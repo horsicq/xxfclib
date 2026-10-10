@@ -37,42 +37,30 @@ extern "C" {
 typedef struct xx_ms_dos_backup {
     Abstractformat format;
     uint64_t number_of_records;
-    uint32_t sequence;   /**< u16 at 0x01. */
-    bool last_fragment;  /**< byte 0 == 0xFF. */
-    int64_t data_size;   /**< Bytes after the 128-byte header. */
+    uint32_t sequence;  /**< u16 at 0x01. */
+    bool last_fragment; /**< byte 0 == 0xFF. */
+    int64_t data_size;  /**< Bytes after the 128-byte header. */
 } xx_ms_dos_backup;
 
 typedef xx_ms_dos_backup xx_ms_dos_backup_t;
 
 #define XX_MS_DOS_BACKUP_HEADER_SIZE 128
 
-XXFC_API void xx_ms_dos_backup_init(xx_ms_dos_backup *archive,
-                                    xx_io_device *device,
-                                    int64_t base_address);
-XXFC_API xx_ms_dos_backup *xx_ms_dos_backup_create(xx_io_device *device,
-                                                   int64_t base_address);
+XXFC_API void xx_ms_dos_backup_init(xx_ms_dos_backup *archive, xx_io_device *device, int64_t base_address);
+XXFC_API xx_ms_dos_backup *xx_ms_dos_backup_create(xx_io_device *device, int64_t base_address);
 XXFC_API void xx_ms_dos_backup_destroy(xx_ms_dos_backup *archive);
 XXFC_API void xx_ms_dos_backup_free(xx_ms_dos_backup *archive);
 
-XXFC_API bool xx_ms_dos_backup_check_is_valid(Abstractformat *self,
-                                              xx_pd_struct *pd);
-XXFC_API bool xx_ms_dos_backup_handle_base_info(Abstractformat *self,
-                                                xx_pd_struct *pd);
-XXFC_API int64_t xx_ms_dos_backup_get_format_size(Abstractformat *self,
-                                                  xx_pd_struct *pd);
-XXFC_API uint64_t xx_ms_dos_backup_get_number_of_archive_records(
-    Abstractformat *self, xx_pd_struct *pd);
+XXFC_API bool xx_ms_dos_backup_check_is_valid(Abstractformat *self, xx_pd_struct *pd);
+XXFC_API bool xx_ms_dos_backup_handle_base_info(Abstractformat *self, xx_pd_struct *pd);
+XXFC_API int64_t xx_ms_dos_backup_get_format_size(Abstractformat *self, xx_pd_struct *pd);
+XXFC_API uint64_t xx_ms_dos_backup_get_number_of_archive_records(Abstractformat *self, xx_pd_struct *pd);
 
-XXFC_API xx_archive_record_state *xx_ms_dos_backup_create_archive_records_reading(
-    Abstractformat *self, const xx_list_s *options, xx_pd_struct *pd);
-XXFC_API const xx_archive_record *xx_ms_dos_backup_get_current_archive_record(
-    Abstractformat *self, xx_archive_record_state *state);
-XXFC_API bool xx_ms_dos_backup_unpack_current_archive_record(
-    Abstractformat *self, xx_archive_record_state *state, xx_pd_struct *pd);
-XXFC_API bool xx_ms_dos_backup_archive_record_move_to_next(
-    Abstractformat *self, xx_archive_record_state *state, xx_pd_struct *pd);
-XXFC_API void xx_ms_dos_backup_free_archive_records_reading(
-    Abstractformat *self, xx_archive_record_state *state);
+XXFC_API xx_archive_record_state *xx_ms_dos_backup_create_archive_records_reading(Abstractformat *self, const xx_list_s *options, xx_pd_struct *pd);
+XXFC_API const xx_archive_record *xx_ms_dos_backup_get_current_archive_record(Abstractformat *self, xx_archive_record_state *state);
+XXFC_API bool xx_ms_dos_backup_unpack_current_archive_record(Abstractformat *self, xx_archive_record_state *state, xx_pd_struct *pd);
+XXFC_API bool xx_ms_dos_backup_archive_record_move_to_next(Abstractformat *self, xx_archive_record_state *state, xx_pd_struct *pd);
+XXFC_API void xx_ms_dos_backup_free_archive_records_reading(Abstractformat *self, xx_archive_record_state *state);
 
 #ifdef __cplusplus
 }

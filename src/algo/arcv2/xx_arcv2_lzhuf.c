@@ -36,14 +36,16 @@ typedef struct arcv2_lzhuf_model_s {
     uint32_t root;
 } arcv2_lzhuf_model;
 
-static int arcv2_lzhuf_read_bit(arcv2_lzhuf_bits *bits) {
+static int arcv2_lzhuf_read_bit(arcv2_lzhuf_bits *bits)
+{
     uint8_t byte;
     if (!bits || bits->bit_position / 8U >= bits->input_size) return -1;
     byte = bits->input[bits->bit_position / 8U];
     return (int)((byte >> (7U - (unsigned)(bits->bit_position++ & 7U))) & 1U);
 }
 
-static bool arcv2_lzhuf_reconstruct(arcv2_lzhuf_model *model) {
+static bool arcv2_lzhuf_reconstruct(arcv2_lzhuf_model *model)
+{
     uint32_t leaf_count = 0U;
     uint32_t index;
     if (!model) return false;
@@ -58,12 +60,10 @@ static bool arcv2_lzhuf_reconstruct(arcv2_lzhuf_model *model) {
     if (leaf_count != model->character_count) return false;
     for (index = 0U; index < model->character_count - 1U; ++index) {
         uint32_t node = model->character_count + index;
-        uint32_t sum = model->frequency[index * 2U] +
-                       model->frequency[index * 2U + 1U];
+        uint32_t sum = model->frequency[index * 2U] + model->frequency[index * 2U + 1U];
         uint32_t insertion = node;
         uint32_t move;
-        while (insertion != 0U && sum < model->frequency[insertion - 1U])
-            --insertion;
+        while (insertion != 0U && sum < model->frequency[insertion - 1U]) --insertion;
         for (move = node; move > insertion; --move) {
             model->frequency[move] = model->frequency[move - 1U];
             model->child[move] = model->child[move - 1U];
@@ -73,45 +73,36 @@ static bool arcv2_lzhuf_reconstruct(arcv2_lzhuf_model *model) {
     }
     for (index = 0U; index < model->tree_size; ++index) {
         uint32_t node = model->child[index];
-        if (node >= sizeof(model->parent) / sizeof(model->parent[0]))
-            return false;
+        if (node >= sizeof(model->parent) / sizeof(model->parent[0])) return false;
         model->parent[node] = index;
         if (node < model->tree_size) {
-            if (node + 1U >= sizeof(model->parent) / sizeof(model->parent[0]))
-                return false;
+            if (node + 1U >= sizeof(model->parent) / sizeof(model->parent[0])) return false;
             model->parent[node + 1U] = index;
         }
     }
     return true;
 }
 
-static bool arcv2_lzhuf_update(arcv2_lzhuf_model *model,
-                               uint32_t character) {
+static bool arcv2_lzhuf_update(arcv2_lzhuf_model *model, uint32_t character)
+{
     uint32_t current;
     uint32_t guard = 0U;
     if (!model || character >= model->character_count) return false;
-    if (model->frequency[model->root] == model->maximum_frequency &&
-        !arcv2_lzhuf_reconstruct(model))
-        return false;
+    if (model->frequency[model->root] == model->maximum_frequency && !arcv2_lzhuf_reconstruct(model)) return false;
     current = model->parent[character + model->tree_size];
     do {
         uint32_t updated;
         uint32_t next;
-        if (current >= model->tree_size || guard++ > model->tree_size)
-            return false;
+        if (current >= model->tree_size || guard++ > model->tree_size) return false;
         updated = ++model->frequency[current];
         next = current + 1U;
         if (next > model->tree_size) return false;
         if (updated > model->frequency[next]) {
-            while (next + 1U <= model->tree_size &&
-                   updated > model->frequency[next + 1U])
-                ++next;
+            while (next + 1U <= model->tree_size && updated > model->frequency[next + 1U]) ++next;
             {
                 uint32_t old_child = model->child[current];
                 uint32_t new_child = model->child[next];
-                if (old_child >= sizeof(model->parent) / sizeof(model->parent[0]) ||
-                    new_child >= sizeof(model->parent) / sizeof(model->parent[0]))
-                    return false;
+                if (old_child >= sizeof(model->parent) / sizeof(model->parent[0]) || new_child >= sizeof(model->parent) / sizeof(model->parent[0])) return false;
                 model->frequency[current] = model->frequency[next];
                 model->frequency[next] = updated;
                 model->parent[old_child] = next;
@@ -128,29 +119,25 @@ static bool arcv2_lzhuf_update(arcv2_lzhuf_model *model,
     return true;
 }
 
-static int arcv2_lzhuf_decode_character(arcv2_lzhuf_model *model,
-                                        arcv2_lzhuf_bits *bits) {
+static int arcv2_lzhuf_decode_character(arcv2_lzhuf_model *model, arcv2_lzhuf_bits *bits)
+{
     uint32_t current;
     uint32_t guard = 0U;
     if (!model || !bits) return -2;
     current = model->child[model->root];
     while (current < model->tree_size) {
         int bit;
-        if (current + 1U >= model->tree_size || guard++ > model->tree_size)
-            return -2;
+        if (current + 1U >= model->tree_size || guard++ > model->tree_size) return -2;
         bit = arcv2_lzhuf_read_bit(bits);
         if (bit < 0) return -1;
         current = model->child[current + (uint32_t)bit];
     }
-    if (current < model->tree_size ||
-        current - model->tree_size >= model->character_count ||
-        !arcv2_lzhuf_update(model, current - model->tree_size))
-        return -2;
+    if (current < model->tree_size || current - model->tree_size >= model->character_count || !arcv2_lzhuf_update(model, current - model->tree_size)) return -2;
     return (int)(current - model->tree_size);
 }
 
-static int arcv2_lzhuf_decode_position(const arcv2_lzhuf_model *model,
-                                       arcv2_lzhuf_bits *bits) {
+static int arcv2_lzhuf_decode_position(const arcv2_lzhuf_model *model, arcv2_lzhuf_bits *bits)
+{
     uint32_t first = 0U;
     uint32_t index;
     uint32_t shifted;
@@ -169,27 +156,22 @@ static int arcv2_lzhuf_decode_position(const arcv2_lzhuf_model *model,
         if (bit < 0) return -1;
         shifted = (shifted << 1U) | (uint32_t)bit;
     }
-    return (int)(((uint32_t)model->position_code[first] << 6U) |
-                 (shifted & 0x3fU));
+    return (int)(((uint32_t)model->position_code[first] << 6U) | (shifted & 0x3fU));
 }
 
-static bool arcv2_lzhuf_init(arcv2_lzhuf_model *model, bool wide,
-                             bool lh1) {
-    static const uint8_t symbols_per_length[6U] = { 1U, 3U, 8U,
-                                                      12U, 24U, 16U };
+static bool arcv2_lzhuf_init(arcv2_lzhuf_model *model, bool wide, bool lh1)
+{
+    static const uint8_t symbols_per_length[6U] = {1U, 3U, 8U, 12U, 24U, 16U};
     uint32_t prefix = 0U;
     uint32_t symbol = 0U;
     uint32_t length;
     uint32_t index;
     if (!model) return false;
     xx_rt_memset(model, 0, sizeof(*model));
-    model->character_count = lh1 ? ARCV2_LZHUF_NCHAR_LH1 :
-                             wide ? ARCV2_LZHUF_NCHAR_WIDE :
-                                    ARCV2_LZHUF_NCHAR_COMPACT;
+    model->character_count = lh1 ? ARCV2_LZHUF_NCHAR_LH1 : wide ? ARCV2_LZHUF_NCHAR_WIDE : ARCV2_LZHUF_NCHAR_COMPACT;
     /* Eschalon 1.00 keeps adapting until 0xd000 hits, unlike the later
      * 1.10/2.00 streams that rebuild at the stock LZHUF 0x8000 limit. */
-    model->maximum_frequency = lh1 ? ARCV2_LZHUF_MAX_FREQ_LH1 :
-                                     ARCV2_LZHUF_MAX_FREQ;
+    model->maximum_frequency = lh1 ? ARCV2_LZHUF_MAX_FREQ_LH1 : ARCV2_LZHUF_MAX_FREQ;
     model->tree_size = model->character_count * 2U - 1U;
     model->root = model->tree_size - 1U;
     for (length = 3U; length <= 8U; ++length) {
@@ -214,8 +196,7 @@ static bool arcv2_lzhuf_init(arcv2_lzhuf_model *model, bool wide,
     }
     for (index = 0U; index < model->character_count - 1U; ++index) {
         uint32_t node = model->character_count + index;
-        model->frequency[node] = model->frequency[index * 2U] +
-                                 model->frequency[index * 2U + 1U];
+        model->frequency[node] = model->frequency[index * 2U] + model->frequency[index * 2U + 1U];
         model->child[node] = index * 2U;
         model->parent[index * 2U] = node;
         model->parent[index * 2U + 1U] = node;
@@ -225,10 +206,8 @@ static bool arcv2_lzhuf_init(arcv2_lzhuf_model *model, bool wide,
     return true;
 }
 
-static bool arcv2_lzhuf_decode_memory(const uint8_t *input,
-                                      size_t input_size, uint8_t *output,
-                                      size_t output_size, bool wide, bool lh1,
-                                      size_t *written) {
+static bool arcv2_lzhuf_decode_memory(const uint8_t *input, size_t input_size, uint8_t *output, size_t output_size, bool wide, bool lh1, size_t *written)
+{
     arcv2_lzhuf_model model;
     arcv2_lzhuf_bits bits;
     uint8_t dictionary[ARCV2_LZHUF_DICTIONARY_SIZE];
@@ -236,10 +215,7 @@ static bool arcv2_lzhuf_decode_memory(const uint8_t *input,
     uint32_t write_position;
     uint32_t maximum_length;
     if (written) *written = 0U;
-    if ((!input && input_size != 0U) || (!output && output_size != 0U) ||
-        input_size == 0U || output_size == 0U ||
-        !arcv2_lzhuf_init(&model, wide, lh1))
-        return false;
+    if ((!input && input_size != 0U) || (!output && output_size != 0U) || input_size == 0U || output_size == 0U || !arcv2_lzhuf_init(&model, wide, lh1)) return false;
     xx_rt_memset(&bits, 0, sizeof(bits));
     bits.input = input;
     bits.input_size = input_size;
@@ -252,25 +228,19 @@ static bool arcv2_lzhuf_decode_memory(const uint8_t *input,
         if (character < 256) {
             output[produced++] = (uint8_t)character;
             dictionary[write_position] = (uint8_t)character;
-            write_position = (write_position + 1U) &
-                             (ARCV2_LZHUF_DICTIONARY_SIZE - 1U);
+            write_position = (write_position + 1U) & (ARCV2_LZHUF_DICTIONARY_SIZE - 1U);
         } else {
             int encoded_position = arcv2_lzhuf_decode_position(&model, &bits);
             uint32_t length = (uint32_t)character - (lh1 ? 253U : 254U);
             uint32_t source;
             uint32_t index;
-            if (encoded_position < 0 || length < 3U ||
-                length > maximum_length || length > output_size - produced)
-                goto done;
-            source = (write_position - (uint32_t)encoded_position - 1U) &
-                     (ARCV2_LZHUF_DICTIONARY_SIZE - 1U);
+            if (encoded_position < 0 || length < 3U || length > maximum_length || length > output_size - produced) goto done;
+            source = (write_position - (uint32_t)encoded_position - 1U) & (ARCV2_LZHUF_DICTIONARY_SIZE - 1U);
             for (index = 0U; index < length; ++index) {
-                uint8_t value = dictionary[(source + index) &
-                                           (ARCV2_LZHUF_DICTIONARY_SIZE - 1U)];
+                uint8_t value = dictionary[(source + index) & (ARCV2_LZHUF_DICTIONARY_SIZE - 1U)];
                 output[produced++] = value;
                 dictionary[write_position] = value;
-                write_position = (write_position + 1U) &
-                                 (ARCV2_LZHUF_DICTIONARY_SIZE - 1U);
+                write_position = (write_position + 1U) & (ARCV2_LZHUF_DICTIONARY_SIZE - 1U);
             }
         }
     }
@@ -281,21 +251,18 @@ done:
     return false;
 }
 
-bool xx_arcv2_lzhuf_decode_memory(const uint8_t *input, size_t input_size,
-                                  uint8_t *output, size_t output_size,
-                                  bool wide, size_t *written) {
-    return arcv2_lzhuf_decode_memory(input, input_size, output,
-                                     output_size, wide, false, written);
+bool xx_arcv2_lzhuf_decode_memory(const uint8_t *input, size_t input_size, uint8_t *output, size_t output_size, bool wide, size_t *written)
+{
+    return arcv2_lzhuf_decode_memory(input, input_size, output, output_size, wide, false, written);
 }
 
-bool xx_arcv2_lzhuf_decode_memory_lh1(const uint8_t *input,
-                                      size_t input_size, uint8_t *output,
-                                      size_t output_size, size_t *written) {
-    return arcv2_lzhuf_decode_memory(input, input_size, output,
-                                     output_size, true, true, written);
+bool xx_arcv2_lzhuf_decode_memory_lh1(const uint8_t *input, size_t input_size, uint8_t *output, size_t output_size, size_t *written)
+{
+    return arcv2_lzhuf_decode_memory(input, input_size, output, output_size, true, true, written);
 }
 
-bool xx_arcv2_xor_delta_decode(uint8_t *data, size_t size, uint8_t seed) {
+bool xx_arcv2_xor_delta_decode(uint8_t *data, size_t size, uint8_t seed)
+{
     size_t index;
     uint8_t previous = seed;
     if (!data && size != 0U) return false;

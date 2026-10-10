@@ -55,7 +55,7 @@ static void canonical_codes(const uint8_t *lengths, int n, uint32_t *codes)
     }
     for (int i = 0; i < n; i++) {
         if (lengths[i]) codes[i] = (uint32_t)next_code[(int)lengths[i]]++;
-        else            codes[i] = 0;
+        else codes[i] = 0;
     }
 }
 
@@ -73,8 +73,7 @@ static int rle_block_prefix(const uint8_t *data, int data_len, int block_bytes)
     int rle_len = 0;
     while (raw_len < data_len) {
         int run = 1;
-        while (raw_len + run < data_len &&
-               data[raw_len + run] == data[raw_len] && run < 255 + 4) {
+        while (raw_len + run < data_len && data[raw_len + run] == data[raw_len] && run < 255 + 4) {
             run++;
         }
         int encoded_len = run >= 4 ? 5 : run;
@@ -85,9 +84,7 @@ static int rle_block_prefix(const uint8_t *data, int data_len, int block_bytes)
     return raw_len;
 }
 
-static bool compress_block(bz2_bit_writer *bw,
-                           const uint8_t *data, int data_len,
-                           int block_size_100k, uint32_t *stream_crc)
+static bool compress_block(bz2_bit_writer *bw, const uint8_t *data, int data_len, int block_size_100k, uint32_t *stream_crc)
 {
     /* Bzip2 uses the unreflected CRC-32/BZIP2 model for each block. */
     uint32_t crc = xx_crc32(XX_CRC_TYPE_CRC32_BZIP2, data, (size_t)data_len);
@@ -125,7 +122,10 @@ static bool compress_block(bz2_bit_writer *bw,
 
     /* BWT on RLE-encoded block */
     uint8_t *bwt = (uint8_t *)xx_mem_alloc((size_t)rle_data_len);
-    if (!bwt) { xx_mem_free(rle_data); return false; }
+    if (!bwt) {
+        xx_mem_free(rle_data);
+        return false;
+    }
     int orig_ptr = 0;
     if (!xx_bzip2_bwt_transform(rle_data, rle_data_len, bwt, &orig_ptr)) {
         xx_mem_free(bwt);
@@ -140,12 +140,16 @@ static bool compress_block(bz2_bit_writer *bw,
     for (int j = 0; j < rle_data_len; j++) in_use[bwt[j]] = 1;
 
     int n_syms = 0;
-    for (int j = 0; j < 256; j++) if (in_use[j]) n_syms++;
+    for (int j = 0; j < 256; j++)
+        if (in_use[j]) n_syms++;
     int alpha_size = n_syms + 2; /* +RUNA +RUNB +EOB */
 
     /* MTF */
     int *mtf_vals = (int *)xx_mem_alloc((size_t)rle_data_len * sizeof(int));
-    if (!mtf_vals) { xx_mem_free(bwt); return false; }
+    if (!mtf_vals) {
+        xx_mem_free(bwt);
+        return false;
+    }
     if (!xx_bzip2_mtf_encode(bwt, (size_t)rle_data_len, mtf_vals, in_use)) {
         xx_mem_free(mtf_vals);
         xx_mem_free(bwt);
@@ -157,14 +161,20 @@ static bool compress_block(bz2_bit_writer *bw,
     uint32_t freq[BZ2_MAX_ALPHA_SIZE];
     xx_rt_memset(freq, 0, sizeof(freq));
     int *rle_buf = (int *)xx_mem_alloc(((size_t)rle_data_len + 2) * sizeof(int));
-    if (!rle_buf) { xx_mem_free(mtf_vals); return false; }
+    if (!rle_buf) {
+        xx_mem_free(mtf_vals);
+        return false;
+    }
     int rle_len = 0;
     int i = 0;
     while (i < rle_data_len) {
         if (mtf_vals[i] == 0) {
             /* run of 0s */
             int run = 0;
-            while (i < rle_data_len && mtf_vals[i] == 0) { run++; i++; }
+            while (i < rle_data_len && mtf_vals[i] == 0) {
+                run++;
+                i++;
+            }
             run--; /* bijective: 1→RUNA, 2→RUNB RUNA, 3→RUNA RUNA, ... */
             while (run >= 0) {
                 int bit = run & 1;
@@ -228,15 +238,14 @@ static bool compress_block(bz2_bit_writer *bw,
         if (in_use_16 & (1u << (15 - hi))) {
             uint16_t row = 0;
             for (int lo = 0; lo < 16; lo++) {
-                if (in_use[hi * 16 + lo])
-                    row |= (uint16_t)(1u << (15 - lo));
+                if (in_use[hi * 16 + lo]) row |= (uint16_t)(1u << (15 - lo));
             }
             bz2_bw_write_bits(bw, row, 16);
         }
     }
 
     /* n_groups, n_selectors */
-    bz2_bw_write_bits(bw, 2, 3);   /* 2 groups */
+    bz2_bw_write_bits(bw, 2, 3); /* 2 groups */
     bz2_bw_write_bits(bw, (uint32_t)n_sel, 15);
 
     /* Selectors (all 0, MTF-encoded → single 0-bit each) */
@@ -248,8 +257,14 @@ static bool compress_block(bz2_bit_writer *bw,
         bz2_bw_write_bits(bw, (uint32_t)prev, 5);
         for (int s = 0; s < alpha_size; s++) {
             int curr = lengths[s];
-            while (curr < prev) { bz2_bw_write_bits(bw, 3, 2); prev--; }
-            while (curr > prev) { bz2_bw_write_bits(bw, 2, 2); prev++; }
+            while (curr < prev) {
+                bz2_bw_write_bits(bw, 3, 2);
+                prev--;
+            }
+            while (curr > prev) {
+                bz2_bw_write_bits(bw, 2, 2);
+                prev++;
+            }
             bz2_bw_write_bits(bw, 0, 1); /* stop bit */
         }
     }
@@ -268,17 +283,12 @@ static bool compress_block(bz2_bit_writer *bw,
  * Public compression entry point
  * ========================================================================= */
 
-bool xx_bzip2_compress_stream(xx_io_device *src_dev,
-                              const uint8_t *mem_src, size_t mem_src_size,
-                              int64_t src_offset, int64_t uncomp_size,
-                              bz2_bit_writer *bw, int block_size_100k,
-                              xx_pd_struct *pd)
+bool xx_bzip2_compress_stream(xx_io_device *src_dev, const uint8_t *mem_src, size_t mem_src_size, int64_t src_offset, int64_t uncomp_size, bz2_bit_writer *bw,
+                              int block_size_100k, xx_pd_struct *pd)
 {
     (void)pd;
     if (!bw || bw->error) return false;
-    if (uncomp_size < 0 ||
-        (!src_dev && uncomp_size > 0 &&
-         (!mem_src || (uint64_t)uncomp_size > mem_src_size))) return false;
+    if (uncomp_size < 0 || (!src_dev && uncomp_size > 0 && (!mem_src || (uint64_t)uncomp_size > mem_src_size))) return false;
     if (block_size_100k < 1) block_size_100k = 1;
     if (block_size_100k > 9) block_size_100k = 9;
 
@@ -314,7 +324,10 @@ bool xx_bzip2_compress_stream(xx_io_device *src_dev,
                 ssize_t r;
                 if (request > bw->obuf_capacity) request = bw->obuf_capacity;
                 r = xx_io_read(src_dev, block_buf + got, request);
-                if (r <= 0 || (size_t)r > request) { ok = false; break; }
+                if (r <= 0 || (size_t)r > request) {
+                    ok = false;
+                    break;
+                }
                 got += (size_t)r;
             }
             if (!ok) break;
@@ -325,7 +338,10 @@ bool xx_bzip2_compress_stream(xx_io_device *src_dev,
         }
 
         int block_len = rle_block_prefix(block_buf, (int)got, block_bytes);
-        if (block_len == 0) { ok = false; break; }
+        if (block_len == 0) {
+            ok = false;
+            break;
+        }
         ok = compress_block(bw, block_buf, block_len, block_size_100k, &stream_crc);
         remaining -= block_len;
         buffered = got - (size_t)block_len;

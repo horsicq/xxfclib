@@ -64,20 +64,18 @@ static void xx_ecmpacked_vtable_destroy(Abstractformat *self);
 
 /* ------------------------------------------------------------- helpers -- */
 
-static bool xx_ecmpacked_read_at(Abstractformat *self, int64_t offset,
-                              uint8_t *buffer, size_t size) {
+static bool xx_ecmpacked_read_at(Abstractformat *self, int64_t offset, uint8_t *buffer, size_t size)
+{
     size_t completed = 0U;
     const size_t io_capacity = xx_get_file_buffer_size();
 
-    if (!self || !self->device || offset < 0 ||
-        xx_io_seek64(self->device, offset, SEEK_SET) != 0) {
+    if (!self || !self->device || offset < 0 || xx_io_seek64(self->device, offset, SEEK_SET) != 0) {
         return false;
     }
     while (completed < size) {
         size_t request = size - completed;
         if (request > io_capacity) request = io_capacity;
-        ssize_t received =
-            xx_io_read(self->device, buffer + completed, request);
+        ssize_t received = xx_io_read(self->device, buffer + completed, request);
         if (received <= 0 || (size_t)received > request) {
             return false;
         }
@@ -86,14 +84,14 @@ static bool xx_ecmpacked_read_at(Abstractformat *self, int64_t offset,
     return true;
 }
 
-static bool xx_ecmpacked_range_within(int64_t total, int64_t offset,
-                                   int64_t size) {
-    return offset >= 0 && size >= 0 && offset <= total &&
-           size <= total - offset;
+static bool xx_ecmpacked_range_within(int64_t total, int64_t offset, int64_t size)
+{
+    return offset >= 0 && size >= 0 && offset <= total && size <= total - offset;
 }
 
 /* Refuse anything that would escape the extraction directory. */
-static bool xx_ecmpacked_path_safe(const char *name) {
+static bool xx_ecmpacked_path_safe(const char *name)
+{
     const char *cursor = name;
 
     if (!name || !name[0] || name[0] == '/') return false;
@@ -108,7 +106,8 @@ static bool xx_ecmpacked_path_safe(const char *name) {
     return true;
 }
 
-static void xx_ecmpacked_stream_free(void *pointer) {
+static void xx_ecmpacked_stream_free(void *pointer)
+{
     xx_ecmpacked_stream *stream = (xx_ecmpacked_stream *)pointer;
     size_t index;
 
@@ -121,17 +120,15 @@ static void xx_ecmpacked_stream_free(void *pointer) {
 }
 
 /* Append a member, taking ownership of @p name. */
-static bool xx_ecmpacked_add(xx_ecmpacked_stream *stream,
-                          const xx_ecmpacked_member *member) {
-    xx_ecmpacked_member *grown = (xx_ecmpacked_member *)xx_mem_realloc(
-        stream->items, sizeof(*grown) * (stream->count + 1U));
+static bool xx_ecmpacked_add(xx_ecmpacked_stream *stream, const xx_ecmpacked_member *member)
+{
+    xx_ecmpacked_member *grown = (xx_ecmpacked_member *)xx_mem_realloc(stream->items, sizeof(*grown) * (stream->count + 1U));
 
     if (!grown) return false;
     stream->items = grown;
     stream->items[stream->count++] = *member;
     return true;
 }
-
 
 #define XX_ECMPACKED_MEMBER_NAME "ecm_data"
 #define XX_ECMPACKED_HEADER_SIZE 38
@@ -143,8 +140,8 @@ static bool xx_ecmpacked_add(xx_ecmpacked_stream *stream,
 
 typedef struct xx_ecmpacked_scan_s {
     Abstractformat *self;
-    int64_t base;      /* absolute offset of payload byte 0 */
-    int64_t size;      /* payload length */
+    int64_t base; /* absolute offset of payload byte 0 */
+    int64_t size; /* payload length */
     uint8_t *buffer;
     size_t io_capacity;
     int64_t chunk_offset;
@@ -158,7 +155,6 @@ static bool xx_ecmpacked_measure(Abstractformat *self, int64_t base, int64_t siz
 static xx_ecmpacked_stream *xx_ecmpacked_parse(Abstractformat *self, xx_pd_struct *pd);
 static bool xx_ecmpacked_decode(Abstractformat *self, const xx_ecmpacked_member *member, uint8_t **out, size_t *out_size, xx_pd_struct *pd);
 
-
 /* The payload is walked, not buffered: it can be the whole file, and the walk
  * needs at most two bytes at a time. */
 
@@ -166,22 +162,18 @@ static bool xx_ecmpacked_decode(Abstractformat *self, const xx_ecmpacked_member 
  * it out of band - so every archive lists its single member under this
  * name. */
 
-
-
 /* Fetch one payload byte, refilling the window when the cursor leaves it. */
-static bool xx_ecmpacked_scan_byte(xx_ecmpacked_scan *scan, int64_t position,
-                                   uint8_t *out) {
+static bool xx_ecmpacked_scan_byte(xx_ecmpacked_scan *scan, int64_t position, uint8_t *out)
+{
     int64_t wanted;
 
     if (position < 0 || position >= scan->size) return false;
-    if (position < scan->chunk_offset ||
-        position >= scan->chunk_offset + scan->chunk_size) {
+    if (position < scan->chunk_offset || position >= scan->chunk_offset + scan->chunk_size) {
         wanted = scan->size - position;
         if ((uint64_t)wanted > scan->io_capacity) {
             wanted = (int64_t)scan->io_capacity;
         }
-        if (!xx_ecmpacked_read_at(scan->self, scan->base + position,
-                                  scan->buffer, (size_t)wanted)) {
+        if (!xx_ecmpacked_read_at(scan->self, scan->base + position, scan->buffer, (size_t)wanted)) {
             return false;
         }
         scan->chunk_offset = position;
@@ -195,9 +187,8 @@ static bool xx_ecmpacked_scan_byte(xx_ecmpacked_scan *scan, int64_t position,
  * never stores the decoded length, so this is the only way to learn it - and
  * because the walk must consume the payload exactly, it is simultaneously the
  * strongest structural check the format offers. */
-static bool xx_ecmpacked_measure(Abstractformat *self, int64_t base,
-                                 int64_t size, int64_t *out_size,
-                                 xx_pd_struct *pd) {
+static bool xx_ecmpacked_measure(Abstractformat *self, int64_t base, int64_t size, int64_t *out_size, xx_pd_struct *pd)
+{
     xx_ecmpacked_scan scan;
     int64_t position = 0;
     int64_t unpacked = 0;
@@ -240,8 +231,7 @@ static bool xx_ecmpacked_measure(Abstractformat *self, int64_t base,
              * between tokens. Anything else is not this format, and this is
              * the check that keeps a stray "ECM\0" from measuring. */
             if (size - position < 2) goto done;
-            if (!xx_ecmpacked_scan_byte(&scan, position, &second) ||
-                !xx_ecmpacked_scan_byte(&scan, position + 1, &second)) {
+            if (!xx_ecmpacked_scan_byte(&scan, position, &second) || !xx_ecmpacked_scan_byte(&scan, position + 1, &second)) {
                 goto done;
             }
             /* Length is stored three less than the true run length. */
@@ -263,10 +253,9 @@ done:
     return result;
 }
 
-static xx_ecmpacked_stream *xx_ecmpacked_parse(Abstractformat *self,
-                                               xx_pd_struct *pd) {
-    static const uint8_t signature[4] = {(uint8_t)'E', (uint8_t)'C',
-                                         (uint8_t)'M', 0U};
+static xx_ecmpacked_stream *xx_ecmpacked_parse(Abstractformat *self, xx_pd_struct *pd)
+{
+    static const uint8_t signature[4] = {(uint8_t)'E', (uint8_t)'C', (uint8_t)'M', 0U};
     xx_ecmpacked_stream *stream;
     xx_ecmpacked_member member;
     uint8_t header[XX_ECMPACKED_HEADER_SIZE];
@@ -285,8 +274,7 @@ static xx_ecmpacked_stream *xx_ecmpacked_parse(Abstractformat *self,
      * cannot hold a member. */
     if (span < XX_ECMPACKED_HEADER_SIZE + 2) return NULL;
     if (pd && xx_pd_is_stopped(pd)) return NULL;
-    if (!xx_ecmpacked_read_at(self, self->base_address, header,
-                              sizeof(header))) {
+    if (!xx_ecmpacked_read_at(self, self->base_address, header, sizeof(header))) {
         return NULL;
     }
     if (xx_rt_memcmp(header, signature, sizeof(signature)) != 0) return NULL;
@@ -295,8 +283,7 @@ static xx_ecmpacked_stream *xx_ecmpacked_parse(Abstractformat *self,
      * their own, and this run is what separates the container from Neill
      * Corlett's unrelated "ECM\0" files, whose token stream cannot produce
      * such a run. Loosening this check makes the format match those. */
-    for (index = (size_t)XX_ECMPACKED_RESERVED_OFFSET;
-         index < (size_t)XX_ECMPACKED_RESERVED_END; ++index) {
+    for (index = (size_t)XX_ECMPACKED_RESERVED_OFFSET; index < (size_t)XX_ECMPACKED_RESERVED_END; ++index) {
         if (header[index] != 0U) return NULL;
     }
 
@@ -305,9 +292,7 @@ static xx_ecmpacked_stream *xx_ecmpacked_parse(Abstractformat *self,
 
     compressed_size = span - XX_ECMPACKED_HEADER_SIZE;
     if (compressed_size > XX_ECMPACKED_MAX_DECODED) return NULL;
-    if (!xx_ecmpacked_measure(self,
-                              self->base_address + XX_ECMPACKED_HEADER_SIZE,
-                              compressed_size, &uncompressed_size, pd)) {
+    if (!xx_ecmpacked_measure(self, self->base_address + XX_ECMPACKED_HEADER_SIZE, compressed_size, &uncompressed_size, pd)) {
         return NULL;
     }
 
@@ -318,8 +303,7 @@ static xx_ecmpacked_stream *xx_ecmpacked_parse(Abstractformat *self,
     /* The payload is the file minus the header, so containment is arithmetic
      * rather than a claim from the container - but check it anyway, because a
      * later edit to the header size must not silently publish an overrun. */
-    if (!xx_ecmpacked_range_within(span, XX_ECMPACKED_HEADER_SIZE,
-                                   compressed_size)) {
+    if (!xx_ecmpacked_range_within(span, XX_ECMPACKED_HEADER_SIZE, compressed_size)) {
         goto fail;
     }
     if (stream->count >= (size_t)XX_ECMPACKED_MAX_MEMBERS) goto fail;
@@ -352,8 +336,6 @@ fail:
     return NULL;
 }
 
-
-
 /* The container holds exactly one member, so the cap the briefing asks for is
  * a constant rather than a runaway guard. */
 
@@ -369,10 +351,8 @@ fail:
  * tokens. The decoder is output-driven: it stops exactly at out_size and
  * fails if the input runs out first, so "wrote fewer bytes than claimed" is
  * reported as failure rather than as a short success. */
-static bool xx_ecmpacked_decode(Abstractformat *self,
-                                const xx_ecmpacked_member *member,
-                                uint8_t **out, size_t *out_size,
-                                xx_pd_struct *pd) {
+static bool xx_ecmpacked_decode(Abstractformat *self, const xx_ecmpacked_member *member, uint8_t **out, size_t *out_size, xx_pd_struct *pd)
+{
     uint8_t *input;
     uint8_t *output;
     size_t written = 0U;
@@ -387,15 +367,13 @@ static bool xx_ecmpacked_decode(Abstractformat *self,
     if (member->compressed_size < 1 || member->uncompressed_size < 1) {
         return false;
     }
-    if (member->compressed_size > XX_ECMPACKED_MAX_DECODED ||
-        member->uncompressed_size > XX_ECMPACKED_MAX_DECODED) {
+    if (member->compressed_size > XX_ECMPACKED_MAX_DECODED || member->uncompressed_size > XX_ECMPACKED_MAX_DECODED) {
         return false;
     }
 
     input = (uint8_t *)xx_mem_alloc((size_t)member->compressed_size);
     if (!input) return false;
-    if (!xx_ecmpacked_read_at(self, member->data_offset, input,
-                              (size_t)member->compressed_size)) {
+    if (!xx_ecmpacked_read_at(self, member->data_offset, input, (size_t)member->compressed_size)) {
         xx_mem_free(input);
         return false;
     }
@@ -409,10 +387,7 @@ static bool xx_ecmpacked_decode(Abstractformat *self,
         xx_mem_free(input);
         return false;
     }
-    if (!xx_ampk_lzss_decode_memory(input, (size_t)member->compressed_size,
-                                    output,
-                                    (size_t)member->uncompressed_size,
-                                    &written) ||
+    if (!xx_ampk_lzss_decode_memory(input, (size_t)member->compressed_size, output, (size_t)member->uncompressed_size, &written) ||
         written != (size_t)member->uncompressed_size) {
         xx_mem_free(output);
         xx_mem_free(input);
@@ -426,8 +401,8 @@ static bool xx_ecmpacked_decode(Abstractformat *self,
 
 /* ---------------------------------------------------------- lifecycle --- */
 
-void xx_ecmpacked_init(xx_ecmpacked *archive, xx_io_device *device,
-                    int64_t base_address) {
+void xx_ecmpacked_init(xx_ecmpacked *archive, xx_io_device *device, int64_t base_address)
+{
     if (!archive) return;
     xx_mem_zero(archive, sizeof(*archive));
     xx_format_init(&archive->format, device, base_address);
@@ -440,22 +415,17 @@ void xx_ecmpacked_init(xx_ecmpacked *archive, xx_io_device *device,
     archive->format.check_is_valid = xx_ecmpacked_check_is_valid;
     archive->format.handle_base_info = xx_ecmpacked_handle_base_info;
     archive->format.get_format_size = xx_ecmpacked_get_format_size;
-    archive->format.get_number_of_archive_records =
-        xx_ecmpacked_get_number_of_archive_records;
-    archive->format.create_archive_records_reading =
-        xx_ecmpacked_create_archive_records_reading;
-    archive->format.get_current_archive_record =
-        xx_ecmpacked_get_current_archive_record;
-    archive->format.unpack_current_archive_record =
-        xx_ecmpacked_unpack_current_archive_record;
-    archive->format.archive_record_move_to_next =
-        xx_ecmpacked_archive_record_move_to_next;
-    archive->format.free_archive_records_reading =
-        xx_ecmpacked_free_archive_records_reading;
+    archive->format.get_number_of_archive_records = xx_ecmpacked_get_number_of_archive_records;
+    archive->format.create_archive_records_reading = xx_ecmpacked_create_archive_records_reading;
+    archive->format.get_current_archive_record = xx_ecmpacked_get_current_archive_record;
+    archive->format.unpack_current_archive_record = xx_ecmpacked_unpack_current_archive_record;
+    archive->format.archive_record_move_to_next = xx_ecmpacked_archive_record_move_to_next;
+    archive->format.free_archive_records_reading = xx_ecmpacked_free_archive_records_reading;
     archive->format.destroy = xx_ecmpacked_vtable_destroy;
 }
 
-xx_ecmpacked *xx_ecmpacked_create(xx_io_device *device, int64_t base_address) {
+xx_ecmpacked *xx_ecmpacked_create(xx_io_device *device, int64_t base_address)
+{
     xx_ecmpacked *archive = (xx_ecmpacked *)xx_mem_alloc(sizeof(*archive));
 
     if (!archive) return NULL;
@@ -463,7 +433,8 @@ xx_ecmpacked *xx_ecmpacked_create(xx_io_device *device, int64_t base_address) {
     return archive;
 }
 
-void xx_ecmpacked_destroy(xx_ecmpacked *archive) {
+void xx_ecmpacked_destroy(xx_ecmpacked *archive)
+{
     if (!archive) return;
     /* Not xx_format_destroy: it dispatches through format.destroy, which is
      * the wrapper below, and the two would recurse. */
@@ -472,19 +443,22 @@ void xx_ecmpacked_destroy(xx_ecmpacked *archive) {
     archive->number_of_records = 0U;
 }
 
-void xx_ecmpacked_free(xx_ecmpacked *archive) {
+void xx_ecmpacked_free(xx_ecmpacked *archive)
+{
     if (!archive) return;
     xx_ecmpacked_destroy(archive);
     xx_mem_free(archive);
 }
 
-static void xx_ecmpacked_vtable_destroy(Abstractformat *self) {
+static void xx_ecmpacked_vtable_destroy(Abstractformat *self)
+{
     xx_ecmpacked_destroy((xx_ecmpacked *)self);
 }
 
 /* -------------------------------------------------------------- format -- */
 
-bool xx_ecmpacked_check_is_valid(Abstractformat *self, xx_pd_struct *pd) {
+bool xx_ecmpacked_check_is_valid(Abstractformat *self, xx_pd_struct *pd)
+{
     xx_ecmpacked_stream *stream;
 
     if (!self || (pd && xx_pd_is_stopped(pd))) return false;
@@ -494,7 +468,8 @@ bool xx_ecmpacked_check_is_valid(Abstractformat *self, xx_pd_struct *pd) {
     return true;
 }
 
-bool xx_ecmpacked_handle_base_info(Abstractformat *self, xx_pd_struct *pd) {
+bool xx_ecmpacked_handle_base_info(Abstractformat *self, xx_pd_struct *pd)
+{
     xx_ecmpacked *archive = (xx_ecmpacked *)self;
     xx_ecmpacked_stream *stream;
 
@@ -515,18 +490,17 @@ bool xx_ecmpacked_handle_base_info(Abstractformat *self, xx_pd_struct *pd) {
     return true;
 }
 
-int64_t xx_ecmpacked_get_format_size(Abstractformat *self, xx_pd_struct *pd) {
-    if (!self ||
-        (!self->base_info_handled && !xx_format_handle_base_info(self, pd))) {
+int64_t xx_ecmpacked_get_format_size(Abstractformat *self, xx_pd_struct *pd)
+{
+    if (!self || (!self->base_info_handled && !xx_format_handle_base_info(self, pd))) {
         return 0;
     }
     return self->is_valid ? self->format_size : 0;
 }
 
-uint64_t xx_ecmpacked_get_number_of_archive_records(Abstractformat *self,
-                                                 xx_pd_struct *pd) {
-    if (!self ||
-        (!self->base_info_handled && !xx_format_handle_base_info(self, pd))) {
+uint64_t xx_ecmpacked_get_number_of_archive_records(Abstractformat *self, xx_pd_struct *pd)
+{
+    if (!self || (!self->base_info_handled && !xx_format_handle_base_info(self, pd))) {
         return 0U;
     }
     return self->is_valid ? ((xx_ecmpacked *)self)->number_of_records : 0U;
@@ -534,8 +508,8 @@ uint64_t xx_ecmpacked_get_number_of_archive_records(Abstractformat *self,
 
 /* ------------------------------------------------------------- records -- */
 
-static bool xx_ecmpacked_set_record(xx_archive_record *record,
-                                 const xx_ecmpacked_member *member) {
+static bool xx_ecmpacked_set_record(xx_archive_record *record, const xx_ecmpacked_member *member)
+{
     xx_archive_record_cleanup(record);
     xx_archive_record_init(record);
     record->header_offset = member->header_offset;
@@ -543,34 +517,24 @@ static bool xx_ecmpacked_set_record(xx_archive_record *record,
     record->data_offset = member->data_offset;
     record->compressed_size = member->compressed_size;
     return xx_archive_record_set_original_name(record, member->name) &&
-           xx_archive_record_set_meta_u64(record, XX_META_ID_COMPRESSED_SIZE,
-                                          (uint64_t)member->compressed_size) &&
-           xx_archive_record_set_meta_u64(
-               record, XX_META_ID_UNCOMPRESSED_SIZE,
-               (uint64_t)member->uncompressed_size) &&
-           xx_archive_record_set_meta_u64(record, XX_META_ID_COMPRESSION_METHOD,
-                                          member->method) &&
-           xx_archive_record_set_meta_u64(record, XX_META_ID_TIMESTAMP,
-                                          member->timestamp) &&
-           xx_archive_record_set_meta_bool(record, XX_META_ID_IS_FOLDER,
-                                           member->is_folder) &&
-           xx_archive_record_set_meta_bool(record, XX_META_ID_IS_ENCRYPTED,
-                                           false);
+           xx_archive_record_set_meta_u64(record, XX_META_ID_COMPRESSED_SIZE, (uint64_t)member->compressed_size) &&
+           xx_archive_record_set_meta_u64(record, XX_META_ID_UNCOMPRESSED_SIZE, (uint64_t)member->uncompressed_size) &&
+           xx_archive_record_set_meta_u64(record, XX_META_ID_COMPRESSION_METHOD, member->method) &&
+           xx_archive_record_set_meta_u64(record, XX_META_ID_TIMESTAMP, member->timestamp) &&
+           xx_archive_record_set_meta_bool(record, XX_META_ID_IS_FOLDER, member->is_folder) && xx_archive_record_set_meta_bool(record, XX_META_ID_IS_ENCRYPTED, false);
 }
 
-static bool xx_ecmpacked_copy_options(xx_list_s *target,
-                                   const xx_list_s *options) {
+static bool xx_ecmpacked_copy_options(xx_list_s *target, const xx_list_s *options)
+{
     size_t index;
 
     if (!target || !options) return options == NULL;
     for (index = 0U; index < options->count; ++index) {
-        const xx_meta *source =
-            (const xx_meta *)xx_list_at((const xx_list_t *)options, index);
+        const xx_meta *source = (const xx_meta *)xx_list_at((const xx_list_t *)options, index);
         xx_meta copied;
         if (!source) continue;
         xx_meta_init(&copied, source->meta_id);
-        if (!xx_var_copy(&copied.var, &source->var) ||
-            !xx_list_append(target, &copied)) {
+        if (!xx_var_copy(&copied.var, &source->var) || !xx_list_append(target, &copied)) {
             xx_meta_cleanup(&copied);
             return false;
         }
@@ -578,21 +542,20 @@ static bool xx_ecmpacked_copy_options(xx_list_s *target,
     return true;
 }
 
-static const xx_var *xx_ecmpacked_get_option(const xx_list_s *options,
-                                          uint32_t meta_id) {
+static const xx_var *xx_ecmpacked_get_option(const xx_list_s *options, uint32_t meta_id)
+{
     size_t index;
 
     if (!options) return NULL;
     for (index = 0U; index < options->count; ++index) {
-        const xx_meta *meta =
-            (const xx_meta *)xx_list_at((const xx_list_t *)options, index);
+        const xx_meta *meta = (const xx_meta *)xx_list_at((const xx_list_t *)options, index);
         if (meta && meta->meta_id == meta_id) return &meta->var;
     }
     return NULL;
 }
 
-xx_archive_record_state *xx_ecmpacked_create_archive_records_reading(
-    Abstractformat *self, const xx_list_s *options, xx_pd_struct *pd) {
+xx_archive_record_state *xx_ecmpacked_create_archive_records_reading(Abstractformat *self, const xx_list_s *options, xx_pd_struct *pd)
+{
     xx_ecmpacked_stream *stream;
     xx_archive_record_state *state;
 
@@ -608,9 +571,7 @@ xx_archive_record_state *xx_ecmpacked_create_archive_records_reading(
     state->internal_state = stream;
     state->free_internal = xx_ecmpacked_stream_free;
     state->total_records = (int64_t)stream->count;
-    if (!xx_ecmpacked_copy_options(&state->options, options) ||
-        (stream->count != 0U &&
-         !xx_ecmpacked_set_record(&state->current_record, &stream->items[0]))) {
+    if (!xx_ecmpacked_copy_options(&state->options, options) || (stream->count != 0U && !xx_ecmpacked_set_record(&state->current_record, &stream->items[0]))) {
         xx_archive_record_state_free(state);
         return NULL;
     }
@@ -619,20 +580,16 @@ xx_archive_record_state *xx_ecmpacked_create_archive_records_reading(
     return state;
 }
 
-const xx_archive_record *xx_ecmpacked_get_current_archive_record(
-    Abstractformat *self, xx_archive_record_state *state) {
-    return self && state && state->format == self && state->has_record
-               ? &state->current_record
-               : NULL;
+const xx_archive_record *xx_ecmpacked_get_current_archive_record(Abstractformat *self, xx_archive_record_state *state)
+{
+    return self && state && state->format == self && state->has_record ? &state->current_record : NULL;
 }
 
-bool xx_ecmpacked_archive_record_move_to_next(Abstractformat *self,
-                                           xx_archive_record_state *state,
-                                           xx_pd_struct *pd) {
+bool xx_ecmpacked_archive_record_move_to_next(Abstractformat *self, xx_archive_record_state *state, xx_pd_struct *pd)
+{
     xx_ecmpacked_stream *stream;
 
-    if (!self || !state || state->format != self || !state->has_record ||
-        (pd && xx_pd_is_stopped(pd))) {
+    if (!self || !state || state->format != self || !state->has_record || (pd && xx_pd_is_stopped(pd))) {
         return false;
     }
     stream = (xx_ecmpacked_stream *)state->internal_state;
@@ -644,14 +601,12 @@ bool xx_ecmpacked_archive_record_move_to_next(Abstractformat *self,
     }
     ++stream->index;
     ++state->current_index;
-    state->has_record = xx_ecmpacked_set_record(&state->current_record,
-                                             &stream->items[stream->index]);
+    state->has_record = xx_ecmpacked_set_record(&state->current_record, &stream->items[stream->index]);
     return state->has_record;
 }
 
-bool xx_ecmpacked_unpack_current_archive_record(Abstractformat *self,
-                                             xx_archive_record_state *state,
-                                             xx_pd_struct *pd) {
+bool xx_ecmpacked_unpack_current_archive_record(Abstractformat *self, xx_archive_record_state *state, xx_pd_struct *pd)
+{
     xx_ecmpacked_stream *stream;
     const xx_ecmpacked_member *member;
     const xx_var *path_option;
@@ -663,8 +618,7 @@ bool xx_ecmpacked_unpack_current_archive_record(Abstractformat *self,
     bool result = false;
     bool created = false;
 
-    if (!self || !state || state->format != self || !state->has_record ||
-        (pd && xx_pd_is_stopped(pd))) {
+    if (!self || !state || state->format != self || !state->has_record || (pd && xx_pd_is_stopped(pd))) {
         return false;
     }
     stream = (xx_ecmpacked_stream *)state->internal_state;
@@ -672,8 +626,7 @@ bool xx_ecmpacked_unpack_current_archive_record(Abstractformat *self,
     member = &stream->items[stream->index];
     if (!xx_ecmpacked_path_safe(member->name)) return false;
 
-    path_option = xx_ecmpacked_get_option(&state->options,
-                                       XX_META_ID_OPT_UNPACK_PATH);
+    path_option = xx_ecmpacked_get_option(&state->options, XX_META_ID_OPT_UNPACK_PATH);
     if (!path_option) {
         /* No destination: decode and discard, which verifies the member
          * without writing anything. */
@@ -682,11 +635,9 @@ bool xx_ecmpacked_unpack_current_archive_record(Abstractformat *self,
         xx_mem_free(plain);
         return result;
     }
-    if (path_option->type == XX_VAR_TYPE_STRING ||
-        path_option->type == XX_VAR_TYPE_STRING_VIEW) {
+    if (path_option->type == XX_VAR_TYPE_STRING || path_option->type == XX_VAR_TYPE_STRING_VIEW) {
         base_path = xx_var_get_str(path_option);
-    } else if (path_option->type == XX_VAR_TYPE_WSTRING ||
-               path_option->type == XX_VAR_TYPE_WSTRING_VIEW) {
+    } else if (path_option->type == XX_VAR_TYPE_WSTRING || path_option->type == XX_VAR_TYPE_WSTRING_VIEW) {
         converted_path = xx_str_unicode_to_utf8(xx_var_get_wstr(path_option));
         base_path = converted_path;
     }
@@ -694,9 +645,7 @@ bool xx_ecmpacked_unpack_current_archive_record(Abstractformat *self,
         xx_str_free(converted_path);
         return false;
     }
-    if (base_path[0] != '\0' &&
-        base_path[xx_str_len(base_path) - 1U] != '/' &&
-        base_path[xx_str_len(base_path) - 1U] != '\\') {
+    if (base_path[0] != '\0' && base_path[xx_str_len(base_path) - 1U] != '/' && base_path[xx_str_len(base_path) - 1U] != '\\') {
         target_path = xx_str_concat3(base_path, "/", member->name);
     } else {
         target_path = xx_str_concat(base_path, member->name);
@@ -709,8 +658,7 @@ bool xx_ecmpacked_unpack_current_archive_record(Abstractformat *self,
         xx_str_free(target_path);
         return result;
     }
-    if (!xx_store_create_dirs_a(target_path, false) ||
-        !xx_ecmpacked_decode(self, member, &plain, &plain_size, pd)) {
+    if (!xx_store_create_dirs_a(target_path, false) || !xx_ecmpacked_decode(self, member, &plain, &plain_size, pd)) {
         xx_str_free(target_path);
         return false;
     }
@@ -721,8 +669,7 @@ bool xx_ecmpacked_unpack_current_archive_record(Abstractformat *self,
 
         result = output != NULL;
         while (result && completed < plain_size) {
-            ssize_t sent = xx_io_write(output, plain + completed,
-                                       plain_size - completed);
+            ssize_t sent = xx_io_write(output, plain + completed, plain_size - completed);
             if (sent <= 0 || (size_t)sent > plain_size - completed) {
                 result = false;
                 break;
@@ -737,8 +684,8 @@ bool xx_ecmpacked_unpack_current_archive_record(Abstractformat *self,
     return result;
 }
 
-void xx_ecmpacked_free_archive_records_reading(Abstractformat *self,
-                                            xx_archive_record_state *state) {
+void xx_ecmpacked_free_archive_records_reading(Abstractformat *self, xx_archive_record_state *state)
+{
     (void)self;
     xx_archive_record_state_free(state);
 }

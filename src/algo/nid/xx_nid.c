@@ -61,7 +61,8 @@ typedef struct nid_state_s {
     uint8_t ring[NID_RING_SIZE];
 } nid_state;
 
-static void nid_bits_init(nid_bits *bits, const uint8_t *data, size_t size) {
+static void nid_bits_init(nid_bits *bits, const uint8_t *data, size_t size)
+{
     bits->data = data;
     bits->size = size;
     bits->position = 0;
@@ -69,7 +70,8 @@ static void nid_bits_init(nid_bits *bits, const uint8_t *data, size_t size) {
     bits->count = 0;
 }
 
-static int32_t nid_bit(nid_bits *bits) {
+static int32_t nid_bit(nid_bits *bits)
+{
     int32_t result;
 
     if (bits->count == 0) {
@@ -85,7 +87,8 @@ static int32_t nid_bit(nid_bits *bits) {
     return result;
 }
 
-static int32_t nid_read_bits(nid_bits *bits, int32_t count) {
+static int32_t nid_read_bits(nid_bits *bits, int32_t count)
+{
     int32_t result = 0;
     int32_t i;
 
@@ -98,7 +101,8 @@ static int32_t nid_read_bits(nid_bits *bits, int32_t count) {
     return result;
 }
 
-static void nid_model_init(nid_model *model, int32_t max_count) {
+static void nid_model_init(nid_model *model, int32_t max_count)
+{
     int32_t i;
 
     model->max_count = max_count;
@@ -119,7 +123,8 @@ static void nid_model_init(nid_model *model, int32_t max_count) {
     model->total = (uint16_t)NID_NSYM;
 }
 
-static void nid_rescale(nid_model *model, uint32_t initial) {
+static void nid_rescale(nid_model *model, uint32_t initial)
+{
     uint32_t accumulator = initial;
     int32_t i;
 
@@ -131,7 +136,8 @@ static void nid_rescale(nid_model *model, uint32_t initial) {
     model->total = (uint16_t)accumulator;
 }
 
-static void nid_update(nid_model *model, int32_t position) {
+static void nid_update(nid_model *model, int32_t position)
+{
     uint16_t symbol = model->symbol_at[position];
     uint16_t new_weight;
     int32_t i;
@@ -163,7 +169,8 @@ static void nid_update(nid_model *model, int32_t position) {
 /* Splits [start, start + count) at the running-weight half point.  Internal
  * nodes are identified by their split index (< NID_NSYM), leaves by
  * symbol + NID_NSYM. */
-static int32_t nid_build(nid_model *model, int32_t start, int32_t count, uint32_t total, int32_t depth) {
+static int32_t nid_build(nid_model *model, int32_t start, int32_t count, uint32_t total, int32_t depth)
+{
     int32_t split;
     int32_t left;
     int32_t right;
@@ -207,7 +214,8 @@ static int32_t nid_build(nid_model *model, int32_t start, int32_t count, uint32_
     return split;
 }
 
-static bool nid_build_tree(nid_model *model) {
+static bool nid_build_tree(nid_model *model)
+{
     int32_t attempt;
 
     /* A too-deep code forces a weight rescale and a retry; the reference loops
@@ -224,7 +232,8 @@ static bool nid_build_tree(nid_model *model) {
 }
 
 /* Returns the decoded symbol, or -1 on a bit-reader failure / broken tree. */
-static int32_t nid_decode_symbol(nid_model *model, nid_bits *bits) {
+static int32_t nid_decode_symbol(nid_model *model, nid_bits *bits)
+{
     int32_t steps;
 
     if (!model->use_list) {
@@ -290,7 +299,8 @@ static int32_t nid_decode_symbol(nid_model *model, nid_bits *bits) {
 /* Expands one compressed block straight into output + *out_position.  The
  * block may not produce more than (output_size - *out_position) bytes; that is
  * the reference's per-block nRemaining limit. */
-static bool nid_decode_block(nid_state *state, const uint8_t *data, size_t size, uint8_t *output, size_t output_size, size_t *out_position) {
+static bool nid_decode_block(nid_state *state, const uint8_t *data, size_t size, uint8_t *output, size_t output_size, size_t *out_position)
+{
     nid_bits bits;
     int32_t magic;
     int32_t mode;
@@ -368,7 +378,8 @@ static bool nid_decode_block(nid_state *state, const uint8_t *data, size_t size,
     return true;
 }
 
-bool xx_nid_decode_memory(const uint8_t *input, size_t input_size, uint8_t *output, size_t output_size, size_t *written) {
+bool xx_nid_decode_memory(const uint8_t *input, size_t input_size, uint8_t *output, size_t output_size, size_t *written)
+{
     nid_state *state;
     size_t position = 0;
     size_t out_position = 0;

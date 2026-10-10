@@ -27,14 +27,13 @@ typedef struct nss_codec_bits_s {
     unsigned bit_at;
 } nss_codec_bits;
 
-static bool nss_codec_read_bits(nss_codec_bits *bits, unsigned count,
-                                unsigned *value) {
+static bool nss_codec_read_bits(nss_codec_bits *bits, unsigned count, unsigned *value)
+{
     unsigned result = 0U, index;
     if (!bits || !value || count > 13U) return false;
     for (index = 0U; index < count; ++index) {
         if (bits->byte_at >= bits->size) return false;
-        result |= (unsigned)((bits->data[bits->byte_at] >> bits->bit_at) &
-                             1U) << index;
+        result |= (unsigned)((bits->data[bits->byte_at] >> bits->bit_at) & 1U) << index;
         if (++bits->bit_at == 8U) {
             bits->bit_at = 0U;
             ++bits->byte_at;
@@ -44,9 +43,8 @@ static bool nss_codec_read_bits(nss_codec_bits *bits, unsigned count,
     return true;
 }
 
-static bool nss_codec_emit(uint8_t value, uint8_t *output,
-                           size_t output_size, size_t *output_at,
-                           bool *escape, uint8_t *previous) {
+static bool nss_codec_emit(uint8_t value, uint8_t *output, size_t output_size, size_t *output_at, bool *escape, uint8_t *previous)
+{
     size_t repeat;
     if (*escape) {
         *escape = false;
@@ -74,8 +72,8 @@ static bool nss_codec_emit(uint8_t value, uint8_t *output,
 /* `input` begins just after the decrypted eight-byte SYMANTEC verifier.
  * `output_size` is the original size from the member header. A malformed
  * stream never writes outside the caller's output buffer. */
-static bool nss_decode_lzw_rle(const uint8_t *input, size_t input_size,
-                               uint8_t *output, size_t output_size) {
+static bool nss_decode_lzw_rle(const uint8_t *input, size_t input_size, uint8_t *output, size_t output_size)
+{
     nss_codec_context *ctx;
     nss_codec_bits bits;
     size_t output_at = 0U, history_at = 0U, token_count = 0U;
@@ -84,9 +82,7 @@ static bool nss_decode_lzw_rle(const uint8_t *input, size_t input_size,
     int32_t previous_code = 0;
     uint8_t previous_byte = 0U;
     bool high_mode = true, escape = false, success = false;
-    if ((!input && input_size) || (!output && output_size) ||
-        !output_size || !input_size || input_size > SIZE_MAX / 8U)
-        return false;
+    if ((!input && input_size) || (!output && output_size) || !output_size || !input_size || input_size > SIZE_MAX / 8U) return false;
     ctx = (nss_codec_context *)xx_mem_calloc(1U, sizeof(*ctx));
     if (!ctx) return false;
     bits.data = input;
@@ -105,8 +101,7 @@ static bool nss_decode_lzw_rle(const uint8_t *input, size_t input_size,
                 success = output_at == output_size && !escape;
                 break;
             }
-            if (!nss_codec_read_bits(&bits, selector ? width : 8U,
-                                     &raw_code)) break;
+            if (!nss_codec_read_bits(&bits, selector ? width : 8U, &raw_code)) break;
             code = selector ? (int32_t)raw_code : ~(int32_t)raw_code;
         } else {
             has_bits = nss_codec_read_bits(&bits, width, &raw_code);
@@ -120,13 +115,11 @@ static bool nss_decode_lzw_rle(const uint8_t *input, size_t input_size,
             success = output_at == output_size && !escape;
             break;
         }
-        if (++token_count > input_size * 8U || code < -256 ||
-            code > (int32_t)next_code) break;
+        if (++token_count > input_size * 8U || code < -256 || code > (int32_t)next_code) break;
         node = code;
         while (node > 0) {
             unsigned slot = (unsigned)node;
-            if (slot > next_code || depth == NSS_CODEC_MAX_CODE ||
-                ctx->prefix[slot] == (int16_t)slot) break;
+            if (slot > next_code || depth == NSS_CODEC_MAX_CODE || ctx->prefix[slot] == (int16_t)slot) break;
             ctx->stack[depth++] = ctx->suffix[slot];
             ctx->use_count[slot] = 4U;
             node = ctx->prefix[slot];
@@ -135,9 +128,7 @@ static bool nss_decode_lzw_rle(const uint8_t *input, size_t input_size,
         first = (uint8_t)~node;
         ctx->stack[depth++] = first;
         for (index = depth; index > 0U; --index) {
-            if (!nss_codec_emit(ctx->stack[index - 1U], output,
-                                output_size, &output_at, &escape,
-                                &previous_byte)) goto done;
+            if (!nss_codec_emit(ctx->stack[index - 1U], output, output_size, &output_at, &escape, &previous_byte)) goto done;
         }
         if (previous_code) {
             unsigned slot;
@@ -146,19 +137,16 @@ static bool nss_decode_lzw_rle(const uint8_t *input, size_t input_size,
             } else {
                 unsigned best = 257U, scanned, start = replacement;
                 slot = 0U;
-                for (scanned = 0U; scanned < NSS_CODEC_MAX_CODE;
-                     ++scanned) {
+                for (scanned = 0U; scanned < NSS_CODEC_MAX_CODE; ++scanned) {
                     unsigned seen;
-                    if (++replacement > NSS_CODEC_MAX_CODE)
-                        replacement = 1U;
+                    if (++replacement > NSS_CODEC_MAX_CODE) replacement = 1U;
                     seen = ctx->use_count[replacement];
                     if (seen < best) {
                         best = seen;
                         slot = replacement;
                     }
                     --ctx->use_count[replacement];
-                    if (!ctx->use_count[replacement] ||
-                        replacement == start) break;
+                    if (!ctx->use_count[replacement] || replacement == start) break;
                 }
                 if (!slot) break;
             }

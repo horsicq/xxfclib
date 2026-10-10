@@ -40,10 +40,8 @@ static void xx_com_vtable_destroy(Abstractformat *self);
  * see xx_com_check_is_valid) is overlay, and the remainder of the 64 KiB
  * segment is uninitialised virtual space.
  */
-static bool xx_com_get_layout(const Abstractformat *format,
-                              int64_t *binary_size,
-                              int64_t *code_size,
-                              int64_t *overlay_size) {
+static bool xx_com_get_layout(const Abstractformat *format, int64_t *binary_size, int64_t *code_size, int64_t *overlay_size)
+{
     int64_t total_size;
     int64_t available;
     int64_t code;
@@ -68,7 +66,8 @@ static bool xx_com_get_layout(const Abstractformat *format,
     return true;
 }
 
-void xx_com_init(xx_com *com, xx_io_device *dev, int64_t base_address) {
+void xx_com_init(xx_com *com, xx_io_device *dev, int64_t base_address)
+{
     if (!com) {
         return;
     }
@@ -104,7 +103,8 @@ void xx_com_init(xx_com *com, xx_io_device *dev, int64_t base_address) {
     com->entry_bytes = 0;
 }
 
-xx_com *xx_com_create(xx_io_device *dev, int64_t base_address) {
+xx_com *xx_com_create(xx_io_device *dev, int64_t base_address)
+{
     xx_com *com = (xx_com *)xx_mem_alloc(sizeof(xx_com));
     if (!com) {
         return NULL;
@@ -113,7 +113,8 @@ xx_com *xx_com_create(xx_io_device *dev, int64_t base_address) {
     return com;
 }
 
-void xx_com_destroy(xx_com *com) {
+void xx_com_destroy(xx_com *com)
+{
     if (!com) {
         return;
     }
@@ -123,14 +124,16 @@ void xx_com_destroy(xx_com *com) {
     xx_format_cleanup_extra_parameters(&com->format);
 }
 
-static void xx_com_vtable_destroy(Abstractformat *self) {
+static void xx_com_vtable_destroy(Abstractformat *self)
+{
     if (self) {
         xx_com *com = (xx_com *)self;
         xx_com_destroy(com);
     }
 }
 
-void xx_com_free(xx_com *com) {
+void xx_com_free(xx_com *com)
+{
     if (!com) {
         return;
     }
@@ -165,13 +168,13 @@ void xx_com_free(xx_com *com) {
  * anything at all passes.  Treat a true result as "not ruled out", and see
  * the dispatch note at the end of this file.
  */
-bool xx_com_check_is_valid(Abstractformat *self, xx_pd_struct *pd) {
+bool xx_com_check_is_valid(Abstractformat *self, xx_pd_struct *pd)
+{
     int64_t total_size;
     int64_t available;
     uint16_t lead;
 
-    if (!self || !self->device || self->base_address < 0 ||
-        xx_pd_is_stopped(pd)) {
+    if (!self || !self->device || self->base_address < 0 || xx_pd_is_stopped(pd)) {
         return false;
     }
 
@@ -202,14 +205,14 @@ bool xx_com_check_is_valid(Abstractformat *self, xx_pd_struct *pd) {
     return true;
 }
 
-bool xx_com_handle_base_info(Abstractformat *self, xx_pd_struct *pd) {
+bool xx_com_handle_base_info(Abstractformat *self, xx_pd_struct *pd)
+{
     int64_t binary_size;
     int64_t code_size;
     int64_t overlay_size;
     xx_com *com;
 
-    if (!self || !self->device || self->base_address < 0 ||
-        xx_pd_is_stopped(pd)) {
+    if (!self || !self->device || self->base_address < 0 || xx_pd_is_stopped(pd)) {
         return false;
     }
 
@@ -249,17 +252,13 @@ bool xx_com_handle_base_info(Abstractformat *self, xx_pd_struct *pd) {
     return true;
 }
 
-int64_t xx_com_get_format_size(Abstractformat *self, xx_pd_struct *pd) {
-    return self && (self->base_info_handled ||
-                    xx_com_handle_base_info(self, pd))
-               ? self->format_size
-               : -1;
+int64_t xx_com_get_format_size(Abstractformat *self, xx_pd_struct *pd)
+{
+    return self && (self->base_info_handled || xx_com_handle_base_info(self, pd)) ? self->format_size : -1;
 }
 
-bool xx_com_get_memory_map(Abstractformat *self,
-                           xx_memory_map_mode_t mode,
-                           xx_memory_map *output,
-                           xx_pd_struct *pd) {
+bool xx_com_get_memory_map(Abstractformat *self, xx_memory_map_mode_t mode, xx_memory_map *output, xx_pd_struct *pd)
+{
     xx_com *com;
     int64_t binary_size;
     int64_t code_size;
@@ -269,8 +268,7 @@ bool xx_com_get_memory_map(Abstractformat *self,
     uint64_t code_address;
     uint64_t tail_address;
 
-    if (!self || !output || !self->device || !self->base_info_handled ||
-        self->base_address < 0 || xx_pd_is_stopped(pd)) {
+    if (!self || !output || !self->device || !self->base_info_handled || self->base_address < 0 || xx_pd_is_stopped(pd)) {
         return false;
     }
     if (mode == XX_MEMORY_MAP_MODE_UNKNOWN) {
@@ -285,9 +283,7 @@ bool xx_com_get_memory_map(Abstractformat *self,
         return false;
     }
 
-    module_address = self->module_address != XX_INVALID_ADDRESS
-                         ? self->module_address
-                         : 0U;
+    module_address = self->module_address != XX_INVALID_ADDRESS ? self->module_address : 0U;
     /* module_address is the segment base; the image itself starts one PSP
      * later.  Bound the arithmetic so a caller-supplied module address near
      * the top of the address space cannot wrap. */
@@ -313,31 +309,19 @@ bool xx_com_get_memory_map(Abstractformat *self,
 
     /* The 256-byte Program Segment Prefix is built by DOS at load time and is
      * not present in the file: virtual-only, no backing offset. */
-    if (!xx_memory_map_add_part(output, -1, 0, module_address,
-                                (int64_t)XX_COM_ADDRESS_BEGIN,
-                                XX_FILE_PART_HEADER, 0,
-                                "PSP", false)) {
+    if (!xx_memory_map_add_part(output, -1, 0, module_address, (int64_t)XX_COM_ADDRESS_BEGIN, XX_FILE_PART_HEADER, 0, "PSP", false)) {
         return false;
     }
-    if (!xx_memory_map_add_part(output, self->base_address, code_size,
-                                code_address, code_size,
-                                XX_FILE_PART_SEGMENT, 1,
-                                "COM image", false)) {
+    if (!xx_memory_map_add_part(output, self->base_address, code_size, code_address, code_size, XX_FILE_PART_SEGMENT, 1, "COM image", false)) {
         return false;
     }
     /* Remainder of the single 64 KiB segment: allocated to the program by DOS
      * but not initialised from the file. */
-    if (tail_size > 0 &&
-        !xx_memory_map_add_part(output, -1, 0, tail_address, tail_size,
-                                XX_FILE_PART_SEGMENT, 2,
-                                "Segment tail", false)) {
+    if (tail_size > 0 && !xx_memory_map_add_part(output, -1, 0, tail_address, tail_size, XX_FILE_PART_SEGMENT, 2, "Segment tail", false)) {
         return false;
     }
     if (overlay_size > 0 &&
-        !xx_memory_map_add_part(output, self->base_address + code_size,
-                                overlay_size, XX_INVALID_ADDRESS, 0,
-                                XX_FILE_PART_OVERLAY, 3,
-                                "Overlay", false)) {
+        !xx_memory_map_add_part(output, self->base_address + code_size, overlay_size, XX_INVALID_ADDRESS, 0, XX_FILE_PART_OVERLAY, 3, "Overlay", false)) {
         return false;
     }
 
@@ -346,31 +330,34 @@ bool xx_com_get_memory_map(Abstractformat *self,
 }
 
 /* --- Getters --- */
-uint32_t xx_com_get_address_begin(const xx_com *com) {
+uint32_t xx_com_get_address_begin(const xx_com *com)
+{
     return com ? com->address_begin : XX_COM_ADDRESS_BEGIN;
 }
 
-uint32_t xx_com_get_image_size(const xx_com *com) {
+uint32_t xx_com_get_image_size(const xx_com *com)
+{
     return com ? com->image_size : XX_COM_IMAGE_SIZE;
 }
 
-int64_t xx_com_get_code_size(const xx_com *com) {
+int64_t xx_com_get_code_size(const xx_com *com)
+{
     return com ? com->code_size : 0;
 }
 
-uint16_t xx_com_get_entry_bytes(const xx_com *com) {
+uint16_t xx_com_get_entry_bytes(const xx_com *com)
+{
     return com ? com->entry_bytes : 0;
 }
 
-uint64_t xx_com_get_entry_point_address(const xx_com *com) {
+uint64_t xx_com_get_entry_point_address(const xx_com *com)
+{
     uint64_t module_address;
 
     if (!com) {
         return XX_INVALID_ADDRESS;
     }
-    module_address = com->format.module_address != XX_INVALID_ADDRESS
-                         ? com->format.module_address
-                         : 0U;
+    module_address = com->format.module_address != XX_INVALID_ADDRESS ? com->format.module_address : 0U;
     if ((uint64_t)XX_COM_ADDRESS_BEGIN > XX_INVALID_ADDRESS - module_address) {
         return XX_INVALID_ADDRESS;
     }

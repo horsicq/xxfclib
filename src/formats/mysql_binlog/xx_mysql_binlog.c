@@ -6,15 +6,166 @@
 #include "xxfclib/formats/mysql_binlog/xx_mysql_binlog.h"
 #include "../common/xx_serialized_value_helpers.h"
 
-static bool my_status(memory_blob *b,uint64_t at,uint64_t end) {uint32_t seen=0;while(at<end) {uint8_t code=b->p[(size_t)at++];uint64_t n=0;if(code>20 || (seen&(1U<<code))) return false;seen|=1U<<code;if(code==0 || code==3 || code==10) n=4;else if(code==1 || code==9 || code==17) n=8;else if(code==4) n=6;else if(code==7 || code==8 || code==18) n=2;else if(code==13) n=3;else if(code==16 || code==19 || code==20) n=1;else if(code==2 || code==5 || code==6 || code==11) {unsigned strings=code==11 ? 2:1;for(unsigned i=0;i<strings;++i) {if(at>=end) return false;n=b->p[(size_t)at++];if(!record_span(at,n,end) || !serialized_utf(b,at,n)) return false;at+=n;if(code==2 && n) {if(at>=end || b->p[(size_t)at++]) return false;}}continue;}else if(code==12) {if(at>=end) return false;n=b->p[(size_t)at++];if(n==254) continue;if(!n || n>16) return false;for(uint64_t i=0;i<n;++i) {uint64_t start=at;while(at<end && b->p[(size_t)at]) ++at;if(at>=end || !serialized_utf(b,start,at-start)) return false;++at;}continue;}else return false;if(!record_span(at,n,end) || !blob_span(b,at,n)) return false;if(code==13 && ((uint32_t)b->p[(size_t)at]|((uint32_t)b->p[(size_t)at+1]<<8)|((uint32_t)b->p[(size_t)at+2]<<16))>=1000000U) return false;at+=n;}return at==end;}
-static bool my_event(memory_blob *b,uint64_t at,uint64_t n,uint8_t type,uint8_t post,bool crc) {uint64_t body=at+19,end=at+n-(crc ? 4U:0U),m;if(end<body || post>end-body) return false;if(type==15) return true;if(type==3) return end==body;if(type==16) return end-body==8;if(type==4) return end-body>8 && serialized_utf(b,body+8,end-body-8);if(type==27) return serialized_utf(b,body,end-body);if(type==2) {uint64_t db,sql;if(post!=13 || end-body<13) return false;db=b->p[(size_t)body+8];m=xx_data_get_u16(b->p+(size_t)body+11, 2, 0, false);if(!record_span(body+13,m+db+1,end) || b->p[(size_t)(body+13+m+db)] || !my_status(b,body+13,body+13+m)) return false;sql=body+13+m+db+1;return serialized_utf(b,body+13+m,db) && serialized_utf(b,sql,end-sql);}return false;}
-static bool pm_parse(Abstractformat *f,pm_stream *s,xx_pd_struct *pd) {memory_blob b;uint64_t at=4,n,end,table,nTypes;uint8_t common,alg=0;unsigned major=0,minor=0,patch=0;bool ok=false,crc,checksummed;if(!blob_load(f,&b,pd)) return false;BLOB_NEED(blob_span(&b,0,4) && !xx_rt_memcmp(b.p,"\xfe" "bin",4) && blob_span(&b,4,81) && b.p[8]==15);n=xx_data_get_u32(b.p+13, 4, 0, false);BLOB_NEED(n>=81 && blob_span(&b,4,n) && xx_data_get_u16(b.p+23, 2, 0, false)==4);common=b.p[79];BLOB_NEED(common==19 && blob_ascii(b.p+25,50,true));uint64_t v=25;for(unsigned part=0;part<3;++part) {unsigned value=0,digits=0;while(v<75 && b.p[(size_t)v]>='0' && b.p[(size_t)v]<='9') {BLOB_NEED(++digits<=3);value=value*10+b.p[(size_t)v++]-'0';}BLOB_NEED(digits);if(part==0) major=value;else if(part==1) minor=value;else patch=value;if(part<2) BLOB_NEED(v<75 && b.p[(size_t)v++]=='.');}BLOB_NEED(major>=5 && major<=9);checksummed=major>5 || minor>6 || (minor==6 && patch>=1);end=4+n;if(checksummed) {BLOB_NEED(n>=86);alg=b.p[(size_t)end-5];BLOB_NEED(alg<=1);}crc=alg==1;BLOB_NEED(!crc || serialized_crc(&b,4,n-4,xx_data_get_u32(b.p+(size_t)end-4, 4, 0, false),false));table=80;nTypes=end-(checksummed ? 5U:0U)-table;BLOB_NEED(nTypes>=16 && nTypes<=64);BLOB_NEED(xx_data_get_u32(b.p+17, 4, 0, false)==end && blob_add(f,s,&b,"binlog-header",0,4));
-    while(at<b.n) {uint8_t type,post;BLOB_NEED(blob_span(&b,at,19));n=xx_data_get_u32(b.p+(size_t)at+9, 4, 0, false);type=b.p[(size_t)at+4];BLOB_NEED(type && type<=nTypes && n>=19+(crc ? 4U:0U) && blob_span(&b,at,n));end=at+n;post=b.p[(size_t)table+type-1];BLOB_NEED(xx_data_get_u32(b.p+(size_t)at+13, 4, 0, false)==end && (type!=15 || at==4) && (!crc || serialized_crc(&b,at,n-4,xx_data_get_u32(b.p+(size_t)end-4, 4, 0, false),false)) && my_event(&b,at,n,type,post,crc) && blob_add(f,s,&b,"encoded-event",at,n));at=end;}
-    BLOB_NEED(s->count>1);s->size=(int64_t)b.n;ok=true;done:xx_mem_free(b.p);return ok;}
+static bool my_status(memory_blob *b, uint64_t at, uint64_t end)
+{
+    uint32_t seen = 0;
+    while (at < end) {
+        uint8_t code = b->p[(size_t)at++];
+        uint64_t n = 0;
+        if (code > 20 || (seen & (1U << code))) return false;
+        seen |= 1U << code;
+        if (code == 0 || code == 3 || code == 10) n = 4;
+        else if (code == 1 || code == 9 || code == 17) n = 8;
+        else if (code == 4) n = 6;
+        else if (code == 7 || code == 8 || code == 18) n = 2;
+        else if (code == 13) n = 3;
+        else if (code == 16 || code == 19 || code == 20) n = 1;
+        else if (code == 2 || code == 5 || code == 6 || code == 11) {
+            unsigned strings = code == 11 ? 2 : 1;
+            for (unsigned i = 0; i < strings; ++i) {
+                if (at >= end) return false;
+                n = b->p[(size_t)at++];
+                if (!record_span(at, n, end) || !serialized_utf(b, at, n)) return false;
+                at += n;
+                if (code == 2 && n) {
+                    if (at >= end || b->p[(size_t)at++]) return false;
+                }
+            }
+            continue;
+        } else if (code == 12) {
+            if (at >= end) return false;
+            n = b->p[(size_t)at++];
+            if (n == 254) continue;
+            if (!n || n > 16) return false;
+            for (uint64_t i = 0; i < n; ++i) {
+                uint64_t start = at;
+                while (at < end && b->p[(size_t)at]) ++at;
+                if (at >= end || !serialized_utf(b, start, at - start)) return false;
+                ++at;
+            }
+            continue;
+        } else return false;
+        if (!record_span(at, n, end) || !blob_span(b, at, n)) return false;
+        if (code == 13 && ((uint32_t)b->p[(size_t)at] | ((uint32_t)b->p[(size_t)at + 1] << 8) | ((uint32_t)b->p[(size_t)at + 2] << 16)) >= 1000000U) return false;
+        at += n;
+    }
+    return at == end;
+}
+static bool my_event(memory_blob *b, uint64_t at, uint64_t n, uint8_t type, uint8_t post, bool crc)
+{
+    uint64_t body = at + 19, end = at + n - (crc ? 4U : 0U), m;
+    if (end < body || post > end - body) return false;
+    if (type == 15) return true;
+    if (type == 3) return end == body;
+    if (type == 16) return end - body == 8;
+    if (type == 4) return end - body > 8 && serialized_utf(b, body + 8, end - body - 8);
+    if (type == 27) return serialized_utf(b, body, end - body);
+    if (type == 2) {
+        uint64_t db, sql;
+        if (post != 13 || end - body < 13) return false;
+        db = b->p[(size_t)body + 8];
+        m = xx_data_get_u16(b->p + (size_t)body + 11, 2, 0, false);
+        if (!record_span(body + 13, m + db + 1, end) || b->p[(size_t)(body + 13 + m + db)] || !my_status(b, body + 13, body + 13 + m)) return false;
+        sql = body + 13 + m + db + 1;
+        return serialized_utf(b, body + 13 + m, db) && serialized_utf(b, sql, end - sql);
+    }
+    return false;
+}
+static bool pm_parse(Abstractformat *f, pm_stream *s, xx_pd_struct *pd)
+{
+    memory_blob b;
+    uint64_t at = 4, n, end, table, nTypes;
+    uint8_t common, alg = 0;
+    unsigned major = 0, minor = 0, patch = 0;
+    bool ok = false, crc, checksummed;
+    if (!blob_load(f, &b, pd)) return false;
+    BLOB_NEED(blob_span(&b, 0, 4) &&
+              !xx_rt_memcmp(b.p,
+                            "\xfe"
+                            "bin",
+                            4) &&
+              blob_span(&b, 4, 81) && b.p[8] == 15);
+    n = xx_data_get_u32(b.p + 13, 4, 0, false);
+    BLOB_NEED(n >= 81 && blob_span(&b, 4, n) && xx_data_get_u16(b.p + 23, 2, 0, false) == 4);
+    common = b.p[79];
+    BLOB_NEED(common == 19 && blob_ascii(b.p + 25, 50, true));
+    uint64_t v = 25;
+    for (unsigned part = 0; part < 3; ++part) {
+        unsigned value = 0, digits = 0;
+        while (v < 75 && b.p[(size_t)v] >= '0' && b.p[(size_t)v] <= '9') {
+            BLOB_NEED(++digits <= 3);
+            value = value * 10 + b.p[(size_t)v++] - '0';
+        }
+        BLOB_NEED(digits);
+        if (part == 0) major = value;
+        else if (part == 1) minor = value;
+        else patch = value;
+        if (part < 2) BLOB_NEED(v < 75 && b.p[(size_t)v++] == '.');
+    }
+    BLOB_NEED(major >= 5 && major <= 9);
+    checksummed = major > 5 || minor > 6 || (minor == 6 && patch >= 1);
+    end = 4 + n;
+    if (checksummed) {
+        BLOB_NEED(n >= 86);
+        alg = b.p[(size_t)end - 5];
+        BLOB_NEED(alg <= 1);
+    }
+    crc = alg == 1;
+    BLOB_NEED(!crc || serialized_crc(&b, 4, n - 4, xx_data_get_u32(b.p + (size_t)end - 4, 4, 0, false), false));
+    table = 80;
+    nTypes = end - (checksummed ? 5U : 0U) - table;
+    BLOB_NEED(nTypes >= 16 && nTypes <= 64);
+    BLOB_NEED(xx_data_get_u32(b.p + 17, 4, 0, false) == end && blob_add(f, s, &b, "binlog-header", 0, 4));
+    while (at < b.n) {
+        uint8_t type, post;
+        BLOB_NEED(blob_span(&b, at, 19));
+        n = xx_data_get_u32(b.p + (size_t)at + 9, 4, 0, false);
+        type = b.p[(size_t)at + 4];
+        BLOB_NEED(type && type <= nTypes && n >= 19 + (crc ? 4U : 0U) && blob_span(&b, at, n));
+        end = at + n;
+        post = b.p[(size_t)table + type - 1];
+        BLOB_NEED(xx_data_get_u32(b.p + (size_t)at + 13, 4, 0, false) == end && (type != 15 || at == 4) &&
+                  (!crc || serialized_crc(&b, at, n - 4, xx_data_get_u32(b.p + (size_t)end - 4, 4, 0, false), false)) && my_event(&b, at, n, type, post, crc) &&
+                  blob_add(f, s, &b, "encoded-event", at, n));
+        at = end;
+    }
+    BLOB_NEED(s->count > 1);
+    s->size = (int64_t)b.n;
+    ok = true;
+done:
+    xx_mem_free(b.p);
+    return ok;
+}
 
-void xx_mysql_binlog_init(xx_mysql_binlog *r,xx_io_device *d,int64_t b) { if(r) { xx_mem_zero(r,sizeof(*r)); pm_init(&r->format,d,b,XX_FILE_TYPE_MYSQL_BINLOG,"binlog"); } }
-xx_mysql_binlog *xx_mysql_binlog_create(xx_io_device *d,int64_t b) { xx_mysql_binlog *r=(xx_mysql_binlog *)xx_mem_alloc(sizeof(*r)); if(r) xx_mysql_binlog_init(r,d,b); return r; }
-void xx_mysql_binlog_destroy(xx_mysql_binlog *r) { if(r) xx_format_cleanup_extra_parameters(&r->format); }
-void xx_mysql_binlog_free(xx_mysql_binlog *r) { if(r) { xx_mysql_binlog_destroy(r); xx_mem_free(r); } }
-bool xx_mysql_binlog_check_is_valid(Abstractformat *f,xx_pd_struct *pd) { return pm_valid(f,pd); }
-bool xx_mysql_binlog_handle_base_info(Abstractformat *f,xx_pd_struct *pd) { return pm_handle(f,pd); }
+void xx_mysql_binlog_init(xx_mysql_binlog *r, xx_io_device *d, int64_t b)
+{
+    if (r) {
+        xx_mem_zero(r, sizeof(*r));
+        pm_init(&r->format, d, b, XX_FILE_TYPE_MYSQL_BINLOG, "binlog");
+    }
+}
+xx_mysql_binlog *xx_mysql_binlog_create(xx_io_device *d, int64_t b)
+{
+    xx_mysql_binlog *r = (xx_mysql_binlog *)xx_mem_alloc(sizeof(*r));
+    if (r) xx_mysql_binlog_init(r, d, b);
+    return r;
+}
+void xx_mysql_binlog_destroy(xx_mysql_binlog *r)
+{
+    if (r) xx_format_cleanup_extra_parameters(&r->format);
+}
+void xx_mysql_binlog_free(xx_mysql_binlog *r)
+{
+    if (r) {
+        xx_mysql_binlog_destroy(r);
+        xx_mem_free(r);
+    }
+}
+bool xx_mysql_binlog_check_is_valid(Abstractformat *f, xx_pd_struct *pd)
+{
+    return pm_valid(f, pd);
+}
+bool xx_mysql_binlog_handle_base_info(Abstractformat *f, xx_pd_struct *pd)
+{
+    return pm_handle(f, pd);
+}

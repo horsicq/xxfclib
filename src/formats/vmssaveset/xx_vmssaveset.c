@@ -87,31 +87,27 @@ typedef struct vmssaveset_stream_s {
     uint64_t aux2;
 } vmssaveset_stream;
 
-static bool vmssaveset_read_at(xx_io_device *device, int64_t offset, void *buffer,
-                        size_t size) {
+static bool vmssaveset_read_at(xx_io_device *device, int64_t offset, void *buffer, size_t size)
+{
     size_t done = 0U;
-    if (!device || (!buffer && size != 0U) || offset < 0 ||
-        xx_io_seek64(device, offset, SEEK_SET) != 0)
-        return false;
+    if (!device || (!buffer && size != 0U) || offset < 0 || xx_io_seek64(device, offset, SEEK_SET) != 0) return false;
     while (done < size) {
-        ssize_t amount = xx_io_read(device, (uint8_t *)buffer + done,
-                                    size - done);
+        ssize_t amount = xx_io_read(device, (uint8_t *)buffer + done, size - done);
         if (amount <= 0 || (size_t)amount > size - done) return false;
         done += (size_t)amount;
     }
     return true;
 }
 
-static bool vmssaveset_write_all(xx_io_device *device, const void *data, size_t size,
-                          xx_pd_struct *pd) {
+static bool vmssaveset_write_all(xx_io_device *device, const void *data, size_t size, xx_pd_struct *pd)
+{
     size_t done = 0U;
     if (!data && size != 0U) return false;
     if (!device) return true; /* verify-only pass: nothing is materialized */
     while (done < size) {
         ssize_t amount;
         if (pd && xx_pd_is_stopped(pd)) return false;
-        amount = xx_io_write(device, (const uint8_t *)data + done,
-                             size - done);
+        amount = xx_io_write(device, (const uint8_t *)data + done, size - done);
         if (amount <= 0 || (size_t)amount > size - done) return false;
         done += (size_t)amount;
     }
@@ -119,30 +115,58 @@ static bool vmssaveset_write_all(xx_io_device *device, const void *data, size_t 
 }
 
 /* Copy a run of source bytes straight through to the destination. */
-static XXFC_MAYBE_UNUSED bool vmssaveset_copy_range(xx_io_device *source, int64_t offset, uint64_t size,
-                           xx_io_device *destination, xx_pd_struct *pd) {
+static XXFC_MAYBE_UNUSED bool vmssaveset_copy_range(xx_io_device *source, int64_t offset, uint64_t size, xx_io_device *destination, xx_pd_struct *pd)
+{
     size_t capacity = xx_get_file_buffer_size();
     uint8_t *buffer = NULL;
     bool buffer_result = false;
     uint64_t left = size;
-    if (!source || offset < 0) { buffer_result = (false); goto buffer_done; }
-    if (!destination) { buffer_result = (true); goto buffer_done; }
-    if (xx_io_seek64(source, offset, SEEK_SET) != 0) { buffer_result = (false); goto buffer_done; }
+    if (!source || offset < 0) {
+        buffer_result = (false);
+        goto buffer_done;
+    }
+    if (!destination) {
+        buffer_result = (true);
+        goto buffer_done;
+    }
+    if (xx_io_seek64(source, offset, SEEK_SET) != 0) {
+        buffer_result = (false);
+        goto buffer_done;
+    }
     if (capacity > (SIZE_MAX >> 1U)) capacity = SIZE_MAX >> 1U;
-    if (left) { if(capacity>left) capacity=(size_t)left; buffer = (uint8_t *)xx_mem_alloc(capacity); if (!buffer) { buffer_result = false; goto buffer_done; } }
+    if (left) {
+        if (capacity > left) capacity = (size_t)left;
+        buffer = (uint8_t *)xx_mem_alloc(capacity);
+        if (!buffer) {
+            buffer_result = false;
+            goto buffer_done;
+        }
+    }
     while (left != 0U) {
         size_t want = left < capacity ? (size_t)left : capacity;
         size_t done = 0U;
-        if (pd && xx_pd_is_stopped(pd)) { buffer_result = (false); goto buffer_done; }
+        if (pd && xx_pd_is_stopped(pd)) {
+            buffer_result = (false);
+            goto buffer_done;
+        }
         while (done < want) {
             ssize_t amount = xx_io_read(source, buffer + done, want - done);
-            if (amount <= 0 || (size_t)amount > want - done) { buffer_result = (false); goto buffer_done; }
+            if (amount <= 0 || (size_t)amount > want - done) {
+                buffer_result = (false);
+                goto buffer_done;
+            }
             done += (size_t)amount;
         }
-        if (!vmssaveset_write_all(destination, buffer, want, pd)) { buffer_result = (false); goto buffer_done; }
+        if (!vmssaveset_write_all(destination, buffer, want, pd)) {
+            buffer_result = (false);
+            goto buffer_done;
+        }
         left -= want;
     }
-    { buffer_result = (true); goto buffer_done; }
+    {
+        buffer_result = (true);
+        goto buffer_done;
+    }
 
 buffer_done:
     xx_mem_free(buffer);
@@ -150,23 +174,42 @@ buffer_done:
 }
 
 /* Emit `size` zero bytes: the filler every sparse disk image needs. */
-static XXFC_MAYBE_UNUSED bool vmssaveset_write_zeros(xx_io_device *destination, uint64_t size,
-                            xx_pd_struct *pd) {
+static XXFC_MAYBE_UNUSED bool vmssaveset_write_zeros(xx_io_device *destination, uint64_t size, xx_pd_struct *pd)
+{
     size_t capacity = xx_get_file_buffer_size();
     uint8_t *buffer = NULL;
     bool buffer_result = false;
     uint64_t left = size;
-    if (!destination) { buffer_result = (true); goto buffer_done; }
+    if (!destination) {
+        buffer_result = (true);
+        goto buffer_done;
+    }
     if (capacity > (SIZE_MAX >> 1U)) capacity = SIZE_MAX >> 1U;
-    if (left) { if(capacity>left) capacity=(size_t)left; buffer = (uint8_t *)xx_mem_alloc(capacity); if (!buffer) { buffer_result = false; goto buffer_done; } }
-    if (!left) { buffer_result = true; goto buffer_done; }
+    if (left) {
+        if (capacity > left) capacity = (size_t)left;
+        buffer = (uint8_t *)xx_mem_alloc(capacity);
+        if (!buffer) {
+            buffer_result = false;
+            goto buffer_done;
+        }
+    }
+    if (!left) {
+        buffer_result = true;
+        goto buffer_done;
+    }
     xx_mem_zero(buffer, capacity);
     while (left != 0U) {
         size_t want = left < capacity ? (size_t)left : capacity;
-        if (!vmssaveset_write_all(destination, buffer, want, pd)) { buffer_result = (false); goto buffer_done; }
+        if (!vmssaveset_write_all(destination, buffer, want, pd)) {
+            buffer_result = (false);
+            goto buffer_done;
+        }
         left -= want;
     }
-    { buffer_result = (true); goto buffer_done; }
+    {
+        buffer_result = (true);
+        goto buffer_done;
+    }
 
 buffer_done:
     xx_mem_free(buffer);
@@ -175,8 +218,8 @@ buffer_done:
 
 /* Reader-owned names are built here, never taken from the container, so they
  * are safe by construction. */
-static char *vmssaveset_make_name(const char *prefix, int64_t index,
-                           const char *suffix) {
+static char *vmssaveset_make_name(const char *prefix, int64_t index, const char *suffix)
+{
     char buffer[96];
     size_t used = 0U;
     size_t at;
@@ -213,7 +256,8 @@ static char *vmssaveset_make_name(const char *prefix, int64_t index,
 /* Names that DO come from the container are normalized here: separators are
  * unified, traversal components are removed and anything a filesystem would
  * choke on becomes '_'. */
-static char *vmssaveset_clean_name(const uint8_t *bytes, size_t size) {
+static char *vmssaveset_clean_name(const uint8_t *bytes, size_t size)
+{
     char *name;
     size_t input = 0U, output = 0U;
     if ((!bytes && size != 0U) || size > SIZE_MAX - 2U) return NULL;
@@ -221,16 +265,12 @@ static char *vmssaveset_clean_name(const uint8_t *bytes, size_t size) {
     if (!name) return NULL;
     while (input < size) {
         size_t start, end, component_start;
-        while (input < size && (bytes[input] == '/' || bytes[input] == '\\'))
-            ++input;
+        while (input < size && (bytes[input] == '/' || bytes[input] == '\\')) ++input;
         start = input;
-        while (input < size && bytes[input] != '/' && bytes[input] != '\\')
-            ++input;
+        while (input < size && bytes[input] != '/' && bytes[input] != '\\') ++input;
         end = input;
-        if (end == start || (end - start == 1U && bytes[start] == '.'))
-            continue;
-        if (end - start == 2U && bytes[start] == '.' &&
-            bytes[start + 1U] == '.') {
+        if (end == start || (end - start == 1U && bytes[start] == '.')) continue;
+        if (end - start == 2U && bytes[start] == '.' && bytes[start + 1U] == '.') {
             if (output != 0U) {
                 while (output != 0U && name[output - 1U] != '/') --output;
                 if (output != 0U) --output;
@@ -241,15 +281,10 @@ static char *vmssaveset_clean_name(const uint8_t *bytes, size_t size) {
         component_start = output;
         while (start < end) {
             uint8_t c = bytes[start++];
-            if (c < 0x20U || c == '"' || c == '*' || c == ':' || c == '<' ||
-                c == '>' || c == '?' || c == '|' || c == 0U)
-                name[output++] = '_';
-            else
-                name[output++] = (char)c;
+            if (c < 0x20U || c == '"' || c == '*' || c == ':' || c == '<' || c == '>' || c == '?' || c == '|' || c == 0U) name[output++] = '_';
+            else name[output++] = (char)c;
         }
-        while (output > component_start &&
-               (name[output - 1U] == ' ' || name[output - 1U] == '.'))
-            --output;
+        while (output > component_start && (name[output - 1U] == ' ' || name[output - 1U] == '.')) --output;
         if (output == component_start) name[output++] = '_';
     }
     if (output == 0U) name[output++] = '_';
@@ -257,30 +292,26 @@ static char *vmssaveset_clean_name(const uint8_t *bytes, size_t size) {
     return name;
 }
 
-static bool vmssaveset_safe_output_name(const char *name) {
+static bool vmssaveset_safe_output_name(const char *name)
+{
     const char *segment;
     const char *at;
-    if (!name || !name[0] || name[0] == '/' || name[0] == '\\' ||
-        name[1] == ':')
-        return false;
+    if (!name || !name[0] || name[0] == '/' || name[0] == '\\' || name[1] == ':') return false;
     segment = name;
     for (at = name;; ++at) {
         unsigned char c = (unsigned char)*at;
-        if (c == ':' || c == '<' || c == '>' || c == '"' || c == '|' ||
-            c == '?' || c == '*' || (c != 0U && c < 0x20U))
-            return false;
+        if (c == ':' || c == '<' || c == '>' || c == '"' || c == '|' || c == '?' || c == '*' || (c != 0U && c < 0x20U)) return false;
         if (c == '/' || c == '\\' || c == 0U) {
             size_t length = (size_t)(at - segment);
-            if (length == 0U || (length == 1U && segment[0] == '.') ||
-                (length == 2U && segment[0] == '.' && segment[1] == '.'))
-                return false;
+            if (length == 0U || (length == 1U && segment[0] == '.') || (length == 2U && segment[0] == '.' && segment[1] == '.')) return false;
             if (c == 0U) return true;
             segment = at + 1;
         }
     }
 }
 
-static void vmssaveset_stream_free(void *opaque) {
+static void vmssaveset_stream_free(void *opaque)
+{
     vmssaveset_stream *stream = (vmssaveset_stream *)opaque;
     size_t index;
     if (!stream) return;
@@ -290,13 +321,11 @@ static void vmssaveset_stream_free(void *opaque) {
     xx_mem_free(stream);
 }
 
-static bool vmssaveset_add_member(vmssaveset_stream *stream, const vmssaveset_member *member) {
+static bool vmssaveset_add_member(vmssaveset_stream *stream, const vmssaveset_member *member)
+{
     vmssaveset_member *grown;
-    if (!stream || !member || stream->count >= VMSSAVESET_MAX_MEMBERS ||
-        stream->count > SIZE_MAX / sizeof(*grown) - 1U)
-        return false;
-    grown = (vmssaveset_member *)xx_mem_realloc(
-        stream->items, (stream->count + 1U) * sizeof(*grown));
+    if (!stream || !member || stream->count >= VMSSAVESET_MAX_MEMBERS || stream->count > SIZE_MAX / sizeof(*grown) - 1U) return false;
+    grown = (vmssaveset_member *)xx_mem_realloc(stream->items, (stream->count + 1U) * sizeof(*grown));
     if (!grown) return false;
     stream->items = grown;
     stream->items[stream->count++] = *member;
@@ -332,58 +361,48 @@ typedef struct vmssaveset_walker_s {
     bool at_end;
 } vmssaveset_walker;
 
-static bool vmssaveset_cursor_read(vmssaveset_cursor *cursor, size_t count,
-                                   uint8_t *out) {
-    if (!cursor || cursor->position < 0 ||
-        (int64_t)count > cursor->size - cursor->position)
-        return false;
-    if (!vmssaveset_read_at(cursor->device, cursor->base + cursor->position,
-                            out, count))
-        return false;
+static bool vmssaveset_cursor_read(vmssaveset_cursor *cursor, size_t count, uint8_t *out)
+{
+    if (!cursor || cursor->position < 0 || (int64_t)count > cursor->size - cursor->position) return false;
+    if (!vmssaveset_read_at(cursor->device, cursor->base + cursor->position, out, count)) return false;
     cursor->position += (int64_t)count;
     return true;
 }
 
-static bool vmssaveset_cursor_skip(vmssaveset_cursor *cursor, int64_t count) {
-    if (!cursor || count < 0 || cursor->position < 0 ||
-        count > cursor->size - cursor->position)
-        return false;
+static bool vmssaveset_cursor_skip(vmssaveset_cursor *cursor, int64_t count)
+{
+    if (!cursor || count < 0 || cursor->position < 0 || count > cursor->size - cursor->position) return false;
     cursor->position += count;
     return true;
 }
 
-static bool vmssaveset_cursor_seek(vmssaveset_cursor *cursor, int64_t target) {
+static bool vmssaveset_cursor_seek(vmssaveset_cursor *cursor, int64_t target)
+{
     if (!cursor || target < 0 || target > cursor->size) return false;
     cursor->position = target;
     return true;
 }
 
-static bool vmssaveset_opsys_ok(uint16_t opsys) {
+static bool vmssaveset_opsys_ok(uint16_t opsys)
+{
     return opsys == 0x400U || opsys == 0x800U || opsys == 0x1000U;
 }
 
-static bool vmssaveset_block_header_ok(const uint8_t *header) {
-    return xx_data_get_u16(header, 2, 0, false) == 0x100U &&
-           vmssaveset_opsys_ok(xx_data_get_u16(header + 2U, 2, 0, false)) &&
-           xx_data_get_u16(header + 4U, 2, 0, false) == 1U &&
-           xx_data_get_u16(header + 6U, 2, 0, false) == 1U &&
-           (int32_t)xx_data_get_u32(header + 0x28U, 4, 0, false) > 0x100 &&
-           xx_data_get_u64(header + 0x10U, 8, 0, false) == 0U &&
-           xx_data_get_u64(header + 0x18U, 8, 0, false) == 0U &&
-           xx_data_get_u32(header + 0x20U, 4, 0, false) == 0x10101U &&
-           xx_data_get_u64(header + 0xecU, 8, 0, false) == 0U &&
-           xx_data_get_u64(header + 0xf4U, 8, 0, false) == 0U &&
-           xx_data_get_u16(header + 0xfcU, 2, 0, false) == 0U;
+static bool vmssaveset_block_header_ok(const uint8_t *header)
+{
+    return xx_data_get_u16(header, 2, 0, false) == 0x100U && vmssaveset_opsys_ok(xx_data_get_u16(header + 2U, 2, 0, false)) &&
+           xx_data_get_u16(header + 4U, 2, 0, false) == 1U && xx_data_get_u16(header + 6U, 2, 0, false) == 1U &&
+           (int32_t)xx_data_get_u32(header + 0x28U, 4, 0, false) > 0x100 && xx_data_get_u64(header + 0x10U, 8, 0, false) == 0U &&
+           xx_data_get_u64(header + 0x18U, 8, 0, false) == 0U && xx_data_get_u32(header + 0x20U, 4, 0, false) == 0x10101U &&
+           xx_data_get_u64(header + 0xecU, 8, 0, false) == 0U && xx_data_get_u64(header + 0xf4U, 8, 0, false) == 0U && xx_data_get_u16(header + 0xfcU, 2, 0, false) == 0U;
 }
 
 /* Records remain inside their declared physical block. A clean end is
  * distinct from a failed header/read, including after opaque filler blocks. */
-static bool vmssaveset_next_record(vmssaveset_walker *walker,
-                                   int32_t *record_size,
-                                   int32_t *record_type) {
+static bool vmssaveset_next_record(vmssaveset_walker *walker, int32_t *record_size, int32_t *record_type)
+{
     uint8_t header[VMSSAVESET_BLOCK_HEADER_SIZE];
-    if (!walker || !walker->cursor || !record_size || !record_type)
-        return false;
+    if (!walker || !walker->cursor || !record_size || !record_type) return false;
     walker->at_end = false;
     if (walker->remaining == 0) {
         for (;;) {
@@ -393,38 +412,30 @@ static bool vmssaveset_next_record(vmssaveset_walker *walker,
                 walker->at_end = true;
                 return false;
             }
-            if (!vmssaveset_cursor_read(walker->cursor,
-                                        VMSSAVESET_BLOCK_HEADER_SIZE, header))
-                return false;
+            if (!vmssaveset_cursor_read(walker->cursor, VMSSAVESET_BLOCK_HEADER_SIZE, header)) return false;
             applic = xx_data_get_u16(header + 6U, 2, 0, false);
             block = (int32_t)xx_data_get_u32(header + 0x28U, 4, 0, false);
             if (walker->block_size == 0) walker->block_size = block;
-            if (xx_data_get_u16(header, 2, 0, false) != 0x100U ||
-                !vmssaveset_opsys_ok(xx_data_get_u16(header + 2U, 2, 0, false)) ||
+            if (xx_data_get_u16(header, 2, 0, false) != 0x100U || !vmssaveset_opsys_ok(xx_data_get_u16(header + 2U, 2, 0, false)) ||
                 xx_data_get_u16(header + 4U, 2, 0, false) != 1U)
                 return false;
             if (applic != 1U && applic != 2U) return false;
-            if (xx_data_get_u64(header + 0x10U, 8, 0, false) != 0U ||
-                xx_data_get_u64(header + 0x18U, 8, 0, false) != 0U ||
-                xx_data_get_u64(header + 0xecU, 8, 0, false) != 0U ||
-                xx_data_get_u64(header + 0xf4U, 8, 0, false) != 0U ||
+            if (xx_data_get_u64(header + 0x10U, 8, 0, false) != 0U || xx_data_get_u64(header + 0x18U, 8, 0, false) != 0U ||
+                xx_data_get_u64(header + 0xecU, 8, 0, false) != 0U || xx_data_get_u64(header + 0xf4U, 8, 0, false) != 0U ||
                 xx_data_get_u16(header + 0xfcU, 2, 0, false) != 0U)
                 return false;
             if (applic == 2U && block == 0) block = walker->block_size;
             if (block < 0x101) return false;
             walker->remaining = (int64_t)block - VMSSAVESET_BLOCK_HEADER_SIZE;
             if (applic != 2U) break;
-            if (!vmssaveset_cursor_skip(walker->cursor, walker->remaining))
-                return false;
+            if (!vmssaveset_cursor_skip(walker->cursor, walker->remaining)) return false;
             walker->remaining = 0;
         }
     }
     {
         uint8_t record[VMSSAVESET_RECORD_HEADER_SIZE];
         if (walker->remaining < VMSSAVESET_RECORD_HEADER_SIZE) return false;
-        if (!vmssaveset_cursor_read(walker->cursor,
-                                    VMSSAVESET_RECORD_HEADER_SIZE, record))
-            return false;
+        if (!vmssaveset_cursor_read(walker->cursor, VMSSAVESET_RECORD_HEADER_SIZE, record)) return false;
         walker->remaining -= VMSSAVESET_RECORD_HEADER_SIZE;
         if (xx_data_get_u32(record + 0x0cU, 4, 0, false) != 0U) return false;
         *record_size = (int32_t)xx_data_get_u16(record, 2, 0, false);
@@ -437,18 +448,13 @@ static bool vmssaveset_next_record(vmssaveset_walker *walker,
 
 /* The rtype-3 file-attributes record. Attribute lengths exclude the two magic
  * bytes; the remaining zero bytes align the complete record to a longword. */
-static bool vmssaveset_attributes(vmssaveset_cursor *cursor,
-                                  int32_t record_size, char *name,
-                                  size_t name_size, uint64_t *file_size,
-                                  bool *is_directory, bool *var_rec,
-                                  uint32_t *characteristics,
-                                  uint16_t file_id[3]) {
+static bool vmssaveset_attributes(vmssaveset_cursor *cursor, int32_t record_size, char *name, size_t name_size, uint64_t *file_size, bool *is_directory, bool *var_rec,
+                                  uint32_t *characteristics, uint16_t file_id[3])
+{
     uint8_t scratch[0x40];
     int64_t left = (int64_t)record_size - 2;
     bool seen_fid = false, seen_characteristics = false;
-    if (!cursor || !name || !file_size || !is_directory || !var_rec ||
-        !characteristics || !file_id || left < 0)
-        return false;
+    if (!cursor || !name || !file_size || !is_directory || !var_rec || !characteristics || !file_id || left < 0) return false;
     name[0] = '\0';
     *file_size = 0U;
     *is_directory = false;
@@ -468,18 +474,13 @@ static bool vmssaveset_attributes(vmssaveset_cursor *cursor,
             uint8_t raw[VMSSAVESET_MAX_NAME];
             size_t take;
             if (length == 0 || (size_t)length > sizeof(raw)) return false;
-            if (!vmssaveset_cursor_read(cursor, (size_t)length, raw))
-                return false;
-            take = (size_t)length < name_size - 1U ? (size_t)length
-                                                   : name_size - 1U;
+            if (!vmssaveset_cursor_read(cursor, (size_t)length, raw)) return false;
+            take = (size_t)length < name_size - 1U ? (size_t)length : name_size - 1U;
             {
                 size_t at;
                 for (at = 0U; at < take; ++at) {
                     uint8_t ch = raw[at];
-                    bool safe = (ch >= 'a' && ch <= 'z') ||
-                                (ch >= 'A' && ch <= 'Z') ||
-                                (ch >= '0' && ch <= '9') || ch == '.' ||
-                                ch == '_' || ch == '-' || ch == ';' ||
+                    bool safe = (ch >= 'a' && ch <= 'z') || (ch >= 'A' && ch <= 'Z') || (ch >= '0' && ch <= '9') || ch == '.' || ch == '_' || ch == '-' || ch == ';' ||
                                 ch == '[' || ch == ']' || ch == '$';
                     name[at] = safe ? (char)ch : '_';
                 }
@@ -526,7 +527,8 @@ static bool vmssaveset_attributes(vmssaveset_cursor *cursor,
     return true;
 }
 
-static bool vmssaveset_name_is(const char *name, const char *expected) {
+static bool vmssaveset_name_is(const char *name, const char *expected)
+{
     while (*name && *expected) {
         unsigned char c = (unsigned char)*name++;
         if (c >= 'a' && c <= 'z') c -= 'a' - 'A';
@@ -542,15 +544,15 @@ static bool vmssaveset_name_is(const char *name, const char *expected) {
  * https://docs.vmssoftware.com/vsi-openvms-guide-to-extended-file-specifications/
  * FIDs: VSI System Management Utilities Reference Manual, ANALYZE/DISK list.
  */
-static bool vmssaveset_reserved_header(const char *name,
-                                      const uint16_t file_id[3]) {
+static bool vmssaveset_reserved_header(const char *name, const uint16_t file_id[3])
+{
     if (file_id[0] != file_id[1] || file_id[2] == 0U) return false;
     switch (file_id[0]) {
-    case 1U: return vmssaveset_name_is(name, "[000000]INDEXF.SYS;1");
-    case 2U: return vmssaveset_name_is(name, "[000000]BITMAP.SYS;1");
-    case 3U: return vmssaveset_name_is(name, "[000000]BADBLK.SYS;1");
-    case 9U: return vmssaveset_name_is(name, "[000000]BADLOG.SYS;1");
-    default: return false;
+        case 1U: return vmssaveset_name_is(name, "[000000]INDEXF.SYS;1");
+        case 2U: return vmssaveset_name_is(name, "[000000]BITMAP.SYS;1");
+        case 3U: return vmssaveset_name_is(name, "[000000]BADBLK.SYS;1");
+        case 9U: return vmssaveset_name_is(name, "[000000]BADLOG.SYS;1");
+        default: return false;
     }
 }
 
@@ -559,8 +561,8 @@ static bool vmssaveset_reserved_header(const char *name,
  * still consumed and checked normally, and a partial body never becomes a
  * header-only success. A failed physical read is never an absent body.
  */
-static bool vmssaveset_body_present(const vmssaveset_walker *walker,
-                                   bool *present) {
+static bool vmssaveset_body_present(const vmssaveset_walker *walker, bool *present)
+{
     vmssaveset_cursor cursor = *walker->cursor;
     vmssaveset_walker look = *walker;
     int64_t records = 0;
@@ -575,8 +577,7 @@ static bool vmssaveset_body_present(const vmssaveset_walker *walker,
             return true;
         }
         if (type == 3) return true;
-        if (type != 0 && type != 1 && type != 2 && type != 7 && type != 0x0b)
-            return false;
+        if (type != 0 && type != 1 && type != 2 && type != 7 && type != 0x0b) return false;
         if (!vmssaveset_cursor_skip(&cursor, size)) return false;
     }
 }
@@ -597,11 +598,10 @@ typedef struct vmssaveset_varrec_s {
     bool pad;
 } vmssaveset_varrec;
 
-static const uint8_t vmssaveset_crlf[2] = { 0x0dU, 0x0aU };
+static const uint8_t vmssaveset_crlf[2] = {0x0dU, 0x0aU};
 
-static bool vmssaveset_varrec_push(vmssaveset_varrec *state,
-                                   const uint8_t *data, size_t size,
-                                   xx_pd_struct *pd) {
+static bool vmssaveset_varrec_push(vmssaveset_varrec *state, const uint8_t *data, size_t size, xx_pd_struct *pd)
+{
     size_t at = 0U;
     if (!state) return false;
     while (at < size) {
@@ -613,23 +613,18 @@ static bool vmssaveset_varrec_push(vmssaveset_varrec *state,
             state->pad = (state->remaining & 1U) != 0U;
             state->phase = 1U;
             if (state->remaining != 0U) continue;
-            if (!vmssaveset_write_all(state->destination, vmssaveset_crlf, 2U,
-                                      pd))
-                return false;
+            if (!vmssaveset_write_all(state->destination, vmssaveset_crlf, 2U, pd)) return false;
             state->produced += 2U;
             state->phase = state->pad ? 2U : 0U;
         } else if (state->phase == 1U) {
             size_t take = size - at;
             if (take > state->remaining) take = state->remaining;
-            if (!vmssaveset_write_all(state->destination, data + at, take, pd))
-                return false;
+            if (!vmssaveset_write_all(state->destination, data + at, take, pd)) return false;
             state->produced += take;
             at += take;
             state->remaining -= (uint32_t)take;
             if (state->remaining != 0U) continue;
-            if (!vmssaveset_write_all(state->destination, vmssaveset_crlf, 2U,
-                                      pd))
-                return false;
+            if (!vmssaveset_write_all(state->destination, vmssaveset_crlf, 2U, pd)) return false;
             state->produced += 2U;
             state->phase = state->pad ? 2U : 0U;
         } else {
@@ -643,9 +638,8 @@ static bool vmssaveset_varrec_push(vmssaveset_varrec *state,
 /* Gather the rtype-4 payloads that follow until `size` bytes exist;
  * interleaved rtype-0 records are skipped and the last record is truncated to
  * fit.  A NULL destination consumes the body without writing it. */
-static bool vmssaveset_collect(vmssaveset_walker *walker, uint64_t size,
-                               xx_io_device *destination,
-                               vmssaveset_varrec *convert, xx_pd_struct *pd) {
+static bool vmssaveset_collect(vmssaveset_walker *walker, uint64_t size, xx_io_device *destination, vmssaveset_varrec *convert, xx_pd_struct *pd)
+{
     uint8_t payload[VMSSAVESET_MAX_RECORD];
     uint64_t left = size;
     int64_t records = 0;
@@ -659,38 +653,28 @@ static bool vmssaveset_collect(vmssaveset_walker *walker, uint64_t size,
         uint64_t take;
         if (pd && xx_pd_is_stopped(pd)) return false;
         if (++records > VMSSAVESET_MAX_BODY_RECORDS) return false;
-        if (!vmssaveset_next_record(walker, &record_size, &record_type))
-            return false;
+        if (!vmssaveset_next_record(walker, &record_size, &record_type)) return false;
         if (record_type == 0) {
-            if (!vmssaveset_cursor_skip(walker->cursor, record_size))
-                return false;
+            if (!vmssaveset_cursor_skip(walker->cursor, record_size)) return false;
             continue;
         }
-        if (record_type != 4 || record_size < 0 ||
-            record_size > VMSSAVESET_MAX_RECORD)
-            return false;
-        if (!vmssaveset_cursor_read(walker->cursor, (size_t)record_size,
-                                    payload))
-            return false;
+        if (record_type != 4 || record_size < 0 || record_size > VMSSAVESET_MAX_RECORD) return false;
+        if (!vmssaveset_cursor_read(walker->cursor, (size_t)record_size, payload)) return false;
         take = left < (uint64_t)record_size ? left : (uint64_t)record_size;
         if (convert) {
-            if (!vmssaveset_varrec_push(convert, payload, (size_t)take, pd))
-                return false;
-        } else if (destination &&
-                   !vmssaveset_write_all(destination, payload, (size_t)take,
-                                         pd)) {
+            if (!vmssaveset_varrec_push(convert, payload, (size_t)take, pd)) return false;
+        } else if (destination && !vmssaveset_write_all(destination, payload, (size_t)take, pd)) {
             return false;
         }
         left -= (uint64_t)record_size < left ? (uint64_t)record_size : left;
     }
     /* A variable-record stream that does not parse out exactly is malformed. */
-    if (convert && (convert->phase != 0U || convert->header_have != 0U))
-        return false;
+    if (convert && (convert->phase != 0U || convert->header_have != 0U)) return false;
     return true;
 }
 
-static bool vmssaveset_parse(Abstractformat *format,
-                             vmssaveset_stream **result) {
+static bool vmssaveset_parse(Abstractformat *format, vmssaveset_stream **result)
+{
     uint8_t header[VMSSAVESET_BLOCK_HEADER_SIZE];
     vmssaveset_stream *stream = NULL;
     vmssaveset_cursor cursor;
@@ -698,16 +682,12 @@ static bool vmssaveset_parse(Abstractformat *format,
     int64_t total, size;
     bool complete = false;
 
-    if (!format || !format->device || !result || format->base_address < 0)
-        return false;
+    if (!format || !format->device || !result || format->base_address < 0) return false;
     total = xx_io_total_size(format->device);
     if (total < format->base_address) return false;
     size = total - format->base_address;
-    if (size < VMSSAVESET_BLOCK_HEADER_SIZE ||
-        (uint64_t)size > VMSSAVESET_MAX_MEMBER ||
-        !vmssaveset_read_at(format->device, format->base_address, header,
-                            sizeof(header)) ||
-        !vmssaveset_block_header_ok(header))
+    if (size < VMSSAVESET_BLOCK_HEADER_SIZE || (uint64_t)size > VMSSAVESET_MAX_MEMBER ||
+        !vmssaveset_read_at(format->device, format->base_address, header, sizeof(header)) || !vmssaveset_block_header_ok(header))
         return false;
 
     stream = (vmssaveset_stream *)xx_mem_calloc(1U, sizeof(*stream));
@@ -746,25 +726,17 @@ static bool vmssaveset_parse(Abstractformat *format,
              * and extents used here, so these known ancillary records may
              * be skipped only within their complete physical block. */
             if (record_type == 2 || record_type == 7) {
-                if (walker.remaining < 0 ||
-                    !vmssaveset_cursor_seek(&cursor, record_end)) break;
+                if (walker.remaining < 0 || !vmssaveset_cursor_seek(&cursor, record_end)) break;
                 continue;
             }
-            if (record_type != 0 && record_type != 1 && record_type != 0x0b &&
-                record_type != 4)
-                break;
+            if (record_type != 0 && record_type != 1 && record_type != 0x0b && record_type != 4) break;
             if (!vmssaveset_cursor_seek(&cursor, record_end)) break;
             continue;
         }
-        if (!vmssaveset_attributes(&cursor, record_size, name, sizeof(name),
-                                   &file_size, &is_directory, &var_rec,
-                                   &characteristics, file_id))
-            break;
+        if (!vmssaveset_attributes(&cursor, record_size, name, sizeof(name), &file_size, &is_directory, &var_rec, &characteristics, file_id)) break;
         if (!vmssaveset_cursor_seek(&cursor, record_end)) break;
 
-        if (!is_directory && file_size != 0U &&
-            ((characteristics & VMSSAVESET_FCH_NOBACKUP) != 0U ||
-             vmssaveset_reserved_header(name, file_id))) {
+        if (!is_directory && file_size != 0U && ((characteristics & VMSSAVESET_FCH_NOBACKUP) != 0U || vmssaveset_reserved_header(name, file_id))) {
             bool body_present;
             if (!vmssaveset_body_present(&walker, &body_present)) break;
             /* SET FILE/NOBACKUP stores attributes without contents. Reserved
@@ -794,21 +766,17 @@ static bool vmssaveset_parse(Abstractformat *format,
          * which is what the member then reports. */
         if (var_rec && !is_directory) {
             vmssaveset_varrec convert;
-            if (!vmssaveset_collect(&walker, file_size, NULL, &convert, NULL))
-                break;
+            if (!vmssaveset_collect(&walker, file_size, NULL, &convert, NULL)) break;
             member.unpacked_size = convert.produced;
         } else if (!vmssaveset_collect(&walker, file_size, NULL, NULL, NULL)) {
             break;
         }
-        member.packed_size = format->base_address + cursor.position -
-                             member.data_offset;
+        member.packed_size = format->base_address + cursor.position - member.data_offset;
         if (is_directory) continue;
         if (name[0] == '\0') {
-            member.name =
-                vmssaveset_make_name("member_", (int64_t)stream->count, "");
+            member.name = vmssaveset_make_name("member_", (int64_t)stream->count, "");
         } else {
-            member.name =
-                vmssaveset_clean_name((const uint8_t *)name, xx_str_len(name));
+            member.name = vmssaveset_clean_name((const uint8_t *)name, xx_str_len(name));
         }
         if (!member.name) break;
         if (!vmssaveset_add_member(stream, &member)) {
@@ -825,11 +793,8 @@ fail:
     return false;
 }
 
-static bool vmssaveset_write_member(Abstractformat *format,
-                                    vmssaveset_stream *stream,
-                                    const vmssaveset_member *member,
-                                    xx_io_device *destination,
-                                    xx_pd_struct *pd) {
+static bool vmssaveset_write_member(Abstractformat *format, vmssaveset_stream *stream, const vmssaveset_member *member, xx_io_device *destination, xx_pd_struct *pd)
+{
     vmssaveset_cursor cursor;
     vmssaveset_walker walker;
     int64_t total;
@@ -850,24 +815,21 @@ static bool vmssaveset_write_member(Abstractformat *format,
      * file is one (flags bit 0). */
     if ((member->flags & VMSSAVESET_FLAG_VARREC) != 0U) {
         vmssaveset_varrec convert;
-        return vmssaveset_collect(&walker, member->aux2, destination, &convert,
-                                  pd) &&
-               convert.produced == member->unpacked_size;
+        return vmssaveset_collect(&walker, member->aux2, destination, &convert, pd) && convert.produced == member->unpacked_size;
     }
     return vmssaveset_collect(&walker, member->aux2, destination, NULL, pd);
 }
 
-static bool vmssaveset_copy_options(xx_list_s *destination, const xx_list_s *source) {
+static bool vmssaveset_copy_options(xx_list_s *destination, const xx_list_s *source)
+{
     size_t index;
     if (!source) return true;
     for (index = 0U; index < source->count; ++index) {
-        const xx_meta *original =
-            (const xx_meta *)xx_list_at((const xx_list_t *)source, index);
+        const xx_meta *original = (const xx_meta *)xx_list_at((const xx_list_t *)source, index);
         xx_meta copy;
         if (!original) continue;
         xx_meta_init(&copy, original->meta_id);
-        if (!xx_var_copy(&copy.var, &original->var) ||
-            !xx_list_append(destination, &copy)) {
+        if (!xx_var_copy(&copy.var, &original->var) || !xx_list_append(destination, &copy)) {
             xx_meta_cleanup(&copy);
             return false;
         }
@@ -875,19 +837,19 @@ static bool vmssaveset_copy_options(xx_list_s *destination, const xx_list_s *sou
     return true;
 }
 
-static const xx_var *vmssaveset_option(const xx_list_s *options, uint32_t id) {
+static const xx_var *vmssaveset_option(const xx_list_s *options, uint32_t id)
+{
     size_t index;
     if (!options) return NULL;
     for (index = 0U; index < options->count; ++index) {
-        const xx_meta *meta =
-            (const xx_meta *)xx_list_at((const xx_list_t *)options, index);
+        const xx_meta *meta = (const xx_meta *)xx_list_at((const xx_list_t *)options, index);
         if (meta && meta->meta_id == id) return &meta->var;
     }
     return NULL;
 }
 
-static bool vmssaveset_set_record(xx_archive_record *record,
-                           const vmssaveset_member *member) {
+static bool vmssaveset_set_record(xx_archive_record *record, const vmssaveset_member *member)
+{
     xx_archive_record_cleanup(record);
     xx_archive_record_init(record);
     record->header_offset = member->header_offset;
@@ -895,27 +857,17 @@ static bool vmssaveset_set_record(xx_archive_record *record,
     record->data_offset = member->data_offset;
     record->compressed_size = member->packed_size;
     return xx_archive_record_set_original_name(record, member->name) &&
-           xx_archive_record_set_meta_u64(record, XX_META_ID_COMPRESSED_SIZE,
-                                          (uint64_t)member->packed_size) &&
-           xx_archive_record_set_meta_u64(record, XX_META_ID_UNCOMPRESSED_SIZE,
-                                          member->unpacked_size) &&
-           xx_archive_record_set_meta_u64(record, XX_META_ID_COMPRESSION_METHOD,
-                                          member->method) &&
-           xx_archive_record_set_meta_u64(record, XX_META_ID_CRC32,
-                                          member->crc32) &&
-           xx_archive_record_set_meta_u64(record, XX_META_ID_ATTRIBUTES,
-                                          member->attributes) &&
-           xx_archive_record_set_meta_u64(record, XX_META_ID_TIMESTAMP,
-                                          member->timestamp) &&
-           xx_archive_record_set_meta_u64(record, XX_META_ID_FLAGS,
-                                          member->flags) &&
-           xx_archive_record_set_meta_bool(record, XX_META_ID_IS_ENCRYPTED,
-                                           member->encrypted) &&
-           xx_archive_record_set_meta_bool(record, XX_META_ID_IS_FOLDER,
-                                           member->folder);
+           xx_archive_record_set_meta_u64(record, XX_META_ID_COMPRESSED_SIZE, (uint64_t)member->packed_size) &&
+           xx_archive_record_set_meta_u64(record, XX_META_ID_UNCOMPRESSED_SIZE, member->unpacked_size) &&
+           xx_archive_record_set_meta_u64(record, XX_META_ID_COMPRESSION_METHOD, member->method) &&
+           xx_archive_record_set_meta_u64(record, XX_META_ID_CRC32, member->crc32) && xx_archive_record_set_meta_u64(record, XX_META_ID_ATTRIBUTES, member->attributes) &&
+           xx_archive_record_set_meta_u64(record, XX_META_ID_TIMESTAMP, member->timestamp) && xx_archive_record_set_meta_u64(record, XX_META_ID_FLAGS, member->flags) &&
+           xx_archive_record_set_meta_bool(record, XX_META_ID_IS_ENCRYPTED, member->encrypted) &&
+           xx_archive_record_set_meta_bool(record, XX_META_ID_IS_FOLDER, member->folder);
 }
 
-void xx_vmssaveset_init(xx_vmssaveset *archive, xx_io_device *device, int64_t base_address) {
+void xx_vmssaveset_init(xx_vmssaveset *archive, xx_io_device *device, int64_t base_address)
+{
     if (!archive) return;
     xx_mem_zero(archive, sizeof(*archive));
     xx_format_init(&archive->format, device, base_address);
@@ -928,38 +880,36 @@ void xx_vmssaveset_init(xx_vmssaveset *archive, xx_io_device *device, int64_t ba
     archive->format.check_is_valid = xx_vmssaveset_check_is_valid;
     archive->format.handle_base_info = xx_vmssaveset_handle_base_info;
     archive->format.get_format_size = xx_vmssaveset_get_format_size;
-    archive->format.get_number_of_archive_records =
-        xx_vmssaveset_get_number_of_archive_records;
-    archive->format.create_archive_records_reading =
-        xx_vmssaveset_create_archive_records_reading;
-    archive->format.get_current_archive_record =
-        xx_vmssaveset_get_current_archive_record;
-    archive->format.unpack_current_archive_record =
-        xx_vmssaveset_unpack_current_archive_record;
-    archive->format.archive_record_move_to_next =
-        xx_vmssaveset_archive_record_move_to_next;
-    archive->format.free_archive_records_reading =
-        xx_vmssaveset_free_archive_records_reading;
+    archive->format.get_number_of_archive_records = xx_vmssaveset_get_number_of_archive_records;
+    archive->format.create_archive_records_reading = xx_vmssaveset_create_archive_records_reading;
+    archive->format.get_current_archive_record = xx_vmssaveset_get_current_archive_record;
+    archive->format.unpack_current_archive_record = xx_vmssaveset_unpack_current_archive_record;
+    archive->format.archive_record_move_to_next = xx_vmssaveset_archive_record_move_to_next;
+    archive->format.free_archive_records_reading = xx_vmssaveset_free_archive_records_reading;
     archive->archive_end = -1;
 }
 
-xx_vmssaveset *xx_vmssaveset_create(xx_io_device *device, int64_t base_address) {
+xx_vmssaveset *xx_vmssaveset_create(xx_io_device *device, int64_t base_address)
+{
     xx_vmssaveset *archive = (xx_vmssaveset *)xx_mem_alloc(sizeof(*archive));
     if (archive) xx_vmssaveset_init(archive, device, base_address);
     return archive;
 }
 
-void xx_vmssaveset_destroy(xx_vmssaveset *archive) {
+void xx_vmssaveset_destroy(xx_vmssaveset *archive)
+{
     if (archive) xx_format_cleanup_extra_parameters(&archive->format);
 }
 
-void xx_vmssaveset_free(xx_vmssaveset *archive) {
+void xx_vmssaveset_free(xx_vmssaveset *archive)
+{
     if (!archive) return;
     xx_vmssaveset_destroy(archive);
     xx_mem_free(archive);
 }
 
-bool xx_vmssaveset_check_is_valid(Abstractformat *format, xx_pd_struct *pd) {
+bool xx_vmssaveset_check_is_valid(Abstractformat *format, xx_pd_struct *pd)
+{
     vmssaveset_stream *stream;
     (void)pd;
     if (!vmssaveset_parse(format, &stream)) return false;
@@ -967,7 +917,8 @@ bool xx_vmssaveset_check_is_valid(Abstractformat *format, xx_pd_struct *pd) {
     return true;
 }
 
-bool xx_vmssaveset_handle_base_info(Abstractformat *format, xx_pd_struct *pd) {
+bool xx_vmssaveset_handle_base_info(Abstractformat *format, xx_pd_struct *pd)
+{
     vmssaveset_stream *stream;
     xx_vmssaveset *archive;
     (void)pd;
@@ -996,23 +947,18 @@ bool xx_vmssaveset_handle_base_info(Abstractformat *format, xx_pd_struct *pd) {
     return true;
 }
 
-int64_t xx_vmssaveset_get_format_size(Abstractformat *format, xx_pd_struct *pd) {
-    return format && (format->base_info_handled ||
-                      xx_vmssaveset_handle_base_info(format, pd))
-               ? format->format_size
-               : -1;
+int64_t xx_vmssaveset_get_format_size(Abstractformat *format, xx_pd_struct *pd)
+{
+    return format && (format->base_info_handled || xx_vmssaveset_handle_base_info(format, pd)) ? format->format_size : -1;
 }
 
-uint64_t xx_vmssaveset_get_number_of_archive_records(Abstractformat *format,
-                                              xx_pd_struct *pd) {
-    return format && (format->base_info_handled ||
-                      xx_vmssaveset_handle_base_info(format, pd))
-               ? ((xx_vmssaveset *)format)->number_of_records
-               : 0U;
+uint64_t xx_vmssaveset_get_number_of_archive_records(Abstractformat *format, xx_pd_struct *pd)
+{
+    return format && (format->base_info_handled || xx_vmssaveset_handle_base_info(format, pd)) ? ((xx_vmssaveset *)format)->number_of_records : 0U;
 }
 
-xx_archive_record_state *xx_vmssaveset_create_archive_records_reading(
-    Abstractformat *format, const xx_list_s *options, xx_pd_struct *pd) {
+xx_archive_record_state *xx_vmssaveset_create_archive_records_reading(Abstractformat *format, const xx_list_s *options, xx_pd_struct *pd)
+{
     vmssaveset_stream *stream;
     xx_archive_record_state *state;
     (void)pd;
@@ -1026,8 +972,7 @@ xx_archive_record_state *xx_vmssaveset_create_archive_records_reading(
     state->internal_state = stream;
     state->free_internal = vmssaveset_stream_free;
     state->total_records = stream->count;
-    if (!vmssaveset_copy_options(&state->options, options) ||
-        !vmssaveset_set_record(&state->current_record, &stream->items[0])) {
+    if (!vmssaveset_copy_options(&state->options, options) || !vmssaveset_set_record(&state->current_record, &stream->items[0])) {
         xx_archive_record_state_free(state);
         return NULL;
     }
@@ -1035,33 +980,26 @@ xx_archive_record_state *xx_vmssaveset_create_archive_records_reading(
     return state;
 }
 
-const xx_archive_record *xx_vmssaveset_get_current_archive_record(
-    Abstractformat *format, xx_archive_record_state *state) {
-    return format && state && state->format == format && state->has_record
-               ? &state->current_record
-               : NULL;
+const xx_archive_record *xx_vmssaveset_get_current_archive_record(Abstractformat *format, xx_archive_record_state *state)
+{
+    return format && state && state->format == format && state->has_record ? &state->current_record : NULL;
 }
 
-bool xx_vmssaveset_archive_record_move_to_next(Abstractformat *format,
-                                        xx_archive_record_state *state,
-                                        xx_pd_struct *pd) {
+bool xx_vmssaveset_archive_record_move_to_next(Abstractformat *format, xx_archive_record_state *state, xx_pd_struct *pd)
+{
     vmssaveset_stream *stream;
     (void)pd;
-    if (!format || !state || state->format != format ||
-        !(stream = (vmssaveset_stream *)state->internal_state) ||
-        ++stream->index >= stream->count) {
+    if (!format || !state || state->format != format || !(stream = (vmssaveset_stream *)state->internal_state) || ++stream->index >= stream->count) {
         if (state) state->has_record = false;
         return false;
     }
     ++state->current_index;
-    state->has_record =
-        vmssaveset_set_record(&state->current_record, &stream->items[stream->index]);
+    state->has_record = vmssaveset_set_record(&state->current_record, &stream->items[stream->index]);
     return state->has_record;
 }
 
-bool xx_vmssaveset_unpack_current_archive_record(Abstractformat *format,
-                                          xx_archive_record_state *state,
-                                          xx_pd_struct *pd) {
+bool xx_vmssaveset_unpack_current_archive_record(Abstractformat *format, xx_archive_record_state *state, xx_pd_struct *pd)
+{
     vmssaveset_stream *stream;
     vmssaveset_member *member;
     const xx_var *path_option;
@@ -1071,28 +1009,21 @@ bool xx_vmssaveset_unpack_current_archive_record(Abstractformat *format,
     xx_io_device *destination = NULL;
     bool result = false;
     bool created = false;
-    if (!format || !state || state->format != format || !state->has_record ||
-        !(stream = (vmssaveset_stream *)state->internal_state) ||
-        stream->index >= stream->count || (pd && xx_pd_is_stopped(pd)))
+    if (!format || !state || state->format != format || !state->has_record || !(stream = (vmssaveset_stream *)state->internal_state) || stream->index >= stream->count ||
+        (pd && xx_pd_is_stopped(pd)))
         return false;
     member = &stream->items[stream->index];
     if (!vmssaveset_safe_output_name(member->name)) return false;
     path_option = vmssaveset_option(&state->options, XX_META_ID_OPT_UNPACK_PATH);
-    if (!path_option)
-        return vmssaveset_write_member(format, stream, member, NULL, pd);
-    if (path_option->type == XX_VAR_TYPE_STRING ||
-        path_option->type == XX_VAR_TYPE_STRING_VIEW)
-        base = xx_var_get_str(path_option);
-    else if (path_option->type == XX_VAR_TYPE_WSTRING ||
-             path_option->type == XX_VAR_TYPE_WSTRING_VIEW) {
+    if (!path_option) return vmssaveset_write_member(format, stream, member, NULL, pd);
+    if (path_option->type == XX_VAR_TYPE_STRING || path_option->type == XX_VAR_TYPE_STRING_VIEW) base = xx_var_get_str(path_option);
+    else if (path_option->type == XX_VAR_TYPE_WSTRING || path_option->type == XX_VAR_TYPE_WSTRING_VIEW) {
         owned_base = xx_str_unicode_to_utf8(xx_var_get_wstr(path_option));
         base = owned_base;
     }
     if (!base) goto done;
-    path = (base[0] && base[xx_str_len(base) - 1U] != '/' &&
-            base[xx_str_len(base) - 1U] != '\\')
-               ? xx_str_concat3(base, "/", member->name)
-               : xx_str_concat(base, member->name);
+    path = (base[0] && base[xx_str_len(base) - 1U] != '/' && base[xx_str_len(base) - 1U] != '\\') ? xx_str_concat3(base, "/", member->name)
+                                                                                                  : xx_str_concat(base, member->name);
     if (!path) goto done;
     if (member->folder) {
         result = xx_store_create_dirs_a(path, true);
@@ -1112,8 +1043,8 @@ done:
     return result;
 }
 
-void xx_vmssaveset_free_archive_records_reading(Abstractformat *format,
-                                         xx_archive_record_state *state) {
+void xx_vmssaveset_free_archive_records_reading(Abstractformat *format, xx_archive_record_state *state)
+{
     (void)format;
     xx_archive_record_state_free(state);
 }

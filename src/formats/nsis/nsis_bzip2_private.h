@@ -194,7 +194,7 @@ extern UInt32 BZ2_crc32Table[256];
 
 typedef struct {
     /* pointer back to the struct nsis_bzstream */
-    nsis_bzstream* strm;
+    nsis_bzstream *strm;
 
     /* mode this stream is in, and whether inputting */
     /* or outputting data */
@@ -205,16 +205,16 @@ typedef struct {
     UInt32 avail_in_expect;
 
     /* for doing the block sorting */
-    UInt32* arr1;
-    UInt32* arr2;
-    UInt32* ftab;
+    UInt32 *arr1;
+    UInt32 *arr2;
+    UInt32 *ftab;
     Int32 origPtr;
 
     /* aliases for arr1 and arr2 */
-    UInt32* ptr;
-    UChar* block;
-    UInt16* mtfv;
-    UChar* zbits;
+    UInt32 *ptr;
+    UChar *block;
+    UInt16 *mtfv;
+    UChar *zbits;
 
     /* for deciding when to use the fallback sorting algorithm */
     Int32 workFactor;
@@ -318,7 +318,7 @@ typedef struct {
 
 typedef struct {
     /* pointer back to the struct nsis_bzstream */
-    nsis_bzstream* strm;
+    nsis_bzstream *strm;
 
     /* state indicator for this stream */
     Int32 state;
@@ -349,11 +349,11 @@ typedef struct {
     Int32 cftabCopy[257];
 
     /* for undoing the Burrows-Wheeler transform (FAST) */
-    UInt32* tt;
+    UInt32 *tt;
 
     /* for undoing the Burrows-Wheeler transform (SMALL) */
-    UInt16* ll16;
-    UChar* ll4;
+    UInt16 *ll16;
+    UChar *ll4;
 
     /* stored and calculated CRCs */
     UInt32 storedBlockCRC;
@@ -401,9 +401,9 @@ typedef struct {
     Int32 save_zj;
     Int32 save_gSel;
     Int32 save_gMinlen;
-    Int32* save_gLimit;
-    Int32* save_gBase;
-    Int32* save_gPerm;
+    Int32 *save_gLimit;
+    Int32 *save_gBase;
+    Int32 *save_gPerm;
 
 } DState;
 

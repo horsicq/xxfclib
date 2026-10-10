@@ -7,13 +7,15 @@
 #ifdef __cplusplus
 extern "C" {
 #endif
-typedef struct xx_ethereum_rlp {Abstractformat format;} xx_ethereum_rlp;
-XXFC_API void xx_ethereum_rlp_init(xx_ethereum_rlp *,xx_io_device *,int64_t);
-XXFC_API xx_ethereum_rlp *xx_ethereum_rlp_create(xx_io_device *,int64_t);
+typedef struct xx_ethereum_rlp {
+    Abstractformat format;
+} xx_ethereum_rlp;
+XXFC_API void xx_ethereum_rlp_init(xx_ethereum_rlp *, xx_io_device *, int64_t);
+XXFC_API xx_ethereum_rlp *xx_ethereum_rlp_create(xx_io_device *, int64_t);
 XXFC_API void xx_ethereum_rlp_destroy(xx_ethereum_rlp *);
 XXFC_API void xx_ethereum_rlp_free(xx_ethereum_rlp *);
-XXFC_API bool xx_ethereum_rlp_check_is_valid(Abstractformat *,xx_pd_struct *);
-XXFC_API bool xx_ethereum_rlp_handle_base_info(Abstractformat *,xx_pd_struct *);
+XXFC_API bool xx_ethereum_rlp_check_is_valid(Abstractformat *, xx_pd_struct *);
+XXFC_API bool xx_ethereum_rlp_handle_base_info(Abstractformat *, xx_pd_struct *);
 #ifdef __cplusplus
 }
 #endif

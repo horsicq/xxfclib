@@ -12,8 +12,8 @@ extern "C" {
 #endif
 
 #define XX_PE_SIGNATURE UINT32_C(0x00004550)
-#define XX_PE_MAGIC_32  UINT16_C(0x010b)
-#define XX_PE_MAGIC_64  UINT16_C(0x020b)
+#define XX_PE_MAGIC_32 UINT16_C(0x010b)
+#define XX_PE_MAGIC_64 UINT16_C(0x020b)
 
 typedef enum xx_pe_data_struct_id_e {
     XX_PE_DATA_STRUCT_UNKNOWN = 0,
@@ -159,8 +159,7 @@ typedef enum xx_pe_data_struct_id_e {
 } xx_pe_data_struct_id_t;
 
 /* Source compatibility with the original PE32-only identifier. */
-#define XX_PE_DATA_STRUCT_OPTIONAL_HEADER \
-    XX_PE_DATA_STRUCT_OPTIONAL_HEADER32
+#define XX_PE_DATA_STRUCT_OPTIONAL_HEADER XX_PE_DATA_STRUCT_OPTIONAL_HEADER32
 
 typedef struct xx_pe_section {
     char name[9];
@@ -203,13 +202,11 @@ XXFC_API void xx_pe_destroy(xx_pe *pe);
 XXFC_API void xx_pe_free(xx_pe *pe);
 
 /** Quickly check MZ and PE signatures at an absolute device offset. */
-XXFC_API bool xx_pe_fast_detect(xx_io_device *device, int64_t base_address,
-                                bool is_mapped);
+XXFC_API bool xx_pe_fast_detect(xx_io_device *device, int64_t base_address, bool is_mapped);
 XXFC_API xx_file_type_t xx_pe_file_type(xx_io_device *device, int64_t base_address, bool is_mapped);
 /** Return the largest section raw offset plus its FileAlignment-rounded raw size.
  * This is a file-layout extent for either is_mapped value; invalid headers return -1. */
-XXFC_API int64_t xx_pe_size(xx_io_device *device, int64_t base_address,
-                            bool is_mapped);
+XXFC_API int64_t xx_pe_size(xx_io_device *device, int64_t base_address, bool is_mapped);
 /** PE detection, sizing, and streaming-search callbacks. */
 XXFC_API Abstractextractor *xx_pe_get_abstract_extractor(void);
 XXFC_API Abstractdetector *xx_pe_get_abstract_detector(void);
@@ -246,10 +243,7 @@ XXFC_API xx_metadata_state *xx_pe_create_metadata_reading(Abstractformat *self, 
 XXFC_API const xx_metadata_record *xx_pe_get_current_metadata(Abstractformat *self, xx_metadata_state *state);
 XXFC_API bool xx_pe_metadata_move_to_next(Abstractformat *self, xx_metadata_state *state, xx_pd_struct *pd);
 XXFC_API void xx_pe_free_metadata_reading(Abstractformat *self, xx_metadata_state *state);
-XXFC_API bool xx_pe_get_memory_map(Abstractformat *self,
-                                   xx_memory_map_mode_t mode,
-                                   xx_memory_map *output,
-                                   xx_pd_struct *pd);
+XXFC_API bool xx_pe_get_memory_map(Abstractformat *self, xx_memory_map_mode_t mode, xx_memory_map *output, xx_pd_struct *pd);
 
 XXFC_API bool xx_pe_is_64(const xx_pe *pe);
 XXFC_API uint16_t xx_pe_get_machine(const xx_pe *pe);
@@ -258,11 +252,13 @@ XXFC_API uint64_t xx_pe_get_image_base(const xx_pe *pe);
 XXFC_API uint16_t xx_pe_get_number_of_sections(const xx_pe *pe);
 XXFC_API const xx_pe_section *xx_pe_get_section(const xx_pe *pe, uint16_t index);
 
-static inline Abstractformat *xx_pe_to_format(xx_pe *pe) {
+static inline Abstractformat *xx_pe_to_format(xx_pe *pe)
+{
     return pe ? &pe->format : NULL;
 }
 
-static inline const Abstractformat *xx_pe_to_format_const(const xx_pe *pe) {
+static inline const Abstractformat *xx_pe_to_format_const(const xx_pe *pe)
+{
     return pe ? &pe->format : NULL;
 }
 

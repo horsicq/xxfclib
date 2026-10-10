@@ -74,15 +74,12 @@ typedef struct smsipak_stream_s {
     int64_t archive_size;
 } smsipak_stream;
 
-static bool smsipak_read_at(xx_io_device *device, int64_t offset, void *buffer,
-                            size_t size) {
+static bool smsipak_read_at(xx_io_device *device, int64_t offset, void *buffer, size_t size)
+{
     size_t done = 0U;
-    if (!device || (!buffer && size != 0U) || offset < 0 ||
-        xx_io_seek64(device, offset, SEEK_SET) != 0)
-        return false;
+    if (!device || (!buffer && size != 0U) || offset < 0 || xx_io_seek64(device, offset, SEEK_SET) != 0) return false;
     while (done < size) {
-        ssize_t amount = xx_io_read(device, (uint8_t *)buffer + done,
-                                    size - done);
+        ssize_t amount = xx_io_read(device, (uint8_t *)buffer + done, size - done);
         if (amount <= 0 || (size_t)amount > size - done) return false;
         done += (size_t)amount;
     }
@@ -92,7 +89,8 @@ static bool smsipak_read_at(xx_io_device *device, int64_t offset, void *buffer,
 /* Member names are 8.3 DOS names with no path component.  Anything a host
  * filesystem would object to is neutralized; an empty name is rejected by the
  * caller rather than being invented. */
-static char *smsipak_normalize_name(const uint8_t *bytes, size_t size) {
+static char *smsipak_normalize_name(const uint8_t *bytes, size_t size)
+{
     char *name;
     size_t input, output = 0U;
     name = (char *)xx_mem_alloc(size + 1U);
@@ -100,34 +98,28 @@ static char *smsipak_normalize_name(const uint8_t *bytes, size_t size) {
     for (input = 0U; input < size; ++input) {
         uint8_t c = bytes[input];
         if (c == 0U) break;
-        if (c < 0x20U || c == '/' || c == '\\' || c == '"' || c == '*' ||
-            c == ':' || c == '<' || c == '>' || c == '?' || c == '|')
-            name[output++] = '_';
-        else
-            name[output++] = (char)c;
+        if (c < 0x20U || c == '/' || c == '\\' || c == '"' || c == '*' || c == ':' || c == '<' || c == '>' || c == '?' || c == '|') name[output++] = '_';
+        else name[output++] = (char)c;
     }
-    while (output != 0U && (name[output - 1U] == ' ' ||
-                            name[output - 1U] == '.'))
-        --output;
+    while (output != 0U && (name[output - 1U] == ' ' || name[output - 1U] == '.')) --output;
     name[output] = 0;
     return name;
 }
 
-static bool smsipak_safe_output_name(const char *name) {
+static bool smsipak_safe_output_name(const char *name)
+{
     size_t length;
     if (!name || !name[0]) return false;
-    if (name[0] == '.' && (!name[1] || (name[1] == '.' && !name[2])))
-        return false;
+    if (name[0] == '.' && (!name[1] || (name[1] == '.' && !name[2]))) return false;
     for (length = 0U; name[length]; ++length) {
         unsigned char c = (unsigned char)name[length];
-        if (c < 0x20U || c == '/' || c == '\\' || c == ':' || c == '<' ||
-            c == '>' || c == '"' || c == '|' || c == '?' || c == '*')
-            return false;
+        if (c < 0x20U || c == '/' || c == '\\' || c == ':' || c == '<' || c == '>' || c == '"' || c == '|' || c == '?' || c == '*') return false;
     }
     return true;
 }
 
-static void smsipak_stream_free(void *opaque) {
+static void smsipak_stream_free(void *opaque)
+{
     smsipak_stream *stream = (smsipak_stream *)opaque;
     size_t index;
     if (!stream) return;
@@ -137,34 +129,28 @@ static void smsipak_stream_free(void *opaque) {
     xx_mem_free(stream);
 }
 
-static bool smsipak_add_member(smsipak_stream *stream,
-                               const smsipak_member *member) {
+static bool smsipak_add_member(smsipak_stream *stream, const smsipak_member *member)
+{
     smsipak_member *grown;
-    if (!stream || !member || stream->count >= SMSIPAK_MAX_MEMBERS ||
-        stream->count > SIZE_MAX / sizeof(*grown) - 1U)
-        return false;
-    grown = (smsipak_member *)xx_mem_realloc(
-        stream->items, (stream->count + 1U) * sizeof(*grown));
+    if (!stream || !member || stream->count >= SMSIPAK_MAX_MEMBERS || stream->count > SIZE_MAX / sizeof(*grown) - 1U) return false;
+    grown = (smsipak_member *)xx_mem_realloc(stream->items, (stream->count + 1U) * sizeof(*grown));
     if (!grown) return false;
     stream->items = grown;
     stream->items[stream->count++] = *member;
     return true;
 }
 
-static bool smsipak_parse(Abstractformat *format, smsipak_stream **result) {
+static bool smsipak_parse(Abstractformat *format, smsipak_stream **result)
+{
     uint8_t header[SMSIPAK_HEADER_SIZE];
     smsipak_stream *stream = NULL;
     int64_t total, size, member_end, cursor, archive_end, index_size;
-    if (!format || !format->device || !result || format->base_address < 0)
-        return false;
+    if (!format || !format->device || !result || format->base_address < 0) return false;
     total = xx_io_total_size(format->device);
     if (total < format->base_address) return false;
     size = total - format->base_address;
-    if (size < SMSIPAK_HEADER_SIZE + SMSIPAK_RECORD_SIZE ||
-        !smsipak_read_at(format->device, format->base_address, header,
-                         sizeof(header)) ||
-        xx_rt_memcmp(header, "SMSIPAK ", 8U) != 0 ||
-        xx_data_get_u16(header + 8U, 2, 0, false) != SMSIPAK_STAMP)
+    if (size < SMSIPAK_HEADER_SIZE + SMSIPAK_RECORD_SIZE || !smsipak_read_at(format->device, format->base_address, header, sizeof(header)) ||
+        xx_rt_memcmp(header, "SMSIPAK ", 8U) != 0 || xx_data_get_u16(header + 8U, 2, 0, false) != SMSIPAK_STAMP)
         return false;
 
     /* +10 is where the members stop, not the file size. */
@@ -178,32 +164,24 @@ static bool smsipak_parse(Abstractformat *format, smsipak_stream **result) {
         uint8_t record[SMSIPAK_RECORD_SIZE];
         smsipak_member member;
         int32_t unpacked, packed;
-        if (member_end - cursor < SMSIPAK_RECORD_SIZE ||
-            !smsipak_read_at(format->device, format->base_address + cursor,
-                             record, sizeof(record)))
-            goto fail;
+        if (member_end - cursor < SMSIPAK_RECORD_SIZE || !smsipak_read_at(format->device, format->base_address + cursor, record, sizeof(record))) goto fail;
         if (xx_data_get_u16(record + 32U, 2, 0, false) != 0U) goto fail;
         xx_mem_zero(&member, sizeof(member));
         member.method = record[23];
-        if (member.method != SMSIPAK_METHOD_DCL &&
-            member.method != SMSIPAK_METHOD_STORE)
-            goto fail;
+        if (member.method != SMSIPAK_METHOD_DCL && member.method != SMSIPAK_METHOD_STORE) goto fail;
         unpacked = (int32_t)xx_data_get_u32(record + 24U, 4, 0, false);
         packed = (int32_t)xx_data_get_u32(record + 28U, 4, 0, false);
         if (unpacked < 0 || packed < 0) goto fail;
         /* Bound the payload against the member area before it is trusted. */
-        if (member_end - (cursor + SMSIPAK_RECORD_SIZE) < (int64_t)packed)
-            goto fail;
-        if (member.method == SMSIPAK_METHOD_STORE && packed != unpacked)
-            goto fail;
+        if (member_end - (cursor + SMSIPAK_RECORD_SIZE) < (int64_t)packed) goto fail;
+        if (member.method == SMSIPAK_METHOD_STORE && packed != unpacked) goto fail;
         member.name = smsipak_normalize_name(record, SMSIPAK_NAME_SIZE);
         if (!member.name) goto fail;
         if (!member.name[0]) {
             xx_str_free(member.name);
             goto fail;
         }
-        member.dos_time = ((uint32_t)xx_data_get_u16(record + 13U, 2, 0, false) << 16U) |
-                          (uint32_t)xx_data_get_u16(record + 15U, 2, 0, false);
+        member.dos_time = ((uint32_t)xx_data_get_u16(record + 13U, 2, 0, false) << 16U) | (uint32_t)xx_data_get_u16(record + 15U, 2, 0, false);
         member.crc32 = xx_data_get_u32(record + 17U, 4, 0, false);
         member.attributes = xx_data_get_u16(record + 21U, 2, 0, false);
         member.header_offset = format->base_address + cursor;
@@ -226,18 +204,12 @@ static bool smsipak_parse(Abstractformat *format, smsipak_stream **result) {
     if (size - member_end >= index_size) {
         uint8_t *index = (uint8_t *)xx_mem_alloc((size_t)index_size);
         bool valid = false;
-        if (index &&
-            smsipak_read_at(format->device, format->base_address + member_end,
-                            index, (size_t)index_size)) {
+        if (index && smsipak_read_at(format->device, format->base_address + member_end, index, (size_t)index_size)) {
             size_t i;
-            valid = xx_data_get_u32(index, 4, 0, false) == 0U &&
-                    (size_t)xx_data_get_u16(index + 4U, 2, 0, false) == stream->count;
+            valid = xx_data_get_u32(index, 4, 0, false) == 0U && (size_t)xx_data_get_u16(index + 4U, 2, 0, false) == stream->count;
             for (i = 0U; valid && i < stream->count; ++i) {
-                int64_t offset = (int64_t)xx_data_get_u32(
-                    index + SMSIPAK_INDEX_HEADER_SIZE + i * 4U, 4, 0, false);
-                if (format->base_address + offset !=
-                    stream->items[i].header_offset)
-                    valid = false;
+                int64_t offset = (int64_t)xx_data_get_u32(index + SMSIPAK_INDEX_HEADER_SIZE + i * 4U, 4, 0, false);
+                if (format->base_address + offset != stream->items[i].header_offset) valid = false;
             }
         }
         if (index) xx_mem_free(index);
@@ -252,18 +224,16 @@ fail:
     return false;
 }
 
-static bool smsipak_copy_options(xx_list_s *destination,
-                                 const xx_list_s *source) {
+static bool smsipak_copy_options(xx_list_s *destination, const xx_list_s *source)
+{
     size_t index;
     if (!source) return true;
     for (index = 0U; index < source->count; ++index) {
-        const xx_meta *original =
-            (const xx_meta *)xx_list_at((const xx_list_t *)source, index);
+        const xx_meta *original = (const xx_meta *)xx_list_at((const xx_list_t *)source, index);
         xx_meta copy;
         if (!original) continue;
         xx_meta_init(&copy, original->meta_id);
-        if (!xx_var_copy(&copy.var, &original->var) ||
-            !xx_list_append(destination, &copy)) {
+        if (!xx_var_copy(&copy.var, &original->var) || !xx_list_append(destination, &copy)) {
             xx_meta_cleanup(&copy);
             return false;
         }
@@ -271,19 +241,19 @@ static bool smsipak_copy_options(xx_list_s *destination,
     return true;
 }
 
-static const xx_var *smsipak_option(const xx_list_s *options, uint32_t id) {
+static const xx_var *smsipak_option(const xx_list_s *options, uint32_t id)
+{
     size_t index;
     if (!options) return NULL;
     for (index = 0U; index < options->count; ++index) {
-        const xx_meta *meta =
-            (const xx_meta *)xx_list_at((const xx_list_t *)options, index);
+        const xx_meta *meta = (const xx_meta *)xx_list_at((const xx_list_t *)options, index);
         if (meta && meta->meta_id == id) return &meta->var;
     }
     return NULL;
 }
 
-static bool smsipak_set_record(xx_archive_record *record,
-                               const smsipak_member *member) {
+static bool smsipak_set_record(xx_archive_record *record, const smsipak_member *member)
+{
     xx_archive_record_cleanup(record);
     xx_archive_record_init(record);
     record->header_offset = member->header_offset;
@@ -291,55 +261,34 @@ static bool smsipak_set_record(xx_archive_record *record,
     record->data_offset = member->data_offset;
     record->compressed_size = member->packed_size;
     return xx_archive_record_set_original_name(record, member->name) &&
-           xx_archive_record_set_meta_u64(record, XX_META_ID_COMPRESSED_SIZE,
-                                          (uint64_t)member->packed_size) &&
-           xx_archive_record_set_meta_u64(record, XX_META_ID_UNCOMPRESSED_SIZE,
-                                          member->unpacked_size) &&
-           xx_archive_record_set_meta_u64(record, XX_META_ID_COMPRESSION_METHOD,
-                                          member->method) &&
-           xx_archive_record_set_meta_u64(record, XX_META_ID_CRC32,
-                                          member->crc32) &&
-           xx_archive_record_set_meta_u64(record, XX_META_ID_ATTRIBUTES,
-                                          member->attributes) &&
-           xx_archive_record_set_meta_u64(record, XX_META_ID_TIMESTAMP,
-                                          member->dos_time) &&
-           xx_archive_record_set_meta_bool(record, XX_META_ID_IS_ENCRYPTED,
-                                           false) &&
-           xx_archive_record_set_meta_bool(record, XX_META_ID_IS_FOLDER,
-                                           false);
+           xx_archive_record_set_meta_u64(record, XX_META_ID_COMPRESSED_SIZE, (uint64_t)member->packed_size) &&
+           xx_archive_record_set_meta_u64(record, XX_META_ID_UNCOMPRESSED_SIZE, member->unpacked_size) &&
+           xx_archive_record_set_meta_u64(record, XX_META_ID_COMPRESSION_METHOD, member->method) &&
+           xx_archive_record_set_meta_u64(record, XX_META_ID_CRC32, member->crc32) && xx_archive_record_set_meta_u64(record, XX_META_ID_ATTRIBUTES, member->attributes) &&
+           xx_archive_record_set_meta_u64(record, XX_META_ID_TIMESTAMP, member->dos_time) && xx_archive_record_set_meta_bool(record, XX_META_ID_IS_ENCRYPTED, false) &&
+           xx_archive_record_set_meta_bool(record, XX_META_ID_IS_FOLDER, false);
 }
 
-static bool smsipak_decode_member(Abstractformat *format,
-                                  const smsipak_member *member,
-                                  uint8_t **plain, size_t *plain_size) {
+static bool smsipak_decode_member(Abstractformat *format, const smsipak_member *member, uint8_t **plain, size_t *plain_size)
+{
     uint8_t *packed = NULL;
     uint8_t *output = NULL;
     size_t written = 0U;
     size_t output_size;
     bool decoded = false;
-    if (!format || !member || !plain || !plain_size || member->packed_size < 0 ||
-        member->unpacked_size > SIZE_MAX)
-        return false;
+    if (!format || !member || !plain || !plain_size || member->packed_size < 0 || member->unpacked_size > SIZE_MAX) return false;
     output_size = (size_t)member->unpacked_size;
-    packed = (uint8_t *)xx_mem_alloc(
-        member->packed_size != 0 ? (size_t)member->packed_size : 1U);
+    packed = (uint8_t *)xx_mem_alloc(member->packed_size != 0 ? (size_t)member->packed_size : 1U);
     output = (uint8_t *)xx_mem_alloc(output_size != 0U ? output_size : 1U);
-    if (!packed || !output ||
-        (member->packed_size != 0 &&
-         !smsipak_read_at(format->device, member->data_offset, packed,
-                          (size_t)member->packed_size)))
-        goto fail;
+    if (!packed || !output || (member->packed_size != 0 && !smsipak_read_at(format->device, member->data_offset, packed, (size_t)member->packed_size))) goto fail;
     if (member->method == SMSIPAK_METHOD_STORE) {
         if (output_size != 0U) xx_rt_memcpy(output, packed, output_size);
         written = output_size;
         decoded = true;
     } else {
-        decoded = xx_dcl_decode_memory(packed, (size_t)member->packed_size,
-                                       output, output_size, &written);
+        decoded = xx_dcl_decode_memory(packed, (size_t)member->packed_size, output, output_size, &written);
     }
-    if (!decoded || written != output_size ||
-        xx_crc32_calc(0U, output, written) != member->crc32)
-        goto fail;
+    if (!decoded || written != output_size || xx_crc32_calc(0U, output, written) != member->crc32) goto fail;
     xx_mem_free(packed);
     *plain = output;
     *plain_size = written;
@@ -350,8 +299,8 @@ fail:
     return false;
 }
 
-void xx_smsipak_init(xx_smsipak *archive, xx_io_device *device,
-                     int64_t base_address) {
+void xx_smsipak_init(xx_smsipak *archive, xx_io_device *device, int64_t base_address)
+{
     if (!archive) return;
     xx_mem_zero(archive, sizeof(*archive));
     xx_format_init(&archive->format, device, base_address);
@@ -364,38 +313,36 @@ void xx_smsipak_init(xx_smsipak *archive, xx_io_device *device,
     archive->format.check_is_valid = xx_smsipak_check_is_valid;
     archive->format.handle_base_info = xx_smsipak_handle_base_info;
     archive->format.get_format_size = xx_smsipak_get_format_size;
-    archive->format.get_number_of_archive_records =
-        xx_smsipak_get_number_of_archive_records;
-    archive->format.create_archive_records_reading =
-        xx_smsipak_create_archive_records_reading;
-    archive->format.get_current_archive_record =
-        xx_smsipak_get_current_archive_record;
-    archive->format.unpack_current_archive_record =
-        xx_smsipak_unpack_current_archive_record;
-    archive->format.archive_record_move_to_next =
-        xx_smsipak_archive_record_move_to_next;
-    archive->format.free_archive_records_reading =
-        xx_smsipak_free_archive_records_reading;
+    archive->format.get_number_of_archive_records = xx_smsipak_get_number_of_archive_records;
+    archive->format.create_archive_records_reading = xx_smsipak_create_archive_records_reading;
+    archive->format.get_current_archive_record = xx_smsipak_get_current_archive_record;
+    archive->format.unpack_current_archive_record = xx_smsipak_unpack_current_archive_record;
+    archive->format.archive_record_move_to_next = xx_smsipak_archive_record_move_to_next;
+    archive->format.free_archive_records_reading = xx_smsipak_free_archive_records_reading;
     archive->archive_end = -1;
 }
 
-xx_smsipak *xx_smsipak_create(xx_io_device *device, int64_t base_address) {
+xx_smsipak *xx_smsipak_create(xx_io_device *device, int64_t base_address)
+{
     xx_smsipak *archive = (xx_smsipak *)xx_mem_alloc(sizeof(*archive));
     if (archive) xx_smsipak_init(archive, device, base_address);
     return archive;
 }
 
-void xx_smsipak_destroy(xx_smsipak *archive) {
+void xx_smsipak_destroy(xx_smsipak *archive)
+{
     if (archive) xx_format_cleanup_extra_parameters(&archive->format);
 }
 
-void xx_smsipak_free(xx_smsipak *archive) {
+void xx_smsipak_free(xx_smsipak *archive)
+{
     if (!archive) return;
     xx_smsipak_destroy(archive);
     xx_mem_free(archive);
 }
 
-bool xx_smsipak_check_is_valid(Abstractformat *format, xx_pd_struct *pd) {
+bool xx_smsipak_check_is_valid(Abstractformat *format, xx_pd_struct *pd)
+{
     smsipak_stream *stream;
     (void)pd;
     if (!smsipak_parse(format, &stream)) return false;
@@ -403,7 +350,8 @@ bool xx_smsipak_check_is_valid(Abstractformat *format, xx_pd_struct *pd) {
     return true;
 }
 
-bool xx_smsipak_handle_base_info(Abstractformat *format, xx_pd_struct *pd) {
+bool xx_smsipak_handle_base_info(Abstractformat *format, xx_pd_struct *pd)
+{
     smsipak_stream *stream;
     xx_smsipak *archive;
     (void)pd;
@@ -419,21 +367,18 @@ bool xx_smsipak_handle_base_info(Abstractformat *format, xx_pd_struct *pd) {
     return true;
 }
 
-int64_t xx_smsipak_get_format_size(Abstractformat *format, xx_pd_struct *pd) {
-    return format && (format->base_info_handled ||
-                      xx_smsipak_handle_base_info(format, pd))
-               ? format->format_size : -1;
+int64_t xx_smsipak_get_format_size(Abstractformat *format, xx_pd_struct *pd)
+{
+    return format && (format->base_info_handled || xx_smsipak_handle_base_info(format, pd)) ? format->format_size : -1;
 }
 
-uint64_t xx_smsipak_get_number_of_archive_records(Abstractformat *format,
-                                                  xx_pd_struct *pd) {
-    return format && (format->base_info_handled ||
-                      xx_smsipak_handle_base_info(format, pd))
-               ? ((xx_smsipak *)format)->number_of_records : 0U;
+uint64_t xx_smsipak_get_number_of_archive_records(Abstractformat *format, xx_pd_struct *pd)
+{
+    return format && (format->base_info_handled || xx_smsipak_handle_base_info(format, pd)) ? ((xx_smsipak *)format)->number_of_records : 0U;
 }
 
-xx_archive_record_state *xx_smsipak_create_archive_records_reading(
-    Abstractformat *format, const xx_list_s *options, xx_pd_struct *pd) {
+xx_archive_record_state *xx_smsipak_create_archive_records_reading(Abstractformat *format, const xx_list_s *options, xx_pd_struct *pd)
+{
     smsipak_stream *stream;
     xx_archive_record_state *state;
     (void)pd;
@@ -447,8 +392,7 @@ xx_archive_record_state *xx_smsipak_create_archive_records_reading(
     state->internal_state = stream;
     state->free_internal = smsipak_stream_free;
     state->total_records = stream->count;
-    if (!smsipak_copy_options(&state->options, options) ||
-        !smsipak_set_record(&state->current_record, &stream->items[0])) {
+    if (!smsipak_copy_options(&state->options, options) || !smsipak_set_record(&state->current_record, &stream->items[0])) {
         xx_archive_record_state_free(state);
         return NULL;
     }
@@ -456,32 +400,26 @@ xx_archive_record_state *xx_smsipak_create_archive_records_reading(
     return state;
 }
 
-const xx_archive_record *xx_smsipak_get_current_archive_record(
-    Abstractformat *format, xx_archive_record_state *state) {
-    return format && state && state->format == format && state->has_record
-               ? &state->current_record : NULL;
+const xx_archive_record *xx_smsipak_get_current_archive_record(Abstractformat *format, xx_archive_record_state *state)
+{
+    return format && state && state->format == format && state->has_record ? &state->current_record : NULL;
 }
 
-bool xx_smsipak_archive_record_move_to_next(Abstractformat *format,
-                                            xx_archive_record_state *state,
-                                            xx_pd_struct *pd) {
+bool xx_smsipak_archive_record_move_to_next(Abstractformat *format, xx_archive_record_state *state, xx_pd_struct *pd)
+{
     smsipak_stream *stream;
     (void)pd;
-    if (!format || !state || state->format != format ||
-        !(stream = (smsipak_stream *)state->internal_state) ||
-        ++stream->index >= stream->count) {
+    if (!format || !state || state->format != format || !(stream = (smsipak_stream *)state->internal_state) || ++stream->index >= stream->count) {
         if (state) state->has_record = false;
         return false;
     }
     ++state->current_index;
-    state->has_record = smsipak_set_record(&state->current_record,
-                                           &stream->items[stream->index]);
+    state->has_record = smsipak_set_record(&state->current_record, &stream->items[stream->index]);
     return state->has_record;
 }
 
-bool xx_smsipak_unpack_current_archive_record(Abstractformat *format,
-                                              xx_archive_record_state *state,
-                                              xx_pd_struct *pd) {
+bool xx_smsipak_unpack_current_archive_record(Abstractformat *format, xx_archive_record_state *state, xx_pd_struct *pd)
+{
     smsipak_stream *stream;
     smsipak_member *member;
     const xx_var *path_option;
@@ -492,32 +430,24 @@ bool xx_smsipak_unpack_current_archive_record(Abstractformat *format,
     size_t plain_size = 0U, written = 0U;
     bool result = false;
     bool created = false;
-    if (!format || !state || state->format != format || !state->has_record ||
-        !(stream = (smsipak_stream *)state->internal_state) ||
-        stream->index >= stream->count || (pd && xx_pd_is_stopped(pd)))
+    if (!format || !state || state->format != format || !state->has_record || !(stream = (smsipak_stream *)state->internal_state) || stream->index >= stream->count ||
+        (pd && xx_pd_is_stopped(pd)))
         return false;
     member = &stream->items[stream->index];
-    if (!smsipak_safe_output_name(member->name) ||
-        !smsipak_decode_member(format, member, &plain, &plain_size))
-        goto done;
+    if (!smsipak_safe_output_name(member->name) || !smsipak_decode_member(format, member, &plain, &plain_size)) goto done;
     path_option = smsipak_option(&state->options, XX_META_ID_OPT_UNPACK_PATH);
     if (!path_option) {
         result = true;
         goto done;
     }
-    if (path_option->type == XX_VAR_TYPE_STRING ||
-        path_option->type == XX_VAR_TYPE_STRING_VIEW)
-        base = xx_var_get_str(path_option);
-    else if (path_option->type == XX_VAR_TYPE_WSTRING ||
-             path_option->type == XX_VAR_TYPE_WSTRING_VIEW) {
+    if (path_option->type == XX_VAR_TYPE_STRING || path_option->type == XX_VAR_TYPE_STRING_VIEW) base = xx_var_get_str(path_option);
+    else if (path_option->type == XX_VAR_TYPE_WSTRING || path_option->type == XX_VAR_TYPE_WSTRING_VIEW) {
         owned_base = xx_str_unicode_to_utf8(xx_var_get_wstr(path_option));
         base = owned_base;
     }
     if (!base) goto done;
-    path = (base[0] && base[xx_str_len(base) - 1U] != '/' &&
-            base[xx_str_len(base) - 1U] != '\\')
-               ? xx_str_concat3(base, "/", member->name)
-               : xx_str_concat(base, member->name);
+    path = (base[0] && base[xx_str_len(base) - 1U] != '/' && base[xx_str_len(base) - 1U] != '\\') ? xx_str_concat3(base, "/", member->name)
+                                                                                                  : xx_str_concat(base, member->name);
     if (!path) goto done;
     if (!xx_store_create_dirs_a(path, false)) goto done;
     {
@@ -526,8 +456,7 @@ bool xx_smsipak_unpack_current_archive_record(Abstractformat *format,
         if (!destination) goto done;
         result = true;
         while (written < plain_size) {
-            ssize_t amount = xx_io_write(destination, plain + written,
-                                         plain_size - written);
+            ssize_t amount = xx_io_write(destination, plain + written, plain_size - written);
             if (amount <= 0 || (size_t)amount > plain_size - written) {
                 result = false;
                 break;
@@ -544,8 +473,8 @@ done:
     return result;
 }
 
-void xx_smsipak_free_archive_records_reading(Abstractformat *format,
-                                             xx_archive_record_state *state) {
+void xx_smsipak_free_archive_records_reading(Abstractformat *format, xx_archive_record_state *state)
+{
     (void)format;
     xx_archive_record_state_free(state);
 }

@@ -128,51 +128,47 @@
 
 #define GI_PD_MASK 0xFFFFUL
 
-static const uint8_t g_gi_signature[8] = {0xAB, 0x67, 0xA7, 0x36,
-                                          0xFF, 0x4D, 0xFB, 0x6F};
+static const uint8_t g_gi_signature[8] = {0xAB, 0x67, 0xA7, 0x36, 0xFF, 0x4D, 0xFB, 0x6F};
 
-static const uint8_t g_gi_dist_bits[GI_DIST_SLOTS] = {
-    0, 1, 1, 2, 2, 2, 3, 3, 3, 3, 4, 4, 5, 5, 6,
-    6, 7, 7, 8, 8, 9, 9, 10, 10, 11, 11, 12, 12, 13, 13};
+static const uint8_t g_gi_dist_bits[GI_DIST_SLOTS] = {0, 1, 1, 2, 2, 2, 3, 3, 3, 3, 4, 4, 5, 5, 6, 6, 7, 7, 8, 8, 9, 9, 10, 10, 11, 11, 12, 12, 13, 13};
 
 /* ---------------------------------------------------------------------- */
 /* Small helpers                                                           */
 
-static bool gi_read_at(xx_io_device *device, int64_t offset, void *buffer,
-                       size_t size) {
+static bool gi_read_at(xx_io_device *device, int64_t offset, void *buffer, size_t size)
+{
     size_t done = 0U;
     const size_t io_capacity = xx_get_file_buffer_size();
-    if (!device || (!buffer && size != 0U) || offset < 0 ||
-        xx_io_seek64(device, offset, SEEK_SET) != 0)
-        return false;
+    if (!device || (!buffer && size != 0U) || offset < 0 || xx_io_seek64(device, offset, SEEK_SET) != 0) return false;
     while (done < size) {
         size_t request = size - done;
         if (request > io_capacity) request = io_capacity;
-        ssize_t amount =
-            xx_io_read(device, (uint8_t *)buffer + done, request);
+        ssize_t amount = xx_io_read(device, (uint8_t *)buffer + done, request);
         if (amount <= 0 || (size_t)amount > request) return false;
         done += (size_t)amount;
     }
     return true;
 }
 
-static bool gi_stopped(xx_pd_struct *pd) { return pd && xx_pd_is_stopped(pd); }
+static bool gi_stopped(xx_pd_struct *pd)
+{
+    return pd && xx_pd_is_stopped(pd);
+}
 
 /* ---------------------------------------------------------------------- */
 /* Carrier                                                                 */
 
 typedef struct gi_location_s {
-    int64_t total;          /**< Bytes from base to the end of the device. */
-    int64_t overlay;        /**< Base-relative end of the PE image. */
-    int64_t payload;        /**< Base-relative payload start. */
+    int64_t total;   /**< Bytes from base to the end of the device. */
+    int64_t overlay; /**< Base-relative end of the PE image. */
+    int64_t payload; /**< Base-relative payload start. */
     uint32_t runtime_size;
 } gi_location;
 
-static bool gi_payload_header_ok(const uint8_t *h, uint32_t *runtime) {
+static bool gi_payload_header_ok(const uint8_t *h, uint32_t *runtime)
+{
     uint32_t size = xx_data_get_u32(h, 4, 0, false);
-    if (size == 0U || size >= GI_MAX_RUNTIME ||
-        xx_rt_memcmp(h + 4U, g_gi_signature, sizeof(g_gi_signature)) != 0)
-        return false;
+    if (size == 0U || size >= GI_MAX_RUNTIME || xx_rt_memcmp(h + 4U, g_gi_signature, sizeof(g_gi_signature)) != 0) return false;
     if (runtime) *runtime = size;
     return true;
 }
@@ -180,56 +176,44 @@ static bool gi_payload_header_ok(const uint8_t *h, uint32_t *runtime) {
 /* Reads just enough of the PE to know where its image ends, then looks for
  * the payload header at the stub's locator and at the overlay start.  At
  * most five small reads, so it is cheap enough for every MZ file. */
-static bool gi_locate(Abstractformat *format, gi_location *out) {
+static bool gi_locate(Abstractformat *format, gi_location *out)
+{
     uint8_t mz[0x40];
     uint8_t nt[24];
     uint8_t sections[GI_MAX_SECTIONS * 40U];
     uint8_t head[GI_PAYLOAD_HEADER];
     int64_t base, total, table, overlay = 0, candidate;
     uint32_t lfanew, nsec, optsz, index, runtime = 0U;
-    if (!format || !format->device || !out || format->base_address < 0)
-        return false;
+    if (!format || !format->device || !out || format->base_address < 0) return false;
     base = format->base_address;
     total = xx_io_total_size(format->device);
     if (total < base) return false;
     total -= base;
     if (total < (int64_t)(GI_LOCATOR_OFFSET + GI_LOCATOR_SIZE)) return false;
-    if (!gi_read_at(format->device, base, mz, sizeof(mz)) || mz[0] != 'M' ||
-        mz[1] != 'Z')
-        return false;
+    if (!gi_read_at(format->device, base, mz, sizeof(mz)) || mz[0] != 'M' || mz[1] != 'Z') return false;
     lfanew = xx_data_get_u32(mz + 0x3C, 4, 0, false);
-    if (lfanew < 0x40U || lfanew > GI_MAX_LFANEW ||
-        (int64_t)lfanew + (int64_t)sizeof(nt) > total ||
-        !gi_read_at(format->device, base + lfanew, nt, sizeof(nt)) ||
+    if (lfanew < 0x40U || lfanew > GI_MAX_LFANEW || (int64_t)lfanew + (int64_t)sizeof(nt) > total || !gi_read_at(format->device, base + lfanew, nt, sizeof(nt)) ||
         nt[0] != 'P' || nt[1] != 'E' || nt[2] != 0 || nt[3] != 0)
         return false;
     nsec = xx_data_get_u16(nt + 6, 2, 0, false);
     optsz = xx_data_get_u16(nt + 20, 2, 0, false);
     if (nsec == 0U || nsec > GI_MAX_SECTIONS) return false;
     table = (int64_t)lfanew + 24 + (int64_t)optsz;
-    if (table + (int64_t)nsec * 40 > total ||
-        !gi_read_at(format->device, base + table, sections, nsec * 40U))
-        return false;
+    if (table + (int64_t)nsec * 40 > total || !gi_read_at(format->device, base + table, sections, nsec * 40U)) return false;
     for (index = 0U; index < nsec; ++index) {
         const uint8_t *s = sections + index * 40U;
         int64_t raw_size = (int64_t)xx_data_get_u32(s + 16, 4, 0, false);
         int64_t raw_ptr = (int64_t)xx_data_get_u32(s + 20, 4, 0, false);
-        if (raw_size != 0 && raw_ptr + raw_size > overlay)
-            overlay = raw_ptr + raw_size;
+        if (raw_size != 0 && raw_ptr + raw_size > overlay) overlay = raw_ptr + raw_size;
     }
-    if (overlay <= 0 || overlay + (int64_t)GI_PAYLOAD_HEADER > total)
-        return false;
+    if (overlay <= 0 || overlay + (int64_t)GI_PAYLOAD_HEADER > total) return false;
 
     /* The locator in the stub's header padding. */
     {
         uint8_t locator[GI_LOCATOR_SIZE];
-        if (gi_read_at(format->device, base + GI_LOCATOR_OFFSET, locator,
-                       sizeof(locator))) {
+        if (gi_read_at(format->device, base + GI_LOCATOR_OFFSET, locator, sizeof(locator))) {
             candidate = (int64_t)xx_data_get_u32(locator, 4, 0, false);
-            if (candidate >= overlay &&
-                candidate + (int64_t)GI_PAYLOAD_HEADER <= total &&
-                gi_read_at(format->device, base + candidate, head,
-                           sizeof(head)) &&
+            if (candidate >= overlay && candidate + (int64_t)GI_PAYLOAD_HEADER <= total && gi_read_at(format->device, base + candidate, head, sizeof(head)) &&
                 gi_payload_header_ok(head, &runtime)) {
                 out->total = total;
                 out->overlay = overlay;
@@ -240,9 +224,7 @@ static bool gi_locate(Abstractformat *format, gi_location *out) {
         }
     }
     /* Otherwise the payload has to open the overlay. */
-    if (!gi_read_at(format->device, base + overlay, head, sizeof(head)) ||
-        !gi_payload_header_ok(head, &runtime))
-        return false;
+    if (!gi_read_at(format->device, base + overlay, head, sizeof(head)) || !gi_payload_header_ok(head, &runtime)) return false;
     out->total = total;
     out->overlay = overlay;
     out->payload = overlay;
@@ -255,17 +237,18 @@ static bool gi_locate(Abstractformat *format, gi_location *out) {
 
 typedef struct gi_input_s {
     xx_io_device *device;
-    int64_t next;    /**< Absolute offset of the next byte to buffer. */
-    int64_t end;     /**< Absolute end of readable data. */
+    int64_t next; /**< Absolute offset of the next byte to buffer. */
+    int64_t end;  /**< Absolute end of readable data. */
     size_t length;
     size_t position;
-    uint32_t count;  /**< Bits left in current. */
+    uint32_t count; /**< Bits left in current. */
     uint8_t current;
     uint8_t *buffer;
     size_t io_capacity;
 } gi_input;
 
-static gi_input *gi_input_create(void) {
+static gi_input *gi_input_create(void)
+{
     const size_t capacity = xx_get_file_buffer_size();
     gi_input *in;
     if (capacity > SIZE_MAX - sizeof(*in)) return NULL;
@@ -276,18 +259,21 @@ static gi_input *gi_input_create(void) {
     return in;
 }
 
-static void gi_in_seek(gi_input *in, int64_t offset) {
+static void gi_in_seek(gi_input *in, int64_t offset)
+{
     in->next = offset;
     in->length = 0U;
     in->position = 0U;
     in->count = 0U;
 }
 
-static int64_t gi_in_tell(const gi_input *in) {
+static int64_t gi_in_tell(const gi_input *in)
+{
     return in->next - (int64_t)(in->length - in->position);
 }
 
-static bool gi_in_byte(gi_input *in, uint8_t *value) {
+static bool gi_in_byte(gi_input *in, uint8_t *value)
+{
     if (in->position >= in->length) {
         int64_t left = in->end - in->next;
         size_t want;
@@ -303,9 +289,13 @@ static bool gi_in_byte(gi_input *in, uint8_t *value) {
 }
 
 /* Blocks start on a byte boundary: the bits left over are dropped. */
-static void gi_in_align(gi_input *in) { in->count = 0U; }
+static void gi_in_align(gi_input *in)
+{
+    in->count = 0U;
+}
 
-static bool gi_in_u32(gi_input *in, uint32_t *value) {
+static bool gi_in_u32(gi_input *in, uint32_t *value)
+{
     uint8_t b[4];
     size_t index;
     gi_in_align(in);
@@ -315,7 +305,8 @@ static bool gi_in_u32(gi_input *in, uint32_t *value) {
     return true;
 }
 
-static int gi_in_bit(gi_input *in) {
+static int gi_in_bit(gi_input *in)
+{
     int result;
     if (in->count == 0U) {
         if (!gi_in_byte(in, &in->current)) return -1;
@@ -343,7 +334,8 @@ typedef struct gi_tree_s {
 /* Builds the starting tree over weights 1..n.  The displaced minimum only
  * becomes the second minimum when that slot is still empty; the reference
  * builder does this and the tree shape depends on it. */
-static bool gi_tree_init(gi_tree *t, int32_t symbols) {
+static bool gi_tree_init(gi_tree *t, int32_t symbols)
+{
     int32_t i, count, total = symbols * 2 - 1, last = -1;
     t->symbols = symbols;
     for (i = 0; i < symbols * 2; ++i) {
@@ -380,11 +372,15 @@ static bool gi_tree_init(gi_tree *t, int32_t symbols) {
     return true;
 }
 
-static int32_t gi_half(int32_t w) { return w >= 0 ? w / 2 : -((1 - w) / 2); }
+static int32_t gi_half(int32_t w)
+{
+    return w >= 0 ? w / 2 : -((1 - w) / 2);
+}
 
 /* Exchanges a with b and, when the heavier child of the node moved in
  * outweighs the sibling left behind, repeats once one level down. */
-static bool gi_tree_swap(gi_tree *t, int32_t a, int32_t b) {
+static bool gi_tree_swap(gi_tree *t, int32_t a, int32_t b)
+{
     bool extra = true;
     int32_t guard;
     for (guard = 0; guard < 2; ++guard) {
@@ -394,8 +390,7 @@ static bool gi_tree_swap(gi_tree *t, int32_t a, int32_t b) {
         heavy = t->left[b];
         if (heavy >= 0) {
             if (t->right[b] < 0) return false;
-            if (t->weight[t->left[b]] <= t->weight[t->right[b]])
-                heavy = t->right[b];
+            if (t->weight[t->left[b]] <= t->weight[t->right[b]]) heavy = t->right[b];
         }
         if (t->left[pa] == a) t->left[pa] = (int16_t)b;
         else t->right[pa] = (int16_t)b;
@@ -405,9 +400,7 @@ static bool gi_tree_swap(gi_tree *t, int32_t a, int32_t b) {
         else t->right[pb] = (int16_t)a;
         t->parent[a] = (int16_t)pb;
         t->parent[b] = (int16_t)pa;
-        if (!extra || heavy < 0 || sibling < 0 ||
-            t->weight[heavy] <= t->weight[sibling])
-            break;
+        if (!extra || heavy < 0 || sibling < 0 || t->weight[heavy] <= t->weight[sibling]) break;
         extra = false;
         t->weight[b] += t->weight[sibling] - t->weight[heavy];
         a = heavy;
@@ -416,19 +409,17 @@ static bool gi_tree_swap(gi_tree *t, int32_t a, int32_t b) {
     return true;
 }
 
-static bool gi_tree_update(gi_tree *t, int32_t symbol) {
+static bool gi_tree_update(gi_tree *t, int32_t symbol)
+{
     int32_t node = symbol, steps = 0;
     while (node >= 0) {
         int32_t par = t->parent[node];
         if (++steps > GI_MAX_NODES) return false;
         if (par >= 0 && t->parent[par] >= 0) {
             int32_t grand = t->parent[par];
-            int32_t uncle = t->left[grand] == par ? t->right[grand]
-                                                   : t->left[grand];
+            int32_t uncle = t->left[grand] == par ? t->right[grand] : t->left[grand];
             if (uncle < 0) return false;
-            if (t->weight[uncle] <= t->weight[node] &&
-                !gi_tree_swap(t, node, uncle))
-                return false;
+            if (t->weight[uncle] <= t->weight[node] && !gi_tree_swap(t, node, uncle)) return false;
         }
         ++t->weight[node];
         node = t->parent[node];
@@ -440,7 +431,8 @@ static bool gi_tree_update(gi_tree *t, int32_t symbol) {
     return true;
 }
 
-static int32_t gi_tree_symbol(gi_tree *t, gi_input *in) {
+static int32_t gi_tree_symbol(gi_tree *t, gi_input *in)
+{
     int32_t node = t->root, depth = 0;
     do {
         int bit = gi_in_bit(in);
@@ -464,12 +456,10 @@ typedef struct gi_codec_s {
     uint8_t window[GI_WINDOW];
 } gi_codec;
 
-static bool gi_codec_reset(gi_codec *c) {
+static bool gi_codec_reset(gi_codec *c)
+{
     uint32_t i;
-    if (!gi_tree_init(&c->main_tree, GI_MAIN_SYMBOLS) ||
-        !gi_tree_init(&c->dist_tree, GI_DIST_SYMBOLS) ||
-        !gi_tree_init(&c->len_tree, GI_LEN_SYMBOLS))
-        return false;
+    if (!gi_tree_init(&c->main_tree, GI_MAIN_SYMBOLS) || !gi_tree_init(&c->dist_tree, GI_DIST_SYMBOLS) || !gi_tree_init(&c->len_tree, GI_LEN_SYMBOLS)) return false;
     for (i = 0U; i < GI_RECENT; ++i) c->recent[i] = i;
     c->position = 0U;
     xx_mem_zero(c->window, sizeof(c->window));
@@ -477,7 +467,7 @@ static bool gi_codec_reset(gi_codec *c) {
 }
 
 typedef struct gi_sink_s {
-    uint8_t *memory;      /**< Memory target of capacity bytes, or NULL. */
+    uint8_t *memory; /**< Memory target of capacity bytes, or NULL. */
     size_t capacity;
     size_t length;
     xx_io_device *device; /**< Device target, or NULL. */
@@ -487,12 +477,12 @@ typedef struct gi_sink_s {
     bool failed;
 } gi_sink;
 
-static bool gi_sink_flush(gi_sink *s) {
+static bool gi_sink_flush(gi_sink *s)
+{
     size_t done = 0U;
     if (!s || !s->device || s->failed) return !s || !s->failed;
     while (done < s->staged) {
-        ssize_t amount = xx_io_write(s->device, s->buffer + done,
-                                     s->staged - done);
+        ssize_t amount = xx_io_write(s->device, s->buffer + done, s->staged - done);
         if (amount <= 0 || (size_t)amount > s->staged - done) {
             s->failed = true;
             return false;
@@ -503,7 +493,8 @@ static bool gi_sink_flush(gi_sink *s) {
     return true;
 }
 
-static void gi_sink_put(gi_sink *s, uint8_t value) {
+static void gi_sink_put(gi_sink *s, uint8_t value)
+{
     if (!s || s->failed) return;
     if (s->memory) {
         if (s->length >= s->capacity) {
@@ -518,15 +509,16 @@ static void gi_sink_put(gi_sink *s, uint8_t value) {
     }
 }
 
-static int32_t gi_dist_base(int32_t slot) {
+static int32_t gi_dist_base(int32_t slot)
+{
     int32_t base = 0, i;
     for (i = 0; i < slot; ++i) base += 1 << g_gi_dist_bits[i];
     return base;
 }
 
 /* Decodes one block body of exactly size bytes. */
-static bool gi_unpack(gi_codec *c, gi_input *in, uint32_t size, gi_sink *sink,
-                      xx_pd_struct *pd) {
+static bool gi_unpack(gi_codec *c, gi_input *in, uint32_t size, gi_sink *sink, xx_pd_struct *pd)
+{
     unsigned long counter = 0UL;
     while (size > 0U) {
         int32_t symbol;
@@ -586,8 +578,8 @@ static bool gi_unpack(gi_codec *c, gi_input *in, uint32_t size, gi_sink *sink,
 
 /* One block: its size word (checked against limit when limit != 0), then
  * the bit stream.  The input is left on the first byte not taken. */
-static bool gi_block(gi_codec *c, gi_input *in, uint32_t limit,
-                     uint32_t *decoded, gi_sink *sink, xx_pd_struct *pd) {
+static bool gi_block(gi_codec *c, gi_input *in, uint32_t limit, uint32_t *decoded, gi_sink *sink, xx_pd_struct *pd)
+{
     uint32_t size;
     if (!gi_in_u32(in, &size) || (limit != 0U && size > limit)) return false;
     if (decoded) *decoded = size;
@@ -600,17 +592,17 @@ static bool gi_block(gi_codec *c, gi_input *in, uint32_t limit,
 /* Member table                                                            */
 
 typedef struct gi_member_s {
-    char *name;           /**< UTF-8, '/' separated, unique among safe names. */
+    char *name; /**< UTF-8, '/' separated, unique among safe names. */
     bool safe;
     bool stored;
-    bool broken;          /**< Its data is cut off or does not decode. */
+    bool broken; /**< Its data is cut off or does not decode. */
     uint32_t size;
     uint32_t attributes;
     uint64_t filetime;
     int64_t command_offset; /**< Absolute. */
     int64_t command_size;
-    int64_t data_offset;    /**< Absolute. */
-    int64_t data_size;      /**< Bytes the member data occupies. */
+    int64_t data_offset; /**< Absolute. */
+    int64_t data_size;   /**< Bytes the member data occupies. */
 } gi_member;
 
 typedef struct gi_replay_s {
@@ -627,12 +619,13 @@ typedef struct gi_list_s {
     size_t capacity;
     size_t index;
     gi_location location;
-    int64_t end;  /**< Base-relative end of what was walked. */
+    int64_t end; /**< Base-relative end of what was walked. */
     bool complete;
     gi_replay replay;
 } gi_list;
 
-static void gi_list_free(void *opaque) {
+static void gi_list_free(void *opaque)
+{
     gi_list *list = (gi_list *)opaque;
     size_t index;
     if (!list) return;
@@ -648,14 +641,14 @@ static void gi_list_free(void *opaque) {
     xx_mem_free(list);
 }
 
-static bool gi_list_add(gi_list *list, const gi_member *member) {
+static bool gi_list_add(gi_list *list, const gi_member *member)
+{
     if (list->count >= GI_MAX_MEMBERS) return false;
     if (list->count == list->capacity) {
         size_t grown = list->capacity ? list->capacity * 2U : 16U;
         gi_member *items;
         if (grown > GI_MAX_MEMBERS) grown = GI_MAX_MEMBERS;
-        items = (gi_member *)xx_mem_realloc(list->items,
-                                            grown * sizeof(*items));
+        items = (gi_member *)xx_mem_realloc(list->items, grown * sizeof(*items));
         if (!items) return false;
         list->items = items;
         list->capacity = grown;
@@ -667,7 +660,8 @@ static bool gi_list_add(gi_list *list, const gi_member *member) {
 /* ---------------------------------------------------------------------- */
 /* Names                                                                   */
 
-static char gi_upper(char c) {
+static char gi_upper(char c)
+{
     return (c >= 'a' && c <= 'z') ? (char)(c - 'a' + 'A') : c;
 }
 
@@ -676,17 +670,17 @@ static char gi_upper(char c) {
  * (C3 A0..C3 BE, except the division sign C3 B7) fold onto their capitals
  * C3 80..C3 9E, as NTFS does.  0xC3 is never a continuation byte, so prev
  * is always a lead byte when it is 0xC3. */
-static uint8_t gi_fold(uint8_t prev, uint8_t c) {
-    if (prev == 0xC3U && c >= 0xA0U && c <= 0xBEU && c != 0xB7U)
-        return (uint8_t)(c - 0x20U);
+static uint8_t gi_fold(uint8_t prev, uint8_t c)
+{
+    if (prev == 0xC3U && c >= 0xA0U && c <= 0xBEU && c != 0xB7U) return (uint8_t)(c - 0x20U);
     return (uint8_t)gi_upper((char)c);
 }
 
 /* True when the component's stem (before its first dot, trailing spaces
  * ignored) is a Windows device name. */
-static bool gi_is_device(const uint8_t *comp, size_t length) {
-    static const char *const names[] = {"CON", "PRN", "AUX", "NUL",
-                                        "CONIN$", "CONOUT$", "CLOCK$"};
+static bool gi_is_device(const uint8_t *comp, size_t length)
+{
+    static const char *const names[] = {"CON", "PRN", "AUX", "NUL", "CONIN$", "CONOUT$", "CLOCK$"};
     size_t stem = 0U, index, k;
     while (stem < length && comp[stem] != '.') ++stem;
     while (stem > 0U && comp[stem - 1U] == ' ') --stem;
@@ -698,14 +692,9 @@ static bool gi_is_device(const uint8_t *comp, size_t length) {
     }
     /* Windows also takes the Latin-1 superscripts 1, 2 and 3 as the digit
      * of COM#/LPT#. */
-    if (stem == 4U && ((comp[3] >= '0' && comp[3] <= '9') ||
-                       comp[3] == 0xB9U || comp[3] == 0xB2U ||
-                       comp[3] == 0xB3U)) {
-        char a = gi_upper((char)comp[0]), b = gi_upper((char)comp[1]),
-             c = gi_upper((char)comp[2]);
-        if ((a == 'C' && b == 'O' && c == 'M') ||
-            (a == 'L' && b == 'P' && c == 'T'))
-            return true;
+    if (stem == 4U && ((comp[3] >= '0' && comp[3] <= '9') || comp[3] == 0xB9U || comp[3] == 0xB2U || comp[3] == 0xB3U)) {
+        char a = gi_upper((char)comp[0]), b = gi_upper((char)comp[1]), c = gi_upper((char)comp[2]);
+        if ((a == 'C' && b == 'O' && c == 'M') || (a == 'L' && b == 'P' && c == 'T')) return true;
     }
     return false;
 }
@@ -715,14 +704,13 @@ static bool gi_is_device(const uint8_t *comp, size_t length) {
  * Windows reserves and no device-name component.  A component ending in a
  * dot or a space is refused too: Windows drops those, so "a.txt." would land
  * on the file of a different member "a.txt". */
-static bool gi_name_safe(const uint8_t *raw, size_t length) {
+static bool gi_name_safe(const uint8_t *raw, size_t length)
+{
     size_t start = 0U, index;
     if (length == 0U) return false;
     for (index = 0U; index < length; ++index) {
         uint8_t c = raw[index];
-        if (c < 0x20U || c == 0x7FU || c == ':' || c == '*' || c == '?' ||
-            c == '"' || c == '<' || c == '>' || c == '|')
-            return false;
+        if (c < 0x20U || c == 0x7FU || c == ':' || c == '*' || c == '?' || c == '"' || c == '<' || c == '>' || c == '|') return false;
     }
     for (index = 0U; index <= length; ++index) {
         if (index == length || raw[index] == '\\' || raw[index] == '/') {
@@ -731,10 +719,7 @@ static bool gi_name_safe(const uint8_t *raw, size_t length) {
             if (index == start) return false;
             for (k = start; k < index; ++k)
                 if (raw[k] != '.' && raw[k] != ' ') meaningful = true;
-            if (!meaningful || raw[index - 1U] == '.' ||
-                raw[index - 1U] == ' ' ||
-                gi_is_device(raw + start, index - start))
-                return false;
+            if (!meaningful || raw[index - 1U] == '.' || raw[index - 1U] == ' ' || gi_is_device(raw + start, index - start)) return false;
             start = index + 1U;
         }
     }
@@ -745,7 +730,8 @@ static bool gi_name_safe(const uint8_t *raw, size_t length) {
  * bytes without '.', ending in '~' and one or more digits, and an optional
  * extension of at most 3 bytes.  On a volume that makes short names, such a
  * member would open the file an earlier long-named member was written to. */
-static bool gi_short_alias(const uint8_t *comp, size_t length) {
+static bool gi_short_alias(const uint8_t *comp, size_t length)
+{
     size_t dot = length, index, tilde = 0U;
     bool found = false;
     for (index = length; index > 0U; --index)
@@ -753,8 +739,7 @@ static bool gi_short_alias(const uint8_t *comp, size_t length) {
             dot = index - 1U;
             break;
         }
-    if (dot == 0U || dot > 8U || (dot < length && length - dot - 1U > 3U))
-        return false;
+    if (dot == 0U || dot > 8U || (dot < length && length - dot - 1U > 3U)) return false;
     for (index = 0U; index < dot; ++index) {
         if (comp[index] == '.') return false;
         if (comp[index] == '~') {
@@ -772,7 +757,8 @@ static bool gi_short_alias(const uint8_t *comp, size_t length) {
  * UTF-8, control bytes and '%' as %XX, and '~' as '_' in a component of
  * 8.3 short-alias form.  suffix > 0 appends "_<suffix>" before the last
  * component's extension. */
-static char *gi_make_name(const uint8_t *raw, size_t length, uint32_t suffix) {
+static char *gi_make_name(const uint8_t *raw, size_t length, uint32_t suffix)
+{
     static const char hex[] = "0123456789ABCDEF";
     char digits[12];
     size_t ndigits = 0U, out_length = 0U, index, insert = length, o = 0U;
@@ -791,8 +777,7 @@ static char *gi_make_name(const uint8_t *raw, size_t length, uint32_t suffix) {
                 last_sep = index;
                 has_sep = true;
             }
-        for (index = length; index > (has_sep ? last_sep + 1U : 0U);
-             --index)
+        for (index = length; index > (has_sep ? last_sep + 1U : 0U); --index)
             if (raw[index - 1U] == '.') {
                 insert = index - 1U;
                 break;
@@ -801,9 +786,7 @@ static char *gi_make_name(const uint8_t *raw, size_t length, uint32_t suffix) {
     }
     for (index = 0U; index < length; ++index) {
         uint8_t c = raw[index];
-        out_length += (c >= 0x80U) ? 2U
-                      : (c < 0x20U || c == 0x7FU || c == '%') ? 3U
-                                                               : 1U;
+        out_length += (c >= 0x80U) ? 2U : (c < 0x20U || c == 0x7FU || c == '%') ? 3U : 1U;
     }
     if (suffix) out_length += 1U + ndigits;
     name = (char *)xx_mem_alloc(out_length + 1U);
@@ -843,7 +826,8 @@ static char *gi_make_name(const uint8_t *raw, size_t length, uint32_t suffix) {
 
 /* Names compare without case (output lands on case-insensitive file
  * systems); a small open-addressing set keeps duplicates linear. */
-static uint32_t gi_hash(const char *s) {
+static uint32_t gi_hash(const char *s)
+{
     uint32_t h = 2166136261U;
     uint8_t prev = 0U;
     while (*s) {
@@ -857,10 +841,10 @@ static uint32_t gi_hash(const char *s) {
 
 /* Folded bytes match only where the bytes before them matched too, so both
  * sides always fold with the same lead byte. */
-static bool gi_same(const char *a, const char *b) {
+static bool gi_same(const char *a, const char *b)
+{
     uint8_t prev = 0U;
-    while (*a && *b &&
-           gi_fold(prev, (uint8_t)*a) == gi_fold(prev, (uint8_t)*b)) {
+    while (*a && *b && gi_fold(prev, (uint8_t)*a) == gi_fold(prev, (uint8_t)*b)) {
         prev = (uint8_t)*a;
         ++a, ++b;
     }
@@ -875,7 +859,8 @@ typedef struct gi_names_s {
     size_t mask;
 } gi_names;
 
-static size_t gi_names_find(const gi_names *set, const char *name) {
+static size_t gi_names_find(const gi_names *set, const char *name)
+{
     size_t at = gi_hash(name) & set->mask;
     while (set->slots[at]) {
         if (gi_same(set->slots[at], name)) return at;
@@ -884,7 +869,8 @@ static size_t gi_names_find(const gi_names *set, const char *name) {
     return SIZE_MAX;
 }
 
-static void gi_names_insert(gi_names *set, const char *name) {
+static void gi_names_insert(gi_names *set, const char *name)
+{
     size_t at = gi_hash(name) & set->mask;
     while (set->slots[at]) at = (at + 1U) & set->mask;
     set->slots[at] = name;
@@ -893,8 +879,8 @@ static void gi_names_insert(gi_names *set, const char *name) {
 
 /* Gives m a name no earlier safe member uses.  The set holds at most count
  * names, so at most count + 1 suffixes are ever tried. */
-static bool gi_unique_name(gi_names *set, gi_member *m, const uint8_t *raw,
-                           size_t length, size_t count) {
+static bool gi_unique_name(gi_names *set, gi_member *m, const uint8_t *raw, size_t length, size_t count)
+{
     size_t slot = gi_names_find(set, m->name), tries = 0U;
     uint32_t suffix;
     char *candidate = NULL;
@@ -930,8 +916,8 @@ typedef struct gi_raw_names_s {
     size_t *lengths;
 } gi_raw_names;
 
-static bool gi_walk(Abstractformat *format, gi_list **result, bool names,
-                    xx_pd_struct *pd) {
+static bool gi_walk(Abstractformat *format, gi_list **result, bool names, xx_pd_struct *pd)
+{
     gi_list *list = NULL;
     gi_input *in = NULL;
     gi_codec *cmd = NULL, *data = NULL;
@@ -954,9 +940,7 @@ static bool gi_walk(Abstractformat *format, gi_list **result, bool names,
     cmd = (gi_codec *)xx_mem_alloc(sizeof(*cmd));
     data = (gi_codec *)xx_mem_alloc(sizeof(*data));
     buffer = (uint8_t *)xx_mem_alloc(GI_MAX_CMD);
-    if (!in || !cmd || !data || !buffer || !gi_codec_reset(cmd) ||
-        !gi_codec_reset(data))
-        goto done;
+    if (!in || !cmd || !data || !buffer || !gi_codec_reset(cmd) || !gi_codec_reset(data)) goto done;
     in->device = format->device;
     in->end = base + list->location.total;
     gi_in_seek(in, base + list->location.payload);
@@ -968,9 +952,7 @@ static bool gi_walk(Abstractformat *format, gi_list **result, bool names,
      * decoding them again for the next candidate that points here. */
 
     /* The runtime image; its state is dropped afterwards. */
-    if (!gi_block(cmd, in, GI_MAX_RUNTIME - 1U, &decoded, NULL, pd) ||
-        decoded == 0U || !gi_codec_reset(cmd))
-        goto stop;
+    if (!gi_block(cmd, in, GI_MAX_RUNTIME - 1U, &decoded, NULL, pd) || decoded == 0U || !gi_codec_reset(cmd)) goto stop;
     {
         uint8_t header[GI_ARCHIVE_HEADER];
         size_t index;
@@ -981,8 +963,7 @@ static bool gi_walk(Abstractformat *format, gi_list **result, bool names,
     {
         uint32_t index;
         for (index = 0U; index < GI_SKIPPED_BLOCKS; ++index)
-            if (!gi_block(cmd, in, GI_MAX_SKIPPED_BLOCK, NULL, NULL, pd))
-                goto stop;
+            if (!gi_block(cmd, in, GI_MAX_SKIPPED_BLOCK, NULL, NULL, pd)) goto stop;
     }
     last_good = gi_in_tell(in);
 
@@ -1000,8 +981,7 @@ static bool gi_walk(Abstractformat *format, gi_list **result, bool names,
         xx_mem_zero(&sink, sizeof(sink));
         sink.memory = buffer;
         sink.capacity = GI_MAX_CMD;
-        if (!gi_unpack(cmd, in, size, &sink, pd) || sink.length != size)
-            break;
+        if (!gi_unpack(cmd, in, size, &sink, pd) || sink.length != size) break;
         gi_in_align(in);
         tag = xx_data_get_u16(buffer, 2, 0, false);
         if (tag == GI_TAG_END) {
@@ -1020,9 +1000,7 @@ static bool gi_walk(Abstractformat *format, gi_list **result, bool names,
         if (record_size <= GI_RECORD_MIN) break;
         name_end = GI_RECORD_NAME_OFFSET;
         while (name_end < record_size && record[name_end] != 0U) ++name_end;
-        if (name_end >= record_size || name_end == GI_RECORD_NAME_OFFSET ||
-            name_end - GI_RECORD_NAME_OFFSET > GI_MAX_NAME)
-            break;
+        if (name_end >= record_size || name_end == GI_RECORD_NAME_OFFSET || name_end - GI_RECORD_NAME_OFFSET > GI_MAX_NAME) break;
         xx_mem_zero(&member, sizeof(member));
         member.attributes = xx_data_get_u32(record, 4, 0, false);
         member.size = xx_data_get_u32(record + GI_RECORD_SIZE_OFFSET, 4, 0, false);
@@ -1046,8 +1024,7 @@ static bool gi_walk(Abstractformat *format, gi_list **result, bool names,
             uint32_t block_size;
             int64_t probe = member.data_offset;
             uint8_t word[4];
-            if (probe + 4 > in->end ||
-                !gi_read_at(in->device, probe, word, sizeof(word))) {
+            if (probe + 4 > in->end || !gi_read_at(in->device, probe, word, sizeof(word))) {
                 member.broken = true;
                 gi_in_seek(in, in->end);
             } else {
@@ -1064,9 +1041,7 @@ static bool gi_walk(Abstractformat *format, gi_list **result, bool names,
         /* The same caps with and without names, so counting and listing
          * always agree on where the chain stops. */
         name_length = name_end - GI_RECORD_NAME_OFFSET;
-        if (list->count >= GI_MAX_MEMBERS ||
-            name_bytes + name_length > GI_MAX_NAME_BYTES)
-            break;
+        if (list->count >= GI_MAX_MEMBERS || name_bytes + name_length > GI_MAX_NAME_BYTES) break;
         name_bytes += name_length;
         if (names) {
             if (raw.length + name_length > raw.capacity) {
@@ -1078,18 +1053,15 @@ static bool gi_walk(Abstractformat *format, gi_list **result, bool names,
                 raw.bytes = bytes;
                 raw.capacity = grown;
             }
-            xx_rt_memcpy(raw.bytes + raw.length,
-                         record + GI_RECORD_NAME_OFFSET, name_length);
+            xx_rt_memcpy(raw.bytes + raw.length, record + GI_RECORD_NAME_OFFSET, name_length);
             if (list->count == list->capacity) {
                 size_t grown = list->capacity ? list->capacity * 2U : 16U;
                 size_t *offsets, *lengths;
                 if (grown > GI_MAX_MEMBERS) grown = GI_MAX_MEMBERS;
-                offsets = (size_t *)xx_mem_realloc(raw.offsets,
-                                                   grown * sizeof(size_t));
+                offsets = (size_t *)xx_mem_realloc(raw.offsets, grown * sizeof(size_t));
                 if (!offsets) goto done;
                 raw.offsets = offsets;
-                lengths = (size_t *)xx_mem_realloc(raw.lengths,
-                                                   grown * sizeof(size_t));
+                lengths = (size_t *)xx_mem_realloc(raw.lengths, grown * sizeof(size_t));
                 if (!lengths) goto done;
                 raw.lengths = lengths;
             }
@@ -1164,9 +1136,8 @@ done:
 /* ---------------------------------------------------------------------- */
 /* Extraction                                                              */
 
-static bool gi_replay_member(Abstractformat *format, gi_list *list,
-                             size_t target, xx_io_device *destination,
-                             xx_pd_struct *pd) {
+static bool gi_replay_member(Abstractformat *format, gi_list *list, size_t target, xx_io_device *destination, xx_pd_struct *pd)
+{
     gi_replay *r = &list->replay;
     gi_sink sink;
     const gi_member *m;
@@ -1201,8 +1172,7 @@ static bool gi_replay_member(Abstractformat *format, gi_list *list,
         r->next = SIZE_MAX;
         if (!m->stored) {
             gi_in_seek(r->input, m->data_offset);
-            if (!gi_block(r->codec, r->input, 0U, NULL, NULL, pd))
-                return false;
+            if (!gi_block(r->codec, r->input, 0U, NULL, NULL, pd)) return false;
         }
         r->next = k + 1U;
     }
@@ -1217,8 +1187,7 @@ static bool gi_replay_member(Abstractformat *format, gi_list *list,
         gi_in_seek(r->input, m->data_offset);
         while (done < (int64_t)m->size) {
             uint8_t value;
-            if ((done & (int64_t)GI_PD_MASK) == 0 && gi_stopped(pd))
-                return false;
+            if ((done & (int64_t)GI_PD_MASK) == 0 && gi_stopped(pd)) return false;
             if (!gi_in_byte(r->input, &value)) return false;
             if (destination) gi_sink_put(&sink, value);
             ++done;
@@ -1226,10 +1195,7 @@ static bool gi_replay_member(Abstractformat *format, gi_list *list,
     } else {
         uint32_t decoded = 0U;
         gi_in_seek(r->input, m->data_offset);
-        if (!gi_block(r->codec, r->input, 0U, &decoded,
-                      destination ? &sink : NULL, pd) ||
-            decoded != m->size)
-            return false;
+        if (!gi_block(r->codec, r->input, 0U, &decoded, destination ? &sink : NULL, pd) || decoded != m->size) return false;
     }
     r->next = target + 1U;
     return gi_sink_flush(&sink);
@@ -1238,17 +1204,16 @@ static bool gi_replay_member(Abstractformat *format, gi_list *list,
 /* ---------------------------------------------------------------------- */
 /* Records                                                                 */
 
-static bool gi_copy_options(xx_list_s *destination, const xx_list_s *source) {
+static bool gi_copy_options(xx_list_s *destination, const xx_list_s *source)
+{
     size_t index;
     if (!source) return true;
     for (index = 0U; index < source->count; ++index) {
-        const xx_meta *original =
-            (const xx_meta *)xx_list_at((const xx_list_t *)source, index);
+        const xx_meta *original = (const xx_meta *)xx_list_at((const xx_list_t *)source, index);
         xx_meta copy;
         if (!original) continue;
         xx_meta_init(&copy, original->meta_id);
-        if (!xx_var_copy(&copy.var, &original->var) ||
-            !xx_list_append(destination, &copy)) {
+        if (!xx_var_copy(&copy.var, &original->var) || !xx_list_append(destination, &copy)) {
             xx_meta_cleanup(&copy);
             return false;
         }
@@ -1256,45 +1221,37 @@ static bool gi_copy_options(xx_list_s *destination, const xx_list_s *source) {
     return true;
 }
 
-static const xx_var *gi_option(const xx_list_s *options, uint32_t id) {
+static const xx_var *gi_option(const xx_list_s *options, uint32_t id)
+{
     size_t index;
     if (!options) return NULL;
     for (index = 0U; index < options->count; ++index) {
-        const xx_meta *meta =
-            (const xx_meta *)xx_list_at((const xx_list_t *)options, index);
+        const xx_meta *meta = (const xx_meta *)xx_list_at((const xx_list_t *)options, index);
         if (meta && meta->meta_id == id) return &meta->var;
     }
     return NULL;
 }
 
-static bool gi_set_record(xx_archive_record *record, const gi_member *m) {
+static bool gi_set_record(xx_archive_record *record, const gi_member *m)
+{
     xx_archive_record_cleanup(record);
     xx_archive_record_init(record);
     record->header_offset = m->command_offset;
     record->header_size = m->command_size;
     record->data_offset = m->data_offset;
     record->compressed_size = m->data_size;
-    return xx_archive_record_set_original_name(record, m->name) &&
-           xx_archive_record_set_meta_u64(record, XX_META_ID_UNCOMPRESSED_SIZE,
-                                          m->size) &&
-           xx_archive_record_set_meta_u64(record, XX_META_ID_COMPRESSED_SIZE,
-                                          (uint64_t)m->data_size) &&
-           xx_archive_record_set_meta_u64(record, XX_META_ID_COMPRESSION_METHOD,
-                                          m->stored ? 0U : 1U) &&
-           xx_archive_record_set_meta_u64(record, XX_META_ID_ATTRIBUTES,
-                                          m->attributes) &&
-           xx_archive_record_set_meta_u64(record, XX_META_ID_TIMESTAMP,
-                                          m->filetime) &&
-           xx_archive_record_set_meta_bool(record, XX_META_ID_IS_ENCRYPTED,
-                                           false) &&
-           xx_archive_record_set_meta_bool(record, XX_META_ID_IS_FOLDER, false);
+    return xx_archive_record_set_original_name(record, m->name) && xx_archive_record_set_meta_u64(record, XX_META_ID_UNCOMPRESSED_SIZE, m->size) &&
+           xx_archive_record_set_meta_u64(record, XX_META_ID_COMPRESSED_SIZE, (uint64_t)m->data_size) &&
+           xx_archive_record_set_meta_u64(record, XX_META_ID_COMPRESSION_METHOD, m->stored ? 0U : 1U) &&
+           xx_archive_record_set_meta_u64(record, XX_META_ID_ATTRIBUTES, m->attributes) && xx_archive_record_set_meta_u64(record, XX_META_ID_TIMESTAMP, m->filetime) &&
+           xx_archive_record_set_meta_bool(record, XX_META_ID_IS_ENCRYPTED, false) && xx_archive_record_set_meta_bool(record, XX_META_ID_IS_FOLDER, false);
 }
 
 /* ---------------------------------------------------------------------- */
 /* Public API                                                              */
 
-void xx_gentee_installer_init(xx_gentee_installer *archive,
-                              xx_io_device *device, int64_t base_address) {
+void xx_gentee_installer_init(xx_gentee_installer *archive, xx_io_device *device, int64_t base_address)
+{
     if (!archive) return;
     xx_mem_zero(archive, sizeof(*archive));
     xx_format_init(&archive->format, device, base_address);
@@ -1302,55 +1259,49 @@ void xx_gentee_installer_init(xx_gentee_installer *archive,
     archive->format.file_type = XX_GENTEE_INSTALLER_FILE_TYPE;
     archive->format.format_type = XX_TYPE_ARCHIVE;
     archive->format.is_archive = true;
-    xx_format_set_mime_type(&archive->format,
-                            "application/x-gentee-installer");
+    xx_format_set_mime_type(&archive->format, "application/x-gentee-installer");
     xx_format_set_extension(&archive->format, "exe");
     archive->format.check_is_valid = xx_gentee_installer_check_is_valid;
     archive->format.handle_base_info = xx_gentee_installer_handle_base_info;
     archive->format.get_format_size = xx_gentee_installer_get_format_size;
-    archive->format.get_number_of_archive_records =
-        xx_gentee_installer_get_number_of_archive_records;
-    archive->format.create_archive_records_reading =
-        xx_gentee_installer_create_archive_records_reading;
-    archive->format.get_current_archive_record =
-        xx_gentee_installer_get_current_archive_record;
-    archive->format.unpack_current_archive_record =
-        xx_gentee_installer_unpack_current_archive_record;
-    archive->format.archive_record_move_to_next =
-        xx_gentee_installer_archive_record_move_to_next;
-    archive->format.free_archive_records_reading =
-        xx_gentee_installer_free_archive_records_reading;
+    archive->format.get_number_of_archive_records = xx_gentee_installer_get_number_of_archive_records;
+    archive->format.create_archive_records_reading = xx_gentee_installer_create_archive_records_reading;
+    archive->format.get_current_archive_record = xx_gentee_installer_get_current_archive_record;
+    archive->format.unpack_current_archive_record = xx_gentee_installer_unpack_current_archive_record;
+    archive->format.archive_record_move_to_next = xx_gentee_installer_archive_record_move_to_next;
+    archive->format.free_archive_records_reading = xx_gentee_installer_free_archive_records_reading;
     archive->payload_offset = -1;
 }
 
-xx_gentee_installer *xx_gentee_installer_create(xx_io_device *device,
-                                                int64_t base_address) {
-    xx_gentee_installer *archive =
-        (xx_gentee_installer *)xx_mem_alloc(sizeof(*archive));
+xx_gentee_installer *xx_gentee_installer_create(xx_io_device *device, int64_t base_address)
+{
+    xx_gentee_installer *archive = (xx_gentee_installer *)xx_mem_alloc(sizeof(*archive));
     if (archive) xx_gentee_installer_init(archive, device, base_address);
     return archive;
 }
 
-void xx_gentee_installer_destroy(xx_gentee_installer *archive) {
+void xx_gentee_installer_destroy(xx_gentee_installer *archive)
+{
     if (archive) xx_format_cleanup_extra_parameters(&archive->format);
 }
 
-void xx_gentee_installer_free(xx_gentee_installer *archive) {
+void xx_gentee_installer_free(xx_gentee_installer *archive)
+{
     if (!archive) return;
     xx_gentee_installer_destroy(archive);
     xx_mem_free(archive);
 }
 
 /* Cheap: the PE headers, the locator and one 12-byte payload header. */
-bool xx_gentee_installer_check_is_valid(Abstractformat *format,
-                                        xx_pd_struct *pd) {
+bool xx_gentee_installer_check_is_valid(Abstractformat *format, xx_pd_struct *pd)
+{
     gi_location location;
     (void)pd;
     return gi_locate(format, &location);
 }
 
-bool xx_gentee_installer_handle_base_info(Abstractformat *format,
-                                          xx_pd_struct *pd) {
+bool xx_gentee_installer_handle_base_info(Abstractformat *format, xx_pd_struct *pd)
+{
     gi_list *list;
     xx_gentee_installer *archive;
     if (!format) return false;
@@ -1379,24 +1330,18 @@ bool xx_gentee_installer_handle_base_info(Abstractformat *format,
     return true;
 }
 
-int64_t xx_gentee_installer_get_format_size(Abstractformat *format,
-                                            xx_pd_struct *pd) {
-    return format && (format->base_info_handled ||
-                      xx_gentee_installer_handle_base_info(format, pd))
-               ? format->format_size
-               : -1;
+int64_t xx_gentee_installer_get_format_size(Abstractformat *format, xx_pd_struct *pd)
+{
+    return format && (format->base_info_handled || xx_gentee_installer_handle_base_info(format, pd)) ? format->format_size : -1;
 }
 
-uint64_t xx_gentee_installer_get_number_of_archive_records(
-    Abstractformat *format, xx_pd_struct *pd) {
-    return format && (format->base_info_handled ||
-                      xx_gentee_installer_handle_base_info(format, pd))
-               ? ((xx_gentee_installer *)format)->number_of_records
-               : 0U;
+uint64_t xx_gentee_installer_get_number_of_archive_records(Abstractformat *format, xx_pd_struct *pd)
+{
+    return format && (format->base_info_handled || xx_gentee_installer_handle_base_info(format, pd)) ? ((xx_gentee_installer *)format)->number_of_records : 0U;
 }
 
-xx_archive_record_state *xx_gentee_installer_create_archive_records_reading(
-    Abstractformat *format, const xx_list_s *options, xx_pd_struct *pd) {
+xx_archive_record_state *xx_gentee_installer_create_archive_records_reading(Abstractformat *format, const xx_list_s *options, xx_pd_struct *pd)
+{
     gi_list *list;
     xx_archive_record_state *state;
     if (!gi_walk(format, &list, true, pd)) return NULL;
@@ -1413,8 +1358,7 @@ xx_archive_record_state *xx_gentee_installer_create_archive_records_reading(
     state->internal_state = list;
     state->free_internal = gi_list_free;
     state->total_records = (int64_t)list->count;
-    if (!gi_copy_options(&state->options, options) ||
-        !gi_set_record(&state->current_record, &list->items[0])) {
+    if (!gi_copy_options(&state->options, options) || !gi_set_record(&state->current_record, &list->items[0])) {
         xx_archive_record_state_free(state);
         return NULL;
     }
@@ -1422,31 +1366,26 @@ xx_archive_record_state *xx_gentee_installer_create_archive_records_reading(
     return state;
 }
 
-const xx_archive_record *xx_gentee_installer_get_current_archive_record(
-    Abstractformat *format, xx_archive_record_state *state) {
-    return format && state && state->format == format && state->has_record
-               ? &state->current_record
-               : NULL;
+const xx_archive_record *xx_gentee_installer_get_current_archive_record(Abstractformat *format, xx_archive_record_state *state)
+{
+    return format && state && state->format == format && state->has_record ? &state->current_record : NULL;
 }
 
-bool xx_gentee_installer_archive_record_move_to_next(
-    Abstractformat *format, xx_archive_record_state *state, xx_pd_struct *pd) {
+bool xx_gentee_installer_archive_record_move_to_next(Abstractformat *format, xx_archive_record_state *state, xx_pd_struct *pd)
+{
     gi_list *list;
     (void)pd;
-    if (!format || !state || state->format != format ||
-        !(list = (gi_list *)state->internal_state) ||
-        ++list->index >= list->count) {
+    if (!format || !state || state->format != format || !(list = (gi_list *)state->internal_state) || ++list->index >= list->count) {
         if (state) state->has_record = false;
         return false;
     }
     ++state->current_index;
-    state->has_record =
-        gi_set_record(&state->current_record, &list->items[list->index]);
+    state->has_record = gi_set_record(&state->current_record, &list->items[list->index]);
     return state->has_record;
 }
 
-bool xx_gentee_installer_unpack_current_archive_record(
-    Abstractformat *format, xx_archive_record_state *state, xx_pd_struct *pd) {
+bool xx_gentee_installer_unpack_current_archive_record(Abstractformat *format, xx_archive_record_state *state, xx_pd_struct *pd)
+{
     gi_list *list;
     gi_member *member;
     const xx_var *path_option;
@@ -1455,30 +1394,23 @@ bool xx_gentee_installer_unpack_current_archive_record(
     char *path = NULL;
     bool result = false;
     bool created = false;
-    if (!format || !state || state->format != format || !state->has_record ||
-        !(list = (gi_list *)state->internal_state) ||
-        list->index >= list->count || gi_stopped(pd))
+    if (!format || !state || state->format != format || !state->has_record || !(list = (gi_list *)state->internal_state) || list->index >= list->count || gi_stopped(pd))
         return false;
     member = &list->items[list->index];
     /* Cut off or undecodable: fail before any output file is created. */
     if (member->broken) return false;
     path_option = gi_option(&state->options, XX_META_ID_OPT_UNPACK_PATH);
-    if (!path_option)
-        return gi_replay_member(format, list, list->index, NULL, pd);
+    if (!path_option) return gi_replay_member(format, list, list->index, NULL, pd);
     if (!member->safe || !member->name) return false;
-    if (path_option->type == XX_VAR_TYPE_STRING ||
-        path_option->type == XX_VAR_TYPE_STRING_VIEW) {
+    if (path_option->type == XX_VAR_TYPE_STRING || path_option->type == XX_VAR_TYPE_STRING_VIEW) {
         base = xx_var_get_str(path_option);
-    } else if (path_option->type == XX_VAR_TYPE_WSTRING ||
-               path_option->type == XX_VAR_TYPE_WSTRING_VIEW) {
+    } else if (path_option->type == XX_VAR_TYPE_WSTRING || path_option->type == XX_VAR_TYPE_WSTRING_VIEW) {
         owned_base = xx_str_unicode_to_utf8(xx_var_get_wstr(path_option));
         base = owned_base;
     }
     if (!base) goto done;
-    path = (base[0] && base[xx_str_len(base) - 1U] != '/' &&
-            base[xx_str_len(base) - 1U] != '\\')
-               ? xx_str_concat3(base, "/", member->name)
-               : xx_str_concat(base, member->name);
+    path = (base[0] && base[xx_str_len(base) - 1U] != '/' && base[xx_str_len(base) - 1U] != '\\') ? xx_str_concat3(base, "/", member->name)
+                                                                                                  : xx_str_concat(base, member->name);
     if (!path || !xx_store_create_dirs_a(path, false)) goto done;
     {
         xx_io_device *destination = xx_io_file_open(path, "wb");
@@ -1494,8 +1426,8 @@ done:
     return result;
 }
 
-void xx_gentee_installer_free_archive_records_reading(
-    Abstractformat *format, xx_archive_record_state *state) {
+void xx_gentee_installer_free_archive_records_reading(Abstractformat *format, xx_archive_record_state *state)
+{
     (void)format;
     xx_archive_record_state_free(state);
 }

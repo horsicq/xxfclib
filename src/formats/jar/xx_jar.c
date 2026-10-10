@@ -8,7 +8,8 @@
 #define XX_JAR_MANIFEST_NAME "META-INF/MANIFEST.MF"
 #define XX_JAR_MANIFEST_LIMIT (UINT64_C(16) * UINT64_C(1024) * UINT64_C(1024))
 
-static void xx_jar_apply_identity(Abstractformat *format) {
+static void xx_jar_apply_identity(Abstractformat *format)
+{
     if (!format) {
         return;
     }
@@ -21,13 +22,15 @@ static void xx_jar_apply_identity(Abstractformat *format) {
     xx_format_set_extension(format, "jar");
 }
 
-static void xx_jar_vtable_destroy(Abstractformat *self) {
+static void xx_jar_vtable_destroy(Abstractformat *self)
+{
     if (self) {
         xx_jar_destroy((xx_jar *)self);
     }
 }
 
-void xx_jar_init(xx_jar *jar, xx_io_device *dev, int64_t base_address) {
+void xx_jar_init(xx_jar *jar, xx_io_device *dev, int64_t base_address)
+{
     Abstractformat *format;
 
     if (!jar) {
@@ -44,7 +47,8 @@ void xx_jar_init(xx_jar *jar, xx_io_device *dev, int64_t base_address) {
     format->destroy = xx_jar_vtable_destroy;
 }
 
-xx_jar *xx_jar_create(xx_io_device *dev, int64_t base_address) {
+xx_jar *xx_jar_create(xx_io_device *dev, int64_t base_address)
+{
     xx_jar *jar = (xx_jar *)xx_mem_alloc(sizeof(xx_jar));
     if (!jar) {
         return NULL;
@@ -53,13 +57,15 @@ xx_jar *xx_jar_create(xx_io_device *dev, int64_t base_address) {
     return jar;
 }
 
-void xx_jar_destroy(xx_jar *jar) {
+void xx_jar_destroy(xx_jar *jar)
+{
     if (jar) {
         xx_zip_destroy(&jar->zip);
     }
 }
 
-void xx_jar_free(xx_jar *jar) {
+void xx_jar_free(xx_jar *jar)
+{
     if (!jar) {
         return;
     }
@@ -67,12 +73,13 @@ void xx_jar_free(xx_jar *jar) {
     xx_mem_free(jar);
 }
 
-bool xx_jar_check_is_valid(Abstractformat *self, xx_pd_struct *pd) {
-    return xx_zip_has_valid_file(self, XX_JAR_MANIFEST_NAME,
-                                 XX_JAR_MANIFEST_LIMIT, pd);
+bool xx_jar_check_is_valid(Abstractformat *self, xx_pd_struct *pd)
+{
+    return xx_zip_has_valid_file(self, XX_JAR_MANIFEST_NAME, XX_JAR_MANIFEST_LIMIT, pd);
 }
 
-bool xx_jar_handle_base_info(Abstractformat *self, xx_pd_struct *pd) {
+bool xx_jar_handle_base_info(Abstractformat *self, xx_pd_struct *pd)
+{
     bool result;
 
     if (!self) {
@@ -80,8 +87,7 @@ bool xx_jar_handle_base_info(Abstractformat *self, xx_pd_struct *pd) {
     }
     result = xx_zip_handle_base_info(self, pd);
     if (result) {
-        result = xx_zip_has_valid_file(self, XX_JAR_MANIFEST_NAME,
-                                       XX_JAR_MANIFEST_LIMIT, pd);
+        result = xx_zip_has_valid_file(self, XX_JAR_MANIFEST_NAME, XX_JAR_MANIFEST_LIMIT, pd);
     }
     xx_jar_apply_identity(self);
     self->is_valid = result;

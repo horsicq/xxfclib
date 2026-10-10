@@ -91,17 +91,15 @@ static void xx_pma_vtable_destroy(Abstractformat *self);
 
 /* ------------------------------------------------------------- helpers -- */
 
-static bool xx_pma_read_at(Abstractformat *self, int64_t offset,
-                           uint8_t *buffer, size_t size) {
+static bool xx_pma_read_at(Abstractformat *self, int64_t offset, uint8_t *buffer, size_t size)
+{
     size_t completed = 0U;
 
-    if (!self || !self->device || offset < 0 ||
-        xx_io_seek64(self->device, offset, SEEK_SET) != 0) {
+    if (!self || !self->device || offset < 0 || xx_io_seek64(self->device, offset, SEEK_SET) != 0) {
         return false;
     }
     while (completed < size) {
-        ssize_t received =
-            xx_io_read(self->device, buffer + completed, size - completed);
+        ssize_t received = xx_io_read(self->device, buffer + completed, size - completed);
         if (received <= 0 || (size_t)received > size - completed) return false;
         completed += (size_t)received;
     }
@@ -109,7 +107,8 @@ static bool xx_pma_read_at(Abstractformat *self, int64_t offset,
 }
 
 /* CRC-16/ARC, the check PMarc stores for the uncompressed payload. */
-static uint16_t xx_pma_crc16(const uint8_t *data, size_t size) {
+static uint16_t xx_pma_crc16(const uint8_t *data, size_t size)
+{
     return xx_crc16_arc_calc(0U, data, size);
 }
 
@@ -117,7 +116,8 @@ static uint16_t xx_pma_crc16(const uint8_t *data, size_t size) {
  * byte from index 2 on.  With only a four-character tag to key on, this byte
  * is what stops unrelated data from being walked as a member chain, so it is
  * never advisory. */
-static bool xx_pma_checksum_ok(const uint8_t *header, int32_t base_size) {
+static bool xx_pma_checksum_ok(const uint8_t *header, int32_t base_size)
+{
     uint32_t sum = 0U;
     int32_t index;
 
@@ -129,9 +129,9 @@ static bool xx_pma_checksum_ok(const uint8_t *header, int32_t base_size) {
 /* "-pm" + '0'..'2' + "-".  The method character is the whole discriminator
  * between this reader and the general LHA one, so it stays closed: a tag this
  * reader cannot decode must not be walked as if it could be. */
-static bool xx_pma_tag_ok(const uint8_t *prefix, uint32_t *method) {
-    if (prefix[2] != (uint8_t)'-' || prefix[3] != (uint8_t)'p' ||
-        prefix[4] != (uint8_t)'m' || prefix[6] != (uint8_t)'-') {
+static bool xx_pma_tag_ok(const uint8_t *prefix, uint32_t *method)
+{
+    if (prefix[2] != (uint8_t)'-' || prefix[3] != (uint8_t)'p' || prefix[4] != (uint8_t)'m' || prefix[6] != (uint8_t)'-') {
         return false;
     }
     if (prefix[5] < (uint8_t)'0' || prefix[5] > (uint8_t)'2') return false;
@@ -141,11 +141,13 @@ static bool xx_pma_tag_ok(const uint8_t *prefix, uint32_t *method) {
 
 /* CP/M names are plain ASCII; a control byte where a name should be is the
  * cheapest sign that the walk has wandered into payload. */
-static bool xx_pma_name_byte_ok(uint8_t byte) {
+static bool xx_pma_name_byte_ok(uint8_t byte)
+{
     return byte >= 0x20U && byte != 0x7FU;
 }
 
-static bool xx_pma_path_safe(const char *name) {
+static bool xx_pma_path_safe(const char *name)
+{
     const char *cursor = name;
 
     if (!name || !name[0] || name[0] == '/' || name[0] == '\\') return false;
@@ -163,7 +165,8 @@ static bool xx_pma_path_safe(const char *name) {
     return true;
 }
 
-static void xx_pma_stream_free(void *pointer) {
+static void xx_pma_stream_free(void *pointer)
+{
     xx_pma_stream *stream = (xx_pma_stream *)pointer;
     size_t index;
 
@@ -175,12 +178,12 @@ static void xx_pma_stream_free(void *pointer) {
     xx_mem_free(stream);
 }
 
-static bool xx_pma_add(xx_pma_stream *stream, const xx_pma_member *member) {
+static bool xx_pma_add(xx_pma_stream *stream, const xx_pma_member *member)
+{
     xx_pma_member *grown;
 
     if (stream->count >= (size_t)XX_PMA_MAX_MEMBERS) return false;
-    grown = (xx_pma_member *)xx_mem_realloc(
-        stream->items, sizeof(*grown) * (stream->count + 1U));
+    grown = (xx_pma_member *)xx_mem_realloc(stream->items, sizeof(*grown) * (stream->count + 1U));
     if (!grown) return false;
     stream->items = grown;
     stream->items[stream->count++] = *member;
@@ -202,8 +205,8 @@ typedef struct xx_pma_bits_s {
     size_t pad;
 } xx_pma_bits;
 
-static void xx_pma_bits_init(xx_pma_bits *reader, const uint8_t *data,
-                             size_t size, size_t pad) {
+static void xx_pma_bits_init(xx_pma_bits *reader, const uint8_t *data, size_t size, size_t pad)
+{
     reader->data = data;
     reader->size = size;
     reader->pos = 0U;
@@ -212,7 +215,8 @@ static void xx_pma_bits_init(xx_pma_bits *reader, const uint8_t *data,
     reader->pad = pad;
 }
 
-static int xx_pma_peek_bits(xx_pma_bits *reader, unsigned int count) {
+static int xx_pma_peek_bits(xx_pma_bits *reader, unsigned int count)
+{
     if (count == 0U) return 0;
     if (count > 16U) return -1;
     while (reader->bits < count) {
@@ -231,7 +235,8 @@ static int xx_pma_peek_bits(xx_pma_bits *reader, unsigned int count) {
     return (int)(reader->buffer >> (32U - count));
 }
 
-static int xx_pma_read_bits(xx_pma_bits *reader, unsigned int count) {
+static int xx_pma_read_bits(xx_pma_bits *reader, unsigned int count)
+{
     int result = xx_pma_peek_bits(reader, count);
 
     if (result >= 0) {
@@ -241,7 +246,8 @@ static int xx_pma_read_bits(xx_pma_bits *reader, unsigned int count) {
     return result;
 }
 
-static int xx_pma_read_bit(xx_pma_bits *reader) {
+static int xx_pma_read_bit(xx_pma_bits *reader)
+{
     return xx_pma_read_bits(reader, 1U);
 }
 
@@ -252,8 +258,8 @@ typedef struct xx_pma_vlt_s {
     unsigned int bits;
 } xx_pma_vlt;
 
-static int xx_pma_decode_vlt(xx_pma_bits *reader, const xx_pma_vlt *table,
-                             unsigned int header) {
+static int xx_pma_decode_vlt(xx_pma_bits *reader, const xx_pma_vlt *table, unsigned int header)
+{
     int value = xx_pma_read_bits(reader, table[header].bits);
 
     if (value < 0) return -1;
@@ -270,7 +276,8 @@ typedef struct xx_pma_history_s {
     uint8_t head;
 } xx_pma_history;
 
-static void xx_pma_history_init(xx_pma_history *list) {
+static void xx_pma_history_init(xx_pma_history *list)
+{
     unsigned int index;
 
     for (index = 0U; index < 256U; ++index) {
@@ -290,7 +297,8 @@ static void xx_pma_history_init(xx_pma_history *list) {
     list->next[0x20] = 0xFFU;
 }
 
-static uint8_t xx_pma_history_find(const xx_pma_history *list, uint8_t count) {
+static uint8_t xx_pma_history_find(const xx_pma_history *list, uint8_t count)
+{
     uint8_t code = list->head;
     unsigned int index;
 
@@ -307,7 +315,8 @@ static uint8_t xx_pma_history_find(const xx_pma_history *list, uint8_t count) {
     return code;
 }
 
-static void xx_pma_history_update(xx_pma_history *list, uint8_t byte) {
+static void xx_pma_history_update(xx_pma_history *list, uint8_t byte)
+{
     uint8_t old_head;
     uint8_t node_prev;
     uint8_t node_next;
@@ -334,7 +343,8 @@ static void xx_pma_history_update(xx_pma_history *list, uint8_t byte) {
  * the two -pm2- trees (65 and 17 entries). */
 #define XX_PMA_TREE_LEAF 0x80U
 
-static void xx_pma_tree_init(uint8_t *tree, size_t length) {
+static void xx_pma_tree_init(uint8_t *tree, size_t length)
+{
     size_t index;
 
     for (index = 0U; index < length; ++index) {
@@ -342,7 +352,8 @@ static void xx_pma_tree_init(uint8_t *tree, size_t length) {
     }
 }
 
-static void xx_pma_tree_single(uint8_t *tree, uint8_t code) {
+static void xx_pma_tree_single(uint8_t *tree, uint8_t code)
+{
     tree[0] = (uint8_t)(code | XX_PMA_TREE_LEAF);
 }
 
@@ -353,7 +364,8 @@ typedef struct xx_pma_tree_build_s {
     unsigned int next_entry;
 } xx_pma_tree_builder;
 
-static void xx_pma_tree_expand(xx_pma_tree_builder *build) {
+static void xx_pma_tree_expand(xx_pma_tree_builder *build)
+{
     unsigned int end_offset;
     unsigned int new_nodes = (build->allocated - build->next_entry) * 2U;
 
@@ -366,7 +378,8 @@ static void xx_pma_tree_expand(xx_pma_tree_builder *build) {
     }
 }
 
-static unsigned int xx_pma_tree_next(xx_pma_tree_builder *build) {
+static unsigned int xx_pma_tree_next(xx_pma_tree_builder *build)
+{
     unsigned int result;
 
     if (build->next_entry >= build->allocated) return 0U;
@@ -375,9 +388,8 @@ static unsigned int xx_pma_tree_next(xx_pma_tree_builder *build) {
     return result;
 }
 
-static bool xx_pma_tree_add_length(xx_pma_tree_builder *build,
-                                   const uint8_t *code_lengths,
-                                   unsigned int count, unsigned int code_len) {
+static bool xx_pma_tree_add_length(xx_pma_tree_builder *build, const uint8_t *code_lengths, unsigned int count, unsigned int code_len)
+{
     bool remaining = false;
     unsigned int index;
 
@@ -392,9 +404,8 @@ static bool xx_pma_tree_add_length(xx_pma_tree_builder *build,
     return remaining;
 }
 
-static void xx_pma_tree_build(uint8_t *tree, size_t length,
-                              const uint8_t *code_lengths,
-                              unsigned int count) {
+static void xx_pma_tree_build(uint8_t *tree, size_t length, const uint8_t *code_lengths, unsigned int count)
+{
     xx_pma_tree_builder build;
     unsigned int code_len = 0U;
 
@@ -412,7 +423,8 @@ static void xx_pma_tree_build(uint8_t *tree, size_t length,
     } while (xx_pma_tree_add_length(&build, code_lengths, count, code_len));
 }
 
-static int xx_pma_tree_read(xx_pma_bits *reader, const uint8_t *tree) {
+static int xx_pma_tree_read(xx_pma_bits *reader, const uint8_t *tree)
+{
     uint8_t code = tree[0];
 
     while ((code & XX_PMA_TREE_LEAF) == 0U) {
@@ -438,12 +450,9 @@ enum {
     XX_PMA_PM2_CONTINUING
 };
 
-static const xx_pma_vlt xx_pma_pm2_history_decode[] = {
-    {0U, 3U},   {8U, 3U},   {16U, 4U},  {32U, 5U},
-    {64U, 5U},  {96U, 5U},  {128U, 6U}, {192U, 6U}};
+static const xx_pma_vlt xx_pma_pm2_history_decode[] = {{0U, 3U}, {8U, 3U}, {16U, 4U}, {32U, 5U}, {64U, 5U}, {96U, 5U}, {128U, 6U}, {192U, 6U}};
 
-static const xx_pma_vlt xx_pma_pm2_copy_decode[] = {
-    {17U, 3U}, {25U, 3U}, {33U, 5U}, {65U, 6U}, {129U, 7U}, {256U, 0U}};
+static const xx_pma_vlt xx_pma_pm2_copy_decode[] = {{17U, 3U}, {25U, 3U}, {33U, 5U}, {65U, 6U}, {129U, 7U}, {256U, 0U}};
 
 typedef struct xx_pma_pm2_s {
     xx_pma_bits bits;
@@ -457,7 +466,8 @@ typedef struct xx_pma_pm2_s {
     uint8_t offset_tree[XX_PMA_PM2_OFFSET_ELEMENTS];
 } xx_pma_pm2;
 
-static void xx_pma_pm2_read_code_tree(xx_pma_pm2 *decoder) {
+static void xx_pma_pm2_read_code_tree(xx_pma_pm2 *decoder)
+{
     uint8_t code_lengths[31];
     int num_codes;
     int min_code_length;
@@ -471,8 +481,7 @@ static void xx_pma_pm2_read_code_tree(xx_pma_pm2 *decoder) {
      * at 29 entries (0..28). */
     if (num_codes > 29) return;
 
-    decoder->need_offset_tree =
-        num_codes >= 10 && !(num_codes == 29 && min_code_length == 0);
+    decoder->need_offset_tree = num_codes >= 10 && !(num_codes == 29 && min_code_length == 0);
 
     if (min_code_length == 0) {
         if (num_codes < 1) return;
@@ -482,18 +491,15 @@ static void xx_pma_pm2_read_code_tree(xx_pma_pm2 *decoder) {
     length_bits = xx_pma_read_bits(&decoder->bits, 3U);
     if (length_bits < 0) return;
     for (index = 0U; index < (unsigned int)num_codes; ++index) {
-        int value = xx_pma_read_bits(&decoder->bits,
-                                     (unsigned int)length_bits);
+        int value = xx_pma_read_bits(&decoder->bits, (unsigned int)length_bits);
         if (value < 0) return;
-        code_lengths[index] =
-            value == 0 ? 0U : (uint8_t)(min_code_length + value - 1);
+        code_lengths[index] = value == 0 ? 0U : (uint8_t)(min_code_length + value - 1);
     }
-    xx_pma_tree_build(decoder->code_tree, sizeof(decoder->code_tree),
-                      code_lengths, (unsigned int)num_codes);
+    xx_pma_tree_build(decoder->code_tree, sizeof(decoder->code_tree), code_lengths, (unsigned int)num_codes);
 }
 
-static void xx_pma_pm2_read_offset_tree(xx_pma_pm2 *decoder,
-                                        unsigned int num_offsets) {
+static void xx_pma_pm2_read_offset_tree(xx_pma_pm2 *decoder, unsigned int num_offsets)
+{
     uint8_t offset_lengths[8];
     unsigned int offset;
     unsigned int single_offset = 0U;
@@ -514,11 +520,11 @@ static void xx_pma_pm2_read_offset_tree(xx_pma_pm2 *decoder,
         xx_pma_tree_single(decoder->offset_tree, (uint8_t)single_offset);
         return;
     }
-    xx_pma_tree_build(decoder->offset_tree, sizeof(decoder->offset_tree),
-                      offset_lengths, num_offsets);
+    xx_pma_tree_build(decoder->offset_tree, sizeof(decoder->offset_tree), offset_lengths, num_offsets);
 }
 
-static void xx_pma_pm2_rebuild(xx_pma_pm2 *decoder) {
+static void xx_pma_pm2_rebuild(xx_pma_pm2 *decoder)
+{
     switch (decoder->tree_state) {
         case XX_PMA_PM2_UNBUILT:
             xx_pma_pm2_read_code_tree(decoder);
@@ -554,8 +560,8 @@ static void xx_pma_pm2_rebuild(xx_pma_pm2 *decoder) {
     }
 }
 
-static void xx_pma_pm2_output(xx_pma_pm2 *decoder, uint8_t *buffer,
-                              size_t *length, uint8_t byte) {
+static void xx_pma_pm2_output(xx_pma_pm2 *decoder, uint8_t *buffer, size_t *length, uint8_t byte)
+{
     decoder->ringbuf[decoder->ringbuf_pos] = byte;
     decoder->ringbuf_pos = (decoder->ringbuf_pos + 1U) % XX_PMA_PM2_RING;
     buffer[*length] = byte;
@@ -565,24 +571,22 @@ static void xx_pma_pm2_output(xx_pma_pm2 *decoder, uint8_t *buffer,
     if (decoder->tree_rebuild_remaining == 0U) xx_pma_pm2_rebuild(decoder);
 }
 
-static void xx_pma_pm2_single_byte(xx_pma_pm2 *decoder, unsigned int code,
-                                   uint8_t *buffer, size_t *length) {
-    int offset = xx_pma_decode_vlt(&decoder->bits,
-                                   xx_pma_pm2_history_decode, code);
+static void xx_pma_pm2_single_byte(xx_pma_pm2 *decoder, unsigned int code, uint8_t *buffer, size_t *length)
+{
+    int offset = xx_pma_decode_vlt(&decoder->bits, xx_pma_pm2_history_decode, code);
 
     if (offset < 0) return;
-    xx_pma_pm2_output(decoder, buffer, length,
-                      xx_pma_history_find(&decoder->history,
-                                          (uint8_t)offset));
+    xx_pma_pm2_output(decoder, buffer, length, xx_pma_history_find(&decoder->history, (uint8_t)offset));
 }
 
-static int xx_pma_pm2_copy_count(xx_pma_pm2 *decoder, unsigned int code) {
+static int xx_pma_pm2_copy_count(xx_pma_pm2 *decoder, unsigned int code)
+{
     if (code < 15U) return (int)code + 2;
-    return xx_pma_decode_vlt(&decoder->bits, xx_pma_pm2_copy_decode,
-                             code - 15U);
+    return xx_pma_decode_vlt(&decoder->bits, xx_pma_pm2_copy_decode, code - 15U);
 }
 
-static int xx_pma_pm2_copy_offset(xx_pma_pm2 *decoder, unsigned int code) {
+static int xx_pma_pm2_copy_offset(xx_pma_pm2 *decoder, unsigned int code)
+{
     unsigned int bits;
     int result = 0;
     int value;
@@ -607,8 +611,8 @@ static int xx_pma_pm2_copy_offset(xx_pma_pm2 *decoder, unsigned int code) {
     return result + value;
 }
 
-static void xx_pma_pm2_copy(xx_pma_pm2 *decoder, unsigned int code,
-                            uint8_t *buffer, size_t *length) {
+static void xx_pma_pm2_copy(xx_pma_pm2 *decoder, unsigned int code, uint8_t *buffer, size_t *length)
+{
     int to_copy = xx_pma_pm2_copy_count(decoder, code);
     int offset = xx_pma_pm2_copy_offset(decoder, code);
     unsigned int start;
@@ -616,17 +620,15 @@ static void xx_pma_pm2_copy(xx_pma_pm2 *decoder, unsigned int code,
 
     if (to_copy < 0 || offset < 0) return;
     if (to_copy > XX_PMA_PM2_OUTPUT) return;
-    start = (decoder->ringbuf_pos + XX_PMA_PM2_RING - 1U -
-             (unsigned int)offset) %
-            XX_PMA_PM2_RING;
+    start = (decoder->ringbuf_pos + XX_PMA_PM2_RING - 1U - (unsigned int)offset) % XX_PMA_PM2_RING;
     for (index = 0U; index < (unsigned int)to_copy; ++index) {
         unsigned int position = (start + index) % XX_PMA_PM2_RING;
-        xx_pma_pm2_output(decoder, buffer, length,
-                          decoder->ringbuf[position]);
+        xx_pma_pm2_output(decoder, buffer, length, decoder->ringbuf[position]);
     }
 }
 
-static size_t xx_pma_pm2_step(xx_pma_pm2 *decoder, uint8_t *buffer) {
+static size_t xx_pma_pm2_step(xx_pma_pm2 *decoder, uint8_t *buffer)
+{
     size_t result = 0U;
     int code;
 
@@ -645,8 +647,8 @@ static size_t xx_pma_pm2_step(xx_pma_pm2 *decoder, uint8_t *buffer) {
     return result;
 }
 
-static bool xx_pma_pm2_decode(const uint8_t *input, size_t input_size,
-                              uint8_t *output, size_t output_size) {
+static bool xx_pma_pm2_decode(const uint8_t *input, size_t input_size, uint8_t *output, size_t output_size)
+{
     xx_pma_pm2 *decoder;
     uint8_t buffer[XX_PMA_PM2_OUTPUT];
     size_t written = 0U;
@@ -689,13 +691,10 @@ static bool xx_pma_pm2_decode(const uint8_t *input, size_t input_size,
 /* Entries 0..5 are the distance ranges proper; 6..14 are narrowed stand-ins
  * used early in the stream, while the history is still short enough that the
  * full width would be wasted bits. */
-static const xx_pma_vlt xx_pma_pm1_copy_ranges[] = {
-    {0U, 6U},    {64U, 8U},   {0U, 6U},    {64U, 9U},    {576U, 11U},
-    {2624U, 13U}, {64U, 8U},  {576U, 8U},  {576U, 9U},   {576U, 10U},
-    {2624U, 8U}, {2624U, 9U}, {2624U, 10U}, {2624U, 11U}, {2624U, 12U}};
+static const xx_pma_vlt xx_pma_pm1_copy_ranges[] = {{0U, 6U},   {64U, 8U},   {0U, 6U},    {64U, 9U},   {576U, 11U},  {2624U, 13U}, {64U, 8U},   {576U, 8U},
+                                                    {576U, 9U}, {576U, 10U}, {2624U, 8U}, {2624U, 9U}, {2624U, 10U}, {2624U, 11U}, {2624U, 12U}};
 
-static const xx_pma_vlt xx_pma_pm1_byte_ranges[] = {
-    {0U, 4U}, {16U, 4U}, {32U, 5U}, {64U, 6U}, {128U, 6U}, {192U, 6U}};
+static const xx_pma_vlt xx_pma_pm1_byte_ranges[] = {{0U, 4U}, {16U, 4U}, {32U, 5U}, {64U, 6U}, {128U, 6U}, {192U, 6U}};
 
 /* Each row is a miniature binary tree: the first byte is the root and each
  * nybble is either a leaf (0x0a..0x0f, meaning index 0..5 into the byte
@@ -703,21 +702,12 @@ static const xx_pma_vlt xx_pma_pm1_byte_ranges[] = {
  * chosen by the 5-bit stream header.  Row 17 is malformed in the original
  * PMarc and is reproduced as-is; nothing appears to emit it. */
 static const uint8_t xx_pma_pm1_byte_trees[32][5] = {
-    {0x12, 0x2d, 0xef, 0x1c, 0xab}, {0x12, 0x23, 0xde, 0xab, 0xcf},
-    {0x12, 0x2c, 0xd2, 0xab, 0xef}, {0x12, 0xa2, 0xd2, 0xbc, 0xef},
-    {0x12, 0xa2, 0xc2, 0xbd, 0xef}, {0x12, 0xa2, 0xcd, 0xb1, 0xef},
-    {0x12, 0xab, 0x12, 0xcd, 0xef}, {0x12, 0xab, 0x1d, 0xc1, 0xef},
-    {0x12, 0xab, 0xc1, 0xd1, 0xef}, {0xa1, 0x12, 0x2c, 0xde, 0xbf},
-    {0xa1, 0x1d, 0x1c, 0xb1, 0xef}, {0xa1, 0x12, 0x2d, 0xef, 0xbc},
-    {0xa1, 0x12, 0xb2, 0xde, 0xcf}, {0xa1, 0x12, 0xbc, 0xd1, 0xef},
-    {0xa1, 0x1c, 0xb1, 0xd1, 0xef}, {0xa1, 0xb1, 0x12, 0xcd, 0xef},
-    {0xa1, 0xb1, 0xc1, 0xd1, 0xef}, {0x12, 0x1c, 0xde, 0xab, 0x00},
-    {0x12, 0xa2, 0xcd, 0xbe, 0x00}, {0x12, 0xab, 0xc1, 0xde, 0x00},
-    {0xa1, 0x1d, 0x1c, 0xbe, 0x00}, {0xa1, 0x12, 0xbc, 0xde, 0x00},
-    {0xa1, 0x1c, 0xb1, 0xde, 0x00}, {0xa1, 0xb1, 0xc1, 0xde, 0x00},
-    {0x1d, 0x1c, 0xab, 0x00, 0x00}, {0x1c, 0xa1, 0xbd, 0x00, 0x00},
-    {0x12, 0xab, 0xcd, 0x00, 0x00}, {0xa1, 0x1c, 0xbd, 0x00, 0x00},
-    {0xa1, 0xb1, 0xcd, 0x00, 0x00}, {0xa1, 0xbc, 0x00, 0x00, 0x00},
+    {0x12, 0x2d, 0xef, 0x1c, 0xab}, {0x12, 0x23, 0xde, 0xab, 0xcf}, {0x12, 0x2c, 0xd2, 0xab, 0xef}, {0x12, 0xa2, 0xd2, 0xbc, 0xef}, {0x12, 0xa2, 0xc2, 0xbd, 0xef},
+    {0x12, 0xa2, 0xcd, 0xb1, 0xef}, {0x12, 0xab, 0x12, 0xcd, 0xef}, {0x12, 0xab, 0x1d, 0xc1, 0xef}, {0x12, 0xab, 0xc1, 0xd1, 0xef}, {0xa1, 0x12, 0x2c, 0xde, 0xbf},
+    {0xa1, 0x1d, 0x1c, 0xb1, 0xef}, {0xa1, 0x12, 0x2d, 0xef, 0xbc}, {0xa1, 0x12, 0xb2, 0xde, 0xcf}, {0xa1, 0x12, 0xbc, 0xd1, 0xef}, {0xa1, 0x1c, 0xb1, 0xd1, 0xef},
+    {0xa1, 0xb1, 0x12, 0xcd, 0xef}, {0xa1, 0xb1, 0xc1, 0xd1, 0xef}, {0x12, 0x1c, 0xde, 0xab, 0x00}, {0x12, 0xa2, 0xcd, 0xbe, 0x00}, {0x12, 0xab, 0xc1, 0xde, 0x00},
+    {0xa1, 0x1d, 0x1c, 0xbe, 0x00}, {0xa1, 0x12, 0xbc, 0xde, 0x00}, {0xa1, 0x1c, 0xb1, 0xde, 0x00}, {0xa1, 0xb1, 0xc1, 0xde, 0x00}, {0x1d, 0x1c, 0xab, 0x00, 0x00},
+    {0x1c, 0xa1, 0xbd, 0x00, 0x00}, {0x12, 0xab, 0xcd, 0x00, 0x00}, {0xa1, 0x1c, 0xbd, 0x00, 0x00}, {0xa1, 0xb1, 0xcd, 0x00, 0x00}, {0xa1, 0xbc, 0x00, 0x00, 0x00},
     {0xab, 0x00, 0x00, 0x00, 0x00}, {0x00, 0x00, 0x00, 0x00, 0x00}};
 
 typedef struct xx_pma_pm1_s {
@@ -729,7 +719,8 @@ typedef struct xx_pma_pm1_s {
     xx_pma_history history;
 } xx_pma_pm1;
 
-static void xx_pma_pm1_output(xx_pma_pm1 *decoder, uint8_t byte) {
+static void xx_pma_pm1_output(xx_pma_pm1 *decoder, uint8_t byte)
+{
     decoder->ringbuf[decoder->ringbuf_pos] = byte;
     decoder->ringbuf_pos = (decoder->ringbuf_pos + 1U) % XX_PMA_PM1_RING;
     xx_pma_history_update(&decoder->history, byte);
@@ -737,7 +728,8 @@ static void xx_pma_pm1_output(xx_pma_pm1 *decoder, uint8_t byte) {
 }
 
 /* Copy lengths use a staircase of ever-wider fields, shortest first. */
-static int xx_pma_pm1_copy_count(xx_pma_pm1 *decoder) {
+static int xx_pma_pm1_copy_count(xx_pma_pm1 *decoder)
+{
     int value = xx_pma_read_bits(&decoder->bits, 2U);
 
     if (value < 0) return -1;
@@ -766,13 +758,14 @@ static int xx_pma_pm1_copy_count(xx_pma_pm1 *decoder) {
 
 /* Bits that only start being present once the output is long enough for the
  * choice they encode to exist. */
-static int xx_pma_pm1_bit_after(xx_pma_pm1 *decoder, unsigned int threshold,
-                                int fallback) {
+static int xx_pma_pm1_bit_after(xx_pma_pm1 *decoder, unsigned int threshold, int fallback)
+{
     if (decoder->output_pos >= threshold) return xx_pma_read_bit(&decoder->bits);
     return fallback;
 }
 
-static int xx_pma_pm1_copy_range(xx_pma_pm1 *decoder) {
+static int xx_pma_pm1_copy_range(xx_pma_pm1 *decoder)
+{
     int value = xx_pma_read_bit(&decoder->bits);
 
     if (value < 0) return -1;
@@ -790,7 +783,8 @@ static int xx_pma_pm1_copy_range(xx_pma_pm1 *decoder) {
     return value != 0 ? 2 : 5;
 }
 
-static size_t xx_pma_pm1_copy(xx_pma_pm1 *decoder, uint8_t *buffer) {
+static size_t xx_pma_pm1_copy(xx_pma_pm1 *decoder, uint8_t *buffer)
+{
     int range_index = xx_pma_pm1_copy_range(decoder);
     int distance;
     int count;
@@ -818,15 +812,12 @@ static size_t xx_pma_pm1_copy(xx_pma_pm1 *decoder, uint8_t *buffer) {
         else if (decoder->output_pos < 4672U) range_index = 13;
         else if (decoder->output_pos < 6720U) range_index = 14;
     }
-    distance = xx_pma_decode_vlt(&decoder->bits, xx_pma_pm1_copy_ranges,
-                                 (unsigned int)range_index);
+    distance = xx_pma_decode_vlt(&decoder->bits, xx_pma_pm1_copy_ranges, (unsigned int)range_index);
     if (distance < 0 || (unsigned int)distance >= decoder->output_pos) {
         return 0U;
     }
     if (count > XX_PMA_PM1_MAX_COPY) return 0U;
-    copy_index = (decoder->ringbuf_pos + XX_PMA_PM1_RING -
-                  (unsigned int)distance - 1U) %
-                 XX_PMA_PM1_RING;
+    copy_index = (decoder->ringbuf_pos + XX_PMA_PM1_RING - (unsigned int)distance - 1U) % XX_PMA_PM1_RING;
     for (index = 0; index < count; ++index) {
         uint8_t byte = decoder->ringbuf[copy_index];
         buffer[index] = byte;
@@ -836,7 +827,8 @@ static size_t xx_pma_pm1_copy(xx_pma_pm1 *decoder, uint8_t *buffer) {
     return (size_t)count;
 }
 
-static int xx_pma_pm1_byte_index(xx_pma_pm1 *decoder) {
+static int xx_pma_pm1_byte_index(xx_pma_pm1 *decoder)
+{
     const uint8_t *node = decoder->byte_tree;
 
     if (node[0] == 0U) return 0;
@@ -844,8 +836,7 @@ static int xx_pma_pm1_byte_index(xx_pma_pm1 *decoder) {
         unsigned int child;
         int bit = xx_pma_read_bit(&decoder->bits);
         if (bit < 0) return -1;
-        child = bit == 0 ? (unsigned int)((*node >> 4) & 0x0FU)
-                         : (unsigned int)(*node & 0x0FU);
+        child = bit == 0 ? (unsigned int)((*node >> 4) & 0x0FU) : (unsigned int)(*node & 0x0FU);
         if (child >= 10U) return (int)(child - 10U);
         if (child == 0U) return -1; /* would not advance: malformed row */
         node += child;
@@ -853,18 +844,19 @@ static int xx_pma_pm1_byte_index(xx_pma_pm1 *decoder) {
     }
 }
 
-static int xx_pma_pm1_byte(xx_pma_pm1 *decoder) {
+static int xx_pma_pm1_byte(xx_pma_pm1 *decoder)
+{
     int index = xx_pma_pm1_byte_index(decoder);
     int count;
 
     if (index < 0 || index > 5) return -1;
-    count = xx_pma_decode_vlt(&decoder->bits, xx_pma_pm1_byte_ranges,
-                              (unsigned int)index);
+    count = xx_pma_decode_vlt(&decoder->bits, xx_pma_pm1_byte_ranges, (unsigned int)index);
     if (count < 0 || count > 255) return -1;
     return (int)xx_pma_history_find(&decoder->history, (uint8_t)count);
 }
 
-static int xx_pma_pm1_block_count(xx_pma_bits *reader) {
+static int xx_pma_pm1_block_count(xx_pma_bits *reader)
+{
     int value = xx_pma_read_bits(reader, 2U);
 
     if (value < 0) return 0;
@@ -883,7 +875,8 @@ static int xx_pma_pm1_block_count(xx_pma_bits *reader) {
     return value < 0 ? 0 : value + 89;
 }
 
-static size_t xx_pma_pm1_byte_block(xx_pma_pm1 *decoder, uint8_t *buffer) {
+static size_t xx_pma_pm1_byte_block(xx_pma_pm1 *decoder, uint8_t *buffer)
+{
     int block_length = xx_pma_pm1_block_count(&decoder->bits);
     size_t result;
     size_t copied;
@@ -907,8 +900,8 @@ static size_t xx_pma_pm1_byte_block(xx_pma_pm1 *decoder, uint8_t *buffer) {
     return result + copied;
 }
 
-static bool xx_pma_pm1_decode(const uint8_t *input, size_t input_size,
-                              uint8_t *output, size_t output_size) {
+static bool xx_pma_pm1_decode(const uint8_t *input, size_t input_size, uint8_t *output, size_t output_size)
+{
     xx_pma_pm1 *decoder;
     uint8_t buffer[XX_PMA_PM1_OUTPUT];
     size_t written = 0U;
@@ -935,8 +928,7 @@ static bool xx_pma_pm1_decode(const uint8_t *input, size_t input_size,
         size_t take;
 
         if (command < 0) break;
-        produced = command == 0 ? xx_pma_pm1_copy(decoder, buffer)
-                                : xx_pma_pm1_byte_block(decoder, buffer);
+        produced = command == 0 ? xx_pma_pm1_copy(decoder, buffer) : xx_pma_pm1_byte_block(decoder, buffer);
         if (produced == 0U) break;
         take = produced;
         if (take > output_size - written) take = output_size - written;
@@ -950,7 +942,8 @@ static bool xx_pma_pm1_decode(const uint8_t *input, size_t input_size,
 
 /* --------------------------------------------------------------- parse -- */
 
-static xx_pma_stream *xx_pma_parse(Abstractformat *self, xx_pd_struct *pd) {
+static xx_pma_stream *xx_pma_parse(Abstractformat *self, xx_pd_struct *pd)
+{
     xx_pma_stream *stream = NULL;
     uint8_t header[XX_PMA_MAX_HEADER];
     char name[XX_PMA_MAX_NAME];
@@ -994,8 +987,7 @@ static xx_pma_stream *xx_pma_parse(Abstractformat *self, xx_pd_struct *pd) {
         base_size = (int32_t)header[0] + 2;
         if (base_size < XX_PMA_MIN_HEADER) goto fail;
         if ((int64_t)base_size > remaining) goto fail;
-        if (!xx_pma_read_at(self, self->base_address + offset, header,
-                            (size_t)base_size)) {
+        if (!xx_pma_read_at(self, self->base_address + offset, header, (size_t)base_size)) {
             goto fail;
         }
         if (!xx_pma_checksum_ok(header, base_size)) goto fail;
@@ -1055,8 +1047,7 @@ static xx_pma_stream *xx_pma_parse(Abstractformat *self, xx_pd_struct *pd) {
         int64_t tail_size = span - offset;
 
         if (tail_size > XX_PMA_MAX_TAIL) goto fail;
-        if (!xx_pma_read_at(self, self->base_address + offset, tail,
-                            (size_t)tail_size)) {
+        if (!xx_pma_read_at(self, self->base_address + offset, tail, (size_t)tail_size)) {
             goto fail;
         }
         if (tail[0] != 0x00U && tail[0] != 0x1AU) goto fail;
@@ -1072,8 +1063,8 @@ fail:
 
 /* -------------------------------------------------------------- decode -- */
 
-static bool xx_pma_decode(Abstractformat *self, const xx_pma_member *member,
-                          uint8_t **out, size_t *out_size, xx_pd_struct *pd) {
+static bool xx_pma_decode(Abstractformat *self, const xx_pma_member *member, uint8_t **out, size_t *out_size, xx_pd_struct *pd)
+{
     uint8_t *packed = NULL;
     uint8_t *plain = NULL;
     size_t plain_size;
@@ -1091,14 +1082,12 @@ static bool xx_pma_decode(Abstractformat *self, const xx_pma_member *member,
     if (member->uncompressed_size > XX_PMA_MAX_DECODED) return false;
     if ((uint64_t)member->compressed_size > (uint64_t)SIZE_MAX) return false;
 
-    if (member->method == XX_PMA_M_PM0 &&
-        member->compressed_size != member->uncompressed_size) {
+    if (member->method == XX_PMA_M_PM0 && member->compressed_size != member->uncompressed_size) {
         return false;
     }
     /* Every PMarc bitstream emits at least one code, so a compressed member
      * with no payload, or one that claims no output, is malformed. */
-    if (member->method != XX_PMA_M_PM0 &&
-        (member->compressed_size == 0 || member->uncompressed_size == 0)) {
+    if (member->method != XX_PMA_M_PM0 && (member->compressed_size == 0 || member->uncompressed_size == 0)) {
         return false;
     }
 
@@ -1106,8 +1095,7 @@ static bool xx_pma_decode(Abstractformat *self, const xx_pma_member *member,
     if (member->compressed_size > 0) {
         packed = (uint8_t *)xx_mem_alloc((size_t)member->compressed_size);
         if (!packed) return false;
-        if (!xx_pma_read_at(self, member->data_offset, packed,
-                            (size_t)member->compressed_size)) {
+        if (!xx_pma_read_at(self, member->data_offset, packed, (size_t)member->compressed_size)) {
             xx_mem_free(packed);
             return false;
         }
@@ -1129,11 +1117,9 @@ static bool xx_pma_decode(Abstractformat *self, const xx_pma_member *member,
         if (plain_size != 0U) xx_rt_memcpy(plain, packed, plain_size);
         decoded = true;
     } else if (member->method == XX_PMA_M_PM1) {
-        decoded = xx_pma_pm1_decode(packed, (size_t)member->compressed_size,
-                                    plain, plain_size);
+        decoded = xx_pma_pm1_decode(packed, (size_t)member->compressed_size, plain, plain_size);
     } else {
-        decoded = xx_pma_pm2_decode(packed, (size_t)member->compressed_size,
-                                    plain, plain_size);
+        decoded = xx_pma_pm2_decode(packed, (size_t)member->compressed_size, plain, plain_size);
     }
     xx_mem_free(packed);
 
@@ -1156,8 +1142,8 @@ static bool xx_pma_decode(Abstractformat *self, const xx_pma_member *member,
 #define XX_PMA_FILE_TYPE XX_FILE_TYPE_UNKNOWN
 #endif
 
-void xx_pma_init(xx_pma *archive, xx_io_device *device,
-                 int64_t base_address) {
+void xx_pma_init(xx_pma *archive, xx_io_device *device, int64_t base_address)
+{
     if (!archive) return;
     xx_mem_zero(archive, sizeof(*archive));
     xx_format_init(&archive->format, device, base_address);
@@ -1170,22 +1156,17 @@ void xx_pma_init(xx_pma *archive, xx_io_device *device,
     archive->format.check_is_valid = xx_pma_check_is_valid;
     archive->format.handle_base_info = xx_pma_handle_base_info;
     archive->format.get_format_size = xx_pma_get_format_size;
-    archive->format.get_number_of_archive_records =
-        xx_pma_get_number_of_archive_records;
-    archive->format.create_archive_records_reading =
-        xx_pma_create_archive_records_reading;
-    archive->format.get_current_archive_record =
-        xx_pma_get_current_archive_record;
-    archive->format.unpack_current_archive_record =
-        xx_pma_unpack_current_archive_record;
-    archive->format.archive_record_move_to_next =
-        xx_pma_archive_record_move_to_next;
-    archive->format.free_archive_records_reading =
-        xx_pma_free_archive_records_reading;
+    archive->format.get_number_of_archive_records = xx_pma_get_number_of_archive_records;
+    archive->format.create_archive_records_reading = xx_pma_create_archive_records_reading;
+    archive->format.get_current_archive_record = xx_pma_get_current_archive_record;
+    archive->format.unpack_current_archive_record = xx_pma_unpack_current_archive_record;
+    archive->format.archive_record_move_to_next = xx_pma_archive_record_move_to_next;
+    archive->format.free_archive_records_reading = xx_pma_free_archive_records_reading;
     archive->format.destroy = xx_pma_vtable_destroy;
 }
 
-xx_pma *xx_pma_create(xx_io_device *device, int64_t base_address) {
+xx_pma *xx_pma_create(xx_io_device *device, int64_t base_address)
+{
     xx_pma *archive = (xx_pma *)xx_mem_alloc(sizeof(*archive));
 
     if (!archive) return NULL;
@@ -1193,7 +1174,8 @@ xx_pma *xx_pma_create(xx_io_device *device, int64_t base_address) {
     return archive;
 }
 
-void xx_pma_destroy(xx_pma *archive) {
+void xx_pma_destroy(xx_pma *archive)
+{
     if (!archive) return;
     /* Not xx_format_destroy: it dispatches through format.destroy, which is
      * the wrapper below, and the two would recurse. */
@@ -1202,19 +1184,22 @@ void xx_pma_destroy(xx_pma *archive) {
     archive->number_of_records = 0U;
 }
 
-void xx_pma_free(xx_pma *archive) {
+void xx_pma_free(xx_pma *archive)
+{
     if (!archive) return;
     xx_pma_destroy(archive);
     xx_mem_free(archive);
 }
 
-static void xx_pma_vtable_destroy(Abstractformat *self) {
+static void xx_pma_vtable_destroy(Abstractformat *self)
+{
     xx_pma_destroy((xx_pma *)self);
 }
 
 /* -------------------------------------------------------------- format -- */
 
-bool xx_pma_check_is_valid(Abstractformat *self, xx_pd_struct *pd) {
+bool xx_pma_check_is_valid(Abstractformat *self, xx_pd_struct *pd)
+{
     xx_pma_stream *stream;
 
     if (!self || (pd && xx_pd_is_stopped(pd))) return false;
@@ -1224,7 +1209,8 @@ bool xx_pma_check_is_valid(Abstractformat *self, xx_pd_struct *pd) {
     return true;
 }
 
-bool xx_pma_handle_base_info(Abstractformat *self, xx_pd_struct *pd) {
+bool xx_pma_handle_base_info(Abstractformat *self, xx_pd_struct *pd)
+{
     xx_pma *archive = (xx_pma *)self;
     xx_pma_stream *stream;
 
@@ -1245,18 +1231,17 @@ bool xx_pma_handle_base_info(Abstractformat *self, xx_pd_struct *pd) {
     return true;
 }
 
-int64_t xx_pma_get_format_size(Abstractformat *self, xx_pd_struct *pd) {
-    if (!self ||
-        (!self->base_info_handled && !xx_format_handle_base_info(self, pd))) {
+int64_t xx_pma_get_format_size(Abstractformat *self, xx_pd_struct *pd)
+{
+    if (!self || (!self->base_info_handled && !xx_format_handle_base_info(self, pd))) {
         return 0;
     }
     return self->is_valid ? self->format_size : 0;
 }
 
-uint64_t xx_pma_get_number_of_archive_records(Abstractformat *self,
-                                              xx_pd_struct *pd) {
-    if (!self ||
-        (!self->base_info_handled && !xx_format_handle_base_info(self, pd))) {
+uint64_t xx_pma_get_number_of_archive_records(Abstractformat *self, xx_pd_struct *pd)
+{
+    if (!self || (!self->base_info_handled && !xx_format_handle_base_info(self, pd))) {
         return 0U;
     }
     return self->is_valid ? ((xx_pma *)self)->number_of_records : 0U;
@@ -1264,8 +1249,8 @@ uint64_t xx_pma_get_number_of_archive_records(Abstractformat *self,
 
 /* ------------------------------------------------------------- records -- */
 
-static bool xx_pma_set_record(xx_archive_record *record,
-                              const xx_pma_member *member) {
+static bool xx_pma_set_record(xx_archive_record *record, const xx_pma_member *member)
+{
     xx_archive_record_cleanup(record);
     xx_archive_record_init(record);
     record->header_offset = member->header_offset;
@@ -1273,37 +1258,25 @@ static bool xx_pma_set_record(xx_archive_record *record,
     record->data_offset = member->data_offset;
     record->compressed_size = member->compressed_size;
     return xx_archive_record_set_original_name(record, member->name) &&
-           xx_archive_record_set_meta_u64(record, XX_META_ID_COMPRESSED_SIZE,
-                                          (uint64_t)member->compressed_size) &&
-           xx_archive_record_set_meta_u64(
-               record, XX_META_ID_UNCOMPRESSED_SIZE,
-               (uint64_t)member->uncompressed_size) &&
-           xx_archive_record_set_meta_u64(record, XX_META_ID_COMPRESSION_METHOD,
-                                          member->method) &&
-           xx_archive_record_set_meta_u64(record, XX_META_ID_CRC32,
-                                          member->crc16) &&
-           xx_archive_record_set_meta_u64(record, XX_META_ID_ATTRIBUTES,
-                                          member->attributes) &&
-           xx_archive_record_set_meta_u64(record, XX_META_ID_TIMESTAMP,
-                                          member->timestamp) &&
-           xx_archive_record_set_meta_bool(record, XX_META_ID_IS_FOLDER,
-                                           false) &&
-           xx_archive_record_set_meta_bool(record, XX_META_ID_IS_ENCRYPTED,
-                                           false);
+           xx_archive_record_set_meta_u64(record, XX_META_ID_COMPRESSED_SIZE, (uint64_t)member->compressed_size) &&
+           xx_archive_record_set_meta_u64(record, XX_META_ID_UNCOMPRESSED_SIZE, (uint64_t)member->uncompressed_size) &&
+           xx_archive_record_set_meta_u64(record, XX_META_ID_COMPRESSION_METHOD, member->method) &&
+           xx_archive_record_set_meta_u64(record, XX_META_ID_CRC32, member->crc16) && xx_archive_record_set_meta_u64(record, XX_META_ID_ATTRIBUTES, member->attributes) &&
+           xx_archive_record_set_meta_u64(record, XX_META_ID_TIMESTAMP, member->timestamp) && xx_archive_record_set_meta_bool(record, XX_META_ID_IS_FOLDER, false) &&
+           xx_archive_record_set_meta_bool(record, XX_META_ID_IS_ENCRYPTED, false);
 }
 
-static bool xx_pma_copy_options(xx_list_s *target, const xx_list_s *options) {
+static bool xx_pma_copy_options(xx_list_s *target, const xx_list_s *options)
+{
     size_t index;
 
     if (!target || !options) return options == NULL;
     for (index = 0U; index < options->count; ++index) {
-        const xx_meta *source =
-            (const xx_meta *)xx_list_at((const xx_list_t *)options, index);
+        const xx_meta *source = (const xx_meta *)xx_list_at((const xx_list_t *)options, index);
         xx_meta copied;
         if (!source) continue;
         xx_meta_init(&copied, source->meta_id);
-        if (!xx_var_copy(&copied.var, &source->var) ||
-            !xx_list_append(target, &copied)) {
+        if (!xx_var_copy(&copied.var, &source->var) || !xx_list_append(target, &copied)) {
             xx_meta_cleanup(&copied);
             return false;
         }
@@ -1311,21 +1284,20 @@ static bool xx_pma_copy_options(xx_list_s *target, const xx_list_s *options) {
     return true;
 }
 
-static const xx_var *xx_pma_get_option(const xx_list_s *options,
-                                       uint32_t meta_id) {
+static const xx_var *xx_pma_get_option(const xx_list_s *options, uint32_t meta_id)
+{
     size_t index;
 
     if (!options) return NULL;
     for (index = 0U; index < options->count; ++index) {
-        const xx_meta *meta =
-            (const xx_meta *)xx_list_at((const xx_list_t *)options, index);
+        const xx_meta *meta = (const xx_meta *)xx_list_at((const xx_list_t *)options, index);
         if (meta && meta->meta_id == meta_id) return &meta->var;
     }
     return NULL;
 }
 
-xx_archive_record_state *xx_pma_create_archive_records_reading(
-    Abstractformat *self, const xx_list_s *options, xx_pd_struct *pd) {
+xx_archive_record_state *xx_pma_create_archive_records_reading(Abstractformat *self, const xx_list_s *options, xx_pd_struct *pd)
+{
     xx_pma_stream *stream;
     xx_archive_record_state *state;
 
@@ -1341,9 +1313,7 @@ xx_archive_record_state *xx_pma_create_archive_records_reading(
     state->internal_state = stream;
     state->free_internal = xx_pma_stream_free;
     state->total_records = (int64_t)stream->count;
-    if (!xx_pma_copy_options(&state->options, options) ||
-        (stream->count != 0U &&
-         !xx_pma_set_record(&state->current_record, &stream->items[0]))) {
+    if (!xx_pma_copy_options(&state->options, options) || (stream->count != 0U && !xx_pma_set_record(&state->current_record, &stream->items[0]))) {
         xx_archive_record_state_free(state);
         return NULL;
     }
@@ -1352,20 +1322,16 @@ xx_archive_record_state *xx_pma_create_archive_records_reading(
     return state;
 }
 
-const xx_archive_record *xx_pma_get_current_archive_record(
-    Abstractformat *self, xx_archive_record_state *state) {
-    return self && state && state->format == self && state->has_record
-               ? &state->current_record
-               : NULL;
+const xx_archive_record *xx_pma_get_current_archive_record(Abstractformat *self, xx_archive_record_state *state)
+{
+    return self && state && state->format == self && state->has_record ? &state->current_record : NULL;
 }
 
-bool xx_pma_archive_record_move_to_next(Abstractformat *self,
-                                        xx_archive_record_state *state,
-                                        xx_pd_struct *pd) {
+bool xx_pma_archive_record_move_to_next(Abstractformat *self, xx_archive_record_state *state, xx_pd_struct *pd)
+{
     xx_pma_stream *stream;
 
-    if (!self || !state || state->format != self || !state->has_record ||
-        (pd && xx_pd_is_stopped(pd))) {
+    if (!self || !state || state->format != self || !state->has_record || (pd && xx_pd_is_stopped(pd))) {
         return false;
     }
     stream = (xx_pma_stream *)state->internal_state;
@@ -1377,14 +1343,12 @@ bool xx_pma_archive_record_move_to_next(Abstractformat *self,
     }
     ++stream->index;
     ++state->current_index;
-    state->has_record =
-        xx_pma_set_record(&state->current_record, &stream->items[stream->index]);
+    state->has_record = xx_pma_set_record(&state->current_record, &stream->items[stream->index]);
     return state->has_record;
 }
 
-bool xx_pma_unpack_current_archive_record(Abstractformat *self,
-                                          xx_archive_record_state *state,
-                                          xx_pd_struct *pd) {
+bool xx_pma_unpack_current_archive_record(Abstractformat *self, xx_archive_record_state *state, xx_pd_struct *pd)
+{
     xx_pma_stream *stream;
     const xx_pma_member *member;
     const xx_var *path_option;
@@ -1396,8 +1360,7 @@ bool xx_pma_unpack_current_archive_record(Abstractformat *self,
     bool result = false;
     bool created = false;
 
-    if (!self || !state || state->format != self || !state->has_record ||
-        (pd && xx_pd_is_stopped(pd))) {
+    if (!self || !state || state->format != self || !state->has_record || (pd && xx_pd_is_stopped(pd))) {
         return false;
     }
     stream = (xx_pma_stream *)state->internal_state;
@@ -1413,11 +1376,9 @@ bool xx_pma_unpack_current_archive_record(Abstractformat *self,
         xx_mem_free(plain);
         return result;
     }
-    if (path_option->type == XX_VAR_TYPE_STRING ||
-        path_option->type == XX_VAR_TYPE_STRING_VIEW) {
+    if (path_option->type == XX_VAR_TYPE_STRING || path_option->type == XX_VAR_TYPE_STRING_VIEW) {
         base_path = xx_var_get_str(path_option);
-    } else if (path_option->type == XX_VAR_TYPE_WSTRING ||
-               path_option->type == XX_VAR_TYPE_WSTRING_VIEW) {
+    } else if (path_option->type == XX_VAR_TYPE_WSTRING || path_option->type == XX_VAR_TYPE_WSTRING_VIEW) {
         converted_path = xx_str_unicode_to_utf8(xx_var_get_wstr(path_option));
         base_path = converted_path;
     }
@@ -1425,8 +1386,7 @@ bool xx_pma_unpack_current_archive_record(Abstractformat *self,
         xx_str_free(converted_path);
         return false;
     }
-    if (base_path[0] != '\0' && base_path[xx_str_len(base_path) - 1U] != '/' &&
-        base_path[xx_str_len(base_path) - 1U] != '\\') {
+    if (base_path[0] != '\0' && base_path[xx_str_len(base_path) - 1U] != '/' && base_path[xx_str_len(base_path) - 1U] != '\\') {
         target_path = xx_str_concat3(base_path, "/", member->name);
     } else {
         target_path = xx_str_concat(base_path, member->name);
@@ -1434,8 +1394,7 @@ bool xx_pma_unpack_current_archive_record(Abstractformat *self,
     xx_str_free(converted_path);
     if (!target_path) return false;
 
-    if (!xx_store_create_dirs_a(target_path, false) ||
-        !xx_pma_decode(self, member, &plain, &plain_size, pd)) {
+    if (!xx_store_create_dirs_a(target_path, false) || !xx_pma_decode(self, member, &plain, &plain_size, pd)) {
         xx_str_free(target_path);
         return false;
     }
@@ -1446,8 +1405,7 @@ bool xx_pma_unpack_current_archive_record(Abstractformat *self,
 
         result = output != NULL;
         while (result && completed < plain_size) {
-            ssize_t sent =
-                xx_io_write(output, plain + completed, plain_size - completed);
+            ssize_t sent = xx_io_write(output, plain + completed, plain_size - completed);
             if (sent <= 0 || (size_t)sent > plain_size - completed) {
                 result = false;
                 break;
@@ -1462,8 +1420,8 @@ bool xx_pma_unpack_current_archive_record(Abstractformat *self,
     return result;
 }
 
-void xx_pma_free_archive_records_reading(Abstractformat *self,
-                                         xx_archive_record_state *state) {
+void xx_pma_free_archive_records_reading(Abstractformat *self, xx_archive_record_state *state)
+{
     (void)self;
     xx_archive_record_state_free(state);
 }

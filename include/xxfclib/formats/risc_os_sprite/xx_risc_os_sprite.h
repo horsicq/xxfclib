@@ -58,33 +58,21 @@ typedef xx_risc_os_sprite xx_risc_os_sprite_t;
 /** Largest sprite count accepted (the field is a u32). */
 #define XX_RISC_OS_SPRITE_MAX_SPRITES 10000U
 
-XXFC_API void xx_risc_os_sprite_init(xx_risc_os_sprite *archive,
-                                     xx_io_device *device,
-                                     int64_t base_address);
-XXFC_API xx_risc_os_sprite *xx_risc_os_sprite_create(xx_io_device *device,
-                                                     int64_t base_address);
+XXFC_API void xx_risc_os_sprite_init(xx_risc_os_sprite *archive, xx_io_device *device, int64_t base_address);
+XXFC_API xx_risc_os_sprite *xx_risc_os_sprite_create(xx_io_device *device, int64_t base_address);
 XXFC_API void xx_risc_os_sprite_destroy(xx_risc_os_sprite *archive);
 XXFC_API void xx_risc_os_sprite_free(xx_risc_os_sprite *archive);
 
-XXFC_API bool xx_risc_os_sprite_check_is_valid(Abstractformat *self,
-                                               xx_pd_struct *pd);
-XXFC_API bool xx_risc_os_sprite_handle_base_info(Abstractformat *self,
-                                                 xx_pd_struct *pd);
-XXFC_API int64_t xx_risc_os_sprite_get_format_size(Abstractformat *self,
-                                                   xx_pd_struct *pd);
-XXFC_API uint64_t xx_risc_os_sprite_get_number_of_archive_records(
-    Abstractformat *self, xx_pd_struct *pd);
+XXFC_API bool xx_risc_os_sprite_check_is_valid(Abstractformat *self, xx_pd_struct *pd);
+XXFC_API bool xx_risc_os_sprite_handle_base_info(Abstractformat *self, xx_pd_struct *pd);
+XXFC_API int64_t xx_risc_os_sprite_get_format_size(Abstractformat *self, xx_pd_struct *pd);
+XXFC_API uint64_t xx_risc_os_sprite_get_number_of_archive_records(Abstractformat *self, xx_pd_struct *pd);
 
-XXFC_API xx_archive_record_state *xx_risc_os_sprite_create_archive_records_reading(
-    Abstractformat *self, const xx_list_s *options, xx_pd_struct *pd);
-XXFC_API const xx_archive_record *xx_risc_os_sprite_get_current_archive_record(
-    Abstractformat *self, xx_archive_record_state *state);
-XXFC_API bool xx_risc_os_sprite_unpack_current_archive_record(
-    Abstractformat *self, xx_archive_record_state *state, xx_pd_struct *pd);
-XXFC_API bool xx_risc_os_sprite_archive_record_move_to_next(
-    Abstractformat *self, xx_archive_record_state *state, xx_pd_struct *pd);
-XXFC_API void xx_risc_os_sprite_free_archive_records_reading(
-    Abstractformat *self, xx_archive_record_state *state);
+XXFC_API xx_archive_record_state *xx_risc_os_sprite_create_archive_records_reading(Abstractformat *self, const xx_list_s *options, xx_pd_struct *pd);
+XXFC_API const xx_archive_record *xx_risc_os_sprite_get_current_archive_record(Abstractformat *self, xx_archive_record_state *state);
+XXFC_API bool xx_risc_os_sprite_unpack_current_archive_record(Abstractformat *self, xx_archive_record_state *state, xx_pd_struct *pd);
+XXFC_API bool xx_risc_os_sprite_archive_record_move_to_next(Abstractformat *self, xx_archive_record_state *state, xx_pd_struct *pd);
+XXFC_API void xx_risc_os_sprite_free_archive_records_reading(Abstractformat *self, xx_archive_record_state *state);
 
 /**
  * @brief Cheap test of the first bytes of a candidate (the detector's
@@ -94,9 +82,7 @@ XXFC_API void xx_risc_os_sprite_free_archive_records_reading(
  * @param magic_size  bytes available (at most 64 are looked at)
  * @param total_size  size of the candidate
  */
-XXFC_API bool xx_risc_os_sprite_prefilter(const uint8_t *magic,
-                                          size_t magic_size,
-                                          int64_t total_size);
+XXFC_API bool xx_risc_os_sprite_prefilter(const uint8_t *magic, size_t magic_size, int64_t total_size);
 
 #ifdef __cplusplus
 }

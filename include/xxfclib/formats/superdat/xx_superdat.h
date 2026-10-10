@@ -11,7 +11,11 @@ extern "C" {
  * Supports original/v1.2 signing/footer variants and modern resource-plus-payload
  * layouts. Vendor DAT checksums with unknown domain appear as info comments.
  * Never executes the installer. Other archive generations fail explicitly. */
-typedef struct xx_superdat { Abstractformat format; void *index; uint64_t generation; } xx_superdat;
+typedef struct xx_superdat {
+    Abstractformat format;
+    void *index;
+    uint64_t generation;
+} xx_superdat;
 XXFC_API void xx_superdat_init(xx_superdat *, xx_io_device *, int64_t);
 XXFC_API xx_superdat *xx_superdat_create(xx_io_device *, int64_t);
 XXFC_API void xx_superdat_destroy(xx_superdat *);

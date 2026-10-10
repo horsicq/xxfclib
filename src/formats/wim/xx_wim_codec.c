@@ -42,7 +42,8 @@
  * chunk (bit-buffer look-ahead and range-coder normalisation), in bytes. */
 #define WC_SLACK_BYTES 32U
 
-static uint32_t wc_le16(const uint8_t *b) {
+static uint32_t wc_le16(const uint8_t *b)
+{
     return (uint32_t)b[0] | ((uint32_t)b[1] << 8U);
 }
 
@@ -66,15 +67,13 @@ typedef struct wim_huff_s {
 
 /* An over-subscribed code is refused.  An incomplete one is accepted: its
  * unused codes have no table entry and fail when met, never before. */
-static bool wh_build(wim_huff *h, const uint8_t *lens, unsigned nsyms,
-                     unsigned max_len) {
+static bool wh_build(wim_huff *h, const uint8_t *lens, unsigned nsyms, unsigned max_len)
+{
     uint16_t next[WH_MAX_LEN + 1U];
     unsigned len, sym, idx = 0U;
     int32_t left = 1;
     uint32_t code = 0U;
-    if (!h || !lens || nsyms > WH_MAX_SYMS || max_len == 0U ||
-        max_len > WH_MAX_LEN)
-        return false;
+    if (!h || !lens || nsyms > WH_MAX_SYMS || max_len == 0U || max_len > WH_MAX_LEN) return false;
     xx_rt_memset(h->count, 0, sizeof(h->count));
     for (sym = 0U; sym < nsyms; ++sym) {
         if (lens[sym] > max_len) return false;
@@ -100,9 +99,7 @@ static bool wh_build(wim_huff *h, const uint8_t *lens, unsigned nsyms,
         for (n = 0U; n < h->count[len]; ++n) {
             uint32_t start = (h->first[len] + n) << shift;
             uint32_t span = 1U << shift, k;
-            uint16_t entry =
-                (uint16_t)(((uint32_t)h->sorted[h->index[len] + n] << 5U) |
-                           len);
+            uint16_t entry = (uint16_t)(((uint32_t)h->sorted[h->index[len] + n] << 5U) | len);
             for (k = 0U; k < span; ++k) h->fast[start + k] = entry;
         }
     }
@@ -111,7 +108,8 @@ static bool wh_build(wim_huff *h, const uint8_t *lens, unsigned nsyms,
 }
 
 /* @p top holds the next 32 stream bits, the first one in bit 31. */
-static int wh_decode(const wim_huff *h, uint32_t top, unsigned *used) {
+static int wh_decode(const wim_huff *h, uint32_t top, unsigned *used)
+{
     uint16_t entry = h->fast[top >> (32U - WH_FAST_BITS)];
     unsigned len;
     if (entry != 0U) {
@@ -131,12 +129,13 @@ static int wh_decode(const wim_huff *h, uint32_t top, unsigned *used) {
 /* ---------------------------------------------------------------------- */
 /* XPRESS                                                                  */
 
-static uint32_t xpress_word(const uint8_t *in, size_t size, size_t at) {
+static uint32_t xpress_word(const uint8_t *in, size_t size, size_t at)
+{
     return (at < size && size - at >= 2U) ? wc_le16(in + at) : 0U;
 }
 
-static bool xpress_decode(wim_huff *h, const uint8_t *in, size_t in_size,
-                          uint8_t *out, size_t out_size) {
+static bool xpress_decode(wim_huff *h, const uint8_t *in, size_t in_size, uint8_t *out, size_t out_size)
+{
     uint8_t lens[512];
     uint32_t bits;
     int extra = 16;
@@ -148,8 +147,7 @@ static bool xpress_decode(wim_huff *h, const uint8_t *in, size_t in_size,
         lens[2U * i + 1U] = (uint8_t)(in[i] >> 4U);
     }
     if (!wh_build(h, lens, 512U, 15U)) return false;
-    bits = (xpress_word(in, in_size, cur) << 16U) |
-           xpress_word(in, in_size, cur + 2U);
+    bits = (xpress_word(in, in_size, cur) << 16U) | xpress_word(in, in_size, cur + 2U);
     cur += 4U;
     while (pos < out_size) {
         unsigned used, obits;
@@ -199,8 +197,7 @@ static bool xpress_decode(wim_huff *h, const uint8_t *in, size_t in_size,
             extra += 16;
             cur += 2U;
         }
-        if ((size_t)offset > pos || length > (uint64_t)(out_size - pos))
-            return false;
+        if ((size_t)offset > pos || length > (uint64_t)(out_size - pos)) return false;
         {
             uint8_t *dst = out + pos;
             const uint8_t *src = dst - offset;
@@ -240,27 +237,30 @@ typedef struct lzx_bits_s {
     unsigned count;
 } lzx_bits;
 
-static void lzx_refill(lzx_bits *b) {
+static void lzx_refill(lzx_bits *b)
+{
     while (b->count <= 48U) {
-        uint32_t word = (b->pos < b->size && b->size - b->pos >= 2U)
-                            ? wc_le16(b->in + b->pos) : 0U;
+        uint32_t word = (b->pos < b->size && b->size - b->pos >= 2U) ? wc_le16(b->in + b->pos) : 0U;
         b->pos += 2U;
         b->buf |= (uint64_t)word << (48U - b->count);
         b->count += 16U;
     }
 }
 
-static uint32_t lzx_peek32(lzx_bits *b) {
+static uint32_t lzx_peek32(lzx_bits *b)
+{
     lzx_refill(b);
     return (uint32_t)(b->buf >> 32U);
 }
 
-static void lzx_skip(lzx_bits *b, unsigned n) {
+static void lzx_skip(lzx_bits *b, unsigned n)
+{
     b->buf <<= n;
     b->count -= n;
 }
 
-static uint32_t lzx_read(lzx_bits *b, unsigned n) {
+static uint32_t lzx_read(lzx_bits *b, unsigned n)
+{
     uint32_t value;
     if (n == 0U) return 0U;
     lzx_refill(b);
@@ -269,7 +269,8 @@ static uint32_t lzx_read(lzx_bits *b, unsigned n) {
     return value;
 }
 
-static int lzx_symbol(lzx_bits *b, const wim_huff *h) {
+static int lzx_symbol(lzx_bits *b, const wim_huff *h)
+{
     unsigned used;
     int sym = wh_decode(h, lzx_peek32(b), &used);
     if (sym >= 0) lzx_skip(b, used);
@@ -278,8 +279,8 @@ static int lzx_symbol(lzx_bits *b, const wim_huff *h) {
 
 /* Tree lengths [first, last) arrive as deltas against the previous block's
  * lengths, coded with a 20-symbol pre-tree sent just before them. */
-static bool lzx_read_lengths(lzx_bits *b, wim_huff *pre, uint8_t *lens,
-                             unsigned first, unsigned last) {
+static bool lzx_read_lengths(lzx_bits *b, wim_huff *pre, uint8_t *lens, unsigned first, unsigned last)
+{
     uint8_t pre_lens[LZX_PRE_SYMS];
     unsigned i;
     for (i = 0U; i < LZX_PRE_SYMS; ++i) pre_lens[i] = (uint8_t)lzx_read(b, 4U);
@@ -310,7 +311,8 @@ static bool lzx_read_lengths(lzx_bits *b, wim_huff *pre, uint8_t *lens,
     return true;
 }
 
-static void lzx_undo_e8(uint8_t *data, size_t size) {
+static void lzx_undo_e8(uint8_t *data, size_t size)
+{
     size_t i = 0U;
     if (size <= 10U) return;
     while (i < size - 10U) {
@@ -322,18 +324,17 @@ static void lzx_undo_e8(uint8_t *data, size_t size) {
             int32_t abs_offset = (int32_t)xx_data_get_u32(data + i + 1U, 4, 0, false);
             int32_t pos = (int32_t)i;
             if (abs_offset >= 0) {
-                if (abs_offset < LZX_E8_SIZE)
-                    xx_data_set_u32(data + i + 1U, 4, 0, (uint32_t)(abs_offset - pos), false);
+                if (abs_offset < LZX_E8_SIZE) xx_data_set_u32(data + i + 1U, 4, 0, (uint32_t)(abs_offset - pos), false);
             } else if (abs_offset >= -pos) {
-                xx_data_set_u32(data + i + 1U, 4, 0,
-                            (uint32_t)(abs_offset + LZX_E8_SIZE), false);
+                xx_data_set_u32(data + i + 1U, 4, 0, (uint32_t)(abs_offset + LZX_E8_SIZE), false);
             }
         }
         i += 5U;
     }
 }
 
-static void lzx_init_tables(lzx_state *x) {
+static void lzx_init_tables(lzx_state *x)
+{
     unsigned slot;
     uint32_t base = 0U;
     for (slot = 0U; slot < LZX_MAX_SLOTS; ++slot) {
@@ -345,18 +346,15 @@ static void lzx_init_tables(lzx_state *x) {
     }
 }
 
-static bool lzx_decode(lzx_state *x, const uint8_t *in, size_t in_size,
-                       uint8_t *out, size_t out_size, uint32_t window) {
-    static const uint8_t slots_for_order[LZX_MAX_ORDER + 1U - LZX_MIN_ORDER] =
-        {30U, 32U, 34U, 36U, 38U, 42U, 50U};
+static bool lzx_decode(lzx_state *x, const uint8_t *in, size_t in_size, uint8_t *out, size_t out_size, uint32_t window)
+{
+    static const uint8_t slots_for_order[LZX_MAX_ORDER + 1U - LZX_MIN_ORDER] = {30U, 32U, 34U, 36U, 38U, 42U, 50U};
     lzx_bits b;
     unsigned order = 0U, slots, main_syms;
     uint32_t r0 = 1U, r1 = 1U, r2 = 1U;
     size_t pos = 0U, target = 0U;
     while (order < 32U && (1UL << order) < (unsigned long)window) ++order;
-    if (order < LZX_MIN_ORDER || order > LZX_MAX_ORDER ||
-        (1UL << order) != (unsigned long)window || out_size > window)
-        return false;
+    if (order < LZX_MIN_ORDER || order > LZX_MAX_ORDER || (1UL << order) != (unsigned long)window || out_size > window) return false;
     slots = slots_for_order[order - LZX_MIN_ORDER];
     main_syms = 256U + 8U * slots;
     xx_rt_memset(x->main_lens, 0, sizeof(x->main_lens));
@@ -380,23 +378,16 @@ static bool lzx_decode(lzx_state *x, const uint8_t *in, size_t in_size,
         if (block == 0U) return false;
         /* A match may run past its block's end; the overrun counts against
          * the next block, so block ends are tracked cumulatively. */
-        target = (size_t)block > out_size - target ? out_size
-                                                   : target + (size_t)block;
+        target = (size_t)block > out_size - target ? out_size : target + (size_t)block;
         if (type == 1U || type == 2U) {
             if (type == 2U) {
                 uint8_t aligned_lens[LZX_ALIGNED_SYMS];
                 unsigned i;
-                for (i = 0U; i < LZX_ALIGNED_SYMS; ++i)
-                    aligned_lens[i] = (uint8_t)lzx_read(&b, 3U);
-                if (!wh_build(&x->aligned, aligned_lens, LZX_ALIGNED_SYMS, 7U))
-                    return false;
+                for (i = 0U; i < LZX_ALIGNED_SYMS; ++i) aligned_lens[i] = (uint8_t)lzx_read(&b, 3U);
+                if (!wh_build(&x->aligned, aligned_lens, LZX_ALIGNED_SYMS, 7U)) return false;
             }
-            if (!lzx_read_lengths(&b, &x->pre, x->main_lens, 0U, 256U) ||
-                !lzx_read_lengths(&b, &x->pre, x->main_lens, 256U,
-                                  main_syms) ||
-                !wh_build(&x->main, x->main_lens, main_syms, 16U) ||
-                !lzx_read_lengths(&b, &x->pre, x->length_lens, 0U,
-                                  LZX_LEN_SYMS) ||
+            if (!lzx_read_lengths(&b, &x->pre, x->main_lens, 0U, 256U) || !lzx_read_lengths(&b, &x->pre, x->main_lens, 256U, main_syms) ||
+                !wh_build(&x->main, x->main_lens, main_syms, 16U) || !lzx_read_lengths(&b, &x->pre, x->length_lens, 0U, LZX_LEN_SYMS) ||
                 !wh_build(&x->length, x->length_lens, LZX_LEN_SYMS, 16U))
                 return false;
             while (pos < target) {
@@ -444,9 +435,7 @@ static bool lzx_decode(lzx_state *x, const uint8_t *in, size_t in_size,
                     r1 = r0;
                     r0 = offset;
                 }
-                if (offset == 0U || (size_t)offset > pos ||
-                    (size_t)length > out_size - pos)
-                    return false;
+                if (offset == 0U || (size_t)offset > pos || (size_t)length > out_size - pos) return false;
                 {
                     uint8_t *dst = out + pos;
                     const uint8_t *src = dst - offset;
@@ -459,18 +448,15 @@ static bool lzx_decode(lzx_state *x, const uint8_t *in, size_t in_size,
             /* The raw block starts on the next 16-bit boundary, and a
              * stream that is already on one skips a whole padding word. */
             size_t consumed = b.pos * 8U - b.count;
-            size_t start = (consumed % 16U) != 0U ? (consumed + 15U) / 16U * 2U
-                                                 : consumed / 8U + 2U;
+            size_t start = (consumed % 16U) != 0U ? (consumed + 15U) / 16U * 2U : consumed / 8U + 2U;
             size_t amount;
-            if (pos != block_start || start > in_size || in_size - start < 12U)
-                return false;
+            if (pos != block_start || start > in_size || in_size - start < 12U) return false;
             amount = target - pos;
             r0 = xx_data_get_u32(in + start, 4, 0, false);
             r1 = xx_data_get_u32(in + start + 4U, 4, 0, false);
             r2 = xx_data_get_u32(in + start + 8U, 4, 0, false);
             start += 12U;
-            if (r0 == 0U || r1 == 0U || r2 == 0U || amount > in_size - start)
-                return false;
+            if (r0 == 0U || r1 == 0U || r2 == 0U || amount > in_size - start) return false;
             xx_rt_memcpy(out + pos, in + start, amount);
             pos += amount;
             start += amount;
@@ -546,18 +532,14 @@ typedef struct lzms_bits_s {
 } lzms_bits;
 
 /* How many offset slots carry each number of extra bits (index = bits). */
-static const uint8_t lzms_off_runs[31] = {
-    8U,  0U,  9U,  7U,  10U, 15U, 15U, 20U, 20U, 30U, 33U,
-    40U, 42U, 45U, 60U, 73U, 80U, 85U, 95U, 105U, 6U, 0U,
-    0U,  0U,  0U,  0U,  0U,  0U,  0U,  0U,  1U};
+static const uint8_t lzms_off_runs[31] = {8U,  0U,  9U,  7U,   10U, 15U, 15U, 20U, 20U, 30U, 33U, 40U, 42U, 45U, 60U, 73U,
+                                          80U, 85U, 95U, 105U, 6U,  0U,  0U,  0U,  0U,  0U,  0U,  0U,  0U,  0U,  1U};
 
-static const uint8_t lzms_len_bits[LZMS_LEN_SYMS] = {
-    0U, 0U, 0U, 0U, 0U, 0U, 0U, 0U, 0U, 0U, 0U, 0U, 0U,  0U,  0U, 0U, 0U, 0U,
-    0U, 0U, 0U, 0U, 0U, 0U, 0U, 0U, 1U, 1U, 1U, 1U, 2U,  2U,  2U, 2U, 2U, 2U,
-    3U, 3U, 3U, 3U, 4U, 4U, 4U, 4U, 4U, 5U, 5U, 6U, 7U,  8U,  9U, 10U, 16U,
-    30U};
+static const uint8_t lzms_len_bits[LZMS_LEN_SYMS] = {0U, 0U, 0U, 0U, 0U, 0U, 0U, 0U, 0U, 0U, 0U, 0U, 0U, 0U, 0U, 0U, 0U, 0U, 0U, 0U, 0U, 0U, 0U, 0U, 0U,  0U,  1U,
+                                                     1U, 1U, 1U, 2U, 2U, 2U, 2U, 2U, 2U, 3U, 3U, 3U, 3U, 4U, 4U, 4U, 4U, 4U, 5U, 5U, 6U, 7U, 8U, 9U, 10U, 16U, 30U};
 
-static void lzms_init_tables(lzms_state *s) {
+static void lzms_init_tables(lzms_state *s)
+{
     unsigned bits, slot = 0U, i;
     uint32_t base = 1U;
     for (bits = 0U; bits < sizeof(lzms_off_runs); ++bits) {
@@ -577,21 +559,20 @@ static void lzms_init_tables(lzms_state *s) {
     }
 }
 
-static uint32_t lzms_rc_word(lzms_rc *rc) {
+static uint32_t lzms_rc_word(lzms_rc *rc)
+{
     uint32_t word = rc->next < rc->words ? wc_le16(rc->in + rc->next * 2U) : 0U;
     ++rc->next;
     return word;
 }
 
-static unsigned lzms_bit(lzms_rc *rc, lzms_prob *probs, uint32_t *state,
-                         uint32_t states) {
+static unsigned lzms_bit(lzms_rc *rc, lzms_prob *probs, uint32_t *state, uint32_t states)
+{
     lzms_prob *p = &probs[*state];
     uint32_t prob = p->zeros, bound;
     unsigned bit;
-    if (prob == 0U)
-        prob = 1U;
-    else if (prob >= 64U)
-        prob = 63U;
+    if (prob == 0U) prob = 1U;
+    else if (prob >= 64U) prob = 63U;
     if (rc->range <= 0xFFFFU) {
         rc->range <<= 16U;
         rc->code = (rc->code << 16U) | lzms_rc_word(rc);
@@ -605,14 +586,14 @@ static unsigned lzms_bit(lzms_rc *rc, lzms_prob *probs, uint32_t *state,
         rc->code -= bound;
         bit = 1U;
     }
-    p->zeros = (uint32_t)((int32_t)p->zeros + (int32_t)(p->history >> 63U) -
-                          (int32_t)bit);
+    p->zeros = (uint32_t)((int32_t)p->zeros + (int32_t)(p->history >> 63U) - (int32_t)bit);
     p->history = (p->history << 1U) | bit;
     *state = ((*state << 1U) | bit) & (states - 1U);
     return bit;
 }
 
-static void lzms_refill(lzms_bits *b) {
+static void lzms_refill(lzms_bits *b)
+{
     while (b->count <= 48U) {
         uint32_t word = 0U;
         if (b->next != 0U) {
@@ -626,7 +607,8 @@ static void lzms_refill(lzms_bits *b) {
     }
 }
 
-static uint32_t lzms_read(lzms_bits *b, unsigned n) {
+static uint32_t lzms_read(lzms_bits *b, unsigned n)
+{
     uint32_t value;
     if (n == 0U) return 0U;
     lzms_refill(b);
@@ -636,7 +618,8 @@ static uint32_t lzms_read(lzms_bits *b, unsigned n) {
     return value;
 }
 
-static void lzms_heap_sift(uint32_t *a, size_t root, size_t n) {
+static void lzms_heap_sift(uint32_t *a, size_t root, size_t n)
+{
     for (;;) {
         size_t child = root * 2U + 1U;
         uint32_t t;
@@ -650,7 +633,8 @@ static void lzms_heap_sift(uint32_t *a, size_t root, size_t n) {
     }
 }
 
-static void lzms_sort(uint32_t *a, size_t n) {
+static void lzms_sort(uint32_t *a, size_t n)
+{
     size_t i;
     if (n < 2U) return;
     for (i = n / 2U; i-- > 0U;) lzms_heap_sift(a, i, n);
@@ -667,7 +651,8 @@ static void lzms_sort(uint32_t *a, size_t n) {
  * an internal node; depths past the limit are folded back onto the deepest
  * level that still has room; lengths are then dealt out longest-first in
  * that same order. */
-static void lzms_make_lengths(lzms_state *s, lzms_code *c) {
+static void lzms_make_lengths(lzms_state *s, lzms_code *c)
+{
     uint32_t count[WH_MAX_LEN + 2U];
     unsigned n = c->nsyms, i = 0U, b = 0U, e = 0U, len;
     for (i = 0U; i < n; ++i) s->key[i] = (c->freq[i] << 10U) | i;
@@ -705,18 +690,18 @@ static void lzms_make_lengths(lzms_state *s, lzms_code *c) {
     i = 0U;
     for (len = LZMS_MAX_CODE_LEN; len >= 1U; --len) {
         uint32_t k;
-        for (k = count[len]; k != 0U && i < n; --k)
-            c->lens[s->key[i++] & 1023U] = (uint8_t)len;
+        for (k = count[len]; k != 0U && i < n; --k) c->lens[s->key[i++] & 1023U] = (uint8_t)len;
     }
 }
 
-static bool lzms_code_build(lzms_state *s, lzms_code *c) {
+static bool lzms_code_build(lzms_state *s, lzms_code *c)
+{
     lzms_make_lengths(s, c);
     return wh_build(&c->huff, c->lens, c->nsyms, LZMS_MAX_CODE_LEN);
 }
 
-static bool lzms_code_init(lzms_state *s, lzms_code *c, unsigned nsyms,
-                           unsigned period) {
+static bool lzms_code_init(lzms_state *s, lzms_code *c, unsigned nsyms, unsigned period)
+{
     unsigned i;
     c->nsyms = nsyms;
     c->period = period;
@@ -725,7 +710,8 @@ static bool lzms_code_init(lzms_state *s, lzms_code *c, unsigned nsyms,
     return lzms_code_build(s, c);
 }
 
-static int lzms_symbol(lzms_state *s, lzms_code *c, lzms_bits *b) {
+static int lzms_symbol(lzms_state *s, lzms_code *c, lzms_bits *b)
+{
     unsigned used;
     int sym;
     lzms_refill(b);
@@ -743,7 +729,8 @@ static int lzms_symbol(lzms_state *s, lzms_code *c, lzms_bits *b) {
     return sym;
 }
 
-static void lzms_prob_init(lzms_prob *p, size_t n) {
+static void lzms_prob_init(lzms_prob *p, size_t n)
+{
     size_t i;
     for (i = 0U; i < n; ++i) {
         p[i].zeros = 48U;
@@ -756,7 +743,8 @@ static void lzms_prob_init(lzms_prob *p, size_t n) {
  * relative form only while the scan is "in code", which it is for a
  * while after two references to the same 16-bit target land within
  * 64 KiB of each other. */
-static void lzms_undo_x86(int32_t *last_use, uint8_t *data, size_t size) {
+static void lzms_undo_x86(int32_t *last_use, uint8_t *data, size_t size)
+{
     int32_t last_x86 = -LZMS_X86_REACH - 1;
     int32_t i = 0, limit;
     size_t k;
@@ -770,17 +758,12 @@ static void lzms_undo_x86(int32_t *last_use, uint8_t *data, size_t size) {
         uint32_t value, target;
         do {
             ++i;
-        } while (i < limit && data[i] != 0x48U && data[i] != 0x4CU &&
-                 data[i] != 0xE8U && data[i] != 0xE9U && data[i] != 0xF0U &&
-                 data[i] != 0xFFU);
+        } while (i < limit && data[i] != 0x48U && data[i] != 0x4CU && data[i] != 0xE8U && data[i] != 0xE9U && data[i] != 0xF0U && data[i] != 0xFFU);
         if (i >= limit) break;
         op = data[i];
         if (op == 0x48U || op == 0x4CU) {
             if ((data[i + 2] & 7U) != 5U) continue;
-            if (data[i + 1] != 0x8DU &&
-                (data[i + 1] != 0x8BU || op != 0x48U ||
-                 (data[i + 2] != 0x05U && data[i + 2] != 0x0DU)))
-                continue;
+            if (data[i + 1] != 0x8DU && (data[i + 1] != 0x8BU || op != 0x48U || (data[i + 2] != 0x05U && data[i + 2] != 0x0DU))) continue;
             span = 3U;
         } else if (op == 0xE8U) {
             span = 1U;
@@ -807,8 +790,8 @@ static void lzms_undo_x86(int32_t *last_use, uint8_t *data, size_t size) {
     }
 }
 
-static bool lzms_decode(lzms_state *s, const uint8_t *in, size_t in_size,
-                        uint8_t *out, size_t out_size) {
+static bool lzms_decode(lzms_state *s, const uint8_t *in, size_t in_size, uint8_t *out, size_t out_size)
+{
     lzms_rc rc;
     lzms_bits bits;
     uint32_t reps[4];
@@ -839,23 +822,18 @@ static bool lzms_decode(lzms_state *s, const uint8_t *in, size_t in_size,
     lzms_prob_init(&s->delta_probs[0][0], 3U * 64U);
     if (out_size >= 2U) {
         size_t last = out_size - 1U;
-        while (off_syms < LZMS_OFF_SYMS && s->off_base[off_syms] <= last)
-            ++off_syms;
+        while (off_syms < LZMS_OFF_SYMS && s->off_base[off_syms] <= last) ++off_syms;
     }
     if (off_syms < 2U) off_syms = 2U;
-    if (!lzms_code_init(s, &s->literal, LZMS_LIT_SYMS, 1024U) ||
-        !lzms_code_init(s, &s->lz_offset, off_syms, 1024U) ||
-        !lzms_code_init(s, &s->length, LZMS_LEN_SYMS, 512U) ||
-        !lzms_code_init(s, &s->delta_offset, off_syms, 1024U) ||
+    if (!lzms_code_init(s, &s->literal, LZMS_LIT_SYMS, 1024U) || !lzms_code_init(s, &s->lz_offset, off_syms, 1024U) ||
+        !lzms_code_init(s, &s->length, LZMS_LEN_SYMS, 512U) || !lzms_code_init(s, &s->delta_offset, off_syms, 1024U) ||
         !lzms_code_init(s, &s->delta_power, LZMS_POWER_SYMS, 512U))
         return false;
     while (pos < out_size) {
         /* The range coder reads words forwards and the bit stream reads
          * them backwards; together they may overrun the chunk only by the
          * look-ahead slack. */
-        if (rc.next + (rc.words - bits.next) + bits.pad >
-            rc.words + WC_SLACK_BYTES / 2U)
-            return false;
+        if (rc.next + (rc.words - bits.next) + bits.pad > rc.words + WC_SLACK_BYTES / 2U) return false;
         if (lzms_bit(&rc, s->main_probs, &main_state, 16U) == 0U) {
             int lit = lzms_symbol(s, &s->literal, &bits);
             if (lit < 0) return false;
@@ -867,21 +845,16 @@ static bool lzms_decode(lzms_state *s, const uint8_t *in, size_t in_size,
             if (lzms_bit(&rc, s->lz_probs[0], &lz_state[0], 64U) == 0U) {
                 slot = lzms_symbol(s, &s->lz_offset, &bits);
                 if (slot < 0) return false;
-                dist = s->off_base[slot] +
-                       lzms_read(&bits, s->off_extra[slot]);
+                dist = s->off_base[slot] + lzms_read(&bits, s->off_extra[slot]);
                 reps[3] = reps[2];
                 reps[2] = reps[1];
                 reps[1] = reps[0];
                 reps[0] = dist;
             } else {
                 unsigned idx, k;
-                if (lzms_bit(&rc, s->lz_probs[1], &lz_state[1], 64U) == 0U)
-                    idx = 0U;
-                else if (lzms_bit(&rc, s->lz_probs[2], &lz_state[2], 64U) ==
-                         0U)
-                    idx = 1U;
-                else
-                    idx = 2U;
+                if (lzms_bit(&rc, s->lz_probs[1], &lz_state[1], 64U) == 0U) idx = 0U;
+                else if (lzms_bit(&rc, s->lz_probs[2], &lz_state[2], 64U) == 0U) idx = 1U;
+                else idx = 2U;
                 idx += prev == 1U ? 1U : 0U;
                 dist = reps[idx];
                 for (k = idx; k > 0U; --k) reps[k] = reps[k - 1U];
@@ -890,9 +863,7 @@ static bool lzms_decode(lzms_state *s, const uint8_t *in, size_t in_size,
             slot = lzms_symbol(s, &s->length, &bits);
             if (slot < 0) return false;
             length = s->len_base[slot] + lzms_read(&bits, s->len_extra[slot]);
-            if (dist == 0U || (size_t)dist > pos ||
-                (size_t)length > out_size - pos)
-                return false;
+            if (dist == 0U || (size_t)dist > pos || (size_t)length > out_size - pos) return false;
             {
                 uint8_t *dst = out + pos;
                 const uint8_t *src = dst - dist;
@@ -919,14 +890,9 @@ static bool lzms_decode(lzms_state *s, const uint8_t *in, size_t in_size,
                 delta_reps[0] = pair;
             } else {
                 unsigned idx, k;
-                if (lzms_bit(&rc, s->delta_probs[1], &delta_state[1], 64U) ==
-                    0U)
-                    idx = 0U;
-                else if (lzms_bit(&rc, s->delta_probs[2], &delta_state[2],
-                                  64U) == 0U)
-                    idx = 1U;
-                else
-                    idx = 2U;
+                if (lzms_bit(&rc, s->delta_probs[1], &delta_state[1], 64U) == 0U) idx = 0U;
+                else if (lzms_bit(&rc, s->delta_probs[2], &delta_state[2], 64U) == 0U) idx = 1U;
+                else idx = 2U;
                 idx += prev == 2U ? 1U : 0U;
                 pair = delta_reps[idx];
                 for (k = idx; k > 0U; --k) delta_reps[k] = delta_reps[k - 1U];
@@ -940,15 +906,12 @@ static bool lzms_decode(lzms_state *s, const uint8_t *in, size_t in_size,
             if (power >= 32U || raw > (0xFFFFFFFFU >> power)) return false;
             dist = raw << power;
             span = (size_t)1U << power;
-            if ((uint64_t)dist + span > (uint64_t)pos ||
-                (size_t)length > out_size - pos)
-                return false;
+            if ((uint64_t)dist + span > (uint64_t)pos || (size_t)length > out_size - pos) return false;
             {
                 uint8_t *dst = out + pos;
                 uint32_t n = length;
                 while (n--) {
-                    *dst = (uint8_t)(dst[-(ptrdiff_t)span] + dst[-(ptrdiff_t)dist] -
-                                     dst[-(ptrdiff_t)(dist + span)]);
+                    *dst = (uint8_t)(dst[-(ptrdiff_t)span] + dst[-(ptrdiff_t)dist] - dst[-(ptrdiff_t)(dist + span)]);
                     ++dst;
                 }
             }
@@ -970,11 +933,10 @@ struct xx_wim_codec {
     lzms_state *lzms;
 };
 
-xx_wim_codec *xx_wim_codec_create(unsigned method) {
+xx_wim_codec *xx_wim_codec_create(unsigned method)
+{
     xx_wim_codec *codec;
-    if (method != XX_WIM_CODEC_XPRESS && method != XX_WIM_CODEC_LZX &&
-        method != XX_WIM_CODEC_LZMS)
-        return NULL;
+    if (method != XX_WIM_CODEC_XPRESS && method != XX_WIM_CODEC_LZX && method != XX_WIM_CODEC_LZMS) return NULL;
     codec = (xx_wim_codec *)xx_mem_calloc(1U, sizeof(*codec));
     if (!codec) return NULL;
     codec->method = method;
@@ -996,7 +958,8 @@ fail:
     return NULL;
 }
 
-void xx_wim_codec_free(xx_wim_codec *codec) {
+void xx_wim_codec_free(xx_wim_codec *codec)
+{
     if (!codec) return;
     if (codec->xpress) xx_mem_free(codec->xpress);
     if (codec->lzx) xx_mem_free(codec->lzx);
@@ -1004,21 +967,13 @@ void xx_wim_codec_free(xx_wim_codec *codec) {
     xx_mem_free(codec);
 }
 
-bool xx_wim_codec_decode(xx_wim_codec *codec, const uint8_t *in,
-                         size_t in_size, uint8_t *out, size_t out_size,
-                         uint32_t window_size) {
-    if (!codec || !in || !out || out_size == 0U ||
-        out_size > XX_WIM_CODEC_MAX_CHUNK)
-        return false;
+bool xx_wim_codec_decode(xx_wim_codec *codec, const uint8_t *in, size_t in_size, uint8_t *out, size_t out_size, uint32_t window_size)
+{
+    if (!codec || !in || !out || out_size == 0U || out_size > XX_WIM_CODEC_MAX_CHUNK) return false;
     switch (codec->method) {
-    case XX_WIM_CODEC_XPRESS:
-        return xpress_decode(codec->xpress, in, in_size, out, out_size);
-    case XX_WIM_CODEC_LZX:
-        return lzx_decode(codec->lzx, in, in_size, out, out_size,
-                          window_size);
-    case XX_WIM_CODEC_LZMS:
-        return lzms_decode(codec->lzms, in, in_size, out, out_size);
-    default:
-        return false;
+        case XX_WIM_CODEC_XPRESS: return xpress_decode(codec->xpress, in, in_size, out, out_size);
+        case XX_WIM_CODEC_LZX: return lzx_decode(codec->lzx, in, in_size, out, out_size, window_size);
+        case XX_WIM_CODEC_LZMS: return lzms_decode(codec->lzms, in, in_size, out, out_size);
+        default: return false;
     }
 }

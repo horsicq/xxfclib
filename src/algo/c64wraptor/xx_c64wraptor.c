@@ -53,9 +53,7 @@ static bool c64_bits_read(c64_bits *reader, int need, int *value)
 /* One member stream.  `output` may be NULL, in which case the walk only
  * counts -- the ring buffer still has to be maintained because matches read
  * from it.  This is the single core the decode and the measure share. */
-static bool c64_run(const uint8_t *input, size_t input_size, uint8_t *output,
-                    size_t output_capacity, size_t *produced_out,
-                    size_t *consumed_out)
+static bool c64_run(const uint8_t *input, size_t input_size, uint8_t *output, size_t output_capacity, size_t *produced_out, size_t *consumed_out)
 {
     uint8_t window[C64_WINDOW_SIZE];
     c64_bits reader;
@@ -137,9 +135,7 @@ static bool c64_run(const uint8_t *input, size_t input_size, uint8_t *output,
     return true;
 }
 
-XXFC_API bool xx_c64wraptor_decode_memory(const uint8_t *input,
-                                          size_t input_size, uint8_t *output,
-                                          size_t output_size, size_t *written)
+XXFC_API bool xx_c64wraptor_decode_memory(const uint8_t *input, size_t input_size, uint8_t *output, size_t output_size, size_t *written)
 {
     size_t produced = 0U;
     size_t consumed = 0U;
@@ -159,9 +155,7 @@ XXFC_API bool xx_c64wraptor_decode_memory(const uint8_t *input,
     return true;
 }
 
-XXFC_API bool xx_c64wraptor_scan_memory(const uint8_t *input,
-                                        size_t input_size, size_t max_output,
-                                        size_t *consumed, size_t *produced)
+XXFC_API bool xx_c64wraptor_scan_memory(const uint8_t *input, size_t input_size, size_t max_output, size_t *consumed, size_t *produced)
 {
     size_t produced_local = 0U;
     size_t consumed_local = 0U;
@@ -170,8 +164,7 @@ XXFC_API bool xx_c64wraptor_scan_memory(const uint8_t *input,
     if (produced) *produced = 0U;
     if (!input || (max_output == 0U)) return false;
 
-    if (!c64_run(input, input_size, NULL, max_output, &produced_local,
-                 &consumed_local)) {
+    if (!c64_run(input, input_size, NULL, max_output, &produced_local, &consumed_local)) {
         return false;
     }
 

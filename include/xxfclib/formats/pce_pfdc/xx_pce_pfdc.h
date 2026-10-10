@@ -16,10 +16,8 @@ typedef struct xx_pce_pfdc_s {
     unsigned version;
 } xx_pce_pfdc;
 
-XXFC_API void xx_pce_pfdc_init(xx_pce_pfdc *, xx_io_device *, int64_t,
-                               unsigned version);
-XXFC_API xx_pce_pfdc *xx_pce_pfdc_create(xx_io_device *, int64_t,
-                                         unsigned version);
+XXFC_API void xx_pce_pfdc_init(xx_pce_pfdc *, xx_io_device *, int64_t, unsigned version);
+XXFC_API xx_pce_pfdc *xx_pce_pfdc_create(xx_io_device *, int64_t, unsigned version);
 XXFC_API void xx_pce_pfdc_destroy(xx_pce_pfdc *);
 XXFC_API void xx_pce_pfdc_free(xx_pce_pfdc *);
 

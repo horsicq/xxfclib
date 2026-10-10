@@ -41,10 +41,10 @@ extern "C" {
 typedef struct xx_finstall {
     Abstractformat format;
     uint64_t number_of_records;
-    uint32_t capacity;   /**< The u32 at 0x0C. */
-    char version;        /**< The digit at 0x0B. */
-    int64_t data_end;    /**< End of the last entry's data, from the base. */
-    bool truncated;      /**< Some entry's data runs past the device end. */
+    uint32_t capacity; /**< The u32 at 0x0C. */
+    char version;      /**< The digit at 0x0B. */
+    int64_t data_end;  /**< End of the last entry's data, from the base. */
+    bool truncated;    /**< Some entry's data runs past the device end. */
 } xx_finstall;
 
 typedef xx_finstall xx_finstall_t;
@@ -56,32 +56,21 @@ typedef xx_finstall xx_finstall_t;
 /** Length of the name field inside a directory entry. */
 #define XX_FINSTALL_NAME_FIELD 16
 
-XXFC_API void xx_finstall_init(xx_finstall *archive, xx_io_device *device,
-                               int64_t base_address);
-XXFC_API xx_finstall *xx_finstall_create(xx_io_device *device,
-                                         int64_t base_address);
+XXFC_API void xx_finstall_init(xx_finstall *archive, xx_io_device *device, int64_t base_address);
+XXFC_API xx_finstall *xx_finstall_create(xx_io_device *device, int64_t base_address);
 XXFC_API void xx_finstall_destroy(xx_finstall *archive);
 XXFC_API void xx_finstall_free(xx_finstall *archive);
 
-XXFC_API bool xx_finstall_check_is_valid(Abstractformat *self,
-                                         xx_pd_struct *pd);
-XXFC_API bool xx_finstall_handle_base_info(Abstractformat *self,
-                                           xx_pd_struct *pd);
-XXFC_API int64_t xx_finstall_get_format_size(Abstractformat *self,
-                                             xx_pd_struct *pd);
-XXFC_API uint64_t xx_finstall_get_number_of_archive_records(
-    Abstractformat *self, xx_pd_struct *pd);
+XXFC_API bool xx_finstall_check_is_valid(Abstractformat *self, xx_pd_struct *pd);
+XXFC_API bool xx_finstall_handle_base_info(Abstractformat *self, xx_pd_struct *pd);
+XXFC_API int64_t xx_finstall_get_format_size(Abstractformat *self, xx_pd_struct *pd);
+XXFC_API uint64_t xx_finstall_get_number_of_archive_records(Abstractformat *self, xx_pd_struct *pd);
 
-XXFC_API xx_archive_record_state *xx_finstall_create_archive_records_reading(
-    Abstractformat *self, const xx_list_s *options, xx_pd_struct *pd);
-XXFC_API const xx_archive_record *xx_finstall_get_current_archive_record(
-    Abstractformat *self, xx_archive_record_state *state);
-XXFC_API bool xx_finstall_unpack_current_archive_record(
-    Abstractformat *self, xx_archive_record_state *state, xx_pd_struct *pd);
-XXFC_API bool xx_finstall_archive_record_move_to_next(
-    Abstractformat *self, xx_archive_record_state *state, xx_pd_struct *pd);
-XXFC_API void xx_finstall_free_archive_records_reading(
-    Abstractformat *self, xx_archive_record_state *state);
+XXFC_API xx_archive_record_state *xx_finstall_create_archive_records_reading(Abstractformat *self, const xx_list_s *options, xx_pd_struct *pd);
+XXFC_API const xx_archive_record *xx_finstall_get_current_archive_record(Abstractformat *self, xx_archive_record_state *state);
+XXFC_API bool xx_finstall_unpack_current_archive_record(Abstractformat *self, xx_archive_record_state *state, xx_pd_struct *pd);
+XXFC_API bool xx_finstall_archive_record_move_to_next(Abstractformat *self, xx_archive_record_state *state, xx_pd_struct *pd);
+XXFC_API void xx_finstall_free_archive_records_reading(Abstractformat *self, xx_archive_record_state *state);
 
 #ifdef __cplusplus
 }

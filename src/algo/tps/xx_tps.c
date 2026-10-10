@@ -41,16 +41,14 @@
  * uncompressed-size dword that block 0 is charged for. */
 static size_t tps_stored_size(size_t coded)
 {
-    size_t blocks = (coded + 4U + (size_t)(TPS_BLOCK_SIZE - 1)) /
-                    (size_t)TPS_BLOCK_SIZE;
+    size_t blocks = (coded + 4U + (size_t)(TPS_BLOCK_SIZE - 1)) / (size_t)TPS_BLOCK_SIZE;
 
     return coded + blocks + 1U;
 }
 
 /* Undo the XOR, verify every block checksum and the end marker.  `output` must
  * hold tps_solve_coded()'s result. */
-static bool tps_dechunk(const uint8_t *input, size_t input_size,
-                        uint32_t decoded_size, size_t coded, uint8_t *output)
+static bool tps_dechunk(const uint8_t *input, size_t input_size, uint32_t decoded_size, size_t coded, uint8_t *output)
 {
     size_t pos = 0U;
     size_t left = coded;
@@ -117,8 +115,7 @@ static bool tps_solve_coded(size_t input_size, size_t *coded_out)
     return false;
 }
 
-bool xx_tps_decode_memory(const uint8_t *input, size_t input_size,
-                          uint8_t *output, size_t output_size, size_t *written)
+bool xx_tps_decode_memory(const uint8_t *input, size_t input_size, uint8_t *output, size_t output_size, size_t *written)
 {
     uint8_t *coded_buffer;
     size_t coded = 0U;
@@ -141,8 +138,7 @@ bool xx_tps_decode_memory(const uint8_t *input, size_t input_size,
 
     ok = tps_dechunk(input, input_size, decoded_size, coded, coded_buffer);
     if (ok) {
-        ok = xx_lzhuf_decode_memory(coded_buffer, coded, output, output_size,
-                                    written);
+        ok = xx_lzhuf_decode_memory(coded_buffer, coded, output, output_size, written);
     }
 
     xx_rt_memset(coded_buffer, 0, coded ? coded : 1U);

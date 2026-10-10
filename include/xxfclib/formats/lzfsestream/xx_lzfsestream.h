@@ -81,48 +81,32 @@ struct xx_lzfsestream {
     uint32_t block_types;       /**< XX_LZFSESTREAM_BLOCK_* seen. */
 };
 
-XXFC_API void xx_lzfsestream_init(xx_lzfsestream *archive,
-                                  xx_io_device *device, int64_t base_address);
-XXFC_API xx_lzfsestream *xx_lzfsestream_create(xx_io_device *device,
-                                               int64_t base_address);
+XXFC_API void xx_lzfsestream_init(xx_lzfsestream *archive, xx_io_device *device, int64_t base_address);
+XXFC_API xx_lzfsestream *xx_lzfsestream_create(xx_io_device *device, int64_t base_address);
 XXFC_API void xx_lzfsestream_destroy(xx_lzfsestream *archive);
 XXFC_API void xx_lzfsestream_free(xx_lzfsestream *archive);
 
-XXFC_API bool xx_lzfsestream_check_is_valid(Abstractformat *self,
-                                            xx_pd_struct *pd);
-XXFC_API bool xx_lzfsestream_handle_base_info(Abstractformat *self,
-                                              xx_pd_struct *pd);
-XXFC_API int64_t xx_lzfsestream_get_format_size(Abstractformat *self,
-                                                xx_pd_struct *pd);
-XXFC_API uint64_t xx_lzfsestream_get_number_of_archive_records(
-    Abstractformat *self, xx_pd_struct *pd);
+XXFC_API bool xx_lzfsestream_check_is_valid(Abstractformat *self, xx_pd_struct *pd);
+XXFC_API bool xx_lzfsestream_handle_base_info(Abstractformat *self, xx_pd_struct *pd);
+XXFC_API int64_t xx_lzfsestream_get_format_size(Abstractformat *self, xx_pd_struct *pd);
+XXFC_API uint64_t xx_lzfsestream_get_number_of_archive_records(Abstractformat *self, xx_pd_struct *pd);
 
 /** Decode the stream to a caller-provided device. */
-XXFC_API bool xx_lzfsestream_unpack_to_device(xx_lzfsestream *archive,
-                                              xx_io_device *destination,
-                                              xx_pd_struct *pd);
+XXFC_API bool xx_lzfsestream_unpack_to_device(xx_lzfsestream *archive, xx_io_device *destination, xx_pd_struct *pd);
 
-XXFC_API xx_archive_record_state *xx_lzfsestream_create_archive_records_reading(
-    Abstractformat *self, const xx_list_s *options, xx_pd_struct *pd);
-XXFC_API const xx_archive_record *xx_lzfsestream_get_current_archive_record(
-    Abstractformat *self, xx_archive_record_state *state);
-XXFC_API bool xx_lzfsestream_unpack_current_archive_record(
-    Abstractformat *self, xx_archive_record_state *state, xx_pd_struct *pd);
-XXFC_API bool xx_lzfsestream_archive_record_move_to_next(
-    Abstractformat *self, xx_archive_record_state *state, xx_pd_struct *pd);
-XXFC_API void xx_lzfsestream_free_archive_records_reading(
-    Abstractformat *self, xx_archive_record_state *state);
+XXFC_API xx_archive_record_state *xx_lzfsestream_create_archive_records_reading(Abstractformat *self, const xx_list_s *options, xx_pd_struct *pd);
+XXFC_API const xx_archive_record *xx_lzfsestream_get_current_archive_record(Abstractformat *self, xx_archive_record_state *state);
+XXFC_API bool xx_lzfsestream_unpack_current_archive_record(Abstractformat *self, xx_archive_record_state *state, xx_pd_struct *pd);
+XXFC_API bool xx_lzfsestream_archive_record_move_to_next(Abstractformat *self, xx_archive_record_state *state, xx_pd_struct *pd);
+XXFC_API void xx_lzfsestream_free_archive_records_reading(Abstractformat *self, xx_archive_record_state *state);
 
-XXFC_API uint64_t xx_lzfsestream_get_uncompressed_size(
-    const xx_lzfsestream *archive);
+XXFC_API uint64_t xx_lzfsestream_get_uncompressed_size(const xx_lzfsestream *archive);
 XXFC_API int64_t xx_lzfsestream_get_stream_end(const xx_lzfsestream *archive);
-XXFC_API uint32_t xx_lzfsestream_get_number_of_blocks(
-    const xx_lzfsestream *archive);
-XXFC_API uint32_t xx_lzfsestream_get_block_types(
-    const xx_lzfsestream *archive);
+XXFC_API uint32_t xx_lzfsestream_get_number_of_blocks(const xx_lzfsestream *archive);
+XXFC_API uint32_t xx_lzfsestream_get_block_types(const xx_lzfsestream *archive);
 
-static inline Abstractformat *xx_lzfsestream_to_format(
-    xx_lzfsestream *archive) {
+static inline Abstractformat *xx_lzfsestream_to_format(xx_lzfsestream *archive)
+{
     return archive ? &archive->format : NULL;
 }
 

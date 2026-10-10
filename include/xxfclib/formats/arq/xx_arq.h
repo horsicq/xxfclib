@@ -29,36 +29,28 @@ extern "C" {
 typedef struct xx_arq {
     Abstractformat format;
     uint64_t number_of_records;
-    bool has_container_header;   /**< The twelve-byte wrapping prelude. */
+    bool has_container_header;           /**< The twelve-byte wrapping prelude. */
     uint32_t declared_uncompressed_size; /**< Only meaningful when wrapped. */
 } xx_arq;
 
 typedef xx_arq xx_arq_t;
 typedef xx_arq XArq;
 
-XXFC_API void xx_arq_init(xx_arq *archive, xx_io_device *device,
-                          int64_t base_address);
+XXFC_API void xx_arq_init(xx_arq *archive, xx_io_device *device, int64_t base_address);
 XXFC_API xx_arq *xx_arq_create(xx_io_device *device, int64_t base_address);
 XXFC_API void xx_arq_destroy(xx_arq *archive);
 XXFC_API void xx_arq_free(xx_arq *archive);
 
 XXFC_API bool xx_arq_check_is_valid(Abstractformat *self, xx_pd_struct *pd);
 XXFC_API bool xx_arq_handle_base_info(Abstractformat *self, xx_pd_struct *pd);
-XXFC_API int64_t xx_arq_get_format_size(Abstractformat *self,
-                                        xx_pd_struct *pd);
-XXFC_API uint64_t xx_arq_get_number_of_archive_records(Abstractformat *self,
-                                                        xx_pd_struct *pd);
+XXFC_API int64_t xx_arq_get_format_size(Abstractformat *self, xx_pd_struct *pd);
+XXFC_API uint64_t xx_arq_get_number_of_archive_records(Abstractformat *self, xx_pd_struct *pd);
 
-XXFC_API xx_archive_record_state *xx_arq_create_archive_records_reading(
-    Abstractformat *self, const xx_list_s *options, xx_pd_struct *pd);
-XXFC_API const xx_archive_record *xx_arq_get_current_archive_record(
-    Abstractformat *self, xx_archive_record_state *state);
-XXFC_API bool xx_arq_unpack_current_archive_record(
-    Abstractformat *self, xx_archive_record_state *state, xx_pd_struct *pd);
-XXFC_API bool xx_arq_archive_record_move_to_next(
-    Abstractformat *self, xx_archive_record_state *state, xx_pd_struct *pd);
-XXFC_API void xx_arq_free_archive_records_reading(
-    Abstractformat *self, xx_archive_record_state *state);
+XXFC_API xx_archive_record_state *xx_arq_create_archive_records_reading(Abstractformat *self, const xx_list_s *options, xx_pd_struct *pd);
+XXFC_API const xx_archive_record *xx_arq_get_current_archive_record(Abstractformat *self, xx_archive_record_state *state);
+XXFC_API bool xx_arq_unpack_current_archive_record(Abstractformat *self, xx_archive_record_state *state, xx_pd_struct *pd);
+XXFC_API bool xx_arq_archive_record_move_to_next(Abstractformat *self, xx_archive_record_state *state, xx_pd_struct *pd);
+XXFC_API void xx_arq_free_archive_records_reading(Abstractformat *self, xx_archive_record_state *state);
 
 /** @brief True when the twelve-byte wrapping prelude is present. */
 XXFC_API bool xx_arq_has_container_header(const xx_arq *archive);

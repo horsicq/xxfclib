@@ -46,57 +46,43 @@ extern "C" {
 #endif
 
 /* Compression level constants (block-size multiplier * 100 kB) */
-#define XX_BZIP2_LEVEL_FASTEST  1
-#define XX_BZIP2_LEVEL_DEFAULT  6
-#define XX_BZIP2_LEVEL_BEST     9
+#define XX_BZIP2_LEVEL_FASTEST 1
+#define XX_BZIP2_LEVEL_DEFAULT 6
+#define XX_BZIP2_LEVEL_BEST 9
 
 /* ========================================================================= */
 /* --- Bzip2 Decompression                                                --- */
 /* ========================================================================= */
 
-XXFC_API bool xx_bzip2_unpack_device(xx_io_device *src_dev, int64_t src_offset, int64_t comp_size,
-                                     xx_io_device *dst_dev, xx_pd_struct *pd);
+XXFC_API bool xx_bzip2_unpack_device(xx_io_device *src_dev, int64_t src_offset, int64_t comp_size, xx_io_device *dst_dev, xx_pd_struct *pd);
 
 /** Decode one finite BZip2 stream. out_consumed, when supplied, reports its
  * exact byte length, excluding buffered read-ahead and trailing bytes, and is
  * zero on failure. comp_size must be nonnegative. Caller owns both devices. */
-XXFC_API bool xx_bzip2_unpack_device_ex(
-    xx_io_device *src_dev, int64_t src_offset, int64_t comp_size,
-    xx_io_device *dst_dev, int64_t *out_consumed, xx_pd_struct *pd);
+XXFC_API bool xx_bzip2_unpack_device_ex(xx_io_device *src_dev, int64_t src_offset, int64_t comp_size, xx_io_device *dst_dev, int64_t *out_consumed, xx_pd_struct *pd);
 
-XXFC_API bool xx_bzip2_unpack_device_to_file(xx_io_device *src_dev, int64_t src_offset, int64_t comp_size,
-                                             const char *dst_file_path, xx_pd_struct *pd);
+XXFC_API bool xx_bzip2_unpack_device_to_file(xx_io_device *src_dev, int64_t src_offset, int64_t comp_size, const char *dst_file_path, xx_pd_struct *pd);
 
-XXFC_API bool xx_bzip2_unpack_device_to_file_w(xx_io_device *src_dev, int64_t src_offset, int64_t comp_size,
-                                               const wchar_t *dst_file_path_w, xx_pd_struct *pd);
+XXFC_API bool xx_bzip2_unpack_device_to_file_w(xx_io_device *src_dev, int64_t src_offset, int64_t comp_size, const wchar_t *dst_file_path_w, xx_pd_struct *pd);
 
-XXFC_API bool xx_bzip2_unpack_device_to_memory(xx_io_device *src_dev, int64_t src_offset, int64_t comp_size,
-                                               void *dst_buf, size_t dst_buf_size, size_t *out_written,
+XXFC_API bool xx_bzip2_unpack_device_to_memory(xx_io_device *src_dev, int64_t src_offset, int64_t comp_size, void *dst_buf, size_t dst_buf_size, size_t *out_written,
                                                xx_pd_struct *pd);
 
-XXFC_API bool xx_bzip2_unpack_memory_to_device(const void *src_buf, size_t comp_size,
-                                               xx_io_device *dst_dev, xx_pd_struct *pd);
-XXFC_API bool xx_bzip2_unpack_memory_to_device_ex(const void *src_buf, size_t comp_size,
-                                                  xx_io_device *dst_dev, size_t *consumed,
-                                                  xx_pd_struct *pd);
+XXFC_API bool xx_bzip2_unpack_memory_to_device(const void *src_buf, size_t comp_size, xx_io_device *dst_dev, xx_pd_struct *pd);
+XXFC_API bool xx_bzip2_unpack_memory_to_device_ex(const void *src_buf, size_t comp_size, xx_io_device *dst_dev, size_t *consumed, xx_pd_struct *pd);
 
-XXFC_API bool xx_bzip2_decompress_memory(const void *src_buf, size_t src_size,
-                                         void *dst_buf, size_t dst_buf_size, size_t *out_written);
+XXFC_API bool xx_bzip2_decompress_memory(const void *src_buf, size_t src_size, void *dst_buf, size_t dst_buf_size, size_t *out_written);
 
 /* ========================================================================= */
 /* --- Bzip2 Compression                                                  --- */
 /* ========================================================================= */
 
-XXFC_API bool xx_bzip2_pack_device(xx_io_device *src_dev, int64_t src_offset, int64_t uncomp_size,
+XXFC_API bool xx_bzip2_pack_device(xx_io_device *src_dev, int64_t src_offset, int64_t uncomp_size, xx_io_device *dst_dev, int level, xx_pd_struct *pd);
+
+XXFC_API bool xx_bzip2_pack_source(xx_io_device *src_dev, const char *src_file_path, int64_t *out_uncomp_size, int64_t *out_comp_size, uint32_t *out_crc32,
                                    xx_io_device *dst_dev, int level, xx_pd_struct *pd);
 
-XXFC_API bool xx_bzip2_pack_source(xx_io_device *src_dev, const char *src_file_path,
-                                   int64_t *out_uncomp_size, int64_t *out_comp_size, uint32_t *out_crc32,
-                                   xx_io_device *dst_dev, int level, xx_pd_struct *pd);
-
-XXFC_API bool xx_bzip2_compress_memory(const void *src_buf, size_t src_size,
-                                       void *dst_buf, size_t dst_buf_size, size_t *out_written,
-                                       int level);
+XXFC_API bool xx_bzip2_compress_memory(const void *src_buf, size_t src_size, void *dst_buf, size_t dst_buf_size, size_t *out_written, int level);
 
 #ifdef __cplusplus
 }

@@ -57,13 +57,13 @@ extern "C" {
 
 /** @brief What the cursor is sitting on. */
 typedef enum xx_xml_type_e {
-    XX_XML_NONE = 0,  /**< Before the first node, or past the last. */
-    XX_XML_START,     /**< <element ...>, possibly self-closing. */
-    XX_XML_END,       /**< </element> */
-    XX_XML_TEXT,      /**< Character data between elements, entities resolved. */
-    XX_XML_COMMENT,   /**< <!-- ... --> */
-    XX_XML_PI,        /**< <?target ... ?> */
-    XX_XML_DOCTYPE    /**< <!DOCTYPE ...> */
+    XX_XML_NONE = 0, /**< Before the first node, or past the last. */
+    XX_XML_START,    /**< <element ...>, possibly self-closing. */
+    XX_XML_END,      /**< </element> */
+    XX_XML_TEXT,     /**< Character data between elements, entities resolved. */
+    XX_XML_COMMENT,  /**< <!-- ... --> */
+    XX_XML_PI,       /**< <?target ... ?> */
+    XX_XML_DOCTYPE   /**< <!DOCTYPE ...> */
 } xx_xml_type_t;
 
 /** @brief One attribute of the current element. */
@@ -79,8 +79,8 @@ typedef struct xx_xml_s {
     size_t position;
 
     xx_xml_type_t type;
-    char *name;  /**< Element or PI target; NULL for text and comments. */
-    char *text;  /**< Text, comment or PI body; NULL for elements. */
+    char *name; /**< Element or PI target; NULL for text and comments. */
+    char *text; /**< Text, comment or PI body; NULL for elements. */
 
     /* Attributes of the current start element. Grown on demand rather than
      * held as a fixed array: a fixed one large enough for real documents puts
@@ -135,8 +135,7 @@ XXFC_API int xx_xml_depth(const xx_xml *xml);
 XXFC_API size_t xx_xml_attribute_count(const xx_xml *xml);
 
 /** @brief One attribute by position, or NULL. */
-XXFC_API const xx_xml_attribute *xx_xml_attribute_at(const xx_xml *xml,
-                                                     size_t index);
+XXFC_API const xx_xml_attribute *xx_xml_attribute_at(const xx_xml *xml, size_t index);
 
 /**
  * @brief One attribute value by name, or NULL when absent.
@@ -167,8 +166,7 @@ XXFC_API size_t xx_xml_escaped_size(const char *text);
  * @return The number of bytes written, excluding the terminator, or 0 when
  *         @p capacity is too small.
  */
-XXFC_API size_t xx_xml_escape(const char *text, char *buffer,
-                              size_t capacity);
+XXFC_API size_t xx_xml_escape(const char *text, char *buffer, size_t capacity);
 
 #ifdef __cplusplus
 }

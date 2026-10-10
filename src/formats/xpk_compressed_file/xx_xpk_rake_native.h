@@ -29,10 +29,10 @@ typedef struct xpk_rake_bits_s {
     unsigned available;
 } xpk_rake_bits;
 
-static bool xpk_rake_bit(xpk_rake_bits *bits, uint32_t *value) {
+static bool xpk_rake_bit(xpk_rake_bits *bits, uint32_t *value)
+{
     if (!bits->available) {
-        if (bits->cursor > bits->size || bits->size - bits->cursor < 4U)
-            return false;
+        if (bits->cursor > bits->size || bits->size - bits->cursor < 4U) return false;
         bits->word = xx_data_get_u32(bits->data + bits->cursor, 4, 0, true);
         bits->cursor += 4U;
         bits->available = 32U;
@@ -42,8 +42,8 @@ static bool xpk_rake_bit(xpk_rake_bits *bits, uint32_t *value) {
     return true;
 }
 
-static bool xpk_rake_read_bits(xpk_rake_bits *bits, unsigned count,
-                               uint32_t *value) {
+static bool xpk_rake_read_bits(xpk_rake_bits *bits, unsigned count, uint32_t *value)
+{
     uint32_t result = 0U, bit;
     unsigned i;
     for (i = 0U; i < count; ++i) {
@@ -54,7 +54,8 @@ static bool xpk_rake_read_bits(xpk_rake_bits *bits, unsigned count,
     return true;
 }
 
-static bool xpk_rake_tree(xpk_rake_node *nodes) {
+static bool xpk_rake_tree(xpk_rake_node *nodes)
+{
     uint32_t code = 0U;
     unsigned used = 1U, i;
     for (i = 0U; i < sizeof(xpk_rake_symbols) / sizeof(xpk_rake_symbols[0]); ++i) {
@@ -71,8 +72,7 @@ static bool xpk_rake_tree(xpk_rake_node *nodes) {
             current = child;
             if (j != 1U && nodes[current].terminal) return false;
         }
-        if (nodes[current].terminal || nodes[current].child[0] ||
-            nodes[current].child[1]) return false;
+        if (nodes[current].terminal || nodes[current].child[0] || nodes[current].child[1]) return false;
         nodes[current].symbol = xpk_rake_symbols[i][1];
         nodes[current].terminal = true;
         code += UINT32_C(1) << (32U - depth);
@@ -80,8 +80,8 @@ static bool xpk_rake_tree(xpk_rake_node *nodes) {
     return true;
 }
 
-static bool xpk_rake_symbol(xpk_rake_bits *bits, const xpk_rake_node *nodes,
-                            uint32_t *value) {
+static bool xpk_rake_symbol(xpk_rake_bits *bits, const xpk_rake_node *nodes, uint32_t *value)
+{
     unsigned current = 0U, depth;
     for (depth = 0U; depth < 19U; ++depth) {
         uint32_t bit;
@@ -96,20 +96,16 @@ static bool xpk_rake_symbol(xpk_rake_bits *bits, const xpk_rake_node *nodes,
     return false;
 }
 
-static bool xpk_rake_native(const uint8_t *packed, size_t size,
-                            uint8_t *output, size_t wanted, xx_pd_struct *pd) {
+static bool xpk_rake_native(const uint8_t *packed, size_t size, uint8_t *output, size_t wanted, xx_pd_struct *pd)
+{
     xpk_rake_node nodes[512] = {0};
     xpk_rake_bits bits;
     size_t middle, back, position = wanted, operations = 0U;
     uint32_t pad, value;
-    if (!packed || (wanted && !output) || size < 8U || xx_pd_is_stopped(pd))
-        return false;
+    if (!packed || (wanted && !output) || size < 8U || xx_pd_is_stopped(pd)) return false;
     pad = ((uint32_t)packed[0] << 8U) | packed[1];
     middle = ((size_t)packed[2] << 8U) | packed[3];
-    if (pad > 32U || middle < 4U || middle >= size ||
-        middle + (middle & 1U) > size ||
-        size - (middle + (middle & 1U)) < 4U ||
-        !xpk_rake_tree(nodes)) return false;
+    if (pad > 32U || middle < 4U || middle >= size || middle + (middle & 1U) > size || size - (middle + (middle & 1U)) < 4U || !xpk_rake_tree(nodes)) return false;
     back = middle;
     bits.data = packed;
     bits.size = size;
@@ -127,21 +123,18 @@ static bool xpk_rake_native(const uint8_t *packed, size_t size,
         } else {
             uint32_t count, distance, bit;
             size_t i;
-            if (!xpk_rake_symbol(&bits, nodes, &count) ||
-                !xpk_rake_bit(&bits, &bit)) return false;
+            if (!xpk_rake_symbol(&bits, nodes, &count) || !xpk_rake_bit(&bits, &bit)) return false;
             count += 2U;
             if (!bit) {
                 if (back <= 4U) return false;
                 distance = (uint32_t)packed[--back] + 1U;
             } else {
                 if (!xpk_rake_bit(&bits, &bit)) return false;
-                if (!xpk_rake_read_bits(&bits, bit ? 6U : 3U, &distance) ||
-                    back <= 4U) return false;
+                if (!xpk_rake_read_bits(&bits, bit ? 6U : 3U, &distance) || back <= 4U) return false;
                 distance = (distance << 8U) | packed[--back];
                 distance += bit ? 0x901U : 0x101U;
             }
-            if (count > position || distance > wanted - position || !distance)
-                return false;
+            if (count > position || distance > wanted - position || !distance) return false;
             for (i = 0U; i < count; ++i) {
                 if ((i & 1023U) == 0U && xx_pd_is_stopped(pd)) return false;
                 --position;

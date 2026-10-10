@@ -25,29 +25,21 @@ typedef struct xx_sls {
 
 typedef xx_sls xx_sls_t;
 
-XXFC_API void xx_sls_init(xx_sls *archive, xx_io_device *device,
-                          int64_t base_address);
+XXFC_API void xx_sls_init(xx_sls *archive, xx_io_device *device, int64_t base_address);
 XXFC_API xx_sls *xx_sls_create(xx_io_device *device, int64_t base_address);
 XXFC_API void xx_sls_destroy(xx_sls *archive);
 XXFC_API void xx_sls_free(xx_sls *archive);
 
 XXFC_API bool xx_sls_check_is_valid(Abstractformat *self, xx_pd_struct *pd);
 XXFC_API bool xx_sls_handle_base_info(Abstractformat *self, xx_pd_struct *pd);
-XXFC_API int64_t xx_sls_get_format_size(Abstractformat *self,
-                                        xx_pd_struct *pd);
-XXFC_API uint64_t xx_sls_get_number_of_archive_records(Abstractformat *self,
-                                                       xx_pd_struct *pd);
+XXFC_API int64_t xx_sls_get_format_size(Abstractformat *self, xx_pd_struct *pd);
+XXFC_API uint64_t xx_sls_get_number_of_archive_records(Abstractformat *self, xx_pd_struct *pd);
 
-XXFC_API xx_archive_record_state *xx_sls_create_archive_records_reading(
-    Abstractformat *self, const xx_list_s *options, xx_pd_struct *pd);
-XXFC_API const xx_archive_record *xx_sls_get_current_archive_record(
-    Abstractformat *self, xx_archive_record_state *state);
-XXFC_API bool xx_sls_unpack_current_archive_record(
-    Abstractformat *self, xx_archive_record_state *state, xx_pd_struct *pd);
-XXFC_API bool xx_sls_archive_record_move_to_next(
-    Abstractformat *self, xx_archive_record_state *state, xx_pd_struct *pd);
-XXFC_API void xx_sls_free_archive_records_reading(
-    Abstractformat *self, xx_archive_record_state *state);
+XXFC_API xx_archive_record_state *xx_sls_create_archive_records_reading(Abstractformat *self, const xx_list_s *options, xx_pd_struct *pd);
+XXFC_API const xx_archive_record *xx_sls_get_current_archive_record(Abstractformat *self, xx_archive_record_state *state);
+XXFC_API bool xx_sls_unpack_current_archive_record(Abstractformat *self, xx_archive_record_state *state, xx_pd_struct *pd);
+XXFC_API bool xx_sls_archive_record_move_to_next(Abstractformat *self, xx_archive_record_state *state, xx_pd_struct *pd);
+XXFC_API void xx_sls_free_archive_records_reading(Abstractformat *self, xx_archive_record_state *state);
 
 #ifdef __cplusplus
 }

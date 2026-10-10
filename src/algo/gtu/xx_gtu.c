@@ -26,17 +26,14 @@
 
 #define GTU_FRAME_PRELUDE 8U
 
-bool xx_gtu_decode_memory(const uint8_t *input, size_t input_size,
-                          uint8_t *output, size_t output_size,
-                          size_t *written)
+bool xx_gtu_decode_memory(const uint8_t *input, size_t input_size, uint8_t *output, size_t output_size, size_t *written)
 {
     size_t frame_offset = 0U;
     size_t left = output_size;
     size_t produced = 0U;
 
     if (written) *written = 0U;
-    if ((!input && input_size != 0U) || (!output && output_size != 0U))
-        return false;
+    if ((!input && input_size != 0U) || (!output && output_size != 0U)) return false;
     if (output_size == 0U) return true;
 
     while (left > 0U) {
@@ -48,9 +45,7 @@ bool xx_gtu_decode_memory(const uint8_t *input, size_t input_size,
 
         /* Reference: `if (nGtuFrameOffset > packed.size() - 8) fail` in signed
          * 64-bit arithmetic, so a member shorter than a prelude fails too. */
-        if ((input_size < GTU_FRAME_PRELUDE) ||
-            (frame_offset > input_size - GTU_FRAME_PRELUDE))
-            return false;
+        if ((input_size < GTU_FRAME_PRELUDE) || (frame_offset > input_size - GTU_FRAME_PRELUDE)) return false;
 
         raw_size = xx_data_get_i32(input + frame_offset, 4, 0, false);
         packed_size = xx_data_get_i32(input + frame_offset + 4U, 4, 0, false);
@@ -66,10 +61,7 @@ bool xx_gtu_decode_memory(const uint8_t *input, size_t input_size,
          * the arithmetic interval all restart at every frame.  The AMPK entry
          * point returns true only when it produced exactly frame_raw bytes,
          * which is the reference's `baGtuFrame.size() != nGtuRawSize` check. */
-        if (!xx_ampk_lzari_decode_memory(input + frame_offset, frame_packed,
-                                         output + produced, frame_raw,
-                                         &frame_written))
-            return false;
+        if (!xx_ampk_lzari_decode_memory(input + frame_offset, frame_packed, output + produced, frame_raw, &frame_written)) return false;
         if (frame_written != frame_raw) return false;
 
         produced += frame_raw;

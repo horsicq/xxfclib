@@ -46,19 +46,19 @@
 #define XX_DTB_MAX_PATH_SIZE 4096U
 
 typedef struct xx_dtb_entry_s {
-    char *name;            /**< Path, no leading slash. */
-    int64_t data_offset;   /**< Device offset of the property value. */
-    int64_t data_size;     /**< Length of the property value. */
-    bool is_folder;        /**< True for a node, false for a property. */
+    char *name;          /**< Path, no leading slash. */
+    int64_t data_offset; /**< Device offset of the property value. */
+    int64_t data_size;   /**< Length of the property value. */
+    bool is_folder;      /**< True for a node, false for a property. */
 } xx_dtb_entry;
 
 typedef struct xx_dtb_private_s {
     xx_dtb_entry *entries;
     size_t count;
     size_t capacity;
-    uint8_t *structure;    /**< Staged structure block. */
+    uint8_t *structure; /**< Staged structure block. */
     uint32_t structure_size;
-    uint8_t *strings;      /**< Staged strings block. */
+    uint8_t *strings; /**< Staged strings block. */
     uint32_t strings_size;
     int64_t input_size;
     int64_t struct_offset; /**< Device offset of the structure block. */
@@ -83,12 +83,11 @@ static void xx_dtb_vtable_destroy(Abstractformat *self);
 
 /* All positioning goes through seek64: a device tree may be embedded far
  * into a multi-gigabyte firmware image and long is 32-bit on Win64. */
-static bool xx_dtb_read_at(xx_io_device *device, int64_t offset, void *data,
-                           size_t size) {
+static bool xx_dtb_read_at(xx_io_device *device, int64_t offset, void *data, size_t size)
+{
     uint8_t *out = (uint8_t *)data;
     size_t done = 0U;
-    if (!device || (!data && size != 0U) || offset < 0 ||
-        xx_io_seek64(device, offset, SEEK_SET) != 0) {
+    if (!device || (!data && size != 0U) || offset < 0 || xx_io_seek64(device, offset, SEEK_SET) != 0) {
         return false;
     }
     while (done < size) {
@@ -99,7 +98,8 @@ static bool xx_dtb_read_at(xx_io_device *device, int64_t offset, void *data,
     return true;
 }
 
-static bool xx_dtb_add(int64_t left, uint64_t right, int64_t *result) {
+static bool xx_dtb_add(int64_t left, uint64_t right, int64_t *result)
+{
     if (!result || left < 0 || right > (uint64_t)(INT64_MAX - left)) {
         return false;
     }
@@ -108,23 +108,23 @@ static bool xx_dtb_add(int64_t left, uint64_t right, int64_t *result) {
 }
 
 /* True when [offset, offset + size) lies inside [0, total_size). */
-static bool xx_dtb_range_within(int64_t total_size, int64_t offset,
-                                int64_t size) {
-    return (total_size >= 0) && (offset >= 0) && (size >= 0) &&
-           (offset <= total_size) && (size <= total_size - offset);
+static bool xx_dtb_range_within(int64_t total_size, int64_t offset, int64_t size)
+{
+    return (total_size >= 0) && (offset >= 0) && (size >= 0) && (offset <= total_size) && (size <= total_size - offset);
 }
 
 /* Round a structure-block cursor up to the given power-of-two alignment,
  * refusing to wrap past the block. */
-static bool xx_dtb_align(uint32_t value, uint32_t alignment,
-                         uint32_t *result) {
+static bool xx_dtb_align(uint32_t value, uint32_t alignment, uint32_t *result)
+{
     uint32_t mask = alignment - 1U;
     if (!result || value > UINT32_MAX - mask) return false;
     *result = (value + mask) & ~mask;
     return true;
 }
 
-static void xx_dtb_private_cleanup(xx_dtb_private *parsed) {
+static void xx_dtb_private_cleanup(xx_dtb_private *parsed)
+{
     size_t index;
     if (!parsed) return;
     for (index = 0U; index < parsed->count; ++index) {
@@ -142,21 +142,19 @@ static void xx_dtb_private_cleanup(xx_dtb_private *parsed) {
     parsed->archive_end = -1;
 }
 
-static bool xx_dtb_append_entry(xx_dtb_private *parsed, xx_dtb_entry *entry) {
+static bool xx_dtb_append_entry(xx_dtb_private *parsed, xx_dtb_entry *entry)
+{
     xx_dtb_entry *grown;
     size_t capacity;
-    if (!parsed || !entry || !entry->name ||
-        parsed->count >= XX_DTB_MAX_ENTRIES) {
+    if (!parsed || !entry || !entry->name || parsed->count >= XX_DTB_MAX_ENTRIES) {
         return false;
     }
     if (parsed->count == parsed->capacity) {
         capacity = parsed->capacity ? parsed->capacity * 2U : 64U;
-        if (capacity < parsed->count ||
-            capacity > SIZE_MAX / sizeof(*parsed->entries)) {
+        if (capacity < parsed->count || capacity > SIZE_MAX / sizeof(*parsed->entries)) {
             return false;
         }
-        grown = (xx_dtb_entry *)xx_mem_realloc(
-            parsed->entries, capacity * sizeof(*parsed->entries));
+        grown = (xx_dtb_entry *)xx_mem_realloc(parsed->entries, capacity * sizeof(*parsed->entries));
         if (!grown) return false;
         parsed->entries = grown;
         parsed->capacity = capacity;
@@ -170,23 +168,20 @@ static bool xx_dtb_append_entry(xx_dtb_private *parsed, xx_dtb_entry *entry) {
  * every host this library builds for.  Device tree node names routinely
  * carry '@' and ',', which are fine; the reserved Windows punctuation and
  * any '..' component are not. */
-static bool xx_dtb_safe_name(const char *name) {
+static bool xx_dtb_safe_name(const char *name)
+{
     const char *component;
     const char *cursor;
     if (!name || !name[0] || name[0] == '/' || name[0] == '\\') return false;
     component = name;
     for (cursor = name;; ++cursor) {
         unsigned char ch = (unsigned char)*cursor;
-        if (ch == ':' || ch == '<' || ch == '>' || ch == '"' || ch == '|' ||
-            ch == '?' || ch == '*' || (ch != 0U && ch < 32U)) {
+        if (ch == ':' || ch == '<' || ch == '>' || ch == '"' || ch == '|' || ch == '?' || ch == '*' || (ch != 0U && ch < 32U)) {
             return false;
         }
         if (ch == '/' || ch == '\\' || ch == 0U) {
             size_t length = (size_t)(cursor - component);
-            if (length == 0U || (length == 1U && component[0] == '.') ||
-                (length == 2U && component[0] == '.' &&
-                 component[1] == '.') ||
-                component[length - 1U] == ' ' ||
+            if (length == 0U || (length == 1U && component[0] == '.') || (length == 2U && component[0] == '.' && component[1] == '.') || component[length - 1U] == ' ' ||
                 component[length - 1U] == '.') {
                 return false;
             }
@@ -198,7 +193,8 @@ static bool xx_dtb_safe_name(const char *name) {
 
 /* Parse-time check.  A node or property name is one path component, so an
  * embedded separator or a control byte makes it implausible. */
-static bool xx_dtb_plausible_name(const char *name, size_t length) {
+static bool xx_dtb_plausible_name(const char *name, size_t length)
+{
     size_t index;
     if (!name || length == 0U) return false;
     for (index = 0U; index < length; ++index) {
@@ -208,17 +204,15 @@ static bool xx_dtb_plausible_name(const char *name, size_t length) {
     return true;
 }
 
-static char *xx_dtb_join_name(const char *prefix, const char *name) {
+static char *xx_dtb_join_name(const char *prefix, const char *name)
+{
     size_t prefix_size = prefix ? xx_str_len(prefix) : 0U;
     size_t name_size = name ? xx_str_len(name) : 0U;
     char *combined;
-    if (!name || name_size == 0U || prefix_size >= XX_DTB_MAX_PATH_SIZE ||
-        name_size > XX_DTB_MAX_PATH_SIZE - prefix_size -
-                        (prefix_size != 0U ? 1U : 0U)) {
+    if (!name || name_size == 0U || prefix_size >= XX_DTB_MAX_PATH_SIZE || name_size > XX_DTB_MAX_PATH_SIZE - prefix_size - (prefix_size != 0U ? 1U : 0U)) {
         return NULL;
     }
-    combined = (char *)xx_mem_alloc(prefix_size + name_size +
-                                    (prefix_size != 0U ? 2U : 1U));
+    combined = (char *)xx_mem_alloc(prefix_size + name_size + (prefix_size != 0U ? 2U : 1U));
     if (!combined) return NULL;
     if (prefix_size != 0U) {
         xx_rt_memcpy(combined, prefix, prefix_size);
@@ -236,8 +230,8 @@ static char *xx_dtb_join_name(const char *prefix, const char *name) {
  * strings block, or NULL when the offset or the string runs outside it.  A
  * name offset past the strings block is the classic malformed-DTB case and
  * must be refused rather than read. */
-static const char *xx_dtb_string_at(const xx_dtb_private *parsed,
-                                    uint32_t offset) {
+static const char *xx_dtb_string_at(const xx_dtb_private *parsed, uint32_t offset)
+{
     uint32_t index;
     if (!parsed->strings || offset >= parsed->strings_size) return NULL;
     for (index = offset; index < parsed->strings_size; ++index) {
@@ -250,9 +244,8 @@ static const char *xx_dtb_string_at(const xx_dtb_private *parsed,
 
 /* Read a NUL-terminated name out of the staged structure block, reporting
  * its length and the cursor position just past the terminator. */
-static bool xx_dtb_struct_string(const xx_dtb_private *parsed, uint32_t cursor,
-                                 const char **out_name, size_t *out_length,
-                                 uint32_t *out_end) {
+static bool xx_dtb_struct_string(const xx_dtb_private *parsed, uint32_t cursor, const char **out_name, size_t *out_length, uint32_t *out_end)
+{
     uint32_t index;
     if (cursor >= parsed->structure_size) return false;
     for (index = cursor; index < parsed->structure_size; ++index) {
@@ -280,9 +273,8 @@ typedef struct xx_dtb_external_s {
 /* Walk one node and everything below it.  cursor points just past the node's
  * FDT_BEGIN_NODE token; on success it is left just past the matching
  * FDT_END_NODE. */
-static bool xx_dtb_walk_node(xx_dtb_private *parsed, uint32_t *cursor,
-                             const char *prefix, unsigned depth,
-                             xx_pd_struct *pd) {
+static bool xx_dtb_walk_node(xx_dtb_private *parsed, uint32_t *cursor, const char *prefix, unsigned depth, xx_pd_struct *pd)
+{
     const char *node_name;
     size_t node_name_length;
     char *path = NULL;
@@ -291,9 +283,7 @@ static bool xx_dtb_walk_node(xx_dtb_private *parsed, uint32_t *cursor,
 
     if (depth > XX_DTB_MAX_DEPTH) return false;
     if (pd && xx_pd_is_stopped(pd)) return false;
-    if (!xx_dtb_struct_string(parsed, position, &node_name, &node_name_length,
-                              &position) ||
-        !xx_dtb_align(position, 4U, &position)) {
+    if (!xx_dtb_struct_string(parsed, position, &node_name, &node_name_length, &position) || !xx_dtb_align(position, 4U, &position)) {
         return false;
     }
     xx_mem_zero(&external, sizeof(external));
@@ -327,12 +317,10 @@ static bool xx_dtb_walk_node(xx_dtb_private *parsed, uint32_t *cursor,
     for (;;) {
         uint32_t token;
         if (pd && xx_pd_is_stopped(pd)) goto fail;
-        if (position > parsed->structure_size - 4U ||
-            position + 4U < position) {
+        if (position > parsed->structure_size - 4U || position + 4U < position) {
             goto fail;
         }
-        token = xx_data_get_u32(parsed->structure, parsed->structure_size,
-                                position, true);
+        token = xx_data_get_u32(parsed->structure, parsed->structure_size, position, true);
         position += 4U;
         if (token == XX_DTB_TOKEN_NOP) continue;
         if (token == XX_DTB_TOKEN_END_NODE) break;
@@ -353,11 +341,8 @@ static bool xx_dtb_walk_node(xx_dtb_private *parsed, uint32_t *cursor,
             int64_t value_offset;
 
             if (position > parsed->structure_size - 8U) goto fail;
-            length = xx_data_get_u32(parsed->structure, parsed->structure_size,
-                                     position, true);
-            name_offset = xx_data_get_u32(parsed->structure,
-                                          parsed->structure_size,
-                                          position + 4U, true);
+            length = xx_data_get_u32(parsed->structure, parsed->structure_size, position, true);
+            name_offset = xx_data_get_u32(parsed->structure, parsed->structure_size, position + 4U, true);
             position += 8U;
             /* Before version 16 a value of eight bytes or more is 8-byte
              * aligned; from version 16 on everything is 4-byte aligned. */
@@ -365,38 +350,28 @@ static bool xx_dtb_walk_node(xx_dtb_private *parsed, uint32_t *cursor,
                 if (!xx_dtb_align(position, 8U, &position)) goto fail;
             }
             value_start = position;
-            if (length > parsed->structure_size ||
-                value_start > parsed->structure_size - length) {
+            if (length > parsed->structure_size || value_start > parsed->structure_size - length) {
                 goto fail;
             }
-            if (!xx_dtb_align(value_start + length, 4U, &position) ||
-                position > parsed->structure_size) {
+            if (!xx_dtb_align(value_start + length, 4U, &position) || position > parsed->structure_size) {
                 goto fail;
             }
             property_name = xx_dtb_string_at(parsed, name_offset);
-            if (!property_name ||
-                !xx_dtb_plausible_name(property_name,
-                                       xx_str_len(property_name))) {
+            if (!property_name || !xx_dtb_plausible_name(property_name, xx_str_len(property_name))) {
                 goto fail;
             }
             /* Remember the FIT external-data pair; the member it describes
              * is created once the node closes. */
             if (length == 4U && xx_str_equals(property_name, "data-offset")) {
                 external.has_offset = true;
-                external.offset = xx_data_get_u32(parsed->structure,
-                                                  parsed->structure_size,
-                                                  value_start, true);
-            } else if (length == 4U &&
-                       xx_str_equals(property_name, "data-size")) {
+                external.offset = xx_data_get_u32(parsed->structure, parsed->structure_size, value_start, true);
+            } else if (length == 4U && xx_str_equals(property_name, "data-size")) {
                 external.has_size = true;
-                external.size = xx_data_get_u32(parsed->structure,
-                                                parsed->structure_size,
-                                                value_start, true);
+                external.size = xx_data_get_u32(parsed->structure, parsed->structure_size, value_start, true);
             }
             full_name = xx_dtb_join_name(path, property_name);
             if (!full_name) goto fail;
-            if (!xx_dtb_add(parsed->struct_offset, value_start,
-                            &value_offset)) {
+            if (!xx_dtb_add(parsed->struct_offset, value_start, &value_offset)) {
                 xx_str_free(full_name);
                 goto fail;
             }
@@ -417,12 +392,9 @@ static bool xx_dtb_walk_node(xx_dtb_private *parsed, uint32_t *cursor,
      * carried inline.  A pair that does not resolve inside the device is
      * dropped rather than failing the parse, since the rest of the tree is
      * still perfectly readable. */
-    if (external.has_offset && external.has_size &&
-        parsed->external_base >= 0 && node_name_length != 0U) {
+    if (external.has_offset && external.has_size && parsed->external_base >= 0 && node_name_length != 0U) {
         int64_t payload;
-        if (xx_dtb_add(parsed->external_base, external.offset, &payload) &&
-            xx_dtb_range_within(parsed->input_size, payload,
-                                (int64_t)external.size)) {
+        if (xx_dtb_add(parsed->external_base, external.offset, &payload) && xx_dtb_range_within(parsed->input_size, payload, (int64_t)external.size)) {
             xx_dtb_entry entry;
             xx_mem_zero(&entry, sizeof(entry));
             entry.name = xx_dtb_join_name(path, "data");
@@ -445,8 +417,8 @@ fail:
     return false;
 }
 
-static bool xx_dtb_parse(Abstractformat *self, xx_dtb_private *parsed,
-                         xx_pd_struct *pd) {
+static bool xx_dtb_parse(Abstractformat *self, xx_dtb_private *parsed, xx_pd_struct *pd)
+{
     uint8_t header[XX_DTB_HEADER_SIZE];
     uint32_t off_struct;
     uint32_t off_strings;
@@ -465,15 +437,11 @@ static bool xx_dtb_parse(Abstractformat *self, xx_dtb_private *parsed,
         parsed->external_base = -1;
         parsed->archive_end = -1;
     }
-    if (!self || !self->device || !parsed || self->base_address < 0 ||
-        (pd && xx_pd_is_stopped(pd))) {
+    if (!self || !self->device || !parsed || self->base_address < 0 || (pd && xx_pd_is_stopped(pd))) {
         return false;
     }
     parsed->input_size = xx_io_total_size(self->device);
-    if (!xx_dtb_range_within(parsed->input_size, self->base_address,
-                             XX_DTB_HEADER_SIZE) ||
-        !xx_dtb_read_at(self->device, self->base_address, header,
-                        sizeof(header)) ||
+    if (!xx_dtb_range_within(parsed->input_size, self->base_address, XX_DTB_HEADER_SIZE) || !xx_dtb_read_at(self->device, self->base_address, header, sizeof(header)) ||
         xx_data_get_u32(header, sizeof(header), 0U, true) != XX_DTB_MAGIC) {
         goto fail;
     }
@@ -482,30 +450,22 @@ static bool xx_dtb_parse(Abstractformat *self, xx_dtb_private *parsed,
     off_strings = xx_data_get_u32(header, sizeof(header), 12U, true);
     off_rsvmap = xx_data_get_u32(header, sizeof(header), 16U, true);
     parsed->version = xx_data_get_u32(header, sizeof(header), 20U, true);
-    parsed->last_comp_version =
-        xx_data_get_u32(header, sizeof(header), 24U, true);
-    parsed->boot_cpuid_phys =
-        xx_data_get_u32(header, sizeof(header), 28U, true);
+    parsed->last_comp_version = xx_data_get_u32(header, sizeof(header), 24U, true);
+    parsed->boot_cpuid_phys = xx_data_get_u32(header, sizeof(header), 28U, true);
 
-    if (parsed->version < XX_DTB_MIN_VERSION ||
-        parsed->version > XX_DTB_MAX_VERSION ||
-        parsed->last_comp_version > parsed->version ||
+    if (parsed->version < XX_DTB_MIN_VERSION || parsed->version > XX_DTB_MAX_VERSION || parsed->last_comp_version > parsed->version ||
         parsed->last_comp_version < XX_DTB_MIN_VERSION) {
         goto fail;
     }
     /* The blob must be at least a header, and must fit the device. */
-    if (parsed->total_size < XX_DTB_HEADER_SIZE ||
-        !xx_dtb_add(self->base_address, parsed->total_size,
-                    &parsed->archive_end) ||
+    if (parsed->total_size < XX_DTB_HEADER_SIZE || !xx_dtb_add(self->base_address, parsed->total_size, &parsed->archive_end) ||
         parsed->archive_end > parsed->input_size) {
         goto fail;
     }
     /* Both blocks are 4-byte aligned and the reservation block is 8-byte
      * aligned; all three live inside the blob. */
-    if ((off_struct & 3U) != 0U || (off_rsvmap & 7U) != 0U ||
-        off_struct < XX_DTB_HEADER_SIZE || off_strings < XX_DTB_HEADER_SIZE ||
-        off_rsvmap < XX_DTB_HEADER_SIZE || off_struct >= parsed->total_size ||
-        off_strings >= parsed->total_size || off_rsvmap >= parsed->total_size) {
+    if ((off_struct & 3U) != 0U || (off_rsvmap & 7U) != 0U || off_struct < XX_DTB_HEADER_SIZE || off_strings < XX_DTB_HEADER_SIZE || off_rsvmap < XX_DTB_HEADER_SIZE ||
+        off_struct >= parsed->total_size || off_strings >= parsed->total_size || off_rsvmap >= parsed->total_size) {
         goto fail;
     }
     /* size_dt_strings arrived in version 3 and size_dt_struct in version 17;
@@ -522,11 +482,8 @@ static bool xx_dtb_parse(Abstractformat *self, xx_dtb_private *parsed,
     } else {
         struct_size = parsed->total_size - off_struct;
     }
-    if (struct_size < 8U || strings_size == 0U ||
-        struct_size > parsed->total_size - off_struct ||
-        strings_size > parsed->total_size - off_strings ||
-        struct_size > XX_DTB_MAX_STRUCT_SIZE ||
-        strings_size > XX_DTB_MAX_STRINGS_SIZE) {
+    if (struct_size < 8U || strings_size == 0U || struct_size > parsed->total_size - off_struct || strings_size > parsed->total_size - off_strings ||
+        struct_size > XX_DTB_MAX_STRUCT_SIZE || strings_size > XX_DTB_MAX_STRINGS_SIZE) {
         goto fail;
     }
 
@@ -536,13 +493,10 @@ static bool xx_dtb_parse(Abstractformat *self, xx_dtb_private *parsed,
     for (;;) {
         uint8_t entry[16];
         if (parsed->reservations > XX_DTB_MAX_RESERVATIONS) goto fail;
-        if (!xx_dtb_range_within(parsed->archive_end, offset,
-                                 (int64_t)sizeof(entry)) ||
-            !xx_dtb_read_at(self->device, offset, entry, sizeof(entry))) {
+        if (!xx_dtb_range_within(parsed->archive_end, offset, (int64_t)sizeof(entry)) || !xx_dtb_read_at(self->device, offset, entry, sizeof(entry))) {
             goto fail;
         }
-        if (xx_data_get_u64(entry, sizeof(entry), 0U, true) == 0U &&
-            xx_data_get_u64(entry, sizeof(entry), 8U, true) == 0U) {
+        if (xx_data_get_u64(entry, sizeof(entry), 0U, true) == 0U && xx_data_get_u64(entry, sizeof(entry), 8U, true) == 0U) {
             break;
         }
         ++parsed->reservations;
@@ -559,11 +513,8 @@ static bool xx_dtb_parse(Abstractformat *self, xx_dtb_private *parsed,
     if (!parsed->structure || !parsed->strings) goto fail;
     parsed->structure_size = struct_size;
     parsed->strings_size = strings_size;
-    if (!xx_dtb_read_at(self->device, parsed->struct_offset, parsed->structure,
-                        struct_size) ||
-        !xx_dtb_add(self->base_address, off_strings, &offset) ||
-        !xx_dtb_read_at(self->device, offset, parsed->strings,
-                        strings_size)) {
+    if (!xx_dtb_read_at(self->device, parsed->struct_offset, parsed->structure, struct_size) || !xx_dtb_add(self->base_address, off_strings, &offset) ||
+        !xx_dtb_read_at(self->device, offset, parsed->strings, strings_size)) {
         goto fail;
     }
     /* A FIT image's external payloads are measured from the end of the blob
@@ -571,8 +522,7 @@ static bool xx_dtb_parse(Abstractformat *self, xx_dtb_private *parsed,
     {
         uint32_t aligned;
         if (xx_dtb_align(parsed->total_size, 4U, &aligned)) {
-            (void)xx_dtb_add(self->base_address, aligned,
-                             &parsed->external_base);
+            (void)xx_dtb_add(self->base_address, aligned, &parsed->external_base);
         }
     }
 
@@ -609,18 +559,16 @@ fail:
 /* Record plumbing                                                           */
 /* ------------------------------------------------------------------------ */
 
-static bool xx_dtb_copy_options(xx_list_s *destination,
-                                const xx_list_s *source) {
+static bool xx_dtb_copy_options(xx_list_s *destination, const xx_list_s *source)
+{
     size_t index;
     if (!destination || !source) return source == NULL;
     for (index = 0U; index < source->count; ++index) {
-        const xx_meta *item =
-            (const xx_meta *)xx_list_at((const xx_list_t *)source, index);
+        const xx_meta *item = (const xx_meta *)xx_list_at((const xx_list_t *)source, index);
         xx_meta copy;
         if (!item) continue;
         xx_meta_init(&copy, item->meta_id);
-        if (!xx_var_copy(&copy.var, &item->var) ||
-            !xx_list_append(destination, &copy)) {
+        if (!xx_var_copy(&copy.var, &item->var) || !xx_list_append(destination, &copy)) {
             xx_meta_cleanup(&copy);
             return false;
         }
@@ -628,20 +576,19 @@ static bool xx_dtb_copy_options(xx_list_s *destination,
     return true;
 }
 
-static const xx_var *xx_dtb_find_option(const xx_list_s *options,
-                                        uint32_t meta_id) {
+static const xx_var *xx_dtb_find_option(const xx_list_s *options, uint32_t meta_id)
+{
     size_t index;
     if (!options) return NULL;
     for (index = 0U; index < options->count; ++index) {
-        const xx_meta *item =
-            (const xx_meta *)xx_list_at((const xx_list_t *)options, index);
+        const xx_meta *item = (const xx_meta *)xx_list_at((const xx_list_t *)options, index);
         if (item && item->meta_id == meta_id) return &item->var;
     }
     return NULL;
 }
 
-static bool xx_dtb_populate_record(xx_archive_record *record,
-                                   const xx_dtb_entry *entry) {
+static bool xx_dtb_populate_record(xx_archive_record *record, const xx_dtb_entry *entry)
+{
     if (!record || !entry || !entry->name) return false;
     xx_archive_record_cleanup(record);
     xx_archive_record_init(record);
@@ -649,18 +596,13 @@ static bool xx_dtb_populate_record(xx_archive_record *record,
     record->header_size = 0;
     record->data_offset = entry->data_offset;
     record->compressed_size = entry->data_size;
-    return xx_archive_record_set_original_name(record, entry->name) &&
-           xx_archive_record_set_meta_u64(record, XX_META_ID_UNCOMPRESSED_SIZE,
-                                          (uint64_t)entry->data_size) &&
-           xx_archive_record_set_meta_u64(record, XX_META_ID_COMPRESSED_SIZE,
-                                          (uint64_t)entry->data_size) &&
-           xx_archive_record_set_meta_u64(record,
-                                          XX_META_ID_COMPRESSION_METHOD, 0U) &&
-           xx_archive_record_set_meta_bool(record, XX_META_ID_IS_FOLDER,
-                                           entry->is_folder);
+    return xx_archive_record_set_original_name(record, entry->name) && xx_archive_record_set_meta_u64(record, XX_META_ID_UNCOMPRESSED_SIZE, (uint64_t)entry->data_size) &&
+           xx_archive_record_set_meta_u64(record, XX_META_ID_COMPRESSED_SIZE, (uint64_t)entry->data_size) &&
+           xx_archive_record_set_meta_u64(record, XX_META_ID_COMPRESSION_METHOD, 0U) && xx_archive_record_set_meta_bool(record, XX_META_ID_IS_FOLDER, entry->is_folder);
 }
 
-static void xx_dtb_archive_stream_free(void *pointer) {
+static void xx_dtb_archive_stream_free(void *pointer)
+{
     xx_dtb_archive_stream *stream = (xx_dtb_archive_stream *)pointer;
     if (!stream) return;
     xx_dtb_private_cleanup(&stream->parsed);
@@ -671,7 +613,8 @@ static void xx_dtb_archive_stream_free(void *pointer) {
 /* Public interface                                                          */
 /* ------------------------------------------------------------------------ */
 
-void xx_dtb_init(xx_dtb *dtb, xx_io_device *dev, int64_t base_address) {
+void xx_dtb_init(xx_dtb *dtb, xx_io_device *dev, int64_t base_address)
+{
     if (!dtb) return;
     xx_mem_zero(dtb, sizeof(*dtb));
     xx_format_init(&dtb->format, dev, base_address);
@@ -684,27 +627,25 @@ void xx_dtb_init(xx_dtb *dtb, xx_io_device *dev, int64_t base_address) {
     dtb->format.check_is_valid = xx_dtb_check_is_valid;
     dtb->format.handle_base_info = xx_dtb_handle_base_info;
     dtb->format.get_format_size = xx_dtb_get_format_size;
-    dtb->format.get_number_of_archive_records =
-        xx_dtb_get_number_of_archive_records;
-    dtb->format.create_archive_records_reading =
-        xx_dtb_create_archive_records_reading;
+    dtb->format.get_number_of_archive_records = xx_dtb_get_number_of_archive_records;
+    dtb->format.create_archive_records_reading = xx_dtb_create_archive_records_reading;
     dtb->format.get_current_archive_record = xx_dtb_get_current_archive_record;
-    dtb->format.unpack_current_archive_record =
-        xx_dtb_unpack_current_archive_record;
+    dtb->format.unpack_current_archive_record = xx_dtb_unpack_current_archive_record;
     dtb->format.archive_record_move_to_next = xx_dtb_archive_record_move_to_next;
-    dtb->format.free_archive_records_reading =
-        xx_dtb_free_archive_records_reading;
+    dtb->format.free_archive_records_reading = xx_dtb_free_archive_records_reading;
     dtb->format.destroy = xx_dtb_vtable_destroy;
     dtb->archive_end = -1;
 }
 
-xx_dtb *xx_dtb_create(xx_io_device *dev, int64_t base_address) {
+xx_dtb *xx_dtb_create(xx_io_device *dev, int64_t base_address)
+{
     xx_dtb *dtb = (xx_dtb *)xx_mem_alloc(sizeof(*dtb));
     if (dtb) xx_dtb_init(dtb, dev, base_address);
     return dtb;
 }
 
-void xx_dtb_destroy(xx_dtb *dtb) {
+void xx_dtb_destroy(xx_dtb *dtb)
+{
     if (!dtb) return;
     if (dtb->internal) {
         xx_dtb_private_cleanup((xx_dtb_private *)dtb->internal);
@@ -714,24 +655,28 @@ void xx_dtb_destroy(xx_dtb *dtb) {
     xx_format_cleanup_extra_parameters(&dtb->format);
 }
 
-static void xx_dtb_vtable_destroy(Abstractformat *self) {
+static void xx_dtb_vtable_destroy(Abstractformat *self)
+{
     xx_dtb_destroy((xx_dtb *)self);
 }
 
-void xx_dtb_free(xx_dtb *dtb) {
+void xx_dtb_free(xx_dtb *dtb)
+{
     if (!dtb) return;
     xx_dtb_destroy(dtb);
     xx_mem_free(dtb);
 }
 
-bool xx_dtb_check_is_valid(Abstractformat *self, xx_pd_struct *pd) {
+bool xx_dtb_check_is_valid(Abstractformat *self, xx_pd_struct *pd)
+{
     xx_dtb_private parsed;
     bool result = xx_dtb_parse(self, &parsed, pd);
     xx_dtb_private_cleanup(&parsed);
     return result;
 }
 
-bool xx_dtb_handle_base_info(Abstractformat *self, xx_pd_struct *pd) {
+bool xx_dtb_handle_base_info(Abstractformat *self, xx_pd_struct *pd)
+{
     xx_dtb_private *parsed;
     xx_dtb *dtb = (xx_dtb *)self;
     int64_t total_size;
@@ -776,29 +721,27 @@ bool xx_dtb_handle_base_info(Abstractformat *self, xx_pd_struct *pd) {
     return true;
 }
 
-int64_t xx_dtb_get_format_size(Abstractformat *self, xx_pd_struct *pd) {
-    if (!self ||
-        (!self->base_info_handled && !xx_format_handle_base_info(self, pd))) {
+int64_t xx_dtb_get_format_size(Abstractformat *self, xx_pd_struct *pd)
+{
+    if (!self || (!self->base_info_handled && !xx_format_handle_base_info(self, pd))) {
         return -1;
     }
     return self->format_size;
 }
 
-uint64_t xx_dtb_get_number_of_archive_records(Abstractformat *self,
-                                              xx_pd_struct *pd) {
-    if (!self ||
-        (!self->base_info_handled && !xx_format_handle_base_info(self, pd))) {
+uint64_t xx_dtb_get_number_of_archive_records(Abstractformat *self, xx_pd_struct *pd)
+{
+    if (!self || (!self->base_info_handled && !xx_format_handle_base_info(self, pd))) {
         return 0U;
     }
     return ((xx_dtb *)self)->number_of_records;
 }
 
-xx_archive_record_state *xx_dtb_create_archive_records_reading(
-    Abstractformat *self, const xx_list_s *options, xx_pd_struct *pd) {
+xx_archive_record_state *xx_dtb_create_archive_records_reading(Abstractformat *self, const xx_list_s *options, xx_pd_struct *pd)
+{
     xx_archive_record_state *state;
     xx_dtb_archive_stream *stream;
-    if (!self || !self->device ||
-        (!self->base_info_handled && !xx_format_handle_base_info(self, pd))) {
+    if (!self || !self->device || (!self->base_info_handled && !xx_format_handle_base_info(self, pd))) {
         return NULL;
     }
     state = (xx_archive_record_state *)xx_mem_alloc(sizeof(*state));
@@ -809,8 +752,7 @@ xx_archive_record_state *xx_dtb_create_archive_records_reading(
         return NULL;
     }
     xx_archive_record_state_init(state, self);
-    if (!xx_dtb_copy_options(&state->options, options) ||
-        !xx_dtb_parse(self, &stream->parsed, pd)) {
+    if (!xx_dtb_copy_options(&state->options, options) || !xx_dtb_parse(self, &stream->parsed, pd)) {
         xx_dtb_archive_stream_free(stream);
         xx_archive_record_state_free(state);
         return NULL;
@@ -819,28 +761,22 @@ xx_archive_record_state *xx_dtb_create_archive_records_reading(
     state->internal_state = stream;
     state->free_internal = xx_dtb_archive_stream_free;
     state->total_records = (int64_t)stream->parsed.count;
-    if (stream->parsed.count != 0U &&
-        xx_dtb_populate_record(&state->current_record,
-                               &stream->parsed.entries[0])) {
+    if (stream->parsed.count != 0U && xx_dtb_populate_record(&state->current_record, &stream->parsed.entries[0])) {
         state->has_record = true;
         state->current_index = 0;
     }
     return state;
 }
 
-const xx_archive_record *xx_dtb_get_current_archive_record(
-    Abstractformat *self, xx_archive_record_state *state) {
-    return self && state && state->format == self && state->has_record
-               ? &state->current_record
-               : NULL;
+const xx_archive_record *xx_dtb_get_current_archive_record(Abstractformat *self, xx_archive_record_state *state)
+{
+    return self && state && state->format == self && state->has_record ? &state->current_record : NULL;
 }
 
-bool xx_dtb_archive_record_move_to_next(Abstractformat *self,
-                                        xx_archive_record_state *state,
-                                        xx_pd_struct *pd) {
+bool xx_dtb_archive_record_move_to_next(Abstractformat *self, xx_archive_record_state *state, xx_pd_struct *pd)
+{
     xx_dtb_archive_stream *stream;
-    if (!self || !state || state->format != self || !state->has_record ||
-        !state->internal_state || (pd && xx_pd_is_stopped(pd))) {
+    if (!self || !state || state->format != self || !state->has_record || !state->internal_state || (pd && xx_pd_is_stopped(pd))) {
         return false;
     }
     stream = (xx_dtb_archive_stream *)state->internal_state;
@@ -851,8 +787,7 @@ bool xx_dtb_archive_record_move_to_next(Abstractformat *self,
         state->has_record = false;
         return false;
     }
-    if (!xx_dtb_populate_record(&state->current_record,
-                                &stream->parsed.entries[stream->index])) {
+    if (!xx_dtb_populate_record(&state->current_record, &stream->parsed.entries[stream->index])) {
         state->has_record = false;
         return false;
     }
@@ -860,9 +795,8 @@ bool xx_dtb_archive_record_move_to_next(Abstractformat *self,
     return true;
 }
 
-bool xx_dtb_unpack_current_archive_record(Abstractformat *self,
-                                          xx_archive_record_state *state,
-                                          xx_pd_struct *pd) {
+bool xx_dtb_unpack_current_archive_record(Abstractformat *self, xx_archive_record_state *state, xx_pd_struct *pd)
+{
     const xx_archive_record *record;
     const xx_var *option;
     const char *name;
@@ -871,8 +805,7 @@ bool xx_dtb_unpack_current_archive_record(Abstractformat *self,
     char *destination = NULL;
     bool folder;
     bool result = false;
-    if (!self || !self->device || !state || state->format != self ||
-        !state->has_record || (pd && xx_pd_is_stopped(pd))) {
+    if (!self || !self->device || !state || state->format != self || !state->has_record || (pd && xx_pd_is_stopped(pd))) {
         return false;
     }
     record = &state->current_record;
@@ -881,39 +814,28 @@ bool xx_dtb_unpack_current_archive_record(Abstractformat *self,
     option = xx_dtb_find_option(&state->options, XX_META_ID_OPT_UNPACK_PATH);
     if (!option) {
         int64_t total = xx_io_total_size(self->device);
-        folder = xx_archive_record_get_meta_bool(record, XX_META_ID_IS_FOLDER,
-                                                 false);
-        return folder || (record->data_offset >= 0 &&
-                          record->compressed_size >= 0 &&
-                          record->data_offset <= total &&
-                          record->compressed_size <=
-                              total - record->data_offset);
+        folder = xx_archive_record_get_meta_bool(record, XX_META_ID_IS_FOLDER, false);
+        return folder ||
+               (record->data_offset >= 0 && record->compressed_size >= 0 && record->data_offset <= total && record->compressed_size <= total - record->data_offset);
     }
-    if (option->type == XX_VAR_TYPE_STRING ||
-        option->type == XX_VAR_TYPE_STRING_VIEW) {
+    if (option->type == XX_VAR_TYPE_STRING || option->type == XX_VAR_TYPE_STRING_VIEW) {
         base = xx_var_get_str(option);
-    } else if (option->type == XX_VAR_TYPE_WSTRING ||
-               option->type == XX_VAR_TYPE_WSTRING_VIEW) {
+    } else if (option->type == XX_VAR_TYPE_WSTRING || option->type == XX_VAR_TYPE_WSTRING_VIEW) {
         owned_base = xx_str_unicode_to_utf8(xx_var_get_wstr(option));
         base = owned_base;
     }
     if (!base) goto cleanup;
-    if (base[0] && base[xx_str_len(base) - 1U] != '/' &&
-        base[xx_str_len(base) - 1U] != '\\') {
+    if (base[0] && base[xx_str_len(base) - 1U] != '/' && base[xx_str_len(base) - 1U] != '\\') {
         destination = xx_str_concat3(base, "/", name);
     } else {
         destination = xx_str_concat(base, name);
     }
     if (!destination) goto cleanup;
-    folder = xx_archive_record_get_meta_bool(record, XX_META_ID_IS_FOLDER,
-                                             false);
+    folder = xx_archive_record_get_meta_bool(record, XX_META_ID_IS_FOLDER, false);
     if (folder) {
         result = xx_store_create_dirs_a(destination, true);
     } else if (xx_store_create_dirs_a(destination, false)) {
-        result = xx_store_unpack_device_to_file(self->device,
-                                                record->data_offset,
-                                                record->compressed_size,
-                                                destination, pd);
+        result = xx_store_unpack_device_to_file(self->device, record->data_offset, record->compressed_size, destination, pd);
     }
 
 cleanup:
@@ -922,31 +844,41 @@ cleanup:
     return result;
 }
 
-void xx_dtb_free_archive_records_reading(Abstractformat *self,
-                                         xx_archive_record_state *state) {
+void xx_dtb_free_archive_records_reading(Abstractformat *self, xx_archive_record_state *state)
+{
     (void)self;
     xx_archive_record_state_free(state);
 }
 
-uint64_t xx_dtb_get_number_of_records(const xx_dtb *dtb) {
+uint64_t xx_dtb_get_number_of_records(const xx_dtb *dtb)
+{
     return dtb ? dtb->number_of_records : 0U;
 }
-uint64_t xx_dtb_get_number_of_members(const xx_dtb *dtb) {
+uint64_t xx_dtb_get_number_of_members(const xx_dtb *dtb)
+{
     return dtb ? dtb->number_of_members : 0U;
 }
-uint64_t xx_dtb_get_number_of_nodes(const xx_dtb *dtb) {
+uint64_t xx_dtb_get_number_of_nodes(const xx_dtb *dtb)
+{
     return dtb ? dtb->number_of_nodes : 0U;
 }
-uint64_t xx_dtb_get_number_of_properties(const xx_dtb *dtb) {
+uint64_t xx_dtb_get_number_of_properties(const xx_dtb *dtb)
+{
     return dtb ? dtb->number_of_properties : 0U;
 }
-uint32_t xx_dtb_get_total_size(const xx_dtb *dtb) {
+uint32_t xx_dtb_get_total_size(const xx_dtb *dtb)
+{
     return dtb ? dtb->total_size : 0U;
 }
-uint32_t xx_dtb_get_version(const xx_dtb *dtb) {
+uint32_t xx_dtb_get_version(const xx_dtb *dtb)
+{
     return dtb ? dtb->version : 0U;
 }
-bool xx_dtb_get_is_fit(const xx_dtb *dtb) { return dtb ? dtb->is_fit : false; }
-int64_t xx_dtb_get_archive_end(const xx_dtb *dtb) {
+bool xx_dtb_get_is_fit(const xx_dtb *dtb)
+{
+    return dtb ? dtb->is_fit : false;
+}
+int64_t xx_dtb_get_archive_end(const xx_dtb *dtb)
+{
     return dtb ? dtb->archive_end : -1;
 }

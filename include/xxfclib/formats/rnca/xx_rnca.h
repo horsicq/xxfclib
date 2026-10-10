@@ -46,34 +46,27 @@ typedef struct xx_rnca {
 typedef xx_rnca xx_rnca_t;
 typedef xx_rnca XRnca;
 
-XXFC_API void xx_rnca_init(xx_rnca *archive, xx_io_device *device,
-                           int64_t base_address);
+XXFC_API void xx_rnca_init(xx_rnca *archive, xx_io_device *device, int64_t base_address);
 XXFC_API xx_rnca *xx_rnca_create(xx_io_device *device, int64_t base_address);
 XXFC_API void xx_rnca_destroy(xx_rnca *archive);
 XXFC_API void xx_rnca_free(xx_rnca *archive);
 
 XXFC_API bool xx_rnca_check_is_valid(Abstractformat *self, xx_pd_struct *pd);
 XXFC_API bool xx_rnca_handle_base_info(Abstractformat *self, xx_pd_struct *pd);
-XXFC_API int64_t xx_rnca_get_format_size(Abstractformat *self,
-                                         xx_pd_struct *pd);
-XXFC_API uint64_t xx_rnca_get_number_of_archive_records(Abstractformat *self,
-                                                        xx_pd_struct *pd);
+XXFC_API int64_t xx_rnca_get_format_size(Abstractformat *self, xx_pd_struct *pd);
+XXFC_API uint64_t xx_rnca_get_number_of_archive_records(Abstractformat *self, xx_pd_struct *pd);
 
-XXFC_API xx_archive_record_state *xx_rnca_create_archive_records_reading(
-    Abstractformat *self, const xx_list_s *options, xx_pd_struct *pd);
-XXFC_API const xx_archive_record *xx_rnca_get_current_archive_record(
-    Abstractformat *self, xx_archive_record_state *state);
-XXFC_API bool xx_rnca_unpack_current_archive_record(
-    Abstractformat *self, xx_archive_record_state *state, xx_pd_struct *pd);
-XXFC_API bool xx_rnca_archive_record_move_to_next(
-    Abstractformat *self, xx_archive_record_state *state, xx_pd_struct *pd);
-XXFC_API void xx_rnca_free_archive_records_reading(
-    Abstractformat *self, xx_archive_record_state *state);
+XXFC_API xx_archive_record_state *xx_rnca_create_archive_records_reading(Abstractformat *self, const xx_list_s *options, xx_pd_struct *pd);
+XXFC_API const xx_archive_record *xx_rnca_get_current_archive_record(Abstractformat *self, xx_archive_record_state *state);
+XXFC_API bool xx_rnca_unpack_current_archive_record(Abstractformat *self, xx_archive_record_state *state, xx_pd_struct *pd);
+XXFC_API bool xx_rnca_archive_record_move_to_next(Abstractformat *self, xx_archive_record_state *state, xx_pd_struct *pd);
+XXFC_API void xx_rnca_free_archive_records_reading(Abstractformat *self, xx_archive_record_state *state);
 
 XXFC_API uint64_t xx_rnca_get_number_of_records(const xx_rnca *archive);
 XXFC_API int64_t xx_rnca_get_directory_size(const xx_rnca *archive);
 
-static inline Abstractformat *xx_rnca_to_format(xx_rnca *archive) {
+static inline Abstractformat *xx_rnca_to_format(xx_rnca *archive)
+{
     return archive ? &archive->format : NULL;
 }
 

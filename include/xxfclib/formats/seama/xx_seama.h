@@ -55,7 +55,7 @@ typedef struct xx_seama XSeama;
 
 struct xx_seama {
     Abstractformat format;
-    uint64_t number_of_records;  /**< Payload entities published. */
+    uint64_t number_of_records; /**< Payload entities published. */
     uint64_t number_of_members;
     uint64_t number_of_entities; /**< Entities in the chain, payload or not. */
     uint32_t meta_size;          /**< First entity's metasize. */
@@ -64,29 +64,21 @@ struct xx_seama {
     void *internal;
 };
 
-XXFC_API void xx_seama_init(xx_seama *seama, xx_io_device *dev,
-                            int64_t base_address);
+XXFC_API void xx_seama_init(xx_seama *seama, xx_io_device *dev, int64_t base_address);
 XXFC_API xx_seama *xx_seama_create(xx_io_device *dev, int64_t base_address);
 XXFC_API void xx_seama_destroy(xx_seama *seama);
 XXFC_API void xx_seama_free(xx_seama *seama);
 
 XXFC_API bool xx_seama_check_is_valid(Abstractformat *self, xx_pd_struct *pd);
 XXFC_API bool xx_seama_handle_base_info(Abstractformat *self, xx_pd_struct *pd);
-XXFC_API int64_t xx_seama_get_format_size(Abstractformat *self,
-                                          xx_pd_struct *pd);
-XXFC_API uint64_t xx_seama_get_number_of_archive_records(Abstractformat *self,
-                                                         xx_pd_struct *pd);
+XXFC_API int64_t xx_seama_get_format_size(Abstractformat *self, xx_pd_struct *pd);
+XXFC_API uint64_t xx_seama_get_number_of_archive_records(Abstractformat *self, xx_pd_struct *pd);
 
-XXFC_API xx_archive_record_state *xx_seama_create_archive_records_reading(
-    Abstractformat *self, const xx_list_s *options, xx_pd_struct *pd);
-XXFC_API const xx_archive_record *xx_seama_get_current_archive_record(
-    Abstractformat *self, xx_archive_record_state *state);
-XXFC_API bool xx_seama_unpack_current_archive_record(
-    Abstractformat *self, xx_archive_record_state *state, xx_pd_struct *pd);
-XXFC_API bool xx_seama_archive_record_move_to_next(
-    Abstractformat *self, xx_archive_record_state *state, xx_pd_struct *pd);
-XXFC_API void xx_seama_free_archive_records_reading(
-    Abstractformat *self, xx_archive_record_state *state);
+XXFC_API xx_archive_record_state *xx_seama_create_archive_records_reading(Abstractformat *self, const xx_list_s *options, xx_pd_struct *pd);
+XXFC_API const xx_archive_record *xx_seama_get_current_archive_record(Abstractformat *self, xx_archive_record_state *state);
+XXFC_API bool xx_seama_unpack_current_archive_record(Abstractformat *self, xx_archive_record_state *state, xx_pd_struct *pd);
+XXFC_API bool xx_seama_archive_record_move_to_next(Abstractformat *self, xx_archive_record_state *state, xx_pd_struct *pd);
+XXFC_API void xx_seama_free_archive_records_reading(Abstractformat *self, xx_archive_record_state *state);
 
 XXFC_API uint64_t xx_seama_get_number_of_records(const xx_seama *seama);
 XXFC_API uint64_t xx_seama_get_number_of_members(const xx_seama *seama);
@@ -95,18 +87,24 @@ XXFC_API uint32_t xx_seama_get_meta_size(const xx_seama *seama);
 XXFC_API uint32_t xx_seama_get_image_size(const xx_seama *seama);
 XXFC_API int64_t xx_seama_get_archive_end(const xx_seama *seama);
 
-static inline Abstractformat *xx_seama_to_format(xx_seama *seama) {
+static inline Abstractformat *xx_seama_to_format(xx_seama *seama)
+{
     return seama ? &seama->format : NULL;
 }
-static inline void XSeama_init(xx_seama *seama, xx_io_device *dev,
-                               int64_t base_address) {
+static inline void XSeama_init(xx_seama *seama, xx_io_device *dev, int64_t base_address)
+{
     xx_seama_init(seama, dev, base_address);
 }
-static inline xx_seama *XSeama_create(xx_io_device *dev, int64_t base_address) {
+static inline xx_seama *XSeama_create(xx_io_device *dev, int64_t base_address)
+{
     return xx_seama_create(dev, base_address);
 }
-static inline void XSeama_free(xx_seama *seama) { xx_seama_free(seama); }
-static inline bool XSeama_is_valid(xx_seama *seama, xx_pd_struct *pd) {
+static inline void XSeama_free(xx_seama *seama)
+{
+    xx_seama_free(seama);
+}
+static inline bool XSeama_is_valid(xx_seama *seama, xx_pd_struct *pd)
+{
     return seama ? xx_format_is_valid(&seama->format, pd) : false;
 }
 

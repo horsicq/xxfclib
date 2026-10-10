@@ -63,8 +63,7 @@ bool ppmd8_re_flush_buffer(ppmd8_range_enc *re)
     return true;
 }
 
-void ppmd8_re_init(CPpmd8 *p, ppmd8_range_enc *re, xx_io_device *dev,
-                   uint8_t *mem, size_t mem_cap)
+void ppmd8_re_init(CPpmd8 *p, ppmd8_range_enc *re, xx_io_device *dev, uint8_t *mem, size_t mem_cap)
 {
     xx_rt_memset(re, 0, sizeof(*re));
     re->dev = dev;
@@ -82,14 +81,12 @@ void ppmd8_re_init(CPpmd8 *p, ppmd8_range_enc *re, xx_io_device *dev,
 
 void Ppmd8_RangeEnc_FlushData(CPpmd8 *p, ppmd8_range_enc *re)
 {
-    for (int i = 0; i < 4; i++, p->Low <<= 8)
-        ppmd8_re_byte(re, (uint8_t)(p->Low >> 24));
+    for (int i = 0; i < 4; i++, p->Low <<= 8) ppmd8_re_byte(re, (uint8_t)(p->Low >> 24));
 }
 
 static void RangeEnc_Normalize(CPpmd8 *p, ppmd8_range_enc *re)
 {
-    while ((p->Low ^ (p->Low + p->Range)) < kTop ||
-           (p->Range < kBot && ((p->Range = (0 - p->Low) & (kBot - 1)), 1))) {
+    while ((p->Low ^ (p->Low + p->Range)) < kTop || (p->Range < kBot && ((p->Range = (0 - p->Low) & (kBot - 1)), 1))) {
         ppmd8_re_byte(re, (uint8_t)(p->Low >> 24));
         p->Range <<= 8;
         p->Low <<= 8;
@@ -179,8 +176,7 @@ void Ppmd8_EncodeSymbol(CPpmd8 *p, ppmd8_range_enc *re, int symbol)
         unsigned i, numMasked = p->MinContext->NumStats;
         do {
             p->OrderFall++;
-            if (!p->MinContext->Suffix)
-                return; /* EndMarker (symbol = -1) */
+            if (!p->MinContext->Suffix) return; /* EndMarker (symbol = -1) */
             p->MinContext = Ppmd8_GetContext(p, p->MinContext->Suffix);
         } while (p->MinContext->NumStats == numMasked);
 
@@ -221,13 +217,8 @@ static void ppmd8_release_staging(ppmd8_range_enc *re, uint8_t *staging)
     re->obuf_pos = 0U;
 }
 
-bool xx_ppmd8_pack_stream(ppmd8_range_enc *re,
-                          xx_io_device *src_dev,
-                          const uint8_t *src_mem, size_t src_size,
-                          int64_t uncomp_size,
-                          int order, uint32_t mem_mb, int restore_method,
-                          bool write_zip_header,
-                          xx_pd_struct *pd)
+bool xx_ppmd8_pack_stream(ppmd8_range_enc *re, xx_io_device *src_dev, const uint8_t *src_mem, size_t src_size, int64_t uncomp_size, int order, uint32_t mem_mb,
+                          int restore_method, bool write_zip_header, xx_pd_struct *pd)
 {
     if (order < PPMD8_MIN_ORDER || order > PPMD8_MAX_ORDER) return false;
     if (restore_method < 0 || restore_method > 1) return false;
@@ -235,8 +226,7 @@ bool xx_ppmd8_pack_stream(ppmd8_range_enc *re,
     if (mem_mb > XX_PPMD8_MAX_MEM_MB) mem_mb = XX_PPMD8_MAX_MEM_MB;
 
     size_t io_capacity = re->io_capacity;
-    uint8_t *staging = io_capacity <= (size_t)-1 / 2U
-        ? (uint8_t *)xx_mem_alloc(io_capacity * 2U) : NULL;
+    uint8_t *staging = io_capacity <= (size_t)-1 / 2U ? (uint8_t *)xx_mem_alloc(io_capacity * 2U) : NULL;
     uint8_t *inbuf = staging;
     if (!staging) return false;
     re->obuf = staging + io_capacity;
@@ -270,11 +260,14 @@ bool xx_ppmd8_pack_stream(ppmd8_range_enc *re,
     Ppmd8_Init(&ppmd, (unsigned)order, (unsigned)restore_method);
 
     int64_t in_processed = 0;
-    size_t  mem_read_pos = 0;
-    bool    ok = true;
+    size_t mem_read_pos = 0;
+    bool ok = true;
 
     for (;;) {
-        if (pd && xx_pd_is_stopped(pd)) { ok = false; break; }
+        if (pd && xx_pd_is_stopped(pd)) {
+            ok = false;
+            break;
+        }
 
         size_t to_read = io_capacity;
         if (uncomp_size >= 0) {
@@ -286,7 +279,10 @@ bool xx_ppmd8_pack_stream(ppmd8_range_enc *re,
         size_t nread = 0;
         if (src_dev) {
             ssize_t r = xx_io_read(src_dev, inbuf, to_read);
-            if (r < 0 || (size_t)r > to_read) { ok = false; break; }
+            if (r < 0 || (size_t)r > to_read) {
+                ok = false;
+                break;
+            }
             nread = (size_t)r;
         } else if (src_mem) {
             size_t rem = src_size > mem_read_pos ? (src_size - mem_read_pos) : 0;
@@ -301,7 +297,10 @@ bool xx_ppmd8_pack_stream(ppmd8_range_enc *re,
 
         for (size_t i = 0; i < nread; i++) {
             Ppmd8_EncodeSymbol(&ppmd, re, (int)inbuf[i]);
-            if (re->error) { ok = false; break; }
+            if (re->error) {
+                ok = false;
+                break;
+            }
         }
         if (!ok) break;
 
@@ -312,8 +311,7 @@ bool xx_ppmd8_pack_stream(ppmd8_range_enc *re,
     if (ok) {
         Ppmd8_EncodeSymbol(&ppmd, re, -1);
         Ppmd8_RangeEnc_FlushData(&ppmd, re);
-        if (!ppmd8_re_flush_buffer(re))
-            ok = false;
+        if (!ppmd8_re_flush_buffer(re)) ok = false;
     }
 
     Ppmd8_Free(&ppmd);

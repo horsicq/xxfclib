@@ -68,22 +68,20 @@ typedef struct bgi2_stream_s {
     char *name; /**< BGI2_NAME_BUFFER bytes: the current member's name. */
 } bgi2_stream;
 
-static size_t bgi2_capacity(void) {
+static size_t bgi2_capacity(void)
+{
     size_t n = xx_get_file_buffer_size();
     if (!n) n = XX_DEFAULT_FILE_BUFFER_SIZE;
     if (n < 4096U) n = 4096U;
     return n > (SIZE_MAX >> 1) ? SIZE_MAX >> 1 : n;
 }
 
-static bool bgi2_read_at(xx_io_device *device, int64_t offset, void *buffer,
-                         size_t size) {
+static bool bgi2_read_at(xx_io_device *device, int64_t offset, void *buffer, size_t size)
+{
     size_t done = 0U;
-    if (!device || (!buffer && size != 0U) || offset < 0 ||
-        xx_io_seek64(device, offset, SEEK_SET) != 0)
-        return false;
+    if (!device || (!buffer && size != 0U) || offset < 0 || xx_io_seek64(device, offset, SEEK_SET) != 0) return false;
     while (done < size) {
-        ssize_t amount = xx_io_read(device, (uint8_t *)buffer + done,
-                                    size - done);
+        ssize_t amount = xx_io_read(device, (uint8_t *)buffer + done, size - done);
         if (amount <= 0 || (size_t)amount > size - done) return false;
         done += (size_t)amount;
     }
@@ -92,8 +90,8 @@ static bool bgi2_read_at(xx_io_device *device, int64_t offset, void *buffer,
 
 /* Stream `size` bytes at `offset` into `destination` (or just read them
  * through when it is NULL) in fixed chunks. */
-static bool bgi2_copy_range(xx_io_device *source, int64_t offset, int64_t size,
-                            xx_io_device *destination, xx_pd_struct *pd) {
+static bool bgi2_copy_range(xx_io_device *source, int64_t offset, int64_t size, xx_io_device *destination, xx_pd_struct *pd)
+{
     const size_t capacity = bgi2_capacity();
     uint8_t *buffer;
     int64_t remaining = size;
@@ -103,17 +101,14 @@ static bool bgi2_copy_range(xx_io_device *source, int64_t offset, int64_t size,
     buffer = (uint8_t *)xx_mem_alloc(capacity);
     if (!buffer) return false;
     while (ok && remaining > 0) {
-        size_t chunk = remaining > (int64_t)capacity ? capacity
-                                                      : (size_t)remaining;
+        size_t chunk = remaining > (int64_t)capacity ? capacity : (size_t)remaining;
         size_t written = 0U;
-        if ((pd && xx_pd_is_stopped(pd)) ||
-            !bgi2_read_at(source, offset + (size - remaining), buffer, chunk)) {
+        if ((pd && xx_pd_is_stopped(pd)) || !bgi2_read_at(source, offset + (size - remaining), buffer, chunk)) {
             ok = false;
             break;
         }
         while (destination && written < chunk) {
-            ssize_t amount = xx_io_write(destination, buffer + written,
-                                         chunk - written);
+            ssize_t amount = xx_io_write(destination, buffer + written, chunk - written);
             if (amount <= 0 || (size_t)amount > chunk - written) {
                 ok = false;
                 break;
@@ -128,15 +123,18 @@ static bool bgi2_copy_range(xx_io_device *source, int64_t offset, int64_t size,
 
 /* ---- member names ------------------------------------------------------ */
 
-static bool bgi2_is_sjis_lead(uint8_t c) {
+static bool bgi2_is_sjis_lead(uint8_t c)
+{
     return (c >= 0x81U && c <= 0x9fU) || (c >= 0xe0U && c <= 0xfcU);
 }
 
-static bool bgi2_is_sjis_trail(uint8_t c) {
+static bool bgi2_is_sjis_trail(uint8_t c)
+{
     return (c >= 0x40U && c <= 0x7eU) || (c >= 0x80U && c <= 0xfcU);
 }
 
-static size_t bgi2_put_escape(char *out, uint8_t c) {
+static size_t bgi2_put_escape(char *out, uint8_t c)
+{
     static const char digits[] = "0123456789ABCDEF";
     out[0] = '%';
     out[1] = digits[(c >> 4U) & 0x0fU];
@@ -145,7 +143,8 @@ static size_t bgi2_put_escape(char *out, uint8_t c) {
 }
 
 /* Length of the raw name: up to the first NUL, at most BGI2_NAME_SIZE. */
-static size_t bgi2_raw_length(const uint8_t *raw) {
+static size_t bgi2_raw_length(const uint8_t *raw)
+{
     size_t length = 0U;
     while (length < BGI2_NAME_SIZE && raw[length] != 0U) ++length;
     return length;
@@ -154,27 +153,23 @@ static size_t bgi2_raw_length(const uint8_t *raw) {
 /* Raw Shift-JIS name -> ASCII path (see xx_bgi2.h).  A double-byte character
  * is escaped as a unit, so a trail byte of 0x5C never becomes a separator.
  * `out` holds at least 3 * length + 1 bytes; returns the converted length. */
-static size_t bgi2_convert_name(const uint8_t *raw, size_t length, char *out) {
+static size_t bgi2_convert_name(const uint8_t *raw, size_t length, char *out)
+{
     size_t at = 0U;
     size_t index = 0U;
     while (index < length) {
         uint8_t c = raw[index];
-        if (bgi2_is_sjis_lead(c) && index + 1U < length &&
-            bgi2_is_sjis_trail(raw[index + 1U])) {
+        if (bgi2_is_sjis_lead(c) && index + 1U < length && bgi2_is_sjis_trail(raw[index + 1U])) {
             at += bgi2_put_escape(out + at, c);
             at += bgi2_put_escape(out + at, raw[index + 1U]);
             index += 2U;
             continue;
         }
-        if (c >= 0x80U || c < 0x20U || c == 0x7fU || c == (uint8_t)'%' ||
-            c == (uint8_t)':' || c == (uint8_t)'<' || c == (uint8_t)'>' ||
-            c == (uint8_t)'"' || c == (uint8_t)'|' || c == (uint8_t)'?' ||
-            c == (uint8_t)'*')
+        if (c >= 0x80U || c < 0x20U || c == 0x7fU || c == (uint8_t)'%' || c == (uint8_t)':' || c == (uint8_t)'<' || c == (uint8_t)'>' || c == (uint8_t)'"' ||
+            c == (uint8_t)'|' || c == (uint8_t)'?' || c == (uint8_t)'*')
             at += bgi2_put_escape(out + at, c);
-        else if (c == (uint8_t)'\\')
-            out[at++] = '/';
-        else
-            out[at++] = (char)c;
+        else if (c == (uint8_t)'\\') out[at++] = '/';
+        else out[at++] = (char)c;
         ++index;
     }
     out[at] = 0;
@@ -182,13 +177,13 @@ static size_t bgi2_convert_name(const uint8_t *raw, size_t length, char *out) {
 }
 
 /* 64-bit FNV-1a with ASCII folded to lower case. */
-static uint64_t bgi2_name_hash(const char *name, size_t length) {
+static uint64_t bgi2_name_hash(const char *name, size_t length)
+{
     uint64_t hash = UINT64_C(0xcbf29ce484222325);
     size_t index;
     for (index = 0U; index < length; ++index) {
         uint8_t c = (uint8_t)name[index];
-        if (c >= (uint8_t)'A' && c <= (uint8_t)'Z')
-            c = (uint8_t)(c - (uint8_t)'A' + (uint8_t)'a');
+        if (c >= (uint8_t)'A' && c <= (uint8_t)'Z') c = (uint8_t)(c - (uint8_t)'A' + (uint8_t)'a');
         hash ^= (uint64_t)c;
         hash *= UINT64_C(0x100000001b3);
     }
@@ -197,7 +192,8 @@ static uint64_t bgi2_name_hash(const char *name, size_t length) {
 
 /* Insert "%_<index>" before the extension of the last component (or append
  * it).  `name` has room for BGI2_NAME_BUFFER bytes. */
-static void bgi2_insert_suffix(char *name, size_t length, uint32_t index) {
+static void bgi2_insert_suffix(char *name, size_t length, uint32_t index)
+{
     char suffix[2 + 10];
     char digits[10];
     size_t suffix_length = 0U, digit_count = 0U, component = 0U, at, tail;
@@ -218,22 +214,19 @@ static void bgi2_insert_suffix(char *name, size_t length, uint32_t index) {
     while (digit_count != 0U) suffix[suffix_length++] = digits[--digit_count];
     if (length + suffix_length >= BGI2_NAME_BUFFER) return;
     tail = length - dot;
-    for (at = tail + 1U; at > 0U; --at)
-        name[dot + suffix_length + at - 1U] = name[dot + at - 1U];
+    for (at = tail + 1U; at > 0U; --at) name[dot + suffix_length + at - 1U] = name[dot + at - 1U];
     xx_rt_memcpy(name + dot, suffix, suffix_length);
 }
 
 /* A Windows device name as the part of a component before its first '.',
  * trailing spaces ignored. */
-static bool bgi2_reserved_component(const char *segment, size_t length) {
-    static const char *const devices[] = {"CON",    "PRN",    "AUX",
-                                          "NUL",    "CLOCK$", "CONIN$",
-                                          "CONOUT$"};
+static bool bgi2_reserved_component(const char *segment, size_t length)
+{
+    static const char *const devices[] = {"CON", "PRN", "AUX", "NUL", "CLOCK$", "CONIN$", "CONOUT$"};
     char stem[8];
     size_t stem_length = 0U, index;
     while (stem_length < length && segment[stem_length] != '.') ++stem_length;
-    while (stem_length != 0U && segment[stem_length - 1U] == ' ')
-        --stem_length;
+    while (stem_length != 0U && segment[stem_length - 1U] == ' ') --stem_length;
     if (stem_length < 3U || stem_length > sizeof(stem) - 1U) return false;
     for (index = 0U; index < stem_length; ++index) {
         char c = segment[index];
@@ -241,36 +234,28 @@ static bool bgi2_reserved_component(const char *segment, size_t length) {
     }
     stem[stem_length] = 0;
     if (stem_length == 4U && stem[3] >= '0' && stem[3] <= '9' &&
-        ((stem[0] == 'C' && stem[1] == 'O' && stem[2] == 'M') ||
-         (stem[0] == 'L' && stem[1] == 'P' && stem[2] == 'T')))
+        ((stem[0] == 'C' && stem[1] == 'O' && stem[2] == 'M') || (stem[0] == 'L' && stem[1] == 'P' && stem[2] == 'T')))
         return true;
     for (index = 0U; index < sizeof(devices) / sizeof(devices[0]); ++index)
-        if (xx_str_len(devices[index]) == stem_length &&
-            xx_rt_memcmp(stem, devices[index], stem_length) == 0)
-            return true;
+        if (xx_str_len(devices[index]) == stem_length && xx_rt_memcmp(stem, devices[index], stem_length) == 0) return true;
     return false;
 }
 
 /* Refuse absolute paths, drive letters and streams, empty components,
  * components ending in '.' or ' ' (covers "." and ".."), device names,
  * control characters and characters no Windows path may carry. */
-static bool bgi2_safe_name(const char *name) {
+static bool bgi2_safe_name(const char *name)
+{
     const char *segment;
     const char *at;
     if (!name || !name[0] || name[0] == '/') return false;
     segment = name;
     for (at = name;; ++at) {
         unsigned char c = (unsigned char)*at;
-        if (c == ':' || c == '<' || c == '>' || c == '"' || c == '|' ||
-            c == '?' || c == '*' || c == '\\' || c == 0x7fU ||
-            (c != 0U && c < 0x20U))
-            return false;
+        if (c == ':' || c == '<' || c == '>' || c == '"' || c == '|' || c == '?' || c == '*' || c == '\\' || c == 0x7fU || (c != 0U && c < 0x20U)) return false;
         if (c == '/' || c == 0U) {
             size_t length = (size_t)(at - segment);
-            if (length == 0U || segment[length - 1U] == '.' ||
-                segment[length - 1U] == ' ' ||
-                bgi2_reserved_component(segment, length))
-                return false;
+            if (length == 0U || segment[length - 1U] == '.' || segment[length - 1U] == ' ' || bgi2_reserved_component(segment, length)) return false;
             if (c == 0U) return true;
             segment = at + 1;
         }
@@ -279,7 +264,8 @@ static bool bgi2_safe_name(const char *name) {
 
 /* Converted name of entry `index` from its raw 0x60 bytes into `out`
  * (BGI2_NAME_BUFFER bytes); an empty name becomes "%_<index>". */
-static size_t bgi2_make_name(const uint8_t *raw, uint32_t index, char *out) {
+static size_t bgi2_make_name(const uint8_t *raw, uint32_t index, char *out)
+{
     size_t length = bgi2_convert_name(raw, bgi2_raw_length(raw), out);
     if (length == 0U) {
         bgi2_insert_suffix(out, 0U, index);
@@ -290,26 +276,22 @@ static size_t bgi2_make_name(const uint8_t *raw, uint32_t index, char *out) {
 
 /* ---- index walk -------------------------------------------------------- */
 
-static bool bgi2_read_header(Abstractformat *format, bgi2_layout *layout,
-                             int64_t *size_out) {
+static bool bgi2_read_header(Abstractformat *format, bgi2_layout *layout, int64_t *size_out)
+{
     uint8_t header[BGI2_HEADER_SIZE];
     int64_t total, size;
     uint32_t count;
-    if (!format || !format->device || !layout || format->base_address < 0)
-        return false;
+    if (!format || !format->device || !layout || format->base_address < 0) return false;
     total = xx_io_total_size(format->device);
     if (total < format->base_address) return false;
     size = total - format->base_address;
-    if (size < (int64_t)BGI2_HEADER_SIZE ||
-        !bgi2_read_at(format->device, format->base_address, header,
-                      sizeof(header)) ||
+    if (size < (int64_t)BGI2_HEADER_SIZE || !bgi2_read_at(format->device, format->base_address, header, sizeof(header)) ||
         xx_rt_memcmp(header, BGI2_MAGIC, BGI2_MAGIC_SIZE) != 0)
         return false;
     count = xx_data_get_u32(header + BGI2_MAGIC_SIZE, 4, 0, false);
     if (count == 0U || count > BGI2_MAX_MEMBERS) return false;
     layout->count = count;
-    layout->data_base =
-        (int64_t)BGI2_HEADER_SIZE + (int64_t)count * BGI2_ENTRY_SIZE;
+    layout->data_base = (int64_t)BGI2_HEADER_SIZE + (int64_t)count * BGI2_ENTRY_SIZE;
     if (layout->data_base > size) return false;
     layout->format_size = layout->data_base;
     *size_out = size;
@@ -319,24 +301,19 @@ static bool bgi2_read_header(Abstractformat *format, bgi2_layout *layout,
 /* Walk the whole index.  Every member must lie inside the file.  With
  * `items` non-NULL it also fills items[] and keys[] (layout->count entries
  * each), using `name` (BGI2_NAME_BUFFER bytes) to hash every name. */
-static bool bgi2_walk(Abstractformat *format, bgi2_layout *layout,
-                      int64_t archive_size, bgi2_member *items, bgi2_key *keys,
-                      char *name, xx_pd_struct *pd) {
+static bool bgi2_walk(Abstractformat *format, bgi2_layout *layout, int64_t archive_size, bgi2_member *items, bgi2_key *keys, char *name, xx_pd_struct *pd)
+{
     uint8_t *chunk;
     uint32_t done = 0U;
     int64_t furthest = layout->data_base;
     bool ok = true;
-    chunk = (uint8_t *)xx_mem_alloc((size_t)BGI2_CHUNK_ENTRIES *
-                                    BGI2_ENTRY_SIZE);
+    chunk = (uint8_t *)xx_mem_alloc((size_t)BGI2_CHUNK_ENTRIES * BGI2_ENTRY_SIZE);
     if (!chunk) return false;
     while (ok && done < layout->count) {
         uint32_t take = layout->count - done, i;
         if (take > BGI2_CHUNK_ENTRIES) take = BGI2_CHUNK_ENTRIES;
         if ((pd && xx_pd_is_stopped(pd)) ||
-            !bgi2_read_at(format->device,
-                          format->base_address + BGI2_HEADER_SIZE +
-                              (int64_t)done * BGI2_ENTRY_SIZE,
-                          chunk, (size_t)take * BGI2_ENTRY_SIZE)) {
+            !bgi2_read_at(format->device, format->base_address + BGI2_HEADER_SIZE + (int64_t)done * BGI2_ENTRY_SIZE, chunk, (size_t)take * BGI2_ENTRY_SIZE)) {
             ok = false;
             break;
         }
@@ -367,25 +344,25 @@ static bool bgi2_walk(Abstractformat *format, bgi2_layout *layout,
     return ok;
 }
 
-static int bgi2_compare_keys(const void *left, const void *right) {
+static int bgi2_compare_keys(const void *left, const void *right)
+{
     const bgi2_key *a = (const bgi2_key *)left;
     const bgi2_key *b = (const bgi2_key *)right;
     if (a->hash != b->hash) return a->hash < b->hash ? -1 : 1;
     return a->index < b->index ? -1 : (a->index > b->index ? 1 : 0);
 }
 
-static void bgi2_mark_duplicates(bgi2_member *items, bgi2_key *keys,
-                                 size_t count) {
+static void bgi2_mark_duplicates(bgi2_member *items, bgi2_key *keys, size_t count)
+{
     size_t index;
     if (count < 2U) return;
     xx_rt_qsort(keys, count, sizeof(*keys), bgi2_compare_keys);
     for (index = 1U; index < count; ++index)
-        if (keys[index].hash == keys[index - 1U].hash &&
-            keys[index].index < count)
-            items[keys[index].index].renamed = true;
+        if (keys[index].hash == keys[index - 1U].hash && keys[index].index < count) items[keys[index].index].renamed = true;
 }
 
-static void bgi2_stream_free(void *opaque) {
+static void bgi2_stream_free(void *opaque)
+{
     bgi2_stream *stream = (bgi2_stream *)opaque;
     if (!stream) return;
     if (stream->items) xx_mem_free(stream->items);
@@ -393,16 +370,15 @@ static void bgi2_stream_free(void *opaque) {
     xx_mem_free(stream);
 }
 
-static bool bgi2_open_stream(Abstractformat *format, bgi2_stream **result,
-                             xx_pd_struct *pd) {
+static bool bgi2_open_stream(Abstractformat *format, bgi2_stream **result, xx_pd_struct *pd)
+{
     bgi2_layout layout;
     int64_t archive_size = 0;
     bgi2_member *items = NULL;
     bgi2_key *keys = NULL;
     char *name = NULL;
     bgi2_stream *stream = NULL;
-    if (!result || !bgi2_read_header(format, &layout, &archive_size))
-        return false;
+    if (!result || !bgi2_read_header(format, &layout, &archive_size)) return false;
     /* At most 0x3FFFF entries: about 10 MiB of bookkeeping, and only after
      * the index itself (32 bytes of file per 40 bytes here) was found to fit
      * inside the file. */
@@ -410,9 +386,7 @@ static bool bgi2_open_stream(Abstractformat *format, bgi2_stream **result,
     keys = (bgi2_key *)xx_mem_alloc((size_t)layout.count * sizeof(*keys));
     name = (char *)xx_mem_alloc(BGI2_NAME_BUFFER);
     stream = (bgi2_stream *)xx_mem_calloc(1U, sizeof(*stream));
-    if (!items || !keys || !name || !stream ||
-        !bgi2_walk(format, &layout, archive_size, items, keys, name, pd))
-        goto fail;
+    if (!items || !keys || !name || !stream || !bgi2_walk(format, &layout, archive_size, items, keys, name, pd)) goto fail;
     bgi2_mark_duplicates(items, keys, layout.count);
     xx_mem_free(keys);
     stream->items = items;
@@ -428,36 +402,31 @@ fail:
     return false;
 }
 
-static int64_t bgi2_entry_offset(Abstractformat *format, size_t index) {
-    return format->base_address + BGI2_HEADER_SIZE +
-           (int64_t)index * BGI2_ENTRY_SIZE;
+static int64_t bgi2_entry_offset(Abstractformat *format, size_t index)
+{
+    return format->base_address + BGI2_HEADER_SIZE + (int64_t)index * BGI2_ENTRY_SIZE;
 }
 
-static bool bgi2_load_name(Abstractformat *format, bgi2_stream *stream,
-                           size_t index) {
+static bool bgi2_load_name(Abstractformat *format, bgi2_stream *stream, size_t index)
+{
     uint8_t raw[BGI2_NAME_SIZE];
     size_t length;
-    if (!bgi2_read_at(format->device, bgi2_entry_offset(format, index), raw,
-                      sizeof(raw)))
-        return false;
+    if (!bgi2_read_at(format->device, bgi2_entry_offset(format, index), raw, sizeof(raw))) return false;
     length = bgi2_make_name(raw, (uint32_t)index, stream->name);
-    if (stream->items[index].renamed)
-        bgi2_insert_suffix(stream->name, length, (uint32_t)index);
+    if (stream->items[index].renamed) bgi2_insert_suffix(stream->name, length, (uint32_t)index);
     return true;
 }
 
-static bool bgi2_copy_options(xx_list_s *destination,
-                              const xx_list_s *source) {
+static bool bgi2_copy_options(xx_list_s *destination, const xx_list_s *source)
+{
     size_t index;
     if (!source) return true;
     for (index = 0U; index < source->count; ++index) {
-        const xx_meta *original =
-            (const xx_meta *)xx_list_at((const xx_list_t *)source, index);
+        const xx_meta *original = (const xx_meta *)xx_list_at((const xx_list_t *)source, index);
         xx_meta copy;
         if (!original) continue;
         xx_meta_init(&copy, original->meta_id);
-        if (!xx_var_copy(&copy.var, &original->var) ||
-            !xx_list_append(destination, &copy)) {
+        if (!xx_var_copy(&copy.var, &original->var) || !xx_list_append(destination, &copy)) {
             xx_meta_cleanup(&copy);
             return false;
         }
@@ -465,19 +434,19 @@ static bool bgi2_copy_options(xx_list_s *destination,
     return true;
 }
 
-static const xx_var *bgi2_option(const xx_list_s *options, uint32_t id) {
+static const xx_var *bgi2_option(const xx_list_s *options, uint32_t id)
+{
     size_t index;
     if (!options) return NULL;
     for (index = 0U; index < options->count; ++index) {
-        const xx_meta *meta =
-            (const xx_meta *)xx_list_at((const xx_list_t *)options, index);
+        const xx_meta *meta = (const xx_meta *)xx_list_at((const xx_list_t *)options, index);
         if (meta && meta->meta_id == id) return &meta->var;
     }
     return NULL;
 }
 
-static bool bgi2_set_record(Abstractformat *format, xx_archive_record *record,
-                            bgi2_stream *stream, size_t index) {
+static bool bgi2_set_record(Abstractformat *format, xx_archive_record *record, bgi2_stream *stream, size_t index)
+{
     const bgi2_member *member = &stream->items[index];
     xx_archive_record_cleanup(record);
     xx_archive_record_init(record);
@@ -486,22 +455,16 @@ static bool bgi2_set_record(Abstractformat *format, xx_archive_record *record,
     record->header_size = BGI2_ENTRY_SIZE;
     record->data_offset = member->data_offset;
     record->compressed_size = member->size;
-    return xx_archive_record_set_original_name(record, stream->name) &&
-           xx_archive_record_set_meta_u64(record, XX_META_ID_COMPRESSED_SIZE,
-                                          (uint64_t)member->size) &&
-           xx_archive_record_set_meta_u64(record, XX_META_ID_UNCOMPRESSED_SIZE,
-                                          (uint64_t)member->size) &&
-           xx_archive_record_set_meta_u64(record, XX_META_ID_COMPRESSION_METHOD,
-                                          0U) &&
-           xx_archive_record_set_meta_bool(record, XX_META_ID_IS_ENCRYPTED,
-                                           false) &&
+    return xx_archive_record_set_original_name(record, stream->name) && xx_archive_record_set_meta_u64(record, XX_META_ID_COMPRESSED_SIZE, (uint64_t)member->size) &&
+           xx_archive_record_set_meta_u64(record, XX_META_ID_UNCOMPRESSED_SIZE, (uint64_t)member->size) &&
+           xx_archive_record_set_meta_u64(record, XX_META_ID_COMPRESSION_METHOD, 0U) && xx_archive_record_set_meta_bool(record, XX_META_ID_IS_ENCRYPTED, false) &&
            xx_archive_record_set_meta_bool(record, XX_META_ID_IS_FOLDER, false);
 }
 
 /* ---- public API -------------------------------------------------------- */
 
-void xx_bgi2_init(xx_bgi2 *archive, xx_io_device *device,
-                  int64_t base_address) {
+void xx_bgi2_init(xx_bgi2 *archive, xx_io_device *device, int64_t base_address)
+{
     if (!archive) return;
     xx_mem_zero(archive, sizeof(*archive));
     xx_format_init(&archive->format, device, base_address);
@@ -514,51 +477,47 @@ void xx_bgi2_init(xx_bgi2 *archive, xx_io_device *device,
     archive->format.check_is_valid = xx_bgi2_check_is_valid;
     archive->format.handle_base_info = xx_bgi2_handle_base_info;
     archive->format.get_format_size = xx_bgi2_get_format_size;
-    archive->format.get_number_of_archive_records =
-        xx_bgi2_get_number_of_archive_records;
-    archive->format.create_archive_records_reading =
-        xx_bgi2_create_archive_records_reading;
-    archive->format.get_current_archive_record =
-        xx_bgi2_get_current_archive_record;
-    archive->format.unpack_current_archive_record =
-        xx_bgi2_unpack_current_archive_record;
-    archive->format.archive_record_move_to_next =
-        xx_bgi2_archive_record_move_to_next;
-    archive->format.free_archive_records_reading =
-        xx_bgi2_free_archive_records_reading;
+    archive->format.get_number_of_archive_records = xx_bgi2_get_number_of_archive_records;
+    archive->format.create_archive_records_reading = xx_bgi2_create_archive_records_reading;
+    archive->format.get_current_archive_record = xx_bgi2_get_current_archive_record;
+    archive->format.unpack_current_archive_record = xx_bgi2_unpack_current_archive_record;
+    archive->format.archive_record_move_to_next = xx_bgi2_archive_record_move_to_next;
+    archive->format.free_archive_records_reading = xx_bgi2_free_archive_records_reading;
     archive->data_base = -1;
 }
 
-xx_bgi2 *xx_bgi2_create(xx_io_device *device, int64_t base_address) {
+xx_bgi2 *xx_bgi2_create(xx_io_device *device, int64_t base_address)
+{
     xx_bgi2 *archive = (xx_bgi2 *)xx_mem_alloc(sizeof(*archive));
     if (archive) xx_bgi2_init(archive, device, base_address);
     return archive;
 }
 
-void xx_bgi2_destroy(xx_bgi2 *archive) {
+void xx_bgi2_destroy(xx_bgi2 *archive)
+{
     if (archive) xx_format_cleanup_extra_parameters(&archive->format);
 }
 
-void xx_bgi2_free(xx_bgi2 *archive) {
+void xx_bgi2_free(xx_bgi2 *archive)
+{
     if (!archive) return;
     xx_bgi2_destroy(archive);
     xx_mem_free(archive);
 }
 
-bool xx_bgi2_check_is_valid(Abstractformat *format, xx_pd_struct *pd) {
+bool xx_bgi2_check_is_valid(Abstractformat *format, xx_pd_struct *pd)
+{
     bgi2_layout layout;
     int64_t archive_size = 0;
-    return bgi2_read_header(format, &layout, &archive_size) &&
-           bgi2_walk(format, &layout, archive_size, NULL, NULL, NULL, pd);
+    return bgi2_read_header(format, &layout, &archive_size) && bgi2_walk(format, &layout, archive_size, NULL, NULL, NULL, pd);
 }
 
-bool xx_bgi2_handle_base_info(Abstractformat *format, xx_pd_struct *pd) {
+bool xx_bgi2_handle_base_info(Abstractformat *format, xx_pd_struct *pd)
+{
     bgi2_layout layout;
     int64_t archive_size = 0;
     xx_bgi2 *archive;
-    if (!bgi2_read_header(format, &layout, &archive_size) ||
-        !bgi2_walk(format, &layout, archive_size, NULL, NULL, NULL, pd))
-        return false;
+    if (!bgi2_read_header(format, &layout, &archive_size) || !bgi2_walk(format, &layout, archive_size, NULL, NULL, NULL, pd)) return false;
     archive = (xx_bgi2 *)format;
     archive->number_of_records = layout.count;
     archive->data_base = layout.data_base;
@@ -569,21 +528,18 @@ bool xx_bgi2_handle_base_info(Abstractformat *format, xx_pd_struct *pd) {
     return true;
 }
 
-int64_t xx_bgi2_get_format_size(Abstractformat *format, xx_pd_struct *pd) {
-    return format && (format->base_info_handled ||
-                      xx_bgi2_handle_base_info(format, pd))
-               ? format->format_size : -1;
+int64_t xx_bgi2_get_format_size(Abstractformat *format, xx_pd_struct *pd)
+{
+    return format && (format->base_info_handled || xx_bgi2_handle_base_info(format, pd)) ? format->format_size : -1;
 }
 
-uint64_t xx_bgi2_get_number_of_archive_records(Abstractformat *format,
-                                               xx_pd_struct *pd) {
-    return format && (format->base_info_handled ||
-                      xx_bgi2_handle_base_info(format, pd))
-               ? ((xx_bgi2 *)format)->number_of_records : 0U;
+uint64_t xx_bgi2_get_number_of_archive_records(Abstractformat *format, xx_pd_struct *pd)
+{
+    return format && (format->base_info_handled || xx_bgi2_handle_base_info(format, pd)) ? ((xx_bgi2 *)format)->number_of_records : 0U;
 }
 
-xx_archive_record_state *xx_bgi2_create_archive_records_reading(
-    Abstractformat *format, const xx_list_s *options, xx_pd_struct *pd) {
+xx_archive_record_state *xx_bgi2_create_archive_records_reading(Abstractformat *format, const xx_list_s *options, xx_pd_struct *pd)
+{
     bgi2_stream *stream;
     xx_archive_record_state *state;
     if (!bgi2_open_stream(format, &stream, pd)) return NULL;
@@ -596,8 +552,7 @@ xx_archive_record_state *xx_bgi2_create_archive_records_reading(
     state->internal_state = stream;
     state->free_internal = bgi2_stream_free;
     state->total_records = stream->count;
-    if (!bgi2_copy_options(&state->options, options) ||
-        !bgi2_set_record(format, &state->current_record, stream, 0U)) {
+    if (!bgi2_copy_options(&state->options, options) || !bgi2_set_record(format, &state->current_record, stream, 0U)) {
         xx_archive_record_state_free(state);
         return NULL;
     }
@@ -605,19 +560,15 @@ xx_archive_record_state *xx_bgi2_create_archive_records_reading(
     return state;
 }
 
-const xx_archive_record *xx_bgi2_get_current_archive_record(
-    Abstractformat *format, xx_archive_record_state *state) {
-    return format && state && state->format == format && state->has_record
-               ? &state->current_record : NULL;
+const xx_archive_record *xx_bgi2_get_current_archive_record(Abstractformat *format, xx_archive_record_state *state)
+{
+    return format && state && state->format == format && state->has_record ? &state->current_record : NULL;
 }
 
-bool xx_bgi2_archive_record_move_to_next(Abstractformat *format,
-                                         xx_archive_record_state *state,
-                                         xx_pd_struct *pd) {
+bool xx_bgi2_archive_record_move_to_next(Abstractformat *format, xx_archive_record_state *state, xx_pd_struct *pd)
+{
     bgi2_stream *stream;
-    if (!format || !state || state->format != format ||
-        !(stream = (bgi2_stream *)state->internal_state) ||
-        ++stream->index >= stream->count) {
+    if (!format || !state || state->format != format || !(stream = (bgi2_stream *)state->internal_state) || ++stream->index >= stream->count) {
         if (state) state->has_record = false;
         return false;
     }
@@ -626,14 +577,12 @@ bool xx_bgi2_archive_record_move_to_next(Abstractformat *format,
         return false;
     }
     ++state->current_index;
-    state->has_record = bgi2_set_record(format, &state->current_record, stream,
-                                        stream->index);
+    state->has_record = bgi2_set_record(format, &state->current_record, stream, stream->index);
     return state->has_record;
 }
 
-bool xx_bgi2_unpack_current_archive_record(Abstractformat *format,
-                                           xx_archive_record_state *state,
-                                           xx_pd_struct *pd) {
+bool xx_bgi2_unpack_current_archive_record(Abstractformat *format, xx_archive_record_state *state, xx_pd_struct *pd)
+{
     bgi2_stream *stream;
     const bgi2_member *member;
     const xx_var *path_option;
@@ -642,37 +591,28 @@ bool xx_bgi2_unpack_current_archive_record(Abstractformat *format,
     char *path = NULL;
     bool result = false;
     bool created = false;
-    if (!format || !state || state->format != format || !state->has_record ||
-        !(stream = (bgi2_stream *)state->internal_state) ||
-        stream->index >= stream->count || (pd && xx_pd_is_stopped(pd)))
+    if (!format || !state || state->format != format || !state->has_record || !(stream = (bgi2_stream *)state->internal_state) || stream->index >= stream->count ||
+        (pd && xx_pd_is_stopped(pd)))
         return false;
     member = &stream->items[stream->index];
     if (member->size < 0 || member->data_offset < 0) return false;
     path_option = bgi2_option(&state->options, XX_META_ID_OPT_UNPACK_PATH);
-    if (!path_option)
-        return bgi2_copy_range(format->device, member->data_offset,
-                               member->size, NULL, pd);
+    if (!path_option) return bgi2_copy_range(format->device, member->data_offset, member->size, NULL, pd);
     if (!bgi2_safe_name(stream->name)) return false;
-    if (path_option->type == XX_VAR_TYPE_STRING ||
-        path_option->type == XX_VAR_TYPE_STRING_VIEW)
-        base = xx_var_get_str(path_option);
-    else if (path_option->type == XX_VAR_TYPE_WSTRING ||
-             path_option->type == XX_VAR_TYPE_WSTRING_VIEW) {
+    if (path_option->type == XX_VAR_TYPE_STRING || path_option->type == XX_VAR_TYPE_STRING_VIEW) base = xx_var_get_str(path_option);
+    else if (path_option->type == XX_VAR_TYPE_WSTRING || path_option->type == XX_VAR_TYPE_WSTRING_VIEW) {
         owned_base = xx_str_unicode_to_utf8(xx_var_get_wstr(path_option));
         base = owned_base;
     }
     if (!base) goto done;
-    path = (base[0] && base[xx_str_len(base) - 1U] != '/' &&
-            base[xx_str_len(base) - 1U] != '\\')
-               ? xx_str_concat3(base, "/", stream->name)
-               : xx_str_concat(base, stream->name);
+    path = (base[0] && base[xx_str_len(base) - 1U] != '/' && base[xx_str_len(base) - 1U] != '\\') ? xx_str_concat3(base, "/", stream->name)
+                                                                                                  : xx_str_concat(base, stream->name);
     if (!path || !xx_store_create_dirs_a(path, false)) goto done;
     {
         xx_io_device *destination = xx_io_file_open(path, "wb");
         if (!destination) goto done;
         created = true;
-        result = bgi2_copy_range(format->device, member->data_offset,
-                                 member->size, destination, pd);
+        result = bgi2_copy_range(format->device, member->data_offset, member->size, destination, pd);
         if (xx_io_close(destination) != 0) result = false;
     }
 done:
@@ -682,8 +622,8 @@ done:
     return result;
 }
 
-void xx_bgi2_free_archive_records_reading(Abstractformat *format,
-                                          xx_archive_record_state *state) {
+void xx_bgi2_free_archive_records_reading(Abstractformat *format, xx_archive_record_state *state)
+{
     (void)format;
     xx_archive_record_state_free(state);
 }

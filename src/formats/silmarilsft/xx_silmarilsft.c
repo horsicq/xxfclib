@@ -57,8 +57,7 @@
 /* The 0xa1 parameter block never varies.  It is the only thing that makes
  * that method's header strong enough to detect on.  Entry v of the table is
  * the offset width used by match selector v. */
-static const uint8_t sil_code_table[SIL_TABLE_SIZE] = {
-    0x0bU, 0x09U, 0x0aU, 0x0bU, 0x07U, 0x05U, 0x06U, 0x07U};
+static const uint8_t sil_code_table[SIL_TABLE_SIZE] = {0x0bU, 0x09U, 0x0aU, 0x0bU, 0x07U, 0x05U, 0x06U, 0x07U};
 
 typedef struct sil_context_s {
     int64_t input_size;
@@ -81,35 +80,32 @@ typedef struct sil_stream_s {
  * past the end are refused; the bit reader decides what they mean. */
 typedef struct sil_source_s {
     xx_io_device *device;
-    int64_t offset;     /* device offset of the next chunk */
-    int64_t remaining;  /* stream bytes not yet pulled into the chunk */
+    int64_t offset;    /* device offset of the next chunk */
+    int64_t remaining; /* stream bytes not yet pulled into the chunk */
     size_t chunk_pos;
     size_t chunk_size;
-    uint64_t consumed;  /* stream bytes handed out */
+    uint64_t consumed; /* stream bytes handed out */
     uint8_t *chunk;
     size_t io_capacity;
 } sil_source;
 
-static bool sil_read_at(xx_io_device *device, int64_t offset, void *buffer,
-                        size_t size) {
+static bool sil_read_at(xx_io_device *device, int64_t offset, void *buffer, size_t size)
+{
     const size_t io_capacity = xx_get_file_buffer_size();
     size_t done = 0U;
-    if (!device || (!buffer && size != 0U) || offset < 0 ||
-        xx_io_seek64(device, offset, SEEK_SET) != 0)
-        return false;
+    if (!device || (!buffer && size != 0U) || offset < 0 || xx_io_seek64(device, offset, SEEK_SET) != 0) return false;
     while (done < size) {
         size_t request = size - done;
         if (request > io_capacity) request = io_capacity;
-        ssize_t amount = xx_io_read(device, (uint8_t *)buffer + done,
-                                    request);
+        ssize_t amount = xx_io_read(device, (uint8_t *)buffer + done, request);
         if (amount <= 0 || (size_t)amount > request) return false;
         done += (size_t)amount;
     }
     return true;
 }
 
-static bool sil_source_init(sil_source *source, xx_io_device *device,
-                            int64_t offset, int64_t size) {
+static bool sil_source_init(sil_source *source, xx_io_device *device, int64_t offset, int64_t size)
+{
     source->device = device;
     source->offset = offset;
     source->remaining = size;
@@ -122,14 +118,13 @@ static bool sil_source_init(sil_source *source, xx_io_device *device,
 }
 
 /* 1 = byte delivered, 0 = clean end of stream, -1 = I/O failure. */
-static int sil_source_byte(sil_source *source, uint8_t *value) {
+static int sil_source_byte(sil_source *source, uint8_t *value)
+{
     if (source->chunk_pos >= source->chunk_size) {
         size_t amount;
         if (source->remaining <= 0) return 0;
-        amount = (uint64_t)source->remaining < (uint64_t)source->io_capacity
-                     ? (size_t)source->remaining : (size_t)source->io_capacity;
-        if (!sil_read_at(source->device, source->offset, source->chunk,
-                         amount)) return -1;
+        amount = (uint64_t)source->remaining < (uint64_t)source->io_capacity ? (size_t)source->remaining : (size_t)source->io_capacity;
+        if (!sil_read_at(source->device, source->offset, source->chunk, amount)) return -1;
         source->offset += (int64_t)amount;
         source->remaining -= (int64_t)amount;
         source->chunk_pos = 0U;
@@ -149,8 +144,8 @@ static int sil_source_byte(sil_source *source, uint8_t *value) {
  * `unpacked_size` bytes and claim exactly `stream_size` input bytes (the tail
  * of an over-long final literal run counts as claimed).  With `output` NULL
  * nothing is materialised, which is what the detection probe wants. */
-static bool sil_byterun(sil_source *source, int64_t stream_size,
-                        int64_t unpacked_size, uint8_t *output) {
+static bool sil_byterun(sil_source *source, int64_t stream_size, int64_t unpacked_size, uint8_t *output)
+{
     int64_t out = 0;
     uint64_t claimed = 0U;
     if (unpacked_size < 0 || stream_size < 0) return false;
@@ -173,12 +168,10 @@ static bool sil_byterun(sil_source *source, int64_t stream_size,
         } else {
             uint8_t value;
             int64_t take = (int64_t)(token & 0x7fU);
-            if (claimed >= (uint64_t)stream_size ||
-                sil_source_byte(source, &value) != 1) return false;
+            if (claimed >= (uint64_t)stream_size || sil_source_byte(source, &value) != 1) return false;
             ++claimed;
             if (take > unpacked_size - out) take = unpacked_size - out;
-            if (output && take > 0)
-                xx_rt_memset(output + out, (int)value, (size_t)take);
+            if (output && take > 0) xx_rt_memset(output + out, (int)value, (size_t)take);
             out += take;
         }
     }
@@ -191,20 +184,19 @@ static bool sil_byterun(sil_source *source, int64_t stream_size,
 typedef struct sil_bits_s {
     sil_source *source;
     uint64_t stream_size;
-    uint64_t position;  /* bytes of word data taken, including padding */
+    uint64_t position; /* bytes of word data taken, including padding */
     uint32_t word;
     unsigned available;
 } sil_bits;
 
-static bool sil_bits_refill(sil_bits *bits) {
+static bool sil_bits_refill(sil_bits *bits)
+{
     uint32_t word = 0U;
     unsigned index;
-    if (bits->position + 2U > bits->stream_size + SIL_BITSTREAM_SLACK)
-        return false;
+    if (bits->position + 2U > bits->stream_size + SIL_BITSTREAM_SLACK) return false;
     for (index = 0U; index < 2U; ++index) {
         uint8_t value = 0U;
-        if (bits->position < bits->stream_size &&
-            sil_source_byte(bits->source, &value) != 1) return false;
+        if (bits->position < bits->stream_size && sil_source_byte(bits->source, &value) != 1) return false;
         word = (word << 8U) | value;
         ++bits->position;
     }
@@ -213,16 +205,15 @@ static bool sil_bits_refill(sil_bits *bits) {
     return true;
 }
 
-static bool sil_bits_get(sil_bits *bits, unsigned count, uint32_t *value) {
+static bool sil_bits_get(sil_bits *bits, unsigned count, uint32_t *value)
+{
     uint32_t result = 0U;
     if (count > 16U) return false;
     while (count != 0U) {
         unsigned take;
         if (bits->available == 0U && !sil_bits_refill(bits)) return false;
         take = count < bits->available ? count : bits->available;
-        result = (result << take) |
-                 ((bits->word >> (bits->available - take)) &
-                  ((UINT32_C(1) << take) - 1U));
+        result = (result << take) | ((bits->word >> (bits->available - take)) & ((UINT32_C(1) << take) - 1U));
         bits->available -= take;
         count -= take;
     }
@@ -231,14 +222,14 @@ static bool sil_bits_get(sil_bits *bits, unsigned count, uint32_t *value) {
 }
 
 /* Sum `width`-bit groups while each group is all ones (the escape value). */
-static bool sil_bits_count(sil_bits *bits, unsigned width, uint64_t cap,
-                           uint64_t *total) {
+static bool sil_bits_count(sil_bits *bits, unsigned width, uint64_t cap, uint64_t *total)
+{
     uint32_t escape = (UINT32_C(1) << width) - 1U, group;
     uint64_t sum = 0U;
     do {
         if (!sil_bits_get(bits, width, &group)) return false;
         sum += group;
-        if (sum > cap) sum = cap;  /* saturate: the output clamps anyway */
+        if (sum > cap) sum = cap; /* saturate: the output clamps anyway */
     } while (group == escape);
     *total = sum;
     return true;
@@ -257,14 +248,12 @@ static bool sil_bits_count(sil_bits *bits, unsigned width, uint64_t cap,
  * left straight after a literal run that reaches that mark, so the final byte
  * may never be written; it stays zero, as in the corpus's sibling copies.
  * A token that runs past the end is clamped to the declared size. */
-static bool sil_bitstream(sil_source *source, int64_t stream_size,
-                          int64_t unpacked_size, const uint8_t *table,
-                          uint8_t *output) {
+static bool sil_bitstream(sil_source *source, int64_t stream_size, int64_t unpacked_size, const uint8_t *table, uint8_t *output)
+{
     sil_bits bits;
     uint64_t size, out = 0U, last;
     unsigned index;
-    if (!source || !table || !output || stream_size <= 0 ||
-        unpacked_size <= 1) return false;
+    if (!source || !table || !output || stream_size <= 0 || unpacked_size <= 1) return false;
     for (index = 0U; index < SIL_TABLE_SIZE; ++index)
         if (table[index] == 0U || table[index] > 16U) return false;
     size = (uint64_t)unpacked_size;
@@ -289,8 +278,7 @@ static bool sil_bitstream(sil_source *source, int64_t stream_size,
             }
             if (out >= last) break;
         }
-        if (!sil_bits_get(&bits, 3U, &selector) ||
-            !sil_bits_get(&bits, table[selector], &offset)) return false;
+        if (!sil_bits_get(&bits, 3U, &selector) || !sil_bits_get(&bits, table[selector], &offset)) return false;
         if ((selector & 3U) != 0U) {
             length = (uint64_t)(selector & 3U) + 1U;
         } else {
@@ -302,77 +290,64 @@ static bool sil_bitstream(sil_source *source, int64_t stream_size,
         if (distance > out) return false;
         take = length < size - out ? length : size - out;
         /* Byte by byte: the source may overlap what is being written. */
-        for (copy = 0U; copy < take; ++copy, ++out)
-            output[out] = output[out - distance];
+        for (copy = 0U; copy < take; ++copy, ++out) output[out] = output[out - distance];
     }
-    if (bits.position >= bits.stream_size)
-        return bits.position - bits.stream_size <= SIL_BITSTREAM_SLACK;
+    if (bits.position >= bits.stream_size) return bits.position - bits.stream_size <= SIL_BITSTREAM_SLACK;
     return bits.stream_size - bits.position <= SIL_BITSTREAM_SLACK;
 }
 
-static void sil_stream_free(void *opaque) {
+static void sil_stream_free(void *opaque)
+{
     if (opaque) xx_mem_free(opaque);
 }
 
-static bool sil_parse(Abstractformat *format, sil_context *out) {
+static bool sil_parse(Abstractformat *format, sil_context *out)
+{
     uint8_t header[SIL_LONG_HEADER_SIZE];
     sil_context context;
     uint32_t packed;
     int64_t total, size, raw_size;
-    if (!format || !format->device || !out || format->base_address < 0)
-        return false;
+    if (!format || !format->device || !out || format->base_address < 0) return false;
     total = xx_io_total_size(format->device);
     if (total < format->base_address) return false;
     size = total - format->base_address;
     xx_mem_zero(&context, sizeof(context));
     context.input_size = size;
-    if (size <= (int64_t)SIL_LONG_HEADER_SIZE || size > SIL_MAX_FILE_SIZE)
-        return false;
-    if (!sil_read_at(format->device, format->base_address, header,
-                     sizeof(header))) return false;
+    if (size <= (int64_t)SIL_LONG_HEADER_SIZE || size > SIL_MAX_FILE_SIZE) return false;
+    if (!sil_read_at(format->device, format->base_address, header, sizeof(header))) return false;
     /* Offset 4 is the "not the main script" word, always 1 in a resource
      * file.  It is the byte-order oracle: nothing else in the header is
      * constant across both builds.  A main script (word 0, followed by 16
      * bytes of VM specs) cannot be told apart by byte order and is not
      * claimed. */
-    if (header[4] == 0x01U && header[5] == 0x00U)
-        context.big_endian = false;
-    else if (header[4] == 0x00U && header[5] == 0x01U)
-        context.big_endian = true;
-    else
-        return false;
+    if (header[4] == 0x01U && header[5] == 0x00U) context.big_endian = false;
+    else if (header[4] == 0x00U && header[5] == 0x01U) context.big_endian = true;
+    else return false;
     packed = xx_data_get_u32(header, 4, 0, context.big_endian);
     context.method = packed >> 24U;
     raw_size = (int64_t)(packed & 0x00ffffffU);
-    if (context.method != SIL_METHOD_BYTERUN &&
-        context.method != SIL_METHOD_BITSTREAM) return false;
+    if (context.method != SIL_METHOD_BYTERUN && context.method != SIL_METHOD_BITSTREAM) return false;
     /* The raw size counts the six-byte header, so anything at or below it
      * describes an empty member and is not a container this reader claims. */
-    if (raw_size <= (int64_t)SIL_SHORT_HEADER_SIZE ||
-        raw_size > SIL_MAX_RAW_SIZE) return false;
+    if (raw_size <= (int64_t)SIL_SHORT_HEADER_SIZE || raw_size > SIL_MAX_RAW_SIZE) return false;
     context.unpacked_size = raw_size - SIL_SHORT_HEADER_SIZE;
     /* Every member of the reference corpus - both methods, both byte orders -
      * decodes to a whole number of eight-byte resource units.  It is a cheap,
      * very discriminating extra constraint on a header this thin. */
     if ((context.unpacked_size % 8) != 0) return false;
-    context.header_size = context.method == SIL_METHOD_BITSTREAM
-                              ? SIL_LONG_HEADER_SIZE : SIL_SHORT_HEADER_SIZE;
+    context.header_size = context.method == SIL_METHOD_BITSTREAM ? SIL_LONG_HEADER_SIZE : SIL_SHORT_HEADER_SIZE;
     context.stream_offset = context.header_size;
     context.stream_size = size - context.header_size;
     if (context.stream_size <= 0) return false;
     context.supported = true;
     if (context.method == SIL_METHOD_BITSTREAM) {
-        if (xx_rt_memcmp(header + SIL_TABLE_OFFSET, sil_code_table,
-                         SIL_TABLE_SIZE) != 0) return false;
+        if (xx_rt_memcmp(header + SIL_TABLE_OFFSET, sil_code_table, SIL_TABLE_SIZE) != 0) return false;
         /* Structural limits of the codec: at best a 3-bit length group buys
          * seven bytes (under 19 output bytes per input byte, with the zero
          * slack counted), and at worst a literal costs 8 2/3 bits.  The
          * lower bound is left loose; the parameter block does the real
          * detection work for this method. */
-        if (context.unpacked_size >
-                19 * (context.stream_size + (int64_t)SIL_BITSTREAM_SLACK) ||
-            context.stream_size > 2 * context.unpacked_size + 64)
-            return false;
+        if (context.unpacked_size > 19 * (context.stream_size + (int64_t)SIL_BITSTREAM_SLACK) || context.stream_size > 2 * context.unpacked_size + 64) return false;
     } else {
         sil_source source;
         /* Structural ceiling on the byte-run codec: a run token spends two
@@ -385,12 +360,9 @@ static bool sil_parse(Abstractformat *format, sil_context *out) {
          * to produce exactly the declared plaintext length and land exactly
          * on the last input byte.  That is what keeps this reader from
          * stealing files and, equally, from being stolen from. */
-        if (!sil_source_init(&source, format->device,
-                        format->base_address + context.stream_offset,
-                        context.stream_size)) return false;
+        if (!sil_source_init(&source, format->device, format->base_address + context.stream_offset, context.stream_size)) return false;
         {
-            bool decoded = sil_byterun(&source, context.stream_size,
-                                       context.unpacked_size, NULL);
+            bool decoded = sil_byterun(&source, context.stream_size, context.unpacked_size, NULL);
             xx_mem_free(source.chunk);
             if (!decoded) return false;
         }
@@ -400,17 +372,16 @@ static bool sil_parse(Abstractformat *format, sil_context *out) {
     return true;
 }
 
-static bool sil_copy_options(xx_list_s *destination, const xx_list_s *source) {
+static bool sil_copy_options(xx_list_s *destination, const xx_list_s *source)
+{
     size_t index;
     if (!source) return true;
     for (index = 0U; index < source->count; ++index) {
-        const xx_meta *original =
-            (const xx_meta *)xx_list_at((const xx_list_t *)source, index);
+        const xx_meta *original = (const xx_meta *)xx_list_at((const xx_list_t *)source, index);
         xx_meta copy;
         if (!original) continue;
         xx_meta_init(&copy, original->meta_id);
-        if (!xx_var_copy(&copy.var, &original->var) ||
-            !xx_list_append(destination, &copy)) {
+        if (!xx_var_copy(&copy.var, &original->var) || !xx_list_append(destination, &copy)) {
             xx_meta_cleanup(&copy);
             return false;
         }
@@ -418,12 +389,12 @@ static bool sil_copy_options(xx_list_s *destination, const xx_list_s *source) {
     return true;
 }
 
-static const xx_var *sil_option(const xx_list_s *options, uint32_t id) {
+static const xx_var *sil_option(const xx_list_s *options, uint32_t id)
+{
     size_t index;
     if (!options) return NULL;
     for (index = 0U; index < options->count; ++index) {
-        const xx_meta *meta =
-            (const xx_meta *)xx_list_at((const xx_list_t *)options, index);
+        const xx_meta *meta = (const xx_meta *)xx_list_at((const xx_list_t *)options, index);
         if (meta && meta->meta_id == id) return &meta->var;
     }
     return NULL;
@@ -435,8 +406,8 @@ static const xx_var *sil_option(const xx_list_s *options, uint32_t id) {
  * happens to live. */
 static const char sil_member_name[] = "silmarils.bin";
 
-static bool sil_set_record(xx_archive_record *record,
-                           const sil_context *context) {
+static bool sil_set_record(xx_archive_record *record, const sil_context *context)
+{
     xx_archive_record_cleanup(record);
     xx_archive_record_init(record);
     record->header_offset = context->stream_offset - context->header_size;
@@ -444,19 +415,14 @@ static bool sil_set_record(xx_archive_record *record,
     record->data_offset = context->stream_offset;
     record->compressed_size = context->stream_size;
     return xx_archive_record_set_original_name(record, sil_member_name) &&
-           xx_archive_record_set_meta_u64(record, XX_META_ID_COMPRESSED_SIZE,
-                                          (uint64_t)context->stream_size) &&
-           xx_archive_record_set_meta_u64(record, XX_META_ID_UNCOMPRESSED_SIZE,
-                                          (uint64_t)context->unpacked_size) &&
-           xx_archive_record_set_meta_u64(record, XX_META_ID_COMPRESSION_METHOD,
-                                          context->method) &&
-           xx_archive_record_set_meta_bool(record, XX_META_ID_IS_ENCRYPTED,
-                                           false) &&
-           xx_archive_record_set_meta_bool(record, XX_META_ID_IS_FOLDER, false);
+           xx_archive_record_set_meta_u64(record, XX_META_ID_COMPRESSED_SIZE, (uint64_t)context->stream_size) &&
+           xx_archive_record_set_meta_u64(record, XX_META_ID_UNCOMPRESSED_SIZE, (uint64_t)context->unpacked_size) &&
+           xx_archive_record_set_meta_u64(record, XX_META_ID_COMPRESSION_METHOD, context->method) &&
+           xx_archive_record_set_meta_bool(record, XX_META_ID_IS_ENCRYPTED, false) && xx_archive_record_set_meta_bool(record, XX_META_ID_IS_FOLDER, false);
 }
 
-void xx_silmarilsft_init(xx_silmarilsft *archive, xx_io_device *device,
-                         int64_t base_address) {
+void xx_silmarilsft_init(xx_silmarilsft *archive, xx_io_device *device, int64_t base_address)
+{
     if (!archive) return;
     xx_mem_zero(archive, sizeof(*archive));
     xx_format_init(&archive->format, device, base_address);
@@ -469,45 +435,42 @@ void xx_silmarilsft_init(xx_silmarilsft *archive, xx_io_device *device,
     archive->format.check_is_valid = xx_silmarilsft_check_is_valid;
     archive->format.handle_base_info = xx_silmarilsft_handle_base_info;
     archive->format.get_format_size = xx_silmarilsft_get_format_size;
-    archive->format.get_number_of_archive_records =
-        xx_silmarilsft_get_number_of_archive_records;
-    archive->format.create_archive_records_reading =
-        xx_silmarilsft_create_archive_records_reading;
-    archive->format.get_current_archive_record =
-        xx_silmarilsft_get_current_archive_record;
-    archive->format.unpack_current_archive_record =
-        xx_silmarilsft_unpack_current_archive_record;
-    archive->format.archive_record_move_to_next =
-        xx_silmarilsft_archive_record_move_to_next;
-    archive->format.free_archive_records_reading =
-        xx_silmarilsft_free_archive_records_reading;
+    archive->format.get_number_of_archive_records = xx_silmarilsft_get_number_of_archive_records;
+    archive->format.create_archive_records_reading = xx_silmarilsft_create_archive_records_reading;
+    archive->format.get_current_archive_record = xx_silmarilsft_get_current_archive_record;
+    archive->format.unpack_current_archive_record = xx_silmarilsft_unpack_current_archive_record;
+    archive->format.archive_record_move_to_next = xx_silmarilsft_archive_record_move_to_next;
+    archive->format.free_archive_records_reading = xx_silmarilsft_free_archive_records_reading;
 }
 
-xx_silmarilsft *xx_silmarilsft_create(xx_io_device *device,
-                                      int64_t base_address) {
+xx_silmarilsft *xx_silmarilsft_create(xx_io_device *device, int64_t base_address)
+{
     xx_silmarilsft *archive = (xx_silmarilsft *)xx_mem_alloc(sizeof(*archive));
     if (archive) xx_silmarilsft_init(archive, device, base_address);
     return archive;
 }
 
-void xx_silmarilsft_destroy(xx_silmarilsft *archive) {
+void xx_silmarilsft_destroy(xx_silmarilsft *archive)
+{
     if (archive) xx_format_cleanup_extra_parameters(&archive->format);
 }
 
-void xx_silmarilsft_free(xx_silmarilsft *archive) {
+void xx_silmarilsft_free(xx_silmarilsft *archive)
+{
     if (!archive) return;
     xx_silmarilsft_destroy(archive);
     xx_mem_free(archive);
 }
 
-bool xx_silmarilsft_check_is_valid(Abstractformat *format, xx_pd_struct *pd) {
+bool xx_silmarilsft_check_is_valid(Abstractformat *format, xx_pd_struct *pd)
+{
     sil_context context;
     (void)pd;
     return sil_parse(format, &context);
 }
 
-bool xx_silmarilsft_handle_base_info(Abstractformat *format,
-                                     xx_pd_struct *pd) {
+bool xx_silmarilsft_handle_base_info(Abstractformat *format, xx_pd_struct *pd)
+{
     sil_context context;
     xx_silmarilsft *archive;
     (void)pd;
@@ -526,22 +489,18 @@ bool xx_silmarilsft_handle_base_info(Abstractformat *format,
     return true;
 }
 
-int64_t xx_silmarilsft_get_format_size(Abstractformat *format,
-                                       xx_pd_struct *pd) {
-    return format && (format->base_info_handled ||
-                      xx_silmarilsft_handle_base_info(format, pd))
-               ? format->format_size : -1;
+int64_t xx_silmarilsft_get_format_size(Abstractformat *format, xx_pd_struct *pd)
+{
+    return format && (format->base_info_handled || xx_silmarilsft_handle_base_info(format, pd)) ? format->format_size : -1;
 }
 
-uint64_t xx_silmarilsft_get_number_of_archive_records(Abstractformat *format,
-                                                      xx_pd_struct *pd) {
-    return format && (format->base_info_handled ||
-                      xx_silmarilsft_handle_base_info(format, pd))
-               ? ((xx_silmarilsft *)format)->number_of_records : 0U;
+uint64_t xx_silmarilsft_get_number_of_archive_records(Abstractformat *format, xx_pd_struct *pd)
+{
+    return format && (format->base_info_handled || xx_silmarilsft_handle_base_info(format, pd)) ? ((xx_silmarilsft *)format)->number_of_records : 0U;
 }
 
-xx_archive_record_state *xx_silmarilsft_create_archive_records_reading(
-    Abstractformat *format, const xx_list_s *options, xx_pd_struct *pd) {
+xx_archive_record_state *xx_silmarilsft_create_archive_records_reading(Abstractformat *format, const xx_list_s *options, xx_pd_struct *pd)
+{
     sil_stream *stream;
     xx_archive_record_state *state;
     sil_context context;
@@ -560,8 +519,7 @@ xx_archive_record_state *xx_silmarilsft_create_archive_records_reading(
     state->internal_state = stream;
     state->free_internal = sil_stream_free;
     state->total_records = 1U;
-    if (!sil_copy_options(&state->options, options) ||
-        !sil_set_record(&state->current_record, &stream->context)) {
+    if (!sil_copy_options(&state->options, options) || !sil_set_record(&state->current_record, &stream->context)) {
         xx_archive_record_state_free(state);
         return NULL;
     }
@@ -569,28 +527,24 @@ xx_archive_record_state *xx_silmarilsft_create_archive_records_reading(
     return state;
 }
 
-const xx_archive_record *xx_silmarilsft_get_current_archive_record(
-    Abstractformat *format, xx_archive_record_state *state) {
-    return format && state && state->format == format && state->has_record
-               ? &state->current_record : NULL;
+const xx_archive_record *xx_silmarilsft_get_current_archive_record(Abstractformat *format, xx_archive_record_state *state)
+{
+    return format && state && state->format == format && state->has_record ? &state->current_record : NULL;
 }
 
-bool xx_silmarilsft_archive_record_move_to_next(Abstractformat *format,
-                                                xx_archive_record_state *state,
-                                                xx_pd_struct *pd) {
+bool xx_silmarilsft_archive_record_move_to_next(Abstractformat *format, xx_archive_record_state *state, xx_pd_struct *pd)
+{
     sil_stream *stream;
     (void)pd;
-    if (!format || !state || state->format != format ||
-        !(stream = (sil_stream *)state->internal_state) ||
-        ++stream->index >= stream->count) {
+    if (!format || !state || state->format != format || !(stream = (sil_stream *)state->internal_state) || ++stream->index >= stream->count) {
         if (state) state->has_record = false;
         return false;
     }
     return false;
 }
 
-bool xx_silmarilsft_unpack_current_archive_record(
-    Abstractformat *format, xx_archive_record_state *state, xx_pd_struct *pd) {
+bool xx_silmarilsft_unpack_current_archive_record(Abstractformat *format, xx_archive_record_state *state, xx_pd_struct *pd)
+{
     sil_stream *stream;
     sil_source source;
     const xx_var *path_option;
@@ -601,34 +555,25 @@ bool xx_silmarilsft_unpack_current_archive_record(
     size_t plain_size = 0U, written = 0U;
     bool decoded, result = false;
     bool created = false;
-    if (!format || !state || state->format != format || !state->has_record ||
-        !(stream = (sil_stream *)state->internal_state) ||
-        stream->index >= stream->count || (pd && xx_pd_is_stopped(pd)))
+    if (!format || !state || state->format != format || !state->has_record || !(stream = (sil_stream *)state->internal_state) || stream->index >= stream->count ||
+        (pd && xx_pd_is_stopped(pd)))
         return false;
     if (!stream->context.supported) return false;
-    if (stream->context.unpacked_size <= 0 ||
-        stream->context.unpacked_size > SIL_MAX_RAW_SIZE ||
-        (uint64_t)stream->context.unpacked_size > (uint64_t)SIZE_MAX ||
+    if (stream->context.unpacked_size <= 0 || stream->context.unpacked_size > SIL_MAX_RAW_SIZE || (uint64_t)stream->context.unpacked_size > (uint64_t)SIZE_MAX ||
         stream->context.stream_size <= 0)
         return false;
     xx_mem_zero(&source, sizeof(source));
     plain_size = (size_t)stream->context.unpacked_size;
     plain = (uint8_t *)xx_mem_alloc(plain_size);
     if (!plain) goto done;
-    if (!sil_source_init(&source, format->device, stream->context.stream_offset,
-                         stream->context.stream_size)) goto done;
+    if (!sil_source_init(&source, format->device, stream->context.stream_offset, stream->context.stream_size)) goto done;
     if (stream->context.method == SIL_METHOD_BITSTREAM) {
         uint8_t table[SIL_TABLE_SIZE];
         /* Re-read rather than trust the constant: the device is the input. */
-        decoded = sil_read_at(format->device,
-                              stream->context.stream_offset -
-                                  (int64_t)SIL_TABLE_SIZE,
-                              table, sizeof(table)) &&
-                  sil_bitstream(&source, stream->context.stream_size,
-                                stream->context.unpacked_size, table, plain);
+        decoded = sil_read_at(format->device, stream->context.stream_offset - (int64_t)SIL_TABLE_SIZE, table, sizeof(table)) &&
+                  sil_bitstream(&source, stream->context.stream_size, stream->context.unpacked_size, table, plain);
     } else {
-        decoded = sil_byterun(&source, stream->context.stream_size,
-                              stream->context.unpacked_size, plain);
+        decoded = sil_byterun(&source, stream->context.stream_size, stream->context.unpacked_size, plain);
     }
     if (!decoded) goto done;
     path_option = sil_option(&state->options, XX_META_ID_OPT_UNPACK_PATH);
@@ -636,19 +581,14 @@ bool xx_silmarilsft_unpack_current_archive_record(
         result = true;
         goto done;
     }
-    if (path_option->type == XX_VAR_TYPE_STRING ||
-        path_option->type == XX_VAR_TYPE_STRING_VIEW)
-        base = xx_var_get_str(path_option);
-    else if (path_option->type == XX_VAR_TYPE_WSTRING ||
-             path_option->type == XX_VAR_TYPE_WSTRING_VIEW) {
+    if (path_option->type == XX_VAR_TYPE_STRING || path_option->type == XX_VAR_TYPE_STRING_VIEW) base = xx_var_get_str(path_option);
+    else if (path_option->type == XX_VAR_TYPE_WSTRING || path_option->type == XX_VAR_TYPE_WSTRING_VIEW) {
         owned_base = xx_str_unicode_to_utf8(xx_var_get_wstr(path_option));
         base = owned_base;
     }
     if (!base) goto done;
-    path = (base[0] && base[xx_str_len(base) - 1U] != '/' &&
-            base[xx_str_len(base) - 1U] != '\\')
-               ? xx_str_concat3(base, "/", sil_member_name)
-               : xx_str_concat(base, sil_member_name);
+    path = (base[0] && base[xx_str_len(base) - 1U] != '/' && base[xx_str_len(base) - 1U] != '\\') ? xx_str_concat3(base, "/", sil_member_name)
+                                                                                                  : xx_str_concat(base, sil_member_name);
     if (!path || !xx_store_create_dirs_a(path, false)) goto done;
     {
         xx_io_device *destination = xx_io_file_open(path, "wb");
@@ -677,8 +617,8 @@ done:
     return result;
 }
 
-void xx_silmarilsft_free_archive_records_reading(
-    Abstractformat *format, xx_archive_record_state *state) {
+void xx_silmarilsft_free_archive_records_reading(Abstractformat *format, xx_archive_record_state *state)
+{
     (void)format;
     xx_archive_record_state_free(state);
 }

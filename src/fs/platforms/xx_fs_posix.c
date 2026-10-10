@@ -46,7 +46,8 @@
 #include <sys/stat.h>
 #include <sys/types.h>
 
-xx_fs_platform_kind_t xx_fs_platform_stat(const char *path) {
+xx_fs_platform_kind_t xx_fs_platform_stat(const char *path)
+{
     struct stat info;
 
     if (!path || stat(path, &info) != 0) {
@@ -58,14 +59,13 @@ xx_fs_platform_kind_t xx_fs_platform_stat(const char *path) {
     return S_ISREG(info.st_mode) ? XX_FS_PLATFORM_FILE : XX_FS_PLATFORM_MISSING;
 }
 
-static bool xx_fs_posix_is_dot(const char *name) {
-    return name && name[0] == '.' &&
-           (name[1] == '\0' || (name[1] == '.' && name[2] == '\0'));
+static bool xx_fs_posix_is_dot(const char *name)
+{
+    return name && name[0] == '.' && (name[1] == '\0' || (name[1] == '.' && name[2] == '\0'));
 }
 
-bool xx_fs_platform_enumerate(const char *path,
-                              xx_fs_platform_entry_fn callback,
-                              void *context) {
+bool xx_fs_platform_enumerate(const char *path, xx_fs_platform_entry_fn callback, void *context)
+{
     DIR *directory;
     struct dirent *item;
     bool result = true;
@@ -114,7 +114,8 @@ bool xx_fs_platform_enumerate(const char *path,
     return result;
 }
 
-char xx_fs_platform_separator(void) {
+char xx_fs_platform_separator(void)
+{
     return '/';
 }
 

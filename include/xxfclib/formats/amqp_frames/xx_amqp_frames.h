@@ -8,13 +8,15 @@
 #ifdef __cplusplus
 extern "C" {
 #endif
-typedef struct xx_amqp_frames { Abstractformat format; } xx_amqp_frames;
-XXFC_API void xx_amqp_frames_init(xx_amqp_frames *,xx_io_device *,int64_t);
-XXFC_API xx_amqp_frames *xx_amqp_frames_create(xx_io_device *,int64_t);
+typedef struct xx_amqp_frames {
+    Abstractformat format;
+} xx_amqp_frames;
+XXFC_API void xx_amqp_frames_init(xx_amqp_frames *, xx_io_device *, int64_t);
+XXFC_API xx_amqp_frames *xx_amqp_frames_create(xx_io_device *, int64_t);
 XXFC_API void xx_amqp_frames_destroy(xx_amqp_frames *);
 XXFC_API void xx_amqp_frames_free(xx_amqp_frames *);
-XXFC_API bool xx_amqp_frames_check_is_valid(Abstractformat *,xx_pd_struct *);
-XXFC_API bool xx_amqp_frames_handle_base_info(Abstractformat *,xx_pd_struct *);
+XXFC_API bool xx_amqp_frames_check_is_valid(Abstractformat *, xx_pd_struct *);
+XXFC_API bool xx_amqp_frames_handle_base_info(Abstractformat *, xx_pd_struct *);
 #ifdef __cplusplus
 }
 #endif

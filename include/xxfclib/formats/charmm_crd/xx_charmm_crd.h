@@ -6,13 +6,15 @@
 #ifdef __cplusplus
 extern "C" {
 #endif
-typedef struct xx_charmm_crd { Abstractformat format; } xx_charmm_crd;
-XXFC_API void xx_charmm_crd_init(xx_charmm_crd *,xx_io_device *,int64_t);
-XXFC_API xx_charmm_crd *xx_charmm_crd_create(xx_io_device *,int64_t);
+typedef struct xx_charmm_crd {
+    Abstractformat format;
+} xx_charmm_crd;
+XXFC_API void xx_charmm_crd_init(xx_charmm_crd *, xx_io_device *, int64_t);
+XXFC_API xx_charmm_crd *xx_charmm_crd_create(xx_io_device *, int64_t);
 XXFC_API void xx_charmm_crd_destroy(xx_charmm_crd *);
 XXFC_API void xx_charmm_crd_free(xx_charmm_crd *);
-XXFC_API bool xx_charmm_crd_check_is_valid(Abstractformat *,xx_pd_struct *);
-XXFC_API bool xx_charmm_crd_handle_base_info(Abstractformat *,xx_pd_struct *);
+XXFC_API bool xx_charmm_crd_check_is_valid(Abstractformat *, xx_pd_struct *);
+XXFC_API bool xx_charmm_crd_handle_base_info(Abstractformat *, xx_pd_struct *);
 #ifdef __cplusplus
 }
 #endif

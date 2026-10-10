@@ -90,12 +90,14 @@ typedef struct sar_stream_s {
 } sar_stream;
 
 #include "xxfclib/global/xx_global.h"
-static size_t gb_sar_ns_capacity(void) {
+static size_t gb_sar_ns_capacity(void)
+{
     size_t n = xx_get_file_buffer_size();
     if (!n) n = XX_DEFAULT_FILE_BUFFER_SIZE;
     return n > (SIZE_MAX >> 1) ? SIZE_MAX >> 1 : n;
 }
-static ssize_t gb_sar_ns_read(xx_io_device *device, void *buffer, size_t size, size_t capacity) {
+static ssize_t gb_sar_ns_read(xx_io_device *device, void *buffer, size_t size, size_t capacity)
+{
     size_t done = 0;
     if (size > (SIZE_MAX >> 1)) return -1;
     while (done < size) {
@@ -109,7 +111,8 @@ static ssize_t gb_sar_ns_read(xx_io_device *device, void *buffer, size_t size, s
     }
     return (ssize_t)done;
 }
-static ssize_t gb_sar_ns_write(xx_io_device *device, const void *buffer, size_t size, size_t capacity) {
+static ssize_t gb_sar_ns_write(xx_io_device *device, const void *buffer, size_t size, size_t capacity)
+{
     size_t done = 0;
     if (size > (SIZE_MAX >> 1)) return -1;
     while (done < size) {
@@ -124,16 +127,13 @@ static ssize_t gb_sar_ns_write(xx_io_device *device, const void *buffer, size_t 
     return (ssize_t)done;
 }
 
-static bool sar_read_at(xx_io_device *device, int64_t offset, void *buffer,
-                        size_t size) {
+static bool sar_read_at(xx_io_device *device, int64_t offset, void *buffer, size_t size)
+{
     const size_t file_io_capacity = gb_sar_ns_capacity();
     size_t done = 0U;
-    if (!device || (!buffer && size != 0U) || offset < 0 ||
-        xx_io_seek64(device, offset, SEEK_SET) != 0)
-        return false;
+    if (!device || (!buffer && size != 0U) || offset < 0 || xx_io_seek64(device, offset, SEEK_SET) != 0) return false;
     while (done < size) {
-        ssize_t amount = gb_sar_ns_read(device, (uint8_t *)buffer + done,
-                                    size - done, file_io_capacity);
+        ssize_t amount = gb_sar_ns_read(device, (uint8_t *)buffer + done, size - done, file_io_capacity);
         if (amount <= 0 || (size_t)amount > size - done) return false;
         done += (size_t)amount;
     }
@@ -143,8 +143,8 @@ static bool sar_read_at(xx_io_device *device, int64_t offset, void *buffer,
 /* Stream `size` bytes at `offset` into `destination` (or just read them
  * through when it is NULL) in fixed chunks, so a member as large as the file
  * never becomes an allocation of that size. */
-static bool sar_copy_range(xx_io_device *source, int64_t offset, int64_t size,
-                           xx_io_device *destination, xx_pd_struct *pd) {
+static bool sar_copy_range(xx_io_device *source, int64_t offset, int64_t size, xx_io_device *destination, xx_pd_struct *pd)
+{
     const size_t file_io_capacity = gb_sar_ns_capacity();
     uint8_t *buffer;
     int64_t remaining = size;
@@ -154,18 +154,14 @@ static bool sar_copy_range(xx_io_device *source, int64_t offset, int64_t size,
     buffer = (uint8_t *)xx_mem_alloc(file_io_capacity);
     if (!buffer) return false;
     while (ok && remaining > 0) {
-        size_t chunk = remaining > (int64_t)file_io_capacity
-                           ? (size_t)file_io_capacity
-                           : (size_t)remaining;
+        size_t chunk = remaining > (int64_t)file_io_capacity ? (size_t)file_io_capacity : (size_t)remaining;
         size_t written = 0U;
-        if ((pd && xx_pd_is_stopped(pd)) ||
-            !sar_read_at(source, offset + (size - remaining), buffer, chunk)) {
+        if ((pd && xx_pd_is_stopped(pd)) || !sar_read_at(source, offset + (size - remaining), buffer, chunk)) {
             ok = false;
             break;
         }
         while (destination && written < chunk) {
-            ssize_t amount = gb_sar_ns_write(destination, buffer + written,
-                                         chunk - written, file_io_capacity);
+            ssize_t amount = gb_sar_ns_write(destination, buffer + written, chunk - written, file_io_capacity);
             if (amount <= 0 || (size_t)amount > chunk - written) {
                 ok = false;
                 break;
@@ -180,15 +176,18 @@ static bool sar_copy_range(xx_io_device *source, int64_t offset, int64_t size,
 
 /* ---- member names ------------------------------------------------------ */
 
-static bool sar_is_sjis_lead(uint8_t c) {
+static bool sar_is_sjis_lead(uint8_t c)
+{
     return (c >= 0x81U && c <= 0x9fU) || (c >= 0xe0U && c <= 0xfcU);
 }
 
-static bool sar_is_sjis_trail(uint8_t c) {
+static bool sar_is_sjis_trail(uint8_t c)
+{
     return (c >= 0x40U && c <= 0x7eU) || (c >= 0x80U && c <= 0xfcU);
 }
 
-static size_t sar_put_escape(char *out, uint8_t c) {
+static size_t sar_put_escape(char *out, uint8_t c)
+{
     static const char digits[] = "0123456789ABCDEF";
     out[0] = '%';
     out[1] = digits[(c >> 4U) & 0x0fU];
@@ -200,24 +199,21 @@ static size_t sar_put_escape(char *out, uint8_t c) {
  * character is escaped as a unit: its trail byte may be 0x5C or 0x7C, which
  * must never turn into a separator or a '|'.  `out` holds at least
  * 3 * length + 1 bytes; returns the converted length. */
-static size_t sar_convert_name(const uint8_t *raw, size_t length, char *out) {
+static size_t sar_convert_name(const uint8_t *raw, size_t length, char *out)
+{
     size_t at = 0U;
     size_t index = 0U;
     while (index < length) {
         uint8_t c = raw[index];
-        if (sar_is_sjis_lead(c) && index + 1U < length &&
-            sar_is_sjis_trail(raw[index + 1U])) {
+        if (sar_is_sjis_lead(c) && index + 1U < length && sar_is_sjis_trail(raw[index + 1U])) {
             at += sar_put_escape(out + at, c);
             at += sar_put_escape(out + at, raw[index + 1U]);
             index += 2U;
             continue;
         }
-        if (c >= 0x80U || c == (uint8_t)'%')
-            at += sar_put_escape(out + at, c);
-        else if (c == (uint8_t)'\\')
-            out[at++] = '/';
-        else
-            out[at++] = (char)c;
+        if (c >= 0x80U || c == (uint8_t)'%') at += sar_put_escape(out + at, c);
+        else if (c == (uint8_t)'\\') out[at++] = '/';
+        else out[at++] = (char)c;
         ++index;
     }
     out[at] = 0;
@@ -227,13 +223,13 @@ static size_t sar_convert_name(const uint8_t *raw, size_t length, char *out) {
 /* 64-bit FNV-1a over the converted name with ASCII folded to lower case, so
  * names that a case-insensitive filesystem treats as one hash alike.  A
  * collision between different names only renames a member needlessly. */
-static uint64_t sar_name_hash(const char *name, size_t length) {
+static uint64_t sar_name_hash(const char *name, size_t length)
+{
     uint64_t hash = UINT64_C(0xcbf29ce484222325);
     size_t index;
     for (index = 0U; index < length; ++index) {
         uint8_t c = (uint8_t)name[index];
-        if (c >= (uint8_t)'A' && c <= (uint8_t)'Z')
-            c = (uint8_t)(c - (uint8_t)'A' + (uint8_t)'a');
+        if (c >= (uint8_t)'A' && c <= (uint8_t)'Z') c = (uint8_t)(c - (uint8_t)'A' + (uint8_t)'a');
         hash ^= (uint64_t)c;
         hash *= UINT64_C(0x100000001b3);
     }
@@ -242,7 +238,8 @@ static uint64_t sar_name_hash(const char *name, size_t length) {
 
 /* Insert "%_<index>" before the extension of the last component (or append
  * it when there is none).  `name` has room for SAR_NAME_BUFFER bytes. */
-static void sar_insert_suffix(char *name, size_t length, uint32_t index) {
+static void sar_insert_suffix(char *name, size_t length, uint32_t index)
+{
     char suffix[2 + 10];
     char digits[10];
     size_t suffix_length = 0U, digit_count = 0U, component = 0U, at, tail;
@@ -264,23 +261,20 @@ static void sar_insert_suffix(char *name, size_t length, uint32_t index) {
     if (length + suffix_length >= SAR_NAME_BUFFER) return;
     tail = length - dot;
     /* Shift the extension (and the terminator) right, then fill the gap. */
-    for (at = tail + 1U; at > 0U; --at)
-        name[dot + suffix_length + at - 1U] = name[dot + at - 1U];
+    for (at = tail + 1U; at > 0U; --at) name[dot + suffix_length + at - 1U] = name[dot + at - 1U];
     xx_rt_memcpy(name + dot, suffix, suffix_length);
 }
 
 /* A Windows device name (CON, PRN, AUX, NUL, COM0-9, LPT0-9, CLOCK$, CONIN$,
  * CONOUT$) as the part of a component before its first '.', trailing spaces
  * ignored: "nul", "Con.txt" and "aux .dat" all open the device. */
-static bool sar_reserved_component(const char *segment, size_t length) {
-    static const char *const devices[] = {"CON",    "PRN",    "AUX",
-                                          "NUL",    "CLOCK$", "CONIN$",
-                                          "CONOUT$"};
+static bool sar_reserved_component(const char *segment, size_t length)
+{
+    static const char *const devices[] = {"CON", "PRN", "AUX", "NUL", "CLOCK$", "CONIN$", "CONOUT$"};
     char stem[8];
     size_t stem_length = 0U, index;
     while (stem_length < length && segment[stem_length] != '.') ++stem_length;
-    while (stem_length != 0U && segment[stem_length - 1U] == ' ')
-        --stem_length;
+    while (stem_length != 0U && segment[stem_length - 1U] == ' ') --stem_length;
     if (stem_length < 3U || stem_length > sizeof(stem) - 1U) return false;
     for (index = 0U; index < stem_length; ++index) {
         char c = segment[index];
@@ -288,13 +282,10 @@ static bool sar_reserved_component(const char *segment, size_t length) {
     }
     stem[stem_length] = 0;
     if (stem_length == 4U && stem[3] >= '0' && stem[3] <= '9' &&
-        ((stem[0] == 'C' && stem[1] == 'O' && stem[2] == 'M') ||
-         (stem[0] == 'L' && stem[1] == 'P' && stem[2] == 'T')))
+        ((stem[0] == 'C' && stem[1] == 'O' && stem[2] == 'M') || (stem[0] == 'L' && stem[1] == 'P' && stem[2] == 'T')))
         return true;
     for (index = 0U; index < sizeof(devices) / sizeof(devices[0]); ++index)
-        if (xx_str_len(devices[index]) == stem_length &&
-            xx_rt_memcmp(stem, devices[index], stem_length) == 0)
-            return true;
+        if (xx_str_len(devices[index]) == stem_length && xx_rt_memcmp(stem, devices[index], stem_length) == 0) return true;
     return false;
 }
 
@@ -302,23 +293,18 @@ static bool sar_reserved_component(const char *segment, size_t length) {
  * components, components ending in '.' or ' ' (this covers "." and "..", and
  * the names Windows would trim into a collision), device names, control
  * characters and the characters no Windows path may carry. */
-static bool sar_safe_name(const char *name) {
+static bool sar_safe_name(const char *name)
+{
     const char *segment;
     const char *at;
     if (!name || !name[0] || name[0] == '/') return false;
     segment = name;
     for (at = name;; ++at) {
         unsigned char c = (unsigned char)*at;
-        if (c == ':' || c == '<' || c == '>' || c == '"' || c == '|' ||
-            c == '?' || c == '*' || c == '\\' || c == 0x7fU ||
-            (c != 0U && c < 0x20U))
-            return false;
+        if (c == ':' || c == '<' || c == '>' || c == '"' || c == '|' || c == '?' || c == '*' || c == '\\' || c == 0x7fU || (c != 0U && c < 0x20U)) return false;
         if (c == '/' || c == 0U) {
             size_t length = (size_t)(at - segment);
-            if (length == 0U || segment[length - 1U] == '.' ||
-                segment[length - 1U] == ' ' ||
-                sar_reserved_component(segment, length))
-                return false;
+            if (length == 0U || segment[length - 1U] == '.' || segment[length - 1U] == ' ' || sar_reserved_component(segment, length)) return false;
             if (c == 0U) return true;
             segment = at + 1;
         }
@@ -327,27 +313,22 @@ static bool sar_safe_name(const char *name) {
 
 /* ---- index walk -------------------------------------------------------- */
 
-static bool sar_read_header(Abstractformat *format, sar_layout *layout) {
+static bool sar_read_header(Abstractformat *format, sar_layout *layout)
+{
     uint8_t header[SAR_HEADER_SIZE];
     int64_t total, size, base, index_size;
     uint32_t count;
-    if (!format || !format->device || !layout || format->base_address < 0)
-        return false;
+    if (!format || !format->device || !layout || format->base_address < 0) return false;
     total = xx_io_total_size(format->device);
     if (total < format->base_address) return false;
     size = total - format->base_address;
-    if (size < (int64_t)SAR_HEADER_SIZE + SAR_MIN_ENTRY ||
-        !sar_read_at(format->device, format->base_address, header,
-                     sizeof(header)))
-        return false;
+    if (size < (int64_t)SAR_HEADER_SIZE + SAR_MIN_ENTRY || !sar_read_at(format->device, format->base_address, header, sizeof(header))) return false;
     count = (uint32_t)xx_data_get_u16(header, 2, 0, true);
     base = (int64_t)xx_data_get_u32(header + 2U, 4, 0, true);
     if (count == 0U || base > size) return false;
     /* The index must hold `count` entries of 10..1033 bytes each. */
     index_size = base - SAR_HEADER_SIZE;
-    if (index_size < (int64_t)count * SAR_MIN_ENTRY ||
-        index_size > (int64_t)count * SAR_MAX_ENTRY)
-        return false;
+    if (index_size < (int64_t)count * SAR_MIN_ENTRY || index_size > (int64_t)count * SAR_MAX_ENTRY) return false;
     layout->archive_size = size;
     layout->data_base = base;
     layout->count = count;
@@ -357,25 +338,22 @@ static bool sar_read_header(Abstractformat *format, sar_layout *layout) {
 /* Return a pointer to index byte `pos` with at least
  * min(SAR_MAX_ENTRY, size - pos) bytes behind it; *avail gets the real
  * count.  NULL at or past the end of the index, or on a read error. */
-static const uint8_t *sar_window_view(sar_window *window, int64_t pos,
-                                      size_t *avail) {
+static const uint8_t *sar_window_view(sar_window *window, int64_t pos, size_t *avail)
+{
     int64_t want = window->size - pos;
     if (pos < 0 || want <= 0) return NULL;
     if (want > SAR_MAX_ENTRY) want = SAR_MAX_ENTRY;
     if ((uint64_t)want > window->capacity) {
-        if (xx_io_seek64(window->device, window->origin + pos, SEEK_SET) != 0 ||
-            gb_sar_ns_read(window->device, window->entry, (size_t)want,
-                window->capacity) != want) return NULL;
-        *avail = (size_t)want; return window->entry;
+        if (xx_io_seek64(window->device, window->origin + pos, SEEK_SET) != 0 || gb_sar_ns_read(window->device, window->entry, (size_t)want, window->capacity) != want)
+            return NULL;
+        *avail = (size_t)want;
+        return window->entry;
     }
-    if (pos < window->start ||
-        pos + want > window->start + (int64_t)window->length) {
+    if (pos < window->start || pos + want > window->start + (int64_t)window->length) {
         int64_t chunk = window->size - pos;
         if ((uint64_t)chunk > window->capacity) chunk = (int64_t)window->capacity;
         window->length = 0U;
-        if (!sar_read_at(window->device, window->origin + pos, window->buffer,
-                         (size_t)chunk))
-            return NULL;
+        if (!sar_read_at(window->device, window->origin + pos, window->buffer, (size_t)chunk)) return NULL;
         window->start = pos;
         window->length = (size_t)chunk;
     }
@@ -387,9 +365,8 @@ static const uint8_t *sar_window_view(sar_window *window, int64_t pos,
  * at least SAR_MAX_ENTRY bytes).  Returns the entry's length, 0 if it is
  * malformed: an empty or over-long name, a control byte in the name, or a
  * name or fixed part running past the end of the index. */
-static size_t sar_parse_entry(const uint8_t *view, size_t avail,
-                              uint32_t *name_length, uint32_t *offset,
-                              uint32_t *size) {
+static size_t sar_parse_entry(const uint8_t *view, size_t avail, uint32_t *name_length, uint32_t *offset, uint32_t *size)
+{
     size_t at;
     for (at = 0U; at < avail && at <= SAR_MAX_NAME; ++at) {
         uint8_t c = view[at];
@@ -399,9 +376,7 @@ static size_t sar_parse_entry(const uint8_t *view, size_t avail,
          * reading something that is not an index. */
         if (c < 0x20U || c == 0x7fU) return 0U;
     }
-    if (at == 0U || at > SAR_MAX_NAME || at >= avail ||
-        avail - at - 1U < SAR_FIXED_SIZE)
-        return 0U;
+    if (at == 0U || at > SAR_MAX_NAME || at >= avail || avail - at - 1U < SAR_FIXED_SIZE) return 0U;
     *name_length = (uint32_t)at;
     *offset = xx_data_get_u32(view + at + 1U, 4, 0, true);
     *size = xx_data_get_u32(view + at + 5U, 4, 0, true);
@@ -411,18 +386,16 @@ static size_t sar_parse_entry(const uint8_t *view, size_t avail,
 /* Members come in ascending order, never overlap and stay inside the data
  * area.  Real writers lay them out back to back; allowing gaps but not
  * overlap keeps the total output bounded by the file size. */
-static bool sar_member_fits(uint32_t offset, uint32_t size,
-                            int64_t previous_end, int64_t data_size) {
-    return (int64_t)offset >= previous_end && (int64_t)offset <= data_size &&
-           (int64_t)size <= data_size - (int64_t)offset;
+static bool sar_member_fits(uint32_t offset, uint32_t size, int64_t previous_end, int64_t data_size)
+{
+    return (int64_t)offset >= previous_end && (int64_t)offset <= data_size && (int64_t)size <= data_size - (int64_t)offset;
 }
 
 /* Walk the whole index.  With `items` NULL this is the probe and keeps
  * nothing; otherwise it fills items[] and keys[] (count entries each), using
  * `name` (SAR_NAME_BUFFER bytes) to hash every converted name. */
-static bool sar_walk(Abstractformat *format, const sar_layout *layout,
-                     sar_member *items, sar_key *keys, char *name,
-                     xx_pd_struct *pd) {
+static bool sar_walk(Abstractformat *format, const sar_layout *layout, sar_member *items, sar_key *keys, char *name, xx_pd_struct *pd)
+{
     sar_window window;
     int64_t index_size = layout->data_base - SAR_HEADER_SIZE;
     int64_t data_size = layout->archive_size - layout->data_base;
@@ -435,15 +408,9 @@ static bool sar_walk(Abstractformat *format, const sar_layout *layout,
      * got past the header has to fall out here. */
     {
         uint8_t first[SAR_MAX_ENTRY];
-        size_t avail = index_size < (int64_t)SAR_MAX_ENTRY
-                           ? (size_t)index_size
-                           : (size_t)SAR_MAX_ENTRY;
+        size_t avail = index_size < (int64_t)SAR_MAX_ENTRY ? (size_t)index_size : (size_t)SAR_MAX_ENTRY;
         uint32_t name_length, offset, size;
-        if (!sar_read_at(format->device,
-                         format->base_address + SAR_HEADER_SIZE, first,
-                         avail) ||
-            sar_parse_entry(first, avail, &name_length, &offset, &size) ==
-                0U ||
+        if (!sar_read_at(format->device, format->base_address + SAR_HEADER_SIZE, first, avail) || sar_parse_entry(first, avail, &name_length, &offset, &size) == 0U ||
             !sar_member_fits(offset, size, 0, data_size))
             return false;
     }
@@ -460,19 +427,15 @@ static bool sar_walk(Abstractformat *format, const sar_layout *layout,
         const uint8_t *view;
         size_t avail = 0U, length;
         uint32_t name_length, offset, size;
-        if ((index & SAR_POLL_MASK) == 0U && pd && xx_pd_is_stopped(pd))
-            goto done;
+        if ((index & SAR_POLL_MASK) == 0U && pd && xx_pd_is_stopped(pd)) goto done;
         view = sar_window_view(&window, pos, &avail);
         if (!view) goto done;
         length = sar_parse_entry(view, avail, &name_length, &offset, &size);
-        if (length == 0U ||
-            !sar_member_fits(offset, size, previous_end, data_size))
-            goto done;
+        if (length == 0U || !sar_member_fits(offset, size, previous_end, data_size)) goto done;
         if (items) {
             size_t converted = sar_convert_name(view, name_length, name);
             items[index].entry_offset = window.origin + pos;
-            items[index].data_offset =
-                format->base_address + layout->data_base + (int64_t)offset;
+            items[index].data_offset = format->base_address + layout->data_base + (int64_t)offset;
             items[index].size = (int64_t)size;
             items[index].name_length = name_length;
             items[index].renamed = false;
@@ -490,7 +453,8 @@ done:
     return ok;
 }
 
-static int sar_compare_keys(const void *left, const void *right) {
+static int sar_compare_keys(const void *left, const void *right)
+{
     const sar_key *a = (const sar_key *)left;
     const sar_key *b = (const sar_key *)right;
     if (a->hash != b->hash) return a->hash < b->hash ? -1 : 1;
@@ -499,18 +463,17 @@ static int sar_compare_keys(const void *left, const void *right) {
 
 /* Sorting puts every group of equal (case-folded) names together, lowest
  * entry index first; that one keeps its name and the rest are renamed. */
-static void sar_mark_duplicates(sar_member *items, sar_key *keys,
-                                size_t count) {
+static void sar_mark_duplicates(sar_member *items, sar_key *keys, size_t count)
+{
     size_t index;
     if (count < 2U) return;
     xx_rt_qsort(keys, count, sizeof(*keys), sar_compare_keys);
     for (index = 1U; index < count; ++index)
-        if (keys[index].hash == keys[index - 1U].hash &&
-            keys[index].index < count)
-            items[keys[index].index].renamed = true;
+        if (keys[index].hash == keys[index - 1U].hash && keys[index].index < count) items[keys[index].index].renamed = true;
 }
 
-static void sar_stream_free(void *opaque) {
+static void sar_stream_free(void *opaque)
+{
     sar_stream *stream = (sar_stream *)opaque;
     if (!stream) return;
     if (stream->items) xx_mem_free(stream->items);
@@ -518,8 +481,8 @@ static void sar_stream_free(void *opaque) {
     xx_mem_free(stream);
 }
 
-static bool sar_open_stream(Abstractformat *format, sar_stream **result,
-                            xx_pd_struct *pd) {
+static bool sar_open_stream(Abstractformat *format, sar_stream **result, xx_pd_struct *pd)
+{
     sar_layout layout;
     sar_member *items = NULL;
     sar_key *keys = NULL;
@@ -531,9 +494,7 @@ static bool sar_open_stream(Abstractformat *format, sar_stream **result,
     keys = (sar_key *)xx_mem_alloc((size_t)layout.count * sizeof(*keys));
     name = (char *)xx_mem_alloc(SAR_NAME_BUFFER);
     stream = (sar_stream *)xx_mem_calloc(1U, sizeof(*stream));
-    if (!items || !keys || !name || !stream ||
-        !sar_walk(format, &layout, items, keys, name, pd))
-        goto fail;
+    if (!items || !keys || !name || !stream || !sar_walk(format, &layout, items, keys, name, pd)) goto fail;
     sar_mark_duplicates(items, keys, layout.count);
     xx_mem_free(keys);
     stream->items = items;
@@ -551,31 +512,27 @@ fail:
 
 /* Re-read member `index`'s raw name and leave its converted (and, for a
  * duplicate, suffixed) form in stream->name. */
-static bool sar_load_name(Abstractformat *format, sar_stream *stream,
-                          size_t index) {
+static bool sar_load_name(Abstractformat *format, sar_stream *stream, size_t index)
+{
     const sar_member *member = &stream->items[index];
     uint8_t raw[SAR_MAX_NAME];
     size_t length;
-    if (member->name_length == 0U || member->name_length > SAR_MAX_NAME ||
-        !sar_read_at(format->device, member->entry_offset, raw,
-                     member->name_length))
-        return false;
+    if (member->name_length == 0U || member->name_length > SAR_MAX_NAME || !sar_read_at(format->device, member->entry_offset, raw, member->name_length)) return false;
     length = sar_convert_name(raw, member->name_length, stream->name);
     if (member->renamed) sar_insert_suffix(stream->name, length, (uint32_t)index);
     return true;
 }
 
-static bool sar_copy_options(xx_list_s *destination, const xx_list_s *source) {
+static bool sar_copy_options(xx_list_s *destination, const xx_list_s *source)
+{
     size_t index;
     if (!source) return true;
     for (index = 0U; index < source->count; ++index) {
-        const xx_meta *original =
-            (const xx_meta *)xx_list_at((const xx_list_t *)source, index);
+        const xx_meta *original = (const xx_meta *)xx_list_at((const xx_list_t *)source, index);
         xx_meta copy;
         if (!original) continue;
         xx_meta_init(&copy, original->meta_id);
-        if (!xx_var_copy(&copy.var, &original->var) ||
-            !xx_list_append(destination, &copy)) {
+        if (!xx_var_copy(&copy.var, &original->var) || !xx_list_append(destination, &copy)) {
             xx_meta_cleanup(&copy);
             return false;
         }
@@ -583,19 +540,19 @@ static bool sar_copy_options(xx_list_s *destination, const xx_list_s *source) {
     return true;
 }
 
-static const xx_var *sar_option(const xx_list_s *options, uint32_t id) {
+static const xx_var *sar_option(const xx_list_s *options, uint32_t id)
+{
     size_t index;
     if (!options) return NULL;
     for (index = 0U; index < options->count; ++index) {
-        const xx_meta *meta =
-            (const xx_meta *)xx_list_at((const xx_list_t *)options, index);
+        const xx_meta *meta = (const xx_meta *)xx_list_at((const xx_list_t *)options, index);
         if (meta && meta->meta_id == id) return &meta->var;
     }
     return NULL;
 }
 
-static bool sar_set_record(Abstractformat *format, xx_archive_record *record,
-                           sar_stream *stream, size_t index) {
+static bool sar_set_record(Abstractformat *format, xx_archive_record *record, sar_stream *stream, size_t index)
+{
     const sar_member *member = &stream->items[index];
     xx_archive_record_cleanup(record);
     xx_archive_record_init(record);
@@ -604,22 +561,16 @@ static bool sar_set_record(Abstractformat *format, xx_archive_record *record,
     record->header_size = (int64_t)member->name_length + 1 + SAR_FIXED_SIZE;
     record->data_offset = member->data_offset;
     record->compressed_size = member->size;
-    return xx_archive_record_set_original_name(record, stream->name) &&
-           xx_archive_record_set_meta_u64(record, XX_META_ID_COMPRESSED_SIZE,
-                                          (uint64_t)member->size) &&
-           xx_archive_record_set_meta_u64(record, XX_META_ID_UNCOMPRESSED_SIZE,
-                                          (uint64_t)member->size) &&
-           xx_archive_record_set_meta_u64(record, XX_META_ID_COMPRESSION_METHOD,
-                                          0U) &&
-           xx_archive_record_set_meta_bool(record, XX_META_ID_IS_ENCRYPTED,
-                                           false) &&
+    return xx_archive_record_set_original_name(record, stream->name) && xx_archive_record_set_meta_u64(record, XX_META_ID_COMPRESSED_SIZE, (uint64_t)member->size) &&
+           xx_archive_record_set_meta_u64(record, XX_META_ID_UNCOMPRESSED_SIZE, (uint64_t)member->size) &&
+           xx_archive_record_set_meta_u64(record, XX_META_ID_COMPRESSION_METHOD, 0U) && xx_archive_record_set_meta_bool(record, XX_META_ID_IS_ENCRYPTED, false) &&
            xx_archive_record_set_meta_bool(record, XX_META_ID_IS_FOLDER, false);
 }
 
 /* ---- public API -------------------------------------------------------- */
 
-void xx_sar_ns_init(xx_sar_ns *archive, xx_io_device *device,
-                    int64_t base_address) {
+void xx_sar_ns_init(xx_sar_ns *archive, xx_io_device *device, int64_t base_address)
+{
     if (!archive) return;
     xx_mem_zero(archive, sizeof(*archive));
     xx_format_init(&archive->format, device, base_address);
@@ -632,49 +583,45 @@ void xx_sar_ns_init(xx_sar_ns *archive, xx_io_device *device,
     archive->format.check_is_valid = xx_sar_ns_check_is_valid;
     archive->format.handle_base_info = xx_sar_ns_handle_base_info;
     archive->format.get_format_size = xx_sar_ns_get_format_size;
-    archive->format.get_number_of_archive_records =
-        xx_sar_ns_get_number_of_archive_records;
-    archive->format.create_archive_records_reading =
-        xx_sar_ns_create_archive_records_reading;
-    archive->format.get_current_archive_record =
-        xx_sar_ns_get_current_archive_record;
-    archive->format.unpack_current_archive_record =
-        xx_sar_ns_unpack_current_archive_record;
-    archive->format.archive_record_move_to_next =
-        xx_sar_ns_archive_record_move_to_next;
-    archive->format.free_archive_records_reading =
-        xx_sar_ns_free_archive_records_reading;
+    archive->format.get_number_of_archive_records = xx_sar_ns_get_number_of_archive_records;
+    archive->format.create_archive_records_reading = xx_sar_ns_create_archive_records_reading;
+    archive->format.get_current_archive_record = xx_sar_ns_get_current_archive_record;
+    archive->format.unpack_current_archive_record = xx_sar_ns_unpack_current_archive_record;
+    archive->format.archive_record_move_to_next = xx_sar_ns_archive_record_move_to_next;
+    archive->format.free_archive_records_reading = xx_sar_ns_free_archive_records_reading;
     archive->data_base = -1;
 }
 
-xx_sar_ns *xx_sar_ns_create(xx_io_device *device, int64_t base_address) {
+xx_sar_ns *xx_sar_ns_create(xx_io_device *device, int64_t base_address)
+{
     xx_sar_ns *archive = (xx_sar_ns *)xx_mem_alloc(sizeof(*archive));
     if (archive) xx_sar_ns_init(archive, device, base_address);
     return archive;
 }
 
-void xx_sar_ns_destroy(xx_sar_ns *archive) {
+void xx_sar_ns_destroy(xx_sar_ns *archive)
+{
     if (archive) xx_format_cleanup_extra_parameters(&archive->format);
 }
 
-void xx_sar_ns_free(xx_sar_ns *archive) {
+void xx_sar_ns_free(xx_sar_ns *archive)
+{
     if (!archive) return;
     xx_sar_ns_destroy(archive);
     xx_mem_free(archive);
 }
 
-bool xx_sar_ns_check_is_valid(Abstractformat *format, xx_pd_struct *pd) {
+bool xx_sar_ns_check_is_valid(Abstractformat *format, xx_pd_struct *pd)
+{
     sar_layout layout;
-    return sar_read_header(format, &layout) &&
-           sar_walk(format, &layout, NULL, NULL, NULL, pd);
+    return sar_read_header(format, &layout) && sar_walk(format, &layout, NULL, NULL, NULL, pd);
 }
 
-bool xx_sar_ns_handle_base_info(Abstractformat *format, xx_pd_struct *pd) {
+bool xx_sar_ns_handle_base_info(Abstractformat *format, xx_pd_struct *pd)
+{
     sar_layout layout;
     xx_sar_ns *archive;
-    if (!sar_read_header(format, &layout) ||
-        !sar_walk(format, &layout, NULL, NULL, NULL, pd))
-        return false;
+    if (!sar_read_header(format, &layout) || !sar_walk(format, &layout, NULL, NULL, NULL, pd)) return false;
     archive = (xx_sar_ns *)format;
     archive->number_of_records = layout.count;
     archive->data_base = layout.data_base;
@@ -685,21 +632,18 @@ bool xx_sar_ns_handle_base_info(Abstractformat *format, xx_pd_struct *pd) {
     return true;
 }
 
-int64_t xx_sar_ns_get_format_size(Abstractformat *format, xx_pd_struct *pd) {
-    return format && (format->base_info_handled ||
-                      xx_sar_ns_handle_base_info(format, pd))
-               ? format->format_size : -1;
+int64_t xx_sar_ns_get_format_size(Abstractformat *format, xx_pd_struct *pd)
+{
+    return format && (format->base_info_handled || xx_sar_ns_handle_base_info(format, pd)) ? format->format_size : -1;
 }
 
-uint64_t xx_sar_ns_get_number_of_archive_records(Abstractformat *format,
-                                                 xx_pd_struct *pd) {
-    return format && (format->base_info_handled ||
-                      xx_sar_ns_handle_base_info(format, pd))
-               ? ((xx_sar_ns *)format)->number_of_records : 0U;
+uint64_t xx_sar_ns_get_number_of_archive_records(Abstractformat *format, xx_pd_struct *pd)
+{
+    return format && (format->base_info_handled || xx_sar_ns_handle_base_info(format, pd)) ? ((xx_sar_ns *)format)->number_of_records : 0U;
 }
 
-xx_archive_record_state *xx_sar_ns_create_archive_records_reading(
-    Abstractformat *format, const xx_list_s *options, xx_pd_struct *pd) {
+xx_archive_record_state *xx_sar_ns_create_archive_records_reading(Abstractformat *format, const xx_list_s *options, xx_pd_struct *pd)
+{
     sar_stream *stream;
     xx_archive_record_state *state;
     if (!sar_open_stream(format, &stream, pd)) return NULL;
@@ -712,8 +656,7 @@ xx_archive_record_state *xx_sar_ns_create_archive_records_reading(
     state->internal_state = stream;
     state->free_internal = sar_stream_free;
     state->total_records = stream->count;
-    if (!sar_copy_options(&state->options, options) ||
-        !sar_set_record(format, &state->current_record, stream, 0U)) {
+    if (!sar_copy_options(&state->options, options) || !sar_set_record(format, &state->current_record, stream, 0U)) {
         xx_archive_record_state_free(state);
         return NULL;
     }
@@ -721,32 +664,26 @@ xx_archive_record_state *xx_sar_ns_create_archive_records_reading(
     return state;
 }
 
-const xx_archive_record *xx_sar_ns_get_current_archive_record(
-    Abstractformat *format, xx_archive_record_state *state) {
-    return format && state && state->format == format && state->has_record
-               ? &state->current_record : NULL;
+const xx_archive_record *xx_sar_ns_get_current_archive_record(Abstractformat *format, xx_archive_record_state *state)
+{
+    return format && state && state->format == format && state->has_record ? &state->current_record : NULL;
 }
 
-bool xx_sar_ns_archive_record_move_to_next(Abstractformat *format,
-                                           xx_archive_record_state *state,
-                                           xx_pd_struct *pd) {
+bool xx_sar_ns_archive_record_move_to_next(Abstractformat *format, xx_archive_record_state *state, xx_pd_struct *pd)
+{
     sar_stream *stream;
     (void)pd;
-    if (!format || !state || state->format != format ||
-        !(stream = (sar_stream *)state->internal_state) ||
-        ++stream->index >= stream->count) {
+    if (!format || !state || state->format != format || !(stream = (sar_stream *)state->internal_state) || ++stream->index >= stream->count) {
         if (state) state->has_record = false;
         return false;
     }
     ++state->current_index;
-    state->has_record = sar_set_record(format, &state->current_record, stream,
-                                       stream->index);
+    state->has_record = sar_set_record(format, &state->current_record, stream, stream->index);
     return state->has_record;
 }
 
-bool xx_sar_ns_unpack_current_archive_record(Abstractformat *format,
-                                             xx_archive_record_state *state,
-                                             xx_pd_struct *pd) {
+bool xx_sar_ns_unpack_current_archive_record(Abstractformat *format, xx_archive_record_state *state, xx_pd_struct *pd)
+{
     sar_stream *stream;
     const sar_member *member;
     const xx_var *path_option;
@@ -755,41 +692,32 @@ bool xx_sar_ns_unpack_current_archive_record(Abstractformat *format,
     char *path = NULL;
     bool result = false;
     bool created = false;
-    if (!format || !state || state->format != format || !state->has_record ||
-        !(stream = (sar_stream *)state->internal_state) ||
-        stream->index >= stream->count || (pd && xx_pd_is_stopped(pd)))
+    if (!format || !state || state->format != format || !state->has_record || !(stream = (sar_stream *)state->internal_state) || stream->index >= stream->count ||
+        (pd && xx_pd_is_stopped(pd)))
         return false;
     member = &stream->items[stream->index];
     if (member->size < 0 || member->data_offset < 0) return false;
     path_option = sar_option(&state->options, XX_META_ID_OPT_UNPACK_PATH);
-    if (!path_option)
-        /* No destination: read the member through, which verifies it. */
-        return sar_copy_range(format->device, member->data_offset,
-                              member->size, NULL, pd);
+    if (!path_option) /* No destination: read the member through, which verifies it. */
+        return sar_copy_range(format->device, member->data_offset, member->size, NULL, pd);
     /* stream->name was built from the file by sar_load_name: refuse it
      * before anything is created when it could escape the output folder or
      * name a device. */
     if (!sar_safe_name(stream->name)) return false;
-    if (path_option->type == XX_VAR_TYPE_STRING ||
-        path_option->type == XX_VAR_TYPE_STRING_VIEW)
-        base = xx_var_get_str(path_option);
-    else if (path_option->type == XX_VAR_TYPE_WSTRING ||
-             path_option->type == XX_VAR_TYPE_WSTRING_VIEW) {
+    if (path_option->type == XX_VAR_TYPE_STRING || path_option->type == XX_VAR_TYPE_STRING_VIEW) base = xx_var_get_str(path_option);
+    else if (path_option->type == XX_VAR_TYPE_WSTRING || path_option->type == XX_VAR_TYPE_WSTRING_VIEW) {
         owned_base = xx_str_unicode_to_utf8(xx_var_get_wstr(path_option));
         base = owned_base;
     }
     if (!base) goto done;
-    path = (base[0] && base[xx_str_len(base) - 1U] != '/' &&
-            base[xx_str_len(base) - 1U] != '\\')
-               ? xx_str_concat3(base, "/", stream->name)
-               : xx_str_concat(base, stream->name);
+    path = (base[0] && base[xx_str_len(base) - 1U] != '/' && base[xx_str_len(base) - 1U] != '\\') ? xx_str_concat3(base, "/", stream->name)
+                                                                                                  : xx_str_concat(base, stream->name);
     if (!path || !xx_store_create_dirs_a(path, false)) goto done;
     {
         xx_io_device *destination = xx_io_file_open(path, "wb");
         created = destination != NULL;
         if (!destination) goto done;
-        result = sar_copy_range(format->device, member->data_offset,
-                                member->size, destination, pd);
+        result = sar_copy_range(format->device, member->data_offset, member->size, destination, pd);
         if (xx_io_close(destination) != 0) result = false;
     }
 done:
@@ -799,8 +727,8 @@ done:
     return result;
 }
 
-void xx_sar_ns_free_archive_records_reading(Abstractformat *format,
-                                            xx_archive_record_state *state) {
+void xx_sar_ns_free_archive_records_reading(Abstractformat *format, xx_archive_record_state *state)
+{
     (void)format;
     xx_archive_record_state_free(state);
 }

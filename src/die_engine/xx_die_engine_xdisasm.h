@@ -27,9 +27,9 @@
 #include "xx_die_engine_bin.h"
 
 typedef struct {
-    int nSize;          /* instruction length in bytes (0 when unknown) */
+    int nSize;              /* instruction length in bytes (0 when unknown) */
     char sInstruction[512]; /* complete uppercase Intel instruction      */
-    int bInvalid;       /* undecodable byte; next address is zero       */
+    int bInvalid;           /* undecodable byte; next address is zero       */
 } XDisasmResult;
 
 XDisasmResult xdisasm(DieFile *pFile, cd_i64 nOffset, int nBits);

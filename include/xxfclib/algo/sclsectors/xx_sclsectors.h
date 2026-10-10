@@ -31,19 +31,12 @@ extern "C" {
 
 /* Canonical form, for the prefix-less case: copies the stream verbatim.
  * Fails when @p output_size cannot hold all of @p input_size. */
-XXFC_API bool xx_sclsectors_decode_memory(const uint8_t *input,
-                                          size_t input_size, uint8_t *output,
-                                          size_t output_size, size_t *written);
+XXFC_API bool xx_sclsectors_decode_memory(const uint8_t *input, size_t input_size, uint8_t *output, size_t output_size, size_t *written);
 
 /* The real entry point: emit @p prefix (the record's compress-properties
  * blob, which may be empty) and then the stream verbatim.  Fails when the two
  * together do not fit in @p output_size.  @p written is set on every path. */
-XXFC_API bool xx_sclsectors_decode_memory_ex(const uint8_t *prefix,
-                                             size_t prefix_size,
-                                             const uint8_t *input,
-                                             size_t input_size,
-                                             uint8_t *output,
-                                             size_t output_size,
+XXFC_API bool xx_sclsectors_decode_memory_ex(const uint8_t *prefix, size_t prefix_size, const uint8_t *input, size_t input_size, uint8_t *output, size_t output_size,
                                              size_t *written);
 
 #ifdef __cplusplus

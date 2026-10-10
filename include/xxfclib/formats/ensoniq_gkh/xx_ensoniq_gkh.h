@@ -13,7 +13,10 @@ XXFC_API void xx_ensoniq_gkh_init(xx_ensoniq_gkh *, xx_io_device *, int64_t);
 XXFC_API xx_ensoniq_gkh *xx_ensoniq_gkh_create(xx_io_device *, int64_t);
 XXFC_API void xx_ensoniq_gkh_destroy(xx_ensoniq_gkh *);
 XXFC_API void xx_ensoniq_gkh_free(xx_ensoniq_gkh *);
-static inline Abstractformat *xx_ensoniq_gkh_to_format(xx_ensoniq_gkh *r) { return r ? &r->format : NULL; }
+static inline Abstractformat *xx_ensoniq_gkh_to_format(xx_ensoniq_gkh *r)
+{
+    return r ? &r->format : NULL;
+}
 #ifdef __cplusplus
 }
 #endif

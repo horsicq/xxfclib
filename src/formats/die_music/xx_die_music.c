@@ -19,8 +19,7 @@ typedef struct xx_die_music_type_entry {
     xx_file_type_t file_type;
 } xx_die_music_type_entry;
 
-#define XX_DIE_MUSIC_ENTRY(ID, slug, numeric_id, display_name) \
-    { #ID, XX_FILE_TYPE_DIE_MUSIC_##ID },
+#define XX_DIE_MUSIC_ENTRY(ID, slug, numeric_id, display_name) {#ID, XX_FILE_TYPE_DIE_MUSIC_##ID},
 static const xx_die_music_type_entry xx_die_music_types[] = {
 #include "xx_die_music_registry.inc"
 };
@@ -31,14 +30,12 @@ static xx_file_type_t xx_die_music_type_for_id(const char *id)
     size_t i;
     if (!id || !id[0]) return XX_FILE_TYPE_UNKNOWN;
     for (i = 0; i < sizeof(xx_die_music_types) / sizeof(xx_die_music_types[0]); ++i) {
-        if (strcmp(id, xx_die_music_types[i].format_id) == 0)
-            return xx_die_music_types[i].file_type;
+        if (strcmp(id, xx_die_music_types[i].format_id) == 0) return xx_die_music_types[i].file_type;
     }
     return XX_FILE_TYPE_UNKNOWN;
 }
 
-static xx_file_type_t xx_die_music_scan(xx_io_device *device,
-                                         const char *expected_id)
+static xx_file_type_t xx_die_music_scan(xx_io_device *device, const char *expected_id)
 {
     DBase db = {0};
     ScanOptions options;
@@ -61,9 +58,7 @@ static xx_file_type_t xx_die_music_scan(xx_io_device *device,
                 for (i = 0; i < result.nCount; ++i) {
                     const ScanRecord *record = &result.pRecords[i];
                     xx_file_type_t type;
-                    if (!record->pFormatId || !record->pFormatId[0] ||
-                        (expected_id && strcmp(expected_id, record->pFormatId) != 0))
-                        continue;
+                    if (!record->pFormatId || !record->pFormatId[0] || (expected_id && strcmp(expected_id, record->pFormatId) != 0)) continue;
                     type = xx_die_music_type_for_id(record->pFormatId);
                     if (type == XX_FILE_TYPE_UNKNOWN) continue;
                     if (record->bIsHeuristic || record->bIsAHeuristic) {
@@ -74,8 +69,7 @@ static xx_file_type_t xx_die_music_scan(xx_io_device *device,
                 }
             }
             scan_result_free(&result);
-            if (strong != XX_FILE_TYPE_UNKNOWN ||
-                (expected_id && heuristic != XX_FILE_TYPE_UNKNOWN)) break;
+            if (strong != XX_FILE_TYPE_UNKNOWN || (expected_id && heuristic != XX_FILE_TYPE_UNKNOWN)) break;
         }
     }
     db_free(&db);
@@ -97,8 +91,7 @@ static bool pm_parse(Abstractformat *format, pm_stream *stream, xx_pd_struct *pd
     int64_t available = pm_available(format);
     char name[80];
 
-    if (!reader->descriptor || available <= 0 ||
-        (pd && xx_pd_is_stopped(pd))) return false;
+    if (!reader->descriptor || available <= 0 || (pd && xx_pd_is_stopped(pd))) return false;
     volume.device = format->device;
     volume.offset = format->base_address;
     volume.size = available;
@@ -106,27 +99,22 @@ static bool pm_parse(Abstractformat *format, pm_stream *stream, xx_pd_struct *pd
     if (!view) return false;
     actual = xx_die_music_scan(view, reader->descriptor->format_id);
     (void)xx_io_close(view);
-    if (actual != reader->descriptor->file_type ||
-        (pd && xx_pd_is_stopped(pd))) return false;
+    if (actual != reader->descriptor->file_type || (pd && xx_pd_is_stopped(pd))) return false;
 
-    (void)xx_rt_snprintf(name, sizeof(name), "%s.music",
-                         reader->descriptor->format_id);
+    (void)xx_rt_snprintf(name, sizeof(name), "%s.music", reader->descriptor->format_id);
     if (!pm_add(format, stream, name, 0, available)) return false;
     stream->size = available;
     return true;
 }
 
-Abstractformat *xx_die_music_reader_create(
-    const xx_die_music_descriptor *descriptor, xx_io_device *device,
-    int64_t base_address)
+Abstractformat *xx_die_music_reader_create(const xx_die_music_descriptor *descriptor, xx_io_device *device, int64_t base_address)
 {
     xx_die_music_reader *reader;
     if (!descriptor) return NULL;
     reader = (xx_die_music_reader *)xx_mem_alloc(sizeof(*reader));
     if (!reader) return NULL;
     xx_mem_zero(reader, sizeof(*reader));
-    pm_init(&reader->format, device, base_address, descriptor->file_type,
-            "music");
+    pm_init(&reader->format, device, base_address, descriptor->file_type, "music");
     reader->descriptor = descriptor;
     return &reader->format;
 }

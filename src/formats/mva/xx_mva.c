@@ -81,17 +81,15 @@ static void xx_mva_vtable_destroy(Abstractformat *self);
 
 /* ------------------------------------------------------------- helpers -- */
 
-static bool xx_mva_read_at(Abstractformat *self, int64_t offset,
-                              uint8_t *buffer, size_t size) {
+static bool xx_mva_read_at(Abstractformat *self, int64_t offset, uint8_t *buffer, size_t size)
+{
     size_t completed = 0U;
 
-    if (!self || !self->device || offset < 0 ||
-        xx_io_seek64(self->device, offset, SEEK_SET) != 0) {
+    if (!self || !self->device || offset < 0 || xx_io_seek64(self->device, offset, SEEK_SET) != 0) {
         return false;
     }
     while (completed < size) {
-        ssize_t received =
-            xx_io_read(self->device, buffer + completed, size - completed);
+        ssize_t received = xx_io_read(self->device, buffer + completed, size - completed);
         if (received <= 0 || (size_t)received > size - completed) {
             return false;
         }
@@ -100,14 +98,14 @@ static bool xx_mva_read_at(Abstractformat *self, int64_t offset,
     return true;
 }
 
-static bool xx_mva_range_within(int64_t total, int64_t offset,
-                                   int64_t size) {
-    return offset >= 0 && size >= 0 && offset <= total &&
-           size <= total - offset;
+static bool xx_mva_range_within(int64_t total, int64_t offset, int64_t size)
+{
+    return offset >= 0 && size >= 0 && offset <= total && size <= total - offset;
 }
 
 /* Refuse anything that would escape the extraction directory. */
-static bool xx_mva_path_safe(const char *name) {
+static bool xx_mva_path_safe(const char *name)
+{
     const char *cursor = name;
 
     if (!name || !name[0] || name[0] == '/') return false;
@@ -122,7 +120,8 @@ static bool xx_mva_path_safe(const char *name) {
     return true;
 }
 
-static void xx_mva_stream_free(void *pointer) {
+static void xx_mva_stream_free(void *pointer)
+{
     xx_mva_stream *stream = (xx_mva_stream *)pointer;
     size_t index;
 
@@ -135,17 +134,15 @@ static void xx_mva_stream_free(void *pointer) {
 }
 
 /* Append a member, taking ownership of @p name. */
-static bool xx_mva_add(xx_mva_stream *stream,
-                          const xx_mva_member *member) {
-    xx_mva_member *grown = (xx_mva_member *)xx_mem_realloc(
-        stream->items, sizeof(*grown) * (stream->count + 1U));
+static bool xx_mva_add(xx_mva_stream *stream, const xx_mva_member *member)
+{
+    xx_mva_member *grown = (xx_mva_member *)xx_mem_realloc(stream->items, sizeof(*grown) * (stream->count + 1U));
 
     if (!grown) return false;
     stream->items = grown;
     stream->items[stream->count++] = *member;
     return true;
 }
-
 
 #define XX_MVA_CONTAINER_HEADER_SIZE 8
 #define XX_MVA_MEMBER_HEADER_SIZE 0x15a
@@ -168,7 +165,6 @@ static char *xx_mva_base_name(const uint8_t *field, size_t length);
 static xx_mva_stream *xx_mva_parse(Abstractformat *self, xx_pd_struct *pd);
 static bool xx_mva_decode(Abstractformat *self, const xx_mva_member *member, uint8_t **out, size_t *out_size, xx_pd_struct *pd);
 
-
 /* 1 GB: no member of a real installer volume approaches this, and the cap
  * keeps a garbage size from being carried into the chain arithmetic. */
 
@@ -176,7 +172,8 @@ static bool xx_mva_decode(Abstractformat *self, const xx_mva_member *member, uin
  * the terminator, so only the run up to the first NUL is the name; a field
  * with no terminator at all is the whole 260 bytes, as the reference
  * implementation reads it. */
-static size_t xx_mva_field_length(const uint8_t *field) {
+static size_t xx_mva_field_length(const uint8_t *field)
+{
     size_t index;
 
     for (index = 0U; index < (size_t)XX_MVA_NAME_SIZE; ++index) {
@@ -195,7 +192,8 @@ static size_t xx_mva_field_length(const uint8_t *field) {
  * build-machine paths and the reference validator accepts them.  The
  * punctuation refused below is what Windows forbids in a path and what a
  * writer therefore never emits. */
-static bool xx_mva_path_valid(const uint8_t *field, size_t length) {
+static bool xx_mva_path_valid(const uint8_t *field, size_t length)
+{
     size_t index;
 
     if (length == 0U) return false;
@@ -203,8 +201,7 @@ static bool xx_mva_path_valid(const uint8_t *field, size_t length) {
         uint8_t byte = field[index];
 
         if (byte < 0x20U) return false;
-        if (byte == '<' || byte == '>' || byte == '"' || byte == '|' ||
-            byte == '*' || byte == '?') {
+        if (byte == '<' || byte == '>' || byte == '"' || byte == '|' || byte == '*' || byte == '?') {
             return false;
         }
     }
@@ -214,15 +211,15 @@ static bool xx_mva_path_valid(const uint8_t *field, size_t length) {
 /* The stored path is absolute and drive qualified.  Members are reported by
  * base name only, matching the reference, which also means no separator, no
  * drive letter and no leading '/' can reach the extraction path. */
-static char *xx_mva_base_name(const uint8_t *field, size_t length) {
+static char *xx_mva_base_name(const uint8_t *field, size_t length)
+{
     size_t start = 0U;
     size_t index;
     size_t size;
     char *result;
 
     for (index = 0U; index < length; ++index) {
-        if (field[index] == '/' || field[index] == '\\' ||
-            field[index] == ':') {
+        if (field[index] == '/' || field[index] == '\\' || field[index] == ':') {
             start = index + 1U;
         }
     }
@@ -237,7 +234,8 @@ static char *xx_mva_base_name(const uint8_t *field, size_t length) {
     return result;
 }
 
-static xx_mva_stream *xx_mva_parse(Abstractformat *self, xx_pd_struct *pd) {
+static xx_mva_stream *xx_mva_parse(Abstractformat *self, xx_pd_struct *pd)
+{
     xx_mva_stream *stream = NULL;
     uint8_t header[XX_MVA_MEMBER_HEADER_SIZE];
     const uint8_t *field = header + XX_MVA_NAME_OFFSET;
@@ -254,12 +252,10 @@ static xx_mva_stream *xx_mva_parse(Abstractformat *self, xx_pd_struct *pd) {
     if (span < XX_MVA_CONTAINER_HEADER_SIZE + XX_MVA_MEMBER_HEADER_SIZE) {
         return NULL;
     }
-    if (!xx_mva_read_at(self, self->base_address, header,
-                        (size_t)XX_MVA_CONTAINER_HEADER_SIZE)) {
+    if (!xx_mva_read_at(self, self->base_address, header, (size_t)XX_MVA_CONTAINER_HEADER_SIZE)) {
         return NULL;
     }
-    if (header[0] != 'm' || header[1] != 'f' || header[2] != 'l' ||
-        header[3] != 'h') {
+    if (header[0] != 'm' || header[1] != 'f' || header[2] != 'l' || header[3] != 'h') {
         return NULL;
     }
     /* A .MVB continuation volume repeats the "mflh" tag but carries the tail
@@ -287,14 +283,12 @@ static xx_mva_stream *xx_mva_parse(Abstractformat *self, xx_pd_struct *pd) {
         if (!xx_mva_range_within(span, offset, XX_MVA_MEMBER_HEADER_SIZE)) {
             break;
         }
-        if (!xx_mva_read_at(self, self->base_address + offset, header,
-                            (size_t)XX_MVA_MEMBER_HEADER_SIZE)) {
+        if (!xx_mva_read_at(self, self->base_address + offset, header, (size_t)XX_MVA_MEMBER_HEADER_SIZE)) {
             goto fail;
         }
         /* End of the chain: the bytes after the last member are whatever the
          * installer appended, not another header. */
-        if (header[0] != 'm' || header[1] != 'f' || header[2] != 'e' ||
-            header[3] != 'n') {
+        if (header[0] != 'm' || header[1] != 'f' || header[2] != 'e' || header[3] != 'n') {
             break;
         }
         if (xx_data_get_u16(header + 4, 2, 0, false) != XX_MVA_MEMBER_VERSION) break;
@@ -307,13 +301,10 @@ static xx_mva_stream *xx_mva_parse(Abstractformat *self, xx_pd_struct *pd) {
 
         /* Both sizes are signed in the container; a negative one is a
          * corrupt header, not a large member. */
-        uncompressed =
-            (int64_t)(int32_t)xx_data_get_u32(header + XX_MVA_SIZES_OFFSET, 4, 0, false);
-        compressed =
-            (int64_t)(int32_t)xx_data_get_u32(header + XX_MVA_SIZES_OFFSET + 4, 4, 0, false);
+        uncompressed = (int64_t)(int32_t)xx_data_get_u32(header + XX_MVA_SIZES_OFFSET, 4, 0, false);
+        compressed = (int64_t)(int32_t)xx_data_get_u32(header + XX_MVA_SIZES_OFFSET + 4, 4, 0, false);
         if (uncompressed < 0 || compressed < 0) break;
-        if (uncompressed > XX_MVA_MAX_MEMBER_SIZE ||
-            compressed > XX_MVA_MAX_MEMBER_SIZE) {
+        if (uncompressed > XX_MVA_MAX_MEMBER_SIZE || compressed > XX_MVA_MAX_MEMBER_SIZE) {
             break;
         }
 
@@ -335,8 +326,7 @@ static xx_mva_stream *xx_mva_parse(Abstractformat *self, xx_pd_struct *pd) {
         member.timestamp = (uint64_t)xx_data_get_u32(header + 8, 4, 0, false);
         /* No method field exists: equal sizes mean the writer stored the
          * member verbatim, anything else is a zlib stream. */
-        member.method = (compressed == uncompressed) ? XX_MVA_METHOD_STORE
-                                                     : XX_MVA_METHOD_ZLIB;
+        member.method = (compressed == uncompressed) ? XX_MVA_METHOD_STORE : XX_MVA_METHOD_ZLIB;
 
         if (!xx_mva_range_within(span, data_offset, compressed)) {
             /* The last member of a volume that spills into a .MVB is
@@ -372,15 +362,13 @@ fail:
     return NULL;
 }
 
-
 /* The container carries no method field; these are what parse derives from
  * the two sizes, and the only two values a member can hold. */
 /* A member's sizes are attacker controlled, so both the packed read and the
  * decoded output are refused above this rather than attempted. */
 
-static bool xx_mva_decode(Abstractformat *self, const xx_mva_member *member,
-                          uint8_t **out, size_t *out_size,
-                          xx_pd_struct *pd) {
+static bool xx_mva_decode(Abstractformat *self, const xx_mva_member *member, uint8_t **out, size_t *out_size, xx_pd_struct *pd)
+{
     uint8_t *packed = NULL;
     uint8_t *plain = NULL;
     size_t packed_size;
@@ -393,8 +381,7 @@ static bool xx_mva_decode(Abstractformat *self, const xx_mva_member *member,
     if (member->compressed_size < 0 || member->uncompressed_size < 0) {
         return false;
     }
-    if (member->compressed_size > XX_MVA_MAX_DECODED ||
-        member->uncompressed_size > XX_MVA_MAX_DECODED) {
+    if (member->compressed_size > XX_MVA_MAX_DECODED || member->uncompressed_size > XX_MVA_MAX_DECODED) {
         return false;
     }
     if (pd && xx_pd_is_stopped(pd)) return false;
@@ -408,8 +395,7 @@ static bool xx_mva_decode(Abstractformat *self, const xx_mva_member *member,
         if (member->compressed_size != member->uncompressed_size) return false;
         plain = (uint8_t *)xx_mem_alloc(plain_size != 0U ? plain_size : 1U);
         if (!plain) return false;
-        if (plain_size != 0U &&
-            !xx_mva_read_at(self, member->data_offset, plain, plain_size)) {
+        if (plain_size != 0U && !xx_mva_read_at(self, member->data_offset, plain, plain_size)) {
             xx_mem_free(plain);
             return false;
         }
@@ -453,9 +439,7 @@ static bool xx_mva_decode(Abstractformat *self, const xx_mva_member *member,
         xx_mem_free(packed);
         return false;
     }
-    if (!xx_zlib_stream_decode_memory(packed, packed_size, plain, plain_size,
-                                      &written) ||
-        written != plain_size) {
+    if (!xx_zlib_stream_decode_memory(packed, packed_size, plain, plain_size, &written) || written != plain_size) {
         xx_mem_free(plain);
         xx_mem_free(packed);
         return false;
@@ -468,8 +452,8 @@ static bool xx_mva_decode(Abstractformat *self, const xx_mva_member *member,
 
 /* ---------------------------------------------------------- lifecycle --- */
 
-void xx_mva_init(xx_mva *archive, xx_io_device *device,
-                    int64_t base_address) {
+void xx_mva_init(xx_mva *archive, xx_io_device *device, int64_t base_address)
+{
     if (!archive) return;
     xx_mem_zero(archive, sizeof(*archive));
     xx_format_init(&archive->format, device, base_address);
@@ -482,22 +466,17 @@ void xx_mva_init(xx_mva *archive, xx_io_device *device,
     archive->format.check_is_valid = xx_mva_check_is_valid;
     archive->format.handle_base_info = xx_mva_handle_base_info;
     archive->format.get_format_size = xx_mva_get_format_size;
-    archive->format.get_number_of_archive_records =
-        xx_mva_get_number_of_archive_records;
-    archive->format.create_archive_records_reading =
-        xx_mva_create_archive_records_reading;
-    archive->format.get_current_archive_record =
-        xx_mva_get_current_archive_record;
-    archive->format.unpack_current_archive_record =
-        xx_mva_unpack_current_archive_record;
-    archive->format.archive_record_move_to_next =
-        xx_mva_archive_record_move_to_next;
-    archive->format.free_archive_records_reading =
-        xx_mva_free_archive_records_reading;
+    archive->format.get_number_of_archive_records = xx_mva_get_number_of_archive_records;
+    archive->format.create_archive_records_reading = xx_mva_create_archive_records_reading;
+    archive->format.get_current_archive_record = xx_mva_get_current_archive_record;
+    archive->format.unpack_current_archive_record = xx_mva_unpack_current_archive_record;
+    archive->format.archive_record_move_to_next = xx_mva_archive_record_move_to_next;
+    archive->format.free_archive_records_reading = xx_mva_free_archive_records_reading;
     archive->format.destroy = xx_mva_vtable_destroy;
 }
 
-xx_mva *xx_mva_create(xx_io_device *device, int64_t base_address) {
+xx_mva *xx_mva_create(xx_io_device *device, int64_t base_address)
+{
     xx_mva *archive = (xx_mva *)xx_mem_alloc(sizeof(*archive));
 
     if (!archive) return NULL;
@@ -505,7 +484,8 @@ xx_mva *xx_mva_create(xx_io_device *device, int64_t base_address) {
     return archive;
 }
 
-void xx_mva_destroy(xx_mva *archive) {
+void xx_mva_destroy(xx_mva *archive)
+{
     if (!archive) return;
     /* Not xx_format_destroy: it dispatches through format.destroy, which is
      * the wrapper below, and the two would recurse. */
@@ -514,19 +494,22 @@ void xx_mva_destroy(xx_mva *archive) {
     archive->number_of_records = 0U;
 }
 
-void xx_mva_free(xx_mva *archive) {
+void xx_mva_free(xx_mva *archive)
+{
     if (!archive) return;
     xx_mva_destroy(archive);
     xx_mem_free(archive);
 }
 
-static void xx_mva_vtable_destroy(Abstractformat *self) {
+static void xx_mva_vtable_destroy(Abstractformat *self)
+{
     xx_mva_destroy((xx_mva *)self);
 }
 
 /* -------------------------------------------------------------- format -- */
 
-bool xx_mva_check_is_valid(Abstractformat *self, xx_pd_struct *pd) {
+bool xx_mva_check_is_valid(Abstractformat *self, xx_pd_struct *pd)
+{
     xx_mva_stream *stream;
 
     if (!self || (pd && xx_pd_is_stopped(pd))) return false;
@@ -536,7 +519,8 @@ bool xx_mva_check_is_valid(Abstractformat *self, xx_pd_struct *pd) {
     return true;
 }
 
-bool xx_mva_handle_base_info(Abstractformat *self, xx_pd_struct *pd) {
+bool xx_mva_handle_base_info(Abstractformat *self, xx_pd_struct *pd)
+{
     xx_mva *archive = (xx_mva *)self;
     xx_mva_stream *stream;
 
@@ -557,18 +541,17 @@ bool xx_mva_handle_base_info(Abstractformat *self, xx_pd_struct *pd) {
     return true;
 }
 
-int64_t xx_mva_get_format_size(Abstractformat *self, xx_pd_struct *pd) {
-    if (!self ||
-        (!self->base_info_handled && !xx_format_handle_base_info(self, pd))) {
+int64_t xx_mva_get_format_size(Abstractformat *self, xx_pd_struct *pd)
+{
+    if (!self || (!self->base_info_handled && !xx_format_handle_base_info(self, pd))) {
         return 0;
     }
     return self->is_valid ? self->format_size : 0;
 }
 
-uint64_t xx_mva_get_number_of_archive_records(Abstractformat *self,
-                                                 xx_pd_struct *pd) {
-    if (!self ||
-        (!self->base_info_handled && !xx_format_handle_base_info(self, pd))) {
+uint64_t xx_mva_get_number_of_archive_records(Abstractformat *self, xx_pd_struct *pd)
+{
+    if (!self || (!self->base_info_handled && !xx_format_handle_base_info(self, pd))) {
         return 0U;
     }
     return self->is_valid ? ((xx_mva *)self)->number_of_records : 0U;
@@ -576,8 +559,8 @@ uint64_t xx_mva_get_number_of_archive_records(Abstractformat *self,
 
 /* ------------------------------------------------------------- records -- */
 
-static bool xx_mva_set_record(xx_archive_record *record,
-                                 const xx_mva_member *member) {
+static bool xx_mva_set_record(xx_archive_record *record, const xx_mva_member *member)
+{
     xx_archive_record_cleanup(record);
     xx_archive_record_init(record);
     record->header_offset = member->header_offset;
@@ -585,34 +568,24 @@ static bool xx_mva_set_record(xx_archive_record *record,
     record->data_offset = member->data_offset;
     record->compressed_size = member->compressed_size;
     return xx_archive_record_set_original_name(record, member->name) &&
-           xx_archive_record_set_meta_u64(record, XX_META_ID_COMPRESSED_SIZE,
-                                          (uint64_t)member->compressed_size) &&
-           xx_archive_record_set_meta_u64(
-               record, XX_META_ID_UNCOMPRESSED_SIZE,
-               (uint64_t)member->uncompressed_size) &&
-           xx_archive_record_set_meta_u64(record, XX_META_ID_COMPRESSION_METHOD,
-                                          member->method) &&
-           xx_archive_record_set_meta_u64(record, XX_META_ID_TIMESTAMP,
-                                          member->timestamp) &&
-           xx_archive_record_set_meta_bool(record, XX_META_ID_IS_FOLDER,
-                                           member->is_folder) &&
-           xx_archive_record_set_meta_bool(record, XX_META_ID_IS_ENCRYPTED,
-                                           false);
+           xx_archive_record_set_meta_u64(record, XX_META_ID_COMPRESSED_SIZE, (uint64_t)member->compressed_size) &&
+           xx_archive_record_set_meta_u64(record, XX_META_ID_UNCOMPRESSED_SIZE, (uint64_t)member->uncompressed_size) &&
+           xx_archive_record_set_meta_u64(record, XX_META_ID_COMPRESSION_METHOD, member->method) &&
+           xx_archive_record_set_meta_u64(record, XX_META_ID_TIMESTAMP, member->timestamp) &&
+           xx_archive_record_set_meta_bool(record, XX_META_ID_IS_FOLDER, member->is_folder) && xx_archive_record_set_meta_bool(record, XX_META_ID_IS_ENCRYPTED, false);
 }
 
-static bool xx_mva_copy_options(xx_list_s *target,
-                                   const xx_list_s *options) {
+static bool xx_mva_copy_options(xx_list_s *target, const xx_list_s *options)
+{
     size_t index;
 
     if (!target || !options) return options == NULL;
     for (index = 0U; index < options->count; ++index) {
-        const xx_meta *source =
-            (const xx_meta *)xx_list_at((const xx_list_t *)options, index);
+        const xx_meta *source = (const xx_meta *)xx_list_at((const xx_list_t *)options, index);
         xx_meta copied;
         if (!source) continue;
         xx_meta_init(&copied, source->meta_id);
-        if (!xx_var_copy(&copied.var, &source->var) ||
-            !xx_list_append(target, &copied)) {
+        if (!xx_var_copy(&copied.var, &source->var) || !xx_list_append(target, &copied)) {
             xx_meta_cleanup(&copied);
             return false;
         }
@@ -620,21 +593,20 @@ static bool xx_mva_copy_options(xx_list_s *target,
     return true;
 }
 
-static const xx_var *xx_mva_get_option(const xx_list_s *options,
-                                          uint32_t meta_id) {
+static const xx_var *xx_mva_get_option(const xx_list_s *options, uint32_t meta_id)
+{
     size_t index;
 
     if (!options) return NULL;
     for (index = 0U; index < options->count; ++index) {
-        const xx_meta *meta =
-            (const xx_meta *)xx_list_at((const xx_list_t *)options, index);
+        const xx_meta *meta = (const xx_meta *)xx_list_at((const xx_list_t *)options, index);
         if (meta && meta->meta_id == meta_id) return &meta->var;
     }
     return NULL;
 }
 
-xx_archive_record_state *xx_mva_create_archive_records_reading(
-    Abstractformat *self, const xx_list_s *options, xx_pd_struct *pd) {
+xx_archive_record_state *xx_mva_create_archive_records_reading(Abstractformat *self, const xx_list_s *options, xx_pd_struct *pd)
+{
     xx_mva_stream *stream;
     xx_archive_record_state *state;
 
@@ -650,9 +622,7 @@ xx_archive_record_state *xx_mva_create_archive_records_reading(
     state->internal_state = stream;
     state->free_internal = xx_mva_stream_free;
     state->total_records = (int64_t)stream->count;
-    if (!xx_mva_copy_options(&state->options, options) ||
-        (stream->count != 0U &&
-         !xx_mva_set_record(&state->current_record, &stream->items[0]))) {
+    if (!xx_mva_copy_options(&state->options, options) || (stream->count != 0U && !xx_mva_set_record(&state->current_record, &stream->items[0]))) {
         xx_archive_record_state_free(state);
         return NULL;
     }
@@ -661,20 +631,16 @@ xx_archive_record_state *xx_mva_create_archive_records_reading(
     return state;
 }
 
-const xx_archive_record *xx_mva_get_current_archive_record(
-    Abstractformat *self, xx_archive_record_state *state) {
-    return self && state && state->format == self && state->has_record
-               ? &state->current_record
-               : NULL;
+const xx_archive_record *xx_mva_get_current_archive_record(Abstractformat *self, xx_archive_record_state *state)
+{
+    return self && state && state->format == self && state->has_record ? &state->current_record : NULL;
 }
 
-bool xx_mva_archive_record_move_to_next(Abstractformat *self,
-                                           xx_archive_record_state *state,
-                                           xx_pd_struct *pd) {
+bool xx_mva_archive_record_move_to_next(Abstractformat *self, xx_archive_record_state *state, xx_pd_struct *pd)
+{
     xx_mva_stream *stream;
 
-    if (!self || !state || state->format != self || !state->has_record ||
-        (pd && xx_pd_is_stopped(pd))) {
+    if (!self || !state || state->format != self || !state->has_record || (pd && xx_pd_is_stopped(pd))) {
         return false;
     }
     stream = (xx_mva_stream *)state->internal_state;
@@ -686,14 +652,12 @@ bool xx_mva_archive_record_move_to_next(Abstractformat *self,
     }
     ++stream->index;
     ++state->current_index;
-    state->has_record = xx_mva_set_record(&state->current_record,
-                                             &stream->items[stream->index]);
+    state->has_record = xx_mva_set_record(&state->current_record, &stream->items[stream->index]);
     return state->has_record;
 }
 
-bool xx_mva_unpack_current_archive_record(Abstractformat *self,
-                                             xx_archive_record_state *state,
-                                             xx_pd_struct *pd) {
+bool xx_mva_unpack_current_archive_record(Abstractformat *self, xx_archive_record_state *state, xx_pd_struct *pd)
+{
     xx_mva_stream *stream;
     const xx_mva_member *member;
     const xx_var *path_option;
@@ -705,8 +669,7 @@ bool xx_mva_unpack_current_archive_record(Abstractformat *self,
     bool result = false;
     bool created = false;
 
-    if (!self || !state || state->format != self || !state->has_record ||
-        (pd && xx_pd_is_stopped(pd))) {
+    if (!self || !state || state->format != self || !state->has_record || (pd && xx_pd_is_stopped(pd))) {
         return false;
     }
     stream = (xx_mva_stream *)state->internal_state;
@@ -714,8 +677,7 @@ bool xx_mva_unpack_current_archive_record(Abstractformat *self,
     member = &stream->items[stream->index];
     if (!xx_mva_path_safe(member->name)) return false;
 
-    path_option = xx_mva_get_option(&state->options,
-                                       XX_META_ID_OPT_UNPACK_PATH);
+    path_option = xx_mva_get_option(&state->options, XX_META_ID_OPT_UNPACK_PATH);
     if (!path_option) {
         /* No destination: decode and discard, which verifies the member
          * without writing anything. */
@@ -724,11 +686,9 @@ bool xx_mva_unpack_current_archive_record(Abstractformat *self,
         xx_mem_free(plain);
         return result;
     }
-    if (path_option->type == XX_VAR_TYPE_STRING ||
-        path_option->type == XX_VAR_TYPE_STRING_VIEW) {
+    if (path_option->type == XX_VAR_TYPE_STRING || path_option->type == XX_VAR_TYPE_STRING_VIEW) {
         base_path = xx_var_get_str(path_option);
-    } else if (path_option->type == XX_VAR_TYPE_WSTRING ||
-               path_option->type == XX_VAR_TYPE_WSTRING_VIEW) {
+    } else if (path_option->type == XX_VAR_TYPE_WSTRING || path_option->type == XX_VAR_TYPE_WSTRING_VIEW) {
         converted_path = xx_str_unicode_to_utf8(xx_var_get_wstr(path_option));
         base_path = converted_path;
     }
@@ -736,9 +696,7 @@ bool xx_mva_unpack_current_archive_record(Abstractformat *self,
         xx_str_free(converted_path);
         return false;
     }
-    if (base_path[0] != '\0' &&
-        base_path[xx_str_len(base_path) - 1U] != '/' &&
-        base_path[xx_str_len(base_path) - 1U] != '\\') {
+    if (base_path[0] != '\0' && base_path[xx_str_len(base_path) - 1U] != '/' && base_path[xx_str_len(base_path) - 1U] != '\\') {
         target_path = xx_str_concat3(base_path, "/", member->name);
     } else {
         target_path = xx_str_concat(base_path, member->name);
@@ -751,8 +709,7 @@ bool xx_mva_unpack_current_archive_record(Abstractformat *self,
         xx_str_free(target_path);
         return result;
     }
-    if (!xx_store_create_dirs_a(target_path, false) ||
-        !xx_mva_decode(self, member, &plain, &plain_size, pd)) {
+    if (!xx_store_create_dirs_a(target_path, false) || !xx_mva_decode(self, member, &plain, &plain_size, pd)) {
         xx_str_free(target_path);
         return false;
     }
@@ -763,8 +720,7 @@ bool xx_mva_unpack_current_archive_record(Abstractformat *self,
 
         result = output != NULL;
         while (result && completed < plain_size) {
-            ssize_t sent = xx_io_write(output, plain + completed,
-                                       plain_size - completed);
+            ssize_t sent = xx_io_write(output, plain + completed, plain_size - completed);
             if (sent <= 0 || (size_t)sent > plain_size - completed) {
                 result = false;
                 break;
@@ -779,8 +735,8 @@ bool xx_mva_unpack_current_archive_record(Abstractformat *self,
     return result;
 }
 
-void xx_mva_free_archive_records_reading(Abstractformat *self,
-                                            xx_archive_record_state *state) {
+void xx_mva_free_archive_records_reading(Abstractformat *self, xx_archive_record_state *state)
+{
     (void)self;
     xx_archive_record_state_free(state);
 }

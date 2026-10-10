@@ -42,8 +42,14 @@
 #ifdef __cplusplus
 extern "C" {
 #endif
-typedef enum xx_cpm_version_e { XX_CPM_VERSION_22 = 22, XX_CPM_VERSION_3 = 3 } xx_cpm_version;
-typedef enum xx_cpm_length_mode_e { XX_CPM_LENGTH_RECORDS = 0, XX_CPM_LENGTH_LAST_RECORD_USED = 1 } xx_cpm_length_mode;
+typedef enum xx_cpm_version_e {
+    XX_CPM_VERSION_22 = 22,
+    XX_CPM_VERSION_3 = 3
+} xx_cpm_version;
+typedef enum xx_cpm_length_mode_e {
+    XX_CPM_LENGTH_RECORDS = 0,
+    XX_CPM_LENGTH_LAST_RECORD_USED = 1
+} xx_cpm_length_mode;
 typedef struct xx_cpm_geometry_s {
     uint32_t tracks;
     uint16_t physical_sectors_per_track, physical_sector_size;
@@ -78,7 +84,10 @@ XXFC_API bool xx_cpm_archive_record_move_to_next(Abstractformat *, xx_archive_re
 XXFC_API bool xx_cpm_unpack_current_archive_record(Abstractformat *, xx_archive_record_state *, xx_pd_struct *);
 XXFC_API bool xx_cpm_extract_record_to_device(Abstractformat *, xx_archive_record_state *, xx_io_device *, xx_pd_struct *);
 XXFC_API void xx_cpm_free_archive_records_reading(Abstractformat *, xx_archive_record_state *);
-static inline Abstractformat *xx_cpm_to_format(xx_cpm *v) { return v ? &v->format : NULL; }
+static inline Abstractformat *xx_cpm_to_format(xx_cpm *v)
+{
+    return v ? &v->format : NULL;
+}
 #ifdef __cplusplus
 }
 #endif

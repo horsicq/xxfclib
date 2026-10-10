@@ -70,8 +70,8 @@
 #define XX_QCOW_MEMBER_NAME "disk.img"
 
 typedef struct xx_qcow_private_s {
-    uint64_t *l1_table;          /**< l1_count entries, host byte offsets. */
-    char *backing_file;          /**< Owned, or NULL. */
+    uint64_t *l1_table; /**< l1_count entries, host byte offsets. */
+    char *backing_file; /**< Owned, or NULL. */
     int64_t input_size;
     int64_t base_address;
     uint64_t virtual_size;
@@ -79,19 +79,19 @@ typedef struct xx_qcow_private_s {
     uint64_t refcount_table_offset;
     uint64_t snapshots_offset;
     uint64_t incompatible_features;
-    uint32_t l1_count;           /**< Entries actually read into l1_table. */
-    uint32_t l1_size;            /**< The header's declared entry count. */
+    uint32_t l1_count; /**< Entries actually read into l1_table. */
+    uint32_t l1_size;  /**< The header's declared entry count. */
     uint32_t version;
     uint32_t cluster_bits;
     uint32_t cluster_size;
-    uint32_t l2_bits;            /**< cluster_bits - 3, or -4 for extended L2. */
+    uint32_t l2_bits; /**< cluster_bits - 3, or -4 for extended L2. */
     uint32_t crypt_method;
     uint64_t crypto_header_offset, crypto_header_size;
     uint32_t nb_snapshots;
     uint32_t refcount_order;
     uint8_t compression_type;
     bool extended_l2;
-    bool consumed;               /**< The single member has been stepped past. */
+    bool consumed; /**< The single member has been stepped past. */
 } xx_qcow_private;
 
 static void xx_qcow_vtable_destroy(Abstractformat *self);
@@ -100,13 +100,12 @@ static void xx_qcow_vtable_destroy(Abstractformat *self);
 
 /* Every read goes through xx_io_seek64: a disk image routinely exceeds 2 GB
  * and long is 32 bits on Win64, so xx_io_seek() would truncate the offset. */
-static bool xx_qcow_read_at(xx_io_device *device, int64_t offset, void *data,
-                            size_t size) {
+static bool xx_qcow_read_at(xx_io_device *device, int64_t offset, void *data, size_t size)
+{
     uint8_t *out = (uint8_t *)data;
     size_t done = 0U;
 
-    if (!device || (!data && size != 0U) || offset < 0 ||
-        xx_io_seek64(device, offset, SEEK_SET) != 0) {
+    if (!device || (!data && size != 0U) || offset < 0 || xx_io_seek64(device, offset, SEEK_SET) != 0) {
         return false;
     }
     while (done < size) {
@@ -118,16 +117,15 @@ static bool xx_qcow_read_at(xx_io_device *device, int64_t offset, void *data,
 }
 
 /* True when [offset, offset + size) lies inside [0, total_size). */
-static bool xx_qcow_range_within(int64_t total_size, int64_t offset,
-                                 int64_t size) {
-    return (total_size >= 0) && (offset >= 0) && (size >= 0) &&
-           (offset <= total_size) && (size <= total_size - offset);
+static bool xx_qcow_range_within(int64_t total_size, int64_t offset, int64_t size)
+{
+    return (total_size >= 0) && (offset >= 0) && (size >= 0) && (offset <= total_size) && (size <= total_size - offset);
 }
 
 /* Convert a host offset taken off the disk into a device offset, refusing
  * anything that does not fit or that runs past the end of the image. */
-static bool xx_qcow_host_range(const xx_qcow_private *parsed, uint64_t host,
-                               int64_t size, int64_t *out_offset) {
+static bool xx_qcow_host_range(const xx_qcow_private *parsed, uint64_t host, int64_t size, int64_t *out_offset)
+{
     int64_t offset;
 
     if (!parsed || !out_offset || host > (uint64_t)INT64_MAX) return false;
@@ -143,31 +141,22 @@ static bool xx_qcow_host_range(const xx_qcow_private *parsed, uint64_t host,
  * length. QEMU can place the next frame immediately after this one in the
  * same sector. Walk only the bounded frame headers to find its exact end;
  * xx_zstd_decompress_memory() still validates and decodes the complete frame. */
-static bool xx_qcow_zstd_frame_size(const uint8_t *data, size_t available,
-                                    size_t *frame_size) {
+static bool xx_qcow_zstd_frame_size(const uint8_t *data, size_t available, size_t *frame_size)
+{
     size_t offset;
     unsigned descriptor;
     unsigned content_size_flag;
     unsigned dictionary_size;
     unsigned content_size_bytes;
     bool last;
-    if (!data || !frame_size || available < 6U ||
-        data[0] != 0x28U || data[1] != 0xb5U || data[2] != 0x2fU ||
-        data[3] != 0xfdU) return false;
+    if (!data || !frame_size || available < 6U || data[0] != 0x28U || data[1] != 0xb5U || data[2] != 0x2fU || data[3] != 0xfdU) return false;
     descriptor = data[4U];
     if ((descriptor & 0x18U) != 0U) return false;
     content_size_flag = descriptor >> 6U;
-    dictionary_size = (descriptor & 3U) == 0U ? 0U :
-                      (descriptor & 3U) == 1U ? 1U :
-                      (descriptor & 3U) == 2U ? 2U : 4U;
-    content_size_bytes = content_size_flag == 0U ?
-                             ((descriptor & 0x20U) != 0U ? 1U : 0U) :
-                         content_size_flag == 1U ? 2U :
-                         content_size_flag == 2U ? 4U : 8U;
+    dictionary_size = (descriptor & 3U) == 0U ? 0U : (descriptor & 3U) == 1U ? 1U : (descriptor & 3U) == 2U ? 2U : 4U;
+    content_size_bytes = content_size_flag == 0U ? ((descriptor & 0x20U) != 0U ? 1U : 0U) : content_size_flag == 1U ? 2U : content_size_flag == 2U ? 4U : 8U;
     offset = 5U + ((descriptor & 0x20U) == 0U ? 1U : 0U);
-    if (offset > available ||
-        dictionary_size + content_size_bytes > available - offset)
-        return false;
+    if (offset > available || dictionary_size + content_size_bytes > available - offset) return false;
     offset += dictionary_size + content_size_bytes;
     do {
         uint32_t header;
@@ -175,9 +164,7 @@ static bool xx_qcow_zstd_frame_size(const uint8_t *data, size_t available,
         size_t block_size;
         size_t stored_size;
         if (available - offset < 3U) return false;
-        header = (uint32_t)data[offset] |
-                 ((uint32_t)data[offset + 1U] << 8U) |
-                 ((uint32_t)data[offset + 2U] << 16U);
+        header = (uint32_t)data[offset] | ((uint32_t)data[offset + 1U] << 8U) | ((uint32_t)data[offset + 2U] << 16U);
         offset += 3U;
         last = (header & 1U) != 0U;
         type = (header >> 1U) & 3U;
@@ -195,7 +182,8 @@ static bool xx_qcow_zstd_frame_size(const uint8_t *data, size_t available,
     return true;
 }
 
-static void xx_qcow_private_cleanup(xx_qcow_private *parsed) {
+static void xx_qcow_private_cleanup(xx_qcow_private *parsed)
+{
     if (!parsed) return;
     if (parsed->l1_table) xx_mem_free(parsed->l1_table);
     if (parsed->backing_file) xx_str_free(parsed->backing_file);
@@ -203,7 +191,8 @@ static void xx_qcow_private_cleanup(xx_qcow_private *parsed) {
     parsed->input_size = -1;
 }
 
-static void xx_qcow_private_free(void *pointer) {
+static void xx_qcow_private_free(void *pointer)
+{
     xx_qcow_private *parsed = (xx_qcow_private *)pointer;
 
     if (!parsed) return;
@@ -214,9 +203,8 @@ static void xx_qcow_private_free(void *pointer) {
 /* The backing file name is plain bytes, not NUL terminated. It is published
  * for information only - this reader never opens it - so control characters
  * and separators are simply refused rather than sanitised. */
-static char *xx_qcow_read_backing_file(xx_io_device *device,
-                                       const xx_qcow_private *parsed,
-                                       uint64_t offset, uint32_t size) {
+static char *xx_qcow_read_backing_file(xx_io_device *device, const xx_qcow_private *parsed, uint64_t offset, uint32_t size)
+{
     int64_t at;
     char *name;
     uint32_t index;
@@ -241,8 +229,8 @@ static char *xx_qcow_read_backing_file(xx_io_device *device,
 
 /* ---------------------------------------------------------------- parse -- */
 
-static bool xx_qcow_parse_impl(Abstractformat *self, xx_qcow_private *parsed,
-                          const xx_list_s *options, xx_pd_struct *pd) {
+static bool xx_qcow_parse_impl(Abstractformat *self, xx_qcow_private *parsed, const xx_list_s *options, xx_pd_struct *pd)
+{
     uint8_t header[XX_QCOW_HEADER_V3_SIZE + 8];
     uint8_t *raw_l1 = NULL;
     int64_t total_size;
@@ -260,15 +248,12 @@ static bool xx_qcow_parse_impl(Abstractformat *self, xx_qcow_private *parsed,
         xx_mem_zero(parsed, sizeof(*parsed));
         parsed->input_size = -1;
     }
-    if (!self || !self->device || !parsed || self->base_address < 0 ||
-        (pd && xx_pd_is_stopped(pd))) {
+    if (!self || !self->device || !parsed || self->base_address < 0 || (pd && xx_pd_is_stopped(pd))) {
         return false;
     }
     total_size = xx_io_total_size(self->device);
-    if (!xx_qcow_range_within(total_size, self->base_address,
-                              XX_QCOW_HEADER_V2_SIZE) ||
-        !xx_qcow_read_at(self->device, self->base_address, header,
-                         XX_QCOW_HEADER_V2_SIZE)) {
+    if (!xx_qcow_range_within(total_size, self->base_address, XX_QCOW_HEADER_V2_SIZE) ||
+        !xx_qcow_read_at(self->device, self->base_address, header, XX_QCOW_HEADER_V2_SIZE)) {
         return false;
     }
     if (xx_data_get_u32(header, sizeof(header), 0U, true) != XX_QCOW_MAGIC) {
@@ -291,14 +276,12 @@ static bool xx_qcow_parse_impl(Abstractformat *self, xx_qcow_private *parsed,
     parsed->crypt_method = xx_data_get_u32(header, sizeof(header), 32U, true);
     parsed->l1_size = xx_data_get_u32(header, sizeof(header), 36U, true);
     parsed->l1_table_offset = xx_data_get_u64(header, sizeof(header), 40U, true);
-    parsed->refcount_table_offset =
-        xx_data_get_u64(header, sizeof(header), 48U, true);
+    parsed->refcount_table_offset = xx_data_get_u64(header, sizeof(header), 48U, true);
     parsed->nb_snapshots = xx_data_get_u32(header, sizeof(header), 60U, true);
     parsed->snapshots_offset = xx_data_get_u64(header, sizeof(header), 64U, true);
     parsed->refcount_order = 4U; /* The version 2 constant. */
 
-    if (parsed->cluster_bits < XX_QCOW_MIN_CLUSTER_BITS ||
-        parsed->cluster_bits > XX_QCOW_MAX_CLUSTER_BITS) {
+    if (parsed->cluster_bits < XX_QCOW_MIN_CLUSTER_BITS || parsed->cluster_bits > XX_QCOW_MAX_CLUSTER_BITS) {
         goto fail;
     }
     parsed->cluster_size = UINT32_C(1) << parsed->cluster_bits;
@@ -306,18 +289,13 @@ static bool xx_qcow_parse_impl(Abstractformat *self, xx_qcow_private *parsed,
     if (parsed->l1_size > XX_QCOW_MAX_L1_ENTRIES) goto fail;
 
     if (parsed->version == 3U) {
-        if (!xx_qcow_range_within(total_size, self->base_address,
-                                  XX_QCOW_HEADER_V3_SIZE) ||
-            !xx_qcow_read_at(self->device, self->base_address, header,
-                             XX_QCOW_HEADER_V3_SIZE)) {
+        if (!xx_qcow_range_within(total_size, self->base_address, XX_QCOW_HEADER_V3_SIZE) ||
+            !xx_qcow_read_at(self->device, self->base_address, header, XX_QCOW_HEADER_V3_SIZE)) {
             goto fail;
         }
-        parsed->incompatible_features =
-            xx_data_get_u64(header, sizeof(header), 72U, true);
-        if ((parsed->incompatible_features & ~UINT64_C(0x1b)) != 0U)
-            goto fail;
-        parsed->extended_l2 =
-            (parsed->incompatible_features & UINT64_C(0x10)) != 0U;
+        parsed->incompatible_features = xx_data_get_u64(header, sizeof(header), 72U, true);
+        if ((parsed->incompatible_features & ~UINT64_C(0x1b)) != 0U) goto fail;
+        parsed->extended_l2 = (parsed->incompatible_features & UINT64_C(0x10)) != 0U;
         if (parsed->extended_l2 && parsed->cluster_bits < 14U) goto fail;
         parsed->refcount_order = xx_data_get_u32(header, sizeof(header), 96U, true);
         header_length = xx_data_get_u32(header, sizeof(header), 100U, true);
@@ -325,13 +303,8 @@ static bool xx_qcow_parse_impl(Abstractformat *self, xx_qcow_private *parsed,
          * hold it; older version 3 writers stop at 104 and mean deflate. */
         if (header_length > XX_QCOW_HEADER_V3_SIZE) {
             uint8_t type = 0U;
-            if (!xx_qcow_range_within(total_size,
-                                      self->base_address +
-                                          XX_QCOW_HEADER_V3_SIZE,
-                                      1) ||
-                !xx_qcow_read_at(self->device,
-                                 self->base_address + XX_QCOW_HEADER_V3_SIZE,
-                                 &type, 1U)) {
+            if (!xx_qcow_range_within(total_size, self->base_address + XX_QCOW_HEADER_V3_SIZE, 1) ||
+                !xx_qcow_read_at(self->device, self->base_address + XX_QCOW_HEADER_V3_SIZE, &type, 1U)) {
                 goto fail;
             }
             parsed->compression_type = type;
@@ -340,8 +313,7 @@ static bool xx_qcow_parse_impl(Abstractformat *self, xx_qcow_private *parsed,
          * understand does not affect guest data, which never goes through the
          * refcount tables, so it is only sanity checked. */
         if (parsed->refcount_order > 6U) goto fail;
-        if (header_length < XX_QCOW_HEADER_V3_SIZE ||
-            (header_length & 7U) != 0U) goto fail;
+        if (header_length < XX_QCOW_HEADER_V3_SIZE || (header_length & 7U) != 0U) goto fail;
     }
     if (parsed->crypt_method > 2U) goto fail;
     if (parsed->crypt_method == 2U) {
@@ -349,31 +321,42 @@ static bool xx_qcow_parse_impl(Abstractformat *self, xx_qcow_private *parsed,
         bool found = false, terminated = false;
         if (header_length > parsed->cluster_size || end > parsed->cluster_size || cursor > end) goto fail;
         while (end - cursor >= 8U) {
-            uint8_t ext[24]; uint32_t magic, len; uint64_t aligned; int64_t ext_at;
+            uint8_t ext[24];
+            uint32_t magic, len;
+            uint64_t aligned;
+            int64_t ext_at;
             if (!xx_qcow_host_range(parsed, cursor, 8, &ext_at) || !xx_qcow_read_at(self->device, ext_at, ext, 8)) goto fail;
-            magic=xx_data_get_u32(ext,8,0,true); len=xx_data_get_u32(ext,8,4,true); cursor+=8;
-            if (!magic) { if(len) goto fail; terminated=true; break; }
-            aligned=((uint64_t)len+7U)&~UINT64_C(7); if(aligned>end-cursor) goto fail;
-            if(magic==UINT32_C(0x0537be77)) {
-                int64_t hdr_at;
-                if(found || len!=16 || !xx_qcow_host_range(parsed,cursor,16,&ext_at) || !xx_qcow_read_at(self->device,ext_at,ext,16)) goto fail;
-                parsed->crypto_header_offset=xx_data_get_u64(ext,16,0,true); parsed->crypto_header_size=xx_data_get_u64(ext,16,8,true);
-                if(parsed->crypto_header_size<592 || parsed->crypto_header_size>64U*1024U*1024U || (parsed->crypto_header_offset&(parsed->cluster_size-1U)) ||
-                   !xx_qcow_host_range(parsed,parsed->crypto_header_offset,(int64_t)parsed->crypto_header_size,&hdr_at)) goto fail;
-                found=true;
+            magic = xx_data_get_u32(ext, 8, 0, true);
+            len = xx_data_get_u32(ext, 8, 4, true);
+            cursor += 8;
+            if (!magic) {
+                if (len) goto fail;
+                terminated = true;
+                break;
             }
-            cursor+=aligned;
+            aligned = ((uint64_t)len + 7U) & ~UINT64_C(7);
+            if (aligned > end - cursor) goto fail;
+            if (magic == UINT32_C(0x0537be77)) {
+                int64_t hdr_at;
+                if (found || len != 16 || !xx_qcow_host_range(parsed, cursor, 16, &ext_at) || !xx_qcow_read_at(self->device, ext_at, ext, 16)) goto fail;
+                parsed->crypto_header_offset = xx_data_get_u64(ext, 16, 0, true);
+                parsed->crypto_header_size = xx_data_get_u64(ext, 16, 8, true);
+                if (parsed->crypto_header_size < 592 || parsed->crypto_header_size > 64U * 1024U * 1024U ||
+                    (parsed->crypto_header_offset & (parsed->cluster_size - 1U)) ||
+                    !xx_qcow_host_range(parsed, parsed->crypto_header_offset, (int64_t)parsed->crypto_header_size, &hdr_at))
+                    goto fail;
+                found = true;
+            }
+            cursor += aligned;
         }
-        if(!found || !terminated) goto fail;
+        if (!found || !terminated) goto fail;
     }
     /* Only deflate and zstd are defined. An unknown value would make every
      * compressed cluster undecodable, so the image is refused up front rather
      * than half way through an extraction. */
     if (parsed->compression_type > 1U) goto fail;
-    if (((parsed->incompatible_features & UINT64_C(0x08)) != 0U) !=
-        (parsed->compression_type != 0U)) goto fail;
-    parsed->l2_bits = parsed->cluster_bits -
-                      (parsed->extended_l2 ? 4U : 3U);
+    if (((parsed->incompatible_features & UINT64_C(0x08)) != 0U) != (parsed->compression_type != 0U)) goto fail;
+    parsed->l2_bits = parsed->cluster_bits - (parsed->extended_l2 ? 4U : 3U);
 
     /* The L1 table has to cover the whole guest address space. A short table
      * is accepted - the clusters it does not reach simply read as zeros - but
@@ -389,33 +372,29 @@ static bool xx_qcow_parse_impl(Abstractformat *self, xx_qcow_private *parsed,
 
     if (parsed->l1_count != 0U) {
         size_t bytes = (size_t)parsed->l1_count * 8U;
-        if (parsed->l1_table_offset == 0U ||
-            (parsed->l1_table_offset & (uint64_t)(parsed->cluster_size - 1U)) !=
-                0U ||
-            !xx_qcow_host_range(parsed, parsed->l1_table_offset, (int64_t)bytes,
-                                &l1_at)) {
+        if (parsed->l1_table_offset == 0U || (parsed->l1_table_offset & (uint64_t)(parsed->cluster_size - 1U)) != 0U ||
+            !xx_qcow_host_range(parsed, parsed->l1_table_offset, (int64_t)bytes, &l1_at)) {
             goto fail;
         }
-        { uint64_t limit, live_bytes=0; const xx_qcow_private *live=(const xx_qcow_private*)((xx_qcow*)self)->internal;
-          if(live) live_bytes=(uint64_t)live->l1_count*8U+sizeof(*live)+1024U;
-          if (!dc_limit(self, options, XX_META_ID_OPT_MEMORY_LIMIT, UINT64_MAX, &limit) || (uint64_t)bytes * 2U + sizeof(*parsed) + live_bytes > limit) goto fail; }
+        {
+            uint64_t limit, live_bytes = 0;
+            const xx_qcow_private *live = (const xx_qcow_private *)((xx_qcow *)self)->internal;
+            if (live) live_bytes = (uint64_t)live->l1_count * 8U + sizeof(*live) + 1024U;
+            if (!dc_limit(self, options, XX_META_ID_OPT_MEMORY_LIMIT, UINT64_MAX, &limit) || (uint64_t)bytes * 2U + sizeof(*parsed) + live_bytes > limit) goto fail;
+        }
         raw_l1 = (uint8_t *)xx_mem_alloc(bytes);
-        parsed->l1_table =
-            (uint64_t *)xx_mem_calloc(parsed->l1_count, sizeof(uint64_t));
+        parsed->l1_table = (uint64_t *)xx_mem_calloc(parsed->l1_count, sizeof(uint64_t));
         if (!raw_l1 || !parsed->l1_table) goto fail;
         if (!xx_qcow_read_at(self->device, l1_at, raw_l1, bytes)) goto fail;
         for (index = 0U; index < parsed->l1_count; ++index) {
-            parsed->l1_table[index] =
-                xx_data_get_u64(raw_l1, bytes, (size_t)index * 8U, true) &
-                XX_QCOW_OFFSET_MASK;
+            parsed->l1_table[index] = xx_data_get_u64(raw_l1, bytes, (size_t)index * 8U, true) & XX_QCOW_OFFSET_MASK;
         }
         xx_mem_free(raw_l1);
         raw_l1 = NULL;
     }
 
     if (backing_offset != 0U && backing_size != 0U) {
-        parsed->backing_file = xx_qcow_read_backing_file(
-            self->device, parsed, backing_offset, backing_size);
+        parsed->backing_file = xx_qcow_read_backing_file(self->device, parsed, backing_offset, backing_size);
         /* An unreadable backing name is metadata damage, not a reason to
          * refuse the image: the guest clusters are still addressable. */
     }
@@ -427,9 +406,15 @@ fail:
     return false;
 }
 
-static bool xx_qcow_parse(Abstractformat *self, xx_qcow_private *parsed, const xx_list_s *options, xx_pd_struct *pd) {
-    int64_t cursor=self&&self->device?xx_io_tell(self->device):-1; bool ok=xx_qcow_parse_impl(self,parsed,options,pd);
-    if(cursor>=0&&xx_io_seek64(self->device,cursor,SEEK_SET)!=0) { xx_qcow_private_cleanup(parsed); ok=false; } return ok;
+static bool xx_qcow_parse(Abstractformat *self, xx_qcow_private *parsed, const xx_list_s *options, xx_pd_struct *pd)
+{
+    int64_t cursor = self && self->device ? xx_io_tell(self->device) : -1;
+    bool ok = xx_qcow_parse_impl(self, parsed, options, pd);
+    if (cursor >= 0 && xx_io_seek64(self->device, cursor, SEEK_SET) != 0) {
+        xx_qcow_private_cleanup(parsed);
+        ok = false;
+    }
+    return ok;
 }
 
 /* --------------------------------------------------------------- reader -- */
@@ -437,10 +422,9 @@ static bool xx_qcow_parse(Abstractformat *self, xx_qcow_private *parsed, const x
 /* Produce one guest cluster into out, which is cluster_size bytes long.
  * Returns false only on a hard error; a cluster that is not present is
  * reported as zeros, which is what the guest would see. */
-static bool xx_qcow_read_cluster(Abstractformat *self,
-                                 const xx_qcow_private *parsed,
-                                 uint64_t cluster_index, uint8_t *out,
-                                 uint8_t *scratch, dc_crypto *crypto, xx_pd_struct *pd) {
+static bool xx_qcow_read_cluster(Abstractformat *self, const xx_qcow_private *parsed, uint64_t cluster_index, uint8_t *out, uint8_t *scratch, dc_crypto *crypto,
+                                 xx_pd_struct *pd)
+{
     uint64_t l1_index = cluster_index >> parsed->l2_bits;
     uint64_t l2_index = cluster_index & (((uint64_t)1 << parsed->l2_bits) - 1U);
     uint64_t l2_table;
@@ -457,10 +441,8 @@ static bool xx_qcow_read_cluster(Abstractformat *self,
     /* An L2 table is exactly one cluster and is cluster aligned. Checking the
      * alignment here is what stops an entry that points into the middle of
      * the L1 table, or into the header, from being treated as a table. */
-    if ((l2_table & (uint64_t)(parsed->cluster_size - 1U)) != 0U)
-        return false;
-    if (!xx_qcow_host_range(parsed, l2_table, (int64_t)parsed->cluster_size,
-                            &at)) {
+    if ((l2_table & (uint64_t)(parsed->cluster_size - 1U)) != 0U) return false;
+    if (!xx_qcow_host_range(parsed, l2_table, (int64_t)parsed->cluster_size, &at)) {
         return false;
     }
     /* Only the one 8- or 16-byte entry is read. The L2 table is never
@@ -468,14 +450,11 @@ static bool xx_qcow_read_cluster(Abstractformat *self,
      * hostile L1 entry cannot drive an allocation, and because the caller
      * walks output clusters in a plain loop there is no recursion for an
      * entry pointing back at the L1 table to exploit. */
-    if (!xx_qcow_read_at(self->device,
-                         at + (int64_t)(l2_index * entry_size), raw,
-                         entry_size)) {
+    if (!xx_qcow_read_at(self->device, at + (int64_t)(l2_index * entry_size), raw, entry_size)) {
         return false;
     }
     entry = xx_data_get_u64(raw, entry_size, 0U, true);
-    bitmap = parsed->extended_l2 ?
-                 xx_data_get_u64(raw, entry_size, 8U, true) : 0U;
+    bitmap = parsed->extended_l2 ? xx_data_get_u64(raw, entry_size, 8U, true) : 0U;
     if (entry == 0U && bitmap == 0U) return true;
 
     if ((entry & XX_QCOW_FLAG_COMPRESSED) != 0U) {
@@ -487,8 +466,7 @@ static bool xx_qcow_read_cluster(Abstractformat *self,
         size_t written = 0U;
 
         if (bitmap != 0U || parsed->crypt_method != 0U) return false;
-        if (available <= 0 || available > (int64_t)parsed->cluster_size * 2 +
-                                              512) {
+        if (available <= 0 || available > (int64_t)parsed->cluster_size * 2 + 512) {
             return false;
         }
         if (!xx_qcow_host_range(parsed, host, available, &at)) return false;
@@ -497,14 +475,9 @@ static bool xx_qcow_read_cluster(Abstractformat *self,
         }
         if (parsed->compression_type == 1U) {
             size_t frame_size;
-            if (!xx_qcow_zstd_frame_size(scratch, (size_t)available,
-                                         &frame_size) ||
-                !xx_zstd_decompress_memory(scratch, frame_size, out,
-                                           parsed->cluster_size, &written))
+            if (!xx_qcow_zstd_frame_size(scratch, (size_t)available, &frame_size) || !xx_zstd_decompress_memory(scratch, frame_size, out, parsed->cluster_size, &written))
                 return false;
-        } else if (!xx_deflate_decompress_memory(scratch, (size_t)available,
-                                                 out, parsed->cluster_size,
-                                                 &written, false)) {
+        } else if (!xx_deflate_decompress_memory(scratch, (size_t)available, out, parsed->cluster_size, &written, false)) {
             /* Raw deflate, no zlib wrapper: is_deflate64 is false and the
              * zlib entry point is deliberately not used. */
             return false;
@@ -517,21 +490,17 @@ static bool xx_qcow_read_cluster(Abstractformat *self,
         uint64_t host = entry & XX_QCOW_OFFSET_MASK;
         uint32_t subcluster_size = parsed->cluster_size / 32U;
         unsigned index;
-        if ((entry & XX_QCOW_FLAG_ZERO) != 0U ||
-            (allocated & zero) != 0U) return false;
+        if ((entry & XX_QCOW_FLAG_ZERO) != 0U || (allocated & zero) != 0U) return false;
         if (allocated == 0U) return true;
-        if (host == 0U ||
-            (host & (uint64_t)(parsed->cluster_size - 1U)) != 0U ||
-            !xx_qcow_host_range(parsed, host,
-                                (int64_t)parsed->cluster_size, &at) ||
-            !xx_qcow_read_at(self->device, at, scratch,
-                             parsed->cluster_size)) return false;
-        if (parsed->crypt_method != 0U && !dc_decrypt(crypto, (parsed->crypt_method == 1U ? cluster_index * (uint64_t)parsed->cluster_size : host) / 512U, scratch, parsed->cluster_size, pd)) return false;
+        if (host == 0U || (host & (uint64_t)(parsed->cluster_size - 1U)) != 0U || !xx_qcow_host_range(parsed, host, (int64_t)parsed->cluster_size, &at) ||
+            !xx_qcow_read_at(self->device, at, scratch, parsed->cluster_size))
+            return false;
+        if (parsed->crypt_method != 0U &&
+            !dc_decrypt(crypto, (parsed->crypt_method == 1U ? cluster_index * (uint64_t)parsed->cluster_size : host) / 512U, scratch, parsed->cluster_size, pd))
+            return false;
         for (index = 0U; index < 32U; ++index) {
             if ((allocated & (UINT32_C(1) << index)) != 0U)
-                xx_rt_memcpy(out + (size_t)index * subcluster_size,
-                             scratch + (size_t)index * subcluster_size,
-                             subcluster_size);
+                xx_rt_memcpy(out + (size_t)index * subcluster_size, scratch + (size_t)index * subcluster_size, subcluster_size);
         }
         return true;
     }
@@ -540,21 +509,19 @@ static bool xx_qcow_read_cluster(Abstractformat *self,
     }
     l2_table = entry & XX_QCOW_OFFSET_MASK;
     if (l2_table == 0U) return true;
-    if ((l2_table & (uint64_t)(parsed->cluster_size - 1U)) != 0U)
-        return false;
-    if (!xx_qcow_host_range(parsed, l2_table, (int64_t)parsed->cluster_size,
-                            &at)) {
+    if ((l2_table & (uint64_t)(parsed->cluster_size - 1U)) != 0U) return false;
+    if (!xx_qcow_host_range(parsed, l2_table, (int64_t)parsed->cluster_size, &at)) {
         return false;
     }
     if (!xx_qcow_read_at(self->device, at, out, parsed->cluster_size)) return false;
-    return parsed->crypt_method == 0U || dc_decrypt(crypto, (parsed->crypt_method == 1U ? cluster_index * (uint64_t)parsed->cluster_size : l2_table) / 512U, out, parsed->cluster_size, pd);
+    return parsed->crypt_method == 0U ||
+           dc_decrypt(crypto, (parsed->crypt_method == 1U ? cluster_index * (uint64_t)parsed->cluster_size : l2_table) / 512U, out, parsed->cluster_size, pd);
 }
 
 /* Walk and verify every allocated cluster, even with no destination. Sparse
  * absent L1 extents are skipped after their mapping has been validated. */
-static bool xx_qcow_write_image(Abstractformat *self,
-                                const xx_qcow_private *parsed,
-                                xx_io_device *output, dc_crypto *crypto, xx_pd_struct *pd) {
+static bool xx_qcow_write_image(Abstractformat *self, const xx_qcow_private *parsed, xx_io_device *output, dc_crypto *crypto, xx_pd_struct *pd)
+{
     uint8_t *cluster;
     uint8_t *scratch;
     uint64_t remaining = parsed->virtual_size;
@@ -575,16 +542,19 @@ static bool xx_qcow_write_image(Abstractformat *self,
          * L1 extent has no stored bytes or compressed stream to consume. */
         uint64_t l1 = index >> parsed->l2_bits;
         if (!output && (l1 >= parsed->l1_count || parsed->l1_table[l1] == 0U)) {
-            uint64_t clusters = (UINT64_C(1) << parsed->l2_bits) - (index & ((UINT64_C(1) << parsed->l2_bits)-1U));
+            uint64_t clusters = (UINT64_C(1) << parsed->l2_bits) - (index & ((UINT64_C(1) << parsed->l2_bits) - 1U));
             uint64_t bytes = clusters * parsed->cluster_size;
-            if (xx_pd_is_stopped(pd)) { result=false; break; }
-            if (bytes > remaining) bytes=remaining;
-            remaining-=bytes; index+=(bytes+parsed->cluster_size-1U)/parsed->cluster_size; continue;
+            if (xx_pd_is_stopped(pd)) {
+                result = false;
+                break;
+            }
+            if (bytes > remaining) bytes = remaining;
+            remaining -= bytes;
+            index += (bytes + parsed->cluster_size - 1U) / parsed->cluster_size;
+            continue;
         }
 
-        size_t chunk = remaining < (uint64_t)parsed->cluster_size
-                           ? (size_t)remaining
-                           : (size_t)parsed->cluster_size;
+        size_t chunk = remaining < (uint64_t)parsed->cluster_size ? (size_t)remaining : (size_t)parsed->cluster_size;
         size_t done = 0U;
 
         if (pd && xx_pd_is_stopped(pd)) {
@@ -607,7 +577,8 @@ static bool xx_qcow_write_image(Abstractformat *self,
         remaining -= (uint64_t)chunk;
         ++index;
     }
-    dc_clear(cluster,parsed->cluster_size); dc_clear(scratch,scratch_size);
+    dc_clear(cluster, parsed->cluster_size);
+    dc_clear(scratch, scratch_size);
     xx_mem_free(cluster);
     xx_mem_free(scratch);
     return result;
@@ -615,7 +586,8 @@ static bool xx_qcow_write_image(Abstractformat *self,
 
 /* ------------------------------------------------------------ lifecycle -- */
 
-void xx_qcow_init(xx_qcow *qcow, xx_io_device *dev, int64_t base_address) {
+void xx_qcow_init(xx_qcow *qcow, xx_io_device *dev, int64_t base_address)
+{
     if (!qcow) return;
     xx_mem_zero(qcow, sizeof(*qcow));
     xx_format_init(&qcow->format, dev, base_address);
@@ -628,27 +600,25 @@ void xx_qcow_init(xx_qcow *qcow, xx_io_device *dev, int64_t base_address) {
     qcow->format.check_is_valid = xx_qcow_check_is_valid;
     qcow->format.handle_base_info = xx_qcow_handle_base_info;
     qcow->format.get_format_size = xx_qcow_get_format_size;
-    qcow->format.get_number_of_archive_records =
-        xx_qcow_get_number_of_archive_records;
-    qcow->format.create_archive_records_reading =
-        xx_qcow_create_archive_records_reading;
+    qcow->format.get_number_of_archive_records = xx_qcow_get_number_of_archive_records;
+    qcow->format.create_archive_records_reading = xx_qcow_create_archive_records_reading;
     qcow->format.get_current_archive_record = xx_qcow_get_current_archive_record;
-    qcow->format.unpack_current_archive_record =
-        xx_qcow_unpack_current_archive_record;
+    qcow->format.unpack_current_archive_record = xx_qcow_unpack_current_archive_record;
     qcow->format.archive_record_move_to_next = xx_qcow_archive_record_move_to_next;
-    qcow->format.free_archive_records_reading =
-        xx_qcow_free_archive_records_reading;
+    qcow->format.free_archive_records_reading = xx_qcow_free_archive_records_reading;
     qcow->format.destroy = xx_qcow_vtable_destroy;
 }
 
-xx_qcow *xx_qcow_create(xx_io_device *dev, int64_t base_address) {
+xx_qcow *xx_qcow_create(xx_io_device *dev, int64_t base_address)
+{
     xx_qcow *qcow = (xx_qcow *)xx_mem_alloc(sizeof(*qcow));
 
     if (qcow) xx_qcow_init(qcow, dev, base_address);
     return qcow;
 }
 
-void xx_qcow_destroy(xx_qcow *qcow) {
+void xx_qcow_destroy(xx_qcow *qcow)
+{
     if (!qcow) return;
     if (qcow->internal) {
         xx_qcow_private_free(qcow->internal);
@@ -657,11 +627,13 @@ void xx_qcow_destroy(xx_qcow *qcow) {
     xx_format_cleanup_extra_parameters(&qcow->format);
 }
 
-static void xx_qcow_vtable_destroy(Abstractformat *self) {
+static void xx_qcow_vtable_destroy(Abstractformat *self)
+{
     xx_qcow_destroy((xx_qcow *)self);
 }
 
-void xx_qcow_free(xx_qcow *qcow) {
+void xx_qcow_free(xx_qcow *qcow)
+{
     if (!qcow) return;
     xx_qcow_destroy(qcow);
     xx_mem_free(qcow);
@@ -669,7 +641,8 @@ void xx_qcow_free(xx_qcow *qcow) {
 
 /* --------------------------------------------------------------- format -- */
 
-bool xx_qcow_check_is_valid(Abstractformat *self, xx_pd_struct *pd) {
+bool xx_qcow_check_is_valid(Abstractformat *self, xx_pd_struct *pd)
+{
     xx_qcow_private parsed;
     bool result = xx_qcow_parse(self, &parsed, NULL, pd);
 
@@ -677,7 +650,8 @@ bool xx_qcow_check_is_valid(Abstractformat *self, xx_pd_struct *pd) {
     return result;
 }
 
-bool xx_qcow_handle_base_info(Abstractformat *self, xx_pd_struct *pd) {
+bool xx_qcow_handle_base_info(Abstractformat *self, xx_pd_struct *pd)
+{
     xx_qcow *qcow = (xx_qcow *)self;
     xx_qcow_private *parsed;
 
@@ -718,18 +692,17 @@ bool xx_qcow_handle_base_info(Abstractformat *self, xx_pd_struct *pd) {
     return true;
 }
 
-int64_t xx_qcow_get_format_size(Abstractformat *self, xx_pd_struct *pd) {
-    if (!self ||
-        (!self->base_info_handled && !xx_format_handle_base_info(self, pd))) {
+int64_t xx_qcow_get_format_size(Abstractformat *self, xx_pd_struct *pd)
+{
+    if (!self || (!self->base_info_handled && !xx_format_handle_base_info(self, pd))) {
         return -1;
     }
     return self->format_size;
 }
 
-uint64_t xx_qcow_get_number_of_archive_records(Abstractformat *self,
-                                               xx_pd_struct *pd) {
-    if (!self ||
-        (!self->base_info_handled && !xx_format_handle_base_info(self, pd))) {
+uint64_t xx_qcow_get_number_of_archive_records(Abstractformat *self, xx_pd_struct *pd)
+{
+    if (!self || (!self->base_info_handled && !xx_format_handle_base_info(self, pd))) {
         return 0U;
     }
     return ((xx_qcow *)self)->number_of_records;
@@ -737,19 +710,17 @@ uint64_t xx_qcow_get_number_of_archive_records(Abstractformat *self,
 
 /* -------------------------------------------------------------- records -- */
 
-static bool xx_qcow_copy_options(xx_list_s *destination,
-                                 const xx_list_s *source) {
+static bool xx_qcow_copy_options(xx_list_s *destination, const xx_list_s *source)
+{
     size_t index;
 
     if (!destination || !source) return source == NULL;
     for (index = 0U; index < source->count; ++index) {
-        const xx_meta *item =
-            (const xx_meta *)xx_list_at((const xx_list_t *)source, index);
+        const xx_meta *item = (const xx_meta *)xx_list_at((const xx_list_t *)source, index);
         xx_meta copy;
         if (!item) continue;
         xx_meta_init(&copy, item->meta_id);
-        if (!xx_var_copy(&copy.var, &item->var) ||
-            !xx_list_append(destination, &copy)) {
+        if (!xx_var_copy(&copy.var, &item->var) || !xx_list_append(destination, &copy)) {
             xx_meta_cleanup(&copy);
             return false;
         }
@@ -757,64 +728,53 @@ static bool xx_qcow_copy_options(xx_list_s *destination,
     return true;
 }
 
-static XXFC_MAYBE_UNUSED const xx_var *xx_qcow_find_option(const xx_list_s *options,
-                                         uint32_t meta_id) {
+static XXFC_MAYBE_UNUSED const xx_var *xx_qcow_find_option(const xx_list_s *options, uint32_t meta_id)
+{
     size_t index;
 
     if (!options) return NULL;
     for (index = 0U; index < options->count; ++index) {
-        const xx_meta *item =
-            (const xx_meta *)xx_list_at((const xx_list_t *)options, index);
+        const xx_meta *item = (const xx_meta *)xx_list_at((const xx_list_t *)options, index);
         if (item && item->meta_id == meta_id) return &item->var;
     }
     return NULL;
 }
 
-static bool xx_qcow_populate_record(xx_archive_record *record,
-                                    const xx_qcow_private *parsed) {
+static bool xx_qcow_populate_record(xx_archive_record *record, const xx_qcow_private *parsed)
+{
     if (!record || !parsed) return false;
     xx_archive_record_cleanup(record);
     xx_archive_record_init(record);
     record->header_offset = parsed->base_address;
-    record->header_size = parsed->version == 3U ? XX_QCOW_HEADER_V3_SIZE
-                                                : XX_QCOW_HEADER_V2_SIZE;
+    record->header_size = parsed->version == 3U ? XX_QCOW_HEADER_V3_SIZE : XX_QCOW_HEADER_V2_SIZE;
     /* The guest image is scattered across the file, so there is no single
      * data extent; the record points at the L1 table, which is where reading
      * it begins. */
     record->data_offset = (int64_t)parsed->l1_table_offset + parsed->base_address;
     record->compressed_size = parsed->input_size - parsed->base_address;
     if (!xx_archive_record_set_original_name(record, XX_QCOW_MEMBER_NAME) ||
-        !xx_archive_record_set_meta_u64(record, XX_META_ID_UNCOMPRESSED_SIZE,
-                                        parsed->virtual_size) ||
-        !xx_archive_record_set_meta_u64(
-            record, XX_META_ID_COMPRESSED_SIZE,
-            (uint64_t)(parsed->input_size - parsed->base_address)) ||
-        !xx_archive_record_set_meta_u64(record, XX_META_ID_COMPRESSION_METHOD,
-                                        parsed->compression_type) ||
+        !xx_archive_record_set_meta_u64(record, XX_META_ID_UNCOMPRESSED_SIZE, parsed->virtual_size) ||
+        !xx_archive_record_set_meta_u64(record, XX_META_ID_COMPRESSED_SIZE, (uint64_t)(parsed->input_size - parsed->base_address)) ||
+        !xx_archive_record_set_meta_u64(record, XX_META_ID_COMPRESSION_METHOD, parsed->compression_type) ||
         !xx_archive_record_set_meta_bool(record, XX_META_ID_IS_FOLDER, false) ||
         /* crypt_method != 0 means the guest clusters are ciphertext and this
          * reader will not produce plaintext for them. */
-        !xx_archive_record_set_meta_bool(record, XX_META_ID_IS_ENCRYPTED,
-                                         parsed->crypt_method != 0U) ||
-        !xx_archive_record_set_meta_u64(record, XX_META_ID_ENCRYPTION_METHOD,
-                                        parsed->crypt_method)) {
+        !xx_archive_record_set_meta_bool(record, XX_META_ID_IS_ENCRYPTED, parsed->crypt_method != 0U) ||
+        !xx_archive_record_set_meta_u64(record, XX_META_ID_ENCRYPTION_METHOD, parsed->crypt_method)) {
         return false;
     }
-    if (parsed->backing_file &&
-        !xx_archive_record_set_meta_str(record, XX_META_ID_COMMENT,
-                                        parsed->backing_file)) {
+    if (parsed->backing_file && !xx_archive_record_set_meta_str(record, XX_META_ID_COMMENT, parsed->backing_file)) {
         return false;
     }
     return true;
 }
 
-xx_archive_record_state *xx_qcow_create_archive_records_reading(
-    Abstractformat *self, const xx_list_s *options, xx_pd_struct *pd) {
+xx_archive_record_state *xx_qcow_create_archive_records_reading(Abstractformat *self, const xx_list_s *options, xx_pd_struct *pd)
+{
     xx_archive_record_state *state;
     xx_qcow_private *parsed;
 
-    if (!self || !self->device ||
-        (!self->base_info_handled && !xx_format_handle_base_info(self, pd))) {
+    if (!self || !self->device || (!self->base_info_handled && !xx_format_handle_base_info(self, pd))) {
         return NULL;
     }
     state = (xx_archive_record_state *)xx_mem_alloc(sizeof(*state));
@@ -825,8 +785,7 @@ xx_archive_record_state *xx_qcow_create_archive_records_reading(
         return NULL;
     }
     xx_archive_record_state_init(state, self);
-    if (!xx_qcow_copy_options(&state->options, options) ||
-        !xx_qcow_parse(self, parsed, options, pd)) {
+    if (!xx_qcow_copy_options(&state->options, options) || !xx_qcow_parse(self, parsed, options, pd)) {
         xx_qcow_private_free(parsed);
         xx_archive_record_state_free(state);
         return NULL;
@@ -843,20 +802,16 @@ xx_archive_record_state *xx_qcow_create_archive_records_reading(
     return state;
 }
 
-const xx_archive_record *xx_qcow_get_current_archive_record(
-    Abstractformat *self, xx_archive_record_state *state) {
-    return self && state && state->format == self && state->has_record
-               ? &state->current_record
-               : NULL;
+const xx_archive_record *xx_qcow_get_current_archive_record(Abstractformat *self, xx_archive_record_state *state)
+{
+    return self && state && state->format == self && state->has_record ? &state->current_record : NULL;
 }
 
-bool xx_qcow_archive_record_move_to_next(Abstractformat *self,
-                                         xx_archive_record_state *state,
-                                         xx_pd_struct *pd) {
+bool xx_qcow_archive_record_move_to_next(Abstractformat *self, xx_archive_record_state *state, xx_pd_struct *pd)
+{
     xx_qcow_private *parsed;
 
-    if (!self || !state || state->format != self || !state->has_record ||
-        (pd && xx_pd_is_stopped(pd))) {
+    if (!self || !state || state->format != self || !state->has_record || (pd && xx_pd_is_stopped(pd))) {
         return false;
     }
     /* One member, so the first step is always the last. */
@@ -868,9 +823,8 @@ bool xx_qcow_archive_record_move_to_next(Abstractformat *self,
     return false;
 }
 
-static bool xx_qcow_unpack_impl(Abstractformat *self,
-                                           xx_archive_record_state *state,
-                                           dc_crypto *crypto, xx_pd_struct *pd) {
+static bool xx_qcow_unpack_impl(Abstractformat *self, xx_archive_record_state *state, dc_crypto *crypto, xx_pd_struct *pd)
+{
     xx_qcow_private *parsed;
     const xx_var *option;
     const char *base = NULL;
@@ -881,8 +835,7 @@ static bool xx_qcow_unpack_impl(Abstractformat *self,
     bool result;
     bool overwrite = false;
 
-    if (!self || !self->device || !state || state->format != self ||
-        !state->has_record || (pd && xx_pd_is_stopped(pd))) {
+    if (!self || !self->device || !state || state->format != self || !state->has_record || (pd && xx_pd_is_stopped(pd))) {
         return false;
     }
     parsed = (xx_qcow_private *)state->internal_state;
@@ -893,11 +846,9 @@ static bool xx_qcow_unpack_impl(Abstractformat *self,
          * real check that the tables and the compressed streams hold up. */
         return xx_qcow_write_image(self, parsed, NULL, crypto, pd);
     }
-    if (option->type == XX_VAR_TYPE_STRING ||
-        option->type == XX_VAR_TYPE_STRING_VIEW) {
+    if (option->type == XX_VAR_TYPE_STRING || option->type == XX_VAR_TYPE_STRING_VIEW) {
         base = xx_var_get_str(option);
-    } else if (option->type == XX_VAR_TYPE_WSTRING ||
-               option->type == XX_VAR_TYPE_WSTRING_VIEW) {
+    } else if (option->type == XX_VAR_TYPE_WSTRING || option->type == XX_VAR_TYPE_WSTRING_VIEW) {
         owned_base = xx_str_unicode_to_utf8(xx_var_get_wstr(option));
         base = owned_base;
     }
@@ -905,8 +856,7 @@ static bool xx_qcow_unpack_impl(Abstractformat *self,
         if (owned_base) xx_str_free(owned_base);
         return false;
     }
-    if (base[0] != '\0' && base[xx_str_len(base) - 1U] != '/' &&
-        base[xx_str_len(base) - 1U] != '\\') {
+    if (base[0] != '\0' && base[xx_str_len(base) - 1U] != '/' && base[xx_str_len(base) - 1U] != '\\') {
         destination = xx_str_concat3(base, "/", XX_QCOW_MEMBER_NAME);
     } else {
         destination = xx_str_concat(base, XX_QCOW_MEMBER_NAME);
@@ -917,62 +867,101 @@ static bool xx_qcow_unpack_impl(Abstractformat *self,
         xx_str_free(destination);
         return false;
     }
-    option=xx_format_resolve_extra_parameter(self,&state->options,XX_META_ID_OPT_OVERWRITE);
-    overwrite=option&&xx_var_get_bool(option);
-    if(dc_same_path(destination,xx_io_source_path(self->device)) || (!overwrite&&xx_io_file_exists_a(destination))) { xx_str_free(destination); return false; }
-    output = dc_stage(destination,&stage);
+    option = xx_format_resolve_extra_parameter(self, &state->options, XX_META_ID_OPT_OVERWRITE);
+    overwrite = option && xx_var_get_bool(option);
+    if (dc_same_path(destination, xx_io_source_path(self->device)) || (!overwrite && xx_io_file_exists_a(destination))) {
+        xx_str_free(destination);
+        return false;
+    }
+    output = dc_stage(destination, &stage);
     result = output != NULL && xx_qcow_write_image(self, parsed, output, crypto, pd);
     if (output && xx_io_close(output) != 0) result = false;
-    if (result && stage) result=!xx_pd_is_stopped(pd)&&xx_io_file_replace_a(stage,destination,overwrite);
-    if(stage) { if(!result) xx_io_file_remove_a(stage); xx_str_free(stage); }
+    if (result && stage) result = !xx_pd_is_stopped(pd) && xx_io_file_replace_a(stage, destination, overwrite);
+    if (stage) {
+        if (!result) xx_io_file_remove_a(stage);
+        xx_str_free(stage);
+    }
     xx_str_free(destination);
     return result;
 }
 
-
-bool xx_qcow_unpack_current_archive_record(Abstractformat *self, xx_archive_record_state *state, xx_pd_struct *pd) {
-    xx_qcow_private *parsed; dc_crypto crypto; const uint8_t *password; size_t password_size; char *owned=NULL;
-    uint8_t key[16]={0}; uint64_t memory, member, required; int64_t cursor; bool result=false;
-    if(!self || !self->device || !state || state->format!=self || !state->has_record) return false;
-    parsed=(xx_qcow_private*)state->internal_state; if(!parsed || parsed->consumed || xx_pd_is_stopped(pd)) return false;
-    xx_mem_zero(&crypto,sizeof(crypto)); cursor=xx_io_tell(self->device);
-    required=(uint64_t)parsed->l1_count*8U + (uint64_t)parsed->cluster_size*3U+512U + sizeof(crypto) + 8192U;
-    { const xx_qcow_private *live=(const xx_qcow_private*)((xx_qcow*)self)->internal; if(live&&live!=parsed) required+=(uint64_t)live->l1_count*8U+sizeof(*live)+1024U; }
-    if(!dc_limit(self,&state->options,XX_META_ID_OPT_MEMORY_LIMIT,UINT64_MAX,&memory) || !dc_limit(self,&state->options,XX_META_ID_OPT_MAX_MEMBER_SIZE,UINT64_MAX,&member) || required>memory || parsed->virtual_size>member) goto done;
-    if(parsed->crypt_method) {
-        if(!dc_password(self,&state->options,&password,&password_size,&owned,memory-required)) { xx_pd_set_error(pd,XXFC_ERR_INVALID_ARG,"Disk image password required"); goto done; }
-        if(parsed->crypt_method==1U) { if(password_size>16) password_size=16; dc_copy(key,password,password_size); if(!dc_crypto_init(&crypto,DC_CBC_PLAIN64,key,16)) goto done; }
-        else if(!dc_luks_unlock(self->device,(uint64_t)parsed->base_address+parsed->crypto_header_offset,parsed->crypto_header_size,true,password,password_size,&crypto,pd)) { if(!xx_pd_is_stopped(pd)) xx_pd_set_error(pd,XXFC_ERR_GENERIC,"LUKS1 keyslot could not be unlocked (wrong password or unsupported parameters)"); goto done; }
+bool xx_qcow_unpack_current_archive_record(Abstractformat *self, xx_archive_record_state *state, xx_pd_struct *pd)
+{
+    xx_qcow_private *parsed;
+    dc_crypto crypto;
+    const uint8_t *password;
+    size_t password_size;
+    char *owned = NULL;
+    uint8_t key[16] = {0};
+    uint64_t memory, member, required;
+    int64_t cursor;
+    bool result = false;
+    if (!self || !self->device || !state || state->format != self || !state->has_record) return false;
+    parsed = (xx_qcow_private *)state->internal_state;
+    if (!parsed || parsed->consumed || xx_pd_is_stopped(pd)) return false;
+    xx_mem_zero(&crypto, sizeof(crypto));
+    cursor = xx_io_tell(self->device);
+    required = (uint64_t)parsed->l1_count * 8U + (uint64_t)parsed->cluster_size * 3U + 512U + sizeof(crypto) + 8192U;
+    {
+        const xx_qcow_private *live = (const xx_qcow_private *)((xx_qcow *)self)->internal;
+        if (live && live != parsed) required += (uint64_t)live->l1_count * 8U + sizeof(*live) + 1024U;
     }
-    result=xx_qcow_unpack_impl(self,state,&crypto,pd);
+    if (!dc_limit(self, &state->options, XX_META_ID_OPT_MEMORY_LIMIT, UINT64_MAX, &memory) ||
+        !dc_limit(self, &state->options, XX_META_ID_OPT_MAX_MEMBER_SIZE, UINT64_MAX, &member) || required > memory || parsed->virtual_size > member)
+        goto done;
+    if (parsed->crypt_method) {
+        if (!dc_password(self, &state->options, &password, &password_size, &owned, memory - required)) {
+            xx_pd_set_error(pd, XXFC_ERR_INVALID_ARG, "Disk image password required");
+            goto done;
+        }
+        if (parsed->crypt_method == 1U) {
+            if (password_size > 16) password_size = 16;
+            dc_copy(key, password, password_size);
+            if (!dc_crypto_init(&crypto, DC_CBC_PLAIN64, key, 16)) goto done;
+        } else if (!dc_luks_unlock(self->device, (uint64_t)parsed->base_address + parsed->crypto_header_offset, parsed->crypto_header_size, true, password, password_size,
+                                   &crypto, pd)) {
+            if (!xx_pd_is_stopped(pd)) xx_pd_set_error(pd, XXFC_ERR_GENERIC, "LUKS1 keyslot could not be unlocked (wrong password or unsupported parameters)");
+            goto done;
+        }
+    }
+    result = xx_qcow_unpack_impl(self, state, &crypto, pd);
 done:
-    if(owned) { dc_clear(owned,xx_str_len(owned)); xx_str_free(owned); } dc_clear(key,sizeof(key)); dc_clear(&crypto,sizeof(crypto));
-    if(cursor>=0 && xx_io_seek64(self->device,cursor,SEEK_SET)!=0) result=false;
+    if (owned) {
+        dc_clear(owned, xx_str_len(owned));
+        xx_str_free(owned);
+    }
+    dc_clear(key, sizeof(key));
+    dc_clear(&crypto, sizeof(crypto));
+    if (cursor >= 0 && xx_io_seek64(self->device, cursor, SEEK_SET) != 0) result = false;
     return result;
 }
 
-void xx_qcow_free_archive_records_reading(Abstractformat *self,
-                                          xx_archive_record_state *state) {
+void xx_qcow_free_archive_records_reading(Abstractformat *self, xx_archive_record_state *state)
+{
     (void)self;
     xx_archive_record_state_free(state);
 }
 
 /* ------------------------------------------------------------ accessors -- */
 
-uint64_t xx_qcow_get_virtual_size(const xx_qcow *qcow) {
+uint64_t xx_qcow_get_virtual_size(const xx_qcow *qcow)
+{
     return qcow ? qcow->virtual_size : 0U;
 }
-uint32_t xx_qcow_get_version(const xx_qcow *qcow) {
+uint32_t xx_qcow_get_version(const xx_qcow *qcow)
+{
     return qcow ? qcow->version : 0U;
 }
-uint32_t xx_qcow_get_cluster_size(const xx_qcow *qcow) {
+uint32_t xx_qcow_get_cluster_size(const xx_qcow *qcow)
+{
     return qcow ? qcow->cluster_size : 0U;
 }
-uint32_t xx_qcow_get_crypt_method(const xx_qcow *qcow) {
+uint32_t xx_qcow_get_crypt_method(const xx_qcow *qcow)
+{
     return qcow ? qcow->crypt_method : 0U;
 }
-const char *xx_qcow_get_backing_file(const xx_qcow *qcow) {
-    const xx_qcow_private *parsed =
-        qcow ? (const xx_qcow_private *)qcow->internal : NULL;
+const char *xx_qcow_get_backing_file(const xx_qcow *qcow)
+{
+    const xx_qcow_private *parsed = qcow ? (const xx_qcow_private *)qcow->internal : NULL;
     return parsed ? parsed->backing_file : NULL;
 }

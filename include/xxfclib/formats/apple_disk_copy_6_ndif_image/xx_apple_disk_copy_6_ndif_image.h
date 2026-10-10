@@ -42,53 +42,35 @@ extern "C" {
 typedef struct xx_apple_disk_copy_6_ndif_image {
     Abstractformat format;
     uint64_t number_of_records;
-    uint64_t image_size;      /**< Decoded disk size in bytes. */
-    uint32_t chunk_count;     /**< Entries in 'bcem' 128, terminator included. */
+    uint64_t image_size;  /**< Decoded disk size in bytes. */
+    uint32_t chunk_count; /**< Entries in 'bcem' 128, terminator included. */
     bool segmented;
     bool has_kencode;
 } xx_apple_disk_copy_6_ndif_image;
 
 typedef xx_apple_disk_copy_6_ndif_image xx_apple_disk_copy_6_ndif_image_t;
 
-XXFC_API void xx_apple_disk_copy_6_ndif_image_init(
-    xx_apple_disk_copy_6_ndif_image *archive, xx_io_device *device,
-    int64_t base_address);
-XXFC_API xx_apple_disk_copy_6_ndif_image *xx_apple_disk_copy_6_ndif_image_create(
-    xx_io_device *device, int64_t base_address);
-XXFC_API void xx_apple_disk_copy_6_ndif_image_destroy(
-    xx_apple_disk_copy_6_ndif_image *archive);
-XXFC_API void xx_apple_disk_copy_6_ndif_image_free(
-    xx_apple_disk_copy_6_ndif_image *archive);
+XXFC_API void xx_apple_disk_copy_6_ndif_image_init(xx_apple_disk_copy_6_ndif_image *archive, xx_io_device *device, int64_t base_address);
+XXFC_API xx_apple_disk_copy_6_ndif_image *xx_apple_disk_copy_6_ndif_image_create(xx_io_device *device, int64_t base_address);
+XXFC_API void xx_apple_disk_copy_6_ndif_image_destroy(xx_apple_disk_copy_6_ndif_image *archive);
+XXFC_API void xx_apple_disk_copy_6_ndif_image_free(xx_apple_disk_copy_6_ndif_image *archive);
 
-XXFC_API bool xx_apple_disk_copy_6_ndif_image_check_is_valid(
-    Abstractformat *self, xx_pd_struct *pd);
-XXFC_API bool xx_apple_disk_copy_6_ndif_image_handle_base_info(
-    Abstractformat *self, xx_pd_struct *pd);
-XXFC_API int64_t xx_apple_disk_copy_6_ndif_image_get_format_size(
-    Abstractformat *self, xx_pd_struct *pd);
-XXFC_API uint64_t xx_apple_disk_copy_6_ndif_image_get_number_of_archive_records(
-    Abstractformat *self, xx_pd_struct *pd);
+XXFC_API bool xx_apple_disk_copy_6_ndif_image_check_is_valid(Abstractformat *self, xx_pd_struct *pd);
+XXFC_API bool xx_apple_disk_copy_6_ndif_image_handle_base_info(Abstractformat *self, xx_pd_struct *pd);
+XXFC_API int64_t xx_apple_disk_copy_6_ndif_image_get_format_size(Abstractformat *self, xx_pd_struct *pd);
+XXFC_API uint64_t xx_apple_disk_copy_6_ndif_image_get_number_of_archive_records(Abstractformat *self, xx_pd_struct *pd);
 
-XXFC_API xx_archive_record_state *
-xx_apple_disk_copy_6_ndif_image_create_archive_records_reading(
-    Abstractformat *self, const xx_list_s *options, xx_pd_struct *pd);
-XXFC_API const xx_archive_record *
-xx_apple_disk_copy_6_ndif_image_get_current_archive_record(
-    Abstractformat *self, xx_archive_record_state *state);
-XXFC_API bool xx_apple_disk_copy_6_ndif_image_unpack_current_archive_record(
-    Abstractformat *self, xx_archive_record_state *state, xx_pd_struct *pd);
-XXFC_API bool xx_apple_disk_copy_6_ndif_image_archive_record_move_to_next(
-    Abstractformat *self, xx_archive_record_state *state, xx_pd_struct *pd);
-XXFC_API void xx_apple_disk_copy_6_ndif_image_free_archive_records_reading(
-    Abstractformat *self, xx_archive_record_state *state);
+XXFC_API xx_archive_record_state *xx_apple_disk_copy_6_ndif_image_create_archive_records_reading(Abstractformat *self, const xx_list_s *options, xx_pd_struct *pd);
+XXFC_API const xx_archive_record *xx_apple_disk_copy_6_ndif_image_get_current_archive_record(Abstractformat *self, xx_archive_record_state *state);
+XXFC_API bool xx_apple_disk_copy_6_ndif_image_unpack_current_archive_record(Abstractformat *self, xx_archive_record_state *state, xx_pd_struct *pd);
+XXFC_API bool xx_apple_disk_copy_6_ndif_image_archive_record_move_to_next(Abstractformat *self, xx_archive_record_state *state, xx_pd_struct *pd);
+XXFC_API void xx_apple_disk_copy_6_ndif_image_free_archive_records_reading(Abstractformat *self, xx_archive_record_state *state);
 
 /**
  * @brief Decode the whole disk image into @p destination (NULL only
  * verifies every chunk).
  */
-XXFC_API bool xx_apple_disk_copy_6_ndif_image_unpack_to_device(
-    xx_apple_disk_copy_6_ndif_image *archive, xx_io_device *destination,
-    xx_pd_struct *pd);
+XXFC_API bool xx_apple_disk_copy_6_ndif_image_unpack_to_device(xx_apple_disk_copy_6_ndif_image *archive, xx_io_device *destination, xx_pd_struct *pd);
 
 /**
  * @brief Decode one Apple Data Compression (ADC) stream held in memory.
@@ -97,9 +79,7 @@ XXFC_API bool xx_apple_disk_copy_6_ndif_image_unpack_to_device(
  *         back-reference before the start of the output; trailing input
  *         bytes are allowed and reported through @p consumed.
  */
-XXFC_API bool xx_apple_disk_copy_6_ndif_image_adc_decode_memory(
-    const uint8_t *input, size_t input_size, uint8_t *output,
-    size_t output_size, size_t *consumed);
+XXFC_API bool xx_apple_disk_copy_6_ndif_image_adc_decode_memory(const uint8_t *input, size_t input_size, uint8_t *output, size_t output_size, size_t *consumed);
 
 #ifdef __cplusplus
 }

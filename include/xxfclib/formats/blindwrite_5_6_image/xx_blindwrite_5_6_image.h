@@ -79,50 +79,32 @@ typedef struct xx_blindwrite_5_6_image {
 
 typedef xx_blindwrite_5_6_image xx_blindwrite_5_6_image_t;
 
-XXFC_API void xx_blindwrite_5_6_image_init(xx_blindwrite_5_6_image *archive,
-                                           xx_io_device *device,
-                                           int64_t base_address);
-XXFC_API xx_blindwrite_5_6_image *xx_blindwrite_5_6_image_create(
-    xx_io_device *device, int64_t base_address);
+XXFC_API void xx_blindwrite_5_6_image_init(xx_blindwrite_5_6_image *archive, xx_io_device *device, int64_t base_address);
+XXFC_API xx_blindwrite_5_6_image *xx_blindwrite_5_6_image_create(xx_io_device *device, int64_t base_address);
 /** Releases parse state and closes the data devices the reader opened. */
-XXFC_API void xx_blindwrite_5_6_image_destroy(
-    xx_blindwrite_5_6_image *archive);
+XXFC_API void xx_blindwrite_5_6_image_destroy(xx_blindwrite_5_6_image *archive);
 XXFC_API void xx_blindwrite_5_6_image_free(xx_blindwrite_5_6_image *archive);
 
-XXFC_API bool xx_blindwrite_5_6_image_check_is_valid(Abstractformat *self,
-                                                     xx_pd_struct *pd);
-XXFC_API bool xx_blindwrite_5_6_image_handle_base_info(Abstractformat *self,
-                                                       xx_pd_struct *pd);
-XXFC_API int64_t xx_blindwrite_5_6_image_get_format_size(Abstractformat *self,
-                                                         xx_pd_struct *pd);
-XXFC_API uint64_t xx_blindwrite_5_6_image_get_number_of_archive_records(
-    Abstractformat *self, xx_pd_struct *pd);
+XXFC_API bool xx_blindwrite_5_6_image_check_is_valid(Abstractformat *self, xx_pd_struct *pd);
+XXFC_API bool xx_blindwrite_5_6_image_handle_base_info(Abstractformat *self, xx_pd_struct *pd);
+XXFC_API int64_t xx_blindwrite_5_6_image_get_format_size(Abstractformat *self, xx_pd_struct *pd);
+XXFC_API uint64_t xx_blindwrite_5_6_image_get_number_of_archive_records(Abstractformat *self, xx_pd_struct *pd);
 
-XXFC_API xx_archive_record_state *
-xx_blindwrite_5_6_image_create_archive_records_reading(
-    Abstractformat *self, const xx_list_s *options, xx_pd_struct *pd);
-XXFC_API const xx_archive_record *
-xx_blindwrite_5_6_image_get_current_archive_record(
-    Abstractformat *self, xx_archive_record_state *state);
-XXFC_API bool xx_blindwrite_5_6_image_unpack_current_archive_record(
-    Abstractformat *self, xx_archive_record_state *state, xx_pd_struct *pd);
-XXFC_API bool xx_blindwrite_5_6_image_archive_record_move_to_next(
-    Abstractformat *self, xx_archive_record_state *state, xx_pd_struct *pd);
-XXFC_API void xx_blindwrite_5_6_image_free_archive_records_reading(
-    Abstractformat *self, xx_archive_record_state *state);
+XXFC_API xx_archive_record_state *xx_blindwrite_5_6_image_create_archive_records_reading(Abstractformat *self, const xx_list_s *options, xx_pd_struct *pd);
+XXFC_API const xx_archive_record *xx_blindwrite_5_6_image_get_current_archive_record(Abstractformat *self, xx_archive_record_state *state);
+XXFC_API bool xx_blindwrite_5_6_image_unpack_current_archive_record(Abstractformat *self, xx_archive_record_state *state, xx_pd_struct *pd);
+XXFC_API bool xx_blindwrite_5_6_image_archive_record_move_to_next(Abstractformat *self, xx_archive_record_state *state, xx_pd_struct *pd);
+XXFC_API void xx_blindwrite_5_6_image_free_archive_records_reading(Abstractformat *self, xx_archive_record_state *state);
 
 /** Detector prefilter: "BWT5 STREAM SIGN" in the first 16 bytes. */
-XXFC_API bool xx_blindwrite_5_6_image_test_magic(const uint8_t *magic,
-                                                 size_t magic_size);
+XXFC_API bool xx_blindwrite_5_6_image_test_magic(const uint8_t *magic, size_t magic_size);
 
 /**
  * @brief Attach the data device of data block @p block_index (0-based,
  * descriptor order).  The device stays owned by the caller and must outlive
  * the reader's use of it; NULL detaches.
  */
-XXFC_API bool xx_blindwrite_5_6_image_set_data_device(
-    xx_blindwrite_5_6_image *archive, uint32_t block_index,
-    xx_io_device *device);
+XXFC_API bool xx_blindwrite_5_6_image_set_data_device(xx_blindwrite_5_6_image *archive, uint32_t block_index, xx_io_device *device);
 
 /**
  * @brief Open every data block's file next to the descriptor.
@@ -134,18 +116,15 @@ XXFC_API bool xx_blindwrite_5_6_image_set_data_device(
  * reader.
  * @return how many data blocks now have a data device.
  */
-XXFC_API uint32_t xx_blindwrite_5_6_image_open_data_files(
-    xx_blindwrite_5_6_image *archive, const char *descriptor_path);
+XXFC_API uint32_t xx_blindwrite_5_6_image_open_data_files(xx_blindwrite_5_6_image *archive, const char *descriptor_path);
 
 /** Number of data blocks (0 when the descriptor is not valid). */
-XXFC_API uint32_t xx_blindwrite_5_6_image_get_number_of_blocks(
-    xx_blindwrite_5_6_image *archive);
+XXFC_API uint32_t xx_blindwrite_5_6_image_get_number_of_blocks(xx_blindwrite_5_6_image *archive);
 /**
  * @brief The stored file name of data block @p block_index, as UTF-8.
  * Free with xx_str_free; NULL when out of range or not valid.
  */
-XXFC_API char *xx_blindwrite_5_6_image_get_block_file_name(
-    xx_blindwrite_5_6_image *archive, uint32_t block_index);
+XXFC_API char *xx_blindwrite_5_6_image_get_block_file_name(xx_blindwrite_5_6_image *archive, uint32_t block_index);
 
 #ifdef __cplusplus
 }

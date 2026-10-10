@@ -92,17 +92,15 @@ static void xx_zlwb_vtable_destroy(Abstractformat *self);
 
 /* ------------------------------------------------------------- helpers -- */
 
-static bool xx_zlwb_read_at(Abstractformat *self, int64_t offset,
-                              uint8_t *buffer, size_t size) {
+static bool xx_zlwb_read_at(Abstractformat *self, int64_t offset, uint8_t *buffer, size_t size)
+{
     size_t completed = 0U;
 
-    if (!self || !self->device || offset < 0 ||
-        xx_io_seek64(self->device, offset, SEEK_SET) != 0) {
+    if (!self || !self->device || offset < 0 || xx_io_seek64(self->device, offset, SEEK_SET) != 0) {
         return false;
     }
     while (completed < size) {
-        ssize_t received =
-            xx_io_read(self->device, buffer + completed, size - completed);
+        ssize_t received = xx_io_read(self->device, buffer + completed, size - completed);
         if (received <= 0 || (size_t)received > size - completed) {
             return false;
         }
@@ -111,26 +109,25 @@ static bool xx_zlwb_read_at(Abstractformat *self, int64_t offset,
     return true;
 }
 
-static bool xx_zlwb_range_within(int64_t total, int64_t offset,
-                                   int64_t size) {
-    return offset >= 0 && size >= 0 && offset <= total &&
-           size <= total - offset;
+static bool xx_zlwb_range_within(int64_t total, int64_t offset, int64_t size)
+{
+    return offset >= 0 && size >= 0 && offset <= total && size <= total - offset;
 }
 
 /* Map one byte onto a byte that is legal inside a path component.  The long
  * record's path field is an installer destination such as "<App>\NAME.DLL",
  * so the angle brackets of a placeholder root are routine and must be folded
  * rather than treated as a rejection. */
-static char xx_zlwb_safe_char(uint8_t c) {
+static char xx_zlwb_safe_char(uint8_t c)
+{
     if (c < 0x20U || c > 0x7EU) return '_';
-    if (c == '<' || c == '>' || c == ':' || c == '"' || c == '|' ||
-        c == '?' || c == '*')
-        return '_';
+    if (c == '<' || c == '>' || c == ':' || c == '"' || c == '|' || c == '?' || c == '*') return '_';
     return (char)c;
 }
 
 /* The last path component of @p path, or NULL when there is none. */
-static const char *xx_zlwb_last_part(const char *path) {
+static const char *xx_zlwb_last_part(const char *path)
+{
     const char *last = path;
     const char *cursor;
     if (!path) return NULL;
@@ -149,7 +146,8 @@ static const char *xx_zlwb_last_part(const char *path) {
  * case the leaf stands alone.  Traversal components are dropped, separators
  * are normalized to '/', and every component is folded to bytes a filesystem
  * will accept.  Returns NULL only on allocation failure or an empty result. */
-static char *xx_zlwb_build_name(const char *path, const char *leaf) {
+static char *xx_zlwb_build_name(const char *path, const char *leaf)
+{
     char *result;
     size_t path_length = path ? xx_str_len(path) : 0U;
     size_t leaf_length = leaf ? xx_str_len(leaf) : 0U;
@@ -167,30 +165,21 @@ static char *xx_zlwb_build_name(const char *path, const char *leaf) {
     input = 0U;
     while (input < directory_length) {
         size_t start, end, component_start;
-        while (input < directory_length &&
-               (path[input] == '\\' || path[input] == '/'))
-            ++input;
+        while (input < directory_length && (path[input] == '\\' || path[input] == '/')) ++input;
         start = input;
-        while (input < directory_length && path[input] != '\\' &&
-               path[input] != '/')
-            ++input;
+        while (input < directory_length && path[input] != '\\' && path[input] != '/') ++input;
         end = input;
-        if (end == start || (end - start == 1U && path[start] == '.'))
-            continue;
+        if (end == start || (end - start == 1U && path[start] == '.')) continue;
         /* A destination path that climbs out of the extraction directory is
          * refused rather than quietly flattened. */
-        if (end - start == 2U && path[start] == '.' &&
-            path[start + 1U] == '.') {
+        if (end - start == 2U && path[start] == '.' && path[start + 1U] == '.') {
             xx_mem_free(result);
             return NULL;
         }
         if (output != 0U) result[output++] = '/';
         component_start = output;
-        while (start < end)
-            result[output++] = xx_zlwb_safe_char((uint8_t)path[start++]);
-        while (output > component_start &&
-               (result[output - 1U] == ' ' || result[output - 1U] == '.'))
-            --output;
+        while (start < end) result[output++] = xx_zlwb_safe_char((uint8_t)path[start++]);
+        while (output > component_start && (result[output - 1U] == ' ' || result[output - 1U] == '.')) --output;
         if (output == component_start) result[output++] = '_';
     }
     if (output != 0U) result[output++] = '/';
@@ -198,12 +187,9 @@ static char *xx_zlwb_build_name(const char *path, const char *leaf) {
         size_t component_start = output;
         for (input = 0U; input < leaf_length; ++input) {
             char c = leaf[input];
-            result[output++] = (c == '\\' || c == '/')
-                                   ? '_' : xx_zlwb_safe_char((uint8_t)c);
+            result[output++] = (c == '\\' || c == '/') ? '_' : xx_zlwb_safe_char((uint8_t)c);
         }
-        while (output > component_start &&
-               (result[output - 1U] == ' ' || result[output - 1U] == '.'))
-            --output;
+        while (output > component_start && (result[output - 1U] == ' ' || result[output - 1U] == '.')) --output;
         if (output == component_start) result[output++] = '_';
     }
     result[output] = '\0';
@@ -211,7 +197,8 @@ static char *xx_zlwb_build_name(const char *path, const char *leaf) {
 }
 
 /* Refuse anything that would escape the extraction directory. */
-static bool xx_zlwb_path_safe(const char *name) {
+static bool xx_zlwb_path_safe(const char *name)
+{
     const char *cursor = name;
 
     if (!name || !name[0] || name[0] == '/') return false;
@@ -226,7 +213,8 @@ static bool xx_zlwb_path_safe(const char *name) {
     return true;
 }
 
-static void xx_zlwb_stream_free(void *pointer) {
+static void xx_zlwb_stream_free(void *pointer)
+{
     xx_zlwb_stream *stream = (xx_zlwb_stream *)pointer;
     size_t index;
 
@@ -239,17 +227,15 @@ static void xx_zlwb_stream_free(void *pointer) {
 }
 
 /* Append a member, taking ownership of @p name. */
-static bool xx_zlwb_add(xx_zlwb_stream *stream,
-                          const xx_zlwb_member *member) {
-    xx_zlwb_member *grown = (xx_zlwb_member *)xx_mem_realloc(
-        stream->items, sizeof(*grown) * (stream->count + 1U));
+static bool xx_zlwb_add(xx_zlwb_stream *stream, const xx_zlwb_member *member)
+{
+    xx_zlwb_member *grown = (xx_zlwb_member *)xx_mem_realloc(stream->items, sizeof(*grown) * (stream->count + 1U));
 
     if (!grown) return false;
     stream->items = grown;
     stream->items[stream->count++] = *member;
     return true;
 }
-
 
 #define XX_ZLWB_HEADER_SIZE 0x1e
 #define XX_ZLWB_BLOB_HEADER_SIZE 0x10
@@ -269,8 +255,8 @@ static bool xx_zlwb_decode(Abstractformat *self, const xx_zlwb_member *member, u
 /* Delphi ShortString: a length byte and that many characters, no terminator.
  * The name is the only text in the record, so it is also the last sanity
  * check on a blob that inflated to the right size by coincidence. */
-static char *xx_zlwb_short_string(const uint8_t *record, size_t record_size,
-                                  size_t offset) {
+static char *xx_zlwb_short_string(const uint8_t *record, size_t record_size, size_t offset)
+{
     char text[256];
     size_t length;
     size_t index;
@@ -289,7 +275,8 @@ static char *xx_zlwb_short_string(const uint8_t *record, size_t record_size,
     return xx_str_dup(text);
 }
 
-static xx_zlwb_stream *xx_zlwb_parse(Abstractformat *self, xx_pd_struct *pd) {
+static xx_zlwb_stream *xx_zlwb_parse(Abstractformat *self, xx_pd_struct *pd)
+{
     xx_zlwb_stream *stream;
     uint8_t header[XX_ZLWB_HEADER_SIZE];
     uint8_t blob_header[XX_ZLWB_BLOB_HEADER_SIZE];
@@ -311,8 +298,7 @@ static xx_zlwb_stream *xx_zlwb_parse(Abstractformat *self, xx_pd_struct *pd) {
     if (!xx_zlwb_read_at(self, self->base_address, header, sizeof(header))) {
         return NULL;
     }
-    if (header[0] != 'Z' || header[1] != 'L' || header[2] != 'W' ||
-        header[3] != 'B') {
+    if (header[0] != 'Z' || header[1] != 'L' || header[2] != 'W' || header[3] != 'B') {
         return NULL;
     }
     /* The 0x1a and the version are part of the signature, not decoration:
@@ -347,9 +333,7 @@ static xx_zlwb_stream *xx_zlwb_parse(Abstractformat *self, xx_pd_struct *pd) {
         size_t written = 0U;
 
         if (pd && xx_pd_is_stopped(pd)) goto fail;
-        if (!xx_zlwb_range_within(span, position, XX_ZLWB_BLOB_HEADER_SIZE) ||
-            !xx_zlwb_read_at(self, self->base_address + position, blob_header,
-                             sizeof(blob_header))) {
+        if (!xx_zlwb_range_within(span, position, XX_ZLWB_BLOB_HEADER_SIZE) || !xx_zlwb_read_at(self, self->base_address + position, blob_header, sizeof(blob_header))) {
             goto fail;
         }
         blob_size = (int64_t)(int32_t)xx_data_get_u32(blob_header + 4, 4, 0, false);
@@ -357,22 +341,17 @@ static xx_zlwb_stream *xx_zlwb_parse(Abstractformat *self, xx_pd_struct *pd) {
         if (blob_size <= 0 || blob_size > XX_ZLWB_MAX_BLOB_SIZE) goto fail;
         /* The record size is not a hint, it names the layout: any other value
          * means the bytes being walked are not a ZLWB directory. */
-        if (record_size != XX_ZLWB_RECORD_SHORT &&
-            record_size != XX_ZLWB_RECORD_LONG) {
+        if (record_size != XX_ZLWB_RECORD_SHORT && record_size != XX_ZLWB_RECORD_LONG) {
             goto fail;
         }
-        if (!xx_zlwb_range_within(span, position + XX_ZLWB_BLOB_HEADER_SIZE,
-                                  blob_size)) {
+        if (!xx_zlwb_range_within(span, position + XX_ZLWB_BLOB_HEADER_SIZE, blob_size)) {
             goto fail;
         }
 
         blob = (uint8_t *)xx_mem_alloc((size_t)blob_size);
         record = (uint8_t *)xx_mem_alloc((size_t)record_size);
         if (!blob || !record) goto fail;
-        if (!xx_zlwb_read_at(self,
-                             self->base_address + position +
-                                 XX_ZLWB_BLOB_HEADER_SIZE,
-                             blob, (size_t)blob_size)) {
+        if (!xx_zlwb_read_at(self, self->base_address + position + XX_ZLWB_BLOB_HEADER_SIZE, blob, (size_t)blob_size)) {
             goto fail;
         }
 
@@ -382,12 +361,8 @@ static xx_zlwb_stream *xx_zlwb_parse(Abstractformat *self, xx_pd_struct *pd) {
          * any of the three -- accept a short inflate, skip the trailer, treat
          * the record size as advisory -- and arbitrary data starts parsing as
          * a member list. */
-        if (!xx_zlib_stream_header_is_valid(blob, (size_t)blob_size) ||
-            !xx_zlib_stream_decode_memory(blob, (size_t)blob_size, record,
-                                          (size_t)record_size, &written) ||
-            written != (size_t)record_size ||
-            !xx_zlib_stream_trailer_matches(blob, (size_t)blob_size, record,
-                                            written)) {
+        if (!xx_zlib_stream_header_is_valid(blob, (size_t)blob_size) || !xx_zlib_stream_decode_memory(blob, (size_t)blob_size, record, (size_t)record_size, &written) ||
+            written != (size_t)record_size || !xx_zlib_stream_trailer_matches(blob, (size_t)blob_size, record, written)) {
             goto fail;
         }
 
@@ -395,16 +370,13 @@ static xx_zlwb_stream *xx_zlwb_parse(Abstractformat *self, xx_pd_struct *pd) {
             name = xx_zlwb_short_string(record, (size_t)record_size, 0x000U);
             data_offset = (int64_t)(int32_t)xx_data_get_u32(record + 0x100, 4, 0, false);
             compressed_size = (int64_t)(int32_t)xx_data_get_u32(record + 0x104, 4, 0, false);
-            uncompressed_size =
-                (int64_t)(int32_t)xx_data_get_u32(record + 0x108, 4, 0, false);
+            uncompressed_size = (int64_t)(int32_t)xx_data_get_u32(record + 0x108, 4, 0, false);
         } else {
             /* The record names the member twice: the path field is the
              * installer destination and the name field is the member itself.
              * The directory comes from the first, the leaf from the second. */
-            char *full = xx_zlwb_short_string(record, (size_t)record_size,
-                                              0x106U);
-            char *bare = xx_zlwb_short_string(record, (size_t)record_size,
-                                              0x006U);
+            char *full = xx_zlwb_short_string(record, (size_t)record_size, 0x106U);
+            char *bare = xx_zlwb_short_string(record, (size_t)record_size, 0x006U);
             /* A writer that leaves the name field empty still fills the path
              * field, so fall back to that path's own last component. */
             const char *leaf = bare ? bare : xx_zlwb_last_part(full);
@@ -417,12 +389,10 @@ static xx_zlwb_stream *xx_zlwb_parse(Abstractformat *self, xx_pd_struct *pd) {
             xx_str_free(bare);
             data_offset = (int64_t)(int32_t)xx_data_get_u32(record + 0x218, 4, 0, false);
             compressed_size = (int64_t)(int32_t)xx_data_get_u32(record + 0x21c, 4, 0, false);
-            uncompressed_size =
-                (int64_t)(int32_t)xx_data_get_u32(record + 0x220, 4, 0, false);
+            uncompressed_size = (int64_t)(int32_t)xx_data_get_u32(record + 0x220, 4, 0, false);
         }
         if (!name) goto fail;
-        if (data_offset < 0 || compressed_size < 0 ||
-            uncompressed_size < 0) {
+        if (data_offset < 0 || compressed_size < 0 || uncompressed_size < 0) {
             xx_str_free(name);
             goto fail;
         }
@@ -471,7 +441,6 @@ fail:
     return NULL;
 }
 
-
 /* The container has no method field: everything it holds -- directory blobs
  * and member data alike -- is a zlib stream. The synthetic value keeps the
  * switch below honest, so a future layout that does carry a method cannot
@@ -479,9 +448,8 @@ fail:
 /* The uncompressed size comes straight out of the archive, so it is
  * attacker-controlled: refuse rather than attempt a huge allocation. */
 
-static bool xx_zlwb_decode(Abstractformat *self,
-                           const xx_zlwb_member *member, uint8_t **out,
-                           size_t *out_size, xx_pd_struct *pd) {
+static bool xx_zlwb_decode(Abstractformat *self, const xx_zlwb_member *member, uint8_t **out, size_t *out_size, xx_pd_struct *pd)
+{
     uint8_t *input = NULL;
     uint8_t *output = NULL;
     size_t written = 0U;
@@ -494,31 +462,23 @@ static bool xx_zlwb_decode(Abstractformat *self,
     if (member->compressed_size <= 0 || member->uncompressed_size < 0) {
         return false;
     }
-    if (member->compressed_size > XX_ZLWB_MAX_DECODED ||
-        member->uncompressed_size > XX_ZLWB_MAX_DECODED) {
+    if (member->compressed_size > XX_ZLWB_MAX_DECODED || member->uncompressed_size > XX_ZLWB_MAX_DECODED) {
         return false;
     }
     if (pd && xx_pd_is_stopped(pd)) return false;
 
     input = (uint8_t *)xx_mem_alloc((size_t)member->compressed_size);
-    output = (uint8_t *)xx_mem_alloc(
-        member->uncompressed_size != 0 ? (size_t)member->uncompressed_size
-                                       : 1U);
+    output = (uint8_t *)xx_mem_alloc(member->uncompressed_size != 0 ? (size_t)member->uncompressed_size : 1U);
     if (!input || !output) goto decode_fail;
-    if (!xx_zlwb_read_at(self, member->data_offset, input,
-                         (size_t)member->compressed_size)) {
+    if (!xx_zlwb_read_at(self, member->data_offset, input, (size_t)member->compressed_size)) {
         goto decode_fail;
     }
     if (pd && xx_pd_is_stopped(pd)) goto decode_fail;
 
-    if (!xx_zlib_stream_header_is_valid(input,
-                                        (size_t)member->compressed_size)) {
+    if (!xx_zlib_stream_header_is_valid(input, (size_t)member->compressed_size)) {
         goto decode_fail;
     }
-    if (!xx_zlib_stream_decode_memory(input, (size_t)member->compressed_size,
-                                      output,
-                                      (size_t)member->uncompressed_size,
-                                      &written)) {
+    if (!xx_zlib_stream_decode_memory(input, (size_t)member->compressed_size, output, (size_t)member->uncompressed_size, &written)) {
         goto decode_fail;
     }
     /* A truncated member must fail, not succeed short: the caller has no way
@@ -526,9 +486,7 @@ static bool xx_zlwb_decode(Abstractformat *self,
     if (written != (size_t)member->uncompressed_size) goto decode_fail;
     /* The directory records the exact stream length, so the RFC 1950 trailer
      * is inside the member and the Adler-32 can be insisted on. */
-    if (!xx_zlib_stream_trailer_matches(input,
-                                        (size_t)member->compressed_size,
-                                        output, written)) {
+    if (!xx_zlib_stream_trailer_matches(input, (size_t)member->compressed_size, output, written)) {
         goto decode_fail;
     }
 
@@ -545,8 +503,8 @@ decode_fail:
 
 /* ---------------------------------------------------------- lifecycle --- */
 
-void xx_zlwb_init(xx_zlwb *archive, xx_io_device *device,
-                    int64_t base_address) {
+void xx_zlwb_init(xx_zlwb *archive, xx_io_device *device, int64_t base_address)
+{
     if (!archive) return;
     xx_mem_zero(archive, sizeof(*archive));
     xx_format_init(&archive->format, device, base_address);
@@ -559,22 +517,17 @@ void xx_zlwb_init(xx_zlwb *archive, xx_io_device *device,
     archive->format.check_is_valid = xx_zlwb_check_is_valid;
     archive->format.handle_base_info = xx_zlwb_handle_base_info;
     archive->format.get_format_size = xx_zlwb_get_format_size;
-    archive->format.get_number_of_archive_records =
-        xx_zlwb_get_number_of_archive_records;
-    archive->format.create_archive_records_reading =
-        xx_zlwb_create_archive_records_reading;
-    archive->format.get_current_archive_record =
-        xx_zlwb_get_current_archive_record;
-    archive->format.unpack_current_archive_record =
-        xx_zlwb_unpack_current_archive_record;
-    archive->format.archive_record_move_to_next =
-        xx_zlwb_archive_record_move_to_next;
-    archive->format.free_archive_records_reading =
-        xx_zlwb_free_archive_records_reading;
+    archive->format.get_number_of_archive_records = xx_zlwb_get_number_of_archive_records;
+    archive->format.create_archive_records_reading = xx_zlwb_create_archive_records_reading;
+    archive->format.get_current_archive_record = xx_zlwb_get_current_archive_record;
+    archive->format.unpack_current_archive_record = xx_zlwb_unpack_current_archive_record;
+    archive->format.archive_record_move_to_next = xx_zlwb_archive_record_move_to_next;
+    archive->format.free_archive_records_reading = xx_zlwb_free_archive_records_reading;
     archive->format.destroy = xx_zlwb_vtable_destroy;
 }
 
-xx_zlwb *xx_zlwb_create(xx_io_device *device, int64_t base_address) {
+xx_zlwb *xx_zlwb_create(xx_io_device *device, int64_t base_address)
+{
     xx_zlwb *archive = (xx_zlwb *)xx_mem_alloc(sizeof(*archive));
 
     if (!archive) return NULL;
@@ -582,7 +535,8 @@ xx_zlwb *xx_zlwb_create(xx_io_device *device, int64_t base_address) {
     return archive;
 }
 
-void xx_zlwb_destroy(xx_zlwb *archive) {
+void xx_zlwb_destroy(xx_zlwb *archive)
+{
     if (!archive) return;
     /* Not xx_format_destroy: it dispatches through format.destroy, which is
      * the wrapper below, and the two would recurse. */
@@ -591,19 +545,22 @@ void xx_zlwb_destroy(xx_zlwb *archive) {
     archive->number_of_records = 0U;
 }
 
-void xx_zlwb_free(xx_zlwb *archive) {
+void xx_zlwb_free(xx_zlwb *archive)
+{
     if (!archive) return;
     xx_zlwb_destroy(archive);
     xx_mem_free(archive);
 }
 
-static void xx_zlwb_vtable_destroy(Abstractformat *self) {
+static void xx_zlwb_vtable_destroy(Abstractformat *self)
+{
     xx_zlwb_destroy((xx_zlwb *)self);
 }
 
 /* -------------------------------------------------------------- format -- */
 
-bool xx_zlwb_check_is_valid(Abstractformat *self, xx_pd_struct *pd) {
+bool xx_zlwb_check_is_valid(Abstractformat *self, xx_pd_struct *pd)
+{
     xx_zlwb_stream *stream;
 
     if (!self || (pd && xx_pd_is_stopped(pd))) return false;
@@ -613,7 +570,8 @@ bool xx_zlwb_check_is_valid(Abstractformat *self, xx_pd_struct *pd) {
     return true;
 }
 
-bool xx_zlwb_handle_base_info(Abstractformat *self, xx_pd_struct *pd) {
+bool xx_zlwb_handle_base_info(Abstractformat *self, xx_pd_struct *pd)
+{
     xx_zlwb *archive = (xx_zlwb *)self;
     xx_zlwb_stream *stream;
 
@@ -634,18 +592,17 @@ bool xx_zlwb_handle_base_info(Abstractformat *self, xx_pd_struct *pd) {
     return true;
 }
 
-int64_t xx_zlwb_get_format_size(Abstractformat *self, xx_pd_struct *pd) {
-    if (!self ||
-        (!self->base_info_handled && !xx_format_handle_base_info(self, pd))) {
+int64_t xx_zlwb_get_format_size(Abstractformat *self, xx_pd_struct *pd)
+{
+    if (!self || (!self->base_info_handled && !xx_format_handle_base_info(self, pd))) {
         return 0;
     }
     return self->is_valid ? self->format_size : 0;
 }
 
-uint64_t xx_zlwb_get_number_of_archive_records(Abstractformat *self,
-                                                 xx_pd_struct *pd) {
-    if (!self ||
-        (!self->base_info_handled && !xx_format_handle_base_info(self, pd))) {
+uint64_t xx_zlwb_get_number_of_archive_records(Abstractformat *self, xx_pd_struct *pd)
+{
+    if (!self || (!self->base_info_handled && !xx_format_handle_base_info(self, pd))) {
         return 0U;
     }
     return self->is_valid ? ((xx_zlwb *)self)->number_of_records : 0U;
@@ -653,8 +610,8 @@ uint64_t xx_zlwb_get_number_of_archive_records(Abstractformat *self,
 
 /* ------------------------------------------------------------- records -- */
 
-static bool xx_zlwb_set_record(xx_archive_record *record,
-                                 const xx_zlwb_member *member) {
+static bool xx_zlwb_set_record(xx_archive_record *record, const xx_zlwb_member *member)
+{
     xx_archive_record_cleanup(record);
     xx_archive_record_init(record);
     record->header_offset = member->header_offset;
@@ -662,34 +619,24 @@ static bool xx_zlwb_set_record(xx_archive_record *record,
     record->data_offset = member->data_offset;
     record->compressed_size = member->compressed_size;
     return xx_archive_record_set_original_name(record, member->name) &&
-           xx_archive_record_set_meta_u64(record, XX_META_ID_COMPRESSED_SIZE,
-                                          (uint64_t)member->compressed_size) &&
-           xx_archive_record_set_meta_u64(
-               record, XX_META_ID_UNCOMPRESSED_SIZE,
-               (uint64_t)member->uncompressed_size) &&
-           xx_archive_record_set_meta_u64(record, XX_META_ID_COMPRESSION_METHOD,
-                                          member->method) &&
-           xx_archive_record_set_meta_u64(record, XX_META_ID_TIMESTAMP,
-                                          member->timestamp) &&
-           xx_archive_record_set_meta_bool(record, XX_META_ID_IS_FOLDER,
-                                           member->is_folder) &&
-           xx_archive_record_set_meta_bool(record, XX_META_ID_IS_ENCRYPTED,
-                                           false);
+           xx_archive_record_set_meta_u64(record, XX_META_ID_COMPRESSED_SIZE, (uint64_t)member->compressed_size) &&
+           xx_archive_record_set_meta_u64(record, XX_META_ID_UNCOMPRESSED_SIZE, (uint64_t)member->uncompressed_size) &&
+           xx_archive_record_set_meta_u64(record, XX_META_ID_COMPRESSION_METHOD, member->method) &&
+           xx_archive_record_set_meta_u64(record, XX_META_ID_TIMESTAMP, member->timestamp) &&
+           xx_archive_record_set_meta_bool(record, XX_META_ID_IS_FOLDER, member->is_folder) && xx_archive_record_set_meta_bool(record, XX_META_ID_IS_ENCRYPTED, false);
 }
 
-static bool xx_zlwb_copy_options(xx_list_s *target,
-                                   const xx_list_s *options) {
+static bool xx_zlwb_copy_options(xx_list_s *target, const xx_list_s *options)
+{
     size_t index;
 
     if (!target || !options) return options == NULL;
     for (index = 0U; index < options->count; ++index) {
-        const xx_meta *source =
-            (const xx_meta *)xx_list_at((const xx_list_t *)options, index);
+        const xx_meta *source = (const xx_meta *)xx_list_at((const xx_list_t *)options, index);
         xx_meta copied;
         if (!source) continue;
         xx_meta_init(&copied, source->meta_id);
-        if (!xx_var_copy(&copied.var, &source->var) ||
-            !xx_list_append(target, &copied)) {
+        if (!xx_var_copy(&copied.var, &source->var) || !xx_list_append(target, &copied)) {
             xx_meta_cleanup(&copied);
             return false;
         }
@@ -697,21 +644,20 @@ static bool xx_zlwb_copy_options(xx_list_s *target,
     return true;
 }
 
-static const xx_var *xx_zlwb_get_option(const xx_list_s *options,
-                                          uint32_t meta_id) {
+static const xx_var *xx_zlwb_get_option(const xx_list_s *options, uint32_t meta_id)
+{
     size_t index;
 
     if (!options) return NULL;
     for (index = 0U; index < options->count; ++index) {
-        const xx_meta *meta =
-            (const xx_meta *)xx_list_at((const xx_list_t *)options, index);
+        const xx_meta *meta = (const xx_meta *)xx_list_at((const xx_list_t *)options, index);
         if (meta && meta->meta_id == meta_id) return &meta->var;
     }
     return NULL;
 }
 
-xx_archive_record_state *xx_zlwb_create_archive_records_reading(
-    Abstractformat *self, const xx_list_s *options, xx_pd_struct *pd) {
+xx_archive_record_state *xx_zlwb_create_archive_records_reading(Abstractformat *self, const xx_list_s *options, xx_pd_struct *pd)
+{
     xx_zlwb_stream *stream;
     xx_archive_record_state *state;
 
@@ -727,9 +673,7 @@ xx_archive_record_state *xx_zlwb_create_archive_records_reading(
     state->internal_state = stream;
     state->free_internal = xx_zlwb_stream_free;
     state->total_records = (int64_t)stream->count;
-    if (!xx_zlwb_copy_options(&state->options, options) ||
-        (stream->count != 0U &&
-         !xx_zlwb_set_record(&state->current_record, &stream->items[0]))) {
+    if (!xx_zlwb_copy_options(&state->options, options) || (stream->count != 0U && !xx_zlwb_set_record(&state->current_record, &stream->items[0]))) {
         xx_archive_record_state_free(state);
         return NULL;
     }
@@ -738,20 +682,16 @@ xx_archive_record_state *xx_zlwb_create_archive_records_reading(
     return state;
 }
 
-const xx_archive_record *xx_zlwb_get_current_archive_record(
-    Abstractformat *self, xx_archive_record_state *state) {
-    return self && state && state->format == self && state->has_record
-               ? &state->current_record
-               : NULL;
+const xx_archive_record *xx_zlwb_get_current_archive_record(Abstractformat *self, xx_archive_record_state *state)
+{
+    return self && state && state->format == self && state->has_record ? &state->current_record : NULL;
 }
 
-bool xx_zlwb_archive_record_move_to_next(Abstractformat *self,
-                                           xx_archive_record_state *state,
-                                           xx_pd_struct *pd) {
+bool xx_zlwb_archive_record_move_to_next(Abstractformat *self, xx_archive_record_state *state, xx_pd_struct *pd)
+{
     xx_zlwb_stream *stream;
 
-    if (!self || !state || state->format != self || !state->has_record ||
-        (pd && xx_pd_is_stopped(pd))) {
+    if (!self || !state || state->format != self || !state->has_record || (pd && xx_pd_is_stopped(pd))) {
         return false;
     }
     stream = (xx_zlwb_stream *)state->internal_state;
@@ -763,14 +703,12 @@ bool xx_zlwb_archive_record_move_to_next(Abstractformat *self,
     }
     ++stream->index;
     ++state->current_index;
-    state->has_record = xx_zlwb_set_record(&state->current_record,
-                                             &stream->items[stream->index]);
+    state->has_record = xx_zlwb_set_record(&state->current_record, &stream->items[stream->index]);
     return state->has_record;
 }
 
-bool xx_zlwb_unpack_current_archive_record(Abstractformat *self,
-                                             xx_archive_record_state *state,
-                                             xx_pd_struct *pd) {
+bool xx_zlwb_unpack_current_archive_record(Abstractformat *self, xx_archive_record_state *state, xx_pd_struct *pd)
+{
     xx_zlwb_stream *stream;
     const xx_zlwb_member *member;
     const xx_var *path_option;
@@ -782,8 +720,7 @@ bool xx_zlwb_unpack_current_archive_record(Abstractformat *self,
     bool result = false;
     bool created = false;
 
-    if (!self || !state || state->format != self || !state->has_record ||
-        (pd && xx_pd_is_stopped(pd))) {
+    if (!self || !state || state->format != self || !state->has_record || (pd && xx_pd_is_stopped(pd))) {
         return false;
     }
     stream = (xx_zlwb_stream *)state->internal_state;
@@ -791,8 +728,7 @@ bool xx_zlwb_unpack_current_archive_record(Abstractformat *self,
     member = &stream->items[stream->index];
     if (!xx_zlwb_path_safe(member->name)) return false;
 
-    path_option = xx_zlwb_get_option(&state->options,
-                                       XX_META_ID_OPT_UNPACK_PATH);
+    path_option = xx_zlwb_get_option(&state->options, XX_META_ID_OPT_UNPACK_PATH);
     if (!path_option) {
         /* No destination: decode and discard, which verifies the member
          * without writing anything. */
@@ -801,11 +737,9 @@ bool xx_zlwb_unpack_current_archive_record(Abstractformat *self,
         xx_mem_free(plain);
         return result;
     }
-    if (path_option->type == XX_VAR_TYPE_STRING ||
-        path_option->type == XX_VAR_TYPE_STRING_VIEW) {
+    if (path_option->type == XX_VAR_TYPE_STRING || path_option->type == XX_VAR_TYPE_STRING_VIEW) {
         base_path = xx_var_get_str(path_option);
-    } else if (path_option->type == XX_VAR_TYPE_WSTRING ||
-               path_option->type == XX_VAR_TYPE_WSTRING_VIEW) {
+    } else if (path_option->type == XX_VAR_TYPE_WSTRING || path_option->type == XX_VAR_TYPE_WSTRING_VIEW) {
         converted_path = xx_str_unicode_to_utf8(xx_var_get_wstr(path_option));
         base_path = converted_path;
     }
@@ -813,9 +747,7 @@ bool xx_zlwb_unpack_current_archive_record(Abstractformat *self,
         xx_str_free(converted_path);
         return false;
     }
-    if (base_path[0] != '\0' &&
-        base_path[xx_str_len(base_path) - 1U] != '/' &&
-        base_path[xx_str_len(base_path) - 1U] != '\\') {
+    if (base_path[0] != '\0' && base_path[xx_str_len(base_path) - 1U] != '/' && base_path[xx_str_len(base_path) - 1U] != '\\') {
         target_path = xx_str_concat3(base_path, "/", member->name);
     } else {
         target_path = xx_str_concat(base_path, member->name);
@@ -828,8 +760,7 @@ bool xx_zlwb_unpack_current_archive_record(Abstractformat *self,
         xx_str_free(target_path);
         return result;
     }
-    if (!xx_store_create_dirs_a(target_path, false) ||
-        !xx_zlwb_decode(self, member, &plain, &plain_size, pd)) {
+    if (!xx_store_create_dirs_a(target_path, false) || !xx_zlwb_decode(self, member, &plain, &plain_size, pd)) {
         xx_str_free(target_path);
         return false;
     }
@@ -840,8 +771,7 @@ bool xx_zlwb_unpack_current_archive_record(Abstractformat *self,
 
         result = output != NULL;
         while (result && completed < plain_size) {
-            ssize_t sent = xx_io_write(output, plain + completed,
-                                       plain_size - completed);
+            ssize_t sent = xx_io_write(output, plain + completed, plain_size - completed);
             if (sent <= 0 || (size_t)sent > plain_size - completed) {
                 result = false;
                 break;
@@ -856,8 +786,8 @@ bool xx_zlwb_unpack_current_archive_record(Abstractformat *self,
     return result;
 }
 
-void xx_zlwb_free_archive_records_reading(Abstractformat *self,
-                                            xx_archive_record_state *state) {
+void xx_zlwb_free_archive_records_reading(Abstractformat *self, xx_archive_record_state *state)
+{
     (void)self;
     xx_archive_record_state_free(state);
 }

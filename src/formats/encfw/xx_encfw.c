@@ -51,11 +51,7 @@
 #define XX_ENCFW_COMMENT_CAPACITY 96U
 
 /* The statistics sample must lie inside every image the size floor admits. */
-typedef char xx_encfw_sample_fits_check
-    [(XX_ENCFW_SAMPLE_SIZE <= XX_ENCFW_MIN_SIZE &&
-      XX_ENCFW_MAGIC_SIZE <= XX_ENCFW_SAMPLE_SIZE)
-         ? 1
-         : -1];
+typedef char xx_encfw_sample_fits_check[(XX_ENCFW_SAMPLE_SIZE <= XX_ENCFW_MIN_SIZE && XX_ENCFW_MAGIC_SIZE <= XX_ENCFW_SAMPLE_SIZE) ? 1 : -1];
 
 typedef struct xx_encfw_entry_s {
     uint8_t magic[XX_ENCFW_MAGIC_SIZE];
@@ -63,15 +59,13 @@ typedef struct xx_encfw_entry_s {
 } xx_encfw_entry;
 
 /* The five tags binwalk knows, with the make and model each one identifies. */
-static const xx_encfw_entry xx_encfw_table[] = {
-    {{0xdfU, 0x8cU, 0x39U, 0x0dU}, "D-Link DIR-822 rev C"},
-    {{0x35U, 0x66U, 0x6fU, 0x68U}, "D-Link DAP-1665"},
-    {{0xf5U, 0x2aU, 0xa0U, 0xb4U}, "D-Link DIR-842 rev C"},
-    {{0xe3U, 0x13U, 0x00U, 0x5bU}, "D-Link DIR-850 rev A"},
-    {{0x0aU, 0x14U, 0xe4U, 0x24U}, "D-Link DIR-850 rev B"}};
+static const xx_encfw_entry xx_encfw_table[] = {{{0xdfU, 0x8cU, 0x39U, 0x0dU}, "D-Link DIR-822 rev C"},
+                                                {{0x35U, 0x66U, 0x6fU, 0x68U}, "D-Link DAP-1665"},
+                                                {{0xf5U, 0x2aU, 0xa0U, 0xb4U}, "D-Link DIR-842 rev C"},
+                                                {{0xe3U, 0x13U, 0x00U, 0x5bU}, "D-Link DIR-850 rev A"},
+                                                {{0x0aU, 0x14U, 0xe4U, 0x24U}, "D-Link DIR-850 rev B"}};
 
-#define XX_ENCFW_TABLE_COUNT \
-    (sizeof(xx_encfw_table) / sizeof(xx_encfw_table[0]))
+#define XX_ENCFW_TABLE_COUNT (sizeof(xx_encfw_table) / sizeof(xx_encfw_table[0]))
 
 typedef struct xx_encfw_private_s {
     int64_t input_size;
@@ -88,13 +82,12 @@ static void xx_encfw_vtable_destroy(Abstractformat *self);
 
 /* All positioning goes through seek64: the base address inside a larger flash
  * dump is not bounded by any 32-bit field, and long is 32-bit on Win64. */
-static bool xx_encfw_read_at(xx_io_device *device, int64_t offset, void *data,
-                             size_t size) {
+static bool xx_encfw_read_at(xx_io_device *device, int64_t offset, void *data, size_t size)
+{
     uint8_t *out = (uint8_t *)data;
     size_t done = 0U;
 
-    if (!device || (!data && size != 0U) || offset < 0 ||
-        xx_io_seek64(device, offset, SEEK_SET) != 0) {
+    if (!device || (!data && size != 0U) || offset < 0 || xx_io_seek64(device, offset, SEEK_SET) != 0) {
         return false;
     }
     while (done < size) {
@@ -105,12 +98,12 @@ static bool xx_encfw_read_at(xx_io_device *device, int64_t offset, void *data,
     return true;
 }
 
-static const char *xx_encfw_lookup(const uint8_t *magic) {
+static const char *xx_encfw_lookup(const uint8_t *magic)
+{
     size_t index;
 
     for (index = 0U; index < XX_ENCFW_TABLE_COUNT; ++index) {
-        if (xx_rt_memcmp(magic, xx_encfw_table[index].magic,
-                         XX_ENCFW_MAGIC_SIZE) == 0) {
+        if (xx_rt_memcmp(magic, xx_encfw_table[index].magic, XX_ENCFW_MAGIC_SIZE) == 0) {
             return xx_encfw_table[index].device;
         }
     }
@@ -121,24 +114,39 @@ static const char *xx_encfw_lookup(const uint8_t *magic) {
  * histogram and reports whether they look like block-cipher output.  The
  * caller has already established that the image is at least that long.  The
  * buffer is small and fixed; the read is bounded by the sample size. */
-static bool xx_encfw_looks_like_ciphertext(xx_io_device *device,
-                                           int64_t offset) {
-    size_t capacity=xx_get_file_buffer_size(); uint8_t *buffer=NULL; bool buffer_result=false;
+static bool xx_encfw_looks_like_ciphertext(xx_io_device *device, int64_t offset)
+{
+    size_t capacity = xx_get_file_buffer_size();
+    uint8_t *buffer = NULL;
+    bool buffer_result = false;
     uint16_t counts[256];
     size_t done = 0U;
     size_t index;
     unsigned distinct = 0U;
 
     xx_rt_memset(counts, 0, sizeof(counts));
-    while (done < (size_t)XX_ENCFW_SAMPLE_SIZE) {if(!buffer) { buffer=(uint8_t *)xx_mem_alloc(capacity); if(!buffer) { buffer_result=false; goto buffer_done; } } 
+    while (done < (size_t)XX_ENCFW_SAMPLE_SIZE) {
+        if (!buffer) {
+            buffer = (uint8_t *)xx_mem_alloc(capacity);
+            if (!buffer) {
+                buffer_result = false;
+                goto buffer_done;
+            }
+        }
         size_t chunk = (size_t)XX_ENCFW_SAMPLE_SIZE - done;
         if (chunk > capacity) chunk = capacity;
         if (!xx_encfw_read_at(device, offset + (int64_t)done, buffer, chunk)) {
-            { buffer_result = (false); goto buffer_done; }
+            {
+                buffer_result = (false);
+                goto buffer_done;
+            }
         }
         for (index = 0U; index < chunk; ++index) {
             if (++counts[buffer[index]] > XX_ENCFW_MAX_BYTE_COUNT) {
-                { buffer_result = (false); goto buffer_done; }
+                {
+                    buffer_result = (false);
+                    goto buffer_done;
+                }
             }
         }
         done += chunk;
@@ -146,7 +154,10 @@ static bool xx_encfw_looks_like_ciphertext(xx_io_device *device,
     for (index = 0U; index < 256U; ++index) {
         if (counts[index] != 0U) ++distinct;
     }
-    { buffer_result = (distinct >= XX_ENCFW_MIN_DISTINCT); goto buffer_done; }
+    {
+        buffer_result = (distinct >= XX_ENCFW_MIN_DISTINCT);
+        goto buffer_done;
+    }
 
 buffer_done:
     xx_mem_free(buffer);
@@ -154,8 +165,8 @@ buffer_done:
 }
 
 /* Bounded append: never writes past capacity, always leaves a terminator. */
-static void xx_encfw_append_text(char *buffer, size_t capacity, size_t *used,
-                                 const char *text) {
+static void xx_encfw_append_text(char *buffer, size_t capacity, size_t *used, const char *text)
+{
     size_t index = 0U;
 
     if (!buffer || !used || capacity == 0U || *used >= capacity) return;
@@ -170,8 +181,8 @@ static void xx_encfw_append_text(char *buffer, size_t capacity, size_t *used,
 }
 
 /* The tag as eight lowercase hex digits, in file order. */
-static void xx_encfw_append_tag(char *buffer, size_t capacity, size_t *used,
-                                uint32_t magic) {
+static void xx_encfw_append_tag(char *buffer, size_t capacity, size_t *used, uint32_t magic)
+{
     static const char digits[] = "0123456789abcdef";
     char text[9];
     unsigned index;
@@ -184,8 +195,8 @@ static void xx_encfw_append_tag(char *buffer, size_t capacity, size_t *used,
 }
 
 /* "device=<name> tag=<8 hex digits> cipher=AES-256-CBC" */
-static void xx_encfw_describe(char *buffer, size_t capacity,
-                              const xx_encfw_private *parsed) {
+static void xx_encfw_describe(char *buffer, size_t capacity, const xx_encfw_private *parsed)
+{
     size_t used = 0U;
 
     if (!buffer || capacity == 0U) return;
@@ -198,15 +209,16 @@ static void xx_encfw_describe(char *buffer, size_t capacity,
     xx_encfw_append_text(buffer, capacity, &used, XX_ENCFW_CIPHER_NAME);
 }
 
-static void xx_encfw_private_free(void *pointer) {
+static void xx_encfw_private_free(void *pointer)
+{
     /* The device name is a static string and the struct owns nothing else. */
     if (pointer) xx_mem_free(pointer);
 }
 
 /* --------------------------------------------------------------- parse -- */
 
-static bool xx_encfw_parse(Abstractformat *self, xx_encfw_private *parsed,
-                           xx_pd_struct *pd) {
+static bool xx_encfw_parse(Abstractformat *self, xx_encfw_private *parsed, xx_pd_struct *pd)
+{
     uint8_t magic[XX_ENCFW_MAGIC_SIZE];
     const char *device;
     int64_t span;
@@ -216,8 +228,7 @@ static bool xx_encfw_parse(Abstractformat *self, xx_encfw_private *parsed,
         parsed->input_size = -1;
         parsed->payload_offset = -1;
     }
-    if (!self || !self->device || !parsed || self->base_address < 0 ||
-        (pd && xx_pd_is_stopped(pd))) {
+    if (!self || !self->device || !parsed || self->base_address < 0 || (pd && xx_pd_is_stopped(pd))) {
         return false;
     }
     parsed->input_size = xx_io_total_size(self->device);
@@ -229,12 +240,10 @@ static bool xx_encfw_parse(Abstractformat *self, xx_encfw_private *parsed,
      * xx_encfw.h).  The cheap checks run first: size and alignment need no
      * read, the tag needs four bytes, and only a file that carries a known
      * tag pays for the statistics sample. */
-    if (span < (int64_t)XX_ENCFW_MIN_SIZE ||
-        (span % (int64_t)XX_ENCFW_BLOCK_SIZE) != 0) {
+    if (span < (int64_t)XX_ENCFW_MIN_SIZE || (span % (int64_t)XX_ENCFW_BLOCK_SIZE) != 0) {
         return false;
     }
-    if (!xx_encfw_read_at(self->device, self->base_address, magic,
-                          XX_ENCFW_MAGIC_SIZE)) {
+    if (!xx_encfw_read_at(self->device, self->base_address, magic, XX_ENCFW_MAGIC_SIZE)) {
         return false;
     }
     device = xx_encfw_lookup(magic);
@@ -246,8 +255,7 @@ static bool xx_encfw_parse(Abstractformat *self, xx_encfw_private *parsed,
 
     parsed->device = device;
     /* Read big endian purely so the value prints in file order. */
-    parsed->magic = ((uint32_t)magic[0] << 24) | ((uint32_t)magic[1] << 16) |
-                    ((uint32_t)magic[2] << 8) | (uint32_t)magic[3];
+    parsed->magic = ((uint32_t)magic[0] << 24) | ((uint32_t)magic[1] << 16) | ((uint32_t)magic[2] << 8) | (uint32_t)magic[3];
     /* The tag is the start of the first cipher block, so the ciphertext is
      * the whole image. */
     parsed->payload_offset = self->base_address;
@@ -257,19 +265,17 @@ static bool xx_encfw_parse(Abstractformat *self, xx_encfw_private *parsed,
 
 /* ------------------------------------------------------------- records -- */
 
-static bool xx_encfw_copy_options(xx_list_s *destination,
-                                  const xx_list_s *source) {
+static bool xx_encfw_copy_options(xx_list_s *destination, const xx_list_s *source)
+{
     size_t index;
 
     if (!destination || !source) return source == NULL;
     for (index = 0U; index < source->count; ++index) {
-        const xx_meta *item =
-            (const xx_meta *)xx_list_at((const xx_list_t *)source, index);
+        const xx_meta *item = (const xx_meta *)xx_list_at((const xx_list_t *)source, index);
         xx_meta copy;
         if (!item) continue;
         xx_meta_init(&copy, item->meta_id);
-        if (!xx_var_copy(&copy.var, &item->var) ||
-            !xx_list_append(destination, &copy)) {
+        if (!xx_var_copy(&copy.var, &item->var) || !xx_list_append(destination, &copy)) {
             xx_meta_cleanup(&copy);
             return false;
         }
@@ -277,8 +283,8 @@ static bool xx_encfw_copy_options(xx_list_s *destination,
     return true;
 }
 
-static bool xx_encfw_populate_record(xx_archive_record *record,
-                                     const xx_encfw_private *parsed) {
+static bool xx_encfw_populate_record(xx_archive_record *record, const xx_encfw_private *parsed)
+{
     char detail[XX_ENCFW_COMMENT_CAPACITY];
 
     if (!record || !parsed || !parsed->device) return false;
@@ -294,26 +300,20 @@ static bool xx_encfw_populate_record(xx_archive_record *record,
      * ciphertext's own size is reported for both.  It is not a guess at what
      * the plaintext would be: it is the extent of the bytes that are there. */
     return xx_archive_record_set_original_name(record, XX_ENCFW_MEMBER_NAME) &&
-           xx_archive_record_set_meta_u64(record, XX_META_ID_COMPRESSED_SIZE,
-                                          (uint64_t)parsed->payload_size) &&
-           xx_archive_record_set_meta_u64(record, XX_META_ID_UNCOMPRESSED_SIZE,
-                                          (uint64_t)parsed->payload_size) &&
-           xx_archive_record_set_meta_u64(record, XX_META_ID_COMPRESSION_METHOD,
-                                          0U) &&
-           xx_archive_record_set_meta_bool(record, XX_META_ID_IS_FOLDER,
-                                           false) &&
-           xx_archive_record_set_meta_bool(record, XX_META_ID_IS_ENCRYPTED,
-                                           true) &&
+           xx_archive_record_set_meta_u64(record, XX_META_ID_COMPRESSED_SIZE, (uint64_t)parsed->payload_size) &&
+           xx_archive_record_set_meta_u64(record, XX_META_ID_UNCOMPRESSED_SIZE, (uint64_t)parsed->payload_size) &&
+           xx_archive_record_set_meta_u64(record, XX_META_ID_COMPRESSION_METHOD, 0U) && xx_archive_record_set_meta_bool(record, XX_META_ID_IS_FOLDER, false) &&
+           xx_archive_record_set_meta_bool(record, XX_META_ID_IS_ENCRYPTED, true) &&
            /* The cipher, not the tag: the tag is ciphertext, not a code. */
-           xx_archive_record_set_meta_u64(record, XX_META_ID_ENCRYPTION_METHOD,
-                                          XX_ENCFW_ENCRYPTION_METHOD) &&
+           xx_archive_record_set_meta_u64(record, XX_META_ID_ENCRYPTION_METHOD, XX_ENCFW_ENCRYPTION_METHOD) &&
            /* Device name and tag, for display. */
            xx_archive_record_set_meta_str(record, XX_META_ID_COMMENT, detail);
 }
 
 /* ----------------------------------------------------------- lifecycle -- */
 
-void xx_encfw_init(xx_encfw *encfw, xx_io_device *dev, int64_t base_address) {
+void xx_encfw_init(xx_encfw *encfw, xx_io_device *dev, int64_t base_address)
+{
     if (!encfw) return;
     xx_mem_zero(encfw, sizeof(*encfw));
     xx_format_init(&encfw->format, dev, base_address);
@@ -323,37 +323,32 @@ void xx_encfw_init(xx_encfw *encfw, xx_io_device *dev, int64_t base_address) {
     encfw->format.file_type = XX_ENCFW_FILE_TYPE;
     encfw->format.format_type = XX_TYPE_ARCHIVE;
     encfw->format.is_archive = true;
-    xx_format_set_mime_type(&encfw->format,
-                            "application/x-dlink-encrypted-firmware");
+    xx_format_set_mime_type(&encfw->format, "application/x-dlink-encrypted-firmware");
     xx_format_set_extension(&encfw->format, "bin");
     encfw->format.check_is_valid = xx_encfw_check_is_valid;
     encfw->format.handle_base_info = xx_encfw_handle_base_info;
     encfw->format.get_format_size = xx_encfw_get_format_size;
-    encfw->format.get_number_of_archive_records =
-        xx_encfw_get_number_of_archive_records;
-    encfw->format.create_archive_records_reading =
-        xx_encfw_create_archive_records_reading;
-    encfw->format.get_current_archive_record =
-        xx_encfw_get_current_archive_record;
-    encfw->format.unpack_current_archive_record =
-        xx_encfw_unpack_current_archive_record;
-    encfw->format.archive_record_move_to_next =
-        xx_encfw_archive_record_move_to_next;
-    encfw->format.free_archive_records_reading =
-        xx_encfw_free_archive_records_reading;
+    encfw->format.get_number_of_archive_records = xx_encfw_get_number_of_archive_records;
+    encfw->format.create_archive_records_reading = xx_encfw_create_archive_records_reading;
+    encfw->format.get_current_archive_record = xx_encfw_get_current_archive_record;
+    encfw->format.unpack_current_archive_record = xx_encfw_unpack_current_archive_record;
+    encfw->format.archive_record_move_to_next = xx_encfw_archive_record_move_to_next;
+    encfw->format.free_archive_records_reading = xx_encfw_free_archive_records_reading;
     encfw->format.destroy = xx_encfw_vtable_destroy;
     encfw->payload_offset = -1;
     encfw->device_name = "";
 }
 
-xx_encfw *xx_encfw_create(xx_io_device *dev, int64_t base_address) {
+xx_encfw *xx_encfw_create(xx_io_device *dev, int64_t base_address)
+{
     xx_encfw *encfw = (xx_encfw *)xx_mem_alloc(sizeof(*encfw));
 
     if (encfw) xx_encfw_init(encfw, dev, base_address);
     return encfw;
 }
 
-void xx_encfw_destroy(xx_encfw *encfw) {
+void xx_encfw_destroy(xx_encfw *encfw)
+{
     if (!encfw) return;
     if (encfw->internal) {
         xx_encfw_private_free(encfw->internal);
@@ -362,11 +357,13 @@ void xx_encfw_destroy(xx_encfw *encfw) {
     xx_format_cleanup_extra_parameters(&encfw->format);
 }
 
-static void xx_encfw_vtable_destroy(Abstractformat *self) {
+static void xx_encfw_vtable_destroy(Abstractformat *self)
+{
     xx_encfw_destroy((xx_encfw *)self);
 }
 
-void xx_encfw_free(xx_encfw *encfw) {
+void xx_encfw_free(xx_encfw *encfw)
+{
     if (!encfw) return;
     xx_encfw_destroy(encfw);
     xx_mem_free(encfw);
@@ -374,13 +371,15 @@ void xx_encfw_free(xx_encfw *encfw) {
 
 /* -------------------------------------------------------------- format -- */
 
-bool xx_encfw_check_is_valid(Abstractformat *self, xx_pd_struct *pd) {
+bool xx_encfw_check_is_valid(Abstractformat *self, xx_pd_struct *pd)
+{
     xx_encfw_private parsed;
 
     return xx_encfw_parse(self, &parsed, pd);
 }
 
-bool xx_encfw_handle_base_info(Abstractformat *self, xx_pd_struct *pd) {
+bool xx_encfw_handle_base_info(Abstractformat *self, xx_pd_struct *pd)
+{
     xx_encfw *encfw = (xx_encfw *)self;
     xx_encfw_private *parsed;
 
@@ -409,18 +408,17 @@ bool xx_encfw_handle_base_info(Abstractformat *self, xx_pd_struct *pd) {
     return true;
 }
 
-int64_t xx_encfw_get_format_size(Abstractformat *self, xx_pd_struct *pd) {
-    if (!self ||
-        (!self->base_info_handled && !xx_format_handle_base_info(self, pd))) {
+int64_t xx_encfw_get_format_size(Abstractformat *self, xx_pd_struct *pd)
+{
+    if (!self || (!self->base_info_handled && !xx_format_handle_base_info(self, pd))) {
         return -1;
     }
     return self->format_size;
 }
 
-uint64_t xx_encfw_get_number_of_archive_records(Abstractformat *self,
-                                                xx_pd_struct *pd) {
-    if (!self ||
-        (!self->base_info_handled && !xx_format_handle_base_info(self, pd))) {
+uint64_t xx_encfw_get_number_of_archive_records(Abstractformat *self, xx_pd_struct *pd)
+{
+    if (!self || (!self->base_info_handled && !xx_format_handle_base_info(self, pd))) {
         return 0U;
     }
     return ((xx_encfw *)self)->number_of_records;
@@ -428,13 +426,12 @@ uint64_t xx_encfw_get_number_of_archive_records(Abstractformat *self,
 
 /* ------------------------------------------------------ record reading -- */
 
-xx_archive_record_state *xx_encfw_create_archive_records_reading(
-    Abstractformat *self, const xx_list_s *options, xx_pd_struct *pd) {
+xx_archive_record_state *xx_encfw_create_archive_records_reading(Abstractformat *self, const xx_list_s *options, xx_pd_struct *pd)
+{
     xx_archive_record_state *state;
     xx_encfw_private *parsed;
 
-    if (!self || !self->device ||
-        (!self->base_info_handled && !xx_format_handle_base_info(self, pd))) {
+    if (!self || !self->device || (!self->base_info_handled && !xx_format_handle_base_info(self, pd))) {
         return NULL;
     }
     state = (xx_archive_record_state *)xx_mem_alloc(sizeof(*state));
@@ -453,8 +450,7 @@ xx_archive_record_state *xx_encfw_create_archive_records_reading(
     state->internal_state = parsed;
     state->free_internal = xx_encfw_private_free;
     state->total_records = 1;
-    if (!xx_encfw_copy_options(&state->options, options) ||
-        !xx_encfw_populate_record(&state->current_record, parsed)) {
+    if (!xx_encfw_copy_options(&state->options, options) || !xx_encfw_populate_record(&state->current_record, parsed)) {
         xx_archive_record_state_free(state);
         return NULL;
     }
@@ -463,20 +459,16 @@ xx_archive_record_state *xx_encfw_create_archive_records_reading(
     return state;
 }
 
-const xx_archive_record *xx_encfw_get_current_archive_record(
-    Abstractformat *self, xx_archive_record_state *state) {
-    return self && state && state->format == self && state->has_record
-               ? &state->current_record
-               : NULL;
+const xx_archive_record *xx_encfw_get_current_archive_record(Abstractformat *self, xx_archive_record_state *state)
+{
+    return self && state && state->format == self && state->has_record ? &state->current_record : NULL;
 }
 
-bool xx_encfw_archive_record_move_to_next(Abstractformat *self,
-                                          xx_archive_record_state *state,
-                                          xx_pd_struct *pd) {
+bool xx_encfw_archive_record_move_to_next(Abstractformat *self, xx_archive_record_state *state, xx_pd_struct *pd)
+{
     xx_encfw_private *parsed;
 
-    if (!self || !state || state->format != self || !state->has_record ||
-        (pd && xx_pd_is_stopped(pd))) {
+    if (!self || !state || state->format != self || !state->has_record || (pd && xx_pd_is_stopped(pd))) {
         return false;
     }
     /* There is exactly one member, so the first step is always the last. */
@@ -488,9 +480,8 @@ bool xx_encfw_archive_record_move_to_next(Abstractformat *self,
     return false;
 }
 
-bool xx_encfw_unpack_current_archive_record(Abstractformat *self,
-                                            xx_archive_record_state *state,
-                                            xx_pd_struct *pd) {
+bool xx_encfw_unpack_current_archive_record(Abstractformat *self, xx_archive_record_state *state, xx_pd_struct *pd)
+{
     (void)self;
     (void)state;
     (void)pd;
@@ -503,22 +494,25 @@ bool xx_encfw_unpack_current_archive_record(Abstractformat *self,
     return false;
 }
 
-void xx_encfw_free_archive_records_reading(Abstractformat *self,
-                                           xx_archive_record_state *state) {
+void xx_encfw_free_archive_records_reading(Abstractformat *self, xx_archive_record_state *state)
+{
     (void)self;
     xx_archive_record_state_free(state);
 }
 
 /* ------------------------------------------------------------ accessors -- */
 
-const char *xx_encfw_get_device_name(const xx_encfw *encfw) {
+const char *xx_encfw_get_device_name(const xx_encfw *encfw)
+{
     return (encfw && encfw->device_name) ? encfw->device_name : "";
 }
 
-uint32_t xx_encfw_get_magic(const xx_encfw *encfw) {
+uint32_t xx_encfw_get_magic(const xx_encfw *encfw)
+{
     return encfw ? encfw->magic : 0U;
 }
 
-int64_t xx_encfw_get_payload_size(const xx_encfw *encfw) {
+int64_t xx_encfw_get_payload_size(const xx_encfw *encfw)
+{
     return encfw ? encfw->payload_size : 0;
 }

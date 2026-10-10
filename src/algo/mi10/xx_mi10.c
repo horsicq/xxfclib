@@ -19,17 +19,14 @@
 
 /* Steps the backward cursor down one byte.  Returns -1 when the cursor would
  * move below the two header bytes, exactly like the reference helper. */
-static int32_t mi10_read_backward(const uint8_t *input, size_t input_size,
-                                  size_t *position)
+static int32_t mi10_read_backward(const uint8_t *input, size_t input_size, size_t *position)
 {
     if ((*position <= MI10_FLOOR) || (*position > input_size)) return -1;
     --(*position);
     return (int32_t)input[*position];
 }
 
-bool xx_mi10_decode_memory(const uint8_t *input, size_t input_size,
-                           uint8_t *output, size_t output_size,
-                           size_t *written)
+bool xx_mi10_decode_memory(const uint8_t *input, size_t input_size, uint8_t *output, size_t output_size, size_t *written)
 {
     size_t input_position;
     size_t output_position;
@@ -72,20 +69,16 @@ bool xx_mi10_decode_memory(const uint8_t *input, size_t input_size,
         distance = (size_t)control;
         length = 3;
         if (control >= 0x80) {
-            int32_t length_distance =
-                mi10_read_backward(input, input_size, &input_position);
+            int32_t length_distance = mi10_read_backward(input, input_size, &input_position);
             if (length_distance < 0) return false;
             /* Deliberate: only the long form biases the distance by one. */
-            distance = (size_t)((((uint32_t)control & 0x7fu) << 4) |
-                                ((uint32_t)length_distance & 0x0fu)) + 1;
+            distance = (size_t)((((uint32_t)control & 0x7fu) << 4) | ((uint32_t)length_distance & 0x0fu)) + 1;
             if (length_distance < 0x80) {
                 length = (size_t)(length_distance >> 4) + 4;
             } else {
-                int32_t length_low =
-                    mi10_read_backward(input, input_size, &input_position);
+                int32_t length_low = mi10_read_backward(input, input_size, &input_position);
                 if (length_low < 0) return false;
-                length = (size_t)((((uint32_t)length_distance & 0x70u) << 4) |
-                                  (uint32_t)length_low) + 12;
+                length = (size_t)((((uint32_t)length_distance & 0x70u) << 4) | (uint32_t)length_low) + 12;
             }
         }
 

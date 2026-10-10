@@ -44,7 +44,7 @@ typedef struct {
     size_t nSize;
     uint32_t nStringCount;
     uint32_t nFlags;
-    size_t nEnd; /* End of this pool chunk, not the whole manifest. */
+    size_t nEnd;         /* End of this pool chunk, not the whole manifest. */
     size_t nOffsetsBase; /* start of the u32 offset array */
     size_t nStringsBase; /* start of the string data       */
 } AxmlPool;
@@ -73,7 +73,10 @@ static void axml_append_string(const AxmlPool *pPool, uint32_t nIndex, xx_buf_t 
     }
 
     nStrOffsetRel = xx_data_get_u32(pPool->pData, pPool->nEnd, pPool->nOffsetsBase + (size_t)nIndex * 4, false);
-    if (nStrOffsetRel >= pPool->nEnd - pPool->nStringsBase) { pOut->failed = true; return; }
+    if (nStrOffsetRel >= pPool->nEnd - pPool->nStringsBase) {
+        pOut->failed = true;
+        return;
+    }
     nStrOffset = pPool->nStringsBase + nStrOffsetRel;
 
     if (pPool->nFlags & AXML_STRING_POOL_UTF8_FLAG) {
@@ -86,33 +89,51 @@ static void axml_append_string(const AxmlPool *pPool, uint32_t nIndex, xx_buf_t 
         uint8_t nLen8 = 0;
 
         nBase = nStrOffset;
-        if (nBase >= pPool->nEnd) { pOut->failed = true; return; }
+        if (nBase >= pPool->nEnd) {
+            pOut->failed = true;
+            return;
+        }
         nLen16 = rd8(pPool->pData, pPool->nEnd, nBase);
         nBase += 1;
 
         if (nLen16 & 0x80) {
-            if (nBase >= pPool->nEnd) { pOut->failed = true; return; }
+            if (nBase >= pPool->nEnd) {
+                pOut->failed = true;
+                return;
+            }
             nBase += 1;
         }
 
-        if (nBase >= pPool->nEnd) { pOut->failed = true; return; }
+        if (nBase >= pPool->nEnd) {
+            pOut->failed = true;
+            return;
+        }
         nLen8 = rd8(pPool->pData, pPool->nEnd, nBase);
         nBase += 1;
         nLen = nLen8;
 
         if (nLen8 & 0x80) {
-            if (nBase >= pPool->nEnd) { pOut->failed = true; return; }
+            if (nBase >= pPool->nEnd) {
+                pOut->failed = true;
+                return;
+            }
             nLen = ((uint32_t)(nLen8 & 0x7F) << 8) | rd8(pPool->pData, pPool->nEnd, nBase);
             nBase += 1;
         }
 
-        if (nBase >= pPool->nEnd || nLen > pPool->nEnd - nBase - 1 || pPool->pData[nBase + nLen] != 0) { pOut->failed = true; return; }
+        if (nBase >= pPool->nEnd || nLen > pPool->nEnd - nBase - 1 || pPool->pData[nBase + nLen] != 0) {
+            pOut->failed = true;
+            return;
+        }
 
         for (k = 0; k < nLen; k++) {
             size_t nAt = nBase + k;
             unsigned char nByte = 0;
 
-            if (nAt >= pPool->nEnd) { pOut->failed = true; return; }
+            if (nAt >= pPool->nEnd) {
+                pOut->failed = true;
+                return;
+            }
 
             nByte = pPool->pData[nAt];
 
@@ -130,27 +151,40 @@ static void axml_append_string(const AxmlPool *pPool, uint32_t nIndex, xx_buf_t 
      * the longer form. read_unicodeString gives nothing at all for a count of
      * 0x10000 or more. */
     nBase = nStrOffset;
-    if (pPool->nEnd - nBase < 2) { pOut->failed = true; return; }
+    if (pPool->nEnd - nBase < 2) {
+        pOut->failed = true;
+        return;
+    }
     nLen = xx_data_get_u16(pPool->pData, pPool->nEnd, nBase, false);
     nBase += 2;
 
     if (nLen & 0x8000) {
-        if (pPool->nEnd - nBase < 2) { pOut->failed = true; return; }
+        if (pPool->nEnd - nBase < 2) {
+            pOut->failed = true;
+            return;
+        }
         nLen = ((nLen & 0x7FFF) << 16) | xx_data_get_u16(pPool->pData, pPool->nEnd, nBase, false);
         nBase += 2;
     }
 
     if (nLen >= 0x10000) {
-        pOut->failed = true; return;
+        pOut->failed = true;
+        return;
     }
-    if (pPool->nEnd - nBase < 2 || nLen > (pPool->nEnd - nBase - 2) / 2 || xx_data_get_u16(pPool->pData, pPool->nEnd, nBase + (size_t)nLen * 2, false) != 0) { pOut->failed = true; return; }
+    if (pPool->nEnd - nBase < 2 || nLen > (pPool->nEnd - nBase - 2) / 2 || xx_data_get_u16(pPool->pData, pPool->nEnd, nBase + (size_t)nLen * 2, false) != 0) {
+        pOut->failed = true;
+        return;
+    }
 
     /* Decode to UTF-8, handling the surrogate pair range. */
     for (k = 0; k < nLen; k++) {
         size_t nAt = nBase + (size_t)k * 2;
         uint32_t nUnit = 0;
 
-        if (nAt + 2 > pPool->nEnd) { pOut->failed = true; return; }
+        if (nAt + 2 > pPool->nEnd) {
+            pOut->failed = true;
+            return;
+        }
 
         nUnit = (uint32_t)pPool->pData[nAt] | ((uint32_t)pPool->pData[nAt + 1] << 8);
 
@@ -253,7 +287,8 @@ static int axml_pool_strings_equal(const AxmlPool *pool, uint32_t a, uint32_t b)
     left = axml_string(pool, a);
     right = axml_string(pool, b);
     result = left && right && !xx_rt_strcmp(left, right);
-    xx_mem_free(left); xx_mem_free(right);
+    xx_mem_free(left);
+    xx_mem_free(right);
     return result;
 }
 
@@ -283,47 +318,40 @@ static char *axml_expand_activity(const char *package, const char *activity)
 /* Metadata is derived from AXML events and namespace URIs, never from the
  * escaped display text. Depth scopes prevent sibling activities and separate
  * intent filters from accidentally combining their declarations. */
-static void axml_metadata_start(AxmlMetadata *metadata, const char *name,
-    uint32_t name_namespace, size_t depth)
+static void axml_metadata_start(AxmlMetadata *metadata, const char *name, uint32_t name_namespace, size_t depth)
 {
     if (name_namespace != UINT32_MAX) return;
     if (depth == 2 && !xx_rt_strcmp(name, "application")) {
         metadata->application_depth = depth;
-    } else if (metadata->application_depth && depth == metadata->application_depth + 1 &&
-        (!xx_rt_strcmp(name, "activity") || !xx_rt_strcmp(name, "activity-alias"))) {
+    } else if (metadata->application_depth && depth == metadata->application_depth + 1 && (!xx_rt_strcmp(name, "activity") || !xx_rt_strcmp(name, "activity-alias"))) {
         metadata->activity_depth = depth;
         metadata->alias = !xx_rt_strcmp(name, "activity-alias");
-        xx_mem_free(metadata->activity); metadata->activity = NULL;
-    } else if (metadata->activity_depth && depth == metadata->activity_depth + 1 &&
-        !xx_rt_strcmp(name, "intent-filter")) {
+        xx_mem_free(metadata->activity);
+        metadata->activity = NULL;
+    } else if (metadata->activity_depth && depth == metadata->activity_depth + 1 && !xx_rt_strcmp(name, "intent-filter")) {
         metadata->filter_depth = depth;
         metadata->main_action = metadata->launcher = 0;
     }
 }
 
-static int axml_metadata_attribute(AxmlMetadata *metadata, const char *element,
-    uint32_t element_namespace, size_t depth, const char *name,
-    int android_namespace, uint32_t attribute_namespace, const char *value)
+static int axml_metadata_attribute(AxmlMetadata *metadata, const char *element, uint32_t element_namespace, size_t depth, const char *name, int android_namespace,
+                                   uint32_t attribute_namespace, const char *value)
 {
     if (element_namespace != UINT32_MAX) return 1;
-    if (depth == 1 && !xx_rt_strcmp(element, "manifest") &&
-        attribute_namespace == UINT32_MAX && !xx_rt_strcmp(name, "package")) {
+    if (depth == 1 && !xx_rt_strcmp(element, "manifest") && attribute_namespace == UINT32_MAX && !xx_rt_strcmp(name, "package")) {
         if (metadata->package_name) return 0;
         metadata->package_name = xx_str_create(value);
         return metadata->package_name != NULL;
     }
     if (!android_namespace) return 1;
-    if (metadata->activity_depth == depth &&
-        !xx_rt_strcmp(name, metadata->alias ? "targetActivity" : "name")) {
+    if (metadata->activity_depth == depth && !xx_rt_strcmp(name, metadata->alias ? "targetActivity" : "name")) {
         if (metadata->activity) return 0;
         metadata->activity = xx_str_create(value);
         return metadata->activity != NULL;
     }
     if (metadata->filter_depth && depth == metadata->filter_depth + 1 && !xx_rt_strcmp(name, "name")) {
-        if (!xx_rt_strcmp(element, "action") && !xx_rt_strcmp(value, "android.intent.action.MAIN"))
-            metadata->main_action = 1;
-        if (!xx_rt_strcmp(element, "category") && !xx_rt_strcmp(value, "android.intent.category.LAUNCHER"))
-            metadata->launcher = 1;
+        if (!xx_rt_strcmp(element, "action") && !xx_rt_strcmp(value, "android.intent.action.MAIN")) metadata->main_action = 1;
+        if (!xx_rt_strcmp(element, "category") && !xx_rt_strcmp(value, "android.intent.category.LAUNCHER")) metadata->launcher = 1;
     }
     return 1;
 }
@@ -331,8 +359,7 @@ static int axml_metadata_attribute(AxmlMetadata *metadata, const char *element,
 static int axml_metadata_end(AxmlMetadata *metadata, size_t depth)
 {
     if (depth == metadata->filter_depth) {
-        if (!metadata->launcher_activity && metadata->main_action && metadata->launcher &&
-            metadata->activity && *metadata->activity) {
+        if (!metadata->launcher_activity && metadata->main_action && metadata->launcher && metadata->activity && *metadata->activity) {
             int relative = metadata->activity[0] == '.' || !xx_rt_strchr(metadata->activity, '.');
             if (!relative || (metadata->package_name && *metadata->package_name)) {
                 metadata->launcher_activity = axml_expand_activity(metadata->package_name, metadata->activity);
@@ -344,7 +371,8 @@ static int axml_metadata_end(AxmlMetadata *metadata, size_t depth)
     }
     if (depth == metadata->activity_depth) {
         metadata->activity_depth = 0;
-        xx_mem_free(metadata->activity); metadata->activity = NULL;
+        xx_mem_free(metadata->activity);
+        metadata->activity = NULL;
     }
     if (depth == metadata->application_depth) metadata->application_depth = 0;
     return 1;
@@ -364,8 +392,7 @@ static void axml_write_attr_name(const AxmlPool *pPool, const AxmlNamespaces *pN
         }
         for (i = 0; i < pNs->nCount; i++) {
             if (pNs->nUri[i] == nNsIndex) {
-                if (axml_string_equals(pPool, pNs->nPrefix[i], "android"))
-                    xx_buf_appendf(pOut, "ns%u", (unsigned)nNsIndex);
+                if (axml_string_equals(pPool, pNs->nPrefix[i], "android")) xx_buf_appendf(pOut, "ns%u", (unsigned)nNsIndex);
                 else axml_append_string(pPool, pNs->nPrefix[i], pOut);
                 xx_buf_append_char(pOut, ':');
 
@@ -378,8 +405,7 @@ static void axml_write_attr_name(const AxmlPool *pPool, const AxmlNamespaces *pN
 }
 
 /* Decodes the AXML in pData into element/attribute text. */
-static char *axml_decode(const unsigned char *pData, size_t nSize,
-    AxmlMetadata *metadata, xx_pd_struct *pd)
+static char *axml_decode(const unsigned char *pData, size_t nSize, AxmlMetadata *metadata, xx_pd_struct *pd)
 {
     xx_buf_t out;
     AxmlPool pool;
@@ -424,7 +450,9 @@ static char *axml_decode(const unsigned char *pData, size_t nSize,
             pool.nFlags = xx_data_get_u32(pData, nSize, nOffset + 16, false);
             pool.nOffsetsBase = nOffset + nHeaderSize;
             pool.nStringsBase = nOffset + xx_data_get_u32(pData, nSize, nOffset + 20, false);
-            if (pool.nStringCount > (nChunkSize - nHeaderSize) / 4 || pool.nStringsBase < pool.nOffsetsBase + (size_t)pool.nStringCount * 4 || pool.nStringsBase > pool.nEnd) goto invalid;
+            if (pool.nStringCount > (nChunkSize - nHeaderSize) / 4 || pool.nStringsBase < pool.nOffsetsBase + (size_t)pool.nStringCount * 4 ||
+                pool.nStringsBase > pool.nEnd)
+                goto invalid;
             bHavePool = 1;
         } else if (nType == AXML_RES_XML_START_NAMESPACE) {
             if (!bHavePool || nChunkSize < 24 || nHeaderSize != 16 || ns.nCount == AXML_MAX_NS) goto invalid;
@@ -437,7 +465,8 @@ static char *axml_decode(const unsigned char *pData, size_t nSize,
         } else if (nType == AXML_RES_XML_END_NAMESPACE) {
             if (!bHavePool || nChunkSize < 24 || nHeaderSize != 16 || !ns.nCount) goto invalid;
             if (!axml_pool_strings_equal(&pool, ns.nPrefix[ns.nCount - 1], xx_data_get_u32(pData, nSize, nOffset + 16, false)) ||
-                !axml_pool_strings_equal(&pool, ns.nUri[ns.nCount - 1], xx_data_get_u32(pData, nSize, nOffset + 20, false))) goto invalid;
+                !axml_pool_strings_equal(&pool, ns.nUri[ns.nCount - 1], xx_data_get_u32(pData, nSize, nOffset + 20, false)))
+                goto invalid;
             --ns.nCount;
         } else if (nType == AXML_RES_XML_START_ELEMENT) {
             uint32_t nName = xx_data_get_u32(pData, nSize, nOffset + 20, false);
@@ -446,8 +475,9 @@ static char *axml_decode(const unsigned char *pData, size_t nSize,
             uint16_t attr_start, attr_size;
             size_t nAttrOffset;
             char *element;
-            if (!bHavePool || nHeaderSize != 16 || nChunkSize < 36 || nName >= pool.nStringCount ||
-                (nNamespace != UINT32_MAX && nNamespace >= pool.nStringCount) || depth == AXML_MAX_DEPTH) goto invalid;
+            if (!bHavePool || nHeaderSize != 16 || nChunkSize < 36 || nName >= pool.nStringCount || (nNamespace != UINT32_MAX && nNamespace >= pool.nStringCount) ||
+                depth == AXML_MAX_DEPTH)
+                goto invalid;
             if (!depth && have_root) goto invalid;
             element = axml_string(&pool, nName);
             if (!element) goto invalid;
@@ -455,13 +485,21 @@ static char *axml_decode(const unsigned char *pData, size_t nSize,
                 have_root = 1;
                 root_is_manifest = nNamespace == UINT32_MAX && !xx_rt_strcmp(element, "manifest");
             }
-            element_names[depth] = nName; element_namespaces[depth] = nNamespace; ++depth;
+            element_names[depth] = nName;
+            element_namespaces[depth] = nNamespace;
+            ++depth;
             if (root_is_manifest) axml_metadata_start(metadata, element, nNamespace, depth);
             attr_start = xx_data_get_u16(pData, nSize, nOffset + 24, false);
             attr_size = xx_data_get_u16(pData, nSize, nOffset + 26, false);
-            if (attr_start < 20 || attr_size < 20 || attr_start > nChunkSize - 16) { xx_mem_free(element); goto invalid; }
+            if (attr_start < 20 || attr_size < 20 || attr_start > nChunkSize - 16) {
+                xx_mem_free(element);
+                goto invalid;
+            }
             nAttrOffset = nOffset + 16 + attr_start;
-            if (nAttrCount > (nOffset + nChunkSize - nAttrOffset) / attr_size) { xx_mem_free(element); goto invalid; }
+            if (nAttrCount > (nOffset + nChunkSize - nAttrOffset) / attr_size) {
+                xx_mem_free(element);
+                goto invalid;
+            }
             uint16_t a = 0;
 
             xx_buf_append_char(&out, '<');
@@ -474,17 +512,26 @@ static char *axml_decode(const unsigned char *pData, size_t nSize,
                 uint8_t nDataType = 0;
                 uint32_t nAttrData = 0;
 
-                if (nAt + 20 > nOffset + nChunkSize || xx_pd_is_stopped(pd)) { xx_mem_free(element); goto invalid; }
+                if (nAt + 20 > nOffset + nChunkSize || xx_pd_is_stopped(pd)) {
+                    xx_mem_free(element);
+                    goto invalid;
+                }
 
                 /* Each attribute can emit a string-pool entry of up to
                  * 0x10000 bytes, so the attribute budget alone does not bound
                  * the decoded text. */
-                if (out.size >= AXML_MAX_OUTPUT || !xx_buf_ok(&out)) { xx_mem_free(element); goto invalid; }
+                if (out.size >= AXML_MAX_OUTPUT || !xx_buf_ok(&out)) {
+                    xx_mem_free(element);
+                    goto invalid;
+                }
 
                 /* Overlapping START_ELEMENT chunks that each declare 0xFFFF
                  * attributes make this quadratic, so the decode as a whole
                  * gets a budget. Real manifests use a few hundred.          */
-                if (nAttrBudget == 0) { xx_mem_free(element); goto invalid; }
+                if (nAttrBudget == 0) {
+                    xx_mem_free(element);
+                    goto invalid;
+                }
 
                 nAttrBudget--;
 
@@ -492,8 +539,10 @@ static char *axml_decode(const unsigned char *pData, size_t nSize,
                 nAttrName = xx_data_get_u32(pData, nSize, nAt + 4, false);
                 nDataType = pData[nAt + 15]; /* HEADER_XML_ATTRIBUTE.dataType */
                 nAttrData = xx_data_get_u32(pData, nSize, nAt + 16, false);
-                if (nAttrName >= pool.nStringCount || (nAttrNs != UINT32_MAX && nAttrNs >= pool.nStringCount) ||
-                    (nDataType == 3 && nAttrData >= pool.nStringCount)) { xx_mem_free(element); goto invalid; }
+                if (nAttrName >= pool.nStringCount || (nAttrNs != UINT32_MAX && nAttrNs >= pool.nStringCount) || (nDataType == 3 && nAttrData >= pool.nStringCount)) {
+                    xx_mem_free(element);
+                    goto invalid;
+                }
 
                 xx_buf_append_char(&out, ' ');
                 axml_write_attr_name(&pool, &ns, nAttrNs, nAttrName, &out);
@@ -513,10 +562,13 @@ static char *axml_decode(const unsigned char *pData, size_t nSize,
                     if (root_is_manifest && xx_buf_ok(&value)) {
                         char *name = axml_string(&pool, nAttrName);
                         int android_namespace = axml_string_equals(&pool, nAttrNs, AXML_ANDROID_URI);
-                        int ok = name && axml_metadata_attribute(metadata, element, nNamespace, depth,
-                            name, android_namespace, nAttrNs, value.data ? value.data : "");
+                        int ok = name && axml_metadata_attribute(metadata, element, nNamespace, depth, name, android_namespace, nAttrNs, value.data ? value.data : "");
                         xx_mem_free(name);
-                        if (!ok) { xx_buf_free(&value); xx_mem_free(element); goto invalid; }
+                        if (!ok) {
+                            xx_buf_free(&value);
+                            xx_mem_free(element);
+                            goto invalid;
+                        }
                     }
                     xx_buf_free(&value);
                 } else if (nDataType == 16) {
@@ -538,8 +590,8 @@ static char *axml_decode(const unsigned char *pData, size_t nSize,
             if (!bHavePool || nHeaderSize != 16 || nChunkSize < 24 || !depth) goto invalid;
             nName = xx_data_get_u32(pData, nSize, nOffset + 20, false);
             nNamespace = xx_data_get_u32(pData, nSize, nOffset + 16, false);
-            if (!axml_pool_strings_equal(&pool, nName, element_names[depth - 1]) ||
-                !axml_pool_strings_equal(&pool, nNamespace, element_namespaces[depth - 1])) goto invalid;
+            if (!axml_pool_strings_equal(&pool, nName, element_names[depth - 1]) || !axml_pool_strings_equal(&pool, nNamespace, element_namespaces[depth - 1]))
+                goto invalid;
             if (root_is_manifest && !axml_metadata_end(metadata, depth)) goto invalid;
             --depth;
             xx_buf_append_str(&out, "</");
@@ -560,9 +612,10 @@ invalid:
     return NULL;
 }
 
-
-bool xx_apk_analyze(xx_apk *apk, xx_pd_struct *pd) {
-    uint8_t *data = NULL; size_t size = 0;
+bool xx_apk_analyze(xx_apk *apk, xx_pd_struct *pd)
+{
+    uint8_t *data = NULL;
+    size_t size = 0;
     AxmlMetadata metadata;
     char *text;
     if (!apk || xx_pd_is_stopped(pd)) return false;
@@ -573,16 +626,28 @@ bool xx_apk_analyze(xx_apk *apk, xx_pd_struct *pd) {
     xx_mem_free(data);
     if (text) {
         apk->manifest_text = text;
-        apk->package_name = metadata.package_name; metadata.package_name = NULL;
-        apk->launcher_activity = metadata.launcher_activity; metadata.launcher_activity = NULL;
+        apk->package_name = metadata.package_name;
+        metadata.package_name = NULL;
+        apk->launcher_activity = metadata.launcher_activity;
+        metadata.launcher_activity = NULL;
     }
     axml_metadata_free(&metadata);
     return text != NULL;
 }
-const char *xx_apk_get_manifest(const xx_apk *apk) { return apk && apk->manifest_text ? apk->manifest_text : ""; }
-const char *xx_apk_get_package_name(const xx_apk *apk) { return apk && apk->package_name ? apk->package_name : ""; }
-const char *xx_apk_get_launcher_activity(const xx_apk *apk) { return apk && apk->launcher_activity ? apk->launcher_activity : ""; }
-char *xx_apk_manifest_record(const xx_apk *apk, const char *key) {
+const char *xx_apk_get_manifest(const xx_apk *apk)
+{
+    return apk && apk->manifest_text ? apk->manifest_text : "";
+}
+const char *xx_apk_get_package_name(const xx_apk *apk)
+{
+    return apk && apk->package_name ? apk->package_name : "";
+}
+const char *xx_apk_get_launcher_activity(const xx_apk *apk)
+{
+    return apk && apk->launcher_activity ? apk->launcher_activity : "";
+}
+char *xx_apk_manifest_record(const xx_apk *apk, const char *key)
+{
     const char *p = xx_apk_get_manifest(apk), *end = p + xx_rt_strlen(p);
     size_t n;
     if (!key) return xx_str_create("");

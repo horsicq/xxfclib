@@ -13,63 +13,55 @@
 #include "../xx_format_extractor_engine.h"
 #include "xxfclib/formats/t98_next_nfd/xx_t98_next_nfd.h"
 
-
-static const uint8_t k_anchor0[] = { 0x54, 0x39, 0x38, 0x46, 0x44, 0x44, 0x4D, 0x49, 0x41, 0x47, 0x45, 0x2E, 0x52 };
+static const uint8_t k_anchor0[] = {0x54, 0x39, 0x38, 0x46, 0x44, 0x44, 0x4D, 0x49, 0x41, 0x47, 0x45, 0x2E, 0x52};
 
 static const xx_format_search_anchor k_anchors[] = {
-    { k_anchor0, sizeof(k_anchor0), 0U },
+    {k_anchor0, sizeof(k_anchor0), 0U},
 };
 
-static const xx_file_type_t k_types[] = { XX_FILE_TYPE_T98_NEXT_NFD };
+static const xx_file_type_t k_types[] = {XX_FILE_TYPE_T98_NEXT_NFD};
 
-static Abstractformat *xx_t98_next_nfd_search_open(xx_io_device *window) {
+static Abstractformat *xx_t98_next_nfd_search_open(xx_io_device *window)
+{
     xx_t98_next_nfd *reader = xx_t98_next_nfd_create(window, 0);
     return reader ? &reader->format : NULL;
 }
 
-static void xx_t98_next_nfd_search_close(Abstractformat *format) {
+static void xx_t98_next_nfd_search_close(Abstractformat *format)
+{
     /* The format is the first member, so this is the reader itself. */
     xx_t98_next_nfd_free((xx_t98_next_nfd *)format);
 }
 
 static const xx_format_search_desc k_desc = {
-    k_types, sizeof(k_types) / sizeof(k_types[0]),
-    k_anchors, sizeof(k_anchors) / sizeof(k_anchors[0]),
-    xx_t98_next_nfd_search_open, xx_t98_next_nfd_search_close, false
-};
+    k_types, sizeof(k_types) / sizeof(k_types[0]), k_anchors, sizeof(k_anchors) / sizeof(k_anchors[0]), xx_t98_next_nfd_search_open, xx_t98_next_nfd_search_close, false};
 
-static xx_format_search_state *xx_t98_next_nfd_create_format_search(
-    xx_format_extractor *self, xx_io_device *device, const xx_list_s *options,
-    xx_pd_struct *pd) {
+static xx_format_search_state *xx_t98_next_nfd_create_format_search(xx_format_extractor *self, xx_io_device *device, const xx_list_s *options, xx_pd_struct *pd)
+{
     (void)self;
     return xx_format_search_create(&k_desc, device, options, pd);
 }
 
-static const xx_format_search_info *xx_t98_next_nfd_get_current_format_info(
-    xx_format_extractor *self, xx_format_search_state *state) {
+static const xx_format_search_info *xx_t98_next_nfd_get_current_format_info(xx_format_extractor *self, xx_format_search_state *state)
+{
     (void)self;
     return xx_format_search_current(state);
 }
 
-static bool xx_t98_next_nfd_format_search_find_next(xx_format_extractor *self,
-                                          xx_format_search_state *state,
-                                          xx_pd_struct *pd) {
+static bool xx_t98_next_nfd_format_search_find_next(xx_format_extractor *self, xx_format_search_state *state, xx_pd_struct *pd)
+{
     (void)self;
     return xx_format_search_find_next(state, pd);
 }
 
-static void xx_t98_next_nfd_free_format_search(xx_format_extractor *self,
-                                     xx_format_search_state *state) {
+static void xx_t98_next_nfd_free_format_search(xx_format_extractor *self, xx_format_search_state *state)
+{
     (void)self;
     xx_format_search_free(state);
 }
 
-xx_format_extractor xx_t98_next_nfd_extractor = {
-    xx_t98_next_nfd_create_format_search,
-    xx_t98_next_nfd_get_current_format_info,
-    xx_t98_next_nfd_format_search_find_next,
-    xx_t98_next_nfd_free_format_search
-};
+xx_format_extractor xx_t98_next_nfd_extractor = {xx_t98_next_nfd_create_format_search, xx_t98_next_nfd_get_current_format_info, xx_t98_next_nfd_format_search_find_next,
+                                                 xx_t98_next_nfd_free_format_search};
 
 /* BEGIN GENERATED ABSTRACT EXTRACTOR */
 #include "../xx_format_abstract_extractor_adapter.h"

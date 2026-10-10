@@ -67,32 +67,31 @@ typedef struct xx_xorarchive_candidate_s {
 /* Mask primitives                                                     */
 /* ------------------------------------------------------------------ */
 
-static uint8_t xx_xorarchive_rol(uint8_t value, unsigned rotation) {
+static uint8_t xx_xorarchive_rol(uint8_t value, unsigned rotation)
+{
     rotation &= 7U;
     if (rotation == 0U) return value;
-    return (uint8_t)(((unsigned)value << rotation) |
-                     ((unsigned)value >> (8U - rotation)));
+    return (uint8_t)(((unsigned)value << rotation) | ((unsigned)value >> (8U - rotation)));
 }
 
 /** Undo the mask for one byte: original = rotate_right(stored ^ key). */
-static uint8_t xx_xorarchive_unmask(uint8_t stored, uint8_t key,
-                                    unsigned rotation) {
+static uint8_t xx_xorarchive_unmask(uint8_t stored, uint8_t key, unsigned rotation)
+{
     return xx_xorarchive_rol((uint8_t)(stored ^ key), (8U - (rotation & 7U)) & 7U);
 }
 
-static void xx_xorarchive_build_table(uint8_t *table, uint8_t key,
-                                      unsigned rotation) {
+static void xx_xorarchive_build_table(uint8_t *table, uint8_t key, unsigned rotation)
+{
     unsigned index;
-    for (index = 0U; index < 256U; ++index)
-        table[index] = xx_xorarchive_unmask((uint8_t)index, key, rotation);
+    for (index = 0U; index < 256U; ++index) table[index] = xx_xorarchive_unmask((uint8_t)index, key, rotation);
 }
 
 /* ------------------------------------------------------------------ */
 /* Unmasking I/O device                                                */
 /* ------------------------------------------------------------------ */
 
-static ssize_t xx_xorarchive_view_read(xx_io_device *device, void *data,
-                                       size_t size) {
+static ssize_t xx_xorarchive_view_read(xx_io_device *device, void *data, size_t size)
+{
     xx_xorarchive *archive = device ? (xx_xorarchive *)device->priv : NULL;
     uint8_t *bytes = (uint8_t *)data;
     ssize_t amount;
@@ -103,44 +102,47 @@ static ssize_t xx_xorarchive_view_read(xx_io_device *device, void *data,
     amount = xx_io_read(archive->source, data, size);
     if (amount <= 0) return amount;
     if ((size_t)amount > size) return -1;
-    for (index = 0U; index < (size_t)amount; ++index)
-        bytes[index] = archive->table[bytes[index]];
+    for (index = 0U; index < (size_t)amount; ++index) bytes[index] = archive->table[bytes[index]];
     return amount;
 }
 
-static int xx_xorarchive_view_seek(xx_io_device *device, long offset,
-                                   int origin) {
+static int xx_xorarchive_view_seek(xx_io_device *device, long offset, int origin)
+{
     xx_xorarchive *archive = device ? (xx_xorarchive *)device->priv : NULL;
     if (!archive || !archive->source) return -1;
     return xx_io_seek(archive->source, offset, origin);
 }
 
-static int xx_xorarchive_view_seek64(xx_io_device *device, int64_t offset,
-                                     int origin) {
+static int xx_xorarchive_view_seek64(xx_io_device *device, int64_t offset, int origin)
+{
     xx_xorarchive *archive = device ? (xx_xorarchive *)device->priv : NULL;
     if (!archive || !archive->source) return -1;
     return xx_io_seek64(archive->source, offset, origin);
 }
 
-static int64_t xx_xorarchive_view_tell(xx_io_device *device) {
+static int64_t xx_xorarchive_view_tell(xx_io_device *device)
+{
     xx_xorarchive *archive = device ? (xx_xorarchive *)device->priv : NULL;
     if (!archive || !archive->source) return -1;
     return xx_io_tell(archive->source);
 }
 
-static int64_t xx_xorarchive_view_size(xx_io_device *device) {
+static int64_t xx_xorarchive_view_size(xx_io_device *device)
+{
     xx_xorarchive *archive = device ? (xx_xorarchive *)device->priv : NULL;
     if (!archive || !archive->source) return -1;
     return xx_io_total_size(archive->source);
 }
 
 /** The masked device is borrowed from the caller and is never closed here. */
-static int xx_xorarchive_view_close(xx_io_device *device) {
+static int xx_xorarchive_view_close(xx_io_device *device)
+{
     (void)device;
     return 0;
 }
 
-static void xx_xorarchive_view_bind(xx_xorarchive *archive) {
+static void xx_xorarchive_view_bind(xx_xorarchive *archive)
+{
     xx_mem_zero(&archive->view, sizeof(archive->view));
     archive->view.priv = archive;
     archive->view.read = xx_xorarchive_view_read;
@@ -159,16 +161,13 @@ static void xx_xorarchive_view_bind(xx_xorarchive *archive) {
 /* ------------------------------------------------------------------ */
 
 /** Does the unmasked window still look like a ZIP local file header? */
-static bool xx_xorarchive_window_is_zip(const uint8_t *window, size_t size,
-                                        uint8_t key, unsigned rotation) {
+static bool xx_xorarchive_window_is_zip(const uint8_t *window, size_t size, uint8_t key, unsigned rotation)
+{
     uint8_t decoded[10];
     unsigned index;
     if (size < sizeof(decoded)) return false;
-    for (index = 0U; index < sizeof(decoded); ++index)
-        decoded[index] = xx_xorarchive_unmask(window[index], key, rotation);
-    if (decoded[0] != 0x50U || decoded[1] != 0x4BU || decoded[2] != 0x03U ||
-        decoded[3] != 0x04U)
-        return false;
+    for (index = 0U; index < sizeof(decoded); ++index) decoded[index] = xx_xorarchive_unmask(window[index], key, rotation);
+    if (decoded[0] != 0x50U || decoded[1] != 0x4BU || decoded[2] != 0x03U || decoded[3] != 0x04U) return false;
     /* "version needed" and "method" are small little-endian words. */
     if (decoded[5] != 0U || decoded[9] != 0U) return false;
     if (decoded[4] == 0U || decoded[4] > 0x3FU) return false;
@@ -176,22 +175,17 @@ static bool xx_xorarchive_window_is_zip(const uint8_t *window, size_t size,
 }
 
 /** Does the unmasked window still look like an ARJ main header? */
-static bool xx_xorarchive_window_is_arj(const uint8_t *window, size_t size,
-                                        uint8_t key, unsigned rotation) {
+static bool xx_xorarchive_window_is_arj(const uint8_t *window, size_t size, uint8_t key, unsigned rotation)
+{
     uint8_t decoded[12];
     unsigned index;
     unsigned header_size;
     if (size < sizeof(decoded)) return false;
-    for (index = 0U; index < sizeof(decoded); ++index)
-        decoded[index] = xx_xorarchive_unmask(window[index], key, rotation);
+    for (index = 0U; index < sizeof(decoded); ++index) decoded[index] = xx_xorarchive_unmask(window[index], key, rotation);
     if (decoded[0] != 0x60U || decoded[1] != 0xEAU) return false;
     header_size = (unsigned)decoded[2] | ((unsigned)decoded[3] << 8U);
-    if (header_size < XX_XORARCHIVE_ARJ_HEADER_MIN ||
-        header_size > XX_XORARCHIVE_ARJ_HEADER_MAX)
-        return false;
-    if (decoded[4] < XX_XORARCHIVE_ARJ_FIRST_MIN ||
-        decoded[4] > XX_XORARCHIVE_ARJ_FIRST_MAX)
-        return false;
+    if (header_size < XX_XORARCHIVE_ARJ_HEADER_MIN || header_size > XX_XORARCHIVE_ARJ_HEADER_MAX) return false;
+    if (decoded[4] < XX_XORARCHIVE_ARJ_FIRST_MIN || decoded[4] > XX_XORARCHIVE_ARJ_FIRST_MAX) return false;
     if (decoded[4] > header_size) return false;
     if (decoded[7] > XX_XORARCHIVE_ARJ_HOST_MAX) return false;
     if (decoded[10] > XX_XORARCHIVE_ARJ_TYPE_MAX) return false;
@@ -203,9 +197,8 @@ static bool xx_xorarchive_window_is_arj(const uint8_t *window, size_t size,
  * header.  The identity mask (rotation 0, key 0) is rejected: an unmasked
  * ZIP or ARJ belongs to the plain readers, not here.
  */
-static unsigned xx_xorarchive_collect(const uint8_t *window, size_t size,
-                                      xx_xorarchive_candidate *candidates,
-                                      unsigned capacity) {
+static unsigned xx_xorarchive_collect(const uint8_t *window, size_t size, xx_xorarchive_candidate *candidates, unsigned capacity)
+{
     static const uint8_t zip_magic[4] = {0x50U, 0x4BU, 0x03U, 0x04U};
     static const uint8_t arj_magic[2] = {0x60U, 0xEAU};
     unsigned count = 0U;
@@ -222,9 +215,7 @@ static unsigned xx_xorarchive_collect(const uint8_t *window, size_t size,
             key = (uint8_t)(xx_xorarchive_rol(zip_magic[0], rotation) ^ window[0]);
             match = !(rotation == 0U && key == 0U);
             for (index = 0U; match && index < sizeof(zip_magic); ++index) {
-                if ((uint8_t)(xx_xorarchive_rol(zip_magic[index], rotation) ^ key) !=
-                    window[index])
-                    match = false;
+                if ((uint8_t)(xx_xorarchive_rol(zip_magic[index], rotation) ^ key) != window[index]) match = false;
             }
             if (match && xx_xorarchive_window_is_zip(window, size, key, rotation)) {
                 candidates[count].rotation = (uint8_t)rotation;
@@ -238,9 +229,7 @@ static unsigned xx_xorarchive_collect(const uint8_t *window, size_t size,
             key = (uint8_t)(xx_xorarchive_rol(arj_magic[0], rotation) ^ window[0]);
             match = !(rotation == 0U && key == 0U);
             for (index = 0U; match && index < sizeof(arj_magic); ++index) {
-                if ((uint8_t)(xx_xorarchive_rol(arj_magic[index], rotation) ^ key) !=
-                    window[index])
-                    match = false;
+                if ((uint8_t)(xx_xorarchive_rol(arj_magic[index], rotation) ^ key) != window[index]) match = false;
             }
             if (match && xx_xorarchive_window_is_arj(window, size, key, rotation)) {
                 candidates[count].rotation = (uint8_t)rotation;
@@ -253,25 +242,24 @@ static unsigned xx_xorarchive_collect(const uint8_t *window, size_t size,
     return count;
 }
 
-bool xx_xorarchive_test_magic(const uint8_t *magic, size_t magic_size) {
+bool xx_xorarchive_test_magic(const uint8_t *magic, size_t magic_size)
+{
     xx_xorarchive_candidate candidates[XX_XORARCHIVE_MAX_CANDIDATES];
     if (!magic) return false;
     if (magic_size > XX_XORARCHIVE_WINDOW) magic_size = XX_XORARCHIVE_WINDOW;
-    return xx_xorarchive_collect(magic, magic_size, candidates,
-                                 XX_XORARCHIVE_MAX_CANDIDATES) != 0U;
+    return xx_xorarchive_collect(magic, magic_size, candidates, XX_XORARCHIVE_MAX_CANDIDATES) != 0U;
 }
 
 /* ------------------------------------------------------------------ */
 /* Identity                                                            */
 /* ------------------------------------------------------------------ */
 
-static void xx_xorarchive_describe(xx_xorarchive *archive) {
+static void xx_xorarchive_describe(xx_xorarchive *archive)
+{
     static const char digits[] = "0123456789ABCDEF";
     char text[32];
     size_t at = 0U;
-    const char *name = (archive->family == (uint8_t)XX_XORARCHIVE_FAMILY_ARJ)
-                           ? "ARJ"
-                           : "ZIP";
+    const char *name = (archive->family == (uint8_t)XX_XORARCHIVE_FAMILY_ARJ) ? "ARJ" : "ZIP";
     if (archive->family == (uint8_t)XX_XORARCHIVE_FAMILY_NONE) {
         xx_format_set_version(&archive->container.format, "");
         return;
@@ -295,7 +283,8 @@ static void xx_xorarchive_describe(xx_xorarchive *archive) {
     xx_format_set_version(&archive->container.format, text);
 }
 
-static void xx_xorarchive_apply_identity(xx_xorarchive *archive) {
+static void xx_xorarchive_apply_identity(xx_xorarchive *archive)
+{
     Abstractformat *format = &archive->container.format;
     format->file_type = XX_XORARCHIVE_FILE_TYPE;
     format->format_type = XX_TYPE_ARCHIVE;
@@ -303,25 +292,21 @@ static void xx_xorarchive_apply_identity(xx_xorarchive *archive) {
     format->is_archive = true;
     format->is_executable = false;
     xx_format_set_mime_type(format, "application/octet-stream");
-    xx_format_set_extension(format,
-                            archive->family == (uint8_t)XX_XORARCHIVE_FAMILY_ARJ
-                                ? "arj"
-                                : "zip");
+    xx_format_set_extension(format, archive->family == (uint8_t)XX_XORARCHIVE_FAMILY_ARJ ? "arj" : "zip");
     xx_xorarchive_describe(archive);
 }
 
-static void xx_xorarchive_vtable_destroy(Abstractformat *self) {
+static void xx_xorarchive_vtable_destroy(Abstractformat *self)
+{
     if (self) xx_xorarchive_destroy((xx_xorarchive *)self);
 }
 
 /** Tear the embedded container down without touching our own state. */
-static void xx_xorarchive_release_container(xx_xorarchive *archive) {
-    if (archive->family == (uint8_t)XX_XORARCHIVE_FAMILY_ZIP)
-        xx_zip_destroy(&archive->container.zip);
-    else if (archive->family == (uint8_t)XX_XORARCHIVE_FAMILY_ARJ)
-        xx_arj_destroy(&archive->container.arj);
-    else
-        xx_format_cleanup_extra_parameters(&archive->container.format);
+static void xx_xorarchive_release_container(xx_xorarchive *archive)
+{
+    if (archive->family == (uint8_t)XX_XORARCHIVE_FAMILY_ZIP) xx_zip_destroy(&archive->container.zip);
+    else if (archive->family == (uint8_t)XX_XORARCHIVE_FAMILY_ARJ) xx_arj_destroy(&archive->container.arj);
+    else xx_format_cleanup_extra_parameters(&archive->container.format);
 }
 
 /**
@@ -329,9 +314,8 @@ static void xx_xorarchive_release_container(xx_xorarchive *archive) {
  * ZIP/ARJ reader whether the unmasked stream parses end to end.  Four bytes
  * of recovered magic are not evidence; a complete parse is.
  */
-static bool xx_xorarchive_try_candidate(xx_xorarchive *archive,
-                                        const xx_xorarchive_candidate *candidate,
-                                        int64_t base_address) {
+static bool xx_xorarchive_try_candidate(xx_xorarchive *archive, const xx_xorarchive_candidate *candidate, int64_t base_address)
+{
     Abstractformat *format;
     bool valid;
 
@@ -364,8 +348,8 @@ static bool xx_xorarchive_try_candidate(xx_xorarchive *archive,
 /* Lifecycle                                                           */
 /* ------------------------------------------------------------------ */
 
-void xx_xorarchive_init(xx_xorarchive *archive, xx_io_device *device,
-                        int64_t base_address) {
+void xx_xorarchive_init(xx_xorarchive *archive, xx_io_device *device, int64_t base_address)
+{
     uint8_t window[XX_XORARCHIVE_WINDOW];
     xx_xorarchive_candidate candidates[XX_XORARCHIVE_MAX_CANDIDATES];
     unsigned count = 0U;
@@ -381,22 +365,17 @@ void xx_xorarchive_init(xx_xorarchive *archive, xx_io_device *device,
     xx_xorarchive_build_table(archive->table, 0U, 0U);
     xx_xorarchive_view_bind(archive);
 
-    if (device && base_address >= 0 &&
-        xx_io_seek64(device, base_address, SEEK_SET) == 0) {
+    if (device && base_address >= 0 && xx_io_seek64(device, base_address, SEEK_SET) == 0) {
         while (filled < sizeof(window)) {
-            ssize_t amount = xx_io_read(device, window + filled,
-                                        sizeof(window) - filled);
+            ssize_t amount = xx_io_read(device, window + filled, sizeof(window) - filled);
             if (amount <= 0 || (size_t)amount > sizeof(window) - filled) break;
             filled += (size_t)amount;
         }
-        count = xx_xorarchive_collect(window, filled, candidates,
-                                      XX_XORARCHIVE_MAX_CANDIDATES);
+        count = xx_xorarchive_collect(window, filled, candidates, XX_XORARCHIVE_MAX_CANDIDATES);
     }
 
     for (index = 0U; index < count; ++index) {
-        if (xx_xorarchive_try_candidate(archive, &candidates[index],
-                                        base_address))
-            break;
+        if (xx_xorarchive_try_candidate(archive, &candidates[index], base_address)) break;
     }
 
     if (archive->family == (uint8_t)XX_XORARCHIVE_FAMILY_NONE) {
@@ -408,25 +387,26 @@ void xx_xorarchive_init(xx_xorarchive *archive, xx_io_device *device,
     archive->container.format.check_is_valid = xx_xorarchive_check_is_valid;
     archive->container.format.handle_base_info = xx_xorarchive_handle_base_info;
     archive->container.format.destroy = xx_xorarchive_vtable_destroy;
-    archive->container.format.is_valid =
-        archive->family != (uint8_t)XX_XORARCHIVE_FAMILY_NONE;
+    archive->container.format.is_valid = archive->family != (uint8_t)XX_XORARCHIVE_FAMILY_NONE;
     archive->container.format.base_info_handled = false;
 }
 
-xx_xorarchive *xx_xorarchive_create(xx_io_device *device,
-                                    int64_t base_address) {
+xx_xorarchive *xx_xorarchive_create(xx_io_device *device, int64_t base_address)
+{
     xx_xorarchive *archive = (xx_xorarchive *)xx_mem_alloc(sizeof(*archive));
     if (archive) xx_xorarchive_init(archive, device, base_address);
     return archive;
 }
 
-void xx_xorarchive_destroy(xx_xorarchive *archive) {
+void xx_xorarchive_destroy(xx_xorarchive *archive)
+{
     if (!archive) return;
     xx_xorarchive_release_container(archive);
     archive->source = NULL;
 }
 
-void xx_xorarchive_free(xx_xorarchive *archive) {
+void xx_xorarchive_free(xx_xorarchive *archive)
+{
     if (!archive) return;
     xx_xorarchive_destroy(archive);
     xx_mem_free(archive);
@@ -436,27 +416,24 @@ void xx_xorarchive_free(xx_xorarchive *archive) {
 /* Format callbacks                                                    */
 /* ------------------------------------------------------------------ */
 
-bool xx_xorarchive_check_is_valid(Abstractformat *self, xx_pd_struct *pd) {
+bool xx_xorarchive_check_is_valid(Abstractformat *self, xx_pd_struct *pd)
+{
     xx_xorarchive *archive = (xx_xorarchive *)self;
     if (!archive) return false;
-    if (archive->family == (uint8_t)XX_XORARCHIVE_FAMILY_ZIP)
-        return xx_zip_check_is_valid(self, pd);
-    if (archive->family == (uint8_t)XX_XORARCHIVE_FAMILY_ARJ)
-        return xx_arj_check_is_valid(self, pd);
+    if (archive->family == (uint8_t)XX_XORARCHIVE_FAMILY_ZIP) return xx_zip_check_is_valid(self, pd);
+    if (archive->family == (uint8_t)XX_XORARCHIVE_FAMILY_ARJ) return xx_arj_check_is_valid(self, pd);
     return false;
 }
 
-bool xx_xorarchive_handle_base_info(Abstractformat *self, xx_pd_struct *pd) {
+bool xx_xorarchive_handle_base_info(Abstractformat *self, xx_pd_struct *pd)
+{
     xx_xorarchive *archive = (xx_xorarchive *)self;
     bool result;
 
     if (!archive) return false;
-    if (archive->family == (uint8_t)XX_XORARCHIVE_FAMILY_ZIP)
-        result = xx_zip_handle_base_info(self, pd);
-    else if (archive->family == (uint8_t)XX_XORARCHIVE_FAMILY_ARJ)
-        result = xx_arj_handle_base_info(self, pd);
-    else
-        result = false;
+    if (archive->family == (uint8_t)XX_XORARCHIVE_FAMILY_ZIP) result = xx_zip_handle_base_info(self, pd);
+    else if (archive->family == (uint8_t)XX_XORARCHIVE_FAMILY_ARJ) result = xx_arj_handle_base_info(self, pd);
+    else result = false;
 
     xx_xorarchive_apply_identity(archive);
     self->is_valid = result;
@@ -468,15 +445,17 @@ bool xx_xorarchive_handle_base_info(Abstractformat *self, xx_pd_struct *pd) {
 /* Getters                                                             */
 /* ------------------------------------------------------------------ */
 
-uint8_t xx_xorarchive_get_key(const xx_xorarchive *archive) {
+uint8_t xx_xorarchive_get_key(const xx_xorarchive *archive)
+{
     return archive ? archive->key : 0U;
 }
 
-uint8_t xx_xorarchive_get_rotation(const xx_xorarchive *archive) {
+uint8_t xx_xorarchive_get_rotation(const xx_xorarchive *archive)
+{
     return archive ? archive->rotation : 0U;
 }
 
-xx_xorarchive_family_t xx_xorarchive_get_family(const xx_xorarchive *archive) {
-    return archive ? (xx_xorarchive_family_t)archive->family
-                   : XX_XORARCHIVE_FAMILY_NONE;
+xx_xorarchive_family_t xx_xorarchive_get_family(const xx_xorarchive *archive)
+{
+    return archive ? (xx_xorarchive_family_t)archive->family : XX_XORARCHIVE_FAMILY_NONE;
 }

@@ -1,7 +1,8 @@
 /* SPDX-License-Identifier: MIT
  * Primary reference: https://raw.githubusercontent.com/ImageMagick/ImageMagick/main/coders/pict.c
- * Apple QuickDraw PICTv2 bounded bitmap subset: checked frame/version/extended-header/rectangular clip and DirectBitsRect RGB32 PackBits rows with exact EndPic/EOF. Original typed opcodes and decoded RGB raster exported; legacy picSize informational, file header when present must be512 zero bytes. JPEG/regions/vector/unknown opcodes declined.
- * Bounded32MiB input,4096 components and bounded work.
+ * Apple QuickDraw PICTv2 bounded bitmap subset: checked frame/version/extended-header/rectangular clip and DirectBitsRect RGB32 PackBits rows with exact EndPic/EOF.
+ * Original typed opcodes and decoded RGB raster exported; legacy picSize informational, file header when present must be512 zero bytes. JPEG/regions/vector/unknown
+ * opcodes declined. Bounded32MiB input,4096 components and bounded work.
  */
 #include "xxfclib/formats/apple_pict/xx_apple_pict.h"
 #include "../common/xx_component_binary.h"
@@ -9,103 +10,88 @@
 static bool image_document_parse(Abstractformat *, pm_stream *, const uint8_t *, uint64_t, xx_pd_struct *);
 static bool image_document_quick(Abstractformat *, uint64_t);
 XX_COMPONENT_CHUNKED_READ_DRIVER(image_document, 33554432, if (ok) s->size = available;)
-static bool image_document_quick(Abstractformat *f, uint64_t n) {
+static bool image_document_quick(Abstractformat *f, uint64_t n)
+{
     uint8_t b[14];
     int64_t at = 0;
-    if (n < 40)
-        return false;
-    if (!pm_read(f, 0, b, 14))
-        return false;
+    if (n < 40) return false;
+    if (!pm_read(f, 0, b, 14)) return false;
     if (component_zero(b, 14)) {
-        if (n < 552)
-            return false;
+        if (n < 552) return false;
         at = 512;
-        if (!pm_read(f, at, b, 14))
-            return false;
+        if (!pm_read(f, at, b, 14)) return false;
     }
-    return xx_data_get_u16(b + 6, 2, 0, true) < xx_data_get_u16(b + 8, 2, 0, true) &&
-           component_tag(b + 10, "\0\x11\2\xff", 4);
+    return xx_data_get_u16(b + 6, 2, 0, true) < xx_data_get_u16(b + 8, 2, 0, true) && component_tag(b + 10, "\0\x11\2\xff", 4);
 }
-static bool image_document_pict_rect(const uint8_t *p, const uint8_t *frame) { return !xx_rt_memcmp(p, frame, 8); }
-static bool image_document_parse(Abstractformat *f, pm_stream *s, const uint8_t *b, uint64_t n, xx_pd_struct *pd) {
+static bool image_document_pict_rect(const uint8_t *p, const uint8_t *frame)
+{
+    return !xx_rt_memcmp(p, frame, 8);
+}
+static bool image_document_parse(Abstractformat *f, pm_stream *s, const uint8_t *b, uint64_t n, xx_pd_struct *pd)
+{
     uint64_t base = component_zero(b, n < 512 ? n : 512) ? 512 : 0, p = base, bitmap, rows;
     uint32_t w, h, y, channels, rowbytes;
     uint8_t *rgb = NULL, *row = NULL;
     const uint8_t *frame;
     bool ok = false;
-    if (!component_span(base, 40, n) || (base == 512 && !component_zero(b, 512)))
-        return false;
+    if (!component_span(base, 40, n) || (base == 512 && !component_zero(b, 512))) return false;
     frame = b + base + 2;
     if (xx_data_get_u16(frame, 2, 0, true) > 32767 || xx_data_get_u16(frame + 2, 2, 0, true) > 32767 ||
-        xx_data_get_u16(frame + 4, 2, 0, true) <= xx_data_get_u16(frame, 2, 0, true) ||
-        xx_data_get_u16(frame + 6, 2, 0, true) <= xx_data_get_u16(frame + 2, 2, 0, true))
+        xx_data_get_u16(frame + 4, 2, 0, true) <= xx_data_get_u16(frame, 2, 0, true) || xx_data_get_u16(frame + 6, 2, 0, true) <= xx_data_get_u16(frame + 2, 2, 0, true))
         return false;
     h = xx_data_get_u16(frame + 4, 2, 0, true) - xx_data_get_u16(frame, 2, 0, true);
     w = xx_data_get_u16(frame + 6, 2, 0, true) - xx_data_get_u16(frame + 2, 2, 0, true);
-    if (w > 8192 || h > 4091 || (uint64_t)w * h > 8388608 ||
-        !component_tag(b + base + 10, "\0\x11\2\xff\x0c\0\xff\xfe\0\0", 10) ||
-        !xx_data_get_u32(b + base + 20, 4, 0, true) || !xx_data_get_u32(b + base + 24, 4, 0, true) ||
-        !image_document_pict_rect(b + base + 28, frame) || xx_data_get_u32(b + base + 36, 4, 0, true))
+    if (w > 8192 || h > 4091 || (uint64_t)w * h > 8388608 || !component_tag(b + base + 10, "\0\x11\2\xff\x0c\0\xff\xfe\0\0", 10) ||
+        !xx_data_get_u32(b + base + 20, 4, 0, true) || !xx_data_get_u32(b + base + 24, 4, 0, true) || !image_document_pict_rect(b + base + 28, frame) ||
+        xx_data_get_u32(b + base + 36, 4, 0, true))
         return false;
     p = base + 40;
-    if (!component_span(p, 12, n) || xx_data_get_u16(b + p, 2, 0, true) != 1 ||
-        xx_data_get_u16(b + p + 2, 2, 0, true) != 10 || !image_document_pict_rect(b + p + 4, frame))
+    if (!component_span(p, 12, n) || xx_data_get_u16(b + p, 2, 0, true) != 1 || xx_data_get_u16(b + p + 2, 2, 0, true) != 10 ||
+        !image_document_pict_rect(b + p + 4, frame))
         return false;
     p += 12;
     bitmap = p;
-    if (!component_span(p, 70, n) || xx_data_get_u16(b + p, 2, 0, true) != 0x9a)
-        return false;
+    if (!component_span(p, 70, n) || xx_data_get_u16(b + p, 2, 0, true) != 0x9a) return false;
     p += 6;
     rowbytes = xx_data_get_u16(b + p, 2, 0, true);
-    if (!(rowbytes & 0x8000))
-        return false;
+    if (!(rowbytes & 0x8000)) return false;
     rowbytes &= 0x7fff;
-    if (rowbytes != w * 4 || !image_document_pict_rect(b + p + 2, frame) || xx_data_get_u16(b + p + 10, 2, 0, true) ||
-        xx_data_get_u16(b + p + 12, 2, 0, true) != 4 || xx_data_get_u32(b + p + 14, 4, 0, true) ||
-        !xx_data_get_u32(b + p + 18, 4, 0, true) || !xx_data_get_u32(b + p + 22, 4, 0, true) ||
-        xx_data_get_u16(b + p + 26, 2, 0, true) != 16 || xx_data_get_u16(b + p + 28, 2, 0, true) != 32 ||
-        (channels = xx_data_get_u16(b + p + 30, 2, 0, true)) != 3 || xx_data_get_u16(b + p + 32, 2, 0, true) != 8 ||
-        !component_zero(b + p + 34, 12) || !image_document_pict_rect(b + p + 46, frame) ||
+    if (rowbytes != w * 4 || !image_document_pict_rect(b + p + 2, frame) || xx_data_get_u16(b + p + 10, 2, 0, true) || xx_data_get_u16(b + p + 12, 2, 0, true) != 4 ||
+        xx_data_get_u32(b + p + 14, 4, 0, true) || !xx_data_get_u32(b + p + 18, 4, 0, true) || !xx_data_get_u32(b + p + 22, 4, 0, true) ||
+        xx_data_get_u16(b + p + 26, 2, 0, true) != 16 || xx_data_get_u16(b + p + 28, 2, 0, true) != 32 || (channels = xx_data_get_u16(b + p + 30, 2, 0, true)) != 3 ||
+        xx_data_get_u16(b + p + 32, 2, 0, true) != 8 || !component_zero(b + p + 34, 12) || !image_document_pict_rect(b + p + 46, frame) ||
         !image_document_pict_rect(b + p + 54, frame) || xx_data_get_u16(b + p + 62, 2, 0, true) != 64)
         return false;
     p += 64;
     rows = p;
     rgb = (uint8_t *)xx_mem_alloc((size_t)w * h * 3);
     row = (uint8_t *)xx_mem_alloc((size_t)w * 3);
-    if (!rgb || !row)
-        goto done;
+    if (!rgb || !row) goto done;
     for (y = 0; y < h; ++y) {
         uint64_t end;
         uint32_t coded, x = 0, j;
         char label[48];
-        if (xx_component_parser_stopped(pd) || !component_span(p, rowbytes > 250 ? 2 : 1, n))
-            goto done;
+        if (xx_component_parser_stopped(pd) || !component_span(p, rowbytes > 250 ? 2 : 1, n)) goto done;
         coded = rowbytes > 250 ? xx_data_get_u16(b + p, 2, 0, true) : b[p];
         end = p + (rowbytes > 250 ? 2 : 1) + coded;
-        if (!coded || end > n)
-            goto done;
+        if (!coded || end > n) goto done;
         p += rowbytes > 250 ? 2 : 1;
         while (p < end) {
             uint8_t control = b[p++];
             uint32_t run = control < 128 ? (uint32_t)control + 1 : 257U - control;
-            if (control == 128)
-                continue;
-            if (run > w * 3 - x)
-                goto done;
+            if (control == 128) continue;
+            if (run > w * 3 - x) goto done;
             if (control < 128) {
-                if (!component_span(p, run, end))
-                    goto done;
+                if (!component_span(p, run, end)) goto done;
                 xx_rt_memcpy(row + x, b + p, run);
                 p += run;
             } else {
-                if (p == end)
-                    goto done;
+                if (p == end) goto done;
                 xx_rt_memset(row + x, b[p++], run);
             }
             x += run;
         }
-        if (x != w * 3)
-            goto done;
+        if (x != w * 3) goto done;
         for (j = 0; j < w; ++j) {
             rgb[((uint64_t)y * w + j) * 3] = row[j];
             rgb[((uint64_t)y * w + j) * 3 + 1] = row[w + j];
@@ -113,21 +99,16 @@ static bool image_document_parse(Abstractformat *f, pm_stream *s, const uint8_t 
         }
         xx_rt_snprintf(label, sizeof(label), "packed-row-%u.bin", y);
         if (y == 0) {
-            if (base && !component_emit(f, s, "file-carrier.bin", 0, base, n))
-                goto done;
-            if (!component_emit(f, s, "picture-descriptor.pict", base, bitmap - base, n) ||
-                !component_emit(f, s, "bitmap-descriptor.pict", bitmap, rows - bitmap, n))
+            if (base && !component_emit(f, s, "file-carrier.bin", 0, base, n)) goto done;
+            if (!component_emit(f, s, "picture-descriptor.pict", base, bitmap - base, n) || !component_emit(f, s, "bitmap-descriptor.pict", bitmap, rows - bitmap, n))
                 goto done;
         }
-        if (!component_emit(f, s, label, end - coded - (rowbytes > 250 ? 2 : 1), coded + (rowbytes > 250 ? 2 : 1), n))
-            goto done;
+        if (!component_emit(f, s, label, end - coded - (rowbytes > 250 ? 2 : 1), coded + (rowbytes > 250 ? 2 : 1), n)) goto done;
     }
     if ((p - base) & 1) {
-        if (p == n || b[p++])
-            goto done;
+        if (p == n || b[p++]) goto done;
     }
-    if (!component_span(p, 2, n) || xx_data_get_u16(b + p, 2, 0, true) != 0xff || p + 2 != n ||
-        !component_emit(f, s, "picture-end.bin", p, 2, n) ||
+    if (!component_span(p, 2, n) || xx_data_get_u16(b + p, 2, 0, true) != 0xff || p + 2 != n || !component_emit(f, s, "picture-end.bin", p, 2, n) ||
         !component_publish_memory_keep_on_failure(f, s, "decoded-rgb8.bin", rgb, (uint64_t)w * h * 3))
         goto done;
     rgb = NULL;
@@ -138,27 +119,35 @@ done:
     return ok;
 }
 
-void xx_apple_pict_init(xx_apple_pict *r, xx_io_device *d, int64_t at) {
+void xx_apple_pict_init(xx_apple_pict *r, xx_io_device *d, int64_t at)
+{
     if (r) {
         xx_mem_zero(r, sizeof(*r));
         pm_init(&r->format, d, at, XX_FILE_TYPE_APPLE_PICT, "pict");
     }
 }
-xx_apple_pict *xx_apple_pict_create(xx_io_device *d, int64_t at) {
+xx_apple_pict *xx_apple_pict_create(xx_io_device *d, int64_t at)
+{
     xx_apple_pict *r = (xx_apple_pict *)xx_mem_alloc(sizeof(*r));
-    if (r)
-        xx_apple_pict_init(r, d, at);
+    if (r) xx_apple_pict_init(r, d, at);
     return r;
 }
-void xx_apple_pict_destroy(xx_apple_pict *r) {
-    if (r)
-        xx_format_cleanup_extra_parameters(&r->format);
+void xx_apple_pict_destroy(xx_apple_pict *r)
+{
+    if (r) xx_format_cleanup_extra_parameters(&r->format);
 }
-void xx_apple_pict_free(xx_apple_pict *r) {
+void xx_apple_pict_free(xx_apple_pict *r)
+{
     if (r) {
         xx_apple_pict_destroy(r);
         xx_mem_free(r);
     }
 }
-bool xx_apple_pict_check_is_valid(Abstractformat *f, xx_pd_struct *pd) { return pm_valid(f, pd); }
-bool xx_apple_pict_handle_base_info(Abstractformat *f, xx_pd_struct *pd) { return pm_handle(f, pd); }
+bool xx_apple_pict_check_is_valid(Abstractformat *f, xx_pd_struct *pd)
+{
+    return pm_valid(f, pd);
+}
+bool xx_apple_pict_handle_base_info(Abstractformat *f, xx_pd_struct *pd)
+{
+    return pm_handle(f, pd);
+}

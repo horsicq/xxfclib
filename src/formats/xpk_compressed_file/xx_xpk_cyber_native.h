@@ -11,12 +11,11 @@
 #include <stddef.h>
 #include <stdint.h>
 
-static bool xpk_fbr2_native(const uint8_t *packed, size_t size,
-                            uint8_t *output, size_t wanted, xx_pd_struct *pd) {
+static bool xpk_fbr2_native(const uint8_t *packed, size_t size, uint8_t *output, size_t wanted, xx_pd_struct *pd)
+{
     size_t cursor = 1U, position = 0U;
     uint8_t mode;
-    if (!packed || size < 1U || (wanted && !output) || xx_pd_is_stopped(pd))
-        return false;
+    if (!packed || size < 1U || (wanted && !output) || xx_pd_is_stopped(pd)) return false;
     mode = packed[0];
     if (mode != 33U && mode != 67U && mode != 100U) return false;
     while (position < wanted) {
@@ -24,10 +23,8 @@ static bool xpk_fbr2_native(const uint8_t *packed, size_t size,
         size_t width = mode == 33U ? 4U : mode == 67U ? 2U : 1U;
         size_t i;
         bool literal;
-        if (xx_pd_is_stopped(pd) || cursor > size || size - cursor < width)
-            return false;
-        for (i = 0U; i < width; ++i)
-            control = (control << 8U) | packed[cursor++];
+        if (xx_pd_is_stopped(pd) || cursor > size || size - cursor < width) return false;
+        for (i = 0U; i < width; ++i) control = (control << 8U) | packed[cursor++];
         if (mode == 33U) {
             literal = control >= UINT32_C(0x80000000);
             count = literal ? 0U - control : control;
@@ -59,8 +56,8 @@ static bool xpk_fbr2_native(const uint8_t *packed, size_t size,
     return !xx_pd_is_stopped(pd);
 }
 
-static bool xpk_slz3_native(const uint8_t *packed, size_t size,
-                            uint8_t *output, size_t wanted, xx_pd_struct *pd) {
+static bool xpk_slz3_native(const uint8_t *packed, size_t size, uint8_t *output, size_t wanted, xx_pd_struct *pd)
+{
     size_t cursor = 0U, position = 0U;
     uint8_t flags = 0U;
     unsigned remaining = 0U;
@@ -86,8 +83,7 @@ static bool xpk_slz3_native(const uint8_t *packed, size_t size,
             if (!token) return false;
             distance = ((size_t)(token & 0xf0U) << 4U) | packed[cursor++];
             count = (size_t)(token & 15U) + 2U;
-            if (!distance || distance > position || count > wanted - position)
-                return false;
+            if (!distance || distance > position || count > wanted - position) return false;
             for (i = 0U; i < count; ++i) {
                 if ((i & 1023U) == 0U && xx_pd_is_stopped(pd)) return false;
                 output[position] = output[position - distance];

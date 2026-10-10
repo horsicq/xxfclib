@@ -22,32 +22,21 @@ typedef struct xx_rid {
 
 typedef xx_rid xx_rid_t;
 
-XXFC_API void xx_rid_init(xx_rid *archive, xx_io_device *device,
-                             int64_t base_address);
-XXFC_API xx_rid *xx_rid_create(xx_io_device *device,
-                                     int64_t base_address);
+XXFC_API void xx_rid_init(xx_rid *archive, xx_io_device *device, int64_t base_address);
+XXFC_API xx_rid *xx_rid_create(xx_io_device *device, int64_t base_address);
 XXFC_API void xx_rid_destroy(xx_rid *archive);
 XXFC_API void xx_rid_free(xx_rid *archive);
 
-XXFC_API bool xx_rid_check_is_valid(Abstractformat *self,
-                                       xx_pd_struct *pd);
-XXFC_API bool xx_rid_handle_base_info(Abstractformat *self,
-                                         xx_pd_struct *pd);
-XXFC_API int64_t xx_rid_get_format_size(Abstractformat *self,
-                                           xx_pd_struct *pd);
-XXFC_API uint64_t xx_rid_get_number_of_archive_records(
-    Abstractformat *self, xx_pd_struct *pd);
+XXFC_API bool xx_rid_check_is_valid(Abstractformat *self, xx_pd_struct *pd);
+XXFC_API bool xx_rid_handle_base_info(Abstractformat *self, xx_pd_struct *pd);
+XXFC_API int64_t xx_rid_get_format_size(Abstractformat *self, xx_pd_struct *pd);
+XXFC_API uint64_t xx_rid_get_number_of_archive_records(Abstractformat *self, xx_pd_struct *pd);
 
-XXFC_API xx_archive_record_state *xx_rid_create_archive_records_reading(
-    Abstractformat *self, const xx_list_s *options, xx_pd_struct *pd);
-XXFC_API const xx_archive_record *xx_rid_get_current_archive_record(
-    Abstractformat *self, xx_archive_record_state *state);
-XXFC_API bool xx_rid_unpack_current_archive_record(
-    Abstractformat *self, xx_archive_record_state *state, xx_pd_struct *pd);
-XXFC_API bool xx_rid_archive_record_move_to_next(
-    Abstractformat *self, xx_archive_record_state *state, xx_pd_struct *pd);
-XXFC_API void xx_rid_free_archive_records_reading(
-    Abstractformat *self, xx_archive_record_state *state);
+XXFC_API xx_archive_record_state *xx_rid_create_archive_records_reading(Abstractformat *self, const xx_list_s *options, xx_pd_struct *pd);
+XXFC_API const xx_archive_record *xx_rid_get_current_archive_record(Abstractformat *self, xx_archive_record_state *state);
+XXFC_API bool xx_rid_unpack_current_archive_record(Abstractformat *self, xx_archive_record_state *state, xx_pd_struct *pd);
+XXFC_API bool xx_rid_archive_record_move_to_next(Abstractformat *self, xx_archive_record_state *state, xx_pd_struct *pd);
+XXFC_API void xx_rid_free_archive_records_reading(Abstractformat *self, xx_archive_record_state *state);
 
 #ifdef __cplusplus
 }

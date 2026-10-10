@@ -66,10 +66,10 @@ typedef struct nsa_key_s {
 } nsa_key;
 
 typedef struct nsa_layout_s {
-    int64_t header;    /**< Absolute offset of the count field. */
+    int64_t header;      /**< Absolute offset of the count field. */
     int64_t format_size; /**< From base_address to EOF. */
-    int64_t data_base; /**< The base field (relative to header). */
-    int64_t data_size; /**< From the data area to EOF. */
+    int64_t data_base;   /**< The base field (relative to header). */
+    int64_t data_size;   /**< From the data area to EOF. */
     uint32_t count;
 } nsa_layout;
 
@@ -93,30 +93,28 @@ typedef struct nsa_stream_s {
 
 /* ---- I/O --------------------------------------------------------------- */
 
-static size_t nsa_capacity(void) {
+static size_t nsa_capacity(void)
+{
     size_t n = xx_get_file_buffer_size();
     if (!n) n = XX_DEFAULT_FILE_BUFFER_SIZE;
     if (n < 4096U) n = 4096U;
     return n > (SIZE_MAX >> 1) ? SIZE_MAX >> 1 : n;
 }
 
-static bool nsa_read_at(xx_io_device *device, int64_t offset, void *buffer,
-                        size_t size) {
+static bool nsa_read_at(xx_io_device *device, int64_t offset, void *buffer, size_t size)
+{
     size_t done = 0U;
-    if (!device || (!buffer && size != 0U) || offset < 0 ||
-        xx_io_seek64(device, offset, SEEK_SET) != 0)
-        return false;
+    if (!device || (!buffer && size != 0U) || offset < 0 || xx_io_seek64(device, offset, SEEK_SET) != 0) return false;
     while (done < size) {
-        ssize_t amount = xx_io_read(device, (uint8_t *)buffer + done,
-                                    size - done);
+        ssize_t amount = xx_io_read(device, (uint8_t *)buffer + done, size - done);
         if (amount <= 0 || (size_t)amount > size - done) return false;
         done += (size_t)amount;
     }
     return true;
 }
 
-static bool nsa_write_all(xx_io_device *destination, const uint8_t *data,
-                          size_t size) {
+static bool nsa_write_all(xx_io_device *destination, const uint8_t *data, size_t size)
+{
     size_t done = 0U;
     if (!destination) return true;
     while (done < size) {
@@ -127,8 +125,8 @@ static bool nsa_write_all(xx_io_device *destination, const uint8_t *data,
     return true;
 }
 
-static bool nsa_copy_range(xx_io_device *source, int64_t offset, int64_t size,
-                           xx_io_device *destination, xx_pd_struct *pd) {
+static bool nsa_copy_range(xx_io_device *source, int64_t offset, int64_t size, xx_io_device *destination, xx_pd_struct *pd)
+{
     const size_t capacity = nsa_capacity();
     uint8_t *buffer;
     int64_t remaining = size;
@@ -138,11 +136,8 @@ static bool nsa_copy_range(xx_io_device *source, int64_t offset, int64_t size,
     buffer = (uint8_t *)xx_mem_alloc(capacity);
     if (!buffer) return false;
     while (remaining > 0) {
-        size_t chunk = remaining > (int64_t)capacity ? capacity
-                                                     : (size_t)remaining;
-        if ((pd && xx_pd_is_stopped(pd)) ||
-            !nsa_read_at(source, offset + (size - remaining), buffer, chunk) ||
-            !nsa_write_all(destination, buffer, chunk)) {
+        size_t chunk = remaining > (int64_t)capacity ? capacity : (size_t)remaining;
+        if ((pd && xx_pd_is_stopped(pd)) || !nsa_read_at(source, offset + (size - remaining), buffer, chunk) || !nsa_write_all(destination, buffer, chunk)) {
             ok = false;
             break;
         }
@@ -166,8 +161,8 @@ typedef struct nsa_bits_s {
     bool eof;
 } nsa_bits;
 
-static bool nsa_bits_open(nsa_bits *bits, xx_io_device *device, int64_t offset,
-                          int64_t size) {
+static bool nsa_bits_open(nsa_bits *bits, xx_io_device *device, int64_t offset, int64_t size)
+{
     xx_mem_zero(bits, sizeof(*bits));
     bits->device = device;
     bits->pos = offset;
@@ -177,13 +172,15 @@ static bool nsa_bits_open(nsa_bits *bits, xx_io_device *device, int64_t offset,
     return bits->buffer != NULL;
 }
 
-static void nsa_bits_close(nsa_bits *bits) {
+static void nsa_bits_close(nsa_bits *bits)
+{
     if (bits->buffer) xx_mem_free(bits->buffer);
     bits->buffer = NULL;
 }
 
 /* Up to 16 bits; on running out of input sets eof and returns 0. */
-static uint32_t nsa_bits_get(nsa_bits *bits, unsigned width) {
+static uint32_t nsa_bits_get(nsa_bits *bits, unsigned width)
+{
     uint32_t value;
     while (bits->count < width) {
         if (bits->at == bits->length) {
@@ -193,8 +190,7 @@ static uint32_t nsa_bits_get(nsa_bits *bits, unsigned width) {
                 bits->eof = true;
                 return 0U;
             }
-            chunk = left > (int64_t)bits->capacity ? bits->capacity
-                                                   : (size_t)left;
+            chunk = left > (int64_t)bits->capacity ? bits->capacity : (size_t)left;
             if (!nsa_read_at(bits->device, bits->pos, bits->buffer, chunk)) {
                 bits->eof = true;
                 return 0U;
@@ -213,15 +209,18 @@ static uint32_t nsa_bits_get(nsa_bits *bits, unsigned width) {
 
 /* ---- member names (as in sar_ns) ---------------------------------------- */
 
-static bool nsa_is_sjis_lead(uint8_t c) {
+static bool nsa_is_sjis_lead(uint8_t c)
+{
     return (c >= 0x81U && c <= 0x9fU) || (c >= 0xe0U && c <= 0xfcU);
 }
 
-static bool nsa_is_sjis_trail(uint8_t c) {
+static bool nsa_is_sjis_trail(uint8_t c)
+{
     return (c >= 0x40U && c <= 0x7eU) || (c >= 0x80U && c <= 0xfcU);
 }
 
-static size_t nsa_put_escape(char *out, uint8_t c) {
+static size_t nsa_put_escape(char *out, uint8_t c)
+{
     static const char digits[] = "0123456789ABCDEF";
     out[0] = '%';
     out[1] = digits[(c >> 4U) & 0x0fU];
@@ -229,44 +228,42 @@ static size_t nsa_put_escape(char *out, uint8_t c) {
     return 3U;
 }
 
-static size_t nsa_convert_name(const uint8_t *raw, size_t length, char *out) {
+static size_t nsa_convert_name(const uint8_t *raw, size_t length, char *out)
+{
     size_t at = 0U;
     size_t index = 0U;
     while (index < length) {
         uint8_t c = raw[index];
-        if (nsa_is_sjis_lead(c) && index + 1U < length &&
-            nsa_is_sjis_trail(raw[index + 1U])) {
+        if (nsa_is_sjis_lead(c) && index + 1U < length && nsa_is_sjis_trail(raw[index + 1U])) {
             at += nsa_put_escape(out + at, c);
             at += nsa_put_escape(out + at, raw[index + 1U]);
             index += 2U;
             continue;
         }
-        if (c >= 0x80U || c == (uint8_t)'%')
-            at += nsa_put_escape(out + at, c);
-        else if (c == (uint8_t)'\\')
-            out[at++] = '/';
-        else
-            out[at++] = (char)c;
+        if (c >= 0x80U || c == (uint8_t)'%') at += nsa_put_escape(out + at, c);
+        else if (c == (uint8_t)'\\') out[at++] = '/';
+        else out[at++] = (char)c;
         ++index;
     }
     out[at] = 0;
     return at;
 }
 
-static uint64_t nsa_name_hash(const char *name, size_t length) {
+static uint64_t nsa_name_hash(const char *name, size_t length)
+{
     uint64_t hash = UINT64_C(0xcbf29ce484222325);
     size_t index;
     for (index = 0U; index < length; ++index) {
         uint8_t c = (uint8_t)name[index];
-        if (c >= (uint8_t)'A' && c <= (uint8_t)'Z')
-            c = (uint8_t)(c - (uint8_t)'A' + (uint8_t)'a');
+        if (c >= (uint8_t)'A' && c <= (uint8_t)'Z') c = (uint8_t)(c - (uint8_t)'A' + (uint8_t)'a');
         hash ^= (uint64_t)c;
         hash *= UINT64_C(0x100000001b3);
     }
     return hash;
 }
 
-static void nsa_insert_suffix(char *name, size_t length, uint32_t index) {
+static void nsa_insert_suffix(char *name, size_t length, uint32_t index)
+{
     char suffix[2 + 10];
     char digits[10];
     size_t suffix_length = 0U, digit_count = 0U, component = 0U, at, tail;
@@ -287,20 +284,17 @@ static void nsa_insert_suffix(char *name, size_t length, uint32_t index) {
     while (digit_count != 0U) suffix[suffix_length++] = digits[--digit_count];
     if (length + suffix_length >= NSA_NAME_BUFFER) return;
     tail = length - dot;
-    for (at = tail + 1U; at > 0U; --at)
-        name[dot + suffix_length + at - 1U] = name[dot + at - 1U];
+    for (at = tail + 1U; at > 0U; --at) name[dot + suffix_length + at - 1U] = name[dot + at - 1U];
     xx_rt_memcpy(name + dot, suffix, suffix_length);
 }
 
-static bool nsa_reserved_component(const char *segment, size_t length) {
-    static const char *const devices[] = {"CON",    "PRN",    "AUX",
-                                          "NUL",    "CLOCK$", "CONIN$",
-                                          "CONOUT$"};
+static bool nsa_reserved_component(const char *segment, size_t length)
+{
+    static const char *const devices[] = {"CON", "PRN", "AUX", "NUL", "CLOCK$", "CONIN$", "CONOUT$"};
     char stem[8];
     size_t stem_length = 0U, index;
     while (stem_length < length && segment[stem_length] != '.') ++stem_length;
-    while (stem_length != 0U && segment[stem_length - 1U] == ' ')
-        --stem_length;
+    while (stem_length != 0U && segment[stem_length - 1U] == ' ') --stem_length;
     if (stem_length < 3U || stem_length > sizeof(stem) - 1U) return false;
     for (index = 0U; index < stem_length; ++index) {
         char c = segment[index];
@@ -308,33 +302,25 @@ static bool nsa_reserved_component(const char *segment, size_t length) {
     }
     stem[stem_length] = 0;
     if (stem_length == 4U && stem[3] >= '0' && stem[3] <= '9' &&
-        ((stem[0] == 'C' && stem[1] == 'O' && stem[2] == 'M') ||
-         (stem[0] == 'L' && stem[1] == 'P' && stem[2] == 'T')))
+        ((stem[0] == 'C' && stem[1] == 'O' && stem[2] == 'M') || (stem[0] == 'L' && stem[1] == 'P' && stem[2] == 'T')))
         return true;
     for (index = 0U; index < sizeof(devices) / sizeof(devices[0]); ++index)
-        if (xx_str_len(devices[index]) == stem_length &&
-            xx_rt_memcmp(stem, devices[index], stem_length) == 0)
-            return true;
+        if (xx_str_len(devices[index]) == stem_length && xx_rt_memcmp(stem, devices[index], stem_length) == 0) return true;
     return false;
 }
 
-static bool nsa_safe_name(const char *name) {
+static bool nsa_safe_name(const char *name)
+{
     const char *segment;
     const char *at;
     if (!name || !name[0] || name[0] == '/') return false;
     segment = name;
     for (at = name;; ++at) {
         unsigned char c = (unsigned char)*at;
-        if (c == ':' || c == '<' || c == '>' || c == '"' || c == '|' ||
-            c == '?' || c == '*' || c == '\\' || c == 0x7fU ||
-            (c != 0U && c < 0x20U))
-            return false;
+        if (c == ':' || c == '<' || c == '>' || c == '"' || c == '|' || c == '?' || c == '*' || c == '\\' || c == 0x7fU || (c != 0U && c < 0x20U)) return false;
         if (c == '/' || c == 0U) {
             size_t length = (size_t)(at - segment);
-            if (length == 0U || segment[length - 1U] == '.' ||
-                segment[length - 1U] == ' ' ||
-                nsa_reserved_component(segment, length))
-                return false;
+            if (length == 0U || segment[length - 1U] == '.' || segment[length - 1U] == ' ' || nsa_reserved_component(segment, length)) return false;
             if (c == 0U) return true;
             segment = at + 1;
         }
@@ -342,14 +328,14 @@ static bool nsa_safe_name(const char *name) {
 }
 
 /* A raw name ending in ".nbz" (ASCII case-insensitive). */
-static bool nsa_is_nbz_name(const uint8_t *raw, size_t length) {
+static bool nsa_is_nbz_name(const uint8_t *raw, size_t length)
+{
     static const char ext[] = ".nbz";
     size_t index;
     if (length < 4U) return false;
     for (index = 0U; index < 4U; ++index) {
         uint8_t c = raw[length - 4U + index];
-        if (c >= (uint8_t)'A' && c <= (uint8_t)'Z')
-            c = (uint8_t)(c - (uint8_t)'A' + (uint8_t)'a');
+        if (c >= (uint8_t)'A' && c <= (uint8_t)'Z') c = (uint8_t)(c - (uint8_t)'A' + (uint8_t)'a');
         if (c != (uint8_t)ext[index]) return false;
     }
     return true;
@@ -357,20 +343,17 @@ static bool nsa_is_nbz_name(const uint8_t *raw, size_t length) {
 
 /* ---- index walk -------------------------------------------------------- */
 
-static bool nsa_read_header(Abstractformat *format, nsa_layout *layout) {
+static bool nsa_read_header(Abstractformat *format, nsa_layout *layout)
+{
     uint8_t header[2 + NSA_HEADER_SIZE];
     int64_t total, size, base, index_size, header_at;
     uint32_t count;
     size_t prefix = 0U;
-    if (!format || !format->device || !layout || format->base_address < 0)
-        return false;
+    if (!format || !format->device || !layout || format->base_address < 0) return false;
     total = xx_io_total_size(format->device);
     if (total < format->base_address) return false;
     size = total - format->base_address;
-    if (size < (int64_t)sizeof(header) + NSA_MIN_ENTRY ||
-        !nsa_read_at(format->device, format->base_address, header,
-                     sizeof(header)))
-        return false;
+    if (size < (int64_t)sizeof(header) + NSA_MIN_ENTRY || !nsa_read_at(format->device, format->base_address, header, sizeof(header))) return false;
     /* GARbro also opens archives whose header follows two zero bytes. */
     if (header[0] == 0U && header[1] == 0U) prefix = 2U;
     count = (uint32_t)xx_data_get_u16(header + prefix, 2, 0, true);
@@ -379,9 +362,7 @@ static bool nsa_read_header(Abstractformat *format, nsa_layout *layout) {
     size -= (int64_t)prefix;
     if (count == 0U || base > size) return false;
     index_size = base - NSA_HEADER_SIZE;
-    if (index_size < (int64_t)count * NSA_MIN_ENTRY ||
-        index_size > (int64_t)count * NSA_MAX_ENTRY)
-        return false;
+    if (index_size < (int64_t)count * NSA_MIN_ENTRY || index_size > (int64_t)count * NSA_MAX_ENTRY) return false;
     layout->header = header_at;
     layout->format_size = total - format->base_address;
     layout->data_base = base;
@@ -390,27 +371,21 @@ static bool nsa_read_header(Abstractformat *format, nsa_layout *layout) {
     return true;
 }
 
-static const uint8_t *nsa_window_view(nsa_window *window, int64_t pos,
-                                      size_t *avail) {
+static const uint8_t *nsa_window_view(nsa_window *window, int64_t pos, size_t *avail)
+{
     int64_t want = window->size - pos;
     if (pos < 0 || want <= 0) return NULL;
     if (want > NSA_MAX_ENTRY) want = NSA_MAX_ENTRY;
     if ((uint64_t)want > window->capacity) {
-        if (!nsa_read_at(window->device, window->origin + pos, window->entry,
-                         (size_t)want))
-            return NULL;
+        if (!nsa_read_at(window->device, window->origin + pos, window->entry, (size_t)want)) return NULL;
         *avail = (size_t)want;
         return window->entry;
     }
-    if (pos < window->start ||
-        pos + want > window->start + (int64_t)window->length) {
+    if (pos < window->start || pos + want > window->start + (int64_t)window->length) {
         int64_t chunk = window->size - pos;
-        if ((uint64_t)chunk > window->capacity)
-            chunk = (int64_t)window->capacity;
+        if ((uint64_t)chunk > window->capacity) chunk = (int64_t)window->capacity;
         window->length = 0U;
-        if (!nsa_read_at(window->device, window->origin + pos, window->buffer,
-                         (size_t)chunk))
-            return NULL;
+        if (!nsa_read_at(window->device, window->origin + pos, window->buffer, (size_t)chunk)) return NULL;
         window->start = pos;
         window->length = (size_t)chunk;
     }
@@ -430,30 +405,23 @@ typedef struct nsa_entry_s {
  * over-long name, a control byte in the name, a codec outside 0/1/2/4, an
  * LZSS member claiming more output than its bits can encode, or a name or
  * fixed part running past the end of the index. */
-static size_t nsa_parse_entry(const uint8_t *view, size_t avail,
-                              nsa_entry *entry) {
+static size_t nsa_parse_entry(const uint8_t *view, size_t avail, nsa_entry *entry)
+{
     size_t at;
     for (at = 0U; at < avail && at <= NSA_MAX_NAME; ++at) {
         uint8_t c = view[at];
         if (c == 0U) break;
         if (c < 0x20U || c == 0x7fU) return 0U;
     }
-    if (at == 0U || at > NSA_MAX_NAME || at >= avail ||
-        avail - at - 1U < NSA_FIXED_SIZE)
-        return 0U;
+    if (at == 0U || at > NSA_MAX_NAME || at >= avail || avail - at - 1U < NSA_FIXED_SIZE) return 0U;
     entry->name_length = (uint32_t)at;
     entry->codec = view[at + 1U];
     entry->offset = xx_data_get_u32(view + at + 2U, 4, 0, true);
     entry->packed = xx_data_get_u32(view + at + 6U, 4, 0, true);
     entry->unpacked = xx_data_get_u32(view + at + 10U, 4, 0, true);
-    if (entry->codec != NSA_CODEC_STORED && entry->codec != NSA_CODEC_SPB &&
-        entry->codec != NSA_CODEC_LZSS && entry->codec != NSA_CODEC_NBZ)
-        return 0U;
+    if (entry->codec != NSA_CODEC_STORED && entry->codec != NSA_CODEC_SPB && entry->codec != NSA_CODEC_LZSS && entry->codec != NSA_CODEC_NBZ) return 0U;
     /* The cheapest LZSS code is 13 bits for 17 bytes. */
-    if (entry->codec == NSA_CODEC_LZSS &&
-        (uint64_t)entry->unpacked >
-            ((uint64_t)entry->packed * 8U / 13U + 1U) * 17U)
-        return 0U;
+    if (entry->codec == NSA_CODEC_LZSS && (uint64_t)entry->unpacked > ((uint64_t)entry->packed * 8U / 13U + 1U) * 17U) return 0U;
     if (nsa_is_nbz_name(view, at)) entry->codec = NSA_CODEC_NBZ;
     return at + 1U + NSA_FIXED_SIZE;
 }
@@ -461,16 +429,13 @@ static size_t nsa_parse_entry(const uint8_t *view, size_t avail,
 /* Members come in non-decreasing offset order and stay inside the data area
  * (as XArchive requires); a member may share data with an earlier one, as a
  * de-duplicating writer produces. */
-static bool nsa_member_fits(const nsa_entry *entry, int64_t previous_offset,
-                            int64_t data_size) {
-    return (int64_t)entry->offset >= previous_offset &&
-           (int64_t)entry->offset <= data_size &&
-           (int64_t)entry->packed <= data_size - (int64_t)entry->offset;
+static bool nsa_member_fits(const nsa_entry *entry, int64_t previous_offset, int64_t data_size)
+{
+    return (int64_t)entry->offset >= previous_offset && (int64_t)entry->offset <= data_size && (int64_t)entry->packed <= data_size - (int64_t)entry->offset;
 }
 
-static bool nsa_walk(Abstractformat *format, const nsa_layout *layout,
-                     nsa_member *items, nsa_key *keys, char *name,
-                     xx_pd_struct *pd) {
+static bool nsa_walk(Abstractformat *format, const nsa_layout *layout, nsa_member *items, nsa_key *keys, char *name, xx_pd_struct *pd)
+{
     nsa_window window;
     int64_t index_size = layout->data_base - NSA_HEADER_SIZE;
     int64_t pos = 0, previous_offset = 0, max_end = 0;
@@ -480,13 +445,9 @@ static bool nsa_walk(Abstractformat *format, const nsa_layout *layout,
     /* Cheap gate before anything is allocated: entry 0 from one small read. */
     {
         uint8_t first[NSA_MAX_ENTRY];
-        size_t avail = index_size < (int64_t)NSA_MAX_ENTRY
-                           ? (size_t)index_size
-                           : (size_t)NSA_MAX_ENTRY;
+        size_t avail = index_size < (int64_t)NSA_MAX_ENTRY ? (size_t)index_size : (size_t)NSA_MAX_ENTRY;
         nsa_entry entry;
-        if (!nsa_read_at(format->device, layout->header + NSA_HEADER_SIZE,
-                         first, avail) ||
-            nsa_parse_entry(first, avail, &entry) == 0U ||
+        if (!nsa_read_at(format->device, layout->header + NSA_HEADER_SIZE, first, avail) || nsa_parse_entry(first, avail, &entry) == 0U ||
             !nsa_member_fits(&entry, 0, layout->data_size))
             return false;
     }
@@ -503,23 +464,17 @@ static bool nsa_walk(Abstractformat *format, const nsa_layout *layout,
         const uint8_t *view;
         size_t avail = 0U, length;
         nsa_entry entry;
-        if ((index & NSA_POLL_MASK) == 0U && pd && xx_pd_is_stopped(pd))
-            goto done;
+        if ((index & NSA_POLL_MASK) == 0U && pd && xx_pd_is_stopped(pd)) goto done;
         view = nsa_window_view(&window, pos, &avail);
         if (!view) goto done;
         length = nsa_parse_entry(view, avail, &entry);
-        if (length == 0U ||
-            !nsa_member_fits(&entry, previous_offset, layout->data_size))
-            goto done;
+        if (length == 0U || !nsa_member_fits(&entry, previous_offset, layout->data_size)) goto done;
         if (items) {
             size_t converted = nsa_convert_name(view, entry.name_length, name);
             items[index].entry_offset = window.origin + pos;
-            items[index].data_offset =
-                layout->header + layout->data_base + (int64_t)entry.offset;
+            items[index].data_offset = layout->header + layout->data_base + (int64_t)entry.offset;
             items[index].packed = (int64_t)entry.packed;
-            items[index].unpacked = entry.codec == NSA_CODEC_STORED
-                                        ? (int64_t)entry.packed
-                                        : (int64_t)entry.unpacked;
+            items[index].unpacked = entry.codec == NSA_CODEC_STORED ? (int64_t)entry.packed : (int64_t)entry.unpacked;
             items[index].name_length = entry.name_length;
             items[index].codec = entry.codec;
             items[index].renamed = false;
@@ -527,8 +482,7 @@ static bool nsa_walk(Abstractformat *format, const nsa_layout *layout,
             keys[index].index = index;
         }
         previous_offset = (int64_t)entry.offset;
-        if ((int64_t)entry.offset + (int64_t)entry.packed > max_end)
-            max_end = (int64_t)entry.offset + (int64_t)entry.packed;
+        if ((int64_t)entry.offset + (int64_t)entry.packed > max_end) max_end = (int64_t)entry.offset + (int64_t)entry.packed;
         pos += (int64_t)length;
     }
     /* The entries must end exactly at base and the data area must end
@@ -539,25 +493,25 @@ done:
     return ok;
 }
 
-static int nsa_compare_keys(const void *left, const void *right) {
+static int nsa_compare_keys(const void *left, const void *right)
+{
     const nsa_key *a = (const nsa_key *)left;
     const nsa_key *b = (const nsa_key *)right;
     if (a->hash != b->hash) return a->hash < b->hash ? -1 : 1;
     return a->index < b->index ? -1 : (a->index > b->index ? 1 : 0);
 }
 
-static void nsa_mark_duplicates(nsa_member *items, nsa_key *keys,
-                                size_t count) {
+static void nsa_mark_duplicates(nsa_member *items, nsa_key *keys, size_t count)
+{
     size_t index;
     if (count < 2U) return;
     xx_rt_qsort(keys, count, sizeof(*keys), nsa_compare_keys);
     for (index = 1U; index < count; ++index)
-        if (keys[index].hash == keys[index - 1U].hash &&
-            keys[index].index < count)
-            items[keys[index].index].renamed = true;
+        if (keys[index].hash == keys[index - 1U].hash && keys[index].index < count) items[keys[index].index].renamed = true;
 }
 
-static void nsa_stream_free(void *opaque) {
+static void nsa_stream_free(void *opaque)
+{
     nsa_stream *stream = (nsa_stream *)opaque;
     if (!stream) return;
     if (stream->items) xx_mem_free(stream->items);
@@ -565,8 +519,8 @@ static void nsa_stream_free(void *opaque) {
     xx_mem_free(stream);
 }
 
-static bool nsa_open_stream(Abstractformat *format, nsa_stream **result,
-                            xx_pd_struct *pd) {
+static bool nsa_open_stream(Abstractformat *format, nsa_stream **result, xx_pd_struct *pd)
+{
     nsa_layout layout;
     nsa_member *items = NULL;
     nsa_key *keys = NULL;
@@ -578,9 +532,7 @@ static bool nsa_open_stream(Abstractformat *format, nsa_stream **result,
     keys = (nsa_key *)xx_mem_alloc((size_t)layout.count * sizeof(*keys));
     name = (char *)xx_mem_alloc(NSA_NAME_BUFFER);
     stream = (nsa_stream *)xx_mem_calloc(1U, sizeof(*stream));
-    if (!items || !keys || !name || !stream ||
-        !nsa_walk(format, &layout, items, keys, name, pd))
-        goto fail;
+    if (!items || !keys || !name || !stream || !nsa_walk(format, &layout, items, keys, name, pd)) goto fail;
     nsa_mark_duplicates(items, keys, layout.count);
     xx_mem_free(keys);
     stream->items = items;
@@ -596,29 +548,24 @@ fail:
     return false;
 }
 
-static bool nsa_load_name(Abstractformat *format, nsa_stream *stream,
-                          size_t index) {
+static bool nsa_load_name(Abstractformat *format, nsa_stream *stream, size_t index)
+{
     const nsa_member *member = &stream->items[index];
     uint8_t raw[NSA_MAX_NAME];
     size_t length;
-    if (member->name_length == 0U || member->name_length > NSA_MAX_NAME ||
-        !nsa_read_at(format->device, member->entry_offset, raw,
-                     member->name_length))
-        return false;
+    if (member->name_length == 0U || member->name_length > NSA_MAX_NAME || !nsa_read_at(format->device, member->entry_offset, raw, member->name_length)) return false;
     length = nsa_convert_name(raw, member->name_length, stream->name);
-    if (member->renamed)
-        nsa_insert_suffix(stream->name, length, (uint32_t)index);
+    if (member->renamed) nsa_insert_suffix(stream->name, length, (uint32_t)index);
     return true;
 }
 
 /* ---- codecs ------------------------------------------------------------ */
 
 /* SPB output size from the 4-byte width/height prefix, or -1. */
-static int64_t nsa_spb_size(uint32_t width, uint32_t height) {
+static int64_t nsa_spb_size(uint32_t width, uint32_t height)
+{
     int64_t stride, total;
-    if (width == 0U || height == 0U || width > NSA_SPB_MAX_SIDE ||
-        height > NSA_SPB_MAX_SIDE)
-        return -1;
+    if (width == 0U || height == 0U || width > NSA_SPB_MAX_SIDE || height > NSA_SPB_MAX_SIDE) return -1;
     stride = ((int64_t)width * 3 + 3) & ~(int64_t)3;
     total = 54 + stride * (int64_t)height;
     return total > NSA_SPB_MAX_OUTPUT ? -1 : total;
@@ -626,19 +573,18 @@ static int64_t nsa_spb_size(uint32_t width, uint32_t height) {
 
 /* The size a member unpacks to, as far as it can be told without decoding;
  * -1 when the member cannot be unpacked. */
-static int64_t nsa_output_size(xx_io_device *device, const nsa_member *member) {
+static int64_t nsa_output_size(xx_io_device *device, const nsa_member *member)
+{
     uint8_t prefix[4];
     if (member->codec == NSA_CODEC_STORED) return member->packed;
     if (member->codec == NSA_CODEC_LZSS) return member->unpacked;
-    if (member->packed < 4 ||
-        !nsa_read_at(device, member->data_offset, prefix, sizeof(prefix)))
-        return -1;
+    if (member->packed < 4 || !nsa_read_at(device, member->data_offset, prefix, sizeof(prefix))) return -1;
     if (member->codec == NSA_CODEC_NBZ) return (int64_t)xx_data_get_u32(prefix, 4, 0, true);
     return nsa_spb_size(xx_data_get_u16(prefix, 2, 0, true), xx_data_get_u16(prefix + 2U, 2, 0, true));
 }
 
-static bool nsa_unpack_lzss(xx_io_device *source, const nsa_member *member,
-                            xx_io_device *destination, xx_pd_struct *pd) {
+static bool nsa_unpack_lzss(xx_io_device *source, const nsa_member *member, xx_io_device *destination, xx_pd_struct *pd)
+{
     uint8_t ring[256];
     unsigned cursor = 239U;
     int64_t produced = 0;
@@ -649,8 +595,7 @@ static bool nsa_unpack_lzss(xx_io_device *source, const nsa_member *member,
     bool ok = true;
     if (size < 0) return false;
     if (size == 0) return true;
-    if (!nsa_bits_open(&bits, source, member->data_offset, member->packed))
-        return false;
+    if (!nsa_bits_open(&bits, source, member->data_offset, member->packed)) return false;
     out_capacity = bits.capacity;
     out = (uint8_t *)xx_mem_alloc(out_capacity);
     if (!out) {
@@ -710,8 +655,8 @@ static bool nsa_unpack_lzss(xx_io_device *source, const nsa_member *member,
     return ok;
 }
 
-static bool nsa_unpack_spb(xx_io_device *source, const nsa_member *member,
-                           xx_io_device *destination, xx_pd_struct *pd) {
+static bool nsa_unpack_spb(xx_io_device *source, const nsa_member *member, xx_io_device *destination, xx_pd_struct *pd)
+{
     uint8_t prefix[4];
     uint32_t width, height, plane_index;
     uint64_t pixels, groups, min_bits;
@@ -719,9 +664,7 @@ static bool nsa_unpack_spb(xx_io_device *source, const nsa_member *member,
     uint8_t *image = NULL, *plane = NULL;
     nsa_bits bits;
     bool ok = false;
-    if (member->packed < 4 ||
-        !nsa_read_at(source, member->data_offset, prefix, sizeof(prefix)))
-        return false;
+    if (member->packed < 4 || !nsa_read_at(source, member->data_offset, prefix, sizeof(prefix))) return false;
     width = xx_data_get_u16(prefix, 2, 0, true);
     height = xx_data_get_u16(prefix + 2U, 2, 0, true);
     total = nsa_spb_size(width, height);
@@ -735,9 +678,7 @@ static bool nsa_unpack_spb(xx_io_device *source, const nsa_member *member,
     stride = ((int64_t)width * 3 + 3) & ~(int64_t)3;
     image = (uint8_t *)xx_mem_calloc(1U, (size_t)total);
     plane = (uint8_t *)xx_mem_alloc((size_t)pixels + 4U);
-    if (!image || !plane ||
-        !nsa_bits_open(&bits, source, member->data_offset + 4,
-                       member->packed - 4)) {
+    if (!image || !plane || !nsa_bits_open(&bits, source, member->data_offset + 4, member->packed - 4)) {
         if (image) xx_mem_free(image);
         if (plane) xx_mem_free(plane);
         return false;
@@ -760,11 +701,9 @@ static bool nsa_unpack_spb(xx_io_device *source, const nsa_member *member,
         while (count < pixels) {
             uint32_t code = nsa_bits_get(&bits, 3U), width_bits, j;
             if (bits.eof) goto done;
-            if ((count & 0xffffU) == 0U && pd && xx_pd_is_stopped(pd))
-                goto done;
+            if ((count & 0xffffU) == 0U && pd && xx_pd_is_stopped(pd)) goto done;
             if (code == 0U) {
-                plane[count] = plane[count + 1U] = plane[count + 2U] =
-                    plane[count + 3U] = current;
+                plane[count] = plane[count + 1U] = plane[count + 2U] = plane[count + 3U] = current;
                 count += 4U;
                 continue;
             }
@@ -774,10 +713,8 @@ static bool nsa_unpack_spb(xx_io_device *source, const nsa_member *member,
                     current = (uint8_t)nsa_bits_get(&bits, 8U);
                 } else {
                     uint32_t delta = nsa_bits_get(&bits, width_bits);
-                    if (delta & 1U)
-                        current = (uint8_t)(current + (delta >> 1U) + 1U);
-                    else
-                        current = (uint8_t)(current - (delta >> 1U));
+                    if (delta & 1U) current = (uint8_t)(current + (delta >> 1U) + 1U);
+                    else current = (uint8_t)(current - (delta >> 1U));
                 }
                 plane[count + j] = current;
             }
@@ -790,12 +727,9 @@ static bool nsa_unpack_spb(xx_io_device *source, const nsa_member *member,
             uint8_t *row = image + 54 + stride * (int64_t)(height - 1U - y);
             uint32_t x;
             if (y & 1U) {
-                for (x = width; x > 0U; --x)
-                    row[(size_t)(x - 1U) * 3U + plane_index] =
-                        plane[source_at++];
+                for (x = width; x > 0U; --x) row[(size_t)(x - 1U) * 3U + plane_index] = plane[source_at++];
             } else {
-                for (x = 0U; x < width; ++x)
-                    row[(size_t)x * 3U + plane_index] = plane[source_at++];
+                for (x = 0U; x < width; ++x) row[(size_t)x * 3U + plane_index] = plane[source_at++];
             }
         }
     }
@@ -816,25 +750,21 @@ typedef struct nsa_limit_s {
     uint64_t limit;
 } nsa_limit;
 
-static ssize_t nsa_limit_write(xx_io_device *self, const void *buffer,
-                               size_t size) {
+static ssize_t nsa_limit_write(xx_io_device *self, const void *buffer, size_t size)
+{
     nsa_limit *limit = (nsa_limit *)self;
-    if (size > (SIZE_MAX >> 1) || (uint64_t)size > limit->limit - limit->written)
-        return -1;
-    if (!nsa_write_all(limit->target, (const uint8_t *)buffer, size))
-        return -1;
+    if (size > (SIZE_MAX >> 1) || (uint64_t)size > limit->limit - limit->written) return -1;
+    if (!nsa_write_all(limit->target, (const uint8_t *)buffer, size)) return -1;
     limit->written += (uint64_t)size;
     return (ssize_t)size;
 }
 
-static bool nsa_unpack_nbz(xx_io_device *source, const nsa_member *member,
-                           xx_io_device *destination, xx_pd_struct *pd) {
+static bool nsa_unpack_nbz(xx_io_device *source, const nsa_member *member, xx_io_device *destination, xx_pd_struct *pd)
+{
     uint8_t prefix[4];
     nsa_limit limit;
     int64_t expected;
-    if (member->packed < 4 ||
-        !nsa_read_at(source, member->data_offset, prefix, sizeof(prefix)))
-        return false;
+    if (member->packed < 4 || !nsa_read_at(source, member->data_offset, prefix, sizeof(prefix))) return false;
     expected = (int64_t)xx_data_get_u32(prefix, 4, 0, true);
     if (expected > NSA_NBZ_MAX_OUTPUT) return false;
     xx_mem_zero(&limit, sizeof(limit));
@@ -842,41 +772,32 @@ static bool nsa_unpack_nbz(xx_io_device *source, const nsa_member *member,
     limit.target = destination;
     limit.limit = (uint64_t)expected;
     if (member->packed == 4) return expected == 0;
-    return xx_bzip2_unpack_device(source, member->data_offset + 4,
-                                  member->packed - 4, &limit.device, pd) &&
-           limit.written == (uint64_t)expected;
+    return xx_bzip2_unpack_device(source, member->data_offset + 4, member->packed - 4, &limit.device, pd) && limit.written == (uint64_t)expected;
 }
 
-static bool nsa_unpack_member(xx_io_device *source, const nsa_member *member,
-                              xx_io_device *destination, xx_pd_struct *pd) {
+static bool nsa_unpack_member(xx_io_device *source, const nsa_member *member, xx_io_device *destination, xx_pd_struct *pd)
+{
     switch (member->codec) {
-    case NSA_CODEC_STORED:
-        return nsa_copy_range(source, member->data_offset, member->packed,
-                              destination, pd);
-    case NSA_CODEC_SPB:
-        return nsa_unpack_spb(source, member, destination, pd);
-    case NSA_CODEC_LZSS:
-        return nsa_unpack_lzss(source, member, destination, pd);
-    case NSA_CODEC_NBZ:
-        return nsa_unpack_nbz(source, member, destination, pd);
-    default:
-        return false;
+        case NSA_CODEC_STORED: return nsa_copy_range(source, member->data_offset, member->packed, destination, pd);
+        case NSA_CODEC_SPB: return nsa_unpack_spb(source, member, destination, pd);
+        case NSA_CODEC_LZSS: return nsa_unpack_lzss(source, member, destination, pd);
+        case NSA_CODEC_NBZ: return nsa_unpack_nbz(source, member, destination, pd);
+        default: return false;
     }
 }
 
 /* ---- records ----------------------------------------------------------- */
 
-static bool nsa_copy_options(xx_list_s *destination, const xx_list_s *source) {
+static bool nsa_copy_options(xx_list_s *destination, const xx_list_s *source)
+{
     size_t index;
     if (!source) return true;
     for (index = 0U; index < source->count; ++index) {
-        const xx_meta *original =
-            (const xx_meta *)xx_list_at((const xx_list_t *)source, index);
+        const xx_meta *original = (const xx_meta *)xx_list_at((const xx_list_t *)source, index);
         xx_meta copy;
         if (!original) continue;
         xx_meta_init(&copy, original->meta_id);
-        if (!xx_var_copy(&copy.var, &original->var) ||
-            !xx_list_append(destination, &copy)) {
+        if (!xx_var_copy(&copy.var, &original->var) || !xx_list_append(destination, &copy)) {
             xx_meta_cleanup(&copy);
             return false;
         }
@@ -884,19 +805,19 @@ static bool nsa_copy_options(xx_list_s *destination, const xx_list_s *source) {
     return true;
 }
 
-static const xx_var *nsa_option(const xx_list_s *options, uint32_t id) {
+static const xx_var *nsa_option(const xx_list_s *options, uint32_t id)
+{
     size_t index;
     if (!options) return NULL;
     for (index = 0U; index < options->count; ++index) {
-        const xx_meta *meta =
-            (const xx_meta *)xx_list_at((const xx_list_t *)options, index);
+        const xx_meta *meta = (const xx_meta *)xx_list_at((const xx_list_t *)options, index);
         if (meta && meta->meta_id == id) return &meta->var;
     }
     return NULL;
 }
 
-static bool nsa_set_record(Abstractformat *format, xx_archive_record *record,
-                           nsa_stream *stream, size_t index) {
+static bool nsa_set_record(Abstractformat *format, xx_archive_record *record, nsa_stream *stream, size_t index)
+{
     const nsa_member *member = &stream->items[index];
     int64_t output = nsa_output_size(format->device, member);
     xx_archive_record_cleanup(record);
@@ -906,22 +827,16 @@ static bool nsa_set_record(Abstractformat *format, xx_archive_record *record,
     record->header_size = (int64_t)member->name_length + 1 + NSA_FIXED_SIZE;
     record->data_offset = member->data_offset;
     record->compressed_size = member->packed;
-    return xx_archive_record_set_original_name(record, stream->name) &&
-           xx_archive_record_set_meta_u64(record, XX_META_ID_COMPRESSED_SIZE,
-                                          (uint64_t)member->packed) &&
-           xx_archive_record_set_meta_u64(
-               record, XX_META_ID_UNCOMPRESSED_SIZE,
-               (uint64_t)(output < 0 ? member->unpacked : output)) &&
-           xx_archive_record_set_meta_u64(record, XX_META_ID_COMPRESSION_METHOD,
-                                          (uint64_t)member->codec) &&
-           xx_archive_record_set_meta_bool(record, XX_META_ID_IS_ENCRYPTED,
-                                           false) &&
-           xx_archive_record_set_meta_bool(record, XX_META_ID_IS_FOLDER, false);
+    return xx_archive_record_set_original_name(record, stream->name) && xx_archive_record_set_meta_u64(record, XX_META_ID_COMPRESSED_SIZE, (uint64_t)member->packed) &&
+           xx_archive_record_set_meta_u64(record, XX_META_ID_UNCOMPRESSED_SIZE, (uint64_t)(output < 0 ? member->unpacked : output)) &&
+           xx_archive_record_set_meta_u64(record, XX_META_ID_COMPRESSION_METHOD, (uint64_t)member->codec) &&
+           xx_archive_record_set_meta_bool(record, XX_META_ID_IS_ENCRYPTED, false) && xx_archive_record_set_meta_bool(record, XX_META_ID_IS_FOLDER, false);
 }
 
 /* ---- public API -------------------------------------------------------- */
 
-void xx_nsa_init(xx_nsa *archive, xx_io_device *device, int64_t base_address) {
+void xx_nsa_init(xx_nsa *archive, xx_io_device *device, int64_t base_address)
+{
     if (!archive) return;
     xx_mem_zero(archive, sizeof(*archive));
     xx_format_init(&archive->format, device, base_address);
@@ -934,49 +849,45 @@ void xx_nsa_init(xx_nsa *archive, xx_io_device *device, int64_t base_address) {
     archive->format.check_is_valid = xx_nsa_check_is_valid;
     archive->format.handle_base_info = xx_nsa_handle_base_info;
     archive->format.get_format_size = xx_nsa_get_format_size;
-    archive->format.get_number_of_archive_records =
-        xx_nsa_get_number_of_archive_records;
-    archive->format.create_archive_records_reading =
-        xx_nsa_create_archive_records_reading;
-    archive->format.get_current_archive_record =
-        xx_nsa_get_current_archive_record;
-    archive->format.unpack_current_archive_record =
-        xx_nsa_unpack_current_archive_record;
-    archive->format.archive_record_move_to_next =
-        xx_nsa_archive_record_move_to_next;
-    archive->format.free_archive_records_reading =
-        xx_nsa_free_archive_records_reading;
+    archive->format.get_number_of_archive_records = xx_nsa_get_number_of_archive_records;
+    archive->format.create_archive_records_reading = xx_nsa_create_archive_records_reading;
+    archive->format.get_current_archive_record = xx_nsa_get_current_archive_record;
+    archive->format.unpack_current_archive_record = xx_nsa_unpack_current_archive_record;
+    archive->format.archive_record_move_to_next = xx_nsa_archive_record_move_to_next;
+    archive->format.free_archive_records_reading = xx_nsa_free_archive_records_reading;
     archive->data_base = -1;
 }
 
-xx_nsa *xx_nsa_create(xx_io_device *device, int64_t base_address) {
+xx_nsa *xx_nsa_create(xx_io_device *device, int64_t base_address)
+{
     xx_nsa *archive = (xx_nsa *)xx_mem_alloc(sizeof(*archive));
     if (archive) xx_nsa_init(archive, device, base_address);
     return archive;
 }
 
-void xx_nsa_destroy(xx_nsa *archive) {
+void xx_nsa_destroy(xx_nsa *archive)
+{
     if (archive) xx_format_cleanup_extra_parameters(&archive->format);
 }
 
-void xx_nsa_free(xx_nsa *archive) {
+void xx_nsa_free(xx_nsa *archive)
+{
     if (!archive) return;
     xx_nsa_destroy(archive);
     xx_mem_free(archive);
 }
 
-bool xx_nsa_check_is_valid(Abstractformat *format, xx_pd_struct *pd) {
+bool xx_nsa_check_is_valid(Abstractformat *format, xx_pd_struct *pd)
+{
     nsa_layout layout;
-    return nsa_read_header(format, &layout) &&
-           nsa_walk(format, &layout, NULL, NULL, NULL, pd);
+    return nsa_read_header(format, &layout) && nsa_walk(format, &layout, NULL, NULL, NULL, pd);
 }
 
-bool xx_nsa_handle_base_info(Abstractformat *format, xx_pd_struct *pd) {
+bool xx_nsa_handle_base_info(Abstractformat *format, xx_pd_struct *pd)
+{
     nsa_layout layout;
     xx_nsa *archive;
-    if (!nsa_read_header(format, &layout) ||
-        !nsa_walk(format, &layout, NULL, NULL, NULL, pd))
-        return false;
+    if (!nsa_read_header(format, &layout) || !nsa_walk(format, &layout, NULL, NULL, NULL, pd)) return false;
     archive = (xx_nsa *)format;
     archive->number_of_records = layout.count;
     archive->data_base = layout.header + layout.data_base;
@@ -987,21 +898,18 @@ bool xx_nsa_handle_base_info(Abstractformat *format, xx_pd_struct *pd) {
     return true;
 }
 
-int64_t xx_nsa_get_format_size(Abstractformat *format, xx_pd_struct *pd) {
-    return format && (format->base_info_handled ||
-                      xx_nsa_handle_base_info(format, pd))
-               ? format->format_size : -1;
+int64_t xx_nsa_get_format_size(Abstractformat *format, xx_pd_struct *pd)
+{
+    return format && (format->base_info_handled || xx_nsa_handle_base_info(format, pd)) ? format->format_size : -1;
 }
 
-uint64_t xx_nsa_get_number_of_archive_records(Abstractformat *format,
-                                              xx_pd_struct *pd) {
-    return format && (format->base_info_handled ||
-                      xx_nsa_handle_base_info(format, pd))
-               ? ((xx_nsa *)format)->number_of_records : 0U;
+uint64_t xx_nsa_get_number_of_archive_records(Abstractformat *format, xx_pd_struct *pd)
+{
+    return format && (format->base_info_handled || xx_nsa_handle_base_info(format, pd)) ? ((xx_nsa *)format)->number_of_records : 0U;
 }
 
-xx_archive_record_state *xx_nsa_create_archive_records_reading(
-    Abstractformat *format, const xx_list_s *options, xx_pd_struct *pd) {
+xx_archive_record_state *xx_nsa_create_archive_records_reading(Abstractformat *format, const xx_list_s *options, xx_pd_struct *pd)
+{
     nsa_stream *stream;
     xx_archive_record_state *state;
     if (!nsa_open_stream(format, &stream, pd)) return NULL;
@@ -1014,8 +922,7 @@ xx_archive_record_state *xx_nsa_create_archive_records_reading(
     state->internal_state = stream;
     state->free_internal = nsa_stream_free;
     state->total_records = stream->count;
-    if (!nsa_copy_options(&state->options, options) ||
-        !nsa_set_record(format, &state->current_record, stream, 0U)) {
+    if (!nsa_copy_options(&state->options, options) || !nsa_set_record(format, &state->current_record, stream, 0U)) {
         xx_archive_record_state_free(state);
         return NULL;
     }
@@ -1023,32 +930,26 @@ xx_archive_record_state *xx_nsa_create_archive_records_reading(
     return state;
 }
 
-const xx_archive_record *xx_nsa_get_current_archive_record(
-    Abstractformat *format, xx_archive_record_state *state) {
-    return format && state && state->format == format && state->has_record
-               ? &state->current_record : NULL;
+const xx_archive_record *xx_nsa_get_current_archive_record(Abstractformat *format, xx_archive_record_state *state)
+{
+    return format && state && state->format == format && state->has_record ? &state->current_record : NULL;
 }
 
-bool xx_nsa_archive_record_move_to_next(Abstractformat *format,
-                                        xx_archive_record_state *state,
-                                        xx_pd_struct *pd) {
+bool xx_nsa_archive_record_move_to_next(Abstractformat *format, xx_archive_record_state *state, xx_pd_struct *pd)
+{
     nsa_stream *stream;
     (void)pd;
-    if (!format || !state || state->format != format ||
-        !(stream = (nsa_stream *)state->internal_state) ||
-        ++stream->index >= stream->count) {
+    if (!format || !state || state->format != format || !(stream = (nsa_stream *)state->internal_state) || ++stream->index >= stream->count) {
         if (state) state->has_record = false;
         return false;
     }
     ++state->current_index;
-    state->has_record = nsa_set_record(format, &state->current_record, stream,
-                                       stream->index);
+    state->has_record = nsa_set_record(format, &state->current_record, stream, stream->index);
     return state->has_record;
 }
 
-bool xx_nsa_unpack_current_archive_record(Abstractformat *format,
-                                          xx_archive_record_state *state,
-                                          xx_pd_struct *pd) {
+bool xx_nsa_unpack_current_archive_record(Abstractformat *format, xx_archive_record_state *state, xx_pd_struct *pd)
+{
     nsa_stream *stream;
     const nsa_member *member;
     const xx_var *path_option;
@@ -1057,30 +958,23 @@ bool xx_nsa_unpack_current_archive_record(Abstractformat *format,
     char *path = NULL;
     bool result = false;
     bool created = false;
-    if (!format || !state || state->format != format || !state->has_record ||
-        !(stream = (nsa_stream *)state->internal_state) ||
-        stream->index >= stream->count || (pd && xx_pd_is_stopped(pd)))
+    if (!format || !state || state->format != format || !state->has_record || !(stream = (nsa_stream *)state->internal_state) || stream->index >= stream->count ||
+        (pd && xx_pd_is_stopped(pd)))
         return false;
     member = &stream->items[stream->index];
     if (member->packed < 0 || member->data_offset < 0) return false;
     path_option = nsa_option(&state->options, XX_META_ID_OPT_UNPACK_PATH);
-    if (!path_option)
-        /* No destination: decode into nothing, which verifies the member. */
+    if (!path_option) /* No destination: decode into nothing, which verifies the member. */
         return nsa_unpack_member(format->device, member, NULL, pd);
     if (!nsa_safe_name(stream->name)) return false;
-    if (path_option->type == XX_VAR_TYPE_STRING ||
-        path_option->type == XX_VAR_TYPE_STRING_VIEW)
-        base = xx_var_get_str(path_option);
-    else if (path_option->type == XX_VAR_TYPE_WSTRING ||
-             path_option->type == XX_VAR_TYPE_WSTRING_VIEW) {
+    if (path_option->type == XX_VAR_TYPE_STRING || path_option->type == XX_VAR_TYPE_STRING_VIEW) base = xx_var_get_str(path_option);
+    else if (path_option->type == XX_VAR_TYPE_WSTRING || path_option->type == XX_VAR_TYPE_WSTRING_VIEW) {
         owned_base = xx_str_unicode_to_utf8(xx_var_get_wstr(path_option));
         base = owned_base;
     }
     if (!base) goto done;
-    path = (base[0] && base[xx_str_len(base) - 1U] != '/' &&
-            base[xx_str_len(base) - 1U] != '\\')
-               ? xx_str_concat3(base, "/", stream->name)
-               : xx_str_concat(base, stream->name);
+    path = (base[0] && base[xx_str_len(base) - 1U] != '/' && base[xx_str_len(base) - 1U] != '\\') ? xx_str_concat3(base, "/", stream->name)
+                                                                                                  : xx_str_concat(base, stream->name);
     if (!path || !xx_store_create_dirs_a(path, false)) goto done;
     {
         xx_io_device *destination = xx_io_file_open(path, "wb");
@@ -1096,8 +990,8 @@ done:
     return result;
 }
 
-void xx_nsa_free_archive_records_reading(Abstractformat *format,
-                                         xx_archive_record_state *state) {
+void xx_nsa_free_archive_records_reading(Abstractformat *format, xx_archive_record_state *state)
+{
     (void)format;
     xx_archive_record_state_free(state);
 }

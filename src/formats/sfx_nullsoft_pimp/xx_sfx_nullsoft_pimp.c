@@ -76,53 +76,51 @@
 
 /* --- small helpers --------------------------------------------------------- */
 
-static uint32_t pimp_le16(const uint8_t *bytes) {
+static uint32_t pimp_le16(const uint8_t *bytes)
+{
     return (uint32_t)bytes[0] | ((uint32_t)bytes[1] << 8U);
 }
 
-static bool pimp_read_at(xx_io_device *device, int64_t offset, void *buffer,
-                         size_t size) {
+static bool pimp_read_at(xx_io_device *device, int64_t offset, void *buffer, size_t size)
+{
     size_t done = 0U;
-    if (!device || (!buffer && size != 0U) || offset < 0 ||
-        xx_io_seek64(device, offset, SEEK_SET) != 0)
-        return false;
+    if (!device || (!buffer && size != 0U) || offset < 0 || xx_io_seek64(device, offset, SEEK_SET) != 0) return false;
     while (done < size) {
-        ssize_t amount = xx_io_read(device, (uint8_t *)buffer + done,
-                                    size - done);
+        ssize_t amount = xx_io_read(device, (uint8_t *)buffer + done, size - done);
         if (amount <= 0 || (size_t)amount > size - done) return false;
         done += (size_t)amount;
     }
     return true;
 }
 
-static bool pimp_stopped(xx_pd_struct *pd) {
+static bool pimp_stopped(xx_pd_struct *pd)
+{
     return pd && xx_pd_is_stopped(pd);
 }
 
 /* RFC 1950 header: Deflate, a window of at most 32 KiB, no preset
  * dictionary, and the check bits. */
-static bool pimp_zlib_header_ok(const uint8_t *header) {
-    return (header[0] & 0x0fU) == 8U && (header[0] >> 4U) <= 7U &&
-           (header[1] & 0x20U) == 0U &&
-           (((uint32_t)header[0] << 8U) | header[1]) % 31U == 0U;
+static bool pimp_zlib_header_ok(const uint8_t *header)
+{
+    return (header[0] & 0x0fU) == 8U && (header[0] >> 4U) <= 7U && (header[1] & 0x20U) == 0U && (((uint32_t)header[0] << 8U) | header[1]) % 31U == 0U;
 }
 
 /* --- text ------------------------------------------------------------------ */
 
 /* Windows-1252 0x80..0x9F.  The five undefined bytes keep their C1 code
  * point, which the name check refuses. */
-static const uint16_t pimp_cp1252_high[32] = {
-    0x20ACU, 0x0081U, 0x201AU, 0x0192U, 0x201EU, 0x2026U, 0x2020U, 0x2021U,
-    0x02C6U, 0x2030U, 0x0160U, 0x2039U, 0x0152U, 0x008DU, 0x017DU, 0x008FU,
-    0x0090U, 0x2018U, 0x2019U, 0x201CU, 0x201DU, 0x2022U, 0x2013U, 0x2014U,
-    0x02DCU, 0x2122U, 0x0161U, 0x203AU, 0x0153U, 0x009DU, 0x017EU, 0x0178U};
+static const uint16_t pimp_cp1252_high[32] = {0x20ACU, 0x0081U, 0x201AU, 0x0192U, 0x201EU, 0x2026U, 0x2020U, 0x2021U, 0x02C6U, 0x2030U, 0x0160U,
+                                              0x2039U, 0x0152U, 0x008DU, 0x017DU, 0x008FU, 0x0090U, 0x2018U, 0x2019U, 0x201CU, 0x201DU, 0x2022U,
+                                              0x2013U, 0x2014U, 0x02DCU, 0x2122U, 0x0161U, 0x203AU, 0x0153U, 0x009DU, 0x017EU, 0x0178U};
 
-static uint32_t pimp_cp1252(uint8_t c) {
+static uint32_t pimp_cp1252(uint8_t c)
+{
     return (c >= 0x80U && c < 0xA0U) ? pimp_cp1252_high[c - 0x80U] : c;
 }
 
 /* Appends one code point below 0x10000; returns the bytes written. */
-static size_t pimp_put_utf8(char *out, uint32_t code) {
+static size_t pimp_put_utf8(char *out, uint32_t code)
+{
     if (code < 0x80U) {
         out[0] = (char)code;
         return 1U;
@@ -140,20 +138,20 @@ static size_t pimp_put_utf8(char *out, uint32_t code) {
 
 /* A NUL-padded text field to UTF-8; control bytes become spaces.  @p out
  * holds at least 3 * @p size + 1 bytes. */
-static void pimp_text(const uint8_t *field, size_t size, char *out) {
+static void pimp_text(const uint8_t *field, size_t size, char *out)
+{
     size_t index, used = 0U;
     for (index = 0U; index < size && field[index] != 0U; ++index) {
         uint8_t c = field[index];
-        used += pimp_put_utf8(out + used, (c < 0x20U || c == 0x7fU)
-                                              ? (uint32_t)' '
-                                              : pimp_cp1252(c));
+        used += pimp_put_utf8(out + used, (c < 0x20U || c == 0x7fU) ? (uint32_t)' ' : pimp_cp1252(c));
     }
     out[used] = 0;
 }
 
 /* A stored member name to UTF-8 with '/' separators.  The caller has
  * checked that it holds no byte below 0x20. */
-static char *pimp_name(const uint8_t *bytes, size_t length) {
+static char *pimp_name(const uint8_t *bytes, size_t length)
+{
     char *out;
     size_t index, used = 0U;
     /* The exact UTF-8 size first, so a name costs what it holds. */
@@ -166,10 +164,8 @@ static char *pimp_name(const uint8_t *bytes, size_t length) {
     used = 0U;
     for (index = 0U; index < length; ++index) {
         uint8_t c = bytes[index];
-        if (c == '\\' || c == '/')
-            out[used++] = '/';
-        else
-            used += pimp_put_utf8(out + used, pimp_cp1252(c));
+        if (c == '\\' || c == '/') out[used++] = '/';
+        else used += pimp_put_utf8(out + used, pimp_cp1252(c));
     }
     out[used] = 0;
     return out;
@@ -177,14 +173,14 @@ static char *pimp_name(const uint8_t *bytes, size_t length) {
 
 /* --- output names ---------------------------------------------------------- */
 
-static char pimp_upper(char c) {
+static char pimp_upper(char c)
+{
     return (c >= 'a' && c <= 'z') ? (char)(c - 'a' + 'A') : c;
 }
 
-static bool pimp_is_device_stem(const char *name, size_t stem) {
-    static const char *const devices[] = {"CON",    "PRN",     "AUX",
-                                          "NUL",    "CONIN$",  "CONOUT$",
-                                          "CLOCK$"};
+static bool pimp_is_device_stem(const char *name, size_t stem)
+{
+    static const char *const devices[] = {"CON", "PRN", "AUX", "NUL", "CONIN$", "CONOUT$", "CLOCK$"};
     size_t k, i;
     for (k = 0U; k < sizeof(devices) / sizeof(devices[0]); ++k) {
         const char *word = devices[k];
@@ -195,14 +191,9 @@ static bool pimp_is_device_stem(const char *name, size_t stem) {
     /* COM0-9 / LPT0-9, and the superscript digits that Windows also
      * reserves (U+00B9, U+00B2, U+00B3; two bytes in UTF-8). */
     if (((stem == 4U && name[3] >= '0' && name[3] <= '9') ||
-         (stem == 5U && (unsigned char)name[3] == 0xC2U &&
-          ((unsigned char)name[4] == 0xB9U ||
-           (unsigned char)name[4] == 0xB2U ||
-           (unsigned char)name[4] == 0xB3U))) &&
-        ((pimp_upper(name[0]) == 'C' && pimp_upper(name[1]) == 'O' &&
-          pimp_upper(name[2]) == 'M') ||
-         (pimp_upper(name[0]) == 'L' && pimp_upper(name[1]) == 'P' &&
-          pimp_upper(name[2]) == 'T')))
+         (stem == 5U && (unsigned char)name[3] == 0xC2U && ((unsigned char)name[4] == 0xB9U || (unsigned char)name[4] == 0xB2U || (unsigned char)name[4] == 0xB3U))) &&
+        ((pimp_upper(name[0]) == 'C' && pimp_upper(name[1]) == 'O' && pimp_upper(name[2]) == 'M') ||
+         (pimp_upper(name[0]) == 'L' && pimp_upper(name[1]) == 'P' && pimp_upper(name[2]) == 'T')))
         return true;
     return false;
 }
@@ -212,7 +203,8 @@ static bool pimp_is_device_stem(const char *name, size_t stem) {
  * nothing that climbs out), no drive colon or other character Windows
  * refuses, no C0/C1 control, no component that Windows would silently trim
  * (trailing dot or space), and no device name in any component. */
-static bool pimp_safe_output_name(const char *name) {
+static bool pimp_safe_output_name(const char *name)
+{
     size_t start = 0U, index = 0U;
     if (!name || !name[0]) return false;
     for (;;) {
@@ -220,19 +212,15 @@ static bool pimp_safe_output_name(const char *name) {
         if (c == '/' || c == 0U) {
             size_t length = index - start, stem = 0U;
             if (length == 0U) return false;
-            if (name[index - 1U] == '.' || name[index - 1U] == ' ')
-                return false;
+            if (name[index - 1U] == '.' || name[index - 1U] == ' ') return false;
             while (stem < length && name[start + stem] != '.') ++stem;
             while (stem > 0U && name[start + stem - 1U] == ' ') --stem;
             if (pimp_is_device_stem(name + start, stem)) return false;
             if (c == 0U) break;
             start = index + 1U;
-        } else if (c < 0x20U || c == 0x7fU || c == '\\' || c == ':' ||
-                   c == '*' || c == '?' || c == '"' || c == '<' || c == '>' ||
-                   c == '|') {
+        } else if (c < 0x20U || c == 0x7fU || c == '\\' || c == ':' || c == '*' || c == '?' || c == '"' || c == '<' || c == '>' || c == '|') {
             return false;
-        } else if (c == 0xC2U && (unsigned char)name[index + 1U] >= 0x80U &&
-                   (unsigned char)name[index + 1U] <= 0x9FU) {
+        } else if (c == 0xC2U && (unsigned char)name[index + 1U] >= 0x80U && (unsigned char)name[index + 1U] <= 0x9FU) {
             return false; /* U+0080..U+009F */
         }
         ++index;
@@ -244,7 +232,8 @@ static bool pimp_safe_output_name(const char *name) {
  * produce: ASCII, Latin-1 and the four Windows-1252 letter pairs.  Every
  * mapping keeps the UTF-8 length.  Folds the character at in[0] (not NUL)
  * into out[0..n-1] and returns n, 1 or 2. */
-static size_t pimp_fold_step(const unsigned char *in, unsigned char *out) {
+static size_t pimp_fold_step(const unsigned char *in, unsigned char *out)
+{
     unsigned char c = in[0], d = in[1];
     if (c == 0xC3U && d != 0U) {
         out[0] = c;
@@ -259,8 +248,7 @@ static size_t pimp_fold_step(const unsigned char *in, unsigned char *out) {
     }
     if (c == 0xC5U && d != 0U) {
         out[0] = c;
-        out[1] = (d == 0xA1U || d == 0x93U || d == 0xBEU)
-                     ? (unsigned char)(d - 1U) : d;
+        out[1] = (d == 0xA1U || d == 0x93U || d == 0xBEU) ? (unsigned char)(d - 1U) : d;
         return 2U;
     }
     out[0] = (c >= 'a' && c <= 'z') ? (unsigned char)(c - 0x20U) : c;
@@ -268,7 +256,8 @@ static size_t pimp_fold_step(const unsigned char *in, unsigned char *out) {
 }
 
 /* Folds @p name into @p out, which holds xx_str_len(name) + 1 bytes. */
-static void pimp_fold(const char *name, char *out) {
+static void pimp_fold(const char *name, char *out)
+{
     const unsigned char *in = (const unsigned char *)name;
     unsigned char *folded = (unsigned char *)out;
     size_t index = 0U;
@@ -278,7 +267,8 @@ static void pimp_fold(const char *name, char *out) {
 
 /* Compares the folded @p key with @p name folded on the fly, stopping at
  * the first difference; <0, 0 or >0 as key sorts before, equal or after. */
-static int pimp_fold_cmp(const char *key, const char *name) {
+static int pimp_fold_cmp(const char *key, const char *name)
+{
     const unsigned char *k = (const unsigned char *)key;
     const unsigned char *in = (const unsigned char *)name;
     size_t index = 0U;
@@ -298,7 +288,8 @@ static int pimp_fold_cmp(const char *key, const char *name) {
  * finished with the splitmix64 mixer.  The seed is not derived from the
  * archive, so names cannot be chosen offline to share a hash; the tree
  * stays O(log n) even if they did, only the comparisons get longer. */
-static uint64_t pimp_mix64(uint64_t value) {
+static uint64_t pimp_mix64(uint64_t value)
+{
     value ^= value >> 30U;
     value *= UINT64_C(0xBF58476D1CE4E5B9);
     value ^= value >> 27U;
@@ -306,7 +297,8 @@ static uint64_t pimp_mix64(uint64_t value) {
     return value ^ (value >> 31U);
 }
 
-static uint64_t pimp_hash(const char *folded, uint64_t seed) {
+static uint64_t pimp_hash(const char *folded, uint64_t seed)
+{
     uint64_t hash = UINT64_C(0xCBF29CE484222325) ^ seed;
     for (; *folded; ++folded) {
         hash ^= (uint8_t)*folded;
@@ -317,7 +309,8 @@ static uint64_t pimp_hash(const char *folded, uint64_t seed) {
 
 /* "<name>_<number>", the number going in front of the last component's
  * extension. */
-static char *pimp_with_suffix(const char *name, size_t number) {
+static char *pimp_with_suffix(const char *name, size_t number)
+{
     char digits[24];
     size_t count = 0U, length = xx_str_len(name), dot = length, index, used;
     char *out;
@@ -352,10 +345,10 @@ typedef struct pimp_member_s {
     uint32_t packed_size;
     uint32_t raw_size;
     bool has_raw_size;
-    bool safe;             /**< The name may be used as an output path. */
-    char *name;            /**< UTF-8, '/' separators, unique if safe. */
-    uint64_t hash;         /**< Hash of the folded name, while deduplicating. */
-    size_t next_suffix;    /**< Next suffix for duplicates of this name. */
+    bool safe;          /**< The name may be used as an output path. */
+    char *name;         /**< UTF-8, '/' separators, unique if safe. */
+    uint64_t hash;      /**< Hash of the folded name, while deduplicating. */
+    size_t next_suffix; /**< Next suffix for duplicates of this name. */
 } pimp_member;
 
 typedef struct pimp_info_s {
@@ -378,7 +371,8 @@ typedef struct pimp_stream_s {
     uint64_t unsized_output; /**< Bytes inflated from members without size. */
 } pimp_stream;
 
-static void pimp_members_free(pimp_member *items, size_t count) {
+static void pimp_members_free(pimp_member *items, size_t count)
+{
     size_t index;
     if (!items) return;
     for (index = 0U; index < count; ++index) {
@@ -387,7 +381,8 @@ static void pimp_members_free(pimp_member *items, size_t count) {
     xx_mem_free(items);
 }
 
-static void pimp_stream_free(void *opaque) {
+static void pimp_stream_free(void *opaque)
+{
     pimp_stream *stream = (pimp_stream *)opaque;
     if (!stream) return;
     pimp_members_free(stream->items, stream->count);
@@ -398,10 +393,9 @@ static void pimp_stream_free(void *opaque) {
  * the bytes that are present before it is used, so the walk reads at most
  * two short records per member and never past @p size.  With @p items the
  * members are also recorded (names converted, not yet deduplicated). */
-static bool pimp_walk(xx_io_device *device, int64_t base, int64_t size,
-                      int64_t at, uint32_t count, bool raw_sizes,
-                      pimp_member *items, int64_t *command_at,
-                      xx_pd_struct *pd) {
+static bool pimp_walk(xx_io_device *device, int64_t base, int64_t size, int64_t at, uint32_t count, bool raw_sizes, pimp_member *items, int64_t *command_at,
+                      xx_pd_struct *pd)
+{
     uint8_t record[PIMP_MAX_NAME + 8U + 2U];
     const uint32_t sizes = raw_sizes ? 8U : 4U;
     int64_t position = at;
@@ -412,28 +406,19 @@ static bool pimp_walk(xx_io_device *device, int64_t base, int64_t size,
         size_t need;
         int64_t data;
         if ((index & 0xFFU) == 0U && pimp_stopped(pd)) return false;
-        if (size - position < 4 ||
-            !pimp_read_at(device, base + position, head, sizeof(head)))
-            return false;
+        if (size - position < 4 || !pimp_read_at(device, base + position, head, sizeof(head))) return false;
         name_size = xx_data_get_u32(head, 4, 0, false);
-        if (name_size < PIMP_MIN_NAME || name_size > PIMP_MAX_NAME)
-            return false;
+        if (name_size < PIMP_MIN_NAME || name_size > PIMP_MAX_NAME) return false;
         need = (size_t)name_size + sizes + 2U;
-        if ((int64_t)need > size - position - 4 ||
-            !pimp_read_at(device, base + position + 4, record, need))
-            return false;
+        if ((int64_t)need > size - position - 4 || !pimp_read_at(device, base + position + 4, record, need)) return false;
         if (record[name_size - 1U] != 0U) return false;
         for (byte = 0U; byte + 1U < name_size; ++byte)
             if (record[byte] < 0x20U || record[byte] == 0x7fU) return false;
         packed = xx_data_get_u32(record + name_size, 4, 0, false);
         if (raw_sizes) raw = xx_data_get_u32(record + name_size + 4U, 4, 0, false);
         data = position + 4 + (int64_t)name_size + (int64_t)sizes;
-        if (packed < PIMP_MIN_PACKED || (int64_t)packed > size - data ||
-            !pimp_zlib_header_ok(record + name_size + sizes))
-            return false;
-        if (raw_sizes && (uint64_t)raw > (uint64_t)packed * PIMP_DEFLATE_RATIO +
-                                             PIMP_DEFLATE_SLACK)
-            return false;
+        if (packed < PIMP_MIN_PACKED || (int64_t)packed > size - data || !pimp_zlib_header_ok(record + name_size + sizes)) return false;
+        if (raw_sizes && (uint64_t)raw > (uint64_t)packed * PIMP_DEFLATE_RATIO + PIMP_DEFLATE_SLACK) return false;
         if (items) {
             pimp_member *member = &items[index];
             member->header_offset = position;
@@ -453,16 +438,13 @@ static bool pimp_walk(xx_io_device *device, int64_t base, int64_t size,
 }
 
 /* The command block: a u32 size, then the NUL-terminated command line. */
-static bool pimp_command(xx_io_device *device, int64_t base, int64_t size,
-                         int64_t at, uint32_t *command_size, int64_t *end) {
+static bool pimp_command(xx_io_device *device, int64_t base, int64_t size, int64_t at, uint32_t *command_size, int64_t *end)
+{
     uint8_t head[4], last;
     uint32_t length;
-    if (size - at < 4 || !pimp_read_at(device, base + at, head, sizeof(head)))
-        return false;
+    if (size - at < 4 || !pimp_read_at(device, base + at, head, sizeof(head))) return false;
     length = xx_data_get_u32(head, 4, 0, false);
-    if (length < 1U || length > PIMP_MAX_COMMAND ||
-        (int64_t)length > size - at - 4 ||
-        !pimp_read_at(device, base + at + 4 + (int64_t)length - 1, &last, 1U) ||
+    if (length < 1U || length > PIMP_MAX_COMMAND || (int64_t)length > size - at - 4 || !pimp_read_at(device, base + at + 4 + (int64_t)length - 1, &last, 1U) ||
         last != 0U)
         return false;
     *command_size = length;
@@ -472,25 +454,20 @@ static bool pimp_command(xx_io_device *device, int64_t base, int64_t size,
 
 /* The overlay: where the last section's raw data ends.  A section that
  * claims bytes beyond the file cannot belong to a complete package. */
-static bool pimp_overlay(xx_io_device *device, int64_t base, int64_t size,
-                         int64_t *overlay) {
+static bool pimp_overlay(xx_io_device *device, int64_t base, int64_t size, int64_t *overlay)
+{
     uint8_t dos[0x40], nt[24], table[PIMP_MAX_SECTIONS * 40U];
     uint32_t sections, optional, index;
     int64_t lfanew, table_at, end = 0;
-    if (size < PIMP_MIN_FILE ||
-        !pimp_read_at(device, base, dos, sizeof(dos)) || dos[0] != 'M' ||
-        dos[1] != 'Z')
-        return false;
+    if (size < PIMP_MIN_FILE || !pimp_read_at(device, base, dos, sizeof(dos)) || dos[0] != 'M' || dos[1] != 'Z') return false;
     lfanew = (int64_t)xx_data_get_u32(dos + 0x3c, 4, 0, false);
-    if (lfanew < 4 || lfanew > PIMP_MAX_LFANEW || lfanew > size - 24 ||
-        !pimp_read_at(device, base + lfanew, nt, sizeof(nt)) || nt[0] != 'P' ||
-        nt[1] != 'E' || nt[2] != 0U || nt[3] != 0U)
+    if (lfanew < 4 || lfanew > PIMP_MAX_LFANEW || lfanew > size - 24 || !pimp_read_at(device, base + lfanew, nt, sizeof(nt)) || nt[0] != 'P' || nt[1] != 'E' ||
+        nt[2] != 0U || nt[3] != 0U)
         return false;
     sections = pimp_le16(nt + 6);
     optional = pimp_le16(nt + 20);
     table_at = lfanew + 24 + (int64_t)optional;
-    if (sections == 0U || sections > PIMP_MAX_SECTIONS ||
-        table_at > size - (int64_t)sections * 40 ||
+    if (sections == 0U || sections > PIMP_MAX_SECTIONS || table_at > size - (int64_t)sections * 40 ||
         !pimp_read_at(device, base + table_at, table, (size_t)sections * 40U))
         return false;
     for (index = 0U; index < sections; ++index) {
@@ -509,56 +486,38 @@ static bool pimp_overlay(xx_io_device *device, int64_t base, int64_t size,
 /* Finds and checks the whole payload.  Layout 2 (count after an extra u32,
  * unpacked sizes present) is tried before layout 1; either is accepted only
  * when its complete member chain and the command block fit. */
-static bool pimp_scan(Abstractformat *format, pimp_info *info,
-                      xx_pd_struct *pd) {
+static bool pimp_scan(Abstractformat *format, pimp_info *info, xx_pd_struct *pd)
+{
     uint8_t head[PIMP_SIGNATURE_SIZE + 1U];
     uint8_t fixed[PIMP_FIXED_BLOCK];
     int64_t total, size, block;
     uint32_t layout;
-    if (!format || !format->device || !info || format->base_address < 0)
-        return false;
+    if (!format || !format->device || !info || format->base_address < 0) return false;
     total = xx_io_total_size(format->device);
     if (total < format->base_address) return false;
     size = total - format->base_address;
     xx_mem_zero(info, sizeof(*info));
-    if (!pimp_overlay(format->device, format->base_address, size,
-                      &info->overlay) ||
-        size - info->overlay < (int64_t)sizeof(head) ||
-        !pimp_read_at(format->device, format->base_address + info->overlay,
-                      head, sizeof(head)) ||
-        xx_rt_memcmp(head, "PIMPFILE", PIMP_SIGNATURE_SIZE) != 0)
+    if (!pimp_overlay(format->device, format->base_address, size, &info->overlay) || size - info->overlay < (int64_t)sizeof(head) ||
+        !pimp_read_at(format->device, format->base_address + info->overlay, head, sizeof(head)) || xx_rt_memcmp(head, "PIMPFILE", PIMP_SIGNATURE_SIZE) != 0)
         return false;
     block = info->overlay + (int64_t)sizeof(head);
     info->has_install_dir = head[PIMP_SIGNATURE_SIZE] != 0U;
     if (info->has_install_dir) {
-        if (size - block < (int64_t)PIMP_DIR_FIELD ||
-            !pimp_read_at(format->device, format->base_address + block,
-                          info->dir_field, PIMP_DIR_FIELD))
-            return false;
+        if (size - block < (int64_t)PIMP_DIR_FIELD || !pimp_read_at(format->device, format->base_address + block, info->dir_field, PIMP_DIR_FIELD)) return false;
         block += PIMP_DIR_FIELD;
     }
-    if (size - block < (int64_t)sizeof(fixed) ||
-        !pimp_read_at(format->device, format->base_address + block, fixed,
-                      sizeof(fixed)))
-        return false;
+    if (size - block < (int64_t)sizeof(fixed) || !pimp_read_at(format->device, format->base_address + block, fixed, sizeof(fixed))) return false;
     xx_rt_memcpy(info->text_fields, fixed, sizeof(info->text_fields));
     for (layout = 2U; layout >= 1U; --layout) {
-        uint32_t count = xx_data_get_u32(fixed + 2U * PIMP_TEXT_FIELD +
-                                   (layout == 2U ? 4U : 0U), 4, 0, false);
-        int64_t members_at = block + 2 * (int64_t)PIMP_TEXT_FIELD +
-                             (layout == 2U ? 8 : 4);
+        uint32_t count = xx_data_get_u32(fixed + 2U * PIMP_TEXT_FIELD + (layout == 2U ? 4U : 0U), 4, 0, false);
+        int64_t members_at = block + 2 * (int64_t)PIMP_TEXT_FIELD + (layout == 2U ? 8 : 4);
         int64_t command_at = 0;
         /* Each record takes at least its fixed fields and a minimal zlib
          * stream, which bounds the count by the bytes left. */
-        int64_t smallest = 4 + (int64_t)PIMP_MIN_NAME +
-                           (layout == 2U ? 8 : 4) + (int64_t)PIMP_MIN_PACKED;
-        if (count == 0U || count > PIMP_MAX_COUNT ||
-            (int64_t)count > (size - members_at) / smallest)
-            continue;
-        if (!pimp_walk(format->device, format->base_address, size, members_at,
-                       count, layout == 2U, NULL, &command_at, pd) ||
-            !pimp_command(format->device, format->base_address, size,
-                          command_at, &info->command_size, &info->end))
+        int64_t smallest = 4 + (int64_t)PIMP_MIN_NAME + (layout == 2U ? 8 : 4) + (int64_t)PIMP_MIN_PACKED;
+        if (count == 0U || count > PIMP_MAX_COUNT || (int64_t)count > (size - members_at) / smallest) continue;
+        if (!pimp_walk(format->device, format->base_address, size, members_at, count, layout == 2U, NULL, &command_at, pd) ||
+            !pimp_command(format->device, format->base_address, size, command_at, &info->command_size, &info->end))
             continue;
         info->layout = layout;
         info->count = count;
@@ -593,8 +552,8 @@ typedef struct pimp_names_s {
 } pimp_names;
 
 /* Folds @p name into @p out and hashes it; false if it is too long. */
-static bool pimp_fold_key(const char *name, char *out, uint64_t seed,
-                          uint64_t *hash) {
+static bool pimp_fold_key(const char *name, char *out, uint64_t seed, uint64_t *hash)
+{
     if (xx_str_len(name) > PIMP_FOLD_MAX) return false;
     pimp_fold(name, out);
     *hash = pimp_hash(out, seed);
@@ -602,14 +561,15 @@ static bool pimp_fold_key(const char *name, char *out, uint64_t seed,
 }
 
 /* Orders the current key against member @p node. */
-static int pimp_names_cmp(pimp_names *names, uint32_t node) {
+static int pimp_names_cmp(pimp_names *names, uint32_t node)
+{
     const pimp_member *member = &names->items[node];
-    if (names->key_hash != member->hash)
-        return names->key_hash < member->hash ? -1 : 1;
+    if (names->key_hash != member->hash) return names->key_hash < member->hash ? -1 : 1;
     return pimp_fold_cmp(names->key, member->name);
 }
 
-static uint32_t pimp_names_find(pimp_names *names) {
+static uint32_t pimp_names_find(pimp_names *names)
+{
     uint32_t node = names->root;
     while (node != PIMP_NIL) {
         int order = pimp_names_cmp(names, node);
@@ -619,7 +579,8 @@ static uint32_t pimp_names_find(pimp_names *names) {
     return PIMP_NIL;
 }
 
-static uint32_t pimp_names_skew(pimp_names *names, uint32_t node) {
+static uint32_t pimp_names_skew(pimp_names *names, uint32_t node)
+{
     uint32_t left = names->left[node];
     if (left != PIMP_NIL && names->level[left] == names->level[node]) {
         names->left[node] = names->right[left];
@@ -629,10 +590,10 @@ static uint32_t pimp_names_skew(pimp_names *names, uint32_t node) {
     return node;
 }
 
-static uint32_t pimp_names_split(pimp_names *names, uint32_t node) {
+static uint32_t pimp_names_split(pimp_names *names, uint32_t node)
+{
     uint32_t right = names->right[node];
-    if (right != PIMP_NIL && names->right[right] != PIMP_NIL &&
-        names->level[names->right[right]] == names->level[node]) {
+    if (right != PIMP_NIL && names->right[right] != PIMP_NIL && names->level[names->right[right]] == names->level[node]) {
         names->right[node] = names->left[right];
         names->left[right] = node;
         ++names->level[right];
@@ -643,18 +604,16 @@ static uint32_t pimp_names_split(pimp_names *names, uint32_t node) {
 
 /* Inserts member @p item, whose name is the current key and absent.  The
  * recursion depth is the tree height, at most 2*log2(0xFFFE) + 2. */
-static uint32_t pimp_names_insert(pimp_names *names, uint32_t node,
-                                  uint32_t item) {
+static uint32_t pimp_names_insert(pimp_names *names, uint32_t node, uint32_t item)
+{
     if (node == PIMP_NIL) {
         names->left[item] = PIMP_NIL;
         names->right[item] = PIMP_NIL;
         names->level[item] = 1U;
         return item;
     }
-    if (pimp_names_cmp(names, node) < 0)
-        names->left[node] = pimp_names_insert(names, names->left[node], item);
-    else
-        names->right[node] = pimp_names_insert(names, names->right[node], item);
+    if (pimp_names_cmp(names, node) < 0) names->left[node] = pimp_names_insert(names, names->left[node], item);
+    else names->right[node] = pimp_names_insert(names, names->right[node], item);
     node = pimp_names_skew(names, node);
     return pimp_names_split(names, node);
 }
@@ -670,8 +629,8 @@ static uint32_t pimp_names_insert(pimp_names *names, uint32_t node,
  * the whole archive (each taken name can be charged once per base, so the
  * budget is only a backstop), and a duplicate that exhausts it is marked
  * unsafe and skipped instead of probing on. */
-static bool pimp_unique_names(pimp_member *items, size_t count,
-                              xx_pd_struct *pd) {
+static bool pimp_unique_names(pimp_member *items, size_t count, xx_pd_struct *pd)
+{
     pimp_names *names;
     size_t index, budget;
     bool result = false;
@@ -682,10 +641,7 @@ static bool pimp_unique_names(pimp_member *items, size_t count,
     names->root = PIMP_NIL;
     /* Run-time entropy only: the clock, heap and stack addresses (ASLR)
      * and the runtime's generator.  Output does not depend on the seed. */
-    names->seed = pimp_mix64((uint64_t)xx_rt_clock_ms() ^
-                             ((uint64_t)(uintptr_t)names << 16U) ^
-                             (uint64_t)(uintptr_t)&budget ^
-                             ((uint64_t)(uint32_t)xx_rt_rand() << 40U));
+    names->seed = pimp_mix64((uint64_t)xx_rt_clock_ms() ^ ((uint64_t)(uintptr_t)names << 16U) ^ (uint64_t)(uintptr_t)&budget ^ ((uint64_t)(uint32_t)xx_rt_rand() << 40U));
     names->left = (uint32_t *)xx_mem_alloc((count + 1U) * sizeof(uint32_t));
     names->right = (uint32_t *)xx_mem_alloc((count + 1U) * sizeof(uint32_t));
     names->level = (uint8_t *)xx_mem_alloc(count + 1U);
@@ -701,8 +657,7 @@ static bool pimp_unique_names(pimp_member *items, size_t count,
         if ((index & 0xFFU) == 0U && pimp_stopped(pd)) goto done;
         if (!member->safe) continue;
         for (;;) {
-            if (!pimp_fold_key(member->name, names->key, names->seed,
-                               &names->key_hash)) {
+            if (!pimp_fold_key(member->name, names->key, names->seed, &names->key_hash)) {
                 exhausted = true; /* cannot happen: names are bounded */
                 break;
             }
@@ -775,14 +730,12 @@ typedef struct pimp_sink_s {
     bool failed;
 } pimp_sink;
 
-static ssize_t pimp_sink_write(xx_io_device *self, const void *buffer,
-                               size_t size) {
+static ssize_t pimp_sink_write(xx_io_device *self, const void *buffer, size_t size)
+{
     pimp_sink *sink = (pimp_sink *)self;
     const uint8_t *bytes = (const uint8_t *)buffer;
     size_t index = 0U, done = 0U;
-    if (!sink || (!buffer && size != 0U) || sink->failed ||
-        (uint64_t)size > sink->limit - sink->written ||
-        size > ((size_t)-1 >> 1U)) {
+    if (!sink || (!buffer && size != 0U) || sink->failed || (uint64_t)size > sink->limit - sink->written || size > ((size_t)-1 >> 1U)) {
         if (sink) sink->failed = true;
         return -1;
     }
@@ -811,62 +764,49 @@ static ssize_t pimp_sink_write(xx_io_device *self, const void *buffer,
 /* Inflates @p member into @p target (NULL only verifies).  A member
  * without a stored size may produce at most @p unsized_left bytes;
  * *@p produced receives what the inflater wrote either way. */
-static bool pimp_decode(Abstractformat *format, const pimp_member *member,
-                        xx_io_device *target, uint64_t unsized_left,
-                        uint64_t *produced, xx_pd_struct *pd) {
+static bool pimp_decode(Abstractformat *format, const pimp_member *member, xx_io_device *target, uint64_t unsized_left, uint64_t *produced, xx_pd_struct *pd)
+{
     uint8_t header[2], trailer[4];
     pimp_sink sink;
     int64_t data = format->base_address + member->data_offset;
     uint32_t expected;
     bool inflated;
     if (produced) *produced = 0U;
-    if (member->packed_size < PIMP_MIN_PACKED ||
-        !pimp_read_at(format->device, data, header, sizeof(header)) ||
-        !pimp_zlib_header_ok(header) ||
-        !pimp_read_at(format->device,
-                      data + (int64_t)member->packed_size - 4, trailer,
-                      sizeof(trailer)))
+    if (member->packed_size < PIMP_MIN_PACKED || !pimp_read_at(format->device, data, header, sizeof(header)) || !pimp_zlib_header_ok(header) ||
+        !pimp_read_at(format->device, data + (int64_t)member->packed_size - 4, trailer, sizeof(trailer)))
         return false;
-    expected = ((uint32_t)trailer[0] << 24U) | ((uint32_t)trailer[1] << 16U) |
-               ((uint32_t)trailer[2] << 8U) | (uint32_t)trailer[3];
+    expected = ((uint32_t)trailer[0] << 24U) | ((uint32_t)trailer[1] << 16U) | ((uint32_t)trailer[2] << 8U) | (uint32_t)trailer[3];
     xx_mem_zero(&sink, sizeof(sink));
     sink.device.write = pimp_sink_write;
     sink.target = target;
     if (member->has_raw_size) {
         sink.limit = (uint64_t)member->raw_size;
     } else {
-        sink.limit = (uint64_t)member->packed_size * PIMP_DEFLATE_RATIO +
-                     PIMP_DEFLATE_SLACK;
-        if (sink.limit > PIMP_UNSIZED_MEMBER_CAP)
-            sink.limit = PIMP_UNSIZED_MEMBER_CAP;
+        sink.limit = (uint64_t)member->packed_size * PIMP_DEFLATE_RATIO + PIMP_DEFLATE_SLACK;
+        if (sink.limit > PIMP_UNSIZED_MEMBER_CAP) sink.limit = PIMP_UNSIZED_MEMBER_CAP;
         if (sink.limit > unsized_left) sink.limit = unsized_left;
     }
     sink.adler_a = 1U;
-    inflated = xx_deflate_unpack_device(format->device, data + 2,
-                                        (int64_t)member->packed_size - 6,
-                                        &sink.device, false, pd);
+    inflated = xx_deflate_unpack_device(format->device, data + 2, (int64_t)member->packed_size - 6, &sink.device, false, pd);
     if (produced) *produced = sink.written;
     if (!inflated) return false;
     if (sink.failed) return false;
-    if (member->has_raw_size && sink.written != (uint64_t)member->raw_size)
-        return false;
+    if (member->has_raw_size && sink.written != (uint64_t)member->raw_size) return false;
     return ((sink.adler_b << 16U) | sink.adler_a) == expected;
 }
 
 /* --- records --------------------------------------------------------------- */
 
-static bool pimp_copy_options(xx_list_s *destination,
-                              const xx_list_s *source) {
+static bool pimp_copy_options(xx_list_s *destination, const xx_list_s *source)
+{
     size_t index;
     if (!source) return true;
     for (index = 0U; index < source->count; ++index) {
-        const xx_meta *original =
-            (const xx_meta *)xx_list_at((const xx_list_t *)source, index);
+        const xx_meta *original = (const xx_meta *)xx_list_at((const xx_list_t *)source, index);
         xx_meta copy;
         if (!original) continue;
         xx_meta_init(&copy, original->meta_id);
-        if (!xx_var_copy(&copy.var, &original->var) ||
-            !xx_list_append(destination, &copy)) {
+        if (!xx_var_copy(&copy.var, &original->var) || !xx_list_append(destination, &copy)) {
             xx_meta_cleanup(&copy);
             return false;
         }
@@ -874,44 +814,37 @@ static bool pimp_copy_options(xx_list_s *destination,
     return true;
 }
 
-static const xx_var *pimp_option(const xx_list_s *options, uint32_t id) {
+static const xx_var *pimp_option(const xx_list_s *options, uint32_t id)
+{
     size_t index;
     if (!options) return NULL;
     for (index = 0U; index < options->count; ++index) {
-        const xx_meta *meta =
-            (const xx_meta *)xx_list_at((const xx_list_t *)options, index);
+        const xx_meta *meta = (const xx_meta *)xx_list_at((const xx_list_t *)options, index);
         if (meta && meta->meta_id == id) return &meta->var;
     }
     return NULL;
 }
 
-static bool pimp_set_record(Abstractformat *format, xx_archive_record *record,
-                            const pimp_member *member) {
+static bool pimp_set_record(Abstractformat *format, xx_archive_record *record, const pimp_member *member)
+{
     xx_archive_record_cleanup(record);
     xx_archive_record_init(record);
     record->header_offset = format->base_address + member->header_offset;
     record->header_size = member->header_size;
     record->data_offset = format->base_address + member->data_offset;
     record->compressed_size = member->packed_size;
-    if (!xx_archive_record_set_original_name(record, member->name) ||
-        !xx_archive_record_set_meta_u64(record, XX_META_ID_COMPRESSED_SIZE,
-                                        member->packed_size) ||
-        !xx_archive_record_set_meta_u64(record, XX_META_ID_COMPRESSION_METHOD,
-                                        PIMP_METHOD_DEFLATE) ||
-        !xx_archive_record_set_meta_bool(record, XX_META_ID_IS_ENCRYPTED,
-                                         false) ||
-        !xx_archive_record_set_meta_bool(record, XX_META_ID_IS_FOLDER, false))
+    if (!xx_archive_record_set_original_name(record, member->name) || !xx_archive_record_set_meta_u64(record, XX_META_ID_COMPRESSED_SIZE, member->packed_size) ||
+        !xx_archive_record_set_meta_u64(record, XX_META_ID_COMPRESSION_METHOD, PIMP_METHOD_DEFLATE) ||
+        !xx_archive_record_set_meta_bool(record, XX_META_ID_IS_ENCRYPTED, false) || !xx_archive_record_set_meta_bool(record, XX_META_ID_IS_FOLDER, false))
         return false;
     /* Layout 1 does not record the unpacked size. */
-    return !member->has_raw_size ||
-           xx_archive_record_set_meta_u64(record, XX_META_ID_UNCOMPRESSED_SIZE,
-                                          member->raw_size);
+    return !member->has_raw_size || xx_archive_record_set_meta_u64(record, XX_META_ID_UNCOMPRESSED_SIZE, member->raw_size);
 }
 
 /* --- lifecycle ------------------------------------------------------------- */
 
-void xx_sfx_nullsoft_pimp_init(xx_sfx_nullsoft_pimp *archive,
-                               xx_io_device *device, int64_t base_address) {
+void xx_sfx_nullsoft_pimp_init(xx_sfx_nullsoft_pimp *archive, xx_io_device *device, int64_t base_address)
+{
     if (!archive) return;
     xx_mem_zero(archive, sizeof(*archive));
     xx_format_init(&archive->format, device, base_address);
@@ -924,49 +857,44 @@ void xx_sfx_nullsoft_pimp_init(xx_sfx_nullsoft_pimp *archive,
     archive->format.check_is_valid = xx_sfx_nullsoft_pimp_check_is_valid;
     archive->format.handle_base_info = xx_sfx_nullsoft_pimp_handle_base_info;
     archive->format.get_format_size = xx_sfx_nullsoft_pimp_get_format_size;
-    archive->format.get_number_of_archive_records =
-        xx_sfx_nullsoft_pimp_get_number_of_archive_records;
-    archive->format.create_archive_records_reading =
-        xx_sfx_nullsoft_pimp_create_archive_records_reading;
-    archive->format.get_current_archive_record =
-        xx_sfx_nullsoft_pimp_get_current_archive_record;
-    archive->format.unpack_current_archive_record =
-        xx_sfx_nullsoft_pimp_unpack_current_archive_record;
-    archive->format.archive_record_move_to_next =
-        xx_sfx_nullsoft_pimp_archive_record_move_to_next;
-    archive->format.free_archive_records_reading =
-        xx_sfx_nullsoft_pimp_free_archive_records_reading;
+    archive->format.get_number_of_archive_records = xx_sfx_nullsoft_pimp_get_number_of_archive_records;
+    archive->format.create_archive_records_reading = xx_sfx_nullsoft_pimp_create_archive_records_reading;
+    archive->format.get_current_archive_record = xx_sfx_nullsoft_pimp_get_current_archive_record;
+    archive->format.unpack_current_archive_record = xx_sfx_nullsoft_pimp_unpack_current_archive_record;
+    archive->format.archive_record_move_to_next = xx_sfx_nullsoft_pimp_archive_record_move_to_next;
+    archive->format.free_archive_records_reading = xx_sfx_nullsoft_pimp_free_archive_records_reading;
     archive->overlay_offset = -1;
     archive->directory_offset = -1;
     archive->command_offset = -1;
 }
 
-xx_sfx_nullsoft_pimp *xx_sfx_nullsoft_pimp_create(xx_io_device *device,
-                                                  int64_t base_address) {
-    xx_sfx_nullsoft_pimp *archive =
-        (xx_sfx_nullsoft_pimp *)xx_mem_alloc(sizeof(*archive));
+xx_sfx_nullsoft_pimp *xx_sfx_nullsoft_pimp_create(xx_io_device *device, int64_t base_address)
+{
+    xx_sfx_nullsoft_pimp *archive = (xx_sfx_nullsoft_pimp *)xx_mem_alloc(sizeof(*archive));
     if (archive) xx_sfx_nullsoft_pimp_init(archive, device, base_address);
     return archive;
 }
 
-void xx_sfx_nullsoft_pimp_destroy(xx_sfx_nullsoft_pimp *archive) {
+void xx_sfx_nullsoft_pimp_destroy(xx_sfx_nullsoft_pimp *archive)
+{
     if (archive) xx_format_cleanup_extra_parameters(&archive->format);
 }
 
-void xx_sfx_nullsoft_pimp_free(xx_sfx_nullsoft_pimp *archive) {
+void xx_sfx_nullsoft_pimp_free(xx_sfx_nullsoft_pimp *archive)
+{
     if (!archive) return;
     xx_sfx_nullsoft_pimp_destroy(archive);
     xx_mem_free(archive);
 }
 
-bool xx_sfx_nullsoft_pimp_check_is_valid(Abstractformat *format,
-                                         xx_pd_struct *pd) {
+bool xx_sfx_nullsoft_pimp_check_is_valid(Abstractformat *format, xx_pd_struct *pd)
+{
     pimp_info info;
     return pimp_scan(format, &info, pd);
 }
 
-bool xx_sfx_nullsoft_pimp_handle_base_info(Abstractformat *format,
-                                           xx_pd_struct *pd) {
+bool xx_sfx_nullsoft_pimp_handle_base_info(Abstractformat *format, xx_pd_struct *pd)
+{
     pimp_info info;
     xx_sfx_nullsoft_pimp *archive;
     if (!format || !pimp_scan(format, &info, pd)) return false;
@@ -979,12 +907,9 @@ bool xx_sfx_nullsoft_pimp_handle_base_info(Abstractformat *format,
     archive->layout = info.layout;
     archive->has_install_dir = info.has_install_dir;
     pimp_text(info.text_fields, PIMP_TEXT_FIELD, archive->title);
-    pimp_text(info.text_fields + PIMP_TEXT_FIELD, PIMP_TEXT_FIELD,
-              archive->description);
-    if (info.has_install_dir)
-        pimp_text(info.dir_field, PIMP_DIR_FIELD, archive->install_dir);
-    else
-        archive->install_dir[0] = 0;
+    pimp_text(info.text_fields + PIMP_TEXT_FIELD, PIMP_TEXT_FIELD, archive->description);
+    if (info.has_install_dir) pimp_text(info.dir_field, PIMP_DIR_FIELD, archive->install_dir);
+    else archive->install_dir[0] = 0;
     format->number_of_archive_records = info.count;
     format->format_size = info.end;
     format->is_valid = true;
@@ -992,22 +917,18 @@ bool xx_sfx_nullsoft_pimp_handle_base_info(Abstractformat *format,
     return true;
 }
 
-int64_t xx_sfx_nullsoft_pimp_get_format_size(Abstractformat *format,
-                                             xx_pd_struct *pd) {
-    return format && (format->base_info_handled ||
-                      xx_sfx_nullsoft_pimp_handle_base_info(format, pd))
-               ? format->format_size : -1;
+int64_t xx_sfx_nullsoft_pimp_get_format_size(Abstractformat *format, xx_pd_struct *pd)
+{
+    return format && (format->base_info_handled || xx_sfx_nullsoft_pimp_handle_base_info(format, pd)) ? format->format_size : -1;
 }
 
-uint64_t xx_sfx_nullsoft_pimp_get_number_of_archive_records(
-    Abstractformat *format, xx_pd_struct *pd) {
-    return format && (format->base_info_handled ||
-                      xx_sfx_nullsoft_pimp_handle_base_info(format, pd))
-               ? ((xx_sfx_nullsoft_pimp *)format)->number_of_records : 0U;
+uint64_t xx_sfx_nullsoft_pimp_get_number_of_archive_records(Abstractformat *format, xx_pd_struct *pd)
+{
+    return format && (format->base_info_handled || xx_sfx_nullsoft_pimp_handle_base_info(format, pd)) ? ((xx_sfx_nullsoft_pimp *)format)->number_of_records : 0U;
 }
 
-xx_archive_record_state *xx_sfx_nullsoft_pimp_create_archive_records_reading(
-    Abstractformat *format, const xx_list_s *options, xx_pd_struct *pd) {
+xx_archive_record_state *xx_sfx_nullsoft_pimp_create_archive_records_reading(Abstractformat *format, const xx_list_s *options, xx_pd_struct *pd)
+{
     pimp_info info;
     pimp_stream *stream;
     xx_archive_record_state *state;
@@ -1016,15 +937,10 @@ xx_archive_record_state *xx_sfx_nullsoft_pimp_create_archive_records_reading(
     size = xx_io_total_size(format->device) - format->base_address;
     stream = (pimp_stream *)xx_mem_calloc(1U, sizeof(*stream));
     if (!stream) return NULL;
-    stream->items = (pimp_member *)xx_mem_calloc(info.count,
-                                                 sizeof(*stream->items));
+    stream->items = (pimp_member *)xx_mem_calloc(info.count, sizeof(*stream->items));
     stream->count = info.count;
-    if (!stream->items ||
-        !pimp_walk(format->device, format->base_address, size,
-                   info.members_at, info.count, info.layout == 2U,
-                   stream->items, &command_at, pd) ||
-        command_at != info.command_at ||
-        !pimp_unique_names(stream->items, stream->count, pd)) {
+    if (!stream->items || !pimp_walk(format->device, format->base_address, size, info.members_at, info.count, info.layout == 2U, stream->items, &command_at, pd) ||
+        command_at != info.command_at || !pimp_unique_names(stream->items, stream->count, pd)) {
         pimp_stream_free(stream);
         return NULL;
     }
@@ -1037,8 +953,7 @@ xx_archive_record_state *xx_sfx_nullsoft_pimp_create_archive_records_reading(
     state->internal_state = stream;
     state->free_internal = pimp_stream_free;
     state->total_records = stream->count;
-    if (!pimp_copy_options(&state->options, options) ||
-        !pimp_set_record(format, &state->current_record, &stream->items[0])) {
+    if (!pimp_copy_options(&state->options, options) || !pimp_set_record(format, &state->current_record, &stream->items[0])) {
         xx_archive_record_state_free(state);
         return NULL;
     }
@@ -1046,26 +961,22 @@ xx_archive_record_state *xx_sfx_nullsoft_pimp_create_archive_records_reading(
     return state;
 }
 
-const xx_archive_record *xx_sfx_nullsoft_pimp_get_current_archive_record(
-    Abstractformat *format, xx_archive_record_state *state) {
-    return format && state && state->format == format && state->has_record
-               ? &state->current_record : NULL;
+const xx_archive_record *xx_sfx_nullsoft_pimp_get_current_archive_record(Abstractformat *format, xx_archive_record_state *state)
+{
+    return format && state && state->format == format && state->has_record ? &state->current_record : NULL;
 }
 
-bool xx_sfx_nullsoft_pimp_archive_record_move_to_next(
-    Abstractformat *format, xx_archive_record_state *state, xx_pd_struct *pd) {
+bool xx_sfx_nullsoft_pimp_archive_record_move_to_next(Abstractformat *format, xx_archive_record_state *state, xx_pd_struct *pd)
+{
     pimp_stream *stream;
     (void)pd;
-    if (!format || !state || state->format != format ||
-        !(stream = (pimp_stream *)state->internal_state) ||
-        stream->index + 1U >= stream->count) {
+    if (!format || !state || state->format != format || !(stream = (pimp_stream *)state->internal_state) || stream->index + 1U >= stream->count) {
         if (state) state->has_record = false;
         return false;
     }
     ++stream->index;
     ++state->current_index;
-    if (!pimp_set_record(format, &state->current_record,
-                         &stream->items[stream->index])) {
+    if (!pimp_set_record(format, &state->current_record, &stream->items[stream->index])) {
         state->has_record = false;
         return false;
     }
@@ -1073,8 +984,8 @@ bool xx_sfx_nullsoft_pimp_archive_record_move_to_next(
     return true;
 }
 
-bool xx_sfx_nullsoft_pimp_unpack_current_archive_record(
-    Abstractformat *format, xx_archive_record_state *state, xx_pd_struct *pd) {
+bool xx_sfx_nullsoft_pimp_unpack_current_archive_record(Abstractformat *format, xx_archive_record_state *state, xx_pd_struct *pd)
+{
     pimp_stream *stream;
     const pimp_member *member;
     const xx_var *path_option;
@@ -1084,44 +995,35 @@ bool xx_sfx_nullsoft_pimp_unpack_current_archive_record(
     bool result = false;
     bool created = false;
     uint64_t unsized_left, produced = 0U;
-    if (!format || !state || state->format != format || !state->has_record ||
-        !(stream = (pimp_stream *)state->internal_state) ||
-        stream->index >= stream->count || pimp_stopped(pd))
+    if (!format || !state || state->format != format || !state->has_record || !(stream = (pimp_stream *)state->internal_state) || stream->index >= stream->count ||
+        pimp_stopped(pd))
         return false;
     member = &stream->items[stream->index];
     /* Output of members without a stored size counts against one budget
      * for the whole archive, whether it is written or only verified. */
-    unsized_left = stream->unsized_output < PIMP_UNSIZED_TOTAL_CAP
-                       ? PIMP_UNSIZED_TOTAL_CAP - stream->unsized_output
-                       : 0U;
+    unsized_left = stream->unsized_output < PIMP_UNSIZED_TOTAL_CAP ? PIMP_UNSIZED_TOTAL_CAP - stream->unsized_output : 0U;
     path_option = pimp_option(&state->options, XX_META_ID_OPT_UNPACK_PATH);
     if (!path_option) {
-        result = pimp_decode(format, member, NULL, unsized_left, &produced,
-                             pd);
+        result = pimp_decode(format, member, NULL, unsized_left, &produced, pd);
         if (!member->has_raw_size) stream->unsized_output += produced;
         return result;
     }
     if (!member->safe || !pimp_safe_output_name(member->name)) return false;
-    if (path_option->type == XX_VAR_TYPE_STRING ||
-        path_option->type == XX_VAR_TYPE_STRING_VIEW) {
+    if (path_option->type == XX_VAR_TYPE_STRING || path_option->type == XX_VAR_TYPE_STRING_VIEW) {
         base = xx_var_get_str(path_option);
-    } else if (path_option->type == XX_VAR_TYPE_WSTRING ||
-               path_option->type == XX_VAR_TYPE_WSTRING_VIEW) {
+    } else if (path_option->type == XX_VAR_TYPE_WSTRING || path_option->type == XX_VAR_TYPE_WSTRING_VIEW) {
         owned_base = xx_str_unicode_to_utf8(xx_var_get_wstr(path_option));
         base = owned_base;
     }
     if (!base) goto done;
-    path = (base[0] && base[xx_str_len(base) - 1U] != '/' &&
-            base[xx_str_len(base) - 1U] != '\\')
-               ? xx_str_concat3(base, "/", member->name)
-               : xx_str_concat(base, member->name);
+    path = (base[0] && base[xx_str_len(base) - 1U] != '/' && base[xx_str_len(base) - 1U] != '\\') ? xx_str_concat3(base, "/", member->name)
+                                                                                                  : xx_str_concat(base, member->name);
     if (!path || !xx_store_create_dirs_a(path, false)) goto done;
     {
         xx_io_device *destination = xx_io_file_open(path, "wb");
         created = destination != NULL;
         if (!destination) goto done;
-        result = pimp_decode(format, member, destination, unsized_left,
-                             &produced, pd);
+        result = pimp_decode(format, member, destination, unsized_left, &produced, pd);
         if (!member->has_raw_size) stream->unsized_output += produced;
         if (xx_io_close(destination) != 0) result = false;
     }
@@ -1132,8 +1034,8 @@ done:
     return result;
 }
 
-void xx_sfx_nullsoft_pimp_free_archive_records_reading(
-    Abstractformat *format, xx_archive_record_state *state) {
+void xx_sfx_nullsoft_pimp_free_archive_records_reading(Abstractformat *format, xx_archive_record_state *state)
+{
     (void)format;
     xx_archive_record_state_free(state);
 }

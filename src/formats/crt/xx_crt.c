@@ -27,9 +27,7 @@
 /** Largest packet: a 64 KiB image plus its header plus modest padding. */
 #define XX_CRT_MAX_PACKET_LENGTH (0x10000U + 0x10000U)
 
-static const char *const xx_crt_signatures[5] = {
-    "C64 CARTRIDGE   ", "C128 CARTRIDGE  ", "CBM2 CARTRIDGE  ",
-    "VIC20 CARTRIDGE ", "PLUS4 CARTRIDGE "};
+static const char *const xx_crt_signatures[5] = {"C64 CARTRIDGE   ", "C128 CARTRIDGE  ", "CBM2 CARTRIDGE  ", "VIC20 CARTRIDGE ", "PLUS4 CARTRIDGE "};
 
 typedef struct xx_crt_chip_s {
     int64_t data_offset; /**< Absolute device offset of the image data. */
@@ -57,8 +55,8 @@ typedef struct xx_crt_stream_s {
 
 static void xx_crt_vtable_destroy(Abstractformat *self);
 
-static bool xx_crt_read_at(xx_io_device *device, int64_t offset, void *data,
-                           size_t size) {
+static bool xx_crt_read_at(xx_io_device *device, int64_t offset, void *data, size_t size)
+{
     uint8_t *out = (uint8_t *)data;
     size_t done = 0U;
     if (!device || offset < 0 || xx_io_seek64(device, offset, SEEK_SET) != 0) {
@@ -72,13 +70,15 @@ static bool xx_crt_read_at(xx_io_device *device, int64_t offset, void *data,
     return true;
 }
 
-static void xx_crt_private_cleanup(xx_crt_private *parsed) {
+static void xx_crt_private_cleanup(xx_crt_private *parsed)
+{
     if (!parsed) return;
     if (parsed->chips) xx_mem_free(parsed->chips);
     xx_mem_zero(parsed, sizeof(*parsed));
 }
 
-static bool xx_crt_push(xx_crt_private *parsed, const xx_crt_chip *chip) {
+static bool xx_crt_push(xx_crt_private *parsed, const xx_crt_chip *chip)
+{
     if (parsed->count == parsed->capacity) {
         size_t capacity = parsed->capacity ? parsed->capacity * 2U : 16U;
         void *next;
@@ -94,7 +94,8 @@ static bool xx_crt_push(xx_crt_private *parsed, const xx_crt_chip *chip) {
 }
 
 /* Check the fixed 64-byte header.  Returns the machine index or -1. */
-static int xx_crt_check_header(const uint8_t *header) {
+static int xx_crt_check_header(const uint8_t *header)
+{
     int machine = -1;
     int index;
     for (index = 0; index < 5; ++index) {
@@ -111,24 +112,20 @@ static int xx_crt_check_header(const uint8_t *header) {
 
 /* Walk the image.  With collect == false only the structure is checked and
  * nothing is allocated. */
-static bool xx_crt_parse(Abstractformat *self, xx_crt_private *parsed,
-                         bool collect, xx_pd_struct *pd) {
+static bool xx_crt_parse(Abstractformat *self, xx_crt_private *parsed, bool collect, xx_pd_struct *pd)
+{
     int64_t total, at, header_end;
     uint32_t header_length;
     uint64_t packets = 0U;
     xx_mem_zero(parsed, sizeof(*parsed));
-    if (!self || !self->device || self->base_address < 0 ||
-        (pd && xx_pd_is_stopped(pd))) {
+    if (!self || !self->device || self->base_address < 0 || (pd && xx_pd_is_stopped(pd))) {
         return false;
     }
     total = xx_io_total_size(self->device);
-    if (total < 0 || self->base_address > total ||
-        total - self->base_address <
-            (int64_t)(XX_CRT_HEADER_SIZE + XX_CRT_CHIP_HEADER_SIZE)) {
+    if (total < 0 || self->base_address > total || total - self->base_address < (int64_t)(XX_CRT_HEADER_SIZE + XX_CRT_CHIP_HEADER_SIZE)) {
         return false;
     }
-    if (!xx_crt_read_at(self->device, self->base_address, parsed->header,
-                        XX_CRT_HEADER_SIZE)) {
+    if (!xx_crt_read_at(self->device, self->base_address, parsed->header, XX_CRT_HEADER_SIZE)) {
         return false;
     }
     parsed->machine = xx_crt_check_header(parsed->header);
@@ -152,8 +149,7 @@ static bool xx_crt_parse(Abstractformat *self, xx_crt_private *parsed,
             xx_crt_private_cleanup(parsed);
             return false;
         }
-        if (!xx_crt_read_at(self->device, at, chip_header,
-                            XX_CRT_CHIP_HEADER_SIZE)) {
+        if (!xx_crt_read_at(self->device, at, chip_header, XX_CRT_CHIP_HEADER_SIZE)) {
             break;
         }
         if (xx_rt_memcmp(chip_header, "CHIP", 4U) != 0) break;
@@ -163,8 +159,7 @@ static bool xx_crt_parse(Abstractformat *self, xx_crt_private *parsed,
         chip.load_address = xx_data_get_u16(chip_header + 12, 2, 0, true);
         chip.data_size = xx_data_get_u16(chip_header + 14, 2, 0, true);
         chip.data_offset = at + (int64_t)XX_CRT_CHIP_HEADER_SIZE;
-        if (chip.chip_type > 3U || packet_length < XX_CRT_CHIP_HEADER_SIZE ||
-            packet_length > XX_CRT_MAX_PACKET_LENGTH) {
+        if (chip.chip_type > 3U || packet_length < XX_CRT_CHIP_HEADER_SIZE || packet_length > XX_CRT_MAX_PACKET_LENGTH) {
             break;
         }
         if (packet_length - XX_CRT_CHIP_HEADER_SIZE < chip.data_size) {
@@ -193,25 +188,24 @@ static bool xx_crt_parse(Abstractformat *self, xx_crt_private *parsed,
 
 /* ------------------------------------------------------------------------ */
 
-static void xx_crt_stream_free(void *pointer) {
+static void xx_crt_stream_free(void *pointer)
+{
     xx_crt_stream *stream = (xx_crt_stream *)pointer;
     if (!stream) return;
     xx_crt_private_cleanup(&stream->parsed);
     xx_mem_free(stream);
 }
 
-static bool xx_crt_copy_options(xx_list_s *destination,
-                                const xx_list_s *source) {
+static bool xx_crt_copy_options(xx_list_s *destination, const xx_list_s *source)
+{
     size_t index;
     if (!destination || !source) return source == NULL;
     for (index = 0U; index < source->count; ++index) {
-        const xx_meta *item =
-            (const xx_meta *)xx_list_at((const xx_list_t *)source, index);
+        const xx_meta *item = (const xx_meta *)xx_list_at((const xx_list_t *)source, index);
         xx_meta copy;
         if (!item) continue;
         xx_meta_init(&copy, item->meta_id);
-        if (!xx_var_copy(&copy.var, &item->var) ||
-            !xx_list_append(destination, &copy)) {
+        if (!xx_var_copy(&copy.var, &item->var) || !xx_list_append(destination, &copy)) {
             xx_meta_cleanup(&copy);
             return false;
         }
@@ -219,47 +213,40 @@ static bool xx_crt_copy_options(xx_list_s *destination,
     return true;
 }
 
-static const xx_var *xx_crt_find_option(const xx_list_s *options,
-                                        uint32_t meta_id) {
+static const xx_var *xx_crt_find_option(const xx_list_s *options, uint32_t meta_id)
+{
     size_t index;
     if (!options) return NULL;
     for (index = 0U; index < options->count; ++index) {
-        const xx_meta *item =
-            (const xx_meta *)xx_list_at((const xx_list_t *)options, index);
+        const xx_meta *item = (const xx_meta *)xx_list_at((const xx_list_t *)options, index);
         if (item && item->meta_id == meta_id) return &item->var;
     }
     return NULL;
 }
 
-static bool xx_crt_populate_record(xx_archive_record *record,
-                                   const xx_crt_chip *chip, size_t index) {
+static bool xx_crt_populate_record(xx_archive_record *record, const xx_crt_chip *chip, size_t index)
+{
     static const char *const kinds[4] = {"", "_ram", "_flash", "_eeprom"};
     char name[64];
     xx_archive_record_cleanup(record);
     xx_archive_record_init(record);
     /* Only numbers from the file go into the name, so it is always safe; the
      * running index keeps repeated bank/address pairs distinct. */
-    (void)xx_rt_snprintf(name, sizeof(name), "chip%04u_bank%u_%04x%s.bin",
-                         (unsigned)index, (unsigned)chip->bank,
-                         (unsigned)chip->load_address,
+    (void)xx_rt_snprintf(name, sizeof(name), "chip%04u_bank%u_%04x%s.bin", (unsigned)index, (unsigned)chip->bank, (unsigned)chip->load_address,
                          kinds[chip->chip_type & 3U]);
     record->header_offset = chip->data_offset - (int64_t)XX_CRT_CHIP_HEADER_SIZE;
     record->header_size = (int64_t)XX_CRT_CHIP_HEADER_SIZE;
     record->data_offset = chip->data_offset;
     record->compressed_size = (int64_t)chip->data_size;
-    return xx_archive_record_set_original_name(record, name) &&
-           xx_archive_record_set_meta_u64(record, XX_META_ID_COMPRESSED_SIZE,
-                                          chip->data_size) &&
-           xx_archive_record_set_meta_u64(record, XX_META_ID_UNCOMPRESSED_SIZE,
-                                          chip->data_size) &&
-           xx_archive_record_set_meta_u64(record, XX_META_ID_COMPRESSION_METHOD,
-                                          0U) &&
-           xx_archive_record_set_meta_bool(record, XX_META_ID_IS_FOLDER, false);
+    return xx_archive_record_set_original_name(record, name) && xx_archive_record_set_meta_u64(record, XX_META_ID_COMPRESSED_SIZE, chip->data_size) &&
+           xx_archive_record_set_meta_u64(record, XX_META_ID_UNCOMPRESSED_SIZE, chip->data_size) &&
+           xx_archive_record_set_meta_u64(record, XX_META_ID_COMPRESSION_METHOD, 0U) && xx_archive_record_set_meta_bool(record, XX_META_ID_IS_FOLDER, false);
 }
 
 /* ------------------------------------------------------------------------ */
 
-void xx_crt_init(xx_crt *crt, xx_io_device *dev, int64_t base_address) {
+void xx_crt_init(xx_crt *crt, xx_io_device *dev, int64_t base_address)
+{
     if (!crt) return;
     xx_mem_zero(crt, sizeof(*crt));
     xx_format_init(&crt->format, dev, base_address);
@@ -272,50 +259,51 @@ void xx_crt_init(xx_crt *crt, xx_io_device *dev, int64_t base_address) {
     crt->format.check_is_valid = xx_crt_check_is_valid;
     crt->format.handle_base_info = xx_crt_handle_base_info;
     crt->format.get_format_size = xx_crt_get_format_size;
-    crt->format.get_number_of_archive_records =
-        xx_crt_get_number_of_archive_records;
-    crt->format.create_archive_records_reading =
-        xx_crt_create_archive_records_reading;
+    crt->format.get_number_of_archive_records = xx_crt_get_number_of_archive_records;
+    crt->format.create_archive_records_reading = xx_crt_create_archive_records_reading;
     crt->format.get_current_archive_record = xx_crt_get_current_archive_record;
-    crt->format.unpack_current_archive_record =
-        xx_crt_unpack_current_archive_record;
-    crt->format.archive_record_move_to_next =
-        xx_crt_archive_record_move_to_next;
-    crt->format.free_archive_records_reading =
-        xx_crt_free_archive_records_reading;
+    crt->format.unpack_current_archive_record = xx_crt_unpack_current_archive_record;
+    crt->format.archive_record_move_to_next = xx_crt_archive_record_move_to_next;
+    crt->format.free_archive_records_reading = xx_crt_free_archive_records_reading;
     crt->format.destroy = xx_crt_vtable_destroy;
     crt->machine = -1;
 }
 
-xx_crt *xx_crt_create(xx_io_device *dev, int64_t base_address) {
+xx_crt *xx_crt_create(xx_io_device *dev, int64_t base_address)
+{
     xx_crt *crt = (xx_crt *)xx_mem_alloc(sizeof(*crt));
     if (crt) xx_crt_init(crt, dev, base_address);
     return crt;
 }
 
-void xx_crt_destroy(xx_crt *crt) {
+void xx_crt_destroy(xx_crt *crt)
+{
     if (!crt) return;
     xx_format_cleanup_extra_parameters(&crt->format);
 }
 
-static void xx_crt_vtable_destroy(Abstractformat *self) {
+static void xx_crt_vtable_destroy(Abstractformat *self)
+{
     xx_crt_destroy((xx_crt *)self);
 }
 
-void xx_crt_free(xx_crt *crt) {
+void xx_crt_free(xx_crt *crt)
+{
     if (!crt) return;
     xx_crt_destroy(crt);
     xx_mem_free(crt);
 }
 
-bool xx_crt_check_is_valid(Abstractformat *self, xx_pd_struct *pd) {
+bool xx_crt_check_is_valid(Abstractformat *self, xx_pd_struct *pd)
+{
     xx_crt_private parsed;
     bool result = xx_crt_parse(self, &parsed, false, pd);
     xx_crt_private_cleanup(&parsed);
     return result;
 }
 
-bool xx_crt_handle_base_info(Abstractformat *self, xx_pd_struct *pd) {
+bool xx_crt_handle_base_info(Abstractformat *self, xx_pd_struct *pd)
+{
     xx_crt *crt = (xx_crt *)self;
     xx_crt_private parsed;
     int64_t total;
@@ -360,29 +348,27 @@ bool xx_crt_handle_base_info(Abstractformat *self, xx_pd_struct *pd) {
     return true;
 }
 
-int64_t xx_crt_get_format_size(Abstractformat *self, xx_pd_struct *pd) {
-    if (!self ||
-        (!self->base_info_handled && !xx_format_handle_base_info(self, pd))) {
+int64_t xx_crt_get_format_size(Abstractformat *self, xx_pd_struct *pd)
+{
+    if (!self || (!self->base_info_handled && !xx_format_handle_base_info(self, pd))) {
         return -1;
     }
     return self->format_size;
 }
 
-uint64_t xx_crt_get_number_of_archive_records(Abstractformat *self,
-                                              xx_pd_struct *pd) {
-    if (!self ||
-        (!self->base_info_handled && !xx_format_handle_base_info(self, pd))) {
+uint64_t xx_crt_get_number_of_archive_records(Abstractformat *self, xx_pd_struct *pd)
+{
+    if (!self || (!self->base_info_handled && !xx_format_handle_base_info(self, pd))) {
         return 0U;
     }
     return ((xx_crt *)self)->number_of_records;
 }
 
-xx_archive_record_state *xx_crt_create_archive_records_reading(
-    Abstractformat *self, const xx_list_s *options, xx_pd_struct *pd) {
+xx_archive_record_state *xx_crt_create_archive_records_reading(Abstractformat *self, const xx_list_s *options, xx_pd_struct *pd)
+{
     xx_archive_record_state *state;
     xx_crt_stream *stream;
-    if (!self || !self->device ||
-        (!self->base_info_handled && !xx_format_handle_base_info(self, pd))) {
+    if (!self || !self->device || (!self->base_info_handled && !xx_format_handle_base_info(self, pd))) {
         return NULL;
     }
     state = (xx_archive_record_state *)xx_mem_alloc(sizeof(*state));
@@ -393,8 +379,7 @@ xx_archive_record_state *xx_crt_create_archive_records_reading(
         return NULL;
     }
     xx_archive_record_state_init(state, self);
-    if (!xx_crt_copy_options(&state->options, options) ||
-        !xx_crt_parse(self, &stream->parsed, true, pd)) {
+    if (!xx_crt_copy_options(&state->options, options) || !xx_crt_parse(self, &stream->parsed, true, pd)) {
         xx_crt_stream_free(stream);
         xx_archive_record_state_free(state);
         return NULL;
@@ -403,28 +388,22 @@ xx_archive_record_state *xx_crt_create_archive_records_reading(
     state->internal_state = stream;
     state->free_internal = xx_crt_stream_free;
     state->total_records = (int64_t)stream->parsed.count;
-    if (stream->parsed.count != 0U &&
-        xx_crt_populate_record(&state->current_record,
-                               &stream->parsed.chips[0], 0U)) {
+    if (stream->parsed.count != 0U && xx_crt_populate_record(&state->current_record, &stream->parsed.chips[0], 0U)) {
         state->has_record = true;
         state->current_index = 0;
     }
     return state;
 }
 
-const xx_archive_record *xx_crt_get_current_archive_record(
-    Abstractformat *self, xx_archive_record_state *state) {
-    return self && state && state->format == self && state->has_record
-               ? &state->current_record
-               : NULL;
+const xx_archive_record *xx_crt_get_current_archive_record(Abstractformat *self, xx_archive_record_state *state)
+{
+    return self && state && state->format == self && state->has_record ? &state->current_record : NULL;
 }
 
-bool xx_crt_archive_record_move_to_next(Abstractformat *self,
-                                        xx_archive_record_state *state,
-                                        xx_pd_struct *pd) {
+bool xx_crt_archive_record_move_to_next(Abstractformat *self, xx_archive_record_state *state, xx_pd_struct *pd)
+{
     xx_crt_stream *stream;
-    if (!self || !state || state->format != self || !state->has_record ||
-        !state->internal_state || (pd && xx_pd_is_stopped(pd))) {
+    if (!self || !state || state->format != self || !state->has_record || !state->internal_state || (pd && xx_pd_is_stopped(pd))) {
         return false;
     }
     stream = (xx_crt_stream *)state->internal_state;
@@ -435,9 +414,7 @@ bool xx_crt_archive_record_move_to_next(Abstractformat *self,
         state->has_record = false;
         return false;
     }
-    if (!xx_crt_populate_record(&state->current_record,
-                                &stream->parsed.chips[stream->index],
-                                stream->index)) {
+    if (!xx_crt_populate_record(&state->current_record, &stream->parsed.chips[stream->index], stream->index)) {
         state->has_record = false;
         return false;
     }
@@ -445,9 +422,8 @@ bool xx_crt_archive_record_move_to_next(Abstractformat *self,
     return true;
 }
 
-bool xx_crt_unpack_current_archive_record(Abstractformat *self,
-                                          xx_archive_record_state *state,
-                                          xx_pd_struct *pd) {
+bool xx_crt_unpack_current_archive_record(Abstractformat *self, xx_archive_record_state *state, xx_pd_struct *pd)
+{
     const xx_archive_record *record;
     const xx_var *option;
     const char *name;
@@ -455,8 +431,7 @@ bool xx_crt_unpack_current_archive_record(Abstractformat *self,
     char *owned_base = NULL;
     char *destination = NULL;
     bool result = false;
-    if (!self || !self->device || !state || state->format != self ||
-        !state->has_record || (pd && xx_pd_is_stopped(pd))) {
+    if (!self || !self->device || !state || state->format != self || !state->has_record || (pd && xx_pd_is_stopped(pd))) {
         return false;
     }
     record = &state->current_record;
@@ -465,21 +440,16 @@ bool xx_crt_unpack_current_archive_record(Abstractformat *self,
     option = xx_crt_find_option(&state->options, XX_META_ID_OPT_UNPACK_PATH);
     if (!option) {
         int64_t total = xx_io_total_size(self->device);
-        return record->data_offset >= 0 && record->compressed_size >= 0 &&
-               record->data_offset <= total &&
-               record->compressed_size <= total - record->data_offset;
+        return record->data_offset >= 0 && record->compressed_size >= 0 && record->data_offset <= total && record->compressed_size <= total - record->data_offset;
     }
-    if (option->type == XX_VAR_TYPE_STRING ||
-        option->type == XX_VAR_TYPE_STRING_VIEW) {
+    if (option->type == XX_VAR_TYPE_STRING || option->type == XX_VAR_TYPE_STRING_VIEW) {
         base = xx_var_get_str(option);
-    } else if (option->type == XX_VAR_TYPE_WSTRING ||
-               option->type == XX_VAR_TYPE_WSTRING_VIEW) {
+    } else if (option->type == XX_VAR_TYPE_WSTRING || option->type == XX_VAR_TYPE_WSTRING_VIEW) {
         owned_base = xx_str_unicode_to_utf8(xx_var_get_wstr(option));
         base = owned_base;
     }
     if (!base) goto cleanup;
-    if (base[0] && base[xx_str_len(base) - 1U] != '/' &&
-        base[xx_str_len(base) - 1U] != '\\') {
+    if (base[0] && base[xx_str_len(base) - 1U] != '/' && base[xx_str_len(base) - 1U] != '\\') {
         destination = xx_str_concat3(base, "/", name);
     } else {
         destination = xx_str_concat(base, name);
@@ -487,17 +457,15 @@ bool xx_crt_unpack_current_archive_record(Abstractformat *self,
     if (!destination) goto cleanup;
     if (!xx_store_create_dirs_a(destination, false)) goto cleanup;
     /* The helper deletes its own output on failure. */
-    result = xx_store_unpack_device_to_file(self->device, record->data_offset,
-                                            record->compressed_size,
-                                            destination, pd);
+    result = xx_store_unpack_device_to_file(self->device, record->data_offset, record->compressed_size, destination, pd);
 cleanup:
     if (owned_base) xx_str_free(owned_base);
     if (destination) xx_str_free(destination);
     return result;
 }
 
-void xx_crt_free_archive_records_reading(Abstractformat *self,
-                                         xx_archive_record_state *state) {
+void xx_crt_free_archive_records_reading(Abstractformat *self, xx_archive_record_state *state)
+{
     (void)self;
     xx_archive_record_state_free(state);
 }

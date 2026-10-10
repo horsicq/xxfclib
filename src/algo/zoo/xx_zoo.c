@@ -57,11 +57,11 @@ typedef struct xx_zoo_lzd_tables_s {
  * framed by its explicit end code, so a code that cannot be filled means the
  * member was truncated.
  */
-static bool xx_zoo_read_code(xx_zoo_bits *bits, int width, uint32_t *code) {
+static bool xx_zoo_read_code(xx_zoo_bits *bits, int width, uint32_t *code)
+{
     while (bits->available < width) {
         if (bits->position >= bits->size) return false;
-        bits->cache |= ((uint64_t)bits->data[bits->position++])
-                       << bits->available;
+        bits->cache |= ((uint64_t)bits->data[bits->position++]) << bits->available;
         bits->available += 8;
     }
     *code = (uint32_t)(bits->cache & ((((uint64_t)1U) << width) - 1U));
@@ -79,16 +79,13 @@ static bool xx_zoo_read_code(xx_zoo_bits *bits, int width, uint32_t *code) {
  * depth limited. A forward or self reference is a malformed stream and fails
  * rather than looping.
  */
-static bool xx_zoo_lzd_expand(uint32_t code, uint32_t next_code,
-                              const xx_zoo_lzd_tables *tables,
-                              uint8_t *stack, uint32_t *stack_size,
-                              uint8_t *first_byte) {
+static bool xx_zoo_lzd_expand(uint32_t code, uint32_t next_code, const xx_zoo_lzd_tables *tables, uint8_t *stack, uint32_t *stack_size, uint8_t *first_byte)
+{
     uint32_t size = 0U;
     uint32_t depth = 0U;
 
     while (code >= XX_ZOO_LZD_FIRST_FREE) {
-        if ((code >= next_code) || (size >= XX_ZOO_LZD_TABLE_SIZE) ||
-            (++depth > XX_ZOO_LZD_TABLE_SIZE)) {
+        if ((code >= next_code) || (size >= XX_ZOO_LZD_TABLE_SIZE) || (++depth > XX_ZOO_LZD_TABLE_SIZE)) {
             return false;
         }
         stack[size++] = tables->suffix[code];
@@ -103,9 +100,8 @@ static bool xx_zoo_lzd_expand(uint32_t code, uint32_t next_code,
     return true;
 }
 
-bool xx_zoo_lzd_decode_memory(const uint8_t *input, size_t input_size,
-                              uint8_t *output, size_t output_size,
-                              size_t *written) {
+bool xx_zoo_lzd_decode_memory(const uint8_t *input, size_t input_size, uint8_t *output, size_t output_size, size_t *written)
+{
     xx_zoo_bits bits;
     xx_zoo_lzd_tables *tables;
     size_t produced = 0U;
@@ -186,15 +182,13 @@ bool xx_zoo_lzd_decode_memory(const uint8_t *input, size_t input_size,
         input_code = code;
 
         if (code < next_code) {
-            if (!xx_zoo_lzd_expand(code, next_code, tables, tables->stack,
-                                   &stack_size, &first_byte)) {
+            if (!xx_zoo_lzd_expand(code, next_code, tables, tables->stack, &stack_size, &first_byte)) {
                 goto done;
             }
         } else if (code == next_code) {
             /* The KwKwK case: the code being defined right now. Expand the
              * previous code and append its own first byte. */
-            if (!xx_zoo_lzd_expand((uint32_t)previous_code, next_code, tables,
-                                   tables->stack, &stack_size, &first_byte)) {
+            if (!xx_zoo_lzd_expand((uint32_t)previous_code, next_code, tables, tables->stack, &stack_size, &first_byte)) {
                 goto done;
             }
         } else {
@@ -240,8 +234,7 @@ bool xx_zoo_lzd_decode_memory(const uint8_t *input, size_t input_size,
      * match the size the directory entry promised -- a short decode reported
      * as success is exactly what a caller cannot detect.
      */
-    ok = initial_clear_seen && eof_seen && (bits.cache == 0U) &&
-         (bits.position == input_size) && (produced == output_size);
+    ok = initial_clear_seen && eof_seen && (bits.cache == 0U) && (bits.position == input_size) && (produced == output_size);
 
 done:
     xx_mem_free(tables);
@@ -267,9 +260,7 @@ done:
  * the bytes produced; what is lost is one extra corruption check, which a
  * reader can still make by comparing the entry's CRC16.
  */
-bool xx_zoo_lzh_decode_memory(const uint8_t *input, size_t input_size,
-                              uint8_t *output, size_t output_size,
-                              size_t *written) {
-    return xx_lzh5_decode_memory(input, input_size, output, output_size, 5,
-                                 written);
+bool xx_zoo_lzh_decode_memory(const uint8_t *input, size_t input_size, uint8_t *output, size_t output_size, size_t *written)
+{
+    return xx_lzh5_decode_memory(input, input_size, output, output_size, 5, written);
 }

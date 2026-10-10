@@ -75,33 +75,37 @@ struct xx_ecos {
     bool has_nop;
 };
 
-XXFC_API void xx_ecos_init(xx_ecos *ecos, xx_io_device *dev,
-                           int64_t base_address);
+XXFC_API void xx_ecos_init(xx_ecos *ecos, xx_io_device *dev, int64_t base_address);
 XXFC_API xx_ecos *xx_ecos_create(xx_io_device *dev, int64_t base_address);
 XXFC_API void xx_ecos_destroy(xx_ecos *ecos);
 XXFC_API void xx_ecos_free(xx_ecos *ecos);
 
 XXFC_API bool xx_ecos_check_is_valid(Abstractformat *self, xx_pd_struct *pd);
 XXFC_API bool xx_ecos_handle_base_info(Abstractformat *self, xx_pd_struct *pd);
-XXFC_API int64_t xx_ecos_get_format_size(Abstractformat *self,
-                                         xx_pd_struct *pd);
+XXFC_API int64_t xx_ecos_get_format_size(Abstractformat *self, xx_pd_struct *pd);
 
 XXFC_API bool xx_ecos_is_big_endian(const xx_ecos *ecos);
 XXFC_API bool xx_ecos_has_nop(const xx_ecos *ecos);
 XXFC_API uint32_t xx_ecos_get_pattern_size(const xx_ecos *ecos);
 
-static inline Abstractformat *xx_ecos_to_format(xx_ecos *ecos) {
+static inline Abstractformat *xx_ecos_to_format(xx_ecos *ecos)
+{
     return ecos ? &ecos->format : NULL;
 }
-static inline void XEcos_init(xx_ecos *ecos, xx_io_device *dev,
-                              int64_t base_address) {
+static inline void XEcos_init(xx_ecos *ecos, xx_io_device *dev, int64_t base_address)
+{
     xx_ecos_init(ecos, dev, base_address);
 }
-static inline xx_ecos *XEcos_create(xx_io_device *dev, int64_t base_address) {
+static inline xx_ecos *XEcos_create(xx_io_device *dev, int64_t base_address)
+{
     return xx_ecos_create(dev, base_address);
 }
-static inline void XEcos_free(xx_ecos *ecos) { xx_ecos_free(ecos); }
-static inline bool XEcos_is_valid(xx_ecos *ecos, xx_pd_struct *pd) {
+static inline void XEcos_free(xx_ecos *ecos)
+{
+    xx_ecos_free(ecos);
+}
+static inline bool XEcos_is_valid(xx_ecos *ecos, xx_pd_struct *pd)
+{
     return ecos ? xx_format_is_valid(&ecos->format, pd) : false;
 }
 

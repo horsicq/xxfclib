@@ -59,12 +59,11 @@ static void xx_mh01_vtable_destroy(Abstractformat *self);
 
 /* All positioning goes through seek64: the header fields are 32-bit but the
  * base address inside a larger carrier is not, and long is 32-bit on Win64. */
-static bool xx_mh01_read_at(xx_io_device *device, int64_t offset, void *data,
-                            size_t size) {
+static bool xx_mh01_read_at(xx_io_device *device, int64_t offset, void *data, size_t size)
+{
     uint8_t *out = (uint8_t *)data;
     size_t done = 0U;
-    if (!device || (!data && size != 0U) || offset < 0 ||
-        xx_io_seek64(device, offset, SEEK_SET) != 0) {
+    if (!device || (!data && size != 0U) || offset < 0 || xx_io_seek64(device, offset, SEEK_SET) != 0) {
         return false;
     }
     while (done < size) {
@@ -75,7 +74,8 @@ static bool xx_mh01_read_at(xx_io_device *device, int64_t offset, void *data,
     return true;
 }
 
-static bool xx_mh01_add(int64_t left, uint64_t right, int64_t *result) {
+static bool xx_mh01_add(int64_t left, uint64_t right, int64_t *result)
+{
     if (!result || left < 0 || right > (uint64_t)(INT64_MAX - left)) {
         return false;
     }
@@ -84,13 +84,13 @@ static bool xx_mh01_add(int64_t left, uint64_t right, int64_t *result) {
 }
 
 /* True when [offset, offset + size) lies inside [0, total_size). */
-static bool xx_mh01_range_within(int64_t total_size, int64_t offset,
-                                 int64_t size) {
-    return (total_size >= 0) && (offset >= 0) && (size >= 0) &&
-           (offset <= total_size) && (size <= total_size - offset);
+static bool xx_mh01_range_within(int64_t total_size, int64_t offset, int64_t size)
+{
+    return (total_size >= 0) && (offset >= 0) && (size >= 0) && (offset <= total_size) && (size <= total_size - offset);
 }
 
-static void xx_mh01_private_cleanup(xx_mh01_private *parsed) {
+static void xx_mh01_private_cleanup(xx_mh01_private *parsed)
+{
     if (!parsed) return;
     if (parsed->iv) xx_str_free(parsed->iv);
     xx_mem_zero(parsed, sizeof(*parsed));
@@ -101,8 +101,8 @@ static void xx_mh01_private_cleanup(xx_mh01_private *parsed) {
     parsed->signature_data_offset = -1;
 }
 
-static void xx_mh01_push(xx_mh01_private *parsed, const char *name,
-                         int64_t offset, int64_t size, bool is_encrypted) {
+static void xx_mh01_push(xx_mh01_private *parsed, const char *name, int64_t offset, int64_t size, bool is_encrypted)
+{
     xx_mh01_region *region;
     if (!parsed || parsed->count >= XX_MH01_MAX_RECORDS || size <= 0) return;
     region = &parsed->regions[parsed->count++];
@@ -112,8 +112,8 @@ static void xx_mh01_push(xx_mh01_private *parsed, const char *name,
     region->is_encrypted = is_encrypted;
 }
 
-static bool xx_mh01_parse(Abstractformat *self, xx_mh01_private *parsed,
-                          xx_pd_struct *pd) {
+static bool xx_mh01_parse(Abstractformat *self, xx_mh01_private *parsed, xx_pd_struct *pd)
+{
     uint8_t header[XX_MH01_HEADER_SIZE];
     uint8_t openssl_magic[XX_MH01_OPENSSL_MAGIC_SIZE];
     uint64_t total_span;
@@ -128,30 +128,24 @@ static bool xx_mh01_parse(Abstractformat *self, xx_mh01_private *parsed,
         parsed->encrypted_data_offset = -1;
         parsed->signature_data_offset = -1;
     }
-    if (!self || !self->device || !parsed || self->base_address < 0 ||
-        (pd && xx_pd_is_stopped(pd))) {
+    if (!self || !self->device || !parsed || self->base_address < 0 || (pd && xx_pd_is_stopped(pd))) {
         return false;
     }
     parsed->input_size = xx_io_total_size(self->device);
-    if (!xx_mh01_range_within(parsed->input_size, self->base_address,
-                              XX_MH01_HEADER_SIZE) ||
-        !xx_mh01_read_at(self->device, self->base_address, header,
-                         XX_MH01_HEADER_SIZE)) {
+    if (!xx_mh01_range_within(parsed->input_size, self->base_address, XX_MH01_HEADER_SIZE) ||
+        !xx_mh01_read_at(self->device, self->base_address, header, XX_MH01_HEADER_SIZE)) {
         goto fail;
     }
     /* Both sub-headers carry the magic.  Requiring the second one is what
      * keeps a stray "MH01" in the middle of some other file from parsing. */
-    if (xx_data_get_u32(header, sizeof(header), 0U, false) != XX_MH01_MAGIC ||
-        xx_data_get_u32(header, sizeof(header), 16U, false) != XX_MH01_MAGIC) {
+    if (xx_data_get_u32(header, sizeof(header), 0U, false) != XX_MH01_MAGIC || xx_data_get_u32(header, sizeof(header), 16U, false) != XX_MH01_MAGIC) {
         goto fail;
     }
-    parsed->signature_offset = xx_data_get_u32(header, sizeof(header), 4U,
-                                               false);
+    parsed->signature_offset = xx_data_get_u32(header, sizeof(header), 4U, false);
     parsed->signature_size = xx_data_get_u32(header, sizeof(header), 8U, false);
     parsed->unknown1 = xx_data_get_u32(header, sizeof(header), 12U, false);
     parsed->iv_size = xx_data_get_u32(header, sizeof(header), 20U, false);
-    parsed->encrypted_data_size =
-        xx_data_get_u32(header, sizeof(header), 24U, false);
+    parsed->encrypted_data_size = xx_data_get_u32(header, sizeof(header), 24U, false);
     parsed->unknown2 = xx_data_get_u32(header, sizeof(header), 28U, false);
 
     /* The IV is buffered whole, so it is capped independently of the device
@@ -159,31 +153,22 @@ static bool xx_mh01_parse(Abstractformat *self, xx_mh01_private *parsed,
      * anywhere near the limit.  The payload is an OpenSSL "enc" container,
      * whose own header ("Salted__" plus an eight-byte salt) is sixteen bytes,
      * so anything shorter cannot be one. */
-    if (parsed->iv_size == 0U || parsed->iv_size > XX_MH01_MAX_IV_SIZE ||
-        parsed->encrypted_data_size < XX_MH01_OPENSSL_HEADER_SIZE ||
-        parsed->signature_size == 0U) {
+    if (parsed->iv_size == 0U || parsed->iv_size > XX_MH01_MAX_IV_SIZE || parsed->encrypted_data_size < XX_MH01_OPENSSL_HEADER_SIZE || parsed->signature_size == 0U) {
         goto fail;
     }
 
     parsed->iv_offset = self->base_address + (int64_t)XX_MH01_HEADER_SIZE;
-    if (!xx_mh01_add(parsed->iv_offset, parsed->iv_size,
-                     &parsed->encrypted_data_offset) ||
-        !xx_mh01_add(self->base_address,
-                     (uint64_t)XX_MH01_SUBHEADER_SIZE +
-                         (uint64_t)parsed->signature_offset,
-                     &parsed->signature_data_offset)) {
+    if (!xx_mh01_add(parsed->iv_offset, parsed->iv_size, &parsed->encrypted_data_offset) ||
+        !xx_mh01_add(self->base_address, (uint64_t)XX_MH01_SUBHEADER_SIZE + (uint64_t)parsed->signature_offset, &parsed->signature_data_offset)) {
         goto fail;
     }
 
     /* Every declared region has to be physically present.  These three
      * lengths are straight out of the file and are the expansion hazard in
      * this format: bound them here, at parse, not at extraction. */
-    if (!xx_mh01_range_within(parsed->input_size, parsed->iv_offset,
-                              (int64_t)parsed->iv_size) ||
-        !xx_mh01_range_within(parsed->input_size, parsed->encrypted_data_offset,
-                              (int64_t)parsed->encrypted_data_size) ||
-        !xx_mh01_range_within(parsed->input_size, parsed->signature_data_offset,
-                              (int64_t)parsed->signature_size)) {
+    if (!xx_mh01_range_within(parsed->input_size, parsed->iv_offset, (int64_t)parsed->iv_size) ||
+        !xx_mh01_range_within(parsed->input_size, parsed->encrypted_data_offset, (int64_t)parsed->encrypted_data_size) ||
+        !xx_mh01_range_within(parsed->input_size, parsed->signature_data_offset, (int64_t)parsed->signature_size)) {
         goto fail;
     }
 
@@ -196,17 +181,14 @@ static bool xx_mh01_parse(Abstractformat *self, xx_mh01_private *parsed,
      * a NUL, a non-hex byte, whitespace before or between digits - means
      * the layout was guessed wrong, so it is a parse failure. */
     parsed->iv = xx_str_create_len(parsed->iv_size);
-    if (!parsed->iv ||
-        !xx_mh01_read_at(self->device, parsed->iv_offset, parsed->iv,
-                         parsed->iv_size)) {
+    if (!parsed->iv || !xx_mh01_read_at(self->device, parsed->iv_offset, parsed->iv, parsed->iv_size)) {
         goto fail;
     }
     parsed->iv[parsed->iv_size] = '\0';
     hex_digits = 0U;
     for (index = 0U; index < parsed->iv_size; ++index) {
         char c = parsed->iv[index];
-        bool is_hex = (c >= '0' && c <= '9') || (c >= 'a' && c <= 'f') ||
-                      (c >= 'A' && c <= 'F');
+        bool is_hex = (c >= '0' && c <= '9') || (c >= 'a' && c <= 'f') || (c >= 'A' && c <= 'F');
         bool is_space = c == ' ' || c == '\t' || c == '\r' || c == '\n';
         if (is_hex && hex_digits == index) {
             ++hex_digits;
@@ -221,10 +203,8 @@ static bool xx_mh01_parse(Abstractformat *self, xx_mh01_private *parsed,
      * plausible lengths is not enough evidence.  encrypted_data_size >= 16
      * was checked above and the region is inside the file, so the magic read
      * stays inside the payload. */
-    if (!xx_mh01_read_at(self->device, parsed->encrypted_data_offset,
-                         openssl_magic, XX_MH01_OPENSSL_MAGIC_SIZE) ||
-        xx_rt_memcmp(openssl_magic, XX_MH01_OPENSSL_MAGIC,
-                     XX_MH01_OPENSSL_MAGIC_SIZE) != 0) {
+    if (!xx_mh01_read_at(self->device, parsed->encrypted_data_offset, openssl_magic, XX_MH01_OPENSSL_MAGIC_SIZE) ||
+        xx_rt_memcmp(openssl_magic, XX_MH01_OPENSSL_MAGIC, XX_MH01_OPENSSL_MAGIC_SIZE) != 0) {
         goto fail;
     }
 
@@ -232,25 +212,17 @@ static bool xx_mh01_parse(Abstractformat *self, xx_mh01_private *parsed,
      * gap, but it may not start inside the header, the IV or the payload it
      * signs.  With that ordering the end of the signature is the end of the
      * whole image. */
-    if (!xx_mh01_add(parsed->encrypted_data_offset,
-                     parsed->encrypted_data_size, &payload_end) ||
-        parsed->signature_data_offset < payload_end) {
+    if (!xx_mh01_add(parsed->encrypted_data_offset, parsed->encrypted_data_size, &payload_end) || parsed->signature_data_offset < payload_end) {
         goto fail;
     }
-    total_span = (uint64_t)XX_MH01_SUBHEADER_SIZE +
-                 (uint64_t)parsed->signature_offset +
-                 (uint64_t)parsed->signature_size;
-    if (!xx_mh01_add(self->base_address, total_span, &parsed->archive_end) ||
-        parsed->archive_end > parsed->input_size) {
+    total_span = (uint64_t)XX_MH01_SUBHEADER_SIZE + (uint64_t)parsed->signature_offset + (uint64_t)parsed->signature_size;
+    if (!xx_mh01_add(self->base_address, total_span, &parsed->archive_end) || parsed->archive_end > parsed->input_size) {
         goto fail;
     }
 
-    xx_mh01_push(parsed, "iv.bin", parsed->iv_offset, (int64_t)parsed->iv_size,
-                 false);
-    xx_mh01_push(parsed, "encrypted.bin", parsed->encrypted_data_offset,
-                 (int64_t)parsed->encrypted_data_size, true);
-    xx_mh01_push(parsed, "signature.bin", parsed->signature_data_offset,
-                 (int64_t)parsed->signature_size, false);
+    xx_mh01_push(parsed, "iv.bin", parsed->iv_offset, (int64_t)parsed->iv_size, false);
+    xx_mh01_push(parsed, "encrypted.bin", parsed->encrypted_data_offset, (int64_t)parsed->encrypted_data_size, true);
+    xx_mh01_push(parsed, "signature.bin", parsed->signature_data_offset, (int64_t)parsed->signature_size, false);
     if (parsed->count == 0U) goto fail;
     return true;
 fail:
@@ -262,18 +234,16 @@ fail:
 /* Record plumbing                                                           */
 /* ------------------------------------------------------------------------ */
 
-static bool xx_mh01_copy_options(xx_list_s *destination,
-                                 const xx_list_s *source) {
+static bool xx_mh01_copy_options(xx_list_s *destination, const xx_list_s *source)
+{
     size_t index;
     if (!destination || !source) return source == NULL;
     for (index = 0U; index < source->count; ++index) {
-        const xx_meta *item =
-            (const xx_meta *)xx_list_at((const xx_list_t *)source, index);
+        const xx_meta *item = (const xx_meta *)xx_list_at((const xx_list_t *)source, index);
         xx_meta copy;
         if (!item) continue;
         xx_meta_init(&copy, item->meta_id);
-        if (!xx_var_copy(&copy.var, &item->var) ||
-            !xx_list_append(destination, &copy)) {
+        if (!xx_var_copy(&copy.var, &item->var) || !xx_list_append(destination, &copy)) {
             xx_meta_cleanup(&copy);
             return false;
         }
@@ -281,21 +251,19 @@ static bool xx_mh01_copy_options(xx_list_s *destination,
     return true;
 }
 
-static const xx_var *xx_mh01_find_option(const xx_list_s *options,
-                                         uint32_t meta_id) {
+static const xx_var *xx_mh01_find_option(const xx_list_s *options, uint32_t meta_id)
+{
     size_t index;
     if (!options) return NULL;
     for (index = 0U; index < options->count; ++index) {
-        const xx_meta *item =
-            (const xx_meta *)xx_list_at((const xx_list_t *)options, index);
+        const xx_meta *item = (const xx_meta *)xx_list_at((const xx_list_t *)options, index);
         if (item && item->meta_id == meta_id) return &item->var;
     }
     return NULL;
 }
 
-static bool xx_mh01_populate_record(xx_archive_record *record,
-                                    const xx_mh01_private *parsed,
-                                    const xx_mh01_region *region) {
+static bool xx_mh01_populate_record(xx_archive_record *record, const xx_mh01_private *parsed, const xx_mh01_region *region)
+{
     if (!record || !parsed || !region || !region->name) return false;
     xx_archive_record_cleanup(record);
     xx_archive_record_init(record);
@@ -306,19 +274,14 @@ static bool xx_mh01_populate_record(xx_archive_record *record,
     /* Nothing inside an MH01 image is compressed, so the two sizes agree and
      * the compression method is "none".  The payload is encrypted with a key
      * this library does not have, which is what the flag records. */
-    return xx_archive_record_set_original_name(record, region->name) &&
-           xx_archive_record_set_meta_u64(record, XX_META_ID_COMPRESSED_SIZE,
-                                          (uint64_t)region->data_size) &&
-           xx_archive_record_set_meta_u64(record, XX_META_ID_UNCOMPRESSED_SIZE,
-                                          (uint64_t)region->data_size) &&
-           xx_archive_record_set_meta_u64(record, XX_META_ID_COMPRESSION_METHOD,
-                                          0U) &&
-           xx_archive_record_set_meta_bool(record, XX_META_ID_IS_ENCRYPTED,
-                                           region->is_encrypted) &&
-           xx_archive_record_set_meta_bool(record, XX_META_ID_IS_FOLDER, false);
+    return xx_archive_record_set_original_name(record, region->name) && xx_archive_record_set_meta_u64(record, XX_META_ID_COMPRESSED_SIZE, (uint64_t)region->data_size) &&
+           xx_archive_record_set_meta_u64(record, XX_META_ID_UNCOMPRESSED_SIZE, (uint64_t)region->data_size) &&
+           xx_archive_record_set_meta_u64(record, XX_META_ID_COMPRESSION_METHOD, 0U) &&
+           xx_archive_record_set_meta_bool(record, XX_META_ID_IS_ENCRYPTED, region->is_encrypted) && xx_archive_record_set_meta_bool(record, XX_META_ID_IS_FOLDER, false);
 }
 
-static void xx_mh01_archive_stream_free(void *pointer) {
+static void xx_mh01_archive_stream_free(void *pointer)
+{
     xx_mh01_archive_stream *stream = (xx_mh01_archive_stream *)pointer;
     if (!stream) return;
     xx_mh01_private_cleanup(&stream->parsed);
@@ -329,7 +292,8 @@ static void xx_mh01_archive_stream_free(void *pointer) {
 /* Public interface                                                          */
 /* ------------------------------------------------------------------------ */
 
-void xx_mh01_init(xx_mh01 *mh01, xx_io_device *dev, int64_t base_address) {
+void xx_mh01_init(xx_mh01 *mh01, xx_io_device *dev, int64_t base_address)
+{
     if (!mh01) return;
     xx_mem_zero(mh01, sizeof(*mh01));
     xx_format_init(&mh01->format, dev, base_address);
@@ -344,18 +308,12 @@ void xx_mh01_init(xx_mh01 *mh01, xx_io_device *dev, int64_t base_address) {
     mh01->format.check_is_valid = xx_mh01_check_is_valid;
     mh01->format.handle_base_info = xx_mh01_handle_base_info;
     mh01->format.get_format_size = xx_mh01_get_format_size;
-    mh01->format.get_number_of_archive_records =
-        xx_mh01_get_number_of_archive_records;
-    mh01->format.create_archive_records_reading =
-        xx_mh01_create_archive_records_reading;
-    mh01->format.get_current_archive_record =
-        xx_mh01_get_current_archive_record;
-    mh01->format.unpack_current_archive_record =
-        xx_mh01_unpack_current_archive_record;
-    mh01->format.archive_record_move_to_next =
-        xx_mh01_archive_record_move_to_next;
-    mh01->format.free_archive_records_reading =
-        xx_mh01_free_archive_records_reading;
+    mh01->format.get_number_of_archive_records = xx_mh01_get_number_of_archive_records;
+    mh01->format.create_archive_records_reading = xx_mh01_create_archive_records_reading;
+    mh01->format.get_current_archive_record = xx_mh01_get_current_archive_record;
+    mh01->format.unpack_current_archive_record = xx_mh01_unpack_current_archive_record;
+    mh01->format.archive_record_move_to_next = xx_mh01_archive_record_move_to_next;
+    mh01->format.free_archive_records_reading = xx_mh01_free_archive_records_reading;
     mh01->format.destroy = xx_mh01_vtable_destroy;
     mh01->iv_offset = -1;
     mh01->encrypted_data_offset = -1;
@@ -363,13 +321,15 @@ void xx_mh01_init(xx_mh01 *mh01, xx_io_device *dev, int64_t base_address) {
     mh01->archive_end = -1;
 }
 
-xx_mh01 *xx_mh01_create(xx_io_device *dev, int64_t base_address) {
+xx_mh01 *xx_mh01_create(xx_io_device *dev, int64_t base_address)
+{
     xx_mh01 *mh01 = (xx_mh01 *)xx_mem_alloc(sizeof(*mh01));
     if (mh01) xx_mh01_init(mh01, dev, base_address);
     return mh01;
 }
 
-void xx_mh01_destroy(xx_mh01 *mh01) {
+void xx_mh01_destroy(xx_mh01 *mh01)
+{
     if (!mh01) return;
     if (mh01->internal) {
         xx_mh01_private_cleanup((xx_mh01_private *)mh01->internal);
@@ -379,24 +339,28 @@ void xx_mh01_destroy(xx_mh01 *mh01) {
     xx_format_cleanup_extra_parameters(&mh01->format);
 }
 
-static void xx_mh01_vtable_destroy(Abstractformat *self) {
+static void xx_mh01_vtable_destroy(Abstractformat *self)
+{
     xx_mh01_destroy((xx_mh01 *)self);
 }
 
-void xx_mh01_free(xx_mh01 *mh01) {
+void xx_mh01_free(xx_mh01 *mh01)
+{
     if (!mh01) return;
     xx_mh01_destroy(mh01);
     xx_mem_free(mh01);
 }
 
-bool xx_mh01_check_is_valid(Abstractformat *self, xx_pd_struct *pd) {
+bool xx_mh01_check_is_valid(Abstractformat *self, xx_pd_struct *pd)
+{
     xx_mh01_private parsed;
     bool result = xx_mh01_parse(self, &parsed, pd);
     xx_mh01_private_cleanup(&parsed);
     return result;
 }
 
-bool xx_mh01_handle_base_info(Abstractformat *self, xx_pd_struct *pd) {
+bool xx_mh01_handle_base_info(Abstractformat *self, xx_pd_struct *pd)
+{
     xx_mh01_private *parsed;
     xx_mh01 *mh01 = (xx_mh01 *)self;
     int64_t total_size;
@@ -439,29 +403,27 @@ bool xx_mh01_handle_base_info(Abstractformat *self, xx_pd_struct *pd) {
     return true;
 }
 
-int64_t xx_mh01_get_format_size(Abstractformat *self, xx_pd_struct *pd) {
-    if (!self ||
-        (!self->base_info_handled && !xx_format_handle_base_info(self, pd))) {
+int64_t xx_mh01_get_format_size(Abstractformat *self, xx_pd_struct *pd)
+{
+    if (!self || (!self->base_info_handled && !xx_format_handle_base_info(self, pd))) {
         return -1;
     }
     return self->format_size;
 }
 
-uint64_t xx_mh01_get_number_of_archive_records(Abstractformat *self,
-                                               xx_pd_struct *pd) {
-    if (!self ||
-        (!self->base_info_handled && !xx_format_handle_base_info(self, pd))) {
+uint64_t xx_mh01_get_number_of_archive_records(Abstractformat *self, xx_pd_struct *pd)
+{
+    if (!self || (!self->base_info_handled && !xx_format_handle_base_info(self, pd))) {
         return 0U;
     }
     return ((xx_mh01 *)self)->number_of_records;
 }
 
-xx_archive_record_state *xx_mh01_create_archive_records_reading(
-    Abstractformat *self, const xx_list_s *options, xx_pd_struct *pd) {
+xx_archive_record_state *xx_mh01_create_archive_records_reading(Abstractformat *self, const xx_list_s *options, xx_pd_struct *pd)
+{
     xx_archive_record_state *state;
     xx_mh01_archive_stream *stream;
-    if (!self || !self->device ||
-        (!self->base_info_handled && !xx_format_handle_base_info(self, pd))) {
+    if (!self || !self->device || (!self->base_info_handled && !xx_format_handle_base_info(self, pd))) {
         return NULL;
     }
     state = (xx_archive_record_state *)xx_mem_alloc(sizeof(*state));
@@ -472,8 +434,7 @@ xx_archive_record_state *xx_mh01_create_archive_records_reading(
         return NULL;
     }
     xx_archive_record_state_init(state, self);
-    if (!xx_mh01_copy_options(&state->options, options) ||
-        !xx_mh01_parse(self, &stream->parsed, pd)) {
+    if (!xx_mh01_copy_options(&state->options, options) || !xx_mh01_parse(self, &stream->parsed, pd)) {
         xx_mh01_archive_stream_free(stream);
         xx_archive_record_state_free(state);
         return NULL;
@@ -482,28 +443,22 @@ xx_archive_record_state *xx_mh01_create_archive_records_reading(
     state->internal_state = stream;
     state->free_internal = xx_mh01_archive_stream_free;
     state->total_records = (int64_t)stream->parsed.count;
-    if (stream->parsed.count != 0U &&
-        xx_mh01_populate_record(&state->current_record, &stream->parsed,
-                                &stream->parsed.regions[0])) {
+    if (stream->parsed.count != 0U && xx_mh01_populate_record(&state->current_record, &stream->parsed, &stream->parsed.regions[0])) {
         state->has_record = true;
         state->current_index = 0;
     }
     return state;
 }
 
-const xx_archive_record *xx_mh01_get_current_archive_record(
-    Abstractformat *self, xx_archive_record_state *state) {
-    return self && state && state->format == self && state->has_record
-               ? &state->current_record
-               : NULL;
+const xx_archive_record *xx_mh01_get_current_archive_record(Abstractformat *self, xx_archive_record_state *state)
+{
+    return self && state && state->format == self && state->has_record ? &state->current_record : NULL;
 }
 
-bool xx_mh01_archive_record_move_to_next(Abstractformat *self,
-                                         xx_archive_record_state *state,
-                                         xx_pd_struct *pd) {
+bool xx_mh01_archive_record_move_to_next(Abstractformat *self, xx_archive_record_state *state, xx_pd_struct *pd)
+{
     xx_mh01_archive_stream *stream;
-    if (!self || !state || state->format != self || !state->has_record ||
-        !state->internal_state || (pd && xx_pd_is_stopped(pd))) {
+    if (!self || !state || state->format != self || !state->has_record || !state->internal_state || (pd && xx_pd_is_stopped(pd))) {
         return false;
     }
     stream = (xx_mh01_archive_stream *)state->internal_state;
@@ -514,8 +469,7 @@ bool xx_mh01_archive_record_move_to_next(Abstractformat *self,
         state->has_record = false;
         return false;
     }
-    if (!xx_mh01_populate_record(&state->current_record, &stream->parsed,
-                                 &stream->parsed.regions[stream->index])) {
+    if (!xx_mh01_populate_record(&state->current_record, &stream->parsed, &stream->parsed.regions[stream->index])) {
         state->has_record = false;
         return false;
     }
@@ -523,9 +477,8 @@ bool xx_mh01_archive_record_move_to_next(Abstractformat *self,
     return true;
 }
 
-bool xx_mh01_unpack_current_archive_record(Abstractformat *self,
-                                           xx_archive_record_state *state,
-                                           xx_pd_struct *pd) {
+bool xx_mh01_unpack_current_archive_record(Abstractformat *self, xx_archive_record_state *state, xx_pd_struct *pd)
+{
     const xx_archive_record *record;
     const xx_var *option;
     const char *name;
@@ -533,8 +486,7 @@ bool xx_mh01_unpack_current_archive_record(Abstractformat *self,
     char *owned_base = NULL;
     char *destination = NULL;
     bool result = false;
-    if (!self || !self->device || !state || state->format != self ||
-        !state->has_record || (pd && xx_pd_is_stopped(pd))) {
+    if (!self || !self->device || !state || state->format != self || !state->has_record || (pd && xx_pd_is_stopped(pd))) {
         return false;
     }
     record = &state->current_record;
@@ -544,59 +496,57 @@ bool xx_mh01_unpack_current_archive_record(Abstractformat *self,
     if (!option) {
         /* No destination: report whether the region's span is addressable. */
         int64_t total = xx_io_total_size(self->device);
-        return record->data_offset >= 0 && record->compressed_size >= 0 &&
-               record->data_offset <= total &&
-               record->compressed_size <= total - record->data_offset;
+        return record->data_offset >= 0 && record->compressed_size >= 0 && record->data_offset <= total && record->compressed_size <= total - record->data_offset;
     }
-    if (option->type == XX_VAR_TYPE_STRING ||
-        option->type == XX_VAR_TYPE_STRING_VIEW) {
+    if (option->type == XX_VAR_TYPE_STRING || option->type == XX_VAR_TYPE_STRING_VIEW) {
         base = xx_var_get_str(option);
-    } else if (option->type == XX_VAR_TYPE_WSTRING ||
-               option->type == XX_VAR_TYPE_WSTRING_VIEW) {
+    } else if (option->type == XX_VAR_TYPE_WSTRING || option->type == XX_VAR_TYPE_WSTRING_VIEW) {
         owned_base = xx_str_unicode_to_utf8(xx_var_get_wstr(option));
         base = owned_base;
     }
     if (!base) goto cleanup;
-    if (base[0] && base[xx_str_len(base) - 1U] != '/' &&
-        base[xx_str_len(base) - 1U] != '\\') {
+    if (base[0] && base[xx_str_len(base) - 1U] != '/' && base[xx_str_len(base) - 1U] != '\\') {
         destination = xx_str_concat3(base, "/", name);
     } else {
         destination = xx_str_concat(base, name);
     }
     if (!destination) goto cleanup;
     if (!xx_store_create_dirs_a(destination, false)) goto cleanup;
-    result = xx_store_unpack_device_to_file(self->device, record->data_offset,
-                                            record->compressed_size,
-                                            destination, pd);
+    result = xx_store_unpack_device_to_file(self->device, record->data_offset, record->compressed_size, destination, pd);
 cleanup:
     if (owned_base) xx_str_free(owned_base);
     if (destination) xx_str_free(destination);
     return result;
 }
 
-void xx_mh01_free_archive_records_reading(Abstractformat *self,
-                                          xx_archive_record_state *state) {
+void xx_mh01_free_archive_records_reading(Abstractformat *self, xx_archive_record_state *state)
+{
     (void)self;
     xx_archive_record_state_free(state);
 }
 
-uint64_t xx_mh01_get_number_of_records(const xx_mh01 *mh01) {
+uint64_t xx_mh01_get_number_of_records(const xx_mh01 *mh01)
+{
     return mh01 ? mh01->number_of_records : 0U;
 }
-uint32_t xx_mh01_get_iv_size(const xx_mh01 *mh01) {
+uint32_t xx_mh01_get_iv_size(const xx_mh01 *mh01)
+{
     return mh01 ? mh01->iv_size : 0U;
 }
-uint32_t xx_mh01_get_encrypted_data_size(const xx_mh01 *mh01) {
+uint32_t xx_mh01_get_encrypted_data_size(const xx_mh01 *mh01)
+{
     return mh01 ? mh01->encrypted_data_size : 0U;
 }
-uint32_t xx_mh01_get_signature_size(const xx_mh01 *mh01) {
+uint32_t xx_mh01_get_signature_size(const xx_mh01 *mh01)
+{
     return mh01 ? mh01->signature_size : 0U;
 }
-const char *xx_mh01_get_iv(const xx_mh01 *mh01) {
-    const xx_mh01_private *parsed =
-        mh01 ? (const xx_mh01_private *)mh01->internal : NULL;
+const char *xx_mh01_get_iv(const xx_mh01 *mh01)
+{
+    const xx_mh01_private *parsed = mh01 ? (const xx_mh01_private *)mh01->internal : NULL;
     return parsed ? parsed->iv : NULL;
 }
-int64_t xx_mh01_get_archive_end(const xx_mh01 *mh01) {
+int64_t xx_mh01_get_archive_end(const xx_mh01 *mh01)
+{
     return mh01 ? mh01->archive_end : -1;
 }

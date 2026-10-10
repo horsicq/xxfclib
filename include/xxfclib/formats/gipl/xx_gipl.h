@@ -6,13 +6,15 @@
 #ifdef __cplusplus
 extern "C" {
 #endif
-typedef struct xx_gipl { Abstractformat format; } xx_gipl;
-XXFC_API void xx_gipl_init(xx_gipl *,xx_io_device *,int64_t);
-XXFC_API xx_gipl *xx_gipl_create(xx_io_device *,int64_t);
+typedef struct xx_gipl {
+    Abstractformat format;
+} xx_gipl;
+XXFC_API void xx_gipl_init(xx_gipl *, xx_io_device *, int64_t);
+XXFC_API xx_gipl *xx_gipl_create(xx_io_device *, int64_t);
 XXFC_API void xx_gipl_destroy(xx_gipl *);
 XXFC_API void xx_gipl_free(xx_gipl *);
-XXFC_API bool xx_gipl_check_is_valid(Abstractformat *,xx_pd_struct *);
-XXFC_API bool xx_gipl_handle_base_info(Abstractformat *,xx_pd_struct *);
+XXFC_API bool xx_gipl_check_is_valid(Abstractformat *, xx_pd_struct *);
+XXFC_API bool xx_gipl_handle_base_info(Abstractformat *, xx_pd_struct *);
 #ifdef __cplusplus
 }
 #endif

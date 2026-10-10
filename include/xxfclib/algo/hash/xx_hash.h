@@ -57,8 +57,8 @@ typedef enum xx_hash_type_e {
 typedef struct xx_hash_context {
     xx_hash_type_t type;
     uint32_t state[8];
-    uint64_t length;              /**< Total bytes fed in, for the padding. */
-    uint8_t buffer[64];           /**< Partial block held between updates. */
+    uint64_t length;    /**< Total bytes fed in, for the padding. */
+    uint8_t buffer[64]; /**< Partial block held between updates. */
     size_t buffered;
     bool initialized;
 } xx_hash_context;
@@ -74,8 +74,7 @@ typedef struct xx_hash_context {
 XXFC_API bool xx_hash_init(xx_hash_context *ctx, xx_hash_type_t type);
 
 /** @brief Feed a block of data into an active context. */
-XXFC_API void xx_hash_update(xx_hash_context *ctx, const void *data,
-                             size_t size);
+XXFC_API void xx_hash_update(xx_hash_context *ctx, const void *data, size_t size);
 
 /**
  * @brief Finish the digest and write it to @p out.
@@ -100,8 +99,7 @@ XXFC_API size_t xx_hash_digest_size(xx_hash_type_t type);
  * @return false on a NULL output, an unknown type, or too small a buffer.
  *         A NULL @p data with @p size 0 is valid and digests the empty string.
  */
-XXFC_API bool xx_hash_memory(xx_hash_type_t type, const void *data,
-                             size_t size, void *out, size_t out_size);
+XXFC_API bool xx_hash_memory(xx_hash_type_t type, const void *data, size_t size, void *out, size_t out_size);
 
 /**
  * @brief Digest @p size bytes of @p dev starting at @p offset.
@@ -110,9 +108,7 @@ XXFC_API bool xx_hash_memory(xx_hash_type_t type, const void *data,
  * means "to the end of the device".
  * @return false if the range lies outside the device or a read fails.
  */
-XXFC_API bool xx_hash_device(xx_hash_type_t type, xx_io_device *dev,
-                             int64_t offset, int64_t size, void *out,
-                             size_t out_size, xx_pd_struct *pd);
+XXFC_API bool xx_hash_device(xx_hash_type_t type, xx_io_device *dev, int64_t offset, int64_t size, void *out, size_t out_size, xx_pd_struct *pd);
 
 /* ========================================================================= */
 /* --- Convenience shortcuts                                             --- */
@@ -131,8 +127,7 @@ XXFC_API bool xx_sha256_memory(const void *data, size_t size, void *out);
  * @param out       receives 2*digest_size+1 bytes including the terminator.
  * @return false when @p out is too small.
  */
-XXFC_API bool xx_hash_to_hex(const void *digest, size_t digest_size, char *out,
-                             size_t out_size);
+XXFC_API bool xx_hash_to_hex(const void *digest, size_t digest_size, char *out, size_t out_size);
 
 /**
  * @brief Compare a computed digest against an expected one.

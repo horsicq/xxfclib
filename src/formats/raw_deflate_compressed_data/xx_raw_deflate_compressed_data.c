@@ -71,8 +71,7 @@
  * here, so the alias macro defined next to the enumerator is tested instead;
  * this picks up the real file type as soon as the reader is registered. */
 #ifdef RAW_DEFLATE_COMPRESSED_DATA
-#define XX_RAW_DEFLATE_COMPRESSED_DATA_FILE_TYPE \
-    XX_FILE_TYPE_RAW_DEFLATE_COMPRESSED_DATA
+#define XX_RAW_DEFLATE_COMPRESSED_DATA_FILE_TYPE XX_FILE_TYPE_RAW_DEFLATE_COMPRESSED_DATA
 #else
 #define XX_RAW_DEFLATE_COMPRESSED_DATA_FILE_TYPE XX_FILE_TYPE_UNKNOWN
 #endif
@@ -113,17 +112,17 @@ typedef struct rdf_huffman_s {
 typedef struct rdf_scanner_s {
     xx_io_device *device;
     xx_pd_struct *pd;
-    int64_t base;          /* device offset of the stream's first byte */
-    int64_t size;          /* bytes available from base to end of file */
+    int64_t base; /* device offset of the stream's first byte */
+    int64_t size; /* bytes available from base to end of file */
     uint8_t *window;
     size_t io_capacity;
     size_t window_fill;
     size_t window_pos;
-    size_t next_read;      /* size of the next window read */
-    int64_t window_start;  /* stream offset of window[0] */
-    uint64_t bits;         /* pulled, not yet used; LSB = next bit */
-    unsigned count;        /* valid bits in `bits`; higher bits are zero */
-    uint64_t produced;     /* plaintext bytes so far */
+    size_t next_read;     /* size of the next window read */
+    int64_t window_start; /* stream offset of window[0] */
+    uint64_t bits;        /* pulled, not yet used; LSB = next bit */
+    unsigned count;       /* valid bits in `bits`; higher bits are zero */
+    uint64_t produced;    /* plaintext bytes so far */
     uint64_t output_limit;
     uint64_t blocks;
     uint32_t poll;
@@ -147,40 +146,23 @@ typedef struct rdf_stream_s {
     size_t count;
 } rdf_stream;
 
-static const uint16_t rdf_length_base[29] = {
-    3, 4, 5, 6, 7, 8, 9, 10, 11, 13, 15, 17, 19, 23, 27, 31,
-    35, 43, 51, 59, 67, 83, 99, 115, 131, 163, 195, 227, 258
-};
-static const uint8_t rdf_length_extra[29] = {
-    0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 1, 1, 2, 2, 2, 2,
-    3, 3, 3, 3, 4, 4, 4, 4, 5, 5, 5, 5, 0
-};
-static const uint16_t rdf_dist_base[30] = {
-    1, 2, 3, 4, 5, 7, 9, 13, 17, 25, 33, 49, 65, 97, 129, 193,
-    257, 385, 513, 769, 1025, 1537, 2049, 3073, 4097, 6145,
-    8193, 12289, 16385, 24577
-};
-static const uint8_t rdf_dist_extra[30] = {
-    0, 0, 0, 0, 1, 1, 2, 2, 3, 3, 4, 4, 5, 5, 6, 6,
-    7, 7, 8, 8, 9, 9, 10, 10, 11, 11, 12, 12, 13, 13
-};
+static const uint16_t rdf_length_base[29] = {3, 4, 5, 6, 7, 8, 9, 10, 11, 13, 15, 17, 19, 23, 27, 31, 35, 43, 51, 59, 67, 83, 99, 115, 131, 163, 195, 227, 258};
+static const uint8_t rdf_length_extra[29] = {0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 1, 1, 2, 2, 2, 2, 3, 3, 3, 3, 4, 4, 4, 4, 5, 5, 5, 5, 0};
+static const uint16_t rdf_dist_base[30] = {1,   2,   3,   4,   5,   7,    9,    13,   17,   25,   33,   49,   65,    97,    129,
+                                           193, 257, 385, 513, 769, 1025, 1537, 2049, 3073, 4097, 6145, 8193, 12289, 16385, 24577};
+static const uint8_t rdf_dist_extra[30] = {0, 0, 0, 0, 1, 1, 2, 2, 3, 3, 4, 4, 5, 5, 6, 6, 7, 7, 8, 8, 9, 9, 10, 10, 11, 11, 12, 12, 13, 13};
 /* Order in which a dynamic block stores the code-length code's lengths. */
-static const uint8_t rdf_clen_order[RDF_CLEN_CODES] = {
-    16, 17, 18, 0, 8, 7, 9, 6, 10, 5, 11, 4, 12, 3, 13, 2, 14, 1, 15
-};
+static const uint8_t rdf_clen_order[RDF_CLEN_CODES] = {16, 17, 18, 0, 8, 7, 9, 6, 10, 5, 11, 4, 12, 3, 13, 2, 14, 1, 15};
 
-static bool rdf_read_at(xx_io_device *device, int64_t offset, void *buffer,
-                        size_t size) {
+static bool rdf_read_at(xx_io_device *device, int64_t offset, void *buffer, size_t size)
+{
     const size_t io_capacity = xx_get_file_buffer_size();
     size_t done = 0U;
-    if (!device || (!buffer && size != 0U) || offset < 0 ||
-        xx_io_seek64(device, offset, SEEK_SET) != 0)
-        return false;
+    if (!device || (!buffer && size != 0U) || offset < 0 || xx_io_seek64(device, offset, SEEK_SET) != 0) return false;
     while (done < size) {
         size_t request = size - done;
         if (request > io_capacity) request = io_capacity;
-        ssize_t amount = xx_io_read(device, (uint8_t *)buffer + done,
-                                    request);
+        ssize_t amount = xx_io_read(device, (uint8_t *)buffer + done, request);
         if (amount <= 0 || (size_t)amount > request) return false;
         done += (size_t)amount;
     }
@@ -194,8 +176,8 @@ static bool rdf_read_at(xx_io_device *device, int64_t offset, void *buffer,
  * distance code may be incomplete only when it is a single one-bit code,
  * and may be empty (a block with no matches has no distance codes).  An
  * over-subscribed code is always refused.  These are zlib's rules. */
-static bool rdf_huffman_build(rdf_huffman *code, const uint8_t *lengths,
-                              unsigned n, bool strict) {
+static bool rdf_huffman_build(rdf_huffman *code, const uint8_t *lengths, unsigned n, bool strict)
+{
     uint16_t offsets[RDF_MAX_BITS + 2U];
     unsigned symbol, length, longest = 0U;
     int32_t left = 1;
@@ -216,34 +198,29 @@ static bool rdf_huffman_build(rdf_huffman *code, const uint8_t *lengths,
     }
     if (left > 0 && (strict || longest != 1U)) return false;
     offsets[1] = 0U;
-    for (length = 1U; length <= RDF_MAX_BITS; ++length)
-        offsets[length + 1U] =
-            (uint16_t)(offsets[length] + code->count[length]);
+    for (length = 1U; length <= RDF_MAX_BITS; ++length) offsets[length + 1U] = (uint16_t)(offsets[length] + code->count[length]);
     for (symbol = 0U; symbol < n; ++symbol)
-        if (lengths[symbol] != 0U)
-            code->symbol[offsets[lengths[symbol]]++] = (uint16_t)symbol;
+        if (lengths[symbol] != 0U) code->symbol[offsets[lengths[symbol]]++] = (uint16_t)symbol;
     return true;
 }
 
-static void rdf_build_fixed(rdf_scanner *scanner) {
+static void rdf_build_fixed(rdf_scanner *scanner)
+{
     uint8_t lengths[RDF_LITLEN_CODES];
     unsigned symbol;
     for (symbol = 0U; symbol < 144U; ++symbol) lengths[symbol] = 8U;
     for (; symbol < 256U; ++symbol) lengths[symbol] = 9U;
     for (; symbol < 280U; ++symbol) lengths[symbol] = 7U;
     for (; symbol < RDF_LITLEN_CODES; ++symbol) lengths[symbol] = 8U;
-    (void)rdf_huffman_build(&scanner->fixed_litlen, lengths, RDF_LITLEN_CODES,
-                            false);
+    (void)rdf_huffman_build(&scanner->fixed_litlen, lengths, RDF_LITLEN_CODES, false);
     for (symbol = 0U; symbol < RDF_DIST_CODES; ++symbol) lengths[symbol] = 5U;
-    (void)rdf_huffman_build(&scanner->fixed_dist, lengths, RDF_DIST_CODES,
-                            false);
+    (void)rdf_huffman_build(&scanner->fixed_dist, lengths, RDF_DIST_CODES, false);
 }
 
 /* ---- bit input ------------------------------------------------------------ */
 
-static bool rdf_scanner_open(rdf_scanner *scanner, xx_io_device *device,
-                             xx_pd_struct *pd, int64_t base, int64_t size,
-                             uint64_t output_limit) {
+static bool rdf_scanner_open(rdf_scanner *scanner, xx_io_device *device, xx_pd_struct *pd, int64_t base, int64_t size, uint64_t output_limit)
+{
     xx_mem_zero(scanner, sizeof(*scanner));
     scanner->device = device;
     scanner->pd = pd;
@@ -258,19 +235,22 @@ static bool rdf_scanner_open(rdf_scanner *scanner, xx_io_device *device,
     return true;
 }
 
-static void rdf_scanner_close(rdf_scanner *scanner) {
+static void rdf_scanner_close(rdf_scanner *scanner)
+{
     if (scanner->window) xx_mem_free(scanner->window);
     scanner->window = NULL;
 }
 
 /* Stream offset of the next byte not yet pulled into the bit cache. */
-static int64_t rdf_position(const rdf_scanner *scanner) {
+static int64_t rdf_position(const rdf_scanner *scanner)
+{
     return scanner->window_start + (int64_t)scanner->window_pos;
 }
 
 /* Load the window at the current position.  False at the end of the stream
  * or on a read error. */
-static bool rdf_fill(rdf_scanner *scanner) {
+static bool rdf_fill(rdf_scanner *scanner)
+{
     int64_t position = rdf_position(scanner);
     int64_t left = scanner->size - position;
     size_t want = scanner->next_read;
@@ -279,9 +259,7 @@ static bool rdf_fill(rdf_scanner *scanner) {
     scanner->window_start = position;
     scanner->window_pos = 0U;
     scanner->window_fill = 0U;
-    if (!rdf_read_at(scanner->device, scanner->base + position,
-                     scanner->window, want))
-        return false;
+    if (!rdf_read_at(scanner->device, scanner->base + position, scanner->window, want)) return false;
     scanner->window_fill = want;
     if (scanner->next_read > scanner->io_capacity / 4U) scanner->next_read = scanner->io_capacity;
     else scanner->next_read *= 4U;
@@ -289,24 +267,24 @@ static bool rdf_fill(rdf_scanner *scanner) {
 }
 
 /* Top the cache up to at least 57 bits, or with every byte left. */
-static void rdf_refill(rdf_scanner *scanner) {
+static void rdf_refill(rdf_scanner *scanner)
+{
     while (scanner->count <= 56U) {
-        if (scanner->window_pos >= scanner->window_fill &&
-            !rdf_fill(scanner))
-            return;
-        scanner->bits |= (uint64_t)scanner->window[scanner->window_pos++]
-                         << scanner->count;
+        if (scanner->window_pos >= scanner->window_fill && !rdf_fill(scanner)) return;
+        scanner->bits |= (uint64_t)scanner->window[scanner->window_pos++] << scanner->count;
         scanner->count += 8U;
     }
 }
 
-static void rdf_drop(rdf_scanner *scanner, unsigned n) {
+static void rdf_drop(rdf_scanner *scanner, unsigned n)
+{
     scanner->bits = n >= 64U ? 0U : scanner->bits >> n;
     scanner->count -= n;
 }
 
 /* Take `n` (0..16) bits, LSB first.  False when the stream ends first. */
-static bool rdf_bits(rdf_scanner *scanner, unsigned n, uint32_t *value) {
+static bool rdf_bits(rdf_scanner *scanner, unsigned n, uint32_t *value)
+{
     if (scanner->count < n) rdf_refill(scanner);
     if (scanner->count < n) return false;
     *value = (uint32_t)(scanner->bits & ((UINT64_C(1) << n) - 1U));
@@ -318,7 +296,8 @@ static bool rdf_bits(rdf_scanner *scanner, unsigned n, uint32_t *value) {
  * length are consecutive integers starting at `first`, so the running code
  * is a code of this length exactly when it lies in [first, first + count).
  * -1 for a bit pattern no code uses, or when the stream ends mid-code. */
-static int rdf_decode(rdf_scanner *scanner, const rdf_huffman *code) {
+static int rdf_decode(rdf_scanner *scanner, const rdf_huffman *code)
+{
     uint64_t bits;
     unsigned length, available;
     int32_t value = 0, first = 0, index = 0;
@@ -342,7 +321,8 @@ static int rdf_decode(rdf_scanner *scanner, const rdf_huffman *code) {
 }
 
 /* Skip `n` bytes of a stored block.  The cache is byte aligned here. */
-static bool rdf_skip(rdf_scanner *scanner, uint32_t n) {
+static bool rdf_skip(rdf_scanner *scanner, uint32_t n)
+{
     int64_t target;
     while (n != 0U && scanner->count >= 8U) {
         rdf_drop(scanner, 8U);
@@ -362,41 +342,37 @@ static bool rdf_skip(rdf_scanner *scanner, uint32_t n) {
     return true;
 }
 
-static bool rdf_add_output(rdf_scanner *scanner, uint64_t amount) {
+static bool rdf_add_output(rdf_scanner *scanner, uint64_t amount)
+{
     if (amount > scanner->output_limit - scanner->produced) return false;
     scanner->produced += amount;
     return true;
 }
 
-static bool rdf_poll(rdf_scanner *scanner) {
-    if ((++scanner->poll & RDF_POLL_MASK) == 0U && scanner->pd &&
-        xx_pd_is_stopped(scanner->pd))
-        return false;
+static bool rdf_poll(rdf_scanner *scanner)
+{
+    if ((++scanner->poll & RDF_POLL_MASK) == 0U && scanner->pd && xx_pd_is_stopped(scanner->pd)) return false;
     return true;
 }
 
 /* ---- blocks ----------------------------------------------------------------- */
 
-static bool rdf_stored_block(rdf_scanner *scanner) {
+static bool rdf_stored_block(rdf_scanner *scanner)
+{
     uint32_t length, complement;
     rdf_drop(scanner, scanner->count & 7U);
-    if (!rdf_bits(scanner, 16U, &length) ||
-        !rdf_bits(scanner, 16U, &complement) ||
-        length != (~complement & 0xffffU) ||
-        !rdf_add_output(scanner, length))
-        return false;
+    if (!rdf_bits(scanner, 16U, &length) || !rdf_bits(scanner, 16U, &complement) || length != (~complement & 0xffffU) || !rdf_add_output(scanner, length)) return false;
     return rdf_skip(scanner, length);
 }
 
 /* Read a dynamic block's header into scanner->litlen / scanner->dist. */
-static bool rdf_dynamic_header(rdf_scanner *scanner) {
+static bool rdf_dynamic_header(rdf_scanner *scanner)
+{
     uint8_t lengths[RDF_LITLEN_CODES + RDF_DIST_CODES];
     uint8_t clen_lengths[RDF_CLEN_CODES];
     uint32_t hlit, hdist, hclen, value;
     unsigned index, total;
-    if (!rdf_bits(scanner, 5U, &hlit) || !rdf_bits(scanner, 5U, &hdist) ||
-        !rdf_bits(scanner, 4U, &hclen))
-        return false;
+    if (!rdf_bits(scanner, 5U, &hlit) || !rdf_bits(scanner, 5U, &hdist) || !rdf_bits(scanner, 4U, &hclen)) return false;
     hlit += 257U;
     hdist += 1U;
     hclen += 4U;
@@ -406,9 +382,7 @@ static bool rdf_dynamic_header(rdf_scanner *scanner) {
         if (!rdf_bits(scanner, 3U, &value)) return false;
         clen_lengths[rdf_clen_order[index]] = (uint8_t)value;
     }
-    if (!rdf_huffman_build(&scanner->clen, clen_lengths, RDF_CLEN_CODES,
-                           true))
-        return false;
+    if (!rdf_huffman_build(&scanner->clen, clen_lengths, RDF_CLEN_CODES, true)) return false;
     total = hlit + hdist;
     index = 0U;
     while (index < total) {
@@ -436,12 +410,11 @@ static bool rdf_dynamic_header(rdf_scanner *scanner) {
     }
     /* A block that cannot end is not a block. */
     if (lengths[256] == 0U) return false;
-    return rdf_huffman_build(&scanner->litlen, lengths, hlit, false) &&
-           rdf_huffman_build(&scanner->dist, lengths + hlit, hdist, false);
+    return rdf_huffman_build(&scanner->litlen, lengths, hlit, false) && rdf_huffman_build(&scanner->dist, lengths + hlit, hdist, false);
 }
 
-static bool rdf_huffman_block(rdf_scanner *scanner, const rdf_huffman *litlen,
-                              const rdf_huffman *dist) {
+static bool rdf_huffman_block(rdf_scanner *scanner, const rdf_huffman *litlen, const rdf_huffman *dist)
+{
     for (;;) {
         int symbol;
         uint32_t extra;
@@ -462,45 +435,35 @@ static bool rdf_huffman_block(rdf_scanner *scanner, const rdf_huffman *litlen,
         if (symbol < 0 || symbol >= 30) return false;
         if (!rdf_bits(scanner, rdf_dist_extra[symbol], &extra)) return false;
         distance = (uint64_t)rdf_dist_base[symbol] + extra;
-        if (distance > scanner->produced ||
-            !rdf_add_output(scanner, length))
-            return false;
+        if (distance > scanner->produced || !rdf_add_output(scanner, length)) return false;
     }
 }
 
 /* Walk the whole stream.  On success the final block ended in the last byte
  * of the input with zero padding, and the context holds the measurements. */
-static bool rdf_walk(rdf_scanner *scanner, rdf_context *context) {
+static bool rdf_walk(rdf_scanner *scanner, rdf_context *context)
+{
     uint32_t final_block = 0U, type;
     int64_t consumed;
     do {
-        if (!rdf_poll(scanner) || !rdf_bits(scanner, 1U, &final_block) ||
-            !rdf_bits(scanner, 2U, &type))
-            return false;
+        if (!rdf_poll(scanner) || !rdf_bits(scanner, 1U, &final_block) || !rdf_bits(scanner, 2U, &type)) return false;
         ++scanner->blocks;
         switch (type) {
             case 0U:
                 if (!rdf_stored_block(scanner)) return false;
                 break;
             case 1U:
-                if (!rdf_huffman_block(scanner, &scanner->fixed_litlen,
-                                       &scanner->fixed_dist))
-                    return false;
+                if (!rdf_huffman_block(scanner, &scanner->fixed_litlen, &scanner->fixed_dist)) return false;
                 break;
             case 2U:
-                if (!rdf_dynamic_header(scanner) ||
-                    !rdf_huffman_block(scanner, &scanner->litlen,
-                                       &scanner->dist))
-                    return false;
+                if (!rdf_dynamic_header(scanner) || !rdf_huffman_block(scanner, &scanner->litlen, &scanner->dist)) return false;
                 break;
-            default:
-                return false;
+            default: return false;
         }
     } while (final_block == 0U);
     /* Whole bytes still cached were pulled but not used; the rest of the
      * current byte is padding and must be zero. */
-    if ((scanner->bits & ((UINT64_C(1) << (scanner->count & 7U)) - 1U)) != 0U)
-        return false;
+    if ((scanner->bits & ((UINT64_C(1) << (scanner->count & 7U)) - 1U)) != 0U) return false;
     consumed = rdf_position(scanner) - (int64_t)(scanner->count / 8U);
     if (consumed != scanner->size) return false;
     context->stream_size = consumed;
@@ -512,13 +475,13 @@ static bool rdf_walk(rdf_scanner *scanner, rdf_context *context) {
 /* The first block header, from the first bytes: reserved type 3, a stored
  * block whose LEN / NLEN disagree and an oversized dynamic header are all
  * refused before anything is allocated. */
-static bool rdf_first_block_plausible(const uint8_t *head, size_t size) {
+static bool rdf_first_block_plausible(const uint8_t *head, size_t size)
+{
     unsigned type = (head[0] >> 1U) & 3U;
     if (type == 3U) return false;
     if (type == 0U) {
         if (size < 5U) return false;
-        return (uint16_t)(head[1] | (head[2] << 8U)) ==
-               (uint16_t)~(uint16_t)(head[3] | (head[4] << 8U));
+        return (uint16_t)(head[1] | (head[2] << 8U)) == (uint16_t)~(uint16_t)(head[3] | (head[4] << 8U));
     }
     if (type == 2U) {
         unsigned hlit = (unsigned)(head[0] >> 3U) & 31U;
@@ -531,35 +494,27 @@ static bool rdf_first_block_plausible(const uint8_t *head, size_t size) {
 
 /* `probe` selects check_is_valid's bounds and extra tests (see the top of
  * the file); otherwise the grammar alone decides, within the open bounds. */
-static bool rdf_parse(Abstractformat *format, rdf_context *out, bool probe,
-                      xx_pd_struct *pd) {
+static bool rdf_parse(Abstractformat *format, rdf_context *out, bool probe, xx_pd_struct *pd)
+{
     uint8_t head[8];
     size_t head_size;
     rdf_scanner *scanner;
     rdf_context context;
     int64_t total, size;
     bool walked;
-    if (!format || !format->device || !out || format->base_address < 0)
-        return false;
+    if (!format || !format->device || !out || format->base_address < 0) return false;
     if (pd && xx_pd_is_stopped(pd)) return false;
     total = xx_io_total_size(format->device);
     if (total < format->base_address) return false;
     size = total - format->base_address;
-    if (probe ? (size < RDF_MIN_PROBE_INPUT || size > RDF_MAX_INPUT)
-              : (size < RDF_MIN_INPUT || size > RDF_MAX_OPEN_INPUT))
-        return false;
+    if (probe ? (size < RDF_MIN_PROBE_INPUT || size > RDF_MAX_INPUT) : (size < RDF_MIN_INPUT || size > RDF_MAX_OPEN_INPUT)) return false;
     head_size = size < (int64_t)sizeof(head) ? (size_t)size : sizeof(head);
-    if (!rdf_read_at(format->device, format->base_address, head, head_size) ||
-        !rdf_first_block_plausible(head, head_size))
-        return false;
+    if (!rdf_read_at(format->device, format->base_address, head, head_size) || !rdf_first_block_plausible(head, head_size)) return false;
     scanner = (rdf_scanner *)xx_mem_alloc(sizeof(*scanner));
     if (!scanner) return false;
     xx_mem_zero(&context, sizeof(context));
     context.stream_offset = format->base_address;
-    walked = rdf_scanner_open(scanner, format->device, pd,
-                              format->base_address, size,
-                              probe ? RDF_MAX_OUTPUT : RDF_MAX_OPEN_OUTPUT) &&
-             rdf_walk(scanner, &context) &&
+    walked = rdf_scanner_open(scanner, format->device, pd, format->base_address, size, probe ? RDF_MAX_OUTPUT : RDF_MAX_OPEN_OUTPUT) && rdf_walk(scanner, &context) &&
              (!probe || context.unpacked_size != 0U);
     rdf_scanner_close(scanner);
     xx_mem_free(scanner);
@@ -570,17 +525,16 @@ static bool rdf_parse(Abstractformat *format, rdf_context *out, bool probe,
 
 /* ---- records ---------------------------------------------------------------- */
 
-static bool rdf_copy_options(xx_list_s *destination, const xx_list_s *source) {
+static bool rdf_copy_options(xx_list_s *destination, const xx_list_s *source)
+{
     size_t index;
     if (!source) return true;
     for (index = 0U; index < source->count; ++index) {
-        const xx_meta *original =
-            (const xx_meta *)xx_list_at((const xx_list_t *)source, index);
+        const xx_meta *original = (const xx_meta *)xx_list_at((const xx_list_t *)source, index);
         xx_meta copy;
         if (!original) continue;
         xx_meta_init(&copy, original->meta_id);
-        if (!xx_var_copy(&copy.var, &original->var) ||
-            !xx_list_append(destination, &copy)) {
+        if (!xx_var_copy(&copy.var, &original->var) || !xx_list_append(destination, &copy)) {
             xx_meta_cleanup(&copy);
             return false;
         }
@@ -588,19 +542,19 @@ static bool rdf_copy_options(xx_list_s *destination, const xx_list_s *source) {
     return true;
 }
 
-static const xx_var *rdf_option(const xx_list_s *options, uint32_t id) {
+static const xx_var *rdf_option(const xx_list_s *options, uint32_t id)
+{
     size_t index;
     if (!options) return NULL;
     for (index = 0U; index < options->count; ++index) {
-        const xx_meta *meta =
-            (const xx_meta *)xx_list_at((const xx_list_t *)options, index);
+        const xx_meta *meta = (const xx_meta *)xx_list_at((const xx_list_t *)options, index);
         if (meta && meta->meta_id == id) return &meta->var;
     }
     return NULL;
 }
 
-static bool rdf_set_record(xx_archive_record *record,
-                           const rdf_context *context) {
+static bool rdf_set_record(xx_archive_record *record, const rdf_context *context)
+{
     xx_archive_record_cleanup(record);
     xx_archive_record_init(record);
     record->header_offset = context->stream_offset;
@@ -608,18 +562,14 @@ static bool rdf_set_record(xx_archive_record *record,
     record->data_offset = context->stream_offset;
     record->compressed_size = context->stream_size;
     return xx_archive_record_set_original_name(record, RDF_PAYLOAD_NAME) &&
-           xx_archive_record_set_meta_u64(record, XX_META_ID_COMPRESSED_SIZE,
-                                          (uint64_t)context->stream_size) &&
-           xx_archive_record_set_meta_u64(record, XX_META_ID_UNCOMPRESSED_SIZE,
-                                          context->unpacked_size) &&
-           xx_archive_record_set_meta_u64(record, XX_META_ID_COMPRESSION_METHOD,
-                                          RDF_METHOD_DEFLATE) &&
-           xx_archive_record_set_meta_bool(record, XX_META_ID_IS_ENCRYPTED,
-                                           false) &&
-           xx_archive_record_set_meta_bool(record, XX_META_ID_IS_FOLDER, false);
+           xx_archive_record_set_meta_u64(record, XX_META_ID_COMPRESSED_SIZE, (uint64_t)context->stream_size) &&
+           xx_archive_record_set_meta_u64(record, XX_META_ID_UNCOMPRESSED_SIZE, context->unpacked_size) &&
+           xx_archive_record_set_meta_u64(record, XX_META_ID_COMPRESSION_METHOD, RDF_METHOD_DEFLATE) &&
+           xx_archive_record_set_meta_bool(record, XX_META_ID_IS_ENCRYPTED, false) && xx_archive_record_set_meta_bool(record, XX_META_ID_IS_FOLDER, false);
 }
 
-static void rdf_stream_free(void *opaque) {
+static void rdf_stream_free(void *opaque)
+{
     if (opaque) xx_mem_free(opaque);
 }
 
@@ -631,18 +581,13 @@ typedef struct rdf_counter_s {
     uint64_t limit;
 } rdf_counter;
 
-static ssize_t rdf_counter_write(xx_io_device *self, const void *data,
-                                 size_t size) {
+static ssize_t rdf_counter_write(xx_io_device *self, const void *data, size_t size)
+{
     rdf_counter *counter = self ? (rdf_counter *)self->priv : NULL;
     size_t done = 0U;
-    if (!counter || (!data && size != 0U) ||
-        (uint64_t)size > counter->limit - counter->written ||
-        size > (((size_t)-1) >> 1U))
-        return -1;
+    if (!counter || (!data && size != 0U) || (uint64_t)size > counter->limit - counter->written || size > (((size_t)-1) >> 1U)) return -1;
     while (done < size) {
-        ssize_t amount = xx_io_write(counter->target,
-                                     (const uint8_t *)data + done,
-                                     size - done);
+        ssize_t amount = xx_io_write(counter->target, (const uint8_t *)data + done, size - done);
         if (amount <= 0 || (size_t)amount > size - done) return -1;
         done += (size_t)amount;
     }
@@ -650,14 +595,11 @@ static ssize_t rdf_counter_write(xx_io_device *self, const void *data,
     return (ssize_t)size;
 }
 
-static bool rdf_unpack_context(Abstractformat *format,
-                               const rdf_context *context,
-                               xx_io_device *destination, xx_pd_struct *pd) {
+static bool rdf_unpack_context(Abstractformat *format, const rdf_context *context, xx_io_device *destination, xx_pd_struct *pd)
+{
     xx_io_device device;
     rdf_counter counter;
-    if (!format || !format->device || !context || !destination ||
-        context->stream_size < RDF_MIN_INPUT ||
-        context->stream_size > RDF_MAX_OPEN_INPUT ||
+    if (!format || !format->device || !context || !destination || context->stream_size < RDF_MIN_INPUT || context->stream_size > RDF_MAX_OPEN_INPUT ||
         context->unpacked_size > RDF_MAX_OPEN_OUTPUT)
         return false;
     xx_mem_zero(&device, sizeof(device));
@@ -666,17 +608,13 @@ static bool rdf_unpack_context(Abstractformat *format,
     counter.limit = context->unpacked_size;
     device.write = rdf_counter_write;
     device.priv = &counter;
-    return xx_deflate_unpack_device(format->device, context->stream_offset,
-                                    context->stream_size, &device, false,
-                                    pd) &&
-           counter.written == context->unpacked_size;
+    return xx_deflate_unpack_device(format->device, context->stream_offset, context->stream_size, &device, false, pd) && counter.written == context->unpacked_size;
 }
 
 /* ---- public API ------------------------------------------------------------- */
 
-void xx_raw_deflate_compressed_data_init(
-    xx_raw_deflate_compressed_data *archive, xx_io_device *device,
-    int64_t base_address) {
+void xx_raw_deflate_compressed_data_init(xx_raw_deflate_compressed_data *archive, xx_io_device *device, int64_t base_address)
+{
     if (!archive) return;
     xx_mem_zero(archive, sizeof(*archive));
     xx_format_init(&archive->format, device, base_address);
@@ -686,55 +624,44 @@ void xx_raw_deflate_compressed_data_init(
     archive->format.is_archive = true;
     xx_format_set_mime_type(&archive->format, "application/octet-stream");
     xx_format_set_extension(&archive->format, "deflate");
-    archive->format.check_is_valid =
-        xx_raw_deflate_compressed_data_check_is_valid;
-    archive->format.handle_base_info =
-        xx_raw_deflate_compressed_data_handle_base_info;
-    archive->format.get_format_size =
-        xx_raw_deflate_compressed_data_get_format_size;
-    archive->format.get_number_of_archive_records =
-        xx_raw_deflate_compressed_data_get_number_of_archive_records;
-    archive->format.create_archive_records_reading =
-        xx_raw_deflate_compressed_data_create_archive_records_reading;
-    archive->format.get_current_archive_record =
-        xx_raw_deflate_compressed_data_get_current_archive_record;
-    archive->format.unpack_current_archive_record =
-        xx_raw_deflate_compressed_data_unpack_current_archive_record;
-    archive->format.archive_record_move_to_next =
-        xx_raw_deflate_compressed_data_archive_record_move_to_next;
-    archive->format.free_archive_records_reading =
-        xx_raw_deflate_compressed_data_free_archive_records_reading;
+    archive->format.check_is_valid = xx_raw_deflate_compressed_data_check_is_valid;
+    archive->format.handle_base_info = xx_raw_deflate_compressed_data_handle_base_info;
+    archive->format.get_format_size = xx_raw_deflate_compressed_data_get_format_size;
+    archive->format.get_number_of_archive_records = xx_raw_deflate_compressed_data_get_number_of_archive_records;
+    archive->format.create_archive_records_reading = xx_raw_deflate_compressed_data_create_archive_records_reading;
+    archive->format.get_current_archive_record = xx_raw_deflate_compressed_data_get_current_archive_record;
+    archive->format.unpack_current_archive_record = xx_raw_deflate_compressed_data_unpack_current_archive_record;
+    archive->format.archive_record_move_to_next = xx_raw_deflate_compressed_data_archive_record_move_to_next;
+    archive->format.free_archive_records_reading = xx_raw_deflate_compressed_data_free_archive_records_reading;
 }
 
-xx_raw_deflate_compressed_data *xx_raw_deflate_compressed_data_create(
-    xx_io_device *device, int64_t base_address) {
-    xx_raw_deflate_compressed_data *archive =
-        (xx_raw_deflate_compressed_data *)xx_mem_alloc(sizeof(*archive));
-    if (archive)
-        xx_raw_deflate_compressed_data_init(archive, device, base_address);
+xx_raw_deflate_compressed_data *xx_raw_deflate_compressed_data_create(xx_io_device *device, int64_t base_address)
+{
+    xx_raw_deflate_compressed_data *archive = (xx_raw_deflate_compressed_data *)xx_mem_alloc(sizeof(*archive));
+    if (archive) xx_raw_deflate_compressed_data_init(archive, device, base_address);
     return archive;
 }
 
-void xx_raw_deflate_compressed_data_destroy(
-    xx_raw_deflate_compressed_data *archive) {
+void xx_raw_deflate_compressed_data_destroy(xx_raw_deflate_compressed_data *archive)
+{
     if (archive) xx_format_cleanup_extra_parameters(&archive->format);
 }
 
-void xx_raw_deflate_compressed_data_free(
-    xx_raw_deflate_compressed_data *archive) {
+void xx_raw_deflate_compressed_data_free(xx_raw_deflate_compressed_data *archive)
+{
     if (!archive) return;
     xx_raw_deflate_compressed_data_destroy(archive);
     xx_mem_free(archive);
 }
 
-bool xx_raw_deflate_compressed_data_check_is_valid(Abstractformat *format,
-                                                   xx_pd_struct *pd) {
+bool xx_raw_deflate_compressed_data_check_is_valid(Abstractformat *format, xx_pd_struct *pd)
+{
     rdf_context context;
     return rdf_parse(format, &context, true, pd);
 }
 
-bool xx_raw_deflate_compressed_data_handle_base_info(Abstractformat *format,
-                                                     xx_pd_struct *pd) {
+bool xx_raw_deflate_compressed_data_handle_base_info(Abstractformat *format, xx_pd_struct *pd)
+{
     rdf_context context;
     xx_raw_deflate_compressed_data *archive;
     if (!format) return false;
@@ -755,34 +682,24 @@ bool xx_raw_deflate_compressed_data_handle_base_info(Abstractformat *format,
     return true;
 }
 
-int64_t xx_raw_deflate_compressed_data_get_format_size(Abstractformat *format,
-                                                       xx_pd_struct *pd) {
-    if (!format ||
-        (!format->base_info_handled &&
-         !xx_raw_deflate_compressed_data_handle_base_info(format, pd)))
-        return 0;
+int64_t xx_raw_deflate_compressed_data_get_format_size(Abstractformat *format, xx_pd_struct *pd)
+{
+    if (!format || (!format->base_info_handled && !xx_raw_deflate_compressed_data_handle_base_info(format, pd))) return 0;
     return format->is_valid ? format->format_size : 0;
 }
 
-uint64_t xx_raw_deflate_compressed_data_get_number_of_archive_records(
-    Abstractformat *format, xx_pd_struct *pd) {
-    if (!format ||
-        (!format->base_info_handled &&
-         !xx_raw_deflate_compressed_data_handle_base_info(format, pd)))
-        return 0U;
-    return format->is_valid
-               ? ((xx_raw_deflate_compressed_data *)format)->number_of_records
-               : 0U;
+uint64_t xx_raw_deflate_compressed_data_get_number_of_archive_records(Abstractformat *format, xx_pd_struct *pd)
+{
+    if (!format || (!format->base_info_handled && !xx_raw_deflate_compressed_data_handle_base_info(format, pd))) return 0U;
+    return format->is_valid ? ((xx_raw_deflate_compressed_data *)format)->number_of_records : 0U;
 }
 
 /* The measurements handle_base_info cached, or a fresh walk. */
-static bool rdf_measured(Abstractformat *format, rdf_context *context,
-                         xx_pd_struct *pd) {
-    xx_raw_deflate_compressed_data *archive =
-        (xx_raw_deflate_compressed_data *)format;
+static bool rdf_measured(Abstractformat *format, rdf_context *context, xx_pd_struct *pd)
+{
+    xx_raw_deflate_compressed_data *archive = (xx_raw_deflate_compressed_data *)format;
     if (!format) return false;
-    if (format->base_info_handled && format->is_valid &&
-        archive->number_of_records == 1U) {
+    if (format->base_info_handled && format->is_valid && archive->number_of_records == 1U) {
         xx_mem_zero(context, sizeof(*context));
         context->stream_offset = format->base_address;
         context->stream_size = archive->stream_size;
@@ -793,19 +710,15 @@ static bool rdf_measured(Abstractformat *format, rdf_context *context,
     return rdf_parse(format, context, false, pd);
 }
 
-bool xx_raw_deflate_compressed_data_unpack_to_device(
-    xx_raw_deflate_compressed_data *archive, xx_io_device *destination,
-    xx_pd_struct *pd) {
+bool xx_raw_deflate_compressed_data_unpack_to_device(xx_raw_deflate_compressed_data *archive, xx_io_device *destination, xx_pd_struct *pd)
+{
     rdf_context context;
-    if (!archive || !destination ||
-        !rdf_measured(&archive->format, &context, pd))
-        return false;
+    if (!archive || !destination || !rdf_measured(&archive->format, &context, pd)) return false;
     return rdf_unpack_context(&archive->format, &context, destination, pd);
 }
 
-xx_archive_record_state *
-xx_raw_deflate_compressed_data_create_archive_records_reading(
-    Abstractformat *format, const xx_list_s *options, xx_pd_struct *pd) {
+xx_archive_record_state *xx_raw_deflate_compressed_data_create_archive_records_reading(Abstractformat *format, const xx_list_s *options, xx_pd_struct *pd)
+{
     rdf_stream *stream;
     xx_archive_record_state *state;
     rdf_context context;
@@ -823,8 +736,7 @@ xx_raw_deflate_compressed_data_create_archive_records_reading(
     state->internal_state = stream;
     state->free_internal = rdf_stream_free;
     state->total_records = 1;
-    if (!rdf_copy_options(&state->options, options) ||
-        !rdf_set_record(&state->current_record, &stream->context)) {
+    if (!rdf_copy_options(&state->options, options) || !rdf_set_record(&state->current_record, &stream->context)) {
         xx_archive_record_state_free(state);
         return NULL;
     }
@@ -833,21 +745,16 @@ xx_raw_deflate_compressed_data_create_archive_records_reading(
     return state;
 }
 
-const xx_archive_record *
-xx_raw_deflate_compressed_data_get_current_archive_record(
-    Abstractformat *format, xx_archive_record_state *state) {
-    return format && state && state->format == format && state->has_record
-               ? &state->current_record : NULL;
+const xx_archive_record *xx_raw_deflate_compressed_data_get_current_archive_record(Abstractformat *format, xx_archive_record_state *state)
+{
+    return format && state && state->format == format && state->has_record ? &state->current_record : NULL;
 }
 
-bool xx_raw_deflate_compressed_data_archive_record_move_to_next(
-    Abstractformat *format, xx_archive_record_state *state,
-    xx_pd_struct *pd) {
+bool xx_raw_deflate_compressed_data_archive_record_move_to_next(Abstractformat *format, xx_archive_record_state *state, xx_pd_struct *pd)
+{
     rdf_stream *stream;
     (void)pd;
-    if (!format || !state || state->format != format ||
-        !(stream = (rdf_stream *)state->internal_state) ||
-        ++stream->index >= stream->count) {
+    if (!format || !state || state->format != format || !(stream = (rdf_stream *)state->internal_state) || ++stream->index >= stream->count) {
         if (state) {
             xx_archive_record_cleanup(&state->current_record);
             xx_archive_record_init(&state->current_record);
@@ -858,9 +765,8 @@ bool xx_raw_deflate_compressed_data_archive_record_move_to_next(
     return false;
 }
 
-bool xx_raw_deflate_compressed_data_unpack_current_archive_record(
-    Abstractformat *format, xx_archive_record_state *state,
-    xx_pd_struct *pd) {
+bool xx_raw_deflate_compressed_data_unpack_current_archive_record(Abstractformat *format, xx_archive_record_state *state, xx_pd_struct *pd)
+{
     rdf_stream *stream;
     const xx_var *path_option;
     const char *base = NULL;
@@ -868,9 +774,8 @@ bool xx_raw_deflate_compressed_data_unpack_current_archive_record(
     char *path = NULL;
     bool result = false;
     bool created = false;
-    if (!format || !state || state->format != format || !state->has_record ||
-        !(stream = (rdf_stream *)state->internal_state) ||
-        stream->index >= stream->count || (pd && xx_pd_is_stopped(pd)))
+    if (!format || !state || state->format != format || !state->has_record || !(stream = (rdf_stream *)state->internal_state) || stream->index >= stream->count ||
+        (pd && xx_pd_is_stopped(pd)))
         return false;
     path_option = rdf_option(&state->options, XX_META_ID_OPT_UNPACK_PATH);
     if (!path_option) {
@@ -878,19 +783,14 @@ bool xx_raw_deflate_compressed_data_unpack_current_archive_record(
         rdf_context context;
         return rdf_parse(format, &context, false, pd);
     }
-    if (path_option->type == XX_VAR_TYPE_STRING ||
-        path_option->type == XX_VAR_TYPE_STRING_VIEW)
-        base = xx_var_get_str(path_option);
-    else if (path_option->type == XX_VAR_TYPE_WSTRING ||
-             path_option->type == XX_VAR_TYPE_WSTRING_VIEW) {
+    if (path_option->type == XX_VAR_TYPE_STRING || path_option->type == XX_VAR_TYPE_STRING_VIEW) base = xx_var_get_str(path_option);
+    else if (path_option->type == XX_VAR_TYPE_WSTRING || path_option->type == XX_VAR_TYPE_WSTRING_VIEW) {
         owned_base = xx_str_unicode_to_utf8(xx_var_get_wstr(path_option));
         base = owned_base;
     }
     if (!base) goto done;
-    path = (base[0] && base[xx_str_len(base) - 1U] != '/' &&
-            base[xx_str_len(base) - 1U] != '\\')
-               ? xx_str_concat3(base, "/", RDF_PAYLOAD_NAME)
-               : xx_str_concat(base, RDF_PAYLOAD_NAME);
+    path = (base[0] && base[xx_str_len(base) - 1U] != '/' && base[xx_str_len(base) - 1U] != '\\') ? xx_str_concat3(base, "/", RDF_PAYLOAD_NAME)
+                                                                                                  : xx_str_concat(base, RDF_PAYLOAD_NAME);
     if (!path || !xx_store_create_dirs_a(path, false)) goto done;
     {
         xx_io_device *destination = xx_io_file_open(path, "wb");
@@ -906,8 +806,8 @@ done:
     return result;
 }
 
-void xx_raw_deflate_compressed_data_free_archive_records_reading(
-    Abstractformat *format, xx_archive_record_state *state) {
+void xx_raw_deflate_compressed_data_free_archive_records_reading(Abstractformat *format, xx_archive_record_state *state)
+{
     (void)format;
     xx_archive_record_state_free(state);
 }

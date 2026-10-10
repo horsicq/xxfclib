@@ -24,9 +24,9 @@
 #define KBOOM_CAPACITY 0x2000U
 #define KBOOM_LAST_SLOT 0x1ffeU
 #define KBOOM_FIRST_SLOT 0x0100U
-#define KBOOM_SCRATCH_TOP 100U  /* phrases are written down from here */
+#define KBOOM_SCRATCH_TOP 100U /* phrases are written down from here */
 #define KBOOM_MAX_PHRASE 100U
-#define KBOOM_MAX_EXTEND 4U     /* trie bytes added per token */
+#define KBOOM_MAX_EXTEND 4U /* trie bytes added per token */
 #define KBOOM_SCRATCH_SIZE 256U
 #define KBOOM_WALK_GUARD 0x4000U
 
@@ -42,18 +42,17 @@ typedef struct kboom_reader_s {
  * 16-bit word at a time.  The word is ADDED, not OR-ed: that is what the
  * reference does and the two differ if the accumulator's low bits are ever
  * non-zero, so it is kept verbatim. */
-static bool kboom_reader_next(kboom_reader *reader, uint32_t *code) {
+static bool kboom_reader_next(kboom_reader *reader, uint32_t *code)
+{
     uint32_t word;
 
     if (!reader || !code) return false;
     if (reader->count < 13U) {
         if ((reader->position + 2U) > reader->size) return false;
-        word = (uint32_t)reader->data[reader->position] |
-               ((uint32_t)reader->data[reader->position + 1U] << 8U);
+        word = (uint32_t)reader->data[reader->position] | ((uint32_t)reader->data[reader->position + 1U] << 8U);
         reader->position += 2U;
         /* count <= 12 here, so the shift is 4..16 and always well defined. */
-        reader->accumulator =
-            (uint32_t)(reader->accumulator + (word << (16U - reader->count)));
+        reader->accumulator = (uint32_t)(reader->accumulator + (word << (16U - reader->count)));
         reader->count += 16U;
     }
     *code = (reader->accumulator >> 19U) & 0x1fffU;
@@ -72,7 +71,8 @@ typedef struct kboom_trie_s {
 
 /* Unlink a recycled slot from its parent's sibling list.  Verbatim from the
  * reference, including the "no parent, no head fix-up" case. */
-static bool kboom_unlink(kboom_trie *trie, uint32_t node) {
+static bool kboom_unlink(kboom_trie *trie, uint32_t node)
+{
     uint16_t after;
     uint16_t before;
 
@@ -95,9 +95,8 @@ static bool kboom_unlink(kboom_trie *trie, uint32_t node) {
     return true;
 }
 
-bool xx_lzwvariants_kboom_decode_memory(const uint8_t *input,
-                                        size_t input_size, uint8_t *output,
-                                        size_t output_size, size_t *written) {
+bool xx_lzwvariants_kboom_decode_memory(const uint8_t *input, size_t input_size, uint8_t *output, size_t output_size, size_t *written)
+{
     kboom_reader reader;
     kboom_trie trie;
     uint16_t *block = NULL;
@@ -111,20 +110,17 @@ bool xx_lzwvariants_kboom_decode_memory(const uint8_t *input,
     bool result = false;
 
     if (written) *written = 0U;
-    if ((!input && input_size != 0U) || (!output && output_size != 0U))
-        return false;
+    if ((!input && input_size != 0U) || (!output && output_size != 0U)) return false;
     if (output_size == 0U) return true;
 
-    block = (uint16_t *)xx_mem_alloc((size_t)KBOOM_CAPACITY * 5U *
-                                     sizeof(uint16_t));
+    block = (uint16_t *)xx_mem_alloc((size_t)KBOOM_CAPACITY * 5U * sizeof(uint16_t));
     if (!block) return false;
     trie.symbol = block;
     trie.child = block + KBOOM_CAPACITY;
     trie.parent = block + (size_t)KBOOM_CAPACITY * 2U;
     trie.next = block + (size_t)KBOOM_CAPACITY * 3U;
     trie.previous = block + (size_t)KBOOM_CAPACITY * 4U;
-    for (index = 0U; index < KBOOM_CAPACITY * 5U; ++index)
-        block[index] = (uint16_t)KBOOM_NIL;
+    for (index = 0U; index < KBOOM_CAPACITY * 5U; ++index) block[index] = (uint16_t)KBOOM_NIL;
     for (index = 0U; index < 256U; ++index) trie.symbol[index] = (uint16_t)index;
     /* xx_rt_memset, not a zeroing loop: an optimiser is allowed to turn the
      * loop into a CRT memset call, which the freestanding build cannot link. */
@@ -150,9 +146,7 @@ bool xx_lzwvariants_kboom_decode_memory(const uint8_t *input,
          * scratch[KBOOM_SCRATCH_TOP]. */
         node = code;
         while (node != KBOOM_NIL) {
-            if ((node >= KBOOM_CAPACITY) || (length > KBOOM_MAX_PHRASE) ||
-                (--guard == 0U))
-                goto done;
+            if ((node >= KBOOM_CAPACITY) || (length > KBOOM_MAX_PHRASE) || (--guard == 0U)) goto done;
             scratch[KBOOM_SCRATCH_TOP - length] = (uint8_t)trie.symbol[node];
             ++length;
             node = trie.parent[node];
@@ -172,10 +166,7 @@ bool xx_lzwvariants_kboom_decode_memory(const uint8_t *input,
             uint32_t current = previous_code;
             uint32_t step;
 
-            for (step = 0U;
-                 (step < length) && (step < KBOOM_MAX_EXTEND) &&
-                 ((previous_length + step) < KBOOM_MAX_PHRASE);
-                 ++step) {
+            for (step = 0U; (step < length) && (step < KBOOM_MAX_EXTEND) && ((previous_length + step) < KBOOM_MAX_PHRASE); ++step) {
                 uint8_t value;
                 uint32_t fresh;
                 uint16_t head;
@@ -187,8 +178,7 @@ bool xx_lzwvariants_kboom_decode_memory(const uint8_t *input,
                     uint32_t match = trie.child[current];
                     uint32_t walk = KBOOM_CAPACITY;
                     while (match != KBOOM_NIL) {
-                        if ((match >= KBOOM_CAPACITY) || (walk-- == 0U))
-                            goto done;
+                        if ((match >= KBOOM_CAPACITY) || (walk-- == 0U)) goto done;
                         if (trie.symbol[match] == value) break;
                         match = trie.next[match];
                     }
@@ -205,9 +195,7 @@ bool xx_lzwvariants_kboom_decode_memory(const uint8_t *input,
                     uint32_t sweep = 0U;
                     for (;;) {
                         if (cursor > KBOOM_LAST_SLOT) cursor = KBOOM_FIRST_SLOT;
-                        if ((cursor != current) &&
-                            (trie.child[cursor] == (uint16_t)KBOOM_NIL))
-                            break;
+                        if ((cursor != current) && (trie.child[cursor] == (uint16_t)KBOOM_NIL)) break;
                         ++cursor;
                         if (++sweep > KBOOM_CAPACITY) goto done;
                     }
@@ -219,8 +207,7 @@ bool xx_lzwvariants_kboom_decode_memory(const uint8_t *input,
                     ++free_slot;
                 }
 
-                if ((fresh >= KBOOM_CAPACITY) || (current >= KBOOM_CAPACITY))
-                    goto done;
+                if ((fresh >= KBOOM_CAPACITY) || (current >= KBOOM_CAPACITY)) goto done;
                 trie.symbol[fresh] = value;
                 trie.parent[fresh] = (uint16_t)current;
                 trie.child[fresh] = (uint16_t)KBOOM_NIL;
@@ -269,7 +256,8 @@ typedef struct newwave_reader_s {
 /* MSB-first.  A code that merely RUNS PAST the final byte is still readable -
  * the encoder pads the tail with zero bits - but one that STARTS past it is
  * not.  Deliberate; do not tighten. */
-static bool newwave_reader_next(newwave_reader *reader, uint32_t *code) {
+static bool newwave_reader_next(newwave_reader *reader, uint32_t *code)
+{
     uint32_t value = 0U;
     uint32_t index;
 
@@ -278,9 +266,7 @@ static bool newwave_reader_next(newwave_reader *reader, uint32_t *code) {
     for (index = 0U; index < reader->width; ++index) {
         size_t bit = reader->bit_position + (size_t)index;
         uint32_t set = 0U;
-        if (bit < reader->bit_size)
-            set = (uint32_t)((reader->data[bit >> 3U] >> (7U - (bit & 7U))) &
-                             1U);
+        if (bit < reader->bit_size) set = (uint32_t)((reader->data[bit >> 3U] >> (7U - (bit & 7U))) & 1U);
         value = (value << 1U) | set;
     }
     reader->bit_position += reader->width;
@@ -288,10 +274,8 @@ static bool newwave_reader_next(newwave_reader *reader, uint32_t *code) {
     return true;
 }
 
-bool xx_lzwvariants_newwave_decode_memory(const uint8_t *input,
-                                          size_t input_size, uint8_t *output,
-                                          size_t output_size,
-                                          size_t *written) {
+bool xx_lzwvariants_newwave_decode_memory(const uint8_t *input, size_t input_size, uint8_t *output, size_t output_size, size_t *written)
+{
     newwave_reader reader;
     uint16_t *prefix = NULL;
     uint8_t *suffix = NULL;
@@ -304,14 +288,12 @@ bool xx_lzwvariants_newwave_decode_memory(const uint8_t *input,
     bool result = false;
 
     if (written) *written = 0U;
-    if ((!input && input_size != 0U) || (!output && output_size != 0U))
-        return false;
+    if ((!input && input_size != 0U) || (!output && output_size != 0U)) return false;
     if (input_size == 0U) return output_size == 0U;
     if (output_size == 0U) return true;
     if (input_size > SIZE_MAX / 8U) return false;
 
-    prefix = (uint16_t *)xx_mem_alloc((size_t)NEWWAVE_CAPACITY *
-                                      sizeof(uint16_t));
+    prefix = (uint16_t *)xx_mem_alloc((size_t)NEWWAVE_CAPACITY * sizeof(uint16_t));
     suffix = (uint8_t *)xx_mem_alloc((size_t)NEWWAVE_CAPACITY);
     stack = (uint8_t *)xx_mem_alloc((size_t)NEWWAVE_STACK_SIZE);
     if (!prefix || !suffix || !stack) goto done;
@@ -360,10 +342,7 @@ bool xx_lzwvariants_newwave_decode_memory(const uint8_t *input,
                 current = (uint32_t)previous;
             }
             while (current > 0xffU) {
-                if ((current >= NEWWAVE_CAPACITY) ||
-                    (++guard > NEWWAVE_CAPACITY) ||
-                    (depth >= NEWWAVE_STACK_SIZE))
-                    goto done;
+                if ((current >= NEWWAVE_CAPACITY) || (++guard > NEWWAVE_CAPACITY) || (depth >= NEWWAVE_STACK_SIZE)) goto done;
                 stack[depth++] = suffix[current];
                 current = prefix[current];
             }

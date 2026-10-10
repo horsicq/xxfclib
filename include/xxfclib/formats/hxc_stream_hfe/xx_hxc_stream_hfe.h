@@ -68,33 +68,21 @@ typedef xx_hxc_stream_hfe xx_hxc_stream_hfe_t;
 /** Per-track cap on the stored and the unpacked stream size. */
 #define XX_HXC_STREAM_HFE_MAX_STREAM (64U * 1024U * 1024U)
 
-XXFC_API void xx_hxc_stream_hfe_init(xx_hxc_stream_hfe *archive,
-                                     xx_io_device *device,
-                                     int64_t base_address);
-XXFC_API xx_hxc_stream_hfe *xx_hxc_stream_hfe_create(xx_io_device *device,
-                                                     int64_t base_address);
+XXFC_API void xx_hxc_stream_hfe_init(xx_hxc_stream_hfe *archive, xx_io_device *device, int64_t base_address);
+XXFC_API xx_hxc_stream_hfe *xx_hxc_stream_hfe_create(xx_io_device *device, int64_t base_address);
 XXFC_API void xx_hxc_stream_hfe_destroy(xx_hxc_stream_hfe *archive);
 XXFC_API void xx_hxc_stream_hfe_free(xx_hxc_stream_hfe *archive);
 
-XXFC_API bool xx_hxc_stream_hfe_check_is_valid(Abstractformat *self,
-                                               xx_pd_struct *pd);
-XXFC_API bool xx_hxc_stream_hfe_handle_base_info(Abstractformat *self,
-                                                 xx_pd_struct *pd);
-XXFC_API int64_t xx_hxc_stream_hfe_get_format_size(Abstractformat *self,
-                                                   xx_pd_struct *pd);
-XXFC_API uint64_t xx_hxc_stream_hfe_get_number_of_archive_records(
-    Abstractformat *self, xx_pd_struct *pd);
+XXFC_API bool xx_hxc_stream_hfe_check_is_valid(Abstractformat *self, xx_pd_struct *pd);
+XXFC_API bool xx_hxc_stream_hfe_handle_base_info(Abstractformat *self, xx_pd_struct *pd);
+XXFC_API int64_t xx_hxc_stream_hfe_get_format_size(Abstractformat *self, xx_pd_struct *pd);
+XXFC_API uint64_t xx_hxc_stream_hfe_get_number_of_archive_records(Abstractformat *self, xx_pd_struct *pd);
 
-XXFC_API xx_archive_record_state *xx_hxc_stream_hfe_create_archive_records_reading(
-    Abstractformat *self, const xx_list_s *options, xx_pd_struct *pd);
-XXFC_API const xx_archive_record *xx_hxc_stream_hfe_get_current_archive_record(
-    Abstractformat *self, xx_archive_record_state *state);
-XXFC_API bool xx_hxc_stream_hfe_unpack_current_archive_record(
-    Abstractformat *self, xx_archive_record_state *state, xx_pd_struct *pd);
-XXFC_API bool xx_hxc_stream_hfe_archive_record_move_to_next(
-    Abstractformat *self, xx_archive_record_state *state, xx_pd_struct *pd);
-XXFC_API void xx_hxc_stream_hfe_free_archive_records_reading(
-    Abstractformat *self, xx_archive_record_state *state);
+XXFC_API xx_archive_record_state *xx_hxc_stream_hfe_create_archive_records_reading(Abstractformat *self, const xx_list_s *options, xx_pd_struct *pd);
+XXFC_API const xx_archive_record *xx_hxc_stream_hfe_get_current_archive_record(Abstractformat *self, xx_archive_record_state *state);
+XXFC_API bool xx_hxc_stream_hfe_unpack_current_archive_record(Abstractformat *self, xx_archive_record_state *state, xx_pd_struct *pd);
+XXFC_API bool xx_hxc_stream_hfe_archive_record_move_to_next(Abstractformat *self, xx_archive_record_state *state, xx_pd_struct *pd);
+XXFC_API void xx_hxc_stream_hfe_free_archive_records_reading(Abstractformat *self, xx_archive_record_state *state);
 
 #ifdef __cplusplus
 }

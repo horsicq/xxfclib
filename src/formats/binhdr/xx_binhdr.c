@@ -44,12 +44,11 @@ static void xx_binhdr_vtable_destroy(Abstractformat *self);
 
 /* seek64 rather than seek: a firmware image can sit past the 2 GiB mark that
  * a 32-bit `long` would silently clamp to on Win64. */
-static bool xx_binhdr_read_at(xx_io_device *device, int64_t offset, void *data,
-                              size_t size) {
+static bool xx_binhdr_read_at(xx_io_device *device, int64_t offset, void *data, size_t size)
+{
     uint8_t *out = (uint8_t *)data;
     size_t done = 0U;
-    if (!device || (!data && size != 0U) || offset < 0 ||
-        xx_io_seek64(device, offset, SEEK_SET) != 0) {
+    if (!device || (!data && size != 0U) || offset < 0 || xx_io_seek64(device, offset, SEEK_SET) != 0) {
         return false;
     }
     while (done < size) {
@@ -60,13 +59,13 @@ static bool xx_binhdr_read_at(xx_io_device *device, int64_t offset, void *data,
     return true;
 }
 
-static bool xx_binhdr_range_within(int64_t total_size, int64_t offset,
-                                   int64_t size) {
-    return (total_size >= 0) && (offset >= 0) && (size >= 0) &&
-           (offset <= total_size) && (size <= total_size - offset);
+static bool xx_binhdr_range_within(int64_t total_size, int64_t offset, int64_t size)
+{
+    return (total_size >= 0) && (offset >= 0) && (size >= 0) && (offset <= total_size) && (size <= total_size - offset);
 }
 
-static void xx_binhdr_private_cleanup(xx_binhdr_private *parsed) {
+static void xx_binhdr_private_cleanup(xx_binhdr_private *parsed)
+{
     if (!parsed) return;
     xx_mem_zero(parsed, sizeof(*parsed));
     parsed->input_size = -1;
@@ -75,7 +74,8 @@ static void xx_binhdr_private_cleanup(xx_binhdr_private *parsed) {
 
 /* The four board-id bytes are a display string, so only printable ASCII is
  * accepted; anything else means the "U2ND" bytes were a coincidence. */
-static bool xx_binhdr_board_id_is_plausible(const uint8_t *raw) {
+static bool xx_binhdr_board_id_is_plausible(const uint8_t *raw)
+{
     size_t index;
     for (index = 0U; index < 4U; ++index) {
         if (raw[index] < 0x20U || raw[index] > 0x7EU) return false;
@@ -83,8 +83,8 @@ static bool xx_binhdr_board_id_is_plausible(const uint8_t *raw) {
     return true;
 }
 
-static bool xx_binhdr_parse(Abstractformat *self, xx_binhdr_private *parsed,
-                            xx_pd_struct *pd) {
+static bool xx_binhdr_parse(Abstractformat *self, xx_binhdr_private *parsed, xx_pd_struct *pd)
+{
     uint8_t header[XX_BINHDR_HEADER_SIZE];
     int64_t total_size;
     uint32_t reserved1;
@@ -96,15 +96,11 @@ static bool xx_binhdr_parse(Abstractformat *self, xx_binhdr_private *parsed,
         parsed->input_size = -1;
         parsed->payload_offset = -1;
     }
-    if (!self || !self->device || !parsed || self->base_address < 0 ||
-        (pd && xx_pd_is_stopped(pd))) {
+    if (!self || !self->device || !parsed || self->base_address < 0 || (pd && xx_pd_is_stopped(pd))) {
         return false;
     }
     total_size = xx_io_total_size(self->device);
-    if (!xx_binhdr_range_within(total_size, self->base_address,
-                                XX_BINHDR_HEADER_SIZE) ||
-        !xx_binhdr_read_at(self->device, self->base_address, header,
-                           sizeof(header))) {
+    if (!xx_binhdr_range_within(total_size, self->base_address, XX_BINHDR_HEADER_SIZE) || !xx_binhdr_read_at(self->device, self->base_address, header, sizeof(header))) {
         return false;
     }
     if (xx_rt_memcmp(header + XX_BINHDR_MAGIC_OFFSET, "U2ND", 4U) != 0) {
@@ -113,13 +109,10 @@ static bool xx_binhdr_parse(Abstractformat *self, xx_binhdr_private *parsed,
     /* The three reserved fields carry the weight of the validation: a 4-byte
      * magic on its own matches far too readily in firmware blobs. */
     reserved1 = xx_data_get_u32(header, sizeof(header), 4U, false);
-    reserved2 = (uint32_t)header[19] | ((uint32_t)header[20] << 8U) |
-                ((uint32_t)header[21] << 16U);
+    reserved2 = (uint32_t)header[19] | ((uint32_t)header[20] << 8U) | ((uint32_t)header[21] << 16U);
     reserved3_low = xx_data_get_u32(header, sizeof(header), 22U, false);
     reserved3_high = xx_data_get_u32(header, sizeof(header), 26U, false);
-    if (reserved1 != 0U || reserved2 != 0U || reserved3_low != 0U ||
-        reserved3_high != 0U || header[18] > 3U ||
-        !xx_binhdr_board_id_is_plausible(header)) {
+    if (reserved1 != 0U || reserved2 != 0U || reserved3_low != 0U || reserved3_high != 0U || header[18] > 3U || !xx_binhdr_board_id_is_plausible(header)) {
         return false;
     }
     parsed->input_size = total_size;
@@ -135,18 +128,16 @@ static bool xx_binhdr_parse(Abstractformat *self, xx_binhdr_private *parsed,
     return true;
 }
 
-static bool xx_binhdr_copy_options(xx_list_s *destination,
-                                   const xx_list_s *source) {
+static bool xx_binhdr_copy_options(xx_list_s *destination, const xx_list_s *source)
+{
     size_t index;
     if (!destination || !source) return source == NULL;
     for (index = 0U; index < source->count; ++index) {
-        const xx_meta *item = (const xx_meta *)xx_list_at(
-            (const xx_list_t *)source, index);
+        const xx_meta *item = (const xx_meta *)xx_list_at((const xx_list_t *)source, index);
         xx_meta copy;
         if (!item) continue;
         xx_meta_init(&copy, item->meta_id);
-        if (!xx_var_copy(&copy.var, &item->var) ||
-            !xx_list_append(destination, &copy)) {
+        if (!xx_var_copy(&copy.var, &item->var) || !xx_list_append(destination, &copy)) {
             xx_meta_cleanup(&copy);
             return false;
         }
@@ -154,20 +145,19 @@ static bool xx_binhdr_copy_options(xx_list_s *destination,
     return true;
 }
 
-static const xx_var *xx_binhdr_find_option(const xx_list_s *options,
-                                           uint32_t meta_id) {
+static const xx_var *xx_binhdr_find_option(const xx_list_s *options, uint32_t meta_id)
+{
     size_t index;
     if (!options) return NULL;
     for (index = 0U; index < options->count; ++index) {
-        const xx_meta *item = (const xx_meta *)xx_list_at(
-            (const xx_list_t *)options, index);
+        const xx_meta *item = (const xx_meta *)xx_list_at((const xx_list_t *)options, index);
         if (item && item->meta_id == meta_id) return &item->var;
     }
     return NULL;
 }
 
-static bool xx_binhdr_populate_record(xx_archive_record *record,
-                                      const xx_binhdr_private *parsed) {
+static bool xx_binhdr_populate_record(xx_archive_record *record, const xx_binhdr_private *parsed)
+{
     if (!record || !parsed || parsed->payload_offset < 0) return false;
     xx_archive_record_cleanup(record);
     xx_archive_record_init(record);
@@ -175,28 +165,22 @@ static bool xx_binhdr_populate_record(xx_archive_record *record,
     record->header_size = XX_BINHDR_HEADER_SIZE;
     record->data_offset = parsed->payload_offset;
     record->compressed_size = parsed->payload_size;
-    return xx_archive_record_set_original_name(record,
-                                               XX_BINHDR_PAYLOAD_NAME) &&
-           xx_archive_record_set_meta_u64(record,
-                                          XX_META_ID_UNCOMPRESSED_SIZE,
-                                          (uint64_t)parsed->payload_size) &&
-           xx_archive_record_set_meta_u64(record, XX_META_ID_COMPRESSED_SIZE,
-                                          (uint64_t)parsed->payload_size) &&
-           xx_archive_record_set_meta_u64(record,
-                                          XX_META_ID_COMPRESSION_METHOD, 0U) &&
-           xx_archive_record_set_meta_bool(record, XX_META_ID_IS_FOLDER,
-                                           false);
+    return xx_archive_record_set_original_name(record, XX_BINHDR_PAYLOAD_NAME) &&
+           xx_archive_record_set_meta_u64(record, XX_META_ID_UNCOMPRESSED_SIZE, (uint64_t)parsed->payload_size) &&
+           xx_archive_record_set_meta_u64(record, XX_META_ID_COMPRESSED_SIZE, (uint64_t)parsed->payload_size) &&
+           xx_archive_record_set_meta_u64(record, XX_META_ID_COMPRESSION_METHOD, 0U) && xx_archive_record_set_meta_bool(record, XX_META_ID_IS_FOLDER, false);
 }
 
-static void xx_binhdr_archive_stream_free(void *pointer) {
+static void xx_binhdr_archive_stream_free(void *pointer)
+{
     xx_binhdr_archive_stream *stream = (xx_binhdr_archive_stream *)pointer;
     if (!stream) return;
     xx_binhdr_private_cleanup(&stream->parsed);
     xx_mem_free(stream);
 }
 
-void xx_binhdr_init(xx_binhdr *binhdr, xx_io_device *dev,
-                    int64_t base_address) {
+void xx_binhdr_init(xx_binhdr *binhdr, xx_io_device *dev, int64_t base_address)
+{
     if (!binhdr) return;
     xx_mem_zero(binhdr, sizeof(*binhdr));
     xx_format_init(&binhdr->format, dev, base_address);
@@ -209,29 +193,25 @@ void xx_binhdr_init(xx_binhdr *binhdr, xx_io_device *dev,
     binhdr->format.check_is_valid = xx_binhdr_check_is_valid;
     binhdr->format.handle_base_info = xx_binhdr_handle_base_info;
     binhdr->format.get_format_size = xx_binhdr_get_format_size;
-    binhdr->format.get_number_of_archive_records =
-        xx_binhdr_get_number_of_archive_records;
-    binhdr->format.create_archive_records_reading =
-        xx_binhdr_create_archive_records_reading;
-    binhdr->format.get_current_archive_record =
-        xx_binhdr_get_current_archive_record;
-    binhdr->format.unpack_current_archive_record =
-        xx_binhdr_unpack_current_archive_record;
-    binhdr->format.archive_record_move_to_next =
-        xx_binhdr_archive_record_move_to_next;
-    binhdr->format.free_archive_records_reading =
-        xx_binhdr_free_archive_records_reading;
+    binhdr->format.get_number_of_archive_records = xx_binhdr_get_number_of_archive_records;
+    binhdr->format.create_archive_records_reading = xx_binhdr_create_archive_records_reading;
+    binhdr->format.get_current_archive_record = xx_binhdr_get_current_archive_record;
+    binhdr->format.unpack_current_archive_record = xx_binhdr_unpack_current_archive_record;
+    binhdr->format.archive_record_move_to_next = xx_binhdr_archive_record_move_to_next;
+    binhdr->format.free_archive_records_reading = xx_binhdr_free_archive_records_reading;
     binhdr->format.destroy = xx_binhdr_vtable_destroy;
     binhdr->payload_offset = -1;
 }
 
-xx_binhdr *xx_binhdr_create(xx_io_device *dev, int64_t base_address) {
+xx_binhdr *xx_binhdr_create(xx_io_device *dev, int64_t base_address)
+{
     xx_binhdr *binhdr = (xx_binhdr *)xx_mem_alloc(sizeof(*binhdr));
     if (binhdr) xx_binhdr_init(binhdr, dev, base_address);
     return binhdr;
 }
 
-void xx_binhdr_destroy(xx_binhdr *binhdr) {
+void xx_binhdr_destroy(xx_binhdr *binhdr)
+{
     if (!binhdr) return;
     if (binhdr->internal) {
         xx_binhdr_private_cleanup((xx_binhdr_private *)binhdr->internal);
@@ -241,24 +221,28 @@ void xx_binhdr_destroy(xx_binhdr *binhdr) {
     xx_format_cleanup_extra_parameters(&binhdr->format);
 }
 
-static void xx_binhdr_vtable_destroy(Abstractformat *self) {
+static void xx_binhdr_vtable_destroy(Abstractformat *self)
+{
     xx_binhdr_destroy((xx_binhdr *)self);
 }
 
-void xx_binhdr_free(xx_binhdr *binhdr) {
+void xx_binhdr_free(xx_binhdr *binhdr)
+{
     if (!binhdr) return;
     xx_binhdr_destroy(binhdr);
     xx_mem_free(binhdr);
 }
 
-bool xx_binhdr_check_is_valid(Abstractformat *self, xx_pd_struct *pd) {
+bool xx_binhdr_check_is_valid(Abstractformat *self, xx_pd_struct *pd)
+{
     xx_binhdr_private parsed;
     bool result = xx_binhdr_parse(self, &parsed, pd);
     xx_binhdr_private_cleanup(&parsed);
     return result;
 }
 
-bool xx_binhdr_handle_base_info(Abstractformat *self, xx_pd_struct *pd) {
+bool xx_binhdr_handle_base_info(Abstractformat *self, xx_pd_struct *pd)
+{
     xx_binhdr_private *parsed;
     xx_binhdr *binhdr = (xx_binhdr *)self;
     if (!self || !binhdr) return false;
@@ -294,25 +278,23 @@ bool xx_binhdr_handle_base_info(Abstractformat *self, xx_pd_struct *pd) {
     return true;
 }
 
-int64_t xx_binhdr_get_format_size(Abstractformat *self, xx_pd_struct *pd) {
-    if (!self || (!self->base_info_handled &&
-                  !xx_format_handle_base_info(self, pd))) return -1;
+int64_t xx_binhdr_get_format_size(Abstractformat *self, xx_pd_struct *pd)
+{
+    if (!self || (!self->base_info_handled && !xx_format_handle_base_info(self, pd))) return -1;
     return self->format_size;
 }
 
-uint64_t xx_binhdr_get_number_of_archive_records(Abstractformat *self,
-                                                 xx_pd_struct *pd) {
-    if (!self || (!self->base_info_handled &&
-                  !xx_format_handle_base_info(self, pd))) return 0U;
+uint64_t xx_binhdr_get_number_of_archive_records(Abstractformat *self, xx_pd_struct *pd)
+{
+    if (!self || (!self->base_info_handled && !xx_format_handle_base_info(self, pd))) return 0U;
     return ((xx_binhdr *)self)->number_of_records;
 }
 
-xx_archive_record_state *xx_binhdr_create_archive_records_reading(
-    Abstractformat *self, const xx_list_s *options, xx_pd_struct *pd) {
+xx_archive_record_state *xx_binhdr_create_archive_records_reading(Abstractformat *self, const xx_list_s *options, xx_pd_struct *pd)
+{
     xx_archive_record_state *state;
     xx_binhdr_archive_stream *stream;
-    if (!self || !self->device ||
-        (!self->base_info_handled && !xx_format_handle_base_info(self, pd))) {
+    if (!self || !self->device || (!self->base_info_handled && !xx_format_handle_base_info(self, pd))) {
         return NULL;
     }
     state = (xx_archive_record_state *)xx_mem_alloc(sizeof(*state));
@@ -323,8 +305,7 @@ xx_archive_record_state *xx_binhdr_create_archive_records_reading(
         return NULL;
     }
     xx_archive_record_state_init(state, self);
-    if (!xx_binhdr_copy_options(&state->options, options) ||
-        !xx_binhdr_parse(self, &stream->parsed, pd)) {
+    if (!xx_binhdr_copy_options(&state->options, options) || !xx_binhdr_parse(self, &stream->parsed, pd)) {
         xx_binhdr_archive_stream_free(stream);
         xx_archive_record_state_free(state);
         return NULL;
@@ -333,26 +314,22 @@ xx_archive_record_state *xx_binhdr_create_archive_records_reading(
     state->internal_state = stream;
     state->free_internal = xx_binhdr_archive_stream_free;
     state->total_records = stream->parsed.payload_size > 0 ? 1 : 0;
-    if (stream->parsed.payload_size > 0 &&
-        xx_binhdr_populate_record(&state->current_record, &stream->parsed)) {
+    if (stream->parsed.payload_size > 0 && xx_binhdr_populate_record(&state->current_record, &stream->parsed)) {
         state->has_record = true;
         state->current_index = 0;
     }
     return state;
 }
 
-const xx_archive_record *xx_binhdr_get_current_archive_record(
-    Abstractformat *self, xx_archive_record_state *state) {
-    return self && state && state->format == self && state->has_record
-               ? &state->current_record : NULL;
+const xx_archive_record *xx_binhdr_get_current_archive_record(Abstractformat *self, xx_archive_record_state *state)
+{
+    return self && state && state->format == self && state->has_record ? &state->current_record : NULL;
 }
 
-bool xx_binhdr_archive_record_move_to_next(Abstractformat *self,
-                                           xx_archive_record_state *state,
-                                           xx_pd_struct *pd) {
+bool xx_binhdr_archive_record_move_to_next(Abstractformat *self, xx_archive_record_state *state, xx_pd_struct *pd)
+{
     xx_binhdr_archive_stream *stream;
-    if (!self || !state || state->format != self || !state->has_record ||
-        !state->internal_state || (pd && xx_pd_is_stopped(pd))) return false;
+    if (!self || !state || state->format != self || !state->has_record || !state->internal_state || (pd && xx_pd_is_stopped(pd))) return false;
     stream = (xx_binhdr_archive_stream *)state->internal_state;
     /* The format holds exactly one member, so the first advance ends it. */
     ++stream->index;
@@ -362,9 +339,8 @@ bool xx_binhdr_archive_record_move_to_next(Abstractformat *self,
     return false;
 }
 
-bool xx_binhdr_unpack_current_archive_record(Abstractformat *self,
-                                             xx_archive_record_state *state,
-                                             xx_pd_struct *pd) {
+bool xx_binhdr_unpack_current_archive_record(Abstractformat *self, xx_archive_record_state *state, xx_pd_struct *pd)
+{
     const xx_archive_record *record;
     const xx_var *option;
     const char *name;
@@ -372,39 +348,30 @@ bool xx_binhdr_unpack_current_archive_record(Abstractformat *self,
     char *owned_base = NULL;
     char *destination = NULL;
     bool result;
-    if (!self || !self->device || !state || state->format != self ||
-        !state->has_record || (pd && xx_pd_is_stopped(pd))) return false;
+    if (!self || !self->device || !state || state->format != self || !state->has_record || (pd && xx_pd_is_stopped(pd))) return false;
     record = &state->current_record;
     name = xx_archive_record_get_original_name(record);
     if (!name || !name[0]) return false;
     option = xx_binhdr_find_option(&state->options, XX_META_ID_OPT_UNPACK_PATH);
     if (!option) {
         int64_t total = xx_io_total_size(self->device);
-        return record->data_offset >= 0 && record->compressed_size >= 0 &&
-               record->data_offset <= total &&
-               record->compressed_size <= total - record->data_offset;
+        return record->data_offset >= 0 && record->compressed_size >= 0 && record->data_offset <= total && record->compressed_size <= total - record->data_offset;
     }
-    if (option->type == XX_VAR_TYPE_STRING ||
-        option->type == XX_VAR_TYPE_STRING_VIEW) {
+    if (option->type == XX_VAR_TYPE_STRING || option->type == XX_VAR_TYPE_STRING_VIEW) {
         base = xx_var_get_str(option);
-    } else if (option->type == XX_VAR_TYPE_WSTRING ||
-               option->type == XX_VAR_TYPE_WSTRING_VIEW) {
+    } else if (option->type == XX_VAR_TYPE_WSTRING || option->type == XX_VAR_TYPE_WSTRING_VIEW) {
         owned_base = xx_str_unicode_to_utf8(xx_var_get_wstr(option));
         base = owned_base;
     }
     if (!base) goto cleanup;
-    if (base[0] && base[xx_str_len(base) - 1U] != '/' &&
-        base[xx_str_len(base) - 1U] != '\\') {
+    if (base[0] && base[xx_str_len(base) - 1U] != '/' && base[xx_str_len(base) - 1U] != '\\') {
         destination = xx_str_concat3(base, "/", name);
     } else {
         destination = xx_str_concat(base, name);
     }
     if (!destination) goto cleanup;
     if (xx_store_create_dirs_a(destination, false)) {
-        result = xx_store_unpack_device_to_file(self->device,
-                                                record->data_offset,
-                                                record->compressed_size,
-                                                destination, pd);
+        result = xx_store_unpack_device_to_file(self->device, record->data_offset, record->compressed_size, destination, pd);
     } else {
         result = false;
     }
@@ -417,31 +384,38 @@ cleanup:
     return false;
 }
 
-void xx_binhdr_free_archive_records_reading(Abstractformat *self,
-                                            xx_archive_record_state *state) {
+void xx_binhdr_free_archive_records_reading(Abstractformat *self, xx_archive_record_state *state)
+{
     (void)self;
     xx_archive_record_state_free(state);
 }
 
-uint64_t xx_binhdr_get_number_of_records(const xx_binhdr *binhdr) {
+uint64_t xx_binhdr_get_number_of_records(const xx_binhdr *binhdr)
+{
     return binhdr ? binhdr->number_of_records : 0U;
 }
-const char *xx_binhdr_get_board_id(const xx_binhdr *binhdr) {
+const char *xx_binhdr_get_board_id(const xx_binhdr *binhdr)
+{
     return binhdr ? binhdr->board_id : NULL;
 }
-uint32_t xx_binhdr_get_build_date(const xx_binhdr *binhdr) {
+uint32_t xx_binhdr_get_build_date(const xx_binhdr *binhdr)
+{
     return binhdr ? binhdr->build_date : 0U;
 }
-uint8_t xx_binhdr_get_version_major(const xx_binhdr *binhdr) {
+uint8_t xx_binhdr_get_version_major(const xx_binhdr *binhdr)
+{
     return binhdr ? binhdr->version_major : 0U;
 }
-uint8_t xx_binhdr_get_version_minor(const xx_binhdr *binhdr) {
+uint8_t xx_binhdr_get_version_minor(const xx_binhdr *binhdr)
+{
     return binhdr ? binhdr->version_minor : 0U;
 }
-uint8_t xx_binhdr_get_hardware_id(const xx_binhdr *binhdr) {
+uint8_t xx_binhdr_get_hardware_id(const xx_binhdr *binhdr)
+{
     return binhdr ? binhdr->hardware_id : 0U;
 }
-const char *xx_binhdr_get_hardware_name(const xx_binhdr *binhdr) {
+const char *xx_binhdr_get_hardware_name(const xx_binhdr *binhdr)
+{
     if (!binhdr) return NULL;
     switch (binhdr->hardware_id) {
         case 0U: return "4702";
@@ -451,9 +425,11 @@ const char *xx_binhdr_get_hardware_name(const xx_binhdr *binhdr) {
         default: return NULL;
     }
 }
-int64_t xx_binhdr_get_payload_offset(const xx_binhdr *binhdr) {
+int64_t xx_binhdr_get_payload_offset(const xx_binhdr *binhdr)
+{
     return binhdr ? binhdr->payload_offset : -1;
 }
-int64_t xx_binhdr_get_payload_size(const xx_binhdr *binhdr) {
+int64_t xx_binhdr_get_payload_size(const xx_binhdr *binhdr)
+{
     return binhdr ? binhdr->payload_size : 0;
 }

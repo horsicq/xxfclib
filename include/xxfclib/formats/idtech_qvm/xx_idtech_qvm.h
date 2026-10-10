@@ -9,13 +9,15 @@
 #ifdef __cplusplus
 extern "C" {
 #endif
-typedef struct xx_idtech_qvm { Abstractformat format; } xx_idtech_qvm;
-XXFC_API void xx_idtech_qvm_init(xx_idtech_qvm *,xx_io_device *,int64_t);
-XXFC_API xx_idtech_qvm *xx_idtech_qvm_create(xx_io_device *,int64_t);
+typedef struct xx_idtech_qvm {
+    Abstractformat format;
+} xx_idtech_qvm;
+XXFC_API void xx_idtech_qvm_init(xx_idtech_qvm *, xx_io_device *, int64_t);
+XXFC_API xx_idtech_qvm *xx_idtech_qvm_create(xx_io_device *, int64_t);
 XXFC_API void xx_idtech_qvm_destroy(xx_idtech_qvm *);
 XXFC_API void xx_idtech_qvm_free(xx_idtech_qvm *);
-XXFC_API bool xx_idtech_qvm_check_is_valid(Abstractformat *,xx_pd_struct *);
-XXFC_API bool xx_idtech_qvm_handle_base_info(Abstractformat *,xx_pd_struct *);
+XXFC_API bool xx_idtech_qvm_check_is_valid(Abstractformat *, xx_pd_struct *);
+XXFC_API bool xx_idtech_qvm_handle_base_info(Abstractformat *, xx_pd_struct *);
 #ifdef __cplusplus
 }
 #endif

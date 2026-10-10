@@ -56,7 +56,7 @@
 #define XX_ASB_PROBE_BYTES (UINT64_C(16) << 20)
 
 typedef struct xx_asb_private_s {
-    char *bundle_path;       /**< Owned copy, or NULL. */
+    char *bundle_path; /**< Owned copy, or NULL. */
     int64_t input_size;
     int64_t base_address;
     uint64_t media_size;
@@ -72,13 +72,12 @@ static void xx_asb_vtable_destroy(Abstractformat *self);
 
 /* ------------------------------------------------------------- helpers -- */
 
-static bool xx_asb_read_at(xx_io_device *device, int64_t offset, void *data,
-                           size_t size) {
+static bool xx_asb_read_at(xx_io_device *device, int64_t offset, void *data, size_t size)
+{
     uint8_t *out = (uint8_t *)data;
     size_t done = 0U;
 
-    if (!device || (!data && size != 0U) || offset < 0 ||
-        xx_io_seek64(device, offset, SEEK_SET) != 0) {
+    if (!device || (!data && size != 0U) || offset < 0 || xx_io_seek64(device, offset, SEEK_SET) != 0) {
         return false;
     }
     while (done < size) {
@@ -89,8 +88,8 @@ static bool xx_asb_read_at(xx_io_device *device, int64_t offset, void *data,
     return true;
 }
 
-static bool xx_asb_write_all(xx_io_device *output, const uint8_t *data,
-                             size_t size) {
+static bool xx_asb_write_all(xx_io_device *output, const uint8_t *data, size_t size)
+{
     size_t done = 0U;
 
     while (done < size) {
@@ -101,10 +100,14 @@ static bool xx_asb_write_all(xx_io_device *output, const uint8_t *data,
     return true;
 }
 
-static bool xx_asb_is_sep(char c) { return c == '/' || c == '\\'; }
+static bool xx_asb_is_sep(char c)
+{
+    return c == '/' || c == '\\';
+}
 
 /* dir + "/" + leaf (no separator added when dir already ends in one). */
-static char *xx_asb_join(const char *dir, const char *leaf) {
+static char *xx_asb_join(const char *dir, const char *leaf)
+{
     size_t length;
 
     if (!dir || !leaf) return NULL;
@@ -128,22 +131,25 @@ typedef struct xx_asb_tag_s {
     bool empty;
 } xx_asb_tag;
 
-static bool xx_asb_is_ws(uint8_t c) {
+static bool xx_asb_is_ws(uint8_t c)
+{
     return c == ' ' || c == '\t' || c == '\r' || c == '\n';
 }
 
-static void xx_asb_skip_ws(xx_asb_lex *l) {
+static void xx_asb_skip_ws(xx_asb_lex *l)
+{
     while (l->pos < l->n && xx_asb_is_ws(l->p[l->pos])) ++l->pos;
 }
 
-static bool xx_asb_at(const xx_asb_lex *l, const char *s) {
+static bool xx_asb_at(const xx_asb_lex *l, const char *s)
+{
     size_t length = xx_str_len(s);
-    return l->n - l->pos >= length &&
-           xx_rt_memcmp(l->p + l->pos, s, length) == 0;
+    return l->n - l->pos >= length && xx_rt_memcmp(l->p + l->pos, s, length) == 0;
 }
 
 /* Advance past the first occurrence of s. */
-static bool xx_asb_skip_past(xx_asb_lex *l, const char *s) {
+static bool xx_asb_skip_past(xx_asb_lex *l, const char *s)
+{
     size_t length = xx_str_len(s);
 
     while (l->n - l->pos >= length) {
@@ -157,7 +163,8 @@ static bool xx_asb_skip_past(xx_asb_lex *l, const char *s) {
 }
 
 /* Whitespace, <?...?>, <!-- ... -->, <!DOCTYPE ...>. */
-static bool xx_asb_skip_misc(xx_asb_lex *l) {
+static bool xx_asb_skip_misc(xx_asb_lex *l)
+{
     for (;;) {
         xx_asb_skip_ws(l);
         if (xx_asb_at(l, "<?")) {
@@ -175,7 +182,8 @@ static bool xx_asb_skip_misc(xx_asb_lex *l) {
 
 /* Reads one element tag at the cursor. Attributes are skipped (quoted
  * values may contain '>'). */
-static bool xx_asb_read_tag(xx_asb_lex *l, xx_asb_tag *tag) {
+static bool xx_asb_read_tag(xx_asb_lex *l, xx_asb_tag *tag)
+{
     size_t length = 0U;
     uint8_t quote = 0U;
 
@@ -188,9 +196,7 @@ static bool xx_asb_read_tag(xx_asb_lex *l, xx_asb_tag *tag) {
     }
     while (l->pos < l->n) {
         uint8_t c = l->p[l->pos];
-        if (!((c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z') ||
-              (c >= '0' && c <= '9') || c == '-' || c == '_' || c == '.' ||
-              c == ':')) {
+        if (!((c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z') || (c >= '0' && c <= '9') || c == '-' || c == '_' || c == '.' || c == ':')) {
             break;
         }
         if (length + 1U >= XX_ASB_MAX_NAME) return false;
@@ -219,20 +225,22 @@ static bool xx_asb_read_tag(xx_asb_lex *l, xx_asb_tag *tag) {
 
 /* Text up to the next '<'. Comments inside values are not supported (no
  * writer emits them); the caller then sees an unexpected tag and fails. */
-static void xx_asb_read_text(xx_asb_lex *l, size_t *start, size_t *length) {
+static void xx_asb_read_text(xx_asb_lex *l, size_t *start, size_t *length)
+{
     *start = l->pos;
     while (l->pos < l->n && l->p[l->pos] != '<') ++l->pos;
     *length = l->pos - *start;
 }
 
-static bool xx_asb_expect_close(xx_asb_lex *l, const char *name) {
+static bool xx_asb_expect_close(xx_asb_lex *l, const char *name)
+{
     xx_asb_tag tag;
-    return xx_asb_read_tag(l, &tag) && tag.closing &&
-           xx_str_equals(tag.name, name);
+    return xx_asb_read_tag(l, &tag) && tag.closing && xx_str_equals(tag.name, name);
 }
 
 /* Skips the body of an already-opened container element. */
-static bool xx_asb_skip_nested(xx_asb_lex *l) {
+static bool xx_asb_skip_nested(xx_asb_lex *l)
+{
     uint32_t depth = 1U;
     size_t start;
     size_t length;
@@ -255,7 +263,8 @@ static bool xx_asb_skip_nested(xx_asb_lex *l) {
 }
 
 /* Trimmed view of [start, start + length). */
-static void xx_asb_trim(const uint8_t *p, size_t *start, size_t *length) {
+static void xx_asb_trim(const uint8_t *p, size_t *start, size_t *length)
+{
     while (*length && xx_asb_is_ws(p[*start])) {
         ++*start;
         --*length;
@@ -263,8 +272,8 @@ static void xx_asb_trim(const uint8_t *p, size_t *start, size_t *length) {
     while (*length && xx_asb_is_ws(p[*start + *length - 1U])) --*length;
 }
 
-static bool xx_asb_parse_u64(const uint8_t *p, size_t start, size_t length,
-                             uint64_t *value) {
+static bool xx_asb_parse_u64(const uint8_t *p, size_t start, size_t length, uint64_t *value)
+{
     uint64_t result = 0U;
     size_t index;
 
@@ -286,8 +295,8 @@ static bool xx_asb_parse_u64(const uint8_t *p, size_t start, size_t length,
     return true;
 }
 
-static bool xx_asb_text_equals(const uint8_t *p, size_t start, size_t length,
-                               const char *s) {
+static bool xx_asb_text_equals(const uint8_t *p, size_t start, size_t length, const char *s)
+{
     xx_asb_trim(p, &start, &length);
     return length == xx_str_len(s) && xx_rt_memcmp(p + start, s, length) == 0;
 }
@@ -302,8 +311,8 @@ typedef struct xx_asb_fields_s {
     uint64_t version;
 } xx_asb_fields;
 
-static bool xx_asb_parse_plist(const uint8_t *p, size_t n,
-                               xx_asb_fields *f) {
+static bool xx_asb_parse_plist(const uint8_t *p, size_t n, xx_asb_fields *f)
+{
     xx_asb_lex lex;
     xx_asb_tag tag;
     uint32_t pairs = 0U;
@@ -314,12 +323,10 @@ static bool xx_asb_parse_plist(const uint8_t *p, size_t n,
     lex.pos = 0U;
     if (n >= 3U && p[0] == 0xEFU && p[1] == 0xBBU && p[2] == 0xBFU) lex.pos = 3U;
 
-    if (!xx_asb_skip_misc(&lex) || !xx_asb_read_tag(&lex, &tag) ||
-        tag.closing || tag.empty || !xx_str_equals(tag.name, "plist")) {
+    if (!xx_asb_skip_misc(&lex) || !xx_asb_read_tag(&lex, &tag) || tag.closing || tag.empty || !xx_str_equals(tag.name, "plist")) {
         return false;
     }
-    if (!xx_asb_skip_misc(&lex) || !xx_asb_read_tag(&lex, &tag) ||
-        tag.closing || tag.empty || !xx_str_equals(tag.name, "dict")) {
+    if (!xx_asb_skip_misc(&lex) || !xx_asb_read_tag(&lex, &tag) || tag.closing || tag.empty || !xx_str_equals(tag.name, "dict")) {
         return false;
     }
     for (;;) {
@@ -347,13 +354,11 @@ static bool xx_asb_parse_plist(const uint8_t *p, size_t n,
             key[key_length] = '\0';
         }
 
-        if (!xx_asb_skip_misc(&lex) || !xx_asb_read_tag(&lex, &value) ||
-            value.closing) {
+        if (!xx_asb_skip_misc(&lex) || !xx_asb_read_tag(&lex, &value) || value.closing) {
             return false;
         }
         if (!value.empty) {
-            if (xx_str_equals(value.name, "dict") ||
-                xx_str_equals(value.name, "array")) {
+            if (xx_str_equals(value.name, "dict") || xx_str_equals(value.name, "array")) {
                 if (!xx_asb_skip_nested(&lex)) return false;
             } else {
                 xx_asb_read_text(&lex, &value_start, &value_length);
@@ -365,29 +370,19 @@ static bool xx_asb_parse_plist(const uint8_t *p, size_t n,
         if (xx_str_equals(key, "diskimage-bundle-type")) {
             if (f->has_type) return false;
             f->has_type = true;
-            f->type_ok = value_text && xx_str_equals(value.name, "string") &&
-                         xx_asb_text_equals(p, value_start, value_length,
-                                            XX_ASB_TYPE_STRING);
+            f->type_ok = value_text && xx_str_equals(value.name, "string") && xx_asb_text_equals(p, value_start, value_length, XX_ASB_TYPE_STRING);
         } else if (xx_str_equals(key, "band-size")) {
-            if (f->has_band || !value_text ||
-                !xx_str_equals(value.name, "integer") ||
-                !xx_asb_parse_u64(p, value_start, value_length,
-                                  &f->band_size)) {
+            if (f->has_band || !value_text || !xx_str_equals(value.name, "integer") || !xx_asb_parse_u64(p, value_start, value_length, &f->band_size)) {
                 return false;
             }
             f->has_band = true;
         } else if (xx_str_equals(key, "size")) {
-            if (f->has_size || !value_text ||
-                !xx_str_equals(value.name, "integer") ||
-                !xx_asb_parse_u64(p, value_start, value_length, &f->size)) {
+            if (f->has_size || !value_text || !xx_str_equals(value.name, "integer") || !xx_asb_parse_u64(p, value_start, value_length, &f->size)) {
                 return false;
             }
             f->has_size = true;
         } else if (xx_str_equals(key, "bundle-backingstore-version")) {
-            if (f->has_version || !value_text ||
-                !xx_str_equals(value.name, "integer") ||
-                !xx_asb_parse_u64(p, value_start, value_length,
-                                  &f->version)) {
+            if (f->has_version || !value_text || !xx_str_equals(value.name, "integer") || !xx_asb_parse_u64(p, value_start, value_length, &f->version)) {
                 return false;
             }
             f->has_version = true;
@@ -404,14 +399,16 @@ static bool xx_asb_parse_plist(const uint8_t *p, size_t n,
     return true;
 }
 
-static void xx_asb_private_cleanup(xx_asb_private *parsed) {
+static void xx_asb_private_cleanup(xx_asb_private *parsed)
+{
     if (!parsed) return;
     if (parsed->bundle_path) xx_str_free(parsed->bundle_path);
     xx_mem_zero(parsed, sizeof(*parsed));
     parsed->input_size = -1;
 }
 
-static void xx_asb_private_free(void *pointer) {
+static void xx_asb_private_free(void *pointer)
+{
     xx_asb_private *parsed = (xx_asb_private *)pointer;
 
     if (!parsed) return;
@@ -420,7 +417,8 @@ static void xx_asb_private_free(void *pointer) {
 }
 
 /* token: empty for a plain bundle, the "encrcdsa" header when encrypted. */
-static bool xx_asb_token_encrypted(const char *bundle_path) {
+static bool xx_asb_token_encrypted(const char *bundle_path)
+{
     char *path = xx_asb_join(bundle_path, "token");
     xx_io_device *device;
     uint8_t head[8];
@@ -430,16 +428,15 @@ static bool xx_asb_token_encrypted(const char *bundle_path) {
     device = xx_io_file_open(path, "rb");
     xx_str_free(path);
     if (!device) return false;
-    if (xx_io_total_size(device) >= 8 && xx_asb_read_at(device, 0, head, 8U) &&
-        xx_rt_memcmp(head, "encrcdsa", 8U) == 0) {
+    if (xx_io_total_size(device) >= 8 && xx_asb_read_at(device, 0, head, 8U) && xx_rt_memcmp(head, "encrcdsa", 8U) == 0) {
         result = true;
     }
     xx_io_close(device);
     return result;
 }
 
-static bool xx_asb_parse(Abstractformat *self, const char *bundle_path,
-                         xx_asb_private *parsed, xx_pd_struct *pd) {
+static bool xx_asb_parse(Abstractformat *self, const char *bundle_path, xx_asb_private *parsed, xx_pd_struct *pd)
+{
     uint8_t *buffer = NULL;
     int64_t total_size;
     int64_t available;
@@ -449,21 +446,18 @@ static bool xx_asb_parse(Abstractformat *self, const char *bundle_path,
         xx_mem_zero(parsed, sizeof(*parsed));
         parsed->input_size = -1;
     }
-    if (!self || !self->device || !parsed || self->base_address < 0 ||
-        (pd && xx_pd_is_stopped(pd))) {
+    if (!self || !self->device || !parsed || self->base_address < 0 || (pd && xx_pd_is_stopped(pd))) {
         return false;
     }
     total_size = xx_io_total_size(self->device);
     if (total_size < 0 || self->base_address > total_size) return false;
     available = total_size - self->base_address;
-    if (available < (int64_t)XX_ASB_MIN_PLIST ||
-        available > (int64_t)XX_ASB_MAX_PLIST) {
+    if (available < (int64_t)XX_ASB_MIN_PLIST || available > (int64_t)XX_ASB_MAX_PLIST) {
         return false;
     }
     buffer = (uint8_t *)xx_mem_alloc((size_t)available);
     if (!buffer) return false;
-    if (!xx_asb_read_at(self->device, self->base_address, buffer,
-                        (size_t)available)) {
+    if (!xx_asb_read_at(self->device, self->base_address, buffer, (size_t)available)) {
         xx_mem_free(buffer);
         return false;
     }
@@ -473,12 +467,8 @@ static bool xx_asb_parse(Abstractformat *self, const char *bundle_path,
     }
     xx_mem_free(buffer);
 
-    if (!fields.has_type || !fields.type_ok || !fields.has_band ||
-        !fields.has_size || fields.size == 0U ||
-        fields.band_size < XX_ASB_SECTOR ||
-        fields.band_size > XX_ASB_MAX_BAND_SIZE ||
-        (fields.band_size % XX_ASB_SECTOR) != 0U ||
-        fields.size > XX_ASB_MAX_MEDIA_SIZE ||
+    if (!fields.has_type || !fields.type_ok || !fields.has_band || !fields.has_size || fields.size == 0U || fields.band_size < XX_ASB_SECTOR ||
+        fields.band_size > XX_ASB_MAX_BAND_SIZE || (fields.band_size % XX_ASB_SECTOR) != 0U || fields.size > XX_ASB_MAX_MEDIA_SIZE ||
         (fields.has_version && (fields.version < 1U || fields.version > 2U))) {
         return false;
     }
@@ -486,9 +476,7 @@ static bool xx_asb_parse(Abstractformat *self, const char *bundle_path,
     parsed->base_address = self->base_address;
     parsed->media_size = fields.size;
     parsed->band_size = fields.band_size;
-    parsed->number_of_bands =
-        fields.size / fields.band_size +
-        ((fields.size % fields.band_size) != 0U ? 1U : 0U);
+    parsed->number_of_bands = fields.size / fields.band_size + ((fields.size % fields.band_size) != 0U ? 1U : 0U);
     parsed->version = fields.has_version ? (uint32_t)fields.version : 0U;
 
     if (bundle_path && bundle_path[0]) {
@@ -508,7 +496,8 @@ static bool xx_asb_parse(Abstractformat *self, const char *bundle_path,
 
 /* --------------------------------------------------------------- reader -- */
 
-static void xx_asb_band_name(uint64_t index, char out[20]) {
+static void xx_asb_band_name(uint64_t index, char out[20])
+{
     static const char digits[] = "0123456789abcdef";
     char reversed[20];
     size_t length = 0U;
@@ -524,8 +513,8 @@ static void xx_asb_band_name(uint64_t index, char out[20]) {
 
 /* Open bands/<hex>. A band that does not exist is sparse (NULL, true). One
  * that exists but cannot be opened is an error (NULL, false). */
-static bool xx_asb_open_band(const xx_asb_private *parsed, uint64_t index,
-                             xx_io_device **band) {
+static bool xx_asb_open_band(const xx_asb_private *parsed, uint64_t index, xx_io_device **band)
+{
     char name[20];
     char *bands;
     char *path;
@@ -547,22 +536,17 @@ static bool xx_asb_open_band(const xx_asb_private *parsed, uint64_t index,
 /* Produce the disk image. With no output only the first
  * XX_ASB_PROBE_BYTES are produced (the size is a plist value and may claim
  * terabytes). */
-static bool xx_asb_write_image(const xx_asb_private *parsed,
-                               xx_io_device *output, xx_pd_struct *pd) {
+static bool xx_asb_write_image(const xx_asb_private *parsed, xx_io_device *output, xx_pd_struct *pd)
+{
     uint8_t *stage;
     uint64_t index;
     uint64_t produced = 0U;
-    uint64_t limit = output ? parsed->media_size
-                            : (parsed->media_size < XX_ASB_PROBE_BYTES
-                                   ? parsed->media_size
-                                   : XX_ASB_PROBE_BYTES);
+    uint64_t limit = output ? parsed->media_size : (parsed->media_size < XX_ASB_PROBE_BYTES ? parsed->media_size : XX_ASB_PROBE_BYTES);
     bool result = true;
 
     stage = (uint8_t *)xx_mem_alloc(XX_ASB_STAGE_SIZE);
     if (!stage) return false;
-    for (index = 0U; result && index < parsed->number_of_bands &&
-                     produced < limit;
-         ++index) {
+    for (index = 0U; result && index < parsed->number_of_bands && produced < limit; ++index) {
         xx_io_device *band = NULL;
         int64_t band_file_size = 0;
         uint64_t band_bytes = parsed->media_size - index * parsed->band_size;
@@ -595,8 +579,7 @@ static bool xx_asb_write_image(const xx_asb_private *parsed,
                 uint64_t left = (uint64_t)band_file_size - offset;
                 from_file = (uint64_t)chunk < left ? chunk : (size_t)left;
             }
-            if (from_file != 0U &&
-                !xx_asb_read_at(band, (int64_t)offset, stage, from_file)) {
+            if (from_file != 0U && !xx_asb_read_at(band, (int64_t)offset, stage, from_file)) {
                 result = false;
                 break;
             }
@@ -618,8 +601,8 @@ static bool xx_asb_write_image(const xx_asb_private *parsed,
 
 /* ------------------------------------------------------------ lifecycle -- */
 
-void xx_apple_sparse_bundle_init(xx_apple_sparse_bundle *bundle,
-                                 xx_io_device *dev, int64_t base_address) {
+void xx_apple_sparse_bundle_init(xx_apple_sparse_bundle *bundle, xx_io_device *dev, int64_t base_address)
+{
     if (!bundle) return;
     xx_mem_zero(bundle, sizeof(*bundle));
     xx_format_init(&bundle->format, dev, base_address);
@@ -632,31 +615,25 @@ void xx_apple_sparse_bundle_init(xx_apple_sparse_bundle *bundle,
     bundle->format.check_is_valid = xx_apple_sparse_bundle_check_is_valid;
     bundle->format.handle_base_info = xx_apple_sparse_bundle_handle_base_info;
     bundle->format.get_format_size = xx_apple_sparse_bundle_get_format_size;
-    bundle->format.get_number_of_archive_records =
-        xx_apple_sparse_bundle_get_number_of_archive_records;
-    bundle->format.create_archive_records_reading =
-        xx_apple_sparse_bundle_create_archive_records_reading;
-    bundle->format.get_current_archive_record =
-        xx_apple_sparse_bundle_get_current_archive_record;
-    bundle->format.unpack_current_archive_record =
-        xx_apple_sparse_bundle_unpack_current_archive_record;
-    bundle->format.archive_record_move_to_next =
-        xx_apple_sparse_bundle_archive_record_move_to_next;
-    bundle->format.free_archive_records_reading =
-        xx_apple_sparse_bundle_free_archive_records_reading;
+    bundle->format.get_number_of_archive_records = xx_apple_sparse_bundle_get_number_of_archive_records;
+    bundle->format.create_archive_records_reading = xx_apple_sparse_bundle_create_archive_records_reading;
+    bundle->format.get_current_archive_record = xx_apple_sparse_bundle_get_current_archive_record;
+    bundle->format.unpack_current_archive_record = xx_apple_sparse_bundle_unpack_current_archive_record;
+    bundle->format.archive_record_move_to_next = xx_apple_sparse_bundle_archive_record_move_to_next;
+    bundle->format.free_archive_records_reading = xx_apple_sparse_bundle_free_archive_records_reading;
     bundle->format.destroy = xx_asb_vtable_destroy;
 }
 
-xx_apple_sparse_bundle *xx_apple_sparse_bundle_create(xx_io_device *dev,
-                                                      int64_t base_address) {
-    xx_apple_sparse_bundle *bundle =
-        (xx_apple_sparse_bundle *)xx_mem_alloc(sizeof(*bundle));
+xx_apple_sparse_bundle *xx_apple_sparse_bundle_create(xx_io_device *dev, int64_t base_address)
+{
+    xx_apple_sparse_bundle *bundle = (xx_apple_sparse_bundle *)xx_mem_alloc(sizeof(*bundle));
 
     if (bundle) xx_apple_sparse_bundle_init(bundle, dev, base_address);
     return bundle;
 }
 
-void xx_apple_sparse_bundle_destroy(xx_apple_sparse_bundle *bundle) {
+void xx_apple_sparse_bundle_destroy(xx_apple_sparse_bundle *bundle)
+{
     if (!bundle) return;
     if (bundle->internal) {
         xx_asb_private_free(bundle->internal);
@@ -674,18 +651,20 @@ void xx_apple_sparse_bundle_destroy(xx_apple_sparse_bundle *bundle) {
     xx_format_cleanup_extra_parameters(&bundle->format);
 }
 
-static void xx_asb_vtable_destroy(Abstractformat *self) {
+static void xx_asb_vtable_destroy(Abstractformat *self)
+{
     xx_apple_sparse_bundle_destroy((xx_apple_sparse_bundle *)self);
 }
 
-void xx_apple_sparse_bundle_free(xx_apple_sparse_bundle *bundle) {
+void xx_apple_sparse_bundle_free(xx_apple_sparse_bundle *bundle)
+{
     if (!bundle) return;
     xx_apple_sparse_bundle_destroy(bundle);
     xx_mem_free(bundle);
 }
 
-bool xx_apple_sparse_bundle_set_bundle_path(xx_apple_sparse_bundle *bundle,
-                                            const char *bundle_path) {
+bool xx_apple_sparse_bundle_set_bundle_path(xx_apple_sparse_bundle *bundle, const char *bundle_path)
+{
     char *copy = NULL;
 
     if (!bundle) return false;
@@ -708,20 +687,21 @@ bool xx_apple_sparse_bundle_set_bundle_path(xx_apple_sparse_bundle *bundle,
 }
 
 /* Last path component is Info.plist / Info.bckup (any case)? */
-static bool xx_asb_names_plist(const char *path, size_t *dir_length) {
+static bool xx_asb_names_plist(const char *path, size_t *dir_length)
+{
     size_t length = xx_str_len(path);
     size_t leaf = length;
 
     while (leaf > 0U && !xx_asb_is_sep(path[leaf - 1U])) --leaf;
-    if (!xx_str_iequals(path + leaf, "Info.plist") &&
-        !xx_str_iequals(path + leaf, "Info.bckup")) {
+    if (!xx_str_iequals(path + leaf, "Info.plist") && !xx_str_iequals(path + leaf, "Info.bckup")) {
         return false;
     }
     *dir_length = leaf;
     return true;
 }
 
-xx_apple_sparse_bundle *xx_apple_sparse_bundle_open_path(const char *path) {
+xx_apple_sparse_bundle *xx_apple_sparse_bundle_open_path(const char *path)
+{
     xx_apple_sparse_bundle *bundle;
     xx_io_device *device = NULL;
     char *dir = NULL;
@@ -779,8 +759,8 @@ xx_apple_sparse_bundle *xx_apple_sparse_bundle_open_path(const char *path) {
 
 /* --------------------------------------------------------------- format -- */
 
-bool xx_apple_sparse_bundle_check_is_valid(Abstractformat *self,
-                                           xx_pd_struct *pd) {
+bool xx_apple_sparse_bundle_check_is_valid(Abstractformat *self, xx_pd_struct *pd)
+{
     xx_asb_private parsed;
     bool result = xx_asb_parse(self, NULL, &parsed, pd);
 
@@ -788,8 +768,8 @@ bool xx_apple_sparse_bundle_check_is_valid(Abstractformat *self,
     return result;
 }
 
-bool xx_apple_sparse_bundle_handle_base_info(Abstractformat *self,
-                                             xx_pd_struct *pd) {
+bool xx_apple_sparse_bundle_handle_base_info(Abstractformat *self, xx_pd_struct *pd)
+{
     xx_apple_sparse_bundle *bundle = (xx_apple_sparse_bundle *)self;
     xx_asb_private *parsed;
 
@@ -809,13 +789,11 @@ bool xx_apple_sparse_bundle_handle_base_info(Abstractformat *self,
     bundle->backingstore_version = parsed->version;
     bundle->is_encrypted = parsed->is_encrypted;
     /* The disk is reachable only with the bundle directory and its bands/. */
-    bundle->number_of_records =
-        (parsed->bundle_path && parsed->bands_present) ? 1U : 0U;
+    bundle->number_of_records = (parsed->bundle_path && parsed->bands_present) ? 1U : 0U;
     self->is_archive = bundle->number_of_records != 0U;
     self->is_crypted = parsed->is_encrypted;
     if (parsed->version != 0U) {
-        (void)xx_rt_snprintf(self->version, sizeof(self->version), "%u",
-                             (unsigned)parsed->version);
+        (void)xx_rt_snprintf(self->version, sizeof(self->version), "%u", (unsigned)parsed->version);
     }
     self->format_size = parsed->input_size - self->base_address;
     self->overlay_offset = -1;
@@ -826,19 +804,17 @@ bool xx_apple_sparse_bundle_handle_base_info(Abstractformat *self,
     return true;
 }
 
-int64_t xx_apple_sparse_bundle_get_format_size(Abstractformat *self,
-                                               xx_pd_struct *pd) {
-    if (!self ||
-        (!self->base_info_handled && !xx_format_handle_base_info(self, pd))) {
+int64_t xx_apple_sparse_bundle_get_format_size(Abstractformat *self, xx_pd_struct *pd)
+{
+    if (!self || (!self->base_info_handled && !xx_format_handle_base_info(self, pd))) {
         return -1;
     }
     return self->format_size;
 }
 
-uint64_t xx_apple_sparse_bundle_get_number_of_archive_records(
-    Abstractformat *self, xx_pd_struct *pd) {
-    if (!self ||
-        (!self->base_info_handled && !xx_format_handle_base_info(self, pd))) {
+uint64_t xx_apple_sparse_bundle_get_number_of_archive_records(Abstractformat *self, xx_pd_struct *pd)
+{
+    if (!self || (!self->base_info_handled && !xx_format_handle_base_info(self, pd))) {
         return 0U;
     }
     return ((xx_apple_sparse_bundle *)self)->number_of_records;
@@ -846,19 +822,17 @@ uint64_t xx_apple_sparse_bundle_get_number_of_archive_records(
 
 /* -------------------------------------------------------------- records -- */
 
-static bool xx_asb_copy_options(xx_list_s *destination,
-                                const xx_list_s *source) {
+static bool xx_asb_copy_options(xx_list_s *destination, const xx_list_s *source)
+{
     size_t index;
 
     if (!destination || !source) return source == NULL;
     for (index = 0U; index < source->count; ++index) {
-        const xx_meta *item =
-            (const xx_meta *)xx_list_at((const xx_list_t *)source, index);
+        const xx_meta *item = (const xx_meta *)xx_list_at((const xx_list_t *)source, index);
         xx_meta copy;
         if (!item) continue;
         xx_meta_init(&copy, item->meta_id);
-        if (!xx_var_copy(&copy.var, &item->var) ||
-            !xx_list_append(destination, &copy)) {
+        if (!xx_var_copy(&copy.var, &item->var) || !xx_list_append(destination, &copy)) {
             xx_meta_cleanup(&copy);
             return false;
         }
@@ -866,21 +840,20 @@ static bool xx_asb_copy_options(xx_list_s *destination,
     return true;
 }
 
-static const xx_var *xx_asb_find_option(const xx_list_s *options,
-                                        uint32_t meta_id) {
+static const xx_var *xx_asb_find_option(const xx_list_s *options, uint32_t meta_id)
+{
     size_t index;
 
     if (!options) return NULL;
     for (index = 0U; index < options->count; ++index) {
-        const xx_meta *item =
-            (const xx_meta *)xx_list_at((const xx_list_t *)options, index);
+        const xx_meta *item = (const xx_meta *)xx_list_at((const xx_list_t *)options, index);
         if (item && item->meta_id == meta_id) return &item->var;
     }
     return NULL;
 }
 
-static bool xx_asb_populate_record(xx_archive_record *record,
-                                   const xx_asb_private *parsed) {
+static bool xx_asb_populate_record(xx_archive_record *record, const xx_asb_private *parsed)
+{
     if (!record || !parsed) return false;
     xx_archive_record_cleanup(record);
     xx_archive_record_init(record);
@@ -888,24 +861,17 @@ static bool xx_asb_populate_record(xx_archive_record *record,
     record->header_size = parsed->input_size - parsed->base_address;
     record->data_offset = -1;
     record->compressed_size = 0;
-    return xx_archive_record_set_original_name(record, XX_ASB_MEMBER_NAME) &&
-           xx_archive_record_set_meta_u64(record, XX_META_ID_UNCOMPRESSED_SIZE,
-                                          parsed->media_size) &&
-           xx_archive_record_set_meta_bool(record, XX_META_ID_IS_FOLDER,
-                                           false) &&
-           xx_archive_record_set_meta_bool(record, XX_META_ID_IS_ENCRYPTED,
-                                           parsed->is_encrypted);
+    return xx_archive_record_set_original_name(record, XX_ASB_MEMBER_NAME) && xx_archive_record_set_meta_u64(record, XX_META_ID_UNCOMPRESSED_SIZE, parsed->media_size) &&
+           xx_archive_record_set_meta_bool(record, XX_META_ID_IS_FOLDER, false) && xx_archive_record_set_meta_bool(record, XX_META_ID_IS_ENCRYPTED, parsed->is_encrypted);
 }
 
-xx_archive_record_state *xx_apple_sparse_bundle_create_archive_records_reading(
-    Abstractformat *self, const xx_list_s *options, xx_pd_struct *pd) {
+xx_archive_record_state *xx_apple_sparse_bundle_create_archive_records_reading(Abstractformat *self, const xx_list_s *options, xx_pd_struct *pd)
+{
     xx_apple_sparse_bundle *bundle = (xx_apple_sparse_bundle *)self;
     xx_archive_record_state *state;
     xx_asb_private *parsed;
 
-    if (!self || !self->device ||
-        (!self->base_info_handled && !xx_format_handle_base_info(self, pd)) ||
-        bundle->number_of_records == 0U) {
+    if (!self || !self->device || (!self->base_info_handled && !xx_format_handle_base_info(self, pd)) || bundle->number_of_records == 0U) {
         return NULL;
     }
     state = (xx_archive_record_state *)xx_mem_alloc(sizeof(*state));
@@ -916,9 +882,7 @@ xx_archive_record_state *xx_apple_sparse_bundle_create_archive_records_reading(
         return NULL;
     }
     xx_archive_record_state_init(state, self);
-    if (!xx_asb_copy_options(&state->options, options) ||
-        !xx_asb_parse(self, bundle->bundle_path, parsed, pd) ||
-        !parsed->bundle_path || !parsed->bands_present) {
+    if (!xx_asb_copy_options(&state->options, options) || !xx_asb_parse(self, bundle->bundle_path, parsed, pd) || !parsed->bundle_path || !parsed->bands_present) {
         xx_asb_private_free(parsed);
         xx_archive_record_state_free(state);
         return NULL;
@@ -935,19 +899,16 @@ xx_archive_record_state *xx_apple_sparse_bundle_create_archive_records_reading(
     return state;
 }
 
-const xx_archive_record *xx_apple_sparse_bundle_get_current_archive_record(
-    Abstractformat *self, xx_archive_record_state *state) {
-    return self && state && state->format == self && state->has_record
-               ? &state->current_record
-               : NULL;
+const xx_archive_record *xx_apple_sparse_bundle_get_current_archive_record(Abstractformat *self, xx_archive_record_state *state)
+{
+    return self && state && state->format == self && state->has_record ? &state->current_record : NULL;
 }
 
-bool xx_apple_sparse_bundle_archive_record_move_to_next(
-    Abstractformat *self, xx_archive_record_state *state, xx_pd_struct *pd) {
+bool xx_apple_sparse_bundle_archive_record_move_to_next(Abstractformat *self, xx_archive_record_state *state, xx_pd_struct *pd)
+{
     xx_asb_private *parsed;
 
-    if (!self || !state || state->format != self || !state->has_record ||
-        (pd && xx_pd_is_stopped(pd))) {
+    if (!self || !state || state->format != self || !state->has_record || (pd && xx_pd_is_stopped(pd))) {
         return false;
     }
     parsed = (xx_asb_private *)state->internal_state;
@@ -961,10 +922,9 @@ bool xx_apple_sparse_bundle_archive_record_move_to_next(
 /* XX_META_ID_OPT_MAX_MEMBER_SIZE, when given, caps the disk size an unpack
  * will write (same handling as the VHDX reader). Absent means unlimited up
  * to XX_ASB_MAX_MEDIA_SIZE. */
-static bool xx_asb_size_allowed(Abstractformat *format,
-                                const xx_list_s *options, uint64_t size) {
-    const xx_var *limit = xx_format_resolve_extra_parameter(
-        format, options, XX_META_ID_OPT_MAX_MEMBER_SIZE);
+static bool xx_asb_size_allowed(Abstractformat *format, const xx_list_s *options, uint64_t size)
+{
+    const xx_var *limit = xx_format_resolve_extra_parameter(format, options, XX_META_ID_OPT_MAX_MEMBER_SIZE);
     if (!limit) return true;
     switch (limit->type) {
         case XX_VAR_TYPE_UINT8:
@@ -982,8 +942,8 @@ static bool xx_asb_size_allowed(Abstractformat *format,
     }
 }
 
-bool xx_apple_sparse_bundle_unpack_current_archive_record(
-    Abstractformat *self, xx_archive_record_state *state, xx_pd_struct *pd) {
+bool xx_apple_sparse_bundle_unpack_current_archive_record(Abstractformat *self, xx_archive_record_state *state, xx_pd_struct *pd)
+{
     xx_asb_private *parsed;
     const xx_var *option;
     const char *base = NULL;
@@ -993,8 +953,7 @@ bool xx_apple_sparse_bundle_unpack_current_archive_record(
     bool result;
     bool created = false;
 
-    if (!self || !self->device || !state || state->format != self ||
-        !state->has_record || (pd && xx_pd_is_stopped(pd))) {
+    if (!self || !self->device || !state || state->format != self || !state->has_record || (pd && xx_pd_is_stopped(pd))) {
         return false;
     }
     parsed = (xx_asb_private *)state->internal_state;
@@ -1007,11 +966,9 @@ bool xx_apple_sparse_bundle_unpack_current_archive_record(
 
     option = xx_asb_find_option(&state->options, XX_META_ID_OPT_UNPACK_PATH);
     if (!option) return xx_asb_write_image(parsed, NULL, pd);
-    if (option->type == XX_VAR_TYPE_STRING ||
-        option->type == XX_VAR_TYPE_STRING_VIEW) {
+    if (option->type == XX_VAR_TYPE_STRING || option->type == XX_VAR_TYPE_STRING_VIEW) {
         base = xx_var_get_str(option);
-    } else if (option->type == XX_VAR_TYPE_WSTRING ||
-               option->type == XX_VAR_TYPE_WSTRING_VIEW) {
+    } else if (option->type == XX_VAR_TYPE_WSTRING || option->type == XX_VAR_TYPE_WSTRING_VIEW) {
         owned_base = xx_str_unicode_to_utf8(xx_var_get_wstr(option));
         base = owned_base;
     }
@@ -1035,20 +992,20 @@ bool xx_apple_sparse_bundle_unpack_current_archive_record(
     return result;
 }
 
-void xx_apple_sparse_bundle_free_archive_records_reading(
-    Abstractformat *self, xx_archive_record_state *state) {
+void xx_apple_sparse_bundle_free_archive_records_reading(Abstractformat *self, xx_archive_record_state *state)
+{
     (void)self;
     xx_archive_record_state_free(state);
 }
 
 /* ------------------------------------------------------------ accessors -- */
 
-uint64_t xx_apple_sparse_bundle_get_media_size(
-    const xx_apple_sparse_bundle *bundle) {
+uint64_t xx_apple_sparse_bundle_get_media_size(const xx_apple_sparse_bundle *bundle)
+{
     return bundle ? bundle->media_size : 0U;
 }
 
-uint64_t xx_apple_sparse_bundle_get_band_size(
-    const xx_apple_sparse_bundle *bundle) {
+uint64_t xx_apple_sparse_bundle_get_band_size(const xx_apple_sparse_bundle *bundle)
+{
     return bundle ? bundle->band_size : 0U;
 }

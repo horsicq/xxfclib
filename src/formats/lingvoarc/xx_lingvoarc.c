@@ -98,10 +98,8 @@
 #define LVS_PROBE_BYTES 4096U
 #define LVS_PAYLOAD_NAME "payload"
 
-static const uint8_t lvs_signature[LVS_HEADER_SIZE] = {
-    'L', 'i', 'n', 'g', 'v', 'o', 'A', 'r', 'c', 'h',
-    0x01, 0x00, 0xf0, 0x1f, 0x00, 0x01, 0x40, 0x00,
-    0x47, 0x01, 0x47, 0x01, 0x1f, 0x83, 0x41, 0x01};
+static const uint8_t lvs_signature[LVS_HEADER_SIZE] = {'L',  'i',  'n',  'g',  'v',  'o',  'A',  'r',  'c',  'h',  0x01, 0x00, 0xf0,
+                                                       0x1f, 0x00, 0x01, 0x40, 0x00, 0x47, 0x01, 0x47, 0x01, 0x1f, 0x83, 0x41, 0x01};
 
 typedef struct lva_member_s {
     char *name;
@@ -122,26 +120,23 @@ typedef struct lva_stream_s {
     uint64_t plain_size; /* stream variant */
 } lva_stream;
 
-static bool lva_read_at(xx_io_device *device, int64_t offset, void *buffer,
-                        size_t size) {
+static bool lva_read_at(xx_io_device *device, int64_t offset, void *buffer, size_t size)
+{
     size_t done = 0U;
     const size_t io_capacity = xx_get_file_buffer_size();
-    if (!device || (!buffer && size != 0U) || offset < 0 ||
-        xx_io_seek64(device, offset, SEEK_SET) != 0)
-        return false;
+    if (!device || (!buffer && size != 0U) || offset < 0 || xx_io_seek64(device, offset, SEEK_SET) != 0) return false;
     while (done < size) {
         size_t request = size - done;
         if (request > io_capacity) request = io_capacity;
-        ssize_t amount = xx_io_read(device, (uint8_t *)buffer + done,
-                                    request);
+        ssize_t amount = xx_io_read(device, (uint8_t *)buffer + done, request);
         if (amount <= 0 || (size_t)amount > request) return false;
         done += (size_t)amount;
     }
     return true;
 }
 
-static bool lva_write_all(xx_io_device *device, const uint8_t *data,
-                          size_t size) {
+static bool lva_write_all(xx_io_device *device, const uint8_t *data, size_t size)
+{
     size_t written = 0U;
     const size_t io_capacity = xx_get_file_buffer_size();
     while (written < size) {
@@ -157,14 +152,14 @@ static bool lva_write_all(xx_io_device *device, const uint8_t *data,
 /* Member paths are DOS style.  The record name keeps the stored bytes and
  * only swaps the backslash separator for '/'; whether the name is safe to
  * create on disk is decided at unpack time by lva_safe_output_name. */
-static char *lva_copy_name(const uint8_t *bytes, size_t size) {
+static char *lva_copy_name(const uint8_t *bytes, size_t size)
+{
     char *name;
     size_t index;
     if (!bytes || size == 0U || size > SIZE_MAX - 1U) return NULL;
     name = (char *)xx_mem_alloc(size + 1U);
     if (!name) return NULL;
-    for (index = 0U; index < size; ++index)
-        name[index] = bytes[index] == '\\' ? '/' : (char)bytes[index];
+    for (index = 0U; index < size; ++index) name[index] = bytes[index] == '\\' ? '/' : (char)bytes[index];
     name[size] = 0;
     return name;
 }
@@ -172,15 +167,13 @@ static char *lva_copy_name(const uint8_t *bytes, size_t size) {
 /* A Windows device name (CON, PRN, AUX, NUL, COM0-9, LPT0-9, CLOCK$, CONIN$,
  * CONOUT$) as the part of a component before its first '.', trailing spaces
  * ignored: "nul", "Con.txt" and "aux .dat" all open the device, not a file. */
-static bool lva_reserved_component(const char *segment, size_t length) {
-    static const char *const devices[] = {"CON",    "PRN",    "AUX",
-                                          "NUL",    "CLOCK$", "CONIN$",
-                                          "CONOUT$"};
+static bool lva_reserved_component(const char *segment, size_t length)
+{
+    static const char *const devices[] = {"CON", "PRN", "AUX", "NUL", "CLOCK$", "CONIN$", "CONOUT$"};
     char stem[8];
     size_t stem_length = 0U, index;
     while (stem_length < length && segment[stem_length] != '.') ++stem_length;
-    while (stem_length != 0U && segment[stem_length - 1U] == ' ')
-        --stem_length;
+    while (stem_length != 0U && segment[stem_length - 1U] == ' ') --stem_length;
     if (stem_length < 3U || stem_length > sizeof(stem) - 1U) return false;
     for (index = 0U; index < stem_length; ++index) {
         char c = segment[index];
@@ -188,13 +181,10 @@ static bool lva_reserved_component(const char *segment, size_t length) {
     }
     stem[stem_length] = 0;
     if (stem_length == 4U && stem[3] >= '0' && stem[3] <= '9' &&
-        ((stem[0] == 'C' && stem[1] == 'O' && stem[2] == 'M') ||
-         (stem[0] == 'L' && stem[1] == 'P' && stem[2] == 'T')))
+        ((stem[0] == 'C' && stem[1] == 'O' && stem[2] == 'M') || (stem[0] == 'L' && stem[1] == 'P' && stem[2] == 'T')))
         return true;
     for (index = 0U; index < sizeof(devices) / sizeof(devices[0]); ++index)
-        if (xx_str_len(devices[index]) == stem_length &&
-            xx_rt_memcmp(stem, devices[index], stem_length) == 0)
-            return true;
+        if (xx_str_len(devices[index]) == stem_length && xx_rt_memcmp(stem, devices[index], stem_length) == 0) return true;
     return false;
 }
 
@@ -202,29 +192,26 @@ static bool lva_reserved_component(const char *segment, size_t length) {
  * components, components ending in '.' or ' ' (this covers "." and ".." and
  * the names Windows would silently trim into a collision), device names,
  * control characters and the characters no Windows path may carry. */
-static bool lva_safe_output_name(const char *name) {
+static bool lva_safe_output_name(const char *name)
+{
     const char *segment;
     const char *at;
     if (!name || !name[0] || name[0] == '/' || name[0] == '\\') return false;
     segment = name;
     for (at = name;; ++at) {
         unsigned char c = (unsigned char)*at;
-        if (c == ':' || c == '<' || c == '>' || c == '"' || c == '|' ||
-            c == '?' || c == '*' || c == 0x7fU || (c != 0U && c < 0x20U))
-            return false;
+        if (c == ':' || c == '<' || c == '>' || c == '"' || c == '|' || c == '?' || c == '*' || c == 0x7fU || (c != 0U && c < 0x20U)) return false;
         if (c == '/' || c == '\\' || c == 0U) {
             size_t length = (size_t)(at - segment);
-            if (length == 0U || segment[length - 1U] == '.' ||
-                segment[length - 1U] == ' ' ||
-                lva_reserved_component(segment, length))
-                return false;
+            if (length == 0U || segment[length - 1U] == '.' || segment[length - 1U] == ' ' || lva_reserved_component(segment, length)) return false;
             if (c == 0U) return true;
             segment = at + 1;
         }
     }
 }
 
-static void lva_stream_free(void *opaque) {
+static void lva_stream_free(void *opaque)
+{
     lva_stream *stream = (lva_stream *)opaque;
     size_t index;
     if (!stream) return;
@@ -264,7 +251,8 @@ typedef struct lvs_state_s {
 /* All 321 lengths must lie in 1..32 and describe a complete prefix code:
  * that is what every known encoder output looks like, and it is what makes
  * the canonical walk below total. */
-static bool lvs_build_code(lvs_code *code, const uint8_t *lengths) {
+static bool lvs_build_code(lvs_code *code, const uint8_t *lengths)
+{
     uint64_t kraft = 0U;
     uint32_t next[LVS_MAX_CODE + 1U];
     uint32_t length, symbol;
@@ -280,27 +268,21 @@ static bool lvs_build_code(lvs_code *code, const uint8_t *lengths) {
     code->first[1] = 0U;
     code->offset[1] = 0U;
     for (length = 2U; length <= LVS_MAX_CODE; ++length) {
-        code->first[length] =
-            (code->first[length - 1U] + code->count[length - 1U]) << 1U;
-        code->offset[length] =
-            code->offset[length - 1U] + code->count[length - 1U];
+        code->first[length] = (code->first[length - 1U] + code->count[length - 1U]) << 1U;
+        code->offset[length] = code->offset[length - 1U] + code->count[length - 1U];
     }
-    for (length = 1U; length <= LVS_MAX_CODE; ++length)
-        next[length] = code->offset[length];
-    for (symbol = 0U; symbol < LVS_SYMBOLS; ++symbol)
-        code->sorted[next[lengths[symbol]]++] = (uint16_t)symbol;
+    for (length = 1U; length <= LVS_MAX_CODE; ++length) next[length] = code->offset[length];
+    for (symbol = 0U; symbol < LVS_SYMBOLS; ++symbol) code->sorted[next[lengths[symbol]]++] = (uint16_t)symbol;
     return true;
 }
 
-static int lvs_bit(lvs_state *state) {
+static int lvs_bit(lvs_state *state)
+{
     if (state->bits_left == 0U) {
         if (state->pos == state->fill) {
             int64_t remaining = state->limit - state->next;
-            size_t amount = remaining > (int64_t)state->io_capacity
-                                ? (size_t)state->io_capacity : (size_t)remaining;
-            if (remaining <= 0 || (state->pd && xx_pd_is_stopped(state->pd)) ||
-                !lva_read_at(state->device, state->next, state->input, amount))
-                return -1;
+            size_t amount = remaining > (int64_t)state->io_capacity ? (size_t)state->io_capacity : (size_t)remaining;
+            if (remaining <= 0 || (state->pd && xx_pd_is_stopped(state->pd)) || !lva_read_at(state->device, state->next, state->input, amount)) return -1;
             state->next += (int64_t)amount;
             state->fill = amount;
             state->pos = 0U;
@@ -313,7 +295,8 @@ static int lvs_bit(lvs_state *state) {
     return (int)((state->byte >> state->bits_left) & 1U);
 }
 
-static int lvs_symbol(lvs_state *state) {
+static int lvs_symbol(lvs_state *state)
+{
     const lvs_code *code = &state->code;
     uint64_t value = 0U;
     uint32_t length;
@@ -321,10 +304,8 @@ static int lvs_symbol(lvs_state *state) {
         int bit = lvs_bit(state);
         if (bit < 0) return -1;
         value = (value << 1U) | (uint64_t)bit;
-        if (value >= code->first[length] &&
-            value - code->first[length] < code->count[length])
-            return code->sorted[code->offset[length] +
-                                (uint32_t)(value - code->first[length])];
+        if (value >= code->first[length] && value - code->first[length] < code->count[length])
+            return code->sorted[code->offset[length] + (uint32_t)(value - code->first[length])];
     }
     return -1;
 }
@@ -336,9 +317,8 @@ static int lvs_symbol(lvs_state *state) {
  * skipped and only lengths are counted.  probe_bytes != 0 bounds the walk
  * for detection: it succeeds once that many bit-stream bytes decoded
  * cleanly, and stream_size / plain_size are then left untouched. */
-static bool lvs_walk(Abstractformat *format, xx_io_device *sink,
-                     xx_pd_struct *pd, uint64_t probe_bytes,
-                     int64_t *stream_size, uint64_t *plain_size) {
+static bool lvs_walk(Abstractformat *format, xx_io_device *sink, xx_pd_struct *pd, uint64_t probe_bytes, int64_t *stream_size, uint64_t *plain_size)
+{
     uint8_t header[LVS_TABLE_END];
     lvs_state *state = NULL;
     const size_t io_capacity = xx_get_file_buffer_size();
@@ -351,9 +331,7 @@ static bool lvs_walk(Abstractformat *format, xx_io_device *sink,
     total = xx_io_total_size(format->device);
     if (total < format->base_address) return false;
     size = total - format->base_address;
-    if (size <= (int64_t)LVS_TABLE_END ||
-        !lva_read_at(format->device, format->base_address, header,
-                     sizeof(header)) ||
+    if (size <= (int64_t)LVS_TABLE_END || !lva_read_at(format->device, format->base_address, header, sizeof(header)) ||
         xx_rt_memcmp(header, lvs_signature, LVS_HEADER_SIZE) != 0)
         return false;
     if (io_capacity > (SIZE_MAX - sizeof(*state)) / 2U) return false;
@@ -422,11 +400,8 @@ static bool lvs_walk(Abstractformat *format, xx_io_device *sink,
         }
         produced += length;
     }
-    if (sink && out_fill != 0U &&
-        !lva_write_all(sink, state->output, out_fill))
-        goto done;
-    if (stream_size)
-        *stream_size = (int64_t)LVS_TABLE_END + (int64_t)state->bytes_used;
+    if (sink && out_fill != 0U && !lva_write_all(sink, state->output, out_fill)) goto done;
+    if (stream_size) *stream_size = (int64_t)LVS_TABLE_END + (int64_t)state->bytes_used;
     if (plain_size) *plain_size = produced;
     result = true;
 done:
@@ -436,8 +411,8 @@ done:
 
 /* ---- container parser --------------------------------------------------- */
 
-static bool lva_parse_container(Abstractformat *format, int64_t size,
-                                const uint8_t *header, lva_stream **result) {
+static bool lva_parse_container(Abstractformat *format, int64_t size, const uint8_t *header, lva_stream **result)
+{
     uint8_t entry[LVA_V2_ENTRY_SIZE];
     uint8_t descriptor[LVA_V2_DESCRIPTOR_SIZE];
     lva_stream *stream = NULL;
@@ -447,9 +422,7 @@ static bool lva_parse_container(Abstractformat *format, int64_t size,
     if (header[9] != '1' && header[9] != '2') return false;
     /* Six constant bytes; the reference reader's own predicate tests them, and they are what
      * keeps a ten-byte ASCII magic from being the whole of the check. */
-    if (header[10] != 0x00U || header[11] != 0xfdU || header[12] != 0x00U ||
-        header[13] != 0xdfU || header[14] != 0x00U || header[15] != 0xffU)
-        return false;
+    if (header[10] != 0x00U || header[11] != 0xfdU || header[12] != 0x00U || header[13] != 0xdfU || header[14] != 0x00U || header[15] != 0xffU) return false;
     count = xx_data_get_u16(header + 16U, 2, 0, false);
     if (count == 0U) return false;
     if (header[9] == '1') {
@@ -477,11 +450,9 @@ static bool lva_parse_container(Abstractformat *format, int64_t size,
         lva_member *member = &stream->items[index];
         int64_t descriptor_offset, payload_size, data_offset;
         size_t terminator = 0U;
-        if (!lva_read_at(format->device, format->base_address + cursor, entry,
-                         entry_size)) goto fail;
+        if (!lva_read_at(format->device, format->base_address + cursor, entry, entry_size)) goto fail;
         cursor += (int64_t)entry_size;
-        while (terminator < name_size && entry[terminator] != 0U)
-            ++terminator;
+        while (terminator < name_size && entry[terminator] != 0U) ++terminator;
         /* An entry whose name field never terminates is not this layout. */
         if (terminator == 0U || terminator >= name_size) goto fail;
         descriptor_offset = (int64_t)xx_data_get_u32(entry + name_size, 4, 0, false);
@@ -492,11 +463,8 @@ static bool lva_parse_container(Abstractformat *format, int64_t size,
          * this, N index entries could name one large payload N times and
          * make the decode work grow with the entry count instead of the
          * file size. */
-        if (descriptor_offset < next_free ||
-            descriptor_offset > size - (int64_t)descriptor_size) goto fail;
-        if (!lva_read_at(format->device,
-                         format->base_address + descriptor_offset, descriptor,
-                         descriptor_size)) goto fail;
+        if (descriptor_offset < next_free || descriptor_offset > size - (int64_t)descriptor_size) goto fail;
+        if (!lva_read_at(format->device, format->base_address + descriptor_offset, descriptor, descriptor_size)) goto fail;
         payload_size = (int64_t)xx_data_get_u32(descriptor + size_offset, 4, 0, false);
         if (payload_size > LVA_MAX_PAYLOAD) goto fail;
         data_offset = descriptor_offset + (int64_t)descriptor_size;
@@ -522,28 +490,22 @@ fail:
 
 /* Which of the two layouts starts at base_address (by its first 18 bytes,
  * returned in `header`), and how many bytes the device holds from there. */
-static uint32_t lva_identify(Abstractformat *format, int64_t *size,
-                             uint8_t *header) {
+static uint32_t lva_identify(Abstractformat *format, int64_t *size, uint8_t *header)
+{
     int64_t total;
-    if (!format || !format->device || format->base_address < 0)
-        return XX_LINGVOARC_VARIANT_NONE;
+    if (!format || !format->device || format->base_address < 0) return XX_LINGVOARC_VARIANT_NONE;
     total = xx_io_total_size(format->device);
     if (total < format->base_address) return XX_LINGVOARC_VARIANT_NONE;
     *size = total - format->base_address;
-    if (*size < (int64_t)LVA_HEADER_SIZE ||
-        !lva_read_at(format->device, format->base_address, header,
-                     LVA_HEADER_SIZE))
-        return XX_LINGVOARC_VARIANT_NONE;
-    if (xx_rt_memcmp(header, "lingvoArc", 9U) == 0)
-        return XX_LINGVOARC_VARIANT_CONTAINER;
-    if (xx_rt_memcmp(header, lvs_signature, LVA_HEADER_SIZE) == 0)
-        return XX_LINGVOARC_VARIANT_STREAM;
+    if (*size < (int64_t)LVA_HEADER_SIZE || !lva_read_at(format->device, format->base_address, header, LVA_HEADER_SIZE)) return XX_LINGVOARC_VARIANT_NONE;
+    if (xx_rt_memcmp(header, "lingvoArc", 9U) == 0) return XX_LINGVOARC_VARIANT_CONTAINER;
+    if (xx_rt_memcmp(header, lvs_signature, LVA_HEADER_SIZE) == 0) return XX_LINGVOARC_VARIANT_STREAM;
     return XX_LINGVOARC_VARIANT_NONE;
 }
 
 /* The one-record description of a stream already measured by lvs_walk. */
-static bool lvs_make_stream(Abstractformat *format, int64_t stream_size,
-                            uint64_t plain_size, lva_stream **result) {
+static bool lvs_make_stream(Abstractformat *format, int64_t stream_size, uint64_t plain_size, lva_stream **result)
+{
     lva_stream *stream;
     if (stream_size <= (int64_t)LVS_TABLE_END) return false;
     stream = (lva_stream *)xx_mem_calloc(1U, sizeof(*stream));
@@ -553,15 +515,13 @@ static bool lvs_make_stream(Abstractformat *format, int64_t stream_size,
     stream->version = 1U;
     stream->archive_size = stream_size;
     stream->plain_size = plain_size;
-    if (!stream->items ||
-        !(stream->items[0].name = xx_str_dup(LVS_PAYLOAD_NAME))) {
+    if (!stream->items || !(stream->items[0].name = xx_str_dup(LVS_PAYLOAD_NAME))) {
         lva_stream_free(stream);
         return false;
     }
     stream->count = 1U;
     stream->items[0].descriptor_offset = format->base_address;
-    stream->items[0].data_offset =
-        format->base_address + (int64_t)LVS_TABLE_END;
+    stream->items[0].data_offset = format->base_address + (int64_t)LVS_TABLE_END;
     stream->items[0].size = stream_size - (int64_t)LVS_TABLE_END;
     stream->items[0].method = 1U;
     *result = stream;
@@ -569,34 +529,26 @@ static bool lvs_make_stream(Abstractformat *format, int64_t stream_size,
 }
 
 /* Full parse: the container index, or one complete walk of the stream. */
-static bool lva_parse(Abstractformat *format, xx_pd_struct *pd,
-                      lva_stream **result) {
+static bool lva_parse(Abstractformat *format, xx_pd_struct *pd, lva_stream **result)
+{
     uint8_t header[LVA_HEADER_SIZE];
     int64_t size = 0, stream_size = 0;
     uint64_t plain_size = 0U;
     if (!result) return false;
     switch (lva_identify(format, &size, header)) {
-    case XX_LINGVOARC_VARIANT_CONTAINER:
-        return lva_parse_container(format, size, header, result);
-    case XX_LINGVOARC_VARIANT_STREAM:
-        return lvs_walk(format, NULL, pd, 0U, &stream_size, &plain_size) &&
-               lvs_make_stream(format, stream_size, plain_size, result);
-    default:
-        return false;
+        case XX_LINGVOARC_VARIANT_CONTAINER: return lva_parse_container(format, size, header, result);
+        case XX_LINGVOARC_VARIANT_STREAM: return lvs_walk(format, NULL, pd, 0U, &stream_size, &plain_size) && lvs_make_stream(format, stream_size, plain_size, result);
+        default: return false;
     }
 }
 
 /* ---- FINEAR payloads ---------------------------------------------------- */
 
-static bool lva_finear_header(Abstractformat *format, const lva_member *member,
-                              uint32_t *checksum, uint32_t *unpacked) {
+static bool lva_finear_header(Abstractformat *format, const lva_member *member, uint32_t *checksum, uint32_t *unpacked)
+{
     uint8_t header[LVA_FINEAR_HEADER_SIZE];
-    if (member->size < (int64_t)LVA_FINEAR_HEADER_SIZE ||
-        !lva_read_at(format->device, member->data_offset, header,
-                     sizeof(header)))
-        return false;
-    if (xx_rt_memcmp(header, "FINEAR", 6U) != 0 || header[6] != 0xddU ||
-        header[7] != 0x88U || header[8] != 0xddU) return false;
+    if (member->size < (int64_t)LVA_FINEAR_HEADER_SIZE || !lva_read_at(format->device, member->data_offset, header, sizeof(header))) return false;
+    if (xx_rt_memcmp(header, "FINEAR", 6U) != 0 || header[6] != 0xddU || header[7] != 0x88U || header[8] != 0xddU) return false;
     *checksum = xx_data_get_u32(header + 9U, 4, 0, false);
     *unpacked = xx_data_get_u32(header + 13U, 4, 0, false);
     /* The checksum field is a 16-bit CRC written into a 32-bit slot. */
@@ -606,22 +558,17 @@ static bool lva_finear_header(Abstractformat *format, const lva_member *member,
 /* Decode a whole (method 0) FINEAR payload, verifying its stored plaintext
  * length and CRC-16/ARC.  Fails closed: a payload that is not FINEAR, or one
  * that does not reproduce both, is not returned at all. */
-static bool lva_decode_member(Abstractformat *format, const lva_member *member,
-                              uint8_t **plain, size_t *plain_size) {
+static bool lva_decode_member(Abstractformat *format, const lva_member *member, uint8_t **plain, size_t *plain_size)
+{
     uint8_t *packed = NULL;
     uint8_t *output = NULL;
     size_t written = 0U;
     uint32_t checksum, unpacked;
     int64_t packed_size;
     if (!format || !member || !plain || !plain_size) return false;
-    if (member->method != 0U ||
-        !lva_finear_header(format, member, &checksum, &unpacked))
-        return false;
+    if (member->method != 0U || !lva_finear_header(format, member, &checksum, &unpacked)) return false;
     packed_size = member->size - (int64_t)LVA_FINEAR_HEADER_SIZE;
-    if ((uint64_t)unpacked > (uint64_t)LVA_MAX_PAYLOAD ||
-        (uint64_t)unpacked >
-            (uint64_t)packed_size * LVA_FINEAR_MAX_RATIO + 64U)
-        return false;
+    if ((uint64_t)unpacked > (uint64_t)LVA_MAX_PAYLOAD || (uint64_t)unpacked > (uint64_t)packed_size * LVA_FINEAR_MAX_RATIO + 64U) return false;
     output = (uint8_t *)xx_mem_alloc(unpacked != 0U ? (size_t)unpacked : 1U);
     if (!output) return false;
     if (packed_size == 0) {
@@ -629,16 +576,9 @@ static bool lva_decode_member(Abstractformat *format, const lva_member *member,
         if (unpacked != 0U || checksum != 0U) goto fail;
     } else {
         packed = (uint8_t *)xx_mem_alloc((size_t)packed_size);
-        if (!packed ||
-            !lva_read_at(format->device,
-                         member->data_offset + LVA_FINEAR_HEADER_SIZE, packed,
-                         (size_t)packed_size))
-            goto fail;
-        if (!xx_lzh1_decode_memory(packed, (size_t)packed_size, output,
-                                   (size_t)unpacked, &written) ||
-            written != (size_t)unpacked ||
-            (uint32_t)xx_crc16(XX_CRC_TYPE_CRC16_ARC, output, written) !=
-                checksum)
+        if (!packed || !lva_read_at(format->device, member->data_offset + LVA_FINEAR_HEADER_SIZE, packed, (size_t)packed_size)) goto fail;
+        if (!xx_lzh1_decode_memory(packed, (size_t)packed_size, output, (size_t)unpacked, &written) || written != (size_t)unpacked ||
+            (uint32_t)xx_crc16(XX_CRC_TYPE_CRC16_ARC, output, written) != checksum)
             goto fail;
         xx_mem_free(packed);
     }
@@ -653,17 +593,16 @@ fail:
 
 /* ---- records ------------------------------------------------------------ */
 
-static bool lva_copy_options(xx_list_s *destination, const xx_list_s *source) {
+static bool lva_copy_options(xx_list_s *destination, const xx_list_s *source)
+{
     size_t index;
     if (!source) return true;
     for (index = 0U; index < source->count; ++index) {
-        const xx_meta *original =
-            (const xx_meta *)xx_list_at((const xx_list_t *)source, index);
+        const xx_meta *original = (const xx_meta *)xx_list_at((const xx_list_t *)source, index);
         xx_meta copy;
         if (!original) continue;
         xx_meta_init(&copy, original->meta_id);
-        if (!xx_var_copy(&copy.var, &original->var) ||
-            !xx_list_append(destination, &copy)) {
+        if (!xx_var_copy(&copy.var, &original->var) || !xx_list_append(destination, &copy)) {
             xx_meta_cleanup(&copy);
             return false;
         }
@@ -671,20 +610,19 @@ static bool lva_copy_options(xx_list_s *destination, const xx_list_s *source) {
     return true;
 }
 
-static const xx_var *lva_option(const xx_list_s *options, uint32_t id) {
+static const xx_var *lva_option(const xx_list_s *options, uint32_t id)
+{
     size_t index;
     if (!options) return NULL;
     for (index = 0U; index < options->count; ++index) {
-        const xx_meta *meta =
-            (const xx_meta *)xx_list_at((const xx_list_t *)options, index);
+        const xx_meta *meta = (const xx_meta *)xx_list_at((const xx_list_t *)options, index);
         if (meta && meta->meta_id == id) return &meta->var;
     }
     return NULL;
 }
 
-static bool lva_set_record(Abstractformat *format, const lva_stream *stream,
-                           xx_archive_record *record,
-                           const lva_member *member, bool raw) {
+static bool lva_set_record(Abstractformat *format, const lva_stream *stream, xx_archive_record *record, const lva_member *member, bool raw)
+{
     char *raw_name = NULL;
     const char *name = member->name;
     bool ok;
@@ -699,43 +637,28 @@ static bool lva_set_record(Abstractformat *format, const lva_stream *stream,
     record->header_size = member->data_offset - member->descriptor_offset;
     record->data_offset = member->data_offset;
     record->compressed_size = member->size;
-    ok = xx_archive_record_set_original_name(record, name) &&
-         xx_archive_record_set_meta_u64(record, XX_META_ID_COMPRESSED_SIZE,
-                                        (uint64_t)member->size) &&
-         xx_archive_record_set_meta_u64(record, XX_META_ID_COMPRESSION_METHOD,
-                                        raw ? 0U : member->method) &&
-         xx_archive_record_set_meta_bool(record, XX_META_ID_IS_ENCRYPTED,
-                                         false) &&
-         xx_archive_record_set_meta_bool(record, XX_META_ID_IS_FOLDER, false);
+    ok = xx_archive_record_set_original_name(record, name) && xx_archive_record_set_meta_u64(record, XX_META_ID_COMPRESSED_SIZE, (uint64_t)member->size) &&
+         xx_archive_record_set_meta_u64(record, XX_META_ID_COMPRESSION_METHOD, raw ? 0U : member->method) &&
+         xx_archive_record_set_meta_bool(record, XX_META_ID_IS_ENCRYPTED, false) && xx_archive_record_set_meta_bool(record, XX_META_ID_IS_FOLDER, false);
     if (raw_name) xx_str_free(raw_name);
     if (!ok) return false;
-    if (raw)
-        return xx_archive_record_set_meta_u64(
-            record, XX_META_ID_UNCOMPRESSED_SIZE, (uint64_t)member->size);
-    if (stream->variant == XX_LINGVOARC_VARIANT_STREAM)
-        return xx_archive_record_set_meta_u64(
-            record, XX_META_ID_UNCOMPRESSED_SIZE, stream->plain_size);
-    if (!xx_archive_record_set_meta_u64(record, XX_META_ID_TIMESTAMP,
-                                        member->timestamp) ||
-        !xx_archive_record_set_meta_u64(record, XX_META_ID_FLAGS,
-                                        member->method))
+    if (raw) return xx_archive_record_set_meta_u64(record, XX_META_ID_UNCOMPRESSED_SIZE, (uint64_t)member->size);
+    if (stream->variant == XX_LINGVOARC_VARIANT_STREAM) return xx_archive_record_set_meta_u64(record, XX_META_ID_UNCOMPRESSED_SIZE, stream->plain_size);
+    if (!xx_archive_record_set_meta_u64(record, XX_META_ID_TIMESTAMP, member->timestamp) || !xx_archive_record_set_meta_u64(record, XX_META_ID_FLAGS, member->method))
         return false;
     {
         /* The FINEAR header (whole members and first fragments) states the
          * plaintext length; a continuation fragment has none to report. */
         uint32_t checksum, unpacked;
-        if (lva_finear_header(format, member, &checksum, &unpacked) &&
-            !xx_archive_record_set_meta_u64(
-                record, XX_META_ID_UNCOMPRESSED_SIZE, unpacked))
-            return false;
+        if (lva_finear_header(format, member, &checksum, &unpacked) && !xx_archive_record_set_meta_u64(record, XX_META_ID_UNCOMPRESSED_SIZE, unpacked)) return false;
     }
     return true;
 }
 
 /* ---- public API --------------------------------------------------------- */
 
-void xx_lingvoarc_init(xx_lingvoarc *archive, xx_io_device *device,
-                       int64_t base_address) {
+void xx_lingvoarc_init(xx_lingvoarc *archive, xx_io_device *device, int64_t base_address)
+{
     if (!archive) return;
     xx_mem_zero(archive, sizeof(*archive));
     xx_format_init(&archive->format, device, base_address);
@@ -748,31 +671,28 @@ void xx_lingvoarc_init(xx_lingvoarc *archive, xx_io_device *device,
     archive->format.check_is_valid = xx_lingvoarc_check_is_valid;
     archive->format.handle_base_info = xx_lingvoarc_handle_base_info;
     archive->format.get_format_size = xx_lingvoarc_get_format_size;
-    archive->format.get_number_of_archive_records =
-        xx_lingvoarc_get_number_of_archive_records;
-    archive->format.create_archive_records_reading =
-        xx_lingvoarc_create_archive_records_reading;
-    archive->format.get_current_archive_record =
-        xx_lingvoarc_get_current_archive_record;
-    archive->format.unpack_current_archive_record =
-        xx_lingvoarc_unpack_current_archive_record;
-    archive->format.archive_record_move_to_next =
-        xx_lingvoarc_archive_record_move_to_next;
-    archive->format.free_archive_records_reading =
-        xx_lingvoarc_free_archive_records_reading;
+    archive->format.get_number_of_archive_records = xx_lingvoarc_get_number_of_archive_records;
+    archive->format.create_archive_records_reading = xx_lingvoarc_create_archive_records_reading;
+    archive->format.get_current_archive_record = xx_lingvoarc_get_current_archive_record;
+    archive->format.unpack_current_archive_record = xx_lingvoarc_unpack_current_archive_record;
+    archive->format.archive_record_move_to_next = xx_lingvoarc_archive_record_move_to_next;
+    archive->format.free_archive_records_reading = xx_lingvoarc_free_archive_records_reading;
 }
 
-xx_lingvoarc *xx_lingvoarc_create(xx_io_device *device, int64_t base_address) {
+xx_lingvoarc *xx_lingvoarc_create(xx_io_device *device, int64_t base_address)
+{
     xx_lingvoarc *archive = (xx_lingvoarc *)xx_mem_alloc(sizeof(*archive));
     if (archive) xx_lingvoarc_init(archive, device, base_address);
     return archive;
 }
 
-void xx_lingvoarc_destroy(xx_lingvoarc *archive) {
+void xx_lingvoarc_destroy(xx_lingvoarc *archive)
+{
     if (archive) xx_format_cleanup_extra_parameters(&archive->format);
 }
 
-void xx_lingvoarc_free(xx_lingvoarc *archive) {
+void xx_lingvoarc_free(xx_lingvoarc *archive)
+{
     if (!archive) return;
     xx_lingvoarc_destroy(archive);
     xx_mem_free(archive);
@@ -784,33 +704,31 @@ void xx_lingvoarc_free(xx_lingvoarc *archive) {
  * stream, so a file that matches the 26-byte header never costs a whole
  * decompression here.  A stream damaged further in is refused later, by
  * handle_base_info. */
-bool xx_lingvoarc_check_is_valid(Abstractformat *format, xx_pd_struct *pd) {
+bool xx_lingvoarc_check_is_valid(Abstractformat *format, xx_pd_struct *pd)
+{
     uint8_t header[LVA_HEADER_SIZE];
     int64_t size = 0;
     lva_stream *stream = NULL;
     switch (lva_identify(format, &size, header)) {
-    case XX_LINGVOARC_VARIANT_CONTAINER:
-        if (!lva_parse_container(format, size, header, &stream)) return false;
-        lva_stream_free(stream);
-        return true;
-    case XX_LINGVOARC_VARIANT_STREAM:
-        return lvs_walk(format, NULL, pd, LVS_PROBE_BYTES, NULL, NULL);
-    default:
-        return false;
+        case XX_LINGVOARC_VARIANT_CONTAINER:
+            if (!lva_parse_container(format, size, header, &stream)) return false;
+            lva_stream_free(stream);
+            return true;
+        case XX_LINGVOARC_VARIANT_STREAM: return lvs_walk(format, NULL, pd, LVS_PROBE_BYTES, NULL, NULL);
+        default: return false;
     }
 }
 
 /* The one full parse; for a stream this is the single validation walk, and
  * its results (format_size, uncompressed_size) are cached here for
  * create_archive_records_reading. */
-bool xx_lingvoarc_handle_base_info(Abstractformat *format, xx_pd_struct *pd) {
+bool xx_lingvoarc_handle_base_info(Abstractformat *format, xx_pd_struct *pd)
+{
     lva_stream *stream;
     xx_lingvoarc *archive;
     if (!format || !lva_parse(format, pd, &stream)) return false;
     archive = (xx_lingvoarc *)format;
-    archive->number_of_records = stream->variant == XX_LINGVOARC_VARIANT_CONTAINER
-                                     ? (uint64_t)stream->count * 2U
-                                     : (uint64_t)stream->count;
+    archive->number_of_records = stream->variant == XX_LINGVOARC_VARIANT_CONTAINER ? (uint64_t)stream->count * 2U : (uint64_t)stream->count;
     archive->container_version = stream->version;
     archive->variant = stream->variant;
     archive->uncompressed_size = stream->plain_size;
@@ -822,37 +740,27 @@ bool xx_lingvoarc_handle_base_info(Abstractformat *format, xx_pd_struct *pd) {
     return true;
 }
 
-int64_t xx_lingvoarc_get_format_size(Abstractformat *format,
-                                     xx_pd_struct *pd) {
-    return format && (format->base_info_handled ||
-                      xx_lingvoarc_handle_base_info(format, pd))
-               ? format->format_size : -1;
+int64_t xx_lingvoarc_get_format_size(Abstractformat *format, xx_pd_struct *pd)
+{
+    return format && (format->base_info_handled || xx_lingvoarc_handle_base_info(format, pd)) ? format->format_size : -1;
 }
 
-uint64_t xx_lingvoarc_get_number_of_archive_records(Abstractformat *format,
-                                                    xx_pd_struct *pd) {
-    return format && (format->base_info_handled ||
-                      xx_lingvoarc_handle_base_info(format, pd))
-               ? ((xx_lingvoarc *)format)->number_of_records : 0U;
+uint64_t xx_lingvoarc_get_number_of_archive_records(Abstractformat *format, xx_pd_struct *pd)
+{
+    return format && (format->base_info_handled || xx_lingvoarc_handle_base_info(format, pd)) ? ((xx_lingvoarc *)format)->number_of_records : 0U;
 }
 
-xx_archive_record_state *xx_lingvoarc_create_archive_records_reading(
-    Abstractformat *format, const xx_list_s *options, xx_pd_struct *pd) {
+xx_archive_record_state *xx_lingvoarc_create_archive_records_reading(Abstractformat *format, const xx_list_s *options, xx_pd_struct *pd)
+{
     lva_stream *stream = NULL;
     xx_archive_record_state *state;
     const xx_lingvoarc *archive = (const xx_lingvoarc *)format;
     bool parsed;
-    if (!format ||
-        (!format->base_info_handled &&
-         !xx_lingvoarc_handle_base_info(format, pd)))
-        return NULL;
+    if (!format || (!format->base_info_handled && !xx_lingvoarc_handle_base_info(format, pd))) return NULL;
     /* A stream was walked once by handle_base_info; reuse what it measured
      * instead of decoding it again.  A container index is cheap to re-read. */
-    if (archive->variant == XX_LINGVOARC_VARIANT_STREAM)
-        parsed = lvs_make_stream(format, format->format_size,
-                                 archive->uncompressed_size, &stream);
-    else
-        parsed = lva_parse(format, pd, &stream);
+    if (archive->variant == XX_LINGVOARC_VARIANT_STREAM) parsed = lvs_make_stream(format, format->format_size, archive->uncompressed_size, &stream);
+    else parsed = lva_parse(format, pd, &stream);
     if (!parsed) return NULL;
     state = (xx_archive_record_state *)xx_mem_alloc(sizeof(*state));
     if (!state) {
@@ -863,9 +771,7 @@ xx_archive_record_state *xx_lingvoarc_create_archive_records_reading(
     state->internal_state = stream;
     state->free_internal = lva_stream_free;
     state->total_records = archive->number_of_records;
-    if (!lva_copy_options(&state->options, options) ||
-        !lva_set_record(format, stream, &state->current_record,
-                        &stream->items[0], false)) {
+    if (!lva_copy_options(&state->options, options) || !lva_set_record(format, stream, &state->current_record, &stream->items[0], false)) {
         xx_archive_record_state_free(state);
         return NULL;
     }
@@ -873,51 +779,39 @@ xx_archive_record_state *xx_lingvoarc_create_archive_records_reading(
     return state;
 }
 
-const xx_archive_record *xx_lingvoarc_get_current_archive_record(
-    Abstractformat *format, xx_archive_record_state *state) {
-    return format && state && state->format == format && state->has_record
-               ? &state->current_record : NULL;
+const xx_archive_record *xx_lingvoarc_get_current_archive_record(Abstractformat *format, xx_archive_record_state *state)
+{
+    return format && state && state->format == format && state->has_record ? &state->current_record : NULL;
 }
 
-bool xx_lingvoarc_archive_record_move_to_next(Abstractformat *format,
-                                              xx_archive_record_state *state,
-                                              xx_pd_struct *pd) {
+bool xx_lingvoarc_archive_record_move_to_next(Abstractformat *format, xx_archive_record_state *state, xx_pd_struct *pd)
+{
     lva_stream *stream;
     (void)pd;
-    if (!format || !state || state->format != format ||
-        !(stream = (lva_stream *)state->internal_state) ||
-        stream->index + 1U >= (uint64_t)state->total_records) {
+    if (!format || !state || state->format != format || !(stream = (lva_stream *)state->internal_state) || stream->index + 1U >= (uint64_t)state->total_records) {
         if (state) state->has_record = false;
         return false;
     }
     ++stream->index;
     ++state->current_index;
-    state->has_record = lva_set_record(
-        format, stream, &state->current_record,
-        &stream->items[stream->index % stream->count],
-        stream->variant == XX_LINGVOARC_VARIANT_CONTAINER &&
-            stream->index >= stream->count);
+    state->has_record = lva_set_record(format, stream, &state->current_record, &stream->items[stream->index % stream->count],
+                                       stream->variant == XX_LINGVOARC_VARIANT_CONTAINER && stream->index >= stream->count);
     return state->has_record;
 }
 
-static bool lva_copy_raw_member(Abstractformat *format,
-                                const lva_member *member,
-                                xx_io_device *destination,
-                                xx_pd_struct *pd) {
+static bool lva_copy_raw_member(Abstractformat *format, const lva_member *member, xx_io_device *destination, xx_pd_struct *pd)
+{
     uint8_t *buffer;
     int64_t remaining, offset;
     bool ok = true;
-    if (!format || !member || !destination || member->size < 0)
-        return false;
+    if (!format || !member || !destination || member->size < 0) return false;
     buffer = (uint8_t *)xx_mem_alloc(65536U);
     if (!buffer) return false;
     remaining = member->size;
     offset = member->data_offset;
     while (remaining > 0) {
         size_t amount = remaining > 65536 ? 65536U : (size_t)remaining;
-        if ((pd && xx_pd_is_stopped(pd)) ||
-            !lva_read_at(format->device, offset, buffer, amount) ||
-            !lva_write_all(destination, buffer, amount)) {
+        if ((pd && xx_pd_is_stopped(pd)) || !lva_read_at(format->device, offset, buffer, amount) || !lva_write_all(destination, buffer, amount)) {
             ok = false;
             break;
         }
@@ -928,8 +822,8 @@ static bool lva_copy_raw_member(Abstractformat *format,
     return ok;
 }
 
-bool xx_lingvoarc_unpack_current_archive_record(
-    Abstractformat *format, xx_archive_record_state *state, xx_pd_struct *pd) {
+bool xx_lingvoarc_unpack_current_archive_record(Abstractformat *format, xx_archive_record_state *state, xx_pd_struct *pd)
+{
     lva_stream *stream;
     lva_member *member;
     const xx_var *path_option;
@@ -942,19 +836,14 @@ bool xx_lingvoarc_unpack_current_archive_record(
     bool result = false;
     bool created = false;
     bool raw;
-    if (!format || !state || state->format != format || !state->has_record ||
-        !(stream = (lva_stream *)state->internal_state) ||
+    if (!format || !state || state->format != format || !state->has_record || !(stream = (lva_stream *)state->internal_state) ||
         stream->index >= (uint64_t)state->total_records || (pd && xx_pd_is_stopped(pd)))
         return false;
-    raw = stream->variant == XX_LINGVOARC_VARIANT_CONTAINER &&
-          stream->index >= stream->count;
+    raw = stream->variant == XX_LINGVOARC_VARIANT_CONTAINER && stream->index >= stream->count;
     member = &stream->items[stream->index % stream->count];
     name = xx_archive_record_get_original_name(&state->current_record);
     if (!name || !lva_safe_output_name(name)) return false;
-    if (stream->variant == XX_LINGVOARC_VARIANT_CONTAINER &&
-        !raw &&
-        !lva_decode_member(format, member, &plain, &plain_size))
-        return false;
+    if (stream->variant == XX_LINGVOARC_VARIANT_CONTAINER && !raw && !lva_decode_member(format, member, &plain, &plain_size)) return false;
     path_option = lva_option(&state->options, XX_META_ID_OPT_UNPACK_PATH);
     if (!path_option) {
         /* No destination: report whether the member decodes.  A container
@@ -963,30 +852,21 @@ bool xx_lingvoarc_unpack_current_archive_record(
         result = true;
         goto done;
     }
-    if (path_option->type == XX_VAR_TYPE_STRING ||
-        path_option->type == XX_VAR_TYPE_STRING_VIEW)
-        base = xx_var_get_str(path_option);
-    else if (path_option->type == XX_VAR_TYPE_WSTRING ||
-             path_option->type == XX_VAR_TYPE_WSTRING_VIEW) {
+    if (path_option->type == XX_VAR_TYPE_STRING || path_option->type == XX_VAR_TYPE_STRING_VIEW) base = xx_var_get_str(path_option);
+    else if (path_option->type == XX_VAR_TYPE_WSTRING || path_option->type == XX_VAR_TYPE_WSTRING_VIEW) {
         owned_base = xx_str_unicode_to_utf8(xx_var_get_wstr(path_option));
         base = owned_base;
     }
     if (!base) goto done;
-    path = (base[0] && base[xx_str_len(base) - 1U] != '/' &&
-            base[xx_str_len(base) - 1U] != '\\')
-               ? xx_str_concat3(base, "/", name)
-               : xx_str_concat(base, name);
+    path = (base[0] && base[xx_str_len(base) - 1U] != '/' && base[xx_str_len(base) - 1U] != '\\') ? xx_str_concat3(base, "/", name) : xx_str_concat(base, name);
     if (!path || !xx_store_create_dirs_a(path, false)) goto done;
     {
         xx_io_device *destination = xx_io_file_open(path, "wb");
         created = destination != NULL;
         if (!destination) goto done;
-        if (raw)
-            result = lva_copy_raw_member(format, member, destination, pd);
-        else if (stream->variant == XX_LINGVOARC_VARIANT_CONTAINER)
-            result = lva_write_all(destination, plain, plain_size);
-        else
-            result = lvs_walk(format, destination, pd, 0U, NULL, NULL);
+        if (raw) result = lva_copy_raw_member(format, member, destination, pd);
+        else if (stream->variant == XX_LINGVOARC_VARIANT_CONTAINER) result = lva_write_all(destination, plain, plain_size);
+        else result = lvs_walk(format, destination, pd, 0U, NULL, NULL);
         if (xx_io_close(destination) != 0) result = false;
     }
 done:
@@ -997,8 +877,8 @@ done:
     return result;
 }
 
-void xx_lingvoarc_free_archive_records_reading(
-    Abstractformat *format, xx_archive_record_state *state) {
+void xx_lingvoarc_free_archive_records_reading(Abstractformat *format, xx_archive_record_state *state)
+{
     (void)format;
     xx_archive_record_state_free(state);
 }

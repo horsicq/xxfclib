@@ -126,13 +126,13 @@ typedef enum adf_kind_e {
 typedef struct adf_volume_s {
     xx_io_device *device;
     int64_t base;
-    uint32_t blocks;      /**< Filesystem span; every pointer is below it. */
+    uint32_t blocks; /**< Filesystem span; every pointer is below it. */
     uint32_t root;
     uint8_t dos_type;
     bool ffs;
     bool long_names;
-    bool blank_boot;   /**< Boot blocks all zero; OFS/FFS still to decide. */
-    bool type_known;   /**< ffs is settled (always, unless blank_boot). */
+    bool blank_boot; /**< Boot blocks all zero; OFS/FFS still to decide. */
+    bool type_known; /**< ffs is settled (always, unless blank_boot). */
     int64_t format_size;
     char volume_name[96];
 } adf_volume;
@@ -141,17 +141,17 @@ typedef struct adf_volume_s {
  * full path is built when a record or an output file needs it, so memory
  * grows with the number of entries, not with their depth. */
 typedef struct adf_member_s {
-    char *leaf;         /**< Unique (within the parent), host-safe UTF-8. */
-    char *comment;      /**< UTF-8 or NULL. */
-    char *link_target;  /**< Soft links only. */
-    uint32_t header;    /**< The entry's own header block. */
-    uint32_t data;      /**< File header that supplies the bytes. */
-    uint32_t first;     /**< First data block of a file, 0 if none. */
+    char *leaf;        /**< Unique (within the parent), host-safe UTF-8. */
+    char *comment;     /**< UTF-8 or NULL. */
+    char *link_target; /**< Soft links only. */
+    uint32_t header;   /**< The entry's own header block. */
+    uint32_t data;     /**< File header that supplies the bytes. */
+    uint32_t first;    /**< First data block of a file, 0 if none. */
     uint32_t protect;
-    uint32_t parent;    /**< Index of the parent member, or ADF_NO_PARENT. */
+    uint32_t parent;      /**< Index of the parent member, or ADF_NO_PARENT. */
     uint32_t next_suffix; /**< Next ~N to try for a name equal to this one. */
     uint64_t size;
-    int64_t timestamp;  /**< Unix seconds, or -1. */
+    int64_t timestamp; /**< Unix seconds, or -1. */
     adf_kind kind;
 } adf_member;
 
@@ -177,23 +177,25 @@ typedef struct adf_stream_s {
 } adf_stream;
 
 typedef struct adf_frame_s {
-    uint32_t block;       /**< Directory (or root) header block. */
-    uint32_t member;      /**< Its member index; ADF_NO_PARENT for the root. */
+    uint32_t block;  /**< Directory (or root) header block. */
+    uint32_t member; /**< Its member index; ADF_NO_PARENT for the root. */
     uint32_t table[ADF_HT_SIZE];
-    uint32_t slot;        /**< Next hash slot to start. */
-    uint32_t next;        /**< Next entry on the current chain, 0 if none. */
+    uint32_t slot; /**< Next hash slot to start. */
+    uint32_t next; /**< Next entry on the current chain, 0 if none. */
 } adf_frame;
 
 /* ---------------------------------------------------------------------- */
 /* Block access                                                            */
 
 #include "xxfclib/global/xx_global.h"
-static size_t gb_adf_capacity(void) {
+static size_t gb_adf_capacity(void)
+{
     size_t n = xx_get_file_buffer_size();
     if (!n) n = XX_DEFAULT_FILE_BUFFER_SIZE;
     return n > (SIZE_MAX >> 1) ? SIZE_MAX >> 1 : n;
 }
-static ssize_t gb_adf_read(xx_io_device *device, void *buffer, size_t size, size_t capacity) {
+static ssize_t gb_adf_read(xx_io_device *device, void *buffer, size_t size, size_t capacity)
+{
     size_t done = 0;
     if (size > (SIZE_MAX >> 1)) return -1;
     while (done < size) {
@@ -207,7 +209,8 @@ static ssize_t gb_adf_read(xx_io_device *device, void *buffer, size_t size, size
     }
     return (ssize_t)done;
 }
-static ssize_t gb_adf_write(xx_io_device *device, const void *buffer, size_t size, size_t capacity) {
+static ssize_t gb_adf_write(xx_io_device *device, const void *buffer, size_t size, size_t capacity)
+{
     size_t done = 0;
     if (size > (SIZE_MAX >> 1)) return -1;
     while (done < size) {
@@ -222,58 +225,53 @@ static ssize_t gb_adf_write(xx_io_device *device, const void *buffer, size_t siz
     return (ssize_t)done;
 }
 
-static bool adf_read_at(xx_io_device *device, int64_t offset, void *buffer,
-                        size_t size) {
+static bool adf_read_at(xx_io_device *device, int64_t offset, void *buffer, size_t size)
+{
     const size_t file_io_capacity = gb_adf_capacity();
     size_t done = 0U;
-    if (!device || (!buffer && size != 0U) || offset < 0 ||
-        xx_io_seek64(device, offset, SEEK_SET) != 0)
-        return false;
+    if (!device || (!buffer && size != 0U) || offset < 0 || xx_io_seek64(device, offset, SEEK_SET) != 0) return false;
     while (done < size) {
-        ssize_t amount = gb_adf_read(device, (uint8_t *)buffer + done,
-                                    size - done, file_io_capacity);
+        ssize_t amount = gb_adf_read(device, (uint8_t *)buffer + done, size - done, file_io_capacity);
         if (amount <= 0 || (size_t)amount > size - done) return false;
         done += (size_t)amount;
     }
     return true;
 }
 
-static bool adf_read_block(const adf_volume *volume, uint32_t block,
-                           uint8_t *buffer) {
+static bool adf_read_block(const adf_volume *volume, uint32_t block, uint8_t *buffer)
+{
     if (!volume || block >= volume->blocks) return false;
-    return adf_read_at(volume->device,
-                       volume->base + (int64_t)block * (int64_t)ADF_BSIZE,
-                       buffer, ADF_BSIZE);
+    return adf_read_at(volume->device, volume->base + (int64_t)block * (int64_t)ADF_BSIZE, buffer, ADF_BSIZE);
 }
 
 /* Header, list, data and comment blocks all sum to zero over 128 longs. */
-static bool adf_checksum_ok(const uint8_t *block) {
+static bool adf_checksum_ok(const uint8_t *block)
+{
     uint32_t sum = 0U;
     size_t index;
-    for (index = 0U; index < ADF_BSIZE; index += 4U)
-        sum += xx_data_get_u32(block + index, 4, 0, true);
+    for (index = 0U; index < ADF_BSIZE; index += 4U) sum += xx_data_get_u32(block + index, 4, 0, true);
     return sum == 0U;
 }
 
 /* A block number that may hold metadata or data: past the boot blocks and
  * inside the filesystem. */
-static bool adf_pointer_ok(const adf_volume *volume, uint32_t block) {
+static bool adf_pointer_ok(const adf_volume *volume, uint32_t block)
+{
     return block >= 2U && block < volume->blocks;
 }
 
 /* ---------------------------------------------------------------------- */
 /* Volume                                                                  */
 
-static bool adf_root_ok(const uint8_t *block) {
-    return xx_data_get_u32(block + ADF_OFF_TYPE, 4, 0, true) == ADF_T_HEADER &&
-           xx_data_get_u32(block + ADF_OFF_KEY, 4, 0, true) == 0U &&
-           xx_data_get_u32(block + ADF_OFF_HIGH_SEQ, 4, 0, true) == 0U &&
-           xx_data_get_u32(block + ADF_OFF_HT_SIZE, 4, 0, true) == ADF_HT_SIZE &&
-           xx_data_get_u32(block + ADF_OFF_SEC_TYPE, 4, 0, true) == ADF_ST_ROOT &&
-           block[ADF_OFF_NAME] <= ADF_NAME_MAX && adf_checksum_ok(block);
+static bool adf_root_ok(const uint8_t *block)
+{
+    return xx_data_get_u32(block + ADF_OFF_TYPE, 4, 0, true) == ADF_T_HEADER && xx_data_get_u32(block + ADF_OFF_KEY, 4, 0, true) == 0U &&
+           xx_data_get_u32(block + ADF_OFF_HIGH_SEQ, 4, 0, true) == 0U && xx_data_get_u32(block + ADF_OFF_HT_SIZE, 4, 0, true) == ADF_HT_SIZE &&
+           xx_data_get_u32(block + ADF_OFF_SEC_TYPE, 4, 0, true) == ADF_ST_ROOT && block[ADF_OFF_NAME] <= ADF_NAME_MAX && adf_checksum_ok(block);
 }
 
-static bool adf_is_variant(uint32_t blocks, uint32_t standard) {
+static bool adf_is_variant(uint32_t blocks, uint32_t standard)
+{
     uint32_t per_cylinder = standard / 80U, cylinders;
     for (cylinders = 80U; cylinders <= 83U; ++cylinders)
         if (blocks == per_cylinder * cylinders) return true;
@@ -282,8 +280,8 @@ static bool adf_is_variant(uint32_t blocks, uint32_t standard) {
 
 /* ISO-8859-1 to UTF-8, with C0/C1 controls replaced.  @p capacity counts
  * the terminator; a name that does not fit is cut at a character. */
-static void adf_latin1_to_utf8(const uint8_t *raw, size_t size, char *out,
-                               size_t capacity) {
+static void adf_latin1_to_utf8(const uint8_t *raw, size_t size, char *out, size_t capacity)
+{
     size_t at = 0U, index;
     if (!out || capacity == 0U) return;
     for (index = 0U; index < size; ++index) {
@@ -302,7 +300,8 @@ static void adf_latin1_to_utf8(const uint8_t *raw, size_t size, char *out,
 }
 
 /* True when both boot blocks are zero bytes. */
-static bool adf_boot_blank(xx_io_device *device, int64_t base) {
+static bool adf_boot_blank(xx_io_device *device, int64_t base)
+{
     uint8_t boot[ADF_BOOT_BYTES];
     size_t index;
     if (!adf_read_at(device, base, boot, sizeof(boot))) return false;
@@ -315,8 +314,8 @@ static bool adf_boot_blank(xx_io_device *device, int64_t base) {
  * (floppies, 81..83-cylinder images and hardfiles), then a standard DD and
  * a standard HD floppy at the start of a longer or shorter image.  A volume
  * with blank boot blocks is accepted only as an exact standard floppy. */
-static bool adf_open_volume(Abstractformat *format, adf_volume *out,
-                            uint8_t *root_block) {
+static bool adf_open_volume(Abstractformat *format, adf_volume *out, uint8_t *root_block)
+{
     uint8_t boot[4];
     uint8_t block[ADF_BSIZE];
     int64_t total, size, whole;
@@ -324,20 +323,14 @@ static bool adf_open_volume(Abstractformat *format, adf_volume *out,
     size_t count = 0U, index;
     adf_volume volume;
     bool blank = false;
-    if (!format || !format->device || !out || format->base_address < 0)
-        return false;
+    if (!format || !format->device || !out || format->base_address < 0) return false;
     total = xx_io_total_size(format->device);
     if (total < format->base_address) return false;
     size = total - format->base_address;
-    if (size < (int64_t)(4U * ADF_BSIZE) ||
-        !adf_read_at(format->device, format->base_address, boot,
-                     sizeof(boot)))
-        return false;
+    if (size < (int64_t)(4U * ADF_BSIZE) || !adf_read_at(format->device, format->base_address, boot, sizeof(boot))) return false;
     if (boot[0] != 'D' || boot[1] != 'O' || boot[2] != 'S' || boot[3] > 7U) {
         if (boot[0] != 0U || boot[1] != 0U || boot[2] != 0U || boot[3] != 0U ||
-            (size != (int64_t)ADF_DD_BLOCKS * ADF_BSIZE &&
-             size != (int64_t)ADF_HD_BLOCKS * ADF_BSIZE) ||
-            !adf_boot_blank(format->device, format->base_address))
+            (size != (int64_t)ADF_DD_BLOCKS * ADF_BSIZE && size != (int64_t)ADF_HD_BLOCKS * ADF_BSIZE) || !adf_boot_blank(format->device, format->base_address))
             return false;
         blank = true;
     }
@@ -348,36 +341,23 @@ static bool adf_open_volume(Abstractformat *format, adf_volume *out,
     }
     if (whole > (int64_t)ADF_DD_ROOT) {
         candidates[count] = ADF_DD_ROOT;
-        spans[count++] =
-            whole <= (int64_t)ADF_MAX_BLOCKS &&
-                    adf_is_variant((uint32_t)whole, ADF_DD_BLOCKS)
-                ? (uint32_t)whole
-                : (whole < (int64_t)ADF_DD_BLOCKS ? (uint32_t)whole
-                                                   : ADF_DD_BLOCKS);
+        spans[count++] = whole <= (int64_t)ADF_MAX_BLOCKS && adf_is_variant((uint32_t)whole, ADF_DD_BLOCKS)
+                             ? (uint32_t)whole
+                             : (whole < (int64_t)ADF_DD_BLOCKS ? (uint32_t)whole : ADF_DD_BLOCKS);
     }
     if (whole > (int64_t)ADF_HD_ROOT) {
         candidates[count] = ADF_HD_ROOT;
-        spans[count++] =
-            whole <= (int64_t)ADF_MAX_BLOCKS &&
-                    adf_is_variant((uint32_t)whole, ADF_HD_BLOCKS)
-                ? (uint32_t)whole
-                : (whole < (int64_t)ADF_HD_BLOCKS ? (uint32_t)whole
-                                                   : ADF_HD_BLOCKS);
+        spans[count++] = whole <= (int64_t)ADF_MAX_BLOCKS && adf_is_variant((uint32_t)whole, ADF_HD_BLOCKS)
+                             ? (uint32_t)whole
+                             : (whole < (int64_t)ADF_HD_BLOCKS ? (uint32_t)whole : ADF_HD_BLOCKS);
     }
     for (index = 0U; index < count; ++index) {
         size_t earlier;
         bool repeated = false;
         for (earlier = 0U; earlier < index; ++earlier)
             if (candidates[earlier] == candidates[index]) repeated = true;
-        if (repeated || candidates[index] < 2U ||
-            candidates[index] >= spans[index])
-            continue;
-        if (!adf_read_at(format->device,
-                         format->base_address +
-                             (int64_t)candidates[index] * (int64_t)ADF_BSIZE,
-                         block, sizeof(block)) ||
-            !adf_root_ok(block))
-            continue;
+        if (repeated || candidates[index] < 2U || candidates[index] >= spans[index]) continue;
+        if (!adf_read_at(format->device, format->base_address + (int64_t)candidates[index] * (int64_t)ADF_BSIZE, block, sizeof(block)) || !adf_root_ok(block)) continue;
         xx_mem_zero(&volume, sizeof(volume));
         volume.device = format->device;
         volume.base = format->base_address;
@@ -389,8 +369,7 @@ static bool adf_open_volume(Abstractformat *format, adf_volume *out,
         volume.blank_boot = blank;
         volume.type_known = !blank;
         volume.format_size = (int64_t)spans[index] * (int64_t)ADF_BSIZE;
-        adf_latin1_to_utf8(block + ADF_OFF_NAME + 1U, block[ADF_OFF_NAME],
-                           volume.volume_name, sizeof(volume.volume_name));
+        adf_latin1_to_utf8(block + ADF_OFF_NAME + 1U, block[ADF_OFF_NAME], volume.volume_name, sizeof(volume.volume_name));
         *out = volume;
         if (root_block) xx_rt_memcpy(root_block, block, ADF_BSIZE);
         return true;
@@ -401,16 +380,16 @@ static bool adf_open_volume(Abstractformat *format, adf_volume *out,
 /* ---------------------------------------------------------------------- */
 /* Names                                                                   */
 
-static unsigned adf_fold(unsigned codepoint) {
-    if ((codepoint >= 'a' && codepoint <= 'z') ||
-        (codepoint >= 0xE0U && codepoint <= 0xFEU && codepoint != 0xF7U))
-        return codepoint - 0x20U;
+static unsigned adf_fold(unsigned codepoint)
+{
+    if ((codepoint >= 'a' && codepoint <= 'z') || (codepoint >= 0xE0U && codepoint <= 0xFEU && codepoint != 0xF7U)) return codepoint - 0x20U;
     return codepoint;
 }
 
 /* Next code point of a UTF-8 string this reader produced (one or two bytes;
  * anything else is taken bytewise). */
-static unsigned adf_next_codepoint(const char **cursor) {
+static unsigned adf_next_codepoint(const char **cursor)
+{
     const uint8_t *at = (const uint8_t *)*cursor;
     if ((at[0] & 0xE0U) == 0xC0U && (at[1] & 0xC0U) == 0x80U) {
         *cursor += 2;
@@ -420,7 +399,8 @@ static unsigned adf_next_codepoint(const char **cursor) {
     return at[0];
 }
 
-static uint32_t adf_name_hash(uint32_t parent, const char *name) {
+static uint32_t adf_name_hash(uint32_t parent, const char *name)
+{
     uint32_t hash = 2166136261U;
     unsigned shift;
     for (shift = 0U; shift < 32U; shift += 8U) {
@@ -434,16 +414,16 @@ static uint32_t adf_name_hash(uint32_t parent, const char *name) {
     return hash;
 }
 
-static bool adf_name_equal(const char *first, const char *second) {
+static bool adf_name_equal(const char *first, const char *second)
+{
     while (*first && *second) {
-        if (adf_fold(adf_next_codepoint(&first)) !=
-            adf_fold(adf_next_codepoint(&second)))
-            return false;
+        if (adf_fold(adf_next_codepoint(&first)) != adf_fold(adf_next_codepoint(&second))) return false;
     }
     return *first == 0 && *second == 0;
 }
 
-static void adf_names_cleanup(adf_names *names) {
+static void adf_names_cleanup(adf_names *names)
+{
     if (!names) return;
     if (names->slots) xx_mem_free(names->slots);
     if (names->hashes) xx_mem_free(names->hashes);
@@ -452,23 +432,20 @@ static void adf_names_cleanup(adf_names *names) {
 
 /* Index of the member already called @p name under @p parent, or
  * ADF_NO_PARENT when the name is free. */
-static uint32_t adf_names_find(const adf_names *names,
-                               const adf_member *items, uint32_t parent,
-                               const char *name, uint32_t hash) {
+static uint32_t adf_names_find(const adf_names *names, const adf_member *items, uint32_t parent, const char *name, uint32_t hash)
+{
     size_t mask, at;
     if (names->capacity == 0U) return ADF_NO_PARENT;
     mask = names->capacity - 1U;
     for (at = hash & mask; names->slots[at]; at = (at + 1U) & mask) {
         const adf_member *other = &items[names->slots[at] - 1U];
-        if (names->hashes[at] == hash && other->parent == parent &&
-            adf_name_equal(other->leaf, name))
-            return names->slots[at] - 1U;
+        if (names->hashes[at] == hash && other->parent == parent && adf_name_equal(other->leaf, name)) return names->slots[at] - 1U;
     }
     return ADF_NO_PARENT;
 }
 
-static void adf_names_place(uint32_t *slots, uint32_t *hashes,
-                            size_t capacity, uint32_t slot, uint32_t hash) {
+static void adf_names_place(uint32_t *slots, uint32_t *hashes, size_t capacity, uint32_t slot, uint32_t hash)
+{
     size_t mask = capacity - 1U, at;
     for (at = hash & mask; slots[at]; at = (at + 1U) & mask) {
     }
@@ -477,13 +454,12 @@ static void adf_names_place(uint32_t *slots, uint32_t *hashes,
 }
 
 /* Record that member @p index owns its (parent, leaf). */
-static bool adf_names_add(adf_names *names, uint32_t index, uint32_t hash) {
+static bool adf_names_add(adf_names *names, uint32_t index, uint32_t hash)
+{
     if ((names->used + 1U) * 2U > names->capacity) {
         size_t capacity = names->capacity ? names->capacity * 2U : 256U, at;
         uint32_t *slots, *hashes;
-        if (capacity > SIZE_MAX / sizeof(*slots) ||
-            capacity < names->capacity)
-            return false;
+        if (capacity > SIZE_MAX / sizeof(*slots) || capacity < names->capacity) return false;
         slots = (uint32_t *)xx_mem_calloc(capacity, sizeof(*slots));
         hashes = (uint32_t *)xx_mem_calloc(capacity, sizeof(*hashes));
         if (!slots || !hashes) {
@@ -492,58 +468,50 @@ static bool adf_names_add(adf_names *names, uint32_t index, uint32_t hash) {
             return false;
         }
         for (at = 0U; at < names->capacity; ++at)
-            if (names->slots[at])
-                adf_names_place(slots, hashes, capacity, names->slots[at],
-                                names->hashes[at]);
+            if (names->slots[at]) adf_names_place(slots, hashes, capacity, names->slots[at], names->hashes[at]);
         if (names->slots) xx_mem_free(names->slots);
         if (names->hashes) xx_mem_free(names->hashes);
         names->slots = slots;
         names->hashes = hashes;
         names->capacity = capacity;
     }
-    adf_names_place(names->slots, names->hashes, names->capacity, index + 1U,
-                    hash);
+    adf_names_place(names->slots, names->hashes, names->capacity, index + 1U, hash);
     ++names->used;
     return true;
 }
 
-static char adf_upper_ascii(char c) {
+static char adf_upper_ascii(char c)
+{
     return (c >= 'a' && c <= 'z') ? (char)(c - 'a' + 'A') : c;
 }
 
 /* Windows device names, with or without an extension, in any case:
  * CON PRN AUX NUL CONIN$ CONOUT$ CLOCK$ and COM/LPT followed by a digit or
  * a superscript one, two or three. */
-static bool adf_reserved_name(const char *name) {
-    static const char *const devices[] = {"CON",     "PRN",    "AUX", "NUL",
-                                          "CONIN$",  "CONOUT$", "CLOCK$"};
+static bool adf_reserved_name(const char *name)
+{
+    static const char *const devices[] = {"CON", "PRN", "AUX", "NUL", "CONIN$", "CONOUT$", "CLOCK$"};
     size_t stem = 0U, index, word;
     while (name[stem] && name[stem] != '.') ++stem;
     while (stem > 0U && name[stem - 1U] == ' ') --stem;
     for (word = 0U; word < sizeof(devices) / sizeof(devices[0]); ++word) {
         const char *device = devices[word];
         for (index = 0U; index < stem; ++index)
-            if (!device[index] || adf_upper_ascii(name[index]) != device[index])
-                break;
+            if (!device[index] || adf_upper_ascii(name[index]) != device[index]) break;
         if (index == stem && device[stem] == 0) return true;
     }
-    if (stem >= 4U &&
-        ((adf_upper_ascii(name[0]) == 'C' && adf_upper_ascii(name[1]) == 'O' &&
-          adf_upper_ascii(name[2]) == 'M') ||
-         (adf_upper_ascii(name[0]) == 'L' && adf_upper_ascii(name[1]) == 'P' &&
-          adf_upper_ascii(name[2]) == 'T'))) {
+    if (stem >= 4U && ((adf_upper_ascii(name[0]) == 'C' && adf_upper_ascii(name[1]) == 'O' && adf_upper_ascii(name[2]) == 'M') ||
+                       (adf_upper_ascii(name[0]) == 'L' && adf_upper_ascii(name[1]) == 'P' && adf_upper_ascii(name[2]) == 'T'))) {
         if (stem == 4U && name[3] >= '0' && name[3] <= '9') return true;
         /* U+00B9, U+00B2, U+00B3 in UTF-8. */
-        if (stem == 5U && (uint8_t)name[3] == 0xC2U &&
-            ((uint8_t)name[4] == 0xB9U || (uint8_t)name[4] == 0xB2U ||
-             (uint8_t)name[4] == 0xB3U))
-            return true;
+        if (stem == 5U && (uint8_t)name[3] == 0xC2U && ((uint8_t)name[4] == 0xB9U || (uint8_t)name[4] == 0xB2U || (uint8_t)name[4] == 0xB3U)) return true;
     }
     return false;
 }
 
 /* One Amiga name (ISO-8859-1) as one host-safe UTF-8 path component. */
-static char *adf_component(const uint8_t *raw, size_t size) {
+static char *adf_component(const uint8_t *raw, size_t size)
+{
     char *result;
     size_t at = 0U, index, capacity = size * 2U + 3U;
     result = (char *)xx_mem_alloc(capacity);
@@ -551,9 +519,8 @@ static char *adf_component(const uint8_t *raw, size_t size) {
     result[at++] = '_'; /* room for a device-name prefix */
     for (index = 0U; index < size; ++index) {
         uint8_t c = raw[index];
-        if (c < 0x20U || c == 0x7FU || (c >= 0x80U && c < 0xA0U) ||
-            c == '/' || c == '\\' || c == ':' || c == '*' || c == '?' ||
-            c == '"' || c == '<' || c == '>' || c == '|')
+        if (c < 0x20U || c == 0x7FU || (c >= 0x80U && c < 0xA0U) || c == '/' || c == '\\' || c == ':' || c == '*' || c == '?' || c == '"' || c == '<' || c == '>' ||
+            c == '|')
             c = '_';
         if (c < 0x80U) {
             result[at++] = (char)c;
@@ -579,7 +546,8 @@ static char *adf_component(const uint8_t *raw, size_t size) {
  * at most one dot, a stem of 1..8 characters holding '~' and a digit after
  * it, an extension of at most 3.  On a volume that makes short names, opening
  * such a name can open an earlier member through its alias. */
-static bool adf_alias_shaped(const char *name) {
+static bool adf_alias_shaped(const char *name)
+{
     size_t stem = 0U, ext = 0U, dots = 0U;
     bool tilde_digit = false;
     const char *at;
@@ -601,21 +569,19 @@ static bool adf_alias_shaped(const char *name) {
 
 /* @p leaf with "~N" before its extension (N = 0: unchanged); '~' becomes
  * '_' throughout when the result would look like an 8.3 alias. */
-static char *adf_join(const char *leaf, unsigned suffix) {
+static char *adf_join(const char *leaf, unsigned suffix)
+{
     char suffix_text[16];
     const char *dot;
     size_t leaf_size, suffix_size = 0U, before, total, at = 0U;
     char *result;
     leaf_size = xx_str_len(leaf);
     if (suffix != 0U) {
-        if (xx_rt_snprintf(suffix_text, sizeof(suffix_text), "~%u", suffix) < 0)
-            return NULL;
+        if (xx_rt_snprintf(suffix_text, sizeof(suffix_text), "~%u", suffix) < 0) return NULL;
         suffix_size = xx_str_len(suffix_text);
     }
     dot = xx_rt_strrchr(leaf, '.');
-    before = (dot && dot != leaf && leaf_size - (size_t)(dot - leaf) <= 32U)
-                 ? (size_t)(dot - leaf)
-                 : leaf_size;
+    before = (dot && dot != leaf && leaf_size - (size_t)(dot - leaf) <= 32U) ? (size_t)(dot - leaf) : leaf_size;
     if (leaf_size > SIZE_MAX / 2U) return NULL;
     total = leaf_size + suffix_size + 1U;
     result = (char *)xx_mem_alloc(total);
@@ -640,8 +606,8 @@ static char *adf_join(const char *leaf, unsigned suffix) {
  * and Windows do.  Suffixes restart where the last collision with the same
  * name stopped, so a run of equal names costs linear work.  On success the
  * caller adds the member and then registers it with @p hash_out. */
-static char *adf_claim(adf_names *names, adf_member *items, uint32_t parent,
-                       const char *leaf, uint32_t *hash_out) {
+static char *adf_claim(adf_names *names, adf_member *items, uint32_t parent, const char *leaf, uint32_t *hash_out)
+{
     unsigned suffix;
     uint32_t owner, hash;
     char *candidate = adf_join(leaf, 0U);
@@ -659,8 +625,7 @@ static char *adf_claim(adf_names *names, adf_member *items, uint32_t parent,
         candidate = adf_join(leaf, suffix);
         if (!candidate) return NULL;
         hash = adf_name_hash(parent, candidate);
-        if (adf_names_find(names, items, parent, candidate, hash) ==
-            ADF_NO_PARENT) {
+        if (adf_names_find(names, items, parent, candidate, hash) == ADF_NO_PARENT) {
             items[owner].next_suffix = suffix + 1U;
             *hash_out = hash;
             return candidate;
@@ -673,13 +638,12 @@ static char *adf_claim(adf_names *names, adf_member *items, uint32_t parent,
 
 /* "a/b/c" for member @p index: its leaf behind those of its parents.  The
  * parent chain only points backwards and is at most ADF_MAX_DEPTH long. */
-static char *adf_member_path(const adf_member *items, size_t count,
-                             uint32_t index) {
+static char *adf_member_path(const adf_member *items, size_t count, uint32_t index)
+{
     size_t total = 0U, at, depth = 0U;
     uint32_t walk;
     char *result;
-    for (walk = index; walk != ADF_NO_PARENT && walk < count;
-         walk = items[walk].parent) {
+    for (walk = index; walk != ADF_NO_PARENT && walk < count; walk = items[walk].parent) {
         if (++depth > ADF_MAX_DEPTH + 1U) return NULL;
         total += xx_str_len(items[walk].leaf) + 1U;
     }
@@ -697,7 +661,8 @@ static char *adf_member_path(const adf_member *items, size_t count,
     return result;
 }
 
-static char *adf_utf8_copy(const uint8_t *raw, size_t size) {
+static char *adf_utf8_copy(const uint8_t *raw, size_t size)
+{
     char *result = (char *)xx_mem_alloc(size * 2U + 1U);
     if (result) adf_latin1_to_utf8(raw, size, result, size * 2U + 1U);
     return result;
@@ -706,43 +671,41 @@ static char *adf_utf8_copy(const uint8_t *raw, size_t size) {
 /* ---------------------------------------------------------------------- */
 /* Directory walk                                                          */
 
-static void adf_member_cleanup(adf_member *member) {
+static void adf_member_cleanup(adf_member *member)
+{
     if (member->leaf) xx_mem_free(member->leaf);
     if (member->comment) xx_mem_free(member->comment);
     if (member->link_target) xx_mem_free(member->link_target);
     xx_mem_zero(member, sizeof(*member));
 }
 
-static void adf_stream_free(void *opaque) {
+static void adf_stream_free(void *opaque)
+{
     adf_stream *stream = (adf_stream *)opaque;
     size_t index;
     if (!stream) return;
-    for (index = 0U; index < stream->count; ++index)
-        adf_member_cleanup(&stream->items[index]);
+    for (index = 0U; index < stream->count; ++index) adf_member_cleanup(&stream->items[index]);
     if (stream->items) xx_mem_free(stream->items);
     xx_mem_free(stream);
 }
 
-static size_t adf_text_size(const char *text) {
+static size_t adf_text_size(const char *text)
+{
     return text ? xx_str_len(text) + 1U : 0U;
 }
 
 /* Append @p member; false when a limit (members or text bytes) is reached,
  * which ends the listing, or when memory runs out. */
-static bool adf_add_member(adf_stream *stream, adf_member *member) {
-    uint64_t text = (uint64_t)sizeof(*member) + 2U * sizeof(uint32_t) * 2U +
-                    adf_text_size(member->leaf) +
-                    adf_text_size(member->comment) +
-                    adf_text_size(member->link_target);
-    if (stream->count >= ADF_MAX_MEMBERS ||
-        text > ADF_MAX_TEXT_BYTES - stream->text_bytes)
-        return false;
+static bool adf_add_member(adf_stream *stream, adf_member *member)
+{
+    uint64_t text =
+        (uint64_t)sizeof(*member) + 2U * sizeof(uint32_t) * 2U + adf_text_size(member->leaf) + adf_text_size(member->comment) + adf_text_size(member->link_target);
+    if (stream->count >= ADF_MAX_MEMBERS || text > ADF_MAX_TEXT_BYTES - stream->text_bytes) return false;
     if (stream->count == stream->capacity) {
         size_t capacity = stream->capacity ? stream->capacity * 2U : 64U;
         adf_member *grown;
         if (capacity > ADF_MAX_MEMBERS) capacity = ADF_MAX_MEMBERS;
-        grown = (adf_member *)xx_mem_realloc(stream->items,
-                                             capacity * sizeof(*grown));
+        grown = (adf_member *)xx_mem_realloc(stream->items, capacity * sizeof(*grown));
         if (!grown) return false;
         stream->items = grown;
         stream->capacity = capacity;
@@ -752,46 +715,37 @@ static bool adf_add_member(adf_stream *stream, adf_member *member) {
     return true;
 }
 
-static bool adf_listing_full(const adf_stream *stream) {
-    return stream->count >= ADF_MAX_MEMBERS ||
-           stream->text_bytes + (uint64_t)sizeof(adf_member) + 1024U >
-               ADF_MAX_TEXT_BYTES;
+static bool adf_listing_full(const adf_stream *stream)
+{
+    return stream->count >= ADF_MAX_MEMBERS || stream->text_bytes + (uint64_t)sizeof(adf_member) + 1024U > ADF_MAX_TEXT_BYTES;
 }
 
-static int64_t adf_timestamp(const uint8_t *field) {
-    uint32_t days = xx_data_get_u32(field, 4, 0, true), minutes = xx_data_get_u32(field + 4U, 4, 0, true),
-             ticks = xx_data_get_u32(field + 8U, 4, 0, true);
+static int64_t adf_timestamp(const uint8_t *field)
+{
+    uint32_t days = xx_data_get_u32(field, 4, 0, true), minutes = xx_data_get_u32(field + 4U, 4, 0, true), ticks = xx_data_get_u32(field + 8U, 4, 0, true);
     if (minutes >= 1440U || ticks >= 3000U || days > 0x7FFFFFU) return -1;
-    return ADF_EPOCH + (int64_t)days * 86400 + (int64_t)minutes * 60 +
-           (int64_t)(ticks / 50U);
+    return ADF_EPOCH + (int64_t)days * 86400 + (int64_t)minutes * 60 + (int64_t)(ticks / 50U);
 }
 
 /* A header block of the tree: type 2, its own number as key, the expected
  * secondary type set, a matching checksum. */
-static bool adf_entry_ok(const uint8_t *block, uint32_t number) {
+static bool adf_entry_ok(const uint8_t *block, uint32_t number)
+{
     uint32_t secondary = xx_data_get_u32(block + ADF_OFF_SEC_TYPE, 4, 0, true);
-    return xx_data_get_u32(block + ADF_OFF_TYPE, 4, 0, true) == ADF_T_HEADER &&
-           xx_data_get_u32(block + ADF_OFF_KEY, 4, 0, true) == number &&
-           (secondary == ADF_ST_USERDIR || secondary == ADF_ST_FILE ||
-            secondary == ADF_ST_SOFTLINK || secondary == ADF_ST_LINKFILE ||
-            secondary == ADF_ST_LINKDIR) &&
+    return xx_data_get_u32(block + ADF_OFF_TYPE, 4, 0, true) == ADF_T_HEADER && xx_data_get_u32(block + ADF_OFF_KEY, 4, 0, true) == number &&
+           (secondary == ADF_ST_USERDIR || secondary == ADF_ST_FILE || secondary == ADF_ST_SOFTLINK || secondary == ADF_ST_LINKFILE || secondary == ADF_ST_LINKDIR) &&
            adf_checksum_ok(block);
 }
 
-static bool adf_file_header_ok(const adf_volume *volume, uint32_t number,
-                               uint8_t *block) {
-    return adf_pointer_ok(volume, number) &&
-           adf_read_block(volume, number, block) &&
-           xx_data_get_u32(block + ADF_OFF_TYPE, 4, 0, true) == ADF_T_HEADER &&
-           xx_data_get_u32(block + ADF_OFF_KEY, 4, 0, true) == number &&
-           xx_data_get_u32(block + ADF_OFF_SEC_TYPE, 4, 0, true) == ADF_ST_FILE &&
-           adf_checksum_ok(block);
+static bool adf_file_header_ok(const adf_volume *volume, uint32_t number, uint8_t *block)
+{
+    return adf_pointer_ok(volume, number) && adf_read_block(volume, number, block) && xx_data_get_u32(block + ADF_OFF_TYPE, 4, 0, true) == ADF_T_HEADER &&
+           xx_data_get_u32(block + ADF_OFF_KEY, 4, 0, true) == number && xx_data_get_u32(block + ADF_OFF_SEC_TYPE, 4, 0, true) == ADF_ST_FILE && adf_checksum_ok(block);
 }
 
 /* Name, comment and date of one entry header. */
-static bool adf_entry_text(const adf_volume *volume, const uint8_t *block,
-                           uint32_t number, char **leaf, char **comment,
-                           int64_t *timestamp) {
+static bool adf_entry_text(const adf_volume *volume, const uint8_t *block, uint32_t number, char **leaf, char **comment, int64_t *timestamp)
+{
     const uint8_t *name;
     size_t name_size;
     *leaf = NULL;
@@ -808,12 +762,9 @@ static bool adf_entry_text(const adf_volume *volume, const uint8_t *block,
         } else if (comment_size == 0U) {
             uint32_t comment_block = xx_data_get_u32(block + ADF_LN_COMMENT_BLOCK, 4, 0, true);
             uint8_t extra[ADF_BSIZE];
-            if (comment_block != 0U && adf_pointer_ok(volume, comment_block) &&
-                adf_read_block(volume, comment_block, extra) &&
-                xx_data_get_u32(extra, 4, 0, true) == ADF_T_COMMENT &&
-                xx_data_get_u32(extra + 4U, 4, 0, true) == comment_block &&
-                xx_data_get_u32(extra + 8U, 4, 0, true) == number && adf_checksum_ok(extra) &&
-                extra[24] != 0U && extra[24] <= ADF_COMMENT_MAX)
+            if (comment_block != 0U && adf_pointer_ok(volume, comment_block) && adf_read_block(volume, comment_block, extra) &&
+                xx_data_get_u32(extra, 4, 0, true) == ADF_T_COMMENT && xx_data_get_u32(extra + 4U, 4, 0, true) == comment_block &&
+                xx_data_get_u32(extra + 8U, 4, 0, true) == number && adf_checksum_ok(extra) && extra[24] != 0U && extra[24] <= ADF_COMMENT_MAX)
                 *comment = adf_utf8_copy(extra + 25U, extra[24]);
         }
         *timestamp = adf_timestamp(block + ADF_LN_DATE);
@@ -821,10 +772,7 @@ static bool adf_entry_text(const adf_volume *volume, const uint8_t *block,
         name_size = block[ADF_OFF_NAME];
         if (name_size > ADF_NAME_MAX) return false;
         name = block + ADF_OFF_NAME + 1U;
-        if (block[ADF_OFF_COMMENT] != 0U &&
-            block[ADF_OFF_COMMENT] <= ADF_COMMENT_MAX)
-            *comment = adf_utf8_copy(block + ADF_OFF_COMMENT + 1U,
-                                     block[ADF_OFF_COMMENT]);
+        if (block[ADF_OFF_COMMENT] != 0U && block[ADF_OFF_COMMENT] <= ADF_COMMENT_MAX) *comment = adf_utf8_copy(block + ADF_OFF_COMMENT + 1U, block[ADF_OFF_COMMENT]);
         *timestamp = adf_timestamp(block + ADF_OFF_DATE);
     }
     *leaf = adf_component(name, name_size);
@@ -839,43 +787,40 @@ static bool adf_entry_text(const adf_volume *volume, const uint8_t *block,
 /* Blank boot blocks leave OFS or FFS open.  The first file with data settles
  * it: an OFS data block is tagged (type 8, owning header, sequence 1, a size
  * that fits, a zero checksum), a raw FFS block essentially never is. */
-static void adf_settle_type(adf_volume *volume, uint32_t header,
-                            uint32_t first) {
+static void adf_settle_type(adf_volume *volume, uint32_t header, uint32_t first)
+{
     uint8_t data[ADF_BSIZE];
     uint32_t size;
     bool ofs;
-    if (volume->type_known || !adf_pointer_ok(volume, first) ||
-        first == volume->root || first == header ||
-        !adf_read_block(volume, first, data))
-        return;
+    if (volume->type_known || !adf_pointer_ok(volume, first) || first == volume->root || first == header || !adf_read_block(volume, first, data)) return;
     size = xx_data_get_u32(data + 12U, 4, 0, true);
-    ofs = xx_data_get_u32(data, 4, 0, true) == ADF_T_DATA && xx_data_get_u32(data + 4U, 4, 0, true) == header &&
-          xx_data_get_u32(data + 8U, 4, 0, true) == 1U && size != 0U && size <= ADF_OFS_PAYLOAD &&
-          adf_checksum_ok(data);
+    ofs = xx_data_get_u32(data, 4, 0, true) == ADF_T_DATA && xx_data_get_u32(data + 4U, 4, 0, true) == header && xx_data_get_u32(data + 8U, 4, 0, true) == 1U &&
+          size != 0U && size <= ADF_OFS_PAYLOAD && adf_checksum_ok(data);
     volume->ffs = !ofs;
     volume->dos_type = ofs ? 0U : 1U;
     volume->type_known = true;
 }
 
-static bool adf_visit(uint8_t *visited, uint32_t block) {
+static bool adf_visit(uint8_t *visited, uint32_t block)
+{
     uint8_t bit = (uint8_t)(1U << (block & 7U));
     if (visited[block >> 3U] & bit) return false;
     visited[block >> 3U] |= bit;
     return true;
 }
 
-static void adf_load_table(adf_frame *frame, const uint8_t *block) {
+static void adf_load_table(adf_frame *frame, const uint8_t *block)
+{
     size_t index;
-    for (index = 0U; index < ADF_HT_SIZE; ++index)
-        frame->table[index] = xx_data_get_u32(block + ADF_OFF_TABLE + index * 4U, 4, 0, true);
+    for (index = 0U; index < ADF_HT_SIZE; ++index) frame->table[index] = xx_data_get_u32(block + ADF_OFF_TABLE + index * 4U, 4, 0, true);
     frame->slot = 0U;
     frame->next = 0U;
 }
 
 /* Build the member list.  Damaged entries end their hash chain (its next
  * pointer cannot be trusted) but do not end the walk. */
-static bool adf_parse(Abstractformat *format, adf_stream **result,
-                      xx_pd_struct *pd) {
+static bool adf_parse(Abstractformat *format, adf_stream **result, xx_pd_struct *pd)
+{
     uint8_t root[ADF_BSIZE];
     uint8_t block[ADF_BSIZE];
     uint8_t target[ADF_BSIZE];
@@ -891,9 +836,7 @@ static bool adf_parse(Abstractformat *format, adf_stream **result,
     stream = (adf_stream *)xx_mem_calloc(1U, sizeof(*stream));
     if (!stream) return false;
     if (!adf_open_volume(format, &stream->volume, root)) goto done;
-    visited = (uint8_t *)xx_mem_calloc(((size_t)stream->volume.blocks + 7U) /
-                                           8U,
-                                       1U);
+    visited = (uint8_t *)xx_mem_calloc(((size_t)stream->volume.blocks + 7U) / 8U, 1U);
     frames = (adf_frame *)xx_mem_alloc(ADF_MAX_DEPTH * sizeof(*frames));
     if (!visited || !frames) goto done;
     adf_visit(visited, 0U);
@@ -910,8 +853,7 @@ static bool adf_parse(Abstractformat *format, adf_stream **result,
         char *leaf = NULL;
         if ((++steps & 0xFFUL) == 0UL && pd && xx_pd_is_stopped(pd)) goto done;
         if (frame->next == 0U) {
-            while (frame->slot < ADF_HT_SIZE && frame->table[frame->slot] == 0U)
-                ++frame->slot;
+            while (frame->slot < ADF_HT_SIZE && frame->table[frame->slot] == 0U) ++frame->slot;
             if (frame->slot >= ADF_HT_SIZE) {
                 --depth;
                 continue;
@@ -920,10 +862,7 @@ static bool adf_parse(Abstractformat *format, adf_stream **result,
         }
         number = frame->next;
         frame->next = 0U;
-        if (!adf_pointer_ok(&stream->volume, number) ||
-            !adf_visit(visited, number) ||
-            !adf_read_block(&stream->volume, number, block) ||
-            !adf_entry_ok(block, number) ||
+        if (!adf_pointer_ok(&stream->volume, number) || !adf_visit(visited, number) || !adf_read_block(&stream->volume, number, block) || !adf_entry_ok(block, number) ||
             xx_data_get_u32(block + ADF_OFF_PARENT, 4, 0, true) != frame->block)
             continue;
         frame->next = xx_data_get_u32(block + ADF_OFF_HASH_CHAIN, 4, 0, true);
@@ -931,9 +870,7 @@ static bool adf_parse(Abstractformat *format, adf_stream **result,
         member.header = number;
         member.parent = frame->member;
         member.protect = xx_data_get_u32(block + ADF_OFF_PROTECT, 4, 0, true);
-        if (!adf_entry_text(&stream->volume, block, number, &leaf,
-                            &member.comment, &member.timestamp))
-            continue;
+        if (!adf_entry_text(&stream->volume, block, number, &leaf, &member.comment, &member.timestamp)) continue;
         secondary = xx_data_get_u32(block + ADF_OFF_SEC_TYPE, 4, 0, true);
         if (secondary == ADF_ST_USERDIR || secondary == ADF_ST_LINKDIR) {
             member.kind = ADF_KIND_FOLDER;
@@ -942,8 +879,7 @@ static bool adf_parse(Abstractformat *format, adf_stream **result,
             member.data = number;
             member.first = xx_data_get_u32(block + ADF_OFF_TABLE_LAST, 4, 0, true);
             member.size = xx_data_get_u32(block + ADF_OFF_BYTE_SIZE, 4, 0, true);
-            if (member.size != 0U)
-                adf_settle_type(&stream->volume, number, member.first);
+            if (member.size != 0U) adf_settle_type(&stream->volume, number, member.first);
         } else if (secondary == ADF_ST_LINKFILE) {
             uint32_t real = xx_data_get_u32(block + ADF_OFF_REAL_ENTRY, 4, 0, true);
             if (!adf_file_header_ok(&stream->volume, real, target)) {
@@ -957,9 +893,7 @@ static bool adf_parse(Abstractformat *format, adf_stream **result,
             member.size = xx_data_get_u32(target + ADF_OFF_BYTE_SIZE, 4, 0, true);
         } else {
             size_t length = 0U;
-            while (length < ADF_LINK_PATH_MAX &&
-                   block[ADF_OFF_TABLE + length] != 0U)
-                ++length;
+            while (length < ADF_LINK_PATH_MAX && block[ADF_OFF_TABLE + length] != 0U) ++length;
             member.kind = ADF_KIND_SOFTLINK;
             member.link_target = adf_utf8_copy(block + ADF_OFF_TABLE, length);
             if (!member.link_target) {
@@ -968,8 +902,7 @@ static bool adf_parse(Abstractformat *format, adf_stream **result,
                 goto done;
             }
         }
-        member.leaf = adf_claim(&names, stream->items, frame->member, leaf,
-                                &hash);
+        member.leaf = adf_claim(&names, stream->items, frame->member, leaf, &hash);
         xx_mem_free(leaf);
         if (!member.leaf) {
             adf_member_cleanup(&member);
@@ -977,13 +910,10 @@ static bool adf_parse(Abstractformat *format, adf_stream **result,
         }
         if (!adf_add_member(stream, &member)) {
             adf_member_cleanup(&member);
-            if (adf_listing_full(stream) ||
-                stream->count >= ADF_MAX_MEMBERS)
-                break;
+            if (adf_listing_full(stream) || stream->count >= ADF_MAX_MEMBERS) break;
             goto done;
         }
-        if (!adf_names_add(&names, (uint32_t)(stream->count - 1U), hash))
-            goto done;
+        if (!adf_names_add(&names, (uint32_t)(stream->count - 1U), hash)) goto done;
         if (secondary == ADF_ST_USERDIR && depth < ADF_MAX_DEPTH) {
             adf_frame *child = &frames[depth];
             child->block = number;
@@ -992,8 +922,7 @@ static bool adf_parse(Abstractformat *format, adf_stream **result,
             ++depth;
         }
     }
-    stream->emit_budget =
-        stream->volume.format_size * ADF_EMIT_FACTOR + ADF_EMIT_SLACK;
+    stream->emit_budget = stream->volume.format_size * ADF_EMIT_FACTOR + ADF_EMIT_SLACK;
     ok = true;
 done:
     adf_names_cleanup(&names);
@@ -1017,7 +946,8 @@ typedef struct adf_sink_s {
     size_t capacity;
 } adf_sink;
 
-static bool adf_sink_flush(adf_sink *sink) {
+static bool adf_sink_flush(adf_sink *sink)
+{
     const size_t file_io_capacity = sink->capacity;
     size_t done = 0U;
     if (!sink->device) {
@@ -1025,8 +955,7 @@ static bool adf_sink_flush(adf_sink *sink) {
         return true;
     }
     while (done < sink->used) {
-        ssize_t wrote = gb_adf_write(sink->device, sink->buffer + done,
-                                    sink->used - done, file_io_capacity);
+        ssize_t wrote = gb_adf_write(sink->device, sink->buffer + done, sink->used - done, file_io_capacity);
         if (wrote <= 0 || (size_t)wrote > sink->used - done) return false;
         done += (size_t)wrote;
     }
@@ -1034,7 +963,8 @@ static bool adf_sink_flush(adf_sink *sink) {
     return true;
 }
 
-static bool adf_sink_put(adf_sink *sink, const uint8_t *data, size_t size) {
+static bool adf_sink_put(adf_sink *sink, const uint8_t *data, size_t size)
+{
     if (!sink->device) return true;
     while (size) {
         size_t take = sink->capacity - sink->used;
@@ -1057,9 +987,8 @@ static bool adf_sink_put(adf_sink *sink, const uint8_t *data, size_t size) {
  * FFS data block carries no tag, so only blocks that cannot hold data (the
  * root, the header, the table being read) are refused.  A revisited
  * extension block is found with Brent's cycle check and fails the copy. */
-static bool adf_copy_file(const adf_volume *volume, uint32_t header,
-                          uint64_t expected, adf_sink *sink,
-                          xx_pd_struct *pd) {
+static bool adf_copy_file(const adf_volume *volume, uint32_t header, uint64_t expected, adf_sink *sink, xx_pd_struct *pd)
+{
     uint8_t table[ADF_BSIZE];
     uint8_t data[ADF_BSIZE];
     uint64_t remaining;
@@ -1067,33 +996,24 @@ static bool adf_copy_file(const adf_volume *volume, uint32_t header,
     uint32_t tortoise = header, power = 1U, run = 0U;
     if (!adf_file_header_ok(volume, header, table)) return false;
     remaining = xx_data_get_u32(table + ADF_OFF_BYTE_SIZE, 4, 0, true);
-    if (remaining != expected ||
-        remaining > (uint64_t)volume->blocks * ADF_BSIZE)
-        return false;
+    if (remaining != expected || remaining > (uint64_t)volume->blocks * ADF_BSIZE) return false;
     while (remaining != 0U) {
         uint32_t slot;
         for (slot = 0U; slot < ADF_HT_SIZE && remaining != 0U; ++slot) {
-            uint32_t pointer =
-                xx_data_get_u32(table + ADF_OFF_TABLE_LAST - slot * 4U, 4, 0, true);
+            uint32_t pointer = xx_data_get_u32(table + ADF_OFF_TABLE_LAST - slot * 4U, 4, 0, true);
             size_t take;
-            if (!adf_pointer_ok(volume, pointer) || pointer == volume->root ||
-                pointer == header || pointer == current ||
-                !adf_read_block(volume, pointer, data))
+            if (!adf_pointer_ok(volume, pointer) || pointer == volume->root || pointer == header || pointer == current || !adf_read_block(volume, pointer, data))
                 return false;
             if (volume->ffs) {
                 take = remaining < ADF_BSIZE ? (size_t)remaining : ADF_BSIZE;
                 if (!adf_sink_put(sink, data, take)) return false;
             } else {
                 uint32_t size = xx_data_get_u32(data + 12U, 4, 0, true);
-                if (xx_data_get_u32(data, 4, 0, true) != ADF_T_DATA ||
-                    xx_data_get_u32(data + 4U, 4, 0, true) != header ||
-                    xx_data_get_u32(data + 8U, 4, 0, true) != sequence || size == 0U ||
-                    size > ADF_OFS_PAYLOAD || !adf_checksum_ok(data))
+                if (xx_data_get_u32(data, 4, 0, true) != ADF_T_DATA || xx_data_get_u32(data + 4U, 4, 0, true) != header ||
+                    xx_data_get_u32(data + 8U, 4, 0, true) != sequence || size == 0U || size > ADF_OFS_PAYLOAD || !adf_checksum_ok(data))
                     return false;
-                take = (uint64_t)size < remaining ? (size_t)size
-                                                  : (size_t)remaining;
-                if (!adf_sink_put(sink, data + ADF_OFS_HEADER, take))
-                    return false;
+                take = (uint64_t)size < remaining ? (size_t)size : (size_t)remaining;
+                if (!adf_sink_put(sink, data + ADF_OFS_HEADER, take)) return false;
             }
             remaining -= take;
             ++sequence;
@@ -1108,12 +1028,9 @@ static bool adf_copy_file(const adf_volume *volume, uint32_t header,
             power = power < UINT32_C(0x80000000) ? power << 1U : power;
             run = 0U;
         }
-        if (++hops > volume->blocks || !adf_pointer_ok(volume, current) ||
-            !adf_read_block(volume, current, table) ||
-            xx_data_get_u32(table + ADF_OFF_TYPE, 4, 0, true) != ADF_T_LIST ||
-            xx_data_get_u32(table + ADF_OFF_KEY, 4, 0, true) != current ||
-            xx_data_get_u32(table + ADF_OFF_PARENT, 4, 0, true) != header ||
-            xx_data_get_u32(table + ADF_OFF_SEC_TYPE, 4, 0, true) != ADF_ST_FILE ||
+        if (++hops > volume->blocks || !adf_pointer_ok(volume, current) || !adf_read_block(volume, current, table) ||
+            xx_data_get_u32(table + ADF_OFF_TYPE, 4, 0, true) != ADF_T_LIST || xx_data_get_u32(table + ADF_OFF_KEY, 4, 0, true) != current ||
+            xx_data_get_u32(table + ADF_OFF_PARENT, 4, 0, true) != header || xx_data_get_u32(table + ADF_OFF_SEC_TYPE, 4, 0, true) != ADF_ST_FILE ||
             !adf_checksum_ok(table))
             return false;
     }
@@ -1123,15 +1040,12 @@ static bool adf_copy_file(const adf_volume *volume, uint32_t header,
 /* Copy (or, with no @p destination, verify) one file.  The bytes count
  * against the session's budget, so shared data cannot be emitted without
  * bound. */
-static bool adf_emit_file(adf_stream *stream, const adf_member *member,
-                          xx_io_device *destination, xx_pd_struct *pd) {
+static bool adf_emit_file(adf_stream *stream, const adf_member *member, xx_io_device *destination, xx_pd_struct *pd)
+{
     const adf_volume *volume = &stream->volume;
     adf_sink sink;
     bool result;
-    if (member->size > (uint64_t)INT64_MAX ||
-        stream->emitted > stream->emit_budget ||
-        (int64_t)member->size > stream->emit_budget - stream->emitted)
-        return false;
+    if (member->size > (uint64_t)INT64_MAX || stream->emitted > stream->emit_budget || (int64_t)member->size > stream->emit_budget - stream->emitted) return false;
     stream->emitted += (int64_t)member->size;
     xx_mem_zero(&sink, sizeof(sink));
     sink.device = destination;
@@ -1148,17 +1062,16 @@ static bool adf_emit_file(adf_stream *stream, const adf_member *member,
 /* ---------------------------------------------------------------------- */
 /* Records                                                                 */
 
-static bool adf_copy_options(xx_list_s *destination, const xx_list_s *source) {
+static bool adf_copy_options(xx_list_s *destination, const xx_list_s *source)
+{
     size_t index;
     if (!source) return true;
     for (index = 0U; index < source->count; ++index) {
-        const xx_meta *item =
-            (const xx_meta *)xx_list_at((const xx_list_t *)source, index);
+        const xx_meta *item = (const xx_meta *)xx_list_at((const xx_list_t *)source, index);
         xx_meta copy;
         if (!item) continue;
         xx_meta_init(&copy, item->meta_id);
-        if (!xx_var_copy(&copy.var, &item->var) ||
-            !xx_list_append(destination, &copy)) {
+        if (!xx_var_copy(&copy.var, &item->var) || !xx_list_append(destination, &copy)) {
             xx_meta_cleanup(&copy);
             return false;
         }
@@ -1166,72 +1079,51 @@ static bool adf_copy_options(xx_list_s *destination, const xx_list_s *source) {
     return true;
 }
 
-static const xx_var *adf_option(const xx_list_s *options, uint32_t id) {
+static const xx_var *adf_option(const xx_list_s *options, uint32_t id)
+{
     size_t index;
     if (!options) return NULL;
     for (index = 0U; index < options->count; ++index) {
-        const xx_meta *item =
-            (const xx_meta *)xx_list_at((const xx_list_t *)options, index);
+        const xx_meta *item = (const xx_meta *)xx_list_at((const xx_list_t *)options, index);
         if (item && item->meta_id == id) return &item->var;
     }
     return NULL;
 }
 
-static bool adf_set_record(xx_archive_record *record,
-                           const adf_stream *stream,
-                           const adf_member *member) {
+static bool adf_set_record(xx_archive_record *record, const adf_stream *stream, const adf_member *member)
+{
     bool folder = member->kind == ADF_KIND_FOLDER;
     uint64_t size = member->kind == ADF_KIND_FILE ? member->size : 0U;
     char *name;
     bool named;
     xx_archive_record_cleanup(record);
     xx_archive_record_init(record);
-    record->header_offset =
-        stream->volume.base + (int64_t)member->header * (int64_t)ADF_BSIZE;
+    record->header_offset = stream->volume.base + (int64_t)member->header * (int64_t)ADF_BSIZE;
     record->header_size = ADF_BSIZE;
-    record->data_offset =
-        member->kind == ADF_KIND_FILE && size != 0U &&
-                adf_pointer_ok(&stream->volume, member->first)
-            ? stream->volume.base + (int64_t)member->first * (int64_t)ADF_BSIZE
-            : record->header_offset;
+    record->data_offset = member->kind == ADF_KIND_FILE && size != 0U && adf_pointer_ok(&stream->volume, member->first)
+                              ? stream->volume.base + (int64_t)member->first * (int64_t)ADF_BSIZE
+                              : record->header_offset;
     record->compressed_size = (int64_t)size;
-    name = adf_member_path(stream->items, stream->count,
-                           (uint32_t)(member - stream->items));
+    name = adf_member_path(stream->items, stream->count, (uint32_t)(member - stream->items));
     if (!name) return false;
     named = xx_archive_record_set_original_name(record, name);
     xx_mem_free(name);
-    if (!named ||
-        !xx_archive_record_set_meta_u64(record, XX_META_ID_COMPRESSED_SIZE,
-                                        size) ||
-        !xx_archive_record_set_meta_u64(record, XX_META_ID_UNCOMPRESSED_SIZE,
-                                        size) ||
-        !xx_archive_record_set_meta_u64(record, XX_META_ID_COMPRESSION_METHOD,
-                                        0U) ||
-        !xx_archive_record_set_meta_u64(record, XX_META_ID_ATTRIBUTES,
-                                        member->protect) ||
-        !xx_archive_record_set_meta_bool(record, XX_META_ID_IS_ENCRYPTED,
-                                         false) ||
+    if (!named || !xx_archive_record_set_meta_u64(record, XX_META_ID_COMPRESSED_SIZE, size) ||
+        !xx_archive_record_set_meta_u64(record, XX_META_ID_UNCOMPRESSED_SIZE, size) || !xx_archive_record_set_meta_u64(record, XX_META_ID_COMPRESSION_METHOD, 0U) ||
+        !xx_archive_record_set_meta_u64(record, XX_META_ID_ATTRIBUTES, member->protect) || !xx_archive_record_set_meta_bool(record, XX_META_ID_IS_ENCRYPTED, false) ||
         !xx_archive_record_set_meta_bool(record, XX_META_ID_IS_FOLDER, folder))
         return false;
-    if (member->timestamp >= 0 &&
-        !xx_archive_record_set_meta_u64(record, XX_META_ID_TIMESTAMP,
-                                        (uint64_t)member->timestamp))
-        return false;
-    if (member->comment && member->comment[0] &&
-        !xx_archive_record_set_meta_str(record, XX_META_ID_COMMENT,
-                                        member->comment))
-        return false;
-    if (member->link_target &&
-        !xx_archive_record_set_meta_str(record, XX_META_ID_LINK_TARGET,
-                                        member->link_target))
-        return false;
+    if (member->timestamp >= 0 && !xx_archive_record_set_meta_u64(record, XX_META_ID_TIMESTAMP, (uint64_t)member->timestamp)) return false;
+    if (member->comment && member->comment[0] && !xx_archive_record_set_meta_str(record, XX_META_ID_COMMENT, member->comment)) return false;
+    if (member->link_target && !xx_archive_record_set_meta_str(record, XX_META_ID_LINK_TARGET, member->link_target)) return false;
     return true;
 }
 
 /* ---------------------------------------------------------------------- */
 /* Public API                                                              */
 
-void xx_adf_init(xx_adf *image, xx_io_device *device, int64_t base_address) {
+void xx_adf_init(xx_adf *image, xx_io_device *device, int64_t base_address)
+{
     if (!image) return;
     xx_mem_zero(image, sizeof(*image));
     xx_format_init(&image->format, device, base_address);
@@ -1244,45 +1136,44 @@ void xx_adf_init(xx_adf *image, xx_io_device *device, int64_t base_address) {
     image->format.check_is_valid = xx_adf_check_is_valid;
     image->format.handle_base_info = xx_adf_handle_base_info;
     image->format.get_format_size = xx_adf_get_format_size;
-    image->format.get_number_of_archive_records =
-        xx_adf_get_number_of_archive_records;
-    image->format.create_archive_records_reading =
-        xx_adf_create_archive_records_reading;
-    image->format.get_current_archive_record =
-        xx_adf_get_current_archive_record;
-    image->format.unpack_current_archive_record =
-        xx_adf_unpack_current_archive_record;
-    image->format.archive_record_move_to_next =
-        xx_adf_archive_record_move_to_next;
-    image->format.free_archive_records_reading =
-        xx_adf_free_archive_records_reading;
+    image->format.get_number_of_archive_records = xx_adf_get_number_of_archive_records;
+    image->format.create_archive_records_reading = xx_adf_create_archive_records_reading;
+    image->format.get_current_archive_record = xx_adf_get_current_archive_record;
+    image->format.unpack_current_archive_record = xx_adf_unpack_current_archive_record;
+    image->format.archive_record_move_to_next = xx_adf_archive_record_move_to_next;
+    image->format.free_archive_records_reading = xx_adf_free_archive_records_reading;
     image->image_size = -1;
 }
 
-xx_adf *xx_adf_create(xx_io_device *device, int64_t base_address) {
+xx_adf *xx_adf_create(xx_io_device *device, int64_t base_address)
+{
     xx_adf *image = (xx_adf *)xx_mem_alloc(sizeof(*image));
     if (image) xx_adf_init(image, device, base_address);
     return image;
 }
 
-void xx_adf_destroy(xx_adf *image) {
+void xx_adf_destroy(xx_adf *image)
+{
     if (image) xx_format_cleanup_extra_parameters(&image->format);
 }
 
-void xx_adf_free(xx_adf *image) {
+void xx_adf_free(xx_adf *image)
+{
     if (!image) return;
     xx_adf_destroy(image);
     xx_mem_free(image);
 }
 
 /* Cheap: the boot tag and one root block. */
-bool xx_adf_check_is_valid(Abstractformat *format, xx_pd_struct *pd) {
+bool xx_adf_check_is_valid(Abstractformat *format, xx_pd_struct *pd)
+{
     adf_volume volume;
     (void)pd;
     return adf_open_volume(format, &volume, NULL);
 }
 
-bool xx_adf_handle_base_info(Abstractformat *format, xx_pd_struct *pd) {
+bool xx_adf_handle_base_info(Abstractformat *format, xx_pd_struct *pd)
+{
     adf_stream *stream;
     xx_adf *image;
     if (!format || !adf_parse(format, &stream, pd)) return false;
@@ -1293,8 +1184,7 @@ bool xx_adf_handle_base_info(Abstractformat *format, xx_pd_struct *pd) {
     image->block_count = stream->volume.blocks;
     image->dos_type = stream->volume.dos_type;
     image->blank_boot = stream->volume.blank_boot ? 1U : 0U;
-    xx_rt_memcpy(image->volume_name, stream->volume.volume_name,
-                 sizeof(image->volume_name));
+    xx_rt_memcpy(image->volume_name, stream->volume.volume_name, sizeof(image->volume_name));
     format->number_of_archive_records = stream->count;
     format->format_size = stream->volume.format_size;
     format->is_valid = true;
@@ -1303,23 +1193,18 @@ bool xx_adf_handle_base_info(Abstractformat *format, xx_pd_struct *pd) {
     return true;
 }
 
-int64_t xx_adf_get_format_size(Abstractformat *format, xx_pd_struct *pd) {
-    return format && (format->base_info_handled ||
-                      xx_adf_handle_base_info(format, pd))
-               ? format->format_size
-               : -1;
+int64_t xx_adf_get_format_size(Abstractformat *format, xx_pd_struct *pd)
+{
+    return format && (format->base_info_handled || xx_adf_handle_base_info(format, pd)) ? format->format_size : -1;
 }
 
-uint64_t xx_adf_get_number_of_archive_records(Abstractformat *format,
-                                              xx_pd_struct *pd) {
-    return format && (format->base_info_handled ||
-                      xx_adf_handle_base_info(format, pd))
-               ? ((xx_adf *)format)->number_of_records
-               : 0U;
+uint64_t xx_adf_get_number_of_archive_records(Abstractformat *format, xx_pd_struct *pd)
+{
+    return format && (format->base_info_handled || xx_adf_handle_base_info(format, pd)) ? ((xx_adf *)format)->number_of_records : 0U;
 }
 
-xx_archive_record_state *xx_adf_create_archive_records_reading(
-    Abstractformat *format, const xx_list_s *options, xx_pd_struct *pd) {
+xx_archive_record_state *xx_adf_create_archive_records_reading(Abstractformat *format, const xx_list_s *options, xx_pd_struct *pd)
+{
     adf_stream *stream;
     xx_archive_record_state *state;
     if (!format || !adf_parse(format, &stream, pd)) return NULL;
@@ -1332,9 +1217,7 @@ xx_archive_record_state *xx_adf_create_archive_records_reading(
     state->internal_state = stream;
     state->free_internal = adf_stream_free;
     state->total_records = stream->count;
-    if (!adf_copy_options(&state->options, options) ||
-        (stream->count != 0U &&
-         !adf_set_record(&state->current_record, stream, &stream->items[0]))) {
+    if (!adf_copy_options(&state->options, options) || (stream->count != 0U && !adf_set_record(&state->current_record, stream, &stream->items[0]))) {
         xx_archive_record_state_free(state);
         return NULL;
     }
@@ -1342,33 +1225,26 @@ xx_archive_record_state *xx_adf_create_archive_records_reading(
     return state;
 }
 
-const xx_archive_record *xx_adf_get_current_archive_record(
-    Abstractformat *format, xx_archive_record_state *state) {
-    return format && state && state->format == format && state->has_record
-               ? &state->current_record
-               : NULL;
+const xx_archive_record *xx_adf_get_current_archive_record(Abstractformat *format, xx_archive_record_state *state)
+{
+    return format && state && state->format == format && state->has_record ? &state->current_record : NULL;
 }
 
-bool xx_adf_archive_record_move_to_next(Abstractformat *format,
-                                        xx_archive_record_state *state,
-                                        xx_pd_struct *pd) {
+bool xx_adf_archive_record_move_to_next(Abstractformat *format, xx_archive_record_state *state, xx_pd_struct *pd)
+{
     adf_stream *stream;
     (void)pd;
-    if (!format || !state || state->format != format ||
-        !(stream = (adf_stream *)state->internal_state) ||
-        ++stream->index >= stream->count) {
+    if (!format || !state || state->format != format || !(stream = (adf_stream *)state->internal_state) || ++stream->index >= stream->count) {
         if (state) state->has_record = false;
         return false;
     }
     ++state->current_index;
-    state->has_record = adf_set_record(&state->current_record, stream,
-                                       &stream->items[stream->index]);
+    state->has_record = adf_set_record(&state->current_record, stream, &stream->items[stream->index]);
     return state->has_record;
 }
 
-bool xx_adf_unpack_current_archive_record(Abstractformat *format,
-                                          xx_archive_record_state *state,
-                                          xx_pd_struct *pd) {
+bool xx_adf_unpack_current_archive_record(Abstractformat *format, xx_archive_record_state *state, xx_pd_struct *pd)
+{
     adf_stream *stream;
     const adf_member *member;
     const xx_var *path_option;
@@ -1378,33 +1254,24 @@ bool xx_adf_unpack_current_archive_record(Abstractformat *format,
     char *path = NULL;
     bool result = false;
     bool created = false;
-    if (!format || !state || state->format != format || !state->has_record ||
-        !(stream = (adf_stream *)state->internal_state) ||
-        stream->index >= stream->count || (pd && xx_pd_is_stopped(pd)))
+    if (!format || !state || state->format != format || !state->has_record || !(stream = (adf_stream *)state->internal_state) || stream->index >= stream->count ||
+        (pd && xx_pd_is_stopped(pd)))
         return false;
     member = &stream->items[stream->index];
     /* A soft link is not a byte stream; the target is on the record. */
     if (member->kind == ADF_KIND_SOFTLINK) return false;
     path_option = adf_option(&state->options, XX_META_ID_OPT_UNPACK_PATH);
-    if (!path_option)
-        return member->kind == ADF_KIND_FOLDER ||
-               adf_emit_file(stream, member, NULL, pd);
-    if (path_option->type == XX_VAR_TYPE_STRING ||
-        path_option->type == XX_VAR_TYPE_STRING_VIEW) {
+    if (!path_option) return member->kind == ADF_KIND_FOLDER || adf_emit_file(stream, member, NULL, pd);
+    if (path_option->type == XX_VAR_TYPE_STRING || path_option->type == XX_VAR_TYPE_STRING_VIEW) {
         base = xx_var_get_str(path_option);
-    } else if (path_option->type == XX_VAR_TYPE_WSTRING ||
-               path_option->type == XX_VAR_TYPE_WSTRING_VIEW) {
+    } else if (path_option->type == XX_VAR_TYPE_WSTRING || path_option->type == XX_VAR_TYPE_WSTRING_VIEW) {
         owned_base = xx_str_unicode_to_utf8(xx_var_get_wstr(path_option));
         base = owned_base;
     }
     if (!base) goto done;
-    name = adf_member_path(stream->items, stream->count,
-                           (uint32_t)stream->index);
+    name = adf_member_path(stream->items, stream->count, (uint32_t)stream->index);
     if (!name) goto done;
-    path = (base[0] && base[xx_str_len(base) - 1U] != '/' &&
-            base[xx_str_len(base) - 1U] != '\\')
-               ? xx_str_concat3(base, "/", name)
-               : xx_str_concat(base, name);
+    path = (base[0] && base[xx_str_len(base) - 1U] != '/' && base[xx_str_len(base) - 1U] != '\\') ? xx_str_concat3(base, "/", name) : xx_str_concat(base, name);
     if (!path) goto done;
     if (member->kind == ADF_KIND_FOLDER) {
         result = xx_store_create_dirs_a(path, true);
@@ -1426,8 +1293,8 @@ done:
     return result;
 }
 
-void xx_adf_free_archive_records_reading(Abstractformat *format,
-                                         xx_archive_record_state *state) {
+void xx_adf_free_archive_records_reading(Abstractformat *format, xx_archive_record_state *state)
+{
     (void)format;
     xx_archive_record_state_free(state);
 }

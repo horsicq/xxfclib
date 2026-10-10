@@ -44,9 +44,8 @@
  * measured before anything has been allocated for it.  One routine, so the
  * measure and the decode can never disagree about what a chain contains.
  */
-static bool rid_chain(const uint8_t *input, size_t input_size,
-                      uint8_t *output, size_t limit, size_t *consumed,
-                      size_t *produced) {
+static bool rid_chain(const uint8_t *input, size_t input_size, uint8_t *output, size_t limit, size_t *consumed, size_t *produced)
+{
     size_t offset = 0U;
     size_t out_at = 0U;
     unsigned blocks = 0U;
@@ -61,12 +60,10 @@ static bool rid_chain(const uint8_t *input, size_t input_size,
 
         /* Frame read, bounded exactly as the reference bounds it: the frame
          * must lie whole inside the buffer. */
-        if ((input_size < RID_FRAME_SIZE) ||
-            (offset > input_size - RID_FRAME_SIZE)) {
+        if ((input_size < RID_FRAME_SIZE) || (offset > input_size - RID_FRAME_SIZE)) {
             return false;
         }
-        block_size = (size_t)input[offset] |
-                     ((size_t)input[offset + 1U] << 8);
+        block_size = (size_t)input[offset] | ((size_t)input[offset + 1U] << 8);
         block_type = input[offset + 2U];
         offset += RID_FRAME_SIZE;
 
@@ -79,8 +76,7 @@ static bool rid_chain(const uint8_t *input, size_t input_size,
             if (produced) *produced = out_at;
             return true;
         }
-        if ((block_type != RID_TYPE_STORED) &&
-            (block_type != RID_TYPE_PACKED)) {
+        if ((block_type != RID_TYPE_STORED) && (block_type != RID_TYPE_PACKED)) {
             return false;
         }
         if ((block_size == 0U) || (block_size > RID_MAX_BLOCK_SIZE)) {
@@ -99,8 +95,7 @@ static bool rid_chain(const uint8_t *input, size_t input_size,
             size_t block_out = 0U;
             /* budget == 0 fails inside xx_dcl_scan_memory, which is what the
              * reference does too: XDclDecoder refuses maxOutputSize < 1. */
-            if (!xx_dcl_scan_memory(input + offset, block_size, budget, NULL,
-                                    &block_out)) {
+            if (!xx_dcl_scan_memory(input + offset, block_size, budget, NULL, &block_out)) {
                 return false;
             }
             /* Deliberate, and matching the reference: XDclDecoder rejects a
@@ -110,10 +105,7 @@ static bool rid_chain(const uint8_t *input, size_t input_size,
             if (block_out == 0U) return false;
             if (output) {
                 size_t block_written = 0U;
-                if (!xx_dcl_decode_memory(input + offset, block_size,
-                                          output + out_at, block_out,
-                                          &block_written) ||
-                    (block_written != block_out)) {
+                if (!xx_dcl_decode_memory(input + offset, block_size, output + out_at, block_out, &block_written) || (block_written != block_out)) {
                     return false;
                 }
             }
@@ -127,17 +119,15 @@ static bool rid_chain(const uint8_t *input, size_t input_size,
     return false;
 }
 
-bool xx_rid_decode_memory(const uint8_t *input, size_t input_size,
-                          uint8_t *output, size_t output_size,
-                          size_t *written) {
+bool xx_rid_decode_memory(const uint8_t *input, size_t input_size, uint8_t *output, size_t output_size, size_t *written)
+{
     size_t chain_size = 0U;
     size_t chain_out = 0U;
 
     if (written) *written = 0U;
     if (output_size > RID_MAX_MEMBER_SIZE) return false;
     if (!output && (output_size != 0U)) return false;
-    if (!rid_chain(input, input_size, output, output_size, &chain_size,
-                   &chain_out)) {
+    if (!rid_chain(input, input_size, output, output_size, &chain_size, &chain_out)) {
         return false;
     }
     /* The caller hands over the member's exact extent, so a chain that
@@ -149,9 +139,8 @@ bool xx_rid_decode_memory(const uint8_t *input, size_t input_size,
     return true;
 }
 
-bool xx_rid_scan_memory(const uint8_t *input, size_t input_size,
-                        size_t max_output, size_t *consumed,
-                        size_t *produced) {
+bool xx_rid_scan_memory(const uint8_t *input, size_t input_size, size_t max_output, size_t *consumed, size_t *produced)
+{
     if (consumed) *consumed = 0U;
     if (produced) *produced = 0U;
     return rid_chain(input, input_size, NULL, max_output, consumed, produced);

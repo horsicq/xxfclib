@@ -24,27 +24,24 @@ typedef struct xx_softronics_bit_reader_s {
     size_t bit_position;
 } xx_softronics_bit_reader;
 
-static bool xx_softronics_read_code(xx_softronics_bit_reader *reader,
-                                    unsigned width, uint16_t *code) {
+static bool xx_softronics_read_code(xx_softronics_bit_reader *reader, unsigned width, uint16_t *code)
+{
     uint16_t value = 0U;
     unsigned index;
-    if (!reader || !code || width == 0U || width > XX_SOFTRONICS_MAX_BITS ||
-        reader->bit_position > reader->bit_size ||
-        width > reader->bit_size - reader->bit_position) {
+    if (!reader || !code || width == 0U || width > XX_SOFTRONICS_MAX_BITS || reader->bit_position > reader->bit_size || width > reader->bit_size - reader->bit_position) {
         return false;
     }
     for (index = 0U; index < width; ++index) {
         size_t bit = reader->bit_position + index;
-        value |= (uint16_t)(((reader->data[bit >> 3U] >> (bit & 7U)) & 1U)
-                            << index);
+        value |= (uint16_t)(((reader->data[bit >> 3U] >> (bit & 7U)) & 1U) << index);
     }
     reader->bit_position += width;
     *code = value;
     return true;
 }
 
-static bool xx_softronics_padding_is_zero(
-    const xx_softronics_bit_reader *reader) {
+static bool xx_softronics_padding_is_zero(const xx_softronics_bit_reader *reader)
+{
     size_t bit;
     if (!reader || reader->bit_position > reader->bit_size) return false;
     for (bit = reader->bit_position; bit < reader->bit_size; ++bit) {
@@ -55,14 +52,12 @@ static bool xx_softronics_padding_is_zero(
     return true;
 }
 
-static bool xx_softronics_expand_code(
-    uint16_t code, uint16_t next_code, const uint16_t *prefix,
-    const uint8_t *suffix, uint8_t *stack, size_t *stack_size,
-    uint8_t *first_byte) {
+static bool xx_softronics_expand_code(uint16_t code, uint16_t next_code, const uint16_t *prefix, const uint8_t *suffix, uint8_t *stack, size_t *stack_size,
+                                      uint8_t *first_byte)
+{
     size_t count = 0U;
     uint16_t current = code;
-    if (!prefix || !suffix || !stack || !stack_size || !first_byte ||
-        code >= next_code) {
+    if (!prefix || !suffix || !stack || !stack_size || !first_byte || code >= next_code) {
         return false;
     }
     while (current >= XX_SOFTRONICS_CLEAR) {
@@ -79,13 +74,10 @@ static bool xx_softronics_expand_code(
     return true;
 }
 
-static bool xx_softronics_emit_reversed(uint8_t *output, size_t output_size,
-                                        size_t *output_position,
-                                        const uint8_t *stack,
-                                        size_t stack_size) {
+static bool xx_softronics_emit_reversed(uint8_t *output, size_t output_size, size_t *output_position, const uint8_t *stack, size_t stack_size)
+{
     size_t index;
-    if (!output || !output_position || !stack || stack_size == 0U ||
-        stack_size > output_size - *output_position) {
+    if (!output || !output_position || !stack || stack_size == 0U || stack_size > output_size - *output_position) {
         return false;
     }
     for (index = stack_size; index != 0U; --index) {
@@ -94,9 +86,8 @@ static bool xx_softronics_emit_reversed(uint8_t *output, size_t output_size,
     return true;
 }
 
-bool xx_softronics_lzw_decompress_memory(
-    const uint8_t *input, size_t input_size, uint8_t *output,
-    size_t output_size, size_t *consumed_size) {
+bool xx_softronics_lzw_decompress_memory(const uint8_t *input, size_t input_size, uint8_t *output, size_t output_size, size_t *consumed_size)
+{
     xx_softronics_bit_reader reader;
     uint16_t prefix[XX_SOFTRONICS_DICTIONARY_SIZE];
     uint8_t suffix[XX_SOFTRONICS_DICTIONARY_SIZE];
@@ -109,15 +100,13 @@ bool xx_softronics_lzw_decompress_memory(
     bool have_previous = false;
     uint16_t code;
     if (consumed_size) *consumed_size = 0U;
-    if (!input || !output || input_size == 0U || output_size == 0U ||
-        input_size > SIZE_MAX / 8U) {
+    if (!input || !output || input_size == 0U || output_size == 0U || input_size > SIZE_MAX / 8U) {
         return false;
     }
     xx_rt_memset(&reader, 0, sizeof(reader));
     reader.data = input;
     reader.bit_size = input_size * 8U;
-    if (!xx_softronics_read_code(&reader, width, &code) ||
-        code != XX_SOFTRONICS_CLEAR) {
+    if (!xx_softronics_read_code(&reader, width, &code) || code != XX_SOFTRONICS_CLEAR) {
         return false;
     }
     for (;;) {
@@ -131,8 +120,7 @@ bool xx_softronics_lzw_decompress_memory(
             continue;
         }
         if (code == XX_SOFTRONICS_END) {
-            if (!have_previous || output_position != output_size ||
-                !xx_softronics_padding_is_zero(&reader)) {
+            if (!have_previous || output_position != output_size || !xx_softronics_padding_is_zero(&reader)) {
                 return false;
             }
             if (consumed_size) *consumed_size = input_size;
@@ -149,21 +137,13 @@ bool xx_softronics_lzw_decompress_memory(
             continue;
         }
         if (code < next_code) {
-            if (!xx_softronics_expand_code(code, next_code, prefix, suffix,
-                                            stack, &stack_size, &first_byte) ||
-                !xx_softronics_emit_reversed(output, output_size,
-                                               &output_position, stack,
-                                               stack_size)) {
+            if (!xx_softronics_expand_code(code, next_code, prefix, suffix, stack, &stack_size, &first_byte) ||
+                !xx_softronics_emit_reversed(output, output_size, &output_position, stack, stack_size)) {
                 return false;
             }
         } else if (code == next_code && next_code < XX_SOFTRONICS_DICTIONARY_SIZE) {
-            if (!xx_softronics_expand_code(previous_code, next_code, prefix,
-                                            suffix, stack, &stack_size,
-                                            &first_byte) ||
-                !xx_softronics_emit_reversed(output, output_size,
-                                               &output_position, stack,
-                                               stack_size) ||
-                output_position >= output_size) {
+            if (!xx_softronics_expand_code(previous_code, next_code, prefix, suffix, stack, &stack_size, &first_byte) ||
+                !xx_softronics_emit_reversed(output, output_size, &output_position, stack, stack_size) || output_position >= output_size) {
                 return false;
             }
             output[output_position++] = previous_first;
@@ -175,8 +155,7 @@ bool xx_softronics_lzw_decompress_memory(
             prefix[next_code] = previous_code;
             suffix[next_code] = first_byte;
             ++next_code;
-            if (width < XX_SOFTRONICS_MAX_BITS &&
-                next_code == (UINT16_C(1) << width)) {
+            if (width < XX_SOFTRONICS_MAX_BITS && next_code == (UINT16_C(1) << width)) {
                 ++width;
             }
         }

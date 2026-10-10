@@ -44,15 +44,12 @@ typedef struct xx_lzop_checksums_s {
     uint32_t crc32;
 } xx_lzop_checksums;
 
-static const uint8_t xx_lzop_magic[XX_LZOP_MAGIC_SIZE] = {
-    UINT8_C(0x89), 'L', 'Z', 'O', 0U, UINT8_C(0x0d), UINT8_C(0x0a),
-    UINT8_C(0x1a), UINT8_C(0x0a)};
+static const uint8_t xx_lzop_magic[XX_LZOP_MAGIC_SIZE] = {UINT8_C(0x89), 'L', 'Z', 'O', 0U, UINT8_C(0x0d), UINT8_C(0x0a), UINT8_C(0x1a), UINT8_C(0x0a)};
 
-static bool xx_lzop_read(xx_lzop_reader *reader, void *data, size_t size) {
+static bool xx_lzop_read(xx_lzop_reader *reader, void *data, size_t size)
+{
     size_t done = 0U;
-    if (!reader || (!data && size != 0U) || reader->cursor < 0 ||
-        reader->cursor > reader->end ||
-        (uint64_t)size > (uint64_t)(reader->end - reader->cursor)) {
+    if (!reader || (!data && size != 0U) || reader->cursor < 0 || reader->cursor > reader->end || (uint64_t)size > (uint64_t)(reader->end - reader->cursor)) {
         return false;
     }
     while (done < size) {
@@ -68,8 +65,8 @@ static bool xx_lzop_read(xx_lzop_reader *reader, void *data, size_t size) {
     return true;
 }
 
-static uint32_t xx_lzop_adler32_update(uint32_t initial,
-                                        const uint8_t *data, size_t size) {
+static uint32_t xx_lzop_adler32_update(uint32_t initial, const uint8_t *data, size_t size)
+{
     uint32_t a = initial & UINT32_C(0xffff);
     uint32_t b = initial >> 16U;
     while (size != 0U) {
@@ -87,57 +84,54 @@ static uint32_t xx_lzop_adler32_update(uint32_t initial,
     return (b << 16U) | a;
 }
 
-static void xx_lzop_checksums_init(xx_lzop_checksums *checksums) {
+static void xx_lzop_checksums_init(xx_lzop_checksums *checksums)
+{
     if (!checksums) return;
     checksums->adler32 = 1U;
     checksums->crc32 = 0U;
 }
 
-static void xx_lzop_checksums_update(xx_lzop_checksums *checksums,
-                                     const void *data, size_t size) {
+static void xx_lzop_checksums_update(xx_lzop_checksums *checksums, const void *data, size_t size)
+{
     if (!checksums || (!data && size != 0U)) return;
-    checksums->adler32 = xx_lzop_adler32_update(
-        checksums->adler32, (const uint8_t *)data, size);
+    checksums->adler32 = xx_lzop_adler32_update(checksums->adler32, (const uint8_t *)data, size);
     checksums->crc32 = xx_crc32_calc(checksums->crc32, data, size);
 }
 
-static bool xx_lzop_read_checked(xx_lzop_reader *reader, void *data,
-                                 size_t size, xx_lzop_checksums *checksums) {
+static bool xx_lzop_read_checked(xx_lzop_reader *reader, void *data, size_t size, xx_lzop_checksums *checksums)
+{
     if (!xx_lzop_read(reader, data, size)) return false;
     xx_lzop_checksums_update(checksums, data, size);
     return true;
 }
 
-static bool xx_lzop_read_u16be(xx_lzop_reader *reader, uint16_t *value,
-                               xx_lzop_checksums *checksums) {
+static bool xx_lzop_read_u16be(xx_lzop_reader *reader, uint16_t *value, xx_lzop_checksums *checksums)
+{
     uint8_t bytes[2];
-    if (!value || !xx_lzop_read_checked(reader, bytes, sizeof(bytes),
-                                        checksums)) {
+    if (!value || !xx_lzop_read_checked(reader, bytes, sizeof(bytes), checksums)) {
         return false;
     }
     *value = ((uint16_t)bytes[0] << 8U) | bytes[1];
     return true;
 }
 
-static bool xx_lzop_read_u32be(xx_lzop_reader *reader, uint32_t *value,
-                               xx_lzop_checksums *checksums) {
+static bool xx_lzop_read_u32be(xx_lzop_reader *reader, uint32_t *value, xx_lzop_checksums *checksums)
+{
     uint8_t bytes[4];
-    if (!value || !xx_lzop_read_checked(reader, bytes, sizeof(bytes),
-                                        checksums)) {
+    if (!value || !xx_lzop_read_checked(reader, bytes, sizeof(bytes), checksums)) {
         return false;
     }
-    *value = ((uint32_t)bytes[0] << 24U) | ((uint32_t)bytes[1] << 16U) |
-             ((uint32_t)bytes[2] << 8U) | bytes[3];
+    *value = ((uint32_t)bytes[0] << 24U) | ((uint32_t)bytes[1] << 16U) | ((uint32_t)bytes[2] << 8U) | bytes[3];
     return true;
 }
 
-static bool xx_lzop_read_u32be_plain(xx_lzop_reader *reader,
-                                     uint32_t *value) {
+static bool xx_lzop_read_u32be_plain(xx_lzop_reader *reader, uint32_t *value)
+{
     return xx_lzop_read_u32be(reader, value, NULL);
 }
 
-static bool xx_lzop_write_all(xx_io_device *destination, const void *data,
-                              size_t size, size_t capacity) {
+static bool xx_lzop_write_all(xx_io_device *destination, const void *data, size_t size, size_t capacity)
+{
     size_t done = 0U;
     if (!destination || (!data && size != 0U)) return false;
     while (done < size) {
@@ -152,19 +146,19 @@ static bool xx_lzop_write_all(xx_io_device *destination, const void *data,
     return true;
 }
 
-bool xx_lzop_has_header(const uint8_t *data, size_t size) {
-    return data && size >= XX_LZOP_MAGIC_SIZE &&
-           xx_rt_memcmp(data, xx_lzop_magic, XX_LZOP_MAGIC_SIZE) == 0;
+bool xx_lzop_has_header(const uint8_t *data, size_t size)
+{
+    return data && size >= XX_LZOP_MAGIC_SIZE && xx_rt_memcmp(data, xx_lzop_magic, XX_LZOP_MAGIC_SIZE) == 0;
 }
 
-static bool xx_lzop_read_extra_field(xx_lzop_reader *reader, bool crc32) {
+static bool xx_lzop_read_extra_field(xx_lzop_reader *reader, bool crc32)
+{
     uint32_t length;
     uint32_t expected;
     xx_lzop_checksums checksums;
     size_t capacity = reader ? reader->capacity : 0;
     uint8_t *buffer = NULL;
-    if (!reader || !xx_lzop_read_u32be_plain(reader, &length) ||
-        length > XX_LZOP_MAX_EXTRA_SIZE) {
+    if (!reader || !xx_lzop_read_u32be_plain(reader, &length) || length > XX_LZOP_MAX_EXTRA_SIZE) {
         return false;
     }
     xx_lzop_checksums_init(&checksums);
@@ -174,9 +168,7 @@ static bool xx_lzop_read_extra_field(xx_lzop_reader *reader, bool crc32) {
         if (!buffer) return false;
     }
     {
-        uint8_t bytes[4] = {(uint8_t)(length >> 24U),
-                            (uint8_t)(length >> 16U),
-                            (uint8_t)(length >> 8U), (uint8_t)length};
+        uint8_t bytes[4] = {(uint8_t)(length >> 24U), (uint8_t)(length >> 16U), (uint8_t)(length >> 8U), (uint8_t)length};
         xx_lzop_checksums_update(&checksums, bytes, sizeof(bytes));
     }
     while (length != 0U) {
@@ -188,14 +180,11 @@ static bool xx_lzop_read_extra_field(xx_lzop_reader *reader, bool crc32) {
         length -= (uint32_t)count;
     }
     xx_mem_free(buffer);
-    return xx_lzop_read_u32be_plain(reader, &expected) &&
-           expected == (crc32 ? checksums.crc32 : checksums.adler32);
+    return xx_lzop_read_u32be_plain(reader, &expected) && expected == (crc32 ? checksums.crc32 : checksums.adler32);
 }
 
-static bool xx_lzop_decode_stream(xx_lzop_reader *reader,
-                                  xx_io_device *destination,
-                                  uint64_t *total_output,
-                                  xx_pd_struct *pd) {
+static bool xx_lzop_decode_stream(xx_lzop_reader *reader, xx_io_device *destination, uint64_t *total_output, xx_pd_struct *pd)
+{
     xx_lzop_checksums header_checksums;
     uint16_t version;
     uint16_t library_version;
@@ -209,51 +198,35 @@ static bool xx_lzop_decode_stream(xx_lzop_reader *reader,
 
     if (!reader || !destination || !total_output) return false;
     xx_lzop_checksums_init(&header_checksums);
-    if (!xx_lzop_read_u16be(reader, &version, &header_checksums) ||
-        !xx_lzop_read_u16be(reader, &library_version, &header_checksums) ||
-        version < XX_LZOP_MIN_VERSION || version > XX_LZOP_MAX_VERSION) {
+    if (!xx_lzop_read_u16be(reader, &version, &header_checksums) || !xx_lzop_read_u16be(reader, &library_version, &header_checksums) || version < XX_LZOP_MIN_VERSION ||
+        version > XX_LZOP_MAX_VERSION) {
         return false;
     }
     if (version >= UINT16_C(0x0940) &&
-        (!xx_lzop_read_u16be(reader, &needed_version, &header_checksums) ||
-         needed_version < XX_LZOP_MIN_VERSION ||
-         needed_version > XX_LZOP_MAX_VERSION)) {
+        (!xx_lzop_read_u16be(reader, &needed_version, &header_checksums) || needed_version < XX_LZOP_MIN_VERSION || needed_version > XX_LZOP_MAX_VERSION)) {
         return false;
     }
-    if (!xx_lzop_read_checked(reader, &method, 1U, &header_checksums) ||
-        (method != 1U && method != 2U && method != 3U)) {
+    if (!xx_lzop_read_checked(reader, &method, 1U, &header_checksums) || (method != 1U && method != 2U && method != 3U)) {
         return false;
     }
-    if (version >= UINT16_C(0x0940) &&
-        !xx_lzop_read_checked(reader, &level, 1U, &header_checksums)) {
+    if (version >= UINT16_C(0x0940) && !xx_lzop_read_checked(reader, &level, 1U, &header_checksums)) {
         return false;
     }
-    if (!xx_lzop_read_u32be(reader, &flags, &header_checksums) ||
-        (flags & ~XX_LZOP_ALLOWED_FLAGS) != 0U ||
-        (flags & (XX_LZOP_FLAG_FILTER | XX_LZOP_FLAG_MULTIPART)) != 0U ||
-        !xx_lzop_read_u32be(reader, &unused, &header_checksums) ||
-        !xx_lzop_read_u32be(reader, &unused, &header_checksums) ||
-        (version >= UINT16_C(0x0940) &&
-         !xx_lzop_read_u32be(reader, &unused, &header_checksums)) ||
-        !xx_lzop_read_checked(reader, &filename_length, 1U,
-                              &header_checksums)) {
+    if (!xx_lzop_read_u32be(reader, &flags, &header_checksums) || (flags & ~XX_LZOP_ALLOWED_FLAGS) != 0U ||
+        (flags & (XX_LZOP_FLAG_FILTER | XX_LZOP_FLAG_MULTIPART)) != 0U || !xx_lzop_read_u32be(reader, &unused, &header_checksums) ||
+        !xx_lzop_read_u32be(reader, &unused, &header_checksums) || (version >= UINT16_C(0x0940) && !xx_lzop_read_u32be(reader, &unused, &header_checksums)) ||
+        !xx_lzop_read_checked(reader, &filename_length, 1U, &header_checksums)) {
         return false;
     }
     if (filename_length != 0U) {
         uint8_t filename[255];
-        if (!xx_lzop_read_checked(reader, filename, filename_length,
-                                  &header_checksums)) {
+        if (!xx_lzop_read_checked(reader, filename, filename_length, &header_checksums)) {
             return false;
         }
     }
     if (!xx_lzop_read_u32be_plain(reader, &expected_header_checksum) ||
-        expected_header_checksum !=
-            ((flags & XX_LZOP_FLAG_HEADER_CRC) != 0U
-                 ? header_checksums.crc32
-                 : header_checksums.adler32) ||
-        ((flags & XX_LZOP_FLAG_HEADER_EXTRA) != 0U &&
-         !xx_lzop_read_extra_field(
-             reader, (flags & XX_LZOP_FLAG_HEADER_CRC) != 0U))) {
+        expected_header_checksum != ((flags & XX_LZOP_FLAG_HEADER_CRC) != 0U ? header_checksums.crc32 : header_checksums.adler32) ||
+        ((flags & XX_LZOP_FLAG_HEADER_EXTRA) != 0U && !xx_lzop_read_extra_field(reader, (flags & XX_LZOP_FLAG_HEADER_CRC) != 0U))) {
         return false;
     }
 
@@ -271,27 +244,18 @@ static bool xx_lzop_decode_stream(xx_lzop_reader *reader,
         xx_lzop_checksums checksums;
         bool result = false;
 
-        if ((pd && xx_pd_is_stopped(pd)) ||
-            !xx_lzop_read_u32be_plain(reader, &expanded_size)) {
+        if ((pd && xx_pd_is_stopped(pd)) || !xx_lzop_read_u32be_plain(reader, &expanded_size)) {
             return false;
         }
         if (expanded_size == 0U) return true;
-        if (expanded_size > XX_LZOP_MAX_BLOCK_SIZE ||
-            *total_output > (uint64_t)INT64_MAX - expanded_size ||
-            !xx_lzop_read_u32be_plain(reader, &packed_size) ||
+        if (expanded_size > XX_LZOP_MAX_BLOCK_SIZE || *total_output > (uint64_t)INT64_MAX - expanded_size || !xx_lzop_read_u32be_plain(reader, &packed_size) ||
             packed_size == 0U || packed_size > expanded_size) {
             return false;
         }
-        if (((flags & XX_LZOP_FLAG_ADLER_DATA) != 0U &&
-             !xx_lzop_read_u32be_plain(reader, &expected_adler_data)) ||
-            ((flags & XX_LZOP_FLAG_CRC_DATA) != 0U &&
-             !xx_lzop_read_u32be_plain(reader, &expected_crc_data)) ||
-            (packed_size < expanded_size &&
-             (flags & XX_LZOP_FLAG_ADLER_COMPRESSED) != 0U &&
-             !xx_lzop_read_u32be_plain(reader, &expected_adler_packed)) ||
-            (packed_size < expanded_size &&
-             (flags & XX_LZOP_FLAG_CRC_COMPRESSED) != 0U &&
-             !xx_lzop_read_u32be_plain(reader, &expected_crc_packed))) {
+        if (((flags & XX_LZOP_FLAG_ADLER_DATA) != 0U && !xx_lzop_read_u32be_plain(reader, &expected_adler_data)) ||
+            ((flags & XX_LZOP_FLAG_CRC_DATA) != 0U && !xx_lzop_read_u32be_plain(reader, &expected_crc_data)) ||
+            (packed_size < expanded_size && (flags & XX_LZOP_FLAG_ADLER_COMPRESSED) != 0U && !xx_lzop_read_u32be_plain(reader, &expected_adler_packed)) ||
+            (packed_size < expanded_size && (flags & XX_LZOP_FLAG_CRC_COMPRESSED) != 0U && !xx_lzop_read_u32be_plain(reader, &expected_crc_packed))) {
             return false;
         }
         packed = (uint8_t *)xx_mem_alloc((size_t)packed_size);
@@ -301,11 +265,8 @@ static bool xx_lzop_decode_stream(xx_lzop_reader *reader,
         }
         xx_lzop_checksums_init(&checksums);
         xx_lzop_checksums_update(&checksums, packed, (size_t)packed_size);
-        if (packed_size < expanded_size &&
-            (((flags & XX_LZOP_FLAG_ADLER_COMPRESSED) != 0U &&
-              checksums.adler32 != expected_adler_packed) ||
-             ((flags & XX_LZOP_FLAG_CRC_COMPRESSED) != 0U &&
-              checksums.crc32 != expected_crc_packed))) {
+        if (packed_size < expanded_size && (((flags & XX_LZOP_FLAG_ADLER_COMPRESSED) != 0U && checksums.adler32 != expected_adler_packed) ||
+                                            ((flags & XX_LZOP_FLAG_CRC_COMPRESSED) != 0U && checksums.crc32 != expected_crc_packed))) {
             xx_mem_free(packed);
             return false;
         }
@@ -313,11 +274,7 @@ static bool xx_lzop_decode_stream(xx_lzop_reader *reader,
             output_data = packed;
         } else {
             expanded = (uint8_t *)xx_mem_alloc((size_t)expanded_size);
-            if (!expanded || !xx_lzo1x_decompress(packed, (size_t)packed_size,
-                                                  expanded,
-                                                  (size_t)expanded_size,
-                                                  &written) ||
-                written != (size_t)expanded_size) {
+            if (!expanded || !xx_lzo1x_decompress(packed, (size_t)packed_size, expanded, (size_t)expanded_size, &written) || written != (size_t)expanded_size) {
                 xx_mem_free(expanded);
                 xx_mem_free(packed);
                 return false;
@@ -326,16 +283,13 @@ static bool xx_lzop_decode_stream(xx_lzop_reader *reader,
         }
         xx_lzop_checksums_init(&checksums);
         xx_lzop_checksums_update(&checksums, output_data, (size_t)expanded_size);
-        if (((flags & XX_LZOP_FLAG_ADLER_DATA) != 0U &&
-             checksums.adler32 != expected_adler_data) ||
-            ((flags & XX_LZOP_FLAG_CRC_DATA) != 0U &&
-             checksums.crc32 != expected_crc_data)) {
+        if (((flags & XX_LZOP_FLAG_ADLER_DATA) != 0U && checksums.adler32 != expected_adler_data) ||
+            ((flags & XX_LZOP_FLAG_CRC_DATA) != 0U && checksums.crc32 != expected_crc_data)) {
             xx_mem_free(expanded);
             xx_mem_free(packed);
             return false;
         }
-        result = xx_lzop_write_all(destination, output_data,
-                                   (size_t)expanded_size, reader->capacity);
+        result = xx_lzop_write_all(destination, output_data, (size_t)expanded_size, reader->capacity);
         xx_mem_free(expanded);
         xx_mem_free(packed);
         if (!result) return false;
@@ -343,10 +297,9 @@ static bool xx_lzop_decode_stream(xx_lzop_reader *reader,
     }
 }
 
-bool xx_lzop_decode_device(xx_io_device *source, int64_t source_offset,
-                           int64_t source_size, xx_io_device *destination,
-                           int64_t *output_size, size_t *stream_count,
-                           xx_pd_struct *pd) {
+bool xx_lzop_decode_device(xx_io_device *source, int64_t source_offset, int64_t source_size, xx_io_device *destination, int64_t *output_size, size_t *stream_count,
+                           xx_pd_struct *pd)
+{
     xx_lzop_reader reader;
     uint8_t magic[XX_LZOP_MAGIC_SIZE];
     int64_t total_size;
@@ -356,14 +309,11 @@ bool xx_lzop_decode_device(xx_io_device *source, int64_t source_offset,
 
     if (output_size) *output_size = -1;
     if (stream_count) *stream_count = 0U;
-    if (!source || !destination || source_offset < 0 ||
-        source_size < (int64_t)XX_LZOP_MAGIC_SIZE ||
-        (pd && xx_pd_is_stopped(pd))) {
+    if (!source || !destination || source_offset < 0 || source_size < (int64_t)XX_LZOP_MAGIC_SIZE || (pd && xx_pd_is_stopped(pd))) {
         return false;
     }
     total_size = xx_io_total_size(source);
-    if (total_size < source_offset || source_size > total_size - source_offset ||
-        xx_io_seek64(source, source_offset, SEEK_SET) != 0) {
+    if (total_size < source_offset || source_size > total_size - source_offset || xx_io_seek64(source, source_offset, SEEK_SET) != 0) {
         return false;
     }
     xx_rt_memset(&reader, 0, sizeof(reader));
@@ -372,15 +322,13 @@ bool xx_lzop_decode_device(xx_io_device *source, int64_t source_offset,
     reader.end = source_offset + source_size;
     reader.capacity = capacity;
     while (reader.cursor < reader.end) {
-        if (count == SIZE_MAX || !xx_lzop_read(&reader, magic, sizeof(magic)) ||
-            !xx_lzop_has_header(magic, sizeof(magic)) ||
+        if (count == SIZE_MAX || !xx_lzop_read(&reader, magic, sizeof(magic)) || !xx_lzop_has_header(magic, sizeof(magic)) ||
             !xx_lzop_decode_stream(&reader, destination, &total_output, pd)) {
             return false;
         }
         ++count;
     }
-    if (count == 0U || reader.cursor != reader.end ||
-        total_output > (uint64_t)INT64_MAX) {
+    if (count == 0U || reader.cursor != reader.end || total_output > (uint64_t)INT64_MAX) {
         return false;
     }
     if (output_size) *output_size = (int64_t)total_output;

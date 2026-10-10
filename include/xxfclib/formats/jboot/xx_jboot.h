@@ -202,29 +202,21 @@ struct xx_jboot {
     void *internal;
 };
 
-XXFC_API void xx_jboot_init(xx_jboot *jboot, xx_io_device *dev,
-                            int64_t base_address);
+XXFC_API void xx_jboot_init(xx_jboot *jboot, xx_io_device *dev, int64_t base_address);
 XXFC_API xx_jboot *xx_jboot_create(xx_io_device *dev, int64_t base_address);
 XXFC_API void xx_jboot_destroy(xx_jboot *jboot);
 XXFC_API void xx_jboot_free(xx_jboot *jboot);
 
 XXFC_API bool xx_jboot_check_is_valid(Abstractformat *self, xx_pd_struct *pd);
 XXFC_API bool xx_jboot_handle_base_info(Abstractformat *self, xx_pd_struct *pd);
-XXFC_API int64_t xx_jboot_get_format_size(Abstractformat *self,
-                                          xx_pd_struct *pd);
-XXFC_API uint64_t xx_jboot_get_number_of_archive_records(Abstractformat *self,
-                                                         xx_pd_struct *pd);
+XXFC_API int64_t xx_jboot_get_format_size(Abstractformat *self, xx_pd_struct *pd);
+XXFC_API uint64_t xx_jboot_get_number_of_archive_records(Abstractformat *self, xx_pd_struct *pd);
 
-XXFC_API xx_archive_record_state *xx_jboot_create_archive_records_reading(
-    Abstractformat *self, const xx_list_s *options, xx_pd_struct *pd);
-XXFC_API const xx_archive_record *xx_jboot_get_current_archive_record(
-    Abstractformat *self, xx_archive_record_state *state);
-XXFC_API bool xx_jboot_unpack_current_archive_record(
-    Abstractformat *self, xx_archive_record_state *state, xx_pd_struct *pd);
-XXFC_API bool xx_jboot_archive_record_move_to_next(
-    Abstractformat *self, xx_archive_record_state *state, xx_pd_struct *pd);
-XXFC_API void xx_jboot_free_archive_records_reading(
-    Abstractformat *self, xx_archive_record_state *state);
+XXFC_API xx_archive_record_state *xx_jboot_create_archive_records_reading(Abstractformat *self, const xx_list_s *options, xx_pd_struct *pd);
+XXFC_API const xx_archive_record *xx_jboot_get_current_archive_record(Abstractformat *self, xx_archive_record_state *state);
+XXFC_API bool xx_jboot_unpack_current_archive_record(Abstractformat *self, xx_archive_record_state *state, xx_pd_struct *pd);
+XXFC_API bool xx_jboot_archive_record_move_to_next(Abstractformat *self, xx_archive_record_state *state, xx_pd_struct *pd);
+XXFC_API void xx_jboot_free_archive_records_reading(Abstractformat *self, xx_archive_record_state *state);
 
 XXFC_API uint32_t xx_jboot_get_variant(const xx_jboot *jboot);
 XXFC_API const char *xx_jboot_get_variant_name(const xx_jboot *jboot);
@@ -233,18 +225,24 @@ XXFC_API uint32_t xx_jboot_get_payload_size(const xx_jboot *jboot);
 XXFC_API const char *xx_jboot_get_rom_id(const xx_jboot *jboot);
 XXFC_API int64_t xx_jboot_get_archive_end(const xx_jboot *jboot);
 
-static inline Abstractformat *xx_jboot_to_format(xx_jboot *jboot) {
+static inline Abstractformat *xx_jboot_to_format(xx_jboot *jboot)
+{
     return jboot ? &jboot->format : NULL;
 }
-static inline void XJBoot_init(xx_jboot *jboot, xx_io_device *dev,
-                               int64_t base_address) {
+static inline void XJBoot_init(xx_jboot *jboot, xx_io_device *dev, int64_t base_address)
+{
     xx_jboot_init(jboot, dev, base_address);
 }
-static inline xx_jboot *XJBoot_create(xx_io_device *dev, int64_t base_address) {
+static inline xx_jboot *XJBoot_create(xx_io_device *dev, int64_t base_address)
+{
     return xx_jboot_create(dev, base_address);
 }
-static inline void XJBoot_free(xx_jboot *jboot) { xx_jboot_free(jboot); }
-static inline bool XJBoot_is_valid(xx_jboot *jboot, xx_pd_struct *pd) {
+static inline void XJBoot_free(xx_jboot *jboot)
+{
+    xx_jboot_free(jboot);
+}
+static inline bool XJBoot_is_valid(xx_jboot *jboot, xx_pd_struct *pd)
+{
     return jboot ? xx_format_is_valid(&jboot->format, pd) : false;
 }
 

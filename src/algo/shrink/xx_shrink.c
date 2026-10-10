@@ -29,11 +29,11 @@
 #include <stdint.h>
 
 #define XX_SHRINK_LITERAL_COUNT 256u
-#define XX_SHRINK_CONTROL_CODE  256u
-#define XX_SHRINK_FIRST_CODE    257u
-#define XX_SHRINK_CODE_COUNT    8192u
-#define XX_SHRINK_MIN_BITS      9u
-#define XX_SHRINK_MAX_BITS      13u
+#define XX_SHRINK_CONTROL_CODE 256u
+#define XX_SHRINK_FIRST_CODE 257u
+#define XX_SHRINK_CODE_COUNT 8192u
+#define XX_SHRINK_MIN_BITS 9u
+#define XX_SHRINK_MAX_BITS 13u
 
 typedef struct xx_shrink_entry_s {
     uint16_t prefix;
@@ -68,14 +68,15 @@ typedef struct xx_shrink_context_s {
     uint16_t next_available;
 } xx_shrink_context;
 
-static void xx_shrink_set_error(xx_shrink_context *ctx, int code,
-                                const char *message) {
+static void xx_shrink_set_error(xx_shrink_context *ctx, int code, const char *message)
+{
     if (ctx->pd && ctx->pd->last_error == 0) {
         xx_pd_set_error(ctx->pd, code, message);
     }
 }
 
-static bool xx_shrink_cancelled(xx_shrink_context *ctx) {
+static bool xx_shrink_cancelled(xx_shrink_context *ctx)
+{
     if (ctx->pd && xx_pd_is_stopped(ctx->pd)) {
         xx_shrink_set_error(ctx, 1, "Shrink decompression cancelled");
         return true;
@@ -83,12 +84,12 @@ static bool xx_shrink_cancelled(xx_shrink_context *ctx) {
     return false;
 }
 
-static bool xx_shrink_flush(xx_shrink_context *ctx) {
+static bool xx_shrink_flush(xx_shrink_context *ctx)
+{
     if (ctx->output_size == 0) {
         return true;
     }
-    if (xx_io_write(ctx->dst, ctx->output, ctx->output_size) !=
-        (ssize_t)ctx->output_size) {
+    if (xx_io_write(ctx->dst, ctx->output, ctx->output_size) != (ssize_t)ctx->output_size) {
         xx_shrink_set_error(ctx, 2, "Cannot write Shrink output");
         return false;
     }
@@ -99,7 +100,8 @@ static bool xx_shrink_flush(xx_shrink_context *ctx) {
     return true;
 }
 
-static bool xx_shrink_emit(xx_shrink_context *ctx, uint8_t value) {
+static bool xx_shrink_emit(xx_shrink_context *ctx, uint8_t value)
+{
     if (ctx->produced >= ctx->expected_size) {
         xx_shrink_set_error(ctx, 3, "Shrink output exceeds expected size");
         return false;
@@ -112,7 +114,8 @@ static bool xx_shrink_emit(xx_shrink_context *ctx, uint8_t value) {
     return true;
 }
 
-static bool xx_shrink_read_byte(xx_shrink_context *ctx, uint8_t *value) {
+static bool xx_shrink_read_byte(xx_shrink_context *ctx, uint8_t *value)
+{
     if (ctx->input_pos == ctx->input_size) {
         size_t request;
         ssize_t count;
@@ -121,9 +124,7 @@ static bool xx_shrink_read_byte(xx_shrink_context *ctx, uint8_t *value) {
             xx_shrink_set_error(ctx, 4, "Truncated Shrink stream");
             return false;
         }
-        request = ((uint64_t)ctx->input_left > ctx->io_capacity)
-                      ? ctx->io_capacity
-                      : (size_t)ctx->input_left;
+        request = ((uint64_t)ctx->input_left > ctx->io_capacity) ? ctx->io_capacity : (size_t)ctx->input_left;
         count = xx_io_read(ctx->src, ctx->input, request);
         if (count <= 0 || (size_t)count != request) {
             xx_shrink_set_error(ctx, 4, "Cannot read Shrink stream");
@@ -138,8 +139,8 @@ static bool xx_shrink_read_byte(xx_shrink_context *ctx, uint8_t *value) {
     return true;
 }
 
-static bool xx_shrink_read_bits(xx_shrink_context *ctx, unsigned count,
-                                uint16_t *value) {
+static bool xx_shrink_read_bits(xx_shrink_context *ctx, unsigned count, uint16_t *value)
+{
     uint8_t byte_value;
     uint64_t mask;
 
@@ -158,7 +159,8 @@ static bool xx_shrink_read_bits(xx_shrink_context *ctx, unsigned count,
     return true;
 }
 
-static void xx_shrink_init_dictionary(xx_shrink_context *ctx) {
+static void xx_shrink_init_dictionary(xx_shrink_context *ctx)
+{
     uint16_t code;
 
     for (code = 0; code < XX_SHRINK_LITERAL_COUNT; ++code) {
@@ -171,7 +173,8 @@ static void xx_shrink_init_dictionary(xx_shrink_context *ctx) {
     ctx->next_available = XX_SHRINK_FIRST_CODE;
 }
 
-static uint16_t xx_shrink_peek_available(xx_shrink_context *ctx) {
+static uint16_t xx_shrink_peek_available(xx_shrink_context *ctx)
+{
     uint16_t code = ctx->next_available;
 
     while (code < XX_SHRINK_CODE_COUNT && !ctx->available[code]) {
@@ -181,7 +184,8 @@ static uint16_t xx_shrink_peek_available(xx_shrink_context *ctx) {
     return code;
 }
 
-static uint16_t xx_shrink_take_available(xx_shrink_context *ctx) {
+static uint16_t xx_shrink_take_available(xx_shrink_context *ctx)
+{
     uint16_t code = xx_shrink_peek_available(ctx);
     if (code < XX_SHRINK_CODE_COUNT) {
         ctx->available[code] = 0;
@@ -190,15 +194,15 @@ static uint16_t xx_shrink_take_available(xx_shrink_context *ctx) {
     return code;
 }
 
-static void xx_shrink_partial_clear(xx_shrink_context *ctx) {
+static void xx_shrink_partial_clear(xx_shrink_context *ctx)
+{
     uint16_t code;
 
     xx_mem_zero(ctx->prefix_mark, sizeof(ctx->prefix_mark));
     for (code = XX_SHRINK_FIRST_CODE; code < XX_SHRINK_CODE_COUNT; ++code) {
         if (ctx->dictionary[code].used) {
             uint16_t prefix = ctx->dictionary[code].prefix;
-            if (prefix >= XX_SHRINK_FIRST_CODE &&
-                prefix < XX_SHRINK_CODE_COUNT) {
+            if (prefix >= XX_SHRINK_FIRST_CODE && prefix < XX_SHRINK_CODE_COUNT) {
                 ctx->prefix_mark[prefix] = 1;
             }
         }
@@ -214,10 +218,8 @@ static void xx_shrink_partial_clear(xx_shrink_context *ctx) {
     ctx->next_available = XX_SHRINK_FIRST_CODE;
 }
 
-static bool xx_shrink_define_pending_prefix(xx_shrink_context *ctx,
-                                            uint16_t code,
-                                            uint16_t previous_code,
-                                            uint8_t previous_first) {
+static bool xx_shrink_define_pending_prefix(xx_shrink_context *ctx, uint16_t code, uint16_t previous_code, uint8_t previous_first)
+{
     uint16_t next = xx_shrink_peek_available(ctx);
     if (code != next || code >= XX_SHRINK_CODE_COUNT) {
         return false;
@@ -228,10 +230,8 @@ static bool xx_shrink_define_pending_prefix(xx_shrink_context *ctx,
     return true;
 }
 
-static bool xx_shrink_expand_code(xx_shrink_context *ctx, uint16_t code,
-                                  uint16_t previous_code,
-                                  uint8_t previous_first,
-                                  uint8_t *first_byte) {
+static bool xx_shrink_expand_code(xx_shrink_context *ctx, uint16_t code, uint16_t previous_code, uint8_t previous_first, uint8_t *first_byte)
+{
     size_t count = 0;
     uint16_t cursor = code;
 
@@ -247,9 +247,7 @@ static bool xx_shrink_expand_code(xx_shrink_context *ctx, uint16_t code,
             xx_shrink_set_error(ctx, 5, "Cyclic Shrink dictionary entry");
             return false;
         }
-        if (!ctx->dictionary[cursor].used &&
-            !xx_shrink_define_pending_prefix(ctx, cursor, previous_code,
-                                             previous_first)) {
+        if (!ctx->dictionary[cursor].used && !xx_shrink_define_pending_prefix(ctx, cursor, previous_code, previous_first)) {
             xx_shrink_set_error(ctx, 5, "Undefined Shrink dictionary code");
             return false;
         }
@@ -284,7 +282,8 @@ static bool xx_shrink_expand_code(xx_shrink_context *ctx, uint16_t code,
     return true;
 }
 
-static bool xx_shrink_decode(xx_shrink_context *ctx) {
+static bool xx_shrink_decode(xx_shrink_context *ctx)
+{
     unsigned code_bits = XX_SHRINK_MIN_BITS;
     uint16_t previous_code = 0;
     uint8_t previous_first = 0;
@@ -296,8 +295,7 @@ static bool xx_shrink_decode(xx_shrink_context *ctx) {
         uint16_t code;
         uint8_t current_first;
 
-        if (xx_shrink_cancelled(ctx) ||
-            !xx_shrink_read_bits(ctx, code_bits, &code)) {
+        if (xx_shrink_cancelled(ctx) || !xx_shrink_read_bits(ctx, code_bits, &code)) {
             return false;
         }
 
@@ -319,8 +317,7 @@ static bool xx_shrink_decode(xx_shrink_context *ctx) {
 
         if (!have_previous) {
             if (code >= XX_SHRINK_LITERAL_COUNT) {
-                xx_shrink_set_error(ctx, 5,
-                                    "First Shrink code is not a literal");
+                xx_shrink_set_error(ctx, 5, "First Shrink code is not a literal");
                 return false;
             }
             current_first = (uint8_t)code;
@@ -333,8 +330,7 @@ static bool xx_shrink_decode(xx_shrink_context *ctx) {
             continue;
         }
 
-        if (!xx_shrink_expand_code(ctx, code, previous_code, previous_first,
-                                   &current_first)) {
+        if (!xx_shrink_expand_code(ctx, code, previous_code, previous_first, &current_first)) {
             return false;
         }
 
@@ -354,16 +350,14 @@ static bool xx_shrink_decode(xx_shrink_context *ctx) {
     return xx_shrink_flush(ctx);
 }
 
-bool xx_shrink_unpack_device(xx_io_device *src_dev, int64_t src_offset,
-                             int64_t comp_size, xx_io_device *dst_dev,
-                             int64_t expected_size, xx_pd_struct *pd) {
+bool xx_shrink_unpack_device(xx_io_device *src_dev, int64_t src_offset, int64_t comp_size, xx_io_device *dst_dev, int64_t expected_size, xx_pd_struct *pd)
+{
     xx_shrink_context *ctx;
     bool result;
     size_t capacity = xx_get_file_buffer_size();
     if (capacity > (SIZE_MAX >> 1)) capacity = SIZE_MAX >> 1;
 
-    if (!src_dev || !dst_dev || comp_size < 0 || expected_size < 0 ||
-        src_offset < -1) {
+    if (!src_dev || !dst_dev || comp_size < 0 || expected_size < 0 || src_offset < -1) {
         return false;
     }
     if (src_offset >= 0 && xx_io_seek64(src_dev, src_offset, SEEK_SET) != 0) {
@@ -396,8 +390,7 @@ bool xx_shrink_unpack_device(xx_io_device *src_dev, int64_t src_offset,
     ctx->input_left = comp_size;
     ctx->expected_size = expected_size;
     if (pd) {
-        ctx->pd_level = xx_pd_enter_level(pd, (uint64_t)expected_size,
-                                          "Unpacking ZIP Shrink");
+        ctx->pd_level = xx_pd_enter_level(pd, (uint64_t)expected_size, "Unpacking ZIP Shrink");
     }
 
     result = xx_shrink_decode(ctx) && ctx->produced == expected_size;
@@ -413,12 +406,8 @@ bool xx_shrink_unpack_device(xx_io_device *src_dev, int64_t src_offset,
     return result;
 }
 
-bool xx_shrink_unpack_device_to_file(xx_io_device *src_dev,
-                                     int64_t src_offset,
-                                     int64_t comp_size,
-                                     const char *dst_file_path,
-                                     int64_t expected_size,
-                                     xx_pd_struct *pd) {
+bool xx_shrink_unpack_device_to_file(xx_io_device *src_dev, int64_t src_offset, int64_t comp_size, const char *dst_file_path, int64_t expected_size, xx_pd_struct *pd)
+{
     xx_io_device *dst_dev;
     bool result;
 
@@ -429,8 +418,7 @@ bool xx_shrink_unpack_device_to_file(xx_io_device *src_dev,
     if (!dst_dev) {
         return false;
     }
-    result = xx_shrink_unpack_device(src_dev, src_offset, comp_size, dst_dev,
-                                     expected_size, pd);
+    result = xx_shrink_unpack_device(src_dev, src_offset, comp_size, dst_dev, expected_size, pd);
     xx_io_close(dst_dev);
     if (!result) {
         xx_io_file_remove_a(dst_file_path);

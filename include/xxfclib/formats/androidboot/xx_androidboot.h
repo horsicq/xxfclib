@@ -88,60 +88,47 @@ struct xx_androidboot {
     void *internal;
 };
 
-XXFC_API void xx_androidboot_init(xx_androidboot *image, xx_io_device *dev,
-                                  int64_t base_address);
-XXFC_API xx_androidboot *xx_androidboot_create(xx_io_device *dev,
-                                               int64_t base_address);
+XXFC_API void xx_androidboot_init(xx_androidboot *image, xx_io_device *dev, int64_t base_address);
+XXFC_API xx_androidboot *xx_androidboot_create(xx_io_device *dev, int64_t base_address);
 XXFC_API void xx_androidboot_destroy(xx_androidboot *image);
 XXFC_API void xx_androidboot_free(xx_androidboot *image);
 
-XXFC_API bool xx_androidboot_check_is_valid(Abstractformat *self,
-                                            xx_pd_struct *pd);
-XXFC_API bool xx_androidboot_handle_base_info(Abstractformat *self,
-                                              xx_pd_struct *pd);
-XXFC_API int64_t xx_androidboot_get_format_size(Abstractformat *self,
-                                                xx_pd_struct *pd);
-XXFC_API uint64_t xx_androidboot_get_number_of_archive_records(
-    Abstractformat *self, xx_pd_struct *pd);
+XXFC_API bool xx_androidboot_check_is_valid(Abstractformat *self, xx_pd_struct *pd);
+XXFC_API bool xx_androidboot_handle_base_info(Abstractformat *self, xx_pd_struct *pd);
+XXFC_API int64_t xx_androidboot_get_format_size(Abstractformat *self, xx_pd_struct *pd);
+XXFC_API uint64_t xx_androidboot_get_number_of_archive_records(Abstractformat *self, xx_pd_struct *pd);
 
-XXFC_API xx_archive_record_state *xx_androidboot_create_archive_records_reading(
-    Abstractformat *self, const xx_list_s *options, xx_pd_struct *pd);
-XXFC_API const xx_archive_record *xx_androidboot_get_current_archive_record(
-    Abstractformat *self, xx_archive_record_state *state);
-XXFC_API bool xx_androidboot_unpack_current_archive_record(
-    Abstractformat *self, xx_archive_record_state *state, xx_pd_struct *pd);
-XXFC_API bool xx_androidboot_archive_record_move_to_next(
-    Abstractformat *self, xx_archive_record_state *state, xx_pd_struct *pd);
-XXFC_API void xx_androidboot_free_archive_records_reading(
-    Abstractformat *self, xx_archive_record_state *state);
+XXFC_API xx_archive_record_state *xx_androidboot_create_archive_records_reading(Abstractformat *self, const xx_list_s *options, xx_pd_struct *pd);
+XXFC_API const xx_archive_record *xx_androidboot_get_current_archive_record(Abstractformat *self, xx_archive_record_state *state);
+XXFC_API bool xx_androidboot_unpack_current_archive_record(Abstractformat *self, xx_archive_record_state *state, xx_pd_struct *pd);
+XXFC_API bool xx_androidboot_archive_record_move_to_next(Abstractformat *self, xx_archive_record_state *state, xx_pd_struct *pd);
+XXFC_API void xx_androidboot_free_archive_records_reading(Abstractformat *self, xx_archive_record_state *state);
 
-XXFC_API uint64_t xx_androidboot_get_number_of_records(
-    const xx_androidboot *image);
-XXFC_API uint64_t xx_androidboot_get_number_of_members(
-    const xx_androidboot *image);
-XXFC_API uint32_t xx_androidboot_get_header_version(
-    const xx_androidboot *image);
+XXFC_API uint64_t xx_androidboot_get_number_of_records(const xx_androidboot *image);
+XXFC_API uint64_t xx_androidboot_get_number_of_members(const xx_androidboot *image);
+XXFC_API uint32_t xx_androidboot_get_header_version(const xx_androidboot *image);
 XXFC_API uint32_t xx_androidboot_get_page_size(const xx_androidboot *image);
 XXFC_API uint32_t xx_androidboot_get_header_size(const xx_androidboot *image);
 XXFC_API int64_t xx_androidboot_get_archive_end(const xx_androidboot *image);
 
-static inline Abstractformat *xx_androidboot_to_format(
-    xx_androidboot *image) {
+static inline Abstractformat *xx_androidboot_to_format(xx_androidboot *image)
+{
     return image ? &image->format : NULL;
 }
-static inline void XAndroidBoot_init(xx_androidboot *image, xx_io_device *dev,
-                                     int64_t base_address) {
+static inline void XAndroidBoot_init(xx_androidboot *image, xx_io_device *dev, int64_t base_address)
+{
     xx_androidboot_init(image, dev, base_address);
 }
-static inline xx_androidboot *XAndroidBoot_create(xx_io_device *dev,
-                                                  int64_t base_address) {
+static inline xx_androidboot *XAndroidBoot_create(xx_io_device *dev, int64_t base_address)
+{
     return xx_androidboot_create(dev, base_address);
 }
-static inline void XAndroidBoot_free(xx_androidboot *image) {
+static inline void XAndroidBoot_free(xx_androidboot *image)
+{
     xx_androidboot_free(image);
 }
-static inline bool XAndroidBoot_is_valid(xx_androidboot *image,
-                                         xx_pd_struct *pd) {
+static inline bool XAndroidBoot_is_valid(xx_androidboot *image, xx_pd_struct *pd)
+{
     return image ? xx_format_is_valid(&image->format, pd) : false;
 }
 

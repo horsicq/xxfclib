@@ -151,15 +151,12 @@ typedef struct is5_stream_s {
     uint32_t major_version;
 } is5_stream;
 
-static bool is5_read_at(xx_io_device *device, int64_t offset, void *buffer,
-                        size_t size) {
+static bool is5_read_at(xx_io_device *device, int64_t offset, void *buffer, size_t size)
+{
     size_t done = 0U;
-    if (!device || (!buffer && size != 0U) || offset < 0 ||
-        xx_io_seek64(device, offset, SEEK_SET) != 0)
-        return false;
+    if (!device || (!buffer && size != 0U) || offset < 0 || xx_io_seek64(device, offset, SEEK_SET) != 0) return false;
     while (done < size) {
-        ssize_t amount = xx_io_read(device, (uint8_t *)buffer + done,
-                                    size - done);
+        ssize_t amount = xx_io_read(device, (uint8_t *)buffer + done, size - done);
         if (amount <= 0 || (size_t)amount > size - done) return false;
         done += (size_t)amount;
     }
@@ -169,7 +166,8 @@ static bool is5_read_at(xx_io_device *device, int64_t offset, void *buffer,
 /* Normalize only the filesystem-facing representation.  Cabinet names are
  * ANSI byte strings, so non-ASCII bytes are retained verbatim while
  * separators and traversal components are made harmless. */
-static char *is5_normalize_name(const uint8_t *bytes, size_t size) {
+static char *is5_normalize_name(const uint8_t *bytes, size_t size)
+{
     char *name;
     size_t input = 0U, output = 0U;
     if ((!bytes && size != 0U) || size > SIZE_MAX - 2U) return NULL;
@@ -177,16 +175,12 @@ static char *is5_normalize_name(const uint8_t *bytes, size_t size) {
     if (!name) return NULL;
     while (input < size) {
         size_t start, end, component_start;
-        while (input < size && (bytes[input] == '/' || bytes[input] == '\\'))
-            ++input;
+        while (input < size && (bytes[input] == '/' || bytes[input] == '\\')) ++input;
         start = input;
-        while (input < size && bytes[input] != '/' && bytes[input] != '\\')
-            ++input;
+        while (input < size && bytes[input] != '/' && bytes[input] != '\\') ++input;
         end = input;
-        if (end == start || (end - start == 1U && bytes[start] == '.'))
-            continue;
-        if (end - start == 2U && bytes[start] == '.' &&
-            bytes[start + 1U] == '.') {
+        if (end == start || (end - start == 1U && bytes[start] == '.')) continue;
+        if (end - start == 2U && bytes[start] == '.' && bytes[start + 1U] == '.') {
             if (output != 0U) {
                 while (output != 0U && name[output - 1U] != '/') --output;
                 if (output != 0U) --output;
@@ -197,15 +191,10 @@ static char *is5_normalize_name(const uint8_t *bytes, size_t size) {
         component_start = output;
         while (start < end) {
             uint8_t c = bytes[start++];
-            if (c < 0x20U || c == '"' || c == '*' || c == ':' || c == '<' ||
-                c == '>' || c == '?' || c == '|' || c == 0U)
-                name[output++] = '_';
-            else
-                name[output++] = (char)c;
+            if (c < 0x20U || c == '"' || c == '*' || c == ':' || c == '<' || c == '>' || c == '?' || c == '|' || c == 0U) name[output++] = '_';
+            else name[output++] = (char)c;
         }
-        while (output > component_start &&
-               (name[output - 1U] == ' ' || name[output - 1U] == '.'))
-            --output;
+        while (output > component_start && (name[output - 1U] == ' ' || name[output - 1U] == '.')) --output;
         if (output == component_start) name[output++] = '_';
     }
     if (output == 0U) name[output++] = '_';
@@ -213,30 +202,26 @@ static char *is5_normalize_name(const uint8_t *bytes, size_t size) {
     return name;
 }
 
-static bool is5_safe_output_name(const char *name) {
+static bool is5_safe_output_name(const char *name)
+{
     const char *segment;
     const char *at;
-    if (!name || !name[0] || name[0] == '/' || name[0] == '\\' ||
-        name[1] == ':')
-        return false;
+    if (!name || !name[0] || name[0] == '/' || name[0] == '\\' || name[1] == ':') return false;
     segment = name;
     for (at = name;; ++at) {
         unsigned char c = (unsigned char)*at;
-        if (c == ':' || c == '<' || c == '>' || c == '"' || c == '|' ||
-            c == '?' || c == '*' || (c != 0U && c < 0x20U))
-            return false;
+        if (c == ':' || c == '<' || c == '>' || c == '"' || c == '|' || c == '?' || c == '*' || (c != 0U && c < 0x20U)) return false;
         if (c == '/' || c == '\\' || c == 0U) {
             size_t length = (size_t)(at - segment);
-            if (length == 0U || (length == 1U && segment[0] == '.') ||
-                (length == 2U && segment[0] == '.' && segment[1] == '.'))
-                return false;
+            if (length == 0U || (length == 1U && segment[0] == '.') || (length == 2U && segment[0] == '.' && segment[1] == '.')) return false;
             if (c == 0U) return true;
             segment = at + 1;
         }
     }
 }
 
-static void is5_stream_free(void *opaque) {
+static void is5_stream_free(void *opaque)
+{
     is5_stream *stream = (is5_stream *)opaque;
     size_t index;
     if (!stream) return;
@@ -246,13 +231,11 @@ static void is5_stream_free(void *opaque) {
     xx_mem_free(stream);
 }
 
-static bool is5_add_member(is5_stream *stream, const is5_member *member) {
+static bool is5_add_member(is5_stream *stream, const is5_member *member)
+{
     is5_member *grown;
-    if (!stream || !member || stream->count >= IS5_MAX_MEMBERS ||
-        stream->count > SIZE_MAX / sizeof(*grown) - 1U)
-        return false;
-    grown = (is5_member *)xx_mem_realloc(stream->items,
-                                         (stream->count + 1U) * sizeof(*grown));
+    if (!stream || !member || stream->count >= IS5_MAX_MEMBERS || stream->count > SIZE_MAX / sizeof(*grown) - 1U) return false;
+    grown = (is5_member *)xx_mem_realloc(stream->items, (stream->count + 1U) * sizeof(*grown));
     if (!grown) return false;
     stream->items = grown;
     stream->items[stream->count++] = *member;
@@ -262,15 +245,14 @@ static bool is5_add_member(is5_stream *stream, const is5_member *member) {
 /* Read a NUL terminated name out of the file table image.  A name that runs
  * off the table, or is empty, or carries a control byte, makes the archive
  * invalid rather than producing a guessed name. */
-static char *is5_table_name(const uint8_t *table, uint32_t table_size,
-                            uint32_t offset) {
+static char *is5_table_name(const uint8_t *table, uint32_t table_size, uint32_t offset)
+{
     uint32_t end;
     if (offset >= table_size) return NULL;
     for (end = offset; end < table_size && table[end] != 0U; ++end) {
         if (table[end] < 0x20U) return NULL;
     }
-    if (end == table_size || end == offset || end - offset > IS5_MAX_NAME)
-        return NULL;
+    if (end == table_size || end == offset || end - offset > IS5_MAX_NAME) return NULL;
     return is5_normalize_name(table + offset, (size_t)(end - offset));
 }
 
@@ -278,9 +260,8 @@ static char *is5_table_name(const uint8_t *table, uint32_t table_size,
  * the first offset array in the table, whose strings are full relative paths.
  * Keep a malformed directory entry from changing the existing leaf behavior;
  * the normalized leaf remains independently safe to extract. */
-static char *is5_member_path(const uint8_t *table, uint32_t table_size,
-                             uint32_t directory_count, uint32_t index,
-                             char *leaf) {
+static char *is5_member_path(const uint8_t *table, uint32_t table_size, uint32_t directory_count, uint32_t index, char *leaf)
+{
     uint32_t offset;
     char *directory, *path;
     if (!leaf || index >= directory_count) return leaf;
@@ -290,12 +271,16 @@ static char *is5_member_path(const uint8_t *table, uint32_t table_size,
     if (!directory) return leaf;
     path = xx_str_concat3(directory, "/", leaf);
     xx_str_free(directory);
-    if (!path) { xx_str_free(leaf); return NULL; }
+    if (!path) {
+        xx_str_free(leaf);
+        return NULL;
+    }
     xx_str_free(leaf);
     return path;
 }
 
-static bool is5_parse(Abstractformat *format, is5_stream **result) {
+static bool is5_parse(Abstractformat *format, is5_stream **result)
+{
     uint8_t common[IS5_COMMON_HEADER_SIZE];
     uint8_t descriptor[IS5_DESCRIPTOR_READ_SIZE];
     uint8_t *table = NULL;
@@ -308,23 +293,18 @@ static bool is5_parse(Abstractformat *format, is5_stream **result) {
     uint32_t volume_data_offset = 0U, first_file = 0U, last_file = 0U;
     bool volume_has_data = true, volume_range_known = false;
 
-    if (!format || !format->device || !result || format->base_address < 0)
-        return false;
+    if (!format || !format->device || !result || format->base_address < 0) return false;
     total = xx_io_total_size(format->device);
     if (total < format->base_address) return false;
     size = total - format->base_address;
-    if (size < (int64_t)IS5_COMMON_HEADER_SIZE ||
-        !is5_read_at(format->device, format->base_address, common,
-                     sizeof(common)) ||
+    if (size < (int64_t)IS5_COMMON_HEADER_SIZE || !is5_read_at(format->device, format->base_address, common, sizeof(common)) ||
         xx_data_get_u32(common, 4, 0, false) != IS5_SIGNATURE)
         return false;
     /* The volume header follows the common header.  A file too small to hold
      * one is a header with no data area, which is exactly what the absent
      * volume header would have said. */
     if (size >= (int64_t)IS5_COMMON_HEADER_SIZE + IS5_VOLUME_HEADER_SIZE &&
-        is5_read_at(format->device,
-                    format->base_address + (int64_t)IS5_COMMON_HEADER_SIZE,
-                    volume, sizeof(volume))) {
+        is5_read_at(format->device, format->base_address + (int64_t)IS5_COMMON_HEADER_SIZE, volume, sizeof(volume))) {
         volume_data_offset = xx_data_get_u32(volume, 4, 0, false);
         first_file = xx_data_get_u32(volume + 8U, 4, 0, false);
         last_file = xx_data_get_u32(volume + 12U, 4, 0, false);
@@ -339,15 +319,9 @@ static bool is5_parse(Abstractformat *format, is5_stream **result) {
     descriptor_offset = xx_data_get_u32(common + 12U, 4, 0, false);
     descriptor_size = xx_data_get_u32(common + 16U, 4, 0, false);
     major = ((version >> 24U) == 1U) ? ((version >> 12U) & 0x0FU) : 0U;
-    if ((int64_t)descriptor_offset > size ||
-        (int64_t)descriptor_size > size - (int64_t)descriptor_offset ||
-        descriptor_size < IS5_DESCRIPTOR_MIN_SIZE)
-        return false;
-    if (!is5_read_at(format->device,
-                     format->base_address + (int64_t)descriptor_offset,
-                     descriptor, IS5_DESCRIPTOR_READ_SIZE > descriptor_size
-                                     ? IS5_DESCRIPTOR_MIN_SIZE
-                                     : IS5_DESCRIPTOR_READ_SIZE))
+    if ((int64_t)descriptor_offset > size || (int64_t)descriptor_size > size - (int64_t)descriptor_offset || descriptor_size < IS5_DESCRIPTOR_MIN_SIZE) return false;
+    if (!is5_read_at(format->device, format->base_address + (int64_t)descriptor_offset, descriptor,
+                     IS5_DESCRIPTOR_READ_SIZE > descriptor_size ? IS5_DESCRIPTOR_MIN_SIZE : IS5_DESCRIPTOR_READ_SIZE))
         return false;
 
     table_offset = xx_data_get_u32(descriptor + 0x0CU, 4, 0, false);
@@ -359,19 +333,12 @@ static bool is5_parse(Abstractformat *format, is5_stream **result) {
     /* The file table is the one allocation this header can influence, so it
      * is bounded against the real file size and against a fixed ceiling
      * before anything is read. */
-    if (file_count == 0U || file_count > IS5_MAX_MEMBERS ||
-        directory_count > IS5_MAX_MEMBERS || table_size == 0U ||
-        table_size > IS5_MAX_FILE_TABLE ||
-        (uint64_t)directory_count * 4U > table_size ||
-        (int64_t)descriptor_offset + (int64_t)table_offset > size ||
-        (int64_t)table_size >
-            size - ((int64_t)descriptor_offset + (int64_t)table_offset))
+    if (file_count == 0U || file_count > IS5_MAX_MEMBERS || directory_count > IS5_MAX_MEMBERS || table_size == 0U || table_size > IS5_MAX_FILE_TABLE ||
+        (uint64_t)directory_count * 4U > table_size || (int64_t)descriptor_offset + (int64_t)table_offset > size ||
+        (int64_t)table_size > size - ((int64_t)descriptor_offset + (int64_t)table_offset))
         return false;
     if (major >= 6U) {
-        if (table_offset2 > table_size ||
-            (uint64_t)file_count * IS5_NEW_DESCRIPTOR_SIZE >
-                (uint64_t)(table_size - table_offset2))
-            return false;
+        if (table_offset2 > table_size || (uint64_t)file_count * IS5_NEW_DESCRIPTOR_SIZE > (uint64_t)(table_size - table_offset2)) return false;
     } else {
         uint64_t needed = ((uint64_t)directory_count + file_count) * 4U;
         if (needed > table_size) return false;
@@ -379,12 +346,7 @@ static bool is5_parse(Abstractformat *format, is5_stream **result) {
 
     table = (uint8_t *)xx_mem_alloc(table_size);
     stream = (is5_stream *)xx_mem_calloc(1U, sizeof(*stream));
-    if (!table || !stream ||
-        !is5_read_at(format->device,
-                     format->base_address + (int64_t)descriptor_offset +
-                         (int64_t)table_offset,
-                     table, table_size))
-        goto fail;
+    if (!table || !stream || !is5_read_at(format->device, format->base_address + (int64_t)descriptor_offset + (int64_t)table_offset, table, table_size)) goto fail;
     stream->major_version = major;
 
     for (index = 0U; index < file_count; ++index) {
@@ -406,9 +368,7 @@ static bool is5_parse(Abstractformat *format, is5_stream **result) {
             member.header_size = IS5_NEW_DESCRIPTOR_SIZE;
         } else {
             entry_offset = xx_data_get_u32(table + (directory_count + index) * 4U, 4, 0, false);
-            if (entry_offset > table_size ||
-                table_size - entry_offset < IS5_OLD_DESCRIPTOR_SIZE)
-                goto fail;
+            if (entry_offset > table_size || table_size - entry_offset < IS5_OLD_DESCRIPTOR_SIZE) goto fail;
             entry = table + entry_offset;
             xx_mem_zero(&member, sizeof(member));
             name_offset = xx_data_get_u32(entry, 4, 0, false);
@@ -419,32 +379,22 @@ static bool is5_parse(Abstractformat *format, is5_stream **result) {
             data_offset = xx_data_get_u32(entry + 38U, 4, 0, false);
             member.header_size = IS5_OLD_DESCRIPTOR_SIZE;
         }
-        member.header_offset = format->base_address +
-                               (int64_t)descriptor_offset +
-                               (int64_t)table_offset + (int64_t)entry_offset;
+        member.header_offset = format->base_address + (int64_t)descriptor_offset + (int64_t)table_offset + (int64_t)entry_offset;
         member.unpacked_size = unpacked;
-        member.packed_size = packed > (uint64_t)INT64_MAX ? 0
-                                                          : (int64_t)packed;
+        member.packed_size = packed > (uint64_t)INT64_MAX ? 0 : (int64_t)packed;
         member.data_offset = -1;
         member.present = false;
         /* An entry marked invalid, or one with no payload at all, is a
          * placeholder the writer left behind.  Its name offset is garbage as
          * well, so it is dropped instead of being given an invented name. */
         if ((member.flags & IS5_FLAG_INVALID) != 0U || packed == 0U) continue;
-        member.name = is5_member_path(table, table_size, directory_count,
-                                      member.directory_index,
-                                      is5_table_name(table, table_size,
-                                                     name_offset));
+        member.name = is5_member_path(table, table_size, directory_count, member.directory_index, is5_table_name(table, table_size, name_offset));
         /* See the volume note at the top of this file: geometry alone is not
          * enough, because a descriptor belonging to another volume can name
          * an offset that happens to be inside this one.  The member is
          * published either way; only its reachability changes. */
-        if (volume_has_data &&
-            (!volume_range_known || (index >= first_file && index <= last_file)) &&
-            data_offset >= (uint64_t)volume_data_offset &&
-            data_offset <= (uint64_t)INT64_MAX &&
-            (int64_t)data_offset <= size &&
-            member.packed_size <= size - (int64_t)data_offset &&
+        if (volume_has_data && (!volume_range_known || (index >= first_file && index <= last_file)) && data_offset >= (uint64_t)volume_data_offset &&
+            data_offset <= (uint64_t)INT64_MAX && (int64_t)data_offset <= size && member.packed_size <= size - (int64_t)data_offset &&
             format->base_address <= INT64_MAX - (int64_t)data_offset) {
             member.data_offset = format->base_address + (int64_t)data_offset;
             member.present = true;
@@ -467,17 +417,16 @@ fail:
     return false;
 }
 
-static bool is5_copy_options(xx_list_s *destination, const xx_list_s *source) {
+static bool is5_copy_options(xx_list_s *destination, const xx_list_s *source)
+{
     size_t index;
     if (!source) return true;
     for (index = 0U; index < source->count; ++index) {
-        const xx_meta *original =
-            (const xx_meta *)xx_list_at((const xx_list_t *)source, index);
+        const xx_meta *original = (const xx_meta *)xx_list_at((const xx_list_t *)source, index);
         xx_meta copy;
         if (!original) continue;
         xx_meta_init(&copy, original->meta_id);
-        if (!xx_var_copy(&copy.var, &original->var) ||
-            !xx_list_append(destination, &copy)) {
+        if (!xx_var_copy(&copy.var, &original->var) || !xx_list_append(destination, &copy)) {
             xx_meta_cleanup(&copy);
             return false;
         }
@@ -485,18 +434,19 @@ static bool is5_copy_options(xx_list_s *destination, const xx_list_s *source) {
     return true;
 }
 
-static const xx_var *is5_option(const xx_list_s *options, uint32_t id) {
+static const xx_var *is5_option(const xx_list_s *options, uint32_t id)
+{
     size_t index;
     if (!options) return NULL;
     for (index = 0U; index < options->count; ++index) {
-        const xx_meta *meta =
-            (const xx_meta *)xx_list_at((const xx_list_t *)options, index);
+        const xx_meta *meta = (const xx_meta *)xx_list_at((const xx_list_t *)options, index);
         if (meta && meta->meta_id == id) return &meta->var;
     }
     return NULL;
 }
 
-static bool is5_set_record(xx_archive_record *record, const is5_member *member) {
+static bool is5_set_record(xx_archive_record *record, const is5_member *member)
+{
     xx_archive_record_cleanup(record);
     xx_archive_record_init(record);
     record->header_offset = member->header_offset;
@@ -504,29 +454,20 @@ static bool is5_set_record(xx_archive_record *record, const is5_member *member) 
     record->data_offset = member->data_offset;
     record->compressed_size = member->packed_size;
     return xx_archive_record_set_original_name(record, member->name) &&
-           xx_archive_record_set_meta_u64(record, XX_META_ID_COMPRESSED_SIZE,
-                                          (uint64_t)member->packed_size) &&
-           xx_archive_record_set_meta_u64(record, XX_META_ID_UNCOMPRESSED_SIZE,
-                                          member->unpacked_size) &&
-           xx_archive_record_set_meta_u64(
-               record, XX_META_ID_COMPRESSION_METHOD,
-               (member->flags & IS5_FLAG_COMPRESSED) != 0U ? 1U : 0U) &&
-           xx_archive_record_set_meta_u64(record, XX_META_ID_FLAGS,
-                                          member->flags) &&
-           xx_archive_record_set_meta_u64(record, XX_META_ID_DISK_NUMBER_START,
-                                          member->directory_index) &&
-           xx_archive_record_set_meta_bool(
-               record, XX_META_ID_IS_ENCRYPTED,
-               (member->flags & IS5_FLAG_OBFUSCATED) != 0U) &&
+           xx_archive_record_set_meta_u64(record, XX_META_ID_COMPRESSED_SIZE, (uint64_t)member->packed_size) &&
+           xx_archive_record_set_meta_u64(record, XX_META_ID_UNCOMPRESSED_SIZE, member->unpacked_size) &&
+           xx_archive_record_set_meta_u64(record, XX_META_ID_COMPRESSION_METHOD, (member->flags & IS5_FLAG_COMPRESSED) != 0U ? 1U : 0U) &&
+           xx_archive_record_set_meta_u64(record, XX_META_ID_FLAGS, member->flags) &&
+           xx_archive_record_set_meta_u64(record, XX_META_ID_DISK_NUMBER_START, member->directory_index) &&
+           xx_archive_record_set_meta_bool(record, XX_META_ID_IS_ENCRYPTED, (member->flags & IS5_FLAG_OBFUSCATED) != 0U) &&
            xx_archive_record_set_meta_bool(record, XX_META_ID_IS_FOLDER, false);
 }
 
 /* A compressed member is a run of raw deflate chunks, each introduced by the
  * u16 count of compressed bytes that follow.  The stored expanded size is the
  * anchor: a run that does not land on it exactly is rejected. */
-static bool is5_inflate_chunks(const uint8_t *packed, size_t packed_size,
-                               uint8_t *output, size_t output_size,
-                               size_t *written) {
+static bool is5_inflate_chunks(const uint8_t *packed, size_t packed_size, uint8_t *output, size_t output_size, size_t *written)
+{
     size_t read = 0U, produced = 0U;
     while (read < packed_size) {
         size_t chunk;
@@ -539,10 +480,7 @@ static bool is5_inflate_chunks(const uint8_t *packed, size_t packed_size,
          * block, so the decoder reports failure after emitting every byte it
          * had.  What it produced is the chunk; the run as a whole is judged
          * by the caller against the stored expanded size. */
-        (void)xx_deflate_decompress_memory(packed + read, chunk,
-                                           output + produced,
-                                           output_size - produced,
-                                           &chunk_written, false);
+        (void)xx_deflate_decompress_memory(packed + read, chunk, output + produced, output_size - produced, &chunk_written, false);
         if (chunk_written == 0U) return false;
         read += chunk;
         produced += chunk_written;
@@ -555,7 +493,8 @@ static bool is5_inflate_chunks(const uint8_t *packed, size_t packed_size,
 /* InstallShield's "obfuscation": each byte is XORed with 0xD5, rotated right
  * by two, then decremented by a counter that cycles modulo 0x47.  It is a
  * transport scramble, not encryption, and carries no key. */
-static void is5_deobfuscate(uint8_t *data, size_t size) {
+static void is5_deobfuscate(uint8_t *data, size_t size)
+{
     size_t index;
     uint32_t seed = 0U;
     for (index = 0U; index < size; ++index) {
@@ -571,55 +510,42 @@ static void is5_deobfuscate(uint8_t *data, size_t size) {
  * into u16-prefixed deflate chunks, the later ones store one continuous raw
  * deflate stream over the whole extent.  Both are tried; the stored expanded
  * size is what decides, and the caller checks it. */
-static size_t is5_expand(const uint8_t *packed, size_t packed_size,
-                         uint8_t *output, size_t output_size) {
+static size_t is5_expand(const uint8_t *packed, size_t packed_size, uint8_t *output, size_t output_size)
+{
     size_t written = 0U;
-    if (is5_inflate_chunks(packed, packed_size, output, output_size,
-                           &written) &&
-        written == output_size) {
+    if (is5_inflate_chunks(packed, packed_size, output, output_size, &written) && written == output_size) {
         return written;
     }
     /* The packer ends these streams without a final block, so the decoder
      * reports failure after producing every byte it had.  The return value is
      * therefore not the test - the declared expanded size is. */
     written = 0U;
-    (void)xx_deflate_decompress_memory(packed, packed_size, output,
-                                       output_size, &written, false);
+    (void)xx_deflate_decompress_memory(packed, packed_size, output, output_size, &written, false);
     return written;
 }
 
-static bool is5_decode_member(Abstractformat *format, const is5_member *member,
-                              uint8_t **plain, size_t *plain_size) {
+static bool is5_decode_member(Abstractformat *format, const is5_member *member, uint8_t **plain, size_t *plain_size)
+{
     uint8_t *packed = NULL;
     uint8_t *output = NULL;
     size_t written = 0U;
     size_t output_size;
-    if (!format || !member || !plain || !plain_size || !member->present ||
-        member->packed_size <= 0 ||
-        (member->flags & IS5_FLAG_SPLIT) != 0U ||
-        member->unpacked_size == 0U ||
-        member->unpacked_size > IS5_MAX_MEMBER_SIZE ||
-        member->unpacked_size > SIZE_MAX)
+    if (!format || !member || !plain || !plain_size || !member->present || member->packed_size <= 0 || (member->flags & IS5_FLAG_SPLIT) != 0U ||
+        member->unpacked_size == 0U || member->unpacked_size > IS5_MAX_MEMBER_SIZE || member->unpacked_size > SIZE_MAX)
         return false;
     output_size = (size_t)member->unpacked_size;
     packed = (uint8_t *)xx_mem_alloc((size_t)member->packed_size);
     output = (uint8_t *)xx_mem_alloc(output_size);
-    if (!packed || !output ||
-        !is5_read_at(format->device, member->data_offset, packed,
-                     (size_t)member->packed_size))
-        goto fail;
+    if (!packed || !output || !is5_read_at(format->device, member->data_offset, packed, (size_t)member->packed_size)) goto fail;
     if ((member->flags & IS5_FLAG_COMPRESSED) != 0U) {
-        written = is5_expand(packed, (size_t)member->packed_size, output,
-                             output_size);
+        written = is5_expand(packed, (size_t)member->packed_size, output, output_size);
         /* Writers set the obfuscation flag on members they did not actually
          * scramble, so the flag selects a SECOND attempt rather than the only
          * one: descramble and expand again, and let the expanded size say
          * which attempt was right. */
-        if (written != output_size &&
-            (member->flags & IS5_FLAG_OBFUSCATED) != 0U) {
+        if (written != output_size && (member->flags & IS5_FLAG_OBFUSCATED) != 0U) {
             is5_deobfuscate(packed, (size_t)member->packed_size);
-            written = is5_expand(packed, (size_t)member->packed_size, output,
-                                 output_size);
+            written = is5_expand(packed, (size_t)member->packed_size, output, output_size);
         }
     } else {
         /* A stored member offers no anchor that could tell a descrambled
@@ -641,7 +567,8 @@ fail:
     return false;
 }
 
-void xx_is5_init(xx_is5 *archive, xx_io_device *device, int64_t base_address) {
+void xx_is5_init(xx_is5 *archive, xx_io_device *device, int64_t base_address)
+{
     if (!archive) return;
     xx_mem_zero(archive, sizeof(*archive));
     xx_format_init(&archive->format, device, base_address);
@@ -649,44 +576,41 @@ void xx_is5_init(xx_is5 *archive, xx_io_device *device, int64_t base_address) {
     archive->format.file_type = XX_IS5_FILE_TYPE;
     archive->format.format_type = XX_TYPE_ARCHIVE;
     archive->format.is_archive = true;
-    xx_format_set_mime_type(&archive->format,
-                            "application/x-installshield-cab");
+    xx_format_set_mime_type(&archive->format, "application/x-installshield-cab");
     xx_format_set_extension(&archive->format, "cab");
     archive->format.check_is_valid = xx_is5_check_is_valid;
     archive->format.handle_base_info = xx_is5_handle_base_info;
     archive->format.get_format_size = xx_is5_get_format_size;
-    archive->format.get_number_of_archive_records =
-        xx_is5_get_number_of_archive_records;
-    archive->format.create_archive_records_reading =
-        xx_is5_create_archive_records_reading;
-    archive->format.get_current_archive_record =
-        xx_is5_get_current_archive_record;
-    archive->format.unpack_current_archive_record =
-        xx_is5_unpack_current_archive_record;
-    archive->format.archive_record_move_to_next =
-        xx_is5_archive_record_move_to_next;
-    archive->format.free_archive_records_reading =
-        xx_is5_free_archive_records_reading;
+    archive->format.get_number_of_archive_records = xx_is5_get_number_of_archive_records;
+    archive->format.create_archive_records_reading = xx_is5_create_archive_records_reading;
+    archive->format.get_current_archive_record = xx_is5_get_current_archive_record;
+    archive->format.unpack_current_archive_record = xx_is5_unpack_current_archive_record;
+    archive->format.archive_record_move_to_next = xx_is5_archive_record_move_to_next;
+    archive->format.free_archive_records_reading = xx_is5_free_archive_records_reading;
     archive->archive_end = -1;
 }
 
-xx_is5 *xx_is5_create(xx_io_device *device, int64_t base_address) {
+xx_is5 *xx_is5_create(xx_io_device *device, int64_t base_address)
+{
     xx_is5 *archive = (xx_is5 *)xx_mem_alloc(sizeof(*archive));
     if (archive) xx_is5_init(archive, device, base_address);
     return archive;
 }
 
-void xx_is5_destroy(xx_is5 *archive) {
+void xx_is5_destroy(xx_is5 *archive)
+{
     if (archive) xx_format_cleanup_extra_parameters(&archive->format);
 }
 
-void xx_is5_free(xx_is5 *archive) {
+void xx_is5_free(xx_is5 *archive)
+{
     if (!archive) return;
     xx_is5_destroy(archive);
     xx_mem_free(archive);
 }
 
-bool xx_is5_check_is_valid(Abstractformat *format, xx_pd_struct *pd) {
+bool xx_is5_check_is_valid(Abstractformat *format, xx_pd_struct *pd)
+{
     is5_stream *stream;
     (void)pd;
     if (!is5_parse(format, &stream)) return false;
@@ -694,7 +618,8 @@ bool xx_is5_check_is_valid(Abstractformat *format, xx_pd_struct *pd) {
     return true;
 }
 
-bool xx_is5_handle_base_info(Abstractformat *format, xx_pd_struct *pd) {
+bool xx_is5_handle_base_info(Abstractformat *format, xx_pd_struct *pd)
+{
     is5_stream *stream;
     xx_is5 *archive;
     (void)pd;
@@ -711,25 +636,18 @@ bool xx_is5_handle_base_info(Abstractformat *format, xx_pd_struct *pd) {
     return true;
 }
 
-int64_t xx_is5_get_format_size(Abstractformat *format, xx_pd_struct *pd) {
-    return format &&
-                   (format->base_info_handled ||
-                    xx_is5_handle_base_info(format, pd))
-               ? format->format_size
-               : -1;
+int64_t xx_is5_get_format_size(Abstractformat *format, xx_pd_struct *pd)
+{
+    return format && (format->base_info_handled || xx_is5_handle_base_info(format, pd)) ? format->format_size : -1;
 }
 
-uint64_t xx_is5_get_number_of_archive_records(Abstractformat *format,
-                                              xx_pd_struct *pd) {
-    return format &&
-                   (format->base_info_handled ||
-                    xx_is5_handle_base_info(format, pd))
-               ? ((xx_is5 *)format)->number_of_records
-               : 0U;
+uint64_t xx_is5_get_number_of_archive_records(Abstractformat *format, xx_pd_struct *pd)
+{
+    return format && (format->base_info_handled || xx_is5_handle_base_info(format, pd)) ? ((xx_is5 *)format)->number_of_records : 0U;
 }
 
-xx_archive_record_state *xx_is5_create_archive_records_reading(
-    Abstractformat *format, const xx_list_s *options, xx_pd_struct *pd) {
+xx_archive_record_state *xx_is5_create_archive_records_reading(Abstractformat *format, const xx_list_s *options, xx_pd_struct *pd)
+{
     is5_stream *stream;
     xx_archive_record_state *state;
     (void)pd;
@@ -759,33 +677,26 @@ xx_archive_record_state *xx_is5_create_archive_records_reading(
     return state;
 }
 
-const xx_archive_record *xx_is5_get_current_archive_record(
-    Abstractformat *format, xx_archive_record_state *state) {
-    return format && state && state->format == format && state->has_record
-               ? &state->current_record
-               : NULL;
+const xx_archive_record *xx_is5_get_current_archive_record(Abstractformat *format, xx_archive_record_state *state)
+{
+    return format && state && state->format == format && state->has_record ? &state->current_record : NULL;
 }
 
-bool xx_is5_archive_record_move_to_next(Abstractformat *format,
-                                        xx_archive_record_state *state,
-                                        xx_pd_struct *pd) {
+bool xx_is5_archive_record_move_to_next(Abstractformat *format, xx_archive_record_state *state, xx_pd_struct *pd)
+{
     is5_stream *stream;
     (void)pd;
-    if (!format || !state || state->format != format ||
-        !(stream = (is5_stream *)state->internal_state) ||
-        ++stream->index >= stream->count) {
+    if (!format || !state || state->format != format || !(stream = (is5_stream *)state->internal_state) || ++stream->index >= stream->count) {
         if (state) state->has_record = false;
         return false;
     }
     ++state->current_index;
-    state->has_record =
-        is5_set_record(&state->current_record, &stream->items[stream->index]);
+    state->has_record = is5_set_record(&state->current_record, &stream->items[stream->index]);
     return state->has_record;
 }
 
-bool xx_is5_unpack_current_archive_record(Abstractformat *format,
-                                          xx_archive_record_state *state,
-                                          xx_pd_struct *pd) {
+bool xx_is5_unpack_current_archive_record(Abstractformat *format, xx_archive_record_state *state, xx_pd_struct *pd)
+{
     is5_stream *stream;
     is5_member *member;
     const xx_var *path_option;
@@ -796,32 +707,24 @@ bool xx_is5_unpack_current_archive_record(Abstractformat *format,
     size_t plain_size = 0U, written = 0U;
     bool result = false;
     bool created = false;
-    if (!format || !state || state->format != format || !state->has_record ||
-        !(stream = (is5_stream *)state->internal_state) ||
-        stream->index >= stream->count || (pd && xx_pd_is_stopped(pd)))
+    if (!format || !state || state->format != format || !state->has_record || !(stream = (is5_stream *)state->internal_state) || stream->index >= stream->count ||
+        (pd && xx_pd_is_stopped(pd)))
         return false;
     member = &stream->items[stream->index];
-    if (!is5_safe_output_name(member->name) ||
-        !is5_decode_member(format, member, &plain, &plain_size))
-        goto done;
+    if (!is5_safe_output_name(member->name) || !is5_decode_member(format, member, &plain, &plain_size)) goto done;
     path_option = is5_option(&state->options, XX_META_ID_OPT_UNPACK_PATH);
     if (!path_option) {
         result = true;
         goto done;
     }
-    if (path_option->type == XX_VAR_TYPE_STRING ||
-        path_option->type == XX_VAR_TYPE_STRING_VIEW)
-        base = xx_var_get_str(path_option);
-    else if (path_option->type == XX_VAR_TYPE_WSTRING ||
-             path_option->type == XX_VAR_TYPE_WSTRING_VIEW) {
+    if (path_option->type == XX_VAR_TYPE_STRING || path_option->type == XX_VAR_TYPE_STRING_VIEW) base = xx_var_get_str(path_option);
+    else if (path_option->type == XX_VAR_TYPE_WSTRING || path_option->type == XX_VAR_TYPE_WSTRING_VIEW) {
         owned_base = xx_str_unicode_to_utf8(xx_var_get_wstr(path_option));
         base = owned_base;
     }
     if (!base) goto done;
-    path = (base[0] && base[xx_str_len(base) - 1U] != '/' &&
-            base[xx_str_len(base) - 1U] != '\\')
-               ? xx_str_concat3(base, "/", member->name)
-               : xx_str_concat(base, member->name);
+    path = (base[0] && base[xx_str_len(base) - 1U] != '/' && base[xx_str_len(base) - 1U] != '\\') ? xx_str_concat3(base, "/", member->name)
+                                                                                                  : xx_str_concat(base, member->name);
     if (!path || !xx_store_create_dirs_a(path, false)) goto done;
     {
         xx_io_device *destination = xx_io_file_open(path, "wb");
@@ -829,8 +732,7 @@ bool xx_is5_unpack_current_archive_record(Abstractformat *format,
         if (!destination) goto done;
         result = true;
         while (written < plain_size) {
-            ssize_t amount = xx_io_write(destination, plain + written,
-                                         plain_size - written);
+            ssize_t amount = xx_io_write(destination, plain + written, plain_size - written);
             if (amount <= 0 || (size_t)amount > plain_size - written) {
                 result = false;
                 break;
@@ -847,8 +749,8 @@ done:
     return result;
 }
 
-void xx_is5_free_archive_records_reading(Abstractformat *format,
-                                         xx_archive_record_state *state) {
+void xx_is5_free_archive_records_reading(Abstractformat *format, xx_archive_record_state *state)
+{
     (void)format;
     xx_archive_record_state_free(state);
 }

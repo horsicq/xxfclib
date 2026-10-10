@@ -13,8 +13,8 @@
 #define DC_FILE_TYPE XX_FILE_TYPE_UNKNOWN
 #endif
 
-static bool dc_parse(Abstractformat *f, dc_image *image,
-                      const xx_list_s *options, xx_pd_struct *pd) {
+static bool dc_parse(Abstractformat *f, dc_image *image, const xx_list_s *options, xx_pd_struct *pd)
+{
     uint8_t header[32];
     uint64_t header_size, declared_size, cylinders, heads, per_track, sector_size;
     uint64_t size;
@@ -26,9 +26,9 @@ static bool dc_parse(Abstractformat *f, dc_image *image,
     per_track = xx_data_get_u32(header + 20U, 4, 0, false);
     heads = xx_data_get_u32(header + 24U, 4, 0, false);
     cylinders = xx_data_get_u32(header + 28U, 4, 0, false);
-    if (header_size < sizeof(header) || header_size > UINT32_C(1048576) ||
-        !declared_size || !cylinders || !heads || !per_track ||
-        sector_size < 128U || sector_size > 16384U || (sector_size & (sector_size - 1U))) return false;
+    if (header_size < sizeof(header) || header_size > UINT32_C(1048576) || !declared_size || !cylinders || !heads || !per_track || sector_size < 128U ||
+        sector_size > 16384U || (sector_size & (sector_size - 1U)))
+        return false;
     /* Divide the declared bounded length before multiplying untrusted values. */
     if (cylinders > declared_size / sector_size / heads / per_track) return false;
     size = cylinders * heads * per_track * sector_size;

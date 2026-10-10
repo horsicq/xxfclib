@@ -9,10 +9,10 @@
 #include "xxfclib/memory/xx_memory.h"
 #include "xxfclib/rt/xx_rt.h"
 
-#define TERSE_NODES 4096U      /* 0x000 .. 0xFFF                            */
-#define TERSE_RING_FIRST 0x101 /* first recyclable node                     */
-#define TERSE_RING_LAST 0xffe  /* last recyclable node                      */
-#define TERSE_MAX_DEPTH 0x1000 /* the reference expansion guard             */
+#define TERSE_NODES 4096U       /* 0x000 .. 0xFFF                            */
+#define TERSE_RING_FIRST 0x101  /* first recyclable node                     */
+#define TERSE_RING_LAST 0xffe   /* last recyclable node                      */
+#define TERSE_MAX_DEPTH 0x1000  /* the reference expansion guard             */
 #define TERSE_STACK_SIZE 0x1010 /* one push in, two out per expansion       */
 
 /* The whole decoder state.  It lives in a heap block owned by the call, never
@@ -23,7 +23,7 @@ typedef struct terse_state {
     size_t position;
     uint32_t bits;
     int bit_count;
-    uint8_t *output;   /* NULL when only measuring                          */
+    uint8_t *output; /* NULL when only measuring                          */
     size_t limit;
     size_t count;
     bool overflow;
@@ -54,12 +54,10 @@ static bool terse_probe(const uint8_t *data, size_t size, size_t offset)
     for (i = 0; i < 5; ++i) {
         int value;
         if (i & 1) {
-            value = (int)((((uint32_t)(data[position] & 0x0fU)) << 8) +
-                          (uint32_t)data[position + 1U]) - 1;
+            value = (int)((((uint32_t)(data[position] & 0x0fU)) << 8) + (uint32_t)data[position + 1U]) - 1;
             position += 2U;
         } else {
-            value = (int)(((uint32_t)data[position] * 16U) +
-                          ((uint32_t)data[position + 1U] >> 4)) - 1;
+            value = (int)(((uint32_t)data[position] * 16U) + ((uint32_t)data[position + 1U] >> 4)) - 1;
             position += 1U;
         }
         if (value < 0 || value >= limits[i]) return false;
@@ -67,8 +65,7 @@ static bool terse_probe(const uint8_t *data, size_t size, size_t offset)
     return true;
 }
 
-bool xx_terse_detect(const uint8_t *input, size_t input_size,
-                     size_t *header_size)
+bool xx_terse_detect(const uint8_t *input, size_t input_size, size_t *header_size)
 {
     bool header_ok = false;
 
@@ -76,27 +73,22 @@ bool xx_terse_detect(const uint8_t *input, size_t input_size,
     if (!input || input_size < 5U) return false;
 
     /* 0xA5698901 read little-endian, i.e. the bytes 01 89 69 A5. */
-    if (input[0] == 0x01U && input[1] == 0x89U && input[2] == 0x69U &&
-        input[3] == 0xa5U) {
+    if (input[0] == 0x01U && input[1] == 0x89U && input[2] == 0x69U && input[3] == 0xa5U) {
         if (header_size) *header_size = 4U;
         return true;
     }
     if (input_size < 12U) return false;
 
-    if (input[0] == 0x05U && input[1] < 2U && (input[2] | input[3]) != 0U &&
-        input[4] == 0U && input[5] == 0U && input[6] == 0U && input[7] == 0U &&
-        input[8] == 0U && input[9] == 0U && input[10] == 0U &&
+    if (input[0] == 0x05U && input[1] < 2U && (input[2] | input[3]) != 0U && input[4] == 0U && input[5] == 0U && input[6] == 0U && input[7] == 0U && input[8] == 0U &&
+        input[9] == 0U && input[10] == 0U && input[11] == 0U) {
+        header_ok = true;
+    }
+    if (!header_ok && input[0] == 0x09U && input[1] < 2U && (input[2] | input[3]) != 0U && input[4] != 0U && input[8] == 0U && input[9] == 0U && input[10] == 0U &&
         input[11] == 0U) {
         header_ok = true;
     }
-    if (!header_ok && input[0] == 0x09U && input[1] < 2U &&
-        (input[2] | input[3]) != 0U && input[4] != 0U && input[8] == 0U &&
-        input[9] == 0U && input[10] == 0U && input[11] == 0U) {
-        header_ok = true;
-    }
-    if (!header_ok && input[0] == 0x02U && input[1] < 2U &&
-        (input[2] | input[3]) != 0U && input[4] != 0U && input[8] == 0U &&
-        input[9] == 0U && input[10] == 0U && input[11] == 0U) {
+    if (!header_ok && input[0] == 0x02U && input[1] < 2U && (input[2] | input[3]) != 0U && input[4] != 0U && input[8] == 0U && input[9] == 0U && input[10] == 0U &&
+        input[11] == 0U) {
         header_ok = true;
     }
     if (!header_ok) return false;
@@ -125,8 +117,7 @@ static bool terse_get_code(terse_state *state, int *code)
         if (state->position >= state->input_size) return false;
         byte = (uint32_t)state->input[state->position];
         state->position++;
-        state->bits = (uint32_t)(state->bits +
-                                 (byte << (24 - state->bit_count)));
+        state->bits = (uint32_t)(state->bits + (byte << (24 - state->bit_count)));
         state->bit_count += 8;
     }
     *code = (int)(state->bits >> 20);
@@ -189,9 +180,7 @@ static void terse_bump(terse_state *state, int node, int delta)
     }
 }
 
-static void terse_init(terse_state *state, const uint8_t *input,
-                       size_t input_size, size_t header_size, uint8_t *output,
-                       size_t limit)
+static void terse_init(terse_state *state, const uint8_t *input, size_t input_size, size_t header_size, uint8_t *output, size_t limit)
 {
     int i;
 
@@ -266,9 +255,7 @@ static bool terse_run(terse_state *state)
  * input before its end code fails here instead.  A stream that terminates
  * cleanly produces byte-for-byte the same output either way.
  */
-static bool terse_core(const uint8_t *input, size_t input_size,
-                       uint8_t *output, size_t limit, size_t *produced,
-                       size_t *consumed)
+static bool terse_core(const uint8_t *input, size_t input_size, uint8_t *output, size_t limit, size_t *produced, size_t *consumed)
 {
     terse_state *state;
     size_t header_size = 0U;
@@ -294,17 +281,14 @@ static bool terse_core(const uint8_t *input, size_t input_size,
         size_t buffered = (size_t)(state->bit_count / 8);
         if (produced) *produced = state->count;
         if (consumed) {
-            *consumed = state->position > buffered ? state->position - buffered
-                                                   : 0U;
+            *consumed = state->position > buffered ? state->position - buffered : 0U;
         }
     }
     xx_mem_free(state);
     return ok;
 }
 
-bool xx_terse_decode_memory(const uint8_t *input, size_t input_size,
-                            uint8_t *output, size_t output_size,
-                            size_t *written)
+bool xx_terse_decode_memory(const uint8_t *input, size_t input_size, uint8_t *output, size_t output_size, size_t *written)
 {
     size_t produced = 0U;
 
@@ -318,9 +302,7 @@ bool xx_terse_decode_memory(const uint8_t *input, size_t input_size,
     return true;
 }
 
-bool xx_terse_scan_memory(const uint8_t *input, size_t input_size,
-                          size_t max_output, size_t *consumed,
-                          size_t *produced)
+bool xx_terse_scan_memory(const uint8_t *input, size_t input_size, size_t max_output, size_t *consumed, size_t *produced)
 {
     if (consumed) *consumed = 0U;
     if (produced) *produced = 0U;

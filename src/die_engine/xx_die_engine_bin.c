@@ -57,8 +57,7 @@ static int die_file_read_device_sized(DieFile *file, xx_io_device *source, size_
 
 static DieBufferedFile *die_buffer_state(const DieFile *file)
 {
-    return file && file->pDevice && file->pDevice->read == die_buffer_read
-        ? (DieBufferedFile *)file->pDevice->priv : NULL;
+    return file && file->pDevice && file->pDevice->read == die_buffer_read ? (DieBufferedFile *)file->pDevice->priv : NULL;
 }
 
 size_t die_file_buffer_size(const DieFile *file)
@@ -88,8 +87,7 @@ static int die_buffer_load(DieBufferedFile *state, cd_u64 upcoming)
     if (state->loaded) return 1;
     if (state->resident || state->load_failed || state->failed || !state->memory_limit) return 0;
     if ((cd_u64)state->size > state->memory_limit || (cd_u64)state->size >= (cd_u64)SIZE_MAX) return 0;
-    if (state->streamed < (cd_u64)state->size &&
-        upcoming < (cd_u64)state->size - state->streamed) return 0;
+    if (state->streamed < (cd_u64)state->size && upcoming < (cd_u64)state->size - state->streamed) return 0;
     size = (size_t)state->size;
     whole = (unsigned char *)x_malloc(size + 1);
     if (!whole || xx_io_seek64(state->source, 0, SEEK_SET) != 0) {
@@ -136,12 +134,10 @@ static int die_buffer_fill(DieBufferedFile *state, cd_i64 offset)
      * first bridge has already loaded the next block. Retain a fixed tail
      * so that visit does not evict and reread both adjacent file blocks. */
     if (state->valid) {
-        size_t tail_capacity = state->capacity < sizeof(state->previous_tail)
-            ? state->capacity : sizeof(state->previous_tail);
+        size_t tail_capacity = state->capacity < sizeof(state->previous_tail) ? state->capacity : sizeof(state->previous_tail);
         state->previous_valid = state->valid < tail_capacity ? state->valid : tail_capacity;
         state->previous_base = state->base + (cd_i64)(state->valid - state->previous_valid);
-        x_memcpy(state->previous_tail, state->buffer + state->valid - state->previous_valid,
-                  state->previous_valid);
+        x_memcpy(state->previous_tail, state->buffer + state->valid - state->previous_valid, state->previous_valid);
     }
     state->valid = 0;
     if (!state->buffer || xx_io_seek64(state->source, base, SEEK_SET) != 0) {
@@ -166,8 +162,7 @@ static int die_buffer_fill(DieBufferedFile *state, cd_i64 offset)
     return 1;
 }
 
-static const unsigned char *die_buffer_view(DieBufferedFile *state,
-                                            cd_i64 offset, size_t *count)
+static const unsigned char *die_buffer_view(DieBufferedFile *state, cd_i64 offset, size_t *count)
 {
     const unsigned char *view;
     size_t within, available;
@@ -176,8 +171,7 @@ static const unsigned char *die_buffer_view(DieBufferedFile *state,
         within = (size_t)(offset - state->base);
         view = state->buffer + within;
         available = state->valid - within;
-    } else if (offset >= state->previous_base &&
-               (cd_u64)(offset - state->previous_base) < state->previous_valid) {
+    } else if (offset >= state->previous_base && (cd_u64)(offset - state->previous_base) < state->previous_valid) {
         within = (size_t)(offset - state->previous_base);
         view = state->previous_tail + within;
         available = state->previous_valid - within;
@@ -252,8 +246,7 @@ static int die_buffer_close(xx_io_device *device)
 
 /* Keep capacity on the shared device for both modes, without changing the
  * private DieFile layout used by the other library translation units. */
-static int die_file_install_device(DieFile *file, xx_io_device *source,
-                                  size_t capacity, int take_ownership, int resident)
+static int die_file_install_device(DieFile *file, xx_io_device *source, size_t capacity, int take_ownership, int resident)
 {
     DieBufferedFile *state;
     state = (DieBufferedFile *)cd_try_malloc(sizeof(*state));
@@ -350,7 +343,10 @@ int die_file_read_at(DieFile *file, cd_i64 offset, void *data, size_t count)
         if (request > capacity) request = capacity;
         if (request > ((size_t)-1 >> 1)) request = (size_t)-1 >> 1;
         got = xx_io_read(file->pDevice, (unsigned char *)data + done, request);
-        if (got <= 0 || (size_t)got > request) { result = 0; break; }
+        if (got <= 0 || (size_t)got > request) {
+            result = 0;
+            break;
+        }
         done += (size_t)got;
     }
     if (xx_io_seek64(file->pDevice, cursor, SEEK_SET) != 0) result = 0;
@@ -368,7 +364,10 @@ const unsigned char *die_file_window(DieFile *file, cd_i64 offset, size_t *count
     if (wanted > die_file_buffer_size(file)) wanted = die_file_buffer_size(file);
     if ((cd_u64)(file->nSize - offset) < wanted) wanted = (size_t)(file->nSize - offset);
     whole = die_file_whole(file, (cd_i64)wanted);
-    if (whole) { *count = wanted; return whole + (size_t)offset; }
+    if (whole) {
+        *count = wanted;
+        return whole + (size_t)offset;
+    }
     state = die_buffer_state(file);
     if (!state || !(view = die_buffer_view(state, offset, &wanted))) return NULL;
     *count = wanted;
@@ -460,8 +459,7 @@ int die_file_open(DieFile *pFile, const char *pFileName)
     return bResult;
 }
 
-int die_file_adopt(DieFile *pFile, unsigned char *pData, cd_i64 nSize,
-                   const char *pName)
+int die_file_adopt(DieFile *pFile, unsigned char *pData, cd_i64 nSize, const char *pName)
 {
     size_t capacity = die_file_buffer_size(NULL);
     xx_io_device *memory;
@@ -534,9 +532,7 @@ int die_range_clamp(DieFile *pFile, cd_i64 nOffset, cd_i64 *pnSize)
 
 /* ---------------------------------------------------------- memory map --- */
 
-int die_map_add_part(xx_memory_map *pMap, cd_i64 nOffset, cd_i64 nSize,
-                     cd_u64 nAddress, cd_u64 nVirtualSize,
-                     xx_file_part_t filePart, const char *pName)
+int die_map_add_part(xx_memory_map *pMap, cd_i64 nOffset, cd_i64 nSize, cd_u64 nAddress, cd_u64 nVirtualSize, xx_file_part_t filePart, const char *pName)
 {
     xx_memory_record record;
 
@@ -637,8 +633,7 @@ static void append_utf8(CDBuf *pBuf, unsigned int nCode)
     }
 }
 
-char *die_unicode_string_n(DieFile *pFile, cd_i64 nOffset, cd_i64 nMaxSize,
-                           int bBigEndian, cd_i64 *pnUnits)
+char *die_unicode_string_n(DieFile *pFile, cd_i64 nOffset, cd_i64 nMaxSize, int bBigEndian, cd_i64 *pnUnits)
 {
     CDBuf buf;
     cd_i64 i = 0;
@@ -656,8 +651,7 @@ char *die_unicode_string_n(DieFile *pFile, cd_i64 nOffset, cd_i64 nMaxSize,
             break;
         }
 
-        nChar = xx_io_get_u16(pFile->pDevice, nOffset + i * 2,
-                              bBigEndian ? true : false);
+        nChar = xx_io_get_u16(pFile->pDevice, nOffset + i * 2, bBigEndian ? true : false);
 
         if (nChar == 0) {
             break;
@@ -673,8 +667,7 @@ char *die_unicode_string_n(DieFile *pFile, cd_i64 nOffset, cd_i64 nMaxSize,
     return cdbuf_detach(&buf, NULL);
 }
 
-char *die_unicode_string(DieFile *pFile, cd_i64 nOffset, cd_i64 nMaxSize,
-                         int bBigEndian)
+char *die_unicode_string(DieFile *pFile, cd_i64 nOffset, cd_i64 nMaxSize, int bBigEndian)
 {
     return die_unicode_string_n(pFile, nOffset, nMaxSize, bBigEndian, NULL);
 }
@@ -787,8 +780,7 @@ char *die_signature_hex(DieFile *pFile, cd_i64 nOffset, cd_i64 nSize)
 
 /* ---------------------------------------------------------- searching --- */
 
-static int die_bytes_equal(DieFile *file, cd_i64 offset,
-                            const unsigned char *bytes, size_t size)
+static int die_bytes_equal(DieFile *file, cd_i64 offset, const unsigned char *bytes, size_t size)
 {
     size_t done = 0;
     while (done < size) {
@@ -800,8 +792,7 @@ static int die_bytes_equal(DieFile *file, cd_i64 offset,
     return 1;
 }
 
-cd_i64 die_find_bytes(DieFile *pFile, cd_i64 nOffset, cd_i64 nSize,
-                      const unsigned char *pNeedle, cd_i64 nNeedleSize)
+cd_i64 die_find_bytes(DieFile *pFile, cd_i64 nOffset, cd_i64 nSize, const unsigned char *pNeedle, cd_i64 nNeedleSize)
 {
     cd_i64 nFound = 0;
     const unsigned char *pWhole;
@@ -825,8 +816,7 @@ cd_i64 die_find_bytes(DieFile *pFile, cd_i64 nOffset, cd_i64 nSize,
      * so the window is expressed by shortening the buffer rather than by a
      * length argument. The result is relative to that buffer. */
     if (pWhole) {
-        nFound = xx_data_find_bytes_buffer_optimize(pWhole + nOffset, (size_t)nSize, 0,
-                                                    pNeedle, (size_t)nNeedleSize, NULL);
+        nFound = xx_data_find_bytes_buffer_optimize(pWhole + nOffset, (size_t)nSize, 0, pNeedle, (size_t)nNeedleSize, NULL);
         return (nFound < 0) ? -1 : (nOffset + nFound);
     } else {
         cd_i64 position = nOffset, end = nOffset + nSize;
@@ -854,15 +844,12 @@ cd_i64 die_find_bytes(DieFile *pFile, cd_i64 nOffset, cd_i64 nSize,
     }
 }
 
-cd_i64 die_find_ansi_string(DieFile *pFile, cd_i64 nOffset, cd_i64 nSize,
-                            const char *pString)
+cd_i64 die_find_ansi_string(DieFile *pFile, cd_i64 nOffset, cd_i64 nSize, const char *pString)
 {
-    return die_find_bytes(pFile, nOffset, nSize, (const unsigned char *)pString,
-                          (cd_i64)x_strlen(pString));
+    return die_find_bytes(pFile, nOffset, nSize, (const unsigned char *)pString, (cd_i64)x_strlen(pString));
 }
 
-cd_i64 die_find_unicode_string(DieFile *pFile, cd_i64 nOffset, cd_i64 nSize,
-                               const char *pString, int bBigEndian)
+cd_i64 die_find_unicode_string(DieFile *pFile, cd_i64 nOffset, cd_i64 nSize, const char *pString, int bBigEndian)
 {
     size_t nLength = x_strlen(pString);
     unsigned char *pNeedle = (unsigned char *)cd_malloc(nLength * 2 + 2);
@@ -879,8 +866,7 @@ cd_i64 die_find_unicode_string(DieFile *pFile, cd_i64 nOffset, cd_i64 nSize,
         }
     }
 
-    nResult = die_find_bytes(pFile, nOffset, nSize, pNeedle,
-                             (cd_i64)(nLength * 2));
+    nResult = die_find_bytes(pFile, nOffset, nSize, pNeedle, (cd_i64)(nLength * 2));
     cd_free(pNeedle);
 
     return nResult;
@@ -934,14 +920,16 @@ double die_entropy(DieFile *pFile, cd_i64 nOffset, cd_i64 nSize)
         int k;
         while (done < nSize) {
             size_t count = (size_t)((cd_u64)(nSize - done) < die_file_buffer_size(pFile) ? (cd_u64)(nSize - done) : die_file_buffer_size(pFile)), i;
-            const unsigned char *view = pWhole ? pWhole + (size_t)(nOffset + done)
-                                               : die_file_window(pFile, nOffset + done, &count);
+            const unsigned char *view = pWhole ? pWhole + (size_t)(nOffset + done) : die_file_window(pFile, nOffset + done, &count);
             if (!view) return 0.0;
             for (i = 0; i < count; ++i) ++counts[view[i]];
             done += (cd_i64)count;
         }
         for (k = 0; k < 256; ++k) {
-            if (counts[k]) { double c = (double)counts[k]; sum += c * x_log(c); }
+            if (counts[k]) {
+                double c = (double)counts[k];
+                sum += c * x_log(c);
+            }
         }
         return (x_log(size) - sum / size) * 1.44269504088896340736;
     }
@@ -959,7 +947,8 @@ int die_is_zero_filled(DieFile *pFile, cd_i64 nOffset, cd_i64 nSize)
         size_t count = (size_t)((cd_u64)(nSize - done) < die_file_buffer_size(pFile) ? (cd_u64)(nSize - done) : die_file_buffer_size(pFile)), i;
         const unsigned char *view = die_file_window(pFile, nOffset + done, &count);
         if (!view) return 0;
-        for (i = 0; i < count; ++i) if (view[i]) return 0;
+        for (i = 0; i < count; ++i)
+            if (view[i]) return 0;
         done += (cd_i64)count;
     }
 
@@ -1011,7 +1000,10 @@ char *die_md5(DieFile *pFile, cd_i64 nOffset, cd_i64 nSize)
         while (ok && done < nSize) {
             size_t count = (size_t)((cd_u64)(nSize - done) < die_file_buffer_size(pFile) ? (cd_u64)(nSize - done) : die_file_buffer_size(pFile));
             const unsigned char *view = die_file_window(pFile, nOffset + done, &count);
-            if (!view) { ok = 0; break; }
+            if (!view) {
+                ok = 0;
+                break;
+            }
             xx_hash_update(&context, view, count);
             done += (cd_i64)count;
         }
@@ -1036,7 +1028,8 @@ cd_u32 die_crc32(DieFile *pFile, cd_i64 nOffset, cd_i64 nSize, cd_u32 nInit)
         const unsigned char *view = die_file_window(pFile, nOffset, &count);
         if (!view) return nInit;
         nInit = xx_crc32_calc(nInit, view, count);
-        nOffset += (cd_i64)count; nSize -= (cd_i64)count;
+        nOffset += (cd_i64)count;
+        nSize -= (cd_i64)count;
     }
     return nInit;
 }
@@ -1059,7 +1052,8 @@ cd_u32 die_adler32(DieFile *pFile, cd_i64 nOffset, cd_i64 nSize)
             const unsigned char *view = die_file_window(pFile, nOffset, &count);
             if (!view) return value;
             value = xx_adler32_update(value, view, count);
-            nOffset += (cd_i64)count; nSize -= (cd_i64)count;
+            nOffset += (cd_i64)count;
+            nSize -= (cd_i64)count;
         }
         return value;
     }
@@ -1081,7 +1075,8 @@ cd_u16 die_crc16(DieFile *pFile, cd_i64 nOffset, cd_i64 nSize, cd_u16 nInit)
         const unsigned char *view = die_file_window(pFile, nOffset, &count);
         if (!view) return nInit;
         nInit = xx_crc16_arc_calc(nInit, view, count);
-        nOffset += (cd_i64)count; nSize -= (cd_i64)count;
+        nOffset += (cd_i64)count;
+        nSize -= (cd_i64)count;
     }
     return nInit;
 }

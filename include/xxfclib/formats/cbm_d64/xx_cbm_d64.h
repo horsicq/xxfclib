@@ -61,7 +61,10 @@ XXFC_API bool xx_cbm_d64_archive_record_move_to_next(Abstractformat *, xx_archiv
 XXFC_API bool xx_cbm_d64_unpack_current_archive_record(Abstractformat *, xx_archive_record_state *, xx_pd_struct *);
 XXFC_API bool xx_cbm_d64_extract_record_to_device(Abstractformat *, xx_archive_record_state *, xx_io_device *, xx_pd_struct *);
 XXFC_API void xx_cbm_d64_free_archive_records_reading(Abstractformat *, xx_archive_record_state *);
-static inline Abstractformat *xx_cbm_d64_to_format(xx_cbm_d64 *v) { return v ? &v->format : NULL; }
+static inline Abstractformat *xx_cbm_d64_to_format(xx_cbm_d64 *v)
+{
+    return v ? &v->format : NULL;
+}
 #ifdef __cplusplus
 }
 #endif

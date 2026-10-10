@@ -36,15 +36,12 @@ typedef struct bagf_stream_s {
     bool consumed;
 } bagf_stream;
 
-static bool bagf_read_at(xx_io_device *device, int64_t offset, void *buffer,
-                         size_t size) {
+static bool bagf_read_at(xx_io_device *device, int64_t offset, void *buffer, size_t size)
+{
     size_t done = 0U;
-    if (!device || (!buffer && size != 0U) || offset < 0 ||
-        xx_io_seek64(device, offset, SEEK_SET) != 0)
-        return false;
+    if (!device || (!buffer && size != 0U) || offset < 0 || xx_io_seek64(device, offset, SEEK_SET) != 0) return false;
     while (done < size) {
-        ssize_t amount =
-            xx_io_read(device, (uint8_t *)buffer + done, size - done);
+        ssize_t amount = xx_io_read(device, (uint8_t *)buffer + done, size - done);
         if (amount <= 0 || (size_t)amount > size - done) return false;
         done += (size_t)amount;
     }
@@ -57,8 +54,8 @@ static bool bagf_read_at(xx_io_device *device, int64_t offset, void *buffer,
  * sanitised: the name becomes an output file name, so separators and the
  * dot-only shapes have to die here.
  */
-static bool bagf_pascal(const uint8_t *field, size_t width, char *out,
-                        bool as_name) {
+static bool bagf_pascal(const uint8_t *field, size_t width, char *out, bool as_name)
+{
     size_t length, index;
     if (width == 0U) return false;
     length = field[0];
@@ -66,50 +63,39 @@ static bool bagf_pascal(const uint8_t *field, size_t width, char *out,
     for (index = 0U; index < length; ++index) {
         uint8_t value = field[1U + index];
         if (value < 0x20U || value >= 0x7fU) return false;
-        if (as_name &&
-            (value == '/' || value == '\\' || value == ':' || value == '<' ||
-             value == '>' || value == '"' || value == '|' || value == '?' ||
-             value == '*'))
+        if (as_name && (value == '/' || value == '\\' || value == ':' || value == '<' || value == '>' || value == '"' || value == '|' || value == '?' || value == '*'))
             return false;
         out[index] = (char)value;
     }
     out[length] = 0;
-    if (as_name && out[0] == '.' &&
-        (length == 1U || (length == 2U && out[1] == '.')))
-        return false;
+    if (as_name && out[0] == '.' && (length == 1U || (length == 2U && out[1] == '.'))) return false;
     return true;
 }
 
-static void bagf_stream_free(void *opaque) {
+static void bagf_stream_free(void *opaque)
+{
     if (opaque) xx_mem_free(opaque);
 }
 
 /* --------------------------------------------------------------- parse -- */
 
-static bool bagf_parse(Abstractformat *format, bagf_stream **result,
-                       xx_pd_struct *pd) {
+static bool bagf_parse(Abstractformat *format, bagf_stream **result, xx_pd_struct *pd)
+{
     uint8_t header[XX_BAGF_HEADER_SIZE];
     bagf_stream *stream;
     int64_t total, span;
     uint32_t data_size;
 
-    if (!format || !format->device || !result || format->base_address < 0 ||
-        (pd && xx_pd_is_stopped(pd)))
-        return false;
+    if (!format || !format->device || !result || format->base_address < 0 || (pd && xx_pd_is_stopped(pd))) return false;
     total = xx_io_total_size(format->device);
     if (total < format->base_address) return false;
     span = total - format->base_address;
     if (span < (int64_t)XX_BAGF_HEADER_SIZE) return false;
-    if (!bagf_read_at(format->device, format->base_address, header,
-                      sizeof(header)))
-        return false;
-    if (xx_rt_memcmp(header, XX_BAGF_SIGNATURE, XX_BAGF_SIGNATURE_SIZE) != 0)
-        return false;
+    if (!bagf_read_at(format->device, format->base_address, header, sizeof(header))) return false;
+    if (xx_rt_memcmp(header, XX_BAGF_SIGNATURE, XX_BAGF_SIGNATURE_SIZE) != 0) return false;
     /* The reference reader's version test, byte for byte. */
     if (header[4] != XX_BAGF_VERSION || header[5] != 0U) return false;
-    if (xx_data_get_u32(header + 8, 4, 0, false) == 0U ||
-        (xx_data_get_u32(header + 8, 4, 0, false) & 0x80000000U) != 0U)
-        return false;
+    if (xx_data_get_u32(header + 8, 4, 0, false) == 0U || (xx_data_get_u32(header + 8, 4, 0, false) & 0x80000000U) != 0U) return false;
 
     data_size = xx_data_get_u32(header + 0x28, 4, 0, false);
     /* The declared payload must fit in the real file before it is used. */
@@ -117,15 +103,12 @@ static bool bagf_parse(Abstractformat *format, bagf_stream **result,
 
     stream = (bagf_stream *)xx_mem_calloc(1U, sizeof(*stream));
     if (!stream) return false;
-    if (!bagf_pascal(header + XX_BAGF_NAME_OFFSET, XX_BAGF_NAME_FIELD,
-                     stream->name, true)) {
+    if (!bagf_pascal(header + XX_BAGF_NAME_OFFSET, XX_BAGF_NAME_FIELD, stream->name, true)) {
         xx_mem_free(stream);
         return false;
     }
     /* The description is optional; an unusable one is simply not published. */
-    if (!bagf_pascal(header + XX_BAGF_COMMENT_OFFSET, XX_BAGF_COMMENT_FIELD,
-                     stream->comment, false))
-        stream->comment[0] = 0;
+    if (!bagf_pascal(header + XX_BAGF_COMMENT_OFFSET, XX_BAGF_COMMENT_FIELD, stream->comment, false)) stream->comment[0] = 0;
     stream->data_offset = format->base_address + (int64_t)XX_BAGF_HEADER_SIZE;
     stream->data_size = (int64_t)data_size;
     stream->opaque_08 = xx_data_get_u32(header + 8, 4, 0, false);
@@ -138,18 +121,16 @@ static bool bagf_parse(Abstractformat *format, bagf_stream **result,
 
 /* -------------------------------------------------------------- record -- */
 
-static bool bagf_copy_options(xx_list_s *destination,
-                              const xx_list_s *source) {
+static bool bagf_copy_options(xx_list_s *destination, const xx_list_s *source)
+{
     size_t index;
     if (!source) return true;
     for (index = 0U; index < source->count; ++index) {
-        const xx_meta *item =
-            (const xx_meta *)xx_list_at((const xx_list_t *)source, index);
+        const xx_meta *item = (const xx_meta *)xx_list_at((const xx_list_t *)source, index);
         xx_meta copy;
         if (!item) continue;
         xx_meta_init(&copy, item->meta_id);
-        if (!xx_var_copy(&copy.var, &item->var) ||
-            !xx_list_append(destination, &copy)) {
+        if (!xx_var_copy(&copy.var, &item->var) || !xx_list_append(destination, &copy)) {
             xx_meta_cleanup(&copy);
             return false;
         }
@@ -157,20 +138,19 @@ static bool bagf_copy_options(xx_list_s *destination,
     return true;
 }
 
-static const xx_var *bagf_option(const xx_list_s *options, uint32_t id) {
+static const xx_var *bagf_option(const xx_list_s *options, uint32_t id)
+{
     size_t index;
     if (!options) return NULL;
     for (index = 0U; index < options->count; ++index) {
-        const xx_meta *item =
-            (const xx_meta *)xx_list_at((const xx_list_t *)options, index);
+        const xx_meta *item = (const xx_meta *)xx_list_at((const xx_list_t *)options, index);
         if (item && item->meta_id == id) return &item->var;
     }
     return NULL;
 }
 
-static bool bagf_set_record(xx_archive_record *record,
-                            const Abstractformat *format,
-                            const bagf_stream *stream) {
+static bool bagf_set_record(xx_archive_record *record, const Abstractformat *format, const bagf_stream *stream)
+{
     xx_archive_record_cleanup(record);
     xx_archive_record_init(record);
     record->header_offset = format->base_address;
@@ -178,26 +158,18 @@ static bool bagf_set_record(xx_archive_record *record,
     record->data_offset = stream->data_offset;
     record->compressed_size = stream->data_size;
     if (!xx_archive_record_set_original_name(record, stream->name)) return false;
-    if (stream->comment[0] &&
-        !xx_archive_record_set_meta_str(record, XX_META_ID_COMMENT,
-                                        stream->comment))
-        return false;
-    return xx_archive_record_set_meta_u64(record, XX_META_ID_COMPRESSED_SIZE,
-                                          (uint64_t)stream->data_size) &&
-           xx_archive_record_set_meta_u64(record, XX_META_ID_UNCOMPRESSED_SIZE,
-                                          (uint64_t)stream->data_size) &&
+    if (stream->comment[0] && !xx_archive_record_set_meta_str(record, XX_META_ID_COMMENT, stream->comment)) return false;
+    return xx_archive_record_set_meta_u64(record, XX_META_ID_COMPRESSED_SIZE, (uint64_t)stream->data_size) &&
+           xx_archive_record_set_meta_u64(record, XX_META_ID_UNCOMPRESSED_SIZE, (uint64_t)stream->data_size) &&
            /* Stored: the payload is the member, byte for byte. */
-           xx_archive_record_set_meta_u64(record, XX_META_ID_COMPRESSION_METHOD,
-                                          0U) &&
-           xx_archive_record_set_meta_bool(record, XX_META_ID_IS_ENCRYPTED,
-                                           false) &&
+           xx_archive_record_set_meta_u64(record, XX_META_ID_COMPRESSION_METHOD, 0U) && xx_archive_record_set_meta_bool(record, XX_META_ID_IS_ENCRYPTED, false) &&
            xx_archive_record_set_meta_bool(record, XX_META_ID_IS_FOLDER, false);
 }
 
 /* ----------------------------------------------------------- lifecycle -- */
 
-void xx_bagf_init(xx_bagf *archive, xx_io_device *device,
-                  int64_t base_address) {
+void xx_bagf_init(xx_bagf *archive, xx_io_device *device, int64_t base_address)
+{
     if (!archive) return;
     xx_mem_zero(archive, sizeof(*archive));
     xx_format_init(&archive->format, device, base_address);
@@ -211,33 +183,30 @@ void xx_bagf_init(xx_bagf *archive, xx_io_device *device,
     archive->format.check_is_valid = xx_bagf_check_is_valid;
     archive->format.handle_base_info = xx_bagf_handle_base_info;
     archive->format.get_format_size = xx_bagf_get_format_size;
-    archive->format.get_number_of_archive_records =
-        xx_bagf_get_number_of_archive_records;
-    archive->format.create_archive_records_reading =
-        xx_bagf_create_archive_records_reading;
-    archive->format.get_current_archive_record =
-        xx_bagf_get_current_archive_record;
-    archive->format.unpack_current_archive_record =
-        xx_bagf_unpack_current_archive_record;
-    archive->format.archive_record_move_to_next =
-        xx_bagf_archive_record_move_to_next;
-    archive->format.free_archive_records_reading =
-        xx_bagf_free_archive_records_reading;
+    archive->format.get_number_of_archive_records = xx_bagf_get_number_of_archive_records;
+    archive->format.create_archive_records_reading = xx_bagf_create_archive_records_reading;
+    archive->format.get_current_archive_record = xx_bagf_get_current_archive_record;
+    archive->format.unpack_current_archive_record = xx_bagf_unpack_current_archive_record;
+    archive->format.archive_record_move_to_next = xx_bagf_archive_record_move_to_next;
+    archive->format.free_archive_records_reading = xx_bagf_free_archive_records_reading;
     archive->data_offset = -1;
     archive->data_size = -1;
 }
 
-xx_bagf *xx_bagf_create(xx_io_device *device, int64_t base_address) {
+xx_bagf *xx_bagf_create(xx_io_device *device, int64_t base_address)
+{
     xx_bagf *archive = (xx_bagf *)xx_mem_alloc(sizeof(*archive));
     if (archive) xx_bagf_init(archive, device, base_address);
     return archive;
 }
 
-void xx_bagf_destroy(xx_bagf *archive) {
+void xx_bagf_destroy(xx_bagf *archive)
+{
     if (archive) xx_format_cleanup_extra_parameters(&archive->format);
 }
 
-void xx_bagf_free(xx_bagf *archive) {
+void xx_bagf_free(xx_bagf *archive)
+{
     if (!archive) return;
     xx_bagf_destroy(archive);
     xx_mem_free(archive);
@@ -245,14 +214,16 @@ void xx_bagf_free(xx_bagf *archive) {
 
 /* -------------------------------------------------------------- format -- */
 
-bool xx_bagf_check_is_valid(Abstractformat *format, xx_pd_struct *pd) {
+bool xx_bagf_check_is_valid(Abstractformat *format, xx_pd_struct *pd)
+{
     bagf_stream *stream;
     if (!bagf_parse(format, &stream, pd)) return false;
     bagf_stream_free(stream);
     return true;
 }
 
-bool xx_bagf_handle_base_info(Abstractformat *format, xx_pd_struct *pd) {
+bool xx_bagf_handle_base_info(Abstractformat *format, xx_pd_struct *pd)
+{
     bagf_stream *stream;
     xx_bagf *archive;
     int64_t total, archive_size;
@@ -287,25 +258,20 @@ bool xx_bagf_handle_base_info(Abstractformat *format, xx_pd_struct *pd) {
     return true;
 }
 
-int64_t xx_bagf_get_format_size(Abstractformat *format, xx_pd_struct *pd) {
-    return format && (format->base_info_handled ||
-                      xx_bagf_handle_base_info(format, pd))
-               ? format->format_size
-               : -1;
+int64_t xx_bagf_get_format_size(Abstractformat *format, xx_pd_struct *pd)
+{
+    return format && (format->base_info_handled || xx_bagf_handle_base_info(format, pd)) ? format->format_size : -1;
 }
 
-uint64_t xx_bagf_get_number_of_archive_records(Abstractformat *format,
-                                               xx_pd_struct *pd) {
-    return format && (format->base_info_handled ||
-                      xx_bagf_handle_base_info(format, pd))
-               ? 1U
-               : 0U;
+uint64_t xx_bagf_get_number_of_archive_records(Abstractformat *format, xx_pd_struct *pd)
+{
+    return format && (format->base_info_handled || xx_bagf_handle_base_info(format, pd)) ? 1U : 0U;
 }
 
 /* ------------------------------------------------------ record reading -- */
 
-xx_archive_record_state *xx_bagf_create_archive_records_reading(
-    Abstractformat *format, const xx_list_s *options, xx_pd_struct *pd) {
+xx_archive_record_state *xx_bagf_create_archive_records_reading(Abstractformat *format, const xx_list_s *options, xx_pd_struct *pd)
+{
     bagf_stream *stream;
     xx_archive_record_state *state;
 
@@ -319,8 +285,7 @@ xx_archive_record_state *xx_bagf_create_archive_records_reading(
     state->internal_state = stream;
     state->free_internal = bagf_stream_free;
     state->total_records = 1;
-    if (!bagf_copy_options(&state->options, options) ||
-        !bagf_set_record(&state->current_record, format, stream)) {
+    if (!bagf_copy_options(&state->options, options) || !bagf_set_record(&state->current_record, format, stream)) {
         xx_archive_record_state_free(state);
         return NULL;
     }
@@ -328,20 +293,16 @@ xx_archive_record_state *xx_bagf_create_archive_records_reading(
     return state;
 }
 
-const xx_archive_record *xx_bagf_get_current_archive_record(
-    Abstractformat *format, xx_archive_record_state *state) {
-    return format && state && state->format == format && state->has_record
-               ? &state->current_record
-               : NULL;
+const xx_archive_record *xx_bagf_get_current_archive_record(Abstractformat *format, xx_archive_record_state *state)
+{
+    return format && state && state->format == format && state->has_record ? &state->current_record : NULL;
 }
 
-bool xx_bagf_archive_record_move_to_next(Abstractformat *format,
-                                         xx_archive_record_state *state,
-                                         xx_pd_struct *pd) {
+bool xx_bagf_archive_record_move_to_next(Abstractformat *format, xx_archive_record_state *state, xx_pd_struct *pd)
+{
     bagf_stream *stream;
     (void)pd;
-    if (!format || !state || state->format != format ||
-        !(stream = (bagf_stream *)state->internal_state)) {
+    if (!format || !state || state->format != format || !(stream = (bagf_stream *)state->internal_state)) {
         if (state) state->has_record = false;
         return false;
     }
@@ -351,9 +312,8 @@ bool xx_bagf_archive_record_move_to_next(Abstractformat *format,
     return false;
 }
 
-bool xx_bagf_unpack_current_archive_record(Abstractformat *format,
-                                           xx_archive_record_state *state,
-                                           xx_pd_struct *pd) {
+bool xx_bagf_unpack_current_archive_record(Abstractformat *format, xx_archive_record_state *state, xx_pd_struct *pd)
+{
     bagf_stream *stream;
     const xx_var *path_option;
     const char *base = NULL;
@@ -364,38 +324,28 @@ bool xx_bagf_unpack_current_archive_record(Abstractformat *format,
     bool result = false;
     bool created = false;
 
-    if (!format || !state || state->format != format || !state->has_record ||
-        !(stream = (bagf_stream *)state->internal_state) || stream->consumed ||
+    if (!format || !state || state->format != format || !state->has_record || !(stream = (bagf_stream *)state->internal_state) || stream->consumed ||
         (pd && xx_pd_is_stopped(pd)))
         return false;
 
-    plain = (uint8_t *)xx_mem_alloc(stream->data_size != 0
-                                        ? (size_t)stream->data_size
-                                        : 1U);
+    plain = (uint8_t *)xx_mem_alloc(stream->data_size != 0 ? (size_t)stream->data_size : 1U);
     if (!plain) goto done;
-    if (stream->data_size != 0 &&
-        !bagf_read_at(format->device, stream->data_offset, plain,
-                      (size_t)stream->data_size))
-        goto done;
+    if (stream->data_size != 0 && !bagf_read_at(format->device, stream->data_offset, plain, (size_t)stream->data_size)) goto done;
 
     path_option = bagf_option(&state->options, XX_META_ID_OPT_UNPACK_PATH);
     if (!path_option) {
         result = true;
         goto done;
     }
-    if (path_option->type == XX_VAR_TYPE_STRING ||
-        path_option->type == XX_VAR_TYPE_STRING_VIEW) {
+    if (path_option->type == XX_VAR_TYPE_STRING || path_option->type == XX_VAR_TYPE_STRING_VIEW) {
         base = xx_var_get_str(path_option);
-    } else if (path_option->type == XX_VAR_TYPE_WSTRING ||
-               path_option->type == XX_VAR_TYPE_WSTRING_VIEW) {
+    } else if (path_option->type == XX_VAR_TYPE_WSTRING || path_option->type == XX_VAR_TYPE_WSTRING_VIEW) {
         owned_base = xx_str_unicode_to_utf8(xx_var_get_wstr(path_option));
         base = owned_base;
     }
     if (!base) goto done;
-    path = (base[0] && base[xx_str_len(base) - 1U] != '/' &&
-            base[xx_str_len(base) - 1U] != '\\')
-               ? xx_str_concat3(base, "/", stream->name)
-               : xx_str_concat(base, stream->name);
+    path = (base[0] && base[xx_str_len(base) - 1U] != '/' && base[xx_str_len(base) - 1U] != '\\') ? xx_str_concat3(base, "/", stream->name)
+                                                                                                  : xx_str_concat(base, stream->name);
     if (!path || !xx_store_create_dirs_a(path, false)) goto done;
     {
         xx_io_device *destination = xx_io_file_open(path, "wb");
@@ -403,10 +353,8 @@ bool xx_bagf_unpack_current_archive_record(Abstractformat *format,
         if (!destination) goto done;
         result = true;
         while (written < (size_t)stream->data_size) {
-            ssize_t amount = xx_io_write(destination, plain + written,
-                                         (size_t)stream->data_size - written);
-            if (amount <= 0 ||
-                (size_t)amount > (size_t)stream->data_size - written) {
+            ssize_t amount = xx_io_write(destination, plain + written, (size_t)stream->data_size - written);
+            if (amount <= 0 || (size_t)amount > (size_t)stream->data_size - written) {
                 result = false;
                 break;
             }
@@ -422,18 +370,20 @@ done:
     return result;
 }
 
-void xx_bagf_free_archive_records_reading(Abstractformat *format,
-                                          xx_archive_record_state *state) {
+void xx_bagf_free_archive_records_reading(Abstractformat *format, xx_archive_record_state *state)
+{
     (void)format;
     xx_archive_record_state_free(state);
 }
 
 /* ----------------------------------------------------------- accessors -- */
 
-int64_t xx_bagf_get_data_offset(const xx_bagf *archive) {
+int64_t xx_bagf_get_data_offset(const xx_bagf *archive)
+{
     return archive ? archive->data_offset : -1;
 }
 
-int64_t xx_bagf_get_data_size(const xx_bagf *archive) {
+int64_t xx_bagf_get_data_size(const xx_bagf *archive)
+{
     return archive ? archive->data_size : -1;
 }

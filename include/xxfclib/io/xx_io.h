@@ -41,10 +41,10 @@ extern "C" {
 
 /* Ensure ssize_t is defined across platforms (e.g. MSVC) */
 #if defined(_MSC_VER)
-#  include <BaseTsd.h>
-   typedef SSIZE_T ssize_t;
+#include <BaseTsd.h>
+typedef SSIZE_T ssize_t;
 #elif !defined(_SSIZE_T_DEFINED) && !defined(__ssize_t_defined)
-#  include <sys/types.h>
+#include <sys/types.h>
 #endif
 
 /* Forward declaration and types */
@@ -57,41 +57,45 @@ typedef struct xx_io_device io_device;
 struct xx_io_device {
     ssize_t (*read)(xx_io_device *self, void *buf, size_t n);
     ssize_t (*write)(xx_io_device *self, const void *buf, size_t n);
-    int     (*seek)(xx_io_device *self, long off, int whence);
-    int     (*close)(xx_io_device *self);
+    int (*seek)(xx_io_device *self, long off, int whence);
+    int (*close)(xx_io_device *self);
     int64_t (*total_size)(xx_io_device *self);
     int64_t (*get_total_size)(xx_io_device *self);
     int64_t (*size)(xx_io_device *self);
-    void *priv;   /* implementation-specific state */
+    void *priv; /* implementation-specific state */
     /* Optional extensions. Zero-initialize custom devices before setting fields. */
-    int     (*seek64)(xx_io_device *self, int64_t off, int whence);
+    int (*seek64)(xx_io_device *self, int64_t off, int whence);
     int64_t (*tell)(xx_io_device *self);
 };
 
 /* Compatibility member aliases matching camelCase / user naming */
 #ifndef totalSize
-#define totalSize      total_size
+#define totalSize total_size
 #endif
 #ifndef getTotalSize
-#define getTotalSize  get_total_size
+#define getTotalSize get_total_size
 #endif
 
 /* --- Inline Convenience Wrappers --- */
 
-static inline ssize_t xx_io_read(xx_io_device *d, void *b, size_t n) {
+static inline ssize_t xx_io_read(xx_io_device *d, void *b, size_t n)
+{
     return (d && d->read) ? d->read(d, b, n) : -1;
 }
 
-static inline ssize_t xx_io_write(xx_io_device *d, const void *b, size_t n) {
+static inline ssize_t xx_io_write(xx_io_device *d, const void *b, size_t n)
+{
     return (d && d->write) ? d->write(d, b, n) : -1;
 }
 
-static inline int xx_io_seek(xx_io_device *d, long off, int whence) {
+static inline int xx_io_seek(xx_io_device *d, long off, int whence)
+{
     return (d && d->seek) ? d->seek(d, off, whence) : -1;
 }
 
 /** Reposition with a 64-bit offset; legacy devices work within long's range. */
-static inline int xx_io_seek64(xx_io_device *d, int64_t off, int whence) {
+static inline int xx_io_seek64(xx_io_device *d, int64_t off, int whence)
+{
     if (!d) return -1;
     if (d->seek64) return d->seek64(d, off, whence);
     if (off < LONG_MIN || off > LONG_MAX) return -1;
@@ -99,15 +103,18 @@ static inline int xx_io_seek64(xx_io_device *d, int64_t off, int whence) {
 }
 
 /** Return the current offset, or -1 if unavailable. */
-static inline int64_t xx_io_tell(xx_io_device *d) {
+static inline int64_t xx_io_tell(xx_io_device *d)
+{
     return (d && d->tell) ? d->tell(d) : -1;
 }
 
-static inline int xx_io_close(xx_io_device *d) {
+static inline int xx_io_close(xx_io_device *d)
+{
     return (d && d->close) ? d->close(d) : -1;
 }
 
-static inline int64_t xx_io_total_size(xx_io_device *d) {
+static inline int64_t xx_io_total_size(xx_io_device *d)
+{
     if (!d) return -1;
     if (d->total_size) return d->total_size(d);
     if (d->get_total_size) return d->get_total_size(d);
@@ -115,15 +122,18 @@ static inline int64_t xx_io_total_size(xx_io_device *d) {
     return -1;
 }
 
-static inline int64_t xx_io_get_total_size(xx_io_device *d) {
+static inline int64_t xx_io_get_total_size(xx_io_device *d)
+{
     return xx_io_total_size(d);
 }
 
-static inline int64_t xx_io_size(xx_io_device *d) {
+static inline int64_t xx_io_size(xx_io_device *d)
+{
     return xx_io_total_size(d);
 }
 
-static inline int64_t xx_io_get_size(xx_io_device *d) {
+static inline int64_t xx_io_get_size(xx_io_device *d)
+{
     return xx_io_total_size(d);
 }
 
@@ -131,20 +141,49 @@ static inline int64_t xx_io_get_size(xx_io_device *d) {
  * The device must be seekable and report its current cursor. For known-size
  * devices, out-of-range requests fail before changing the cursor. Short reads
  * and failed cursor restores also fail. A zero-length read does not move it. */
-XXFC_API bool xx_io_read_at(xx_io_device *device, int64_t offset,
-                            void *buffer, size_t n);
+XXFC_API bool xx_io_read_at(xx_io_device *device, int64_t offset, void *buffer, size_t n);
 
 /* Aliases matching user request without prefix */
-static inline ssize_t io_read(xx_io_device *d, void *b, size_t n)  { return xx_io_read(d, b, n); }
-static inline ssize_t io_write(xx_io_device *d, const void *b, size_t n) { return xx_io_write(d, b, n); }
-static inline int io_seek(xx_io_device *d, long off, int whence) { return xx_io_seek(d, off, whence); }
-static inline int io_seek64(xx_io_device *d, int64_t off, int whence) { return xx_io_seek64(d, off, whence); }
-static inline int64_t io_tell(xx_io_device *d) { return xx_io_tell(d); }
-static inline int io_close(xx_io_device *d) { return xx_io_close(d); }
-static inline int64_t io_total_size(xx_io_device *d) { return xx_io_total_size(d); }
-static inline int64_t io_get_total_size(xx_io_device *d) { return xx_io_total_size(d); }
-static inline int64_t io_size(xx_io_device *d) { return xx_io_total_size(d); }
-static inline int64_t io_get_size(xx_io_device *d) { return xx_io_total_size(d); }
+static inline ssize_t io_read(xx_io_device *d, void *b, size_t n)
+{
+    return xx_io_read(d, b, n);
+}
+static inline ssize_t io_write(xx_io_device *d, const void *b, size_t n)
+{
+    return xx_io_write(d, b, n);
+}
+static inline int io_seek(xx_io_device *d, long off, int whence)
+{
+    return xx_io_seek(d, off, whence);
+}
+static inline int io_seek64(xx_io_device *d, int64_t off, int whence)
+{
+    return xx_io_seek64(d, off, whence);
+}
+static inline int64_t io_tell(xx_io_device *d)
+{
+    return xx_io_tell(d);
+}
+static inline int io_close(xx_io_device *d)
+{
+    return xx_io_close(d);
+}
+static inline int64_t io_total_size(xx_io_device *d)
+{
+    return xx_io_total_size(d);
+}
+static inline int64_t io_get_total_size(xx_io_device *d)
+{
+    return xx_io_total_size(d);
+}
+static inline int64_t io_size(xx_io_device *d)
+{
+    return xx_io_total_size(d);
+}
+static inline int64_t io_get_size(xx_io_device *d)
+{
+    return xx_io_total_size(d);
+}
 
 /* --- Device Constructors --- */
 
@@ -154,11 +193,11 @@ static inline int64_t io_get_size(xx_io_device *d) { return xx_io_total_size(d);
  * @param mode Open mode ("r", "w", "rb", "wb", "r+b", etc.).
  * @return Allocated xx_io_device pointer, or NULL on error.
  */
-XXFC_API xx_io_device* xx_io_file_open(const char *path, const char *mode);
+XXFC_API xx_io_device *xx_io_file_open(const char *path, const char *mode);
 /** Seekable 64-bit temporary stream, removed automatically on close. While a
  * memory-only scope is active it is RAM-backed and never spills to disk. */
-XXFC_API xx_io_device* xx_io_temp_open(void);
-XXFC_API xx_io_device* io_file_open(const char *path, const char *mode);
+XXFC_API xx_io_device *xx_io_temp_open(void);
+XXFC_API xx_io_device *io_file_open(const char *path, const char *mode);
 
 /** Memory-only archive work policy, local to the calling thread. Initialize
  * each scope to zero. Begin before opening/detecting an archive and end after
@@ -186,8 +225,7 @@ typedef enum xx_io_memory_only_error_t {
     XX_IO_MEMORY_ONLY_LIVE_TEMP = 4,
     XX_IO_MEMORY_ONLY_SCOPE_ORDER = 5
 } xx_io_memory_only_error_t;
-XXFC_API bool xx_io_memory_only_begin(xx_io_memory_only_scope *scope,
-                                      uint64_t temporary_byte_limit);
+XXFC_API bool xx_io_memory_only_begin(xx_io_memory_only_scope *scope, uint64_t temporary_byte_limit);
 /** Pop this scope, returning false on an attempted disk mutation, allocation
  * or capacity failure, or an unclosed temporary stream. Except for an invalid
  * nesting order, the scope is popped even on failure. Unclosed RAM streams
@@ -197,8 +235,7 @@ XXFC_API bool xx_io_memory_only_active(void);
 /** Aggregate allocated temporary payload capacity for the active scope. */
 XXFC_API uint64_t xx_io_memory_only_used(void);
 /** First failure, retained in the token after end for useful diagnostics. */
-XXFC_API xx_io_memory_only_error_t xx_io_memory_only_error(
-    const xx_io_memory_only_scope *scope);
+XXFC_API xx_io_memory_only_error_t xx_io_memory_only_error(const xx_io_memory_only_scope *scope);
 
 /**
  * Return the borrowed path used to open a file-backed device. A one-range
@@ -216,11 +253,8 @@ XXFC_API bool xx_io_file_remove_w(const wchar_t *path);
 /** Publish source at destination. If overwrite is false, an existing
  * destination is preserved and the operation fails. Source and destination
  * must reside on the same filesystem for the replacement to be atomic. */
-XXFC_API bool xx_io_file_replace_a(const char *source, const char *destination,
-                                   bool overwrite);
-XXFC_API bool xx_io_file_replace_w(const wchar_t *source,
-                                   const wchar_t *destination,
-                                   bool overwrite);
+XXFC_API bool xx_io_file_replace_a(const char *source, const char *destination, bool overwrite);
+XXFC_API bool xx_io_file_replace_w(const wchar_t *source, const wchar_t *destination, bool overwrite);
 
 /**
  * @brief Open a mutable memory buffer as an abstract I/O device.
@@ -228,8 +262,8 @@ XXFC_API bool xx_io_file_replace_w(const wchar_t *source,
  * @param size Size in bytes of buffer.
  * @return Allocated xx_io_device pointer, or NULL on error.
  */
-XXFC_API xx_io_device* xx_io_mem_open(void *buf, size_t size);
-XXFC_API xx_io_device* io_mem_open(void *buf, size_t size);
+XXFC_API xx_io_device *xx_io_mem_open(void *buf, size_t size);
+XXFC_API xx_io_device *io_mem_open(void *buf, size_t size);
 
 /**
  * @brief Open a read-only memory buffer as an abstract I/O device.
@@ -237,8 +271,8 @@ XXFC_API xx_io_device* io_mem_open(void *buf, size_t size);
  * @param size Size in bytes of buffer.
  * @return Allocated xx_io_device pointer, or NULL on error.
  */
-XXFC_API xx_io_device* xx_io_mem_open_ro(const void *buf, size_t size);
-XXFC_API xx_io_device* io_mem_open_ro(const void *buf, size_t size);
+XXFC_API xx_io_device *xx_io_mem_open_ro(const void *buf, size_t size);
+XXFC_API xx_io_device *io_mem_open_ro(const void *buf, size_t size);
 
 /** True for memory devices and subdevices backed by memory. */
 XXFC_API bool xx_io_is_memory(const xx_io_device *device);
@@ -254,26 +288,20 @@ XXFC_API bool xx_io_is_memory(const xx_io_device *device);
  * The view has its own cursor; I/O repositions the parent, so concurrent use
  * of the parent and its views requires external synchronization.
  */
-XXFC_API xx_io_device *xx_io_sub_open(xx_io_device *parent, int64_t offset,
-                                     int64_t size);
-XXFC_API xx_io_device *io_sub_open(xx_io_device *parent, int64_t offset,
-                                  int64_t size);
+XXFC_API xx_io_device *xx_io_sub_open(xx_io_device *parent, int64_t offset, int64_t size);
+XXFC_API xx_io_device *io_sub_open(xx_io_device *parent, int64_t offset, int64_t size);
 
 /** Open a byte range whose write operations always fail. */
-XXFC_API xx_io_device *xx_io_sub_open_ro(xx_io_device *parent, int64_t offset,
-                                        int64_t size);
-XXFC_API xx_io_device *io_sub_open_ro(xx_io_device *parent, int64_t offset,
-                                     int64_t size);
+XXFC_API xx_io_device *xx_io_sub_open_ro(xx_io_device *parent, int64_t offset, int64_t size);
+XXFC_API xx_io_device *io_sub_open_ro(xx_io_device *parent, int64_t offset, int64_t size);
 
 /**
  * Query the borrowed parent and physical range of a subdevice. Outputs are
  * optional and remain unchanged on failure. Returns false for other devices.
  */
-XXFC_API bool xx_io_sub_get_range(const xx_io_device *device,
-                                 xx_io_device **parent, int64_t *offset,
-                                 int64_t *size);
-static inline bool io_sub_get_range(const xx_io_device *d, xx_io_device **p,
-                                    int64_t *offset, int64_t *size) {
+XXFC_API bool xx_io_sub_get_range(const xx_io_device *device, xx_io_device **parent, int64_t *offset, int64_t *size);
+static inline bool io_sub_get_range(const xx_io_device *d, xx_io_device **p, int64_t *offset, int64_t *size)
+{
     return xx_io_sub_get_range(d, p, offset, size);
 }
 
@@ -288,8 +316,8 @@ static inline bool io_sub_get_range(const xx_io_device *d, xx_io_device **p,
  *
  * @return Allocated xx_io_device pointer, or NULL on error.
  */
-XXFC_API xx_io_device* xx_io_process_open(uint64_t pid);
-XXFC_API xx_io_device* io_process_open(uint64_t pid);
+XXFC_API xx_io_device *xx_io_process_open(uint64_t pid);
+XXFC_API xx_io_device *io_process_open(uint64_t pid);
 
 /**
  * @brief Wrap an already-open process handle as a process-memory device.
@@ -302,14 +330,14 @@ XXFC_API xx_io_device* io_process_open(uint64_t pid);
  *
  * @return Allocated xx_io_device pointer, or NULL on error.
  */
-XXFC_API xx_io_device* xx_io_process_open_handle(void *native_handle);
-XXFC_API xx_io_device* io_process_open_handle(void *native_handle);
+XXFC_API xx_io_device *xx_io_process_open_handle(void *native_handle);
+XXFC_API xx_io_device *io_process_open_handle(void *native_handle);
 
 /** One fixed byte range in a multi-volume stream (zero-length ranges allowed). */
 typedef struct xx_io_volume {
     xx_io_device *device;
-    int64_t offset;  /**< Physical start in device, in bytes. */
-    int64_t size;    /**< Number of bytes contributed to the logical stream. */
+    int64_t offset; /**< Physical start in device, in bytes. */
+    int64_t size;   /**< Number of bytes contributed to the logical stream. */
 } xx_io_volume;
 
 /**
@@ -323,10 +351,8 @@ typedef struct xx_io_volume {
  * @param take_ownership Close each distinct child once when this device closes.
  * On failure, ownership remains with the caller and no child is closed.
  */
-XXFC_API xx_io_device* xx_io_multivolume_open(const xx_io_volume *volumes,
-                                            size_t count, bool take_ownership);
-XXFC_API xx_io_device* io_multivolume_open(const xx_io_volume *volumes,
-                                         size_t count, bool take_ownership);
+XXFC_API xx_io_device *xx_io_multivolume_open(const xx_io_volume *volumes, size_t count, bool take_ownership);
+XXFC_API xx_io_device *io_multivolume_open(const xx_io_volume *volumes, size_t count, bool take_ownership);
 
 /**
  * @brief Open existing files in the supplied order as a multi-volume stream.
@@ -334,10 +360,8 @@ XXFC_API xx_io_device* io_multivolume_open(const xx_io_volume *volumes,
  * discovery, creation, truncation, or archive-specific header removal occurs.
  * The returned device owns all opened files. Failure closes files it opened.
  */
-XXFC_API xx_io_device* xx_io_multivolume_open_files(const char *const *paths,
-                                                  size_t count, const char *mode);
-XXFC_API xx_io_device* io_multivolume_open_files(const char *const *paths,
-                                               size_t count, const char *mode);
+XXFC_API xx_io_device *xx_io_multivolume_open_files(const char *const *paths, size_t count, const char *mode);
+XXFC_API xx_io_device *io_multivolume_open_files(const char *const *paths, size_t count, const char *mode);
 
 /** Return the range count, or zero if device is not a multi-volume device. */
 XXFC_API size_t xx_io_multivolume_count(xx_io_device *device);
@@ -347,14 +371,14 @@ XXFC_API size_t xx_io_multivolume_count(xx_io_device *device);
  * Returned child pointers are borrowed; do not close owned children separately.
  * Returns false for another device type or an out-of-range index.
  */
-XXFC_API bool xx_io_multivolume_get_volume(xx_io_device *device, size_t index,
-                                          xx_io_volume *volume, int64_t *logical_offset);
+XXFC_API bool xx_io_multivolume_get_volume(xx_io_device *device, size_t index, xx_io_volume *volume, int64_t *logical_offset);
 
-static inline size_t io_multivolume_count(xx_io_device *d) {
+static inline size_t io_multivolume_count(xx_io_device *d)
+{
     return xx_io_multivolume_count(d);
 }
-static inline bool io_multivolume_get_volume(xx_io_device *d, size_t index,
-                                            xx_io_volume *v, int64_t *offset) {
+static inline bool io_multivolume_get_volume(xx_io_device *d, size_t index, xx_io_volume *v, int64_t *offset)
+{
     return xx_io_multivolume_get_volume(d, index, v, offset);
 }
 
@@ -390,16 +414,20 @@ XXFC_API bool xx_io_apply_dos_time_and_attrs_w(const wchar_t *path, uint16_t dos
  */
 XXFC_API bool xx_io_apply_dos_time_and_attrs_a(const char *path, uint16_t dos_date, uint16_t dos_time, uint32_t attrs);
 
-static inline bool io_create_dirs_w(const wchar_t *path, bool is_dir) {
+static inline bool io_create_dirs_w(const wchar_t *path, bool is_dir)
+{
     return xx_io_create_dirs_w(path, is_dir);
 }
-static inline bool io_create_dirs_a(const char *path, bool is_dir) {
+static inline bool io_create_dirs_a(const char *path, bool is_dir)
+{
     return xx_io_create_dirs_a(path, is_dir);
 }
-static inline bool io_apply_dos_time_and_attrs_w(const wchar_t *path, uint16_t dos_date, uint16_t dos_time, uint32_t attrs) {
+static inline bool io_apply_dos_time_and_attrs_w(const wchar_t *path, uint16_t dos_date, uint16_t dos_time, uint32_t attrs)
+{
     return xx_io_apply_dos_time_and_attrs_w(path, dos_date, dos_time, attrs);
 }
-static inline bool io_apply_dos_time_and_attrs_a(const char *path, uint16_t dos_date, uint16_t dos_time, uint32_t attrs) {
+static inline bool io_apply_dos_time_and_attrs_a(const char *path, uint16_t dos_date, uint16_t dos_time, uint32_t attrs)
+{
     return xx_io_apply_dos_time_and_attrs_a(path, dos_date, dos_time, attrs);
 }
 

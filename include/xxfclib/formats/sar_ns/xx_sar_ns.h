@@ -61,31 +61,21 @@ typedef struct xx_sar_ns {
 
 typedef xx_sar_ns xx_sar_ns_t;
 
-XXFC_API void xx_sar_ns_init(xx_sar_ns *archive, xx_io_device *device,
-                             int64_t base_address);
-XXFC_API xx_sar_ns *xx_sar_ns_create(xx_io_device *device,
-                                     int64_t base_address);
+XXFC_API void xx_sar_ns_init(xx_sar_ns *archive, xx_io_device *device, int64_t base_address);
+XXFC_API xx_sar_ns *xx_sar_ns_create(xx_io_device *device, int64_t base_address);
 XXFC_API void xx_sar_ns_destroy(xx_sar_ns *archive);
 XXFC_API void xx_sar_ns_free(xx_sar_ns *archive);
 
 XXFC_API bool xx_sar_ns_check_is_valid(Abstractformat *self, xx_pd_struct *pd);
-XXFC_API bool xx_sar_ns_handle_base_info(Abstractformat *self,
-                                         xx_pd_struct *pd);
-XXFC_API int64_t xx_sar_ns_get_format_size(Abstractformat *self,
-                                           xx_pd_struct *pd);
-XXFC_API uint64_t xx_sar_ns_get_number_of_archive_records(Abstractformat *self,
-                                                          xx_pd_struct *pd);
+XXFC_API bool xx_sar_ns_handle_base_info(Abstractformat *self, xx_pd_struct *pd);
+XXFC_API int64_t xx_sar_ns_get_format_size(Abstractformat *self, xx_pd_struct *pd);
+XXFC_API uint64_t xx_sar_ns_get_number_of_archive_records(Abstractformat *self, xx_pd_struct *pd);
 
-XXFC_API xx_archive_record_state *xx_sar_ns_create_archive_records_reading(
-    Abstractformat *self, const xx_list_s *options, xx_pd_struct *pd);
-XXFC_API const xx_archive_record *xx_sar_ns_get_current_archive_record(
-    Abstractformat *self, xx_archive_record_state *state);
-XXFC_API bool xx_sar_ns_unpack_current_archive_record(
-    Abstractformat *self, xx_archive_record_state *state, xx_pd_struct *pd);
-XXFC_API bool xx_sar_ns_archive_record_move_to_next(
-    Abstractformat *self, xx_archive_record_state *state, xx_pd_struct *pd);
-XXFC_API void xx_sar_ns_free_archive_records_reading(
-    Abstractformat *self, xx_archive_record_state *state);
+XXFC_API xx_archive_record_state *xx_sar_ns_create_archive_records_reading(Abstractformat *self, const xx_list_s *options, xx_pd_struct *pd);
+XXFC_API const xx_archive_record *xx_sar_ns_get_current_archive_record(Abstractformat *self, xx_archive_record_state *state);
+XXFC_API bool xx_sar_ns_unpack_current_archive_record(Abstractformat *self, xx_archive_record_state *state, xx_pd_struct *pd);
+XXFC_API bool xx_sar_ns_archive_record_move_to_next(Abstractformat *self, xx_archive_record_state *state, xx_pd_struct *pd);
+XXFC_API void xx_sar_ns_free_archive_records_reading(Abstractformat *self, xx_archive_record_state *state);
 
 #ifdef __cplusplus
 }

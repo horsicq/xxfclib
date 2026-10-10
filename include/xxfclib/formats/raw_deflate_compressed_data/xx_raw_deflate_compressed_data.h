@@ -43,53 +43,35 @@ extern "C" {
 typedef struct xx_raw_deflate_compressed_data {
     Abstractformat format;
     uint64_t number_of_records;
-    uint64_t unpacked_size;   /**< Bytes the stream decodes to. */
-    int64_t stream_size;      /**< Bytes the stream occupies. */
-    uint64_t block_count;     /**< Deflate blocks in the stream. */
+    uint64_t unpacked_size; /**< Bytes the stream decodes to. */
+    int64_t stream_size;    /**< Bytes the stream occupies. */
+    uint64_t block_count;   /**< Deflate blocks in the stream. */
 } xx_raw_deflate_compressed_data;
 
 typedef xx_raw_deflate_compressed_data xx_raw_deflate_compressed_data_t;
 
-XXFC_API void xx_raw_deflate_compressed_data_init(
-    xx_raw_deflate_compressed_data *archive, xx_io_device *device,
-    int64_t base_address);
-XXFC_API xx_raw_deflate_compressed_data *xx_raw_deflate_compressed_data_create(
-    xx_io_device *device, int64_t base_address);
-XXFC_API void xx_raw_deflate_compressed_data_destroy(
-    xx_raw_deflate_compressed_data *archive);
-XXFC_API void xx_raw_deflate_compressed_data_free(
-    xx_raw_deflate_compressed_data *archive);
+XXFC_API void xx_raw_deflate_compressed_data_init(xx_raw_deflate_compressed_data *archive, xx_io_device *device, int64_t base_address);
+XXFC_API xx_raw_deflate_compressed_data *xx_raw_deflate_compressed_data_create(xx_io_device *device, int64_t base_address);
+XXFC_API void xx_raw_deflate_compressed_data_destroy(xx_raw_deflate_compressed_data *archive);
+XXFC_API void xx_raw_deflate_compressed_data_free(xx_raw_deflate_compressed_data *archive);
 
-XXFC_API bool xx_raw_deflate_compressed_data_check_is_valid(
-    Abstractformat *self, xx_pd_struct *pd);
-XXFC_API bool xx_raw_deflate_compressed_data_handle_base_info(
-    Abstractformat *self, xx_pd_struct *pd);
-XXFC_API int64_t xx_raw_deflate_compressed_data_get_format_size(
-    Abstractformat *self, xx_pd_struct *pd);
-XXFC_API uint64_t xx_raw_deflate_compressed_data_get_number_of_archive_records(
-    Abstractformat *self, xx_pd_struct *pd);
+XXFC_API bool xx_raw_deflate_compressed_data_check_is_valid(Abstractformat *self, xx_pd_struct *pd);
+XXFC_API bool xx_raw_deflate_compressed_data_handle_base_info(Abstractformat *self, xx_pd_struct *pd);
+XXFC_API int64_t xx_raw_deflate_compressed_data_get_format_size(Abstractformat *self, xx_pd_struct *pd);
+XXFC_API uint64_t xx_raw_deflate_compressed_data_get_number_of_archive_records(Abstractformat *self, xx_pd_struct *pd);
 
-XXFC_API xx_archive_record_state *
-xx_raw_deflate_compressed_data_create_archive_records_reading(
-    Abstractformat *self, const xx_list_s *options, xx_pd_struct *pd);
-XXFC_API const xx_archive_record *
-xx_raw_deflate_compressed_data_get_current_archive_record(
-    Abstractformat *self, xx_archive_record_state *state);
-XXFC_API bool xx_raw_deflate_compressed_data_unpack_current_archive_record(
-    Abstractformat *self, xx_archive_record_state *state, xx_pd_struct *pd);
-XXFC_API bool xx_raw_deflate_compressed_data_archive_record_move_to_next(
-    Abstractformat *self, xx_archive_record_state *state, xx_pd_struct *pd);
-XXFC_API void xx_raw_deflate_compressed_data_free_archive_records_reading(
-    Abstractformat *self, xx_archive_record_state *state);
+XXFC_API xx_archive_record_state *xx_raw_deflate_compressed_data_create_archive_records_reading(Abstractformat *self, const xx_list_s *options, xx_pd_struct *pd);
+XXFC_API const xx_archive_record *xx_raw_deflate_compressed_data_get_current_archive_record(Abstractformat *self, xx_archive_record_state *state);
+XXFC_API bool xx_raw_deflate_compressed_data_unpack_current_archive_record(Abstractformat *self, xx_archive_record_state *state, xx_pd_struct *pd);
+XXFC_API bool xx_raw_deflate_compressed_data_archive_record_move_to_next(Abstractformat *self, xx_archive_record_state *state, xx_pd_struct *pd);
+XXFC_API void xx_raw_deflate_compressed_data_free_archive_records_reading(Abstractformat *self, xx_archive_record_state *state);
 
 /**
  * @brief Decode the stream into @p destination (after a successful
  * handle_base_info or check_is_valid).  Fails unless exactly the measured
  * number of bytes is produced.
  */
-XXFC_API bool xx_raw_deflate_compressed_data_unpack_to_device(
-    xx_raw_deflate_compressed_data *archive, xx_io_device *destination,
-    xx_pd_struct *pd);
+XXFC_API bool xx_raw_deflate_compressed_data_unpack_to_device(xx_raw_deflate_compressed_data *archive, xx_io_device *destination, xx_pd_struct *pd);
 
 #ifdef __cplusplus
 }

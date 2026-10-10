@@ -44,12 +44,12 @@
 extern "C" {
 #endif
 
-#define XX_PPMD8_MIN_ORDER    2
-#define XX_PPMD8_MAX_ORDER    16
+#define XX_PPMD8_MIN_ORDER 2
+#define XX_PPMD8_MAX_ORDER 16
 #define XX_PPMD8_DEFAULT_ORDER 8
 
-#define XX_PPMD8_MIN_MEM_MB   1u
-#define XX_PPMD8_MAX_MEM_MB   256u
+#define XX_PPMD8_MIN_MEM_MB 1u
+#define XX_PPMD8_MAX_MEM_MB 256u
 #define XX_PPMD8_DEFAULT_MEM_MB 16u
 
 enum xx_ppmd8_restore_method {
@@ -82,35 +82,23 @@ XXFC_API bool xx_ppmd8_parse_zip_props(uint16_t val, int *out_order, uint32_t *o
  * @param mem_mb       Sub-allocator size in MB (1..256).
  * @param restore_method 0 = restart, 1 = cut off.
  */
-XXFC_API bool xx_ppmd8_unpack_device(xx_io_device *src_dev, int64_t src_offset, int64_t comp_size,
-                                     int64_t uncomp_size,
-                                     int order, uint32_t mem_mb, int restore_method,
+XXFC_API bool xx_ppmd8_unpack_device(xx_io_device *src_dev, int64_t src_offset, int64_t comp_size, int64_t uncomp_size, int order, uint32_t mem_mb, int restore_method,
                                      xx_io_device *dst_dev, xx_pd_struct *pd);
 
-XXFC_API bool xx_ppmd8_unpack_device_to_file(xx_io_device *src_dev, int64_t src_offset, int64_t comp_size,
-                                             int64_t uncomp_size,
-                                             int order, uint32_t mem_mb, int restore_method,
-                                             const char *dst_file_path, xx_pd_struct *pd);
+XXFC_API bool xx_ppmd8_unpack_device_to_file(xx_io_device *src_dev, int64_t src_offset, int64_t comp_size, int64_t uncomp_size, int order, uint32_t mem_mb,
+                                             int restore_method, const char *dst_file_path, xx_pd_struct *pd);
 
-XXFC_API bool xx_ppmd8_unpack_device_to_file_w(xx_io_device *src_dev, int64_t src_offset, int64_t comp_size,
-                                               int64_t uncomp_size,
-                                               int order, uint32_t mem_mb, int restore_method,
-                                               const wchar_t *dst_file_path_w, xx_pd_struct *pd);
+XXFC_API bool xx_ppmd8_unpack_device_to_file_w(xx_io_device *src_dev, int64_t src_offset, int64_t comp_size, int64_t uncomp_size, int order, uint32_t mem_mb,
+                                               int restore_method, const wchar_t *dst_file_path_w, xx_pd_struct *pd);
 
-XXFC_API bool xx_ppmd8_unpack_device_to_memory(xx_io_device *src_dev, int64_t src_offset, int64_t comp_size,
-                                               int64_t uncomp_size,
-                                               int order, uint32_t mem_mb, int restore_method,
-                                               void *dst_buf, size_t dst_buf_size, size_t *out_written,
-                                               xx_pd_struct *pd);
+XXFC_API bool xx_ppmd8_unpack_device_to_memory(xx_io_device *src_dev, int64_t src_offset, int64_t comp_size, int64_t uncomp_size, int order, uint32_t mem_mb,
+                                               int restore_method, void *dst_buf, size_t dst_buf_size, size_t *out_written, xx_pd_struct *pd);
 
-XXFC_API bool xx_ppmd8_unpack_memory_to_device(const void *src_buf, size_t comp_size,
-                                               int64_t uncomp_size,
-                                               int order, uint32_t mem_mb, int restore_method,
+XXFC_API bool xx_ppmd8_unpack_memory_to_device(const void *src_buf, size_t comp_size, int64_t uncomp_size, int order, uint32_t mem_mb, int restore_method,
                                                xx_io_device *dst_dev, xx_pd_struct *pd);
 
-XXFC_API bool xx_ppmd8_decompress_memory(const void *src_buf, size_t src_size,
-                                         int order, uint32_t mem_mb, int restore_method,
-                                         void *dst_buf, size_t dst_buf_size, size_t *out_written);
+XXFC_API bool xx_ppmd8_decompress_memory(const void *src_buf, size_t src_size, int order, uint32_t mem_mb, int restore_method, void *dst_buf, size_t dst_buf_size,
+                                         size_t *out_written);
 
 /* ========================================================================= */
 /* --- PPMd8 Compression                                                  --- */
@@ -120,31 +108,23 @@ XXFC_API bool xx_ppmd8_decompress_memory(const void *src_buf, size_t src_size,
  * @brief Compress data from a device using PPMd8.
  * @param write_zip_header If true, writes the 2-byte ZIP method 98 header before compressed data.
  */
-XXFC_API bool xx_ppmd8_pack_device(xx_io_device *src_dev, int64_t src_offset, int64_t uncomp_size,
-                                   xx_io_device *dst_dev, int order, uint32_t mem_mb, int restore_method,
+XXFC_API bool xx_ppmd8_pack_device(xx_io_device *src_dev, int64_t src_offset, int64_t uncomp_size, xx_io_device *dst_dev, int order, uint32_t mem_mb, int restore_method,
                                    bool write_zip_header, xx_pd_struct *pd);
 
-XXFC_API bool xx_ppmd8_pack_source(xx_io_device *src_dev, const char *src_file_path,
-                                   int64_t *out_uncomp_size, int64_t *out_comp_size, uint32_t *out_crc32,
-                                   xx_io_device *dst_dev, int order, uint32_t mem_mb, int restore_method,
-                                   bool write_zip_header, xx_pd_struct *pd);
+XXFC_API bool xx_ppmd8_pack_source(xx_io_device *src_dev, const char *src_file_path, int64_t *out_uncomp_size, int64_t *out_comp_size, uint32_t *out_crc32,
+                                   xx_io_device *dst_dev, int order, uint32_t mem_mb, int restore_method, bool write_zip_header, xx_pd_struct *pd);
 
-XXFC_API bool xx_ppmd8_pack_device_to_file(xx_io_device *src_dev, int64_t src_offset, int64_t uncomp_size,
-                                           const char *dst_file_path, int order, uint32_t mem_mb, int restore_method,
-                                           bool write_zip_header, xx_pd_struct *pd);
+XXFC_API bool xx_ppmd8_pack_device_to_file(xx_io_device *src_dev, int64_t src_offset, int64_t uncomp_size, const char *dst_file_path, int order, uint32_t mem_mb,
+                                           int restore_method, bool write_zip_header, xx_pd_struct *pd);
 
-XXFC_API bool xx_ppmd8_pack_device_to_file_w(xx_io_device *src_dev, int64_t src_offset, int64_t uncomp_size,
-                                             const wchar_t *dst_file_path_w, int order, uint32_t mem_mb, int restore_method,
+XXFC_API bool xx_ppmd8_pack_device_to_file_w(xx_io_device *src_dev, int64_t src_offset, int64_t uncomp_size, const wchar_t *dst_file_path_w, int order, uint32_t mem_mb,
+                                             int restore_method, bool write_zip_header, xx_pd_struct *pd);
+
+XXFC_API bool xx_ppmd8_pack_memory_to_device(const void *src_buf, size_t uncomp_size, xx_io_device *dst_dev, int order, uint32_t mem_mb, int restore_method,
                                              bool write_zip_header, xx_pd_struct *pd);
 
-XXFC_API bool xx_ppmd8_pack_memory_to_device(const void *src_buf, size_t uncomp_size,
-                                             xx_io_device *dst_dev, int order, uint32_t mem_mb, int restore_method,
-                                             bool write_zip_header, xx_pd_struct *pd);
-
-XXFC_API bool xx_ppmd8_compress_memory(const void *src_buf, size_t src_size,
-                                       int order, uint32_t mem_mb, int restore_method,
-                                       bool write_zip_header,
-                                       void *dst_buf, size_t dst_buf_size, size_t *out_written);
+XXFC_API bool xx_ppmd8_compress_memory(const void *src_buf, size_t src_size, int order, uint32_t mem_mb, int restore_method, bool write_zip_header, void *dst_buf,
+                                       size_t dst_buf_size, size_t *out_written);
 
 #ifdef __cplusplus
 }

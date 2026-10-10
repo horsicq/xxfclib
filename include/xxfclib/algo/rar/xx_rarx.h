@@ -82,32 +82,24 @@ XXFC_API void xx_rarx_decoder_reset(xx_rarx_decoder *decoder);
 
 XXFC_API void xx_rarx_decoder_free(xx_rarx_decoder *decoder);
 
-XXFC_API xx_rarx_status_t xx_rarx_decoder_last_status(
-    const xx_rarx_decoder *decoder);
+XXFC_API xx_rarx_status_t xx_rarx_decoder_last_status(const xx_rarx_decoder *decoder);
 
 /**
  * Decode one compressed RAR member from a strictly bounded device range.
  * expected_size is mandatory. Set solid_continuation only when the member is
  * the next member of the same solid chain and all preceding members succeeded.
  */
-XXFC_API bool xx_rarx_decoder_unpack_device(
-    xx_rarx_decoder *decoder, xx_io_device *source, int64_t source_offset,
-    int64_t compressed_size, xx_io_device *destination, int64_t expected_size,
-    xx_rarx_method_t method, uint64_t window_size, bool solid_continuation,
-    xx_rarx_result *result, xx_pd_struct *progress);
+XXFC_API bool xx_rarx_decoder_unpack_device(xx_rarx_decoder *decoder, xx_io_device *source, int64_t source_offset, int64_t compressed_size, xx_io_device *destination,
+                                            int64_t expected_size, xx_rarx_method_t method, uint64_t window_size, bool solid_continuation, xx_rarx_result *result,
+                                            xx_pd_struct *progress);
 
 /** Decode one member held in memory into a caller-owned exact-size buffer. */
-XXFC_API bool xx_rarx_decoder_unpack_memory(
-    xx_rarx_decoder *decoder, const void *source, size_t compressed_size,
-    void *destination, size_t expected_size, xx_rarx_method_t method,
-    uint64_t window_size, bool solid_continuation, xx_rarx_result *result,
-    xx_pd_struct *progress);
+XXFC_API bool xx_rarx_decoder_unpack_memory(xx_rarx_decoder *decoder, const void *source, size_t compressed_size, void *destination, size_t expected_size,
+                                            xx_rarx_method_t method, uint64_t window_size, bool solid_continuation, xx_rarx_result *result, xx_pd_struct *progress);
 
 /** One-shot helper for a non-solid member. */
-XXFC_API bool xx_rarx_unpack_device(
-    xx_io_device *source, int64_t source_offset, int64_t compressed_size,
-    xx_io_device *destination, int64_t expected_size, xx_rarx_method_t method,
-    uint64_t window_size, xx_rarx_result *result, xx_pd_struct *progress);
+XXFC_API bool xx_rarx_unpack_device(xx_io_device *source, int64_t source_offset, int64_t compressed_size, xx_io_device *destination, int64_t expected_size,
+                                    xx_rarx_method_t method, uint64_t window_size, xx_rarx_result *result, xx_pd_struct *progress);
 
 #ifdef __cplusplus
 }

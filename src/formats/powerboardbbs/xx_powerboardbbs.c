@@ -72,17 +72,15 @@ static void xx_powerboardbbs_vtable_destroy(Abstractformat *self);
 
 /* ------------------------------------------------------------- helpers -- */
 
-static bool xx_powerboardbbs_read_at(Abstractformat *self, int64_t offset,
-                              uint8_t *buffer, size_t size) {
+static bool xx_powerboardbbs_read_at(Abstractformat *self, int64_t offset, uint8_t *buffer, size_t size)
+{
     size_t completed = 0U;
 
-    if (!self || !self->device || offset < 0 ||
-        xx_io_seek64(self->device, offset, SEEK_SET) != 0) {
+    if (!self || !self->device || offset < 0 || xx_io_seek64(self->device, offset, SEEK_SET) != 0) {
         return false;
     }
     while (completed < size) {
-        ssize_t received =
-            xx_io_read(self->device, buffer + completed, size - completed);
+        ssize_t received = xx_io_read(self->device, buffer + completed, size - completed);
         if (received <= 0 || (size_t)received > size - completed) {
             return false;
         }
@@ -91,14 +89,14 @@ static bool xx_powerboardbbs_read_at(Abstractformat *self, int64_t offset,
     return true;
 }
 
-static bool xx_powerboardbbs_range_within(int64_t total, int64_t offset,
-                                   int64_t size) {
-    return offset >= 0 && size >= 0 && offset <= total &&
-           size <= total - offset;
+static bool xx_powerboardbbs_range_within(int64_t total, int64_t offset, int64_t size)
+{
+    return offset >= 0 && size >= 0 && offset <= total && size <= total - offset;
 }
 
 /* Refuse anything that would escape the extraction directory. */
-static bool xx_powerboardbbs_path_safe(const char *name) {
+static bool xx_powerboardbbs_path_safe(const char *name)
+{
     const char *cursor = name;
 
     if (!name || !name[0] || name[0] == '/') return false;
@@ -113,7 +111,8 @@ static bool xx_powerboardbbs_path_safe(const char *name) {
     return true;
 }
 
-static void xx_powerboardbbs_stream_free(void *pointer) {
+static void xx_powerboardbbs_stream_free(void *pointer)
+{
     xx_powerboardbbs_stream *stream = (xx_powerboardbbs_stream *)pointer;
     size_t index;
 
@@ -126,10 +125,9 @@ static void xx_powerboardbbs_stream_free(void *pointer) {
 }
 
 /* Append a member, taking ownership of @p name. */
-static bool xx_powerboardbbs_add(xx_powerboardbbs_stream *stream,
-                          const xx_powerboardbbs_member *member) {
-    xx_powerboardbbs_member *grown = (xx_powerboardbbs_member *)xx_mem_realloc(
-        stream->items, sizeof(*grown) * (stream->count + 1U));
+static bool xx_powerboardbbs_add(xx_powerboardbbs_stream *stream, const xx_powerboardbbs_member *member)
+{
+    xx_powerboardbbs_member *grown = (xx_powerboardbbs_member *)xx_mem_realloc(stream->items, sizeof(*grown) * (stream->count + 1U));
 
     if (!grown) return false;
     stream->items = grown;
@@ -137,26 +135,19 @@ static bool xx_powerboardbbs_add(xx_powerboardbbs_stream *stream,
     return true;
 }
 
-
 /* Every member is stored verbatim, so extraction is a bounded copy. */
-static bool xx_powerboardbbs_decode(Abstractformat *self,
-                             const xx_powerboardbbs_member *member, uint8_t **out,
-                             size_t *out_size, xx_pd_struct *pd) {
+static bool xx_powerboardbbs_decode(Abstractformat *self, const xx_powerboardbbs_member *member, uint8_t **out, size_t *out_size, xx_pd_struct *pd)
+{
     uint8_t *buffer;
 
     *out = NULL;
     *out_size = 0U;
-    if (member->compressed_size < 0 ||
-        (uint64_t)member->compressed_size > (uint64_t)SIZE_MAX) {
+    if (member->compressed_size < 0 || (uint64_t)member->compressed_size > (uint64_t)SIZE_MAX) {
         return false;
     }
-    buffer = (uint8_t *)xx_mem_alloc(
-        member->compressed_size != 0 ? (size_t)member->compressed_size : 1U);
+    buffer = (uint8_t *)xx_mem_alloc(member->compressed_size != 0 ? (size_t)member->compressed_size : 1U);
     if (!buffer) return false;
-    if (member->compressed_size != 0 &&
-        ((pd && xx_pd_is_stopped(pd)) ||
-         !xx_powerboardbbs_read_at(self, member->data_offset, buffer,
-                            (size_t)member->compressed_size))) {
+    if (member->compressed_size != 0 && ((pd && xx_pd_is_stopped(pd)) || !xx_powerboardbbs_read_at(self, member->data_offset, buffer, (size_t)member->compressed_size))) {
         xx_mem_free(buffer);
         return false;
     }
@@ -164,7 +155,6 @@ static bool xx_powerboardbbs_decode(Abstractformat *self,
     *out_size = (size_t)member->compressed_size;
     return true;
 }
-
 
 /* The extension field is a fixed three bytes; the base name in front of it is
  * unpadded and 1..8 bytes, so the whole name field is 4..11 bytes. */
@@ -209,7 +199,8 @@ typedef struct {
  * " ! $ - _ ", but the rest of the DOS set is accepted so that a legitimate
  * member cannot be rejected over punctuation.  Every character here is inside
  * 0x20..0x7E, so this is strictly narrower than the printable-ASCII rule. */
-static bool xx_powerboardbbs_is_name_char(uint8_t character) {
+static bool xx_powerboardbbs_is_name_char(uint8_t character)
+{
     if (character >= 'A' && character <= 'Z') return true;
     if (character >= 'a' && character <= 'z') return true;
     if (character >= '0' && character <= '9') return true;
@@ -229,18 +220,16 @@ static bool xx_powerboardbbs_is_name_char(uint8_t character) {
         case '`':
         case '{':
         case '}':
-        case '~':
-            return true;
-        default:
-            return false;
+        case '~': return true;
+        default: return false;
     }
 }
 
 /* One field of the name: printable DOS characters, then blank padding.  A
  * space in the middle of a field means this is not a record header at all,
  * which is most of what keeps a random byte stream from chaining. */
-static bool xx_powerboardbbs_check_field(const uint8_t *data, int32_t size,
-                                         int32_t *used) {
+static bool xx_powerboardbbs_check_field(const uint8_t *data, int32_t size, int32_t *used)
+{
     int32_t index;
     int32_t last = 0;
     bool padding = false;
@@ -263,9 +252,8 @@ static bool xx_powerboardbbs_check_field(const uint8_t *data, int32_t size,
 /* Decode the record header at @p offset (relative to base_address).  Returns
  * false when this is not a record header; on success header->count is 1 or 2
  * and the readings are ordered narrow first. */
-static bool xx_powerboardbbs_read_header(Abstractformat *self, int64_t span,
-                                         int64_t offset,
-                                         xx_powerboardbbs_header *header) {
+static bool xx_powerboardbbs_read_header(Abstractformat *self, int64_t span, int64_t offset, xx_powerboardbbs_header *header)
+{
     uint8_t buffer[XX_POWERBOARDBBS_MAX_HEADER];
     const uint8_t *name_field;
     int64_t available;
@@ -283,8 +271,7 @@ static bool xx_powerboardbbs_read_header(Abstractformat *self, int64_t span,
 
     xx_mem_zero(header, sizeof(*header));
 
-    if (!xx_powerboardbbs_range_within(span, offset,
-                                       XX_POWERBOARDBBS_MIN_RECORD)) {
+    if (!xx_powerboardbbs_range_within(span, offset, XX_POWERBOARDBBS_MIN_RECORD)) {
         return false;
     }
     /* The last record's header is allowed to sit closer to EOF than the
@@ -293,18 +280,15 @@ static bool xx_powerboardbbs_read_header(Abstractformat *self, int64_t span,
     if (available > XX_POWERBOARDBBS_MAX_HEADER) {
         available = XX_POWERBOARDBBS_MAX_HEADER;
     }
-    if (!xx_powerboardbbs_read_at(self, self->base_address + offset, buffer,
-                                  (size_t)available)) {
+    if (!xx_powerboardbbs_read_at(self, self->base_address + offset, buffer, (size_t)available)) {
         return false;
     }
 
     lead = buffer[0];
-    if (lead >= (XX_POWERBOARDBBS_LEAD_BIAS + XX_POWERBOARDBBS_MIN_BASE) &&
-        lead <= (XX_POWERBOARDBBS_LEAD_BIAS + XX_POWERBOARDBBS_MAX_BASE)) {
+    if (lead >= (XX_POWERBOARDBBS_LEAD_BIAS + XX_POWERBOARDBBS_MIN_BASE) && lead <= (XX_POWERBOARDBBS_LEAD_BIAS + XX_POWERBOARDBBS_MAX_BASE)) {
         base_length = (int32_t)lead - XX_POWERBOARDBBS_LEAD_BIAS;
         single_byte_size = true;
-    } else if (lead >= XX_POWERBOARDBBS_MIN_BASE &&
-               lead <= XX_POWERBOARDBBS_MAX_BASE) {
+    } else if (lead >= XX_POWERBOARDBBS_MIN_BASE && lead <= XX_POWERBOARDBBS_MAX_BASE) {
         base_length = (int32_t)lead;
     } else {
         /* Only 16 of the 256 lead values mean anything.  This is the first
@@ -321,9 +305,7 @@ static bool xx_powerboardbbs_read_header(Abstractformat *self, int64_t span,
         return false;
     }
     if (base_used == 0) return false; /* a member with no name at all */
-    if (!xx_powerboardbbs_check_field(name_field + base_length,
-                                      XX_POWERBOARDBBS_EXT_FIELD,
-                                      &ext_used)) {
+    if (!xx_powerboardbbs_check_field(name_field + base_length, XX_POWERBOARDBBS_EXT_FIELD, &ext_used)) {
         return false;
     }
 
@@ -347,8 +329,7 @@ static bool xx_powerboardbbs_read_header(Abstractformat *self, int64_t span,
         size = (int64_t)buffer[size_index];
         /* A zero-length member never occurs and would let the chain stall on
          * a run of identical bytes; treat it as a non-header. */
-        if (size >= 1 &&
-            xx_powerboardbbs_range_within(span, size_offset + 1, size)) {
+        if (size >= 1 && xx_powerboardbbs_range_within(span, size_offset + 1, size)) {
             header->width[0] = 1;
             header->size[0] = size;
             header->count = 1;
@@ -360,8 +341,7 @@ static bool xx_powerboardbbs_read_header(Abstractformat *self, int64_t span,
      * back to the wide one when the tail stops chaining. */
     if ((int64_t)(size_index + 2) <= available) {
         size = (int64_t)xx_data_get_u16(buffer + size_index, 2, 0, false);
-        if (size >= 1 && size <= XX_POWERBOARDBBS_INTEGER_MAX &&
-            xx_powerboardbbs_range_within(span, size_offset + 2, size)) {
+        if (size >= 1 && size <= XX_POWERBOARDBBS_INTEGER_MAX && xx_powerboardbbs_range_within(span, size_offset + 2, size)) {
             header->width[header->count] = 2;
             header->size[header->count] = size;
             header->count++;
@@ -372,9 +352,7 @@ static bool xx_powerboardbbs_read_header(Abstractformat *self, int64_t span,
         /* The two readings are made disjoint on purpose: a value that fits a
          * Pascal Integer would have been written as one, so the LongInt
          * reading only ever offers sizes the narrow one cannot express. */
-        if (size > XX_POWERBOARDBBS_INTEGER_MAX &&
-            size <= XX_POWERBOARDBBS_MAX_MEMBER_SIZE &&
-            xx_powerboardbbs_range_within(span, size_offset + 4, size)) {
+        if (size > XX_POWERBOARDBBS_INTEGER_MAX && size <= XX_POWERBOARDBBS_MAX_MEMBER_SIZE && xx_powerboardbbs_range_within(span, size_offset + 4, size)) {
             header->width[header->count] = 4;
             header->size[header->count] = size;
             header->count++;
@@ -383,13 +361,11 @@ static bool xx_powerboardbbs_read_header(Abstractformat *self, int64_t span,
     return header->count > 0;
 }
 
-static bool xx_powerboardbbs_push_choice(xx_powerboardbbs_choice **stack,
-                                         size_t *count, size_t *capacity,
-                                         const xx_powerboardbbs_choice *choice) {
+static bool xx_powerboardbbs_push_choice(xx_powerboardbbs_choice **stack, size_t *count, size_t *capacity, const xx_powerboardbbs_choice *choice)
+{
     if (*count == *capacity) {
         size_t grown_capacity = (*capacity == 0U) ? 16U : (*capacity * 2U);
-        xx_powerboardbbs_choice *grown = (xx_powerboardbbs_choice *)
-            xx_mem_realloc(*stack, sizeof(*grown) * grown_capacity);
+        xx_powerboardbbs_choice *grown = (xx_powerboardbbs_choice *)xx_mem_realloc(*stack, sizeof(*grown) * grown_capacity);
 
         if (!grown) return false;
         *stack = grown;
@@ -400,8 +376,8 @@ static bool xx_powerboardbbs_push_choice(xx_powerboardbbs_choice **stack,
 }
 
 /* Drop members accepted after a backtrack point, freeing their names. */
-static void xx_powerboardbbs_rewind(xx_powerboardbbs_stream *stream,
-                                    size_t member_count) {
+static void xx_powerboardbbs_rewind(xx_powerboardbbs_stream *stream, size_t member_count)
+{
     while (stream->count > member_count) {
         stream->count--;
         xx_str_free(stream->items[stream->count].name);
@@ -409,11 +385,9 @@ static void xx_powerboardbbs_rewind(xx_powerboardbbs_stream *stream,
     }
 }
 
-static bool xx_powerboardbbs_append(xx_powerboardbbs_stream *stream,
-                                    Abstractformat *self, int64_t offset,
-                                    int32_t name_length, int32_t width,
-                                    int64_t size, const char *name,
-                                    int64_t *next_offset) {
+static bool xx_powerboardbbs_append(xx_powerboardbbs_stream *stream, Abstractformat *self, int64_t offset, int32_t name_length, int32_t width, int64_t size,
+                                    const char *name, int64_t *next_offset)
+{
     xx_powerboardbbs_member member;
     const int64_t header_size = 1 + (int64_t)name_length + (int64_t)width;
     char *copy = xx_str_dup(name);
@@ -434,8 +408,8 @@ static bool xx_powerboardbbs_append(xx_powerboardbbs_stream *stream,
     return true;
 }
 
-static xx_powerboardbbs_stream *xx_powerboardbbs_parse(Abstractformat *self,
-                                                       xx_pd_struct *pd) {
+static xx_powerboardbbs_stream *xx_powerboardbbs_parse(Abstractformat *self, xx_pd_struct *pd)
+{
     xx_powerboardbbs_stream *stream = NULL;
     xx_powerboardbbs_choice *choices = NULL;
     size_t choice_count = 0U;
@@ -463,8 +437,7 @@ static xx_powerboardbbs_stream *xx_powerboardbbs_parse(Abstractformat *self,
         if (pd && xx_pd_is_stopped(pd)) goto fail;
         if (offset == span) break; /* the chain landed exactly on EOF */
 
-        if (offset < span &&
-            xx_powerboardbbs_read_header(self, span, offset, &header)) {
+        if (offset < span && xx_powerboardbbs_read_header(self, span, offset, &header)) {
             if (stream->count >= (size_t)XX_POWERBOARDBBS_MAX_MEMBERS) {
                 goto fail;
             }
@@ -478,19 +451,14 @@ static xx_powerboardbbs_stream *xx_powerboardbbs_parse(Abstractformat *self,
                 choice.width = header.width[1];
                 choice.size = header.size[1];
                 choice.name_length = header.name_length;
-                for (index = 0; index < XX_POWERBOARDBBS_NAME_BUFFER;
-                     ++index) {
+                for (index = 0; index < XX_POWERBOARDBBS_NAME_BUFFER; ++index) {
                     choice.name[index] = header.name[index];
                 }
-                if (!xx_powerboardbbs_push_choice(&choices, &choice_count,
-                                                  &choice_capacity, &choice)) {
+                if (!xx_powerboardbbs_push_choice(&choices, &choice_count, &choice_capacity, &choice)) {
                     goto fail;
                 }
             }
-            if (!xx_powerboardbbs_append(stream, self, offset,
-                                         header.name_length, header.width[0],
-                                         header.size[0], header.name,
-                                         &offset)) {
+            if (!xx_powerboardbbs_append(stream, self, offset, header.name_length, header.width[0], header.size[0], header.name, &offset)) {
                 goto fail;
             }
             advanced = true;
@@ -510,9 +478,7 @@ static xx_powerboardbbs_stream *xx_powerboardbbs_parse(Abstractformat *self,
 
             /* The alternative was bounds-checked when the header was decoded,
              * so it can be applied without re-reading it. */
-            if (!xx_powerboardbbs_append(stream, self, choice.header_offset,
-                                         choice.name_length, choice.width,
-                                         choice.size, choice.name, &offset)) {
+            if (!xx_powerboardbbs_append(stream, self, choice.header_offset, choice.name_length, choice.width, choice.size, choice.name, &offset)) {
                 goto fail;
             }
             resumed = true;
@@ -533,11 +499,10 @@ fail:
     return NULL;
 }
 
-
 /* ---------------------------------------------------------- lifecycle --- */
 
-void xx_powerboardbbs_init(xx_powerboardbbs *archive, xx_io_device *device,
-                    int64_t base_address) {
+void xx_powerboardbbs_init(xx_powerboardbbs *archive, xx_io_device *device, int64_t base_address)
+{
     if (!archive) return;
     xx_mem_zero(archive, sizeof(*archive));
     xx_format_init(&archive->format, device, base_address);
@@ -550,22 +515,17 @@ void xx_powerboardbbs_init(xx_powerboardbbs *archive, xx_io_device *device,
     archive->format.check_is_valid = xx_powerboardbbs_check_is_valid;
     archive->format.handle_base_info = xx_powerboardbbs_handle_base_info;
     archive->format.get_format_size = xx_powerboardbbs_get_format_size;
-    archive->format.get_number_of_archive_records =
-        xx_powerboardbbs_get_number_of_archive_records;
-    archive->format.create_archive_records_reading =
-        xx_powerboardbbs_create_archive_records_reading;
-    archive->format.get_current_archive_record =
-        xx_powerboardbbs_get_current_archive_record;
-    archive->format.unpack_current_archive_record =
-        xx_powerboardbbs_unpack_current_archive_record;
-    archive->format.archive_record_move_to_next =
-        xx_powerboardbbs_archive_record_move_to_next;
-    archive->format.free_archive_records_reading =
-        xx_powerboardbbs_free_archive_records_reading;
+    archive->format.get_number_of_archive_records = xx_powerboardbbs_get_number_of_archive_records;
+    archive->format.create_archive_records_reading = xx_powerboardbbs_create_archive_records_reading;
+    archive->format.get_current_archive_record = xx_powerboardbbs_get_current_archive_record;
+    archive->format.unpack_current_archive_record = xx_powerboardbbs_unpack_current_archive_record;
+    archive->format.archive_record_move_to_next = xx_powerboardbbs_archive_record_move_to_next;
+    archive->format.free_archive_records_reading = xx_powerboardbbs_free_archive_records_reading;
     archive->format.destroy = xx_powerboardbbs_vtable_destroy;
 }
 
-xx_powerboardbbs *xx_powerboardbbs_create(xx_io_device *device, int64_t base_address) {
+xx_powerboardbbs *xx_powerboardbbs_create(xx_io_device *device, int64_t base_address)
+{
     xx_powerboardbbs *archive = (xx_powerboardbbs *)xx_mem_alloc(sizeof(*archive));
 
     if (!archive) return NULL;
@@ -573,7 +533,8 @@ xx_powerboardbbs *xx_powerboardbbs_create(xx_io_device *device, int64_t base_add
     return archive;
 }
 
-void xx_powerboardbbs_destroy(xx_powerboardbbs *archive) {
+void xx_powerboardbbs_destroy(xx_powerboardbbs *archive)
+{
     if (!archive) return;
     /* Not xx_format_destroy: it dispatches through format.destroy, which is
      * the wrapper below, and the two would recurse. */
@@ -582,19 +543,22 @@ void xx_powerboardbbs_destroy(xx_powerboardbbs *archive) {
     archive->number_of_records = 0U;
 }
 
-void xx_powerboardbbs_free(xx_powerboardbbs *archive) {
+void xx_powerboardbbs_free(xx_powerboardbbs *archive)
+{
     if (!archive) return;
     xx_powerboardbbs_destroy(archive);
     xx_mem_free(archive);
 }
 
-static void xx_powerboardbbs_vtable_destroy(Abstractformat *self) {
+static void xx_powerboardbbs_vtable_destroy(Abstractformat *self)
+{
     xx_powerboardbbs_destroy((xx_powerboardbbs *)self);
 }
 
 /* -------------------------------------------------------------- format -- */
 
-bool xx_powerboardbbs_check_is_valid(Abstractformat *self, xx_pd_struct *pd) {
+bool xx_powerboardbbs_check_is_valid(Abstractformat *self, xx_pd_struct *pd)
+{
     xx_powerboardbbs_stream *stream;
 
     if (!self || (pd && xx_pd_is_stopped(pd))) return false;
@@ -604,7 +568,8 @@ bool xx_powerboardbbs_check_is_valid(Abstractformat *self, xx_pd_struct *pd) {
     return true;
 }
 
-bool xx_powerboardbbs_handle_base_info(Abstractformat *self, xx_pd_struct *pd) {
+bool xx_powerboardbbs_handle_base_info(Abstractformat *self, xx_pd_struct *pd)
+{
     xx_powerboardbbs *archive = (xx_powerboardbbs *)self;
     xx_powerboardbbs_stream *stream;
 
@@ -625,18 +590,17 @@ bool xx_powerboardbbs_handle_base_info(Abstractformat *self, xx_pd_struct *pd) {
     return true;
 }
 
-int64_t xx_powerboardbbs_get_format_size(Abstractformat *self, xx_pd_struct *pd) {
-    if (!self ||
-        (!self->base_info_handled && !xx_format_handle_base_info(self, pd))) {
+int64_t xx_powerboardbbs_get_format_size(Abstractformat *self, xx_pd_struct *pd)
+{
+    if (!self || (!self->base_info_handled && !xx_format_handle_base_info(self, pd))) {
         return 0;
     }
     return self->is_valid ? self->format_size : 0;
 }
 
-uint64_t xx_powerboardbbs_get_number_of_archive_records(Abstractformat *self,
-                                                 xx_pd_struct *pd) {
-    if (!self ||
-        (!self->base_info_handled && !xx_format_handle_base_info(self, pd))) {
+uint64_t xx_powerboardbbs_get_number_of_archive_records(Abstractformat *self, xx_pd_struct *pd)
+{
+    if (!self || (!self->base_info_handled && !xx_format_handle_base_info(self, pd))) {
         return 0U;
     }
     return self->is_valid ? ((xx_powerboardbbs *)self)->number_of_records : 0U;
@@ -644,8 +608,8 @@ uint64_t xx_powerboardbbs_get_number_of_archive_records(Abstractformat *self,
 
 /* ------------------------------------------------------------- records -- */
 
-static bool xx_powerboardbbs_set_record(xx_archive_record *record,
-                                 const xx_powerboardbbs_member *member) {
+static bool xx_powerboardbbs_set_record(xx_archive_record *record, const xx_powerboardbbs_member *member)
+{
     xx_archive_record_cleanup(record);
     xx_archive_record_init(record);
     record->header_offset = member->header_offset;
@@ -653,34 +617,24 @@ static bool xx_powerboardbbs_set_record(xx_archive_record *record,
     record->data_offset = member->data_offset;
     record->compressed_size = member->compressed_size;
     return xx_archive_record_set_original_name(record, member->name) &&
-           xx_archive_record_set_meta_u64(record, XX_META_ID_COMPRESSED_SIZE,
-                                          (uint64_t)member->compressed_size) &&
-           xx_archive_record_set_meta_u64(
-               record, XX_META_ID_UNCOMPRESSED_SIZE,
-               (uint64_t)member->uncompressed_size) &&
-           xx_archive_record_set_meta_u64(record, XX_META_ID_COMPRESSION_METHOD,
-                                          member->method) &&
-           xx_archive_record_set_meta_u64(record, XX_META_ID_TIMESTAMP,
-                                          member->timestamp) &&
-           xx_archive_record_set_meta_bool(record, XX_META_ID_IS_FOLDER,
-                                           member->is_folder) &&
-           xx_archive_record_set_meta_bool(record, XX_META_ID_IS_ENCRYPTED,
-                                           false);
+           xx_archive_record_set_meta_u64(record, XX_META_ID_COMPRESSED_SIZE, (uint64_t)member->compressed_size) &&
+           xx_archive_record_set_meta_u64(record, XX_META_ID_UNCOMPRESSED_SIZE, (uint64_t)member->uncompressed_size) &&
+           xx_archive_record_set_meta_u64(record, XX_META_ID_COMPRESSION_METHOD, member->method) &&
+           xx_archive_record_set_meta_u64(record, XX_META_ID_TIMESTAMP, member->timestamp) &&
+           xx_archive_record_set_meta_bool(record, XX_META_ID_IS_FOLDER, member->is_folder) && xx_archive_record_set_meta_bool(record, XX_META_ID_IS_ENCRYPTED, false);
 }
 
-static bool xx_powerboardbbs_copy_options(xx_list_s *target,
-                                   const xx_list_s *options) {
+static bool xx_powerboardbbs_copy_options(xx_list_s *target, const xx_list_s *options)
+{
     size_t index;
 
     if (!target || !options) return options == NULL;
     for (index = 0U; index < options->count; ++index) {
-        const xx_meta *source =
-            (const xx_meta *)xx_list_at((const xx_list_t *)options, index);
+        const xx_meta *source = (const xx_meta *)xx_list_at((const xx_list_t *)options, index);
         xx_meta copied;
         if (!source) continue;
         xx_meta_init(&copied, source->meta_id);
-        if (!xx_var_copy(&copied.var, &source->var) ||
-            !xx_list_append(target, &copied)) {
+        if (!xx_var_copy(&copied.var, &source->var) || !xx_list_append(target, &copied)) {
             xx_meta_cleanup(&copied);
             return false;
         }
@@ -688,21 +642,20 @@ static bool xx_powerboardbbs_copy_options(xx_list_s *target,
     return true;
 }
 
-static const xx_var *xx_powerboardbbs_get_option(const xx_list_s *options,
-                                          uint32_t meta_id) {
+static const xx_var *xx_powerboardbbs_get_option(const xx_list_s *options, uint32_t meta_id)
+{
     size_t index;
 
     if (!options) return NULL;
     for (index = 0U; index < options->count; ++index) {
-        const xx_meta *meta =
-            (const xx_meta *)xx_list_at((const xx_list_t *)options, index);
+        const xx_meta *meta = (const xx_meta *)xx_list_at((const xx_list_t *)options, index);
         if (meta && meta->meta_id == meta_id) return &meta->var;
     }
     return NULL;
 }
 
-xx_archive_record_state *xx_powerboardbbs_create_archive_records_reading(
-    Abstractformat *self, const xx_list_s *options, xx_pd_struct *pd) {
+xx_archive_record_state *xx_powerboardbbs_create_archive_records_reading(Abstractformat *self, const xx_list_s *options, xx_pd_struct *pd)
+{
     xx_powerboardbbs_stream *stream;
     xx_archive_record_state *state;
 
@@ -718,9 +671,7 @@ xx_archive_record_state *xx_powerboardbbs_create_archive_records_reading(
     state->internal_state = stream;
     state->free_internal = xx_powerboardbbs_stream_free;
     state->total_records = (int64_t)stream->count;
-    if (!xx_powerboardbbs_copy_options(&state->options, options) ||
-        (stream->count != 0U &&
-         !xx_powerboardbbs_set_record(&state->current_record, &stream->items[0]))) {
+    if (!xx_powerboardbbs_copy_options(&state->options, options) || (stream->count != 0U && !xx_powerboardbbs_set_record(&state->current_record, &stream->items[0]))) {
         xx_archive_record_state_free(state);
         return NULL;
     }
@@ -729,20 +680,16 @@ xx_archive_record_state *xx_powerboardbbs_create_archive_records_reading(
     return state;
 }
 
-const xx_archive_record *xx_powerboardbbs_get_current_archive_record(
-    Abstractformat *self, xx_archive_record_state *state) {
-    return self && state && state->format == self && state->has_record
-               ? &state->current_record
-               : NULL;
+const xx_archive_record *xx_powerboardbbs_get_current_archive_record(Abstractformat *self, xx_archive_record_state *state)
+{
+    return self && state && state->format == self && state->has_record ? &state->current_record : NULL;
 }
 
-bool xx_powerboardbbs_archive_record_move_to_next(Abstractformat *self,
-                                           xx_archive_record_state *state,
-                                           xx_pd_struct *pd) {
+bool xx_powerboardbbs_archive_record_move_to_next(Abstractformat *self, xx_archive_record_state *state, xx_pd_struct *pd)
+{
     xx_powerboardbbs_stream *stream;
 
-    if (!self || !state || state->format != self || !state->has_record ||
-        (pd && xx_pd_is_stopped(pd))) {
+    if (!self || !state || state->format != self || !state->has_record || (pd && xx_pd_is_stopped(pd))) {
         return false;
     }
     stream = (xx_powerboardbbs_stream *)state->internal_state;
@@ -754,14 +701,12 @@ bool xx_powerboardbbs_archive_record_move_to_next(Abstractformat *self,
     }
     ++stream->index;
     ++state->current_index;
-    state->has_record = xx_powerboardbbs_set_record(&state->current_record,
-                                             &stream->items[stream->index]);
+    state->has_record = xx_powerboardbbs_set_record(&state->current_record, &stream->items[stream->index]);
     return state->has_record;
 }
 
-bool xx_powerboardbbs_unpack_current_archive_record(Abstractformat *self,
-                                             xx_archive_record_state *state,
-                                             xx_pd_struct *pd) {
+bool xx_powerboardbbs_unpack_current_archive_record(Abstractformat *self, xx_archive_record_state *state, xx_pd_struct *pd)
+{
     xx_powerboardbbs_stream *stream;
     const xx_powerboardbbs_member *member;
     const xx_var *path_option;
@@ -773,8 +718,7 @@ bool xx_powerboardbbs_unpack_current_archive_record(Abstractformat *self,
     bool result = false;
     bool created = false;
 
-    if (!self || !state || state->format != self || !state->has_record ||
-        (pd && xx_pd_is_stopped(pd))) {
+    if (!self || !state || state->format != self || !state->has_record || (pd && xx_pd_is_stopped(pd))) {
         return false;
     }
     stream = (xx_powerboardbbs_stream *)state->internal_state;
@@ -782,8 +726,7 @@ bool xx_powerboardbbs_unpack_current_archive_record(Abstractformat *self,
     member = &stream->items[stream->index];
     if (!xx_powerboardbbs_path_safe(member->name)) return false;
 
-    path_option = xx_powerboardbbs_get_option(&state->options,
-                                       XX_META_ID_OPT_UNPACK_PATH);
+    path_option = xx_powerboardbbs_get_option(&state->options, XX_META_ID_OPT_UNPACK_PATH);
     if (!path_option) {
         /* No destination: decode and discard, which verifies the member
          * without writing anything. */
@@ -792,11 +735,9 @@ bool xx_powerboardbbs_unpack_current_archive_record(Abstractformat *self,
         xx_mem_free(plain);
         return result;
     }
-    if (path_option->type == XX_VAR_TYPE_STRING ||
-        path_option->type == XX_VAR_TYPE_STRING_VIEW) {
+    if (path_option->type == XX_VAR_TYPE_STRING || path_option->type == XX_VAR_TYPE_STRING_VIEW) {
         base_path = xx_var_get_str(path_option);
-    } else if (path_option->type == XX_VAR_TYPE_WSTRING ||
-               path_option->type == XX_VAR_TYPE_WSTRING_VIEW) {
+    } else if (path_option->type == XX_VAR_TYPE_WSTRING || path_option->type == XX_VAR_TYPE_WSTRING_VIEW) {
         converted_path = xx_str_unicode_to_utf8(xx_var_get_wstr(path_option));
         base_path = converted_path;
     }
@@ -804,9 +745,7 @@ bool xx_powerboardbbs_unpack_current_archive_record(Abstractformat *self,
         xx_str_free(converted_path);
         return false;
     }
-    if (base_path[0] != '\0' &&
-        base_path[xx_str_len(base_path) - 1U] != '/' &&
-        base_path[xx_str_len(base_path) - 1U] != '\\') {
+    if (base_path[0] != '\0' && base_path[xx_str_len(base_path) - 1U] != '/' && base_path[xx_str_len(base_path) - 1U] != '\\') {
         target_path = xx_str_concat3(base_path, "/", member->name);
     } else {
         target_path = xx_str_concat(base_path, member->name);
@@ -819,8 +758,7 @@ bool xx_powerboardbbs_unpack_current_archive_record(Abstractformat *self,
         xx_str_free(target_path);
         return result;
     }
-    if (!xx_store_create_dirs_a(target_path, false) ||
-        !xx_powerboardbbs_decode(self, member, &plain, &plain_size, pd)) {
+    if (!xx_store_create_dirs_a(target_path, false) || !xx_powerboardbbs_decode(self, member, &plain, &plain_size, pd)) {
         xx_str_free(target_path);
         return false;
     }
@@ -831,8 +769,7 @@ bool xx_powerboardbbs_unpack_current_archive_record(Abstractformat *self,
 
         result = output != NULL;
         while (result && completed < plain_size) {
-            ssize_t sent = xx_io_write(output, plain + completed,
-                                       plain_size - completed);
+            ssize_t sent = xx_io_write(output, plain + completed, plain_size - completed);
             if (sent <= 0 || (size_t)sent > plain_size - completed) {
                 result = false;
                 break;
@@ -847,8 +784,8 @@ bool xx_powerboardbbs_unpack_current_archive_record(Abstractformat *self,
     return result;
 }
 
-void xx_powerboardbbs_free_archive_records_reading(Abstractformat *self,
-                                            xx_archive_record_state *state) {
+void xx_powerboardbbs_free_archive_records_reading(Abstractformat *self, xx_archive_record_state *state)
+{
     (void)self;
     xx_archive_record_state_free(state);
 }

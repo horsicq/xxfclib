@@ -27,31 +27,30 @@
 #include "xx_entropy_platform.h"
 #include "xxfclib/rt/xx_rt.h"
 
-#if (defined(_MSC_VER) && (defined(_M_IX86) || defined(_M_X64))) || \
-    ((defined(__GNUC__) || defined(__clang__)) && (defined(__i386__) || defined(__x86_64__)))
-#  if defined(_MSC_VER)
-#    include <intrin.h>
-#    include <emmintrin.h>
-#  else
-#    include <emmintrin.h>
-#  endif
+#if (defined(_MSC_VER) && (defined(_M_IX86) || defined(_M_X64))) || ((defined(__GNUC__) || defined(__clang__)) && (defined(__i386__) || defined(__x86_64__)))
+#if defined(_MSC_VER)
+#include <intrin.h>
+#include <emmintrin.h>
+#else
+#include <emmintrin.h>
+#endif
 #endif
 
 #if defined(_MSC_VER)
-#  define XX_ALIGN16 __declspec(align(16))
+#define XX_ALIGN16 __declspec(align(16))
 #elif defined(__GNUC__) || defined(__clang__)
-#  define XX_ALIGN16 __attribute__((aligned(16)))
+#define XX_ALIGN16 __attribute__((aligned(16)))
 #else
-#  define XX_ALIGN16
+#define XX_ALIGN16
 #endif
 
-double xx_entropy_calculate_sse2(const void *data, size_t size) {
+double xx_entropy_calculate_sse2(const void *data, size_t size)
+{
     if (!data || size == 0) {
         return 0.0;
     }
 
-#if (defined(_MSC_VER) && (defined(_M_IX86) || defined(_M_X64))) || \
-    ((defined(__GNUC__) || defined(__clang__)) && (defined(__i386__) || defined(__x86_64__)))
+#if (defined(_MSC_VER) && (defined(_M_IX86) || defined(_M_X64))) || ((defined(__GNUC__) || defined(__clang__)) && (defined(__i386__) || defined(__x86_64__)))
 
     const uint8_t *p = (const uint8_t *)data;
     XX_ALIGN16 uint32_t c[4][256] = {{0}};
@@ -61,10 +60,22 @@ double xx_entropy_calculate_sse2(const void *data, size_t size) {
 
     for (; i < limit; i += 16) {
         _mm_prefetch((const char *)(p + i + 256), _MM_HINT_T0);
-        c[0][p[i]]++;     c[1][p[i+1]]++;   c[2][p[i+2]]++;   c[3][p[i+3]]++;
-        c[0][p[i+4]]++;   c[1][p[i+5]]++;   c[2][p[i+6]]++;   c[3][p[i+7]]++;
-        c[0][p[i+8]]++;   c[1][p[i+9]]++;   c[2][p[i+10]]++;  c[3][p[i+11]]++;
-        c[0][p[i+12]]++;  c[1][p[i+13]]++;  c[2][p[i+14]]++;  c[3][p[i+15]]++;
+        c[0][p[i]]++;
+        c[1][p[i + 1]]++;
+        c[2][p[i + 2]]++;
+        c[3][p[i + 3]]++;
+        c[0][p[i + 4]]++;
+        c[1][p[i + 5]]++;
+        c[2][p[i + 6]]++;
+        c[3][p[i + 7]]++;
+        c[0][p[i + 8]]++;
+        c[1][p[i + 9]]++;
+        c[2][p[i + 10]]++;
+        c[3][p[i + 11]]++;
+        c[0][p[i + 12]]++;
+        c[1][p[i + 13]]++;
+        c[2][p[i + 14]]++;
+        c[3][p[i + 15]]++;
     }
     for (; i < size; i++) {
         c[0][p[i]]++;
@@ -102,7 +113,10 @@ double xx_entropy_calculate_sse2(const void *data, size_t size) {
     size_t i = 0;
     size_t limit = size & ~((size_t)3);
     for (; i < limit; i += 4) {
-        c0[p[i]]++;   c1[p[i+1]]++; c2[p[i+2]]++; c3[p[i+3]]++;
+        c0[p[i]]++;
+        c1[p[i + 1]]++;
+        c2[p[i + 2]]++;
+        c3[p[i + 3]]++;
     }
     for (; i < size; i++) c0[p[i]]++;
     double sum = 0.0;

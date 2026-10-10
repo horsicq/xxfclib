@@ -71,12 +71,10 @@ static uint32_t ha_arith_target(const ha_arith *a, uint32_t total)
     uint32_t range;
     if (total == 0U) return 0U;
     range = (uint32_t)(a->high - a->low) + 1U;
-    return (uint32_t)(((((uint64_t)(uint16_t)(a->code - a->low) + 1U) *
-                        (uint64_t)total) - 1U) / (uint64_t)range);
+    return (uint32_t)(((((uint64_t)(uint16_t)(a->code - a->low) + 1U) * (uint64_t)total) - 1U) / (uint64_t)range);
 }
 
-static void ha_arith_update(ha_arith *a, uint32_t low, uint32_t high,
-                            uint32_t total)
+static void ha_arith_update(ha_arith *a, uint32_t low, uint32_t high, uint32_t total)
 {
     uint32_t range;
     if (total == 0U) return;
@@ -116,12 +114,12 @@ static bool ha_sink_put(ha_sink *s, uint8_t value)
 
 /* ================================================================== HSC == */
 
-#define HA_CONTEXTS     10000
-#define HA_POOL         0x7ff8
-#define HA_HASH_SIZE    0x4000
-#define HA_NIL          0xffff
-#define HA_ESCAPE       0x100
-#define HA_MAX_TOTAL    7999
+#define HA_CONTEXTS 10000
+#define HA_POOL 0x7ff8
+#define HA_HASH_SIZE 0x4000
+#define HA_NIL 0xffff
+#define HA_ESCAPE 0x100
+#define HA_MAX_TOTAL 7999
 #define HA_ORDER4_BUDGET 0x9c4
 
 typedef struct ha_hsc {
@@ -219,16 +217,14 @@ static void ha_hsc_init(ha_hsc *m, const uint8_t *data, size_t size)
      * even for a hypothetical bad seed. */
     x = 10;
     for (i = 0; i < HA_HASH_SIZE; ++i) {
-        int64_t t = ((int64_t)(x % 127773) * 16807) +
-                    ((int64_t)(x / 127773) * -2836);
+        int64_t t = ((int64_t)(x % 127773) * 16807) + ((int64_t)(x / 127773) * -2836);
         x = (int32_t)t;
         if (x < 1) x += 0x7fffffff;
         m->hash[i] = (uint16_t)(x & 0x3fff);
     }
 }
 
-static int32_t ha_hsc_hash_of(const ha_hsc *m, const uint8_t *bytes,
-                              int32_t order)
+static int32_t ha_hsc_hash_of(const ha_hsc *m, const uint8_t *bytes, int32_t order)
 {
     int32_t h = 0;
     if (order > 0) h = m->hash[bytes[0]];
@@ -255,17 +251,11 @@ static int32_t ha_hsc_find_next(ha_hsc *m)
                     if (order == 1) {
                         match = (m->context[0] == p[0]);
                     } else if (order == 2) {
-                        match = (m->context[1] == p[1]) &&
-                                (m->context[0] == p[0]);
+                        match = (m->context[1] == p[1]) && (m->context[0] == p[0]);
                     } else if (order == 3) {
-                        match = (m->context[2] == p[2]) &&
-                                (m->context[1] == p[1]) &&
-                                (m->context[0] == p[0]);
+                        match = (m->context[2] == p[2]) && (m->context[1] == p[1]) && (m->context[0] == p[0]);
                     } else if (order == 4) {
-                        match = (m->context[3] == p[3]) &&
-                                (m->context[2] == p[2]) &&
-                                (m->context[1] == p[1]) &&
-                                (m->context[0] == p[0]);
+                        match = (m->context[3] == p[3]) && (m->context[2] == p[2]) && (m->context[1] == p[1]) && (m->context[0] == p[0]);
                     }
                     if (match) {
                         m->scan_order = order;
@@ -304,8 +294,7 @@ static int32_t ha_hsc_inc_slot(const ha_hsc *m, int32_t context)
     return (order > 4) ? 4 : order;
 }
 
-static int32_t ha_hsc_escape_frequency(const ha_hsc *m, int32_t low_count,
-                                       int32_t context)
+static int32_t ha_hsc_escape_frequency(const ha_hsc *m, int32_t low_count, int32_t context)
 {
     int32_t novel;
     int32_t value;
@@ -316,8 +305,7 @@ static int32_t ha_hsc_escape_frequency(const ha_hsc *m, int32_t low_count,
     if (novel == 0xff) return 1;
     value = low_count;
     if ((novel != 0) && (m->total[context] <= ((novel + 1) * 2))) {
-        value = (int32_t)(((uint32_t)low_count * (uint32_t)((novel + 1) * 2)) /
-                          (uint32_t)m->total[context]);
+        value = (int32_t)(((uint32_t)low_count * (uint32_t)((novel + 1) * 2)) / (uint32_t)m->total[context]);
         if ((novel + 1) == (int32_t)m->total[context]) value += ((novel + 1) >> 1);
     }
     if (value == 0) value = 1;
@@ -369,8 +357,7 @@ static int32_t ha_hsc_decode_no_exclusion(ha_hsc *m, int32_t context)
     if (n == HA_NIL) {
         int32_t last = context;
         int32_t k;
-        ha_arith_update(&m->arith, (uint32_t)total, (uint32_t)(total + escape),
-                        (uint32_t)(total + escape));
+        ha_arith_update(&m->arith, (uint32_t)total, (uint32_t)(total + escape), (uint32_t)(total + escape));
         if ((m->total[context] == 1) && (m->increment[ha_hsc_inc_slot(m, context)] < 0x20)) {
             ++m->increment[ha_hsc_inc_slot(m, context)];
         }
@@ -383,8 +370,7 @@ static int32_t ha_hsc_decode_no_exclusion(ha_hsc *m, int32_t context)
         m->run_count = 0;
         return HA_ESCAPE;
     }
-    ha_arith_update(&m->arith, (uint32_t)accumulated,
-                    (uint32_t)(accumulated + hit), (uint32_t)(total + escape));
+    ha_arith_update(&m->arith, (uint32_t)accumulated, (uint32_t)(accumulated + hit), (uint32_t)(total + escape));
     if ((m->total[context] == 1) && (m->increment[ha_hsc_inc_slot(m, context)] != 0)) {
         --m->increment[ha_hsc_inc_slot(m, context)];
     }
@@ -431,8 +417,7 @@ static int32_t ha_hsc_decode_with_exclusion(ha_hsc *m, int32_t context)
          * appended after the physically last slot.  Deliberate. */
         int32_t last = 0;
         int32_t k;
-        ha_arith_update(&m->arith, (uint32_t)total, (uint32_t)(total + escape),
-                        (uint32_t)(total + escape));
+        ha_arith_update(&m->arith, (uint32_t)total, (uint32_t)(total + escape), (uint32_t)(total + escape));
         if ((m->total[context] == 1) && (m->increment[ha_hsc_inc_slot(m, context)] < 0x20)) {
             ++m->increment[ha_hsc_inc_slot(m, context)];
         }
@@ -449,8 +434,7 @@ static int32_t ha_hsc_decode_with_exclusion(ha_hsc *m, int32_t context)
         ++m->escape_depth;
         return HA_ESCAPE;
     }
-    ha_arith_update(&m->arith, (uint32_t)accumulated,
-                    (uint32_t)(accumulated + hit), (uint32_t)(total + escape));
+    ha_arith_update(&m->arith, (uint32_t)accumulated, (uint32_t)(accumulated + hit), (uint32_t)(total + escape));
     if ((m->total[context] == 1) && (m->increment[ha_hsc_inc_slot(m, context)] != 0)) {
         --m->increment[ha_hsc_inc_slot(m, context)];
     }
@@ -481,8 +465,7 @@ static int32_t ha_hsc_decode_fallback(ha_hsc *m)
         }
         ++i;
     }
-    ha_arith_update(&m->arith, (uint32_t)accumulated, (uint32_t)(accumulated + 1),
-                    (uint32_t)total);
+    ha_arith_update(&m->arith, (uint32_t)accumulated, (uint32_t)(accumulated + 1), (uint32_t)total);
     return i;
 }
 
@@ -712,8 +695,7 @@ static bool ha_hsc_run(ha_hsc *m, ha_sink *sink)
         int32_t symbol = 0;
 
         while (context != HA_NIL) {
-            symbol = (m->excluded_count == 0) ? ha_hsc_decode_no_exclusion(m, context)
-                                              : ha_hsc_decode_with_exclusion(m, context);
+            symbol = (m->excluded_count == 0) ? ha_hsc_decode_no_exclusion(m, context) : ha_hsc_decode_with_exclusion(m, context);
             if (m->failed) return false;
             if (symbol != HA_ESCAPE) {
                 ha_hsc_touch(m, context);
@@ -747,25 +729,25 @@ static bool ha_hsc_run(ha_hsc *m, ha_sink *sink)
 
 /* ================================================================== ASC == */
 
-#define ASC_WSIZE   31200 /* 0x79e0 */
-#define ASC_MINLEN  3
+#define ASC_WSIZE 31200 /* 0x79e0 */
+#define ASC_MINLEN 3
 #define ASC_SLCODES 16
-#define ASC_LLLEN   16
+#define ASC_LLLEN 16
 #define ASC_LTCODES 64
 #define ASC_CTCODES 256
 #define ASC_PTCODES 16
-#define ASC_LTSTEP  8
-#define ASC_CTSTEP  1
-#define ASC_PTSTEP  24
-#define ASC_TTSTEP  40
-#define ASC_LTMAX   6000
-#define ASC_CTMAX   1000
-#define ASC_PTMAX   6000
-#define ASC_TTMAX   6000
-#define ASC_CPLEN   8
-#define ASC_LPLEN   4
+#define ASC_LTSTEP 8
+#define ASC_CTSTEP 1
+#define ASC_PTSTEP 24
+#define ASC_TTSTEP 40
+#define ASC_LTMAX 6000
+#define ASC_CTMAX 1000
+#define ASC_PTMAX 6000
+#define ASC_TTMAX 6000
+#define ASC_CPLEN 8
+#define ASC_LPLEN 4
 /* code SLCODES-1 is reserved for the longest match: 15 + 48 * 16 = 783 */
-#define ASC_MAXLEN  ((ASC_SLCODES - 1) + ((ASC_LTCODES - ASC_SLCODES) * ASC_LLLEN))
+#define ASC_MAXLEN ((ASC_SLCODES - 1) + ((ASC_LTCODES - ASC_SLCODES) * ASC_LLLEN))
 
 /* Implicit binary cumulative-frequency tree over 2 * count 16-bit counters;
  * leaves live at [count .. 2*count-1], the running total at [1]. */
@@ -814,8 +796,7 @@ static void asc_tree_rescale(asc_tree *t)
     asc_tree_rebuild(t);
 }
 
-static void asc_tree_add(asc_tree *t, int32_t index, uint16_t step,
-                         uint16_t max_total)
+static void asc_tree_add(asc_tree *t, int32_t index, uint16_t step, uint16_t max_total)
 {
     int32_t i;
     if ((index < 0) || (index >= t->count)) return;
@@ -928,8 +909,7 @@ static bool ha_asc_put_literal(ha_asc *m, ha_sink *sink, uint8_t value)
     return true;
 }
 
-static bool ha_asc_put_match(ha_asc *m, ha_sink *sink, int32_t length,
-                             int32_t position)
+static bool ha_asc_put_match(ha_asc *m, ha_sink *sink, int32_t length, int32_t position)
 {
     int32_t source;
     int32_t i;
@@ -965,8 +945,7 @@ static int32_t ha_asc_decode_char(ha_asc *m)
     if (target < seen) {
         value = asc_tree_find(&m->chars, target, &low);
         if (value < 0) return -1;
-        ha_arith_update(&m->arith, low, low + asc_tree_freq(&m->chars, value),
-                        total);
+        ha_arith_update(&m->arith, low, low + asc_tree_freq(&m->chars, value), total);
     } else {
         uint32_t new_total;
         int32_t first;
@@ -978,8 +957,7 @@ static int32_t ha_asc_decode_char(ha_asc *m)
         target = ha_arith_target(&m->arith, new_total);
         value = asc_tree_find(&m->new_chars, target, &low);
         if (value < 0) return -1;
-        ha_arith_update(&m->arith, low,
-                        low + asc_tree_freq(&m->new_chars, value), new_total);
+        ha_arith_update(&m->arith, low, low + asc_tree_freq(&m->new_chars, value), new_total);
         asc_tree_remove(&m->new_chars, value);
         if (asc_tree_total(&m->new_chars) == 0) {
             m->char_escape = 0;
@@ -990,8 +968,7 @@ static int32_t ha_asc_decode_char(ha_asc *m)
          * a real asymmetry in the original, not a transcription slip.  Making
          * the two agree desynchronises the coder. */
         first = (value < ASC_CPLEN) ? 0 : (value - ASC_CPLEN);
-        bound = ((value + ASC_CPLEN) > (ASC_CTCODES - 2)) ? (ASC_CTCODES - 1)
-                                                          : (value + ASC_CPLEN);
+        bound = ((value + ASC_CPLEN) > (ASC_CTCODES - 2)) ? (ASC_CTCODES - 1) : (value + ASC_CPLEN);
         for (i = first; i < bound; ++i) {
             if (asc_tree_freq(&m->new_chars, i) != 0) {
                 asc_tree_add(&m->new_chars, i, ASC_CTSTEP, ASC_CTMAX);
@@ -1001,8 +978,7 @@ static int32_t ha_asc_decode_char(ha_asc *m)
 
     asc_tree_add(&m->chars, value, ASC_CTSTEP, ASC_CTMAX);
     if (asc_tree_freq(&m->chars, value) == (3 * ASC_CTSTEP)) {
-        m->char_escape = (uint16_t)((m->char_escape < 2) ? 1
-                                                         : (m->char_escape - 1));
+        m->char_escape = (uint16_t)((m->char_escape < 2) ? 1 : (m->char_escape - 1));
     }
 
     return value;
@@ -1020,8 +996,7 @@ static int32_t ha_asc_decode_length(ha_asc *m)
     if (target < seen) {
         code = asc_tree_find(&m->length, target, &low);
         if (code < 0) return -1;
-        ha_arith_update(&m->arith, low, low + asc_tree_freq(&m->length, code),
-                        total);
+        ha_arith_update(&m->arith, low, low + asc_tree_freq(&m->length, code), total);
     } else {
         uint32_t new_total;
         int32_t first;
@@ -1033,8 +1008,7 @@ static int32_t ha_asc_decode_length(ha_asc *m)
         target = ha_arith_target(&m->arith, new_total);
         code = asc_tree_find(&m->new_length, target, &low);
         if (code < 0) return -1;
-        ha_arith_update(&m->arith, low,
-                        low + asc_tree_freq(&m->new_length, code), new_total);
+        ha_arith_update(&m->arith, low, low + asc_tree_freq(&m->new_length, code), new_total);
         asc_tree_remove(&m->new_length, code);
         if (asc_tree_total(&m->new_length) == 0) {
             m->length_escape = 0;
@@ -1043,8 +1017,7 @@ static int32_t ha_asc_decode_length(ha_asc *m)
         }
         /* exclusive upper bound again - same deliberate asymmetry */
         first = (code < ASC_LPLEN) ? 0 : (code - ASC_LPLEN);
-        bound = ((code + ASC_LPLEN) > (ASC_LTCODES - 2)) ? (ASC_LTCODES - 1)
-                                                         : (code + ASC_LPLEN);
+        bound = ((code + ASC_LPLEN) > (ASC_LTCODES - 2)) ? (ASC_LTCODES - 1) : (code + ASC_LPLEN);
         for (i = first; i < bound; ++i) {
             if (asc_tree_freq(&m->new_length, i) != 0) {
                 asc_tree_add(&m->new_length, i, 1, ASC_LTMAX);
@@ -1054,9 +1027,7 @@ static int32_t ha_asc_decode_length(ha_asc *m)
 
     asc_tree_add(&m->length, code, ASC_LTSTEP, ASC_LTMAX);
     if (asc_tree_freq(&m->length, code) == (3 * ASC_LTSTEP)) {
-        m->length_escape = (uint16_t)((m->length_escape < (ASC_LTSTEP + 1))
-                                          ? 1
-                                          : (m->length_escape - ASC_LTSTEP));
+        m->length_escape = (uint16_t)((m->length_escape < (ASC_LTSTEP + 1)) ? 1 : (m->length_escape - ASC_LTSTEP));
     }
 
     length = code;
@@ -1066,8 +1037,7 @@ static int32_t ha_asc_decode_length(ha_asc *m)
         const uint32_t extra = ha_arith_target(&m->arith, ASC_LLLEN);
         if (extra >= (uint32_t)ASC_LLLEN) return -1;
         ha_arith_update(&m->arith, extra, extra + 1, ASC_LLLEN);
-        length = ((code - ASC_SLCODES) * ASC_LLLEN) + (int32_t)extra +
-                 (ASC_SLCODES - 1);
+        length = ((code - ASC_SLCODES) * ASC_LLLEN) + (int32_t)extra + (ASC_SLCODES - 1);
     }
 
     return length + ASC_MINLEN;
@@ -1097,8 +1067,7 @@ static int32_t ha_asc_decode_position(ha_asc *m)
     target = ha_arith_target(&m->arith, total);
     code = asc_tree_find(&m->position, target, &low);
     if (code < 0) return -1;
-    ha_arith_update(&m->arith, low, low + asc_tree_freq(&m->position, code),
-                    total);
+    ha_arith_update(&m->arith, low, low + asc_tree_freq(&m->position, code), total);
     asc_tree_add(&m->position, code, ASC_PTSTEP, ASC_PTMAX);
 
     position = code;
@@ -1125,15 +1094,13 @@ static int32_t ha_asc_decode_position(ha_asc *m)
 static bool ha_asc_run(ha_asc *m, ha_sink *sink)
 {
     while (sink->pos < sink->capacity) {
-        const uint32_t sum = (uint32_t)m->literal_weight[m->context] +
-                             m->match_weight[m->context];
+        const uint32_t sum = (uint32_t)m->literal_weight[m->context] + m->match_weight[m->context];
         const uint32_t target = ha_arith_target(&m->arith, sum + 1);
 
         if (target < m->literal_weight[m->context]) {
             int32_t value;
             ha_arith_update(&m->arith, 0, m->literal_weight[m->context], sum + 1);
-            m->literal_weight[m->context] =
-                (uint16_t)(m->literal_weight[m->context] + ASC_TTSTEP);
+            m->literal_weight[m->context] = (uint16_t)(m->literal_weight[m->context] + ASC_TTSTEP);
             /* the overflow test is on the sum BEFORE the bump - deliberate */
             if (sum > (uint32_t)(ASC_TTMAX - 1)) ha_asc_context_rescale(m, m->context);
             m->context = (m->context * 2) & 3;
@@ -1149,8 +1116,7 @@ static bool ha_asc_run(ha_asc *m, ha_sink *sink)
         if (sum <= target) return false;
 
         ha_arith_update(&m->arith, m->literal_weight[m->context], sum, sum + 1);
-        m->match_weight[m->context] =
-            (uint16_t)(m->match_weight[m->context] + ASC_TTSTEP);
+        m->match_weight[m->context] = (uint16_t)(m->match_weight[m->context] + ASC_TTSTEP);
         if (sum > (uint32_t)(ASC_TTMAX - 1)) ha_asc_context_rescale(m, m->context);
         m->context = ((m->context * 2) & 3) | 1;
 
@@ -1175,9 +1141,7 @@ static bool ha_asc_run(ha_asc *m, ha_sink *sink)
 
 /* ============================================================== entries == */
 
-static bool ha_check_args(const uint8_t *input, size_t input_size,
-                          const uint8_t *output, size_t output_size,
-                          size_t *written)
+static bool ha_check_args(const uint8_t *input, size_t input_size, const uint8_t *output, size_t output_size, size_t *written)
 {
     if (!written) return false;
     *written = 0U;
@@ -1186,9 +1150,7 @@ static bool ha_check_args(const uint8_t *input, size_t input_size,
     return true;
 }
 
-bool xx_ha_asc_decode_memory(const uint8_t *input, size_t input_size,
-                             uint8_t *output, size_t output_size,
-                             size_t *written)
+bool xx_ha_asc_decode_memory(const uint8_t *input, size_t input_size, uint8_t *output, size_t output_size, size_t *written)
 {
     ha_asc *m;
     ha_sink sink;
@@ -1219,9 +1181,7 @@ bool xx_ha_asc_decode_memory(const uint8_t *input, size_t input_size,
     return true;
 }
 
-bool xx_ha_hsc_decode_memory(const uint8_t *input, size_t input_size,
-                             uint8_t *output, size_t output_size,
-                             size_t *written)
+bool xx_ha_hsc_decode_memory(const uint8_t *input, size_t input_size, uint8_t *output, size_t output_size, size_t *written)
 {
     ha_hsc *m;
     ha_sink sink;
@@ -1250,17 +1210,13 @@ bool xx_ha_hsc_decode_memory(const uint8_t *input, size_t input_size,
     return true;
 }
 
-bool xx_ha_decode_memory_method(unsigned method, const uint8_t *input,
-                                size_t input_size, uint8_t *output,
-                                size_t output_size, size_t *written)
+bool xx_ha_decode_memory_method(unsigned method, const uint8_t *input, size_t input_size, uint8_t *output, size_t output_size, size_t *written)
 {
     if (method == 1U) {
-        return xx_ha_asc_decode_memory(input, input_size, output, output_size,
-                                       written);
+        return xx_ha_asc_decode_memory(input, input_size, output, output_size, written);
     }
     if (method == 2U) {
-        return xx_ha_hsc_decode_memory(input, input_size, output, output_size,
-                                       written);
+        return xx_ha_hsc_decode_memory(input, input_size, output, output_size, written);
     }
     if (written) *written = 0U;
     return false;

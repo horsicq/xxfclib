@@ -89,12 +89,11 @@ static void xx_mbr_vtable_destroy(Abstractformat *self);
 /* Read exactly size bytes at an absolute device offset. xx_io_seek64() is
  * used deliberately: long is 32-bit on Win64 and a disk image is routinely
  * larger than 2 GiB, so the legacy seek would silently cap the reader. */
-static bool xx_mbr_read_at(xx_io_device *device, int64_t offset, void *data,
-                           size_t size) {
+static bool xx_mbr_read_at(xx_io_device *device, int64_t offset, void *data, size_t size)
+{
     uint8_t *out = (uint8_t *)data;
     size_t done = 0U;
-    if (!device || (!data && size != 0U) || offset < 0 ||
-        xx_io_seek64(device, offset, SEEK_SET) != 0) {
+    if (!device || (!data && size != 0U) || offset < 0 || xx_io_seek64(device, offset, SEEK_SET) != 0) {
         return false;
     }
     while (done < size) {
@@ -106,16 +105,15 @@ static bool xx_mbr_read_at(xx_io_device *device, int64_t offset, void *data,
 }
 
 /* True when [offset, offset + size) lies inside [0, total_size). */
-static bool xx_mbr_range_within(int64_t total_size, int64_t offset,
-                                int64_t size) {
-    return (total_size >= 0) && (offset >= 0) && (size >= 0) &&
-           (offset <= total_size) && (size <= total_size - offset);
+static bool xx_mbr_range_within(int64_t total_size, int64_t offset, int64_t size)
+{
+    return (total_size >= 0) && (offset >= 0) && (size >= 0) && (offset <= total_size) && (size <= total_size - offset);
 }
 
 /* Turn an absolute LBA into a device offset, refusing anything that would
  * not survive the multiplication or land outside the device. */
-static bool xx_mbr_lba_to_offset(int64_t base_address, uint64_t lba,
-                                 int64_t *result) {
+static bool xx_mbr_lba_to_offset(int64_t base_address, uint64_t lba, int64_t *result)
+{
     uint64_t bytes;
     if (!result || base_address < 0) return false;
     if (lba > (uint64_t)INT64_MAX / XX_MBR_SECTOR_SIZE) return false;
@@ -127,7 +125,8 @@ static bool xx_mbr_lba_to_offset(int64_t base_address, uint64_t lba,
 
 /* Build a record name of the form "partition12". xx_str_* has no formatter
  * and the CRT is off limits, so the digits are laid down by hand. */
-static char *xx_mbr_make_name(unsigned index) {
+static char *xx_mbr_make_name(unsigned index)
+{
     static const char prefix[] = "partition";
     char digits[16];
     char buffer[sizeof(prefix) + sizeof(digits)];
@@ -143,7 +142,8 @@ static char *xx_mbr_make_name(unsigned index) {
     return xx_str_create(buffer);
 }
 
-const char *xx_mbr_type_name(uint8_t type) {
+const char *xx_mbr_type_name(uint8_t type)
+{
     /* The common types only. An unrecognised byte is still published - the
      * caller recurses into the payload and lets the format detector decide -
      * so this table is presentation, not policy. */
@@ -210,10 +210,9 @@ const char *xx_mbr_type_name(uint8_t type) {
     }
 }
 
-static bool xx_mbr_is_extended_type(uint8_t type) {
-    return type == XX_MBR_TYPE_EXTENDED_CHS ||
-           type == XX_MBR_TYPE_EXTENDED_LBA ||
-           type == XX_MBR_TYPE_EXTENDED_LINUX;
+static bool xx_mbr_is_extended_type(uint8_t type)
+{
+    return type == XX_MBR_TYPE_EXTENDED_CHS || type == XX_MBR_TYPE_EXTENDED_LBA || type == XX_MBR_TYPE_EXTENDED_LINUX;
 }
 
 /* ------------------------------------------------------------------ */
@@ -227,18 +226,15 @@ static bool xx_mbr_is_extended_type(uint8_t type) {
  * which occasionally passes a purely structural table check. Reject anything
  * that carries a credible BPB so the filesystem reader keeps its own images.
  */
-static bool xx_mbr_looks_like_boot_sector(const uint8_t *sector) {
+static bool xx_mbr_looks_like_boot_sector(const uint8_t *sector)
+{
     uint16_t bytes_per_sector;
     uint8_t sectors_per_cluster;
     uint8_t media;
     uint8_t number_of_fats;
     /* An explicit filesystem name settles it without any guessing. */
-    if (xx_rt_memcmp(sector + 3, "NTFS    ", 8U) == 0 ||
-        xx_rt_memcmp(sector + 3, "EXFAT   ", 8U) == 0 ||
-        xx_rt_memcmp(sector + 54, "FAT12   ", 8U) == 0 ||
-        xx_rt_memcmp(sector + 54, "FAT16   ", 8U) == 0 ||
-        xx_rt_memcmp(sector + 54, "FAT     ", 8U) == 0 ||
-        xx_rt_memcmp(sector + 82, "FAT32   ", 8U) == 0) {
+    if (xx_rt_memcmp(sector + 3, "NTFS    ", 8U) == 0 || xx_rt_memcmp(sector + 3, "EXFAT   ", 8U) == 0 || xx_rt_memcmp(sector + 54, "FAT12   ", 8U) == 0 ||
+        xx_rt_memcmp(sector + 54, "FAT16   ", 8U) == 0 || xx_rt_memcmp(sector + 54, "FAT     ", 8U) == 0 || xx_rt_memcmp(sector + 82, "FAT32   ", 8U) == 0) {
         return true;
     }
     /* Otherwise require the jump plus a BPB whose every field is legal. */
@@ -249,13 +245,11 @@ static bool xx_mbr_looks_like_boot_sector(const uint8_t *sector) {
     sectors_per_cluster = sector[13];
     number_of_fats = sector[16];
     media = sector[21];
-    if (bytes_per_sector != 512U && bytes_per_sector != 1024U &&
-        bytes_per_sector != 2048U && bytes_per_sector != 4096U) {
+    if (bytes_per_sector != 512U && bytes_per_sector != 1024U && bytes_per_sector != 2048U && bytes_per_sector != 4096U) {
         return false;
     }
     /* Powers of two from 1 to 128; NTFS also encodes 2^-n as 0xF1..0xFF. */
-    if (sectors_per_cluster == 0U ||
-        (sectors_per_cluster & (uint8_t)(sectors_per_cluster - 1U)) != 0U) {
+    if (sectors_per_cluster == 0U || (sectors_per_cluster & (uint8_t)(sectors_per_cluster - 1U)) != 0U) {
         return false;
     }
     if (media < 0xF0U) return false;
@@ -268,7 +262,8 @@ static bool xx_mbr_looks_like_boot_sector(const uint8_t *sector) {
 /* Entry bookkeeping                                                   */
 /* ------------------------------------------------------------------ */
 
-static void xx_mbr_private_cleanup(xx_mbr_private *parsed) {
+static void xx_mbr_private_cleanup(xx_mbr_private *parsed)
+{
     size_t index;
     if (!parsed) return;
     for (index = 0U; index < parsed->count; ++index) {
@@ -280,19 +275,17 @@ static void xx_mbr_private_cleanup(xx_mbr_private *parsed) {
     parsed->archive_end = -1;
 }
 
-static bool xx_mbr_append_entry(xx_mbr_private *parsed, xx_mbr_entry *entry) {
+static bool xx_mbr_append_entry(xx_mbr_private *parsed, xx_mbr_entry *entry)
+{
     xx_mbr_entry *grown;
     size_t capacity;
-    if (!parsed || !entry || !entry->name ||
-        parsed->count >= XX_MBR_MAX_PARTITIONS) {
+    if (!parsed || !entry || !entry->name || parsed->count >= XX_MBR_MAX_PARTITIONS) {
         return false;
     }
     if (parsed->count == parsed->capacity) {
         capacity = parsed->capacity ? parsed->capacity * 2U : 8U;
-        if (capacity < parsed->count ||
-            capacity > SIZE_MAX / sizeof(*parsed->entries)) return false;
-        grown = (xx_mbr_entry *)xx_mem_realloc(
-            parsed->entries, capacity * sizeof(*parsed->entries));
+        if (capacity < parsed->count || capacity > SIZE_MAX / sizeof(*parsed->entries)) return false;
+        grown = (xx_mbr_entry *)xx_mem_realloc(parsed->entries, capacity * sizeof(*parsed->entries));
         if (!grown) return false;
         parsed->entries = grown;
         parsed->capacity = capacity;
@@ -305,7 +298,8 @@ static bool xx_mbr_append_entry(xx_mbr_private *parsed, xx_mbr_entry *entry) {
 /* Record an EBR sector offset, reporting whether it was already on the
  * chain. A full table is reported as "seen" so the walk stops rather than
  * continuing with a set that can no longer remember anything. */
-static bool xx_mbr_visited_mark(xx_mbr_private *parsed, int64_t offset) {
+static bool xx_mbr_visited_mark(xx_mbr_private *parsed, int64_t offset)
+{
     size_t index;
     if (!parsed) return true;
     for (index = 0U; index < parsed->visited_count; ++index) {
@@ -321,11 +315,9 @@ static bool xx_mbr_visited_mark(xx_mbr_private *parsed, int64_t offset) {
  * dumps are common and the leading partitions of one are still usable; the
  * untruncated figure stays available in declared_size. Returns false only on
  * a range that cannot be published at all. */
-static bool xx_mbr_make_entry(xx_mbr_private *parsed, int64_t base_address,
-                              int64_t table_entry_offset, uint64_t start_lba,
-                              uint32_t sector_count, uint8_t type,
-                              uint8_t status, bool is_logical,
-                              unsigned name_index) {
+static bool xx_mbr_make_entry(xx_mbr_private *parsed, int64_t base_address, int64_t table_entry_offset, uint64_t start_lba, uint32_t sector_count, uint8_t type,
+                              uint8_t status, bool is_logical, unsigned name_index)
+{
     xx_mbr_entry entry;
     int64_t offset;
     uint64_t declared;
@@ -367,10 +359,8 @@ static bool xx_mbr_make_entry(xx_mbr_private *parsed, int64_t base_address,
  * partition. A malformed link ends the chain rather than the whole parse:
  * the primaries and the logicals found so far stay usable, which is the
  * behaviour a partially corrupt image needs. */
-static void xx_mbr_walk_ebr_chain(Abstractformat *self, xx_mbr_private *parsed,
-                                  uint64_t extended_start_lba,
-                                  uint64_t extended_sector_count,
-                                  xx_pd_struct *pd) {
+static void xx_mbr_walk_ebr_chain(Abstractformat *self, xx_mbr_private *parsed, uint64_t extended_start_lba, uint64_t extended_sector_count, xx_pd_struct *pd)
+{
     uint64_t current_lba = extended_start_lba;
     uint64_t extended_end_lba = extended_start_lba + extended_sector_count;
     unsigned steps;
@@ -389,25 +379,19 @@ static void xx_mbr_walk_ebr_chain(Abstractformat *self, xx_mbr_private *parsed,
 
         if (pd && xx_pd_is_stopped(pd)) return;
         if (parsed->logical_count >= XX_MBR_MAX_LOGICAL) return;
-        if (current_lba < extended_start_lba ||
-            current_lba >= extended_end_lba) {
+        if (current_lba < extended_start_lba || current_lba >= extended_end_lba) {
             return;
         }
-        if (!xx_mbr_lba_to_offset(self->base_address, current_lba,
-                                  &sector_offset) ||
-            !xx_mbr_range_within(parsed->input_size, sector_offset,
-                                 XX_MBR_SECTOR_SIZE)) {
+        if (!xx_mbr_lba_to_offset(self->base_address, current_lba, &sector_offset) || !xx_mbr_range_within(parsed->input_size, sector_offset, XX_MBR_SECTOR_SIZE)) {
             return;
         }
         /* The cycle guard. An EBR that names itself, or any longer loop,
          * is caught here before it can be walked twice. */
         if (xx_mbr_visited_mark(parsed, sector_offset)) return;
-        if (!xx_mbr_read_at(self->device, sector_offset, sector,
-                            sizeof(sector))) {
+        if (!xx_mbr_read_at(self->device, sector_offset, sector, sizeof(sector))) {
             return;
         }
-        if (sector[XX_MBR_SIGNATURE_OFFSET] != 0x55U ||
-            sector[XX_MBR_SIGNATURE_OFFSET + 1] != 0xAAU) {
+        if (sector[XX_MBR_SIGNATURE_OFFSET] != 0x55U || sector[XX_MBR_SIGNATURE_OFFSET + 1] != 0xAAU) {
             return;
         }
         first = sector + XX_MBR_TABLE_OFFSET;
@@ -422,19 +406,11 @@ static void xx_mbr_walk_ebr_chain(Abstractformat *self, xx_mbr_private *parsed,
         /* Entry 0 is the logical partition, addressed relative to this EBR
          * sector. Its status field is advisory here; an implausible one only
          * disqualifies the entry. */
-        if (first_type != 0U && first_count != 0U &&
-            (first_status == 0x00U || first_status == 0x80U) &&
-            !xx_mbr_is_extended_type(first_type)) {
+        if (first_type != 0U && first_count != 0U && (first_status == 0x00U || first_status == 0x80U) && !xx_mbr_is_extended_type(first_type)) {
             logical_lba = current_lba + first_start;
-            if (first_start != 0U && logical_lba >= current_lba &&
-                logical_lba < extended_end_lba &&
-                (uint64_t)first_count <= extended_end_lba - logical_lba) {
-                if (xx_mbr_make_entry(
-                        parsed, self->base_address,
-                        sector_offset + XX_MBR_TABLE_OFFSET, logical_lba,
-                        first_count, first_type, first_status, true,
-                        (unsigned)(XX_MBR_PRIMARY_COUNT + 1U +
-                                   parsed->logical_count))) {
+            if (first_start != 0U && logical_lba >= current_lba && logical_lba < extended_end_lba && (uint64_t)first_count <= extended_end_lba - logical_lba) {
+                if (xx_mbr_make_entry(parsed, self->base_address, sector_offset + XX_MBR_TABLE_OFFSET, logical_lba, first_count, first_type, first_status, true,
+                                      (unsigned)(XX_MBR_PRIMARY_COUNT + 1U + parsed->logical_count))) {
                     ++parsed->logical_count;
                 }
             }
@@ -452,8 +428,8 @@ static void xx_mbr_walk_ebr_chain(Abstractformat *self, xx_mbr_private *parsed,
 /* Parsing                                                             */
 /* ------------------------------------------------------------------ */
 
-static bool xx_mbr_parse(Abstractformat *self, xx_mbr_private *parsed,
-                         xx_pd_struct *pd) {
+static bool xx_mbr_parse(Abstractformat *self, xx_mbr_private *parsed, xx_pd_struct *pd)
+{
     uint8_t sector[XX_MBR_SECTOR_SIZE];
     int64_t total_size;
     unsigned index;
@@ -471,34 +447,26 @@ static bool xx_mbr_parse(Abstractformat *self, xx_mbr_private *parsed,
         parsed->input_size = -1;
         parsed->archive_end = -1;
     }
-    if (!self || !self->device || !parsed || self->base_address < 0 ||
-        (pd && xx_pd_is_stopped(pd))) return false;
+    if (!self || !self->device || !parsed || self->base_address < 0 || (pd && xx_pd_is_stopped(pd))) return false;
     total_size = xx_io_total_size(self->device);
     /* A partition table that describes nothing beyond its own sector is not
      * a partition table; require at least one further sector to exist. */
-    if (!xx_mbr_range_within(total_size, self->base_address,
-                             2 * XX_MBR_SECTOR_SIZE) ||
-        !xx_mbr_read_at(self->device, self->base_address, sector,
-                        sizeof(sector))) {
+    if (!xx_mbr_range_within(total_size, self->base_address, 2 * XX_MBR_SECTOR_SIZE) || !xx_mbr_read_at(self->device, self->base_address, sector, sizeof(sector))) {
         goto fail;
     }
-    if (sector[XX_MBR_SIGNATURE_OFFSET] != 0x55U ||
-        sector[XX_MBR_SIGNATURE_OFFSET + 1] != 0xAAU) {
+    if (sector[XX_MBR_SIGNATURE_OFFSET] != 0x55U || sector[XX_MBR_SIGNATURE_OFFSET + 1] != 0xAAU) {
         goto fail;
     }
     if (xx_mbr_looks_like_boot_sector(sector)) goto fail;
     parsed->input_size = total_size;
     parsed->archive_end = self->base_address + XX_MBR_SECTOR_SIZE;
-    parsed->disk_signature = xx_data_get_u32(sector, sizeof(sector),
-                                             XX_MBR_DISK_SIGNATURE_OFFSET,
-                                             false);
+    parsed->disk_signature = xx_data_get_u32(sector, sizeof(sector), XX_MBR_DISK_SIGNATURE_OFFSET, false);
 
     /* Pass one: decode and sanity-check the whole table before publishing
      * anything, so that one bogus status byte rejects the image rather than
      * yielding a half-credible partition list. */
     for (index = 0U; index < XX_MBR_PRIMARY_COUNT; ++index) {
-        const uint8_t *raw = sector + XX_MBR_TABLE_OFFSET +
-                             index * XX_MBR_ENTRY_SIZE;
+        const uint8_t *raw = sector + XX_MBR_TABLE_OFFSET + index * XX_MBR_ENTRY_SIZE;
         statuses[index] = raw[0];
         types[index] = raw[4];
         starts[index] = xx_data_get_u32(raw, XX_MBR_ENTRY_SIZE, 8U, false);
@@ -525,8 +493,7 @@ static bool xx_mbr_parse(Abstractformat *self, xx_mbr_private *parsed,
 
     /* Pass two: publish. */
     for (index = 0U; index < XX_MBR_PRIMARY_COUNT; ++index) {
-        int64_t table_entry_offset = self->base_address + XX_MBR_TABLE_OFFSET +
-                                     index * XX_MBR_ENTRY_SIZE;
+        int64_t table_entry_offset = self->base_address + XX_MBR_TABLE_OFFSET + index * XX_MBR_ENTRY_SIZE;
         if (types[index] == 0U || counts[index] == 0U || starts[index] == 0U) {
             continue;
         }
@@ -534,8 +501,7 @@ static bool xx_mbr_parse(Abstractformat *self, xx_mbr_private *parsed,
             /* The container itself holds no filesystem and is not published;
              * its logicals are. */
             ++parsed->extended_count;
-            xx_mbr_walk_ebr_chain(self, parsed, starts[index], counts[index],
-                                  pd);
+            xx_mbr_walk_ebr_chain(self, parsed, starts[index], counts[index], pd);
             continue;
         }
         if (types[index] == XX_MBR_TYPE_GPT_PROTECTIVE) {
@@ -543,9 +509,7 @@ static bool xx_mbr_parse(Abstractformat *self, xx_mbr_private *parsed,
              * The GPT reader covers that region; skip it here. */
             continue;
         }
-        if (xx_mbr_make_entry(parsed, self->base_address, table_entry_offset,
-                              starts[index], counts[index], types[index],
-                              statuses[index], false, index + 1U)) {
+        if (xx_mbr_make_entry(parsed, self->base_address, table_entry_offset, starts[index], counts[index], types[index], statuses[index], false, index + 1U)) {
             ++parsed->primary_count;
         }
     }
@@ -560,18 +524,16 @@ fail:
 /* Archive record plumbing                                             */
 /* ------------------------------------------------------------------ */
 
-static bool xx_mbr_copy_options(xx_list_s *destination,
-                                const xx_list_s *source) {
+static bool xx_mbr_copy_options(xx_list_s *destination, const xx_list_s *source)
+{
     size_t index;
     if (!destination || !source) return source == NULL;
     for (index = 0U; index < source->count; ++index) {
-        const xx_meta *item = (const xx_meta *)xx_list_at(
-            (const xx_list_t *)source, index);
+        const xx_meta *item = (const xx_meta *)xx_list_at((const xx_list_t *)source, index);
         xx_meta copy;
         if (!item) continue;
         xx_meta_init(&copy, item->meta_id);
-        if (!xx_var_copy(&copy.var, &item->var) ||
-            !xx_list_append(destination, &copy)) {
+        if (!xx_var_copy(&copy.var, &item->var) || !xx_list_append(destination, &copy)) {
             xx_meta_cleanup(&copy);
             return false;
         }
@@ -579,13 +541,12 @@ static bool xx_mbr_copy_options(xx_list_s *destination,
     return true;
 }
 
-static const xx_var *xx_mbr_find_option(const xx_list_s *options,
-                                        uint32_t meta_id) {
+static const xx_var *xx_mbr_find_option(const xx_list_s *options, uint32_t meta_id)
+{
     size_t index;
     if (!options) return NULL;
     for (index = 0U; index < options->count; ++index) {
-        const xx_meta *item = (const xx_meta *)xx_list_at(
-            (const xx_list_t *)options, index);
+        const xx_meta *item = (const xx_meta *)xx_list_at((const xx_list_t *)options, index);
         if (item && item->meta_id == meta_id) return &item->var;
     }
     return NULL;
@@ -596,8 +557,8 @@ static const xx_var *xx_mbr_find_option(const xx_list_s *options,
  * figure from the table goes in ATTRIBUTES' company below. The type byte is
  * published as ATTRIBUTES and the status byte as FLAGS, with the readable
  * type name as the comment. */
-static bool xx_mbr_populate_record(xx_archive_record *record,
-                                   const xx_mbr_entry *entry) {
+static bool xx_mbr_populate_record(xx_archive_record *record, const xx_mbr_entry *entry)
+{
     if (!record || !entry || !entry->name) return false;
     xx_archive_record_cleanup(record);
     xx_archive_record_init(record);
@@ -605,23 +566,16 @@ static bool xx_mbr_populate_record(xx_archive_record *record,
     record->header_size = entry->header_size;
     record->data_offset = entry->data_offset;
     record->compressed_size = entry->data_size;
-    return xx_archive_record_set_original_name(record, entry->name) &&
-           xx_archive_record_set_meta_u64(record, XX_META_ID_UNCOMPRESSED_SIZE,
-                                          (uint64_t)entry->data_size) &&
-           xx_archive_record_set_meta_u64(record, XX_META_ID_COMPRESSED_SIZE,
-                                          (uint64_t)entry->data_size) &&
-           xx_archive_record_set_meta_u64(record, XX_META_ID_COMPRESSION_METHOD,
-                                          0U) &&
-           xx_archive_record_set_meta_u64(record, XX_META_ID_ATTRIBUTES,
-                                          entry->type) &&
-           xx_archive_record_set_meta_u64(record, XX_META_ID_FLAGS,
-                                          entry->status) &&
-           xx_archive_record_set_meta_str(record, XX_META_ID_COMMENT,
-                                          xx_mbr_type_name(entry->type)) &&
+    return xx_archive_record_set_original_name(record, entry->name) && xx_archive_record_set_meta_u64(record, XX_META_ID_UNCOMPRESSED_SIZE, (uint64_t)entry->data_size) &&
+           xx_archive_record_set_meta_u64(record, XX_META_ID_COMPRESSED_SIZE, (uint64_t)entry->data_size) &&
+           xx_archive_record_set_meta_u64(record, XX_META_ID_COMPRESSION_METHOD, 0U) && xx_archive_record_set_meta_u64(record, XX_META_ID_ATTRIBUTES, entry->type) &&
+           xx_archive_record_set_meta_u64(record, XX_META_ID_FLAGS, entry->status) &&
+           xx_archive_record_set_meta_str(record, XX_META_ID_COMMENT, xx_mbr_type_name(entry->type)) &&
            xx_archive_record_set_meta_bool(record, XX_META_ID_IS_FOLDER, false);
 }
 
-static void xx_mbr_archive_stream_free(void *pointer) {
+static void xx_mbr_archive_stream_free(void *pointer)
+{
     xx_mbr_archive_stream *stream = (xx_mbr_archive_stream *)pointer;
     if (!stream) return;
     xx_mbr_private_cleanup(&stream->parsed);
@@ -630,14 +584,13 @@ static void xx_mbr_archive_stream_free(void *pointer) {
 
 /* The record names are generated here, never taken from the image, so this
  * only has to refuse the impossible rather than sanitise hostile input. */
-static bool xx_mbr_safe_name(const char *name) {
+static bool xx_mbr_safe_name(const char *name)
+{
     size_t index;
     if (!name || !name[0]) return false;
     for (index = 0U; name[index] != '\0'; ++index) {
         char ch = name[index];
-        if (!((ch >= 'a' && ch <= 'z') || (ch >= 'A' && ch <= 'Z') ||
-              (ch >= '0' && ch <= '9') || ch == '_' || ch == '-' ||
-              ch == '.')) {
+        if (!((ch >= 'a' && ch <= 'z') || (ch >= 'A' && ch <= 'Z') || (ch >= '0' && ch <= '9') || ch == '_' || ch == '-' || ch == '.')) {
             return false;
         }
     }
@@ -648,7 +601,8 @@ static bool xx_mbr_safe_name(const char *name) {
 /* Public API                                                          */
 /* ------------------------------------------------------------------ */
 
-void xx_mbr_init(xx_mbr *mbr, xx_io_device *dev, int64_t base_address) {
+void xx_mbr_init(xx_mbr *mbr, xx_io_device *dev, int64_t base_address)
+{
     if (!mbr) return;
     xx_mem_zero(mbr, sizeof(*mbr));
     xx_format_init(&mbr->format, dev, base_address);
@@ -661,27 +615,25 @@ void xx_mbr_init(xx_mbr *mbr, xx_io_device *dev, int64_t base_address) {
     mbr->format.check_is_valid = xx_mbr_check_is_valid;
     mbr->format.handle_base_info = xx_mbr_handle_base_info;
     mbr->format.get_format_size = xx_mbr_get_format_size;
-    mbr->format.get_number_of_archive_records =
-        xx_mbr_get_number_of_archive_records;
-    mbr->format.create_archive_records_reading =
-        xx_mbr_create_archive_records_reading;
+    mbr->format.get_number_of_archive_records = xx_mbr_get_number_of_archive_records;
+    mbr->format.create_archive_records_reading = xx_mbr_create_archive_records_reading;
     mbr->format.get_current_archive_record = xx_mbr_get_current_archive_record;
-    mbr->format.unpack_current_archive_record =
-        xx_mbr_unpack_current_archive_record;
+    mbr->format.unpack_current_archive_record = xx_mbr_unpack_current_archive_record;
     mbr->format.archive_record_move_to_next = xx_mbr_archive_record_move_to_next;
-    mbr->format.free_archive_records_reading =
-        xx_mbr_free_archive_records_reading;
+    mbr->format.free_archive_records_reading = xx_mbr_free_archive_records_reading;
     mbr->format.destroy = xx_mbr_vtable_destroy;
     mbr->archive_end = -1;
 }
 
-xx_mbr *xx_mbr_create(xx_io_device *dev, int64_t base_address) {
+xx_mbr *xx_mbr_create(xx_io_device *dev, int64_t base_address)
+{
     xx_mbr *mbr = (xx_mbr *)xx_mem_alloc(sizeof(*mbr));
     if (mbr) xx_mbr_init(mbr, dev, base_address);
     return mbr;
 }
 
-void xx_mbr_destroy(xx_mbr *mbr) {
+void xx_mbr_destroy(xx_mbr *mbr)
+{
     if (!mbr) return;
     if (mbr->internal) {
         xx_mbr_private_cleanup((xx_mbr_private *)mbr->internal);
@@ -691,24 +643,28 @@ void xx_mbr_destroy(xx_mbr *mbr) {
     xx_format_cleanup_extra_parameters(&mbr->format);
 }
 
-static void xx_mbr_vtable_destroy(Abstractformat *self) {
+static void xx_mbr_vtable_destroy(Abstractformat *self)
+{
     xx_mbr_destroy((xx_mbr *)self);
 }
 
-void xx_mbr_free(xx_mbr *mbr) {
+void xx_mbr_free(xx_mbr *mbr)
+{
     if (!mbr) return;
     xx_mbr_destroy(mbr);
     xx_mem_free(mbr);
 }
 
-bool xx_mbr_check_is_valid(Abstractformat *self, xx_pd_struct *pd) {
+bool xx_mbr_check_is_valid(Abstractformat *self, xx_pd_struct *pd)
+{
     xx_mbr_private parsed;
     bool result = xx_mbr_parse(self, &parsed, pd);
     xx_mbr_private_cleanup(&parsed);
     return result;
 }
 
-bool xx_mbr_handle_base_info(Abstractformat *self, xx_pd_struct *pd) {
+bool xx_mbr_handle_base_info(Abstractformat *self, xx_pd_struct *pd)
+{
     xx_mbr_private *parsed;
     xx_mbr *mbr = (xx_mbr *)self;
     int64_t total_size;
@@ -751,25 +707,23 @@ bool xx_mbr_handle_base_info(Abstractformat *self, xx_pd_struct *pd) {
     return true;
 }
 
-int64_t xx_mbr_get_format_size(Abstractformat *self, xx_pd_struct *pd) {
-    if (!self || (!self->base_info_handled &&
-                  !xx_format_handle_base_info(self, pd))) return -1;
+int64_t xx_mbr_get_format_size(Abstractformat *self, xx_pd_struct *pd)
+{
+    if (!self || (!self->base_info_handled && !xx_format_handle_base_info(self, pd))) return -1;
     return self->format_size;
 }
 
-uint64_t xx_mbr_get_number_of_archive_records(Abstractformat *self,
-                                              xx_pd_struct *pd) {
-    if (!self || (!self->base_info_handled &&
-                  !xx_format_handle_base_info(self, pd))) return 0U;
+uint64_t xx_mbr_get_number_of_archive_records(Abstractformat *self, xx_pd_struct *pd)
+{
+    if (!self || (!self->base_info_handled && !xx_format_handle_base_info(self, pd))) return 0U;
     return ((xx_mbr *)self)->number_of_records;
 }
 
-xx_archive_record_state *xx_mbr_create_archive_records_reading(
-    Abstractformat *self, const xx_list_s *options, xx_pd_struct *pd) {
+xx_archive_record_state *xx_mbr_create_archive_records_reading(Abstractformat *self, const xx_list_s *options, xx_pd_struct *pd)
+{
     xx_archive_record_state *state;
     xx_mbr_archive_stream *stream;
-    if (!self || !self->device ||
-        (!self->base_info_handled && !xx_format_handle_base_info(self, pd))) {
+    if (!self || !self->device || (!self->base_info_handled && !xx_format_handle_base_info(self, pd))) {
         return NULL;
     }
     state = (xx_archive_record_state *)xx_mem_alloc(sizeof(*state));
@@ -780,8 +734,7 @@ xx_archive_record_state *xx_mbr_create_archive_records_reading(
         return NULL;
     }
     xx_archive_record_state_init(state, self);
-    if (!xx_mbr_copy_options(&state->options, options) ||
-        !xx_mbr_parse(self, &stream->parsed, pd)) {
+    if (!xx_mbr_copy_options(&state->options, options) || !xx_mbr_parse(self, &stream->parsed, pd)) {
         xx_mbr_archive_stream_free(stream);
         xx_archive_record_state_free(state);
         return NULL;
@@ -790,27 +743,22 @@ xx_archive_record_state *xx_mbr_create_archive_records_reading(
     state->internal_state = stream;
     state->free_internal = xx_mbr_archive_stream_free;
     state->total_records = (int64_t)stream->parsed.count;
-    if (stream->parsed.count != 0U &&
-        xx_mbr_populate_record(&state->current_record,
-                               &stream->parsed.entries[0])) {
+    if (stream->parsed.count != 0U && xx_mbr_populate_record(&state->current_record, &stream->parsed.entries[0])) {
         state->has_record = true;
         state->current_index = 0;
     }
     return state;
 }
 
-const xx_archive_record *xx_mbr_get_current_archive_record(
-    Abstractformat *self, xx_archive_record_state *state) {
-    return self && state && state->format == self && state->has_record
-               ? &state->current_record : NULL;
+const xx_archive_record *xx_mbr_get_current_archive_record(Abstractformat *self, xx_archive_record_state *state)
+{
+    return self && state && state->format == self && state->has_record ? &state->current_record : NULL;
 }
 
-bool xx_mbr_archive_record_move_to_next(Abstractformat *self,
-                                        xx_archive_record_state *state,
-                                        xx_pd_struct *pd) {
+bool xx_mbr_archive_record_move_to_next(Abstractformat *self, xx_archive_record_state *state, xx_pd_struct *pd)
+{
     xx_mbr_archive_stream *stream;
-    if (!self || !state || state->format != self || !state->has_record ||
-        !state->internal_state || (pd && xx_pd_is_stopped(pd))) return false;
+    if (!self || !state || state->format != self || !state->has_record || !state->internal_state || (pd && xx_pd_is_stopped(pd))) return false;
     stream = (xx_mbr_archive_stream *)state->internal_state;
     ++stream->index;
     if (stream->index >= stream->parsed.count) {
@@ -819,8 +767,7 @@ bool xx_mbr_archive_record_move_to_next(Abstractformat *self,
         state->has_record = false;
         return false;
     }
-    if (!xx_mbr_populate_record(&state->current_record,
-                                &stream->parsed.entries[stream->index])) {
+    if (!xx_mbr_populate_record(&state->current_record, &stream->parsed.entries[stream->index])) {
         state->has_record = false;
         return false;
     }
@@ -828,9 +775,8 @@ bool xx_mbr_archive_record_move_to_next(Abstractformat *self,
     return true;
 }
 
-bool xx_mbr_unpack_current_archive_record(Abstractformat *self,
-                                          xx_archive_record_state *state,
-                                          xx_pd_struct *pd) {
+bool xx_mbr_unpack_current_archive_record(Abstractformat *self, xx_archive_record_state *state, xx_pd_struct *pd)
+{
     const xx_archive_record *record;
     const xx_var *option;
     const char *name;
@@ -838,29 +784,23 @@ bool xx_mbr_unpack_current_archive_record(Abstractformat *self,
     char *owned_base = NULL;
     char *destination = NULL;
     bool result;
-    if (!self || !self->device || !state || state->format != self ||
-        !state->has_record || (pd && xx_pd_is_stopped(pd))) return false;
+    if (!self || !self->device || !state || state->format != self || !state->has_record || (pd && xx_pd_is_stopped(pd))) return false;
     record = &state->current_record;
     name = xx_archive_record_get_original_name(record);
     if (!xx_mbr_safe_name(name)) return false;
     option = xx_mbr_find_option(&state->options, XX_META_ID_OPT_UNPACK_PATH);
     if (!option) {
         int64_t total = xx_io_total_size(self->device);
-        return record->data_offset >= 0 && record->compressed_size >= 0 &&
-               record->data_offset <= total &&
-               record->compressed_size <= total - record->data_offset;
+        return record->data_offset >= 0 && record->compressed_size >= 0 && record->data_offset <= total && record->compressed_size <= total - record->data_offset;
     }
-    if (option->type == XX_VAR_TYPE_STRING ||
-        option->type == XX_VAR_TYPE_STRING_VIEW) {
+    if (option->type == XX_VAR_TYPE_STRING || option->type == XX_VAR_TYPE_STRING_VIEW) {
         base = xx_var_get_str(option);
-    } else if (option->type == XX_VAR_TYPE_WSTRING ||
-               option->type == XX_VAR_TYPE_WSTRING_VIEW) {
+    } else if (option->type == XX_VAR_TYPE_WSTRING || option->type == XX_VAR_TYPE_WSTRING_VIEW) {
         owned_base = xx_str_unicode_to_utf8(xx_var_get_wstr(option));
         base = owned_base;
     }
     if (!base) goto cleanup;
-    if (base[0] && base[xx_str_len(base) - 1U] != '/' &&
-        base[xx_str_len(base) - 1U] != '\\') {
+    if (base[0] && base[xx_str_len(base) - 1U] != '/' && base[xx_str_len(base) - 1U] != '\\') {
         destination = xx_str_concat(base, "/");
         if (!destination) goto cleanup;
         {
@@ -873,10 +813,7 @@ bool xx_mbr_unpack_current_archive_record(Abstractformat *self,
     }
     if (!destination) goto cleanup;
     if (xx_store_create_dirs_a(destination, false)) {
-        result = xx_store_unpack_device_to_file(self->device,
-                                                record->data_offset,
-                                                record->compressed_size,
-                                                destination, pd);
+        result = xx_store_unpack_device_to_file(self->device, record->data_offset, record->compressed_size, destination, pd);
     } else {
         result = false;
     }
@@ -889,30 +826,35 @@ cleanup:
     return false;
 }
 
-void xx_mbr_free_archive_records_reading(Abstractformat *self,
-                                         xx_archive_record_state *state) {
+void xx_mbr_free_archive_records_reading(Abstractformat *self, xx_archive_record_state *state)
+{
     (void)self;
     xx_archive_record_state_free(state);
 }
 
-uint64_t xx_mbr_get_number_of_records(const xx_mbr *mbr) {
+uint64_t xx_mbr_get_number_of_records(const xx_mbr *mbr)
+{
     return mbr ? mbr->number_of_records : 0U;
 }
-uint64_t xx_mbr_get_number_of_members(const xx_mbr *mbr) {
+uint64_t xx_mbr_get_number_of_members(const xx_mbr *mbr)
+{
     return mbr ? mbr->number_of_members : 0U;
 }
-uint32_t xx_mbr_get_disk_signature(const xx_mbr *mbr) {
+uint32_t xx_mbr_get_disk_signature(const xx_mbr *mbr)
+{
     return mbr ? mbr->disk_signature : 0U;
 }
-bool xx_mbr_is_protective(const xx_mbr *mbr) {
+bool xx_mbr_is_protective(const xx_mbr *mbr)
+{
     return mbr ? mbr->is_protective : false;
 }
-int64_t xx_mbr_get_archive_end(const xx_mbr *mbr) {
+int64_t xx_mbr_get_archive_end(const xx_mbr *mbr)
+{
     return mbr ? mbr->archive_end : -1;
 }
 
-bool xx_mbr_get_partition_info(const xx_mbr *mbr, uint64_t index,
-                               xx_mbr_partition_info *info) {
+bool xx_mbr_get_partition_info(const xx_mbr *mbr, uint64_t index, xx_mbr_partition_info *info)
+{
     const xx_mbr_private *parsed;
     const xx_mbr_entry *entry;
     if (!mbr || !info || !mbr->internal) return false;

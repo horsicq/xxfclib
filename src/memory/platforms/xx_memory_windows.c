@@ -33,7 +33,8 @@
 #endif
 #include <windows.h>
 
-void* xx_memory_platform_alloc(size_t size) {
+void *xx_memory_platform_alloc(size_t size)
+{
     if (size == 0) {
         return NULL;
     }
@@ -46,7 +47,8 @@ void* xx_memory_platform_alloc(size_t size) {
     return HeapAlloc(hHeap, 0, (SIZE_T)size);
 }
 
-void* xx_memory_platform_calloc(size_t count, size_t size) {
+void *xx_memory_platform_calloc(size_t count, size_t size)
+{
     if (count == 0 || size == 0) {
         return NULL;
     }
@@ -65,7 +67,8 @@ void* xx_memory_platform_calloc(size_t count, size_t size) {
     return HeapAlloc(hHeap, HEAP_ZERO_MEMORY, total);
 }
 
-void* xx_memory_platform_realloc(void *ptr, size_t new_size) {
+void *xx_memory_platform_realloc(void *ptr, size_t new_size)
+{
     HANDLE hHeap = GetProcessHeap();
     if (!hHeap) {
         return NULL;
@@ -86,7 +89,8 @@ void* xx_memory_platform_realloc(void *ptr, size_t new_size) {
     return HeapReAlloc(hHeap, 0, ptr, (SIZE_T)new_size);
 }
 
-void xx_memory_platform_free(void *ptr) {
+void xx_memory_platform_free(void *ptr)
+{
     if (!ptr) {
         return;
     }
@@ -97,7 +101,8 @@ void xx_memory_platform_free(void *ptr) {
     }
 }
 
-size_t xx_memory_platform_usable_size(void *ptr) {
+size_t xx_memory_platform_usable_size(void *ptr)
+{
     if (!ptr) {
         return 0;
     }
@@ -114,7 +119,6 @@ size_t xx_memory_platform_usable_size(void *ptr) {
 
     return (size_t)sz;
 }
-
 
 /* Runtime allocation remains platform-specific. Its zero-size behavior is
  * separate from xx_memory_platform_* allocation. Memory operations themselves

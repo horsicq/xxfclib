@@ -18,12 +18,7 @@ extern "C" {
 XXFC_API bool xx_tarx1_has_header(const uint8_t *data, size_t size);
 
 /** Recover TARX v1's embedded stream key and decode its TAR payload. */
-XXFC_API bool xx_tarx1_decode_device(xx_io_device *source,
-                                     int64_t source_offset,
-                                     int64_t source_size,
-                                     xx_io_device *destination,
-                                     int64_t *output_size,
-                                     xx_pd_struct *pd);
+XXFC_API bool xx_tarx1_decode_device(xx_io_device *source, int64_t source_offset, int64_t source_size, xx_io_device *destination, int64_t *output_size, xx_pd_struct *pd);
 
 #ifdef __cplusplus
 }

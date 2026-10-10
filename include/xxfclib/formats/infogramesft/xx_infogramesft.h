@@ -72,10 +72,8 @@ typedef struct xx_infogramesft {
 
 typedef xx_infogramesft xx_infogramesft_t;
 
-XXFC_API void xx_infogramesft_init(xx_infogramesft *archive,
-                                   xx_io_device *device, int64_t base_address);
-XXFC_API xx_infogramesft *xx_infogramesft_create(xx_io_device *device,
-                                                 int64_t base_address);
+XXFC_API void xx_infogramesft_init(xx_infogramesft *archive, xx_io_device *device, int64_t base_address);
+XXFC_API xx_infogramesft *xx_infogramesft_create(xx_io_device *device, int64_t base_address);
 XXFC_API void xx_infogramesft_destroy(xx_infogramesft *archive);
 XXFC_API void xx_infogramesft_free(xx_infogramesft *archive);
 
@@ -87,29 +85,18 @@ XXFC_API void xx_infogramesft_free(xx_infogramesft *archive);
  * window - its method and parameter bytes are legal.  A necessary condition
  * only: the probe (check_is_valid) decides.
  */
-XXFC_API bool xx_infogramesft_test_magic(const uint8_t *magic,
-                                         size_t magic_size,
-                                         int64_t total_size);
+XXFC_API bool xx_infogramesft_test_magic(const uint8_t *magic, size_t magic_size, int64_t total_size);
 
-XXFC_API bool xx_infogramesft_check_is_valid(Abstractformat *self,
-                                             xx_pd_struct *pd);
-XXFC_API bool xx_infogramesft_handle_base_info(Abstractformat *self,
-                                               xx_pd_struct *pd);
-XXFC_API int64_t xx_infogramesft_get_format_size(Abstractformat *self,
-                                                 xx_pd_struct *pd);
-XXFC_API uint64_t xx_infogramesft_get_number_of_archive_records(
-    Abstractformat *self, xx_pd_struct *pd);
+XXFC_API bool xx_infogramesft_check_is_valid(Abstractformat *self, xx_pd_struct *pd);
+XXFC_API bool xx_infogramesft_handle_base_info(Abstractformat *self, xx_pd_struct *pd);
+XXFC_API int64_t xx_infogramesft_get_format_size(Abstractformat *self, xx_pd_struct *pd);
+XXFC_API uint64_t xx_infogramesft_get_number_of_archive_records(Abstractformat *self, xx_pd_struct *pd);
 
-XXFC_API xx_archive_record_state *xx_infogramesft_create_archive_records_reading(
-    Abstractformat *self, const xx_list_s *options, xx_pd_struct *pd);
-XXFC_API const xx_archive_record *xx_infogramesft_get_current_archive_record(
-    Abstractformat *self, xx_archive_record_state *state);
-XXFC_API bool xx_infogramesft_unpack_current_archive_record(
-    Abstractformat *self, xx_archive_record_state *state, xx_pd_struct *pd);
-XXFC_API bool xx_infogramesft_archive_record_move_to_next(
-    Abstractformat *self, xx_archive_record_state *state, xx_pd_struct *pd);
-XXFC_API void xx_infogramesft_free_archive_records_reading(
-    Abstractformat *self, xx_archive_record_state *state);
+XXFC_API xx_archive_record_state *xx_infogramesft_create_archive_records_reading(Abstractformat *self, const xx_list_s *options, xx_pd_struct *pd);
+XXFC_API const xx_archive_record *xx_infogramesft_get_current_archive_record(Abstractformat *self, xx_archive_record_state *state);
+XXFC_API bool xx_infogramesft_unpack_current_archive_record(Abstractformat *self, xx_archive_record_state *state, xx_pd_struct *pd);
+XXFC_API bool xx_infogramesft_archive_record_move_to_next(Abstractformat *self, xx_archive_record_state *state, xx_pd_struct *pd);
+XXFC_API void xx_infogramesft_free_archive_records_reading(Abstractformat *self, xx_archive_record_state *state);
 
 #ifdef __cplusplus
 }

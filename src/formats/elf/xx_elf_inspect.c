@@ -30,44 +30,128 @@
  * compareEP, and a raw-size/overlay estimate.
  */
 
-
 #define ELF_PT_NOTE 4
 #define ELF_SHT_NOTE 7
-
 
 /* _TABLE_XELF_Machines: e_machine -> arch name (xx_elf_inspection::getArch). */
 static const char *elf_machine_name(uint16_t m)
 {
     switch (m) {
-        case 0: return "NONE"; case 1: return "M32"; case 2: return "SPARC"; case 3: return "386";
-        case 4: return "68K"; case 5: return "88K"; case 6: return "486"; case 7: return "860";
-        case 8: return "MIPS"; case 9: return "S370"; case 10: return "MIPS_RS3_LE"; case 11: return "RS6000";
-        case 15: return "PARISC"; case 16: return "nCUBE"; case 17: return "VPP500"; case 18: return "SPARC32PLUS";
-        case 19: return "960"; case 20: return "PPC"; case 21: return "PPC64"; case 22: return "S390";
-        case 23: return "SPU"; case 36: return "V800"; case 37: return "FR20"; case 38: return "RH32";
-        case 39: return "RCE"; case 40: return "ARM"; case 41: return "ALPHA"; case 42: return "SH";
-        case 43: return "SPARCV9"; case 44: return "TRICORE"; case 45: return "ARC"; case 46: return "H8_300";
-        case 47: return "H8_300H"; case 48: return "H8S"; case 49: return "H8_500"; case 50: return "IA_64";
-        case 51: return "MIPS_X"; case 52: return "COLDFIRE"; case 53: return "68HC12"; case 54: return "MMA";
-        case 55: return "PCP"; case 56: return "NCPU"; case 57: return "NDR1"; case 58: return "STARCORE";
-        case 59: return "ME16"; case 60: return "ST100"; case 61: return "TINYJ"; case 62: return "AMD64";
-        case 63: return "PDSP"; case 66: return "FX66"; case 67: return "ST9PLUS"; case 68: return "ST7";
-        case 69: return "68HC16"; case 70: return "68HC11"; case 71: return "68HC08"; case 72: return "68HC05";
-        case 73: return "SVX"; case 74: return "ST19"; case 75: return "VAX"; case 76: return "CRIS";
-        case 77: return "JAVELIN"; case 78: return "FIREPATH"; case 79: return "ZSP"; case 80: return "MMIX";
-        case 81: return "HUANY"; case 82: return "PRISM"; case 83: return "AVR"; case 84: return "FR30";
-        case 85: return "D10V"; case 86: return "D30V"; case 87: return "V850"; case 88: return "M32R";
-        case 89: return "MN10300"; case 90: return "MN10200"; case 91: return "PJ"; case 92: return "OPENRISC";
-        case 93: return "ARC_A5"; case 94: return "XTENSA"; case 95: return "VIDEOCORE"; case 96: return "TMM_GPP";
-        case 97: return "NS32K"; case 98: return "TPC"; case 99: return "SNP1K"; case 100: return "ST200";
-        case 101: return "IP2K"; case 102: return "MAX"; case 103: return "CR"; case 104: return "F2MC16";
-        case 105: return "MSP430"; case 106: return "BLACKFIN"; case 107: return "SE_C33"; case 108: return "SEP";
-        case 109: return "ARCA"; case 110: return "UNICORE"; case 111: return "EXCESS"; case 112: return "DXP";
-        case 113: return "ALTERA_NIOS2"; case 114: return "CRX"; case 115: return "XGATE"; case 116: return "C166";
-        case 117: return "M16C"; case 118: return "DSPIC30F"; case 119: return "CE"; case 120: return "M32C";
-        case 140: return "TI_C6000"; case 183: return "AARCH64"; case 243: return "RISC_V"; case 258: return "LOONGARCH";
-        case 0x5441: return "FRV"; case 0x18ad: return "AVR32"; case 0x9026: return "ALPHA"; case 0x9080: return "CYGNUS_V850";
-        case 0x9041: return "CYGNUS_M32R"; case 0xA390: return "S390_OLD"; case 0xbeef: return "CYGNUS_MN10300";
+        case 0: return "NONE";
+        case 1: return "M32";
+        case 2: return "SPARC";
+        case 3: return "386";
+        case 4: return "68K";
+        case 5: return "88K";
+        case 6: return "486";
+        case 7: return "860";
+        case 8: return "MIPS";
+        case 9: return "S370";
+        case 10: return "MIPS_RS3_LE";
+        case 11: return "RS6000";
+        case 15: return "PARISC";
+        case 16: return "nCUBE";
+        case 17: return "VPP500";
+        case 18: return "SPARC32PLUS";
+        case 19: return "960";
+        case 20: return "PPC";
+        case 21: return "PPC64";
+        case 22: return "S390";
+        case 23: return "SPU";
+        case 36: return "V800";
+        case 37: return "FR20";
+        case 38: return "RH32";
+        case 39: return "RCE";
+        case 40: return "ARM";
+        case 41: return "ALPHA";
+        case 42: return "SH";
+        case 43: return "SPARCV9";
+        case 44: return "TRICORE";
+        case 45: return "ARC";
+        case 46: return "H8_300";
+        case 47: return "H8_300H";
+        case 48: return "H8S";
+        case 49: return "H8_500";
+        case 50: return "IA_64";
+        case 51: return "MIPS_X";
+        case 52: return "COLDFIRE";
+        case 53: return "68HC12";
+        case 54: return "MMA";
+        case 55: return "PCP";
+        case 56: return "NCPU";
+        case 57: return "NDR1";
+        case 58: return "STARCORE";
+        case 59: return "ME16";
+        case 60: return "ST100";
+        case 61: return "TINYJ";
+        case 62: return "AMD64";
+        case 63: return "PDSP";
+        case 66: return "FX66";
+        case 67: return "ST9PLUS";
+        case 68: return "ST7";
+        case 69: return "68HC16";
+        case 70: return "68HC11";
+        case 71: return "68HC08";
+        case 72: return "68HC05";
+        case 73: return "SVX";
+        case 74: return "ST19";
+        case 75: return "VAX";
+        case 76: return "CRIS";
+        case 77: return "JAVELIN";
+        case 78: return "FIREPATH";
+        case 79: return "ZSP";
+        case 80: return "MMIX";
+        case 81: return "HUANY";
+        case 82: return "PRISM";
+        case 83: return "AVR";
+        case 84: return "FR30";
+        case 85: return "D10V";
+        case 86: return "D30V";
+        case 87: return "V850";
+        case 88: return "M32R";
+        case 89: return "MN10300";
+        case 90: return "MN10200";
+        case 91: return "PJ";
+        case 92: return "OPENRISC";
+        case 93: return "ARC_A5";
+        case 94: return "XTENSA";
+        case 95: return "VIDEOCORE";
+        case 96: return "TMM_GPP";
+        case 97: return "NS32K";
+        case 98: return "TPC";
+        case 99: return "SNP1K";
+        case 100: return "ST200";
+        case 101: return "IP2K";
+        case 102: return "MAX";
+        case 103: return "CR";
+        case 104: return "F2MC16";
+        case 105: return "MSP430";
+        case 106: return "BLACKFIN";
+        case 107: return "SE_C33";
+        case 108: return "SEP";
+        case 109: return "ARCA";
+        case 110: return "UNICORE";
+        case 111: return "EXCESS";
+        case 112: return "DXP";
+        case 113: return "ALTERA_NIOS2";
+        case 114: return "CRX";
+        case 115: return "XGATE";
+        case 116: return "C166";
+        case 117: return "M16C";
+        case 118: return "DSPIC30F";
+        case 119: return "CE";
+        case 120: return "M32C";
+        case 140: return "TI_C6000";
+        case 183: return "AARCH64";
+        case 243: return "RISC_V";
+        case 258: return "LOONGARCH";
+        case 0x5441: return "FRV";
+        case 0x18ad: return "AVR32";
+        case 0x9026: return "ALPHA";
+        case 0x9080: return "CYGNUS_V850";
+        case 0x9041: return "CYGNUS_M32R";
+        case 0xA390: return "S390_OLD";
+        case 0xbeef: return "CYGNUS_MN10300";
         default: return "Unknown";
     }
 }
@@ -99,15 +183,42 @@ static const char *elf_osabi_osname(uint8_t nOsAbi)
 static const char *elf_android_version(uint32_t nApi)
 {
     switch (nApi) {
-        case 1: return "1.0"; case 2: return "1.1"; case 3: return "1.5"; case 4: return "1.6";
-        case 5: return "2.0"; case 6: return "2.0.1"; case 7: return "2.1"; case 8: return "2.2.X";
-        case 9: return "2.3-2.3.2"; case 10: return "2.3.3-2.3.7"; case 11: return "3.0"; case 12: return "3.1";
-        case 13: return "3.2.X"; case 14: return "4.0.1-4.0.2"; case 15: return "4.0.3-4.0.4"; case 16: return "4.1.X";
-        case 17: return "4.2.X"; case 18: return "4.3.X"; case 19: return "4.4-4.4.4"; case 20: return "4.4W";
-        case 21: return "5.0"; case 22: return "5.1"; case 23: return "6.0"; case 24: return "7.0";
-        case 25: return "7.1"; case 26: return "8.0"; case 27: return "8.1"; case 28: return "9.0";
-        case 29: return "10.0"; case 30: return "11.0"; case 31: return "12.0"; case 32: return "12.1";
-        case 33: return "13.0"; case 34: return "14.0"; case 35: return "15.0"; case 36: return "16.0";
+        case 1: return "1.0";
+        case 2: return "1.1";
+        case 3: return "1.5";
+        case 4: return "1.6";
+        case 5: return "2.0";
+        case 6: return "2.0.1";
+        case 7: return "2.1";
+        case 8: return "2.2.X";
+        case 9: return "2.3-2.3.2";
+        case 10: return "2.3.3-2.3.7";
+        case 11: return "3.0";
+        case 12: return "3.1";
+        case 13: return "3.2.X";
+        case 14: return "4.0.1-4.0.2";
+        case 15: return "4.0.3-4.0.4";
+        case 16: return "4.1.X";
+        case 17: return "4.2.X";
+        case 18: return "4.3.X";
+        case 19: return "4.4-4.4.4";
+        case 20: return "4.4W";
+        case 21: return "5.0";
+        case 22: return "5.1";
+        case 23: return "6.0";
+        case 24: return "7.0";
+        case 25: return "7.1";
+        case 26: return "8.0";
+        case 27: return "8.1";
+        case 28: return "9.0";
+        case 29: return "10.0";
+        case 30: return "11.0";
+        case 31: return "12.0";
+        case 32: return "12.1";
+        case 33: return "13.0";
+        case 34: return "14.0";
+        case 35: return "15.0";
+        case 36: return "16.0";
         default: return "Unknown";
     }
 }
@@ -188,7 +299,8 @@ static int64_t elf_clamp_end(xx_executable_input *pFile, uint64_t nOffset, uint6
 /* Finds an ELF note by (type, name); nWantType < 0 matches any type. Notes are
  * taken from the PT_NOTE segments, or the SHT_NOTE sections when there is no
  * PT_NOTE. On a match returns 1 and the descriptor offset/size. */
-static int elf_scan_range_note(xx_executable_input *pFile, int64_t nStart, int64_t nEnd, int bBE, int nWantType, const char *pWantName, int64_t *pnDescOff, uint32_t *pnDescSize)
+static int elf_scan_range_note(xx_executable_input *pFile, int64_t nStart, int64_t nEnd, int bBE, int nWantType, const char *pWantName, int64_t *pnDescOff,
+                               uint32_t *pnDescSize)
 {
     int64_t p = nStart;
 
@@ -319,7 +431,10 @@ static int elf_comment_distro(xx_executable_input *pFile, xx_elf_inspection *pEl
     for (p = nStart; p < nEnd;) {
         char *pC = xx_exec_string(pFile, p, nEnd - p);
         size_t nAdvance;
-        if (!pC) { pFile->failed = true; return 0; }
+        if (!pC) {
+            pFile->failed = true;
+            return 0;
+        }
         nAdvance = xx_rt_strlen(pC) + 1;
         int bFound = 0;
 
@@ -418,7 +533,10 @@ static void elf_compute_os(xx_executable_input *pFile, xx_elf_inspection *pElf)
     }
 
     pInterp = elf_interp(pFile, pElf);
-    if (!pInterp) { pFile->failed = true; return; }
+    if (!pInterp) {
+        pFile->failed = true;
+        return;
+    }
 
     if ((xx_rt_strcmp(pOsName, "Unix") == 0) && xx_rt_strstr(pInterp, "ld-elf.so")) pOsName = "FreeBSD";
     if ((xx_rt_strcmp(pOsName, "Unix") == 0) && xx_rt_strstr(pInterp, "linux")) pOsName = "Linux";
@@ -451,7 +569,8 @@ static void elf_compute_os(xx_executable_input *pFile, xx_elf_inspection *pElf)
             if (nDescSize >= 4) {
                 elf_set_str(sVer, sizeof(sVer), elf_android_version(xx_exec_u32(pFile, nDescOff, bBE ? true : false)));
             }
-        } else if (xx_elf_inspect_library_present(pElf, "liblog.so") || (xx_rt_strcmp(pInterp, "system/bin/linker") == 0) || (xx_rt_strcmp(pInterp, "system/bin/linker64") == 0)) {
+        } else if (xx_elf_inspect_library_present(pElf, "liblog.so") || (xx_rt_strcmp(pInterp, "system/bin/linker") == 0) ||
+                   (xx_rt_strcmp(pInterp, "system/bin/linker64") == 0)) {
             pOsName = "Android";
         }
     }
@@ -508,28 +627,123 @@ typedef struct {
     const char *pName;
 } ElfIdName;
 
-static const ElfIdName g_elfTypes[] = {
-    {0, "NONE"}, {1, "REL"}, {2, "EXEC"}, {3, "DYN"}, {4, "CORE"}, {5, "NUM"}, {0xff00, "LOPROC"}, {0xffff, "HIPROC"}
-};
+static const ElfIdName g_elfTypes[] = {{0, "NONE"}, {1, "REL"}, {2, "EXEC"}, {3, "DYN"}, {4, "CORE"}, {5, "NUM"}, {0xff00, "LOPROC"}, {0xffff, "HIPROC"}};
 
-static const ElfIdName g_elfMachines[] = {
-    {0, "NONE"}, {1, "M32"}, {2, "SPARC"}, {3, "386"}, {4, "68K"}, {5, "88K"}, {6, "486"}, {7, "860"}, {8, "MIPS"},
-    {9, "S370"}, {10, "MIPS_RS3_LE"}, {11, "RS6000"}, {15, "PARISC"}, {16, "nCUBE"}, {17, "VPP500"}, {18, "SPARC32PLUS"},
-    {19, "960"}, {20, "PPC"}, {21, "PPC64"}, {22, "S390"}, {23, "SPU"}, {36, "V800"}, {37, "FR20"}, {38, "RH32"},
-    {39, "RCE"}, {40, "ARM"}, {41, "ALPHA"}, {42, "SH"}, {43, "SPARCV9"}, {44, "TRICORE"}, {45, "ARC"}, {46, "H8_300"},
-    {47, "H8_300H"}, {48, "H8S"}, {49, "H8_500"}, {50, "IA_64"}, {51, "MIPS_X"}, {52, "COLDFIRE"}, {53, "68HC12"},
-    {54, "MMA"}, {55, "PCP"}, {56, "NCPU"}, {57, "NDR1"}, {58, "STARCORE"}, {59, "ME16"}, {60, "ST100"}, {61, "TINYJ"},
-    {62, "AMD64"}, {63, "PDSP"}, {66, "FX66"}, {67, "ST9PLUS"}, {68, "ST7"}, {69, "68HC16"}, {70, "68HC11"}, {71, "68HC08"},
-    {72, "68HC05"}, {73, "SVX"}, {74, "ST19"}, {75, "VAX"}, {76, "CRIS"}, {77, "JAVELIN"}, {78, "FIREPATH"}, {79, "ZSP"},
-    {80, "MMIX"}, {81, "HUANY"}, {82, "PRISM"}, {83, "AVR"}, {84, "FR30"}, {85, "D10V"}, {86, "D30V"}, {87, "V850"},
-    {88, "M32R"}, {89, "MN10300"}, {90, "MN10200"}, {91, "PJ"}, {92, "OPENRISC"}, {93, "ARC_A5"}, {94, "XTENSA"},
-    {95, "VIDEOCORE"}, {96, "TMM_GPP"}, {97, "NS32K"}, {98, "TPC"}, {99, "SNP1K"}, {100, "ST200"}, {101, "IP2K"},
-    {102, "MAX"}, {103, "CR"}, {104, "F2MC16"}, {105, "MSP430"}, {106, "BLACKFIN"}, {107, "SE_C33"}, {108, "SEP"},
-    {109, "ARCA"}, {110, "UNICORE"}, {111, "EXCESS"}, {112, "DXP"}, {113, "ALTERA_NIOS2"}, {114, "CRX"}, {115, "XGATE"},
-    {116, "C166"}, {117, "M16C"}, {118, "DSPIC30F"}, {119, "CE"}, {120, "M32C"}, {140, "TI_C6000"}, {183, "AARCH64"},
-    {243, "RISC_V"}, {258, "LOONGARCH"}, {0x5441, "FRV"}, {0x18ad, "AVR32"}, {0x9026, "ALPHA"}, {0x9080, "CYGNUS_V850"},
-    {0x9041, "CYGNUS_M32R"}, {0xA390, "S390_OLD"}, {0xbeef, "CYGNUS_MN10300"}
-};
+static const ElfIdName g_elfMachines[] = {{0, "NONE"},
+                                          {1, "M32"},
+                                          {2, "SPARC"},
+                                          {3, "386"},
+                                          {4, "68K"},
+                                          {5, "88K"},
+                                          {6, "486"},
+                                          {7, "860"},
+                                          {8, "MIPS"},
+                                          {9, "S370"},
+                                          {10, "MIPS_RS3_LE"},
+                                          {11, "RS6000"},
+                                          {15, "PARISC"},
+                                          {16, "nCUBE"},
+                                          {17, "VPP500"},
+                                          {18, "SPARC32PLUS"},
+                                          {19, "960"},
+                                          {20, "PPC"},
+                                          {21, "PPC64"},
+                                          {22, "S390"},
+                                          {23, "SPU"},
+                                          {36, "V800"},
+                                          {37, "FR20"},
+                                          {38, "RH32"},
+                                          {39, "RCE"},
+                                          {40, "ARM"},
+                                          {41, "ALPHA"},
+                                          {42, "SH"},
+                                          {43, "SPARCV9"},
+                                          {44, "TRICORE"},
+                                          {45, "ARC"},
+                                          {46, "H8_300"},
+                                          {47, "H8_300H"},
+                                          {48, "H8S"},
+                                          {49, "H8_500"},
+                                          {50, "IA_64"},
+                                          {51, "MIPS_X"},
+                                          {52, "COLDFIRE"},
+                                          {53, "68HC12"},
+                                          {54, "MMA"},
+                                          {55, "PCP"},
+                                          {56, "NCPU"},
+                                          {57, "NDR1"},
+                                          {58, "STARCORE"},
+                                          {59, "ME16"},
+                                          {60, "ST100"},
+                                          {61, "TINYJ"},
+                                          {62, "AMD64"},
+                                          {63, "PDSP"},
+                                          {66, "FX66"},
+                                          {67, "ST9PLUS"},
+                                          {68, "ST7"},
+                                          {69, "68HC16"},
+                                          {70, "68HC11"},
+                                          {71, "68HC08"},
+                                          {72, "68HC05"},
+                                          {73, "SVX"},
+                                          {74, "ST19"},
+                                          {75, "VAX"},
+                                          {76, "CRIS"},
+                                          {77, "JAVELIN"},
+                                          {78, "FIREPATH"},
+                                          {79, "ZSP"},
+                                          {80, "MMIX"},
+                                          {81, "HUANY"},
+                                          {82, "PRISM"},
+                                          {83, "AVR"},
+                                          {84, "FR30"},
+                                          {85, "D10V"},
+                                          {86, "D30V"},
+                                          {87, "V850"},
+                                          {88, "M32R"},
+                                          {89, "MN10300"},
+                                          {90, "MN10200"},
+                                          {91, "PJ"},
+                                          {92, "OPENRISC"},
+                                          {93, "ARC_A5"},
+                                          {94, "XTENSA"},
+                                          {95, "VIDEOCORE"},
+                                          {96, "TMM_GPP"},
+                                          {97, "NS32K"},
+                                          {98, "TPC"},
+                                          {99, "SNP1K"},
+                                          {100, "ST200"},
+                                          {101, "IP2K"},
+                                          {102, "MAX"},
+                                          {103, "CR"},
+                                          {104, "F2MC16"},
+                                          {105, "MSP430"},
+                                          {106, "BLACKFIN"},
+                                          {107, "SE_C33"},
+                                          {108, "SEP"},
+                                          {109, "ARCA"},
+                                          {110, "UNICORE"},
+                                          {111, "EXCESS"},
+                                          {112, "DXP"},
+                                          {113, "ALTERA_NIOS2"},
+                                          {114, "CRX"},
+                                          {115, "XGATE"},
+                                          {116, "C166"},
+                                          {117, "M16C"},
+                                          {118, "DSPIC30F"},
+                                          {119, "CE"},
+                                          {120, "M32C"},
+                                          {140, "TI_C6000"},
+                                          {183, "AARCH64"},
+                                          {243, "RISC_V"},
+                                          {258, "LOONGARCH"},
+                                          {0x5441, "FRV"},
+                                          {0x18ad, "AVR32"},
+                                          {0x9026, "ALPHA"},
+                                          {0x9080, "CYGNUS_V850"},
+                                          {0x9041, "CYGNUS_M32R"},
+                                          {0xA390, "S390_OLD"},
+                                          {0xbeef, "CYGNUS_MN10300"}};
 
 static const char *elf_lookup(const ElfIdName *pTable, size_t nCount, uint32_t nId)
 {
@@ -650,7 +864,14 @@ static void elf_parse_dynamic(xx_executable_input *pFile, xx_elf_inspection *pEl
             }
 
             if ((nTag == ELF_DT_NEEDED) && ((int64_t)nValue >= 0) && ((int64_t)nValue < nStrTabSize)) {
-                { char *item = xx_exec_string(pFile, nStrTabOffset + (int64_t)nValue, nStrTabSize - (int64_t)nValue); if (!item || !xx_list_append(&pElf->vecLibraries, &item)) { xx_mem_free(item); pFile->failed = true; break; } }
+                {
+                    char *item = xx_exec_string(pFile, nStrTabOffset + (int64_t)nValue, nStrTabSize - (int64_t)nValue);
+                    if (!item || !xx_list_append(&pElf->vecLibraries, &item)) {
+                        xx_mem_free(item);
+                        pFile->failed = true;
+                        break;
+                    }
+                }
             } else if (nTag == ELF_DT_RUNPATH) {
                 nRunPathValue = (int64_t)nValue;
             }
@@ -767,7 +988,8 @@ static int inspect_parse_input(xx_executable_input *pFile, xx_elf_inspection *pE
 
     for (i = 0; i < pElf->nSectionCount && !pFile->failed; i++) {
         if (nShStrTabOffset >= 0 && pElf->pSections[i].nNameIndex < nShStrTabSize) {
-            pElf->pSections[i].pName = xx_exec_string(pFile, nShStrTabOffset + (int64_t)pElf->pSections[i].nNameIndex, (int64_t)(nShStrTabSize - pElf->pSections[i].nNameIndex));
+            pElf->pSections[i].pName =
+                xx_exec_string(pFile, nShStrTabOffset + (int64_t)pElf->pSections[i].nNameIndex, (int64_t)(nShStrTabSize - pElf->pSections[i].nNameIndex));
         } else {
             pElf->pSections[i].pName = xx_str_create("");
         }
@@ -776,10 +998,8 @@ static int inspect_parse_input(xx_executable_input *pFile, xx_elf_inspection *pE
     elf_parse_dynamic(pFile, pElf);
 
     /* General options: "TYPE MACHINE-BITS", e.g. "DYN AMD64-64". */
-    xx_rt_snprintf(pElf->sGeneralOptions, sizeof(pElf->sGeneralOptions), "%s %s-%s",
-               elf_lookup(g_elfTypes, sizeof(g_elfTypes) / sizeof(g_elfTypes[0]), pElf->nType),
-               elf_lookup(g_elfMachines, sizeof(g_elfMachines) / sizeof(g_elfMachines[0]), pElf->nMachine),
-               b64 ? "64" : "32");
+    xx_rt_snprintf(pElf->sGeneralOptions, sizeof(pElf->sGeneralOptions), "%s %s-%s", elf_lookup(g_elfTypes, sizeof(g_elfTypes) / sizeof(g_elfTypes[0]), pElf->nType),
+                   elf_lookup(g_elfMachines, sizeof(g_elfMachines) / sizeof(g_elfMachines[0]), pElf->nMachine), b64 ? "64" : "32");
 
     pElf->nEntryPointOffset = elf_addr_to_offset(pElf, pElf->nEntry);
     elf_compute_overlay(pElf, pFile->size);
@@ -907,8 +1127,7 @@ int xx_elf_inspect_string_in_table_present(xx_elf_inspection *pElf, const char *
 
     /* Range-checked in uint64_t: adding the two raw header fields as int64_t
      * overflows on a malformed section header. */
-    if ((pElf->pSections[nSection].nOffset > (uint64_t)pFile->size) ||
-        (pElf->pSections[nSection].nSize > (uint64_t)pFile->size - pElf->pSections[nSection].nOffset)) {
+    if ((pElf->pSections[nSection].nOffset > (uint64_t)pFile->size) || (pElf->pSections[nSection].nSize > (uint64_t)pFile->size - pElf->pSections[nSection].nOffset)) {
         return 0;
     }
 
@@ -946,16 +1165,23 @@ int xx_elf_inspect_parse(xx_elf *reader, xx_elf_inspection *state, xx_pd_struct 
         return 0;
     }
     input = xx_exec_input_create(&reader->format, pd);
-    if (!input) { if (saved >= 0) xx_io_seek64(reader->format.device, saved, XX_RT_SEEK_SET); return 0; }
+    if (!input) {
+        if (saved >= 0) xx_io_seek64(reader->format.device, saved, XX_RT_SEEK_SET);
+        return 0;
+    }
     result = inspect_parse_input(input, state, reader);
     if (saved >= 0 && xx_io_seek64(reader->format.device, saved, XX_RT_SEEK_SET) != 0) input->failed = true;
-    if (!result || input->failed || xx_pd_is_stopped(pd)) { xx_elf_inspect_free(state); return 0; }
-    input->pd = NULL; input->parsing = false; input->read_work = 0;
+    if (!result || input->failed || xx_pd_is_stopped(pd)) {
+        xx_elf_inspect_free(state);
+        return 0;
+    }
+    input->pd = NULL;
+    input->parsing = false;
+    input->read_work = 0;
     return result;
 }
 
-int xx_elf_inspect_analyze_from_device(xx_elf_inspection *state, xx_io_device *device,
-                                      int64_t base, xx_pd_struct *pd)
+int xx_elf_inspect_analyze_from_device(xx_elf_inspection *state, xx_io_device *device, int64_t base, xx_pd_struct *pd)
 {
     xx_elf reader = {0};
     xx_executable_input *input;
@@ -964,15 +1190,16 @@ int xx_elf_inspect_analyze_from_device(xx_elf_inspection *state, xx_io_device *d
     int result = 0;
     if (!state) return 0;
     xx_rt_memset(state, 0, sizeof(*state));
-    reader.format.device = device; reader.format.base_address = base;
+    reader.format.device = device;
+    reader.format.base_address = base;
     input = xx_exec_input_create(&reader.format, pd);
     if (!input) return 0;
     if (!xx_exec_match(input, 0, "\177ELF", 4)) goto done;
     reader.elf_class = xx_exec_u8(input, 4);
     reader.data_encoding = xx_exec_u8(input, 5);
-    if ((reader.elf_class != 1 && reader.elf_class != 2) ||
-        (reader.data_encoding != 1 && reader.data_encoding != 2) || xx_exec_u8(input, 6) != 1) goto done;
-    wide = reader.elf_class == 2; be = reader.data_encoding == 2;
+    if ((reader.elf_class != 1 && reader.elf_class != 2) || (reader.data_encoding != 1 && reader.data_encoding != 2) || xx_exec_u8(input, 6) != 1) goto done;
+    wide = reader.elf_class == 2;
+    be = reader.data_encoding == 2;
     if (input->size < (wide ? 64 : 52)) goto done;
     reader.os_abi = xx_exec_u8(input, 7);
     reader.type = xx_exec_u16(input, 16, be);
@@ -989,19 +1216,19 @@ int xx_elf_inspect_analyze_from_device(xx_elf_inspection *state, xx_io_device *d
     reader.section_header_count = xx_exec_u16(input, wide ? 60 : 48, be);
     reader.section_name_index = xx_exec_u16(input, wide ? 62 : 50, be);
     if (reader.header_size < (wide ? 64 : 52) || reader.header_size > input->size) goto done;
-    if (reader.section_header_offset && (!reader.section_header_count ||
-        reader.program_header_count == 0xffff || reader.section_name_index == 0xffff)) {
+    if (reader.section_header_offset && (!reader.section_header_count || reader.program_header_count == 0xffff || reader.section_name_index == 0xffff)) {
         uint64_t offset = reader.section_header_offset;
         if (offset > (uint64_t)input->size || (uint64_t)(wide ? 64 : 40) > (uint64_t)input->size - offset) goto done;
-        if (!reader.section_header_count) reader.section_header_count = wide ? xx_exec_u64(input, (int64_t)offset + 32, be) : xx_exec_u32(input, (int64_t)offset + 20, be);
+        if (!reader.section_header_count)
+            reader.section_header_count = wide ? xx_exec_u64(input, (int64_t)offset + 32, be) : xx_exec_u32(input, (int64_t)offset + 20, be);
         if (reader.program_header_count == 0xffff) reader.program_header_count = xx_exec_u32(input, (int64_t)offset + (wide ? 44 : 28), be);
         if (reader.section_name_index == 0xffff) reader.section_name_index = xx_exec_u32(input, (int64_t)offset + (wide ? 40 : 24), be);
     }
     if (reader.program_header_count > 65536 || reader.section_header_count > 65536) goto done;
     if (reader.program_header_count) {
-        if (!reader.program_header_offset || reader.program_header_entry_size < (wide ? 56 : 32) ||
-            reader.program_header_offset > (uint64_t)input->size ||
-            reader.program_header_count * reader.program_header_entry_size > (uint64_t)input->size - reader.program_header_offset) goto done;
+        if (!reader.program_header_offset || reader.program_header_entry_size < (wide ? 56 : 32) || reader.program_header_offset > (uint64_t)input->size ||
+            reader.program_header_count * reader.program_header_entry_size > (uint64_t)input->size - reader.program_header_offset)
+            goto done;
         reader.program_headers = (xx_elf_program_header *)xx_mem_calloc((size_t)reader.program_header_count, sizeof(*reader.program_headers));
         if (!reader.program_headers) goto done;
         for (i = 0; i < reader.program_header_count && !xx_pd_is_stopped(pd); ++i) {
@@ -1015,10 +1242,10 @@ int xx_elf_inspect_analyze_from_device(xx_elf_inspection *state, xx_io_device *d
         }
     }
     if (reader.section_header_count) {
-        if (!reader.section_header_offset || reader.section_header_entry_size < (wide ? 64 : 40) ||
-            reader.section_header_offset > (uint64_t)input->size ||
+        if (!reader.section_header_offset || reader.section_header_entry_size < (wide ? 64 : 40) || reader.section_header_offset > (uint64_t)input->size ||
             reader.section_header_count * reader.section_header_entry_size > (uint64_t)input->size - reader.section_header_offset ||
-            reader.section_name_index >= reader.section_header_count) goto done;
+            reader.section_name_index >= reader.section_header_count)
+            goto done;
         reader.section_headers = (xx_elf_section_header *)xx_mem_calloc((size_t)reader.section_header_count, sizeof(*reader.section_headers));
         if (!reader.section_headers) goto done;
         for (i = 0; i < reader.section_header_count && !xx_pd_is_stopped(pd); ++i) {
@@ -1030,16 +1257,21 @@ int xx_elf_inspect_analyze_from_device(xx_elf_inspection *state, xx_io_device *d
             section->offset = wide ? xx_exec_u64(input, offset + 24, be) : xx_exec_u32(input, offset + 16, be);
             section->size = wide ? xx_exec_u64(input, offset + 32, be) : xx_exec_u32(input, offset + 20, be);
             if (section->type != ELF_SHT_NOBITS && section->type != 0 &&
-                (section->offset > (uint64_t)input->size || section->size > (uint64_t)input->size - section->offset)) goto done;
+                (section->offset > (uint64_t)input->size || section->size > (uint64_t)input->size - section->offset))
+                goto done;
         }
     }
     if (!input->failed && !xx_pd_is_stopped(pd)) result = inspect_parse_input(input, state, &reader);
 done:
-    xx_mem_free(reader.program_headers); xx_mem_free(reader.section_headers);
+    xx_mem_free(reader.program_headers);
+    xx_mem_free(reader.section_headers);
     if (!result || input->failed || xx_pd_is_stopped(pd)) {
-        if (state->pInput) xx_elf_inspect_free(state); else xx_exec_input_free(input);
+        if (state->pInput) xx_elf_inspect_free(state);
+        else xx_exec_input_free(input);
         return 0;
     }
-    input->pd = NULL; input->parsing = false; input->read_work = 0;
+    input->pd = NULL;
+    input->parsing = false;
+    input->read_work = 0;
     return result;
 }

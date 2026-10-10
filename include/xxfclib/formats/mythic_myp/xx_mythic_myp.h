@@ -9,13 +9,15 @@
 #ifdef __cplusplus
 extern "C" {
 #endif
-typedef struct xx_mythic_myp { Abstractformat format; } xx_mythic_myp;
-XXFC_API void xx_mythic_myp_init(xx_mythic_myp *,xx_io_device *,int64_t);
-XXFC_API xx_mythic_myp *xx_mythic_myp_create(xx_io_device *,int64_t);
+typedef struct xx_mythic_myp {
+    Abstractformat format;
+} xx_mythic_myp;
+XXFC_API void xx_mythic_myp_init(xx_mythic_myp *, xx_io_device *, int64_t);
+XXFC_API xx_mythic_myp *xx_mythic_myp_create(xx_io_device *, int64_t);
 XXFC_API void xx_mythic_myp_destroy(xx_mythic_myp *);
 XXFC_API void xx_mythic_myp_free(xx_mythic_myp *);
-XXFC_API bool xx_mythic_myp_check_is_valid(Abstractformat *,xx_pd_struct *);
-XXFC_API bool xx_mythic_myp_handle_base_info(Abstractformat *,xx_pd_struct *);
+XXFC_API bool xx_mythic_myp_check_is_valid(Abstractformat *, xx_pd_struct *);
+XXFC_API bool xx_mythic_myp_handle_base_info(Abstractformat *, xx_pd_struct *);
 #ifdef __cplusplus
 }
 #endif

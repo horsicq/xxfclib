@@ -108,17 +108,14 @@ struct xx_uboot {
     void *internal;
 };
 
-XXFC_API void xx_uboot_init(xx_uboot *uboot, xx_io_device *dev,
-                            int64_t base_address);
+XXFC_API void xx_uboot_init(xx_uboot *uboot, xx_io_device *dev, int64_t base_address);
 XXFC_API xx_uboot *xx_uboot_create(xx_io_device *dev, int64_t base_address);
 XXFC_API void xx_uboot_destroy(xx_uboot *uboot);
 XXFC_API void xx_uboot_free(xx_uboot *uboot);
 
 XXFC_API bool xx_uboot_check_is_valid(Abstractformat *self, xx_pd_struct *pd);
-XXFC_API bool xx_uboot_handle_base_info(Abstractformat *self,
-                                        xx_pd_struct *pd);
-XXFC_API int64_t xx_uboot_get_format_size(Abstractformat *self,
-                                          xx_pd_struct *pd);
+XXFC_API bool xx_uboot_handle_base_info(Abstractformat *self, xx_pd_struct *pd);
+XXFC_API int64_t xx_uboot_get_format_size(Abstractformat *self, xx_pd_struct *pd);
 
 /**
  * @brief Pin the block size instead of searching for it.
@@ -137,28 +134,30 @@ XXFC_API uint32_t xx_uboot_get_env_size(const xx_uboot *uboot);
 XXFC_API uint32_t xx_uboot_get_crc32(const xx_uboot *uboot);
 XXFC_API xx_uboot_layout_t xx_uboot_get_layout(const xx_uboot *uboot);
 /** Key of variable @p index, or NULL when it is out of range. */
-XXFC_API const char *xx_uboot_get_variable_key(const xx_uboot *uboot,
-                                               uint64_t index);
+XXFC_API const char *xx_uboot_get_variable_key(const xx_uboot *uboot, uint64_t index);
 /** Value of variable @p index, or NULL when it is out of range. */
-XXFC_API const char *xx_uboot_get_variable_value(const xx_uboot *uboot,
-                                                 uint64_t index);
+XXFC_API const char *xx_uboot_get_variable_value(const xx_uboot *uboot, uint64_t index);
 /** Value for @p key, or NULL when the block does not define it. */
-XXFC_API const char *xx_uboot_find_variable(const xx_uboot *uboot,
-                                            const char *key);
+XXFC_API const char *xx_uboot_find_variable(const xx_uboot *uboot, const char *key);
 
-static inline Abstractformat *xx_uboot_to_format(xx_uboot *uboot) {
+static inline Abstractformat *xx_uboot_to_format(xx_uboot *uboot)
+{
     return uboot ? &uboot->format : NULL;
 }
-static inline void XUboot_init(xx_uboot *uboot, xx_io_device *dev,
-                               int64_t base_address) {
+static inline void XUboot_init(xx_uboot *uboot, xx_io_device *dev, int64_t base_address)
+{
     xx_uboot_init(uboot, dev, base_address);
 }
-static inline xx_uboot *XUboot_create(xx_io_device *dev,
-                                      int64_t base_address) {
+static inline xx_uboot *XUboot_create(xx_io_device *dev, int64_t base_address)
+{
     return xx_uboot_create(dev, base_address);
 }
-static inline void XUboot_free(xx_uboot *uboot) { xx_uboot_free(uboot); }
-static inline bool XUboot_is_valid(xx_uboot *uboot, xx_pd_struct *pd) {
+static inline void XUboot_free(xx_uboot *uboot)
+{
+    xx_uboot_free(uboot);
+}
+static inline bool XUboot_is_valid(xx_uboot *uboot, xx_pd_struct *pd)
+{
     return uboot ? xx_format_is_valid(&uboot->format, pd) : false;
 }
 

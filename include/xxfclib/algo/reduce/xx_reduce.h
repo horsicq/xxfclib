@@ -41,21 +41,11 @@ extern "C" {
  * factor is the Reduce factor 1 through 4 (ZIP methods 2 through 5 use
  * method - 1). expected_size is mandatory because Reduce has no end marker.
  */
-XXFC_API bool xx_reduce_unpack_device(xx_io_device *src_dev,
-                                      int64_t src_offset,
-                                      int64_t comp_size,
-                                      xx_io_device *dst_dev,
-                                      int64_t expected_size,
-                                      int factor,
+XXFC_API bool xx_reduce_unpack_device(xx_io_device *src_dev, int64_t src_offset, int64_t comp_size, xx_io_device *dst_dev, int64_t expected_size, int factor,
                                       xx_pd_struct *pd);
 
 /** @brief Decode a raw ZIP Reduce stream directly to a UTF-8 file path. */
-XXFC_API bool xx_reduce_unpack_device_to_file(xx_io_device *src_dev,
-                                              int64_t src_offset,
-                                              int64_t comp_size,
-                                              const char *dst_file_path,
-                                              int64_t expected_size,
-                                              int factor,
+XXFC_API bool xx_reduce_unpack_device_to_file(xx_io_device *src_dev, int64_t src_offset, int64_t comp_size, const char *dst_file_path, int64_t expected_size, int factor,
                                               xx_pd_struct *pd);
 
 #ifdef __cplusplus

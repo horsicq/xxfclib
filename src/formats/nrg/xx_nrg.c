@@ -60,21 +60,21 @@
 typedef struct nrg_track_s {
     int64_t entry_offset; /* table entry, from the image start */
     int64_t entry_size;
-    int64_t pregap;       /* index 0; equals start when nothing is stored */
-    int64_t start;        /* index 1 */
+    int64_t pregap; /* index 0; equals start when nothing is stored */
+    int64_t start;  /* index 1 */
     int64_t end;
     uint32_t sector_size;
     uint8_t mode;
     bool tao;
-    uint32_t table;       /* ordinal of the chunk that described it */
+    uint32_t table; /* ordinal of the chunk that described it */
 } nrg_track;
 
 typedef struct nrg_member_s {
     char name[NRG_NAME_SIZE];
-    const char *comment;  /* a literal chosen here, never from the file */
+    const char *comment; /* a literal chosen here, never from the file */
     int64_t header_offset;
     int64_t header_size;
-    int64_t data_offset;  /* absolute device offset */
+    int64_t data_offset; /* absolute device offset */
     int64_t size;
 } nrg_member;
 
@@ -86,7 +86,7 @@ typedef struct nrg_image_s {
     uint32_t kept_tracks;
     uint32_t sessions;
     uint32_t version;
-    int64_t chunk_list;   /* from the image start */
+    int64_t chunk_list; /* from the image start */
     int64_t image_size;
 } nrg_image;
 
@@ -96,12 +96,14 @@ typedef struct nrg_stream_s {
 } nrg_stream;
 
 #include "xxfclib/global/xx_global.h"
-static size_t gb_nrg_capacity(void) {
+static size_t gb_nrg_capacity(void)
+{
     size_t n = xx_get_file_buffer_size();
     if (!n) n = XX_DEFAULT_FILE_BUFFER_SIZE;
     return n > (SIZE_MAX >> 1) ? SIZE_MAX >> 1 : n;
 }
-static ssize_t gb_nrg_read(xx_io_device *device, void *buffer, size_t size, size_t capacity) {
+static ssize_t gb_nrg_read(xx_io_device *device, void *buffer, size_t size, size_t capacity)
+{
     size_t done = 0;
     if (size > (SIZE_MAX >> 1)) return -1;
     while (done < size) {
@@ -115,7 +117,8 @@ static ssize_t gb_nrg_read(xx_io_device *device, void *buffer, size_t size, size
     }
     return (ssize_t)done;
 }
-static ssize_t gb_nrg_write(xx_io_device *device, const void *buffer, size_t size, size_t capacity) {
+static ssize_t gb_nrg_write(xx_io_device *device, const void *buffer, size_t size, size_t capacity)
+{
     size_t done = 0;
     if (size > (SIZE_MAX >> 1)) return -1;
     while (done < size) {
@@ -130,96 +133,98 @@ static ssize_t gb_nrg_write(xx_io_device *device, const void *buffer, size_t siz
     return (ssize_t)done;
 }
 
-
-static uint32_t nrg_be16(const uint8_t *b) {
+static uint32_t nrg_be16(const uint8_t *b)
+{
     return ((uint32_t)b[0] << 8U) | (uint32_t)b[1];
 }
 
-static bool nrg_read_at(xx_io_device *device, int64_t offset, void *buffer,
-                        size_t size) {
+static bool nrg_read_at(xx_io_device *device, int64_t offset, void *buffer, size_t size)
+{
     const size_t file_io_capacity = gb_nrg_capacity();
     size_t done = 0U;
-    if (!device || (!buffer && size != 0U) || offset < 0 ||
-        xx_io_seek64(device, offset, SEEK_SET) != 0)
-        return false;
+    if (!device || (!buffer && size != 0U) || offset < 0 || xx_io_seek64(device, offset, SEEK_SET) != 0) return false;
     while (done < size) {
-        ssize_t amount = gb_nrg_read(device, (uint8_t *)buffer + done,
-                                    size - done, file_io_capacity);
+        ssize_t amount = gb_nrg_read(device, (uint8_t *)buffer + done, size - done, file_io_capacity);
         if (amount <= 0 || (size_t)amount > size - done) return false;
         done += (size_t)amount;
     }
     return true;
 }
 
-static bool nrg_tag_is(const uint8_t *tag, const char *text) {
+static bool nrg_tag_is(const uint8_t *tag, const char *text)
+{
     return xx_rt_memcmp(tag, text, 4U) == 0;
 }
 
 /* Nero's chunk tags are upper-case letters, digits and '!'. */
-static bool nrg_tag_plausible(const uint8_t *tag) {
+static bool nrg_tag_plausible(const uint8_t *tag)
+{
     size_t index;
     for (index = 0U; index < 4U; ++index) {
         uint8_t c = tag[index];
-        if (!((c >= 'A' && c <= 'Z') || (c >= '0' && c <= '9') || c == '!'))
-            return false;
+        if (!((c >= 'A' && c <= 'Z') || (c >= '0' && c <= '9') || c == '!')) return false;
     }
     return true;
 }
 
 /* Sector size of a mode code, for the TAO tables that carry no size. */
-static uint32_t nrg_mode_sector_size(uint8_t mode) {
+static uint32_t nrg_mode_sector_size(uint8_t mode)
+{
     switch (mode) {
-    case 0x00:
-    case 0x02: return 2048U;
-    case 0x03: return 2336U;
-    case 0x05:
-    case 0x06:
-    case 0x07: return 2352U;
-    case 0x0F:
-    case 0x10:
-    case 0x11: return 2448U;
-    default: return 0U;
+        case 0x00:
+        case 0x02: return 2048U;
+        case 0x03: return 2336U;
+        case 0x05:
+        case 0x06:
+        case 0x07: return 2352U;
+        case 0x0F:
+        case 0x10:
+        case 0x11: return 2448U;
+        default: return 0U;
     }
 }
 
-static bool nrg_sector_size_known(uint32_t size) {
+static bool nrg_sector_size_known(uint32_t size)
+{
     return size == 2048U || size == 2336U || size == 2352U || size == 2448U;
 }
 
-static bool nrg_is_audio(const nrg_track *track) {
-    return (track->mode == 0x07U || track->mode == 0x10U) &&
-           track->sector_size >= 2352U;
+static bool nrg_is_audio(const nrg_track *track)
+{
+    return (track->mode == 0x07U || track->mode == 0x10U) && track->sector_size >= 2352U;
 }
 
-static const char *nrg_comment(const nrg_track *track) {
+static const char *nrg_comment(const nrg_track *track)
+{
     switch (track->mode) {
-    case 0x00: return "MODE1/2048";
-    case 0x02: return "MODE2/2048";
-    case 0x03: return "MODE2/2336";
-    case 0x05: return "MODE1/2352";
-    case 0x06: return "MODE2/2352";
-    case 0x07: return "AUDIO";
-    case 0x0F: return "MODE1/2448";
-    case 0x10: return "CDG";
-    case 0x11: return "MODE2/2448";
-    default: break;
+        case 0x00: return "MODE1/2048";
+        case 0x02: return "MODE2/2048";
+        case 0x03: return "MODE2/2336";
+        case 0x05: return "MODE1/2352";
+        case 0x06: return "MODE2/2352";
+        case 0x07: return "AUDIO";
+        case 0x0F: return "MODE1/2448";
+        case 0x10: return "CDG";
+        case 0x11: return "MODE2/2448";
+        default: break;
     }
     switch (track->sector_size) {
-    case 2048U: return "DATA/2048";
-    case 2336U: return "DATA/2336";
-    case 2352U: return "DATA/2352";
-    default: return "DATA/2448";
+        case 2048U: return "DATA/2048";
+        case 2336U: return "DATA/2336";
+        case 2352U: return "DATA/2352";
+        default: return "DATA/2448";
     }
 }
 
-static const char *nrg_extension(const nrg_track *track, bool pregap) {
+static const char *nrg_extension(const nrg_track *track, bool pregap)
+{
     if (nrg_is_audio(track)) return track->sector_size == 2448U ? "cdg" : "cdda";
     if (track->sector_size == 2048U) return pregap ? "bin" : "iso";
     return "bin";
 }
 
-static void nrg_make_name(char *name, uint32_t number, const char *extension,
-                          bool pregap) {
+static void nrg_make_name(char *name, uint32_t number, const char *extension, bool pregap)
+{
     static const char prefix[] = "track";
     static const char middle[] = ".pregap.";
     size_t used = 0U, index;
@@ -231,26 +236,23 @@ static void nrg_make_name(char *name, uint32_t number, const char *extension,
     } else {
         name[used++] = '.';
     }
-    for (index = 0U; extension[index] && used < NRG_NAME_SIZE - 1U; ++index)
-        name[used++] = extension[index];
+    for (index = 0U; extension[index] && used < NRG_NAME_SIZE - 1U; ++index) name[used++] = extension[index];
     name[used] = 0;
 }
 
-static bool nrg_add_track(nrg_image *image, const nrg_track *track) {
+static bool nrg_add_track(nrg_image *image, const nrg_track *track)
+{
     if (image->track_count >= XX_NRG_MAX_TRACKS) return false;
     image->tracks[image->track_count++] = *track;
     return true;
 }
 
 /* DAOX / DAOI: a 22-byte header, then one fixed-size entry per track. */
-static bool nrg_parse_dao(nrg_image *image, const uint8_t *payload,
-                          uint32_t size, int64_t payload_offset, bool wide,
-                          uint32_t table) {
+static bool nrg_parse_dao(nrg_image *image, const uint8_t *payload, uint32_t size, int64_t payload_offset, bool wide, uint32_t table)
+{
     uint32_t entry_size = wide ? NRG_DAOX_ENTRY : NRG_DAOI_ENTRY;
     uint32_t count, index;
-    if (size < NRG_DAO_HEADER + entry_size ||
-        (size - NRG_DAO_HEADER) % entry_size != 0U)
-        return false;
+    if (size < NRG_DAO_HEADER + entry_size || (size - NRG_DAO_HEADER) % entry_size != 0U) return false;
     count = (size - NRG_DAO_HEADER) / entry_size;
     if (count > XX_NRG_MAX_TRACKS) return false;
     for (index = 0U; index < count; ++index) {
@@ -262,21 +264,14 @@ static bool nrg_parse_dao(nrg_image *image, const uint8_t *payload,
         track.sector_size = nrg_be16(entry + 12U);
         track.mode = entry[14];
         for (field = 0U; field < 3U; ++field)
-            values[field] = wide ? xx_data_get_u64(entry + 18U + field * 8U, 8, 0, true)
-                                 : (uint64_t)xx_data_get_u32(entry + 18U + field * 4U, 4, 0, true);
+            values[field] = wide ? xx_data_get_u64(entry + 18U + field * 8U, 8, 0, true) : (uint64_t)xx_data_get_u32(entry + 18U + field * 4U, 4, 0, true);
         /* Every extent sits in the data area in front of the chunk list. */
-        if (!nrg_sector_size_known(track.sector_size) ||
-            values[0] > values[1] || values[1] >= values[2] ||
-            values[2] > (uint64_t)image->chunk_list)
-            return false;
+        if (!nrg_sector_size_known(track.sector_size) || values[0] > values[1] || values[1] >= values[2] || values[2] > (uint64_t)image->chunk_list) return false;
         track.pregap = (int64_t)values[0];
         track.start = (int64_t)values[1];
         track.end = (int64_t)values[2];
-        if ((track.start - track.pregap) % (int64_t)track.sector_size != 0 ||
-            (track.end - track.start) % (int64_t)track.sector_size != 0)
-            return false;
-        track.entry_offset =
-            payload_offset + (int64_t)NRG_DAO_HEADER + (int64_t)index * entry_size;
+        if ((track.start - track.pregap) % (int64_t)track.sector_size != 0 || (track.end - track.start) % (int64_t)track.sector_size != 0) return false;
+        track.entry_offset = payload_offset + (int64_t)NRG_DAO_HEADER + (int64_t)index * entry_size;
         track.entry_size = (int64_t)entry_size;
         track.table = table;
         if (!nrg_add_track(image, &track)) return false;
@@ -285,9 +280,8 @@ static bool nrg_parse_dao(nrg_image *image, const uint8_t *payload,
 }
 
 /* ETN2 / ETNF: one entry per track, the sector size implied by the mode. */
-static bool nrg_parse_etn(nrg_image *image, const uint8_t *payload,
-                          uint32_t size, int64_t payload_offset, bool wide,
-                          uint32_t table) {
+static bool nrg_parse_etn(nrg_image *image, const uint8_t *payload, uint32_t size, int64_t payload_offset, bool wide, uint32_t table)
+{
     uint32_t entry_size = wide ? NRG_ETN2_ENTRY : NRG_ETNF_ENTRY;
     uint32_t count, index;
     if (size < entry_size || size % entry_size != 0U) return false;
@@ -308,9 +302,7 @@ static bool nrg_parse_etn(nrg_image *image, const uint8_t *payload,
             track.mode = entry[11];
         }
         track.sector_size = nrg_mode_sector_size(track.mode);
-        if (track.sector_size == 0U || length == 0U ||
-            length % track.sector_size != 0U ||
-            offset > (uint64_t)image->chunk_list ||
+        if (track.sector_size == 0U || length == 0U || length % track.sector_size != 0U || offset > (uint64_t)image->chunk_list ||
             length > (uint64_t)image->chunk_list - offset)
             return false;
         track.pregap = (int64_t)offset;
@@ -327,19 +319,18 @@ static bool nrg_parse_etn(nrg_image *image, const uint8_t *payload,
 
 /* A TAO table that repeats extents a DAO table already gives would list the
  * same data twice; such TAO entries are dropped. */
-static bool nrg_overlaps_dao(const nrg_image *image, const nrg_track *track) {
+static bool nrg_overlaps_dao(const nrg_image *image, const nrg_track *track)
+{
     uint32_t index;
     for (index = 0U; index < image->track_count; ++index) {
         const nrg_track *other = &image->tracks[index];
-        if (!other->tao && track->start < other->end &&
-            other->pregap < track->end)
-            return true;
+        if (!other->tao && track->start < other->end && other->pregap < track->end) return true;
     }
     return false;
 }
 
-static bool nrg_add_member(nrg_image *image, const nrg_track *track,
-                           uint32_t number, bool pregap, int64_t base) {
+static bool nrg_add_member(nrg_image *image, const nrg_track *track, uint32_t number, bool pregap, int64_t base)
+{
     nrg_member *member;
     if (image->member_count >= XX_NRG_MAX_MEMBERS) return false;
     member = &image->members[image->member_count++];
@@ -348,12 +339,12 @@ static bool nrg_add_member(nrg_image *image, const nrg_track *track,
     member->header_offset = base + track->entry_offset;
     member->header_size = track->entry_size;
     member->data_offset = base + (pregap ? track->pregap : track->start);
-    member->size = pregap ? track->start - track->pregap
-                          : track->end - track->start;
+    member->size = pregap ? track->start - track->pregap : track->end - track->start;
     return true;
 }
 
-static bool nrg_build_members(nrg_image *image, int64_t base) {
+static bool nrg_build_members(nrg_image *image, int64_t base)
+{
     uint32_t index, number = 0U, last_table = UINT32_MAX;
     for (index = 0U; index < image->track_count; ++index) {
         const nrg_track *track = &image->tracks[index];
@@ -363,24 +354,22 @@ static bool nrg_build_members(nrg_image *image, int64_t base) {
             ++image->sessions;
             last_table = track->table;
         }
-        if (track->start > track->pregap &&
-            !nrg_add_member(image, track, number, true, base))
-            return false;
+        if (track->start > track->pregap && !nrg_add_member(image, track, number, true, base)) return false;
         if (!nrg_add_member(image, track, number, false, base)) return false;
     }
     image->kept_tracks = number;
     return image->member_count != 0U;
 }
 
-bool xx_nrg_probe_device(xx_io_device *device) {
+bool xx_nrg_probe_device(xx_io_device *device)
+{
     uint8_t footer[NRG_FOOTER_V2];
     int64_t total = device ? xx_io_total_size(device) : -1;
     int64_t saved = device ? xx_io_tell(device) : -1;
     int64_t footer_offset;
     uint64_t list;
     bool result = false;
-    if (total < NRG_MIN_SECTOR + NRG_CHUNK_HEADER + NRG_ETNF_ENTRY +
-                    NRG_CHUNK_HEADER + NRG_FOOTER_V1 ||
+    if (total < NRG_MIN_SECTOR + NRG_CHUNK_HEADER + NRG_ETNF_ENTRY + NRG_CHUNK_HEADER + NRG_FOOTER_V1 ||
         !nrg_read_at(device, total - NRG_FOOTER_V2, footer, sizeof(footer)))
         goto done;
     if (nrg_tag_is(footer, "NER5")) {
@@ -392,14 +381,14 @@ bool xx_nrg_probe_device(xx_io_device *device) {
     } else {
         goto done;
     }
-    result = list >= NRG_MIN_SECTOR &&
-             list <= (uint64_t)(footer_offset - NRG_CHUNK_HEADER);
+    result = list >= NRG_MIN_SECTOR && list <= (uint64_t)(footer_offset - NRG_CHUNK_HEADER);
 done:
     if (saved >= 0) (void)xx_io_seek64(device, saved, SEEK_SET);
     return result;
 }
 
-static bool nrg_parse(Abstractformat *format, nrg_image **result) {
+static bool nrg_parse(Abstractformat *format, nrg_image **result)
+{
     uint8_t footer[NRG_FOOTER_V2];
     uint8_t header[NRG_CHUNK_HEADER];
     uint8_t *table = NULL;
@@ -409,17 +398,13 @@ static bool nrg_parse(Abstractformat *format, nrg_image **result) {
     uint64_t list;
     bool ended = false;
     if (result) *result = NULL;
-    if (!format || !format->device || !result || format->base_address < 0)
-        return false;
+    if (!format || !format->device || !result || format->base_address < 0) return false;
     total = xx_io_total_size(format->device);
     if (total < format->base_address) return false;
     size = total - format->base_address;
     /* One sector of data, one table entry, END! and the footer at least. */
-    if (size < NRG_MIN_SECTOR + NRG_CHUNK_HEADER + NRG_ETNF_ENTRY +
-                   NRG_CHUNK_HEADER + NRG_FOOTER_V1 ||
-        !nrg_read_at(format->device,
-                     format->base_address + size - NRG_FOOTER_V2, footer,
-                     sizeof(footer)))
+    if (size < NRG_MIN_SECTOR + NRG_CHUNK_HEADER + NRG_ETNF_ENTRY + NRG_CHUNK_HEADER + NRG_FOOTER_V1 ||
+        !nrg_read_at(format->device, format->base_address + size - NRG_FOOTER_V2, footer, sizeof(footer)))
         return false;
     if (nrg_tag_is(footer, "NER5")) {
         version = 2U;
@@ -432,9 +417,7 @@ static bool nrg_parse(Abstractformat *format, nrg_image **result) {
     } else {
         return false;
     }
-    if (list < NRG_MIN_SECTOR ||
-        list > (uint64_t)(footer_offset - NRG_CHUNK_HEADER))
-        return false;
+    if (list < NRG_MIN_SECTOR || list > (uint64_t)(footer_offset - NRG_CHUNK_HEADER)) return false;
     image = (nrg_image *)xx_mem_calloc(1U, sizeof(*image));
     table = (uint8_t *)xx_mem_alloc(NRG_MAX_TABLE);
     if (!image || !table) goto fail;
@@ -446,9 +429,7 @@ static bool nrg_parse(Abstractformat *format, nrg_image **result) {
         int64_t payload_offset;
         uint32_t chunk_size;
         bool dao, etn, wide;
-        if (position > footer_offset - NRG_CHUNK_HEADER ||
-            !nrg_read_at(format->device, format->base_address + position,
-                         header, sizeof(header)) ||
+        if (position > footer_offset - NRG_CHUNK_HEADER || !nrg_read_at(format->device, format->base_address + position, header, sizeof(header)) ||
             !nrg_tag_plausible(header))
             goto fail;
         chunk_size = xx_data_get_u32(header + 4U, 4, 0, true);
@@ -462,26 +443,16 @@ static bool nrg_parse(Abstractformat *format, nrg_image **result) {
         etn = nrg_tag_is(header, "ETN2") || nrg_tag_is(header, "ETNF");
         wide = nrg_tag_is(header, "DAOX") || nrg_tag_is(header, "ETN2");
         if (dao || etn) {
-            if (chunk_size > NRG_MAX_TABLE ||
-                !nrg_read_at(format->device,
-                             format->base_address + payload_offset, table,
-                             chunk_size))
-                goto fail;
-            if (dao ? !nrg_parse_dao(image, table, chunk_size, payload_offset,
-                                     wide, tables)
-                    : !nrg_parse_etn(image, table, chunk_size, payload_offset,
-                                     wide, tables))
+            if (chunk_size > NRG_MAX_TABLE || !nrg_read_at(format->device, format->base_address + payload_offset, table, chunk_size)) goto fail;
+            if (dao ? !nrg_parse_dao(image, table, chunk_size, payload_offset, wide, tables) : !nrg_parse_etn(image, table, chunk_size, payload_offset, wide, tables))
                 goto fail;
             ++tables;
-        } else if ((nrg_tag_is(header, "CUEX") || nrg_tag_is(header, "CUES")) &&
-                   chunk_size % NRG_CUE_ENTRY != 0U) {
+        } else if ((nrg_tag_is(header, "CUEX") || nrg_tag_is(header, "CUES")) && chunk_size % NRG_CUE_ENTRY != 0U) {
             goto fail;
         }
         position = payload_offset + (int64_t)chunk_size;
     }
-    if (!ended || image->track_count == 0U ||
-        !nrg_build_members(image, format->base_address))
-        goto fail;
+    if (!ended || image->track_count == 0U || !nrg_build_members(image, format->base_address)) goto fail;
     xx_mem_free(table);
     *result = image;
     return true;
@@ -491,24 +462,24 @@ fail:
     return false;
 }
 
-static void nrg_stream_free(void *opaque) {
+static void nrg_stream_free(void *opaque)
+{
     nrg_stream *stream = (nrg_stream *)opaque;
     if (!stream) return;
     if (stream->image) xx_mem_free(stream->image);
     xx_mem_free(stream);
 }
 
-static bool nrg_copy_options(xx_list_s *destination, const xx_list_s *source) {
+static bool nrg_copy_options(xx_list_s *destination, const xx_list_s *source)
+{
     size_t index;
     if (!source) return true;
     for (index = 0U; index < source->count; ++index) {
-        const xx_meta *original =
-            (const xx_meta *)xx_list_at((const xx_list_t *)source, index);
+        const xx_meta *original = (const xx_meta *)xx_list_at((const xx_list_t *)source, index);
         xx_meta copy;
         if (!original) continue;
         xx_meta_init(&copy, original->meta_id);
-        if (!xx_var_copy(&copy.var, &original->var) ||
-            !xx_list_append(destination, &copy)) {
+        if (!xx_var_copy(&copy.var, &original->var) || !xx_list_append(destination, &copy)) {
             xx_meta_cleanup(&copy);
             return false;
         }
@@ -516,41 +487,40 @@ static bool nrg_copy_options(xx_list_s *destination, const xx_list_s *source) {
     return true;
 }
 
-static const xx_var *nrg_option(const xx_list_s *options, uint32_t id) {
+static const xx_var *nrg_option(const xx_list_s *options, uint32_t id)
+{
     size_t index;
     if (!options) return NULL;
     for (index = 0U; index < options->count; ++index) {
-        const xx_meta *meta =
-            (const xx_meta *)xx_list_at((const xx_list_t *)options, index);
+        const xx_meta *meta = (const xx_meta *)xx_list_at((const xx_list_t *)options, index);
         if (meta && meta->meta_id == id) return &meta->var;
     }
     return NULL;
 }
 
 /* XX_META_ID_OPT_MAX_MEMBER_SIZE, when given, refuses larger members. */
-static bool nrg_member_allowed(Abstractformat *format,
-                               const xx_list_s *options, int64_t size) {
-    const xx_var *limit = xx_format_resolve_extra_parameter(
-        format, options, XX_META_ID_OPT_MAX_MEMBER_SIZE);
+static bool nrg_member_allowed(Abstractformat *format, const xx_list_s *options, int64_t size)
+{
+    const xx_var *limit = xx_format_resolve_extra_parameter(format, options, XX_META_ID_OPT_MAX_MEMBER_SIZE);
     if (!limit) return true;
     switch (limit->type) {
-    case XX_VAR_TYPE_UINT8:
-    case XX_VAR_TYPE_UINT16:
-    case XX_VAR_TYPE_UINT32:
-    case XX_VAR_TYPE_UINT64: return (uint64_t)size <= xx_var_get_u64(limit);
-    case XX_VAR_TYPE_INT8:
-    case XX_VAR_TYPE_INT16:
-    case XX_VAR_TYPE_INT32:
-    case XX_VAR_TYPE_INT64: {
-        int64_t value = xx_var_get_i64(limit);
-        return value >= 0 && size <= value;
-    }
-    default: return true;
+        case XX_VAR_TYPE_UINT8:
+        case XX_VAR_TYPE_UINT16:
+        case XX_VAR_TYPE_UINT32:
+        case XX_VAR_TYPE_UINT64: return (uint64_t)size <= xx_var_get_u64(limit);
+        case XX_VAR_TYPE_INT8:
+        case XX_VAR_TYPE_INT16:
+        case XX_VAR_TYPE_INT32:
+        case XX_VAR_TYPE_INT64: {
+            int64_t value = xx_var_get_i64(limit);
+            return value >= 0 && size <= value;
+        }
+        default: return true;
     }
 }
 
-static bool nrg_set_record(xx_archive_record *record,
-                           const nrg_member *member) {
+static bool nrg_set_record(xx_archive_record *record, const nrg_member *member)
+{
     xx_archive_record_cleanup(record);
     xx_archive_record_init(record);
     record->header_offset = member->header_offset;
@@ -559,47 +529,32 @@ static bool nrg_set_record(xx_archive_record *record,
     record->compressed_size = member->size;
     /* Tracks are stored verbatim, so both sizes agree and nothing is
      * compressed. */
-    return xx_archive_record_set_original_name(record, member->name) &&
-           xx_archive_record_set_meta_u64(record, XX_META_ID_COMPRESSED_SIZE,
-                                          (uint64_t)member->size) &&
-           xx_archive_record_set_meta_u64(record, XX_META_ID_UNCOMPRESSED_SIZE,
-                                          (uint64_t)member->size) &&
-           xx_archive_record_set_meta_u64(record, XX_META_ID_COMPRESSION_METHOD,
-                                          0U) &&
-           xx_archive_record_set_meta_str(record, XX_META_ID_COMMENT,
-                                          member->comment) &&
-           xx_archive_record_set_meta_bool(record, XX_META_ID_IS_ENCRYPTED,
-                                           false) &&
-           xx_archive_record_set_meta_bool(record, XX_META_ID_IS_FOLDER, false);
+    return xx_archive_record_set_original_name(record, member->name) && xx_archive_record_set_meta_u64(record, XX_META_ID_COMPRESSED_SIZE, (uint64_t)member->size) &&
+           xx_archive_record_set_meta_u64(record, XX_META_ID_UNCOMPRESSED_SIZE, (uint64_t)member->size) &&
+           xx_archive_record_set_meta_u64(record, XX_META_ID_COMPRESSION_METHOD, 0U) && xx_archive_record_set_meta_str(record, XX_META_ID_COMMENT, member->comment) &&
+           xx_archive_record_set_meta_bool(record, XX_META_ID_IS_ENCRYPTED, false) && xx_archive_record_set_meta_bool(record, XX_META_ID_IS_FOLDER, false);
 }
 
 /* Copies the member's bytes to @p destination through a fixed buffer; with
  * no destination the bytes are only read, which proves they are there. */
-static bool nrg_copy_member(Abstractformat *format, const nrg_member *member,
-                            xx_io_device *destination, xx_pd_struct *pd) {
+static bool nrg_copy_member(Abstractformat *format, const nrg_member *member, xx_io_device *destination, xx_pd_struct *pd)
+{
     const size_t file_io_capacity = gb_nrg_capacity();
     uint8_t *buffer;
     int64_t done = 0;
     bool result = true;
-    if (!format || !member || member->size < 0 || member->data_offset < 0 ||
-        member->size > xx_io_total_size(format->device) - member->data_offset)
-        return false;
+    if (!format || !member || member->size < 0 || member->data_offset < 0 || member->size > xx_io_total_size(format->device) - member->data_offset) return false;
     buffer = (uint8_t *)xx_mem_alloc(file_io_capacity);
     if (!buffer) return false;
     while (done < member->size) {
-        size_t amount = member->size - done > (int64_t)file_io_capacity
-                            ? file_io_capacity
-                            : (size_t)(member->size - done);
+        size_t amount = member->size - done > (int64_t)file_io_capacity ? file_io_capacity : (size_t)(member->size - done);
         size_t written = 0U;
-        if ((pd && xx_pd_is_stopped(pd)) ||
-            !nrg_read_at(format->device, member->data_offset + done, buffer,
-                         amount)) {
+        if ((pd && xx_pd_is_stopped(pd)) || !nrg_read_at(format->device, member->data_offset + done, buffer, amount)) {
             result = false;
             break;
         }
         while (destination && written < amount) {
-            ssize_t step = gb_nrg_write(destination, buffer + written,
-                                       amount - written, file_io_capacity);
+            ssize_t step = gb_nrg_write(destination, buffer + written, amount - written, file_io_capacity);
             if (step <= 0 || (size_t)step > amount - written) break;
             written += (size_t)step;
         }
@@ -613,7 +568,8 @@ static bool nrg_copy_member(Abstractformat *format, const nrg_member *member,
     return result;
 }
 
-void xx_nrg_init(xx_nrg *archive, xx_io_device *device, int64_t base_address) {
+void xx_nrg_init(xx_nrg *archive, xx_io_device *device, int64_t base_address)
+{
     if (!archive) return;
     xx_mem_zero(archive, sizeof(*archive));
     xx_format_init(&archive->format, device, base_address);
@@ -626,38 +582,36 @@ void xx_nrg_init(xx_nrg *archive, xx_io_device *device, int64_t base_address) {
     archive->format.check_is_valid = xx_nrg_check_is_valid;
     archive->format.handle_base_info = xx_nrg_handle_base_info;
     archive->format.get_format_size = xx_nrg_get_format_size;
-    archive->format.get_number_of_archive_records =
-        xx_nrg_get_number_of_archive_records;
-    archive->format.create_archive_records_reading =
-        xx_nrg_create_archive_records_reading;
-    archive->format.get_current_archive_record =
-        xx_nrg_get_current_archive_record;
-    archive->format.unpack_current_archive_record =
-        xx_nrg_unpack_current_archive_record;
-    archive->format.archive_record_move_to_next =
-        xx_nrg_archive_record_move_to_next;
-    archive->format.free_archive_records_reading =
-        xx_nrg_free_archive_records_reading;
+    archive->format.get_number_of_archive_records = xx_nrg_get_number_of_archive_records;
+    archive->format.create_archive_records_reading = xx_nrg_create_archive_records_reading;
+    archive->format.get_current_archive_record = xx_nrg_get_current_archive_record;
+    archive->format.unpack_current_archive_record = xx_nrg_unpack_current_archive_record;
+    archive->format.archive_record_move_to_next = xx_nrg_archive_record_move_to_next;
+    archive->format.free_archive_records_reading = xx_nrg_free_archive_records_reading;
     archive->chunk_list_offset = -1;
 }
 
-xx_nrg *xx_nrg_create(xx_io_device *device, int64_t base_address) {
+xx_nrg *xx_nrg_create(xx_io_device *device, int64_t base_address)
+{
     xx_nrg *archive = (xx_nrg *)xx_mem_alloc(sizeof(*archive));
     if (archive) xx_nrg_init(archive, device, base_address);
     return archive;
 }
 
-void xx_nrg_destroy(xx_nrg *archive) {
+void xx_nrg_destroy(xx_nrg *archive)
+{
     if (archive) xx_format_cleanup_extra_parameters(&archive->format);
 }
 
-void xx_nrg_free(xx_nrg *archive) {
+void xx_nrg_free(xx_nrg *archive)
+{
     if (!archive) return;
     xx_nrg_destroy(archive);
     xx_mem_free(archive);
 }
 
-bool xx_nrg_check_is_valid(Abstractformat *format, xx_pd_struct *pd) {
+bool xx_nrg_check_is_valid(Abstractformat *format, xx_pd_struct *pd)
+{
     nrg_image *image;
     (void)pd;
     if (!nrg_parse(format, &image)) return false;
@@ -665,7 +619,8 @@ bool xx_nrg_check_is_valid(Abstractformat *format, xx_pd_struct *pd) {
     return true;
 }
 
-bool xx_nrg_handle_base_info(Abstractformat *format, xx_pd_struct *pd) {
+bool xx_nrg_handle_base_info(Abstractformat *format, xx_pd_struct *pd)
+{
     nrg_image *image;
     xx_nrg *archive;
     (void)pd;
@@ -684,21 +639,18 @@ bool xx_nrg_handle_base_info(Abstractformat *format, xx_pd_struct *pd) {
     return true;
 }
 
-int64_t xx_nrg_get_format_size(Abstractformat *format, xx_pd_struct *pd) {
-    return format && (format->base_info_handled ||
-                      xx_nrg_handle_base_info(format, pd))
-               ? format->format_size : -1;
+int64_t xx_nrg_get_format_size(Abstractformat *format, xx_pd_struct *pd)
+{
+    return format && (format->base_info_handled || xx_nrg_handle_base_info(format, pd)) ? format->format_size : -1;
 }
 
-uint64_t xx_nrg_get_number_of_archive_records(Abstractformat *format,
-                                              xx_pd_struct *pd) {
-    return format && (format->base_info_handled ||
-                      xx_nrg_handle_base_info(format, pd))
-               ? ((xx_nrg *)format)->number_of_records : 0U;
+uint64_t xx_nrg_get_number_of_archive_records(Abstractformat *format, xx_pd_struct *pd)
+{
+    return format && (format->base_info_handled || xx_nrg_handle_base_info(format, pd)) ? ((xx_nrg *)format)->number_of_records : 0U;
 }
 
-xx_archive_record_state *xx_nrg_create_archive_records_reading(
-    Abstractformat *format, const xx_list_s *options, xx_pd_struct *pd) {
+xx_archive_record_state *xx_nrg_create_archive_records_reading(Abstractformat *format, const xx_list_s *options, xx_pd_struct *pd)
+{
     nrg_stream *stream;
     xx_archive_record_state *state;
     nrg_image *image;
@@ -719,8 +671,7 @@ xx_archive_record_state *xx_nrg_create_archive_records_reading(
     state->internal_state = stream;
     state->free_internal = nrg_stream_free;
     state->total_records = (int64_t)image->member_count;
-    if (!nrg_copy_options(&state->options, options) ||
-        !nrg_set_record(&state->current_record, &image->members[0])) {
+    if (!nrg_copy_options(&state->options, options) || !nrg_set_record(&state->current_record, &image->members[0])) {
         xx_archive_record_state_free(state);
         return NULL;
     }
@@ -728,33 +679,28 @@ xx_archive_record_state *xx_nrg_create_archive_records_reading(
     return state;
 }
 
-const xx_archive_record *xx_nrg_get_current_archive_record(
-    Abstractformat *format, xx_archive_record_state *state) {
-    return format && state && state->format == format && state->has_record
-               ? &state->current_record : NULL;
+const xx_archive_record *xx_nrg_get_current_archive_record(Abstractformat *format, xx_archive_record_state *state)
+{
+    return format && state && state->format == format && state->has_record ? &state->current_record : NULL;
 }
 
-bool xx_nrg_archive_record_move_to_next(Abstractformat *format,
-                                        xx_archive_record_state *state,
-                                        xx_pd_struct *pd) {
+bool xx_nrg_archive_record_move_to_next(Abstractformat *format, xx_archive_record_state *state, xx_pd_struct *pd)
+{
     nrg_stream *stream;
     (void)pd;
-    if (!format || !state || state->format != format ||
-        !(stream = (nrg_stream *)state->internal_state) || !stream->image ||
+    if (!format || !state || state->format != format || !(stream = (nrg_stream *)state->internal_state) || !stream->image ||
         stream->index + 1U >= stream->image->member_count) {
         if (state) state->has_record = false;
         return false;
     }
     ++stream->index;
     ++state->current_index;
-    state->has_record = nrg_set_record(&state->current_record,
-                                       &stream->image->members[stream->index]);
+    state->has_record = nrg_set_record(&state->current_record, &stream->image->members[stream->index]);
     return state->has_record;
 }
 
-bool xx_nrg_unpack_current_archive_record(Abstractformat *format,
-                                          xx_archive_record_state *state,
-                                          xx_pd_struct *pd) {
+bool xx_nrg_unpack_current_archive_record(Abstractformat *format, xx_archive_record_state *state, xx_pd_struct *pd)
+{
     nrg_stream *stream;
     const nrg_member *member;
     const xx_var *path_option;
@@ -763,31 +709,24 @@ bool xx_nrg_unpack_current_archive_record(Abstractformat *format,
     char *path = NULL;
     bool result = false;
     bool created = false;
-    if (!format || !state || state->format != format || !state->has_record ||
-        !(stream = (nrg_stream *)state->internal_state) || !stream->image ||
-        stream->index >= stream->image->member_count ||
-        (pd && xx_pd_is_stopped(pd)))
+    if (!format || !state || state->format != format || !state->has_record || !(stream = (nrg_stream *)state->internal_state) || !stream->image ||
+        stream->index >= stream->image->member_count || (pd && xx_pd_is_stopped(pd)))
         return false;
     member = &stream->image->members[stream->index];
-    if (!nrg_member_allowed(format, &state->options, member->size))
-        return false;
+    if (!nrg_member_allowed(format, &state->options, member->size)) return false;
     path_option = nrg_option(&state->options, XX_META_ID_OPT_UNPACK_PATH);
     if (!path_option) return nrg_copy_member(format, member, NULL, pd);
-    if (path_option->type == XX_VAR_TYPE_STRING ||
-        path_option->type == XX_VAR_TYPE_STRING_VIEW) {
+    if (path_option->type == XX_VAR_TYPE_STRING || path_option->type == XX_VAR_TYPE_STRING_VIEW) {
         base = xx_var_get_str(path_option);
-    } else if (path_option->type == XX_VAR_TYPE_WSTRING ||
-               path_option->type == XX_VAR_TYPE_WSTRING_VIEW) {
+    } else if (path_option->type == XX_VAR_TYPE_WSTRING || path_option->type == XX_VAR_TYPE_WSTRING_VIEW) {
         owned_base = xx_str_unicode_to_utf8(xx_var_get_wstr(path_option));
         base = owned_base;
     }
     if (!base) goto done;
     /* Member names are built here ("trackNN..."), never taken from the
      * image, so they are safe and unique by construction. */
-    path = (base[0] && base[xx_str_len(base) - 1U] != '/' &&
-            base[xx_str_len(base) - 1U] != '\\')
-               ? xx_str_concat3(base, "/", member->name)
-               : xx_str_concat(base, member->name);
+    path = (base[0] && base[xx_str_len(base) - 1U] != '/' && base[xx_str_len(base) - 1U] != '\\') ? xx_str_concat3(base, "/", member->name)
+                                                                                                  : xx_str_concat(base, member->name);
     if (!path || !xx_store_create_dirs_a(path, false)) goto done;
     {
         xx_io_device *destination = xx_io_file_open(path, "wb");
@@ -803,8 +742,8 @@ done:
     return result;
 }
 
-void xx_nrg_free_archive_records_reading(Abstractformat *format,
-                                         xx_archive_record_state *state) {
+void xx_nrg_free_archive_records_reading(Abstractformat *format, xx_archive_record_state *state)
+{
     (void)format;
     xx_archive_record_state_free(state);
 }

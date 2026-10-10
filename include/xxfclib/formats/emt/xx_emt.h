@@ -74,21 +74,20 @@ struct xx_emt {
     char banner[XX_EMT_BANNER_SIZE + 1];
 };
 
-XXFC_API void xx_emt_init(xx_emt *image, xx_io_device *device,
-                          int64_t base_address);
+XXFC_API void xx_emt_init(xx_emt *image, xx_io_device *device, int64_t base_address);
 XXFC_API xx_emt *xx_emt_create(xx_io_device *device, int64_t base_address);
 XXFC_API void xx_emt_destroy(xx_emt *image);
 XXFC_API void xx_emt_free(xx_emt *image);
 
 XXFC_API bool xx_emt_check_is_valid(Abstractformat *self, xx_pd_struct *pd);
 XXFC_API bool xx_emt_handle_base_info(Abstractformat *self, xx_pd_struct *pd);
-XXFC_API int64_t xx_emt_get_format_size(Abstractformat *self,
-                                        xx_pd_struct *pd);
+XXFC_API int64_t xx_emt_get_format_size(Abstractformat *self, xx_pd_struct *pd);
 
 /** Product banner, or an empty string before handle_base_info. */
 XXFC_API const char *xx_emt_get_banner(const xx_emt *image);
 
-static inline Abstractformat *xx_emt_to_format(xx_emt *image) {
+static inline Abstractformat *xx_emt_to_format(xx_emt *image)
+{
     return image ? &image->format : NULL;
 }
 

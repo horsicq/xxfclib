@@ -13,7 +13,10 @@ XXFC_API void xx_samcoupe_sad_init(xx_samcoupe_sad *, xx_io_device *, int64_t);
 XXFC_API xx_samcoupe_sad *xx_samcoupe_sad_create(xx_io_device *, int64_t);
 XXFC_API void xx_samcoupe_sad_destroy(xx_samcoupe_sad *);
 XXFC_API void xx_samcoupe_sad_free(xx_samcoupe_sad *);
-static inline Abstractformat *xx_samcoupe_sad_to_format(xx_samcoupe_sad *r) { return r ? &r->format : NULL; }
+static inline Abstractformat *xx_samcoupe_sad_to_format(xx_samcoupe_sad *r)
+{
+    return r ? &r->format : NULL;
+}
 #ifdef __cplusplus
 }
 #endif

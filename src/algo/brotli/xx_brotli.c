@@ -100,7 +100,8 @@ typedef struct xx_br_decoder {
     int distance_index;
 } xx_br_decoder;
 
-static bool xx_br_reserve_output(xx_br_decoder *decoder, size_t additional) {
+static bool xx_br_reserve_output(xx_br_decoder *decoder, size_t additional)
+{
     size_t required;
     size_t next_capacity;
     uint8_t *grown;
@@ -112,16 +113,14 @@ static bool xx_br_reserve_output(xx_br_decoder *decoder, size_t additional) {
     if (!decoder->grow_output || required > decoder->maximum_output_capacity) {
         return false;
     }
-    next_capacity = decoder->output_capacity == 0U ? 64U :
-                                                  decoder->output_capacity;
+    next_capacity = decoder->output_capacity == 0U ? 64U : decoder->output_capacity;
     while (next_capacity < required) {
         if (next_capacity > decoder->maximum_output_capacity / 2U) {
             next_capacity = decoder->maximum_output_capacity;
         } else {
             next_capacity *= 2U;
         }
-        if (next_capacity < required &&
-            next_capacity == decoder->maximum_output_capacity) {
+        if (next_capacity < required && next_capacity == decoder->maximum_output_capacity) {
             return false;
         }
     }
@@ -132,25 +131,23 @@ static bool xx_br_reserve_output(xx_br_decoder *decoder, size_t additional) {
     return true;
 }
 
-static bool xx_br_read_bits(xx_br_bits *bits, unsigned count,
-                            uint32_t *result) {
+static bool xx_br_read_bits(xx_br_bits *bits, unsigned count, uint32_t *result)
+{
     uint32_t value = 0U;
-    if (!bits || !result || count > 32U ||
-        count > bits->bit_count - bits->position) {
+    if (!bits || !result || count > 32U || count > bits->bit_count - bits->position) {
         return false;
     }
     for (unsigned index = 0; index < count; ++index) {
         size_t position = bits->position + index;
-        value |= (uint32_t)((bits->data[position >> 3] >> (position & 7U)) & 1U)
-                 << index;
+        value |= (uint32_t)((bits->data[position >> 3] >> (position & 7U)) & 1U) << index;
     }
     bits->position += count;
     *result = value;
     return true;
 }
 
-static bool xx_br_peek_padded(const xx_br_bits *bits, unsigned count,
-                              uint32_t *result, unsigned *available) {
+static bool xx_br_peek_padded(const xx_br_bits *bits, unsigned count, uint32_t *result, unsigned *available)
+{
     size_t left;
     unsigned actual;
     uint32_t value = 0U;
@@ -159,22 +156,23 @@ static bool xx_br_peek_padded(const xx_br_bits *bits, unsigned count,
     actual = left < count ? (unsigned)left : count;
     for (unsigned index = 0; index < actual; ++index) {
         size_t position = bits->position + index;
-        value |= (uint32_t)((bits->data[position >> 3] >> (position & 7U)) & 1U)
-                 << index;
+        value |= (uint32_t)((bits->data[position >> 3] >> (position & 7U)) & 1U) << index;
     }
     *result = value;
     if (available) *available = actual;
     return true;
 }
 
-static bool xx_br_align_to_byte(xx_br_bits *bits) {
+static bool xx_br_align_to_byte(xx_br_bits *bits)
+{
     unsigned remainder = (unsigned)(bits->position & 7U);
     uint32_t padding;
     if (remainder == 0U) return true;
     return xx_br_read_bits(bits, 8U - remainder, &padding) && padding == 0U;
 }
 
-static void xx_br_huff_free(xx_br_huff *tree) {
+static void xx_br_huff_free(xx_br_huff *tree)
+{
     if (!tree) return;
     xx_mem_free(tree->nodes);
     tree->nodes = NULL;
@@ -182,15 +180,16 @@ static void xx_br_huff_free(xx_br_huff *tree) {
     tree->capacity = 0U;
 }
 
-static void xx_br_node_init(xx_br_huff_node *node) {
+static void xx_br_node_init(xx_br_huff_node *node)
+{
     node->child[0] = -1;
     node->child[1] = -1;
     node->symbol = -1;
 }
 
-static bool xx_br_huff_add_node(xx_br_huff *tree, int16_t *index) {
-    if (!tree || !index || tree->node_count >= tree->capacity ||
-        tree->node_count > INT16_MAX) {
+static bool xx_br_huff_add_node(xx_br_huff *tree, int16_t *index)
+{
+    if (!tree || !index || tree->node_count >= tree->capacity || tree->node_count > INT16_MAX) {
         return false;
     }
     *index = (int16_t)tree->node_count++;
@@ -198,8 +197,8 @@ static bool xx_br_huff_add_node(xx_br_huff *tree, int16_t *index) {
     return true;
 }
 
-static bool xx_br_huff_build(xx_br_huff *tree, const uint8_t *lengths,
-                             unsigned alphabet_size, bool allow_single) {
+static bool xx_br_huff_build(xx_br_huff *tree, const uint8_t *lengths, unsigned alphabet_size, bool allow_single)
+{
     uint16_t counts[XX_BR_MAX_HUFFMAN_BITS + 1U] = {0};
     uint32_t next_code[XX_BR_MAX_HUFFMAN_BITS + 1U] = {0};
     unsigned used = 0U;
@@ -208,8 +207,7 @@ static bool xx_br_huff_build(xx_br_huff *tree, const uint8_t *lengths,
     uint32_t code = 0U;
     int16_t root;
 
-    if (!tree || !lengths || alphabet_size == 0U || alphabet_size > 16383U ||
-        alphabet_size > (UINT16_MAX - 1U) / 2U) {
+    if (!tree || !lengths || alphabet_size == 0U || alphabet_size > 16383U || alphabet_size > (UINT16_MAX - 1U) / 2U) {
         return false;
     }
     xx_br_huff_free(tree);
@@ -224,8 +222,7 @@ static bool xx_br_huff_build(xx_br_huff *tree, const uint8_t *lengths,
     }
     if (used == 0U || (used == 1U && !allow_single)) return false;
     tree->capacity = (uint16_t)(alphabet_size * 2U + 1U);
-    tree->nodes = (xx_br_huff_node *)xx_mem_alloc(
-        (size_t)tree->capacity * sizeof(*tree->nodes));
+    tree->nodes = (xx_br_huff_node *)xx_mem_alloc((size_t)tree->capacity * sizeof(*tree->nodes));
     if (!tree->nodes || !xx_br_huff_add_node(tree, &root) || root != 0) {
         xx_br_huff_free(tree);
         return false;
@@ -258,8 +255,7 @@ static bool xx_br_huff_build(xx_br_huff *tree, const uint8_t *lengths,
         if (length == 0U) continue;
         symbol_code = next_code[length]++;
         for (unsigned depth = 0U; depth < length; ++depth) {
-            unsigned bit = (unsigned)((symbol_code >>
-                                      (length - depth - 1U)) & 1U);
+            unsigned bit = (unsigned)((symbol_code >> (length - depth - 1U)) & 1U);
             int16_t child = tree->nodes[(unsigned)node].child[bit];
             if (tree->nodes[(unsigned)node].symbol >= 0) {
                 xx_br_huff_free(tree);
@@ -274,9 +270,7 @@ static bool xx_br_huff_build(xx_br_huff *tree, const uint8_t *lengths,
             }
             node = child;
         }
-        if (tree->nodes[(unsigned)node].symbol >= 0 ||
-            tree->nodes[(unsigned)node].child[0] >= 0 ||
-            tree->nodes[(unsigned)node].child[1] >= 0) {
+        if (tree->nodes[(unsigned)node].symbol >= 0 || tree->nodes[(unsigned)node].child[0] >= 0 || tree->nodes[(unsigned)node].child[1] >= 0) {
             xx_br_huff_free(tree);
             return false;
         }
@@ -285,8 +279,8 @@ static bool xx_br_huff_build(xx_br_huff *tree, const uint8_t *lengths,
     return true;
 }
 
-static bool xx_br_huff_decode(xx_br_bits *bits, const xx_br_huff *tree,
-                              unsigned *symbol) {
+static bool xx_br_huff_decode(xx_br_bits *bits, const xx_br_huff *tree, unsigned *symbol)
+{
     int16_t node = 0;
     if (!bits || !tree || !tree->nodes || !symbol) return false;
     for (unsigned depth = 0U; depth <= XX_BR_MAX_HUFFMAN_BITS; ++depth) {
@@ -296,8 +290,7 @@ static bool xx_br_huff_decode(xx_br_bits *bits, const xx_br_huff *tree,
             *symbol = (unsigned)entry->symbol;
             return true;
         }
-        if (depth == XX_BR_MAX_HUFFMAN_BITS ||
-            !xx_br_read_bits(bits, 1U, &bit) || entry->child[bit] < 0) {
+        if (depth == XX_BR_MAX_HUFFMAN_BITS || !xx_br_read_bits(bits, 1U, &bit) || entry->child[bit] < 0) {
             return false;
         }
         node = entry->child[bit];
@@ -305,7 +298,8 @@ static bool xx_br_huff_decode(xx_br_bits *bits, const xx_br_huff *tree,
     return false;
 }
 
-static unsigned xx_br_symbol_bits(unsigned alphabet_size) {
+static unsigned xx_br_symbol_bits(unsigned alphabet_size)
+{
     unsigned bits = 0U;
     unsigned value = alphabet_size - 1U;
     while (value != 0U) {
@@ -315,26 +309,18 @@ static unsigned xx_br_symbol_bits(unsigned alphabet_size) {
     return bits;
 }
 
-static bool xx_br_read_huffman(xx_br_bits *bits, unsigned alphabet_max,
-                               unsigned alphabet_limit, xx_br_huff *tree) {
-    static const uint8_t order[18] = {
-        1, 2, 3, 4, 0, 5, 17, 6, 16, 7, 8, 9, 10, 11, 12, 13, 14, 15
-    };
-    static const uint8_t prefix_length[16] = {
-        2, 2, 2, 3, 2, 2, 2, 4, 2, 2, 2, 3, 2, 2, 2, 4
-    };
-    static const uint8_t prefix_value[16] = {
-        0, 4, 3, 2, 0, 4, 3, 1, 0, 4, 3, 2, 0, 4, 3, 5
-    };
+static bool xx_br_read_huffman(xx_br_bits *bits, unsigned alphabet_max, unsigned alphabet_limit, xx_br_huff *tree)
+{
+    static const uint8_t order[18] = {1, 2, 3, 4, 0, 5, 17, 6, 16, 7, 8, 9, 10, 11, 12, 13, 14, 15};
+    static const uint8_t prefix_length[16] = {2, 2, 2, 3, 2, 2, 2, 4, 2, 2, 2, 3, 2, 2, 2, 4};
+    static const uint8_t prefix_value[16] = {0, 4, 3, 2, 0, 4, 3, 1, 0, 4, 3, 2, 0, 4, 3, 5};
     uint8_t code_length_lengths[18] = {0};
     uint8_t *lengths = NULL;
     xx_br_huff code_length_tree = {0};
     uint32_t mode;
     bool success = false;
 
-    if (!bits || !tree || alphabet_max == 0U ||
-        alphabet_limit == 0U || alphabet_limit > alphabet_max ||
-        !xx_br_read_bits(bits, 2U, &mode)) {
+    if (!bits || !tree || alphabet_max == 0U || alphabet_limit == 0U || alphabet_limit > alphabet_max || !xx_br_read_bits(bits, 2U, &mode)) {
         return false;
     }
     lengths = (uint8_t *)xx_mem_calloc(alphabet_limit, sizeof(*lengths));
@@ -349,8 +335,7 @@ static bool xx_br_read_huffman(xx_br_bits *bits, unsigned alphabet_max,
         count = (unsigned)size_code + 1U;
         for (unsigned index = 0U; index < count; ++index) {
             uint32_t value;
-            if (!xx_br_read_bits(bits, symbol_bits, &value) ||
-                value >= alphabet_limit) {
+            if (!xx_br_read_bits(bits, symbol_bits, &value) || value >= alphabet_limit) {
                 goto cleanup;
             }
             symbols[index] = (unsigned)value;
@@ -381,8 +366,7 @@ static bool xx_br_read_huffman(xx_br_bits *bits, unsigned alphabet_max,
                 lengths[symbols[3]] = 3U;
             }
         }
-        success = xx_br_huff_build(tree, lengths, alphabet_limit,
-                                   count == 1U);
+        success = xx_br_huff_build(tree, lengths, alphabet_limit, count == 1U);
         goto cleanup;
     }
 
@@ -410,8 +394,7 @@ static bool xx_br_read_huffman(xx_br_bits *bits, unsigned alphabet_max,
             }
         }
         if (nonzero != 1U && space != 0) goto cleanup;
-        if (!xx_br_huff_build(&code_length_tree, code_length_lengths, 18U,
-                              nonzero == 1U)) {
+        if (!xx_br_huff_build(&code_length_tree, code_length_lengths, 18U, nonzero == 1U)) {
             goto cleanup;
         }
     }
@@ -471,7 +454,8 @@ cleanup:
     return success;
 }
 
-static bool xx_br_read_var_uint8(xx_br_bits *bits, unsigned *value) {
+static bool xx_br_read_var_uint8(xx_br_bits *bits, unsigned *value)
+{
     uint32_t present;
     uint32_t width;
     uint32_t suffix;
@@ -490,40 +474,31 @@ static bool xx_br_read_var_uint8(xx_br_bits *bits, unsigned *value) {
     return true;
 }
 
-static bool xx_br_read_block_length(xx_br_bits *bits,
-                                    const xx_br_huff *tree,
-                                    size_t *length) {
-    static const uint32_t offsets[XX_BR_BLOCK_LENGTH_SYMBOLS] = {
-        1U, 5U, 9U, 13U, 17U, 25U, 33U, 41U, 49U, 65U, 81U,
-        97U, 113U, 145U, 177U, 209U, 241U, 305U, 369U, 497U,
-        753U, 1265U, 2289U, 4337U, 8433U, 16625U
-    };
-    static const uint8_t extra_bits[XX_BR_BLOCK_LENGTH_SYMBOLS] = {
-        2, 2, 2, 2, 3, 3, 3, 3, 4, 4, 4, 4, 5,
-        5, 5, 5, 6, 6, 7, 8, 9, 10, 11, 12, 13, 24
-    };
+static bool xx_br_read_block_length(xx_br_bits *bits, const xx_br_huff *tree, size_t *length)
+{
+    static const uint32_t offsets[XX_BR_BLOCK_LENGTH_SYMBOLS] = {1U,   5U,   9U,   13U,  17U,  25U,  33U,  41U,  49U,   65U,   81U,   97U,   113U,
+                                                                 145U, 177U, 209U, 241U, 305U, 369U, 497U, 753U, 1265U, 2289U, 4337U, 8433U, 16625U};
+    static const uint8_t extra_bits[XX_BR_BLOCK_LENGTH_SYMBOLS] = {2, 2, 2, 2, 3, 3, 3, 3, 4, 4, 4, 4, 5, 5, 5, 5, 6, 6, 7, 8, 9, 10, 11, 12, 13, 24};
     unsigned symbol;
     uint32_t extra;
-    if (!xx_br_huff_decode(bits, tree, &symbol) ||
-        symbol >= XX_BR_BLOCK_LENGTH_SYMBOLS ||
-        !xx_br_read_bits(bits, extra_bits[symbol], &extra)) {
+    if (!xx_br_huff_decode(bits, tree, &symbol) || symbol >= XX_BR_BLOCK_LENGTH_SYMBOLS || !xx_br_read_bits(bits, extra_bits[symbol], &extra)) {
         return false;
     }
     *length = (size_t)offsets[symbol] + (size_t)extra;
     return true;
 }
 
-static void xx_br_block_free(xx_br_block *block) {
+static void xx_br_block_free(xx_br_block *block)
+{
     if (!block) return;
     xx_br_huff_free(&block->type_tree);
     xx_br_huff_free(&block->length_tree);
 }
 
-static bool xx_br_block_init(xx_br_bits *bits, xx_br_block *block) {
+static bool xx_br_block_init(xx_br_bits *bits, xx_br_block *block)
+{
     unsigned count_minus_one;
-    if (!bits || !block ||
-        !xx_br_read_var_uint8(bits, &count_minus_one) ||
-        count_minus_one >= XX_BR_MAX_BLOCK_TYPES) {
+    if (!bits || !block || !xx_br_read_var_uint8(bits, &count_minus_one) || count_minus_one >= XX_BR_MAX_BLOCK_TYPES) {
         return false;
     }
     block->count = count_minus_one + 1U;
@@ -531,25 +506,21 @@ static bool xx_br_block_init(xx_br_bits *bits, xx_br_block *block) {
     block->current = 0U;
     block->remaining = SIZE_MAX;
     if (block->count == 1U) return true;
-    if (!xx_br_read_huffman(bits, block->count + 2U,
-                            block->count + 2U, &block->type_tree) ||
-        !xx_br_read_huffman(bits, XX_BR_BLOCK_LENGTH_SYMBOLS,
-                            XX_BR_BLOCK_LENGTH_SYMBOLS,
-                            &block->length_tree) ||
-        !xx_br_read_block_length(bits, &block->length_tree,
-                                 &block->remaining)) {
+    if (!xx_br_read_huffman(bits, block->count + 2U, block->count + 2U, &block->type_tree) ||
+        !xx_br_read_huffman(bits, XX_BR_BLOCK_LENGTH_SYMBOLS, XX_BR_BLOCK_LENGTH_SYMBOLS, &block->length_tree) ||
+        !xx_br_read_block_length(bits, &block->length_tree, &block->remaining)) {
         return false;
     }
     return true;
 }
 
-static bool xx_br_block_switch(xx_br_bits *bits, xx_br_block *block) {
+static bool xx_br_block_switch(xx_br_bits *bits, xx_br_block *block)
+{
     unsigned code;
     unsigned next;
     size_t length;
     if (!bits || !block || block->count <= 1U) return false;
-    if (!xx_br_huff_decode(bits, &block->type_tree, &code) ||
-        !xx_br_read_block_length(bits, &block->length_tree, &length)) {
+    if (!xx_br_huff_decode(bits, &block->type_tree, &code) || !xx_br_read_block_length(bits, &block->length_tree, &length)) {
         return false;
     }
     if (code == 0U) {
@@ -567,7 +538,8 @@ static bool xx_br_block_switch(xx_br_bits *bits, xx_br_block *block) {
     return true;
 }
 
-static bool xx_br_block_prepare(xx_br_bits *bits, xx_br_block *block) {
+static bool xx_br_block_prepare(xx_br_bits *bits, xx_br_block *block)
+{
     if (block->count == 1U) return true;
     if (block->remaining == 0U && !xx_br_block_switch(bits, block)) {
         return false;
@@ -575,13 +547,13 @@ static bool xx_br_block_prepare(xx_br_bits *bits, xx_br_block *block) {
     return block->remaining != 0U;
 }
 
-static void xx_br_block_consume(xx_br_block *block) {
+static void xx_br_block_consume(xx_br_block *block)
+{
     if (block->count > 1U && block->remaining != 0U) --block->remaining;
 }
 
-static bool xx_br_decode_context_map(xx_br_bits *bits, size_t map_size,
-                                     uint8_t **out_map,
-                                     unsigned *out_tree_count) {
+static bool xx_br_decode_context_map(xx_br_bits *bits, size_t map_size, uint8_t **out_map, unsigned *out_tree_count)
+{
     xx_br_huff tree = {0};
     uint8_t *map = NULL;
     unsigned count_minus_one;
@@ -590,9 +562,7 @@ static bool xx_br_decode_context_map(xx_br_bits *bits, size_t map_size,
     unsigned max_run = 0U;
     bool success = false;
 
-    if (!bits || !out_map || !out_tree_count || map_size == 0U ||
-        !xx_br_read_var_uint8(bits, &count_minus_one) ||
-        count_minus_one >= XX_BR_MAX_BLOCK_TYPES) {
+    if (!bits || !out_map || !out_tree_count || map_size == 0U || !xx_br_read_var_uint8(bits, &count_minus_one) || count_minus_one >= XX_BR_MAX_BLOCK_TYPES) {
         return false;
     }
     tree_count = count_minus_one + 1U;
@@ -609,8 +579,7 @@ static bool xx_br_decode_context_map(xx_br_bits *bits, size_t map_size,
         if (!xx_br_read_bits(bits, 4U, &encoded)) goto cleanup;
         max_run = (unsigned)encoded + 1U;
     }
-    if (!xx_br_read_huffman(bits, tree_count + max_run,
-                            tree_count + max_run, &tree)) {
+    if (!xx_br_read_huffman(bits, tree_count + max_run, tree_count + max_run, &tree)) {
         goto cleanup;
     }
     for (size_t position = 0U; position < map_size;) {
@@ -664,20 +633,16 @@ cleanup:
     return success;
 }
 
-static bool xx_br_read_tree_group(xx_br_bits *bits, unsigned tree_count,
-                                  unsigned alphabet_max,
-                                  unsigned alphabet_limit,
-                                  xx_br_huff **out_trees) {
+static bool xx_br_read_tree_group(xx_br_bits *bits, unsigned tree_count, unsigned alphabet_max, unsigned alphabet_limit, xx_br_huff **out_trees)
+{
     xx_br_huff *trees;
-    if (!bits || !out_trees || tree_count == 0U ||
-        tree_count > XX_BR_MAX_BLOCK_TYPES) {
+    if (!bits || !out_trees || tree_count == 0U || tree_count > XX_BR_MAX_BLOCK_TYPES) {
         return false;
     }
     trees = (xx_br_huff *)xx_mem_calloc(tree_count, sizeof(*trees));
     if (!trees) return false;
     for (unsigned index = 0U; index < tree_count; ++index) {
-        if (!xx_br_read_huffman(bits, alphabet_max, alphabet_limit,
-                                &trees[index])) {
+        if (!xx_br_read_huffman(bits, alphabet_max, alphabet_limit, &trees[index])) {
             for (unsigned done = 0U; done < index; ++done) {
                 xx_br_huff_free(&trees[done]);
             }
@@ -689,7 +654,8 @@ static bool xx_br_read_tree_group(xx_br_bits *bits, unsigned tree_count,
     return true;
 }
 
-static void xx_br_tree_group_free(xx_br_huff *trees, unsigned count) {
+static void xx_br_tree_group_free(xx_br_huff *trees, unsigned count)
+{
     if (!trees) return;
     for (unsigned index = 0U; index < count; ++index) {
         xx_br_huff_free(&trees[index]);
@@ -697,7 +663,8 @@ static void xx_br_tree_group_free(xx_br_huff *trees, unsigned count) {
     xx_mem_free(trees);
 }
 
-static void xx_br_meta_free(xx_br_meta *meta) {
+static void xx_br_meta_free(xx_br_meta *meta)
+{
     if (!meta) return;
     for (unsigned index = 0U; index < 3U; ++index) {
         xx_br_block_free(&meta->blocks[index]);
@@ -706,8 +673,7 @@ static void xx_br_meta_free(xx_br_meta *meta) {
     xx_mem_free(meta->literal_map);
     xx_mem_free(meta->distance_map);
     xx_br_tree_group_free(meta->literal_trees, meta->literal_tree_count);
-    xx_br_tree_group_free(meta->command_trees,
-                          meta->blocks[1].count);
+    xx_br_tree_group_free(meta->command_trees, meta->blocks[1].count);
     xx_br_tree_group_free(meta->distance_trees, meta->distance_tree_count);
     meta->context_modes = NULL;
     meta->literal_map = NULL;
@@ -717,8 +683,8 @@ static void xx_br_meta_free(xx_br_meta *meta) {
     meta->distance_trees = NULL;
 }
 
-static bool xx_br_distance_limit(unsigned postfix, unsigned direct,
-                                 unsigned *alphabet_limit) {
+static bool xx_br_distance_limit(unsigned postfix, unsigned direct, unsigned *alphabet_limit)
+{
     uint32_t max_distance = XX_BR_MAX_DISTANCE;
     uint32_t forbidden;
     uint32_t offset;
@@ -746,12 +712,12 @@ static bool xx_br_distance_limit(unsigned postfix, unsigned direct,
     }
     --group;
     postfix_mask = (1U << postfix) - 1U;
-    *alphabet_limit = (unsigned)(((group << postfix) | postfix_mask) + direct +
-                                 XX_BR_SHORT_DISTANCE_CODES + 1U);
+    *alphabet_limit = (unsigned)(((group << postfix) | postfix_mask) + direct + XX_BR_SHORT_DISTANCE_CODES + 1U);
     return true;
 }
 
-static bool xx_br_meta_read(xx_br_decoder *decoder, xx_br_meta *meta) {
+static bool xx_br_meta_read(xx_br_decoder *decoder, xx_br_meta *meta)
+{
     uint32_t distance_parameters;
     unsigned distance_limit;
     if (!decoder || !meta) return false;
@@ -764,8 +730,7 @@ static bool xx_br_meta_read(xx_br_decoder *decoder, xx_br_meta *meta) {
         return false;
     }
     meta->postfix_bits = (unsigned)distance_parameters & 3U;
-    meta->direct_codes = ((unsigned)distance_parameters >> 2U)
-                         << meta->postfix_bits;
+    meta->direct_codes = ((unsigned)distance_parameters >> 2U) << meta->postfix_bits;
     if (meta->postfix_bits > 3U || meta->direct_codes > 120U) return false;
     meta->context_modes = (uint8_t *)xx_mem_alloc(meta->blocks[0].count);
     if (!meta->context_modes) return false;
@@ -774,55 +739,29 @@ static bool xx_br_meta_read(xx_br_decoder *decoder, xx_br_meta *meta) {
         if (!xx_br_read_bits(&decoder->bits, 2U, &mode)) return false;
         meta->context_modes[index] = (uint8_t)mode;
     }
-    if (!xx_br_decode_context_map(
-            &decoder->bits, (size_t)meta->blocks[0].count * 64U,
-            &meta->literal_map, &meta->literal_tree_count) ||
-        !xx_br_decode_context_map(
-            &decoder->bits, (size_t)meta->blocks[2].count * 4U,
-            &meta->distance_map, &meta->distance_tree_count)) {
+    if (!xx_br_decode_context_map(&decoder->bits, (size_t)meta->blocks[0].count * 64U, &meta->literal_map, &meta->literal_tree_count) ||
+        !xx_br_decode_context_map(&decoder->bits, (size_t)meta->blocks[2].count * 4U, &meta->distance_map, &meta->distance_tree_count)) {
         return false;
     }
     if (decoder->window_bits <= 24U) {
-        meta->distance_alphabet = XX_BR_SHORT_DISTANCE_CODES +
-            meta->direct_codes + (24U << (meta->postfix_bits + 1U));
+        meta->distance_alphabet = XX_BR_SHORT_DISTANCE_CODES + meta->direct_codes + (24U << (meta->postfix_bits + 1U));
         distance_limit = meta->distance_alphabet;
     } else {
-        meta->distance_alphabet = XX_BR_SHORT_DISTANCE_CODES +
-            meta->direct_codes + (62U << (meta->postfix_bits + 1U));
-        if (!xx_br_distance_limit(meta->postfix_bits, meta->direct_codes,
-                                  &distance_limit) ||
-            distance_limit > meta->distance_alphabet) {
+        meta->distance_alphabet = XX_BR_SHORT_DISTANCE_CODES + meta->direct_codes + (62U << (meta->postfix_bits + 1U));
+        if (!xx_br_distance_limit(meta->postfix_bits, meta->direct_codes, &distance_limit) || distance_limit > meta->distance_alphabet) {
             return false;
         }
     }
-    return xx_br_read_tree_group(&decoder->bits, meta->literal_tree_count,
-                                 XX_BR_LITERAL_SYMBOLS,
-                                 XX_BR_LITERAL_SYMBOLS,
-                                 &meta->literal_trees) &&
-           xx_br_read_tree_group(&decoder->bits, meta->blocks[1].count,
-                                 XX_BR_COMMAND_SYMBOLS,
-                                 XX_BR_COMMAND_SYMBOLS,
-                                 &meta->command_trees) &&
-           xx_br_read_tree_group(&decoder->bits, meta->distance_tree_count,
-                                 meta->distance_alphabet, distance_limit,
-                                 &meta->distance_trees);
+    return xx_br_read_tree_group(&decoder->bits, meta->literal_tree_count, XX_BR_LITERAL_SYMBOLS, XX_BR_LITERAL_SYMBOLS, &meta->literal_trees) &&
+           xx_br_read_tree_group(&decoder->bits, meta->blocks[1].count, XX_BR_COMMAND_SYMBOLS, XX_BR_COMMAND_SYMBOLS, &meta->command_trees) &&
+           xx_br_read_tree_group(&decoder->bits, meta->distance_tree_count, meta->distance_alphabet, distance_limit, &meta->distance_trees);
 }
 
-static bool xx_br_command(unsigned symbol, xx_br_bits *bits,
-                          size_t *insert_length, size_t *copy_length,
-                          unsigned *distance_context,
-                          bool *implicit_distance) {
-    static const uint8_t insert_extra[24] = {
-        0, 0, 0, 0, 0, 0, 1, 1, 2, 2, 3, 3,
-        4, 4, 5, 5, 6, 7, 8, 9, 10, 12, 14, 24
-    };
-    static const uint8_t copy_extra[24] = {
-        0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 2, 2,
-        3, 3, 4, 4, 5, 5, 6, 7, 8, 9, 10, 24
-    };
-    static const uint8_t cell_position[11] = {
-        0, 1, 0, 1, 8, 9, 2, 16, 10, 17, 18
-    };
+static bool xx_br_command(unsigned symbol, xx_br_bits *bits, size_t *insert_length, size_t *copy_length, unsigned *distance_context, bool *implicit_distance)
+{
+    static const uint8_t insert_extra[24] = {0, 0, 0, 0, 0, 0, 1, 1, 2, 2, 3, 3, 4, 4, 5, 5, 6, 7, 8, 9, 10, 12, 14, 24};
+    static const uint8_t copy_extra[24] = {0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 2, 2, 3, 3, 4, 4, 5, 5, 6, 7, 8, 9, 10, 24};
+    static const uint8_t cell_position[11] = {0, 1, 0, 1, 8, 9, 2, 16, 10, 17, 18};
     uint32_t insert_offsets[24];
     uint32_t copy_offsets[24];
     unsigned cell;
@@ -832,49 +771,39 @@ static bool xx_br_command(unsigned symbol, xx_br_bits *bits,
     uint32_t insert_suffix;
     uint32_t copy_suffix;
 
-    if (!bits || !insert_length || !copy_length || !distance_context ||
-        !implicit_distance || symbol >= XX_BR_COMMAND_SYMBOLS) {
+    if (!bits || !insert_length || !copy_length || !distance_context || !implicit_distance || symbol >= XX_BR_COMMAND_SYMBOLS) {
         return false;
     }
     insert_offsets[0] = 0U;
     copy_offsets[0] = 2U;
     for (unsigned index = 0U; index < 23U; ++index) {
-        insert_offsets[index + 1U] = insert_offsets[index] +
-                                     (UINT32_C(1) << insert_extra[index]);
-        copy_offsets[index + 1U] = copy_offsets[index] +
-                                   (UINT32_C(1) << copy_extra[index]);
+        insert_offsets[index + 1U] = insert_offsets[index] + (UINT32_C(1) << insert_extra[index]);
+        copy_offsets[index + 1U] = copy_offsets[index] + (UINT32_C(1) << copy_extra[index]);
     }
     cell = symbol >> 6U;
     position = cell_position[cell];
     copy_code = ((position << 3U) & 0x18U) + (symbol & 7U);
     insert_code = (position & 0x18U) + ((symbol >> 3U) & 7U);
-    if (!xx_br_read_bits(bits, insert_extra[insert_code], &insert_suffix) ||
-        !xx_br_read_bits(bits, copy_extra[copy_code], &copy_suffix)) {
+    if (!xx_br_read_bits(bits, insert_extra[insert_code], &insert_suffix) || !xx_br_read_bits(bits, copy_extra[copy_code], &copy_suffix)) {
         return false;
     }
     *insert_length = (size_t)insert_offsets[insert_code] + insert_suffix;
     *copy_length = (size_t)copy_offsets[copy_code] + copy_suffix;
-    *distance_context = copy_offsets[copy_code] > 4U
-                            ? 3U
-                            : copy_offsets[copy_code] - 2U;
+    *distance_context = copy_offsets[copy_code] > 4U ? 3U : copy_offsets[copy_code] - 2U;
     *implicit_distance = cell < 2U;
     return true;
 }
 
-static unsigned xx_br_literal_context(const xx_br_decoder *decoder,
-                                      unsigned mode) {
-    uint8_t previous = decoder->output_position == 0U
-                           ? 0U
-                           : decoder->output[decoder->output_position - 1U];
-    uint8_t before_previous = decoder->output_position < 2U
-                                  ? 0U
-                                  : decoder->output[decoder->output_position - 2U];
+static unsigned xx_br_literal_context(const xx_br_decoder *decoder, unsigned mode)
+{
+    uint8_t previous = decoder->output_position == 0U ? 0U : decoder->output[decoder->output_position - 1U];
+    uint8_t before_previous = decoder->output_position < 2U ? 0U : decoder->output[decoder->output_position - 2U];
     size_t offset = (size_t)(mode & 3U) << 9U;
-    return (unsigned)(xx_brotli_context_table[offset + previous] |
-                      xx_brotli_context_table[offset + 256U + before_previous]);
+    return (unsigned)(xx_brotli_context_table[offset + previous] | xx_brotli_context_table[offset + 256U + before_previous]);
 }
 
-static int xx_br_uppercase(uint8_t *text, size_t length) {
+static int xx_br_uppercase(uint8_t *text, size_t length)
+{
     if (length == 0U) return 0;
     if (text[0] < UINT8_C(0xC0)) {
         if (text[0] >= (uint8_t)'a' && text[0] <= (uint8_t)'z') {
@@ -892,10 +821,8 @@ static int xx_br_uppercase(uint8_t *text, size_t length) {
     return 3;
 }
 
-static bool xx_br_transform_word(unsigned transform_index,
-                                 const uint8_t *word, size_t word_length,
-                                 uint8_t transformed[64],
-                                 size_t *transformed_length) {
+static bool xx_br_transform_word(unsigned transform_index, const uint8_t *word, size_t word_length, uint8_t transformed[64], size_t *transformed_length)
+{
     static const uint8_t prefix_suffix[] =
         "\1 \2, \10 of the \4 of \2s \1.\5 and \4 "
         "in \1\"\4 to \2\">\1\n\2. \1]\5 for \3 a \6 "
@@ -904,13 +831,9 @@ static bool xx_br_transform_word(unsigned transform_index,
         "\2=\"\4 at \3ly \1,\2=\'\5.com/\7. This \5"
         " not \3er \3al \4ful \4ive \5less \4es"
         "t \4ize \2\302\240\4ous \5 the \2e ";
-    static const uint16_t map[50] = {
-        0x00, 0x02, 0x05, 0x0E, 0x13, 0x16, 0x18, 0x1E, 0x23, 0x25,
-        0x2A, 0x2D, 0x2F, 0x32, 0x34, 0x3A, 0x3E, 0x45, 0x47, 0x4E,
-        0x55, 0x5A, 0x5C, 0x63, 0x68, 0x6D, 0x72, 0x77, 0x7A, 0x7C,
-        0x80, 0x83, 0x88, 0x8C, 0x8E, 0x91, 0x97, 0x9F, 0xA5, 0xA9,
-        0xAD, 0xB2, 0xB7, 0xBD, 0xC2, 0xC7, 0xCA, 0xCF, 0xD5, 0xD8
-    };
+    static const uint16_t map[50] = {0x00, 0x02, 0x05, 0x0E, 0x13, 0x16, 0x18, 0x1E, 0x23, 0x25, 0x2A, 0x2D, 0x2F, 0x32, 0x34, 0x3A, 0x3E,
+                                     0x45, 0x47, 0x4E, 0x55, 0x5A, 0x5C, 0x63, 0x68, 0x6D, 0x72, 0x77, 0x7A, 0x7C, 0x80, 0x83, 0x88, 0x8C,
+                                     0x8E, 0x91, 0x97, 0x9F, 0xA5, 0xA9, 0xAD, 0xB2, 0xB7, 0xBD, 0xC2, 0xC7, 0xCA, 0xCF, 0xD5, 0xD8};
     const uint8_t *triple;
     const uint8_t *prefix;
     const uint8_t *suffix;
@@ -921,8 +844,7 @@ static bool xx_br_transform_word(unsigned transform_index,
     size_t body_length = word_length;
     size_t output = 0U;
 
-    if (!word || !transformed || !transformed_length ||
-        transform_index >= XX_BR_DICTIONARY_TRANSFORMS) {
+    if (!word || !transformed || !transformed_length || transform_index >= XX_BR_DICTIONARY_TRANSFORMS) {
         return false;
     }
     triple = &xx_brotli_transforms[transform_index * 3U];
@@ -957,8 +879,7 @@ static bool xx_br_transform_word(unsigned transform_index,
     } else if (type == 11U) {
         size_t position = 0U;
         while (position < body_length) {
-            int step = xx_br_uppercase(transformed + prefix_length + position,
-                                       body_length - position);
+            int step = xx_br_uppercase(transformed + prefix_length + position, body_length - position);
             if (step <= 0 || (size_t)step > body_length - position) return false;
             position += (size_t)step;
         }
@@ -970,21 +891,12 @@ static bool xx_br_transform_word(unsigned transform_index,
     return true;
 }
 
-static bool xx_br_copy_dictionary(xx_br_decoder *decoder, size_t distance,
-                                  size_t maximum_distance,
-                                  size_t copy_length, size_t remaining,
-                                  unsigned distance_context,
-                                  size_t *produced) {
-    static const uint8_t size_bits[32] = {
-        0, 0, 0, 0, 10, 10, 11, 11, 10, 10, 10, 10, 10, 9, 9, 8,
-        7, 7, 8, 7, 7, 6, 6, 5, 5, 0, 0, 0, 0, 0, 0, 0
-    };
-    static const uint32_t offsets[32] = {
-        0, 0, 0, 0, 0, 4096, 9216, 21504, 35840, 44032, 53248,
-        63488, 74752, 87040, 93696, 100864, 104704, 106752,
-        108928, 113536, 115968, 118528, 119872, 121280, 122016,
-        122784, 122784, 122784, 122784, 122784, 122784, 122784
-    };
+static bool xx_br_copy_dictionary(xx_br_decoder *decoder, size_t distance, size_t maximum_distance, size_t copy_length, size_t remaining, unsigned distance_context,
+                                  size_t *produced)
+{
+    static const uint8_t size_bits[32] = {0, 0, 0, 0, 10, 10, 11, 11, 10, 10, 10, 10, 10, 9, 9, 8, 7, 7, 8, 7, 7, 6, 6, 5, 5, 0, 0, 0, 0, 0, 0, 0};
+    static const uint32_t offsets[32] = {0,      0,      0,      0,      0,      4096,   9216,   21504,  35840,  44032,  53248,  63488,  74752,  87040,  93696,  100864,
+                                         104704, 106752, 108928, 113536, 115968, 118528, 119872, 121280, 122016, 122784, 122784, 122784, 122784, 122784, 122784, 122784};
     size_t address;
     unsigned bits;
     size_t word_index;
@@ -993,9 +905,7 @@ static bool xx_br_copy_dictionary(xx_br_decoder *decoder, size_t distance,
     uint8_t transformed[64];
     size_t transformed_size;
 
-    if (!decoder || !produced || distance <= maximum_distance ||
-        distance > XX_BR_MAX_DISTANCE || copy_length < 4U ||
-        copy_length > 24U) {
+    if (!decoder || !produced || distance <= maximum_distance || distance > XX_BR_MAX_DISTANCE || copy_length < 4U || copy_length > 24U) {
         return false;
     }
     bits = size_bits[copy_length];
@@ -1003,19 +913,13 @@ static bool xx_br_copy_dictionary(xx_br_decoder *decoder, size_t distance,
     address = distance - maximum_distance - 1U;
     word_index = address & (((size_t)1U << bits) - 1U);
     transform_index = (unsigned)(address >> bits);
-    if (transform_index >= XX_BR_DICTIONARY_TRANSFORMS ||
-        word_index > (SIZE_MAX - offsets[copy_length]) / copy_length) {
+    if (transform_index >= XX_BR_DICTIONARY_TRANSFORMS || word_index > (SIZE_MAX - offsets[copy_length]) / copy_length) {
         return false;
     }
-    dictionary_offset = (size_t)offsets[copy_length] +
-                        word_index * copy_length;
+    dictionary_offset = (size_t)offsets[copy_length] + word_index * copy_length;
     if (dictionary_offset > XX_BR_DICTIONARY_SIZE - copy_length ||
-        !xx_br_transform_word(transform_index,
-                              xx_brotli_dictionary_data + dictionary_offset,
-                              copy_length, transformed, &transformed_size) ||
-        (transformed_size == 0U && distance <= 120U) ||
-        transformed_size > remaining ||
-        !xx_br_reserve_output(decoder, transformed_size)) {
+        !xx_br_transform_word(transform_index, xx_brotli_dictionary_data + dictionary_offset, copy_length, transformed, &transformed_size) ||
+        (transformed_size == 0U && distance <= 120U) || transformed_size > remaining || !xx_br_reserve_output(decoder, transformed_size)) {
         return false;
     }
     for (size_t index = 0U; index < transformed_size; ++index) {
@@ -1026,11 +930,9 @@ static bool xx_br_copy_dictionary(xx_br_decoder *decoder, size_t distance,
     return true;
 }
 
-static bool xx_br_resolve_distance(xx_br_decoder *decoder, xx_br_meta *meta,
-                                   unsigned distance_context,
-                                   bool implicit_distance,
-                                   size_t *distance,
-                                   unsigned *restore_context) {
+static bool xx_br_resolve_distance(xx_br_decoder *decoder, xx_br_meta *meta, unsigned distance_context, bool implicit_distance, size_t *distance,
+                                   unsigned *restore_context)
+{
     unsigned code;
     int32_t resolved;
     *restore_context = 0U;
@@ -1042,11 +944,8 @@ static bool xx_br_resolve_distance(xx_br_decoder *decoder, xx_br_meta *meta,
         xx_br_block *block = &meta->blocks[2];
         unsigned tree_index;
         if (!xx_br_block_prepare(&decoder->bits, block)) return false;
-        tree_index = meta->distance_map[(size_t)block->current * 4U +
-                                        distance_context];
-        if (tree_index >= meta->distance_tree_count ||
-            !xx_br_huff_decode(&decoder->bits,
-                               &meta->distance_trees[tree_index], &code)) {
+        tree_index = meta->distance_map[(size_t)block->current * 4U + distance_context];
+        if (tree_index >= meta->distance_tree_count || !xx_br_huff_decode(&decoder->bits, &meta->distance_trees[tree_index], &code)) {
             return false;
         }
         xx_br_block_consume(block);
@@ -1054,16 +953,13 @@ static bool xx_br_resolve_distance(xx_br_decoder *decoder, xx_br_meta *meta,
             if (code <= 3U) {
                 int offset = (int)code - 3;
                 *restore_context = 1U >> code;
-                resolved = decoder->distances[
-                    (unsigned)(decoder->distance_index - offset) & 3U];
+                resolved = decoder->distances[(unsigned)(decoder->distance_index - offset) & 3U];
                 decoder->distance_index -= (int)*restore_context;
             } else {
                 int index_delta = code < 10U ? 3 : 2;
                 int base = code < 10U ? (int)code - 4 : (int)code - 10;
                 int delta = (int)((UINT32_C(0x605142) >> (4 * base)) & 15U) - 3;
-                resolved = decoder->distances[
-                               (unsigned)(decoder->distance_index + index_delta) & 3U] +
-                           delta;
+                resolved = decoder->distances[(unsigned)(decoder->distance_index + index_delta) & 3U] + delta;
             }
         } else if (code < 16U + meta->direct_codes) {
             resolved = (int32_t)(code - 15U);
@@ -1074,13 +970,10 @@ static bool xx_br_resolve_distance(xx_br_decoder *decoder, xx_br_meta *meta,
             unsigned postfix = adjusted & (postfix_count - 1U);
             unsigned extra_bits = (group >> 1U) + 1U;
             unsigned half = group & 1U;
-            uint64_t base = (uint64_t)meta->direct_codes +
-                ((((uint64_t)(2U + half) << extra_bits) - 4U)
-                 << meta->postfix_bits) + 1U + postfix;
+            uint64_t base = (uint64_t)meta->direct_codes + ((((uint64_t)(2U + half) << extra_bits) - 4U) << meta->postfix_bits) + 1U + postfix;
             uint32_t extra;
             uint64_t value;
-            if (extra_bits > 31U ||
-                !xx_br_read_bits(&decoder->bits, extra_bits, &extra)) {
+            if (extra_bits > 31U || !xx_br_read_bits(&decoder->bits, extra_bits, &extra)) {
                 return false;
             }
             value = base + ((uint64_t)extra << meta->postfix_bits);
@@ -1093,8 +986,8 @@ static bool xx_br_resolve_distance(xx_br_decoder *decoder, xx_br_meta *meta,
     return true;
 }
 
-static bool xx_br_decode_compressed_meta(xx_br_decoder *decoder,
-                                         size_t meta_length) {
+static bool xx_br_decode_compressed_meta(xx_br_decoder *decoder, size_t meta_length)
+{
     xx_br_meta meta = {0};
     size_t remaining = meta_length;
     bool success = false;
@@ -1108,18 +1001,11 @@ static bool xx_br_decode_compressed_meta(xx_br_decoder *decoder,
         unsigned distance_context;
         bool implicit_distance;
 
-        if (!xx_br_block_prepare(&decoder->bits, command_block) ||
-            !xx_br_huff_decode(
-                &decoder->bits,
-                &meta.command_trees[command_block->current],
-                &command_symbol)) {
+        if (!xx_br_block_prepare(&decoder->bits, command_block) || !xx_br_huff_decode(&decoder->bits, &meta.command_trees[command_block->current], &command_symbol)) {
             goto cleanup;
         }
         xx_br_block_consume(command_block);
-        if (!xx_br_command(command_symbol, &decoder->bits,
-                           &insert_length, &copy_length,
-                           &distance_context, &implicit_distance) ||
-            insert_length > remaining ||
+        if (!xx_br_command(command_symbol, &decoder->bits, &insert_length, &copy_length, &distance_context, &implicit_distance) || insert_length > remaining ||
             !xx_br_reserve_output(decoder, insert_length)) {
             goto cleanup;
         }
@@ -1132,14 +1018,9 @@ static bool xx_br_decode_compressed_meta(xx_br_decoder *decoder,
             if (!xx_br_block_prepare(&decoder->bits, literal_block)) {
                 goto cleanup;
             }
-            context = xx_br_literal_context(
-                decoder, meta.context_modes[literal_block->current]);
-            tree_index = meta.literal_map[
-                (size_t)literal_block->current * 64U + context];
-            if (tree_index >= meta.literal_tree_count ||
-                !xx_br_huff_decode(&decoder->bits,
-                                   &meta.literal_trees[tree_index],
-                                   &literal) ||
+            context = xx_br_literal_context(decoder, meta.context_modes[literal_block->current]);
+            tree_index = meta.literal_map[(size_t)literal_block->current * 64U + context];
+            if (tree_index >= meta.literal_tree_count || !xx_br_huff_decode(&decoder->bits, &meta.literal_trees[tree_index], &literal) ||
                 literal >= XX_BR_LITERAL_SYMBOLS) {
                 goto cleanup;
             }
@@ -1150,38 +1031,26 @@ static bool xx_br_decode_compressed_meta(xx_br_decoder *decoder,
         {
             size_t distance;
             unsigned restore_context;
-            size_t maximum_distance = decoder->output_position <
-                                               decoder->maximum_backward_distance
-                                           ? decoder->output_position
-                                           : decoder->maximum_backward_distance;
-            if (!xx_br_resolve_distance(decoder, &meta, distance_context,
-                                        implicit_distance, &distance,
-                                        &restore_context)) {
+            size_t maximum_distance = decoder->output_position < decoder->maximum_backward_distance ? decoder->output_position : decoder->maximum_backward_distance;
+            if (!xx_br_resolve_distance(decoder, &meta, distance_context, implicit_distance, &distance, &restore_context)) {
                 goto cleanup;
             }
             if (distance > maximum_distance) {
                 size_t produced;
-                if (!xx_br_copy_dictionary(decoder, distance,
-                                           maximum_distance, copy_length,
-                                           remaining, restore_context,
-                                           &produced)) {
+                if (!xx_br_copy_dictionary(decoder, distance, maximum_distance, copy_length, remaining, restore_context, &produced)) {
                     goto cleanup;
                 }
                 remaining -= produced;
             } else {
                 size_t source_position;
-            if (copy_length > remaining ||
-                !xx_br_reserve_output(decoder, copy_length) ||
-                distance == 0U || distance > decoder->output_position) {
+                if (copy_length > remaining || !xx_br_reserve_output(decoder, copy_length) || distance == 0U || distance > decoder->output_position) {
                     goto cleanup;
                 }
                 source_position = decoder->output_position - distance;
                 for (size_t copied = 0U; copied < copy_length; ++copied) {
-                    decoder->output[decoder->output_position++] =
-                        decoder->output[source_position++];
+                    decoder->output[decoder->output_position++] = decoder->output[source_position++];
                 }
-                decoder->distances[(unsigned)decoder->distance_index & 3U] =
-                    (int32_t)distance;
+                decoder->distances[(unsigned)decoder->distance_index & 3U] = (int32_t)distance;
                 ++decoder->distance_index;
                 remaining -= copy_length;
             }
@@ -1194,7 +1063,8 @@ cleanup:
     return success;
 }
 
-static bool xx_br_decode_window(xx_br_decoder *decoder) {
+static bool xx_br_decode_window(xx_br_decoder *decoder)
+{
     uint32_t first;
     uint32_t value;
     if (!xx_br_read_bits(&decoder->bits, 1U, &first)) return false;
@@ -1208,10 +1078,7 @@ static bool xx_br_decode_window(xx_br_decoder *decoder) {
             if (!xx_br_read_bits(&decoder->bits, 3U, &value)) return false;
             if (value == 1U) {
                 uint32_t reserved;
-                if (!xx_br_read_bits(&decoder->bits, 1U, &reserved) ||
-                    reserved != 0U ||
-                    !xx_br_read_bits(&decoder->bits, 6U, &value) ||
-                    value < 10U || value > 30U) {
+                if (!xx_br_read_bits(&decoder->bits, 1U, &reserved) || reserved != 0U || !xx_br_read_bits(&decoder->bits, 6U, &value) || value < 10U || value > 30U) {
                     return false;
                 }
                 decoder->window_bits = (unsigned)value;
@@ -1222,15 +1089,12 @@ static bool xx_br_decode_window(xx_br_decoder *decoder) {
             }
         }
     }
-    decoder->maximum_backward_distance =
-        ((size_t)1U << decoder->window_bits) - 16U;
+    decoder->maximum_backward_distance = ((size_t)1U << decoder->window_bits) - 16U;
     return true;
 }
 
-static bool xx_br_read_meta_header(xx_br_decoder *decoder, bool *is_last,
-                                   bool *is_empty, bool *is_metadata,
-                                   bool *is_uncompressed,
-                                   size_t *meta_length) {
+static bool xx_br_read_meta_header(xx_br_decoder *decoder, bool *is_last, bool *is_empty, bool *is_metadata, bool *is_uncompressed, size_t *meta_length)
+{
     uint32_t value;
     unsigned nibbles;
     size_t length = 0U;
@@ -1252,8 +1116,7 @@ static bool xx_br_read_meta_header(xx_br_decoder *decoder, bool *is_last,
     if (nibbles == 7U) {
         unsigned byte_count;
         *is_metadata = true;
-        if (!xx_br_read_bits(&decoder->bits, 1U, &value) || value != 0U ||
-            !xx_br_read_bits(&decoder->bits, 2U, &value)) {
+        if (!xx_br_read_bits(&decoder->bits, 1U, &value) || value != 0U || !xx_br_read_bits(&decoder->bits, 2U, &value)) {
             return false;
         }
         byte_count = (unsigned)value;
@@ -1286,15 +1149,13 @@ static bool xx_br_read_meta_header(xx_br_decoder *decoder, bool *is_last,
     return true;
 }
 
-static bool xx_br_decode_raw(const uint8_t *source, size_t source_size,
-                             uint8_t *destination, size_t destination_capacity,
-                             size_t *out_written) {
+static bool xx_br_decode_raw(const uint8_t *source, size_t source_size, uint8_t *destination, size_t destination_capacity, size_t *out_written)
+{
     xx_br_decoder decoder;
     bool finished = false;
 
     if (out_written) *out_written = 0U;
-    if (!source || source_size == 0U || !destination || !out_written ||
-        source_size > SIZE_MAX / 8U) {
+    if (!source || source_size == 0U || !destination || !out_written || source_size > SIZE_MAX / 8U) {
         return false;
     }
     decoder.bits.data = source;
@@ -1320,9 +1181,7 @@ static bool xx_br_decode_raw(const uint8_t *source, size_t source_size,
         bool is_metadata;
         bool is_uncompressed;
         size_t meta_length;
-        if (!xx_br_read_meta_header(&decoder, &is_last, &is_empty,
-                                    &is_metadata, &is_uncompressed,
-                                    &meta_length)) {
+        if (!xx_br_read_meta_header(&decoder, &is_last, &is_empty, &is_metadata, &is_uncompressed, &meta_length)) {
             return false;
         }
         if (is_empty) {
@@ -1341,8 +1200,7 @@ static bool xx_br_decode_raw(const uint8_t *source, size_t source_size,
                     return false;
                 }
                 for (size_t index = 0U; index < meta_length; ++index) {
-                    decoder.output[decoder.output_position + index] =
-                        source[byte_position + index];
+                    decoder.output[decoder.output_position + index] = source[byte_position + index];
                 }
                 decoder.output_position += meta_length;
                 decoder.bits.position += meta_length * 8U;
@@ -1352,8 +1210,7 @@ static bool xx_br_decode_raw(const uint8_t *source, size_t source_size,
         }
         if (is_last) finished = true;
     }
-    if (!xx_br_align_to_byte(&decoder.bits) ||
-        decoder.bits.position != decoder.bits.bit_count) {
+    if (!xx_br_align_to_byte(&decoder.bits) || decoder.bits.position != decoder.bits.bit_count) {
         return false;
     }
     *out_written = decoder.output_position;
@@ -1363,17 +1220,15 @@ static bool xx_br_decode_raw(const uint8_t *source, size_t source_size,
 /* A growing variant for raw streams.  Brotli's normal wire format does not
  * publish an expanded size, so format readers need this bounded allocation
  * path instead of guessing a destination length. */
-static bool xx_br_decode_raw_alloc(const uint8_t *source, size_t source_size,
-                                   size_t maximum_output,
-                                   uint8_t **out_data, size_t *out_written) {
+static bool xx_br_decode_raw_alloc(const uint8_t *source, size_t source_size, size_t maximum_output, uint8_t **out_data, size_t *out_written)
+{
     xx_br_decoder decoder;
     bool finished = false;
     size_t initial_capacity;
 
     if (out_data) *out_data = NULL;
     if (out_written) *out_written = 0U;
-    if (!source || source_size == 0U || !out_data || !out_written ||
-        source_size > SIZE_MAX / 8U) {
+    if (!source || source_size == 0U || !out_data || !out_written || source_size > SIZE_MAX / 8U) {
         return false;
     }
     initial_capacity = maximum_output < 64U ? maximum_output : 64U;
@@ -1403,9 +1258,7 @@ static bool xx_br_decode_raw_alloc(const uint8_t *source, size_t source_size,
         bool is_metadata;
         bool is_uncompressed;
         size_t meta_length;
-        if (!xx_br_read_meta_header(&decoder, &is_last, &is_empty,
-                                    &is_metadata, &is_uncompressed,
-                                    &meta_length)) {
+        if (!xx_br_read_meta_header(&decoder, &is_last, &is_empty, &is_metadata, &is_uncompressed, &meta_length)) {
             goto error;
         }
         if (is_empty) {
@@ -1423,8 +1276,7 @@ static bool xx_br_decode_raw_alloc(const uint8_t *source, size_t source_size,
                 size_t index;
                 if (!xx_br_reserve_output(&decoder, meta_length)) goto error;
                 for (index = 0U; index < meta_length; ++index) {
-                    decoder.output[decoder.output_position + index] =
-                        source[byte_position + index];
+                    decoder.output[decoder.output_position + index] = source[byte_position + index];
                 }
                 decoder.output_position += meta_length;
                 decoder.bits.position += meta_length * 8U;
@@ -1434,8 +1286,7 @@ static bool xx_br_decode_raw_alloc(const uint8_t *source, size_t source_size,
         }
         if (is_last) finished = true;
     }
-    if (!xx_br_align_to_byte(&decoder.bits) ||
-        decoder.bits.position != decoder.bits.bit_count) {
+    if (!xx_br_align_to_byte(&decoder.bits) || decoder.bits.position != decoder.bits.bit_count) {
         goto error;
     }
     *out_data = decoder.output;
@@ -1447,16 +1298,14 @@ error:
     return false;
 }
 
-static bool xx_br_is_mt_header(const uint8_t *source, size_t source_size) {
-    return source_size >= 16U &&
-           xx_data_get_u32(source, 4, 0, false) == UINT32_C(0x184D2A50) &&
-           xx_data_get_u32(source + 4U, 4, 0, false) == UINT32_C(8) &&
+static bool xx_br_is_mt_header(const uint8_t *source, size_t source_size)
+{
+    return source_size >= 16U && xx_data_get_u32(source, 4, 0, false) == UINT32_C(0x184D2A50) && xx_data_get_u32(source + 4U, 4, 0, false) == UINT32_C(8) &&
            xx_data_get_u16(source + 12U, 2, 0, false) == UINT16_C(0x5242);
 }
 
-bool xx_brotli_decompress_memory(const void *source, size_t source_size,
-                                 void *destination, size_t destination_size,
-                                 size_t *out_written) {
+bool xx_brotli_decompress_memory(const void *source, size_t source_size, void *destination, size_t destination_size, size_t *out_written)
+{
     const uint8_t *input = (const uint8_t *)source;
     uint8_t *output = (uint8_t *)destination;
     uint8_t empty_output = 0U;
@@ -1466,13 +1315,11 @@ bool xx_brotli_decompress_memory(const void *source, size_t source_size,
     bool saw_frame = false;
 
     if (out_written) *out_written = 0U;
-    if (!out_written || (!input && source_size != 0U) ||
-        (!output && destination_size != 0U) || source_size == 0U) {
+    if (!out_written || (!input && source_size != 0U) || (!output && destination_size != 0U) || source_size == 0U) {
         return false;
     }
     if (!output) output = &empty_output;
-    if (xx_br_decode_raw(input, source_size, output, destination_size,
-                         &raw_written) && raw_written == destination_size) {
+    if (xx_br_decode_raw(input, source_size, output, destination_size, &raw_written) && raw_written == destination_size) {
         *out_written = raw_written;
         return true;
     }
@@ -1490,16 +1337,12 @@ bool xx_brotli_decompress_memory(const void *source, size_t source_size,
         compressed_size = xx_data_get_u32(header + 8U, 4, 0, false);
         frame_limit = (size_t)xx_data_get_u16(header + 14U, 2, 0, false) << 16U;
         input_position += 16U;
-        if ((size_t)compressed_size > source_size - input_position ||
-            output_position > destination_size) {
+        if ((size_t)compressed_size > source_size - input_position || output_position > destination_size) {
             return false;
         }
         frame_capacity = destination_size - output_position;
         if (frame_capacity > frame_limit) frame_capacity = frame_limit;
-        if (!xx_br_decode_raw(input + input_position, compressed_size,
-                              output + output_position, frame_capacity,
-                              &frame_written) ||
-            frame_written > frame_limit ||
+        if (!xx_br_decode_raw(input + input_position, compressed_size, output + output_position, frame_capacity, &frame_written) || frame_written > frame_limit ||
             frame_written > destination_size - output_position) {
             return false;
         }
@@ -1512,15 +1355,13 @@ bool xx_brotli_decompress_memory(const void *source, size_t source_size,
     return true;
 }
 
-static bool xx_br_append_output(uint8_t **data, size_t *size,
-                                size_t *capacity, const uint8_t *source,
-                                size_t source_size) {
+static bool xx_br_append_output(uint8_t **data, size_t *size, size_t *capacity, const uint8_t *source, size_t source_size)
+{
     size_t required;
     size_t next_capacity;
     uint8_t *grown;
     size_t index;
-    if (!data || !size || !capacity || (!source && source_size != 0U) ||
-        source_size > XX_BR_MAX_ALLOCATED_OUTPUT - *size) {
+    if (!data || !size || !capacity || (!source && source_size != 0U) || source_size > XX_BR_MAX_ALLOCATED_OUTPUT - *size) {
         return false;
     }
     required = *size + source_size;
@@ -1532,8 +1373,7 @@ static bool xx_br_append_output(uint8_t **data, size_t *size,
             } else {
                 next_capacity *= 2U;
             }
-            if (next_capacity < required &&
-                next_capacity == XX_BR_MAX_ALLOCATED_OUTPUT) {
+            if (next_capacity < required && next_capacity == XX_BR_MAX_ALLOCATED_OUTPUT) {
                 return false;
             }
         }
@@ -1549,8 +1389,8 @@ static bool xx_br_append_output(uint8_t **data, size_t *size,
     return true;
 }
 
-bool xx_brotli_decompress_alloc(const void *source, size_t source_size,
-                                uint8_t **out_data, size_t *out_size) {
+bool xx_brotli_decompress_alloc(const void *source, size_t source_size, uint8_t **out_data, size_t *out_size)
+{
     const uint8_t *input = (const uint8_t *)source;
     uint8_t *output = NULL;
     size_t output_size = 0U;
@@ -1562,9 +1402,7 @@ bool xx_brotli_decompress_alloc(const void *source, size_t source_size,
     if (out_size) *out_size = 0U;
     if (!input || source_size == 0U || !out_data || !out_size) return false;
     if (!xx_br_is_mt_header(input, source_size)) {
-        return xx_br_decode_raw_alloc(input, source_size,
-                                      XX_BR_MAX_ALLOCATED_OUTPUT,
-                                      out_data, out_size);
+        return xx_br_decode_raw_alloc(input, source_size, XX_BR_MAX_ALLOCATED_OUTPUT, out_data, out_size);
     }
     while (input_position < source_size) {
         const uint8_t *header;
@@ -1573,27 +1411,20 @@ bool xx_brotli_decompress_alloc(const void *source, size_t source_size,
         uint8_t *frame_data = NULL;
         size_t frame_size = 0U;
         size_t maximum_frame;
-        if (source_size - input_position < 16U ||
-            !xx_br_is_mt_header(input + input_position,
-                                source_size - input_position)) {
+        if (source_size - input_position < 16U || !xx_br_is_mt_header(input + input_position, source_size - input_position)) {
             goto error;
         }
         header = input + input_position;
         compressed_size = xx_data_get_u32(header + 8U, 4, 0, false);
         frame_limit = (size_t)xx_data_get_u16(header + 14U, 2, 0, false) << 16U;
         input_position += 16U;
-        if (frame_limit == 0U ||
-            (size_t)compressed_size > source_size - input_position ||
-            output_size > XX_BR_MAX_ALLOCATED_OUTPUT) {
+        if (frame_limit == 0U || (size_t)compressed_size > source_size - input_position || output_size > XX_BR_MAX_ALLOCATED_OUTPUT) {
             goto error;
         }
         maximum_frame = XX_BR_MAX_ALLOCATED_OUTPUT - output_size;
         if (frame_limit < maximum_frame) maximum_frame = frame_limit;
-        if (!xx_br_decode_raw_alloc(input + input_position,
-                                    (size_t)compressed_size, maximum_frame,
-                                    &frame_data, &frame_size) ||
-            !xx_br_append_output(&output, &output_size, &output_capacity,
-                                 frame_data, frame_size)) {
+        if (!xx_br_decode_raw_alloc(input + input_position, (size_t)compressed_size, maximum_frame, &frame_data, &frame_size) ||
+            !xx_br_append_output(&output, &output_size, &output_capacity, frame_data, frame_size)) {
             xx_mem_free(frame_data);
             goto error;
         }

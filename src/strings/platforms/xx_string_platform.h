@@ -40,12 +40,12 @@ extern "C" {
 /**
  * @brief Convert multi-byte (ANSI or UTF-8) to wide/Unicode string using platform APIs.
  */
-wchar_t* xx_string_platform_mb_to_wide(const char *str, unsigned int codepage);
+wchar_t *xx_string_platform_mb_to_wide(const char *str, unsigned int codepage);
 
 /**
  * @brief Convert wide/Unicode string to multi-byte (ANSI or UTF-8) using platform APIs.
  */
-char* xx_string_platform_wide_to_mb(const wchar_t *wstr, unsigned int codepage);
+char *xx_string_platform_wide_to_mb(const wchar_t *wstr, unsigned int codepage);
 
 #ifdef __cplusplus
 }

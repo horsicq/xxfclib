@@ -33,9 +33,7 @@ extern "C" {
  * @return true on a complete, digest-verified unwrap that filled
  *         @p output_size exactly.
  */
-XXFC_API bool xx_tivoli_decode_memory(const uint8_t *input, size_t input_size,
-                                      uint8_t *output, size_t output_size,
-                                      size_t *written);
+XXFC_API bool xx_tivoli_decode_memory(const uint8_t *input, size_t input_size, uint8_t *output, size_t output_size, size_t *written);
 
 /**
  * @brief Measure the unwrapped stream of a Tivoli container.
@@ -54,9 +52,7 @@ XXFC_API bool xx_tivoli_decode_memory(const uint8_t *input, size_t input_size,
  * @param produced    Receives the unwrapped size.  May be NULL.
  * @return true when the whole chain unwrapped and verified within the limit.
  */
-XXFC_API bool xx_tivoli_scan_memory(const uint8_t *input, size_t input_size,
-                                    size_t max_output, size_t *consumed,
-                                    size_t *produced);
+XXFC_API bool xx_tivoli_scan_memory(const uint8_t *input, size_t input_size, size_t max_output, size_t *consumed, size_t *produced);
 
 #ifdef __cplusplus
 }

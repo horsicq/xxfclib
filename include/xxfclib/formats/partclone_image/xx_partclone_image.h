@@ -60,7 +60,7 @@ typedef struct xx_partclone_image XPartcloneImage;
 
 struct xx_partclone_image {
     Abstractformat format;
-    uint64_t number_of_records;   /**< Always 1 for a valid image. */
+    uint64_t number_of_records; /**< Always 1 for a valid image. */
     uint64_t total_blocks;
     uint64_t used_blocks;
     uint64_t device_size;
@@ -69,54 +69,37 @@ struct xx_partclone_image {
     uint16_t checksum_size;
     uint32_t blocks_per_checksum;
     bool big_endian;
-    char fs_name[17];             /**< Filesystem name, NUL terminated. */
-    int64_t restored_size;        /**< Size of the restored image, or -1. */
-    int64_t archive_end;          /**< End of the image data, or -1. */
+    char fs_name[17];      /**< Filesystem name, NUL terminated. */
+    int64_t restored_size; /**< Size of the restored image, or -1. */
+    int64_t archive_end;   /**< End of the image data, or -1. */
     void *internal;
 };
 
-XXFC_API void xx_partclone_image_init(xx_partclone_image *image,
-                                      xx_io_device *dev, int64_t base_address);
-XXFC_API xx_partclone_image *xx_partclone_image_create(xx_io_device *dev,
-                                                       int64_t base_address);
+XXFC_API void xx_partclone_image_init(xx_partclone_image *image, xx_io_device *dev, int64_t base_address);
+XXFC_API xx_partclone_image *xx_partclone_image_create(xx_io_device *dev, int64_t base_address);
 XXFC_API void xx_partclone_image_destroy(xx_partclone_image *image);
 XXFC_API void xx_partclone_image_free(xx_partclone_image *image);
 
-XXFC_API bool xx_partclone_image_check_is_valid(Abstractformat *self,
-                                                xx_pd_struct *pd);
-XXFC_API bool xx_partclone_image_handle_base_info(Abstractformat *self,
-                                                  xx_pd_struct *pd);
-XXFC_API int64_t xx_partclone_image_get_format_size(Abstractformat *self,
-                                                    xx_pd_struct *pd);
-XXFC_API uint64_t xx_partclone_image_get_number_of_archive_records(
-    Abstractformat *self, xx_pd_struct *pd);
+XXFC_API bool xx_partclone_image_check_is_valid(Abstractformat *self, xx_pd_struct *pd);
+XXFC_API bool xx_partclone_image_handle_base_info(Abstractformat *self, xx_pd_struct *pd);
+XXFC_API int64_t xx_partclone_image_get_format_size(Abstractformat *self, xx_pd_struct *pd);
+XXFC_API uint64_t xx_partclone_image_get_number_of_archive_records(Abstractformat *self, xx_pd_struct *pd);
 
 /** Restore the raw partition image into destination, from its current
  * position. */
-XXFC_API bool xx_partclone_image_unpack_to_device(xx_partclone_image *image,
-                                                  xx_io_device *destination,
-                                                  xx_pd_struct *pd);
+XXFC_API bool xx_partclone_image_unpack_to_device(xx_partclone_image *image, xx_io_device *destination, xx_pd_struct *pd);
 
-XXFC_API xx_archive_record_state *
-xx_partclone_image_create_archive_records_reading(Abstractformat *self,
-                                                  const xx_list_s *options,
-                                                  xx_pd_struct *pd);
-XXFC_API const xx_archive_record *xx_partclone_image_get_current_archive_record(
-    Abstractformat *self, xx_archive_record_state *state);
-XXFC_API bool xx_partclone_image_unpack_current_archive_record(
-    Abstractformat *self, xx_archive_record_state *state, xx_pd_struct *pd);
-XXFC_API bool xx_partclone_image_archive_record_move_to_next(
-    Abstractformat *self, xx_archive_record_state *state, xx_pd_struct *pd);
-XXFC_API void xx_partclone_image_free_archive_records_reading(
-    Abstractformat *self, xx_archive_record_state *state);
+XXFC_API xx_archive_record_state *xx_partclone_image_create_archive_records_reading(Abstractformat *self, const xx_list_s *options, xx_pd_struct *pd);
+XXFC_API const xx_archive_record *xx_partclone_image_get_current_archive_record(Abstractformat *self, xx_archive_record_state *state);
+XXFC_API bool xx_partclone_image_unpack_current_archive_record(Abstractformat *self, xx_archive_record_state *state, xx_pd_struct *pd);
+XXFC_API bool xx_partclone_image_archive_record_move_to_next(Abstractformat *self, xx_archive_record_state *state, xx_pd_struct *pd);
+XXFC_API void xx_partclone_image_free_archive_records_reading(Abstractformat *self, xx_archive_record_state *state);
 
-XXFC_API int64_t xx_partclone_image_get_restored_size(
-    const xx_partclone_image *image);
-XXFC_API int64_t xx_partclone_image_get_archive_end(
-    const xx_partclone_image *image);
+XXFC_API int64_t xx_partclone_image_get_restored_size(const xx_partclone_image *image);
+XXFC_API int64_t xx_partclone_image_get_archive_end(const xx_partclone_image *image);
 
-static inline Abstractformat *xx_partclone_image_to_format(
-    xx_partclone_image *image) {
+static inline Abstractformat *xx_partclone_image_to_format(xx_partclone_image *image)
+{
     return image ? &image->format : NULL;
 }
 

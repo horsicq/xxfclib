@@ -59,7 +59,10 @@ XXFC_API bool xx_atari_dos2_archive_record_move_to_next(Abstractformat *, xx_arc
 XXFC_API bool xx_atari_dos2_unpack_current_archive_record(Abstractformat *, xx_archive_record_state *, xx_pd_struct *);
 XXFC_API bool xx_atari_dos2_extract_record_to_device(Abstractformat *, xx_archive_record_state *, xx_io_device *, xx_pd_struct *);
 XXFC_API void xx_atari_dos2_free_archive_records_reading(Abstractformat *, xx_archive_record_state *);
-static inline Abstractformat *xx_atari_dos2_to_format(xx_atari_dos2 *v) { return v ? &v->format : NULL; }
+static inline Abstractformat *xx_atari_dos2_to_format(xx_atari_dos2 *v)
+{
+    return v ? &v->format : NULL;
+}
 #ifdef __cplusplus
 }
 #endif

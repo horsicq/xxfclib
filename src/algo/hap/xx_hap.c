@@ -26,37 +26,37 @@
 
 #define HAP_STATE_SIZE 0x50600
 
-#define HAP_OFF_LISTCOUNT 0x2c   /* symbols in the context being scanned     */
-#define HAP_OFF_LISTSTART 0x2e   /* arena index of that context              */
-#define HAP_OFF_STACKPTR 0x30    /* cumulative-frequency stack pointer       */
+#define HAP_OFF_LISTCOUNT 0x2c /* symbols in the context being scanned     */
+#define HAP_OFF_LISTSTART 0x2e /* arena index of that context              */
+#define HAP_OFF_STACKPTR 0x30  /* cumulative-frequency stack pointer       */
 #define HAP_OFF_SAVE32 0x32
 #define HAP_OFF_SAVE34 0x34
 #define HAP_OFF_SAVE36 0x36
 #define HAP_OFF_SAVE38 0x38
-#define HAP_OFF_MARKER 0x3b      /* per level: 0 coded, -1 new, -4 esc, -6 grow */
-#define HAP_OFF_SYMBOL 0x45      /* the byte just decoded                    */
-#define HAP_OFF_LEVELSTART 0x46  /* per level: arena index                   */
-#define HAP_OFF_LEVEL 0x50       /* 8, 6, 4, 2, 0                            */
-#define HAP_OFF_LEVELCOUNT 0x53  /* per level: symbol count                  */
+#define HAP_OFF_MARKER 0x3b     /* per level: 0 coded, -1 new, -4 esc, -6 grow */
+#define HAP_OFF_SYMBOL 0x45     /* the byte just decoded                    */
+#define HAP_OFF_LEVELSTART 0x46 /* per level: arena index                   */
+#define HAP_OFF_LEVEL 0x50      /* 8, 6, 4, 2, 0                            */
+#define HAP_OFF_LEVELCOUNT 0x53 /* per level: symbol count                  */
 #define HAP_OFF_BITCOUNT 0x5d
 #define HAP_OFF_CUMLOW 0x5e
 #define HAP_OFF_TOTAL 0x60
 #define HAP_OFF_CUMHIGH 0x62
-#define HAP_OFF_EXCLTOP 0x64     /* next free slot in the exclusion log      */
-#define HAP_OFF_NEXTNODE 0x68    /* next context id, stepped by 2            */
-#define HAP_OFF_SAVEA3 0x75      /* per level: previous node                 */
-#define HAP_OFF_NODE 0x7f        /* per level: current context node          */
-#define HAP_OFF_SAVEAD 0x6b      /* per level: previous symbol slot          */
-#define HAP_OFF_MATCHPOS 0x22    /* per level: symbol slot of the decoded byte */
-#define HAP_OFF_STACK 0x89       /* cumulative-frequency stack base          */
+#define HAP_OFF_EXCLTOP 0x64  /* next free slot in the exclusion log      */
+#define HAP_OFF_NEXTNODE 0x68 /* next context id, stepped by 2            */
+#define HAP_OFF_SAVEA3 0x75   /* per level: previous node                 */
+#define HAP_OFF_NODE 0x7f     /* per level: current context node          */
+#define HAP_OFF_SAVEAD 0x6b   /* per level: previous symbol slot          */
+#define HAP_OFF_MATCHPOS 0x22 /* per level: symbol slot of the decoded byte */
+#define HAP_OFF_STACK 0x89    /* cumulative-frequency stack base          */
 #define HAP_OFF_INBYTE 0x10089
 #define HAP_OFF_VALUE 0x1008a
 #define HAP_OFF_LOW 0x1008c
 #define HAP_OFF_HIGH 0x1008e
-#define HAP_OFF_EXCL 0x10090     /* 0xff allowed, 0 excluded                 */
-#define HAP_OFF_CHILD 0x102e0    /* per symbol slot: child context, 16 bit   */
-#define HAP_OFF_SYM 0x202e0      /* arena: symbol bytes                      */
-#define HAP_OFF_CNT 0x282e0      /* arena: count bytes (SYM + 0x8000)        */
+#define HAP_OFF_EXCL 0x10090      /* 0xff allowed, 0 excluded                 */
+#define HAP_OFF_CHILD 0x102e0     /* per symbol slot: child context, 16 bit   */
+#define HAP_OFF_SYM 0x202e0       /* arena: symbol bytes                      */
+#define HAP_OFF_CNT 0x282e0       /* arena: count bytes (SYM + 0x8000)        */
 #define HAP_OFF_NODESTART 0x302e0 /* per node: arena index                   */
 #define HAP_OFF_NODECOUNT 0x402e0 /* per node: symbol count minus one        */
 #define HAP_OFF_FREELIST 0x502e0  /* free-list head per size class           */
@@ -100,9 +100,7 @@ static void hap_p16(hap_model *m, int32_t offset, uint32_t value)
 
 static uint32_t hap_g32(const hap_model *m, int32_t offset)
 {
-    return (uint32_t)m->s[offset] | ((uint32_t)m->s[offset + 1] << 8) |
-           ((uint32_t)m->s[offset + 2] << 16) |
-           ((uint32_t)m->s[offset + 3] << 24);
+    return (uint32_t)m->s[offset] | ((uint32_t)m->s[offset + 1] << 8) | ((uint32_t)m->s[offset + 2] << 16) | ((uint32_t)m->s[offset + 3] << 24);
 }
 
 static void hap_p32(hap_model *m, int32_t offset, uint32_t value)
@@ -271,8 +269,7 @@ static bool hap_arith_update(hap_model *m)
             hap_p8(m, HAP_OFF_INBYTE, (uint32_t)m->input[m->input_pos++]);
         }
         hap_p8(m, HAP_OFF_BITCOUNT, hap_g8(m, HAP_OFF_BITCOUNT) - 1U);
-        hap_p16(m, HAP_OFF_VALUE,
-                hap_g16(m, HAP_OFF_VALUE) * 2U + (hap_g8(m, HAP_OFF_INBYTE) >> 7));
+        hap_p16(m, HAP_OFF_VALUE, hap_g16(m, HAP_OFF_VALUE) * 2U + (hap_g8(m, HAP_OFF_INBYTE) >> 7));
         hap_p8(m, HAP_OFF_INBYTE, hap_g8(m, HAP_OFF_INBYTE) * 2U);
     }
 }
@@ -291,13 +288,11 @@ static void hap_fixup_escape(hap_model *m)
             hap_p16(m, HAP_OFF_MARKER + level, 0xfffaU);
             return;
         }
-        if (hap_g8(m, HAP_OFF_SYMBOL) == hap_g8(m, HAP_OFF_SYM + (int32_t)index))
-            break;
+        if (hap_g8(m, HAP_OFF_SYMBOL) == hap_g8(m, HAP_OFF_SYM + (int32_t)index)) break;
         index = (index + 1U) & 0xffffU;
         count--;
     }
-    hap_p8(m, HAP_OFF_CNT + (int32_t)index,
-           hap_g8(m, HAP_OFF_CNT + (int32_t)index) + 1U);
+    hap_p8(m, HAP_OFF_CNT + (int32_t)index, hap_g8(m, HAP_OFF_CNT + (int32_t)index) + 1U);
     hap_p16(m, HAP_OFF_MARKER + level, 0U);
 }
 
@@ -395,8 +390,7 @@ static int32_t hap_grow_context(hap_model *m)
     if (u >= 0x211) return -1;
 
     block = hap_g16(m, HAP_OFF_FREELIST + u);
-    hap_p16(m, HAP_OFF_FREELIST + u,
-            hap_g16(m, HAP_OFF_CHILD + (int32_t)((block * 2U) & 0xffffU)));
+    hap_p16(m, HAP_OFF_FREELIST + u, hap_g16(m, HAP_OFF_CHILD + (int32_t)((block * 2U) & 0xffffU)));
     remainder = (int32_t)((uint32_t)(u - (int32_t)size_class) & 0xffffU);
     if (remainder != 0) {
         int32_t tail_offset = (int32_t)((block * 2U + size_class) & 0xffffU);
@@ -447,15 +441,13 @@ static int32_t hap_grow_context(hap_model *m)
     {
         uint32_t step;
         for (step = result; step != 0U; step--) {
-            hap_p16(m, HAP_OFF_CHILD + (int32_t)dest,
-                    hap_g16(m, HAP_OFF_CHILD + (int32_t)source));
+            hap_p16(m, HAP_OFF_CHILD + (int32_t)dest, hap_g16(m, HAP_OFF_CHILD + (int32_t)source));
             dest = (dest + 2U) & 0xffffU;
             source = (source + 2U) & 0xffffU;
         }
     }
     hap_p16(m, HAP_OFF_CHILD + (int32_t)dest, 0xffffU);
-    hap_p16(m, HAP_OFF_CHILD + (int32_t)((hap_gi16(m, HAP_OFF_SAVE34) * 2) & 0xffff),
-            spare);
+    hap_p16(m, HAP_OFF_CHILD + (int32_t)((hap_gi16(m, HAP_OFF_SAVE34) * 2) & 0xffff), spare);
     return (int32_t)result;
 }
 
@@ -516,8 +508,7 @@ static int32_t hap_decode_symbol(hap_model *m)
             uint32_t weight;
             hap_push(m, total);
             symbol = hap_g8(m, HAP_OFF_SYM + (int32_t)index);
-            weight = hap_g8(m, HAP_OFF_EXCL + (int32_t)symbol) &
-                     hap_g8(m, HAP_OFF_SYM + (int32_t)((index + 0x8000U) & 0xffffU));
+            weight = hap_g8(m, HAP_OFF_EXCL + (int32_t)symbol) & hap_g8(m, HAP_OFF_SYM + (int32_t)((index + 0x8000U) & 0xffffU));
             index = (index - 1U) & 0xffffU;
             if (weight != 0U) {
                 symbols = (symbols + 1U) & 0xffffU;
@@ -534,8 +525,7 @@ static int32_t hap_decode_symbol(hap_model *m)
         if (hap_g16(m, HAP_OFF_LEVEL) == 0U) break;
         with_escape = (total + symbols) & 0xffffU;
         adjusted = with_escape;
-        if ((with_escape & 1U) && (symbols != 1U))
-            adjusted = (with_escape - 1U) & 0xffffU;
+        if ((with_escape & 1U) && (symbols != 1U)) adjusted = (with_escape - 1U) & 0xffffU;
         if (adjusted < 0x3fffU) {
             total = adjusted;
             break;
@@ -544,12 +534,10 @@ static int32_t hap_decode_symbol(hap_model *m)
         {
             int32_t j = hap_gi16(m, HAP_OFF_LISTCOUNT);
             uint32_t p;
-            hap_p16(m, HAP_OFF_STACKPTR,
-                    hap_g16(m, HAP_OFF_STACKPTR) + (uint32_t)(j * 2));
+            hap_p16(m, HAP_OFF_STACKPTR, hap_g16(m, HAP_OFF_STACKPTR) + (uint32_t)(j * 2));
             p = hap_g16(m, HAP_OFF_LISTSTART);
             while (j != 0) {
-                hap_p8(m, HAP_OFF_CNT + (int32_t)p,
-                       hap_g8(m, HAP_OFF_CNT + (int32_t)p) >> 1);
+                hap_p8(m, HAP_OFF_CNT + (int32_t)p, hap_g8(m, HAP_OFF_CNT + (int32_t)p) >> 1);
                 p = (p + 1U) & 0xffffU;
                 j--;
             }
@@ -619,27 +607,23 @@ static int32_t hap_decode_symbol(hap_model *m)
         int32_t j = hap_gi16(m, HAP_OFF_LISTCOUNT);
         uint32_t q = hap_g16(m, HAP_OFF_LISTSTART);
         while (j != 0) {
-            hap_p8(m, HAP_OFF_CNT + (int32_t)q,
-                   hap_g8(m, HAP_OFF_CNT + (int32_t)q) >> 1);
+            hap_p8(m, HAP_OFF_CNT + (int32_t)q, hap_g8(m, HAP_OFF_CNT + (int32_t)q) >> 1);
             q = (q + 1U) & 0xffffU;
             j--;
         }
     }
-    hap_p8(m, HAP_OFF_CNT + (int32_t)position,
-           hap_g8(m, HAP_OFF_CNT + (int32_t)position) + 1U);
+    hap_p8(m, HAP_OFF_CNT + (int32_t)position, hap_g8(m, HAP_OFF_CNT + (int32_t)position) + 1U);
     return hap_tail(m, 0, 1U);
 }
 
-static bool hap_decode_stream(hap_model *m, uint8_t *output, size_t output_size,
-                              size_t *produced)
+static bool hap_decode_stream(hap_model *m, uint8_t *output, size_t output_size, size_t *produced)
 {
     size_t remaining = output_size;
     uint32_t primed;
 
     if (output_size == 0U) return true;
     if (m->input_pos + 2U > m->input_size) return false;
-    primed = (uint32_t)m->input[m->input_pos] |
-             ((uint32_t)m->input[m->input_pos + 1] << 8);
+    primed = (uint32_t)m->input[m->input_pos] | ((uint32_t)m->input[m->input_pos + 1] << 8);
     m->input_pos += 2U;
     hap_p16(m, HAP_OFF_VALUE, ((primed & 0xffU) << 8) | (primed >> 8));
     hap_p8(m, HAP_OFF_BITCOUNT, 0U);
@@ -664,8 +648,7 @@ static bool hap_decode_stream(hap_model *m, uint8_t *output, size_t output_size,
                 /* The escape path stored 0 in EXCL[symbol]; the restore
                  * DECREMENTS, which wraps 0 back to 0xff.  Deliberate. */
                 uint32_t t = hap_g8(m, HAP_OFF_EXCL + (int32_t)u);
-                hap_p8(m, HAP_OFF_EXCL + (int32_t)t,
-                       hap_g8(m, HAP_OFF_EXCL + (int32_t)t) - 1U);
+                hap_p8(m, HAP_OFF_EXCL + (int32_t)t, hap_g8(m, HAP_OFF_EXCL + (int32_t)t) - 1U);
                 u = (u + 1U) & 0xffffU;
                 n--;
             }
@@ -674,8 +657,7 @@ static bool hap_decode_stream(hap_model *m, uint8_t *output, size_t output_size,
         /* The order-0 context always exists, so this walk always stops; the
          * counter only keeps a corrupt state from indexing off the block. */
         for (guard = 0; guard < 5; guard++) {
-            if (hap_gi16(m, HAP_OFF_NODE + (int32_t)hap_g16(m, HAP_OFF_LEVEL)) != -1)
-                break;
+            if (hap_gi16(m, HAP_OFF_NODE + (int32_t)hap_g16(m, HAP_OFF_LEVEL)) != -1) break;
             hap_p16(m, HAP_OFF_MARKER + (int32_t)hap_g16(m, HAP_OFF_LEVEL), 0xffffU);
             if (hap_g16(m, HAP_OFF_LEVEL) == 0U) return false;
             hap_p16(m, HAP_OFF_LEVEL, hap_g16(m, HAP_OFF_LEVEL) - 2U);
@@ -717,11 +699,8 @@ static bool hap_decode_stream(hap_model *m, uint8_t *output, size_t output_size,
                     previous = (int32_t)((uint32_t)(level - 2) & 0xffffU);
                     a = hap_gi16(m, HAP_OFF_SAVEA3 + previous);
                     b = hap_gi16(m, HAP_OFF_SAVEAD + previous);
-                    offset = hap_gi16(m,
-                        HAP_OFF_NODESTART + (int32_t)((uint32_t)(a * 2) & 0xffffU));
-                    hap_p16(m,
-                        HAP_OFF_CHILD + (int32_t)((uint32_t)((offset + b) * 2) & 0xffffU),
-                        (uint32_t)r);
+                    offset = hap_gi16(m, HAP_OFF_NODESTART + (int32_t)((uint32_t)(a * 2) & 0xffffU));
+                    hap_p16(m, HAP_OFF_CHILD + (int32_t)((uint32_t)((offset + b) * 2) & 0xffffU), (uint32_t)r);
                 } else if (hap_gi16(m, HAP_OFF_MARKER + level) == -6) {
                     if (hap_grow_context(m) < 0) {
                         hap_init(m);
@@ -739,8 +718,7 @@ static bool hap_decode_stream(hap_model *m, uint8_t *output, size_t output_size,
         hap_p16(m, HAP_OFF_MATCHPOS + 2, symbol);
         u = 4U;
         for (;;) {
-            uint32_t base = hap_g16(m, HAP_OFF_NODESTART +
-                (int32_t)((uint32_t)(hap_gi16(m, HAP_OFF_NODE + (int32_t)u) * 2) & 0xffffU));
+            uint32_t base = hap_g16(m, HAP_OFF_NODESTART + (int32_t)((uint32_t)(hap_gi16(m, HAP_OFF_NODE + (int32_t)u) * 2) & 0xffffU));
             uint32_t j = base;
             for (c = 0x100; c > 0; c--) {
                 if (symbol == hap_g8(m, HAP_OFF_SYM + (int32_t)j)) break;
@@ -753,32 +731,25 @@ static bool hap_decode_stream(hap_model *m, uint8_t *output, size_t output_size,
         u = 6U;
         for (c = 0; c < 3; c++) {
             int32_t offset;
-            hap_p16(m, HAP_OFF_SAVEA3 + (int32_t)u,
-                    hap_g16(m, HAP_OFF_NODE + (int32_t)u));
-            offset = hap_gi16(m, HAP_OFF_NODESTART +
-                (int32_t)((uint32_t)(hap_gi16(m, HAP_OFF_NODE + (int32_t)u) * 2) & 0xffffU));
-            hap_p16(m, HAP_OFF_SAVEAD + (int32_t)u,
-                    hap_g16(m, HAP_OFF_MATCHPOS + (int32_t)u));
+            hap_p16(m, HAP_OFF_SAVEA3 + (int32_t)u, hap_g16(m, HAP_OFF_NODE + (int32_t)u));
+            offset = hap_gi16(m, HAP_OFF_NODESTART + (int32_t)((uint32_t)(hap_gi16(m, HAP_OFF_NODE + (int32_t)u) * 2) & 0xffffU));
+            hap_p16(m, HAP_OFF_SAVEAD + (int32_t)u, hap_g16(m, HAP_OFF_MATCHPOS + (int32_t)u));
             hap_p16(m, HAP_OFF_NODE + (int32_t)u + 2,
-                    hap_g16(m, HAP_OFF_CHILD +
-                        (int32_t)((uint32_t)((offset +
-                            hap_gi16(m, HAP_OFF_MATCHPOS + (int32_t)u)) * 2) & 0xffffU)));
+                    hap_g16(m, HAP_OFF_CHILD + (int32_t)((uint32_t)((offset + hap_gi16(m, HAP_OFF_MATCHPOS + (int32_t)u)) * 2) & 0xffffU)));
             u = (u - 2U) & 0xffffU;
         }
     }
     return true;
 }
 
-bool xx_hap_decode_memory(const uint8_t *input, size_t input_size,
-                          uint8_t *output, size_t output_size, size_t *written)
+bool xx_hap_decode_memory(const uint8_t *input, size_t input_size, uint8_t *output, size_t output_size, size_t *written)
 {
     hap_model model;
     size_t produced = 0U;
     bool result;
 
     if (written) *written = 0U;
-    if ((!input && input_size != 0U) || (!output && output_size != 0U))
-        return false;
+    if ((!input && input_size != 0U) || (!output && output_size != 0U)) return false;
     if (output_size > HAP_MAX_OUTPUT) return false;
     if (output_size == 0U) return true;
     if (input_size == 0U) return false;

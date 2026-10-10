@@ -43,9 +43,7 @@ static uint32_t xx_genius_crc32_unfinalised(const uint8_t *data, size_t size)
     return ~xx_crc32_calc(0U, data, size);
 }
 
-bool xx_genius_decode_memory(const uint8_t *input, size_t input_size,
-                             uint8_t *output, size_t output_size,
-                             size_t *written)
+bool xx_genius_decode_memory(const uint8_t *input, size_t input_size, uint8_t *output, size_t output_size, size_t *written)
 {
     size_t blocks_end;
     size_t offset = 0U;
@@ -58,8 +56,7 @@ bool xx_genius_decode_memory(const uint8_t *input, size_t input_size,
     /* The reference rejects a zero-length member outright: a compressed member
      * always has at least one block. */
     if ((output_size < 1U) || (output_size > GPL_MAX_OUTPUT)) return false;
-    if (input_size < (GPL_TRAILER_SIZE + GPL_BLOCKLEN_SIZE +
-                      GPL_MIN_BLOCK_SIZE)) {
+    if (input_size < (GPL_TRAILER_SIZE + GPL_BLOCKLEN_SIZE + GPL_MIN_BLOCK_SIZE)) {
         return false;
     }
 
@@ -78,8 +75,7 @@ bool xx_genius_decode_memory(const uint8_t *input, size_t input_size,
         if ((blocks_end - offset) < GPL_BLOCKLEN_SIZE) return false;
         block_size = (size_t)xx_data_get_u32(input + offset, 4, 0, false);
         offset += GPL_BLOCKLEN_SIZE;
-        if ((block_size < GPL_MIN_BLOCK_SIZE) ||
-            (block_size > (blocks_end - offset))) {
+        if ((block_size < GPL_MIN_BLOCK_SIZE) || (block_size > (blocks_end - offset))) {
             return false;
         }
 
@@ -89,15 +85,11 @@ bool xx_genius_decode_memory(const uint8_t *input, size_t input_size,
         /* The plaintext still outstanding doubles as this block's ceiling, so a
          * block that wants to produce more than the member promises stops right
          * there instead of overrunning. */
-        if (!xx_dcl_scan_memory(input + offset, block_size, remaining, NULL,
-                                &plain_size)) {
+        if (!xx_dcl_scan_memory(input + offset, block_size, remaining, NULL, &plain_size)) {
             return false;
         }
         if ((plain_size == 0U) || (plain_size > remaining)) return false;
-        if (!xx_dcl_decode_memory(input + offset, block_size,
-                                  output + produced, plain_size,
-                                  &block_written) ||
-            (block_written != plain_size)) {
+        if (!xx_dcl_decode_memory(input + offset, block_size, output + produced, plain_size, &block_written) || (block_written != plain_size)) {
             return false;
         }
 

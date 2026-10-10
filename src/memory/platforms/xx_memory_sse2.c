@@ -18,7 +18,8 @@
 #endif
 
 XX_MEMORY_TARGET_SSE2
-void xx_memory_copy_sse2(uint8_t *destination, const uint8_t *source, size_t size) {
+void xx_memory_copy_sse2(uint8_t *destination, const uint8_t *source, size_t size)
+{
 #ifdef XX_MEMORY_X86
     size_t at = 0;
     for (; size - at >= 64; at += 64) {
@@ -36,15 +37,15 @@ void xx_memory_copy_sse2(uint8_t *destination, const uint8_t *source, size_t siz
         _mm_storeu_si128((__m128i *)(void *)(destination + at), value);
     }
     /* Volatile tails stay bounded and do not become CRT memcpy calls. */
-    for (; at < size; ++at)
-        ((volatile uint8_t *)destination)[at] = ((const volatile uint8_t *)source)[at];
+    for (; at < size; ++at) ((volatile uint8_t *)destination)[at] = ((const volatile uint8_t *)source)[at];
 #else
     xx_memory_copy_scalar(destination, source, size);
 #endif
 }
 
 XX_MEMORY_TARGET_SSE2
-void xx_memory_move_sse2(uint8_t *destination, const uint8_t *source, size_t size) {
+void xx_memory_move_sse2(uint8_t *destination, const uint8_t *source, size_t size)
+{
 #ifdef XX_MEMORY_X86
     uintptr_t d = (uintptr_t)destination, s = (uintptr_t)source;
     size_t at;
@@ -74,7 +75,8 @@ void xx_memory_move_sse2(uint8_t *destination, const uint8_t *source, size_t siz
 }
 
 XX_MEMORY_TARGET_SSE2
-void xx_memory_set_sse2(uint8_t *destination, uint8_t value, size_t size) {
+void xx_memory_set_sse2(uint8_t *destination, uint8_t value, size_t size)
+{
 #ifdef XX_MEMORY_X86
     __m128i bytes = _mm_set1_epi8((char)value);
     size_t at = 0;
@@ -84,8 +86,7 @@ void xx_memory_set_sse2(uint8_t *destination, uint8_t value, size_t size) {
         _mm_storeu_si128((__m128i *)(void *)(destination + at + 32), bytes);
         _mm_storeu_si128((__m128i *)(void *)(destination + at + 48), bytes);
     }
-    for (; size - at >= 16; at += 16)
-        _mm_storeu_si128((__m128i *)(void *)(destination + at), bytes);
+    for (; size - at >= 16; at += 16) _mm_storeu_si128((__m128i *)(void *)(destination + at), bytes);
     xx_memory_set_scalar(destination + at, value, size - at);
 #else
     xx_memory_set_scalar(destination, value, size);
@@ -93,7 +94,8 @@ void xx_memory_set_sse2(uint8_t *destination, uint8_t value, size_t size) {
 }
 
 XX_MEMORY_TARGET_SSE2
-int xx_memory_compare_sse2(const uint8_t *first, const uint8_t *second, size_t size) {
+int xx_memory_compare_sse2(const uint8_t *first, const uint8_t *second, size_t size)
+{
 #ifdef XX_MEMORY_X86
     size_t at = 0;
     for (; size - at >= 16; at += 16) {
@@ -117,7 +119,8 @@ int xx_memory_compare_sse2(const uint8_t *first, const uint8_t *second, size_t s
 }
 
 XX_MEMORY_TARGET_SSE2
-const uint8_t *xx_memory_find_sse2(const uint8_t *source, uint8_t value, size_t size) {
+const uint8_t *xx_memory_find_sse2(const uint8_t *source, uint8_t value, size_t size)
+{
 #ifdef XX_MEMORY_X86
     __m128i wanted = _mm_set1_epi8((char)value);
     size_t at = 0;

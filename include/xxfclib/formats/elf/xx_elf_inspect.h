@@ -25,7 +25,6 @@
 #include "xxfclib/formats/elf/xx_elf.h"
 #include "xxfclib/formats/xx_executable_inspect.h"
 
-
 // Inspection strings and arrays are owned by this state; initialize it to zero.
 // Release with xx_elf_inspect_free before reuse. Offsets are relative to reader base.
 #ifdef __cplusplus
@@ -95,14 +94,13 @@ typedef struct {
 
 /* Independent native inspection for callers that do not need the full reader
  * vtable. Borrows device; state owns a read-only view. */
-XXFC_API int xx_elf_inspect_analyze_from_device(xx_elf_inspection *state,
-    xx_io_device *device, int64_t base, xx_pd_struct *pd);
+XXFC_API int xx_elf_inspect_analyze_from_device(xx_elf_inspection *state, xx_io_device *device, int64_t base, xx_pd_struct *pd);
 
 XXFC_API int xx_elf_inspect_parse(xx_elf *reader, xx_elf_inspection *pElf, xx_pd_struct *pd);
 XXFC_API void xx_elf_inspect_free(xx_elf_inspection *pElf);
 
 /* Section helpers (index-based, matching the script API). */
-XXFC_API int xx_elf_inspect_section_number(xx_elf_inspection *pElf, const char *pName);   /* -1 if absent */
+XXFC_API int xx_elf_inspect_section_number(xx_elf_inspection *pElf, const char *pName); /* -1 if absent */
 XXFC_API int xx_elf_inspect_section_present(xx_elf_inspection *pElf, const char *pName);
 XXFC_API uint64_t xx_elf_inspect_section_offset(xx_elf_inspection *pElf, int nNumber);
 XXFC_API uint64_t xx_elf_inspect_section_size(xx_elf_inspection *pElf, int nNumber);

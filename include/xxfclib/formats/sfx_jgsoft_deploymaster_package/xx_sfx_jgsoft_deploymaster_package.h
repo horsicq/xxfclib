@@ -73,25 +73,25 @@ extern "C" {
  */
 typedef struct xx_sfx_jgsoft_deploymaster_package {
     Abstractformat format;
-    int64_t overlay_start;     /**< Offset of the bzip2 stream, from base. */
-    int64_t engine_size;       /**< Packed size of the bzip2 stream. */
-    int64_t data_end;          /**< Where the package data ends (a trailing
-                                    certificate excluded), from base. */
-    int64_t table_offset;      /**< Offset of the file table, -1 if the
-                                    settings could not be walked. */
-    uint32_t specials;         /**< Special files (icon, readme, ...). */
-    uint32_t listed_files;     /**< Names in the file list. */
-    uint32_t missing_files;    /**< Table entries without data here
-                                    (offset 0xFFFFFFFF). */
-    uint32_t damaged_files;    /**< Entries whose record is cut off or
-                                    unreadable: listed, fail to unpack. */
+    int64_t overlay_start;  /**< Offset of the bzip2 stream, from base. */
+    int64_t engine_size;    /**< Packed size of the bzip2 stream. */
+    int64_t data_end;       /**< Where the package data ends (a trailing
+                                 certificate excluded), from base. */
+    int64_t table_offset;   /**< Offset of the file table, -1 if the
+                                 settings could not be walked. */
+    uint32_t specials;      /**< Special files (icon, readme, ...). */
+    uint32_t listed_files;  /**< Names in the file list. */
+    uint32_t missing_files; /**< Table entries without data here
+                                 (offset 0xFFFFFFFF). */
+    uint32_t damaged_files; /**< Entries whose record is cut off or
+                                 unreadable: listed, fail to unpack. */
     uint64_t number_of_records;
-    bool walked;               /**< False: the fallback two-member view. */
+    bool walked; /**< False: the fallback two-member view. */
     /* Internal: the result of the overlay search (which scans the bzip2
      * engine for its end), kept so that check_is_valid, handle_base_info
      * and create_archive_records_reading search only once. */
-    int32_t locate_state;      /* 0 not searched, 1 found, -1 rejected */
-    int64_t locate_total;      /* device size the result belongs to */
+    int32_t locate_state; /* 0 not searched, 1 found, -1 rejected */
+    int64_t locate_total; /* device size the result belongs to */
     int64_t locate_overlay;
     int64_t locate_bz_end;
     int64_t locate_end;
@@ -99,44 +99,23 @@ typedef struct xx_sfx_jgsoft_deploymaster_package {
     int64_t locate_cert_end;
 } xx_sfx_jgsoft_deploymaster_package;
 
-typedef xx_sfx_jgsoft_deploymaster_package
-    xx_sfx_jgsoft_deploymaster_package_t;
+typedef xx_sfx_jgsoft_deploymaster_package xx_sfx_jgsoft_deploymaster_package_t;
 
-XXFC_API void xx_sfx_jgsoft_deploymaster_package_init(
-    xx_sfx_jgsoft_deploymaster_package *archive, xx_io_device *device,
-    int64_t base_address);
-XXFC_API xx_sfx_jgsoft_deploymaster_package *
-xx_sfx_jgsoft_deploymaster_package_create(xx_io_device *device,
-                                          int64_t base_address);
-XXFC_API void xx_sfx_jgsoft_deploymaster_package_destroy(
-    xx_sfx_jgsoft_deploymaster_package *archive);
-XXFC_API void xx_sfx_jgsoft_deploymaster_package_free(
-    xx_sfx_jgsoft_deploymaster_package *archive);
+XXFC_API void xx_sfx_jgsoft_deploymaster_package_init(xx_sfx_jgsoft_deploymaster_package *archive, xx_io_device *device, int64_t base_address);
+XXFC_API xx_sfx_jgsoft_deploymaster_package *xx_sfx_jgsoft_deploymaster_package_create(xx_io_device *device, int64_t base_address);
+XXFC_API void xx_sfx_jgsoft_deploymaster_package_destroy(xx_sfx_jgsoft_deploymaster_package *archive);
+XXFC_API void xx_sfx_jgsoft_deploymaster_package_free(xx_sfx_jgsoft_deploymaster_package *archive);
 
-XXFC_API bool xx_sfx_jgsoft_deploymaster_package_check_is_valid(
-    Abstractformat *self, xx_pd_struct *pd);
-XXFC_API bool xx_sfx_jgsoft_deploymaster_package_handle_base_info(
-    Abstractformat *self, xx_pd_struct *pd);
-XXFC_API int64_t xx_sfx_jgsoft_deploymaster_package_get_format_size(
-    Abstractformat *self, xx_pd_struct *pd);
-XXFC_API uint64_t
-xx_sfx_jgsoft_deploymaster_package_get_number_of_archive_records(
-    Abstractformat *self, xx_pd_struct *pd);
+XXFC_API bool xx_sfx_jgsoft_deploymaster_package_check_is_valid(Abstractformat *self, xx_pd_struct *pd);
+XXFC_API bool xx_sfx_jgsoft_deploymaster_package_handle_base_info(Abstractformat *self, xx_pd_struct *pd);
+XXFC_API int64_t xx_sfx_jgsoft_deploymaster_package_get_format_size(Abstractformat *self, xx_pd_struct *pd);
+XXFC_API uint64_t xx_sfx_jgsoft_deploymaster_package_get_number_of_archive_records(Abstractformat *self, xx_pd_struct *pd);
 
-XXFC_API xx_archive_record_state *
-xx_sfx_jgsoft_deploymaster_package_create_archive_records_reading(
-    Abstractformat *self, const xx_list_s *options, xx_pd_struct *pd);
-XXFC_API const xx_archive_record *
-xx_sfx_jgsoft_deploymaster_package_get_current_archive_record(
-    Abstractformat *self, xx_archive_record_state *state);
-XXFC_API bool
-xx_sfx_jgsoft_deploymaster_package_unpack_current_archive_record(
-    Abstractformat *self, xx_archive_record_state *state, xx_pd_struct *pd);
-XXFC_API bool xx_sfx_jgsoft_deploymaster_package_archive_record_move_to_next(
-    Abstractformat *self, xx_archive_record_state *state, xx_pd_struct *pd);
-XXFC_API void
-xx_sfx_jgsoft_deploymaster_package_free_archive_records_reading(
-    Abstractformat *self, xx_archive_record_state *state);
+XXFC_API xx_archive_record_state *xx_sfx_jgsoft_deploymaster_package_create_archive_records_reading(Abstractformat *self, const xx_list_s *options, xx_pd_struct *pd);
+XXFC_API const xx_archive_record *xx_sfx_jgsoft_deploymaster_package_get_current_archive_record(Abstractformat *self, xx_archive_record_state *state);
+XXFC_API bool xx_sfx_jgsoft_deploymaster_package_unpack_current_archive_record(Abstractformat *self, xx_archive_record_state *state, xx_pd_struct *pd);
+XXFC_API bool xx_sfx_jgsoft_deploymaster_package_archive_record_move_to_next(Abstractformat *self, xx_archive_record_state *state, xx_pd_struct *pd);
+XXFC_API void xx_sfx_jgsoft_deploymaster_package_free_archive_records_reading(Abstractformat *self, xx_archive_record_state *state);
 
 #ifdef __cplusplus
 }

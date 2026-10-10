@@ -41,12 +41,11 @@ typedef struct xx_linuxzimage_parsed_s {
 static void xx_linuxzimage_vtable_destroy(Abstractformat *self);
 
 /* All positioning goes through seek64: long is 32-bit on Win64. */
-static bool xx_linuxzimage_read_at(xx_io_device *device, int64_t offset,
-                                   void *data, size_t size) {
+static bool xx_linuxzimage_read_at(xx_io_device *device, int64_t offset, void *data, size_t size)
+{
     uint8_t *out = (uint8_t *)data;
     size_t done = 0U;
-    if (!device || (!data && size != 0U) || offset < 0 ||
-        xx_io_seek64(device, offset, SEEK_SET) != 0) {
+    if (!device || (!data && size != 0U) || offset < 0 || xx_io_seek64(device, offset, SEEK_SET) != 0) {
         return false;
     }
     while (done < size) {
@@ -72,9 +71,8 @@ static bool xx_linuxzimage_read_at(xx_io_device *device, int64_t offset,
  *   - end - start <= the bytes available from base_address.
  * The format size is end - start.
  */
-static bool xx_linuxzimage_parse(Abstractformat *self,
-                                 xx_linuxzimage_parsed *parsed,
-                                 xx_pd_struct *pd) {
+static bool xx_linuxzimage_parse(Abstractformat *self, xx_linuxzimage_parsed *parsed, xx_pd_struct *pd)
+{
     uint8_t header[XX_LINUXZIMAGE_EXTENDED_HEADER_SIZE];
     int64_t total_size;
     int64_t available;
@@ -85,19 +83,16 @@ static bool xx_linuxzimage_parse(Abstractformat *self,
     bool header_be;
 
     if (parsed) xx_mem_zero(parsed, sizeof(*parsed));
-    if (!self || !self->device || !parsed || self->base_address < 0 ||
-        (pd && xx_pd_is_stopped(pd))) {
+    if (!self || !self->device || !parsed || self->base_address < 0 || (pd && xx_pd_is_stopped(pd))) {
         return false;
     }
     total_size = xx_io_total_size(self->device);
     if (total_size < 0 || total_size < self->base_address) return false;
     available = total_size - self->base_address;
     if (available < (int64_t)XX_LINUXZIMAGE_HEADER_SIZE) return false;
-    have = available >= (int64_t)sizeof(header) ? sizeof(header)
-                                                : (size_t)available;
+    have = available >= (int64_t)sizeof(header) ? sizeof(header) : (size_t)available;
     xx_mem_zero(header, sizeof(header));
-    if (!xx_linuxzimage_read_at(self->device, self->base_address, header,
-                                have)) {
+    if (!xx_linuxzimage_read_at(self->device, self->base_address, header, have)) {
         return false;
     }
 
@@ -110,11 +105,9 @@ static bool xx_linuxzimage_parse(Abstractformat *self,
             return false;
         }
     }
-    if (xx_data_get_u32(header, have, XX_LINUXZIMAGE_MAGIC_OFFSET, false) ==
-        XX_LINUXZIMAGE_MAGIC) {
+    if (xx_data_get_u32(header, have, XX_LINUXZIMAGE_MAGIC_OFFSET, false) == XX_LINUXZIMAGE_MAGIC) {
         header_be = false;
-    } else if (xx_data_get_u32(header, have, XX_LINUXZIMAGE_MAGIC_OFFSET,
-                               true) == XX_LINUXZIMAGE_MAGIC) {
+    } else if (xx_data_get_u32(header, have, XX_LINUXZIMAGE_MAGIC_OFFSET, true) == XX_LINUXZIMAGE_MAGIC) {
         header_be = true;
     } else {
         return false;
@@ -122,13 +115,9 @@ static bool xx_linuxzimage_parse(Abstractformat *self,
 
     parsed->code_big_endian = (nop == XX_LINUXZIMAGE_NOP_BE);
     parsed->header_big_endian = header_be;
-    parsed->start_address = xx_data_get_u32(
-        header, have, XX_LINUXZIMAGE_START_OFFSET, header_be);
-    parsed->end_address = xx_data_get_u32(
-        header, have, XX_LINUXZIMAGE_END_OFFSET, header_be);
-    parsed->branch = xx_data_get_u32(header, have,
-                                     XX_LINUXZIMAGE_BRANCH_OFFSET,
-                                     parsed->code_big_endian);
+    parsed->start_address = xx_data_get_u32(header, have, XX_LINUXZIMAGE_START_OFFSET, header_be);
+    parsed->end_address = xx_data_get_u32(header, have, XX_LINUXZIMAGE_END_OFFSET, header_be);
+    parsed->branch = xx_data_get_u32(header, have, XX_LINUXZIMAGE_BRANCH_OFFSET, parsed->code_big_endian);
     if (parsed->end_address <= parsed->start_address) return false;
     /* Both are u32 and end > start, so the difference cannot wrap. */
     size = parsed->end_address - parsed->start_address;
@@ -138,27 +127,20 @@ static bool xx_linuxzimage_parse(Abstractformat *self,
 
     /* Optional v3.x+ words, looked at only where they lie inside both the
      * bytes read and the image itself. */
-    if (have >= XX_LINUXZIMAGE_ENDIAN_FLAG_OFFSET + 4U &&
-        size >= XX_LINUXZIMAGE_ENDIAN_FLAG_OFFSET + 4U) {
-        if (xx_data_get_u32(header, have, XX_LINUXZIMAGE_ENDIAN_FLAG_OFFSET,
-                            false) == XX_LINUXZIMAGE_ENDIAN_FLAG) {
+    if (have >= XX_LINUXZIMAGE_ENDIAN_FLAG_OFFSET + 4U && size >= XX_LINUXZIMAGE_ENDIAN_FLAG_OFFSET + 4U) {
+        if (xx_data_get_u32(header, have, XX_LINUXZIMAGE_ENDIAN_FLAG_OFFSET, false) == XX_LINUXZIMAGE_ENDIAN_FLAG) {
             parsed->has_endian_flag = true;
             parsed->kernel_big_endian = false;
-        } else if (xx_data_get_u32(header, have,
-                                   XX_LINUXZIMAGE_ENDIAN_FLAG_OFFSET, true) ==
-                   XX_LINUXZIMAGE_ENDIAN_FLAG) {
+        } else if (xx_data_get_u32(header, have, XX_LINUXZIMAGE_ENDIAN_FLAG_OFFSET, true) == XX_LINUXZIMAGE_ENDIAN_FLAG) {
             parsed->has_endian_flag = true;
             parsed->kernel_big_endian = true;
         }
     }
     if (!parsed->has_endian_flag) parsed->kernel_big_endian = header_be;
-    if (have >= XX_LINUXZIMAGE_EXTENDED_HEADER_SIZE &&
-        size >= XX_LINUXZIMAGE_EXTENDED_HEADER_SIZE &&
-        xx_data_get_u32(header, have, XX_LINUXZIMAGE_TABLE_MAGIC_OFFSET,
-                        false) == XX_LINUXZIMAGE_TABLE_MAGIC) {
+    if (have >= XX_LINUXZIMAGE_EXTENDED_HEADER_SIZE && size >= XX_LINUXZIMAGE_EXTENDED_HEADER_SIZE &&
+        xx_data_get_u32(header, have, XX_LINUXZIMAGE_TABLE_MAGIC_OFFSET, false) == XX_LINUXZIMAGE_TABLE_MAGIC) {
         parsed->has_table_magic = true;
-        parsed->table_offset = xx_data_get_u32(
-            header, have, XX_LINUXZIMAGE_TABLE_OFFSET_FIELD, header_be);
+        parsed->table_offset = xx_data_get_u32(header, have, XX_LINUXZIMAGE_TABLE_OFFSET_FIELD, header_be);
     }
     return !(pd && xx_pd_is_stopped(pd));
 }
@@ -167,8 +149,8 @@ static bool xx_linuxzimage_parse(Abstractformat *self,
 /* Public interface                                                          */
 /* ------------------------------------------------------------------------ */
 
-void xx_linuxzimage_init(xx_linuxzimage *image, xx_io_device *dev,
-                         int64_t base_address) {
+void xx_linuxzimage_init(xx_linuxzimage *image, xx_io_device *dev, int64_t base_address)
+{
     if (!image) return;
     xx_mem_zero(image, sizeof(*image));
     xx_format_init(&image->format, dev, base_address);
@@ -188,33 +170,39 @@ void xx_linuxzimage_init(xx_linuxzimage *image, xx_io_device *dev,
     xx_components_install(&image->format);
 }
 
-xx_linuxzimage *xx_linuxzimage_create(xx_io_device *dev, int64_t base_address) {
+xx_linuxzimage *xx_linuxzimage_create(xx_io_device *dev, int64_t base_address)
+{
     xx_linuxzimage *image = (xx_linuxzimage *)xx_mem_alloc(sizeof(*image));
     if (image) xx_linuxzimage_init(image, dev, base_address);
     return image;
 }
 
-void xx_linuxzimage_destroy(xx_linuxzimage *image) {
+void xx_linuxzimage_destroy(xx_linuxzimage *image)
+{
     if (!image) return;
     xx_format_cleanup_extra_parameters(&image->format);
 }
 
-static void xx_linuxzimage_vtable_destroy(Abstractformat *self) {
+static void xx_linuxzimage_vtable_destroy(Abstractformat *self)
+{
     xx_linuxzimage_destroy((xx_linuxzimage *)self);
 }
 
-void xx_linuxzimage_free(xx_linuxzimage *image) {
+void xx_linuxzimage_free(xx_linuxzimage *image)
+{
     if (!image) return;
     xx_linuxzimage_destroy(image);
     xx_mem_free(image);
 }
 
-bool xx_linuxzimage_check_is_valid(Abstractformat *self, xx_pd_struct *pd) {
+bool xx_linuxzimage_check_is_valid(Abstractformat *self, xx_pd_struct *pd)
+{
     xx_linuxzimage_parsed parsed;
     return xx_linuxzimage_parse(self, &parsed, pd);
 }
 
-bool xx_linuxzimage_handle_base_info(Abstractformat *self, xx_pd_struct *pd) {
+bool xx_linuxzimage_handle_base_info(Abstractformat *self, xx_pd_struct *pd)
+{
     xx_linuxzimage_parsed parsed;
     xx_linuxzimage *image = (xx_linuxzimage *)self;
     int64_t total_size;
@@ -235,8 +223,7 @@ bool xx_linuxzimage_handle_base_info(Abstractformat *self, xx_pd_struct *pd) {
     image->has_endian_flag = parsed.has_endian_flag;
     image->has_table_magic = parsed.has_table_magic;
     image->kernel_big_endian = parsed.kernel_big_endian;
-    self->endian =
-        parsed.kernel_big_endian ? XX_ENDIAN_BIG : XX_ENDIAN_LITTLE;
+    self->endian = parsed.kernel_big_endian ? XX_ENDIAN_BIG : XX_ENDIAN_LITTLE;
 
     /* The zImage runs from start to _edata; an appended DTB or padding
      * after it is overlay.  parse() bounded image_size by the device. */
@@ -257,42 +244,47 @@ bool xx_linuxzimage_handle_base_info(Abstractformat *self, xx_pd_struct *pd) {
     return true;
 }
 
-int64_t xx_linuxzimage_get_format_size(Abstractformat *self,
-                                       xx_pd_struct *pd) {
-    if (!self ||
-        (!self->base_info_handled && !xx_format_handle_base_info(self, pd))) {
+int64_t xx_linuxzimage_get_format_size(Abstractformat *self, xx_pd_struct *pd)
+{
+    if (!self || (!self->base_info_handled && !xx_format_handle_base_info(self, pd))) {
         return -1;
     }
     return self->format_size;
 }
 
-uint32_t xx_linuxzimage_get_start_address(const xx_linuxzimage *image) {
+uint32_t xx_linuxzimage_get_start_address(const xx_linuxzimage *image)
+{
     return image ? image->start_address : 0U;
 }
-uint32_t xx_linuxzimage_get_end_address(const xx_linuxzimage *image) {
+uint32_t xx_linuxzimage_get_end_address(const xx_linuxzimage *image)
+{
     return image ? image->end_address : 0U;
 }
-uint32_t xx_linuxzimage_get_table_offset(const xx_linuxzimage *image) {
+uint32_t xx_linuxzimage_get_table_offset(const xx_linuxzimage *image)
+{
     return image ? image->table_offset : 0U;
 }
-bool xx_linuxzimage_is_code_big_endian(const xx_linuxzimage *image) {
+bool xx_linuxzimage_is_code_big_endian(const xx_linuxzimage *image)
+{
     return image ? image->code_big_endian : false;
 }
-bool xx_linuxzimage_is_header_big_endian(const xx_linuxzimage *image) {
+bool xx_linuxzimage_is_header_big_endian(const xx_linuxzimage *image)
+{
     return image ? image->header_big_endian : false;
 }
-bool xx_linuxzimage_is_kernel_big_endian(const xx_linuxzimage *image) {
+bool xx_linuxzimage_is_kernel_big_endian(const xx_linuxzimage *image)
+{
     return image ? image->kernel_big_endian : false;
 }
-bool xx_linuxzimage_has_endian_flag(const xx_linuxzimage *image) {
+bool xx_linuxzimage_has_endian_flag(const xx_linuxzimage *image)
+{
     return image ? image->has_endian_flag : false;
 }
 
 /* Encoded/structural component members; this does not decode media. */
-static bool xx_components_build(Abstractformat *f, xx_component_stream *s, xx_pd_struct *pd) {
-
+static bool xx_components_build(Abstractformat *f, xx_component_stream *s, xx_pd_struct *pd)
+{
     (void)pd;
-    return xx_component_add(f,s,0,36,"bootstrap-instructions") &&
-        xx_component_add(f,s,40,8,"kernel-load-addresses") &&
-        (f->format_size==48 || xx_component_add(f,s,48,f->format_size-48,"self-decompressing-kernel-body"));
+    return xx_component_add(f, s, 0, 36, "bootstrap-instructions") && xx_component_add(f, s, 40, 8, "kernel-load-addresses") &&
+           (f->format_size == 48 || xx_component_add(f, s, 48, f->format_size - 48, "self-decompressing-kernel-body"));
 }

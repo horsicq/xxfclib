@@ -60,56 +60,43 @@ typedef struct xx_parallels_hdd xx_parallels_hdd_t;
 
 struct xx_parallels_hdd {
     Abstractformat format;
-    uint64_t number_of_records;   /**< Always 1: the guest disk image. */
-    uint64_t virtual_size;        /**< Guest-visible disk size in bytes. */
-    uint64_t nb_sectors;          /**< As used (old magic: low 32 bits). */
-    uint64_t ext_off;             /**< Format Extension sector, 0 if none. */
-    uint64_t data_start;          /**< Effective data area start, sectors. */
-    uint64_t allocated_clusters;  /**< BAT entries that map to file data. */
-    uint32_t version;             /**< Always 2. */
+    uint64_t number_of_records;  /**< Always 1: the guest disk image. */
+    uint64_t virtual_size;       /**< Guest-visible disk size in bytes. */
+    uint64_t nb_sectors;         /**< As used (old magic: low 32 bits). */
+    uint64_t ext_off;            /**< Format Extension sector, 0 if none. */
+    uint64_t data_start;         /**< Effective data area start, sectors. */
+    uint64_t allocated_clusters; /**< BAT entries that map to file data. */
+    uint32_t version;            /**< Always 2. */
     uint32_t heads;
     uint32_t cylinders;
-    uint32_t tracks;              /**< Sectors per cluster. */
-    uint32_t cluster_size;        /**< tracks * 512. */
+    uint32_t tracks;       /**< Sectors per cluster. */
+    uint32_t cluster_size; /**< tracks * 512. */
     uint32_t bat_entries;
     uint32_t in_use;
-    uint32_t data_off;            /**< The header field as stored. */
+    uint32_t data_off; /**< The header field as stored. */
     uint32_t flags;
-    bool is_extended;             /**< "WithouFreSpacExt": BAT in clusters. */
-    bool truncated;               /**< Some mapped data lies past the end. */
+    bool is_extended; /**< "WithouFreSpacExt": BAT in clusters. */
+    bool truncated;   /**< Some mapped data lies past the end. */
 };
 
 /** Size of the fixed header that precedes the BAT. */
 #define XX_PARALLELS_HDD_HEADER_SIZE 64
 
-XXFC_API void xx_parallels_hdd_init(xx_parallels_hdd *image,
-                                    xx_io_device *dev, int64_t base_address);
-XXFC_API xx_parallels_hdd *xx_parallels_hdd_create(xx_io_device *dev,
-                                                   int64_t base_address);
+XXFC_API void xx_parallels_hdd_init(xx_parallels_hdd *image, xx_io_device *dev, int64_t base_address);
+XXFC_API xx_parallels_hdd *xx_parallels_hdd_create(xx_io_device *dev, int64_t base_address);
 XXFC_API void xx_parallels_hdd_destroy(xx_parallels_hdd *image);
 XXFC_API void xx_parallels_hdd_free(xx_parallels_hdd *image);
 
-XXFC_API bool xx_parallels_hdd_check_is_valid(Abstractformat *self,
-                                              xx_pd_struct *pd);
-XXFC_API bool xx_parallels_hdd_handle_base_info(Abstractformat *self,
-                                                xx_pd_struct *pd);
-XXFC_API int64_t xx_parallels_hdd_get_format_size(Abstractformat *self,
-                                                  xx_pd_struct *pd);
-XXFC_API uint64_t xx_parallels_hdd_get_number_of_archive_records(
-    Abstractformat *self, xx_pd_struct *pd);
+XXFC_API bool xx_parallels_hdd_check_is_valid(Abstractformat *self, xx_pd_struct *pd);
+XXFC_API bool xx_parallels_hdd_handle_base_info(Abstractformat *self, xx_pd_struct *pd);
+XXFC_API int64_t xx_parallels_hdd_get_format_size(Abstractformat *self, xx_pd_struct *pd);
+XXFC_API uint64_t xx_parallels_hdd_get_number_of_archive_records(Abstractformat *self, xx_pd_struct *pd);
 
-XXFC_API xx_archive_record_state *
-xx_parallels_hdd_create_archive_records_reading(Abstractformat *self,
-                                                const xx_list_s *options,
-                                                xx_pd_struct *pd);
-XXFC_API const xx_archive_record *xx_parallels_hdd_get_current_archive_record(
-    Abstractformat *self, xx_archive_record_state *state);
-XXFC_API bool xx_parallels_hdd_unpack_current_archive_record(
-    Abstractformat *self, xx_archive_record_state *state, xx_pd_struct *pd);
-XXFC_API bool xx_parallels_hdd_archive_record_move_to_next(
-    Abstractformat *self, xx_archive_record_state *state, xx_pd_struct *pd);
-XXFC_API void xx_parallels_hdd_free_archive_records_reading(
-    Abstractformat *self, xx_archive_record_state *state);
+XXFC_API xx_archive_record_state *xx_parallels_hdd_create_archive_records_reading(Abstractformat *self, const xx_list_s *options, xx_pd_struct *pd);
+XXFC_API const xx_archive_record *xx_parallels_hdd_get_current_archive_record(Abstractformat *self, xx_archive_record_state *state);
+XXFC_API bool xx_parallels_hdd_unpack_current_archive_record(Abstractformat *self, xx_archive_record_state *state, xx_pd_struct *pd);
+XXFC_API bool xx_parallels_hdd_archive_record_move_to_next(Abstractformat *self, xx_archive_record_state *state, xx_pd_struct *pd);
+XXFC_API void xx_parallels_hdd_free_archive_records_reading(Abstractformat *self, xx_archive_record_state *state);
 
 /**
  * @brief Write the guest disk to @p destination.
@@ -117,12 +104,10 @@ XXFC_API void xx_parallels_hdd_free_archive_records_reading(
  * With a NULL destination nothing is written and only the BAT is walked,
  * which checks that every entry can be fetched.
  */
-XXFC_API bool xx_parallels_hdd_unpack_to_device(xx_parallels_hdd *image,
-                                                xx_io_device *destination,
-                                                xx_pd_struct *pd);
+XXFC_API bool xx_parallels_hdd_unpack_to_device(xx_parallels_hdd *image, xx_io_device *destination, xx_pd_struct *pd);
 
-static inline Abstractformat *xx_parallels_hdd_to_format(
-    xx_parallels_hdd *image) {
+static inline Abstractformat *xx_parallels_hdd_to_format(xx_parallels_hdd *image)
+{
     return image ? &image->format : NULL;
 }
 

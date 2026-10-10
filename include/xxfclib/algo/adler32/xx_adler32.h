@@ -30,8 +30,7 @@ extern "C" {
  * @param adler running value; pass XX_ADLER32_INIT for the first block.
  * @return the updated checksum, high half `b`, low half `a`.
  */
-XXFC_API uint32_t xx_adler32_update(uint32_t adler, const void *data,
-                                    size_t size);
+XXFC_API uint32_t xx_adler32_update(uint32_t adler, const void *data, size_t size);
 
 /** @brief Adler-32 of a whole buffer. */
 XXFC_API uint32_t xx_adler32(const void *data, size_t size);

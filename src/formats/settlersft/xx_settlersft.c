@@ -90,17 +90,15 @@ static void xx_settlersft_vtable_destroy(Abstractformat *self);
 
 /* ------------------------------------------------------------- helpers -- */
 
-static bool xx_settlersft_read_at(Abstractformat *self, int64_t offset,
-                              uint8_t *buffer, size_t size) {
+static bool xx_settlersft_read_at(Abstractformat *self, int64_t offset, uint8_t *buffer, size_t size)
+{
     size_t completed = 0U;
 
-    if (!self || !self->device || offset < 0 ||
-        xx_io_seek64(self->device, offset, SEEK_SET) != 0) {
+    if (!self || !self->device || offset < 0 || xx_io_seek64(self->device, offset, SEEK_SET) != 0) {
         return false;
     }
     while (completed < size) {
-        ssize_t received =
-            xx_io_read(self->device, buffer + completed, size - completed);
+        ssize_t received = xx_io_read(self->device, buffer + completed, size - completed);
         if (received <= 0 || (size_t)received > size - completed) return false;
         completed += (size_t)received;
     }
@@ -108,7 +106,8 @@ static bool xx_settlersft_read_at(Abstractformat *self, int64_t offset,
 }
 
 /* Refuse anything that would escape the extraction directory. */
-static bool xx_settlersft_path_safe(const char *path) {
+static bool xx_settlersft_path_safe(const char *path)
+{
     const char *cursor = path;
 
     if (!path || !path[0] || path[0] == '/') return false;
@@ -127,8 +126,8 @@ static bool xx_settlersft_path_safe(const char *path) {
 
 /* Build a filesystem-safe name from raw 8-bit bytes.  Backslashes become
  * path separators, everything a filesystem would object to becomes '_'. */
-static XXFC_MAYBE_UNUSED char *xx_settlersft_make_name(const uint8_t *raw, size_t size,
-                                 bool keep_path) {
+static XXFC_MAYBE_UNUSED char *xx_settlersft_make_name(const uint8_t *raw, size_t size, bool keep_path)
+{
     char *text;
     size_t length = 0U;
     size_t index;
@@ -144,17 +143,13 @@ static XXFC_MAYBE_UNUSED char *xx_settlersft_make_name(const uint8_t *raw, size_
             text[length++] = '/';
             continue;
         }
-        if (c < 0x20U || c > 0x7eU || c == '/' || c == '\\' || c == ':' ||
-            c == '*' || c == '?' || c == '"' || c == '<' || c == '>' ||
-            c == '|') {
+        if (c < 0x20U || c > 0x7eU || c == '/' || c == '\\' || c == ':' || c == '*' || c == '?' || c == '"' || c == '<' || c == '>' || c == '|') {
             text[length++] = '_';
         } else {
             text[length++] = (char)c;
         }
     }
-    while (length != 0U &&
-           (text[length - 1U] == ' ' || text[length - 1U] == '.' ||
-            text[length - 1U] == '/')) {
+    while (length != 0U && (text[length - 1U] == ' ' || text[length - 1U] == '.' || text[length - 1U] == '/')) {
         --length;
     }
     while (length != 0U && text[0] == '/') {
@@ -166,7 +161,8 @@ static XXFC_MAYBE_UNUSED char *xx_settlersft_make_name(const uint8_t *raw, size_
     return text;
 }
 
-static void xx_settlersft_stream_free(void *pointer) {
+static void xx_settlersft_stream_free(void *pointer)
+{
     xx_settlersft_stream *stream = (xx_settlersft_stream *)pointer;
     size_t index;
 
@@ -181,15 +177,14 @@ static void xx_settlersft_stream_free(void *pointer) {
 /* Grow the member vector one entry at a time.  The caller has already bounded
  * the member count against the real file size, so this cannot be driven to an
  * unbounded allocation by a small header. */
-static bool xx_settlersft_add(xx_settlersft_stream *stream,
-                          const xx_settlersft_member *member) {
+static bool xx_settlersft_add(xx_settlersft_stream *stream, const xx_settlersft_member *member)
+{
     if (!stream || !member) return false;
     if (stream->count == stream->capacity) {
         size_t wanted = stream->capacity ? stream->capacity * 2U : 16U;
         xx_settlersft_member *grown;
         if (wanted > SIZE_MAX / sizeof(*grown)) return false;
-        grown = (xx_settlersft_member *)xx_mem_realloc(stream->items,
-                                                   wanted * sizeof(*grown));
+        grown = (xx_settlersft_member *)xx_mem_realloc(stream->items, wanted * sizeof(*grown));
         if (!grown) return false;
         stream->items = grown;
         stream->capacity = wanted;
@@ -199,25 +194,33 @@ static bool xx_settlersft_add(xx_settlersft_stream *stream,
 }
 
 /* Slots are anonymous; the one-based slot index is their stable identity. */
-static char *xx_settlersft_slot_name(uint32_t index, uint32_t kind) {
+static char *xx_settlersft_slot_name(uint32_t index, uint32_t kind)
+{
     char text[48];
     const char *dir = "";
     const char *ext = ".bin";
     int length;
-    if (kind == XX_SETTLERSFT_KIND_BITMAP) { dir = "Bitmaps/"; ext = ".bmp"; }
-    else if (kind == XX_SETTLERSFT_KIND_MASK) { dir = "Masks/"; ext = ".bmp"; }
-    else if (kind == XX_SETTLERSFT_KIND_PALETTE) { dir = "Palettes/"; ext = ".pal"; }
-    else if (kind == XX_SETTLERSFT_KIND_XMI) { dir = "XMIDI/"; ext = ".xmi"; }
+    if (kind == XX_SETTLERSFT_KIND_BITMAP) {
+        dir = "Bitmaps/";
+        ext = ".bmp";
+    } else if (kind == XX_SETTLERSFT_KIND_MASK) {
+        dir = "Masks/";
+        ext = ".bmp";
+    } else if (kind == XX_SETTLERSFT_KIND_PALETTE) {
+        dir = "Palettes/";
+        ext = ".pal";
+    } else if (kind == XX_SETTLERSFT_KIND_XMI) {
+        dir = "XMIDI/";
+        ext = ".xmi";
+    }
     length = snprintf(text, sizeof(text), "%s%04u%s", dir, index, ext);
     return length > 0 && (size_t)length < sizeof(text) ? xx_str_dup(text) : NULL;
 }
 
 /* The same bounded row walk classifies and converts a sprite.  A row ends
  * only on a zero run and must fill exactly its declared width. */
-static bool xx_settlersft_rle(const uint8_t *source, size_t size, int type,
-                              uint32_t width, uint32_t height,
-                              const uint8_t *palette, uint8_t *pixels,
-                              xx_pd_struct *pd) {
+static bool xx_settlersft_rle(const uint8_t *source, size_t size, int type, uint32_t width, uint32_t height, const uint8_t *palette, uint8_t *pixels, xx_pd_struct *pd)
+{
     size_t pos = 0U;
     uint32_t y;
     if (!source || width == 0U || width > 1024U || height == 0U) return false;
@@ -258,43 +261,33 @@ static bool xx_settlersft_rle(const uint8_t *source, size_t size, int type,
     return pos == size;
 }
 
-static uint32_t xx_settlersft_classify(const uint8_t *p, size_t size,
-                                       uint64_t *output_size,
-                                       xx_pd_struct *pd) {
+static uint32_t xx_settlersft_classify(const uint8_t *p, size_t size, uint64_t *output_size, xx_pd_struct *pd)
+{
     uint32_t width, height;
     *output_size = size;
     if (size >= 11U) {
         width = xx_data_get_u16(p + 2, 2, 0, false);
         height = xx_data_get_u16(p + 4, 2, 0, false);
-        if ((int16_t)width > 0 && (int16_t)height > 0 &&
-            xx_settlersft_rle(p + 10, size - 10U,
-                              (int16_t)xx_data_get_u16(p, 2, 0, false), width, height,
-                              NULL, NULL, pd)) {
-            *output_size = XX_SETTLERSFT_BMP_HEADER_SIZE +
-                           (uint64_t)width * height * 4U;
+        if ((int16_t)width > 0 && (int16_t)height > 0 && xx_settlersft_rle(p + 10, size - 10U, (int16_t)xx_data_get_u16(p, 2, 0, false), width, height, NULL, NULL, pd)) {
+            *output_size = XX_SETTLERSFT_BMP_HEADER_SIZE + (uint64_t)width * height * 4U;
             return XX_SETTLERSFT_KIND_MASK;
         }
-        if (xx_data_get_u16(p, 2, 0, false) == 1U && (int16_t)width > 0 &&
-            (int16_t)height > 0 && xx_data_get_u16(p + 6, 2, 0, false) == 0U &&
-            xx_data_get_u16(p + 8, 2, 0, false) == 0U &&
-            (uint64_t)width * height + 10U == size) {
-            *output_size = XX_SETTLERSFT_BMP_HEADER_SIZE +
-                           XX_SETTLERSFT_BMP_PALETTE_SIZE + size - 10U;
+        if (xx_data_get_u16(p, 2, 0, false) == 1U && (int16_t)width > 0 && (int16_t)height > 0 && xx_data_get_u16(p + 6, 2, 0, false) == 0U &&
+            xx_data_get_u16(p + 8, 2, 0, false) == 0U && (uint64_t)width * height + 10U == size) {
+            *output_size = XX_SETTLERSFT_BMP_HEADER_SIZE + XX_SETTLERSFT_BMP_PALETTE_SIZE + size - 10U;
             return XX_SETTLERSFT_KIND_BITMAP;
         }
     }
-    if (size >= 5U && xx_rt_memcmp(p, "FORM", 4U) == 0)
-        return XX_SETTLERSFT_KIND_XMI;
-    if (size == XX_SETTLERSFT_PALETTE_SIZE)
-        return XX_SETTLERSFT_KIND_PALETTE;
+    if (size >= 5U && xx_rt_memcmp(p, "FORM", 4U) == 0) return XX_SETTLERSFT_KIND_XMI;
+    if (size == XX_SETTLERSFT_PALETTE_SIZE) return XX_SETTLERSFT_KIND_PALETTE;
     return XX_SETTLERSFT_KIND_BIN;
 }
 
-static void xx_settlersft_bmp_header(uint8_t *out, uint32_t width,
-                                     uint32_t height, uint32_t bits,
-                                     uint32_t data_size, uint32_t offset) {
+static void xx_settlersft_bmp_header(uint8_t *out, uint32_t width, uint32_t height, uint32_t bits, uint32_t data_size, uint32_t offset)
+{
     xx_mem_zero(out, XX_SETTLERSFT_BMP_HEADER_SIZE);
-    out[0] = 'B'; out[1] = 'M';
+    out[0] = 'B';
+    out[1] = 'M';
     xx_data_set_u32(out + 2, 4, 0, offset + data_size, false);
     xx_data_set_u32(out + 10, 4, 0, offset, false);
     xx_data_set_u32(out + 14, 4, 0, 40U, false);
@@ -309,11 +302,10 @@ static void xx_settlersft_bmp_header(uint8_t *out, uint32_t width,
     }
 }
 
-
 /* --------------------------------------------------------------- parse -- */
 
-static xx_settlersft_stream *xx_settlersft_parse(Abstractformat *self,
-                                         xx_pd_struct *pd) {
+static xx_settlersft_stream *xx_settlersft_parse(Abstractformat *self, xx_pd_struct *pd)
+{
     xx_settlersft_stream *stream = NULL;
     uint8_t head[XX_SETTLERSFT_HEADER_SIZE];
     uint8_t *table = NULL;
@@ -348,9 +340,7 @@ static xx_settlersft_stream *xx_settlersft_parse(Abstractformat *self,
 
     table = (uint8_t *)xx_mem_alloc((size_t)table_size);
     if (!table) return NULL;
-    if (!xx_settlersft_read_at(self,
-                               self->base_address + XX_SETTLERSFT_HEADER_SIZE,
-                               table, (size_t)table_size)) {
+    if (!xx_settlersft_read_at(self, self->base_address + XX_SETTLERSFT_HEADER_SIZE, table, (size_t)table_size)) {
         goto fail;
     }
 
@@ -363,8 +353,7 @@ static xx_settlersft_stream *xx_settlersft_parse(Abstractformat *self,
         int64_t size1 = (int64_t)(int32_t)xx_data_get_u32(table + 8, 4, 0, false);
         int64_t offset1 = (int64_t)(int32_t)xx_data_get_u32(table + 12, 4, 0, false);
 
-        if (offset0 != XX_SETTLERSFT_HEADER_SIZE + table_size || size0 <= 0 ||
-            size1 <= 0 || offset1 != offset0 + size0) {
+        if (offset0 != XX_SETTLERSFT_HEADER_SIZE + table_size || size0 <= 0 || size1 <= 0 || offset1 != offset0 + size0) {
             goto fail;
         }
     }
@@ -374,8 +363,7 @@ static xx_settlersft_stream *xx_settlersft_parse(Abstractformat *self,
     xx_mem_zero(stream, sizeof(*stream));
 
     for (index = 0U; index < count; ++index) {
-        const uint8_t *entry =
-            table + (size_t)(index * (uint64_t)XX_SETTLERSFT_ENTRY_SIZE);
+        const uint8_t *entry = table + (size_t)(index * (uint64_t)XX_SETTLERSFT_ENTRY_SIZE);
         int64_t size = (int64_t)(int32_t)xx_data_get_u32(entry, 4, 0, false);
         int64_t offset = (int64_t)(int32_t)xx_data_get_u32(entry + 4, 4, 0, false);
         xx_settlersft_member member;
@@ -383,21 +371,17 @@ static xx_settlersft_stream *xx_settlersft_parse(Abstractformat *self,
         if (pd && xx_pd_is_stopped(pd)) goto fail;
         /* The palette is located the way the reference implementation does
          * it: the first slot whose size is exactly 768, in use or not. */
-        if (size == XX_SETTLERSFT_PALETTE_SIZE && palette_offset < 0)
-            palette_offset = offset;
+        if (size == XX_SETTLERSFT_PALETTE_SIZE && palette_offset < 0) palette_offset = offset;
         if (offset == 0) continue; /* unused slot */
         /* Every extent is bounded against the real file before it is
          * recorded, so a corrupt table cannot drive a read past the end. */
-        if (offset < 0 || size < 0 || size > XX_SETTLERSFT_MAX_ENTRY_SIZE ||
-            offset > span || size > span - offset) {
+        if (offset < 0 || size < 0 || size > XX_SETTLERSFT_MAX_ENTRY_SIZE || offset > span || size > span - offset) {
             goto fail;
         }
 
         xx_mem_zero(&member, sizeof(member));
         member.slot_index = (uint32_t)(index + 1U);
-        member.header_offset = self->base_address +
-                               XX_SETTLERSFT_HEADER_SIZE +
-                               (int64_t)(index * XX_SETTLERSFT_ENTRY_SIZE);
+        member.header_offset = self->base_address + XX_SETTLERSFT_HEADER_SIZE + (int64_t)(index * XX_SETTLERSFT_ENTRY_SIZE);
         member.header_size = XX_SETTLERSFT_ENTRY_SIZE;
         member.data_offset = self->base_address + offset;
         member.packed_size = size;
@@ -409,10 +393,9 @@ static xx_settlersft_stream *xx_settlersft_parse(Abstractformat *self,
     /* Every archive of this family carries its palette; without it the image
      * members could not be produced and the reference decoder gives up too,
      * so its absence is treated as "not this format". */
-    if (stream->count == 0U || palette_offset < 0 ||
-        palette_offset > span - XX_SETTLERSFT_PALETTE_SIZE ||
-        !xx_settlersft_read_at(self, self->base_address + palette_offset,
-                               stream->palette, sizeof(stream->palette))) goto fail;
+    if (stream->count == 0U || palette_offset < 0 || palette_offset > span - XX_SETTLERSFT_PALETTE_SIZE ||
+        !xx_settlersft_read_at(self, self->base_address + palette_offset, stream->palette, sizeof(stream->palette)))
+        goto fail;
 
     for (index = 0U; index < stream->count; ++index) {
         xx_settlersft_member *member = &stream->items[index];
@@ -420,19 +403,15 @@ static xx_settlersft_stream *xx_settlersft_parse(Abstractformat *self,
         if (pd && xx_pd_is_stopped(pd)) goto fail;
         if (member->packed_size != 0) {
             packed = (uint8_t *)xx_mem_alloc((size_t)member->packed_size);
-            if (!packed || !xx_settlersft_read_at(self, member->data_offset,
-                                packed, (size_t)member->packed_size)) {
+            if (!packed || !xx_settlersft_read_at(self, member->data_offset, packed, (size_t)member->packed_size)) {
                 xx_mem_free(packed);
                 goto fail;
             }
         }
-        member->kind = xx_settlersft_classify(packed,
-                          (size_t)member->packed_size, &member->unpacked_size, pd);
+        member->kind = xx_settlersft_classify(packed, (size_t)member->packed_size, &member->unpacked_size, pd);
         xx_mem_free(packed);
         if (pd && xx_pd_is_stopped(pd)) goto fail;
-        member->method = (member->kind == XX_SETTLERSFT_KIND_MASK ||
-                          member->kind == XX_SETTLERSFT_KIND_BITMAP) ?
-                         XX_SETTLERSFT_METHOD_IMAGE : XX_SETTLERSFT_METHOD_STORE;
+        member->method = (member->kind == XX_SETTLERSFT_KIND_MASK || member->kind == XX_SETTLERSFT_KIND_BITMAP) ? XX_SETTLERSFT_METHOD_IMAGE : XX_SETTLERSFT_METHOD_STORE;
         member->name = xx_settlersft_slot_name(member->slot_index, member->kind);
         if (!member->name) goto fail;
     }
@@ -449,10 +428,8 @@ fail:
 
 /* Read the bounded slot and convert image records to the same BMP layout as
  * the reference implementation. */
-static bool xx_settlersft_decode(Abstractformat *self,
-                             const xx_settlersft_member *member,
-                             const uint8_t *palette, uint8_t **out,
-                             size_t *out_size, xx_pd_struct *pd) {
+static bool xx_settlersft_decode(Abstractformat *self, const xx_settlersft_member *member, const uint8_t *palette, uint8_t **out, size_t *out_size, xx_pd_struct *pd)
+{
     uint8_t *packed;
     uint8_t *output;
     size_t size;
@@ -472,37 +449,34 @@ static bool xx_settlersft_decode(Abstractformat *self,
         xx_mem_free(packed);
         return false;
     }
-    if (member->kind != XX_SETTLERSFT_KIND_MASK &&
-        member->kind != XX_SETTLERSFT_KIND_BITMAP) {
+    if (member->kind != XX_SETTLERSFT_KIND_MASK && member->kind != XX_SETTLERSFT_KIND_BITMAP) {
         *out = packed;
         *out_size = size;
         return true;
     }
-    if (size < 11U || !palette || member->unpacked_size > SIZE_MAX ||
-        member->unpacked_size > UINT32_MAX) {
+    if (size < 11U || !palette || member->unpacked_size > SIZE_MAX || member->unpacked_size > UINT32_MAX) {
         xx_mem_free(packed);
         return false;
     }
     width = xx_data_get_u16(packed + 2, 2, 0, false);
     height = xx_data_get_u16(packed + 4, 2, 0, false);
     output = (uint8_t *)xx_mem_alloc((size_t)member->unpacked_size);
-    if (!output) { xx_mem_free(packed); return false; }
+    if (!output) {
+        xx_mem_free(packed);
+        return false;
+    }
     if (member->kind == XX_SETTLERSFT_KIND_MASK) {
         image_size = width * height * 4U;
-        xx_settlersft_bmp_header(output, width, height, 32U, image_size,
-                                 XX_SETTLERSFT_BMP_HEADER_SIZE);
-        if (!xx_settlersft_rle(packed + 10, size - 10U,
-                               (int16_t)xx_data_get_u16(packed, 2, 0, false),
-                               width, height, palette,
-                               output + XX_SETTLERSFT_BMP_HEADER_SIZE, pd)) {
+        xx_settlersft_bmp_header(output, width, height, 32U, image_size, XX_SETTLERSFT_BMP_HEADER_SIZE);
+        if (!xx_settlersft_rle(packed + 10, size - 10U, (int16_t)xx_data_get_u16(packed, 2, 0, false), width, height, palette, output + XX_SETTLERSFT_BMP_HEADER_SIZE,
+                               pd)) {
             xx_mem_free(output);
             xx_mem_free(packed);
             return false;
         }
     } else {
         uint32_t i;
-        uint32_t offset = XX_SETTLERSFT_BMP_HEADER_SIZE +
-                          XX_SETTLERSFT_BMP_PALETTE_SIZE;
+        uint32_t offset = XX_SETTLERSFT_BMP_HEADER_SIZE + XX_SETTLERSFT_BMP_PALETTE_SIZE;
         /* The original header reports aligned stride while pixel rows are
          * copied as stored.  Preserve that byte-level behaviour. */
         image_size = ((width + 3U) & ~3U) * height;
@@ -522,11 +496,10 @@ static bool xx_settlersft_decode(Abstractformat *self,
     return true;
 }
 
-
 /* ---------------------------------------------------------- lifecycle --- */
 
-void xx_settlersft_init(xx_settlersft *archive, xx_io_device *device,
-                    int64_t base_address) {
+void xx_settlersft_init(xx_settlersft *archive, xx_io_device *device, int64_t base_address)
+{
     if (!archive) return;
     xx_mem_zero(archive, sizeof(*archive));
     xx_format_init(&archive->format, device, base_address);
@@ -539,22 +512,17 @@ void xx_settlersft_init(xx_settlersft *archive, xx_io_device *device,
     archive->format.check_is_valid = xx_settlersft_check_is_valid;
     archive->format.handle_base_info = xx_settlersft_handle_base_info;
     archive->format.get_format_size = xx_settlersft_get_format_size;
-    archive->format.get_number_of_archive_records =
-        xx_settlersft_get_number_of_archive_records;
-    archive->format.create_archive_records_reading =
-        xx_settlersft_create_archive_records_reading;
-    archive->format.get_current_archive_record =
-        xx_settlersft_get_current_archive_record;
-    archive->format.unpack_current_archive_record =
-        xx_settlersft_unpack_current_archive_record;
-    archive->format.archive_record_move_to_next =
-        xx_settlersft_archive_record_move_to_next;
-    archive->format.free_archive_records_reading =
-        xx_settlersft_free_archive_records_reading;
+    archive->format.get_number_of_archive_records = xx_settlersft_get_number_of_archive_records;
+    archive->format.create_archive_records_reading = xx_settlersft_create_archive_records_reading;
+    archive->format.get_current_archive_record = xx_settlersft_get_current_archive_record;
+    archive->format.unpack_current_archive_record = xx_settlersft_unpack_current_archive_record;
+    archive->format.archive_record_move_to_next = xx_settlersft_archive_record_move_to_next;
+    archive->format.free_archive_records_reading = xx_settlersft_free_archive_records_reading;
     archive->format.destroy = xx_settlersft_vtable_destroy;
 }
 
-xx_settlersft *xx_settlersft_create(xx_io_device *device, int64_t base_address) {
+xx_settlersft *xx_settlersft_create(xx_io_device *device, int64_t base_address)
+{
     xx_settlersft *archive = (xx_settlersft *)xx_mem_alloc(sizeof(*archive));
 
     if (!archive) return NULL;
@@ -562,7 +530,8 @@ xx_settlersft *xx_settlersft_create(xx_io_device *device, int64_t base_address) 
     return archive;
 }
 
-void xx_settlersft_destroy(xx_settlersft *archive) {
+void xx_settlersft_destroy(xx_settlersft *archive)
+{
     if (!archive) return;
     /* Not xx_format_destroy: it dispatches through format.destroy, which is
      * the wrapper below, and the two would recurse. */
@@ -571,19 +540,22 @@ void xx_settlersft_destroy(xx_settlersft *archive) {
     archive->number_of_records = 0U;
 }
 
-void xx_settlersft_free(xx_settlersft *archive) {
+void xx_settlersft_free(xx_settlersft *archive)
+{
     if (!archive) return;
     xx_settlersft_destroy(archive);
     xx_mem_free(archive);
 }
 
-static void xx_settlersft_vtable_destroy(Abstractformat *self) {
+static void xx_settlersft_vtable_destroy(Abstractformat *self)
+{
     xx_settlersft_destroy((xx_settlersft *)self);
 }
 
 /* -------------------------------------------------------------- format -- */
 
-bool xx_settlersft_check_is_valid(Abstractformat *self, xx_pd_struct *pd) {
+bool xx_settlersft_check_is_valid(Abstractformat *self, xx_pd_struct *pd)
+{
     xx_settlersft_stream *stream;
 
     if (!self || (pd && xx_pd_is_stopped(pd))) return false;
@@ -593,7 +565,8 @@ bool xx_settlersft_check_is_valid(Abstractformat *self, xx_pd_struct *pd) {
     return true;
 }
 
-bool xx_settlersft_handle_base_info(Abstractformat *self, xx_pd_struct *pd) {
+bool xx_settlersft_handle_base_info(Abstractformat *self, xx_pd_struct *pd)
+{
     xx_settlersft *archive = (xx_settlersft *)self;
     xx_settlersft_stream *stream;
 
@@ -614,18 +587,17 @@ bool xx_settlersft_handle_base_info(Abstractformat *self, xx_pd_struct *pd) {
     return true;
 }
 
-int64_t xx_settlersft_get_format_size(Abstractformat *self, xx_pd_struct *pd) {
-    if (!self ||
-        (!self->base_info_handled && !xx_format_handle_base_info(self, pd))) {
+int64_t xx_settlersft_get_format_size(Abstractformat *self, xx_pd_struct *pd)
+{
+    if (!self || (!self->base_info_handled && !xx_format_handle_base_info(self, pd))) {
         return 0;
     }
     return self->is_valid ? self->format_size : 0;
 }
 
-uint64_t xx_settlersft_get_number_of_archive_records(Abstractformat *self,
-                                                 xx_pd_struct *pd) {
-    if (!self ||
-        (!self->base_info_handled && !xx_format_handle_base_info(self, pd))) {
+uint64_t xx_settlersft_get_number_of_archive_records(Abstractformat *self, xx_pd_struct *pd)
+{
+    if (!self || (!self->base_info_handled && !xx_format_handle_base_info(self, pd))) {
         return 0U;
     }
     return self->is_valid ? ((xx_settlersft *)self)->number_of_records : 0U;
@@ -633,46 +605,36 @@ uint64_t xx_settlersft_get_number_of_archive_records(Abstractformat *self,
 
 /* ------------------------------------------------------------- records -- */
 
-static bool xx_settlersft_set_record(xx_archive_record *record,
-                                 const xx_settlersft_member *member) {
+static bool xx_settlersft_set_record(xx_archive_record *record, const xx_settlersft_member *member)
+{
     xx_archive_record_cleanup(record);
     xx_archive_record_init(record);
     record->header_offset = member->header_offset;
     record->header_size = member->header_size;
     record->data_offset = member->data_offset;
     record->compressed_size = member->packed_size;
-    if (member->has_crc &&
-        !xx_archive_record_set_meta_u64(record, XX_META_ID_CRC32,
-                                        member->crc32)) {
+    if (member->has_crc && !xx_archive_record_set_meta_u64(record, XX_META_ID_CRC32, member->crc32)) {
         return false;
     }
     return xx_archive_record_set_original_name(record, member->name) &&
-           xx_archive_record_set_meta_u64(record, XX_META_ID_COMPRESSED_SIZE,
-                                          (uint64_t)member->packed_size) &&
-           xx_archive_record_set_meta_u64(record, XX_META_ID_UNCOMPRESSED_SIZE,
-                                          member->unpacked_size) &&
-           xx_archive_record_set_meta_u64(record, XX_META_ID_COMPRESSION_METHOD,
-                                          member->method) &&
-           xx_archive_record_set_meta_bool(record, XX_META_ID_IS_FOLDER,
-                                           member->is_folder) &&
-           xx_archive_record_set_meta_bool(record, XX_META_ID_IS_ENCRYPTED,
-                                           false);
+           xx_archive_record_set_meta_u64(record, XX_META_ID_COMPRESSED_SIZE, (uint64_t)member->packed_size) &&
+           xx_archive_record_set_meta_u64(record, XX_META_ID_UNCOMPRESSED_SIZE, member->unpacked_size) &&
+           xx_archive_record_set_meta_u64(record, XX_META_ID_COMPRESSION_METHOD, member->method) &&
+           xx_archive_record_set_meta_bool(record, XX_META_ID_IS_FOLDER, member->is_folder) && xx_archive_record_set_meta_bool(record, XX_META_ID_IS_ENCRYPTED, false);
 }
 
-static bool xx_settlersft_copy_options(xx_list_s *target,
-                                   const xx_list_s *options) {
+static bool xx_settlersft_copy_options(xx_list_s *target, const xx_list_s *options)
+{
     size_t index;
 
     if (!options) return true;
     if (!target) return false;
     for (index = 0U; index < options->count; ++index) {
-        const xx_meta *source =
-            (const xx_meta *)xx_list_at((const xx_list_t *)options, index);
+        const xx_meta *source = (const xx_meta *)xx_list_at((const xx_list_t *)options, index);
         xx_meta copied;
         if (!source) continue;
         xx_meta_init(&copied, source->meta_id);
-        if (!xx_var_copy(&copied.var, &source->var) ||
-            !xx_list_append(target, &copied)) {
+        if (!xx_var_copy(&copied.var, &source->var) || !xx_list_append(target, &copied)) {
             xx_meta_cleanup(&copied);
             return false;
         }
@@ -680,21 +642,20 @@ static bool xx_settlersft_copy_options(xx_list_s *target,
     return true;
 }
 
-static const xx_var *xx_settlersft_get_option(const xx_list_s *options,
-                                          uint32_t meta_id) {
+static const xx_var *xx_settlersft_get_option(const xx_list_s *options, uint32_t meta_id)
+{
     size_t index;
 
     if (!options) return NULL;
     for (index = 0U; index < options->count; ++index) {
-        const xx_meta *meta =
-            (const xx_meta *)xx_list_at((const xx_list_t *)options, index);
+        const xx_meta *meta = (const xx_meta *)xx_list_at((const xx_list_t *)options, index);
         if (meta && meta->meta_id == meta_id) return &meta->var;
     }
     return NULL;
 }
 
-xx_archive_record_state *xx_settlersft_create_archive_records_reading(
-    Abstractformat *self, const xx_list_s *options, xx_pd_struct *pd) {
+xx_archive_record_state *xx_settlersft_create_archive_records_reading(Abstractformat *self, const xx_list_s *options, xx_pd_struct *pd)
+{
     xx_settlersft_stream *stream;
     xx_archive_record_state *state;
 
@@ -710,9 +671,7 @@ xx_archive_record_state *xx_settlersft_create_archive_records_reading(
     state->internal_state = stream;
     state->free_internal = xx_settlersft_stream_free;
     state->total_records = (int64_t)stream->count;
-    if (!xx_settlersft_copy_options(&state->options, options) ||
-        (stream->count != 0U &&
-         !xx_settlersft_set_record(&state->current_record, &stream->items[0]))) {
+    if (!xx_settlersft_copy_options(&state->options, options) || (stream->count != 0U && !xx_settlersft_set_record(&state->current_record, &stream->items[0]))) {
         xx_archive_record_state_free(state);
         return NULL;
     }
@@ -721,20 +680,16 @@ xx_archive_record_state *xx_settlersft_create_archive_records_reading(
     return state;
 }
 
-const xx_archive_record *xx_settlersft_get_current_archive_record(
-    Abstractformat *self, xx_archive_record_state *state) {
-    return self && state && state->format == self && state->has_record
-               ? &state->current_record
-               : NULL;
+const xx_archive_record *xx_settlersft_get_current_archive_record(Abstractformat *self, xx_archive_record_state *state)
+{
+    return self && state && state->format == self && state->has_record ? &state->current_record : NULL;
 }
 
-bool xx_settlersft_archive_record_move_to_next(Abstractformat *self,
-                                           xx_archive_record_state *state,
-                                           xx_pd_struct *pd) {
+bool xx_settlersft_archive_record_move_to_next(Abstractformat *self, xx_archive_record_state *state, xx_pd_struct *pd)
+{
     xx_settlersft_stream *stream;
 
-    if (!self || !state || state->format != self || !state->has_record ||
-        (pd && xx_pd_is_stopped(pd))) {
+    if (!self || !state || state->format != self || !state->has_record || (pd && xx_pd_is_stopped(pd))) {
         return false;
     }
     stream = (xx_settlersft_stream *)state->internal_state;
@@ -746,15 +701,12 @@ bool xx_settlersft_archive_record_move_to_next(Abstractformat *self,
     }
     ++stream->index;
     ++state->current_index;
-    state->has_record =
-        xx_settlersft_set_record(&state->current_record,
-                             &stream->items[stream->index]);
+    state->has_record = xx_settlersft_set_record(&state->current_record, &stream->items[stream->index]);
     return state->has_record;
 }
 
-bool xx_settlersft_unpack_current_archive_record(Abstractformat *self,
-                                             xx_archive_record_state *state,
-                                             xx_pd_struct *pd) {
+bool xx_settlersft_unpack_current_archive_record(Abstractformat *self, xx_archive_record_state *state, xx_pd_struct *pd)
+{
     xx_settlersft_stream *stream;
     const xx_settlersft_member *member;
     const xx_var *path_option;
@@ -766,8 +718,7 @@ bool xx_settlersft_unpack_current_archive_record(Abstractformat *self,
     bool result = false;
     bool created = false;
 
-    if (!self || !state || state->format != self || !state->has_record ||
-        (pd && xx_pd_is_stopped(pd))) {
+    if (!self || !state || state->format != self || !state->has_record || (pd && xx_pd_is_stopped(pd))) {
         return false;
     }
     stream = (xx_settlersft_stream *)state->internal_state;
@@ -775,22 +726,18 @@ bool xx_settlersft_unpack_current_archive_record(Abstractformat *self,
     member = &stream->items[stream->index];
     if (!xx_settlersft_path_safe(member->name)) return false;
 
-    path_option =
-        xx_settlersft_get_option(&state->options, XX_META_ID_OPT_UNPACK_PATH);
+    path_option = xx_settlersft_get_option(&state->options, XX_META_ID_OPT_UNPACK_PATH);
     if (!path_option) {
         /* No destination: decode and discard, which verifies the member
          * without writing anything. */
         if (member->is_folder) return true;
-        result = xx_settlersft_decode(self, member, stream->palette,
-                                      &plain, &plain_size, pd);
+        result = xx_settlersft_decode(self, member, stream->palette, &plain, &plain_size, pd);
         xx_mem_free(plain);
         return result;
     }
-    if (path_option->type == XX_VAR_TYPE_STRING ||
-        path_option->type == XX_VAR_TYPE_STRING_VIEW) {
+    if (path_option->type == XX_VAR_TYPE_STRING || path_option->type == XX_VAR_TYPE_STRING_VIEW) {
         base_path = xx_var_get_str(path_option);
-    } else if (path_option->type == XX_VAR_TYPE_WSTRING ||
-               path_option->type == XX_VAR_TYPE_WSTRING_VIEW) {
+    } else if (path_option->type == XX_VAR_TYPE_WSTRING || path_option->type == XX_VAR_TYPE_WSTRING_VIEW) {
         converted_path = xx_str_unicode_to_utf8(xx_var_get_wstr(path_option));
         base_path = converted_path;
     }
@@ -798,8 +745,7 @@ bool xx_settlersft_unpack_current_archive_record(Abstractformat *self,
         xx_str_free(converted_path);
         return false;
     }
-    if (base_path[0] != '\0' && base_path[xx_str_len(base_path) - 1U] != '/' &&
-        base_path[xx_str_len(base_path) - 1U] != '\\') {
+    if (base_path[0] != '\0' && base_path[xx_str_len(base_path) - 1U] != '/' && base_path[xx_str_len(base_path) - 1U] != '\\') {
         target_path = xx_str_concat3(base_path, "/", member->name);
     } else {
         target_path = xx_str_concat(base_path, member->name);
@@ -812,9 +758,7 @@ bool xx_settlersft_unpack_current_archive_record(Abstractformat *self,
         xx_str_free(target_path);
         return result;
     }
-    if (!xx_store_create_dirs_a(target_path, false) ||
-        !xx_settlersft_decode(self, member, stream->palette,
-                              &plain, &plain_size, pd)) {
+    if (!xx_store_create_dirs_a(target_path, false) || !xx_settlersft_decode(self, member, stream->palette, &plain, &plain_size, pd)) {
         xx_str_free(target_path);
         return false;
     }
@@ -825,8 +769,7 @@ bool xx_settlersft_unpack_current_archive_record(Abstractformat *self,
 
         result = output != NULL;
         while (result && completed < plain_size) {
-            ssize_t sent =
-                xx_io_write(output, plain + completed, plain_size - completed);
+            ssize_t sent = xx_io_write(output, plain + completed, plain_size - completed);
             if (sent <= 0 || (size_t)sent > plain_size - completed) {
                 result = false;
                 break;
@@ -841,8 +784,8 @@ bool xx_settlersft_unpack_current_archive_record(Abstractformat *self,
     return result;
 }
 
-void xx_settlersft_free_archive_records_reading(Abstractformat *self,
-                                            xx_archive_record_state *state) {
+void xx_settlersft_free_archive_records_reading(Abstractformat *self, xx_archive_record_state *state)
+{
     (void)self;
     xx_archive_record_state_free(state);
 }

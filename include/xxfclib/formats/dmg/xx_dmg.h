@@ -120,18 +120,18 @@ typedef struct xx_dmg XDmg;
 
 struct xx_dmg {
     Abstractformat format;
-    uint64_t number_of_records;  /**< One per blkx table. */
+    uint64_t number_of_records; /**< One per blkx table. */
     uint64_t number_of_members;
-    uint64_t sector_count;       /**< The trailer's sector count. */
-    uint32_t version;            /**< The trailer's version, always 4. */
+    uint64_t sector_count; /**< The trailer's sector count. */
+    uint32_t version;      /**< The trailer's version, always 4. */
     uint32_t flags;
     uint32_t image_variant;
-    int64_t koly_offset;         /**< Where the trailer starts, or -1. */
-    int64_t data_fork_offset;    /**< Relative to base_address. */
+    int64_t koly_offset;      /**< Where the trailer starts, or -1. */
+    int64_t data_fork_offset; /**< Relative to base_address. */
     int64_t data_fork_length;
-    int64_t xml_offset;          /**< Relative to base_address. */
+    int64_t xml_offset; /**< Relative to base_address. */
     int64_t xml_length;
-    int64_t archive_end;         /**< End of the trailer, or -1. */
+    int64_t archive_end; /**< End of the trailer, or -1. */
     void *internal;
 };
 
@@ -143,8 +143,7 @@ XXFC_API void xx_dmg_free(xx_dmg *dmg);
 XXFC_API bool xx_dmg_check_is_valid(Abstractformat *self, xx_pd_struct *pd);
 XXFC_API bool xx_dmg_handle_base_info(Abstractformat *self, xx_pd_struct *pd);
 XXFC_API int64_t xx_dmg_get_format_size(Abstractformat *self, xx_pd_struct *pd);
-XXFC_API uint64_t xx_dmg_get_number_of_archive_records(Abstractformat *self,
-                                                       xx_pd_struct *pd);
+XXFC_API uint64_t xx_dmg_get_number_of_archive_records(Abstractformat *self, xx_pd_struct *pd);
 
 /**
  * @brief Whether the device carries a UDIF trailer in its last 512 bytes.
@@ -160,20 +159,13 @@ XXFC_API bool xx_dmg_probe_device(xx_io_device *dev, int64_t base_address);
  *
  * @param index The partition, counted in blkx order.
  */
-XXFC_API bool xx_dmg_unpack_partition_to_device(xx_dmg *dmg, size_t index,
-                                                xx_io_device *destination,
-                                                xx_pd_struct *pd);
+XXFC_API bool xx_dmg_unpack_partition_to_device(xx_dmg *dmg, size_t index, xx_io_device *destination, xx_pd_struct *pd);
 
-XXFC_API xx_archive_record_state *xx_dmg_create_archive_records_reading(
-    Abstractformat *self, const xx_list_s *options, xx_pd_struct *pd);
-XXFC_API const xx_archive_record *xx_dmg_get_current_archive_record(
-    Abstractformat *self, xx_archive_record_state *state);
-XXFC_API bool xx_dmg_unpack_current_archive_record(
-    Abstractformat *self, xx_archive_record_state *state, xx_pd_struct *pd);
-XXFC_API bool xx_dmg_archive_record_move_to_next(
-    Abstractformat *self, xx_archive_record_state *state, xx_pd_struct *pd);
-XXFC_API void xx_dmg_free_archive_records_reading(
-    Abstractformat *self, xx_archive_record_state *state);
+XXFC_API xx_archive_record_state *xx_dmg_create_archive_records_reading(Abstractformat *self, const xx_list_s *options, xx_pd_struct *pd);
+XXFC_API const xx_archive_record *xx_dmg_get_current_archive_record(Abstractformat *self, xx_archive_record_state *state);
+XXFC_API bool xx_dmg_unpack_current_archive_record(Abstractformat *self, xx_archive_record_state *state, xx_pd_struct *pd);
+XXFC_API bool xx_dmg_archive_record_move_to_next(Abstractformat *self, xx_archive_record_state *state, xx_pd_struct *pd);
+XXFC_API void xx_dmg_free_archive_records_reading(Abstractformat *self, xx_archive_record_state *state);
 
 XXFC_API uint64_t xx_dmg_get_number_of_records(const xx_dmg *dmg);
 XXFC_API uint64_t xx_dmg_get_number_of_members(const xx_dmg *dmg);
@@ -182,18 +174,24 @@ XXFC_API int64_t xx_dmg_get_data_fork_length(const xx_dmg *dmg);
 XXFC_API int64_t xx_dmg_get_xml_length(const xx_dmg *dmg);
 XXFC_API int64_t xx_dmg_get_archive_end(const xx_dmg *dmg);
 
-static inline Abstractformat *xx_dmg_to_format(xx_dmg *dmg) {
+static inline Abstractformat *xx_dmg_to_format(xx_dmg *dmg)
+{
     return dmg ? &dmg->format : NULL;
 }
-static inline void XDmg_init(xx_dmg *dmg, xx_io_device *dev,
-                             int64_t base_address) {
+static inline void XDmg_init(xx_dmg *dmg, xx_io_device *dev, int64_t base_address)
+{
     xx_dmg_init(dmg, dev, base_address);
 }
-static inline xx_dmg *XDmg_create(xx_io_device *dev, int64_t base_address) {
+static inline xx_dmg *XDmg_create(xx_io_device *dev, int64_t base_address)
+{
     return xx_dmg_create(dev, base_address);
 }
-static inline void XDmg_free(xx_dmg *dmg) { xx_dmg_free(dmg); }
-static inline bool XDmg_is_valid(xx_dmg *dmg, xx_pd_struct *pd) {
+static inline void XDmg_free(xx_dmg *dmg)
+{
+    xx_dmg_free(dmg);
+}
+static inline bool XDmg_is_valid(xx_dmg *dmg, xx_pd_struct *pd)
+{
     return dmg ? xx_format_is_valid(&dmg->format, pd) : false;
 }
 

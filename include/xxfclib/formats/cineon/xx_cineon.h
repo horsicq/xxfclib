@@ -9,13 +9,15 @@
 #ifdef __cplusplus
 extern "C" {
 #endif
-typedef struct xx_cineon { Abstractformat format; } xx_cineon;
-XXFC_API void xx_cineon_init(xx_cineon *,xx_io_device *,int64_t);
-XXFC_API xx_cineon *xx_cineon_create(xx_io_device *,int64_t);
+typedef struct xx_cineon {
+    Abstractformat format;
+} xx_cineon;
+XXFC_API void xx_cineon_init(xx_cineon *, xx_io_device *, int64_t);
+XXFC_API xx_cineon *xx_cineon_create(xx_io_device *, int64_t);
 XXFC_API void xx_cineon_destroy(xx_cineon *);
 XXFC_API void xx_cineon_free(xx_cineon *);
-XXFC_API bool xx_cineon_check_is_valid(Abstractformat *,xx_pd_struct *);
-XXFC_API bool xx_cineon_handle_base_info(Abstractformat *,xx_pd_struct *);
+XXFC_API bool xx_cineon_check_is_valid(Abstractformat *, xx_pd_struct *);
+XXFC_API bool xx_cineon_handle_base_info(Abstractformat *, xx_pd_struct *);
 #ifdef __cplusplus
 }
 #endif

@@ -67,17 +67,15 @@ static void xx_pyz_vtable_destroy(Abstractformat *self);
 
 /* ------------------------------------------------------------- helpers -- */
 
-static bool xx_pyz_read_at(Abstractformat *self, int64_t offset,
-                              uint8_t *buffer, size_t size) {
+static bool xx_pyz_read_at(Abstractformat *self, int64_t offset, uint8_t *buffer, size_t size)
+{
     size_t completed = 0U;
 
-    if (!self || !self->device || offset < 0 ||
-        xx_io_seek64(self->device, offset, SEEK_SET) != 0) {
+    if (!self || !self->device || offset < 0 || xx_io_seek64(self->device, offset, SEEK_SET) != 0) {
         return false;
     }
     while (completed < size) {
-        ssize_t received =
-            xx_io_read(self->device, buffer + completed, size - completed);
+        ssize_t received = xx_io_read(self->device, buffer + completed, size - completed);
         if (received <= 0 || (size_t)received > size - completed) {
             return false;
         }
@@ -86,14 +84,14 @@ static bool xx_pyz_read_at(Abstractformat *self, int64_t offset,
     return true;
 }
 
-static bool xx_pyz_range_within(int64_t total, int64_t offset,
-                                   int64_t size) {
-    return offset >= 0 && size >= 0 && offset <= total &&
-           size <= total - offset;
+static bool xx_pyz_range_within(int64_t total, int64_t offset, int64_t size)
+{
+    return offset >= 0 && size >= 0 && offset <= total && size <= total - offset;
 }
 
 /* Refuse anything that would escape the extraction directory. */
-static bool xx_pyz_path_safe(const char *name) {
+static bool xx_pyz_path_safe(const char *name)
+{
     const char *cursor = name;
 
     if (!name || !name[0] || name[0] == '/') return false;
@@ -108,7 +106,8 @@ static bool xx_pyz_path_safe(const char *name) {
     return true;
 }
 
-static void xx_pyz_stream_free(void *pointer) {
+static void xx_pyz_stream_free(void *pointer)
+{
     xx_pyz_stream *stream = (xx_pyz_stream *)pointer;
     size_t index;
 
@@ -121,17 +120,15 @@ static void xx_pyz_stream_free(void *pointer) {
 }
 
 /* Append a member, taking ownership of @p name. */
-static bool xx_pyz_add(xx_pyz_stream *stream,
-                          const xx_pyz_member *member) {
-    xx_pyz_member *grown = (xx_pyz_member *)xx_mem_realloc(
-        stream->items, sizeof(*grown) * (stream->count + 1U));
+static bool xx_pyz_add(xx_pyz_stream *stream, const xx_pyz_member *member)
+{
+    xx_pyz_member *grown = (xx_pyz_member *)xx_mem_realloc(stream->items, sizeof(*grown) * (stream->count + 1U));
 
     if (!grown) return false;
     stream->items = grown;
     stream->items[stream->count++] = *member;
     return true;
 }
-
 
 #define XX_PYZ_HEADER_SIZE 12
 #define XX_PYZ_MIN_SIZE 16
@@ -175,7 +172,6 @@ typedef struct xx_pyz_marshal_s {
 
 /* ------------------------------------------------- marshal (TOC) reader -- */
 
-
 /* A marshalled object, reduced to the three shapes a PYZ table of contents is
  * allowed to contain. A sequence's elements are NOT consumed here: the caller
  * knows how many it expects and reads them itself, which is what lets this
@@ -193,12 +189,9 @@ static int64_t xx_pyz_le_i32(const uint8_t *data)
     return (int64_t)value;
 }
 
-static bool xx_pyz_take(xx_pyz_marshal *reader, int64_t size,
-                        const uint8_t **out)
+static bool xx_pyz_take(xx_pyz_marshal *reader, int64_t size, const uint8_t **out)
 {
-    if ((size < 0) || (reader->position < 0) ||
-        (reader->position > reader->size) ||
-        (size > (reader->size - reader->position))) {
+    if ((size < 0) || (reader->position < 0) || (reader->position > reader->size) || (size > (reader->size - reader->position))) {
         return false;
     }
     *out = reader->data + reader->position;
@@ -228,8 +221,7 @@ static bool xx_pyz_read_length(xx_pyz_marshal *reader, int64_t *out)
  * slot has to be reserved in the same order here. */
 static bool xx_pyz_ref_reserve(xx_pyz_marshal *reader, int64_t *index)
 {
-    xx_pyz_value *grown = (xx_pyz_value *)xx_mem_realloc(
-        reader->refs, sizeof(xx_pyz_value) * (size_t)(reader->ref_count + 1));
+    xx_pyz_value *grown = (xx_pyz_value *)xx_mem_realloc(reader->refs, sizeof(xx_pyz_value) * (size_t)(reader->ref_count + 1));
 
     if (!grown) {
         return false;
@@ -242,8 +234,7 @@ static bool xx_pyz_ref_reserve(xx_pyz_marshal *reader, int64_t *index)
     return true;
 }
 
-static bool xx_pyz_read_object(xx_pyz_marshal *reader, xx_pyz_value *value,
-                               int depth)
+static bool xx_pyz_read_object(xx_pyz_marshal *reader, xx_pyz_value *value, int depth)
 {
     const uint8_t *raw = NULL;
     uint8_t code;
@@ -326,14 +317,11 @@ static bool xx_pyz_read_object(xx_pyz_marshal *reader, xx_pyz_value *value,
             magnitude += term;
         }
         value->kind = XX_PYZ_KIND_INT;
-        value->number =
-            (digits < 0) ? -(int64_t)magnitude : (int64_t)magnitude;
-    } else if ((type == 's') || (type == 't') || (type == 'u') ||
-               (type == 'a') || (type == 'A')) {
+        value->number = (digits < 0) ? -(int64_t)magnitude : (int64_t)magnitude;
+    } else if ((type == 's') || (type == 't') || (type == 'u') || (type == 'a') || (type == 'A')) {
         /* bytes, interned string, unicode, ascii, interned ascii: all of them
          * are a 4-byte length followed by that many bytes. */
-        if (!xx_pyz_read_length(reader, &length) ||
-            !xx_pyz_take(reader, length, &raw)) {
+        if (!xx_pyz_read_length(reader, &length) || !xx_pyz_take(reader, length, &raw)) {
             return false;
         }
         value->kind = XX_PYZ_KIND_STR;
@@ -380,8 +368,7 @@ static bool xx_pyz_read_object(xx_pyz_marshal *reader, xx_pyz_value *value,
          * and they are not in the stream a second time. Refuse it rather than
          * desynchronise the reader - a desynchronised reader still produces
          * member-shaped output. */
-        if ((reader->refs[index].kind == XX_PYZ_KIND_SEQ) ||
-            (reader->refs[index].kind == XX_PYZ_KIND_DICT)) {
+        if ((reader->refs[index].kind == XX_PYZ_KIND_SEQ) || (reader->refs[index].kind == XX_PYZ_KIND_DICT)) {
             return false;
         }
         *value = reader->refs[index];
@@ -420,9 +407,7 @@ static bool xx_pyz_name_valid(const uint8_t *data, int64_t size)
     }
     for (index = 0; index < size; index++) {
         character = data[index];
-        if (!(((character >= 'a') && (character <= 'z')) ||
-              ((character >= 'A') && (character <= 'Z')) ||
-              ((character >= '0') && (character <= '9')) ||
+        if (!(((character >= 'a') && (character <= 'z')) || ((character >= 'A') && (character <= 'Z')) || ((character >= '0') && (character <= '9')) ||
               (character == '_') || (character == '.'))) {
             return false;
         }
@@ -433,13 +418,11 @@ static bool xx_pyz_name_valid(const uint8_t *data, int64_t size)
     return true;
 }
 
-static char *xx_pyz_build_name(const uint8_t *data, int64_t size,
-                               bool is_package)
+static char *xx_pyz_build_name(const uint8_t *data, int64_t size, bool is_package)
 {
     /* Bounded by XX_PYZ_MAX_NAME plus the longest suffix. */
     char path[XX_PYZ_MAX_NAME + 32];
-    const char *suffix =
-        is_package ? "/__init__.pyc.marshal" : ".pyc.marshal";
+    const char *suffix = is_package ? "/__init__.pyc.marshal" : ".pyc.marshal";
     int64_t position = 0;
     int64_t index;
 
@@ -522,8 +505,7 @@ static xx_pyz_stream *xx_pyz_parse(Abstractformat *self, xx_pd_struct *pd)
     if (!toc) {
         return NULL;
     }
-    if (!xx_pyz_read_at(self, self->base_address + toc_offset, toc,
-                        (size_t)toc_size)) {
+    if (!xx_pyz_read_at(self, self->base_address + toc_offset, toc, (size_t)toc_size)) {
         xx_mem_free(toc);
         return NULL;
     }
@@ -561,8 +543,7 @@ static xx_pyz_stream *xx_pyz_parse(Abstractformat *self, xx_pd_struct *pd)
          * these counts is exact - a tuple of a different width means the blob
          * is not a PYZ table of contents, whatever else it parses as. */
         if (!dictionary) {
-            if (!xx_pyz_read_object(&reader, &item, 1) ||
-                (item.kind != XX_PYZ_KIND_SEQ) || (item.count != 2)) {
+            if (!xx_pyz_read_object(&reader, &item, 1) || (item.kind != XX_PYZ_KIND_SEQ) || (item.count != 2)) {
                 goto fail;
             }
         }
@@ -600,8 +581,7 @@ static xx_pyz_stream *xx_pyz_parse(Abstractformat *self, xx_pd_struct *pd)
          * containment rule that ties the TOC offset, the member offsets and
          * the file length together: a member reaching into the TOC, or past
          * EOF, is a rejection. */
-        if ((data_offset < XX_PYZ_HEADER_SIZE) || (data_size < 0) ||
-            !xx_pyz_range_within(toc_offset, data_offset, data_size)) {
+        if ((data_offset < XX_PYZ_HEADER_SIZE) || (data_size < 0) || !xx_pyz_range_within(toc_offset, data_offset, data_size)) {
             goto fail;
         }
 
@@ -614,8 +594,7 @@ static xx_pyz_stream *xx_pyz_parse(Abstractformat *self, xx_pd_struct *pd)
             }
             continue;
         }
-        if ((entry_type != XX_PYZ_ENTRY_MODULE) &&
-            (entry_type != XX_PYZ_ENTRY_PACKAGE)) {
+        if ((entry_type != XX_PYZ_ENTRY_MODULE) && (entry_type != XX_PYZ_ENTRY_PACKAGE)) {
             goto fail;
         }
         if (data_size < XX_PYZ_MIN_STREAM) {
@@ -628,8 +607,7 @@ static xx_pyz_stream *xx_pyz_parse(Abstractformat *self, xx_pd_struct *pd)
         for (other = 0; other < (int64_t)stream->count; other++) {
             other_begin = stream->items[other].data_offset - self->base_address;
             other_end = other_begin + stream->items[other].compressed_size;
-            if ((data_offset < other_end) &&
-                (other_begin < (data_offset + data_size))) {
+            if ((data_offset < other_end) && (other_begin < (data_offset + data_size))) {
                 goto fail;
             }
         }
@@ -642,8 +620,7 @@ static xx_pyz_stream *xx_pyz_parse(Abstractformat *self, xx_pd_struct *pd)
          * a pair of plausible-looking numbers implausible; the decode proves
          * the stream is complete, but only when something asks for the bytes,
          * and validity must not depend on that. */
-        if (!xx_pyz_read_at(self, self->base_address + data_offset, signature,
-                            sizeof(signature))) {
+        if (!xx_pyz_read_at(self, self->base_address + data_offset, signature, sizeof(signature))) {
             goto fail;
         }
         if (!xx_zlib_stream_header_is_valid(signature, sizeof(signature))) {
@@ -651,8 +628,7 @@ static xx_pyz_stream *xx_pyz_parse(Abstractformat *self, xx_pd_struct *pd)
         }
 
         xx_mem_zero(&member, sizeof(member));
-        member.name = xx_pyz_build_name(toc + name.offset, name.size,
-                                        entry_type == XX_PYZ_ENTRY_PACKAGE);
+        member.name = xx_pyz_build_name(toc + name.offset, name.size, entry_type == XX_PYZ_ENTRY_PACKAGE);
         if (!member.name) {
             goto fail;
         }
@@ -682,8 +658,7 @@ static xx_pyz_stream *xx_pyz_parse(Abstractformat *self, xx_pd_struct *pd)
      * shape above this is the strongest check in the format: a random tail
      * that happens to start with a list code has to consume itself to the
      * last byte and no further. Do not relax this to "<=". */
-    if (reader.position != reader.size ||
-        (dictionary && !dictionary_ended)) {
+    if (reader.position != reader.size || (dictionary && !dictionary_ended)) {
         goto fail;
     }
     /* A table of contents of nothing but namespace markers has no bytes in
@@ -713,10 +688,7 @@ fail:
 
 /* -------------------------------------------------------------- decode -- */
 
-static bool xx_pyz_decode_core(Abstractformat *self,
-                               const xx_pyz_member *member, uint8_t **out,
-                               size_t *out_size, xx_pd_struct *pd,
-                               bool require_trailer)
+static bool xx_pyz_decode_core(Abstractformat *self, const xx_pyz_member *member, uint8_t **out, size_t *out_size, xx_pd_struct *pd, bool require_trailer)
 {
     uint8_t *compressed = NULL;
     uint8_t *plain = NULL;
@@ -736,12 +708,10 @@ static bool xx_pyz_decode_core(Abstractformat *self,
      * itself publish keeps a future entry type from being inflated as if it
      * were a module - silently guessing is how garbage gets written out as
      * data. */
-    if ((member->method != (uint32_t)XX_PYZ_ENTRY_MODULE) &&
-        (member->method != (uint32_t)XX_PYZ_ENTRY_PACKAGE)) {
+    if ((member->method != (uint32_t)XX_PYZ_ENTRY_MODULE) && (member->method != (uint32_t)XX_PYZ_ENTRY_PACKAGE)) {
         return false;
     }
-    if ((member->compressed_size < XX_PYZ_MIN_STREAM) ||
-        (member->compressed_size > (int64_t)XX_PYZ_MAX_DECODED)) {
+    if ((member->compressed_size < XX_PYZ_MIN_STREAM) || (member->compressed_size > (int64_t)XX_PYZ_MAX_DECODED)) {
         return false;
     }
     if (pd && xx_pd_is_stopped(pd)) {
@@ -753,9 +723,7 @@ static bool xx_pyz_decode_core(Abstractformat *self,
     if (!compressed) {
         return false;
     }
-    if (!xx_pyz_read_at(self, member->data_offset, compressed,
-                        compressed_size) ||
-        (pd && xx_pd_is_stopped(pd))) {
+    if (!xx_pyz_read_at(self, member->data_offset, compressed, compressed_size) || (pd && xx_pd_is_stopped(pd))) {
         xx_mem_free(compressed);
         return false;
     }
@@ -764,9 +732,7 @@ static bool xx_pyz_decode_core(Abstractformat *self,
      * guessed and grown. Deflate on marshalled bytecode rarely beats 8:1, so
      * the first guess is almost always the only one; the cap is what keeps a
      * hostile member from turning a few bytes into an unbounded allocation. */
-    capacity = (compressed_size < (size_t)(XX_PYZ_MAX_DECODED / 8))
-                   ? (compressed_size * 8)
-                   : (size_t)XX_PYZ_MAX_DECODED;
+    capacity = (compressed_size < (size_t)(XX_PYZ_MAX_DECODED / 8)) ? (compressed_size * 8) : (size_t)XX_PYZ_MAX_DECODED;
     if (capacity < 4096) {
         capacity = 4096;
     }
@@ -777,17 +743,13 @@ static bool xx_pyz_decode_core(Abstractformat *self,
             failed = true;
             break;
         }
-        if (xx_zlib_stream_decode_memory(compressed, compressed_size, plain,
-                                         capacity, &written) &&
-            (written <= capacity)) {
+        if (xx_zlib_stream_decode_memory(compressed, compressed_size, plain, capacity, &written) && (written <= capacity)) {
             /* The Adler-32 in the trailer covers the WHOLE plaintext, and the
              * table of contents cuts the stream at its last byte, so a match
              * proves the decode ran to the end. With no stored uncompressed
              * size to compare against, this is the only thing standing
              * between a truncated member and a caller that believes it. */
-            if (!require_trailer ||
-                xx_zlib_stream_trailer_matches(compressed, compressed_size,
-                                               plain, written)) {
+            if (!require_trailer || xx_zlib_stream_trailer_matches(compressed, compressed_size, plain, written)) {
                 decoded = true;
                 break;
             }
@@ -804,9 +766,7 @@ static bool xx_pyz_decode_core(Abstractformat *self,
             failed = true;
             break;
         }
-        capacity = (capacity > (size_t)(XX_PYZ_MAX_DECODED / 2))
-                       ? (size_t)XX_PYZ_MAX_DECODED
-                       : (capacity * 2);
+        capacity = (capacity > (size_t)(XX_PYZ_MAX_DECODED / 2)) ? (size_t)XX_PYZ_MAX_DECODED : (capacity * 2);
         if (pd && xx_pd_is_stopped(pd)) {
             failed = true;
         }
@@ -824,8 +784,7 @@ static bool xx_pyz_decode_core(Abstractformat *self,
     return true;
 }
 
-static bool xx_pyz_decode(Abstractformat *self, const xx_pyz_member *member,
-                          uint8_t **out, size_t *out_size, xx_pd_struct *pd)
+static bool xx_pyz_decode(Abstractformat *self, const xx_pyz_member *member, uint8_t **out, size_t *out_size, xx_pd_struct *pd)
 {
     /* Handing bytes to a caller requires the Adler-32 to agree: it is the
      * only proof the stream decoded whole. */
@@ -839,7 +798,8 @@ static bool xx_pyz_decode(Abstractformat *self, const xx_pyz_member *member,
  * Reporting "unknown" instead would be worse than wrong - a caller that skips
  * unknown-size members never asks for the bytes, so the checksum never gets
  * to refuse anything. */
-static void xx_pyz_measure(Abstractformat *self, xx_pyz_member *member) {
+static void xx_pyz_measure(Abstractformat *self, xx_pyz_member *member)
+{
     uint8_t *plain = NULL;
     size_t plain_size = 0U;
 
@@ -858,8 +818,8 @@ static void xx_pyz_measure(Abstractformat *self, xx_pyz_member *member) {
 
 /* ---------------------------------------------------------- lifecycle --- */
 
-void xx_pyz_init(xx_pyz *archive, xx_io_device *device,
-                    int64_t base_address) {
+void xx_pyz_init(xx_pyz *archive, xx_io_device *device, int64_t base_address)
+{
     if (!archive) return;
     xx_mem_zero(archive, sizeof(*archive));
     xx_format_init(&archive->format, device, base_address);
@@ -872,22 +832,17 @@ void xx_pyz_init(xx_pyz *archive, xx_io_device *device,
     archive->format.check_is_valid = xx_pyz_check_is_valid;
     archive->format.handle_base_info = xx_pyz_handle_base_info;
     archive->format.get_format_size = xx_pyz_get_format_size;
-    archive->format.get_number_of_archive_records =
-        xx_pyz_get_number_of_archive_records;
-    archive->format.create_archive_records_reading =
-        xx_pyz_create_archive_records_reading;
-    archive->format.get_current_archive_record =
-        xx_pyz_get_current_archive_record;
-    archive->format.unpack_current_archive_record =
-        xx_pyz_unpack_current_archive_record;
-    archive->format.archive_record_move_to_next =
-        xx_pyz_archive_record_move_to_next;
-    archive->format.free_archive_records_reading =
-        xx_pyz_free_archive_records_reading;
+    archive->format.get_number_of_archive_records = xx_pyz_get_number_of_archive_records;
+    archive->format.create_archive_records_reading = xx_pyz_create_archive_records_reading;
+    archive->format.get_current_archive_record = xx_pyz_get_current_archive_record;
+    archive->format.unpack_current_archive_record = xx_pyz_unpack_current_archive_record;
+    archive->format.archive_record_move_to_next = xx_pyz_archive_record_move_to_next;
+    archive->format.free_archive_records_reading = xx_pyz_free_archive_records_reading;
     archive->format.destroy = xx_pyz_vtable_destroy;
 }
 
-xx_pyz *xx_pyz_create(xx_io_device *device, int64_t base_address) {
+xx_pyz *xx_pyz_create(xx_io_device *device, int64_t base_address)
+{
     xx_pyz *archive = (xx_pyz *)xx_mem_alloc(sizeof(*archive));
 
     if (!archive) return NULL;
@@ -895,7 +850,8 @@ xx_pyz *xx_pyz_create(xx_io_device *device, int64_t base_address) {
     return archive;
 }
 
-void xx_pyz_destroy(xx_pyz *archive) {
+void xx_pyz_destroy(xx_pyz *archive)
+{
     if (!archive) return;
     /* Not xx_format_destroy: it dispatches through format.destroy, which is
      * the wrapper below, and the two would recurse. */
@@ -904,19 +860,22 @@ void xx_pyz_destroy(xx_pyz *archive) {
     archive->number_of_records = 0U;
 }
 
-void xx_pyz_free(xx_pyz *archive) {
+void xx_pyz_free(xx_pyz *archive)
+{
     if (!archive) return;
     xx_pyz_destroy(archive);
     xx_mem_free(archive);
 }
 
-static void xx_pyz_vtable_destroy(Abstractformat *self) {
+static void xx_pyz_vtable_destroy(Abstractformat *self)
+{
     xx_pyz_destroy((xx_pyz *)self);
 }
 
 /* -------------------------------------------------------------- format -- */
 
-bool xx_pyz_check_is_valid(Abstractformat *self, xx_pd_struct *pd) {
+bool xx_pyz_check_is_valid(Abstractformat *self, xx_pd_struct *pd)
+{
     xx_pyz_stream *stream;
 
     if (!self || (pd && xx_pd_is_stopped(pd))) return false;
@@ -926,7 +885,8 @@ bool xx_pyz_check_is_valid(Abstractformat *self, xx_pd_struct *pd) {
     return true;
 }
 
-bool xx_pyz_handle_base_info(Abstractformat *self, xx_pd_struct *pd) {
+bool xx_pyz_handle_base_info(Abstractformat *self, xx_pd_struct *pd)
+{
     xx_pyz *archive = (xx_pyz *)self;
     xx_pyz_stream *stream;
 
@@ -947,18 +907,17 @@ bool xx_pyz_handle_base_info(Abstractformat *self, xx_pd_struct *pd) {
     return true;
 }
 
-int64_t xx_pyz_get_format_size(Abstractformat *self, xx_pd_struct *pd) {
-    if (!self ||
-        (!self->base_info_handled && !xx_format_handle_base_info(self, pd))) {
+int64_t xx_pyz_get_format_size(Abstractformat *self, xx_pd_struct *pd)
+{
+    if (!self || (!self->base_info_handled && !xx_format_handle_base_info(self, pd))) {
         return 0;
     }
     return self->is_valid ? self->format_size : 0;
 }
 
-uint64_t xx_pyz_get_number_of_archive_records(Abstractformat *self,
-                                                 xx_pd_struct *pd) {
-    if (!self ||
-        (!self->base_info_handled && !xx_format_handle_base_info(self, pd))) {
+uint64_t xx_pyz_get_number_of_archive_records(Abstractformat *self, xx_pd_struct *pd)
+{
+    if (!self || (!self->base_info_handled && !xx_format_handle_base_info(self, pd))) {
         return 0U;
     }
     return self->is_valid ? ((xx_pyz *)self)->number_of_records : 0U;
@@ -966,8 +925,8 @@ uint64_t xx_pyz_get_number_of_archive_records(Abstractformat *self,
 
 /* ------------------------------------------------------------- records -- */
 
-static bool xx_pyz_set_record(Abstractformat *self, xx_archive_record *record,
-                                 xx_pyz_member *member) {
+static bool xx_pyz_set_record(Abstractformat *self, xx_archive_record *record, xx_pyz_member *member)
+{
     xx_pyz_measure(self, member);
     xx_archive_record_cleanup(record);
     xx_archive_record_init(record);
@@ -976,34 +935,24 @@ static bool xx_pyz_set_record(Abstractformat *self, xx_archive_record *record,
     record->data_offset = member->data_offset;
     record->compressed_size = member->compressed_size;
     return xx_archive_record_set_original_name(record, member->name) &&
-           xx_archive_record_set_meta_u64(record, XX_META_ID_COMPRESSED_SIZE,
-                                          (uint64_t)member->compressed_size) &&
-           xx_archive_record_set_meta_u64(
-               record, XX_META_ID_UNCOMPRESSED_SIZE,
-               (uint64_t)member->uncompressed_size) &&
-           xx_archive_record_set_meta_u64(record, XX_META_ID_COMPRESSION_METHOD,
-                                          member->method) &&
-           xx_archive_record_set_meta_u64(record, XX_META_ID_TIMESTAMP,
-                                          member->timestamp) &&
-           xx_archive_record_set_meta_bool(record, XX_META_ID_IS_FOLDER,
-                                           member->is_folder) &&
-           xx_archive_record_set_meta_bool(record, XX_META_ID_IS_ENCRYPTED,
-                                           false);
+           xx_archive_record_set_meta_u64(record, XX_META_ID_COMPRESSED_SIZE, (uint64_t)member->compressed_size) &&
+           xx_archive_record_set_meta_u64(record, XX_META_ID_UNCOMPRESSED_SIZE, (uint64_t)member->uncompressed_size) &&
+           xx_archive_record_set_meta_u64(record, XX_META_ID_COMPRESSION_METHOD, member->method) &&
+           xx_archive_record_set_meta_u64(record, XX_META_ID_TIMESTAMP, member->timestamp) &&
+           xx_archive_record_set_meta_bool(record, XX_META_ID_IS_FOLDER, member->is_folder) && xx_archive_record_set_meta_bool(record, XX_META_ID_IS_ENCRYPTED, false);
 }
 
-static bool xx_pyz_copy_options(xx_list_s *target,
-                                   const xx_list_s *options) {
+static bool xx_pyz_copy_options(xx_list_s *target, const xx_list_s *options)
+{
     size_t index;
 
     if (!target || !options) return options == NULL;
     for (index = 0U; index < options->count; ++index) {
-        const xx_meta *source =
-            (const xx_meta *)xx_list_at((const xx_list_t *)options, index);
+        const xx_meta *source = (const xx_meta *)xx_list_at((const xx_list_t *)options, index);
         xx_meta copied;
         if (!source) continue;
         xx_meta_init(&copied, source->meta_id);
-        if (!xx_var_copy(&copied.var, &source->var) ||
-            !xx_list_append(target, &copied)) {
+        if (!xx_var_copy(&copied.var, &source->var) || !xx_list_append(target, &copied)) {
             xx_meta_cleanup(&copied);
             return false;
         }
@@ -1011,21 +960,20 @@ static bool xx_pyz_copy_options(xx_list_s *target,
     return true;
 }
 
-static const xx_var *xx_pyz_get_option(const xx_list_s *options,
-                                          uint32_t meta_id) {
+static const xx_var *xx_pyz_get_option(const xx_list_s *options, uint32_t meta_id)
+{
     size_t index;
 
     if (!options) return NULL;
     for (index = 0U; index < options->count; ++index) {
-        const xx_meta *meta =
-            (const xx_meta *)xx_list_at((const xx_list_t *)options, index);
+        const xx_meta *meta = (const xx_meta *)xx_list_at((const xx_list_t *)options, index);
         if (meta && meta->meta_id == meta_id) return &meta->var;
     }
     return NULL;
 }
 
-xx_archive_record_state *xx_pyz_create_archive_records_reading(
-    Abstractformat *self, const xx_list_s *options, xx_pd_struct *pd) {
+xx_archive_record_state *xx_pyz_create_archive_records_reading(Abstractformat *self, const xx_list_s *options, xx_pd_struct *pd)
+{
     xx_pyz_stream *stream;
     xx_archive_record_state *state;
 
@@ -1041,10 +989,7 @@ xx_archive_record_state *xx_pyz_create_archive_records_reading(
     state->internal_state = stream;
     state->free_internal = xx_pyz_stream_free;
     state->total_records = (int64_t)stream->count;
-    if (!xx_pyz_copy_options(&state->options, options) ||
-        (stream->count != 0U &&
-         !xx_pyz_set_record(self, &state->current_record,
-                            &stream->items[0]))) {
+    if (!xx_pyz_copy_options(&state->options, options) || (stream->count != 0U && !xx_pyz_set_record(self, &state->current_record, &stream->items[0]))) {
         xx_archive_record_state_free(state);
         return NULL;
     }
@@ -1053,20 +998,16 @@ xx_archive_record_state *xx_pyz_create_archive_records_reading(
     return state;
 }
 
-const xx_archive_record *xx_pyz_get_current_archive_record(
-    Abstractformat *self, xx_archive_record_state *state) {
-    return self && state && state->format == self && state->has_record
-               ? &state->current_record
-               : NULL;
+const xx_archive_record *xx_pyz_get_current_archive_record(Abstractformat *self, xx_archive_record_state *state)
+{
+    return self && state && state->format == self && state->has_record ? &state->current_record : NULL;
 }
 
-bool xx_pyz_archive_record_move_to_next(Abstractformat *self,
-                                           xx_archive_record_state *state,
-                                           xx_pd_struct *pd) {
+bool xx_pyz_archive_record_move_to_next(Abstractformat *self, xx_archive_record_state *state, xx_pd_struct *pd)
+{
     xx_pyz_stream *stream;
 
-    if (!self || !state || state->format != self || !state->has_record ||
-        (pd && xx_pd_is_stopped(pd))) {
+    if (!self || !state || state->format != self || !state->has_record || (pd && xx_pd_is_stopped(pd))) {
         return false;
     }
     stream = (xx_pyz_stream *)state->internal_state;
@@ -1078,14 +1019,12 @@ bool xx_pyz_archive_record_move_to_next(Abstractformat *self,
     }
     ++stream->index;
     ++state->current_index;
-    state->has_record = xx_pyz_set_record(self, &state->current_record,
-                                             &stream->items[stream->index]);
+    state->has_record = xx_pyz_set_record(self, &state->current_record, &stream->items[stream->index]);
     return state->has_record;
 }
 
-bool xx_pyz_unpack_current_archive_record(Abstractformat *self,
-                                             xx_archive_record_state *state,
-                                             xx_pd_struct *pd) {
+bool xx_pyz_unpack_current_archive_record(Abstractformat *self, xx_archive_record_state *state, xx_pd_struct *pd)
+{
     xx_pyz_stream *stream;
     const xx_pyz_member *member;
     const xx_var *path_option;
@@ -1097,8 +1036,7 @@ bool xx_pyz_unpack_current_archive_record(Abstractformat *self,
     bool result = false;
     bool created = false;
 
-    if (!self || !state || state->format != self || !state->has_record ||
-        (pd && xx_pd_is_stopped(pd))) {
+    if (!self || !state || state->format != self || !state->has_record || (pd && xx_pd_is_stopped(pd))) {
         return false;
     }
     stream = (xx_pyz_stream *)state->internal_state;
@@ -1106,8 +1044,7 @@ bool xx_pyz_unpack_current_archive_record(Abstractformat *self,
     member = &stream->items[stream->index];
     if (!xx_pyz_path_safe(member->name)) return false;
 
-    path_option = xx_pyz_get_option(&state->options,
-                                       XX_META_ID_OPT_UNPACK_PATH);
+    path_option = xx_pyz_get_option(&state->options, XX_META_ID_OPT_UNPACK_PATH);
     if (!path_option) {
         /* No destination: decode and discard, which verifies the member
          * without writing anything. */
@@ -1116,11 +1053,9 @@ bool xx_pyz_unpack_current_archive_record(Abstractformat *self,
         xx_mem_free(plain);
         return result;
     }
-    if (path_option->type == XX_VAR_TYPE_STRING ||
-        path_option->type == XX_VAR_TYPE_STRING_VIEW) {
+    if (path_option->type == XX_VAR_TYPE_STRING || path_option->type == XX_VAR_TYPE_STRING_VIEW) {
         base_path = xx_var_get_str(path_option);
-    } else if (path_option->type == XX_VAR_TYPE_WSTRING ||
-               path_option->type == XX_VAR_TYPE_WSTRING_VIEW) {
+    } else if (path_option->type == XX_VAR_TYPE_WSTRING || path_option->type == XX_VAR_TYPE_WSTRING_VIEW) {
         converted_path = xx_str_unicode_to_utf8(xx_var_get_wstr(path_option));
         base_path = converted_path;
     }
@@ -1128,9 +1063,7 @@ bool xx_pyz_unpack_current_archive_record(Abstractformat *self,
         xx_str_free(converted_path);
         return false;
     }
-    if (base_path[0] != '\0' &&
-        base_path[xx_str_len(base_path) - 1U] != '/' &&
-        base_path[xx_str_len(base_path) - 1U] != '\\') {
+    if (base_path[0] != '\0' && base_path[xx_str_len(base_path) - 1U] != '/' && base_path[xx_str_len(base_path) - 1U] != '\\') {
         target_path = xx_str_concat3(base_path, "/", member->name);
     } else {
         target_path = xx_str_concat(base_path, member->name);
@@ -1143,8 +1076,7 @@ bool xx_pyz_unpack_current_archive_record(Abstractformat *self,
         xx_str_free(target_path);
         return result;
     }
-    if (!xx_store_create_dirs_a(target_path, false) ||
-        !xx_pyz_decode(self, member, &plain, &plain_size, pd)) {
+    if (!xx_store_create_dirs_a(target_path, false) || !xx_pyz_decode(self, member, &plain, &plain_size, pd)) {
         xx_str_free(target_path);
         return false;
     }
@@ -1155,8 +1087,7 @@ bool xx_pyz_unpack_current_archive_record(Abstractformat *self,
 
         result = output != NULL;
         while (result && completed < plain_size) {
-            ssize_t sent = xx_io_write(output, plain + completed,
-                                       plain_size - completed);
+            ssize_t sent = xx_io_write(output, plain + completed, plain_size - completed);
             if (sent <= 0 || (size_t)sent > plain_size - completed) {
                 result = false;
                 break;
@@ -1171,8 +1102,8 @@ bool xx_pyz_unpack_current_archive_record(Abstractformat *self,
     return result;
 }
 
-void xx_pyz_free_archive_records_reading(Abstractformat *self,
-                                            xx_archive_record_state *state) {
+void xx_pyz_free_archive_records_reading(Abstractformat *self, xx_archive_record_state *state)
+{
     (void)self;
     xx_archive_record_state_free(state);
 }

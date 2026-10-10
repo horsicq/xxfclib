@@ -76,12 +76,11 @@ static void xx_logfs_vtable_destroy(Abstractformat *self);
 
 /* ------------------------------------------------------------- helpers -- */
 
-static bool xx_logfs_read_at(xx_io_device *device, int64_t offset, void *data,
-                             size_t size) {
+static bool xx_logfs_read_at(xx_io_device *device, int64_t offset, void *data, size_t size)
+{
     uint8_t *out = (uint8_t *)data;
     size_t done = 0U;
-    if (!device || (!data && size != 0U) || offset < 0 ||
-        xx_io_seek64(device, offset, SEEK_SET) != 0) {
+    if (!device || (!data && size != 0U) || offset < 0 || xx_io_seek64(device, offset, SEEK_SET) != 0) {
         return false;
     }
     while (done < size) {
@@ -93,17 +92,17 @@ static bool xx_logfs_read_at(xx_io_device *device, int64_t offset, void *data,
 }
 
 /* True when [offset, offset + size) lies inside [0, total_size). */
-static bool xx_logfs_range_within(int64_t total_size, int64_t offset,
-                                  int64_t size) {
-    return (total_size >= 0) && (offset >= 0) && (size >= 0) &&
-           (offset <= total_size) && (size <= total_size - offset);
+static bool xx_logfs_range_within(int64_t total_size, int64_t offset, int64_t size)
+{
+    return (total_size >= 0) && (offset >= 0) && (size >= 0) && (offset <= total_size) && (size <= total_size - offset);
 }
 
 /* The kernel's logfs_crc32() is cpu_to_be32(crc32(~0, data, len)), and
  * crc32() there is crc32_le(), which neither pre- nor post-complements. The
  * library's xx_crc32_calc() is the zlib form - it complements both ends - so
  * one final complement converts between the two. */
-uint32_t xx_logfs_crc32(const void *data, size_t size) {
+uint32_t xx_logfs_crc32(const void *data, size_t size)
+{
     return ~xx_crc32_calc(0U, data, size);
 }
 
@@ -111,28 +110,26 @@ uint32_t xx_logfs_crc32(const void *data, size_t size) {
 
 /* Decode and validate one 0x100-byte superblock image. Returns false unless
  * the magic, both CRCs and the geometry all hold. */
-static bool xx_logfs_decode_super(const uint8_t *raw, xx_logfs_super *out) {
+static bool xx_logfs_decode_super(const uint8_t *raw, xx_logfs_super *out)
+{
     uint32_t stored_sh_crc;
     uint32_t stored_ds_crc;
     size_t index;
     if (!raw || !out) return false;
     xx_mem_zero(out, sizeof(*out));
 
-    if (xx_data_get_u64(raw, XX_LOGFS_DISK_SUPER_SIZE, 24U, true) !=
-        XX_LOGFS_MAGIC) {
+    if (xx_data_get_u64(raw, XX_LOGFS_DISK_SUPER_SIZE, 24U, true) != XX_LOGFS_MAGIC) {
         return false;
     }
     /* Segment header CRC covers bytes 4..0x18 of the header. */
     stored_sh_crc = xx_data_get_u32(raw, XX_LOGFS_DISK_SUPER_SIZE, 0U, true);
-    if (stored_sh_crc !=
-        xx_logfs_crc32(raw + 4, XX_LOGFS_SEGMENT_HEADER_SIZE - 4U)) {
+    if (stored_sh_crc != xx_logfs_crc32(raw + 4, XX_LOGFS_SEGMENT_HEADER_SIZE - 4U)) {
         return false;
     }
     /* Superblock CRC skips the segment header plus the 8-byte magic and the
      * 4-byte CRC field itself, i.e. it starts at 0x18 + 12 = 0x24. */
     stored_ds_crc = xx_data_get_u32(raw, XX_LOGFS_DISK_SUPER_SIZE, 32U, true);
-    if (stored_ds_crc !=
-        xx_logfs_crc32(raw + 36, XX_LOGFS_DISK_SUPER_SIZE - 36U)) {
+    if (stored_ds_crc != xx_logfs_crc32(raw + 36, XX_LOGFS_DISK_SUPER_SIZE - 36U)) {
         return false;
     }
 
@@ -140,8 +137,7 @@ static bool xx_logfs_decode_super(const uint8_t *raw, xx_logfs_super *out) {
     out->segment_level = raw[7];
     out->segment_number = xx_data_get_u32(raw, XX_LOGFS_DISK_SUPER_SIZE, 8U, true);
     out->erase_count = xx_data_get_u32(raw, XX_LOGFS_DISK_SUPER_SIZE, 12U, true);
-    out->global_erase_count =
-        xx_data_get_u64(raw, XX_LOGFS_DISK_SUPER_SIZE, 16U, true);
+    out->global_erase_count = xx_data_get_u64(raw, XX_LOGFS_DISK_SUPER_SIZE, 16U, true);
 
     out->ifile_levels = raw[36];
     out->iblock_levels = raw[37];
@@ -149,54 +145,39 @@ static bool xx_logfs_decode_super(const uint8_t *raw, xx_logfs_super *out) {
     out->segment_shift = raw[39];
     out->block_shift = raw[40];
     out->write_shift = raw[41];
-    out->filesystem_size =
-        xx_data_get_u64(raw, XX_LOGFS_DISK_SUPER_SIZE, 48U, true);
+    out->filesystem_size = xx_data_get_u64(raw, XX_LOGFS_DISK_SUPER_SIZE, 48U, true);
     out->segment_size = xx_data_get_u32(raw, XX_LOGFS_DISK_SUPER_SIZE, 56U, true);
-    out->bad_seg_reserve =
-        xx_data_get_u32(raw, XX_LOGFS_DISK_SUPER_SIZE, 60U, true);
-    out->feature_incompat =
-        xx_data_get_u64(raw, XX_LOGFS_DISK_SUPER_SIZE, 64U, true);
-    out->feature_ro_compat =
-        xx_data_get_u64(raw, XX_LOGFS_DISK_SUPER_SIZE, 72U, true);
-    out->feature_compat =
-        xx_data_get_u64(raw, XX_LOGFS_DISK_SUPER_SIZE, 80U, true);
-    out->feature_flags =
-        xx_data_get_u64(raw, XX_LOGFS_DISK_SUPER_SIZE, 88U, true);
+    out->bad_seg_reserve = xx_data_get_u32(raw, XX_LOGFS_DISK_SUPER_SIZE, 60U, true);
+    out->feature_incompat = xx_data_get_u64(raw, XX_LOGFS_DISK_SUPER_SIZE, 64U, true);
+    out->feature_ro_compat = xx_data_get_u64(raw, XX_LOGFS_DISK_SUPER_SIZE, 72U, true);
+    out->feature_compat = xx_data_get_u64(raw, XX_LOGFS_DISK_SUPER_SIZE, 80U, true);
+    out->feature_flags = xx_data_get_u64(raw, XX_LOGFS_DISK_SUPER_SIZE, 88U, true);
     out->root_reserve = xx_data_get_u64(raw, XX_LOGFS_DISK_SUPER_SIZE, 96U, true);
-    out->speed_reserve =
-        xx_data_get_u64(raw, XX_LOGFS_DISK_SUPER_SIZE, 104U, true);
+    out->speed_reserve = xx_data_get_u64(raw, XX_LOGFS_DISK_SUPER_SIZE, 104U, true);
     for (index = 0U; index < XX_LOGFS_JOURNAL_SEGS; ++index) {
-        out->journal_seg[index] = xx_data_get_u32(
-            raw, XX_LOGFS_DISK_SUPER_SIZE, 112U + index * 4U, true);
+        out->journal_seg[index] = xx_data_get_u32(raw, XX_LOGFS_DISK_SUPER_SIZE, 112U + index * 4U, true);
     }
-    out->super_ofs[0] =
-        xx_data_get_u64(raw, XX_LOGFS_DISK_SUPER_SIZE, 176U, true);
-    out->super_ofs[1] =
-        xx_data_get_u64(raw, XX_LOGFS_DISK_SUPER_SIZE, 184U, true);
+    out->super_ofs[0] = xx_data_get_u64(raw, XX_LOGFS_DISK_SUPER_SIZE, 176U, true);
+    out->super_ofs[1] = xx_data_get_u64(raw, XX_LOGFS_DISK_SUPER_SIZE, 184U, true);
 
     /* The CRCs already make a false positive improbable, so these checks are
      * about refusing a volume this reader would then misreport rather than
      * about detection. */
     if (out->segment_type != XX_LOGFS_SEG_SUPER) return false;
-    if (out->block_shift < XX_LOGFS_MIN_BLOCK_SHIFT ||
-        out->block_shift > XX_LOGFS_MAX_BLOCK_SHIFT) return false;
-    if (out->segment_shift < XX_LOGFS_MIN_SEGMENT_SHIFT ||
-        out->segment_shift > XX_LOGFS_MAX_SEGMENT_SHIFT) return false;
+    if (out->block_shift < XX_LOGFS_MIN_BLOCK_SHIFT || out->block_shift > XX_LOGFS_MAX_BLOCK_SHIFT) return false;
+    if (out->segment_shift < XX_LOGFS_MIN_SEGMENT_SHIFT || out->segment_shift > XX_LOGFS_MAX_SEGMENT_SHIFT) return false;
     if (out->segment_shift <= out->block_shift) return false;
     if (out->write_shift > out->block_shift) return false;
     if (out->segment_size != (UINT32_C(1) << out->segment_shift)) return false;
-    if (out->filesystem_size == 0U ||
-        (out->filesystem_size & (out->segment_size - 1U)) != 0U) return false;
+    if (out->filesystem_size == 0U || (out->filesystem_size & (out->segment_size - 1U)) != 0U) return false;
     if (out->filesystem_size > (uint64_t)INT64_MAX) return false;
     return true;
 }
 
-static bool xx_logfs_load_super(xx_io_device *device, int64_t offset,
-                                int64_t total_size, xx_logfs_super *out) {
+static bool xx_logfs_load_super(xx_io_device *device, int64_t offset, int64_t total_size, xx_logfs_super *out)
+{
     uint8_t raw[XX_LOGFS_DISK_SUPER_SIZE];
-    if (!xx_logfs_range_within(total_size, offset,
-                               (int64_t)XX_LOGFS_DISK_SUPER_SIZE) ||
-        !xx_logfs_read_at(device, offset, raw, sizeof(raw))) {
+    if (!xx_logfs_range_within(total_size, offset, (int64_t)XX_LOGFS_DISK_SUPER_SIZE) || !xx_logfs_read_at(device, offset, raw, sizeof(raw))) {
         return false;
     }
     return xx_logfs_decode_super(raw, out);
@@ -205,7 +186,8 @@ static bool xx_logfs_load_super(xx_io_device *device, int64_t offset,
 /* The trailing copy sits one 4 KiB page below the 4 KiB-aligned end of the
  * device, per fs/logfs/dev_bdev.c. Returns -1 when the device is too small
  * for that position to exist at or after base_address. */
-static int64_t xx_logfs_mirror_offset(int64_t base_address, int64_t total_size) {
+static int64_t xx_logfs_mirror_offset(int64_t base_address, int64_t total_size)
+{
     int64_t span;
     int64_t position;
     if (base_address < 0 || total_size < base_address) return -1;
@@ -216,7 +198,8 @@ static int64_t xx_logfs_mirror_offset(int64_t base_address, int64_t total_size) 
     return base_address + position;
 }
 
-static void xx_logfs_private_cleanup(xx_logfs_private *parsed) {
+static void xx_logfs_private_cleanup(xx_logfs_private *parsed)
+{
     if (!parsed) return;
     xx_mem_zero(parsed, sizeof(*parsed));
     parsed->input_size = -1;
@@ -224,20 +207,18 @@ static void xx_logfs_private_cleanup(xx_logfs_private *parsed) {
     parsed->mirror_offset = -1;
 }
 
-static bool xx_logfs_parse(Abstractformat *self, xx_logfs_private *parsed,
-                           xx_pd_struct *pd) {
+static bool xx_logfs_parse(Abstractformat *self, xx_logfs_private *parsed, xx_pd_struct *pd)
+{
     int64_t total_size;
     int64_t mirror;
     xx_logfs_super mirror_super;
     if (parsed) xx_logfs_private_cleanup(parsed);
-    if (!self || !self->device || !parsed || self->base_address < 0 ||
-        (pd && xx_pd_is_stopped(pd))) return false;
+    if (!self || !self->device || !parsed || self->base_address < 0 || (pd && xx_pd_is_stopped(pd))) return false;
     total_size = xx_io_total_size(self->device);
     parsed->input_size = total_size;
 
     /* The primary copy is the first thing in the volume. */
-    if (!xx_logfs_load_super(self->device, self->base_address, total_size,
-                             &parsed->super)) {
+    if (!xx_logfs_load_super(self->device, self->base_address, total_size, &parsed->super)) {
         xx_logfs_private_cleanup(parsed);
         return false;
     }
@@ -247,8 +228,7 @@ static bool xx_logfs_parse(Abstractformat *self, xx_logfs_private *parsed,
      * as LogFS, it just loses the second opinion. */
     mirror = xx_logfs_mirror_offset(self->base_address, total_size);
     parsed->mirror_offset = mirror;
-    if (mirror > self->base_address &&
-        xx_logfs_load_super(self->device, mirror, total_size, &mirror_super)) {
+    if (mirror > self->base_address && xx_logfs_load_super(self->device, mirror, total_size, &mirror_super)) {
         parsed->mirror_valid = true;
     }
     return true;
@@ -256,7 +236,8 @@ static bool xx_logfs_parse(Abstractformat *self, xx_logfs_private *parsed,
 
 /* ---------------------------------------------------------- public API -- */
 
-void xx_logfs_init(xx_logfs *logfs, xx_io_device *dev, int64_t base_address) {
+void xx_logfs_init(xx_logfs *logfs, xx_io_device *dev, int64_t base_address)
+{
     if (!logfs) return;
     xx_mem_zero(logfs, sizeof(*logfs));
     xx_format_init(&logfs->format, dev, base_address);
@@ -277,13 +258,15 @@ void xx_logfs_init(xx_logfs *logfs, xx_io_device *dev, int64_t base_address) {
     logfs->mirror_offset = -1;
 }
 
-xx_logfs *xx_logfs_create(xx_io_device *dev, int64_t base_address) {
+xx_logfs *xx_logfs_create(xx_io_device *dev, int64_t base_address)
+{
     xx_logfs *logfs = (xx_logfs *)xx_mem_alloc(sizeof(*logfs));
     if (logfs) xx_logfs_init(logfs, dev, base_address);
     return logfs;
 }
 
-void xx_logfs_destroy(xx_logfs *logfs) {
+void xx_logfs_destroy(xx_logfs *logfs)
+{
     if (!logfs) return;
     if (logfs->internal) {
         xx_logfs_private_cleanup((xx_logfs_private *)logfs->internal);
@@ -293,24 +276,28 @@ void xx_logfs_destroy(xx_logfs *logfs) {
     xx_format_cleanup_extra_parameters(&logfs->format);
 }
 
-static void xx_logfs_vtable_destroy(Abstractformat *self) {
+static void xx_logfs_vtable_destroy(Abstractformat *self)
+{
     xx_logfs_destroy((xx_logfs *)self);
 }
 
-void xx_logfs_free(xx_logfs *logfs) {
+void xx_logfs_free(xx_logfs *logfs)
+{
     if (!logfs) return;
     xx_logfs_destroy(logfs);
     xx_mem_free(logfs);
 }
 
-bool xx_logfs_check_is_valid(Abstractformat *self, xx_pd_struct *pd) {
+bool xx_logfs_check_is_valid(Abstractformat *self, xx_pd_struct *pd)
+{
     xx_logfs_private parsed;
     bool result = xx_logfs_parse(self, &parsed, pd);
     xx_logfs_private_cleanup(&parsed);
     return result;
 }
 
-bool xx_logfs_handle_base_info(Abstractformat *self, xx_pd_struct *pd) {
+bool xx_logfs_handle_base_info(Abstractformat *self, xx_pd_struct *pd)
+{
     xx_logfs_private *parsed;
     xx_logfs *logfs = (xx_logfs *)self;
     int64_t total_size;
@@ -384,29 +371,33 @@ bool xx_logfs_handle_base_info(Abstractformat *self, xx_pd_struct *pd) {
     return true;
 }
 
-int64_t xx_logfs_get_format_size(Abstractformat *self, xx_pd_struct *pd) {
-    if (!self || (!self->base_info_handled &&
-                  !xx_format_handle_base_info(self, pd))) return -1;
+int64_t xx_logfs_get_format_size(Abstractformat *self, xx_pd_struct *pd)
+{
+    if (!self || (!self->base_info_handled && !xx_format_handle_base_info(self, pd))) return -1;
     return self->format_size;
 }
 
-uint64_t xx_logfs_get_filesystem_size(const xx_logfs *logfs) {
+uint64_t xx_logfs_get_filesystem_size(const xx_logfs *logfs)
+{
     return logfs ? logfs->filesystem_size : 0U;
 }
-uint32_t xx_logfs_get_segment_size(const xx_logfs *logfs) {
+uint32_t xx_logfs_get_segment_size(const xx_logfs *logfs)
+{
     return logfs ? logfs->segment_size : 0U;
 }
-uint32_t xx_logfs_get_block_size(const xx_logfs *logfs) {
-    return (logfs && logfs->block_shift < 32U)
-               ? (UINT32_C(1) << logfs->block_shift) : 0U;
+uint32_t xx_logfs_get_block_size(const xx_logfs *logfs)
+{
+    return (logfs && logfs->block_shift < 32U) ? (UINT32_C(1) << logfs->block_shift) : 0U;
 }
-uint32_t xx_logfs_get_write_size(const xx_logfs *logfs) {
-    return (logfs && logfs->write_shift < 32U)
-               ? (UINT32_C(1) << logfs->write_shift) : 0U;
+uint32_t xx_logfs_get_write_size(const xx_logfs *logfs)
+{
+    return (logfs && logfs->write_shift < 32U) ? (UINT32_C(1) << logfs->write_shift) : 0U;
 }
-int64_t xx_logfs_get_super_offset(const xx_logfs *logfs) {
+int64_t xx_logfs_get_super_offset(const xx_logfs *logfs)
+{
     return logfs ? logfs->super_offset : -1;
 }
-bool xx_logfs_get_mirror_valid(const xx_logfs *logfs) {
+bool xx_logfs_get_mirror_valid(const xx_logfs *logfs)
+{
     return logfs ? logfs->mirror_valid : false;
 }

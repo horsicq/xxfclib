@@ -31,19 +31,23 @@
 
 /* --------------------------------------------------------------- queries */
 
-bool xx_fs_exists(const char *path) {
+bool xx_fs_exists(const char *path)
+{
     return xx_fs_platform_stat(path) != XX_FS_PLATFORM_MISSING;
 }
 
-bool xx_fs_is_dir(const char *path) {
+bool xx_fs_is_dir(const char *path)
+{
     return xx_fs_platform_stat(path) == XX_FS_PLATFORM_DIR;
 }
 
-bool xx_fs_is_file(const char *path) {
+bool xx_fs_is_file(const char *path)
+{
     return xx_fs_platform_stat(path) == XX_FS_PLATFORM_FILE;
 }
 
-char *xx_fs_read_file(const char *path, int64_t *size) {
+char *xx_fs_read_file(const char *path, int64_t *size)
+{
     xx_io_device *device;
     int64_t total;
     char *data;
@@ -103,7 +107,8 @@ char *xx_fs_read_file(const char *path, int64_t *size) {
 
 /* ----------------------------------------------------------- directories */
 
-void xx_fs_entry_free(xx_fs_entry_t *entry) {
+void xx_fs_entry_free(xx_fs_entry_t *entry)
+{
     if (!entry) {
         return;
     }
@@ -112,9 +117,8 @@ void xx_fs_entry_free(xx_fs_entry_t *entry) {
     xx_mem_free(entry);
 }
 
-static xx_fs_entry_t *xx_fs_entry_create(const char *directory,
-                                         const char *name,
-                                         xx_fs_entry_type_t type) {
+static xx_fs_entry_t *xx_fs_entry_create(const char *directory, const char *name, xx_fs_entry_type_t type)
+{
     xx_fs_entry_t *entry = (xx_fs_entry_t *)xx_mem_alloc(sizeof(*entry));
     if (!entry) {
         return NULL;
@@ -131,7 +135,8 @@ static xx_fs_entry_t *xx_fs_entry_create(const char *directory,
 
 /* By name alone. Used when the caller's order is the directory's own name
  * order rather than a presentation order. */
-static int xx_fs_entry_compare_name(const void *left, const void *right) {
+static int xx_fs_entry_compare_name(const void *left, const void *right)
+{
     const xx_fs_entry_t *a = *(const xx_fs_entry_t *const *)left;
     const xx_fs_entry_t *b = *(const xx_fs_entry_t *const *)right;
 
@@ -140,7 +145,8 @@ static int xx_fs_entry_compare_name(const void *left, const void *right) {
 
 /* Directories first, then by name, so a listing is stable across platforms
  * whose enumeration order differs. */
-static int xx_fs_entry_compare(const void *left, const void *right) {
+static int xx_fs_entry_compare(const void *left, const void *right)
+{
     const xx_fs_entry_t *a = *(const xx_fs_entry_t *const *)left;
     const xx_fs_entry_t *b = *(const xx_fs_entry_t *const *)right;
 
@@ -150,9 +156,9 @@ static int xx_fs_entry_compare(const void *left, const void *right) {
     return xx_rt_strcmp(a->name, b->name);
 }
 
-static bool xx_fs_name_is_dot(const char *name) {
-    return name && name[0] == '.' &&
-           (name[1] == '\0' || (name[1] == '.' && name[2] == '\0'));
+static bool xx_fs_name_is_dot(const char *name)
+{
+    return name && name[0] == '.' && (name[1] == '\0' || (name[1] == '.' && name[2] == '\0'));
 }
 
 /* Context for xx_fs_collect_entry: where to append, and whether an append has
@@ -163,10 +169,10 @@ typedef struct xx_fs_collector_s {
     bool ok;
 } xx_fs_collector;
 
-static bool xx_fs_collect_entry(void *context, const char *name, bool is_dir) {
+static bool xx_fs_collect_entry(void *context, const char *name, bool is_dir)
+{
     xx_fs_collector *collector = (xx_fs_collector *)context;
-    xx_fs_entry_t *entry = xx_fs_entry_create(
-        collector->directory, name, is_dir ? XX_FS_ENTRY_DIR : XX_FS_ENTRY_FILE);
+    xx_fs_entry_t *entry = xx_fs_entry_create(collector->directory, name, is_dir ? XX_FS_ENTRY_DIR : XX_FS_ENTRY_FILE);
 
     if (!entry || !xx_list_append(collector->list, &entry)) {
         xx_fs_entry_free(entry);
@@ -176,12 +182,13 @@ static bool xx_fs_collect_entry(void *context, const char *name, bool is_dir) {
     return true;
 }
 
-bool xx_fs_list_dir(const char *path, xx_list_t *list) {
+bool xx_fs_list_dir(const char *path, xx_list_t *list)
+{
     return xx_fs_list_dir_sorted(path, list, XX_FS_SORT_DIRS_FIRST);
 }
 
-bool xx_fs_list_dir_sorted(const char *path, xx_list_t *list,
-                           xx_fs_sort_t order) {
+bool xx_fs_list_dir_sorted(const char *path, xx_list_t *list, xx_fs_sort_t order)
+{
     xx_fs_collector collector;
     size_t first;
 
@@ -193,24 +200,21 @@ bool xx_fs_list_dir_sorted(const char *path, xx_list_t *list,
     collector.list = list;
     collector.ok = true;
 
-    if (!xx_fs_platform_enumerate(path, xx_fs_collect_entry, &collector) ||
-        !collector.ok) {
+    if (!xx_fs_platform_enumerate(path, xx_fs_collect_entry, &collector) || !collector.ok) {
         return false;
     }
 
     {
         size_t added = xx_list_count(list) - first;
         if (added > 1U) {
-            xx_rt_qsort((char *)xx_list_at(list, first), added,
-                        sizeof(xx_fs_entry_t *),
-                        (order == XX_FS_SORT_NAME) ? xx_fs_entry_compare_name
-                                                   : xx_fs_entry_compare);
+            xx_rt_qsort((char *)xx_list_at(list, first), added, sizeof(xx_fs_entry_t *), (order == XX_FS_SORT_NAME) ? xx_fs_entry_compare_name : xx_fs_entry_compare);
         }
     }
     return true;
 }
 
-bool xx_fs_find_files(const char *path, xx_list_t *list, bool recursive) {
+bool xx_fs_find_files(const char *path, xx_list_t *list, bool recursive)
+{
     xx_list_t *entries;
     size_t index;
     size_t count;
@@ -265,11 +269,13 @@ bool xx_fs_find_files(const char *path, xx_list_t *list, bool recursive) {
 
 /* ----------------------------------------------------------------- paths */
 
-bool xx_fs_is_separator(char c) {
+bool xx_fs_is_separator(char c)
+{
     return c == '/' || c == '\\';
 }
 
-char *xx_fs_path_join(const char *left, const char *right) {
+char *xx_fs_path_join(const char *left, const char *right)
+{
     xx_buf_t buf;
 
     xx_buf_init(&buf);
@@ -286,7 +292,8 @@ char *xx_fs_path_join(const char *left, const char *right) {
     return xx_buf_detach(&buf, NULL);
 }
 
-static const char *xx_fs_last_separator(const char *path) {
+static const char *xx_fs_last_separator(const char *path)
+{
     const char *found = NULL;
     const char *cursor;
 
@@ -299,7 +306,8 @@ static const char *xx_fs_last_separator(const char *path) {
 }
 
 /* xx_str_dup of a bounded range; xxfclib has no strndup. */
-static char *xx_fs_dup_range(const char *text, size_t length) {
+static char *xx_fs_dup_range(const char *text, size_t length)
+{
     char *result = (char *)xx_mem_alloc(length + 1U);
     if (!result) {
         return NULL;
@@ -311,7 +319,8 @@ static char *xx_fs_dup_range(const char *text, size_t length) {
     return result;
 }
 
-char *xx_fs_path_dir(const char *path) {
+char *xx_fs_path_dir(const char *path)
+{
     const char *separator;
 
     if (!path) {
@@ -324,7 +333,8 @@ char *xx_fs_path_dir(const char *path) {
     return xx_fs_dup_range(path, (size_t)(separator - path));
 }
 
-char *xx_fs_path_file_name(const char *path) {
+char *xx_fs_path_file_name(const char *path)
+{
     const char *separator;
 
     if (!path) {
@@ -334,7 +344,8 @@ char *xx_fs_path_file_name(const char *path) {
     return xx_str_dup(separator ? separator + 1 : path);
 }
 
-char *xx_fs_path_base_name(const char *path) {
+char *xx_fs_path_base_name(const char *path)
+{
     char *file_name = xx_fs_path_file_name(path);
     char *dot;
 
@@ -359,8 +370,8 @@ char *xx_fs_path_base_name(const char *path) {
  * there ".hidden.txt" has complete suffix "" while its plain suffix is
  * "txt", a complete suffix shorter than the plain one. Both rules are
  * reachable; only the first is the default. */
-static char *xx_fs_suffix_from(const char *path, bool first_dot,
-                               bool skip_leading_dot) {
+static char *xx_fs_suffix_from(const char *path, bool first_dot, bool skip_leading_dot)
+{
     char *file_name = xx_fs_path_file_name(path);
     char *search;
     char *dot;
@@ -369,8 +380,7 @@ static char *xx_fs_suffix_from(const char *path, bool first_dot,
     if (!file_name) {
         return NULL;
     }
-    search = (skip_leading_dot && file_name[0] == '.') ? file_name + 1
-                                                       : file_name;
+    search = (skip_leading_dot && file_name[0] == '.') ? file_name + 1 : file_name;
     dot = first_dot ? xx_rt_strchr(search, '.') : xx_rt_strrchr(search, '.');
     /* Without the skip, a dot in position 0 is the one found, and there is no
      * suffix to report after it. */
@@ -382,19 +392,23 @@ static char *xx_fs_suffix_from(const char *path, bool first_dot,
     return result;
 }
 
-char *xx_fs_path_suffix(const char *path) {
+char *xx_fs_path_suffix(const char *path)
+{
     return xx_fs_suffix_from(path, false, true);
 }
 
-char *xx_fs_path_complete_suffix(const char *path) {
+char *xx_fs_path_complete_suffix(const char *path)
+{
     return xx_fs_suffix_from(path, true, true);
 }
 
-char *xx_fs_path_complete_suffix_ex(const char *path, bool skip_leading_dot) {
+char *xx_fs_path_complete_suffix_ex(const char *path, bool skip_leading_dot)
+{
     return xx_fs_suffix_from(path, true, skip_leading_dot);
 }
 
-char *xx_fs_path_native(const char *path) {
+char *xx_fs_path_native(const char *path)
+{
     char *result;
     size_t index;
 

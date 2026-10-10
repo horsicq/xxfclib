@@ -36,24 +36,24 @@ typedef struct xx_7zip_stream_sink_s {
     xx_pd_struct *pd;
 } xx_7zip_stream_sink;
 
-static ssize_t xx_7zip_stream_read(xx_io_device *device, void *buffer, size_t size) {
+static ssize_t xx_7zip_stream_read(xx_io_device *device, void *buffer, size_t size)
+{
     xx_7zip_stream_window *window = (xx_7zip_stream_window *)device->priv;
     ssize_t count;
     uint64_t remaining;
-    if (!window || (!buffer && size) || size > (size_t)PTRDIFF_MAX ||
-        xx_pd_is_stopped(window->pd)) return -1;
+    if (!window || (!buffer && size) || size > (size_t)PTRDIFF_MAX || xx_pd_is_stopped(window->pd)) return -1;
     remaining = window->size - window->position;
     if ((uint64_t)size > remaining) size = (size_t)remaining;
     if (size == 0U) return 0;
-    if (xx_io_seek64(window->source, window->offset + (int64_t)window->position, SEEK_SET) != 0)
-        return -1;
+    if (xx_io_seek64(window->source, window->offset + (int64_t)window->position, SEEK_SET) != 0) return -1;
     count = xx_io_read(window->source, buffer, size);
     if (count < 0 || (size_t)count > size) return -1;
     window->position += (uint64_t)count;
     return count;
 }
 
-static int xx_7zip_stream_seek64(xx_io_device *device, int64_t offset, int origin) {
+static int xx_7zip_stream_seek64(xx_io_device *device, int64_t offset, int origin)
+{
     xx_7zip_stream_window *window = (xx_7zip_stream_window *)device->priv;
     uint64_t base, next;
     if (!window) return -1;
@@ -74,27 +74,31 @@ static int xx_7zip_stream_seek64(xx_io_device *device, int64_t offset, int origi
     return 0;
 }
 
-static int xx_7zip_stream_seek(xx_io_device *device, long offset, int origin) {
+static int xx_7zip_stream_seek(xx_io_device *device, long offset, int origin)
+{
     return xx_7zip_stream_seek64(device, (int64_t)offset, origin);
 }
 
-static int64_t xx_7zip_stream_tell(xx_io_device *device) {
+static int64_t xx_7zip_stream_tell(xx_io_device *device)
+{
     xx_7zip_stream_window *window = (xx_7zip_stream_window *)device->priv;
     return window ? (int64_t)window->position : -1;
 }
 
-static int64_t xx_7zip_stream_size(xx_io_device *device) {
+static int64_t xx_7zip_stream_size(xx_io_device *device)
+{
     xx_7zip_stream_window *window = (xx_7zip_stream_window *)device->priv;
     return window ? (int64_t)window->size : -1;
 }
 
-static bool xx_7zip_stream_window_init(xx_7zip_stream_window *window,
-                                       xx_io_device *source, int64_t offset,
-                                       uint64_t size, xx_pd_struct *pd) {
-    if (!window || !source || offset < 0 || size > (uint64_t)INT64_MAX - (uint64_t)offset)
-        return false;
+static bool xx_7zip_stream_window_init(xx_7zip_stream_window *window, xx_io_device *source, int64_t offset, uint64_t size, xx_pd_struct *pd)
+{
+    if (!window || !source || offset < 0 || size > (uint64_t)INT64_MAX - (uint64_t)offset) return false;
     xx_mem_zero(window, sizeof(*window));
-    window->source = source; window->offset = offset; window->size = size; window->pd = pd;
+    window->source = source;
+    window->offset = offset;
+    window->size = size;
+    window->pd = pd;
     window->device.priv = window;
     window->device.read = xx_7zip_stream_read;
     window->device.seek = xx_7zip_stream_seek;
@@ -104,32 +108,36 @@ static bool xx_7zip_stream_window_init(xx_7zip_stream_window *window,
     return true;
 }
 
-static ssize_t xx_7zip_stream_write(xx_io_device *device, const void *buffer, size_t size) {
+static ssize_t xx_7zip_stream_write(xx_io_device *device, const void *buffer, size_t size)
+{
     xx_7zip_stream_sink *sink = (xx_7zip_stream_sink *)device->priv;
     ssize_t count;
-    if (!sink || (!buffer && size) || size > (size_t)PTRDIFF_MAX ||
-        (uint64_t)size > sink->size - sink->position || xx_pd_is_stopped(sink->pd)) return -1;
+    if (!sink || (!buffer && size) || size > (size_t)PTRDIFF_MAX || (uint64_t)size > sink->size - sink->position || xx_pd_is_stopped(sink->pd)) return -1;
     count = xx_io_write(sink->target, buffer, size);
     if (count < 0 || (size_t)count > size) return -1;
     sink->position += (uint64_t)count;
     return count;
 }
 
-static int64_t xx_7zip_stream_output_size(xx_io_device *device) {
+static int64_t xx_7zip_stream_output_size(xx_io_device *device)
+{
     xx_7zip_stream_sink *sink = (xx_7zip_stream_sink *)device->priv;
     return sink ? (int64_t)sink->position : -1;
 }
 
-static void xx_7zip_stream_sink_init(xx_7zip_stream_sink *sink, xx_io_device *target,
-                                     uint64_t size, xx_pd_struct *pd) {
+static void xx_7zip_stream_sink_init(xx_7zip_stream_sink *sink, xx_io_device *target, uint64_t size, xx_pd_struct *pd)
+{
     xx_mem_zero(sink, sizeof(*sink));
-    sink->target = target; sink->size = size; sink->pd = pd;
+    sink->target = target;
+    sink->size = size;
+    sink->pd = pd;
     sink->device.priv = sink;
     sink->device.write = xx_7zip_stream_write;
     sink->device.total_size = xx_7zip_stream_output_size;
 }
 
-static bool xx_7zip_stream_read_exact(xx_io_device *source, uint8_t *buffer, size_t size) {
+static bool xx_7zip_stream_read_exact(xx_io_device *source, uint8_t *buffer, size_t size)
+{
     while (size != 0U) {
         size_t request = size < XX_7ZIP_STREAM_BUFFER ? size : XX_7ZIP_STREAM_BUFFER;
         ssize_t count = xx_io_read(source, buffer, request);
@@ -140,8 +148,8 @@ static bool xx_7zip_stream_read_exact(xx_io_device *source, uint8_t *buffer, siz
     return true;
 }
 
-static bool xx_7zip_stream_write_exact(xx_io_device *destination,
-                                       const uint8_t *buffer, size_t size) {
+static bool xx_7zip_stream_write_exact(xx_io_device *destination, const uint8_t *buffer, size_t size)
+{
     while (size != 0U) {
         ssize_t count = xx_io_write(destination, buffer, size);
         if (count <= 0 || (size_t)count > size) return false;
@@ -151,16 +159,15 @@ static bool xx_7zip_stream_write_exact(xx_io_device *destination,
     return true;
 }
 
-static bool xx_7zip_stream_filter(uint64_t method, const uint8_t *properties,
-                                  size_t properties_size, xx_7zip_stream_window *source,
-                                  xx_io_device *destination, uint64_t expected_size) {
+static bool xx_7zip_stream_filter(uint64_t method, const uint8_t *properties, size_t properties_size, xx_7zip_stream_window *source, xx_io_device *destination,
+                                  uint64_t expected_size)
+{
     xx_7zip_branch_state branch;
     uint8_t delta[256];
     uint8_t *buffer;
     size_t used = 0U;
     unsigned delta_at = 0U, distance = 0U, swap = 0U;
-    bool simple = method == XX_7ZIP_METHOD_COPY || method == XX_7ZIP_METHOD_DELTA ||
-                  method == XX_7ZIP_METHOD_SWAP2 || method == XX_7ZIP_METHOD_SWAP4;
+    bool simple = method == XX_7ZIP_METHOD_COPY || method == XX_7ZIP_METHOD_DELTA || method == XX_7ZIP_METHOD_SWAP2 || method == XX_7ZIP_METHOD_SWAP4;
     bool success = false;
     if (source->size != expected_size) return false;
     if (method == XX_7ZIP_METHOD_DELTA) {
@@ -223,9 +230,8 @@ done:
     return success;
 }
 
-static bool xx_7zip_stream_deflate(xx_io_device *source, uint64_t size,
-                                   xx_io_device *destination, bool deflate64,
-                                   xx_pd_struct *pd) {
+static bool xx_7zip_stream_deflate(xx_io_device *source, uint64_t size, xx_io_device *destination, bool deflate64, xx_pd_struct *pd)
+{
     xx_bit_reader reader;
     bool result;
     uint64_t used, unused;
@@ -243,9 +249,8 @@ static bool xx_7zip_stream_deflate(xx_io_device *source, uint64_t size,
     return result;
 }
 
-static bool xx_7zip_stream_memory(uint64_t method, xx_io_device *source,
-                                  uint64_t input_size, uint64_t output_size,
-                                  xx_io_device *destination, xx_pd_struct *pd) {
+static bool xx_7zip_stream_memory(uint64_t method, xx_io_device *source, uint64_t input_size, uint64_t output_size, xx_io_device *destination, xx_pd_struct *pd)
+{
     uint8_t *input = NULL, *output = NULL;
     size_t written = 0U;
     bool result = false;
@@ -253,73 +258,68 @@ static bool xx_7zip_stream_memory(uint64_t method, xx_io_device *source,
     input = (uint8_t *)xx_mem_alloc(input_size ? (size_t)input_size : 1U);
     output = (uint8_t *)xx_mem_alloc(output_size ? (size_t)output_size : 1U);
     if (!input || !output || !xx_7zip_stream_read_exact(source, input, (size_t)input_size)) goto done;
-    if (method == XX_7ZIP_METHOD_ZSTD)
-        result = xx_zstd_decompress_memory(input, (size_t)input_size, output, (size_t)output_size, &written);
-    else if (method == XX_7ZIP_METHOD_BROTLI)
-        result = xx_brotli_decompress_memory(input, (size_t)input_size, output, (size_t)output_size, &written);
-    else if (method == XX_7ZIP_METHOD_LZ4)
-        result = xx_lz4_decompress_memory(input, (size_t)input_size, output, (size_t)output_size, &written);
-    else if (method == XX_7ZIP_METHOD_LZ5)
-        result = xx_lz5_decompress_memory(input, (size_t)input_size, output, (size_t)output_size, &written);
-    else if (method == XX_7ZIP_METHOD_LIZARD)
-        result = xx_lizard_decompress_memory(input, (size_t)input_size, output, (size_t)output_size, &written);
+    if (method == XX_7ZIP_METHOD_ZSTD) result = xx_zstd_decompress_memory(input, (size_t)input_size, output, (size_t)output_size, &written);
+    else if (method == XX_7ZIP_METHOD_BROTLI) result = xx_brotli_decompress_memory(input, (size_t)input_size, output, (size_t)output_size, &written);
+    else if (method == XX_7ZIP_METHOD_LZ4) result = xx_lz4_decompress_memory(input, (size_t)input_size, output, (size_t)output_size, &written);
+    else if (method == XX_7ZIP_METHOD_LZ5) result = xx_lz5_decompress_memory(input, (size_t)input_size, output, (size_t)output_size, &written);
+    else if (method == XX_7ZIP_METHOD_LIZARD) result = xx_lizard_decompress_memory(input, (size_t)input_size, output, (size_t)output_size, &written);
     result = result && written == (size_t)output_size && !xx_pd_is_stopped(pd);
     if (result) {
         size_t at = 0U;
         while (at < written) {
             size_t chunk = written - at;
             if (chunk > XX_7ZIP_STREAM_BUFFER) chunk = XX_7ZIP_STREAM_BUFFER;
-            if (!xx_7zip_stream_write_exact(destination, output + at, chunk)) { result = false; break; }
+            if (!xx_7zip_stream_write_exact(destination, output + at, chunk)) {
+                result = false;
+                break;
+            }
             at += chunk;
         }
     }
 done:
-    if (input) { xx_mem_zero(input, (size_t)input_size); xx_mem_free(input); }
-    if (output) { xx_mem_zero(output, (size_t)output_size); xx_mem_free(output); }
+    if (input) {
+        xx_mem_zero(input, (size_t)input_size);
+        xx_mem_free(input);
+    }
+    if (output) {
+        xx_mem_zero(output, (size_t)output_size);
+        xx_mem_free(output);
+    }
     return result;
 }
 
-bool xx_7zip_stream_decode(uint64_t method, const uint8_t *properties,
-                            size_t properties_size, xx_io_device *source,
-                            int64_t source_offset, uint64_t compressed_size,
-                            uint64_t expected_size, xx_io_device *destination,
-                            const uint8_t *password_utf16le, size_t password_size,
-                            xx_pd_struct *pd) {
+bool xx_7zip_stream_decode(uint64_t method, const uint8_t *properties, size_t properties_size, xx_io_device *source, int64_t source_offset, uint64_t compressed_size,
+                           uint64_t expected_size, xx_io_device *destination, const uint8_t *password_utf16le, size_t password_size, xx_pd_struct *pd)
+{
     xx_7zip_stream_window input;
     xx_7zip_stream_sink output;
     bool result = false;
-    if (!destination || (!properties && properties_size) || expected_size > INT64_MAX ||
-        xx_pd_is_stopped(pd) ||
-        !xx_7zip_stream_window_init(&input, source, source_offset, compressed_size, pd)) return false;
+    if (!destination || (!properties && properties_size) || expected_size > INT64_MAX || xx_pd_is_stopped(pd) ||
+        !xx_7zip_stream_window_init(&input, source, source_offset, compressed_size, pd))
+        return false;
     xx_7zip_stream_sink_init(&output, destination, expected_size, pd);
     if (method == XX_7ZIP_METHOD_LZMA) {
-        result = xx_lzma_unpack_device(&input.device, 0, (int64_t)compressed_size,
-                     properties, properties_size, (int64_t)expected_size, &output.device, pd);
+        result = xx_lzma_unpack_device(&input.device, 0, (int64_t)compressed_size, properties, properties_size, (int64_t)expected_size, &output.device, pd);
     } else if (method == XX_7ZIP_METHOD_LZMA2 && properties_size == 1U) {
-        result = xx_lzma2_unpack_device(&input.device, 0, (int64_t)compressed_size,
-                     properties[0], &output.device, pd);
+        result = xx_lzma2_unpack_device(&input.device, 0, (int64_t)compressed_size, properties[0], &output.device, pd);
     } else if (method == XX_7ZIP_METHOD_BZIP2 && properties_size == 0U) {
         result = xx_bzip2_unpack_device(&input.device, 0, (int64_t)compressed_size, &output.device, pd);
     } else if ((method == XX_7ZIP_METHOD_DEFLATE || method == XX_7ZIP_METHOD_DEFLATE64) && properties_size == 0U) {
-        result = xx_7zip_stream_deflate(&input.device, compressed_size, &output.device,
-                                       method == XX_7ZIP_METHOD_DEFLATE64, pd);
+        result = xx_7zip_stream_deflate(&input.device, compressed_size, &output.device, method == XX_7ZIP_METHOD_DEFLATE64, pd);
     } else if (method == XX_7ZIP_METHOD_PPMD7 && properties_size == 5U) {
         ppmd7_range_dec decoder;
         if (compressed_size == 0U) result = expected_size == 0U;
-        else result = ppmd7_rd_init(&decoder, &input.device, NULL, 0U, (int64_t)compressed_size) &&
-                      xx_ppmd7_decompress_stream_sized(&decoder, properties[0],
-                          xx_data_get_u32(properties + 1U, 4, 0, false), &output.device, expected_size, pd);
+        else
+            result = ppmd7_rd_init(&decoder, &input.device, NULL, 0U, (int64_t)compressed_size) &&
+                     xx_ppmd7_decompress_stream_sized(&decoder, properties[0], xx_data_get_u32(properties + 1U, 4, 0, false), &output.device, expected_size, pd);
     } else if (method == XX_7ZIP_METHOD_AES) {
-        result = xx_7zip_aes_decrypt_device(&input.device, 0, (int64_t)compressed_size,
-                     password_utf16le, password_size, properties, properties_size,
-                     (int64_t)expected_size, &output.device, pd);
-    } else if (method == XX_7ZIP_METHOD_ZSTD || method == XX_7ZIP_METHOD_BROTLI ||
-               method == XX_7ZIP_METHOD_LZ4 || method == XX_7ZIP_METHOD_LZ5 || method == XX_7ZIP_METHOD_LIZARD) {
-        result = xx_7zip_stream_memory(method, &input.device, compressed_size,
-                                       expected_size, &output.device, pd);
+        result = xx_7zip_aes_decrypt_device(&input.device, 0, (int64_t)compressed_size, password_utf16le, password_size, properties, properties_size,
+                                            (int64_t)expected_size, &output.device, pd);
+    } else if (method == XX_7ZIP_METHOD_ZSTD || method == XX_7ZIP_METHOD_BROTLI || method == XX_7ZIP_METHOD_LZ4 || method == XX_7ZIP_METHOD_LZ5 ||
+               method == XX_7ZIP_METHOD_LIZARD) {
+        result = xx_7zip_stream_memory(method, &input.device, compressed_size, expected_size, &output.device, pd);
     } else {
-        result = xx_7zip_stream_filter(method, properties, properties_size,
-                                       &input, &output.device, expected_size);
+        result = xx_7zip_stream_filter(method, properties, properties_size, &input, &output.device, expected_size);
     }
     return result && output.position == expected_size && !xx_pd_is_stopped(pd);
 }
@@ -331,8 +331,8 @@ typedef struct xx_7zip_bcj2_stream_input_s {
     uint64_t consumed;
 } xx_7zip_bcj2_stream_input;
 
-static inline bool xx_7zip_bcj2_stream_byte(xx_7zip_bcj2_stream_input *input,
-                                           uint8_t *value) {
+static inline bool xx_7zip_bcj2_stream_byte(xx_7zip_bcj2_stream_input *input, uint8_t *value)
+{
     if (input->consumed == input->window.size) return false;
     if (input->at == input->length) {
         ssize_t count;
@@ -349,9 +349,8 @@ static inline bool xx_7zip_bcj2_stream_byte(xx_7zip_bcj2_stream_input *input,
     return true;
 }
 
-static inline bool xx_7zip_bcj2_stream_bit(xx_7zip_bcj2_stream_input *input,
-                                           uint32_t *range, uint32_t *code,
-                                           uint16_t *probability, bool *bit) {
+static inline bool xx_7zip_bcj2_stream_bit(xx_7zip_bcj2_stream_input *input, uint32_t *range, uint32_t *code, uint16_t *probability, bool *bit)
+{
     uint32_t bound;
     if (*range < (UINT32_C(1) << 24U)) {
         uint8_t next;
@@ -373,10 +372,9 @@ static inline bool xx_7zip_bcj2_stream_bit(xx_7zip_bcj2_stream_input *input,
     return true;
 }
 
-bool xx_7zip_stream_bcj2(xx_io_device *const sources[4], const uint64_t sizes[4],
-                          const uint8_t *properties, size_t properties_size,
-                          uint64_t expected_size, xx_io_device *destination,
-                          xx_pd_struct *pd) {
+bool xx_7zip_stream_bcj2(xx_io_device *const sources[4], const uint64_t sizes[4], const uint8_t *properties, size_t properties_size, uint64_t expected_size,
+                         xx_io_device *destination, xx_pd_struct *pd)
+{
     xx_7zip_bcj2_stream_input input[4];
     xx_7zip_stream_sink output;
     uint16_t probabilities[258];
@@ -385,9 +383,9 @@ bool xx_7zip_stream_bcj2(xx_io_device *const sources[4], const uint64_t sizes[4]
     uint32_t ip, range = UINT32_MAX, code = 0U;
     uint8_t previous = 0U, first;
     bool success = false;
-    if (!sources || !sizes || !destination || (!properties && properties_size) ||
-        !xx_7zip_branch_properties_supported(properties_size) || expected_size > INT64_MAX ||
-        sizes[3] < 5U || (sizes[1] & 3U) || (sizes[2] & 3U) || xx_pd_is_stopped(pd)) return false;
+    if (!sources || !sizes || !destination || (!properties && properties_size) || !xx_7zip_branch_properties_supported(properties_size) || expected_size > INT64_MAX ||
+        sizes[3] < 5U || (sizes[1] & 3U) || (sizes[2] & 3U) || xx_pd_is_stopped(pd))
+        return false;
     xx_mem_zero(input, sizeof(input));
     for (i = 0U; i < 4U; ++i)
         if (!xx_7zip_stream_window_init(&input[i].window, sources[i], 0, sizes[i], pd)) return false;
@@ -417,15 +415,12 @@ bool xx_7zip_stream_bcj2(xx_io_device *const sources[4], const uint64_t sizes[4]
             if (!xx_7zip_stream_write_exact(&output.device, out_buffer, used)) goto done;
             used = 0U;
         }
-        if (!xx_7zip_bcj2_stream_byte(&input[0], &opcode) ||
-            output.position + used >= expected_size) goto done;
-        branch = opcode == 0xE8U || opcode == 0xE9U ||
-                 (previous == 0x0FU && (opcode & 0xF0U) == 0x80U);
+        if (!xx_7zip_bcj2_stream_byte(&input[0], &opcode) || output.position + used >= expected_size) goto done;
+        branch = opcode == 0xE8U || opcode == 0xE9U || (previous == 0x0FU && (opcode & 0xF0U) == 0x80U);
         out_buffer[used++] = opcode;
         ++ip;
         if (branch) {
-            uint16_t *probability = opcode == 0xE8U ? &probabilities[2U + previous]
-                                 : &probabilities[opcode == 0xE9U ? 1U : 0U];
+            uint16_t *probability = opcode == 0xE8U ? &probabilities[2U + previous] : &probabilities[opcode == 0xE9U ? 1U : 0U];
             bool converted;
             if (!xx_7zip_bcj2_stream_bit(&input[3], &range, &code, probability, &converted)) goto done;
             if (converted) {
@@ -449,8 +444,7 @@ bool xx_7zip_stream_bcj2(xx_io_device *const sources[4], const uint64_t sizes[4]
         }
         previous = opcode;
     }
-    success = input[1].consumed == sizes[1] && input[2].consumed == sizes[2] && code == 0U &&
-              xx_7zip_stream_write_exact(&output.device, out_buffer, used) &&
+    success = input[1].consumed == sizes[1] && input[2].consumed == sizes[2] && code == 0U && xx_7zip_stream_write_exact(&output.device, out_buffer, used) &&
               output.position == expected_size && !xx_pd_is_stopped(pd);
 done:
     xx_mem_zero(buffers, XX_7ZIP_STREAM_BUFFER * 5U);

@@ -1,7 +1,8 @@
 /* Copyright (c) 2026 hors<horsicq@gmail.com>
  * SPDX-License-Identifier: MIT
  * Layout reference: https://raw.githubusercontent.com/gildor2/UEViewer/master/Unreal/UnrealPackage/UnPackage2.cpp
- * Unreal Engine1 versions61-63, licensee0, little endian, uncompressed export objects. Validates compact indices, name/import/export/heritage tables and object ranges. Later UE versions, game-specific encryption/compression and object decoding/execution unsupported.
+ * Unreal Engine1 versions61-63, licensee0, little endian, uncompressed export objects. Validates compact indices, name/import/export/heritage tables and object ranges.
+ * Later UE versions, game-specific encryption/compression and object decoding/execution unsupported.
  */
 #ifndef XX_UNREAL_PACKAGE_H
 #define XX_UNREAL_PACKAGE_H
@@ -9,13 +10,15 @@
 #ifdef __cplusplus
 extern "C" {
 #endif
-typedef struct xx_unreal_package { Abstractformat format; } xx_unreal_package;
-XXFC_API void xx_unreal_package_init(xx_unreal_package *,xx_io_device *,int64_t);
-XXFC_API xx_unreal_package *xx_unreal_package_create(xx_io_device *,int64_t);
+typedef struct xx_unreal_package {
+    Abstractformat format;
+} xx_unreal_package;
+XXFC_API void xx_unreal_package_init(xx_unreal_package *, xx_io_device *, int64_t);
+XXFC_API xx_unreal_package *xx_unreal_package_create(xx_io_device *, int64_t);
 XXFC_API void xx_unreal_package_destroy(xx_unreal_package *);
 XXFC_API void xx_unreal_package_free(xx_unreal_package *);
-XXFC_API bool xx_unreal_package_check_is_valid(Abstractformat *,xx_pd_struct *);
-XXFC_API bool xx_unreal_package_handle_base_info(Abstractformat *,xx_pd_struct *);
+XXFC_API bool xx_unreal_package_check_is_valid(Abstractformat *, xx_pd_struct *);
+XXFC_API bool xx_unreal_package_handle_base_info(Abstractformat *, xx_pd_struct *);
 #ifdef __cplusplus
 }
 #endif

@@ -19,8 +19,7 @@ typedef struct xx_northstar_nsi_s {
     Abstractformat format;
 } xx_northstar_nsi;
 
-XXFC_API void xx_northstar_nsi_init(xx_northstar_nsi *, xx_io_device *,
-                                    int64_t);
+XXFC_API void xx_northstar_nsi_init(xx_northstar_nsi *, xx_io_device *, int64_t);
 XXFC_API xx_northstar_nsi *xx_northstar_nsi_create(xx_io_device *, int64_t);
 XXFC_API void xx_northstar_nsi_destroy(xx_northstar_nsi *);
 XXFC_API void xx_northstar_nsi_free(xx_northstar_nsi *);

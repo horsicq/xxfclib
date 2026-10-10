@@ -6,11 +6,51 @@
 #include "xxfclib/data/xx_data.h"
 #include "../common/xx_network_packet.h"
 
-static bool pm_parse(Abstractformat *f,pm_stream *s,xx_pd_struct *pd){memory_blob b;bool ok=false;if(!blob_load(f,&b,pd))return false;BLOB_NEED(b.n>=60&&blob_span(&b,0,14));unsigned type=xx_data_get_u16(b.p+12, 2, 0, true);BLOB_NEED((type==0x0800&&(b.p[14]>>4)==4)||(type==0x86dd&&(b.p[14]>>4)==6));BLOB_NEED(!(b.p[6]&1)&&!blob_zero(&b,6,6)&&blob_add(f,s,&b,"ethernet-header",0,14)&&packet_ip_add(f,s,&b,14,b.n-14));s->size=(int64_t)b.n;ok=true;done:xx_mem_free(b.p);return ok;}
+static bool pm_parse(Abstractformat *f, pm_stream *s, xx_pd_struct *pd)
+{
+    memory_blob b;
+    bool ok = false;
+    if (!blob_load(f, &b, pd)) return false;
+    BLOB_NEED(b.n >= 60 && blob_span(&b, 0, 14));
+    unsigned type = xx_data_get_u16(b.p + 12, 2, 0, true);
+    BLOB_NEED((type == 0x0800 && (b.p[14] >> 4) == 4) || (type == 0x86dd && (b.p[14] >> 4) == 6));
+    BLOB_NEED(!(b.p[6] & 1) && !blob_zero(&b, 6, 6) && blob_add(f, s, &b, "ethernet-header", 0, 14) && packet_ip_add(f, s, &b, 14, b.n - 14));
+    s->size = (int64_t)b.n;
+    ok = true;
+done:
+    xx_mem_free(b.p);
+    return ok;
+}
 
-void xx_ethernet_frame_init(xx_ethernet_frame *r,xx_io_device *d,int64_t b){if(r){xx_mem_zero(r,sizeof(*r));pm_init(&r->format,d,b,XX_FILE_TYPE_ETHERNET_FRAME,"bin");}}
-xx_ethernet_frame *xx_ethernet_frame_create(xx_io_device *d,int64_t b){xx_ethernet_frame *r=(xx_ethernet_frame *)xx_mem_alloc(sizeof(*r));if(r)xx_ethernet_frame_init(r,d,b);return r;}
-void xx_ethernet_frame_destroy(xx_ethernet_frame *r){if(r)xx_format_cleanup_extra_parameters(&r->format);}
-void xx_ethernet_frame_free(xx_ethernet_frame *r){if(r){xx_ethernet_frame_destroy(r);xx_mem_free(r);}}
-bool xx_ethernet_frame_check_is_valid(Abstractformat *f,xx_pd_struct *pd){return pm_valid(f,pd);}
-bool xx_ethernet_frame_handle_base_info(Abstractformat *f,xx_pd_struct *pd){return pm_handle(f,pd);}
+void xx_ethernet_frame_init(xx_ethernet_frame *r, xx_io_device *d, int64_t b)
+{
+    if (r) {
+        xx_mem_zero(r, sizeof(*r));
+        pm_init(&r->format, d, b, XX_FILE_TYPE_ETHERNET_FRAME, "bin");
+    }
+}
+xx_ethernet_frame *xx_ethernet_frame_create(xx_io_device *d, int64_t b)
+{
+    xx_ethernet_frame *r = (xx_ethernet_frame *)xx_mem_alloc(sizeof(*r));
+    if (r) xx_ethernet_frame_init(r, d, b);
+    return r;
+}
+void xx_ethernet_frame_destroy(xx_ethernet_frame *r)
+{
+    if (r) xx_format_cleanup_extra_parameters(&r->format);
+}
+void xx_ethernet_frame_free(xx_ethernet_frame *r)
+{
+    if (r) {
+        xx_ethernet_frame_destroy(r);
+        xx_mem_free(r);
+    }
+}
+bool xx_ethernet_frame_check_is_valid(Abstractformat *f, xx_pd_struct *pd)
+{
+    return pm_valid(f, pd);
+}
+bool xx_ethernet_frame_handle_base_info(Abstractformat *f, xx_pd_struct *pd)
+{
+    return pm_handle(f, pd);
+}

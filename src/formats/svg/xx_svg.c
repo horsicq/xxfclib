@@ -64,10 +64,10 @@ typedef struct xx_svg_parsed_s {
 /* The look-ahead pass of the tag walk: covers [start, gt] where gt is the
  * first '>' at or after start. */
 typedef struct xx_svg_span_s {
-    int64_t start;    /* first byte of the pass, -1 before the first */
-    int64_t gt;       /* the '>' that ended the pass, -1 none yet */
-    int64_t last_err; /* start of the last invalid UTF-8 sequence, or -1 */
-    int64_t last_head;/* start of the last head magic, or -1 */
+    int64_t start;     /* first byte of the pass, -1 before the first */
+    int64_t gt;        /* the '>' that ended the pass, -1 none yet */
+    int64_t last_err;  /* start of the last invalid UTF-8 sequence, or -1 */
+    int64_t last_head; /* start of the last head magic, or -1 */
 } xx_svg_span;
 
 static void xx_svg_vtable_destroy(Abstractformat *self);
@@ -75,13 +75,12 @@ static void xx_svg_vtable_destroy(Abstractformat *self);
 /* ------------------------------------------------------------- helpers -- */
 
 /* All positioning goes through seek64: long is 32-bit on Win64. */
-static bool xx_svg_read_at_sized(xx_io_device *device, int64_t offset, void *data,
-                           size_t size, size_t io_capacity) {
+static bool xx_svg_read_at_sized(xx_io_device *device, int64_t offset, void *data, size_t size, size_t io_capacity)
+{
     uint8_t *out = (uint8_t *)data;
     size_t done = 0U;
 
-    if (!device || (!data && size != 0U) || offset < 0 ||
-        xx_io_seek64(device, offset, SEEK_SET) != 0) {
+    if (!device || (!data && size != 0U) || offset < 0 || xx_io_seek64(device, offset, SEEK_SET) != 0) {
         return false;
     }
     while (done < size) {
@@ -94,13 +93,13 @@ static bool xx_svg_read_at_sized(xx_io_device *device, int64_t offset, void *dat
     return true;
 }
 
-static XXFC_MAYBE_UNUSED bool xx_svg_read_at(xx_io_device *device, int64_t offset, void *data,
-                           size_t size) {
+static XXFC_MAYBE_UNUSED bool xx_svg_read_at(xx_io_device *device, int64_t offset, void *data, size_t size)
+{
     return xx_svg_read_at_sized(device, offset, data, size, xx_get_file_buffer_size());
 }
 
-static bool xx_svg_cursor_open(xx_svg_cursor *cursor, xx_io_device *device,
-                               int64_t limit) {
+static bool xx_svg_cursor_open(xx_svg_cursor *cursor, xx_io_device *device, int64_t limit)
+{
     xx_mem_zero(cursor, sizeof(*cursor));
     cursor->device = device;
     cursor->limit = limit;
@@ -110,7 +109,8 @@ static bool xx_svg_cursor_open(xx_svg_cursor *cursor, xx_io_device *device,
     return cursor->window != NULL;
 }
 
-static void xx_svg_cursor_close(xx_svg_cursor *cursor) {
+static void xx_svg_cursor_close(xx_svg_cursor *cursor)
+{
     if (cursor->window) xx_mem_free(cursor->window);
     cursor->window = NULL;
     cursor->window_size = 0U;
@@ -119,11 +119,9 @@ static void xx_svg_cursor_close(xx_svg_cursor *cursor) {
 /* Pointer to `size` (<= XX_SVG_MAX_PEEK) bytes at `offset`, or NULL when
  * any of them lies at or past the limit or cannot be read.  With `run`, the
  * number of window bytes available from `offset` is stored there too. */
-static const uint8_t *xx_svg_peek(xx_svg_cursor *cursor, int64_t offset,
-                                  size_t size, size_t *run) {
-    if (!cursor->window || offset < 0 || size == 0U ||
-        size > XX_SVG_MAX_PEEK || offset >= cursor->limit ||
-        (int64_t)size > cursor->limit - offset) {
+static const uint8_t *xx_svg_peek(xx_svg_cursor *cursor, int64_t offset, size_t size, size_t *run)
+{
+    if (!cursor->window || offset < 0 || size == 0U || size > XX_SVG_MAX_PEEK || offset >= cursor->limit || (int64_t)size > cursor->limit - offset) {
         return NULL;
     }
     /* Grammar lookahead is fixed semantic state, assembled by bounded reads. */
@@ -132,13 +130,9 @@ static const uint8_t *xx_svg_peek(xx_svg_cursor *cursor, int64_t offset,
         if (run) *run = size;
         return cursor->peek;
     }
-    if (cursor->window_size == 0U || offset < cursor->window_start ||
-        offset - cursor->window_start >
-            (int64_t)cursor->window_size - (int64_t)size) {
+    if (cursor->window_size == 0U || offset < cursor->window_start || offset - cursor->window_start > (int64_t)cursor->window_size - (int64_t)size) {
         int64_t remaining = cursor->limit - offset;
-        size_t want = (uint64_t)remaining < (uint64_t)cursor->io_capacity
-                          ? (size_t)remaining
-                          : (size_t)cursor->io_capacity;
+        size_t want = (uint64_t)remaining < (uint64_t)cursor->io_capacity ? (size_t)remaining : (size_t)cursor->io_capacity;
         cursor->window_size = 0U;
         if (!xx_svg_read_at_sized(cursor->device, offset, cursor->window, want, cursor->io_capacity)) {
             return NULL;
@@ -152,19 +146,20 @@ static const uint8_t *xx_svg_peek(xx_svg_cursor *cursor, int64_t offset,
     return cursor->window + (size_t)(offset - cursor->window_start);
 }
 
-static bool xx_svg_match(xx_svg_cursor *cursor, int64_t offset,
-                         const char *text, size_t size) {
+static bool xx_svg_match(xx_svg_cursor *cursor, int64_t offset, const char *text, size_t size)
+{
     const uint8_t *p = xx_svg_peek(cursor, offset, size, NULL);
     return p != NULL && xx_rt_memcmp(p, text, size) == 0;
 }
 
-static bool xx_svg_is_space(uint8_t c) {
+static bool xx_svg_is_space(uint8_t c)
+{
     return c == 0x20U || c == 0x09U || c == 0x0DU || c == 0x0AU;
 }
 
-static bool xx_svg_poll(uint64_t *counter, xx_pd_struct *pd) {
-    if ((++*counter & XX_SVG_STOP_POLL_MASK) == 0U && pd &&
-        xx_pd_is_stopped(pd)) {
+static bool xx_svg_poll(uint64_t *counter, xx_pd_struct *pd)
+{
+    if ((++*counter & XX_SVG_STOP_POLL_MASK) == 0U && pd && xx_pd_is_stopped(pd)) {
         return false;
     }
     return true;
@@ -173,9 +168,8 @@ static bool xx_svg_poll(uint64_t *counter, xx_pd_struct *pd) {
 /* First occurrence of `text` (no repeated first byte needed) starting in
  * [from, stop); on success *found is its offset.  Linear: each position is
  * compared once, with at most `size` bytes. */
-static bool xx_svg_find(xx_svg_cursor *cursor, int64_t from, int64_t stop,
-                        const char *text, size_t size, int64_t *found,
-                        uint64_t *counter, xx_pd_struct *pd) {
+static bool xx_svg_find(xx_svg_cursor *cursor, int64_t from, int64_t stop, const char *text, size_t size, int64_t *found, uint64_t *counter, xx_pd_struct *pd)
+{
     int64_t pos = from;
 
     while (pos < stop) {
@@ -208,9 +202,8 @@ static bool xx_svg_find(xx_svg_cursor *cursor, int64_t from, int64_t stop,
 /* <!DOCTYPE at `pos`.  The name must be "svg"; quoted literals and an
  * internal subset (with its own comments and PIs) are skipped so a '>' or
  * ']' inside them does not end the declaration.  *next is one past '>'. */
-static bool xx_svg_skip_doctype(xx_svg_cursor *cursor, int64_t pos,
-                                int64_t stop, int64_t *next,
-                                uint64_t *counter, xx_pd_struct *pd) {
+static bool xx_svg_skip_doctype(xx_svg_cursor *cursor, int64_t pos, int64_t stop, int64_t *next, uint64_t *counter, xx_pd_struct *pd)
+{
     const uint8_t *p;
     uint8_t quote = 0U;
     bool subset = false;
@@ -247,16 +240,14 @@ static bool xx_svg_skip_doctype(xx_svg_cursor *cursor, int64_t pos,
         if (subset) {
             int64_t end;
             if (c == '<' && xx_svg_match(cursor, pos, "<!--", 4U)) {
-                if (!xx_svg_find(cursor, pos + 4, stop, "-->", 3U, &end,
-                                 counter, pd)) {
+                if (!xx_svg_find(cursor, pos + 4, stop, "-->", 3U, &end, counter, pd)) {
                     return false;
                 }
                 pos = end + 3;
                 continue;
             }
             if (c == '<' && xx_svg_match(cursor, pos, "<?", 2U)) {
-                if (!xx_svg_find(cursor, pos + 2, stop, "?>", 2U, &end,
-                                 counter, pd)) {
+                if (!xx_svg_find(cursor, pos + 2, stop, "?>", 2U, &end, counter, pd)) {
                     return false;
                 }
                 pos = end + 2;
@@ -279,9 +270,8 @@ static bool xx_svg_skip_doctype(xx_svg_cursor *cursor, int64_t pos,
 
 /* Walks the prolog from the base address; on success parsed->root is the
  * offset of the root's "<svg ". */
-static bool xx_svg_parse_prolog(xx_svg_cursor *cursor, int64_t base,
-                                xx_svg_parsed *parsed, uint64_t *counter,
-                                xx_pd_struct *pd) {
+static bool xx_svg_parse_prolog(xx_svg_cursor *cursor, int64_t base, xx_svg_parsed *parsed, uint64_t *counter, xx_pd_struct *pd)
+{
     int64_t stop = cursor->limit;
     int64_t pos = base;
 
@@ -301,8 +291,7 @@ static bool xx_svg_parse_prolog(xx_svg_cursor *cursor, int64_t base,
             continue;
         }
         if (*p != '<') return false;
-        if (xx_svg_match(cursor, pos, XX_SVG_OPEN_TAG,
-                         XX_SVG_OPEN_TAG_SIZE)) {
+        if (xx_svg_match(cursor, pos, XX_SVG_OPEN_TAG, XX_SVG_OPEN_TAG_SIZE)) {
             parsed->root = pos;
             return true;
         }
@@ -311,8 +300,7 @@ static bool xx_svg_parse_prolog(xx_svg_cursor *cursor, int64_t base,
                 const uint8_t *q = xx_svg_peek(cursor, pos + 5, 1U, NULL);
                 if (q && xx_svg_is_space(*q)) parsed->xml_declaration = true;
             }
-            if (!xx_svg_find(cursor, pos + 2, stop, "?>", 2U, &end, counter,
-                             pd)) {
+            if (!xx_svg_find(cursor, pos + 2, stop, "?>", 2U, &end, counter, pd)) {
                 return false;
             }
             ++parsed->pis;
@@ -320,8 +308,7 @@ static bool xx_svg_parse_prolog(xx_svg_cursor *cursor, int64_t base,
             continue;
         }
         if (xx_svg_match(cursor, pos, "<!--", 4U)) {
-            if (!xx_svg_find(cursor, pos + 4, stop, "-->", 3U, &end, counter,
-                             pd)) {
+            if (!xx_svg_find(cursor, pos + 4, stop, "-->", 3U, &end, counter, pd)) {
                 return false;
             }
             ++parsed->comments;
@@ -329,8 +316,7 @@ static bool xx_svg_parse_prolog(xx_svg_cursor *cursor, int64_t base,
             continue;
         }
         if (xx_svg_match(cursor, pos, "<!DOCTYPE", 9U)) {
-            if (parsed->doctype ||
-                !xx_svg_skip_doctype(cursor, pos, stop, &end, counter, pd)) {
+            if (parsed->doctype || !xx_svg_skip_doctype(cursor, pos, stop, &end, counter, pd)) {
                 return false;
             }
             parsed->doctype = true;
@@ -347,16 +333,29 @@ static bool xx_svg_parse_prolog(xx_svg_cursor *cursor, int64_t base,
 /* Length of the UTF-8 sequence led by `c` and the allowed range of its
  * second byte (RFC 3629, as Rust's str::from_utf8 applies it); 0 = `c`
  * cannot lead a sequence. */
-static uint32_t xx_svg_utf8_lead(uint8_t c, uint8_t *lo, uint8_t *hi) {
+static uint32_t xx_svg_utf8_lead(uint8_t c, uint8_t *lo, uint8_t *hi)
+{
     *lo = 0x80U;
     *hi = 0xBFU;
     if (c >= 0xC2U && c <= 0xDFU) return 2U;
-    if (c == 0xE0U) { *lo = 0xA0U; return 3U; }
+    if (c == 0xE0U) {
+        *lo = 0xA0U;
+        return 3U;
+    }
     if ((c >= 0xE1U && c <= 0xECU) || c == 0xEEU || c == 0xEFU) return 3U;
-    if (c == 0xEDU) { *hi = 0x9FU; return 3U; }
-    if (c == 0xF0U) { *lo = 0x90U; return 4U; }
+    if (c == 0xEDU) {
+        *hi = 0x9FU;
+        return 3U;
+    }
+    if (c == 0xF0U) {
+        *lo = 0x90U;
+        return 4U;
+    }
     if (c >= 0xF1U && c <= 0xF3U) return 4U;
-    if (c == 0xF4U) { *hi = 0x8FU; return 4U; }
+    if (c == 0xF4U) {
+        *hi = 0x8FU;
+        return 4U;
+    }
     return 0U;
 }
 
@@ -364,9 +363,8 @@ static uint32_t xx_svg_utf8_lead(uint8_t c, uint8_t *lo, uint8_t *hi) {
  * recording the last UTF-8 error and the last head magic on the way.  The
  * pass restarts at `start`, which is always a '<', i.e. an ASCII byte and
  * so a character boundary.  False when no '>' lies before the limit. */
-static bool xx_svg_span_run(xx_svg_cursor *cursor, xx_svg_span *span,
-                            int64_t start, uint64_t *counter,
-                            xx_pd_struct *pd) {
+static bool xx_svg_span_run(xx_svg_cursor *cursor, xx_svg_span *span, int64_t start, uint64_t *counter, xx_pd_struct *pd)
+{
     int64_t pos = start;
 
     span->start = start;
@@ -389,9 +387,7 @@ static bool xx_svg_span_run(xx_svg_cursor *cursor, xx_svg_span *span,
         }
         if (*p == 'x') {
             /* Cheap reject on the next byte when it is already at hand. */
-            if ((run - i < 2U || p[1] == 'm') &&
-                xx_svg_match(cursor, pos, XX_SVG_HEAD_MAGIC,
-                             XX_SVG_HEAD_MAGIC_SIZE)) {
+            if ((run - i < 2U || p[1] == 'm') && xx_svg_match(cursor, pos, XX_SVG_HEAD_MAGIC, XX_SVG_HEAD_MAGIC_SIZE)) {
                 span->last_head = pos;
             }
             ++pos;
@@ -401,9 +397,7 @@ static bool xx_svg_span_run(xx_svg_cursor *cursor, xx_svg_span *span,
             uint8_t lo;
             uint8_t hi;
             uint32_t length = xx_svg_utf8_lead(*p, &lo, &hi);
-            const uint8_t *q = length != 0U
-                                   ? xx_svg_peek(cursor, pos, length, NULL)
-                                   : NULL;
+            const uint8_t *q = length != 0U ? xx_svg_peek(cursor, pos, length, NULL) : NULL;
             bool ok = q != NULL && q[1] >= lo && q[1] <= hi;
             uint32_t k;
             for (k = 2U; ok && k < length; ++k) {
@@ -423,9 +417,8 @@ static bool xx_svg_span_run(xx_svg_cursor *cursor, xx_svg_span *span,
 }
 
 /* binwalk parse_svg_image from the root. */
-static bool xx_svg_walk(xx_svg_cursor *scan, xx_svg_cursor *ahead,
-                        xx_svg_parsed *parsed, uint64_t *counter,
-                        xx_pd_struct *pd) {
+static bool xx_svg_walk(xx_svg_cursor *scan, xx_svg_cursor *ahead, xx_svg_parsed *parsed, uint64_t *counter, xx_pd_struct *pd)
+{
     xx_svg_span span;
     int64_t pos = parsed->root;
     uint64_t heads = 0U;
@@ -453,10 +446,8 @@ static bool xx_svg_walk(xx_svg_cursor *scan, xx_svg_cursor *ahead,
             continue;
         }
 
-        is_open = xx_svg_match(scan, pos, XX_SVG_OPEN_TAG,
-                               XX_SVG_OPEN_TAG_SIZE);
-        is_close = !is_open && xx_svg_match(scan, pos, XX_SVG_CLOSE_TAG,
-                                            XX_SVG_CLOSE_TAG_SIZE);
+        is_open = xx_svg_match(scan, pos, XX_SVG_OPEN_TAG, XX_SVG_OPEN_TAG_SIZE);
+        is_close = !is_open && xx_svg_match(scan, pos, XX_SVG_CLOSE_TAG, XX_SVG_CLOSE_TAG_SIZE);
         if (!is_open && !is_close) {
             ++pos;
             continue;
@@ -464,8 +455,7 @@ static bool xx_svg_walk(xx_svg_cursor *scan, xx_svg_cursor *ahead,
 
         /* The tag is [pos, gt].  A '>' found for an earlier tag at or after
          * pos is also the first one after pos: there is none in between. */
-        if (span.gt < pos &&
-            !xx_svg_span_run(ahead, &span, pos, counter, pd)) {
+        if (span.gt < pos && !xx_svg_span_run(ahead, &span, pos, counter, pd)) {
             return false; /* no '>' at all: binwalk's walk fails */
         }
         if (span.last_err >= pos) return false; /* not valid UTF-8 */
@@ -499,8 +489,8 @@ static bool xx_svg_walk(xx_svg_cursor *scan, xx_svg_cursor *ahead,
 
 /* --------------------------------------------------------------- parse -- */
 
-static bool xx_svg_parse(Abstractformat *self, xx_svg_parsed *parsed,
-                         xx_pd_struct *pd) {
+static bool xx_svg_parse(Abstractformat *self, xx_svg_parsed *parsed, xx_pd_struct *pd)
+{
     xx_svg_cursor scan;
     xx_svg_cursor ahead;
     int64_t limit;
@@ -512,13 +502,11 @@ static bool xx_svg_parse(Abstractformat *self, xx_svg_parsed *parsed,
     parsed->root = -1;
     parsed->head = -1;
     parsed->end = -1;
-    if (!self || !self->device || self->base_address < 0 ||
-        (pd && xx_pd_is_stopped(pd))) {
+    if (!self || !self->device || self->base_address < 0 || (pd && xx_pd_is_stopped(pd))) {
         return false;
     }
     parsed->input_size = xx_io_total_size(self->device);
-    if (parsed->input_size < self->base_address ||
-        parsed->input_size - self->base_address < (int64_t)XX_SVG_MIN_SIZE) {
+    if (parsed->input_size < self->base_address || parsed->input_size - self->base_address < (int64_t)XX_SVG_MIN_SIZE) {
         return false;
     }
     limit = parsed->input_size;
@@ -530,9 +518,7 @@ static bool xx_svg_parse(Abstractformat *self, xx_svg_parsed *parsed,
         xx_svg_cursor_close(&scan);
         return false;
     }
-    ok = xx_svg_parse_prolog(&scan, self->base_address, parsed, &counter,
-                             pd) &&
-         xx_svg_walk(&scan, &ahead, parsed, &counter, pd);
+    ok = xx_svg_parse_prolog(&scan, self->base_address, parsed, &counter, pd) && xx_svg_walk(&scan, &ahead, parsed, &counter, pd);
     xx_svg_cursor_close(&ahead);
     xx_svg_cursor_close(&scan);
     return ok && parsed->end > self->base_address && parsed->end <= limit;
@@ -540,7 +526,8 @@ static bool xx_svg_parse(Abstractformat *self, xx_svg_parsed *parsed,
 
 /* ----------------------------------------------------------- lifecycle -- */
 
-void xx_svg_init(xx_svg *svg, xx_io_device *dev, int64_t base_address) {
+void xx_svg_init(xx_svg *svg, xx_io_device *dev, int64_t base_address)
+{
     if (!svg) return;
     xx_mem_zero(svg, sizeof(*svg));
     xx_format_init(&svg->format, dev, base_address);
@@ -561,23 +548,27 @@ void xx_svg_init(xx_svg *svg, xx_io_device *dev, int64_t base_address) {
     xx_components_install(&svg->format);
 }
 
-xx_svg *xx_svg_create(xx_io_device *dev, int64_t base_address) {
+xx_svg *xx_svg_create(xx_io_device *dev, int64_t base_address)
+{
     xx_svg *svg = (xx_svg *)xx_mem_alloc(sizeof(*svg));
 
     if (svg) xx_svg_init(svg, dev, base_address);
     return svg;
 }
 
-void xx_svg_destroy(xx_svg *svg) {
+void xx_svg_destroy(xx_svg *svg)
+{
     if (!svg) return;
     xx_format_cleanup_extra_parameters(&svg->format);
 }
 
-static void xx_svg_vtable_destroy(Abstractformat *self) {
+static void xx_svg_vtable_destroy(Abstractformat *self)
+{
     xx_svg_destroy((xx_svg *)self);
 }
 
-void xx_svg_free(xx_svg *svg) {
+void xx_svg_free(xx_svg *svg)
+{
     if (!svg) return;
     xx_svg_destroy(svg);
     xx_mem_free(svg);
@@ -590,19 +581,17 @@ void xx_svg_free(xx_svg *svg) {
  * refuse too.  When the detector's window is full and ends before the
  * first token is complete (a long run of white space), it cannot decide
  * and lets the probe do so. */
-bool xx_svg_check_magic(const uint8_t *magic, size_t magic_size) {
-    static const char *const tokens[] = {
-        XX_SVG_OPEN_TAG, "<?", "<!--", "<!DOCTYPE"
-    };
-    static const size_t lengths[] = { XX_SVG_OPEN_TAG_SIZE, 2U, 4U, 9U };
+bool xx_svg_check_magic(const uint8_t *magic, size_t magic_size)
+{
+    static const char *const tokens[] = {XX_SVG_OPEN_TAG, "<?", "<!--", "<!DOCTYPE"};
+    static const size_t lengths[] = {XX_SVG_OPEN_TAG_SIZE, 2U, 4U, 9U};
     bool window_full = magic_size >= XX_SVG_MAGIC_WINDOW;
     size_t i = 0U;
     size_t rest;
     size_t k;
 
     if (!magic || magic_size == 0U) return false;
-    if (magic_size >= 3U && magic[0] == 0xEFU && magic[1] == 0xBBU &&
-        magic[2] == 0xBFU) {
+    if (magic_size >= 3U && magic[0] == 0xEFU && magic[1] == 0xBBU && magic[2] == 0xBFU) {
         i = 3U;
     }
     while (i < magic_size && xx_svg_is_space(magic[i])) ++i;
@@ -611,21 +600,22 @@ bool xx_svg_check_magic(const uint8_t *magic, size_t magic_size) {
     for (k = 0U; k < sizeof(tokens) / sizeof(tokens[0]); ++k) {
         size_t length = lengths[k];
         size_t n = rest < length ? rest : length;
-        if (xx_rt_memcmp(magic + i, tokens[k], n) == 0 &&
-            (n == length || window_full)) {
+        if (xx_rt_memcmp(magic + i, tokens[k], n) == 0 && (n == length || window_full)) {
             return true;
         }
     }
     return false;
 }
 
-bool xx_svg_check_is_valid(Abstractformat *self, xx_pd_struct *pd) {
+bool xx_svg_check_is_valid(Abstractformat *self, xx_pd_struct *pd)
+{
     xx_svg_parsed parsed;
 
     return xx_svg_parse(self, &parsed, pd);
 }
 
-bool xx_svg_handle_base_info(Abstractformat *self, xx_pd_struct *pd) {
+bool xx_svg_handle_base_info(Abstractformat *self, xx_pd_struct *pd)
+{
     xx_svg *svg = (xx_svg *)self;
     xx_svg_parsed parsed;
 
@@ -660,9 +650,9 @@ bool xx_svg_handle_base_info(Abstractformat *self, xx_pd_struct *pd) {
     return true;
 }
 
-int64_t xx_svg_get_format_size(Abstractformat *self, xx_pd_struct *pd) {
-    if (!self ||
-        (!self->base_info_handled && !xx_format_handle_base_info(self, pd))) {
+int64_t xx_svg_get_format_size(Abstractformat *self, xx_pd_struct *pd)
+{
+    if (!self || (!self->base_info_handled && !xx_format_handle_base_info(self, pd))) {
         return -1;
     }
     return self->format_size;
@@ -670,50 +660,58 @@ int64_t xx_svg_get_format_size(Abstractformat *self, xx_pd_struct *pd) {
 
 /* ------------------------------------------------------------ accessors -- */
 
-int64_t xx_svg_get_root_offset(const xx_svg *svg) {
+int64_t xx_svg_get_root_offset(const xx_svg *svg)
+{
     return svg ? svg->root_offset : -1;
 }
 
-int64_t xx_svg_get_head_offset(const xx_svg *svg) {
+int64_t xx_svg_get_head_offset(const xx_svg *svg)
+{
     return svg ? svg->head_offset : -1;
 }
 
-int64_t xx_svg_get_end_offset(const xx_svg *svg) {
+int64_t xx_svg_get_end_offset(const xx_svg *svg)
+{
     return svg ? svg->end_offset : -1;
 }
 
-uint64_t xx_svg_get_number_of_svg_tags(const xx_svg *svg) {
+uint64_t xx_svg_get_number_of_svg_tags(const xx_svg *svg)
+{
     return svg ? svg->number_of_svg_tags : 0U;
 }
 
-uint32_t xx_svg_get_max_depth(const xx_svg *svg) {
+uint32_t xx_svg_get_max_depth(const xx_svg *svg)
+{
     return svg ? svg->max_depth : 0U;
 }
 
-bool xx_svg_has_xml_declaration(const xx_svg *svg) {
+bool xx_svg_has_xml_declaration(const xx_svg *svg)
+{
     return svg ? svg->has_xml_declaration : false;
 }
 
-bool xx_svg_has_doctype(const xx_svg *svg) {
+bool xx_svg_has_doctype(const xx_svg *svg)
+{
     return svg ? svg->has_doctype : false;
 }
 
 /* Encoded/structural component members; this does not decode media. */
-static bool xx_components_build(Abstractformat *f, xx_component_stream *s, xx_pd_struct *pd) {
-
-    xx_svg *v=(xx_svg *)f;
-    int64_t root=v->root_offset-f->base_address, close=v->end_offset-f->base_address-6, pos=root+5;
-    uint8_t quote=0,c;
-    if(root && !xx_component_add(f,s,0,root,"xml-prolog")) return false;
-    while(pos<close) {
-        if(xx_pd_is_stopped(pd) || !xx_component_read(f,pos,&c,1)) return false;
-        if(quote) { if(c==quote) quote=0; }
-        else if(c=='\'' || c=='"') quote=c;
-        else if(c=='>') break;
+static bool xx_components_build(Abstractformat *f, xx_component_stream *s, xx_pd_struct *pd)
+{
+    xx_svg *v = (xx_svg *)f;
+    int64_t root = v->root_offset - f->base_address, close = v->end_offset - f->base_address - 6, pos = root + 5;
+    uint8_t quote = 0, c;
+    if (root && !xx_component_add(f, s, 0, root, "xml-prolog")) return false;
+    while (pos < close) {
+        if (xx_pd_is_stopped(pd) || !xx_component_read(f, pos, &c, 1)) return false;
+        if (quote) {
+            if (c == quote) quote = 0;
+        } else if (c == '\'' || c == '"') quote = c;
+        else if (c == '>') break;
         ++pos;
     }
     /* The legacy size reader accepts a close tag ending the root's opening
      * tag. Preserve that acceptance, but never include it in attributes. */
-    if(!xx_component_add(f,s,root+5,pos-root-5,"svg-root-attributes")) return false;
-    return pos>=close || xx_component_add(f,s,pos+1,close-pos-1,"svg-inner-markup");
+    if (!xx_component_add(f, s, root + 5, pos - root - 5, "svg-root-attributes")) return false;
+    return pos >= close || xx_component_add(f, s, pos + 1, close - pos - 1, "svg-inner-markup");
 }

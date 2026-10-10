@@ -30,7 +30,10 @@ XXFC_API bool xx_pyc_const_present(const xx_pyc *pyc, const char *value);
 XXFC_API bool xx_pyc_check_is_valid(Abstractformat *format, xx_pd_struct *pd);
 XXFC_API bool xx_pyc_handle_base_info(Abstractformat *format, xx_pd_struct *pd);
 XXFC_API int64_t xx_pyc_get_format_size(Abstractformat *format, xx_pd_struct *pd);
-static inline Abstractformat *xx_pyc_to_format(xx_pyc *pyc) { return pyc ? &pyc->format : NULL; }
+static inline Abstractformat *xx_pyc_to_format(xx_pyc *pyc)
+{
+    return pyc ? &pyc->format : NULL;
+}
 #ifdef __cplusplus
 }
 #endif

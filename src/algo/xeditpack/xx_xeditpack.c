@@ -17,16 +17,16 @@ typedef struct xep_walker {
     const uint8_t *data;
     size_t size;
     size_t position;
-    uint8_t *out;      /* NULL while measuring */
+    uint8_t *out; /* NULL while measuring */
     size_t produced;
-    size_t ceiling;    /* the format ceiling, as in the reference */
-    size_t capacity;   /* the caller's buffer; SIZE_MAX while measuring */
+    size_t ceiling;  /* the format ceiling, as in the reference */
+    size_t capacity; /* the caller's buffer; SIZE_MAX while measuring */
     bool overflow;
     bool truncated;
 } xep_walker;
 
-static void xep_init(xep_walker *w, const uint8_t *data, size_t size,
-                     uint8_t *out, size_t ceiling, size_t capacity) {
+static void xep_init(xep_walker *w, const uint8_t *data, size_t size, uint8_t *out, size_t ceiling, size_t capacity)
+{
     w->data = data;
     w->size = size;
     w->position = 0U;
@@ -38,7 +38,8 @@ static void xep_init(xep_walker *w, const uint8_t *data, size_t size,
     w->truncated = false;
 }
 
-static bool xep_read_byte(xep_walker *w, uint8_t *value) {
+static bool xep_read_byte(xep_walker *w, uint8_t *value)
+{
     if (w->position >= w->size) return false;
     *value = w->data[w->position];
     ++w->position;
@@ -46,7 +47,8 @@ static bool xep_read_byte(xep_walker *w, uint8_t *value) {
 }
 
 /* Big endian, high byte first -- this is a mainframe format. */
-static bool xep_read_word(xep_walker *w, uint32_t *value) {
+static bool xep_read_word(xep_walker *w, uint32_t *value)
+{
     uint8_t high = 0U;
     uint8_t low = 0U;
     if (!xep_read_byte(w, &high)) return false;
@@ -55,7 +57,8 @@ static bool xep_read_word(xep_walker *w, uint32_t *value) {
     return true;
 }
 
-static bool xep_reserve(xep_walker *w, size_t count) {
+static bool xep_reserve(xep_walker *w, size_t count)
+{
     if (count > (w->ceiling - w->produced)) {
         w->overflow = true;
         return false;
@@ -70,11 +73,13 @@ static bool xep_reserve(xep_walker *w, size_t count) {
  * reserves its FULL count against that ceiling (see xep_copy).  Folding the
  * two limits into one would make a truncated member fail to decode at the very
  * length measure() just reported for it. */
-static bool xep_fits(xep_walker *w, size_t count) {
+static bool xep_fits(xep_walker *w, size_t count)
+{
     return count <= (w->capacity - w->produced);
 }
 
-static bool xep_fill(xep_walker *w, uint8_t byte, size_t count) {
+static bool xep_fill(xep_walker *w, uint8_t byte, size_t count)
+{
     size_t i;
     if (!xep_reserve(w, count)) return false;
     if (!xep_fits(w, count)) return false;
@@ -91,7 +96,8 @@ static bool xep_fill(xep_walker *w, uint8_t byte, size_t count) {
  * the FULL count is reserved against the ceiling before the clamp, and that
  * the cursor advances by the full count as well -- both deliberate, both
  * copied from the reference. */
-static bool xep_copy(xep_walker *w, size_t count) {
+static bool xep_copy(xep_walker *w, size_t count)
+{
     size_t available;
     size_t taken;
     if (!xep_reserve(w, count)) return false;
@@ -107,24 +113,22 @@ static bool xep_copy(xep_walker *w, size_t count) {
     return true;
 }
 
-static bool xep_run(xep_walker *w) {
+static bool xep_run(xep_walker *w)
+{
     for (;;) {
         uint8_t opcode = 0U;
         if (!xep_read_byte(w, &opcode)) break;
 
         if (opcode <= 0x77U) {
-            if (!xep_fill(w, (uint8_t)XEP_BLANK, (size_t)opcode + 1U))
-                return false;
+            if (!xep_fill(w, (uint8_t)XEP_BLANK, (size_t)opcode + 1U)) return false;
         } else if ((opcode == 0x78U) || (opcode == 0x7cU)) {
             uint8_t count = 0U;
             if (!xep_read_byte(w, &count)) break;
-            if (!xep_fill(w, (uint8_t)XEP_BLANK, (size_t)count + 1U))
-                return false;
+            if (!xep_fill(w, (uint8_t)XEP_BLANK, (size_t)count + 1U)) return false;
         } else if ((opcode == 0x79U) || (opcode == 0x7dU)) {
             uint32_t count = 0U;
             if (!xep_read_word(w, &count)) break;
-            if (!xep_fill(w, (uint8_t)XEP_BLANK, (size_t)count + 1U))
-                return false;
+            if (!xep_fill(w, (uint8_t)XEP_BLANK, (size_t)count + 1U)) return false;
         } else if ((opcode == 0x7aU) || (opcode == 0x7eU)) {
             uint8_t count = 0U;
             uint8_t byte = 0U;
@@ -162,19 +166,15 @@ static bool xep_run(xep_walker *w) {
     return !w->overflow;
 }
 
-bool xx_xeditpack_decode_memory(const uint8_t *input, size_t input_size,
-                                uint8_t *output, size_t output_size,
-                                size_t *written) {
+bool xx_xeditpack_decode_memory(const uint8_t *input, size_t input_size, uint8_t *output, size_t output_size, size_t *written)
+{
     xep_walker walker;
     if (written) *written = 0U;
     if (!written) return false;
     if (!input && (input_size != 0U)) return false;
     if (!output && (output_size != 0U)) return false;
 
-    xep_init(&walker, input, input_size, output,
-             (output_size > XX_XEDITPACK_MAX_OUTPUT) ? output_size
-                                                     : XX_XEDITPACK_MAX_OUTPUT,
-             output_size);
+    xep_init(&walker, input, input_size, output, (output_size > XX_XEDITPACK_MAX_OUTPUT) ? output_size : XX_XEDITPACK_MAX_OUTPUT, output_size);
     if (!xep_run(&walker)) return false;
 
     *written = walker.produced;
@@ -182,9 +182,8 @@ bool xx_xeditpack_decode_memory(const uint8_t *input, size_t input_size,
     return true;
 }
 
-bool xx_xeditpack_scan_memory(const uint8_t *input, size_t input_size,
-                              size_t max_output, size_t *consumed,
-                              size_t *produced) {
+bool xx_xeditpack_scan_memory(const uint8_t *input, size_t input_size, size_t max_output, size_t *consumed, size_t *produced)
+{
     xep_walker walker;
     if (consumed) *consumed = 0U;
     if (produced) *produced = 0U;
@@ -196,8 +195,7 @@ bool xx_xeditpack_scan_memory(const uint8_t *input, size_t input_size,
     if (walker.produced == 0U) return false;
 
     if (consumed) {
-        *consumed = (walker.position < input_size) ? walker.position
-                                                   : input_size;
+        *consumed = (walker.position < input_size) ? walker.position : input_size;
     }
     if (produced) *produced = walker.produced;
 

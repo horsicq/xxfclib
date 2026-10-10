@@ -14,53 +14,21 @@
 #define XX_FTCOMP_TOKEN_SLACK 16U
 
 static const uint16_t ft33_weights_header[257] = {
-    1024, 600, 300, 260, 230, 212, 192, 172, 148, 132, 120, 108, 
-    92, 84, 80, 76, 72, 68, 64, 60, 56, 52, 48, 44, 
-    40, 36, 32, 28, 24, 22, 20, 19, 18, 17, 16, 15, 
-    14, 14, 13, 13, 12, 12, 11, 11, 10, 10, 9, 9, 
-    9, 8, 8, 8, 7, 7, 7, 6, 6, 6, 6, 5, 
-    5, 5, 5, 4, 4, 4, 4, 4, 4, 3, 3, 3, 
-    3, 3, 2, 2, 2, 2, 2, 2, 2, 2, 1, 1, 
-    1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 
-    1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 
-    1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 
-    1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 
-    1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 
-    1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 
-    1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 
-    1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 
-    1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 
-    1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 
-    1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 
-    1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 
-    1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 
-    1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 
-    1, 1, 1, 4, 15
-};
+    1024, 600, 300, 260, 230, 212, 192, 172, 148, 132, 120, 108, 92, 84, 80, 76, 72, 68, 64, 60, 56, 52, 48, 44, 40, 36, 32, 28, 24, 22, 20, 19, 18, 17, 16, 15, 14,
+    14,   13,  13,  12,  12,  11,  11,  10,  10,  9,   9,   9,   8,  8,  8,  7,  7,  7,  6,  6,  6,  6,  5,  5,  5,  5,  4,  4,  4,  4,  4,  4,  3,  3,  3,  3,  3,
+    2,    2,   2,   2,   2,   2,   2,   2,   1,   1,   1,   1,   1,  1,  1,  1,  1,  1,  1,  1,  1,  1,  1,  1,  1,  1,  1,  1,  1,  1,  1,  1,  1,  1,  1,  1,  1,
+    1,    1,   1,   1,   1,   1,   1,   1,   1,   1,   1,   1,   1,  1,  1,  1,  1,  1,  1,  1,  1,  1,  1,  1,  1,  1,  1,  1,  1,  1,  1,  1,  1,  1,  1,  1,  1,
+    1,    1,   1,   1,   1,   1,   1,   1,   1,   1,   1,   1,   1,  1,  1,  1,  1,  1,  1,  1,  1,  1,  1,  1,  1,  1,  1,  1,  1,  1,  1,  1,  1,  1,  1,  1,  1,
+    1,    1,   1,   1,   1,   1,   1,   1,   1,   1,   1,   1,   1,  1,  1,  1,  1,  1,  1,  1,  1,  1,  1,  1,  1,  1,  1,  1,  1,  1,  1,  1,  1,  1,  1,  1,  1,
+    1,    1,   1,   1,   1,   1,   1,   1,   1,   1,   1,   1,   1,  1,  1,  1,  1,  1,  1,  1,  1,  1,  1,  1,  1,  1,  1,  1,  1,  1,  1,  1,  1,  4,  15};
 static const uint16_t ft33_weights_extra[258] = {
-    40, 39, 39, 38, 38, 37, 37, 36, 36, 35, 35, 34, 
-    34, 33, 33, 32, 32, 31, 31, 30, 30, 29, 29, 28, 
-    28, 27, 26, 25, 24, 24, 23, 23, 22, 22, 21, 21, 
-    20, 20, 19, 19, 19, 18, 18, 18, 17, 17, 17, 17, 
-    16, 16, 16, 16, 16, 16, 16, 15, 15, 15, 15, 15, 
-    15, 15, 15, 14, 14, 14, 14, 14, 14, 13, 13, 13, 
-    13, 13, 13, 12, 12, 12, 12, 12, 11, 11, 11, 11, 
-    11, 10, 10, 10, 10, 10, 10, 9, 9, 9, 9, 9, 
-    9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 
-    9, 9, 9, 9, 8, 8, 8, 8, 8, 8, 8, 8, 
-    8, 8, 8, 8, 8, 8, 8, 8, 7, 7, 7, 7, 
-    7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 
-    6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 
-    6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 5, 
-    5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 
-    5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 
-    5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 
-    5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 
-    5, 5, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 
-    4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 
-    4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 
-    4, 4, 0, 0, 255, 120
-};
+    40, 39, 39, 38, 38, 37, 37, 36, 36, 35, 35, 34, 34, 33, 33, 32, 32, 31, 31, 30, 30, 29, 29, 28, 28, 27, 26, 25, 24, 24, 23, 23, 22, 22, 21,  21, 20,
+    20, 19, 19, 19, 18, 18, 18, 17, 17, 17, 17, 16, 16, 16, 16, 16, 16, 16, 15, 15, 15, 15, 15, 15, 15, 15, 14, 14, 14, 14, 14, 14, 13, 13, 13,  13, 13,
+    13, 12, 12, 12, 12, 12, 11, 11, 11, 11, 11, 10, 10, 10, 10, 10, 10, 9,  9,  9,  9,  9,  9,  9,  9,  9,  9,  9,  9,  9,  9,  9,  9,  9,  9,   9,  9,
+    9,  8,  8,  8,  8,  8,  8,  8,  8,  8,  8,  8,  8,  8,  8,  8,  8,  7,  7,  7,  7,  7,  7,  7,  7,  7,  7,  7,  7,  7,  7,  7,  7,  6,  6,   6,  6,
+    6,  6,  6,  6,  6,  6,  6,  6,  6,  6,  6,  6,  6,  6,  6,  6,  6,  6,  6,  5,  5,  5,  5,  5,  5,  5,  5,  5,  5,  5,  5,  5,  5,  5,  5,   5,  5,
+    5,  5,  5,  5,  5,  5,  5,  5,  5,  5,  5,  5,  5,  5,  5,  5,  5,  5,  5,  5,  5,  5,  5,  5,  5,  5,  5,  5,  5,  5,  5,  5,  5,  4,  4,   4,  4,
+    4,  4,  4,  4,  4,  4,  4,  4,  4,  4,  4,  4,  4,  4,  4,  4,  4,  4,  4,  4,  4,  4,  4,  4,  4,  4,  4,  4,  4,  4,  4,  4,  0,  0,  255, 120};
 
 typedef struct xx_ftcomp_huff_s {
     uint16_t node[XX_FTCOMP_NODE_WORDS];
@@ -77,9 +45,8 @@ typedef struct xx_ftcomp_bits_s {
     int32_t held;
 } xx_ftcomp_bits;
 
-
-static void xx_ftcomp_bits_init(xx_ftcomp_bits *bits, const uint8_t *data,
-                                size_t size, size_t at) {
+static void xx_ftcomp_bits_init(xx_ftcomp_bits *bits, const uint8_t *data, size_t size, size_t at)
+{
     bits->data = data;
     bits->size = size;
     bits->at = at;
@@ -90,23 +57,24 @@ static void xx_ftcomp_bits_init(xx_ftcomp_bits *bits, const uint8_t *data,
 /* MSB-first into a sixteen-bit accumulator.  Reading past the end feeds zero
  * bytes, as the reference does against its own zero-filled buffer; a stream
  * that actually needs them fails the length checks instead. */
-static void xx_ftcomp_bits_fill(xx_ftcomp_bits *bits, int32_t need) {
+static void xx_ftcomp_bits_fill(xx_ftcomp_bits *bits, int32_t need)
+{
     while (bits->held < need) {
         uint32_t byte = (bits->at < bits->size) ? bits->data[bits->at] : 0U;
         ++bits->at;
-        bits->accumulator =
-            (uint16_t)(bits->accumulator |
-                       (uint16_t)(byte << ((8 - bits->held) & 31)));
+        bits->accumulator = (uint16_t)(bits->accumulator | (uint16_t)(byte << ((8 - bits->held) & 31)));
         bits->held += 8;
     }
 }
 
-static void xx_ftcomp_bits_drop(xx_ftcomp_bits *bits, int32_t count) {
+static void xx_ftcomp_bits_drop(xx_ftcomp_bits *bits, int32_t count)
+{
     bits->accumulator = (uint16_t)(bits->accumulator << count);
     bits->held -= count;
 }
 
-static uint32_t xx_ftcomp_bits_one(xx_ftcomp_bits *bits) {
+static uint32_t xx_ftcomp_bits_one(xx_ftcomp_bits *bits)
+{
     uint32_t value;
     xx_ftcomp_bits_fill(bits, 1);
     value = (uint32_t)(bits->accumulator >> 15);
@@ -114,7 +82,8 @@ static uint32_t xx_ftcomp_bits_one(xx_ftcomp_bits *bits) {
     return value;
 }
 
-static uint32_t xx_ftcomp_bits_take(xx_ftcomp_bits *bits, int32_t count) {
+static uint32_t xx_ftcomp_bits_take(xx_ftcomp_bits *bits, int32_t count)
+{
     uint32_t value;
     xx_ftcomp_bits_fill(bits, count);
     value = (uint32_t)(bits->accumulator >> (16 - count));
@@ -122,9 +91,8 @@ static uint32_t xx_ftcomp_bits_take(xx_ftcomp_bits *bits, int32_t count) {
     return value;
 }
 
-
-static void xx_ftcomp_sort(uint16_t *lut, const uint16_t *node, int32_t low,
-                           int32_t high) {
+static void xx_ftcomp_sort(uint16_t *lut, const uint16_t *node, int32_t low, int32_t high)
+{
     int32_t stack[66];
     int32_t depth = 2;
     stack[0] = low;
@@ -144,8 +112,7 @@ static void xx_ftcomp_sort(uint16_t *lut, const uint16_t *node, int32_t low,
                     probe = hold + 1;
                     next = b;
                     if (probe > b) break;
-                    while (scan < probe && node[lut[scan]] < node[lut[probe]])
-                        ++scan;
+                    while (scan < probe && node[lut[scan]] < node[lut[probe]]) ++scan;
                     if (scan <= hold) {
                         int32_t k = hold;
                         for (;;) {
@@ -201,8 +168,8 @@ static void xx_ftcomp_sort(uint16_t *lut, const uint16_t *node, int32_t low,
     }
 }
 
-
-static bool xx_ftcomp_build(xx_ftcomp_huff *huff) {
+static bool xx_ftcomp_build(xx_ftcomp_huff *huff)
+{
     uint16_t *node = huff->node;
     uint16_t *lut = huff->lut;
     int32_t index = 0, count = 0, ones = 0, last_zero = 0;
@@ -258,9 +225,7 @@ static bool xx_ftcomp_build(xx_ftcomp_huff *huff) {
             insert = (top + bound) >> 1;
         }
         moved = insert - head - 1;
-        if (insert < 1 || insert > count ||
-            free_node + 3 >= (int32_t)XX_FTCOMP_NODE_WORDS)
-            return false;
+        if (insert < 1 || insert > count || free_node + 3 >= (int32_t)XX_FTCOMP_NODE_WORDS) return false;
         if (moved > 0) {
             int32_t k;
             for (k = 0; k < moved; ++k) lut[head + k] = lut[head + k + 1];
@@ -278,8 +243,7 @@ static bool xx_ftcomp_build(xx_ftcomp_huff *huff) {
     {
         uint16_t first = lut[head];
         uint16_t second = lut[head + 1];
-        node[free_node] =
-            (uint16_t)((uint32_t)node[first] + (uint32_t)node[second]);
+        node[free_node] = (uint16_t)((uint32_t)node[first] + (uint32_t)node[second]);
         node[free_node + 1] = 0U;
         node[free_node + 2] = first;
         node[free_node + 3] = second;
@@ -307,17 +271,16 @@ static bool xx_ftcomp_build(xx_ftcomp_huff *huff) {
     return true;
 }
 
-static bool xx_ftcomp_build_static(xx_ftcomp_huff *huff,
-                                   const uint16_t *weights, size_t count) {
+static bool xx_ftcomp_build_static(xx_ftcomp_huff *huff, const uint16_t *weights, size_t count)
+{
     size_t index;
     xx_mem_zero(huff, sizeof(*huff));
-    for (index = 0U; index < count; ++index)
-        huff->node[index * 4U] = weights[index];
+    for (index = 0U; index < count; ++index) huff->node[index * 4U] = weights[index];
     return xx_ftcomp_build(huff);
 }
 
-static uint32_t xx_ftcomp_decode_symbol(xx_ftcomp_bits *bits,
-                                        const xx_ftcomp_huff *huff) {
+static uint32_t xx_ftcomp_decode_symbol(xx_ftcomp_bits *bits, const xx_ftcomp_huff *huff)
+{
     uint32_t top, value;
     xx_ftcomp_bits_fill(bits, 9);
     top = (uint32_t)(bits->accumulator >> 7);
@@ -331,15 +294,16 @@ static uint32_t xx_ftcomp_decode_symbol(xx_ftcomp_bits *bits,
     return value;
 }
 
-static uint32_t ft33_class(uint32_t symbol) {
+static uint32_t ft33_class(uint32_t symbol)
+{
     if (symbol < 0x100U) return 0U;
     if (symbol < 0x194U) return 1U;
     if (symbol < 0x1b4U) return 0U;
     return 1U;
 }
 
-static uint32_t ft33_recent(uint32_t symbol, uint32_t *current,
-                            uint32_t *previous) {
+static uint32_t ft33_recent(uint32_t symbol, uint32_t *current, uint32_t *previous)
+{
     uint32_t value, low, high;
     if (symbol == 0x100U) return *current;
     value = *previous;
@@ -355,7 +319,8 @@ static uint32_t ft33_recent(uint32_t symbol, uint32_t *current,
     return value;
 }
 
-static uint32_t ft33_token_fields(uint8_t token) {
+static uint32_t ft33_token_fields(uint8_t token)
+{
     if (token < 0x40U) return 1U;
     if (token < 0x80U) return 2U;
     if (token < 0x90U) return 3U;
@@ -381,18 +346,20 @@ typedef struct ft33_decoder_s {
     uint32_t last_symbol;
 } ft33_decoder;
 
-static bool ft33_put(ft33_decoder *d, uint8_t byte) {
+static bool ft33_put(ft33_decoder *d, uint8_t byte)
+{
     if (d->at >= d->capacity) return false;
     d->out[d->at++] = byte;
     return true;
 }
 
-static uint32_t ft33_symbol(ft33_decoder *d, const xx_ftcomp_huff *huff) {
+static uint32_t ft33_symbol(ft33_decoder *d, const xx_ftcomp_huff *huff)
+{
     return xx_ftcomp_decode_symbol(&d->bits, huff) >> 2U;
 }
 
-static bool ft33_dynamic_tree(ft33_decoder *d, xx_ftcomp_huff *tree,
-                              uint32_t first, uint32_t second) {
+static bool ft33_dynamic_tree(ft33_decoder *d, xx_ftcomp_huff *tree, uint32_t first, uint32_t second)
+{
     uint32_t largest = 0U, scale, index;
     xx_mem_zero(tree, sizeof(*tree));
     for (index = 0U; index < XX_FTCOMP_SYMBOLS; ++index) {
@@ -412,14 +379,11 @@ static bool ft33_dynamic_tree(ft33_decoder *d, xx_ftcomp_huff *tree,
     return xx_ftcomp_build(tree);
 }
 
-static bool ft33_read_header(ft33_decoder *d, const uint8_t *input,
-                             size_t input_size) {
+static bool ft33_read_header(ft33_decoder *d, const uint8_t *input, size_t input_size)
+{
     uint32_t filled = 0U;
-    if (input_size < 4U ||
-        !xx_ftcomp_build_static(&d->header, ft33_weights_header,
-                                sizeof(ft33_weights_header) / sizeof(ft33_weights_header[0])) ||
-        !xx_ftcomp_build_static(&d->extra, ft33_weights_extra,
-                                sizeof(ft33_weights_extra) / sizeof(ft33_weights_extra[0])))
+    if (input_size < 4U || !xx_ftcomp_build_static(&d->header, ft33_weights_header, sizeof(ft33_weights_header) / sizeof(ft33_weights_header[0])) ||
+        !xx_ftcomp_build_static(&d->extra, ft33_weights_extra, sizeof(ft33_weights_extra) / sizeof(ft33_weights_extra[0])))
         return false;
     xx_ftcomp_bits_init(&d->bits, input, input_size, 4U);
     while (filled < XX_FTCOMP_SYMBOLS) {
@@ -440,13 +404,13 @@ static bool ft33_read_header(ft33_decoder *d, const uint8_t *input,
         d->table_b = d->table_a;
         return true;
     }
-    if (input[2] || input[3])
-        return ft33_dynamic_tree(d, &d->table_b, input[3], input[2]);
+    if (input[2] || input[3]) return ft33_dynamic_tree(d, &d->table_b, input[3], input[2]);
     d->table_b = d->table_a;
     return true;
 }
 
-static bool ft33_remember_pair(ft33_decoder *d, uint16_t pair) {
+static bool ft33_remember_pair(ft33_decoder *d, uint16_t pair)
+{
     if (d->pair_head == 0U) {
         uint32_t k;
         for (k = 0U; k < 15U; ++k) d->pairs[32U + k] = d->pairs[k];
@@ -456,7 +420,8 @@ static bool ft33_remember_pair(ft33_decoder *d, uint16_t pair) {
     return true;
 }
 
-static void ft33_remember_place(ft33_decoder *d, uint16_t place) {
+static void ft33_remember_place(ft33_decoder *d, uint16_t place)
+{
     if (d->place_head == 0U) {
         uint32_t k;
         for (k = 0U; k < 16U; ++k) d->places[32U + k] = d->places[k];
@@ -465,7 +430,8 @@ static void ft33_remember_place(ft33_decoder *d, uint16_t place) {
     d->places[d->place_head] = place;
 }
 
-static bool ft33_main_symbol(ft33_decoder *d) {
+static bool ft33_main_symbol(ft33_decoder *d)
+{
     uint32_t symbol = ft33_symbol(d, d->context ? &d->table_b : &d->table_a);
     d->last_symbol = symbol;
     size_t at = d->at;
@@ -473,8 +439,7 @@ static bool ft33_main_symbol(ft33_decoder *d) {
     d->context = ft33_class(symbol);
     if (symbol < 0x100U) {
         ++d->position;
-        return ft33_put(d, (uint8_t)symbol) &&
-               (symbol != 0x9eU || ft33_put(d, 0xffU));
+        return ft33_put(d, (uint8_t)symbol) && (symbol != 0x9eU || ft33_put(d, 0xffU));
     }
     if (symbol < 0x194U) {
         uint8_t token = (uint8_t)(symbol - 0x100U);
@@ -494,11 +459,9 @@ static bool ft33_main_symbol(ft33_decoder *d) {
         uint32_t back = symbol - 0x192U;
         uint16_t pair;
         if (back > at || at - back + 1U >= at || d->capacity - at < 2U) return false;
-        pair = (uint16_t)((uint32_t)d->out[at - back] |
-                          ((uint32_t)d->out[at - back + 1U] << 8U));
+        pair = (uint16_t)((uint32_t)d->out[at - back] | ((uint32_t)d->out[at - back + 1U] << 8U));
         d->position += ((pair & 0xffU) != 0x9eU ? 1U : 0U) + 1U;
-        if (!ft33_put(d, (uint8_t)pair) ||
-            !ft33_put(d, (uint8_t)(pair >> 8U))) return false;
+        if (!ft33_put(d, (uint8_t)pair) || !ft33_put(d, (uint8_t)(pair >> 8U))) return false;
         return ft33_remember_pair(d, pair);
     }
     if (symbol < 0x1b4U) {
@@ -506,10 +469,8 @@ static bool ft33_main_symbol(ft33_decoder *d) {
         uint16_t pair = d->pairs[d->pair_head + rank];
         if (d->capacity - at < 2U) return false;
         d->position += ((pair & 0xffU) != 0x9eU ? 1U : 0U) + 1U;
-        if (!ft33_put(d, (uint8_t)pair) ||
-            !ft33_put(d, (uint8_t)(pair >> 8U))) return false;
-        for (k = rank; k > 0U; --k)
-            d->pairs[d->pair_head + k] = d->pairs[d->pair_head + k - 1U];
+        if (!ft33_put(d, (uint8_t)pair) || !ft33_put(d, (uint8_t)(pair >> 8U))) return false;
+        for (k = rank; k > 0U; --k) d->pairs[d->pair_head + k] = d->pairs[d->pair_head + k - 1U];
         d->pairs[d->pair_head] = pair;
         return true;
     }
@@ -522,46 +483,36 @@ static bool ft33_main_symbol(ft33_decoder *d) {
         if (source < 1U || source >= at) return false;
         token = d->out[source];
         fields = ft33_token_fields(token);
-        if (!fields || source + fields >= at ||
-            d->capacity - at < 2U + fields) return false;
-        if (token < 0x80U)
-            d->position += (token & 0x3fU) + 3U;
-        else if (token < 0x88U)
-            d->position += (uint32_t)d->out[source + 1U] + 6U;
-        else if (token < 0x90U)
-            d->position += (uint32_t)d->out[source + 1U] + 0x106U;
-        else
-            d->position += (uint32_t)d->out[source + 1U] + 3U;
+        if (!fields || source + fields >= at || d->capacity - at < 2U + fields) return false;
+        if (token < 0x80U) d->position += (token & 0x3fU) + 3U;
+        else if (token < 0x88U) d->position += (uint32_t)d->out[source + 1U] + 6U;
+        else if (token < 0x90U) d->position += (uint32_t)d->out[source + 1U] + 0x106U;
+        else d->position += (uint32_t)d->out[source + 1U] + 3U;
         if (!ft33_put(d, 0x9eU) || !ft33_put(d, token)) return false;
         for (copied = 0U; copied < fields; ++copied)
             if (!ft33_put(d, d->out[source + 1U + copied])) return false;
-        for (k = rank; k > 0U; --k)
-            d->places[d->place_head + k] = d->places[d->place_head + k - 1U];
+        for (k = rank; k > 0U; --k) d->places[d->place_head + k] = d->places[d->place_head + k - 1U];
         d->places[d->place_head] = (uint16_t)(at + 1U);
         return true;
     }
 }
 
-static bool ft33_pending_field(ft33_decoder *d) {
+static bool ft33_pending_field(ft33_decoder *d)
+{
     uint32_t symbol, value, raw = 0U, range = 0U;
     if (d->pending == 2U) {
         xx_ftcomp_bits_fill(&d->bits, 9);
         if (d->special) {
             range = 2U;
             raw = xx_ftcomp_bits_take(&d->bits, 2);
-        } else if (!(d->bits.accumulator & 0x8000U) ||
-                   d->position < 0x2101U) {
+        } else if (!(d->bits.accumulator & 0x8000U) || d->position < 0x2101U) {
             range = 0U;
-            raw = d->position < 0x2100U
-                      ? xx_ftcomp_bits_take(&d->bits, 5) & 0x1fU
-                      : xx_ftcomp_bits_take(&d->bits, 6) & 0x1fU;
+            raw = d->position < 0x2100U ? xx_ftcomp_bits_take(&d->bits, 5) & 0x1fU : xx_ftcomp_bits_take(&d->bits, 6) & 0x1fU;
         } else {
             range = 1U;
-            raw = d->position < 0x6100U
-                      ? xx_ftcomp_bits_take(&d->bits, 7) & 0x3fU
-                      : d->position < 0xa100U
-                            ? xx_ftcomp_bits_take(&d->bits, 8) & 0x7fU
-                            : xx_ftcomp_bits_take(&d->bits, 9) & 0xffU;
+            raw = d->position < 0x6100U   ? xx_ftcomp_bits_take(&d->bits, 7) & 0x3fU
+                  : d->position < 0xa100U ? xx_ftcomp_bits_take(&d->bits, 8) & 0x7fU
+                                          : xx_ftcomp_bits_take(&d->bits, 9) & 0xffU;
         }
     }
     symbol = ft33_symbol(d, &d->extra);
@@ -579,17 +530,15 @@ static bool ft33_pending_field(ft33_decoder *d) {
         value = raw + value * 0x20U + 0x100U;
     } else {
         value = ft33_recent(symbol, &d->current_far, &d->previous_far);
-        value = raw + value * (d->position < 0x6100U ? 0x40U :
-                               d->position < 0xa100U ? 0x80U : 0x100U) +
-                0x2100U;
+        value = raw + value * (d->position < 0x6100U ? 0x40U : d->position < 0xa100U ? 0x80U : 0x100U) + 0x2100U;
     }
     value &= 0xffffU;
     d->pending = 0U;
-    return ft33_put(d, (uint8_t)value) &&
-           ft33_put(d, (uint8_t)(value >> 8U));
+    return ft33_put(d, (uint8_t)value) && ft33_put(d, (uint8_t)(value >> 8U));
 }
 
-static bool ft33_long_field(ft33_decoder *d) {
+static bool ft33_long_field(ft33_decoder *d)
+{
     uint32_t value, symbol;
     ++d->pending;
     if (d->pending == 5U) {
@@ -616,40 +565,31 @@ static bool ft33_long_field(ft33_decoder *d) {
     return value <= 0xffU && ft33_put(d, (uint8_t)value);
 }
 
-bool xx_ftcomp_entropy33_decode(const uint8_t *input, size_t input_size,
-                                uint8_t *tokens, size_t expected,
-                                size_t capacity, uint32_t initial_position,
-                                size_t *produced, size_t *consumed) {
+bool xx_ftcomp_entropy33_decode(const uint8_t *input, size_t input_size, uint8_t *tokens, size_t expected, size_t capacity, uint32_t initial_position, size_t *produced,
+                                size_t *consumed)
+{
     ft33_decoder *d;
     bool ok = false;
     if (consumed) *consumed = 0U;
     if (produced) *produced = 0U;
-    if (!input || !tokens || !produced || !consumed || input_size < 4U ||
-        expected == 0U || expected > 0xffffU || capacity < expected)
-        return false;
+    if (!input || !tokens || !produced || !consumed || input_size < 4U || expected == 0U || expected > 0xffffU || capacity < expected) return false;
     d = (ft33_decoder *)xx_mem_calloc(1U, sizeof(*d));
     if (!d) return false;
     d->out = tokens;
     d->expected = expected;
-    d->capacity = capacity - expected > XX_FTCOMP_TOKEN_SLACK
-                      ? expected + XX_FTCOMP_TOKEN_SLACK : capacity;
+    d->capacity = capacity - expected > XX_FTCOMP_TOKEN_SLACK ? expected + XX_FTCOMP_TOKEN_SLACK : capacity;
     d->position = initial_position;
     d->pair_head = d->place_head = 0x20U;
     d->previous_byte = d->previous_near = d->previous_far = 1U;
     d->previous_special = d->previous_high = 1U;
     if (!ft33_read_header(d, input, input_size)) goto done;
     while (d->at < expected) {
-        if ((d->pending == 0U ? !ft33_main_symbol(d) :
-             d->pending < 3U ? !ft33_pending_field(d) :
-                                !ft33_long_field(d)) ||
-            d->bits.at > input_size + 4U) goto done;
+        if ((d->pending == 0U ? !ft33_main_symbol(d) : d->pending < 3U ? !ft33_pending_field(d) : !ft33_long_field(d)) || d->bits.at > input_size + 4U) goto done;
     }
     *produced = d->at;
     *consumed = d->bits.at - (size_t)(d->bits.held >> 3);
-    ok = *consumed != 0U && *consumed <= input_size &&
-         *produced == expected;
+    ok = *consumed != 0U && *consumed <= input_size && *produced == expected;
 done:
     xx_mem_free(d);
     return ok;
 }
-

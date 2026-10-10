@@ -33,22 +33,24 @@ typedef struct stylus_state {
     const uint8_t *input;
     size_t input_size;
     size_t offset;
-    uint8_t *output;      /* NULL when only measuring */
-    size_t limit;         /* output capacity / measuring ceiling */
+    uint8_t *output; /* NULL when only measuring */
+    size_t limit;    /* output capacity / measuring ceiling */
     size_t produced;
     uint8_t window[STYLUS_WINDOW_SIZE];
     uint32_t cursor;
 } stylus_state;
 
 /* -1 means "input exhausted", which is the stream's only terminator. */
-static int stylus_get(stylus_state *state) {
+static int stylus_get(stylus_state *state)
+{
     uint8_t byte;
     if (state->offset >= state->input_size) return -1;
     byte = state->input[state->offset++];
     return (int)(uint8_t)(byte ^ STYLUS_XOR_KEY);
 }
 
-static bool stylus_emit(stylus_state *state, uint8_t byte) {
+static bool stylus_emit(stylus_state *state, uint8_t byte)
+{
     if (state->produced >= state->limit) return false;
     if (state->output) state->output[state->produced] = byte;
     state->window[state->cursor] = byte;
@@ -57,9 +59,8 @@ static bool stylus_emit(stylus_state *state, uint8_t byte) {
     return true;
 }
 
-static bool stylus_run(const uint8_t *input, size_t input_size,
-                       uint8_t *output, size_t limit, size_t *produced,
-                       size_t *consumed) {
+static bool stylus_run(const uint8_t *input, size_t input_size, uint8_t *output, size_t limit, size_t *produced, size_t *consumed)
+{
     stylus_state state;
     uint32_t flags = 0U;
 
@@ -101,8 +102,7 @@ static bool stylus_run(const uint8_t *input, size_t input_size,
             uint32_t i;
             if (second < 0) break; /* same deliberate tolerance as above */
 
-            source = ((((uint32_t)second >> 4) << 8) | (uint32_t)byte) +
-                     STYLUS_MATCH_BIAS;
+            source = ((((uint32_t)second >> 4) << 8) | (uint32_t)byte) + STYLUS_MATCH_BIAS;
             source &= STYLUS_WINDOW_MASK;
             length = ((uint32_t)second & 0x0fU) + STYLUS_MATCH_MIN_LENGTH;
 
@@ -123,9 +123,8 @@ static bool stylus_run(const uint8_t *input, size_t input_size,
     return true;
 }
 
-bool xx_stylus_decode_memory(const uint8_t *input, size_t input_size,
-                             uint8_t *output, size_t output_size,
-                             size_t *written) {
+bool xx_stylus_decode_memory(const uint8_t *input, size_t input_size, uint8_t *output, size_t output_size, size_t *written)
+{
     size_t produced = 0U;
 
     if (written) *written = 0U;
@@ -139,9 +138,8 @@ bool xx_stylus_decode_memory(const uint8_t *input, size_t input_size,
     return produced == output_size;
 }
 
-bool xx_stylus_scan_memory(const uint8_t *input, size_t input_size,
-                           size_t max_output, size_t *consumed,
-                           size_t *produced) {
+bool xx_stylus_scan_memory(const uint8_t *input, size_t input_size, size_t max_output, size_t *consumed, size_t *produced)
+{
     if (consumed) *consumed = 0U;
     if (produced) *produced = 0U;
     if (max_output == 0U) return false;

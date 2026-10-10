@@ -9,52 +9,46 @@
 #include "../xx_format_extractor_engine.h"
 #include "xxfclib/formats/pchrom/xx_pchrom.h"
 
-static const uint8_t k_anchor0[] = { 0x5A, 0xA5, 0xF0, 0x0F };
+static const uint8_t k_anchor0[] = {0x5A, 0xA5, 0xF0, 0x0F};
 
 static const xx_format_search_anchor k_anchors[] = {
-    { k_anchor0, sizeof(k_anchor0), 16U },
+    {k_anchor0, sizeof(k_anchor0), 16U},
 };
 
-static const xx_file_type_t k_types[] = { XX_FILE_TYPE_PCHROM };
+static const xx_file_type_t k_types[] = {XX_FILE_TYPE_PCHROM};
 
-static Abstractformat *xx_pchrom_search_open(xx_io_device *window) {
+static Abstractformat *xx_pchrom_search_open(xx_io_device *window)
+{
     xx_pchrom *reader = xx_pchrom_create(window, 0);
     return reader ? &reader->format : NULL;
 }
-static void xx_pchrom_search_close(Abstractformat *format) {
+static void xx_pchrom_search_close(Abstractformat *format)
+{
     xx_pchrom_free((xx_pchrom *)format);
 }
 static const xx_format_search_desc k_desc = {
-    k_types, sizeof(k_types) / sizeof(k_types[0]),
-    k_anchors, sizeof(k_anchors) / sizeof(k_anchors[0]),
-    xx_pchrom_search_open, xx_pchrom_search_close, false
-};
-static xx_format_search_state *xx_pchrom_search_create(
-    xx_format_extractor *self, xx_io_device *device, const xx_list_s *options,
-    xx_pd_struct *pd) {
+    k_types, sizeof(k_types) / sizeof(k_types[0]), k_anchors, sizeof(k_anchors) / sizeof(k_anchors[0]), xx_pchrom_search_open, xx_pchrom_search_close, false};
+static xx_format_search_state *xx_pchrom_search_create(xx_format_extractor *self, xx_io_device *device, const xx_list_s *options, xx_pd_struct *pd)
+{
     (void)self;
     return xx_format_search_create(&k_desc, device, options, pd);
 }
-static const xx_format_search_info *xx_pchrom_search_current(
-    xx_format_extractor *self, xx_format_search_state *state) {
+static const xx_format_search_info *xx_pchrom_search_current(xx_format_extractor *self, xx_format_search_state *state)
+{
     (void)self;
     return xx_format_search_current(state);
 }
-static bool xx_pchrom_search_next(xx_format_extractor *self,
-    xx_format_search_state *state, xx_pd_struct *pd) {
+static bool xx_pchrom_search_next(xx_format_extractor *self, xx_format_search_state *state, xx_pd_struct *pd)
+{
     (void)self;
     return xx_format_search_find_next(state, pd);
 }
-static void xx_pchrom_search_free(xx_format_extractor *self,
-    xx_format_search_state *state) {
+static void xx_pchrom_search_free(xx_format_extractor *self, xx_format_search_state *state)
+{
     (void)self;
     xx_format_search_free(state);
 }
-xx_format_extractor xx_pchrom_extractor = {
-    xx_pchrom_search_create, xx_pchrom_search_current,
-    xx_pchrom_search_next, xx_pchrom_search_free
-};
-
+xx_format_extractor xx_pchrom_extractor = {xx_pchrom_search_create, xx_pchrom_search_current, xx_pchrom_search_next, xx_pchrom_search_free};
 
 /* BEGIN GENERATED ABSTRACT EXTRACTOR */
 #include "../xx_format_abstract_extractor_adapter.h"

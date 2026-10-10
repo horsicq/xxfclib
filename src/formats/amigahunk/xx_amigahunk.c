@@ -38,28 +38,26 @@
 #define XX_AMIGAHUNK_MAX_ENTRIES UINT32_C(0x100000)
 
 /* EXT sub-record kinds, as stored in the top byte of the type/length word. */
-#define XX_AMIGAHUNK_EXT_SYMB   0x00U
-#define XX_AMIGAHUNK_EXT_ABS    0x02U
+#define XX_AMIGAHUNK_EXT_SYMB 0x00U
+#define XX_AMIGAHUNK_EXT_ABS 0x02U
 #define XX_AMIGAHUNK_EXT_COMMON 0x82U
 
 static void xx_amigahunk_vtable_destroy(Abstractformat *self);
 
 /* --- Bounded primitive reads ------------------------------------------- */
 
-static bool xx_amigahunk_read_u32(Abstractformat *self, int64_t offset,
-                                  int64_t end, uint32_t *value) {
-    if (!self || !value || offset < self->base_address || offset < 0 ||
-        end < 4 || offset > end - 4) {
+static bool xx_amigahunk_read_u32(Abstractformat *self, int64_t offset, int64_t end, uint32_t *value)
+{
+    if (!self || !value || offset < self->base_address || offset < 0 || end < 4 || offset > end - 4) {
         return false;
     }
     *value = xx_io_get_u32(self->device, offset, true);
     return true;
 }
 
-static bool xx_amigahunk_read_u16(Abstractformat *self, int64_t offset,
-                                  int64_t end, uint16_t *value) {
-    if (!self || !value || offset < self->base_address || offset < 0 ||
-        end < 2 || offset > end - 2) {
+static bool xx_amigahunk_read_u16(Abstractformat *self, int64_t offset, int64_t end, uint16_t *value)
+{
+    if (!self || !value || offset < self->base_address || offset < 0 || end < 2 || offset > end - 2) {
         return false;
     }
     *value = xx_io_get_u16(self->device, offset, true);
@@ -67,8 +65,8 @@ static bool xx_amigahunk_read_u16(Abstractformat *self, int64_t offset,
 }
 
 /* Advance by count longwords, refusing anything that leaves the device. */
-static bool xx_amigahunk_skip_longwords(int64_t *cursor, uint32_t count,
-                                        int64_t end) {
+static bool xx_amigahunk_skip_longwords(int64_t *cursor, uint32_t count, int64_t end)
+{
     int64_t bytes;
     if (!cursor || *cursor < 0 || *cursor > end) return false;
     if (count > XX_AMIGAHUNK_MAX_ENTRIES) return false;
@@ -78,7 +76,8 @@ static bool xx_amigahunk_skip_longwords(int64_t *cursor, uint32_t count,
     return true;
 }
 
-static int64_t xx_amigahunk_align_up(int64_t value, int64_t alignment) {
+static int64_t xx_amigahunk_align_up(int64_t value, int64_t alignment)
+{
     int64_t remainder;
     if (value < 0 || alignment <= 0) return value;
     remainder = value % alignment;
@@ -89,16 +88,18 @@ static int64_t xx_amigahunk_align_up(int64_t value, int64_t alignment) {
 
 /* --- Hunk classification ----------------------------------------------- */
 
-static bool xx_amigahunk_is_loadable(uint32_t id) {
-    return id == XX_AMIGAHUNK_HUNK_CODE || id == XX_AMIGAHUNK_HUNK_DATA ||
-           id == XX_AMIGAHUNK_HUNK_BSS || id == XX_AMIGAHUNK_HUNK_PPC_CODE;
+static bool xx_amigahunk_is_loadable(uint32_t id)
+{
+    return id == XX_AMIGAHUNK_HUNK_CODE || id == XX_AMIGAHUNK_HUNK_DATA || id == XX_AMIGAHUNK_HUNK_BSS || id == XX_AMIGAHUNK_HUNK_PPC_CODE;
 }
 
-static bool xx_amigahunk_is_code(uint32_t id) {
+static bool xx_amigahunk_is_code(uint32_t id)
+{
     return id == XX_AMIGAHUNK_HUNK_CODE || id == XX_AMIGAHUNK_HUNK_PPC_CODE;
 }
 
-const char *xx_amigahunk_hunk_id_to_string(uint32_t hunk_id) {
+const char *xx_amigahunk_hunk_id_to_string(uint32_t hunk_id)
+{
     switch (hunk_id) {
         case XX_AMIGAHUNK_HUNK_UNIT: return "HUNK_UNIT";
         case XX_AMIGAHUNK_HUNK_NAME: return "HUNK_NAME";
@@ -135,9 +136,8 @@ const char *xx_amigahunk_hunk_id_to_string(uint32_t hunk_id) {
 /* HUNK_HEADER: resident library name list, then table_size/first/last, then
  * one size longword per loaded hunk. A size whose two memory-attribute bits
  * are both set is followed by an explicit 32-bit memory-attribute longword. */
-static bool xx_amigahunk_walk_header(Abstractformat *self, int64_t *cursor,
-                                     int64_t end, xx_amigahunk *amigahunk,
-                                     xx_pd_struct *pd) {
+static bool xx_amigahunk_walk_header(Abstractformat *self, int64_t *cursor, int64_t end, xx_amigahunk *amigahunk, xx_pd_struct *pd)
+{
     uint32_t name_longwords;
     uint32_t table_size;
     uint32_t first_hunk;
@@ -161,8 +161,7 @@ static bool xx_amigahunk_walk_header(Abstractformat *self, int64_t *cursor,
         if (strings > XX_AMIGAHUNK_MAX_ENTRIES) return false;
     }
 
-    if (!xx_amigahunk_read_u32(self, *cursor, end, &table_size) ||
-        !xx_amigahunk_read_u32(self, *cursor + 4, end, &first_hunk) ||
+    if (!xx_amigahunk_read_u32(self, *cursor, end, &table_size) || !xx_amigahunk_read_u32(self, *cursor + 4, end, &first_hunk) ||
         !xx_amigahunk_read_u32(self, *cursor + 8, end, &last_hunk)) {
         return false;
     }
@@ -199,8 +198,8 @@ static bool xx_amigahunk_walk_header(Abstractformat *self, int64_t *cursor,
 
 /* HUNK_CODE / HUNK_DATA / HUNK_PPC_CODE / HUNK_DEBUG / HUNK_UNIT /
  * HUNK_NAME: one longword count followed by that many longwords. */
-static bool xx_amigahunk_walk_counted(Abstractformat *self, int64_t *cursor,
-                                      int64_t end) {
+static bool xx_amigahunk_walk_counted(Abstractformat *self, int64_t *cursor, int64_t end)
+{
     uint32_t longwords;
     if (!xx_amigahunk_read_u32(self, *cursor, end, &longwords)) return false;
     *cursor += 4;
@@ -209,8 +208,8 @@ static bool xx_amigahunk_walk_counted(Abstractformat *self, int64_t *cursor,
 
 /* HUNK_RELOC8/16/32 and HUNK_DREL8/16/32: repeated
  * <count><hunk number><count offsets>, terminated by a zero count. */
-static bool xx_amigahunk_walk_reloc_long(Abstractformat *self, int64_t *cursor,
-                                         int64_t end, xx_pd_struct *pd) {
+static bool xx_amigahunk_walk_reloc_long(Abstractformat *self, int64_t *cursor, int64_t end, xx_pd_struct *pd)
+{
     uint32_t guard;
     for (guard = 0U; guard < XX_AMIGAHUNK_MAX_ENTRIES; ++guard) {
         uint32_t count;
@@ -227,9 +226,8 @@ static bool xx_amigahunk_walk_reloc_long(Abstractformat *self, int64_t *cursor,
 
 /* HUNK_RELOC32SHORT / HUNK_DREL32EXE: the same list built from 16-bit
  * words, terminated by a zero count word and padded to a longword. */
-static bool xx_amigahunk_walk_reloc_short(Abstractformat *self, int64_t *cursor,
-                                          int64_t end, int64_t start,
-                                          xx_pd_struct *pd) {
+static bool xx_amigahunk_walk_reloc_short(Abstractformat *self, int64_t *cursor, int64_t end, int64_t start, xx_pd_struct *pd)
+{
     uint32_t guard;
     for (guard = 0U; guard < XX_AMIGAHUNK_MAX_ENTRIES; ++guard) {
         uint16_t count;
@@ -253,8 +251,8 @@ static bool xx_amigahunk_walk_reloc_short(Abstractformat *self, int64_t *cursor,
 }
 
 /* HUNK_SYMBOL: repeated <name length><name><value>, zero length ends it. */
-static bool xx_amigahunk_walk_symbol(Abstractformat *self, int64_t *cursor,
-                                     int64_t end, xx_pd_struct *pd) {
+static bool xx_amigahunk_walk_symbol(Abstractformat *self, int64_t *cursor, int64_t end, xx_pd_struct *pd)
+{
     uint32_t guard;
     for (guard = 0U; guard < XX_AMIGAHUNK_MAX_ENTRIES; ++guard) {
         uint32_t name_longwords;
@@ -275,8 +273,8 @@ static bool xx_amigahunk_walk_symbol(Abstractformat *self, int64_t *cursor,
 
 /* HUNK_EXT: repeated <type:8|name length:24><name><payload>, zero ends it.
  * Ported from XAmigaHunk::_getHunkSize. */
-static bool xx_amigahunk_walk_ext(Abstractformat *self, int64_t *cursor,
-                                  int64_t end, xx_pd_struct *pd) {
+static bool xx_amigahunk_walk_ext(Abstractformat *self, int64_t *cursor, int64_t end, xx_pd_struct *pd)
+{
     uint32_t guard;
     for (guard = 0U; guard < XX_AMIGAHUNK_MAX_ENTRIES; ++guard) {
         uint32_t type_length;
@@ -325,11 +323,9 @@ static bool xx_amigahunk_walk_ext(Abstractformat *self, int64_t *cursor,
  * Returns 0 for an unparsable or out-of-bounds hunk, which ends the walk.
  * amigahunk may be NULL; when supplied, HUNK_HEADER fields are recorded.
  */
-static int64_t xx_amigahunk_hunk_size(Abstractformat *self, int64_t offset,
-                                      int64_t end, uint32_t *out_id,
-                                      uint32_t *out_raw_id,
-                                      xx_amigahunk *amigahunk,
-                                      xx_pd_struct *pd) {
+static int64_t xx_amigahunk_hunk_size(Abstractformat *self, int64_t offset, int64_t end, uint32_t *out_id, uint32_t *out_raw_id, xx_amigahunk *amigahunk,
+                                      xx_pd_struct *pd)
+{
     int64_t cursor = offset;
     uint32_t raw_id;
     uint32_t id;
@@ -340,17 +336,13 @@ static int64_t xx_amigahunk_hunk_size(Abstractformat *self, int64_t offset,
     cursor += 4;
 
     switch (id) {
-        case XX_AMIGAHUNK_HUNK_HEADER:
-            ok = xx_amigahunk_walk_header(self, &cursor, end, amigahunk, pd);
-            break;
+        case XX_AMIGAHUNK_HUNK_HEADER: ok = xx_amigahunk_walk_header(self, &cursor, end, amigahunk, pd); break;
         case XX_AMIGAHUNK_HUNK_CODE:
         case XX_AMIGAHUNK_HUNK_DATA:
         case XX_AMIGAHUNK_HUNK_PPC_CODE:
         case XX_AMIGAHUNK_HUNK_DEBUG:
         case XX_AMIGAHUNK_HUNK_UNIT:
-        case XX_AMIGAHUNK_HUNK_NAME:
-            ok = xx_amigahunk_walk_counted(self, &cursor, end);
-            break;
+        case XX_AMIGAHUNK_HUNK_NAME: ok = xx_amigahunk_walk_counted(self, &cursor, end); break;
         case XX_AMIGAHUNK_HUNK_BSS:
             /* Length only; BSS occupies no file bytes. */
             ok = cursor <= end - 4;
@@ -361,22 +353,12 @@ static int64_t xx_amigahunk_hunk_size(Abstractformat *self, int64_t offset,
         case XX_AMIGAHUNK_HUNK_RELOC8:
         case XX_AMIGAHUNK_HUNK_DREL32:
         case XX_AMIGAHUNK_HUNK_DREL16:
-        case XX_AMIGAHUNK_HUNK_DREL8:
-            ok = xx_amigahunk_walk_reloc_long(self, &cursor, end, pd);
-            break;
+        case XX_AMIGAHUNK_HUNK_DREL8: ok = xx_amigahunk_walk_reloc_long(self, &cursor, end, pd); break;
         case XX_AMIGAHUNK_HUNK_RELOC32SHORT:
-        case XX_AMIGAHUNK_HUNK_DREL32EXE:
-            ok = xx_amigahunk_walk_reloc_short(self, &cursor, end, offset, pd);
-            break;
-        case XX_AMIGAHUNK_HUNK_SYMBOL:
-            ok = xx_amigahunk_walk_symbol(self, &cursor, end, pd);
-            break;
-        case XX_AMIGAHUNK_HUNK_EXT:
-            ok = xx_amigahunk_walk_ext(self, &cursor, end, pd);
-            break;
-        case XX_AMIGAHUNK_HUNK_END:
-            ok = true;
-            break;
+        case XX_AMIGAHUNK_HUNK_DREL32EXE: ok = xx_amigahunk_walk_reloc_short(self, &cursor, end, offset, pd); break;
+        case XX_AMIGAHUNK_HUNK_SYMBOL: ok = xx_amigahunk_walk_symbol(self, &cursor, end, pd); break;
+        case XX_AMIGAHUNK_HUNK_EXT: ok = xx_amigahunk_walk_ext(self, &cursor, end, pd); break;
+        case XX_AMIGAHUNK_HUNK_END: ok = true; break;
         default:
             /* HUNK_OVERLAY, HUNK_BREAK, HUNK_LIB, HUNK_INDEX and the
              * remaining relocation dialects are not walked; the reference
@@ -393,16 +375,14 @@ static int64_t xx_amigahunk_hunk_size(Abstractformat *self, int64_t offset,
 
 /* --- Hunk table -------------------------------------------------------- */
 
-static bool xx_amigahunk_append_hunk(xx_amigahunk *amigahunk,
-                                     const xx_amigahunk_hunk *hunk,
-                                     uint32_t *capacity) {
+static bool xx_amigahunk_append_hunk(xx_amigahunk *amigahunk, const xx_amigahunk_hunk *hunk, uint32_t *capacity)
+{
     if (amigahunk->hunk_count >= *capacity) {
         uint32_t next = *capacity ? (*capacity * 2U) : 16U;
         xx_amigahunk_hunk *grown;
         if (next > XX_AMIGAHUNK_MAX_HUNKS) next = XX_AMIGAHUNK_MAX_HUNKS;
         if (next <= amigahunk->hunk_count) return false;
-        grown = (xx_amigahunk_hunk *)xx_mem_realloc(
-            amigahunk->hunks, (size_t)next * sizeof(xx_amigahunk_hunk));
+        grown = (xx_amigahunk_hunk *)xx_mem_realloc(amigahunk->hunks, (size_t)next * sizeof(xx_amigahunk_hunk));
         if (!grown) return false;
         amigahunk->hunks = grown;
         *capacity = next;
@@ -413,8 +393,8 @@ static bool xx_amigahunk_append_hunk(xx_amigahunk *amigahunk,
 }
 
 /* Walk every hunk from base_address onwards, filling the hunk table. */
-static bool xx_amigahunk_parse(xx_amigahunk *amigahunk, int64_t end,
-                               int64_t *format_size, xx_pd_struct *pd) {
+static bool xx_amigahunk_parse(xx_amigahunk *amigahunk, int64_t end, int64_t *format_size, xx_pd_struct *pd)
+{
     Abstractformat *self;
     int64_t cursor;
     int64_t last_end = 0;
@@ -432,8 +412,7 @@ static bool xx_amigahunk_parse(xx_amigahunk *amigahunk, int64_t end,
         uint32_t raw_id = 0U;
 
         if (xx_pd_is_stopped(pd)) return false;
-        size = xx_amigahunk_hunk_size(self, cursor, end, &id, &raw_id,
-                                      amigahunk, pd);
+        size = xx_amigahunk_hunk_size(self, cursor, end, &id, &raw_id, amigahunk, pd);
         if (size <= 0) break;
 
         hunk.id = id;
@@ -458,15 +437,14 @@ static bool xx_amigahunk_parse(xx_amigahunk *amigahunk, int64_t end,
 
     /* The reference measures the format by the last HUNK_END. Files that
      * stop short of one still get their walked extent rather than zero. */
-    *format_size = (last_end_hunk > 0 ? last_end_hunk : last_end) -
-                   self->base_address;
+    *format_size = (last_end_hunk > 0 ? last_end_hunk : last_end) - self->base_address;
     return *format_size > 0;
 }
 
 /* --- Lifecycle --------------------------------------------------------- */
 
-void xx_amigahunk_init(xx_amigahunk *amigahunk, xx_io_device *dev,
-                       int64_t base_address) {
+void xx_amigahunk_init(xx_amigahunk *amigahunk, xx_io_device *dev, int64_t base_address)
+{
     if (!amigahunk) return;
     xx_mem_zero(amigahunk, sizeof(xx_amigahunk));
 
@@ -492,15 +470,16 @@ void xx_amigahunk_init(xx_amigahunk *amigahunk, xx_io_device *dev,
     amigahunk->hunks = NULL;
 }
 
-xx_amigahunk *xx_amigahunk_create(xx_io_device *dev, int64_t base_address) {
-    xx_amigahunk *amigahunk =
-        (xx_amigahunk *)xx_mem_alloc(sizeof(xx_amigahunk));
+xx_amigahunk *xx_amigahunk_create(xx_io_device *dev, int64_t base_address)
+{
+    xx_amigahunk *amigahunk = (xx_amigahunk *)xx_mem_alloc(sizeof(xx_amigahunk));
     if (!amigahunk) return NULL;
     xx_amigahunk_init(amigahunk, dev, base_address);
     return amigahunk;
 }
 
-void xx_amigahunk_destroy(xx_amigahunk *amigahunk) {
+void xx_amigahunk_destroy(xx_amigahunk *amigahunk)
+{
     if (!amigahunk) return;
     if (amigahunk->hunks) {
         xx_mem_free(amigahunk->hunks);
@@ -513,13 +492,15 @@ void xx_amigahunk_destroy(xx_amigahunk *amigahunk) {
     xx_format_cleanup_extra_parameters(&amigahunk->format);
 }
 
-static void xx_amigahunk_vtable_destroy(Abstractformat *self) {
+static void xx_amigahunk_vtable_destroy(Abstractformat *self)
+{
     if (self) {
         xx_amigahunk_destroy((xx_amigahunk *)self);
     }
 }
 
-void xx_amigahunk_free(xx_amigahunk *amigahunk) {
+void xx_amigahunk_free(xx_amigahunk *amigahunk)
+{
     if (!amigahunk) return;
     xx_amigahunk_destroy(amigahunk);
     xx_mem_free(amigahunk);
@@ -527,36 +508,34 @@ void xx_amigahunk_free(xx_amigahunk *amigahunk) {
 
 /* --- Format callbacks --------------------------------------------------- */
 
-bool xx_amigahunk_check_is_valid(Abstractformat *self, xx_pd_struct *pd) {
+bool xx_amigahunk_check_is_valid(Abstractformat *self, xx_pd_struct *pd)
+{
     int64_t total_size;
     uint32_t magic;
 
-    if (!self || !self->device || self->base_address < 0 ||
-        xx_pd_is_stopped(pd)) {
+    if (!self || !self->device || self->base_address < 0 || xx_pd_is_stopped(pd)) {
         return false;
     }
     total_size = xx_io_total_size(self->device);
-    if (total_size < self->base_address ||
-        total_size - self->base_address < XX_AMIGAHUNK_MIN_SIZE) {
+    if (total_size < self->base_address || total_size - self->base_address < XX_AMIGAHUNK_MIN_SIZE) {
         return false;
     }
 
     /* The whole signature: a big-endian HUNK_HEADER or HUNK_UNIT id. The
      * memory-attribute bits are not masked here, matching the reference. */
     magic = xx_io_get_u32(self->device, self->base_address, true);
-    return magic == XX_AMIGAHUNK_HUNK_HEADER ||
-           magic == XX_AMIGAHUNK_HUNK_UNIT;
+    return magic == XX_AMIGAHUNK_HUNK_HEADER || magic == XX_AMIGAHUNK_HUNK_UNIT;
 }
 
-bool xx_amigahunk_handle_base_info(Abstractformat *self, xx_pd_struct *pd) {
+bool xx_amigahunk_handle_base_info(Abstractformat *self, xx_pd_struct *pd)
+{
     xx_amigahunk *amigahunk;
     int64_t total_size;
     int64_t available;
     int64_t end;
     int64_t format_size = 0;
 
-    if (!self || !self->device || self->base_address < 0 ||
-        xx_pd_is_stopped(pd)) {
+    if (!self || !self->device || self->base_address < 0 || xx_pd_is_stopped(pd)) {
         return false;
     }
     if (!xx_amigahunk_check_is_valid(self, pd)) {
@@ -601,8 +580,7 @@ bool xx_amigahunk_handle_base_info(Abstractformat *self, xx_pd_struct *pd) {
     self->endian = XX_ENDIAN_BIG;
     self->os = XX_OS_GENERIC;
     self->arch = amigahunk->has_ppc_code ? XX_ARCH_PPC : XX_ARCH_M68K;
-    self->format_type = amigahunk->is_object ? XX_TYPE_OBJECT
-                                             : XX_TYPE_CONSOLE_APPLICATION;
+    self->format_type = amigahunk->is_object ? XX_TYPE_OBJECT : XX_TYPE_CONSOLE_APPLICATION;
     self->is_executable = !amigahunk->is_object;
     xx_format_set_extension(self, amigahunk->is_object ? "o" : "");
     self->format_size = format_size;
@@ -619,19 +597,15 @@ bool xx_amigahunk_handle_base_info(Abstractformat *self, xx_pd_struct *pd) {
     return true;
 }
 
-int64_t xx_amigahunk_get_format_size(Abstractformat *self, xx_pd_struct *pd) {
-    return self && (self->base_info_handled ||
-                    xx_amigahunk_handle_base_info(self, pd))
-               ? self->format_size
-               : -1;
+int64_t xx_amigahunk_get_format_size(Abstractformat *self, xx_pd_struct *pd)
+{
+    return self && (self->base_info_handled || xx_amigahunk_handle_base_info(self, pd)) ? self->format_size : -1;
 }
 
 /* Segment view: HUNK_HEADER as the header, then every loadable hunk laid
  * out sequentially from IMAGE_BASE, each rounded up to 16 bytes. */
-static bool xx_amigahunk_map_segments(xx_amigahunk *amigahunk,
-                                      xx_memory_map *output,
-                                      uint64_t module_address,
-                                      xx_pd_struct *pd) {
+static bool xx_amigahunk_map_segments(xx_amigahunk *amigahunk, xx_memory_map *output, uint64_t module_address, xx_pd_struct *pd)
+{
     uint64_t address = module_address;
     uint32_t index;
     int32_t part_number = 0;
@@ -646,10 +620,7 @@ static bool xx_amigahunk_map_segments(xx_amigahunk *amigahunk,
         if (xx_pd_is_stopped(pd)) return false;
 
         if (hunk->id == XX_AMIGAHUNK_HUNK_HEADER) {
-            if (!xx_memory_map_add_part(output, hunk->offset, hunk->size,
-                                        XX_INVALID_ADDRESS, 0,
-                                        XX_FILE_PART_HEADER, part_number++,
-                                        "HUNK_HEADER", false)) {
+            if (!xx_memory_map_add_part(output, hunk->offset, hunk->size, XX_INVALID_ADDRESS, 0, XX_FILE_PART_HEADER, part_number++, "HUNK_HEADER", false)) {
                 return false;
             }
             continue;
@@ -657,31 +628,23 @@ static bool xx_amigahunk_map_segments(xx_amigahunk *amigahunk,
         if (!xx_amigahunk_is_loadable(hunk->id)) continue;
         if (hunk->size < 8) continue;
 
-        longwords = xx_io_get_u32(amigahunk->format.device, hunk->offset + 4,
-                                  true);
+        longwords = xx_io_get_u32(amigahunk->format.device, hunk->offset + 4, true);
         body_offset = hunk->offset + 8;
         file_size = hunk->id == XX_AMIGAHUNK_HUNK_BSS ? 0 : hunk->size - 8;
-        virtual_size = xx_amigahunk_align_up((int64_t)longwords * 4,
-                                             XX_AMIGAHUNK_ALIGNMENT);
+        virtual_size = xx_amigahunk_align_up((int64_t)longwords * 4, XX_AMIGAHUNK_ALIGNMENT);
         if (virtual_size < file_size) virtual_size = file_size;
-        if (address == XX_INVALID_ADDRESS ||
-            (uint64_t)virtual_size >= XX_INVALID_ADDRESS - address) {
+        if (address == XX_INVALID_ADDRESS || (uint64_t)virtual_size >= XX_INVALID_ADDRESS - address) {
             return false;
         }
 
-        if (!xx_memory_map_add_part(output, body_offset, file_size, address,
-                                    virtual_size, XX_FILE_PART_SEGMENT,
-                                    part_number++,
-                                    xx_amigahunk_hunk_id_to_string(hunk->id),
+        if (!xx_memory_map_add_part(output, body_offset, file_size, address, virtual_size, XX_FILE_PART_SEGMENT, part_number++, xx_amigahunk_hunk_id_to_string(hunk->id),
                                     false)) {
             return false;
         }
-        if (output->start_load_offset < 0 || body_offset <
-                                                 output->start_load_offset) {
+        if (output->start_load_offset < 0 || body_offset < output->start_load_offset) {
             output->start_load_offset = body_offset;
         }
-        if (xx_amigahunk_is_code(hunk->id) && output->code_base < 0 &&
-            address <= (uint64_t)INT64_MAX) {
+        if (xx_amigahunk_is_code(hunk->id) && output->code_base < 0 && address <= (uint64_t)INT64_MAX) {
             output->code_base = (int64_t)address;
             output->entry_point_address = address;
         }
@@ -691,45 +654,35 @@ static bool xx_amigahunk_map_segments(xx_amigahunk *amigahunk,
 }
 
 /* Region view: one record per hunk, named after its type. */
-static bool xx_amigahunk_map_regions(xx_amigahunk *amigahunk,
-                                     xx_memory_map *output,
-                                     xx_pd_struct *pd) {
+static bool xx_amigahunk_map_regions(xx_amigahunk *amigahunk, xx_memory_map *output, xx_pd_struct *pd)
+{
     uint32_t index;
     for (index = 0U; index < amigahunk->hunk_count; ++index) {
         const xx_amigahunk_hunk *hunk = &amigahunk->hunks[index];
         if (xx_pd_is_stopped(pd)) return false;
-        if (!xx_memory_map_add_part(output, hunk->offset, hunk->size,
-                                    XX_INVALID_ADDRESS, 0,
-                                    XX_FILE_PART_REGION,
-                                    index <= (uint32_t)INT32_MAX
-                                        ? (int32_t)index
-                                        : -1,
-                                    xx_amigahunk_hunk_id_to_string(hunk->id),
-                                    false)) {
+        if (!xx_memory_map_add_part(output, hunk->offset, hunk->size, XX_INVALID_ADDRESS, 0, XX_FILE_PART_REGION, index <= (uint32_t)INT32_MAX ? (int32_t)index : -1,
+                                    xx_amigahunk_hunk_id_to_string(hunk->id), false)) {
             return false;
         }
     }
     return true;
 }
 
-bool xx_amigahunk_get_memory_map(Abstractformat *self,
-                                 xx_memory_map_mode_t mode,
-                                 xx_memory_map *output, xx_pd_struct *pd) {
+bool xx_amigahunk_get_memory_map(Abstractformat *self, xx_memory_map_mode_t mode, xx_memory_map *output, xx_pd_struct *pd)
+{
     xx_amigahunk *amigahunk;
     int64_t total_size;
     int64_t binary_size;
     uint64_t module_address;
     bool success;
 
-    if (!self || !output || !self->device || !self->base_info_handled ||
-        self->base_address < 0 || xx_pd_is_stopped(pd)) {
+    if (!self || !output || !self->device || !self->base_info_handled || self->base_address < 0 || xx_pd_is_stopped(pd)) {
         return false;
     }
     if (mode == XX_MEMORY_MAP_MODE_UNKNOWN) {
         mode = XX_MEMORY_MAP_MODE_SEGMENTS;
     }
-    if (mode != XX_MEMORY_MAP_MODE_SEGMENTS &&
-        mode != XX_MEMORY_MAP_MODE_REGIONS) {
+    if (mode != XX_MEMORY_MAP_MODE_SEGMENTS && mode != XX_MEMORY_MAP_MODE_REGIONS) {
         return false;
     }
 
@@ -738,9 +691,7 @@ bool xx_amigahunk_get_memory_map(Abstractformat *self,
     if (total_size < self->base_address) return false;
     binary_size = total_size - self->base_address;
 
-    module_address = self->module_address != XX_INVALID_ADDRESS
-                         ? self->module_address
-                         : XX_AMIGAHUNK_IMAGE_BASE;
+    module_address = self->module_address != XX_INVALID_ADDRESS ? self->module_address : XX_AMIGAHUNK_IMAGE_BASE;
 
     output->binary_offset = self->base_address;
     output->module_address = module_address;
@@ -755,17 +706,11 @@ bool xx_amigahunk_get_memory_map(Abstractformat *self,
     output->arch = self->arch;
     output->mode = mode;
 
-    success = mode == XX_MEMORY_MAP_MODE_SEGMENTS
-                  ? xx_amigahunk_map_segments(amigahunk, output,
-                                              module_address, pd)
-                  : xx_amigahunk_map_regions(amigahunk, output, pd);
+    success = mode == XX_MEMORY_MAP_MODE_SEGMENTS ? xx_amigahunk_map_segments(amigahunk, output, module_address, pd) : xx_amigahunk_map_regions(amigahunk, output, pd);
     if (!success) return false;
 
-    if (self->format_size < binary_size &&
-        !xx_memory_map_add_part(output, self->base_address + self->format_size,
-                                binary_size - self->format_size,
-                                XX_INVALID_ADDRESS, 0, XX_FILE_PART_OVERLAY,
-                                -1, "Overlay", false)) {
+    if (self->format_size < binary_size && !xx_memory_map_add_part(output, self->base_address + self->format_size, binary_size - self->format_size, XX_INVALID_ADDRESS, 0,
+                                                                   XX_FILE_PART_OVERLAY, -1, "Overlay", false)) {
         return false;
     }
     return !xx_pd_is_stopped(pd) && xx_memory_map_finalize(output);
@@ -773,47 +718,53 @@ bool xx_amigahunk_get_memory_map(Abstractformat *self,
 
 /* --- Getters ------------------------------------------------------------ */
 
-uint32_t xx_amigahunk_get_magic(const xx_amigahunk *amigahunk) {
+uint32_t xx_amigahunk_get_magic(const xx_amigahunk *amigahunk)
+{
     return amigahunk ? amigahunk->magic : 0U;
 }
 
-uint32_t xx_amigahunk_get_strings_size(const xx_amigahunk *amigahunk) {
+uint32_t xx_amigahunk_get_strings_size(const xx_amigahunk *amigahunk)
+{
     return amigahunk ? amigahunk->strings_size : 0U;
 }
 
-uint32_t xx_amigahunk_get_table_size(const xx_amigahunk *amigahunk) {
+uint32_t xx_amigahunk_get_table_size(const xx_amigahunk *amigahunk)
+{
     return amigahunk ? amigahunk->table_size : 0U;
 }
 
-uint32_t xx_amigahunk_get_first_hunk(const xx_amigahunk *amigahunk) {
+uint32_t xx_amigahunk_get_first_hunk(const xx_amigahunk *amigahunk)
+{
     return amigahunk ? amigahunk->first_hunk : 0U;
 }
 
-uint32_t xx_amigahunk_get_last_hunk(const xx_amigahunk *amigahunk) {
+uint32_t xx_amigahunk_get_last_hunk(const xx_amigahunk *amigahunk)
+{
     return amigahunk ? amigahunk->last_hunk : 0U;
 }
 
-int64_t xx_amigahunk_get_size_table_offset(const xx_amigahunk *amigahunk) {
+int64_t xx_amigahunk_get_size_table_offset(const xx_amigahunk *amigahunk)
+{
     return amigahunk ? amigahunk->size_table_offset : -1;
 }
 
-uint32_t xx_amigahunk_get_size_table_count(const xx_amigahunk *amigahunk) {
+uint32_t xx_amigahunk_get_size_table_count(const xx_amigahunk *amigahunk)
+{
     return amigahunk ? amigahunk->size_table_count : 0U;
 }
 
-uint32_t xx_amigahunk_get_number_of_hunks(const xx_amigahunk *amigahunk) {
+uint32_t xx_amigahunk_get_number_of_hunks(const xx_amigahunk *amigahunk)
+{
     return amigahunk ? amigahunk->hunk_count : 0U;
 }
 
-const xx_amigahunk_hunk *xx_amigahunk_get_hunk(const xx_amigahunk *amigahunk,
-                                               uint32_t index) {
-    return amigahunk && amigahunk->hunks && index < amigahunk->hunk_count
-               ? &amigahunk->hunks[index]
-               : NULL;
+const xx_amigahunk_hunk *xx_amigahunk_get_hunk(const xx_amigahunk *amigahunk, uint32_t index)
+{
+    return amigahunk && amigahunk->hunks && index < amigahunk->hunk_count ? &amigahunk->hunks[index] : NULL;
 }
 
-bool xx_amigahunk_is_hunk_present(const xx_amigahunk *amigahunk,
-                                  uint32_t hunk_id) {
+bool xx_amigahunk_is_hunk_present(const xx_amigahunk *amigahunk, uint32_t hunk_id)
+{
     uint32_t index;
     if (!amigahunk || !amigahunk->hunks) return false;
     for (index = 0U; index < amigahunk->hunk_count; ++index) {
@@ -822,10 +773,12 @@ bool xx_amigahunk_is_hunk_present(const xx_amigahunk *amigahunk,
     return false;
 }
 
-bool xx_amigahunk_is_object(const xx_amigahunk *amigahunk) {
+bool xx_amigahunk_is_object(const xx_amigahunk *amigahunk)
+{
     return amigahunk ? amigahunk->is_object : false;
 }
 
-bool xx_amigahunk_has_ppc_code(const xx_amigahunk *amigahunk) {
+bool xx_amigahunk_has_ppc_code(const xx_amigahunk *amigahunk)
+{
     return amigahunk ? amigahunk->has_ppc_code : false;
 }

@@ -2,13 +2,15 @@
 #ifndef XX_ADLIB_AMD_H
 #define XX_ADLIB_AMD_H
 #include "xxfclib/formats/xx_format.h"
-typedef struct xx_adlib_amd {Abstractformat format;} xx_adlib_amd;
-XXFC_API void xx_adlib_amd_init(xx_adlib_amd *,xx_io_device *,int64_t);
-XXFC_API xx_adlib_amd *xx_adlib_amd_create(xx_io_device *,int64_t);
+typedef struct xx_adlib_amd {
+    Abstractformat format;
+} xx_adlib_amd;
+XXFC_API void xx_adlib_amd_init(xx_adlib_amd *, xx_io_device *, int64_t);
+XXFC_API xx_adlib_amd *xx_adlib_amd_create(xx_io_device *, int64_t);
 XXFC_API void xx_adlib_amd_destroy(xx_adlib_amd *);
 XXFC_API void xx_adlib_amd_free(xx_adlib_amd *);
-XXFC_API bool xx_adlib_amd_check_is_valid(Abstractformat *,xx_pd_struct *);
-XXFC_API bool xx_adlib_amd_handle_base_info(Abstractformat *,xx_pd_struct *);
+XXFC_API bool xx_adlib_amd_check_is_valid(Abstractformat *, xx_pd_struct *);
+XXFC_API bool xx_adlib_amd_handle_base_info(Abstractformat *, xx_pd_struct *);
 /* BEGIN GENERATED ABSTRACT EXTRACTOR */
 #ifdef __cplusplus
 extern "C" {

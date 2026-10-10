@@ -23,19 +23,13 @@ XXFC_API bool xx_tarx2_has_header(const uint8_t *data, size_t size);
  * uses big-endian halves; ciphertext uses the format's little-endian halves.
  * This low-level helper does not add the header, Gzip wrapping, or padding.
  */
-XXFC_API bool xx_tarx2_encrypt_blocks(const uint8_t *source,
-                                      uint8_t *destination, size_t size);
+XXFC_API bool xx_tarx2_encrypt_blocks(const uint8_t *source, uint8_t *destination, size_t size);
 
 /**
  * Decrypt the fixed-key Blowfish transport, unwrap its Gzip member, and emit
  * the ordinary TAR payload.  The source range includes the TARX2 header.
  */
-XXFC_API bool xx_tarx2_decode_device(xx_io_device *source,
-                                     int64_t source_offset,
-                                     int64_t source_size,
-                                     xx_io_device *destination,
-                                     int64_t *output_size,
-                                     xx_pd_struct *pd);
+XXFC_API bool xx_tarx2_decode_device(xx_io_device *source, int64_t source_offset, int64_t source_size, xx_io_device *destination, int64_t *output_size, xx_pd_struct *pd);
 
 #ifdef __cplusplus
 }

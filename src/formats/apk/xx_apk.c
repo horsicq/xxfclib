@@ -21,7 +21,8 @@ typedef struct xx_apk_native_analysis {
     const char *abis[XX_APK_MAX_NATIVE_ABIS];
 } xx_apk_native_analysis;
 
-static void xx_apk_free_native_analysis(xx_apk_native_analysis *analysis) {
+static void xx_apk_free_native_analysis(xx_apk_native_analysis *analysis)
+{
     size_t i;
     if (!analysis) return;
     for (i = 0; i < analysis->count; ++i) {
@@ -42,14 +43,16 @@ typedef struct xx_apk_dex_analysis {
     xx_apk_dex_member members[XX_APK_MAX_DEX];
 } xx_apk_dex_analysis;
 
-static void xx_apk_free_dex_analysis(xx_apk_dex_analysis *analysis) {
+static void xx_apk_free_dex_analysis(xx_apk_dex_analysis *analysis)
+{
     size_t i;
     if (!analysis) return;
     for (i = 0; i < analysis->count; ++i) xx_mem_free(analysis->members[i].name);
     xx_mem_free(analysis);
 }
 
-static uint32_t xx_apk_dex_number(const char *name) {
+static uint32_t xx_apk_dex_number(const char *name)
+{
     uint32_t value = 0;
     const char *p;
     if (!name) return 0;
@@ -65,7 +68,8 @@ static uint32_t xx_apk_dex_number(const char *name) {
     return value >= 2 && !xx_rt_strcmp(p, ".dex") ? value : 0;
 }
 
-static void xx_apk_apply_identity(Abstractformat *format) {
+static void xx_apk_apply_identity(Abstractformat *format)
+{
     if (!format) {
         return;
     }
@@ -78,13 +82,15 @@ static void xx_apk_apply_identity(Abstractformat *format) {
     xx_format_set_extension(format, "apk");
 }
 
-static void xx_apk_vtable_destroy(Abstractformat *self) {
+static void xx_apk_vtable_destroy(Abstractformat *self)
+{
     if (self) {
         xx_apk_destroy((xx_apk *)self);
     }
 }
 
-void xx_apk_init(xx_apk *apk, xx_io_device *dev, int64_t base_address) {
+void xx_apk_init(xx_apk *apk, xx_io_device *dev, int64_t base_address)
+{
     Abstractformat *format;
 
     if (!apk) {
@@ -101,7 +107,8 @@ void xx_apk_init(xx_apk *apk, xx_io_device *dev, int64_t base_address) {
     format->destroy = xx_apk_vtable_destroy;
 }
 
-xx_apk *xx_apk_create(xx_io_device *dev, int64_t base_address) {
+xx_apk *xx_apk_create(xx_io_device *dev, int64_t base_address)
+{
     xx_apk *apk = (xx_apk *)xx_mem_alloc(sizeof(xx_apk));
     if (!apk) {
         return NULL;
@@ -110,11 +117,15 @@ xx_apk *xx_apk_create(xx_io_device *dev, int64_t base_address) {
     return apk;
 }
 
-void xx_apk_destroy(xx_apk *apk) {
+void xx_apk_destroy(xx_apk *apk)
+{
     if (apk) {
-        xx_mem_free(apk->manifest_text); apk->manifest_text = NULL;
-        xx_mem_free(apk->package_name); apk->package_name = NULL;
-        xx_mem_free(apk->launcher_activity); apk->launcher_activity = NULL;
+        xx_mem_free(apk->manifest_text);
+        apk->manifest_text = NULL;
+        xx_mem_free(apk->package_name);
+        apk->package_name = NULL;
+        xx_mem_free(apk->launcher_activity);
+        apk->launcher_activity = NULL;
         xx_apk_free_dex_analysis((xx_apk_dex_analysis *)apk->dex_analysis);
         apk->dex_analysis = NULL;
         xx_apk_free_native_analysis((xx_apk_native_analysis *)apk->native_analysis);
@@ -123,7 +134,8 @@ void xx_apk_destroy(xx_apk *apk) {
     }
 }
 
-void xx_apk_free(xx_apk *apk) {
+void xx_apk_free(xx_apk *apk)
+{
     if (!apk) {
         return;
     }
@@ -131,12 +143,13 @@ void xx_apk_free(xx_apk *apk) {
     xx_mem_free(apk);
 }
 
-bool xx_apk_check_is_valid(Abstractformat *self, xx_pd_struct *pd) {
-    return xx_zip_has_valid_file(self, XX_APK_MANIFEST_NAME,
-                                 XX_APK_MANIFEST_LIMIT, pd);
+bool xx_apk_check_is_valid(Abstractformat *self, xx_pd_struct *pd)
+{
+    return xx_zip_has_valid_file(self, XX_APK_MANIFEST_NAME, XX_APK_MANIFEST_LIMIT, pd);
 }
 
-bool xx_apk_handle_base_info(Abstractformat *self, xx_pd_struct *pd) {
+bool xx_apk_handle_base_info(Abstractformat *self, xx_pd_struct *pd)
+{
     bool result;
 
     if (!self) {
@@ -144,21 +157,24 @@ bool xx_apk_handle_base_info(Abstractformat *self, xx_pd_struct *pd) {
     }
     result = xx_zip_handle_base_info(self, pd);
     if (result) {
-        result = xx_zip_has_valid_file(self, XX_APK_MANIFEST_NAME,
-                                       XX_APK_MANIFEST_LIMIT, pd);
+        result = xx_zip_has_valid_file(self, XX_APK_MANIFEST_NAME, XX_APK_MANIFEST_LIMIT, pd);
     }
     xx_apk_apply_identity(self);
     self->is_valid = result;
     return result;
 }
 
-bool xx_apk_analyze_dex(xx_apk *apk, xx_pd_struct *pd) {
+bool xx_apk_analyze_dex(xx_apk *apk, xx_pd_struct *pd)
+{
     const xx_list_s *names;
     xx_apk_dex_analysis *analysis;
     size_t i;
     bool analyzed;
     if (!apk || xx_pd_is_stopped(pd)) return false;
-    if (apk->dex_analysis) { xx_apk_apply_identity(&apk->zip.format); return true; }
+    if (apk->dex_analysis) {
+        xx_apk_apply_identity(&apk->zip.format);
+        return true;
+    }
     analyzed = xx_zip_analyze(&apk->zip, pd);
     /* The inherited inspection calls ZIP's handler directly. Keep the public
      * derived object identified as APK on both success and failure. */
@@ -176,13 +192,13 @@ bool xx_apk_analyze_dex(xx_apk *apk, xx_pd_struct *pd) {
         if (xx_pd_is_stopped(pd)) goto invalid;
         if (!number) continue;
         if (analysis->count == XX_APK_MAX_DEX) goto invalid;
-        for (at = 0; at < analysis->count && analysis->members[at].number < number; ++at) {}
+        for (at = 0; at < analysis->count && analysis->members[at].number < number; ++at) {
+        }
         if (at < analysis->count && analysis->members[at].number == number) goto invalid;
         copy = xx_str_create(name);
         if (!copy) goto invalid;
         if (at < analysis->count) {
-            xx_rt_memmove(analysis->members + at + 1, analysis->members + at,
-                (analysis->count - at) * sizeof(*analysis->members));
+            xx_rt_memmove(analysis->members + at + 1, analysis->members + at, (analysis->count - at) * sizeof(*analysis->members));
         }
         analysis->members[at].name = copy;
         analysis->members[at].number = number;
@@ -195,18 +211,20 @@ invalid:
     return false;
 }
 
-size_t xx_apk_get_dex_count(const xx_apk *apk) {
+size_t xx_apk_get_dex_count(const xx_apk *apk)
+{
     const xx_apk_dex_analysis *analysis = apk ? (const xx_apk_dex_analysis *)apk->dex_analysis : NULL;
     return analysis ? analysis->count : 0;
 }
 
-const char *xx_apk_get_dex_name(const xx_apk *apk, size_t index) {
+const char *xx_apk_get_dex_name(const xx_apk *apk, size_t index)
+{
     const xx_apk_dex_analysis *analysis = apk ? (const xx_apk_dex_analysis *)apk->dex_analysis : NULL;
     return analysis && index < analysis->count ? analysis->members[index].name : NULL;
 }
 
-bool xx_apk_read_dex(xx_apk *apk, size_t index, size_t limit,
-    uint8_t **data, size_t *size, xx_pd_struct *pd) {
+bool xx_apk_read_dex(xx_apk *apk, size_t index, size_t limit, uint8_t **data, size_t *size, xx_pd_struct *pd)
+{
     const char *name;
     if (data) *data = NULL;
     if (size) *size = 0;
@@ -215,32 +233,34 @@ bool xx_apk_read_dex(xx_apk *apk, size_t index, size_t limit,
     return name && xx_zip_read_file(&apk->zip, name, limit, data, size, pd);
 }
 
-static bool xx_apk_native_parts(const char *entry, size_t *abi_size,
-    const char **name) {
+static bool xx_apk_native_parts(const char *entry, size_t *abi_size, const char **name)
+{
     const char *p, *start;
     size_t length;
     if (!entry || xx_rt_strncmp(entry, "lib/", 4)) return false;
     start = p = entry + 4;
-    while ((size_t)(p - start) <= 63 && ((*p >= 'a' && *p <= 'z') || (*p >= 'A' && *p <= 'Z') ||
-        (*p >= '0' && *p <= '9') || *p == '_' || *p == '-')) ++p;
+    while ((size_t)(p - start) <= 63 && ((*p >= 'a' && *p <= 'z') || (*p >= 'A' && *p <= 'Z') || (*p >= '0' && *p <= '9') || *p == '_' || *p == '-')) ++p;
     if (*p != '/' || p == start || (size_t)(p - start) > 63) return false;
-    *abi_size = (size_t)(p - start); start = ++p;
-    while ((size_t)(p - start) <= 255 && ((*p >= 'a' && *p <= 'z') || (*p >= 'A' && *p <= 'Z') ||
-        (*p >= '0' && *p <= '9') || *p == '_' || *p == '-' || *p == '.')) ++p;
+    *abi_size = (size_t)(p - start);
+    start = ++p;
+    while ((size_t)(p - start) <= 255 && ((*p >= 'a' && *p <= 'z') || (*p >= 'A' && *p <= 'Z') || (*p >= '0' && *p <= '9') || *p == '_' || *p == '-' || *p == '.')) ++p;
     length = (size_t)(p - start);
-    if (*p || length < 7 || length > 255 || xx_rt_strncmp(start, "lib", 3) ||
-        xx_rt_strcmp(p - 3, ".so")) return false;
+    if (*p || length < 7 || length > 255 || xx_rt_strncmp(start, "lib", 3) || xx_rt_strcmp(p - 3, ".so")) return false;
     *name = start;
     return true;
 }
 
-bool xx_apk_analyze_native_libraries(xx_apk *apk, xx_pd_struct *pd) {
+bool xx_apk_analyze_native_libraries(xx_apk *apk, xx_pd_struct *pd)
+{
     const xx_list_s *names;
     xx_apk_native_analysis *analysis;
     size_t i;
     bool analyzed;
     if (!apk || xx_pd_is_stopped(pd)) return false;
-    if (apk->native_analysis) { xx_apk_apply_identity(&apk->zip.format); return true; }
+    if (apk->native_analysis) {
+        xx_apk_apply_identity(&apk->zip.format);
+        return true;
+    }
     analyzed = xx_zip_analyze(&apk->zip, pd);
     xx_apk_apply_identity(&apk->zip.format);
     if (!analyzed || !(names = xx_zip_get_record_names(&apk->zip))) return false;
@@ -254,7 +274,8 @@ bool xx_apk_analyze_native_libraries(xx_apk *apk, xx_pd_struct *pd) {
         if (xx_pd_is_stopped(pd)) goto invalid;
         if (!xx_apk_native_parts(entry, &abi_size, &name)) continue;
         if (analysis->count == XX_APK_MAX_NATIVE_LIBRARIES) goto invalid;
-        xx_rt_memcpy(abi, entry + 4, abi_size); abi[abi_size] = 0;
+        xx_rt_memcpy(abi, entry + 4, abi_size);
+        abi[abi_size] = 0;
         for (at = 0; at < analysis->count; ++at) {
             int comparison = xx_rt_strcmp(analysis->libraries[at].abi, abi);
             if (!comparison) comparison = xx_rt_strcmp(analysis->libraries[at].name, name);
@@ -265,13 +286,14 @@ bool xx_apk_analyze_native_libraries(xx_apk *apk, xx_pd_struct *pd) {
         info.abi = (char *)xx_mem_alloc(abi_size + 1);
         info.name = xx_str_create(name);
         if (!info.entry_name || !info.abi || !info.name) {
-            xx_mem_free((void *)info.entry_name); xx_mem_free((void *)info.abi);
-            xx_mem_free((void *)info.name); goto invalid;
+            xx_mem_free((void *)info.entry_name);
+            xx_mem_free((void *)info.abi);
+            xx_mem_free((void *)info.name);
+            goto invalid;
         }
         xx_rt_memcpy((char *)info.abi, entry + 4, abi_size);
         ((char *)info.abi)[abi_size] = 0;
-        if (at < analysis->count) xx_rt_memmove(analysis->libraries + at + 1,
-            analysis->libraries + at, (analysis->count - at) * sizeof(*analysis->libraries));
+        if (at < analysis->count) xx_rt_memmove(analysis->libraries + at + 1, analysis->libraries + at, (analysis->count - at) * sizeof(*analysis->libraries));
         analysis->libraries[at] = info;
         ++analysis->count;
     }
@@ -288,28 +310,32 @@ invalid:
     return false;
 }
 
-size_t xx_apk_get_native_library_count(const xx_apk *apk) {
+size_t xx_apk_get_native_library_count(const xx_apk *apk)
+{
     const xx_apk_native_analysis *analysis = apk ? (const xx_apk_native_analysis *)apk->native_analysis : NULL;
     return analysis ? analysis->count : 0;
 }
 
-const xx_apk_native_library_info *xx_apk_get_native_library(const xx_apk *apk, size_t index) {
+const xx_apk_native_library_info *xx_apk_get_native_library(const xx_apk *apk, size_t index)
+{
     const xx_apk_native_analysis *analysis = apk ? (const xx_apk_native_analysis *)apk->native_analysis : NULL;
     return analysis && index < analysis->count ? analysis->libraries + index : NULL;
 }
 
-size_t xx_apk_get_native_abi_count(const xx_apk *apk) {
+size_t xx_apk_get_native_abi_count(const xx_apk *apk)
+{
     const xx_apk_native_analysis *analysis = apk ? (const xx_apk_native_analysis *)apk->native_analysis : NULL;
     return analysis ? analysis->abi_count : 0;
 }
 
-const char *xx_apk_get_native_abi(const xx_apk *apk, size_t index) {
+const char *xx_apk_get_native_abi(const xx_apk *apk, size_t index)
+{
     const xx_apk_native_analysis *analysis = apk ? (const xx_apk_native_analysis *)apk->native_analysis : NULL;
     return analysis && index < analysis->abi_count ? analysis->abis[index] : NULL;
 }
 
-bool xx_apk_read_native_library(xx_apk *apk, const char *abi, const char *name,
-    size_t limit, uint8_t **data, size_t *size, xx_pd_struct *pd) {
+bool xx_apk_read_native_library(xx_apk *apk, const char *abi, const char *name, size_t limit, uint8_t **data, size_t *size, xx_pd_struct *pd)
+{
     const xx_apk_native_analysis *analysis;
     size_t i;
     bool result;

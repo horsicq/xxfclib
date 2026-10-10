@@ -8,13 +8,15 @@
 #ifdef __cplusplus
 extern "C" {
 #endif
-typedef struct xx_commodore_tap { Abstractformat format; } xx_commodore_tap;
-XXFC_API void xx_commodore_tap_init(xx_commodore_tap *,xx_io_device *,int64_t);
-XXFC_API xx_commodore_tap *xx_commodore_tap_create(xx_io_device *,int64_t);
+typedef struct xx_commodore_tap {
+    Abstractformat format;
+} xx_commodore_tap;
+XXFC_API void xx_commodore_tap_init(xx_commodore_tap *, xx_io_device *, int64_t);
+XXFC_API xx_commodore_tap *xx_commodore_tap_create(xx_io_device *, int64_t);
 XXFC_API void xx_commodore_tap_destroy(xx_commodore_tap *);
 XXFC_API void xx_commodore_tap_free(xx_commodore_tap *);
-XXFC_API bool xx_commodore_tap_check_is_valid(Abstractformat *,xx_pd_struct *);
-XXFC_API bool xx_commodore_tap_handle_base_info(Abstractformat *,xx_pd_struct *);
+XXFC_API bool xx_commodore_tap_check_is_valid(Abstractformat *, xx_pd_struct *);
+XXFC_API bool xx_commodore_tap_handle_base_info(Abstractformat *, xx_pd_struct *);
 #ifdef __cplusplus
 }
 #endif

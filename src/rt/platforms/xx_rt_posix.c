@@ -41,12 +41,9 @@ char *xx_rt_getenv(const char *pName)
     return getenv(pName);
 }
 
-
-void xx_rt_qsort(void *pBase, size_t nCount, size_t nSize,
-                 xx_rt_compare_fn fnCompare)
+void xx_rt_qsort(void *pBase, size_t nCount, size_t nSize, xx_rt_compare_fn fnCompare)
 {
-    if ((pBase == NULL) || (fnCompare == NULL) || (nCount < 2) ||
-        (nSize == 0) || (nCount > ((size_t)-1) / nSize)) {
+    if ((pBase == NULL) || (fnCompare == NULL) || (nCount < 2) || (nSize == 0) || (nCount > ((size_t)-1) / nSize)) {
         return;
     }
 
@@ -57,7 +54,6 @@ int xx_rt_rand(void)
 {
     return rand() % (XX_RT_RAND_MAX + 1);
 }
-
 
 void *xx_rt_stdout(void)
 {
@@ -71,8 +67,7 @@ void *xx_rt_stderr(void)
 
 int xx_rt_platform_write_stream(void *pStream, const char *pData, size_t nSize)
 {
-    if (pStream != xx_rt_stdout() && pStream != xx_rt_stderr() &&
-        !xx_io_policy_mutation_allowed()) return -1;
+    if (pStream != xx_rt_stdout() && pStream != xx_rt_stderr() && !xx_io_policy_mutation_allowed()) return -1;
     return (int)fwrite(pData, 1, nSize, (FILE *)pStream);
 }
 
@@ -134,13 +129,10 @@ int xx_rt_fflush(void *pStream)
     return fflush((FILE *)pStream);
 }
 
-
-
 XX_RT_PRINTF_LIKE(3, 0) int xx_rt_vsnprintf(char *pBuffer, size_t nSize, const char *pFormat, XX_RT_VA_LIST args)
 {
     return vsnprintf(pBuffer, nSize, pFormat, args);
 }
-
 
 long long xx_rt_clock_ms(void)
 {

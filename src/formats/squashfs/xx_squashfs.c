@@ -160,13 +160,12 @@ static void xx_squashfs_vtable_destroy(Abstractformat *self);
 
 /* Absolute device read; every offset in this reader is relative to
  * format->base_address, so callers pass image-relative offsets. */
-static bool xx_squashfs_read_at(Abstractformat *self, int64_t offset,
-                                void *data, size_t size) {
+static bool xx_squashfs_read_at(Abstractformat *self, int64_t offset, void *data, size_t size)
+{
     uint8_t *out = (uint8_t *)data;
     size_t done = 0U;
     int64_t absolute;
-    if (!self || !self->device || (!data && size != 0U) || offset < 0 ||
-        self->base_address < 0 || offset > INT64_MAX - self->base_address) {
+    if (!self || !self->device || (!data && size != 0U) || offset < 0 || self->base_address < 0 || offset > INT64_MAX - self->base_address) {
         return false;
     }
     absolute = self->base_address + offset;
@@ -183,9 +182,8 @@ static bool xx_squashfs_read_at(Abstractformat *self, int64_t offset,
 
 /* The squashfs-lzma variant: five props bytes and NO size field.  The plain
  * 13-byte "alone" header is tried second, exactly as the reference does. */
-static bool xx_squashfs_lzma_block(const uint8_t *input, size_t input_size,
-                                   uint8_t *output, size_t output_cap,
-                                   size_t *written) {
+static bool xx_squashfs_lzma_block(const uint8_t *input, size_t input_size, uint8_t *output, size_t output_cap, size_t *written)
+{
     unsigned variant;
     if (input_size <= 5U || output_cap == 0U) return false;
     for (variant = 0U; variant < 2U; ++variant) {
@@ -194,11 +192,7 @@ static bool xx_squashfs_lzma_block(const uint8_t *input, size_t input_size,
         if (input_size <= header_size) continue;
         /* uncomp_size -1: the length is not in the stream, so decoding runs
          * until the output buffer fills or the input is exhausted. */
-        if (xx_lzma_decompress_memory(input + header_size,
-                                      input_size - header_size, input, 5U,
-                                      (int64_t)-1, output, output_cap,
-                                      &produced) &&
-            produced != 0U) {
+        if (xx_lzma_decompress_memory(input + header_size, input_size - header_size, input, 5U, (int64_t)-1, output, output_cap, &produced) && produced != 0U) {
             *written = produced;
             return true;
         }
@@ -209,9 +203,8 @@ static bool xx_squashfs_lzma_block(const uint8_t *input, size_t input_size,
 /* SquashFS XZ blocks are complete .xz streams, so the xz format reader decodes
  * them directly over a pair of memory devices.  There is no memory-to-memory
  * XZ entry point in the library to call instead. */
-static bool xx_squashfs_xz_block(const uint8_t *input, size_t input_size,
-                                 uint8_t *output, size_t output_cap,
-                                 size_t *written) {
+static bool xx_squashfs_xz_block(const uint8_t *input, size_t input_size, uint8_t *output, size_t output_cap, size_t *written)
+{
     xx_io_device *source;
     xx_io_device *destination;
     xx_xz xz;
@@ -237,44 +230,34 @@ static bool xx_squashfs_xz_block(const uint8_t *input, size_t input_size,
 }
 
 /* Decode one block with a single, known compressor id. */
-static bool xx_squashfs_decompress_with(uint32_t compressor,
-                                        const uint8_t *input,
-                                        size_t input_size, uint8_t *output,
-                                        size_t output_cap, size_t *written) {
+static bool xx_squashfs_decompress_with(uint32_t compressor, const uint8_t *input, size_t input_size, uint8_t *output, size_t output_cap, size_t *written)
+{
     size_t produced = 0U;
     if (!input || input_size == 0U || !output || output_cap == 0U) return false;
     switch (compressor) {
         case XX_SQUASHFS_COMPRESSOR_GZIP:
             /* SquashFS "gzip" blocks are bare zlib streams, not gzip members. */
-            if (!xx_zlib_stream_decode_memory(input, input_size, output,
-                                              output_cap, &produced)) {
+            if (!xx_zlib_stream_decode_memory(input, input_size, output, output_cap, &produced)) {
                 return false;
             }
             break;
-        case XX_SQUASHFS_COMPRESSOR_LZMA:
-            return xx_squashfs_lzma_block(input, input_size, output, output_cap,
-                                          written);
+        case XX_SQUASHFS_COMPRESSOR_LZMA: return xx_squashfs_lzma_block(input, input_size, output, output_cap, written);
         case XX_SQUASHFS_COMPRESSOR_LZO:
             /* The native LZO1X decoder bounds writes by output_cap and
              * reports the actual length, including short metadata blocks. */
-            if (!xx_lzo1x_decompress(input, input_size, output, output_cap,
-                                     &produced)) {
+            if (!xx_lzo1x_decompress(input, input_size, output, output_cap, &produced)) {
                 return false;
             }
             break;
-        case XX_SQUASHFS_COMPRESSOR_XZ:
-            return xx_squashfs_xz_block(input, input_size, output, output_cap,
-                                        written);
+        case XX_SQUASHFS_COMPRESSOR_XZ: return xx_squashfs_xz_block(input, input_size, output, output_cap, written);
         case XX_SQUASHFS_COMPRESSOR_LZ4:
             /* SquashFS stores independent raw LZ4 sequences, not frames. */
-            if (!xx_lz4_decompress_block(input, input_size, output, output_cap,
-                                         &produced)) {
+            if (!xx_lz4_decompress_block(input, input_size, output, output_cap, &produced)) {
                 return false;
             }
             break;
         case XX_SQUASHFS_COMPRESSOR_ZSTD:
-            if (!xx_zstd_decompress_memory_bounded(input, input_size, output,
-                                                   output_cap, &produced)) {
+            if (!xx_zstd_decompress_memory_bounded(input, input_size, output, output_cap, &produced)) {
                 return false;
             }
             break;
@@ -293,33 +276,26 @@ static bool xx_squashfs_decompress_with(uint32_t compressor,
  * squashfs-tools LZ4 blocks are raw sequences without a frame header; the
  * declared compressor id selects the raw-block decoder above.
  */
-static bool xx_squashfs_decompress(const xx_squashfs_superblock *super,
-                                   const uint8_t *input, size_t input_size,
-                                   uint8_t *output, size_t output_cap,
-                                   size_t *written) {
+static bool xx_squashfs_decompress(const xx_squashfs_superblock *super, const uint8_t *input, size_t input_size, uint8_t *output, size_t output_cap, size_t *written)
+{
     uint32_t order[3];
     uint32_t sniffed = 0U;
     unsigned count = 0U;
     unsigned index;
-    if (!super || !input || input_size == 0U || !output || output_cap == 0U ||
-        !written) {
+    if (!super || !input || input_size == 0U || !output || output_cap == 0U || !written) {
         return false;
     }
     *written = 0U;
 
     if (super->major >= 4 && super->compressor != 0U) {
-        return xx_squashfs_decompress_with(super->compressor, input, input_size,
-                                           output, output_cap, written);
+        return xx_squashfs_decompress_with(super->compressor, input, input_size, output, output_cap, written);
     }
 
-    if (input[0] == 0x5DU && input_size >= 3U && input[1] == 0U &&
-        input[2] == 0U) {
+    if (input[0] == 0x5DU && input_size >= 3U && input[1] == 0U && input[2] == 0U) {
         sniffed = XX_SQUASHFS_COMPRESSOR_LZMA;
     } else if (input[0] == 0x78U) {
         sniffed = XX_SQUASHFS_COMPRESSOR_GZIP;
-    } else if (input_size >= 6U && input[0] == 0xFDU && input[1] == 0x37U &&
-               input[2] == 0x7AU && input[3] == 0x58U && input[4] == 0x5AU &&
-               input[5] == 0x00U) {
+    } else if (input_size >= 6U && input[0] == 0xFDU && input[1] == 0x37U && input[2] == 0x7AU && input[3] == 0x58U && input[4] == 0x5AU && input[5] == 0x00U) {
         sniffed = XX_SQUASHFS_COMPRESSOR_XZ;
     }
     if (sniffed != 0U) order[count++] = sniffed;
@@ -333,8 +309,7 @@ static bool xx_squashfs_decompress(const xx_squashfs_superblock *super,
         order[count++] = XX_SQUASHFS_COMPRESSOR_XZ;
     }
     for (index = 0U; index < count; ++index) {
-        if (xx_squashfs_decompress_with(order[index], input, input_size, output,
-                                        output_cap, written)) {
+        if (xx_squashfs_decompress_with(order[index], input, input_size, output, output_cap, written)) {
             return true;
         }
     }
@@ -343,9 +318,8 @@ static bool xx_squashfs_decompress(const xx_squashfs_superblock *super,
 
 /* --------------------------------------------------- metadata streams --- */
 
-static bool xx_squashfs_cache_insert(xx_squashfs_private *parsed, int64_t base,
-                                     int64_t block, int64_t next,
-                                     const uint8_t *data, size_t size) {
+static bool xx_squashfs_cache_insert(xx_squashfs_private *parsed, int64_t base, int64_t block, int64_t next, const uint8_t *data, size_t size)
+{
     xx_squashfs_meta_block *grown;
     uint8_t *copy = NULL;
     size_t capacity;
@@ -354,12 +328,10 @@ static bool xx_squashfs_cache_insert(xx_squashfs_private *parsed, int64_t base,
     if (!parsed || parsed->cache_bytes > XX_SQUASHFS_CACHE_BUDGET) return false;
     if (parsed->cache_count == parsed->cache_capacity) {
         capacity = parsed->cache_capacity ? parsed->cache_capacity * 2U : 64U;
-        if (capacity < parsed->cache_count ||
-            capacity > SIZE_MAX / sizeof(*parsed->cache)) {
+        if (capacity < parsed->cache_count || capacity > SIZE_MAX / sizeof(*parsed->cache)) {
             return false;
         }
-        grown = (xx_squashfs_meta_block *)xx_mem_realloc(
-            parsed->cache, capacity * sizeof(*parsed->cache));
+        grown = (xx_squashfs_meta_block *)xx_mem_realloc(parsed->cache, capacity * sizeof(*parsed->cache));
         if (!grown) return false;
         parsed->cache = grown;
         parsed->cache_capacity = capacity;
@@ -379,13 +351,12 @@ static bool xx_squashfs_cache_insert(xx_squashfs_private *parsed, int64_t base,
     return true;
 }
 
-static const xx_squashfs_meta_block *xx_squashfs_cache_find(
-    const xx_squashfs_private *parsed, int64_t base, int64_t block) {
+static const xx_squashfs_meta_block *xx_squashfs_cache_find(const xx_squashfs_private *parsed, int64_t base, int64_t block)
+{
     size_t index;
     if (!parsed) return NULL;
     for (index = 0U; index < parsed->cache_count; ++index) {
-        if (parsed->cache[index].base == base &&
-            parsed->cache[index].block == block) {
+        if (parsed->cache[index].base == base && parsed->cache[index].block == block) {
             return &parsed->cache[index];
         }
     }
@@ -402,10 +373,8 @@ static const xx_squashfs_meta_block *xx_squashfs_cache_find(
  * of the parse; `plain`/`plain_size` are the fallback when the block could not
  * be cached, and the caller must consume them before the next call.
  */
-static bool xx_squashfs_meta_get_block(xx_squashfs_walk *walk, int64_t base,
-                                       int64_t block, uint8_t *plain,
-                                       const uint8_t **data, size_t *size,
-                                       int64_t *next) {
+static bool xx_squashfs_meta_get_block(xx_squashfs_walk *walk, int64_t base, int64_t block, uint8_t *plain, const uint8_t **data, size_t *size, int64_t *next)
+{
     const xx_squashfs_meta_block *cached;
     uint8_t header_bytes[2];
     uint8_t packed[XX_SQUASHFS_META_MAX];
@@ -413,8 +382,7 @@ static bool xx_squashfs_meta_get_block(xx_squashfs_walk *walk, int64_t base,
     size_t length;
     size_t produced = 0U;
     int64_t position;
-    if (!walk || !walk->parsed || !plain || !data || !size || !next ||
-        base < 0 || block < 0 || block > INT64_MAX - base) {
+    if (!walk || !walk->parsed || !plain || !data || !size || !next || base < 0 || block < 0 || block > INT64_MAX - base) {
         return false;
     }
     cached = xx_squashfs_cache_find(walk->parsed, base, block);
@@ -437,8 +405,7 @@ static bool xx_squashfs_meta_get_block(xx_squashfs_walk *walk, int64_t base,
     if (length == 0U) {
         *data = plain;
         *size = 0U;
-        (void)xx_squashfs_cache_insert(walk->parsed, base, block, *next, plain,
-                                       0U);
+        (void)xx_squashfs_cache_insert(walk->parsed, base, block, *next, plain, 0U);
         return true;
     }
     if (!xx_squashfs_read_at(walk->format, position + 2, packed, length)) {
@@ -447,21 +414,18 @@ static bool xx_squashfs_meta_get_block(xx_squashfs_walk *walk, int64_t base,
     if ((header & 0x8000U) != 0U) {
         xx_mem_copy(plain, packed, length);
         produced = length;
-    } else if (!xx_squashfs_decompress(&walk->parsed->super, packed, length,
-                                       plain, XX_SQUASHFS_META_MAX,
-                                       &produced)) {
+    } else if (!xx_squashfs_decompress(&walk->parsed->super, packed, length, plain, XX_SQUASHFS_META_MAX, &produced)) {
         return false;
     }
-    (void)xx_squashfs_cache_insert(walk->parsed, base, block, *next, plain,
-                                   produced);
+    (void)xx_squashfs_cache_insert(walk->parsed, base, block, *next, plain, produced);
     cached = xx_squashfs_cache_find(walk->parsed, base, block);
     *data = cached ? cached->data : plain;
     *size = produced;
     return true;
 }
 
-static void xx_squashfs_meta_seek(xx_squashfs_meta_stream *stream,
-                                  int64_t block, int64_t offset) {
+static void xx_squashfs_meta_seek(xx_squashfs_meta_stream *stream, int64_t block, int64_t offset)
+{
     if (!stream) return;
     stream->block = block;
     stream->offset = offset;
@@ -470,8 +434,8 @@ static void xx_squashfs_meta_seek(xx_squashfs_meta_stream *stream,
 /* Reads `size` bytes out of the stream into a caller buffer.  Every structure
  * this reader parses is at most XX_SQUASHFS_MAX_NAME bytes long, so no caller
  * needs a heap buffer here. */
-static bool xx_squashfs_meta_read(xx_squashfs_meta_stream *stream, size_t size,
-                                  uint8_t *out) {
+static bool xx_squashfs_meta_read(xx_squashfs_meta_stream *stream, size_t size, uint8_t *out)
+{
     uint8_t plain[XX_SQUASHFS_META_MAX];
     size_t done = 0U;
     unsigned guard = 0U;
@@ -483,9 +447,7 @@ static bool xx_squashfs_meta_read(xx_squashfs_meta_stream *stream, size_t size,
         int64_t available;
         size_t take;
         if (++guard > XX_SQUASHFS_META_GUARD) return false;
-        if (!xx_squashfs_meta_get_block(stream->walk, stream->base,
-                                        stream->block, plain, &data,
-                                        &block_size, &next)) {
+        if (!xx_squashfs_meta_get_block(stream->walk, stream->base, stream->block, plain, &data, &block_size, &next)) {
             return false;
         }
         available = (int64_t)block_size - stream->offset;
@@ -525,18 +487,15 @@ static bool xx_squashfs_meta_read(xx_squashfs_meta_stream *stream, size_t size,
  * offset from the LSB in the little-endian layout, `width` its bit count.
  * v4 is unaffected: it uses real u16/u32 fields rather than bitfields.
  */
-static uint32_t xx_squashfs_bits(uint32_t word, unsigned total_bits,
-                                 unsigned lsb_shift, unsigned width,
-                                 bool big_endian) {
+static uint32_t xx_squashfs_bits(uint32_t word, unsigned total_bits, unsigned lsb_shift, unsigned width, bool big_endian)
+{
     unsigned shift = big_endian ? (total_bits - lsb_shift - width) : lsb_shift;
-    uint32_t mask = (width >= 32U) ? 0xFFFFFFFFU
-                                   : (uint32_t)((1UL << width) - 1UL);
+    uint32_t mask = (width >= 32U) ? 0xFFFFFFFFU : (uint32_t)((1UL << width) - 1UL);
     return (word >> shift) & mask;
 }
 
-static bool xx_squashfs_base_inode(xx_squashfs_walk *walk,
-                                   xx_squashfs_meta_stream *stream,
-                                   int32_t *type) {
+static bool xx_squashfs_base_inode(xx_squashfs_walk *walk, xx_squashfs_meta_stream *stream, int32_t *type)
+{
     uint8_t data[8];
     int32_t major;
     bool big_endian;
@@ -545,8 +504,7 @@ static bool xx_squashfs_base_inode(xx_squashfs_walk *walk,
     big_endian = walk->parsed->super.big_endian;
     if (major == 1) {
         if (!xx_squashfs_meta_read(stream, 3U, data)) return false;
-        *type = (int32_t)xx_squashfs_bits(
-            xx_data_get_u16(data, 2, 0, big_endian), 16U, 0U, 4U, big_endian);
+        *type = (int32_t)xx_squashfs_bits(xx_data_get_u16(data, 2, 0, big_endian), 16U, 0U, 4U, big_endian);
         return true;
     }
     if (major == 4) {
@@ -555,15 +513,12 @@ static bool xx_squashfs_base_inode(xx_squashfs_walk *walk,
         return true;
     }
     if (!xx_squashfs_meta_read(stream, 4U, data)) return false;
-    *type = (int32_t)xx_squashfs_bits(
-        xx_data_get_u16(data, 2, 0, big_endian), 16U, 0U, 4U, big_endian);
+    *type = (int32_t)xx_squashfs_bits(xx_data_get_u16(data, 2, 0, big_endian), 16U, 0U, 4U, big_endian);
     return true;
 }
 
-static bool xx_squashfs_dir_inode(xx_squashfs_walk *walk,
-                                  xx_squashfs_meta_stream *stream,
-                                  bool extended, int64_t *size,
-                                  int64_t *offset, int64_t *start_block) {
+static bool xx_squashfs_dir_inode(xx_squashfs_walk *walk, xx_squashfs_meta_stream *stream, bool extended, int64_t *size, int64_t *offset, int64_t *start_block)
+{
     uint8_t data[32];
     uint32_t word;
     int32_t major;
@@ -578,8 +533,7 @@ static bool xx_squashfs_dir_inode(xx_squashfs_walk *walk,
             word = xx_data_get_u32(data, 4, 0, big_endian);
             *size = (int64_t)xx_squashfs_bits(word, 32U, 0U, 27U, big_endian);
             if (!xx_squashfs_meta_read(stream, 1U, data)) return false;
-            *offset = (int64_t)xx_squashfs_bits(word, 32U, 27U, 5U, big_endian) +
-                      (int64_t)data[0] * 32;
+            *offset = (int64_t)xx_squashfs_bits(word, 32U, 27U, 5U, big_endian) + (int64_t)data[0] * 32;
         } else {
             if (!xx_squashfs_meta_read(stream, 4U, data)) return false;
             word = xx_data_get_u32(data, 4, 0, big_endian);
@@ -589,11 +543,9 @@ static bool xx_squashfs_dir_inode(xx_squashfs_walk *walk,
         if (!xx_squashfs_meta_read(stream, 4U, data)) return false; /* mtime */
         if (!xx_squashfs_meta_read(stream, 3U, data)) return false;
         if (big_endian) {
-            *start_block = ((int64_t)data[0] << 16) | ((int64_t)data[1] << 8) |
-                           (int64_t)data[2];
+            *start_block = ((int64_t)data[0] << 16) | ((int64_t)data[1] << 8) | (int64_t)data[2];
         } else {
-            *start_block = (int64_t)data[0] | ((int64_t)data[1] << 8) |
-                           ((int64_t)data[2] << 16);
+            *start_block = (int64_t)data[0] | ((int64_t)data[1] << 8) | ((int64_t)data[2] << 16);
         }
         return true;
     }
@@ -607,8 +559,7 @@ static bool xx_squashfs_dir_inode(xx_squashfs_walk *walk,
             word = xx_data_get_u32(data, 4, 0, big_endian);
             *size = (int64_t)xx_squashfs_bits(word, 32U, 0U, 27U, big_endian);
             if (!xx_squashfs_meta_read(stream, 1U, data)) return false;
-            *offset = (int64_t)xx_squashfs_bits(word, 32U, 27U, 5U, big_endian) +
-                      (int64_t)data[0] * 32;
+            *offset = (int64_t)xx_squashfs_bits(word, 32U, 27U, 5U, big_endian) + (int64_t)data[0] * 32;
         } else {
             if (!xx_squashfs_meta_read(stream, 4U, data)) return false;
             word = xx_data_get_u32(data, 4, 0, big_endian);
@@ -637,11 +588,9 @@ static bool xx_squashfs_dir_inode(xx_squashfs_walk *walk,
     return true;
 }
 
-static bool xx_squashfs_file_inode(xx_squashfs_walk *walk,
-                                   xx_squashfs_meta_stream *stream,
-                                   bool extended, int64_t *start,
-                                   int64_t *fragment, int64_t *block_offset,
-                                   int64_t *size) {
+static bool xx_squashfs_file_inode(xx_squashfs_walk *walk, xx_squashfs_meta_stream *stream, bool extended, int64_t *start, int64_t *fragment, int64_t *block_offset,
+                                   int64_t *size)
+{
     uint8_t data[48];
     int32_t major;
     bool big_endian;
@@ -702,8 +651,8 @@ static bool xx_squashfs_file_inode(xx_squashfs_walk *walk,
 
 /* The index value is an ABSOLUTE file offset of a metadata block, which is why
  * the stream is opened on base 0. */
-static bool xx_squashfs_fragment(xx_squashfs_walk *walk, int64_t index,
-                                 int64_t *start, int64_t *size) {
+static bool xx_squashfs_fragment(xx_squashfs_walk *walk, int64_t index, int64_t *start, int64_t *size)
+{
     xx_squashfs_meta_stream stream;
     uint8_t entry[16];
     uint8_t pointer[8];
@@ -721,8 +670,7 @@ static bool xx_squashfs_fragment(xx_squashfs_walk *walk, int64_t index,
 
     if (major == 2) {
         index_position = walk->parsed->super.fragment_table + (index >> 10) * 4;
-        if (index_position < 0 ||
-            index_position > walk->parsed->image_size - 4) {
+        if (index_position < 0 || index_position > walk->parsed->image_size - 4) {
             return false;
         }
         if (!xx_squashfs_read_at(walk->format, index_position, pointer, 4U)) {
@@ -732,8 +680,7 @@ static bool xx_squashfs_fragment(xx_squashfs_walk *walk, int64_t index,
         entry_offset = (index & 0x3FF) * 8;
     } else {
         index_position = walk->parsed->super.fragment_table + (index >> 9) * 8;
-        if (index_position < 0 ||
-            index_position > walk->parsed->image_size - 8) {
+        if (index_position < 0 || index_position > walk->parsed->image_size - 8) {
             return false;
         }
         if (!xx_squashfs_read_at(walk->format, index_position, pointer, 8U)) {
@@ -762,14 +709,16 @@ static bool xx_squashfs_fragment(xx_squashfs_walk *walk, int64_t index,
 
 /* -------------------------------------------------------- collections --- */
 
-static void xx_squashfs_member_cleanup(xx_squashfs_member *member) {
+static void xx_squashfs_member_cleanup(xx_squashfs_member *member)
+{
     if (!member) return;
     if (member->name) xx_str_free(member->name);
     if (member->chunks) xx_mem_free(member->chunks);
     xx_mem_zero(member, sizeof(*member));
 }
 
-static void xx_squashfs_private_cleanup(xx_squashfs_private *parsed) {
+static void xx_squashfs_private_cleanup(xx_squashfs_private *parsed)
+{
     size_t index;
     if (!parsed) return;
     for (index = 0U; index < parsed->count; ++index) {
@@ -784,22 +733,19 @@ static void xx_squashfs_private_cleanup(xx_squashfs_private *parsed) {
 }
 
 /* Takes ownership of *member on success and zeroes it. */
-static bool xx_squashfs_append_member(xx_squashfs_private *parsed,
-                                      xx_squashfs_member *member) {
+static bool xx_squashfs_append_member(xx_squashfs_private *parsed, xx_squashfs_member *member)
+{
     xx_squashfs_member *grown;
     size_t capacity;
-    if (!parsed || !member || !member->name ||
-        parsed->count >= XX_SQUASHFS_MAX_MEMBERS) {
+    if (!parsed || !member || !member->name || parsed->count >= XX_SQUASHFS_MAX_MEMBERS) {
         return false;
     }
     if (parsed->count == parsed->capacity) {
         capacity = parsed->capacity ? parsed->capacity * 2U : 32U;
-        if (capacity < parsed->count ||
-            capacity > SIZE_MAX / sizeof(*parsed->members)) {
+        if (capacity < parsed->count || capacity > SIZE_MAX / sizeof(*parsed->members)) {
             return false;
         }
-        grown = (xx_squashfs_member *)xx_mem_realloc(
-            parsed->members, capacity * sizeof(*parsed->members));
+        grown = (xx_squashfs_member *)xx_mem_realloc(parsed->members, capacity * sizeof(*parsed->members));
         if (!grown) return false;
         parsed->members = grown;
         parsed->capacity = capacity;
@@ -809,10 +755,9 @@ static bool xx_squashfs_append_member(xx_squashfs_private *parsed,
     return true;
 }
 
-static bool xx_squashfs_append_chunk(xx_squashfs_chunk **chunks, size_t *count,
-                                     size_t *capacity, int64_t offset,
-                                     int64_t on_disk, int64_t out_size,
-                                     int64_t skip, uint32_t kind) {
+static bool xx_squashfs_append_chunk(xx_squashfs_chunk **chunks, size_t *count, size_t *capacity, int64_t offset, int64_t on_disk, int64_t out_size, int64_t skip,
+                                     uint32_t kind)
+{
     xx_squashfs_chunk *grown;
     size_t grown_capacity;
     if (!chunks || !count || !capacity || *count >= XX_SQUASHFS_MAX_CHUNKS) {
@@ -820,12 +765,10 @@ static bool xx_squashfs_append_chunk(xx_squashfs_chunk **chunks, size_t *count,
     }
     if (*count == *capacity) {
         grown_capacity = *capacity ? *capacity * 2U : 16U;
-        if (grown_capacity < *count ||
-            grown_capacity > SIZE_MAX / sizeof(**chunks)) {
+        if (grown_capacity < *count || grown_capacity > SIZE_MAX / sizeof(**chunks)) {
             return false;
         }
-        grown = (xx_squashfs_chunk *)xx_mem_realloc(
-            *chunks, grown_capacity * sizeof(**chunks));
+        grown = (xx_squashfs_chunk *)xx_mem_realloc(*chunks, grown_capacity * sizeof(**chunks));
         if (!grown) return false;
         *chunks = grown;
         *capacity = grown_capacity;
@@ -843,22 +786,20 @@ static bool xx_squashfs_append_chunk(xx_squashfs_chunk **chunks, size_t *count,
 
 /* Same rules as the ISO 9660 reader: no absolute paths, no traversal, no
  * characters a Windows path cannot carry. */
-static bool xx_squashfs_safe_name(const char *name) {
+static bool xx_squashfs_safe_name(const char *name)
+{
     const char *component;
     const char *cursor;
     if (!name || !name[0] || name[0] == '/' || name[0] == '\\') return false;
     component = name;
     for (cursor = name;; ++cursor) {
         unsigned char ch = (unsigned char)*cursor;
-        if (ch == ':' || ch == '<' || ch == '>' || ch == '"' || ch == '|' ||
-            ch == '?' || ch == '*' || (ch != 0U && ch < 32U)) {
+        if (ch == ':' || ch == '<' || ch == '>' || ch == '"' || ch == '|' || ch == '?' || ch == '*' || (ch != 0U && ch < 32U)) {
             return false;
         }
         if (ch == '/' || ch == '\\' || ch == 0U) {
             size_t length = (size_t)(cursor - component);
-            if (length == 0U || (length == 1U && component[0] == '.') ||
-                (length == 2U && component[0] == '.' && component[1] == '.') ||
-                component[length - 1U] == ' ' ||
+            if (length == 0U || (length == 1U && component[0] == '.') || (length == 2U && component[0] == '.' && component[1] == '.') || component[length - 1U] == ' ' ||
                 component[length - 1U] == '.') {
                 return false;
             }
@@ -871,15 +812,13 @@ static bool xx_squashfs_safe_name(const char *name) {
 /* Unlike the reference, which prefixes every path with '/' because the root
  * walk starts from an empty QString, the root's children are emitted without a
  * leading separator so the names stay relative. */
-static char *xx_squashfs_join_name(const char *prefix, const uint8_t *name,
-                                   size_t name_size) {
+static char *xx_squashfs_join_name(const char *prefix, const uint8_t *name, size_t name_size)
+{
     size_t prefix_size = prefix ? xx_str_len(prefix) : 0U;
     char *combined;
     size_t index;
-    if (!name || name_size == 0U || name_size > XX_SQUASHFS_MAX_NAME ||
-        prefix_size >= XX_SQUASHFS_MAX_PATH ||
-        name_size > XX_SQUASHFS_MAX_PATH - prefix_size -
-                        (prefix_size != 0U ? 1U : 0U)) {
+    if (!name || name_size == 0U || name_size > XX_SQUASHFS_MAX_NAME || prefix_size >= XX_SQUASHFS_MAX_PATH ||
+        name_size > XX_SQUASHFS_MAX_PATH - prefix_size - (prefix_size != 0U ? 1U : 0U)) {
         return NULL;
     }
     for (index = 0U; index < name_size; ++index) {
@@ -887,8 +826,7 @@ static char *xx_squashfs_join_name(const char *prefix, const uint8_t *name,
             return NULL;
         }
     }
-    combined = (char *)xx_mem_alloc(prefix_size + name_size +
-                                    (prefix_size != 0U ? 2U : 1U));
+    combined = (char *)xx_mem_alloc(prefix_size + name_size + (prefix_size != 0U ? 2U : 1U));
     if (!combined) return NULL;
     if (prefix_size != 0U) {
         xx_mem_copy(combined, prefix, prefix_size);
@@ -904,14 +842,11 @@ static char *xx_squashfs_join_name(const char *prefix, const uint8_t *name,
 
 /* --------------------------------------------------------- the walk --- */
 
-static bool xx_squashfs_walk_node(xx_squashfs_walk *walk, int64_t block,
-                                  int64_t offset, int32_t want,
-                                  const char *name, unsigned depth);
+static bool xx_squashfs_walk_node(xx_squashfs_walk *walk, int64_t block, int64_t offset, int32_t want, const char *name, unsigned depth);
 
 /* Builds a member's chunk list from its block list plus optional fragment. */
-static bool xx_squashfs_file_data(xx_squashfs_walk *walk,
-                                  xx_squashfs_meta_stream *stream,
-                                  bool extended, const char *name) {
+static bool xx_squashfs_file_data(xx_squashfs_walk *walk, xx_squashfs_meta_stream *stream, bool extended, const char *name)
+{
     xx_squashfs_member member;
     xx_squashfs_chunk *chunks = NULL;
     size_t chunk_count = 0U;
@@ -930,8 +865,7 @@ static bool xx_squashfs_file_data(xx_squashfs_walk *walk,
     bool big_endian;
 
     if (!walk || !stream || !name) return false;
-    if (!xx_squashfs_file_inode(walk, stream, extended, &start, &fragment,
-                                &block_offset, &size)) {
+    if (!xx_squashfs_file_inode(walk, stream, extended, &start, &fragment, &block_offset, &size)) {
         return false;
     }
     if (size < 0 || size > XX_SQUASHFS_MAX_UNCOMPRESSED || block_offset < 0) {
@@ -977,20 +911,15 @@ static bool xx_squashfs_file_data(xx_squashfs_walk *walk,
                 zero_size = remaining;
             }
             if (zero_size < 0) zero_size = 0;
-            if (!xx_squashfs_append_chunk(&chunks, &chunk_count,
-                                          &chunk_capacity, 0, 0, zero_size, 0,
-                                          XX_SQUASHFS_KIND_SPARSE)) {
+            if (!xx_squashfs_append_chunk(&chunks, &chunk_count, &chunk_capacity, 0, 0, zero_size, 0, XX_SQUASHFS_KIND_SPARSE)) {
                 goto fail;
             }
         } else {
             if (position < 0 || on_disk > walk->parsed->image_size - position) {
                 goto fail;
             }
-            if (!xx_squashfs_append_chunk(
-                    &chunks, &chunk_count, &chunk_capacity, position, on_disk,
-                    block_size, 0,
-                    (entry & 0x1000000U) ? XX_SQUASHFS_KIND_STORED
-                                         : XX_SQUASHFS_KIND_COMPRESSED)) {
+            if (!xx_squashfs_append_chunk(&chunks, &chunk_count, &chunk_capacity, position, on_disk, block_size, 0,
+                                          (entry & 0x1000000U) ? XX_SQUASHFS_KIND_STORED : XX_SQUASHFS_KIND_COMPRESSED)) {
                 goto fail;
             }
         }
@@ -1002,20 +931,15 @@ static bool xx_squashfs_file_data(xx_squashfs_walk *walk,
         int64_t fragment_start = 0;
         int64_t fragment_size = 0;
         int64_t on_disk;
-        if (!xx_squashfs_fragment(walk, fragment, &fragment_start,
-                                  &fragment_size)) {
+        if (!xx_squashfs_fragment(walk, fragment, &fragment_start, &fragment_size)) {
             goto fail;
         }
         on_disk = fragment_size & 0xFFFFFF;
-        if (fragment_start < 0 ||
-            on_disk > walk->parsed->image_size - fragment_start) {
+        if (fragment_start < 0 || on_disk > walk->parsed->image_size - fragment_start) {
             goto fail;
         }
-        if (!xx_squashfs_append_chunk(
-                &chunks, &chunk_count, &chunk_capacity, fragment_start, on_disk,
-                tail, block_offset,
-                (fragment_size & 0x1000000) ? XX_SQUASHFS_KIND_STORED
-                                            : XX_SQUASHFS_KIND_COMPRESSED)) {
+        if (!xx_squashfs_append_chunk(&chunks, &chunk_count, &chunk_capacity, fragment_start, on_disk, tail, block_offset,
+                                      (fragment_size & 0x1000000) ? XX_SQUASHFS_KIND_STORED : XX_SQUASHFS_KIND_COMPRESSED)) {
             goto fail;
         }
     }
@@ -1051,9 +975,8 @@ fail:
     return false;
 }
 
-static bool xx_squashfs_walk_dir(xx_squashfs_walk *walk, int64_t start_block,
-                                 int64_t offset, int64_t size,
-                                 const char *prefix, unsigned depth) {
+static bool xx_squashfs_walk_dir(xx_squashfs_walk *walk, int64_t start_block, int64_t offset, int64_t size, const char *prefix, unsigned depth)
+{
     xx_squashfs_meta_stream stream;
     int64_t remaining = size;
     int32_t major;
@@ -1084,8 +1007,7 @@ static bool xx_squashfs_walk_dir(xx_squashfs_walk *walk, int64_t start_block,
             /* The entry count is stored biased by one, and like every other
              * v1/v2 bitfield it swaps ends with the image's byte order. */
             count = (int64_t)xx_squashfs_bits(word, 32U, 0U, 8U, big_endian) + 1;
-            entry_block =
-                (int64_t)xx_squashfs_bits(word, 32U, 8U, 24U, big_endian);
+            entry_block = (int64_t)xx_squashfs_bits(word, 32U, 8U, 24U, big_endian);
         } else if (major == 3) {
             if (remaining < 9) return false;
             remaining -= 9;
@@ -1117,8 +1039,7 @@ static bool xx_squashfs_walk_dir(xx_squashfs_walk *walk, int64_t start_block,
                 entry_offset = (int64_t)xx_data_get_u16(entry, 2, 0, big_endian);
                 entry_type = (int64_t)xx_data_get_u16(entry + 4U, 2, 0, big_endian);
                 /* The name length is stored biased by one too. */
-                name_size =
-                    (int64_t)xx_data_get_u16(entry + 6U, 2, 0, big_endian) + 1;
+                name_size = (int64_t)xx_data_get_u16(entry + 6U, 2, 0, big_endian) + 1;
             } else {
                 uint32_t word;
                 int64_t need = (major == 1 || major == 2) ? 3 : 5;
@@ -1126,10 +1047,8 @@ static bool xx_squashfs_walk_dir(xx_squashfs_walk *walk, int64_t start_block,
                 remaining -= need;
                 if (!xx_squashfs_meta_read(&stream, 2U, entry)) return false;
                 word = xx_data_get_u16(entry, 2, 0, big_endian);
-                entry_offset =
-                    (int64_t)xx_squashfs_bits(word, 16U, 0U, 13U, big_endian);
-                entry_type =
-                    (int64_t)xx_squashfs_bits(word, 16U, 13U, 3U, big_endian);
+                entry_offset = (int64_t)xx_squashfs_bits(word, 16U, 0U, 13U, big_endian);
+                entry_type = (int64_t)xx_squashfs_bits(word, 16U, 13U, 3U, big_endian);
                 if (!xx_squashfs_meta_read(&stream, 1U, entry)) return false;
                 name_size = (int64_t)entry[0] + 1;
                 if (major == 3) {
@@ -1145,15 +1064,11 @@ static bool xx_squashfs_walk_dir(xx_squashfs_walk *walk, int64_t start_block,
                 return false;
             }
 
-            if (entry_type == XX_SQUASHFS_INODE_DIR ||
-                entry_type == XX_SQUASHFS_INODE_FILE) {
-                char *child = xx_squashfs_join_name(prefix, name,
-                                                     (size_t)name_size);
+            if (entry_type == XX_SQUASHFS_INODE_DIR || entry_type == XX_SQUASHFS_INODE_FILE) {
+                char *child = xx_squashfs_join_name(prefix, name, (size_t)name_size);
                 bool ok;
                 if (!child) return false;
-                ok = xx_squashfs_walk_node(walk, entry_block, entry_offset,
-                                           (int32_t)entry_type, child,
-                                           depth + 1U);
+                ok = xx_squashfs_walk_node(walk, entry_block, entry_offset, (int32_t)entry_type, child, depth + 1U);
                 xx_str_free(child);
                 if (!ok) return false;
             }
@@ -1163,9 +1078,8 @@ static bool xx_squashfs_walk_dir(xx_squashfs_walk *walk, int64_t start_block,
     return remaining == 0;
 }
 
-static bool xx_squashfs_walk_node(xx_squashfs_walk *walk, int64_t block,
-                                  int64_t offset, int32_t want,
-                                  const char *name, unsigned depth) {
+static bool xx_squashfs_walk_node(xx_squashfs_walk *walk, int64_t block, int64_t offset, int32_t want, const char *name, unsigned depth)
+{
     xx_squashfs_meta_stream stream;
     int32_t type = 0;
     if (!walk || depth > XX_SQUASHFS_MAX_DEPTH) return false;
@@ -1179,9 +1093,7 @@ static bool xx_squashfs_walk_node(xx_squashfs_walk *walk, int64_t block,
     if (!xx_squashfs_base_inode(walk, &stream, &type)) return false;
     /* Only directories and regular files, basic and extended; everything else
      * (symlinks, devices, fifos, sockets) is skipped. */
-    if (type != want &&
-        !(type == XX_SQUASHFS_INODE_LDIR && want == XX_SQUASHFS_INODE_DIR) &&
-        !(type == XX_SQUASHFS_INODE_LREG && want == XX_SQUASHFS_INODE_FILE)) {
+    if (type != want && !(type == XX_SQUASHFS_INODE_LDIR && want == XX_SQUASHFS_INODE_DIR) && !(type == XX_SQUASHFS_INODE_LREG && want == XX_SQUASHFS_INODE_FILE)) {
         return false;
     }
 
@@ -1189,18 +1101,14 @@ static bool xx_squashfs_walk_node(xx_squashfs_walk *walk, int64_t block,
         int64_t dir_size = 0;
         int64_t dir_offset = 0;
         int64_t dir_start = 0;
-        if (!xx_squashfs_dir_inode(walk, &stream,
-                                   type == XX_SQUASHFS_INODE_LDIR, &dir_size,
-                                   &dir_offset, &dir_start)) {
+        if (!xx_squashfs_dir_inode(walk, &stream, type == XX_SQUASHFS_INODE_LDIR, &dir_size, &dir_offset, &dir_start)) {
             return false;
         }
-        return xx_squashfs_walk_dir(walk, dir_start, dir_offset, dir_size, name,
-                                    depth);
+        return xx_squashfs_walk_dir(walk, dir_start, dir_offset, dir_size, name, depth);
     }
     if (type == XX_SQUASHFS_INODE_FILE || type == XX_SQUASHFS_INODE_LREG) {
         if (walk->parsed->count >= XX_SQUASHFS_MAX_MEMBERS) return false;
-        return xx_squashfs_file_data(walk, &stream,
-                                     type == XX_SQUASHFS_INODE_LREG, name);
+        return xx_squashfs_file_data(walk, &stream, type == XX_SQUASHFS_INODE_LREG, name);
     }
 
     return false;
@@ -1217,9 +1125,8 @@ static bool xx_squashfs_walk_node(xx_squashfs_walk *walk, int64_t block,
  * are the LZO and LZ4 forks, which state their compressor through the magic
  * because their superblocks predate the compressor field.
  */
-static bool xx_squashfs_parse_superblock(const uint8_t *header,
-                                         int64_t image_size,
-                                         xx_squashfs_superblock *super) {
+static bool xx_squashfs_parse_superblock(const uint8_t *header, int64_t image_size, xx_squashfs_superblock *super)
+{
     uint32_t magic;
     bool big_endian;
     if (!header || !super) return false;
@@ -1259,80 +1166,51 @@ static bool xx_squashfs_parse_superblock(const uint8_t *header,
         super->block_size = (int64_t)xx_data_get_u32(header + 12U, 4, 0, big_endian);
         super->fragments = (int64_t)xx_data_get_u32(header + 16U, 4, 0, big_endian);
         compressor_id = xx_data_get_u16(header + 0x14U, 2, 0, big_endian);
-        super->root_inode =
-            (int64_t)xx_data_get_u64(header + 0x20U, 8, 0, big_endian);
-        super->bytes_used =
-            (int64_t)xx_data_get_u64(header + 0x28U, 8, 0, big_endian);
-        super->inode_table =
-            (int64_t)xx_data_get_u64(header + 0x40U, 8, 0, big_endian);
-        super->directory_table =
-            (int64_t)xx_data_get_u64(header + 0x48U, 8, 0, big_endian);
-        super->fragment_table =
-            (int64_t)xx_data_get_u64(header + 0x50U, 8, 0, big_endian);
-        if (compressor_id >= XX_SQUASHFS_COMPRESSOR_GZIP &&
-            compressor_id <= XX_SQUASHFS_COMPRESSOR_ZSTD) {
+        super->root_inode = (int64_t)xx_data_get_u64(header + 0x20U, 8, 0, big_endian);
+        super->bytes_used = (int64_t)xx_data_get_u64(header + 0x28U, 8, 0, big_endian);
+        super->inode_table = (int64_t)xx_data_get_u64(header + 0x40U, 8, 0, big_endian);
+        super->directory_table = (int64_t)xx_data_get_u64(header + 0x48U, 8, 0, big_endian);
+        super->fragment_table = (int64_t)xx_data_get_u64(header + 0x50U, 8, 0, big_endian);
+        if (compressor_id >= XX_SQUASHFS_COMPRESSOR_GZIP && compressor_id <= XX_SQUASHFS_COMPRESSOR_ZSTD) {
             super->compressor = compressor_id;
         }
     } else if (super->major == 3) {
         /* v3 is PACKED: the 64-bit tables start at the unaligned 0x3F. */
         super->inodes = (int64_t)xx_data_get_u32(header + 4U, 4, 0, big_endian);
-        super->root_inode =
-            (int64_t)xx_data_get_u64(header + 0x2BU, 8, 0, big_endian);
-        super->block_size =
-            (int64_t)xx_data_get_u32(header + 0x33U, 4, 0, big_endian);
-        super->fragments =
-            (int64_t)xx_data_get_u32(header + 0x37U, 4, 0, big_endian);
-        super->bytes_used =
-            (int64_t)xx_data_get_u64(header + 0x3FU, 8, 0, big_endian);
-        super->inode_table =
-            (int64_t)xx_data_get_u64(header + 0x57U, 8, 0, big_endian);
-        super->directory_table =
-            (int64_t)xx_data_get_u64(header + 0x5FU, 8, 0, big_endian);
-        super->fragment_table =
-            (int64_t)xx_data_get_u64(header + 0x67U, 8, 0, big_endian);
+        super->root_inode = (int64_t)xx_data_get_u64(header + 0x2BU, 8, 0, big_endian);
+        super->block_size = (int64_t)xx_data_get_u32(header + 0x33U, 4, 0, big_endian);
+        super->fragments = (int64_t)xx_data_get_u32(header + 0x37U, 4, 0, big_endian);
+        super->bytes_used = (int64_t)xx_data_get_u64(header + 0x3FU, 8, 0, big_endian);
+        super->inode_table = (int64_t)xx_data_get_u64(header + 0x57U, 8, 0, big_endian);
+        super->directory_table = (int64_t)xx_data_get_u64(header + 0x5FU, 8, 0, big_endian);
+        super->fragment_table = (int64_t)xx_data_get_u64(header + 0x67U, 8, 0, big_endian);
     } else {
         super->inodes = (int64_t)xx_data_get_u32(header + 4U, 4, 0, big_endian);
         if (super->major == 1) {
-            super->block_size =
-                (int64_t)xx_data_get_u16(header + 0x20U, 2, 0, big_endian);
+            super->block_size = (int64_t)xx_data_get_u16(header + 0x20U, 2, 0, big_endian);
         } else {
-            super->block_size =
-                (int64_t)xx_data_get_u32(header + 0x33U, 4, 0, big_endian);
+            super->block_size = (int64_t)xx_data_get_u32(header + 0x33U, 4, 0, big_endian);
         }
-        super->root_inode =
-            (int64_t)xx_data_get_u64(header + 0x2BU, 8, 0, big_endian);
-        super->bytes_used =
-            (int64_t)xx_data_get_u32(header + 8U, 4, 0, big_endian);
-        super->inode_table =
-            (int64_t)xx_data_get_u32(header + 0x14U, 4, 0, big_endian);
-        super->directory_table =
-            (int64_t)xx_data_get_u32(header + 0x18U, 4, 0, big_endian);
-        super->fragments =
-            (super->major == 2)
-                ? (int64_t)xx_data_get_u32(header + 0x37U, 4, 0, big_endian)
-                : 0;
-        super->fragment_table =
-            (super->major == 2)
-                ? (int64_t)xx_data_get_u32(header + 0x3BU, 4, 0, big_endian)
-                : 0;
+        super->root_inode = (int64_t)xx_data_get_u64(header + 0x2BU, 8, 0, big_endian);
+        super->bytes_used = (int64_t)xx_data_get_u32(header + 8U, 4, 0, big_endian);
+        super->inode_table = (int64_t)xx_data_get_u32(header + 0x14U, 4, 0, big_endian);
+        super->directory_table = (int64_t)xx_data_get_u32(header + 0x18U, 4, 0, big_endian);
+        super->fragments = (super->major == 2) ? (int64_t)xx_data_get_u32(header + 0x37U, 4, 0, big_endian) : 0;
+        super->fragment_table = (super->major == 2) ? (int64_t)xx_data_get_u32(header + 0x3BU, 4, 0, big_endian) : 0;
     }
 
     if (super->block_size == 0) {
-        int32_t block_log =
-            (int32_t)xx_data_get_u16(header + 0x22U, 2, 0, big_endian);
+        int32_t block_log = (int32_t)xx_data_get_u16(header + 0x22U, 2, 0, big_endian);
         if (block_log < 0 || block_log > 23) return false;
         super->block_size = INT64_C(1) << block_log;
     }
-    if (super->block_size <= 0 ||
-        super->block_size > XX_SQUASHFS_MAX_BLOCK_SIZE) {
+    if (super->block_size <= 0 || super->block_size > XX_SQUASHFS_MAX_BLOCK_SIZE) {
         return false;
     }
-    if (super->inode_table < 0 || super->directory_table < 0 ||
-        super->root_inode < 0) {
+    if (super->inode_table < 0 || super->directory_table < 0 || super->root_inode < 0) {
         return false;
     }
-    if (image_size > 0 && (super->inode_table > image_size ||
-                           super->directory_table > image_size)) {
+    if (image_size > 0 && (super->inode_table > image_size || super->directory_table > image_size)) {
         return false;
     }
     return true;
@@ -1344,8 +1222,8 @@ static bool xx_squashfs_parse_superblock(const uint8_t *header,
  * dies half way keeps everything collected so far, and the parse succeeds as
  * long as at least one regular file was found.
  */
-static bool xx_squashfs_parse(Abstractformat *self, xx_squashfs_private *parsed,
-                              bool full, xx_pd_struct *pd) {
+static bool xx_squashfs_parse(Abstractformat *self, xx_squashfs_private *parsed, bool full, xx_pd_struct *pd)
+{
     uint8_t header[XX_SQUASHFS_SUPERBLOCK_SIZE];
     xx_squashfs_walk walk;
     int64_t total_size;
@@ -1353,20 +1231,17 @@ static bool xx_squashfs_parse(Abstractformat *self, xx_squashfs_private *parsed,
      * stack copy whatever this returns, and cleaning up an uninitialised one
      * would free indeterminate pointers. */
     if (parsed) xx_mem_zero(parsed, sizeof(*parsed));
-    if (!self || !self->device || !parsed || self->base_address < 0 ||
-        (pd && xx_pd_is_stopped(pd))) {
+    if (!self || !self->device || !parsed || self->base_address < 0 || (pd && xx_pd_is_stopped(pd))) {
         return false;
     }
     total_size = xx_io_total_size(self->device);
     if (total_size < self->base_address) return false;
     parsed->image_size = total_size - self->base_address;
-    if (parsed->image_size < XX_SQUASHFS_SUPERBLOCK_SIZE ||
-        parsed->image_size > XX_SQUASHFS_MAX_INPUT) {
+    if (parsed->image_size < XX_SQUASHFS_SUPERBLOCK_SIZE || parsed->image_size > XX_SQUASHFS_MAX_INPUT) {
         return false;
     }
     if (!xx_squashfs_read_at(self, 0, header, sizeof(header))) goto fail;
-    if (!xx_squashfs_parse_superblock(header, parsed->image_size,
-                                      &parsed->super)) {
+    if (!xx_squashfs_parse_superblock(header, parsed->image_size, &parsed->super)) {
         goto fail;
     }
     if (!full) return true;
@@ -1376,9 +1251,7 @@ static bool xx_squashfs_parse(Abstractformat *self, xx_squashfs_private *parsed,
     walk.pd = pd;
     /* The root inode reference packs the metadata block in the high 48 bits
      * and the offset within that block in the low 16. */
-    (void)xx_squashfs_walk_node(&walk, parsed->super.root_inode >> 16,
-                                parsed->super.root_inode & 0xFFFF,
-                                XX_SQUASHFS_INODE_DIR, "", 0U);
+    (void)xx_squashfs_walk_node(&walk, parsed->super.root_inode >> 16, parsed->super.root_inode & 0xFFFF, XX_SQUASHFS_INODE_DIR, "", 0U);
     if (parsed->count == 0U) goto fail;
     return true;
 
@@ -1390,11 +1263,9 @@ fail:
 /* --------------------------------------------------------- extraction --- */
 
 /* Decodes one member's chunks straight into `destination`. */
-static bool xx_squashfs_extract_member(Abstractformat *self,
-                                       const xx_squashfs_private *parsed,
-                                       const xx_squashfs_member *member,
-                                       xx_io_device *destination,
-                                       xx_pd_struct *pd) {
+static bool xx_squashfs_extract_member(Abstractformat *self, const xx_squashfs_private *parsed, const xx_squashfs_member *member, xx_io_device *destination,
+                                       xx_pd_struct *pd)
+{
     uint8_t *packed = NULL;
     uint8_t *plain = NULL;
     size_t packed_capacity = 0U;
@@ -1417,8 +1288,7 @@ static bool xx_squashfs_extract_member(Abstractformat *self,
     if (plain_capacity < (size_t)parsed->super.block_size) {
         plain_capacity = (size_t)parsed->super.block_size;
     }
-    if (packed_capacity > (size_t)XX_SQUASHFS_MAX_BLOCK_SIZE ||
-        plain_capacity > (size_t)XX_SQUASHFS_MAX_BLOCK_SIZE) {
+    if (packed_capacity > (size_t)XX_SQUASHFS_MAX_BLOCK_SIZE || plain_capacity > (size_t)XX_SQUASHFS_MAX_BLOCK_SIZE) {
         return false;
     }
     packed = (uint8_t *)xx_mem_alloc(packed_capacity ? packed_capacity : 1U);
@@ -1448,19 +1318,14 @@ static bool xx_squashfs_extract_member(Abstractformat *self,
             continue;
         }
 
-        if (chunk->on_disk <= 0 ||
-            (size_t)chunk->on_disk > packed_capacity ||
-            !xx_squashfs_read_at(self, chunk->offset, packed,
-                                 (size_t)chunk->on_disk)) {
+        if (chunk->on_disk <= 0 || (size_t)chunk->on_disk > packed_capacity || !xx_squashfs_read_at(self, chunk->offset, packed, (size_t)chunk->on_disk)) {
             goto cleanup;
         }
         if (chunk->kind == XX_SQUASHFS_KIND_STORED) {
             emit = packed;
             emit_size = (size_t)chunk->on_disk;
         } else {
-            if (!xx_squashfs_decompress(&parsed->super, packed,
-                                        (size_t)chunk->on_disk, plain,
-                                        plain_capacity, &produced)) {
+            if (!xx_squashfs_decompress(&parsed->super, packed, (size_t)chunk->on_disk, plain, plain_capacity, &produced)) {
                 goto cleanup;
             }
             emit = plain;
@@ -1476,8 +1341,7 @@ static bool xx_squashfs_extract_member(Abstractformat *self,
         if (emit_size > (size_t)chunk->out_size) {
             emit_size = (size_t)chunk->out_size;
         }
-        if (emit_size != 0U &&
-            xx_io_write(destination, emit, emit_size) != (ssize_t)emit_size) {
+        if (emit_size != 0U && xx_io_write(destination, emit, emit_size) != (ssize_t)emit_size) {
             goto cleanup;
         }
         produced_total += (int64_t)emit_size;
@@ -1495,18 +1359,16 @@ cleanup:
 
 /* ------------------------------------------------------ record plumbing --- */
 
-static bool xx_squashfs_copy_options(xx_list_s *destination,
-                                     const xx_list_s *source) {
+static bool xx_squashfs_copy_options(xx_list_s *destination, const xx_list_s *source)
+{
     size_t index;
     if (!destination || !source) return source == NULL;
     for (index = 0U; index < source->count; ++index) {
-        const xx_meta *item =
-            (const xx_meta *)xx_list_at((const xx_list_t *)source, index);
+        const xx_meta *item = (const xx_meta *)xx_list_at((const xx_list_t *)source, index);
         xx_meta copy;
         if (!item) continue;
         xx_meta_init(&copy, item->meta_id);
-        if (!xx_var_copy(&copy.var, &item->var) ||
-            !xx_list_append(destination, &copy)) {
+        if (!xx_var_copy(&copy.var, &item->var) || !xx_list_append(destination, &copy)) {
             xx_meta_cleanup(&copy);
             return false;
         }
@@ -1514,9 +1376,8 @@ static bool xx_squashfs_copy_options(xx_list_s *destination,
     return true;
 }
 
-static bool xx_squashfs_populate_record(xx_archive_record *record,
-                                        const xx_squashfs_member *member,
-                                        uint32_t compressor) {
+static bool xx_squashfs_populate_record(xx_archive_record *record, const xx_squashfs_member *member, uint32_t compressor)
+{
     if (!record || !member || !member->name) return false;
     xx_archive_record_cleanup(record);
     xx_archive_record_init(record);
@@ -1525,16 +1386,14 @@ static bool xx_squashfs_populate_record(xx_archive_record *record,
     record->data_offset = member->span_offset;
     record->compressed_size = member->span_size;
     return xx_archive_record_set_original_name(record, member->name) &&
-           xx_archive_record_set_meta_u64(record, XX_META_ID_UNCOMPRESSED_SIZE,
-                                          (uint64_t)member->uncompressed_size) &&
-           xx_archive_record_set_meta_u64(record, XX_META_ID_COMPRESSED_SIZE,
-                                          (uint64_t)member->span_size) &&
-           xx_archive_record_set_meta_u64(record, XX_META_ID_COMPRESSION_METHOD,
-                                          (uint64_t)compressor) &&
+           xx_archive_record_set_meta_u64(record, XX_META_ID_UNCOMPRESSED_SIZE, (uint64_t)member->uncompressed_size) &&
+           xx_archive_record_set_meta_u64(record, XX_META_ID_COMPRESSED_SIZE, (uint64_t)member->span_size) &&
+           xx_archive_record_set_meta_u64(record, XX_META_ID_COMPRESSION_METHOD, (uint64_t)compressor) &&
            xx_archive_record_set_meta_bool(record, XX_META_ID_IS_FOLDER, false);
 }
 
-static void xx_squashfs_archive_stream_free(void *pointer) {
+static void xx_squashfs_archive_stream_free(void *pointer)
+{
     xx_squashfs_archive_stream *stream = (xx_squashfs_archive_stream *)pointer;
     if (!stream) return;
     xx_squashfs_private_cleanup(&stream->parsed);
@@ -1543,8 +1402,8 @@ static void xx_squashfs_archive_stream_free(void *pointer) {
 
 /* ---------------------------------------------------------- lifecycle --- */
 
-void xx_squashfs_init(xx_squashfs *squashfs, xx_io_device *dev,
-                      int64_t base_address) {
+void xx_squashfs_init(xx_squashfs *squashfs, xx_io_device *dev, int64_t base_address)
+{
     if (!squashfs) return;
     xx_mem_zero(squashfs, sizeof(*squashfs));
     xx_format_init(&squashfs->format, dev, base_address);
@@ -1557,28 +1416,24 @@ void xx_squashfs_init(xx_squashfs *squashfs, xx_io_device *dev,
     squashfs->format.check_is_valid = xx_squashfs_check_is_valid;
     squashfs->format.handle_base_info = xx_squashfs_handle_base_info;
     squashfs->format.get_format_size = xx_squashfs_get_format_size;
-    squashfs->format.get_number_of_archive_records =
-        xx_squashfs_get_number_of_archive_records;
-    squashfs->format.create_archive_records_reading =
-        xx_squashfs_create_archive_records_reading;
-    squashfs->format.get_current_archive_record =
-        xx_squashfs_get_current_archive_record;
-    squashfs->format.unpack_current_archive_record =
-        xx_squashfs_unpack_current_archive_record;
-    squashfs->format.archive_record_move_to_next =
-        xx_squashfs_archive_record_move_to_next;
-    squashfs->format.free_archive_records_reading =
-        xx_squashfs_free_archive_records_reading;
+    squashfs->format.get_number_of_archive_records = xx_squashfs_get_number_of_archive_records;
+    squashfs->format.create_archive_records_reading = xx_squashfs_create_archive_records_reading;
+    squashfs->format.get_current_archive_record = xx_squashfs_get_current_archive_record;
+    squashfs->format.unpack_current_archive_record = xx_squashfs_unpack_current_archive_record;
+    squashfs->format.archive_record_move_to_next = xx_squashfs_archive_record_move_to_next;
+    squashfs->format.free_archive_records_reading = xx_squashfs_free_archive_records_reading;
     squashfs->format.destroy = xx_squashfs_vtable_destroy;
 }
 
-xx_squashfs *xx_squashfs_create(xx_io_device *dev, int64_t base_address) {
+xx_squashfs *xx_squashfs_create(xx_io_device *dev, int64_t base_address)
+{
     xx_squashfs *squashfs = (xx_squashfs *)xx_mem_alloc(sizeof(*squashfs));
     if (squashfs) xx_squashfs_init(squashfs, dev, base_address);
     return squashfs;
 }
 
-void xx_squashfs_destroy(xx_squashfs *squashfs) {
+void xx_squashfs_destroy(xx_squashfs *squashfs)
+{
     if (!squashfs) return;
     if (squashfs->internal) {
         xx_squashfs_private_cleanup((xx_squashfs_private *)squashfs->internal);
@@ -1588,11 +1443,13 @@ void xx_squashfs_destroy(xx_squashfs *squashfs) {
     xx_format_cleanup_extra_parameters(&squashfs->format);
 }
 
-static void xx_squashfs_vtable_destroy(Abstractformat *self) {
+static void xx_squashfs_vtable_destroy(Abstractformat *self)
+{
     xx_squashfs_destroy((xx_squashfs *)self);
 }
 
-void xx_squashfs_free(xx_squashfs *squashfs) {
+void xx_squashfs_free(xx_squashfs *squashfs)
+{
     if (!squashfs) return;
     xx_squashfs_destroy(squashfs);
     xx_mem_free(squashfs);
@@ -1600,7 +1457,8 @@ void xx_squashfs_free(xx_squashfs *squashfs) {
 
 /* -------------------------------------------------------------- vtable --- */
 
-bool xx_squashfs_check_is_valid(Abstractformat *self, xx_pd_struct *pd) {
+bool xx_squashfs_check_is_valid(Abstractformat *self, xx_pd_struct *pd)
+{
     xx_squashfs_private parsed;
     /* Detection stops at the superblock: the inode walk only happens on the
      * full parse, so validity stays cheap. */
@@ -1609,7 +1467,8 @@ bool xx_squashfs_check_is_valid(Abstractformat *self, xx_pd_struct *pd) {
     return result;
 }
 
-bool xx_squashfs_handle_base_info(Abstractformat *self, xx_pd_struct *pd) {
+bool xx_squashfs_handle_base_info(Abstractformat *self, xx_pd_struct *pd)
+{
     xx_squashfs_private *parsed;
     xx_squashfs *squashfs = (xx_squashfs *)self;
     int64_t total_size;
@@ -1642,8 +1501,7 @@ bool xx_squashfs_handle_base_info(Abstractformat *self, xx_pd_struct *pd) {
     /* bytes_used is the authoritative archive size when it is sane; anything
      * past it is overlay. */
     archive_size = parsed->image_size;
-    if (parsed->super.bytes_used > 0 &&
-        parsed->super.bytes_used <= parsed->image_size) {
+    if (parsed->super.bytes_used > 0 && parsed->super.bytes_used <= parsed->image_size) {
         archive_size = parsed->super.bytes_used;
     }
     self->format_size = archive_size;
@@ -1661,29 +1519,27 @@ bool xx_squashfs_handle_base_info(Abstractformat *self, xx_pd_struct *pd) {
     return true;
 }
 
-int64_t xx_squashfs_get_format_size(Abstractformat *self, xx_pd_struct *pd) {
-    if (!self ||
-        (!self->base_info_handled && !xx_format_handle_base_info(self, pd))) {
+int64_t xx_squashfs_get_format_size(Abstractformat *self, xx_pd_struct *pd)
+{
+    if (!self || (!self->base_info_handled && !xx_format_handle_base_info(self, pd))) {
         return -1;
     }
     return self->format_size;
 }
 
-uint64_t xx_squashfs_get_number_of_archive_records(Abstractformat *self,
-                                                   xx_pd_struct *pd) {
-    if (!self ||
-        (!self->base_info_handled && !xx_format_handle_base_info(self, pd))) {
+uint64_t xx_squashfs_get_number_of_archive_records(Abstractformat *self, xx_pd_struct *pd)
+{
+    if (!self || (!self->base_info_handled && !xx_format_handle_base_info(self, pd))) {
         return 0U;
     }
     return ((xx_squashfs *)self)->number_of_records;
 }
 
-xx_archive_record_state *xx_squashfs_create_archive_records_reading(
-    Abstractformat *self, const xx_list_s *options, xx_pd_struct *pd) {
+xx_archive_record_state *xx_squashfs_create_archive_records_reading(Abstractformat *self, const xx_list_s *options, xx_pd_struct *pd)
+{
     xx_archive_record_state *state;
     xx_squashfs_archive_stream *stream;
-    if (!self || !self->device ||
-        (!self->base_info_handled && !xx_format_handle_base_info(self, pd))) {
+    if (!self || !self->device || (!self->base_info_handled && !xx_format_handle_base_info(self, pd))) {
         return NULL;
     }
     state = (xx_archive_record_state *)xx_mem_alloc(sizeof(*state));
@@ -1694,8 +1550,7 @@ xx_archive_record_state *xx_squashfs_create_archive_records_reading(
         return NULL;
     }
     xx_archive_record_state_init(state, self);
-    if (!xx_squashfs_copy_options(&state->options, options) ||
-        !xx_squashfs_parse(self, &stream->parsed, true, pd)) {
+    if (!xx_squashfs_copy_options(&state->options, options) || !xx_squashfs_parse(self, &stream->parsed, true, pd)) {
         xx_squashfs_archive_stream_free(stream);
         xx_archive_record_state_free(state);
         return NULL;
@@ -1704,29 +1559,22 @@ xx_archive_record_state *xx_squashfs_create_archive_records_reading(
     state->internal_state = stream;
     state->free_internal = xx_squashfs_archive_stream_free;
     state->total_records = (int64_t)stream->parsed.count;
-    if (stream->parsed.count != 0U &&
-        xx_squashfs_populate_record(&state->current_record,
-                                    &stream->parsed.members[0],
-                                    stream->parsed.super.compressor)) {
+    if (stream->parsed.count != 0U && xx_squashfs_populate_record(&state->current_record, &stream->parsed.members[0], stream->parsed.super.compressor)) {
         state->has_record = true;
         state->current_index = 0;
     }
     return state;
 }
 
-const xx_archive_record *xx_squashfs_get_current_archive_record(
-    Abstractformat *self, xx_archive_record_state *state) {
-    return self && state && state->format == self && state->has_record
-               ? &state->current_record
-               : NULL;
+const xx_archive_record *xx_squashfs_get_current_archive_record(Abstractformat *self, xx_archive_record_state *state)
+{
+    return self && state && state->format == self && state->has_record ? &state->current_record : NULL;
 }
 
-bool xx_squashfs_archive_record_move_to_next(Abstractformat *self,
-                                             xx_archive_record_state *state,
-                                             xx_pd_struct *pd) {
+bool xx_squashfs_archive_record_move_to_next(Abstractformat *self, xx_archive_record_state *state, xx_pd_struct *pd)
+{
     xx_squashfs_archive_stream *stream;
-    if (!self || !state || state->format != self || !state->has_record ||
-        !state->internal_state || (pd && xx_pd_is_stopped(pd))) {
+    if (!self || !state || state->format != self || !state->has_record || !state->internal_state || (pd && xx_pd_is_stopped(pd))) {
         return false;
     }
     stream = (xx_squashfs_archive_stream *)state->internal_state;
@@ -1737,9 +1585,7 @@ bool xx_squashfs_archive_record_move_to_next(Abstractformat *self,
         state->has_record = false;
         return false;
     }
-    if (!xx_squashfs_populate_record(&state->current_record,
-                                     &stream->parsed.members[stream->index],
-                                     stream->parsed.super.compressor)) {
+    if (!xx_squashfs_populate_record(&state->current_record, &stream->parsed.members[stream->index], stream->parsed.super.compressor)) {
         state->has_record = false;
         return false;
     }
@@ -1747,8 +1593,8 @@ bool xx_squashfs_archive_record_move_to_next(Abstractformat *self,
     return true;
 }
 
-static xx_io_device *xx_squashfs_stage(const char *destination,
-                                        char **stage_path) {
+static xx_io_device *xx_squashfs_stage(const char *destination, char **stage_path)
+{
     unsigned attempt;
     size_t index, parent = 0U;
     char *directory = xx_str_dup(destination);
@@ -1783,9 +1629,8 @@ static xx_io_device *xx_squashfs_stage(const char *destination,
     return NULL;
 }
 
-bool xx_squashfs_unpack_current_archive_record(Abstractformat *self,
-                                               xx_archive_record_state *state,
-                                               xx_pd_struct *pd) {
+bool xx_squashfs_unpack_current_archive_record(Abstractformat *self, xx_archive_record_state *state, xx_pd_struct *pd)
+{
     xx_squashfs_archive_stream *stream;
     const xx_squashfs_member *member;
     const xx_var *option;
@@ -1798,9 +1643,7 @@ bool xx_squashfs_unpack_current_archive_record(Abstractformat *self,
     bool result = false;
     bool overwrite;
 
-    if (!self || !self->device || !state || state->format != self ||
-        !state->has_record || !state->internal_state ||
-        (pd && xx_pd_is_stopped(pd))) {
+    if (!self || !self->device || !state || state->format != self || !state->has_record || !state->internal_state || (pd && xx_pd_is_stopped(pd))) {
         return false;
     }
     stream = (xx_squashfs_archive_stream *)state->internal_state;
@@ -1808,29 +1651,22 @@ bool xx_squashfs_unpack_current_archive_record(Abstractformat *self,
     member = &stream->parsed.members[stream->index];
     if (!xx_squashfs_safe_name(member->name)) return false;
 
-    option = xx_format_resolve_extra_parameter(self, &state->options,
-                                               XX_META_ID_OPT_UNPACK_PATH);
-    overwrite_option = xx_format_resolve_extra_parameter(
-        self, &state->options, XX_META_ID_OPT_OVERWRITE);
+    option = xx_format_resolve_extra_parameter(self, &state->options, XX_META_ID_OPT_UNPACK_PATH);
+    overwrite_option = xx_format_resolve_extra_parameter(self, &state->options, XX_META_ID_OPT_OVERWRITE);
     overwrite = overwrite_option && xx_var_get_bool(overwrite_option);
     if (!option) {
         /* No destination: report whether the member's span is addressable. */
-        return member->span_offset >= 0 && member->span_size >= 0 &&
-               member->span_offset <= stream->parsed.image_size &&
-               member->span_size <=
-                   stream->parsed.image_size - member->span_offset;
+        return member->span_offset >= 0 && member->span_size >= 0 && member->span_offset <= stream->parsed.image_size &&
+               member->span_size <= stream->parsed.image_size - member->span_offset;
     }
-    if (option->type == XX_VAR_TYPE_STRING ||
-        option->type == XX_VAR_TYPE_STRING_VIEW) {
+    if (option->type == XX_VAR_TYPE_STRING || option->type == XX_VAR_TYPE_STRING_VIEW) {
         base = xx_var_get_str(option);
-    } else if (option->type == XX_VAR_TYPE_WSTRING ||
-               option->type == XX_VAR_TYPE_WSTRING_VIEW) {
+    } else if (option->type == XX_VAR_TYPE_WSTRING || option->type == XX_VAR_TYPE_WSTRING_VIEW) {
         owned_base = xx_str_unicode_to_utf8(xx_var_get_wstr(option));
         base = owned_base;
     }
     if (!base) goto cleanup;
-    if (base[0] && base[xx_str_len(base) - 1U] != '/' &&
-        base[xx_str_len(base) - 1U] != '\\') {
+    if (base[0] && base[xx_str_len(base) - 1U] != '/' && base[xx_str_len(base) - 1U] != '\\') {
         destination_path = xx_str_concat3(base, "/", member->name);
     } else {
         destination_path = xx_str_concat(base, member->name);
@@ -1840,8 +1676,7 @@ bool xx_squashfs_unpack_current_archive_record(Abstractformat *self,
     if (!xx_store_create_dirs_a(destination_path, false)) goto cleanup;
     destination = xx_squashfs_stage(destination_path, &stage_path);
     if (!destination) goto cleanup;
-    result = xx_squashfs_extract_member(self, &stream->parsed, member,
-                                        destination, pd);
+    result = xx_squashfs_extract_member(self, &stream->parsed, member, destination, pd);
     if (xx_io_close(destination)) result = false;
     destination = NULL;
     if (pd && xx_pd_is_stopped(pd)) result = false;
@@ -1858,37 +1693,45 @@ cleanup:
     return result;
 }
 
-void xx_squashfs_free_archive_records_reading(Abstractformat *self,
-                                              xx_archive_record_state *state) {
+void xx_squashfs_free_archive_records_reading(Abstractformat *self, xx_archive_record_state *state)
+{
     (void)self;
     xx_archive_record_state_free(state);
 }
 
 /* --------------------------------------------------------- accessors --- */
 
-uint64_t xx_squashfs_get_number_of_records(const xx_squashfs *squashfs) {
+uint64_t xx_squashfs_get_number_of_records(const xx_squashfs *squashfs)
+{
     return squashfs ? squashfs->number_of_records : 0U;
 }
-uint64_t xx_squashfs_get_number_of_members(const xx_squashfs *squashfs) {
+uint64_t xx_squashfs_get_number_of_members(const xx_squashfs *squashfs)
+{
     return squashfs ? squashfs->number_of_members : 0U;
 }
-uint32_t xx_squashfs_get_version_major(const xx_squashfs *squashfs) {
+uint32_t xx_squashfs_get_version_major(const xx_squashfs *squashfs)
+{
     return squashfs ? squashfs->version_major : 0U;
 }
-uint32_t xx_squashfs_get_version_minor(const xx_squashfs *squashfs) {
+uint32_t xx_squashfs_get_version_minor(const xx_squashfs *squashfs)
+{
     return squashfs ? squashfs->version_minor : 0U;
 }
-uint32_t xx_squashfs_get_compressor(const xx_squashfs *squashfs) {
+uint32_t xx_squashfs_get_compressor(const xx_squashfs *squashfs)
+{
     return squashfs ? squashfs->compressor : 0U;
 }
-uint32_t xx_squashfs_get_block_size(const xx_squashfs *squashfs) {
+uint32_t xx_squashfs_get_block_size(const xx_squashfs *squashfs)
+{
     return squashfs ? squashfs->block_size : 0U;
 }
-int64_t xx_squashfs_get_bytes_used(const xx_squashfs *squashfs) {
+int64_t xx_squashfs_get_bytes_used(const xx_squashfs *squashfs)
+{
     return squashfs ? squashfs->bytes_used : 0;
 }
 
-const char *xx_squashfs_compressor_to_string(uint32_t compressor) {
+const char *xx_squashfs_compressor_to_string(uint32_t compressor)
+{
     switch (compressor) {
         case XX_SQUASHFS_COMPRESSOR_GZIP: return "GZIP";
         case XX_SQUASHFS_COMPRESSOR_LZMA: return "LZMA";

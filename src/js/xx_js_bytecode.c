@@ -31,15 +31,15 @@
 #define JS_BC_MAGIC_3 'E'
 #define JS_BC_VERSION 2
 
-#define BC_FLAG_STR      0x0001
-#define BC_FLAG_STR2     0x0002
-#define BC_FLAG_NODE_A   0x0004
-#define BC_FLAG_NODE_B   0x0008
-#define BC_FLAG_NODE_C   0x0010
-#define BC_FLAG_NODE_D   0x0020
-#define BC_FLAG_LIST     0x0040
+#define BC_FLAG_STR 0x0001
+#define BC_FLAG_STR2 0x0002
+#define BC_FLAG_NODE_A 0x0004
+#define BC_FLAG_NODE_B 0x0008
+#define BC_FLAG_NODE_C 0x0010
+#define BC_FLAG_NODE_D 0x0020
+#define BC_FLAG_LIST 0x0040
 #define BC_FLAG_VARNAMES 0x0080
-#define BC_FLAG_NUM      0x0100
+#define BC_FLAG_NUM 0x0100
 
 int js_is_bytecode(const void *pData, size_t nSize)
 {
@@ -47,8 +47,7 @@ int js_is_bytecode(const void *pData, size_t nSize)
     if (!p || nSize < 8) {
         return 0;
     }
-    return (p[0] == JS_BC_MAGIC_0 && p[1] == JS_BC_MAGIC_1 &&
-            p[2] == JS_BC_MAGIC_2 && p[3] == JS_BC_MAGIC_3);
+    return (p[0] == JS_BC_MAGIC_0 && p[1] == JS_BC_MAGIC_1 && p[2] == JS_BC_MAGIC_2 && p[3] == JS_BC_MAGIC_3);
 }
 
 /* ----------------------------------------------------------- serialization  */
@@ -415,8 +414,7 @@ static void bc_decompile_node(xx_buf_t *buf, const JSNode *node)
             size_t i;
             for (i = 0; i < node->nList; i++) {
                 bc_decompile_node(buf, node->ppList[i]);
-                if (node->ppList[i] && node->ppList[i]->type != N_FUNCTION &&
-                    node->ppList[i]->type != N_IF && node->ppList[i]->type != N_FOR &&
+                if (node->ppList[i] && node->ppList[i]->type != N_FUNCTION && node->ppList[i]->type != N_IF && node->ppList[i]->type != N_FOR &&
                     node->ppList[i]->type != N_WHILE && node->ppList[i]->type != N_BLOCK) {
                     xx_buf_append_str(buf, ";\n");
                 } else {
@@ -430,8 +428,7 @@ static void bc_decompile_node(xx_buf_t *buf, const JSNode *node)
             xx_buf_append_str(buf, "{\n");
             for (i = 0; i < node->nList; i++) {
                 bc_decompile_node(buf, node->ppList[i]);
-                if (node->ppList[i] && node->ppList[i]->type != N_FUNCTION &&
-                    node->ppList[i]->type != N_IF && node->ppList[i]->type != N_FOR &&
+                if (node->ppList[i] && node->ppList[i]->type != N_FUNCTION && node->ppList[i]->type != N_IF && node->ppList[i]->type != N_FOR &&
                     node->ppList[i]->type != N_WHILE && node->ppList[i]->type != N_BLOCK) {
                     xx_buf_append_str(buf, ";\n");
                 } else {
@@ -811,4 +808,3 @@ void js_free_decompiled(char *pStr)
         xx_rt_free(pStr);
     }
 }
-

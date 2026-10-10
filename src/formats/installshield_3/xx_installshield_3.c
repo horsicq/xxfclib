@@ -60,14 +60,11 @@
  * stuffed with copies of a descriptor can cost. */
 #define IS3_MAX_WALKS 3U
 
-static const uint8_t g_is3_magic[8] = {0x94, 0x01, 0x00, 0x00,
-                                       0x06, 0x00, 0x00, 0x00};
-static const uint8_t g_is3_key[8] = {0xCA, 0xDA, 0x7A, 0x5B,
-                                     0x4A, 0x76, 0x3E, 0xA0};
+static const uint8_t g_is3_magic[8] = {0x94, 0x01, 0x00, 0x00, 0x06, 0x00, 0x00, 0x00};
+static const uint8_t g_is3_key[8] = {0xCA, 0xDA, 0x7A, 0x5B, 0x4A, 0x76, 0x3E, 0xA0};
 
 /* The descriptor's obfuscated string fields: offset and size. */
-static const uint16_t g_is3_fields[4][2] = {
-    {0x01C, 40}, {0x044, 128}, {0x0C4, 80}, {0x114, 128}};
+static const uint16_t g_is3_fields[4][2] = {{0x01C, 40}, {0x044, 128}, {0x0C4, 80}, {0x114, 128}};
 #define IS3_FIELD_SOURCE_DIR 3
 
 typedef struct is3_layout_s {
@@ -99,18 +96,15 @@ typedef struct is3_stream_s {
     size_t index;
 } is3_stream;
 
-static bool is3_read_at(xx_io_device *device, int64_t offset, void *buffer,
-                        size_t size) {
+static bool is3_read_at(xx_io_device *device, int64_t offset, void *buffer, size_t size)
+{
     size_t done = 0U;
     const size_t io_capacity = xx_get_file_buffer_size();
-    if (!device || (!buffer && size != 0U) || offset < 0 ||
-        xx_io_seek64(device, offset, SEEK_SET) != 0)
-        return false;
+    if (!device || (!buffer && size != 0U) || offset < 0 || xx_io_seek64(device, offset, SEEK_SET) != 0) return false;
     while (done < size) {
         size_t request = size - done;
         if (request > io_capacity) request = io_capacity;
-        ssize_t amount =
-            xx_io_read(device, (uint8_t *)buffer + done, request);
+        ssize_t amount = xx_io_read(device, (uint8_t *)buffer + done, request);
         if (amount <= 0 || (size_t)amount > request) return false;
         done += (size_t)amount;
     }
@@ -119,29 +113,32 @@ static bool is3_read_at(xx_io_device *device, int64_t offset, void *buffer,
 
 /* Every offset/size pair taken from the file passes through this before it
  * is used to read, allocate or advance. */
-static bool is3_range_within(int64_t total, int64_t offset, int64_t size) {
-    return total >= 0 && offset >= 0 && size >= 0 && offset <= total &&
-           size <= total - offset;
+static bool is3_range_within(int64_t total, int64_t offset, int64_t size)
+{
+    return total >= 0 && offset >= 0 && size >= 0 && offset <= total && size <= total - offset;
 }
 
-void xx_installshield_3_decode(uint8_t *data, size_t size) {
+void xx_installshield_3_decode(uint8_t *data, size_t size)
+{
     size_t index;
     if (!data) return;
     for (index = 0U; index < size; ++index) {
         unsigned value = (unsigned)(data[index] ^ g_is3_key[index & 7U]);
         unsigned shift = (unsigned)((index + 1U) & 7U);
-        if (shift)
-            value = ((value << shift) | (value >> (8U - shift))) & 0xFFU;
+        if (shift) value = ((value << shift) | (value >> (8U - shift))) & 0xFFU;
         data[index] = (uint8_t)value;
     }
 }
 
 /* Path and string characters: anything but C0 controls and DEL. */
-static bool is3_char_ok(uint8_t c) { return c >= 0x20U && c != 0x7FU; }
+static bool is3_char_ok(uint8_t c)
+{
+    return c >= 0x20U && c != 0x7FU;
+}
 
 /* A fixed field must hold a NUL-terminated string of printable bytes. */
-static bool is3_field_ok(const uint8_t *descriptor, unsigned field,
-                         uint8_t *decoded, size_t *length) {
+static bool is3_field_ok(const uint8_t *descriptor, unsigned field, uint8_t *decoded, size_t *length)
+{
     size_t size = g_is3_fields[field][1];
     size_t index;
     xx_rt_memcpy(decoded, descriptor + g_is3_fields[field][0], size);
@@ -160,46 +157,41 @@ static bool is3_field_ok(const uint8_t *descriptor, unsigned field,
 /* Member names                                                             */
 /* ------------------------------------------------------------------------ */
 
-static uint8_t is3_fold(uint8_t c) {
+static uint8_t is3_fold(uint8_t c)
+{
     if (c >= 'a' && c <= 'z') return (uint8_t)(c - 'a' + 'A');
     return c;
 }
 
-static bool is3_is_separator(uint8_t c) { return c == '\\' || c == '/'; }
+static bool is3_is_separator(uint8_t c)
+{
+    return c == '\\' || c == '/';
+}
 
-static char is3_upper(char c) {
+static char is3_upper(char c)
+{
     return (c >= 'a' && c <= 'z') ? (char)(c - 'a' + 'A') : c;
 }
 
 /* True when the component's stem (up to its first dot, trailing spaces
  * dropped) is a Windows device name. */
-static bool is3_is_device(const char *component, size_t length) {
-    static const char *const names[] = {"CON",    "PRN",     "AUX",
-                                        "NUL",    "CONIN$",  "CONOUT$",
-                                        "CLOCK$"};
+static bool is3_is_device(const char *component, size_t length)
+{
+    static const char *const names[] = {"CON", "PRN", "AUX", "NUL", "CONIN$", "CONOUT$", "CLOCK$"};
     size_t stem = 0U, index;
     while (stem < length && component[stem] != '.') ++stem;
     while (stem > 0U && component[stem - 1U] == ' ') --stem;
     for (index = 0U; index < sizeof(names) / sizeof(names[0]); ++index) {
         size_t at = 0U;
-        while (at < stem && names[index][at] &&
-               is3_upper(component[at]) == names[index][at])
-            ++at;
+        while (at < stem && names[index][at] && is3_upper(component[at]) == names[index][at]) ++at;
         if (at == stem && names[index][at] == 0) return true;
     }
-    if (stem >= 4U &&
-        ((is3_upper(component[0]) == 'C' && is3_upper(component[1]) == 'O' &&
-          is3_upper(component[2]) == 'M') ||
-         (is3_upper(component[0]) == 'L' && is3_upper(component[1]) == 'P' &&
-          is3_upper(component[2]) == 'T'))) {
+    if (stem >= 4U && ((is3_upper(component[0]) == 'C' && is3_upper(component[1]) == 'O' && is3_upper(component[2]) == 'M') ||
+                       (is3_upper(component[0]) == 'L' && is3_upper(component[1]) == 'P' && is3_upper(component[2]) == 'T'))) {
         /* COM0..COM9, LPT0..LPT9 and the superscript-digit forms, which
          * Windows also resolves to devices (UTF-8 C2 B9 / C2 B2 / C2 B3). */
-        if (stem == 4U && component[3] >= '0' && component[3] <= '9')
-            return true;
-        if (stem == 5U && (uint8_t)component[3] == 0xC2U &&
-            ((uint8_t)component[4] == 0xB9U ||
-             (uint8_t)component[4] == 0xB2U ||
-             (uint8_t)component[4] == 0xB3U))
+        if (stem == 4U && component[3] >= '0' && component[3] <= '9') return true;
+        if (stem == 5U && (uint8_t)component[3] == 0xC2U && ((uint8_t)component[4] == 0xB9U || (uint8_t)component[4] == 0xB2U || (uint8_t)component[4] == 0xB3U))
             return true;
     }
     return false;
@@ -212,8 +204,8 @@ static bool is3_is_device(const char *component, size_t length) {
  * IS3_MAX_COMPONENT bytes (whole characters), below the 255-character limit
  * of common file systems with room for a rename suffix.  @p out has room for
  * 2 * length + 2 more bytes. */
-static void is3_append_component(char *out, size_t *at, const uint8_t *text,
-                                 size_t length) {
+static void is3_append_component(char *out, size_t *at, const uint8_t *text, size_t length)
+{
     size_t start = *at, index;
     if (start != 0U) out[(*at)++] = '/';
     start = *at;
@@ -223,16 +215,13 @@ static void is3_append_component(char *out, size_t *at, const uint8_t *text,
         if (c >= 0x80U) {
             out[(*at)++] = (char)(0xC0U | (c >> 6U));
             out[(*at)++] = (char)(0x80U | (c & 0x3FU));
-        } else if (c == '<' || c == '>' || c == '"' || c == '|' ||
-                   c == '?' || c == '*' || c == ':') {
+        } else if (c == '<' || c == '>' || c == '"' || c == '|' || c == '?' || c == '*' || c == ':') {
             out[(*at)++] = '_';
         } else {
             out[(*at)++] = (char)c;
         }
     }
-    if (*at > start &&
-        (out[*at - 1U] == '.' || out[*at - 1U] == ' '))
-        out[*at - 1U] = '_';
+    if (*at > start && (out[*at - 1U] == '.' || out[*at - 1U] == ' ')) out[*at - 1U] = '_';
     if (is3_is_device(out + start, *at - start)) {
         xx_mem_move(out + start + 1U, out + start, *at - start);
         out[start] = '_';
@@ -244,8 +233,8 @@ static void is3_append_component(char *out, size_t *at, const uint8_t *text,
  * directory - where the stub itself writes the file.  A path outside that
  * directory, or one with a ".." or drive component in its relative part,
  * keeps only its last component.  Empty results are numbered. */
-static char *is3_make_name(const is3_layout *layout, const uint8_t *path,
-                           size_t length, uint32_t index) {
+static char *is3_make_name(const is3_layout *layout, const uint8_t *path, size_t length, uint32_t index)
+{
     size_t source = layout->source_dir_length;
     size_t start = 0U, at = 0U, position;
     bool relative = false;
@@ -254,9 +243,7 @@ static char *is3_make_name(const is3_layout *layout, const uint8_t *path,
         size_t k;
         bool match = true;
         for (k = 0U; k < source && match; ++k)
-            match = is3_fold(path[k]) == is3_fold(layout->source_dir[k]) ||
-                    (is3_is_separator(path[k]) &&
-                     is3_is_separator(layout->source_dir[k]));
+            match = is3_fold(path[k]) == is3_fold(layout->source_dir[k]) || (is3_is_separator(path[k]) && is3_is_separator(layout->source_dir[k]));
         if (match) {
             if (is3_is_separator(layout->source_dir[source - 1U])) {
                 start = source;
@@ -273,9 +260,7 @@ static char *is3_make_name(const is3_layout *layout, const uint8_t *path,
         for (position = start;; ++position) {
             if (position == length || is3_is_separator(path[position])) {
                 size_t part = position - segment;
-                if (part == 2U && path[segment] == '.' &&
-                    path[segment + 1U] == '.')
-                    relative = false;
+                if (part == 2U && path[segment] == '.' && path[segment + 1U] == '.') relative = false;
                 if (position == length) break;
                 segment = position + 1U;
             } else if (path[position] == ':') {
@@ -285,9 +270,7 @@ static char *is3_make_name(const is3_layout *layout, const uint8_t *path,
     }
     if (!relative) {
         start = length;
-        while (start > 0U && !is3_is_separator(path[start - 1U]) &&
-               path[start - 1U] != ':')
-            --start;
+        while (start > 0U && !is3_is_separator(path[start - 1U]) && path[start - 1U] != ':') --start;
     }
     out = (char *)xx_mem_alloc(3U * (length - start) + 32U);
     if (!out) return NULL;
@@ -295,9 +278,7 @@ static char *is3_make_name(const is3_layout *layout, const uint8_t *path,
     while (position < length) {
         size_t end = position;
         while (end < length && !is3_is_separator(path[end])) ++end;
-        if (end > position &&
-            !(end - position == 1U && path[position] == '.'))
-            is3_append_component(out, &at, path + position, end - position);
+        if (end > position && !(end - position == 1U && path[position] == '.')) is3_append_component(out, &at, path + position, end - position);
         position = end + 1U;
     }
     if (at == 0U) {
@@ -310,7 +291,8 @@ static char *is3_make_name(const is3_layout *layout, const uint8_t *path,
 
 /* Comparison key: ASCII case folded, every non-ASCII byte one class, so
  * names that any file system could treat as equal compare equal. */
-static int is3_key_compare(const char *a, const char *b) {
+static int is3_key_compare(const char *a, const char *b)
+{
     for (;; ++a, ++b) {
         uint8_t x = (uint8_t)*a, y = (uint8_t)*b;
         if (x >= 0x80U) x = 0x80U;
@@ -322,7 +304,8 @@ static int is3_key_compare(const char *a, const char *b) {
     }
 }
 
-static int is3_member_compare(const void *left, const void *right) {
+static int is3_member_compare(const void *left, const void *right)
+{
     const is3_member *a = *(const is3_member *const *)left;
     const is3_member *b = *(const is3_member *const *)right;
     int result = is3_key_compare(a->name, b->name);
@@ -331,7 +314,8 @@ static int is3_member_compare(const void *left, const void *right) {
 }
 
 /* "dir/NAME.EXT" -> "dir/NAME_<index>[_<pass>].EXT". */
-static bool is3_rename(is3_member *member, unsigned pass) {
+static bool is3_rename(is3_member *member, unsigned pass)
+{
     char suffix[32];
     size_t length = xx_str_len(member->name);
     size_t last = length, dot = length, suffix_length;
@@ -345,19 +329,14 @@ static bool is3_rename(is3_member *member, unsigned pass) {
                 break;
             }
     }
-    if (pass == 0U)
-        suffix_length = (size_t)xx_rt_snprintf(suffix, sizeof(suffix), "_%u",
-                                               (unsigned)member->index);
-    else
-        suffix_length = (size_t)xx_rt_snprintf(
-            suffix, sizeof(suffix), "_%u_%u", (unsigned)member->index, pass);
+    if (pass == 0U) suffix_length = (size_t)xx_rt_snprintf(suffix, sizeof(suffix), "_%u", (unsigned)member->index);
+    else suffix_length = (size_t)xx_rt_snprintf(suffix, sizeof(suffix), "_%u_%u", (unsigned)member->index, pass);
     if (suffix_length >= sizeof(suffix)) return false;
     grown = (char *)xx_mem_alloc(length + suffix_length + 1U);
     if (!grown) return false;
     xx_rt_memcpy(grown, member->name, dot);
     xx_rt_memcpy(grown + dot, suffix, suffix_length);
-    xx_rt_memcpy(grown + dot + suffix_length, member->name + dot,
-                 length - dot);
+    xx_rt_memcpy(grown + dot + suffix_length, member->name + dot, length - dot);
     grown[length + suffix_length] = 0;
     xx_mem_free(member->name);
     member->name = grown;
@@ -367,8 +346,8 @@ static bool is3_rename(is3_member *member, unsigned pass) {
 /* Compare @p name with "<directory>/" under the same key as
  * is3_key_compare; with @p prefix_only, only the first
  * length(directory) + 1 bytes of @p name take part. */
-static int is3_key_compare_dir(const char *name, const char *directory,
-                               bool prefix_only) {
+static int is3_key_compare_dir(const char *name, const char *directory, bool prefix_only)
+{
     const char *at = directory;
     bool slash_done = false;
     for (;; ++name) {
@@ -394,19 +373,16 @@ static int is3_key_compare_dir(const char *name, const char *directory,
 /* True when some member's name lies below @p order[at]'s name, which would
  * need that name as a directory.  @p order is sorted by key, so the names
  * that start with "<name>/" form one run; a binary search finds its head. */
-static bool is3_has_descendant(is3_member *const *order, size_t count,
-                               size_t at) {
+static bool is3_has_descendant(is3_member *const *order, size_t count, size_t at)
+{
     const char *directory = order[at]->name;
     size_t low = 0U, high = count;
     while (low < high) {
         size_t middle = low + (high - low) / 2U;
-        if (is3_key_compare_dir(order[middle]->name, directory, false) < 0)
-            low = middle + 1U;
-        else
-            high = middle;
+        if (is3_key_compare_dir(order[middle]->name, directory, false) < 0) low = middle + 1U;
+        else high = middle;
     }
-    return low < count &&
-           is3_key_compare_dir(order[low]->name, directory, true) == 0;
+    return low < count && is3_key_compare_dir(order[low]->name, directory, true) == 0;
 }
 
 /* Rename members until every name differs from every other and no name is
@@ -414,7 +390,8 @@ static bool is3_has_descendant(is3_member *const *order, size_t count,
  * group of equal names, and every member some other name lies below, is
  * renamed.  Whatever still conflicts after the last pass is refused, so no
  * member can ever overwrite, or block, another. */
-static bool is3_make_unique(is3_stream *stream) {
+static bool is3_make_unique(is3_stream *stream)
+{
     is3_member **order;
     unsigned pass;
     size_t index;
@@ -427,14 +404,10 @@ static bool is3_make_unique(is3_stream *stream) {
             order[index] = &stream->items[index];
             order[index]->pending = false;
         }
-        xx_rt_qsort(order, stream->count, sizeof(*order),
-                    is3_member_compare);
+        xx_rt_qsort(order, stream->count, sizeof(*order), is3_member_compare);
         clean = true;
         for (index = 0U; index < stream->count; ++index) {
-            if ((index > 0U && is3_key_compare(order[index]->name,
-                                               order[index - 1U]->name) ==
-                                   0) ||
-                is3_has_descendant(order, stream->count, index)) {
+            if ((index > 0U && is3_key_compare(order[index]->name, order[index - 1U]->name) == 0) || is3_has_descendant(order, stream->count, index)) {
                 order[index]->pending = true;
                 clean = false;
             }
@@ -455,7 +428,8 @@ static bool is3_make_unique(is3_stream *stream) {
 }
 
 /* A final check before a name reaches the file system. */
-static bool is3_safe_output_name(const char *name) {
+static bool is3_safe_output_name(const char *name)
+{
     const char *segment;
     const char *at;
     if (!name || !name[0] || name[0] == '/' || name[0] == '\\') return false;
@@ -464,9 +438,7 @@ static bool is3_safe_output_name(const char *name) {
         unsigned char c = (unsigned char)*at;
         if (c == '/' || c == 0U) {
             size_t length = (size_t)(at - segment);
-            if (length == 0U || (length == 1U && segment[0] == '.') ||
-                (length == 2U && segment[0] == '.' && segment[1] == '.') ||
-                is3_is_device(segment, length))
+            if (length == 0U || (length == 1U && segment[0] == '.') || (length == 2U && segment[0] == '.' && segment[1] == '.') || is3_is_device(segment, length))
                 return false;
             if (c == 0U) return true;
             segment = at + 1;
@@ -476,7 +448,8 @@ static bool is3_safe_output_name(const char *name) {
     }
 }
 
-static void is3_stream_free(void *opaque) {
+static void is3_stream_free(void *opaque)
+{
     is3_stream *stream = (is3_stream *)opaque;
     size_t index;
     if (!stream) return;
@@ -506,34 +479,29 @@ typedef struct is3_window_s {
 /* @p size bytes at relative @p offset, which the caller has checked to lie
  * below @p limit; a reload reads at most IS3_WINDOW bytes, never past
  * @p limit. */
-static const uint8_t *is3_window_get(is3_window *window, int64_t limit,
-                                     int64_t offset, size_t size) {
+static const uint8_t *is3_window_get(is3_window *window, int64_t limit, int64_t offset, size_t size)
+{
     int64_t want;
     if (size > sizeof(window->frame) || offset < 0) return NULL;
     if (size > window->io_capacity) {
-        if (limit - offset < (int64_t)size ||
-            !is3_read_at(window->device, window->base + offset, window->frame, size)) return NULL;
+        if (limit - offset < (int64_t)size || !is3_read_at(window->device, window->base + offset, window->frame, size)) return NULL;
         return window->frame;
     }
-    if (window->start >= 0 && offset >= window->start &&
-        (uint64_t)(offset - window->start) + size <= window->length)
+    if (window->start >= 0 && offset >= window->start && (uint64_t)(offset - window->start) + size <= window->length)
         return window->buffer + (size_t)(offset - window->start);
     want = limit - offset;
     if ((uint64_t)want > window->io_capacity) want = (int64_t)window->io_capacity;
     if (want < (int64_t)size) return NULL;
     window->start = -1;
-    if (!is3_read_at(window->device, window->base + offset, window->buffer,
-                     (size_t)want))
-        return NULL;
+    if (!is3_read_at(window->device, window->base + offset, window->buffer, (size_t)want)) return NULL;
     window->start = offset;
     window->length = (size_t)want;
     return window->buffer;
 }
 
 /* Walk the record chain.  With @p stream, also collect the members. */
-static bool is3_walk(xx_io_device *device, int64_t base,
-                     const is3_layout *layout, is3_stream *stream,
-                     xx_pd_struct *pd) {
+static bool is3_walk(xx_io_device *device, int64_t base, const is3_layout *layout, is3_stream *stream, xx_pd_struct *pd)
+{
     uint8_t buffer[IS3_MAX_PATH + 8U];
     is3_window window;
     const uint8_t *view;
@@ -550,8 +518,7 @@ static bool is3_walk(xx_io_device *device, int64_t base,
     window.buffer = (uint8_t *)xx_mem_alloc(window.io_capacity);
     if (!window.buffer) return false;
     if (stream) {
-        stream->items = (is3_member *)xx_mem_calloc(layout->count,
-                                                    sizeof(is3_member));
+        stream->items = (is3_member *)xx_mem_calloc(layout->count, sizeof(is3_member));
         if (!stream->items) goto done;
     }
     for (index = 0U; index < layout->count; ++index) {
@@ -559,14 +526,10 @@ static bool is3_walk(xx_io_device *device, int64_t base,
         size_t k;
         int64_t data;
         if (pd && xx_pd_is_stopped(pd)) goto done;
-        if (!is3_range_within(end, position, IS3_MIN_RECORD) ||
-            !(view = is3_window_get(&window, end, position, 4U)))
-            goto done;
+        if (!is3_range_within(end, position, IS3_MIN_RECORD) || !(view = is3_window_get(&window, end, position, 4U))) goto done;
         length = xx_data_get_u32(view, 4, 0, false);
-        if (length == 0U || length > IS3_MAX_PATH ||
-            !is3_range_within(end, position + 4, (int64_t)length + 8) ||
-            !(view = is3_window_get(&window, end, position + 4,
-                                    (size_t)length + 8U)))
+        if (length == 0U || length > IS3_MAX_PATH || !is3_range_within(end, position + 4, (int64_t)length + 8) ||
+            !(view = is3_window_get(&window, end, position + 4, (size_t)length + 8U)))
             goto done;
         xx_rt_memcpy(buffer, view, (size_t)length + 8U);
         name_bytes += length;
@@ -601,17 +564,14 @@ done:
 /* Validate a descriptor candidate at @p offset.  The records must start at
  * @p data_exact when it is not negative, and never before @p data_min.
  * @p walks counts the record walks spent on this file. */
-static bool is3_check_descriptor(xx_io_device *device, int64_t base,
-                                 int64_t available, int64_t offset,
-                                 int64_t data_min, int64_t data_exact,
-                                 bool is_ne, is3_layout *layout,
-                                 unsigned *walks, xx_pd_struct *pd) {
+static bool is3_check_descriptor(xx_io_device *device, int64_t base, int64_t available, int64_t offset, int64_t data_min, int64_t data_exact, bool is_ne,
+                                 is3_layout *layout, unsigned *walks, xx_pd_struct *pd)
+{
     uint8_t descriptor[IS3_DESC_SIZE];
     uint8_t decoded[128];
     is3_layout candidate;
     unsigned field;
-    if (!is3_range_within(available, offset, IS3_DESC_SIZE) ||
-        !is3_read_at(device, base + offset, descriptor, sizeof(descriptor)) ||
+    if (!is3_range_within(available, offset, IS3_DESC_SIZE) || !is3_read_at(device, base + offset, descriptor, sizeof(descriptor)) ||
         xx_rt_memcmp(descriptor, g_is3_magic, sizeof(g_is3_magic)) != 0)
         return false;
     xx_mem_zero(&candidate, sizeof(candidate));
@@ -620,14 +580,9 @@ static bool is3_check_descriptor(xx_io_device *device, int64_t base,
     candidate.count = xx_data_get_u32(descriptor + 0x0C, 4, 0, false);
     candidate.archive_size = (int64_t)xx_data_get_u32(descriptor + 0x10, 4, 0, false);
     candidate.is_ne = is_ne;
-    if ((data_exact >= 0 && candidate.data_offset != data_exact) ||
-        candidate.data_offset < data_min || candidate.count == 0U ||
-        candidate.count > IS3_MAX_RECORDS ||
-        candidate.archive_size > available ||
-        candidate.archive_size <= candidate.data_offset ||
-        (uint64_t)(candidate.archive_size - candidate.data_offset) /
-                IS3_MIN_RECORD <
-            candidate.count)
+    if ((data_exact >= 0 && candidate.data_offset != data_exact) || candidate.data_offset < data_min || candidate.count == 0U || candidate.count > IS3_MAX_RECORDS ||
+        candidate.archive_size > available || candidate.archive_size <= candidate.data_offset ||
+        (uint64_t)(candidate.archive_size - candidate.data_offset) / IS3_MIN_RECORD < candidate.count)
         return false;
     for (field = 0U; field < 4U; ++field) {
         size_t length = 0U;
@@ -646,31 +601,25 @@ static bool is3_check_descriptor(xx_io_device *device, int64_t base,
 
 /* The first record head at the end of a PE image: a cheap gate that turns
  * away every PE without this payload before the image is scanned. */
-static bool is3_first_record_ok(xx_io_device *device, int64_t base,
-                                int64_t available, int64_t position) {
+static bool is3_first_record_ok(xx_io_device *device, int64_t base, int64_t available, int64_t position)
+{
     uint8_t buffer[IS3_MAX_PATH + 8U];
     uint8_t head[4];
     uint32_t length;
     size_t k;
-    if (!is3_range_within(available, position, IS3_MIN_RECORD) ||
-        !is3_read_at(device, base + position, head, sizeof(head)))
-        return false;
+    if (!is3_range_within(available, position, IS3_MIN_RECORD) || !is3_read_at(device, base + position, head, sizeof(head))) return false;
     length = xx_data_get_u32(head, 4, 0, false);
-    if (length == 0U || length > IS3_MAX_PATH ||
-        !is3_range_within(available, position + 4, (int64_t)length + 8) ||
-        !is3_read_at(device, base + position + 4, buffer,
-                     (size_t)length + 8U))
+    if (length == 0U || length > IS3_MAX_PATH || !is3_range_within(available, position + 4, (int64_t)length + 8) ||
+        !is3_read_at(device, base + position + 4, buffer, (size_t)length + 8U))
         return false;
     xx_installshield_3_decode(buffer, length);
     for (k = 0U; k < length; ++k)
         if (!is3_char_ok(buffer[k])) return false;
-    return is3_range_within(available, position + 4 + (int64_t)length + 8,
-                            (int64_t)xx_data_get_u32(buffer + length + 4U, 4, 0, false));
+    return is3_range_within(available, position + 4 + (int64_t)length + 8, (int64_t)xx_data_get_u32(buffer + length + 4U, 4, 0, false));
 }
 
-static bool is3_locate_pe(xx_io_device *device, int64_t base,
-                          int64_t available, int64_t header,
-                          is3_layout *layout, xx_pd_struct *pd) {
+static bool is3_locate_pe(xx_io_device *device, int64_t base, int64_t available, int64_t header, is3_layout *layout, xx_pd_struct *pd)
+{
     const size_t io_capacity = xx_get_file_buffer_size();
     uint8_t coff[24];
     uint8_t optional[64];
@@ -681,23 +630,16 @@ static bool is3_locate_pe(xx_io_device *device, int64_t base,
     int64_t section_table, image_end, scan_end, position;
     unsigned tried = 0U, walks = 0U;
     bool found = false;
-    if (!is3_range_within(available, header, (int64_t)sizeof(coff)) ||
-        !is3_read_at(device, base + header, coff, sizeof(coff)))
-        return false;
+    if (!is3_range_within(available, header, (int64_t)sizeof(coff)) || !is3_read_at(device, base + header, coff, sizeof(coff))) return false;
     section_count = xx_data_get_u16(coff + 6U, 2, 0, false);
     optional_size = xx_data_get_u16(coff + 20U, 2, 0, false);
-    if (section_count == 0U || section_count > IS3_PE_MAX_SECTIONS ||
-        optional_size < sizeof(optional) ||
-        !is3_range_within(available, header + 24, (int64_t)sizeof(optional)) ||
-        !is3_read_at(device, base + header + 24, optional, sizeof(optional)))
+    if (section_count == 0U || section_count > IS3_PE_MAX_SECTIONS || optional_size < sizeof(optional) ||
+        !is3_range_within(available, header + 24, (int64_t)sizeof(optional)) || !is3_read_at(device, base + header + 24, optional, sizeof(optional)))
         return false;
     optional_magic = xx_data_get_u16(optional, 2, 0, false);
     if (optional_magic != 0x10BU && optional_magic != 0x20BU) return false;
     section_table = header + 24 + (int64_t)optional_size;
-    if (!is3_range_within(available, section_table,
-                          (int64_t)section_count * 40) ||
-        !is3_read_at(device, base + section_table, sections,
-                     (size_t)section_count * 40U))
+    if (!is3_range_within(available, section_table, (int64_t)section_count * 40) || !is3_read_at(device, base + section_table, sections, (size_t)section_count * 40U))
         return false;
     image_end = (int64_t)xx_data_get_u32(optional + 60U, 4, 0, false);
     for (index = 0U; index < section_count; ++index) {
@@ -706,13 +648,10 @@ static bool is3_locate_pe(xx_io_device *device, int64_t base,
         int64_t raw_offset = (int64_t)xx_data_get_u32(entry + 20U, 4, 0, false);
         if (raw_size == 0) continue;
         if (!is3_range_within(available, raw_offset, raw_size)) return false;
-        if (raw_offset + raw_size > image_end)
-            image_end = raw_offset + raw_size;
+        if (raw_offset + raw_size > image_end) image_end = raw_offset + raw_size;
     }
     /* The records start exactly where the image ends. */
-    if (image_end < (int64_t)IS3_DESC_SIZE ||
-        !is3_first_record_ok(device, base, available, image_end))
-        return false;
+    if (image_end < (int64_t)IS3_DESC_SIZE || !is3_first_record_ok(device, base, available, image_end)) return false;
 
     scan_end = image_end < IS3_SCAN_LIMIT ? image_end : IS3_SCAN_LIMIT;
     chunk = (uint8_t *)xx_mem_alloc(io_capacity);
@@ -731,11 +670,11 @@ static bool is3_locate_pe(xx_io_device *device, int64_t base,
                 bytes = frame;
             }
             if (xx_rt_memcmp(bytes, g_is3_magic, 8U) != 0) continue;
-            if (++tried > IS3_MAX_CANDIDATES) { position = scan_end; break; }
-            found = is3_check_descriptor(device, base, available,
-                                         position + (int64_t)at,
-                                         position + (int64_t)at + IS3_DESC_SIZE,
-                                         image_end, false, layout, &walks, pd);
+            if (++tried > IS3_MAX_CANDIDATES) {
+                position = scan_end;
+                break;
+            }
+            found = is3_check_descriptor(device, base, available, position + (int64_t)at, position + (int64_t)at + IS3_DESC_SIZE, image_end, false, layout, &walks, pd);
         }
         if (position < scan_end) position += (int64_t)amount;
     }
@@ -743,30 +682,23 @@ static bool is3_locate_pe(xx_io_device *device, int64_t base,
     return found;
 }
 
-static bool is3_locate_ne(xx_io_device *device, int64_t base,
-                          int64_t available, int64_t header,
-                          is3_layout *layout, xx_pd_struct *pd) {
+static bool is3_locate_ne(xx_io_device *device, int64_t base, int64_t available, int64_t header, is3_layout *layout, xx_pd_struct *pd)
+{
     uint8_t ne[0x40];
     uint8_t *table;
     uint32_t resource_table, resident_names, table_size, shift;
     size_t position = 2U;
     unsigned tried = 0U, walks = 0U;
     bool found = false;
-    if (!is3_range_within(available, header, (int64_t)sizeof(ne)) ||
-        !is3_read_at(device, base + header, ne, sizeof(ne)))
-        return false;
+    if (!is3_range_within(available, header, (int64_t)sizeof(ne)) || !is3_read_at(device, base + header, ne, sizeof(ne))) return false;
     resource_table = xx_data_get_u16(ne + 0x24U, 2, 0, false);
     resident_names = xx_data_get_u16(ne + 0x26U, 2, 0, false);
     if (resource_table == 0U || resident_names <= resource_table) return false;
     table_size = resident_names - resource_table;
-    if (table_size < 2U + 8U + 12U ||
-        !is3_range_within(available, header + (int64_t)resource_table,
-                          (int64_t)table_size))
-        return false;
+    if (table_size < 2U + 8U + 12U || !is3_range_within(available, header + (int64_t)resource_table, (int64_t)table_size)) return false;
     table = (uint8_t *)xx_mem_alloc(table_size);
     if (!table) return false;
-    if (!is3_read_at(device, base + header + (int64_t)resource_table, table,
-                     table_size)) {
+    if (!is3_read_at(device, base + header + (int64_t)resource_table, table, table_size)) {
         xx_mem_free(table);
         return false;
     }
@@ -790,12 +722,9 @@ static bool is3_locate_ne(xx_io_device *device, int64_t base,
             const uint8_t *entry = table + position + (size_t)k * 12U;
             int64_t offset = (int64_t)xx_data_get_u16(entry, 2, 0, false) << shift;
             int64_t length = (int64_t)xx_data_get_u16(entry + 2U, 2, 0, false) << shift;
-            if (type != IS3_NE_RESOURCE_TYPE || length < IS3_DESC_SIZE)
-                continue;
+            if (type != IS3_NE_RESOURCE_TYPE || length < IS3_DESC_SIZE) continue;
             if (++tried > IS3_MAX_CANDIDATES) break;
-            found = is3_check_descriptor(device, base, available, offset,
-                                         offset + IS3_DESC_SIZE, -1, true,
-                                         layout, &walks, pd);
+            found = is3_check_descriptor(device, base, available, offset, offset + IS3_DESC_SIZE, -1, true, layout, &walks, pd);
         }
         if (tried > IS3_MAX_CANDIDATES) break;
         position += (size_t)count * 12U;
@@ -804,45 +733,35 @@ static bool is3_locate_ne(xx_io_device *device, int64_t base,
     return found;
 }
 
-static bool is3_locate(Abstractformat *format, is3_layout *layout,
-                       xx_pd_struct *pd) {
+static bool is3_locate(Abstractformat *format, is3_layout *layout, xx_pd_struct *pd)
+{
     uint8_t mz[0x40];
     uint8_t signature[4];
     int64_t total, available, header;
-    if (!format || !format->device || !layout || format->base_address < 0)
-        return false;
+    if (!format || !format->device || !layout || format->base_address < 0) return false;
     total = xx_io_total_size(format->device);
     if (total < format->base_address) return false;
     available = total - format->base_address;
-    if (available < 0x40 + IS3_DESC_SIZE + IS3_MIN_RECORD ||
-        !is3_read_at(format->device, format->base_address, mz, sizeof(mz)) ||
-        mz[0] != 'M' || mz[1] != 'Z')
+    if (available < 0x40 + IS3_DESC_SIZE + IS3_MIN_RECORD || !is3_read_at(format->device, format->base_address, mz, sizeof(mz)) || mz[0] != 'M' || mz[1] != 'Z')
         return false;
     header = (int64_t)xx_data_get_u32(mz + 0x3CU, 4, 0, false);
-    if (header < 0x40 ||
-        !is3_range_within(available, header, (int64_t)sizeof(signature)) ||
-        !is3_read_at(format->device, format->base_address + header,
-                     signature, sizeof(signature)))
+    if (header < 0x40 || !is3_range_within(available, header, (int64_t)sizeof(signature)) ||
+        !is3_read_at(format->device, format->base_address + header, signature, sizeof(signature)))
         return false;
-    if (signature[0] == 'P' && signature[1] == 'E' && signature[2] == 0U &&
-        signature[3] == 0U)
-        return is3_locate_pe(format->device, format->base_address, available,
-                             header, layout, pd);
-    if (signature[0] == 'N' && signature[1] == 'E')
-        return is3_locate_ne(format->device, format->base_address, available,
-                             header, layout, pd);
+    if (signature[0] == 'P' && signature[1] == 'E' && signature[2] == 0U && signature[3] == 0U)
+        return is3_locate_pe(format->device, format->base_address, available, header, layout, pd);
+    if (signature[0] == 'N' && signature[1] == 'E') return is3_locate_ne(format->device, format->base_address, available, header, layout, pd);
     return false;
 }
 
-static bool is3_parse(Abstractformat *format, is3_layout *layout,
-                      is3_stream **result, xx_pd_struct *pd) {
+static bool is3_parse(Abstractformat *format, is3_layout *layout, is3_stream **result, xx_pd_struct *pd)
+{
     is3_stream *stream;
     if (!is3_locate(format, layout, pd)) return false;
     if (!result) return true;
     stream = (is3_stream *)xx_mem_calloc(1U, sizeof(*stream));
     if (!stream) return false;
-    if (!is3_walk(format->device, format->base_address, layout, stream, pd) ||
-        stream->count != layout->count || !is3_make_unique(stream)) {
+    if (!is3_walk(format->device, format->base_address, layout, stream, pd) || stream->count != layout->count || !is3_make_unique(stream)) {
         is3_stream_free(stream);
         return false;
     }
@@ -854,18 +773,16 @@ static bool is3_parse(Abstractformat *format, is3_layout *layout,
 /* Archive API                                                              */
 /* ------------------------------------------------------------------------ */
 
-static bool is3_copy_options(xx_list_s *destination,
-                             const xx_list_s *source) {
+static bool is3_copy_options(xx_list_s *destination, const xx_list_s *source)
+{
     size_t index;
     if (!source) return true;
     for (index = 0U; index < source->count; ++index) {
-        const xx_meta *original =
-            (const xx_meta *)xx_list_at((const xx_list_t *)source, index);
+        const xx_meta *original = (const xx_meta *)xx_list_at((const xx_list_t *)source, index);
         xx_meta copy;
         if (!original) continue;
         xx_meta_init(&copy, original->meta_id);
-        if (!xx_var_copy(&copy.var, &original->var) ||
-            !xx_list_append(destination, &copy)) {
+        if (!xx_var_copy(&copy.var, &original->var) || !xx_list_append(destination, &copy)) {
             xx_meta_cleanup(&copy);
             return false;
         }
@@ -873,43 +790,35 @@ static bool is3_copy_options(xx_list_s *destination,
     return true;
 }
 
-static const xx_var *is3_option(const xx_list_s *options, uint32_t id) {
+static const xx_var *is3_option(const xx_list_s *options, uint32_t id)
+{
     size_t index;
     if (!options) return NULL;
     for (index = 0U; index < options->count; ++index) {
-        const xx_meta *meta =
-            (const xx_meta *)xx_list_at((const xx_list_t *)options, index);
+        const xx_meta *meta = (const xx_meta *)xx_list_at((const xx_list_t *)options, index);
         if (meta && meta->meta_id == id) return &meta->var;
     }
     return NULL;
 }
 
-static bool is3_set_record(xx_archive_record *record,
-                           const is3_member *member) {
+static bool is3_set_record(xx_archive_record *record, const is3_member *member)
+{
     xx_archive_record_cleanup(record);
     xx_archive_record_init(record);
     record->header_offset = member->header_offset;
     record->header_size = member->header_size;
     record->data_offset = member->data_offset;
     record->compressed_size = member->size;
-    return xx_archive_record_set_original_name(record, member->name) &&
-           xx_archive_record_set_meta_u64(record, XX_META_ID_COMPRESSED_SIZE,
-                                          (uint64_t)member->size) &&
-           xx_archive_record_set_meta_u64(record, XX_META_ID_UNCOMPRESSED_SIZE,
-                                          (uint64_t)member->size) &&
-           xx_archive_record_set_meta_u64(record, XX_META_ID_COMPRESSION_METHOD,
-                                          0U) &&
-           xx_archive_record_set_meta_u64(record, XX_META_ID_LAST_MOD_DATE,
-                                          member->dos_date) &&
-           xx_archive_record_set_meta_u64(record, XX_META_ID_LAST_MOD_TIME,
-                                          member->dos_time) &&
-           xx_archive_record_set_meta_bool(record, XX_META_ID_IS_ENCRYPTED,
-                                           false) &&
-           xx_archive_record_set_meta_bool(record, XX_META_ID_IS_FOLDER, false);
+    return xx_archive_record_set_original_name(record, member->name) && xx_archive_record_set_meta_u64(record, XX_META_ID_COMPRESSED_SIZE, (uint64_t)member->size) &&
+           xx_archive_record_set_meta_u64(record, XX_META_ID_UNCOMPRESSED_SIZE, (uint64_t)member->size) &&
+           xx_archive_record_set_meta_u64(record, XX_META_ID_COMPRESSION_METHOD, 0U) &&
+           xx_archive_record_set_meta_u64(record, XX_META_ID_LAST_MOD_DATE, member->dos_date) &&
+           xx_archive_record_set_meta_u64(record, XX_META_ID_LAST_MOD_TIME, member->dos_time) &&
+           xx_archive_record_set_meta_bool(record, XX_META_ID_IS_ENCRYPTED, false) && xx_archive_record_set_meta_bool(record, XX_META_ID_IS_FOLDER, false);
 }
 
-void xx_installshield_3_init(xx_installshield_3 *archive, xx_io_device *device,
-                             int64_t base_address) {
+void xx_installshield_3_init(xx_installshield_3 *archive, xx_io_device *device, int64_t base_address)
+{
     if (!archive) return;
     xx_mem_zero(archive, sizeof(*archive));
     xx_format_init(&archive->format, device, base_address);
@@ -917,55 +826,49 @@ void xx_installshield_3_init(xx_installshield_3 *archive, xx_io_device *device,
     archive->format.file_type = XX_INSTALLSHIELD_3_FILE_TYPE;
     archive->format.format_type = XX_TYPE_ARCHIVE;
     archive->format.is_archive = true;
-    xx_format_set_mime_type(&archive->format,
-                            "application/x-installshield-3-sfx");
+    xx_format_set_mime_type(&archive->format, "application/x-installshield-3-sfx");
     xx_format_set_extension(&archive->format, "exe");
     archive->format.check_is_valid = xx_installshield_3_check_is_valid;
     archive->format.handle_base_info = xx_installshield_3_handle_base_info;
     archive->format.get_format_size = xx_installshield_3_get_format_size;
-    archive->format.get_number_of_archive_records =
-        xx_installshield_3_get_number_of_archive_records;
-    archive->format.create_archive_records_reading =
-        xx_installshield_3_create_archive_records_reading;
-    archive->format.get_current_archive_record =
-        xx_installshield_3_get_current_archive_record;
-    archive->format.unpack_current_archive_record =
-        xx_installshield_3_unpack_current_archive_record;
-    archive->format.archive_record_move_to_next =
-        xx_installshield_3_archive_record_move_to_next;
-    archive->format.free_archive_records_reading =
-        xx_installshield_3_free_archive_records_reading;
+    archive->format.get_number_of_archive_records = xx_installshield_3_get_number_of_archive_records;
+    archive->format.create_archive_records_reading = xx_installshield_3_create_archive_records_reading;
+    archive->format.get_current_archive_record = xx_installshield_3_get_current_archive_record;
+    archive->format.unpack_current_archive_record = xx_installshield_3_unpack_current_archive_record;
+    archive->format.archive_record_move_to_next = xx_installshield_3_archive_record_move_to_next;
+    archive->format.free_archive_records_reading = xx_installshield_3_free_archive_records_reading;
     archive->descriptor_offset = -1;
     archive->data_offset = -1;
     archive->archive_size = -1;
 }
 
-xx_installshield_3 *xx_installshield_3_create(xx_io_device *device,
-                                              int64_t base_address) {
-    xx_installshield_3 *archive =
-        (xx_installshield_3 *)xx_mem_alloc(sizeof(*archive));
+xx_installshield_3 *xx_installshield_3_create(xx_io_device *device, int64_t base_address)
+{
+    xx_installshield_3 *archive = (xx_installshield_3 *)xx_mem_alloc(sizeof(*archive));
     if (archive) xx_installshield_3_init(archive, device, base_address);
     return archive;
 }
 
-void xx_installshield_3_destroy(xx_installshield_3 *archive) {
+void xx_installshield_3_destroy(xx_installshield_3 *archive)
+{
     if (archive) xx_format_cleanup_extra_parameters(&archive->format);
 }
 
-void xx_installshield_3_free(xx_installshield_3 *archive) {
+void xx_installshield_3_free(xx_installshield_3 *archive)
+{
     if (!archive) return;
     xx_installshield_3_destroy(archive);
     xx_mem_free(archive);
 }
 
-bool xx_installshield_3_check_is_valid(Abstractformat *format,
-                                       xx_pd_struct *pd) {
+bool xx_installshield_3_check_is_valid(Abstractformat *format, xx_pd_struct *pd)
+{
     is3_layout layout;
     return is3_parse(format, &layout, NULL, pd);
 }
 
-bool xx_installshield_3_handle_base_info(Abstractformat *format,
-                                         xx_pd_struct *pd) {
+bool xx_installshield_3_handle_base_info(Abstractformat *format, xx_pd_struct *pd)
+{
     is3_layout layout;
     xx_installshield_3 *archive;
     if (!format) return false;
@@ -978,8 +881,7 @@ bool xx_installshield_3_handle_base_info(Abstractformat *format,
     }
     archive = (xx_installshield_3 *)format;
     archive->number_of_records = layout.count;
-    archive->descriptor_offset =
-        format->base_address + layout.descriptor_offset;
+    archive->descriptor_offset = format->base_address + layout.descriptor_offset;
     archive->data_offset = format->base_address + layout.data_offset;
     archive->archive_size = layout.archive_size;
     archive->is_ne = layout.is_ne;
@@ -995,24 +897,18 @@ bool xx_installshield_3_handle_base_info(Abstractformat *format,
     return true;
 }
 
-int64_t xx_installshield_3_get_format_size(Abstractformat *format,
-                                           xx_pd_struct *pd) {
-    return format && (format->base_info_handled ||
-                      xx_installshield_3_handle_base_info(format, pd))
-               ? format->format_size
-               : -1;
+int64_t xx_installshield_3_get_format_size(Abstractformat *format, xx_pd_struct *pd)
+{
+    return format && (format->base_info_handled || xx_installshield_3_handle_base_info(format, pd)) ? format->format_size : -1;
 }
 
-uint64_t xx_installshield_3_get_number_of_archive_records(
-    Abstractformat *format, xx_pd_struct *pd) {
-    return format && (format->base_info_handled ||
-                      xx_installshield_3_handle_base_info(format, pd))
-               ? ((xx_installshield_3 *)format)->number_of_records
-               : 0U;
+uint64_t xx_installshield_3_get_number_of_archive_records(Abstractformat *format, xx_pd_struct *pd)
+{
+    return format && (format->base_info_handled || xx_installshield_3_handle_base_info(format, pd)) ? ((xx_installshield_3 *)format)->number_of_records : 0U;
 }
 
-xx_archive_record_state *xx_installshield_3_create_archive_records_reading(
-    Abstractformat *format, const xx_list_s *options, xx_pd_struct *pd) {
+xx_archive_record_state *xx_installshield_3_create_archive_records_reading(Abstractformat *format, const xx_list_s *options, xx_pd_struct *pd)
+{
     is3_layout layout;
     is3_stream *stream = NULL;
     xx_archive_record_state *state;
@@ -1026,8 +922,7 @@ xx_archive_record_state *xx_installshield_3_create_archive_records_reading(
     state->internal_state = stream;
     state->free_internal = is3_stream_free;
     state->total_records = (int64_t)stream->count;
-    if (!is3_copy_options(&state->options, options) ||
-        !is3_set_record(&state->current_record, &stream->items[0])) {
+    if (!is3_copy_options(&state->options, options) || !is3_set_record(&state->current_record, &stream->items[0])) {
         xx_archive_record_state_free(state);
         return NULL;
     }
@@ -1035,33 +930,26 @@ xx_archive_record_state *xx_installshield_3_create_archive_records_reading(
     return state;
 }
 
-const xx_archive_record *xx_installshield_3_get_current_archive_record(
-    Abstractformat *format, xx_archive_record_state *state) {
-    return format && state && state->format == format && state->has_record
-               ? &state->current_record
-               : NULL;
+const xx_archive_record *xx_installshield_3_get_current_archive_record(Abstractformat *format, xx_archive_record_state *state)
+{
+    return format && state && state->format == format && state->has_record ? &state->current_record : NULL;
 }
 
-bool xx_installshield_3_archive_record_move_to_next(
-    Abstractformat *format, xx_archive_record_state *state,
-    xx_pd_struct *pd) {
+bool xx_installshield_3_archive_record_move_to_next(Abstractformat *format, xx_archive_record_state *state, xx_pd_struct *pd)
+{
     is3_stream *stream;
     (void)pd;
-    if (!format || !state || state->format != format ||
-        !(stream = (is3_stream *)state->internal_state) ||
-        ++stream->index >= stream->count) {
+    if (!format || !state || state->format != format || !(stream = (is3_stream *)state->internal_state) || ++stream->index >= stream->count) {
         if (state) state->has_record = false;
         return false;
     }
     ++state->current_index;
-    state->has_record =
-        is3_set_record(&state->current_record, &stream->items[stream->index]);
+    state->has_record = is3_set_record(&state->current_record, &stream->items[stream->index]);
     return state->has_record;
 }
 
-bool xx_installshield_3_unpack_current_archive_record(
-    Abstractformat *format, xx_archive_record_state *state,
-    xx_pd_struct *pd) {
+bool xx_installshield_3_unpack_current_archive_record(Abstractformat *format, xx_archive_record_state *state, xx_pd_struct *pd)
+{
     is3_stream *stream;
     is3_member *member;
     const xx_var *path_option;
@@ -1069,42 +957,33 @@ bool xx_installshield_3_unpack_current_archive_record(
     char *owned_base = NULL;
     char *path = NULL;
     bool result = false;
-    if (!format || !state || state->format != format || !state->has_record ||
-        !(stream = (is3_stream *)state->internal_state) ||
-        stream->index >= stream->count || (pd && xx_pd_is_stopped(pd)))
+    if (!format || !state || state->format != format || !state->has_record || !(stream = (is3_stream *)state->internal_state) || stream->index >= stream->count ||
+        (pd && xx_pd_is_stopped(pd)))
         return false;
     member = &stream->items[stream->index];
     if (member->refused || !is3_safe_output_name(member->name)) return false;
     path_option = is3_option(&state->options, XX_META_ID_OPT_UNPACK_PATH);
     if (!path_option) return true; /* A dry run: the member is readable. */
-    if (path_option->type == XX_VAR_TYPE_STRING ||
-        path_option->type == XX_VAR_TYPE_STRING_VIEW) {
+    if (path_option->type == XX_VAR_TYPE_STRING || path_option->type == XX_VAR_TYPE_STRING_VIEW) {
         base = xx_var_get_str(path_option);
-    } else if (path_option->type == XX_VAR_TYPE_WSTRING ||
-               path_option->type == XX_VAR_TYPE_WSTRING_VIEW) {
+    } else if (path_option->type == XX_VAR_TYPE_WSTRING || path_option->type == XX_VAR_TYPE_WSTRING_VIEW) {
         owned_base = xx_str_unicode_to_utf8(xx_var_get_wstr(path_option));
         base = owned_base;
     }
     if (!base) goto done;
-    path = (base[0] && base[xx_str_len(base) - 1U] != '/' &&
-            base[xx_str_len(base) - 1U] != '\\')
-               ? xx_str_concat3(base, "/", member->name)
-               : xx_str_concat(base, member->name);
+    path = (base[0] && base[xx_str_len(base) - 1U] != '/' && base[xx_str_len(base) - 1U] != '\\') ? xx_str_concat3(base, "/", member->name)
+                                                                                                  : xx_str_concat(base, member->name);
     if (!path || !xx_store_create_dirs_a(path, false)) goto done;
-    result = xx_store_unpack_device_to_file(format->device,
-                                            member->data_offset, member->size,
-                                            path, pd);
-    if (result && (member->dos_date || member->dos_time))
-        (void)xx_store_apply_dos_time_and_attrs_a(path, member->dos_date,
-                                                  member->dos_time, 0U);
+    result = xx_store_unpack_device_to_file(format->device, member->data_offset, member->size, path, pd);
+    if (result && (member->dos_date || member->dos_time)) (void)xx_store_apply_dos_time_and_attrs_a(path, member->dos_date, member->dos_time, 0U);
 done:
     if (path) xx_str_free(path);
     if (owned_base) xx_str_free(owned_base);
     return result;
 }
 
-void xx_installshield_3_free_archive_records_reading(
-    Abstractformat *format, xx_archive_record_state *state) {
+void xx_installshield_3_free_archive_records_reading(Abstractformat *format, xx_archive_record_state *state)
+{
     (void)format;
     xx_archive_record_state_free(state);
 }

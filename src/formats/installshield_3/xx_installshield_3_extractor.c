@@ -11,61 +11,54 @@
 #include "../xx_format_extractor_engine.h"
 #include "xxfclib/formats/installshield_3/xx_installshield_3.h"
 
-static const uint8_t k_anchor0[] = { 0x4D, 0x5A };
+static const uint8_t k_anchor0[] = {0x4D, 0x5A};
 static const xx_format_search_anchor k_anchors[] = {
-    { k_anchor0, sizeof(k_anchor0), 0U },
+    {k_anchor0, sizeof(k_anchor0), 0U},
 };
 
-static const xx_file_type_t k_types[] = {
-    XX_FILE_TYPE_INSTALLSHIELD_3
-};
+static const xx_file_type_t k_types[] = {XX_FILE_TYPE_INSTALLSHIELD_3};
 
-static Abstractformat *xx_installshield_3_search_open(xx_io_device *window) {
+static Abstractformat *xx_installshield_3_search_open(xx_io_device *window)
+{
     xx_installshield_3 *reader = xx_installshield_3_create(window, 0);
     return reader ? &reader->format : NULL;
 }
 
-static void xx_installshield_3_search_close(Abstractformat *format) {
+static void xx_installshield_3_search_close(Abstractformat *format)
+{
     xx_installshield_3_free((xx_installshield_3 *)format);
 }
 
 static const xx_format_search_desc k_desc = {
-    k_types, sizeof(k_types) / sizeof(k_types[0]),
-    k_anchors, sizeof(k_anchors) / sizeof(k_anchors[0]),
-    xx_installshield_3_search_open, xx_installshield_3_search_close, false
-};
+    k_types, sizeof(k_types) / sizeof(k_types[0]), k_anchors, sizeof(k_anchors) / sizeof(k_anchors[0]), xx_installshield_3_search_open, xx_installshield_3_search_close,
+    false};
 
-static xx_format_search_state *xx_installshield_3_create_format_search(
-    xx_format_extractor *self, xx_io_device *device, const xx_list_s *options,
-    xx_pd_struct *pd) {
+static xx_format_search_state *xx_installshield_3_create_format_search(xx_format_extractor *self, xx_io_device *device, const xx_list_s *options, xx_pd_struct *pd)
+{
     (void)self;
     return xx_format_search_create(&k_desc, device, options, pd);
 }
 
-static const xx_format_search_info *xx_installshield_3_get_current_format_info(
-    xx_format_extractor *self, xx_format_search_state *state) {
+static const xx_format_search_info *xx_installshield_3_get_current_format_info(xx_format_extractor *self, xx_format_search_state *state)
+{
     (void)self;
     return xx_format_search_current(state);
 }
 
-static bool xx_installshield_3_format_search_find_next(
-    xx_format_extractor *self, xx_format_search_state *state, xx_pd_struct *pd) {
+static bool xx_installshield_3_format_search_find_next(xx_format_extractor *self, xx_format_search_state *state, xx_pd_struct *pd)
+{
     (void)self;
     return xx_format_search_find_next(state, pd);
 }
 
-static void xx_installshield_3_free_format_search(
-    xx_format_extractor *self, xx_format_search_state *state) {
+static void xx_installshield_3_free_format_search(xx_format_extractor *self, xx_format_search_state *state)
+{
     (void)self;
     xx_format_search_free(state);
 }
 
-xx_format_extractor xx_installshield_3_extractor = {
-    xx_installshield_3_create_format_search,
-    xx_installshield_3_get_current_format_info,
-    xx_installshield_3_format_search_find_next,
-    xx_installshield_3_free_format_search
-};
+xx_format_extractor xx_installshield_3_extractor = {xx_installshield_3_create_format_search, xx_installshield_3_get_current_format_info,
+                                                    xx_installshield_3_format_search_find_next, xx_installshield_3_free_format_search};
 
 /* BEGIN GENERATED ABSTRACT EXTRACTOR */
 #include "../xx_format_abstract_extractor_adapter.h"

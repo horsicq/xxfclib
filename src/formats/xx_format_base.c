@@ -12,7 +12,8 @@
 
 static void xx_format_extra_parameter_free_elem(void *element);
 
-static void xx_format_invalidate_password_state(Abstractformat *format) {
+static void xx_format_invalidate_password_state(Abstractformat *format)
+{
     if (!format) {
         return;
     }
@@ -25,7 +26,8 @@ static void xx_format_invalidate_password_state(Abstractformat *format) {
     xx_format_invalidate_memory_map(format);
 }
 
-void xx_format_init(Abstractformat *fmt, xx_io_device *dev, int64_t base_address) {
+void xx_format_init(Abstractformat *fmt, xx_io_device *dev, int64_t base_address)
+{
     if (!fmt) {
         return;
     }
@@ -55,11 +57,11 @@ void xx_format_init(Abstractformat *fmt, xx_io_device *dev, int64_t base_address
     fmt->number_of_archive_records = 0;
     fmt->module_address = XX_INVALID_ADDRESS;
     xx_memory_map_init(&fmt->memory_map);
-    xx_list_init(&fmt->list_extra_parameters, sizeof(xx_meta),
-                 xx_format_extra_parameter_free_elem);
+    xx_list_init(&fmt->list_extra_parameters, sizeof(xx_meta), xx_format_extra_parameter_free_elem);
 }
 
-void xx_format_invalidate_memory_map(Abstractformat *format) {
+void xx_format_invalidate_memory_map(Abstractformat *format)
+{
     bool was_handling;
     if (!format) return;
     was_handling = format->memory_map_handling;
@@ -71,24 +73,18 @@ void xx_format_invalidate_memory_map(Abstractformat *format) {
     format->memory_map_requested_mode = XX_MEMORY_MAP_MODE_UNKNOWN;
 }
 
-static bool xx_format_get_default_memory_map(Abstractformat *format,
-                                             xx_memory_map_mode_t mode,
-                                             xx_memory_map *output) {
+static bool xx_format_get_default_memory_map(Abstractformat *format, xx_memory_map_mode_t mode, xx_memory_map *output)
+{
     xx_memory_record record;
     int64_t total;
     int64_t size;
-    if (!format || !format->device || !output || format->base_address < 0)
-        return false;
-    if (mode != XX_MEMORY_MAP_MODE_UNKNOWN &&
-        mode != XX_MEMORY_MAP_MODE_REGIONS)
-        return false;
+    if (!format || !format->device || !output || format->base_address < 0) return false;
+    if (mode != XX_MEMORY_MAP_MODE_UNKNOWN && mode != XX_MEMORY_MAP_MODE_REGIONS) return false;
     total = xx_io_total_size(format->device);
     if (total < format->base_address) return false;
     size = total - format->base_address;
     output->binary_offset = format->base_address;
-    output->module_address = format->module_address != XX_INVALID_ADDRESS
-                                 ? format->module_address
-                                 : 0U;
+    output->module_address = format->module_address != XX_INVALID_ADDRESS ? format->module_address : 0U;
     output->is_image = format->is_mapped;
     output->binary_size = size;
     output->entry_point_address = XX_INVALID_ADDRESS;
@@ -108,41 +104,25 @@ static bool xx_format_get_default_memory_map(Abstractformat *format,
     return xx_memory_map_add_record(output, &record);
 }
 
-bool xx_format_handle_memory_map(Abstractformat *format,
-                                 xx_memory_map_mode_t mode,
-                                 xx_pd_struct *pd) {
+bool xx_format_handle_memory_map(Abstractformat *format, xx_memory_map_mode_t mode, xx_pd_struct *pd)
+{
     xx_memory_map result;
     bool built;
     if (!format || xx_pd_is_stopped(pd)) return false;
     if (!xx_format_handle_split_format(format, pd)) return false;
-    if (format->memory_map_handled &&
-        (format->memory_map_requested_mode == mode ||
-         (mode != XX_MEMORY_MAP_MODE_UNKNOWN &&
-          format->memory_map.mode == mode)))
-        return true;
+    if (format->memory_map_handled && (format->memory_map_requested_mode == mode || (mode != XX_MEMORY_MAP_MODE_UNKNOWN && format->memory_map.mode == mode))) return true;
     if (format->memory_map_handling) {
-        xx_pd_set_error(pd, XXFC_ERR_INVALID_ARG,
-                        "Recursive memory-map construction");
+        xx_pd_set_error(pd, XXFC_ERR_INVALID_ARG, "Recursive memory-map construction");
         return false;
     }
-    if (!format->base_info_handled && format->handle_base_info &&
-        !xx_format_handle_base_info(format, pd))
-        return false;
+    if (!format->base_info_handled && format->handle_base_info && !xx_format_handle_base_info(format, pd)) return false;
     /* A concrete base-info handler may construct the default map because it
      * needs that same map for parsing address-based tables (PE does this). */
-    if (format->memory_map_handled &&
-        (format->memory_map_requested_mode == mode ||
-         (mode != XX_MEMORY_MAP_MODE_UNKNOWN &&
-          format->memory_map.mode == mode)))
-        return true;
+    if (format->memory_map_handled && (format->memory_map_requested_mode == mode || (mode != XX_MEMORY_MAP_MODE_UNKNOWN && format->memory_map.mode == mode))) return true;
     format->memory_map_handling = true;
     xx_memory_map_init(&result);
-    built = format->get_memory_map
-                ? format->get_memory_map(format, mode, &result, pd)
-                : xx_format_get_default_memory_map(format, mode, &result);
-    if (built && result.mode == XX_MEMORY_MAP_MODE_UNKNOWN &&
-        mode != XX_MEMORY_MAP_MODE_UNKNOWN)
-        result.mode = mode;
+    built = format->get_memory_map ? format->get_memory_map(format, mode, &result, pd) : xx_format_get_default_memory_map(format, mode, &result);
+    if (built && result.mode == XX_MEMORY_MAP_MODE_UNKNOWN && mode != XX_MEMORY_MAP_MODE_UNKNOWN) result.mode = mode;
     if (built) built = xx_memory_map_finalize(&result);
     if (!built || xx_pd_is_stopped(pd)) {
         xx_memory_map_cleanup(&result);
@@ -157,66 +137,49 @@ bool xx_format_handle_memory_map(Abstractformat *format,
     return true;
 }
 
-const xx_memory_map *xx_format_get_memory_map(Abstractformat *format,
-                                               xx_memory_map_mode_t mode,
-                                               xx_pd_struct *pd) {
-    return xx_format_handle_memory_map(format, mode, pd)
-               ? &format->memory_map
-               : NULL;
+const xx_memory_map *xx_format_get_memory_map(Abstractformat *format, xx_memory_map_mode_t mode, xx_pd_struct *pd)
+{
+    return xx_format_handle_memory_map(format, mode, pd) ? &format->memory_map : NULL;
 }
 
-uint64_t xx_format_offset_to_address(Abstractformat *format, int64_t offset,
-                                     xx_pd_struct *pd) {
-    const xx_memory_map *map = xx_format_get_memory_map(
-        format, XX_MEMORY_MAP_MODE_UNKNOWN, pd);
-    return map ? xx_memory_map_offset_to_address(map, offset)
-               : XX_INVALID_ADDRESS;
+uint64_t xx_format_offset_to_address(Abstractformat *format, int64_t offset, xx_pd_struct *pd)
+{
+    const xx_memory_map *map = xx_format_get_memory_map(format, XX_MEMORY_MAP_MODE_UNKNOWN, pd);
+    return map ? xx_memory_map_offset_to_address(map, offset) : XX_INVALID_ADDRESS;
 }
 
-int64_t xx_format_address_to_offset(Abstractformat *format, uint64_t address,
-                                    xx_pd_struct *pd) {
-    const xx_memory_map *map = xx_format_get_memory_map(
-        format, XX_MEMORY_MAP_MODE_UNKNOWN, pd);
+int64_t xx_format_address_to_offset(Abstractformat *format, uint64_t address, xx_pd_struct *pd)
+{
+    const xx_memory_map *map = xx_format_get_memory_map(format, XX_MEMORY_MAP_MODE_UNKNOWN, pd);
     return map ? xx_memory_map_address_to_offset(map, address) : -1;
 }
 
-uint64_t xx_format_offset_to_rel_address(Abstractformat *format,
-                                          int64_t offset, xx_pd_struct *pd) {
-    const xx_memory_map *map = xx_format_get_memory_map(
-        format, XX_MEMORY_MAP_MODE_UNKNOWN, pd);
-    return map ? xx_memory_map_offset_to_relative_address(map, offset)
-               : XX_INVALID_ADDRESS;
+uint64_t xx_format_offset_to_rel_address(Abstractformat *format, int64_t offset, xx_pd_struct *pd)
+{
+    const xx_memory_map *map = xx_format_get_memory_map(format, XX_MEMORY_MAP_MODE_UNKNOWN, pd);
+    return map ? xx_memory_map_offset_to_relative_address(map, offset) : XX_INVALID_ADDRESS;
 }
 
-int64_t xx_format_rel_address_to_offset(Abstractformat *format,
-                                        int64_t relative_address,
-                                        xx_pd_struct *pd) {
-    const xx_memory_map *map = xx_format_get_memory_map(
-        format, XX_MEMORY_MAP_MODE_UNKNOWN, pd);
-    return map ? xx_memory_map_relative_address_to_offset(map,
-                                                           relative_address)
-               : -1;
+int64_t xx_format_rel_address_to_offset(Abstractformat *format, int64_t relative_address, xx_pd_struct *pd)
+{
+    const xx_memory_map *map = xx_format_get_memory_map(format, XX_MEMORY_MAP_MODE_UNKNOWN, pd);
+    return map ? xx_memory_map_relative_address_to_offset(map, relative_address) : -1;
 }
 
-uint64_t xx_format_rel_address_to_address(Abstractformat *format,
-                                           int64_t relative_address,
-                                           xx_pd_struct *pd) {
-    const xx_memory_map *map = xx_format_get_memory_map(
-        format, XX_MEMORY_MAP_MODE_UNKNOWN, pd);
-    return map ? xx_memory_map_relative_address_to_address(map,
-                                                            relative_address)
-               : XX_INVALID_ADDRESS;
+uint64_t xx_format_rel_address_to_address(Abstractformat *format, int64_t relative_address, xx_pd_struct *pd)
+{
+    const xx_memory_map *map = xx_format_get_memory_map(format, XX_MEMORY_MAP_MODE_UNKNOWN, pd);
+    return map ? xx_memory_map_relative_address_to_address(map, relative_address) : XX_INVALID_ADDRESS;
 }
 
-int64_t xx_format_address_to_rel_address(Abstractformat *format,
-                                          uint64_t address,
-                                          xx_pd_struct *pd) {
-    const xx_memory_map *map = xx_format_get_memory_map(
-        format, XX_MEMORY_MAP_MODE_UNKNOWN, pd);
+int64_t xx_format_address_to_rel_address(Abstractformat *format, uint64_t address, xx_pd_struct *pd)
+{
+    const xx_memory_map *map = xx_format_get_memory_map(format, XX_MEMORY_MAP_MODE_UNKNOWN, pd);
     return map ? xx_memory_map_address_to_relative_address(map, address) : -1;
 }
 
-bool xx_format_handle_split_format(Abstractformat *format, xx_pd_struct *pd) {
+bool xx_format_handle_split_format(Abstractformat *format, xx_pd_struct *pd)
+{
     bool handled;
     if (!format) {
         return false;
@@ -245,7 +208,8 @@ bool xx_format_handle_split_format(Abstractformat *format, xx_pd_struct *pd) {
     return true;
 }
 
-static void xx_format_secure_clear_parameter(xx_meta *meta) {
+static void xx_format_secure_clear_parameter(xx_meta *meta)
+{
     xx_var *value;
     if (!meta || meta->meta_id != XX_META_ID_OPT_PASSWORD) {
         return;
@@ -257,14 +221,14 @@ static void xx_format_secure_clear_parameter(xx_meta *meta) {
     if (value->type == XX_VAR_TYPE_STRING && value->val.str.ptr) {
         xx_mem_zero(value->val.str.ptr, value->val.str.len);
     } else if (value->type == XX_VAR_TYPE_WSTRING && value->val.wstr.ptr) {
-        xx_mem_zero(value->val.wstr.ptr,
-                    value->val.wstr.len * sizeof(wchar_t));
+        xx_mem_zero(value->val.wstr.ptr, value->val.wstr.len * sizeof(wchar_t));
     } else if (value->type == XX_VAR_TYPE_BYTES && value->val.bytes.data) {
         xx_mem_zero(value->val.bytes.data, value->val.bytes.size);
     }
 }
 
-static void xx_format_extra_parameter_free_elem(void *element) {
+static void xx_format_extra_parameter_free_elem(void *element)
+{
     xx_meta *meta = (xx_meta *)element;
     if (!meta) {
         return;
@@ -273,16 +237,15 @@ static void xx_format_extra_parameter_free_elem(void *element) {
     xx_meta_cleanup(meta);
 }
 
-static bool xx_format_copy_parameter_value(xx_var *destination,
-                                           const xx_var *source) {
+static bool xx_format_copy_parameter_value(xx_var *destination, const xx_var *source)
+{
     if (!destination || !source) {
         return false;
     }
     switch ((xx_var_type_t)source->type) {
         case XX_VAR_TYPE_STRING_VIEW: {
             char *copy;
-            if ((!source->val.str.ptr && source->val.str.len != 0U) ||
-                source->val.str.len == SIZE_MAX) {
+            if ((!source->val.str.ptr && source->val.str.len != 0U) || source->val.str.len == SIZE_MAX) {
                 return false;
             }
             copy = (char *)xx_mem_alloc(source->val.str.len + 1U);
@@ -293,46 +256,36 @@ static bool xx_format_copy_parameter_value(xx_var *destination,
                 xx_mem_copy(copy, source->val.str.ptr, source->val.str.len);
             }
             copy[source->val.str.len] = '\0';
-            return xx_var_set_str_take(destination, copy,
-                                       source->val.str.len);
+            return xx_var_set_str_take(destination, copy, source->val.str.len);
         }
         case XX_VAR_TYPE_WSTRING_VIEW: {
             wchar_t *copy;
-            if ((!source->val.wstr.ptr && source->val.wstr.len != 0U) ||
-                source->val.wstr.len >
-                    (SIZE_MAX / sizeof(wchar_t)) - 1U) {
+            if ((!source->val.wstr.ptr && source->val.wstr.len != 0U) || source->val.wstr.len > (SIZE_MAX / sizeof(wchar_t)) - 1U) {
                 return false;
             }
-            copy = (wchar_t *)xx_mem_alloc(
-                (source->val.wstr.len + 1U) * sizeof(wchar_t));
+            copy = (wchar_t *)xx_mem_alloc((source->val.wstr.len + 1U) * sizeof(wchar_t));
             if (!copy) {
                 return false;
             }
             if (source->val.wstr.len != 0U) {
-                xx_mem_copy(copy, source->val.wstr.ptr,
-                            source->val.wstr.len * sizeof(wchar_t));
+                xx_mem_copy(copy, source->val.wstr.ptr, source->val.wstr.len * sizeof(wchar_t));
             }
             copy[source->val.wstr.len] = L'\0';
-            return xx_var_set_wstr_take(destination, copy,
-                                        source->val.wstr.len);
+            return xx_var_set_wstr_take(destination, copy, source->val.wstr.len);
         }
-        case XX_VAR_TYPE_BYTES_VIEW:
-            return xx_var_set_bytes(destination, source->val.bytes.data,
-                                    source->val.bytes.size);
-        default:
-            return xx_var_copy(destination, source);
+        case XX_VAR_TYPE_BYTES_VIEW: return xx_var_set_bytes(destination, source->val.bytes.data, source->val.bytes.size);
+        default: return xx_var_copy(destination, source);
     }
 }
 
-const xx_var *xx_format_find_extra_parameter(const Abstractformat *format,
-                                              uint32_t meta_id) {
+const xx_var *xx_format_find_extra_parameter(const Abstractformat *format, uint32_t meta_id)
+{
     size_t i;
     if (!format) {
         return NULL;
     }
     for (i = 0; i < format->list_extra_parameters.count; ++i) {
-        const xx_meta *meta = (const xx_meta *)xx_list_at(
-            &format->list_extra_parameters, i);
+        const xx_meta *meta = (const xx_meta *)xx_list_at(&format->list_extra_parameters, i);
         if (meta && meta->meta_id == meta_id) {
             return &meta->var;
         }
@@ -340,14 +293,12 @@ const xx_var *xx_format_find_extra_parameter(const Abstractformat *format,
     return NULL;
 }
 
-const xx_var *xx_format_resolve_extra_parameter(
-    const Abstractformat *format, const xx_list_s *operation_parameters,
-    uint32_t meta_id) {
+const xx_var *xx_format_resolve_extra_parameter(const Abstractformat *format, const xx_list_s *operation_parameters, uint32_t meta_id)
+{
     size_t i;
     if (operation_parameters) {
         for (i = 0; i < operation_parameters->count; ++i) {
-            const xx_meta *meta = (const xx_meta *)xx_list_at(
-                operation_parameters, i);
+            const xx_meta *meta = (const xx_meta *)xx_list_at(operation_parameters, i);
             if (meta && meta->meta_id == meta_id) {
                 return &meta->var;
             }
@@ -356,8 +307,8 @@ const xx_var *xx_format_resolve_extra_parameter(
     return xx_format_find_extra_parameter(format, meta_id);
 }
 
-bool xx_format_set_extra_parameter(Abstractformat *format, uint32_t meta_id,
-                                   const xx_var *value) {
+bool xx_format_set_extra_parameter(Abstractformat *format, uint32_t meta_id, const xx_var *value)
+{
     xx_var replacement;
     size_t i;
     if (!format) {
@@ -367,20 +318,16 @@ bool xx_format_set_extra_parameter(Abstractformat *format, uint32_t meta_id,
         (void)xx_format_remove_extra_parameter(format, meta_id);
         return true;
     }
-    if (format->list_extra_parameters.elem_size == 0U &&
-        !xx_list_init(&format->list_extra_parameters, sizeof(xx_meta),
-                      xx_format_extra_parameter_free_elem)) {
+    if (format->list_extra_parameters.elem_size == 0U && !xx_list_init(&format->list_extra_parameters, sizeof(xx_meta), xx_format_extra_parameter_free_elem)) {
         return false;
     }
-    format->list_extra_parameters.elem_free =
-        xx_format_extra_parameter_free_elem;
+    format->list_extra_parameters.elem_free = xx_format_extra_parameter_free_elem;
     xx_var_init(&replacement);
     if (!xx_format_copy_parameter_value(&replacement, value)) {
         return false;
     }
     for (i = 0; i < format->list_extra_parameters.count; ++i) {
-        xx_meta *meta = (xx_meta *)xx_list_at(
-            &format->list_extra_parameters, i);
+        xx_meta *meta = (xx_meta *)xx_list_at(&format->list_extra_parameters, i);
         if (meta && meta->meta_id == meta_id) {
             xx_format_secure_clear_parameter(meta);
             xx_var_cleanup(&meta->var);
@@ -406,22 +353,20 @@ bool xx_format_set_extra_parameter(Abstractformat *format, uint32_t meta_id,
     return true;
 }
 
-bool xx_format_remove_extra_parameter(Abstractformat *format,
-                                      uint32_t meta_id) {
+bool xx_format_remove_extra_parameter(Abstractformat *format, uint32_t meta_id)
+{
     size_t i;
     bool removed = false;
     if (!format) {
         return false;
     }
-    format->list_extra_parameters.elem_free =
-        xx_format_extra_parameter_free_elem;
+    format->list_extra_parameters.elem_free = xx_format_extra_parameter_free_elem;
     i = format->list_extra_parameters.count;
     while (i != 0U) {
         xx_meta *meta;
         --i;
         meta = (xx_meta *)xx_list_at(&format->list_extra_parameters, i);
-        if (meta && meta->meta_id == meta_id &&
-            xx_list_remove_at(&format->list_extra_parameters, i)) {
+        if (meta && meta->meta_id == meta_id && xx_list_remove_at(&format->list_extra_parameters, i)) {
             removed = true;
         }
     }
@@ -431,18 +376,18 @@ bool xx_format_remove_extra_parameter(Abstractformat *format,
     return removed;
 }
 
-void xx_format_cleanup_extra_parameters(Abstractformat *format) {
+void xx_format_cleanup_extra_parameters(Abstractformat *format)
+{
     if (!format) {
         return;
     }
-    format->list_extra_parameters.elem_free =
-        xx_format_extra_parameter_free_elem;
+    format->list_extra_parameters.elem_free = xx_format_extra_parameter_free_elem;
     xx_list_cleanup(&format->list_extra_parameters);
     xx_format_invalidate_memory_map(format);
 }
 
-bool xx_format_set_password(Abstractformat *format,
-                            const char *password_utf8) {
+bool xx_format_set_password(Abstractformat *format, const char *password_utf8)
+{
     xx_meta sensitive;
     xx_var value;
     bool result;
@@ -450,16 +395,14 @@ bool xx_format_set_password(Abstractformat *format,
         return false;
     }
     if (!password_utf8) {
-        (void)xx_format_remove_extra_parameter(format,
-                                               XX_META_ID_OPT_PASSWORD);
+        (void)xx_format_remove_extra_parameter(format, XX_META_ID_OPT_PASSWORD);
         return true;
     }
     xx_var_init(&value);
     if (!xx_var_set_str(&value, password_utf8)) {
         return false;
     }
-    result = xx_format_set_extra_parameter(format,
-                                           XX_META_ID_OPT_PASSWORD, &value);
+    result = xx_format_set_extra_parameter(format, XX_META_ID_OPT_PASSWORD, &value);
     sensitive.meta_id = XX_META_ID_OPT_PASSWORD;
     sensitive.var = value;
     xx_format_secure_clear_parameter(&sensitive);
@@ -467,13 +410,14 @@ bool xx_format_set_password(Abstractformat *format,
     return result;
 }
 
-const char *xx_format_get_password(const Abstractformat *format) {
-    const xx_var *value = xx_format_find_extra_parameter(
-        format, XX_META_ID_OPT_PASSWORD);
+const char *xx_format_get_password(const Abstractformat *format)
+{
+    const xx_var *value = xx_format_find_extra_parameter(format, XX_META_ID_OPT_PASSWORD);
     return value ? xx_var_get_str(value) : NULL;
 }
 
-Abstractformat *xx_format_create(xx_io_device *dev, int64_t base_address) {
+Abstractformat *xx_format_create(xx_io_device *dev, int64_t base_address)
+{
     Abstractformat *fmt = (Abstractformat *)xx_mem_alloc(sizeof(Abstractformat));
     if (!fmt) {
         return NULL;
@@ -482,7 +426,8 @@ Abstractformat *xx_format_create(xx_io_device *dev, int64_t base_address) {
     return fmt;
 }
 
-void xx_format_free(Abstractformat *fmt) {
+void xx_format_free(Abstractformat *fmt)
+{
     if (!fmt) {
         return;
     }
@@ -494,7 +439,8 @@ void xx_format_free(Abstractformat *fmt) {
 /* --- Metadata & Archive Record Lifecycle                               --- */
 /* ========================================================================= */
 
-void xx_meta_init(xx_meta *meta, uint32_t meta_id) {
+void xx_meta_init(xx_meta *meta, uint32_t meta_id)
+{
     if (!meta) {
         return;
     }
@@ -502,7 +448,8 @@ void xx_meta_init(xx_meta *meta, uint32_t meta_id) {
     xx_var_init(&meta->var);
 }
 
-void xx_meta_cleanup(xx_meta *meta) {
+void xx_meta_cleanup(xx_meta *meta)
+{
     if (!meta) {
         return;
     }
@@ -514,13 +461,15 @@ void xx_meta_cleanup(xx_meta *meta) {
     meta->meta_id = 0;
 }
 
-void xx_meta_free_elem(void *element) {
+void xx_meta_free_elem(void *element)
+{
     if (element) {
         xx_meta_cleanup((xx_meta *)element);
     }
 }
 
-void xx_archive_record_init(xx_archive_record *rec) {
+void xx_archive_record_init(xx_archive_record *rec)
+{
     if (!rec) {
         return;
     }
@@ -530,7 +479,8 @@ void xx_archive_record_init(xx_archive_record *rec) {
     xx_list_init(&rec->list_meta, sizeof(xx_meta), xx_meta_free_elem);
 }
 
-void xx_archive_record_cleanup(xx_archive_record *rec) {
+void xx_archive_record_cleanup(xx_archive_record *rec)
+{
     if (!rec) {
         return;
     }
@@ -540,13 +490,15 @@ void xx_archive_record_cleanup(xx_archive_record *rec) {
     rec->data_offset = -1;
 }
 
-void xx_archive_record_free_elem(void *element) {
+void xx_archive_record_free_elem(void *element)
+{
     if (element) {
         xx_archive_record_cleanup((xx_archive_record *)element);
     }
 }
 
-bool xx_archive_record_add_meta(xx_archive_record *rec, uint32_t meta_id, const xx_var *var) {
+bool xx_archive_record_add_meta(xx_archive_record *rec, uint32_t meta_id, const xx_var *var)
+{
     if (!rec) {
         return false;
     }
@@ -565,7 +517,8 @@ bool xx_archive_record_add_meta(xx_archive_record *rec, uint32_t meta_id, const 
     return true;
 }
 
-bool xx_archive_record_set_meta(xx_archive_record *rec, uint32_t meta_id, const xx_var *var) {
+bool xx_archive_record_set_meta(xx_archive_record *rec, uint32_t meta_id, const xx_var *var)
+{
     if (!rec) {
         return false;
     }
@@ -579,7 +532,8 @@ bool xx_archive_record_set_meta(xx_archive_record *rec, uint32_t meta_id, const 
     return xx_archive_record_add_meta(rec, meta_id, var);
 }
 
-bool xx_archive_record_add_meta_str(xx_archive_record *rec, uint32_t meta_id, const char *str) {
+bool xx_archive_record_add_meta_str(xx_archive_record *rec, uint32_t meta_id, const char *str)
+{
     if (!rec || !str) {
         return false;
     }
@@ -593,7 +547,8 @@ bool xx_archive_record_add_meta_str(xx_archive_record *rec, uint32_t meta_id, co
     return ok;
 }
 
-bool xx_archive_record_add_meta_wstr(xx_archive_record *rec, uint32_t meta_id, const wchar_t *wstr) {
+bool xx_archive_record_add_meta_wstr(xx_archive_record *rec, uint32_t meta_id, const wchar_t *wstr)
+{
     if (!rec || !wstr) {
         return false;
     }
@@ -607,7 +562,8 @@ bool xx_archive_record_add_meta_wstr(xx_archive_record *rec, uint32_t meta_id, c
     return ok;
 }
 
-bool xx_archive_record_add_meta_i64(xx_archive_record *rec, uint32_t meta_id, int64_t val) {
+bool xx_archive_record_add_meta_i64(xx_archive_record *rec, uint32_t meta_id, int64_t val)
+{
     if (!rec) {
         return false;
     }
@@ -617,7 +573,8 @@ bool xx_archive_record_add_meta_i64(xx_archive_record *rec, uint32_t meta_id, in
     return xx_archive_record_add_meta(rec, meta_id, &v);
 }
 
-bool xx_archive_record_add_meta_u64(xx_archive_record *rec, uint32_t meta_id, uint64_t val) {
+bool xx_archive_record_add_meta_u64(xx_archive_record *rec, uint32_t meta_id, uint64_t val)
+{
     if (!rec) {
         return false;
     }
@@ -627,7 +584,8 @@ bool xx_archive_record_add_meta_u64(xx_archive_record *rec, uint32_t meta_id, ui
     return xx_archive_record_add_meta(rec, meta_id, &v);
 }
 
-bool xx_archive_record_set_meta_str(xx_archive_record *rec, uint32_t meta_id, const char *str) {
+bool xx_archive_record_set_meta_str(xx_archive_record *rec, uint32_t meta_id, const char *str)
+{
     if (!rec || !str) {
         return false;
     }
@@ -641,7 +599,8 @@ bool xx_archive_record_set_meta_str(xx_archive_record *rec, uint32_t meta_id, co
     return ok;
 }
 
-bool xx_archive_record_set_meta_wstr(xx_archive_record *rec, uint32_t meta_id, const wchar_t *wstr) {
+bool xx_archive_record_set_meta_wstr(xx_archive_record *rec, uint32_t meta_id, const wchar_t *wstr)
+{
     if (!rec || !wstr) {
         return false;
     }
@@ -655,7 +614,8 @@ bool xx_archive_record_set_meta_wstr(xx_archive_record *rec, uint32_t meta_id, c
     return ok;
 }
 
-bool xx_archive_record_set_meta_i64(xx_archive_record *rec, uint32_t meta_id, int64_t val) {
+bool xx_archive_record_set_meta_i64(xx_archive_record *rec, uint32_t meta_id, int64_t val)
+{
     if (!rec) return false;
     xx_var v;
     xx_var_init(&v);
@@ -663,7 +623,8 @@ bool xx_archive_record_set_meta_i64(xx_archive_record *rec, uint32_t meta_id, in
     return xx_archive_record_set_meta(rec, meta_id, &v);
 }
 
-bool xx_archive_record_set_meta_u64(xx_archive_record *rec, uint32_t meta_id, uint64_t val) {
+bool xx_archive_record_set_meta_u64(xx_archive_record *rec, uint32_t meta_id, uint64_t val)
+{
     if (!rec) return false;
     xx_var v;
     xx_var_init(&v);
@@ -671,7 +632,8 @@ bool xx_archive_record_set_meta_u64(xx_archive_record *rec, uint32_t meta_id, ui
     return xx_archive_record_set_meta(rec, meta_id, &v);
 }
 
-bool xx_archive_record_set_meta_bool(xx_archive_record *rec, uint32_t meta_id, bool val) {
+bool xx_archive_record_set_meta_bool(xx_archive_record *rec, uint32_t meta_id, bool val)
+{
     if (!rec) return false;
     xx_var v;
     xx_var_init(&v);
@@ -679,7 +641,8 @@ bool xx_archive_record_set_meta_bool(xx_archive_record *rec, uint32_t meta_id, b
     return xx_archive_record_set_meta(rec, meta_id, &v);
 }
 
-const xx_var* xx_archive_record_find_meta(const xx_archive_record *rec, uint32_t meta_id) {
+const xx_var *xx_archive_record_find_meta(const xx_archive_record *rec, uint32_t meta_id)
+{
     if (!rec) {
         return NULL;
     }
@@ -693,27 +656,32 @@ const xx_var* xx_archive_record_find_meta(const xx_archive_record *rec, uint32_t
     return NULL;
 }
 
-const char* xx_archive_record_get_meta_str(const xx_archive_record *rec, uint32_t meta_id) {
+const char *xx_archive_record_get_meta_str(const xx_archive_record *rec, uint32_t meta_id)
+{
     const xx_var *v = xx_archive_record_find_meta(rec, meta_id);
     return v ? xx_var_get_str(v) : NULL;
 }
 
-const wchar_t* xx_archive_record_get_meta_wstr(const xx_archive_record *rec, uint32_t meta_id) {
+const wchar_t *xx_archive_record_get_meta_wstr(const xx_archive_record *rec, uint32_t meta_id)
+{
     const xx_var *v = xx_archive_record_find_meta(rec, meta_id);
     return v ? xx_var_get_wstr(v) : NULL;
 }
 
-int64_t xx_archive_record_get_meta_i64(const xx_archive_record *rec, uint32_t meta_id, int64_t default_val) {
+int64_t xx_archive_record_get_meta_i64(const xx_archive_record *rec, uint32_t meta_id, int64_t default_val)
+{
     const xx_var *v = xx_archive_record_find_meta(rec, meta_id);
     return v ? xx_var_get_i64(v) : default_val;
 }
 
-uint64_t xx_archive_record_get_meta_u64(const xx_archive_record *rec, uint32_t meta_id, uint64_t default_val) {
+uint64_t xx_archive_record_get_meta_u64(const xx_archive_record *rec, uint32_t meta_id, uint64_t default_val)
+{
     const xx_var *v = xx_archive_record_find_meta(rec, meta_id);
     return v ? xx_var_get_u64(v) : default_val;
 }
 
-bool xx_archive_record_get_meta_bool(const xx_archive_record *rec, uint32_t meta_id, bool default_val) {
+bool xx_archive_record_get_meta_bool(const xx_archive_record *rec, uint32_t meta_id, bool default_val)
+{
     const xx_var *v = xx_archive_record_find_meta(rec, meta_id);
     return v ? xx_var_get_bool(v) : default_val;
 }
@@ -722,7 +690,8 @@ bool xx_archive_record_get_meta_bool(const xx_archive_record *rec, uint32_t meta
 /* --- Archive Record Stream Reading Operations                          --- */
 /* ========================================================================= */
 
-void xx_archive_record_state_init(xx_archive_record_state *state, Abstractformat *fmt) {
+void xx_archive_record_state_init(xx_archive_record_state *state, Abstractformat *fmt)
+{
     if (!state) {
         return;
     }
@@ -735,7 +704,8 @@ void xx_archive_record_state_init(xx_archive_record_state *state, Abstractformat
     xx_list_init(&state->options, sizeof(xx_meta), xx_meta_free_elem);
 }
 
-void xx_archive_record_state_cleanup(xx_archive_record_state *state) {
+void xx_archive_record_state_cleanup(xx_archive_record_state *state)
+{
     if (!state) {
         return;
     }
@@ -750,7 +720,8 @@ void xx_archive_record_state_cleanup(xx_archive_record_state *state) {
     state->total_records = -1;
 }
 
-void xx_archive_record_state_free(xx_archive_record_state *state) {
+void xx_archive_record_state_free(xx_archive_record_state *state)
+{
     if (!state) {
         return;
     }
@@ -758,18 +729,15 @@ void xx_archive_record_state_free(xx_archive_record_state *state) {
     xx_mem_free(state);
 }
 
-xx_archive_record_state *xx_format_create_archive_records_reading(Abstractformat *f, const xx_list_s *options, xx_pd_struct *pd) {
+xx_archive_record_state *xx_format_create_archive_records_reading(Abstractformat *f, const xx_list_s *options, xx_pd_struct *pd)
+{
     if (!xx_format_handle_split_format(f, pd)) {
         return NULL;
     }
     /* These readers parse their index under the reading operation's memory
      * limit. Explicit INFO and detection retain their normal default budget. */
-    if (!f->base_info_handled &&
-        !(f->create_archive_records_reading &&
-          (f->file_type == XX_FILE_TYPE_SUPERDAT ||
-           f->file_type == XX_FILE_TYPE_EXCELSIOR_INSTALLER ||
-           f->file_type == XX_FILE_TYPE_NETOPSYSTEMS_FEAD ||
-           f->file_type == XX_FILE_TYPE_DGCA))) {
+    if (!f->base_info_handled && !(f->create_archive_records_reading && (f->file_type == XX_FILE_TYPE_SUPERDAT || f->file_type == XX_FILE_TYPE_EXCELSIOR_INSTALLER ||
+                                                                         f->file_type == XX_FILE_TYPE_NETOPSYSTEMS_FEAD || f->file_type == XX_FILE_TYPE_DGCA))) {
         xx_format_handle_base_info(f, pd);
     }
     if (f->create_archive_records_reading) {
@@ -778,7 +746,8 @@ xx_archive_record_state *xx_format_create_archive_records_reading(Abstractformat
     return NULL;
 }
 
-const xx_archive_record *xx_format_get_current_archive_record(Abstractformat *f, xx_archive_record_state *state) {
+const xx_archive_record *xx_format_get_current_archive_record(Abstractformat *f, xx_archive_record_state *state)
+{
     if (!state) {
         return NULL;
     }
@@ -788,7 +757,8 @@ const xx_archive_record *xx_format_get_current_archive_record(Abstractformat *f,
     return state->has_record ? &state->current_record : NULL;
 }
 
-bool xx_format_unpack_current_archive_record(Abstractformat *f, xx_archive_record_state *state, xx_pd_struct *pd) {
+bool xx_format_unpack_current_archive_record(Abstractformat *f, xx_archive_record_state *state, xx_pd_struct *pd)
+{
     if (!state || !state->has_record) {
         return false;
     }
@@ -801,7 +771,8 @@ bool xx_format_unpack_current_archive_record(Abstractformat *f, xx_archive_recor
     return false;
 }
 
-bool xx_format_archive_record_move_to_next(Abstractformat *f, xx_archive_record_state *state, xx_pd_struct *pd) {
+bool xx_format_archive_record_move_to_next(Abstractformat *f, xx_archive_record_state *state, xx_pd_struct *pd)
+{
     if (!state) {
         return false;
     }
@@ -814,7 +785,8 @@ bool xx_format_archive_record_move_to_next(Abstractformat *f, xx_archive_record_
     return false;
 }
 
-void xx_format_free_archive_records_reading(Abstractformat *f, xx_archive_record_state *state) {
+void xx_format_free_archive_records_reading(Abstractformat *f, xx_archive_record_state *state)
+{
     if (!state) {
         return;
     }
@@ -828,9 +800,9 @@ void xx_format_free_archive_records_reading(Abstractformat *f, xx_archive_record
     }
 }
 
-
 /* Archive writing and data-structure lifecycle shared by native readers. */
-void xx_archive_write_state_init(xx_archive_write_state *state, Abstractformat *fmt) {
+void xx_archive_write_state_init(xx_archive_write_state *state, Abstractformat *fmt)
+{
     if (!state) {
         return;
     }
@@ -843,7 +815,8 @@ void xx_archive_write_state_init(xx_archive_write_state *state, Abstractformat *
     xx_list_init(&state->options, sizeof(xx_meta), xx_meta_free_elem);
 }
 
-void xx_archive_write_state_cleanup(xx_archive_write_state *state) {
+void xx_archive_write_state_cleanup(xx_archive_write_state *state)
+{
     if (!state) {
         return;
     }
@@ -858,7 +831,8 @@ void xx_archive_write_state_cleanup(xx_archive_write_state *state) {
     state->total_records = -1;
 }
 
-void xx_archive_write_state_free(xx_archive_write_state *state) {
+void xx_archive_write_state_free(xx_archive_write_state *state)
+{
     if (!state) {
         return;
     }
@@ -866,7 +840,8 @@ void xx_archive_write_state_free(xx_archive_write_state *state) {
     xx_mem_free(state);
 }
 
-xx_archive_write_state *xx_format_create_archive_records_writing(Abstractformat *f, const xx_list_s *options, xx_pd_struct *pd) {
+xx_archive_write_state *xx_format_create_archive_records_writing(Abstractformat *f, const xx_list_s *options, xx_pd_struct *pd)
+{
     if (!f) {
         return NULL;
     }
@@ -876,7 +851,8 @@ xx_archive_write_state *xx_format_create_archive_records_writing(Abstractformat 
     return NULL;
 }
 
-bool xx_format_pack_archive_record(Abstractformat *f, xx_archive_write_state *state, const xx_archive_record *record, xx_io_device *source_dev, xx_pd_struct *pd) {
+bool xx_format_pack_archive_record(Abstractformat *f, xx_archive_write_state *state, const xx_archive_record *record, xx_io_device *source_dev, xx_pd_struct *pd)
+{
     if (!state) {
         return false;
     }
@@ -889,7 +865,8 @@ bool xx_format_pack_archive_record(Abstractformat *f, xx_archive_write_state *st
     return false;
 }
 
-bool xx_format_finalize_archive_records_writing(Abstractformat *f, xx_archive_write_state *state, xx_pd_struct *pd) {
+bool xx_format_finalize_archive_records_writing(Abstractformat *f, xx_archive_write_state *state, xx_pd_struct *pd)
+{
     if (!state) {
         return false;
     }
@@ -902,7 +879,8 @@ bool xx_format_finalize_archive_records_writing(Abstractformat *f, xx_archive_wr
     return false;
 }
 
-void xx_format_free_archive_records_writing(Abstractformat *f, xx_archive_write_state *state) {
+void xx_format_free_archive_records_writing(Abstractformat *f, xx_archive_write_state *state)
+{
     if (!state) {
         return;
     }
@@ -916,7 +894,8 @@ void xx_format_free_archive_records_writing(Abstractformat *f, xx_archive_write_
     }
 }
 
-void xx_data_struct_state_init(xx_data_struct_state *state, Abstractformat *fmt) {
+void xx_data_struct_state_init(xx_data_struct_state *state, Abstractformat *fmt)
+{
     if (!state) {
         return;
     }
@@ -927,7 +906,8 @@ void xx_data_struct_state_init(xx_data_struct_state *state, Abstractformat *fmt)
     state->total_structs = -1;
 }
 
-void xx_data_struct_state_cleanup(xx_data_struct_state *state) {
+void xx_data_struct_state_cleanup(xx_data_struct_state *state)
+{
     if (!state) {
         return;
     }
@@ -940,7 +920,8 @@ void xx_data_struct_state_cleanup(xx_data_struct_state *state) {
     state->total_structs = -1;
 }
 
-void xx_data_struct_state_free(xx_data_struct_state *state) {
+void xx_data_struct_state_free(xx_data_struct_state *state)
+{
     if (!state) {
         return;
     }
@@ -948,7 +929,8 @@ void xx_data_struct_state_free(xx_data_struct_state *state) {
     xx_mem_free(state);
 }
 
-xx_data_struct_state *xx_format_create_data_structs_reading(Abstractformat *f, xx_pd_struct *pd) {
+xx_data_struct_state *xx_format_create_data_structs_reading(Abstractformat *f, xx_pd_struct *pd)
+{
     if (!xx_format_handle_split_format(f, pd)) {
         return NULL;
     }
@@ -961,7 +943,8 @@ xx_data_struct_state *xx_format_create_data_structs_reading(Abstractformat *f, x
     return NULL;
 }
 
-const xx_data_struct *xx_format_get_current_data_struct(Abstractformat *f, xx_data_struct_state *state) {
+const xx_data_struct *xx_format_get_current_data_struct(Abstractformat *f, xx_data_struct_state *state)
+{
     if (!state) {
         return NULL;
     }
@@ -971,7 +954,8 @@ const xx_data_struct *xx_format_get_current_data_struct(Abstractformat *f, xx_da
     return state->has_struct ? &state->current_struct : NULL;
 }
 
-bool xx_format_data_struct_move_to_next(Abstractformat *f, xx_data_struct_state *state, xx_pd_struct *pd) {
+bool xx_format_data_struct_move_to_next(Abstractformat *f, xx_data_struct_state *state, xx_pd_struct *pd)
+{
     if (!state) {
         return false;
     }
@@ -984,7 +968,8 @@ bool xx_format_data_struct_move_to_next(Abstractformat *f, xx_data_struct_state 
     return false;
 }
 
-void xx_format_free_data_structs_reading(Abstractformat *f, xx_data_struct_state *state) {
+void xx_format_free_data_structs_reading(Abstractformat *f, xx_data_struct_state *state)
+{
     if (!state) {
         return;
     }
@@ -1002,7 +987,8 @@ void xx_format_free_data_structs_reading(Abstractformat *f, xx_data_struct_state
 /* --- Data Struct Record Lifecycle                                       --- */
 /* ========================================================================= */
 
-void xx_data_struct_record_init(xx_data_struct_record *rec) {
+void xx_data_struct_record_init(xx_data_struct_record *rec)
+{
     if (!rec) {
         return;
     }
@@ -1013,7 +999,8 @@ void xx_data_struct_record_init(xx_data_struct_record *rec) {
     xx_var_init(&rec->value);
 }
 
-void xx_data_struct_record_cleanup(xx_data_struct_record *rec) {
+void xx_data_struct_record_cleanup(xx_data_struct_record *rec)
+{
     if (!rec) {
         return;
     }
@@ -1032,13 +1019,15 @@ void xx_data_struct_record_cleanup(xx_data_struct_record *rec) {
     rec->size = -1;
 }
 
-void xx_data_struct_record_free_elem(void *element) {
+void xx_data_struct_record_free_elem(void *element)
+{
     if (element) {
         xx_data_struct_record_cleanup((xx_data_struct_record *)element);
     }
 }
 
-bool xx_data_struct_record_set_name(xx_data_struct_record *rec, const wchar_t *name) {
+bool xx_data_struct_record_set_name(xx_data_struct_record *rec, const wchar_t *name)
+{
     if (!rec) {
         return false;
     }
@@ -1053,7 +1042,8 @@ bool xx_data_struct_record_set_name(xx_data_struct_record *rec, const wchar_t *n
     return true;
 }
 
-bool xx_data_struct_record_set_type(xx_data_struct_record *rec, const wchar_t *type) {
+bool xx_data_struct_record_set_type(xx_data_struct_record *rec, const wchar_t *type)
+{
     if (!rec) {
         return false;
     }
@@ -1068,14 +1058,16 @@ bool xx_data_struct_record_set_type(xx_data_struct_record *rec, const wchar_t *t
     return true;
 }
 
-bool xx_data_struct_record_set_value(xx_data_struct_record *rec, const xx_var *value) {
+bool xx_data_struct_record_set_value(xx_data_struct_record *rec, const xx_var *value)
+{
     if (!rec || !value) {
         return false;
     }
     return xx_var_copy(&rec->value, value);
 }
 
-bool xx_data_struct_record_set_display_value(xx_data_struct_record *rec, const wchar_t *display_value) {
+bool xx_data_struct_record_set_display_value(xx_data_struct_record *rec, const wchar_t *display_value)
+{
     if (!rec) {
         return false;
     }
@@ -1090,9 +1082,8 @@ bool xx_data_struct_record_set_display_value(xx_data_struct_record *rec, const w
     return true;
 }
 
-bool xx_data_struct_record_populate(xx_data_struct_record *rec, xx_io_device *device,
-                                   int64_t parent_offset, const xx_data_struct_field_desc *field,
-                                   bool is_big_endian) {
+bool xx_data_struct_record_populate(xx_data_struct_record *rec, xx_io_device *device, int64_t parent_offset, const xx_data_struct_field_desc *field, bool is_big_endian)
+{
     if (!rec || !device || !field) {
         return false;
     }
@@ -1122,22 +1113,15 @@ bool xx_data_struct_record_populate(xx_data_struct_record *rec, xx_io_device *de
     size_t display_index;
     bool as_hex = (field->property & (XX_DATA_STRUCT_RECORD_PROPERTY_ID | XX_DATA_STRUCT_RECORD_PROPERTY_FLAGS)) != 0;
     if (as_hex) {
-        display_length = xx_rt_snprintf(display_ascii, sizeof(display_ascii),
-                                        "0x%08llX",
-                                        (unsigned long long)raw_value);
+        display_length = xx_rt_snprintf(display_ascii, sizeof(display_ascii), "0x%08llX", (unsigned long long)raw_value);
     } else {
-        display_length = xx_rt_snprintf(display_ascii, sizeof(display_ascii),
-                                        "%llu",
-                                        (unsigned long long)raw_value);
+        display_length = xx_rt_snprintf(display_ascii, sizeof(display_ascii), "%llu", (unsigned long long)raw_value);
     }
-    if (display_length < 0 ||
-        (size_t)display_length >= sizeof(display_ascii)) {
+    if (display_length < 0 || (size_t)display_length >= sizeof(display_ascii)) {
         return false;
     }
-    for (display_index = 0U; display_index <= (size_t)display_length;
-         ++display_index) {
-        display_buf[display_index] =
-            (wchar_t)(unsigned char)display_ascii[display_index];
+    for (display_index = 0U; display_index <= (size_t)display_length; ++display_index) {
+        display_buf[display_index] = (wchar_t)(unsigned char)display_ascii[display_index];
     }
 
     xx_data_struct_record_set_name(rec, field->name);
@@ -1151,7 +1135,8 @@ bool xx_data_struct_record_populate(xx_data_struct_record *rec, xx_io_device *de
 /* --- Data Struct Records Stream Reading Operations                      --- */
 /* ========================================================================= */
 
-void xx_data_struct_record_state_init(xx_data_struct_record_state *state, Abstractformat *fmt, const xx_data_struct *ds) {
+void xx_data_struct_record_state_init(xx_data_struct_record_state *state, Abstractformat *fmt, const xx_data_struct *ds)
+{
     if (!state) {
         return;
     }
@@ -1166,7 +1151,8 @@ void xx_data_struct_record_state_init(xx_data_struct_record_state *state, Abstra
     state->total_records = -1;
 }
 
-void xx_data_struct_record_state_cleanup(xx_data_struct_record_state *state) {
+void xx_data_struct_record_state_cleanup(xx_data_struct_record_state *state)
+{
     if (!state) {
         return;
     }
@@ -1180,7 +1166,8 @@ void xx_data_struct_record_state_cleanup(xx_data_struct_record_state *state) {
     state->total_records = -1;
 }
 
-void xx_data_struct_record_state_free(xx_data_struct_record_state *state) {
+void xx_data_struct_record_state_free(xx_data_struct_record_state *state)
+{
     if (!state) {
         return;
     }
@@ -1188,7 +1175,8 @@ void xx_data_struct_record_state_free(xx_data_struct_record_state *state) {
     xx_mem_free(state);
 }
 
-xx_data_struct_record_state *xx_format_create_data_struct_records_reading(Abstractformat *f, const xx_data_struct *ds, xx_pd_struct *pd) {
+xx_data_struct_record_state *xx_format_create_data_struct_records_reading(Abstractformat *f, const xx_data_struct *ds, xx_pd_struct *pd)
+{
     if (!f || !ds) {
         return NULL;
     }
@@ -1204,7 +1192,8 @@ xx_data_struct_record_state *xx_format_create_data_struct_records_reading(Abstra
     return NULL;
 }
 
-const xx_data_struct_record *xx_format_get_current_data_struct_record(Abstractformat *f, xx_data_struct_record_state *state) {
+const xx_data_struct_record *xx_format_get_current_data_struct_record(Abstractformat *f, xx_data_struct_record_state *state)
+{
     if (!state) {
         return NULL;
     }
@@ -1214,7 +1203,8 @@ const xx_data_struct_record *xx_format_get_current_data_struct_record(Abstractfo
     return state->has_record ? &state->current_record : NULL;
 }
 
-bool xx_format_data_struct_record_move_to_next(Abstractformat *f, xx_data_struct_record_state *state, xx_pd_struct *pd) {
+bool xx_format_data_struct_record_move_to_next(Abstractformat *f, xx_data_struct_record_state *state, xx_pd_struct *pd)
+{
     if (!state) {
         return false;
     }
@@ -1227,7 +1217,8 @@ bool xx_format_data_struct_record_move_to_next(Abstractformat *f, xx_data_struct
     return false;
 }
 
-void xx_format_free_data_struct_records_reading(Abstractformat *f, xx_data_struct_record_state *state) {
+void xx_format_free_data_struct_records_reading(Abstractformat *f, xx_data_struct_record_state *state)
+{
     if (!state) {
         return;
     }

@@ -13,7 +13,9 @@
 extern "C" {
 #endif
 
-typedef struct xx_ivf { Abstractformat format; } xx_ivf;
+typedef struct xx_ivf {
+    Abstractformat format;
+} xx_ivf;
 
 XXFC_API void xx_ivf_init(xx_ivf *, xx_io_device *, int64_t);
 XXFC_API xx_ivf *xx_ivf_create(xx_io_device *, int64_t);

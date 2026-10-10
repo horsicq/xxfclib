@@ -30,28 +30,23 @@ typedef struct xx_lpaq8 {
     uint64_t number_of_records;
     bool incomplete;
     const char *note;
-    uint8_t level;             /**< Memory level, the ASCII digit decoded to 0..9. */
-    uint8_t data_mode;         /**< Stored mode byte, 0..2. */
+    uint8_t level;              /**< Memory level, the ASCII digit decoded to 0..9. */
+    uint8_t data_mode;          /**< Stored mode byte, 0..2. */
     uint32_t uncompressed_size; /**< Original size in bytes, big-endian in the file. */
 } xx_lpaq8;
 
 typedef xx_lpaq8 xx_lpaq8_t;
 typedef xx_lpaq8 XLpaq8;
 
-XXFC_API void xx_lpaq8_init(xx_lpaq8 *archive, xx_io_device *device,
-                            int64_t base_address);
-XXFC_API xx_lpaq8 *xx_lpaq8_create(xx_io_device *device,
-                                   int64_t base_address);
+XXFC_API void xx_lpaq8_init(xx_lpaq8 *archive, xx_io_device *device, int64_t base_address);
+XXFC_API xx_lpaq8 *xx_lpaq8_create(xx_io_device *device, int64_t base_address);
 XXFC_API void xx_lpaq8_destroy(xx_lpaq8 *archive);
 XXFC_API void xx_lpaq8_free(xx_lpaq8 *archive);
 
 XXFC_API bool xx_lpaq8_check_is_valid(Abstractformat *self, xx_pd_struct *pd);
-XXFC_API bool xx_lpaq8_handle_base_info(Abstractformat *self,
-                                        xx_pd_struct *pd);
-XXFC_API int64_t xx_lpaq8_get_format_size(Abstractformat *self,
-                                          xx_pd_struct *pd);
-XXFC_API uint64_t xx_lpaq8_get_number_of_archive_records(Abstractformat *self,
-                                                          xx_pd_struct *pd);
+XXFC_API bool xx_lpaq8_handle_base_info(Abstractformat *self, xx_pd_struct *pd);
+XXFC_API int64_t xx_lpaq8_get_format_size(Abstractformat *self, xx_pd_struct *pd);
+XXFC_API uint64_t xx_lpaq8_get_number_of_archive_records(Abstractformat *self, xx_pd_struct *pd);
 
 /** @brief Memory level 0..9, or 0 before the header is read. */
 XXFC_API uint8_t xx_lpaq8_get_level(const xx_lpaq8 *archive);

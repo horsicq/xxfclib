@@ -80,8 +80,7 @@ static uint32_t cp_bits_read(cp_bits *r, unsigned count)
             r->ok = false;
             return 0;
         }
-        value = (value << 1) |
-                ((uint32_t)(r->data[index] >> (7U - (unsigned)(r->bitpos & 7U))) & 1U);
+        value = (value << 1) | ((uint32_t)(r->data[index] >> (7U - (unsigned)(r->bitpos & 7U))) & 1U);
         ++r->bitpos;
     }
     return value;
@@ -111,8 +110,7 @@ static size_t cp_bits_aligned_offset(const cp_bits *r)
 
 static void cp_bits_skip_bytes(cp_bits *r, size_t count)
 {
-    if (!r->ok || (r->bitpos & 7U) != 0U || count > r->size ||
-        (r->bitpos >> 3) > r->size - count) {
+    if (!r->ok || (r->bitpos & 7U) != 0U || count > r->size || (r->bitpos >> 3) > r->size - count) {
         r->ok = false;
         return;
     }
@@ -161,8 +159,7 @@ static bool cp_code_build(cp_code *code, const uint8_t *lengths, int size)
     }
 
     offsets[1] = 0;
-    for (length = 1; length <= CP_MAX_CODE_LENGTH; ++length)
-        offsets[length + 1] = offsets[length] + (int)code->count[length];
+    for (length = 1; length <= CP_MAX_CODE_LENGTH; ++length) offsets[length + 1] = offsets[length] + (int)code->count[length];
 
     for (symbol = 0; symbol < size; ++symbol) {
         int len = (int)lengths[symbol];
@@ -187,8 +184,7 @@ static int cp_code_decode(const cp_code *code, cp_bits *r)
         codeval |= (int)cp_bits_read(r, 1);
         if (!r->ok) return -1;
         count = (int)code->count[length];
-        if (codeval - first < count)
-            return (int)code->symbol[index + (codeval - first)];
+        if (codeval - first < count) return (int)code->symbol[index + (codeval - first)];
         index += count;
         first = (first + count) << 1;
         codeval <<= 1;
@@ -204,8 +200,7 @@ static bool cp_read_table(cp_bits *r, int size, cp_code *code)
     int pairs;
     int i;
 
-    if (size <= 0 || size > CP_MAX_SYMBOLS || (r->bitpos & 7U) != 0U)
-        return false;
+    if (size <= 0 || size > CP_MAX_SYMBOLS || (r->bitpos & 7U) != 0U) return false;
     pairs = (int)cp_bits_take_byte(r);
     if (!r->ok || pairs * 2 > size) return false;
     xx_rt_memset(lengths, 0, sizeof(lengths));
@@ -245,14 +240,10 @@ static bool cp_lzh_start_block(cp_lzh *s)
          * boundary relative to where the previous block's data began and then
          * writes a two-byte marker, so the gap is 3 bytes when the block's
          * length is odd and 2 when it is even. Do not "simplify" this. */
-        cp_bits_skip_bytes(&s->reader,
-                           ((current - s->block_start) & 1U) ? 3U : 2U);
+        cp_bits_skip_bytes(&s->reader, ((current - s->block_start) & 1U) ? 3U : 2U);
         if (!s->reader.ok) return false;
     }
-    if (!cp_read_table(&s->reader, 256, &s->literal) ||
-        !cp_read_table(&s->reader, 64, &s->length) ||
-        !cp_read_table(&s->reader, 128, &s->offset))
-        return false;
+    if (!cp_read_table(&s->reader, 256, &s->literal) || !cp_read_table(&s->reader, 64, &s->length) || !cp_read_table(&s->reader, 128, &s->offset)) return false;
     s->block_count = 0;
     s->block_start = cp_bits_aligned_offset(&s->reader);
     return true;
@@ -267,8 +258,7 @@ static bool cp_lzh_next(cp_lzh *s, uint8_t *value)
         ++s->match_offset;
         --s->match_length;
     } else {
-        if (s->block_count >= s->block_size && !cp_lzh_start_block(s))
-            return false;
+        if (s->block_count >= s->block_size && !cp_lzh_start_block(s)) return false;
         if (cp_bits_read(&s->reader, 1)) {
             int literal;
             if (!s->reader.ok) return false;
@@ -286,8 +276,7 @@ static bool cp_lzh_next(cp_lzh *s, uint8_t *value)
             high = cp_code_decode(&s->offset, &s->reader);
             if (length < 0 || high < 0 || high > 127) return false;
             offset = ((uint32_t)high << 6) | cp_bits_read(&s->reader, 6);
-            if (!s->reader.ok || length <= 0 || length > 63 || offset > 8191U)
-                return false;
+            if (!s->reader.ok || length <= 0 || length > 63 || offset > 8191U) return false;
             s->match_length = length;
             /* Modular, exactly as the reference: it computes position -
              * offset in a 32-bit int (which may go negative near the start of
@@ -324,8 +313,7 @@ static bool cp_source_next(cp_source *src, uint8_t *value)
     return true;
 }
 
-static bool cp_expand_rle(cp_source *src, uint8_t *output, size_t output_size,
-                          size_t *produced)
+static bool cp_expand_rle(cp_source *src, uint8_t *output, size_t output_size, size_t *produced)
 {
     size_t written = 0;
     uint8_t saved = 0;
@@ -391,11 +379,7 @@ static bool cp_expand_rle(cp_source *src, uint8_t *output, size_t output_size,
 
 /* ---------------------------------------------------------------- public */
 
-XXFC_API bool xx_compactpro_decode_memory(const uint8_t *input,
-                                          size_t input_size, bool lzh,
-                                          uint32_t block_size,
-                                          uint8_t *output, size_t output_size,
-                                          size_t *written)
+XXFC_API bool xx_compactpro_decode_memory(const uint8_t *input, size_t input_size, bool lzh, uint32_t block_size, uint8_t *output, size_t output_size, size_t *written)
 {
     cp_source source;
     cp_lzh *stream = 0;
@@ -434,23 +418,12 @@ XXFC_API bool xx_compactpro_decode_memory(const uint8_t *input,
     return result;
 }
 
-XXFC_API bool xx_compactpro_rle_decode_memory(const uint8_t *input,
-                                              size_t input_size,
-                                              uint8_t *output,
-                                              size_t output_size,
-                                              size_t *written)
+XXFC_API bool xx_compactpro_rle_decode_memory(const uint8_t *input, size_t input_size, uint8_t *output, size_t output_size, size_t *written)
 {
-    return xx_compactpro_decode_memory(input, input_size, false, 0, output,
-                                       output_size, written);
+    return xx_compactpro_decode_memory(input, input_size, false, 0, output, output_size, written);
 }
 
-XXFC_API bool xx_compactpro_lzh_decode_memory(const uint8_t *input,
-                                              size_t input_size,
-                                              uint8_t *output,
-                                              size_t output_size,
-                                              size_t *written)
+XXFC_API bool xx_compactpro_lzh_decode_memory(const uint8_t *input, size_t input_size, uint8_t *output, size_t output_size, size_t *written)
 {
-    return xx_compactpro_decode_memory(input, input_size, true,
-                                       XX_COMPACTPRO_BLOCK_SIZE, output,
-                                       output_size, written);
+    return xx_compactpro_decode_memory(input, input_size, true, XX_COMPACTPRO_BLOCK_SIZE, output, output_size, written);
 }

@@ -46,17 +46,15 @@
 
 static void xx_uharc_vtable_destroy(Abstractformat *self);
 
-static bool xx_uharc_read_at(Abstractformat *self, int64_t offset,
-                             uint8_t *buffer, size_t size) {
+static bool xx_uharc_read_at(Abstractformat *self, int64_t offset, uint8_t *buffer, size_t size)
+{
     size_t completed = 0U;
 
-    if (!self || !self->device || offset < 0 ||
-        xx_io_seek64(self->device, offset, SEEK_SET) != 0) {
+    if (!self || !self->device || offset < 0 || xx_io_seek64(self->device, offset, SEEK_SET) != 0) {
         return false;
     }
     while (completed < size) {
-        ssize_t received =
-            xx_io_read(self->device, buffer + completed, size - completed);
+        ssize_t received = xx_io_read(self->device, buffer + completed, size - completed);
         if (received <= 0 || (size_t)received > size - completed) {
             return false;
         }
@@ -65,7 +63,8 @@ static bool xx_uharc_read_at(Abstractformat *self, int64_t offset,
     return true;
 }
 
-static bool xx_uharc_probe(Abstractformat *self, uint8_t *version_out) {
+static bool xx_uharc_probe(Abstractformat *self, uint8_t *version_out)
+{
     uint8_t header[XX_UHARC_PROBE_SIZE];
     int64_t total;
     size_t index;
@@ -75,15 +74,13 @@ static bool xx_uharc_probe(Abstractformat *self, uint8_t *version_out) {
         return false;
     }
     total = xx_io_total_size(self->device);
-    if (total < self->base_address ||
-        total - self->base_address < XX_UHARC_MIN_SIZE) {
+    if (total < self->base_address || total - self->base_address < XX_UHARC_MIN_SIZE) {
         return false;
     }
     if (!xx_uharc_read_at(self, self->base_address, header, sizeof(header))) {
         return false;
     }
-    if (header[0] != 'U' || header[1] != 'H' || header[2] != 'A' ||
-        header[3] < XX_UHARC_VERSION_MIN || header[3] > XX_UHARC_VERSION_MAX) {
+    if (header[0] != 'U' || header[1] != 'H' || header[2] != 'A' || header[3] < XX_UHARC_VERSION_MIN || header[3] > XX_UHARC_VERSION_MAX) {
         return false;
     }
     for (index = 5U; index < sizeof(header); ++index) {
@@ -101,8 +98,8 @@ static bool xx_uharc_probe(Abstractformat *self, uint8_t *version_out) {
     return true;
 }
 
-void xx_uharc_init(xx_uharc *archive, xx_io_device *device,
-                   int64_t base_address) {
+void xx_uharc_init(xx_uharc *archive, xx_io_device *device, int64_t base_address)
+{
     if (!archive) return;
     xx_mem_zero(archive, sizeof(*archive));
     xx_format_init(&archive->format, device, base_address);
@@ -115,12 +112,12 @@ void xx_uharc_init(xx_uharc *archive, xx_io_device *device,
     archive->format.check_is_valid = xx_uharc_check_is_valid;
     archive->format.handle_base_info = xx_uharc_handle_base_info;
     archive->format.get_format_size = xx_uharc_get_format_size;
-    archive->format.get_number_of_archive_records =
-        xx_uharc_get_number_of_archive_records;
+    archive->format.get_number_of_archive_records = xx_uharc_get_number_of_archive_records;
     archive->format.destroy = xx_uharc_vtable_destroy;
 }
 
-xx_uharc *xx_uharc_create(xx_io_device *device, int64_t base_address) {
+xx_uharc *xx_uharc_create(xx_io_device *device, int64_t base_address)
+{
     xx_uharc *archive = (xx_uharc *)xx_mem_alloc(sizeof(*archive));
 
     if (!archive) return NULL;
@@ -128,7 +125,8 @@ xx_uharc *xx_uharc_create(xx_io_device *device, int64_t base_address) {
     return archive;
 }
 
-void xx_uharc_destroy(xx_uharc *archive) {
+void xx_uharc_destroy(xx_uharc *archive)
+{
     if (!archive) return;
     /* Not xx_format_destroy: it dispatches back through format.destroy. */
     if (archive->format.close) archive->format.close(&archive->format);
@@ -136,22 +134,26 @@ void xx_uharc_destroy(xx_uharc *archive) {
     archive->version = 0U;
 }
 
-void xx_uharc_free(xx_uharc *archive) {
+void xx_uharc_free(xx_uharc *archive)
+{
     if (!archive) return;
     xx_uharc_destroy(archive);
     xx_mem_free(archive);
 }
 
-static void xx_uharc_vtable_destroy(Abstractformat *self) {
+static void xx_uharc_vtable_destroy(Abstractformat *self)
+{
     xx_uharc_destroy((xx_uharc *)self);
 }
 
-bool xx_uharc_check_is_valid(Abstractformat *self, xx_pd_struct *pd) {
+bool xx_uharc_check_is_valid(Abstractformat *self, xx_pd_struct *pd)
+{
     if (!self || (pd && xx_pd_is_stopped(pd))) return false;
     return xx_uharc_probe(self, NULL);
 }
 
-bool xx_uharc_handle_base_info(Abstractformat *self, xx_pd_struct *pd) {
+bool xx_uharc_handle_base_info(Abstractformat *self, xx_pd_struct *pd)
+{
     xx_uharc *archive = (xx_uharc *)self;
     uint8_t version = 0U;
 
@@ -171,22 +173,23 @@ bool xx_uharc_handle_base_info(Abstractformat *self, xx_pd_struct *pd) {
     return true;
 }
 
-int64_t xx_uharc_get_format_size(Abstractformat *self, xx_pd_struct *pd) {
-    if (!self ||
-        (!self->base_info_handled && !xx_format_handle_base_info(self, pd))) {
+int64_t xx_uharc_get_format_size(Abstractformat *self, xx_pd_struct *pd)
+{
+    if (!self || (!self->base_info_handled && !xx_format_handle_base_info(self, pd))) {
         return 0;
     }
     return self->is_valid ? self->format_size : 0;
 }
 
-uint64_t xx_uharc_get_number_of_archive_records(Abstractformat *self,
-                                                xx_pd_struct *pd) {
+uint64_t xx_uharc_get_number_of_archive_records(Abstractformat *self, xx_pd_struct *pd)
+{
     /* The coder is closed source; no member is advertised. */
     (void)self;
     (void)pd;
     return 0U;
 }
 
-uint8_t xx_uharc_get_version(const xx_uharc *archive) {
+uint8_t xx_uharc_get_version(const xx_uharc *archive)
+{
     return archive ? archive->version : 0U;
 }

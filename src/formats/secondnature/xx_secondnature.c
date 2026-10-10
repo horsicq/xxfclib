@@ -82,17 +82,15 @@ static void xx_secondnature_vtable_destroy(Abstractformat *self);
 
 /* ------------------------------------------------------------- helpers -- */
 
-static bool xx_secondnature_read_at(Abstractformat *self, int64_t offset,
-                              uint8_t *buffer, size_t size) {
+static bool xx_secondnature_read_at(Abstractformat *self, int64_t offset, uint8_t *buffer, size_t size)
+{
     size_t completed = 0U;
 
-    if (!self || !self->device || offset < 0 ||
-        xx_io_seek64(self->device, offset, SEEK_SET) != 0) {
+    if (!self || !self->device || offset < 0 || xx_io_seek64(self->device, offset, SEEK_SET) != 0) {
         return false;
     }
     while (completed < size) {
-        ssize_t received =
-            xx_io_read(self->device, buffer + completed, size - completed);
+        ssize_t received = xx_io_read(self->device, buffer + completed, size - completed);
         if (received <= 0 || (size_t)received > size - completed) {
             return false;
         }
@@ -101,14 +99,14 @@ static bool xx_secondnature_read_at(Abstractformat *self, int64_t offset,
     return true;
 }
 
-static bool xx_secondnature_range_within(int64_t total, int64_t offset,
-                                   int64_t size) {
-    return offset >= 0 && size >= 0 && offset <= total &&
-           size <= total - offset;
+static bool xx_secondnature_range_within(int64_t total, int64_t offset, int64_t size)
+{
+    return offset >= 0 && size >= 0 && offset <= total && size <= total - offset;
 }
 
 /* Refuse anything that would escape the extraction directory. */
-static bool xx_secondnature_path_safe(const char *name) {
+static bool xx_secondnature_path_safe(const char *name)
+{
     const char *cursor = name;
 
     if (!name || !name[0] || name[0] == '/') return false;
@@ -123,7 +121,8 @@ static bool xx_secondnature_path_safe(const char *name) {
     return true;
 }
 
-static void xx_secondnature_stream_free(void *pointer) {
+static void xx_secondnature_stream_free(void *pointer)
+{
     xx_secondnature_stream *stream = (xx_secondnature_stream *)pointer;
     size_t index;
 
@@ -136,10 +135,9 @@ static void xx_secondnature_stream_free(void *pointer) {
 }
 
 /* Append a member, taking ownership of @p name. */
-static bool xx_secondnature_add(xx_secondnature_stream *stream,
-                          const xx_secondnature_member *member) {
-    xx_secondnature_member *grown = (xx_secondnature_member *)xx_mem_realloc(
-        stream->items, sizeof(*grown) * (stream->count + 1U));
+static bool xx_secondnature_add(xx_secondnature_stream *stream, const xx_secondnature_member *member)
+{
+    xx_secondnature_member *grown = (xx_secondnature_member *)xx_mem_realloc(stream->items, sizeof(*grown) * (stream->count + 1U));
 
     if (!grown) return false;
     stream->items = grown;
@@ -147,26 +145,19 @@ static bool xx_secondnature_add(xx_secondnature_stream *stream,
     return true;
 }
 
-
 /* Every member is stored verbatim, so extraction is a bounded copy. */
-static bool xx_secondnature_decode(Abstractformat *self,
-                             const xx_secondnature_member *member, uint8_t **out,
-                             size_t *out_size, xx_pd_struct *pd) {
+static bool xx_secondnature_decode(Abstractformat *self, const xx_secondnature_member *member, uint8_t **out, size_t *out_size, xx_pd_struct *pd)
+{
     uint8_t *buffer;
 
     *out = NULL;
     *out_size = 0U;
-    if (member->compressed_size < 0 ||
-        (uint64_t)member->compressed_size > (uint64_t)SIZE_MAX) {
+    if (member->compressed_size < 0 || (uint64_t)member->compressed_size > (uint64_t)SIZE_MAX) {
         return false;
     }
-    buffer = (uint8_t *)xx_mem_alloc(
-        member->compressed_size != 0 ? (size_t)member->compressed_size : 1U);
+    buffer = (uint8_t *)xx_mem_alloc(member->compressed_size != 0 ? (size_t)member->compressed_size : 1U);
     if (!buffer) return false;
-    if (member->compressed_size != 0 &&
-        ((pd && xx_pd_is_stopped(pd)) ||
-         !xx_secondnature_read_at(self, member->data_offset, buffer,
-                            (size_t)member->compressed_size))) {
+    if (member->compressed_size != 0 && ((pd && xx_pd_is_stopped(pd)) || !xx_secondnature_read_at(self, member->data_offset, buffer, (size_t)member->compressed_size))) {
         xx_mem_free(buffer);
         return false;
     }
@@ -174,7 +165,6 @@ static bool xx_secondnature_decode(Abstractformat *self,
     *out_size = (size_t)member->compressed_size;
     return true;
 }
-
 
 #define XX_SECONDNATURE_BANNER_SIZE 32
 #define XX_SECONDNATURE_BANNER_TEXT_SIZE 28
@@ -200,9 +190,8 @@ static bool xx_secondnature_decode(Abstractformat *self,
 #define XX_SECONDNATURE_MAX_MEMBER_SIZE 0x10000000
 #define XX_SECONDNATURE_JIF_WRAPPER_SIZE 554
 
-static bool xx_secondnature_wrapped_jpeg(Abstractformat *self,
-                                        int64_t offset, int64_t size,
-                                        const char *name) {
+static bool xx_secondnature_wrapped_jpeg(Abstractformat *self, int64_t offset, int64_t size, const char *name)
+{
     static const uint8_t wrapper_magic[4] = {0x18U, 0x9cU, 0x9cU, 0x2aU};
     uint8_t header[4];
     uint8_t jpeg_start[2];
@@ -211,28 +200,20 @@ static bool xx_secondnature_wrapped_jpeg(Abstractformat *self,
 
     if (!name || size < XX_SECONDNATURE_JIF_WRAPPER_SIZE + 4) return false;
     length = xx_rt_strlen(name);
-    if (length < 4U || name[length - 4U] != '.' ||
-        (name[length - 3U] != 'J' && name[length - 3U] != 'j') ||
-        (name[length - 2U] != 'I' && name[length - 2U] != 'i') ||
+    if (length < 4U || name[length - 4U] != '.' || (name[length - 3U] != 'J' && name[length - 3U] != 'j') || (name[length - 2U] != 'I' && name[length - 2U] != 'i') ||
         (name[length - 1U] != 'F' && name[length - 1U] != 'f')) {
         return false;
     }
-    return xx_secondnature_read_at(self, offset, header, sizeof(header)) &&
-           xx_rt_memcmp(header, wrapper_magic, sizeof(header)) == 0 &&
-           xx_secondnature_read_at(
-               self, offset + XX_SECONDNATURE_JIF_WRAPPER_SIZE,
-               jpeg_start, sizeof(jpeg_start)) &&
-           jpeg_start[0] == 0xffU && jpeg_start[1] == 0xd8U &&
-           xx_secondnature_read_at(self, offset + size - 2,
-                                   jpeg_end, sizeof(jpeg_end)) &&
-           jpeg_end[0] == 0xffU && jpeg_end[1] == 0xd9U;
+    return xx_secondnature_read_at(self, offset, header, sizeof(header)) && xx_rt_memcmp(header, wrapper_magic, sizeof(header)) == 0 &&
+           xx_secondnature_read_at(self, offset + XX_SECONDNATURE_JIF_WRAPPER_SIZE, jpeg_start, sizeof(jpeg_start)) && jpeg_start[0] == 0xffU && jpeg_start[1] == 0xd8U &&
+           xx_secondnature_read_at(self, offset + size - 2, jpeg_end, sizeof(jpeg_end)) && jpeg_end[0] == 0xffU && jpeg_end[1] == 0xd9U;
 }
 
 /* .SNX and .REF store the whole header/directory region as its one's
  * complement; member payloads are plain in every kind, which is why the JPEG
  * streams are visible unaltered in a raw dump of a .REF. */
-static void xx_secondnature_unmask(uint8_t *data, size_t size,
-                                   bool complemented) {
+static void xx_secondnature_unmask(uint8_t *data, size_t size, bool complemented)
+{
     size_t index;
 
     if (!complemented) return;
@@ -241,7 +222,8 @@ static void xx_secondnature_unmask(uint8_t *data, size_t size,
     }
 }
 
-static bool xx_secondnature_name_valid(const uint8_t *name, size_t length) {
+static bool xx_secondnature_name_valid(const uint8_t *name, size_t length)
+{
     size_t index;
 
     /* The name must end before the 13th byte: a field filled edge to edge
@@ -255,20 +237,18 @@ static bool xx_secondnature_name_valid(const uint8_t *name, size_t length) {
         if (character < 0x20U || character > 0x7EU) return false;
         /* DOS 8.3 names only - the format has no directories, so rejecting
          * the separators here also makes a path escape unrepresentable. */
-        if (character == '/' || character == '\\' || character == ':' ||
-            character == '*' || character == '?' || character == '"' ||
-            character == '<' || character == '>' || character == '|') {
+        if (character == '/' || character == '\\' || character == ':' || character == '*' || character == '?' || character == '"' || character == '<' ||
+            character == '>' || character == '|') {
             return false;
         }
     }
     return true;
 }
 
-static xx_secondnature_stream *xx_secondnature_parse(Abstractformat *self,
-                                                     xx_pd_struct *pd) {
-    static const uint8_t banner_text[XX_SECONDNATURE_BANNER_TEXT_SIZE] = {
-        'S', 'e', 'c', 'o', 'n', 'd', ' ', 'N', 'a', 't', 'u', 'r', 'e', ' ',
-        'S', 'o', 'f', 't', 'w', 'a', 'r', 'e', ' ', 'I', 'n', 'c', '.', ' '};
+static xx_secondnature_stream *xx_secondnature_parse(Abstractformat *self, xx_pd_struct *pd)
+{
+    static const uint8_t banner_text[XX_SECONDNATURE_BANNER_TEXT_SIZE] = {'S', 'e', 'c', 'o', 'n', 'd', ' ', 'N', 'a', 't', 'u', 'r', 'e', ' ',
+                                                                          'S', 'o', 'f', 't', 'w', 'a', 'r', 'e', ' ', 'I', 'n', 'c', '.', ' '};
     static const uint8_t kind_snx[3] = {'S', 'N', 'X'};
     static const uint8_t kind_ref[3] = {'R', 'E', 'F'};
     static const uint8_t kind_bmx[3] = {'B', 'M', 'X'};
@@ -296,8 +276,7 @@ static xx_secondnature_stream *xx_secondnature_parse(Abstractformat *self,
     if (span < XX_SECONDNATURE_BANNER_SIZE + XX_SECONDNATURE_BMX_ENTRY_SIZE) {
         return NULL;
     }
-    if (!xx_secondnature_read_at(self, self->base_address, banner,
-                                 sizeof(banner))) {
+    if (!xx_secondnature_read_at(self, self->base_address, banner, sizeof(banner))) {
         return NULL;
     }
 
@@ -317,14 +296,11 @@ static xx_secondnature_stream *xx_secondnature_parse(Abstractformat *self,
      * The NUL is what stops a longer sentence starting with the literal. */
     if (banner[XX_SECONDNATURE_BANNER_SIZE - 1] != 0U) return NULL;
 
-    if (xx_rt_memcmp(banner + XX_SECONDNATURE_KIND_OFFSET, kind_snx,
-                     sizeof(kind_snx)) == 0) {
+    if (xx_rt_memcmp(banner + XX_SECONDNATURE_KIND_OFFSET, kind_snx, sizeof(kind_snx)) == 0) {
         kind = XX_SECONDNATURE_KIND_SNX;
-    } else if (xx_rt_memcmp(banner + XX_SECONDNATURE_KIND_OFFSET, kind_ref,
-                            sizeof(kind_ref)) == 0) {
+    } else if (xx_rt_memcmp(banner + XX_SECONDNATURE_KIND_OFFSET, kind_ref, sizeof(kind_ref)) == 0) {
         kind = XX_SECONDNATURE_KIND_REF;
-    } else if (xx_rt_memcmp(banner + XX_SECONDNATURE_KIND_OFFSET, kind_bmx,
-                            sizeof(kind_bmx)) == 0) {
+    } else if (xx_rt_memcmp(banner + XX_SECONDNATURE_KIND_OFFSET, kind_bmx, sizeof(kind_bmx)) == 0) {
         kind = XX_SECONDNATURE_KIND_BMX;
     } else {
         /* The kind set is closed: an unknown kind gives no directory shape,
@@ -333,9 +309,7 @@ static xx_secondnature_stream *xx_secondnature_parse(Abstractformat *self,
     }
 
     if (kind == XX_SECONDNATURE_KIND_BMX) {
-        if (!xx_secondnature_read_at(
-                self, self->base_address + XX_SECONDNATURE_COUNT_OFFSET,
-                counts, 2U)) {
+        if (!xx_secondnature_read_at(self, self->base_address + XX_SECONDNATURE_COUNT_OFFSET, counts, 2U)) {
             return NULL;
         }
         xx_secondnature_unmask(counts, 2U, complemented);
@@ -347,9 +321,7 @@ static xx_secondnature_stream *xx_secondnature_parse(Abstractformat *self,
         int64_t text_count;
         int64_t image_count;
 
-        if (!xx_secondnature_read_at(
-                self, self->base_address + XX_SECONDNATURE_COUNT_OFFSET,
-                counts, 4U)) {
+        if (!xx_secondnature_read_at(self, self->base_address + XX_SECONDNATURE_COUNT_OFFSET, counts, 4U)) {
             return NULL;
         }
         xx_secondnature_unmask(counts, 4U, complemented);
@@ -394,37 +366,30 @@ static xx_secondnature_stream *xx_secondnature_parse(Abstractformat *self,
 
         if (pd && xx_pd_is_stopped(pd)) goto fail;
         entry_offset = dir_offset + (index * entry_size);
-        if (!xx_secondnature_read_at(self, self->base_address + entry_offset,
-                                     entry, (size_t)entry_size)) {
+        if (!xx_secondnature_read_at(self, self->base_address + entry_offset, entry, (size_t)entry_size)) {
             goto fail;
         }
         xx_secondnature_unmask(entry, (size_t)entry_size, complemented);
 
-        while (name_length < (size_t)XX_SECONDNATURE_NAME_FIELD &&
-               entry[name_length] != 0U) {
+        while (name_length < (size_t)XX_SECONDNATURE_NAME_FIELD && entry[name_length] != 0U) {
             ++name_length;
         }
 
         /* .REF puts a u16 member kind between the name and the values; the
          * other two shapes do not. */
-        value_offset = (kind == XX_SECONDNATURE_KIND_REF)
-                           ? (XX_SECONDNATURE_NAME_FIELD + 2)
-                           : XX_SECONDNATURE_NAME_FIELD;
+        value_offset = (kind == XX_SECONDNATURE_KIND_REF) ? (XX_SECONDNATURE_NAME_FIELD + 2) : XX_SECONDNATURE_NAME_FIELD;
         data_offset = (int64_t)xx_data_get_u32(entry + value_offset, 4, 0, false);
         data_size = (int64_t)xx_data_get_u32(entry + value_offset + 4, 4, 0, false);
 
         /* Some SNX writers leave all-one offset/size sentinels in unused
          * picture slots and companion REF slots. Accept only those exact
          * sentinels, with either a valid name or an all-one name field. */
-        if (kind == XX_SECONDNATURE_KIND_SNX &&
-            data_offset == (int64_t)UINT32_MAX &&
-            data_size == (int64_t)UINT32_MAX) {
+        if (kind == XX_SECONDNATURE_KIND_SNX && data_offset == (int64_t)UINT32_MAX && data_size == (int64_t)UINT32_MAX) {
             bool all_ones = true;
             size_t byte;
             for (byte = 0U; byte < XX_SECONDNATURE_NAME_FIELD; ++byte)
                 if (entry[byte] != 0xffU) all_ones = false;
-            if (all_ones || xx_secondnature_name_valid(entry, name_length))
-                continue;
+            if (all_ones || xx_secondnature_name_valid(entry, name_length)) continue;
             goto fail;
         }
 
@@ -464,8 +429,7 @@ static xx_secondnature_stream *xx_secondnature_parse(Abstractformat *self,
         member.data_offset = self->base_address + data_offset;
         member.compressed_size = data_size;
         member.uncompressed_size = data_size;
-        if (xx_secondnature_wrapped_jpeg(self, member.data_offset,
-                                         data_size, name)) {
+        if (xx_secondnature_wrapped_jpeg(self, member.data_offset, data_size, name)) {
             member.data_offset += XX_SECONDNATURE_JIF_WRAPPER_SIZE;
             member.compressed_size -= XX_SECONDNATURE_JIF_WRAPPER_SIZE;
             member.uncompressed_size -= XX_SECONDNATURE_JIF_WRAPPER_SIZE;
@@ -489,11 +453,10 @@ fail:
     return NULL;
 }
 
-
 /* ---------------------------------------------------------- lifecycle --- */
 
-void xx_secondnature_init(xx_secondnature *archive, xx_io_device *device,
-                    int64_t base_address) {
+void xx_secondnature_init(xx_secondnature *archive, xx_io_device *device, int64_t base_address)
+{
     if (!archive) return;
     xx_mem_zero(archive, sizeof(*archive));
     xx_format_init(&archive->format, device, base_address);
@@ -506,22 +469,17 @@ void xx_secondnature_init(xx_secondnature *archive, xx_io_device *device,
     archive->format.check_is_valid = xx_secondnature_check_is_valid;
     archive->format.handle_base_info = xx_secondnature_handle_base_info;
     archive->format.get_format_size = xx_secondnature_get_format_size;
-    archive->format.get_number_of_archive_records =
-        xx_secondnature_get_number_of_archive_records;
-    archive->format.create_archive_records_reading =
-        xx_secondnature_create_archive_records_reading;
-    archive->format.get_current_archive_record =
-        xx_secondnature_get_current_archive_record;
-    archive->format.unpack_current_archive_record =
-        xx_secondnature_unpack_current_archive_record;
-    archive->format.archive_record_move_to_next =
-        xx_secondnature_archive_record_move_to_next;
-    archive->format.free_archive_records_reading =
-        xx_secondnature_free_archive_records_reading;
+    archive->format.get_number_of_archive_records = xx_secondnature_get_number_of_archive_records;
+    archive->format.create_archive_records_reading = xx_secondnature_create_archive_records_reading;
+    archive->format.get_current_archive_record = xx_secondnature_get_current_archive_record;
+    archive->format.unpack_current_archive_record = xx_secondnature_unpack_current_archive_record;
+    archive->format.archive_record_move_to_next = xx_secondnature_archive_record_move_to_next;
+    archive->format.free_archive_records_reading = xx_secondnature_free_archive_records_reading;
     archive->format.destroy = xx_secondnature_vtable_destroy;
 }
 
-xx_secondnature *xx_secondnature_create(xx_io_device *device, int64_t base_address) {
+xx_secondnature *xx_secondnature_create(xx_io_device *device, int64_t base_address)
+{
     xx_secondnature *archive = (xx_secondnature *)xx_mem_alloc(sizeof(*archive));
 
     if (!archive) return NULL;
@@ -529,7 +487,8 @@ xx_secondnature *xx_secondnature_create(xx_io_device *device, int64_t base_addre
     return archive;
 }
 
-void xx_secondnature_destroy(xx_secondnature *archive) {
+void xx_secondnature_destroy(xx_secondnature *archive)
+{
     if (!archive) return;
     /* Not xx_format_destroy: it dispatches through format.destroy, which is
      * the wrapper below, and the two would recurse. */
@@ -538,19 +497,22 @@ void xx_secondnature_destroy(xx_secondnature *archive) {
     archive->number_of_records = 0U;
 }
 
-void xx_secondnature_free(xx_secondnature *archive) {
+void xx_secondnature_free(xx_secondnature *archive)
+{
     if (!archive) return;
     xx_secondnature_destroy(archive);
     xx_mem_free(archive);
 }
 
-static void xx_secondnature_vtable_destroy(Abstractformat *self) {
+static void xx_secondnature_vtable_destroy(Abstractformat *self)
+{
     xx_secondnature_destroy((xx_secondnature *)self);
 }
 
 /* -------------------------------------------------------------- format -- */
 
-bool xx_secondnature_check_is_valid(Abstractformat *self, xx_pd_struct *pd) {
+bool xx_secondnature_check_is_valid(Abstractformat *self, xx_pd_struct *pd)
+{
     xx_secondnature_stream *stream;
 
     if (!self || (pd && xx_pd_is_stopped(pd))) return false;
@@ -560,7 +522,8 @@ bool xx_secondnature_check_is_valid(Abstractformat *self, xx_pd_struct *pd) {
     return true;
 }
 
-bool xx_secondnature_handle_base_info(Abstractformat *self, xx_pd_struct *pd) {
+bool xx_secondnature_handle_base_info(Abstractformat *self, xx_pd_struct *pd)
+{
     xx_secondnature *archive = (xx_secondnature *)self;
     xx_secondnature_stream *stream;
 
@@ -581,18 +544,17 @@ bool xx_secondnature_handle_base_info(Abstractformat *self, xx_pd_struct *pd) {
     return true;
 }
 
-int64_t xx_secondnature_get_format_size(Abstractformat *self, xx_pd_struct *pd) {
-    if (!self ||
-        (!self->base_info_handled && !xx_format_handle_base_info(self, pd))) {
+int64_t xx_secondnature_get_format_size(Abstractformat *self, xx_pd_struct *pd)
+{
+    if (!self || (!self->base_info_handled && !xx_format_handle_base_info(self, pd))) {
         return 0;
     }
     return self->is_valid ? self->format_size : 0;
 }
 
-uint64_t xx_secondnature_get_number_of_archive_records(Abstractformat *self,
-                                                 xx_pd_struct *pd) {
-    if (!self ||
-        (!self->base_info_handled && !xx_format_handle_base_info(self, pd))) {
+uint64_t xx_secondnature_get_number_of_archive_records(Abstractformat *self, xx_pd_struct *pd)
+{
+    if (!self || (!self->base_info_handled && !xx_format_handle_base_info(self, pd))) {
         return 0U;
     }
     return self->is_valid ? ((xx_secondnature *)self)->number_of_records : 0U;
@@ -600,8 +562,8 @@ uint64_t xx_secondnature_get_number_of_archive_records(Abstractformat *self,
 
 /* ------------------------------------------------------------- records -- */
 
-static bool xx_secondnature_set_record(xx_archive_record *record,
-                                 const xx_secondnature_member *member) {
+static bool xx_secondnature_set_record(xx_archive_record *record, const xx_secondnature_member *member)
+{
     xx_archive_record_cleanup(record);
     xx_archive_record_init(record);
     record->header_offset = member->header_offset;
@@ -609,34 +571,24 @@ static bool xx_secondnature_set_record(xx_archive_record *record,
     record->data_offset = member->data_offset;
     record->compressed_size = member->compressed_size;
     return xx_archive_record_set_original_name(record, member->name) &&
-           xx_archive_record_set_meta_u64(record, XX_META_ID_COMPRESSED_SIZE,
-                                          (uint64_t)member->compressed_size) &&
-           xx_archive_record_set_meta_u64(
-               record, XX_META_ID_UNCOMPRESSED_SIZE,
-               (uint64_t)member->uncompressed_size) &&
-           xx_archive_record_set_meta_u64(record, XX_META_ID_COMPRESSION_METHOD,
-                                          member->method) &&
-           xx_archive_record_set_meta_u64(record, XX_META_ID_TIMESTAMP,
-                                          member->timestamp) &&
-           xx_archive_record_set_meta_bool(record, XX_META_ID_IS_FOLDER,
-                                           member->is_folder) &&
-           xx_archive_record_set_meta_bool(record, XX_META_ID_IS_ENCRYPTED,
-                                           false);
+           xx_archive_record_set_meta_u64(record, XX_META_ID_COMPRESSED_SIZE, (uint64_t)member->compressed_size) &&
+           xx_archive_record_set_meta_u64(record, XX_META_ID_UNCOMPRESSED_SIZE, (uint64_t)member->uncompressed_size) &&
+           xx_archive_record_set_meta_u64(record, XX_META_ID_COMPRESSION_METHOD, member->method) &&
+           xx_archive_record_set_meta_u64(record, XX_META_ID_TIMESTAMP, member->timestamp) &&
+           xx_archive_record_set_meta_bool(record, XX_META_ID_IS_FOLDER, member->is_folder) && xx_archive_record_set_meta_bool(record, XX_META_ID_IS_ENCRYPTED, false);
 }
 
-static bool xx_secondnature_copy_options(xx_list_s *target,
-                                   const xx_list_s *options) {
+static bool xx_secondnature_copy_options(xx_list_s *target, const xx_list_s *options)
+{
     size_t index;
 
     if (!target || !options) return options == NULL;
     for (index = 0U; index < options->count; ++index) {
-        const xx_meta *source =
-            (const xx_meta *)xx_list_at((const xx_list_t *)options, index);
+        const xx_meta *source = (const xx_meta *)xx_list_at((const xx_list_t *)options, index);
         xx_meta copied;
         if (!source) continue;
         xx_meta_init(&copied, source->meta_id);
-        if (!xx_var_copy(&copied.var, &source->var) ||
-            !xx_list_append(target, &copied)) {
+        if (!xx_var_copy(&copied.var, &source->var) || !xx_list_append(target, &copied)) {
             xx_meta_cleanup(&copied);
             return false;
         }
@@ -644,21 +596,20 @@ static bool xx_secondnature_copy_options(xx_list_s *target,
     return true;
 }
 
-static const xx_var *xx_secondnature_get_option(const xx_list_s *options,
-                                          uint32_t meta_id) {
+static const xx_var *xx_secondnature_get_option(const xx_list_s *options, uint32_t meta_id)
+{
     size_t index;
 
     if (!options) return NULL;
     for (index = 0U; index < options->count; ++index) {
-        const xx_meta *meta =
-            (const xx_meta *)xx_list_at((const xx_list_t *)options, index);
+        const xx_meta *meta = (const xx_meta *)xx_list_at((const xx_list_t *)options, index);
         if (meta && meta->meta_id == meta_id) return &meta->var;
     }
     return NULL;
 }
 
-xx_archive_record_state *xx_secondnature_create_archive_records_reading(
-    Abstractformat *self, const xx_list_s *options, xx_pd_struct *pd) {
+xx_archive_record_state *xx_secondnature_create_archive_records_reading(Abstractformat *self, const xx_list_s *options, xx_pd_struct *pd)
+{
     xx_secondnature_stream *stream;
     xx_archive_record_state *state;
 
@@ -674,9 +625,7 @@ xx_archive_record_state *xx_secondnature_create_archive_records_reading(
     state->internal_state = stream;
     state->free_internal = xx_secondnature_stream_free;
     state->total_records = (int64_t)stream->count;
-    if (!xx_secondnature_copy_options(&state->options, options) ||
-        (stream->count != 0U &&
-         !xx_secondnature_set_record(&state->current_record, &stream->items[0]))) {
+    if (!xx_secondnature_copy_options(&state->options, options) || (stream->count != 0U && !xx_secondnature_set_record(&state->current_record, &stream->items[0]))) {
         xx_archive_record_state_free(state);
         return NULL;
     }
@@ -685,20 +634,16 @@ xx_archive_record_state *xx_secondnature_create_archive_records_reading(
     return state;
 }
 
-const xx_archive_record *xx_secondnature_get_current_archive_record(
-    Abstractformat *self, xx_archive_record_state *state) {
-    return self && state && state->format == self && state->has_record
-               ? &state->current_record
-               : NULL;
+const xx_archive_record *xx_secondnature_get_current_archive_record(Abstractformat *self, xx_archive_record_state *state)
+{
+    return self && state && state->format == self && state->has_record ? &state->current_record : NULL;
 }
 
-bool xx_secondnature_archive_record_move_to_next(Abstractformat *self,
-                                           xx_archive_record_state *state,
-                                           xx_pd_struct *pd) {
+bool xx_secondnature_archive_record_move_to_next(Abstractformat *self, xx_archive_record_state *state, xx_pd_struct *pd)
+{
     xx_secondnature_stream *stream;
 
-    if (!self || !state || state->format != self || !state->has_record ||
-        (pd && xx_pd_is_stopped(pd))) {
+    if (!self || !state || state->format != self || !state->has_record || (pd && xx_pd_is_stopped(pd))) {
         return false;
     }
     stream = (xx_secondnature_stream *)state->internal_state;
@@ -710,14 +655,12 @@ bool xx_secondnature_archive_record_move_to_next(Abstractformat *self,
     }
     ++stream->index;
     ++state->current_index;
-    state->has_record = xx_secondnature_set_record(&state->current_record,
-                                             &stream->items[stream->index]);
+    state->has_record = xx_secondnature_set_record(&state->current_record, &stream->items[stream->index]);
     return state->has_record;
 }
 
-bool xx_secondnature_unpack_current_archive_record(Abstractformat *self,
-                                             xx_archive_record_state *state,
-                                             xx_pd_struct *pd) {
+bool xx_secondnature_unpack_current_archive_record(Abstractformat *self, xx_archive_record_state *state, xx_pd_struct *pd)
+{
     xx_secondnature_stream *stream;
     const xx_secondnature_member *member;
     const xx_var *path_option;
@@ -729,8 +672,7 @@ bool xx_secondnature_unpack_current_archive_record(Abstractformat *self,
     bool result = false;
     bool created = false;
 
-    if (!self || !state || state->format != self || !state->has_record ||
-        (pd && xx_pd_is_stopped(pd))) {
+    if (!self || !state || state->format != self || !state->has_record || (pd && xx_pd_is_stopped(pd))) {
         return false;
     }
     stream = (xx_secondnature_stream *)state->internal_state;
@@ -738,8 +680,7 @@ bool xx_secondnature_unpack_current_archive_record(Abstractformat *self,
     member = &stream->items[stream->index];
     if (!xx_secondnature_path_safe(member->name)) return false;
 
-    path_option = xx_secondnature_get_option(&state->options,
-                                       XX_META_ID_OPT_UNPACK_PATH);
+    path_option = xx_secondnature_get_option(&state->options, XX_META_ID_OPT_UNPACK_PATH);
     if (!path_option) {
         /* No destination: decode and discard, which verifies the member
          * without writing anything. */
@@ -748,11 +689,9 @@ bool xx_secondnature_unpack_current_archive_record(Abstractformat *self,
         xx_mem_free(plain);
         return result;
     }
-    if (path_option->type == XX_VAR_TYPE_STRING ||
-        path_option->type == XX_VAR_TYPE_STRING_VIEW) {
+    if (path_option->type == XX_VAR_TYPE_STRING || path_option->type == XX_VAR_TYPE_STRING_VIEW) {
         base_path = xx_var_get_str(path_option);
-    } else if (path_option->type == XX_VAR_TYPE_WSTRING ||
-               path_option->type == XX_VAR_TYPE_WSTRING_VIEW) {
+    } else if (path_option->type == XX_VAR_TYPE_WSTRING || path_option->type == XX_VAR_TYPE_WSTRING_VIEW) {
         converted_path = xx_str_unicode_to_utf8(xx_var_get_wstr(path_option));
         base_path = converted_path;
     }
@@ -760,9 +699,7 @@ bool xx_secondnature_unpack_current_archive_record(Abstractformat *self,
         xx_str_free(converted_path);
         return false;
     }
-    if (base_path[0] != '\0' &&
-        base_path[xx_str_len(base_path) - 1U] != '/' &&
-        base_path[xx_str_len(base_path) - 1U] != '\\') {
+    if (base_path[0] != '\0' && base_path[xx_str_len(base_path) - 1U] != '/' && base_path[xx_str_len(base_path) - 1U] != '\\') {
         target_path = xx_str_concat3(base_path, "/", member->name);
     } else {
         target_path = xx_str_concat(base_path, member->name);
@@ -775,8 +712,7 @@ bool xx_secondnature_unpack_current_archive_record(Abstractformat *self,
         xx_str_free(target_path);
         return result;
     }
-    if (!xx_store_create_dirs_a(target_path, false) ||
-        !xx_secondnature_decode(self, member, &plain, &plain_size, pd)) {
+    if (!xx_store_create_dirs_a(target_path, false) || !xx_secondnature_decode(self, member, &plain, &plain_size, pd)) {
         xx_str_free(target_path);
         return false;
     }
@@ -787,8 +723,7 @@ bool xx_secondnature_unpack_current_archive_record(Abstractformat *self,
 
         result = output != NULL;
         while (result && completed < plain_size) {
-            ssize_t sent = xx_io_write(output, plain + completed,
-                                       plain_size - completed);
+            ssize_t sent = xx_io_write(output, plain + completed, plain_size - completed);
             if (sent <= 0 || (size_t)sent > plain_size - completed) {
                 result = false;
                 break;
@@ -803,8 +738,8 @@ bool xx_secondnature_unpack_current_archive_record(Abstractformat *self,
     return result;
 }
 
-void xx_secondnature_free_archive_records_reading(Abstractformat *self,
-                                            xx_archive_record_state *state) {
+void xx_secondnature_free_archive_records_reading(Abstractformat *self, xx_archive_record_state *state)
+{
     (void)self;
     xx_archive_record_state_free(state);
 }

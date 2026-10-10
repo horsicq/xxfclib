@@ -20,9 +20,7 @@ extern "C" {
  * @param consumed_size receives the number of packed bytes consumed on
  * success; it may be NULL.
  */
-XXFC_API bool xx_softronics_lzw_decompress_memory(
-    const uint8_t *input, size_t input_size, uint8_t *output,
-    size_t output_size, size_t *consumed_size);
+XXFC_API bool xx_softronics_lzw_decompress_memory(const uint8_t *input, size_t input_size, uint8_t *output, size_t output_size, size_t *consumed_size);
 
 #ifdef __cplusplus
 }

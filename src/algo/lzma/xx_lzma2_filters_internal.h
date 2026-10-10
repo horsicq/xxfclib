@@ -28,20 +28,15 @@ enum {
 };
 
 /* Compute only requested checks. Unrequested digest fields remain zero. */
-bool xx_lzma2_unpack_filtered_checked_device(
-    xx_io_device *source, int64_t offset, int64_t compressed_size,
-    uint8_t property, uint16_t delta_distance, uint64_t expected_size,
-    xx_io_device *destination, unsigned check_mask,
-    xx_lzma2_decoded_info *info, xx_pd_struct *pd);
+bool xx_lzma2_unpack_filtered_checked_device(xx_io_device *source, int64_t offset, int64_t compressed_size, uint8_t property, uint16_t delta_distance,
+                                             uint64_t expected_size, xx_io_device *destination, unsigned check_mask, xx_lzma2_decoded_info *info, xx_pd_struct *pd);
 
 /* Decode a raw LZMA2 extent, optionally reversing a Delta filter (distance
  * 1..256; zero disables it). Enforce the expected decoded size and compute
  * checksums over the final output. A NULL destination validates only. Devices
  * are borrowed; a failed call may leave partial output in the destination.
  * Container framing and checksum comparison belong to the format reader. */
-bool xx_lzma2_unpack_filtered_device(
-    xx_io_device *source, int64_t offset, int64_t compressed_size,
-    uint8_t property, uint16_t delta_distance, uint64_t expected_size,
-    xx_io_device *destination, xx_lzma2_decoded_info *info, xx_pd_struct *pd);
+bool xx_lzma2_unpack_filtered_device(xx_io_device *source, int64_t offset, int64_t compressed_size, uint8_t property, uint16_t delta_distance, uint64_t expected_size,
+                                     xx_io_device *destination, xx_lzma2_decoded_info *info, xx_pd_struct *pd);
 
 #endif /* XXFCLIB_LZMA2_FILTERS_INTERNAL_H */

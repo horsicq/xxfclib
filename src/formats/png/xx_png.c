@@ -83,8 +83,7 @@
 #define XX_PNG_MAX_DIMENSION UINT32_C(0x7FFFFFFF)
 
 /* The lead read in one go: magic (16) + IHDR data (13) + IHDR CRC (4). */
-#define XX_PNG_LEAD_SIZE \
-    (XX_PNG_MAGIC_SIZE + XX_PNG_IHDR_DATA_SIZE + XX_PNG_CHUNK_CRC_SIZE)
+#define XX_PNG_LEAD_SIZE (XX_PNG_MAGIC_SIZE + XX_PNG_IHDR_DATA_SIZE + XX_PNG_CHUNK_CRC_SIZE)
 
 /* Read-ahead window for chunk headers.  An image with many small chunks
  * (an APNG with hundreds of fcTL / fdAT pairs) is then read in blocks
@@ -95,9 +94,7 @@
 /* How many chunks between two stop-flag polls. */
 #define XX_PNG_POLL_INTERVAL 4096U
 
-static const uint8_t xx_png_magic[XX_PNG_MAGIC_SIZE] = {
-    0x89U, 0x50U, 0x4EU, 0x47U, 0x0DU, 0x0AU, 0x1AU, 0x0AU,
-    0x00U, 0x00U, 0x00U, 0x0DU, 0x49U, 0x48U, 0x44U, 0x52U};
+static const uint8_t xx_png_magic[XX_PNG_MAGIC_SIZE] = {0x89U, 0x50U, 0x4EU, 0x47U, 0x0DU, 0x0AU, 0x1AU, 0x0AU, 0x00U, 0x00U, 0x00U, 0x0DU, 0x49U, 0x48U, 0x44U, 0x52U};
 
 typedef struct xx_png_parsed_s {
     int64_t input_size;
@@ -117,9 +114,9 @@ typedef struct xx_png_parsed_s {
 
 typedef struct xx_png_cursor_s {
     xx_io_device *device;
-    int64_t base;         /* absolute offset of the signature */
-    int64_t span;         /* bytes from base to the end of the device */
-    uint8_t *window;      /* window_capacity bytes */
+    int64_t base;    /* absolute offset of the signature */
+    int64_t span;    /* bytes from base to the end of the device */
+    uint8_t *window; /* window_capacity bytes */
     size_t window_capacity;
     int64_t window_start; /* offset of window[0], relative to base */
     size_t window_size;   /* valid bytes in window */
@@ -131,13 +128,12 @@ static void xx_png_vtable_destroy(Abstractformat *self);
 
 /* All positioning goes through seek64: the base address inside a larger
  * image is not bounded by any 32-bit field, and long is 32-bit on Win64. */
-static bool xx_png_read_at(xx_io_device *device, int64_t offset, void *data,
-                           size_t size) {
+static bool xx_png_read_at(xx_io_device *device, int64_t offset, void *data, size_t size)
+{
     uint8_t *out = (uint8_t *)data;
     size_t done = 0U;
 
-    if (!device || (!data && size != 0U) || offset < 0 ||
-        xx_io_seek64(device, offset, SEEK_SET) != 0) {
+    if (!device || (!data && size != 0U) || offset < 0 || xx_io_seek64(device, offset, SEEK_SET) != 0) {
         return false;
     }
     while (done < size) {
@@ -151,62 +147,51 @@ static bool xx_png_read_at(xx_io_device *device, int64_t offset, void *data,
 /* Copy @p size bytes at @p offset (relative to base) out of the window,
  * refilling it when the range is not fully inside.  False when the range
  * runs past the end of the device or on a read error. */
-static bool xx_png_cursor_get(xx_png_cursor *cursor, int64_t offset,
-                              uint8_t *out, size_t size) {
+static bool xx_png_cursor_get(xx_png_cursor *cursor, int64_t offset, uint8_t *out, size_t size)
+{
     int64_t remain;
     size_t want;
 
-    if (offset < 0 || size > cursor->window_capacity ||
-        offset > cursor->span - (int64_t)size) {
+    if (offset < 0 || size > cursor->window_capacity || offset > cursor->span - (int64_t)size) {
         return false;
     }
-    if (!(offset >= cursor->window_start &&
-          offset - cursor->window_start <=
-              (int64_t)cursor->window_size - (int64_t)size)) {
+    if (!(offset >= cursor->window_start && offset - cursor->window_start <= (int64_t)cursor->window_size - (int64_t)size)) {
         remain = cursor->span - offset;
-        want = remain < (int64_t)cursor->window_capacity
-                   ? (size_t)remain
-                   : cursor->window_capacity;
+        want = remain < (int64_t)cursor->window_capacity ? (size_t)remain : cursor->window_capacity;
         cursor->window_size = 0U;
         /* base + offset < base + span == device size: no overflow. */
-        if (!xx_png_read_at(cursor->device, cursor->base + offset,
-                            cursor->window, want)) {
+        if (!xx_png_read_at(cursor->device, cursor->base + offset, cursor->window, want)) {
             return false;
         }
         cursor->window_start = offset;
         cursor->window_size = want;
     }
-    xx_rt_memcpy(out,
-                 cursor->window + (size_t)(offset - cursor->window_start),
-                 size);
+    xx_rt_memcpy(out, cursor->window + (size_t)(offset - cursor->window_start), size);
     return true;
 }
 
-static bool xx_png_is_letter(uint8_t c) {
+static bool xx_png_is_letter(uint8_t c)
+{
     return (c >= 0x41U && c <= 0x5AU) || (c >= 0x61U && c <= 0x7AU);
 }
 
 /* PNG spec table 11.1: allowed bit depths per colour type. */
-static bool xx_png_depth_is_legal(uint8_t colour_type, uint8_t bit_depth) {
+static bool xx_png_depth_is_legal(uint8_t colour_type, uint8_t bit_depth)
+{
     switch (colour_type) {
-        case XX_PNG_COLOUR_GRAYSCALE:
-            return bit_depth == 1U || bit_depth == 2U || bit_depth == 4U ||
-                   bit_depth == 8U || bit_depth == 16U;
-        case XX_PNG_COLOUR_PALETTE:
-            return bit_depth == 1U || bit_depth == 2U || bit_depth == 4U ||
-                   bit_depth == 8U;
+        case XX_PNG_COLOUR_GRAYSCALE: return bit_depth == 1U || bit_depth == 2U || bit_depth == 4U || bit_depth == 8U || bit_depth == 16U;
+        case XX_PNG_COLOUR_PALETTE: return bit_depth == 1U || bit_depth == 2U || bit_depth == 4U || bit_depth == 8U;
         case XX_PNG_COLOUR_RGB:
         case XX_PNG_COLOUR_GRAYSCALE_ALPHA:
-        case XX_PNG_COLOUR_RGBA:
-            return bit_depth == 8U || bit_depth == 16U;
-        default:
-            return false;
+        case XX_PNG_COLOUR_RGBA: return bit_depth == 8U || bit_depth == 16U;
+        default: return false;
     }
 }
 
 /* The 16-byte magic, the IHDR fields and the IHDR CRC.  @p lead holds
  * XX_PNG_LEAD_SIZE bytes from the image start. */
-static bool xx_png_check_lead(const uint8_t *lead, xx_png_parsed *parsed) {
+static bool xx_png_check_lead(const uint8_t *lead, xx_png_parsed *parsed)
+{
     const uint8_t *ihdr = lead + XX_PNG_MAGIC_SIZE;
     uint32_t stored_crc;
     uint32_t crc;
@@ -219,8 +204,7 @@ static bool xx_png_check_lead(const uint8_t *lead, xx_png_parsed *parsed) {
     parsed->bit_depth = ihdr[8];
     parsed->colour_type = ihdr[9];
     parsed->interlace = ihdr[12];
-    if (parsed->width == 0U || parsed->width > XX_PNG_MAX_DIMENSION ||
-        parsed->height == 0U || parsed->height > XX_PNG_MAX_DIMENSION) {
+    if (parsed->width == 0U || parsed->width > XX_PNG_MAX_DIMENSION || parsed->height == 0U || parsed->height > XX_PNG_MAX_DIMENSION) {
         return false;
     }
     if (!xx_png_depth_is_legal(parsed->colour_type, parsed->bit_depth)) {
@@ -232,15 +216,14 @@ static bool xx_png_check_lead(const uint8_t *lead, xx_png_parsed *parsed) {
 
     /* CRC-32 over the chunk type and data: bytes 12..28 of the lead. */
     stored_crc = xx_data_get_u32(ihdr + XX_PNG_IHDR_DATA_SIZE, 4, 0, true);
-    crc = xx_crc32_calc(0U, lead + XX_PNG_SIGNATURE_SIZE + 4U,
-                        4U + XX_PNG_IHDR_DATA_SIZE);
+    crc = xx_crc32_calc(0U, lead + XX_PNG_SIGNATURE_SIZE + 4U, 4U + XX_PNG_IHDR_DATA_SIZE);
     return crc == stored_crc;
 }
 
 /* The chunk walk of binwalk's get_png_data_size, plus the length / type /
  * IEND / IDAT rules described at the top of the file. */
-static bool xx_png_walk(xx_png_cursor *cursor, xx_png_parsed *parsed,
-                        xx_pd_struct *pd) {
+static bool xx_png_walk(xx_png_cursor *cursor, xx_png_parsed *parsed, xx_pd_struct *pd)
+{
     int64_t pos = (int64_t)XX_PNG_SIGNATURE_SIZE;
     uint32_t iterations = 0U;
 
@@ -251,14 +234,12 @@ static bool xx_png_walk(xx_png_cursor *cursor, xx_png_parsed *parsed,
         int64_t chunk_end;
         size_t index;
 
-        if (++iterations % XX_PNG_POLL_INTERVAL == 0U &&
-            xx_pd_is_stopped(pd)) {
+        if (++iterations % XX_PNG_POLL_INTERVAL == 0U && xx_pd_is_stopped(pd)) {
             return false;
         }
         /* is_offset_safe + common::parse: the whole 8-byte header must be
          * inside the data. */
-        if (pos >= cursor->span ||
-            !xx_png_cursor_get(cursor, pos, header, sizeof(header))) {
+        if (pos >= cursor->span || !xx_png_cursor_get(cursor, pos, header, sizeof(header))) {
             return false;
         }
         length = xx_data_get_u32(header, 4, 0, true);
@@ -270,8 +251,7 @@ static bool xx_png_walk(xx_png_cursor *cursor, xx_png_parsed *parsed,
         if (parsed->chunk_count < UINT32_MAX) ++parsed->chunk_count;
 
         /* pos < span and length < 2^31: no overflow in int64. */
-        chunk_end = pos + (int64_t)XX_PNG_CHUNK_HEADER_SIZE +
-                    (int64_t)length + (int64_t)XX_PNG_CHUNK_CRC_SIZE;
+        chunk_end = pos + (int64_t)XX_PNG_CHUNK_HEADER_SIZE + (int64_t)length + (int64_t)XX_PNG_CHUNK_CRC_SIZE;
 
         if (type == XX_PNG_TYPE_IEND) {
             if (length != 0U || parsed->idat_count == 0U) return false;
@@ -283,13 +263,10 @@ static bool xx_png_walk(xx_png_cursor *cursor, xx_png_parsed *parsed,
         if (type == XX_PNG_TYPE_IDAT) {
             if (parsed->idat_count < UINT32_MAX) ++parsed->idat_count;
             parsed->idat_size += (int64_t)length;
-        } else if (type == XX_PNG_TYPE_ACTL && !parsed->is_animated &&
-                   length >= 8U && chunk_end <= cursor->span) {
+        } else if (type == XX_PNG_TYPE_ACTL && !parsed->is_animated && length >= 8U && chunk_end <= cursor->span) {
             /* acTL: num_frames u32, num_plays u32 -- informational. */
             uint8_t actl[8];
-            if (!xx_png_cursor_get(cursor,
-                                   pos + (int64_t)XX_PNG_CHUNK_HEADER_SIZE,
-                                   actl, sizeof(actl))) {
+            if (!xx_png_cursor_get(cursor, pos + (int64_t)XX_PNG_CHUNK_HEADER_SIZE, actl, sizeof(actl))) {
                 return false;
             }
             parsed->is_animated = true;
@@ -302,8 +279,8 @@ static bool xx_png_walk(xx_png_cursor *cursor, xx_png_parsed *parsed,
 
 /* --------------------------------------------------------------- parse -- */
 
-static bool xx_png_parse(Abstractformat *self, xx_png_parsed *parsed,
-                         xx_pd_struct *pd) {
+static bool xx_png_parse(Abstractformat *self, xx_png_parsed *parsed, xx_pd_struct *pd)
+{
     uint8_t lead[XX_PNG_LEAD_SIZE];
     xx_png_cursor cursor;
     int64_t span;
@@ -314,8 +291,7 @@ static bool xx_png_parse(Abstractformat *self, xx_png_parsed *parsed,
         parsed->input_size = -1;
         parsed->image_size = -1;
     }
-    if (!self || !self->device || !parsed || self->base_address < 0 ||
-        xx_pd_is_stopped(pd)) {
+    if (!self || !self->device || !parsed || self->base_address < 0 || xx_pd_is_stopped(pd)) {
         return false;
     }
     parsed->input_size = xx_io_total_size(self->device);
@@ -323,8 +299,7 @@ static bool xx_png_parse(Abstractformat *self, xx_png_parsed *parsed,
     span = parsed->input_size - self->base_address;
     if (span < XX_PNG_MIN_SIZE) return false;
 
-    if (!xx_png_read_at(self->device, self->base_address, lead,
-                        sizeof(lead))) {
+    if (!xx_png_read_at(self->device, self->base_address, lead, sizeof(lead))) {
         return false;
     }
     if (!xx_png_check_lead(lead, parsed)) return false;
@@ -333,9 +308,7 @@ static bool xx_png_parse(Abstractformat *self, xx_png_parsed *parsed,
     cursor.device = self->device;
     cursor.base = self->base_address;
     cursor.span = span;
-    cursor.window_capacity = span < (int64_t)XX_PNG_WINDOW_SIZE
-                                 ? (size_t)span
-                                 : XX_PNG_WINDOW_SIZE;
+    cursor.window_capacity = span < (int64_t)XX_PNG_WINDOW_SIZE ? (size_t)span : XX_PNG_WINDOW_SIZE;
     cursor.window = (uint8_t *)xx_mem_alloc(cursor.window_capacity);
     if (!cursor.window) return false;
     cursor.window_start = 0;
@@ -344,8 +317,7 @@ static bool xx_png_parse(Abstractformat *self, xx_png_parsed *parsed,
     result = xx_png_walk(&cursor, parsed, pd);
     xx_mem_free(cursor.window);
 
-    if (!result || parsed->image_size < XX_PNG_MIN_SIZE ||
-        parsed->image_size > span) {
+    if (!result || parsed->image_size < XX_PNG_MIN_SIZE || parsed->image_size > span) {
         parsed->image_size = -1;
         return false;
     }
@@ -362,7 +334,8 @@ typedef struct xx_png_analysis_s {
     bool valid, has_phys;
 } xx_png_analysis;
 
-bool xx_png_analyze(xx_png *png, xx_pd_struct *pd) {
+bool xx_png_analyze(xx_png *png, xx_pd_struct *pd)
+{
     xx_png_analysis local, *info;
     uint8_t bytes[21];
     int64_t total, span, pos = 8, saved;
@@ -376,32 +349,36 @@ bool xx_png_analyze(xx_png *png, xx_pd_struct *pd) {
     span = total - png->format.base_address;
     /* Signature recognition remains tolerant for metadata inspection, while
      * the native archive callbacks enforce all eight bytes and CRC rules. */
-    if (span < 8 || !xx_png_read_at(png->format.device, png->format.base_address, bytes, 4) ||
-        xx_rt_memcmp(bytes, "\x89PNG", 4) != 0) goto done;
+    if (span < 8 || !xx_png_read_at(png->format.device, png->format.base_address, bytes, 4) || xx_rt_memcmp(bytes, "\x89PNG", 4) != 0) goto done;
     while (pos <= span - 12) {
         uint32_t length;
         size_t needed = 0;
-        if (xx_pd_is_stopped(pd) || !xx_png_read_at(png->format.device,
-                png->format.base_address + pos, bytes, 8)) goto done;
+        if (xx_pd_is_stopped(pd) || !xx_png_read_at(png->format.device, png->format.base_address + pos, bytes, 8)) goto done;
         length = xx_data_get_u32(bytes, 8, 0, true);
         if ((int64_t)length > span - pos - 8) break;
         if (xx_rt_memcmp(bytes + 4, "IHDR", 4) == 0 && length >= 13) needed = 13;
         else if (xx_rt_memcmp(bytes + 4, "pHYs", 4) == 0 && length >= 9) needed = 9;
         else if (xx_rt_memcmp(bytes + 4, "bKGD", 4) == 0 && (length == 1 || length == 2 || length == 6)) needed = length;
         else if (xx_rt_memcmp(bytes + 4, "IEND", 4) == 0) break;
-        if (needed && !xx_png_read_at(png->format.device,
-                png->format.base_address + pos + 8, bytes + 8, needed)) goto done;
+        if (needed && !xx_png_read_at(png->format.device, png->format.base_address + pos + 8, bytes + 8, needed)) goto done;
         if (needed == 13) {
             local.width = xx_data_get_u32(bytes, sizeof(bytes), 8, true);
             local.height = xx_data_get_u32(bytes, sizeof(bytes), 12, true);
-            local.depth = bytes[16]; local.color = bytes[17]; local.valid = true;
+            local.depth = bytes[16];
+            local.color = bytes[17];
+            local.valid = true;
         } else if (needed == 9) {
             local.phys_x = xx_data_get_u32(bytes, sizeof(bytes), 8, true);
             local.phys_y = xx_data_get_u32(bytes, sizeof(bytes), 12, true);
-            local.unit = bytes[16]; local.has_phys = true;
-        } else if (needed == 1) { local.background = 3; local.palette = bytes[8]; }
-        else if (needed == 2) { local.background = 1; local.gray = xx_data_get_u16(bytes, sizeof(bytes), 8, true); }
-        else if (needed == 6) {
+            local.unit = bytes[16];
+            local.has_phys = true;
+        } else if (needed == 1) {
+            local.background = 3;
+            local.palette = bytes[8];
+        } else if (needed == 2) {
+            local.background = 1;
+            local.gray = xx_data_get_u16(bytes, sizeof(bytes), 8, true);
+        } else if (needed == 6) {
             local.background = 2;
             local.red = xx_data_get_u16(bytes, sizeof(bytes), 8, true);
             local.green = xx_data_get_u16(bytes, sizeof(bytes), 10, true);
@@ -412,13 +389,16 @@ bool xx_png_analyze(xx_png *png, xx_pd_struct *pd) {
     if (xx_pd_is_stopped(pd) || !local.valid) goto done;
     info = (xx_png_analysis *)xx_mem_alloc(sizeof(*info));
     if (!info) goto done;
-    *info = local; png->analysis = info; success = true;
+    *info = local;
+    png->analysis = info;
+    success = true;
 done:
     if (saved >= 0) (void)xx_io_seek64(png->format.device, saved, SEEK_SET);
     return success;
 }
 
-char *xx_png_get_info(xx_png *png, xx_pd_struct *pd) {
+char *xx_png_get_info(xx_png *png, xx_pd_struct *pd)
+{
     xx_png_analysis *info;
     xx_buf_t text;
     const char *schema = NULL;
@@ -437,8 +417,7 @@ char *xx_png_get_info(xx_png *png, xx_pd_struct *pd) {
     if (schema) (void)xx_buf_append_str(&text, schema);
     else (void)xx_buf_appendf(&text, "Unknown(%u)", (unsigned)info->color);
     if (info->has_phys && (info->phys_x || info->phys_y))
-        (void)xx_buf_appendf(&text, ", pHYs: %ux%u %s", (unsigned)info->phys_x, (unsigned)info->phys_y,
-                              info->unit == 1 ? "meter" : "unknown");
+        (void)xx_buf_appendf(&text, ", pHYs: %ux%u %s", (unsigned)info->phys_x, (unsigned)info->phys_y, info->unit == 1 ? "meter" : "unknown");
     if (info->background == 1) (void)xx_buf_appendf(&text, ", bKGD: gray=%u", (unsigned)info->gray);
     else if (info->background == 2) (void)xx_buf_appendf(&text, ", bKGD: rgb=(%u,%u,%u)", (unsigned)info->red, (unsigned)info->green, (unsigned)info->blue);
     else if (info->background == 3) (void)xx_buf_appendf(&text, ", bKGD: paletteIndex=%u", (unsigned)info->palette);
@@ -447,7 +426,8 @@ char *xx_png_get_info(xx_png *png, xx_pd_struct *pd) {
 
 /* ----------------------------------------------------------- lifecycle -- */
 
-void xx_png_init(xx_png *png, xx_io_device *dev, int64_t base_address) {
+void xx_png_init(xx_png *png, xx_io_device *dev, int64_t base_address)
+{
     if (!png) return;
     xx_mem_zero(png, sizeof(*png));
     xx_format_init(&png->format, dev, base_address);
@@ -468,25 +448,29 @@ void xx_png_init(xx_png *png, xx_io_device *dev, int64_t base_address) {
     xx_components_install(&png->format);
 }
 
-xx_png *xx_png_create(xx_io_device *dev, int64_t base_address) {
+xx_png *xx_png_create(xx_io_device *dev, int64_t base_address)
+{
     xx_png *png = (xx_png *)xx_mem_alloc(sizeof(*png));
 
     if (png) xx_png_init(png, dev, base_address);
     return png;
 }
 
-void xx_png_destroy(xx_png *png) {
+void xx_png_destroy(xx_png *png)
+{
     if (!png) return;
     xx_mem_free(png->analysis);
     png->analysis = NULL;
     xx_format_cleanup_extra_parameters(&png->format);
 }
 
-static void xx_png_vtable_destroy(Abstractformat *self) {
+static void xx_png_vtable_destroy(Abstractformat *self)
+{
     xx_png_destroy((xx_png *)self);
 }
 
-void xx_png_free(xx_png *png) {
+void xx_png_free(xx_png *png)
+{
     if (!png) return;
     xx_png_destroy(png);
     xx_mem_free(png);
@@ -494,18 +478,20 @@ void xx_png_free(xx_png *png) {
 
 /* -------------------------------------------------------------- format -- */
 
-bool xx_png_check_magic(const uint8_t *data, size_t size) {
-    return data && size >= XX_PNG_MAGIC_SIZE &&
-           xx_rt_memcmp(data, xx_png_magic, XX_PNG_MAGIC_SIZE) == 0;
+bool xx_png_check_magic(const uint8_t *data, size_t size)
+{
+    return data && size >= XX_PNG_MAGIC_SIZE && xx_rt_memcmp(data, xx_png_magic, XX_PNG_MAGIC_SIZE) == 0;
 }
 
-bool xx_png_check_is_valid(Abstractformat *self, xx_pd_struct *pd) {
+bool xx_png_check_is_valid(Abstractformat *self, xx_pd_struct *pd)
+{
     xx_png_parsed parsed;
 
     return xx_png_parse(self, &parsed, pd);
 }
 
-bool xx_png_handle_base_info(Abstractformat *self, xx_pd_struct *pd) {
+bool xx_png_handle_base_info(Abstractformat *self, xx_pd_struct *pd)
+{
     xx_png *png = (xx_png *)self;
     xx_png_parsed parsed;
     int64_t image_end;
@@ -546,9 +532,9 @@ bool xx_png_handle_base_info(Abstractformat *self, xx_pd_struct *pd) {
     return true;
 }
 
-int64_t xx_png_get_format_size(Abstractformat *self, xx_pd_struct *pd) {
-    if (!self ||
-        (!self->base_info_handled && !xx_format_handle_base_info(self, pd))) {
+int64_t xx_png_get_format_size(Abstractformat *self, xx_pd_struct *pd)
+{
+    if (!self || (!self->base_info_handled && !xx_format_handle_base_info(self, pd))) {
         return -1;
     }
     return self->format_size;
@@ -556,58 +542,74 @@ int64_t xx_png_get_format_size(Abstractformat *self, xx_pd_struct *pd) {
 
 /* ------------------------------------------------------------ accessors -- */
 
-int64_t xx_png_get_image_end(const xx_png *png) {
+int64_t xx_png_get_image_end(const xx_png *png)
+{
     return png ? png->image_end : -1;
 }
 
-uint32_t xx_png_get_width(const xx_png *png) { return png ? png->width : 0U; }
+uint32_t xx_png_get_width(const xx_png *png)
+{
+    return png ? png->width : 0U;
+}
 
-uint32_t xx_png_get_height(const xx_png *png) {
+uint32_t xx_png_get_height(const xx_png *png)
+{
     return png ? png->height : 0U;
 }
 
-uint8_t xx_png_get_bit_depth(const xx_png *png) {
+uint8_t xx_png_get_bit_depth(const xx_png *png)
+{
     return png ? png->bit_depth : 0U;
 }
 
-uint8_t xx_png_get_colour_type(const xx_png *png) {
+uint8_t xx_png_get_colour_type(const xx_png *png)
+{
     return png ? png->colour_type : 0U;
 }
 
-uint8_t xx_png_get_interlace(const xx_png *png) {
+uint8_t xx_png_get_interlace(const xx_png *png)
+{
     return png ? png->interlace : 0U;
 }
 
-uint32_t xx_png_get_chunk_count(const xx_png *png) {
+uint32_t xx_png_get_chunk_count(const xx_png *png)
+{
     return png ? png->chunk_count : 0U;
 }
 
-uint32_t xx_png_get_idat_count(const xx_png *png) {
+uint32_t xx_png_get_idat_count(const xx_png *png)
+{
     return png ? png->idat_count : 0U;
 }
 
-bool xx_png_is_animated(const xx_png *png) {
+bool xx_png_is_animated(const xx_png *png)
+{
     return png ? png->is_animated : false;
 }
 
-uint32_t xx_png_get_frame_count(const xx_png *png) {
+uint32_t xx_png_get_frame_count(const xx_png *png)
+{
     return png ? png->frame_count : 0U;
 }
 
 /* Encoded/structural component members; this does not decode media. */
-static bool xx_components_build(Abstractformat *f, xx_component_stream *s, xx_pd_struct *pd) {
-
-    int64_t pos=8;
-    while(pos<f->format_size) {
-        uint8_t h[8], checksum[4]; uint32_t n; char kind[5];
-        if(xx_pd_is_stopped(pd) || !xx_component_read(f,pos,h,8)) return false;
-        n=xx_data_get_u32(h,8,0,true); xx_rt_memcpy(kind,h+4,4); kind[4]=0;
-        if(!xx_component_add(f,s,pos+8,n,kind)) return false;
-        if(!xx_component_read(f,pos+8+n,checksum,4)) return false;
-        s->items[s->count-1].has_crc32=true;
-        s->items[s->count-1].crc32=xx_data_get_u32(checksum,4,0,true);
-        s->items[s->count-1].crc32_seed=xx_crc32_calc(0,h+4,4);
-        pos+=(int64_t)n+12;
+static bool xx_components_build(Abstractformat *f, xx_component_stream *s, xx_pd_struct *pd)
+{
+    int64_t pos = 8;
+    while (pos < f->format_size) {
+        uint8_t h[8], checksum[4];
+        uint32_t n;
+        char kind[5];
+        if (xx_pd_is_stopped(pd) || !xx_component_read(f, pos, h, 8)) return false;
+        n = xx_data_get_u32(h, 8, 0, true);
+        xx_rt_memcpy(kind, h + 4, 4);
+        kind[4] = 0;
+        if (!xx_component_add(f, s, pos + 8, n, kind)) return false;
+        if (!xx_component_read(f, pos + 8 + n, checksum, 4)) return false;
+        s->items[s->count - 1].has_crc32 = true;
+        s->items[s->count - 1].crc32 = xx_data_get_u32(checksum, 4, 0, true);
+        s->items[s->count - 1].crc32_seed = xx_crc32_calc(0, h + 4, 4);
+        pos += (int64_t)n + 12;
     }
-    return pos==f->format_size;
+    return pos == f->format_size;
 }

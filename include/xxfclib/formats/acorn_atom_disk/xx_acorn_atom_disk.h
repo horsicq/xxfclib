@@ -63,43 +63,29 @@ extern "C" {
 typedef struct xx_acorn_atom_disk {
     Abstractformat format;
     uint64_t number_of_records;
-    int64_t image_size;      /**< Always 102400. */
-    uint32_t disc_sectors;   /**< Sector count from the catalogue. */
-    uint32_t cycle;          /**< Catalogue write cycle byte. */
-    char title[13];          /**< Title, trailing spaces / NULs removed. */
+    int64_t image_size;    /**< Always 102400. */
+    uint32_t disc_sectors; /**< Sector count from the catalogue. */
+    uint32_t cycle;        /**< Catalogue write cycle byte. */
+    char title[13];        /**< Title, trailing spaces / NULs removed. */
 } xx_acorn_atom_disk;
 
 typedef xx_acorn_atom_disk xx_acorn_atom_disk_t;
 
-XXFC_API void xx_acorn_atom_disk_init(xx_acorn_atom_disk *archive,
-                                      xx_io_device *device,
-                                      int64_t base_address);
-XXFC_API xx_acorn_atom_disk *xx_acorn_atom_disk_create(xx_io_device *device,
-                                                       int64_t base_address);
+XXFC_API void xx_acorn_atom_disk_init(xx_acorn_atom_disk *archive, xx_io_device *device, int64_t base_address);
+XXFC_API xx_acorn_atom_disk *xx_acorn_atom_disk_create(xx_io_device *device, int64_t base_address);
 XXFC_API void xx_acorn_atom_disk_destroy(xx_acorn_atom_disk *archive);
 XXFC_API void xx_acorn_atom_disk_free(xx_acorn_atom_disk *archive);
 
-XXFC_API bool xx_acorn_atom_disk_check_is_valid(Abstractformat *self,
-                                                xx_pd_struct *pd);
-XXFC_API bool xx_acorn_atom_disk_handle_base_info(Abstractformat *self,
-                                                  xx_pd_struct *pd);
-XXFC_API int64_t xx_acorn_atom_disk_get_format_size(Abstractformat *self,
-                                                    xx_pd_struct *pd);
-XXFC_API uint64_t xx_acorn_atom_disk_get_number_of_archive_records(
-    Abstractformat *self, xx_pd_struct *pd);
+XXFC_API bool xx_acorn_atom_disk_check_is_valid(Abstractformat *self, xx_pd_struct *pd);
+XXFC_API bool xx_acorn_atom_disk_handle_base_info(Abstractformat *self, xx_pd_struct *pd);
+XXFC_API int64_t xx_acorn_atom_disk_get_format_size(Abstractformat *self, xx_pd_struct *pd);
+XXFC_API uint64_t xx_acorn_atom_disk_get_number_of_archive_records(Abstractformat *self, xx_pd_struct *pd);
 
-XXFC_API xx_archive_record_state *
-xx_acorn_atom_disk_create_archive_records_reading(Abstractformat *self,
-                                                  const xx_list_s *options,
-                                                  xx_pd_struct *pd);
-XXFC_API const xx_archive_record *xx_acorn_atom_disk_get_current_archive_record(
-    Abstractformat *self, xx_archive_record_state *state);
-XXFC_API bool xx_acorn_atom_disk_unpack_current_archive_record(
-    Abstractformat *self, xx_archive_record_state *state, xx_pd_struct *pd);
-XXFC_API bool xx_acorn_atom_disk_archive_record_move_to_next(
-    Abstractformat *self, xx_archive_record_state *state, xx_pd_struct *pd);
-XXFC_API void xx_acorn_atom_disk_free_archive_records_reading(
-    Abstractformat *self, xx_archive_record_state *state);
+XXFC_API xx_archive_record_state *xx_acorn_atom_disk_create_archive_records_reading(Abstractformat *self, const xx_list_s *options, xx_pd_struct *pd);
+XXFC_API const xx_archive_record *xx_acorn_atom_disk_get_current_archive_record(Abstractformat *self, xx_archive_record_state *state);
+XXFC_API bool xx_acorn_atom_disk_unpack_current_archive_record(Abstractformat *self, xx_archive_record_state *state, xx_pd_struct *pd);
+XXFC_API bool xx_acorn_atom_disk_archive_record_move_to_next(Abstractformat *self, xx_archive_record_state *state, xx_pd_struct *pd);
+XXFC_API void xx_acorn_atom_disk_free_archive_records_reading(Abstractformat *self, xx_archive_record_state *state);
 
 #ifdef __cplusplus
 }

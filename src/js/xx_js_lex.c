@@ -25,15 +25,13 @@
 
 #include "xx_js_lex.h"
 
+static const char *g_pKeywords[] = {"break", "case",  "catch",      "continue", "default", "delete", "do",    "else",  "finally", "for",    "function",
+                                    "if",    "in",    "instanceof", "new",      "return",  "switch", "this",  "throw", "try",     "typeof", "var",
+                                    "void",  "while", "with",       "null",     "true",    "false",  "const", "let",   NULL};
 
-static const char *g_pKeywords[] = {"break",  "case",   "catch", "continue", "default",    "delete", "do",     "else",  "finally", "for",
-                                    "function", "if",   "in",    "instanceof", "new",      "return", "switch", "this",  "throw",   "try",
-                                    "typeof", "var",    "void",  "while",    "with",       "null",   "true",   "false", "const",   "let",
-                                    NULL};
-
-static const JSTokType g_keywordTypes[] = {T_BREAK,  T_CASE,   T_CATCH, T_CONTINUE,   T_DEFAULT, T_DELETE, T_DO,     T_ELSE, T_FINALLY, T_FOR,
-                                           T_FUNCTION, T_IF,   T_IN,    T_INSTANCEOF, T_NEW,     T_RETURN, T_SWITCH, T_THIS, T_THROW,   T_TRY,
-                                           T_TYPEOF, T_VAR,    T_VOID,  T_WHILE,      T_WITH,    T_NULL,   T_TRUE,   T_FALSE, T_VAR,    T_VAR};
+static const JSTokType g_keywordTypes[] = {T_BREAK,    T_CASE, T_CATCH, T_CONTINUE,   T_DEFAULT, T_DELETE, T_DO,     T_ELSE,  T_FINALLY, T_FOR,
+                                           T_FUNCTION, T_IF,   T_IN,    T_INSTANCEOF, T_NEW,     T_RETURN, T_SWITCH, T_THIS,  T_THROW,   T_TRY,
+                                           T_TYPEOF,   T_VAR,  T_VOID,  T_WHILE,      T_WITH,    T_NULL,   T_TRUE,   T_FALSE, T_VAR,     T_VAR};
 
 static int is_ident_start(int nChar)
 {
@@ -365,12 +363,30 @@ int js_lex_run(JSLexer *pLexer, const char *pSource, char **ppError)
                     p++;
 
                     switch (*p) {
-                        case 'n': xx_buf_append_char(&buf, '\n'); p++; break;
-                        case 't': xx_buf_append_char(&buf, '\t'); p++; break;
-                        case 'r': xx_buf_append_char(&buf, '\r'); p++; break;
-                        case 'b': xx_buf_append_char(&buf, '\b'); p++; break;
-                        case 'f': xx_buf_append_char(&buf, '\f'); p++; break;
-                        case 'v': xx_buf_append_char(&buf, '\v'); p++; break;
+                        case 'n':
+                            xx_buf_append_char(&buf, '\n');
+                            p++;
+                            break;
+                        case 't':
+                            xx_buf_append_char(&buf, '\t');
+                            p++;
+                            break;
+                        case 'r':
+                            xx_buf_append_char(&buf, '\r');
+                            p++;
+                            break;
+                        case 'b':
+                            xx_buf_append_char(&buf, '\b');
+                            p++;
+                            break;
+                        case 'f':
+                            xx_buf_append_char(&buf, '\f');
+                            p++;
+                            break;
+                        case 'v':
+                            xx_buf_append_char(&buf, '\v');
+                            p++;
+                            break;
                         case '0':
                             if (!is_digit((unsigned char)p[1])) {
                                 xx_buf_append_char(&buf, '\0');
@@ -514,18 +530,57 @@ int js_lex_run(JSLexer *pLexer, const char *pSource, char **ppError)
             struct {
                 const char *pText;
                 JSTokType type;
-            } punctuators[] = {
-                {">>>=", T_USHR_ASSIGN}, {"===", T_SEQ},        {"!==", T_SNE},        {"<<=", T_SHL_ASSIGN}, {">>=", T_SHR_ASSIGN},
-                {">>>", T_USHR},         {"...", T_ELLIPSIS},   {"==", T_EQ},          {"!=", T_NE},          {"<=", T_LE},
-                {">=", T_GE},            {"&&", T_LAND},        {"||", T_LOR},         {"++", T_INC},         {"--", T_DEC},
-                {"<<", T_SHL},           {">>", T_SHR},         {"+=", T_ADD_ASSIGN},  {"-=", T_SUB_ASSIGN},  {"*=", T_MUL_ASSIGN},
-                {"/=", T_DIV_ASSIGN},    {"%=", T_MOD_ASSIGN},  {"&=", T_AND_ASSIGN},  {"|=", T_OR_ASSIGN},   {"^=", T_XOR_ASSIGN},
-                {"=>", T_ARROW},         {"{", T_LBRACE},       {"}", T_RBRACE},       {"(", T_LPAREN},       {")", T_RPAREN},
-                {"[", T_LBRACKET},       {"]", T_RBRACKET},     {";", T_SEMI},         {",", T_COMMA},        {"<", T_LT},
-                {">", T_GT},             {"+", T_ADD},          {"-", T_SUB},          {"*", T_MUL},          {"/", T_DIV},
-                {"%", T_MOD},            {"&", T_AND},          {"|", T_OR},           {"^", T_XOR},          {"!", T_NOT},
-                {"~", T_BNOT},           {"?", T_QUESTION},     {":", T_COLON},        {"=", T_ASSIGN},       {".", T_DOT},
-                {NULL, T_EOF}};
+            } punctuators[] = {{">>>=", T_USHR_ASSIGN},
+                               {"===", T_SEQ},
+                               {"!==", T_SNE},
+                               {"<<=", T_SHL_ASSIGN},
+                               {">>=", T_SHR_ASSIGN},
+                               {">>>", T_USHR},
+                               {"...", T_ELLIPSIS},
+                               {"==", T_EQ},
+                               {"!=", T_NE},
+                               {"<=", T_LE},
+                               {">=", T_GE},
+                               {"&&", T_LAND},
+                               {"||", T_LOR},
+                               {"++", T_INC},
+                               {"--", T_DEC},
+                               {"<<", T_SHL},
+                               {">>", T_SHR},
+                               {"+=", T_ADD_ASSIGN},
+                               {"-=", T_SUB_ASSIGN},
+                               {"*=", T_MUL_ASSIGN},
+                               {"/=", T_DIV_ASSIGN},
+                               {"%=", T_MOD_ASSIGN},
+                               {"&=", T_AND_ASSIGN},
+                               {"|=", T_OR_ASSIGN},
+                               {"^=", T_XOR_ASSIGN},
+                               {"=>", T_ARROW},
+                               {"{", T_LBRACE},
+                               {"}", T_RBRACE},
+                               {"(", T_LPAREN},
+                               {")", T_RPAREN},
+                               {"[", T_LBRACKET},
+                               {"]", T_RBRACKET},
+                               {";", T_SEMI},
+                               {",", T_COMMA},
+                               {"<", T_LT},
+                               {">", T_GT},
+                               {"+", T_ADD},
+                               {"-", T_SUB},
+                               {"*", T_MUL},
+                               {"/", T_DIV},
+                               {"%", T_MOD},
+                               {"&", T_AND},
+                               {"|", T_OR},
+                               {"^", T_XOR},
+                               {"!", T_NOT},
+                               {"~", T_BNOT},
+                               {"?", T_QUESTION},
+                               {":", T_COLON},
+                               {"=", T_ASSIGN},
+                               {".", T_DOT},
+                               {NULL, T_EOF}};
             int i = 0;
             int bFound = 0;
 

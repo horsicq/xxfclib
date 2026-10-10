@@ -85,56 +85,54 @@ struct xx_qnx6 {
     uint32_t free_inodes;
     uint32_t num_blocks;
     uint32_t free_blocks;
-    uint32_t checksum;    /**< The superblock's field, NOT verified. */
+    uint32_t checksum; /**< The superblock's field, NOT verified. */
     uint16_t version1;
     uint16_t version2;
     int64_t superblock_offset; /**< Device offset of the superblock. */
     int64_t archive_end;
-    bool big_endian;      /**< True for the big-endian superblock variant. */
+    bool big_endian; /**< True for the big-endian superblock variant. */
     void *internal;
 };
 
-XXFC_API void xx_qnx6_init(xx_qnx6 *qnx6, xx_io_device *dev,
-                           int64_t base_address);
+XXFC_API void xx_qnx6_init(xx_qnx6 *qnx6, xx_io_device *dev, int64_t base_address);
 XXFC_API xx_qnx6 *xx_qnx6_create(xx_io_device *dev, int64_t base_address);
 XXFC_API void xx_qnx6_destroy(xx_qnx6 *qnx6);
 XXFC_API void xx_qnx6_free(xx_qnx6 *qnx6);
 
 XXFC_API bool xx_qnx6_check_is_valid(Abstractformat *self, xx_pd_struct *pd);
 XXFC_API bool xx_qnx6_handle_base_info(Abstractformat *self, xx_pd_struct *pd);
-XXFC_API int64_t xx_qnx6_get_format_size(Abstractformat *self,
-                                         xx_pd_struct *pd);
-XXFC_API uint64_t xx_qnx6_get_number_of_archive_records(Abstractformat *self,
-                                                        xx_pd_struct *pd);
+XXFC_API int64_t xx_qnx6_get_format_size(Abstractformat *self, xx_pd_struct *pd);
+XXFC_API uint64_t xx_qnx6_get_number_of_archive_records(Abstractformat *self, xx_pd_struct *pd);
 
-XXFC_API xx_archive_record_state *xx_qnx6_create_archive_records_reading(
-    Abstractformat *self, const xx_list_s *options, xx_pd_struct *pd);
-XXFC_API const xx_archive_record *xx_qnx6_get_current_archive_record(
-    Abstractformat *self, xx_archive_record_state *state);
-XXFC_API bool xx_qnx6_unpack_current_archive_record(
-    Abstractformat *self, xx_archive_record_state *state, xx_pd_struct *pd);
-XXFC_API bool xx_qnx6_archive_record_move_to_next(
-    Abstractformat *self, xx_archive_record_state *state, xx_pd_struct *pd);
-XXFC_API void xx_qnx6_free_archive_records_reading(
-    Abstractformat *self, xx_archive_record_state *state);
+XXFC_API xx_archive_record_state *xx_qnx6_create_archive_records_reading(Abstractformat *self, const xx_list_s *options, xx_pd_struct *pd);
+XXFC_API const xx_archive_record *xx_qnx6_get_current_archive_record(Abstractformat *self, xx_archive_record_state *state);
+XXFC_API bool xx_qnx6_unpack_current_archive_record(Abstractformat *self, xx_archive_record_state *state, xx_pd_struct *pd);
+XXFC_API bool xx_qnx6_archive_record_move_to_next(Abstractformat *self, xx_archive_record_state *state, xx_pd_struct *pd);
+XXFC_API void xx_qnx6_free_archive_records_reading(Abstractformat *self, xx_archive_record_state *state);
 
 XXFC_API uint64_t xx_qnx6_get_number_of_records(const xx_qnx6 *qnx6);
 XXFC_API uint32_t xx_qnx6_get_blocksize(const xx_qnx6 *qnx6);
 XXFC_API uint32_t xx_qnx6_get_num_blocks(const xx_qnx6 *qnx6);
 XXFC_API bool xx_qnx6_is_big_endian(const xx_qnx6 *qnx6);
 
-static inline Abstractformat *xx_qnx6_to_format(xx_qnx6 *qnx6) {
+static inline Abstractformat *xx_qnx6_to_format(xx_qnx6 *qnx6)
+{
     return qnx6 ? &qnx6->format : NULL;
 }
-static inline void XQnx6_init(xx_qnx6 *qnx6, xx_io_device *dev,
-                              int64_t base_address) {
+static inline void XQnx6_init(xx_qnx6 *qnx6, xx_io_device *dev, int64_t base_address)
+{
     xx_qnx6_init(qnx6, dev, base_address);
 }
-static inline xx_qnx6 *XQnx6_create(xx_io_device *dev, int64_t base_address) {
+static inline xx_qnx6 *XQnx6_create(xx_io_device *dev, int64_t base_address)
+{
     return xx_qnx6_create(dev, base_address);
 }
-static inline void XQnx6_free(xx_qnx6 *qnx6) { xx_qnx6_free(qnx6); }
-static inline bool XQnx6_is_valid(xx_qnx6 *qnx6, xx_pd_struct *pd) {
+static inline void XQnx6_free(xx_qnx6 *qnx6)
+{
+    xx_qnx6_free(qnx6);
+}
+static inline bool XQnx6_is_valid(xx_qnx6 *qnx6, xx_pd_struct *pd)
+{
     return qnx6 ? xx_format_is_valid(&qnx6->format, pd) : false;
 }
 

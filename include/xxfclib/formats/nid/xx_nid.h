@@ -35,34 +35,27 @@ struct xx_nid {
     int64_t archive_size;       /**< End of the furthest member block chain. */
 };
 
-XXFC_API void xx_nid_init(xx_nid *archive, xx_io_device *device,
-                          int64_t base_address);
+XXFC_API void xx_nid_init(xx_nid *archive, xx_io_device *device, int64_t base_address);
 XXFC_API xx_nid *xx_nid_create(xx_io_device *device, int64_t base_address);
 XXFC_API void xx_nid_destroy(xx_nid *archive);
 XXFC_API void xx_nid_free(xx_nid *archive);
 
 XXFC_API bool xx_nid_check_is_valid(Abstractformat *self, xx_pd_struct *pd);
 XXFC_API bool xx_nid_handle_base_info(Abstractformat *self, xx_pd_struct *pd);
-XXFC_API int64_t xx_nid_get_format_size(Abstractformat *self,
-                                        xx_pd_struct *pd);
-XXFC_API uint64_t xx_nid_get_number_of_archive_records(Abstractformat *self,
-                                                       xx_pd_struct *pd);
+XXFC_API int64_t xx_nid_get_format_size(Abstractformat *self, xx_pd_struct *pd);
+XXFC_API uint64_t xx_nid_get_number_of_archive_records(Abstractformat *self, xx_pd_struct *pd);
 
-XXFC_API xx_archive_record_state *xx_nid_create_archive_records_reading(
-    Abstractformat *self, const xx_list_s *options, xx_pd_struct *pd);
-XXFC_API const xx_archive_record *xx_nid_get_current_archive_record(
-    Abstractformat *self, xx_archive_record_state *state);
-XXFC_API bool xx_nid_unpack_current_archive_record(
-    Abstractformat *self, xx_archive_record_state *state, xx_pd_struct *pd);
-XXFC_API bool xx_nid_archive_record_move_to_next(
-    Abstractformat *self, xx_archive_record_state *state, xx_pd_struct *pd);
-XXFC_API void xx_nid_free_archive_records_reading(
-    Abstractformat *self, xx_archive_record_state *state);
+XXFC_API xx_archive_record_state *xx_nid_create_archive_records_reading(Abstractformat *self, const xx_list_s *options, xx_pd_struct *pd);
+XXFC_API const xx_archive_record *xx_nid_get_current_archive_record(Abstractformat *self, xx_archive_record_state *state);
+XXFC_API bool xx_nid_unpack_current_archive_record(Abstractformat *self, xx_archive_record_state *state, xx_pd_struct *pd);
+XXFC_API bool xx_nid_archive_record_move_to_next(Abstractformat *self, xx_archive_record_state *state, xx_pd_struct *pd);
+XXFC_API void xx_nid_free_archive_records_reading(Abstractformat *self, xx_archive_record_state *state);
 
 XXFC_API uint64_t xx_nid_get_number_of_records(const xx_nid *archive);
 XXFC_API int64_t xx_nid_get_archive_size(const xx_nid *archive);
 
-static inline Abstractformat *xx_nid_to_format(xx_nid *archive) {
+static inline Abstractformat *xx_nid_to_format(xx_nid *archive)
+{
     return archive ? &archive->format : NULL;
 }
 

@@ -46,11 +46,17 @@ static bool rd_refill(lzma_range_dec *rd)
     if (!rd->ibuf) {
         if (!rd->ibuf_capacity) rd->ibuf_capacity = xx_get_file_buffer_size();
         rd->ibuf = (uint8_t *)xx_mem_alloc(rd->ibuf_capacity);
-        if (!rd->ibuf) { rd->error = true; return false; }
+        if (!rd->ibuf) {
+            rd->error = true;
+            return false;
+        }
     }
     size_t want = rd->ibuf_capacity;
     if (rd->remaining >= 0) {
-        if (rd->remaining == 0) { rd->eof = true; return false; }
+        if (rd->remaining == 0) {
+            rd->eof = true;
+            return false;
+        }
         if ((uint64_t)want > (uint64_t)rd->remaining) want = (size_t)rd->remaining;
     }
 
@@ -60,9 +66,16 @@ static bool rd_refill(lzma_range_dec *rd)
     } else {
         size_t avail = rd->mem_size - rd->mem_pos;
         got = avail == 0 ? 0 : (ssize_t)(avail < want ? avail : want);
-        if (got > 0) { xx_rt_memcpy(rd->ibuf, rd->mem + rd->mem_pos, (size_t)got); rd->mem_pos += (size_t)got; }
+        if (got > 0) {
+            xx_rt_memcpy(rd->ibuf, rd->mem + rd->mem_pos, (size_t)got);
+            rd->mem_pos += (size_t)got;
+        }
     }
-    if (got <= 0 || (size_t)got > want) { rd->eof = true; rd->error = true; return false; }
+    if (got <= 0 || (size_t)got > want) {
+        rd->eof = true;
+        rd->error = true;
+        return false;
+    }
     if (rd->remaining >= 0) rd->remaining -= got;
     rd->ibuf_pos = 0;
     rd->ibuf_len = (size_t)got;
@@ -71,7 +84,10 @@ static bool rd_refill(lzma_range_dec *rd)
 
 static XX_LZMA_INLINE uint8_t rd_byte(lzma_range_dec *rd)
 {
-    if (!rd_refill(rd)) { rd->error = true; return 0; }
+    if (!rd_refill(rd)) {
+        rd->error = true;
+        return 0;
+    }
     return rd->ibuf[rd->ibuf_pos++];
 }
 
@@ -81,13 +97,15 @@ static uint64_t rd_bytes_left(const lzma_range_dec *rd)
     return buffered + (rd->remaining > 0 ? (uint64_t)rd->remaining : 0u);
 }
 
-static bool rd_read_exact(lzma_range_dec *rd, uint8_t *data, size_t size,
-                          xx_pd_struct *pd, const xx_lzma_platform *platform)
+static bool rd_read_exact(lzma_range_dec *rd, uint8_t *data, size_t size, xx_pd_struct *pd, const xx_lzma_platform *platform)
 {
     while (size != 0) {
         size_t amount;
         if (pd && xx_pd_is_stopped(pd)) return false;
-        if (!rd_refill(rd)) { rd->error = true; return false; }
+        if (!rd_refill(rd)) {
+            rd->error = true;
+            return false;
+        }
         amount = rd->ibuf_len - rd->ibuf_pos;
         if (amount > size) amount = size;
         if (pd && amount > 4096) amount = 4096;
@@ -99,34 +117,32 @@ static bool rd_read_exact(lzma_range_dec *rd, uint8_t *data, size_t size,
     return true;
 }
 
-static bool lzma_rd_init_sized(lzma_range_dec *rd, xx_io_device *dev,
-                              const uint8_t *mem, size_t mem_size,
-                              int64_t remaining, size_t capacity)
+static bool lzma_rd_init_sized(lzma_range_dec *rd, xx_io_device *dev, const uint8_t *mem, size_t mem_size, int64_t remaining, size_t capacity)
 {
     xx_rt_memset(rd, 0, sizeof(*rd));
-    rd->dev       = dev;
-    rd->mem       = mem;
-    rd->mem_size  = mem_size;
+    rd->dev = dev;
+    rd->mem = mem;
+    rd->mem_size = mem_size;
     rd->remaining = remaining;
-    rd->range     = 0xFFFFFFFFu;
+    rd->range = 0xFFFFFFFFu;
     rd->ibuf_capacity = capacity;
-    if ((!dev && !mem) || remaining < 5 ||
-        (mem && (uint64_t)remaining > (uint64_t)mem_size)) return false;
+    if ((!dev && !mem) || remaining < 5 || (mem && (uint64_t)remaining > (uint64_t)mem_size)) return false;
     /* A raw LZMA range stream starts with a zero byte. */
-    if (rd_byte(rd) != 0 || rd->error) { lzma_rd_free(rd); return false; }
-    rd->code  = ((uint32_t)rd_byte(rd) << 24) |
-                ((uint32_t)rd_byte(rd) << 16) |
-                ((uint32_t)rd_byte(rd) << 8)  |
-                 (uint32_t)rd_byte(rd);
-    if (rd->error) { lzma_rd_free(rd); return false; }
+    if (rd_byte(rd) != 0 || rd->error) {
+        lzma_rd_free(rd);
+        return false;
+    }
+    rd->code = ((uint32_t)rd_byte(rd) << 24) | ((uint32_t)rd_byte(rd) << 16) | ((uint32_t)rd_byte(rd) << 8) | (uint32_t)rd_byte(rd);
+    if (rd->error) {
+        lzma_rd_free(rd);
+        return false;
+    }
     return true;
 }
 
-bool lzma_rd_init(lzma_range_dec *rd, xx_io_device *dev,
-                  const uint8_t *mem, size_t mem_size, int64_t remaining)
+bool lzma_rd_init(lzma_range_dec *rd, xx_io_device *dev, const uint8_t *mem, size_t mem_size, int64_t remaining)
 {
-    return lzma_rd_init_sized(rd, dev, mem, mem_size, remaining,
-                              xx_get_file_buffer_size());
+    return lzma_rd_init_sized(rd, dev, mem, mem_size, remaining, xx_get_file_buffer_size());
 }
 
 void lzma_rd_free(lzma_range_dec *rd)
@@ -141,7 +157,7 @@ static XX_LZMA_INLINE void rd_normalise(lzma_range_dec *rd)
 {
     if (rd->range < RC_TOP_VALUE) {
         rd->range <<= 8;
-        rd->code   = (rd->code << 8) | rd_byte(rd);
+        rd->code = (rd->code << 8) | rd_byte(rd);
     }
 }
 
@@ -153,8 +169,7 @@ static XX_LZMA_INLINE int rd_bit(lzma_range_dec *rd, lzma_prob *prob)
     const uint32_t mask = 0U - (unsigned)bit;
     rd->range = (bound & ~mask) | ((range - bound) & mask);
     rd->code = code - (bound & mask);
-    *prob = (lzma_prob)(value + (((RC_BIT_MODEL_TOTAL - value) >> RC_MOVE_BITS) & ~mask) -
-                                ((value >> RC_MOVE_BITS) & mask));
+    *prob = (lzma_prob)(value + (((RC_BIT_MODEL_TOTAL - value) >> RC_MOVE_BITS) & ~mask) - ((value >> RC_MOVE_BITS) & mask));
     rd_normalise(rd);
     return bit;
 }
@@ -162,8 +177,7 @@ static XX_LZMA_INLINE int rd_bit(lzma_range_dec *rd, lzma_prob *prob)
 static uint32_t rd_bittree(lzma_range_dec *rd, lzma_prob *probs, int n_bits)
 {
     uint32_t m = 1;
-    for (int i = 0; i < n_bits; i++)
-        m = (m << 1) | rd_bit(rd, probs + m);
+    for (int i = 0; i < n_bits; i++) m = (m << 1) | rd_bit(rd, probs + m);
     return m - (1u << n_bits);
 }
 
@@ -183,7 +197,7 @@ static uint32_t rd_direct(lzma_range_dec *rd, int n_bits)
     uint32_t result = 0;
     for (int i = n_bits - 1; i >= 0; i--) {
         rd->range >>= 1;
-        rd->code  -= rd->range;
+        rd->code -= rd->range;
         uint32_t t = (uint32_t)(-(int32_t)(rd->code >> 31));
         rd->code += rd->range & t;
         result |= ((t + 1) & 1u) << i;
@@ -202,14 +216,11 @@ bool lzma_parse_props(const uint8_t *props, size_t props_size, lzma_props *out)
     int d = props[0];
     if (d >= 9 * 5 * 5) return false;
     out->pb = d / (9 * 5);
-    d      -= out->pb * 9 * 5;
+    d -= out->pb * 9 * 5;
     out->lp = d / 9;
     out->lc = d - out->lp * 9;
     if (out->lc + out->lp > 4) return false;
-    uint32_t ds = (uint32_t)props[1]        |
-                  ((uint32_t)props[2] << 8)  |
-                  ((uint32_t)props[3] << 16) |
-                  ((uint32_t)props[4] << 24);
+    uint32_t ds = (uint32_t)props[1] | ((uint32_t)props[2] << 8) | ((uint32_t)props[3] << 16) | ((uint32_t)props[4] << 24);
     if (ds > XX_LZMA_MAX_DICT_SIZE) return false;
     /* Round up to power of 2 (minimum 4096) */
     uint32_t real_ds = 4096;
@@ -240,8 +251,7 @@ static void lzma_dec_reset_model(lzma_decoder *dec)
     probs_init(dec->is_rep_g0, LZMA_NUM_STATES);
     probs_init(dec->is_rep_g1, LZMA_NUM_STATES);
     probs_init(dec->is_rep_g2, LZMA_NUM_STATES);
-    for (int i = 0; i < LZMA_NUM_LEN_TO_POS_STATES; i++)
-        probs_init(dec->pos_slot[i], 1 << 6);
+    for (int i = 0; i < LZMA_NUM_LEN_TO_POS_STATES; i++) probs_init(dec->pos_slot[i], 1 << 6);
     probs_init(dec->pos_decoders, LZMA_FULL_DISTANCES - LZMA_NUM_LEN_TO_POS_STATES * 4);
     probs_init(dec->pos_align, 1 << LZMA_NUM_ALIGN_BITS);
     for (int which = 0; which < 2; which++) {
@@ -265,8 +275,7 @@ static void lzma_dec_reset_dictionary(lzma_decoder *dec)
 
 static bool lzma_dec_set_lclppb(lzma_decoder *dec, int lc, int lp, int pb)
 {
-    if (lc < 0 || lp < 0 || pb < 0 || lc > 8 || lp > 4 || pb > 4 || lc + lp > 4)
-        return false;
+    if (lc < 0 || lp < 0 || pb < 0 || lc > 8 || lp > 4 || pb > 4 || lc + lp > 4) return false;
     if (dec->props.lc != lc || dec->props.lp != lp) {
         size_t count = (size_t)0x300 << (lc + lp);
         lzma_prob *replacement = (lzma_prob *)xx_mem_alloc(count * sizeof(lzma_prob));
@@ -287,8 +296,7 @@ static void lzma_dec_note_output(lzma_decoder *dec)
 
 static uint32_t lzma_dict_index(const lzma_decoder *dec, uint64_t position)
 {
-    if ((dec->dict_limit & (dec->dict_limit - 1u)) == 0)
-        return (uint32_t)position & (dec->dict_limit - 1u);
+    if ((dec->dict_limit & (dec->dict_limit - 1u)) == 0) return (uint32_t)position & (dec->dict_limit - 1u);
     return (uint32_t)(position % dec->dict_limit);
 }
 
@@ -302,10 +310,17 @@ lzma_decoder *lzma_dec_create(const lzma_props *props)
     dec->props = *props;
 
     dec->lit_probs = (lzma_prob *)xx_mem_alloc(total_lit);
-    if (!dec->lit_probs) { xx_mem_free(dec); return NULL; }
+    if (!dec->lit_probs) {
+        xx_mem_free(dec);
+        return NULL;
+    }
 
     dec->dict = (uint8_t *)xx_mem_alloc(props->dict_size);
-    if (!dec->dict) { xx_mem_free(dec->lit_probs); xx_mem_free(dec); return NULL; }
+    if (!dec->dict) {
+        xx_mem_free(dec->lit_probs);
+        xx_mem_free(dec);
+        return NULL;
+    }
 
     xx_rt_memset(dec->dict, 0, props->dict_size);
 
@@ -329,8 +344,7 @@ void lzma_dec_free(lzma_decoder *dec)
  * Length decoder
  * ========================================================================= */
 
-static uint32_t lzma_decode_len(lzma_range_dec *rd, lzma_decoder *dec,
-                                int which, int pos_state)
+static uint32_t lzma_decode_len(lzma_range_dec *rd, lzma_decoder *dec, int which, int pos_state)
 {
     if (!rd_bit(rd, &dec->len_choice[which])) {
         return LZMA_MATCH_MIN_LEN + rd_bittree(rd, dec->len_low[which][pos_state], 3);
@@ -347,14 +361,14 @@ static uint32_t lzma_decode_len(lzma_range_dec *rd, lzma_decoder *dec,
 
 typedef struct {
     xx_io_device *dev;
-    uint8_t      *mem;
-    size_t        mem_cap;
-    size_t        mem_written;
-    uint64_t      total_written;
-    uint8_t      *obuf;
-    size_t        obuf_capacity;
-    size_t        obuf_pos;
-    bool          error;
+    uint8_t *mem;
+    size_t mem_cap;
+    size_t mem_written;
+    uint64_t total_written;
+    uint8_t *obuf;
+    size_t obuf_capacity;
+    size_t obuf_pos;
+    bool error;
     xx_pd_struct *pd;
 } lzma_out;
 
@@ -364,7 +378,10 @@ static bool lzma_out_flush(lzma_out *o)
     if (o->dev) {
         size_t done = 0;
         while (done < o->obuf_pos) {
-            if (o->pd && xx_pd_is_stopped(o->pd)) { o->error = true; return false; }
+            if (o->pd && xx_pd_is_stopped(o->pd)) {
+                o->error = true;
+                return false;
+            }
             ssize_t amount = xx_io_write(o->dev, o->obuf + done, o->obuf_pos - done);
             if (amount <= 0 || (size_t)amount > o->obuf_pos - done) {
                 o->error = true;
@@ -390,13 +407,13 @@ static bool lzma_out_flush(lzma_out *o)
 
 static bool lzma_out_byte(lzma_out *o, uint8_t b)
 {
-    if (o->obuf_pos >= o->obuf_capacity) if (!lzma_out_flush(o)) return false;
+    if (o->obuf_pos >= o->obuf_capacity)
+        if (!lzma_out_flush(o)) return false;
     o->obuf[o->obuf_pos++] = b;
     return true;
 }
 
-static bool lzma_out_block(lzma_out *out, const uint8_t *data, size_t size,
-                           const xx_lzma_platform *platform)
+static bool lzma_out_block(lzma_out *out, const uint8_t *data, size_t size, const xx_lzma_platform *platform)
 {
     while (size != 0) {
         size_t amount = out->obuf_capacity - out->obuf_pos;
@@ -418,9 +435,7 @@ static bool lzma_out_block(lzma_out *out, const uint8_t *data, size_t size,
  * LZMA block decompression
  * ========================================================================= */
 
-static bool lzma_decode_block(lzma_range_dec *rd, lzma_decoder *dec,
-                              int64_t uncomp_size, lzma_out *out,
-                              xx_pd_struct *pd)
+static bool lzma_decode_block(lzma_range_dec *rd, lzma_decoder *dec, int64_t uncomp_size, lzma_out *out, xx_pd_struct *pd)
 {
     int pb_mask = (1 << dec->props.pb) - 1;
     int lp_mask = (1 << dec->props.lp) - 1;
@@ -436,8 +451,7 @@ static bool lzma_decode_block(lzma_range_dec *rd, lzma_decoder *dec,
         if (!rd_bit(rd, &dec->is_match[state][pos_state])) {
             /* Literal */
             uint8_t prev = dec->dict_filled ? dec->dict[lzma_dict_index(dec, dp - 1)] : 0;
-            uint32_t lit_ctx = (((uint32_t)dp & (uint32_t)lp_mask) << dec->props.lc) |
-                               ((uint32_t)prev >> (8 - dec->props.lc));
+            uint32_t lit_ctx = (((uint32_t)dp & (uint32_t)lp_mask) << dec->props.lc) | ((uint32_t)prev >> (8 - dec->props.lc));
             lzma_prob *lit = dec->lit_probs + (size_t)lit_ctx * 0x300u;
             uint32_t sym;
             if (rd->error) return false;
@@ -446,8 +460,7 @@ static bool lzma_decode_block(lzma_range_dec *rd, lzma_decoder *dec,
                 sym = rd_bittree(rd, lit, 8);
             } else {
                 /* literal with match byte */
-                if (dec->rep[0] == 0 || dec->rep[0] > dec->dict_filled ||
-                    dec->rep[0] > dec->dict_limit) return false;
+                if (dec->rep[0] == 0 || dec->rep[0] > dec->dict_filled || dec->rep[0] > dec->dict_limit) return false;
                 uint8_t match_byte = dec->dict[lzma_dict_index(dec, dp - dec->rep[0])];
                 sym = 1;
                 do {
@@ -478,8 +491,7 @@ static bool lzma_decode_block(lzma_range_dec *rd, lzma_decoder *dec,
             /* Match */
             uint32_t dist;
             len = lzma_decode_len(rd, dec, 0, pos_state);
-            uint32_t len_state = (len - LZMA_MATCH_MIN_LEN < LZMA_NUM_LEN_TO_POS_STATES)
-                                 ? len - LZMA_MATCH_MIN_LEN : LZMA_NUM_LEN_TO_POS_STATES - 1;
+            uint32_t len_state = (len - LZMA_MATCH_MIN_LEN < LZMA_NUM_LEN_TO_POS_STATES) ? len - LZMA_MATCH_MIN_LEN : LZMA_NUM_LEN_TO_POS_STATES - 1;
             uint32_t pos_slot = rd_bittree(rd, dec->pos_slot[len_state], 6);
             if (pos_slot < 4) {
                 dist = pos_slot;
@@ -497,22 +509,21 @@ static bool lzma_decode_block(lzma_range_dec *rd, lzma_decoder *dec,
                     }
                 }
             }
-            dec->rep[3] = dec->rep[2]; dec->rep[2] = dec->rep[1]; dec->rep[1] = dec->rep[0];
+            dec->rep[3] = dec->rep[2];
+            dec->rep[2] = dec->rep[1];
+            dec->rep[1] = dec->rep[0];
             dec->rep[0] = dist + 1;
-            dec->state  = (state < 7) ? 7 : 10;
+            dec->state = (state < 7) ? 7 : 10;
         } else {
             /* Rep match */
             if (!rd_bit(rd, &dec->is_rep_g0[state])) {
                 if (!rd_bit(rd, &dec->is_rep0_long[state][pos_state])) {
                     /* Short rep */
-                    if (dec->rep[0] == 0 || dec->rep[0] > dec->dict_filled ||
-                        dec->rep[0] > dec->dict_limit || rd->error) return false;
-                    dec->dict[lzma_dict_index(dec, dec->dict_pos)] =
-                        dec->dict[lzma_dict_index(dec, dec->dict_pos - dec->rep[0])];
+                    if (dec->rep[0] == 0 || dec->rep[0] > dec->dict_filled || dec->rep[0] > dec->dict_limit || rd->error) return false;
+                    dec->dict[lzma_dict_index(dec, dec->dict_pos)] = dec->dict[lzma_dict_index(dec, dec->dict_pos - dec->rep[0])];
                     dec->dict_pos++;
                     lzma_dec_note_output(dec);
-                    if (!lzma_out_byte(out, dec->dict[lzma_dict_index(dec, dec->dict_pos - 1)]))
-                        return false;
+                    if (!lzma_out_byte(out, dec->dict[lzma_dict_index(dec, dec->dict_pos - 1)])) return false;
                     dec->state = (state < 7) ? 9 : 11;
                     total_out++;
                     continue;
@@ -520,25 +531,33 @@ static bool lzma_decode_block(lzma_range_dec *rd, lzma_decoder *dec,
                 len = lzma_decode_len(rd, dec, 1, pos_state);
                 dec->state = (state < 7) ? 8 : 11;
             } else if (!rd_bit(rd, &dec->is_rep_g1[state])) {
-                uint32_t tmp = dec->rep[1]; dec->rep[1] = dec->rep[0]; dec->rep[0] = tmp;
+                uint32_t tmp = dec->rep[1];
+                dec->rep[1] = dec->rep[0];
+                dec->rep[0] = tmp;
                 len = lzma_decode_len(rd, dec, 1, pos_state);
                 dec->state = (state < 7) ? 8 : 11;
             } else if (!rd_bit(rd, &dec->is_rep_g2[state])) {
-                uint32_t tmp = dec->rep[2]; dec->rep[2] = dec->rep[1]; dec->rep[1] = dec->rep[0]; dec->rep[0] = tmp;
+                uint32_t tmp = dec->rep[2];
+                dec->rep[2] = dec->rep[1];
+                dec->rep[1] = dec->rep[0];
+                dec->rep[0] = tmp;
                 len = lzma_decode_len(rd, dec, 1, pos_state);
                 dec->state = (state < 7) ? 8 : 11;
             } else {
-                uint32_t tmp = dec->rep[3]; dec->rep[3] = dec->rep[2]; dec->rep[2] = dec->rep[1];
-                dec->rep[1] = dec->rep[0]; dec->rep[0] = tmp;
+                uint32_t tmp = dec->rep[3];
+                dec->rep[3] = dec->rep[2];
+                dec->rep[2] = dec->rep[1];
+                dec->rep[1] = dec->rep[0];
+                dec->rep[0] = tmp;
                 len = lzma_decode_len(rd, dec, 1, pos_state);
                 dec->state = (state < 7) ? 8 : 11;
             }
         }
 
         /* Copy match */
-        if (rd->error || dec->rep[0] == 0 || dec->rep[0] > dec->dict_filled ||
-            dec->rep[0] > dec->dict_limit ||
-            (uncomp_size >= 0 && (int64_t)len > uncomp_size - total_out)) return false;
+        if (rd->error || dec->rep[0] == 0 || dec->rep[0] > dec->dict_filled || dec->rep[0] > dec->dict_limit ||
+            (uncomp_size >= 0 && (int64_t)len > uncomp_size - total_out))
+            return false;
         for (uint32_t j = 0; j < len; j++) {
             uint8_t b = dec->dict[lzma_dict_index(dec, dec->dict_pos - dec->rep[0])];
             dec->dict[lzma_dict_index(dec, dec->dict_pos++)] = b;
@@ -554,25 +573,24 @@ static bool lzma_decode_block(lzma_range_dec *rd, lzma_decoder *dec,
  * Public LZMA decompression entry point
  * ========================================================================= */
 
-bool xx_lzma_decompress_stream(lzma_range_dec *rd,
-                               const lzma_props *props,
-                               int64_t uncomp_size,
-                               xx_io_device *dst_dev,
-                               uint8_t *mem_dst, size_t mem_cap, size_t *out_written,
-                               xx_pd_struct *pd)
+bool xx_lzma_decompress_stream(lzma_range_dec *rd, const lzma_props *props, int64_t uncomp_size, xx_io_device *dst_dev, uint8_t *mem_dst, size_t mem_cap,
+                               size_t *out_written, xx_pd_struct *pd)
 {
     lzma_decoder *dec = lzma_dec_create(props);
     if (!dec) return false;
 
     lzma_out out;
     xx_rt_memset(&out, 0, sizeof(out));
-    out.dev     = dst_dev;
-    out.mem     = mem_dst;
+    out.dev = dst_dev;
+    out.mem = mem_dst;
     out.mem_cap = mem_cap;
-    out.pd      = pd;
+    out.pd = pd;
     out.obuf_capacity = rd->ibuf_capacity ? rd->ibuf_capacity : xx_get_file_buffer_size();
     out.obuf = (uint8_t *)xx_mem_alloc(out.obuf_capacity);
-    if (!out.obuf) { lzma_dec_free(dec); return false; }
+    if (!out.obuf) {
+        lzma_dec_free(dec);
+        return false;
+    }
 
     bool ok = lzma_decode_block(rd, dec, uncomp_size, &out, pd);
 
@@ -589,11 +607,7 @@ bool xx_lzma_decompress_stream(lzma_range_dec *rd,
  * LZMA2 decompression
  * ========================================================================= */
 
-bool xx_lzma2_decompress_stream(lzma_range_dec *rd,
-                                uint8_t props2_byte,
-                                xx_io_device *dst_dev,
-                                uint8_t *mem_dst, size_t mem_cap, size_t *out_written,
-                                xx_pd_struct *pd)
+bool xx_lzma2_decompress_stream(lzma_range_dec *rd, uint8_t props2_byte, xx_io_device *dst_dev, uint8_t *mem_dst, size_t mem_cap, size_t *out_written, xx_pd_struct *pd)
 {
     const xx_lzma_platform *platform = xx_lzma_platform_select();
     uint32_t logical_dict;
@@ -609,9 +623,7 @@ bool xx_lzma2_decompress_stream(lzma_range_dec *rd,
     lzma_props props;
 
     if (out_written) *out_written = 0;
-    if (!rd || (!dst_dev && !mem_dst && mem_cap != 0) ||
-        !xx_lzma2_parse_property(props2_byte, &logical_dict) || rd_bytes_left(rd) == 0)
-        return false;
+    if (!rd || (!dst_dev && !mem_dst && mem_cap != 0) || !xx_lzma2_parse_property(props2_byte, &logical_dict) || rd_bytes_left(rd) == 0) return false;
     xx_rt_memset(&out, 0, sizeof(out));
     /* LZMA2 callers initialise rd manually, before any range prefix exists. */
     if (!rd->ibuf_capacity) rd->ibuf_capacity = xx_get_file_buffer_size();
@@ -677,10 +689,8 @@ bool xx_lzma2_decompress_stream(lzma_range_dec *rd,
                 dec->dict_pos += amount;
                 at += amount;
             }
-            if (chunk_size >= dec->dict_limit - dec->dict_filled)
-                dec->dict_filled = dec->dict_limit;
-            else
-                dec->dict_filled += chunk_size;
+            if (chunk_size >= dec->dict_limit - dec->dict_filled) dec->dict_filled = dec->dict_limit;
+            else dec->dict_filled += chunk_size;
             if (!lzma_out_block(&out, packed, chunk_size, platform)) goto cleanup;
             continue;
         }
@@ -694,8 +704,7 @@ bool xx_lzma2_decompress_stream(lzma_range_dec *rd,
             lzma_range_dec chunk_rd;
 
             if (!rd_read_exact(rd, header, sizeof(header), pd, platform)) goto cleanup;
-            unpack_size = (((uint32_t)ctrl & 0x1Fu) << 16) |
-                          ((uint32_t)header[0] << 8) | header[1];
+            unpack_size = (((uint32_t)ctrl & 0x1Fu) << 16) | ((uint32_t)header[0] << 8) | header[1];
             packed_size = ((uint32_t)header[2] << 8) | header[3];
             unpack_size++;
             packed_size++;
@@ -728,10 +737,8 @@ bool xx_lzma2_decompress_stream(lzma_range_dec *rd,
                 goto cleanup;
             }
 
-            if (packed_size < RC_INIT_BYTES ||
-                !rd_read_exact(rd, packed, packed_size, pd, platform) ||
-                !lzma_rd_init_sized(&chunk_rd, NULL, packed, packed_size,
-                                      (int64_t)packed_size, rd->ibuf_capacity))
+            if (packed_size < RC_INIT_BYTES || !rd_read_exact(rd, packed, packed_size, pd, platform) ||
+                !lzma_rd_init_sized(&chunk_rd, NULL, packed, packed_size, (int64_t)packed_size, rd->ibuf_capacity))
                 goto cleanup;
             {
                 bool chunk_ok = lzma_decode_block(&chunk_rd, dec, (int64_t)unpack_size, &out, pd);

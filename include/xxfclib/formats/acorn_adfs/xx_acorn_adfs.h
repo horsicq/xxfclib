@@ -29,8 +29,10 @@
 extern "C" {
 #endif
 typedef enum xx_acorn_adfs_variant_e {
-    XX_ACORN_ADFS_AUTO = 0, XX_ACORN_ADFS_S = 640,
-    XX_ACORN_ADFS_M = 1280, XX_ACORN_ADFS_L = 2560
+    XX_ACORN_ADFS_AUTO = 0,
+    XX_ACORN_ADFS_S = 640,
+    XX_ACORN_ADFS_M = 1280,
+    XX_ACORN_ADFS_L = 2560
 } xx_acorn_adfs_variant;
 typedef enum xx_acorn_adfs_order_e {
     XX_ACORN_ADFS_ORDER_AUTO = 0,
@@ -48,8 +50,7 @@ typedef struct xx_acorn_adfs_s {
 typedef xx_acorn_adfs xx_acorn_adfs_t;
 typedef xx_acorn_adfs XACORN_ADFS;
 XXFC_API void xx_acorn_adfs_init(xx_acorn_adfs *, xx_io_device *, int64_t);
-XXFC_API void xx_acorn_adfs_init_ex(xx_acorn_adfs *, xx_io_device *, int64_t,
-    xx_acorn_adfs_variant, xx_acorn_adfs_order);
+XXFC_API void xx_acorn_adfs_init_ex(xx_acorn_adfs *, xx_io_device *, int64_t, xx_acorn_adfs_variant, xx_acorn_adfs_order);
 XXFC_API xx_acorn_adfs *xx_acorn_adfs_create(xx_io_device *, int64_t);
 XXFC_API void xx_acorn_adfs_destroy(xx_acorn_adfs *);
 XXFC_API void xx_acorn_adfs_free(xx_acorn_adfs *);
@@ -63,7 +64,10 @@ XXFC_API bool xx_acorn_adfs_archive_record_move_to_next(Abstractformat *, xx_arc
 XXFC_API bool xx_acorn_adfs_unpack_current_archive_record(Abstractformat *, xx_archive_record_state *, xx_pd_struct *);
 XXFC_API bool xx_acorn_adfs_extract_record_to_device(Abstractformat *, xx_archive_record_state *, xx_io_device *, xx_pd_struct *);
 XXFC_API void xx_acorn_adfs_free_archive_records_reading(Abstractformat *, xx_archive_record_state *);
-static inline Abstractformat *xx_acorn_adfs_to_format(xx_acorn_adfs *v) { return v ? &v->format : NULL; }
+static inline Abstractformat *xx_acorn_adfs_to_format(xx_acorn_adfs *v)
+{
+    return v ? &v->format : NULL;
+}
 #ifdef __cplusplus
 }
 #endif

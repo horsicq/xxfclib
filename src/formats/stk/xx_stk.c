@@ -74,17 +74,15 @@ static void xx_stk_vtable_destroy(Abstractformat *self);
 
 /* ------------------------------------------------------------- helpers -- */
 
-static bool xx_stk_read_at(Abstractformat *self, int64_t offset,
-                              uint8_t *buffer, size_t size) {
+static bool xx_stk_read_at(Abstractformat *self, int64_t offset, uint8_t *buffer, size_t size)
+{
     size_t completed = 0U;
 
-    if (!self || !self->device || offset < 0 ||
-        xx_io_seek64(self->device, offset, SEEK_SET) != 0) {
+    if (!self || !self->device || offset < 0 || xx_io_seek64(self->device, offset, SEEK_SET) != 0) {
         return false;
     }
     while (completed < size) {
-        ssize_t received =
-            xx_io_read(self->device, buffer + completed, size - completed);
+        ssize_t received = xx_io_read(self->device, buffer + completed, size - completed);
         if (received <= 0 || (size_t)received > size - completed) {
             return false;
         }
@@ -93,14 +91,14 @@ static bool xx_stk_read_at(Abstractformat *self, int64_t offset,
     return true;
 }
 
-static bool xx_stk_range_within(int64_t total, int64_t offset,
-                                   int64_t size) {
-    return offset >= 0 && size >= 0 && offset <= total &&
-           size <= total - offset;
+static bool xx_stk_range_within(int64_t total, int64_t offset, int64_t size)
+{
+    return offset >= 0 && size >= 0 && offset <= total && size <= total - offset;
 }
 
 /* Refuse anything that would escape the extraction directory. */
-static bool xx_stk_path_safe(const char *name) {
+static bool xx_stk_path_safe(const char *name)
+{
     const char *cursor = name;
 
     if (!name || !name[0] || name[0] == '/') return false;
@@ -115,7 +113,8 @@ static bool xx_stk_path_safe(const char *name) {
     return true;
 }
 
-static void xx_stk_stream_free(void *pointer) {
+static void xx_stk_stream_free(void *pointer)
+{
     xx_stk_stream *stream = (xx_stk_stream *)pointer;
     size_t index;
 
@@ -128,17 +127,15 @@ static void xx_stk_stream_free(void *pointer) {
 }
 
 /* Append a member, taking ownership of @p name. */
-static bool xx_stk_add(xx_stk_stream *stream,
-                          const xx_stk_member *member) {
-    xx_stk_member *grown = (xx_stk_member *)xx_mem_realloc(
-        stream->items, sizeof(*grown) * (stream->count + 1U));
+static bool xx_stk_add(xx_stk_stream *stream, const xx_stk_member *member)
+{
+    xx_stk_member *grown = (xx_stk_member *)xx_mem_realloc(stream->items, sizeof(*grown) * (stream->count + 1U));
 
     if (!grown) return false;
     stream->items = grown;
     stream->items[stream->count++] = *member;
     return true;
 }
-
 
 #define XX_STK_MAX_MEMBERS 65535
 #define XX_STK_CLASSIC_MAX_MEMBERS 20000
@@ -155,12 +152,12 @@ static bool xx_stk_add(xx_stk_stream *stream,
  * call into each other's helpers. */
 static bool xx_stk_name_byte_valid(uint8_t value);
 static int64_t xx_stk_copy_name(const uint8_t *source, int64_t max_length, uint8_t *target);
-static bool xx_stk_publish(xx_stk_stream *stream, const char *name, int64_t header_offset, int64_t header_size, int64_t data_offset, int64_t packed, int64_t plain, uint32_t method);
+static bool xx_stk_publish(xx_stk_stream *stream, const char *name, int64_t header_offset, int64_t header_size, int64_t data_offset, int64_t packed, int64_t plain,
+                           uint32_t method);
 static xx_stk_stream *xx_stk_parse_classic(Abstractformat *self, int64_t span, xx_pd_struct *pd);
 static xx_stk_stream *xx_stk_parse_stk2(Abstractformat *self, int64_t span, xx_pd_struct *pd);
 static xx_stk_stream *xx_stk_parse(Abstractformat *self, xx_pd_struct *pd);
 static bool xx_stk_decode(Abstractformat *self, const xx_stk_member *member, uint8_t **out, size_t *out_size, xx_pd_struct *pd);
-
 
 /* The classic generation stores its count in a u16 but the reference reader
  * refuses anything above 20000: the format has no signature, so a plausible
@@ -173,14 +170,15 @@ static bool xx_stk_decode(Abstractformat *self, const xx_stk_member *member, uin
  * signature is far more likely to be a false positive than an exotic name.
  * For the classic generation this is one of only three checks standing
  * between this reader and any file whose first two bytes look like a count. */
-static bool xx_stk_name_byte_valid(uint8_t value) {
+static bool xx_stk_name_byte_valid(uint8_t value)
+{
     return value >= 0x20U && value <= 0x7EU;
 }
 
 /* Copy a NUL-terminated or field-filling DOS name out of a directory entry,
  * rewriting the DOS separator. Returns the length, or 0 to reject. */
-static int64_t xx_stk_copy_name(const uint8_t *source, int64_t max_length,
-                                uint8_t *target) {
+static int64_t xx_stk_copy_name(const uint8_t *source, int64_t max_length, uint8_t *target)
+{
     int64_t index;
 
     for (index = 0; index < max_length; ++index) {
@@ -195,10 +193,9 @@ static int64_t xx_stk_copy_name(const uint8_t *source, int64_t max_length,
     return index;
 }
 
-static bool xx_stk_publish(xx_stk_stream *stream, const char *name,
-                           int64_t header_offset, int64_t header_size,
-                           int64_t data_offset, int64_t packed,
-                           int64_t plain, uint32_t method) {
+static bool xx_stk_publish(xx_stk_stream *stream, const char *name, int64_t header_offset, int64_t header_size, int64_t data_offset, int64_t packed, int64_t plain,
+                           uint32_t method)
+{
     xx_stk_member member;
     char *copy = xx_str_dup(name);
 
@@ -225,8 +222,8 @@ static bool xx_stk_publish(xx_stk_stream *stream, const char *name,
 }
 
 /* Classic generation: u16 count, then count 22-byte entries. */
-static xx_stk_stream *xx_stk_parse_classic(Abstractformat *self, int64_t span,
-                                           xx_pd_struct *pd) {
+static xx_stk_stream *xx_stk_parse_classic(Abstractformat *self, int64_t span, xx_pd_struct *pd)
+{
     xx_stk_stream *stream = NULL;
     uint8_t entry[XX_STK_ENTRY_SIZE];
     uint8_t count_field[2];
@@ -243,8 +240,7 @@ static xx_stk_stream *xx_stk_parse_classic(Abstractformat *self, int64_t span,
     uint32_t method;
 
     if (span < 2 + XX_STK_ENTRY_SIZE) return NULL;
-    if (!xx_stk_read_at(self, self->base_address, count_field,
-                        sizeof(count_field))) {
+    if (!xx_stk_read_at(self, self->base_address, count_field, sizeof(count_field))) {
         return NULL;
     }
     count = (int64_t)xx_data_get_u16(count_field, 2, 0, false);
@@ -262,8 +258,7 @@ static xx_stk_stream *xx_stk_parse_classic(Abstractformat *self, int64_t span,
     for (index = 0; index < count; ++index) {
         if (pd && xx_pd_is_stopped(pd)) goto fail;
         entry_offset = 2 + index * XX_STK_ENTRY_SIZE;
-        if (!xx_stk_read_at(self, self->base_address + entry_offset, entry,
-                            sizeof(entry))) {
+        if (!xx_stk_read_at(self, self->base_address + entry_offset, entry, sizeof(entry))) {
             goto fail;
         }
         if (xx_stk_copy_name(entry, XX_STK_NAME_SIZE, name) <= 0) goto fail;
@@ -285,10 +280,7 @@ static xx_stk_stream *xx_stk_parse_classic(Abstractformat *self, int64_t span,
             if (!xx_stk_range_within(span, data_offset, stored_size)) {
                 goto fail;
             }
-            if (!xx_stk_publish(stream, (const char *)name,
-                                self->base_address + entry_offset,
-                                XX_STK_ENTRY_SIZE,
-                                self->base_address + data_offset, stored_size,
+            if (!xx_stk_publish(stream, (const char *)name, self->base_address + entry_offset, XX_STK_ENTRY_SIZE, self->base_address + data_offset, stored_size,
                                 stored_size, 0U)) {
                 goto fail;
             }
@@ -296,8 +288,7 @@ static xx_stk_stream *xx_stk_parse_classic(Abstractformat *self, int64_t span,
             /* A compressed chunk is a u32 plaintext size then the LZSS
              * stream, so the chunk must hold at least that prefix. */
             if (!xx_stk_range_within(span, data_offset, 4)) goto fail;
-            if (!xx_stk_read_at(self, self->base_address + data_offset, prefix,
-                                sizeof(prefix))) {
+            if (!xx_stk_read_at(self, self->base_address + data_offset, prefix, sizeof(prefix))) {
                 goto fail;
             }
             plain_size = (int64_t)xx_data_get_u32(prefix, 4, 0, false);
@@ -311,11 +302,8 @@ static xx_stk_stream *xx_stk_parse_classic(Abstractformat *self, int64_t span,
                 stream_size = span - (data_offset + 4);
             }
             if (stream_size < 0) stream_size = 0;
-            if (!xx_stk_publish(stream, (const char *)name,
-                                self->base_address + entry_offset,
-                                XX_STK_ENTRY_SIZE,
-                                self->base_address + data_offset + 4,
-                                stream_size, plain_size, 1U)) {
+            if (!xx_stk_publish(stream, (const char *)name, self->base_address + entry_offset, XX_STK_ENTRY_SIZE, self->base_address + data_offset + 4, stream_size,
+                                plain_size, 1U)) {
                 goto fail;
             }
         }
@@ -330,8 +318,8 @@ fail:
 }
 
 /* STK2 generation: signed header, directory placed after the member data. */
-static xx_stk_stream *xx_stk_parse_stk2(Abstractformat *self, int64_t span,
-                                        xx_pd_struct *pd) {
+static xx_stk_stream *xx_stk_parse_stk2(Abstractformat *self, int64_t span, xx_pd_struct *pd)
+{
     xx_stk_stream *stream = NULL;
     uint8_t header[XX_STK2_HEADER_SIZE];
     uint8_t directory[8];
@@ -362,8 +350,7 @@ static xx_stk_stream *xx_stk_parse_stk2(Abstractformat *self, int64_t span,
      * header, and its first two words must fit. */
     if (directory_offset < XX_STK2_HEADER_SIZE) return NULL;
     if (!xx_stk_range_within(span, directory_offset, 8)) return NULL;
-    if (!xx_stk_read_at(self, self->base_address + directory_offset, directory,
-                        sizeof(directory))) {
+    if (!xx_stk_read_at(self, self->base_address + directory_offset, directory, sizeof(directory))) {
         return NULL;
     }
     count = (int64_t)xx_data_get_u32(directory, 4, 0, false);
@@ -389,8 +376,7 @@ static xx_stk_stream *xx_stk_parse_stk2(Abstractformat *self, int64_t span,
     for (index = 0; index < count; ++index) {
         if (pd && xx_pd_is_stopped(pd)) goto fail;
         record_offset = meta_offset + index * XX_STK2_RECORD_SIZE;
-        if (!xx_stk_read_at(self, self->base_address + record_offset, record,
-                            sizeof(record))) {
+        if (!xx_stk_read_at(self, self->base_address + record_offset, record, sizeof(record))) {
             goto fail;
         }
         name_pointer = (int64_t)xx_data_get_u32(record, 4, 0, false);
@@ -407,11 +393,8 @@ static xx_stk_stream *xx_stk_parse_stk2(Abstractformat *self, int64_t span,
          * dropping a member whose data is perfectly locatable. */
         length = 0;
         if (name_pointer >= name_base && name_pointer < meta_offset) {
-            while (length < XX_STK_MAX_NAME &&
-                   name_pointer + length < meta_offset) {
-                if (!xx_stk_read_at(self,
-                                    self->base_address + name_pointer + length,
-                                    &byte, 1U)) {
+            while (length < XX_STK_MAX_NAME && name_pointer + length < meta_offset) {
+                if (!xx_stk_read_at(self, self->base_address + name_pointer + length, &byte, 1U)) {
                     goto fail;
                 }
                 if (byte == 0U) break;
@@ -424,8 +407,7 @@ static xx_stk_stream *xx_stk_parse_stk2(Abstractformat *self, int64_t span,
             }
         }
         if (length <= 0) {
-            if (xx_rt_snprintf((char *)name, sizeof(name), "file%d",
-                               (int)index) <= 0) {
+            if (xx_rt_snprintf((char *)name, sizeof(name), "file%d", (int)index) <= 0) {
                 goto fail;
             }
         } else {
@@ -440,10 +422,7 @@ static xx_stk_stream *xx_stk_parse_stk2(Abstractformat *self, int64_t span,
             if (!xx_stk_range_within(span, chunk_offset, stored_size)) {
                 goto fail;
             }
-            if (!xx_stk_publish(stream, (const char *)name,
-                                self->base_address + record_offset,
-                                XX_STK2_RECORD_SIZE,
-                                self->base_address + chunk_offset + 4,
+            if (!xx_stk_publish(stream, (const char *)name, self->base_address + record_offset, XX_STK2_RECORD_SIZE, self->base_address + chunk_offset + 4,
                                 stored_size - 4, plain_size, 1U)) {
                 goto fail;
             }
@@ -451,10 +430,7 @@ static xx_stk_stream *xx_stk_parse_stk2(Abstractformat *self, int64_t span,
             if (!xx_stk_range_within(span, chunk_offset, stored_size)) {
                 goto fail;
             }
-            if (!xx_stk_publish(stream, (const char *)name,
-                                self->base_address + record_offset,
-                                XX_STK2_RECORD_SIZE,
-                                self->base_address + chunk_offset, stored_size,
+            if (!xx_stk_publish(stream, (const char *)name, self->base_address + record_offset, XX_STK2_RECORD_SIZE, self->base_address + chunk_offset, stored_size,
                                 stored_size, 0U)) {
                 goto fail;
             }
@@ -473,7 +449,8 @@ fail:
     return NULL;
 }
 
-static xx_stk_stream *xx_stk_parse(Abstractformat *self, xx_pd_struct *pd) {
+static xx_stk_stream *xx_stk_parse(Abstractformat *self, xx_pd_struct *pd)
+{
     uint8_t signature[5];
     int64_t total;
     int64_t span;
@@ -488,16 +465,12 @@ static xx_stk_stream *xx_stk_parse(Abstractformat *self, xx_pd_struct *pd) {
     /* "STK2." is the only signature either generation has. Its absence is not
      * evidence against the classic layout -- that one has none -- so the
      * classic walk is tried whenever the signature is missing. */
-    if (span >= XX_STK2_HEADER_SIZE &&
-        xx_stk_read_at(self, self->base_address, signature,
-                       sizeof(signature)) &&
-        signature[0] == 'S' && signature[1] == 'T' && signature[2] == 'K' &&
-        signature[3] == '2' && signature[4] == '.') {
+    if (span >= XX_STK2_HEADER_SIZE && xx_stk_read_at(self, self->base_address, signature, sizeof(signature)) && signature[0] == 'S' && signature[1] == 'T' &&
+        signature[2] == 'K' && signature[3] == '2' && signature[4] == '.') {
         return xx_stk_parse_stk2(self, span, pd);
     }
     return xx_stk_parse_classic(self, span, pd);
 }
-
 
 /* The classic generation's own compression byte. STK2 has no such field --
  * it infers compression from stored size != plaintext size -- so these two
@@ -512,9 +485,8 @@ static xx_stk_stream *xx_stk_parse(Abstractformat *self, xx_pd_struct *pd) {
  * parse has already stripped the compressed chunk's 4-byte plaintext-size
  * prefix: data_offset points at the LZSS bytes and uncompressed_size holds
  * the value that prefix carried, which is what the codec wants. */
-static bool xx_stk_decode(Abstractformat *self, const xx_stk_member *member,
-                          uint8_t **out, size_t *out_size,
-                          xx_pd_struct *pd) {
+static bool xx_stk_decode(Abstractformat *self, const xx_stk_member *member, uint8_t **out, size_t *out_size, xx_pd_struct *pd)
+{
     uint8_t *packed = NULL;
     uint8_t *plain = NULL;
     size_t packed_size;
@@ -528,12 +500,10 @@ static bool xx_stk_decode(Abstractformat *self, const xx_stk_member *member,
     if (member->compressed_size < 0 || member->uncompressed_size < 0) {
         return false;
     }
-    if (member->compressed_size > XX_STK_MAX_DECODED ||
-        member->uncompressed_size > XX_STK_MAX_DECODED) {
+    if (member->compressed_size > XX_STK_MAX_DECODED || member->uncompressed_size > XX_STK_MAX_DECODED) {
         return false;
     }
-    if (member->method != XX_STK_METHOD_STORE &&
-        member->method != XX_STK_METHOD_COKTEL_LZ) {
+    if (member->method != XX_STK_METHOD_STORE && member->method != XX_STK_METHOD_COKTEL_LZ) {
         /* Nothing else is defined; treating an unknown value as stored would
          * hand the caller an LZSS stream that looks like data. */
         return false;
@@ -586,8 +556,7 @@ static bool xx_stk_decode(Abstractformat *self, const xx_stk_member *member,
     /* The declared size is authoritative for this codec: the stream may end
      * mid-match and the final flag byte may carry unused bits, so it stops on
      * output count, not input EOF. */
-    if (!xx_coktellz_decode_memory(packed, packed_size, plain, plain_size,
-                                   &written)) {
+    if (!xx_coktellz_decode_memory(packed, packed_size, plain, plain_size, &written)) {
         xx_mem_free(packed);
         xx_mem_free(plain);
         return false;
@@ -609,8 +578,8 @@ static bool xx_stk_decode(Abstractformat *self, const xx_stk_member *member,
 
 /* ---------------------------------------------------------- lifecycle --- */
 
-void xx_stk_init(xx_stk *archive, xx_io_device *device,
-                    int64_t base_address) {
+void xx_stk_init(xx_stk *archive, xx_io_device *device, int64_t base_address)
+{
     if (!archive) return;
     xx_mem_zero(archive, sizeof(*archive));
     xx_format_init(&archive->format, device, base_address);
@@ -623,22 +592,17 @@ void xx_stk_init(xx_stk *archive, xx_io_device *device,
     archive->format.check_is_valid = xx_stk_check_is_valid;
     archive->format.handle_base_info = xx_stk_handle_base_info;
     archive->format.get_format_size = xx_stk_get_format_size;
-    archive->format.get_number_of_archive_records =
-        xx_stk_get_number_of_archive_records;
-    archive->format.create_archive_records_reading =
-        xx_stk_create_archive_records_reading;
-    archive->format.get_current_archive_record =
-        xx_stk_get_current_archive_record;
-    archive->format.unpack_current_archive_record =
-        xx_stk_unpack_current_archive_record;
-    archive->format.archive_record_move_to_next =
-        xx_stk_archive_record_move_to_next;
-    archive->format.free_archive_records_reading =
-        xx_stk_free_archive_records_reading;
+    archive->format.get_number_of_archive_records = xx_stk_get_number_of_archive_records;
+    archive->format.create_archive_records_reading = xx_stk_create_archive_records_reading;
+    archive->format.get_current_archive_record = xx_stk_get_current_archive_record;
+    archive->format.unpack_current_archive_record = xx_stk_unpack_current_archive_record;
+    archive->format.archive_record_move_to_next = xx_stk_archive_record_move_to_next;
+    archive->format.free_archive_records_reading = xx_stk_free_archive_records_reading;
     archive->format.destroy = xx_stk_vtable_destroy;
 }
 
-xx_stk *xx_stk_create(xx_io_device *device, int64_t base_address) {
+xx_stk *xx_stk_create(xx_io_device *device, int64_t base_address)
+{
     xx_stk *archive = (xx_stk *)xx_mem_alloc(sizeof(*archive));
 
     if (!archive) return NULL;
@@ -646,7 +610,8 @@ xx_stk *xx_stk_create(xx_io_device *device, int64_t base_address) {
     return archive;
 }
 
-void xx_stk_destroy(xx_stk *archive) {
+void xx_stk_destroy(xx_stk *archive)
+{
     if (!archive) return;
     /* Not xx_format_destroy: it dispatches through format.destroy, which is
      * the wrapper below, and the two would recurse. */
@@ -655,19 +620,22 @@ void xx_stk_destroy(xx_stk *archive) {
     archive->number_of_records = 0U;
 }
 
-void xx_stk_free(xx_stk *archive) {
+void xx_stk_free(xx_stk *archive)
+{
     if (!archive) return;
     xx_stk_destroy(archive);
     xx_mem_free(archive);
 }
 
-static void xx_stk_vtable_destroy(Abstractformat *self) {
+static void xx_stk_vtable_destroy(Abstractformat *self)
+{
     xx_stk_destroy((xx_stk *)self);
 }
 
 /* -------------------------------------------------------------- format -- */
 
-bool xx_stk_check_is_valid(Abstractformat *self, xx_pd_struct *pd) {
+bool xx_stk_check_is_valid(Abstractformat *self, xx_pd_struct *pd)
+{
     xx_stk_stream *stream;
 
     if (!self || (pd && xx_pd_is_stopped(pd))) return false;
@@ -677,7 +645,8 @@ bool xx_stk_check_is_valid(Abstractformat *self, xx_pd_struct *pd) {
     return true;
 }
 
-bool xx_stk_handle_base_info(Abstractformat *self, xx_pd_struct *pd) {
+bool xx_stk_handle_base_info(Abstractformat *self, xx_pd_struct *pd)
+{
     xx_stk *archive = (xx_stk *)self;
     xx_stk_stream *stream;
 
@@ -698,18 +667,17 @@ bool xx_stk_handle_base_info(Abstractformat *self, xx_pd_struct *pd) {
     return true;
 }
 
-int64_t xx_stk_get_format_size(Abstractformat *self, xx_pd_struct *pd) {
-    if (!self ||
-        (!self->base_info_handled && !xx_format_handle_base_info(self, pd))) {
+int64_t xx_stk_get_format_size(Abstractformat *self, xx_pd_struct *pd)
+{
+    if (!self || (!self->base_info_handled && !xx_format_handle_base_info(self, pd))) {
         return 0;
     }
     return self->is_valid ? self->format_size : 0;
 }
 
-uint64_t xx_stk_get_number_of_archive_records(Abstractformat *self,
-                                                 xx_pd_struct *pd) {
-    if (!self ||
-        (!self->base_info_handled && !xx_format_handle_base_info(self, pd))) {
+uint64_t xx_stk_get_number_of_archive_records(Abstractformat *self, xx_pd_struct *pd)
+{
+    if (!self || (!self->base_info_handled && !xx_format_handle_base_info(self, pd))) {
         return 0U;
     }
     return self->is_valid ? ((xx_stk *)self)->number_of_records : 0U;
@@ -717,8 +685,8 @@ uint64_t xx_stk_get_number_of_archive_records(Abstractformat *self,
 
 /* ------------------------------------------------------------- records -- */
 
-static bool xx_stk_set_record(xx_archive_record *record,
-                                 const xx_stk_member *member) {
+static bool xx_stk_set_record(xx_archive_record *record, const xx_stk_member *member)
+{
     xx_archive_record_cleanup(record);
     xx_archive_record_init(record);
     record->header_offset = member->header_offset;
@@ -726,34 +694,24 @@ static bool xx_stk_set_record(xx_archive_record *record,
     record->data_offset = member->data_offset;
     record->compressed_size = member->compressed_size;
     return xx_archive_record_set_original_name(record, member->name) &&
-           xx_archive_record_set_meta_u64(record, XX_META_ID_COMPRESSED_SIZE,
-                                          (uint64_t)member->compressed_size) &&
-           xx_archive_record_set_meta_u64(
-               record, XX_META_ID_UNCOMPRESSED_SIZE,
-               (uint64_t)member->uncompressed_size) &&
-           xx_archive_record_set_meta_u64(record, XX_META_ID_COMPRESSION_METHOD,
-                                          member->method) &&
-           xx_archive_record_set_meta_u64(record, XX_META_ID_TIMESTAMP,
-                                          member->timestamp) &&
-           xx_archive_record_set_meta_bool(record, XX_META_ID_IS_FOLDER,
-                                           member->is_folder) &&
-           xx_archive_record_set_meta_bool(record, XX_META_ID_IS_ENCRYPTED,
-                                           false);
+           xx_archive_record_set_meta_u64(record, XX_META_ID_COMPRESSED_SIZE, (uint64_t)member->compressed_size) &&
+           xx_archive_record_set_meta_u64(record, XX_META_ID_UNCOMPRESSED_SIZE, (uint64_t)member->uncompressed_size) &&
+           xx_archive_record_set_meta_u64(record, XX_META_ID_COMPRESSION_METHOD, member->method) &&
+           xx_archive_record_set_meta_u64(record, XX_META_ID_TIMESTAMP, member->timestamp) &&
+           xx_archive_record_set_meta_bool(record, XX_META_ID_IS_FOLDER, member->is_folder) && xx_archive_record_set_meta_bool(record, XX_META_ID_IS_ENCRYPTED, false);
 }
 
-static bool xx_stk_copy_options(xx_list_s *target,
-                                   const xx_list_s *options) {
+static bool xx_stk_copy_options(xx_list_s *target, const xx_list_s *options)
+{
     size_t index;
 
     if (!target || !options) return options == NULL;
     for (index = 0U; index < options->count; ++index) {
-        const xx_meta *source =
-            (const xx_meta *)xx_list_at((const xx_list_t *)options, index);
+        const xx_meta *source = (const xx_meta *)xx_list_at((const xx_list_t *)options, index);
         xx_meta copied;
         if (!source) continue;
         xx_meta_init(&copied, source->meta_id);
-        if (!xx_var_copy(&copied.var, &source->var) ||
-            !xx_list_append(target, &copied)) {
+        if (!xx_var_copy(&copied.var, &source->var) || !xx_list_append(target, &copied)) {
             xx_meta_cleanup(&copied);
             return false;
         }
@@ -761,21 +719,20 @@ static bool xx_stk_copy_options(xx_list_s *target,
     return true;
 }
 
-static const xx_var *xx_stk_get_option(const xx_list_s *options,
-                                          uint32_t meta_id) {
+static const xx_var *xx_stk_get_option(const xx_list_s *options, uint32_t meta_id)
+{
     size_t index;
 
     if (!options) return NULL;
     for (index = 0U; index < options->count; ++index) {
-        const xx_meta *meta =
-            (const xx_meta *)xx_list_at((const xx_list_t *)options, index);
+        const xx_meta *meta = (const xx_meta *)xx_list_at((const xx_list_t *)options, index);
         if (meta && meta->meta_id == meta_id) return &meta->var;
     }
     return NULL;
 }
 
-xx_archive_record_state *xx_stk_create_archive_records_reading(
-    Abstractformat *self, const xx_list_s *options, xx_pd_struct *pd) {
+xx_archive_record_state *xx_stk_create_archive_records_reading(Abstractformat *self, const xx_list_s *options, xx_pd_struct *pd)
+{
     xx_stk_stream *stream;
     xx_archive_record_state *state;
 
@@ -791,9 +748,7 @@ xx_archive_record_state *xx_stk_create_archive_records_reading(
     state->internal_state = stream;
     state->free_internal = xx_stk_stream_free;
     state->total_records = (int64_t)stream->count;
-    if (!xx_stk_copy_options(&state->options, options) ||
-        (stream->count != 0U &&
-         !xx_stk_set_record(&state->current_record, &stream->items[0]))) {
+    if (!xx_stk_copy_options(&state->options, options) || (stream->count != 0U && !xx_stk_set_record(&state->current_record, &stream->items[0]))) {
         xx_archive_record_state_free(state);
         return NULL;
     }
@@ -802,20 +757,16 @@ xx_archive_record_state *xx_stk_create_archive_records_reading(
     return state;
 }
 
-const xx_archive_record *xx_stk_get_current_archive_record(
-    Abstractformat *self, xx_archive_record_state *state) {
-    return self && state && state->format == self && state->has_record
-               ? &state->current_record
-               : NULL;
+const xx_archive_record *xx_stk_get_current_archive_record(Abstractformat *self, xx_archive_record_state *state)
+{
+    return self && state && state->format == self && state->has_record ? &state->current_record : NULL;
 }
 
-bool xx_stk_archive_record_move_to_next(Abstractformat *self,
-                                           xx_archive_record_state *state,
-                                           xx_pd_struct *pd) {
+bool xx_stk_archive_record_move_to_next(Abstractformat *self, xx_archive_record_state *state, xx_pd_struct *pd)
+{
     xx_stk_stream *stream;
 
-    if (!self || !state || state->format != self || !state->has_record ||
-        (pd && xx_pd_is_stopped(pd))) {
+    if (!self || !state || state->format != self || !state->has_record || (pd && xx_pd_is_stopped(pd))) {
         return false;
     }
     stream = (xx_stk_stream *)state->internal_state;
@@ -827,14 +778,12 @@ bool xx_stk_archive_record_move_to_next(Abstractformat *self,
     }
     ++stream->index;
     ++state->current_index;
-    state->has_record = xx_stk_set_record(&state->current_record,
-                                             &stream->items[stream->index]);
+    state->has_record = xx_stk_set_record(&state->current_record, &stream->items[stream->index]);
     return state->has_record;
 }
 
-bool xx_stk_unpack_current_archive_record(Abstractformat *self,
-                                             xx_archive_record_state *state,
-                                             xx_pd_struct *pd) {
+bool xx_stk_unpack_current_archive_record(Abstractformat *self, xx_archive_record_state *state, xx_pd_struct *pd)
+{
     xx_stk_stream *stream;
     const xx_stk_member *member;
     const xx_var *path_option;
@@ -846,8 +795,7 @@ bool xx_stk_unpack_current_archive_record(Abstractformat *self,
     bool result = false;
     bool created = false;
 
-    if (!self || !state || state->format != self || !state->has_record ||
-        (pd && xx_pd_is_stopped(pd))) {
+    if (!self || !state || state->format != self || !state->has_record || (pd && xx_pd_is_stopped(pd))) {
         return false;
     }
     stream = (xx_stk_stream *)state->internal_state;
@@ -855,8 +803,7 @@ bool xx_stk_unpack_current_archive_record(Abstractformat *self,
     member = &stream->items[stream->index];
     if (!xx_stk_path_safe(member->name)) return false;
 
-    path_option = xx_stk_get_option(&state->options,
-                                       XX_META_ID_OPT_UNPACK_PATH);
+    path_option = xx_stk_get_option(&state->options, XX_META_ID_OPT_UNPACK_PATH);
     if (!path_option) {
         /* No destination: decode and discard, which verifies the member
          * without writing anything. */
@@ -865,11 +812,9 @@ bool xx_stk_unpack_current_archive_record(Abstractformat *self,
         xx_mem_free(plain);
         return result;
     }
-    if (path_option->type == XX_VAR_TYPE_STRING ||
-        path_option->type == XX_VAR_TYPE_STRING_VIEW) {
+    if (path_option->type == XX_VAR_TYPE_STRING || path_option->type == XX_VAR_TYPE_STRING_VIEW) {
         base_path = xx_var_get_str(path_option);
-    } else if (path_option->type == XX_VAR_TYPE_WSTRING ||
-               path_option->type == XX_VAR_TYPE_WSTRING_VIEW) {
+    } else if (path_option->type == XX_VAR_TYPE_WSTRING || path_option->type == XX_VAR_TYPE_WSTRING_VIEW) {
         converted_path = xx_str_unicode_to_utf8(xx_var_get_wstr(path_option));
         base_path = converted_path;
     }
@@ -877,9 +822,7 @@ bool xx_stk_unpack_current_archive_record(Abstractformat *self,
         xx_str_free(converted_path);
         return false;
     }
-    if (base_path[0] != '\0' &&
-        base_path[xx_str_len(base_path) - 1U] != '/' &&
-        base_path[xx_str_len(base_path) - 1U] != '\\') {
+    if (base_path[0] != '\0' && base_path[xx_str_len(base_path) - 1U] != '/' && base_path[xx_str_len(base_path) - 1U] != '\\') {
         target_path = xx_str_concat3(base_path, "/", member->name);
     } else {
         target_path = xx_str_concat(base_path, member->name);
@@ -892,8 +835,7 @@ bool xx_stk_unpack_current_archive_record(Abstractformat *self,
         xx_str_free(target_path);
         return result;
     }
-    if (!xx_store_create_dirs_a(target_path, false) ||
-        !xx_stk_decode(self, member, &plain, &plain_size, pd)) {
+    if (!xx_store_create_dirs_a(target_path, false) || !xx_stk_decode(self, member, &plain, &plain_size, pd)) {
         xx_str_free(target_path);
         return false;
     }
@@ -904,8 +846,7 @@ bool xx_stk_unpack_current_archive_record(Abstractformat *self,
 
         result = output != NULL;
         while (result && completed < plain_size) {
-            ssize_t sent = xx_io_write(output, plain + completed,
-                                       plain_size - completed);
+            ssize_t sent = xx_io_write(output, plain + completed, plain_size - completed);
             if (sent <= 0 || (size_t)sent > plain_size - completed) {
                 result = false;
                 break;
@@ -920,8 +861,8 @@ bool xx_stk_unpack_current_archive_record(Abstractformat *self,
     return result;
 }
 
-void xx_stk_free_archive_records_reading(Abstractformat *self,
-                                            xx_archive_record_state *state) {
+void xx_stk_free_archive_records_reading(Abstractformat *self, xx_archive_record_state *state)
+{
     (void)self;
     xx_archive_record_state_free(state);
 }

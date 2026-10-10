@@ -63,11 +63,11 @@
 #define XX_SPARSE_MEMBER_NAME "sparse.img"
 
 typedef struct xx_sparse_chunk_s {
-    uint32_t type;         /**< One of the XX_SPARSE_CHUNK_* values. */
-    uint32_t blocks;       /**< Output blocks this chunk expands to. */
-    uint32_t fill;         /**< FILL: the 4-byte pattern, host order. */
-    uint32_t crc;          /**< CRC32: the running checksum carried here. */
-    int64_t data_offset;   /**< RAW: device offset of the stored blocks. */
+    uint32_t type;       /**< One of the XX_SPARSE_CHUNK_* values. */
+    uint32_t blocks;     /**< Output blocks this chunk expands to. */
+    uint32_t fill;       /**< FILL: the 4-byte pattern, host order. */
+    uint32_t crc;        /**< CRC32: the running checksum carried here. */
+    int64_t data_offset; /**< RAW: device offset of the stored blocks. */
 } xx_sparse_chunk;
 
 typedef struct xx_sparse_private_s {
@@ -94,12 +94,11 @@ static void xx_sparse_vtable_destroy(Abstractformat *self);
 
 /* All positioning goes through seek64: an expanded image routinely exceeds
  * 2 GiB and long is 32-bit on Win64. */
-static bool xx_sparse_read_at(xx_io_device *device, int64_t offset, void *data,
-                              size_t size) {
+static bool xx_sparse_read_at(xx_io_device *device, int64_t offset, void *data, size_t size)
+{
     uint8_t *out = (uint8_t *)data;
     size_t done = 0U;
-    if (!device || (!data && size != 0U) || offset < 0 ||
-        xx_io_seek64(device, offset, SEEK_SET) != 0) {
+    if (!device || (!data && size != 0U) || offset < 0 || xx_io_seek64(device, offset, SEEK_SET) != 0) {
         return false;
     }
     while (done < size) {
@@ -110,8 +109,8 @@ static bool xx_sparse_read_at(xx_io_device *device, int64_t offset, void *data,
     return true;
 }
 
-static bool xx_sparse_write_all(xx_io_device *device, const void *data,
-                                size_t size) {
+static bool xx_sparse_write_all(xx_io_device *device, const void *data, size_t size)
+{
     const uint8_t *in = (const uint8_t *)data;
     size_t done = 0U;
     if (!device || (!data && size != 0U)) return false;
@@ -123,7 +122,8 @@ static bool xx_sparse_write_all(xx_io_device *device, const void *data,
     return true;
 }
 
-static bool xx_sparse_add(int64_t left, uint64_t right, int64_t *result) {
+static bool xx_sparse_add(int64_t left, uint64_t right, int64_t *result)
+{
     if (!result || left < 0 || right > (uint64_t)(INT64_MAX - left)) {
         return false;
     }
@@ -132,13 +132,13 @@ static bool xx_sparse_add(int64_t left, uint64_t right, int64_t *result) {
 }
 
 /* True when [offset, offset + size) lies inside [0, total_size). */
-static bool xx_sparse_range_within(int64_t total_size, int64_t offset,
-                                   int64_t size) {
-    return (total_size >= 0) && (offset >= 0) && (size >= 0) &&
-           (offset <= total_size) && (size <= total_size - offset);
+static bool xx_sparse_range_within(int64_t total_size, int64_t offset, int64_t size)
+{
+    return (total_size >= 0) && (offset >= 0) && (size >= 0) && (offset <= total_size) && (size <= total_size - offset);
 }
 
-static void xx_sparse_private_cleanup(xx_sparse_private *parsed) {
+static void xx_sparse_private_cleanup(xx_sparse_private *parsed)
+{
     if (!parsed) return;
     if (parsed->chunks) xx_mem_free(parsed->chunks);
     xx_mem_zero(parsed, sizeof(*parsed));
@@ -147,8 +147,8 @@ static void xx_sparse_private_cleanup(xx_sparse_private *parsed) {
     parsed->expanded_size = -1;
 }
 
-static bool xx_sparse_append_chunk(xx_sparse_private *parsed,
-                                   const xx_sparse_chunk *chunk) {
+static bool xx_sparse_append_chunk(xx_sparse_private *parsed, const xx_sparse_chunk *chunk)
+{
     xx_sparse_chunk *grown;
     size_t capacity;
     if (!parsed || !chunk || parsed->count >= XX_SPARSE_MAX_CHUNKS) {
@@ -156,12 +156,10 @@ static bool xx_sparse_append_chunk(xx_sparse_private *parsed,
     }
     if (parsed->count == parsed->capacity) {
         capacity = parsed->capacity ? parsed->capacity * 2U : 64U;
-        if (capacity < parsed->count ||
-            capacity > SIZE_MAX / sizeof(*parsed->chunks)) {
+        if (capacity < parsed->count || capacity > SIZE_MAX / sizeof(*parsed->chunks)) {
             return false;
         }
-        grown = (xx_sparse_chunk *)xx_mem_realloc(
-            parsed->chunks, capacity * sizeof(*parsed->chunks));
+        grown = (xx_sparse_chunk *)xx_mem_realloc(parsed->chunks, capacity * sizeof(*parsed->chunks));
         if (!grown) return false;
         parsed->chunks = grown;
         parsed->capacity = capacity;
@@ -174,12 +172,9 @@ static bool xx_sparse_append_chunk(xx_sparse_private *parsed,
  * format-wide one, and the built-in default applies when neither is set.  A
  * value that is not a plain non-negative integer is ignored rather than
  * treated as zero, which would reject every image. */
-static uint64_t xx_sparse_max_expanded(const Abstractformat *self,
-                                       const xx_list_s *options) {
-    const xx_var *limit = self ? xx_format_resolve_extra_parameter(
-                                     self, options,
-                                     XX_META_ID_OPT_MAX_MEMBER_SIZE)
-                               : NULL;
+static uint64_t xx_sparse_max_expanded(const Abstractformat *self, const xx_list_s *options)
+{
+    const xx_var *limit = self ? xx_format_resolve_extra_parameter(self, options, XX_META_ID_OPT_MAX_MEMBER_SIZE) : NULL;
     if (!limit) return XX_SPARSE_DEFAULT_MAX_EXPANDED;
     switch (limit->type) {
         case XX_VAR_TYPE_UINT8:
@@ -191,8 +186,7 @@ static uint64_t xx_sparse_max_expanded(const Abstractformat *self,
         case XX_VAR_TYPE_INT32:
         case XX_VAR_TYPE_INT64: {
             int64_t value = xx_var_get_i64(limit);
-            return value >= 0 ? (uint64_t)value
-                              : XX_SPARSE_DEFAULT_MAX_EXPANDED;
+            return value >= 0 ? (uint64_t)value : XX_SPARSE_DEFAULT_MAX_EXPANDED;
         }
         default: return XX_SPARSE_DEFAULT_MAX_EXPANDED;
     }
@@ -201,19 +195,13 @@ static uint64_t xx_sparse_max_expanded(const Abstractformat *self,
 /* Read the file header and validate the fields that make the rest of the
  * walk meaningful.  Reports the offset of the first chunk header and the
  * chunk header size the walk must step by. */
-static bool xx_sparse_parse_header(Abstractformat *self,
-                                   xx_sparse_private *parsed,
-                                   int64_t *out_first_chunk,
-                                   uint32_t *out_chunk_header_size) {
+static bool xx_sparse_parse_header(Abstractformat *self, xx_sparse_private *parsed, int64_t *out_first_chunk, uint32_t *out_chunk_header_size)
+{
     uint8_t header[XX_SPARSE_HEADER_SIZE];
     uint32_t file_header_size;
     uint32_t chunk_header_size;
-    if (!xx_sparse_range_within(parsed->input_size, self->base_address,
-                                XX_SPARSE_HEADER_SIZE) ||
-        !xx_sparse_read_at(self->device, self->base_address, header,
-                           sizeof(header)) ||
-        xx_data_get_u32(header, sizeof(header), 0U, false) !=
-            XX_SPARSE_MAGIC) {
+    if (!xx_sparse_range_within(parsed->input_size, self->base_address, XX_SPARSE_HEADER_SIZE) ||
+        !xx_sparse_read_at(self->device, self->base_address, header, sizeof(header)) || xx_data_get_u32(header, sizeof(header), 0U, false) != XX_SPARSE_MAGIC) {
         return false;
     }
     parsed->major_version = xx_data_get_u16(header, sizeof(header), 4U, false);
@@ -223,15 +211,12 @@ static bool xx_sparse_parse_header(Abstractformat *self,
     parsed->block_size = xx_data_get_u32(header, sizeof(header), 12U, false);
     parsed->total_blocks = xx_data_get_u32(header, sizeof(header), 16U, false);
     parsed->total_chunks = xx_data_get_u32(header, sizeof(header), 20U, false);
-    parsed->image_checksum =
-        xx_data_get_u32(header, sizeof(header), 24U, false);
+    parsed->image_checksum = xx_data_get_u32(header, sizeof(header), 24U, false);
 
     /* Only the 1.x layout is described by this reader.  A future major
      * version may move fields, so it is refused rather than guessed at. */
     if (parsed->major_version != 1U) return false;
-    if (file_header_size < XX_SPARSE_HEADER_SIZE ||
-        file_header_size > XX_SPARSE_MAX_HEADER_SIZE ||
-        chunk_header_size < XX_SPARSE_CHUNK_HEADER_SIZE ||
+    if (file_header_size < XX_SPARSE_HEADER_SIZE || file_header_size > XX_SPARSE_MAX_HEADER_SIZE || chunk_header_size < XX_SPARSE_CHUNK_HEADER_SIZE ||
         chunk_header_size > XX_SPARSE_MAX_HEADER_SIZE) {
         return false;
     }
@@ -244,22 +229,18 @@ static bool xx_sparse_parse_header(Abstractformat *self,
     /* total_blks * blk_sz is at most 2^64; it is computed in 64 bits and
      * must still land inside int64_t to be a usable file size. */
     {
-        uint64_t expanded =
-            (uint64_t)parsed->total_blocks * (uint64_t)parsed->block_size;
-        if (expanded > (uint64_t)INT64_MAX ||
-            expanded > xx_sparse_max_expanded(self, NULL)) {
+        uint64_t expanded = (uint64_t)parsed->total_blocks * (uint64_t)parsed->block_size;
+        if (expanded > (uint64_t)INT64_MAX || expanded > xx_sparse_max_expanded(self, NULL)) {
             return false;
         }
         parsed->expanded_size = (int64_t)expanded;
     }
     *out_chunk_header_size = chunk_header_size;
-    return xx_sparse_add(self->base_address, file_header_size,
-                         out_first_chunk) &&
-           xx_sparse_range_within(parsed->input_size, *out_first_chunk, 0);
+    return xx_sparse_add(self->base_address, file_header_size, out_first_chunk) && xx_sparse_range_within(parsed->input_size, *out_first_chunk, 0);
 }
 
-static bool xx_sparse_parse(Abstractformat *self, xx_sparse_private *parsed,
-                            xx_pd_struct *pd) {
+static bool xx_sparse_parse(Abstractformat *self, xx_sparse_private *parsed, xx_pd_struct *pd)
+{
     uint32_t chunk_header_size = 0U;
     uint64_t blocks_seen = 0U;
     int64_t offset;
@@ -272,8 +253,7 @@ static bool xx_sparse_parse(Abstractformat *self, xx_sparse_private *parsed,
         parsed->archive_end = -1;
         parsed->expanded_size = -1;
     }
-    if (!self || !self->device || !parsed || self->base_address < 0 ||
-        (pd && xx_pd_is_stopped(pd))) {
+    if (!self || !self->device || !parsed || self->base_address < 0 || (pd && xx_pd_is_stopped(pd))) {
         return false;
     }
     parsed->input_size = xx_io_total_size(self->device);
@@ -287,49 +267,38 @@ static bool xx_sparse_parse(Abstractformat *self, xx_sparse_private *parsed,
         uint32_t payload;
         int64_t payload_offset;
         if (pd && xx_pd_is_stopped(pd)) goto fail;
-        if (!xx_sparse_range_within(parsed->input_size, offset,
-                                    (int64_t)chunk_header_size) ||
-            !xx_sparse_read_at(self->device, offset, chunk_header,
-                               sizeof(chunk_header))) {
+        if (!xx_sparse_range_within(parsed->input_size, offset, (int64_t)chunk_header_size) ||
+            !xx_sparse_read_at(self->device, offset, chunk_header, sizeof(chunk_header))) {
             goto fail;
         }
         xx_mem_zero(&chunk, sizeof(chunk));
-        chunk.type =
-            xx_data_get_u16(chunk_header, sizeof(chunk_header), 0U, false);
-        chunk.blocks =
-            xx_data_get_u32(chunk_header, sizeof(chunk_header), 4U, false);
-        total_size =
-            xx_data_get_u32(chunk_header, sizeof(chunk_header), 8U, false);
+        chunk.type = xx_data_get_u16(chunk_header, sizeof(chunk_header), 0U, false);
+        chunk.blocks = xx_data_get_u32(chunk_header, sizeof(chunk_header), 4U, false);
+        total_size = xx_data_get_u32(chunk_header, sizeof(chunk_header), 8U, false);
         chunk.data_offset = -1;
 
         /* total_sz counts the chunk header too, so anything smaller than the
          * header is nonsense and would let the cursor stand still. */
         if (total_size < chunk_header_size) goto fail;
         payload = total_size - chunk_header_size;
-        if (!xx_sparse_add(offset, chunk_header_size, &payload_offset) ||
-            !xx_sparse_range_within(parsed->input_size, payload_offset,
-                                    (int64_t)payload)) {
+        if (!xx_sparse_add(offset, chunk_header_size, &payload_offset) || !xx_sparse_range_within(parsed->input_size, payload_offset, (int64_t)payload)) {
             goto fail;
         }
         switch (chunk.type) {
             case XX_SPARSE_CHUNK_RAW:
                 /* The payload must be exactly the blocks it claims, so that
                  * expansion never reads past what the chunk owns. */
-                if ((uint64_t)payload !=
-                    (uint64_t)chunk.blocks * (uint64_t)parsed->block_size) {
+                if ((uint64_t)payload != (uint64_t)chunk.blocks * (uint64_t)parsed->block_size) {
                     goto fail;
                 }
                 chunk.data_offset = payload_offset;
                 break;
             case XX_SPARSE_CHUNK_FILL: {
                 uint8_t pattern[4];
-                if (payload != 4U ||
-                    !xx_sparse_read_at(self->device, payload_offset, pattern,
-                                       sizeof(pattern))) {
+                if (payload != 4U || !xx_sparse_read_at(self->device, payload_offset, pattern, sizeof(pattern))) {
                     goto fail;
                 }
-                chunk.fill =
-                    xx_data_get_u32(pattern, sizeof(pattern), 0U, false);
+                chunk.fill = xx_data_get_u32(pattern, sizeof(pattern), 0U, false);
                 break;
             }
             case XX_SPARSE_CHUNK_DONT_CARE:
@@ -338,9 +307,7 @@ static bool xx_sparse_parse(Abstractformat *self, xx_sparse_private *parsed,
             case XX_SPARSE_CHUNK_CRC32: {
                 uint8_t value[4];
                 /* A CRC32 chunk produces no output of its own. */
-                if (payload != 4U || chunk.blocks != 0U ||
-                    !xx_sparse_read_at(self->device, payload_offset, value,
-                                       sizeof(value))) {
+                if (payload != 4U || chunk.blocks != 0U || !xx_sparse_read_at(self->device, payload_offset, value, sizeof(value))) {
                     goto fail;
                 }
                 chunk.crc = xx_data_get_u32(value, sizeof(value), 0U, false);
@@ -350,9 +317,7 @@ static bool xx_sparse_parse(Abstractformat *self, xx_sparse_private *parsed,
         }
         blocks_seen += chunk.blocks;
         if (blocks_seen > (uint64_t)parsed->total_blocks) goto fail;
-        if (!xx_sparse_append_chunk(parsed, &chunk) ||
-            !xx_sparse_add(offset, total_size, &offset) ||
-            offset > parsed->input_size) {
+        if (!xx_sparse_append_chunk(parsed, &chunk) || !xx_sparse_add(offset, total_size, &offset) || offset > parsed->input_size) {
             goto fail;
         }
     }
@@ -372,9 +337,8 @@ fail:
 
 /* Write size bytes of a repeating 4-byte pattern, updating the running CRC.
  * A pattern of zero is the DONT_CARE case, which shares this path. */
-static bool xx_sparse_emit_pattern(xx_io_device *destination, uint32_t pattern,
-                                   int64_t size, uint32_t *crc,
-                                   xx_pd_struct *pd) {
+static bool xx_sparse_emit_pattern(xx_io_device *destination, uint32_t pattern, int64_t size, uint32_t *crc, xx_pd_struct *pd)
+{
     uint8_t staging[XX_SPARSE_STAGING_SIZE];
     size_t index;
     if (size < 0) return false;
@@ -387,11 +351,8 @@ static bool xx_sparse_emit_pattern(xx_io_device *destination, uint32_t pattern,
         staging[index + 3U] = (uint8_t)((pattern >> 24) & 0xFFU);
     }
     while (size > 0) {
-        size_t step = (size < (int64_t)sizeof(staging))
-                          ? (size_t)size
-                          : sizeof(staging);
-        if ((pd && xx_pd_is_stopped(pd)) ||
-            !xx_sparse_write_all(destination, staging, step)) {
+        size_t step = (size < (int64_t)sizeof(staging)) ? (size_t)size : sizeof(staging);
+        if ((pd && xx_pd_is_stopped(pd)) || !xx_sparse_write_all(destination, staging, step)) {
             return false;
         }
         if (crc) *crc = xx_crc32_calc(*crc, staging, step);
@@ -401,16 +362,13 @@ static bool xx_sparse_emit_pattern(xx_io_device *destination, uint32_t pattern,
 }
 
 /* Copy size bytes straight out of the source device. */
-static bool xx_sparse_emit_raw(xx_io_device *source, int64_t offset,
-                               xx_io_device *destination, int64_t size,
-                               uint32_t *crc, xx_pd_struct *pd) {
+static bool xx_sparse_emit_raw(xx_io_device *source, int64_t offset, xx_io_device *destination, int64_t size, uint32_t *crc, xx_pd_struct *pd)
+{
     uint8_t staging[XX_SPARSE_STAGING_SIZE];
     if (size < 0 || offset < 0) return false;
     if (size != 0 && xx_io_seek64(source, offset, SEEK_SET) != 0) return false;
     while (size > 0) {
-        size_t step = (size < (int64_t)sizeof(staging))
-                          ? (size_t)size
-                          : sizeof(staging);
+        size_t step = (size < (int64_t)sizeof(staging)) ? (size_t)size : sizeof(staging);
         size_t done = 0U;
         if (pd && xx_pd_is_stopped(pd)) return false;
         while (done < step) {
@@ -425,26 +383,22 @@ static bool xx_sparse_emit_raw(xx_io_device *source, int64_t offset,
     return true;
 }
 
-static bool xx_sparse_expand(Abstractformat *self,
-                             const xx_sparse_private *parsed,
-                             xx_io_device *destination, xx_pd_struct *pd) {
+static bool xx_sparse_expand(Abstractformat *self, const xx_sparse_private *parsed, xx_io_device *destination, xx_pd_struct *pd)
+{
     uint32_t crc = 0U;
     size_t index;
     if (!self || !self->device || !parsed || !destination) return false;
     for (index = 0U; index < parsed->count; ++index) {
         const xx_sparse_chunk *chunk = &parsed->chunks[index];
-        int64_t size =
-            (int64_t)((uint64_t)chunk->blocks * (uint64_t)parsed->block_size);
+        int64_t size = (int64_t)((uint64_t)chunk->blocks * (uint64_t)parsed->block_size);
         switch (chunk->type) {
             case XX_SPARSE_CHUNK_RAW:
-                if (!xx_sparse_emit_raw(self->device, chunk->data_offset,
-                                        destination, size, &crc, pd)) {
+                if (!xx_sparse_emit_raw(self->device, chunk->data_offset, destination, size, &crc, pd)) {
                     return false;
                 }
                 break;
             case XX_SPARSE_CHUNK_FILL:
-                if (!xx_sparse_emit_pattern(destination, chunk->fill, size,
-                                            &crc, pd)) {
+                if (!xx_sparse_emit_pattern(destination, chunk->fill, size, &crc, pd)) {
                     return false;
                 }
                 break;
@@ -476,18 +430,16 @@ static bool xx_sparse_expand(Abstractformat *self,
 /* Record plumbing                                                           */
 /* ------------------------------------------------------------------------ */
 
-static bool xx_sparse_copy_options(xx_list_s *destination,
-                                   const xx_list_s *source) {
+static bool xx_sparse_copy_options(xx_list_s *destination, const xx_list_s *source)
+{
     size_t index;
     if (!destination || !source) return source == NULL;
     for (index = 0U; index < source->count; ++index) {
-        const xx_meta *item =
-            (const xx_meta *)xx_list_at((const xx_list_t *)source, index);
+        const xx_meta *item = (const xx_meta *)xx_list_at((const xx_list_t *)source, index);
         xx_meta copy;
         if (!item) continue;
         xx_meta_init(&copy, item->meta_id);
-        if (!xx_var_copy(&copy.var, &item->var) ||
-            !xx_list_append(destination, &copy)) {
+        if (!xx_var_copy(&copy.var, &item->var) || !xx_list_append(destination, &copy)) {
             xx_meta_cleanup(&copy);
             return false;
         }
@@ -495,21 +447,19 @@ static bool xx_sparse_copy_options(xx_list_s *destination,
     return true;
 }
 
-static const xx_var *xx_sparse_find_option(const xx_list_s *options,
-                                           uint32_t meta_id) {
+static const xx_var *xx_sparse_find_option(const xx_list_s *options, uint32_t meta_id)
+{
     size_t index;
     if (!options) return NULL;
     for (index = 0U; index < options->count; ++index) {
-        const xx_meta *item =
-            (const xx_meta *)xx_list_at((const xx_list_t *)options, index);
+        const xx_meta *item = (const xx_meta *)xx_list_at((const xx_list_t *)options, index);
         if (item && item->meta_id == meta_id) return &item->var;
     }
     return NULL;
 }
 
-static bool xx_sparse_populate_record(xx_archive_record *record,
-                                      const xx_sparse_private *parsed,
-                                      int64_t base_address) {
+static bool xx_sparse_populate_record(xx_archive_record *record, const xx_sparse_private *parsed, int64_t base_address)
+{
     if (!record || !parsed) return false;
     xx_archive_record_cleanup(record);
     xx_archive_record_init(record);
@@ -520,20 +470,14 @@ static bool xx_sparse_populate_record(xx_archive_record *record,
     record->data_offset = base_address;
     record->compressed_size = parsed->archive_end - base_address;
     return xx_archive_record_set_original_name(record, XX_SPARSE_MEMBER_NAME) &&
-           xx_archive_record_set_meta_u64(record, XX_META_ID_UNCOMPRESSED_SIZE,
-                                          (uint64_t)parsed->expanded_size) &&
-           xx_archive_record_set_meta_u64(
-               record, XX_META_ID_COMPRESSED_SIZE,
-               (uint64_t)record->compressed_size) &&
-           xx_archive_record_set_meta_u64(record,
-                                          XX_META_ID_COMPRESSION_METHOD, 1U) &&
-           xx_archive_record_set_meta_u64(record, XX_META_ID_CRC32,
-                                          parsed->image_checksum) &&
-           xx_archive_record_set_meta_bool(record, XX_META_ID_IS_FOLDER,
-                                           false);
+           xx_archive_record_set_meta_u64(record, XX_META_ID_UNCOMPRESSED_SIZE, (uint64_t)parsed->expanded_size) &&
+           xx_archive_record_set_meta_u64(record, XX_META_ID_COMPRESSED_SIZE, (uint64_t)record->compressed_size) &&
+           xx_archive_record_set_meta_u64(record, XX_META_ID_COMPRESSION_METHOD, 1U) &&
+           xx_archive_record_set_meta_u64(record, XX_META_ID_CRC32, parsed->image_checksum) && xx_archive_record_set_meta_bool(record, XX_META_ID_IS_FOLDER, false);
 }
 
-static void xx_sparse_archive_stream_free(void *pointer) {
+static void xx_sparse_archive_stream_free(void *pointer)
+{
     xx_sparse_archive_stream *stream = (xx_sparse_archive_stream *)pointer;
     if (!stream) return;
     xx_sparse_private_cleanup(&stream->parsed);
@@ -544,8 +488,8 @@ static void xx_sparse_archive_stream_free(void *pointer) {
 /* Public interface                                                          */
 /* ------------------------------------------------------------------------ */
 
-void xx_sparse_init(xx_sparse *sparse, xx_io_device *dev,
-                    int64_t base_address) {
+void xx_sparse_init(xx_sparse *sparse, xx_io_device *dev, int64_t base_address)
+{
     if (!sparse) return;
     xx_mem_zero(sparse, sizeof(*sparse));
     xx_format_init(&sparse->format, dev, base_address);
@@ -558,30 +502,26 @@ void xx_sparse_init(xx_sparse *sparse, xx_io_device *dev,
     sparse->format.check_is_valid = xx_sparse_check_is_valid;
     sparse->format.handle_base_info = xx_sparse_handle_base_info;
     sparse->format.get_format_size = xx_sparse_get_format_size;
-    sparse->format.get_number_of_archive_records =
-        xx_sparse_get_number_of_archive_records;
-    sparse->format.create_archive_records_reading =
-        xx_sparse_create_archive_records_reading;
-    sparse->format.get_current_archive_record =
-        xx_sparse_get_current_archive_record;
-    sparse->format.unpack_current_archive_record =
-        xx_sparse_unpack_current_archive_record;
-    sparse->format.archive_record_move_to_next =
-        xx_sparse_archive_record_move_to_next;
-    sparse->format.free_archive_records_reading =
-        xx_sparse_free_archive_records_reading;
+    sparse->format.get_number_of_archive_records = xx_sparse_get_number_of_archive_records;
+    sparse->format.create_archive_records_reading = xx_sparse_create_archive_records_reading;
+    sparse->format.get_current_archive_record = xx_sparse_get_current_archive_record;
+    sparse->format.unpack_current_archive_record = xx_sparse_unpack_current_archive_record;
+    sparse->format.archive_record_move_to_next = xx_sparse_archive_record_move_to_next;
+    sparse->format.free_archive_records_reading = xx_sparse_free_archive_records_reading;
     sparse->format.destroy = xx_sparse_vtable_destroy;
     sparse->expanded_size = -1;
     sparse->archive_end = -1;
 }
 
-xx_sparse *xx_sparse_create(xx_io_device *dev, int64_t base_address) {
+xx_sparse *xx_sparse_create(xx_io_device *dev, int64_t base_address)
+{
     xx_sparse *sparse = (xx_sparse *)xx_mem_alloc(sizeof(*sparse));
     if (sparse) xx_sparse_init(sparse, dev, base_address);
     return sparse;
 }
 
-void xx_sparse_destroy(xx_sparse *sparse) {
+void xx_sparse_destroy(xx_sparse *sparse)
+{
     if (!sparse) return;
     if (sparse->internal) {
         xx_sparse_private_cleanup((xx_sparse_private *)sparse->internal);
@@ -591,24 +531,28 @@ void xx_sparse_destroy(xx_sparse *sparse) {
     xx_format_cleanup_extra_parameters(&sparse->format);
 }
 
-static void xx_sparse_vtable_destroy(Abstractformat *self) {
+static void xx_sparse_vtable_destroy(Abstractformat *self)
+{
     xx_sparse_destroy((xx_sparse *)self);
 }
 
-void xx_sparse_free(xx_sparse *sparse) {
+void xx_sparse_free(xx_sparse *sparse)
+{
     if (!sparse) return;
     xx_sparse_destroy(sparse);
     xx_mem_free(sparse);
 }
 
-bool xx_sparse_check_is_valid(Abstractformat *self, xx_pd_struct *pd) {
+bool xx_sparse_check_is_valid(Abstractformat *self, xx_pd_struct *pd)
+{
     xx_sparse_private parsed;
     bool result = xx_sparse_parse(self, &parsed, pd);
     xx_sparse_private_cleanup(&parsed);
     return result;
 }
 
-bool xx_sparse_handle_base_info(Abstractformat *self, xx_pd_struct *pd) {
+bool xx_sparse_handle_base_info(Abstractformat *self, xx_pd_struct *pd)
+{
     xx_sparse_private *parsed;
     xx_sparse *sparse = (xx_sparse *)self;
     int64_t total_size;
@@ -650,40 +594,37 @@ bool xx_sparse_handle_base_info(Abstractformat *self, xx_pd_struct *pd) {
     return true;
 }
 
-int64_t xx_sparse_get_format_size(Abstractformat *self, xx_pd_struct *pd) {
-    if (!self ||
-        (!self->base_info_handled && !xx_format_handle_base_info(self, pd))) {
+int64_t xx_sparse_get_format_size(Abstractformat *self, xx_pd_struct *pd)
+{
+    if (!self || (!self->base_info_handled && !xx_format_handle_base_info(self, pd))) {
         return -1;
     }
     return self->format_size;
 }
 
-uint64_t xx_sparse_get_number_of_archive_records(Abstractformat *self,
-                                                 xx_pd_struct *pd) {
-    if (!self ||
-        (!self->base_info_handled && !xx_format_handle_base_info(self, pd))) {
+uint64_t xx_sparse_get_number_of_archive_records(Abstractformat *self, xx_pd_struct *pd)
+{
+    if (!self || (!self->base_info_handled && !xx_format_handle_base_info(self, pd))) {
         return 0U;
     }
     return ((xx_sparse *)self)->number_of_records;
 }
 
-bool xx_sparse_unpack_to_device(xx_sparse *sparse, xx_io_device *destination,
-                                xx_pd_struct *pd) {
+bool xx_sparse_unpack_to_device(xx_sparse *sparse, xx_io_device *destination, xx_pd_struct *pd)
+{
     xx_sparse_private parsed;
     bool result;
     if (!sparse || !destination) return false;
-    result = xx_sparse_parse(&sparse->format, &parsed, pd) &&
-             xx_sparse_expand(&sparse->format, &parsed, destination, pd);
+    result = xx_sparse_parse(&sparse->format, &parsed, pd) && xx_sparse_expand(&sparse->format, &parsed, destination, pd);
     xx_sparse_private_cleanup(&parsed);
     return result;
 }
 
-xx_archive_record_state *xx_sparse_create_archive_records_reading(
-    Abstractformat *self, const xx_list_s *options, xx_pd_struct *pd) {
+xx_archive_record_state *xx_sparse_create_archive_records_reading(Abstractformat *self, const xx_list_s *options, xx_pd_struct *pd)
+{
     xx_archive_record_state *state;
     xx_sparse_archive_stream *stream;
-    if (!self || !self->device ||
-        (!self->base_info_handled && !xx_format_handle_base_info(self, pd))) {
+    if (!self || !self->device || (!self->base_info_handled && !xx_format_handle_base_info(self, pd))) {
         return NULL;
     }
     state = (xx_archive_record_state *)xx_mem_alloc(sizeof(*state));
@@ -694,8 +635,7 @@ xx_archive_record_state *xx_sparse_create_archive_records_reading(
         return NULL;
     }
     xx_archive_record_state_init(state, self);
-    if (!xx_sparse_copy_options(&state->options, options) ||
-        !xx_sparse_parse(self, &stream->parsed, pd)) {
+    if (!xx_sparse_copy_options(&state->options, options) || !xx_sparse_parse(self, &stream->parsed, pd)) {
         xx_sparse_archive_stream_free(stream);
         xx_archive_record_state_free(state);
         return NULL;
@@ -704,27 +644,22 @@ xx_archive_record_state *xx_sparse_create_archive_records_reading(
     state->internal_state = stream;
     state->free_internal = xx_sparse_archive_stream_free;
     state->total_records = 1;
-    if (xx_sparse_populate_record(&state->current_record, &stream->parsed,
-                                  self->base_address)) {
+    if (xx_sparse_populate_record(&state->current_record, &stream->parsed, self->base_address)) {
         state->has_record = true;
         state->current_index = 0;
     }
     return state;
 }
 
-const xx_archive_record *xx_sparse_get_current_archive_record(
-    Abstractformat *self, xx_archive_record_state *state) {
-    return self && state && state->format == self && state->has_record
-               ? &state->current_record
-               : NULL;
+const xx_archive_record *xx_sparse_get_current_archive_record(Abstractformat *self, xx_archive_record_state *state)
+{
+    return self && state && state->format == self && state->has_record ? &state->current_record : NULL;
 }
 
-bool xx_sparse_archive_record_move_to_next(Abstractformat *self,
-                                           xx_archive_record_state *state,
-                                           xx_pd_struct *pd) {
+bool xx_sparse_archive_record_move_to_next(Abstractformat *self, xx_archive_record_state *state, xx_pd_struct *pd)
+{
     xx_sparse_archive_stream *stream;
-    if (!self || !state || state->format != self || !state->has_record ||
-        !state->internal_state || (pd && xx_pd_is_stopped(pd))) {
+    if (!self || !state || state->format != self || !state->has_record || !state->internal_state || (pd && xx_pd_is_stopped(pd))) {
         return false;
     }
     stream = (xx_sparse_archive_stream *)state->internal_state;
@@ -738,9 +673,8 @@ bool xx_sparse_archive_record_move_to_next(Abstractformat *self,
 
 /* The sparse member is reassembled, not copied, so extraction goes through
  * the expander rather than xx_store_unpack_device_to_file(). */
-bool xx_sparse_unpack_current_archive_record(Abstractformat *self,
-                                             xx_archive_record_state *state,
-                                             xx_pd_struct *pd) {
+bool xx_sparse_unpack_current_archive_record(Abstractformat *self, xx_archive_record_state *state, xx_pd_struct *pd)
+{
     xx_sparse_archive_stream *stream;
     const xx_var *option;
     const char *base = NULL;
@@ -749,38 +683,30 @@ bool xx_sparse_unpack_current_archive_record(Abstractformat *self,
     xx_io_device *destination = NULL;
     bool result = false;
     bool created = false;
-    if (!self || !self->device || !state || state->format != self ||
-        !state->has_record || !state->internal_state ||
-        (pd && xx_pd_is_stopped(pd))) {
+    if (!self || !self->device || !state || state->format != self || !state->has_record || !state->internal_state || (pd && xx_pd_is_stopped(pd))) {
         return false;
     }
     stream = (xx_sparse_archive_stream *)state->internal_state;
     if (stream->index != 0U) return false;
     /* The parse applied the format-wide ceiling; a stricter one supplied
      * with this read session is honoured here. */
-    if (stream->parsed.expanded_size < 0 ||
-        (uint64_t)stream->parsed.expanded_size >
-            xx_sparse_max_expanded(self, &state->options)) {
+    if (stream->parsed.expanded_size < 0 || (uint64_t)stream->parsed.expanded_size > xx_sparse_max_expanded(self, &state->options)) {
         return false;
     }
 
     option = xx_sparse_find_option(&state->options, XX_META_ID_OPT_UNPACK_PATH);
     if (!option) {
         /* No destination: report whether the container is addressable. */
-        return stream->parsed.archive_end >= 0 &&
-               stream->parsed.archive_end <= stream->parsed.input_size;
+        return stream->parsed.archive_end >= 0 && stream->parsed.archive_end <= stream->parsed.input_size;
     }
-    if (option->type == XX_VAR_TYPE_STRING ||
-        option->type == XX_VAR_TYPE_STRING_VIEW) {
+    if (option->type == XX_VAR_TYPE_STRING || option->type == XX_VAR_TYPE_STRING_VIEW) {
         base = xx_var_get_str(option);
-    } else if (option->type == XX_VAR_TYPE_WSTRING ||
-               option->type == XX_VAR_TYPE_WSTRING_VIEW) {
+    } else if (option->type == XX_VAR_TYPE_WSTRING || option->type == XX_VAR_TYPE_WSTRING_VIEW) {
         owned_base = xx_str_unicode_to_utf8(xx_var_get_wstr(option));
         base = owned_base;
     }
     if (!base) goto cleanup;
-    if (base[0] && base[xx_str_len(base) - 1U] != '/' &&
-        base[xx_str_len(base) - 1U] != '\\') {
+    if (base[0] && base[xx_str_len(base) - 1U] != '/' && base[xx_str_len(base) - 1U] != '\\') {
         destination_path = xx_str_concat3(base, "/", XX_SPARSE_MEMBER_NAME);
     } else {
         destination_path = xx_str_concat(base, XX_SPARSE_MEMBER_NAME);
@@ -802,33 +728,41 @@ cleanup:
     return result;
 }
 
-void xx_sparse_free_archive_records_reading(Abstractformat *self,
-                                            xx_archive_record_state *state) {
+void xx_sparse_free_archive_records_reading(Abstractformat *self, xx_archive_record_state *state)
+{
     (void)self;
     xx_archive_record_state_free(state);
 }
 
-uint64_t xx_sparse_get_number_of_records(const xx_sparse *sparse) {
+uint64_t xx_sparse_get_number_of_records(const xx_sparse *sparse)
+{
     return sparse ? sparse->number_of_records : 0U;
 }
-uint64_t xx_sparse_get_number_of_members(const xx_sparse *sparse) {
+uint64_t xx_sparse_get_number_of_members(const xx_sparse *sparse)
+{
     return sparse ? sparse->number_of_members : 0U;
 }
-uint32_t xx_sparse_get_block_size(const xx_sparse *sparse) {
+uint32_t xx_sparse_get_block_size(const xx_sparse *sparse)
+{
     return sparse ? sparse->block_size : 0U;
 }
-uint32_t xx_sparse_get_total_blocks(const xx_sparse *sparse) {
+uint32_t xx_sparse_get_total_blocks(const xx_sparse *sparse)
+{
     return sparse ? sparse->total_blocks : 0U;
 }
-uint32_t xx_sparse_get_total_chunks(const xx_sparse *sparse) {
+uint32_t xx_sparse_get_total_chunks(const xx_sparse *sparse)
+{
     return sparse ? sparse->total_chunks : 0U;
 }
-uint32_t xx_sparse_get_image_checksum(const xx_sparse *sparse) {
+uint32_t xx_sparse_get_image_checksum(const xx_sparse *sparse)
+{
     return sparse ? sparse->image_checksum : 0U;
 }
-int64_t xx_sparse_get_expanded_size(const xx_sparse *sparse) {
+int64_t xx_sparse_get_expanded_size(const xx_sparse *sparse)
+{
     return sparse ? sparse->expanded_size : -1;
 }
-int64_t xx_sparse_get_archive_end(const xx_sparse *sparse) {
+int64_t xx_sparse_get_archive_end(const xx_sparse *sparse)
+{
     return sparse ? sparse->archive_end : -1;
 }

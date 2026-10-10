@@ -23,14 +23,14 @@
 #endif
 
 #define XX_APM_SECTOR 512U
-#define XX_APM_DDM_SIG 0x4552U  /* 'ER' */
+#define XX_APM_DDM_SIG 0x4552U   /* 'ER' */
 #define XX_APM_ENTRY_SIG 0x504DU /* 'PM' */
 #define XX_APM_TEXT_FIELD 32U
 /* "<type> (<name>)" with both fields at their widest. */
 #define XX_APM_COMMENT_SIZE (XX_APM_TEXT_FIELD * 2U + 4U)
 
 typedef struct xx_apm_entry_s {
-    char *name;     /**< Generated record name, e.g. "partition3". */
+    char *name; /**< Generated record name, e.g. "partition3". */
     char part_name[XX_APM_TEXT_FIELD + 1U];
     char part_type[XX_APM_TEXT_FIELD + 1U];
     int64_t header_offset;
@@ -76,12 +76,11 @@ static void xx_apm_vtable_destroy(Abstractformat *self);
 
 /* Read exactly size bytes at an absolute device offset; xx_io_seek64() is
  * used because a disk image is routinely larger than 2 GiB. */
-static bool xx_apm_read_at(xx_io_device *device, int64_t offset, void *data,
-                           size_t size) {
+static bool xx_apm_read_at(xx_io_device *device, int64_t offset, void *data, size_t size)
+{
     uint8_t *out = (uint8_t *)data;
     size_t done = 0U;
-    if (!device || (!data && size != 0U) || offset < 0 ||
-        xx_io_seek64(device, offset, SEEK_SET) != 0) {
+    if (!device || (!data && size != 0U) || offset < 0 || xx_io_seek64(device, offset, SEEK_SET) != 0) {
         return false;
     }
     while (done < size) {
@@ -93,8 +92,8 @@ static bool xx_apm_read_at(xx_io_device *device, int64_t offset, void *data,
 }
 
 /* base + blocks * unit, refusing anything that does not fit in int64_t. */
-static bool xx_apm_block_to_offset(int64_t base_address, uint64_t blocks,
-                                   uint32_t unit, int64_t *result) {
+static bool xx_apm_block_to_offset(int64_t base_address, uint64_t blocks, uint32_t unit, int64_t *result)
+{
     uint64_t bytes;
     if (!result || base_address < 0 || unit == 0U) return false;
     if (blocks > (uint64_t)INT64_MAX / unit) return false;
@@ -106,7 +105,8 @@ static bool xx_apm_block_to_offset(int64_t base_address, uint64_t blocks,
 
 /* Build a record name of the form "partition12"; the same helper the MBR
  * and GPT readers use, hand rolled to stay CRT free. */
-static char *xx_apm_make_name(unsigned index) {
+static char *xx_apm_make_name(unsigned index)
+{
     static const char prefix[] = "partition";
     char digits[16];
     char buffer[sizeof(prefix) + sizeof(digits)];
@@ -125,8 +125,8 @@ static char *xx_apm_make_name(unsigned index) {
 /* Copy a NUL-padded 32-byte text field. The map stores Mac OS Roman; only
  * printable ASCII is kept verbatim, anything else becomes '?', so the text is
  * always safe to show. It never becomes a path. */
-static void xx_apm_copy_text(const uint8_t *raw,
-                             char out[XX_APM_TEXT_FIELD + 1U]) {
+static void xx_apm_copy_text(const uint8_t *raw, char out[XX_APM_TEXT_FIELD + 1U])
+{
     size_t index;
     size_t end = 0U;
     for (index = 0U; index < XX_APM_TEXT_FIELD; ++index) {
@@ -138,38 +138,35 @@ static void xx_apm_copy_text(const uint8_t *raw,
     out[end] = '\0'; /* Trailing blanks carry nothing. */
 }
 
-static bool xx_apm_is_block_size(uint32_t value) {
+static bool xx_apm_is_block_size(uint32_t value)
+{
     return value == 512U || value == 1024U || value == 2048U || value == 4096U;
 }
 
 /* Read the map entry at offset and check the parts every entry must have:
  * the 'PM' signature, the zero pad word, and a map size that is at least 1
  * and within the cap. */
-static bool xx_apm_read_entry(xx_io_device *device, int64_t offset,
-                              int64_t total_size,
-                              uint8_t buffer[XX_APM_SECTOR],
-                              xx_apm_raw_entry *raw) {
-    if (offset < 0 || offset > total_size ||
-        total_size - offset < (int64_t)XX_APM_SECTOR) {
+static bool xx_apm_read_entry(xx_io_device *device, int64_t offset, int64_t total_size, uint8_t buffer[XX_APM_SECTOR], xx_apm_raw_entry *raw)
+{
+    if (offset < 0 || offset > total_size || total_size - offset < (int64_t)XX_APM_SECTOR) {
         return false;
     }
     if (!xx_apm_read_at(device, offset, buffer, XX_APM_SECTOR)) return false;
-    if (xx_data_get_u16(buffer, XX_APM_SECTOR, 0U, true) != XX_APM_ENTRY_SIG ||
-        xx_data_get_u16(buffer, XX_APM_SECTOR, 2U, true) != 0U) {
+    if (xx_data_get_u16(buffer, XX_APM_SECTOR, 0U, true) != XX_APM_ENTRY_SIG || xx_data_get_u16(buffer, XX_APM_SECTOR, 2U, true) != 0U) {
         return false;
     }
     raw->map_entries = xx_data_get_u32(buffer, XX_APM_SECTOR, 4U, true);
     raw->start_block = xx_data_get_u32(buffer, XX_APM_SECTOR, 8U, true);
     raw->block_count = xx_data_get_u32(buffer, XX_APM_SECTOR, 12U, true);
-    return raw->map_entries != 0U &&
-           raw->map_entries <= XX_APM_MAX_MAP_ENTRIES;
+    return raw->map_entries != 0U && raw->map_entries <= XX_APM_MAX_MAP_ENTRIES;
 }
 
 /* ------------------------------------------------------------------ */
 /* Parsing                                                             */
 /* ------------------------------------------------------------------ */
 
-static void xx_apm_private_cleanup(xx_apm_private *parsed) {
+static void xx_apm_private_cleanup(xx_apm_private *parsed)
+{
     size_t index;
     if (!parsed) return;
     for (index = 0U; index < parsed->count; ++index) {
@@ -181,19 +178,17 @@ static void xx_apm_private_cleanup(xx_apm_private *parsed) {
     parsed->archive_end = -1;
 }
 
-static bool xx_apm_append_entry(xx_apm_private *parsed, xx_apm_entry *entry) {
+static bool xx_apm_append_entry(xx_apm_private *parsed, xx_apm_entry *entry)
+{
     xx_apm_entry *grown;
     size_t capacity;
-    if (!parsed || !entry || !entry->name ||
-        parsed->count >= XX_APM_MAX_MAP_ENTRIES) {
+    if (!parsed || !entry || !entry->name || parsed->count >= XX_APM_MAX_MAP_ENTRIES) {
         return false;
     }
     if (parsed->count == parsed->capacity) {
         capacity = parsed->capacity ? parsed->capacity * 2U : 16U;
-        if (capacity < parsed->count ||
-            capacity > SIZE_MAX / sizeof(*parsed->entries)) return false;
-        grown = (xx_apm_entry *)xx_mem_realloc(
-            parsed->entries, capacity * sizeof(*parsed->entries));
+        if (capacity < parsed->count || capacity > SIZE_MAX / sizeof(*parsed->entries)) return false;
+        grown = (xx_apm_entry *)xx_mem_realloc(parsed->entries, capacity * sizeof(*parsed->entries));
         if (!grown) return false;
         parsed->entries = grown;
         parsed->capacity = capacity;
@@ -205,9 +200,8 @@ static bool xx_apm_append_entry(xx_apm_private *parsed, xx_apm_entry *entry) {
 
 /* Decode one map entry already known to carry the signature and publish it
  * when it has a payload on this device. */
-static bool xx_apm_collect_entry(Abstractformat *self, xx_apm_private *parsed,
-                                 const uint8_t *buffer, int64_t entry_offset,
-                                 uint32_t entry_index) {
+static bool xx_apm_collect_entry(Abstractformat *self, xx_apm_private *parsed, const uint8_t *buffer, int64_t entry_offset, uint32_t entry_index)
+{
     xx_apm_entry entry;
     int64_t offset;
     int64_t available;
@@ -222,8 +216,7 @@ static bool xx_apm_collect_entry(Abstractformat *self, xx_apm_private *parsed,
     if ((uint64_t)entry.start_block + entry.block_count > 0x100000000ULL) {
         return true;
     }
-    if (!xx_apm_block_to_offset(self->base_address, entry.start_block,
-                                parsed->map_step, &offset)) {
+    if (!xx_apm_block_to_offset(self->base_address, entry.start_block, parsed->map_step, &offset)) {
         return true;
     }
     if (offset >= parsed->input_size) return true; /* Past the device. */
@@ -253,9 +246,8 @@ static bool xx_apm_collect_entry(Abstractformat *self, xx_apm_private *parsed,
  * hold, so a truncated dump keeps its leading partitions. Returns false only
  * on a hard failure (allocation, cancellation); a walk that publishes
  * nothing returns true with count == 0. */
-static bool xx_apm_walk(Abstractformat *self, xx_apm_private *parsed,
-                        int64_t total_size, uint32_t step,
-                        const xx_apm_raw_entry *first, xx_pd_struct *pd) {
+static bool xx_apm_walk(Abstractformat *self, xx_apm_private *parsed, int64_t total_size, uint32_t step, const xx_apm_raw_entry *first, xx_pd_struct *pd)
+{
     uint8_t buffer[XX_APM_SECTOR];
     uint32_t index;
     parsed->map_step = step;
@@ -265,10 +257,7 @@ static bool xx_apm_walk(Abstractformat *self, xx_apm_private *parsed,
         xx_apm_raw_entry raw;
         int64_t entry_offset;
         if (pd && xx_pd_is_stopped(pd)) return false;
-        if (!xx_apm_block_to_offset(self->base_address, index, step,
-                                    &entry_offset) ||
-            !xx_apm_read_entry(self->device, entry_offset, total_size, buffer,
-                               &raw)) {
+        if (!xx_apm_block_to_offset(self->base_address, index, step, &entry_offset) || !xx_apm_read_entry(self->device, entry_offset, total_size, buffer, &raw)) {
             break;
         }
         parsed->entries_read = index;
@@ -282,7 +271,8 @@ static bool xx_apm_walk(Abstractformat *self, xx_apm_private *parsed,
     return true;
 }
 
-static void xx_apm_private_reset(xx_apm_private *parsed) {
+static void xx_apm_private_reset(xx_apm_private *parsed)
+{
     xx_rt_memset(parsed, 0, sizeof(*parsed));
     parsed->input_size = -1;
     parsed->archive_end = -1;
@@ -296,8 +286,8 @@ static void xx_apm_private_reset(xx_apm_private *parsed) {
  * both are walked and the one that reads more consecutive entries wins; the
  * wide map keeps a tie, and a wide walk that publishes nothing always gives
  * way to a narrow walk that does. At most 2 x 257 sectors are read. */
-static bool xx_apm_parse(Abstractformat *self, xx_apm_private *parsed,
-                         xx_pd_struct *pd) {
+static bool xx_apm_parse(Abstractformat *self, xx_apm_private *parsed, xx_pd_struct *pd)
+{
     uint8_t buffer[XX_APM_SECTOR];
     xx_apm_raw_entry narrow;
     xx_apm_raw_entry wide;
@@ -313,16 +303,13 @@ static bool xx_apm_parse(Abstractformat *self, xx_apm_private *parsed,
      * stack copy whatever this returns. */
     if (parsed) xx_apm_private_reset(parsed);
     xx_apm_private_reset(&alternative);
-    if (!self || !self->device || !parsed || self->base_address < 0 ||
-        (pd && xx_pd_is_stopped(pd))) return false;
+    if (!self || !self->device || !parsed || self->base_address < 0 || (pd && xx_pd_is_stopped(pd))) return false;
     total_size = xx_io_total_size(self->device);
     /* Block 0 and at least one map entry. */
-    if (total_size <= self->base_address ||
-        total_size - self->base_address < (int64_t)(XX_APM_SECTOR * 2U)) {
+    if (total_size <= self->base_address || total_size - self->base_address < (int64_t)(XX_APM_SECTOR * 2U)) {
         return false;
     }
-    if (!xx_apm_read_at(self->device, self->base_address, buffer,
-                        XX_APM_SECTOR)) {
+    if (!xx_apm_read_at(self->device, self->base_address, buffer, XX_APM_SECTOR)) {
         return false;
     }
     if (xx_data_get_u16(buffer, XX_APM_SECTOR, 0U, true) != XX_APM_DDM_SIG) {
@@ -331,36 +318,27 @@ static bool xx_apm_parse(Abstractformat *self, xx_apm_private *parsed,
     block_size = xx_data_get_u16(buffer, XX_APM_SECTOR, 2U, true);
     if (!xx_apm_is_block_size(block_size)) return false;
     device_blocks = xx_data_get_u32(buffer, XX_APM_SECTOR, 4U, true);
-    narrow_ok = xx_apm_read_entry(self->device,
-                                  self->base_address + XX_APM_SECTOR,
-                                  total_size, buffer, &narrow);
-    if (!(narrow_ok && (block_size == XX_APM_SECTOR ||
-                        narrow.start_block == 1U)) &&
-        block_size != XX_APM_SECTOR &&
+    narrow_ok = xx_apm_read_entry(self->device, self->base_address + XX_APM_SECTOR, total_size, buffer, &narrow);
+    if (!(narrow_ok && (block_size == XX_APM_SECTOR || narrow.start_block == 1U)) && block_size != XX_APM_SECTOR &&
         xx_apm_block_to_offset(self->base_address, 1U, block_size, &offset)) {
-        wide_ok = xx_apm_read_entry(self->device, offset, total_size, buffer,
-                                    &wide);
+        wide_ok = xx_apm_read_entry(self->device, offset, total_size, buffer, &wide);
     }
     if (wide_ok) {
         if (!xx_apm_walk(self, parsed, total_size, block_size, &wide, pd)) {
             goto fail;
         }
         if (narrow_ok) {
-            if (!xx_apm_walk(self, &alternative, total_size, XX_APM_SECTOR,
-                             &narrow, pd)) {
+            if (!xx_apm_walk(self, &alternative, total_size, XX_APM_SECTOR, &narrow, pd)) {
                 goto fail;
             }
-            if (alternative.count != 0U &&
-                (parsed->count == 0U ||
-                 alternative.entries_read > parsed->entries_read)) {
+            if (alternative.count != 0U && (parsed->count == 0U || alternative.entries_read > parsed->entries_read)) {
                 xx_apm_private_cleanup(parsed);
                 *parsed = alternative;
                 xx_apm_private_reset(&alternative);
             }
         }
     } else if (narrow_ok) {
-        if (!xx_apm_walk(self, parsed, total_size, XX_APM_SECTOR, &narrow,
-                         pd)) {
+        if (!xx_apm_walk(self, parsed, total_size, XX_APM_SECTOR, &narrow, pd)) {
             goto fail;
         }
     } else {
@@ -372,9 +350,7 @@ static bool xx_apm_parse(Abstractformat *self, xx_apm_private *parsed,
     if (parsed->entries_read == 0U || parsed->count == 0U) goto fail;
     /* sbBlkCount gives the device size: a disk whose map leaves its tail
      * unaccounted for still ends there, as far as this device holds it. */
-    if (parsed->device_blocks != 0U &&
-        xx_apm_block_to_offset(self->base_address, parsed->device_blocks,
-                               parsed->block_size, &device_end)) {
+    if (parsed->device_blocks != 0U && xx_apm_block_to_offset(self->base_address, parsed->device_blocks, parsed->block_size, &device_end)) {
         if (device_end > total_size) device_end = total_size;
         if (device_end > parsed->archive_end) parsed->archive_end = device_end;
     }
@@ -389,18 +365,16 @@ fail:
 /* Archive record plumbing                                             */
 /* ------------------------------------------------------------------ */
 
-static bool xx_apm_copy_options(xx_list_s *destination,
-                                const xx_list_s *source) {
+static bool xx_apm_copy_options(xx_list_s *destination, const xx_list_s *source)
+{
     size_t index;
     if (!destination || !source) return source == NULL;
     for (index = 0U; index < source->count; ++index) {
-        const xx_meta *item = (const xx_meta *)xx_list_at(
-            (const xx_list_t *)source, index);
+        const xx_meta *item = (const xx_meta *)xx_list_at((const xx_list_t *)source, index);
         xx_meta copy;
         if (!item) continue;
         xx_meta_init(&copy, item->meta_id);
-        if (!xx_var_copy(&copy.var, &item->var) ||
-            !xx_list_append(destination, &copy)) {
+        if (!xx_var_copy(&copy.var, &item->var) || !xx_list_append(destination, &copy)) {
             xx_meta_cleanup(&copy);
             return false;
         }
@@ -408,21 +382,20 @@ static bool xx_apm_copy_options(xx_list_s *destination,
     return true;
 }
 
-static const xx_var *xx_apm_find_option(const xx_list_s *options,
-                                        uint32_t meta_id) {
+static const xx_var *xx_apm_find_option(const xx_list_s *options, uint32_t meta_id)
+{
     size_t index;
     if (!options) return NULL;
     for (index = 0U; index < options->count; ++index) {
-        const xx_meta *item = (const xx_meta *)xx_list_at(
-            (const xx_list_t *)options, index);
+        const xx_meta *item = (const xx_meta *)xx_list_at((const xx_list_t *)options, index);
         if (item && item->meta_id == meta_id) return &item->var;
     }
     return NULL;
 }
 
 /* "<type> (<name>)", or whichever of the two is set. */
-static void xx_apm_make_comment(const xx_apm_entry *entry,
-                                char out[XX_APM_COMMENT_SIZE]) {
+static void xx_apm_make_comment(const xx_apm_entry *entry, char out[XX_APM_COMMENT_SIZE])
+{
     size_t type_length = xx_str_len(entry->part_type);
     size_t name_length = xx_str_len(entry->part_name);
     size_t used = type_length;
@@ -440,8 +413,8 @@ static void xx_apm_make_comment(const xx_apm_entry *entry,
 }
 
 /* The payload is carried verbatim, so both sizes are the bytes present. */
-static bool xx_apm_populate_record(xx_archive_record *record,
-                                   const xx_apm_entry *entry) {
+static bool xx_apm_populate_record(xx_archive_record *record, const xx_apm_entry *entry)
+{
     char comment[XX_APM_COMMENT_SIZE];
     if (!record || !entry || !entry->name) return false;
     xx_archive_record_cleanup(record);
@@ -451,21 +424,14 @@ static bool xx_apm_populate_record(xx_archive_record *record,
     record->header_size = (int64_t)XX_APM_SECTOR;
     record->data_offset = entry->data_offset;
     record->compressed_size = entry->data_size;
-    return xx_archive_record_set_original_name(record, entry->name) &&
-           xx_archive_record_set_meta_u64(record, XX_META_ID_UNCOMPRESSED_SIZE,
-                                          (uint64_t)entry->data_size) &&
-           xx_archive_record_set_meta_u64(record, XX_META_ID_COMPRESSED_SIZE,
-                                          (uint64_t)entry->data_size) &&
-           xx_archive_record_set_meta_u64(record, XX_META_ID_COMPRESSION_METHOD,
-                                          0U) &&
-           xx_archive_record_set_meta_u64(record, XX_META_ID_ATTRIBUTES,
-                                          entry->status) &&
-           xx_archive_record_set_meta_str(record, XX_META_ID_COMMENT,
-                                          comment) &&
-           xx_archive_record_set_meta_bool(record, XX_META_ID_IS_FOLDER, false);
+    return xx_archive_record_set_original_name(record, entry->name) && xx_archive_record_set_meta_u64(record, XX_META_ID_UNCOMPRESSED_SIZE, (uint64_t)entry->data_size) &&
+           xx_archive_record_set_meta_u64(record, XX_META_ID_COMPRESSED_SIZE, (uint64_t)entry->data_size) &&
+           xx_archive_record_set_meta_u64(record, XX_META_ID_COMPRESSION_METHOD, 0U) && xx_archive_record_set_meta_u64(record, XX_META_ID_ATTRIBUTES, entry->status) &&
+           xx_archive_record_set_meta_str(record, XX_META_ID_COMMENT, comment) && xx_archive_record_set_meta_bool(record, XX_META_ID_IS_FOLDER, false);
 }
 
-static void xx_apm_archive_stream_free(void *pointer) {
+static void xx_apm_archive_stream_free(void *pointer)
+{
     xx_apm_archive_stream *stream = (xx_apm_archive_stream *)pointer;
     if (!stream) return;
     xx_apm_private_cleanup(&stream->parsed);
@@ -474,14 +440,13 @@ static void xx_apm_archive_stream_free(void *pointer) {
 
 /* Record names are generated here, never taken from the map, so this only
  * has to refuse the impossible. */
-static bool xx_apm_safe_name(const char *name) {
+static bool xx_apm_safe_name(const char *name)
+{
     size_t index;
     if (!name || !name[0]) return false;
     for (index = 0U; name[index] != '\0'; ++index) {
         char ch = name[index];
-        if (!((ch >= 'a' && ch <= 'z') || (ch >= 'A' && ch <= 'Z') ||
-              (ch >= '0' && ch <= '9') || ch == '_' || ch == '-' ||
-              ch == '.')) {
+        if (!((ch >= 'a' && ch <= 'z') || (ch >= 'A' && ch <= 'Z') || (ch >= '0' && ch <= '9') || ch == '_' || ch == '-' || ch == '.')) {
             return false;
         }
     }
@@ -492,7 +457,8 @@ static bool xx_apm_safe_name(const char *name) {
 /* Public API                                                          */
 /* ------------------------------------------------------------------ */
 
-void xx_apm_init(xx_apm *apm, xx_io_device *dev, int64_t base_address) {
+void xx_apm_init(xx_apm *apm, xx_io_device *dev, int64_t base_address)
+{
     if (!apm) return;
     xx_rt_memset(apm, 0, sizeof(*apm));
     xx_format_init(&apm->format, dev, base_address);
@@ -505,27 +471,25 @@ void xx_apm_init(xx_apm *apm, xx_io_device *dev, int64_t base_address) {
     apm->format.check_is_valid = xx_apm_check_is_valid;
     apm->format.handle_base_info = xx_apm_handle_base_info;
     apm->format.get_format_size = xx_apm_get_format_size;
-    apm->format.get_number_of_archive_records =
-        xx_apm_get_number_of_archive_records;
-    apm->format.create_archive_records_reading =
-        xx_apm_create_archive_records_reading;
+    apm->format.get_number_of_archive_records = xx_apm_get_number_of_archive_records;
+    apm->format.create_archive_records_reading = xx_apm_create_archive_records_reading;
     apm->format.get_current_archive_record = xx_apm_get_current_archive_record;
-    apm->format.unpack_current_archive_record =
-        xx_apm_unpack_current_archive_record;
+    apm->format.unpack_current_archive_record = xx_apm_unpack_current_archive_record;
     apm->format.archive_record_move_to_next = xx_apm_archive_record_move_to_next;
-    apm->format.free_archive_records_reading =
-        xx_apm_free_archive_records_reading;
+    apm->format.free_archive_records_reading = xx_apm_free_archive_records_reading;
     apm->format.destroy = xx_apm_vtable_destroy;
     apm->archive_end = -1;
 }
 
-xx_apm *xx_apm_create(xx_io_device *dev, int64_t base_address) {
+xx_apm *xx_apm_create(xx_io_device *dev, int64_t base_address)
+{
     xx_apm *apm = (xx_apm *)xx_mem_alloc(sizeof(*apm));
     if (apm) xx_apm_init(apm, dev, base_address);
     return apm;
 }
 
-void xx_apm_destroy(xx_apm *apm) {
+void xx_apm_destroy(xx_apm *apm)
+{
     if (!apm) return;
     if (apm->internal) {
         xx_apm_private_cleanup((xx_apm_private *)apm->internal);
@@ -535,24 +499,28 @@ void xx_apm_destroy(xx_apm *apm) {
     xx_format_cleanup_extra_parameters(&apm->format);
 }
 
-static void xx_apm_vtable_destroy(Abstractformat *self) {
+static void xx_apm_vtable_destroy(Abstractformat *self)
+{
     xx_apm_destroy((xx_apm *)self);
 }
 
-void xx_apm_free(xx_apm *apm) {
+void xx_apm_free(xx_apm *apm)
+{
     if (!apm) return;
     xx_apm_destroy(apm);
     xx_mem_free(apm);
 }
 
-bool xx_apm_check_is_valid(Abstractformat *self, xx_pd_struct *pd) {
+bool xx_apm_check_is_valid(Abstractformat *self, xx_pd_struct *pd)
+{
     xx_apm_private parsed;
     bool result = xx_apm_parse(self, &parsed, pd);
     xx_apm_private_cleanup(&parsed);
     return result;
 }
 
-bool xx_apm_handle_base_info(Abstractformat *self, xx_pd_struct *pd) {
+bool xx_apm_handle_base_info(Abstractformat *self, xx_pd_struct *pd)
+{
     xx_apm_private *parsed;
     xx_apm *apm = (xx_apm *)self;
     int64_t total_size;
@@ -592,25 +560,23 @@ bool xx_apm_handle_base_info(Abstractformat *self, xx_pd_struct *pd) {
     return true;
 }
 
-int64_t xx_apm_get_format_size(Abstractformat *self, xx_pd_struct *pd) {
-    if (!self || (!self->base_info_handled &&
-                  !xx_format_handle_base_info(self, pd))) return -1;
+int64_t xx_apm_get_format_size(Abstractformat *self, xx_pd_struct *pd)
+{
+    if (!self || (!self->base_info_handled && !xx_format_handle_base_info(self, pd))) return -1;
     return self->format_size;
 }
 
-uint64_t xx_apm_get_number_of_archive_records(Abstractformat *self,
-                                              xx_pd_struct *pd) {
-    if (!self || (!self->base_info_handled &&
-                  !xx_format_handle_base_info(self, pd))) return 0U;
+uint64_t xx_apm_get_number_of_archive_records(Abstractformat *self, xx_pd_struct *pd)
+{
+    if (!self || (!self->base_info_handled && !xx_format_handle_base_info(self, pd))) return 0U;
     return ((xx_apm *)self)->number_of_records;
 }
 
-xx_archive_record_state *xx_apm_create_archive_records_reading(
-    Abstractformat *self, const xx_list_s *options, xx_pd_struct *pd) {
+xx_archive_record_state *xx_apm_create_archive_records_reading(Abstractformat *self, const xx_list_s *options, xx_pd_struct *pd)
+{
     xx_archive_record_state *state;
     xx_apm_archive_stream *stream;
-    if (!self || !self->device ||
-        (!self->base_info_handled && !xx_format_handle_base_info(self, pd))) {
+    if (!self || !self->device || (!self->base_info_handled && !xx_format_handle_base_info(self, pd))) {
         return NULL;
     }
     state = (xx_archive_record_state *)xx_mem_alloc(sizeof(*state));
@@ -621,8 +587,7 @@ xx_archive_record_state *xx_apm_create_archive_records_reading(
         return NULL;
     }
     xx_archive_record_state_init(state, self);
-    if (!xx_apm_copy_options(&state->options, options) ||
-        !xx_apm_parse(self, &stream->parsed, pd)) {
+    if (!xx_apm_copy_options(&state->options, options) || !xx_apm_parse(self, &stream->parsed, pd)) {
         xx_apm_archive_stream_free(stream);
         xx_archive_record_state_free(state);
         return NULL;
@@ -631,27 +596,22 @@ xx_archive_record_state *xx_apm_create_archive_records_reading(
     state->internal_state = stream;
     state->free_internal = xx_apm_archive_stream_free;
     state->total_records = (int64_t)stream->parsed.count;
-    if (stream->parsed.count != 0U &&
-        xx_apm_populate_record(&state->current_record,
-                               &stream->parsed.entries[0])) {
+    if (stream->parsed.count != 0U && xx_apm_populate_record(&state->current_record, &stream->parsed.entries[0])) {
         state->has_record = true;
         state->current_index = 0;
     }
     return state;
 }
 
-const xx_archive_record *xx_apm_get_current_archive_record(
-    Abstractformat *self, xx_archive_record_state *state) {
-    return self && state && state->format == self && state->has_record
-               ? &state->current_record : NULL;
+const xx_archive_record *xx_apm_get_current_archive_record(Abstractformat *self, xx_archive_record_state *state)
+{
+    return self && state && state->format == self && state->has_record ? &state->current_record : NULL;
 }
 
-bool xx_apm_archive_record_move_to_next(Abstractformat *self,
-                                        xx_archive_record_state *state,
-                                        xx_pd_struct *pd) {
+bool xx_apm_archive_record_move_to_next(Abstractformat *self, xx_archive_record_state *state, xx_pd_struct *pd)
+{
     xx_apm_archive_stream *stream;
-    if (!self || !state || state->format != self || !state->has_record ||
-        !state->internal_state || (pd && xx_pd_is_stopped(pd))) return false;
+    if (!self || !state || state->format != self || !state->has_record || !state->internal_state || (pd && xx_pd_is_stopped(pd))) return false;
     stream = (xx_apm_archive_stream *)state->internal_state;
     ++stream->index;
     if (stream->index >= stream->parsed.count) {
@@ -660,8 +620,7 @@ bool xx_apm_archive_record_move_to_next(Abstractformat *self,
         state->has_record = false;
         return false;
     }
-    if (!xx_apm_populate_record(&state->current_record,
-                                &stream->parsed.entries[stream->index])) {
+    if (!xx_apm_populate_record(&state->current_record, &stream->parsed.entries[stream->index])) {
         state->has_record = false;
         return false;
     }
@@ -669,9 +628,8 @@ bool xx_apm_archive_record_move_to_next(Abstractformat *self,
     return true;
 }
 
-bool xx_apm_unpack_current_archive_record(Abstractformat *self,
-                                          xx_archive_record_state *state,
-                                          xx_pd_struct *pd) {
+bool xx_apm_unpack_current_archive_record(Abstractformat *self, xx_archive_record_state *state, xx_pd_struct *pd)
+{
     const xx_archive_record *record;
     const xx_var *option;
     const char *name;
@@ -680,30 +638,24 @@ bool xx_apm_unpack_current_archive_record(Abstractformat *self,
     char *destination = NULL;
     size_t base_length;
     bool result = false;
-    if (!self || !self->device || !state || state->format != self ||
-        !state->has_record || (pd && xx_pd_is_stopped(pd))) return false;
+    if (!self || !self->device || !state || state->format != self || !state->has_record || (pd && xx_pd_is_stopped(pd))) return false;
     record = &state->current_record;
     name = xx_archive_record_get_original_name(record);
     if (!xx_apm_safe_name(name)) return false;
     option = xx_apm_find_option(&state->options, XX_META_ID_OPT_UNPACK_PATH);
     if (!option) {
         int64_t total = xx_io_total_size(self->device);
-        return record->data_offset >= 0 && record->compressed_size >= 0 &&
-               record->data_offset <= total &&
-               record->compressed_size <= total - record->data_offset;
+        return record->data_offset >= 0 && record->compressed_size >= 0 && record->data_offset <= total && record->compressed_size <= total - record->data_offset;
     }
-    if (option->type == XX_VAR_TYPE_STRING ||
-        option->type == XX_VAR_TYPE_STRING_VIEW) {
+    if (option->type == XX_VAR_TYPE_STRING || option->type == XX_VAR_TYPE_STRING_VIEW) {
         base = xx_var_get_str(option);
-    } else if (option->type == XX_VAR_TYPE_WSTRING ||
-               option->type == XX_VAR_TYPE_WSTRING_VIEW) {
+    } else if (option->type == XX_VAR_TYPE_WSTRING || option->type == XX_VAR_TYPE_WSTRING_VIEW) {
         owned_base = xx_str_unicode_to_utf8(xx_var_get_wstr(option));
         base = owned_base;
     }
     if (!base) goto cleanup;
     base_length = xx_str_len(base);
-    if (base_length != 0U && base[base_length - 1U] != '/' &&
-        base[base_length - 1U] != '\\') {
+    if (base_length != 0U && base[base_length - 1U] != '/' && base[base_length - 1U] != '\\') {
         char *with_slash = xx_str_concat(base, "/");
         if (!with_slash) goto cleanup;
         destination = xx_str_concat(with_slash, name);
@@ -713,10 +665,7 @@ bool xx_apm_unpack_current_archive_record(Abstractformat *self,
     }
     if (!destination) goto cleanup;
     if (xx_store_create_dirs_a(destination, false)) {
-        result = xx_store_unpack_device_to_file(self->device,
-                                                record->data_offset,
-                                                record->compressed_size,
-                                                destination, pd);
+        result = xx_store_unpack_device_to_file(self->device, record->data_offset, record->compressed_size, destination, pd);
     }
 cleanup:
     if (owned_base) xx_str_free(owned_base);
@@ -724,30 +673,35 @@ cleanup:
     return result;
 }
 
-void xx_apm_free_archive_records_reading(Abstractformat *self,
-                                         xx_archive_record_state *state) {
+void xx_apm_free_archive_records_reading(Abstractformat *self, xx_archive_record_state *state)
+{
     (void)self;
     xx_archive_record_state_free(state);
 }
 
-uint64_t xx_apm_get_number_of_records(const xx_apm *apm) {
+uint64_t xx_apm_get_number_of_records(const xx_apm *apm)
+{
     return apm ? apm->number_of_records : 0U;
 }
-uint64_t xx_apm_get_number_of_members(const xx_apm *apm) {
+uint64_t xx_apm_get_number_of_members(const xx_apm *apm)
+{
     return apm ? apm->number_of_members : 0U;
 }
-uint32_t xx_apm_get_block_size(const xx_apm *apm) {
+uint32_t xx_apm_get_block_size(const xx_apm *apm)
+{
     return apm ? apm->block_size : 0U;
 }
-uint32_t xx_apm_get_map_step(const xx_apm *apm) {
+uint32_t xx_apm_get_map_step(const xx_apm *apm)
+{
     return apm ? apm->map_step : 0U;
 }
-int64_t xx_apm_get_archive_end(const xx_apm *apm) {
+int64_t xx_apm_get_archive_end(const xx_apm *apm)
+{
     return apm ? apm->archive_end : -1;
 }
 
-bool xx_apm_get_partition_info(const xx_apm *apm, uint64_t index,
-                               xx_apm_partition_info *info) {
+bool xx_apm_get_partition_info(const xx_apm *apm, uint64_t index, xx_apm_partition_info *info)
+{
     const xx_apm_private *parsed;
     const xx_apm_entry *entry;
     if (!apm || !info || !apm->internal) return false;

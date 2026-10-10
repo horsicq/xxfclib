@@ -68,18 +68,9 @@ extern "C" {
  * @param output_size Receives header plus encrypted payload size on success.
  * @return true when the parameters are valid and the envelope was produced.
  */
-XXFC_API bool xx_zipcrypto_encrypt_envelope(
-    const uint8_t *input,
-    size_t input_size,
-    const uint8_t *password,
-    size_t password_size,
-    uint32_t crc32,
-    uint16_t last_mod_time,
-    bool has_data_descriptor,
-    const uint8_t random_header[XX_ZIPCRYPTO_RANDOM_HEADER_SIZE],
-    uint8_t *output,
-    size_t output_capacity,
-    size_t *output_size);
+XXFC_API bool xx_zipcrypto_encrypt_envelope(const uint8_t *input, size_t input_size, const uint8_t *password, size_t password_size, uint32_t crc32,
+                                            uint16_t last_mod_time, bool has_data_descriptor, const uint8_t random_header[XX_ZIPCRYPTO_RANDOM_HEADER_SIZE],
+                                            uint8_t *output, size_t output_capacity, size_t *output_size);
 
 /**
  * @brief Decrypt a complete traditional ZipCrypto entry envelope.
@@ -111,16 +102,8 @@ XXFC_API bool xx_zipcrypto_encrypt_envelope(
  * @param output_size Receives the decrypted compressed stream size on success.
  * @return true when parameters and password verifier are valid.
  */
-XXFC_API bool xx_zipcrypto_decrypt_envelope(const uint8_t *envelope,
-                                            size_t envelope_size,
-                                            const uint8_t *password,
-                                            size_t password_size,
-                                            uint32_t crc32,
-                                            uint16_t last_mod_time,
-                                            bool has_data_descriptor,
-                                            uint8_t *output,
-                                            size_t output_capacity,
-                                            size_t *output_size);
+XXFC_API bool xx_zipcrypto_decrypt_envelope(const uint8_t *envelope, size_t envelope_size, const uint8_t *password, size_t password_size, uint32_t crc32,
+                                            uint16_t last_mod_time, bool has_data_descriptor, uint8_t *output, size_t output_capacity, size_t *output_size);
 
 /** Cancellation-aware envelope variants; the original APIs pass NULL for pd.
  * Password setup and payload loops poll at bounded intervals. Cancellation
@@ -129,26 +112,17 @@ XXFC_API bool xx_zipcrypto_decrypt_envelope(const uint8_t *envelope,
  * decryption, cancellation after output starts also alters the envelope; retry
  * from an unchanged source copy. Wrong-password output remains untouched.
  */
-XXFC_API bool xx_zipcrypto_encrypt_envelope_progress(
-    const uint8_t *input, size_t input_size,
-    const uint8_t *password, size_t password_size,
-    uint32_t crc32, uint16_t last_mod_time, bool has_data_descriptor,
-    const uint8_t random_header[XX_ZIPCRYPTO_RANDOM_HEADER_SIZE],
-    uint8_t *output, size_t output_capacity, size_t *output_size,
-    xx_pd_struct *pd);
-XXFC_API bool xx_zipcrypto_decrypt_envelope_progress(
-    const uint8_t *envelope, size_t envelope_size,
-    const uint8_t *password, size_t password_size,
-    uint32_t crc32, uint16_t last_mod_time, bool has_data_descriptor,
-    uint8_t *output, size_t output_capacity, size_t *output_size,
-    xx_pd_struct *pd);
+XXFC_API bool xx_zipcrypto_encrypt_envelope_progress(const uint8_t *input, size_t input_size, const uint8_t *password, size_t password_size, uint32_t crc32,
+                                                     uint16_t last_mod_time, bool has_data_descriptor, const uint8_t random_header[XX_ZIPCRYPTO_RANDOM_HEADER_SIZE],
+                                                     uint8_t *output, size_t output_capacity, size_t *output_size, xx_pd_struct *pd);
+XXFC_API bool xx_zipcrypto_decrypt_envelope_progress(const uint8_t *envelope, size_t envelope_size, const uint8_t *password, size_t password_size, uint32_t crc32,
+                                                     uint16_t last_mod_time, bool has_data_descriptor, uint8_t *output, size_t output_capacity, size_t *output_size,
+                                                     xx_pd_struct *pd);
 
 /**
  * @brief Return the verifier byte required by a traditional ZIP entry.
  */
-XXFC_API uint8_t xx_zipcrypto_verifier_byte(uint32_t crc32,
-                                            uint16_t last_mod_time,
-                                            bool has_data_descriptor);
+XXFC_API uint8_t xx_zipcrypto_verifier_byte(uint32_t crc32, uint16_t last_mod_time, bool has_data_descriptor);
 
 #ifdef __cplusplus
 }

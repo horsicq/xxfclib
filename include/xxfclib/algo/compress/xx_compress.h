@@ -28,11 +28,7 @@ XXFC_API bool xx_compress_has_header(const uint8_t *data, size_t size);
  * range, rejects malformed variable-width groups, and reports plaintext bytes
  * through @p output_size when it is non-NULL.
  */
-XXFC_API bool xx_compress_decode_device(xx_io_device *source,
-                                        int64_t source_offset,
-                                        int64_t source_size,
-                                        xx_io_device *destination,
-                                        int64_t *output_size,
+XXFC_API bool xx_compress_decode_device(xx_io_device *source, int64_t source_offset, int64_t source_size, xx_io_device *destination, int64_t *output_size,
                                         xx_pd_struct *pd);
 
 #ifdef __cplusplus

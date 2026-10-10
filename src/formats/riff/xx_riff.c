@@ -37,7 +37,7 @@
 
 typedef struct xx_riff_parsed_s {
     int64_t input_size;
-    int64_t format_size;      /* riff_size + 8 */
+    int64_t format_size; /* riff_size + 8 */
     uint32_t riff_size;
     uint8_t form_type[4];
     uint8_t first_chunk_id[4];
@@ -51,13 +51,12 @@ static void xx_riff_vtable_destroy(Abstractformat *self);
 
 /* All positioning goes through seek64: a RIFF carved out of a disk image can
  * sit past 2 GiB, and long is 32-bit on Win64. */
-static bool xx_riff_read_at(xx_io_device *device, int64_t offset, void *data,
-                            size_t size) {
+static bool xx_riff_read_at(xx_io_device *device, int64_t offset, void *data, size_t size)
+{
     uint8_t *out = (uint8_t *)data;
     size_t done = 0U;
 
-    if (!device || (!data && size != 0U) || offset < 0 ||
-        xx_io_seek64(device, offset, SEEK_SET) != 0) {
+    if (!device || (!data && size != 0U) || offset < 0 || xx_io_seek64(device, offset, SEEK_SET) != 0) {
         return false;
     }
     while (done < size) {
@@ -73,7 +72,8 @@ static bool xx_riff_read_at(xx_io_device *device, int64_t offset, void *data,
  * form types such as the "-=SO" of an obfuscated WAVE use punctuation);
  * control bytes and bytes >= 0x80 are not.  binwalk only requires valid
  * UTF-8, which every accepted value is. */
-static bool xx_riff_fourcc_is_valid(const uint8_t *id) {
+static bool xx_riff_fourcc_is_valid(const uint8_t *id)
+{
     size_t index;
 
     for (index = 0U; index < 4U; ++index) {
@@ -82,7 +82,8 @@ static bool xx_riff_fourcc_is_valid(const uint8_t *id) {
     return true;
 }
 
-static void xx_riff_copy_fourcc(char *destination, const uint8_t *id) {
+static void xx_riff_copy_fourcc(char *destination, const uint8_t *id)
+{
     size_t index;
 
     for (index = 0U; index < 4U; ++index) destination[index] = (char)id[index];
@@ -91,8 +92,8 @@ static void xx_riff_copy_fourcc(char *destination, const uint8_t *id) {
 
 /* --------------------------------------------------------------- parse -- */
 
-static bool xx_riff_parse(Abstractformat *self, xx_riff_parsed *parsed,
-                          xx_pd_struct *pd) {
+static bool xx_riff_parse(Abstractformat *self, xx_riff_parsed *parsed, xx_pd_struct *pd)
+{
     uint8_t header[XX_RIFF_HEADER_SIZE];
     uint8_t chunk[XX_RIFF_CHUNK_HEADER_SIZE];
     int64_t available;
@@ -106,8 +107,7 @@ static bool xx_riff_parse(Abstractformat *self, xx_riff_parsed *parsed,
         parsed->input_size = -1;
         parsed->format_size = -1;
     }
-    if (!self || !self->device || !parsed || self->base_address < 0 ||
-        (pd && xx_pd_is_stopped(pd))) {
+    if (!self || !self->device || !parsed || self->base_address < 0 || (pd && xx_pd_is_stopped(pd))) {
         return false;
     }
     parsed->input_size = xx_io_total_size(self->device);
@@ -120,14 +120,12 @@ static bool xx_riff_parse(Abstractformat *self, xx_riff_parsed *parsed,
     if (!xx_riff_read_at(self->device, start, header, sizeof(header))) {
         return false;
     }
-    if (header[0] != 0x52U || header[1] != 0x49U || header[2] != 0x46U ||
-        header[3] != 0x46U) { /* "RIFF" */
+    if (header[0] != 0x52U || header[1] != 0x49U || header[2] != 0x46U || header[3] != 0x46U) { /* "RIFF" */
         return false;
     }
     parsed->riff_size = xx_data_get_u32(header + 4, 4, 0, false);
     /* riff_size is a u32, so the sum cannot overflow an int64. */
-    parsed->format_size = (int64_t)parsed->riff_size +
-                          (int64_t)XX_RIFF_CHUNK_HEADER_SIZE;
+    parsed->format_size = (int64_t)parsed->riff_size + (int64_t)XX_RIFF_CHUNK_HEADER_SIZE;
     /* binwalk.rs: a size past the end of the data voids the signature. */
     if (parsed->format_size > available) return false;
     xx_rt_memcpy(parsed->form_type, header + 8, 4U);
@@ -136,8 +134,7 @@ static bool xx_riff_parse(Abstractformat *self, xx_riff_parsed *parsed,
     /* The body is the form type plus at least one chunk header. */
     if (parsed->riff_size < XX_RIFF_MIN_RIFF_SIZE) return false;
     /* binwalk: String::from_utf8(form type).  Narrowed to a FOURCC. */
-    if (!xx_riff_fourcc_is_valid(parsed->form_type) ||
-        parsed->form_type[0] == 0x20U) {
+    if (!xx_riff_fourcc_is_valid(parsed->form_type) || parsed->form_type[0] == 0x20U) {
         return false;
     }
 
@@ -153,8 +150,7 @@ static bool xx_riff_parse(Abstractformat *self, xx_riff_parsed *parsed,
 
         if (count >= XX_RIFF_MAX_CHUNKS) return false;
         if (pd && xx_pd_is_stopped(pd)) return false;
-        if (!xx_riff_read_at(self->device, start + position, chunk,
-                             sizeof(chunk))) {
+        if (!xx_riff_read_at(self->device, start + position, chunk, sizeof(chunk))) {
             return false;
         }
         if (!xx_riff_fourcc_is_valid(chunk)) return false;
@@ -182,20 +178,15 @@ static bool xx_riff_parse(Abstractformat *self, xx_riff_parsed *parsed,
 
 /* The extension and MIME type binwalk's extractor and the common tools use
  * for the frequent form types; everything else stays a generic RIFF. */
-static void xx_riff_set_names(Abstractformat *self, const uint8_t *form_type) {
+static void xx_riff_set_names(Abstractformat *self, const uint8_t *form_type)
+{
     static const struct {
         char form[5];
         const char *extension;
         const char *mime;
     } k_names[] = {
-        {"WAVE", "wav", "audio/wav"},
-        {"AVI ", "avi", "video/x-msvideo"},
-        {"WEBP", "webp", "image/webp"},
-        {"ACON", "ani", "application/x-navi-animation"},
-        {"RMID", "rmi", "audio/mid"},
-        {"sfbk", "sf2", "audio/x-soundfont"},
-        {"DLS ", "dls", "audio/dls"},
-        {"PAL ", "pal", "application/x-riff"},
+        {"WAVE", "wav", "audio/wav"}, {"AVI ", "avi", "video/x-msvideo"},   {"WEBP", "webp", "image/webp"}, {"ACON", "ani", "application/x-navi-animation"},
+        {"RMID", "rmi", "audio/mid"}, {"sfbk", "sf2", "audio/x-soundfont"}, {"DLS ", "dls", "audio/dls"},   {"PAL ", "pal", "application/x-riff"},
     };
     size_t index;
 
@@ -212,7 +203,8 @@ static void xx_riff_set_names(Abstractformat *self, const uint8_t *form_type) {
 
 /* ----------------------------------------------------------- lifecycle -- */
 
-void xx_riff_init(xx_riff *riff, xx_io_device *dev, int64_t base_address) {
+void xx_riff_init(xx_riff *riff, xx_io_device *dev, int64_t base_address)
+{
     if (!riff) return;
     xx_mem_zero(riff, sizeof(*riff));
     xx_format_init(&riff->format, dev, base_address);
@@ -231,23 +223,27 @@ void xx_riff_init(xx_riff *riff, xx_io_device *dev, int64_t base_address) {
     xx_components_install(&riff->format);
 }
 
-xx_riff *xx_riff_create(xx_io_device *dev, int64_t base_address) {
+xx_riff *xx_riff_create(xx_io_device *dev, int64_t base_address)
+{
     xx_riff *riff = (xx_riff *)xx_mem_alloc(sizeof(*riff));
 
     if (riff) xx_riff_init(riff, dev, base_address);
     return riff;
 }
 
-void xx_riff_destroy(xx_riff *riff) {
+void xx_riff_destroy(xx_riff *riff)
+{
     if (!riff) return;
     xx_format_cleanup_extra_parameters(&riff->format);
 }
 
-static void xx_riff_vtable_destroy(Abstractformat *self) {
+static void xx_riff_vtable_destroy(Abstractformat *self)
+{
     xx_riff_destroy((xx_riff *)self);
 }
 
-void xx_riff_free(xx_riff *riff) {
+void xx_riff_free(xx_riff *riff)
+{
     if (!riff) return;
     xx_riff_destroy(riff);
     xx_mem_free(riff);
@@ -255,13 +251,15 @@ void xx_riff_free(xx_riff *riff) {
 
 /* -------------------------------------------------------------- format -- */
 
-bool xx_riff_check_is_valid(Abstractformat *self, xx_pd_struct *pd) {
+bool xx_riff_check_is_valid(Abstractformat *self, xx_pd_struct *pd)
+{
     xx_riff_parsed parsed;
 
     return xx_riff_parse(self, &parsed, pd);
 }
 
-bool xx_riff_handle_base_info(Abstractformat *self, xx_pd_struct *pd) {
+bool xx_riff_handle_base_info(Abstractformat *self, xx_pd_struct *pd)
+{
     xx_riff *riff = (xx_riff *)self;
     xx_riff_parsed parsed;
     int64_t end;
@@ -303,9 +301,9 @@ bool xx_riff_handle_base_info(Abstractformat *self, xx_pd_struct *pd) {
     return true;
 }
 
-int64_t xx_riff_get_format_size(Abstractformat *self, xx_pd_struct *pd) {
-    if (!self ||
-        (!self->base_info_handled && !xx_format_handle_base_info(self, pd))) {
+int64_t xx_riff_get_format_size(Abstractformat *self, xx_pd_struct *pd)
+{
+    if (!self || (!self->base_info_handled && !xx_format_handle_base_info(self, pd))) {
         return -1;
     }
     return self->format_size;
@@ -313,32 +311,40 @@ int64_t xx_riff_get_format_size(Abstractformat *self, xx_pd_struct *pd) {
 
 /* ------------------------------------------------------------ accessors -- */
 
-uint32_t xx_riff_get_riff_size(const xx_riff *riff) {
+uint32_t xx_riff_get_riff_size(const xx_riff *riff)
+{
     return riff ? riff->riff_size : 0U;
 }
 
-const char *xx_riff_get_form_type(const xx_riff *riff) {
+const char *xx_riff_get_form_type(const xx_riff *riff)
+{
     return riff ? riff->form_type : "";
 }
 
-const char *xx_riff_get_first_chunk_id(const xx_riff *riff) {
+const char *xx_riff_get_first_chunk_id(const xx_riff *riff)
+{
     return riff ? riff->first_chunk_id : "";
 }
 
-uint32_t xx_riff_get_number_of_chunks(const xx_riff *riff) {
+uint32_t xx_riff_get_number_of_chunks(const xx_riff *riff)
+{
     return riff ? riff->number_of_chunks : 0U;
 }
 
 /* Encoded/structural component members; this does not decode media. */
-static bool xx_components_build(Abstractformat *f, xx_component_stream *s, xx_pd_struct *pd) {
-
-    int64_t pos=12;
-    while(pos<f->format_size) {
-        uint8_t h[8]; uint32_t n; char kind[5];
-        if(xx_pd_is_stopped(pd) || !xx_component_read(f,pos,h,8)) return false;
-        n=xx_data_get_u32(h,8,4,false); xx_rt_memcpy(kind,h,4); kind[4]=0;
-        if(!xx_component_add(f,s,pos+8,n,kind)) return false;
-        pos+=8+(int64_t)n+(n&1);
+static bool xx_components_build(Abstractformat *f, xx_component_stream *s, xx_pd_struct *pd)
+{
+    int64_t pos = 12;
+    while (pos < f->format_size) {
+        uint8_t h[8];
+        uint32_t n;
+        char kind[5];
+        if (xx_pd_is_stopped(pd) || !xx_component_read(f, pos, h, 8)) return false;
+        n = xx_data_get_u32(h, 8, 4, false);
+        xx_rt_memcpy(kind, h, 4);
+        kind[4] = 0;
+        if (!xx_component_add(f, s, pos + 8, n, kind)) return false;
+        pos += 8 + (int64_t)n + (n & 1);
     }
-    return pos==f->format_size || (pos==f->format_size+1 && ((xx_riff *)f)->pad_outside);
+    return pos == f->format_size || (pos == f->format_size + 1 && ((xx_riff *)f)->pad_outside);
 }

@@ -106,25 +106,29 @@ typedef struct lz_rc_s {
     bool overrun;
 } lz_rc;
 
-static void lz_fill(lz_prob *p, size_t n) {
+static void lz_fill(lz_prob *p, size_t n)
+{
     size_t i;
     for (i = 0U; i < n; ++i) p[i] = (lz_prob)LZ_PROB_INIT;
 }
 
-static uint8_t lz_next(lz_rc *rc) {
+static uint8_t lz_next(lz_rc *rc)
+{
     if (rc->pos < rc->size) return rc->in[rc->pos++];
     rc->overrun = true;
     return 0U;
 }
 
-static void lz_normalize(lz_rc *rc) {
+static void lz_normalize(lz_rc *rc)
+{
     if (rc->range < (1U << 24)) {
         rc->range <<= 8;
         rc->code = (rc->code << 8) | lz_next(rc);
     }
 }
 
-static unsigned lz_bit(lz_rc *rc, lz_prob *p) {
+static unsigned lz_bit(lz_rc *rc, lz_prob *p)
+{
     uint32_t bound = (rc->range >> LZ_PROB_BITS) * (uint32_t)(*p);
     unsigned bit;
     if (rc->code < bound) {
@@ -141,14 +145,16 @@ static unsigned lz_bit(lz_rc *rc, lz_prob *p) {
     return bit;
 }
 
-static uint32_t lz_tree(lz_rc *rc, lz_prob *probs, unsigned bits) {
+static uint32_t lz_tree(lz_rc *rc, lz_prob *probs, unsigned bits)
+{
     uint32_t m = 1U;
     unsigned i;
     for (i = 0U; i < bits; ++i) m = (m << 1) | lz_bit(rc, probs + m);
     return m - (1U << bits);
 }
 
-static uint32_t lz_reverse(lz_rc *rc, lz_prob *probs, unsigned bits) {
+static uint32_t lz_reverse(lz_rc *rc, lz_prob *probs, unsigned bits)
+{
     uint32_t m = 1U;
     uint32_t symbol = 0U;
     unsigned i;
@@ -160,7 +166,8 @@ static uint32_t lz_reverse(lz_rc *rc, lz_prob *probs, unsigned bits) {
     return symbol;
 }
 
-static uint32_t lz_direct(lz_rc *rc, unsigned bits) {
+static uint32_t lz_direct(lz_rc *rc, unsigned bits)
+{
     uint32_t result = 0U;
     unsigned i;
     for (i = 0U; i < bits; ++i) {
@@ -176,7 +183,8 @@ static uint32_t lz_direct(lz_rc *rc, unsigned bits) {
     return result;
 }
 
-static uint32_t lz_length(lz_rc *rc, lz_len *len, unsigned pos_state) {
+static uint32_t lz_length(lz_rc *rc, lz_len *len, unsigned pos_state)
+{
     if (lz_bit(rc, &len->choice) == 0U) return lz_tree(rc, len->low[pos_state], 3U);
     if (lz_bit(rc, &len->choice2) == 0U) {
         return 8U + lz_tree(rc, len->mid[pos_state], 3U);
@@ -184,10 +192,8 @@ static uint32_t lz_length(lz_rc *rc, lz_len *len, unsigned pos_state) {
     return 16U + lz_tree(rc, len->high, 8U);
 }
 
-bool xx_squashfs_sqlz_lzma_decode(const uint8_t *input, size_t input_size,
-                                  uint8_t props_byte, uint8_t *output,
-                                  size_t output_size, bool exact,
-                                  size_t *written) {
+bool xx_squashfs_sqlz_lzma_decode(const uint8_t *input, size_t input_size, uint8_t props_byte, uint8_t *output, size_t output_size, bool exact, size_t *written)
+{
     lz_model *model = NULL;
     lz_prob *literal = NULL;
     lz_rc rc;
@@ -236,9 +242,7 @@ bool xx_squashfs_sqlz_lzma_decode(const uint8_t *input, size_t input_size,
 
         if (lz_bit(&rc, &model->is_match[state][pos_state]) == 0U) {
             unsigned prev = pos ? output[pos - 1U] : 0U;
-            lz_prob *probs =
-                literal + 0x300U * (((pos & ((1U << lp) - 1U)) << lc) +
-                                    (prev >> (8U - lc)));
+            lz_prob *probs = literal + 0x300U * (((pos & ((1U << lp) - 1U)) << lc) + (prev >> (8U - lc)));
             uint32_t symbol = 1U;
             if (state >= 7U) {
                 unsigned match_byte;
@@ -303,8 +307,7 @@ bool xx_squashfs_sqlz_lzma_decode(const uint8_t *input, size_t input_size,
                 unsigned direct = (unsigned)((slot >> 1) - 1U);
                 uint32_t dist = (2U | (slot & 1U)) << direct;
                 if (slot < 14U) {
-                    dist += lz_reverse(&rc, model->pos_special + dist - slot,
-                                       direct);
+                    dist += lz_reverse(&rc, model->pos_special + dist - slot, direct);
                 } else {
                     dist += lz_direct(&rc, direct - 4U) << 4;
                     dist += lz_reverse(&rc, model->align, 4U);
@@ -435,12 +438,11 @@ static void xx_squashfs_sqlz_vtable_destroy(Abstractformat *self);
 /* ============================================================== helpers === */
 
 /* Image-relative read. */
-static bool sqlz_read_at(Abstractformat *self, int64_t offset, void *data,
-                         size_t size) {
+static bool sqlz_read_at(Abstractformat *self, int64_t offset, void *data, size_t size)
+{
     uint8_t *out = (uint8_t *)data;
     size_t done = 0U;
-    if (!self || !self->device || (!data && size != 0U) || offset < 0 ||
-        self->base_address < 0 || offset > INT64_MAX - self->base_address) {
+    if (!self || !self->device || (!data && size != 0U) || offset < 0 || self->base_address < 0 || offset > INT64_MAX - self->base_address) {
         return false;
     }
     if (xx_io_seek64(self->device, self->base_address + offset, SEEK_SET) != 0) {
@@ -460,8 +462,8 @@ static bool sqlz_read_at(Abstractformat *self, int64_t offset, void *data,
  * significant bit down.  `lsb_shift` is the field's offset in the
  * little-endian layout.
  */
-static uint32_t sqlz_bits(uint32_t word, unsigned total_bits,
-                          unsigned lsb_shift, unsigned width, bool be) {
+static uint32_t sqlz_bits(uint32_t word, unsigned total_bits, unsigned lsb_shift, unsigned width, bool be)
+{
     unsigned shift = be ? (total_bits - lsb_shift - width) : lsb_shift;
     uint32_t mask = (width >= 32U) ? 0xFFFFFFFFU : ((1U << width) - 1U);
     return (word >> shift) & mask;
@@ -474,9 +476,8 @@ static uint32_t sqlz_bits(uint32_t word, unsigned total_bits,
  * exactly `output_cap` bytes (a full data block or a file's short last
  * block); false means "at most output_cap" (metadata and fragment blocks).
  */
-static bool sqlz_decompress(const uint8_t *input, size_t input_size,
-                            uint8_t *output, size_t output_cap, bool exact,
-                            size_t *written) {
+static bool sqlz_decompress(const uint8_t *input, size_t input_size, uint8_t *output, size_t output_cap, bool exact, size_t *written)
+{
     size_t produced = 0U;
     if (!input || input_size == 0U || !output || output_cap == 0U || !written) {
         return false;
@@ -484,11 +485,8 @@ static bool sqlz_decompress(const uint8_t *input, size_t input_size,
     *written = 0U;
 
     /* zlib: CMF 0x78 and a valid FCHECK. */
-    if (input_size >= 2U && input[0] == 0x78U &&
-        (((unsigned)input[0] << 8) | input[1]) % 31U == 0U) {
-        if (xx_zlib_stream_decode_memory(input, input_size, output, output_cap,
-                                         &produced) &&
-            produced != 0U && (!exact || produced == output_cap)) {
+    if (input_size >= 2U && input[0] == 0x78U && (((unsigned)input[0] << 8) | input[1]) % 31U == 0U) {
+        if (xx_zlib_stream_decode_memory(input, input_size, output, output_cap, &produced) && produced != 0U && (!exact || produced == output_cap)) {
             *written = produced;
             return true;
         }
@@ -499,25 +497,18 @@ static bool sqlz_decompress(const uint8_t *input, size_t input_size,
          * (all ones) or fits the block, and its first stream byte is 0. */
         if (input_size > 13U && input[13] == 0U) {
             uint64_t size = xx_data_get_u64(input + 5, 8, 0, false);
-            if (size == UINT64_MAX ||
-                (size != 0U && size <= (uint64_t)output_cap)) {
+            if (size == UINT64_MAX || (size != 0U && size <= (uint64_t)output_cap)) {
                 bool known = size != UINT64_MAX;
                 size_t want = known ? (size_t)size : output_cap;
                 if ((!exact || !known || want == output_cap) &&
-                    xx_squashfs_sqlz_lzma_decode(input + 13, input_size - 13U,
-                                                 input[0], output, want,
-                                                 known || exact, &produced) &&
-                    (!exact || produced == output_cap)) {
+                    xx_squashfs_sqlz_lzma_decode(input + 13, input_size - 13U, input[0], output, want, known || exact, &produced) && (!exact || produced == output_cap)) {
                     *written = produced;
                     return true;
                 }
             }
         }
         /* Five props bytes and no size field. */
-        if (input[5] == 0U &&
-            xx_squashfs_sqlz_lzma_decode(input + 5, input_size - 5U, input[0],
-                                         output, output_cap, exact,
-                                         &produced)) {
+        if (input[5] == 0U && xx_squashfs_sqlz_lzma_decode(input + 5, input_size - 5U, input[0], output, output_cap, exact, &produced)) {
             *written = produced;
             return true;
         }
@@ -527,8 +518,8 @@ static bool sqlz_decompress(const uint8_t *input, size_t input_size,
 
 /* ========================================================== metadata === */
 
-static bool sqlz_cache_insert(sqlz_private *parsed, int64_t base, int64_t block,
-                              int64_t next, const uint8_t *data, size_t size) {
+static bool sqlz_cache_insert(sqlz_private *parsed, int64_t base, int64_t block, int64_t next, const uint8_t *data, size_t size)
+{
     sqlz_meta_block *grown;
     uint8_t *copy = NULL;
     size_t capacity;
@@ -536,8 +527,7 @@ static bool sqlz_cache_insert(sqlz_private *parsed, int64_t base, int64_t block,
     if (parsed->cache_count == parsed->cache_capacity) {
         capacity = parsed->cache_capacity ? parsed->cache_capacity * 2U : 64U;
         if (capacity > SIZE_MAX / sizeof(*parsed->cache)) return false;
-        grown = (sqlz_meta_block *)xx_mem_realloc(
-            parsed->cache, capacity * sizeof(*parsed->cache));
+        grown = (sqlz_meta_block *)xx_mem_realloc(parsed->cache, capacity * sizeof(*parsed->cache));
         if (!grown) return false;
         parsed->cache = grown;
         parsed->cache_capacity = capacity;
@@ -557,8 +547,8 @@ static bool sqlz_cache_insert(sqlz_private *parsed, int64_t base, int64_t block,
     return true;
 }
 
-static const sqlz_meta_block *sqlz_cache_find(const sqlz_private *parsed,
-                                              int64_t base, int64_t block) {
+static const sqlz_meta_block *sqlz_cache_find(const sqlz_private *parsed, int64_t base, int64_t block)
+{
     size_t index;
     for (index = parsed->cache_count; index > 0U; --index) {
         const sqlz_meta_block *entry = &parsed->cache[index - 1U];
@@ -569,9 +559,8 @@ static const sqlz_meta_block *sqlz_cache_find(const sqlz_private *parsed,
 
 /* One metadata block: an 8 KiB payload behind a u16 header whose 0x8000 bit
  * marks it stored.  `plain` is the caller's fallback buffer. */
-static bool sqlz_meta_get_block(sqlz_walk *walk, int64_t base, int64_t block,
-                                uint8_t *plain, const uint8_t **data,
-                                size_t *size, int64_t *next) {
+static bool sqlz_meta_get_block(sqlz_walk *walk, int64_t base, int64_t block, uint8_t *plain, const uint8_t **data, size_t *size, int64_t *next)
+{
     const sqlz_meta_block *cached;
     uint8_t header_bytes[2];
     uint8_t packed[SQLZ_META_MAX];
@@ -605,8 +594,7 @@ static bool sqlz_meta_get_block(sqlz_walk *walk, int64_t base, int64_t block,
     if ((header & 0x8000U) != 0U) {
         xx_rt_memcpy(plain, packed, length);
         produced = length;
-    } else if (!sqlz_decompress(packed, length, plain, SQLZ_META_MAX, false,
-                                &produced)) {
+    } else if (!sqlz_decompress(packed, length, plain, SQLZ_META_MAX, false, &produced)) {
         return false;
     }
     (void)sqlz_cache_insert(walk->parsed, base, block, *next, plain, produced);
@@ -616,7 +604,8 @@ static bool sqlz_meta_get_block(sqlz_walk *walk, int64_t base, int64_t block,
     return true;
 }
 
-static bool sqlz_meta_read(sqlz_stream *stream, size_t size, uint8_t *out) {
+static bool sqlz_meta_read(sqlz_stream *stream, size_t size, uint8_t *out)
+{
     uint8_t plain[SQLZ_META_MAX];
     size_t done = 0U;
     unsigned guard = 0U;
@@ -627,8 +616,7 @@ static bool sqlz_meta_read(sqlz_stream *stream, size_t size, uint8_t *out) {
         int64_t available;
         size_t take;
         if (++guard > SQLZ_META_GUARD) return false;
-        if (!sqlz_meta_get_block(stream->walk, stream->base, stream->block,
-                                 plain, &data, &block_size, &next)) {
+        if (!sqlz_meta_get_block(stream->walk, stream->base, stream->block, plain, &data, &block_size, &next)) {
             return false;
         }
         available = (int64_t)block_size - stream->offset;
@@ -653,8 +641,8 @@ static bool sqlz_meta_read(sqlz_stream *stream, size_t size, uint8_t *out) {
 
 /* ============================================================ inodes === */
 
-static bool sqlz_base_inode(sqlz_walk *walk, sqlz_stream *stream,
-                            int32_t *type) {
+static bool sqlz_base_inode(sqlz_walk *walk, sqlz_stream *stream, int32_t *type)
+{
     uint8_t data[4];
     bool be = walk->parsed->super.big_endian;
     if (!sqlz_meta_read(stream, 4U, data)) return false;
@@ -662,9 +650,8 @@ static bool sqlz_base_inode(sqlz_walk *walk, sqlz_stream *stream,
     return true;
 }
 
-static bool sqlz_dir_inode(sqlz_walk *walk, sqlz_stream *stream, bool extended,
-                           int64_t *size, int64_t *offset,
-                           int64_t *start_block) {
+static bool sqlz_dir_inode(sqlz_walk *walk, sqlz_stream *stream, bool extended, int64_t *size, int64_t *offset, int64_t *start_block)
+{
     uint8_t data[16];
     uint32_t word;
     bool be = walk->parsed->super.big_endian;
@@ -690,10 +677,8 @@ static bool sqlz_dir_inode(sqlz_walk *walk, sqlz_stream *stream, bool extended,
         }
         if (!sqlz_meta_read(stream, 4U, data)) return false; /* mtime */
         if (!sqlz_meta_read(stream, 3U, data)) return false;
-        *start_block = be ? (((int64_t)data[0] << 16) | ((int64_t)data[1] << 8) |
-                             (int64_t)data[2])
-                          : ((int64_t)data[0] | ((int64_t)data[1] << 8) |
-                             ((int64_t)data[2] << 16));
+        *start_block =
+            be ? (((int64_t)data[0] << 16) | ((int64_t)data[1] << 8) | (int64_t)data[2]) : ((int64_t)data[0] | ((int64_t)data[1] << 8) | ((int64_t)data[2] << 16));
         return true;
     }
 
@@ -722,9 +707,8 @@ static bool sqlz_dir_inode(sqlz_walk *walk, sqlz_stream *stream, bool extended,
     return true;
 }
 
-static bool sqlz_file_inode(sqlz_walk *walk, sqlz_stream *stream,
-                            bool extended, int64_t *start, int64_t *fragment,
-                            int64_t *block_offset, int64_t *size) {
+static bool sqlz_file_inode(sqlz_walk *walk, sqlz_stream *stream, bool extended, int64_t *start, int64_t *fragment, int64_t *block_offset, int64_t *size)
+{
     uint8_t data[40];
     bool be = walk->parsed->super.big_endian;
     if (walk->parsed->super.major == 2) {
@@ -761,8 +745,8 @@ static bool sqlz_file_inode(sqlz_walk *walk, sqlz_stream *stream,
 
 /* A fragment index entry is an ABSOLUTE (image-relative) metadata block
  * offset, hence the stream on base 0. */
-static bool sqlz_fragment(sqlz_walk *walk, int64_t index, int64_t *start,
-                          int64_t *size) {
+static bool sqlz_fragment(sqlz_walk *walk, int64_t index, int64_t *start, int64_t *size)
+{
     sqlz_stream stream;
     uint8_t entry[16];
     uint8_t pointer[8];
@@ -773,8 +757,7 @@ static bool sqlz_fragment(sqlz_walk *walk, int64_t index, int64_t *start,
     if (index < 0 || index >= walk->parsed->super.fragments) return false;
     if (walk->parsed->super.major == 2) {
         index_position = walk->parsed->super.fragment_table + (index >> 10) * 4;
-        if (index_position < 0 || index_position > walk->parsed->image_size - 4 ||
-            !sqlz_read_at(walk->format, index_position, pointer, 4U)) {
+        if (index_position < 0 || index_position > walk->parsed->image_size - 4 || !sqlz_read_at(walk->format, index_position, pointer, 4U)) {
             return false;
         }
         block = (int64_t)xx_data_get_u32(pointer, 4, 0, be);
@@ -782,8 +765,7 @@ static bool sqlz_fragment(sqlz_walk *walk, int64_t index, int64_t *start,
     } else {
         uint64_t raw;
         index_position = walk->parsed->super.fragment_table + (index >> 9) * 8;
-        if (index_position < 0 || index_position > walk->parsed->image_size - 8 ||
-            !sqlz_read_at(walk->format, index_position, pointer, 8U)) {
+        if (index_position < 0 || index_position > walk->parsed->image_size - 8 || !sqlz_read_at(walk->format, index_position, pointer, 8U)) {
             return false;
         }
         raw = xx_data_get_u64(pointer, 8, 0, be);
@@ -813,13 +795,15 @@ static bool sqlz_fragment(sqlz_walk *walk, int64_t index, int64_t *start,
 
 /* ======================================================== collections === */
 
-static void sqlz_member_cleanup(sqlz_member *member) {
+static void sqlz_member_cleanup(sqlz_member *member)
+{
     if (member->name) xx_str_free(member->name);
     if (member->chunks) xx_mem_free(member->chunks);
     xx_rt_memset(member, 0, sizeof(*member));
 }
 
-static void sqlz_private_cleanup(sqlz_private *parsed) {
+static void sqlz_private_cleanup(sqlz_private *parsed)
+{
     size_t index;
     if (!parsed) return;
     for (index = 0U; index < parsed->count; ++index) {
@@ -833,14 +817,14 @@ static void sqlz_private_cleanup(sqlz_private *parsed) {
     xx_rt_memset(parsed, 0, sizeof(*parsed));
 }
 
-static bool sqlz_append_member(sqlz_private *parsed, sqlz_member *member) {
+static bool sqlz_append_member(sqlz_private *parsed, sqlz_member *member)
+{
     if (parsed->count >= SQLZ_MAX_MEMBERS) return false;
     if (parsed->count == parsed->capacity) {
         size_t capacity = parsed->capacity ? parsed->capacity * 2U : 32U;
         sqlz_member *grown;
         if (capacity > SIZE_MAX / sizeof(*parsed->members)) return false;
-        grown = (sqlz_member *)xx_mem_realloc(parsed->members,
-                                              capacity * sizeof(*parsed->members));
+        grown = (sqlz_member *)xx_mem_realloc(parsed->members, capacity * sizeof(*parsed->members));
         if (!grown) return false;
         parsed->members = grown;
         parsed->capacity = capacity;
@@ -850,15 +834,14 @@ static bool sqlz_append_member(sqlz_private *parsed, sqlz_member *member) {
     return true;
 }
 
-static bool sqlz_append_chunk(sqlz_chunk **chunks, size_t *count,
-                              size_t *capacity, const sqlz_chunk *chunk) {
+static bool sqlz_append_chunk(sqlz_chunk **chunks, size_t *count, size_t *capacity, const sqlz_chunk *chunk)
+{
     if (*count >= SQLZ_MAX_CHUNKS) return false;
     if (*count == *capacity) {
         size_t grown_capacity = *capacity ? *capacity * 2U : 16U;
         sqlz_chunk *grown;
         if (grown_capacity > SIZE_MAX / sizeof(**chunks)) return false;
-        grown = (sqlz_chunk *)xx_mem_realloc(*chunks,
-                                             grown_capacity * sizeof(**chunks));
+        grown = (sqlz_chunk *)xx_mem_realloc(*chunks, grown_capacity * sizeof(**chunks));
         if (!grown) return false;
         *chunks = grown;
         *capacity = grown_capacity;
@@ -869,15 +852,16 @@ static bool sqlz_append_chunk(sqlz_chunk **chunks, size_t *count,
 
 /* ============================================================== names === */
 
-static char sqlz_lower(char c) {
+static char sqlz_lower(char c)
+{
     return (c >= 'A' && c <= 'Z') ? (char)(c - 'A' + 'a') : c;
 }
 
 /* CON, PRN, AUX, NUL, COM0-9, LPT0-9, CONIN$, CONOUT$, CLOCK$, with or without
  * an extension (and trailing spaces before it). */
-static bool sqlz_component_is_device(const char *s, size_t n) {
-    static const char *const names[] = {"con", "prn", "aux", "nul",
-                                        "conin$", "conout$", "clock$"};
+static bool sqlz_component_is_device(const char *s, size_t n)
+{
+    static const char *const names[] = {"con", "prn", "aux", "nul", "conin$", "conout$", "clock$"};
     size_t stem = 0U;
     size_t index;
     while (stem < n && s[stem] != '.') ++stem;
@@ -895,9 +879,7 @@ static bool sqlz_component_is_device(const char *s, size_t n) {
         char a = sqlz_lower(s[0]);
         char b = sqlz_lower(s[1]);
         char c = sqlz_lower(s[2]);
-        if (((a == 'c' && b == 'o' && c == 'm') ||
-             (a == 'l' && b == 'p' && c == 't')) &&
-            s[3] >= '0' && s[3] <= '9') {
+        if (((a == 'c' && b == 'o' && c == 'm') || (a == 'l' && b == 'p' && c == 't')) && s[3] >= '0' && s[3] <= '9') {
             return true;
         }
     }
@@ -905,23 +887,21 @@ static bool sqlz_component_is_device(const char *s, size_t n) {
 }
 
 /* Relative, no traversal, no characters or names Windows cannot carry. */
-static bool sqlz_name_is_safe(const char *name) {
+static bool sqlz_name_is_safe(const char *name)
+{
     const char *component;
     const char *cursor;
     if (!name || !name[0] || name[0] == '/' || name[0] == '\\') return false;
     component = name;
     for (cursor = name;; ++cursor) {
         unsigned char ch = (unsigned char)*cursor;
-        if (ch == ':' || ch == '<' || ch == '>' || ch == '"' || ch == '|' ||
-            ch == '?' || ch == '*' || ch == 127U || (ch != 0U && ch < 32U)) {
+        if (ch == ':' || ch == '<' || ch == '>' || ch == '"' || ch == '|' || ch == '?' || ch == '*' || ch == 127U || (ch != 0U && ch < 32U)) {
             return false;
         }
         if (ch == '/' || ch == '\\' || ch == 0U) {
             size_t length = (size_t)(cursor - component);
-            if (length == 0U || (length == 1U && component[0] == '.') ||
-                (length == 2U && component[0] == '.' && component[1] == '.') ||
-                component[length - 1U] == ' ' || component[length - 1U] == '.' ||
-                sqlz_component_is_device(component, length)) {
+            if (length == 0U || (length == 1U && component[0] == '.') || (length == 2U && component[0] == '.' && component[1] == '.') || component[length - 1U] == ' ' ||
+                component[length - 1U] == '.' || sqlz_component_is_device(component, length)) {
                 return false;
             }
             if (ch == 0U) return true;
@@ -930,14 +910,12 @@ static bool sqlz_name_is_safe(const char *name) {
     }
 }
 
-static char *sqlz_join_name(const char *prefix, const uint8_t *name,
-                            size_t name_size) {
+static char *sqlz_join_name(const char *prefix, const uint8_t *name, size_t name_size)
+{
     size_t prefix_size = prefix ? xx_str_len(prefix) : 0U;
     char *combined;
     size_t index;
-    if (name_size == 0U || name_size > SQLZ_MAX_NAME ||
-        prefix_size >= SQLZ_MAX_PATH ||
-        name_size > SQLZ_MAX_PATH - prefix_size - 1U) {
+    if (name_size == 0U || name_size > SQLZ_MAX_NAME || prefix_size >= SQLZ_MAX_PATH || name_size > SQLZ_MAX_PATH - prefix_size - 1U) {
         return NULL;
     }
     for (index = 0U; index < name_size; ++index) {
@@ -959,7 +937,8 @@ static char *sqlz_join_name(const char *prefix, const uint8_t *name,
     return combined;
 }
 
-static size_t sqlz_hash(const char *s) {
+static size_t sqlz_hash(const char *s)
+{
     uint32_t h = 2166136261U;
     for (; *s; ++s) {
         char c = (*s == '\\') ? '/' : sqlz_lower(*s);
@@ -969,7 +948,8 @@ static size_t sqlz_hash(const char *s) {
     return (size_t)h;
 }
 
-static bool sqlz_same(const char *a, const char *b) {
+static bool sqlz_same(const char *a, const char *b)
+{
     for (;; ++a, ++b) {
         char ca = (*a == '\\') ? '/' : sqlz_lower(*a);
         char cb = (*b == '\\') ? '/' : sqlz_lower(*b);
@@ -978,7 +958,8 @@ static bool sqlz_same(const char *a, const char *b) {
     }
 }
 
-static void sqlz_seen_cleanup(sqlz_seen *seen) {
+static void sqlz_seen_cleanup(sqlz_seen *seen)
+{
     size_t index;
     for (index = 0U; index < seen->capacity; ++index) {
         if (seen->slots[index]) xx_str_free(seen->slots[index]);
@@ -987,7 +968,8 @@ static void sqlz_seen_cleanup(sqlz_seen *seen) {
     xx_rt_memset(seen, 0, sizeof(*seen));
 }
 
-static void sqlz_seen_place(char **slots, size_t capacity, char *name) {
+static void sqlz_seen_place(char **slots, size_t capacity, char *name)
+{
     size_t index = sqlz_hash(name) & (capacity - 1U);
     while (slots[index]) index = (index + 1U) & (capacity - 1U);
     slots[index] = name;
@@ -995,7 +977,8 @@ static void sqlz_seen_place(char **slots, size_t capacity, char *name) {
 
 /* True when `name` is new and now recorded; false for a repeat or when it
  * cannot be recorded (the member is then refused, never overwritten). */
-static bool sqlz_seen_add(sqlz_seen *seen, const char *name) {
+static bool sqlz_seen_add(sqlz_seen *seen, const char *name)
+{
     char *copy;
     if (seen->capacity != 0U) {
         size_t index = sqlz_hash(name) & (seen->capacity - 1U);
@@ -1027,11 +1010,10 @@ static bool sqlz_seen_add(sqlz_seen *seen, const char *name) {
 
 /* ============================================================== walk === */
 
-static bool sqlz_walk_node(sqlz_walk *walk, int64_t block, int64_t offset,
-                           int32_t want, const char *name, unsigned depth);
+static bool sqlz_walk_node(sqlz_walk *walk, int64_t block, int64_t offset, int32_t want, const char *name, unsigned depth);
 
-static bool sqlz_file_data(sqlz_walk *walk, sqlz_stream *stream, bool extended,
-                           const char *name) {
+static bool sqlz_file_data(sqlz_walk *walk, sqlz_stream *stream, bool extended, const char *name)
+{
     sqlz_member member;
     sqlz_chunk *chunks = NULL;
     size_t chunk_count = 0U;
@@ -1046,12 +1028,10 @@ static bool sqlz_file_data(sqlz_walk *walk, sqlz_stream *stream, bool extended,
     size_t index;
     bool be = walk->parsed->super.big_endian;
 
-    if (!sqlz_file_inode(walk, stream, extended, &start, &fragment,
-                         &block_offset, &size)) {
+    if (!sqlz_file_inode(walk, stream, extended, &start, &fragment, &block_offset, &size)) {
         return false;
     }
-    if (size < 0 || size > SQLZ_MAX_UNCOMPRESSED || block_offset < 0 ||
-        start < 0) {
+    if (size < 0 || size > SQLZ_MAX_UNCOMPRESSED || block_offset < 0 || start < 0) {
         return false;
     }
     if (fragment == INT64_C(0xFFFFFFFF)) {
@@ -1084,8 +1064,7 @@ static bool sqlz_file_data(sqlz_walk *walk, sqlz_stream *stream, bool extended,
             if (on_disk > walk->parsed->image_size - position) goto fail;
             chunk.offset = position;
             chunk.on_disk = on_disk;
-            chunk.kind = (entry & 0x1000000U) ? SQLZ_KIND_STORED
-                                              : SQLZ_KIND_COMPRESSED;
+            chunk.kind = (entry & 0x1000000U) ? SQLZ_KIND_STORED : SQLZ_KIND_COMPRESSED;
         }
         if (!sqlz_append_chunk(&chunks, &chunk_count, &chunk_capacity, &chunk)) {
             goto fail;
@@ -1102,9 +1081,7 @@ static bool sqlz_file_data(sqlz_walk *walk, sqlz_stream *stream, bool extended,
             goto fail;
         }
         on_disk = fragment_size & 0xFFFFFF;
-        if (fragment_start < 0 || on_disk == 0 ||
-            on_disk > walk->parsed->image_size - fragment_start ||
-            block_offset >= block_size || tail > block_size - block_offset) {
+        if (fragment_start < 0 || on_disk == 0 || on_disk > walk->parsed->image_size - fragment_start || block_offset >= block_size || tail > block_size - block_offset) {
             goto fail;
         }
         xx_rt_memset(&chunk, 0, sizeof(chunk));
@@ -1113,8 +1090,7 @@ static bool sqlz_file_data(sqlz_walk *walk, sqlz_stream *stream, bool extended,
         chunk.out_size = tail;
         chunk.skip = block_offset;
         chunk.fragment = true;
-        chunk.kind = (fragment_size & 0x1000000) ? SQLZ_KIND_STORED
-                                                 : SQLZ_KIND_COMPRESSED;
+        chunk.kind = (fragment_size & 0x1000000) ? SQLZ_KIND_STORED : SQLZ_KIND_COMPRESSED;
         if (!sqlz_append_chunk(&chunks, &chunk_count, &chunk_capacity, &chunk)) {
             goto fail;
         }
@@ -1149,8 +1125,8 @@ fail:
     return false;
 }
 
-static bool sqlz_walk_dir(sqlz_walk *walk, int64_t start_block, int64_t offset,
-                          int64_t size, const char *prefix, unsigned depth) {
+static bool sqlz_walk_dir(sqlz_walk *walk, int64_t start_block, int64_t offset, int64_t size, const char *prefix, unsigned depth)
+{
     sqlz_stream stream;
     int64_t remaining = size;
     bool v3 = walk->parsed->super.major == 3;
@@ -1212,8 +1188,7 @@ static bool sqlz_walk_dir(sqlz_walk *walk, int64_t start_block, int64_t offset,
                  * listing itself stays in step, so its siblings still load. */
                 char *child = sqlz_join_name(prefix, name, (size_t)name_size);
                 if (!child) continue;
-                (void)sqlz_walk_node(walk, entry_block, entry_offset,
-                                     (int32_t)entry_type, child, depth + 1U);
+                (void)sqlz_walk_node(walk, entry_block, entry_offset, (int32_t)entry_type, child, depth + 1U);
                 xx_str_free(child);
             }
         }
@@ -1221,8 +1196,8 @@ static bool sqlz_walk_dir(sqlz_walk *walk, int64_t start_block, int64_t offset,
     return remaining == 0;
 }
 
-static bool sqlz_walk_node(sqlz_walk *walk, int64_t block, int64_t offset,
-                           int32_t want, const char *name, unsigned depth) {
+static bool sqlz_walk_node(sqlz_walk *walk, int64_t block, int64_t offset, int32_t want, const char *name, unsigned depth)
+{
     sqlz_stream stream;
     int32_t type = 0;
     if (depth > SQLZ_MAX_DEPTH || ++walk->visits > SQLZ_MAX_VISITS) return false;
@@ -1232,8 +1207,7 @@ static bool sqlz_walk_node(sqlz_walk *walk, int64_t block, int64_t offset,
     stream.block = block;
     stream.offset = offset;
     if (!sqlz_base_inode(walk, &stream, &type)) return false;
-    if (type != want && !(type == SQLZ_INODE_LDIR && want == SQLZ_INODE_DIR) &&
-        !(type == SQLZ_INODE_LREG && want == SQLZ_INODE_FILE)) {
+    if (type != want && !(type == SQLZ_INODE_LDIR && want == SQLZ_INODE_DIR) && !(type == SQLZ_INODE_LREG && want == SQLZ_INODE_FILE)) {
         return false;
     }
     /* v2 has no extended regular inode. */
@@ -1242,15 +1216,13 @@ static bool sqlz_walk_node(sqlz_walk *walk, int64_t block, int64_t offset,
         int64_t dir_size = 0, dir_offset = 0, dir_start = 0;
         unsigned level;
         for (level = 0U; level < depth; ++level) {
-            if (walk->ancestor_block[level] == block &&
-                walk->ancestor_offset[level] == offset) {
+            if (walk->ancestor_block[level] == block && walk->ancestor_offset[level] == offset) {
                 return true; /* a directory inside itself: not walked again */
             }
         }
         walk->ancestor_block[depth] = block;
         walk->ancestor_offset[depth] = offset;
-        if (!sqlz_dir_inode(walk, &stream, type == SQLZ_INODE_LDIR, &dir_size,
-                            &dir_offset, &dir_start)) {
+        if (!sqlz_dir_inode(walk, &stream, type == SQLZ_INODE_LDIR, &dir_size, &dir_offset, &dir_start)) {
             return false;
         }
         if (dir_size < 0 || dir_offset >= (int64_t)SQLZ_META_MAX) return false;
@@ -1261,8 +1233,8 @@ static bool sqlz_walk_node(sqlz_walk *walk, int64_t block, int64_t offset,
 
 /* ========================================================== superblock === */
 
-static bool sqlz_parse_super(const uint8_t *h, int64_t image_size,
-                             sqlz_super *super) {
+static bool sqlz_parse_super(const uint8_t *h, int64_t image_size, sqlz_super *super)
+{
     unsigned block_log;
     bool be;
     xx_rt_memset(super, 0, sizeof(*super));
@@ -1285,8 +1257,7 @@ static bool sqlz_parse_super(const uint8_t *h, int64_t image_size,
     super->block_size = (int64_t)xx_data_get_u32(h + 0x33, 4, 0, be);
     super->fragments = (int64_t)xx_data_get_u32(h + 0x37, 4, 0, be);
     super->root_inode = (int64_t)(xx_data_get_u64(h + 0x2B, 8, 0, be) & UINT64_C(0xFFFFFFFFFFFF));
-    if (block_log < 12U || block_log > 20U ||
-        super->block_size != (INT64_C(1) << block_log)) {
+    if (block_log < 12U || block_log > 20U || super->block_size != (INT64_C(1) << block_log)) {
         return false;
     }
     if (super->major == 2) {
@@ -1299,8 +1270,7 @@ static bool sqlz_parse_super(const uint8_t *h, int64_t image_size,
         uint64_t it = xx_data_get_u64(h + 0x57, 8, 0, be);
         uint64_t dt = xx_data_get_u64(h + 0x5F, 8, 0, be);
         uint64_t ft = xx_data_get_u64(h + 0x67, 8, 0, be);
-        if (used > (uint64_t)INT64_MAX || it > (uint64_t)INT64_MAX ||
-            dt > (uint64_t)INT64_MAX) {
+        if (used > (uint64_t)INT64_MAX || it > (uint64_t)INT64_MAX || dt > (uint64_t)INT64_MAX) {
             return false;
         }
         super->bytes_used = (int64_t)used;
@@ -1308,28 +1278,23 @@ static bool sqlz_parse_super(const uint8_t *h, int64_t image_size,
         super->directory_table = (int64_t)dt;
         super->fragment_table = (ft > (uint64_t)INT64_MAX) ? -1 : (int64_t)ft;
     }
-    if (super->inode_table < (super->major == 2 ? SQLZ_SUPER_V2 : SQLZ_SUPER_V3) ||
-        super->directory_table <= super->inode_table ||
-        super->directory_table >= image_size ||
-        super->bytes_used <= super->directory_table) {
+    if (super->inode_table < (super->major == 2 ? SQLZ_SUPER_V2 : SQLZ_SUPER_V3) || super->directory_table <= super->inode_table ||
+        super->directory_table >= image_size || super->bytes_used <= super->directory_table) {
         return false;
     }
-    if (super->fragments != 0 &&
-        (super->fragment_table <= super->directory_table ||
-         super->fragment_table >= image_size)) {
+    if (super->fragments != 0 && (super->fragment_table <= super->directory_table || super->fragment_table >= image_size)) {
         return false;
     }
     return true;
 }
 
-static bool sqlz_parse(Abstractformat *self, sqlz_private *parsed, bool full,
-                       xx_pd_struct *pd) {
+static bool sqlz_parse(Abstractformat *self, sqlz_private *parsed, bool full, xx_pd_struct *pd)
+{
     uint8_t header[SQLZ_SUPER_V3];
     sqlz_walk walk;
     int64_t total;
     xx_rt_memset(parsed, 0, sizeof(*parsed));
-    if (!self || !self->device || self->base_address < 0 ||
-        (pd && xx_pd_is_stopped(pd))) {
+    if (!self || !self->device || self->base_address < 0 || (pd && xx_pd_is_stopped(pd))) {
         return false;
     }
     total = xx_io_total_size(self->device);
@@ -1337,10 +1302,7 @@ static bool sqlz_parse(Abstractformat *self, sqlz_private *parsed, bool full,
     parsed->image_size = total - self->base_address;
     if (parsed->image_size < SQLZ_SUPER_V2) return false;
     xx_rt_memset(header, 0, sizeof(header));
-    if (!sqlz_read_at(self, 0,
-                      header, parsed->image_size < SQLZ_SUPER_V3
-                                  ? (size_t)SQLZ_SUPER_V2
-                                  : (size_t)SQLZ_SUPER_V3)) {
+    if (!sqlz_read_at(self, 0, header, parsed->image_size < SQLZ_SUPER_V3 ? (size_t)SQLZ_SUPER_V2 : (size_t)SQLZ_SUPER_V3)) {
         return false;
     }
     if (!sqlz_parse_super(header, parsed->image_size, &parsed->super)) {
@@ -1352,9 +1314,7 @@ static bool sqlz_parse(Abstractformat *self, sqlz_private *parsed, bool full,
     walk.parsed = parsed;
     walk.pd = pd;
     walk.visits = 0U;
-    (void)sqlz_walk_node(&walk, parsed->super.root_inode >> 16,
-                         parsed->super.root_inode & 0xFFFF, SQLZ_INODE_DIR, "",
-                         0U);
+    (void)sqlz_walk_node(&walk, parsed->super.root_inode >> 16, parsed->super.root_inode & 0xFFFF, SQLZ_INODE_DIR, "", 0U);
     if (parsed->count == 0U) {
         sqlz_private_cleanup(parsed);
         return false;
@@ -1364,14 +1324,13 @@ static bool sqlz_parse(Abstractformat *self, sqlz_private *parsed, bool full,
 
 /* ========================================================== extraction === */
 
-static bool sqlz_write_all(xx_io_device *destination, const uint8_t *data,
-                           size_t size) {
+static bool sqlz_write_all(xx_io_device *destination, const uint8_t *data, size_t size)
+{
     return size == 0U || xx_io_write(destination, data, size) == (ssize_t)size;
 }
 
-static bool sqlz_extract_member(Abstractformat *self, sqlz_session *session,
-                                const sqlz_member *member,
-                                xx_io_device *destination, xx_pd_struct *pd) {
+static bool sqlz_extract_member(Abstractformat *self, sqlz_session *session, const sqlz_member *member, xx_io_device *destination, xx_pd_struct *pd)
+{
     const sqlz_private *parsed = &session->parsed;
     size_t block_size = (size_t)parsed->super.block_size;
     uint8_t *packed = NULL;
@@ -1390,8 +1349,7 @@ static bool sqlz_extract_member(Abstractformat *self, sqlz_session *session,
         size_t emit_size;
         size_t produced = 0U;
         if (pd && xx_pd_is_stopped(pd)) goto cleanup;
-        if (chunk->out_size < 0 || chunk->out_size > (int64_t)block_size ||
-            chunk->skip < 0) {
+        if (chunk->out_size < 0 || chunk->out_size > (int64_t)block_size || chunk->skip < 0) {
             goto cleanup;
         }
         if (chunk->kind == SQLZ_KIND_SPARSE) {
@@ -1407,13 +1365,11 @@ static bool sqlz_extract_member(Abstractformat *self, sqlz_session *session,
         if (chunk->on_disk <= 0 || chunk->on_disk > (int64_t)block_size + 64) {
             goto cleanup;
         }
-        if (chunk->fragment && chunk->kind == SQLZ_KIND_COMPRESSED &&
-            session->frag_data && session->frag_offset == chunk->offset) {
+        if (chunk->fragment && chunk->kind == SQLZ_KIND_COMPRESSED && session->frag_data && session->frag_offset == chunk->offset) {
             emit = session->frag_data;
             emit_size = session->frag_size;
         } else {
-            if (!sqlz_read_at(self, chunk->offset, packed,
-                              (size_t)chunk->on_disk)) {
+            if (!sqlz_read_at(self, chunk->offset, packed, (size_t)chunk->on_disk)) {
                 goto cleanup;
             }
             if (chunk->kind == SQLZ_KIND_STORED) {
@@ -1422,8 +1378,7 @@ static bool sqlz_extract_member(Abstractformat *self, sqlz_session *session,
             } else {
                 bool exact = !chunk->fragment;
                 size_t want = exact ? (size_t)chunk->out_size : block_size;
-                if (!sqlz_decompress(packed, (size_t)chunk->on_disk, plain, want,
-                                     exact, &produced)) {
+                if (!sqlz_decompress(packed, (size_t)chunk->on_disk, plain, want, exact, &produced)) {
                     goto cleanup;
                 }
                 emit = plain;
@@ -1460,17 +1415,16 @@ cleanup:
 
 /* ===================================================== record plumbing === */
 
-static bool sqlz_copy_options(xx_list_s *destination, const xx_list_s *source) {
+static bool sqlz_copy_options(xx_list_s *destination, const xx_list_s *source)
+{
     size_t index;
     if (!source) return true;
     for (index = 0U; index < source->count; ++index) {
-        const xx_meta *item =
-            (const xx_meta *)xx_list_at((const xx_list_t *)source, index);
+        const xx_meta *item = (const xx_meta *)xx_list_at((const xx_list_t *)source, index);
         xx_meta copy;
         if (!item) continue;
         xx_meta_init(&copy, item->meta_id);
-        if (!xx_var_copy(&copy.var, &item->var) ||
-            !xx_list_append(destination, &copy)) {
+        if (!xx_var_copy(&copy.var, &item->var) || !xx_list_append(destination, &copy)) {
             xx_meta_cleanup(&copy);
             return false;
         }
@@ -1478,20 +1432,19 @@ static bool sqlz_copy_options(xx_list_s *destination, const xx_list_s *source) {
     return true;
 }
 
-static const xx_var *sqlz_find_option(const xx_list_s *options,
-                                      uint32_t meta_id) {
+static const xx_var *sqlz_find_option(const xx_list_s *options, uint32_t meta_id)
+{
     size_t index;
     if (!options) return NULL;
     for (index = 0U; index < options->count; ++index) {
-        const xx_meta *item =
-            (const xx_meta *)xx_list_at((const xx_list_t *)options, index);
+        const xx_meta *item = (const xx_meta *)xx_list_at((const xx_list_t *)options, index);
         if (item && item->meta_id == meta_id) return &item->var;
     }
     return NULL;
 }
 
-static bool sqlz_populate_record(xx_archive_record *record,
-                                 const sqlz_member *member, int64_t base) {
+static bool sqlz_populate_record(xx_archive_record *record, const sqlz_member *member, int64_t base)
+{
     xx_archive_record_cleanup(record);
     xx_archive_record_init(record);
     record->header_offset = -1;
@@ -1499,16 +1452,14 @@ static bool sqlz_populate_record(xx_archive_record *record,
     record->data_offset = base + member->span_offset;
     record->compressed_size = member->span_size;
     return xx_archive_record_set_original_name(record, member->name) &&
-           xx_archive_record_set_meta_u64(record, XX_META_ID_UNCOMPRESSED_SIZE,
-                                          (uint64_t)member->uncompressed_size) &&
-           xx_archive_record_set_meta_u64(record, XX_META_ID_COMPRESSED_SIZE,
-                                          (uint64_t)member->span_size) &&
-           xx_archive_record_set_meta_u64(record, XX_META_ID_COMPRESSION_METHOD,
-                                          (uint64_t)SQLZ_METHOD_LZMA) &&
+           xx_archive_record_set_meta_u64(record, XX_META_ID_UNCOMPRESSED_SIZE, (uint64_t)member->uncompressed_size) &&
+           xx_archive_record_set_meta_u64(record, XX_META_ID_COMPRESSED_SIZE, (uint64_t)member->span_size) &&
+           xx_archive_record_set_meta_u64(record, XX_META_ID_COMPRESSION_METHOD, (uint64_t)SQLZ_METHOD_LZMA) &&
            xx_archive_record_set_meta_bool(record, XX_META_ID_IS_FOLDER, false);
 }
 
-static void sqlz_session_free(void *pointer) {
+static void sqlz_session_free(void *pointer)
+{
     sqlz_session *session = (sqlz_session *)pointer;
     if (!session) return;
     sqlz_private_cleanup(&session->parsed);
@@ -1519,8 +1470,8 @@ static void sqlz_session_free(void *pointer) {
 
 /* =========================================================== lifecycle === */
 
-void xx_squashfs_sqlz_init(xx_squashfs_sqlz *archive, xx_io_device *device,
-                           int64_t base_address) {
+void xx_squashfs_sqlz_init(xx_squashfs_sqlz *archive, xx_io_device *device, int64_t base_address)
+{
     if (!archive) return;
     xx_rt_memset(archive, 0, sizeof(*archive));
     xx_format_init(&archive->format, device, base_address);
@@ -1533,40 +1484,36 @@ void xx_squashfs_sqlz_init(xx_squashfs_sqlz *archive, xx_io_device *device,
     archive->format.check_is_valid = xx_squashfs_sqlz_check_is_valid;
     archive->format.handle_base_info = xx_squashfs_sqlz_handle_base_info;
     archive->format.get_format_size = xx_squashfs_sqlz_get_format_size;
-    archive->format.get_number_of_archive_records =
-        xx_squashfs_sqlz_get_number_of_archive_records;
-    archive->format.create_archive_records_reading =
-        xx_squashfs_sqlz_create_archive_records_reading;
-    archive->format.get_current_archive_record =
-        xx_squashfs_sqlz_get_current_archive_record;
-    archive->format.unpack_current_archive_record =
-        xx_squashfs_sqlz_unpack_current_archive_record;
-    archive->format.archive_record_move_to_next =
-        xx_squashfs_sqlz_archive_record_move_to_next;
-    archive->format.free_archive_records_reading =
-        xx_squashfs_sqlz_free_archive_records_reading;
+    archive->format.get_number_of_archive_records = xx_squashfs_sqlz_get_number_of_archive_records;
+    archive->format.create_archive_records_reading = xx_squashfs_sqlz_create_archive_records_reading;
+    archive->format.get_current_archive_record = xx_squashfs_sqlz_get_current_archive_record;
+    archive->format.unpack_current_archive_record = xx_squashfs_sqlz_unpack_current_archive_record;
+    archive->format.archive_record_move_to_next = xx_squashfs_sqlz_archive_record_move_to_next;
+    archive->format.free_archive_records_reading = xx_squashfs_sqlz_free_archive_records_reading;
     archive->format.destroy = xx_squashfs_sqlz_vtable_destroy;
 }
 
-xx_squashfs_sqlz *xx_squashfs_sqlz_create(xx_io_device *device,
-                                          int64_t base_address) {
-    xx_squashfs_sqlz *archive =
-        (xx_squashfs_sqlz *)xx_mem_alloc(sizeof(*archive));
+xx_squashfs_sqlz *xx_squashfs_sqlz_create(xx_io_device *device, int64_t base_address)
+{
+    xx_squashfs_sqlz *archive = (xx_squashfs_sqlz *)xx_mem_alloc(sizeof(*archive));
     if (archive) xx_squashfs_sqlz_init(archive, device, base_address);
     return archive;
 }
 
-void xx_squashfs_sqlz_destroy(xx_squashfs_sqlz *archive) {
+void xx_squashfs_sqlz_destroy(xx_squashfs_sqlz *archive)
+{
     if (!archive) return;
     archive->internal = NULL;
     xx_format_cleanup_extra_parameters(&archive->format);
 }
 
-static void xx_squashfs_sqlz_vtable_destroy(Abstractformat *self) {
+static void xx_squashfs_sqlz_vtable_destroy(Abstractformat *self)
+{
     xx_squashfs_sqlz_destroy((xx_squashfs_sqlz *)self);
 }
 
-void xx_squashfs_sqlz_free(xx_squashfs_sqlz *archive) {
+void xx_squashfs_sqlz_free(xx_squashfs_sqlz *archive)
+{
     if (!archive) return;
     xx_squashfs_sqlz_destroy(archive);
     xx_mem_free(archive);
@@ -1574,14 +1521,16 @@ void xx_squashfs_sqlz_free(xx_squashfs_sqlz *archive) {
 
 /* ============================================================== vtable === */
 
-bool xx_squashfs_sqlz_check_is_valid(Abstractformat *self, xx_pd_struct *pd) {
+bool xx_squashfs_sqlz_check_is_valid(Abstractformat *self, xx_pd_struct *pd)
+{
     sqlz_private parsed;
     bool result = sqlz_parse(self, &parsed, false, pd);
     sqlz_private_cleanup(&parsed);
     return result;
 }
 
-bool xx_squashfs_sqlz_handle_base_info(Abstractformat *self, xx_pd_struct *pd) {
+bool xx_squashfs_sqlz_handle_base_info(Abstractformat *self, xx_pd_struct *pd)
+{
     xx_squashfs_sqlz *archive = (xx_squashfs_sqlz *)self;
     sqlz_private parsed;
     int64_t total;
@@ -1600,12 +1549,10 @@ bool xx_squashfs_sqlz_handle_base_info(Abstractformat *self, xx_pd_struct *pd) {
     archive->bytes_used = parsed.super.bytes_used;
     archive->big_endian = parsed.super.big_endian;
     self->endian = parsed.super.big_endian ? XX_ENDIAN_BIG : XX_ENDIAN_LITTLE;
-    (void)xx_rt_snprintf(self->version, sizeof(self->version), "%d.%d",
-                         (int)parsed.super.major, (int)parsed.super.minor);
+    (void)xx_rt_snprintf(self->version, sizeof(self->version), "%d.%d", (int)parsed.super.major, (int)parsed.super.minor);
 
     archive_size = parsed.image_size;
-    if (parsed.super.bytes_used > 0 &&
-        parsed.super.bytes_used <= parsed.image_size) {
+    if (parsed.super.bytes_used > 0 && parsed.super.bytes_used <= parsed.image_size) {
         archive_size = parsed.super.bytes_used;
     }
     self->format_size = archive_size;
@@ -1624,30 +1571,27 @@ bool xx_squashfs_sqlz_handle_base_info(Abstractformat *self, xx_pd_struct *pd) {
     return true;
 }
 
-int64_t xx_squashfs_sqlz_get_format_size(Abstractformat *self,
-                                         xx_pd_struct *pd) {
-    if (!self ||
-        (!self->base_info_handled && !xx_format_handle_base_info(self, pd))) {
+int64_t xx_squashfs_sqlz_get_format_size(Abstractformat *self, xx_pd_struct *pd)
+{
+    if (!self || (!self->base_info_handled && !xx_format_handle_base_info(self, pd))) {
         return -1;
     }
     return self->format_size;
 }
 
-uint64_t xx_squashfs_sqlz_get_number_of_archive_records(Abstractformat *self,
-                                                        xx_pd_struct *pd) {
-    if (!self ||
-        (!self->base_info_handled && !xx_format_handle_base_info(self, pd))) {
+uint64_t xx_squashfs_sqlz_get_number_of_archive_records(Abstractformat *self, xx_pd_struct *pd)
+{
+    if (!self || (!self->base_info_handled && !xx_format_handle_base_info(self, pd))) {
         return 0U;
     }
     return ((xx_squashfs_sqlz *)self)->number_of_records;
 }
 
-xx_archive_record_state *xx_squashfs_sqlz_create_archive_records_reading(
-    Abstractformat *self, const xx_list_s *options, xx_pd_struct *pd) {
+xx_archive_record_state *xx_squashfs_sqlz_create_archive_records_reading(Abstractformat *self, const xx_list_s *options, xx_pd_struct *pd)
+{
     xx_archive_record_state *state;
     sqlz_session *session;
-    if (!self || !self->device ||
-        (!self->base_info_handled && !xx_format_handle_base_info(self, pd))) {
+    if (!self || !self->device || (!self->base_info_handled && !xx_format_handle_base_info(self, pd))) {
         return NULL;
     }
     state = (xx_archive_record_state *)xx_mem_alloc(sizeof(*state));
@@ -1661,33 +1605,27 @@ xx_archive_record_state *xx_squashfs_sqlz_create_archive_records_reading(
     state->internal_state = session;
     state->free_internal = sqlz_session_free;
     session->frag_offset = -1;
-    if (!sqlz_copy_options(&state->options, options) ||
-        !sqlz_parse(self, &session->parsed, true, pd)) {
+    if (!sqlz_copy_options(&state->options, options) || !sqlz_parse(self, &session->parsed, true, pd)) {
         xx_archive_record_state_free(state);
         return NULL;
     }
     state->total_records = (int64_t)session->parsed.count;
-    if (session->parsed.count != 0U &&
-        sqlz_populate_record(&state->current_record, &session->parsed.members[0],
-                             self->base_address)) {
+    if (session->parsed.count != 0U && sqlz_populate_record(&state->current_record, &session->parsed.members[0], self->base_address)) {
         state->has_record = true;
         state->current_index = 0;
     }
     return state;
 }
 
-const xx_archive_record *xx_squashfs_sqlz_get_current_archive_record(
-    Abstractformat *self, xx_archive_record_state *state) {
-    return self && state && state->format == self && state->has_record
-               ? &state->current_record
-               : NULL;
+const xx_archive_record *xx_squashfs_sqlz_get_current_archive_record(Abstractformat *self, xx_archive_record_state *state)
+{
+    return self && state && state->format == self && state->has_record ? &state->current_record : NULL;
 }
 
-bool xx_squashfs_sqlz_archive_record_move_to_next(
-    Abstractformat *self, xx_archive_record_state *state, xx_pd_struct *pd) {
+bool xx_squashfs_sqlz_archive_record_move_to_next(Abstractformat *self, xx_archive_record_state *state, xx_pd_struct *pd)
+{
     sqlz_session *session;
-    if (!self || !state || state->format != self || !state->has_record ||
-        !state->internal_state || (pd && xx_pd_is_stopped(pd))) {
+    if (!self || !state || state->format != self || !state->has_record || !state->internal_state || (pd && xx_pd_is_stopped(pd))) {
         return false;
     }
     session = (sqlz_session *)state->internal_state;
@@ -1698,9 +1636,7 @@ bool xx_squashfs_sqlz_archive_record_move_to_next(
         state->has_record = false;
         return false;
     }
-    if (!sqlz_populate_record(&state->current_record,
-                              &session->parsed.members[session->index],
-                              self->base_address)) {
+    if (!sqlz_populate_record(&state->current_record, &session->parsed.members[session->index], self->base_address)) {
         state->has_record = false;
         return false;
     }
@@ -1708,8 +1644,8 @@ bool xx_squashfs_sqlz_archive_record_move_to_next(
     return true;
 }
 
-bool xx_squashfs_sqlz_unpack_current_archive_record(
-    Abstractformat *self, xx_archive_record_state *state, xx_pd_struct *pd) {
+bool xx_squashfs_sqlz_unpack_current_archive_record(Abstractformat *self, xx_archive_record_state *state, xx_pd_struct *pd)
+{
     sqlz_session *session;
     const sqlz_member *member;
     const xx_var *option;
@@ -1720,9 +1656,7 @@ bool xx_squashfs_sqlz_unpack_current_archive_record(
     bool result = false;
     bool created = false;
 
-    if (!self || !self->device || !state || state->format != self ||
-        !state->has_record || !state->internal_state ||
-        (pd && xx_pd_is_stopped(pd))) {
+    if (!self || !self->device || !state || state->format != self || !state->has_record || !state->internal_state || (pd && xx_pd_is_stopped(pd))) {
         return false;
     }
     session = (sqlz_session *)state->internal_state;
@@ -1732,24 +1666,19 @@ bool xx_squashfs_sqlz_unpack_current_archive_record(
 
     option = sqlz_find_option(&state->options, XX_META_ID_OPT_UNPACK_PATH);
     if (!option) {
-        return member->span_offset >= 0 && member->span_size >= 0 &&
-               member->span_offset <= session->parsed.image_size &&
-               member->span_size <=
-                   session->parsed.image_size - member->span_offset;
+        return member->span_offset >= 0 && member->span_size >= 0 && member->span_offset <= session->parsed.image_size &&
+               member->span_size <= session->parsed.image_size - member->span_offset;
     }
     /* A repeated name is refused so it can never overwrite the first. */
     if (!sqlz_seen_add(&session->seen, member->name)) return false;
-    if (option->type == XX_VAR_TYPE_STRING ||
-        option->type == XX_VAR_TYPE_STRING_VIEW) {
+    if (option->type == XX_VAR_TYPE_STRING || option->type == XX_VAR_TYPE_STRING_VIEW) {
         base = xx_var_get_str(option);
-    } else if (option->type == XX_VAR_TYPE_WSTRING ||
-               option->type == XX_VAR_TYPE_WSTRING_VIEW) {
+    } else if (option->type == XX_VAR_TYPE_WSTRING || option->type == XX_VAR_TYPE_WSTRING_VIEW) {
         owned_base = xx_str_unicode_to_utf8(xx_var_get_wstr(option));
         base = owned_base;
     }
     if (!base) goto cleanup;
-    if (base[0] && base[xx_str_len(base) - 1U] != '/' &&
-        base[xx_str_len(base) - 1U] != '\\') {
+    if (base[0] && base[xx_str_len(base) - 1U] != '/' && base[xx_str_len(base) - 1U] != '\\') {
         destination_path = xx_str_concat3(base, "/", member->name);
     } else {
         destination_path = xx_str_concat(base, member->name);
@@ -1771,8 +1700,8 @@ cleanup:
     return result;
 }
 
-void xx_squashfs_sqlz_free_archive_records_reading(
-    Abstractformat *self, xx_archive_record_state *state) {
+void xx_squashfs_sqlz_free_archive_records_reading(Abstractformat *self, xx_archive_record_state *state)
+{
     (void)self;
     xx_archive_record_state_free(state);
 }

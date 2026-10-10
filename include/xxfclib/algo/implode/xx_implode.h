@@ -41,24 +41,12 @@ extern "C" {
  * The two booleans correspond to ZIP general-purpose flags 1 and 2: an 8 KiB
  * dictionary and a coded-literal tree, respectively. expected_size is required.
  */
-XXFC_API bool xx_implode_unpack_device(xx_io_device *src_dev,
-                                       int64_t src_offset,
-                                       int64_t comp_size,
-                                       xx_io_device *dst_dev,
-                                       int64_t expected_size,
-                                       bool use_8k_dictionary,
-                                       bool use_literal_tree,
-                                       xx_pd_struct *pd);
+XXFC_API bool xx_implode_unpack_device(xx_io_device *src_dev, int64_t src_offset, int64_t comp_size, xx_io_device *dst_dev, int64_t expected_size, bool use_8k_dictionary,
+                                       bool use_literal_tree, xx_pd_struct *pd);
 
 /** @brief Decode a raw ZIP Implode stream directly to a UTF-8 file path. */
-XXFC_API bool xx_implode_unpack_device_to_file(xx_io_device *src_dev,
-                                               int64_t src_offset,
-                                               int64_t comp_size,
-                                               const char *dst_file_path,
-                                               int64_t expected_size,
-                                               bool use_8k_dictionary,
-                                               bool use_literal_tree,
-                                               xx_pd_struct *pd);
+XXFC_API bool xx_implode_unpack_device_to_file(xx_io_device *src_dev, int64_t src_offset, int64_t comp_size, const char *dst_file_path, int64_t expected_size,
+                                               bool use_8k_dictionary, bool use_literal_tree, xx_pd_struct *pd);
 
 #ifdef __cplusplus
 }

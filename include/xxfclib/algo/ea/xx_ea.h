@@ -32,9 +32,7 @@ extern "C" {
  * The container stores the uncompressed size, so no measuring entry point is
  * needed: pass that size as @p output_size.
  */
-XXFC_API bool xx_ea_decode_memory(const uint8_t *input, size_t input_size,
-                                  uint8_t *output, size_t output_size,
-                                  size_t *written);
+XXFC_API bool xx_ea_decode_memory(const uint8_t *input, size_t input_size, uint8_t *output, size_t output_size, size_t *written);
 
 /**
  * @brief EALIB member method 1.
@@ -50,9 +48,7 @@ XXFC_API bool xx_ea_decode_memory(const uint8_t *input, size_t input_size,
  * exist, which truncates a final match that overshoots -- see the note in the
  * implementation; that is deliberate and matches the reference.
  */
-XXFC_API bool xx_ea_lib_decode_memory(const uint8_t *input, size_t input_size,
-                                      uint8_t *output, size_t output_size,
-                                      size_t *written);
+XXFC_API bool xx_ea_lib_decode_memory(const uint8_t *input, size_t input_size, uint8_t *output, size_t output_size, size_t *written);
 
 /**
  * @brief Electronic Arts RefPack (QFS), whole container including the header.
@@ -68,9 +64,7 @@ XXFC_API bool xx_ea_lib_decode_memory(const uint8_t *input, size_t input_size,
  * as large as the declared size.  The decode fails if the declared size does
  * not fit in @p output_size.
  */
-XXFC_API bool xx_ea_refpack_decode_memory(const uint8_t *input,
-                                          size_t input_size, uint8_t *output,
-                                          size_t output_size, size_t *written);
+XXFC_API bool xx_ea_refpack_decode_memory(const uint8_t *input, size_t input_size, uint8_t *output, size_t output_size, size_t *written);
 
 /**
  * @brief Measure a RefPack container without materialising it.
@@ -86,9 +80,7 @@ XXFC_API bool xx_ea_refpack_decode_memory(const uint8_t *input,
  * @param consumed    Receives the container length through the terminator.
  * @param produced    Receives the decoded size.  May be NULL.
  */
-XXFC_API bool xx_ea_refpack_scan_memory(const uint8_t *input,
-                                        size_t input_size, size_t max_output,
-                                        size_t *consumed, size_t *produced);
+XXFC_API bool xx_ea_refpack_scan_memory(const uint8_t *input, size_t input_size, size_t max_output, size_t *consumed, size_t *produced);
 
 #ifdef __cplusplus
 }

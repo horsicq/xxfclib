@@ -31,9 +31,7 @@ extern "C" {
  * @param written     Receives the rendered length (0 on failure).
  * @return true only when the record was complete and fully rendered.
  */
-XXFC_API bool xx_pkt_decode_memory(const uint8_t *input, size_t input_size,
-                                   uint8_t *output, size_t output_size,
-                                   size_t *written);
+XXFC_API bool xx_pkt_decode_memory(const uint8_t *input, size_t input_size, uint8_t *output, size_t output_size, size_t *written);
 
 /**
  * @brief Measure the rendering of a record without producing it.
@@ -52,9 +50,7 @@ XXFC_API bool xx_pkt_decode_memory(const uint8_t *input, size_t input_size,
  * @param produced    Receives the rendered length. May be NULL.
  * @return true when the record is well formed and fits within @p max_output.
  */
-XXFC_API bool xx_pkt_scan_memory(const uint8_t *input, size_t input_size,
-                                 size_t max_output, size_t *consumed,
-                                 size_t *produced);
+XXFC_API bool xx_pkt_scan_memory(const uint8_t *input, size_t input_size, size_t max_output, size_t *consumed, size_t *produced);
 
 #ifdef __cplusplus
 }

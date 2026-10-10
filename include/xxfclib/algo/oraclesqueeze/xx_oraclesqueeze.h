@@ -19,15 +19,11 @@ typedef struct xx_oraclesqueeze_tree_info_s {
 } xx_oraclesqueeze_tree_info;
 
 /** Parse and bounds-check a Greenlaw Squeeze node table beginning at @p input. */
-XXFC_API bool xx_oraclesqueeze_parse_tree(const uint8_t *input,
-                                          size_t input_size,
-                                          xx_oraclesqueeze_tree_info *info);
+XXFC_API bool xx_oraclesqueeze_parse_tree(const uint8_t *input, size_t input_size, xx_oraclesqueeze_tree_info *info);
 
 /** Decode the node table, LSB-first Huffman stream and 0x90 RLE stage.  The
  * caller supplies the exact uncompressed length. */
-XXFC_API bool xx_oraclesqueeze_decompress_memory(
-    const uint8_t *input, size_t input_size, uint8_t *output,
-    size_t output_size, size_t *consumed_size, uint16_t *checksum);
+XXFC_API bool xx_oraclesqueeze_decompress_memory(const uint8_t *input, size_t input_size, uint8_t *output, size_t output_size, size_t *consumed_size, uint16_t *checksum);
 
 #ifdef __cplusplus
 }

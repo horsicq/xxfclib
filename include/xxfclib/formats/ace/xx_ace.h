@@ -41,9 +41,18 @@ XXFC_API bool xx_ace_unpack_current_archive_record(Abstractformat *self, xx_arch
 XXFC_API bool xx_ace_archive_record_move_to_next(Abstractformat *self, xx_archive_record_state *state, xx_pd_struct *pd);
 XXFC_API void xx_ace_free_archive_records_reading(Abstractformat *self, xx_archive_record_state *state);
 
-static inline Abstractformat *xx_ace_to_format(xx_ace *ace) { return ace ? &ace->format : NULL; }
-static inline void XAce_init(xx_ace *ace, xx_io_device *dev, int64_t base) { xx_ace_init(ace, dev, base); }
-static inline bool XAce_is_valid(xx_ace *ace, xx_pd_struct *pd) { return ace && xx_format_is_valid(&ace->format, pd); }
+static inline Abstractformat *xx_ace_to_format(xx_ace *ace)
+{
+    return ace ? &ace->format : NULL;
+}
+static inline void XAce_init(xx_ace *ace, xx_io_device *dev, int64_t base)
+{
+    xx_ace_init(ace, dev, base);
+}
+static inline bool XAce_is_valid(xx_ace *ace, xx_pd_struct *pd)
+{
+    return ace && xx_format_is_valid(&ace->format, pd);
+}
 #ifdef __cplusplus
 }
 #endif

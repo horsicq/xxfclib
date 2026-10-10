@@ -18,9 +18,7 @@
 
 /* Field 4 (the body) is rendered without a label; the reference stores that
  * as a NULL entry in its label table and loops PKT_FIELD_COUNT - 1 times. */
-static const char *const pkt_labels[PKT_FIELD_COUNT] = {
-    "Date    = ", "To      = ", "From    = ", "Subject = ", 0
-};
+static const char *const pkt_labels[PKT_FIELD_COUNT] = {"Date    = ", "To      = ", "From    = ", "Subject = ", 0};
 
 static size_t pkt_label_length(const char *label)
 {
@@ -48,8 +46,7 @@ static size_t pkt_label_length(const char *label)
  * The end position is now reported through `consumed` instead, and only the
  * rendering path - which is called with the exact extent the measuring path
  * returned - still insists the record fill its input. */
-static bool pkt_run(const uint8_t *input, size_t input_size, uint8_t *output,
-                    size_t output_size, size_t *produced, size_t *consumed)
+static bool pkt_run(const uint8_t *input, size_t input_size, uint8_t *output, size_t output_size, size_t *produced, size_t *consumed)
 {
     size_t starts[PKT_FIELD_COUNT];
     size_t lengths[PKT_FIELD_COUNT];
@@ -104,8 +101,7 @@ static bool pkt_run(const uint8_t *input, size_t input_size, uint8_t *output,
     }
     output[position++] = (uint8_t)PKT_LINE_TERMINATOR; /* blank line */
     if (lengths[PKT_FIELD_COUNT - 1]) {
-        xx_rt_memcpy(output + position, input + starts[PKT_FIELD_COUNT - 1],
-                     lengths[PKT_FIELD_COUNT - 1]);
+        xx_rt_memcpy(output + position, input + starts[PKT_FIELD_COUNT - 1], lengths[PKT_FIELD_COUNT - 1]);
         position += lengths[PKT_FIELD_COUNT - 1];
     }
     output[position++] = (uint8_t)PKT_LINE_TERMINATOR;
@@ -113,9 +109,7 @@ static bool pkt_run(const uint8_t *input, size_t input_size, uint8_t *output,
     return position == total;
 }
 
-bool xx_pkt_decode_memory(const uint8_t *input, size_t input_size,
-                          uint8_t *output, size_t output_size,
-                          size_t *written)
+bool xx_pkt_decode_memory(const uint8_t *input, size_t input_size, uint8_t *output, size_t output_size, size_t *written)
 {
     size_t produced = 0;
     bool ok;
@@ -128,16 +122,14 @@ bool xx_pkt_decode_memory(const uint8_t *input, size_t input_size,
     return true;
 }
 
-bool xx_pkt_scan_memory(const uint8_t *input, size_t input_size,
-                        size_t max_output, size_t *consumed, size_t *produced)
+bool xx_pkt_scan_memory(const uint8_t *input, size_t input_size, size_t max_output, size_t *consumed, size_t *produced)
 {
     size_t measured = 0;
     size_t used = 0;
 
     if (consumed) *consumed = 0;
     if (produced) *produced = 0;
-    if (!pkt_run(input, input_size, 0, max_output, &measured, &used))
-        return false;
+    if (!pkt_run(input, input_size, 0, max_output, &measured, &used)) return false;
     /* The record's true end, not the size of the window it was found in. */
     if (consumed) *consumed = used;
     if (produced) *produced = measured;

@@ -8,13 +8,15 @@
 #ifdef __cplusplus
 extern "C" {
 #endif
-typedef struct xx_espressif_image { Abstractformat format; } xx_espressif_image;
-XXFC_API void xx_espressif_image_init(xx_espressif_image *,xx_io_device *,int64_t);
-XXFC_API xx_espressif_image *xx_espressif_image_create(xx_io_device *,int64_t);
+typedef struct xx_espressif_image {
+    Abstractformat format;
+} xx_espressif_image;
+XXFC_API void xx_espressif_image_init(xx_espressif_image *, xx_io_device *, int64_t);
+XXFC_API xx_espressif_image *xx_espressif_image_create(xx_io_device *, int64_t);
 XXFC_API void xx_espressif_image_destroy(xx_espressif_image *);
 XXFC_API void xx_espressif_image_free(xx_espressif_image *);
-XXFC_API bool xx_espressif_image_check_is_valid(Abstractformat *,xx_pd_struct *);
-XXFC_API bool xx_espressif_image_handle_base_info(Abstractformat *,xx_pd_struct *);
+XXFC_API bool xx_espressif_image_check_is_valid(Abstractformat *, xx_pd_struct *);
+XXFC_API bool xx_espressif_image_handle_base_info(Abstractformat *, xx_pd_struct *);
 #ifdef __cplusplus
 }
 #endif

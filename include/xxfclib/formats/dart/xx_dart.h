@@ -45,9 +45,9 @@ typedef struct xx_dart {
     uint32_t compression; /**< 0 RLE, 1 LZHUF, 2 none. */
     uint32_t disk_type;
     uint32_t disk_kib;
-    uint32_t block_count;   /**< disk_kib / 20 */
-    uint32_t header_size;   /**< 84 or 148 */
-    int64_t stored_size;    /**< Header plus every stored block. */
+    uint32_t block_count; /**< disk_kib / 20 */
+    uint32_t header_size; /**< 84 or 148 */
+    int64_t stored_size;  /**< Header plus every stored block. */
 } xx_dart;
 
 typedef xx_dart xx_dart_t;
@@ -56,29 +56,21 @@ typedef xx_dart xx_dart_t;
 #define XX_DART_BLOCK_TAGS 480
 #define XX_DART_BLOCK_SIZE (XX_DART_BLOCK_DATA + XX_DART_BLOCK_TAGS)
 
-XXFC_API void xx_dart_init(xx_dart *archive, xx_io_device *device,
-                           int64_t base_address);
+XXFC_API void xx_dart_init(xx_dart *archive, xx_io_device *device, int64_t base_address);
 XXFC_API xx_dart *xx_dart_create(xx_io_device *device, int64_t base_address);
 XXFC_API void xx_dart_destroy(xx_dart *archive);
 XXFC_API void xx_dart_free(xx_dart *archive);
 
 XXFC_API bool xx_dart_check_is_valid(Abstractformat *self, xx_pd_struct *pd);
 XXFC_API bool xx_dart_handle_base_info(Abstractformat *self, xx_pd_struct *pd);
-XXFC_API int64_t xx_dart_get_format_size(Abstractformat *self,
-                                         xx_pd_struct *pd);
-XXFC_API uint64_t xx_dart_get_number_of_archive_records(Abstractformat *self,
-                                                        xx_pd_struct *pd);
+XXFC_API int64_t xx_dart_get_format_size(Abstractformat *self, xx_pd_struct *pd);
+XXFC_API uint64_t xx_dart_get_number_of_archive_records(Abstractformat *self, xx_pd_struct *pd);
 
-XXFC_API xx_archive_record_state *xx_dart_create_archive_records_reading(
-    Abstractformat *self, const xx_list_s *options, xx_pd_struct *pd);
-XXFC_API const xx_archive_record *xx_dart_get_current_archive_record(
-    Abstractformat *self, xx_archive_record_state *state);
-XXFC_API bool xx_dart_unpack_current_archive_record(
-    Abstractformat *self, xx_archive_record_state *state, xx_pd_struct *pd);
-XXFC_API bool xx_dart_archive_record_move_to_next(
-    Abstractformat *self, xx_archive_record_state *state, xx_pd_struct *pd);
-XXFC_API void xx_dart_free_archive_records_reading(
-    Abstractformat *self, xx_archive_record_state *state);
+XXFC_API xx_archive_record_state *xx_dart_create_archive_records_reading(Abstractformat *self, const xx_list_s *options, xx_pd_struct *pd);
+XXFC_API const xx_archive_record *xx_dart_get_current_archive_record(Abstractformat *self, xx_archive_record_state *state);
+XXFC_API bool xx_dart_unpack_current_archive_record(Abstractformat *self, xx_archive_record_state *state, xx_pd_struct *pd);
+XXFC_API bool xx_dart_archive_record_move_to_next(Abstractformat *self, xx_archive_record_state *state, xx_pd_struct *pd);
+XXFC_API void xx_dart_free_archive_records_reading(Abstractformat *self, xx_archive_record_state *state);
 
 /**
  * @brief Expand the whole image.
@@ -87,10 +79,7 @@ XXFC_API void xx_dart_free_archive_records_reading(
  * @param tag_destination  receives the tag bytes (NULL discards them)
  * @return true only when every block expanded to exactly 20960 bytes
  */
-XXFC_API bool xx_dart_unpack_to_device(xx_dart *archive,
-                                       xx_io_device *data_destination,
-                                       xx_io_device *tag_destination,
-                                       xx_pd_struct *pd);
+XXFC_API bool xx_dart_unpack_to_device(xx_dart *archive, xx_io_device *data_destination, xx_io_device *tag_destination, xx_pd_struct *pd);
 
 /**
  * @brief Expand one LZHUF-coded DART block held in memory.
@@ -98,9 +87,7 @@ XXFC_API bool xx_dart_unpack_to_device(xx_dart *archive,
  * Bytes past @p input_size read as zero, as in the reference decoder.
  * @return true when @p output_size bytes were produced
  */
-XXFC_API bool xx_dart_lzhuf_decode_memory(const uint8_t *input,
-                                          size_t input_size, uint8_t *output,
-                                          size_t output_size);
+XXFC_API bool xx_dart_lzhuf_decode_memory(const uint8_t *input, size_t input_size, uint8_t *output, size_t output_size);
 
 #ifdef __cplusplus
 }

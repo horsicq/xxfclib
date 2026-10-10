@@ -30,9 +30,7 @@ extern "C" {
  * @p output_size IS the member's declared uncompressed size: the decode
  * succeeds only when the chain produces exactly that many bytes and ends
  * exactly at the last input byte. */
-XXFC_API bool xx_asymetrix_decode_memory(const uint8_t *input,
-                                         size_t input_size, uint8_t *output,
-                                         size_t output_size, size_t *written);
+XXFC_API bool xx_asymetrix_decode_memory(const uint8_t *input, size_t input_size, uint8_t *output, size_t output_size, size_t *written);
 
 #ifdef __cplusplus
 }

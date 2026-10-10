@@ -36,9 +36,7 @@ extern "C" {
  * exact decoded length, which the caller should compare with the
  * container's imagefs_size.
  */
-XXFC_API bool xx_qnxbase_decode_memory(const uint8_t *input, size_t input_size,
-                                       uint8_t *output, size_t output_size,
-                                       size_t *written);
+XXFC_API bool xx_qnxbase_decode_memory(const uint8_t *input, size_t input_size, uint8_t *output, size_t output_size, size_t *written);
 
 #ifdef __cplusplus
 }

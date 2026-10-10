@@ -27,16 +27,16 @@ typedef struct cmpsc_encoder {
     unsigned nodes;
 } cmpsc_encoder;
 
-size_t xx_cmpsc_zip_encode_bound(size_t input_size) {
+size_t xx_cmpsc_zip_encode_bound(size_t input_size)
+{
     const size_t overhead = CMPSC_ENC_HEADER_SIZE + CMPSC_ENC_DICTIONARY_SIZE;
     size_t extra = input_size / 8U + (input_size % 8U != 0U);
-    if (input_size > SIZE_MAX - overhead ||
-        extra > SIZE_MAX - overhead - input_size) return 0U;
+    if (input_size > SIZE_MAX - overhead || extra > SIZE_MAX - overhead - input_size) return 0U;
     return overhead + input_size + extra;
 }
 
-static unsigned cmpsc_encoder_find(const cmpsc_encoder *state,
-                                   unsigned parent, uint8_t suffix) {
+static unsigned cmpsc_encoder_find(const cmpsc_encoder *state, unsigned parent, uint8_t suffix)
+{
     unsigned node = state->first_child[parent];
     while (node != CMPSC_ENC_NO_NODE) {
         if (state->suffix[node] == suffix) return node;
@@ -45,7 +45,8 @@ static unsigned cmpsc_encoder_find(const cmpsc_encoder *state,
     return CMPSC_ENC_NO_NODE;
 }
 
-static void cmpsc_encoder_init(cmpsc_encoder *state) {
+static void cmpsc_encoder_init(cmpsc_encoder *state)
+{
     unsigned node;
     xx_rt_memset(state, 0, sizeof(*state));
     for (node = 0U; node < CMPSC_ENC_ENTRIES; ++node) {
@@ -61,17 +62,15 @@ static void cmpsc_encoder_init(cmpsc_encoder *state) {
     state->nodes = 256U;
 }
 
-static bool cmpsc_encoder_train(cmpsc_encoder *state, const uint8_t *input,
-                                  size_t input_size, xx_pd_struct *pd) {
+static bool cmpsc_encoder_train(cmpsc_encoder *state, const uint8_t *input, size_t input_size, xx_pd_struct *pd)
+{
     size_t position = 0U;
     while (position < input_size && state->nodes < CMPSC_ENC_ENTRIES) {
         unsigned current = input[position++];
         for (;;) {
             unsigned next;
             if (pd && xx_pd_is_stopped(pd)) return false;
-            if (position == input_size ||
-                state->length[current] >= CMPSC_ENC_MAX_PHRASE)
-                break;
+            if (position == input_size || state->length[current] >= CMPSC_ENC_MAX_PHRASE) break;
             next = cmpsc_encoder_find(state, current, input[position]);
             if (next == CMPSC_ENC_NO_NODE) {
                 uint8_t *entry;
@@ -96,9 +95,8 @@ static bool cmpsc_encoder_train(cmpsc_encoder *state, const uint8_t *input,
     return !pd || !xx_pd_is_stopped(pd);
 }
 
-bool xx_cmpsc_zip_encode_memory(const uint8_t *input, size_t input_size,
-                                 uint8_t *output, size_t output_capacity,
-                                 size_t *written, xx_pd_struct *pd) {
+bool xx_cmpsc_zip_encode_memory(const uint8_t *input, size_t input_size, uint8_t *output, size_t output_capacity, size_t *written, xx_pd_struct *pd)
+{
     cmpsc_encoder *state = NULL;
     const uint8_t *dictionary;
     size_t dictionary_size = CMPSC_ENC_DICTIONARY_SIZE;
@@ -107,10 +105,8 @@ bool xx_cmpsc_zip_encode_memory(const uint8_t *input, size_t input_size,
     unsigned bit_count = 0U;
     bool success = false;
     if (written) *written = 0U;
-    if ((!input && input_size != 0U) || !output ||
-        output_capacity < CMPSC_ENC_HEADER_SIZE ||
-        xx_cmpsc_zip_encode_bound(input_size) == 0U ||
-        (pd && xx_pd_is_stopped(pd))) return false;
+    if ((!input && input_size != 0U) || !output || output_capacity < CMPSC_ENC_HEADER_SIZE || xx_cmpsc_zip_encode_bound(input_size) == 0U || (pd && xx_pd_is_stopped(pd)))
+        return false;
     state = (cmpsc_encoder *)xx_mem_alloc(sizeof(*state));
     if (!state) return false;
     cmpsc_encoder_init(state);
@@ -118,22 +114,15 @@ bool xx_cmpsc_zip_encode_memory(const uint8_t *input, size_t input_size,
     dictionary = state->dictionary;
     /* The bounded attempt may fail for an incompressible dictionary. Raw
      * dictionary storage is always the valid fallback within encode_bound. */
-    if (xx_deflate_compress_memory(state->dictionary,
-                                   CMPSC_ENC_DICTIONARY_SIZE,
-                                   state->compressed_dictionary,
-                                   sizeof(state->compressed_dictionary),
-                                   &compressed_size, XX_DEFLATE_LEVEL_DEFAULT,
-                                   false) && compressed_size != 0U &&
-        compressed_size < dictionary_size) {
+    if (xx_deflate_compress_memory(state->dictionary, CMPSC_ENC_DICTIONARY_SIZE, state->compressed_dictionary, sizeof(state->compressed_dictionary), &compressed_size,
+                                   XX_DEFLATE_LEVEL_DEFAULT, false) &&
+        compressed_size != 0U && compressed_size < dictionary_size) {
         dictionary = state->compressed_dictionary;
         dictionary_size = compressed_size;
     }
-    if ((pd && xx_pd_is_stopped(pd)) ||
-        dictionary_size > output_capacity - CMPSC_ENC_HEADER_SIZE)
-        goto cleanup;
+    if ((pd && xx_pd_is_stopped(pd)) || dictionary_size > output_capacity - CMPSC_ENC_HEADER_SIZE) goto cleanup;
     output[0] = 1U;
-    output[1] = (uint8_t)(0x80U | CMPSC_ENC_WIDTH |
-                         (dictionary == state->compressed_dictionary ? 0x40U : 0U));
+    output[1] = (uint8_t)(0x80U | CMPSC_ENC_WIDTH | (dictionary == state->compressed_dictionary ? 0x40U : 0U));
     output[2] = (uint8_t)dictionary_size;
     output[3] = (uint8_t)(dictionary_size >> 8U);
     output[4] = (uint8_t)(dictionary_size >> 16U);
@@ -144,8 +133,7 @@ bool xx_cmpsc_zip_encode_memory(const uint8_t *input, size_t input_size,
         unsigned current = input[source_position++];
         if (pd && xx_pd_is_stopped(pd)) goto cleanup;
         while (source_position < input_size) {
-            unsigned next = cmpsc_encoder_find(state, current,
-                                                input[source_position]);
+            unsigned next = cmpsc_encoder_find(state, current, input[source_position]);
             if (next == CMPSC_ENC_NO_NODE) break;
             current = next;
             ++source_position;

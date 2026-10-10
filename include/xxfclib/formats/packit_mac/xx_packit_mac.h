@@ -63,41 +63,30 @@ typedef struct xx_packit_mac {
     Abstractformat format;
     uint64_t number_of_records;
     uint64_t number_of_members;
-    int64_t archive_size;   /**< Bytes from the base address to the end. */
-    bool has_end_marker;    /**< The walk stopped at a "PEnd" marker. */
-    bool has_encrypted;     /**< The walk stopped at an encrypted member. */
+    int64_t archive_size;        /**< Bytes from the base address to the end. */
+    bool has_end_marker;         /**< The walk stopped at a "PEnd" marker. */
+    bool has_encrypted;          /**< The walk stopped at an encrypted member. */
     bool has_incomplete_members; /**< A recognizable member was damaged,
                                       truncated or beyond the member cap. */
 } xx_packit_mac;
 
 typedef xx_packit_mac xx_packit_mac_t;
 
-XXFC_API void xx_packit_mac_init(xx_packit_mac *archive, xx_io_device *device,
-                                 int64_t base_address);
-XXFC_API xx_packit_mac *xx_packit_mac_create(xx_io_device *device,
-                                             int64_t base_address);
+XXFC_API void xx_packit_mac_init(xx_packit_mac *archive, xx_io_device *device, int64_t base_address);
+XXFC_API xx_packit_mac *xx_packit_mac_create(xx_io_device *device, int64_t base_address);
 XXFC_API void xx_packit_mac_destroy(xx_packit_mac *archive);
 XXFC_API void xx_packit_mac_free(xx_packit_mac *archive);
 
-XXFC_API bool xx_packit_mac_check_is_valid(Abstractformat *self,
-                                           xx_pd_struct *pd);
-XXFC_API bool xx_packit_mac_handle_base_info(Abstractformat *self,
-                                             xx_pd_struct *pd);
-XXFC_API int64_t xx_packit_mac_get_format_size(Abstractformat *self,
-                                               xx_pd_struct *pd);
-XXFC_API uint64_t xx_packit_mac_get_number_of_archive_records(
-    Abstractformat *self, xx_pd_struct *pd);
+XXFC_API bool xx_packit_mac_check_is_valid(Abstractformat *self, xx_pd_struct *pd);
+XXFC_API bool xx_packit_mac_handle_base_info(Abstractformat *self, xx_pd_struct *pd);
+XXFC_API int64_t xx_packit_mac_get_format_size(Abstractformat *self, xx_pd_struct *pd);
+XXFC_API uint64_t xx_packit_mac_get_number_of_archive_records(Abstractformat *self, xx_pd_struct *pd);
 
-XXFC_API xx_archive_record_state *xx_packit_mac_create_archive_records_reading(
-    Abstractformat *self, const xx_list_s *options, xx_pd_struct *pd);
-XXFC_API const xx_archive_record *xx_packit_mac_get_current_archive_record(
-    Abstractformat *self, xx_archive_record_state *state);
-XXFC_API bool xx_packit_mac_unpack_current_archive_record(
-    Abstractformat *self, xx_archive_record_state *state, xx_pd_struct *pd);
-XXFC_API bool xx_packit_mac_archive_record_move_to_next(
-    Abstractformat *self, xx_archive_record_state *state, xx_pd_struct *pd);
-XXFC_API void xx_packit_mac_free_archive_records_reading(
-    Abstractformat *self, xx_archive_record_state *state);
+XXFC_API xx_archive_record_state *xx_packit_mac_create_archive_records_reading(Abstractformat *self, const xx_list_s *options, xx_pd_struct *pd);
+XXFC_API const xx_archive_record *xx_packit_mac_get_current_archive_record(Abstractformat *self, xx_archive_record_state *state);
+XXFC_API bool xx_packit_mac_unpack_current_archive_record(Abstractformat *self, xx_archive_record_state *state, xx_pd_struct *pd);
+XXFC_API bool xx_packit_mac_archive_record_move_to_next(Abstractformat *self, xx_archive_record_state *state, xx_pd_struct *pd);
+XXFC_API void xx_packit_mac_free_archive_records_reading(Abstractformat *self, xx_archive_record_state *state);
 
 /**
  * @brief Decode one PackIt / StuffIt-method-3 Huffman stream held in memory.
@@ -110,11 +99,7 @@ XXFC_API void xx_packit_mac_free_archive_records_reading(
  * @return true when the tree is well formed and @p output_size bytes were
  *         decoded without running past @p stream_size
  */
-XXFC_API bool xx_packit_mac_huffman_decode_memory(const uint8_t *stream,
-                                                  size_t stream_size,
-                                                  uint8_t *output,
-                                                  size_t output_size,
-                                                  size_t *consumed);
+XXFC_API bool xx_packit_mac_huffman_decode_memory(const uint8_t *stream, size_t stream_size, uint8_t *output, size_t output_size, size_t *consumed);
 
 #ifdef __cplusplus
 }

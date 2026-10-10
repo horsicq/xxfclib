@@ -30,12 +30,12 @@ extern "C" {
 #endif
 
 /* Standard ZIP Record Signatures */
-#define XX_ZIP_LOCAL_FILE_HEADER_SIGNATURE          0x04034B50
-#define XX_ZIP_CENTRAL_DIRECTORY_HEADER_SIGNATURE   0x02014B50
-#define XX_ZIP_EOCD_SIGNATURE                       0x06054B50
-#define XX_ZIP_ZIP64_EOCD_SIGNATURE                 0x06064B50
-#define XX_ZIP_ZIP64_EOCD_LOCATOR_SIGNATURE         0x07064B50
-#define XX_ZIP_DATA_DESCRIPTOR_SIGNATURE            0x08074B50
+#define XX_ZIP_LOCAL_FILE_HEADER_SIGNATURE 0x04034B50
+#define XX_ZIP_CENTRAL_DIRECTORY_HEADER_SIGNATURE 0x02014B50
+#define XX_ZIP_EOCD_SIGNATURE 0x06054B50
+#define XX_ZIP_ZIP64_EOCD_SIGNATURE 0x06064B50
+#define XX_ZIP_ZIP64_EOCD_LOCATOR_SIGNATURE 0x07064B50
+#define XX_ZIP_DATA_DESCRIPTOR_SIGNATURE 0x08074B50
 
 #pragma pack(push, 1)
 
@@ -43,7 +43,7 @@ extern "C" {
  * @brief Local file header (30 bytes fixed)
  */
 typedef struct {
-    uint32_t signature;              /**< 0x04034B50 (PK\x03\x04) */
+    uint32_t signature; /**< 0x04034B50 (PK\x03\x04) */
     uint16_t version_needed;
     uint16_t flags;
     uint16_t compression_method;
@@ -60,7 +60,7 @@ typedef struct {
  * @brief Central directory file header (46 bytes fixed)
  */
 typedef struct {
-    uint32_t signature;              /**< 0x02014B50 (PK\x01\x02) */
+    uint32_t signature; /**< 0x02014B50 (PK\x01\x02) */
     uint16_t version_made_by;
     uint16_t version_needed;
     uint16_t flags;
@@ -83,7 +83,7 @@ typedef struct {
  * @brief End of Central Directory Record (EOCD, 22 bytes fixed)
  */
 typedef struct {
-    uint32_t signature;              /**< 0x06054B50 (PK\x05\x06) */
+    uint32_t signature; /**< 0x06054B50 (PK\x05\x06) */
     uint16_t disk_number;
     uint16_t cd_start_disk;
     uint16_t records_on_disk;
@@ -97,7 +97,7 @@ typedef struct {
  * @brief ZIP64 End of Central Directory Locator (20 bytes fixed)
  */
 typedef struct {
-    uint32_t signature;              /**< 0x07064B50 (PK\x06\x07) */
+    uint32_t signature; /**< 0x07064B50 (PK\x06\x07) */
     uint32_t disk_with_zip64_eocd;
     uint64_t zip64_eocd_offset;
     uint32_t total_disks;
@@ -107,7 +107,7 @@ typedef struct {
  * @brief ZIP64 End of Central Directory Record (56 bytes fixed)
  */
 typedef struct {
-    uint32_t signature;              /**< 0x06064B50 (PK\x06\x06) */
+    uint32_t signature; /**< 0x06064B50 (PK\x06\x06) */
     uint64_t record_size;
     uint16_t version_made_by;
     uint16_t version_needed;

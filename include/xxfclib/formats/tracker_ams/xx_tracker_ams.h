@@ -5,13 +5,15 @@
 #ifdef __cplusplus
 extern "C" {
 #endif
-typedef struct xx_tracker_ams { Abstractformat format; } xx_tracker_ams;
-XXFC_API void xx_tracker_ams_init(xx_tracker_ams *,xx_io_device *,int64_t);
-XXFC_API xx_tracker_ams *xx_tracker_ams_create(xx_io_device *,int64_t);
+typedef struct xx_tracker_ams {
+    Abstractformat format;
+} xx_tracker_ams;
+XXFC_API void xx_tracker_ams_init(xx_tracker_ams *, xx_io_device *, int64_t);
+XXFC_API xx_tracker_ams *xx_tracker_ams_create(xx_io_device *, int64_t);
 XXFC_API void xx_tracker_ams_destroy(xx_tracker_ams *);
 XXFC_API void xx_tracker_ams_free(xx_tracker_ams *);
-XXFC_API bool xx_tracker_ams_check_is_valid(Abstractformat *,xx_pd_struct *);
-XXFC_API bool xx_tracker_ams_handle_base_info(Abstractformat *,xx_pd_struct *);
+XXFC_API bool xx_tracker_ams_check_is_valid(Abstractformat *, xx_pd_struct *);
+XXFC_API bool xx_tracker_ams_handle_base_info(Abstractformat *, xx_pd_struct *);
 #ifdef __cplusplus
 }
 #endif

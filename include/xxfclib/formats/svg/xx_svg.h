@@ -81,16 +81,16 @@ typedef struct xx_svg XSvg;
 
 struct xx_svg {
     Abstractformat format;
-    int64_t root_offset;       /**< Absolute offset of the root "<svg ". */
-    int64_t head_offset;       /**< Absolute offset of the head tag. */
-    int64_t end_offset;        /**< One past the matching "</svg>". */
+    int64_t root_offset;         /**< Absolute offset of the root "<svg ". */
+    int64_t head_offset;         /**< Absolute offset of the head tag. */
+    int64_t end_offset;          /**< One past the matching "</svg>". */
     uint64_t number_of_svg_tags; /**< "<svg " open tags, root included. */
-    uint32_t max_depth;        /**< Deepest svg-in-svg nesting, root = 1. */
+    uint32_t max_depth;          /**< Deepest svg-in-svg nesting, root = 1. */
     uint32_t number_of_prolog_comments;
     uint32_t number_of_prolog_pis;
-    bool has_bom;              /**< UTF-8 byte order mark at the base. */
-    bool has_xml_declaration;  /**< The prolog holds "<?xml" + space. */
-    bool has_doctype;          /**< The prolog holds <!DOCTYPE svg ...>. */
+    bool has_bom;             /**< UTF-8 byte order mark at the base. */
+    bool has_xml_declaration; /**< The prolog holds "<?xml" + space. */
+    bool has_doctype;         /**< The prolog holds <!DOCTYPE svg ...>. */
 };
 
 XXFC_API void xx_svg_init(xx_svg *svg, xx_io_device *dev, int64_t base_address);
@@ -120,18 +120,24 @@ XXFC_API uint32_t xx_svg_get_max_depth(const xx_svg *svg);
 XXFC_API bool xx_svg_has_xml_declaration(const xx_svg *svg);
 XXFC_API bool xx_svg_has_doctype(const xx_svg *svg);
 
-static inline Abstractformat *xx_svg_to_format(xx_svg *svg) {
+static inline Abstractformat *xx_svg_to_format(xx_svg *svg)
+{
     return svg ? &svg->format : NULL;
 }
-static inline void XSvg_init(xx_svg *svg, xx_io_device *dev,
-                             int64_t base_address) {
+static inline void XSvg_init(xx_svg *svg, xx_io_device *dev, int64_t base_address)
+{
     xx_svg_init(svg, dev, base_address);
 }
-static inline xx_svg *XSvg_create(xx_io_device *dev, int64_t base_address) {
+static inline xx_svg *XSvg_create(xx_io_device *dev, int64_t base_address)
+{
     return xx_svg_create(dev, base_address);
 }
-static inline void XSvg_free(xx_svg *svg) { xx_svg_free(svg); }
-static inline bool XSvg_is_valid(xx_svg *svg, xx_pd_struct *pd) {
+static inline void XSvg_free(xx_svg *svg)
+{
+    xx_svg_free(svg);
+}
+static inline bool XSvg_is_valid(xx_svg *svg, xx_pd_struct *pd)
+{
     return svg ? xx_format_is_valid(&svg->format, pd) : false;
 }
 

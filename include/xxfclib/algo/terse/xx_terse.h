@@ -62,8 +62,7 @@ extern "C" {
  * @param header_size  Receives 4 or 12. May be NULL.
  * @return true when @p input looks like a TERSE container.
  */
-XXFC_API bool xx_terse_detect(const uint8_t *input, size_t input_size,
-                              size_t *header_size);
+XXFC_API bool xx_terse_detect(const uint8_t *input, size_t input_size, size_t *header_size);
 
 /**
  * @brief Decode a TERSE container into a buffer of known size.
@@ -76,9 +75,7 @@ XXFC_API bool xx_terse_detect(const uint8_t *input, size_t input_size,
  * @return true only when the stream reached its end code having produced
  *         exactly @p output_size bytes.
  */
-XXFC_API bool xx_terse_decode_memory(const uint8_t *input, size_t input_size,
-                                     uint8_t *output, size_t output_size,
-                                     size_t *written);
+XXFC_API bool xx_terse_decode_memory(const uint8_t *input, size_t input_size, uint8_t *output, size_t output_size, size_t *written);
 
 /**
  * @brief Measure a TERSE container, which stores no decoded length.
@@ -96,9 +93,7 @@ XXFC_API bool xx_terse_decode_memory(const uint8_t *input, size_t input_size,
  * @param produced    Receives the decoded size. May be NULL.
  * @return true when the stream reached its end code within the limit.
  */
-XXFC_API bool xx_terse_scan_memory(const uint8_t *input, size_t input_size,
-                                   size_t max_output, size_t *consumed,
-                                   size_t *produced);
+XXFC_API bool xx_terse_scan_memory(const uint8_t *input, size_t input_size, size_t max_output, size_t *consumed, size_t *produced);
 
 #ifdef __cplusplus
 }

@@ -1,57 +1,151 @@
 /* Copyright (c) 2026 hors<horsicq@gmail.com>
  * SPDX-License-Identifier: MIT
  * Layout reference: https://raw.githubusercontent.com/aboood40091/BNTX-Injector/master/structs.py
- * Little-endian BNTX versions0.4.0.0/0.4.1.0 NX 2D single-layer textures; exports bounded encoded mip slices. Validates BRTI/BRTD pointers, names, dimensions and mip extents. No sparse/multisample/array/runtime-relocated variants, swizzle reversal or pixel decoding; relocation bytes are not applied.
+ * Little-endian BNTX versions0.4.0.0/0.4.1.0 NX 2D single-layer textures; exports bounded encoded mip slices. Validates BRTI/BRTD pointers, names, dimensions and mip
+ * extents. No sparse/multisample/array/runtime-relocated variants, swizzle reversal or pixel decoding; relocation bytes are not applied.
  */
 #include "xxfclib/formats/nintendo_bntx/xx_nintendo_bntx.h"
 #include "../xx_payload_members.h"
 #include "xxfclib/data/xx_data.h"
 
-static uint64_t g64(const uint8_t *p,bool be) { return be ? ((uint64_t)xx_data_get_u32(p, 4, 0, true)<<32)|xx_data_get_u32(p+4, 4, 0, true) : ((uint64_t)xx_data_get_u32(p+4, 4, 0, false)<<32)|xx_data_get_u32(p, 4, 0, false); }
-static bool span(uint64_t at,uint64_t n,uint64_t total) { return at<=total && n<=total-at; }
-static bool emit(Abstractformat *f,pm_stream *s,const char *name,uint64_t at,uint64_t n,uint64_t total) {
+static uint64_t g64(const uint8_t *p, bool be)
+{
+    return be ? ((uint64_t)xx_data_get_u32(p, 4, 0, true) << 32) | xx_data_get_u32(p + 4, 4, 0, true)
+              : ((uint64_t)xx_data_get_u32(p + 4, 4, 0, false) << 32) | xx_data_get_u32(p, 4, 0, false);
+}
+static bool span(uint64_t at, uint64_t n, uint64_t total)
+{
+    return at <= total && n <= total - at;
+}
+static bool emit(Abstractformat *f, pm_stream *s, const char *name, uint64_t at, uint64_t n, uint64_t total)
+{
     size_t i;
-    if(!span(at,n,total) || total>(uint64_t)pm_available(f) || s->count>=4096) return false;
-    for(i=0;i<s->count;++i) { uint64_t a=(uint64_t)(s->items[i].offset-f->base_address),b=(uint64_t)s->items[i].size;
-        if(n && b && at<a+b && a<at+n) return false; }
-    return pm_add(f,s,name,(int64_t)at,(int64_t)n);
-}
-static bool zname(Abstractformat *f,uint64_t at,uint64_t end) {
-    uint8_t c; uint64_t i; if(at>=end || end>(uint64_t)pm_available(f)) return false;
-    for(i=0;i<4096 && at+i<end;++i) { if(!pm_read(f,(int64_t)(at+i),&c,1)) return false; if(!c) return i!=0; } return false;
-}
-
-
-static bool pm_parse(Abstractformat *f,pm_stream *s,xx_pd_struct *pd) {
-
-    uint8_t h[88],p[8],b[160],n[2],datah[16]; uint32_t total,count,i,version,reloc; uint64_t table,data,limit,data_end; char label[40];
-    if(!pm_read(f,0,h,88) || xx_rt_memcmp(h,"BNTX\0\0\0\0",8) || h[12]!=0xff || h[13]!=0xfe || h[14]>16 || h[15]!=0x40 || xx_data_get_u16(h+20, 2, 0, false) || xx_rt_memcmp(h+32,"NX  ",4)) return false;
-    version=xx_data_get_u32(h+8, 4, 0, false); total=xx_data_get_u32(h+28, 4, 0, false); count=xx_data_get_u32(h+36, 4, 0, false); reloc=xx_data_get_u32(h+24, 4, 0, false); table=g64(h+40,false); data=g64(h+48,false);
-    if((version!=0x40000 && version!=0x40100) || total<88 || total>(uint64_t)pm_available(f) || !count || count>1024 || table<88 || !span(table,(uint64_t)count*8,total) || data<table+(uint64_t)count*8 || !span(data,16,total) || !pm_read(f,(int64_t)data,datah,16) || xx_rt_memcmp(datah,"BRTD",4)) return false;
-    if(g64(h+64,false) || g64(h+72,false) || xx_data_get_u32(h+80, 4, 0, false)) return false;
-    if(xx_data_get_u32(h+16, 4, 0, false)<2 || !span(xx_data_get_u32(h+16, 4, 0, false)-2,2,total) || !pm_read(f,xx_data_get_u32(h+16, 4, 0, false)-2,n,2) || !span(xx_data_get_u32(h+16, 4, 0, false),xx_data_get_u16(n, 2, 0, false)+1,total) || !zname(f,xx_data_get_u32(h+16, 4, 0, false),xx_data_get_u32(h+16, 4, 0, false)+xx_data_get_u16(n, 2, 0, false)+1)) return false;
-    limit=reloc ? reloc : total;
-    if(xx_data_get_u32(datah+8, 4, 0, false)<16 || !span(data,xx_data_get_u32(datah+8, 4, 0, false),limit)) { return false; } data_end=data+xx_data_get_u32(datah+8, 4, 0, false);
-    if(reloc && (reloc<data+16 || !span(reloc,16,total) || !pm_read(f,reloc,datah,16) || xx_rt_memcmp(datah,"_RLT",4) || xx_data_get_u32(datah+4, 4, 0, false)!=reloc || xx_data_get_u32(datah+8, 4, 0, false)>16)) return false;
-    for(i=0;i<count;++i) { uint64_t info,ptrs,name,first,last,image; uint32_t w,he,mips,j,alignment;
-        if((pd && xx_pd_is_stopped(pd)) || !pm_read(f,(int64_t)(table+i*8),p,8)) { return false; } info=g64(p,false);
-        if(info<88 || !span(info,160,data) || !pm_read(f,(int64_t)info,b,160) || xx_rt_memcmp(b,"BRTI",4) || xx_data_get_u32(b+8, 4, 0, false)<160 || !span(info,xx_data_get_u32(b+8, 4, 0, false),data)) return false;
-        w=xx_data_get_u32(b+36, 4, 0, false); he=xx_data_get_u32(b+40, 4, 0, false); mips=xx_data_get_u16(b+22, 2, 0, false); image=xx_data_get_u32(b+80, 4, 0, false); alignment=xx_data_get_u32(b+84, 4, 0, false); name=g64(b+96,false); ptrs=g64(b+112,false);
-        if((b[16]&~1U) || b[17]!=2 || xx_data_get_u16(b+18, 2, 0, false)>1 || !mips || mips>16 || xx_data_get_u16(b+24, 2, 0, false)!=1 || !w || !he || w>16384 || he>16384 || xx_data_get_u32(b+44, 4, 0, false)!=1 || xx_data_get_u32(b+48, 4, 0, false)!=1 || !xx_data_get_u32(b+28, 4, 0, false) || !image || !alignment || (alignment&(alignment-1)) || alignment>65536 || name<88 || !span(name,2,data) || !pm_read(f,(int64_t)name,n,2) || !span(name+2,xx_data_get_u16(n, 2, 0, false)+1,data) || !zname(f,name+2,name+3+xx_data_get_u16(n, 2, 0, false)) || ptrs<88 || !span(ptrs,(uint64_t)mips*8,data)) return false;
-        if(!pm_read(f,(int64_t)ptrs,p,8)) { return false; } first=g64(p,false); if(first<data+16 || first%alignment || !span(first,image,data_end)) return false; last=first;
-        for(j=0;j<mips;++j) { uint64_t next=first+image;
-            if(pd && xx_pd_is_stopped(pd)) return false;
-            if(j+1<mips) { if(!pm_read(f,(int64_t)(ptrs+(j+1)*8),p,8)) return false; next=g64(p,false); }
-            if(next<=last || next>first+image) return false;
-            xx_rt_snprintf(label,sizeof(label),"texture-%u-mip-%u.bin",i,j); if(!emit(f,s,label,last,next-last,total)) return false; last=next; }
+    if (!span(at, n, total) || total > (uint64_t)pm_available(f) || s->count >= 4096) return false;
+    for (i = 0; i < s->count; ++i) {
+        uint64_t a = (uint64_t)(s->items[i].offset - f->base_address), b = (uint64_t)s->items[i].size;
+        if (n && b && at < a + b && a < at + n) return false;
     }
-    s->size=total; return true;
-
+    return pm_add(f, s, name, (int64_t)at, (int64_t)n);
+}
+static bool zname(Abstractformat *f, uint64_t at, uint64_t end)
+{
+    uint8_t c;
+    uint64_t i;
+    if (at >= end || end > (uint64_t)pm_available(f)) return false;
+    for (i = 0; i < 4096 && at + i < end; ++i) {
+        if (!pm_read(f, (int64_t)(at + i), &c, 1)) return false;
+        if (!c) return i != 0;
+    }
+    return false;
 }
 
-void xx_nintendo_bntx_init(xx_nintendo_bntx *r,xx_io_device *d,int64_t b) { if(r) { xx_mem_zero(r,sizeof(*r)); pm_init(&r->format,d,b,XX_FILE_TYPE_NINTENDO_BNTX,"bntx"); } }
-xx_nintendo_bntx *xx_nintendo_bntx_create(xx_io_device *d,int64_t b) { xx_nintendo_bntx *r=(xx_nintendo_bntx *)xx_mem_alloc(sizeof(*r)); if(r) xx_nintendo_bntx_init(r,d,b); return r; }
-void xx_nintendo_bntx_destroy(xx_nintendo_bntx *r) { if(r) xx_format_cleanup_extra_parameters(&r->format); }
-void xx_nintendo_bntx_free(xx_nintendo_bntx *r) { if(r) { xx_nintendo_bntx_destroy(r); xx_mem_free(r); } }
-bool xx_nintendo_bntx_check_is_valid(Abstractformat *f,xx_pd_struct *pd) { return pm_valid(f,pd); }
-bool xx_nintendo_bntx_handle_base_info(Abstractformat *f,xx_pd_struct *pd) { return pm_handle(f,pd); }
+static bool pm_parse(Abstractformat *f, pm_stream *s, xx_pd_struct *pd)
+{
+    uint8_t h[88], p[8], b[160], n[2], datah[16];
+    uint32_t total, count, i, version, reloc;
+    uint64_t table, data, limit, data_end;
+    char label[40];
+    if (!pm_read(f, 0, h, 88) || xx_rt_memcmp(h, "BNTX\0\0\0\0", 8) || h[12] != 0xff || h[13] != 0xfe || h[14] > 16 || h[15] != 0x40 ||
+        xx_data_get_u16(h + 20, 2, 0, false) || xx_rt_memcmp(h + 32, "NX  ", 4))
+        return false;
+    version = xx_data_get_u32(h + 8, 4, 0, false);
+    total = xx_data_get_u32(h + 28, 4, 0, false);
+    count = xx_data_get_u32(h + 36, 4, 0, false);
+    reloc = xx_data_get_u32(h + 24, 4, 0, false);
+    table = g64(h + 40, false);
+    data = g64(h + 48, false);
+    if ((version != 0x40000 && version != 0x40100) || total < 88 || total > (uint64_t)pm_available(f) || !count || count > 1024 || table < 88 ||
+        !span(table, (uint64_t)count * 8, total) || data < table + (uint64_t)count * 8 || !span(data, 16, total) || !pm_read(f, (int64_t)data, datah, 16) ||
+        xx_rt_memcmp(datah, "BRTD", 4))
+        return false;
+    if (g64(h + 64, false) || g64(h + 72, false) || xx_data_get_u32(h + 80, 4, 0, false)) return false;
+    if (xx_data_get_u32(h + 16, 4, 0, false) < 2 || !span(xx_data_get_u32(h + 16, 4, 0, false) - 2, 2, total) ||
+        !pm_read(f, xx_data_get_u32(h + 16, 4, 0, false) - 2, n, 2) || !span(xx_data_get_u32(h + 16, 4, 0, false), xx_data_get_u16(n, 2, 0, false) + 1, total) ||
+        !zname(f, xx_data_get_u32(h + 16, 4, 0, false), xx_data_get_u32(h + 16, 4, 0, false) + xx_data_get_u16(n, 2, 0, false) + 1))
+        return false;
+    limit = reloc ? reloc : total;
+    if (xx_data_get_u32(datah + 8, 4, 0, false) < 16 || !span(data, xx_data_get_u32(datah + 8, 4, 0, false), limit)) {
+        return false;
+    }
+    data_end = data + xx_data_get_u32(datah + 8, 4, 0, false);
+    if (reloc && (reloc < data + 16 || !span(reloc, 16, total) || !pm_read(f, reloc, datah, 16) || xx_rt_memcmp(datah, "_RLT", 4) ||
+                  xx_data_get_u32(datah + 4, 4, 0, false) != reloc || xx_data_get_u32(datah + 8, 4, 0, false) > 16))
+        return false;
+    for (i = 0; i < count; ++i) {
+        uint64_t info, ptrs, name, first, last, image;
+        uint32_t w, he, mips, j, alignment;
+        if ((pd && xx_pd_is_stopped(pd)) || !pm_read(f, (int64_t)(table + i * 8), p, 8)) {
+            return false;
+        }
+        info = g64(p, false);
+        if (info < 88 || !span(info, 160, data) || !pm_read(f, (int64_t)info, b, 160) || xx_rt_memcmp(b, "BRTI", 4) || xx_data_get_u32(b + 8, 4, 0, false) < 160 ||
+            !span(info, xx_data_get_u32(b + 8, 4, 0, false), data))
+            return false;
+        w = xx_data_get_u32(b + 36, 4, 0, false);
+        he = xx_data_get_u32(b + 40, 4, 0, false);
+        mips = xx_data_get_u16(b + 22, 2, 0, false);
+        image = xx_data_get_u32(b + 80, 4, 0, false);
+        alignment = xx_data_get_u32(b + 84, 4, 0, false);
+        name = g64(b + 96, false);
+        ptrs = g64(b + 112, false);
+        if ((b[16] & ~1U) || b[17] != 2 || xx_data_get_u16(b + 18, 2, 0, false) > 1 || !mips || mips > 16 || xx_data_get_u16(b + 24, 2, 0, false) != 1 || !w || !he ||
+            w > 16384 || he > 16384 || xx_data_get_u32(b + 44, 4, 0, false) != 1 || xx_data_get_u32(b + 48, 4, 0, false) != 1 || !xx_data_get_u32(b + 28, 4, 0, false) ||
+            !image || !alignment || (alignment & (alignment - 1)) || alignment > 65536 || name < 88 || !span(name, 2, data) || !pm_read(f, (int64_t)name, n, 2) ||
+            !span(name + 2, xx_data_get_u16(n, 2, 0, false) + 1, data) || !zname(f, name + 2, name + 3 + xx_data_get_u16(n, 2, 0, false)) || ptrs < 88 ||
+            !span(ptrs, (uint64_t)mips * 8, data))
+            return false;
+        if (!pm_read(f, (int64_t)ptrs, p, 8)) {
+            return false;
+        }
+        first = g64(p, false);
+        if (first < data + 16 || first % alignment || !span(first, image, data_end)) return false;
+        last = first;
+        for (j = 0; j < mips; ++j) {
+            uint64_t next = first + image;
+            if (pd && xx_pd_is_stopped(pd)) return false;
+            if (j + 1 < mips) {
+                if (!pm_read(f, (int64_t)(ptrs + (j + 1) * 8), p, 8)) return false;
+                next = g64(p, false);
+            }
+            if (next <= last || next > first + image) return false;
+            xx_rt_snprintf(label, sizeof(label), "texture-%u-mip-%u.bin", i, j);
+            if (!emit(f, s, label, last, next - last, total)) return false;
+            last = next;
+        }
+    }
+    s->size = total;
+    return true;
+}
+
+void xx_nintendo_bntx_init(xx_nintendo_bntx *r, xx_io_device *d, int64_t b)
+{
+    if (r) {
+        xx_mem_zero(r, sizeof(*r));
+        pm_init(&r->format, d, b, XX_FILE_TYPE_NINTENDO_BNTX, "bntx");
+    }
+}
+xx_nintendo_bntx *xx_nintendo_bntx_create(xx_io_device *d, int64_t b)
+{
+    xx_nintendo_bntx *r = (xx_nintendo_bntx *)xx_mem_alloc(sizeof(*r));
+    if (r) xx_nintendo_bntx_init(r, d, b);
+    return r;
+}
+void xx_nintendo_bntx_destroy(xx_nintendo_bntx *r)
+{
+    if (r) xx_format_cleanup_extra_parameters(&r->format);
+}
+void xx_nintendo_bntx_free(xx_nintendo_bntx *r)
+{
+    if (r) {
+        xx_nintendo_bntx_destroy(r);
+        xx_mem_free(r);
+    }
+}
+bool xx_nintendo_bntx_check_is_valid(Abstractformat *f, xx_pd_struct *pd)
+{
+    return pm_valid(f, pd);
+}
+bool xx_nintendo_bntx_handle_base_info(Abstractformat *f, xx_pd_struct *pd)
+{
+    return pm_handle(f, pd);
+}

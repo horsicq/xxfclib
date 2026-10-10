@@ -63,13 +63,13 @@ extern "C" {
 typedef struct xx_adf {
     Abstractformat format;
     uint64_t number_of_records;
-    int64_t image_size;     /**< Bytes of the volume (format size). */
-    uint32_t root_block;    /**< Block number of the root block. */
-    uint32_t block_count;   /**< Blocks the filesystem spans. */
-    uint8_t dos_type;       /**< The boot block's flags byte, 0..7 (for a
-                                 blank boot block: 0 or 1 as inferred). */
-    uint8_t blank_boot;     /**< 1 when the boot blocks were all zero. */
-    char volume_name[96];   /**< UTF-8 volume name from the root block. */
+    int64_t image_size;   /**< Bytes of the volume (format size). */
+    uint32_t root_block;  /**< Block number of the root block. */
+    uint32_t block_count; /**< Blocks the filesystem spans. */
+    uint8_t dos_type;     /**< The boot block's flags byte, 0..7 (for a
+                               blank boot block: 0 or 1 as inferred). */
+    uint8_t blank_boot;   /**< 1 when the boot blocks were all zero. */
+    char volume_name[96]; /**< UTF-8 volume name from the root block. */
 } xx_adf;
 
 typedef xx_adf xx_adf_t;
@@ -77,29 +77,21 @@ typedef xx_adf xx_adf_t;
 /** Block size of every image this reader accepts. */
 #define XX_ADF_BLOCK_SIZE 512
 
-XXFC_API void xx_adf_init(xx_adf *image, xx_io_device *device,
-                          int64_t base_address);
+XXFC_API void xx_adf_init(xx_adf *image, xx_io_device *device, int64_t base_address);
 XXFC_API xx_adf *xx_adf_create(xx_io_device *device, int64_t base_address);
 XXFC_API void xx_adf_destroy(xx_adf *image);
 XXFC_API void xx_adf_free(xx_adf *image);
 
 XXFC_API bool xx_adf_check_is_valid(Abstractformat *self, xx_pd_struct *pd);
 XXFC_API bool xx_adf_handle_base_info(Abstractformat *self, xx_pd_struct *pd);
-XXFC_API int64_t xx_adf_get_format_size(Abstractformat *self,
-                                        xx_pd_struct *pd);
-XXFC_API uint64_t xx_adf_get_number_of_archive_records(Abstractformat *self,
-                                                       xx_pd_struct *pd);
+XXFC_API int64_t xx_adf_get_format_size(Abstractformat *self, xx_pd_struct *pd);
+XXFC_API uint64_t xx_adf_get_number_of_archive_records(Abstractformat *self, xx_pd_struct *pd);
 
-XXFC_API xx_archive_record_state *xx_adf_create_archive_records_reading(
-    Abstractformat *self, const xx_list_s *options, xx_pd_struct *pd);
-XXFC_API const xx_archive_record *xx_adf_get_current_archive_record(
-    Abstractformat *self, xx_archive_record_state *state);
-XXFC_API bool xx_adf_unpack_current_archive_record(
-    Abstractformat *self, xx_archive_record_state *state, xx_pd_struct *pd);
-XXFC_API bool xx_adf_archive_record_move_to_next(
-    Abstractformat *self, xx_archive_record_state *state, xx_pd_struct *pd);
-XXFC_API void xx_adf_free_archive_records_reading(
-    Abstractformat *self, xx_archive_record_state *state);
+XXFC_API xx_archive_record_state *xx_adf_create_archive_records_reading(Abstractformat *self, const xx_list_s *options, xx_pd_struct *pd);
+XXFC_API const xx_archive_record *xx_adf_get_current_archive_record(Abstractformat *self, xx_archive_record_state *state);
+XXFC_API bool xx_adf_unpack_current_archive_record(Abstractformat *self, xx_archive_record_state *state, xx_pd_struct *pd);
+XXFC_API bool xx_adf_archive_record_move_to_next(Abstractformat *self, xx_archive_record_state *state, xx_pd_struct *pd);
+XXFC_API void xx_adf_free_archive_records_reading(Abstractformat *self, xx_archive_record_state *state);
 
 #ifdef __cplusplus
 }

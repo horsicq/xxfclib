@@ -37,11 +37,7 @@ extern "C" {
  * exactly that many bytes AND the bit stream ends exactly at the end of
  * @p input.  No scan entry point is needed or provided.
  */
-XXFC_API bool xx_fpak_decode_memory_profile(const uint8_t *input,
-                                            size_t input_size,
-                                            uint16_t method, uint16_t flags,
-                                            uint8_t *output,
-                                            size_t output_size,
+XXFC_API bool xx_fpak_decode_memory_profile(const uint8_t *input, size_t input_size, uint16_t method, uint16_t flags, uint8_t *output, size_t output_size,
                                             size_t *written);
 
 /**
@@ -57,11 +53,7 @@ XXFC_API bool xx_fpak_decode_memory_profile(const uint8_t *input,
  * desync and still fails.  The member CRC-32 cannot be checked against a
  * prefix, so a caller must publish the result as an obviously partial member.
  */
-XXFC_API bool xx_fpak_decode_partial_profile(const uint8_t *input,
-                                             size_t input_size,
-                                             uint16_t method, uint16_t flags,
-                                             uint8_t *output,
-                                             size_t output_size,
+XXFC_API bool xx_fpak_decode_partial_profile(const uint8_t *input, size_t input_size, uint16_t method, uint16_t flags, uint8_t *output, size_t output_size,
                                              size_t *written);
 
 /**
@@ -72,9 +64,7 @@ XXFC_API bool xx_fpak_decode_partial_profile(const uint8_t *input,
  * compress-properties blob with.  Prefer the _profile form whenever the
  * record's four-byte [u16 method][u16 flags] property is available.
  */
-XXFC_API bool xx_fpak_decode_memory(const uint8_t *input, size_t input_size,
-                                    uint8_t *output, size_t output_size,
-                                    size_t *written);
+XXFC_API bool xx_fpak_decode_memory(const uint8_t *input, size_t input_size, uint8_t *output, size_t output_size, size_t *written);
 
 #ifdef __cplusplus
 }

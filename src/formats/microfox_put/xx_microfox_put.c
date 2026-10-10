@@ -83,9 +83,9 @@
 #define XX_MICROFOX_PUT_FILE_TYPE XX_FILE_TYPE_UNKNOWN
 #endif
 
-#define PUT_L0_MIN 24      /* level-0 header with an empty name */
-#define PUT_L1_MIN 27      /* level 0 plus the OS byte and the first chain word */
-#define PUT_BASE_MAX 257   /* 0xFF + 2 */
+#define PUT_L0_MIN 24    /* level-0 header with an empty name */
+#define PUT_L1_MIN 27    /* level 0 plus the OS byte and the first chain word */
+#define PUT_BASE_MAX 257 /* 0xFF + 2 */
 #define PUT_EXT_MAX_COUNT 64
 #define PUT_HEADER_MAX (PUT_BASE_MAX + 65536)
 #define PUT_MAX_MEMBERS 65536
@@ -109,12 +109,12 @@
 #define PUT_LZ5_BLOCK_MAX_OUT ((int64_t)65536 * 256)
 
 typedef struct put_member_s {
-    uint8_t *raw;  /* NUL-terminated, '/'-separated, code page 437 bytes */
-    uint8_t *orig; /* the name as stored, once raw has been renamed */
-    char *name;    /* UTF-8, filled when records are read */
+    uint8_t *raw;          /* NUL-terminated, '/'-separated, code page 437 bytes */
+    uint8_t *orig;         /* the name as stored, once raw has been renamed */
+    char *name;            /* UTF-8, filled when records are read */
     int64_t header_offset; /* absolute */
     int64_t header_size;
-    int64_t data_offset;   /* absolute */
+    int64_t data_offset; /* absolute */
     int64_t packed_size;
     int64_t unpacked_size;
     uint32_t dos_datetime;
@@ -138,12 +138,14 @@ static void put_vtable_destroy(Abstractformat *self);
 /* -------------------------------------------------------------- helpers -- */
 
 #include "xxfclib/global/xx_global.h"
-static size_t gb_microfox_put_capacity(void) {
+static size_t gb_microfox_put_capacity(void)
+{
     size_t n = xx_get_file_buffer_size();
     if (!n) n = XX_DEFAULT_FILE_BUFFER_SIZE;
     return n > (SIZE_MAX >> 1) ? SIZE_MAX >> 1 : n;
 }
-static ssize_t gb_microfox_put_read(xx_io_device *device, void *buffer, size_t size, size_t capacity) {
+static ssize_t gb_microfox_put_read(xx_io_device *device, void *buffer, size_t size, size_t capacity)
+{
     size_t done = 0;
     if (size > (SIZE_MAX >> 1)) return -1;
     while (done < size) {
@@ -157,7 +159,8 @@ static ssize_t gb_microfox_put_read(xx_io_device *device, void *buffer, size_t s
     }
     return (ssize_t)done;
 }
-static ssize_t gb_microfox_put_write(xx_io_device *device, const void *buffer, size_t size, size_t capacity) {
+static ssize_t gb_microfox_put_write(xx_io_device *device, const void *buffer, size_t size, size_t capacity)
+{
     size_t done = 0;
     if (size > (SIZE_MAX >> 1)) return -1;
     while (done < size) {
@@ -172,13 +175,12 @@ static ssize_t gb_microfox_put_write(xx_io_device *device, const void *buffer, s
     return (ssize_t)done;
 }
 
-static bool put_read_at(xx_io_device *device, int64_t offset, uint8_t *buffer,
-                        size_t size) {
+static bool put_read_at(xx_io_device *device, int64_t offset, uint8_t *buffer, size_t size)
+{
     const size_t file_io_capacity = gb_microfox_put_capacity();
     size_t done = 0U;
 
-    if (!device || offset < 0 || (!buffer && size != 0U) ||
-        xx_io_seek64(device, offset, SEEK_SET) != 0) {
+    if (!device || offset < 0 || (!buffer && size != 0U) || xx_io_seek64(device, offset, SEEK_SET) != 0) {
         return false;
     }
     while (done < size) {
@@ -189,13 +191,14 @@ static bool put_read_at(xx_io_device *device, int64_t offset, uint8_t *buffer,
     return true;
 }
 
-static uint16_t put_crc16_update(uint16_t crc, const uint8_t *data, size_t size) {
+static uint16_t put_crc16_update(uint16_t crc, const uint8_t *data, size_t size)
+{
     return xx_crc16_arc_calc(crc, data, size);
 }
 
 /* The header CRC of extended type 0 counts its own two bytes as zero. */
-static uint16_t put_header_crc(const uint8_t *header, size_t size,
-                               size_t skip) {
+static uint16_t put_header_crc(const uint8_t *header, size_t size, size_t skip)
+{
     static const uint8_t zero[2] = {0U, 0U};
     uint16_t crc = put_crc16_update(0U, header, skip);
 
@@ -203,21 +206,21 @@ static uint16_t put_header_crc(const uint8_t *header, size_t size,
     return put_crc16_update(crc, header + skip + 2U, size - skip - 2U);
 }
 
-static bool put_tag_ok(const uint8_t *header) {
-    return header[2] == (uint8_t)'-' && header[3] == (uint8_t)'l' &&
-           header[4] == (uint8_t)'Z' &&
-           (header[5] == (uint8_t)'0' || header[5] == (uint8_t)'1' ||
-            header[5] == (uint8_t)'5') &&
-           header[6] == (uint8_t)'-';
+static bool put_tag_ok(const uint8_t *header)
+{
+    return header[2] == (uint8_t)'-' && header[3] == (uint8_t)'l' && header[4] == (uint8_t)'Z' &&
+           (header[5] == (uint8_t)'0' || header[5] == (uint8_t)'1' || header[5] == (uint8_t)'5') && header[6] == (uint8_t)'-';
 }
 
 /* Names are raw code page bytes; a control byte in one means the walk has
  * wandered into payload. */
-static bool put_name_byte_ok(uint8_t byte) {
+static bool put_name_byte_ok(uint8_t byte)
+{
     return byte >= 0x20U && byte != 0x7FU;
 }
 
-static void put_stream_free(void *pointer) {
+static void put_stream_free(void *pointer)
+{
     put_stream *stream = (put_stream *)pointer;
     size_t index;
 
@@ -231,7 +234,8 @@ static void put_stream_free(void *pointer) {
     xx_mem_free(stream);
 }
 
-static bool put_stream_add(put_stream *stream, const put_member *member) {
+static bool put_stream_add(put_stream *stream, const put_member *member)
+{
     if (stream->count == stream->capacity) {
         size_t grown_capacity = stream->capacity ? stream->capacity * 2U : 16U;
         put_member *grown;
@@ -240,8 +244,7 @@ static bool put_stream_add(put_stream *stream, const put_member *member) {
             grown_capacity = (size_t)PUT_MAX_MEMBERS;
         }
         if (grown_capacity <= stream->capacity) return false;
-        grown = (put_member *)xx_mem_realloc(
-            stream->items, grown_capacity * sizeof(*grown));
+        grown = (put_member *)xx_mem_realloc(stream->items, grown_capacity * sizeof(*grown));
         if (!grown) return false;
         stream->items = grown;
         stream->capacity = grown_capacity;
@@ -255,8 +258,8 @@ static bool put_stream_add(put_stream *stream, const put_member *member) {
 /* Append @p size bytes of a name or directory field to @p out, turning the
  * separators into '/'. A NUL ends a name field early (the bytes after it are
  * still covered by the header checksum, but are not the name). */
-static bool put_append_field(uint8_t *out, size_t *used, const uint8_t *field,
-                             int32_t size, bool is_dir) {
+static bool put_append_field(uint8_t *out, size_t *used, const uint8_t *field, int32_t size, bool is_dir)
+{
     int32_t index;
 
     for (index = 0; index < size; ++index) {
@@ -280,9 +283,8 @@ static bool put_append_field(uint8_t *out, size_t *used, const uint8_t *field,
  * PUT_HEADER_MAX bytes, @p name PUT_NAME_MAX + 1. On success the member's
  * raw name is left NUL-terminated in @p name and not yet owned by
  * @p member. */
-static bool put_parse_member(Abstractformat *self, uint8_t *header,
-                             uint8_t *name, int64_t offset, int64_t span,
-                             put_member *member, xx_pd_struct *pd) {
+static bool put_parse_member(Abstractformat *self, uint8_t *header, uint8_t *name, int64_t offset, int64_t span, put_member *member, xx_pd_struct *pd)
+{
     xx_io_device *device = self->device;
     int64_t absolute = self->base_address + offset;
     int64_t remaining = span - offset;
@@ -339,8 +341,7 @@ static bool put_parse_member(Abstractformat *self, uint8_t *header,
             /* the chain is counted inside the packed size */
             if ((int64_t)next > packed - ext_total) return false;
             if ((int64_t)next > remaining - (int64_t)header_total) return false;
-            if (!put_read_at(device, absolute + header_total,
-                             header + header_total, (size_t)next)) {
+            if (!put_read_at(device, absolute + header_total, header + header_total, (size_t)next)) {
                 return false;
             }
             type = header[header_total];
@@ -361,9 +362,7 @@ static bool put_parse_member(Abstractformat *self, uint8_t *header,
             ext_total += next;
             next = (int32_t)xx_data_get_u16(header + header_total - 2, 2, 0, false);
         }
-        if (crc_pos >= 0 &&
-            put_header_crc(header, (size_t)header_total, (size_t)crc_pos) !=
-                xx_data_get_u16(header + crc_pos, 2, 0, false)) {
+        if (crc_pos >= 0 && put_header_crc(header, (size_t)header_total, (size_t)crc_pos) != xx_data_get_u16(header + crc_pos, 2, 0, false)) {
             return false;
         }
         packed -= ext_total;
@@ -404,7 +403,8 @@ static bool put_parse_member(Abstractformat *self, uint8_t *header,
     return true;
 }
 
-static put_stream *put_parse(Abstractformat *self, xx_pd_struct *pd) {
+static put_stream *put_parse(Abstractformat *self, xx_pd_struct *pd)
+{
     put_stream *stream = NULL;
     uint8_t *header = NULL;
     uint8_t *name = NULL;
@@ -432,8 +432,7 @@ static put_stream *put_parse(Abstractformat *self, xx_pd_struct *pd) {
             stream->archive_size = span;
             break;
         }
-        if (!put_read_at(self->device, self->base_address + offset, &first,
-                         1U)) {
+        if (!put_read_at(self->device, self->base_address + offset, &first, 1U)) {
             goto fail;
         }
         if (first == 0U && stream->count > 0U) {
@@ -442,8 +441,7 @@ static put_stream *put_parse(Abstractformat *self, xx_pd_struct *pd) {
             stream->archive_size = offset + 1;
             break;
         }
-        if (stream->count >= (size_t)PUT_MAX_MEMBERS ||
-            !put_parse_member(self, header, name, offset, span, &member, pd)) {
+        if (stream->count >= (size_t)PUT_MAX_MEMBERS || !put_parse_member(self, header, name, offset, span, &member, pd)) {
             if (stream->count == 0U) goto fail;
             if (pd && xx_pd_is_stopped(pd)) goto fail;
             stream->archive_size = offset;
@@ -473,24 +471,16 @@ fail:
 
 /* Code page 437, 0x80..0xFF, as Unicode. */
 static const uint16_t put_cp437_high[128] = {
-    0x00C7, 0x00FC, 0x00E9, 0x00E2, 0x00E4, 0x00E0, 0x00E5, 0x00E7,
-    0x00EA, 0x00EB, 0x00E8, 0x00EF, 0x00EE, 0x00EC, 0x00C4, 0x00C5,
-    0x00C9, 0x00E6, 0x00C6, 0x00F4, 0x00F6, 0x00F2, 0x00FB, 0x00F9,
-    0x00FF, 0x00D6, 0x00DC, 0x00A2, 0x00A3, 0x00A5, 0x20A7, 0x0192,
-    0x00E1, 0x00ED, 0x00F3, 0x00FA, 0x00F1, 0x00D1, 0x00AA, 0x00BA,
-    0x00BF, 0x2310, 0x00AC, 0x00BD, 0x00BC, 0x00A1, 0x00AB, 0x00BB,
-    0x2591, 0x2592, 0x2593, 0x2502, 0x2524, 0x2561, 0x2562, 0x2556,
-    0x2555, 0x2563, 0x2551, 0x2557, 0x255D, 0x255C, 0x255B, 0x2510,
-    0x2514, 0x2534, 0x252C, 0x251C, 0x2500, 0x253C, 0x255E, 0x255F,
-    0x255A, 0x2554, 0x2569, 0x2566, 0x2560, 0x2550, 0x256C, 0x2567,
-    0x2568, 0x2564, 0x2565, 0x2559, 0x2558, 0x2552, 0x2553, 0x256B,
-    0x256A, 0x2518, 0x250C, 0x2588, 0x2584, 0x258C, 0x2590, 0x2580,
-    0x03B1, 0x00DF, 0x0393, 0x03C0, 0x03A3, 0x03C3, 0x00B5, 0x03C4,
-    0x03A6, 0x0398, 0x03A9, 0x03B4, 0x221E, 0x03C6, 0x03B5, 0x2229,
-    0x2261, 0x00B1, 0x2265, 0x2264, 0x2320, 0x2321, 0x00F7, 0x2248,
-    0x00B0, 0x2219, 0x00B7, 0x221A, 0x207F, 0x00B2, 0x25A0, 0x00A0};
+    0x00C7, 0x00FC, 0x00E9, 0x00E2, 0x00E4, 0x00E0, 0x00E5, 0x00E7, 0x00EA, 0x00EB, 0x00E8, 0x00EF, 0x00EE, 0x00EC, 0x00C4, 0x00C5, 0x00C9, 0x00E6, 0x00C6,
+    0x00F4, 0x00F6, 0x00F2, 0x00FB, 0x00F9, 0x00FF, 0x00D6, 0x00DC, 0x00A2, 0x00A3, 0x00A5, 0x20A7, 0x0192, 0x00E1, 0x00ED, 0x00F3, 0x00FA, 0x00F1, 0x00D1,
+    0x00AA, 0x00BA, 0x00BF, 0x2310, 0x00AC, 0x00BD, 0x00BC, 0x00A1, 0x00AB, 0x00BB, 0x2591, 0x2592, 0x2593, 0x2502, 0x2524, 0x2561, 0x2562, 0x2556, 0x2555,
+    0x2563, 0x2551, 0x2557, 0x255D, 0x255C, 0x255B, 0x2510, 0x2514, 0x2534, 0x252C, 0x251C, 0x2500, 0x253C, 0x255E, 0x255F, 0x255A, 0x2554, 0x2569, 0x2566,
+    0x2560, 0x2550, 0x256C, 0x2567, 0x2568, 0x2564, 0x2565, 0x2559, 0x2558, 0x2552, 0x2553, 0x256B, 0x256A, 0x2518, 0x250C, 0x2588, 0x2584, 0x258C, 0x2590,
+    0x2580, 0x03B1, 0x00DF, 0x0393, 0x03C0, 0x03A3, 0x03C3, 0x00B5, 0x03C4, 0x03A6, 0x0398, 0x03A9, 0x03B4, 0x221E, 0x03C6, 0x03B5, 0x2229, 0x2261, 0x00B1,
+    0x2265, 0x2264, 0x2320, 0x2321, 0x00F7, 0x2248, 0x00B0, 0x2219, 0x00B7, 0x221A, 0x207F, 0x00B2, 0x25A0, 0x00A0};
 
-static char *put_to_utf8(const uint8_t *raw) {
+static char *put_to_utf8(const uint8_t *raw)
+{
     size_t length = xx_str_len((const char *)raw);
     size_t out = 0U;
     size_t index;
@@ -500,8 +490,7 @@ static char *put_to_utf8(const uint8_t *raw) {
     text = (char *)xx_mem_alloc(length * 3U + 1U);
     if (!text) return NULL;
     for (index = 0U; index < length; ++index) {
-        uint32_t code = raw[index] < 0x80U ? (uint32_t)raw[index]
-                                           : put_cp437_high[raw[index] - 0x80U];
+        uint32_t code = raw[index] < 0x80U ? (uint32_t)raw[index] : put_cp437_high[raw[index] - 0x80U];
         if (code < 0x80U) {
             text[out++] = (char)code;
         } else if (code < 0x800U) {
@@ -519,7 +508,8 @@ static char *put_to_utf8(const uint8_t *raw) {
 
 /* The case folding Windows file systems apply, restricted to what code page
  * 437 can spell: ASCII letters and the eight accented pairs, plus sigma. */
-static uint8_t put_fold(uint8_t byte) {
+static uint8_t put_fold(uint8_t byte)
+{
     if (byte >= (uint8_t)'a' && byte <= (uint8_t)'z') {
         return (uint8_t)(byte - 0x20U);
     }
@@ -537,7 +527,8 @@ static uint8_t put_fold(uint8_t byte) {
     }
 }
 
-static int put_name_compare(const uint8_t *left, const uint8_t *right) {
+static int put_name_compare(const uint8_t *left, const uint8_t *right)
+{
     for (;;) {
         uint8_t a = put_fold(*left++);
         uint8_t b = put_fold(*right++);
@@ -551,7 +542,8 @@ static int put_name_compare(const uint8_t *left, const uint8_t *right) {
  * renamed ones, then by member index. The first member of a group of equal
  * names is the one that keeps its name: an original name wins over one this
  * reader made up, and among originals the earliest member wins. */
-static bool put_order_less(const put_stream *stream, size_t a, size_t b) {
+static bool put_order_less(const put_stream *stream, size_t a, size_t b)
+{
     const put_member *left = &stream->items[a];
     const put_member *right = &stream->items[b];
     int order = put_name_compare(left->raw, right->raw);
@@ -563,15 +555,14 @@ static bool put_order_less(const put_stream *stream, size_t a, size_t b) {
     return a < b;
 }
 
-static void put_sift_down(const put_stream *stream, size_t *order,
-                          size_t root, size_t size) {
+static void put_sift_down(const put_stream *stream, size_t *order, size_t root, size_t size)
+{
     for (;;) {
         size_t child = root * 2U + 1U;
         size_t swap;
 
         if (child >= size) return;
-        if (child + 1U < size &&
-            put_order_less(stream, order[child], order[child + 1U])) {
+        if (child + 1U < size && put_order_less(stream, order[child], order[child + 1U])) {
             ++child;
         }
         if (!put_order_less(stream, order[root], order[child])) return;
@@ -584,7 +575,8 @@ static void put_sift_down(const put_stream *stream, size_t *order,
 
 /* Heapsort: O(n log n) whatever the names, so a crafted archive cannot make
  * this quadratic. */
-static void put_sort(const put_stream *stream, size_t *order, size_t count) {
+static void put_sort(const put_stream *stream, size_t *order, size_t count)
+{
     size_t index;
 
     for (index = 0U; index < count; ++index) order[index] = index;
@@ -600,7 +592,8 @@ static void put_sort(const put_stream *stream, size_t *order, size_t count) {
     }
 }
 
-static size_t put_format_decimal(char *out, size_t value) {
+static size_t put_format_decimal(char *out, size_t value)
+{
     char digits[24];
     size_t count = 0U;
     size_t index;
@@ -619,7 +612,8 @@ static size_t put_format_decimal(char *out, size_t value) {
  * passes), always built from the stored name, never from an earlier rename.
  * Returns 1 on success, 0 when the result would be too long, -1 when out of
  * memory. */
-static int put_rename(put_member *member, size_t number, unsigned pass) {
+static int put_rename(put_member *member, size_t number, unsigned pass)
+{
     char suffix[PUT_RENAME_ROOM];
     const uint8_t *source = member->orig ? member->orig : member->raw;
     size_t suffix_length = 0U;
@@ -652,8 +646,7 @@ static int put_rename(put_member *member, size_t number, unsigned pass) {
     if (!renamed) return -1;
     xx_rt_memcpy(renamed, source, insert);
     xx_rt_memcpy(renamed + insert, suffix, suffix_length);
-    xx_rt_memcpy(renamed + insert + suffix_length, source + insert,
-                 length - insert);
+    xx_rt_memcpy(renamed + insert + suffix_length, source + insert, length - insert);
     renamed[length + suffix_length] = 0U;
     if (member->orig) {
         xx_mem_free(member->raw);
@@ -671,7 +664,8 @@ static int put_rename(put_member *member, size_t number, unsigned pass) {
  * in turn (with a stored name, say), the next pass renames the made-up one
  * again with the pass number added. Whatever is still shared after the last
  * pass is marked as not extractable. */
-static bool put_make_unique(put_stream *stream) {
+static bool put_make_unique(put_stream *stream)
+{
     size_t *order;
     unsigned pass;
 
@@ -714,7 +708,8 @@ static bool put_make_unique(put_stream *stream) {
     return true;
 }
 
-static bool put_is_word(const uint8_t *text, size_t length, const char *word) {
+static bool put_is_word(const uint8_t *text, size_t length, const char *word)
+{
     size_t index;
 
     for (index = 0U; index < length; ++index) {
@@ -728,10 +723,9 @@ static bool put_is_word(const uint8_t *text, size_t length, const char *word) {
 /* A component Windows would treat as a device, with or without extension:
  * CON, PRN, AUX, NUL, CONIN$, CONOUT$, CLOCK$, COM0-9, LPT0-9 (and COM/LPT
  * with the superscript two, 0xFD in code page 437). */
-static bool put_is_device(const uint8_t *component, size_t length) {
-    static const char *const devices[] = {"CON",    "PRN",     "AUX",
-                                          "NUL",    "CONIN$",  "CONOUT$",
-                                          "CLOCK$"};
+static bool put_is_device(const uint8_t *component, size_t length)
+{
+    static const char *const devices[] = {"CON", "PRN", "AUX", "NUL", "CONIN$", "CONOUT$", "CLOCK$"};
     size_t stem = 0U;
     size_t index;
 
@@ -740,11 +734,8 @@ static bool put_is_device(const uint8_t *component, size_t length) {
     for (index = 0U; index < sizeof(devices) / sizeof(devices[0]); ++index) {
         if (put_is_word(component, stem, devices[index])) return true;
     }
-    if (stem == 4U && ((component[3] >= (uint8_t)'0' &&
-                        component[3] <= (uint8_t)'9') ||
-                       component[3] == 0xFDU)) {
-        return put_is_word(component, 3U, "COM") ||
-               put_is_word(component, 3U, "LPT");
+    if (stem == 4U && ((component[3] >= (uint8_t)'0' && component[3] <= (uint8_t)'9') || component[3] == 0xFDU)) {
+        return put_is_word(component, 3U, "COM") || put_is_word(component, 3U, "LPT");
     }
     return false;
 }
@@ -753,7 +744,8 @@ static bool put_is_device(const uint8_t *component, size_t length) {
  * ".." components, a component ending in '.' or ' ' (Windows drops those,
  * so it would alias another name), drive and stream colons and the other
  * characters Windows reserves, and device names. */
-static bool put_name_safe(const uint8_t *raw) {
+static bool put_name_safe(const uint8_t *raw)
+{
     size_t start = 0U;
 
     if (!raw || raw[0] == 0U || raw[0] == (uint8_t)'/') return false;
@@ -769,9 +761,7 @@ static bool put_name_safe(const uint8_t *raw) {
         for (index = start; index < end; ++index) {
             uint8_t byte = raw[index];
 
-            if (!put_name_byte_ok(byte) || byte == (uint8_t)':' ||
-                byte == (uint8_t)'<' || byte == (uint8_t)'>' ||
-                byte == (uint8_t)'"' || byte == (uint8_t)'|' ||
+            if (!put_name_byte_ok(byte) || byte == (uint8_t)':' || byte == (uint8_t)'<' || byte == (uint8_t)'>' || byte == (uint8_t)'"' || byte == (uint8_t)'|' ||
                 byte == (uint8_t)'?' || byte == (uint8_t)'*') {
                 return false;
             }
@@ -789,7 +779,8 @@ typedef struct put_sink_s {
     uint16_t crc;
 } put_sink;
 
-static bool put_sink_write(put_sink *sink, const uint8_t *data, size_t size) {
+static bool put_sink_write(put_sink *sink, const uint8_t *data, size_t size)
+{
     const size_t file_io_capacity = gb_microfox_put_capacity();
     size_t done = 0U;
 
@@ -805,8 +796,8 @@ static bool put_sink_write(put_sink *sink, const uint8_t *data, size_t size) {
 
 /* Stored members are copied through a fixed buffer; packed ones are decoded
  * in memory, with the CRC checked BEFORE anything is written. */
-static bool put_extract(Abstractformat *self, const put_member *member,
-                        xx_io_device *destination, xx_pd_struct *pd) {
+static bool put_extract(Abstractformat *self, const put_member *member, xx_io_device *destination, xx_pd_struct *pd)
+{
     const size_t file_io_capacity = gb_microfox_put_capacity();
     put_sink sink;
     uint8_t *packed = NULL;
@@ -828,11 +819,8 @@ static bool put_extract(Abstractformat *self, const put_member *member,
         if (!chunk) return false;
         ok = true;
         while (ok && left > 0) {
-            size_t piece = left > (int64_t)file_io_capacity ? (size_t)file_io_capacity
-                                                          : (size_t)left;
-            if ((pd && xx_pd_is_stopped(pd)) ||
-                !put_read_at(self->device, position, chunk, piece) ||
-                !put_sink_write(&sink, chunk, piece)) {
+            size_t piece = left > (int64_t)file_io_capacity ? (size_t)file_io_capacity : (size_t)left;
+            if ((pd && xx_pd_is_stopped(pd)) || !put_read_at(self->device, position, chunk, piece) || !put_sink_write(&sink, chunk, piece)) {
                 ok = false;
                 break;
             }
@@ -843,19 +831,13 @@ static bool put_extract(Abstractformat *self, const put_member *member,
         return ok && sink.crc == member->crc16;
     }
 
-    if (member->unpacked_size > PUT_MAX_DECODED ||
-        member->packed_size > PUT_MAX_DECODED) {
+    if (member->unpacked_size > PUT_MAX_DECODED || member->packed_size > PUT_MAX_DECODED) {
         return false;
     }
-    if (member->method == (uint8_t)'1' &&
-        member->unpacked_size >
-            member->packed_size * PUT_LZ1_RATIO + PUT_LZ1_RATIO) {
+    if (member->method == (uint8_t)'1' && member->unpacked_size > member->packed_size * PUT_LZ1_RATIO + PUT_LZ1_RATIO) {
         return false;
     }
-    if (member->method == (uint8_t)'5' &&
-        member->unpacked_size >
-            (member->packed_size * 8 / PUT_LZ5_BLOCK_MIN_BITS + 1) *
-                PUT_LZ5_BLOCK_MAX_OUT) {
+    if (member->method == (uint8_t)'5' && member->unpacked_size > (member->packed_size * 8 / PUT_LZ5_BLOCK_MIN_BITS + 1) * PUT_LZ5_BLOCK_MAX_OUT) {
         return false;
     }
     if (member->unpacked_size == 0) {
@@ -867,20 +849,16 @@ static bool put_extract(Abstractformat *self, const put_member *member,
     packed = (uint8_t *)xx_mem_alloc((size_t)member->packed_size);
     plain = (uint8_t *)xx_mem_alloc((size_t)member->unpacked_size);
     if (!packed || !plain) goto done;
-    if (!put_read_at(self->device, member->data_offset, packed,
-                     (size_t)member->packed_size)) {
+    if (!put_read_at(self->device, member->data_offset, packed, (size_t)member->packed_size)) {
         goto done;
     }
     if (pd && xx_pd_is_stopped(pd)) goto done;
     if (member->method == (uint8_t)'1') {
-        if (!xx_lzh1_decode_memory(packed, (size_t)member->packed_size, plain,
-                                   (size_t)member->unpacked_size, &written)) {
+        if (!xx_lzh1_decode_memory(packed, (size_t)member->packed_size, plain, (size_t)member->unpacked_size, &written)) {
             goto done;
         }
     } else if (member->method == (uint8_t)'5') {
-        if (!xx_lzh5_decode_memory(packed, (size_t)member->packed_size, plain,
-                                   (size_t)member->unpacked_size, 5,
-                                   &written)) {
+        if (!xx_lzh5_decode_memory(packed, (size_t)member->packed_size, plain, (size_t)member->unpacked_size, 5, &written)) {
             goto done;
         }
     } else {
@@ -899,8 +877,8 @@ done:
 
 /* ------------------------------------------------------------ lifecycle -- */
 
-void xx_microfox_put_init(xx_microfox_put *archive, xx_io_device *device,
-                          int64_t base_address) {
+void xx_microfox_put_init(xx_microfox_put *archive, xx_io_device *device, int64_t base_address)
+{
     if (!archive) return;
     xx_mem_zero(archive, sizeof(*archive));
     xx_format_init(&archive->format, device, base_address);
@@ -913,31 +891,25 @@ void xx_microfox_put_init(xx_microfox_put *archive, xx_io_device *device,
     archive->format.check_is_valid = xx_microfox_put_check_is_valid;
     archive->format.handle_base_info = xx_microfox_put_handle_base_info;
     archive->format.get_format_size = xx_microfox_put_get_format_size;
-    archive->format.get_number_of_archive_records =
-        xx_microfox_put_get_number_of_archive_records;
-    archive->format.create_archive_records_reading =
-        xx_microfox_put_create_archive_records_reading;
-    archive->format.get_current_archive_record =
-        xx_microfox_put_get_current_archive_record;
-    archive->format.unpack_current_archive_record =
-        xx_microfox_put_unpack_current_archive_record;
-    archive->format.archive_record_move_to_next =
-        xx_microfox_put_archive_record_move_to_next;
-    archive->format.free_archive_records_reading =
-        xx_microfox_put_free_archive_records_reading;
+    archive->format.get_number_of_archive_records = xx_microfox_put_get_number_of_archive_records;
+    archive->format.create_archive_records_reading = xx_microfox_put_create_archive_records_reading;
+    archive->format.get_current_archive_record = xx_microfox_put_get_current_archive_record;
+    archive->format.unpack_current_archive_record = xx_microfox_put_unpack_current_archive_record;
+    archive->format.archive_record_move_to_next = xx_microfox_put_archive_record_move_to_next;
+    archive->format.free_archive_records_reading = xx_microfox_put_free_archive_records_reading;
     archive->format.destroy = put_vtable_destroy;
 }
 
-xx_microfox_put *xx_microfox_put_create(xx_io_device *device,
-                                        int64_t base_address) {
-    xx_microfox_put *archive =
-        (xx_microfox_put *)xx_mem_alloc(sizeof(*archive));
+xx_microfox_put *xx_microfox_put_create(xx_io_device *device, int64_t base_address)
+{
+    xx_microfox_put *archive = (xx_microfox_put *)xx_mem_alloc(sizeof(*archive));
 
     if (archive) xx_microfox_put_init(archive, device, base_address);
     return archive;
 }
 
-void xx_microfox_put_destroy(xx_microfox_put *archive) {
+void xx_microfox_put_destroy(xx_microfox_put *archive)
+{
     if (!archive) return;
     /* Not xx_format_destroy: that dispatches through format.destroy, which
      * is the wrapper below, and the two would recurse. */
@@ -946,19 +918,22 @@ void xx_microfox_put_destroy(xx_microfox_put *archive) {
     archive->number_of_records = 0U;
 }
 
-void xx_microfox_put_free(xx_microfox_put *archive) {
+void xx_microfox_put_free(xx_microfox_put *archive)
+{
     if (!archive) return;
     xx_microfox_put_destroy(archive);
     xx_mem_free(archive);
 }
 
-static void put_vtable_destroy(Abstractformat *self) {
+static void put_vtable_destroy(Abstractformat *self)
+{
     xx_microfox_put_destroy((xx_microfox_put *)self);
 }
 
 /* --------------------------------------------------------------- format -- */
 
-bool xx_microfox_put_check_is_valid(Abstractformat *self, xx_pd_struct *pd) {
+bool xx_microfox_put_check_is_valid(Abstractformat *self, xx_pd_struct *pd)
+{
     put_stream *stream;
 
     if (!self || (pd && xx_pd_is_stopped(pd))) return false;
@@ -968,7 +943,8 @@ bool xx_microfox_put_check_is_valid(Abstractformat *self, xx_pd_struct *pd) {
     return true;
 }
 
-bool xx_microfox_put_handle_base_info(Abstractformat *self, xx_pd_struct *pd) {
+bool xx_microfox_put_handle_base_info(Abstractformat *self, xx_pd_struct *pd)
+{
     xx_microfox_put *archive = (xx_microfox_put *)self;
     put_stream *stream;
 
@@ -988,19 +964,17 @@ bool xx_microfox_put_handle_base_info(Abstractformat *self, xx_pd_struct *pd) {
     return true;
 }
 
-int64_t xx_microfox_put_get_format_size(Abstractformat *self,
-                                        xx_pd_struct *pd) {
-    if (!self ||
-        (!self->base_info_handled && !xx_format_handle_base_info(self, pd))) {
+int64_t xx_microfox_put_get_format_size(Abstractformat *self, xx_pd_struct *pd)
+{
+    if (!self || (!self->base_info_handled && !xx_format_handle_base_info(self, pd))) {
         return 0;
     }
     return self->is_valid ? self->format_size : 0;
 }
 
-uint64_t xx_microfox_put_get_number_of_archive_records(Abstractformat *self,
-                                                       xx_pd_struct *pd) {
-    if (!self ||
-        (!self->base_info_handled && !xx_format_handle_base_info(self, pd))) {
+uint64_t xx_microfox_put_get_number_of_archive_records(Abstractformat *self, xx_pd_struct *pd)
+{
+    if (!self || (!self->base_info_handled && !xx_format_handle_base_info(self, pd))) {
         return 0U;
     }
     return self->is_valid ? ((xx_microfox_put *)self)->number_of_records : 0U;
@@ -1008,8 +982,8 @@ uint64_t xx_microfox_put_get_number_of_archive_records(Abstractformat *self,
 
 /* -------------------------------------------------------------- records -- */
 
-static bool put_set_record(xx_archive_record *record,
-                           const put_member *member) {
+static bool put_set_record(xx_archive_record *record, const put_member *member)
+{
     xx_archive_record_cleanup(record);
     xx_archive_record_init(record);
     record->header_offset = member->header_offset;
@@ -1017,40 +991,28 @@ static bool put_set_record(xx_archive_record *record,
     record->data_offset = member->data_offset;
     record->compressed_size = member->packed_size;
     return xx_archive_record_set_original_name(record, member->name) &&
-           xx_archive_record_set_meta_u64(record, XX_META_ID_COMPRESSED_SIZE,
-                                          (uint64_t)member->packed_size) &&
-           xx_archive_record_set_meta_u64(record, XX_META_ID_UNCOMPRESSED_SIZE,
-                                          (uint64_t)member->unpacked_size) &&
+           xx_archive_record_set_meta_u64(record, XX_META_ID_COMPRESSED_SIZE, (uint64_t)member->packed_size) &&
+           xx_archive_record_set_meta_u64(record, XX_META_ID_UNCOMPRESSED_SIZE, (uint64_t)member->unpacked_size) &&
            /* The three tag characters, packed big-endian: "lZ5" = 0x6C5A35. */
-           xx_archive_record_set_meta_u64(
-               record, XX_META_ID_COMPRESSION_METHOD,
-               ((uint64_t)'l' << 16) | ((uint64_t)'Z' << 8) |
-                   (uint64_t)member->method) &&
-           xx_archive_record_set_meta_u64(record, XX_META_ID_LAST_MOD_TIME,
-                                          member->dos_datetime & 0xFFFFU) &&
-           xx_archive_record_set_meta_u64(record, XX_META_ID_LAST_MOD_DATE,
-                                          member->dos_datetime >> 16) &&
-           xx_archive_record_set_meta_u64(record, XX_META_ID_ATTRIBUTES,
-                                          member->attributes) &&
-           xx_archive_record_set_meta_bool(record, XX_META_ID_IS_FOLDER,
-                                           false) &&
-           xx_archive_record_set_meta_bool(record, XX_META_ID_IS_ENCRYPTED,
-                                           false);
+           xx_archive_record_set_meta_u64(record, XX_META_ID_COMPRESSION_METHOD, ((uint64_t)'l' << 16) | ((uint64_t)'Z' << 8) | (uint64_t)member->method) &&
+           xx_archive_record_set_meta_u64(record, XX_META_ID_LAST_MOD_TIME, member->dos_datetime & 0xFFFFU) &&
+           xx_archive_record_set_meta_u64(record, XX_META_ID_LAST_MOD_DATE, member->dos_datetime >> 16) &&
+           xx_archive_record_set_meta_u64(record, XX_META_ID_ATTRIBUTES, member->attributes) && xx_archive_record_set_meta_bool(record, XX_META_ID_IS_FOLDER, false) &&
+           xx_archive_record_set_meta_bool(record, XX_META_ID_IS_ENCRYPTED, false);
 }
 
-static bool put_copy_options(xx_list_s *target, const xx_list_s *options) {
+static bool put_copy_options(xx_list_s *target, const xx_list_s *options)
+{
     size_t index;
 
     if (!options) return true;
     for (index = 0U; index < options->count; ++index) {
-        const xx_meta *source =
-            (const xx_meta *)xx_list_at((const xx_list_t *)options, index);
+        const xx_meta *source = (const xx_meta *)xx_list_at((const xx_list_t *)options, index);
         xx_meta copied;
 
         if (!source) continue;
         xx_meta_init(&copied, source->meta_id);
-        if (!xx_var_copy(&copied.var, &source->var) ||
-            !xx_list_append(target, &copied)) {
+        if (!xx_var_copy(&copied.var, &source->var) || !xx_list_append(target, &copied)) {
             xx_meta_cleanup(&copied);
             return false;
         }
@@ -1058,8 +1020,8 @@ static bool put_copy_options(xx_list_s *target, const xx_list_s *options) {
     return true;
 }
 
-xx_archive_record_state *xx_microfox_put_create_archive_records_reading(
-    Abstractformat *self, const xx_list_s *options, xx_pd_struct *pd) {
+xx_archive_record_state *xx_microfox_put_create_archive_records_reading(Abstractformat *self, const xx_list_s *options, xx_pd_struct *pd)
+{
     put_stream *stream;
     xx_archive_record_state *state;
     size_t index;
@@ -1087,8 +1049,7 @@ xx_archive_record_state *xx_microfox_put_create_archive_records_reading(
     state->internal_state = stream;
     state->free_internal = put_stream_free;
     state->total_records = (int64_t)stream->count;
-    if (!put_copy_options(&state->options, options) ||
-        !put_set_record(&state->current_record, &stream->items[0])) {
+    if (!put_copy_options(&state->options, options) || !put_set_record(&state->current_record, &stream->items[0])) {
         xx_archive_record_state_free(state);
         return NULL;
     }
@@ -1097,19 +1058,16 @@ xx_archive_record_state *xx_microfox_put_create_archive_records_reading(
     return state;
 }
 
-const xx_archive_record *xx_microfox_put_get_current_archive_record(
-    Abstractformat *self, xx_archive_record_state *state) {
-    return self && state && state->format == self && state->has_record
-               ? &state->current_record
-               : NULL;
+const xx_archive_record *xx_microfox_put_get_current_archive_record(Abstractformat *self, xx_archive_record_state *state)
+{
+    return self && state && state->format == self && state->has_record ? &state->current_record : NULL;
 }
 
-bool xx_microfox_put_archive_record_move_to_next(
-    Abstractformat *self, xx_archive_record_state *state, xx_pd_struct *pd) {
+bool xx_microfox_put_archive_record_move_to_next(Abstractformat *self, xx_archive_record_state *state, xx_pd_struct *pd)
+{
     put_stream *stream;
 
-    if (!self || !state || state->format != self || !state->has_record ||
-        (pd && xx_pd_is_stopped(pd))) {
+    if (!self || !state || state->format != self || !state->has_record || (pd && xx_pd_is_stopped(pd))) {
         return false;
     }
     stream = (put_stream *)state->internal_state;
@@ -1121,13 +1079,12 @@ bool xx_microfox_put_archive_record_move_to_next(
     }
     ++stream->index;
     ++state->current_index;
-    state->has_record =
-        put_set_record(&state->current_record, &stream->items[stream->index]);
+    state->has_record = put_set_record(&state->current_record, &stream->items[stream->index]);
     return state->has_record;
 }
 
-bool xx_microfox_put_unpack_current_archive_record(
-    Abstractformat *self, xx_archive_record_state *state, xx_pd_struct *pd) {
+bool xx_microfox_put_unpack_current_archive_record(Abstractformat *self, xx_archive_record_state *state, xx_pd_struct *pd)
+{
     put_stream *stream;
     const put_member *member;
     const xx_var *option;
@@ -1139,31 +1096,26 @@ bool xx_microfox_put_unpack_current_archive_record(
     bool overwrite;
     bool result;
 
-    if (!self || !state || state->format != self || !state->has_record ||
-        (pd && xx_pd_is_stopped(pd))) {
+    if (!self || !state || state->format != self || !state->has_record || (pd && xx_pd_is_stopped(pd))) {
         return false;
     }
     stream = (put_stream *)state->internal_state;
     if (!stream || stream->index >= stream->count) return false;
     member = &stream->items[stream->index];
 
-    option = xx_format_resolve_extra_parameter(self, &state->options,
-                                               XX_META_ID_OPT_MAX_MEMBER_SIZE);
+    option = xx_format_resolve_extra_parameter(self, &state->options, XX_META_ID_OPT_MAX_MEMBER_SIZE);
     if (option && (uint64_t)member->unpacked_size > xx_var_get_u64(option)) {
         return false;
     }
-    option = xx_format_resolve_extra_parameter(self, &state->options,
-                                               XX_META_ID_OPT_UNPACK_PATH);
+    option = xx_format_resolve_extra_parameter(self, &state->options, XX_META_ID_OPT_UNPACK_PATH);
     if (!option) {
         /* No destination: decode and discard, which verifies the member. */
         return put_extract(self, member, NULL, pd);
     }
     if (!member->extractable || !put_name_safe(member->raw)) return false;
-    if (option->type == XX_VAR_TYPE_STRING ||
-        option->type == XX_VAR_TYPE_STRING_VIEW) {
+    if (option->type == XX_VAR_TYPE_STRING || option->type == XX_VAR_TYPE_STRING_VIEW) {
         base_path = xx_var_get_str(option);
-    } else if (option->type == XX_VAR_TYPE_WSTRING ||
-               option->type == XX_VAR_TYPE_WSTRING_VIEW) {
+    } else if (option->type == XX_VAR_TYPE_WSTRING || option->type == XX_VAR_TYPE_WSTRING_VIEW) {
         converted = xx_str_unicode_to_utf8(xx_var_get_wstr(option));
         base_path = converted;
     }
@@ -1172,8 +1124,7 @@ bool xx_microfox_put_unpack_current_archive_record(
         return false;
     }
     base_length = xx_str_len(base_path);
-    if (base_length != 0U && base_path[base_length - 1U] != '/' &&
-        base_path[base_length - 1U] != '\\') {
+    if (base_length != 0U && base_path[base_length - 1U] != '/' && base_path[base_length - 1U] != '\\') {
         target = xx_str_concat3(base_path, "/", member->name);
     } else {
         target = xx_str_concat(base_path, member->name);
@@ -1185,8 +1136,7 @@ bool xx_microfox_put_unpack_current_archive_record(
         return false;
     }
 
-    option = xx_format_resolve_extra_parameter(self, &state->options,
-                                               XX_META_ID_OPT_OVERWRITE);
+    option = xx_format_resolve_extra_parameter(self, &state->options, XX_META_ID_OPT_OVERWRITE);
     overwrite = option && xx_var_get_bool(option);
     /* Without the overwrite option an existing file is never replaced --
      * whatever produced it, an earlier member included (a name Windows
@@ -1203,8 +1153,8 @@ bool xx_microfox_put_unpack_current_archive_record(
     return result;
 }
 
-void xx_microfox_put_free_archive_records_reading(
-    Abstractformat *self, xx_archive_record_state *state) {
+void xx_microfox_put_free_archive_records_reading(Abstractformat *self, xx_archive_record_state *state)
+{
     (void)self;
     xx_archive_record_state_free(state);
 }

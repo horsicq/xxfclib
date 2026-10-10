@@ -39,7 +39,8 @@
 static volatile long xx_scan_id_seed;
 static volatile long xx_scan_id_counter;
 
-static uint32_t xx_scan_atomic_increment(volatile long *value) {
+static uint32_t xx_scan_atomic_increment(volatile long *value)
+{
 #if defined(_MSC_VER)
     return (uint32_t)_InterlockedIncrement(value);
 #elif defined(__GNUC__) || defined(__clang__)
@@ -50,15 +51,14 @@ static uint32_t xx_scan_atomic_increment(volatile long *value) {
 }
 
 /* Stores desired when *value is 0; returns the value now in place. */
-static uint32_t xx_scan_atomic_init(volatile long *value, long desired) {
+static uint32_t xx_scan_atomic_init(volatile long *value, long desired)
+{
 #if defined(_MSC_VER)
     long previous = _InterlockedCompareExchange(value, desired, 0);
     return (uint32_t)(previous ? previous : desired);
 #elif defined(__GNUC__) || defined(__clang__)
     long expected = 0;
-    if (__atomic_compare_exchange_n(value, &expected, desired, false,
-                                    __ATOMIC_ACQ_REL, __ATOMIC_ACQUIRE))
-        return (uint32_t)desired;
+    if (__atomic_compare_exchange_n(value, &expected, desired, false, __ATOMIC_ACQ_REL, __ATOMIC_ACQUIRE)) return (uint32_t)desired;
     return (uint32_t)expected;
 #else
     if (!*value) *value = desired;
@@ -67,7 +67,8 @@ static uint32_t xx_scan_atomic_init(volatile long *value, long desired) {
 }
 
 /* SplitMix64 finalizer: a bijection on 64-bit values. */
-static uint64_t xx_scan_mix64(uint64_t value) {
+static uint64_t xx_scan_mix64(uint64_t value)
+{
     value ^= value >> 30;
     value *= 0xbf58476d1ce4e5b9ULL;
     value ^= value >> 27;
@@ -76,35 +77,32 @@ static uint64_t xx_scan_mix64(uint64_t value) {
     return value;
 }
 
-static uint64_t xx_scan_new_id(void) {
+static uint64_t xx_scan_new_id(void)
+{
     uint32_t seed = (uint32_t)xx_scan_id_seed;
     uint64_t id;
     if (!seed) {
         int marker = 0;
-        uint64_t entropy = (uint64_t)xx_rt_clock_ms() ^
-            ((uint64_t)(uintptr_t)&xx_scan_id_counter << 20) ^
-            ((uint64_t)(uintptr_t)&marker << 7);
+        uint64_t entropy = (uint64_t)xx_rt_clock_ms() ^ ((uint64_t)(uintptr_t)&xx_scan_id_counter << 20) ^ ((uint64_t)(uintptr_t)&marker << 7);
         uint32_t candidate = (uint32_t)(xx_scan_mix64(entropy) >> 32);
         seed = xx_scan_atomic_init(&xx_scan_id_seed, (long)(candidate ? candidate : 1u));
     }
     /* The seed is nonzero, so the mixer input is never 0 and, the mixer being
      * a bijection that fixes 0, neither is the id: 0 stays free for "no
      * parent". */
-    id = xx_scan_mix64(((uint64_t)seed << 32) |
-                       xx_scan_atomic_increment(&xx_scan_id_counter));
+    id = xx_scan_mix64(((uint64_t)seed << 32) | xx_scan_atomic_increment(&xx_scan_id_counter));
     return id;
 }
 
-static xx_scan_format_callback xx_scan_select_callback(
-    const xx_scan_engine *engine, xx_file_type_t type) {
+static xx_scan_format_callback xx_scan_select_callback(const xx_scan_engine *engine, xx_file_type_t type)
+{
     xx_scan_format_callback callback = NULL;
     size_t index;
     switch (type) {
         case XX_FILE_TYPE_BINARY: callback = engine->scan_binary; break;
         case XX_FILE_TYPE_PE32:
         case XX_FILE_TYPE_PE64:
-        case XX_FILE_TYPE_DOTNET:
-            return engine->scan_pe;
+        case XX_FILE_TYPE_DOTNET: return engine->scan_pe;
         case XX_FILE_TYPE_ELF32:
         case XX_FILE_TYPE_ELF64: callback = engine->scan_elf; break;
         case XX_FILE_TYPE_MACHO32:
@@ -137,14 +135,13 @@ static xx_scan_format_callback xx_scan_select_callback(
     if (callback) return callback;
     for (index = 0; index < engine->format_handler_count; ++index) {
         const xx_scan_format_handler *handler = &engine->format_handlers[index];
-        if (handler->file_type == type && handler->callback)
-            return handler->callback;
+        if (handler->file_type == type && handler->callback) return handler->callback;
     }
     return engine->scan_device;
 }
 
-static size_t xx_scan_build_plan(const xx_scan_options *options,
-                                 xx_file_type_t types[3]) {
+static size_t xx_scan_build_plan(const xx_scan_options *options, xx_file_type_t types[3])
+{
     size_t count = 0;
     if (options->all_types_scan) {
         switch (options->file_type) {
@@ -153,20 +150,14 @@ static size_t xx_scan_build_plan(const xx_scan_options *options,
             case XX_FILE_TYPE_DOTNET:
             case XX_FILE_TYPE_NE:
             case XX_FILE_TYPE_LE:
-            case XX_FILE_TYPE_LX:
-                types[count++] = XX_FILE_TYPE_MSDOS;
-                break;
+            case XX_FILE_TYPE_LX: types[count++] = XX_FILE_TYPE_MSDOS; break;
             case XX_FILE_TYPE_APK:
             case XX_FILE_TYPE_IPA:
                 types[count++] = XX_FILE_TYPE_ZIP;
                 types[count++] = XX_FILE_TYPE_JAR;
                 break;
-            case XX_FILE_TYPE_JAR:
-                types[count++] = XX_FILE_TYPE_ZIP;
-                break;
-            case XX_FILE_TYPE_DOS4G:
-                types[count++] = XX_FILE_TYPE_DOS16M;
-                break;
+            case XX_FILE_TYPE_JAR: types[count++] = XX_FILE_TYPE_ZIP; break;
+            case XX_FILE_TYPE_DOS4G: types[count++] = XX_FILE_TYPE_DOS16M; break;
             default: break;
         }
     }
@@ -174,11 +165,9 @@ static size_t xx_scan_build_plan(const xx_scan_options *options,
     return count;
 }
 
-static xx_scan_result *xx_scan_run_plan(xx_scan_engine *engine,
-                                        xx_io_device *device,
-                                        const xx_scan_options *options,
-                                        const xx_scan_result *forbidden_result,
-                                        xx_pd_struct *pd) {
+static xx_scan_result *xx_scan_run_plan(xx_scan_engine *engine, xx_io_device *device, const xx_scan_options *options, const xx_scan_result *forbidden_result,
+                                        xx_pd_struct *pd)
+{
     xx_file_type_t types[3];
     xx_scan_format_callback callbacks[3];
     size_t count = xx_scan_build_plan(options, types);
@@ -190,10 +179,8 @@ static xx_scan_result *xx_scan_run_plan(xx_scan_engine *engine,
         callbacks[index] = xx_scan_select_callback(engine, types[index]);
         if (!callbacks[index]) {
             xx_pd_set_error(pd, XXFC_ERR_INVALID_ARG,
-                            types[index] == XX_FILE_TYPE_PE32 ||
-                            types[index] == XX_FILE_TYPE_PE64
-                            || types[index] == XX_FILE_TYPE_DOTNET
-                                ? "Missing PE scan callback" : "Missing scan callback");
+                            types[index] == XX_FILE_TYPE_PE32 || types[index] == XX_FILE_TYPE_PE64 || types[index] == XX_FILE_TYPE_DOTNET ? "Missing PE scan callback"
+                                                                                                                                          : "Missing scan callback");
             return NULL;
         }
     }
@@ -216,8 +203,7 @@ static xx_scan_result *xx_scan_run_plan(xx_scan_engine *engine,
         }
         part = callbacks[index](engine, device, &pass, pd);
         if (!part) {
-            if (pd && !pd->last_error && !pd->is_stop)
-                xx_pd_set_error(pd, XXFC_ERR_GENERIC, "Scan callback failed");
+            if (pd && !pd->last_error && !pd->is_stop) xx_pd_set_error(pd, XXFC_ERR_GENERIC, "Scan callback failed");
             goto failed;
         }
         if (part == result || part == forbidden_result) {
@@ -234,8 +220,7 @@ static xx_scan_result *xx_scan_run_plan(xx_scan_engine *engine,
             bool appended = engine->append_result(engine, result, part, 0, pd);
             engine->free_result(engine, part);
             if (!appended || (pd && pd->is_stop)) {
-                if (pd && !pd->last_error && !pd->is_stop)
-                    xx_pd_set_error(pd, XXFC_ERR_GENERIC, "Cannot append scan result");
+                if (pd && !pd->last_error && !pd->is_stop) xx_pd_set_error(pd, XXFC_ERR_GENERIC, "Cannot append scan result");
                 goto failed;
             }
         }
@@ -246,14 +231,15 @@ failed:
     return NULL;
 }
 
-void xx_scan_options_init(xx_scan_options *options) {
+void xx_scan_options_init(xx_scan_options *options)
+{
     if (!options) return;
     xx_mem_zero(options, sizeof(*options));
     options->size = -1;
 }
 
-static bool xx_scan_validate(xx_scan_engine *engine, const xx_scan_options *options,
-                             xx_pd_struct *pd) {
+static bool xx_scan_validate(xx_scan_engine *engine, const xx_scan_options *options, xx_pd_struct *pd)
+{
     if (!engine) {
         xx_pd_set_error(pd, XXFC_ERR_NULL_PARAM, "Scan engine is NULL");
         return false;
@@ -266,16 +252,15 @@ static bool xx_scan_validate(xx_scan_engine *engine, const xx_scan_options *opti
         xx_pd_set_error(pd, XXFC_ERR_INVALID_ARG, "Missing format handler table");
         return false;
     }
-    if (options && (options->offset < 0 || options->size < -1 ||
-        (options->size >= 0 && options->size > INT64_MAX - options->offset))) {
+    if (options && (options->offset < 0 || options->size < -1 || (options->size >= 0 && options->size > INT64_MAX - options->offset))) {
         xx_pd_set_error(pd, XXFC_ERR_INVALID_ARG, "Invalid scan range");
         return false;
     }
     return !pd || !pd->is_stop;
 }
 
-static bool xx_scan_resolve_options(xx_scan_engine *engine, xx_io_device *device,
-                                     xx_scan_options *options, xx_pd_struct *pd) {
+static bool xx_scan_resolve_options(xx_scan_engine *engine, xx_io_device *device, xx_scan_options *options, xx_pd_struct *pd)
+{
     if (options->file_type == XX_FILE_TYPE_UNKNOWN) {
         xx_list_t *types;
         if (!engine->get_file_types) {
@@ -284,12 +269,10 @@ static bool xx_scan_resolve_options(xx_scan_engine *engine, xx_io_device *device
         }
         types = engine->get_file_types(engine, device, options, pd);
         if (!types) {
-            if (pd && !pd->last_error && !pd->is_stop)
-                xx_pd_set_error(pd, XXFC_ERR_GENERIC, "Scan file-type detection failed");
+            if (pd && !pd->last_error && !pd->is_stop) xx_pd_set_error(pd, XXFC_ERR_GENERIC, "Scan file-type detection failed");
             return false;
         }
-        if (types->elem_size != sizeof(xx_file_type_t) || types->count == 0 ||
-            !xx_list_get(types, types->count - 1, &options->file_type)) {
+        if (types->elem_size != sizeof(xx_file_type_t) || types->count == 0 || !xx_list_get(types, types->count - 1, &options->file_type)) {
             xx_pd_set_error(pd, XXFC_ERR_INVALID_ARG, "Invalid scan file-type list");
             xx_list_destroy(types);
             return false;
@@ -303,16 +286,11 @@ static bool xx_scan_resolve_options(xx_scan_engine *engine, xx_io_device *device
     return !pd || !pd->is_stop;
 }
 
-static xx_scan_result *xx_scan_internal(xx_scan_engine *engine, xx_io_device *device,
-                                        const xx_scan_options *options,
-                                        const xx_scan_result *forbidden_result,
+static xx_scan_result *xx_scan_internal(xx_scan_engine *engine, xx_io_device *device, const xx_scan_options *options, const xx_scan_result *forbidden_result,
                                         uint64_t parent_id, xx_pd_struct *pd);
 
-static xx_scan_result *xx_scan_run_overlay(xx_scan_engine *engine,
-                                            xx_io_device *device,
-                                            const xx_scan_options *options,
-                                            xx_scan_result *result,
-                                            xx_pd_struct *pd) {
+static xx_scan_result *xx_scan_run_overlay(xx_scan_engine *engine, xx_io_device *device, const xx_scan_options *options, xx_scan_result *result, xx_pd_struct *pd)
+{
     xx_scan_options overlay_options = *options;
     xx_io_device *overlay_device = NULL;
     int64_t offset = -1;
@@ -324,12 +302,9 @@ static xx_scan_result *xx_scan_run_overlay(xx_scan_engine *engine,
     bool appended;
 
     if (pd && pd->is_stop) goto failed;
-    found = engine->get_overlay
-        ? engine->get_overlay(engine, device, options, &offset, &size, pd)
-        : xx_scan_get_overlay(engine, device, options, &offset, &size, pd);
+    found = engine->get_overlay ? engine->get_overlay(engine, device, options, &offset, &size, pd) : xx_scan_get_overlay(engine, device, options, &offset, &size, pd);
     if (!found) {
-        if (pd && !pd->last_error && !pd->is_stop)
-            xx_pd_set_error(pd, XXFC_ERR_GENERIC, "Scan overlay detection failed");
+        if (pd && !pd->last_error && !pd->is_stop) xx_pd_set_error(pd, XXFC_ERR_GENERIC, "Scan overlay detection failed");
         goto failed;
     }
     if (pd && pd->is_stop) goto failed;
@@ -343,19 +318,14 @@ static xx_scan_result *xx_scan_run_overlay(xx_scan_engine *engine,
 
     total_size = xx_io_total_size(device);
     range_size = options->size;
-    if (range_size < 0 && total_size >= 0)
-        range_size = total_size - options->offset;
-    if (size < 0 || offset <= options->offset || offset > INT64_MAX - size ||
-        (total_size >= 0 && (offset > total_size || size > total_size - offset)) ||
-        (range_size >= 0 && (offset - options->offset > range_size ||
-            size > range_size - (offset - options->offset)))) {
+    if (range_size < 0 && total_size >= 0) range_size = total_size - options->offset;
+    if (size < 0 || offset <= options->offset || offset > INT64_MAX - size || (total_size >= 0 && (offset > total_size || size > total_size - offset)) ||
+        (range_size >= 0 && (offset - options->offset > range_size || size > range_size - (offset - options->offset)))) {
         xx_pd_set_error(pd, XXFC_ERR_OUT_OF_BOUNDS, "Invalid scan overlay range");
         goto failed;
     }
     if (!engine->get_file_types || !engine->append_result) {
-        xx_pd_set_error(pd, XXFC_ERR_INVALID_ARG,
-                        !engine->get_file_types ? "Missing scan file-type callback"
-                                                : "Missing scan result append callback");
+        xx_pd_set_error(pd, XXFC_ERR_INVALID_ARG, !engine->get_file_types ? "Missing scan file-type callback" : "Missing scan result append callback");
         goto failed;
     }
 
@@ -376,8 +346,7 @@ static xx_scan_result *xx_scan_run_overlay(xx_scan_engine *engine,
 
     /* Use the same detection, buffering and dispatch path as a normal scan.
        The borrowed outer result must not be returned or freed by the child. */
-    part = xx_scan_internal(engine, overlay_device, &overlay_options, result,
-                            options->scan_id, pd);
+    part = xx_scan_internal(engine, overlay_device, &overlay_options, result, options->scan_id, pd);
     if (!part) goto failed;
     if (pd && pd->is_stop) {
         engine->free_result(engine, part);
@@ -386,8 +355,7 @@ static xx_scan_result *xx_scan_run_overlay(xx_scan_engine *engine,
     appended = engine->append_result(engine, result, part, offset, pd);
     engine->free_result(engine, part);
     if (!appended || (pd && pd->is_stop)) {
-        if (pd && !pd->last_error && !pd->is_stop)
-            xx_pd_set_error(pd, XXFC_ERR_GENERIC, "Cannot append scan overlay result");
+        if (pd && !pd->last_error && !pd->is_stop) xx_pd_set_error(pd, XXFC_ERR_GENERIC, "Cannot append scan overlay result");
         goto failed;
     }
     xx_io_close(overlay_device);
@@ -400,10 +368,9 @@ failed:
 
 /* parent_id is 0 for the caller's input and, for an overlay, the scan_id of
  * the scan that found it. Every call draws its own scan_id. */
-static xx_scan_result *xx_scan_internal(xx_scan_engine *engine, xx_io_device *device,
-                                        const xx_scan_options *options,
-                                        const xx_scan_result *forbidden_result,
-                                        uint64_t parent_id, xx_pd_struct *pd) {
+static xx_scan_result *xx_scan_internal(xx_scan_engine *engine, xx_io_device *device, const xx_scan_options *options, const xx_scan_result *forbidden_result,
+                                        uint64_t parent_id, xx_pd_struct *pd)
+{
     xx_scan_options defaults;
     xx_scan_options resolved;
     int64_t device_size;
@@ -423,8 +390,7 @@ static xx_scan_result *xx_scan_internal(xx_scan_engine *engine, xx_io_device *de
     }
 
     device_size = xx_io_total_size(device);
-    if (device_size >= 0 && (options->offset > device_size ||
-        (options->size >= 0 && options->size > device_size - options->offset))) {
+    if (device_size >= 0 && (options->offset > device_size || (options->size >= 0 && options->size > device_size - options->offset))) {
         xx_pd_set_error(pd, XXFC_ERR_OUT_OF_BOUNDS, "Scan range exceeds input size");
         return NULL;
     }
@@ -432,18 +398,15 @@ static xx_scan_result *xx_scan_internal(xx_scan_engine *engine, xx_io_device *de
         xx_pd_set_error(pd, XXFC_ERR_INVALID_ARG, "Missing scan file-type callback");
         return NULL;
     }
-    if (options->file_type != XX_FILE_TYPE_UNKNOWN &&
-        !xx_scan_select_callback(engine, options->file_type)) {
+    if (options->file_type != XX_FILE_TYPE_UNKNOWN && !xx_scan_select_callback(engine, options->file_type)) {
         xx_pd_set_error(pd, XXFC_ERR_INVALID_ARG,
-                        options->file_type == XX_FILE_TYPE_PE32 ||
-                        options->file_type == XX_FILE_TYPE_PE64
-                        || options->file_type == XX_FILE_TYPE_DOTNET
-                            ? "Missing PE scan callback" : "Missing scan callback");
+                        options->file_type == XX_FILE_TYPE_PE32 || options->file_type == XX_FILE_TYPE_PE64 || options->file_type == XX_FILE_TYPE_DOTNET
+                            ? "Missing PE scan callback"
+                            : "Missing scan callback");
         return NULL;
     }
 
-    if (device_size >= 0 && (uint64_t)device_size < (uint64_t)xx_get_file_buffer_size() &&
-        !xx_io_is_memory(device)) {
+    if (device_size >= 0 && (uint64_t)device_size < (uint64_t)xx_get_file_buffer_size() && !xx_io_is_memory(device)) {
         size_t size = (size_t)device_size;
         size_t copied = 0;
         if (size) {
@@ -459,9 +422,7 @@ static xx_scan_result *xx_scan_internal(xx_scan_engine *engine, xx_io_device *de
         }
         while (copied < size) {
             size_t remaining = size - copied;
-            ssize_t n = xx_io_read(device, (uint8_t *)buffer + copied,
-                                   remaining > (size_t)PTRDIFF_MAX
-                                       ? (size_t)PTRDIFF_MAX : remaining);
+            ssize_t n = xx_io_read(device, (uint8_t *)buffer + copied, remaining > (size_t)PTRDIFF_MAX ? (size_t)PTRDIFF_MAX : remaining);
             if (n <= 0) {
                 xx_pd_set_error(pd, XXFC_ERR_IO, "Cannot read scan input");
                 goto done;
@@ -482,8 +443,7 @@ static xx_scan_result *xx_scan_internal(xx_scan_engine *engine, xx_io_device *de
     resolved.parent_id = parent_id;
     if (!xx_scan_resolve_options(engine, scan_device, &resolved, pd)) goto done;
     result = xx_scan_run_plan(engine, scan_device, &resolved, forbidden_result, pd);
-    if (result && resolved.overlay_scan)
-        result = xx_scan_run_overlay(engine, scan_device, &resolved, result, pd);
+    if (result && resolved.overlay_scan) result = xx_scan_run_overlay(engine, scan_device, &resolved, result, pd);
 
 done:
     if (memory_device) xx_io_close(memory_device);
@@ -491,18 +451,18 @@ done:
     return result;
 }
 
-xx_scan_result *xx_scan(xx_scan_engine *engine, xx_io_device *device,
-                        const xx_scan_options *options, xx_pd_struct *pd) {
+xx_scan_result *xx_scan(xx_scan_engine *engine, xx_io_device *device, const xx_scan_options *options, xx_pd_struct *pd)
+{
     return xx_scan_internal(engine, device, options, NULL, 0, pd);
 }
 
-xx_scan_result *xx_scan_device(xx_scan_engine *engine, xx_io_device *device,
-                               const xx_scan_options *options, xx_pd_struct *pd) {
+xx_scan_result *xx_scan_device(xx_scan_engine *engine, xx_io_device *device, const xx_scan_options *options, xx_pd_struct *pd)
+{
     return xx_scan(engine, device, options, pd);
 }
 
-xx_scan_result *xx_scan_file(xx_scan_engine *engine, const char *path,
-                             const xx_scan_options *options, xx_pd_struct *pd) {
+xx_scan_result *xx_scan_file(xx_scan_engine *engine, const char *path, const xx_scan_options *options, xx_pd_struct *pd)
+{
     xx_scan_options file_options;
     xx_io_device *device;
     xx_scan_result *result;
@@ -526,8 +486,8 @@ xx_scan_result *xx_scan_file(xx_scan_engine *engine, const char *path,
     return result;
 }
 
-xx_scan_result *xx_scan_memory(xx_scan_engine *engine, const void *data, size_t size,
-                               const xx_scan_options *options, xx_pd_struct *pd) {
+xx_scan_result *xx_scan_memory(xx_scan_engine *engine, const void *data, size_t size, const xx_scan_options *options, xx_pd_struct *pd)
+{
     xx_io_device *device;
     xx_scan_result *result;
 
@@ -550,23 +510,24 @@ xx_scan_result *xx_scan_memory(xx_scan_engine *engine, const void *data, size_t 
     return result;
 }
 
-size_t xx_scan_get_record_count(xx_scan_engine *engine, const xx_scan_result *result) {
-    return (engine && engine->get_record_count && result)
-        ? engine->get_record_count(engine, result) : 0;
+size_t xx_scan_get_record_count(xx_scan_engine *engine, const xx_scan_result *result)
+{
+    return (engine && engine->get_record_count && result) ? engine->get_record_count(engine, result) : 0;
 }
 
-const xx_scan_record *xx_scan_get_record(xx_scan_engine *engine,
-                                         const xx_scan_result *result, size_t index) {
-    if (!engine || !engine->get_record ||
-        index >= xx_scan_get_record_count(engine, result)) return NULL;
+const xx_scan_record *xx_scan_get_record(xx_scan_engine *engine, const xx_scan_result *result, size_t index)
+{
+    if (!engine || !engine->get_record || index >= xx_scan_get_record_count(engine, result)) return NULL;
     return engine->get_record(engine, result, index);
 }
 
-void xx_scan_free_result(xx_scan_engine *engine, xx_scan_result *result) {
+void xx_scan_free_result(xx_scan_engine *engine, xx_scan_result *result)
+{
     if (engine && engine->free_result && result) engine->free_result(engine, result);
 }
 
-void xx_scan_engine_cleanup(xx_scan_engine *engine) {
+void xx_scan_engine_cleanup(xx_scan_engine *engine)
+{
     if (!engine) return;
     if (engine->cleanup) engine->cleanup(engine);
     xx_mem_zero(engine, sizeof(*engine));

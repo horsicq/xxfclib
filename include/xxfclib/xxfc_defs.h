@@ -43,36 +43,36 @@ extern "C" {
 
 /* Status / Return Codes */
 typedef enum xxfc_status_e {
-    XXFC_OK                 =  0,   /**< Operation successful */
-    XXFC_ERR_GENERIC        = -1,   /**< General / unknown error */
-    XXFC_ERR_NULL_PARAM     = -2,   /**< Null pointer argument passed */
-    XXFC_ERR_OUT_OF_MEMORY  = -3,   /**< Memory allocation failure */
-    XXFC_ERR_OUT_OF_BOUNDS  = -4,   /**< Index or offset exceeds buffer range */
-    XXFC_ERR_INVALID_ARG    = -5,   /**< Invalid argument or state */
-    XXFC_ERR_READ_ONLY      = -6,   /**< Modification attempted on a read-only view */
-    XXFC_ERR_IO             = -7    /**< Input/output or file access failure */
+    XXFC_OK = 0,                 /**< Operation successful */
+    XXFC_ERR_GENERIC = -1,       /**< General / unknown error */
+    XXFC_ERR_NULL_PARAM = -2,    /**< Null pointer argument passed */
+    XXFC_ERR_OUT_OF_MEMORY = -3, /**< Memory allocation failure */
+    XXFC_ERR_OUT_OF_BOUNDS = -4, /**< Index or offset exceeds buffer range */
+    XXFC_ERR_INVALID_ARG = -5,   /**< Invalid argument or state */
+    XXFC_ERR_READ_ONLY = -6,     /**< Modification attempted on a read-only view */
+    XXFC_ERR_IO = -7             /**< Input/output or file access failure */
 } xxfc_status_t;
 
 /* File Types */
 typedef enum xx_file_type_e {
     XX_FILE_TYPE_UNKNOWN = 0,
-    XX_FILE_TYPE_BINARY  = 1,
-    XX_FILE_TYPE_ZIP     = 2,
-    XX_FILE_TYPE_ZIP64   = 3,
-    XX_FILE_TYPE_7ZIP    = 4,
-    XX_FILE_TYPE_RAR     = 5,
-    XX_FILE_TYPE_AR      = 6,
-    XX_FILE_TYPE_BZ2     = 7,
-    XX_FILE_TYPE_GZ      = 8,
-    XX_FILE_TYPE_XZ      = 9,
-    XX_FILE_TYPE_TAR     = 10,
-    XX_FILE_TYPE_JAR     = 11,
-    XX_FILE_TYPE_APK     = 12,
-    XX_FILE_TYPE_TAR_GZ  = 13,
+    XX_FILE_TYPE_BINARY = 1,
+    XX_FILE_TYPE_ZIP = 2,
+    XX_FILE_TYPE_ZIP64 = 3,
+    XX_FILE_TYPE_7ZIP = 4,
+    XX_FILE_TYPE_RAR = 5,
+    XX_FILE_TYPE_AR = 6,
+    XX_FILE_TYPE_BZ2 = 7,
+    XX_FILE_TYPE_GZ = 8,
+    XX_FILE_TYPE_XZ = 9,
+    XX_FILE_TYPE_TAR = 10,
+    XX_FILE_TYPE_JAR = 11,
+    XX_FILE_TYPE_APK = 12,
+    XX_FILE_TYPE_TAR_GZ = 13,
     XX_FILE_TYPE_TAR_BZ2 = 14,
-    XX_FILE_TYPE_TAR_XZ  = 15,
-    XX_FILE_TYPE_IPA     = 16,
-    XX_FILE_TYPE_NPM     = 17,
+    XX_FILE_TYPE_TAR_XZ = 15,
+    XX_FILE_TYPE_IPA = 16,
+    XX_FILE_TYPE_NPM = 17,
     XX_FILE_TYPE_ISO9660 = 18,
     XX_FILE_TYPE_TAR_LZ4 = 19,
     XX_FILE_TYPE_ACE = 20,
@@ -1560,7 +1560,7 @@ typedef enum xx_file_type_e {
 #include "formats/xx_format_gap_enums.inc"
 #include "formats/die_music/xx_die_music_enums.inc"
     XX_FILE_TYPE_DOTNET = 2802,
-/* Native container readers. Keep these public numeric IDs stable. */
+    /* Native container readers. Keep these public numeric IDs stable. */
     XX_FILE_TYPE_ZXML = 2900,
     XX_FILE_TYPE_ZISOFS = 2901,
     XX_FILE_TYPE_NVP = 2902,
@@ -1950,7 +1950,6 @@ typedef enum xx_file_type_e {
 #define FILE_TYPE_AARUFORMAT XX_FILE_TYPE_AARUFORMAT
 #endif
 #define THEBAT_MSB XX_FILE_TYPE_THEBAT_MSB
-
 
 /* Additional native archive, disk and filesystem readers. Existing IDs stay stable. */
 #define XX_FILE_TYPE_XP3 XX_FILE_TYPE_KIRIKIRI_XP3
@@ -2593,7 +2592,6 @@ typedef xx_file_type_t FILE_TYPE;
 #define FILE_TYPE_DEMON_INPUT XX_FILE_TYPE_DEMON_INPUT
 #endif
 
-
 #ifndef FILE_TYPE_ETHERNET_FRAME
 #define FILE_TYPE_ETHERNET_FRAME XX_FILE_TYPE_ETHERNET_FRAME
 #endif
@@ -2793,7 +2791,6 @@ typedef xx_file_type_t FILE_TYPE;
 #ifndef FILE_TYPE_LUT_CINESPACE_CSP
 #define FILE_TYPE_LUT_CINESPACE_CSP XX_FILE_TYPE_LUT_CINESPACE_CSP
 #endif
-
 
 #ifndef FILE_TYPE_NTP_MESSAGE
 #define FILE_TYPE_NTP_MESSAGE XX_FILE_TYPE_NTP_MESSAGE
@@ -2995,7 +2992,6 @@ typedef xx_file_type_t FILE_TYPE;
 #define FILE_TYPE_ASSEMBLY_GFA XX_FILE_TYPE_ASSEMBLY_GFA
 #endif
 
-
 #ifndef FILE_TYPE_HTTP1_MESSAGE
 #define FILE_TYPE_HTTP1_MESSAGE XX_FILE_TYPE_HTTP1_MESSAGE
 #endif
@@ -3195,7 +3191,6 @@ typedef xx_file_type_t FILE_TYPE;
 #ifndef FILE_TYPE_OPENFOAM_POINTS
 #define FILE_TYPE_OPENFOAM_POINTS XX_FILE_TYPE_OPENFOAM_POINTS
 #endif
-
 
 #ifndef FILE_TYPE_MINECRAFT_NBT
 #define FILE_TYPE_MINECRAFT_NBT XX_FILE_TYPE_MINECRAFT_NBT
@@ -3397,7 +3392,6 @@ typedef xx_file_type_t FILE_TYPE;
 #define FILE_TYPE_DL_POLY_CONFIG XX_FILE_TYPE_DL_POLY_CONFIG
 #endif
 
-
 #ifndef FILE_TYPE_NIX_NAR
 #define FILE_TYPE_NIX_NAR XX_FILE_TYPE_NIX_NAR
 #endif
@@ -3597,7 +3591,6 @@ typedef xx_file_type_t FILE_TYPE;
 #ifndef FILE_TYPE_GROMACS_GRO
 #define FILE_TYPE_GROMACS_GRO XX_FILE_TYPE_GROMACS_GRO
 #endif
-
 
 #ifndef FILE_TYPE_MICROSOFT_MSF
 #define FILE_TYPE_MICROSOFT_MSF XX_FILE_TYPE_MICROSOFT_MSF
@@ -3799,7 +3792,6 @@ typedef xx_file_type_t FILE_TYPE;
 #define FILE_TYPE_PYTHON_MARSHAL XX_FILE_TYPE_PYTHON_MARSHAL
 #endif
 
-
 #ifndef FILE_TYPE_VICE_X64
 #define FILE_TYPE_VICE_X64 XX_FILE_TYPE_VICE_X64
 #endif
@@ -3999,7 +3991,6 @@ typedef xx_file_type_t FILE_TYPE;
 #ifndef FILE_TYPE_IRCAM_SDIF
 #define FILE_TYPE_IRCAM_SDIF XX_FILE_TYPE_IRCAM_SDIF
 #endif
-
 
 #ifndef FILE_TYPE_TRACKER_LIQUID
 #define FILE_TYPE_TRACKER_LIQUID XX_FILE_TYPE_TRACKER_LIQUID
@@ -4201,7 +4192,6 @@ typedef xx_file_type_t FILE_TYPE;
 #define FILE_TYPE_MINOLTA_MRW XX_FILE_TYPE_MINOLTA_MRW
 #endif
 
-
 #ifndef SFX_IMP
 #define SFX_IMP XX_FILE_TYPE_SFX_IMP
 #endif
@@ -4401,7 +4391,6 @@ typedef xx_file_type_t FILE_TYPE;
 #ifndef JAVA_JMOD
 #define JAVA_JMOD XX_FILE_TYPE_JAVA_JMOD
 #endif
-
 
 #ifndef SFX_ARCV2
 #define SFX_ARCV2 XX_FILE_TYPE_SFX_ARCV2
@@ -4603,7 +4592,6 @@ typedef xx_file_type_t FILE_TYPE;
 #define TENSORFLOW_TFRECORD XX_FILE_TYPE_TENSORFLOW_TFRECORD
 #endif
 
-
 #ifndef SFX_ARC
 #define SFX_ARC XX_FILE_TYPE_SFX_ARC
 #endif
@@ -4803,7 +4791,6 @@ typedef xx_file_type_t FILE_TYPE;
 #ifndef APACHE_PARQUET
 #define APACHE_PARQUET XX_FILE_TYPE_APACHE_PARQUET
 #endif
-
 
 #ifndef MAKESELF
 #define MAKESELF XX_FILE_TYPE_MAKESELF
@@ -5005,7 +4992,6 @@ typedef xx_file_type_t FILE_TYPE;
 #define CRX XX_FILE_TYPE_CRX
 #endif
 
-
 #ifndef BETHESDA_BSA
 #define BETHESDA_BSA XX_FILE_TYPE_BETHESDA_BSA
 #endif
@@ -5205,7 +5191,6 @@ typedef xx_file_type_t FILE_TYPE;
 #ifndef WOFF2
 #define WOFF2 XX_FILE_TYPE_WOFF2
 #endif
-
 
 #ifndef ACT_APRICOT_PC_XI_RAW
 #define ACT_APRICOT_PC_XI_RAW XX_FILE_TYPE_ACT_APRICOT_PC_XI_RAW
@@ -5407,7 +5392,6 @@ typedef xx_file_type_t FILE_TYPE;
 #define MIDI XX_FILE_TYPE_MIDI
 #endif
 
-
 #ifndef ADVANCED_INSTALLER_BOOTSTRAPPER
 #define ADVANCED_INSTALLER_BOOTSTRAPPER XX_FILE_TYPE_ADVANCED_INSTALLER_BOOTSTRAPPER
 #endif
@@ -5608,7 +5592,6 @@ typedef xx_file_type_t FILE_TYPE;
 #define STUFFIT5 XX_FILE_TYPE_STUFFIT5
 #endif
 
-
 #ifndef SFX_NULLSOFT_PIMP
 #define SFX_NULLSOFT_PIMP XX_FILE_TYPE_SFX_NULLSOFT_PIMP
 #endif
@@ -5649,7 +5632,6 @@ typedef xx_file_type_t FILE_TYPE;
 #define SFXSTART XX_FILE_TYPE_SFXSTART
 #endif
 
-
 #ifndef SFX_ANALOGX_EMUCORE_FFS
 #define SFX_ANALOGX_EMUCORE_FFS XX_FILE_TYPE_SFX_ANALOGX_EMUCORE_FFS
 #endif
@@ -5686,28 +5668,27 @@ typedef xx_file_type_t FILE_TYPE;
 #define SFX_ARDI_DISKETTE_IMAGE XX_FILE_TYPE_SFX_ARDI_DISKETTE_IMAGE
 #endif
 
-
 #ifndef SFX_SBX_EXTRACTOR
 #define SFX_SBX_EXTRACTOR XX_FILE_TYPE_SFX_SBX_EXTRACTOR
 #endif
 
 #ifndef ZIP
-#define ZIP   XX_FILE_TYPE_ZIP
+#define ZIP XX_FILE_TYPE_ZIP
 #endif
 #ifndef ZIP64
 #define ZIP64 XX_FILE_TYPE_ZIP64
 #endif
 #ifndef JAR
-#define JAR   XX_FILE_TYPE_JAR
+#define JAR XX_FILE_TYPE_JAR
 #endif
 #ifndef APK
-#define APK   XX_FILE_TYPE_APK
+#define APK XX_FILE_TYPE_APK
 #endif
 #ifndef IPA
-#define IPA   XX_FILE_TYPE_IPA
+#define IPA XX_FILE_TYPE_IPA
 #endif
 #ifndef NPM
-#define NPM   XX_FILE_TYPE_NPM
+#define NPM XX_FILE_TYPE_NPM
 #endif
 #ifndef TAR_GZ
 #define TAR_GZ XX_FILE_TYPE_TAR_GZ
@@ -6093,89 +6074,89 @@ typedef xx_file_type_t FILE_TYPE;
 
 /* Operating System Types */
 typedef enum xx_os_e {
-    XX_OS_UNKNOWN  = 0,
-    XX_OS_GENERIC  = 1,
-    XX_OS_WINDOWS  = 2,
-    XX_OS_LINUX    = 3,
-    XX_OS_MACOS    = 4,
-    XX_OS_UNIX     = 5,
-    XX_OS_DOS      = 6,
-    XX_OS_FREEBSD  = 7,
-    XX_OS_ANDROID  = 8,
-    XX_OS_IOS      = 9,
-    XX_OS_OS2      = 10
+    XX_OS_UNKNOWN = 0,
+    XX_OS_GENERIC = 1,
+    XX_OS_WINDOWS = 2,
+    XX_OS_LINUX = 3,
+    XX_OS_MACOS = 4,
+    XX_OS_UNIX = 5,
+    XX_OS_DOS = 6,
+    XX_OS_FREEBSD = 7,
+    XX_OS_ANDROID = 8,
+    XX_OS_IOS = 9,
+    XX_OS_OS2 = 10
 } xx_os_t;
 
 typedef xx_os_t xx_os;
 typedef xx_os_t OS_TYPE;
 
 #ifndef OS_UNKNOWN
-#define OS_UNKNOWN  XX_OS_UNKNOWN
+#define OS_UNKNOWN XX_OS_UNKNOWN
 #endif
 #ifndef OS_GENERIC
-#define OS_GENERIC  XX_OS_GENERIC
+#define OS_GENERIC XX_OS_GENERIC
 #endif
 #ifndef OS_WINDOWS
-#define OS_WINDOWS  XX_OS_WINDOWS
+#define OS_WINDOWS XX_OS_WINDOWS
 #endif
 #ifndef OS_LINUX
-#define OS_LINUX    XX_OS_LINUX
+#define OS_LINUX XX_OS_LINUX
 #endif
 #ifndef OS_MACOS
-#define OS_MACOS    XX_OS_MACOS
+#define OS_MACOS XX_OS_MACOS
 #endif
 #ifndef OS_UNIX
-#define OS_UNIX     XX_OS_UNIX
+#define OS_UNIX XX_OS_UNIX
 #endif
 #ifndef OS_DOS
-#define OS_DOS      XX_OS_DOS
+#define OS_DOS XX_OS_DOS
 #endif
 #ifndef OS_FREEBSD
-#define OS_FREEBSD  XX_OS_FREEBSD
+#define OS_FREEBSD XX_OS_FREEBSD
 #endif
 #ifndef OS_ANDROID
-#define OS_ANDROID  XX_OS_ANDROID
+#define OS_ANDROID XX_OS_ANDROID
 #endif
 #ifndef OS_IOS
-#define OS_IOS      XX_OS_IOS
+#define OS_IOS XX_OS_IOS
 #endif
 #ifndef OS_OS2
-#define OS_OS2      XX_OS_OS2
+#define OS_OS2 XX_OS_OS2
 #endif
 
 /* Architecture Types */
 typedef enum xx_arch_e {
     XX_ARCH_UNKNOWN = 0,
     XX_ARCH_GENERIC = 1,
-    XX_ARCH_X86_16  = 2,
-    XX_ARCH_X86     = 3,
-    XX_ARCH_X86_64  = 4,
-    XX_ARCH_ARM     = 5,
-    XX_ARCH_ARM64   = 6,
-    XX_ARCH_MIPS    = 7,
-    XX_ARCH_MIPS64  = 8,
-    XX_ARCH_PPC     = 9,
-    XX_ARCH_PPC64   = 10,
-    XX_ARCH_RISCV   = 11,
+    XX_ARCH_X86_16 = 2,
+    XX_ARCH_X86 = 3,
+    XX_ARCH_X86_64 = 4,
+    XX_ARCH_ARM = 5,
+    XX_ARCH_ARM64 = 6,
+    XX_ARCH_MIPS = 7,
+    XX_ARCH_MIPS64 = 8,
+    XX_ARCH_PPC = 9,
+    XX_ARCH_PPC64 = 10,
+    XX_ARCH_RISCV = 11,
     XX_ARCH_RISCV64 = 12,
-    XX_ARCH_SPARC   = 13,
+    XX_ARCH_SPARC = 13,
     XX_ARCH_SPARC64 = 14,
-    XX_ARCH_M68K    = 15,
-    XX_ARCH_AVR     = 16,
-    XX_ARCH_SH      = 17,
-    XX_ARCH_WASM    = 18,
-    XX_ARCH_JVM     = 19,
-    XX_ARCH_DOTNET  = 20,
-    XX_ARCH_DALVIK  = 21,
+    XX_ARCH_M68K = 15,
+    XX_ARCH_AVR = 16,
+    XX_ARCH_SH = 17,
+    XX_ARCH_WASM = 18,
+    XX_ARCH_JVM = 19,
+    XX_ARCH_DOTNET = 20,
+    XX_ARCH_DALVIK = 21,
 
     /* Common aliases */
-    XX_ARCH_I386    = 3,
-    XX_ARCH_X86_32  = 3,
-    XX_ARCH_AMD64   = 4,
-    XX_ARCH_X64     = 4,
-    XX_ARCH_ARM32   = 5,
+    XX_ARCH_I386 = 3,
+    XX_ARCH_X86_32 = 3,
+    XX_ARCH_AMD64 = 4,
+    XX_ARCH_X64 = 4,
+    XX_ARCH_ARM32 = 5,
     XX_ARCH_AARCH64 = 6,
-    XX_ARCH_CIL     = 20
+    XX_ARCH_CIL = 20
 } xx_arch_t;
 
 typedef xx_arch_t xx_arch;
@@ -6190,83 +6171,83 @@ typedef xx_arch_t FORMAT_ARCH;
 #define ARCH_GENERIC XX_ARCH_GENERIC
 #endif
 #ifndef ARCH_X86_16
-#define ARCH_X86_16  XX_ARCH_X86_16
+#define ARCH_X86_16 XX_ARCH_X86_16
 #endif
 #ifndef ARCH_X86
-#define ARCH_X86     XX_ARCH_X86
+#define ARCH_X86 XX_ARCH_X86
 #endif
 #ifndef ARCH_X86_64
-#define ARCH_X86_64  XX_ARCH_X86_64
+#define ARCH_X86_64 XX_ARCH_X86_64
 #endif
 #ifndef ARCH_ARM
-#define ARCH_ARM     XX_ARCH_ARM
+#define ARCH_ARM XX_ARCH_ARM
 #endif
 #ifndef ARCH_ARM64
-#define ARCH_ARM64   XX_ARCH_ARM64
+#define ARCH_ARM64 XX_ARCH_ARM64
 #endif
 #ifndef ARCH_MIPS
-#define ARCH_MIPS    XX_ARCH_MIPS
+#define ARCH_MIPS XX_ARCH_MIPS
 #endif
 #ifndef ARCH_MIPS64
-#define ARCH_MIPS64  XX_ARCH_MIPS64
+#define ARCH_MIPS64 XX_ARCH_MIPS64
 #endif
 #ifndef ARCH_PPC
-#define ARCH_PPC     XX_ARCH_PPC
+#define ARCH_PPC XX_ARCH_PPC
 #endif
 #ifndef ARCH_PPC64
-#define ARCH_PPC64   XX_ARCH_PPC64
+#define ARCH_PPC64 XX_ARCH_PPC64
 #endif
 #ifndef ARCH_RISCV
-#define ARCH_RISCV   XX_ARCH_RISCV
+#define ARCH_RISCV XX_ARCH_RISCV
 #endif
 #ifndef ARCH_RISCV64
 #define ARCH_RISCV64 XX_ARCH_RISCV64
 #endif
 #ifndef ARCH_WASM
-#define ARCH_WASM    XX_ARCH_WASM
+#define ARCH_WASM XX_ARCH_WASM
 #endif
 #ifndef ARCH_DALVIK
-#define ARCH_DALVIK  XX_ARCH_DALVIK
+#define ARCH_DALVIK XX_ARCH_DALVIK
 #endif
 
 /* Binary / Application Format Types */
 typedef enum xx_format_type_e {
-    XX_FORMAT_TYPE_UNKNOWN              = 0,
-    XX_FORMAT_TYPE_CONSOLE_APPLICATION  = 1,
-    XX_FORMAT_TYPE_GUI_APPLICATION      = 2,
-    XX_FORMAT_TYPE_LIBRARY              = 3,
-    XX_FORMAT_TYPE_DRIVER               = 4,
-    XX_FORMAT_TYPE_STATIC_LIBRARY       = 5,
-    XX_FORMAT_TYPE_SERVICE              = 6,
-    XX_FORMAT_TYPE_DAEMON               = 7,
-    XX_FORMAT_TYPE_BOOT                 = 8,
-    XX_FORMAT_TYPE_FIRMWARE             = 9,
-    XX_FORMAT_TYPE_OBJECT               = 10,
-    XX_FORMAT_TYPE_PACKAGE              = 11,
-    XX_FORMAT_TYPE_RAW                  = 12,
-    XX_FORMAT_TYPE_ARCHIVE              = 13,
-    XX_FORMAT_TYPE_CUSTOM               = 100,
+    XX_FORMAT_TYPE_UNKNOWN = 0,
+    XX_FORMAT_TYPE_CONSOLE_APPLICATION = 1,
+    XX_FORMAT_TYPE_GUI_APPLICATION = 2,
+    XX_FORMAT_TYPE_LIBRARY = 3,
+    XX_FORMAT_TYPE_DRIVER = 4,
+    XX_FORMAT_TYPE_STATIC_LIBRARY = 5,
+    XX_FORMAT_TYPE_SERVICE = 6,
+    XX_FORMAT_TYPE_DAEMON = 7,
+    XX_FORMAT_TYPE_BOOT = 8,
+    XX_FORMAT_TYPE_FIRMWARE = 9,
+    XX_FORMAT_TYPE_OBJECT = 10,
+    XX_FORMAT_TYPE_PACKAGE = 11,
+    XX_FORMAT_TYPE_RAW = 12,
+    XX_FORMAT_TYPE_ARCHIVE = 13,
+    XX_FORMAT_TYPE_CUSTOM = 100,
 
     /* Aliases */
-    XX_TYPE_UNKNOWN                     = 0,
-    XX_TYPE_CONSOLE_APPLICATION         = 1,
-    XX_TYPE_CONSOLE                     = 1,
-    XX_TYPE_GUI_APPLICATION             = 2,
-    XX_TYPE_GUI                         = 2,
-    XX_TYPE_LIBRARY                     = 3,
-    XX_TYPE_DLL                         = 3,
-    XX_TYPE_SHARED_LIBRARY              = 3,
-    XX_TYPE_DRIVER                      = 4,
-    XX_TYPE_STATIC_LIBRARY              = 5,
-    XX_TYPE_SERVICE                     = 6,
-    XX_TYPE_DAEMON                      = 7,
-    XX_TYPE_BOOT                        = 8,
-    XX_TYPE_FIRMWARE                    = 9,
-    XX_TYPE_OBJECT                      = 10,
-    XX_TYPE_PACKAGE                     = 11,
-    XX_TYPE_RAW                         = 12,
-    XX_TYPE_ARCHIVE                     = 13,
-    XX_TYPE_CUSTOM                      = 100
+    XX_TYPE_UNKNOWN = 0,
+    XX_TYPE_CONSOLE_APPLICATION = 1,
+    XX_TYPE_CONSOLE = 1,
+    XX_TYPE_GUI_APPLICATION = 2,
+    XX_TYPE_GUI = 2,
+    XX_TYPE_LIBRARY = 3,
+    XX_TYPE_DLL = 3,
+    XX_TYPE_SHARED_LIBRARY = 3,
+    XX_TYPE_DRIVER = 4,
+    XX_TYPE_STATIC_LIBRARY = 5,
+    XX_TYPE_SERVICE = 6,
+    XX_TYPE_DAEMON = 7,
+    XX_TYPE_BOOT = 8,
+    XX_TYPE_FIRMWARE = 9,
+    XX_TYPE_OBJECT = 10,
+    XX_TYPE_PACKAGE = 11,
+    XX_TYPE_RAW = 12,
+    XX_TYPE_ARCHIVE = 13,
+    XX_TYPE_CUSTOM = 100
 } xx_format_type_t;
 
 typedef xx_format_type_t xx_format_type;
@@ -6276,52 +6257,52 @@ typedef xx_format_type_t FORMAT_TYPE;
 typedef xx_format_type_t TYPE;
 
 #ifndef TYPE_UNKNOWN
-#define TYPE_UNKNOWN             XX_TYPE_UNKNOWN
+#define TYPE_UNKNOWN XX_TYPE_UNKNOWN
 #endif
 #ifndef TYPE_CONSOLE_APPLICATION
 #define TYPE_CONSOLE_APPLICATION XX_TYPE_CONSOLE_APPLICATION
 #endif
 #ifndef TYPE_CONSOLE
-#define TYPE_CONSOLE             XX_TYPE_CONSOLE
+#define TYPE_CONSOLE XX_TYPE_CONSOLE
 #endif
 #ifndef TYPE_GUI_APPLICATION
-#define TYPE_GUI_APPLICATION     XX_TYPE_GUI_APPLICATION
+#define TYPE_GUI_APPLICATION XX_TYPE_GUI_APPLICATION
 #endif
 #ifndef TYPE_GUI
-#define TYPE_GUI                 XX_TYPE_GUI
+#define TYPE_GUI XX_TYPE_GUI
 #endif
 #ifndef TYPE_LIBRARY
-#define TYPE_LIBRARY             XX_TYPE_LIBRARY
+#define TYPE_LIBRARY XX_TYPE_LIBRARY
 #endif
 #ifndef TYPE_DRIVER
-#define TYPE_DRIVER              XX_TYPE_DRIVER
+#define TYPE_DRIVER XX_TYPE_DRIVER
 #endif
 #ifndef TYPE_STATIC_LIBRARY
-#define TYPE_STATIC_LIBRARY      XX_TYPE_STATIC_LIBRARY
+#define TYPE_STATIC_LIBRARY XX_TYPE_STATIC_LIBRARY
 #endif
 #ifndef TYPE_SERVICE
-#define TYPE_SERVICE             XX_TYPE_SERVICE
+#define TYPE_SERVICE XX_TYPE_SERVICE
 #endif
 #ifndef TYPE_DAEMON
-#define TYPE_DAEMON              XX_TYPE_DAEMON
+#define TYPE_DAEMON XX_TYPE_DAEMON
 #endif
 #ifndef TYPE_BOOT
-#define TYPE_BOOT                XX_TYPE_BOOT
+#define TYPE_BOOT XX_TYPE_BOOT
 #endif
 #ifndef TYPE_FIRMWARE
-#define TYPE_FIRMWARE            XX_TYPE_FIRMWARE
+#define TYPE_FIRMWARE XX_TYPE_FIRMWARE
 #endif
 #ifndef TYPE_OBJECT
-#define TYPE_OBJECT              XX_TYPE_OBJECT
+#define TYPE_OBJECT XX_TYPE_OBJECT
 #endif
 #ifndef TYPE_PACKAGE
-#define TYPE_PACKAGE             XX_TYPE_PACKAGE
+#define TYPE_PACKAGE XX_TYPE_PACKAGE
 #endif
 #ifndef TYPE_RAW
-#define TYPE_RAW                 XX_TYPE_RAW
+#define TYPE_RAW XX_TYPE_RAW
 #endif
 #ifndef TYPE_ARCHIVE
-#define TYPE_ARCHIVE             XX_TYPE_ARCHIVE
+#define TYPE_ARCHIVE XX_TYPE_ARCHIVE
 #endif
 
 #ifndef FORMAT_TYPE_UNKNOWN
@@ -6334,18 +6315,17 @@ typedef xx_format_type_t TYPE;
 #define FORMAT_TYPE_LIBRARY XX_FORMAT_TYPE_LIBRARY
 #endif
 #ifndef FORMAT_TYPE_DRIVER
-#define FORMAT_TYPE_DRIVER  XX_FORMAT_TYPE_DRIVER
+#define FORMAT_TYPE_DRIVER XX_FORMAT_TYPE_DRIVER
 #endif
 #ifndef FORMAT_TYPE_ARCHIVE
 #define FORMAT_TYPE_ARCHIVE XX_FORMAT_TYPE_ARCHIVE
 #endif
 
-
 /* Endianness */
 typedef enum xx_endian_e {
     XX_ENDIAN_UNKNOWN = 0,
-    XX_ENDIAN_LITTLE  = 1,
-    XX_ENDIAN_BIG     = 2
+    XX_ENDIAN_LITTLE = 1,
+    XX_ENDIAN_BIG = 2
 } xx_endian_t;
 
 typedef xx_endian_t xx_endian;
@@ -6357,31 +6337,30 @@ typedef xx_endian_t FORMAT_ENDIAN;
 #define ENDIAN_UNKNOWN XX_ENDIAN_UNKNOWN
 #endif
 #ifndef ENDIAN_LITTLE
-#define ENDIAN_LITTLE  XX_ENDIAN_LITTLE
+#define ENDIAN_LITTLE XX_ENDIAN_LITTLE
 #endif
 #ifndef ENDIAN_BIG
-#define ENDIAN_BIG     XX_ENDIAN_BIG
+#define ENDIAN_BIG XX_ENDIAN_BIG
 #endif
 
 #ifndef XX_FORMAT_ENDIAN_UNKNOWN
 #define XX_FORMAT_ENDIAN_UNKNOWN XX_ENDIAN_UNKNOWN
 #endif
 #ifndef XX_FORMAT_ENDIAN_LITTLE
-#define XX_FORMAT_ENDIAN_LITTLE  XX_ENDIAN_LITTLE
+#define XX_FORMAT_ENDIAN_LITTLE XX_ENDIAN_LITTLE
 #endif
 #ifndef XX_FORMAT_ENDIAN_BIG
-#define XX_FORMAT_ENDIAN_BIG     XX_ENDIAN_BIG
+#define XX_FORMAT_ENDIAN_BIG XX_ENDIAN_BIG
 #endif
 #ifndef FORMAT_ENDIAN_UNKNOWN
-#define FORMAT_ENDIAN_UNKNOWN    XX_ENDIAN_UNKNOWN
+#define FORMAT_ENDIAN_UNKNOWN XX_ENDIAN_UNKNOWN
 #endif
 #ifndef FORMAT_ENDIAN_LITTLE
-#define FORMAT_ENDIAN_LITTLE     XX_ENDIAN_LITTLE
+#define FORMAT_ENDIAN_LITTLE XX_ENDIAN_LITTLE
 #endif
 #ifndef FORMAT_ENDIAN_BIG
-#define FORMAT_ENDIAN_BIG        XX_ENDIAN_BIG
+#define FORMAT_ENDIAN_BIG XX_ENDIAN_BIG
 #endif
-
 
 /* Helper Macros */
 #ifndef XXFC_UNUSED
@@ -6390,40 +6369,40 @@ typedef xx_endian_t FORMAT_ENDIAN;
 /* A static function that some translation units leave unused, typically a
  * helper defined in a shared header. */
 #ifndef XXFC_MAYBE_UNUSED
-#  if defined(__GNUC__) || defined(__clang__)
-#    define XXFC_MAYBE_UNUSED __attribute__((unused))
-#  else
-#    define XXFC_MAYBE_UNUSED
-#  endif
+#if defined(__GNUC__) || defined(__clang__)
+#define XXFC_MAYBE_UNUSED __attribute__((unused))
+#else
+#define XXFC_MAYBE_UNUSED
+#endif
 #endif
 
 /* Export / Import decorations */
 #if defined(_WIN32) && defined(__TINYC__)
-#  if defined(XXFC_STATIC)
-#    define XXFC_API
-#  elif defined(XXFC_BUILD_SHARED) || defined(xxfclib_EXPORTS) || defined(xxfclib_shared_EXPORTS)
-#    define XXFC_API __attribute__((dllexport))
-#  else
-#    define XXFC_API __attribute__((dllimport))
-#  endif
-#elif defined(_WIN32) || defined(__CYGWIN__)
-#  if defined(XXFC_STATIC)
-#    define XXFC_API
-#  elif defined(XXFC_BUILD_SHARED) || defined(xxfclib_EXPORTS) || defined(xxfclib_shared_EXPORTS)
-#    define XXFC_API __declspec(dllexport)
-#  else
-#    define XXFC_API __declspec(dllimport)
-#  endif
-#elif defined(__GNUC__) || defined(__clang__)
-#  if defined(XXFC_STATIC)
-#    define XXFC_API
-#  elif defined(XXFC_BUILD_SHARED) || defined(xxfclib_EXPORTS) || defined(xxfclib_shared_EXPORTS)
-#    define XXFC_API __attribute__((visibility("default")))
-#  else
-#    define XXFC_API
-#  endif
+#if defined(XXFC_STATIC)
+#define XXFC_API
+#elif defined(XXFC_BUILD_SHARED) || defined(xxfclib_EXPORTS) || defined(xxfclib_shared_EXPORTS)
+#define XXFC_API __attribute__((dllexport))
 #else
-#  define XXFC_API
+#define XXFC_API __attribute__((dllimport))
+#endif
+#elif defined(_WIN32) || defined(__CYGWIN__)
+#if defined(XXFC_STATIC)
+#define XXFC_API
+#elif defined(XXFC_BUILD_SHARED) || defined(xxfclib_EXPORTS) || defined(xxfclib_shared_EXPORTS)
+#define XXFC_API __declspec(dllexport)
+#else
+#define XXFC_API __declspec(dllimport)
+#endif
+#elif defined(__GNUC__) || defined(__clang__)
+#if defined(XXFC_STATIC)
+#define XXFC_API
+#elif defined(XXFC_BUILD_SHARED) || defined(xxfclib_EXPORTS) || defined(xxfclib_shared_EXPORTS)
+#define XXFC_API __attribute__((visibility("default")))
+#else
+#define XXFC_API
+#endif
+#else
+#define XXFC_API
 #endif
 
 /* Enum to String helpers */

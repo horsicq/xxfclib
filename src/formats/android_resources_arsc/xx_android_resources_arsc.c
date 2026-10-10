@@ -7,21 +7,160 @@
 #include "../common/xx_serialized_value_helpers.h"
 
 #include "../common/xx_android_resource_wire.h"
-static bool ar_type(memory_blob *b,android_wire_chunk *c,uint32_t strings,uint32_t keys,uint32_t expected) {uint64_t at=c->at,start,n,i,pos,prior=0,end,used=0;uint16_t flags,size;uint32_t config;if(c->header<24 || c->end-at<24 || b->p[(size_t)at+9] || xx_data_get_u16(b->p+(size_t)at+10, 2, 0, false)) return false;n=xx_data_get_u32(b->p+(size_t)at+12, 4, 0, false);start=xx_data_get_u32(b->p+(size_t)at+16, 4, 0, false);config=xx_data_get_u32(b->p+(size_t)at+20, 4, 0, false);if(n!=expected || n>65536 || config<4 || config+20U!=c->header || start<c->header+n*4 || (start&3) || !record_span(at,start,c->end)) return false;end=c->end;
-    for(i=0;i<n;++i) {uint32_t offset=xx_data_get_u32(b->p+(size_t)(at+c->header+i*4), 4, 0, false);if(offset==0xffffffffU) continue;if((offset&3) || !record_span(at+start,offset,end)) return false;pos=at+start+offset;if(!record_span(pos,8,end) || (used && pos<prior)) return false;size=xx_data_get_u16(b->p+(size_t)pos, 2, 0, false);flags=xx_data_get_u16(b->p+(size_t)pos+2, 2, 0, false);if((flags&~7U) || xx_data_get_u32(b->p+(size_t)pos+4, 4, 0, false)>=keys) return false;if(flags&1) {uint32_t count;if(size!=16 || !record_span(pos,16,end)) return false;count=xx_data_get_u32(b->p+(size_t)pos+12, 4, 0, false);if(count>4096 || !record_span(pos+16,(uint64_t)count*12,end)) return false;for(uint64_t j=0;j<count;++j) if(!android_wire_value(b,pos+20+j*12,end,strings)) return false;prior=pos+16+(uint64_t)count*12;}else {if(size!=8 || !android_wire_value(b,pos+8,end,strings)) return false;prior=pos+16;}++used;}
-    return used && prior==end;
+static bool ar_type(memory_blob *b, android_wire_chunk *c, uint32_t strings, uint32_t keys, uint32_t expected)
+{
+    uint64_t at = c->at, start, n, i, pos, prior = 0, end, used = 0;
+    uint16_t flags, size;
+    uint32_t config;
+    if (c->header < 24 || c->end - at < 24 || b->p[(size_t)at + 9] || xx_data_get_u16(b->p + (size_t)at + 10, 2, 0, false)) return false;
+    n = xx_data_get_u32(b->p + (size_t)at + 12, 4, 0, false);
+    start = xx_data_get_u32(b->p + (size_t)at + 16, 4, 0, false);
+    config = xx_data_get_u32(b->p + (size_t)at + 20, 4, 0, false);
+    if (n != expected || n > 65536 || config < 4 || config + 20U != c->header || start < c->header + n * 4 || (start & 3) || !record_span(at, start, c->end))
+        return false;
+    end = c->end;
+    for (i = 0; i < n; ++i) {
+        uint32_t offset = xx_data_get_u32(b->p + (size_t)(at + c->header + i * 4), 4, 0, false);
+        if (offset == 0xffffffffU) continue;
+        if ((offset & 3) || !record_span(at + start, offset, end)) return false;
+        pos = at + start + offset;
+        if (!record_span(pos, 8, end) || (used && pos < prior)) return false;
+        size = xx_data_get_u16(b->p + (size_t)pos, 2, 0, false);
+        flags = xx_data_get_u16(b->p + (size_t)pos + 2, 2, 0, false);
+        if ((flags & ~7U) || xx_data_get_u32(b->p + (size_t)pos + 4, 4, 0, false) >= keys) return false;
+        if (flags & 1) {
+            uint32_t count;
+            if (size != 16 || !record_span(pos, 16, end)) return false;
+            count = xx_data_get_u32(b->p + (size_t)pos + 12, 4, 0, false);
+            if (count > 4096 || !record_span(pos + 16, (uint64_t)count * 12, end)) return false;
+            for (uint64_t j = 0; j < count; ++j)
+                if (!android_wire_value(b, pos + 20 + j * 12, end, strings)) return false;
+            prior = pos + 16 + (uint64_t)count * 12;
+        } else {
+            if (size != 8 || !android_wire_value(b, pos + 8, end, strings)) return false;
+            prior = pos + 16;
+        }
+        ++used;
+    }
+    return used && prior == end;
 }
-static bool ar_package(Abstractformat *f,pm_stream *s,memory_blob *b,android_wire_chunk *c,uint32_t globals) {uint64_t at=c->at,child,typePool,keyPool,i;uint32_t types=0,keys=0,spec[256],actual[256],expectedConfigs[256];bool haveTypes=false,haveKeys=false;android_wire_chunk a;uint16_t name=0;if((c->header!=284 && c->header!=288) || c->end-at<c->header || !xx_data_get_u32(b->p+(size_t)at+8, 4, 0, false) || xx_data_get_u32(b->p+(size_t)at+8, 4, 0, false)>255 || (c->header==288 && xx_data_get_u32(b->p+(size_t)at+284, 4, 0, false))) return false;while(name<128 && xx_data_get_u16(b->p+(size_t)at+12+name*2, 2, 0, false)) ++name;if(!name || name==128 || !android_wire_utf16(b,at+12,name)) return false;typePool=xx_data_get_u32(b->p+(size_t)at+268, 4, 0, false);keyPool=xx_data_get_u32(b->p+(size_t)at+276, 4, 0, false);if(typePool<c->header || keyPool<c->header || typePool==keyPool) return false;xx_mem_zero(spec,sizeof(spec));xx_mem_zero(actual,sizeof(actual));xx_mem_zero(expectedConfigs,sizeof(expectedConfigs));if(!blob_add(f,s,b,"package-header",at,c->header)) return false;child=at+c->header;
-    while(child<c->end) {if(!android_wire_read(b,child,c->end,&a)) return false;if(a.type==1) {uint32_t count;if(!android_wire_pool(b,&a,&count)) return false;if(child-at==typePool && !haveTypes) {types=count;haveTypes=true;if(types>255 || xx_data_get_u32(b->p+(size_t)at+272, 4, 0, false)>types) return false;}else if(child-at==keyPool && !haveKeys) {keys=count;haveKeys=true;if(xx_data_get_u32(b->p+(size_t)at+280, 4, 0, false)>keys) return false;}else return false;}
-        else if(a.type==514) {if(a.end-child<16) return false;uint8_t id=b->p[(size_t)child+8];if(!haveTypes || !haveKeys || a.header!=16 || a.end-child<16 || !id || id>types || b->p[(size_t)child+9] || spec[id]) return false;spec[id]=xx_data_get_u32(b->p+(size_t)child+12, 4, 0, false);expectedConfigs[id]=xx_data_get_u16(b->p+(size_t)child+10, 2, 0, false);if(!spec[id] || spec[id]>65536 || a.end-child!=16+(uint64_t)spec[id]*4) return false;}
-        else { if(a.type==513) {if(a.end-child<24) return false;uint8_t id=b->p[(size_t)child+8];if(!id || !spec[id] || !ar_type(b,&a,globals,keys,spec[id]) || ++actual[id]>1024) return false;}else return false; } if(!blob_add(f,s,b,a.type==1 ? "package-string-pool":a.type==514 ? "type-spec":"resource-type",child,a.end-child)) return false;child=a.end;
-    }for(i=1;i<256;++i) if(spec[i] && (!actual[i] || (expectedConfigs[i] && expectedConfigs[i]!=actual[i]))) return false;return haveTypes && haveKeys;
+static bool ar_package(Abstractformat *f, pm_stream *s, memory_blob *b, android_wire_chunk *c, uint32_t globals)
+{
+    uint64_t at = c->at, child, typePool, keyPool, i;
+    uint32_t types = 0, keys = 0, spec[256], actual[256], expectedConfigs[256];
+    bool haveTypes = false, haveKeys = false;
+    android_wire_chunk a;
+    uint16_t name = 0;
+    if ((c->header != 284 && c->header != 288) || c->end - at < c->header || !xx_data_get_u32(b->p + (size_t)at + 8, 4, 0, false) ||
+        xx_data_get_u32(b->p + (size_t)at + 8, 4, 0, false) > 255 || (c->header == 288 && xx_data_get_u32(b->p + (size_t)at + 284, 4, 0, false)))
+        return false;
+    while (name < 128 && xx_data_get_u16(b->p + (size_t)at + 12 + name * 2, 2, 0, false)) ++name;
+    if (!name || name == 128 || !android_wire_utf16(b, at + 12, name)) return false;
+    typePool = xx_data_get_u32(b->p + (size_t)at + 268, 4, 0, false);
+    keyPool = xx_data_get_u32(b->p + (size_t)at + 276, 4, 0, false);
+    if (typePool < c->header || keyPool < c->header || typePool == keyPool) return false;
+    xx_mem_zero(spec, sizeof(spec));
+    xx_mem_zero(actual, sizeof(actual));
+    xx_mem_zero(expectedConfigs, sizeof(expectedConfigs));
+    if (!blob_add(f, s, b, "package-header", at, c->header)) return false;
+    child = at + c->header;
+    while (child < c->end) {
+        if (!android_wire_read(b, child, c->end, &a)) return false;
+        if (a.type == 1) {
+            uint32_t count;
+            if (!android_wire_pool(b, &a, &count)) return false;
+            if (child - at == typePool && !haveTypes) {
+                types = count;
+                haveTypes = true;
+                if (types > 255 || xx_data_get_u32(b->p + (size_t)at + 272, 4, 0, false) > types) return false;
+            } else if (child - at == keyPool && !haveKeys) {
+                keys = count;
+                haveKeys = true;
+                if (xx_data_get_u32(b->p + (size_t)at + 280, 4, 0, false) > keys) return false;
+            } else return false;
+        } else if (a.type == 514) {
+            if (a.end - child < 16) return false;
+            uint8_t id = b->p[(size_t)child + 8];
+            if (!haveTypes || !haveKeys || a.header != 16 || a.end - child < 16 || !id || id > types || b->p[(size_t)child + 9] || spec[id]) return false;
+            spec[id] = xx_data_get_u32(b->p + (size_t)child + 12, 4, 0, false);
+            expectedConfigs[id] = xx_data_get_u16(b->p + (size_t)child + 10, 2, 0, false);
+            if (!spec[id] || spec[id] > 65536 || a.end - child != 16 + (uint64_t)spec[id] * 4) return false;
+        } else {
+            if (a.type == 513) {
+                if (a.end - child < 24) return false;
+                uint8_t id = b->p[(size_t)child + 8];
+                if (!id || !spec[id] || !ar_type(b, &a, globals, keys, spec[id]) || ++actual[id] > 1024) return false;
+            } else return false;
+        }
+        if (!blob_add(f, s, b, a.type == 1 ? "package-string-pool" : a.type == 514 ? "type-spec" : "resource-type", child, a.end - child)) return false;
+        child = a.end;
+    }
+    for (i = 1; i < 256; ++i)
+        if (spec[i] && (!actual[i] || (expectedConfigs[i] && expectedConfigs[i] != actual[i]))) return false;
+    return haveTypes && haveKeys;
 }
-static bool pm_parse(Abstractformat *f,pm_stream *s,xx_pd_struct *pd) {memory_blob b;android_wire_chunk root,c;uint64_t at=12;uint32_t count,packages=0,strings=0,ids[256];bool pool=false,ok=false;if(!blob_load(f,&b,pd)) return false;BLOB_NEED(android_wire_read(&b,0,b.n,&root) && root.type==2 && root.header==12 && root.end==b.n);count=xx_data_get_u32(b.p+8, 4, 0, false);BLOB_NEED(count && count<=255 && blob_add(f,s,&b,"arsc-header",0,12));while(at<b.n) {BLOB_NEED(android_wire_read(&b,at,b.n,&c));if(c.type==1) {BLOB_NEED(!pool && !packages && android_wire_pool(&b,&c,&strings) && blob_add(f,s,&b,"global-string-pool",at,c.end-at));pool=true;}else {BLOB_NEED(pool && c.type==512 && packages<count && c.end-at>=12);ids[packages]=xx_data_get_u32(b.p+(size_t)at+8, 4, 0, false);for(uint32_t i=0;i<packages;++i) BLOB_NEED(ids[i]!=ids[packages]);BLOB_NEED(ar_package(f,s,&b,&c,strings));++packages;}at=c.end;}BLOB_NEED(packages==count);s->size=(int64_t)b.n;ok=true;done:xx_mem_free(b.p);return ok;}
+static bool pm_parse(Abstractformat *f, pm_stream *s, xx_pd_struct *pd)
+{
+    memory_blob b;
+    android_wire_chunk root, c;
+    uint64_t at = 12;
+    uint32_t count, packages = 0, strings = 0, ids[256];
+    bool pool = false, ok = false;
+    if (!blob_load(f, &b, pd)) return false;
+    BLOB_NEED(android_wire_read(&b, 0, b.n, &root) && root.type == 2 && root.header == 12 && root.end == b.n);
+    count = xx_data_get_u32(b.p + 8, 4, 0, false);
+    BLOB_NEED(count && count <= 255 && blob_add(f, s, &b, "arsc-header", 0, 12));
+    while (at < b.n) {
+        BLOB_NEED(android_wire_read(&b, at, b.n, &c));
+        if (c.type == 1) {
+            BLOB_NEED(!pool && !packages && android_wire_pool(&b, &c, &strings) && blob_add(f, s, &b, "global-string-pool", at, c.end - at));
+            pool = true;
+        } else {
+            BLOB_NEED(pool && c.type == 512 && packages < count && c.end - at >= 12);
+            ids[packages] = xx_data_get_u32(b.p + (size_t)at + 8, 4, 0, false);
+            for (uint32_t i = 0; i < packages; ++i) BLOB_NEED(ids[i] != ids[packages]);
+            BLOB_NEED(ar_package(f, s, &b, &c, strings));
+            ++packages;
+        }
+        at = c.end;
+    }
+    BLOB_NEED(packages == count);
+    s->size = (int64_t)b.n;
+    ok = true;
+done:
+    xx_mem_free(b.p);
+    return ok;
+}
 
-void xx_android_resources_arsc_init(xx_android_resources_arsc *r,xx_io_device *d,int64_t b) { if(r) { xx_mem_zero(r,sizeof(*r)); pm_init(&r->format,d,b,XX_FILE_TYPE_ANDROID_RESOURCES_ARSC,"arsc"); } }
-xx_android_resources_arsc *xx_android_resources_arsc_create(xx_io_device *d,int64_t b) { xx_android_resources_arsc *r=(xx_android_resources_arsc *)xx_mem_alloc(sizeof(*r)); if(r) xx_android_resources_arsc_init(r,d,b); return r; }
-void xx_android_resources_arsc_destroy(xx_android_resources_arsc *r) { if(r) xx_format_cleanup_extra_parameters(&r->format); }
-void xx_android_resources_arsc_free(xx_android_resources_arsc *r) { if(r) { xx_android_resources_arsc_destroy(r); xx_mem_free(r); } }
-bool xx_android_resources_arsc_check_is_valid(Abstractformat *f,xx_pd_struct *pd) { return pm_valid(f,pd); }
-bool xx_android_resources_arsc_handle_base_info(Abstractformat *f,xx_pd_struct *pd) { return pm_handle(f,pd); }
+void xx_android_resources_arsc_init(xx_android_resources_arsc *r, xx_io_device *d, int64_t b)
+{
+    if (r) {
+        xx_mem_zero(r, sizeof(*r));
+        pm_init(&r->format, d, b, XX_FILE_TYPE_ANDROID_RESOURCES_ARSC, "arsc");
+    }
+}
+xx_android_resources_arsc *xx_android_resources_arsc_create(xx_io_device *d, int64_t b)
+{
+    xx_android_resources_arsc *r = (xx_android_resources_arsc *)xx_mem_alloc(sizeof(*r));
+    if (r) xx_android_resources_arsc_init(r, d, b);
+    return r;
+}
+void xx_android_resources_arsc_destroy(xx_android_resources_arsc *r)
+{
+    if (r) xx_format_cleanup_extra_parameters(&r->format);
+}
+void xx_android_resources_arsc_free(xx_android_resources_arsc *r)
+{
+    if (r) {
+        xx_android_resources_arsc_destroy(r);
+        xx_mem_free(r);
+    }
+}
+bool xx_android_resources_arsc_check_is_valid(Abstractformat *f, xx_pd_struct *pd)
+{
+    return pm_valid(f, pd);
+}
+bool xx_android_resources_arsc_handle_base_info(Abstractformat *f, xx_pd_struct *pd)
+{
+    return pm_handle(f, pd);
+}

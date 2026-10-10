@@ -34,9 +34,7 @@ void xx_wim_codec_free(xx_wim_codec *codec);
 
 /* Decode one chunk.  For LZX, window_size is the resource chunk size (a power
  * of two from 2^15 to 2^21); the other codecs ignore it. */
-bool xx_wim_codec_decode(xx_wim_codec *codec, const uint8_t *in,
-                         size_t in_size, uint8_t *out, size_t out_size,
-                         uint32_t window_size);
+bool xx_wim_codec_decode(xx_wim_codec *codec, const uint8_t *in, size_t in_size, uint8_t *out, size_t out_size, uint32_t window_size);
 
 #ifdef __cplusplus
 }

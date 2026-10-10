@@ -19,70 +19,59 @@
 #include "../xx_format_extractor_engine.h"
 #include "xxfclib/formats/pp20/xx_pp20.h"
 
-static const uint8_t k_anchor0[] = { 0x50, 0x50, 0x32, 0x30 };
-static const uint8_t k_anchor1[] = { 0x50, 0x50, 0x31, 0x31 };
-static const uint8_t k_anchor2[] = { 0x50, 0x50, 0x4C, 0x53 };
-static const uint8_t k_anchor3[] = { 0x50, 0x58, 0x32, 0x30 };
-static const uint8_t k_anchor4[] = { 0x50, 0x50, 0x42, 0x4B };
+static const uint8_t k_anchor0[] = {0x50, 0x50, 0x32, 0x30};
+static const uint8_t k_anchor1[] = {0x50, 0x50, 0x31, 0x31};
+static const uint8_t k_anchor2[] = {0x50, 0x50, 0x4C, 0x53};
+static const uint8_t k_anchor3[] = {0x50, 0x58, 0x32, 0x30};
+static const uint8_t k_anchor4[] = {0x50, 0x50, 0x42, 0x4B};
 
 static const xx_format_search_anchor k_anchors[] = {
-    { k_anchor0, sizeof(k_anchor0), 0U },
-    { k_anchor1, sizeof(k_anchor1), 0U },
-    { k_anchor2, sizeof(k_anchor2), 0U },
-    { k_anchor3, sizeof(k_anchor3), 0U },
-    { k_anchor4, sizeof(k_anchor4), 0U },
+    {k_anchor0, sizeof(k_anchor0), 0U}, {k_anchor1, sizeof(k_anchor1), 0U}, {k_anchor2, sizeof(k_anchor2), 0U},
+    {k_anchor3, sizeof(k_anchor3), 0U}, {k_anchor4, sizeof(k_anchor4), 0U},
 };
 
-static const xx_file_type_t k_types[] = { XX_FILE_TYPE_PP20 };
+static const xx_file_type_t k_types[] = {XX_FILE_TYPE_PP20};
 
-static Abstractformat *xx_pp20_search_open(xx_io_device *window) {
+static Abstractformat *xx_pp20_search_open(xx_io_device *window)
+{
     xx_pp20 *reader = xx_pp20_create(window, 0);
     return reader ? &reader->format : NULL;
 }
 
-static void xx_pp20_search_close(Abstractformat *format) {
+static void xx_pp20_search_close(Abstractformat *format)
+{
     /* The format is the first member, so this is the reader itself. */
     xx_pp20_free((xx_pp20 *)format);
 }
 
 static const xx_format_search_desc k_desc = {
-    k_types, sizeof(k_types) / sizeof(k_types[0]),
-    k_anchors, sizeof(k_anchors) / sizeof(k_anchors[0]),
-    xx_pp20_search_open, xx_pp20_search_close, false
-};
+    k_types, sizeof(k_types) / sizeof(k_types[0]), k_anchors, sizeof(k_anchors) / sizeof(k_anchors[0]), xx_pp20_search_open, xx_pp20_search_close, false};
 
-static xx_format_search_state *xx_pp20_create_format_search(
-    xx_format_extractor *self, xx_io_device *device, const xx_list_s *options,
-    xx_pd_struct *pd) {
+static xx_format_search_state *xx_pp20_create_format_search(xx_format_extractor *self, xx_io_device *device, const xx_list_s *options, xx_pd_struct *pd)
+{
     (void)self;
     return xx_format_search_create(&k_desc, device, options, pd);
 }
 
-static const xx_format_search_info *xx_pp20_get_current_format_info(
-    xx_format_extractor *self, xx_format_search_state *state) {
+static const xx_format_search_info *xx_pp20_get_current_format_info(xx_format_extractor *self, xx_format_search_state *state)
+{
     (void)self;
     return xx_format_search_current(state);
 }
 
-static bool xx_pp20_format_search_find_next(xx_format_extractor *self,
-                                          xx_format_search_state *state,
-                                          xx_pd_struct *pd) {
+static bool xx_pp20_format_search_find_next(xx_format_extractor *self, xx_format_search_state *state, xx_pd_struct *pd)
+{
     (void)self;
     return xx_format_search_find_next(state, pd);
 }
 
-static void xx_pp20_free_format_search(xx_format_extractor *self,
-                                     xx_format_search_state *state) {
+static void xx_pp20_free_format_search(xx_format_extractor *self, xx_format_search_state *state)
+{
     (void)self;
     xx_format_search_free(state);
 }
 
-xx_format_extractor xx_pp20_extractor = {
-    xx_pp20_create_format_search,
-    xx_pp20_get_current_format_info,
-    xx_pp20_format_search_find_next,
-    xx_pp20_free_format_search
-};
+xx_format_extractor xx_pp20_extractor = {xx_pp20_create_format_search, xx_pp20_get_current_format_info, xx_pp20_format_search_find_next, xx_pp20_free_format_search};
 
 /* BEGIN GENERATED ABSTRACT EXTRACTOR */
 #include "../xx_format_abstract_extractor_adapter.h"

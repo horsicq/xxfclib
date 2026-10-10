@@ -61,7 +61,8 @@ typedef struct charc_state_s {
     int32_t window_position;
 } charc_state;
 
-static int32_t charc_read_bits(charc_bits *bits, int32_t nbits) {
+static int32_t charc_read_bits(charc_bits *bits, int32_t nbits)
+{
     int32_t value;
 
     if ((nbits < 1) || (nbits > 8)) return -1;
@@ -87,7 +88,8 @@ static int32_t charc_read_bits(charc_bits *bits, int32_t nbits) {
  * Returns the number of bytes written, or 0 when the budget ran out first.
  * The 16-bit truncations of `available` are the reference's own arithmetic
  * and are kept deliberately. */
-static int32_t charc_build_table(const uint8_t *lengths, uint8_t *destination, int32_t capacity) {
+static int32_t charc_build_table(const uint8_t *lengths, uint8_t *destination, int32_t capacity)
+{
     int32_t written;
     int32_t remaining_capacity;
     uint8_t current_length;
@@ -150,7 +152,8 @@ static int32_t charc_build_table(const uint8_t *lengths, uint8_t *destination, i
  * `count` of them.  `budget` is the format's own accounting; `bytes` is the
  * hard end of the buffer and exists only so a corrupt table cannot read past
  * the arena. */
-static int32_t charc_decode_symbol(charc_bits *bits, const uint8_t *table, int32_t bytes, int32_t budget) {
+static int32_t charc_decode_symbol(charc_bits *bits, const uint8_t *table, int32_t bytes, int32_t budget)
+{
     int32_t code = 0;
     int32_t available = 1;
     int32_t offset = 0;
@@ -184,7 +187,8 @@ static int32_t charc_decode_symbol(charc_bits *bits, const uint8_t *table, int32
     }
 }
 
-static int32_t charc_decode_context(charc_state *state, charc_bits *bits, int32_t context) {
+static int32_t charc_decode_context(charc_state *state, charc_bits *bits, int32_t context)
+{
     int32_t table;
 
     if ((context < 0) || (context >= CHARC_CONTEXT_COUNT)) return -1;
@@ -200,7 +204,8 @@ static int32_t charc_decode_context(charc_state *state, charc_bits *bits, int32_
  * context mode is 2 at zero instead of spending a meta symbol on it; the two
  * distance/length contexts are built without it.  That asymmetry is
  * load-bearing - do not "tidy" it into a single rule. */
-static bool charc_build_context(charc_state *state, charc_bits *bits, int32_t context, bool skip_mode2) {
+static bool charc_build_context(charc_state *state, charc_bits *bits, int32_t context, bool skip_mode2)
+{
     const uint8_t mode = state->context_mode[context];
 
     if (mode == 3) {
@@ -237,7 +242,8 @@ static bool charc_build_context(charc_state *state, charc_bits *bits, int32_t co
     return true;
 }
 
-static bool charc_init_model(charc_state *state, charc_bits *bits) {
+static bool charc_init_model(charc_state *state, charc_bits *bits)
+{
     int32_t all_literal;
     int32_t has_escape_table;
     int32_t i;
@@ -327,14 +333,16 @@ static bool charc_init_model(charc_state *state, charc_bits *bits) {
  * only while there is room.  The reference appends to a growing QByteArray
  * and truncates the final overshoot afterwards, so dropping the overshoot
  * here is output-equivalent - the loop that produced it ends immediately. */
-static void charc_emit(charc_state *state, uint8_t *output, size_t output_size, size_t *produced, uint8_t byte) {
+static void charc_emit(charc_state *state, uint8_t *output, size_t output_size, size_t *produced, uint8_t byte)
+{
     if (*produced < output_size) output[*produced] = byte;
     (*produced)++;
     state->window[state->window_position] = byte;
     state->window_position = (state->window_position + 1) & CHARC_WINDOW_MASK;
 }
 
-static bool charc_decode_stream(charc_state *state, const uint8_t *input, size_t input_size, uint8_t *output, size_t output_size, size_t *produced) {
+static bool charc_decode_stream(charc_state *state, const uint8_t *input, size_t input_size, uint8_t *output, size_t output_size, size_t *produced)
+{
     charc_bits bits;
     int32_t length_bias;
     int32_t first_byte;
@@ -410,7 +418,8 @@ static bool charc_decode_stream(charc_state *state, const uint8_t *input, size_t
     return true;
 }
 
-bool xx_charc_decode_memory(const uint8_t *input, size_t input_size, uint8_t *output, size_t output_size, size_t *written) {
+bool xx_charc_decode_memory(const uint8_t *input, size_t input_size, uint8_t *output, size_t output_size, size_t *written)
+{
     charc_state *state;
     size_t produced = 0;
     bool decoded;

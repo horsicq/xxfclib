@@ -44,12 +44,11 @@ static void xx_rtk_vtable_destroy(Abstractformat *self);
 
 /* seek64 rather than seek: the payload offset comes straight out of the
  * header and can name a position past the 2 GiB `long` ceiling on Win64. */
-static bool xx_rtk_read_at(xx_io_device *device, int64_t offset, void *data,
-                           size_t size) {
+static bool xx_rtk_read_at(xx_io_device *device, int64_t offset, void *data, size_t size)
+{
     uint8_t *out = (uint8_t *)data;
     size_t done = 0U;
-    if (!device || (!data && size != 0U) || offset < 0 ||
-        xx_io_seek64(device, offset, SEEK_SET) != 0) {
+    if (!device || (!data && size != 0U) || offset < 0 || xx_io_seek64(device, offset, SEEK_SET) != 0) {
         return false;
     }
     while (done < size) {
@@ -60,7 +59,8 @@ static bool xx_rtk_read_at(xx_io_device *device, int64_t offset, void *data,
     return true;
 }
 
-static bool xx_rtk_add(int64_t left, uint64_t right, int64_t *result) {
+static bool xx_rtk_add(int64_t left, uint64_t right, int64_t *result)
+{
     if (!result || left < 0 || right > (uint64_t)(INT64_MAX - left)) {
         return false;
     }
@@ -68,13 +68,13 @@ static bool xx_rtk_add(int64_t left, uint64_t right, int64_t *result) {
     return true;
 }
 
-static bool xx_rtk_range_within(int64_t total_size, int64_t offset,
-                                int64_t size) {
-    return (total_size >= 0) && (offset >= 0) && (size >= 0) &&
-           (offset <= total_size) && (size <= total_size - offset);
+static bool xx_rtk_range_within(int64_t total_size, int64_t offset, int64_t size)
+{
+    return (total_size >= 0) && (offset >= 0) && (size >= 0) && (offset <= total_size) && (size <= total_size - offset);
 }
 
-static void xx_rtk_private_cleanup(xx_rtk_private *parsed) {
+static void xx_rtk_private_cleanup(xx_rtk_private *parsed)
+{
     if (!parsed) return;
     xx_mem_zero(parsed, sizeof(*parsed));
     parsed->input_size = -1;
@@ -82,8 +82,8 @@ static void xx_rtk_private_cleanup(xx_rtk_private *parsed) {
     parsed->archive_end = -1;
 }
 
-static bool xx_rtk_parse(Abstractformat *self, xx_rtk_private *parsed,
-                         xx_pd_struct *pd) {
+static bool xx_rtk_parse(Abstractformat *self, xx_rtk_private *parsed, xx_pd_struct *pd)
+{
     uint8_t header[XX_RTK_HEADER_SIZE];
     int64_t total_size;
     int64_t effective_header;
@@ -93,15 +93,11 @@ static bool xx_rtk_parse(Abstractformat *self, xx_rtk_private *parsed,
         parsed->payload_offset = -1;
         parsed->archive_end = -1;
     }
-    if (!self || !self->device || !parsed || self->base_address < 0 ||
-        (pd && xx_pd_is_stopped(pd))) {
+    if (!self || !self->device || !parsed || self->base_address < 0 || (pd && xx_pd_is_stopped(pd))) {
         return false;
     }
     total_size = xx_io_total_size(self->device);
-    if (!xx_rtk_range_within(total_size, self->base_address,
-                             XX_RTK_HEADER_SIZE) ||
-        !xx_rtk_read_at(self->device, self->base_address, header,
-                        sizeof(header)) ||
+    if (!xx_rtk_range_within(total_size, self->base_address, XX_RTK_HEADER_SIZE) || !xx_rtk_read_at(self->device, self->base_address, header, sizeof(header)) ||
         xx_rt_memcmp(header, "RTK0", XX_RTK_MAGIC_SIZE) != 0) {
         return false;
     }
@@ -112,10 +108,8 @@ static bool xx_rtk_parse(Abstractformat *self, xx_rtk_private *parsed,
     /* The stored header size excludes the four magic bytes. */
     effective_header = (int64_t)parsed->header_size + XX_RTK_MAGIC_SIZE;
     if (effective_header < XX_RTK_HEADER_SIZE) return false;
-    if (!xx_rtk_add(self->base_address, (uint64_t)effective_header,
-                    &parsed->payload_offset) ||
-        !xx_rtk_range_within(total_size, parsed->payload_offset,
-                             (int64_t)parsed->image_size)) {
+    if (!xx_rtk_add(self->base_address, (uint64_t)effective_header, &parsed->payload_offset) ||
+        !xx_rtk_range_within(total_size, parsed->payload_offset, (int64_t)parsed->image_size)) {
         parsed->payload_offset = -1;
         return false;
     }
@@ -125,18 +119,16 @@ static bool xx_rtk_parse(Abstractformat *self, xx_rtk_private *parsed,
     return true;
 }
 
-static bool xx_rtk_copy_options(xx_list_s *destination,
-                                const xx_list_s *source) {
+static bool xx_rtk_copy_options(xx_list_s *destination, const xx_list_s *source)
+{
     size_t index;
     if (!destination || !source) return source == NULL;
     for (index = 0U; index < source->count; ++index) {
-        const xx_meta *item = (const xx_meta *)xx_list_at(
-            (const xx_list_t *)source, index);
+        const xx_meta *item = (const xx_meta *)xx_list_at((const xx_list_t *)source, index);
         xx_meta copy;
         if (!item) continue;
         xx_meta_init(&copy, item->meta_id);
-        if (!xx_var_copy(&copy.var, &item->var) ||
-            !xx_list_append(destination, &copy)) {
+        if (!xx_var_copy(&copy.var, &item->var) || !xx_list_append(destination, &copy)) {
             xx_meta_cleanup(&copy);
             return false;
         }
@@ -144,48 +136,42 @@ static bool xx_rtk_copy_options(xx_list_s *destination,
     return true;
 }
 
-static const xx_var *xx_rtk_find_option(const xx_list_s *options,
-                                        uint32_t meta_id) {
+static const xx_var *xx_rtk_find_option(const xx_list_s *options, uint32_t meta_id)
+{
     size_t index;
     if (!options) return NULL;
     for (index = 0U; index < options->count; ++index) {
-        const xx_meta *item = (const xx_meta *)xx_list_at(
-            (const xx_list_t *)options, index);
+        const xx_meta *item = (const xx_meta *)xx_list_at((const xx_list_t *)options, index);
         if (item && item->meta_id == meta_id) return &item->var;
     }
     return NULL;
 }
 
-static bool xx_rtk_populate_record(xx_archive_record *record,
-                                   const xx_rtk_private *parsed) {
+static bool xx_rtk_populate_record(xx_archive_record *record, const xx_rtk_private *parsed)
+{
     if (!record || !parsed || parsed->payload_offset < 0) return false;
     xx_archive_record_cleanup(record);
     xx_archive_record_init(record);
-    record->header_offset = parsed->payload_offset -
-                            ((int64_t)parsed->header_size + XX_RTK_MAGIC_SIZE);
+    record->header_offset = parsed->payload_offset - ((int64_t)parsed->header_size + XX_RTK_MAGIC_SIZE);
     record->header_size = (int64_t)parsed->header_size + XX_RTK_MAGIC_SIZE;
     record->data_offset = parsed->payload_offset;
     record->compressed_size = parsed->payload_size;
     return xx_archive_record_set_original_name(record, XX_RTK_PAYLOAD_NAME) &&
-           xx_archive_record_set_meta_u64(record,
-                                          XX_META_ID_UNCOMPRESSED_SIZE,
-                                          (uint64_t)parsed->payload_size) &&
-           xx_archive_record_set_meta_u64(record, XX_META_ID_COMPRESSED_SIZE,
-                                          (uint64_t)parsed->payload_size) &&
-           xx_archive_record_set_meta_u64(record,
-                                          XX_META_ID_COMPRESSION_METHOD, 0U) &&
-           xx_archive_record_set_meta_bool(record, XX_META_ID_IS_FOLDER,
-                                           false);
+           xx_archive_record_set_meta_u64(record, XX_META_ID_UNCOMPRESSED_SIZE, (uint64_t)parsed->payload_size) &&
+           xx_archive_record_set_meta_u64(record, XX_META_ID_COMPRESSED_SIZE, (uint64_t)parsed->payload_size) &&
+           xx_archive_record_set_meta_u64(record, XX_META_ID_COMPRESSION_METHOD, 0U) && xx_archive_record_set_meta_bool(record, XX_META_ID_IS_FOLDER, false);
 }
 
-static void xx_rtk_archive_stream_free(void *pointer) {
+static void xx_rtk_archive_stream_free(void *pointer)
+{
     xx_rtk_archive_stream *stream = (xx_rtk_archive_stream *)pointer;
     if (!stream) return;
     xx_rtk_private_cleanup(&stream->parsed);
     xx_mem_free(stream);
 }
 
-void xx_rtk_init(xx_rtk *rtk, xx_io_device *dev, int64_t base_address) {
+void xx_rtk_init(xx_rtk *rtk, xx_io_device *dev, int64_t base_address)
+{
     if (!rtk) return;
     xx_mem_zero(rtk, sizeof(*rtk));
     xx_format_init(&rtk->format, dev, base_address);
@@ -198,30 +184,26 @@ void xx_rtk_init(xx_rtk *rtk, xx_io_device *dev, int64_t base_address) {
     rtk->format.check_is_valid = xx_rtk_check_is_valid;
     rtk->format.handle_base_info = xx_rtk_handle_base_info;
     rtk->format.get_format_size = xx_rtk_get_format_size;
-    rtk->format.get_number_of_archive_records =
-        xx_rtk_get_number_of_archive_records;
-    rtk->format.create_archive_records_reading =
-        xx_rtk_create_archive_records_reading;
-    rtk->format.get_current_archive_record =
-        xx_rtk_get_current_archive_record;
-    rtk->format.unpack_current_archive_record =
-        xx_rtk_unpack_current_archive_record;
-    rtk->format.archive_record_move_to_next =
-        xx_rtk_archive_record_move_to_next;
-    rtk->format.free_archive_records_reading =
-        xx_rtk_free_archive_records_reading;
+    rtk->format.get_number_of_archive_records = xx_rtk_get_number_of_archive_records;
+    rtk->format.create_archive_records_reading = xx_rtk_create_archive_records_reading;
+    rtk->format.get_current_archive_record = xx_rtk_get_current_archive_record;
+    rtk->format.unpack_current_archive_record = xx_rtk_unpack_current_archive_record;
+    rtk->format.archive_record_move_to_next = xx_rtk_archive_record_move_to_next;
+    rtk->format.free_archive_records_reading = xx_rtk_free_archive_records_reading;
     rtk->format.destroy = xx_rtk_vtable_destroy;
     rtk->payload_offset = -1;
     rtk->archive_end = -1;
 }
 
-xx_rtk *xx_rtk_create(xx_io_device *dev, int64_t base_address) {
+xx_rtk *xx_rtk_create(xx_io_device *dev, int64_t base_address)
+{
     xx_rtk *rtk = (xx_rtk *)xx_mem_alloc(sizeof(*rtk));
     if (rtk) xx_rtk_init(rtk, dev, base_address);
     return rtk;
 }
 
-void xx_rtk_destroy(xx_rtk *rtk) {
+void xx_rtk_destroy(xx_rtk *rtk)
+{
     if (!rtk) return;
     if (rtk->internal) {
         xx_rtk_private_cleanup((xx_rtk_private *)rtk->internal);
@@ -231,24 +213,28 @@ void xx_rtk_destroy(xx_rtk *rtk) {
     xx_format_cleanup_extra_parameters(&rtk->format);
 }
 
-static void xx_rtk_vtable_destroy(Abstractformat *self) {
+static void xx_rtk_vtable_destroy(Abstractformat *self)
+{
     xx_rtk_destroy((xx_rtk *)self);
 }
 
-void xx_rtk_free(xx_rtk *rtk) {
+void xx_rtk_free(xx_rtk *rtk)
+{
     if (!rtk) return;
     xx_rtk_destroy(rtk);
     xx_mem_free(rtk);
 }
 
-bool xx_rtk_check_is_valid(Abstractformat *self, xx_pd_struct *pd) {
+bool xx_rtk_check_is_valid(Abstractformat *self, xx_pd_struct *pd)
+{
     xx_rtk_private parsed;
     bool result = xx_rtk_parse(self, &parsed, pd);
     xx_rtk_private_cleanup(&parsed);
     return result;
 }
 
-bool xx_rtk_handle_base_info(Abstractformat *self, xx_pd_struct *pd) {
+bool xx_rtk_handle_base_info(Abstractformat *self, xx_pd_struct *pd)
+{
     xx_rtk_private *parsed;
     xx_rtk *rtk = (xx_rtk *)self;
     int64_t total_size;
@@ -288,25 +274,23 @@ bool xx_rtk_handle_base_info(Abstractformat *self, xx_pd_struct *pd) {
     return true;
 }
 
-int64_t xx_rtk_get_format_size(Abstractformat *self, xx_pd_struct *pd) {
-    if (!self || (!self->base_info_handled &&
-                  !xx_format_handle_base_info(self, pd))) return -1;
+int64_t xx_rtk_get_format_size(Abstractformat *self, xx_pd_struct *pd)
+{
+    if (!self || (!self->base_info_handled && !xx_format_handle_base_info(self, pd))) return -1;
     return self->format_size;
 }
 
-uint64_t xx_rtk_get_number_of_archive_records(Abstractformat *self,
-                                              xx_pd_struct *pd) {
-    if (!self || (!self->base_info_handled &&
-                  !xx_format_handle_base_info(self, pd))) return 0U;
+uint64_t xx_rtk_get_number_of_archive_records(Abstractformat *self, xx_pd_struct *pd)
+{
+    if (!self || (!self->base_info_handled && !xx_format_handle_base_info(self, pd))) return 0U;
     return ((xx_rtk *)self)->number_of_records;
 }
 
-xx_archive_record_state *xx_rtk_create_archive_records_reading(
-    Abstractformat *self, const xx_list_s *options, xx_pd_struct *pd) {
+xx_archive_record_state *xx_rtk_create_archive_records_reading(Abstractformat *self, const xx_list_s *options, xx_pd_struct *pd)
+{
     xx_archive_record_state *state;
     xx_rtk_archive_stream *stream;
-    if (!self || !self->device ||
-        (!self->base_info_handled && !xx_format_handle_base_info(self, pd))) {
+    if (!self || !self->device || (!self->base_info_handled && !xx_format_handle_base_info(self, pd))) {
         return NULL;
     }
     state = (xx_archive_record_state *)xx_mem_alloc(sizeof(*state));
@@ -317,8 +301,7 @@ xx_archive_record_state *xx_rtk_create_archive_records_reading(
         return NULL;
     }
     xx_archive_record_state_init(state, self);
-    if (!xx_rtk_copy_options(&state->options, options) ||
-        !xx_rtk_parse(self, &stream->parsed, pd)) {
+    if (!xx_rtk_copy_options(&state->options, options) || !xx_rtk_parse(self, &stream->parsed, pd)) {
         xx_rtk_archive_stream_free(stream);
         xx_archive_record_state_free(state);
         return NULL;
@@ -327,26 +310,22 @@ xx_archive_record_state *xx_rtk_create_archive_records_reading(
     state->internal_state = stream;
     state->free_internal = xx_rtk_archive_stream_free;
     state->total_records = stream->parsed.payload_size > 0 ? 1 : 0;
-    if (stream->parsed.payload_size > 0 &&
-        xx_rtk_populate_record(&state->current_record, &stream->parsed)) {
+    if (stream->parsed.payload_size > 0 && xx_rtk_populate_record(&state->current_record, &stream->parsed)) {
         state->has_record = true;
         state->current_index = 0;
     }
     return state;
 }
 
-const xx_archive_record *xx_rtk_get_current_archive_record(
-    Abstractformat *self, xx_archive_record_state *state) {
-    return self && state && state->format == self && state->has_record
-               ? &state->current_record : NULL;
+const xx_archive_record *xx_rtk_get_current_archive_record(Abstractformat *self, xx_archive_record_state *state)
+{
+    return self && state && state->format == self && state->has_record ? &state->current_record : NULL;
 }
 
-bool xx_rtk_archive_record_move_to_next(Abstractformat *self,
-                                        xx_archive_record_state *state,
-                                        xx_pd_struct *pd) {
+bool xx_rtk_archive_record_move_to_next(Abstractformat *self, xx_archive_record_state *state, xx_pd_struct *pd)
+{
     xx_rtk_archive_stream *stream;
-    if (!self || !state || state->format != self || !state->has_record ||
-        !state->internal_state || (pd && xx_pd_is_stopped(pd))) return false;
+    if (!self || !state || state->format != self || !state->has_record || !state->internal_state || (pd && xx_pd_is_stopped(pd))) return false;
     stream = (xx_rtk_archive_stream *)state->internal_state;
     /* One payload per image, so the first advance ends the enumeration. */
     ++stream->index;
@@ -356,9 +335,8 @@ bool xx_rtk_archive_record_move_to_next(Abstractformat *self,
     return false;
 }
 
-bool xx_rtk_unpack_current_archive_record(Abstractformat *self,
-                                          xx_archive_record_state *state,
-                                          xx_pd_struct *pd) {
+bool xx_rtk_unpack_current_archive_record(Abstractformat *self, xx_archive_record_state *state, xx_pd_struct *pd)
+{
     const xx_archive_record *record;
     const xx_var *option;
     const char *name;
@@ -366,39 +344,30 @@ bool xx_rtk_unpack_current_archive_record(Abstractformat *self,
     char *owned_base = NULL;
     char *destination = NULL;
     bool result;
-    if (!self || !self->device || !state || state->format != self ||
-        !state->has_record || (pd && xx_pd_is_stopped(pd))) return false;
+    if (!self || !self->device || !state || state->format != self || !state->has_record || (pd && xx_pd_is_stopped(pd))) return false;
     record = &state->current_record;
     name = xx_archive_record_get_original_name(record);
     if (!name || !name[0]) return false;
     option = xx_rtk_find_option(&state->options, XX_META_ID_OPT_UNPACK_PATH);
     if (!option) {
         int64_t total = xx_io_total_size(self->device);
-        return record->data_offset >= 0 && record->compressed_size >= 0 &&
-               record->data_offset <= total &&
-               record->compressed_size <= total - record->data_offset;
+        return record->data_offset >= 0 && record->compressed_size >= 0 && record->data_offset <= total && record->compressed_size <= total - record->data_offset;
     }
-    if (option->type == XX_VAR_TYPE_STRING ||
-        option->type == XX_VAR_TYPE_STRING_VIEW) {
+    if (option->type == XX_VAR_TYPE_STRING || option->type == XX_VAR_TYPE_STRING_VIEW) {
         base = xx_var_get_str(option);
-    } else if (option->type == XX_VAR_TYPE_WSTRING ||
-               option->type == XX_VAR_TYPE_WSTRING_VIEW) {
+    } else if (option->type == XX_VAR_TYPE_WSTRING || option->type == XX_VAR_TYPE_WSTRING_VIEW) {
         owned_base = xx_str_unicode_to_utf8(xx_var_get_wstr(option));
         base = owned_base;
     }
     if (!base) goto cleanup;
-    if (base[0] && base[xx_str_len(base) - 1U] != '/' &&
-        base[xx_str_len(base) - 1U] != '\\') {
+    if (base[0] && base[xx_str_len(base) - 1U] != '/' && base[xx_str_len(base) - 1U] != '\\') {
         destination = xx_str_concat3(base, "/", name);
     } else {
         destination = xx_str_concat(base, name);
     }
     if (!destination) goto cleanup;
     if (xx_store_create_dirs_a(destination, false)) {
-        result = xx_store_unpack_device_to_file(self->device,
-                                                record->data_offset,
-                                                record->compressed_size,
-                                                destination, pd);
+        result = xx_store_unpack_device_to_file(self->device, record->data_offset, record->compressed_size, destination, pd);
     } else {
         result = false;
     }
@@ -411,30 +380,37 @@ cleanup:
     return false;
 }
 
-void xx_rtk_free_archive_records_reading(Abstractformat *self,
-                                         xx_archive_record_state *state) {
+void xx_rtk_free_archive_records_reading(Abstractformat *self, xx_archive_record_state *state)
+{
     (void)self;
     xx_archive_record_state_free(state);
 }
 
-uint64_t xx_rtk_get_number_of_records(const xx_rtk *rtk) {
+uint64_t xx_rtk_get_number_of_records(const xx_rtk *rtk)
+{
     return rtk ? rtk->number_of_records : 0U;
 }
-uint32_t xx_rtk_get_image_size(const xx_rtk *rtk) {
+uint32_t xx_rtk_get_image_size(const xx_rtk *rtk)
+{
     return rtk ? rtk->image_size : 0U;
 }
-uint32_t xx_rtk_get_checksum(const xx_rtk *rtk) {
+uint32_t xx_rtk_get_checksum(const xx_rtk *rtk)
+{
     return rtk ? rtk->checksum : 0U;
 }
-uint32_t xx_rtk_get_header_size(const xx_rtk *rtk) {
+uint32_t xx_rtk_get_header_size(const xx_rtk *rtk)
+{
     return rtk ? rtk->header_size : 0U;
 }
-uint32_t xx_rtk_get_identifier(const xx_rtk *rtk) {
+uint32_t xx_rtk_get_identifier(const xx_rtk *rtk)
+{
     return rtk ? rtk->identifier : 0U;
 }
-int64_t xx_rtk_get_payload_offset(const xx_rtk *rtk) {
+int64_t xx_rtk_get_payload_offset(const xx_rtk *rtk)
+{
     return rtk ? rtk->payload_offset : -1;
 }
-int64_t xx_rtk_get_archive_end(const xx_rtk *rtk) {
+int64_t xx_rtk_get_archive_end(const xx_rtk *rtk)
+{
     return rtk ? rtk->archive_end : -1;
 }

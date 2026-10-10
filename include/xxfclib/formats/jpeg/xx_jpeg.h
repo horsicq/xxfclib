@@ -88,18 +88,15 @@ XXFC_API int64_t xx_jpeg_get_exif_size(const xx_jpeg *jpeg);
 XXFC_API bool xx_jpeg_is_chunk_present(const xx_jpeg *jpeg, uint8_t marker);
 
 /* --- Constructors & Lifecycle --- */
-XXFC_API void xx_jpeg_init(xx_jpeg *jpeg, xx_io_device *dev,
-                           int64_t base_address);
+XXFC_API void xx_jpeg_init(xx_jpeg *jpeg, xx_io_device *dev, int64_t base_address);
 XXFC_API xx_jpeg *xx_jpeg_create(xx_io_device *dev, int64_t base_address);
 XXFC_API void xx_jpeg_destroy(xx_jpeg *jpeg);
 XXFC_API void xx_jpeg_free(xx_jpeg *jpeg);
 
 /* --- Format Implementation Callbacks --- */
 XXFC_API bool xx_jpeg_check_is_valid(Abstractformat *self, xx_pd_struct *pd);
-XXFC_API bool xx_jpeg_handle_base_info(Abstractformat *self,
-                                       xx_pd_struct *pd);
-XXFC_API int64_t xx_jpeg_get_format_size(Abstractformat *self,
-                                         xx_pd_struct *pd);
+XXFC_API bool xx_jpeg_handle_base_info(Abstractformat *self, xx_pd_struct *pd);
+XXFC_API int64_t xx_jpeg_get_format_size(Abstractformat *self, xx_pd_struct *pd);
 
 /* --- Prefilter helper --- */
 /** True when @p data (the first @p size bytes of a candidate) starts with one
@@ -119,29 +116,34 @@ XXFC_API uint16_t xx_jpeg_get_height(const xx_jpeg *jpeg);
 XXFC_API uint8_t xx_jpeg_get_components(const xx_jpeg *jpeg);
 
 /* Cast helpers */
-static inline Abstractformat *xx_jpeg_to_format(xx_jpeg *jpeg) {
+static inline Abstractformat *xx_jpeg_to_format(xx_jpeg *jpeg)
+{
     return jpeg ? &jpeg->format : NULL;
 }
 
-static inline const Abstractformat *xx_jpeg_to_format_const(
-    const xx_jpeg *jpeg) {
+static inline const Abstractformat *xx_jpeg_to_format_const(const xx_jpeg *jpeg)
+{
     return jpeg ? &jpeg->format : NULL;
 }
 
 /* User-facing aliases.  XJpegImage, not XJpeg: see the note at the top. */
-static inline void XJpegImage_init(xx_jpeg *jpeg, xx_io_device *dev,
-                                   int64_t base_address) {
+static inline void XJpegImage_init(xx_jpeg *jpeg, xx_io_device *dev, int64_t base_address)
+{
     xx_jpeg_init(jpeg, dev, base_address);
 }
 
-static inline xx_jpeg *XJpegImage_create(xx_io_device *dev,
-                                         int64_t base_address) {
+static inline xx_jpeg *XJpegImage_create(xx_io_device *dev, int64_t base_address)
+{
     return xx_jpeg_create(dev, base_address);
 }
 
-static inline void XJpegImage_free(xx_jpeg *jpeg) { xx_jpeg_free(jpeg); }
+static inline void XJpegImage_free(xx_jpeg *jpeg)
+{
+    xx_jpeg_free(jpeg);
+}
 
-static inline bool XJpegImage_is_valid(xx_jpeg *jpeg, xx_pd_struct *pd) {
+static inline bool XJpegImage_is_valid(xx_jpeg *jpeg, xx_pd_struct *pd)
+{
     return jpeg ? xx_format_is_valid(&jpeg->format, pd) : false;
 }
 

@@ -55,9 +55,7 @@ static uint32_t xx_zcmp_adler32(const uint8_t *data, size_t size)
     return (b << 16) | a;
 }
 
-bool xx_zcmp_decode_memory(const uint8_t *input, size_t input_size,
-                           uint8_t *output, size_t output_size,
-                           size_t *written)
+bool xx_zcmp_decode_memory(const uint8_t *input, size_t input_size, uint8_t *output, size_t output_size, size_t *written)
 {
     size_t position = 0U;
     size_t produced = 0U;
@@ -86,8 +84,7 @@ bool xx_zcmp_decode_memory(const uint8_t *input, size_t input_size,
         if ((input_size - position) < ZCMP_ZLIB_HEADER_SIZE) return false;
         cmf = input[position];
         flg = input[position + 1U];
-        if (((cmf & 0x0fU) != 8U) || ((cmf >> 4) > 7U) ||
-            ((((cmf << 8) | flg) % 31U) != 0U) || ((flg & 0x20U) != 0U)) {
+        if (((cmf & 0x0fU) != 8U) || ((cmf >> 4) > 7U) || ((((cmf << 8) | flg) % 31U) != 0U) || ((flg & 0x20U) != 0U)) {
             return false;
         }
 
@@ -96,9 +93,7 @@ bool xx_zcmp_decode_memory(const uint8_t *input, size_t input_size,
 
         device = xx_io_mem_open(output + produced, output_size - produced);
         if (!device) return false;
-        ok = xx_deflate_unpack_memory_to_device_ex(
-            input + position + ZCMP_ZLIB_HEADER_SIZE, available, device,
-            &consumed, false, NULL);
+        ok = xx_deflate_unpack_memory_to_device_ex(input + position + ZCMP_ZLIB_HEADER_SIZE, available, device, &consumed, false, NULL);
         at = xx_io_tell(device);
         xx_io_close(device);
         if (!ok || (at < 0)) return false;
@@ -109,11 +104,8 @@ bool xx_zcmp_decode_memory(const uint8_t *input, size_t input_size,
         if ((available - consumed) < ZCMP_ZLIB_TRAILER_SIZE) return false;
 
         {
-            const uint8_t *trailer = input + position + ZCMP_ZLIB_HEADER_SIZE +
-                                     consumed;
-            stored = ((uint32_t)trailer[0] << 24) |
-                     ((uint32_t)trailer[1] << 16) |
-                     ((uint32_t)trailer[2] << 8) | (uint32_t)trailer[3];
+            const uint8_t *trailer = input + position + ZCMP_ZLIB_HEADER_SIZE + consumed;
+            stored = ((uint32_t)trailer[0] << 24) | ((uint32_t)trailer[1] << 16) | ((uint32_t)trailer[2] << 8) | (uint32_t)trailer[3];
         }
         if (stored != xx_zcmp_adler32(output + produced, block_size)) {
             return false;

@@ -19,13 +19,10 @@ typedef struct xx_lzpis2_info_s {
 } xx_lzpis2_info;
 
 /** Validate an LZPIS2 chunk chain and return its aggregate sizes. */
-XXFC_API bool xx_lzpis2_parse_memory(const uint8_t *input, size_t input_size,
-                                     xx_lzpis2_info *info);
+XXFC_API bool xx_lzpis2_parse_memory(const uint8_t *input, size_t input_size, xx_lzpis2_info *info);
 
 /** Decode an LZPIS2 member into exactly output_size bytes. */
-XXFC_API bool xx_lzpis2_decompress_memory(
-    const uint8_t *input, size_t input_size, uint8_t *output,
-    size_t output_size, size_t *consumed_size, xx_lzpis2_info *info);
+XXFC_API bool xx_lzpis2_decompress_memory(const uint8_t *input, size_t input_size, uint8_t *output, size_t output_size, size_t *consumed_size, xx_lzpis2_info *info);
 
 #ifdef __cplusplus
 }

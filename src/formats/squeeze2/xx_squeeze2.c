@@ -69,31 +69,27 @@ typedef struct squeeze2_stream_s {
     uint64_t aux2;
 } squeeze2_stream;
 
-static bool squeeze2_read_at(xx_io_device *device, int64_t offset, void *buffer,
-                        size_t size) {
+static bool squeeze2_read_at(xx_io_device *device, int64_t offset, void *buffer, size_t size)
+{
     size_t done = 0U;
-    if (!device || (!buffer && size != 0U) || offset < 0 ||
-        xx_io_seek64(device, offset, SEEK_SET) != 0)
-        return false;
+    if (!device || (!buffer && size != 0U) || offset < 0 || xx_io_seek64(device, offset, SEEK_SET) != 0) return false;
     while (done < size) {
-        ssize_t amount = xx_io_read(device, (uint8_t *)buffer + done,
-                                    size - done);
+        ssize_t amount = xx_io_read(device, (uint8_t *)buffer + done, size - done);
         if (amount <= 0 || (size_t)amount > size - done) return false;
         done += (size_t)amount;
     }
     return true;
 }
 
-static bool squeeze2_write_all(xx_io_device *device, const void *data, size_t size,
-                          xx_pd_struct *pd) {
+static bool squeeze2_write_all(xx_io_device *device, const void *data, size_t size, xx_pd_struct *pd)
+{
     size_t done = 0U;
     if (!data && size != 0U) return false;
     if (!device) return true; /* verify-only pass: nothing is materialized */
     while (done < size) {
         ssize_t amount;
         if (pd && xx_pd_is_stopped(pd)) return false;
-        amount = xx_io_write(device, (const uint8_t *)data + done,
-                             size - done);
+        amount = xx_io_write(device, (const uint8_t *)data + done, size - done);
         if (amount <= 0 || (size_t)amount > size - done) return false;
         done += (size_t)amount;
     }
@@ -101,30 +97,58 @@ static bool squeeze2_write_all(xx_io_device *device, const void *data, size_t si
 }
 
 /* Copy a run of source bytes straight through to the destination. */
-static XXFC_MAYBE_UNUSED bool squeeze2_copy_range(xx_io_device *source, int64_t offset, uint64_t size,
-                           xx_io_device *destination, xx_pd_struct *pd) {
+static XXFC_MAYBE_UNUSED bool squeeze2_copy_range(xx_io_device *source, int64_t offset, uint64_t size, xx_io_device *destination, xx_pd_struct *pd)
+{
     size_t capacity = xx_get_file_buffer_size();
     uint8_t *buffer = NULL;
     bool buffer_result = false;
     uint64_t left = size;
-    if (!source || offset < 0) { buffer_result = (false); goto buffer_done; }
-    if (!destination) { buffer_result = (true); goto buffer_done; }
-    if (xx_io_seek64(source, offset, SEEK_SET) != 0) { buffer_result = (false); goto buffer_done; }
+    if (!source || offset < 0) {
+        buffer_result = (false);
+        goto buffer_done;
+    }
+    if (!destination) {
+        buffer_result = (true);
+        goto buffer_done;
+    }
+    if (xx_io_seek64(source, offset, SEEK_SET) != 0) {
+        buffer_result = (false);
+        goto buffer_done;
+    }
     if (capacity > (SIZE_MAX >> 1U)) capacity = SIZE_MAX >> 1U;
-    if (left) { if(capacity>left) capacity=(size_t)left; buffer = (uint8_t *)xx_mem_alloc(capacity); if (!buffer) { buffer_result = false; goto buffer_done; } }
+    if (left) {
+        if (capacity > left) capacity = (size_t)left;
+        buffer = (uint8_t *)xx_mem_alloc(capacity);
+        if (!buffer) {
+            buffer_result = false;
+            goto buffer_done;
+        }
+    }
     while (left != 0U) {
         size_t want = left < capacity ? (size_t)left : capacity;
         size_t done = 0U;
-        if (pd && xx_pd_is_stopped(pd)) { buffer_result = (false); goto buffer_done; }
+        if (pd && xx_pd_is_stopped(pd)) {
+            buffer_result = (false);
+            goto buffer_done;
+        }
         while (done < want) {
             ssize_t amount = xx_io_read(source, buffer + done, want - done);
-            if (amount <= 0 || (size_t)amount > want - done) { buffer_result = (false); goto buffer_done; }
+            if (amount <= 0 || (size_t)amount > want - done) {
+                buffer_result = (false);
+                goto buffer_done;
+            }
             done += (size_t)amount;
         }
-        if (!squeeze2_write_all(destination, buffer, want, pd)) { buffer_result = (false); goto buffer_done; }
+        if (!squeeze2_write_all(destination, buffer, want, pd)) {
+            buffer_result = (false);
+            goto buffer_done;
+        }
         left -= want;
     }
-    { buffer_result = (true); goto buffer_done; }
+    {
+        buffer_result = (true);
+        goto buffer_done;
+    }
 
 buffer_done:
     xx_mem_free(buffer);
@@ -132,23 +156,42 @@ buffer_done:
 }
 
 /* Emit `size` zero bytes: the filler every sparse disk image needs. */
-static XXFC_MAYBE_UNUSED bool squeeze2_write_zeros(xx_io_device *destination, uint64_t size,
-                            xx_pd_struct *pd) {
+static XXFC_MAYBE_UNUSED bool squeeze2_write_zeros(xx_io_device *destination, uint64_t size, xx_pd_struct *pd)
+{
     size_t capacity = xx_get_file_buffer_size();
     uint8_t *buffer = NULL;
     bool buffer_result = false;
     uint64_t left = size;
-    if (!destination) { buffer_result = (true); goto buffer_done; }
+    if (!destination) {
+        buffer_result = (true);
+        goto buffer_done;
+    }
     if (capacity > (SIZE_MAX >> 1U)) capacity = SIZE_MAX >> 1U;
-    if (left) { if(capacity>left) capacity=(size_t)left; buffer = (uint8_t *)xx_mem_alloc(capacity); if (!buffer) { buffer_result = false; goto buffer_done; } }
-    if (!left) { buffer_result = true; goto buffer_done; }
+    if (left) {
+        if (capacity > left) capacity = (size_t)left;
+        buffer = (uint8_t *)xx_mem_alloc(capacity);
+        if (!buffer) {
+            buffer_result = false;
+            goto buffer_done;
+        }
+    }
+    if (!left) {
+        buffer_result = true;
+        goto buffer_done;
+    }
     xx_mem_zero(buffer, capacity);
     while (left != 0U) {
         size_t want = left < capacity ? (size_t)left : capacity;
-        if (!squeeze2_write_all(destination, buffer, want, pd)) { buffer_result = (false); goto buffer_done; }
+        if (!squeeze2_write_all(destination, buffer, want, pd)) {
+            buffer_result = (false);
+            goto buffer_done;
+        }
         left -= want;
     }
-    { buffer_result = (true); goto buffer_done; }
+    {
+        buffer_result = (true);
+        goto buffer_done;
+    }
 
 buffer_done:
     xx_mem_free(buffer);
@@ -157,8 +200,8 @@ buffer_done:
 
 /* Reader-owned names are built here, never taken from the container, so they
  * are safe by construction. */
-static XXFC_MAYBE_UNUSED char *squeeze2_make_name(const char *prefix, int64_t index,
-                           const char *suffix) {
+static XXFC_MAYBE_UNUSED char *squeeze2_make_name(const char *prefix, int64_t index, const char *suffix)
+{
     char buffer[96];
     size_t used = 0U;
     size_t at;
@@ -195,7 +238,8 @@ static XXFC_MAYBE_UNUSED char *squeeze2_make_name(const char *prefix, int64_t in
 /* Names that DO come from the container are normalized here: separators are
  * unified, traversal components are removed and anything a filesystem would
  * choke on becomes '_'. */
-static char *squeeze2_clean_name(const uint8_t *bytes, size_t size) {
+static char *squeeze2_clean_name(const uint8_t *bytes, size_t size)
+{
     char *name;
     size_t input = 0U, output = 0U;
     if ((!bytes && size != 0U) || size > SIZE_MAX - 2U) return NULL;
@@ -203,16 +247,12 @@ static char *squeeze2_clean_name(const uint8_t *bytes, size_t size) {
     if (!name) return NULL;
     while (input < size) {
         size_t start, end, component_start;
-        while (input < size && (bytes[input] == '/' || bytes[input] == '\\'))
-            ++input;
+        while (input < size && (bytes[input] == '/' || bytes[input] == '\\')) ++input;
         start = input;
-        while (input < size && bytes[input] != '/' && bytes[input] != '\\')
-            ++input;
+        while (input < size && bytes[input] != '/' && bytes[input] != '\\') ++input;
         end = input;
-        if (end == start || (end - start == 1U && bytes[start] == '.'))
-            continue;
-        if (end - start == 2U && bytes[start] == '.' &&
-            bytes[start + 1U] == '.') {
+        if (end == start || (end - start == 1U && bytes[start] == '.')) continue;
+        if (end - start == 2U && bytes[start] == '.' && bytes[start + 1U] == '.') {
             if (output != 0U) {
                 while (output != 0U && name[output - 1U] != '/') --output;
                 if (output != 0U) --output;
@@ -223,15 +263,10 @@ static char *squeeze2_clean_name(const uint8_t *bytes, size_t size) {
         component_start = output;
         while (start < end) {
             uint8_t c = bytes[start++];
-            if (c < 0x20U || c == '"' || c == '*' || c == ':' || c == '<' ||
-                c == '>' || c == '?' || c == '|' || c == 0U)
-                name[output++] = '_';
-            else
-                name[output++] = (char)c;
+            if (c < 0x20U || c == '"' || c == '*' || c == ':' || c == '<' || c == '>' || c == '?' || c == '|' || c == 0U) name[output++] = '_';
+            else name[output++] = (char)c;
         }
-        while (output > component_start &&
-               (name[output - 1U] == ' ' || name[output - 1U] == '.'))
-            --output;
+        while (output > component_start && (name[output - 1U] == ' ' || name[output - 1U] == '.')) --output;
         if (output == component_start) name[output++] = '_';
     }
     if (output == 0U) name[output++] = '_';
@@ -239,30 +274,26 @@ static char *squeeze2_clean_name(const uint8_t *bytes, size_t size) {
     return name;
 }
 
-static bool squeeze2_safe_output_name(const char *name) {
+static bool squeeze2_safe_output_name(const char *name)
+{
     const char *segment;
     const char *at;
-    if (!name || !name[0] || name[0] == '/' || name[0] == '\\' ||
-        name[1] == ':')
-        return false;
+    if (!name || !name[0] || name[0] == '/' || name[0] == '\\' || name[1] == ':') return false;
     segment = name;
     for (at = name;; ++at) {
         unsigned char c = (unsigned char)*at;
-        if (c == ':' || c == '<' || c == '>' || c == '"' || c == '|' ||
-            c == '?' || c == '*' || (c != 0U && c < 0x20U))
-            return false;
+        if (c == ':' || c == '<' || c == '>' || c == '"' || c == '|' || c == '?' || c == '*' || (c != 0U && c < 0x20U)) return false;
         if (c == '/' || c == '\\' || c == 0U) {
             size_t length = (size_t)(at - segment);
-            if (length == 0U || (length == 1U && segment[0] == '.') ||
-                (length == 2U && segment[0] == '.' && segment[1] == '.'))
-                return false;
+            if (length == 0U || (length == 1U && segment[0] == '.') || (length == 2U && segment[0] == '.' && segment[1] == '.')) return false;
             if (c == 0U) return true;
             segment = at + 1;
         }
     }
 }
 
-static void squeeze2_stream_free(void *opaque) {
+static void squeeze2_stream_free(void *opaque)
+{
     squeeze2_stream *stream = (squeeze2_stream *)opaque;
     size_t index;
     if (!stream) return;
@@ -272,13 +303,11 @@ static void squeeze2_stream_free(void *opaque) {
     xx_mem_free(stream);
 }
 
-static bool squeeze2_add_member(squeeze2_stream *stream, const squeeze2_member *member) {
+static bool squeeze2_add_member(squeeze2_stream *stream, const squeeze2_member *member)
+{
     squeeze2_member *grown;
-    if (!stream || !member || stream->count >= SQUEEZE2_MAX_MEMBERS ||
-        stream->count > SIZE_MAX / sizeof(*grown) - 1U)
-        return false;
-    grown = (squeeze2_member *)xx_mem_realloc(
-        stream->items, (stream->count + 1U) * sizeof(*grown));
+    if (!stream || !member || stream->count >= SQUEEZE2_MAX_MEMBERS || stream->count > SIZE_MAX / sizeof(*grown) - 1U) return false;
+    grown = (squeeze2_member *)xx_mem_realloc(stream->items, (stream->count + 1U) * sizeof(*grown));
     if (!grown) return false;
     stream->items = grown;
     stream->items[stream->count++] = *member;
@@ -319,40 +348,33 @@ typedef struct squeeze2_header_s {
     size_t data_offset;
 } squeeze2_header;
 
-static int32_t squeeze2_read_signed16le(const uint8_t *data) {
+static int32_t squeeze2_read_signed16le(const uint8_t *data)
+{
     uint16_t value = xx_data_get_u16(data, 2, 0, false);
-    return (value & UINT16_C(0x8000)) != 0U ? (int32_t)value - INT32_C(65536)
-                                            : (int32_t)value;
+    return (value & UINT16_C(0x8000)) != 0U ? (int32_t)value - INT32_C(65536) : (int32_t)value;
 }
 
 /* A NUL-terminated printable field.  Anything outside the safe set becomes
  * '_' in the copy; a control byte makes the file invalid rather than being
  * silently repaired, which is what keeps a random FA FF file out. */
-static bool squeeze2_read_field(const uint8_t *input, size_t input_size,
-                                size_t offset, char *out, size_t out_size,
-                                size_t *next_offset, bool allow_empty) {
+static bool squeeze2_read_field(const uint8_t *input, size_t input_size, size_t offset, char *out, size_t out_size, size_t *next_offset, bool allow_empty)
+{
     size_t length = 0U;
     size_t index;
     if (!input || !out || !next_offset || offset >= input_size) return false;
-    while (offset + length < input_size && length < out_size - 1U &&
-           input[offset + length] != 0U) {
+    while (offset + length < input_size && length < out_size - 1U && input[offset + length] != 0U) {
         uint8_t ch = input[offset + length];
         if (ch < 0x20U || ch >= 0x7fU) return false;
         ++length;
     }
-    if ((length == 0U && !allow_empty) || offset + length >= input_size ||
-        input[offset + length] != 0U)
-        return false;
+    if ((length == 0U && !allow_empty) || offset + length >= input_size || input[offset + length] != 0U) return false;
     for (index = 0U; index < length; ++index) {
         uint8_t ch = input[offset + index];
-        bool safe = (ch >= 'a' && ch <= 'z') || (ch >= 'A' && ch <= 'Z') ||
-                    (ch >= '0' && ch <= '9') || ch == '.' || ch == '_' ||
-                    ch == '-';
+        bool safe = (ch >= 'a' && ch <= 'z') || (ch >= 'A' && ch <= 'Z') || (ch >= '0' && ch <= '9') || ch == '.' || ch == '_' || ch == '-';
         out[index] = safe ? (char)ch : '_';
     }
     out[length] = '\0';
-    if (xx_rt_strcmp(out, ".") == 0 || xx_rt_strcmp(out, "..") == 0)
-        xx_rt_memcpy(out, "payload", sizeof("payload"));
+    if (xx_rt_strcmp(out, ".") == 0 || xx_rt_strcmp(out, "..") == 0) xx_rt_memcpy(out, "payload", sizeof("payload"));
     *next_offset = offset + length + 1U;
     return true;
 }
@@ -371,20 +393,14 @@ static bool squeeze2_read_field(const uint8_t *input, size_t input_size,
  * differs, which is why this is a sibling of that reader and not a new codec.
  * Field layout confirmed against the recovered recognition predicate FUN_004f3400 (the
  * Squeeze2 VMT slot 0 at 0x004f3860) and against the corpus. */
-static bool squeeze2_parse_header(const uint8_t *input, size_t input_size,
-                                  squeeze2_header *header) {
+static bool squeeze2_parse_header(const uint8_t *input, size_t input_size, squeeze2_header *header)
+{
     size_t offset;
     size_t table_size;
     size_t index;
-    if (!input || !header || input_size < 12U || input[0] != 0xfaU ||
-        input[1] != 0xffU)
-        return false;
-    if (!squeeze2_read_field(input, input_size, 2U, header->file_name,
-                             sizeof(header->file_name), &offset, false))
-        return false;
-    if (!squeeze2_read_field(input, input_size, offset, header->stamp,
-                             sizeof(header->stamp), &offset, true))
-        return false;
+    if (!input || !header || input_size < 12U || input[0] != 0xfaU || input[1] != 0xffU) return false;
+    if (!squeeze2_read_field(input, input_size, 2U, header->file_name, sizeof(header->file_name), &offset, false)) return false;
+    if (!squeeze2_read_field(input, input_size, offset, header->stamp, sizeof(header->stamp), &offset, true)) return false;
     if (input_size - offset < 10U) return false;
     if (input[offset] != 0x00U || input[offset + 1U] != 0x1aU) return false;
     header->checksum = xx_data_get_u16(input + offset + 2U, 2, 0, false);
@@ -392,16 +408,13 @@ static bool squeeze2_parse_header(const uint8_t *input, size_t input_size,
     header->dos_time = xx_data_get_u16(input + offset + 6U, 2, 0, false);
     header->node_count = xx_data_get_u16(input + offset + 8U, 2, 0, false);
     offset += 10U;
-    if (header->node_count == 0U || header->node_count > SQUEEZE2_MAX_NODES)
-        return false;
+    if (header->node_count == 0U || header->node_count > SQUEEZE2_MAX_NODES) return false;
     table_size = (size_t)header->node_count * 4U;
     if (table_size > input_size - offset) return false;
     /* Bound every child before anything indexes the table. */
     for (index = 0U; index < (size_t)header->node_count * 2U; ++index) {
         int32_t child = squeeze2_read_signed16le(input + offset + index * 2U);
-        if (child >= (int32_t)header->node_count ||
-            (child < 0 && (uint32_t)(-child - 1) > SQUEEZE2_SPEOF))
-            return false;
+        if (child >= (int32_t)header->node_count || (child < 0 && (uint32_t)(-child - 1) > SQUEEZE2_SPEOF)) return false;
     }
     if (input_size - offset - table_size == 0U) return false;
     header->tree_offset = offset;
@@ -409,14 +422,14 @@ static bool squeeze2_parse_header(const uint8_t *input, size_t input_size,
     return true;
 }
 
-static bool squeeze2_sink_put(squeeze2_sink *sink, uint8_t value) {
+static bool squeeze2_sink_put(squeeze2_sink *sink, uint8_t value)
+{
     if (!sink || (uint64_t)sink->size >= SQUEEZE2_MAX_OUTPUT) return false;
     if (sink->materialize) {
         if (sink->size == sink->capacity) {
             size_t wanted = sink->capacity ? sink->capacity * 2U : 65536U;
             uint8_t *grown;
-            if ((uint64_t)wanted > SQUEEZE2_MAX_OUTPUT)
-                wanted = (size_t)SQUEEZE2_MAX_OUTPUT;
+            if ((uint64_t)wanted > SQUEEZE2_MAX_OUTPUT) wanted = (size_t)SQUEEZE2_MAX_OUTPUT;
             if (wanted <= sink->size) return false;
             grown = (uint8_t *)xx_mem_realloc(sink->data, wanted);
             if (!grown) return false;
@@ -430,7 +443,8 @@ static bool squeeze2_sink_put(squeeze2_sink *sink, uint8_t value) {
     return true;
 }
 
-static bool squeeze2_read_bit(squeeze2_bit_reader *reader, uint32_t *bit) {
+static bool squeeze2_read_bit(squeeze2_bit_reader *reader, uint32_t *bit)
+{
     if (!reader || !bit) return false;
     if (reader->bits_left == 0U) {
         if (reader->position >= reader->size) return false;
@@ -443,19 +457,16 @@ static bool squeeze2_read_bit(squeeze2_bit_reader *reader, uint32_t *bit) {
     return true;
 }
 
-static bool squeeze2_decode_symbol(squeeze2_bit_reader *reader,
-                                   const uint8_t *tree, uint16_t node_count,
-                                   uint32_t *symbol) {
+static bool squeeze2_decode_symbol(squeeze2_bit_reader *reader, const uint8_t *tree, uint16_t node_count, uint32_t *symbol)
+{
     uint16_t node = 0U;
     unsigned guard = 0U;
     if (!reader || !tree || node_count == 0U || !symbol) return false;
     for (;;) {
         uint32_t bit;
         int32_t child;
-        if (++guard > node_count || !squeeze2_read_bit(reader, &bit))
-            return false;
-        child = squeeze2_read_signed16le(tree + (size_t)node * 4U +
-                                         (size_t)bit * 2U);
+        if (++guard > node_count || !squeeze2_read_bit(reader, &bit)) return false;
+        child = squeeze2_read_signed16le(tree + (size_t)node * 4U + (size_t)bit * 2U);
         if (child < 0) {
             *symbol = (uint32_t)(-child - 1);
             return true;
@@ -468,10 +479,9 @@ static bool squeeze2_decode_symbol(squeeze2_bit_reader *reader,
 /* The Huffman walk plus the 0x90 repeat stage, run to SPEOF.  There is no
  * stored plaintext length, so the header checksum is the only integrity
  * anchor and it is ALWAYS verified before a stream is accepted. */
-static bool squeeze2_decode(const uint8_t *input, size_t input_size,
-                            const squeeze2_header *header, bool materialize,
-                            uint8_t **output, uint64_t *output_size,
-                            xx_pd_struct *pd) {
+static bool squeeze2_decode(const uint8_t *input, size_t input_size, const squeeze2_header *header, bool materialize, uint8_t **output, uint64_t *output_size,
+                            xx_pd_struct *pd)
+{
     squeeze2_sink sink;
     squeeze2_bit_reader reader;
     bool repeat_pending = false;
@@ -491,9 +501,7 @@ static bool squeeze2_decode(const uint8_t *input, size_t input_size,
     while (!finished) {
         uint32_t symbol;
         if ((++tick & 0xffffU) == 0U && pd && xx_pd_is_stopped(pd)) goto fail;
-        if (!squeeze2_decode_symbol(&reader, input + header->tree_offset,
-                                    header->node_count, &symbol))
-            goto fail;
+        if (!squeeze2_decode_symbol(&reader, input + header->tree_offset, header->node_count, &symbol)) goto fail;
         if (symbol == SQUEEZE2_SPEOF) {
             if (repeat_pending) goto fail;
             finished = true;
@@ -535,28 +543,22 @@ fail:
     return false;
 }
 
-static bool squeeze2_run(Abstractformat *format, squeeze2_header *header,
-                         bool materialize, uint8_t **plain,
-                         uint64_t *plain_size, xx_pd_struct *pd) {
+static bool squeeze2_run(Abstractformat *format, squeeze2_header *header, bool materialize, uint8_t **plain, uint64_t *plain_size, xx_pd_struct *pd)
+{
     int64_t total, size;
     uint8_t *input = NULL;
     uint64_t produced = 0U;
     bool result = false;
     if (plain) *plain = NULL;
     if (plain_size) *plain_size = 0U;
-    if (!format || !format->device || format->base_address < 0 || !header)
-        return false;
+    if (!format || !format->device || format->base_address < 0 || !header) return false;
     total = xx_io_total_size(format->device);
     if (total < format->base_address) return false;
     size = total - format->base_address;
     if (size < 12 || (uint64_t)size > SQUEEZE2_MAX_INPUT) return false;
     input = (uint8_t *)xx_mem_alloc((size_t)size);
-    if (!input ||
-        !squeeze2_read_at(format->device, format->base_address, input,
-                          (size_t)size) ||
-        !squeeze2_parse_header(input, (size_t)size, header) ||
-        !squeeze2_decode(input, (size_t)size, header, materialize, plain,
-                         &produced, pd))
+    if (!input || !squeeze2_read_at(format->device, format->base_address, input, (size_t)size) || !squeeze2_parse_header(input, (size_t)size, header) ||
+        !squeeze2_decode(input, (size_t)size, header, materialize, plain, &produced, pd))
         goto cleanup;
     if (plain_size) *plain_size = produced;
     result = true;
@@ -565,7 +567,8 @@ cleanup:
     return result;
 }
 
-static bool squeeze2_parse(Abstractformat *format, squeeze2_stream **result) {
+static bool squeeze2_parse(Abstractformat *format, squeeze2_stream **result)
+{
     squeeze2_header header;
     squeeze2_stream *stream = NULL;
     squeeze2_member member;
@@ -574,8 +577,7 @@ static bool squeeze2_parse(Abstractformat *format, squeeze2_stream **result) {
 
     if (!format || !format->device || !result) return false;
     xx_mem_zero(&header, sizeof(header));
-    if (!squeeze2_run(format, &header, false, NULL, &produced, NULL))
-        return false;
+    if (!squeeze2_run(format, &header, false, NULL, &produced, NULL)) return false;
     total = xx_io_total_size(format->device);
     size = total - format->base_address;
 
@@ -583,8 +585,7 @@ static bool squeeze2_parse(Abstractformat *format, squeeze2_stream **result) {
     if (!stream) return false;
 
     xx_mem_zero(&member, sizeof(member));
-    member.name = squeeze2_clean_name((const uint8_t *)header.file_name,
-                                      xx_str_len(header.file_name));
+    member.name = squeeze2_clean_name((const uint8_t *)header.file_name, xx_str_len(header.file_name));
     if (!member.name) goto fail;
     member.header_offset = format->base_address;
     member.header_size = (int64_t)header.data_offset;
@@ -607,11 +608,8 @@ fail:
     return false;
 }
 
-static bool squeeze2_write_member(Abstractformat *format,
-                                  squeeze2_stream *stream,
-                                  const squeeze2_member *member,
-                                  xx_io_device *destination,
-                                  xx_pd_struct *pd) {
+static bool squeeze2_write_member(Abstractformat *format, squeeze2_stream *stream, const squeeze2_member *member, xx_io_device *destination, xx_pd_struct *pd)
+{
     squeeze2_header header;
     uint8_t *plain = NULL;
     uint64_t plain_size = 0U;
@@ -619,26 +617,22 @@ static bool squeeze2_write_member(Abstractformat *format,
     (void)stream;
     if (!format || !member) return false;
     xx_mem_zero(&header, sizeof(header));
-    if (!squeeze2_run(format, &header, true, &plain, &plain_size, pd))
-        return false;
-    result = plain_size == member->unpacked_size &&
-             plain_size <= (uint64_t)SIZE_MAX &&
-             squeeze2_write_all(destination, plain, (size_t)plain_size, pd);
+    if (!squeeze2_run(format, &header, true, &plain, &plain_size, pd)) return false;
+    result = plain_size == member->unpacked_size && plain_size <= (uint64_t)SIZE_MAX && squeeze2_write_all(destination, plain, (size_t)plain_size, pd);
     if (plain) xx_mem_free(plain);
     return result;
 }
 
-static bool squeeze2_copy_options(xx_list_s *destination, const xx_list_s *source) {
+static bool squeeze2_copy_options(xx_list_s *destination, const xx_list_s *source)
+{
     size_t index;
     if (!source) return true;
     for (index = 0U; index < source->count; ++index) {
-        const xx_meta *original =
-            (const xx_meta *)xx_list_at((const xx_list_t *)source, index);
+        const xx_meta *original = (const xx_meta *)xx_list_at((const xx_list_t *)source, index);
         xx_meta copy;
         if (!original) continue;
         xx_meta_init(&copy, original->meta_id);
-        if (!xx_var_copy(&copy.var, &original->var) ||
-            !xx_list_append(destination, &copy)) {
+        if (!xx_var_copy(&copy.var, &original->var) || !xx_list_append(destination, &copy)) {
             xx_meta_cleanup(&copy);
             return false;
         }
@@ -646,19 +640,19 @@ static bool squeeze2_copy_options(xx_list_s *destination, const xx_list_s *sourc
     return true;
 }
 
-static const xx_var *squeeze2_option(const xx_list_s *options, uint32_t id) {
+static const xx_var *squeeze2_option(const xx_list_s *options, uint32_t id)
+{
     size_t index;
     if (!options) return NULL;
     for (index = 0U; index < options->count; ++index) {
-        const xx_meta *meta =
-            (const xx_meta *)xx_list_at((const xx_list_t *)options, index);
+        const xx_meta *meta = (const xx_meta *)xx_list_at((const xx_list_t *)options, index);
         if (meta && meta->meta_id == id) return &meta->var;
     }
     return NULL;
 }
 
-static bool squeeze2_set_record(xx_archive_record *record,
-                           const squeeze2_member *member) {
+static bool squeeze2_set_record(xx_archive_record *record, const squeeze2_member *member)
+{
     xx_archive_record_cleanup(record);
     xx_archive_record_init(record);
     record->header_offset = member->header_offset;
@@ -666,27 +660,17 @@ static bool squeeze2_set_record(xx_archive_record *record,
     record->data_offset = member->data_offset;
     record->compressed_size = member->packed_size;
     return xx_archive_record_set_original_name(record, member->name) &&
-           xx_archive_record_set_meta_u64(record, XX_META_ID_COMPRESSED_SIZE,
-                                          (uint64_t)member->packed_size) &&
-           xx_archive_record_set_meta_u64(record, XX_META_ID_UNCOMPRESSED_SIZE,
-                                          member->unpacked_size) &&
-           xx_archive_record_set_meta_u64(record, XX_META_ID_COMPRESSION_METHOD,
-                                          member->method) &&
-           xx_archive_record_set_meta_u64(record, XX_META_ID_CRC32,
-                                          member->crc32) &&
-           xx_archive_record_set_meta_u64(record, XX_META_ID_ATTRIBUTES,
-                                          member->attributes) &&
-           xx_archive_record_set_meta_u64(record, XX_META_ID_TIMESTAMP,
-                                          member->timestamp) &&
-           xx_archive_record_set_meta_u64(record, XX_META_ID_FLAGS,
-                                          member->flags) &&
-           xx_archive_record_set_meta_bool(record, XX_META_ID_IS_ENCRYPTED,
-                                           member->encrypted) &&
-           xx_archive_record_set_meta_bool(record, XX_META_ID_IS_FOLDER,
-                                           member->folder);
+           xx_archive_record_set_meta_u64(record, XX_META_ID_COMPRESSED_SIZE, (uint64_t)member->packed_size) &&
+           xx_archive_record_set_meta_u64(record, XX_META_ID_UNCOMPRESSED_SIZE, member->unpacked_size) &&
+           xx_archive_record_set_meta_u64(record, XX_META_ID_COMPRESSION_METHOD, member->method) &&
+           xx_archive_record_set_meta_u64(record, XX_META_ID_CRC32, member->crc32) && xx_archive_record_set_meta_u64(record, XX_META_ID_ATTRIBUTES, member->attributes) &&
+           xx_archive_record_set_meta_u64(record, XX_META_ID_TIMESTAMP, member->timestamp) && xx_archive_record_set_meta_u64(record, XX_META_ID_FLAGS, member->flags) &&
+           xx_archive_record_set_meta_bool(record, XX_META_ID_IS_ENCRYPTED, member->encrypted) &&
+           xx_archive_record_set_meta_bool(record, XX_META_ID_IS_FOLDER, member->folder);
 }
 
-void xx_squeeze2_init(xx_squeeze2 *archive, xx_io_device *device, int64_t base_address) {
+void xx_squeeze2_init(xx_squeeze2 *archive, xx_io_device *device, int64_t base_address)
+{
     if (!archive) return;
     xx_mem_zero(archive, sizeof(*archive));
     xx_format_init(&archive->format, device, base_address);
@@ -699,38 +683,36 @@ void xx_squeeze2_init(xx_squeeze2 *archive, xx_io_device *device, int64_t base_a
     archive->format.check_is_valid = xx_squeeze2_check_is_valid;
     archive->format.handle_base_info = xx_squeeze2_handle_base_info;
     archive->format.get_format_size = xx_squeeze2_get_format_size;
-    archive->format.get_number_of_archive_records =
-        xx_squeeze2_get_number_of_archive_records;
-    archive->format.create_archive_records_reading =
-        xx_squeeze2_create_archive_records_reading;
-    archive->format.get_current_archive_record =
-        xx_squeeze2_get_current_archive_record;
-    archive->format.unpack_current_archive_record =
-        xx_squeeze2_unpack_current_archive_record;
-    archive->format.archive_record_move_to_next =
-        xx_squeeze2_archive_record_move_to_next;
-    archive->format.free_archive_records_reading =
-        xx_squeeze2_free_archive_records_reading;
+    archive->format.get_number_of_archive_records = xx_squeeze2_get_number_of_archive_records;
+    archive->format.create_archive_records_reading = xx_squeeze2_create_archive_records_reading;
+    archive->format.get_current_archive_record = xx_squeeze2_get_current_archive_record;
+    archive->format.unpack_current_archive_record = xx_squeeze2_unpack_current_archive_record;
+    archive->format.archive_record_move_to_next = xx_squeeze2_archive_record_move_to_next;
+    archive->format.free_archive_records_reading = xx_squeeze2_free_archive_records_reading;
     archive->archive_end = -1;
 }
 
-xx_squeeze2 *xx_squeeze2_create(xx_io_device *device, int64_t base_address) {
+xx_squeeze2 *xx_squeeze2_create(xx_io_device *device, int64_t base_address)
+{
     xx_squeeze2 *archive = (xx_squeeze2 *)xx_mem_alloc(sizeof(*archive));
     if (archive) xx_squeeze2_init(archive, device, base_address);
     return archive;
 }
 
-void xx_squeeze2_destroy(xx_squeeze2 *archive) {
+void xx_squeeze2_destroy(xx_squeeze2 *archive)
+{
     if (archive) xx_format_cleanup_extra_parameters(&archive->format);
 }
 
-void xx_squeeze2_free(xx_squeeze2 *archive) {
+void xx_squeeze2_free(xx_squeeze2 *archive)
+{
     if (!archive) return;
     xx_squeeze2_destroy(archive);
     xx_mem_free(archive);
 }
 
-bool xx_squeeze2_check_is_valid(Abstractformat *format, xx_pd_struct *pd) {
+bool xx_squeeze2_check_is_valid(Abstractformat *format, xx_pd_struct *pd)
+{
     squeeze2_stream *stream;
     (void)pd;
     if (!squeeze2_parse(format, &stream)) return false;
@@ -738,7 +720,8 @@ bool xx_squeeze2_check_is_valid(Abstractformat *format, xx_pd_struct *pd) {
     return true;
 }
 
-bool xx_squeeze2_handle_base_info(Abstractformat *format, xx_pd_struct *pd) {
+bool xx_squeeze2_handle_base_info(Abstractformat *format, xx_pd_struct *pd)
+{
     squeeze2_stream *stream;
     xx_squeeze2 *archive;
     (void)pd;
@@ -767,23 +750,18 @@ bool xx_squeeze2_handle_base_info(Abstractformat *format, xx_pd_struct *pd) {
     return true;
 }
 
-int64_t xx_squeeze2_get_format_size(Abstractformat *format, xx_pd_struct *pd) {
-    return format && (format->base_info_handled ||
-                      xx_squeeze2_handle_base_info(format, pd))
-               ? format->format_size
-               : -1;
+int64_t xx_squeeze2_get_format_size(Abstractformat *format, xx_pd_struct *pd)
+{
+    return format && (format->base_info_handled || xx_squeeze2_handle_base_info(format, pd)) ? format->format_size : -1;
 }
 
-uint64_t xx_squeeze2_get_number_of_archive_records(Abstractformat *format,
-                                              xx_pd_struct *pd) {
-    return format && (format->base_info_handled ||
-                      xx_squeeze2_handle_base_info(format, pd))
-               ? ((xx_squeeze2 *)format)->number_of_records
-               : 0U;
+uint64_t xx_squeeze2_get_number_of_archive_records(Abstractformat *format, xx_pd_struct *pd)
+{
+    return format && (format->base_info_handled || xx_squeeze2_handle_base_info(format, pd)) ? ((xx_squeeze2 *)format)->number_of_records : 0U;
 }
 
-xx_archive_record_state *xx_squeeze2_create_archive_records_reading(
-    Abstractformat *format, const xx_list_s *options, xx_pd_struct *pd) {
+xx_archive_record_state *xx_squeeze2_create_archive_records_reading(Abstractformat *format, const xx_list_s *options, xx_pd_struct *pd)
+{
     squeeze2_stream *stream;
     xx_archive_record_state *state;
     (void)pd;
@@ -797,8 +775,7 @@ xx_archive_record_state *xx_squeeze2_create_archive_records_reading(
     state->internal_state = stream;
     state->free_internal = squeeze2_stream_free;
     state->total_records = stream->count;
-    if (!squeeze2_copy_options(&state->options, options) ||
-        !squeeze2_set_record(&state->current_record, &stream->items[0])) {
+    if (!squeeze2_copy_options(&state->options, options) || !squeeze2_set_record(&state->current_record, &stream->items[0])) {
         xx_archive_record_state_free(state);
         return NULL;
     }
@@ -806,33 +783,26 @@ xx_archive_record_state *xx_squeeze2_create_archive_records_reading(
     return state;
 }
 
-const xx_archive_record *xx_squeeze2_get_current_archive_record(
-    Abstractformat *format, xx_archive_record_state *state) {
-    return format && state && state->format == format && state->has_record
-               ? &state->current_record
-               : NULL;
+const xx_archive_record *xx_squeeze2_get_current_archive_record(Abstractformat *format, xx_archive_record_state *state)
+{
+    return format && state && state->format == format && state->has_record ? &state->current_record : NULL;
 }
 
-bool xx_squeeze2_archive_record_move_to_next(Abstractformat *format,
-                                        xx_archive_record_state *state,
-                                        xx_pd_struct *pd) {
+bool xx_squeeze2_archive_record_move_to_next(Abstractformat *format, xx_archive_record_state *state, xx_pd_struct *pd)
+{
     squeeze2_stream *stream;
     (void)pd;
-    if (!format || !state || state->format != format ||
-        !(stream = (squeeze2_stream *)state->internal_state) ||
-        ++stream->index >= stream->count) {
+    if (!format || !state || state->format != format || !(stream = (squeeze2_stream *)state->internal_state) || ++stream->index >= stream->count) {
         if (state) state->has_record = false;
         return false;
     }
     ++state->current_index;
-    state->has_record =
-        squeeze2_set_record(&state->current_record, &stream->items[stream->index]);
+    state->has_record = squeeze2_set_record(&state->current_record, &stream->items[stream->index]);
     return state->has_record;
 }
 
-bool xx_squeeze2_unpack_current_archive_record(Abstractformat *format,
-                                          xx_archive_record_state *state,
-                                          xx_pd_struct *pd) {
+bool xx_squeeze2_unpack_current_archive_record(Abstractformat *format, xx_archive_record_state *state, xx_pd_struct *pd)
+{
     squeeze2_stream *stream;
     squeeze2_member *member;
     const xx_var *path_option;
@@ -842,28 +812,21 @@ bool xx_squeeze2_unpack_current_archive_record(Abstractformat *format,
     xx_io_device *destination = NULL;
     bool result = false;
     bool created = false;
-    if (!format || !state || state->format != format || !state->has_record ||
-        !(stream = (squeeze2_stream *)state->internal_state) ||
-        stream->index >= stream->count || (pd && xx_pd_is_stopped(pd)))
+    if (!format || !state || state->format != format || !state->has_record || !(stream = (squeeze2_stream *)state->internal_state) || stream->index >= stream->count ||
+        (pd && xx_pd_is_stopped(pd)))
         return false;
     member = &stream->items[stream->index];
     if (!squeeze2_safe_output_name(member->name)) return false;
     path_option = squeeze2_option(&state->options, XX_META_ID_OPT_UNPACK_PATH);
-    if (!path_option)
-        return squeeze2_write_member(format, stream, member, NULL, pd);
-    if (path_option->type == XX_VAR_TYPE_STRING ||
-        path_option->type == XX_VAR_TYPE_STRING_VIEW)
-        base = xx_var_get_str(path_option);
-    else if (path_option->type == XX_VAR_TYPE_WSTRING ||
-             path_option->type == XX_VAR_TYPE_WSTRING_VIEW) {
+    if (!path_option) return squeeze2_write_member(format, stream, member, NULL, pd);
+    if (path_option->type == XX_VAR_TYPE_STRING || path_option->type == XX_VAR_TYPE_STRING_VIEW) base = xx_var_get_str(path_option);
+    else if (path_option->type == XX_VAR_TYPE_WSTRING || path_option->type == XX_VAR_TYPE_WSTRING_VIEW) {
         owned_base = xx_str_unicode_to_utf8(xx_var_get_wstr(path_option));
         base = owned_base;
     }
     if (!base) goto done;
-    path = (base[0] && base[xx_str_len(base) - 1U] != '/' &&
-            base[xx_str_len(base) - 1U] != '\\')
-               ? xx_str_concat3(base, "/", member->name)
-               : xx_str_concat(base, member->name);
+    path = (base[0] && base[xx_str_len(base) - 1U] != '/' && base[xx_str_len(base) - 1U] != '\\') ? xx_str_concat3(base, "/", member->name)
+                                                                                                  : xx_str_concat(base, member->name);
     if (!path) goto done;
     if (member->folder) {
         result = xx_store_create_dirs_a(path, true);
@@ -883,8 +846,8 @@ done:
     return result;
 }
 
-void xx_squeeze2_free_archive_records_reading(Abstractformat *format,
-                                         xx_archive_record_state *state) {
+void xx_squeeze2_free_archive_records_reading(Abstractformat *format, xx_archive_record_state *state)
+{
     (void)format;
     xx_archive_record_state_free(state);
 }

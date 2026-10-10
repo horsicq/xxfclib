@@ -97,12 +97,14 @@ static void xx_gob_vtable_destroy(Abstractformat *self);
 /* ------------------------------------------------------------- helpers -- */
 
 #include "xxfclib/global/xx_global.h"
-static size_t gb_gob_capacity(void) {
+static size_t gb_gob_capacity(void)
+{
     size_t n = xx_get_file_buffer_size();
     if (!n) n = XX_DEFAULT_FILE_BUFFER_SIZE;
     return n > (SIZE_MAX >> 1) ? SIZE_MAX >> 1 : n;
 }
-static ssize_t gb_gob_read(xx_io_device *device, void *buffer, size_t size, size_t capacity) {
+static ssize_t gb_gob_read(xx_io_device *device, void *buffer, size_t size, size_t capacity)
+{
     size_t done = 0;
     if (size > (SIZE_MAX >> 1)) return -1;
     while (done < size) {
@@ -116,7 +118,8 @@ static ssize_t gb_gob_read(xx_io_device *device, void *buffer, size_t size, size
     }
     return (ssize_t)done;
 }
-static ssize_t gb_gob_write(xx_io_device *device, const void *buffer, size_t size, size_t capacity) {
+static ssize_t gb_gob_write(xx_io_device *device, const void *buffer, size_t size, size_t capacity)
+{
     size_t done = 0;
     if (size > (SIZE_MAX >> 1)) return -1;
     while (done < size) {
@@ -131,19 +134,16 @@ static ssize_t gb_gob_write(xx_io_device *device, const void *buffer, size_t siz
     return (ssize_t)done;
 }
 
-
-static bool xx_gob_read_at(Abstractformat *self, int64_t offset,
-                           uint8_t *buffer, size_t size) {
+static bool xx_gob_read_at(Abstractformat *self, int64_t offset, uint8_t *buffer, size_t size)
+{
     const size_t file_io_capacity = gb_gob_capacity();
     size_t completed = 0U;
 
-    if (!self || !self->device || offset < 0 ||
-        xx_io_seek64(self->device, offset, SEEK_SET) != 0) {
+    if (!self || !self->device || offset < 0 || xx_io_seek64(self->device, offset, SEEK_SET) != 0) {
         return false;
     }
     while (completed < size) {
-        ssize_t received =
-            gb_gob_read(self->device, buffer + completed, size - completed, file_io_capacity);
+        ssize_t received = gb_gob_read(self->device, buffer + completed, size - completed, file_io_capacity);
         if (received <= 0 || (size_t)received > size - completed) {
             return false;
         }
@@ -152,11 +152,13 @@ static bool xx_gob_read_at(Abstractformat *self, int64_t offset,
     return true;
 }
 
-static bool xx_gob_range_within(int64_t total, int64_t offset, int64_t size) {
+static bool xx_gob_range_within(int64_t total, int64_t offset, int64_t size)
+{
     return offset >= 0 && size >= 0 && offset <= total && size <= total - offset;
 }
 
-static bool xx_gob_path_safe(const char *name) {
+static bool xx_gob_path_safe(const char *name)
+{
     const char *cursor = name;
 
     if (!name || !name[0] || name[0] == '/') return false;
@@ -172,7 +174,8 @@ static bool xx_gob_path_safe(const char *name) {
     return true;
 }
 
-static void xx_gob_stream_free(void *pointer) {
+static void xx_gob_stream_free(void *pointer)
+{
     xx_gob_stream *stream = (xx_gob_stream *)pointer;
     size_t index;
 
@@ -184,9 +187,9 @@ static void xx_gob_stream_free(void *pointer) {
     xx_mem_free(stream);
 }
 
-static bool xx_gob_add(xx_gob_stream *stream, const xx_gob_member *member) {
-    xx_gob_member *grown = (xx_gob_member *)xx_mem_realloc(
-        stream->items, sizeof(*grown) * (stream->count + 1U));
+static bool xx_gob_add(xx_gob_stream *stream, const xx_gob_member *member)
+{
+    xx_gob_member *grown = (xx_gob_member *)xx_mem_realloc(stream->items, sizeof(*grown) * (stream->count + 1U));
 
     if (!grown) return false;
     stream->items = grown;
@@ -199,7 +202,8 @@ static bool xx_gob_add(xx_gob_stream *stream, const xx_gob_member *member) {
  * dropped, and a byte no file system would take becomes '_'. A name that
  * ends up empty is a reject, not a placeholder: an unnamed member in a table
  * of named ones means the table was not read correctly. */
-static char *xx_gob_make_name(const uint8_t *field, size_t field_size) {
+static char *xx_gob_make_name(const uint8_t *field, size_t field_size)
+{
     char *name;
     size_t length = 0U;
     size_t output = 0U;
@@ -224,8 +228,7 @@ static char *xx_gob_make_name(const uint8_t *field, size_t field_size) {
                 output = component_start;
                 continue;
             }
-            if (part == 2U && name[component_start] == '.' &&
-                name[component_start + 1U] == '.') {
+            if (part == 2U && name[component_start] == '.' && name[component_start + 1U] == '.') {
                 xx_str_free(name);
                 return NULL;
             }
@@ -233,15 +236,12 @@ static char *xx_gob_make_name(const uint8_t *field, size_t field_size) {
             component_start = output;
             continue;
         }
-        if (c < 0x20U || c == 0x7fU || c == ':' || c == '"' || c == '*' ||
-            c == '<' || c == '>' || c == '?' || c == '|') {
+        if (c < 0x20U || c == 0x7fU || c == ':' || c == '"' || c == '*' || c == '<' || c == '>' || c == '?' || c == '|') {
             c = (uint8_t)'_';
         }
         name[output++] = (char)c;
     }
-    while (output != 0U && (name[output - 1U] == '/' ||
-                            name[output - 1U] == ' ' ||
-                            name[output - 1U] == '.')) {
+    while (output != 0U && (name[output - 1U] == '/' || name[output - 1U] == ' ' || name[output - 1U] == '.')) {
         --output;
     }
     name[output] = 0;
@@ -254,7 +254,8 @@ static char *xx_gob_make_name(const uint8_t *field, size_t field_size) {
 
 /* ------------------------------------------------------------- parsing -- */
 
-static xx_gob_stream *xx_gob_parse(Abstractformat *self, xx_pd_struct *pd) {
+static xx_gob_stream *xx_gob_parse(Abstractformat *self, xx_pd_struct *pd)
+{
     xx_gob_stream *stream = NULL;
     uint8_t header[XX_GOB_JK_HEADER_SIZE];
     uint8_t count_bytes[4];
@@ -297,12 +298,10 @@ static xx_gob_stream *xx_gob_parse(Abstractformat *self, xx_pd_struct *pd) {
 
     /* The table pointer is attacker-controlled: bound it, then bound the
      * count it leads to, BEFORE either is allowed to size an allocation. */
-    if (table_offset < header_size ||
-        !xx_gob_range_within(span, table_offset, 4)) {
+    if (table_offset < header_size || !xx_gob_range_within(span, table_offset, 4)) {
         return NULL;
     }
-    if (!xx_gob_read_at(self, self->base_address + table_offset, count_bytes,
-                        sizeof(count_bytes))) {
+    if (!xx_gob_read_at(self, self->base_address + table_offset, count_bytes, sizeof(count_bytes))) {
         return NULL;
     }
     count = xx_data_get_u32(count_bytes, 4, 0, false);
@@ -314,8 +313,7 @@ static xx_gob_stream *xx_gob_parse(Abstractformat *self, xx_pd_struct *pd) {
 
     table = (uint8_t *)xx_mem_alloc((size_t)table_size);
     if (!table) return NULL;
-    if (!xx_gob_read_at(self, self->base_address + table_offset + 4, table,
-                        (size_t)table_size)) {
+    if (!xx_gob_read_at(self, self->base_address + table_offset + 4, table, (size_t)table_size)) {
         goto fail;
     }
 
@@ -340,8 +338,7 @@ static xx_gob_stream *xx_gob_parse(Abstractformat *self, xx_pd_struct *pd) {
         if (!name) goto fail;
         xx_mem_zero(&member, sizeof(member));
         member.name = name;
-        member.header_offset =
-            self->base_address + table_offset + 4 + (int64_t)index * entry_size;
+        member.header_offset = self->base_address + table_offset + 4 + (int64_t)index * entry_size;
         member.header_size = entry_size;
         member.data_offset = self->base_address + offset;
         member.compressed_size = size;
@@ -365,7 +362,8 @@ fail:
 
 /* ---------------------------------------------------------- lifecycle --- */
 
-void xx_gob_init(xx_gob *archive, xx_io_device *device, int64_t base_address) {
+void xx_gob_init(xx_gob *archive, xx_io_device *device, int64_t base_address)
+{
     if (!archive) return;
     xx_mem_zero(archive, sizeof(*archive));
     xx_format_init(&archive->format, device, base_address);
@@ -378,22 +376,17 @@ void xx_gob_init(xx_gob *archive, xx_io_device *device, int64_t base_address) {
     archive->format.check_is_valid = xx_gob_check_is_valid;
     archive->format.handle_base_info = xx_gob_handle_base_info;
     archive->format.get_format_size = xx_gob_get_format_size;
-    archive->format.get_number_of_archive_records =
-        xx_gob_get_number_of_archive_records;
-    archive->format.create_archive_records_reading =
-        xx_gob_create_archive_records_reading;
-    archive->format.get_current_archive_record =
-        xx_gob_get_current_archive_record;
-    archive->format.unpack_current_archive_record =
-        xx_gob_unpack_current_archive_record;
-    archive->format.archive_record_move_to_next =
-        xx_gob_archive_record_move_to_next;
-    archive->format.free_archive_records_reading =
-        xx_gob_free_archive_records_reading;
+    archive->format.get_number_of_archive_records = xx_gob_get_number_of_archive_records;
+    archive->format.create_archive_records_reading = xx_gob_create_archive_records_reading;
+    archive->format.get_current_archive_record = xx_gob_get_current_archive_record;
+    archive->format.unpack_current_archive_record = xx_gob_unpack_current_archive_record;
+    archive->format.archive_record_move_to_next = xx_gob_archive_record_move_to_next;
+    archive->format.free_archive_records_reading = xx_gob_free_archive_records_reading;
     archive->format.destroy = xx_gob_vtable_destroy;
 }
 
-xx_gob *xx_gob_create(xx_io_device *device, int64_t base_address) {
+xx_gob *xx_gob_create(xx_io_device *device, int64_t base_address)
+{
     xx_gob *archive = (xx_gob *)xx_mem_alloc(sizeof(*archive));
 
     if (!archive) return NULL;
@@ -401,26 +394,30 @@ xx_gob *xx_gob_create(xx_io_device *device, int64_t base_address) {
     return archive;
 }
 
-void xx_gob_destroy(xx_gob *archive) {
+void xx_gob_destroy(xx_gob *archive)
+{
     if (!archive) return;
     if (archive->format.close) archive->format.close(&archive->format);
     xx_format_cleanup_extra_parameters(&archive->format);
     archive->number_of_records = 0U;
 }
 
-void xx_gob_free(xx_gob *archive) {
+void xx_gob_free(xx_gob *archive)
+{
     if (!archive) return;
     xx_gob_destroy(archive);
     xx_mem_free(archive);
 }
 
-static void xx_gob_vtable_destroy(Abstractformat *self) {
+static void xx_gob_vtable_destroy(Abstractformat *self)
+{
     xx_gob_destroy((xx_gob *)self);
 }
 
 /* -------------------------------------------------------------- format -- */
 
-bool xx_gob_check_is_valid(Abstractformat *self, xx_pd_struct *pd) {
+bool xx_gob_check_is_valid(Abstractformat *self, xx_pd_struct *pd)
+{
     xx_gob_stream *stream;
 
     if (!self || (pd && xx_pd_is_stopped(pd))) return false;
@@ -430,7 +427,8 @@ bool xx_gob_check_is_valid(Abstractformat *self, xx_pd_struct *pd) {
     return true;
 }
 
-bool xx_gob_handle_base_info(Abstractformat *self, xx_pd_struct *pd) {
+bool xx_gob_handle_base_info(Abstractformat *self, xx_pd_struct *pd)
+{
     xx_gob *archive = (xx_gob *)self;
     xx_gob_stream *stream;
 
@@ -451,18 +449,17 @@ bool xx_gob_handle_base_info(Abstractformat *self, xx_pd_struct *pd) {
     return true;
 }
 
-int64_t xx_gob_get_format_size(Abstractformat *self, xx_pd_struct *pd) {
-    if (!self ||
-        (!self->base_info_handled && !xx_format_handle_base_info(self, pd))) {
+int64_t xx_gob_get_format_size(Abstractformat *self, xx_pd_struct *pd)
+{
+    if (!self || (!self->base_info_handled && !xx_format_handle_base_info(self, pd))) {
         return 0;
     }
     return self->is_valid ? self->format_size : 0;
 }
 
-uint64_t xx_gob_get_number_of_archive_records(Abstractformat *self,
-                                              xx_pd_struct *pd) {
-    if (!self ||
-        (!self->base_info_handled && !xx_format_handle_base_info(self, pd))) {
+uint64_t xx_gob_get_number_of_archive_records(Abstractformat *self, xx_pd_struct *pd)
+{
+    if (!self || (!self->base_info_handled && !xx_format_handle_base_info(self, pd))) {
         return 0U;
     }
     return self->is_valid ? ((xx_gob *)self)->number_of_records : 0U;
@@ -470,8 +467,8 @@ uint64_t xx_gob_get_number_of_archive_records(Abstractformat *self,
 
 /* ------------------------------------------------------------- records -- */
 
-static bool xx_gob_set_record(xx_archive_record *record,
-                              const xx_gob_member *member) {
+static bool xx_gob_set_record(xx_archive_record *record, const xx_gob_member *member)
+{
     xx_archive_record_cleanup(record);
     xx_archive_record_init(record);
     record->header_offset = member->header_offset;
@@ -479,31 +476,23 @@ static bool xx_gob_set_record(xx_archive_record *record,
     record->data_offset = member->data_offset;
     record->compressed_size = member->compressed_size;
     return xx_archive_record_set_original_name(record, member->name) &&
-           xx_archive_record_set_meta_u64(record, XX_META_ID_COMPRESSED_SIZE,
-                                          (uint64_t)member->compressed_size) &&
-           xx_archive_record_set_meta_u64(
-               record, XX_META_ID_UNCOMPRESSED_SIZE,
-               (uint64_t)member->uncompressed_size) &&
-           xx_archive_record_set_meta_u64(record, XX_META_ID_COMPRESSION_METHOD,
-                                          member->method) &&
-           xx_archive_record_set_meta_bool(record, XX_META_ID_IS_FOLDER,
-                                           member->is_folder) &&
-           xx_archive_record_set_meta_bool(record, XX_META_ID_IS_ENCRYPTED,
-                                           false);
+           xx_archive_record_set_meta_u64(record, XX_META_ID_COMPRESSED_SIZE, (uint64_t)member->compressed_size) &&
+           xx_archive_record_set_meta_u64(record, XX_META_ID_UNCOMPRESSED_SIZE, (uint64_t)member->uncompressed_size) &&
+           xx_archive_record_set_meta_u64(record, XX_META_ID_COMPRESSION_METHOD, member->method) &&
+           xx_archive_record_set_meta_bool(record, XX_META_ID_IS_FOLDER, member->is_folder) && xx_archive_record_set_meta_bool(record, XX_META_ID_IS_ENCRYPTED, false);
 }
 
-static bool xx_gob_copy_options(xx_list_s *target, const xx_list_s *options) {
+static bool xx_gob_copy_options(xx_list_s *target, const xx_list_s *options)
+{
     size_t index;
 
     if (!target || !options) return options == NULL;
     for (index = 0U; index < options->count; ++index) {
-        const xx_meta *source =
-            (const xx_meta *)xx_list_at((const xx_list_t *)options, index);
+        const xx_meta *source = (const xx_meta *)xx_list_at((const xx_list_t *)options, index);
         xx_meta copied;
         if (!source) continue;
         xx_meta_init(&copied, source->meta_id);
-        if (!xx_var_copy(&copied.var, &source->var) ||
-            !xx_list_append(target, &copied)) {
+        if (!xx_var_copy(&copied.var, &source->var) || !xx_list_append(target, &copied)) {
             xx_meta_cleanup(&copied);
             return false;
         }
@@ -511,21 +500,20 @@ static bool xx_gob_copy_options(xx_list_s *target, const xx_list_s *options) {
     return true;
 }
 
-static const xx_var *xx_gob_get_option(const xx_list_s *options,
-                                       uint32_t meta_id) {
+static const xx_var *xx_gob_get_option(const xx_list_s *options, uint32_t meta_id)
+{
     size_t index;
 
     if (!options) return NULL;
     for (index = 0U; index < options->count; ++index) {
-        const xx_meta *meta =
-            (const xx_meta *)xx_list_at((const xx_list_t *)options, index);
+        const xx_meta *meta = (const xx_meta *)xx_list_at((const xx_list_t *)options, index);
         if (meta && meta->meta_id == meta_id) return &meta->var;
     }
     return NULL;
 }
 
-xx_archive_record_state *xx_gob_create_archive_records_reading(
-    Abstractformat *self, const xx_list_s *options, xx_pd_struct *pd) {
+xx_archive_record_state *xx_gob_create_archive_records_reading(Abstractformat *self, const xx_list_s *options, xx_pd_struct *pd)
+{
     xx_gob_stream *stream;
     xx_archive_record_state *state;
 
@@ -541,9 +529,7 @@ xx_archive_record_state *xx_gob_create_archive_records_reading(
     state->internal_state = stream;
     state->free_internal = xx_gob_stream_free;
     state->total_records = (int64_t)stream->count;
-    if (!xx_gob_copy_options(&state->options, options) ||
-        (stream->count != 0U &&
-         !xx_gob_set_record(&state->current_record, &stream->items[0]))) {
+    if (!xx_gob_copy_options(&state->options, options) || (stream->count != 0U && !xx_gob_set_record(&state->current_record, &stream->items[0]))) {
         xx_archive_record_state_free(state);
         return NULL;
     }
@@ -552,20 +538,16 @@ xx_archive_record_state *xx_gob_create_archive_records_reading(
     return state;
 }
 
-const xx_archive_record *xx_gob_get_current_archive_record(
-    Abstractformat *self, xx_archive_record_state *state) {
-    return self && state && state->format == self && state->has_record
-               ? &state->current_record
-               : NULL;
+const xx_archive_record *xx_gob_get_current_archive_record(Abstractformat *self, xx_archive_record_state *state)
+{
+    return self && state && state->format == self && state->has_record ? &state->current_record : NULL;
 }
 
-bool xx_gob_archive_record_move_to_next(Abstractformat *self,
-                                        xx_archive_record_state *state,
-                                        xx_pd_struct *pd) {
+bool xx_gob_archive_record_move_to_next(Abstractformat *self, xx_archive_record_state *state, xx_pd_struct *pd)
+{
     xx_gob_stream *stream;
 
-    if (!self || !state || state->format != self || !state->has_record ||
-        (pd && xx_pd_is_stopped(pd))) {
+    if (!self || !state || state->format != self || !state->has_record || (pd && xx_pd_is_stopped(pd))) {
         return false;
     }
     stream = (xx_gob_stream *)state->internal_state;
@@ -577,16 +559,14 @@ bool xx_gob_archive_record_move_to_next(Abstractformat *self,
     }
     ++stream->index;
     ++state->current_index;
-    state->has_record =
-        xx_gob_set_record(&state->current_record, &stream->items[stream->index]);
+    state->has_record = xx_gob_set_record(&state->current_record, &stream->items[stream->index]);
     return state->has_record;
 }
 
 /* Members are stored, and a GOB can be tens of megabytes, so extraction
  * streams through a fixed buffer rather than materialising a member. */
-static bool xx_gob_copy_member(Abstractformat *self,
-                               const xx_gob_member *member,
-                               xx_io_device *output, xx_pd_struct *pd) {
+static bool xx_gob_copy_member(Abstractformat *self, const xx_gob_member *member, xx_io_device *output, xx_pd_struct *pd)
+{
     const size_t file_io_capacity = gb_gob_capacity();
     uint8_t *buffer;
     int64_t remaining = member->uncompressed_size;
@@ -596,8 +576,7 @@ static bool xx_gob_copy_member(Abstractformat *self,
     buffer = (uint8_t *)xx_mem_alloc(file_io_capacity);
     if (!buffer) return false;
     while (result && remaining > 0) {
-        size_t piece = remaining > (int64_t)file_io_capacity ? (size_t)file_io_capacity
-                                                     : (size_t)remaining;
+        size_t piece = remaining > (int64_t)file_io_capacity ? (size_t)file_io_capacity : (size_t)remaining;
         size_t completed = 0U;
         if (pd && xx_pd_is_stopped(pd)) {
             result = false;
@@ -608,8 +587,7 @@ static bool xx_gob_copy_member(Abstractformat *self,
             break;
         }
         while (completed < piece) {
-            ssize_t sent =
-                gb_gob_write(output, buffer + completed, piece - completed, file_io_capacity);
+            ssize_t sent = gb_gob_write(output, buffer + completed, piece - completed, file_io_capacity);
             if (sent <= 0 || (size_t)sent > piece - completed) {
                 result = false;
                 break;
@@ -625,9 +603,8 @@ static bool xx_gob_copy_member(Abstractformat *self,
 
 /* Reading a member without writing it: the same walk, discarding the bytes,
  * so that "unpack with no destination" still proves the extent is readable. */
-static bool xx_gob_verify_member(Abstractformat *self,
-                                 const xx_gob_member *member,
-                                 xx_pd_struct *pd) {
+static bool xx_gob_verify_member(Abstractformat *self, const xx_gob_member *member, xx_pd_struct *pd)
+{
     const size_t file_io_capacity = gb_gob_capacity();
     uint8_t *buffer;
     int64_t remaining = member->uncompressed_size;
@@ -638,10 +615,8 @@ static bool xx_gob_verify_member(Abstractformat *self,
     buffer = (uint8_t *)xx_mem_alloc(file_io_capacity);
     if (!buffer) return false;
     while (remaining > 0) {
-        size_t piece = remaining > (int64_t)file_io_capacity ? (size_t)file_io_capacity
-                                                     : (size_t)remaining;
-        if ((pd && xx_pd_is_stopped(pd)) ||
-            !xx_gob_read_at(self, at, buffer, piece)) {
+        size_t piece = remaining > (int64_t)file_io_capacity ? (size_t)file_io_capacity : (size_t)remaining;
+        if ((pd && xx_pd_is_stopped(pd)) || !xx_gob_read_at(self, at, buffer, piece)) {
             result = false;
             break;
         }
@@ -652,9 +627,8 @@ static bool xx_gob_verify_member(Abstractformat *self,
     return result;
 }
 
-bool xx_gob_unpack_current_archive_record(Abstractformat *self,
-                                          xx_archive_record_state *state,
-                                          xx_pd_struct *pd) {
+bool xx_gob_unpack_current_archive_record(Abstractformat *self, xx_archive_record_state *state, xx_pd_struct *pd)
+{
     xx_gob_stream *stream;
     const xx_gob_member *member;
     const xx_var *path_option;
@@ -664,8 +638,7 @@ bool xx_gob_unpack_current_archive_record(Abstractformat *self,
     bool result = false;
     bool created = false;
 
-    if (!self || !state || state->format != self || !state->has_record ||
-        (pd && xx_pd_is_stopped(pd))) {
+    if (!self || !state || state->format != self || !state->has_record || (pd && xx_pd_is_stopped(pd))) {
         return false;
     }
     stream = (xx_gob_stream *)state->internal_state;
@@ -673,15 +646,12 @@ bool xx_gob_unpack_current_archive_record(Abstractformat *self,
     member = &stream->items[stream->index];
     if (!xx_gob_path_safe(member->name)) return false;
 
-    path_option = xx_gob_get_option(&state->options,
-                                    XX_META_ID_OPT_UNPACK_PATH);
+    path_option = xx_gob_get_option(&state->options, XX_META_ID_OPT_UNPACK_PATH);
     if (!path_option) return xx_gob_verify_member(self, member, pd);
 
-    if (path_option->type == XX_VAR_TYPE_STRING ||
-        path_option->type == XX_VAR_TYPE_STRING_VIEW) {
+    if (path_option->type == XX_VAR_TYPE_STRING || path_option->type == XX_VAR_TYPE_STRING_VIEW) {
         base_path = xx_var_get_str(path_option);
-    } else if (path_option->type == XX_VAR_TYPE_WSTRING ||
-               path_option->type == XX_VAR_TYPE_WSTRING_VIEW) {
+    } else if (path_option->type == XX_VAR_TYPE_WSTRING || path_option->type == XX_VAR_TYPE_WSTRING_VIEW) {
         converted_path = xx_str_unicode_to_utf8(xx_var_get_wstr(path_option));
         base_path = converted_path;
     }
@@ -689,9 +659,7 @@ bool xx_gob_unpack_current_archive_record(Abstractformat *self,
         xx_str_free(converted_path);
         return false;
     }
-    if (base_path[0] != '\0' &&
-        base_path[xx_str_len(base_path) - 1U] != '/' &&
-        base_path[xx_str_len(base_path) - 1U] != '\\') {
+    if (base_path[0] != '\0' && base_path[xx_str_len(base_path) - 1U] != '/' && base_path[xx_str_len(base_path) - 1U] != '\\') {
         target_path = xx_str_concat3(base_path, "/", member->name);
     } else {
         target_path = xx_str_concat(base_path, member->name);
@@ -716,8 +684,8 @@ bool xx_gob_unpack_current_archive_record(Abstractformat *self,
     return result;
 }
 
-void xx_gob_free_archive_records_reading(Abstractformat *self,
-                                         xx_archive_record_state *state) {
+void xx_gob_free_archive_records_reading(Abstractformat *self, xx_archive_record_state *state)
+{
     (void)self;
     xx_archive_record_state_free(state);
 }

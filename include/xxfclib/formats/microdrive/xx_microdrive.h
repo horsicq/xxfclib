@@ -10,16 +10,18 @@ extern "C" {
 #endif
 typedef xx_apple_family_info xx_microdrive;
 typedef xx_microdrive xx_microdrive_t;
-XXFC_API void xx_microdrive_init(xx_microdrive *,xx_io_device *,int64_t);
-XXFC_API xx_microdrive *xx_microdrive_create(xx_io_device *,int64_t);
+XXFC_API void xx_microdrive_init(xx_microdrive *, xx_io_device *, int64_t);
+XXFC_API xx_microdrive *xx_microdrive_create(xx_io_device *, int64_t);
 XXFC_API void xx_microdrive_destroy(xx_microdrive *);
 XXFC_API void xx_microdrive_free(xx_microdrive *);
-XXFC_API bool xx_microdrive_check_is_valid(Abstractformat *,xx_pd_struct *);
-XXFC_API bool xx_microdrive_handle_base_info(Abstractformat *,xx_pd_struct *);
-XXFC_API bool xx_microdrive_extract_record_to_device(Abstractformat *,xx_archive_record_state *,xx_io_device *,xx_pd_struct *);
-static inline Abstractformat *xx_microdrive_to_format(xx_microdrive *r) { return r ? &r->format : NULL; }
+XXFC_API bool xx_microdrive_check_is_valid(Abstractformat *, xx_pd_struct *);
+XXFC_API bool xx_microdrive_handle_base_info(Abstractformat *, xx_pd_struct *);
+XXFC_API bool xx_microdrive_extract_record_to_device(Abstractformat *, xx_archive_record_state *, xx_io_device *, xx_pd_struct *);
+static inline Abstractformat *xx_microdrive_to_format(xx_microdrive *r)
+{
+    return r ? &r->format : NULL;
+}
 #ifdef __cplusplus
 }
 #endif
 #endif
-

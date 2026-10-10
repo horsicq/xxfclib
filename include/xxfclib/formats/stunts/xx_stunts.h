@@ -25,29 +25,21 @@ typedef struct xx_stunts {
 
 typedef xx_stunts xx_stunts_t;
 
-XXFC_API void xx_stunts_init(xx_stunts *archive, xx_io_device *device,
-                            int64_t base_address);
+XXFC_API void xx_stunts_init(xx_stunts *archive, xx_io_device *device, int64_t base_address);
 XXFC_API xx_stunts *xx_stunts_create(xx_io_device *device, int64_t base_address);
 XXFC_API void xx_stunts_destroy(xx_stunts *archive);
 XXFC_API void xx_stunts_free(xx_stunts *archive);
 
 XXFC_API bool xx_stunts_check_is_valid(Abstractformat *self, xx_pd_struct *pd);
 XXFC_API bool xx_stunts_handle_base_info(Abstractformat *self, xx_pd_struct *pd);
-XXFC_API int64_t xx_stunts_get_format_size(Abstractformat *self,
-                                          xx_pd_struct *pd);
-XXFC_API uint64_t xx_stunts_get_number_of_archive_records(Abstractformat *self,
-                                                         xx_pd_struct *pd);
+XXFC_API int64_t xx_stunts_get_format_size(Abstractformat *self, xx_pd_struct *pd);
+XXFC_API uint64_t xx_stunts_get_number_of_archive_records(Abstractformat *self, xx_pd_struct *pd);
 
-XXFC_API xx_archive_record_state *xx_stunts_create_archive_records_reading(
-    Abstractformat *self, const xx_list_s *options, xx_pd_struct *pd);
-XXFC_API const xx_archive_record *xx_stunts_get_current_archive_record(
-    Abstractformat *self, xx_archive_record_state *state);
-XXFC_API bool xx_stunts_unpack_current_archive_record(
-    Abstractformat *self, xx_archive_record_state *state, xx_pd_struct *pd);
-XXFC_API bool xx_stunts_archive_record_move_to_next(
-    Abstractformat *self, xx_archive_record_state *state, xx_pd_struct *pd);
-XXFC_API void xx_stunts_free_archive_records_reading(
-    Abstractformat *self, xx_archive_record_state *state);
+XXFC_API xx_archive_record_state *xx_stunts_create_archive_records_reading(Abstractformat *self, const xx_list_s *options, xx_pd_struct *pd);
+XXFC_API const xx_archive_record *xx_stunts_get_current_archive_record(Abstractformat *self, xx_archive_record_state *state);
+XXFC_API bool xx_stunts_unpack_current_archive_record(Abstractformat *self, xx_archive_record_state *state, xx_pd_struct *pd);
+XXFC_API bool xx_stunts_archive_record_move_to_next(Abstractformat *self, xx_archive_record_state *state, xx_pd_struct *pd);
+XXFC_API void xx_stunts_free_archive_records_reading(Abstractformat *self, xx_archive_record_state *state);
 
 #ifdef __cplusplus
 }

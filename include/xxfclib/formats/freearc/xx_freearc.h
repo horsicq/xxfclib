@@ -28,8 +28,8 @@ extern "C" {
  */
 typedef struct xx_freearc {
     Abstractformat format;
-    uint16_t flags;   /**< Header flags, bytes 4..5. */
-    uint16_t version; /**< Header version, bytes 6..7. */
+    uint16_t flags;       /**< Header flags, bytes 4..5. */
+    uint16_t version;     /**< Header version, bytes 6..7. */
     int64_t archive_size; /**< End of the footer descriptor, or -1. */
     void *index;          /**< Parsed directory (private), NULL until read. */
     bool index_tried;     /**< The directory has been parsed (or failed). */
@@ -38,32 +38,21 @@ typedef struct xx_freearc {
 typedef xx_freearc xx_freearc_t;
 typedef xx_freearc XFreearc;
 
-XXFC_API void xx_freearc_init(xx_freearc *archive, xx_io_device *device,
-                              int64_t base_address);
-XXFC_API xx_freearc *xx_freearc_create(xx_io_device *device,
-                                       int64_t base_address);
+XXFC_API void xx_freearc_init(xx_freearc *archive, xx_io_device *device, int64_t base_address);
+XXFC_API xx_freearc *xx_freearc_create(xx_io_device *device, int64_t base_address);
 XXFC_API void xx_freearc_destroy(xx_freearc *archive);
 XXFC_API void xx_freearc_free(xx_freearc *archive);
 
-XXFC_API bool xx_freearc_check_is_valid(Abstractformat *self,
-                                        xx_pd_struct *pd);
-XXFC_API bool xx_freearc_handle_base_info(Abstractformat *self,
-                                          xx_pd_struct *pd);
-XXFC_API int64_t xx_freearc_get_format_size(Abstractformat *self,
-                                            xx_pd_struct *pd);
-XXFC_API uint64_t xx_freearc_get_number_of_archive_records(
-    Abstractformat *self, xx_pd_struct *pd);
+XXFC_API bool xx_freearc_check_is_valid(Abstractformat *self, xx_pd_struct *pd);
+XXFC_API bool xx_freearc_handle_base_info(Abstractformat *self, xx_pd_struct *pd);
+XXFC_API int64_t xx_freearc_get_format_size(Abstractformat *self, xx_pd_struct *pd);
+XXFC_API uint64_t xx_freearc_get_number_of_archive_records(Abstractformat *self, xx_pd_struct *pd);
 
-XXFC_API xx_archive_record_state *xx_freearc_create_archive_records_reading(
-    Abstractformat *self, const xx_list_s *options, xx_pd_struct *pd);
-XXFC_API const xx_archive_record *xx_freearc_get_current_archive_record(
-    Abstractformat *self, xx_archive_record_state *state);
-XXFC_API bool xx_freearc_unpack_current_archive_record(
-    Abstractformat *self, xx_archive_record_state *state, xx_pd_struct *pd);
-XXFC_API bool xx_freearc_archive_record_move_to_next(
-    Abstractformat *self, xx_archive_record_state *state, xx_pd_struct *pd);
-XXFC_API void xx_freearc_free_archive_records_reading(
-    Abstractformat *self, xx_archive_record_state *state);
+XXFC_API xx_archive_record_state *xx_freearc_create_archive_records_reading(Abstractformat *self, const xx_list_s *options, xx_pd_struct *pd);
+XXFC_API const xx_archive_record *xx_freearc_get_current_archive_record(Abstractformat *self, xx_archive_record_state *state);
+XXFC_API bool xx_freearc_unpack_current_archive_record(Abstractformat *self, xx_archive_record_state *state, xx_pd_struct *pd);
+XXFC_API bool xx_freearc_archive_record_move_to_next(Abstractformat *self, xx_archive_record_state *state, xx_pd_struct *pd);
+XXFC_API void xx_freearc_free_archive_records_reading(Abstractformat *self, xx_archive_record_state *state);
 
 /**
  * @brief Decode a FreeArc method chain held in memory.
@@ -73,10 +62,7 @@ XXFC_API void xx_freearc_free_archive_records_reading(
  * unknown. On success *out receives a buffer from xx_mem_alloc (possibly
  * @p in itself) that the caller frees; @p in is always consumed.
  */
-XXFC_API bool xx_freearc_decode_chain(const char *method, uint8_t *in,
-                                      size_t in_size, int64_t expected,
-                                      uint8_t **out, size_t *out_size,
-                                      xx_pd_struct *pd);
+XXFC_API bool xx_freearc_decode_chain(const char *method, uint8_t *in, size_t in_size, int64_t expected, uint8_t **out, size_t *out_size, xx_pd_struct *pd);
 /** @brief True when every stage of @p method is one this reader decodes. */
 XXFC_API bool xx_freearc_method_supported(const char *method);
 

@@ -15,57 +15,48 @@
 #include "../xx_format_extractor_engine.h"
 #include "xxfclib/formats/recognita/xx_recognita.h"
 
+static const xx_file_type_t k_types[] = {XX_FILE_TYPE_RECOGNITA};
 
-static const xx_file_type_t k_types[] = { XX_FILE_TYPE_RECOGNITA };
-
-static Abstractformat *xx_recognita_search_open(xx_io_device *window) {
+static Abstractformat *xx_recognita_search_open(xx_io_device *window)
+{
     xx_recognita *reader = xx_recognita_create(window, 0);
     return reader ? &reader->format : NULL;
 }
 
-static void xx_recognita_search_close(Abstractformat *format) {
+static void xx_recognita_search_close(Abstractformat *format)
+{
     /* The format is the first member, so this is the reader itself. */
     xx_recognita_free((xx_recognita *)format);
 }
 
-static const xx_format_search_desc k_desc = {
-    k_types, sizeof(k_types) / sizeof(k_types[0]),
-    NULL, 0U,
-    xx_recognita_search_open, xx_recognita_search_close, false
-};
+static const xx_format_search_desc k_desc = {k_types, sizeof(k_types) / sizeof(k_types[0]), NULL, 0U, xx_recognita_search_open, xx_recognita_search_close, false};
 
-static xx_format_search_state *xx_recognita_create_format_search(
-    xx_format_extractor *self, xx_io_device *device, const xx_list_s *options,
-    xx_pd_struct *pd) {
+static xx_format_search_state *xx_recognita_create_format_search(xx_format_extractor *self, xx_io_device *device, const xx_list_s *options, xx_pd_struct *pd)
+{
     (void)self;
     return xx_format_search_create(&k_desc, device, options, pd);
 }
 
-static const xx_format_search_info *xx_recognita_get_current_format_info(
-    xx_format_extractor *self, xx_format_search_state *state) {
+static const xx_format_search_info *xx_recognita_get_current_format_info(xx_format_extractor *self, xx_format_search_state *state)
+{
     (void)self;
     return xx_format_search_current(state);
 }
 
-static bool xx_recognita_format_search_find_next(xx_format_extractor *self,
-                                          xx_format_search_state *state,
-                                          xx_pd_struct *pd) {
+static bool xx_recognita_format_search_find_next(xx_format_extractor *self, xx_format_search_state *state, xx_pd_struct *pd)
+{
     (void)self;
     return xx_format_search_find_next(state, pd);
 }
 
-static void xx_recognita_free_format_search(xx_format_extractor *self,
-                                     xx_format_search_state *state) {
+static void xx_recognita_free_format_search(xx_format_extractor *self, xx_format_search_state *state)
+{
     (void)self;
     xx_format_search_free(state);
 }
 
-xx_format_extractor xx_recognita_extractor = {
-    xx_recognita_create_format_search,
-    xx_recognita_get_current_format_info,
-    xx_recognita_format_search_find_next,
-    xx_recognita_free_format_search
-};
+xx_format_extractor xx_recognita_extractor = {xx_recognita_create_format_search, xx_recognita_get_current_format_info, xx_recognita_format_search_find_next,
+                                              xx_recognita_free_format_search};
 
 /* BEGIN GENERATED ABSTRACT EXTRACTOR */
 #include "../xx_format_abstract_extractor_adapter.h"

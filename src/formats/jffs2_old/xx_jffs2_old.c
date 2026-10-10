@@ -100,8 +100,8 @@ typedef struct xx_jffs2_old_fragment_s {
 
 /** One resolved tree member. */
 typedef struct xx_jffs2_old_entry_s {
-    char *name;         /**< Full path from the root, '/' separated. */
-    char *link_target;  /**< Symlink target, or NULL. */
+    char *name;        /**< Full path from the root, '/' separated. */
+    char *link_target; /**< Symlink target, or NULL. */
     uint32_t ino;
     uint32_t mode;
     uint32_t mtime;
@@ -162,13 +162,13 @@ static void xx_jffs2_old_vtable_destroy(Abstractformat *self);
 /* -------------------------------------------------------- arithmetic --- */
 
 /* True when [offset, offset + size) lies inside [0, total_size). */
-static bool xx_jffs2_old_range_within(int64_t total_size, int64_t offset,
-                                  int64_t size) {
-    return (total_size >= 0) && (offset >= 0) && (size >= 0) &&
-           (offset <= total_size) && (size <= total_size - offset);
+static bool xx_jffs2_old_range_within(int64_t total_size, int64_t offset, int64_t size)
+{
+    return (total_size >= 0) && (offset >= 0) && (size >= 0) && (offset <= total_size) && (size <= total_size - offset);
 }
 
-static bool xx_jffs2_old_add(int64_t left, uint64_t right, int64_t *result) {
+static bool xx_jffs2_old_add(int64_t left, uint64_t right, int64_t *result)
+{
     if (!result || left < 0 || right > (uint64_t)(INT64_MAX - left)) {
         return false;
     }
@@ -177,12 +177,12 @@ static bool xx_jffs2_old_add(int64_t left, uint64_t right, int64_t *result) {
 }
 
 /* Round up to the next 4-byte boundary, refusing to overflow. */
-static bool xx_jffs2_old_align(int64_t value, int64_t *result) {
+static bool xx_jffs2_old_align(int64_t value, int64_t *result)
+{
     if (!result || value < 0 || value > INT64_MAX - (XX_JFFS2_OLD_ALIGNMENT - 1)) {
         return false;
     }
-    *result = (value + (XX_JFFS2_OLD_ALIGNMENT - 1)) &
-              ~(int64_t)(XX_JFFS2_OLD_ALIGNMENT - 1);
+    *result = (value + (XX_JFFS2_OLD_ALIGNMENT - 1)) & ~(int64_t)(XX_JFFS2_OLD_ALIGNMENT - 1);
     return true;
 }
 
@@ -192,14 +192,15 @@ static bool xx_jffs2_old_align(int64_t value, int64_t *result) {
  * zlib (it inverts on the way in and on the way out), so seeding it with
  * 0xFFFFFFFF cancels the entry inversion and a final XOR cancels the exit
  * one. binwalk and jefferson spell the same identity differently. */
-static uint32_t xx_jffs2_old_crc(const void *data, size_t size) {
+static uint32_t xx_jffs2_old_crc(const void *data, size_t size)
+{
     return xx_crc32_calc(0xFFFFFFFFU, data, size) ^ 0xFFFFFFFFU;
 }
 
 /* ------------------------------------------------------------ window --- */
 
-static void xx_jffs2_old_window_init(xx_jffs2_old_window *window, xx_io_device *device,
-                                 int64_t total) {
+static void xx_jffs2_old_window_init(xx_jffs2_old_window *window, xx_io_device *device, int64_t total)
+{
     if (!window) return;
     window->device = device;
     window->offset = -1;
@@ -209,18 +210,14 @@ static void xx_jffs2_old_window_init(xx_jffs2_old_window *window, xx_io_device *
 
 /* Return a pointer to `need` bytes at `offset`, refilling if necessary.
  * NULL when the request runs off the end of the device or a read fails. */
-static const uint8_t *xx_jffs2_old_window_get(xx_jffs2_old_window *window,
-                                          int64_t offset, size_t need) {
+static const uint8_t *xx_jffs2_old_window_get(xx_jffs2_old_window *window, int64_t offset, size_t need)
+{
     size_t want;
     size_t done = 0U;
-    if (!window || !window->device || need == 0U ||
-        need > XX_JFFS2_OLD_WINDOW_SIZE ||
-        !xx_jffs2_old_range_within(window->total, offset, (int64_t)need)) {
+    if (!window || !window->device || need == 0U || need > XX_JFFS2_OLD_WINDOW_SIZE || !xx_jffs2_old_range_within(window->total, offset, (int64_t)need)) {
         return NULL;
     }
-    if (window->offset >= 0 && offset >= window->offset &&
-        offset - window->offset <= (int64_t)window->size &&
-        (size_t)(offset - window->offset) <= window->size - need) {
+    if (window->offset >= 0 && offset >= window->offset && offset - window->offset <= (int64_t)window->size && (size_t)(offset - window->offset) <= window->size - need) {
         return window->buffer + (offset - window->offset);
     }
     want = XX_JFFS2_OLD_WINDOW_SIZE;
@@ -231,8 +228,7 @@ static const uint8_t *xx_jffs2_old_window_get(xx_jffs2_old_window *window,
     window->size = 0U;
     if (xx_io_seek64(window->device, offset, SEEK_SET) != 0) return NULL;
     while (done < want) {
-        ssize_t got = xx_io_read(window->device, window->buffer + done,
-                                 want - done);
+        ssize_t got = xx_io_read(window->device, window->buffer + done, want - done);
         if (got <= 0 || (size_t)got > want - done) break;
         done += (size_t)got;
     }
@@ -244,20 +240,23 @@ static const uint8_t *xx_jffs2_old_window_get(xx_jffs2_old_window *window,
 
 /* --------------------------------------------------------- inode set --- */
 
-static void xx_jffs2_old_inoset_cleanup(xx_jffs2_old_inoset *set) {
+static void xx_jffs2_old_inoset_cleanup(xx_jffs2_old_inoset *set)
+{
     if (!set) return;
     if (set->slots) xx_mem_free(set->slots);
     xx_mem_zero(set, sizeof(*set));
 }
 
-static size_t xx_jffs2_old_inoset_slot(const xx_jffs2_old_inoset *set, uint32_t ino) {
+static size_t xx_jffs2_old_inoset_slot(const xx_jffs2_old_inoset *set, uint32_t ino)
+{
     uint64_t key = (uint64_t)ino;
     key = (key ^ (key >> 29U)) * UINT64_C(0xbf58476d1ce4e5b9);
     key ^= key >> 32U;
     return (size_t)key & (set->capacity - 1U);
 }
 
-static bool xx_jffs2_old_inoset_grow(xx_jffs2_old_inoset *set) {
+static bool xx_jffs2_old_inoset_grow(xx_jffs2_old_inoset *set)
+{
     uint64_t *slots;
     size_t capacity = set->capacity ? set->capacity * 2U : 256U;
     size_t index;
@@ -286,7 +285,8 @@ static bool xx_jffs2_old_inoset_grow(xx_jffs2_old_inoset *set) {
 /* Record ino and report whether it had already been seen. Allocation
  * failure is reported as "seen" so the walk stops rather than continuing
  * with a set that can no longer remember anything. */
-static bool xx_jffs2_old_inoset_mark(xx_jffs2_old_inoset *set, uint32_t ino) {
+static bool xx_jffs2_old_inoset_mark(xx_jffs2_old_inoset *set, uint32_t ino)
+{
     size_t slot;
     if (!set) return true;
     if ((set->count + 1U) * 4U >= set->capacity * 3U) {
@@ -302,7 +302,8 @@ static bool xx_jffs2_old_inoset_mark(xx_jffs2_old_inoset *set, uint32_t ino) {
     return false;
 }
 
-static void xx_jffs2_old_inoset_unmark(xx_jffs2_old_inoset *set, uint32_t ino) {
+static void xx_jffs2_old_inoset_unmark(xx_jffs2_old_inoset *set, uint32_t ino)
+{
     size_t slot;
     size_t scan;
     if (!set || set->capacity == 0U) return;
@@ -338,10 +339,8 @@ static void xx_jffs2_old_inoset_unmark(xx_jffs2_old_inoset *set, uint32_t ino) {
  * heapsort is chosen over an insertion sort because a large image can carry
  * hundreds of thousands of nodes and over a merge sort because it needs no
  * second array. The caller supplies scratch space for one element. */
-static void xx_jffs2_old_sift(uint8_t *base, size_t count, size_t size,
-                          size_t root,
-                          int (*compare)(const void *, const void *),
-                          uint8_t *scratch) {
+static void xx_jffs2_old_sift(uint8_t *base, size_t count, size_t size, size_t root, int (*compare)(const void *, const void *), uint8_t *scratch)
+{
     for (;;) {
         size_t child = root * 2U + 1U;
         size_t largest = root;
@@ -349,8 +348,7 @@ static void xx_jffs2_old_sift(uint8_t *base, size_t count, size_t size,
         if (compare(base + child * size, base + largest * size) > 0) {
             largest = child;
         }
-        if (child + 1U < count &&
-            compare(base + (child + 1U) * size, base + largest * size) > 0) {
+        if (child + 1U < count && compare(base + (child + 1U) * size, base + largest * size) > 0) {
             largest = child + 1U;
         }
         if (largest == root) break;
@@ -361,9 +359,8 @@ static void xx_jffs2_old_sift(uint8_t *base, size_t count, size_t size,
     }
 }
 
-static void xx_jffs2_old_sort(void *base, size_t count, size_t size,
-                          int (*compare)(const void *, const void *),
-                          uint8_t *scratch) {
+static void xx_jffs2_old_sort(void *base, size_t count, size_t size, int (*compare)(const void *, const void *), uint8_t *scratch)
+{
     uint8_t *bytes = (uint8_t *)base;
     size_t index;
     if (!bytes || !compare || !scratch || count < 2U) return;
@@ -381,7 +378,8 @@ static void xx_jffs2_old_sort(void *base, size_t count, size_t size,
 /* Dirents are ordered by parent, then name, then version, so that the run
  * for one name within one directory is contiguous and its last element is
  * the winning revision. */
-static int xx_jffs2_old_dirent_compare(const void *left, const void *right) {
+static int xx_jffs2_old_dirent_compare(const void *left, const void *right)
+{
     const xx_jffs2_old_dirent *a = (const xx_jffs2_old_dirent *)left;
     const xx_jffs2_old_dirent *b = (const xx_jffs2_old_dirent *)right;
     int order;
@@ -394,7 +392,8 @@ static int xx_jffs2_old_dirent_compare(const void *left, const void *right) {
 
 /* Fragments are ordered by inode, then version: replaying one inode's run
  * front to back is exactly the log replay the format specifies. */
-static int xx_jffs2_old_fragment_compare(const void *left, const void *right) {
+static int xx_jffs2_old_fragment_compare(const void *left, const void *right)
+{
     const xx_jffs2_old_fragment *a = (const xx_jffs2_old_fragment *)left;
     const xx_jffs2_old_fragment *b = (const xx_jffs2_old_fragment *)right;
     if (a->ino != b->ino) return a->ino < b->ino ? -1 : 1;
@@ -406,8 +405,8 @@ static int xx_jffs2_old_fragment_compare(const void *left, const void *right) {
 }
 
 /* First index whose pino is >= key, over an array already sorted. */
-static size_t xx_jffs2_old_dirent_lower_bound(const xx_jffs2_old_dirent *dirents,
-                                          size_t count, uint32_t pino) {
+static size_t xx_jffs2_old_dirent_lower_bound(const xx_jffs2_old_dirent *dirents, size_t count, uint32_t pino)
+{
     size_t low = 0U;
     size_t high = count;
     while (low < high) {
@@ -421,8 +420,8 @@ static size_t xx_jffs2_old_dirent_lower_bound(const xx_jffs2_old_dirent *dirents
     return low;
 }
 
-static size_t xx_jffs2_old_fragment_lower_bound(const xx_jffs2_old_fragment *fragments,
-                                            size_t count, uint32_t ino) {
+static size_t xx_jffs2_old_fragment_lower_bound(const xx_jffs2_old_fragment *fragments, size_t count, uint32_t ino)
+{
     size_t low = 0U;
     size_t high = count;
     while (low < high) {
@@ -444,8 +443,8 @@ static size_t xx_jffs2_old_fragment_lower_bound(const xx_jffs2_old_fragment *fra
  * byte-at-a-time. The kernel's decompressor trusts its input; this one does
  * not, so both the input cursor and the output cursor are bounded.
  * There is no xxfclib equivalent, so it is implemented here. */
-static bool xx_jffs2_old_rtime_decompress(const uint8_t *input, size_t input_size,
-                                      uint8_t *output, size_t output_size) {
+static bool xx_jffs2_old_rtime_decompress(const uint8_t *input, size_t input_size, uint8_t *output, size_t output_size)
+{
     /* The kernel uses a short here, which wraps once the output passes
      * 32767; a real RTIME node never exceeds one page, so a wider counter
      * agrees with it everywhere it matters and stays in range elsewhere. */
@@ -496,19 +495,19 @@ typedef struct xx_jffs2_old_rubin_s {
 /* Past the end of the stored bits the coder reads zeroes. The kernel walks
  * off its buffer here; refusing to would break images whose final byte is
  * only partly used, so the padding is silent and bounded instead. */
-static uint32_t xx_jffs2_old_rubin_pullbit(xx_jffs2_old_rubin *state) {
+static uint32_t xx_jffs2_old_rubin_pullbit(xx_jffs2_old_rubin *state)
+{
     size_t index = state->bit_offset >> 3U;
     uint32_t bit = 0U;
     if (index < state->input_size) {
-        bit = (uint32_t)((state->input[index] >>
-                          (7U - (state->bit_offset & 7U))) &
-                         1U);
+        bit = (uint32_t)((state->input[index] >> (7U - (state->bit_offset & 7U))) & 1U);
     }
     ++state->bit_offset;
     return bit;
 }
 
-static void xx_jffs2_old_rubin_renormalise(xx_jffs2_old_rubin *state) {
+static void xx_jffs2_old_rubin_renormalise(xx_jffs2_old_rubin *state)
+{
     uint32_t p = state->p;
     uint32_t q = state->q;
     uint32_t rec_q = state->rec_q;
@@ -520,9 +519,7 @@ static void xx_jffs2_old_rubin_renormalise(xx_jffs2_old_rubin *state) {
         p <<= 1U;
         /* p doubles each round; the loop cannot run past the register
          * width, but the guard keeps a crafted state from spinning. */
-    } while (bits < 64U &&
-             ((q >= XX_JFFS2_OLD_RUBIN_UPPER) ||
-              ((p + q) <= XX_JFFS2_OLD_RUBIN_UPPER)));
+    } while (bits < 64U && ((q >= XX_JFFS2_OLD_RUBIN_UPPER) || ((p + q) <= XX_JFFS2_OLD_RUBIN_UPPER)));
     state->p = p;
     state->q = q;
     while (bits-- != 0U) {
@@ -533,13 +530,12 @@ static void xx_jffs2_old_rubin_renormalise(xx_jffs2_old_rubin *state) {
     state->rec_q = rec_q;
 }
 
-static uint32_t xx_jffs2_old_rubin_decode(xx_jffs2_old_rubin *state, uint32_t a,
-                                      uint32_t b) {
+static uint32_t xx_jffs2_old_rubin_decode(xx_jffs2_old_rubin *state, uint32_t a, uint32_t b)
+{
     uint32_t i0;
     uint32_t threshold;
     uint32_t symbol;
-    if ((state->q >= XX_JFFS2_OLD_RUBIN_UPPER) ||
-        ((state->p + state->q) <= XX_JFFS2_OLD_RUBIN_UPPER)) {
+    if ((state->q >= XX_JFFS2_OLD_RUBIN_UPPER) || ((state->p + state->q) <= XX_JFFS2_OLD_RUBIN_UPPER)) {
         xx_jffs2_old_rubin_renormalise(state);
     }
     if (a + b == 0U) return 0U;
@@ -556,9 +552,8 @@ static uint32_t xx_jffs2_old_rubin_decode(xx_jffs2_old_rubin *state, uint32_t a,
     return symbol;
 }
 
-static bool xx_jffs2_old_rubin_decompress(const uint8_t *input, size_t input_size,
-                                      uint32_t divider, const uint32_t *bits,
-                                      uint8_t *output, size_t output_size) {
+static bool xx_jffs2_old_rubin_decompress(const uint8_t *input, size_t input_size, uint32_t divider, const uint32_t *bits, uint8_t *output, size_t output_size)
+{
     xx_jffs2_old_rubin state;
     size_t index;
     if (!input || !output || !bits || divider == 0U) return false;
@@ -579,9 +574,7 @@ static bool xx_jffs2_old_rubin_decompress(const uint8_t *input, size_t input_siz
         unsigned bit;
         uint32_t value = 0U;
         for (bit = 0U; bit < 8U; ++bit) {
-            value |= xx_jffs2_old_rubin_decode(&state, divider - state.bits[bit],
-                                           state.bits[bit])
-                     << bit;
+            value |= xx_jffs2_old_rubin_decode(&state, divider - state.bits[bit], state.bits[bit]) << bit;
         }
         output[index] = (uint8_t)value;
     }
@@ -590,38 +583,29 @@ static bool xx_jffs2_old_rubin_decompress(const uint8_t *input, size_t input_siz
 
 #define XX_JFFS2_OLD_RUBIN_MIPS_DIVIDER 1043U
 
-static bool xx_jffs2_old_rubinmips_decompress(const uint8_t *input,
-                                          size_t input_size, uint8_t *output,
-                                          size_t output_size) {
-    static const uint32_t mips_bits[8] = {277U, 249U, 290U, 267U,
-                                          229U, 341U, 212U, 241U};
-    return xx_jffs2_old_rubin_decompress(input, input_size,
-                                     XX_JFFS2_OLD_RUBIN_MIPS_DIVIDER, mips_bits,
-                                     output, output_size);
+static bool xx_jffs2_old_rubinmips_decompress(const uint8_t *input, size_t input_size, uint8_t *output, size_t output_size)
+{
+    static const uint32_t mips_bits[8] = {277U, 249U, 290U, 267U, 229U, 341U, 212U, 241U};
+    return xx_jffs2_old_rubin_decompress(input, input_size, XX_JFFS2_OLD_RUBIN_MIPS_DIVIDER, mips_bits, output, output_size);
 }
 
-static bool xx_jffs2_old_dynrubin_decompress(const uint8_t *input,
-                                         size_t input_size, uint8_t *output,
-                                         size_t output_size) {
+static bool xx_jffs2_old_dynrubin_decompress(const uint8_t *input, size_t input_size, uint8_t *output, size_t output_size)
+{
     uint32_t bits[8];
     size_t index;
     if (!input || input_size < 8U) return false;
     for (index = 0U; index < 8U; ++index) bits[index] = input[index];
-    return xx_jffs2_old_rubin_decompress(input + 8U, input_size - 8U, 256U, bits,
-                                     output, output_size);
+    return xx_jffs2_old_rubin_decompress(input + 8U, input_size - 8U, 256U, bits, output, output_size);
 }
 
 /* Expand one inode node's payload into exactly dsize bytes at output. */
-static bool xx_jffs2_old_decompress(uint8_t compression, const uint8_t *input,
-                                size_t input_size, uint8_t *output,
-                                size_t output_size) {
+static bool xx_jffs2_old_decompress(uint8_t compression, const uint8_t *input, size_t input_size, uint8_t *output, size_t output_size)
+{
     size_t written = 0U;
     if (!output) return false;
     if (output_size == 0U) return true;
     switch (compression) {
-        case XX_JFFS2_OLD_COMPR_ZERO:
-            xx_mem_zero(output, output_size);
-            return true;
+        case XX_JFFS2_OLD_COMPR_ZERO: xx_mem_zero(output, output_size); return true;
         case XX_JFFS2_OLD_COMPR_NONE:
         case XX_JFFS2_OLD_COMPR_COPY:
             /* COPY is "compression was not worth it": stored verbatim, the
@@ -629,26 +613,18 @@ static bool xx_jffs2_old_decompress(uint8_t compression, const uint8_t *input,
             if (!input || input_size != output_size) return false;
             xx_mem_copy(output, input, output_size);
             return true;
-        case XX_JFFS2_OLD_COMPR_RTIME:
-            return xx_jffs2_old_rtime_decompress(input, input_size, output,
-                                             output_size);
-        case XX_JFFS2_OLD_COMPR_RUBINMIPS:
-            return xx_jffs2_old_rubinmips_decompress(input, input_size, output,
-                                                 output_size);
-        case XX_JFFS2_OLD_COMPR_DYNRUBIN:
-            return xx_jffs2_old_dynrubin_decompress(input, input_size, output,
-                                                output_size);
+        case XX_JFFS2_OLD_COMPR_RTIME: return xx_jffs2_old_rtime_decompress(input, input_size, output, output_size);
+        case XX_JFFS2_OLD_COMPR_RUBINMIPS: return xx_jffs2_old_rubinmips_decompress(input, input_size, output, output_size);
+        case XX_JFFS2_OLD_COMPR_DYNRUBIN: return xx_jffs2_old_dynrubin_decompress(input, input_size, output, output_size);
         case XX_JFFS2_OLD_COMPR_ZLIB:
             if (!input) return false;
-            if (!xx_zlib_stream_decode_memory(input, input_size, output,
-                                              output_size, &written)) {
+            if (!xx_zlib_stream_decode_memory(input, input_size, output, output_size, &written)) {
                 return false;
             }
             return written == output_size;
         case XX_JFFS2_OLD_COMPR_LZO:
             if (!input) return false;
-            if (!xx_lzo1x_decompress(input, input_size, output, output_size,
-                                     &written)) {
+            if (!xx_lzo1x_decompress(input, input_size, output, output_size, &written)) {
                 return false;
             }
             return written == output_size;
@@ -657,22 +633,19 @@ static bool xx_jffs2_old_decompress(uint8_t compression, const uint8_t *input,
              * LZMA stream with no property byte and no size field, encoded
              * with lc=0, lp=0, pb=0; the properties are synthesised here.
              * Untested against a real image - no sample was available. */
-            static const uint8_t props[5] = {0x00U, 0x00U, 0x20U, 0x00U,
-                                             0x00U};
+            static const uint8_t props[5] = {0x00U, 0x00U, 0x20U, 0x00U, 0x00U};
             if (!input) return false;
-            if (!xx_lzma_decompress_memory(input, input_size, props,
-                                           sizeof(props), (int64_t)output_size,
-                                           output, output_size, &written)) {
+            if (!xx_lzma_decompress_memory(input, input_size, props, sizeof(props), (int64_t)output_size, output, output_size, &written)) {
                 return false;
             }
             return written == output_size;
         }
-        default:
-            return false;
+        default: return false;
     }
 }
 
-const char *xx_jffs2_old_compression_to_string(uint32_t compression) {
+const char *xx_jffs2_old_compression_to_string(uint32_t compression)
+{
     switch (compression) {
         case XX_JFFS2_OLD_COMPR_NONE: return "NONE";
         case XX_JFFS2_OLD_COMPR_ZERO: return "ZERO";
@@ -689,7 +662,8 @@ const char *xx_jffs2_old_compression_to_string(uint32_t compression) {
 
 /* ----------------------------------------------------------- storage --- */
 
-static void xx_jffs2_old_private_cleanup(xx_jffs2_old_private *parsed) {
+static void xx_jffs2_old_private_cleanup(xx_jffs2_old_private *parsed)
+{
     size_t index;
     if (!parsed) return;
     for (index = 0U; index < parsed->dirent_count; ++index) {
@@ -711,8 +685,8 @@ static void xx_jffs2_old_private_cleanup(xx_jffs2_old_private *parsed) {
     parsed->archive_end = -1;
 }
 
-static bool xx_jffs2_old_grow(void **array, size_t *capacity, size_t count,
-                          size_t element_size, size_t limit) {
+static bool xx_jffs2_old_grow(void **array, size_t *capacity, size_t count, size_t element_size, size_t limit)
+{
     void *grown;
     size_t wanted;
     if (count < *capacity) return true;
@@ -727,12 +701,10 @@ static bool xx_jffs2_old_grow(void **array, size_t *capacity, size_t count,
     return true;
 }
 
-static bool xx_jffs2_old_append_dirent(xx_jffs2_old_private *parsed,
-                                   xx_jffs2_old_dirent *dirent) {
+static bool xx_jffs2_old_append_dirent(xx_jffs2_old_private *parsed, xx_jffs2_old_dirent *dirent)
+{
     if (!parsed || !dirent || !dirent->name) return false;
-    if (!xx_jffs2_old_grow((void **)&parsed->dirents, &parsed->dirent_capacity,
-                       parsed->dirent_count, sizeof(*parsed->dirents),
-                       XX_JFFS2_OLD_MAX_DIRENTS)) {
+    if (!xx_jffs2_old_grow((void **)&parsed->dirents, &parsed->dirent_capacity, parsed->dirent_count, sizeof(*parsed->dirents), XX_JFFS2_OLD_MAX_DIRENTS)) {
         return false;
     }
     parsed->dirents[parsed->dirent_count++] = *dirent;
@@ -740,24 +712,20 @@ static bool xx_jffs2_old_append_dirent(xx_jffs2_old_private *parsed,
     return true;
 }
 
-static bool xx_jffs2_old_append_fragment(xx_jffs2_old_private *parsed,
-                                     const xx_jffs2_old_fragment *fragment) {
+static bool xx_jffs2_old_append_fragment(xx_jffs2_old_private *parsed, const xx_jffs2_old_fragment *fragment)
+{
     if (!parsed || !fragment) return false;
-    if (!xx_jffs2_old_grow((void **)&parsed->fragments, &parsed->fragment_capacity,
-                       parsed->fragment_count, sizeof(*parsed->fragments),
-                       XX_JFFS2_OLD_MAX_FRAGMENTS)) {
+    if (!xx_jffs2_old_grow((void **)&parsed->fragments, &parsed->fragment_capacity, parsed->fragment_count, sizeof(*parsed->fragments), XX_JFFS2_OLD_MAX_FRAGMENTS)) {
         return false;
     }
     parsed->fragments[parsed->fragment_count++] = *fragment;
     return true;
 }
 
-static bool xx_jffs2_old_append_entry(xx_jffs2_old_private *parsed,
-                                  xx_jffs2_old_entry *entry) {
+static bool xx_jffs2_old_append_entry(xx_jffs2_old_private *parsed, xx_jffs2_old_entry *entry)
+{
     if (!parsed || !entry || !entry->name) return false;
-    if (!xx_jffs2_old_grow((void **)&parsed->entries, &parsed->capacity,
-                       parsed->count, sizeof(*parsed->entries),
-                       XX_JFFS2_OLD_MAX_ENTRIES)) {
+    if (!xx_jffs2_old_grow((void **)&parsed->entries, &parsed->capacity, parsed->count, sizeof(*parsed->entries), XX_JFFS2_OLD_MAX_ENTRIES)) {
         return false;
     }
     parsed->entries[parsed->count++] = *entry;
@@ -770,7 +738,8 @@ static bool xx_jffs2_old_append_entry(xx_jffs2_old_private *parsed,
 /* Parse-time check. A dirent name is a single path component, so only an
  * empty name, a control byte, an embedded separator and the two dot names
  * make it implausible - JFFS2 stores neither "." nor "..". */
-static bool xx_jffs2_old_plausible_name(const char *name, size_t length) {
+static bool xx_jffs2_old_plausible_name(const char *name, size_t length)
+{
     size_t index;
     if (!name || length == 0U || length > XX_JFFS2_OLD_MAX_NAME) return false;
     for (index = 0U; index < length; ++index) {
@@ -782,7 +751,8 @@ static bool xx_jffs2_old_plausible_name(const char *name, size_t length) {
     return true;
 }
 
-static char xx_jffs2_old_upper(char ch) {
+static char xx_jffs2_old_upper(char ch)
+{
     return (ch >= 'a' && ch <= 'z') ? (char)(ch - 'a' + 'A') : ch;
 }
 
@@ -790,10 +760,9 @@ static char xx_jffs2_old_upper(char ch) {
  * Windows device name - CON, PRN, AUX, NUL, COM0-9, LPT0-9, CONIN$, CONOUT$,
  * CLOCK$ - in any case, with or without an extension, trailing spaces on
  * the stem ignored. */
-static bool xx_jffs2_old_is_device_name(const char *component, size_t length) {
-    static const char *const devices[] = {"CON",    "PRN",     "AUX",
-                                          "NUL",    "CONIN$",  "CONOUT$",
-                                          "CLOCK$"};
+static bool xx_jffs2_old_is_device_name(const char *component, size_t length)
+{
+    static const char *const devices[] = {"CON", "PRN", "AUX", "NUL", "CONIN$", "CONOUT$", "CLOCK$"};
     size_t stem = 0U;
     size_t index;
     while (stem < length && component[stem] != '.') ++stem;
@@ -801,8 +770,7 @@ static bool xx_jffs2_old_is_device_name(const char *component, size_t length) {
     for (index = 0U; index < sizeof(devices) / sizeof(devices[0]); ++index) {
         const char *word = devices[index];
         size_t position = 0U;
-        while (position < stem && word[position] &&
-               xx_jffs2_old_upper(component[position]) == word[position]) {
+        while (position < stem && word[position] && xx_jffs2_old_upper(component[position]) == word[position]) {
             ++position;
         }
         if (position == stem && word[position] == '\0') return true;
@@ -811,8 +779,7 @@ static bool xx_jffs2_old_is_device_name(const char *component, size_t length) {
         char a = xx_jffs2_old_upper(component[0]);
         char b = xx_jffs2_old_upper(component[1]);
         char c = xx_jffs2_old_upper(component[2]);
-        if ((a == 'C' && b == 'O' && c == 'M') ||
-            (a == 'L' && b == 'P' && c == 'T')) {
+        if ((a == 'C' && b == 'O' && c == 'M') || (a == 'L' && b == 'P' && c == 'T')) {
             return true;
         }
     }
@@ -822,24 +789,21 @@ static bool xx_jffs2_old_is_device_name(const char *component, size_t length) {
 /* Extraction-time check, deliberately stricter: the path must stay inside
  * the destination tree on every host this library builds for, so reserved
  * Windows punctuation is rejected even though JFFS2 may legally carry it. */
-static bool xx_jffs2_old_safe_name(const char *name) {
+static bool xx_jffs2_old_safe_name(const char *name)
+{
     const char *component;
     const char *cursor;
     if (!name || !name[0] || name[0] == '/' || name[0] == '\\') return false;
     component = name;
     for (cursor = name;; ++cursor) {
         unsigned char ch = (unsigned char)*cursor;
-        if (ch == ':' || ch == '<' || ch == '>' || ch == '"' || ch == '|' ||
-            ch == '?' || ch == '*' || (ch != 0U && ch < 32U)) {
+        if (ch == ':' || ch == '<' || ch == '>' || ch == '"' || ch == '|' || ch == '?' || ch == '*' || (ch != 0U && ch < 32U)) {
             return false;
         }
         if (ch == '/' || ch == '\\' || ch == 0U) {
             size_t length = (size_t)(cursor - component);
-            if (length == 0U || (length == 1U && component[0] == '.') ||
-                (length == 2U && component[0] == '.' && component[1] == '.') ||
-                component[length - 1U] == ' ' ||
-                component[length - 1U] == '.' ||
-                xx_jffs2_old_is_device_name(component, length)) {
+            if (length == 0U || (length == 1U && component[0] == '.') || (length == 2U && component[0] == '.' && component[1] == '.') || component[length - 1U] == ' ' ||
+                component[length - 1U] == '.' || xx_jffs2_old_is_device_name(component, length)) {
                 return false;
             }
             if (ch == 0U) return true;
@@ -848,17 +812,15 @@ static bool xx_jffs2_old_safe_name(const char *name) {
     }
 }
 
-static char *xx_jffs2_old_join_name(const char *prefix, const char *name) {
+static char *xx_jffs2_old_join_name(const char *prefix, const char *name)
+{
     size_t prefix_size = prefix ? xx_str_len(prefix) : 0U;
     size_t name_size = name ? xx_str_len(name) : 0U;
     char *combined;
-    if (!name || name_size == 0U || prefix_size >= XX_JFFS2_OLD_MAX_PATH ||
-        name_size > XX_JFFS2_OLD_MAX_PATH - prefix_size -
-                        (prefix_size != 0U ? 1U : 0U)) {
+    if (!name || name_size == 0U || prefix_size >= XX_JFFS2_OLD_MAX_PATH || name_size > XX_JFFS2_OLD_MAX_PATH - prefix_size - (prefix_size != 0U ? 1U : 0U)) {
         return NULL;
     }
-    combined = (char *)xx_mem_alloc(prefix_size + name_size +
-                                    (prefix_size != 0U ? 2U : 1U));
+    combined = (char *)xx_mem_alloc(prefix_size + name_size + (prefix_size != 0U ? 2U : 1U));
     if (!combined) return NULL;
     if (prefix_size != 0U) {
         xx_mem_copy(combined, prefix, prefix_size);
@@ -875,9 +837,8 @@ static char *xx_jffs2_old_join_name(const char *prefix, const char *name) {
 /* -------------------------------------------------------- node scanner --- */
 
 /* Read one DIRENT node that has already passed the header check. */
-static bool xx_jffs2_old_read_dirent(xx_jffs2_old_private *parsed,
-                                 xx_jffs2_old_window *window, int64_t offset,
-                                 uint32_t totlen) {
+static bool xx_jffs2_old_read_dirent(xx_jffs2_old_private *parsed, xx_jffs2_old_window *window, int64_t offset, uint32_t totlen)
+{
     /* The fixed part is copied out rather than used in place: reading the
      * name needs a second window fetch, and that may reposition the window
      * and invalidate the pointer this one returned. */
@@ -892,22 +853,16 @@ static bool xx_jffs2_old_read_dirent(xx_jffs2_old_private *parsed,
     fetched = xx_jffs2_old_window_get(window, offset, XX_JFFS2_OLD_DIRENT_NODE_SIZE);
     if (!fetched) return false;
     xx_mem_copy(header, fetched, XX_JFFS2_OLD_DIRENT_NODE_SIZE);
-    if (xx_jffs2_old_crc(header, XX_JFFS2_OLD_DIRENT_CRC_SIZE) !=
-        xx_data_get_u32(header, XX_JFFS2_OLD_DIRENT_NODE_SIZE, 32U,
-                        parsed->big_endian)) {
+    if (xx_jffs2_old_crc(header, XX_JFFS2_OLD_DIRENT_CRC_SIZE) != xx_data_get_u32(header, XX_JFFS2_OLD_DIRENT_NODE_SIZE, 32U, parsed->big_endian)) {
         return false;
     }
     nsize = xx_data_get_u8(header, XX_JFFS2_OLD_DIRENT_NODE_SIZE, 28U);
     if (nsize == 0U || totlen - XX_JFFS2_OLD_DIRENT_NODE_SIZE < nsize) return false;
     xx_mem_zero(&dirent, sizeof(dirent));
-    dirent.pino = xx_data_get_u32(header, XX_JFFS2_OLD_DIRENT_NODE_SIZE, 12U,
-                                  parsed->big_endian);
-    dirent.version = xx_data_get_u32(header, XX_JFFS2_OLD_DIRENT_NODE_SIZE, 16U,
-                                     parsed->big_endian);
-    dirent.ino = xx_data_get_u32(header, XX_JFFS2_OLD_DIRENT_NODE_SIZE, 20U,
-                                 parsed->big_endian);
-    dirent.mctime = xx_data_get_u32(header, XX_JFFS2_OLD_DIRENT_NODE_SIZE, 24U,
-                                    parsed->big_endian);
+    dirent.pino = xx_data_get_u32(header, XX_JFFS2_OLD_DIRENT_NODE_SIZE, 12U, parsed->big_endian);
+    dirent.version = xx_data_get_u32(header, XX_JFFS2_OLD_DIRENT_NODE_SIZE, 16U, parsed->big_endian);
+    dirent.ino = xx_data_get_u32(header, XX_JFFS2_OLD_DIRENT_NODE_SIZE, 20U, parsed->big_endian);
+    dirent.mctime = xx_data_get_u32(header, XX_JFFS2_OLD_DIRENT_NODE_SIZE, 24U, parsed->big_endian);
     dirent.type = xx_data_get_u8(header, XX_JFFS2_OLD_DIRENT_NODE_SIZE, 29U);
     dirent.node_offset = offset;
     if (!xx_jffs2_old_add(offset, XX_JFFS2_OLD_DIRENT_NODE_SIZE, &name_offset)) {
@@ -915,9 +870,7 @@ static bool xx_jffs2_old_read_dirent(xx_jffs2_old_private *parsed,
     }
     raw_name = xx_jffs2_old_window_get(window, name_offset, nsize);
     if (!raw_name) return false;
-    if (xx_jffs2_old_crc(raw_name, nsize) !=
-        xx_data_get_u32(header, XX_JFFS2_OLD_DIRENT_NODE_SIZE, 36U,
-                        parsed->big_endian)) {
+    if (xx_jffs2_old_crc(raw_name, nsize) != xx_data_get_u32(header, XX_JFFS2_OLD_DIRENT_NODE_SIZE, 36U, parsed->big_endian)) {
         return false;
     }
     name = (char *)xx_mem_alloc((size_t)nsize + 1U);
@@ -937,47 +890,33 @@ static bool xx_jffs2_old_read_dirent(xx_jffs2_old_private *parsed,
 }
 
 /* Read one INODE node that has already passed the header check. */
-static bool xx_jffs2_old_read_inode(xx_jffs2_old_private *parsed,
-                                xx_jffs2_old_window *window, int64_t offset,
-                                uint32_t totlen) {
+static bool xx_jffs2_old_read_inode(xx_jffs2_old_private *parsed, xx_jffs2_old_window *window, int64_t offset, uint32_t totlen)
+{
     const uint8_t *header;
     xx_jffs2_old_fragment fragment;
     if (totlen < XX_JFFS2_OLD_INODE_NODE_SIZE) return false;
     header = xx_jffs2_old_window_get(window, offset, XX_JFFS2_OLD_INODE_NODE_SIZE);
     if (!header) return false;
-    if (xx_jffs2_old_crc(header, XX_JFFS2_OLD_INODE_CRC_SIZE) !=
-        xx_data_get_u32(header, XX_JFFS2_OLD_INODE_NODE_SIZE, 64U,
-                        parsed->big_endian)) {
+    if (xx_jffs2_old_crc(header, XX_JFFS2_OLD_INODE_CRC_SIZE) != xx_data_get_u32(header, XX_JFFS2_OLD_INODE_NODE_SIZE, 64U, parsed->big_endian)) {
         return false;
     }
     xx_mem_zero(&fragment, sizeof(fragment));
-    fragment.ino = xx_data_get_u32(header, XX_JFFS2_OLD_INODE_NODE_SIZE, 12U,
-                                   parsed->big_endian);
-    fragment.version = xx_data_get_u32(header, XX_JFFS2_OLD_INODE_NODE_SIZE, 16U,
-                                       parsed->big_endian);
-    fragment.mode = xx_data_get_u32(header, XX_JFFS2_OLD_INODE_NODE_SIZE, 20U,
-                                    parsed->big_endian);
-    fragment.isize = xx_data_get_u32(header, XX_JFFS2_OLD_INODE_NODE_SIZE, 28U,
-                                     parsed->big_endian);
-    fragment.mtime = xx_data_get_u32(header, XX_JFFS2_OLD_INODE_NODE_SIZE, 36U,
-                                     parsed->big_endian);
-    fragment.offset = xx_data_get_u32(header, XX_JFFS2_OLD_INODE_NODE_SIZE, 44U,
-                                      parsed->big_endian);
-    fragment.csize = xx_data_get_u32(header, XX_JFFS2_OLD_INODE_NODE_SIZE, 48U,
-                                     parsed->big_endian);
-    fragment.dsize = xx_data_get_u32(header, XX_JFFS2_OLD_INODE_NODE_SIZE, 52U,
-                                     parsed->big_endian);
+    fragment.ino = xx_data_get_u32(header, XX_JFFS2_OLD_INODE_NODE_SIZE, 12U, parsed->big_endian);
+    fragment.version = xx_data_get_u32(header, XX_JFFS2_OLD_INODE_NODE_SIZE, 16U, parsed->big_endian);
+    fragment.mode = xx_data_get_u32(header, XX_JFFS2_OLD_INODE_NODE_SIZE, 20U, parsed->big_endian);
+    fragment.isize = xx_data_get_u32(header, XX_JFFS2_OLD_INODE_NODE_SIZE, 28U, parsed->big_endian);
+    fragment.mtime = xx_data_get_u32(header, XX_JFFS2_OLD_INODE_NODE_SIZE, 36U, parsed->big_endian);
+    fragment.offset = xx_data_get_u32(header, XX_JFFS2_OLD_INODE_NODE_SIZE, 44U, parsed->big_endian);
+    fragment.csize = xx_data_get_u32(header, XX_JFFS2_OLD_INODE_NODE_SIZE, 48U, parsed->big_endian);
+    fragment.dsize = xx_data_get_u32(header, XX_JFFS2_OLD_INODE_NODE_SIZE, 52U, parsed->big_endian);
     fragment.compr = xx_data_get_u8(header, XX_JFFS2_OLD_INODE_NODE_SIZE, 56U);
-    fragment.data_crc = xx_data_get_u32(header, XX_JFFS2_OLD_INODE_NODE_SIZE, 60U,
-                                        parsed->big_endian);
+    fragment.data_crc = xx_data_get_u32(header, XX_JFFS2_OLD_INODE_NODE_SIZE, 60U, parsed->big_endian);
     /* The payload must fit inside the node the header declares. */
     if (totlen - XX_JFFS2_OLD_INODE_NODE_SIZE < fragment.csize) return false;
-    if (!xx_jffs2_old_add(offset, XX_JFFS2_OLD_INODE_NODE_SIZE,
-                      &fragment.data_offset)) {
+    if (!xx_jffs2_old_add(offset, XX_JFFS2_OLD_INODE_NODE_SIZE, &fragment.data_offset)) {
         return false;
     }
-    if (!xx_jffs2_old_range_within(parsed->input_size, fragment.data_offset,
-                               fragment.csize)) {
+    if (!xx_jffs2_old_range_within(parsed->input_size, fragment.data_offset, fragment.csize)) {
         return false;
     }
     if (fragment.ino == 0U) return false;
@@ -995,15 +934,14 @@ static bool xx_jffs2_old_read_inode(xx_jffs2_old_private *parsed,
  * validated, its endianness is locked for the rest of the image: accepting
  * either per node would let random data half-match and produce nonsense
  * records. */
-static bool xx_jffs2_old_scan(Abstractformat *self, xx_jffs2_old_private *parsed,
-                          xx_pd_struct *pd) {
+static bool xx_jffs2_old_scan(Abstractformat *self, xx_jffs2_old_private *parsed, xx_pd_struct *pd)
+{
     xx_jffs2_old_window window;
     int64_t offset = self->base_address;
     int64_t last_end = self->base_address;
     bool endian_known = false;
     xx_jffs2_old_window_init(&window, self->device, parsed->input_size);
-    while (offset <= parsed->input_size -
-                         (int64_t)XX_JFFS2_OLD_UNKNOWN_NODE_SIZE) {
+    while (offset <= parsed->input_size - (int64_t)XX_JFFS2_OLD_UNKNOWN_NODE_SIZE) {
         const uint8_t *header;
         uint32_t totlen;
         uint16_t nodetype;
@@ -1014,39 +952,29 @@ static bool xx_jffs2_old_scan(Abstractformat *self, xx_jffs2_old_private *parsed
 
         if (pd && xx_pd_is_stopped(pd)) return false;
         if (parsed->node_count >= XX_JFFS2_OLD_MAX_NODES) break;
-        header = xx_jffs2_old_window_get(&window, offset,
-                                     XX_JFFS2_OLD_UNKNOWN_NODE_SIZE);
+        header = xx_jffs2_old_window_get(&window, offset, XX_JFFS2_OLD_UNKNOWN_NODE_SIZE);
         if (!header) break;
 
         /* Endianness is not recorded anywhere, so it is inferred from the
          * magic and then confirmed by the header CRC. */
         if (endian_known) {
             big_endian = parsed->big_endian;
-            if (xx_data_get_u16(header, XX_JFFS2_OLD_UNKNOWN_NODE_SIZE, 0U,
-                                big_endian) != XX_JFFS2_OLD_MAGIC) {
+            if (xx_data_get_u16(header, XX_JFFS2_OLD_UNKNOWN_NODE_SIZE, 0U, big_endian) != XX_JFFS2_OLD_MAGIC) {
                 goto resync;
             }
-        } else if (xx_data_get_u16(header, XX_JFFS2_OLD_UNKNOWN_NODE_SIZE, 0U,
-                                   false) == XX_JFFS2_OLD_MAGIC) {
+        } else if (xx_data_get_u16(header, XX_JFFS2_OLD_UNKNOWN_NODE_SIZE, 0U, false) == XX_JFFS2_OLD_MAGIC) {
             big_endian = false;
-        } else if (xx_data_get_u16(header, XX_JFFS2_OLD_UNKNOWN_NODE_SIZE, 0U,
-                                   true) == XX_JFFS2_OLD_MAGIC) {
+        } else if (xx_data_get_u16(header, XX_JFFS2_OLD_UNKNOWN_NODE_SIZE, 0U, true) == XX_JFFS2_OLD_MAGIC) {
             big_endian = true;
         } else {
             goto resync;
         }
-        if (xx_jffs2_old_crc(header, XX_JFFS2_OLD_HDR_CRC_SIZE) !=
-            xx_data_get_u32(header, XX_JFFS2_OLD_UNKNOWN_NODE_SIZE, 8U,
-                            big_endian)) {
+        if (xx_jffs2_old_crc(header, XX_JFFS2_OLD_HDR_CRC_SIZE) != xx_data_get_u32(header, XX_JFFS2_OLD_UNKNOWN_NODE_SIZE, 8U, big_endian)) {
             goto resync;
         }
-        nodetype = xx_data_get_u16(header, XX_JFFS2_OLD_UNKNOWN_NODE_SIZE, 2U,
-                                   big_endian);
-        totlen = xx_data_get_u32(header, XX_JFFS2_OLD_UNKNOWN_NODE_SIZE, 4U,
-                                 big_endian);
-        if (totlen < XX_JFFS2_OLD_UNKNOWN_NODE_SIZE ||
-            !xx_jffs2_old_add(offset, totlen, &node_end) ||
-            node_end > parsed->input_size) {
+        nodetype = xx_data_get_u16(header, XX_JFFS2_OLD_UNKNOWN_NODE_SIZE, 2U, big_endian);
+        totlen = xx_data_get_u32(header, XX_JFFS2_OLD_UNKNOWN_NODE_SIZE, 4U, big_endian);
+        if (totlen < XX_JFFS2_OLD_UNKNOWN_NODE_SIZE || !xx_jffs2_old_add(offset, totlen, &node_end) || node_end > parsed->input_size) {
             goto resync;
         }
         if (!endian_known) {
@@ -1083,8 +1011,8 @@ static bool xx_jffs2_old_scan(Abstractformat *self, xx_jffs2_old_private *parsed
 /* ------------------------------------------------- content replay --- */
 
 /* Grow a zero-filled reconstruction buffer to at least `wanted` bytes. */
-static bool xx_jffs2_old_ensure(uint8_t **buffer, size_t *capacity,
-                            size_t wanted) {
+static bool xx_jffs2_old_ensure(uint8_t **buffer, size_t *capacity, size_t wanted)
+{
     uint8_t *grown;
     size_t target;
     if (wanted <= *capacity) return true;
@@ -1112,10 +1040,9 @@ static bool xx_jffs2_old_ensure(uint8_t **buffer, size_t *capacity,
  * offset, so a later node both overwrites bytes and can shorten the file.
  * Regions no node ever covered read as zero, which is how JFFS2 represents
  * a hole. The caller owns *out_data. */
-static bool xx_jffs2_old_reconstruct(xx_io_device *device,
-                                 const xx_jffs2_old_private *parsed, uint32_t ino,
-                                 uint64_t size_limit, uint8_t **out_data,
-                                 size_t *out_size, xx_pd_struct *pd) {
+static bool xx_jffs2_old_reconstruct(xx_io_device *device, const xx_jffs2_old_private *parsed, uint32_t ino, uint64_t size_limit, uint8_t **out_data, size_t *out_size,
+                                     xx_pd_struct *pd)
+{
     xx_jffs2_old_window window;
     uint8_t *buffer = NULL;
     uint8_t *payload = NULL;
@@ -1129,8 +1056,7 @@ static bool xx_jffs2_old_reconstruct(xx_io_device *device,
     *out_size = 0U;
     if (size_limit > XX_JFFS2_OLD_MAX_FILE_SIZE) size_limit = XX_JFFS2_OLD_MAX_FILE_SIZE;
     xx_jffs2_old_window_init(&window, device, parsed->input_size);
-    index = xx_jffs2_old_fragment_lower_bound(parsed->fragments,
-                                          parsed->fragment_count, ino);
+    index = xx_jffs2_old_fragment_lower_bound(parsed->fragments, parsed->fragment_count, ino);
     for (; index < parsed->fragment_count; ++index) {
         const xx_jffs2_old_fragment *fragment = &parsed->fragments[index];
         uint64_t end;
@@ -1140,8 +1066,7 @@ static bool xx_jffs2_old_reconstruct(xx_io_device *device,
         found = true;
         if (pd && xx_pd_is_stopped(pd)) goto fail;
         end = (uint64_t)fragment->offset + (uint64_t)fragment->dsize;
-        wanted = end > (uint64_t)fragment->isize ? end
-                                                 : (uint64_t)fragment->isize;
+        wanted = end > (uint64_t)fragment->isize ? end : (uint64_t)fragment->isize;
         if (wanted > size_limit) goto fail;
         if (!xx_jffs2_old_ensure(&buffer, &capacity, (size_t)wanted)) goto fail;
         /* A node that shortens the file discards the tail; if a later node
@@ -1155,41 +1080,32 @@ static bool xx_jffs2_old_reconstruct(xx_io_device *device,
             stored = NULL;
             if (fragment->csize != 0U) {
                 if (fragment->csize <= XX_JFFS2_OLD_WINDOW_SIZE) {
-                    stored = xx_jffs2_old_window_get(&window, fragment->data_offset,
-                                                 fragment->csize);
+                    stored = xx_jffs2_old_window_get(&window, fragment->data_offset, fragment->csize);
                 } else {
                     /* Payloads larger than one window are read into their
                      * own buffer; a node this big is unusual but legal. */
                     if (fragment->csize > XX_JFFS2_OLD_MAX_FILE_SIZE) goto fail;
                     if (fragment->csize > payload_capacity) {
-                        uint8_t *grown = (uint8_t *)xx_mem_realloc(
-                            payload, fragment->csize);
+                        uint8_t *grown = (uint8_t *)xx_mem_realloc(payload, fragment->csize);
                         if (!grown) goto fail;
                         payload = grown;
                         payload_capacity = fragment->csize;
                     }
-                    if (!xx_jffs2_old_range_within(parsed->input_size,
-                                               fragment->data_offset,
-                                               fragment->csize) ||
-                        !xx_store_unpack_device_to_memory(
-                            device, fragment->data_offset, fragment->csize,
-                            payload, payload_capacity, NULL, pd)) {
+                    if (!xx_jffs2_old_range_within(parsed->input_size, fragment->data_offset, fragment->csize) ||
+                        !xx_store_unpack_device_to_memory(device, fragment->data_offset, fragment->csize, payload, payload_capacity, NULL, pd)) {
                         goto fail;
                     }
                     stored = payload;
                 }
                 if (!stored) goto fail;
                 /* data_crc covers the stored bytes, before decompression. */
-                if (xx_jffs2_old_crc(stored, fragment->csize) !=
-                    fragment->data_crc) {
+                if (xx_jffs2_old_crc(stored, fragment->csize) != fragment->data_crc) {
                     goto fail;
                 }
             } else if (fragment->compr != XX_JFFS2_OLD_COMPR_ZERO) {
                 goto fail;
             }
-            if (!xx_jffs2_old_decompress(fragment->compr, stored, fragment->csize,
-                                     buffer + fragment->offset,
-                                     fragment->dsize)) {
+            if (!xx_jffs2_old_decompress(fragment->compr, stored, fragment->csize, buffer + fragment->offset, fragment->dsize)) {
                 goto fail;
             }
         }
@@ -1209,11 +1125,9 @@ fail:
 
 /* The declared size of an inode is the isize of its highest-version node;
  * the fragment array is sorted, so that is the last of its run. */
-static uint64_t xx_jffs2_old_inode_size(const xx_jffs2_old_private *parsed,
-                                    uint32_t ino, uint32_t *out_mode,
-                                    uint32_t *out_mtime, bool *out_present) {
-    size_t index = xx_jffs2_old_fragment_lower_bound(parsed->fragments,
-                                                 parsed->fragment_count, ino);
+static uint64_t xx_jffs2_old_inode_size(const xx_jffs2_old_private *parsed, uint32_t ino, uint32_t *out_mode, uint32_t *out_mtime, bool *out_present)
+{
+    size_t index = xx_jffs2_old_fragment_lower_bound(parsed->fragments, parsed->fragment_count, ino);
     uint64_t size = 0U;
     bool present = false;
     for (; index < parsed->fragment_count; ++index) {
@@ -1234,7 +1148,8 @@ static uint64_t xx_jffs2_old_inode_size(const xx_jffs2_old_private *parsed,
  * names differing only in case (legal in JFFS2) cannot overwrite each other
  * on a case-insensitive host. A hash collision between genuinely different
  * names only costs a harmless rename. */
-static uint64_t xx_jffs2_old_fold_hash(const char *name) {
+static uint64_t xx_jffs2_old_fold_hash(const char *name)
+{
     uint64_t hash = UINT64_C(0xcbf29ce484222325);
     for (; *name; ++name) {
         hash ^= (uint8_t)xx_jffs2_old_upper(*name);
@@ -1243,7 +1158,8 @@ static uint64_t xx_jffs2_old_fold_hash(const char *name) {
     return hash | 1U;
 }
 
-static size_t xx_jffs2_old_hash_slot(size_t capacity, uint64_t key) {
+static size_t xx_jffs2_old_hash_slot(size_t capacity, uint64_t key)
+{
     key ^= key >> 31U;
     key *= UINT64_C(0x94d049bb133111eb);
     key ^= key >> 29U;
@@ -1251,7 +1167,8 @@ static size_t xx_jffs2_old_hash_slot(size_t capacity, uint64_t key) {
 }
 
 /* 1 = inserted, 0 = already present, -1 = allocation failure. */
-static int xx_jffs2_old_hash_insert(xx_jffs2_old_inoset *set, uint64_t key) {
+static int xx_jffs2_old_hash_insert(xx_jffs2_old_inoset *set, uint64_t key)
+{
     size_t slot;
     if ((set->count + 1U) * 4U >= set->capacity * 3U) {
         size_t capacity = set->capacity ? set->capacity * 2U : 256U;
@@ -1288,11 +1205,11 @@ static int xx_jffs2_old_hash_insert(xx_jffs2_old_inoset *set, uint64_t key) {
 /* Claim *name, or a "<name>_<n>" variant when a case-insensitively equal
  * path was claimed before. On success *name may be replaced by a new
  * allocation (the old one is freed). False means the member is dropped. */
-static bool xx_jffs2_old_claim_name(xx_jffs2_old_private *parsed, char **name) {
+static bool xx_jffs2_old_claim_name(xx_jffs2_old_private *parsed, char **name)
+{
     size_t length;
     unsigned attempt;
-    int status = xx_jffs2_old_hash_insert(&parsed->claimed,
-                                          xx_jffs2_old_fold_hash(*name));
+    int status = xx_jffs2_old_hash_insert(&parsed->claimed, xx_jffs2_old_fold_hash(*name));
     if (status != 0) return status > 0;
     length = xx_str_len(*name);
     if (length > XX_JFFS2_OLD_MAX_PATH) return false;
@@ -1313,8 +1230,7 @@ static bool xx_jffs2_old_claim_name(xx_jffs2_old_private *parsed, char **name) {
         candidate[position++] = '_';
         while (count != 0U) candidate[position++] = digits[--count];
         candidate[position] = '\0';
-        status = xx_jffs2_old_hash_insert(&parsed->claimed,
-                                          xx_jffs2_old_fold_hash(candidate));
+        status = xx_jffs2_old_hash_insert(&parsed->claimed, xx_jffs2_old_fold_hash(candidate));
         if (status > 0) {
             xx_str_free(*name);
             *name = candidate;
@@ -1328,14 +1244,11 @@ static bool xx_jffs2_old_claim_name(xx_jffs2_old_private *parsed, char **name) {
 
 /* ------------------------------------------------------- tree walker --- */
 
-static bool xx_jffs2_old_walk(xx_io_device *device, xx_jffs2_old_private *parsed,
-                          uint32_t pino, const char *prefix, unsigned depth,
-                          xx_pd_struct *pd);
+static bool xx_jffs2_old_walk(xx_io_device *device, xx_jffs2_old_private *parsed, uint32_t pino, const char *prefix, unsigned depth, xx_pd_struct *pd);
 
-static bool xx_jffs2_old_add_member(xx_io_device *device, xx_jffs2_old_private *parsed,
-                                const xx_jffs2_old_dirent *dirent,
-                                const char *prefix, unsigned depth,
-                                xx_pd_struct *pd) {
+static bool xx_jffs2_old_add_member(xx_io_device *device, xx_jffs2_old_private *parsed, const xx_jffs2_old_dirent *dirent, const char *prefix, unsigned depth,
+                                    xx_pd_struct *pd)
+{
     xx_jffs2_old_entry entry;
     char *full_name = xx_jffs2_old_join_name(prefix, dirent->name);
     bool present = false;
@@ -1351,8 +1264,7 @@ static bool xx_jffs2_old_add_member(xx_io_device *device, xx_jffs2_old_private *
     entry.ino = dirent->ino;
     entry.mtime = dirent->mctime;
     entry.header_offset = dirent->node_offset;
-    entry.size = xx_jffs2_old_inode_size(parsed, dirent->ino, &entry.mode,
-                                     &entry.mtime, &present);
+    entry.size = xx_jffs2_old_inode_size(parsed, dirent->ino, &entry.mode, &entry.mtime, &present);
     entry.has_data = present;
     if (dirent->type == XX_JFFS2_OLD_DT_DIR) {
         entry.is_folder = true;
@@ -1363,9 +1275,7 @@ static bool xx_jffs2_old_add_member(xx_io_device *device, xx_jffs2_old_private *
         entry.is_link = true;
         /* A symlink's target is the inode's contents, so it is resolved
          * now: it is at most a page and the listing wants to show it. */
-        if (xx_jffs2_old_reconstruct(device, parsed, dirent->ino,
-                                 XX_JFFS2_OLD_MAX_LINK_TARGET, &target,
-                                 &target_size, pd)) {
+        if (xx_jffs2_old_reconstruct(device, parsed, dirent->ino, XX_JFFS2_OLD_MAX_LINK_TARGET, &target, &target_size, pd)) {
             char *text = (char *)xx_mem_alloc(target_size + 1U);
             if (text) {
                 if (target_size != 0U) xx_mem_copy(text, target, target_size);
@@ -1394,8 +1304,7 @@ static bool xx_jffs2_old_add_member(xx_io_device *device, xx_jffs2_old_private *
             return false;
         }
         child_prefix = parsed->entries[parsed->count - 1U].name;
-        return xx_jffs2_old_walk(device, parsed, dirent->ino, child_prefix,
-                             depth + 1U, pd);
+        return xx_jffs2_old_walk(device, parsed, dirent->ino, child_prefix, depth + 1U, pd);
     }
     if (!xx_jffs2_old_append_entry(parsed, &entry)) {
         xx_str_free(full_name);
@@ -1409,30 +1318,24 @@ static bool xx_jffs2_old_add_member(xx_io_device *device, xx_jffs2_old_private *
  * so the entries of one directory form a contiguous run and, within it, the
  * revisions of one name form a contiguous sub-run whose last element is the
  * one that survives. An ino of zero there means the name was unlinked. */
-static bool xx_jffs2_old_walk(xx_io_device *device, xx_jffs2_old_private *parsed,
-                          uint32_t pino, const char *prefix, unsigned depth,
-                          xx_pd_struct *pd) {
+static bool xx_jffs2_old_walk(xx_io_device *device, xx_jffs2_old_private *parsed, uint32_t pino, const char *prefix, unsigned depth, xx_pd_struct *pd)
+{
     size_t index;
     if (depth > XX_JFFS2_OLD_MAX_DEPTH) return true;
     if (xx_jffs2_old_inoset_mark(&parsed->visited, pino)) return true;
-    index = xx_jffs2_old_dirent_lower_bound(parsed->dirents, parsed->dirent_count,
-                                        pino);
+    index = xx_jffs2_old_dirent_lower_bound(parsed->dirents, parsed->dirent_count, pino);
     while (index < parsed->dirent_count && parsed->dirents[index].pino == pino) {
         size_t last = index;
         if (pd && xx_pd_is_stopped(pd)) {
             xx_jffs2_old_inoset_unmark(&parsed->visited, pino);
             return false;
         }
-        while (last + 1U < parsed->dirent_count &&
-               parsed->dirents[last + 1U].pino == pino &&
-               xx_str_cmp(parsed->dirents[last + 1U].name,
-                          parsed->dirents[index].name) == 0) {
+        while (last + 1U < parsed->dirent_count && parsed->dirents[last + 1U].pino == pino &&
+               xx_str_cmp(parsed->dirents[last + 1U].name, parsed->dirents[index].name) == 0) {
             ++last;
         }
-        if (parsed->dirents[last].ino != 0U &&
-            parsed->count < XX_JFFS2_OLD_MAX_ENTRIES) {
-            if (!xx_jffs2_old_add_member(device, parsed, &parsed->dirents[last],
-                                     prefix, depth, pd)) {
+        if (parsed->dirents[last].ino != 0U && parsed->count < XX_JFFS2_OLD_MAX_ENTRIES) {
+            if (!xx_jffs2_old_add_member(device, parsed, &parsed->dirents[last], prefix, depth, pd)) {
                 xx_jffs2_old_inoset_unmark(&parsed->visited, pino);
                 return false;
             }
@@ -1448,12 +1351,10 @@ static bool xx_jffs2_old_walk(xx_io_device *device, xx_jffs2_old_private *parsed
 
 /* ------------------------------------------------------------- parse --- */
 
-static bool xx_jffs2_old_parse(Abstractformat *self, xx_jffs2_old_private *parsed,
-                           xx_pd_struct *pd) {
+static bool xx_jffs2_old_parse(Abstractformat *self, xx_jffs2_old_private *parsed, xx_pd_struct *pd)
+{
     int64_t total_size;
-    uint8_t scratch[sizeof(xx_jffs2_old_dirent) > sizeof(xx_jffs2_old_fragment)
-                        ? sizeof(xx_jffs2_old_dirent)
-                        : sizeof(xx_jffs2_old_fragment)];
+    uint8_t scratch[sizeof(xx_jffs2_old_dirent) > sizeof(xx_jffs2_old_fragment) ? sizeof(xx_jffs2_old_dirent) : sizeof(xx_jffs2_old_fragment)];
     /* Initialise before the guard clause: callers run the cleanup on their
      * stack copy whatever this returns, and cleaning an uninitialised one
      * would free indeterminate pointers. */
@@ -1462,13 +1363,11 @@ static bool xx_jffs2_old_parse(Abstractformat *self, xx_jffs2_old_private *parse
         parsed->input_size = -1;
         parsed->archive_end = -1;
     }
-    if (!self || !self->device || !parsed || self->base_address < 0 ||
-        (pd && xx_pd_is_stopped(pd))) {
+    if (!self || !self->device || !parsed || self->base_address < 0 || (pd && xx_pd_is_stopped(pd))) {
         return false;
     }
     total_size = xx_io_total_size(self->device);
-    if (!xx_jffs2_old_range_within(total_size, self->base_address,
-                               (int64_t)XX_JFFS2_OLD_UNKNOWN_NODE_SIZE)) {
+    if (!xx_jffs2_old_range_within(total_size, self->base_address, (int64_t)XX_JFFS2_OLD_UNKNOWN_NODE_SIZE)) {
         goto fail;
     }
     parsed->input_size = total_size;
@@ -1477,11 +1376,8 @@ static bool xx_jffs2_old_parse(Abstractformat *self, xx_jffs2_old_private *parse
      * one dirent so that random data carrying one lucky header does not
      * register as a filesystem. */
     if (parsed->dirent_count == 0U) goto fail;
-    xx_jffs2_old_sort(parsed->dirents, parsed->dirent_count,
-                  sizeof(*parsed->dirents), xx_jffs2_old_dirent_compare, scratch);
-    xx_jffs2_old_sort(parsed->fragments, parsed->fragment_count,
-                  sizeof(*parsed->fragments), xx_jffs2_old_fragment_compare,
-                  scratch);
+    xx_jffs2_old_sort(parsed->dirents, parsed->dirent_count, sizeof(*parsed->dirents), xx_jffs2_old_dirent_compare, scratch);
+    xx_jffs2_old_sort(parsed->fragments, parsed->fragment_count, sizeof(*parsed->fragments), xx_jffs2_old_fragment_compare, scratch);
     if (!xx_jffs2_old_walk(self->device, parsed, XX_JFFS2_OLD_ROOT_INO, "", 0U, pd)) {
         goto fail;
     }
@@ -1494,18 +1390,16 @@ fail:
 
 /* ------------------------------------------------------------ records --- */
 
-static bool xx_jffs2_old_copy_options(xx_list_s *destination,
-                                  const xx_list_s *source) {
+static bool xx_jffs2_old_copy_options(xx_list_s *destination, const xx_list_s *source)
+{
     size_t index;
     if (!destination || !source) return source == NULL;
     for (index = 0U; index < source->count; ++index) {
-        const xx_meta *item =
-            (const xx_meta *)xx_list_at((const xx_list_t *)source, index);
+        const xx_meta *item = (const xx_meta *)xx_list_at((const xx_list_t *)source, index);
         xx_meta copy;
         if (!item) continue;
         xx_meta_init(&copy, item->meta_id);
-        if (!xx_var_copy(&copy.var, &item->var) ||
-            !xx_list_append(destination, &copy)) {
+        if (!xx_var_copy(&copy.var, &item->var) || !xx_list_append(destination, &copy)) {
             xx_meta_cleanup(&copy);
             return false;
         }
@@ -1513,20 +1407,19 @@ static bool xx_jffs2_old_copy_options(xx_list_s *destination,
     return true;
 }
 
-static const xx_var *xx_jffs2_old_find_option(const xx_list_s *options,
-                                          uint32_t meta_id) {
+static const xx_var *xx_jffs2_old_find_option(const xx_list_s *options, uint32_t meta_id)
+{
     size_t index;
     if (!options) return NULL;
     for (index = 0U; index < options->count; ++index) {
-        const xx_meta *item =
-            (const xx_meta *)xx_list_at((const xx_list_t *)options, index);
+        const xx_meta *item = (const xx_meta *)xx_list_at((const xx_list_t *)options, index);
         if (item && item->meta_id == meta_id) return &item->var;
     }
     return NULL;
 }
 
-static bool xx_jffs2_old_populate_record(xx_archive_record *record,
-                                     const xx_jffs2_old_entry *entry) {
+static bool xx_jffs2_old_populate_record(xx_archive_record *record, const xx_jffs2_old_entry *entry)
+{
     if (!record || !entry || !entry->name) return false;
     xx_archive_record_cleanup(record);
     xx_archive_record_init(record);
@@ -1534,28 +1427,19 @@ static bool xx_jffs2_old_populate_record(xx_archive_record *record,
     record->header_size = 0;
     record->data_offset = -1;
     record->compressed_size = 0;
-    if (!xx_archive_record_set_original_name(record, entry->name) ||
-        !xx_archive_record_set_meta_u64(record, XX_META_ID_UNCOMPRESSED_SIZE,
-                                        entry->size) ||
-        !xx_archive_record_set_meta_u64(record, XX_META_ID_COMPRESSED_SIZE,
-                                        entry->size) ||
-        !xx_archive_record_set_meta_u64(record, XX_META_ID_ATTRIBUTES,
-                                        entry->mode) ||
-        !xx_archive_record_set_meta_u64(record, XX_META_ID_TIMESTAMP,
-                                        entry->mtime) ||
-        !xx_archive_record_set_meta_bool(record, XX_META_ID_IS_FOLDER,
-                                         entry->is_folder)) {
+    if (!xx_archive_record_set_original_name(record, entry->name) || !xx_archive_record_set_meta_u64(record, XX_META_ID_UNCOMPRESSED_SIZE, entry->size) ||
+        !xx_archive_record_set_meta_u64(record, XX_META_ID_COMPRESSED_SIZE, entry->size) || !xx_archive_record_set_meta_u64(record, XX_META_ID_ATTRIBUTES, entry->mode) ||
+        !xx_archive_record_set_meta_u64(record, XX_META_ID_TIMESTAMP, entry->mtime) || !xx_archive_record_set_meta_bool(record, XX_META_ID_IS_FOLDER, entry->is_folder)) {
         return false;
     }
-    if (entry->link_target &&
-        !xx_archive_record_set_meta_str(record, XX_META_ID_LINK_TARGET,
-                                        entry->link_target)) {
+    if (entry->link_target && !xx_archive_record_set_meta_str(record, XX_META_ID_LINK_TARGET, entry->link_target)) {
         return false;
     }
     return true;
 }
 
-static void xx_jffs2_old_archive_stream_free(void *pointer) {
+static void xx_jffs2_old_archive_stream_free(void *pointer)
+{
     xx_jffs2_old_archive_stream *stream = (xx_jffs2_old_archive_stream *)pointer;
     if (!stream) return;
     xx_jffs2_old_private_cleanup(&stream->parsed);
@@ -1564,7 +1448,8 @@ static void xx_jffs2_old_archive_stream_free(void *pointer) {
 
 /* ---------------------------------------------------------- lifetime --- */
 
-void xx_jffs2_old_init(xx_jffs2_old *jffs2_old, xx_io_device *dev, int64_t base_address) {
+void xx_jffs2_old_init(xx_jffs2_old *jffs2_old, xx_io_device *dev, int64_t base_address)
+{
     if (!jffs2_old) return;
     xx_mem_zero(jffs2_old, sizeof(*jffs2_old));
     xx_format_init(&jffs2_old->format, dev, base_address);
@@ -1578,29 +1463,25 @@ void xx_jffs2_old_init(xx_jffs2_old *jffs2_old, xx_io_device *dev, int64_t base_
     jffs2_old->format.check_is_valid = xx_jffs2_old_check_is_valid;
     jffs2_old->format.handle_base_info = xx_jffs2_old_handle_base_info;
     jffs2_old->format.get_format_size = xx_jffs2_old_get_format_size;
-    jffs2_old->format.get_number_of_archive_records =
-        xx_jffs2_old_get_number_of_archive_records;
-    jffs2_old->format.create_archive_records_reading =
-        xx_jffs2_old_create_archive_records_reading;
-    jffs2_old->format.get_current_archive_record =
-        xx_jffs2_old_get_current_archive_record;
-    jffs2_old->format.unpack_current_archive_record =
-        xx_jffs2_old_unpack_current_archive_record;
-    jffs2_old->format.archive_record_move_to_next =
-        xx_jffs2_old_archive_record_move_to_next;
-    jffs2_old->format.free_archive_records_reading =
-        xx_jffs2_old_free_archive_records_reading;
+    jffs2_old->format.get_number_of_archive_records = xx_jffs2_old_get_number_of_archive_records;
+    jffs2_old->format.create_archive_records_reading = xx_jffs2_old_create_archive_records_reading;
+    jffs2_old->format.get_current_archive_record = xx_jffs2_old_get_current_archive_record;
+    jffs2_old->format.unpack_current_archive_record = xx_jffs2_old_unpack_current_archive_record;
+    jffs2_old->format.archive_record_move_to_next = xx_jffs2_old_archive_record_move_to_next;
+    jffs2_old->format.free_archive_records_reading = xx_jffs2_old_free_archive_records_reading;
     jffs2_old->format.destroy = xx_jffs2_old_vtable_destroy;
     jffs2_old->archive_end = -1;
 }
 
-xx_jffs2_old *xx_jffs2_old_create(xx_io_device *dev, int64_t base_address) {
+xx_jffs2_old *xx_jffs2_old_create(xx_io_device *dev, int64_t base_address)
+{
     xx_jffs2_old *jffs2_old = (xx_jffs2_old *)xx_mem_alloc(sizeof(*jffs2_old));
     if (jffs2_old) xx_jffs2_old_init(jffs2_old, dev, base_address);
     return jffs2_old;
 }
 
-void xx_jffs2_old_destroy(xx_jffs2_old *jffs2_old) {
+void xx_jffs2_old_destroy(xx_jffs2_old *jffs2_old)
+{
     if (!jffs2_old) return;
     if (jffs2_old->internal) {
         xx_jffs2_old_private_cleanup((xx_jffs2_old_private *)jffs2_old->internal);
@@ -1610,11 +1491,13 @@ void xx_jffs2_old_destroy(xx_jffs2_old *jffs2_old) {
     xx_format_cleanup_extra_parameters(&jffs2_old->format);
 }
 
-static void xx_jffs2_old_vtable_destroy(Abstractformat *self) {
+static void xx_jffs2_old_vtable_destroy(Abstractformat *self)
+{
     xx_jffs2_old_destroy((xx_jffs2_old *)self);
 }
 
-void xx_jffs2_old_free(xx_jffs2_old *jffs2_old) {
+void xx_jffs2_old_free(xx_jffs2_old *jffs2_old)
+{
     if (!jffs2_old) return;
     xx_jffs2_old_destroy(jffs2_old);
     xx_mem_free(jffs2_old);
@@ -1622,14 +1505,16 @@ void xx_jffs2_old_free(xx_jffs2_old *jffs2_old) {
 
 /* -------------------------------------------------------------- vtable --- */
 
-bool xx_jffs2_old_check_is_valid(Abstractformat *self, xx_pd_struct *pd) {
+bool xx_jffs2_old_check_is_valid(Abstractformat *self, xx_pd_struct *pd)
+{
     xx_jffs2_old_private parsed;
     bool result = xx_jffs2_old_parse(self, &parsed, pd);
     xx_jffs2_old_private_cleanup(&parsed);
     return result;
 }
 
-bool xx_jffs2_old_handle_base_info(Abstractformat *self, xx_pd_struct *pd) {
+bool xx_jffs2_old_handle_base_info(Abstractformat *self, xx_pd_struct *pd)
+{
     xx_jffs2_old_private *parsed;
     xx_jffs2_old *jffs2_old = (xx_jffs2_old *)self;
     int64_t total_size;
@@ -1673,29 +1558,27 @@ bool xx_jffs2_old_handle_base_info(Abstractformat *self, xx_pd_struct *pd) {
     return true;
 }
 
-int64_t xx_jffs2_old_get_format_size(Abstractformat *self, xx_pd_struct *pd) {
-    if (!self ||
-        (!self->base_info_handled && !xx_format_handle_base_info(self, pd))) {
+int64_t xx_jffs2_old_get_format_size(Abstractformat *self, xx_pd_struct *pd)
+{
+    if (!self || (!self->base_info_handled && !xx_format_handle_base_info(self, pd))) {
         return -1;
     }
     return self->format_size;
 }
 
-uint64_t xx_jffs2_old_get_number_of_archive_records(Abstractformat *self,
-                                                xx_pd_struct *pd) {
-    if (!self ||
-        (!self->base_info_handled && !xx_format_handle_base_info(self, pd))) {
+uint64_t xx_jffs2_old_get_number_of_archive_records(Abstractformat *self, xx_pd_struct *pd)
+{
+    if (!self || (!self->base_info_handled && !xx_format_handle_base_info(self, pd))) {
         return 0U;
     }
     return ((xx_jffs2_old *)self)->number_of_records;
 }
 
-xx_archive_record_state *xx_jffs2_old_create_archive_records_reading(
-    Abstractformat *self, const xx_list_s *options, xx_pd_struct *pd) {
+xx_archive_record_state *xx_jffs2_old_create_archive_records_reading(Abstractformat *self, const xx_list_s *options, xx_pd_struct *pd)
+{
     xx_archive_record_state *state;
     xx_jffs2_old_archive_stream *stream;
-    if (!self || !self->device ||
-        (!self->base_info_handled && !xx_format_handle_base_info(self, pd))) {
+    if (!self || !self->device || (!self->base_info_handled && !xx_format_handle_base_info(self, pd))) {
         return NULL;
     }
     state = (xx_archive_record_state *)xx_mem_alloc(sizeof(*state));
@@ -1706,8 +1589,7 @@ xx_archive_record_state *xx_jffs2_old_create_archive_records_reading(
         return NULL;
     }
     xx_archive_record_state_init(state, self);
-    if (!xx_jffs2_old_copy_options(&state->options, options) ||
-        !xx_jffs2_old_parse(self, &stream->parsed, pd)) {
+    if (!xx_jffs2_old_copy_options(&state->options, options) || !xx_jffs2_old_parse(self, &stream->parsed, pd)) {
         xx_jffs2_old_archive_stream_free(stream);
         xx_archive_record_state_free(state);
         return NULL;
@@ -1716,28 +1598,22 @@ xx_archive_record_state *xx_jffs2_old_create_archive_records_reading(
     state->internal_state = stream;
     state->free_internal = xx_jffs2_old_archive_stream_free;
     state->total_records = (int64_t)stream->parsed.count;
-    if (stream->parsed.count != 0U &&
-        xx_jffs2_old_populate_record(&state->current_record,
-                                 &stream->parsed.entries[0])) {
+    if (stream->parsed.count != 0U && xx_jffs2_old_populate_record(&state->current_record, &stream->parsed.entries[0])) {
         state->has_record = true;
         state->current_index = 0;
     }
     return state;
 }
 
-const xx_archive_record *xx_jffs2_old_get_current_archive_record(
-    Abstractformat *self, xx_archive_record_state *state) {
-    return self && state && state->format == self && state->has_record
-               ? &state->current_record
-               : NULL;
+const xx_archive_record *xx_jffs2_old_get_current_archive_record(Abstractformat *self, xx_archive_record_state *state)
+{
+    return self && state && state->format == self && state->has_record ? &state->current_record : NULL;
 }
 
-bool xx_jffs2_old_archive_record_move_to_next(Abstractformat *self,
-                                          xx_archive_record_state *state,
-                                          xx_pd_struct *pd) {
+bool xx_jffs2_old_archive_record_move_to_next(Abstractformat *self, xx_archive_record_state *state, xx_pd_struct *pd)
+{
     xx_jffs2_old_archive_stream *stream;
-    if (!self || !state || state->format != self || !state->has_record ||
-        !state->internal_state || (pd && xx_pd_is_stopped(pd))) {
+    if (!self || !state || state->format != self || !state->has_record || !state->internal_state || (pd && xx_pd_is_stopped(pd))) {
         return false;
     }
     stream = (xx_jffs2_old_archive_stream *)state->internal_state;
@@ -1748,8 +1624,7 @@ bool xx_jffs2_old_archive_record_move_to_next(Abstractformat *self,
         state->has_record = false;
         return false;
     }
-    if (!xx_jffs2_old_populate_record(&state->current_record,
-                                  &stream->parsed.entries[stream->index])) {
+    if (!xx_jffs2_old_populate_record(&state->current_record, &stream->parsed.entries[stream->index])) {
         state->has_record = false;
         return false;
     }
@@ -1757,9 +1632,8 @@ bool xx_jffs2_old_archive_record_move_to_next(Abstractformat *self,
     return true;
 }
 
-bool xx_jffs2_old_unpack_current_archive_record(Abstractformat *self,
-                                            xx_archive_record_state *state,
-                                            xx_pd_struct *pd) {
+bool xx_jffs2_old_unpack_current_archive_record(Abstractformat *self, xx_archive_record_state *state, xx_pd_struct *pd)
+{
     xx_jffs2_old_archive_stream *stream;
     const xx_jffs2_old_entry *entry;
     const xx_var *option;
@@ -1771,9 +1645,7 @@ bool xx_jffs2_old_unpack_current_archive_record(Abstractformat *self,
     size_t data_size = 0U;
     bool result = false;
     bool created = false;
-    if (!self || !self->device || !state || state->format != self ||
-        !state->has_record || !state->internal_state ||
-        (pd && xx_pd_is_stopped(pd))) {
+    if (!self || !self->device || !state || state->format != self || !state->has_record || !state->internal_state || (pd && xx_pd_is_stopped(pd))) {
         return false;
     }
     stream = (xx_jffs2_old_archive_stream *)state->internal_state;
@@ -1790,25 +1662,20 @@ bool xx_jffs2_old_unpack_current_archive_record(Abstractformat *self,
         if (entry->is_folder || entry->is_special) return true;
         if (entry->is_link) return entry->link_target != NULL;
         if (!entry->has_data) return true;
-        if (!xx_jffs2_old_reconstruct(self->device, &stream->parsed, entry->ino,
-                                  XX_JFFS2_OLD_MAX_FILE_SIZE, &data, &data_size,
-                                  pd)) {
+        if (!xx_jffs2_old_reconstruct(self->device, &stream->parsed, entry->ino, XX_JFFS2_OLD_MAX_FILE_SIZE, &data, &data_size, pd)) {
             return false;
         }
         xx_mem_free(data);
         return true;
     }
-    if (option->type == XX_VAR_TYPE_STRING ||
-        option->type == XX_VAR_TYPE_STRING_VIEW) {
+    if (option->type == XX_VAR_TYPE_STRING || option->type == XX_VAR_TYPE_STRING_VIEW) {
         base = xx_var_get_str(option);
-    } else if (option->type == XX_VAR_TYPE_WSTRING ||
-               option->type == XX_VAR_TYPE_WSTRING_VIEW) {
+    } else if (option->type == XX_VAR_TYPE_WSTRING || option->type == XX_VAR_TYPE_WSTRING_VIEW) {
         owned_base = xx_str_unicode_to_utf8(xx_var_get_wstr(option));
         base = owned_base;
     }
     if (!base) goto cleanup;
-    if (base[0] && base[xx_str_len(base) - 1U] != '/' &&
-        base[xx_str_len(base) - 1U] != '\\') {
+    if (base[0] && base[xx_str_len(base) - 1U] != '/' && base[xx_str_len(base) - 1U] != '\\') {
         destination_path = xx_str_concat3(base, "/", entry->name);
     } else {
         destination_path = xx_str_concat(base, entry->name);
@@ -1834,10 +1701,7 @@ bool xx_jffs2_old_unpack_current_archive_record(Abstractformat *self,
         data = (uint8_t *)xx_mem_alloc(data_size == 0U ? 1U : data_size);
         if (!data) goto cleanup;
         if (data_size != 0U) xx_mem_copy(data, entry->link_target, data_size);
-    } else if (entry->has_data &&
-               !xx_jffs2_old_reconstruct(self->device, &stream->parsed, entry->ino,
-                                     XX_JFFS2_OLD_MAX_FILE_SIZE, &data, &data_size,
-                                     pd)) {
+    } else if (entry->has_data && !xx_jffs2_old_reconstruct(self->device, &stream->parsed, entry->ino, XX_JFFS2_OLD_MAX_FILE_SIZE, &data, &data_size, pd)) {
         /* A name whose inode nodes never reached the image is written as an
          * empty file rather than dropped; the name is real either way. */
         goto cleanup;
@@ -1845,8 +1709,7 @@ bool xx_jffs2_old_unpack_current_archive_record(Abstractformat *self,
     destination = xx_io_file_open(destination_path, "wb");
     created = destination != NULL;
     if (!destination) goto cleanup;
-    result = (data_size == 0U) ||
-             xx_store_unpack_memory_to_device(data, data_size, destination, pd);
+    result = (data_size == 0U) || xx_store_unpack_memory_to_device(data, data_size, destination, pd);
     xx_io_close(destination);
     destination = NULL;
     if (!result && created) xx_rt_remove(destination_path);
@@ -1859,35 +1722,43 @@ cleanup:
     return result;
 }
 
-void xx_jffs2_old_free_archive_records_reading(Abstractformat *self,
-                                           xx_archive_record_state *state) {
+void xx_jffs2_old_free_archive_records_reading(Abstractformat *self, xx_archive_record_state *state)
+{
     (void)self;
     xx_archive_record_state_free(state);
 }
 
 /* --------------------------------------------------------- accessors --- */
 
-uint64_t xx_jffs2_old_get_number_of_records(const xx_jffs2_old *jffs2_old) {
+uint64_t xx_jffs2_old_get_number_of_records(const xx_jffs2_old *jffs2_old)
+{
     return jffs2_old ? jffs2_old->number_of_records : 0U;
 }
-uint64_t xx_jffs2_old_get_number_of_members(const xx_jffs2_old *jffs2_old) {
+uint64_t xx_jffs2_old_get_number_of_members(const xx_jffs2_old *jffs2_old)
+{
     return jffs2_old ? jffs2_old->number_of_members : 0U;
 }
-uint64_t xx_jffs2_old_get_number_of_nodes(const xx_jffs2_old *jffs2_old) {
+uint64_t xx_jffs2_old_get_number_of_nodes(const xx_jffs2_old *jffs2_old)
+{
     return jffs2_old ? jffs2_old->number_of_nodes : 0U;
 }
-uint64_t xx_jffs2_old_get_number_of_dirents(const xx_jffs2_old *jffs2_old) {
+uint64_t xx_jffs2_old_get_number_of_dirents(const xx_jffs2_old *jffs2_old)
+{
     return jffs2_old ? jffs2_old->number_of_dirents : 0U;
 }
-uint64_t xx_jffs2_old_get_number_of_inodes(const xx_jffs2_old *jffs2_old) {
+uint64_t xx_jffs2_old_get_number_of_inodes(const xx_jffs2_old *jffs2_old)
+{
     return jffs2_old ? jffs2_old->number_of_inodes : 0U;
 }
-int64_t xx_jffs2_old_get_archive_end(const xx_jffs2_old *jffs2_old) {
+int64_t xx_jffs2_old_get_archive_end(const xx_jffs2_old *jffs2_old)
+{
     return jffs2_old ? jffs2_old->archive_end : -1;
 }
-uint32_t xx_jffs2_old_get_compression_mask(const xx_jffs2_old *jffs2_old) {
+uint32_t xx_jffs2_old_get_compression_mask(const xx_jffs2_old *jffs2_old)
+{
     return jffs2_old ? jffs2_old->compression_mask : 0U;
 }
-bool xx_jffs2_old_get_is_big_endian(const xx_jffs2_old *jffs2_old) {
+bool xx_jffs2_old_get_is_big_endian(const xx_jffs2_old *jffs2_old)
+{
     return jffs2_old ? jffs2_old->is_big_endian : false;
 }

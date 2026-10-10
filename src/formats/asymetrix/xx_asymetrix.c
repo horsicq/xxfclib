@@ -79,17 +79,15 @@ static void xx_asymetrix_vtable_destroy(Abstractformat *self);
 
 /* ------------------------------------------------------------- helpers -- */
 
-static bool xx_asymetrix_read_at(Abstractformat *self, int64_t offset,
-                              uint8_t *buffer, size_t size) {
+static bool xx_asymetrix_read_at(Abstractformat *self, int64_t offset, uint8_t *buffer, size_t size)
+{
     size_t completed = 0U;
 
-    if (!self || !self->device || offset < 0 ||
-        xx_io_seek64(self->device, offset, SEEK_SET) != 0) {
+    if (!self || !self->device || offset < 0 || xx_io_seek64(self->device, offset, SEEK_SET) != 0) {
         return false;
     }
     while (completed < size) {
-        ssize_t received =
-            xx_io_read(self->device, buffer + completed, size - completed);
+        ssize_t received = xx_io_read(self->device, buffer + completed, size - completed);
         if (received <= 0 || (size_t)received > size - completed) {
             return false;
         }
@@ -98,14 +96,14 @@ static bool xx_asymetrix_read_at(Abstractformat *self, int64_t offset,
     return true;
 }
 
-static bool xx_asymetrix_range_within(int64_t total, int64_t offset,
-                                   int64_t size) {
-    return offset >= 0 && size >= 0 && offset <= total &&
-           size <= total - offset;
+static bool xx_asymetrix_range_within(int64_t total, int64_t offset, int64_t size)
+{
+    return offset >= 0 && size >= 0 && offset <= total && size <= total - offset;
 }
 
 /* Refuse anything that would escape the extraction directory. */
-static bool xx_asymetrix_path_safe(const char *name) {
+static bool xx_asymetrix_path_safe(const char *name)
+{
     const char *cursor = name;
 
     if (!name || !name[0] || name[0] == '/') return false;
@@ -120,7 +118,8 @@ static bool xx_asymetrix_path_safe(const char *name) {
     return true;
 }
 
-static void xx_asymetrix_stream_free(void *pointer) {
+static void xx_asymetrix_stream_free(void *pointer)
+{
     xx_asymetrix_stream *stream = (xx_asymetrix_stream *)pointer;
     size_t index;
 
@@ -133,17 +132,15 @@ static void xx_asymetrix_stream_free(void *pointer) {
 }
 
 /* Append a member, taking ownership of @p name. */
-static bool xx_asymetrix_add(xx_asymetrix_stream *stream,
-                          const xx_asymetrix_member *member) {
-    xx_asymetrix_member *grown = (xx_asymetrix_member *)xx_mem_realloc(
-        stream->items, sizeof(*grown) * (stream->count + 1U));
+static bool xx_asymetrix_add(xx_asymetrix_stream *stream, const xx_asymetrix_member *member)
+{
+    xx_asymetrix_member *grown = (xx_asymetrix_member *)xx_mem_realloc(stream->items, sizeof(*grown) * (stream->count + 1U));
 
     if (!grown) return false;
     stream->items = grown;
     stream->items[stream->count++] = *member;
     return true;
 }
-
 
 #define XX_ASYMETRIX_HEADER_SIZE 0x2c
 #define XX_ASYMETRIX_MAGIC 0x63132260U
@@ -178,7 +175,6 @@ static bool xx_asymetrix_measure(Abstractformat *self, int64_t data_offset, int6
 static xx_asymetrix_stream *xx_asymetrix_parse(Abstractformat *self, xx_pd_struct *pd);
 static bool xx_asymetrix_decode(Abstractformat *self, const xx_asymetrix_member *member, uint8_t **out, size_t *out_size, xx_pd_struct *pd);
 
-
 /* 60 22 13 63 followed by 6C 00 00 00.  The second dword is the directory
  * record stride and is a hard constant of the writer, so the gate is really a
  * 64-bit compare - the same signature Detect-It-Easy ships as "Asymetrix". */
@@ -191,11 +187,13 @@ static bool xx_asymetrix_decode(Abstractformat *self, const xx_asymetrix_member 
  * of its own - the method is chosen per block - so this single value stands
  * for "walk the block chain", and the decode accepts nothing else. */
 
-static uint32_t xx_asymetrix_le16(const uint8_t *data) {
+static uint32_t xx_asymetrix_le16(const uint8_t *data)
+{
     return (uint32_t)data[0] | ((uint32_t)data[1] << 8);
 }
 
-static bool xx_asymetrix_name_character(uint8_t value) {
+static bool xx_asymetrix_name_character(uint8_t value)
+{
     if (value < 0x20U || value > 0x7eU) return false;
     /* DOS 8.3 names only.  A separator here would let a member escape the
      * extraction folder and never occurs in the format, so it is a rejection
@@ -209,10 +207,8 @@ static bool xx_asymetrix_name_character(uint8_t value) {
         case '"':
         case '<':
         case '>':
-        case '|':
-            return false;
-        default:
-            return true;
+        case '|': return false;
+        default: return true;
     }
 }
 
@@ -224,8 +220,8 @@ static bool xx_asymetrix_name_character(uint8_t value) {
  * fills the field is legal, and stopping the scan one byte short rejects
  * every archive holding a full-width 8.3 name such as "comptr01.ico" - 51 of
  * the 56 volume-1 archives in the reference corpus. */
-static bool xx_asymetrix_read_name(const uint8_t *field, size_t field_size,
-                                   char *out) {
+static bool xx_asymetrix_read_name(const uint8_t *field, size_t field_size, char *out)
+{
     size_t index;
 
     for (index = 0U; index < field_size; ++index) {
@@ -243,9 +239,8 @@ static bool xx_asymetrix_read_name(const uint8_t *field, size_t field_size,
 /* Walks a member's block chain and reports its exact byte length.  Offsets are
  * relative to base_address; @p region_end is where the next member on this
  * volume starts, or the span when this is the last one. */
-static bool xx_asymetrix_measure(Abstractformat *self, int64_t data_offset,
-                                 int64_t region_end, int64_t uncompressed,
-                                 int64_t *stream_size, xx_pd_struct *pd) {
+static bool xx_asymetrix_measure(Abstractformat *self, int64_t data_offset, int64_t region_end, int64_t uncompressed, int64_t *stream_size, xx_pd_struct *pd)
+{
     uint8_t header[XX_ASYMETRIX_BLOCK_HEADER_SIZE];
     int64_t offset = data_offset;
     int64_t produced = 0;
@@ -260,24 +255,19 @@ static bool xx_asymetrix_measure(Abstractformat *self, int64_t data_offset,
         int64_t wanted;
 
         if (pd && xx_pd_is_stopped(pd)) return false;
-        if (!xx_asymetrix_range_within(region_end, offset,
-                                       XX_ASYMETRIX_BLOCK_HEADER_SIZE)) {
+        if (!xx_asymetrix_range_within(region_end, offset, XX_ASYMETRIX_BLOCK_HEADER_SIZE)) {
             return false;
         }
-        if (!xx_asymetrix_read_at(self, self->base_address + offset, header,
-                                  sizeof(header))) {
+        if (!xx_asymetrix_read_at(self, self->base_address + offset, header, sizeof(header))) {
             return false;
         }
         method = xx_asymetrix_le16(header);
         block_size = xx_data_get_u32(header + 2, 4, 0, false);
-        if (method != XX_ASYMETRIX_BLOCK_METHOD_STORED &&
-            method != XX_ASYMETRIX_BLOCK_METHOD_IMPLODE) {
+        if (method != XX_ASYMETRIX_BLOCK_METHOD_STORED && method != XX_ASYMETRIX_BLOCK_METHOD_IMPLODE) {
             return false;
         }
         if ((int64_t)block_size > XX_ASYMETRIX_MAX_BLOCK_SIZE) return false;
-        if (!xx_asymetrix_range_within(
-                region_end, offset + XX_ASYMETRIX_BLOCK_HEADER_SIZE,
-                (int64_t)block_size)) {
+        if (!xx_asymetrix_range_within(region_end, offset + XX_ASYMETRIX_BLOCK_HEADER_SIZE, (int64_t)block_size)) {
             return false;
         }
 
@@ -304,8 +294,8 @@ static bool xx_asymetrix_measure(Abstractformat *self, int64_t data_offset,
     return true;
 }
 
-static xx_asymetrix_stream *xx_asymetrix_parse(Abstractformat *self,
-                                               xx_pd_struct *pd) {
+static xx_asymetrix_stream *xx_asymetrix_parse(Abstractformat *self, xx_pd_struct *pd)
+{
     xx_asymetrix_stream *stream = NULL;
     uint8_t header[XX_ASYMETRIX_HEADER_SIZE];
     uint8_t probe[XX_ASYMETRIX_BLOCK_HEADER_SIZE + 2];
@@ -327,8 +317,7 @@ static xx_asymetrix_stream *xx_asymetrix_parse(Abstractformat *self,
     if (span < XX_ASYMETRIX_HEADER_SIZE + XX_ASYMETRIX_BLOCK_HEADER_SIZE) {
         return NULL;
     }
-    if (!xx_asymetrix_read_at(self, self->base_address, header,
-                              sizeof(header))) {
+    if (!xx_asymetrix_read_at(self, self->base_address, header, sizeof(header))) {
         return NULL;
     }
     /* Magic and stride together are the primary gate.  The stride is not a
@@ -341,8 +330,7 @@ static xx_asymetrix_stream *xx_asymetrix_parse(Abstractformat *self,
     }
     /* The set name is a real, always-populated field; an empty or non-DOS one
      * means the 0x2C bytes are not this header. */
-    if (!xx_asymetrix_read_name(header + XX_ASYMETRIX_SETNAME_OFFSET,
-                                XX_ASYMETRIX_SETNAME_FIELD, set_name)) {
+    if (!xx_asymetrix_read_name(header + XX_ASYMETRIX_SETNAME_OFFSET, XX_ASYMETRIX_SETNAME_FIELD, set_name)) {
         return NULL;
     }
 
@@ -364,16 +352,12 @@ static xx_asymetrix_stream *xx_asymetrix_parse(Abstractformat *self,
     if (volume != 1U) {
         data_offset = XX_ASYMETRIX_HEADER_SIZE;
     } else {
-        if (!xx_asymetrix_range_within(span, XX_ASYMETRIX_HEADER_SIZE,
-                                       (int64_t)count *
-                                           XX_ASYMETRIX_RECORD_STRIDE)) {
+        if (!xx_asymetrix_range_within(span, XX_ASYMETRIX_HEADER_SIZE, (int64_t)count * XX_ASYMETRIX_RECORD_STRIDE)) {
             return NULL;
         }
-        data_offset = XX_ASYMETRIX_HEADER_SIZE +
-                      (int64_t)count * XX_ASYMETRIX_RECORD_STRIDE;
+        data_offset = XX_ASYMETRIX_HEADER_SIZE + (int64_t)count * XX_ASYMETRIX_RECORD_STRIDE;
     }
-    if (!xx_asymetrix_range_within(span, data_offset,
-                                   XX_ASYMETRIX_BLOCK_HEADER_SIZE)) {
+    if (!xx_asymetrix_range_within(span, data_offset, XX_ASYMETRIX_BLOCK_HEADER_SIZE)) {
         return NULL;
     }
 
@@ -383,39 +367,28 @@ static xx_asymetrix_stream *xx_asymetrix_parse(Abstractformat *self,
      * 0, 2048-byte window) that every compressed block in this format carries.
      * With the magic, this is the whole defence against a crafted 0x2C-byte
      * header followed by arbitrary bytes. */
-    if (!xx_asymetrix_read_at(self, self->base_address + data_offset, probe,
-                              XX_ASYMETRIX_BLOCK_HEADER_SIZE)) {
+    if (!xx_asymetrix_read_at(self, self->base_address + data_offset, probe, XX_ASYMETRIX_BLOCK_HEADER_SIZE)) {
         return NULL;
     }
     first_method = xx_asymetrix_le16(probe);
     first_size = xx_data_get_u32(probe + 2, 4, 0, false);
-    if (first_method != XX_ASYMETRIX_BLOCK_METHOD_STORED &&
-        first_method != XX_ASYMETRIX_BLOCK_METHOD_IMPLODE) {
+    if (first_method != XX_ASYMETRIX_BLOCK_METHOD_STORED && first_method != XX_ASYMETRIX_BLOCK_METHOD_IMPLODE) {
         return NULL;
     }
-    if (first_size == 0U ||
-        (int64_t)first_size > XX_ASYMETRIX_MAX_BLOCK_SIZE ||
-        !xx_asymetrix_range_within(
-            span, data_offset + XX_ASYMETRIX_BLOCK_HEADER_SIZE,
-            (int64_t)first_size)) {
+    if (first_size == 0U || (int64_t)first_size > XX_ASYMETRIX_MAX_BLOCK_SIZE ||
+        !xx_asymetrix_range_within(span, data_offset + XX_ASYMETRIX_BLOCK_HEADER_SIZE, (int64_t)first_size)) {
         return NULL;
     }
     if (first_method == XX_ASYMETRIX_BLOCK_METHOD_IMPLODE) {
         /* Read the prelude separately: a stored first block may be as short as
          * one byte, and demanding eight bytes up front would reject it. */
-        if (!xx_asymetrix_range_within(
-                span, data_offset + XX_ASYMETRIX_BLOCK_HEADER_SIZE, 2)) {
+        if (!xx_asymetrix_range_within(span, data_offset + XX_ASYMETRIX_BLOCK_HEADER_SIZE, 2)) {
             return NULL;
         }
-        if (!xx_asymetrix_read_at(
-                self,
-                self->base_address + data_offset +
-                    XX_ASYMETRIX_BLOCK_HEADER_SIZE,
-                probe + XX_ASYMETRIX_BLOCK_HEADER_SIZE, 2)) {
+        if (!xx_asymetrix_read_at(self, self->base_address + data_offset + XX_ASYMETRIX_BLOCK_HEADER_SIZE, probe + XX_ASYMETRIX_BLOCK_HEADER_SIZE, 2)) {
             return NULL;
         }
-        if (probe[XX_ASYMETRIX_BLOCK_HEADER_SIZE] != 0x00U ||
-            probe[XX_ASYMETRIX_BLOCK_HEADER_SIZE + 1] != 0x05U) {
+        if (probe[XX_ASYMETRIX_BLOCK_HEADER_SIZE] != 0x00U || probe[XX_ASYMETRIX_BLOCK_HEADER_SIZE + 1] != 0x05U) {
             return NULL;
         }
     }
@@ -439,22 +412,16 @@ static xx_asymetrix_stream *xx_asymetrix_parse(Abstractformat *self,
         char *owned;
 
         if (pd && xx_pd_is_stopped(pd)) goto fail;
-        record_offset = XX_ASYMETRIX_HEADER_SIZE +
-                        (int64_t)index * XX_ASYMETRIX_RECORD_STRIDE;
-        if (!xx_asymetrix_read_at(self, self->base_address + record_offset,
-                                  record, sizeof(record))) {
+        record_offset = XX_ASYMETRIX_HEADER_SIZE + (int64_t)index * XX_ASYMETRIX_RECORD_STRIDE;
+        if (!xx_asymetrix_read_at(self, self->base_address + record_offset, record, sizeof(record))) {
             goto fail;
         }
-        if (!xx_asymetrix_read_name(record, XX_ASYMETRIX_RECORD_NAME_FIELD,
-                                    name)) {
+        if (!xx_asymetrix_read_name(record, XX_ASYMETRIX_RECORD_NAME_FIELD, name)) {
             goto fail;
         }
-        member_volume =
-            xx_data_get_u32(record + XX_ASYMETRIX_RECORD_VOLUME, 4, 0, false) >> 16;
-        member_offset =
-            (int64_t)xx_data_get_u32(record + XX_ASYMETRIX_RECORD_OFFSET, 4, 0, false);
-        member_size =
-            (int64_t)xx_data_get_u32(record + XX_ASYMETRIX_RECORD_SIZE, 4, 0, false);
+        member_volume = xx_data_get_u32(record + XX_ASYMETRIX_RECORD_VOLUME, 4, 0, false) >> 16;
+        member_offset = (int64_t)xx_data_get_u32(record + XX_ASYMETRIX_RECORD_OFFSET, 4, 0, false);
+        member_size = (int64_t)xx_data_get_u32(record + XX_ASYMETRIX_RECORD_SIZE, 4, 0, false);
 
         /* Records are written sorted by (volume, offset).  That order is what
          * lets the next record delimit this member's block region in one pass
@@ -466,8 +433,7 @@ static xx_asymetrix_stream *xx_asymetrix_parse(Abstractformat *self,
         if (index == 0U) {
             /* The first member must be the first thing after the directory and
              * must live on this volume; no zero-size member exists. */
-            if (member_volume != volume || member_offset != data_offset ||
-                member_size == 0) {
+            if (member_volume != volume || member_offset != data_offset || member_size == 0) {
                 goto fail;
             }
         }
@@ -480,22 +446,17 @@ static xx_asymetrix_stream *xx_asymetrix_parse(Abstractformat *self,
             uint8_t next[XX_ASYMETRIX_RECORD_STRIDE];
             int64_t next_offset = record_offset + XX_ASYMETRIX_RECORD_STRIDE;
 
-            if (!xx_asymetrix_read_at(self, self->base_address + next_offset,
-                                      next, sizeof(next))) {
+            if (!xx_asymetrix_read_at(self, self->base_address + next_offset, next, sizeof(next))) {
                 goto fail;
             }
-            if ((xx_data_get_u32(next + XX_ASYMETRIX_RECORD_VOLUME, 4, 0, false) >> 16) ==
-                volume) {
-                region_end =
-                    (int64_t)xx_data_get_u32(next +
-                                               XX_ASYMETRIX_RECORD_OFFSET, 4, 0, false);
+            if ((xx_data_get_u32(next + XX_ASYMETRIX_RECORD_VOLUME, 4, 0, false) >> 16) == volume) {
+                region_end = (int64_t)xx_data_get_u32(next + XX_ASYMETRIX_RECORD_OFFSET, 4, 0, false);
                 if (region_end < member_offset || region_end > span) goto fail;
             }
         }
 
         if (member_size > XX_ASYMETRIX_MAX_DECODED) continue;
-        if (!xx_asymetrix_measure(self, member_offset, region_end, member_size,
-                                  &chain_size, pd)) {
+        if (!xx_asymetrix_measure(self, member_offset, region_end, member_size, &chain_size, pd)) {
             /* Listed by the reference, refused here: a member whose chain runs
              * past this volume has no complete extent inside the file, and the
              * contract has no way to publish "present but unextractable". */
@@ -517,10 +478,7 @@ static xx_asymetrix_stream *xx_asymetrix_parse(Abstractformat *self,
         member.method = XX_ASYMETRIX_METHOD_BLOCKS;
         /* DOS date in the high half, DOS time in the low half - the in-record
          * order is reversed, the packed value is not. */
-        member.timestamp =
-            ((uint64_t)xx_asymetrix_le16(record + XX_ASYMETRIX_RECORD_DATE)
-             << 16) |
-            (uint64_t)xx_asymetrix_le16(record + XX_ASYMETRIX_RECORD_TIME);
+        member.timestamp = ((uint64_t)xx_asymetrix_le16(record + XX_ASYMETRIX_RECORD_DATE) << 16) | (uint64_t)xx_asymetrix_le16(record + XX_ASYMETRIX_RECORD_TIME);
         member.is_folder = false;
         if (!xx_asymetrix_add(stream, &member)) {
             xx_str_free(owned);
@@ -547,11 +505,8 @@ fail:
     return NULL;
 }
 
-
-static bool xx_asymetrix_decode(Abstractformat *self,
-                                const xx_asymetrix_member *member,
-                                uint8_t **out, size_t *out_size,
-                                xx_pd_struct *pd) {
+static bool xx_asymetrix_decode(Abstractformat *self, const xx_asymetrix_member *member, uint8_t **out, size_t *out_size, xx_pd_struct *pd)
+{
     uint8_t *packed = NULL;
     uint8_t *plain = NULL;
     size_t packed_size;
@@ -568,10 +523,7 @@ static bool xx_asymetrix_decode(Abstractformat *self,
     if (member->uncompressed_size < 0 || member->compressed_size < 0) {
         return false;
     }
-    if ((uint64_t)member->uncompressed_size >
-            (uint64_t)XX_ASYMETRIX_MAX_DECODED ||
-        (uint64_t)member->compressed_size >
-            (uint64_t)XX_ASYMETRIX_MAX_DECODED) {
+    if ((uint64_t)member->uncompressed_size > (uint64_t)XX_ASYMETRIX_MAX_DECODED || (uint64_t)member->compressed_size > (uint64_t)XX_ASYMETRIX_MAX_DECODED) {
         return false;
     }
     if (pd && xx_pd_is_stopped(pd)) return false;
@@ -592,9 +544,7 @@ static bool xx_asymetrix_decode(Abstractformat *self,
     if (packed_size == 0U) return false;
     packed = (uint8_t *)xx_mem_alloc(packed_size);
     if (!packed) return false;
-    if (!xx_asymetrix_read_at(self, member->data_offset, packed,
-                              packed_size) ||
-        (pd && xx_pd_is_stopped(pd))) {
+    if (!xx_asymetrix_read_at(self, member->data_offset, packed, packed_size) || (pd && xx_pd_is_stopped(pd))) {
         xx_mem_free(packed);
         return false;
     }
@@ -607,9 +557,7 @@ static bool xx_asymetrix_decode(Abstractformat *self,
     /* The declared size is not a hint: it is what tells the block walker how
      * much each block is supposed to produce.  The decoder succeeds only when
      * the chain yields exactly that and ends exactly on the last input byte. */
-    if (!xx_asymetrix_decode_memory(packed, packed_size, plain, plain_size,
-                                    &written) ||
-        written != plain_size) {
+    if (!xx_asymetrix_decode_memory(packed, packed_size, plain, plain_size, &written) || written != plain_size) {
         xx_mem_free(packed);
         xx_mem_free(plain);
         return false;
@@ -622,8 +570,8 @@ static bool xx_asymetrix_decode(Abstractformat *self,
 
 /* ---------------------------------------------------------- lifecycle --- */
 
-void xx_asymetrix_init(xx_asymetrix *archive, xx_io_device *device,
-                    int64_t base_address) {
+void xx_asymetrix_init(xx_asymetrix *archive, xx_io_device *device, int64_t base_address)
+{
     if (!archive) return;
     xx_mem_zero(archive, sizeof(*archive));
     xx_format_init(&archive->format, device, base_address);
@@ -636,22 +584,17 @@ void xx_asymetrix_init(xx_asymetrix *archive, xx_io_device *device,
     archive->format.check_is_valid = xx_asymetrix_check_is_valid;
     archive->format.handle_base_info = xx_asymetrix_handle_base_info;
     archive->format.get_format_size = xx_asymetrix_get_format_size;
-    archive->format.get_number_of_archive_records =
-        xx_asymetrix_get_number_of_archive_records;
-    archive->format.create_archive_records_reading =
-        xx_asymetrix_create_archive_records_reading;
-    archive->format.get_current_archive_record =
-        xx_asymetrix_get_current_archive_record;
-    archive->format.unpack_current_archive_record =
-        xx_asymetrix_unpack_current_archive_record;
-    archive->format.archive_record_move_to_next =
-        xx_asymetrix_archive_record_move_to_next;
-    archive->format.free_archive_records_reading =
-        xx_asymetrix_free_archive_records_reading;
+    archive->format.get_number_of_archive_records = xx_asymetrix_get_number_of_archive_records;
+    archive->format.create_archive_records_reading = xx_asymetrix_create_archive_records_reading;
+    archive->format.get_current_archive_record = xx_asymetrix_get_current_archive_record;
+    archive->format.unpack_current_archive_record = xx_asymetrix_unpack_current_archive_record;
+    archive->format.archive_record_move_to_next = xx_asymetrix_archive_record_move_to_next;
+    archive->format.free_archive_records_reading = xx_asymetrix_free_archive_records_reading;
     archive->format.destroy = xx_asymetrix_vtable_destroy;
 }
 
-xx_asymetrix *xx_asymetrix_create(xx_io_device *device, int64_t base_address) {
+xx_asymetrix *xx_asymetrix_create(xx_io_device *device, int64_t base_address)
+{
     xx_asymetrix *archive = (xx_asymetrix *)xx_mem_alloc(sizeof(*archive));
 
     if (!archive) return NULL;
@@ -659,7 +602,8 @@ xx_asymetrix *xx_asymetrix_create(xx_io_device *device, int64_t base_address) {
     return archive;
 }
 
-void xx_asymetrix_destroy(xx_asymetrix *archive) {
+void xx_asymetrix_destroy(xx_asymetrix *archive)
+{
     if (!archive) return;
     /* Not xx_format_destroy: it dispatches through format.destroy, which is
      * the wrapper below, and the two would recurse. */
@@ -668,19 +612,22 @@ void xx_asymetrix_destroy(xx_asymetrix *archive) {
     archive->number_of_records = 0U;
 }
 
-void xx_asymetrix_free(xx_asymetrix *archive) {
+void xx_asymetrix_free(xx_asymetrix *archive)
+{
     if (!archive) return;
     xx_asymetrix_destroy(archive);
     xx_mem_free(archive);
 }
 
-static void xx_asymetrix_vtable_destroy(Abstractformat *self) {
+static void xx_asymetrix_vtable_destroy(Abstractformat *self)
+{
     xx_asymetrix_destroy((xx_asymetrix *)self);
 }
 
 /* -------------------------------------------------------------- format -- */
 
-bool xx_asymetrix_check_is_valid(Abstractformat *self, xx_pd_struct *pd) {
+bool xx_asymetrix_check_is_valid(Abstractformat *self, xx_pd_struct *pd)
+{
     xx_asymetrix_stream *stream;
 
     if (!self || (pd && xx_pd_is_stopped(pd))) return false;
@@ -690,7 +637,8 @@ bool xx_asymetrix_check_is_valid(Abstractformat *self, xx_pd_struct *pd) {
     return true;
 }
 
-bool xx_asymetrix_handle_base_info(Abstractformat *self, xx_pd_struct *pd) {
+bool xx_asymetrix_handle_base_info(Abstractformat *self, xx_pd_struct *pd)
+{
     xx_asymetrix *archive = (xx_asymetrix *)self;
     xx_asymetrix_stream *stream;
 
@@ -711,18 +659,17 @@ bool xx_asymetrix_handle_base_info(Abstractformat *self, xx_pd_struct *pd) {
     return true;
 }
 
-int64_t xx_asymetrix_get_format_size(Abstractformat *self, xx_pd_struct *pd) {
-    if (!self ||
-        (!self->base_info_handled && !xx_format_handle_base_info(self, pd))) {
+int64_t xx_asymetrix_get_format_size(Abstractformat *self, xx_pd_struct *pd)
+{
+    if (!self || (!self->base_info_handled && !xx_format_handle_base_info(self, pd))) {
         return 0;
     }
     return self->is_valid ? self->format_size : 0;
 }
 
-uint64_t xx_asymetrix_get_number_of_archive_records(Abstractformat *self,
-                                                 xx_pd_struct *pd) {
-    if (!self ||
-        (!self->base_info_handled && !xx_format_handle_base_info(self, pd))) {
+uint64_t xx_asymetrix_get_number_of_archive_records(Abstractformat *self, xx_pd_struct *pd)
+{
+    if (!self || (!self->base_info_handled && !xx_format_handle_base_info(self, pd))) {
         return 0U;
     }
     return self->is_valid ? ((xx_asymetrix *)self)->number_of_records : 0U;
@@ -730,8 +677,8 @@ uint64_t xx_asymetrix_get_number_of_archive_records(Abstractformat *self,
 
 /* ------------------------------------------------------------- records -- */
 
-static bool xx_asymetrix_set_record(xx_archive_record *record,
-                                 const xx_asymetrix_member *member) {
+static bool xx_asymetrix_set_record(xx_archive_record *record, const xx_asymetrix_member *member)
+{
     xx_archive_record_cleanup(record);
     xx_archive_record_init(record);
     record->header_offset = member->header_offset;
@@ -739,34 +686,24 @@ static bool xx_asymetrix_set_record(xx_archive_record *record,
     record->data_offset = member->data_offset;
     record->compressed_size = member->compressed_size;
     return xx_archive_record_set_original_name(record, member->name) &&
-           xx_archive_record_set_meta_u64(record, XX_META_ID_COMPRESSED_SIZE,
-                                          (uint64_t)member->compressed_size) &&
-           xx_archive_record_set_meta_u64(
-               record, XX_META_ID_UNCOMPRESSED_SIZE,
-               (uint64_t)member->uncompressed_size) &&
-           xx_archive_record_set_meta_u64(record, XX_META_ID_COMPRESSION_METHOD,
-                                          member->method) &&
-           xx_archive_record_set_meta_u64(record, XX_META_ID_TIMESTAMP,
-                                          member->timestamp) &&
-           xx_archive_record_set_meta_bool(record, XX_META_ID_IS_FOLDER,
-                                           member->is_folder) &&
-           xx_archive_record_set_meta_bool(record, XX_META_ID_IS_ENCRYPTED,
-                                           false);
+           xx_archive_record_set_meta_u64(record, XX_META_ID_COMPRESSED_SIZE, (uint64_t)member->compressed_size) &&
+           xx_archive_record_set_meta_u64(record, XX_META_ID_UNCOMPRESSED_SIZE, (uint64_t)member->uncompressed_size) &&
+           xx_archive_record_set_meta_u64(record, XX_META_ID_COMPRESSION_METHOD, member->method) &&
+           xx_archive_record_set_meta_u64(record, XX_META_ID_TIMESTAMP, member->timestamp) &&
+           xx_archive_record_set_meta_bool(record, XX_META_ID_IS_FOLDER, member->is_folder) && xx_archive_record_set_meta_bool(record, XX_META_ID_IS_ENCRYPTED, false);
 }
 
-static bool xx_asymetrix_copy_options(xx_list_s *target,
-                                   const xx_list_s *options) {
+static bool xx_asymetrix_copy_options(xx_list_s *target, const xx_list_s *options)
+{
     size_t index;
 
     if (!target || !options) return options == NULL;
     for (index = 0U; index < options->count; ++index) {
-        const xx_meta *source =
-            (const xx_meta *)xx_list_at((const xx_list_t *)options, index);
+        const xx_meta *source = (const xx_meta *)xx_list_at((const xx_list_t *)options, index);
         xx_meta copied;
         if (!source) continue;
         xx_meta_init(&copied, source->meta_id);
-        if (!xx_var_copy(&copied.var, &source->var) ||
-            !xx_list_append(target, &copied)) {
+        if (!xx_var_copy(&copied.var, &source->var) || !xx_list_append(target, &copied)) {
             xx_meta_cleanup(&copied);
             return false;
         }
@@ -774,21 +711,20 @@ static bool xx_asymetrix_copy_options(xx_list_s *target,
     return true;
 }
 
-static const xx_var *xx_asymetrix_get_option(const xx_list_s *options,
-                                          uint32_t meta_id) {
+static const xx_var *xx_asymetrix_get_option(const xx_list_s *options, uint32_t meta_id)
+{
     size_t index;
 
     if (!options) return NULL;
     for (index = 0U; index < options->count; ++index) {
-        const xx_meta *meta =
-            (const xx_meta *)xx_list_at((const xx_list_t *)options, index);
+        const xx_meta *meta = (const xx_meta *)xx_list_at((const xx_list_t *)options, index);
         if (meta && meta->meta_id == meta_id) return &meta->var;
     }
     return NULL;
 }
 
-xx_archive_record_state *xx_asymetrix_create_archive_records_reading(
-    Abstractformat *self, const xx_list_s *options, xx_pd_struct *pd) {
+xx_archive_record_state *xx_asymetrix_create_archive_records_reading(Abstractformat *self, const xx_list_s *options, xx_pd_struct *pd)
+{
     xx_asymetrix_stream *stream;
     xx_archive_record_state *state;
 
@@ -804,9 +740,7 @@ xx_archive_record_state *xx_asymetrix_create_archive_records_reading(
     state->internal_state = stream;
     state->free_internal = xx_asymetrix_stream_free;
     state->total_records = (int64_t)stream->count;
-    if (!xx_asymetrix_copy_options(&state->options, options) ||
-        (stream->count != 0U &&
-         !xx_asymetrix_set_record(&state->current_record, &stream->items[0]))) {
+    if (!xx_asymetrix_copy_options(&state->options, options) || (stream->count != 0U && !xx_asymetrix_set_record(&state->current_record, &stream->items[0]))) {
         xx_archive_record_state_free(state);
         return NULL;
     }
@@ -815,20 +749,16 @@ xx_archive_record_state *xx_asymetrix_create_archive_records_reading(
     return state;
 }
 
-const xx_archive_record *xx_asymetrix_get_current_archive_record(
-    Abstractformat *self, xx_archive_record_state *state) {
-    return self && state && state->format == self && state->has_record
-               ? &state->current_record
-               : NULL;
+const xx_archive_record *xx_asymetrix_get_current_archive_record(Abstractformat *self, xx_archive_record_state *state)
+{
+    return self && state && state->format == self && state->has_record ? &state->current_record : NULL;
 }
 
-bool xx_asymetrix_archive_record_move_to_next(Abstractformat *self,
-                                           xx_archive_record_state *state,
-                                           xx_pd_struct *pd) {
+bool xx_asymetrix_archive_record_move_to_next(Abstractformat *self, xx_archive_record_state *state, xx_pd_struct *pd)
+{
     xx_asymetrix_stream *stream;
 
-    if (!self || !state || state->format != self || !state->has_record ||
-        (pd && xx_pd_is_stopped(pd))) {
+    if (!self || !state || state->format != self || !state->has_record || (pd && xx_pd_is_stopped(pd))) {
         return false;
     }
     stream = (xx_asymetrix_stream *)state->internal_state;
@@ -840,14 +770,12 @@ bool xx_asymetrix_archive_record_move_to_next(Abstractformat *self,
     }
     ++stream->index;
     ++state->current_index;
-    state->has_record = xx_asymetrix_set_record(&state->current_record,
-                                             &stream->items[stream->index]);
+    state->has_record = xx_asymetrix_set_record(&state->current_record, &stream->items[stream->index]);
     return state->has_record;
 }
 
-bool xx_asymetrix_unpack_current_archive_record(Abstractformat *self,
-                                             xx_archive_record_state *state,
-                                             xx_pd_struct *pd) {
+bool xx_asymetrix_unpack_current_archive_record(Abstractformat *self, xx_archive_record_state *state, xx_pd_struct *pd)
+{
     xx_asymetrix_stream *stream;
     const xx_asymetrix_member *member;
     const xx_var *path_option;
@@ -859,8 +787,7 @@ bool xx_asymetrix_unpack_current_archive_record(Abstractformat *self,
     bool result = false;
     bool created = false;
 
-    if (!self || !state || state->format != self || !state->has_record ||
-        (pd && xx_pd_is_stopped(pd))) {
+    if (!self || !state || state->format != self || !state->has_record || (pd && xx_pd_is_stopped(pd))) {
         return false;
     }
     stream = (xx_asymetrix_stream *)state->internal_state;
@@ -868,8 +795,7 @@ bool xx_asymetrix_unpack_current_archive_record(Abstractformat *self,
     member = &stream->items[stream->index];
     if (!xx_asymetrix_path_safe(member->name)) return false;
 
-    path_option = xx_asymetrix_get_option(&state->options,
-                                       XX_META_ID_OPT_UNPACK_PATH);
+    path_option = xx_asymetrix_get_option(&state->options, XX_META_ID_OPT_UNPACK_PATH);
     if (!path_option) {
         /* No destination: decode and discard, which verifies the member
          * without writing anything. */
@@ -878,11 +804,9 @@ bool xx_asymetrix_unpack_current_archive_record(Abstractformat *self,
         xx_mem_free(plain);
         return result;
     }
-    if (path_option->type == XX_VAR_TYPE_STRING ||
-        path_option->type == XX_VAR_TYPE_STRING_VIEW) {
+    if (path_option->type == XX_VAR_TYPE_STRING || path_option->type == XX_VAR_TYPE_STRING_VIEW) {
         base_path = xx_var_get_str(path_option);
-    } else if (path_option->type == XX_VAR_TYPE_WSTRING ||
-               path_option->type == XX_VAR_TYPE_WSTRING_VIEW) {
+    } else if (path_option->type == XX_VAR_TYPE_WSTRING || path_option->type == XX_VAR_TYPE_WSTRING_VIEW) {
         converted_path = xx_str_unicode_to_utf8(xx_var_get_wstr(path_option));
         base_path = converted_path;
     }
@@ -890,9 +814,7 @@ bool xx_asymetrix_unpack_current_archive_record(Abstractformat *self,
         xx_str_free(converted_path);
         return false;
     }
-    if (base_path[0] != '\0' &&
-        base_path[xx_str_len(base_path) - 1U] != '/' &&
-        base_path[xx_str_len(base_path) - 1U] != '\\') {
+    if (base_path[0] != '\0' && base_path[xx_str_len(base_path) - 1U] != '/' && base_path[xx_str_len(base_path) - 1U] != '\\') {
         target_path = xx_str_concat3(base_path, "/", member->name);
     } else {
         target_path = xx_str_concat(base_path, member->name);
@@ -905,8 +827,7 @@ bool xx_asymetrix_unpack_current_archive_record(Abstractformat *self,
         xx_str_free(target_path);
         return result;
     }
-    if (!xx_store_create_dirs_a(target_path, false) ||
-        !xx_asymetrix_decode(self, member, &plain, &plain_size, pd)) {
+    if (!xx_store_create_dirs_a(target_path, false) || !xx_asymetrix_decode(self, member, &plain, &plain_size, pd)) {
         xx_str_free(target_path);
         return false;
     }
@@ -917,8 +838,7 @@ bool xx_asymetrix_unpack_current_archive_record(Abstractformat *self,
 
         result = output != NULL;
         while (result && completed < plain_size) {
-            ssize_t sent = xx_io_write(output, plain + completed,
-                                       plain_size - completed);
+            ssize_t sent = xx_io_write(output, plain + completed, plain_size - completed);
             if (sent <= 0 || (size_t)sent > plain_size - completed) {
                 result = false;
                 break;
@@ -933,8 +853,8 @@ bool xx_asymetrix_unpack_current_archive_record(Abstractformat *self,
     return result;
 }
 
-void xx_asymetrix_free_archive_records_reading(Abstractformat *self,
-                                            xx_archive_record_state *state) {
+void xx_asymetrix_free_archive_records_reading(Abstractformat *self, xx_archive_record_state *state)
+{
     (void)self;
     xx_archive_record_state_free(state);
 }

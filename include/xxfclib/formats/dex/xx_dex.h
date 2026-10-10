@@ -73,8 +73,12 @@ typedef struct xx_dex_map_item_s {
     uint32_t offset;
 } xx_dex_map_item;
 
-typedef struct xx_dex_string_id_s { uint32_t string_data_off; } xx_dex_string_id;
-typedef struct xx_dex_type_id_s { uint32_t descriptor_idx; } xx_dex_type_id;
+typedef struct xx_dex_string_id_s {
+    uint32_t string_data_off;
+} xx_dex_string_id;
+typedef struct xx_dex_type_id_s {
+    uint32_t descriptor_idx;
+} xx_dex_type_id;
 typedef struct xx_dex_proto_id_s {
     uint32_t shorty_idx, return_type_idx, parameters_off;
 } xx_dex_proto_id;
@@ -115,21 +119,15 @@ typedef struct xx_dex {
 typedef xx_dex xx_dex_t;
 typedef xx_dex XDEX;
 
-XXFC_API void xx_dex_init(xx_dex *dex, xx_io_device *device,
-                          int64_t base_address);
+XXFC_API void xx_dex_init(xx_dex *dex, xx_io_device *device, int64_t base_address);
 XXFC_API xx_dex *xx_dex_create(xx_io_device *device, int64_t base_address);
 XXFC_API void xx_dex_destroy(xx_dex *dex);
 XXFC_API void xx_dex_free(xx_dex *dex);
 
 XXFC_API bool xx_dex_check_is_valid(Abstractformat *self, xx_pd_struct *pd);
-XXFC_API bool xx_dex_handle_base_info(Abstractformat *self,
-                                      xx_pd_struct *pd);
-XXFC_API int64_t xx_dex_get_format_size(Abstractformat *self,
-                                        xx_pd_struct *pd);
-XXFC_API bool xx_dex_get_memory_map(Abstractformat *self,
-                                    xx_memory_map_mode_t mode,
-                                    xx_memory_map *output,
-                                    xx_pd_struct *pd);
+XXFC_API bool xx_dex_handle_base_info(Abstractformat *self, xx_pd_struct *pd);
+XXFC_API int64_t xx_dex_get_format_size(Abstractformat *self, xx_pd_struct *pd);
+XXFC_API bool xx_dex_get_memory_map(Abstractformat *self, xx_memory_map_mode_t mode, xx_memory_map *output, xx_pd_struct *pd);
 
 XXFC_API const xx_dex_header *xx_dex_get_header(const xx_dex *dex);
 XXFC_API uint32_t xx_dex_get_version_number(const xx_dex *dex);
@@ -149,8 +147,7 @@ XXFC_API bool xx_dex_read_method_id(const xx_dex *dex, uint32_t index, xx_dex_me
 XXFC_API bool xx_dex_read_class_def(const xx_dex *dex, uint32_t index, xx_dex_class_def *out);
 /* Offset zero represents an absent, empty type list. */
 XXFC_API bool xx_dex_read_type_list_count(const xx_dex *dex, uint32_t offset, uint32_t *out);
-XXFC_API bool xx_dex_read_type_list_item(const xx_dex *dex, uint32_t offset,
-                                        uint32_t index, uint16_t *out);
+XXFC_API bool xx_dex_read_type_list_item(const xx_dex *dex, uint32_t offset, uint32_t index, uint16_t *out);
 /* Checks the header, instruction extent, zero padding, try-item extent and start of the
  * handler list. Encoded exception handlers and bytecode are not verified. */
 XXFC_API bool xx_dex_read_code_item(const xx_dex *dex, uint32_t offset, xx_dex_code_item *out);
@@ -158,11 +155,8 @@ XXFC_API bool xx_dex_read_code_item(const xx_dex *dex, uint32_t offset, xx_dex_c
  * MUTF-8, ULEB128 and the declared UTF-16 code-unit count inside data_size.
  * Neither reader allocates. read_string requires buffer and capacity > 0;
  * its optional out receives the same metadata as read_string_info. */
-XXFC_API bool xx_dex_read_string_info(const xx_dex *dex, uint32_t index,
-                                     size_t max_bytes, xx_dex_string_info *out, xx_pd_struct *pd);
-XXFC_API bool xx_dex_read_string(const xx_dex *dex, uint32_t index,
-                                char *buffer, size_t capacity,
-                                xx_dex_string_info *out, xx_pd_struct *pd);
+XXFC_API bool xx_dex_read_string_info(const xx_dex *dex, uint32_t index, size_t max_bytes, xx_dex_string_info *out, xx_pd_struct *pd);
+XXFC_API bool xx_dex_read_string(const xx_dex *dex, uint32_t index, char *buffer, size_t capacity, xx_dex_string_info *out, xx_pd_struct *pd);
 /* Cached inspection for signature queries. Strings are borrowed unless
  * documented as owned; owned strings are released with xx_str_free. */
 XXFC_API bool xx_dex_analyze(xx_dex *dex, xx_pd_struct *pd);
@@ -175,12 +169,13 @@ XXFC_API bool xx_dex_item_string_present(const xx_dex *dex, const char *value);
 XXFC_API const char *xx_dex_android_version(const xx_dex *dex);
 XXFC_API const char *xx_dex_map_item_type_to_string(uint16_t type);
 
-static inline Abstractformat *xx_dex_to_format(xx_dex *dex) {
+static inline Abstractformat *xx_dex_to_format(xx_dex *dex)
+{
     return dex ? &dex->format : NULL;
 }
 
-static inline const Abstractformat *xx_dex_to_format_const(
-    const xx_dex *dex) {
+static inline const Abstractformat *xx_dex_to_format_const(const xx_dex *dex)
+{
     return dex ? &dex->format : NULL;
 }
 

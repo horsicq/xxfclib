@@ -40,8 +40,8 @@ extern "C" {
 /**
  * @brief Open file handle on host platform.
  */
-void* xx_io_platform_file_open(const char *path, const char *mode);
-void* xx_io_platform_temp_open(void);
+void *xx_io_platform_file_open(const char *path, const char *mode);
+void *xx_io_platform_temp_open(void);
 
 /**
  * @brief Read bytes from platform file handle.
@@ -74,10 +74,8 @@ bool xx_io_platform_file_exists_a(const char *path);
 bool xx_io_platform_file_exists_w(const wchar_t *path);
 bool xx_io_platform_file_remove_a(const char *path);
 bool xx_io_platform_file_remove_w(const wchar_t *path);
-bool xx_io_platform_file_replace_a(const char *source,
-                                   const char *destination, bool overwrite);
-bool xx_io_platform_file_replace_w(const wchar_t *source,
-                                   const wchar_t *destination, bool overwrite);
+bool xx_io_platform_file_replace_a(const char *source, const char *destination, bool overwrite);
+bool xx_io_platform_file_replace_w(const wchar_t *source, const wchar_t *destination, bool overwrite);
 
 /**
  * @brief Recursively create parent directories on host platform (wide string).
@@ -98,7 +96,6 @@ bool xx_io_platform_apply_dos_time_and_attrs_w(const wchar_t *path, uint16_t dos
  * @brief Apply DOS date, time, and external attributes on host platform (UTF-8 string).
  */
 bool xx_io_platform_apply_dos_time_and_attrs_a(const char *path, uint16_t dos_date, uint16_t dos_time, uint32_t attrs);
-
 
 /**
  * @brief Fill @p output with @p size cryptographically secure random bytes.
@@ -121,15 +118,13 @@ bool xx_io_platform_secure_random(uint8_t *output, size_t size);
  *
  * @return An opaque handle, or NULL on failure.
  */
-void* xx_io_platform_process_open(uint64_t pid);
+void *xx_io_platform_process_open(uint64_t pid);
 
 /** Read @p n bytes at absolute address @p addr. Returns bytes read, or -1. */
-ssize_t xx_io_platform_process_read(void *handle, uint64_t addr, void *buf,
-                                    size_t n);
+ssize_t xx_io_platform_process_read(void *handle, uint64_t addr, void *buf, size_t n);
 
 /** Write @p n bytes at absolute address @p addr. Returns bytes written, or -1. */
-ssize_t xx_io_platform_process_write(void *handle, uint64_t addr,
-                                     const void *buf, size_t n);
+ssize_t xx_io_platform_process_write(void *handle, uint64_t addr, const void *buf, size_t n);
 
 /** Release the handle from xx_io_platform_process_open. */
 int xx_io_platform_process_close(void *handle);
@@ -143,7 +138,7 @@ int xx_io_platform_process_close(void *handle);
  * hooks expect, or NULL if @p native is not usable. The returned handle refers
  * to the same OS object; the caller keeps ownership.
  */
-void* xx_io_platform_process_adopt(void *native);
+void *xx_io_platform_process_adopt(void *native);
 
 /**
  * @brief The directory separator this platform writes, as a wide character.

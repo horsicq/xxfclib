@@ -11,8 +11,7 @@
  * all positive weights preserves a real prefix tree on every retry; once
  * weights converge to 1 or 2 the tree fits comfortably within 20 bits.
  */
-bool xx_bzip2_huffman_lengths(const uint32_t *freq, int symbol_count,
-                               uint8_t *lengths)
+bool xx_bzip2_huffman_lengths(const uint32_t *freq, int symbol_count, uint8_t *lengths)
 {
     uint32_t weights[BZ2_MAX_ALPHA_SIZE];
     uint64_t node_weights[2 * BZ2_MAX_ALPHA_SIZE - 1];
@@ -20,10 +19,8 @@ bool xx_bzip2_huffman_lengths(const uint32_t *freq, int symbol_count,
     uint8_t candidate[BZ2_MAX_ALPHA_SIZE];
     int symbol;
 
-    if (!freq || !lengths || symbol_count <= 0 ||
-        symbol_count > BZ2_MAX_ALPHA_SIZE) return false;
-    for (symbol = 0; symbol < symbol_count; ++symbol)
-        weights[symbol] = freq[symbol] != 0U ? freq[symbol] : 1U;
+    if (!freq || !lengths || symbol_count <= 0 || symbol_count > BZ2_MAX_ALPHA_SIZE) return false;
+    for (symbol = 0; symbol < symbol_count; ++symbol) weights[symbol] = freq[symbol] != 0U ? freq[symbol] : 1U;
 
     for (;;) {
         int active = symbol_count;
@@ -66,14 +63,16 @@ bool xx_bzip2_huffman_lengths(const uint32_t *freq, int symbol_count,
                 node = parents[node];
                 depth++;
             }
-            if (depth > BZ2_MAX_CODE_LEN) { too_deep = true; break; }
+            if (depth > BZ2_MAX_CODE_LEN) {
+                too_deep = true;
+                break;
+            }
             candidate[symbol] = (uint8_t)(depth != 0U ? depth : 1U);
         }
         if (!too_deep) {
             xx_rt_memcpy(lengths, candidate, (size_t)symbol_count);
             return true;
         }
-        for (symbol = 0; symbol < symbol_count; ++symbol)
-            weights[symbol] = 1U + weights[symbol] / 2U;
+        for (symbol = 0; symbol < symbol_count; ++symbol) weights[symbol] = 1U + weights[symbol] / 2U;
     }
 }

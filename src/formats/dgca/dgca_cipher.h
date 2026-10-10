@@ -20,7 +20,7 @@ typedef struct dg_cipher {
     unsigned char feedback[128], digest[64], previous, position, count;
 } dg_cipher;
 /* SHA-512 as specified in FIPS 180-4; output uses the standard byte order. */
-DG_CIPHER_API void dg_sha512_digest(const void *, size_t, unsigned char [64]);
+DG_CIPHER_API void dg_sha512_digest(const void *, size_t, unsigned char[64]);
 /* Input key bytes and seed context are supplied explicitly by the container. */
 DG_CIPHER_API void dg_cipher_init(dg_cipher *, const void *, size_t, const void *, size_t);
 DG_CIPHER_API void dg_cipher_decrypt(dg_cipher *, unsigned char *, size_t);

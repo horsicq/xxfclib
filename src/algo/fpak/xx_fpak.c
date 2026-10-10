@@ -42,9 +42,7 @@ static bool fpak_read_bit(fpak_bits *bits, uint32_t *value)
         bits->ran_out = true;
         return false;
     }
-    *value = (uint32_t)((bits->data[bits->bit_position >> 3] >>
-                         (bits->bit_position & 7U)) &
-                        1U);
+    *value = (uint32_t)((bits->data[bits->bit_position >> 3] >> (bits->bit_position & 7U)) & 1U);
     ++bits->bit_position;
     return true;
 }
@@ -74,9 +72,7 @@ static uint64_t fpak_consumed(const fpak_bits *bits)
 
 /* symbol_total is 64 for the length and distance trees and 256 for the
  * literal tree; the run-length encoding of the code lengths is identical. */
-static bool fpak_read_tree(const uint8_t *packed, size_t packed_size,
-                           size_t *position, int32_t symbol_total,
-                           fpak_tree *tree)
+static bool fpak_read_tree(const uint8_t *packed, size_t packed_size, size_t *position, int32_t symbol_total, fpak_tree *tree)
 {
     uint8_t lengths[FPAK_MAX_TREE_SYMBOLS];
     uint32_t pair_count;
@@ -88,9 +84,7 @@ static bool fpak_read_tree(const uint8_t *packed, size_t packed_size,
     int32_t symbol;
     uint32_t kraft_units = 0U;
 
-    if (!position || !tree || (*position >= packed_size) ||
-        (symbol_total < 1) || (symbol_total > FPAK_MAX_TREE_SYMBOLS))
-        return false;
+    if (!position || !tree || (*position >= packed_size) || (symbol_total < 1) || (symbol_total > FPAK_MAX_TREE_SYMBOLS)) return false;
 
     xx_rt_memset(lengths, 0, sizeof(lengths));
     pair_count = (uint32_t)packed[(*position)++] + 1U;
@@ -105,8 +99,7 @@ static bool fpak_read_tree(const uint8_t *packed, size_t packed_size,
         descriptor = packed[(*position)++];
         repeat = (int32_t)(descriptor >> 4) + 1;
         code_length = (uint8_t)((descriptor & 0x0fU) + 1U);
-        if ((symbol_count > symbol_total - repeat) || (code_length > 16U))
-            return false;
+        if ((symbol_count > symbol_total - repeat) || (code_length > 16U)) return false;
         for (; repeat > 0; --repeat) lengths[symbol_count++] = code_length;
     }
     if (symbol_count != symbol_total) return false;
@@ -128,18 +121,15 @@ static bool fpak_read_tree(const uint8_t *packed, size_t packed_size,
         tree->first_code[length] = code;
         tree->first_symbol[length] = output_index;
         for (symbol = 0; symbol < symbol_total; ++symbol) {
-            if (lengths[symbol] == length)
-                tree->symbols[output_index++] = (uint8_t)symbol;
+            if (lengths[symbol] == length) tree->symbols[output_index++] = (uint8_t)symbol;
         }
     }
     /* `code` is first_code[16] here: the reference checks the walk closed on
      * the whole 16-bit space, deliberately after the loop. */
-    return (output_index == symbol_total) &&
-           (code + tree->count[16] == (1U << 16));
+    return (output_index == symbol_total) && (code + tree->count[16] == (1U << 16));
 }
 
-static bool fpak_decode_symbol(fpak_bits *bits, const fpak_tree *tree,
-                               uint32_t *symbol)
+static bool fpak_decode_symbol(fpak_bits *bits, const fpak_tree *tree, uint32_t *symbol)
 {
     uint32_t code = 0U;
     uint32_t length;
@@ -156,8 +146,7 @@ static bool fpak_decode_symbol(fpak_bits *bits, const fpak_tree *tree,
         first = tree->first_code[length];
         count = tree->count[length];
         if (count && (code >= first) && ((code - first) < count)) {
-            const int32_t index =
-                tree->first_symbol[length] + (int32_t)(code - first);
+            const int32_t index = tree->first_symbol[length] + (int32_t)(code - first);
             if ((index < 0) || (index >= tree->symbol_count)) return false;
             *symbol = tree->symbols[index];
             return true;
@@ -166,10 +155,8 @@ static bool fpak_decode_symbol(fpak_bits *bits, const fpak_tree *tree,
     return false;
 }
 
-static bool fpak_decode_core(const uint8_t *input, size_t input_size,
-                             uint16_t method, uint16_t flags,
-                             uint8_t *output, size_t output_size,
-                             size_t *written, bool allow_partial)
+static bool fpak_decode_core(const uint8_t *input, size_t input_size, uint16_t method, uint16_t flags, uint8_t *output, size_t output_size, size_t *written,
+                             bool allow_partial)
 {
     fpak_tree literal_tree;
     fpak_tree length_tree;
@@ -184,10 +171,7 @@ static bool fpak_decode_core(const uint8_t *input, size_t input_size,
 
     if (written) *written = 0U;
     if ((!input && input_size) || (!output && output_size)) return false;
-    if ((input_size == 0U) || (output_size < 1U) ||
-        ((uint64_t)output_size > FPAK_MAX_OUTPUT) ||
-        ((uint64_t)output_size > FPAK_MAX_INT32))
-        return false;
+    if ((input_size == 0U) || (output_size < 1U) || ((uint64_t)output_size > FPAK_MAX_OUTPUT) || ((uint64_t)output_size > FPAK_MAX_INT32)) return false;
 
     if (method == XX_FPAK_METHOD_STORED) {
         /* A stored member is its own payload; the segment chain has already
@@ -209,15 +193,9 @@ static bool fpak_decode_core(const uint8_t *input, size_t input_size,
     minimum_match = use_literal_tree ? 3U : 2U;
     dictionary_size = 1U << (distance_bits + 6U);
 
-    if (use_literal_tree &&
-        !fpak_read_tree(input, input_size, &position, FPAK_MAX_TREE_SYMBOLS,
-                        &literal_tree))
-        return false;
-    if (!fpak_read_tree(input, input_size, &position, FPAK_CODE_TREE_SYMBOLS,
-                        &length_tree) ||
-        !fpak_read_tree(input, input_size, &position, FPAK_CODE_TREE_SYMBOLS,
-                        &distance_tree) ||
-        (position >= input_size))
+    if (use_literal_tree && !fpak_read_tree(input, input_size, &position, FPAK_MAX_TREE_SYMBOLS, &literal_tree)) return false;
+    if (!fpak_read_tree(input, input_size, &position, FPAK_CODE_TREE_SYMBOLS, &length_tree) ||
+        !fpak_read_tree(input, input_size, &position, FPAK_CODE_TREE_SYMBOLS, &distance_tree) || (position >= input_size))
         return false;
 
     bits.data = input;
@@ -231,8 +209,7 @@ static bool fpak_decode_core(const uint8_t *input, size_t input_size,
         if (literal_flag) {
             uint32_t literal = 0U;
             if (use_literal_tree) {
-                if (!fpak_decode_symbol(&bits, &literal_tree, &literal))
-                    goto stopped;
+                if (!fpak_decode_symbol(&bits, &literal_tree, &literal)) goto stopped;
             } else if (!fpak_read_bits(&bits, 8U, &literal)) {
                 goto stopped;
             }
@@ -244,8 +221,7 @@ static bool fpak_decode_core(const uint8_t *input, size_t input_size,
             uint32_t length;
             uint32_t distance;
             uint32_t i;
-            if (!fpak_read_bits(&bits, distance_bits, &low_distance) ||
-                !fpak_decode_symbol(&bits, &distance_tree, &distance_symbol) ||
+            if (!fpak_read_bits(&bits, distance_bits, &low_distance) || !fpak_decode_symbol(&bits, &distance_tree, &distance_symbol) ||
                 !fpak_decode_symbol(&bits, &length_tree, &length_symbol))
                 goto stopped;
             length = length_symbol + minimum_match;
@@ -255,17 +231,13 @@ static bool fpak_decode_core(const uint8_t *input, size_t input_size,
                 length += extra_length;
             }
             distance = (distance_symbol << distance_bits) + low_distance + 1U;
-            if (!distance || (distance > dictionary_size) ||
-                ((uint64_t)length > (uint64_t)(output_size - produced)))
-                return false;
+            if (!distance || (distance > dictionary_size) || ((uint64_t)length > (uint64_t)(output_size - produced))) return false;
             /* PKZIP Implode starts with a zero-filled dictionary.  A legal
              * early match may therefore point before the first produced byte;
              * this is NOT a malformed back-reference and must not be made one.
              * Copying one byte at a time also gives overlapping LZ copies. */
             for (i = 0U; i < length; ++i) {
-                const uint8_t value = (size_t)distance <= produced
-                                          ? output[produced - distance]
-                                          : (uint8_t)0;
+                const uint8_t value = (size_t)distance <= produced ? output[produced - distance] : (uint8_t)0;
                 output[produced++] = value;
             }
         }
@@ -273,8 +245,7 @@ static bool fpak_decode_core(const uint8_t *input, size_t input_size,
 
     /* The stream must end exactly at the end of the member: a short read is a
      * desync and trailing bytes mean the wrong profile was used. */
-    if ((produced != output_size) || (fpak_consumed(&bits) != input_size))
-        return false;
+    if ((produced != output_size) || (fpak_consumed(&bits) != input_size)) return false;
 
     if (written) *written = produced;
     return true;
@@ -292,29 +263,17 @@ stopped:
     return false;
 }
 
-bool xx_fpak_decode_memory_profile(const uint8_t *input, size_t input_size,
-                                   uint16_t method, uint16_t flags,
-                                   uint8_t *output, size_t output_size,
-                                   size_t *written)
+bool xx_fpak_decode_memory_profile(const uint8_t *input, size_t input_size, uint16_t method, uint16_t flags, uint8_t *output, size_t output_size, size_t *written)
 {
-    return fpak_decode_core(input, input_size, method, flags, output,
-                            output_size, written, false);
+    return fpak_decode_core(input, input_size, method, flags, output, output_size, written, false);
 }
 
-bool xx_fpak_decode_partial_profile(const uint8_t *input, size_t input_size,
-                                    uint16_t method, uint16_t flags,
-                                    uint8_t *output, size_t output_size,
-                                    size_t *written)
+bool xx_fpak_decode_partial_profile(const uint8_t *input, size_t input_size, uint16_t method, uint16_t flags, uint8_t *output, size_t output_size, size_t *written)
 {
-    return fpak_decode_core(input, input_size, method, flags, output,
-                            output_size, written, true);
+    return fpak_decode_core(input, input_size, method, flags, output, output_size, written, true);
 }
 
-bool xx_fpak_decode_memory(const uint8_t *input, size_t input_size,
-                           uint8_t *output, size_t output_size,
-                           size_t *written)
+bool xx_fpak_decode_memory(const uint8_t *input, size_t input_size, uint8_t *output, size_t output_size, size_t *written)
 {
-    return xx_fpak_decode_memory_profile(input, input_size,
-                                         XX_FPAK_METHOD_IMPLODED, 0U, output,
-                                         output_size, written);
+    return xx_fpak_decode_memory_profile(input, input_size, XX_FPAK_METHOD_IMPLODED, 0U, output, output_size, written);
 }

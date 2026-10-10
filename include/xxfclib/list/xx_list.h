@@ -51,11 +51,11 @@ typedef int (*xx_elem_compare_fn)(const void *a, const void *b);
  * @brief Generic dynamic list container.
  */
 typedef struct xx_list_s {
-    uint8_t *data;              /**< Contiguous buffer holding elements */
-    size_t count;               /**< Number of active elements in the list */
-    size_t capacity;            /**< Total allocated element capacity */
-    size_t elem_size;           /**< Byte size of a single element */
-    xx_elem_free_fn elem_free;  /**< Optional element destructor */
+    uint8_t *data;             /**< Contiguous buffer holding elements */
+    size_t count;              /**< Number of active elements in the list */
+    size_t capacity;           /**< Total allocated element capacity */
+    size_t elem_size;          /**< Byte size of a single element */
+    xx_elem_free_fn elem_free; /**< Optional element destructor */
 } xx_list_t;
 
 typedef struct xx_list_s xx_list_s;
@@ -70,7 +70,7 @@ typedef struct xx_list_s xx_list_s;
  * @param elem_free Optional destructor called on removed elements (can be NULL).
  * @return Pointer to newly allocated xx_list_t, or NULL on error.
  */
-XXFC_API xx_list_t* xx_list_create(size_t elem_size, xx_elem_free_fn elem_free);
+XXFC_API xx_list_t *xx_list_create(size_t elem_size, xx_elem_free_fn elem_free);
 
 /**
  * @brief Initialize an existing xx_list_t on stack or embedded struct.
@@ -95,7 +95,7 @@ XXFC_API void xx_list_clear(xx_list_t *list);
 /**
  * @brief Create a shallow clone of the list.
  */
-XXFC_API xx_list_t* xx_list_clone(const xx_list_t *list);
+XXFC_API xx_list_t *xx_list_clone(const xx_list_t *list);
 
 /* ========================================================================= */
 /* --- Capacity and Size                                                 --- */
@@ -104,12 +104,12 @@ XXFC_API xx_list_t* xx_list_clone(const xx_list_t *list);
 XXFC_API size_t xx_list_count(const xx_list_t *list);
 XXFC_API size_t xx_list_size(const xx_list_t *list);
 XXFC_API size_t xx_list_length(const xx_list_t *list);
-XXFC_API bool   xx_list_is_empty(const xx_list_t *list);
+XXFC_API bool xx_list_is_empty(const xx_list_t *list);
 XXFC_API size_t xx_list_capacity(const xx_list_t *list);
 XXFC_API size_t xx_list_elem_size(const xx_list_t *list);
 
-XXFC_API bool   xx_list_reserve(xx_list_t *list, size_t new_capacity);
-XXFC_API bool   xx_list_squeeze(xx_list_t *list);
+XXFC_API bool xx_list_reserve(xx_list_t *list, size_t new_capacity);
+XXFC_API bool xx_list_squeeze(xx_list_t *list);
 
 /* ========================================================================= */
 /* --- Element Access                                                    --- */
@@ -119,7 +119,7 @@ XXFC_API bool   xx_list_squeeze(xx_list_t *list);
  * @brief Get pointer to element at specified index.
  * @return Direct pointer to element in internal buffer, or NULL if out of bounds.
  */
-XXFC_API void* xx_list_at(const xx_list_t *list, size_t index);
+XXFC_API void *xx_list_at(const xx_list_t *list, size_t index);
 
 /**
  * @brief Copy element at index into out_element.
@@ -134,12 +134,12 @@ XXFC_API bool xx_list_set(xx_list_t *list, size_t index, const void *element);
 /**
  * @brief Pointer to first element, or NULL if list is empty.
  */
-XXFC_API void* xx_list_first(const xx_list_t *list);
+XXFC_API void *xx_list_first(const xx_list_t *list);
 
 /**
  * @brief Pointer to last element, or NULL if list is empty.
  */
-XXFC_API void* xx_list_last(const xx_list_t *list);
+XXFC_API void *xx_list_last(const xx_list_t *list);
 
 /**
  * @brief Get element at index, or copy defaultValue if index is out of bounds.
@@ -277,30 +277,33 @@ XXFC_API void xx_list_sort(xx_list_t *list, xx_elem_compare_fn cmp);
  * @brief Extract a sub-list starting at pos with length len.
  * If length < 0, copies all elements from pos to end of list.
  */
-XXFC_API xx_list_t* xx_list_mid(const xx_list_t *list, size_t pos, int64_t length);
+XXFC_API xx_list_t *xx_list_mid(const xx_list_t *list, size_t pos, int64_t length);
 
 /* ========================================================================= */
 /* --- Type-Safe Helper Macros                                           --- */
 /* ========================================================================= */
 
-#define xx_list_at_as(Type, list, index) (*((Type*)xx_list_at((list), (index))))
-#define xx_list_first_as(Type, list)     (*((Type*)xx_list_first((list))))
-#define xx_list_last_as(Type, list)      (*((Type*)xx_list_last((list))))
+#define xx_list_at_as(Type, list, index) (*((Type *)xx_list_at((list), (index))))
+#define xx_list_first_as(Type, list) (*((Type *)xx_list_first((list))))
+#define xx_list_last_as(Type, list) (*((Type *)xx_list_last((list))))
 
-#define xx_list_append_val(list, Type, val) do { \
-    Type _tmp_val = (val); \
-    xx_list_append((list), &_tmp_val); \
-} while(0)
+#define xx_list_append_val(list, Type, val) \
+    do {                                    \
+        Type _tmp_val = (val);              \
+        xx_list_append((list), &_tmp_val);  \
+    } while (0)
 
-#define xx_list_prepend_val(list, Type, val) do { \
-    Type _tmp_val = (val); \
-    xx_list_prepend((list), &_tmp_val); \
-} while(0)
+#define xx_list_prepend_val(list, Type, val) \
+    do {                                     \
+        Type _tmp_val = (val);               \
+        xx_list_prepend((list), &_tmp_val);  \
+    } while (0)
 
-#define xx_list_insert_val(list, index, Type, val) do { \
-    Type _tmp_val = (val); \
-    xx_list_insert((list), (index), &_tmp_val); \
-} while(0)
+#define xx_list_insert_val(list, index, Type, val)  \
+    do {                                            \
+        Type _tmp_val = (val);                      \
+        xx_list_insert((list), (index), &_tmp_val); \
+    } while (0)
 
 #ifdef __cplusplus
 }

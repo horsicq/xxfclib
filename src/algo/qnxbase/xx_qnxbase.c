@@ -27,22 +27,23 @@ typedef struct qnx_bits {
     bool error;
 } qnx_bits;
 
-static uint32_t qnx_bit(qnx_bits *reader) {
+static uint32_t qnx_bit(qnx_bits *reader)
+{
     reader->state = reader->state * 2U;
     if ((reader->state & 0xffU) == 0U) {
         if (reader->pos >= reader->size) {
             reader->error = true;
             return 0U;
         }
-        reader->state = (reader->state & 0xffffff00U) |
-                        (uint32_t)reader->data[reader->pos];
+        reader->state = (reader->state & 0xffffff00U) | (uint32_t)reader->data[reader->pos];
         reader->pos++;
         reader->state = reader->state * 2U + 1U;
     }
     return (reader->state >> 8U) & 1U;
 }
 
-static uint32_t qnx_byte(qnx_bits *reader) {
+static uint32_t qnx_byte(qnx_bits *reader)
+{
     uint32_t result;
     if (reader->pos >= reader->size) {
         reader->error = true;
@@ -57,9 +58,8 @@ static uint32_t qnx_byte(qnx_bits *reader) {
  * also carries the match history; returns false on a malformed stream, true
  * when the end marker was reached.  *consumed receives the number of input
  * bytes the stream used. */
-static bool qnx_decode_block(const uint8_t *data, size_t size, uint8_t *output,
-                             size_t out_capacity, size_t *out_position,
-                             size_t *consumed) {
+static bool qnx_decode_block(const uint8_t *data, size_t size, uint8_t *output, size_t out_capacity, size_t *out_position, size_t *consumed)
+{
     qnx_bits reader;
     uint32_t last_offset = 1U;
     size_t out_pos = *out_position;
@@ -148,9 +148,8 @@ static bool qnx_decode_block(const uint8_t *data, size_t size, uint8_t *output,
     }
 }
 
-bool xx_qnxbase_decode_memory(const uint8_t *input, size_t input_size,
-                              uint8_t *output, size_t output_size,
-                              size_t *written) {
+bool xx_qnxbase_decode_memory(const uint8_t *input, size_t input_size, uint8_t *output, size_t output_size, size_t *written)
+{
     size_t position = 0U;
     size_t out_pos = 0U;
 
@@ -162,15 +161,13 @@ bool xx_qnxbase_decode_memory(const uint8_t *input, size_t input_size,
         size_t consumed = 0U;
 
         if (input_size - position < 2U) return false;
-        block_size = ((size_t)input[position] << 8U) |
-                     (size_t)input[position + 1U];
+        block_size = ((size_t)input[position] << 8U) | (size_t)input[position + 1U];
         position += 2U;
         if (block_size == 0U) break;
         if (block_size > QNXB_MAX_BLOCK) return false;
         if (block_size > input_size - position) return false;
 
-        if (!qnx_decode_block(input + position, block_size, output, output_size,
-                              &out_pos, &consumed)) {
+        if (!qnx_decode_block(input + position, block_size, output, output_size, &out_pos, &consumed)) {
             return false;
         }
         /* Each block's declared length must match what the end marker

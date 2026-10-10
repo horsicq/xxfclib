@@ -33,8 +33,7 @@
  * the real file type is picked up as soon as the format is registered. */
 #ifdef SFX_CLICKTEAM_MULTIMEDIA_FUSION
 
-#define XX_SFX_CLICKTEAM_MULTIMEDIA_FUSION_FILE_TYPE \
-    XX_FILE_TYPE_SFX_CLICKTEAM_MULTIMEDIA_FUSION
+#define XX_SFX_CLICKTEAM_MULTIMEDIA_FUSION_FILE_TYPE XX_FILE_TYPE_SFX_CLICKTEAM_MULTIMEDIA_FUSION
 #else
 #define XX_SFX_CLICKTEAM_MULTIMEDIA_FUSION_FILE_TYPE XX_FILE_TYPE_UNKNOWN
 #endif
@@ -78,9 +77,9 @@ enum {
 };
 
 typedef struct mmf_layout_s {
-    int64_t pack;          /* device offset of the pack header */
-    int64_t end;           /* device offset where the pack data ends */
-    int64_t total;         /* bytes from base_address to the device end */
+    int64_t pack;  /* device offset of the pack header */
+    int64_t end;   /* device offset where the pack data ends */
+    int64_t total; /* bytes from base_address to the device end */
     uint32_t declared;
     bool unicode;
     bool two_fields;
@@ -88,7 +87,7 @@ typedef struct mmf_layout_s {
 } mmf_layout;
 
 typedef struct mmf_entry_s {
-    char *name;            /* published UTF-8 name */
+    char *name; /* published UTF-8 name */
     int64_t header_offset;
     int64_t header_size;
     int64_t data_offset;
@@ -100,9 +99,9 @@ typedef struct mmf_entry_s {
 
 typedef struct mmf_table_s {
     mmf_entry *entries;
-    size_t count;          /* entries in use, "1.ccn" included */
+    size_t count; /* entries in use, "1.ccn" included */
     size_t capacity;
-    uint32_t parsed;       /* complete packed-file records */
+    uint32_t parsed; /* complete packed-file records */
     bool truncated;
     int64_t ccn_offset;
     int64_t ccn_size;
@@ -120,19 +119,21 @@ typedef struct mmf_stream_s {
     mmf_table table;
     size_t index;
     uint64_t max_inflated;
-    uint64_t max_member;   /* UINT64_MAX when unset */
+    uint64_t max_member; /* UINT64_MAX when unset */
 } mmf_stream;
 
 /* ---------------------------------------------------------------------- */
 /* Helpers                                                                 */
 
 #include "xxfclib/global/xx_global.h"
-static size_t gb_sfx_clickteam_multimedia_fusion_capacity(void) {
+static size_t gb_sfx_clickteam_multimedia_fusion_capacity(void)
+{
     size_t n = xx_get_file_buffer_size();
     if (!n) n = XX_DEFAULT_FILE_BUFFER_SIZE;
     return n > (SIZE_MAX >> 1) ? SIZE_MAX >> 1 : n;
 }
-static ssize_t gb_sfx_clickteam_multimedia_fusion_read(xx_io_device *device, void *buffer, size_t size, size_t capacity) {
+static ssize_t gb_sfx_clickteam_multimedia_fusion_read(xx_io_device *device, void *buffer, size_t size, size_t capacity)
+{
     size_t done = 0;
     if (size > (SIZE_MAX >> 1)) return -1;
     while (done < size) {
@@ -146,7 +147,8 @@ static ssize_t gb_sfx_clickteam_multimedia_fusion_read(xx_io_device *device, voi
     }
     return (ssize_t)done;
 }
-static ssize_t gb_sfx_clickteam_multimedia_fusion_write(xx_io_device *device, const void *buffer, size_t size, size_t capacity) {
+static ssize_t gb_sfx_clickteam_multimedia_fusion_write(xx_io_device *device, const void *buffer, size_t size, size_t capacity)
+{
     size_t done = 0;
     if (size > (SIZE_MAX >> 1)) return -1;
     while (done < size) {
@@ -161,21 +163,18 @@ static ssize_t gb_sfx_clickteam_multimedia_fusion_write(xx_io_device *device, co
     return (ssize_t)done;
 }
 
-
-static uint32_t mmf_le16(const uint8_t *p) {
+static uint32_t mmf_le16(const uint8_t *p)
+{
     return (uint32_t)p[0] | ((uint32_t)p[1] << 8U);
 }
 
-static bool mmf_read_at(xx_io_device *device, int64_t offset, void *buffer,
-                        size_t size) {
+static bool mmf_read_at(xx_io_device *device, int64_t offset, void *buffer, size_t size)
+{
     const size_t file_io_capacity = gb_sfx_clickteam_multimedia_fusion_capacity();
     size_t done = 0U;
-    if (!device || (!buffer && size != 0U) || offset < 0 ||
-        xx_io_seek64(device, offset, SEEK_SET) != 0)
-        return false;
+    if (!device || (!buffer && size != 0U) || offset < 0 || xx_io_seek64(device, offset, SEEK_SET) != 0) return false;
     while (done < size) {
-        ssize_t amount = gb_sfx_clickteam_multimedia_fusion_read(device, (uint8_t *)buffer + done,
-                                    size - done, file_io_capacity);
+        ssize_t amount = gb_sfx_clickteam_multimedia_fusion_read(device, (uint8_t *)buffer + done, size - done, file_io_capacity);
         if (amount <= 0 || (size_t)amount > size - done) return false;
         done += (size_t)amount;
     }
@@ -185,24 +184,23 @@ static bool mmf_read_at(xx_io_device *device, int64_t offset, void *buffer,
 /* The zlib header test of the first-record probe: deflate with a window of
  * at most 32K, a valid check value, no preset dictionary, and a first
  * block whose type is not the reserved one. */
-static bool mmf_zlib_start(const uint8_t *p) {
+static bool mmf_zlib_start(const uint8_t *p)
+{
     uint32_t cmf = p[0], flg = p[1];
-    return (cmf & 0x0FU) == 8U && (cmf >> 4U) < 8U &&
-           ((cmf << 8U) | flg) % 31U == 0U && (flg & 0x20U) == 0U &&
-           ((p[2] >> 1U) & 3U) != 3U;
+    return (cmf & 0x0FU) == 8U && (cmf >> 4U) < 8U && ((cmf << 8U) | flg) % 31U == 0U && (flg & 0x20U) == 0U && ((p[2] >> 1U) & 3U) != 3U;
 }
 
-static uint32_t mmf_rol1(uint32_t value) {
+static uint32_t mmf_rol1(uint32_t value)
+{
     return (value << 1U) | (value >> 31U);
 }
 
-uint32_t xx_sfx_clickteam_multimedia_fusion_checksum(const uint8_t *data,
-                                                     size_t size) {
+uint32_t xx_sfx_clickteam_multimedia_fusion_checksum(const uint8_t *data, size_t size)
+{
     uint32_t sum = 0U;
     size_t index = 0U;
     if (!data) return 0U;
-    for (; size - index >= 4U; index += 4U)
-        sum = mmf_rol1(sum) + xx_data_get_u32(data + index, 4, 0, false);
+    for (; size - index >= 4U; index += 4U) sum = mmf_rol1(sum) + xx_data_get_u32(data + index, 4, 0, false);
     for (; index < size; ++index) sum = mmf_rol1(sum) + data[index];
     return sum;
 }
@@ -213,9 +211,8 @@ uint32_t xx_sfx_clickteam_multimedia_fusion_checksum(const uint8_t *data,
 /* End of the PE image's file data (headers and every section's raw data)
  * and where an Authenticode certificate that closes the file begins.  Both
  * are relative to base_address. */
-static bool mmf_pe_extent(xx_io_device *device, int64_t base, int64_t size,
-                          int64_t *raw_end_out, int64_t *data_end_out,
-                          uint32_t *alignment_out) {
+static bool mmf_pe_extent(xx_io_device *device, int64_t base, int64_t size, int64_t *raw_end_out, int64_t *data_end_out, uint32_t *alignment_out)
+{
     uint8_t dos[0x40];
     uint8_t nt[24];
     uint8_t optional[MMF_PE_OPTIONAL_MAX];
@@ -224,28 +221,19 @@ static bool mmf_pe_extent(xx_io_device *device, int64_t base, int64_t size,
     uint32_t security_entry, index;
     size_t optional_read;
     int64_t raw_end, section_offset, data_end = size;
-    if (size < (int64_t)sizeof(dos) ||
-        !mmf_read_at(device, base, dos, sizeof(dos)) ||
-        dos[0] != 'M' || dos[1] != 'Z')
-        return false;
+    if (size < (int64_t)sizeof(dos) || !mmf_read_at(device, base, dos, sizeof(dos)) || dos[0] != 'M' || dos[1] != 'Z') return false;
     nt_offset = xx_data_get_u32(dos + 0x3C, 4, 0, false);
-    if (nt_offset < 4U || (int64_t)nt_offset > size - (int64_t)sizeof(nt) ||
-        !mmf_read_at(device, base + nt_offset, nt, sizeof(nt)) ||
+    if (nt_offset < 4U || (int64_t)nt_offset > size - (int64_t)sizeof(nt) || !mmf_read_at(device, base + nt_offset, nt, sizeof(nt)) ||
         xx_rt_memcmp(nt, "PE\0\0", 4U) != 0)
         return false;
     section_count = mmf_le16(nt + 6);
     optional_size = mmf_le16(nt + 20);
-    if (section_count == 0U || section_count > MMF_PE_MAX_SECTIONS ||
-        optional_size < 64U)
-        return false;
-    optional_read = optional_size < MMF_PE_OPTIONAL_MAX ? optional_size
-                                                         : MMF_PE_OPTIONAL_MAX;
+    if (section_count == 0U || section_count > MMF_PE_MAX_SECTIONS || optional_size < 64U) return false;
+    optional_read = optional_size < MMF_PE_OPTIONAL_MAX ? optional_size : MMF_PE_OPTIONAL_MAX;
     section_offset = (int64_t)nt_offset + 24 + optional_size;
-    if (section_offset > size ||
-        (int64_t)section_count * MMF_PE_SECTION_SIZE > size - section_offset ||
+    if (section_offset > size || (int64_t)section_count * MMF_PE_SECTION_SIZE > size - section_offset ||
         !mmf_read_at(device, base + nt_offset + 24, optional, optional_read) ||
-        !mmf_read_at(device, base + section_offset, sections,
-                     section_count * MMF_PE_SECTION_SIZE))
+        !mmf_read_at(device, base + section_offset, sections, section_count * MMF_PE_SECTION_SIZE))
         return false;
     magic = mmf_le16(optional);
     if (magic == 0x10BU) {
@@ -255,7 +243,7 @@ static bool mmf_pe_extent(xx_io_device *device, int64_t base, int64_t size,
     } else {
         return false;
     }
-    raw_end = (int64_t)xx_data_get_u32(optional + 60, 4, 0, false);  /* SizeOfHeaders */
+    raw_end = (int64_t)xx_data_get_u32(optional + 60, 4, 0, false); /* SizeOfHeaders */
     if (raw_end > size) return false;
     for (index = 0U; index < section_count; ++index) {
         const uint8_t *entry = sections + index * MMF_PE_SECTION_SIZE;
@@ -270,27 +258,22 @@ static bool mmf_pe_extent(xx_io_device *device, int64_t base, int64_t size,
      * of the file.  mmf_locate() falls back to the whole overlay when an odd
      * entry points into the pack header. */
     security_entry = directories + 4U * 8U;
-    if (optional_read >= security_entry + 8U &&
-        xx_data_get_u32(optional + directories - 4U, 4, 0, false) > 4U) {
+    if (optional_read >= security_entry + 8U && xx_data_get_u32(optional + directories - 4U, 4, 0, false) > 4U) {
         int64_t cert_offset = (int64_t)xx_data_get_u32(optional + security_entry, 4, 0, false);
         int64_t cert_size = (int64_t)xx_data_get_u32(optional + security_entry + 4U, 4, 0, false);
-        if (cert_size > 0 && cert_offset > raw_end && cert_offset <= size &&
-            cert_size == size - cert_offset)
-            data_end = cert_offset;
+        if (cert_size > 0 && cert_offset > raw_end && cert_offset <= size && cert_size == size - cert_offset) data_end = cert_offset;
     }
     *raw_end_out = raw_end;
     *data_end_out = data_end;
-    *alignment_out = xx_data_get_u32(optional + 36, 4, 0, false);  /* FileAlignment */
+    *alignment_out = xx_data_get_u32(optional + 36, 4, 0, false); /* FileAlignment */
     return true;
 }
 
 /* One reading of the first record's size fields: the packed data starts at
  * @p data and must open with an MZ image or a zlib header and fit the pack. */
-static bool mmf_probe_payload(const uint8_t *head, size_t data,
-                              uint32_t packed, int64_t room, bool *stored) {
-    if (packed == 0U || packed > (uint32_t)INT32_MAX ||
-        (int64_t)data > room || (int64_t)packed > room - (int64_t)data)
-        return false;
+static bool mmf_probe_payload(const uint8_t *head, size_t data, uint32_t packed, int64_t room, bool *stored)
+{
+    if (packed == 0U || packed > (uint32_t)INT32_MAX || (int64_t)data > room || (int64_t)packed > room - (int64_t)data) return false;
     if (head[data] == 'M' && head[data + 1U] == 'Z') {
         *stored = true;
         return true;
@@ -310,8 +293,8 @@ static bool mmf_probe_payload(const uint8_t *head, size_t data,
  * zero), anything else is the single packed-size field.  Every known build
  * leaves the first record's checksum empty; a pack whose first record
  * carries one is not accepted, since neither reference would read it. */
-static bool mmf_probe_record(const uint8_t *head, size_t avail, int64_t room,
-                             bool unicode, bool *two_fields, bool *stored) {
+static bool mmf_probe_record(const uint8_t *head, size_t avail, int64_t room, bool unicode, bool *two_fields, bool *stored)
+{
     uint32_t length, first, second;
     size_t name_bytes, position;
     if (avail < 2U) return false;
@@ -330,8 +313,8 @@ static bool mmf_probe_record(const uint8_t *head, size_t avail, int64_t room,
     return mmf_probe_payload(head, position + 8U, second, room, stored);
 }
 
-static bool mmf_try_pack(xx_io_device *device, int64_t pack, int64_t end,
-                         mmf_layout *layout) {
+static bool mmf_try_pack(xx_io_device *device, int64_t pack, int64_t end, mmf_layout *layout)
+{
     uint8_t header[MMF_HEADER_SIZE];
     uint8_t head[MMF_PROBE_SIZE];
     int64_t room;
@@ -339,11 +322,10 @@ static bool mmf_try_pack(xx_io_device *device, int64_t pack, int64_t end,
     uint32_t count;
     bool two_u = false, stored_u = false, two_a = false, stored_a = false;
     bool as_unicode, as_ansi;
-    if (pack < 0 || end - pack < (int64_t)MMF_HEADER_SIZE + 2 ||
-        !mmf_read_at(device, pack, header, sizeof(header)) ||
+    if (pack < 0 || end - pack < (int64_t)MMF_HEADER_SIZE + 2 || !mmf_read_at(device, pack, header, sizeof(header)) ||
         xx_data_get_u32(header, 4, 0, false) != MMF_MAGIC1 || xx_data_get_u32(header + 4, 4, 0, false) != MMF_MAGIC2 ||
-        xx_data_get_u32(header + 8, 4, 0, false) != MMF_HEADER_SIZE ||
-        xx_data_get_u32(header + 0x14, 4, 0, false) != 0U || xx_data_get_u32(header + 0x18, 4, 0, false) != 0U)
+        xx_data_get_u32(header + 8, 4, 0, false) != MMF_HEADER_SIZE || xx_data_get_u32(header + 0x14, 4, 0, false) != 0U ||
+        xx_data_get_u32(header + 0x18, 4, 0, false) != 0U)
         return false;
     count = xx_data_get_u32(header + 0x1C, 4, 0, false);
     if (count == 0U || count > MMF_MAX_FILES) return false;
@@ -367,40 +349,28 @@ static bool mmf_try_pack(xx_io_device *device, int64_t pack, int64_t end,
 /* The pack header sits at the end of the section data, or at that offset
  * rounded up to the file alignment: a section whose raw size is not a
  * multiple of the alignment still makes the linker pad the file. */
-static bool mmf_find_pack(Abstractformat *format, int64_t raw_end,
-                          int64_t data_end, uint32_t alignment,
-                          mmf_layout *found) {
+static bool mmf_find_pack(Abstractformat *format, int64_t raw_end, int64_t data_end, uint32_t alignment, mmf_layout *found)
+{
     int64_t aligned;
     if (raw_end >= data_end) return false;
-    if (mmf_try_pack(format->device, format->base_address + raw_end,
-                     format->base_address + data_end, found))
-        return true;
-    if (alignment < 0x200U || alignment > 0x10000U ||
-        (alignment & (alignment - 1U)) != 0U)
-        return false;
+    if (mmf_try_pack(format->device, format->base_address + raw_end, format->base_address + data_end, found)) return true;
+    if (alignment < 0x200U || alignment > 0x10000U || (alignment & (alignment - 1U)) != 0U) return false;
     aligned = (raw_end + (int64_t)alignment - 1) & ~((int64_t)alignment - 1);
-    return aligned != raw_end && aligned < data_end &&
-           mmf_try_pack(format->device, format->base_address + aligned,
-                        format->base_address + data_end, found);
+    return aligned != raw_end && aligned < data_end && mmf_try_pack(format->device, format->base_address + aligned, format->base_address + data_end, found);
 }
 
-static bool mmf_locate(Abstractformat *format, mmf_layout *layout) {
+static bool mmf_locate(Abstractformat *format, mmf_layout *layout)
+{
     int64_t total, size, raw_end = 0, data_end = 0;
     uint32_t alignment = 0U;
     mmf_layout found;
-    if (!format || !format->device || !layout || format->base_address < 0)
-        return false;
+    if (!format || !format->device || !layout || format->base_address < 0) return false;
     total = xx_io_total_size(format->device);
     if (total < format->base_address) return false;
     size = total - format->base_address;
-    if (!mmf_pe_extent(format->device, format->base_address, size, &raw_end,
-                       &data_end, &alignment))
-        return false;
+    if (!mmf_pe_extent(format->device, format->base_address, size, &raw_end, &data_end, &alignment)) return false;
     xx_mem_zero(&found, sizeof(found));
-    if (!mmf_find_pack(format, raw_end, data_end, alignment, &found) &&
-        (data_end == size ||
-         !mmf_find_pack(format, raw_end, size, alignment, &found)))
-        return false;
+    if (!mmf_find_pack(format, raw_end, data_end, alignment, &found) && (data_end == size || !mmf_find_pack(format, raw_end, size, alignment, &found))) return false;
     found.total = size;
     *layout = found;
     return true;
@@ -409,7 +379,8 @@ static bool mmf_locate(Abstractformat *format, mmf_layout *layout) {
 /* ---------------------------------------------------------------------- */
 /* Member names                                                            */
 
-static void mmf_put_utf8(char *out, size_t *length, uint32_t code) {
+static void mmf_put_utf8(char *out, size_t *length, uint32_t code)
+{
     if (code < 0x80U) {
         out[(*length)++] = (char)code;
     } else if (code < 0x800U) {
@@ -430,8 +401,8 @@ static void mmf_put_utf8(char *out, size_t *length, uint32_t code) {
 /* Decode a raw name to UTF-8 (8-bit names are taken as Latin-1).  Returns
  * NULL for a name that cannot be represented: NUL, an unpaired surrogate,
  * or no memory. */
-static char *mmf_decode_name(const uint8_t *raw, uint32_t length,
-                             bool unicode) {
+static char *mmf_decode_name(const uint8_t *raw, uint32_t length, bool unicode)
+{
     char *out = (char *)xx_mem_alloc((size_t)length * 3U + 1U);
     size_t used = 0U;
     uint32_t index;
@@ -463,7 +434,8 @@ bad:
     return NULL;
 }
 
-static char mmf_upper(char c) {
+static char mmf_upper(char c)
+{
     return (c >= 'a' && c <= 'z') ? (char)(c - 'a' + 'A') : c;
 }
 
@@ -471,28 +443,20 @@ static char mmf_upper(char c) {
  * separators, drive colons or wildcard/reserved punctuation, no control
  * characters, not "." or ".." (no trailing dot or space at all), and not a
  * Windows device name in any case, with or without an extension. */
-static bool mmf_safe_name(const char *name) {
-    static const char *const devices[] = {"CON", "PRN", "AUX", "NUL",
-                                          "CONIN$", "CONOUT$", "CLOCK$"};
+static bool mmf_safe_name(const char *name)
+{
+    static const char *const devices[] = {"CON", "PRN", "AUX", "NUL", "CONIN$", "CONOUT$", "CLOCK$"};
     size_t length, index, stem = 0U, characters = 0U, device;
     if (!name || !name[0]) return false;
     length = xx_str_len(name);
     for (index = 0U; index < length; ++index) {
         unsigned char c = (unsigned char)name[index];
-        if (c < 0x20U || c == 0x7FU || c == '/' || c == '\\' || c == ':' ||
-            c == '<' || c == '>' || c == '"' || c == '|' || c == '?' ||
-            c == '*')
-            return false;
+        if (c < 0x20U || c == 0x7FU || c == '/' || c == '\\' || c == ':' || c == '<' || c == '>' || c == '"' || c == '|' || c == '?' || c == '*') return false;
         /* C1 controls, U+0080..U+009F, are C2 80..C2 9F in UTF-8. */
-        if (c == 0xC2U && index + 1U < length &&
-            (unsigned char)name[index + 1U] >= 0x80U &&
-            (unsigned char)name[index + 1U] <= 0x9FU)
-            return false;
+        if (c == 0xC2U && index + 1U < length && (unsigned char)name[index + 1U] >= 0x80U && (unsigned char)name[index + 1U] <= 0x9FU) return false;
         if ((c & 0xC0U) != 0x80U) ++characters;
     }
-    if (characters > MMF_NAME_CHARS || name[length - 1U] == '.' ||
-        name[length - 1U] == ' ')
-        return false;
+    if (characters > MMF_NAME_CHARS || name[length - 1U] == '.' || name[length - 1U] == ' ') return false;
     while (stem < length && name[stem] != '.') ++stem;
     while (stem > 0U && name[stem - 1U] == ' ') --stem;
     for (device = 0U; device < sizeof(devices) / sizeof(devices[0]); ++device) {
@@ -501,18 +465,12 @@ static bool mmf_safe_name(const char *name) {
         while (k < stem && word[k] && mmf_upper(name[k]) == word[k]) ++k;
         if (k == stem && word[k] == 0) return false;
     }
-    if (stem >= 4U &&
-        ((mmf_upper(name[0]) == 'C' && mmf_upper(name[1]) == 'O' &&
-          mmf_upper(name[2]) == 'M') ||
-         (mmf_upper(name[0]) == 'L' && mmf_upper(name[1]) == 'P' &&
-          mmf_upper(name[2]) == 'T'))) {
+    if (stem >= 4U && ((mmf_upper(name[0]) == 'C' && mmf_upper(name[1]) == 'O' && mmf_upper(name[2]) == 'M') ||
+                       (mmf_upper(name[0]) == 'L' && mmf_upper(name[1]) == 'P' && mmf_upper(name[2]) == 'T'))) {
         /* COM0..COM9, LPT0..LPT9 and the superscript-digit forms
          * (U+00B9, U+00B2, U+00B3, UTF-8 C2 B9 / C2 B2 / C2 B3). */
         if (stem == 4U && name[3] >= '0' && name[3] <= '9') return false;
-        if (stem == 5U && (unsigned char)name[3] == 0xC2U &&
-            ((unsigned char)name[4] == 0xB9U ||
-             (unsigned char)name[4] == 0xB2U ||
-             (unsigned char)name[4] == 0xB3U))
+        if (stem == 5U && (unsigned char)name[3] == 0xC2U && ((unsigned char)name[4] == 0xB9U || (unsigned char)name[4] == 0xB2U || (unsigned char)name[4] == 0xB3U))
             return false;
     }
     return true;
@@ -521,7 +479,8 @@ static bool mmf_safe_name(const char *name) {
 /* Next code point of a published name.  Published names are well-formed
  * UTF-8 (mmf_decode_name, or ASCII built here), so no validation is done
  * beyond never stepping over the terminator. */
-static uint32_t mmf_next_code(const char **cursor) {
+static uint32_t mmf_next_code(const char **cursor)
+{
     const unsigned char *p = (const unsigned char *)*cursor;
     uint32_t code = p[0];
     size_t extra = 0U, index;
@@ -535,8 +494,7 @@ static uint32_t mmf_next_code(const char **cursor) {
         code &= 0x1FU;
         extra = 1U;
     }
-    for (index = 1U; index <= extra && p[index] != 0U; ++index)
-        code = (code << 6U) | (p[index] & 0x3FU);
+    for (index = 1U; index <= extra && p[index] != 0U; ++index) code = (code << 6U) | (p[index] & 0x3FU);
     *cursor = (const char *)(p + index);
     return code;
 }
@@ -547,7 +505,8 @@ static uint32_t mmf_next_code(const char **cursor) {
  * Folding more than NTFS does only renames a member that would not have
  * collided, which is the safe direction, so the table errs that way (the
  * dotless i, long s, final sigma and micro sign fold too). */
-static uint32_t mmf_fold(uint32_t c) {
+static uint32_t mmf_fold(uint32_t c)
+{
     if (c < 0x80U) return (c >= 'a' && c <= 'z') ? c - 0x20U : c;
     if (c == 0xB5U) return 0x39CU;
     if (c >= 0xE0U && c <= 0xFEU && c != 0xF7U) return c - 0x20U;
@@ -556,10 +515,8 @@ static uint32_t mmf_fold(uint32_t c) {
     if (c < 0x180U) {
         if (c == 0x130U || c == 0x131U) return 'I';
         if (c == 0x17FU) return 'S';
-        if ((c >= 0x139U && c <= 0x148U) || (c >= 0x179U && c <= 0x17EU))
-            return (c & 1U) ? c : c - 1U;
-        if (c <= 0x137U || (c >= 0x14AU && c <= 0x177U))
-            return (c & 1U) ? c - 1U : c;
+        if ((c >= 0x139U && c <= 0x148U) || (c >= 0x179U && c <= 0x17EU)) return (c & 1U) ? c : c - 1U;
+        if (c <= 0x137U || (c >= 0x14AU && c <= 0x177U)) return (c & 1U) ? c - 1U : c;
         return c;
     }
     if (c >= 0x370U && c < 0x400U) {
@@ -574,16 +531,13 @@ static uint32_t mmf_fold(uint32_t c) {
     if (c >= 0x400U && c < 0x530U) {
         if (c >= 0x430U && c <= 0x44FU) return c - 0x20U;
         if (c >= 0x450U && c <= 0x45FU) return c - 0x50U;
-        if ((c >= 0x460U && c <= 0x481U) || (c >= 0x48AU && c <= 0x4BFU) ||
-            c >= 0x4D0U)
-            return (c & 1U) ? c - 1U : c;
+        if ((c >= 0x460U && c <= 0x481U) || (c >= 0x48AU && c <= 0x4BFU) || c >= 0x4D0U) return (c & 1U) ? c - 1U : c;
         if (c >= 0x4C1U && c <= 0x4CEU) return (c & 1U) ? c : c - 1U;
         if (c == 0x4CFU) return 0x4C0U;
         return c;
     }
     if (c >= 0x561U && c <= 0x586U) return c - 0x30U;
-    if (c >= 0x1E00U && c <= 0x1EFFU && !(c >= 0x1E96U && c <= 0x1E9FU))
-        return (c & 1U) ? c - 1U : c;
+    if (c >= 0x1E00U && c <= 0x1EFFU && !(c >= 0x1E96U && c <= 0x1E9FU)) return (c & 1U) ? c - 1U : c;
     if (c >= 0xFF41U && c <= 0xFF5AU) return c - 0x20U;
     return c;
 }
@@ -593,17 +547,26 @@ static uint32_t mmf_fold(uint32_t c) {
  * its names at one run of slots: publicly known unkeyed hashes let a
  * 65,536-name table turn every lookup into a walk of the whole table. */
 #define MMF_ROTL64(x, b) (((x) << (b)) | ((x) >> (64U - (b))))
-#define MMF_SIPROUND(v0, v1, v2, v3)                                        \
-    do {                                                                     \
-        v0 += v1; v1 = MMF_ROTL64(v1, 13U); v1 ^= v0;                        \
-        v0 = MMF_ROTL64(v0, 32U);                                            \
-        v2 += v3; v3 = MMF_ROTL64(v3, 16U); v3 ^= v2;                        \
-        v0 += v3; v3 = MMF_ROTL64(v3, 21U); v3 ^= v0;                        \
-        v2 += v1; v1 = MMF_ROTL64(v1, 17U); v1 ^= v2;                        \
-        v2 = MMF_ROTL64(v2, 32U);                                            \
+#define MMF_SIPROUND(v0, v1, v2, v3) \
+    do {                             \
+        v0 += v1;                    \
+        v1 = MMF_ROTL64(v1, 13U);    \
+        v1 ^= v0;                    \
+        v0 = MMF_ROTL64(v0, 32U);    \
+        v2 += v3;                    \
+        v3 = MMF_ROTL64(v3, 16U);    \
+        v3 ^= v2;                    \
+        v0 += v3;                    \
+        v3 = MMF_ROTL64(v3, 21U);    \
+        v3 ^= v0;                    \
+        v2 += v1;                    \
+        v1 = MMF_ROTL64(v1, 17U);    \
+        v1 ^= v2;                    \
+        v2 = MMF_ROTL64(v2, 32U);    \
     } while (0)
 
-static uint32_t mmf_name_hash(const mmf_table *table, const char *name) {
+static uint32_t mmf_name_hash(const mmf_table *table, const char *name)
+{
     uint64_t v0 = table->key0 ^ UINT64_C(0x736f6d6570736575);
     uint64_t v1 = table->key1 ^ UINT64_C(0x646f72616e646f6d);
     uint64_t v2 = table->key0 ^ UINT64_C(0x6c7967656e657261);
@@ -636,7 +599,8 @@ static uint32_t mmf_name_hash(const mmf_table *table, const char *name) {
     return (uint32_t)(v0 ^ (v0 >> 32U));
 }
 
-static uint64_t mmf_mix64(uint64_t x) {
+static uint64_t mmf_mix64(uint64_t x)
+{
     x += UINT64_C(0x9E3779B97F4A7C15);
     x = (x ^ (x >> 30U)) * UINT64_C(0xBF58476D1CE4E5B9);
     x = (x ^ (x >> 27U)) * UINT64_C(0x94D049BB133111EB);
@@ -647,7 +611,8 @@ static uint64_t mmf_mix64(uint64_t x) {
  * heap and stack addresses (randomised by the loader) and the CRT-free
  * generator's state.  Which names collide never depends on it, so the
  * published names are the same on every run. */
-static void mmf_table_key(mmf_table *table) {
+static void mmf_table_key(mmf_table *table)
+{
     uint64_t seed = (uint64_t)xx_rt_clock_ms();
     seed = mmf_mix64(seed ^ (uint64_t)(uintptr_t)table->slots);
     seed = mmf_mix64(seed ^ (uint64_t)(uintptr_t)&seed);
@@ -656,28 +621,28 @@ static void mmf_table_key(mmf_table *table) {
     table->key1 = mmf_mix64(seed ^ (uint64_t)(uintptr_t)table->entries);
 }
 
-static bool mmf_same_name(const char *left, const char *right) {
+static bool mmf_same_name(const char *left, const char *right)
+{
     while (*left && *right)
-        if (mmf_fold(mmf_next_code(&left)) != mmf_fold(mmf_next_code(&right)))
-            return false;
+        if (mmf_fold(mmf_next_code(&left)) != mmf_fold(mmf_next_code(&right))) return false;
     return *left == *right;
 }
 
-static bool mmf_name_taken(const mmf_table *table, const char *name) {
+static bool mmf_name_taken(const mmf_table *table, const char *name)
+{
     uint32_t hash = mmf_name_hash(table, name);
     size_t slot = hash & table->mask, probes;
     for (probes = 0U; probes <= table->mask; ++probes) {
         uint32_t value = table->slots[slot];
         if (value == 0U) return false;
-        if (table->hashes[slot] == hash &&
-            mmf_same_name(table->entries[value - 1U].name, name))
-            return true;
+        if (table->hashes[slot] == hash && mmf_same_name(table->entries[value - 1U].name, name)) return true;
         slot = (slot + 1U) & table->mask;
     }
     return true;
 }
 
-static void mmf_name_insert(mmf_table *table, size_t index) {
+static void mmf_name_insert(mmf_table *table, size_t index)
+{
     uint32_t hash = mmf_name_hash(table, table->entries[index].name);
     size_t slot = hash & table->mask, probes;
     for (probes = 0U; probes <= table->mask; ++probes) {
@@ -694,18 +659,17 @@ static void mmf_name_insert(mmf_table *table, size_t index) {
  * most eight bytes ending in '~' and digits, an extension of at most
  * three).  On a volume with short names it can be the alias of a member
  * already written, so such a name is always published with a suffix. */
-static bool mmf_alias_shaped(const char *name) {
+static bool mmf_alias_shaped(const char *name)
+{
     size_t length = xx_str_len(name), stem = length, index;
     for (index = length; index > 0U; --index)
         if (name[index - 1U] == '.') {
             stem = index - 1U;
             break;
         }
-    if (stem == 0U || stem > 8U || (stem < length && length - stem - 1U > 3U))
-        return false;
+    if (stem == 0U || stem > 8U || (stem < length && length - stem - 1U > 3U)) return false;
     index = stem;
-    while (index > 0U && name[index - 1U] >= '0' && name[index - 1U] <= '9')
-        --index;
+    while (index > 0U && name[index - 1U] >= '0' && name[index - 1U] <= '9') --index;
     return index < stem && index > 0U && name[index - 1U] == '~';
 }
 
@@ -714,8 +678,8 @@ static bool mmf_alias_shaped(const char *name) {
  * names become "file_NNNN"; a name already published (compared after case
  * folding) or shaped like an 8.3 alias gets "_NNNN" (and a further counter
  * if needed) appended, so no member overwrites another. */
-static bool mmf_publish_name(mmf_table *table, size_t index, char *decoded,
-                             uint32_t ordinal) {
+static bool mmf_publish_name(mmf_table *table, size_t index, char *decoded, uint32_t ordinal)
+{
     mmf_entry *entry = &table->entries[index];
     char *base = decoded;
     char *candidate = NULL;
@@ -738,13 +702,8 @@ static bool mmf_publish_name(mmf_table *table, size_t index, char *decoded,
             return false;
         }
         for (attempt = 0U; attempt < MMF_DEDUP_TRIES; ++attempt) {
-            if (attempt == 0U)
-                (void)xx_rt_snprintf(candidate, base_length + 32U, "%s_%04u",
-                                     base, (unsigned)ordinal);
-            else
-                (void)xx_rt_snprintf(candidate, base_length + 32U,
-                                     "%s_%04u_%u", base, (unsigned)ordinal,
-                                     (unsigned)attempt);
+            if (attempt == 0U) (void)xx_rt_snprintf(candidate, base_length + 32U, "%s_%04u", base, (unsigned)ordinal);
+            else (void)xx_rt_snprintf(candidate, base_length + 32U, "%s_%04u_%u", base, (unsigned)ordinal, (unsigned)attempt);
             if (!mmf_name_taken(table, candidate)) {
                 entry->extractable = true;
                 break;
@@ -766,13 +725,13 @@ static bool mmf_publish_name(mmf_table *table, size_t index, char *decoded,
 /* ---------------------------------------------------------------------- */
 /* The record table                                                        */
 
-static void mmf_table_free(mmf_table *table) {
+static void mmf_table_free(mmf_table *table)
+{
     size_t index;
     if (!table) return;
     if (table->entries) {
         for (index = 0U; index < table->count; ++index)
-            if (table->entries[index].name)
-                xx_mem_free(table->entries[index].name);
+            if (table->entries[index].name) xx_mem_free(table->entries[index].name);
         xx_mem_free(table->entries);
     }
     if (table->slots) xx_mem_free(table->slots);
@@ -784,8 +743,8 @@ static void mmf_table_free(mmf_table *table) {
  * table->entries; otherwise only the counts and the "1.ccn" extent are
  * measured.  A table that ends before its count (a truncated or damaged
  * file) keeps the records read so far and has no "1.ccn". */
-static bool mmf_walk(Abstractformat *format, const mmf_layout *layout,
-                     mmf_table *table, bool build, xx_pd_struct *pd) {
+static bool mmf_walk(Abstractformat *format, const mmf_layout *layout, mmf_table *table, bool build, xx_pd_struct *pd)
+{
     uint8_t head[MMF_RECORD_HEAD_MAX];
     int64_t position = layout->pack + MMF_HEADER_SIZE;
     size_t raw_names = 0U;
@@ -796,8 +755,7 @@ static bool mmf_walk(Abstractformat *format, const mmf_layout *layout,
         size_t slots = 16U;
         table->capacity = (size_t)layout->declared + 1U;
         while (slots < table->capacity * 2U) slots <<= 1U;
-        table->entries = (mmf_entry *)xx_mem_calloc(table->capacity,
-                                                    sizeof(mmf_entry));
+        table->entries = (mmf_entry *)xx_mem_calloc(table->capacity, sizeof(mmf_entry));
         table->slots = (uint32_t *)xx_mem_calloc(slots, sizeof(uint32_t));
         table->hashes = (uint32_t *)xx_mem_calloc(slots, sizeof(uint32_t));
         table->mask = slots - 1U;
@@ -809,17 +767,13 @@ static bool mmf_walk(Abstractformat *format, const mmf_layout *layout,
         size_t name_bytes, fields = layout->two_fields ? 8U : 4U;
         int64_t data;
         if ((index & 0xFFU) == 0U && pd && xx_pd_is_stopped(pd)) goto fail;
-        if (layout->end - position < 2 ||
-            !mmf_read_at(format->device, position, head, 2U))
-            break;
+        if (layout->end - position < 2 || !mmf_read_at(format->device, position, head, 2U)) break;
         length = mmf_le16(head);
         if (length == 0U || length > MMF_MAX_NAME) break;
         name_bytes = layout->unicode ? (size_t)length * 2U : (size_t)length;
         raw_names += name_bytes;
-        if (raw_names > MMF_NAME_BUDGET ||
-            layout->end - position - 2 < (int64_t)(name_bytes + fields) ||
-            !mmf_read_at(format->device, position + 2, head,
-                         name_bytes + fields))
+        if (raw_names > MMF_NAME_BUDGET || layout->end - position - 2 < (int64_t)(name_bytes + fields) ||
+            !mmf_read_at(format->device, position + 2, head, name_bytes + fields))
             break;
         if (layout->two_fields) {
             checksum = xx_data_get_u32(head + name_bytes, 4, 0, false);
@@ -828,9 +782,7 @@ static bool mmf_walk(Abstractformat *format, const mmf_layout *layout,
             packed = xx_data_get_u32(head + name_bytes, 4, 0, false);
         }
         data = position + 2 + (int64_t)(name_bytes + fields);
-        if (packed == 0U || packed > (uint32_t)INT32_MAX ||
-            (int64_t)packed > layout->end - data)
-            break;
+        if (packed == 0U || packed > (uint32_t)INT32_MAX || (int64_t)packed > layout->end - data) break;
         if (build) {
             mmf_entry *entry = &table->entries[table->count];
             char *decoded;
@@ -844,19 +796,12 @@ static bool mmf_walk(Abstractformat *format, const mmf_layout *layout,
              * record is inflated when it opens with a zlib header and
              * copied as it is otherwise, as XArchive does. */
             if (index == 0U) {
-                entry->kind = layout->first_stored ? MMF_KIND_STORED
-                                                   : MMF_KIND_ZLIB;
+                entry->kind = layout->first_stored ? MMF_KIND_STORED : MMF_KIND_ZLIB;
             } else {
-                entry->kind = packed >= 3U &&
-                                      mmf_read_at(format->device, data,
-                                                  start, sizeof(start)) &&
-                                      mmf_zlib_start(start)
-                                  ? MMF_KIND_ZLIB
-                                  : MMF_KIND_STORED;
+                entry->kind = packed >= 3U && mmf_read_at(format->device, data, start, sizeof(start)) && mmf_zlib_start(start) ? MMF_KIND_ZLIB : MMF_KIND_STORED;
             }
             decoded = mmf_decode_name(head, length, layout->unicode);
-            if (!mmf_publish_name(table, table->count, decoded, index))
-                goto fail;
+            if (!mmf_publish_name(table, table->count, decoded, index)) goto fail;
             ++table->count;
         }
         ++table->parsed;
@@ -878,14 +823,11 @@ static bool mmf_walk(Abstractformat *format, const mmf_layout *layout,
             entry->data_offset = position;
             entry->packed_size = table->ccn_size;
             entry->kind = MMF_KIND_CCN;
-            if (!mmf_publish_name(table, table->count, name,
-                                  layout->declared))
-                goto fail;
+            if (!mmf_publish_name(table, table->count, name, layout->declared)) goto fail;
             ++table->count;
         }
     }
-    if (!build)
-        table->count = (size_t)table->parsed + (table->ccn_offset >= 0 ? 1U : 0U);
+    if (!build) table->count = (size_t)table->parsed + (table->ccn_offset >= 0 ? 1U : 0U);
     return true;
 fail:
     mmf_table_free(table);
@@ -909,15 +851,13 @@ typedef struct mmf_sink_s {
     uint32_t adler_b;
 } mmf_sink;
 
-static ssize_t mmf_sink_write(xx_io_device *self, const void *buffer,
-                              size_t size) {
+static ssize_t mmf_sink_write(xx_io_device *self, const void *buffer, size_t size)
+{
     const size_t file_io_capacity = gb_sfx_clickteam_multimedia_fusion_capacity();
     mmf_sink *sink = self ? (mmf_sink *)self->priv : NULL;
     const uint8_t *bytes = (const uint8_t *)buffer;
     size_t index = 0U, done = 0U;
-    if (!sink || (!bytes && size != 0U) || size > MMF_SSIZE_LIMIT ||
-        (uint64_t)size > sink->limit - sink->written)
-        return -1;
+    if (!sink || (!bytes && size != 0U) || size > MMF_SSIZE_LIMIT || (uint64_t)size > sink->limit - sink->written) return -1;
     while (index < size) {
         size_t chunk = size - index;
         size_t end;
@@ -946,8 +886,8 @@ static ssize_t mmf_sink_write(xx_io_device *self, const void *buffer,
     return (ssize_t)size;
 }
 
-static void mmf_sink_init(mmf_sink *sink, xx_io_device *target,
-                          uint64_t limit) {
+static void mmf_sink_init(mmf_sink *sink, xx_io_device *target, uint64_t limit)
+{
     xx_mem_zero(sink, sizeof(*sink));
     sink->device.write = mmf_sink_write;
     sink->device.priv = sink;
@@ -956,15 +896,15 @@ static void mmf_sink_init(mmf_sink *sink, xx_io_device *target,
     sink->adler_a = 1U;
 }
 
-static uint32_t mmf_sink_checksum(const mmf_sink *sink) {
+static uint32_t mmf_sink_checksum(const mmf_sink *sink)
+{
     uint32_t sum = sink->sum, index;
-    for (index = 0U; index < sink->pending_bytes; ++index)
-        sum = mmf_rol1(sum) + ((sink->pending >> (8U * index)) & 0xFFU);
+    for (index = 0U; index < sink->pending_bytes; ++index) sum = mmf_rol1(sum) + ((sink->pending >> (8U * index)) & 0xFFU);
     return sum;
 }
 
-static bool mmf_copy(xx_io_device *source, int64_t offset, int64_t size,
-                     mmf_sink *sink, xx_pd_struct *pd) {
+static bool mmf_copy(xx_io_device *source, int64_t offset, int64_t size, mmf_sink *sink, xx_pd_struct *pd)
+{
     const size_t file_io_capacity = gb_sfx_clickteam_multimedia_fusion_capacity();
     uint8_t *buffer;
     bool result = true;
@@ -972,11 +912,8 @@ static bool mmf_copy(xx_io_device *source, int64_t offset, int64_t size,
     buffer = (uint8_t *)xx_mem_alloc(file_io_capacity);
     if (!buffer) return false;
     while (size > 0) {
-        size_t chunk = size < (int64_t)file_io_capacity ? (size_t)size
-                                                       : file_io_capacity;
-        if ((pd && xx_pd_is_stopped(pd)) ||
-            !mmf_read_at(source, offset, buffer, chunk) ||
-            mmf_sink_write(&sink->device, buffer, chunk) != (ssize_t)chunk) {
+        size_t chunk = size < (int64_t)file_io_capacity ? (size_t)size : file_io_capacity;
+        if ((pd && xx_pd_is_stopped(pd)) || !mmf_read_at(source, offset, buffer, chunk) || mmf_sink_write(&sink->device, buffer, chunk) != (ssize_t)chunk) {
             result = false;
             break;
         }
@@ -992,10 +929,8 @@ static bool mmf_copy(xx_io_device *source, int64_t offset, int64_t size,
  * stream ends, and check the Adler-32 that follows it against @p first,
  * the sink of the pass that wrote the member.  Only for members of at
  * most MMF_SLACK_MAX packed bytes; the output limit still applies. */
-static bool mmf_adler_before_slack(xx_io_device *device,
-                                   const mmf_entry *entry,
-                                   const mmf_sink *first, uint64_t limit,
-                                   xx_pd_struct *pd) {
+static bool mmf_adler_before_slack(xx_io_device *device, const mmf_entry *entry, const mmf_sink *first, uint64_t limit, xx_pd_struct *pd)
+{
     mmf_sink verify;
     uint8_t *buffer;
     size_t size, consumed = 0U;
@@ -1005,81 +940,59 @@ static bool mmf_adler_before_slack(xx_io_device *device,
     buffer = (uint8_t *)xx_mem_alloc(size);
     if (!buffer) return false;
     mmf_sink_init(&verify, NULL, limit);
-    if (mmf_read_at(device, entry->data_offset + 2, buffer, size) &&
-        xx_deflate_unpack_memory_to_device_ex(buffer, size, &verify.device,
-                                              &consumed, false, pd) &&
-        consumed <= size && size - consumed >= 4U &&
-        verify.written == first->written &&
-        verify.adler_a == first->adler_a && verify.adler_b == first->adler_b) {
+    if (mmf_read_at(device, entry->data_offset + 2, buffer, size) && xx_deflate_unpack_memory_to_device_ex(buffer, size, &verify.device, &consumed, false, pd) &&
+        consumed <= size && size - consumed >= 4U && verify.written == first->written && verify.adler_a == first->adler_a && verify.adler_b == first->adler_b) {
         const uint8_t *p = buffer + consumed;
-        uint32_t adler = ((uint32_t)p[0] << 24U) | ((uint32_t)p[1] << 16U) |
-                         ((uint32_t)p[2] << 8U) | (uint32_t)p[3];
+        uint32_t adler = ((uint32_t)p[0] << 24U) | ((uint32_t)p[1] << 16U) | ((uint32_t)p[2] << 8U) | (uint32_t)p[3];
         result = adler == ((first->adler_b << 16U) | first->adler_a);
     }
     xx_mem_free(buffer);
     return result;
 }
 
-static bool mmf_unpack_entry(Abstractformat *format, const mmf_stream *stream,
-                             const mmf_entry *entry, xx_io_device *target,
-                             xx_pd_struct *pd) {
+static bool mmf_unpack_entry(Abstractformat *format, const mmf_stream *stream, const mmf_entry *entry, xx_io_device *target, xx_pd_struct *pd)
+{
     mmf_sink sink;
     uint64_t limit = stream->max_member;
-    if (entry->kind == MMF_KIND_ZLIB && limit > stream->max_inflated)
-        limit = stream->max_inflated;
+    if (entry->kind == MMF_KIND_ZLIB && limit > stream->max_inflated) limit = stream->max_inflated;
     mmf_sink_init(&sink, target, limit);
     if (entry->kind == MMF_KIND_ZLIB) {
         uint8_t zlib_head[2], trailer[4];
         uint32_t cmf, flg, adler;
         /* Two header bytes, at least one deflate byte, the Adler-32. */
-        if (entry->packed_size < 7 ||
-            !mmf_read_at(format->device, entry->data_offset, zlib_head, 2U))
-            return false;
+        if (entry->packed_size < 7 || !mmf_read_at(format->device, entry->data_offset, zlib_head, 2U)) return false;
         cmf = zlib_head[0];
         flg = zlib_head[1];
-        if ((cmf & 0x0FU) != 8U || (cmf >> 4U) > 7U ||
-            ((cmf << 8U) | flg) % 31U != 0U || (flg & 0x20U) != 0U)
-            return false;
-        if (!xx_deflate_unpack_device(format->device, entry->data_offset + 2,
-                                      entry->packed_size - 2, &sink.device,
-                                      false, pd) ||
-            !mmf_read_at(format->device,
-                         entry->data_offset + entry->packed_size - 4, trailer,
-                         4U))
+        if ((cmf & 0x0FU) != 8U || (cmf >> 4U) > 7U || ((cmf << 8U) | flg) % 31U != 0U || (flg & 0x20U) != 0U) return false;
+        if (!xx_deflate_unpack_device(format->device, entry->data_offset + 2, entry->packed_size - 2, &sink.device, false, pd) ||
+            !mmf_read_at(format->device, entry->data_offset + entry->packed_size - 4, trailer, 4U))
             return false;
         /* Every known build stores the whole zlib stream, so its Adler-32
          * closes the packed data.  When it does not, the stream may end
          * early with slack behind it (the references accept that too):
          * find where it ends and take the Adler-32 from there. */
-        adler = ((uint32_t)trailer[0] << 24U) | ((uint32_t)trailer[1] << 16U) |
-                ((uint32_t)trailer[2] << 8U) | (uint32_t)trailer[3];
-        if (adler != ((sink.adler_b << 16U) | sink.adler_a) &&
-            !mmf_adler_before_slack(format->device, entry, &sink, limit, pd))
-            return false;
-    } else if (!mmf_copy(format->device, entry->data_offset,
-                         entry->packed_size, &sink, pd)) {
+        adler = ((uint32_t)trailer[0] << 24U) | ((uint32_t)trailer[1] << 16U) | ((uint32_t)trailer[2] << 8U) | (uint32_t)trailer[3];
+        if (adler != ((sink.adler_b << 16U) | sink.adler_a) && !mmf_adler_before_slack(format->device, entry, &sink, limit, pd)) return false;
+    } else if (!mmf_copy(format->device, entry->data_offset, entry->packed_size, &sink, pd)) {
         return false;
     }
-    if (entry->kind != MMF_KIND_CCN && stream->layout.two_fields &&
-        entry->checksum != 0U && mmf_sink_checksum(&sink) != entry->checksum)
-        return false;
+    if (entry->kind != MMF_KIND_CCN && stream->layout.two_fields && entry->checksum != 0U && mmf_sink_checksum(&sink) != entry->checksum) return false;
     return true;
 }
 
 /* ---------------------------------------------------------------------- */
 /* Options and records                                                     */
 
-static bool mmf_copy_options(xx_list_s *destination, const xx_list_s *source) {
+static bool mmf_copy_options(xx_list_s *destination, const xx_list_s *source)
+{
     size_t index;
     if (!source) return true;
     for (index = 0U; index < source->count; ++index) {
-        const xx_meta *original =
-            (const xx_meta *)xx_list_at((const xx_list_t *)source, index);
+        const xx_meta *original = (const xx_meta *)xx_list_at((const xx_list_t *)source, index);
         xx_meta copy;
         if (!original) continue;
         xx_meta_init(&copy, original->meta_id);
-        if (!xx_var_copy(&copy.var, &original->var) ||
-            !xx_list_append(destination, &copy)) {
+        if (!xx_var_copy(&copy.var, &original->var) || !xx_list_append(destination, &copy)) {
             xx_meta_cleanup(&copy);
             return false;
         }
@@ -1088,10 +1001,9 @@ static bool mmf_copy_options(xx_list_s *destination, const xx_list_s *source) {
 }
 
 /* XX_META_ID_OPT_MAX_MEMBER_SIZE, when set to a non-negative integer. */
-static uint64_t mmf_max_member(const Abstractformat *format,
-                               const xx_list_s *options) {
-    const xx_var *limit = xx_format_resolve_extra_parameter(
-        format, options, XX_META_ID_OPT_MAX_MEMBER_SIZE);
+static uint64_t mmf_max_member(const Abstractformat *format, const xx_list_s *options)
+{
+    const xx_var *limit = xx_format_resolve_extra_parameter(format, options, XX_META_ID_OPT_MAX_MEMBER_SIZE);
     if (!limit) return UINT64_MAX;
     switch (limit->type) {
         case XX_VAR_TYPE_UINT8:
@@ -1109,32 +1021,25 @@ static uint64_t mmf_max_member(const Abstractformat *format,
     }
 }
 
-static bool mmf_set_record(xx_archive_record *record, const mmf_entry *entry) {
+static bool mmf_set_record(xx_archive_record *record, const mmf_entry *entry)
+{
     xx_archive_record_cleanup(record);
     xx_archive_record_init(record);
     record->header_offset = entry->header_offset;
     record->header_size = entry->header_size;
     record->data_offset = entry->data_offset;
     record->compressed_size = entry->packed_size;
-    if (!xx_archive_record_set_original_name(record, entry->name) ||
-        !xx_archive_record_set_meta_u64(record, XX_META_ID_COMPRESSED_SIZE,
-                                        (uint64_t)entry->packed_size) ||
-        !xx_archive_record_set_meta_u64(record, XX_META_ID_COMPRESSION_METHOD,
-                                        entry->kind == MMF_KIND_ZLIB ? 8U
-                                                                     : 0U) ||
-        !xx_archive_record_set_meta_bool(record, XX_META_ID_IS_ENCRYPTED,
-                                         false) ||
-        !xx_archive_record_set_meta_bool(record, XX_META_ID_IS_FOLDER, false))
+    if (!xx_archive_record_set_original_name(record, entry->name) || !xx_archive_record_set_meta_u64(record, XX_META_ID_COMPRESSED_SIZE, (uint64_t)entry->packed_size) ||
+        !xx_archive_record_set_meta_u64(record, XX_META_ID_COMPRESSION_METHOD, entry->kind == MMF_KIND_ZLIB ? 8U : 0U) ||
+        !xx_archive_record_set_meta_bool(record, XX_META_ID_IS_ENCRYPTED, false) || !xx_archive_record_set_meta_bool(record, XX_META_ID_IS_FOLDER, false))
         return false;
     /* Only a stored member's size is known before it is inflated. */
-    if (entry->kind != MMF_KIND_ZLIB &&
-        !xx_archive_record_set_meta_u64(record, XX_META_ID_UNCOMPRESSED_SIZE,
-                                        (uint64_t)entry->packed_size))
-        return false;
+    if (entry->kind != MMF_KIND_ZLIB && !xx_archive_record_set_meta_u64(record, XX_META_ID_UNCOMPRESSED_SIZE, (uint64_t)entry->packed_size)) return false;
     return true;
 }
 
-static void mmf_stream_free(void *opaque) {
+static void mmf_stream_free(void *opaque)
+{
     mmf_stream *stream = (mmf_stream *)opaque;
     if (!stream) return;
     mmf_table_free(&stream->table);
@@ -1144,9 +1049,8 @@ static void mmf_stream_free(void *opaque) {
 /* ---------------------------------------------------------------------- */
 /* Public API                                                              */
 
-void xx_sfx_clickteam_multimedia_fusion_init(
-    xx_sfx_clickteam_multimedia_fusion *archive, xx_io_device *device,
-    int64_t base_address) {
+void xx_sfx_clickteam_multimedia_fusion_init(xx_sfx_clickteam_multimedia_fusion *archive, xx_io_device *device, int64_t base_address)
+{
     if (!archive) return;
     xx_mem_zero(archive, sizeof(*archive));
     xx_format_init(&archive->format, device, base_address);
@@ -1157,65 +1061,52 @@ void xx_sfx_clickteam_multimedia_fusion_init(
     archive->format.is_archive = true;
     xx_format_set_mime_type(&archive->format, "application/x-dosexec");
     xx_format_set_extension(&archive->format, "exe");
-    archive->format.check_is_valid =
-        xx_sfx_clickteam_multimedia_fusion_check_is_valid;
-    archive->format.handle_base_info =
-        xx_sfx_clickteam_multimedia_fusion_handle_base_info;
-    archive->format.get_format_size =
-        xx_sfx_clickteam_multimedia_fusion_get_format_size;
-    archive->format.get_number_of_archive_records =
-        xx_sfx_clickteam_multimedia_fusion_get_number_of_archive_records;
-    archive->format.create_archive_records_reading =
-        xx_sfx_clickteam_multimedia_fusion_create_archive_records_reading;
-    archive->format.get_current_archive_record =
-        xx_sfx_clickteam_multimedia_fusion_get_current_archive_record;
-    archive->format.unpack_current_archive_record =
-        xx_sfx_clickteam_multimedia_fusion_unpack_current_archive_record;
-    archive->format.archive_record_move_to_next =
-        xx_sfx_clickteam_multimedia_fusion_archive_record_move_to_next;
-    archive->format.free_archive_records_reading =
-        xx_sfx_clickteam_multimedia_fusion_free_archive_records_reading;
+    archive->format.check_is_valid = xx_sfx_clickteam_multimedia_fusion_check_is_valid;
+    archive->format.handle_base_info = xx_sfx_clickteam_multimedia_fusion_handle_base_info;
+    archive->format.get_format_size = xx_sfx_clickteam_multimedia_fusion_get_format_size;
+    archive->format.get_number_of_archive_records = xx_sfx_clickteam_multimedia_fusion_get_number_of_archive_records;
+    archive->format.create_archive_records_reading = xx_sfx_clickteam_multimedia_fusion_create_archive_records_reading;
+    archive->format.get_current_archive_record = xx_sfx_clickteam_multimedia_fusion_get_current_archive_record;
+    archive->format.unpack_current_archive_record = xx_sfx_clickteam_multimedia_fusion_unpack_current_archive_record;
+    archive->format.archive_record_move_to_next = xx_sfx_clickteam_multimedia_fusion_archive_record_move_to_next;
+    archive->format.free_archive_records_reading = xx_sfx_clickteam_multimedia_fusion_free_archive_records_reading;
     archive->pack_offset = -1;
     archive->container_end = -1;
     archive->ccn_offset = -1;
 }
 
-xx_sfx_clickteam_multimedia_fusion *xx_sfx_clickteam_multimedia_fusion_create(
-    xx_io_device *device, int64_t base_address) {
-    xx_sfx_clickteam_multimedia_fusion *archive =
-        (xx_sfx_clickteam_multimedia_fusion *)xx_mem_alloc(sizeof(*archive));
-    if (archive)
-        xx_sfx_clickteam_multimedia_fusion_init(archive, device, base_address);
+xx_sfx_clickteam_multimedia_fusion *xx_sfx_clickteam_multimedia_fusion_create(xx_io_device *device, int64_t base_address)
+{
+    xx_sfx_clickteam_multimedia_fusion *archive = (xx_sfx_clickteam_multimedia_fusion *)xx_mem_alloc(sizeof(*archive));
+    if (archive) xx_sfx_clickteam_multimedia_fusion_init(archive, device, base_address);
     return archive;
 }
 
-void xx_sfx_clickteam_multimedia_fusion_destroy(
-    xx_sfx_clickteam_multimedia_fusion *archive) {
+void xx_sfx_clickteam_multimedia_fusion_destroy(xx_sfx_clickteam_multimedia_fusion *archive)
+{
     if (archive) xx_format_cleanup_extra_parameters(&archive->format);
 }
 
-void xx_sfx_clickteam_multimedia_fusion_free(
-    xx_sfx_clickteam_multimedia_fusion *archive) {
+void xx_sfx_clickteam_multimedia_fusion_free(xx_sfx_clickteam_multimedia_fusion *archive)
+{
     if (!archive) return;
     xx_sfx_clickteam_multimedia_fusion_destroy(archive);
     xx_mem_free(archive);
 }
 
-bool xx_sfx_clickteam_multimedia_fusion_check_is_valid(Abstractformat *format,
-                                                       xx_pd_struct *pd) {
+bool xx_sfx_clickteam_multimedia_fusion_check_is_valid(Abstractformat *format, xx_pd_struct *pd)
+{
     mmf_layout layout;
     (void)pd;
     return mmf_locate(format, &layout);
 }
 
-bool xx_sfx_clickteam_multimedia_fusion_handle_base_info(
-    Abstractformat *format, xx_pd_struct *pd) {
+bool xx_sfx_clickteam_multimedia_fusion_handle_base_info(Abstractformat *format, xx_pd_struct *pd)
+{
     xx_sfx_clickteam_multimedia_fusion *archive;
     mmf_layout layout;
     mmf_table table;
-    if (!format || !mmf_locate(format, &layout) ||
-        !mmf_walk(format, &layout, &table, false, pd))
-        return false;
+    if (!format || !mmf_locate(format, &layout) || !mmf_walk(format, &layout, &table, false, pd)) return false;
     archive = (xx_sfx_clickteam_multimedia_fusion *)format;
     archive->pack_offset = layout.pack;
     archive->container_end = layout.end;
@@ -1238,43 +1129,31 @@ bool xx_sfx_clickteam_multimedia_fusion_handle_base_info(
     return true;
 }
 
-int64_t xx_sfx_clickteam_multimedia_fusion_get_format_size(
-    Abstractformat *format, xx_pd_struct *pd) {
-    return format && (format->base_info_handled ||
-                      xx_sfx_clickteam_multimedia_fusion_handle_base_info(
-                          format, pd))
-               ? format->format_size
-               : -1;
+int64_t xx_sfx_clickteam_multimedia_fusion_get_format_size(Abstractformat *format, xx_pd_struct *pd)
+{
+    return format && (format->base_info_handled || xx_sfx_clickteam_multimedia_fusion_handle_base_info(format, pd)) ? format->format_size : -1;
 }
 
-uint64_t xx_sfx_clickteam_multimedia_fusion_get_number_of_archive_records(
-    Abstractformat *format, xx_pd_struct *pd) {
-    return format && (format->base_info_handled ||
-                      xx_sfx_clickteam_multimedia_fusion_handle_base_info(
-                          format, pd))
-               ? ((xx_sfx_clickteam_multimedia_fusion *)format)
-                     ->number_of_records
+uint64_t xx_sfx_clickteam_multimedia_fusion_get_number_of_archive_records(Abstractformat *format, xx_pd_struct *pd)
+{
+    return format && (format->base_info_handled || xx_sfx_clickteam_multimedia_fusion_handle_base_info(format, pd))
+               ? ((xx_sfx_clickteam_multimedia_fusion *)format)->number_of_records
                : 0U;
 }
 
-xx_archive_record_state *
-xx_sfx_clickteam_multimedia_fusion_create_archive_records_reading(
-    Abstractformat *format, const xx_list_s *options, xx_pd_struct *pd) {
+xx_archive_record_state *xx_sfx_clickteam_multimedia_fusion_create_archive_records_reading(Abstractformat *format, const xx_list_s *options, xx_pd_struct *pd)
+{
     mmf_stream *stream;
     xx_archive_record_state *state;
     if (!format) return NULL;
     stream = (mmf_stream *)xx_mem_calloc(1U, sizeof(*stream));
     if (!stream) return NULL;
-    if (!mmf_locate(format, &stream->layout) ||
-        !mmf_walk(format, &stream->layout, &stream->table, true, pd) ||
-        stream->table.count == 0U) {
+    if (!mmf_locate(format, &stream->layout) || !mmf_walk(format, &stream->layout, &stream->table, true, pd) || stream->table.count == 0U) {
         mmf_stream_free(stream);
         return NULL;
     }
     stream->max_member = mmf_max_member(format, options);
-    stream->max_inflated = stream->max_member != UINT64_MAX
-                               ? stream->max_member
-                               : MMF_DEFAULT_MAX_INFLATED;
+    stream->max_inflated = stream->max_member != UINT64_MAX ? stream->max_member : MMF_DEFAULT_MAX_INFLATED;
     state = (xx_archive_record_state *)xx_mem_alloc(sizeof(*state));
     if (!state) {
         mmf_stream_free(stream);
@@ -1284,8 +1163,7 @@ xx_sfx_clickteam_multimedia_fusion_create_archive_records_reading(
     state->internal_state = stream;
     state->free_internal = mmf_stream_free;
     state->total_records = (int64_t)stream->table.count;
-    if (!mmf_copy_options(&state->options, options) ||
-        !mmf_set_record(&state->current_record, &stream->table.entries[0])) {
+    if (!mmf_copy_options(&state->options, options) || !mmf_set_record(&state->current_record, &stream->table.entries[0])) {
         xx_archive_record_state_free(state);
         return NULL;
     }
@@ -1294,28 +1172,21 @@ xx_sfx_clickteam_multimedia_fusion_create_archive_records_reading(
     return state;
 }
 
-const xx_archive_record *
-xx_sfx_clickteam_multimedia_fusion_get_current_archive_record(
-    Abstractformat *format, xx_archive_record_state *state) {
-    return format && state && state->format == format && state->has_record
-               ? &state->current_record
-               : NULL;
+const xx_archive_record *xx_sfx_clickteam_multimedia_fusion_get_current_archive_record(Abstractformat *format, xx_archive_record_state *state)
+{
+    return format && state && state->format == format && state->has_record ? &state->current_record : NULL;
 }
 
-bool xx_sfx_clickteam_multimedia_fusion_archive_record_move_to_next(
-    Abstractformat *format, xx_archive_record_state *state,
-    xx_pd_struct *pd) {
+bool xx_sfx_clickteam_multimedia_fusion_archive_record_move_to_next(Abstractformat *format, xx_archive_record_state *state, xx_pd_struct *pd)
+{
     mmf_stream *stream;
     (void)pd;
-    if (!format || !state || state->format != format ||
-        !(stream = (mmf_stream *)state->internal_state) ||
-        stream->index + 1U >= stream->table.count) {
+    if (!format || !state || state->format != format || !(stream = (mmf_stream *)state->internal_state) || stream->index + 1U >= stream->table.count) {
         if (state) state->has_record = false;
         return false;
     }
     ++stream->index;
-    if (!mmf_set_record(&state->current_record,
-                        &stream->table.entries[stream->index])) {
+    if (!mmf_set_record(&state->current_record, &stream->table.entries[stream->index])) {
         state->has_record = false;
         return false;
     }
@@ -1324,9 +1195,8 @@ bool xx_sfx_clickteam_multimedia_fusion_archive_record_move_to_next(
     return true;
 }
 
-bool xx_sfx_clickteam_multimedia_fusion_unpack_current_archive_record(
-    Abstractformat *format, xx_archive_record_state *state,
-    xx_pd_struct *pd) {
+bool xx_sfx_clickteam_multimedia_fusion_unpack_current_archive_record(Abstractformat *format, xx_archive_record_state *state, xx_pd_struct *pd)
+{
     mmf_stream *stream;
     const mmf_entry *entry;
     const xx_var *path_option;
@@ -1336,40 +1206,31 @@ bool xx_sfx_clickteam_multimedia_fusion_unpack_current_archive_record(
     char *path = NULL;
     bool result = false;
     bool created = false;
-    if (!format || !state || state->format != format || !state->has_record ||
-        !(stream = (mmf_stream *)state->internal_state) ||
-        stream->index >= stream->table.count || (pd && xx_pd_is_stopped(pd)))
+    if (!format || !state || state->format != format || !state->has_record || !(stream = (mmf_stream *)state->internal_state) || stream->index >= stream->table.count ||
+        (pd && xx_pd_is_stopped(pd)))
         return false;
     entry = &stream->table.entries[stream->index];
-    path_option = xx_format_resolve_extra_parameter(
-        format, &state->options, XX_META_ID_OPT_UNPACK_PATH);
+    path_option = xx_format_resolve_extra_parameter(format, &state->options, XX_META_ID_OPT_UNPACK_PATH);
     if (!path_option) return mmf_unpack_entry(format, stream, entry, NULL, pd);
     if (!entry->extractable || !mmf_safe_name(entry->name)) return false;
-    if (path_option->type == XX_VAR_TYPE_STRING ||
-        path_option->type == XX_VAR_TYPE_STRING_VIEW) {
+    if (path_option->type == XX_VAR_TYPE_STRING || path_option->type == XX_VAR_TYPE_STRING_VIEW) {
         base = xx_var_get_str(path_option);
-    } else if (path_option->type == XX_VAR_TYPE_WSTRING ||
-               path_option->type == XX_VAR_TYPE_WSTRING_VIEW) {
+    } else if (path_option->type == XX_VAR_TYPE_WSTRING || path_option->type == XX_VAR_TYPE_WSTRING_VIEW) {
         owned_base = xx_str_unicode_to_utf8(xx_var_get_wstr(path_option));
         base = owned_base;
     }
     if (!base) goto done;
-    path = (base[0] && base[xx_str_len(base) - 1U] != '/' &&
-            base[xx_str_len(base) - 1U] != '\\')
-               ? xx_str_concat3(base, "/", entry->name)
-               : xx_str_concat(base, entry->name);
+    path = (base[0] && base[xx_str_len(base) - 1U] != '/' && base[xx_str_len(base) - 1U] != '\\') ? xx_str_concat3(base, "/", entry->name)
+                                                                                                  : xx_str_concat(base, entry->name);
     if (!path || !xx_store_create_dirs_a(path, false)) goto done;
     /* Without XX_META_ID_OPT_OVERWRITE an existing file is never replaced:
      * besides a user's own file, this also stops a member whose name only a
      * file system's own case or alias rules make equal to an earlier one.
      */
-    overwrite_option = xx_format_resolve_extra_parameter(
-        format, &state->options, XX_META_ID_OPT_OVERWRITE);
+    overwrite_option = xx_format_resolve_extra_parameter(format, &state->options, XX_META_ID_OPT_OVERWRITE);
     {
-        bool overwrite =
-            overwrite_option && xx_var_get_bool(overwrite_option);
-        xx_io_device *destination =
-            xx_io_file_open(path, overwrite ? "wb" : "wbx");
+        bool overwrite = overwrite_option && xx_var_get_bool(overwrite_option);
+        xx_io_device *destination = xx_io_file_open(path, overwrite ? "wb" : "wbx");
         created = destination != NULL;
         if (!destination) goto done;
         result = mmf_unpack_entry(format, stream, entry, destination, pd);
@@ -1382,8 +1243,8 @@ done:
     return result;
 }
 
-void xx_sfx_clickteam_multimedia_fusion_free_archive_records_reading(
-    Abstractformat *format, xx_archive_record_state *state) {
+void xx_sfx_clickteam_multimedia_fusion_free_archive_records_reading(Abstractformat *format, xx_archive_record_state *state)
+{
     (void)format;
     xx_archive_record_state_free(state);
 }

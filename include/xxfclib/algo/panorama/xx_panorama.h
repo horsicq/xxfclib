@@ -36,9 +36,7 @@ extern "C" {
  * seed (a zero seed means the file literally begins with "Rar!", i.e. it is
  * not enciphered at all).
  */
-XXFC_API bool xx_panorama_seed_from_header(const uint8_t *header,
-                                           size_t header_size,
-                                           uint32_t *seed);
+XXFC_API bool xx_panorama_seed_from_header(const uint8_t *header, size_t header_size, uint32_t *seed);
 
 /**
  * @brief Decipher a whole Panorama file, deriving the seed from its header.
@@ -47,9 +45,7 @@ XXFC_API bool xx_panorama_seed_from_header(const uint8_t *header,
  * offset 0, so a partial view decodes to garbage.  @p output_size must be at
  * least @p input_size; exactly @p input_size bytes are produced.
  */
-XXFC_API bool xx_panorama_decode_memory(const uint8_t *input,
-                                        size_t input_size, uint8_t *output,
-                                        size_t output_size, size_t *written);
+XXFC_API bool xx_panorama_decode_memory(const uint8_t *input, size_t input_size, uint8_t *output, size_t output_size, size_t *written);
 
 /**
  * @brief Same, with the seed supplied (the container's compress property).
@@ -58,11 +54,7 @@ XXFC_API bool xx_panorama_decode_memory(const uint8_t *input,
  * signature check, because the caller already validated the seed when it
  * parsed the container.
  */
-XXFC_API bool xx_panorama_decode_memory_seed(const uint8_t *input,
-                                             size_t input_size, uint32_t seed,
-                                             uint8_t *output,
-                                             size_t output_size,
-                                             size_t *written);
+XXFC_API bool xx_panorama_decode_memory_seed(const uint8_t *input, size_t input_size, uint32_t seed, uint8_t *output, size_t output_size, size_t *written);
 
 /**
  * @brief Measure a Panorama file.
@@ -71,9 +63,7 @@ XXFC_API bool xx_panorama_decode_memory_seed(const uint8_t *input,
  * reports @p produced == @p consumed == @p input_size.  Provided so a reader
  * has one call that both sizes an allocation and rejects a non-Panorama file.
  */
-XXFC_API bool xx_panorama_scan_memory(const uint8_t *input, size_t input_size,
-                                      size_t max_output, size_t *consumed,
-                                      size_t *produced);
+XXFC_API bool xx_panorama_scan_memory(const uint8_t *input, size_t input_size, size_t max_output, size_t *consumed, size_t *produced);
 
 #ifdef __cplusplus
 }

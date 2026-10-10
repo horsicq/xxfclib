@@ -6,13 +6,15 @@
 #ifdef __cplusplus
 extern "C" {
 #endif
-typedef struct xx_java_jmod { Abstractformat format; } xx_java_jmod;
-XXFC_API void xx_java_jmod_init(xx_java_jmod *,xx_io_device *,int64_t);
-XXFC_API xx_java_jmod *xx_java_jmod_create(xx_io_device *,int64_t);
+typedef struct xx_java_jmod {
+    Abstractformat format;
+} xx_java_jmod;
+XXFC_API void xx_java_jmod_init(xx_java_jmod *, xx_io_device *, int64_t);
+XXFC_API xx_java_jmod *xx_java_jmod_create(xx_io_device *, int64_t);
 XXFC_API void xx_java_jmod_destroy(xx_java_jmod *);
 XXFC_API void xx_java_jmod_free(xx_java_jmod *);
-XXFC_API bool xx_java_jmod_check_is_valid(Abstractformat *,xx_pd_struct *);
-XXFC_API bool xx_java_jmod_handle_base_info(Abstractformat *,xx_pd_struct *);
+XXFC_API bool xx_java_jmod_check_is_valid(Abstractformat *, xx_pd_struct *);
+XXFC_API bool xx_java_jmod_handle_base_info(Abstractformat *, xx_pd_struct *);
 #ifdef __cplusplus
 }
 #endif

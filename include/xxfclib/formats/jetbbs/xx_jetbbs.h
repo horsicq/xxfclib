@@ -13,7 +13,8 @@ extern "C" {
 #endif
 
 /**
- * @brief A JetBBS archive: a chain of LHA level 0/1 member headers whose method tag is "-mg0-", "-mg4-" or "-mg5-", each followed by its stored or LZH-compressed payload.
+ * @brief A JetBBS archive: a chain of LHA level 0/1 member headers whose method tag is "-mg0-", "-mg4-" or "-mg5-", each followed by its stored or LZH-compressed
+ * payload.
  */
 typedef struct xx_jetbbs {
     Abstractformat format;
@@ -22,32 +23,21 @@ typedef struct xx_jetbbs {
 
 typedef xx_jetbbs xx_jetbbs_t;
 
-XXFC_API void xx_jetbbs_init(xx_jetbbs *archive, xx_io_device *device,
-                             int64_t base_address);
-XXFC_API xx_jetbbs *xx_jetbbs_create(xx_io_device *device,
-                                     int64_t base_address);
+XXFC_API void xx_jetbbs_init(xx_jetbbs *archive, xx_io_device *device, int64_t base_address);
+XXFC_API xx_jetbbs *xx_jetbbs_create(xx_io_device *device, int64_t base_address);
 XXFC_API void xx_jetbbs_destroy(xx_jetbbs *archive);
 XXFC_API void xx_jetbbs_free(xx_jetbbs *archive);
 
-XXFC_API bool xx_jetbbs_check_is_valid(Abstractformat *self,
-                                       xx_pd_struct *pd);
-XXFC_API bool xx_jetbbs_handle_base_info(Abstractformat *self,
-                                         xx_pd_struct *pd);
-XXFC_API int64_t xx_jetbbs_get_format_size(Abstractformat *self,
-                                           xx_pd_struct *pd);
-XXFC_API uint64_t xx_jetbbs_get_number_of_archive_records(
-    Abstractformat *self, xx_pd_struct *pd);
+XXFC_API bool xx_jetbbs_check_is_valid(Abstractformat *self, xx_pd_struct *pd);
+XXFC_API bool xx_jetbbs_handle_base_info(Abstractformat *self, xx_pd_struct *pd);
+XXFC_API int64_t xx_jetbbs_get_format_size(Abstractformat *self, xx_pd_struct *pd);
+XXFC_API uint64_t xx_jetbbs_get_number_of_archive_records(Abstractformat *self, xx_pd_struct *pd);
 
-XXFC_API xx_archive_record_state *xx_jetbbs_create_archive_records_reading(
-    Abstractformat *self, const xx_list_s *options, xx_pd_struct *pd);
-XXFC_API const xx_archive_record *xx_jetbbs_get_current_archive_record(
-    Abstractformat *self, xx_archive_record_state *state);
-XXFC_API bool xx_jetbbs_unpack_current_archive_record(
-    Abstractformat *self, xx_archive_record_state *state, xx_pd_struct *pd);
-XXFC_API bool xx_jetbbs_archive_record_move_to_next(
-    Abstractformat *self, xx_archive_record_state *state, xx_pd_struct *pd);
-XXFC_API void xx_jetbbs_free_archive_records_reading(
-    Abstractformat *self, xx_archive_record_state *state);
+XXFC_API xx_archive_record_state *xx_jetbbs_create_archive_records_reading(Abstractformat *self, const xx_list_s *options, xx_pd_struct *pd);
+XXFC_API const xx_archive_record *xx_jetbbs_get_current_archive_record(Abstractformat *self, xx_archive_record_state *state);
+XXFC_API bool xx_jetbbs_unpack_current_archive_record(Abstractformat *self, xx_archive_record_state *state, xx_pd_struct *pd);
+XXFC_API bool xx_jetbbs_archive_record_move_to_next(Abstractformat *self, xx_archive_record_state *state, xx_pd_struct *pd);
+XXFC_API void xx_jetbbs_free_archive_records_reading(Abstractformat *self, xx_archive_record_state *state);
 
 #ifdef __cplusplus
 }

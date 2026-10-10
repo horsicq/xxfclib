@@ -46,23 +46,23 @@ typedef struct xx_msdos XMsdos;
  * Inherits from Abstractformat by placing it as the first member.
  */
 struct xx_msdos {
-    Abstractformat format;              /**< Base format structure (first member) */
-    uint16_t       signature;           /**< MZ signature (0x5A4D = 'MZ') */
-    uint16_t       bytes_on_last_page;  /**< Bytes on last page of program */
-    uint16_t       pages_in_file;       /**< Pages in file */
-    uint16_t       relocations;         /**< Number of relocation table entries */
-    uint16_t       header_size;         /**< Header size in paragraphs */
-    uint16_t       minalloc;            /**< Minimum memory required in paragraphs */
-    uint16_t       maxalloc;            /**< Maximum memory required in paragraphs */
-    uint16_t       ss;                  /**< Initial SS (stack segment) */
-    uint16_t       sp;                  /**< Initial SP (stack pointer) */
-    uint16_t       checksum;            /**< Checksum (usually 0) */
-    uint16_t       ip;                  /**< Initial IP (instruction pointer) */
-    uint16_t       cs;                  /**< Initial CS (code segment) */
-    uint16_t       reloc_offset;        /**< Offset to relocation table */
-    uint16_t       overlay_number;      /**< Overlay number */
-    int64_t        pe_offset;           /**< Offset to PE header (-1 if none) */
-    bool           has_pe_header;       /**< True if PE header is present */
+    Abstractformat format;       /**< Base format structure (first member) */
+    uint16_t signature;          /**< MZ signature (0x5A4D = 'MZ') */
+    uint16_t bytes_on_last_page; /**< Bytes on last page of program */
+    uint16_t pages_in_file;      /**< Pages in file */
+    uint16_t relocations;        /**< Number of relocation table entries */
+    uint16_t header_size;        /**< Header size in paragraphs */
+    uint16_t minalloc;           /**< Minimum memory required in paragraphs */
+    uint16_t maxalloc;           /**< Maximum memory required in paragraphs */
+    uint16_t ss;                 /**< Initial SS (stack segment) */
+    uint16_t sp;                 /**< Initial SP (stack pointer) */
+    uint16_t checksum;           /**< Checksum (usually 0) */
+    uint16_t ip;                 /**< Initial IP (instruction pointer) */
+    uint16_t cs;                 /**< Initial CS (code segment) */
+    uint16_t reloc_offset;       /**< Offset to relocation table */
+    uint16_t overlay_number;     /**< Overlay number */
+    int64_t pe_offset;           /**< Offset to PE header (-1 if none) */
+    bool has_pe_header;          /**< True if PE header is present */
 };
 
 /* --- Constructors & Lifecycle --- */
@@ -75,10 +75,7 @@ XXFC_API void xx_msdos_destroy(xx_msdos *msdos);
 XXFC_API bool xx_msdos_check_is_valid(Abstractformat *self, xx_pd_struct *pd);
 XXFC_API bool xx_msdos_handle_base_info(Abstractformat *self, xx_pd_struct *pd);
 XXFC_API int64_t xx_msdos_get_format_size(Abstractformat *self, xx_pd_struct *pd);
-XXFC_API bool xx_msdos_get_memory_map(Abstractformat *self,
-                                      xx_memory_map_mode_t mode,
-                                      xx_memory_map *output,
-                                      xx_pd_struct *pd);
+XXFC_API bool xx_msdos_get_memory_map(Abstractformat *self, xx_memory_map_mode_t mode, xx_memory_map *output, xx_pd_struct *pd);
 
 /* --- MS-DOS Getters & Properties --- */
 XXFC_API uint16_t xx_msdos_get_signature(const xx_msdos *msdos);
@@ -107,32 +104,39 @@ XXFC_API void xx_msdos_set_pe_offset(xx_msdos *msdos, int64_t val);
 XXFC_API void xx_msdos_set_has_pe_header(xx_msdos *msdos, bool val);
 
 /* Cast helpers */
-static inline Abstractformat *xx_msdos_to_format(xx_msdos *msdos) {
+static inline Abstractformat *xx_msdos_to_format(xx_msdos *msdos)
+{
     return msdos ? &msdos->format : NULL;
 }
 
-static inline const Abstractformat *xx_msdos_to_format_const(const xx_msdos *msdos) {
+static inline const Abstractformat *xx_msdos_to_format_const(const xx_msdos *msdos)
+{
     return msdos ? &msdos->format : NULL;
 }
 
 /* User-facing aliases without xx_ prefix */
-static inline void XMsdos_init(xx_msdos *msdos, xx_io_device *dev, int64_t base_address) {
+static inline void XMsdos_init(xx_msdos *msdos, xx_io_device *dev, int64_t base_address)
+{
     xx_msdos_init(msdos, dev, base_address);
 }
 
-static inline xx_msdos *XMsdos_create(xx_io_device *dev, int64_t base_address) {
+static inline xx_msdos *XMsdos_create(xx_io_device *dev, int64_t base_address)
+{
     return xx_msdos_create(dev, base_address);
 }
 
-static inline void XMsdos_free(xx_msdos *msdos) {
+static inline void XMsdos_free(xx_msdos *msdos)
+{
     xx_msdos_free(msdos);
 }
 
-static inline bool XMsdos_check_is_valid(xx_msdos *msdos, xx_pd_struct *pd) {
+static inline bool XMsdos_check_is_valid(xx_msdos *msdos, xx_pd_struct *pd)
+{
     return msdos ? xx_msdos_check_is_valid(&msdos->format, pd) : false;
 }
 
-static inline bool XMsdos_handle_base_info(xx_msdos *msdos, xx_pd_struct *pd) {
+static inline bool XMsdos_handle_base_info(xx_msdos *msdos, xx_pd_struct *pd)
+{
     return msdos ? xx_msdos_handle_base_info(&msdos->format, pd) : false;
 }
 

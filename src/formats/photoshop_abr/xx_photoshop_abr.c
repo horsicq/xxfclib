@@ -1,8 +1,8 @@
 /* Copyright (c) 2026 hors<horsicq@gmail.com>
  * SPDX-License-Identifier: MIT
  * Reference: https://raw.githubusercontent.com/GNOME/gimp/master/app/core/gimpbrush-load.c
- * ABR1/2 sampled8-bit brushes only: complete count/record framing, bounded UTF16 names/geometry, stored or fully validated row PackBits. Original brush metadata and encoded bitmap payloads exported; computed brushes and ABR6+ unsupported.
- * Limits64MiB input,4096 components; encoded assets are never executed.
+ * ABR1/2 sampled8-bit brushes only: complete count/record framing, bounded UTF16 names/geometry, stored or fully validated row PackBits. Original brush metadata and
+ * encoded bitmap payloads exported; computed brushes and ABR6+ unsupported. Limits64MiB input,4096 components; encoded assets are never executed.
  */
 #include "xxfclib/formats/photoshop_abr/xx_photoshop_abr.h"
 #include "../common/xx_component_binary.h"
@@ -11,38 +11,34 @@ static bool model_image_parse(Abstractformat *, pm_stream *, const uint8_t *, ui
 static bool model_image_quick(Abstractformat *, uint64_t);
 XX_COMPONENT_CHUNKED_READ_DRIVER(model_image, 67108864, )
 #include "xxfclib/data/xx_data.h"
-static bool model_image_quick(Abstractformat *f, uint64_t n) {
+static bool model_image_quick(Abstractformat *f, uint64_t n)
+{
     uint8_t b[4];
-    return n >= 42 && pm_read(f, 0, b, 4) &&
-           (xx_data_get_u16(b, 2, 0, true) == 1 || xx_data_get_u16(b, 2, 0, true) == 2);
+    return n >= 42 && pm_read(f, 0, b, 4) && (xx_data_get_u16(b, 2, 0, true) == 1 || xx_data_get_u16(b, 2, 0, true) == 2);
 }
-static bool ab_pack(const uint8_t *b, uint64_t at, uint64_t end, uint32_t width) {
+static bool ab_pack(const uint8_t *b, uint64_t at, uint64_t end, uint32_t width)
+{
     uint32_t out = 0;
     while (at < end) {
         uint8_t c = b[at++];
         uint32_t run;
-        if (c == 128)
-            continue;
+        if (c == 128) continue;
         run = c < 128 ? (uint32_t)(c + 1) : 257U - c;
-        if (run > width - out)
-            return false;
+        if (run > width - out) return false;
         if (c < 128) {
-            if (!component_span(at, run, end))
-                return false;
+            if (!component_span(at, run, end)) return false;
             at += run;
-        } else if (at < end)
-            ++at;
-        else
-            return false;
+        } else if (at < end) ++at;
+        else return false;
         out += run;
     }
     return out == width;
 }
-static bool model_image_parse(Abstractformat *f, pm_stream *s, const uint8_t *b, uint64_t n, xx_pd_struct *pd) {
+static bool model_image_parse(Abstractformat *f, pm_stream *s, const uint8_t *b, uint64_t n, xx_pd_struct *pd)
+{
     uint32_t version = xx_data_get_u16(b, 2, 0, true), count = xx_data_get_u16(b + 2, 2, 0, true), i;
     uint64_t p = 4, budget = 0;
-    if ((version != 1 && version != 2) || !count || count > 1024 || !component_emit(f, s, "descriptor.abr", 0, 4, n))
-        return false;
+    if ((version != 1 && version != 2) || !count || count > 1024 || !component_emit(f, s, "descriptor.abr", 0, 4, n)) return false;
     for (i = 0; i < count; ++i) {
         uint64_t start = p, end, data;
         uint32_t size, w, h, j;
@@ -54,29 +50,23 @@ static bool model_image_parse(Abstractformat *f, pm_stream *s, const uint8_t *b,
         }
         size = xx_data_get_u32(b + p + 2, 4, 0, true);
         p += 6;
-        if (!component_span(p, size, n))
-            return false;
+        if (!component_span(p, size, n)) return false;
         end = p + size;
-        if (!component_span(p, 6, end) || !xx_data_get_u16(b + p + 4, 2, 0, true) ||
-            xx_data_get_u16(b + p + 4, 2, 0, true) > 10000) {
+        if (!component_span(p, 6, end) || !xx_data_get_u16(b + p + 4, 2, 0, true) || xx_data_get_u16(b + p + 4, 2, 0, true) > 10000) {
             return false;
         }
         p += 6;
         if (version == 2) {
             uint32_t units;
-            if (!component_span(p, 4, end))
-                return false;
+            if (!component_span(p, 4, end)) return false;
             units = xx_data_get_u32(b + p, 4, 0, true);
             p += 4;
-            if (units > 4096 || !component_span(p, (uint64_t)units * 2, end))
-                return false;
+            if (units > 4096 || !component_span(p, (uint64_t)units * 2, end)) return false;
             for (j = 0; j < units; ++j) {
                 uint16_t c = xx_data_get_u16(b + p + j * 2, 2, 0, true);
                 if (c >= 0xd800 && c <= 0xdbff) {
-                    if (++j >= units || (c = xx_data_get_u16(b + p + j * 2, 2, 0, true)) < 0xdc00 || c > 0xdfff)
-                        return false;
-                } else if (c >= 0xdc00 && c <= 0xdfff)
-                    return false;
+                    if (++j >= units || (c = xx_data_get_u16(b + p + j * 2, 2, 0, true)) < 0xdc00 || c > 0xdfff) return false;
+                } else if (c >= 0xdc00 && c <= 0xdfff) return false;
             }
             p += (uint64_t)units * 2;
         }
@@ -90,8 +80,7 @@ static bool model_image_parse(Abstractformat *f, pm_stream *s, const uint8_t *b,
         bottom = (int32_t)xx_data_get_u32(b + p + 8, 4, 0, true);
         right = (int32_t)xx_data_get_u32(b + p + 12, 4, 0, true);
         p += 16;
-        if (bottom <= top || right <= left || bottom - top > 16384 || right - left > 16384 ||
-            xx_data_get_u16(b + p, 2, 0, true) != 8) {
+        if (bottom <= top || right <= left || bottom - top > 16384 || right - left > 16384 || xx_data_get_u16(b + p, 2, 0, true) != 8) {
             return false;
         }
         w = (uint32_t)(right - left);
@@ -104,30 +93,23 @@ static bool model_image_parse(Abstractformat *f, pm_stream *s, const uint8_t *b,
         }
         budget += (uint64_t)w * h;
         if (compression == 0) {
-            if (end - p != (uint64_t)w * h)
-                return false;
+            if (end - p != (uint64_t)w * h) return false;
             p = end;
         } else if (compression == 1) {
             uint64_t table = p;
-            if (!component_span(p, (uint64_t)h * 2, end))
-                return false;
+            if (!component_span(p, (uint64_t)h * 2, end)) return false;
             p += (uint64_t)h * 2;
             for (j = 0; j < h; ++j) {
                 uint32_t z = xx_data_get_u16(b + table + j * 2, 2, 0, true);
-                if (xx_component_parser_stopped(pd) || !z || !component_span(p, z, end) || !ab_pack(b, p, p + z, w))
-                    return false;
+                if (xx_component_parser_stopped(pd) || !z || !component_span(p, z, end) || !ab_pack(b, p, p + z, w)) return false;
                 p += z;
             }
-            if (p != end)
-                return false;
-        } else
-            return false;
+            if (p != end) return false;
+        } else return false;
         xx_rt_snprintf(label, sizeof(label), "brush-%u-descriptor.abr", i);
-        if (!component_emit(f, s, label, start, data - start, n))
-            return false;
+        if (!component_emit(f, s, label, start, data - start, n)) return false;
         xx_rt_snprintf(label, sizeof(label), "brush-%u-bitmap.abr", i);
-        if (!component_emit(f, s, label, data, end - data, n))
-            return false;
+        if (!component_emit(f, s, label, data, end - data, n)) return false;
     }
     if (p != n) {
         return false;
@@ -136,27 +118,35 @@ static bool model_image_parse(Abstractformat *f, pm_stream *s, const uint8_t *b,
     return true;
 }
 
-void xx_photoshop_abr_init(xx_photoshop_abr *r, xx_io_device *d, int64_t at) {
+void xx_photoshop_abr_init(xx_photoshop_abr *r, xx_io_device *d, int64_t at)
+{
     if (r) {
         xx_mem_zero(r, sizeof(*r));
         pm_init(&r->format, d, at, XX_FILE_TYPE_PHOTOSHOP_ABR, "abr");
     }
 }
-xx_photoshop_abr *xx_photoshop_abr_create(xx_io_device *d, int64_t at) {
+xx_photoshop_abr *xx_photoshop_abr_create(xx_io_device *d, int64_t at)
+{
     xx_photoshop_abr *r = (xx_photoshop_abr *)xx_mem_alloc(sizeof(*r));
-    if (r)
-        xx_photoshop_abr_init(r, d, at);
+    if (r) xx_photoshop_abr_init(r, d, at);
     return r;
 }
-void xx_photoshop_abr_destroy(xx_photoshop_abr *r) {
-    if (r)
-        xx_format_cleanup_extra_parameters(&r->format);
+void xx_photoshop_abr_destroy(xx_photoshop_abr *r)
+{
+    if (r) xx_format_cleanup_extra_parameters(&r->format);
 }
-void xx_photoshop_abr_free(xx_photoshop_abr *r) {
+void xx_photoshop_abr_free(xx_photoshop_abr *r)
+{
     if (r) {
         xx_photoshop_abr_destroy(r);
         xx_mem_free(r);
     }
 }
-bool xx_photoshop_abr_check_is_valid(Abstractformat *f, xx_pd_struct *pd) { return pm_valid(f, pd); }
-bool xx_photoshop_abr_handle_base_info(Abstractformat *f, xx_pd_struct *pd) { return pm_handle(f, pd); }
+bool xx_photoshop_abr_check_is_valid(Abstractformat *f, xx_pd_struct *pd)
+{
+    return pm_valid(f, pd);
+}
+bool xx_photoshop_abr_handle_base_info(Abstractformat *f, xx_pd_struct *pd)
+{
+    return pm_handle(f, pd);
+}

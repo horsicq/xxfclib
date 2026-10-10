@@ -41,36 +41,25 @@ typedef struct xx_cloop {
 
 typedef xx_cloop xx_cloop_t;
 
-XXFC_API void xx_cloop_init(xx_cloop *archive, xx_io_device *device,
-                            int64_t base_address);
-XXFC_API xx_cloop *xx_cloop_create(xx_io_device *device,
-                                   int64_t base_address);
+XXFC_API void xx_cloop_init(xx_cloop *archive, xx_io_device *device, int64_t base_address);
+XXFC_API xx_cloop *xx_cloop_create(xx_io_device *device, int64_t base_address);
 XXFC_API void xx_cloop_destroy(xx_cloop *archive);
 XXFC_API void xx_cloop_free(xx_cloop *archive);
 /** Open a bounded, read-only, seekable view of the decoded disk. The caller
  * closes the returned device with xx_io_close(); source/archive are borrowed.
  * Images with more than 1M blocks retain the normal raw-member extraction. */
-XXFC_API xx_io_device *xx_cloop_open_disk_device(xx_cloop *archive,
-                                                 xx_pd_struct *pd);
+XXFC_API xx_io_device *xx_cloop_open_disk_device(xx_cloop *archive, xx_pd_struct *pd);
 
 XXFC_API bool xx_cloop_check_is_valid(Abstractformat *self, xx_pd_struct *pd);
-XXFC_API bool xx_cloop_handle_base_info(Abstractformat *self,
-                                        xx_pd_struct *pd);
-XXFC_API int64_t xx_cloop_get_format_size(Abstractformat *self,
-                                          xx_pd_struct *pd);
-XXFC_API uint64_t xx_cloop_get_number_of_archive_records(
-    Abstractformat *self, xx_pd_struct *pd);
+XXFC_API bool xx_cloop_handle_base_info(Abstractformat *self, xx_pd_struct *pd);
+XXFC_API int64_t xx_cloop_get_format_size(Abstractformat *self, xx_pd_struct *pd);
+XXFC_API uint64_t xx_cloop_get_number_of_archive_records(Abstractformat *self, xx_pd_struct *pd);
 
-XXFC_API xx_archive_record_state *xx_cloop_create_archive_records_reading(
-    Abstractformat *self, const xx_list_s *options, xx_pd_struct *pd);
-XXFC_API const xx_archive_record *xx_cloop_get_current_archive_record(
-    Abstractformat *self, xx_archive_record_state *state);
-XXFC_API bool xx_cloop_unpack_current_archive_record(
-    Abstractformat *self, xx_archive_record_state *state, xx_pd_struct *pd);
-XXFC_API bool xx_cloop_archive_record_move_to_next(
-    Abstractformat *self, xx_archive_record_state *state, xx_pd_struct *pd);
-XXFC_API void xx_cloop_free_archive_records_reading(
-    Abstractformat *self, xx_archive_record_state *state);
+XXFC_API xx_archive_record_state *xx_cloop_create_archive_records_reading(Abstractformat *self, const xx_list_s *options, xx_pd_struct *pd);
+XXFC_API const xx_archive_record *xx_cloop_get_current_archive_record(Abstractformat *self, xx_archive_record_state *state);
+XXFC_API bool xx_cloop_unpack_current_archive_record(Abstractformat *self, xx_archive_record_state *state, xx_pd_struct *pd);
+XXFC_API bool xx_cloop_archive_record_move_to_next(Abstractformat *self, xx_archive_record_state *state, xx_pd_struct *pd);
+XXFC_API void xx_cloop_free_archive_records_reading(Abstractformat *self, xx_archive_record_state *state);
 
 #ifdef __cplusplus
 }

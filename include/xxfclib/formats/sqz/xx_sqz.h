@@ -38,29 +38,21 @@ typedef struct xx_sqz {
 
 typedef xx_sqz xx_sqz_t;
 
-XXFC_API void xx_sqz_init(xx_sqz *archive, xx_io_device *device,
-                          int64_t base_address);
+XXFC_API void xx_sqz_init(xx_sqz *archive, xx_io_device *device, int64_t base_address);
 XXFC_API xx_sqz *xx_sqz_create(xx_io_device *device, int64_t base_address);
 XXFC_API void xx_sqz_destroy(xx_sqz *archive);
 XXFC_API void xx_sqz_free(xx_sqz *archive);
 
 XXFC_API bool xx_sqz_check_is_valid(Abstractformat *self, xx_pd_struct *pd);
 XXFC_API bool xx_sqz_handle_base_info(Abstractformat *self, xx_pd_struct *pd);
-XXFC_API int64_t xx_sqz_get_format_size(Abstractformat *self,
-                                        xx_pd_struct *pd);
-XXFC_API uint64_t xx_sqz_get_number_of_archive_records(Abstractformat *self,
-                                                       xx_pd_struct *pd);
+XXFC_API int64_t xx_sqz_get_format_size(Abstractformat *self, xx_pd_struct *pd);
+XXFC_API uint64_t xx_sqz_get_number_of_archive_records(Abstractformat *self, xx_pd_struct *pd);
 
-XXFC_API xx_archive_record_state *xx_sqz_create_archive_records_reading(
-    Abstractformat *self, const xx_list_s *options, xx_pd_struct *pd);
-XXFC_API const xx_archive_record *xx_sqz_get_current_archive_record(
-    Abstractformat *self, xx_archive_record_state *state);
-XXFC_API bool xx_sqz_unpack_current_archive_record(
-    Abstractformat *self, xx_archive_record_state *state, xx_pd_struct *pd);
-XXFC_API bool xx_sqz_archive_record_move_to_next(
-    Abstractformat *self, xx_archive_record_state *state, xx_pd_struct *pd);
-XXFC_API void xx_sqz_free_archive_records_reading(
-    Abstractformat *self, xx_archive_record_state *state);
+XXFC_API xx_archive_record_state *xx_sqz_create_archive_records_reading(Abstractformat *self, const xx_list_s *options, xx_pd_struct *pd);
+XXFC_API const xx_archive_record *xx_sqz_get_current_archive_record(Abstractformat *self, xx_archive_record_state *state);
+XXFC_API bool xx_sqz_unpack_current_archive_record(Abstractformat *self, xx_archive_record_state *state, xx_pd_struct *pd);
+XXFC_API bool xx_sqz_archive_record_move_to_next(Abstractformat *self, xx_archive_record_state *state, xx_pd_struct *pd);
+XXFC_API void xx_sqz_free_archive_records_reading(Abstractformat *self, xx_archive_record_state *state);
 
 #ifdef __cplusplus
 }

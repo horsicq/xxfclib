@@ -52,73 +52,54 @@ extern "C" {
 
 typedef struct xx_daemon_tools_mdx {
     Abstractformat format;
-    void *image;                 /**< Parsed descriptor (private). */
+    void *image; /**< Parsed descriptor (private). */
     uint64_t number_of_records;
-    bool is_mdx;                 /**< Single-file MDX (data inside). */
+    bool is_mdx; /**< Single-file MDX (data inside). */
     uint8_t version_minor;
-    uint16_t medium_type;        /**< 0 CD-ROM, 3 DVD-ROM. */
+    uint16_t medium_type; /**< 0 CD-ROM, 3 DVD-ROM. */
     uint16_t number_of_sessions;
-    bool data_encrypted;         /**< Track data is AES-LRW enciphered. */
-    bool data_key_available;     /**< ...and the key could be derived. */
-    uint32_t number_of_files;    /**< MDS v2: distinct data file names. */
+    bool data_encrypted;      /**< Track data is AES-LRW enciphered. */
+    bool data_key_available;  /**< ...and the key could be derived. */
+    uint32_t number_of_files; /**< MDS v2: distinct data file names. */
     xx_io_device *data[XX_DAEMON_TOOLS_MDX_MAX_FILES];
     bool data_owned[XX_DAEMON_TOOLS_MDX_MAX_FILES];
 } xx_daemon_tools_mdx;
 
 typedef xx_daemon_tools_mdx xx_daemon_tools_mdx_t;
 
-XXFC_API void xx_daemon_tools_mdx_init(xx_daemon_tools_mdx *archive,
-                                       xx_io_device *device,
-                                       int64_t base_address);
-XXFC_API xx_daemon_tools_mdx *xx_daemon_tools_mdx_create(xx_io_device *device,
-                                                         int64_t base_address);
+XXFC_API void xx_daemon_tools_mdx_init(xx_daemon_tools_mdx *archive, xx_io_device *device, int64_t base_address);
+XXFC_API xx_daemon_tools_mdx *xx_daemon_tools_mdx_create(xx_io_device *device, int64_t base_address);
 XXFC_API void xx_daemon_tools_mdx_destroy(xx_daemon_tools_mdx *archive);
 XXFC_API void xx_daemon_tools_mdx_free(xx_daemon_tools_mdx *archive);
 
-XXFC_API bool xx_daemon_tools_mdx_check_is_valid(Abstractformat *self,
-                                                 xx_pd_struct *pd);
-XXFC_API bool xx_daemon_tools_mdx_handle_base_info(Abstractformat *self,
-                                                   xx_pd_struct *pd);
-XXFC_API int64_t xx_daemon_tools_mdx_get_format_size(Abstractformat *self,
-                                                     xx_pd_struct *pd);
-XXFC_API uint64_t xx_daemon_tools_mdx_get_number_of_archive_records(
-    Abstractformat *self, xx_pd_struct *pd);
+XXFC_API bool xx_daemon_tools_mdx_check_is_valid(Abstractformat *self, xx_pd_struct *pd);
+XXFC_API bool xx_daemon_tools_mdx_handle_base_info(Abstractformat *self, xx_pd_struct *pd);
+XXFC_API int64_t xx_daemon_tools_mdx_get_format_size(Abstractformat *self, xx_pd_struct *pd);
+XXFC_API uint64_t xx_daemon_tools_mdx_get_number_of_archive_records(Abstractformat *self, xx_pd_struct *pd);
 
-XXFC_API xx_archive_record_state *
-xx_daemon_tools_mdx_create_archive_records_reading(Abstractformat *self,
-                                                   const xx_list_s *options,
-                                                   xx_pd_struct *pd);
-XXFC_API const xx_archive_record *xx_daemon_tools_mdx_get_current_archive_record(
-    Abstractformat *self, xx_archive_record_state *state);
-XXFC_API bool xx_daemon_tools_mdx_unpack_current_archive_record(
-    Abstractformat *self, xx_archive_record_state *state, xx_pd_struct *pd);
-XXFC_API bool xx_daemon_tools_mdx_archive_record_move_to_next(
-    Abstractformat *self, xx_archive_record_state *state, xx_pd_struct *pd);
-XXFC_API void xx_daemon_tools_mdx_free_archive_records_reading(
-    Abstractformat *self, xx_archive_record_state *state);
+XXFC_API xx_archive_record_state *xx_daemon_tools_mdx_create_archive_records_reading(Abstractformat *self, const xx_list_s *options, xx_pd_struct *pd);
+XXFC_API const xx_archive_record *xx_daemon_tools_mdx_get_current_archive_record(Abstractformat *self, xx_archive_record_state *state);
+XXFC_API bool xx_daemon_tools_mdx_unpack_current_archive_record(Abstractformat *self, xx_archive_record_state *state, xx_pd_struct *pd);
+XXFC_API bool xx_daemon_tools_mdx_archive_record_move_to_next(Abstractformat *self, xx_archive_record_state *state, xx_pd_struct *pd);
+XXFC_API void xx_daemon_tools_mdx_free_archive_records_reading(Abstractformat *self, xx_archive_record_state *state);
 
 /**
  * @brief MDS v2 only: name of data file @p index as the descriptor gives it
  *        (UTF-8; "*.mdf" means "the descriptor's name with extension mdf").
  */
-XXFC_API const char *xx_daemon_tools_mdx_get_file_name(
-    xx_daemon_tools_mdx *archive, uint32_t index);
+XXFC_API const char *xx_daemon_tools_mdx_get_file_name(xx_daemon_tools_mdx *archive, uint32_t index);
 
 /** @brief MDS v2 only: supply the device for data file @p index (not owned). */
-XXFC_API bool xx_daemon_tools_mdx_set_data_device(xx_daemon_tools_mdx *archive,
-                                                  uint32_t index,
-                                                  xx_io_device *device);
+XXFC_API bool xx_daemon_tools_mdx_set_data_device(xx_daemon_tools_mdx *archive, uint32_t index, xx_io_device *device);
 
 /**
  * @brief MDS v2 only: open the data files next to @p mds_path.
  * @return number of data files that are available afterwards
  */
-XXFC_API uint32_t xx_daemon_tools_mdx_open_data_files(
-    xx_daemon_tools_mdx *archive, const char *mds_path);
+XXFC_API uint32_t xx_daemon_tools_mdx_open_data_files(xx_daemon_tools_mdx *archive, const char *mds_path);
 
 /** @brief RIPEMD-160 of @p size bytes (exposed for the unit test). */
-XXFC_API void xx_daemon_tools_mdx_rmd160(const void *data, size_t size,
-                                         uint8_t digest[20]);
+XXFC_API void xx_daemon_tools_mdx_rmd160(const void *data, size_t size, uint8_t digest[20]);
 
 #ifdef __cplusplus
 }

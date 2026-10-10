@@ -22,7 +22,9 @@ extern "C" {
 #endif
 typedef struct xx_thomson_sap xx_thomson_sap;
 typedef struct xx_thomson_sap xx_thomson_sap_t;
-struct xx_thomson_sap { Abstractformat format; };
+struct xx_thomson_sap {
+    Abstractformat format;
+};
 XXFC_API void xx_thomson_sap_init(xx_thomson_sap *reader, xx_io_device *device, int64_t base_address);
 XXFC_API xx_thomson_sap *xx_thomson_sap_create(xx_io_device *device, int64_t base_address);
 XXFC_API void xx_thomson_sap_destroy(xx_thomson_sap *reader);
@@ -32,9 +34,9 @@ XXFC_API bool xx_thomson_sap_handle_base_info(Abstractformat *format, xx_pd_stru
 /** Stream the zero-based member to a borrowed device at its current cursor.
  * Output must differ from input. Failure may leave partial output.
  */
-XXFC_API bool xx_thomson_sap_unpack_to_device(xx_thomson_sap *reader, uint64_t record_index,
-    xx_io_device *output, xx_pd_struct *pd);
-static inline Abstractformat *xx_thomson_sap_to_format(xx_thomson_sap *reader) {
+XXFC_API bool xx_thomson_sap_unpack_to_device(xx_thomson_sap *reader, uint64_t record_index, xx_io_device *output, xx_pd_struct *pd);
+static inline Abstractformat *xx_thomson_sap_to_format(xx_thomson_sap *reader)
+{
     return reader ? &reader->format : NULL;
 }
 #ifdef __cplusplus

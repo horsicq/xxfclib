@@ -54,13 +54,11 @@ typedef struct hsh_stream_s {
 
 static void hsh_vtable_destroy(Abstractformat *self);
 
-static bool hsh_read_at(xx_io_device *device, int64_t offset, void *data,
-                        size_t size) {
+static bool hsh_read_at(xx_io_device *device, int64_t offset, void *data, size_t size)
+{
     uint8_t *out = (uint8_t *)data;
     size_t done = 0U;
-    if (!device || (!data && size) || offset < 0 ||
-        xx_io_seek64(device, offset, SEEK_SET) != 0)
-        return false;
+    if (!device || (!data && size) || offset < 0 || xx_io_seek64(device, offset, SEEK_SET) != 0) return false;
     while (done < size) {
         ssize_t got = xx_io_read(device, out + done, size - done);
         if (got <= 0 || (size_t)got > size - done) return false;
@@ -69,7 +67,8 @@ static bool hsh_read_at(xx_io_device *device, int64_t offset, void *data,
     return true;
 }
 
-static void hsh_parsed_cleanup(hsh_parsed *parsed) {
+static void hsh_parsed_cleanup(hsh_parsed *parsed)
+{
     if (!parsed) return;
     if (parsed->tracks) xx_mem_free(parsed->tracks);
     xx_mem_zero(parsed, sizeof(*parsed));
@@ -77,8 +76,8 @@ static void hsh_parsed_cleanup(hsh_parsed *parsed) {
 
 /* Header and track list only; no stream is decoded here, so the probe costs
  * one 48-byte read plus at most 16 KiB of track list. */
-static bool hsh_parse(Abstractformat *self, hsh_parsed *parsed,
-                      xx_pd_struct *pd) {
+static bool hsh_parse(Abstractformat *self, hsh_parsed *parsed, xx_pd_struct *pd)
+{
     uint8_t header[XX_HXC_STREAM_HFE_HEADER_SIZE];
     uint8_t *list = NULL;
     int64_t input_size, avail;
@@ -87,37 +86,26 @@ static bool hsh_parse(Abstractformat *self, hsh_parsed *parsed,
     bool ok = false;
 
     if (parsed) xx_mem_zero(parsed, sizeof(*parsed));
-    if (!self || !self->device || !parsed || self->base_address < 0 ||
-        (pd && xx_pd_is_stopped(pd)))
-        return false;
+    if (!self || !self->device || !parsed || self->base_address < 0 || (pd && xx_pd_is_stopped(pd))) return false;
     input_size = xx_io_total_size(self->device);
     if (input_size < self->base_address) return false;
     avail = input_size - self->base_address;
-    if (avail < (int64_t)XX_HXC_STREAM_HFE_HEADER_SIZE ||
-        !hsh_read_at(self->device, self->base_address, header,
-                     sizeof(header)) ||
-        xx_rt_memcmp(header, XX_HXC_STREAM_HFE_SIGNATURE,
-                     XX_HXC_STREAM_HFE_SIGNATURE_SIZE) != 0)
+    if (avail < (int64_t)XX_HXC_STREAM_HFE_HEADER_SIZE || !hsh_read_at(self->device, self->base_address, header, sizeof(header)) ||
+        xx_rt_memcmp(header, XX_HXC_STREAM_HFE_SIGNATURE, XX_HXC_STREAM_HFE_SIGNATURE_SIZE) != 0)
         return false;
 
     tracks = xx_data_get_u32(header, sizeof(header), 0x24U, false);
     sides = xx_data_get_u32(header, sizeof(header), 0x28U, false);
     list_offset = xx_data_get_u32(header, sizeof(header), 0x1CU, false);
-    if (tracks == 0U || tracks > XX_HXC_STREAM_HFE_MAX_TRACKS || sides == 0U ||
-        sides > XX_HXC_STREAM_HFE_MAX_SIDES ||
-        list_offset < XX_HXC_STREAM_HFE_HEADER_SIZE)
+    if (tracks == 0U || tracks > XX_HXC_STREAM_HFE_MAX_TRACKS || sides == 0U || sides > XX_HXC_STREAM_HFE_MAX_SIDES || list_offset < XX_HXC_STREAM_HFE_HEADER_SIZE)
         return false;
     entries = tracks * sides;
-    list_end = (uint64_t)list_offset +
-               (uint64_t)entries * XX_HXC_STREAM_HFE_ENTRY_SIZE;
+    list_end = (uint64_t)list_offset + (uint64_t)entries * XX_HXC_STREAM_HFE_ENTRY_SIZE;
     if (list_end > (uint64_t)avail) return false;
 
-    list = (uint8_t *)xx_mem_alloc((size_t)entries *
-                                   XX_HXC_STREAM_HFE_ENTRY_SIZE);
+    list = (uint8_t *)xx_mem_alloc((size_t)entries * XX_HXC_STREAM_HFE_ENTRY_SIZE);
     parsed->tracks = (hsh_track *)xx_mem_calloc(entries, sizeof(hsh_track));
-    if (!list || !parsed->tracks ||
-        !hsh_read_at(self->device, self->base_address + (int64_t)list_offset,
-                     list, (size_t)entries * XX_HXC_STREAM_HFE_ENTRY_SIZE))
+    if (!list || !parsed->tracks || !hsh_read_at(self->device, self->base_address + (int64_t)list_offset, list, (size_t)entries * XX_HXC_STREAM_HFE_ENTRY_SIZE))
         goto done;
 
     previous_end = list_end;
@@ -132,20 +120,12 @@ static bool hsh_parse(Abstractformat *self, hsh_parsed *parsed,
         hsh_track *t;
         if (flags & ~HSH_FLAG_LZ4) goto done;
         if (offset == 0U && packed == 0U && unpacked == 0U) continue;
-        if (packed == 0U || unpacked == 0U ||
-            packed > XX_HXC_STREAM_HFE_MAX_STREAM ||
-            unpacked > XX_HXC_STREAM_HFE_MAX_STREAM)
-            goto done;
-        if ((flags & HSH_FLAG_LZ4)
-                ? (uint64_t)unpacked > (uint64_t)packed * HSH_LZ4_MAX_RATIO
-                : unpacked != packed)
-            goto done;
+        if (packed == 0U || unpacked == 0U || packed > XX_HXC_STREAM_HFE_MAX_STREAM || unpacked > XX_HXC_STREAM_HFE_MAX_STREAM) goto done;
+        if ((flags & HSH_FLAG_LZ4) ? (uint64_t)unpacked > (uint64_t)packed * HSH_LZ4_MAX_RATIO : unpacked != packed) goto done;
         /* Streams follow the list in list order and never overlap: that is
          * how hxcfe writes them, and it keeps one packed span from being
          * reused as many tracks. */
-        if ((uint64_t)offset < previous_end ||
-            (uint64_t)offset + packed > (uint64_t)avail)
-            goto done;
+        if ((uint64_t)offset < previous_end || (uint64_t)offset + packed > (uint64_t)avail) goto done;
         previous_end = (uint64_t)offset + packed;
         t = &parsed->tracks[parsed->count++];
         t->offset = self->base_address + (int64_t)offset;
@@ -171,20 +151,16 @@ done:
 }
 
 /* Decode one track into a fresh buffer of exactly unpacked_size bytes. */
-static uint8_t *hsh_load_track(xx_io_device *device, const hsh_track *t) {
+static uint8_t *hsh_load_track(xx_io_device *device, const hsh_track *t)
+{
     uint8_t *packed = NULL, *out = NULL;
     size_t written = 0U;
     if (!device || !t) return NULL;
     packed = (uint8_t *)xx_mem_alloc(t->packed_size);
-    if (!packed || !hsh_read_at(device, t->offset, packed, t->packed_size))
-        goto fail;
+    if (!packed || !hsh_read_at(device, t->offset, packed, t->packed_size)) goto fail;
     if (!(t->flags & HSH_FLAG_LZ4)) return packed;
     out = (uint8_t *)xx_mem_alloc(t->unpacked_size);
-    if (!out ||
-        !xx_lz4_decompress_block(packed, t->packed_size, out, t->unpacked_size,
-                                 &written) ||
-        written != t->unpacked_size)
-        goto fail;
+    if (!out || !xx_lz4_decompress_block(packed, t->packed_size, out, t->unpacked_size, &written) || written != t->unpacked_size) goto fail;
     xx_mem_free(packed);
     return out;
 fail:
@@ -193,17 +169,16 @@ fail:
     return NULL;
 }
 
-static bool hsh_copy_options(xx_list_s *destination, const xx_list_s *source) {
+static bool hsh_copy_options(xx_list_s *destination, const xx_list_s *source)
+{
     size_t index;
     if (!destination || !source) return source == NULL;
     for (index = 0U; index < source->count; ++index) {
-        const xx_meta *item =
-            (const xx_meta *)xx_list_at((const xx_list_t *)source, index);
+        const xx_meta *item = (const xx_meta *)xx_list_at((const xx_list_t *)source, index);
         xx_meta copy;
         if (!item) continue;
         xx_meta_init(&copy, item->meta_id);
-        if (!xx_var_copy(&copy.var, &item->var) ||
-            !xx_list_append(destination, &copy)) {
+        if (!xx_var_copy(&copy.var, &item->var) || !xx_list_append(destination, &copy)) {
             xx_meta_cleanup(&copy);
             return false;
         }
@@ -211,25 +186,24 @@ static bool hsh_copy_options(xx_list_s *destination, const xx_list_s *source) {
     return true;
 }
 
-static const xx_var *hsh_find_option(const xx_list_s *options,
-                                     uint32_t meta_id) {
+static const xx_var *hsh_find_option(const xx_list_s *options, uint32_t meta_id)
+{
     size_t index;
     if (!options) return NULL;
     for (index = 0U; index < options->count; ++index) {
-        const xx_meta *item =
-            (const xx_meta *)xx_list_at((const xx_list_t *)options, index);
+        const xx_meta *item = (const xx_meta *)xx_list_at((const xx_list_t *)options, index);
         if (item && item->meta_id == meta_id) return &item->var;
     }
     return NULL;
 }
 
-static void hsh_track_name(const hsh_track *t, char *name, size_t size) {
-    xx_rt_snprintf(name, size, "track%03u_side%u.stream", (unsigned)t->track,
-                   (unsigned)t->side);
+static void hsh_track_name(const hsh_track *t, char *name, size_t size)
+{
+    xx_rt_snprintf(name, size, "track%03u_side%u.stream", (unsigned)t->track, (unsigned)t->side);
 }
 
-static bool hsh_populate_record(xx_archive_record *record,
-                                const hsh_parsed *parsed, const hsh_track *t) {
+static bool hsh_populate_record(xx_archive_record *record, const hsh_parsed *parsed, const hsh_track *t)
+{
     char name[48];
     if (!record || !parsed || !t) return false;
     xx_archive_record_cleanup(record);
@@ -239,27 +213,22 @@ static bool hsh_populate_record(xx_archive_record *record,
     record->header_size = XX_HXC_STREAM_HFE_HEADER_SIZE;
     record->data_offset = t->offset;
     record->compressed_size = t->packed_size;
-    return xx_archive_record_set_original_name(record, name) &&
-           xx_archive_record_set_meta_u64(record, XX_META_ID_COMPRESSED_SIZE,
-                                          t->packed_size) &&
-           xx_archive_record_set_meta_u64(record, XX_META_ID_UNCOMPRESSED_SIZE,
-                                          t->unpacked_size) &&
-           xx_archive_record_set_meta_u64(record, XX_META_ID_COMPRESSION_METHOD,
-                                          (t->flags & HSH_FLAG_LZ4) ? 1U : 0U) &&
-           xx_archive_record_set_meta_bool(record, XX_META_ID_IS_ENCRYPTED,
-                                           false) &&
-           xx_archive_record_set_meta_bool(record, XX_META_ID_IS_FOLDER, false);
+    return xx_archive_record_set_original_name(record, name) && xx_archive_record_set_meta_u64(record, XX_META_ID_COMPRESSED_SIZE, t->packed_size) &&
+           xx_archive_record_set_meta_u64(record, XX_META_ID_UNCOMPRESSED_SIZE, t->unpacked_size) &&
+           xx_archive_record_set_meta_u64(record, XX_META_ID_COMPRESSION_METHOD, (t->flags & HSH_FLAG_LZ4) ? 1U : 0U) &&
+           xx_archive_record_set_meta_bool(record, XX_META_ID_IS_ENCRYPTED, false) && xx_archive_record_set_meta_bool(record, XX_META_ID_IS_FOLDER, false);
 }
 
-static void hsh_stream_free(void *pointer) {
+static void hsh_stream_free(void *pointer)
+{
     hsh_stream *stream = (hsh_stream *)pointer;
     if (!stream) return;
     hsh_parsed_cleanup(&stream->parsed);
     xx_mem_free(stream);
 }
 
-void xx_hxc_stream_hfe_init(xx_hxc_stream_hfe *archive, xx_io_device *device,
-                            int64_t base_address) {
+void xx_hxc_stream_hfe_init(xx_hxc_stream_hfe *archive, xx_io_device *device, int64_t base_address)
+{
     if (!archive) return;
     xx_mem_zero(archive, sizeof(*archive));
     xx_format_init(&archive->format, device, base_address);
@@ -272,54 +241,51 @@ void xx_hxc_stream_hfe_init(xx_hxc_stream_hfe *archive, xx_io_device *device,
     archive->format.check_is_valid = xx_hxc_stream_hfe_check_is_valid;
     archive->format.handle_base_info = xx_hxc_stream_hfe_handle_base_info;
     archive->format.get_format_size = xx_hxc_stream_hfe_get_format_size;
-    archive->format.get_number_of_archive_records =
-        xx_hxc_stream_hfe_get_number_of_archive_records;
-    archive->format.create_archive_records_reading =
-        xx_hxc_stream_hfe_create_archive_records_reading;
-    archive->format.get_current_archive_record =
-        xx_hxc_stream_hfe_get_current_archive_record;
-    archive->format.unpack_current_archive_record =
-        xx_hxc_stream_hfe_unpack_current_archive_record;
-    archive->format.archive_record_move_to_next =
-        xx_hxc_stream_hfe_archive_record_move_to_next;
-    archive->format.free_archive_records_reading =
-        xx_hxc_stream_hfe_free_archive_records_reading;
+    archive->format.get_number_of_archive_records = xx_hxc_stream_hfe_get_number_of_archive_records;
+    archive->format.create_archive_records_reading = xx_hxc_stream_hfe_create_archive_records_reading;
+    archive->format.get_current_archive_record = xx_hxc_stream_hfe_get_current_archive_record;
+    archive->format.unpack_current_archive_record = xx_hxc_stream_hfe_unpack_current_archive_record;
+    archive->format.archive_record_move_to_next = xx_hxc_stream_hfe_archive_record_move_to_next;
+    archive->format.free_archive_records_reading = xx_hxc_stream_hfe_free_archive_records_reading;
     archive->format.destroy = hsh_vtable_destroy;
     archive->archive_end = -1;
 }
 
-xx_hxc_stream_hfe *xx_hxc_stream_hfe_create(xx_io_device *device,
-                                            int64_t base_address) {
-    xx_hxc_stream_hfe *archive =
-        (xx_hxc_stream_hfe *)xx_mem_alloc(sizeof(*archive));
+xx_hxc_stream_hfe *xx_hxc_stream_hfe_create(xx_io_device *device, int64_t base_address)
+{
+    xx_hxc_stream_hfe *archive = (xx_hxc_stream_hfe *)xx_mem_alloc(sizeof(*archive));
     if (archive) xx_hxc_stream_hfe_init(archive, device, base_address);
     return archive;
 }
 
-void xx_hxc_stream_hfe_destroy(xx_hxc_stream_hfe *archive) {
+void xx_hxc_stream_hfe_destroy(xx_hxc_stream_hfe *archive)
+{
     if (!archive) return;
     xx_format_cleanup_extra_parameters(&archive->format);
 }
 
-static void hsh_vtable_destroy(Abstractformat *self) {
+static void hsh_vtable_destroy(Abstractformat *self)
+{
     xx_hxc_stream_hfe_destroy((xx_hxc_stream_hfe *)self);
 }
 
-void xx_hxc_stream_hfe_free(xx_hxc_stream_hfe *archive) {
+void xx_hxc_stream_hfe_free(xx_hxc_stream_hfe *archive)
+{
     if (!archive) return;
     xx_hxc_stream_hfe_destroy(archive);
     xx_mem_free(archive);
 }
 
-bool xx_hxc_stream_hfe_check_is_valid(Abstractformat *self, xx_pd_struct *pd) {
+bool xx_hxc_stream_hfe_check_is_valid(Abstractformat *self, xx_pd_struct *pd)
+{
     hsh_parsed parsed;
     bool result = hsh_parse(self, &parsed, pd);
     hsh_parsed_cleanup(&parsed);
     return result;
 }
 
-bool xx_hxc_stream_hfe_handle_base_info(Abstractformat *self,
-                                        xx_pd_struct *pd) {
+bool xx_hxc_stream_hfe_handle_base_info(Abstractformat *self, xx_pd_struct *pd)
+{
     xx_hxc_stream_hfe *archive = (xx_hxc_stream_hfe *)self;
     hsh_parsed parsed;
     int64_t total_size;
@@ -352,29 +318,23 @@ bool xx_hxc_stream_hfe_handle_base_info(Abstractformat *self,
     return true;
 }
 
-int64_t xx_hxc_stream_hfe_get_format_size(Abstractformat *self,
-                                          xx_pd_struct *pd) {
-    if (!self ||
-        (!self->base_info_handled && !xx_format_handle_base_info(self, pd)))
-        return -1;
+int64_t xx_hxc_stream_hfe_get_format_size(Abstractformat *self, xx_pd_struct *pd)
+{
+    if (!self || (!self->base_info_handled && !xx_format_handle_base_info(self, pd))) return -1;
     return self->format_size;
 }
 
-uint64_t xx_hxc_stream_hfe_get_number_of_archive_records(Abstractformat *self,
-                                                         xx_pd_struct *pd) {
-    if (!self ||
-        (!self->base_info_handled && !xx_format_handle_base_info(self, pd)))
-        return 0U;
+uint64_t xx_hxc_stream_hfe_get_number_of_archive_records(Abstractformat *self, xx_pd_struct *pd)
+{
+    if (!self || (!self->base_info_handled && !xx_format_handle_base_info(self, pd))) return 0U;
     return ((xx_hxc_stream_hfe *)self)->number_of_records;
 }
 
-xx_archive_record_state *xx_hxc_stream_hfe_create_archive_records_reading(
-    Abstractformat *self, const xx_list_s *options, xx_pd_struct *pd) {
+xx_archive_record_state *xx_hxc_stream_hfe_create_archive_records_reading(Abstractformat *self, const xx_list_s *options, xx_pd_struct *pd)
+{
     xx_archive_record_state *state;
     hsh_stream *stream;
-    if (!self || !self->device ||
-        (!self->base_info_handled && !xx_format_handle_base_info(self, pd)))
-        return NULL;
+    if (!self || !self->device || (!self->base_info_handled && !xx_format_handle_base_info(self, pd))) return NULL;
     state = (xx_archive_record_state *)xx_mem_alloc(sizeof(*state));
     stream = (hsh_stream *)xx_mem_calloc(1U, sizeof(*stream));
     if (!state || !stream) {
@@ -383,8 +343,7 @@ xx_archive_record_state *xx_hxc_stream_hfe_create_archive_records_reading(
         return NULL;
     }
     xx_archive_record_state_init(state, self);
-    if (!hsh_copy_options(&state->options, options) ||
-        !hsh_parse(self, &stream->parsed, pd)) {
+    if (!hsh_copy_options(&state->options, options) || !hsh_parse(self, &stream->parsed, pd)) {
         hsh_stream_free(stream);
         xx_archive_record_state_free(state);
         return NULL;
@@ -393,28 +352,22 @@ xx_archive_record_state *xx_hxc_stream_hfe_create_archive_records_reading(
     state->internal_state = stream;
     state->free_internal = hsh_stream_free;
     state->total_records = (int64_t)stream->parsed.count;
-    if (stream->parsed.count != 0U &&
-        hsh_populate_record(&state->current_record, &stream->parsed,
-                            &stream->parsed.tracks[0])) {
+    if (stream->parsed.count != 0U && hsh_populate_record(&state->current_record, &stream->parsed, &stream->parsed.tracks[0])) {
         state->has_record = true;
         state->current_index = 0;
     }
     return state;
 }
 
-const xx_archive_record *xx_hxc_stream_hfe_get_current_archive_record(
-    Abstractformat *self, xx_archive_record_state *state) {
-    return self && state && state->format == self && state->has_record
-               ? &state->current_record
-               : NULL;
+const xx_archive_record *xx_hxc_stream_hfe_get_current_archive_record(Abstractformat *self, xx_archive_record_state *state)
+{
+    return self && state && state->format == self && state->has_record ? &state->current_record : NULL;
 }
 
-bool xx_hxc_stream_hfe_archive_record_move_to_next(
-    Abstractformat *self, xx_archive_record_state *state, xx_pd_struct *pd) {
+bool xx_hxc_stream_hfe_archive_record_move_to_next(Abstractformat *self, xx_archive_record_state *state, xx_pd_struct *pd)
+{
     hsh_stream *stream;
-    if (!self || !state || state->format != self || !state->has_record ||
-        !state->internal_state || (pd && xx_pd_is_stopped(pd)))
-        return false;
+    if (!self || !state || state->format != self || !state->has_record || !state->internal_state || (pd && xx_pd_is_stopped(pd))) return false;
     stream = (hsh_stream *)state->internal_state;
     ++stream->index;
     if (stream->index >= stream->parsed.count) {
@@ -423,8 +376,7 @@ bool xx_hxc_stream_hfe_archive_record_move_to_next(
         state->has_record = false;
         return false;
     }
-    if (!hsh_populate_record(&state->current_record, &stream->parsed,
-                             &stream->parsed.tracks[stream->index])) {
+    if (!hsh_populate_record(&state->current_record, &stream->parsed, &stream->parsed.tracks[stream->index])) {
         state->has_record = false;
         return false;
     }
@@ -432,8 +384,8 @@ bool xx_hxc_stream_hfe_archive_record_move_to_next(
     return true;
 }
 
-bool xx_hxc_stream_hfe_unpack_current_archive_record(
-    Abstractformat *self, xx_archive_record_state *state, xx_pd_struct *pd) {
+bool xx_hxc_stream_hfe_unpack_current_archive_record(Abstractformat *self, xx_archive_record_state *state, xx_pd_struct *pd)
+{
     hsh_stream *stream;
     const hsh_track *t;
     const xx_var *option;
@@ -444,10 +396,7 @@ bool xx_hxc_stream_hfe_unpack_current_archive_record(
     uint8_t *data = NULL;
     bool result = false;
     bool created = false;
-    if (!self || !self->device || !state || state->format != self ||
-        !state->has_record || !state->internal_state ||
-        (pd && xx_pd_is_stopped(pd)))
-        return false;
+    if (!self || !self->device || !state || state->format != self || !state->has_record || !state->internal_state || (pd && xx_pd_is_stopped(pd))) return false;
     stream = (hsh_stream *)state->internal_state;
     if (stream->index >= stream->parsed.count) return false;
     t = &stream->parsed.tracks[stream->index];
@@ -462,21 +411,15 @@ bool xx_hxc_stream_hfe_unpack_current_archive_record(
         xx_mem_free(data);
         return true;
     }
-    if (option->type == XX_VAR_TYPE_STRING ||
-        option->type == XX_VAR_TYPE_STRING_VIEW) {
+    if (option->type == XX_VAR_TYPE_STRING || option->type == XX_VAR_TYPE_STRING_VIEW) {
         base = xx_var_get_str(option);
-    } else if (option->type == XX_VAR_TYPE_WSTRING ||
-               option->type == XX_VAR_TYPE_WSTRING_VIEW) {
+    } else if (option->type == XX_VAR_TYPE_WSTRING || option->type == XX_VAR_TYPE_WSTRING_VIEW) {
         owned_base = xx_str_unicode_to_utf8(xx_var_get_wstr(option));
         base = owned_base;
     }
     if (!base) goto cleanup;
-    destination = (base[0] && base[xx_str_len(base) - 1U] != '/' &&
-                   base[xx_str_len(base) - 1U] != '\\')
-                      ? xx_str_concat3(base, "/", name)
-                      : xx_str_concat(base, name);
-    if (!destination || !xx_store_create_dirs_a(destination, false))
-        goto cleanup;
+    destination = (base[0] && base[xx_str_len(base) - 1U] != '/' && base[xx_str_len(base) - 1U] != '\\') ? xx_str_concat3(base, "/", name) : xx_str_concat(base, name);
+    if (!destination || !xx_store_create_dirs_a(destination, false)) goto cleanup;
     {
         xx_io_device *out = xx_io_file_open(destination, "wb");
         size_t done = 0U;
@@ -506,8 +449,8 @@ cleanup:
     return result;
 }
 
-void xx_hxc_stream_hfe_free_archive_records_reading(
-    Abstractformat *self, xx_archive_record_state *state) {
+void xx_hxc_stream_hfe_free_archive_records_reading(Abstractformat *self, xx_archive_record_state *state)
+{
     (void)self;
     xx_archive_record_state_free(state);
 }

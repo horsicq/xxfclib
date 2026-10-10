@@ -92,17 +92,15 @@ static void xx_amigalzx_vtable_destroy(Abstractformat *self);
 
 /* ------------------------------------------------------------- helpers -- */
 
-static bool xx_amigalzx_read_at(Abstractformat *self, int64_t offset,
-                              uint8_t *buffer, size_t size) {
+static bool xx_amigalzx_read_at(Abstractformat *self, int64_t offset, uint8_t *buffer, size_t size)
+{
     size_t completed = 0U;
 
-    if (!self || !self->device || offset < 0 ||
-        xx_io_seek64(self->device, offset, SEEK_SET) != 0) {
+    if (!self || !self->device || offset < 0 || xx_io_seek64(self->device, offset, SEEK_SET) != 0) {
         return false;
     }
     while (completed < size) {
-        ssize_t received =
-            xx_io_read(self->device, buffer + completed, size - completed);
+        ssize_t received = xx_io_read(self->device, buffer + completed, size - completed);
         if (received <= 0 || (size_t)received > size - completed) {
             return false;
         }
@@ -111,14 +109,14 @@ static bool xx_amigalzx_read_at(Abstractformat *self, int64_t offset,
     return true;
 }
 
-static bool xx_amigalzx_range_within(int64_t total, int64_t offset,
-                                   int64_t size) {
-    return offset >= 0 && size >= 0 && offset <= total &&
-           size <= total - offset;
+static bool xx_amigalzx_range_within(int64_t total, int64_t offset, int64_t size)
+{
+    return offset >= 0 && size >= 0 && offset <= total && size <= total - offset;
 }
 
 /* Refuse anything that would escape the extraction directory. */
-static bool xx_amigalzx_path_safe(const char *name) {
+static bool xx_amigalzx_path_safe(const char *name)
+{
     const char *cursor = name;
 
     if (!name || !name[0] || name[0] == '/') return false;
@@ -133,7 +131,8 @@ static bool xx_amigalzx_path_safe(const char *name) {
     return true;
 }
 
-static void xx_amigalzx_stream_free(void *pointer) {
+static void xx_amigalzx_stream_free(void *pointer)
+{
     xx_amigalzx_stream *stream = (xx_amigalzx_stream *)pointer;
     size_t index;
 
@@ -147,17 +146,15 @@ static void xx_amigalzx_stream_free(void *pointer) {
 }
 
 /* Append a member, taking ownership of @p name. */
-static bool xx_amigalzx_add(xx_amigalzx_stream *stream,
-                          const xx_amigalzx_member *member) {
-    xx_amigalzx_member *grown = (xx_amigalzx_member *)xx_mem_realloc(
-        stream->items, sizeof(*grown) * (stream->count + 1U));
+static bool xx_amigalzx_add(xx_amigalzx_stream *stream, const xx_amigalzx_member *member)
+{
+    xx_amigalzx_member *grown = (xx_amigalzx_member *)xx_mem_realloc(stream->items, sizeof(*grown) * (stream->count + 1U));
 
     if (!grown) return false;
     stream->items = grown;
     stream->items[stream->count++] = *member;
     return true;
 }
-
 
 #define XX_AMIGALZX_MAX_MEMBERS 65536
 #define XX_AMIGALZX_MAX_GROUP_OUTPUT ((int64_t)1024 * 1024 * 1024)
@@ -175,14 +172,16 @@ static bool xx_amigalzx_add(xx_amigalzx_stream *stream,
  * it, matching the reference reader's 1 GiB ceiling. */
 static bool xx_amigalzx_name_byte_valid(uint8_t value);
 static int64_t xx_amigalzx_normalize_name(uint8_t *name, int64_t length);
-static bool xx_amigalzx_close_group(xx_amigalzx_stream *stream, int64_t span, size_t group_start, int64_t group_plain, int64_t data_offset, int64_t packed_size, int64_t base_address, uint32_t method);
+static bool xx_amigalzx_close_group(xx_amigalzx_stream *stream, int64_t span, size_t group_start, int64_t group_plain, int64_t data_offset, int64_t packed_size,
+                                    int64_t base_address, uint32_t method);
 static xx_amigalzx_stream *xx_amigalzx_parse(Abstractformat *self, xx_pd_struct *pd);
 static bool xx_amigalzx_decode(Abstractformat *self, const xx_amigalzx_member *member, xx_amigalzx_stream *stream, uint8_t **out, size_t *out_size, xx_pd_struct *pd);
 
 /* Amiga file names are Latin-1, so bytes above 0x9F are legitimate accented
  * characters and are kept. What is rejected is the control ranges: C0
  * (below 0x20) and C1 (0x7F..0x9F). This mirrors the reference reader. */
-static bool xx_amigalzx_name_byte_valid(uint8_t value) {
+static bool xx_amigalzx_name_byte_valid(uint8_t value)
+{
     if (value < 0x20U) return false;
     if (value >= 0x7FU && value <= 0x9FU) return false;
     return true;
@@ -194,7 +193,8 @@ static bool xx_amigalzx_name_byte_valid(uint8_t value) {
  * '\\', and a leading volume name followed by ':' ("Work:src/x") is a root
  * designator, not a directory of the archive. Returns the length of the
  * rewritten name, or 0 for a name that must be rejected. */
-static int64_t xx_amigalzx_normalize_name(uint8_t *name, int64_t length) {
+static int64_t xx_amigalzx_normalize_name(uint8_t *name, int64_t length)
+{
     int64_t index;
     int64_t start = 0;
     int64_t out = 0;
@@ -232,8 +232,7 @@ static int64_t xx_amigalzx_normalize_name(uint8_t *name, int64_t length) {
             int64_t begin = index - component;
             if (component == 0) return 0;
             if (component == 1 && name[begin] == '.') return 0;
-            if (component == 2 && name[begin] == '.' &&
-                name[begin + 1] == '.') {
+            if (component == 2 && name[begin] == '.' && name[begin + 1] == '.') {
                 return 0;
             }
             component = 0;
@@ -249,10 +248,9 @@ static int64_t xx_amigalzx_normalize_name(uint8_t *name, int64_t length) {
  * members hold their substream offset in data_offset and nothing usable in
  * compressed_size, so this is where a group's members become publishable.
  * Returns false if the group does not describe a consistent stream. */
-static bool xx_amigalzx_close_group(xx_amigalzx_stream *stream, int64_t span,
-                                    size_t group_start, int64_t group_plain,
-                                    int64_t data_offset, int64_t packed_size,
-                                    int64_t base_address, uint32_t method) {
+static bool xx_amigalzx_close_group(xx_amigalzx_stream *stream, int64_t span, size_t group_start, int64_t group_plain, int64_t data_offset, int64_t packed_size,
+                                    int64_t base_address, uint32_t method)
+{
     size_t index;
 
     if (method == XX_AMIGALZX_METHOD_STORE) {
@@ -281,8 +279,7 @@ static bool xx_amigalzx_close_group(xx_amigalzx_stream *stream, int64_t span,
         if (member->uncompressed_size > group_plain - substream) return false;
         if (method == XX_AMIGALZX_METHOD_STORE) {
             /* Narrow the member to its own bytes inside the stored run. */
-            if (!xx_amigalzx_range_within(span, data_offset + substream,
-                                          member->uncompressed_size)) {
+            if (!xx_amigalzx_range_within(span, data_offset + substream, member->uncompressed_size)) {
                 return false;
             }
             member->data_offset = base_address + data_offset + substream;
@@ -297,8 +294,8 @@ static bool xx_amigalzx_close_group(xx_amigalzx_stream *stream, int64_t span,
     return true;
 }
 
-static xx_amigalzx_stream *xx_amigalzx_parse(Abstractformat *self,
-                                             xx_pd_struct *pd) {
+static xx_amigalzx_stream *xx_amigalzx_parse(Abstractformat *self, xx_pd_struct *pd)
+{
     xx_amigalzx_stream *stream;
     xx_amigalzx_member member;
     uint8_t archive_header[XX_AMIGALZX_ARCHIVE_HEADER_SIZE];
@@ -326,19 +323,16 @@ static xx_amigalzx_stream *xx_amigalzx_parse(Abstractformat *self,
     if (total < self->base_address) return NULL;
     span = total - self->base_address;
     /* Signature plus at least one member header and a one-byte name. */
-    if (span < XX_AMIGALZX_ARCHIVE_HEADER_SIZE +
-                   XX_AMIGALZX_ENTRY_HEADER_SIZE + 1) {
+    if (span < XX_AMIGALZX_ARCHIVE_HEADER_SIZE + XX_AMIGALZX_ENTRY_HEADER_SIZE + 1) {
         return NULL;
     }
-    if (!xx_amigalzx_read_at(self, self->base_address, archive_header,
-                             sizeof(archive_header))) {
+    if (!xx_amigalzx_read_at(self, self->base_address, archive_header, sizeof(archive_header))) {
         return NULL;
     }
     /* Three bytes of magic is weak on its own. What actually keeps this
      * format from claiming unrelated files is the walk below: every member
      * header must validate and the chain must land on EOF to the byte. */
-    if (archive_header[0] != 'L' || archive_header[1] != 'Z' ||
-        archive_header[2] != 'X') {
+    if (archive_header[0] != 'L' || archive_header[1] != 'Z' || archive_header[2] != 'X') {
         return NULL;
     }
 
@@ -350,12 +344,10 @@ static xx_amigalzx_stream *xx_amigalzx_parse(Abstractformat *self,
     while (offset < span) {
         if (pd && xx_pd_is_stopped(pd)) goto fail;
         if (++records > XX_AMIGALZX_MAX_MEMBERS) goto fail;
-        if (!xx_amigalzx_range_within(span, offset,
-                                      XX_AMIGALZX_ENTRY_HEADER_SIZE)) {
+        if (!xx_amigalzx_range_within(span, offset, XX_AMIGALZX_ENTRY_HEADER_SIZE)) {
             goto fail;
         }
-        if (!xx_amigalzx_read_at(self, self->base_address + offset, header,
-                                 sizeof(header))) {
+        if (!xx_amigalzx_read_at(self, self->base_address + offset, header, sizeof(header))) {
             goto fail;
         }
 
@@ -368,21 +360,16 @@ static xx_amigalzx_stream *xx_amigalzx_parse(Abstractformat *self,
         /* Only 0 and 2 were ever assigned. Rejecting everything else is the
          * single most selective byte in the member header and the check a
          * later reader will be tempted to widen "just in case". */
-        if (method != XX_AMIGALZX_METHOD_STORE &&
-            method != XX_AMIGALZX_METHOD_LZX) {
+        if (method != XX_AMIGALZX_METHOD_STORE && method != XX_AMIGALZX_METHOD_LZX) {
             goto fail;
         }
         /* A zero-length name is not a thing; the field is 1..255. */
         if (name_length < 1) goto fail;
         variable_size = name_length + comment_length;
-        if (!xx_amigalzx_range_within(
-                span, offset + XX_AMIGALZX_ENTRY_HEADER_SIZE, variable_size)) {
+        if (!xx_amigalzx_range_within(span, offset + XX_AMIGALZX_ENTRY_HEADER_SIZE, variable_size)) {
             goto fail;
         }
-        if (!xx_amigalzx_read_at(
-                self, self->base_address + offset +
-                          XX_AMIGALZX_ENTRY_HEADER_SIZE,
-                name_buffer, (size_t)name_length)) {
+        if (!xx_amigalzx_read_at(self, self->base_address + offset + XX_AMIGALZX_ENTRY_HEADER_SIZE, name_buffer, (size_t)name_length)) {
             goto fail;
         }
         normalized = xx_amigalzx_normalize_name(name_buffer, name_length);
@@ -436,9 +423,7 @@ static xx_amigalzx_stream *xx_amigalzx_parse(Abstractformat *self,
         group_plain += unpacked_size;
 
         if (packed_size > 0) {
-            if (!xx_amigalzx_close_group(stream, span, group_start,
-                                         group_plain, data_offset, packed_size,
-                                         self->base_address, method)) {
+            if (!xx_amigalzx_close_group(stream, span, group_start, group_plain, data_offset, packed_size, self->base_address, method)) {
                 goto fail;
             }
             group_start = stream->count;
@@ -467,8 +452,6 @@ fail:
     xx_amigalzx_stream_free(stream);
     return NULL;
 }
-
-
 
 /* -------------------------------------------------- Amiga LZX method 2 -- */
 
@@ -512,14 +495,10 @@ fail:
 #define XX_AMIGALZX_MAIN_SIZE 768
 #define XX_AMIGALZX_MAX_CODE_BITS 16
 
-static const uint8_t xx_amigalzx_extra_bits[32] = {
-    0, 0, 0, 0, 1, 1, 2,  2,  3,  3,  4,  4,  5,  5,  6,  6,
-    7, 7, 8, 8, 9, 9, 10, 10, 11, 11, 12, 12, 13, 13, 14, 14};
+static const uint8_t xx_amigalzx_extra_bits[32] = {0, 0, 0, 0, 1, 1, 2, 2, 3, 3, 4, 4, 5, 5, 6, 6, 7, 7, 8, 8, 9, 9, 10, 10, 11, 11, 12, 12, 13, 13, 14, 14};
 
-static const uint32_t xx_amigalzx_base[32] = {
-    0,    1,    2,    3,    4,    6,    8,     12,    16,    24,   32,
-    48,   64,   96,   128,  192,  256,  384,   512,   768,   1024, 1536,
-    2048, 3072, 4096, 6144, 8192, 12288, 16384, 24576, 32768, 49152};
+static const uint32_t xx_amigalzx_base[32] = {0,   1,   2,   3,   4,    6,    8,    12,   16,   24,   32,   48,    64,    96,    128,   192,
+                                              256, 384, 512, 768, 1024, 1536, 2048, 3072, 4096, 6144, 8192, 12288, 16384, 24576, 32768, 49152};
 
 typedef struct xx_amigalzx_bits_s {
     const uint8_t *data;
@@ -544,8 +523,8 @@ typedef struct xx_amigalzx_code_s {
     uint16_t single_symbol;
 } xx_amigalzx_code;
 
-static void xx_amigalzx_bits_init(xx_amigalzx_bits *bits, const uint8_t *data,
-                                  size_t size) {
+static void xx_amigalzx_bits_init(xx_amigalzx_bits *bits, const uint8_t *data, size_t size)
+{
     bits->data = data;
     bits->size = size;
     bits->position = 0U;
@@ -556,7 +535,8 @@ static void xx_amigalzx_bits_init(xx_amigalzx_bits *bits, const uint8_t *data,
 
 /* Past the end the reader yields zeros and raises overrun; the caller decides
  * whether that mattered by checking it produced the plaintext it promised. */
-static uint32_t xx_amigalzx_read_bits(xx_amigalzx_bits *bits, int count) {
+static uint32_t xx_amigalzx_read_bits(xx_amigalzx_bits *bits, int count)
+{
     uint32_t result;
 
     /* Every field in this format is at most sixteen bits, which is what lets
@@ -566,8 +546,7 @@ static uint32_t xx_amigalzx_read_bits(xx_amigalzx_bits *bits, int count) {
     while (bits->available < count) {
         uint32_t word = 0U;
         if (bits->position + 2U <= bits->size) {
-            word = ((uint32_t)bits->data[bits->position] << 8) |
-                   (uint32_t)bits->data[bits->position + 1U];
+            word = ((uint32_t)bits->data[bits->position] << 8) | (uint32_t)bits->data[bits->position + 1U];
             bits->position += 2U;
         } else {
             bits->overrun = true;
@@ -581,9 +560,8 @@ static uint32_t xx_amigalzx_read_bits(xx_amigalzx_bits *bits, int count) {
     return result;
 }
 
-static bool xx_amigalzx_code_build(xx_amigalzx_code *code,
-                                   const uint8_t *lengths, int count,
-                                   int max_length) {
+static bool xx_amigalzx_code_build(xx_amigalzx_code *code, const uint8_t *lengths, int count, int max_length)
+{
     int length;
     int index;
     int value = 0;
@@ -591,8 +569,7 @@ static bool xx_amigalzx_code_build(xx_amigalzx_code *code,
     int next_index[XX_AMIGALZX_MAX_CODE_BITS + 1];
 
     xx_mem_zero(code, sizeof(*code));
-    if (count <= 0 || count > XX_AMIGALZX_MAIN_SIZE ||
-        max_length > XX_AMIGALZX_MAX_CODE_BITS) {
+    if (count <= 0 || count > XX_AMIGALZX_MAIN_SIZE || max_length > XX_AMIGALZX_MAX_CODE_BITS) {
         return false;
     }
     for (index = 0; index < count; ++index) {
@@ -615,10 +592,7 @@ static bool xx_amigalzx_code_build(xx_amigalzx_code *code,
     }
     for (length = 1; length <= max_length; ++length) {
         code->first_code[length] = value;
-        code->first_index[length] =
-            (length == 1) ? 0
-                          : code->first_index[length - 1] +
-                                code->count[length - 1];
+        code->first_index[length] = (length == 1) ? 0 : code->first_index[length - 1] + code->count[length - 1];
         next_index[length] = code->first_index[length];
         value += code->count[length];
         /* Over-subscription is the one thing that is never legal. An
@@ -635,8 +609,8 @@ static bool xx_amigalzx_code_build(xx_amigalzx_code *code,
 }
 
 /* Returns the symbol, or -1 for a bit pattern the code does not define. */
-static int xx_amigalzx_code_read(xx_amigalzx_bits *bits,
-                                 const xx_amigalzx_code *code) {
+static int xx_amigalzx_code_read(xx_amigalzx_bits *bits, const xx_amigalzx_code *code)
+{
     int length;
     int value = 0;
 
@@ -646,10 +620,8 @@ static int xx_amigalzx_code_read(xx_amigalzx_bits *bits,
     for (length = 1; length <= code->max_bits; ++length) {
         value = (value << 1) | (int)xx_amigalzx_read_bits(bits, 1);
         if (bits->overrun) return -1;
-        if (code->count[length] != 0 &&
-            value - code->first_code[length] < code->count[length]) {
-            return (int)code->symbols[code->first_index[length] +
-                                      (value - code->first_code[length])];
+        if (code->count[length] != 0 && value - code->first_code[length] < code->count[length]) {
+            return (int)code->symbols[code->first_index[length] + (value - code->first_code[length])];
         }
     }
     return -1;
@@ -665,8 +637,8 @@ static int xx_amigalzx_code_read(xx_amigalzx_bits *bits,
  * asymmetry is real, it is in unlzx, and getting it wrong desynchronises the
  * bitstream one block in and produces tables that look almost plausible.
  */
-static bool xx_amigalzx_read_lengths(xx_amigalzx_bits *bits, uint8_t *lengths,
-                                     int count, bool second_half) {
+static bool xx_amigalzx_read_lengths(xx_amigalzx_bits *bits, uint8_t *lengths, int count, bool second_half)
+{
     uint8_t pretree_lengths[XX_AMIGALZX_PRETREE_SIZE];
     xx_amigalzx_code pretree;
     const int fix = second_half ? 1 : 0;
@@ -676,8 +648,7 @@ static bool xx_amigalzx_read_lengths(xx_amigalzx_bits *bits, uint8_t *lengths,
         pretree_lengths[index] = (uint8_t)xx_amigalzx_read_bits(bits, 4);
     }
     if (bits->overrun) return false;
-    if (!xx_amigalzx_code_build(&pretree, pretree_lengths,
-                                XX_AMIGALZX_PRETREE_SIZE, 15)) {
+    if (!xx_amigalzx_code_build(&pretree, pretree_lengths, XX_AMIGALZX_PRETREE_SIZE, 15)) {
         return false;
     }
 
@@ -712,9 +683,8 @@ static bool xx_amigalzx_read_lengths(xx_amigalzx_bits *bits, uint8_t *lengths,
 
 /* Decode a whole LZX stream into @p output, which must be exactly the
  * plaintext length the container declared for the group. */
-static bool xx_amigalzx_lzx_decode(const uint8_t *input, size_t input_size,
-                                   uint8_t *output, size_t output_size,
-                                   xx_pd_struct *pd) {
+static bool xx_amigalzx_lzx_decode(const uint8_t *input, size_t input_size, uint8_t *output, size_t output_size, xx_pd_struct *pd)
+{
     xx_amigalzx_bits bits;
     xx_amigalzx_code main_code;
     xx_amigalzx_code offset_code;
@@ -754,11 +724,9 @@ static bool xx_amigalzx_lzx_decode(const uint8_t *input, size_t input_size,
                 uint8_t offset_lengths[XX_AMIGALZX_OFFSET_SIZE];
                 int index;
                 for (index = 0; index < XX_AMIGALZX_OFFSET_SIZE; ++index) {
-                    offset_lengths[index] =
-                        (uint8_t)xx_amigalzx_read_bits(&bits, 3);
+                    offset_lengths[index] = (uint8_t)xx_amigalzx_read_bits(&bits, 3);
                 }
-                if (!xx_amigalzx_code_build(&offset_code, offset_lengths,
-                                            XX_AMIGALZX_OFFSET_SIZE, 7)) {
+                if (!xx_amigalzx_code_build(&offset_code, offset_lengths, XX_AMIGALZX_OFFSET_SIZE, 7)) {
                     goto done;
                 }
             }
@@ -766,8 +734,7 @@ static bool xx_amigalzx_lzx_decode(const uint8_t *input, size_t input_size,
             middle = xx_amigalzx_read_bits(&bits, 8);
             low = xx_amigalzx_read_bits(&bits, 8);
             if (bits.overrun) goto done;
-            block_size = ((size_t)high << 16) | ((size_t)middle << 8) |
-                         (size_t)low;
+            block_size = ((size_t)high << 16) | ((size_t)middle << 8) | (size_t)low;
             /* A block that claims more than the group has left cannot be
              * real, and this is what keeps block_end inside the buffer. */
             if (block_size == 0U || block_size > output_size - produced) {
@@ -775,11 +742,8 @@ static bool xx_amigalzx_lzx_decode(const uint8_t *input, size_t input_size,
             }
             block_end = produced + block_size;
 
-            if (!xx_amigalzx_read_lengths(&bits, lengths, 256, false) ||
-                !xx_amigalzx_read_lengths(&bits, lengths + 256, 512, true) ||
-                !xx_amigalzx_code_build(&main_code, lengths,
-                                        XX_AMIGALZX_MAIN_SIZE,
-                                        XX_AMIGALZX_MAX_CODE_BITS)) {
+            if (!xx_amigalzx_read_lengths(&bits, lengths, 256, false) || !xx_amigalzx_read_lengths(&bits, lengths + 256, 512, true) ||
+                !xx_amigalzx_code_build(&main_code, lengths, XX_AMIGALZX_MAIN_SIZE, XX_AMIGALZX_MAX_CODE_BITS)) {
                 goto done;
             }
         }
@@ -809,9 +773,7 @@ static bool xx_amigalzx_lzx_decode(const uint8_t *input, size_t input_size,
             } else {
                 offset += xx_amigalzx_read_bits(&bits, offset_bits);
             }
-            length = xx_amigalzx_base[length_class] + 3U +
-                     xx_amigalzx_read_bits(
-                         &bits, (int)xx_amigalzx_extra_bits[length_class]);
+            length = xx_amigalzx_base[length_class] + 3U + xx_amigalzx_read_bits(&bits, (int)xx_amigalzx_extra_bits[length_class]);
             if (bits.overrun) goto done;
             if (offset == 0U || offset > (uint32_t)XX_AMIGALZX_WINDOW) {
                 goto done;
@@ -821,9 +783,7 @@ static bool xx_amigalzx_lzx_decode(const uint8_t *input, size_t input_size,
                 /* The coder's window starts zero-filled, so a reference that
                  * reaches back before anything was produced reads zeros
                  * rather than running off the buffer. */
-                output[produced] = (offset > produced)
-                                       ? 0U
-                                       : output[produced - offset];
+                output[produced] = (offset > produced) ? 0U : output[produced - offset];
                 ++produced;
             }
             last_offset = offset;
@@ -840,28 +800,22 @@ done:
 
 /* Decode the group @p member belongs to, caching the result on the stream so
  * that a merged group is decoded once rather than once per member. */
-static const uint8_t *xx_amigalzx_group_plain(Abstractformat *self,
-                                              xx_amigalzx_stream *stream,
-                                              const xx_amigalzx_member *member,
-                                              xx_pd_struct *pd) {
+static const uint8_t *xx_amigalzx_group_plain(Abstractformat *self, xx_amigalzx_stream *stream, const xx_amigalzx_member *member, xx_pd_struct *pd)
+{
     uint8_t *packed;
     uint8_t *plain;
 
     if (!stream || member->group_plain <= 0) return NULL;
-    if (stream->cache && stream->cache_key == member->data_offset &&
-        stream->cache_size == (size_t)member->group_plain) {
+    if (stream->cache && stream->cache_key == member->data_offset && stream->cache_size == (size_t)member->group_plain) {
         return stream->cache;
     }
-    if (member->compressed_size <= 0 ||
-        member->compressed_size > XX_AMIGALZX_MAX_DECODED ||
-        member->group_plain > XX_AMIGALZX_MAX_DECODED) {
+    if (member->compressed_size <= 0 || member->compressed_size > XX_AMIGALZX_MAX_DECODED || member->group_plain > XX_AMIGALZX_MAX_DECODED) {
         return NULL;
     }
 
     packed = (uint8_t *)xx_mem_alloc((size_t)member->compressed_size);
     if (!packed) return NULL;
-    if (!xx_amigalzx_read_at(self, member->data_offset, packed,
-                             (size_t)member->compressed_size)) {
+    if (!xx_amigalzx_read_at(self, member->data_offset, packed, (size_t)member->compressed_size)) {
         xx_mem_free(packed);
         return NULL;
     }
@@ -870,8 +824,7 @@ static const uint8_t *xx_amigalzx_group_plain(Abstractformat *self,
         xx_mem_free(packed);
         return NULL;
     }
-    if (!xx_amigalzx_lzx_decode(packed, (size_t)member->compressed_size, plain,
-                                (size_t)member->group_plain, pd)) {
+    if (!xx_amigalzx_lzx_decode(packed, (size_t)member->compressed_size, plain, (size_t)member->group_plain, pd)) {
         xx_mem_free(packed);
         xx_mem_free(plain);
         return NULL;
@@ -899,10 +852,8 @@ static const uint8_t *xx_amigalzx_group_plain(Abstractformat *self,
  * it is returned. That checksum is the format's only end-to-end statement
  * about the plaintext, and without it a subtly wrong decode is indistinguish-
  * able from a right one. */
-static bool xx_amigalzx_decode(Abstractformat *self,
-                               const xx_amigalzx_member *member,
-                               xx_amigalzx_stream *stream, uint8_t **out,
-                               size_t *out_size, xx_pd_struct *pd) {
+static bool xx_amigalzx_decode(Abstractformat *self, const xx_amigalzx_member *member, xx_amigalzx_stream *stream, uint8_t **out, size_t *out_size, xx_pd_struct *pd)
+{
     uint8_t *buffer;
 
     *out = NULL;
@@ -912,12 +863,10 @@ static bool xx_amigalzx_decode(Abstractformat *self,
     if (member->compressed_size < 0 || member->uncompressed_size < 0) {
         return false;
     }
-    if (member->compressed_size > XX_AMIGALZX_MAX_DECODED ||
-        member->uncompressed_size > XX_AMIGALZX_MAX_DECODED) {
+    if (member->compressed_size > XX_AMIGALZX_MAX_DECODED || member->uncompressed_size > XX_AMIGALZX_MAX_DECODED) {
         return false;
     }
-    if (member->method != XX_AMIGALZX_METHOD_STORE &&
-        member->method != XX_AMIGALZX_METHOD_LZX) {
+    if (member->method != XX_AMIGALZX_METHOD_STORE && member->method != XX_AMIGALZX_METHOD_LZX) {
         return false;
     }
 
@@ -941,32 +890,24 @@ static bool xx_amigalzx_decode(Abstractformat *self,
         /* parse narrows a stored member to exactly its own bytes, so the two
          * sizes must agree; a disagreement means the narrowing was skipped
          * and the copy below would hand out a neighbour's data. */
-        if (member->compressed_size != member->uncompressed_size ||
-            !xx_amigalzx_read_at(self, member->data_offset, buffer,
-                                 (size_t)member->uncompressed_size)) {
+        if (member->compressed_size != member->uncompressed_size || !xx_amigalzx_read_at(self, member->data_offset, buffer, (size_t)member->uncompressed_size)) {
             xx_mem_free(buffer);
             return false;
         }
     } else {
-        const uint8_t *plain =
-            xx_amigalzx_group_plain(self, stream, member, pd);
-        if (!plain || member->group_offset < 0 ||
-            member->group_offset > member->group_plain ||
-            member->uncompressed_size >
-                member->group_plain - member->group_offset) {
+        const uint8_t *plain = xx_amigalzx_group_plain(self, stream, member, pd);
+        if (!plain || member->group_offset < 0 || member->group_offset > member->group_plain || member->uncompressed_size > member->group_plain - member->group_offset) {
             xx_mem_free(buffer);
             return false;
         }
-        xx_rt_memcpy(buffer, plain + member->group_offset,
-                     (size_t)member->uncompressed_size);
+        xx_rt_memcpy(buffer, plain + member->group_offset, (size_t)member->uncompressed_size);
     }
 
     if (pd && xx_pd_is_stopped(pd)) {
         xx_mem_free(buffer);
         return false;
     }
-    if (xx_crc32_calc(0U, buffer, (size_t)member->uncompressed_size) !=
-        member->crc32) {
+    if (xx_crc32_calc(0U, buffer, (size_t)member->uncompressed_size) != member->crc32) {
         xx_mem_free(buffer);
         return false;
     }
@@ -977,8 +918,8 @@ static bool xx_amigalzx_decode(Abstractformat *self,
 
 /* ---------------------------------------------------------- lifecycle --- */
 
-void xx_amigalzx_init(xx_amigalzx *archive, xx_io_device *device,
-                    int64_t base_address) {
+void xx_amigalzx_init(xx_amigalzx *archive, xx_io_device *device, int64_t base_address)
+{
     if (!archive) return;
     xx_mem_zero(archive, sizeof(*archive));
     xx_format_init(&archive->format, device, base_address);
@@ -991,22 +932,17 @@ void xx_amigalzx_init(xx_amigalzx *archive, xx_io_device *device,
     archive->format.check_is_valid = xx_amigalzx_check_is_valid;
     archive->format.handle_base_info = xx_amigalzx_handle_base_info;
     archive->format.get_format_size = xx_amigalzx_get_format_size;
-    archive->format.get_number_of_archive_records =
-        xx_amigalzx_get_number_of_archive_records;
-    archive->format.create_archive_records_reading =
-        xx_amigalzx_create_archive_records_reading;
-    archive->format.get_current_archive_record =
-        xx_amigalzx_get_current_archive_record;
-    archive->format.unpack_current_archive_record =
-        xx_amigalzx_unpack_current_archive_record;
-    archive->format.archive_record_move_to_next =
-        xx_amigalzx_archive_record_move_to_next;
-    archive->format.free_archive_records_reading =
-        xx_amigalzx_free_archive_records_reading;
+    archive->format.get_number_of_archive_records = xx_amigalzx_get_number_of_archive_records;
+    archive->format.create_archive_records_reading = xx_amigalzx_create_archive_records_reading;
+    archive->format.get_current_archive_record = xx_amigalzx_get_current_archive_record;
+    archive->format.unpack_current_archive_record = xx_amigalzx_unpack_current_archive_record;
+    archive->format.archive_record_move_to_next = xx_amigalzx_archive_record_move_to_next;
+    archive->format.free_archive_records_reading = xx_amigalzx_free_archive_records_reading;
     archive->format.destroy = xx_amigalzx_vtable_destroy;
 }
 
-xx_amigalzx *xx_amigalzx_create(xx_io_device *device, int64_t base_address) {
+xx_amigalzx *xx_amigalzx_create(xx_io_device *device, int64_t base_address)
+{
     xx_amigalzx *archive = (xx_amigalzx *)xx_mem_alloc(sizeof(*archive));
 
     if (!archive) return NULL;
@@ -1014,7 +950,8 @@ xx_amigalzx *xx_amigalzx_create(xx_io_device *device, int64_t base_address) {
     return archive;
 }
 
-void xx_amigalzx_destroy(xx_amigalzx *archive) {
+void xx_amigalzx_destroy(xx_amigalzx *archive)
+{
     if (!archive) return;
     /* Not xx_format_destroy: it dispatches through format.destroy, which is
      * the wrapper below, and the two would recurse. */
@@ -1023,19 +960,22 @@ void xx_amigalzx_destroy(xx_amigalzx *archive) {
     archive->number_of_records = 0U;
 }
 
-void xx_amigalzx_free(xx_amigalzx *archive) {
+void xx_amigalzx_free(xx_amigalzx *archive)
+{
     if (!archive) return;
     xx_amigalzx_destroy(archive);
     xx_mem_free(archive);
 }
 
-static void xx_amigalzx_vtable_destroy(Abstractformat *self) {
+static void xx_amigalzx_vtable_destroy(Abstractformat *self)
+{
     xx_amigalzx_destroy((xx_amigalzx *)self);
 }
 
 /* -------------------------------------------------------------- format -- */
 
-bool xx_amigalzx_check_is_valid(Abstractformat *self, xx_pd_struct *pd) {
+bool xx_amigalzx_check_is_valid(Abstractformat *self, xx_pd_struct *pd)
+{
     xx_amigalzx_stream *stream;
 
     if (!self || (pd && xx_pd_is_stopped(pd))) return false;
@@ -1045,7 +985,8 @@ bool xx_amigalzx_check_is_valid(Abstractformat *self, xx_pd_struct *pd) {
     return true;
 }
 
-bool xx_amigalzx_handle_base_info(Abstractformat *self, xx_pd_struct *pd) {
+bool xx_amigalzx_handle_base_info(Abstractformat *self, xx_pd_struct *pd)
+{
     xx_amigalzx *archive = (xx_amigalzx *)self;
     xx_amigalzx_stream *stream;
 
@@ -1066,18 +1007,17 @@ bool xx_amigalzx_handle_base_info(Abstractformat *self, xx_pd_struct *pd) {
     return true;
 }
 
-int64_t xx_amigalzx_get_format_size(Abstractformat *self, xx_pd_struct *pd) {
-    if (!self ||
-        (!self->base_info_handled && !xx_format_handle_base_info(self, pd))) {
+int64_t xx_amigalzx_get_format_size(Abstractformat *self, xx_pd_struct *pd)
+{
+    if (!self || (!self->base_info_handled && !xx_format_handle_base_info(self, pd))) {
         return 0;
     }
     return self->is_valid ? self->format_size : 0;
 }
 
-uint64_t xx_amigalzx_get_number_of_archive_records(Abstractformat *self,
-                                                 xx_pd_struct *pd) {
-    if (!self ||
-        (!self->base_info_handled && !xx_format_handle_base_info(self, pd))) {
+uint64_t xx_amigalzx_get_number_of_archive_records(Abstractformat *self, xx_pd_struct *pd)
+{
+    if (!self || (!self->base_info_handled && !xx_format_handle_base_info(self, pd))) {
         return 0U;
     }
     return self->is_valid ? ((xx_amigalzx *)self)->number_of_records : 0U;
@@ -1085,8 +1025,8 @@ uint64_t xx_amigalzx_get_number_of_archive_records(Abstractformat *self,
 
 /* ------------------------------------------------------------- records -- */
 
-static bool xx_amigalzx_set_record(xx_archive_record *record,
-                                 const xx_amigalzx_member *member) {
+static bool xx_amigalzx_set_record(xx_archive_record *record, const xx_amigalzx_member *member)
+{
     xx_archive_record_cleanup(record);
     xx_archive_record_init(record);
     record->header_offset = member->header_offset;
@@ -1094,34 +1034,24 @@ static bool xx_amigalzx_set_record(xx_archive_record *record,
     record->data_offset = member->data_offset;
     record->compressed_size = member->compressed_size;
     return xx_archive_record_set_original_name(record, member->name) &&
-           xx_archive_record_set_meta_u64(record, XX_META_ID_COMPRESSED_SIZE,
-                                          (uint64_t)member->compressed_size) &&
-           xx_archive_record_set_meta_u64(
-               record, XX_META_ID_UNCOMPRESSED_SIZE,
-               (uint64_t)member->uncompressed_size) &&
-           xx_archive_record_set_meta_u64(record, XX_META_ID_COMPRESSION_METHOD,
-                                          member->method) &&
-           xx_archive_record_set_meta_u64(record, XX_META_ID_TIMESTAMP,
-                                          member->timestamp) &&
-           xx_archive_record_set_meta_bool(record, XX_META_ID_IS_FOLDER,
-                                           member->is_folder) &&
-           xx_archive_record_set_meta_bool(record, XX_META_ID_IS_ENCRYPTED,
-                                           false);
+           xx_archive_record_set_meta_u64(record, XX_META_ID_COMPRESSED_SIZE, (uint64_t)member->compressed_size) &&
+           xx_archive_record_set_meta_u64(record, XX_META_ID_UNCOMPRESSED_SIZE, (uint64_t)member->uncompressed_size) &&
+           xx_archive_record_set_meta_u64(record, XX_META_ID_COMPRESSION_METHOD, member->method) &&
+           xx_archive_record_set_meta_u64(record, XX_META_ID_TIMESTAMP, member->timestamp) &&
+           xx_archive_record_set_meta_bool(record, XX_META_ID_IS_FOLDER, member->is_folder) && xx_archive_record_set_meta_bool(record, XX_META_ID_IS_ENCRYPTED, false);
 }
 
-static bool xx_amigalzx_copy_options(xx_list_s *target,
-                                   const xx_list_s *options) {
+static bool xx_amigalzx_copy_options(xx_list_s *target, const xx_list_s *options)
+{
     size_t index;
 
     if (!target || !options) return options == NULL;
     for (index = 0U; index < options->count; ++index) {
-        const xx_meta *source =
-            (const xx_meta *)xx_list_at((const xx_list_t *)options, index);
+        const xx_meta *source = (const xx_meta *)xx_list_at((const xx_list_t *)options, index);
         xx_meta copied;
         if (!source) continue;
         xx_meta_init(&copied, source->meta_id);
-        if (!xx_var_copy(&copied.var, &source->var) ||
-            !xx_list_append(target, &copied)) {
+        if (!xx_var_copy(&copied.var, &source->var) || !xx_list_append(target, &copied)) {
             xx_meta_cleanup(&copied);
             return false;
         }
@@ -1129,21 +1059,20 @@ static bool xx_amigalzx_copy_options(xx_list_s *target,
     return true;
 }
 
-static const xx_var *xx_amigalzx_get_option(const xx_list_s *options,
-                                          uint32_t meta_id) {
+static const xx_var *xx_amigalzx_get_option(const xx_list_s *options, uint32_t meta_id)
+{
     size_t index;
 
     if (!options) return NULL;
     for (index = 0U; index < options->count; ++index) {
-        const xx_meta *meta =
-            (const xx_meta *)xx_list_at((const xx_list_t *)options, index);
+        const xx_meta *meta = (const xx_meta *)xx_list_at((const xx_list_t *)options, index);
         if (meta && meta->meta_id == meta_id) return &meta->var;
     }
     return NULL;
 }
 
-xx_archive_record_state *xx_amigalzx_create_archive_records_reading(
-    Abstractformat *self, const xx_list_s *options, xx_pd_struct *pd) {
+xx_archive_record_state *xx_amigalzx_create_archive_records_reading(Abstractformat *self, const xx_list_s *options, xx_pd_struct *pd)
+{
     xx_amigalzx_stream *stream;
     xx_archive_record_state *state;
 
@@ -1159,9 +1088,7 @@ xx_archive_record_state *xx_amigalzx_create_archive_records_reading(
     state->internal_state = stream;
     state->free_internal = xx_amigalzx_stream_free;
     state->total_records = (int64_t)stream->count;
-    if (!xx_amigalzx_copy_options(&state->options, options) ||
-        (stream->count != 0U &&
-         !xx_amigalzx_set_record(&state->current_record, &stream->items[0]))) {
+    if (!xx_amigalzx_copy_options(&state->options, options) || (stream->count != 0U && !xx_amigalzx_set_record(&state->current_record, &stream->items[0]))) {
         xx_archive_record_state_free(state);
         return NULL;
     }
@@ -1170,20 +1097,16 @@ xx_archive_record_state *xx_amigalzx_create_archive_records_reading(
     return state;
 }
 
-const xx_archive_record *xx_amigalzx_get_current_archive_record(
-    Abstractformat *self, xx_archive_record_state *state) {
-    return self && state && state->format == self && state->has_record
-               ? &state->current_record
-               : NULL;
+const xx_archive_record *xx_amigalzx_get_current_archive_record(Abstractformat *self, xx_archive_record_state *state)
+{
+    return self && state && state->format == self && state->has_record ? &state->current_record : NULL;
 }
 
-bool xx_amigalzx_archive_record_move_to_next(Abstractformat *self,
-                                           xx_archive_record_state *state,
-                                           xx_pd_struct *pd) {
+bool xx_amigalzx_archive_record_move_to_next(Abstractformat *self, xx_archive_record_state *state, xx_pd_struct *pd)
+{
     xx_amigalzx_stream *stream;
 
-    if (!self || !state || state->format != self || !state->has_record ||
-        (pd && xx_pd_is_stopped(pd))) {
+    if (!self || !state || state->format != self || !state->has_record || (pd && xx_pd_is_stopped(pd))) {
         return false;
     }
     stream = (xx_amigalzx_stream *)state->internal_state;
@@ -1195,14 +1118,12 @@ bool xx_amigalzx_archive_record_move_to_next(Abstractformat *self,
     }
     ++stream->index;
     ++state->current_index;
-    state->has_record = xx_amigalzx_set_record(&state->current_record,
-                                             &stream->items[stream->index]);
+    state->has_record = xx_amigalzx_set_record(&state->current_record, &stream->items[stream->index]);
     return state->has_record;
 }
 
-bool xx_amigalzx_unpack_current_archive_record(Abstractformat *self,
-                                             xx_archive_record_state *state,
-                                             xx_pd_struct *pd) {
+bool xx_amigalzx_unpack_current_archive_record(Abstractformat *self, xx_archive_record_state *state, xx_pd_struct *pd)
+{
     xx_amigalzx_stream *stream;
     const xx_amigalzx_member *member;
     const xx_var *path_option;
@@ -1214,8 +1135,7 @@ bool xx_amigalzx_unpack_current_archive_record(Abstractformat *self,
     bool result = false;
     bool created = false;
 
-    if (!self || !state || state->format != self || !state->has_record ||
-        (pd && xx_pd_is_stopped(pd))) {
+    if (!self || !state || state->format != self || !state->has_record || (pd && xx_pd_is_stopped(pd))) {
         return false;
     }
     stream = (xx_amigalzx_stream *)state->internal_state;
@@ -1223,8 +1143,7 @@ bool xx_amigalzx_unpack_current_archive_record(Abstractformat *self,
     member = &stream->items[stream->index];
     if (!xx_amigalzx_path_safe(member->name)) return false;
 
-    path_option = xx_amigalzx_get_option(&state->options,
-                                       XX_META_ID_OPT_UNPACK_PATH);
+    path_option = xx_amigalzx_get_option(&state->options, XX_META_ID_OPT_UNPACK_PATH);
     if (!path_option) {
         /* No destination: decode and discard, which verifies the member
          * without writing anything. */
@@ -1233,11 +1152,9 @@ bool xx_amigalzx_unpack_current_archive_record(Abstractformat *self,
         xx_mem_free(plain);
         return result;
     }
-    if (path_option->type == XX_VAR_TYPE_STRING ||
-        path_option->type == XX_VAR_TYPE_STRING_VIEW) {
+    if (path_option->type == XX_VAR_TYPE_STRING || path_option->type == XX_VAR_TYPE_STRING_VIEW) {
         base_path = xx_var_get_str(path_option);
-    } else if (path_option->type == XX_VAR_TYPE_WSTRING ||
-               path_option->type == XX_VAR_TYPE_WSTRING_VIEW) {
+    } else if (path_option->type == XX_VAR_TYPE_WSTRING || path_option->type == XX_VAR_TYPE_WSTRING_VIEW) {
         converted_path = xx_str_unicode_to_utf8(xx_var_get_wstr(path_option));
         base_path = converted_path;
     }
@@ -1245,9 +1162,7 @@ bool xx_amigalzx_unpack_current_archive_record(Abstractformat *self,
         xx_str_free(converted_path);
         return false;
     }
-    if (base_path[0] != '\0' &&
-        base_path[xx_str_len(base_path) - 1U] != '/' &&
-        base_path[xx_str_len(base_path) - 1U] != '\\') {
+    if (base_path[0] != '\0' && base_path[xx_str_len(base_path) - 1U] != '/' && base_path[xx_str_len(base_path) - 1U] != '\\') {
         target_path = xx_str_concat3(base_path, "/", member->name);
     } else {
         target_path = xx_str_concat(base_path, member->name);
@@ -1260,8 +1175,7 @@ bool xx_amigalzx_unpack_current_archive_record(Abstractformat *self,
         xx_str_free(target_path);
         return result;
     }
-    if (!xx_store_create_dirs_a(target_path, false) ||
-        !xx_amigalzx_decode(self, member, stream, &plain, &plain_size, pd)) {
+    if (!xx_store_create_dirs_a(target_path, false) || !xx_amigalzx_decode(self, member, stream, &plain, &plain_size, pd)) {
         xx_str_free(target_path);
         return false;
     }
@@ -1272,8 +1186,7 @@ bool xx_amigalzx_unpack_current_archive_record(Abstractformat *self,
 
         result = output != NULL;
         while (result && completed < plain_size) {
-            ssize_t sent = xx_io_write(output, plain + completed,
-                                       plain_size - completed);
+            ssize_t sent = xx_io_write(output, plain + completed, plain_size - completed);
             if (sent <= 0 || (size_t)sent > plain_size - completed) {
                 result = false;
                 break;
@@ -1288,8 +1201,8 @@ bool xx_amigalzx_unpack_current_archive_record(Abstractformat *self,
     return result;
 }
 
-void xx_amigalzx_free_archive_records_reading(Abstractformat *self,
-                                            xx_archive_record_state *state) {
+void xx_amigalzx_free_archive_records_reading(Abstractformat *self, xx_archive_record_state *state)
+{
     (void)self;
     xx_archive_record_state_free(state);
 }

@@ -69,33 +69,22 @@ typedef struct xx_format_search_desc {
 /** Return the sole declared type without inspecting the device, or validate
  * and classify a multi-type format at an absolute offset. Preserves the cursor;
  * returns UNKNOWN when a multi-type format cannot be classified. */
-xx_file_type_t xx_format_search_file_type(const xx_format_search_desc *desc,
-                                         xx_io_device *device,
-                                         int64_t base_address, bool is_mapped);
+xx_file_type_t xx_format_search_file_type(const xx_format_search_desc *desc, xx_io_device *device, int64_t base_address, bool is_mapped);
 
 /** Read a validated reader's version at an absolute offset. Returns an owned
  * UTF-8 string (xx_str_free), empty when unversioned, or NULL on failure.
  * Preserves the device cursor and closes the temporary reader and view. */
-char *xx_format_search_get_version(const xx_format_search_desc *desc,
-                                   xx_io_device *device,
-                                   int64_t base_address, bool is_mapped);
+char *xx_format_search_get_version(const xx_format_search_desc *desc, xx_io_device *device, int64_t base_address, bool is_mapped);
 
 /** Validate and classify one absolute offset without scanning for candidates.
  * Preserves the device cursor; returns false if it cannot be restored. */
-bool xx_format_search_fast_detect(const xx_format_search_desc *desc,
-                                  xx_io_device *device, int64_t base_address,
-                                  bool is_mapped);
+bool xx_format_search_fast_detect(const xx_format_search_desc *desc, xx_io_device *device, int64_t base_address, bool is_mapped);
 
 /** Measure a validated format at an absolute offset, or return -1 when the
  * extent is unknown, invalid, or outside the device. Preserves its cursor. */
-int64_t xx_format_search_size(const xx_format_search_desc *desc,
-                              xx_io_device *device, int64_t base_address,
-                              bool is_mapped);
+int64_t xx_format_search_size(const xx_format_search_desc *desc, xx_io_device *device, int64_t base_address, bool is_mapped);
 
-xx_format_search_state *xx_format_search_create(const xx_format_search_desc *desc,
-                                                xx_io_device *device,
-                                                const xx_list_s *options,
-                                                xx_pd_struct *pd);
+xx_format_search_state *xx_format_search_create(const xx_format_search_desc *desc, xx_io_device *device, const xx_list_s *options, xx_pd_struct *pd);
 const xx_format_search_info *xx_format_search_current(xx_format_search_state *state);
 bool xx_format_search_find_next(xx_format_search_state *state, xx_pd_struct *pd);
 void xx_format_search_free(xx_format_search_state *state);

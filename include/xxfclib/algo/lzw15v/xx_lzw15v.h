@@ -54,9 +54,7 @@ extern "C" {
  * @param written     Receives the produced byte count (0 on failure).
  * @return true only on a complete decode that filled @p output exactly.
  */
-XXFC_API bool xx_lzw15v_decode_memory(const uint8_t *input, size_t input_size,
-                                      uint8_t *output, size_t output_size,
-                                      size_t *written);
+XXFC_API bool xx_lzw15v_decode_memory(const uint8_t *input, size_t input_size, uint8_t *output, size_t output_size, size_t *written);
 
 /**
  * @brief Measure an LZW15V stream, which stores no plaintext length.
@@ -78,9 +76,7 @@ XXFC_API bool xx_lzw15v_decode_memory(const uint8_t *input, size_t input_size,
  * @param produced    Receives the decoded size.  May be NULL.
  * @return true when the stream reached its END code within the limit.
  */
-XXFC_API bool xx_lzw15v_scan_memory(const uint8_t *input, size_t input_size,
-                                    size_t max_output, size_t *consumed,
-                                    size_t *produced);
+XXFC_API bool xx_lzw15v_scan_memory(const uint8_t *input, size_t input_size, size_t max_output, size_t *consumed, size_t *produced);
 
 #ifdef __cplusplus
 }

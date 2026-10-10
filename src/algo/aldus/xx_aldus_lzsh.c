@@ -26,38 +26,35 @@ typedef struct lh5_tree {
     unsigned symbol_count;
 } lh5_tree;
 
-static bool lh5_get(lh5_bits *reader, unsigned bits, unsigned *value) {
+static bool lh5_get(lh5_bits *reader, unsigned bits, unsigned *value)
+{
     size_t bit_size, index;
     unsigned result = 0U;
-    if (!reader || !value || bits > 16U ||
-        reader->input_size > SIZE_MAX / 8U) return false;
+    if (!reader || !value || bits > 16U || reader->input_size > SIZE_MAX / 8U) return false;
     bit_size = reader->input_size * 8U;
-    if (reader->bit_offset > bit_size || bits > bit_size - reader->bit_offset)
-        return false;
+    if (reader->bit_offset > bit_size || bits > bit_size - reader->bit_offset) return false;
     for (index = 0U; index < bits; ++index) {
         size_t bit = reader->bit_offset + index;
-        result = (result << 1U) |
-                 ((unsigned)(reader->input[bit >> 3U] >>
-                            (7U - (bit & 7U))) & 1U);
+        result = (result << 1U) | ((unsigned)(reader->input[bit >> 3U] >> (7U - (bit & 7U))) & 1U);
     }
     reader->bit_offset += bits;
     *value = result;
     return true;
 }
 
-static void lh5_constant(lh5_tree *tree, int symbol) {
+static void lh5_constant(lh5_tree *tree, int symbol)
+{
     xx_rt_memset(tree, 0, sizeof(*tree));
     tree->constant = true;
     tree->constant_symbol = symbol;
 }
 
-static bool lh5_build(lh5_tree *tree, const uint8_t *lengths,
-                      unsigned length_count) {
+static bool lh5_build(lh5_tree *tree, const uint8_t *lengths, unsigned length_count)
+{
     unsigned offsets[LH5_MAX_CODE_BITS + 1U];
     unsigned index, length, active = 0U;
     int remaining = 1;
-    if (!tree || !lengths || length_count == 0U ||
-        length_count > LH5_MAIN_SYMBOLS) return false;
+    if (!tree || !lengths || length_count == 0U || length_count > LH5_MAIN_SYMBOLS) return false;
     xx_rt_memset(tree, 0, sizeof(*tree));
     for (index = 0U; index < length_count; ++index) {
         if (lengths[index] > LH5_MAX_CODE_BITS) return false;
@@ -73,8 +70,7 @@ static bool lh5_build(lh5_tree *tree, const uint8_t *lengths,
     }
     offsets[0] = 0U;
     offsets[1] = 0U;
-    for (length = 1U; length < LH5_MAX_CODE_BITS; ++length)
-        offsets[length + 1U] = offsets[length] + tree->count[length];
+    for (length = 1U; length < LH5_MAX_CODE_BITS; ++length) offsets[length + 1U] = offsets[length] + tree->count[length];
     for (index = 0U; index < length_count; ++index) {
         length = lengths[index];
         if (length != 0U) tree->symbols[offsets[length]++] = (uint16_t)index;
@@ -83,7 +79,8 @@ static bool lh5_build(lh5_tree *tree, const uint8_t *lengths,
     return true;
 }
 
-static int lh5_symbol(lh5_bits *reader, const lh5_tree *tree) {
+static int lh5_symbol(lh5_bits *reader, const lh5_tree *tree)
+{
     unsigned code = 0U, first = 0U, position = 0U, length;
     if (!reader || !tree) return -1;
     if (tree->constant) return tree->constant_symbol;
@@ -102,17 +99,14 @@ static int lh5_symbol(lh5_bits *reader, const lh5_tree *tree) {
     return -1;
 }
 
-static bool lh5_read_pt_lengths(lh5_bits *reader, unsigned symbols,
-                                unsigned count_bits, int special,
-                                lh5_tree *tree) {
+static bool lh5_read_pt_lengths(lh5_bits *reader, unsigned symbols, unsigned count_bits, int special, lh5_tree *tree)
+{
     uint8_t lengths[LH5_PRE_SYMBOLS];
     unsigned entries, index = 0U;
-    if (!reader || !tree || symbols > sizeof(lengths) ||
-        !lh5_get(reader, count_bits, &entries)) return false;
+    if (!reader || !tree || symbols > sizeof(lengths) || !lh5_get(reader, count_bits, &entries)) return false;
     if (entries == 0U) {
         unsigned symbol;
-        if (!lh5_get(reader, count_bits, &symbol) || symbol >= symbols)
-            return false;
+        if (!lh5_get(reader, count_bits, &symbol) || symbol >= symbols) return false;
         lh5_constant(tree, (int)symbol);
         return true;
     }
@@ -131,24 +125,22 @@ static bool lh5_read_pt_lengths(lh5_bits *reader, unsigned symbols,
         lengths[index++] = (uint8_t)length;
         if (special >= 0 && index == (unsigned)special) {
             unsigned skip;
-            if (!lh5_get(reader, 2U, &skip) || skip > symbols - index)
-                return false;
+            if (!lh5_get(reader, 2U, &skip) || skip > symbols - index) return false;
             while (skip--) lengths[index++] = 0U;
         }
     }
     return lh5_build(tree, lengths, symbols);
 }
 
-static bool lh5_read_main_lengths(lh5_bits *reader, const lh5_tree *pre,
-                                  lh5_tree *tree) {
+static bool lh5_read_main_lengths(lh5_bits *reader, const lh5_tree *pre, lh5_tree *tree)
+{
     uint8_t lengths[LH5_MAIN_SYMBOLS];
     unsigned entries;
     unsigned index = 0U;
     if (!reader || !pre || !tree || !lh5_get(reader, 9U, &entries)) return false;
     if (entries == 0U) {
         unsigned symbol;
-        if (!lh5_get(reader, 9U, &symbol) || symbol >= LH5_MAIN_SYMBOLS)
-            return false;
+        if (!lh5_get(reader, 9U, &symbol) || symbol >= LH5_MAIN_SYMBOLS) return false;
         lh5_constant(tree, (int)symbol);
         return true;
     }
@@ -180,8 +172,8 @@ static bool lh5_read_main_lengths(lh5_bits *reader, const lh5_tree *pre,
     return lh5_build(tree, lengths, LH5_MAIN_SYMBOLS);
 }
 
-static bool lh5_decode(const uint8_t *input, size_t input_size,
-                       uint8_t *output, size_t output_size) {
+static bool lh5_decode(const uint8_t *input, size_t input_size, uint8_t *output, size_t output_size)
+{
     lh5_bits reader;
     lh5_tree literal_tree, position_tree;
     unsigned symbols_left = 0U;
@@ -193,12 +185,9 @@ static bool lh5_decode(const uint8_t *input, size_t input_size,
     while (output_at < output_size) {
         if (symbols_left == 0U) {
             lh5_tree pre_tree;
-            if (!lh5_get(&reader, 16U, &symbols_left) || symbols_left == 0U ||
-                !lh5_read_pt_lengths(&reader, LH5_PRE_SYMBOLS, 5U, 3,
-                                     &pre_tree) ||
-                !lh5_read_main_lengths(&reader, &pre_tree, &literal_tree) ||
-                !lh5_read_pt_lengths(&reader, LH5_POSITION_SYMBOLS, 4U, -1,
-                                     &position_tree)) return false;
+            if (!lh5_get(&reader, 16U, &symbols_left) || symbols_left == 0U || !lh5_read_pt_lengths(&reader, LH5_PRE_SYMBOLS, 5U, 3, &pre_tree) ||
+                !lh5_read_main_lengths(&reader, &pre_tree, &literal_tree) || !lh5_read_pt_lengths(&reader, LH5_POSITION_SYMBOLS, 4U, -1, &position_tree))
+                return false;
         }
         {
             int symbol;
@@ -214,26 +203,20 @@ static bool lh5_decode(const uint8_t *input, size_t input_size,
                 int distance_code = lh5_symbol(&reader, &position_tree);
                 unsigned base, extra = 0U;
                 size_t distance, index;
-                if (distance_code < 0 || (unsigned)distance_code > LH5_MAX_CODE_BITS ||
-                    (distance_code > 0 &&
-                     !lh5_get(&reader, (unsigned)distance_code - 1U, &extra)))
+                if (distance_code < 0 || (unsigned)distance_code > LH5_MAX_CODE_BITS || (distance_code > 0 && !lh5_get(&reader, (unsigned)distance_code - 1U, &extra)))
                     return false;
-                base = distance_code == 0 ? 0U
-                                          : (1U << ((unsigned)distance_code - 1U));
+                base = distance_code == 0 ? 0U : (1U << ((unsigned)distance_code - 1U));
                 distance = (size_t)base + extra + 1U;
-                if (distance > output_at || length > output_size - output_at)
-                    return false;
-                for (index = 0U; index < length; ++index, ++output_at)
-                    output[output_at] = output[output_at - distance];
+                if (distance > output_at || length > output_size - output_at) return false;
+                for (index = 0U; index < length; ++index, ++output_at) output[output_at] = output[output_at - distance];
             }
         }
     }
     return true;
 }
 
-bool xx_aldus_lzsh_decode_block(const uint8_t *input, size_t input_size,
-                                 uint8_t *output, size_t output_size,
-                                 size_t *written) {
+bool xx_aldus_lzsh_decode_block(const uint8_t *input, size_t input_size, uint8_t *output, size_t output_size, size_t *written)
+{
     uint16_t expected_crc;
     bool decoded;
     if (written) *written = 0U;

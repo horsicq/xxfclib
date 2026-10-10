@@ -99,32 +99,21 @@ typedef struct xx_lingvoarc {
 
 typedef xx_lingvoarc xx_lingvoarc_t;
 
-XXFC_API void xx_lingvoarc_init(xx_lingvoarc *archive, xx_io_device *device,
-                                int64_t base_address);
-XXFC_API xx_lingvoarc *xx_lingvoarc_create(xx_io_device *device,
-                                           int64_t base_address);
+XXFC_API void xx_lingvoarc_init(xx_lingvoarc *archive, xx_io_device *device, int64_t base_address);
+XXFC_API xx_lingvoarc *xx_lingvoarc_create(xx_io_device *device, int64_t base_address);
 XXFC_API void xx_lingvoarc_destroy(xx_lingvoarc *archive);
 XXFC_API void xx_lingvoarc_free(xx_lingvoarc *archive);
 
-XXFC_API bool xx_lingvoarc_check_is_valid(Abstractformat *self,
-                                          xx_pd_struct *pd);
-XXFC_API bool xx_lingvoarc_handle_base_info(Abstractformat *self,
-                                            xx_pd_struct *pd);
-XXFC_API int64_t xx_lingvoarc_get_format_size(Abstractformat *self,
-                                              xx_pd_struct *pd);
-XXFC_API uint64_t xx_lingvoarc_get_number_of_archive_records(
-    Abstractformat *self, xx_pd_struct *pd);
+XXFC_API bool xx_lingvoarc_check_is_valid(Abstractformat *self, xx_pd_struct *pd);
+XXFC_API bool xx_lingvoarc_handle_base_info(Abstractformat *self, xx_pd_struct *pd);
+XXFC_API int64_t xx_lingvoarc_get_format_size(Abstractformat *self, xx_pd_struct *pd);
+XXFC_API uint64_t xx_lingvoarc_get_number_of_archive_records(Abstractformat *self, xx_pd_struct *pd);
 
-XXFC_API xx_archive_record_state *xx_lingvoarc_create_archive_records_reading(
-    Abstractformat *self, const xx_list_s *options, xx_pd_struct *pd);
-XXFC_API const xx_archive_record *xx_lingvoarc_get_current_archive_record(
-    Abstractformat *self, xx_archive_record_state *state);
-XXFC_API bool xx_lingvoarc_unpack_current_archive_record(
-    Abstractformat *self, xx_archive_record_state *state, xx_pd_struct *pd);
-XXFC_API bool xx_lingvoarc_archive_record_move_to_next(
-    Abstractformat *self, xx_archive_record_state *state, xx_pd_struct *pd);
-XXFC_API void xx_lingvoarc_free_archive_records_reading(
-    Abstractformat *self, xx_archive_record_state *state);
+XXFC_API xx_archive_record_state *xx_lingvoarc_create_archive_records_reading(Abstractformat *self, const xx_list_s *options, xx_pd_struct *pd);
+XXFC_API const xx_archive_record *xx_lingvoarc_get_current_archive_record(Abstractformat *self, xx_archive_record_state *state);
+XXFC_API bool xx_lingvoarc_unpack_current_archive_record(Abstractformat *self, xx_archive_record_state *state, xx_pd_struct *pd);
+XXFC_API bool xx_lingvoarc_archive_record_move_to_next(Abstractformat *self, xx_archive_record_state *state, xx_pd_struct *pd);
+XXFC_API void xx_lingvoarc_free_archive_records_reading(Abstractformat *self, xx_archive_record_state *state);
 
 #ifdef __cplusplus
 }

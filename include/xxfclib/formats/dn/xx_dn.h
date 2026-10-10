@@ -15,8 +15,7 @@ typedef struct xx_dn {
     Abstractformat format;
 } xx_dn;
 
-XXFC_API void xx_dn_init(xx_dn *archive, xx_io_device *device,
-                          int64_t base_address);
+XXFC_API void xx_dn_init(xx_dn *archive, xx_io_device *device, int64_t base_address);
 XXFC_API xx_dn *xx_dn_create(xx_io_device *device, int64_t base_address);
 XXFC_API void xx_dn_destroy(xx_dn *archive);
 XXFC_API void xx_dn_free(xx_dn *archive);

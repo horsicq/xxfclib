@@ -42,11 +42,11 @@ extern "C" {
  */
 typedef struct xx_pc_install_setup {
     Abstractformat format;
-    uint64_t number_of_records;   /**< Members listed (group members expanded). */
-    uint64_t number_of_chunks;    /**< Records in the [20/20] chain. */
-    int64_t head_offset;          /**< Head tag, relative to the base address. */
-    int64_t trailer_offset;       /**< Trailer, relative to the base address. */
-    bool relocated;               /**< The trailer's offsets were stale. */
+    uint64_t number_of_records; /**< Members listed (group members expanded). */
+    uint64_t number_of_chunks;  /**< Records in the [20/20] chain. */
+    int64_t head_offset;        /**< Head tag, relative to the base address. */
+    int64_t trailer_offset;     /**< Trailer, relative to the base address. */
+    bool relocated;             /**< The trailer's offsets were stale. */
 } xx_pc_install_setup;
 
 typedef xx_pc_install_setup xx_pc_install_setup_t;
@@ -55,35 +55,21 @@ typedef xx_pc_install_setup xx_pc_install_setup_t;
 #define XX_PC_INSTALL_SETUP_METHOD_STORE 0U
 #define XX_PC_INSTALL_SETUP_METHOD_DCL 1U
 
-XXFC_API void xx_pc_install_setup_init(xx_pc_install_setup *archive,
-                                       xx_io_device *device,
-                                       int64_t base_address);
-XXFC_API xx_pc_install_setup *xx_pc_install_setup_create(xx_io_device *device,
-                                                         int64_t base_address);
+XXFC_API void xx_pc_install_setup_init(xx_pc_install_setup *archive, xx_io_device *device, int64_t base_address);
+XXFC_API xx_pc_install_setup *xx_pc_install_setup_create(xx_io_device *device, int64_t base_address);
 XXFC_API void xx_pc_install_setup_destroy(xx_pc_install_setup *archive);
 XXFC_API void xx_pc_install_setup_free(xx_pc_install_setup *archive);
 
-XXFC_API bool xx_pc_install_setup_check_is_valid(Abstractformat *self,
-                                                 xx_pd_struct *pd);
-XXFC_API bool xx_pc_install_setup_handle_base_info(Abstractformat *self,
-                                                   xx_pd_struct *pd);
-XXFC_API int64_t xx_pc_install_setup_get_format_size(Abstractformat *self,
-                                                     xx_pd_struct *pd);
-XXFC_API uint64_t xx_pc_install_setup_get_number_of_archive_records(
-    Abstractformat *self, xx_pd_struct *pd);
+XXFC_API bool xx_pc_install_setup_check_is_valid(Abstractformat *self, xx_pd_struct *pd);
+XXFC_API bool xx_pc_install_setup_handle_base_info(Abstractformat *self, xx_pd_struct *pd);
+XXFC_API int64_t xx_pc_install_setup_get_format_size(Abstractformat *self, xx_pd_struct *pd);
+XXFC_API uint64_t xx_pc_install_setup_get_number_of_archive_records(Abstractformat *self, xx_pd_struct *pd);
 
-XXFC_API xx_archive_record_state *
-xx_pc_install_setup_create_archive_records_reading(Abstractformat *self,
-                                                   const xx_list_s *options,
-                                                   xx_pd_struct *pd);
-XXFC_API const xx_archive_record *xx_pc_install_setup_get_current_archive_record(
-    Abstractformat *self, xx_archive_record_state *state);
-XXFC_API bool xx_pc_install_setup_unpack_current_archive_record(
-    Abstractformat *self, xx_archive_record_state *state, xx_pd_struct *pd);
-XXFC_API bool xx_pc_install_setup_archive_record_move_to_next(
-    Abstractformat *self, xx_archive_record_state *state, xx_pd_struct *pd);
-XXFC_API void xx_pc_install_setup_free_archive_records_reading(
-    Abstractformat *self, xx_archive_record_state *state);
+XXFC_API xx_archive_record_state *xx_pc_install_setup_create_archive_records_reading(Abstractformat *self, const xx_list_s *options, xx_pd_struct *pd);
+XXFC_API const xx_archive_record *xx_pc_install_setup_get_current_archive_record(Abstractformat *self, xx_archive_record_state *state);
+XXFC_API bool xx_pc_install_setup_unpack_current_archive_record(Abstractformat *self, xx_archive_record_state *state, xx_pd_struct *pd);
+XXFC_API bool xx_pc_install_setup_archive_record_move_to_next(Abstractformat *self, xx_archive_record_state *state, xx_pd_struct *pd);
+XXFC_API void xx_pc_install_setup_free_archive_records_reading(Abstractformat *self, xx_archive_record_state *state);
 
 #ifdef __cplusplus
 }

@@ -8,13 +8,15 @@
 #ifdef __cplusplus
 extern "C" {
 #endif
-typedef struct xx_sfnt { Abstractformat format; } xx_sfnt;
-XXFC_API void xx_sfnt_init(xx_sfnt *,xx_io_device *,int64_t);
-XXFC_API xx_sfnt *xx_sfnt_create(xx_io_device *,int64_t);
+typedef struct xx_sfnt {
+    Abstractformat format;
+} xx_sfnt;
+XXFC_API void xx_sfnt_init(xx_sfnt *, xx_io_device *, int64_t);
+XXFC_API xx_sfnt *xx_sfnt_create(xx_io_device *, int64_t);
 XXFC_API void xx_sfnt_destroy(xx_sfnt *);
 XXFC_API void xx_sfnt_free(xx_sfnt *);
-XXFC_API bool xx_sfnt_check_is_valid(Abstractformat *,xx_pd_struct *);
-XXFC_API bool xx_sfnt_handle_base_info(Abstractformat *,xx_pd_struct *);
+XXFC_API bool xx_sfnt_check_is_valid(Abstractformat *, xx_pd_struct *);
+XXFC_API bool xx_sfnt_handle_base_info(Abstractformat *, xx_pd_struct *);
 #ifdef __cplusplus
 }
 #endif

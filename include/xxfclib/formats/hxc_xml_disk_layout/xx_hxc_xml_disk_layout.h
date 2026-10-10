@@ -12,7 +12,10 @@ XXFC_API void xx_hxc_xml_disk_layout_destroy(xx_hxc_xml_disk_layout *);
 XXFC_API void xx_hxc_xml_disk_layout_free(xx_hxc_xml_disk_layout *);
 XXFC_API bool xx_hxc_xml_disk_layout_check_is_valid(Abstractformat *, xx_pd_struct *);
 XXFC_API bool xx_hxc_xml_disk_layout_handle_base_info(Abstractformat *, xx_pd_struct *);
-static inline Abstractformat *xx_hxc_xml_disk_layout_to_format(xx_hxc_xml_disk_layout *r) { return r ? &r->format : NULL; }
+static inline Abstractformat *xx_hxc_xml_disk_layout_to_format(xx_hxc_xml_disk_layout *r)
+{
+    return r ? &r->format : NULL;
+}
 #ifdef __cplusplus
 }
 #endif

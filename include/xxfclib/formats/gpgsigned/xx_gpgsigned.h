@@ -37,8 +37,8 @@
 extern "C" {
 #endif
 
-#define XX_GPGSIGNED_CTB 0xA3U           /**< old format, tag 8, indeterminate */
-#define XX_GPGSIGNED_ALGO_ZIP 0x01U      /**< RFC 4880 9.3: 1 = ZIP (RFC 1951) */
+#define XX_GPGSIGNED_CTB 0xA3U      /**< old format, tag 8, indeterminate */
+#define XX_GPGSIGNED_ALGO_ZIP 0x01U /**< RFC 4880 9.3: 1 = ZIP (RFC 1951) */
 #define XX_GPGSIGNED_HEADER_SIZE 2U
 /** Decompressed output is capped; a larger stream is rejected. */
 #define XX_GPGSIGNED_MAX_OUTPUT ((uint64_t)1024U * 1024U * 1024U)
@@ -56,59 +56,49 @@ struct xx_gpgsigned {
     uint8_t first_packet_tag;   /**< Tag of the first inner packet. */
 };
 
-XXFC_API void xx_gpgsigned_init(xx_gpgsigned *gpg, xx_io_device *dev,
-                                int64_t base_address);
-XXFC_API xx_gpgsigned *xx_gpgsigned_create(xx_io_device *dev,
-                                           int64_t base_address);
+XXFC_API void xx_gpgsigned_init(xx_gpgsigned *gpg, xx_io_device *dev, int64_t base_address);
+XXFC_API xx_gpgsigned *xx_gpgsigned_create(xx_io_device *dev, int64_t base_address);
 XXFC_API void xx_gpgsigned_destroy(xx_gpgsigned *gpg);
 XXFC_API void xx_gpgsigned_free(xx_gpgsigned *gpg);
 
-XXFC_API bool xx_gpgsigned_check_is_valid(Abstractformat *self,
-                                          xx_pd_struct *pd);
-XXFC_API bool xx_gpgsigned_handle_base_info(Abstractformat *self,
-                                            xx_pd_struct *pd);
-XXFC_API int64_t xx_gpgsigned_get_format_size(Abstractformat *self,
-                                              xx_pd_struct *pd);
-XXFC_API uint64_t xx_gpgsigned_get_number_of_archive_records(
-    Abstractformat *self, xx_pd_struct *pd);
+XXFC_API bool xx_gpgsigned_check_is_valid(Abstractformat *self, xx_pd_struct *pd);
+XXFC_API bool xx_gpgsigned_handle_base_info(Abstractformat *self, xx_pd_struct *pd);
+XXFC_API int64_t xx_gpgsigned_get_format_size(Abstractformat *self, xx_pd_struct *pd);
+XXFC_API uint64_t xx_gpgsigned_get_number_of_archive_records(Abstractformat *self, xx_pd_struct *pd);
 
 /** Decode the packet stream to a caller-provided device.  The result is
  * checked against the size and CRC-32 recorded by handle_base_info. */
-XXFC_API bool xx_gpgsigned_unpack_to_device(xx_gpgsigned *gpg,
-                                            xx_io_device *destination,
-                                            xx_pd_struct *pd);
+XXFC_API bool xx_gpgsigned_unpack_to_device(xx_gpgsigned *gpg, xx_io_device *destination, xx_pd_struct *pd);
 
-XXFC_API xx_archive_record_state *xx_gpgsigned_create_archive_records_reading(
-    Abstractformat *self, const xx_list_s *options, xx_pd_struct *pd);
-XXFC_API const xx_archive_record *xx_gpgsigned_get_current_archive_record(
-    Abstractformat *self, xx_archive_record_state *state);
-XXFC_API bool xx_gpgsigned_unpack_current_archive_record(
-    Abstractformat *self, xx_archive_record_state *state, xx_pd_struct *pd);
-XXFC_API bool xx_gpgsigned_archive_record_move_to_next(
-    Abstractformat *self, xx_archive_record_state *state, xx_pd_struct *pd);
-XXFC_API void xx_gpgsigned_free_archive_records_reading(
-    Abstractformat *self, xx_archive_record_state *state);
+XXFC_API xx_archive_record_state *xx_gpgsigned_create_archive_records_reading(Abstractformat *self, const xx_list_s *options, xx_pd_struct *pd);
+XXFC_API const xx_archive_record *xx_gpgsigned_get_current_archive_record(Abstractformat *self, xx_archive_record_state *state);
+XXFC_API bool xx_gpgsigned_unpack_current_archive_record(Abstractformat *self, xx_archive_record_state *state, xx_pd_struct *pd);
+XXFC_API bool xx_gpgsigned_archive_record_move_to_next(Abstractformat *self, xx_archive_record_state *state, xx_pd_struct *pd);
+XXFC_API void xx_gpgsigned_free_archive_records_reading(Abstractformat *self, xx_archive_record_state *state);
 
 XXFC_API uint64_t xx_gpgsigned_get_uncompressed_size(const xx_gpgsigned *gpg);
 XXFC_API uint64_t xx_gpgsigned_get_packet_count(const xx_gpgsigned *gpg);
 XXFC_API int64_t xx_gpgsigned_get_stream_end(const xx_gpgsigned *gpg);
 XXFC_API uint32_t xx_gpgsigned_get_crc32(const xx_gpgsigned *gpg);
 
-static inline Abstractformat *xx_gpgsigned_to_format(xx_gpgsigned *gpg) {
+static inline Abstractformat *xx_gpgsigned_to_format(xx_gpgsigned *gpg)
+{
     return gpg ? &gpg->format : NULL;
 }
-static inline void XGpgsigned_init(xx_gpgsigned *gpg, xx_io_device *dev,
-                                   int64_t base_address) {
+static inline void XGpgsigned_init(xx_gpgsigned *gpg, xx_io_device *dev, int64_t base_address)
+{
     xx_gpgsigned_init(gpg, dev, base_address);
 }
-static inline xx_gpgsigned *XGpgsigned_create(xx_io_device *dev,
-                                              int64_t base_address) {
+static inline xx_gpgsigned *XGpgsigned_create(xx_io_device *dev, int64_t base_address)
+{
     return xx_gpgsigned_create(dev, base_address);
 }
-static inline void XGpgsigned_free(xx_gpgsigned *gpg) {
+static inline void XGpgsigned_free(xx_gpgsigned *gpg)
+{
     xx_gpgsigned_free(gpg);
 }
-static inline bool XGpgsigned_is_valid(xx_gpgsigned *gpg, xx_pd_struct *pd) {
+static inline bool XGpgsigned_is_valid(xx_gpgsigned *gpg, xx_pd_struct *pd)
+{
     return gpg ? xx_format_is_valid(&gpg->format, pd) : false;
 }
 

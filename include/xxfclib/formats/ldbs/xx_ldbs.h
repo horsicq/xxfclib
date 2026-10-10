@@ -14,15 +14,11 @@ extern "C" {
 typedef struct xx_ldbs_s {
     Abstractformat format;
 } xx_ldbs;
-XXFC_API void xx_ldbs_init(xx_ldbs *reader, xx_io_device *device,
-                           int64_t base_address);
-XXFC_API xx_ldbs *xx_ldbs_create(xx_io_device *device,
-                                 int64_t base_address);
+XXFC_API void xx_ldbs_init(xx_ldbs *reader, xx_io_device *device, int64_t base_address);
+XXFC_API xx_ldbs *xx_ldbs_create(xx_io_device *device, int64_t base_address);
 XXFC_API void xx_ldbs_destroy(xx_ldbs *reader);
 XXFC_API void xx_ldbs_free(xx_ldbs *reader);
-XXFC_API bool xx_ldbs_unpack_to_device(xx_ldbs *reader,
-                                       xx_io_device *destination,
-                                       xx_pd_struct *pd);
+XXFC_API bool xx_ldbs_unpack_to_device(xx_ldbs *reader, xx_io_device *destination, xx_pd_struct *pd);
 #ifdef __cplusplus
 }
 #endif

@@ -9,13 +9,15 @@
 #ifdef __cplusplus
 extern "C" {
 #endif
-typedef struct xx_totalannihilation_hpi { Abstractformat format; } xx_totalannihilation_hpi;
-XXFC_API void xx_totalannihilation_hpi_init(xx_totalannihilation_hpi *,xx_io_device *,int64_t);
-XXFC_API xx_totalannihilation_hpi *xx_totalannihilation_hpi_create(xx_io_device *,int64_t);
+typedef struct xx_totalannihilation_hpi {
+    Abstractformat format;
+} xx_totalannihilation_hpi;
+XXFC_API void xx_totalannihilation_hpi_init(xx_totalannihilation_hpi *, xx_io_device *, int64_t);
+XXFC_API xx_totalannihilation_hpi *xx_totalannihilation_hpi_create(xx_io_device *, int64_t);
 XXFC_API void xx_totalannihilation_hpi_destroy(xx_totalannihilation_hpi *);
 XXFC_API void xx_totalannihilation_hpi_free(xx_totalannihilation_hpi *);
-XXFC_API bool xx_totalannihilation_hpi_check_is_valid(Abstractformat *,xx_pd_struct *);
-XXFC_API bool xx_totalannihilation_hpi_handle_base_info(Abstractformat *,xx_pd_struct *);
+XXFC_API bool xx_totalannihilation_hpi_check_is_valid(Abstractformat *, xx_pd_struct *);
+XXFC_API bool xx_totalannihilation_hpi_handle_base_info(Abstractformat *, xx_pd_struct *);
 #ifdef __cplusplus
 }
 #endif

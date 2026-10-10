@@ -70,36 +70,26 @@ typedef struct xx_nitroplus_npa {
 typedef xx_nitroplus_npa xx_nitroplus_npa_t;
 typedef xx_nitroplus_npa XNitroplusNpa;
 
-XXFC_API void xx_nitroplus_npa_init(xx_nitroplus_npa *archive, xx_io_device *device,
-                           int64_t base_address);
+XXFC_API void xx_nitroplus_npa_init(xx_nitroplus_npa *archive, xx_io_device *device, int64_t base_address);
 XXFC_API xx_nitroplus_npa *xx_nitroplus_npa_create(xx_io_device *device, int64_t base_address);
 XXFC_API void xx_nitroplus_npa_destroy(xx_nitroplus_npa *archive);
 XXFC_API void xx_nitroplus_npa_free(xx_nitroplus_npa *archive);
 /** Table must be a permutation. Invalid parameters leave the old key intact. */
-XXFC_API bool xx_nitroplus_npa_set_scheme(xx_nitroplus_npa *archive,
-    xx_nitroplus_npa_profile profile, uint32_t name_key, const uint8_t decrypt_table[256]);
+XXFC_API bool xx_nitroplus_npa_set_scheme(xx_nitroplus_npa *archive, xx_nitroplus_npa_profile profile, uint32_t name_key, const uint8_t decrypt_table[256]);
 XXFC_API void xx_nitroplus_npa_clear_scheme(xx_nitroplus_npa *archive);
 XXFC_API bool xx_nitroplus_npa_check_is_valid(Abstractformat *self, xx_pd_struct *pd);
 XXFC_API bool xx_nitroplus_npa_handle_base_info(Abstractformat *self, xx_pd_struct *pd);
 XXFC_API int64_t xx_nitroplus_npa_get_format_size(Abstractformat *self, xx_pd_struct *pd);
-XXFC_API uint64_t xx_nitroplus_npa_get_number_of_archive_records(
-    Abstractformat *self, xx_pd_struct *pd);
-XXFC_API xx_archive_record_state *xx_nitroplus_npa_create_archive_records_reading(
-    Abstractformat *self, const xx_list_s *options, xx_pd_struct *pd);
-XXFC_API const xx_archive_record *xx_nitroplus_npa_get_current_archive_record(
-    Abstractformat *self, xx_archive_record_state *state);
-XXFC_API bool xx_nitroplus_npa_unpack_current_archive_record(
-    Abstractformat *self, xx_archive_record_state *state, xx_pd_struct *pd);
+XXFC_API uint64_t xx_nitroplus_npa_get_number_of_archive_records(Abstractformat *self, xx_pd_struct *pd);
+XXFC_API xx_archive_record_state *xx_nitroplus_npa_create_archive_records_reading(Abstractformat *self, const xx_list_s *options, xx_pd_struct *pd);
+XXFC_API const xx_archive_record *xx_nitroplus_npa_get_current_archive_record(Abstractformat *self, xx_archive_record_state *state);
+XXFC_API bool xx_nitroplus_npa_unpack_current_archive_record(Abstractformat *self, xx_archive_record_state *state, xx_pd_struct *pd);
 /** Copy the current member to a caller-owned device; NULL verifies it only.
  * Destination must differ from the input device. Options limiting member
  * size and extraction buffers are also honored by this direct C API. */
-XXFC_API bool xx_nitroplus_npa_unpack_current_archive_record_to_device(
-    Abstractformat *self, xx_archive_record_state *state,
-    xx_io_device *destination, xx_pd_struct *pd);
-XXFC_API bool xx_nitroplus_npa_archive_record_move_to_next(
-    Abstractformat *self, xx_archive_record_state *state, xx_pd_struct *pd);
-XXFC_API void xx_nitroplus_npa_free_archive_records_reading(
-    Abstractformat *self, xx_archive_record_state *state);
+XXFC_API bool xx_nitroplus_npa_unpack_current_archive_record_to_device(Abstractformat *self, xx_archive_record_state *state, xx_io_device *destination, xx_pd_struct *pd);
+XXFC_API bool xx_nitroplus_npa_archive_record_move_to_next(Abstractformat *self, xx_archive_record_state *state, xx_pd_struct *pd);
+XXFC_API void xx_nitroplus_npa_free_archive_records_reading(Abstractformat *self, xx_archive_record_state *state);
 
 #ifdef __cplusplus
 }

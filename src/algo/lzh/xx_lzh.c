@@ -34,15 +34,13 @@ typedef struct xx_lh1_state_s {
     uint8_t dictionary[XX_LH1_N];
 } xx_lh1_state;
 
-static unsigned xx_lh1_bits(xx_lh1_state *state, unsigned count) {
+static unsigned xx_lh1_bits(xx_lh1_state *state, unsigned count)
+{
     unsigned result = 0U;
     unsigned i;
     if (!state || state->error || count > 16U ||
-        (state->device ? (state->stream_bits > state->stream_size * 8U ||
-                         count > state->stream_size * 8U - state->stream_bits) :
-                        (state->input_size > SIZE_MAX / 8U ||
-                         state->bit_pos > state->input_size * 8U ||
-                         count > state->input_size * 8U - state->bit_pos))) {
+        (state->device ? (state->stream_bits > state->stream_size * 8U || count > state->stream_size * 8U - state->stream_bits)
+                       : (state->input_size > SIZE_MAX / 8U || state->bit_pos > state->input_size * 8U || count > state->input_size * 8U - state->bit_pos))) {
         if (state) state->error = true;
         return 0U;
     }
@@ -51,31 +49,30 @@ static unsigned xx_lh1_bits(xx_lh1_state *state, unsigned count) {
             if (!(state->stream_bits & 7U)) {
                 if (state->input_pos == state->input_count) {
                     uint64_t remaining = state->stream_size - state->stream_read;
-                    size_t wanted = remaining < sizeof(state->input_buffer) ?
-                                    (size_t)remaining : sizeof(state->input_buffer);
+                    size_t wanted = remaining < sizeof(state->input_buffer) ? (size_t)remaining : sizeof(state->input_buffer);
                     ssize_t received = xx_io_read(state->device, state->input_buffer, wanted);
                     if (received <= 0 || (size_t)received > wanted) {
-                        state->error = true; return 0U;
+                        state->error = true;
+                        return 0U;
                     }
-                    state->input_pos = 0U; state->input_count = (size_t)received;
+                    state->input_pos = 0U;
+                    state->input_count = (size_t)received;
                     state->stream_read += (size_t)received;
                 }
                 state->stream_byte = state->input_buffer[state->input_pos++];
             }
-            result = (result << 1U) | ((state->stream_byte >>
-                       (7U - (state->stream_bits & 7U))) & 1U);
+            result = (result << 1U) | ((state->stream_byte >> (7U - (state->stream_bits & 7U))) & 1U);
             ++state->stream_bits;
             continue;
         }
-        result = (result << 1U) |
-                 ((state->input[state->bit_pos >> 3U] >>
-                   (7U - (state->bit_pos & 7U))) & 1U);
+        result = (result << 1U) | ((state->input[state->bit_pos >> 3U] >> (7U - (state->bit_pos & 7U))) & 1U);
         ++state->bit_pos;
     }
     return result;
 }
 
-static void xx_lh1_init(xx_lh1_state *state) {
+static void xx_lh1_init(xx_lh1_state *state)
+{
     static const int counts[6] = {1, 3, 8, 12, 24, 16};
     int length, symbol = 0, table = 0;
     xx_rt_memset(state, 0, sizeof(*state));
@@ -92,7 +89,8 @@ static void xx_lh1_init(xx_lh1_state *state) {
     }
 }
 
-static void xx_lh1_start_tree(xx_lh1_state *state) {
+static void xx_lh1_start_tree(xx_lh1_state *state)
+{
     int i;
     int j;
     for (i = 0; i < XX_LH1_N_CHAR; ++i) {
@@ -114,7 +112,8 @@ static void xx_lh1_start_tree(xx_lh1_state *state) {
     state->parent[XX_LH1_R] = 0;
 }
 
-static void xx_lh1_rebuild(xx_lh1_state *state) {
+static void xx_lh1_rebuild(xx_lh1_state *state)
+{
     int i;
     int j = 0;
     int k;
@@ -138,8 +137,7 @@ static void xx_lh1_rebuild(xx_lh1_state *state) {
     }
     for (i = 0; i < XX_LH1_T; ++i) {
         k = state->child[i];
-        if (k >= XX_LH1_T)
-            state->parent[k] = i;
+        if (k >= XX_LH1_T) state->parent[k] = i;
         else {
             state->parent[k] = i;
             state->parent[k + 1] = i;
@@ -147,10 +145,10 @@ static void xx_lh1_rebuild(xx_lh1_state *state) {
     }
 }
 
-static void xx_lh1_update(xx_lh1_state *state, int symbol) {
+static void xx_lh1_update(xx_lh1_state *state, int symbol)
+{
     int node;
-    if (state->freq[XX_LH1_R] == XX_LH1_MAX_FREQ)
-        xx_lh1_rebuild(state);
+    if (state->freq[XX_LH1_R] == XX_LH1_MAX_FREQ) xx_lh1_rebuild(state);
     node = state->parent[symbol + XX_LH1_T];
     do {
         int frequency = ++state->freq[node];
@@ -175,7 +173,8 @@ static void xx_lh1_update(xx_lh1_state *state, int symbol) {
     } while (node != 0);
 }
 
-static int xx_lh1_decode_symbol(xx_lh1_state *state) {
+static int xx_lh1_decode_symbol(xx_lh1_state *state)
+{
     int symbol = state->child[XX_LH1_R];
     while (symbol < XX_LH1_T && !state->error) {
         symbol += (int)xx_lh1_bits(state, 1U);
@@ -191,18 +190,17 @@ static int xx_lh1_decode_symbol(xx_lh1_state *state) {
     return symbol;
 }
 
-static unsigned xx_lh1_decode_position(xx_lh1_state *state) {
+static unsigned xx_lh1_decode_position(xx_lh1_state *state)
+{
     unsigned value = xx_lh1_bits(state, 8U);
     unsigned position = (unsigned)state->position_code[value] << 6U;
     int remaining = (int)state->position_length[value] - 2;
-    while (remaining-- > 0 && !state->error)
-        value = (value << 1U) + xx_lh1_bits(state, 1U);
+    while (remaining-- > 0 && !state->error) value = (value << 1U) + xx_lh1_bits(state, 1U);
     return position | (value & 0x3fU);
 }
 
-bool xx_lzh1_decode_memory(const uint8_t *input, size_t input_size,
-                           uint8_t *output, size_t output_size,
-                           size_t *written) {
+bool xx_lzh1_decode_memory(const uint8_t *input, size_t input_size, uint8_t *output, size_t output_size, size_t *written)
+{
     static const int symbol_counts[6] = {1, 3, 8, 12, 24, 16};
     xx_lh1_state state;
     size_t output_pos = 0U;
@@ -211,9 +209,7 @@ bool xx_lzh1_decode_memory(const uint8_t *input, size_t input_size,
     int symbol_index = 0;
     int length;
     if (written) *written = 0U;
-    if (input_size > SIZE_MAX / 8U ||
-        (!input && input_size != 0U) || (!output && output_size != 0U) ||
-        (output_size != 0U && input_size == 0U)) return false;
+    if (input_size > SIZE_MAX / 8U || (!input && input_size != 0U) || (!output && output_size != 0U) || (output_size != 0U && input_size == 0U)) return false;
     xx_rt_memset(&state, 0, sizeof(state));
     state.input = input;
     state.input_size = input_size;
@@ -243,8 +239,7 @@ bool xx_lzh1_decode_memory(const uint8_t *input, size_t input_size,
             dictionary_pos &= XX_LH1_N - 1U;
         } else {
             unsigned distance = xx_lh1_decode_position(&state);
-            unsigned source = (dictionary_pos - distance - 1U) &
-                              (XX_LH1_N - 1U);
+            unsigned source = (dictionary_pos - distance - 1U) & (XX_LH1_N - 1U);
             unsigned count = (unsigned)(symbol - 255 + XX_LH1_THRESHOLD);
             unsigned i;
             if (state.error || count > output_size - output_pos) {
@@ -252,8 +247,7 @@ bool xx_lzh1_decode_memory(const uint8_t *input, size_t input_size,
                 break;
             }
             for (i = 0U; i < count; ++i) {
-                uint8_t byte = state.dictionary[(source + i) &
-                                                (XX_LH1_N - 1U)];
+                uint8_t byte = state.dictionary[(source + i) & (XX_LH1_N - 1U)];
                 output[output_pos++] = byte;
                 state.dictionary[dictionary_pos++] = byte;
                 dictionary_pos &= XX_LH1_N - 1U;
@@ -261,8 +255,7 @@ bool xx_lzh1_decode_memory(const uint8_t *input, size_t input_size,
         }
     }
     if (written) *written = output_pos;
-    if (state.error || output_pos != output_size ||
-        state.bit_pos > input_size * 8U) return false;
+    if (state.error || output_pos != output_size || state.bit_pos > input_size * 8U) return false;
     {
         size_t unused_bits = input_size * 8U - state.bit_pos;
 
@@ -270,14 +263,12 @@ bool xx_lzh1_decode_memory(const uint8_t *input, size_t input_size,
          * packed size when the Huffman stream ends exactly on a byte boundary.
          * The declared output size still terminates decoding; accept only
          * that single zero byte, never arbitrary trailing payload. */
-        return unused_bits < 8U ||
-               (unused_bits == 8U && input[input_size - 1U] == 0U);
+        return unused_bits < 8U || (unused_bits == 8U && input[input_size - 1U] == 0U);
     }
 }
 
-bool xx_lzh1_decode_to_device(xx_io_device *input, uint64_t input_size,
-                             xx_io_device *output, uint64_t output_size,
-                             uint64_t *written, xx_pd_struct *pd) {
+bool xx_lzh1_decode_to_device(xx_io_device *input, uint64_t input_size, xx_io_device *output, uint64_t output_size, uint64_t *written, xx_pd_struct *pd)
+{
     xx_lh1_state state;
     uint8_t buffer[4096];
     uint64_t done = 0, delivered = 0, unused;
@@ -286,10 +277,11 @@ bool xx_lzh1_decode_to_device(xx_io_device *input, uint64_t input_size,
     int level = -1;
     bool ok = false;
     if (written) *written = 0;
-    if (!input || !output || input_size > UINT64_MAX / 8U ||
-        (output_size && !input_size) || xx_pd_is_stopped(pd)) return false;
-    xx_lh1_init(&state); xx_lh1_start_tree(&state);
-    state.device = input; state.stream_size = input_size;
+    if (!input || !output || input_size > UINT64_MAX / 8U || (output_size && !input_size) || xx_pd_is_stopped(pd)) return false;
+    xx_lh1_init(&state);
+    xx_lh1_start_tree(&state);
+    state.device = input;
+    state.stream_size = input_size;
     level = xx_pd_enter_level(pd, output_size, "Decoding LH1 member");
     while (done < output_size && !state.error) {
         int symbol = xx_lh1_decode_symbol(&state);
@@ -302,10 +294,11 @@ bool xx_lzh1_decode_to_device(xx_io_device *input, uint64_t input_size,
         }
         if (state.error || count > output_size - done) break;
         for (i = 0; i < count; ++i) {
-            uint8_t byte = symbol < 256 ? (uint8_t)symbol :
-                           state.dictionary[(source + i) & (XX_LH1_N - 1U)];
-            buffer[used++] = byte; ++done;
-            state.dictionary[position++] = byte; position &= XX_LH1_N - 1U;
+            uint8_t byte = symbol < 256 ? (uint8_t)symbol : state.dictionary[(source + i) & (XX_LH1_N - 1U)];
+            buffer[used++] = byte;
+            ++done;
+            state.dictionary[position++] = byte;
+            position &= XX_LH1_N - 1U;
             if (used == sizeof(buffer) || done == output_size) {
                 size_t sent = 0;
                 if (xx_pd_is_stopped(pd)) goto cleanup;
@@ -313,9 +306,11 @@ bool xx_lzh1_decode_to_device(xx_io_device *input, uint64_t input_size,
                     if (xx_pd_is_stopped(pd)) goto cleanup;
                     ssize_t n = xx_io_write(output, buffer + sent, used - sent);
                     if (n <= 0 || (size_t)n > used - sent) goto cleanup;
-                    sent += (size_t)n; delivered += (size_t)n;
+                    sent += (size_t)n;
+                    delivered += (size_t)n;
                 }
-                used = 0; xx_pd_set_current(pd, level, done);
+                used = 0;
+                xx_pd_set_current(pd, level, done);
             }
         }
     }

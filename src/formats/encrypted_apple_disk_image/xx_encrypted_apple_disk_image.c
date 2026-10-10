@@ -26,8 +26,7 @@
 #include <stdio.h>
 
 #ifdef ENCRYPTED_APPLE_DISK_IMAGE
-#define XX_ENCRYPTED_APPLE_DISK_IMAGE_FILE_TYPE \
-    XX_FILE_TYPE_ENCRYPTED_APPLE_DISK_IMAGE
+#define XX_ENCRYPTED_APPLE_DISK_IMAGE_FILE_TYPE XX_FILE_TYPE_ENCRYPTED_APPLE_DISK_IMAGE
 #else
 #define XX_ENCRYPTED_APPLE_DISK_IMAGE_FILE_TYPE XX_FILE_TYPE_UNKNOWN
 #endif
@@ -49,8 +48,8 @@
 typedef struct xx_eadi_private_s {
     int64_t input_size;
     int64_t base_address;
-    uint64_t format_size;     /**< Bytes from base_address. */
-    uint64_t payload_offset;  /**< Absolute device offset. */
+    uint64_t format_size;    /**< Bytes from base_address. */
+    uint64_t payload_offset; /**< Absolute device offset. */
     uint64_t payload_size;
     uint64_t data_length;
     uint32_t version;
@@ -70,13 +69,12 @@ static void xx_eadi_vtable_destroy(Abstractformat *self);
 
 /* ------------------------------------------------------------- helpers -- */
 
-static bool xx_eadi_read_at(xx_io_device *device, int64_t offset, void *data,
-                            size_t size) {
+static bool xx_eadi_read_at(xx_io_device *device, int64_t offset, void *data, size_t size)
+{
     uint8_t *out = (uint8_t *)data;
     size_t done = 0U;
 
-    if (!device || (!data && size != 0U) || offset < 0 ||
-        xx_io_seek64(device, offset, SEEK_SET) != 0) {
+    if (!device || (!data && size != 0U) || offset < 0 || xx_io_seek64(device, offset, SEEK_SET) != 0) {
         return false;
     }
     while (done < size) {
@@ -87,12 +85,13 @@ static bool xx_eadi_read_at(xx_io_device *device, int64_t offset, void *data,
     return true;
 }
 
-static void xx_eadi_private_free(void *pointer) {
+static void xx_eadi_private_free(void *pointer)
+{
     if (pointer) xx_mem_free(pointer);
 }
 
-static void xx_eadi_append_text(char *buffer, size_t capacity, size_t *used,
-                                const char *text) {
+static void xx_eadi_append_text(char *buffer, size_t capacity, size_t *used, const char *text)
+{
     size_t index = 0U;
 
     if (!text) return;
@@ -104,8 +103,8 @@ static void xx_eadi_append_text(char *buffer, size_t capacity, size_t *used,
     buffer[*used] = '\0';
 }
 
-static void xx_eadi_append_u64(char *buffer, size_t capacity, size_t *used,
-                               uint64_t value) {
+static void xx_eadi_append_u64(char *buffer, size_t capacity, size_t *used, uint64_t value)
+{
     char digits[21];
     size_t count = 0U;
 
@@ -122,8 +121,8 @@ static void xx_eadi_append_u64(char *buffer, size_t capacity, size_t *used,
 
 /* ---------------------------------------------------------------- parse -- */
 
-static bool xx_eadi_parse_v2(xx_io_device *device, xx_eadi_private *parsed,
-                             uint64_t available) {
+static bool xx_eadi_parse_v2(xx_io_device *device, xx_eadi_private *parsed, uint64_t available)
+{
     uint8_t header[XX_EADI_V2_HEADER_SIZE];
     uint8_t table[XX_EADI_V2_MAX_KEYS * XX_EADI_V2_KEY_POINTER_SIZE];
     uint64_t table_end;
@@ -133,9 +132,7 @@ static bool xx_eadi_parse_v2(xx_io_device *device, xx_eadi_private *parsed,
     size_t table_size;
     uint32_t index;
 
-    if (available < XX_EADI_V2_HEADER_SIZE ||
-        !xx_eadi_read_at(device, parsed->base_address, header,
-                         sizeof(header))) {
+    if (available < XX_EADI_V2_HEADER_SIZE || !xx_eadi_read_at(device, parsed->base_address, header, sizeof(header))) {
         return false;
     }
     if (xx_rt_memcmp(header, "encrcdsa", 8U) != 0) return false;
@@ -143,36 +140,28 @@ static bool xx_eadi_parse_v2(xx_io_device *device, xx_eadi_private *parsed,
     if (parsed->version != 2U) return false;
     parsed->block_iv_len = xx_data_get_u32(header, sizeof(header), 0x0CU, true);
     parsed->block_mode = xx_data_get_u32(header, sizeof(header), 0x10U, true);
-    parsed->block_algorithm =
-        xx_data_get_u32(header, sizeof(header), 0x14U, true);
+    parsed->block_algorithm = xx_data_get_u32(header, sizeof(header), 0x14U, true);
     parsed->key_bits = xx_data_get_u32(header, sizeof(header), 0x18U, true);
     xx_mem_copy(parsed->uuid, header + 0x24U, sizeof(parsed->uuid));
     parsed->block_size = xx_data_get_u32(header, sizeof(header), 0x34U, true);
     parsed->data_length = xx_data_get_u64(header, sizeof(header), 0x38U, true);
     data_offset = xx_data_get_u64(header, sizeof(header), 0x40U, true);
-    parsed->number_of_keys =
-        xx_data_get_u32(header, sizeof(header), 0x48U, true);
+    parsed->number_of_keys = xx_data_get_u32(header, sizeof(header), 0x48U, true);
 
     if (parsed->block_iv_len == 0U || parsed->block_iv_len > 64U) return false;
-    if (parsed->key_bits != 128U && parsed->key_bits != 192U &&
-        parsed->key_bits != 256U) {
+    if (parsed->key_bits != 128U && parsed->key_bits != 192U && parsed->key_bits != 256U) {
         return false;
     }
     /* A power of two between 512 bytes and 1 MB. */
-    if (parsed->block_size < 512U || parsed->block_size > 0x100000U ||
-        (parsed->block_size & (parsed->block_size - 1U)) != 0U) {
+    if (parsed->block_size < 512U || parsed->block_size > 0x100000U || (parsed->block_size & (parsed->block_size - 1U)) != 0U) {
         return false;
     }
-    if (parsed->number_of_keys == 0U ||
-        parsed->number_of_keys > XX_EADI_V2_MAX_KEYS) {
+    if (parsed->number_of_keys == 0U || parsed->number_of_keys > XX_EADI_V2_MAX_KEYS) {
         return false;
     }
     table_size = (size_t)parsed->number_of_keys * XX_EADI_V2_KEY_POINTER_SIZE;
     table_end = (uint64_t)XX_EADI_V2_HEADER_SIZE + table_size;
-    if (table_end > available ||
-        !xx_eadi_read_at(device,
-                         parsed->base_address + XX_EADI_V2_HEADER_SIZE, table,
-                         table_size)) {
+    if (table_end > available || !xx_eadi_read_at(device, parsed->base_address + XX_EADI_V2_HEADER_SIZE, table, table_size)) {
         return false;
     }
     end = table_end;
@@ -182,26 +171,19 @@ static bool xx_eadi_parse_v2(xx_io_device *device, xx_eadi_private *parsed,
         uint64_t offset = xx_data_get_u64(table, table_size, at + 4U, true);
         uint64_t size = xx_data_get_u64(table, table_size, at + 12U, true);
 
-        if (size == 0U || size > XX_EADI_V2_MAX_KEY_SIZE ||
-            offset < XX_EADI_V2_HEADER_SIZE || offset > available ||
-            size > available - offset) {
+        if (size == 0U || size > XX_EADI_V2_MAX_KEY_SIZE || offset < XX_EADI_V2_HEADER_SIZE || offset > available || size > available - offset) {
             return false;
         }
         if (offset + size > end) end = offset + size;
         if (type == XX_EADI_V2_KEY_TYPE_PASSPHRASE) {
             ++parsed->passphrase_keys;
-            if (parsed->kdf_iterations == 0U &&
-                size >= XX_EADI_V2_PASSPHRASE_HEADER_SIZE) {
+            if (parsed->kdf_iterations == 0U && size >= XX_EADI_V2_PASSPHRASE_HEADER_SIZE) {
                 uint8_t key[XX_EADI_V2_PASSPHRASE_HEADER_SIZE];
-                if (!xx_eadi_read_at(device,
-                                     parsed->base_address + (int64_t)offset,
-                                     key, sizeof(key))) {
+                if (!xx_eadi_read_at(device, parsed->base_address + (int64_t)offset, key, sizeof(key))) {
                     return false;
                 }
-                if (xx_data_get_u32(key, sizeof(key), 0U, true) ==
-                    XX_EADI_CSSM_ALGID_PKCS5_PBKDF2) {
-                    parsed->kdf_iterations =
-                        xx_data_get_u32(key, sizeof(key), 8U, true);
+                if (xx_data_get_u32(key, sizeof(key), 0U, true) == XX_EADI_CSSM_ALGID_PKCS5_PBKDF2) {
+                    parsed->kdf_iterations = xx_data_get_u32(key, sizeof(key), 8U, true);
                 }
             }
         }
@@ -209,8 +191,7 @@ static bool xx_eadi_parse_v2(xx_io_device *device, xx_eadi_private *parsed,
     if (data_offset < table_end || data_offset > available) return false;
     /* The ciphertext is whole blocks; the last one is padded. */
     if (parsed->data_length > UINT64_C(0x4000000000000000)) return false;
-    declared = (parsed->data_length + parsed->block_size - 1U) /
-               parsed->block_size * parsed->block_size;
+    declared = (parsed->data_length + parsed->block_size - 1U) / parsed->block_size * parsed->block_size;
     parsed->payload_size = declared;
     if (declared > available - data_offset) {
         parsed->payload_size = available - data_offset;
@@ -224,8 +205,8 @@ static bool xx_eadi_parse_v2(xx_io_device *device, xx_eadi_private *parsed,
     return true;
 }
 
-static bool xx_eadi_parse_v1(xx_io_device *device, xx_eadi_private *parsed,
-                             uint64_t available) {
+static bool xx_eadi_parse_v1(xx_io_device *device, xx_eadi_private *parsed, uint64_t available)
+{
     uint8_t trailer[XX_EADI_V1_TRAILER_SIZE];
     int64_t trailer_offset;
     uint32_t salt_len;
@@ -234,12 +215,9 @@ static bool xx_eadi_parse_v1(xx_io_device *device, xx_eadi_private *parsed,
     uint32_t integrity;
 
     if (available < XX_EADI_V1_TRAILER_SIZE) return false;
-    trailer_offset = parsed->base_address + (int64_t)available -
-                     (int64_t)XX_EADI_V1_TRAILER_SIZE;
+    trailer_offset = parsed->base_address + (int64_t)available - (int64_t)XX_EADI_V1_TRAILER_SIZE;
     /* Cheap first: the signature is the file's last eight bytes. */
-    if (!xx_eadi_read_at(device, trailer_offset + XX_EADI_V1_TRAILER_SIZE - 8,
-                         trailer, 8U) ||
-        xx_rt_memcmp(trailer, "cdsaencr", 8U) != 0) {
+    if (!xx_eadi_read_at(device, trailer_offset + XX_EADI_V1_TRAILER_SIZE - 8, trailer, 8U) || xx_rt_memcmp(trailer, "cdsaencr", 8U) != 0) {
         return false;
     }
     if (!xx_eadi_read_at(device, trailer_offset, trailer, sizeof(trailer))) {
@@ -250,9 +228,8 @@ static bool xx_eadi_parse_v1(xx_io_device *device, xx_eadi_private *parsed,
     wrapped_aes = xx_data_get_u32(trailer, sizeof(trailer), 136U, true);
     wrapped_hmac = xx_data_get_u32(trailer, sizeof(trailer), 436U, true);
     integrity = xx_data_get_u32(trailer, sizeof(trailer), 740U, true);
-    if (parsed->kdf_iterations == 0U || salt_len == 0U || salt_len > 48U ||
-        wrapped_aes == 0U || wrapped_aes > 296U || wrapped_hmac == 0U ||
-        wrapped_hmac > 300U || integrity > 48U) {
+    if (parsed->kdf_iterations == 0U || salt_len == 0U || salt_len > 48U || wrapped_aes == 0U || wrapped_aes > 296U || wrapped_hmac == 0U || wrapped_hmac > 300U ||
+        integrity > 48U) {
         return false;
     }
     parsed->version = 1U;
@@ -264,8 +241,8 @@ static bool xx_eadi_parse_v1(xx_io_device *device, xx_eadi_private *parsed,
     return true;
 }
 
-static bool xx_eadi_parse(Abstractformat *self, xx_eadi_private *parsed,
-                          xx_pd_struct *pd) {
+static bool xx_eadi_parse(Abstractformat *self, xx_eadi_private *parsed, xx_pd_struct *pd)
+{
     int64_t total_size;
     uint64_t available;
 
@@ -273,8 +250,7 @@ static bool xx_eadi_parse(Abstractformat *self, xx_eadi_private *parsed,
         xx_mem_zero(parsed, sizeof(*parsed));
         parsed->input_size = -1;
     }
-    if (!self || !self->device || !parsed || self->base_address < 0 ||
-        (pd && xx_pd_is_stopped(pd))) {
+    if (!self || !self->device || !parsed || self->base_address < 0 || (pd && xx_pd_is_stopped(pd))) {
         return false;
     }
     total_size = xx_io_total_size(self->device);
@@ -292,9 +268,8 @@ static bool xx_eadi_parse(Abstractformat *self, xx_eadi_private *parsed,
 
 /* ------------------------------------------------------------ lifecycle -- */
 
-void xx_encrypted_apple_disk_image_init(xx_encrypted_apple_disk_image *image,
-                                        xx_io_device *dev,
-                                        int64_t base_address) {
+void xx_encrypted_apple_disk_image_init(xx_encrypted_apple_disk_image *image, xx_io_device *dev, int64_t base_address)
+{
     if (!image) return;
     xx_mem_zero(image, sizeof(*image));
     xx_format_init(&image->format, dev, base_address);
@@ -302,40 +277,30 @@ void xx_encrypted_apple_disk_image_init(xx_encrypted_apple_disk_image *image,
     image->format.file_type = XX_ENCRYPTED_APPLE_DISK_IMAGE_FILE_TYPE;
     image->format.format_type = XX_TYPE_ARCHIVE;
     image->format.is_archive = true;
-    xx_format_set_mime_type(&image->format,
-                            "application/x-apple-diskimage");
+    xx_format_set_mime_type(&image->format, "application/x-apple-diskimage");
     xx_format_set_extension(&image->format, "dmg");
     image->format.check_is_valid = xx_encrypted_apple_disk_image_check_is_valid;
-    image->format.handle_base_info =
-        xx_encrypted_apple_disk_image_handle_base_info;
-    image->format.get_format_size =
-        xx_encrypted_apple_disk_image_get_format_size;
-    image->format.get_number_of_archive_records =
-        xx_encrypted_apple_disk_image_get_number_of_archive_records;
-    image->format.create_archive_records_reading =
-        xx_encrypted_apple_disk_image_create_archive_records_reading;
-    image->format.get_current_archive_record =
-        xx_encrypted_apple_disk_image_get_current_archive_record;
-    image->format.unpack_current_archive_record =
-        xx_encrypted_apple_disk_image_unpack_current_archive_record;
-    image->format.archive_record_move_to_next =
-        xx_encrypted_apple_disk_image_archive_record_move_to_next;
-    image->format.free_archive_records_reading =
-        xx_encrypted_apple_disk_image_free_archive_records_reading;
+    image->format.handle_base_info = xx_encrypted_apple_disk_image_handle_base_info;
+    image->format.get_format_size = xx_encrypted_apple_disk_image_get_format_size;
+    image->format.get_number_of_archive_records = xx_encrypted_apple_disk_image_get_number_of_archive_records;
+    image->format.create_archive_records_reading = xx_encrypted_apple_disk_image_create_archive_records_reading;
+    image->format.get_current_archive_record = xx_encrypted_apple_disk_image_get_current_archive_record;
+    image->format.unpack_current_archive_record = xx_encrypted_apple_disk_image_unpack_current_archive_record;
+    image->format.archive_record_move_to_next = xx_encrypted_apple_disk_image_archive_record_move_to_next;
+    image->format.free_archive_records_reading = xx_encrypted_apple_disk_image_free_archive_records_reading;
     image->format.destroy = xx_eadi_vtable_destroy;
 }
 
-xx_encrypted_apple_disk_image *xx_encrypted_apple_disk_image_create(
-    xx_io_device *dev, int64_t base_address) {
-    xx_encrypted_apple_disk_image *image =
-        (xx_encrypted_apple_disk_image *)xx_mem_alloc(sizeof(*image));
+xx_encrypted_apple_disk_image *xx_encrypted_apple_disk_image_create(xx_io_device *dev, int64_t base_address)
+{
+    xx_encrypted_apple_disk_image *image = (xx_encrypted_apple_disk_image *)xx_mem_alloc(sizeof(*image));
 
     if (image) xx_encrypted_apple_disk_image_init(image, dev, base_address);
     return image;
 }
 
-void xx_encrypted_apple_disk_image_destroy(
-    xx_encrypted_apple_disk_image *image) {
+void xx_encrypted_apple_disk_image_destroy(xx_encrypted_apple_disk_image *image)
+{
     if (!image) return;
     if (image->internal) {
         xx_eadi_private_free(image->internal);
@@ -344,12 +309,13 @@ void xx_encrypted_apple_disk_image_destroy(
     xx_format_cleanup_extra_parameters(&image->format);
 }
 
-static void xx_eadi_vtable_destroy(Abstractformat *self) {
-    xx_encrypted_apple_disk_image_destroy(
-        (xx_encrypted_apple_disk_image *)self);
+static void xx_eadi_vtable_destroy(Abstractformat *self)
+{
+    xx_encrypted_apple_disk_image_destroy((xx_encrypted_apple_disk_image *)self);
 }
 
-void xx_encrypted_apple_disk_image_free(xx_encrypted_apple_disk_image *image) {
+void xx_encrypted_apple_disk_image_free(xx_encrypted_apple_disk_image *image)
+{
     if (!image) return;
     xx_encrypted_apple_disk_image_destroy(image);
     xx_mem_free(image);
@@ -357,17 +323,16 @@ void xx_encrypted_apple_disk_image_free(xx_encrypted_apple_disk_image *image) {
 
 /* --------------------------------------------------------------- format -- */
 
-bool xx_encrypted_apple_disk_image_check_is_valid(Abstractformat *self,
-                                                  xx_pd_struct *pd) {
+bool xx_encrypted_apple_disk_image_check_is_valid(Abstractformat *self, xx_pd_struct *pd)
+{
     xx_eadi_private parsed;
 
     return xx_eadi_parse(self, &parsed, pd);
 }
 
-bool xx_encrypted_apple_disk_image_handle_base_info(Abstractformat *self,
-                                                    xx_pd_struct *pd) {
-    xx_encrypted_apple_disk_image *image =
-        (xx_encrypted_apple_disk_image *)self;
+bool xx_encrypted_apple_disk_image_handle_base_info(Abstractformat *self, xx_pd_struct *pd)
+{
+    xx_encrypted_apple_disk_image *image = (xx_encrypted_apple_disk_image *)self;
     xx_eadi_private *parsed;
 
     if (!self) return false;
@@ -394,8 +359,7 @@ bool xx_encrypted_apple_disk_image_handle_base_info(Abstractformat *self,
     self->format_size = (int64_t)parsed->format_size;
     if ((int64_t)parsed->format_size < parsed->input_size - self->base_address) {
         self->overlay_offset = self->base_address + self->format_size;
-        self->overlay_size =
-            parsed->input_size - self->base_address - self->format_size;
+        self->overlay_size = parsed->input_size - self->base_address - self->format_size;
     } else {
         self->overlay_offset = -1;
         self->overlay_size = 0;
@@ -406,19 +370,17 @@ bool xx_encrypted_apple_disk_image_handle_base_info(Abstractformat *self,
     return true;
 }
 
-int64_t xx_encrypted_apple_disk_image_get_format_size(Abstractformat *self,
-                                                      xx_pd_struct *pd) {
-    if (!self ||
-        (!self->base_info_handled && !xx_format_handle_base_info(self, pd))) {
+int64_t xx_encrypted_apple_disk_image_get_format_size(Abstractformat *self, xx_pd_struct *pd)
+{
+    if (!self || (!self->base_info_handled && !xx_format_handle_base_info(self, pd))) {
         return -1;
     }
     return self->format_size;
 }
 
-uint64_t xx_encrypted_apple_disk_image_get_number_of_archive_records(
-    Abstractformat *self, xx_pd_struct *pd) {
-    if (!self ||
-        (!self->base_info_handled && !xx_format_handle_base_info(self, pd))) {
+uint64_t xx_encrypted_apple_disk_image_get_number_of_archive_records(Abstractformat *self, xx_pd_struct *pd)
+{
+    if (!self || (!self->base_info_handled && !xx_format_handle_base_info(self, pd))) {
         return 0U;
     }
     return ((xx_encrypted_apple_disk_image *)self)->number_of_records;
@@ -426,19 +388,17 @@ uint64_t xx_encrypted_apple_disk_image_get_number_of_archive_records(
 
 /* -------------------------------------------------------------- records -- */
 
-static bool xx_eadi_copy_options(xx_list_s *destination,
-                                 const xx_list_s *source) {
+static bool xx_eadi_copy_options(xx_list_s *destination, const xx_list_s *source)
+{
     size_t index;
 
     if (!destination || !source) return source == NULL;
     for (index = 0U; index < source->count; ++index) {
-        const xx_meta *item =
-            (const xx_meta *)xx_list_at((const xx_list_t *)source, index);
+        const xx_meta *item = (const xx_meta *)xx_list_at((const xx_list_t *)source, index);
         xx_meta copy;
         if (!item) continue;
         xx_meta_init(&copy, item->meta_id);
-        if (!xx_var_copy(&copy.var, &item->var) ||
-            !xx_list_append(destination, &copy)) {
+        if (!xx_var_copy(&copy.var, &item->var) || !xx_list_append(destination, &copy)) {
             xx_meta_cleanup(&copy);
             return false;
         }
@@ -446,8 +406,8 @@ static bool xx_eadi_copy_options(xx_list_s *destination,
     return true;
 }
 
-static bool xx_eadi_populate_record(xx_archive_record *record,
-                                    const xx_eadi_private *parsed) {
+static bool xx_eadi_populate_record(xx_archive_record *record, const xx_eadi_private *parsed)
+{
     char detail[192];
     size_t used = 0U;
 
@@ -459,9 +419,7 @@ static bool xx_eadi_populate_record(xx_archive_record *record,
     record->data_offset = (int64_t)parsed->payload_offset;
     record->compressed_size = (int64_t)parsed->payload_size;
     if (parsed->version == 2U) {
-        record->header_size = (int64_t)XX_EADI_V2_HEADER_SIZE +
-                              (int64_t)parsed->number_of_keys *
-                                  (int64_t)XX_EADI_V2_KEY_POINTER_SIZE;
+        record->header_size = (int64_t)XX_EADI_V2_HEADER_SIZE + (int64_t)parsed->number_of_keys * (int64_t)XX_EADI_V2_KEY_POINTER_SIZE;
         xx_eadi_append_text(detail, sizeof(detail), &used, "encrcdsa v2 AES-");
         xx_eadi_append_u64(detail, sizeof(detail), &used, parsed->key_bits);
         xx_eadi_append_text(detail, sizeof(detail), &used, " block=");
@@ -469,20 +427,16 @@ static bool xx_eadi_populate_record(xx_archive_record *record,
         xx_eadi_append_text(detail, sizeof(detail), &used, " data_len=");
         xx_eadi_append_u64(detail, sizeof(detail), &used, parsed->data_length);
         xx_eadi_append_text(detail, sizeof(detail), &used, " keys=");
-        xx_eadi_append_u64(detail, sizeof(detail), &used,
-                           parsed->number_of_keys);
+        xx_eadi_append_u64(detail, sizeof(detail), &used, parsed->number_of_keys);
         xx_eadi_append_text(detail, sizeof(detail), &used, " passphrase_keys=");
-        xx_eadi_append_u64(detail, sizeof(detail), &used,
-                           parsed->passphrase_keys);
+        xx_eadi_append_u64(detail, sizeof(detail), &used, parsed->passphrase_keys);
     } else {
         record->header_size = (int64_t)XX_EADI_V1_TRAILER_SIZE;
         xx_eadi_append_text(detail, sizeof(detail), &used, "cdsaencr v1");
     }
     if (parsed->kdf_iterations != 0U) {
-        xx_eadi_append_text(detail, sizeof(detail), &used,
-                            " kdf=PBKDF2-HMAC-SHA1 iterations=");
-        xx_eadi_append_u64(detail, sizeof(detail), &used,
-                           parsed->kdf_iterations);
+        xx_eadi_append_text(detail, sizeof(detail), &used, " kdf=PBKDF2-HMAC-SHA1 iterations=");
+        xx_eadi_append_u64(detail, sizeof(detail), &used, parsed->kdf_iterations);
     }
     if (parsed->truncated) {
         xx_eadi_append_text(detail, sizeof(detail), &used, " TRUNCATED");
@@ -491,31 +445,19 @@ static bool xx_eadi_populate_record(xx_archive_record *record,
     return xx_archive_record_set_original_name(record, XX_EADI_MEMBER_NAME) &&
            /* v2 records the plaintext length; v1 does not, so the ciphertext
             * extent is all there is to report. */
-           xx_archive_record_set_meta_u64(
-               record, XX_META_ID_UNCOMPRESSED_SIZE,
-               parsed->version == 2U ? parsed->data_length
-                                     : parsed->payload_size) &&
-           xx_archive_record_set_meta_u64(record, XX_META_ID_COMPRESSED_SIZE,
-                                          parsed->payload_size) &&
-           xx_archive_record_set_meta_u64(record, XX_META_ID_COMPRESSION_METHOD,
-                                          0U) &&
-           xx_archive_record_set_meta_bool(record, XX_META_ID_IS_FOLDER,
-                                           false) &&
-           xx_archive_record_set_meta_bool(record, XX_META_ID_IS_ENCRYPTED,
-                                           true) &&
-           xx_archive_record_set_meta_u64(record, XX_META_ID_ENCRYPTION_METHOD,
-                                          parsed->version) &&
-           xx_archive_record_set_meta_str(record, XX_META_ID_COMMENT, detail);
+           xx_archive_record_set_meta_u64(record, XX_META_ID_UNCOMPRESSED_SIZE, parsed->version == 2U ? parsed->data_length : parsed->payload_size) &&
+           xx_archive_record_set_meta_u64(record, XX_META_ID_COMPRESSED_SIZE, parsed->payload_size) &&
+           xx_archive_record_set_meta_u64(record, XX_META_ID_COMPRESSION_METHOD, 0U) && xx_archive_record_set_meta_bool(record, XX_META_ID_IS_FOLDER, false) &&
+           xx_archive_record_set_meta_bool(record, XX_META_ID_IS_ENCRYPTED, true) &&
+           xx_archive_record_set_meta_u64(record, XX_META_ID_ENCRYPTION_METHOD, parsed->version) && xx_archive_record_set_meta_str(record, XX_META_ID_COMMENT, detail);
 }
 
-xx_archive_record_state *
-xx_encrypted_apple_disk_image_create_archive_records_reading(
-    Abstractformat *self, const xx_list_s *options, xx_pd_struct *pd) {
+xx_archive_record_state *xx_encrypted_apple_disk_image_create_archive_records_reading(Abstractformat *self, const xx_list_s *options, xx_pd_struct *pd)
+{
     xx_archive_record_state *state;
     xx_eadi_private *parsed;
 
-    if (!self || !self->device ||
-        (!self->base_info_handled && !xx_format_handle_base_info(self, pd))) {
+    if (!self || !self->device || (!self->base_info_handled && !xx_format_handle_base_info(self, pd))) {
         return NULL;
     }
     state = (xx_archive_record_state *)xx_mem_alloc(sizeof(*state));
@@ -526,8 +468,7 @@ xx_encrypted_apple_disk_image_create_archive_records_reading(
         return NULL;
     }
     xx_archive_record_state_init(state, self);
-    if (!xx_eadi_copy_options(&state->options, options) ||
-        !xx_eadi_parse(self, parsed, pd)) {
+    if (!xx_eadi_copy_options(&state->options, options) || !xx_eadi_parse(self, parsed, pd)) {
         xx_eadi_private_free(parsed);
         xx_archive_record_state_free(state);
         return NULL;
@@ -544,18 +485,14 @@ xx_encrypted_apple_disk_image_create_archive_records_reading(
     return state;
 }
 
-const xx_archive_record *
-xx_encrypted_apple_disk_image_get_current_archive_record(
-    Abstractformat *self, xx_archive_record_state *state) {
-    return self && state && state->format == self && state->has_record
-               ? &state->current_record
-               : NULL;
+const xx_archive_record *xx_encrypted_apple_disk_image_get_current_archive_record(Abstractformat *self, xx_archive_record_state *state)
+{
+    return self && state && state->format == self && state->has_record ? &state->current_record : NULL;
 }
 
-bool xx_encrypted_apple_disk_image_archive_record_move_to_next(
-    Abstractformat *self, xx_archive_record_state *state, xx_pd_struct *pd) {
-    if (!self || !state || state->format != self || !state->has_record ||
-        (pd && xx_pd_is_stopped(pd))) {
+bool xx_encrypted_apple_disk_image_archive_record_move_to_next(Abstractformat *self, xx_archive_record_state *state, xx_pd_struct *pd)
+{
+    if (!self || !state || state->format != self || !state->has_record || (pd && xx_pd_is_stopped(pd))) {
         return false;
     }
     xx_archive_record_cleanup(&state->current_record);
@@ -564,8 +501,8 @@ bool xx_encrypted_apple_disk_image_archive_record_move_to_next(
     return false;
 }
 
-bool xx_encrypted_apple_disk_image_unpack_current_archive_record(
-    Abstractformat *self, xx_archive_record_state *state, xx_pd_struct *pd) {
+bool xx_encrypted_apple_disk_image_unpack_current_archive_record(Abstractformat *self, xx_archive_record_state *state, xx_pd_struct *pd)
+{
     (void)self;
     (void)state;
     (void)pd;
@@ -576,15 +513,15 @@ bool xx_encrypted_apple_disk_image_unpack_current_archive_record(
     return false;
 }
 
-void xx_encrypted_apple_disk_image_free_archive_records_reading(
-    Abstractformat *self, xx_archive_record_state *state) {
+void xx_encrypted_apple_disk_image_free_archive_records_reading(Abstractformat *self, xx_archive_record_state *state)
+{
     (void)self;
     xx_archive_record_state_free(state);
 }
 
 /* ------------------------------------------------------------ accessors -- */
 
-uint32_t xx_encrypted_apple_disk_image_get_version(
-    const xx_encrypted_apple_disk_image *image) {
+uint32_t xx_encrypted_apple_disk_image_get_version(const xx_encrypted_apple_disk_image *image)
+{
     return image ? image->version : 0U;
 }

@@ -40,30 +40,12 @@ typedef struct xx_ecos_pattern_s {
 /* Longest first: a big-endian image with the nop also matches the shorter
  * no-nop big-endian pattern's first four bytes, so the longer one has to be
  * tried first for has_nop to be reported correctly. */
-static const xx_ecos_pattern xx_ecos_patterns[] = {
-    {{0x40U, 0x1AU, 0x68U, 0x00U, 0x00U, 0x00U, 0x00U, 0x00U, 0x33U, 0x5AU,
-      0x00U, 0x7FU},
-     12U,
-     true,
-     true},
-    {{0x00U, 0x68U, 0x1AU, 0x40U, 0x00U, 0x00U, 0x00U, 0x00U, 0x7FU, 0x00U,
-      0x5AU, 0x33U},
-     12U,
-     false,
-     true},
-    {{0x40U, 0x1AU, 0x68U, 0x00U, 0x33U, 0x5AU, 0x00U, 0x7FU, 0x00U, 0x00U,
-      0x00U, 0x00U},
-     8U,
-     true,
-     false},
-    {{0x00U, 0x68U, 0x1AU, 0x40U, 0x7FU, 0x00U, 0x5AU, 0x33U, 0x00U, 0x00U,
-      0x00U, 0x00U},
-     8U,
-     false,
-     false}};
+static const xx_ecos_pattern xx_ecos_patterns[] = {{{0x40U, 0x1AU, 0x68U, 0x00U, 0x00U, 0x00U, 0x00U, 0x00U, 0x33U, 0x5AU, 0x00U, 0x7FU}, 12U, true, true},
+                                                   {{0x00U, 0x68U, 0x1AU, 0x40U, 0x00U, 0x00U, 0x00U, 0x00U, 0x7FU, 0x00U, 0x5AU, 0x33U}, 12U, false, true},
+                                                   {{0x40U, 0x1AU, 0x68U, 0x00U, 0x33U, 0x5AU, 0x00U, 0x7FU, 0x00U, 0x00U, 0x00U, 0x00U}, 8U, true, false},
+                                                   {{0x00U, 0x68U, 0x1AU, 0x40U, 0x7FU, 0x00U, 0x5AU, 0x33U, 0x00U, 0x00U, 0x00U, 0x00U}, 8U, false, false}};
 
-#define XX_ECOS_PATTERN_COUNT \
-    (sizeof(xx_ecos_patterns) / sizeof(xx_ecos_patterns[0]))
+#define XX_ECOS_PATTERN_COUNT (sizeof(xx_ecos_patterns) / sizeof(xx_ecos_patterns[0]))
 
 typedef struct xx_ecos_parsed_s {
     int64_t input_size;
@@ -78,13 +60,12 @@ static void xx_ecos_vtable_destroy(Abstractformat *self);
 
 /* All positioning goes through seek64: the base address inside a larger flash
  * dump is not bounded by any 32-bit field, and long is 32-bit on Win64. */
-static bool xx_ecos_read_at(xx_io_device *device, int64_t offset, void *data,
-                            size_t size) {
+static bool xx_ecos_read_at(xx_io_device *device, int64_t offset, void *data, size_t size)
+{
     uint8_t *out = (uint8_t *)data;
     size_t done = 0U;
 
-    if (!device || (!data && size != 0U) || offset < 0 ||
-        xx_io_seek64(device, offset, SEEK_SET) != 0) {
+    if (!device || (!data && size != 0U) || offset < 0 || xx_io_seek64(device, offset, SEEK_SET) != 0) {
         return false;
     }
     while (done < size) {
@@ -97,8 +78,8 @@ static bool xx_ecos_read_at(xx_io_device *device, int64_t offset, void *data,
 
 /* --------------------------------------------------------------- parse -- */
 
-static bool xx_ecos_parse(Abstractformat *self, xx_ecos_parsed *parsed,
-                          xx_pd_struct *pd) {
+static bool xx_ecos_parse(Abstractformat *self, xx_ecos_parsed *parsed, xx_pd_struct *pd)
+{
     uint8_t window[XX_ECOS_MAX_PATTERN_SIZE];
     size_t available;
     size_t index;
@@ -108,8 +89,7 @@ static bool xx_ecos_parse(Abstractformat *self, xx_ecos_parsed *parsed,
         xx_mem_zero(parsed, sizeof(*parsed));
         parsed->input_size = -1;
     }
-    if (!self || !self->device || !parsed || self->base_address < 0 ||
-        (pd && xx_pd_is_stopped(pd))) {
+    if (!self || !self->device || !parsed || self->base_address < 0 || (pd && xx_pd_is_stopped(pd))) {
         return false;
     }
     parsed->input_size = xx_io_total_size(self->device);
@@ -118,9 +98,7 @@ static bool xx_ecos_parse(Abstractformat *self, xx_ecos_parsed *parsed,
     /* The shortest pattern is eight bytes; anything smaller cannot match. */
     if (span < 8) return false;
 
-    available = (span < (int64_t)XX_ECOS_MAX_PATTERN_SIZE)
-                    ? (size_t)span
-                    : XX_ECOS_MAX_PATTERN_SIZE;
+    available = (span < (int64_t)XX_ECOS_MAX_PATTERN_SIZE) ? (size_t)span : XX_ECOS_MAX_PATTERN_SIZE;
     if (!xx_ecos_read_at(self->device, self->base_address, window, available)) {
         return false;
     }
@@ -139,7 +117,8 @@ static bool xx_ecos_parse(Abstractformat *self, xx_ecos_parsed *parsed,
 
 /* ----------------------------------------------------------- lifecycle -- */
 
-void xx_ecos_init(xx_ecos *ecos, xx_io_device *dev, int64_t base_address) {
+void xx_ecos_init(xx_ecos *ecos, xx_io_device *dev, int64_t base_address)
+{
     if (!ecos) return;
     xx_mem_zero(ecos, sizeof(*ecos));
     xx_format_init(&ecos->format, dev, base_address);
@@ -157,23 +136,27 @@ void xx_ecos_init(xx_ecos *ecos, xx_io_device *dev, int64_t base_address) {
     ecos->format.destroy = xx_ecos_vtable_destroy;
 }
 
-xx_ecos *xx_ecos_create(xx_io_device *dev, int64_t base_address) {
+xx_ecos *xx_ecos_create(xx_io_device *dev, int64_t base_address)
+{
     xx_ecos *ecos = (xx_ecos *)xx_mem_alloc(sizeof(*ecos));
 
     if (ecos) xx_ecos_init(ecos, dev, base_address);
     return ecos;
 }
 
-void xx_ecos_destroy(xx_ecos *ecos) {
+void xx_ecos_destroy(xx_ecos *ecos)
+{
     if (!ecos) return;
     xx_format_cleanup_extra_parameters(&ecos->format);
 }
 
-static void xx_ecos_vtable_destroy(Abstractformat *self) {
+static void xx_ecos_vtable_destroy(Abstractformat *self)
+{
     xx_ecos_destroy((xx_ecos *)self);
 }
 
-void xx_ecos_free(xx_ecos *ecos) {
+void xx_ecos_free(xx_ecos *ecos)
+{
     if (!ecos) return;
     xx_ecos_destroy(ecos);
     xx_mem_free(ecos);
@@ -181,13 +164,15 @@ void xx_ecos_free(xx_ecos *ecos) {
 
 /* -------------------------------------------------------------- format -- */
 
-bool xx_ecos_check_is_valid(Abstractformat *self, xx_pd_struct *pd) {
+bool xx_ecos_check_is_valid(Abstractformat *self, xx_pd_struct *pd)
+{
     xx_ecos_parsed parsed;
 
     return xx_ecos_parse(self, &parsed, pd);
 }
 
-bool xx_ecos_handle_base_info(Abstractformat *self, xx_pd_struct *pd) {
+bool xx_ecos_handle_base_info(Abstractformat *self, xx_pd_struct *pd)
+{
     xx_ecos *ecos = (xx_ecos *)self;
     xx_ecos_parsed parsed;
 
@@ -217,9 +202,9 @@ bool xx_ecos_handle_base_info(Abstractformat *self, xx_pd_struct *pd) {
     return true;
 }
 
-int64_t xx_ecos_get_format_size(Abstractformat *self, xx_pd_struct *pd) {
-    if (!self ||
-        (!self->base_info_handled && !xx_format_handle_base_info(self, pd))) {
+int64_t xx_ecos_get_format_size(Abstractformat *self, xx_pd_struct *pd)
+{
+    if (!self || (!self->base_info_handled && !xx_format_handle_base_info(self, pd))) {
         return -1;
     }
     return self->format_size;
@@ -227,14 +212,17 @@ int64_t xx_ecos_get_format_size(Abstractformat *self, xx_pd_struct *pd) {
 
 /* ------------------------------------------------------------ accessors -- */
 
-bool xx_ecos_is_big_endian(const xx_ecos *ecos) {
+bool xx_ecos_is_big_endian(const xx_ecos *ecos)
+{
     return ecos ? ecos->big_endian : false;
 }
 
-bool xx_ecos_has_nop(const xx_ecos *ecos) {
+bool xx_ecos_has_nop(const xx_ecos *ecos)
+{
     return ecos ? ecos->has_nop : false;
 }
 
-uint32_t xx_ecos_get_pattern_size(const xx_ecos *ecos) {
+uint32_t xx_ecos_get_pattern_size(const xx_ecos *ecos)
+{
     return ecos ? ecos->pattern_size : 0U;
 }

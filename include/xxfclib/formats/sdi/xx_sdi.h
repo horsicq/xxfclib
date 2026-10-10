@@ -25,7 +25,9 @@ extern "C" {
 
 typedef struct xx_sdi xx_sdi;
 typedef struct xx_sdi xx_sdi_t;
-struct xx_sdi { Abstractformat format; };
+struct xx_sdi {
+    Abstractformat format;
+};
 
 XXFC_API void xx_sdi_init(xx_sdi *reader, xx_io_device *device, int64_t base_address);
 XXFC_API xx_sdi *xx_sdi_create(xx_io_device *device, int64_t base_address);
@@ -37,9 +39,9 @@ XXFC_API bool xx_sdi_handle_base_info(Abstractformat *format, xx_pd_struct *pd);
  * its current cursor. Failure may leave partial output; input cursor is restored.
  * Output must differ from input. This function does not close either device.
  */
-XXFC_API bool xx_sdi_unpack_to_device(xx_sdi *reader, uint64_t record_index,
-    xx_io_device *output, xx_pd_struct *pd);
-static inline Abstractformat *xx_sdi_to_format(xx_sdi *reader) {
+XXFC_API bool xx_sdi_unpack_to_device(xx_sdi *reader, uint64_t record_index, xx_io_device *output, xx_pd_struct *pd);
+static inline Abstractformat *xx_sdi_to_format(xx_sdi *reader)
+{
     return reader ? &reader->format : NULL;
 }
 #ifdef __cplusplus

@@ -13,8 +13,6 @@
  * are relative to the cramfs superblock and count four-byte units. The two
  * high bits identify direct and uncompressed storage. Compressed direct
  * pointers require a length prefix and are intentionally excluded here. */
-bool xx_cramfs_direct_native_span(uint32_t pointer, int64_t base,
-                                  int64_t image_end, size_t expected,
-                                  int64_t *start, int64_t *next);
+bool xx_cramfs_direct_native_span(uint32_t pointer, int64_t base, int64_t image_end, size_t expected, int64_t *start, int64_t *next);
 
 #endif

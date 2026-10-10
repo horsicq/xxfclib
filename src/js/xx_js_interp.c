@@ -23,8 +23,12 @@
 
 #include "xx_js_ast.h"
 
-
-typedef enum { CT_NORMAL = 0, CT_BREAK, CT_CONTINUE, CT_RETURN } JSCompletionType;
+typedef enum {
+    CT_NORMAL = 0,
+    CT_BREAK,
+    CT_CONTINUE,
+    CT_RETURN
+} JSCompletionType;
 
 typedef struct {
     JSCompletionType type;
@@ -534,9 +538,7 @@ static void hoist_declarations_node(JSCtx *pCtx, JSNode *pNode, JSFrame *pFrame,
             return;
 
         case N_WHILE:
-        case N_DOWHILE:
-            hoist_declarations(pCtx, pNode->d, pFrame, 0);
-            return;
+        case N_DOWHILE: hoist_declarations(pCtx, pNode->d, pFrame, 0); return;
 
         case N_TRY:
             hoist_declarations(pCtx, pNode->a, pFrame, 0);
@@ -544,13 +546,9 @@ static void hoist_declarations_node(JSCtx *pCtx, JSNode *pNode, JSFrame *pFrame,
             hoist_declarations(pCtx, pNode->c, pFrame, 0);
             return;
 
-        case N_LABELED:
-            hoist_declarations(pCtx, pNode->a, pFrame, 0);
-            return;
+        case N_LABELED: hoist_declarations(pCtx, pNode->a, pFrame, 0); return;
 
-        case N_EXPRSTMT:
-            (void)bTopLevel;
-            return;
+        case N_EXPRSTMT: (void)bTopLevel; return;
 
         default: return;
     }

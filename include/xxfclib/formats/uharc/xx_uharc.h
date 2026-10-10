@@ -32,19 +32,15 @@ typedef struct xx_uharc {
 typedef xx_uharc xx_uharc_t;
 typedef xx_uharc XUharc;
 
-XXFC_API void xx_uharc_init(xx_uharc *archive, xx_io_device *device,
-                            int64_t base_address);
+XXFC_API void xx_uharc_init(xx_uharc *archive, xx_io_device *device, int64_t base_address);
 XXFC_API xx_uharc *xx_uharc_create(xx_io_device *device, int64_t base_address);
 XXFC_API void xx_uharc_destroy(xx_uharc *archive);
 XXFC_API void xx_uharc_free(xx_uharc *archive);
 
 XXFC_API bool xx_uharc_check_is_valid(Abstractformat *self, xx_pd_struct *pd);
-XXFC_API bool xx_uharc_handle_base_info(Abstractformat *self,
-                                        xx_pd_struct *pd);
-XXFC_API int64_t xx_uharc_get_format_size(Abstractformat *self,
-                                          xx_pd_struct *pd);
-XXFC_API uint64_t xx_uharc_get_number_of_archive_records(Abstractformat *self,
-                                                         xx_pd_struct *pd);
+XXFC_API bool xx_uharc_handle_base_info(Abstractformat *self, xx_pd_struct *pd);
+XXFC_API int64_t xx_uharc_get_format_size(Abstractformat *self, xx_pd_struct *pd);
+XXFC_API uint64_t xx_uharc_get_number_of_archive_records(Abstractformat *self, xx_pd_struct *pd);
 
 /** @brief Raw version byte (0x02, 0x04, 0x06, ...); 0 when not probed. */
 XXFC_API uint8_t xx_uharc_get_version(const xx_uharc *archive);

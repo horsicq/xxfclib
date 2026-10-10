@@ -106,12 +106,11 @@
 static const char epsf_runtime_name[] = "SETUPMN.DLL";
 static const char epsf_script_name[] = "SETUP_SCRIPT.DFM";
 static const char epsf_damaged_name[] = "PRODUCT_ARCHIVE.ARCV";
-static const uint8_t epsf_arcv4_tag[EPSF_TAG_SIZE] = { 'A', 'R', 'C', 'V',
-                                                       0x00U, 0x04U };
+static const uint8_t epsf_arcv4_tag[EPSF_TAG_SIZE] = {'A', 'R', 'C', 'V', 0x00U, 0x04U};
 
 typedef struct epsf_layout_s {
-    int64_t end;             /* device size */
-    int64_t header_offset;   /* absolute offsets from here on */
+    int64_t end;           /* device size */
+    int64_t header_offset; /* absolute offsets from here on */
     uint32_t runtime_size;
     uint32_t runtime_packed;
     uint32_t runtime_sum;
@@ -122,7 +121,7 @@ typedef struct epsf_layout_s {
     int64_t archive_offset;
     int64_t archive_size;
     uint64_t archive_records;
-    int64_t damaged_offset;  /* gated but unparsable container, or -1 */
+    int64_t damaged_offset; /* gated but unparsable container, or -1 */
 } epsf_layout;
 
 typedef struct epsf_member_s {
@@ -167,12 +166,14 @@ typedef struct epsf_names_s {
 } epsf_names;
 
 #include "xxfclib/global/xx_global.h"
-static size_t gb_eschalon_setup_epsf_capacity(void) {
+static size_t gb_eschalon_setup_epsf_capacity(void)
+{
     size_t n = xx_get_file_buffer_size();
     if (!n) n = XX_DEFAULT_FILE_BUFFER_SIZE;
     return n > (SIZE_MAX >> 1) ? SIZE_MAX >> 1 : n;
 }
-static ssize_t gb_eschalon_setup_epsf_read(xx_io_device *device, void *buffer, size_t size, size_t capacity) {
+static ssize_t gb_eschalon_setup_epsf_read(xx_io_device *device, void *buffer, size_t size, size_t capacity)
+{
     size_t done = 0;
     if (size > (SIZE_MAX >> 1)) return -1;
     while (done < size) {
@@ -186,7 +187,8 @@ static ssize_t gb_eschalon_setup_epsf_read(xx_io_device *device, void *buffer, s
     }
     return (ssize_t)done;
 }
-static ssize_t gb_eschalon_setup_epsf_write(xx_io_device *device, const void *buffer, size_t size, size_t capacity) {
+static ssize_t gb_eschalon_setup_epsf_write(xx_io_device *device, const void *buffer, size_t size, size_t capacity)
+{
     size_t done = 0;
     if (size > (SIZE_MAX >> 1)) return -1;
     while (done < size) {
@@ -201,16 +203,13 @@ static ssize_t gb_eschalon_setup_epsf_write(xx_io_device *device, const void *bu
     return (ssize_t)done;
 }
 
-static bool epsf_read_at(xx_io_device *device, int64_t offset, void *buffer,
-                         size_t size) {
+static bool epsf_read_at(xx_io_device *device, int64_t offset, void *buffer, size_t size)
+{
     const size_t file_io_capacity = gb_eschalon_setup_epsf_capacity();
     size_t done = 0U;
-    if (!device || (!buffer && size != 0U) || offset < 0 ||
-        xx_io_seek64(device, offset, SEEK_SET) != 0)
-        return false;
+    if (!device || (!buffer && size != 0U) || offset < 0 || xx_io_seek64(device, offset, SEEK_SET) != 0) return false;
     while (done < size) {
-        ssize_t amount = gb_eschalon_setup_epsf_read(device, (uint8_t *)buffer + done,
-                                    size - done, file_io_capacity);
+        ssize_t amount = gb_eschalon_setup_epsf_read(device, (uint8_t *)buffer + done, size - done, file_io_capacity);
         if (amount <= 0 || (size_t)amount > size - done) return false;
         done += (size_t)amount;
     }
@@ -221,7 +220,8 @@ static bool epsf_read_at(xx_io_device *device, int64_t offset, void *buffer,
 /* Carrier: PE overlay and the EPSF header                                */
 /* ---------------------------------------------------------------------- */
 
-static bool epsf_locate(Abstractformat *format, epsf_layout *out) {
+static bool epsf_locate(Abstractformat *format, epsf_layout *out)
+{
     uint8_t dos[EPSF_DOS_HEADER_SIZE];
     uint8_t nt[EPSF_NT_HEADER_SIZE];
     uint8_t sections[EPSF_MAX_SECTIONS * EPSF_SECTION_SIZE];
@@ -231,61 +231,41 @@ static bool epsf_locate(Abstractformat *format, epsf_layout *out) {
     uint64_t table, raw_end = 0U;
     uint32_t lfanew, runtime_size, runtime_packed, runtime_sum;
     uint16_t section_count, optional_size, optional_magic, index;
-    if (!format || !format->device || !out || format->base_address < 0)
-        return false;
+    if (!format || !format->device || !out || format->base_address < 0) return false;
     device = format->device;
     base = format->base_address;
     total = xx_io_total_size(device);
-    if (total < base ||
-        total - base < (int64_t)(EPSF_DOS_HEADER_SIZE + EPSF_HEADER_SIZE))
-        return false;
+    if (total < base || total - base < (int64_t)(EPSF_DOS_HEADER_SIZE + EPSF_HEADER_SIZE)) return false;
     size = total - base;
-    if (!epsf_read_at(device, base, dos, sizeof(dos)) || dos[0] != 'M' ||
-        dos[1] != 'Z')
-        return false;
+    if (!epsf_read_at(device, base, dos, sizeof(dos)) || dos[0] != 'M' || dos[1] != 'Z') return false;
     lfanew = xx_data_get_u32(dos + 0x3cU, 4, 0, false);
-    if ((uint64_t)lfanew + EPSF_NT_HEADER_SIZE > (uint64_t)size ||
-        !epsf_read_at(device, base + (int64_t)lfanew, nt, sizeof(nt)) ||
-        nt[0] != 'P' || nt[1] != 'E' || nt[2] != 0U || nt[3] != 0U)
+    if ((uint64_t)lfanew + EPSF_NT_HEADER_SIZE > (uint64_t)size || !epsf_read_at(device, base + (int64_t)lfanew, nt, sizeof(nt)) || nt[0] != 'P' || nt[1] != 'E' ||
+        nt[2] != 0U || nt[3] != 0U)
         return false;
     section_count = xx_data_get_u16(nt + 6U, 2, 0, false);
     optional_size = xx_data_get_u16(nt + 20U, 2, 0, false);
     optional_magic = xx_data_get_u16(nt + 24U, 2, 0, false);
-    if (section_count == 0U || section_count > EPSF_MAX_SECTIONS ||
-        optional_size < 2U ||
-        (optional_magic != 0x10bU && optional_magic != 0x20bU))
-        return false;
+    if (section_count == 0U || section_count > EPSF_MAX_SECTIONS || optional_size < 2U || (optional_magic != 0x10bU && optional_magic != 0x20bU)) return false;
     table = (uint64_t)lfanew + 24U + optional_size;
-    if (table > (uint64_t)size ||
-        (uint64_t)section_count * EPSF_SECTION_SIZE > (uint64_t)size - table ||
-        !epsf_read_at(device, base + (int64_t)table, sections,
-                      (size_t)section_count * EPSF_SECTION_SIZE))
+    if (table > (uint64_t)size || (uint64_t)section_count * EPSF_SECTION_SIZE > (uint64_t)size - table ||
+        !epsf_read_at(device, base + (int64_t)table, sections, (size_t)section_count * EPSF_SECTION_SIZE))
         return false;
     for (index = 0U; index < section_count; ++index) {
         const uint8_t *section = sections + (size_t)index * EPSF_SECTION_SIZE;
         uint32_t raw_size = xx_data_get_u32(section + 16U, 4, 0, false);
         uint32_t raw_pointer = xx_data_get_u32(section + 20U, 4, 0, false);
-        if (raw_size != 0U &&
-            (uint64_t)raw_pointer + raw_size > raw_end)
-            raw_end = (uint64_t)raw_pointer + raw_size;
+        if (raw_size != 0U && (uint64_t)raw_pointer + raw_size > raw_end) raw_end = (uint64_t)raw_pointer + raw_size;
     }
     /* The header sits exactly at the overlay: the end of the furthest raw
      * section data. */
-    if (raw_end == 0U || raw_end > (uint64_t)size - EPSF_HEADER_SIZE ||
-        !epsf_read_at(device, base + (int64_t)raw_end, header,
-                      sizeof(header)) ||
-        xx_rt_memcmp(header, "EPSF", 4U) != 0 ||
-        xx_data_get_u16(header + 4U, 2, 0, false) != EPSF_VERSION)
+    if (raw_end == 0U || raw_end > (uint64_t)size - EPSF_HEADER_SIZE || !epsf_read_at(device, base + (int64_t)raw_end, header, sizeof(header)) ||
+        xx_rt_memcmp(header, "EPSF", 4U) != 0 || xx_data_get_u16(header + 4U, 2, 0, false) != EPSF_VERSION)
         return false;
     runtime_size = xx_data_get_u32(header + 6U, 4, 0, false);
     runtime_packed = xx_data_get_u32(header + 10U, 4, 0, false);
     runtime_sum = xx_data_get_u32(header + 14U, 4, 0, false);
-    if (runtime_size == 0U || runtime_packed == 0U ||
-        runtime_size > EPSF_MAX_RUNTIME || runtime_packed > EPSF_MAX_RUNTIME ||
-        (uint64_t)runtime_packed >
-            (uint64_t)size - raw_end - EPSF_HEADER_SIZE ||
-        (uint64_t)runtime_size >
-            (uint64_t)runtime_packed * EPSF_MAX_RATIO + EPSF_MAX_RATIO ||
+    if (runtime_size == 0U || runtime_packed == 0U || runtime_size > EPSF_MAX_RUNTIME || runtime_packed > EPSF_MAX_RUNTIME ||
+        (uint64_t)runtime_packed > (uint64_t)size - raw_end - EPSF_HEADER_SIZE || (uint64_t)runtime_size > (uint64_t)runtime_packed * EPSF_MAX_RATIO + EPSF_MAX_RATIO ||
         (uint64_t)runtime_sum > (uint64_t)runtime_size * 255U)
         return false;
     xx_rt_memset(out, 0, sizeof(*out));
@@ -306,7 +286,8 @@ static bool epsf_locate(Abstractformat *format, epsf_layout *out) {
 /* Region 3: the ARCV 4.00 container                                      */
 /* ---------------------------------------------------------------------- */
 
-static bool epsf_filled(const uint8_t *data, size_t size, uint8_t value) {
+static bool epsf_filled(const uint8_t *data, size_t size, uint8_t value)
+{
     size_t index;
     for (index = 0U; index < size; ++index)
         if (data[index] != value) return false;
@@ -315,59 +296,40 @@ static bool epsf_filled(const uint8_t *data, size_t size, uint8_t value) {
 
 /* Constant-cost gate: the fixed ARCV4 header fill, then the first FILE
  * prologue and the DATA header behind its body.  Three reads, no walk. */
-static bool epsf_gate_archive(xx_io_device *device, const epsf_layout *layout,
-                              int64_t candidate) {
+static bool epsf_gate_archive(xx_io_device *device, const epsf_layout *layout, int64_t candidate)
+{
     uint8_t header[EPSF_ARCV_HEADER_SIZE];
     uint8_t prologue[EPSF_ARCV_PROLOGUE_SIZE];
     uint8_t data[EPSF_ARCV_DATA_SIZE];
     uint32_t record_size, data_type;
     uint16_t subvariant;
     int64_t room = layout->end - candidate;
-    if (candidate < 0 ||
-        room < (int64_t)(EPSF_ARCV_HEADER_SIZE + EPSF_ARCV_PROLOGUE_SIZE) ||
-        !epsf_read_at(device, candidate, header, sizeof(header)) ||
+    if (candidate < 0 || room < (int64_t)(EPSF_ARCV_HEADER_SIZE + EPSF_ARCV_PROLOGUE_SIZE) || !epsf_read_at(device, candidate, header, sizeof(header)) ||
         xx_rt_memcmp(header, epsf_arcv4_tag, EPSF_TAG_SIZE) != 0)
         return false;
     subvariant = xx_data_get_u16(header + 6U, 2, 0, false);
-    if ((subvariant != 1U && subvariant != 5U) ||
-        !epsf_filled(header + EPSF_ARCV_ZERO_OFFSET, EPSF_ARCV_ZERO_SIZE, 0U) ||
-        !epsf_filled(header + EPSF_ARCV_AA_OFFSET, EPSF_ARCV_AA_SIZE, 0xaaU) ||
-        !epsf_filled(header + EPSF_ARCV_TAIL_ZERO_OFFSET,
-                     EPSF_ARCV_TAIL_ZERO_SIZE, 0U) ||
-        !epsf_read_at(device, candidate + (int64_t)EPSF_ARCV_HEADER_SIZE,
-                      prologue, sizeof(prologue)) ||
-        xx_rt_memcmp(prologue, "FILE", 4U) != 0 ||
-        (xx_data_get_u32(prologue + 4U, 4, 0, false) & 0xffU) != 1U ||
-        xx_data_get_u32(prologue + 8U, 4, 0, false) != EPSF_ARCV_PROLOGUE_SIZE)
+    if ((subvariant != 1U && subvariant != 5U) || !epsf_filled(header + EPSF_ARCV_ZERO_OFFSET, EPSF_ARCV_ZERO_SIZE, 0U) ||
+        !epsf_filled(header + EPSF_ARCV_AA_OFFSET, EPSF_ARCV_AA_SIZE, 0xaaU) || !epsf_filled(header + EPSF_ARCV_TAIL_ZERO_OFFSET, EPSF_ARCV_TAIL_ZERO_SIZE, 0U) ||
+        !epsf_read_at(device, candidate + (int64_t)EPSF_ARCV_HEADER_SIZE, prologue, sizeof(prologue)) || xx_rt_memcmp(prologue, "FILE", 4U) != 0 ||
+        (xx_data_get_u32(prologue + 4U, 4, 0, false) & 0xffU) != 1U || xx_data_get_u32(prologue + 8U, 4, 0, false) != EPSF_ARCV_PROLOGUE_SIZE)
         return false;
     record_size = xx_data_get_u32(prologue + 12U, 4, 0, false);
     if (record_size < 40U || record_size > EPSF_ARCV_MAX_BODY ||
-        (int64_t)(EPSF_ARCV_HEADER_SIZE + EPSF_ARCV_PROLOGUE_SIZE +
-                  EPSF_ARCV_DATA_SIZE) + (int64_t)record_size > room ||
-        !epsf_read_at(device,
-                      candidate + (int64_t)(EPSF_ARCV_HEADER_SIZE +
-                                            EPSF_ARCV_PROLOGUE_SIZE) +
-                          (int64_t)record_size,
-                      data, sizeof(data)))
+        (int64_t)(EPSF_ARCV_HEADER_SIZE + EPSF_ARCV_PROLOGUE_SIZE + EPSF_ARCV_DATA_SIZE) + (int64_t)record_size > room ||
+        !epsf_read_at(device, candidate + (int64_t)(EPSF_ARCV_HEADER_SIZE + EPSF_ARCV_PROLOGUE_SIZE) + (int64_t)record_size, data, sizeof(data)))
         return false;
     data_type = xx_data_get_u32(data + 4U, 4, 0, false) & 0xffU;
-    return xx_rt_memcmp(data, "DATA", 4U) == 0 &&
-           (data_type == 1U || data_type == 5U) &&
-           xx_data_get_u32(data + 8U, 4, 0, false) == EPSF_ARCV_DATA_SIZE &&
-           xx_data_get_u32(data + 16U, 4, 0, false) == 0U && xx_data_get_u32(data + 24U, 4, 0, false) == 0U &&
-           xx_data_get_u32(data + 28U, 4, 0, false) == 0U;
+    return xx_rt_memcmp(data, "DATA", 4U) == 0 && (data_type == 1U || data_type == 5U) && xx_data_get_u32(data + 8U, 4, 0, false) == EPSF_ARCV_DATA_SIZE &&
+           xx_data_get_u32(data + 16U, 4, 0, false) == 0U && xx_data_get_u32(data + 24U, 4, 0, false) == 0U && xx_data_get_u32(data + 28U, 4, 0, false) == 0U;
 }
 
-static bool epsf_try_archive(Abstractformat *format, epsf_layout *layout,
-                             int64_t candidate, xx_pd_struct *pd) {
+static bool epsf_try_archive(Abstractformat *format, epsf_layout *layout, int64_t candidate, xx_pd_struct *pd)
+{
     xx_arcv4 inner;
     bool valid;
     xx_arcv4_init(&inner, format->device, candidate);
-    valid = xx_arcv4_handle_base_info(&inner.format, pd) &&
-            inner.format.format_size > 0 &&
-            inner.format.format_size <= layout->end - candidate &&
-            inner.number_of_records != 0U &&
-            inner.number_of_records <= EPSF_MAX_ARCHIVE_RECORDS;
+    valid = xx_arcv4_handle_base_info(&inner.format, pd) && inner.format.format_size > 0 && inner.format.format_size <= layout->end - candidate &&
+            inner.number_of_records != 0U && inner.number_of_records <= EPSF_MAX_ARCHIVE_RECORDS;
     if (valid) {
         layout->archive_offset = candidate;
         layout->archive_size = inner.format.format_size;
@@ -377,19 +339,15 @@ static bool epsf_try_archive(Abstractformat *format, epsf_layout *layout,
     return valid;
 }
 
-static void epsf_find_archive(Abstractformat *format, epsf_layout *layout,
-                              xx_pd_struct *pd) {
+static void epsf_find_archive(Abstractformat *format, epsf_layout *layout, xx_pd_struct *pd)
+{
     const size_t file_io_capacity = gb_eschalon_setup_epsf_capacity();
     int64_t position = layout->script_offset;
     int64_t limit = layout->end;
     unsigned candidates = 0U;
-    if (limit - position > EPSF_SEARCH_WINDOW)
-        limit = position + EPSF_SEARCH_WINDOW;
-    while (limit - position >= (int64_t)EPSF_TAG_SIZE &&
-           candidates < EPSF_MAX_CANDIDATES && !xx_pd_is_stopped(pd)) {
-        int64_t candidate = xx_io_find_bytes_buffer_optimize_ex(
-            format->device, position, limit - position, epsf_arcv4_tag,
-            EPSF_TAG_SIZE, file_io_capacity, pd);
+    if (limit - position > EPSF_SEARCH_WINDOW) limit = position + EPSF_SEARCH_WINDOW;
+    while (limit - position >= (int64_t)EPSF_TAG_SIZE && candidates < EPSF_MAX_CANDIDATES && !xx_pd_is_stopped(pd)) {
+        int64_t candidate = xx_io_find_bytes_buffer_optimize_ex(format->device, position, limit - position, epsf_arcv4_tag, EPSF_TAG_SIZE, file_io_capacity, pd);
         if (candidate < 0) break;
         ++candidates;
         if (epsf_gate_archive(format->device, layout, candidate)) {
@@ -397,9 +355,7 @@ static void epsf_find_archive(Abstractformat *format, epsf_layout *layout,
              * is the product container; if its chain does not parse it is
              * damaged, and later hits (which may well lie inside it) are not
              * worth another multi-second walk. */
-            if (epsf_try_archive(format, layout, candidate, pd))
-                layout->script_region =
-                    layout->archive_offset - layout->script_offset;
+            if (epsf_try_archive(format, layout, candidate, pd)) layout->script_region = layout->archive_offset - layout->script_offset;
             else if (!xx_pd_is_stopped(pd)) {
                 layout->damaged_offset = candidate;
                 layout->script_region = candidate - layout->script_offset;
@@ -417,8 +373,8 @@ static void epsf_find_archive(Abstractformat *format, epsf_layout *layout,
 /* Decode a method-2 stream that ends at its end symbol.  On success the
  * output holds exactly the decoded bytes; *output may be NULL to only
  * measure. */
-static bool epsf_decode_open_stream(const uint8_t *packed, size_t packed_size,
-                                    uint8_t **output, size_t *output_size) {
+static bool epsf_decode_open_stream(const uint8_t *packed, size_t packed_size, uint8_t **output, size_t *output_size)
+{
     size_t capacity = EPSF_SCRIPT_FIRST_OUTPUT;
     if (output) *output = NULL;
     if (output_size) *output_size = 0U;
@@ -427,39 +383,30 @@ static bool epsf_decode_open_stream(const uint8_t *packed, size_t packed_size,
         uint8_t *buffer = (uint8_t *)xx_mem_alloc(capacity);
         size_t produced = 0U, check = 0U;
         if (!buffer) return false;
-        (void)xx_arcv4_decode_memory(packed, packed_size, buffer, capacity,
-                                     &produced);
-        if (produced != 0U && produced < capacity &&
-            xx_arcv4_decode_memory(packed, packed_size, buffer, produced,
-                                   &check) &&
-            check == produced) {
-            if (output)
-                *output = buffer;
-            else
-                xx_mem_free(buffer);
+        (void)xx_arcv4_decode_memory(packed, packed_size, buffer, capacity, &produced);
+        if (produced != 0U && produced < capacity && xx_arcv4_decode_memory(packed, packed_size, buffer, produced, &check) && check == produced) {
+            if (output) *output = buffer;
+            else xx_mem_free(buffer);
             if (output_size) *output_size = produced;
             return true;
         }
         xx_mem_free(buffer);
         /* Only a stream that ran into the end of the buffer earns a larger
          * one; anything else stopped on a real error. */
-        if (produced + EPSF_MAX_MATCH <= capacity ||
-            capacity >= EPSF_SCRIPT_MAX_OUTPUT)
-            return false;
+        if (produced + EPSF_MAX_MATCH <= capacity || capacity >= EPSF_SCRIPT_MAX_OUTPUT) return false;
         capacity *= 4U;
-        if (capacity > EPSF_SCRIPT_MAX_OUTPUT)
-            capacity = EPSF_SCRIPT_MAX_OUTPUT;
+        if (capacity > EPSF_SCRIPT_MAX_OUTPUT) capacity = EPSF_SCRIPT_MAX_OUTPUT;
     }
 }
 
-static size_t epsf_script_input_size(const epsf_layout *layout) {
+static size_t epsf_script_input_size(const epsf_layout *layout)
+{
     if (layout->script_region <= 0) return 0U;
-    return layout->script_region > (int64_t)EPSF_SCRIPT_MAX_INPUT
-               ? (size_t)EPSF_SCRIPT_MAX_INPUT
-               : (size_t)layout->script_region;
+    return layout->script_region > (int64_t)EPSF_SCRIPT_MAX_INPUT ? (size_t)EPSF_SCRIPT_MAX_INPUT : (size_t)layout->script_region;
 }
 
-static void epsf_measure_script(Abstractformat *format, epsf_layout *layout) {
+static void epsf_measure_script(Abstractformat *format, epsf_layout *layout)
+{
     size_t input_size = epsf_script_input_size(layout);
     size_t decoded = 0U;
     uint8_t *packed;
@@ -467,15 +414,13 @@ static void epsf_measure_script(Abstractformat *format, epsf_layout *layout) {
     if (input_size == 0U) return;
     packed = (uint8_t *)xx_mem_alloc(input_size);
     if (!packed) return;
-    if (epsf_read_at(format->device, layout->script_offset, packed,
-                     input_size) &&
-        epsf_decode_open_stream(packed, input_size, NULL, &decoded))
+    if (epsf_read_at(format->device, layout->script_offset, packed, input_size) && epsf_decode_open_stream(packed, input_size, NULL, &decoded))
         layout->script_size = decoded;
     xx_mem_free(packed);
 }
 
-static bool epsf_parse_layout(Abstractformat *format, epsf_layout *layout,
-                              xx_pd_struct *pd) {
+static bool epsf_parse_layout(Abstractformat *format, epsf_layout *layout, xx_pd_struct *pd)
+{
     if (!epsf_locate(format, layout)) return false;
     if (pd && xx_pd_is_stopped(pd)) return false;
     epsf_find_archive(format, layout, pd);
@@ -486,29 +431,30 @@ static bool epsf_parse_layout(Abstractformat *format, epsf_layout *layout,
 
 /* A script region that does not decode is still listed (as a member that
  * cannot be extracted), so that its loss shows. */
-static bool epsf_script_listed(const epsf_layout *layout) {
+static bool epsf_script_listed(const epsf_layout *layout)
+{
     return layout->script_size != 0U || layout->script_region > 0;
 }
 
-static uint64_t epsf_record_count(const epsf_layout *layout) {
-    return 1U + (epsf_script_listed(layout) ? 1U : 0U) +
-           (layout->archive_offset >= 0 ? layout->archive_records : 0U) +
-           (layout->damaged_offset >= 0 ? 1U : 0U);
+static uint64_t epsf_record_count(const epsf_layout *layout)
+{
+    return 1U + (epsf_script_listed(layout) ? 1U : 0U) + (layout->archive_offset >= 0 ? layout->archive_records : 0U) + (layout->damaged_offset >= 0 ? 1U : 0U);
 }
 
 /* ---------------------------------------------------------------------- */
 /* Names                                                                  */
 /* ---------------------------------------------------------------------- */
 
-static char epsf_upper(char c) {
+static char epsf_upper(char c)
+{
     return (c >= 'a' && c <= 'z') ? (char)(c - 'a' + 'A') : c;
 }
 
-static bool epsf_stem_is(const char *name, size_t stem, const char *word) {
+static bool epsf_stem_is(const char *name, size_t stem, const char *word)
+{
     size_t index;
     for (index = 0U; index < stem; ++index) {
-        if (!word[index] || epsf_upper(name[index]) != word[index])
-            return false;
+        if (!word[index] || epsf_upper(name[index]) != word[index]) return false;
     }
     return word[stem] == 0;
 }
@@ -516,18 +462,16 @@ static bool epsf_stem_is(const char *name, size_t stem, const char *word) {
 /* One path component: printable ASCII, not only dots and spaces (so never
  * "." or ".."), and not a Windows device name.  Ported from xx_xpak.c's
  * xpak_safe_output_name (xxfclib, MIT). */
-static bool epsf_safe_component(const char *name, size_t length) {
-    static const char *const devices[] = { "CON",    "PRN",     "AUX",
-                                           "NUL",    "CONIN$",  "CONOUT$",
-                                           "CLOCK$" };
+static bool epsf_safe_component(const char *name, size_t length)
+{
+    static const char *const devices[] = {"CON", "PRN", "AUX", "NUL", "CONIN$", "CONOUT$", "CLOCK$"};
     size_t stem = 0U, index;
     bool meaningful = false;
     if (length == 0U) return false;
     for (index = 0U; index < length; ++index) {
         char c = name[index];
-        if ((unsigned char)c < 0x20U || (unsigned char)c > 0x7EU ||
-            c == '/' || c == '\\' || c == ':' || c == '<' || c == '>' ||
-            c == '"' || c == '|' || c == '?' || c == '*')
+        if ((unsigned char)c < 0x20U || (unsigned char)c > 0x7EU || c == '/' || c == '\\' || c == ':' || c == '<' || c == '>' || c == '"' || c == '|' || c == '?' ||
+            c == '*')
             return false;
         if (c != '.' && c != ' ') meaningful = true;
     }
@@ -537,10 +481,8 @@ static bool epsf_safe_component(const char *name, size_t length) {
     for (index = 0U; index < sizeof(devices) / sizeof(devices[0]); ++index)
         if (epsf_stem_is(name, stem, devices[index])) return false;
     if (stem == 4U && name[3] >= '0' && name[3] <= '9' &&
-        ((epsf_upper(name[0]) == 'C' && epsf_upper(name[1]) == 'O' &&
-          epsf_upper(name[2]) == 'M') ||
-         (epsf_upper(name[0]) == 'L' && epsf_upper(name[1]) == 'P' &&
-          epsf_upper(name[2]) == 'T')))
+        ((epsf_upper(name[0]) == 'C' && epsf_upper(name[1]) == 'O' && epsf_upper(name[2]) == 'M') ||
+         (epsf_upper(name[0]) == 'L' && epsf_upper(name[1]) == 'P' && epsf_upper(name[2]) == 'T')))
         return false;
     return true;
 }
@@ -549,14 +491,14 @@ static bool epsf_safe_component(const char *name, size_t length) {
  * into "E_/SETUP/X.DLL".  '/' separates components; each component must be
  * safe on its own, so no absolute path, empty component, "." or ".." and no
  * device name can reach the file system. */
-static bool epsf_safe_output_name(const char *name) {
+static bool epsf_safe_output_name(const char *name)
+{
     size_t start = 0U, index = 0U;
     if (!name || !name[0]) return false;
     for (;;) {
         char c = name[index];
         if (c == '/' || c == 0) {
-            if (!epsf_safe_component(name + start, index - start))
-                return false;
+            if (!epsf_safe_component(name + start, index - start)) return false;
             if (c == 0) return true;
             start = index + 1U;
         }
@@ -564,17 +506,20 @@ static bool epsf_safe_output_name(const char *name) {
     }
 }
 
-static uint32_t epsf_node_height(const epsf_names *set, uint32_t node) {
+static uint32_t epsf_node_height(const epsf_names *set, uint32_t node)
+{
     return node ? set->nodes[node].height : 0U;
 }
 
-static void epsf_node_update(epsf_names *set, uint32_t node) {
+static void epsf_node_update(epsf_names *set, uint32_t node)
+{
     uint32_t left = epsf_node_height(set, set->nodes[node].left);
     uint32_t right = epsf_node_height(set, set->nodes[node].right);
     set->nodes[node].height = (left > right ? left : right) + 1U;
 }
 
-static uint32_t epsf_node_rotate_right(epsf_names *set, uint32_t node) {
+static uint32_t epsf_node_rotate_right(epsf_names *set, uint32_t node)
+{
     uint32_t pivot = set->nodes[node].left;
     set->nodes[node].left = set->nodes[pivot].right;
     set->nodes[pivot].right = node;
@@ -583,7 +528,8 @@ static uint32_t epsf_node_rotate_right(epsf_names *set, uint32_t node) {
     return pivot;
 }
 
-static uint32_t epsf_node_rotate_left(epsf_names *set, uint32_t node) {
+static uint32_t epsf_node_rotate_left(epsf_names *set, uint32_t node)
+{
     uint32_t pivot = set->nodes[node].right;
     set->nodes[node].right = set->nodes[pivot].left;
     set->nodes[pivot].left = node;
@@ -592,23 +538,20 @@ static uint32_t epsf_node_rotate_left(epsf_names *set, uint32_t node) {
     return pivot;
 }
 
-static uint32_t epsf_node_balance(epsf_names *set, uint32_t node) {
+static uint32_t epsf_node_balance(epsf_names *set, uint32_t node)
+{
     uint32_t left, right;
     epsf_node_update(set, node);
     left = epsf_node_height(set, set->nodes[node].left);
     right = epsf_node_height(set, set->nodes[node].right);
     if (left > right + 1U) {
         uint32_t child = set->nodes[node].left;
-        if (epsf_node_height(set, set->nodes[child].right) >
-            epsf_node_height(set, set->nodes[child].left))
-            set->nodes[node].left = epsf_node_rotate_left(set, child);
+        if (epsf_node_height(set, set->nodes[child].right) > epsf_node_height(set, set->nodes[child].left)) set->nodes[node].left = epsf_node_rotate_left(set, child);
         return epsf_node_rotate_right(set, node);
     }
     if (right > left + 1U) {
         uint32_t child = set->nodes[node].right;
-        if (epsf_node_height(set, set->nodes[child].left) >
-            epsf_node_height(set, set->nodes[child].right))
-            set->nodes[node].right = epsf_node_rotate_right(set, child);
+        if (epsf_node_height(set, set->nodes[child].left) > epsf_node_height(set, set->nodes[child].right)) set->nodes[node].right = epsf_node_rotate_right(set, child);
         return epsf_node_rotate_left(set, node);
     }
     return node;
@@ -616,19 +559,16 @@ static uint32_t epsf_node_balance(epsf_names *set, uint32_t node) {
 
 /* Recursion depth is the tree height: at most ~1.44 log2(n), 25 levels for
  * the 100,002 names a carrier can have. */
-static uint32_t epsf_node_insert(epsf_names *set, uint32_t root,
-                                 uint32_t node) {
+static uint32_t epsf_node_insert(epsf_names *set, uint32_t root, uint32_t node)
+{
     if (!root) return node;
-    if (xx_str_icmp(set->nodes[node].name, set->nodes[root].name) < 0)
-        set->nodes[root].left = epsf_node_insert(set, set->nodes[root].left,
-                                                 node);
-    else
-        set->nodes[root].right = epsf_node_insert(set, set->nodes[root].right,
-                                                  node);
+    if (xx_str_icmp(set->nodes[node].name, set->nodes[root].name) < 0) set->nodes[root].left = epsf_node_insert(set, set->nodes[root].left, node);
+    else set->nodes[root].right = epsf_node_insert(set, set->nodes[root].right, node);
     return epsf_node_balance(set, root);
 }
 
-static bool epsf_names_has(const epsf_names *set, const char *name) {
+static bool epsf_names_has(const epsf_names *set, const char *name)
+{
     uint32_t node = set->root;
     uint32_t steps;
     for (steps = 0U; node && steps <= set->count; ++steps) {
@@ -639,7 +579,8 @@ static bool epsf_names_has(const epsf_names *set, const char *name) {
     return false;
 }
 
-static bool epsf_names_put(epsf_names *set, const char *name) {
+static bool epsf_names_put(epsf_names *set, const char *name)
+{
     uint32_t node;
     if (set->count >= set->capacity) return false;
     node = ++set->count;
@@ -653,7 +594,8 @@ static bool epsf_names_put(epsf_names *set, const char *name) {
 
 /* "DIR/NAME.EXT" -> "DIR/NAME_<n>.EXT"; only the last path component's
  * extension is looked at, and the dot of a leading-dot name is kept. */
-static char *epsf_suffixed(const char *name, uint32_t number) {
+static char *epsf_suffixed(const char *name, uint32_t number)
+{
     char digits[16];
     size_t digit_count = 0U, length, dot, total, index, at = 0U;
     char *result;
@@ -686,7 +628,8 @@ static char *epsf_suffixed(const char *name, uint32_t number) {
 /* Member list                                                            */
 /* ---------------------------------------------------------------------- */
 
-static void epsf_stream_free(void *opaque) {
+static void epsf_stream_free(void *opaque)
+{
     epsf_stream *stream = (epsf_stream *)opaque;
     size_t index;
     if (!stream) return;
@@ -698,8 +641,8 @@ static void epsf_stream_free(void *opaque) {
 }
 
 /* Takes ownership of member->name. */
-static bool epsf_add_member(epsf_stream *stream, epsf_names *set,
-                            epsf_member *member, uint32_t *suffix) {
+static bool epsf_add_member(epsf_stream *stream, epsf_names *set, epsf_member *member, uint32_t *suffix)
+{
     if (stream->count >= stream->capacity) {
         xx_mem_free(member->name);
         member->name = NULL;
@@ -730,8 +673,8 @@ static bool epsf_add_member(epsf_stream *stream, epsf_names *set,
     return true;
 }
 
-static bool epsf_collect(Abstractformat *format, epsf_stream *stream,
-                         xx_pd_struct *pd) {
+static bool epsf_collect(Abstractformat *format, epsf_stream *stream, xx_pd_struct *pd)
+{
     const epsf_layout *layout = &stream->layout;
     epsf_names set;
     epsf_member member;
@@ -740,11 +683,9 @@ static bool epsf_collect(Abstractformat *format, epsf_stream *stream,
     bool ok = false;
     if (wanted > EPSF_MAX_ARCHIVE_RECORDS + 2U) return false;
     stream->capacity = (size_t)wanted;
-    stream->items =
-        (epsf_member *)xx_mem_calloc(stream->capacity, sizeof(*stream->items));
+    stream->items = (epsf_member *)xx_mem_calloc(stream->capacity, sizeof(*stream->items));
     if (!stream->items) return false;
-    set.nodes = (epsf_name_node *)xx_mem_calloc(stream->capacity + 1U,
-                                                sizeof(*set.nodes));
+    set.nodes = (epsf_name_node *)xx_mem_calloc(stream->capacity + 1U, sizeof(*set.nodes));
     set.root = 0U;
     set.count = 0U;
     set.capacity = (uint32_t)stream->capacity;
@@ -760,21 +701,18 @@ static bool epsf_collect(Abstractformat *format, epsf_stream *stream,
     member.original_size = layout->runtime_size;
     member.method = 2U;
     member.check = layout->runtime_sum;
-    if (!member.name || !epsf_add_member(stream, &set, &member, &suffix))
-        goto done;
+    if (!member.name || !epsf_add_member(stream, &set, &member, &suffix)) goto done;
 
     if (epsf_script_listed(layout)) {
         xx_rt_memset(&member, 0, sizeof(member));
         member.name = xx_str_dup(epsf_script_name);
-        member.kind = layout->script_size != 0U ? EPSF_KIND_SCRIPT
-                                                : EPSF_KIND_SCRIPT_DAMAGED;
+        member.kind = layout->script_size != 0U ? EPSF_KIND_SCRIPT : EPSF_KIND_SCRIPT_DAMAGED;
         member.header_offset = -1;
         member.data_offset = layout->script_offset;
         member.packed_size = (uint64_t)layout->script_region;
         member.original_size = layout->script_size;
         member.method = layout->script_size != 0U ? 2U : UINT32_MAX;
-        if (!member.name || !epsf_add_member(stream, &set, &member, &suffix))
-            goto done;
+        if (!member.name || !epsf_add_member(stream, &set, &member, &suffix)) goto done;
     }
 
     if (layout->damaged_offset >= 0) {
@@ -787,8 +725,7 @@ static bool epsf_collect(Abstractformat *format, epsf_stream *stream,
         member.packed_size = (uint64_t)(layout->end - layout->damaged_offset);
         member.original_size = member.packed_size;
         member.method = UINT32_MAX;
-        if (!member.name || !epsf_add_member(stream, &set, &member, &suffix))
-            goto done;
+        if (!member.name || !epsf_add_member(stream, &set, &member, &suffix)) goto done;
     }
 
     if (layout->archive_offset >= 0) {
@@ -796,12 +733,10 @@ static bool epsf_collect(Abstractformat *format, epsf_stream *stream,
         xx_archive_record_state *state;
         bool inner_ok = true;
         xx_arcv4_init(&inner, format->device, layout->archive_offset);
-        state = xx_arcv4_create_archive_records_reading(&inner.format, NULL,
-                                                        pd);
+        state = xx_arcv4_create_archive_records_reading(&inner.format, NULL, pd);
         if (!state) inner_ok = false;
         while (inner_ok) {
-            const xx_archive_record *record =
-                xx_arcv4_get_current_archive_record(&inner.format, state);
+            const xx_archive_record *record = xx_arcv4_get_current_archive_record(&inner.format, state);
             const char *name;
             if (!record) break;
             if (pd && xx_pd_is_stopped(pd)) {
@@ -815,33 +750,20 @@ static bool epsf_collect(Abstractformat *format, epsf_stream *stream,
             member.header_offset = record->header_offset;
             member.header_size = record->header_size;
             member.data_offset = record->data_offset;
-            member.packed_size = record->compressed_size < 0
-                                     ? 0U : (uint64_t)record->compressed_size;
-            member.original_size = xx_archive_record_get_meta_u64(
-                record, XX_META_ID_UNCOMPRESSED_SIZE, 0U);
-            member.method = (uint32_t)xx_archive_record_get_meta_u64(
-                record, XX_META_ID_COMPRESSION_METHOD, UINT32_MAX);
-            member.check = (uint32_t)xx_archive_record_get_meta_u64(
-                record, XX_META_ID_CRC32, 0U);
-            member.attributes = (uint32_t)xx_archive_record_get_meta_u64(
-                record, XX_META_ID_ATTRIBUTES, 0U);
-            member.timestamp = xx_archive_record_get_meta_u64(
-                record, XX_META_ID_TIMESTAMP, 0U);
-            if (!member.name || record->data_offset < layout->archive_offset ||
-                record->compressed_size < 0 ||
-                record->data_offset >
-                    layout->archive_offset + layout->archive_size ||
-                record->compressed_size >
-                    layout->archive_offset + layout->archive_size -
-                        record->data_offset ||
-                !epsf_add_member(stream, &set, &member, &suffix)) {
+            member.packed_size = record->compressed_size < 0 ? 0U : (uint64_t)record->compressed_size;
+            member.original_size = xx_archive_record_get_meta_u64(record, XX_META_ID_UNCOMPRESSED_SIZE, 0U);
+            member.method = (uint32_t)xx_archive_record_get_meta_u64(record, XX_META_ID_COMPRESSION_METHOD, UINT32_MAX);
+            member.check = (uint32_t)xx_archive_record_get_meta_u64(record, XX_META_ID_CRC32, 0U);
+            member.attributes = (uint32_t)xx_archive_record_get_meta_u64(record, XX_META_ID_ATTRIBUTES, 0U);
+            member.timestamp = xx_archive_record_get_meta_u64(record, XX_META_ID_TIMESTAMP, 0U);
+            if (!member.name || record->data_offset < layout->archive_offset || record->compressed_size < 0 ||
+                record->data_offset > layout->archive_offset + layout->archive_size ||
+                record->compressed_size > layout->archive_offset + layout->archive_size - record->data_offset || !epsf_add_member(stream, &set, &member, &suffix)) {
                 if (member.name) xx_mem_free(member.name);
                 inner_ok = false;
                 break;
             }
-            if (!xx_arcv4_archive_record_move_to_next(&inner.format, state,
-                                                      pd))
-                break;
+            if (!xx_arcv4_archive_record_move_to_next(&inner.format, state, pd)) break;
         }
         if (state) xx_arcv4_free_archive_records_reading(&inner.format, state);
         xx_arcv4_destroy(&inner);
@@ -857,18 +779,16 @@ done:
 /* Extraction                                                             */
 /* ---------------------------------------------------------------------- */
 
-static bool epsf_copy_options(xx_list_s *destination,
-                              const xx_list_s *source) {
+static bool epsf_copy_options(xx_list_s *destination, const xx_list_s *source)
+{
     size_t index;
     if (!source) return true;
     for (index = 0U; index < source->count; ++index) {
-        const xx_meta *item =
-            (const xx_meta *)xx_list_at((const xx_list_t *)source, index);
+        const xx_meta *item = (const xx_meta *)xx_list_at((const xx_list_t *)source, index);
         xx_meta copy;
         if (!item) continue;
         xx_meta_init(&copy, item->meta_id);
-        if (!xx_var_copy(&copy.var, &item->var) ||
-            !xx_list_append(destination, &copy)) {
+        if (!xx_var_copy(&copy.var, &item->var) || !xx_list_append(destination, &copy)) {
             xx_meta_cleanup(&copy);
             return false;
         }
@@ -876,19 +796,19 @@ static bool epsf_copy_options(xx_list_s *destination,
     return true;
 }
 
-static const xx_var *epsf_option(const xx_list_s *options, uint32_t id) {
+static const xx_var *epsf_option(const xx_list_s *options, uint32_t id)
+{
     size_t index;
     if (!options) return NULL;
     for (index = 0U; index < options->count; ++index) {
-        const xx_meta *item =
-            (const xx_meta *)xx_list_at((const xx_list_t *)options, index);
+        const xx_meta *item = (const xx_meta *)xx_list_at((const xx_list_t *)options, index);
         if (item && item->meta_id == id) return &item->var;
     }
     return NULL;
 }
 
-static bool epsf_set_record(xx_archive_record *record,
-                            const epsf_member *member) {
+static bool epsf_set_record(xx_archive_record *record, const epsf_member *member)
+{
     bool ok;
     xx_archive_record_cleanup(record);
     xx_archive_record_init(record);
@@ -896,34 +816,23 @@ static bool epsf_set_record(xx_archive_record *record,
     record->header_size = member->header_size;
     record->data_offset = member->data_offset;
     record->compressed_size = (int64_t)member->packed_size;
-    ok = xx_archive_record_set_original_name(record, member->name) &&
-         xx_archive_record_set_meta_u64(record, XX_META_ID_COMPRESSED_SIZE,
-                                        member->packed_size) &&
-         xx_archive_record_set_meta_u64(record, XX_META_ID_UNCOMPRESSED_SIZE,
-                                        member->original_size) &&
-         xx_archive_record_set_meta_u64(record, XX_META_ID_COMPRESSION_METHOD,
-                                        member->method) &&
-         xx_archive_record_set_meta_bool(record, XX_META_ID_IS_ENCRYPTED,
-                                         false) &&
-         xx_archive_record_set_meta_bool(record, XX_META_ID_IS_FOLDER, false);
+    ok = xx_archive_record_set_original_name(record, member->name) && xx_archive_record_set_meta_u64(record, XX_META_ID_COMPRESSED_SIZE, member->packed_size) &&
+         xx_archive_record_set_meta_u64(record, XX_META_ID_UNCOMPRESSED_SIZE, member->original_size) &&
+         xx_archive_record_set_meta_u64(record, XX_META_ID_COMPRESSION_METHOD, member->method) &&
+         xx_archive_record_set_meta_bool(record, XX_META_ID_IS_ENCRYPTED, false) && xx_archive_record_set_meta_bool(record, XX_META_ID_IS_FOLDER, false);
     if (ok && member->kind == EPSF_KIND_ARCV) {
-        ok = xx_archive_record_set_meta_u64(record, XX_META_ID_ATTRIBUTES,
-                                            member->attributes) &&
-             xx_archive_record_set_meta_u64(record, XX_META_ID_TIMESTAMP,
-                                            member->timestamp) &&
-             xx_archive_record_set_meta_u64(record, XX_META_ID_CRC32,
-                                            member->check);
+        ok = xx_archive_record_set_meta_u64(record, XX_META_ID_ATTRIBUTES, member->attributes) &&
+             xx_archive_record_set_meta_u64(record, XX_META_ID_TIMESTAMP, member->timestamp) && xx_archive_record_set_meta_u64(record, XX_META_ID_CRC32, member->check);
     }
     return ok;
 }
 
-static bool epsf_write_all(xx_io_device *destination, const uint8_t *data,
-                           size_t size) {
+static bool epsf_write_all(xx_io_device *destination, const uint8_t *data, size_t size)
+{
     const size_t file_io_capacity = gb_eschalon_setup_epsf_capacity();
     size_t written = 0U;
     while (written < size) {
-        ssize_t amount = gb_eschalon_setup_epsf_write(destination, data + written,
-                                     size - written, file_io_capacity);
+        ssize_t amount = gb_eschalon_setup_epsf_write(destination, data + written, size - written, file_io_capacity);
         if (amount <= 0 || (size_t)amount > size - written) return false;
         written += (size_t)amount;
     }
@@ -931,29 +840,21 @@ static bool epsf_write_all(xx_io_device *destination, const uint8_t *data,
 }
 
 /* Decode a member completely in memory and verify it. */
-static bool epsf_decode_member(Abstractformat *format,
-                               const epsf_stream *stream,
-                               const epsf_member *member, uint64_t limit,
-                               uint8_t **plain, size_t *plain_size) {
+static bool epsf_decode_member(Abstractformat *format, const epsf_stream *stream, const epsf_member *member, uint64_t limit, uint8_t **plain, size_t *plain_size)
+{
     uint8_t *packed = NULL;
     uint8_t *output = NULL;
     size_t input_size, written = 0U;
     bool ok = false;
     *plain = NULL;
     *plain_size = 0U;
-    if (member->original_size > limit ||
-        member->original_size > EPSF_MAX_MEMBER ||
-        member->original_size > (uint64_t)SIZE_MAX - 1U)
-        return false;
+    if (member->original_size > limit || member->original_size > EPSF_MAX_MEMBER || member->original_size > (uint64_t)SIZE_MAX - 1U) return false;
     if (member->kind == EPSF_KIND_SCRIPT) {
         size_t decoded = 0U;
         input_size = epsf_script_input_size(&stream->layout);
         if (input_size == 0U) return false;
         packed = (uint8_t *)xx_mem_alloc(input_size);
-        if (!packed ||
-            !epsf_read_at(format->device, member->data_offset, packed,
-                          input_size) ||
-            !epsf_decode_open_stream(packed, input_size, &output, &decoded) ||
+        if (!packed || !epsf_read_at(format->device, member->data_offset, packed, input_size) || !epsf_decode_open_stream(packed, input_size, &output, &decoded) ||
             decoded != member->original_size) {
             if (output) xx_mem_free(output);
             output = NULL;
@@ -963,30 +864,19 @@ static bool epsf_decode_member(Abstractformat *format,
         ok = true;
         goto done;
     }
-    if (member->packed_size > EPSF_MAX_MEMBER ||
-        member->packed_size > (uint64_t)SIZE_MAX ||
-        (member->method == 2U &&
-         member->original_size >
-             member->packed_size * EPSF_MAX_RATIO + EPSF_MAX_RATIO) ||
-        (member->method == 0U && member->original_size != member->packed_size) ||
-        (member->method != 0U && member->method != 2U) ||
+    if (member->packed_size > EPSF_MAX_MEMBER || member->packed_size > (uint64_t)SIZE_MAX ||
+        (member->method == 2U && member->original_size > member->packed_size * EPSF_MAX_RATIO + EPSF_MAX_RATIO) ||
+        (member->method == 0U && member->original_size != member->packed_size) || (member->method != 0U && member->method != 2U) ||
         (member->method == 2U && member->packed_size == 0U))
         return false;
     input_size = (size_t)member->packed_size;
     packed = (uint8_t *)xx_mem_alloc(input_size != 0U ? input_size : 1U);
-    output = (uint8_t *)xx_mem_alloc(member->original_size != 0U
-                                         ? (size_t)member->original_size : 1U);
-    if (!packed || !output ||
-        (input_size != 0U &&
-         !epsf_read_at(format->device, member->data_offset, packed,
-                       input_size)))
-        goto done;
+    output = (uint8_t *)xx_mem_alloc(member->original_size != 0U ? (size_t)member->original_size : 1U);
+    if (!packed || !output || (input_size != 0U && !epsf_read_at(format->device, member->data_offset, packed, input_size))) goto done;
     if (member->method == 0U) {
         if (input_size != 0U) xx_rt_memcpy(output, packed, input_size);
         written = input_size;
-    } else if (!xx_arcv4_decode_memory(packed, input_size, output,
-                                       (size_t)member->original_size,
-                                       &written)) {
+    } else if (!xx_arcv4_decode_memory(packed, input_size, output, (size_t)member->original_size, &written)) {
         goto done;
     }
     if (written != member->original_size) goto done;
@@ -1010,8 +900,8 @@ done:
 }
 
 /* Stored ARCV4 members are streamed so their size never becomes a buffer. */
-static bool epsf_copy_stored(Abstractformat *format, const epsf_member *member,
-                             xx_io_device *destination) {
+static bool epsf_copy_stored(Abstractformat *format, const epsf_member *member, xx_io_device *destination)
+{
     const size_t file_io_capacity = gb_eschalon_setup_epsf_capacity();
     uint8_t *chunk;
     uint64_t done = 0U;
@@ -1020,11 +910,8 @@ static bool epsf_copy_stored(Abstractformat *format, const epsf_member *member,
     chunk = (uint8_t *)xx_mem_alloc(file_io_capacity);
     if (!chunk) return false;
     while (done < member->packed_size) {
-        size_t want = member->packed_size - done > file_io_capacity
-                          ? file_io_capacity
-                          : (size_t)(member->packed_size - done);
-        if (!epsf_read_at(format->device, member->data_offset + (int64_t)done,
-                          chunk, want)) {
+        size_t want = member->packed_size - done > file_io_capacity ? file_io_capacity : (size_t)(member->packed_size - done);
+        if (!epsf_read_at(format->device, member->data_offset + (int64_t)done, chunk, want)) {
             ok = false;
             break;
         }
@@ -1042,7 +929,8 @@ static bool epsf_copy_stored(Abstractformat *format, const epsf_member *member,
 /* The caller's XX_META_ID_OPT_MAX_MEMBER_SIZE, or no limit.  Decoded
  * members are additionally held to EPSF_MAX_MEMBER because they need a
  * buffer; stored ones are streamed and need none. */
-static uint64_t epsf_member_limit(const xx_list_s *options) {
+static uint64_t epsf_member_limit(const xx_list_s *options)
+{
     const xx_var *limit = epsf_option(options, XX_META_ID_OPT_MAX_MEMBER_SIZE);
     return limit ? xx_var_get_u64(limit) : UINT64_MAX;
 }
@@ -1051,8 +939,8 @@ static uint64_t epsf_member_limit(const xx_list_s *options) {
 /* Public API                                                             */
 /* ---------------------------------------------------------------------- */
 
-void xx_eschalon_setup_epsf_init(xx_eschalon_setup_epsf *archive,
-                                 xx_io_device *device, int64_t base_address) {
+void xx_eschalon_setup_epsf_init(xx_eschalon_setup_epsf *archive, xx_io_device *device, int64_t base_address)
+{
     if (!archive) return;
     xx_mem_zero(archive, sizeof(*archive));
     xx_format_init(&archive->format, device, base_address);
@@ -1065,51 +953,46 @@ void xx_eschalon_setup_epsf_init(xx_eschalon_setup_epsf *archive,
     archive->format.check_is_valid = xx_eschalon_setup_epsf_check_is_valid;
     archive->format.handle_base_info = xx_eschalon_setup_epsf_handle_base_info;
     archive->format.get_format_size = xx_eschalon_setup_epsf_get_format_size;
-    archive->format.get_number_of_archive_records =
-        xx_eschalon_setup_epsf_get_number_of_archive_records;
-    archive->format.create_archive_records_reading =
-        xx_eschalon_setup_epsf_create_archive_records_reading;
-    archive->format.get_current_archive_record =
-        xx_eschalon_setup_epsf_get_current_archive_record;
-    archive->format.unpack_current_archive_record =
-        xx_eschalon_setup_epsf_unpack_current_archive_record;
-    archive->format.archive_record_move_to_next =
-        xx_eschalon_setup_epsf_archive_record_move_to_next;
-    archive->format.free_archive_records_reading =
-        xx_eschalon_setup_epsf_free_archive_records_reading;
+    archive->format.get_number_of_archive_records = xx_eschalon_setup_epsf_get_number_of_archive_records;
+    archive->format.create_archive_records_reading = xx_eschalon_setup_epsf_create_archive_records_reading;
+    archive->format.get_current_archive_record = xx_eschalon_setup_epsf_get_current_archive_record;
+    archive->format.unpack_current_archive_record = xx_eschalon_setup_epsf_unpack_current_archive_record;
+    archive->format.archive_record_move_to_next = xx_eschalon_setup_epsf_archive_record_move_to_next;
+    archive->format.free_archive_records_reading = xx_eschalon_setup_epsf_free_archive_records_reading;
     archive->header_offset = -1;
     archive->script_offset = -1;
     archive->archive_offset = -1;
     archive->damaged_archive_offset = -1;
 }
 
-xx_eschalon_setup_epsf *xx_eschalon_setup_epsf_create(xx_io_device *device,
-                                                      int64_t base_address) {
-    xx_eschalon_setup_epsf *archive =
-        (xx_eschalon_setup_epsf *)xx_mem_alloc(sizeof(*archive));
+xx_eschalon_setup_epsf *xx_eschalon_setup_epsf_create(xx_io_device *device, int64_t base_address)
+{
+    xx_eschalon_setup_epsf *archive = (xx_eschalon_setup_epsf *)xx_mem_alloc(sizeof(*archive));
     if (archive) xx_eschalon_setup_epsf_init(archive, device, base_address);
     return archive;
 }
 
-void xx_eschalon_setup_epsf_destroy(xx_eschalon_setup_epsf *archive) {
+void xx_eschalon_setup_epsf_destroy(xx_eschalon_setup_epsf *archive)
+{
     if (archive) xx_format_cleanup_extra_parameters(&archive->format);
 }
 
-void xx_eschalon_setup_epsf_free(xx_eschalon_setup_epsf *archive) {
+void xx_eschalon_setup_epsf_free(xx_eschalon_setup_epsf *archive)
+{
     if (!archive) return;
     xx_eschalon_setup_epsf_destroy(archive);
     xx_mem_free(archive);
 }
 
-bool xx_eschalon_setup_epsf_check_is_valid(Abstractformat *format,
-                                           xx_pd_struct *pd) {
+bool xx_eschalon_setup_epsf_check_is_valid(Abstractformat *format, xx_pd_struct *pd)
+{
     epsf_layout layout;
     (void)pd;
     return epsf_locate(format, &layout);
 }
 
-bool xx_eschalon_setup_epsf_handle_base_info(Abstractformat *format,
-                                             xx_pd_struct *pd) {
+bool xx_eschalon_setup_epsf_handle_base_info(Abstractformat *format, xx_pd_struct *pd)
+{
     epsf_layout layout;
     xx_eschalon_setup_epsf *archive;
     int64_t format_end;
@@ -1125,15 +1008,12 @@ bool xx_eschalon_setup_epsf_handle_base_info(Abstractformat *format,
     archive->script_size = layout.script_size;
     archive->archive_offset = layout.archive_offset;
     archive->archive_size = layout.archive_offset >= 0 ? layout.archive_size : 0;
-    archive->archive_records =
-        layout.archive_offset >= 0 ? layout.archive_records : 0U;
+    archive->archive_records = layout.archive_offset >= 0 ? layout.archive_records : 0U;
     archive->damaged_archive_offset = layout.damaged_offset;
     /* Without a product container the script runs to the end of the file,
      * and nothing records where its stream stops.  A damaged container also
      * runs to the end. */
-    format_end = layout.archive_offset >= 0
-                     ? layout.archive_offset + layout.archive_size
-                     : layout.end;
+    format_end = layout.archive_offset >= 0 ? layout.archive_offset + layout.archive_size : layout.end;
     format->number_of_archive_records = archive->number_of_records;
     format->format_size = format_end - format->base_address;
     format->overlay_offset = format_end < layout.end ? format_end : -1;
@@ -1143,35 +1023,26 @@ bool xx_eschalon_setup_epsf_handle_base_info(Abstractformat *format,
     return true;
 }
 
-int64_t xx_eschalon_setup_epsf_get_format_size(Abstractformat *format,
-                                               xx_pd_struct *pd) {
-    return format && (format->base_info_handled ||
-                      xx_eschalon_setup_epsf_handle_base_info(format, pd))
-               ? format->format_size : -1;
+int64_t xx_eschalon_setup_epsf_get_format_size(Abstractformat *format, xx_pd_struct *pd)
+{
+    return format && (format->base_info_handled || xx_eschalon_setup_epsf_handle_base_info(format, pd)) ? format->format_size : -1;
 }
 
-uint64_t xx_eschalon_setup_epsf_get_number_of_archive_records(
-    Abstractformat *format, xx_pd_struct *pd) {
-    return format && (format->base_info_handled ||
-                      xx_eschalon_setup_epsf_handle_base_info(format, pd))
-               ? ((xx_eschalon_setup_epsf *)format)->number_of_records : 0U;
+uint64_t xx_eschalon_setup_epsf_get_number_of_archive_records(Abstractformat *format, xx_pd_struct *pd)
+{
+    return format && (format->base_info_handled || xx_eschalon_setup_epsf_handle_base_info(format, pd)) ? ((xx_eschalon_setup_epsf *)format)->number_of_records : 0U;
 }
 
 /* Rebuild the layout handle_base_info found, so the ARCV4 search and its
  * full parse are not repeated.  Falls back to a fresh parse (returns false)
  * when base info was never handled or the device no longer matches. */
-static bool epsf_cached_layout(Abstractformat *format, epsf_layout *layout) {
-    const xx_eschalon_setup_epsf *archive =
-        (const xx_eschalon_setup_epsf *)format;
+static bool epsf_cached_layout(Abstractformat *format, epsf_layout *layout)
+{
+    const xx_eschalon_setup_epsf *archive = (const xx_eschalon_setup_epsf *)format;
     int64_t total;
-    if (!format->base_info_handled || !format->is_valid ||
-        archive->header_offset < 0 || archive->script_offset < 0)
-        return false;
+    if (!format->base_info_handled || !format->is_valid || archive->header_offset < 0 || archive->script_offset < 0) return false;
     total = xx_io_total_size(format->device);
-    if (total != format->base_address + format->format_size +
-                     format->overlay_size ||
-        archive->script_offset > total)
-        return false;
+    if (total != format->base_address + format->format_size + format->overlay_size || archive->script_offset > total) return false;
     xx_rt_memset(layout, 0, sizeof(*layout));
     layout->end = total;
     layout->header_offset = archive->header_offset;
@@ -1189,15 +1060,14 @@ static bool epsf_cached_layout(Abstractformat *format, epsf_layout *layout) {
     return true;
 }
 
-xx_archive_record_state *xx_eschalon_setup_epsf_create_archive_records_reading(
-    Abstractformat *format, const xx_list_s *options, xx_pd_struct *pd) {
+xx_archive_record_state *xx_eschalon_setup_epsf_create_archive_records_reading(Abstractformat *format, const xx_list_s *options, xx_pd_struct *pd)
+{
     epsf_stream *stream;
     xx_archive_record_state *state;
     if (!format) return NULL;
     stream = (epsf_stream *)xx_mem_calloc(1U, sizeof(*stream));
     if (!stream) return NULL;
-    if (!epsf_cached_layout(format, &stream->layout) &&
-        !epsf_parse_layout(format, &stream->layout, pd)) {
+    if (!epsf_cached_layout(format, &stream->layout) && !epsf_parse_layout(format, &stream->layout, pd)) {
         epsf_stream_free(stream);
         return NULL;
     }
@@ -1214,8 +1084,7 @@ xx_archive_record_state *xx_eschalon_setup_epsf_create_archive_records_reading(
     state->internal_state = stream;
     state->free_internal = epsf_stream_free;
     state->total_records = (int64_t)stream->count;
-    if (!epsf_copy_options(&state->options, options) ||
-        !epsf_set_record(&state->current_record, &stream->items[0])) {
+    if (!epsf_copy_options(&state->options, options) || !epsf_set_record(&state->current_record, &stream->items[0])) {
         xx_archive_record_state_free(state);
         return NULL;
     }
@@ -1223,31 +1092,27 @@ xx_archive_record_state *xx_eschalon_setup_epsf_create_archive_records_reading(
     return state;
 }
 
-const xx_archive_record *xx_eschalon_setup_epsf_get_current_archive_record(
-    Abstractformat *format, xx_archive_record_state *state) {
-    return format && state && state->format == format && state->has_record
-               ? &state->current_record : NULL;
+const xx_archive_record *xx_eschalon_setup_epsf_get_current_archive_record(Abstractformat *format, xx_archive_record_state *state)
+{
+    return format && state && state->format == format && state->has_record ? &state->current_record : NULL;
 }
 
-bool xx_eschalon_setup_epsf_archive_record_move_to_next(
-    Abstractformat *format, xx_archive_record_state *state, xx_pd_struct *pd) {
+bool xx_eschalon_setup_epsf_archive_record_move_to_next(Abstractformat *format, xx_archive_record_state *state, xx_pd_struct *pd)
+{
     epsf_stream *stream;
     (void)pd;
-    if (!format || !state || state->format != format ||
-        !(stream = (epsf_stream *)state->internal_state) ||
-        stream->index + 1U >= stream->count) {
+    if (!format || !state || state->format != format || !(stream = (epsf_stream *)state->internal_state) || stream->index + 1U >= stream->count) {
         if (state) state->has_record = false;
         return false;
     }
     ++stream->index;
     ++state->current_index;
-    state->has_record = epsf_set_record(&state->current_record,
-                                        &stream->items[stream->index]);
+    state->has_record = epsf_set_record(&state->current_record, &stream->items[stream->index]);
     return state->has_record;
 }
 
-bool xx_eschalon_setup_epsf_unpack_current_archive_record(
-    Abstractformat *format, xx_archive_record_state *state, xx_pd_struct *pd) {
+bool xx_eschalon_setup_epsf_unpack_current_archive_record(Abstractformat *format, xx_archive_record_state *state, xx_pd_struct *pd)
+{
     epsf_stream *stream;
     const epsf_member *member;
     const xx_var *path_option;
@@ -1260,24 +1125,18 @@ bool xx_eschalon_setup_epsf_unpack_current_archive_record(
     bool result = false;
     bool created = false;
     bool stored;
-    if (!format || !state || state->format != format || !state->has_record ||
-        !(stream = (epsf_stream *)state->internal_state) ||
-        stream->index >= stream->count || (pd && xx_pd_is_stopped(pd)))
+    if (!format || !state || state->format != format || !state->has_record || !(stream = (epsf_stream *)state->internal_state) || stream->index >= stream->count ||
+        (pd && xx_pd_is_stopped(pd)))
         return false;
     member = &stream->items[stream->index];
     /* A damaged product container is listed so that its loss shows; there is
      * nothing trustworthy to write for it. */
-    if (!member->safe || member->kind == EPSF_KIND_DAMAGED ||
-        member->kind == EPSF_KIND_SCRIPT_DAMAGED)
-        return false;
+    if (!member->safe || member->kind == EPSF_KIND_DAMAGED || member->kind == EPSF_KIND_SCRIPT_DAMAGED) return false;
     limit = epsf_member_limit(&state->options);
     stored = member->kind == EPSF_KIND_ARCV && member->method == 0U;
     if (stored) {
-        if (member->original_size != member->packed_size ||
-            member->original_size > limit)
-            return false;
-    } else if (!epsf_decode_member(format, stream, member, limit, &plain,
-                                   &plain_size)) {
+        if (member->original_size != member->packed_size || member->original_size > limit) return false;
+    } else if (!epsf_decode_member(format, stream, member, limit, &plain, &plain_size)) {
         return false;
     }
     path_option = epsf_option(&state->options, XX_META_ID_OPT_UNPACK_PATH);
@@ -1285,26 +1144,21 @@ bool xx_eschalon_setup_epsf_unpack_current_archive_record(
         result = stored ? epsf_copy_stored(format, member, NULL) : true;
         goto done;
     }
-    if (path_option->type == XX_VAR_TYPE_STRING ||
-        path_option->type == XX_VAR_TYPE_STRING_VIEW) {
+    if (path_option->type == XX_VAR_TYPE_STRING || path_option->type == XX_VAR_TYPE_STRING_VIEW) {
         base = xx_var_get_str(path_option);
-    } else if (path_option->type == XX_VAR_TYPE_WSTRING ||
-               path_option->type == XX_VAR_TYPE_WSTRING_VIEW) {
+    } else if (path_option->type == XX_VAR_TYPE_WSTRING || path_option->type == XX_VAR_TYPE_WSTRING_VIEW) {
         owned_base = xx_str_unicode_to_utf8(xx_var_get_wstr(path_option));
         base = owned_base;
     }
     if (!base) goto done;
-    path = (base[0] && base[xx_str_len(base) - 1U] != '/' &&
-            base[xx_str_len(base) - 1U] != '\\')
-               ? xx_str_concat3(base, "/", member->name)
-               : xx_str_concat(base, member->name);
+    path = (base[0] && base[xx_str_len(base) - 1U] != '/' && base[xx_str_len(base) - 1U] != '\\') ? xx_str_concat3(base, "/", member->name)
+                                                                                                  : xx_str_concat(base, member->name);
     if (!path || !xx_store_create_dirs_a(path, false)) goto done;
     {
         xx_io_device *destination = xx_io_file_open(path, "wb");
         created = destination != NULL;
         if (!destination) goto done;
-        result = stored ? epsf_copy_stored(format, member, destination)
-                        : epsf_write_all(destination, plain, plain_size);
+        result = stored ? epsf_copy_stored(format, member, destination) : epsf_write_all(destination, plain, plain_size);
         if (xx_io_close(destination) != 0) result = false;
     }
 done:
@@ -1315,8 +1169,8 @@ done:
     return result;
 }
 
-void xx_eschalon_setup_epsf_free_archive_records_reading(
-    Abstractformat *format, xx_archive_record_state *state) {
+void xx_eschalon_setup_epsf_free_archive_records_reading(Abstractformat *format, xx_archive_record_state *state)
+{
     (void)format;
     xx_archive_record_state_free(state);
 }

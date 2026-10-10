@@ -78,36 +78,28 @@ typedef struct xx_bagf xx_bagf_t;
 typedef struct xx_bagf XBagf;
 
 struct xx_bagf {
-    Abstractformat format;  /**< Base format structure (first member). */
-    int64_t data_offset;    /**< Absolute offset of the payload. */
-    int64_t data_size;      /**< Payload size, bounded to the file. */
-    uint32_t opaque_08;     /**< u32 at 0x08.  Never interpreted. */
-    uint32_t opaque_20;     /**< u32 at 0x20.  Never interpreted. */
-    uint32_t opaque_24;     /**< u32 at 0x24.  Never interpreted. */
+    Abstractformat format; /**< Base format structure (first member). */
+    int64_t data_offset;   /**< Absolute offset of the payload. */
+    int64_t data_size;     /**< Payload size, bounded to the file. */
+    uint32_t opaque_08;    /**< u32 at 0x08.  Never interpreted. */
+    uint32_t opaque_20;    /**< u32 at 0x20.  Never interpreted. */
+    uint32_t opaque_24;    /**< u32 at 0x24.  Never interpreted. */
 };
 
-XXFC_API void xx_bagf_init(xx_bagf *archive, xx_io_device *device,
-                           int64_t base_address);
+XXFC_API void xx_bagf_init(xx_bagf *archive, xx_io_device *device, int64_t base_address);
 XXFC_API xx_bagf *xx_bagf_create(xx_io_device *device, int64_t base_address);
 XXFC_API void xx_bagf_destroy(xx_bagf *archive);
 XXFC_API void xx_bagf_free(xx_bagf *archive);
 
 XXFC_API bool xx_bagf_check_is_valid(Abstractformat *self, xx_pd_struct *pd);
 XXFC_API bool xx_bagf_handle_base_info(Abstractformat *self, xx_pd_struct *pd);
-XXFC_API int64_t xx_bagf_get_format_size(Abstractformat *self,
-                                         xx_pd_struct *pd);
-XXFC_API uint64_t xx_bagf_get_number_of_archive_records(Abstractformat *self,
-                                                        xx_pd_struct *pd);
-XXFC_API xx_archive_record_state *xx_bagf_create_archive_records_reading(
-    Abstractformat *self, const xx_list_s *options, xx_pd_struct *pd);
-XXFC_API const xx_archive_record *xx_bagf_get_current_archive_record(
-    Abstractformat *self, xx_archive_record_state *state);
-XXFC_API bool xx_bagf_unpack_current_archive_record(
-    Abstractformat *self, xx_archive_record_state *state, xx_pd_struct *pd);
-XXFC_API bool xx_bagf_archive_record_move_to_next(
-    Abstractformat *self, xx_archive_record_state *state, xx_pd_struct *pd);
-XXFC_API void xx_bagf_free_archive_records_reading(
-    Abstractformat *self, xx_archive_record_state *state);
+XXFC_API int64_t xx_bagf_get_format_size(Abstractformat *self, xx_pd_struct *pd);
+XXFC_API uint64_t xx_bagf_get_number_of_archive_records(Abstractformat *self, xx_pd_struct *pd);
+XXFC_API xx_archive_record_state *xx_bagf_create_archive_records_reading(Abstractformat *self, const xx_list_s *options, xx_pd_struct *pd);
+XXFC_API const xx_archive_record *xx_bagf_get_current_archive_record(Abstractformat *self, xx_archive_record_state *state);
+XXFC_API bool xx_bagf_unpack_current_archive_record(Abstractformat *self, xx_archive_record_state *state, xx_pd_struct *pd);
+XXFC_API bool xx_bagf_archive_record_move_to_next(Abstractformat *self, xx_archive_record_state *state, xx_pd_struct *pd);
+XXFC_API void xx_bagf_free_archive_records_reading(Abstractformat *self, xx_archive_record_state *state);
 
 /** Absolute payload offset, or -1 before handle_base_info. */
 XXFC_API int64_t xx_bagf_get_data_offset(const xx_bagf *archive);

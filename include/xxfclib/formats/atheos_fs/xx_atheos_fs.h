@@ -7,11 +7,14 @@
 extern "C" {
 #endif
 typedef xx_volume xx_atheos_fs;
-XXFC_API void xx_atheos_fs_init(xx_atheos_fs *,xx_io_device *,int64_t);
-XXFC_API xx_atheos_fs *xx_atheos_fs_create(xx_io_device *,int64_t);
+XXFC_API void xx_atheos_fs_init(xx_atheos_fs *, xx_io_device *, int64_t);
+XXFC_API xx_atheos_fs *xx_atheos_fs_create(xx_io_device *, int64_t);
 XXFC_API void xx_atheos_fs_destroy(xx_atheos_fs *);
 XXFC_API void xx_atheos_fs_free(xx_atheos_fs *);
-static inline Abstractformat *xx_atheos_fs_to_format(xx_atheos_fs *r) { return r?&r->format:NULL; }
+static inline Abstractformat *xx_atheos_fs_to_format(xx_atheos_fs *r)
+{
+    return r ? &r->format : NULL;
+}
 #ifdef __cplusplus
 }
 #endif

@@ -7,13 +7,15 @@
 #ifdef __cplusplus
 extern "C" {
 #endif
-typedef struct xx_ethernet_frame {Abstractformat format;} xx_ethernet_frame;
-XXFC_API void xx_ethernet_frame_init(xx_ethernet_frame *,xx_io_device *,int64_t);
-XXFC_API xx_ethernet_frame *xx_ethernet_frame_create(xx_io_device *,int64_t);
+typedef struct xx_ethernet_frame {
+    Abstractformat format;
+} xx_ethernet_frame;
+XXFC_API void xx_ethernet_frame_init(xx_ethernet_frame *, xx_io_device *, int64_t);
+XXFC_API xx_ethernet_frame *xx_ethernet_frame_create(xx_io_device *, int64_t);
 XXFC_API void xx_ethernet_frame_destroy(xx_ethernet_frame *);
 XXFC_API void xx_ethernet_frame_free(xx_ethernet_frame *);
-XXFC_API bool xx_ethernet_frame_check_is_valid(Abstractformat *,xx_pd_struct *);
-XXFC_API bool xx_ethernet_frame_handle_base_info(Abstractformat *,xx_pd_struct *);
+XXFC_API bool xx_ethernet_frame_check_is_valid(Abstractformat *, xx_pd_struct *);
+XXFC_API bool xx_ethernet_frame_handle_base_info(Abstractformat *, xx_pd_struct *);
 #ifdef __cplusplus
 }
 #endif

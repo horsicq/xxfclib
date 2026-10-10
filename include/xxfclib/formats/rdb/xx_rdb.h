@@ -92,28 +92,28 @@ typedef struct xx_rdb XRdb;
 
 /** One published member, as seen by a caller that wants to recurse. */
 typedef struct xx_rdb_member_info {
-    bool is_filesystem;      /**< false: partition, true: filesystem code. */
-    uint32_t index;          /**< 1-based position in its chain. */
-    int64_t offset;          /**< Partition: absolute device offset; else -1. */
-    int64_t size;            /**< Bytes the record extracts. */
-    uint64_t declared_size;  /**< Partition: size from the geometry. */
-    uint32_t dos_type;       /**< DosType of the partition or filesystem. */
-    uint32_t flags;          /**< PART Flags, or FSHD Version for a filesystem. */
-    uint32_t low_cyl;        /**< Partition only. */
-    uint32_t high_cyl;       /**< Partition only. */
-    const char *drive_name;  /**< PART DriveName, printable ASCII, "" if unset. */
-    const char *name;        /**< Record name, e.g. "partition2". */
+    bool is_filesystem;     /**< false: partition, true: filesystem code. */
+    uint32_t index;         /**< 1-based position in its chain. */
+    int64_t offset;         /**< Partition: absolute device offset; else -1. */
+    int64_t size;           /**< Bytes the record extracts. */
+    uint64_t declared_size; /**< Partition: size from the geometry. */
+    uint32_t dos_type;      /**< DosType of the partition or filesystem. */
+    uint32_t flags;         /**< PART Flags, or FSHD Version for a filesystem. */
+    uint32_t low_cyl;       /**< Partition only. */
+    uint32_t high_cyl;      /**< Partition only. */
+    const char *drive_name; /**< PART DriveName, printable ASCII, "" if unset. */
+    const char *name;       /**< Record name, e.g. "partition2". */
 } xx_rdb_member_info;
 
 struct xx_rdb {
     Abstractformat format;
     uint64_t number_of_records;
     uint64_t number_of_members;
-    uint32_t block_bytes;    /**< RDSK BlockBytes. */
-    uint32_t rdsk_block;     /**< Block number that holds the RDSK block. */
-    uint32_t partitions;     /**< Partitions published. */
-    uint32_t filesystems;    /**< Filesystems published. */
-    int64_t archive_end;     /**< End of the disk as far as known, or -1. */
+    uint32_t block_bytes; /**< RDSK BlockBytes. */
+    uint32_t rdsk_block;  /**< Block number that holds the RDSK block. */
+    uint32_t partitions;  /**< Partitions published. */
+    uint32_t filesystems; /**< Filesystems published. */
+    int64_t archive_end;  /**< End of the disk as far as known, or -1. */
     void *internal;
 };
 
@@ -125,19 +125,13 @@ XXFC_API void xx_rdb_free(xx_rdb *rdb);
 XXFC_API bool xx_rdb_check_is_valid(Abstractformat *self, xx_pd_struct *pd);
 XXFC_API bool xx_rdb_handle_base_info(Abstractformat *self, xx_pd_struct *pd);
 XXFC_API int64_t xx_rdb_get_format_size(Abstractformat *self, xx_pd_struct *pd);
-XXFC_API uint64_t xx_rdb_get_number_of_archive_records(Abstractformat *self,
-                                                       xx_pd_struct *pd);
+XXFC_API uint64_t xx_rdb_get_number_of_archive_records(Abstractformat *self, xx_pd_struct *pd);
 
-XXFC_API xx_archive_record_state *xx_rdb_create_archive_records_reading(
-    Abstractformat *self, const xx_list_s *options, xx_pd_struct *pd);
-XXFC_API const xx_archive_record *xx_rdb_get_current_archive_record(
-    Abstractformat *self, xx_archive_record_state *state);
-XXFC_API bool xx_rdb_unpack_current_archive_record(
-    Abstractformat *self, xx_archive_record_state *state, xx_pd_struct *pd);
-XXFC_API bool xx_rdb_archive_record_move_to_next(
-    Abstractformat *self, xx_archive_record_state *state, xx_pd_struct *pd);
-XXFC_API void xx_rdb_free_archive_records_reading(
-    Abstractformat *self, xx_archive_record_state *state);
+XXFC_API xx_archive_record_state *xx_rdb_create_archive_records_reading(Abstractformat *self, const xx_list_s *options, xx_pd_struct *pd);
+XXFC_API const xx_archive_record *xx_rdb_get_current_archive_record(Abstractformat *self, xx_archive_record_state *state);
+XXFC_API bool xx_rdb_unpack_current_archive_record(Abstractformat *self, xx_archive_record_state *state, xx_pd_struct *pd);
+XXFC_API bool xx_rdb_archive_record_move_to_next(Abstractformat *self, xx_archive_record_state *state, xx_pd_struct *pd);
+XXFC_API void xx_rdb_free_archive_records_reading(Abstractformat *self, xx_archive_record_state *state);
 
 XXFC_API uint64_t xx_rdb_get_number_of_records(const xx_rdb *rdb);
 XXFC_API uint64_t xx_rdb_get_number_of_members(const xx_rdb *rdb);
@@ -146,21 +140,26 @@ XXFC_API int64_t xx_rdb_get_archive_end(const xx_rdb *rdb);
 
 /** Fill info for the index-th published record (partitions first, then
  * filesystems). Requires that base info has already been handled. */
-XXFC_API bool xx_rdb_get_member_info(const xx_rdb *rdb, uint64_t index,
-                                     xx_rdb_member_info *info);
+XXFC_API bool xx_rdb_get_member_info(const xx_rdb *rdb, uint64_t index, xx_rdb_member_info *info);
 
-static inline Abstractformat *xx_rdb_to_format(xx_rdb *rdb) {
+static inline Abstractformat *xx_rdb_to_format(xx_rdb *rdb)
+{
     return rdb ? &rdb->format : NULL;
 }
-static inline void XRdb_init(xx_rdb *rdb, xx_io_device *dev,
-                             int64_t base_address) {
+static inline void XRdb_init(xx_rdb *rdb, xx_io_device *dev, int64_t base_address)
+{
     xx_rdb_init(rdb, dev, base_address);
 }
-static inline xx_rdb *XRdb_create(xx_io_device *dev, int64_t base_address) {
+static inline xx_rdb *XRdb_create(xx_io_device *dev, int64_t base_address)
+{
     return xx_rdb_create(dev, base_address);
 }
-static inline void XRdb_free(xx_rdb *rdb) { xx_rdb_free(rdb); }
-static inline bool XRdb_is_valid(xx_rdb *rdb, xx_pd_struct *pd) {
+static inline void XRdb_free(xx_rdb *rdb)
+{
+    xx_rdb_free(rdb);
+}
+static inline bool XRdb_is_valid(xx_rdb *rdb, xx_pd_struct *pd)
+{
     return rdb ? xx_format_is_valid(&rdb->format, pd) : false;
 }
 

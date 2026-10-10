@@ -71,7 +71,6 @@
 #define PIT_MAX_INTERNAL 255U
 #define PIT_LEAF 0x8000U
 
-
 /* 63 Mac Roman bytes are at most 189 UTF-8 bytes; room for "_<n>" and
  * ".rsrc" on top. */
 #define PIT_NAME_BUFFER 256U
@@ -82,8 +81,8 @@
 #define PIT_KIND_ENCRYPTED 2U
 
 typedef struct pit_member_s {
-    int64_t offset;   /**< Absolute offset of the member's marker. */
-    int64_t size;     /**< Marker plus body (or stream) bytes. */
+    int64_t offset; /**< Absolute offset of the member's marker. */
+    int64_t size;   /**< Marker plus body (or stream) bytes. */
     uint32_t data_length;
     uint32_t rsrc_length;
     uint32_t type;
@@ -92,7 +91,7 @@ typedef struct pit_member_s {
     uint8_t name_length;
     uint8_t name[PIT_NAME_FIELD];
     uint8_t kind;
-    uint8_t marker;   /**< Fourth marker byte. */
+    uint8_t marker; /**< Fourth marker byte. */
 } pit_member;
 
 typedef struct pit_item_s {
@@ -115,11 +114,11 @@ typedef struct pit_stream_s {
 } pit_stream;
 
 typedef struct pit_reader_s {
-    xx_io_device *device;  /**< NULL when reading from memory. */
+    xx_io_device *device; /**< NULL when reading from memory. */
     const uint8_t *data;
-    int64_t next;          /**< Device offset of the next refill. */
-    int64_t limit;         /**< Device offset input must not reach. */
-    uint64_t fetched;      /**< Bytes handed to the bit reader / caller. */
+    int64_t next;     /**< Device offset of the next refill. */
+    int64_t limit;    /**< Device offset input must not reach. */
+    uint64_t fetched; /**< Bytes handed to the bit reader / caller. */
     size_t length;
     size_t position;
     uint32_t bits;
@@ -131,7 +130,8 @@ typedef struct pit_reader_s {
     size_t io_capacity;
 } pit_reader;
 
-static pit_reader *pit_reader_create(void) {
+static pit_reader *pit_reader_create(void)
+{
     size_t capacity = xx_get_file_buffer_size();
     pit_reader *state;
     if (capacity > ((size_t)-1 - sizeof(*state)) / 2U) return NULL;
@@ -143,7 +143,6 @@ static pit_reader *pit_reader_create(void) {
     return state;
 }
 
-
 typedef enum pit_step_e {
     PIT_STEP_MEMBER,
     PIT_STEP_END,
@@ -154,36 +153,24 @@ typedef enum pit_step_e {
 
 /* Mac Roman 0x80..0xFF as Unicode code points. */
 static const uint16_t pit_mac_roman[128] = {
-    0x00C4, 0x00C5, 0x00C7, 0x00C9, 0x00D1, 0x00D6, 0x00DC, 0x00E1,
-    0x00E0, 0x00E2, 0x00E4, 0x00E3, 0x00E5, 0x00E7, 0x00E9, 0x00E8,
-    0x00EA, 0x00EB, 0x00ED, 0x00EC, 0x00EE, 0x00EF, 0x00F1, 0x00F3,
-    0x00F2, 0x00F4, 0x00F6, 0x00F5, 0x00FA, 0x00F9, 0x00FB, 0x00FC,
-    0x2020, 0x00B0, 0x00A2, 0x00A3, 0x00A7, 0x2022, 0x00B6, 0x00DF,
-    0x00AE, 0x00A9, 0x2122, 0x00B4, 0x00A8, 0x2260, 0x00C6, 0x00D8,
-    0x221E, 0x00B1, 0x2264, 0x2265, 0x00A5, 0x00B5, 0x2202, 0x2211,
-    0x220F, 0x03C0, 0x222B, 0x00AA, 0x00BA, 0x03A9, 0x00E6, 0x00F8,
-    0x00BF, 0x00A1, 0x00AC, 0x221A, 0x0192, 0x2248, 0x2206, 0x00AB,
-    0x00BB, 0x2026, 0x00A0, 0x00C0, 0x00C3, 0x00D5, 0x0152, 0x0153,
-    0x2013, 0x2014, 0x201C, 0x201D, 0x2018, 0x2019, 0x00F7, 0x25CA,
-    0x00FF, 0x0178, 0x2044, 0x20AC, 0x2039, 0x203A, 0xFB01, 0xFB02,
-    0x2021, 0x00B7, 0x201A, 0x201E, 0x2030, 0x00C2, 0x00CA, 0x00C1,
-    0x00CB, 0x00C8, 0x00CD, 0x00CE, 0x00CF, 0x00CC, 0x00D3, 0x00D4,
-    0xF8FF, 0x00D2, 0x00DA, 0x00DB, 0x00D9, 0x0131, 0x02C6, 0x02DC,
-    0x00AF, 0x02D8, 0x02D9, 0x02DA, 0x00B8, 0x02DD, 0x02DB, 0x02C7,
+    0x00C4, 0x00C5, 0x00C7, 0x00C9, 0x00D1, 0x00D6, 0x00DC, 0x00E1, 0x00E0, 0x00E2, 0x00E4, 0x00E3, 0x00E5, 0x00E7, 0x00E9, 0x00E8, 0x00EA, 0x00EB, 0x00ED,
+    0x00EC, 0x00EE, 0x00EF, 0x00F1, 0x00F3, 0x00F2, 0x00F4, 0x00F6, 0x00F5, 0x00FA, 0x00F9, 0x00FB, 0x00FC, 0x2020, 0x00B0, 0x00A2, 0x00A3, 0x00A7, 0x2022,
+    0x00B6, 0x00DF, 0x00AE, 0x00A9, 0x2122, 0x00B4, 0x00A8, 0x2260, 0x00C6, 0x00D8, 0x221E, 0x00B1, 0x2264, 0x2265, 0x00A5, 0x00B5, 0x2202, 0x2211, 0x220F,
+    0x03C0, 0x222B, 0x00AA, 0x00BA, 0x03A9, 0x00E6, 0x00F8, 0x00BF, 0x00A1, 0x00AC, 0x221A, 0x0192, 0x2248, 0x2206, 0x00AB, 0x00BB, 0x2026, 0x00A0, 0x00C0,
+    0x00C3, 0x00D5, 0x0152, 0x0153, 0x2013, 0x2014, 0x201C, 0x201D, 0x2018, 0x2019, 0x00F7, 0x25CA, 0x00FF, 0x0178, 0x2044, 0x20AC, 0x2039, 0x203A, 0xFB01,
+    0xFB02, 0x2021, 0x00B7, 0x201A, 0x201E, 0x2030, 0x00C2, 0x00CA, 0x00C1, 0x00CB, 0x00C8, 0x00CD, 0x00CE, 0x00CF, 0x00CC, 0x00D3, 0x00D4, 0xF8FF, 0x00D2,
+    0x00DA, 0x00DB, 0x00D9, 0x0131, 0x02C6, 0x02DC, 0x00AF, 0x02D8, 0x02D9, 0x02DA, 0x00B8, 0x02DD, 0x02DB, 0x02C7,
 };
 
-static bool pit_read_at(xx_io_device *device, int64_t offset, void *buffer,
-                        size_t size) {
+static bool pit_read_at(xx_io_device *device, int64_t offset, void *buffer, size_t size)
+{
     size_t done = 0U;
     const size_t io_capacity = xx_get_file_buffer_size();
-    if (!device || (!buffer && size != 0U) || offset < 0 ||
-        xx_io_seek64(device, offset, SEEK_SET) != 0)
-        return false;
+    if (!device || (!buffer && size != 0U) || offset < 0 || xx_io_seek64(device, offset, SEEK_SET) != 0) return false;
     while (done < size) {
         size_t request = size - done;
         if (request > io_capacity) request = io_capacity;
-        ssize_t amount = xx_io_read(device, (uint8_t *)buffer + done,
-                                    request);
+        ssize_t amount = xx_io_read(device, (uint8_t *)buffer + done, request);
         if (amount <= 0 || (size_t)amount > request) return false;
         done += (size_t)amount;
     }
@@ -193,9 +180,8 @@ static bool pit_read_at(xx_io_device *device, int64_t offset, void *buffer,
 /* ---------------------------------------------------------------------- */
 /* Input: bytes, bits, Huffman codes                                       */
 
-static void pit_reader_start(pit_reader *r, xx_io_device *device,
-                             const uint8_t *memory, int64_t offset,
-                             int64_t limit, bool huffman) {
+static void pit_reader_start(pit_reader *r, xx_io_device *device, const uint8_t *memory, int64_t offset, int64_t limit, bool huffman)
+{
     r->device = device;
     r->data = memory;
     r->next = offset;
@@ -208,15 +194,15 @@ static void pit_reader_start(pit_reader *r, xx_io_device *device,
     r->huffman = huffman;
 }
 
-static bool pit_fetch(pit_reader *r, uint8_t *byte) {
+static bool pit_fetch(pit_reader *r, uint8_t *byte)
+{
     if (r->position >= r->length) {
         int64_t left;
         size_t amount;
         if (!r->device) return false;
         left = r->limit - r->next;
         if (left <= 0) return false;
-        amount = left < (int64_t)r->io_capacity ? (size_t)left
-                                                   : r->io_capacity;
+        amount = left < (int64_t)r->io_capacity ? (size_t)left : r->io_capacity;
         if (!pit_read_at(r->device, r->next, r->buffer, amount)) return false;
         r->data = r->buffer;
         r->next += (int64_t)amount;
@@ -229,15 +215,16 @@ static bool pit_fetch(pit_reader *r, uint8_t *byte) {
 }
 
 /* Input bits not yet consumed. */
-static uint64_t pit_bits_left(const pit_reader *r) {
+static uint64_t pit_bits_left(const pit_reader *r)
+{
     uint64_t bytes = (uint64_t)(r->length - r->position);
-    if (r->device && r->limit > r->next)
-        bytes += (uint64_t)(r->limit - r->next);
+    if (r->device && r->limit > r->next) bytes += (uint64_t)(r->limit - r->next);
     return bytes * 8U + r->bit_count;
 }
 
 /* One bit, most significant first; -1 at the end of the input. */
-static int pit_bit(pit_reader *r) {
+static int pit_bit(pit_reader *r)
+{
     if (r->bit_count == 0U) {
         uint8_t byte;
         if (!pit_fetch(r, &byte)) return -1;
@@ -254,7 +241,8 @@ static int pit_bit(pit_reader *r) {
  * hostile tree cannot recurse; each internal node adds one net slot, which
  * bounds the stack by the node limit.  A root that is itself a leaf would
  * give zero-length codes and is refused, as the reference refuses it. */
-static bool pit_read_tree(pit_reader *r) {
+static bool pit_read_tree(pit_reader *r)
+{
     uint16_t stack[PIT_MAX_INTERNAL + 2U];
     size_t depth = 0U;
     uint32_t internal = 1U;
@@ -275,9 +263,7 @@ static bool pit_read_tree(pit_reader *r) {
             r->tree[slot >> 1U][slot & 1U] = (uint16_t)(PIT_LEAF | value);
         } else {
             uint16_t node;
-            if (internal >= PIT_MAX_INTERNAL ||
-                depth + 2U > sizeof(stack) / sizeof(stack[0]))
-                return false;
+            if (internal >= PIT_MAX_INTERNAL || depth + 2U > sizeof(stack) / sizeof(stack[0])) return false;
             node = (uint16_t)internal++;
             r->tree[slot >> 1U][slot & 1U] = node;
             stack[depth++] = (uint16_t)(node * 2U + 1U);
@@ -290,7 +276,8 @@ static bool pit_read_tree(pit_reader *r) {
 /* Every child slot was filled by pit_read_tree and every internal child has
  * a larger index than its parent, so a code ends within PIT_MAX_INTERNAL
  * bits; the step bound only restates that. */
-static bool pit_symbol(pit_reader *r, uint8_t *out) {
+static bool pit_symbol(pit_reader *r, uint8_t *out)
+{
     uint32_t node = 0U, steps;
     for (steps = 0U; steps < PIT_MAX_INTERNAL; ++steps) {
         int bit = pit_bit(r);
@@ -307,11 +294,13 @@ static bool pit_symbol(pit_reader *r, uint8_t *out) {
     return false;
 }
 
-static bool pit_next(pit_reader *r, uint8_t *out) {
+static bool pit_next(pit_reader *r, uint8_t *out)
+{
     return r->huffman ? pit_symbol(r, out) : pit_fetch(r, out);
 }
 
-static bool pit_read_body(pit_reader *r, uint8_t *out, size_t size) {
+static bool pit_read_body(pit_reader *r, uint8_t *out, size_t size)
+{
     size_t index;
     for (index = 0U; index < size; ++index)
         if (!pit_next(r, out + index)) return false;
@@ -321,16 +310,16 @@ static bool pit_read_body(pit_reader *r, uint8_t *out, size_t size) {
 /* ---------------------------------------------------------------------- */
 /* Member walk                                                             */
 
-static bool pit_body_header_valid(const uint8_t *header) {
+static bool pit_body_header_valid(const uint8_t *header)
+{
     uint8_t name_length = header[PIT_OFF_NAME_LENGTH];
     return name_length >= 1U && name_length <= PIT_NAME_FIELD &&
-           xx_crc16_xmodem_calc(0U, header, PIT_HEADER_CRC_SPAN) ==
-               xx_data_get_u16(header + PIT_OFF_HEADER_CRC, 2, 0, true) &&
-           xx_data_get_u32(header + PIT_OFF_DATA_LENGTH, 4, 0, true) <= PIT_MAX_FORK &&
-           xx_data_get_u32(header + PIT_OFF_RSRC_LENGTH, 4, 0, true) <= PIT_MAX_FORK;
+           xx_crc16_xmodem_calc(0U, header, PIT_HEADER_CRC_SPAN) == xx_data_get_u16(header + PIT_OFF_HEADER_CRC, 2, 0, true) &&
+           xx_data_get_u32(header + PIT_OFF_DATA_LENGTH, 4, 0, true) <= PIT_MAX_FORK && xx_data_get_u32(header + PIT_OFF_RSRC_LENGTH, 4, 0, true) <= PIT_MAX_FORK;
 }
 
-static void pit_member_from_header(pit_member *m, const uint8_t *header) {
+static void pit_member_from_header(pit_member *m, const uint8_t *header)
+{
     m->name_length = header[PIT_OFF_NAME_LENGTH];
     xx_rt_memcpy(m->name, header + PIT_OFF_NAME, PIT_NAME_FIELD);
     m->type = xx_data_get_u32(header + PIT_OFF_TYPE, 4, 0, true);
@@ -342,15 +331,13 @@ static void pit_member_from_header(pit_member *m, const uint8_t *header) {
 
 /* Reads the member (or end marker) at absolute offset @p at.  A Huffman
  * member is decoded to its end, since only that locates the next member. */
-static pit_step pit_parse_member(xx_io_device *device, int64_t at,
-                                 int64_t end, pit_reader *r, pit_member *m) {
+static pit_step pit_parse_member(xx_io_device *device, int64_t at, int64_t end, pit_reader *r, pit_member *m)
+{
     uint8_t marker[PIT_MARKER_SIZE];
     uint8_t header[PIT_BODY_HEADER];
     xx_mem_zero(m, sizeof(*m));
     m->offset = at;
-    if (end - at < PIT_MARKER_SIZE ||
-        !pit_read_at(device, at, marker, sizeof(marker)))
-        return PIT_STEP_STOP;
+    if (end - at < PIT_MARKER_SIZE || !pit_read_at(device, at, marker, sizeof(marker))) return PIT_STEP_STOP;
     if (xx_rt_memcmp(marker, "PEnd", 4U) == 0) return PIT_STEP_END;
     if (xx_rt_memcmp(marker, "PMa", 3U) != 0) return PIT_STEP_STOP;
     m->marker = marker[3];
@@ -359,29 +346,20 @@ static pit_step pit_parse_member(xx_io_device *device, int64_t at,
         m->size = end - at;
         return PIT_STEP_ENCRYPTED;
     }
-    if (marker[3] == 'g')
-        m->kind = PIT_KIND_STORED;
-    else if (marker[3] == '4')
-        m->kind = PIT_KIND_HUFFMAN;
-    else
-        return PIT_STEP_STOP;
+    if (marker[3] == 'g') m->kind = PIT_KIND_STORED;
+    else if (marker[3] == '4') m->kind = PIT_KIND_HUFFMAN;
+    else return PIT_STEP_STOP;
 
-    pit_reader_start(r, device, NULL, at + PIT_MARKER_SIZE, end,
-                     m->kind == PIT_KIND_HUFFMAN);
-    if ((r->huffman && !pit_read_tree(r)) ||
-        !pit_read_body(r, header, sizeof(header)) ||
-        !pit_body_header_valid(header))
-        return PIT_STEP_DAMAGED;
+    pit_reader_start(r, device, NULL, at + PIT_MARKER_SIZE, end, m->kind == PIT_KIND_HUFFMAN);
+    if ((r->huffman && !pit_read_tree(r)) || !pit_read_body(r, header, sizeof(header)) || !pit_body_header_valid(header)) return PIT_STEP_DAMAGED;
     pit_member_from_header(m, header);
 
     if (m->kind == PIT_KIND_STORED) {
-        int64_t size = (int64_t)PIT_STORED_OVERHEAD +
-                       (int64_t)m->data_length + (int64_t)m->rsrc_length;
+        int64_t size = (int64_t)PIT_STORED_OVERHEAD + (int64_t)m->data_length + (int64_t)m->rsrc_length;
         if (size > end - at) return PIT_STEP_DAMAGED;
         m->size = size;
     } else {
-        uint64_t need = (uint64_t)m->data_length +
-                        (uint64_t)m->rsrc_length + PIT_TRAILER;
+        uint64_t need = (uint64_t)m->data_length + (uint64_t)m->rsrc_length + PIT_TRAILER;
         uint64_t index;
         uint8_t byte;
         if (need > pit_bits_left(r)) return PIT_STEP_DAMAGED;
@@ -392,7 +370,8 @@ static pit_step pit_parse_member(xx_io_device *device, int64_t at,
     return PIT_STEP_MEMBER;
 }
 
-static void pit_stream_free(void *opaque) {
+static void pit_stream_free(void *opaque)
+{
     pit_stream *stream = (pit_stream *)opaque;
     size_t index;
     if (!stream) return;
@@ -403,15 +382,14 @@ static void pit_stream_free(void *opaque) {
     xx_mem_free(stream);
 }
 
-static bool pit_add_member(pit_stream *stream, const pit_member *member) {
+static bool pit_add_member(pit_stream *stream, const pit_member *member)
+{
     if (stream->member_count == stream->member_capacity) {
-        size_t capacity = stream->member_capacity ? stream->member_capacity * 2U
-                                                  : 16U;
+        size_t capacity = stream->member_capacity ? stream->member_capacity * 2U : 16U;
         pit_member *grown;
         if (capacity > PIT_MAX_MEMBERS + 1U) capacity = PIT_MAX_MEMBERS + 1U;
         if (capacity <= stream->member_count) return false;
-        grown = (pit_member *)xx_mem_realloc(stream->members,
-                                             capacity * sizeof(*grown));
+        grown = (pit_member *)xx_mem_realloc(stream->members, capacity * sizeof(*grown));
         if (!grown) return false;
         stream->members = grown;
         stream->member_capacity = capacity;
@@ -427,7 +405,8 @@ static bool pit_add_member(pit_stream *stream, const pit_member *member) {
  * trailing data. A recognized stored/Huffman member that cannot be parsed
  * is reported as incomplete, as is a further member beyond the member cap.
  * With @p out NULL only the first member is checked. */
-static bool pit_parse(Abstractformat *format, pit_stream **out) {
+static bool pit_parse(Abstractformat *format, pit_stream **out)
+{
     pit_reader *reader;
     pit_stream *stream = NULL;
     int64_t total, at, end;
@@ -437,9 +416,7 @@ static bool pit_parse(Abstractformat *format, pit_stream **out) {
     if (out) *out = NULL;
     if (!format || !format->device || format->base_address < 0) return false;
     total = xx_io_total_size(format->device);
-    if (total < 0 || format->base_address > total ||
-        total - format->base_address < (int64_t)PIT_MARKER_SIZE + 12)
-        return false;
+    if (total < 0 || format->base_address > total || total - format->base_address < (int64_t)PIT_MARKER_SIZE + 12) return false;
     reader = pit_reader_create();
     if (!reader) return false;
     if (out) {
@@ -456,14 +433,11 @@ static bool pit_parse(Abstractformat *format, pit_stream **out) {
             /* Inspect only the marker at the chain boundary. An ordinary
              * overlay or EOF does not imply an unreadable declared member.
              */
-            if (stream && end - at >= PIT_MARKER_SIZE &&
-                pit_read_at(format->device, at, marker, sizeof(marker))) {
+            if (stream && end - at >= PIT_MARKER_SIZE && pit_read_at(format->device, at, marker, sizeof(marker))) {
                 if (xx_rt_memcmp(marker, "PEnd", 4U) == 0) {
                     stream->end_marker = true;
                     at += PIT_MARKER_SIZE;
-                } else if (xx_rt_memcmp(marker, "PMa", 3U) == 0 &&
-                           (marker[3] == 'g' || marker[3] == '4' ||
-                            marker[3] == '5' || marker[3] == '6')) {
+                } else if (xx_rt_memcmp(marker, "PMa", 3U) == 0 && (marker[3] == 'g' || marker[3] == '4' || marker[3] == '5' || marker[3] == '6')) {
                     stream->incomplete_members = true;
                 }
             }
@@ -506,7 +480,8 @@ done:
 /* ---------------------------------------------------------------------- */
 /* Names                                                                   */
 
-static size_t pit_put_utf8(char *out, uint32_t code) {
+static size_t pit_put_utf8(char *out, uint32_t code)
+{
     if (code < 0x80U) {
         out[0] = (char)code;
         return 1U;
@@ -527,53 +502,45 @@ static size_t pit_put_utf8(char *out, uint32_t code) {
  * would read as structure or refuse becomes '_', the rest is converted to
  * UTF-8, and trailing dots and spaces (which Windows drops) are removed, so
  * "." and ".." can never survive. */
-static void pit_display_name(const pit_member *m, char *out) {
+static void pit_display_name(const pit_member *m, char *out)
+{
     size_t index, length = 0U;
-    for (index = 0U; index < m->name_length && index < PIT_NAME_FIELD;
-         ++index) {
+    for (index = 0U; index < m->name_length && index < PIT_NAME_FIELD; ++index) {
         uint8_t c = m->name[index];
-        if (c < 0x20U || c == 0x7FU || c == '/' || c == '\\' || c == ':' ||
-            c == '*' || c == '?' || c == '"' || c == '<' || c == '>' ||
-            c == '|')
-            out[length++] = '_';
-        else if (c < 0x80U)
-            out[length++] = (char)c;
-        else
-            length += pit_put_utf8(out + length, pit_mac_roman[c - 0x80U]);
+        if (c < 0x20U || c == 0x7FU || c == '/' || c == '\\' || c == ':' || c == '*' || c == '?' || c == '"' || c == '<' || c == '>' || c == '|') out[length++] = '_';
+        else if (c < 0x80U) out[length++] = (char)c;
+        else length += pit_put_utf8(out + length, pit_mac_roman[c - 0x80U]);
     }
-    while (length != 0U && (out[length - 1U] == ' ' || out[length - 1U] == '.'))
-        --length;
+    while (length != 0U && (out[length - 1U] == ' ' || out[length - 1U] == '.')) --length;
     if (length == 0U) out[length++] = '_';
     out[length] = 0;
 }
 
-static char pit_upper(char c) {
+static char pit_upper(char c)
+{
     return (c >= 'a' && c <= 'z') ? (char)(c - 'a' + 'A') : c;
 }
 
-static bool pit_stem_is(const char *name, size_t stem, const char *word) {
+static bool pit_stem_is(const char *name, size_t stem, const char *word)
+{
     size_t index;
     for (index = 0U; index < stem; ++index)
-        if (!word[index] || pit_upper(name[index]) != word[index])
-            return false;
+        if (!word[index] || pit_upper(name[index]) != word[index]) return false;
     return word[stem] == 0;
 }
 
 /* Windows device names, with or without an extension and in any case. */
-static bool pit_is_device_name(const char *name) {
-    static const char *const devices[] = {"CON",    "PRN",     "AUX",
-                                          "NUL",    "CONIN$",  "CONOUT$",
-                                          "CLOCK$"};
+static bool pit_is_device_name(const char *name)
+{
+    static const char *const devices[] = {"CON", "PRN", "AUX", "NUL", "CONIN$", "CONOUT$", "CLOCK$"};
     size_t length = xx_str_len(name), stem = 0U, index;
     while (stem < length && name[stem] != '.') ++stem;
     while (stem > 0U && name[stem - 1U] == ' ') --stem;
     for (index = 0U; index < sizeof(devices) / sizeof(devices[0]); ++index)
         if (pit_stem_is(name, stem, devices[index])) return true;
     return stem == 4U && name[3] >= '0' && name[3] <= '9' &&
-           ((pit_upper(name[0]) == 'C' && pit_upper(name[1]) == 'O' &&
-             pit_upper(name[2]) == 'M') ||
-            (pit_upper(name[0]) == 'L' && pit_upper(name[1]) == 'P' &&
-             pit_upper(name[2]) == 'T'));
+           ((pit_upper(name[0]) == 'C' && pit_upper(name[1]) == 'O' && pit_upper(name[2]) == 'M') ||
+            (pit_upper(name[0]) == 'L' && pit_upper(name[1]) == 'P' && pit_upper(name[2]) == 'T'));
 }
 
 /* Output names already handed out, compared without case (the output lands
@@ -590,7 +557,8 @@ typedef struct pit_names_s {
  * three bytes), upper-cased the way a case-insensitive file system would
  * compare it; 0 at the end.  Folding more than the file system does only
  * costs an extra suffix, folding less could let two records share a file. */
-static uint32_t pit_fold_next(const char **cursor) {
+static uint32_t pit_fold_next(const char **cursor)
+{
     const uint8_t *s = (const uint8_t *)*cursor;
     uint32_t code = s[0];
     size_t used = 1U;
@@ -599,8 +567,7 @@ static uint32_t pit_fold_next(const char **cursor) {
         code = ((code & 0x1FU) << 6U) | (s[1] & 0x3FU);
         used = 2U;
     } else if ((code & 0xF0U) == 0xE0U && s[1] != 0U && s[2] != 0U) {
-        code = ((code & 0x0FU) << 12U) | ((uint32_t)(s[1] & 0x3FU) << 6U) |
-               (s[2] & 0x3FU);
+        code = ((code & 0x0FU) << 12U) | ((uint32_t)(s[1] & 0x3FU) << 6U) | (s[2] & 0x3FU);
         used = 3U;
     }
     *cursor += used;
@@ -613,7 +580,8 @@ static uint32_t pit_fold_next(const char **cursor) {
     return code;
 }
 
-static uint32_t pit_hash(const char *name) {
+static uint32_t pit_hash(const char *name)
+{
     uint32_t hash = 2166136261U, code;
     while ((code = pit_fold_next(&name)) != 0U) {
         hash ^= code;
@@ -622,7 +590,8 @@ static uint32_t pit_hash(const char *name) {
     return hash;
 }
 
-static bool pit_same_name(const char *left, const char *right) {
+static bool pit_same_name(const char *left, const char *right)
+{
     for (;;) {
         uint32_t a = pit_fold_next(&left);
         uint32_t b = pit_fold_next(&right);
@@ -631,7 +600,8 @@ static bool pit_same_name(const char *left, const char *right) {
     }
 }
 
-static bool pit_names_init(pit_names *names, size_t expected) {
+static bool pit_names_init(pit_names *names, size_t expected)
+{
     size_t size = 16U;
     xx_mem_zero(names, sizeof(*names));
     while (size < expected * 2U + 2U) size *= 2U;
@@ -641,7 +611,8 @@ static bool pit_names_init(pit_names *names, size_t expected) {
     return names->slots && names->hints;
 }
 
-static void pit_names_cleanup(pit_names *names) {
+static void pit_names_cleanup(pit_names *names)
+{
     if (names->slots) xx_mem_free((void *)names->slots);
     if (names->hints) xx_mem_free(names->hints);
     xx_mem_zero(names, sizeof(*names));
@@ -649,18 +620,20 @@ static void pit_names_cleanup(pit_names *names) {
 
 /* Slot holding @p name, or the empty slot where it would go.  The table is
  * never more than half full, so the probe always ends. */
-static size_t pit_names_find(const pit_names *names, const char *name) {
+static size_t pit_names_find(const pit_names *names, const char *name)
+{
     size_t slot = (size_t)pit_hash(name) & names->mask;
-    while (names->slots[slot] && !pit_same_name(names->slots[slot], name))
-        slot = (slot + 1U) & names->mask;
+    while (names->slots[slot] && !pit_same_name(names->slots[slot], name)) slot = (slot + 1U) & names->mask;
     return slot;
 }
 
-static bool pit_names_taken(const pit_names *names, const char *name) {
+static bool pit_names_taken(const pit_names *names, const char *name)
+{
     return names->slots[pit_names_find(names, name)] != NULL;
 }
 
-static void pit_names_add(pit_names *names, const char *name) {
+static void pit_names_add(pit_names *names, const char *name)
+{
     size_t slot = pit_names_find(names, name);
     if (!names->slots[slot]) {
         names->slots[slot] = name;
@@ -669,7 +642,8 @@ static void pit_names_add(pit_names *names, const char *name) {
 }
 
 /* "<stem>_<n><extension>", the suffix going before a final extension. */
-static void pit_with_suffix(const char *base, uint32_t suffix, char *out) {
+static void pit_with_suffix(const char *base, uint32_t suffix, char *out)
+{
     size_t length = xx_str_len(base), stem = length, index;
     char digits[16];
     int count;
@@ -687,7 +661,8 @@ static void pit_with_suffix(const char *base, uint32_t suffix, char *out) {
     out[length + (size_t)count] = 0;
 }
 
-static char *pit_copy(const char *text, const char *suffix) {
+static char *pit_copy(const char *text, const char *suffix)
+{
     size_t length = xx_str_len(text);
     size_t extra = suffix ? xx_str_len(suffix) : 0U;
     char *copy = (char *)xx_mem_alloc(length + extra + 1U);
@@ -698,8 +673,8 @@ static char *pit_copy(const char *text, const char *suffix) {
     return copy;
 }
 
-static bool pit_add_item(pit_stream *stream, char *name, size_t member,
-                         bool resource) {
+static bool pit_add_item(pit_stream *stream, char *name, size_t member, bool resource)
+{
     pit_item *item = &stream->items[stream->count++];
     item->name = name;
     item->member = member;
@@ -710,19 +685,15 @@ static bool pit_add_item(pit_stream *stream, char *name, size_t member,
 /* One or two records per member.  A member's data and resource names come
  * from the same stem, and a stem is only taken when both names it needs are
  * still free, so no record can overwrite another's output. */
-static bool pit_build_items(pit_stream *stream) {
+static bool pit_build_items(pit_stream *stream)
+{
     pit_names names;
     size_t index;
     bool result = false;
     xx_mem_zero(&names, sizeof(names));
-    if (stream->member_count == 0U ||
-        stream->member_count > SIZE_MAX / (2U * sizeof(pit_item)))
-        return false;
-    stream->items = (pit_item *)xx_mem_calloc(stream->member_count * 2U,
-                                              sizeof(pit_item));
-    if (!stream->items ||
-        !pit_names_init(&names, stream->member_count * 2U))
-        goto done;
+    if (stream->member_count == 0U || stream->member_count > SIZE_MAX / (2U * sizeof(pit_item))) return false;
+    stream->items = (pit_item *)xx_mem_calloc(stream->member_count * 2U, sizeof(pit_item));
+    if (!stream->items || !pit_names_init(&names, stream->member_count * 2U)) goto done;
     for (index = 0U; index < stream->member_count; ++index) {
         const pit_member *m = &stream->members[index];
         char base[PIT_NAME_BUFFER];
@@ -734,8 +705,7 @@ static bool pit_build_items(pit_stream *stream) {
         char *data_name = NULL, *rsrc_name = NULL;
 
         if (m->kind == PIT_KIND_ENCRYPTED) {
-            (void)xx_rt_snprintf(base, sizeof(base), "%s%u",
-                                 PIT_ENCRYPTED_NAME, (unsigned)(index + 1U));
+            (void)xx_rt_snprintf(base, sizeof(base), "%s%u", PIT_ENCRYPTED_NAME, (unsigned)(index + 1U));
             want_data = true;
             want_rsrc = false;
         } else {
@@ -744,25 +714,16 @@ static bool pit_build_items(pit_stream *stream) {
             want_data = m->data_length != 0U || !want_rsrc;
         }
         base_slot = pit_names_find(&names, base);
-        for (attempts = 0U; attempts <= 2U * PIT_MAX_MEMBERS + 2U;
-             ++attempts) {
-            if (suffix == 0U)
-                xx_rt_memcpy(candidate, base, xx_str_len(base) + 1U);
-            else
-                pit_with_suffix(base, suffix, candidate);
+        for (attempts = 0U; attempts <= 2U * PIT_MAX_MEMBERS + 2U; ++attempts) {
+            if (suffix == 0U) xx_rt_memcpy(candidate, base, xx_str_len(base) + 1U);
+            else pit_with_suffix(base, suffix, candidate);
             xx_rt_snprintf(resource, sizeof(resource), "%s.rsrc", candidate);
-            if ((!want_data || !pit_names_taken(&names, candidate)) &&
-                (!want_rsrc || !pit_names_taken(&names, resource)))
-                break;
-            if (suffix == 0U && names.slots[base_slot] &&
-                names.hints[base_slot] != 0U)
-                suffix = names.hints[base_slot];
-            else
-                ++suffix;
+            if ((!want_data || !pit_names_taken(&names, candidate)) && (!want_rsrc || !pit_names_taken(&names, resource))) break;
+            if (suffix == 0U && names.slots[base_slot] && names.hints[base_slot] != 0U) suffix = names.hints[base_slot];
+            else ++suffix;
         }
         if (attempts > 2U * PIT_MAX_MEMBERS + 2U) goto done;
-        if (suffix != 0U && names.slots[base_slot])
-            names.hints[base_slot] = suffix + 1U;
+        if (suffix != 0U && names.slots[base_slot]) names.hints[base_slot] = suffix + 1U;
         if (want_data) {
             data_name = pit_copy(candidate, NULL);
             if (!data_name) goto done;
@@ -785,8 +746,8 @@ done:
 /* ---------------------------------------------------------------------- */
 /* Extraction                                                              */
 
-static bool pit_write_all(xx_io_device *sink, const uint8_t *data,
-                          size_t size) {
+static bool pit_write_all(xx_io_device *sink, const uint8_t *data, size_t size)
+{
     size_t done = 0U;
     const size_t io_capacity = xx_get_file_buffer_size();
     while (done < size) {
@@ -803,8 +764,8 @@ static bool pit_write_all(xx_io_device *sink, const uint8_t *data,
  * still the one the walk saw, passes the wanted fork to @p sink (NULL only
  * verifies) and succeeds only when the fork CRC matches and the member ends
  * exactly where the walk said it does. */
-static bool pit_extract(Abstractformat *format, const pit_member *m,
-                        bool resource, xx_io_device *sink, xx_pd_struct *pd) {
+static bool pit_extract(Abstractformat *format, const pit_member *m, bool resource, xx_io_device *sink, xx_pd_struct *pd)
+{
     pit_reader *r;
     uint8_t header[PIT_BODY_HEADER];
     uint8_t trailer[PIT_TRAILER];
@@ -812,21 +773,14 @@ static bool pit_extract(Abstractformat *format, const pit_member *m,
     uint16_t crc = 0U;
     uint32_t fork;
     bool result = false;
-    if (!format || !m || m->kind == PIT_KIND_ENCRYPTED || m->size <= 0)
-        return false;
+    if (!format || !m || m->kind == PIT_KIND_ENCRYPTED || m->size <= 0) return false;
     r = pit_reader_create();
     if (!r) return false;
-    pit_reader_start(r, format->device, NULL, m->offset + PIT_MARKER_SIZE,
-                     m->offset + m->size, m->kind == PIT_KIND_HUFFMAN);
-    if ((r->huffman && !pit_read_tree(r)) ||
-        !pit_read_body(r, header, sizeof(header)) ||
-        !pit_body_header_valid(header))
-        goto done;
+    pit_reader_start(r, format->device, NULL, m->offset + PIT_MARKER_SIZE, m->offset + m->size, m->kind == PIT_KIND_HUFFMAN);
+    if ((r->huffman && !pit_read_tree(r)) || !pit_read_body(r, header, sizeof(header)) || !pit_body_header_valid(header)) goto done;
     xx_mem_zero(&check, sizeof(check));
     pit_member_from_header(&check, header);
-    if (check.data_length != m->data_length ||
-        check.rsrc_length != m->rsrc_length)
-        goto done;
+    if (check.data_length != m->data_length || check.rsrc_length != m->rsrc_length) goto done;
     for (fork = 0U; fork < 2U; ++fork) {
         uint64_t left = fork == 0U ? m->data_length : m->rsrc_length;
         bool wanted = sink && (fork == 1U) == resource;
@@ -839,33 +793,24 @@ static bool pit_extract(Abstractformat *format, const pit_member *m,
             left -= amount;
         }
     }
-    if (!pit_read_body(r, trailer, sizeof(trailer)) ||
-        xx_data_get_u16(trailer, 2, 0, true) != crc ||
-        (int64_t)r->fetched != m->size - PIT_MARKER_SIZE)
-        goto done;
+    if (!pit_read_body(r, trailer, sizeof(trailer)) || xx_data_get_u16(trailer, 2, 0, true) != crc || (int64_t)r->fetched != m->size - PIT_MARKER_SIZE) goto done;
     result = true;
 done:
     xx_mem_free(r);
     return result;
 }
 
-bool xx_packit_mac_huffman_decode_memory(const uint8_t *stream,
-                                         size_t stream_size, uint8_t *output,
-                                         size_t output_size,
-                                         size_t *consumed) {
+bool xx_packit_mac_huffman_decode_memory(const uint8_t *stream, size_t stream_size, uint8_t *output, size_t output_size, size_t *consumed)
+{
     pit_reader *r;
     size_t index;
     bool result = false;
     if (consumed) *consumed = 0U;
-    if (!stream || (!output && output_size != 0U) ||
-        stream_size > (size_t)INT64_MAX)
-        return false;
+    if (!stream || (!output && output_size != 0U) || stream_size > (size_t)INT64_MAX) return false;
     r = pit_reader_create();
     if (!r) return false;
     pit_reader_start(r, NULL, stream, 0, (int64_t)stream_size, true);
-    if (!pit_read_tree(r) ||
-        (uint64_t)output_size > pit_bits_left(r))
-        goto done;
+    if (!pit_read_tree(r) || (uint64_t)output_size > pit_bits_left(r)) goto done;
     for (index = 0U; index < output_size; ++index)
         if (!pit_symbol(r, output + index)) goto done;
     if (consumed) *consumed = (size_t)r->fetched;
@@ -878,17 +823,16 @@ done:
 /* ---------------------------------------------------------------------- */
 /* Records                                                                 */
 
-static bool pit_copy_options(xx_list_s *destination, const xx_list_s *source) {
+static bool pit_copy_options(xx_list_s *destination, const xx_list_s *source)
+{
     size_t index;
     if (!source) return true;
     for (index = 0U; index < source->count; ++index) {
-        const xx_meta *original =
-            (const xx_meta *)xx_list_at((const xx_list_t *)source, index);
+        const xx_meta *original = (const xx_meta *)xx_list_at((const xx_list_t *)source, index);
         xx_meta copy;
         if (!original) continue;
         xx_meta_init(&copy, original->meta_id);
-        if (!xx_var_copy(&copy.var, &original->var) ||
-            !xx_list_append(destination, &copy)) {
+        if (!xx_var_copy(&copy.var, &original->var) || !xx_list_append(destination, &copy)) {
             xx_meta_cleanup(&copy);
             return false;
         }
@@ -896,20 +840,18 @@ static bool pit_copy_options(xx_list_s *destination, const xx_list_s *source) {
     return true;
 }
 
-static bool pit_set_record(xx_archive_record *record, const pit_stream *stream,
-                           const pit_item *item) {
+static bool pit_set_record(xx_archive_record *record, const pit_stream *stream, const pit_item *item)
+{
     const pit_member *m = &stream->members[item->member];
     bool encrypted = m->kind == PIT_KIND_ENCRYPTED;
     uint64_t length = item->resource ? m->rsrc_length : m->data_length;
-    uint64_t method = (m->kind == PIT_KIND_HUFFMAN || m->marker == '6') ? 1U
-                                                                        : 0U;
+    uint64_t method = (m->kind == PIT_KIND_HUFFMAN || m->marker == '6') ? 1U : 0U;
     xx_archive_record_cleanup(record);
     xx_archive_record_init(record);
     record->header_offset = item->resource ? -1 : m->offset;
     if (m->kind == PIT_KIND_STORED) {
         record->header_size = PIT_MARKER_SIZE + PIT_BODY_HEADER;
-        record->data_offset = m->offset + PIT_MARKER_SIZE + PIT_BODY_HEADER +
-                              (item->resource ? (int64_t)m->data_length : 0);
+        record->data_offset = m->offset + PIT_MARKER_SIZE + PIT_BODY_HEADER + (item->resource ? (int64_t)m->data_length : 0);
         record->compressed_size = (int64_t)length;
     } else {
         /* Both forks share one coded stream (or one ciphertext). */
@@ -918,29 +860,20 @@ static bool pit_set_record(xx_archive_record *record, const pit_stream *stream,
         record->compressed_size = m->size - PIT_MARKER_SIZE;
     }
     if (!xx_archive_record_set_original_name(record, item->name) ||
-        !xx_archive_record_set_meta_u64(record, XX_META_ID_COMPRESSED_SIZE,
-                                        (uint64_t)record->compressed_size) ||
-        !xx_archive_record_set_meta_u64(record, XX_META_ID_COMPRESSION_METHOD,
-                                        method) ||
-        !xx_archive_record_set_meta_bool(record, XX_META_ID_IS_ENCRYPTED,
-                                         encrypted) ||
+        !xx_archive_record_set_meta_u64(record, XX_META_ID_COMPRESSED_SIZE, (uint64_t)record->compressed_size) ||
+        !xx_archive_record_set_meta_u64(record, XX_META_ID_COMPRESSION_METHOD, method) || !xx_archive_record_set_meta_bool(record, XX_META_ID_IS_ENCRYPTED, encrypted) ||
         !xx_archive_record_set_meta_bool(record, XX_META_ID_IS_FOLDER, false))
         return false;
     if (encrypted) return true;
-    return xx_archive_record_set_meta_u64(record, XX_META_ID_UNCOMPRESSED_SIZE,
-                                          length) &&
-           xx_archive_record_set_meta_u64(record, XX_META_ID_TIMESTAMP,
-                                          m->modified) &&
-           xx_archive_record_set_meta_u64(record, XX_META_ID_ATTRIBUTES,
-                                          m->finder_flags) &&
-           xx_archive_record_set_meta_u64(record, XX_META_ID_FLAGS, m->type);
+    return xx_archive_record_set_meta_u64(record, XX_META_ID_UNCOMPRESSED_SIZE, length) && xx_archive_record_set_meta_u64(record, XX_META_ID_TIMESTAMP, m->modified) &&
+           xx_archive_record_set_meta_u64(record, XX_META_ID_ATTRIBUTES, m->finder_flags) && xx_archive_record_set_meta_u64(record, XX_META_ID_FLAGS, m->type);
 }
 
 /* ---------------------------------------------------------------------- */
 /* Public API                                                              */
 
-void xx_packit_mac_init(xx_packit_mac *archive, xx_io_device *device,
-                        int64_t base_address) {
+void xx_packit_mac_init(xx_packit_mac *archive, xx_io_device *device, int64_t base_address)
+{
     if (!archive) return;
     xx_mem_zero(archive, sizeof(*archive));
     xx_format_init(&archive->format, device, base_address);
@@ -953,46 +886,42 @@ void xx_packit_mac_init(xx_packit_mac *archive, xx_io_device *device,
     archive->format.check_is_valid = xx_packit_mac_check_is_valid;
     archive->format.handle_base_info = xx_packit_mac_handle_base_info;
     archive->format.get_format_size = xx_packit_mac_get_format_size;
-    archive->format.get_number_of_archive_records =
-        xx_packit_mac_get_number_of_archive_records;
-    archive->format.create_archive_records_reading =
-        xx_packit_mac_create_archive_records_reading;
-    archive->format.get_current_archive_record =
-        xx_packit_mac_get_current_archive_record;
-    archive->format.unpack_current_archive_record =
-        xx_packit_mac_unpack_current_archive_record;
-    archive->format.archive_record_move_to_next =
-        xx_packit_mac_archive_record_move_to_next;
-    archive->format.free_archive_records_reading =
-        xx_packit_mac_free_archive_records_reading;
+    archive->format.get_number_of_archive_records = xx_packit_mac_get_number_of_archive_records;
+    archive->format.create_archive_records_reading = xx_packit_mac_create_archive_records_reading;
+    archive->format.get_current_archive_record = xx_packit_mac_get_current_archive_record;
+    archive->format.unpack_current_archive_record = xx_packit_mac_unpack_current_archive_record;
+    archive->format.archive_record_move_to_next = xx_packit_mac_archive_record_move_to_next;
+    archive->format.free_archive_records_reading = xx_packit_mac_free_archive_records_reading;
     archive->archive_size = -1;
 }
 
-xx_packit_mac *xx_packit_mac_create(xx_io_device *device,
-                                    int64_t base_address) {
-    xx_packit_mac *archive =
-        (xx_packit_mac *)xx_mem_alloc(sizeof(*archive));
+xx_packit_mac *xx_packit_mac_create(xx_io_device *device, int64_t base_address)
+{
+    xx_packit_mac *archive = (xx_packit_mac *)xx_mem_alloc(sizeof(*archive));
     if (archive) xx_packit_mac_init(archive, device, base_address);
     return archive;
 }
 
-void xx_packit_mac_destroy(xx_packit_mac *archive) {
+void xx_packit_mac_destroy(xx_packit_mac *archive)
+{
     if (archive) xx_format_cleanup_extra_parameters(&archive->format);
 }
 
-void xx_packit_mac_free(xx_packit_mac *archive) {
+void xx_packit_mac_free(xx_packit_mac *archive)
+{
     if (!archive) return;
     xx_packit_mac_destroy(archive);
     xx_mem_free(archive);
 }
 
-bool xx_packit_mac_check_is_valid(Abstractformat *format, xx_pd_struct *pd) {
+bool xx_packit_mac_check_is_valid(Abstractformat *format, xx_pd_struct *pd)
+{
     (void)pd;
     return pit_parse(format, NULL);
 }
 
-bool xx_packit_mac_handle_base_info(Abstractformat *format,
-                                    xx_pd_struct *pd) {
+bool xx_packit_mac_handle_base_info(Abstractformat *format, xx_pd_struct *pd)
+{
     pit_stream *stream;
     xx_packit_mac *archive;
     (void)pd;
@@ -1017,24 +946,18 @@ bool xx_packit_mac_handle_base_info(Abstractformat *format,
     return true;
 }
 
-int64_t xx_packit_mac_get_format_size(Abstractformat *format,
-                                      xx_pd_struct *pd) {
-    return format && (format->base_info_handled ||
-                      xx_packit_mac_handle_base_info(format, pd))
-               ? format->format_size
-               : -1;
+int64_t xx_packit_mac_get_format_size(Abstractformat *format, xx_pd_struct *pd)
+{
+    return format && (format->base_info_handled || xx_packit_mac_handle_base_info(format, pd)) ? format->format_size : -1;
 }
 
-uint64_t xx_packit_mac_get_number_of_archive_records(Abstractformat *format,
-                                                     xx_pd_struct *pd) {
-    return format && (format->base_info_handled ||
-                      xx_packit_mac_handle_base_info(format, pd))
-               ? ((xx_packit_mac *)format)->number_of_records
-               : 0U;
+uint64_t xx_packit_mac_get_number_of_archive_records(Abstractformat *format, xx_pd_struct *pd)
+{
+    return format && (format->base_info_handled || xx_packit_mac_handle_base_info(format, pd)) ? ((xx_packit_mac *)format)->number_of_records : 0U;
 }
 
-xx_archive_record_state *xx_packit_mac_create_archive_records_reading(
-    Abstractformat *format, const xx_list_s *options, xx_pd_struct *pd) {
+xx_archive_record_state *xx_packit_mac_create_archive_records_reading(Abstractformat *format, const xx_list_s *options, xx_pd_struct *pd)
+{
     pit_stream *stream;
     xx_archive_record_state *state;
     (void)pd;
@@ -1052,8 +975,7 @@ xx_archive_record_state *xx_packit_mac_create_archive_records_reading(
     state->internal_state = stream;
     state->free_internal = pit_stream_free;
     state->total_records = (int64_t)stream->count;
-    if (!pit_copy_options(&state->options, options) ||
-        !pit_set_record(&state->current_record, stream, &stream->items[0])) {
+    if (!pit_copy_options(&state->options, options) || !pit_set_record(&state->current_record, stream, &stream->items[0])) {
         xx_archive_record_state_free(state);
         return NULL;
     }
@@ -1062,33 +984,27 @@ xx_archive_record_state *xx_packit_mac_create_archive_records_reading(
     return state;
 }
 
-const xx_archive_record *xx_packit_mac_get_current_archive_record(
-    Abstractformat *format, xx_archive_record_state *state) {
-    return format && state && state->format == format && state->has_record
-               ? &state->current_record
-               : NULL;
+const xx_archive_record *xx_packit_mac_get_current_archive_record(Abstractformat *format, xx_archive_record_state *state)
+{
+    return format && state && state->format == format && state->has_record ? &state->current_record : NULL;
 }
 
-bool xx_packit_mac_archive_record_move_to_next(Abstractformat *format,
-                                               xx_archive_record_state *state,
-                                               xx_pd_struct *pd) {
+bool xx_packit_mac_archive_record_move_to_next(Abstractformat *format, xx_archive_record_state *state, xx_pd_struct *pd)
+{
     pit_stream *stream;
     (void)pd;
-    if (!format || !state || state->format != format ||
-        !(stream = (pit_stream *)state->internal_state) ||
-        stream->index + 1U >= stream->count) {
+    if (!format || !state || state->format != format || !(stream = (pit_stream *)state->internal_state) || stream->index + 1U >= stream->count) {
         if (state) state->has_record = false;
         return false;
     }
     ++stream->index;
     ++state->current_index;
-    state->has_record = pit_set_record(&state->current_record, stream,
-                                       &stream->items[stream->index]);
+    state->has_record = pit_set_record(&state->current_record, stream, &stream->items[stream->index]);
     return state->has_record;
 }
 
-bool xx_packit_mac_unpack_current_archive_record(
-    Abstractformat *format, xx_archive_record_state *state, xx_pd_struct *pd) {
+bool xx_packit_mac_unpack_current_archive_record(Abstractformat *format, xx_archive_record_state *state, xx_pd_struct *pd)
+{
     pit_stream *stream;
     const pit_item *item;
     const pit_member *member;
@@ -1099,37 +1015,26 @@ bool xx_packit_mac_unpack_current_archive_record(
     char *path = NULL;
     bool result = false;
     bool created = false;
-    if (!format || !state || state->format != format || !state->has_record ||
-        !(stream = (pit_stream *)state->internal_state) ||
-        stream->index >= stream->count || (pd && xx_pd_is_stopped(pd)))
+    if (!format || !state || state->format != format || !state->has_record || !(stream = (pit_stream *)state->internal_state) || stream->index >= stream->count ||
+        (pd && xx_pd_is_stopped(pd)))
         return false;
     item = &stream->items[stream->index];
     member = &stream->members[item->member];
     if (member->kind == PIT_KIND_ENCRYPTED) return false;
-    limit_option = xx_format_resolve_extra_parameter(
-        format, &state->options, XX_META_ID_OPT_MAX_MEMBER_SIZE);
-    if (limit_option &&
-        (uint64_t)(item->resource ? member->rsrc_length : member->data_length) >
-            xx_var_get_u64(limit_option))
-        return false;
-    path_option = xx_format_resolve_extra_parameter(
-        format, &state->options, XX_META_ID_OPT_UNPACK_PATH);
-    if (!path_option)
-        return pit_extract(format, member, item->resource, NULL, pd);
+    limit_option = xx_format_resolve_extra_parameter(format, &state->options, XX_META_ID_OPT_MAX_MEMBER_SIZE);
+    if (limit_option && (uint64_t)(item->resource ? member->rsrc_length : member->data_length) > xx_var_get_u64(limit_option)) return false;
+    path_option = xx_format_resolve_extra_parameter(format, &state->options, XX_META_ID_OPT_UNPACK_PATH);
+    if (!path_option) return pit_extract(format, member, item->resource, NULL, pd);
     if (pit_is_device_name(item->name)) return false;
-    if (path_option->type == XX_VAR_TYPE_STRING ||
-        path_option->type == XX_VAR_TYPE_STRING_VIEW) {
+    if (path_option->type == XX_VAR_TYPE_STRING || path_option->type == XX_VAR_TYPE_STRING_VIEW) {
         base = xx_var_get_str(path_option);
-    } else if (path_option->type == XX_VAR_TYPE_WSTRING ||
-               path_option->type == XX_VAR_TYPE_WSTRING_VIEW) {
+    } else if (path_option->type == XX_VAR_TYPE_WSTRING || path_option->type == XX_VAR_TYPE_WSTRING_VIEW) {
         owned_base = xx_str_unicode_to_utf8(xx_var_get_wstr(path_option));
         base = owned_base;
     }
     if (!base) goto done;
-    path = (base[0] && base[xx_str_len(base) - 1U] != '/' &&
-            base[xx_str_len(base) - 1U] != '\\')
-               ? xx_str_concat3(base, "/", item->name)
-               : xx_str_concat(base, item->name);
+    path =
+        (base[0] && base[xx_str_len(base) - 1U] != '/' && base[xx_str_len(base) - 1U] != '\\') ? xx_str_concat3(base, "/", item->name) : xx_str_concat(base, item->name);
     if (!path || !xx_store_create_dirs_a(path, false)) goto done;
     {
         xx_io_device *destination = xx_io_file_open(path, "wb");
@@ -1145,8 +1050,8 @@ done:
     return result;
 }
 
-void xx_packit_mac_free_archive_records_reading(
-    Abstractformat *format, xx_archive_record_state *state) {
+void xx_packit_mac_free_archive_records_reading(Abstractformat *format, xx_archive_record_state *state)
+{
     (void)format;
     xx_archive_record_state_free(state);
 }

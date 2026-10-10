@@ -25,7 +25,8 @@
 /* The xx_rt_* runtime memory primitives that used to live here now sit in
  * src/memory/platforms/, beside the other memory platform code. */
 
-bool xx_io_read_at(xx_io_device *device, int64_t offset, void *buffer, size_t n) {
+bool xx_io_read_at(xx_io_device *device, int64_t offset, void *buffer, size_t n)
+{
     int64_t cursor, size;
     size_t done = 0;
     bool ok = true;
@@ -44,13 +45,15 @@ bool xx_io_read_at(xx_io_device *device, int64_t offset, void *buffer, size_t n)
         ssize_t got;
         if (request > (size_t)PTRDIFF_MAX) request = (size_t)PTRDIFF_MAX;
         got = xx_io_read(device, (uint8_t *)buffer + done, request);
-        if (got <= 0 || (size_t)got > request) { ok = false; break; }
+        if (got <= 0 || (size_t)got > request) {
+            ok = false;
+            break;
+        }
         done += (size_t)got;
     }
     if (xx_io_seek64(device, cursor, SEEK_SET) != 0) ok = false;
     return ok;
 }
-
 
 /* ------------------------------------------------------------------------ */
 /*  I/O                                                                      */
@@ -72,13 +75,15 @@ typedef struct {
 
 static int xx_io_multivolume_close_cb(xx_io_device *self);
 
-static xx_io_multivolume_state *xx_io_multivolume_state_of(xx_io_device *self) {
+static xx_io_multivolume_state *xx_io_multivolume_state_of(xx_io_device *self)
+{
     if (!self || self->close != xx_io_multivolume_close_cb) return NULL;
     return (xx_io_multivolume_state *)self->priv;
 }
 
 /* Find the first range ending after pos, skipping any empty ranges. */
-static size_t xx_io_multivolume_find(const xx_io_multivolume_state *st, int64_t pos) {
+static size_t xx_io_multivolume_find(const xx_io_multivolume_state *st, int64_t pos)
+{
     size_t lo = 0, hi = st->count;
     while (lo < hi) {
         size_t mid = lo + (hi - lo) / 2;
@@ -88,8 +93,8 @@ static size_t xx_io_multivolume_find(const xx_io_multivolume_state *st, int64_t 
     return lo;
 }
 
-static ssize_t xx_io_multivolume_transfer(xx_io_device *self, void *read_buf,
-                                         const void *write_buf, size_t n, bool writing) {
+static ssize_t xx_io_multivolume_transfer(xx_io_device *self, void *read_buf, const void *write_buf, size_t n, bool writing)
+{
     xx_io_multivolume_state *st = xx_io_multivolume_state_of(self);
     size_t done = 0, index;
     if (!st) return -1;
@@ -111,13 +116,11 @@ static ssize_t xx_io_multivolume_transfer(xx_io_device *self, void *read_buf,
             continue;
         }
         if ((uint64_t)request > (uint64_t)remaining) request = (size_t)remaining;
-        if (xx_io_seek64(entry->volume.device,
-                         entry->volume.offset + (st->pos - entry->start), SEEK_SET) != 0) {
+        if (xx_io_seek64(entry->volume.device, entry->volume.offset + (st->pos - entry->start), SEEK_SET) != 0) {
             return done ? (ssize_t)done : -1;
         }
         if (writing) {
-            transferred = xx_io_write(entry->volume.device,
-                                      (const unsigned char *)write_buf + done, request);
+            transferred = xx_io_write(entry->volume.device, (const unsigned char *)write_buf + done, request);
         } else {
             transferred = xx_io_read(entry->volume.device, (unsigned char *)read_buf + done, request);
         }
@@ -132,15 +135,18 @@ static ssize_t xx_io_multivolume_transfer(xx_io_device *self, void *read_buf,
     return (ssize_t)done;
 }
 
-static ssize_t xx_io_multivolume_read_cb(xx_io_device *self, void *buf, size_t n) {
+static ssize_t xx_io_multivolume_read_cb(xx_io_device *self, void *buf, size_t n)
+{
     return xx_io_multivolume_transfer(self, buf, NULL, n, false);
 }
 
-static ssize_t xx_io_multivolume_write_cb(xx_io_device *self, const void *buf, size_t n) {
+static ssize_t xx_io_multivolume_write_cb(xx_io_device *self, const void *buf, size_t n)
+{
     return xx_io_multivolume_transfer(self, NULL, buf, n, true);
 }
 
-static int xx_io_multivolume_seek64_cb(xx_io_device *self, int64_t off, int whence) {
+static int xx_io_multivolume_seek64_cb(xx_io_device *self, int64_t off, int whence)
+{
     xx_io_multivolume_state *st = xx_io_multivolume_state_of(self);
     int64_t base;
     if (!st) return -1;
@@ -155,21 +161,25 @@ static int xx_io_multivolume_seek64_cb(xx_io_device *self, int64_t off, int when
     return 0;
 }
 
-static int xx_io_multivolume_seek_cb(xx_io_device *self, long off, int whence) {
+static int xx_io_multivolume_seek_cb(xx_io_device *self, long off, int whence)
+{
     return xx_io_multivolume_seek64_cb(self, (int64_t)off, whence);
 }
 
-static int64_t xx_io_multivolume_tell_cb(xx_io_device *self) {
+static int64_t xx_io_multivolume_tell_cb(xx_io_device *self)
+{
     xx_io_multivolume_state *st = xx_io_multivolume_state_of(self);
     return st ? st->pos : -1;
 }
 
-static int64_t xx_io_multivolume_size_cb(xx_io_device *self) {
+static int64_t xx_io_multivolume_size_cb(xx_io_device *self)
+{
     xx_io_multivolume_state *st = xx_io_multivolume_state_of(self);
     return st ? st->size : -1;
 }
 
-static int xx_io_multivolume_close_cb(xx_io_device *self) {
+static int xx_io_multivolume_close_cb(xx_io_device *self)
+{
     xx_io_multivolume_state *st = xx_io_multivolume_state_of(self);
     int result = 0;
     size_t i;
@@ -183,7 +193,8 @@ static int xx_io_multivolume_close_cb(xx_io_device *self) {
     return result;
 }
 
-xx_io_device *xx_io_multivolume_open(const xx_io_volume *volumes, size_t count, bool take_ownership) {
+xx_io_device *xx_io_multivolume_open(const xx_io_volume *volumes, size_t count, bool take_ownership)
+{
     xx_io_multivolume_state *st;
     xx_io_device *dev;
     int64_t total = 0;
@@ -193,13 +204,12 @@ xx_io_device *xx_io_multivolume_open(const xx_io_volume *volumes, size_t count, 
     for (i = 0; i < count; ++i) {
         xx_io_device *child = volumes[i].device;
         int64_t physical_size;
-        if (!child || (!child->seek64 && !child->seek) ||
-            (!child->read && !child->write) || (take_ownership && !child->close) ||
-            volumes[i].offset < 0 || volumes[i].size < 0) return NULL;
+        if (!child || (!child->seek64 && !child->seek) || (!child->read && !child->write) || (take_ownership && !child->close) || volumes[i].offset < 0 ||
+            volumes[i].size < 0)
+            return NULL;
         physical_size = xx_io_total_size(child);
-        if (physical_size < 0 || volumes[i].offset > physical_size ||
-            volumes[i].size > physical_size - volumes[i].offset ||
-            volumes[i].size > INT64_MAX - total) return NULL;
+        if (physical_size < 0 || volumes[i].offset > physical_size || volumes[i].size > physical_size - volumes[i].offset || volumes[i].size > INT64_MAX - total)
+            return NULL;
         total += volumes[i].size;
     }
     st = (xx_io_multivolume_state *)xx_mem_calloc(1, sizeof(*st));
@@ -245,17 +255,18 @@ xx_io_device *xx_io_multivolume_open(const xx_io_volume *volumes, size_t count, 
     return dev;
 }
 
-xx_io_device *io_multivolume_open(const xx_io_volume *volumes, size_t count, bool take_ownership) {
+xx_io_device *io_multivolume_open(const xx_io_volume *volumes, size_t count, bool take_ownership)
+{
     return xx_io_multivolume_open(volumes, count, take_ownership);
 }
 
-xx_io_device *xx_io_multivolume_open_files(const char *const *paths, size_t count, const char *mode) {
+xx_io_device *xx_io_multivolume_open_files(const char *const *paths, size_t count, const char *mode)
+{
     xx_io_volume *volumes;
     xx_io_device *dev = NULL;
     size_t i, opened = 0;
     if (!paths || !count || !mode || count > SIZE_MAX / sizeof(*volumes)) return NULL;
-    if (!(mode[0] == 'r' && ((mode[1] == 'b' && mode[2] == '\0') ||
-                           (mode[1] == '+' && mode[2] == 'b' && mode[3] == '\0')))) return NULL;
+    if (!(mode[0] == 'r' && ((mode[1] == 'b' && mode[2] == '\0') || (mode[1] == '+' && mode[2] == 'b' && mode[3] == '\0')))) return NULL;
     volumes = (xx_io_volume *)xx_mem_calloc(count, sizeof(*volumes));
     if (!volumes) return NULL;
     for (i = 0; i < count; ++i) {
@@ -274,17 +285,19 @@ xx_io_device *xx_io_multivolume_open_files(const char *const *paths, size_t coun
     return dev;
 }
 
-xx_io_device *io_multivolume_open_files(const char *const *paths, size_t count, const char *mode) {
+xx_io_device *io_multivolume_open_files(const char *const *paths, size_t count, const char *mode)
+{
     return xx_io_multivolume_open_files(paths, count, mode);
 }
 
-size_t xx_io_multivolume_count(xx_io_device *device) {
+size_t xx_io_multivolume_count(xx_io_device *device)
+{
     xx_io_multivolume_state *st = xx_io_multivolume_state_of(device);
     return st ? st->count : 0;
 }
 
-bool xx_io_multivolume_get_volume(xx_io_device *device, size_t index,
-                                 xx_io_volume *volume, int64_t *logical_offset) {
+bool xx_io_multivolume_get_volume(xx_io_device *device, size_t index, xx_io_volume *volume, int64_t *logical_offset)
+{
     xx_io_multivolume_state *st = xx_io_multivolume_state_of(device);
     if (!st || index >= st->count) return false;
     if (volume) *volume = st->entries[index].volume;

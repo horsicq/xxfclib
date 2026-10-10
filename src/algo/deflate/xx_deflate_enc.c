@@ -29,7 +29,8 @@
 /* --- Bit Writer Implementation                                         --- */
 /* ========================================================================= */
 
-bool xx_bw_init(xx_bit_writer *bw, xx_io_device *dev, uint8_t *mem_dst, size_t mem_cap) {
+bool xx_bw_init(xx_bit_writer *bw, xx_io_device *dev, uint8_t *mem_dst, size_t mem_cap)
+{
     xx_rt_memset(bw, 0, sizeof(*bw));
     bw->dev = dev;
     bw->mem_dst = mem_dst;
@@ -48,14 +49,16 @@ bool xx_bw_init(xx_bit_writer *bw, xx_io_device *dev, uint8_t *mem_dst, size_t m
     return true;
 }
 
-void xx_bw_free(xx_bit_writer *bw) {
+void xx_bw_free(xx_bit_writer *bw)
+{
     if (bw->buffer) {
         xx_mem_free(bw->buffer);
         bw->buffer = NULL;
     }
 }
 
-static bool xx_bw_flush_buffer(xx_bit_writer *bw) {
+static bool xx_bw_flush_buffer(xx_bit_writer *bw)
+{
     if (bw->error) {
         return false;
     }
@@ -70,7 +73,8 @@ static bool xx_bw_flush_buffer(xx_bit_writer *bw) {
     return true;
 }
 
-static inline bool xx_bw_put_byte(xx_bit_writer *bw, uint8_t b) {
+static inline bool xx_bw_put_byte(xx_bit_writer *bw, uint8_t b)
+{
     if (bw->dev) {
         if (bw->buffer_pos >= bw->buffer_cap) {
             if (!xx_bw_flush_buffer(bw)) {
@@ -89,7 +93,8 @@ static inline bool xx_bw_put_byte(xx_bit_writer *bw, uint8_t b) {
     return true;
 }
 
-static inline bool xx_bw_put_word(xx_bit_writer *bw, uint32_t word) {
+static inline bool xx_bw_put_word(xx_bit_writer *bw, uint32_t word)
+{
     uint8_t *destination;
     if (bw->error) return false;
     if (bw->dev && bw->buffer_cap - bw->buffer_pos >= 4U) {
@@ -111,7 +116,8 @@ static inline bool xx_bw_put_word(xx_bit_writer *bw, uint32_t word) {
     return true;
 }
 
-static inline bool xx_bw_write_bits(xx_bit_writer *bw, uint32_t val, int n) {
+static inline bool xx_bw_write_bits(xx_bit_writer *bw, uint32_t val, int n)
+{
     bw->bit_buf |= ((uint64_t)val & ((UINT64_C(1) << n) - 1U)) << bw->bit_count;
     bw->bit_count += n;
 
@@ -123,7 +129,8 @@ static inline bool xx_bw_write_bits(xx_bit_writer *bw, uint32_t val, int n) {
     return true;
 }
 
-static bool xx_bw_align_byte(xx_bit_writer *bw) {
+static bool xx_bw_align_byte(xx_bit_writer *bw)
+{
     while (bw->bit_count > 0) {
         if (!xx_bw_put_byte(bw, (uint8_t)bw->bit_buf)) return false;
         bw->bit_buf >>= 8;
@@ -134,11 +141,13 @@ static bool xx_bw_align_byte(xx_bit_writer *bw) {
     return true;
 }
 
-static bool xx_bw_finish(xx_bit_writer *bw) {
+static bool xx_bw_finish(xx_bit_writer *bw)
+{
     return xx_bw_align_byte(bw) && xx_bw_flush_buffer(bw);
 }
 
-static bool xx_bw_write_bytes(xx_bit_writer *bw, const uint8_t *data, size_t size) {
+static bool xx_bw_write_bytes(xx_bit_writer *bw, const uint8_t *data, size_t size)
+{
     if (bw->error || bw->bit_count != 0) return false;
     if (bw->dev) {
         while (size != 0U) {
@@ -174,7 +183,7 @@ static bool xx_bw_write_bytes(xx_bit_writer *bw, const uint8_t *data, size_t siz
 /* ========================================================================= */
 
 typedef struct {
-    uint16_t symbol;    /* Literal <256; otherwise a cached length symbol. */
+    uint16_t symbol; /* Literal <256; otherwise a cached length symbol. */
     uint16_t length_extra;
     uint16_t distance_extra;
     uint8_t length_bits;
@@ -185,8 +194,8 @@ typedef struct {
 #define XX_ENC_MAX_TOKENS 65536
 
 /* Length and Distance Encoding Helpers */
-static inline void xx_set_match_token(xx_token *token, size_t length,
-                                      size_t distance, bool is_deflate64) {
+static inline void xx_set_match_token(xx_token *token, size_t length, size_t distance, bool is_deflate64)
+{
     uint32_t minus_one = (uint32_t)distance - 1U;
     unsigned symbol = xx_distance_codes[minus_one < 256U ? minus_one : 256U + (minus_one >> 7)];
     unsigned bits = symbol < 4U ? 0U : symbol / 2U - 1U;
@@ -208,7 +217,8 @@ static inline void xx_set_match_token(xx_token *token, size_t length,
 }
 
 /* Reverse bits for LSB-first output */
-static inline uint32_t xx_reverse_bits(uint32_t val, int bits) {
+static inline uint32_t xx_reverse_bits(uint32_t val, int bits)
+{
     uint32_t res = 0;
     for (int i = 0; i < bits; ++i) {
         res |= ((val >> i) & 1) << (bits - 1 - i);
@@ -223,17 +233,17 @@ static inline uint32_t xx_reverse_bits(uint32_t val, int bits) {
 typedef struct {
     uint32_t freq;
     uint16_t symbol;
-    int16_t  left;
-    int16_t  right;
+    int16_t left;
+    int16_t right;
 } xx_huff_node;
 
-static bool xx_huff_node_less(const xx_huff_node *nodes, int a, int b) {
-    return nodes[a].freq < nodes[b].freq ||
-           (nodes[a].freq == nodes[b].freq && a < b);
+static bool xx_huff_node_less(const xx_huff_node *nodes, int a, int b)
+{
+    return nodes[a].freq < nodes[b].freq || (nodes[a].freq == nodes[b].freq && a < b);
 }
 
-static void xx_huff_heap_push(const xx_huff_node *nodes, int *heap,
-                              int *count, int node) {
+static void xx_huff_heap_push(const xx_huff_node *nodes, int *heap, int *count, int node)
+{
     int at = (*count)++;
     while (at != 0) {
         int parent = (at - 1) / 2;
@@ -244,14 +254,14 @@ static void xx_huff_heap_push(const xx_huff_node *nodes, int *heap,
     heap[at] = node;
 }
 
-static int xx_huff_heap_pop(const xx_huff_node *nodes, int *heap, int *count) {
+static int xx_huff_heap_pop(const xx_huff_node *nodes, int *heap, int *count)
+{
     int result = heap[0];
     int node = heap[--*count];
     int at = 0;
     while (at * 2 + 1 < *count) {
         int child = at * 2 + 1;
-        if (child + 1 < *count && xx_huff_node_less(nodes, heap[child + 1], heap[child]))
-            ++child;
+        if (child + 1 < *count && xx_huff_node_less(nodes, heap[child + 1], heap[child])) ++child;
         if (!xx_huff_node_less(nodes, heap[child], node)) break;
         heap[at] = heap[child];
         at = child;
@@ -260,7 +270,8 @@ static int xx_huff_heap_pop(const xx_huff_node *nodes, int *heap, int *count) {
     return result;
 }
 
-void xx_deflate_build_code_lengths(const uint32_t *freqs, int num_symbols, uint8_t *out_lens, int max_bits) {
+void xx_deflate_build_code_lengths(const uint32_t *freqs, int num_symbols, uint8_t *out_lens, int max_bits)
+{
     xx_rt_memset(out_lens, 0, (size_t)num_symbols);
 
     xx_huff_node nodes[600];
@@ -289,8 +300,7 @@ void xx_deflate_build_code_lengths(const uint32_t *freqs, int num_symbols, uint8
     int heap[600];
     int active = 0;
     int cur_nodes = num_nodes;
-    for (int i = 0; i < num_nodes; ++i)
-        xx_huff_heap_push(nodes, heap, &active, i);
+    for (int i = 0; i < num_nodes; ++i) xx_huff_heap_push(nodes, heap, &active, i);
 
     while (active > 1) {
         int min1 = xx_huff_heap_pop(nodes, heap, &active);
@@ -354,18 +364,17 @@ void xx_deflate_build_code_lengths(const uint32_t *freqs, int num_symbols, uint8
             --used;
         }
         active = 0;
-        for (int i = 0; i < num_nodes; ++i)
-            xx_huff_heap_push(nodes, heap, &active, i);
+        for (int i = 0; i < num_nodes; ++i) xx_huff_heap_push(nodes, heap, &active, i);
         for (int bits = max_bits; bits > 0; --bits)
             for (unsigned i = 0; i < counts[bits]; ++i) {
                 int leaf = xx_huff_heap_pop(nodes, heap, &active);
                 out_lens[nodes[leaf].symbol] = (uint8_t)bits;
             }
     }
-
 }
 
-static void xx_generate_canonical_codes(const uint8_t *lens, int num_symbols, uint16_t *out_codes) {
+static void xx_generate_canonical_codes(const uint8_t *lens, int num_symbols, uint16_t *out_codes)
+{
     uint16_t count[16] = {0};
     for (int i = 0; i < num_symbols; ++i) {
         if (lens[i] > 0 && lens[i] <= 15) {
@@ -396,7 +405,8 @@ static void xx_generate_canonical_codes(const uint8_t *lens, int num_symbols, ui
 /* --- Block Emission (Stored, Fixed, and Dynamic)                       --- */
 /* ========================================================================= */
 
-static bool xx_emit_stored_block(xx_bit_writer *bw, const uint8_t *data, size_t len, bool bfinal) {
+static bool xx_emit_stored_block(xx_bit_writer *bw, const uint8_t *data, size_t len, bool bfinal)
+{
     if (len > 65535U) return false;
     if (!xx_bw_write_bits(bw, bfinal ? 1 : 0, 1)) return false;
     if (!xx_bw_write_bits(bw, 0, 2)) return false; /* BTYPE = 00 */
@@ -409,8 +419,8 @@ static bool xx_emit_stored_block(xx_bit_writer *bw, const uint8_t *data, size_t 
     return xx_bw_write_bytes(bw, data, len);
 }
 
-static bool xx_emit_stored_blocks(xx_bit_writer *bw, const uint8_t *data,
-                                  size_t size, bool bfinal) {
+static bool xx_emit_stored_blocks(xx_bit_writer *bw, const uint8_t *data, size_t size, bool bfinal)
+{
     do {
         size_t chunk = size < 65535U ? size : 65535U;
         if (!xx_emit_stored_block(bw, data, chunk, bfinal && chunk == size)) return false;
@@ -420,7 +430,8 @@ static bool xx_emit_stored_blocks(xx_bit_writer *bw, const uint8_t *data,
     return true;
 }
 
-static bool xx_code_lengths_valid(const uint8_t *lengths, int count, int max_bits) {
+static bool xx_code_lengths_valid(const uint8_t *lengths, int count, int max_bits)
+{
     uint32_t remaining = 1U << max_bits;
     for (int i = 0; i < count; ++i) {
         if (lengths[i] != 0U) {
@@ -434,18 +445,16 @@ static bool xx_code_lengths_valid(const uint8_t *lengths, int count, int max_bit
     return true;
 }
 
-static uint64_t xx_final_block_cost(const xx_bit_writer *bw, uint64_t bits, bool bfinal) {
+static uint64_t xx_final_block_cost(const xx_bit_writer *bw, uint64_t bits, bool bfinal)
+{
     if (bfinal) bits += (8U - ((bw->bit_count + (unsigned)(bits & 7U)) & 7U)) & 7U;
     return bits;
 }
 
-static const uint8_t g_cll_order[XX_DEFLATE_MAX_CLEN_CODES] = {
-    16, 17, 18, 0, 8, 7, 9, 6, 10, 5, 11, 4, 12, 3, 13, 2, 14, 1, 15
-};
+static const uint8_t g_cll_order[XX_DEFLATE_MAX_CLEN_CODES] = {16, 17, 18, 0, 8, 7, 9, 6, 10, 5, 11, 4, 12, 3, 13, 2, 14, 1, 15};
 
-static bool xx_emit_block(xx_bit_writer *bw, const xx_token *tokens, size_t num_tokens,
-                          const uint8_t *raw_data, size_t raw_size,
-                          bool is_deflate64, bool bfinal) {
+static bool xx_emit_block(xx_bit_writer *bw, const xx_token *tokens, size_t num_tokens, const uint8_t *raw_data, size_t raw_size, bool is_deflate64, bool bfinal)
+{
     uint32_t lit_freq[XX_DEFLATE_MAX_LIT_LEN_CODES] = {0};
     uint32_t dist_freq[XX_DEFLATE_MAX_DIST_CODES_64] = {0};
     uint64_t extra_bits = 0U;
@@ -471,9 +480,7 @@ static bool xx_emit_block(xx_bit_writer *bw, const xx_token *tokens, size_t num_
 
     size_t stored_blocks = raw_size / 65535U + (raw_size % 65535U != 0U);
     if (stored_blocks == 0U) stored_blocks = 1U;
-    uint64_t stored_bits = (uint64_t)raw_size * 8U + 35U +
-                          ((8U - ((bw->bit_count + 3U) & 7U)) & 7U) +
-                          (uint64_t)(stored_blocks - 1U) * 40U;
+    uint64_t stored_bits = (uint64_t)raw_size * 8U + 35U + ((8U - ((bw->bit_count + 3U) & 7U)) & 7U) + (uint64_t)(stored_blocks - 1U) * 40U;
     uint64_t payload_bits = extra_bits, fixed_bits = 3U + extra_bits;
     for (int i = 0; i < XX_DEFLATE_MAX_LIT_LEN_CODES; ++i) {
         unsigned fixed_length = i <= 143 ? 8U : i <= 255 ? 9U : i <= 279 ? 7U : 8U;
@@ -487,8 +494,7 @@ static bool xx_emit_block(xx_bit_writer *bw, const xx_token *tokens, size_t num_
     fixed_bits = xx_final_block_cost(bw, fixed_bits, bfinal);
     /* Every dynamic header costs at least 29 bits. If even that bound loses,
      * skip code-length RLE, the third tree, and canonical code generation. */
-    if (stored_bits <= fixed_bits && stored_bits <= payload_bits + 29U)
-        return xx_emit_stored_blocks(bw, raw_data, raw_size, bfinal);
+    if (stored_bits <= fixed_bits && stored_bits <= payload_bits + 29U) return xx_emit_stored_blocks(bw, raw_data, raw_size, bfinal);
 
     /* Determine HLIT and HDIST */
     int hlit = XX_DEFLATE_MAX_LIT_LEN_CODES;
@@ -595,32 +601,37 @@ static bool xx_emit_block(xx_bit_writer *bw, const xx_token *tokens, size_t num_
     }
 
     uint64_t dynamic_bits = 17U + 3U * (unsigned)hclen + payload_bits;
-    bool dynamic_valid = xx_code_lengths_valid(lit_lens, XX_DEFLATE_MAX_LIT_LEN_CODES, 15) &&
-                         xx_code_lengths_valid(dist_lens, max_dists, 15) &&
+    bool dynamic_valid = xx_code_lengths_valid(lit_lens, XX_DEFLATE_MAX_LIT_LEN_CODES, 15) && xx_code_lengths_valid(dist_lens, max_dists, 15) &&
                          xx_code_lengths_valid(clen_lens, XX_DEFLATE_MAX_CLEN_CODES, 7);
-    for (int i = 0; i < num_rle; ++i)
-        dynamic_bits += clen_lens[rle_syms[i]] + rle_nbits[i];
+    for (int i = 0; i < num_rle; ++i) dynamic_bits += clen_lens[rle_syms[i]] + rle_nbits[i];
     dynamic_bits = xx_final_block_cost(bw, dynamic_bits, bfinal);
     if (!dynamic_valid) dynamic_bits = UINT64_MAX;
-    if (stored_bits <= fixed_bits && stored_bits <= dynamic_bits)
-        return xx_emit_stored_blocks(bw, raw_data, raw_size, bfinal);
+    if (stored_bits <= fixed_bits && stored_bits <= dynamic_bits) return xx_emit_stored_blocks(bw, raw_data, raw_size, bfinal);
 
     bool use_fixed = fixed_bits <= dynamic_bits;
     if (use_fixed) {
         for (int i = 0; i < XX_DEFLATE_MAX_LIT_LEN_CODES; ++i) {
             unsigned code;
-            if (i <= 143) { lit_lens[i] = 8; code = (unsigned)i + 48U; }
-            else if (i <= 255) { lit_lens[i] = 9; code = (unsigned)i + 256U; }
-            else if (i <= 279) { lit_lens[i] = 7; code = (unsigned)i - 256U; }
-            else { lit_lens[i] = 8; code = (unsigned)i - 88U; }
+            if (i <= 143) {
+                lit_lens[i] = 8;
+                code = (unsigned)i + 48U;
+            } else if (i <= 255) {
+                lit_lens[i] = 9;
+                code = (unsigned)i + 256U;
+            } else if (i <= 279) {
+                lit_lens[i] = 7;
+                code = (unsigned)i - 256U;
+            } else {
+                lit_lens[i] = 8;
+                code = (unsigned)i - 88U;
+            }
             lit_codes[i] = (uint16_t)xx_reverse_bits(code, lit_lens[i]);
         }
         for (int i = 0; i < max_dists; ++i) {
             dist_lens[i] = 5;
             dist_codes[i] = (uint16_t)xx_reverse_bits((unsigned)i, 5);
         }
-        if (!xx_bw_write_bits(bw, bfinal ? 1U : 0U, 1) ||
-            !xx_bw_write_bits(bw, 1U, 2)) return false;
+        if (!xx_bw_write_bits(bw, bfinal ? 1U : 0U, 1) || !xx_bw_write_bits(bw, 1U, 2)) return false;
     } else {
         /* Write Block Header */
         if (!xx_bw_write_bits(bw, bfinal ? 1 : 0, 1)) return false;
@@ -650,7 +661,8 @@ static bool xx_emit_block(xx_bit_writer *bw, const xx_token *tokens, size_t num_
         if (token->symbol >= 257U) {
             if (!xx_bw_write_bits(bw, token->length_extra, token->length_bits) ||
                 !xx_bw_write_bits(bw, dist_codes[token->distance_symbol], dist_lens[token->distance_symbol]) ||
-                !xx_bw_write_bits(bw, token->distance_extra, token->distance_bits)) return false;
+                !xx_bw_write_bits(bw, token->distance_extra, token->distance_bits))
+                return false;
         }
     }
 
@@ -668,14 +680,14 @@ static bool xx_emit_block(xx_bit_writer *bw, const xx_token *tokens, size_t num_
 #define XX_HASH_SIZE (1 << XX_HASH_BITS)
 #define XX_HASH_MASK (XX_HASH_SIZE - 1)
 
-static inline uint32_t xx_calc_hash(const uint8_t *p) {
+static inline uint32_t xx_calc_hash(const uint8_t *p)
+{
     return ((((uint32_t)p[0] << 10) ^ ((uint32_t)p[1] << 5) ^ (uint32_t)p[2]) & XX_HASH_MASK);
 }
 
-bool xx_deflate_compress_stream_with_window(xx_io_device *src_dev, const uint8_t *mem_src, size_t mem_src_size,
-                                int64_t src_offset, int64_t uncomp_size,
-                                xx_bit_writer *writer, int level, bool is_deflate64,
-                                size_t window_size, xx_pd_struct *pd) {
+bool xx_deflate_compress_stream_with_window(xx_io_device *src_dev, const uint8_t *mem_src, size_t mem_src_size, int64_t src_offset, int64_t uncomp_size,
+                                            xx_bit_writer *writer, int level, bool is_deflate64, size_t window_size, xx_pd_struct *pd)
+{
     size_t win_size = xx_deflate_resolve_window(is_deflate64, window_size);
     if (win_size == 0U) return false;
     if (level < 0) level = XX_DEFLATE_LEVEL_DEFAULT;
@@ -719,8 +731,7 @@ bool xx_deflate_compress_stream_with_window(xx_io_device *src_dev, const uint8_t
 
     int pd_level = -1;
     if (pd) {
-        pd_level = xx_pd_enter_level(pd, uncomp_size > 0 ? (uint64_t)uncomp_size : 0,
-                                     is_deflate64 ? "Compressing Deflate64" : "Compressing Deflate");
+        pd_level = xx_pd_enter_level(pd, uncomp_size > 0 ? (uint64_t)uncomp_size : 0, is_deflate64 ? "Compressing Deflate64" : "Compressing Deflate");
     }
 
     size_t max_chain = (level <= 3) ? 4 : (level <= 6 ? 16 : 128);
@@ -857,8 +868,7 @@ bool xx_deflate_compress_stream_with_window(xx_io_device *src_dev, const uint8_t
             size_t max_test = available < max_match_len ? available : max_match_len;
             const uint8_t *current = in_window + win_head;
             while (match_position != UINT64_MAX && chain_count++ < max_chain) {
-                if (match_position >= position || match_position < window_base ||
-                    position - match_position > win_size) break;
+                if (match_position >= position || match_position < window_base || position - match_position > win_size) break;
                 size_t distance = (size_t)(position - match_position);
                 const uint8_t *candidate = in_window + (size_t)(match_position - window_base);
                 if (candidate[best_len] == current[best_len] && candidate[0] == current[0]) {
@@ -866,9 +876,8 @@ bool xx_deflate_compress_stream_with_window(xx_io_device *src_dev, const uint8_t
                     size_t length = xx_deflate_match_words(current, candidate, prefix);
                     if (length == prefix && length < max_test) {
                         size_t left = max_test - length;
-                        length += match_long && left >= 32U ?
-                            match_long(current + length, candidate + length, left) :
-                            xx_deflate_match_words(current + length, candidate + length, left);
+                        length += match_long && left >= 32U ? match_long(current + length, candidate + length, left)
+                                                            : xx_deflate_match_words(current + length, candidate + length, left);
                     }
                     if (length > best_len) {
                         best_len = length;
@@ -906,8 +915,7 @@ bool xx_deflate_compress_stream_with_window(xx_io_device *src_dev, const uint8_t
         }
 
         bool is_last_block = (src_eof && win_head >= win_tail);
-        if (!xx_emit_block(writer, tokens, num_tokens, in_window + block_start_pos,
-                           win_head - block_start_pos, is_deflate64, is_last_block)) {
+        if (!xx_emit_block(writer, tokens, num_tokens, in_window + block_start_pos, win_head - block_start_pos, is_deflate64, is_last_block)) {
             success = false;
             break;
         }
@@ -946,11 +954,8 @@ bool xx_deflate_compress_stream_with_window(xx_io_device *src_dev, const uint8_t
     return success;
 }
 
-bool xx_deflate_compress_stream(
-    xx_io_device *src_dev, const uint8_t *mem_src, size_t mem_src_size,
-    int64_t src_offset, int64_t uncomp_size, xx_bit_writer *writer,
-    int level, bool is_deflate64, xx_pd_struct *pd) {
-    return xx_deflate_compress_stream_with_window(
-        src_dev, mem_src, mem_src_size, src_offset, uncomp_size, writer,
-        level, is_deflate64, 0U, pd);
+bool xx_deflate_compress_stream(xx_io_device *src_dev, const uint8_t *mem_src, size_t mem_src_size, int64_t src_offset, int64_t uncomp_size, xx_bit_writer *writer,
+                                int level, bool is_deflate64, xx_pd_struct *pd)
+{
+    return xx_deflate_compress_stream_with_window(src_dev, mem_src, mem_src_size, src_offset, uncomp_size, writer, level, is_deflate64, 0U, pd);
 }

@@ -14,12 +14,12 @@ typedef struct xx_sfx_gxl {
     Abstractformat format;
     xx_gxl *inner;
 } xx_sfx_gxl;
-XXFC_API void xx_sfx_gxl_init(xx_sfx_gxl *,xx_io_device *,int64_t);
-XXFC_API xx_sfx_gxl *xx_sfx_gxl_create(xx_io_device *,int64_t);
+XXFC_API void xx_sfx_gxl_init(xx_sfx_gxl *, xx_io_device *, int64_t);
+XXFC_API xx_sfx_gxl *xx_sfx_gxl_create(xx_io_device *, int64_t);
 XXFC_API void xx_sfx_gxl_destroy(xx_sfx_gxl *);
 XXFC_API void xx_sfx_gxl_free(xx_sfx_gxl *);
-XXFC_API bool xx_sfx_gxl_check_is_valid(Abstractformat *,xx_pd_struct *);
-XXFC_API bool xx_sfx_gxl_handle_base_info(Abstractformat *,xx_pd_struct *);
+XXFC_API bool xx_sfx_gxl_check_is_valid(Abstractformat *, xx_pd_struct *);
+XXFC_API bool xx_sfx_gxl_handle_base_info(Abstractformat *, xx_pd_struct *);
 #ifdef __cplusplus
 }
 #endif

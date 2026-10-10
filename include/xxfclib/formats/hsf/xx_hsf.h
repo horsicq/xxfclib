@@ -62,31 +62,24 @@ struct xx_hsf {
     void *internal;
 };
 
-XXFC_API void xx_hsf_init(xx_hsf *hsf, xx_io_device *dev,
-                          int64_t base_address);
+XXFC_API void xx_hsf_init(xx_hsf *hsf, xx_io_device *dev, int64_t base_address);
 XXFC_API xx_hsf *xx_hsf_create(xx_io_device *dev, int64_t base_address);
 XXFC_API void xx_hsf_destroy(xx_hsf *hsf);
 XXFC_API void xx_hsf_free(xx_hsf *hsf);
 
 XXFC_API bool xx_hsf_check_is_valid(Abstractformat *self, xx_pd_struct *pd);
 XXFC_API bool xx_hsf_handle_base_info(Abstractformat *self, xx_pd_struct *pd);
-XXFC_API int64_t xx_hsf_get_format_size(Abstractformat *self,
-                                        xx_pd_struct *pd);
-XXFC_API uint64_t xx_hsf_get_number_of_archive_records(Abstractformat *self,
-                                                       xx_pd_struct *pd);
+XXFC_API int64_t xx_hsf_get_format_size(Abstractformat *self, xx_pd_struct *pd);
+XXFC_API uint64_t xx_hsf_get_number_of_archive_records(Abstractformat *self, xx_pd_struct *pd);
 
-XXFC_API xx_archive_record_state *xx_hsf_create_archive_records_reading(
-    Abstractformat *self, const xx_list_s *options, xx_pd_struct *pd);
-XXFC_API const xx_archive_record *xx_hsf_get_current_archive_record(
-    Abstractformat *self, xx_archive_record_state *state);
-XXFC_API bool xx_hsf_unpack_current_archive_record(
-    Abstractformat *self, xx_archive_record_state *state, xx_pd_struct *pd);
-XXFC_API bool xx_hsf_archive_record_move_to_next(
-    Abstractformat *self, xx_archive_record_state *state, xx_pd_struct *pd);
-XXFC_API void xx_hsf_free_archive_records_reading(
-    Abstractformat *self, xx_archive_record_state *state);
+XXFC_API xx_archive_record_state *xx_hsf_create_archive_records_reading(Abstractformat *self, const xx_list_s *options, xx_pd_struct *pd);
+XXFC_API const xx_archive_record *xx_hsf_get_current_archive_record(Abstractformat *self, xx_archive_record_state *state);
+XXFC_API bool xx_hsf_unpack_current_archive_record(Abstractformat *self, xx_archive_record_state *state, xx_pd_struct *pd);
+XXFC_API bool xx_hsf_archive_record_move_to_next(Abstractformat *self, xx_archive_record_state *state, xx_pd_struct *pd);
+XXFC_API void xx_hsf_free_archive_records_reading(Abstractformat *self, xx_archive_record_state *state);
 
-static inline Abstractformat *xx_hsf_to_format(xx_hsf *hsf) {
+static inline Abstractformat *xx_hsf_to_format(xx_hsf *hsf)
+{
     return hsf ? &hsf->format : NULL;
 }
 

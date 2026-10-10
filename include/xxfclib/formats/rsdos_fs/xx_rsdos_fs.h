@@ -72,43 +72,32 @@ extern "C" {
 typedef struct xx_rsdos_fs {
     Abstractformat format;
     uint64_t number_of_records;
-    int64_t image_size;      /**< Bytes from base_address to the end. */
-    uint32_t header_size;    /**< JVC / VDK header bytes, 0 when none. */
-    uint32_t container;      /**< 0 headerless, 1 JVC header, 2 VDK. */
-    uint32_t sides;          /**< 1 or 2. */
-    uint32_t tracks;         /**< Whole tracks per side in the image. */
-    uint32_t granule_count;  /**< Granule-table entries in use, 68..255. */
-    uint32_t free_granules;  /**< Granule-table entries equal to 0xFF. */
+    int64_t image_size;     /**< Bytes from base_address to the end. */
+    uint32_t header_size;   /**< JVC / VDK header bytes, 0 when none. */
+    uint32_t container;     /**< 0 headerless, 1 JVC header, 2 VDK. */
+    uint32_t sides;         /**< 1 or 2. */
+    uint32_t tracks;        /**< Whole tracks per side in the image. */
+    uint32_t granule_count; /**< Granule-table entries in use, 68..255. */
+    uint32_t free_granules; /**< Granule-table entries equal to 0xFF. */
 } xx_rsdos_fs;
 
 typedef xx_rsdos_fs xx_rsdos_fs_t;
 
-XXFC_API void xx_rsdos_fs_init(xx_rsdos_fs *archive, xx_io_device *device,
-                               int64_t base_address);
-XXFC_API xx_rsdos_fs *xx_rsdos_fs_create(xx_io_device *device,
-                                         int64_t base_address);
+XXFC_API void xx_rsdos_fs_init(xx_rsdos_fs *archive, xx_io_device *device, int64_t base_address);
+XXFC_API xx_rsdos_fs *xx_rsdos_fs_create(xx_io_device *device, int64_t base_address);
 XXFC_API void xx_rsdos_fs_destroy(xx_rsdos_fs *archive);
 XXFC_API void xx_rsdos_fs_free(xx_rsdos_fs *archive);
 
-XXFC_API bool xx_rsdos_fs_check_is_valid(Abstractformat *self,
-                                         xx_pd_struct *pd);
-XXFC_API bool xx_rsdos_fs_handle_base_info(Abstractformat *self,
-                                           xx_pd_struct *pd);
-XXFC_API int64_t xx_rsdos_fs_get_format_size(Abstractformat *self,
-                                             xx_pd_struct *pd);
-XXFC_API uint64_t xx_rsdos_fs_get_number_of_archive_records(
-    Abstractformat *self, xx_pd_struct *pd);
+XXFC_API bool xx_rsdos_fs_check_is_valid(Abstractformat *self, xx_pd_struct *pd);
+XXFC_API bool xx_rsdos_fs_handle_base_info(Abstractformat *self, xx_pd_struct *pd);
+XXFC_API int64_t xx_rsdos_fs_get_format_size(Abstractformat *self, xx_pd_struct *pd);
+XXFC_API uint64_t xx_rsdos_fs_get_number_of_archive_records(Abstractformat *self, xx_pd_struct *pd);
 
-XXFC_API xx_archive_record_state *xx_rsdos_fs_create_archive_records_reading(
-    Abstractformat *self, const xx_list_s *options, xx_pd_struct *pd);
-XXFC_API const xx_archive_record *xx_rsdos_fs_get_current_archive_record(
-    Abstractformat *self, xx_archive_record_state *state);
-XXFC_API bool xx_rsdos_fs_unpack_current_archive_record(
-    Abstractformat *self, xx_archive_record_state *state, xx_pd_struct *pd);
-XXFC_API bool xx_rsdos_fs_archive_record_move_to_next(
-    Abstractformat *self, xx_archive_record_state *state, xx_pd_struct *pd);
-XXFC_API void xx_rsdos_fs_free_archive_records_reading(
-    Abstractformat *self, xx_archive_record_state *state);
+XXFC_API xx_archive_record_state *xx_rsdos_fs_create_archive_records_reading(Abstractformat *self, const xx_list_s *options, xx_pd_struct *pd);
+XXFC_API const xx_archive_record *xx_rsdos_fs_get_current_archive_record(Abstractformat *self, xx_archive_record_state *state);
+XXFC_API bool xx_rsdos_fs_unpack_current_archive_record(Abstractformat *self, xx_archive_record_state *state, xx_pd_struct *pd);
+XXFC_API bool xx_rsdos_fs_archive_record_move_to_next(Abstractformat *self, xx_archive_record_state *state, xx_pd_struct *pd);
+XXFC_API void xx_rsdos_fs_free_archive_records_reading(Abstractformat *self, xx_archive_record_state *state);
 
 #ifdef __cplusplus
 }

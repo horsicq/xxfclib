@@ -12,12 +12,12 @@
 #include "xxfclib/memory/xx_memory.h"
 #include "xxfclib/algo/hzl/xx_hzl.h"
 
-#define HZL_N 8192                          /* ring size, mask 0x1fff      */
-#define HZL_F 60                            /* longest match               */
-#define HZL_THRESHOLD 2                     /* shortest match is THR + 1   */
+#define HZL_N 8192                               /* ring size, mask 0x1fff      */
+#define HZL_F 60                                 /* longest match               */
+#define HZL_THRESHOLD 2                          /* shortest match is THR + 1   */
 #define HZL_N_CHAR (256 + HZL_F - HZL_THRESHOLD) /* 314, no stop code      */
-#define HZL_T (HZL_N_CHAR * 2 - 1)          /* 627                         */
-#define HZL_R (HZL_T - 1)                   /* 626                         */
+#define HZL_T (HZL_N_CHAR * 2 - 1)               /* 627                         */
+#define HZL_R (HZL_T - 1)                        /* 626                         */
 #define HZL_MAX_FREQ 0x8000
 
 /* The bit reader keeps a 16-bit look-ahead window, so a well-formed stream can
@@ -42,11 +42,13 @@ typedef struct hzl_state_s {
     uint8_t ring[HZL_N + HZL_F];
 } hzl_state;
 
-static bool hzl_is_overrun(const hzl_bits *bits) {
+static bool hzl_is_overrun(const hzl_bits *bits)
+{
     return bits->position > (bits->size + (size_t)HZL_TAIL_SLACK);
 }
 
-static void hzl_fill(hzl_bits *bits) {
+static void hzl_fill(hzl_bits *bits)
+{
     while (bits->count <= 8) {
         uint32_t byte = 0U;
         if (bits->position < bits->size) byte = bits->data[bits->position];
@@ -56,7 +58,8 @@ static void hzl_fill(hzl_bits *bits) {
     }
 }
 
-static int32_t hzl_read_bit(hzl_bits *bits) {
+static int32_t hzl_read_bit(hzl_bits *bits)
+{
     uint32_t value;
     hzl_fill(bits);
     value = bits->buffer;
@@ -65,7 +68,8 @@ static int32_t hzl_read_bit(hzl_bits *bits) {
     return (int32_t)((value >> 15) & 1U);
 }
 
-static int32_t hzl_read_byte(hzl_bits *bits) {
+static int32_t hzl_read_byte(hzl_bits *bits)
+{
     uint32_t value;
     hzl_fill(bits);
     value = bits->buffer;
@@ -77,7 +81,8 @@ static int32_t hzl_read_byte(hzl_bits *bits) {
 /* Position decode table: 1/3/8/12/24/16 symbols at code lengths 3..8, each
  * occupying 1 << (8 - length) prefix slots.  Built into caller-owned state --
  * the library forbids module-level mutable tables. */
-static bool hzl_build_position_table(hzl_state *state) {
+static bool hzl_build_position_table(hzl_state *state)
+{
     static const int32_t per_length[6] = {1, 3, 8, 12, 24, 16};
     int32_t prefix = 0;
     int32_t symbol = 0;
@@ -99,7 +104,8 @@ static bool hzl_build_position_table(hzl_state *state) {
     return (prefix == 256) && (symbol == 64);
 }
 
-static int32_t hzl_decode_position(hzl_bits *bits, const hzl_state *state) {
+static int32_t hzl_decode_position(hzl_bits *bits, const hzl_state *state)
+{
     int32_t i = hzl_read_byte(bits);
     int32_t high;
     int32_t j;
@@ -115,7 +121,8 @@ static int32_t hzl_decode_position(hzl_bits *bits, const hzl_state *state) {
     return high | (i & 0x3f);
 }
 
-static void hzl_init_tree(hzl_state *state) {
+static void hzl_init_tree(hzl_state *state)
+{
     int32_t i;
     int32_t j;
     for (i = 0; i < HZL_N_CHAR; ++i) {
@@ -137,7 +144,8 @@ static void hzl_init_tree(hzl_state *state) {
     state->parent[HZL_R] = 0;
 }
 
-static void hzl_reconstruct(hzl_state *state) {
+static void hzl_reconstruct(hzl_state *state)
+{
     int32_t i;
     int32_t j;
     int32_t n;
@@ -173,7 +181,8 @@ static void hzl_reconstruct(hzl_state *state) {
     }
 }
 
-static bool hzl_update(hzl_state *state, int32_t character) {
+static bool hzl_update(hzl_state *state, int32_t character)
+{
     int32_t c;
     if (state->frequency[HZL_R] == HZL_MAX_FREQ) hzl_reconstruct(state);
     c = state->parent[character + HZL_T];
@@ -213,7 +222,8 @@ static bool hzl_update(hzl_state *state, int32_t character) {
     return true;
 }
 
-static int32_t hzl_decode_character(hzl_state *state, hzl_bits *bits) {
+static int32_t hzl_decode_character(hzl_state *state, hzl_bits *bits)
+{
     int32_t code = state->child[HZL_R];
     int32_t guard = 0;
     while (code < HZL_T) {
@@ -228,9 +238,8 @@ static int32_t hzl_decode_character(hzl_state *state, hzl_bits *bits) {
     return code;
 }
 
-bool xx_hzl_decode_memory(const uint8_t *input, size_t input_size,
-                          uint8_t *output, size_t output_size,
-                          size_t *written) {
+bool xx_hzl_decode_memory(const uint8_t *input, size_t input_size, uint8_t *output, size_t output_size, size_t *written)
+{
     hzl_state *state;
     hzl_bits bits;
     size_t produced = 0U;

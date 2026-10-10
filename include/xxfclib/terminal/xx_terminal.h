@@ -49,18 +49,14 @@ XXFC_API xx_terminal_state xx_terminal_init(xx_terminal_stream_t stream);
 XXFC_API void xx_terminal_finish(const xx_terminal_state *state);
 
 /** @brief Write exactly size bytes, including embedded NULs. No formatting. */
-XXFC_API xxfc_status_t xx_terminal_write(const xx_terminal_state *state,
-                                        const char *text, size_t size);
+XXFC_API xxfc_status_t xx_terminal_write(const xx_terminal_state *state, const char *text, size_t size);
 /** @brief Write a NUL-terminated string without interpreting format specifiers. */
-XXFC_API xxfc_status_t xx_terminal_print(const xx_terminal_state *state,
-                                        const char *text);
+XXFC_API xxfc_status_t xx_terminal_print(const xx_terminal_state *state, const char *text);
 XXFC_API xxfc_status_t xx_terminal_flush(const xx_terminal_state *state);
 
 /** @brief Read/write raw native Windows attributes. Color mapping is the caller's responsibility. */
-XXFC_API bool xx_terminal_get_attributes(const xx_terminal_state *state,
-                                         uint16_t *attributes);
-XXFC_API bool xx_terminal_set_attributes(const xx_terminal_state *state,
-                                         uint16_t attributes);
+XXFC_API bool xx_terminal_get_attributes(const xx_terminal_state *state, uint16_t *attributes);
+XXFC_API bool xx_terminal_set_attributes(const xx_terminal_state *state, uint16_t attributes);
 
 #ifdef __cplusplus
 }

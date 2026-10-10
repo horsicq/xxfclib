@@ -79,17 +79,15 @@ static void xx_zpak_vtable_destroy(Abstractformat *self);
 
 /* ------------------------------------------------------------- helpers -- */
 
-static bool xx_zpak_read_at(Abstractformat *self, int64_t offset,
-                              uint8_t *buffer, size_t size) {
+static bool xx_zpak_read_at(Abstractformat *self, int64_t offset, uint8_t *buffer, size_t size)
+{
     size_t completed = 0U;
 
-    if (!self || !self->device || offset < 0 ||
-        xx_io_seek64(self->device, offset, SEEK_SET) != 0) {
+    if (!self || !self->device || offset < 0 || xx_io_seek64(self->device, offset, SEEK_SET) != 0) {
         return false;
     }
     while (completed < size) {
-        ssize_t received =
-            xx_io_read(self->device, buffer + completed, size - completed);
+        ssize_t received = xx_io_read(self->device, buffer + completed, size - completed);
         if (received <= 0 || (size_t)received > size - completed) {
             return false;
         }
@@ -98,14 +96,14 @@ static bool xx_zpak_read_at(Abstractformat *self, int64_t offset,
     return true;
 }
 
-static bool xx_zpak_range_within(int64_t total, int64_t offset,
-                                   int64_t size) {
-    return offset >= 0 && size >= 0 && offset <= total &&
-           size <= total - offset;
+static bool xx_zpak_range_within(int64_t total, int64_t offset, int64_t size)
+{
+    return offset >= 0 && size >= 0 && offset <= total && size <= total - offset;
 }
 
 /* Refuse anything that would escape the extraction directory. */
-static bool xx_zpak_path_safe(const char *name) {
+static bool xx_zpak_path_safe(const char *name)
+{
     const char *cursor = name;
 
     if (!name || !name[0] || name[0] == '/') return false;
@@ -120,7 +118,8 @@ static bool xx_zpak_path_safe(const char *name) {
     return true;
 }
 
-static void xx_zpak_stream_free(void *pointer) {
+static void xx_zpak_stream_free(void *pointer)
+{
     xx_zpak_stream *stream = (xx_zpak_stream *)pointer;
     size_t index;
 
@@ -133,17 +132,15 @@ static void xx_zpak_stream_free(void *pointer) {
 }
 
 /* Append a member, taking ownership of @p name. */
-static bool xx_zpak_add(xx_zpak_stream *stream,
-                          const xx_zpak_member *member) {
-    xx_zpak_member *grown = (xx_zpak_member *)xx_mem_realloc(
-        stream->items, sizeof(*grown) * (stream->count + 1U));
+static bool xx_zpak_add(xx_zpak_stream *stream, const xx_zpak_member *member)
+{
+    xx_zpak_member *grown = (xx_zpak_member *)xx_mem_realloc(stream->items, sizeof(*grown) * (stream->count + 1U));
 
     if (!grown) return false;
     stream->items = grown;
     stream->items[stream->count++] = *member;
     return true;
 }
-
 
 #define XX_ZPAK_MAX_MEMBERS 65535
 #define XX_ZPAK_REC_DATAOFFSET 0x0d
@@ -169,7 +166,6 @@ static xx_zpak_stream *xx_zpak_parse(Abstractformat *self, xx_pd_struct *pd);
 static bool xx_zpak_unchunk(const uint8_t *payload, size_t size, uint8_t **out, size_t *out_size);
 static bool xx_zpak_decode(Abstractformat *self, const xx_zpak_member *member, uint8_t **out, size_t *out_size, xx_pd_struct *pd);
 
-
 /* The payload of the first member can never start inside the header plus its
  * own directory record, so the reference rejects an offset at or below this.
  * It is one of only three value checks standing behind a four-byte magic. */
@@ -179,7 +175,8 @@ static bool xx_zpak_decode(Abstractformat *self, const xx_zpak_member *member, u
  * because a DOS 8.3 name never needed more and a random byte string passing
  * the four-byte magic is far more likely to contain control bytes than a
  * real archive is. */
-static bool xx_zpak_copy_name(const uint8_t *record, char *buffer) {
+static bool xx_zpak_copy_name(const uint8_t *record, char *buffer)
+{
     size_t index;
     size_t length = 0U;
 
@@ -197,7 +194,8 @@ static bool xx_zpak_copy_name(const uint8_t *record, char *buffer) {
     return length != 0U;
 }
 
-static xx_zpak_stream *xx_zpak_parse(Abstractformat *self, xx_pd_struct *pd) {
+static xx_zpak_stream *xx_zpak_parse(Abstractformat *self, xx_pd_struct *pd)
+{
     xx_zpak_stream *stream = NULL;
     xx_zpak_member member;
     uint8_t probe[XX_ZPAK_MIN_SIZE];
@@ -228,11 +226,9 @@ static xx_zpak_stream *xx_zpak_parse(Abstractformat *self, xx_pd_struct *pd) {
      * combination of the magic with the three first-record checks below and
      * the containment test on every record; each is cheap and each rules out
      * a large slice of random data. */
-    is_v2 = (probe[0] == (uint8_t)'z' && probe[1] == (uint8_t)'p' &&
-             probe[2] == (uint8_t)'k' && probe[3] == (uint8_t)'2');
+    is_v2 = (probe[0] == (uint8_t)'z' && probe[1] == (uint8_t)'p' && probe[2] == (uint8_t)'k' && probe[3] == (uint8_t)'2');
     if (!is_v2) {
-        if (probe[0] != (uint8_t)'z' || probe[1] != (uint8_t)'p' ||
-            probe[2] != (uint8_t)'a' || probe[3] != (uint8_t)'k') {
+        if (probe[0] != (uint8_t)'z' || probe[1] != (uint8_t)'p' || probe[2] != (uint8_t)'a' || probe[3] != (uint8_t)'k') {
             return NULL;
         }
     }
@@ -249,29 +245,23 @@ static xx_zpak_stream *xx_zpak_parse(Abstractformat *self, xx_pd_struct *pd) {
      * further down - they are not: they run before a single directory byte
      * is read, so they are what stops a 64 KB directory being allocated for
      * a file that merely begins "zpak". */
-    if ((int32_t)xx_data_get_u32(probe + XX_ZPAK_HEADER_SIZE +
-                              XX_ZPAK_REC_DATAOFFSET, 4, 0, false) <=
-        (int32_t)XX_ZPAK_MIN_DATA_OFFSET) {
+    if ((int32_t)xx_data_get_u32(probe + XX_ZPAK_HEADER_SIZE + XX_ZPAK_REC_DATAOFFSET, 4, 0, false) <= (int32_t)XX_ZPAK_MIN_DATA_OFFSET) {
         return NULL;
     }
-    if ((int32_t)xx_data_get_u32(probe + XX_ZPAK_HEADER_SIZE +
-                              XX_ZPAK_REC_COMPRESSED, 4, 0, false) < 0) {
+    if ((int32_t)xx_data_get_u32(probe + XX_ZPAK_HEADER_SIZE + XX_ZPAK_REC_COMPRESSED, 4, 0, false) < 0) {
         return NULL;
     }
-    if ((int32_t)xx_data_get_u32(probe + XX_ZPAK_HEADER_SIZE +
-                              XX_ZPAK_REC_UNCOMPRESSED, 4, 0, false) < 0) {
+    if ((int32_t)xx_data_get_u32(probe + XX_ZPAK_HEADER_SIZE + XX_ZPAK_REC_UNCOMPRESSED, 4, 0, false) < 0) {
         return NULL;
     }
 
     directory_size = (int64_t)count * XX_ZPAK_RECORD_SIZE;
-    if (!xx_zpak_range_within(span, (int64_t)XX_ZPAK_HEADER_SIZE,
-                              directory_size)) {
+    if (!xx_zpak_range_within(span, (int64_t)XX_ZPAK_HEADER_SIZE, directory_size)) {
         return NULL;
     }
     directory = (uint8_t *)xx_mem_alloc((size_t)directory_size);
     if (!directory) return NULL;
-    if (!xx_zpak_read_at(self, self->base_address + XX_ZPAK_HEADER_SIZE,
-                         directory, (size_t)directory_size)) {
+    if (!xx_zpak_read_at(self, self->base_address + XX_ZPAK_HEADER_SIZE, directory, (size_t)directory_size)) {
         xx_mem_free(directory);
         return NULL;
     }
@@ -297,17 +287,13 @@ static xx_zpak_stream *xx_zpak_parse(Abstractformat *self, xx_pd_struct *pd) {
         /* All three sizes are read as SIGNED 32-bit values, matching the
          * reference: a negative one is a malformed archive, not a member
          * four gigabytes long. */
-        if ((int32_t)xx_data_get_u32(record + XX_ZPAK_REC_DATAOFFSET, 4, 0, false) < 0 ||
-            (int32_t)xx_data_get_u32(record + XX_ZPAK_REC_COMPRESSED, 4, 0, false) < 0 ||
+        if ((int32_t)xx_data_get_u32(record + XX_ZPAK_REC_DATAOFFSET, 4, 0, false) < 0 || (int32_t)xx_data_get_u32(record + XX_ZPAK_REC_COMPRESSED, 4, 0, false) < 0 ||
             (int32_t)xx_data_get_u32(record + XX_ZPAK_REC_UNCOMPRESSED, 4, 0, false) < 0) {
             goto fail;
         }
-        data_offset =
-            (int64_t)(int32_t)xx_data_get_u32(record + XX_ZPAK_REC_DATAOFFSET, 4, 0, false);
-        compressed_size =
-            (int64_t)(int32_t)xx_data_get_u32(record + XX_ZPAK_REC_COMPRESSED, 4, 0, false);
-        uncompressed_size =
-            (int64_t)(int32_t)xx_data_get_u32(record + XX_ZPAK_REC_UNCOMPRESSED, 4, 0, false);
+        data_offset = (int64_t)(int32_t)xx_data_get_u32(record + XX_ZPAK_REC_DATAOFFSET, 4, 0, false);
+        compressed_size = (int64_t)(int32_t)xx_data_get_u32(record + XX_ZPAK_REC_COMPRESSED, 4, 0, false);
+        uncompressed_size = (int64_t)(int32_t)xx_data_get_u32(record + XX_ZPAK_REC_UNCOMPRESSED, 4, 0, false);
 
         /* The payload offset is absolute, so a record can point anywhere;
          * this containment test is the only thing that keeps a member's
@@ -315,8 +301,7 @@ static xx_zpak_stream *xx_zpak_parse(Abstractformat *self, xx_pd_struct *pd) {
         if (!xx_zpak_range_within(span, data_offset, compressed_size)) {
             goto fail;
         }
-        if (compressed_size > XX_ZPAK_MAX_DECODED ||
-            uncompressed_size > XX_ZPAK_MAX_DECODED) {
+        if (compressed_size > XX_ZPAK_MAX_DECODED || uncompressed_size > XX_ZPAK_MAX_DECODED) {
             goto fail;
         }
 
@@ -329,8 +314,7 @@ static xx_zpak_stream *xx_zpak_parse(Abstractformat *self, xx_pd_struct *pd) {
 
         xx_mem_zero(&member, sizeof(member));
         member.name = name;
-        member.header_offset = self->base_address + XX_ZPAK_HEADER_SIZE +
-                               ((int64_t)index * XX_ZPAK_RECORD_SIZE);
+        member.header_offset = self->base_address + XX_ZPAK_HEADER_SIZE + ((int64_t)index * XX_ZPAK_RECORD_SIZE);
         member.header_size = XX_ZPAK_RECORD_SIZE;
         member.data_offset = self->base_address + data_offset;
         member.compressed_size = compressed_size;
@@ -341,8 +325,7 @@ static xx_zpak_stream *xx_zpak_parse(Abstractformat *self, xx_pd_struct *pd) {
         /* Published as (date << 16) | time; the record stores the date word
          * first, the reverse of the packed DOS order. */
         member.timestamp =
-            ((uint64_t)xx_data_get_u16(record + XX_ZPAK_REC_DOSDATE, 2, 0, false) << 16) |
-            (uint64_t)xx_data_get_u16(record + XX_ZPAK_REC_DOSTIME, 2, 0, false);
+            ((uint64_t)xx_data_get_u16(record + XX_ZPAK_REC_DOSDATE, 2, 0, false) << 16) | (uint64_t)xx_data_get_u16(record + XX_ZPAK_REC_DOSTIME, 2, 0, false);
         /* The directory has no attribute byte: ZPAK stores flat names. */
         member.is_folder = false;
 
@@ -368,7 +351,6 @@ fail:
     xx_zpak_stream_free(stream);
     return NULL;
 }
-
 
 /* The header plus one whole directory record: the reference probes exactly
  * this much before it trusts anything, because three of its detection checks
@@ -396,8 +378,8 @@ fail:
  * available are "refuse" and "silently short", and the decode contract
  * forbids the second. A truncated member the reference would partially
  * recover is therefore a hard failure here. */
-static bool xx_zpak_unchunk(const uint8_t *payload, size_t size,
-                            uint8_t **out, size_t *out_size) {
+static bool xx_zpak_unchunk(const uint8_t *payload, size_t size, uint8_t **out, size_t *out_size)
+{
     uint8_t *result;
     size_t framed_size;
     size_t position = 0U;
@@ -418,8 +400,7 @@ static bool xx_zpak_unchunk(const uint8_t *payload, size_t size,
     if (!result) return false;
 
     while (position + 2U <= framed_size) {
-        size_t chunk_size = (size_t)payload[1U + position] |
-                            ((size_t)payload[2U + position] << 8);
+        size_t chunk_size = (size_t)payload[1U + position] | ((size_t)payload[2U + position] << 8);
         position += 2U;
         /* A zero length terminates the stream early; whatever follows is
          * writer padding and is not part of the LZW stream. */
@@ -457,9 +438,8 @@ static bool xx_zpak_unchunk(const uint8_t *payload, size_t size,
 /* Two codecs, chosen by the container magic and recorded by parse. An
  * unrecognised value is refused rather than copied through: a stored-bytes
  * fallback here would write LZW codes to disk and call it the file. */
-static bool xx_zpak_decode(Abstractformat *self, const xx_zpak_member *member,
-                           uint8_t **out, size_t *out_size,
-                           xx_pd_struct *pd) {
+static bool xx_zpak_decode(Abstractformat *self, const xx_zpak_member *member, uint8_t **out, size_t *out_size, xx_pd_struct *pd)
+{
     uint8_t *input;
     uint8_t *output;
     uint8_t *unframed = NULL;
@@ -471,22 +451,19 @@ static bool xx_zpak_decode(Abstractformat *self, const xx_zpak_member *member,
     *out_size = 0U;
     if (!self || !member) return false;
     if (pd && xx_pd_is_stopped(pd)) return false;
-    if (member->method != XX_ZPAK_METHOD_LZW &&
-        member->method != XX_ZPAK_METHOD_DCL) {
+    if (member->method != XX_ZPAK_METHOD_LZW && member->method != XX_ZPAK_METHOD_DCL) {
         return false;
     }
     if (member->compressed_size < 1 || member->uncompressed_size < 1) {
         return false;
     }
-    if (member->compressed_size > XX_ZPAK_MAX_DECODED ||
-        member->uncompressed_size > XX_ZPAK_MAX_DECODED) {
+    if (member->compressed_size > XX_ZPAK_MAX_DECODED || member->uncompressed_size > XX_ZPAK_MAX_DECODED) {
         return false;
     }
 
     input = (uint8_t *)xx_mem_alloc((size_t)member->compressed_size);
     if (!input) return false;
-    if (!xx_zpak_read_at(self, member->data_offset, input,
-                         (size_t)member->compressed_size)) {
+    if (!xx_zpak_read_at(self, member->data_offset, input, (size_t)member->compressed_size)) {
         xx_mem_free(input);
         return false;
     }
@@ -496,8 +473,7 @@ static bool xx_zpak_decode(Abstractformat *self, const xx_zpak_member *member,
     }
 
     if (member->method == XX_ZPAK_METHOD_LZW) {
-        if (!xx_zpak_unchunk(input, (size_t)member->compressed_size, &unframed,
-                             &unframed_size)) {
+        if (!xx_zpak_unchunk(input, (size_t)member->compressed_size, &unframed, &unframed_size)) {
             xx_mem_free(input);
             return false;
         }
@@ -516,17 +492,13 @@ static bool xx_zpak_decode(Abstractformat *self, const xx_zpak_member *member,
          * with CLEAR, close with END and carry only zero bits after it -
          * requirements the chunk framing above is responsible for
          * delivering intact. */
-        ok = xx_softronics_lzw_decompress_memory(
-            unframed, unframed_size, output,
-            (size_t)member->uncompressed_size, &written);
+        ok = xx_softronics_lzw_decompress_memory(unframed, unframed_size, output, (size_t)member->uncompressed_size, &written);
         /* This entry point reports the INPUT bytes it consumed, not the
          * output it produced, so the exact-length test is the decoder's own
          * internal one and there is nothing further to compare here. */
         written = ok ? (size_t)member->uncompressed_size : 0U;
     } else {
-        ok = xx_dcl_decode_memory(input, (size_t)member->compressed_size,
-                                  output, (size_t)member->uncompressed_size,
-                                  &written);
+        ok = xx_dcl_decode_memory(input, (size_t)member->compressed_size, output, (size_t)member->uncompressed_size, &written);
     }
     /* Exactly the declared plaintext length, or nothing. Most archives carry
      * no usable CRC (a zero high word means the reference does not check
@@ -548,8 +520,8 @@ static bool xx_zpak_decode(Abstractformat *self, const xx_zpak_member *member,
 
 /* ---------------------------------------------------------- lifecycle --- */
 
-void xx_zpak_init(xx_zpak *archive, xx_io_device *device,
-                    int64_t base_address) {
+void xx_zpak_init(xx_zpak *archive, xx_io_device *device, int64_t base_address)
+{
     if (!archive) return;
     xx_mem_zero(archive, sizeof(*archive));
     xx_format_init(&archive->format, device, base_address);
@@ -562,22 +534,17 @@ void xx_zpak_init(xx_zpak *archive, xx_io_device *device,
     archive->format.check_is_valid = xx_zpak_check_is_valid;
     archive->format.handle_base_info = xx_zpak_handle_base_info;
     archive->format.get_format_size = xx_zpak_get_format_size;
-    archive->format.get_number_of_archive_records =
-        xx_zpak_get_number_of_archive_records;
-    archive->format.create_archive_records_reading =
-        xx_zpak_create_archive_records_reading;
-    archive->format.get_current_archive_record =
-        xx_zpak_get_current_archive_record;
-    archive->format.unpack_current_archive_record =
-        xx_zpak_unpack_current_archive_record;
-    archive->format.archive_record_move_to_next =
-        xx_zpak_archive_record_move_to_next;
-    archive->format.free_archive_records_reading =
-        xx_zpak_free_archive_records_reading;
+    archive->format.get_number_of_archive_records = xx_zpak_get_number_of_archive_records;
+    archive->format.create_archive_records_reading = xx_zpak_create_archive_records_reading;
+    archive->format.get_current_archive_record = xx_zpak_get_current_archive_record;
+    archive->format.unpack_current_archive_record = xx_zpak_unpack_current_archive_record;
+    archive->format.archive_record_move_to_next = xx_zpak_archive_record_move_to_next;
+    archive->format.free_archive_records_reading = xx_zpak_free_archive_records_reading;
     archive->format.destroy = xx_zpak_vtable_destroy;
 }
 
-xx_zpak *xx_zpak_create(xx_io_device *device, int64_t base_address) {
+xx_zpak *xx_zpak_create(xx_io_device *device, int64_t base_address)
+{
     xx_zpak *archive = (xx_zpak *)xx_mem_alloc(sizeof(*archive));
 
     if (!archive) return NULL;
@@ -585,7 +552,8 @@ xx_zpak *xx_zpak_create(xx_io_device *device, int64_t base_address) {
     return archive;
 }
 
-void xx_zpak_destroy(xx_zpak *archive) {
+void xx_zpak_destroy(xx_zpak *archive)
+{
     if (!archive) return;
     /* Not xx_format_destroy: it dispatches through format.destroy, which is
      * the wrapper below, and the two would recurse. */
@@ -594,19 +562,22 @@ void xx_zpak_destroy(xx_zpak *archive) {
     archive->number_of_records = 0U;
 }
 
-void xx_zpak_free(xx_zpak *archive) {
+void xx_zpak_free(xx_zpak *archive)
+{
     if (!archive) return;
     xx_zpak_destroy(archive);
     xx_mem_free(archive);
 }
 
-static void xx_zpak_vtable_destroy(Abstractformat *self) {
+static void xx_zpak_vtable_destroy(Abstractformat *self)
+{
     xx_zpak_destroy((xx_zpak *)self);
 }
 
 /* -------------------------------------------------------------- format -- */
 
-bool xx_zpak_check_is_valid(Abstractformat *self, xx_pd_struct *pd) {
+bool xx_zpak_check_is_valid(Abstractformat *self, xx_pd_struct *pd)
+{
     xx_zpak_stream *stream;
 
     if (!self || (pd && xx_pd_is_stopped(pd))) return false;
@@ -616,7 +587,8 @@ bool xx_zpak_check_is_valid(Abstractformat *self, xx_pd_struct *pd) {
     return true;
 }
 
-bool xx_zpak_handle_base_info(Abstractformat *self, xx_pd_struct *pd) {
+bool xx_zpak_handle_base_info(Abstractformat *self, xx_pd_struct *pd)
+{
     xx_zpak *archive = (xx_zpak *)self;
     xx_zpak_stream *stream;
 
@@ -637,18 +609,17 @@ bool xx_zpak_handle_base_info(Abstractformat *self, xx_pd_struct *pd) {
     return true;
 }
 
-int64_t xx_zpak_get_format_size(Abstractformat *self, xx_pd_struct *pd) {
-    if (!self ||
-        (!self->base_info_handled && !xx_format_handle_base_info(self, pd))) {
+int64_t xx_zpak_get_format_size(Abstractformat *self, xx_pd_struct *pd)
+{
+    if (!self || (!self->base_info_handled && !xx_format_handle_base_info(self, pd))) {
         return 0;
     }
     return self->is_valid ? self->format_size : 0;
 }
 
-uint64_t xx_zpak_get_number_of_archive_records(Abstractformat *self,
-                                                 xx_pd_struct *pd) {
-    if (!self ||
-        (!self->base_info_handled && !xx_format_handle_base_info(self, pd))) {
+uint64_t xx_zpak_get_number_of_archive_records(Abstractformat *self, xx_pd_struct *pd)
+{
+    if (!self || (!self->base_info_handled && !xx_format_handle_base_info(self, pd))) {
         return 0U;
     }
     return self->is_valid ? ((xx_zpak *)self)->number_of_records : 0U;
@@ -656,8 +627,8 @@ uint64_t xx_zpak_get_number_of_archive_records(Abstractformat *self,
 
 /* ------------------------------------------------------------- records -- */
 
-static bool xx_zpak_set_record(xx_archive_record *record,
-                                 const xx_zpak_member *member) {
+static bool xx_zpak_set_record(xx_archive_record *record, const xx_zpak_member *member)
+{
     xx_archive_record_cleanup(record);
     xx_archive_record_init(record);
     record->header_offset = member->header_offset;
@@ -665,34 +636,24 @@ static bool xx_zpak_set_record(xx_archive_record *record,
     record->data_offset = member->data_offset;
     record->compressed_size = member->compressed_size;
     return xx_archive_record_set_original_name(record, member->name) &&
-           xx_archive_record_set_meta_u64(record, XX_META_ID_COMPRESSED_SIZE,
-                                          (uint64_t)member->compressed_size) &&
-           xx_archive_record_set_meta_u64(
-               record, XX_META_ID_UNCOMPRESSED_SIZE,
-               (uint64_t)member->uncompressed_size) &&
-           xx_archive_record_set_meta_u64(record, XX_META_ID_COMPRESSION_METHOD,
-                                          member->method) &&
-           xx_archive_record_set_meta_u64(record, XX_META_ID_TIMESTAMP,
-                                          member->timestamp) &&
-           xx_archive_record_set_meta_bool(record, XX_META_ID_IS_FOLDER,
-                                           member->is_folder) &&
-           xx_archive_record_set_meta_bool(record, XX_META_ID_IS_ENCRYPTED,
-                                           false);
+           xx_archive_record_set_meta_u64(record, XX_META_ID_COMPRESSED_SIZE, (uint64_t)member->compressed_size) &&
+           xx_archive_record_set_meta_u64(record, XX_META_ID_UNCOMPRESSED_SIZE, (uint64_t)member->uncompressed_size) &&
+           xx_archive_record_set_meta_u64(record, XX_META_ID_COMPRESSION_METHOD, member->method) &&
+           xx_archive_record_set_meta_u64(record, XX_META_ID_TIMESTAMP, member->timestamp) &&
+           xx_archive_record_set_meta_bool(record, XX_META_ID_IS_FOLDER, member->is_folder) && xx_archive_record_set_meta_bool(record, XX_META_ID_IS_ENCRYPTED, false);
 }
 
-static bool xx_zpak_copy_options(xx_list_s *target,
-                                   const xx_list_s *options) {
+static bool xx_zpak_copy_options(xx_list_s *target, const xx_list_s *options)
+{
     size_t index;
 
     if (!target || !options) return options == NULL;
     for (index = 0U; index < options->count; ++index) {
-        const xx_meta *source =
-            (const xx_meta *)xx_list_at((const xx_list_t *)options, index);
+        const xx_meta *source = (const xx_meta *)xx_list_at((const xx_list_t *)options, index);
         xx_meta copied;
         if (!source) continue;
         xx_meta_init(&copied, source->meta_id);
-        if (!xx_var_copy(&copied.var, &source->var) ||
-            !xx_list_append(target, &copied)) {
+        if (!xx_var_copy(&copied.var, &source->var) || !xx_list_append(target, &copied)) {
             xx_meta_cleanup(&copied);
             return false;
         }
@@ -700,21 +661,20 @@ static bool xx_zpak_copy_options(xx_list_s *target,
     return true;
 }
 
-static const xx_var *xx_zpak_get_option(const xx_list_s *options,
-                                          uint32_t meta_id) {
+static const xx_var *xx_zpak_get_option(const xx_list_s *options, uint32_t meta_id)
+{
     size_t index;
 
     if (!options) return NULL;
     for (index = 0U; index < options->count; ++index) {
-        const xx_meta *meta =
-            (const xx_meta *)xx_list_at((const xx_list_t *)options, index);
+        const xx_meta *meta = (const xx_meta *)xx_list_at((const xx_list_t *)options, index);
         if (meta && meta->meta_id == meta_id) return &meta->var;
     }
     return NULL;
 }
 
-xx_archive_record_state *xx_zpak_create_archive_records_reading(
-    Abstractformat *self, const xx_list_s *options, xx_pd_struct *pd) {
+xx_archive_record_state *xx_zpak_create_archive_records_reading(Abstractformat *self, const xx_list_s *options, xx_pd_struct *pd)
+{
     xx_zpak_stream *stream;
     xx_archive_record_state *state;
 
@@ -730,9 +690,7 @@ xx_archive_record_state *xx_zpak_create_archive_records_reading(
     state->internal_state = stream;
     state->free_internal = xx_zpak_stream_free;
     state->total_records = (int64_t)stream->count;
-    if (!xx_zpak_copy_options(&state->options, options) ||
-        (stream->count != 0U &&
-         !xx_zpak_set_record(&state->current_record, &stream->items[0]))) {
+    if (!xx_zpak_copy_options(&state->options, options) || (stream->count != 0U && !xx_zpak_set_record(&state->current_record, &stream->items[0]))) {
         xx_archive_record_state_free(state);
         return NULL;
     }
@@ -741,20 +699,16 @@ xx_archive_record_state *xx_zpak_create_archive_records_reading(
     return state;
 }
 
-const xx_archive_record *xx_zpak_get_current_archive_record(
-    Abstractformat *self, xx_archive_record_state *state) {
-    return self && state && state->format == self && state->has_record
-               ? &state->current_record
-               : NULL;
+const xx_archive_record *xx_zpak_get_current_archive_record(Abstractformat *self, xx_archive_record_state *state)
+{
+    return self && state && state->format == self && state->has_record ? &state->current_record : NULL;
 }
 
-bool xx_zpak_archive_record_move_to_next(Abstractformat *self,
-                                           xx_archive_record_state *state,
-                                           xx_pd_struct *pd) {
+bool xx_zpak_archive_record_move_to_next(Abstractformat *self, xx_archive_record_state *state, xx_pd_struct *pd)
+{
     xx_zpak_stream *stream;
 
-    if (!self || !state || state->format != self || !state->has_record ||
-        (pd && xx_pd_is_stopped(pd))) {
+    if (!self || !state || state->format != self || !state->has_record || (pd && xx_pd_is_stopped(pd))) {
         return false;
     }
     stream = (xx_zpak_stream *)state->internal_state;
@@ -766,14 +720,12 @@ bool xx_zpak_archive_record_move_to_next(Abstractformat *self,
     }
     ++stream->index;
     ++state->current_index;
-    state->has_record = xx_zpak_set_record(&state->current_record,
-                                             &stream->items[stream->index]);
+    state->has_record = xx_zpak_set_record(&state->current_record, &stream->items[stream->index]);
     return state->has_record;
 }
 
-bool xx_zpak_unpack_current_archive_record(Abstractformat *self,
-                                             xx_archive_record_state *state,
-                                             xx_pd_struct *pd) {
+bool xx_zpak_unpack_current_archive_record(Abstractformat *self, xx_archive_record_state *state, xx_pd_struct *pd)
+{
     xx_zpak_stream *stream;
     const xx_zpak_member *member;
     const xx_var *path_option;
@@ -785,8 +737,7 @@ bool xx_zpak_unpack_current_archive_record(Abstractformat *self,
     bool result = false;
     bool created = false;
 
-    if (!self || !state || state->format != self || !state->has_record ||
-        (pd && xx_pd_is_stopped(pd))) {
+    if (!self || !state || state->format != self || !state->has_record || (pd && xx_pd_is_stopped(pd))) {
         return false;
     }
     stream = (xx_zpak_stream *)state->internal_state;
@@ -794,8 +745,7 @@ bool xx_zpak_unpack_current_archive_record(Abstractformat *self,
     member = &stream->items[stream->index];
     if (!xx_zpak_path_safe(member->name)) return false;
 
-    path_option = xx_zpak_get_option(&state->options,
-                                       XX_META_ID_OPT_UNPACK_PATH);
+    path_option = xx_zpak_get_option(&state->options, XX_META_ID_OPT_UNPACK_PATH);
     if (!path_option) {
         /* No destination: decode and discard, which verifies the member
          * without writing anything. */
@@ -804,11 +754,9 @@ bool xx_zpak_unpack_current_archive_record(Abstractformat *self,
         xx_mem_free(plain);
         return result;
     }
-    if (path_option->type == XX_VAR_TYPE_STRING ||
-        path_option->type == XX_VAR_TYPE_STRING_VIEW) {
+    if (path_option->type == XX_VAR_TYPE_STRING || path_option->type == XX_VAR_TYPE_STRING_VIEW) {
         base_path = xx_var_get_str(path_option);
-    } else if (path_option->type == XX_VAR_TYPE_WSTRING ||
-               path_option->type == XX_VAR_TYPE_WSTRING_VIEW) {
+    } else if (path_option->type == XX_VAR_TYPE_WSTRING || path_option->type == XX_VAR_TYPE_WSTRING_VIEW) {
         converted_path = xx_str_unicode_to_utf8(xx_var_get_wstr(path_option));
         base_path = converted_path;
     }
@@ -816,9 +764,7 @@ bool xx_zpak_unpack_current_archive_record(Abstractformat *self,
         xx_str_free(converted_path);
         return false;
     }
-    if (base_path[0] != '\0' &&
-        base_path[xx_str_len(base_path) - 1U] != '/' &&
-        base_path[xx_str_len(base_path) - 1U] != '\\') {
+    if (base_path[0] != '\0' && base_path[xx_str_len(base_path) - 1U] != '/' && base_path[xx_str_len(base_path) - 1U] != '\\') {
         target_path = xx_str_concat3(base_path, "/", member->name);
     } else {
         target_path = xx_str_concat(base_path, member->name);
@@ -831,8 +777,7 @@ bool xx_zpak_unpack_current_archive_record(Abstractformat *self,
         xx_str_free(target_path);
         return result;
     }
-    if (!xx_store_create_dirs_a(target_path, false) ||
-        !xx_zpak_decode(self, member, &plain, &plain_size, pd)) {
+    if (!xx_store_create_dirs_a(target_path, false) || !xx_zpak_decode(self, member, &plain, &plain_size, pd)) {
         xx_str_free(target_path);
         return false;
     }
@@ -843,8 +788,7 @@ bool xx_zpak_unpack_current_archive_record(Abstractformat *self,
 
         result = output != NULL;
         while (result && completed < plain_size) {
-            ssize_t sent = xx_io_write(output, plain + completed,
-                                       plain_size - completed);
+            ssize_t sent = xx_io_write(output, plain + completed, plain_size - completed);
             if (sent <= 0 || (size_t)sent > plain_size - completed) {
                 result = false;
                 break;
@@ -859,8 +803,8 @@ bool xx_zpak_unpack_current_archive_record(Abstractformat *self,
     return result;
 }
 
-void xx_zpak_free_archive_records_reading(Abstractformat *self,
-                                            xx_archive_record_state *state) {
+void xx_zpak_free_archive_records_reading(Abstractformat *self, xx_archive_record_state *state)
+{
     (void)self;
     xx_archive_record_state_free(state);
 }

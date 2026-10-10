@@ -15,15 +15,11 @@ extern "C" {
 typedef struct xx_snatchit_cp2_s {
     Abstractformat format;
 } xx_snatchit_cp2;
-XXFC_API void xx_snatchit_cp2_init(xx_snatchit_cp2 *reader,
-                                   xx_io_device *device,int64_t base_address);
-XXFC_API xx_snatchit_cp2 *xx_snatchit_cp2_create(xx_io_device *device,
-                                                  int64_t base_address);
+XXFC_API void xx_snatchit_cp2_init(xx_snatchit_cp2 *reader, xx_io_device *device, int64_t base_address);
+XXFC_API xx_snatchit_cp2 *xx_snatchit_cp2_create(xx_io_device *device, int64_t base_address);
 XXFC_API void xx_snatchit_cp2_destroy(xx_snatchit_cp2 *reader);
 XXFC_API void xx_snatchit_cp2_free(xx_snatchit_cp2 *reader);
-XXFC_API bool xx_snatchit_cp2_unpack_to_device(xx_snatchit_cp2 *reader,
-                                                xx_io_device *destination,
-                                                xx_pd_struct *pd);
+XXFC_API bool xx_snatchit_cp2_unpack_to_device(xx_snatchit_cp2 *reader, xx_io_device *destination, xx_pd_struct *pd);
 #ifdef __cplusplus
 }
 #endif

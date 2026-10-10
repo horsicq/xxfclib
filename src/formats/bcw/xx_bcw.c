@@ -39,7 +39,6 @@
 #include "xxfclib/global/xx_global.h"
 #include "xxfclib/formats/bcw/xx_bcw.h"
 
-
 #include "xxfclib/algo/store/xx_store.h"
 #include "xxfclib/io/xx_io.h"
 #include "xxfclib/memory/xx_memory.h"
@@ -76,13 +75,11 @@ typedef struct bcw_stream_s {
     int64_t archive_size;
 } bcw_stream;
 
-static bool bcw_read_at(xx_io_device *device, int64_t offset, void *buffer,
-                        size_t size) {
+static bool bcw_read_at(xx_io_device *device, int64_t offset, void *buffer, size_t size)
+{
     size_t transfer_capacity = xx_get_file_buffer_size();
     size_t done = 0U;
-    if (!device || (!buffer && size != 0U) || offset < 0 ||
-        xx_io_seek64(device, offset, SEEK_SET) != 0)
-        return false;
+    if (!device || (!buffer && size != 0U) || offset < 0 || xx_io_seek64(device, offset, SEEK_SET) != 0) return false;
     while (done < size) {
         size_t request = size - done;
         ssize_t amount;
@@ -97,7 +94,8 @@ static bool bcw_read_at(xx_io_device *device, int64_t offset, void *buffer,
 /* Every name field in these containers is a fixed-width buffer whose tail is
  * uninitialised builder heap, so only the bytes before the first NUL are ever
  * surfaced, and separators and traversal components are made harmless. */
-static char *bcw_normalize_name(const uint8_t *bytes, size_t size) {
+static char *bcw_normalize_name(const uint8_t *bytes, size_t size)
+{
     char *name;
     size_t input = 0U, output = 0U, limit = 0U;
     if ((!bytes && size != 0U) || size > SIZE_MAX - 2U) return NULL;
@@ -109,16 +107,12 @@ static char *bcw_normalize_name(const uint8_t *bytes, size_t size) {
     if (!name) return NULL;
     while (input < size) {
         size_t start, end, component_start;
-        while (input < size && (bytes[input] == '/' || bytes[input] == '\\'))
-            ++input;
+        while (input < size && (bytes[input] == '/' || bytes[input] == '\\')) ++input;
         start = input;
-        while (input < size && bytes[input] != '/' && bytes[input] != '\\')
-            ++input;
+        while (input < size && bytes[input] != '/' && bytes[input] != '\\') ++input;
         end = input;
-        if (end == start || (end - start == 1U && bytes[start] == '.'))
-            continue;
-        if (end - start == 2U && bytes[start] == '.' &&
-            bytes[start + 1U] == '.') {
+        if (end == start || (end - start == 1U && bytes[start] == '.')) continue;
+        if (end - start == 2U && bytes[start] == '.' && bytes[start + 1U] == '.') {
             if (output != 0U) {
                 while (output != 0U && name[output - 1U] != '/') --output;
                 if (output != 0U) --output;
@@ -129,15 +123,10 @@ static char *bcw_normalize_name(const uint8_t *bytes, size_t size) {
         component_start = output;
         while (start < end) {
             uint8_t c = bytes[start++];
-            if (c < 0x20U || c == '"' || c == '*' || c == ':' || c == '<' ||
-                c == '>' || c == '?' || c == '|' || c == 0U)
-                name[output++] = '_';
-            else
-                name[output++] = (char)c;
+            if (c < 0x20U || c == '"' || c == '*' || c == ':' || c == '<' || c == '>' || c == '?' || c == '|' || c == 0U) name[output++] = '_';
+            else name[output++] = (char)c;
         }
-        while (output > component_start &&
-               (name[output - 1U] == ' ' || name[output - 1U] == '.'))
-            --output;
+        while (output > component_start && (name[output - 1U] == ' ' || name[output - 1U] == '.')) --output;
         if (output == component_start) name[output++] = '_';
     }
     if (output == 0U) name[output++] = '_';
@@ -147,21 +136,18 @@ static char *bcw_normalize_name(const uint8_t *bytes, size_t size) {
 
 /* A member name that survives to the filesystem must be a plain relative
  * path; anything else makes the member invalid rather than renamed. */
-static bool bcw_safe_output_name(const char *name) {
+static bool bcw_safe_output_name(const char *name)
+{
     const char *segment;
     const char *at;
-    if (!name || !name[0] || name[0] == '/' || name[0] == '\\' ||
-        name[1] == ':') return false;
+    if (!name || !name[0] || name[0] == '/' || name[0] == '\\' || name[1] == ':') return false;
     segment = name;
     for (at = name;; ++at) {
         unsigned char c = (unsigned char)*at;
-        if (c == ':' || c == '<' || c == '>' || c == '"' || c == '|' ||
-            c == '?' || c == '*' || (c != 0U && c < 0x20U)) return false;
+        if (c == ':' || c == '<' || c == '>' || c == '"' || c == '|' || c == '?' || c == '*' || (c != 0U && c < 0x20U)) return false;
         if (c == '/' || c == '\\' || c == 0U) {
             size_t length = (size_t)(at - segment);
-            if (length == 0U || (length == 1U && segment[0] == '.') ||
-                (length == 2U && segment[0] == '.' && segment[1] == '.'))
-                return false;
+            if (length == 0U || (length == 1U && segment[0] == '.') || (length == 2U && segment[0] == '.' && segment[1] == '.')) return false;
             if (c == 0U) return true;
             segment = at + 1;
         }
@@ -171,7 +157,8 @@ static bool bcw_safe_output_name(const char *name) {
 /* The raw 8.3 fields of these DOS-era containers are the only evidence that a
  * candidate offset really is a header, so a byte that cannot appear in a name
  * rejects the file instead of being scrubbed. */
-static XXFC_MAYBE_UNUSED bool bcw_plausible_raw_name(const uint8_t *bytes, size_t size) {
+static XXFC_MAYBE_UNUSED bool bcw_plausible_raw_name(const uint8_t *bytes, size_t size)
+{
     size_t index;
     if (!bytes || size == 0U || bytes[0] == 0U) return false;
     for (index = 0U; index < size; ++index) {
@@ -182,7 +169,8 @@ static XXFC_MAYBE_UNUSED bool bcw_plausible_raw_name(const uint8_t *bytes, size_
     return true;
 }
 
-static void bcw_stream_free(void *opaque) {
+static void bcw_stream_free(void *opaque)
+{
     bcw_stream *stream = (bcw_stream *)opaque;
     size_t index;
     if (!stream) return;
@@ -192,13 +180,11 @@ static void bcw_stream_free(void *opaque) {
     xx_mem_free(stream);
 }
 
-static bool bcw_add_member(bcw_stream *stream, const bcw_member *member) {
+static bool bcw_add_member(bcw_stream *stream, const bcw_member *member)
+{
     bcw_member *grown;
-    if (!stream || !member || stream->count >= BCW_MAX_MEMBERS ||
-        stream->count > SIZE_MAX / sizeof(*grown) - 1U)
-        return false;
-    grown = (bcw_member *)xx_mem_realloc(stream->items,
-                                         (stream->count + 1U) * sizeof(*grown));
+    if (!stream || !member || stream->count >= BCW_MAX_MEMBERS || stream->count > SIZE_MAX / sizeof(*grown) - 1U) return false;
+    grown = (bcw_member *)xx_mem_realloc(stream->items, (stream->count + 1U) * sizeof(*grown));
     if (!grown) return false;
     stream->items = grown;
     stream->items[stream->count++] = *member;
@@ -245,9 +231,8 @@ typedef struct bcw_reader_s {
     size_t capacity;
 } bcw_reader;
 
-static void bcw_reader_init(bcw_reader *reader, xx_io_device *device,
-                            int64_t position, int64_t limit,
-                            uint8_t *buffer, size_t capacity) {
+static void bcw_reader_init(bcw_reader *reader, xx_io_device *device, int64_t position, int64_t limit, uint8_t *buffer, size_t capacity)
+{
     xx_mem_zero(reader, sizeof(*reader));
     reader->device = device;
     reader->position = position;
@@ -258,15 +243,13 @@ static void bcw_reader_init(bcw_reader *reader, xx_io_device *device,
 
 /* Returns the next byte, or -1 at the end of the archive or on an I/O
  * failure; the two are told apart by reader->failed. */
-static int bcw_reader_next(bcw_reader *reader) {
+static int bcw_reader_next(bcw_reader *reader)
+{
     if (reader->failed || reader->position >= reader->limit) return -1;
     if (reader->at >= reader->filled) {
         int64_t remaining = reader->limit - reader->position;
-        size_t want = ((uint64_t)remaining < (uint64_t)reader->capacity)
-                          ? (size_t)remaining
-                          : reader->capacity;
-        if (!bcw_read_at(reader->device, reader->position, reader->buffer,
-                         want)) {
+        size_t want = ((uint64_t)remaining < (uint64_t)reader->capacity) ? (size_t)remaining : reader->capacity;
+        if (!bcw_read_at(reader->device, reader->position, reader->buffer, want)) {
             reader->failed = true;
             return -1;
         }
@@ -287,9 +270,8 @@ typedef struct bcw_lzw_s {
     uint8_t stack[BCW_LZW_MAX_CODES + 1U];
 } bcw_lzw;
 
-static bool bcw_lzw_read_code(bcw_reader *reader, uint32_t width,
-                              uint32_t *accumulator, uint32_t *held,
-                              uint32_t *code) {
+static bool bcw_lzw_read_code(bcw_reader *reader, uint32_t width, uint32_t *accumulator, uint32_t *held, uint32_t *code)
+{
     while (*held < width) {
         int byte = bcw_reader_next(reader);
         if (byte < 0) return false;
@@ -306,8 +288,8 @@ static bool bcw_lzw_read_code(bcw_reader *reader, uint32_t width,
  * case nothing is written and only *produced is computed.  Returns false for
  * a stream that is malformed or that never reaches its end code: a member is
  * either complete or refused. */
-static bool bcw_lzw_run(bcw_lzw *lzw, bcw_reader *reader, uint8_t *output,
-                        uint64_t output_limit, uint64_t *produced) {
+static bool bcw_lzw_run(bcw_lzw *lzw, bcw_reader *reader, uint8_t *output, uint64_t output_limit, uint64_t *produced)
+{
     uint32_t width = 9U, limit = 0x1ffU, free_code = BCW_LZW_FIRST;
     uint32_t accumulator = 0U, held = 0U, code = 0U, previous, first;
     uint32_t index;
@@ -320,8 +302,7 @@ static bool bcw_lzw_run(bcw_lzw *lzw, bcw_reader *reader, uint8_t *output,
     }
     /* The first code of a BCW stream is emitted as a literal without a
      * dictionary lookup; the engine reads it before entering its loop. */
-    if (!bcw_lzw_read_code(reader, width, &accumulator, &held, &code))
-        return false;
+    if (!bcw_lzw_read_code(reader, width, &accumulator, &held, &code)) return false;
     if (code > 0xffU || output_limit == 0U) return false;
     if (output) output[0] = (uint8_t)code;
     total = 1U;
@@ -335,18 +316,15 @@ static bool bcw_lzw_run(bcw_lzw *lzw, bcw_reader *reader, uint8_t *output,
         if (limit < free_code + 1U) {
             ++width;
             if (width > BCW_LZW_HARD_BITS) return false;
-            limit = (width == BCW_LZW_MAX_BITS) ? BCW_LZW_MAX_CODES
-                                                : ((1U << width) - 1U);
+            limit = (width == BCW_LZW_MAX_BITS) ? BCW_LZW_MAX_CODES : ((1U << width) - 1U);
         }
-        if (!bcw_lzw_read_code(reader, width, &accumulator, &held, &code))
-            return false;
+        if (!bcw_lzw_read_code(reader, width, &accumulator, &held, &code)) return false;
         if (code == BCW_LZW_END) break;
         if (code == BCW_LZW_CLEAR) {
             width = 9U;
             limit = 0x1ffU;
             free_code = BCW_LZW_FIRST;
-            if (!bcw_lzw_read_code(reader, width, &accumulator, &held, &code))
-                return false;
+            if (!bcw_lzw_read_code(reader, width, &accumulator, &held, &code)) return false;
             if (code == BCW_LZW_END) break;
             if (code > 0xffU || total >= output_limit) return false;
             if (output) output[total] = (uint8_t)code;
@@ -360,8 +338,7 @@ static bool bcw_lzw_run(bcw_lzw *lzw, bcw_reader *reader, uint8_t *output,
         if (code > free_code) return false;
         /* KwKwK: a code equal to the next free slot expands to the previous
          * string plus its own first byte. */
-        run = (code == free_code) ? lzw->length[previous] + 1U
-                                  : lzw->length[code];
+        run = (code == free_code) ? lzw->length[previous] + 1U : lzw->length[code];
         if ((uint64_t)run > output_limit - total) return false;
         walk = (code == free_code) ? previous : code;
         if (output) {
@@ -394,7 +371,8 @@ static bool bcw_lzw_run(bcw_lzw *lzw, bcw_reader *reader, uint8_t *output,
 /* Walks the record chain, measuring every member's stream on the way so the
  * next record's offset is known.  Nothing here trusts a declared size,
  * because the container declares none. */
-static bool bcw_parse_buffered(Abstractformat *format, bcw_stream **result, uint8_t *buffer, size_t buffer_capacity) {
+static bool bcw_parse_buffered(Abstractformat *format, bcw_stream **result, uint8_t *buffer, size_t buffer_capacity)
+{
     uint8_t header[4];
     bcw_stream *stream = NULL;
     bcw_reader reader;
@@ -403,22 +381,17 @@ static bool bcw_parse_buffered(Abstractformat *format, bcw_stream **result, uint
     size_t marks[BCW_MAX_DEPTH];
     size_t depth = 0U, path_length = 0U;
     int64_t total, size;
-    if (!format || !format->device || !result || format->base_address < 0)
-        return false;
+    if (!format || !format->device || !result || format->base_address < 0) return false;
     total = xx_io_total_size(format->device);
     if (total < format->base_address) return false;
     size = total - format->base_address;
-    if (size < (int64_t)sizeof(header) + 1 ||
-        !bcw_read_at(format->device, format->base_address, header,
-                     sizeof(header)) ||
-        header[0] != 0x0aU || header[1] != 0x14U || header[2] != 0x1eU ||
-        header[3] != 0x28U)
+    if (size < (int64_t)sizeof(header) + 1 || !bcw_read_at(format->device, format->base_address, header, sizeof(header)) || header[0] != 0x0aU || header[1] != 0x14U ||
+        header[2] != 0x1eU || header[3] != 0x28U)
         return false;
     stream = (bcw_stream *)xx_mem_calloc(1U, sizeof(*stream));
     lzw = (bcw_lzw *)xx_mem_alloc(sizeof(*lzw));
     if (!stream || !lzw) goto fail;
-    bcw_reader_init(&reader, format->device,
-                    format->base_address + (int64_t)sizeof(header), total, buffer, buffer_capacity);
+    bcw_reader_init(&reader, format->device, format->base_address + (int64_t)sizeof(header), total, buffer, buffer_capacity);
     path[0] = 0;
     for (;;) {
         uint8_t raw[BCW_MAX_NAME_SIZE];
@@ -437,8 +410,7 @@ static bool bcw_parse_buffered(Abstractformat *format, bcw_stream **result, uint
             path[path_length] = 0;
             continue;
         }
-        if (kind != (int)BCW_KIND_FILE && kind != (int)BCW_KIND_ENTER)
-            goto fail;
+        if (kind != (int)BCW_KIND_FILE && kind != (int)BCW_KIND_ENTER) goto fail;
         /* The name is NUL-terminated and nothing states its length, so it is
          * read a byte at a time against a ceiling. */
         for (;;) {
@@ -458,8 +430,7 @@ static bool bcw_parse_buffered(Abstractformat *format, bcw_stream **result, uint
                 path[path_length++] = '/';
             }
             if (path_length + length >= sizeof(path)) goto fail;
-            for (index = 0U; index < length; ++index)
-                path[path_length++] = (char)raw[index];
+            for (index = 0U; index < length; ++index) path[path_length++] = (char)raw[index];
             path[path_length] = 0;
             continue;
         }
@@ -477,12 +448,10 @@ static bool bcw_parse_buffered(Abstractformat *format, bcw_stream **result, uint
                 stamp[index] = (uint8_t)byte;
             }
             data_offset = reader.position;
-            if (!bcw_lzw_run(lzw, &reader, NULL, BCW_MAX_OUTPUT, &produced))
-                goto fail;
+            if (!bcw_lzw_run(lzw, &reader, NULL, BCW_MAX_OUTPUT, &produced)) goto fail;
             xx_mem_zero(&member, sizeof(member));
             if (path_length + 1U + length >= sizeof(joined)) goto fail;
-            for (index = 0U; index < path_length; ++index)
-                joined[at++] = (uint8_t)path[index];
+            for (index = 0U; index < path_length; ++index) joined[at++] = (uint8_t)path[index];
             if (at != 0U) joined[at++] = (uint8_t)'/';
             for (index = 0U; index < length; ++index) joined[at++] = raw[index];
             joined[at] = 0U;
@@ -498,8 +467,7 @@ static bool bcw_parse_buffered(Abstractformat *format, bcw_stream **result, uint
              * other DOS-era readers here use, with the time in the low
              * half.  SBLOCK.DLL carries 1991-06-25 12:53:00, which is the
              * stamp the reference reader puts on the file it writes. */
-            member.dos_time = ((uint32_t)xx_data_get_u16(stamp, 2, 0, false) << 16U) |
-                              xx_data_get_u16(stamp + 2U, 2, 0, false);
+            member.dos_time = ((uint32_t)xx_data_get_u16(stamp, 2, 0, false) << 16U) | xx_data_get_u16(stamp + 2U, 2, 0, false);
             member.folder = false;
             if (!bcw_add_member(stream, &member)) {
                 xx_str_free(member.name);
@@ -519,7 +487,8 @@ fail:
     return false;
 }
 
-static bool bcw_parse(Abstractformat *format, bcw_stream **result) {
+static bool bcw_parse(Abstractformat *format, bcw_stream **result)
+{
     size_t buffer_capacity = xx_get_file_buffer_size();
     uint8_t *buffer = (uint8_t *)xx_mem_alloc(buffer_capacity);
     bool buffer_result;
@@ -529,17 +498,16 @@ static bool bcw_parse(Abstractformat *format, bcw_stream **result) {
     return buffer_result;
 }
 
-static bool bcw_copy_options(xx_list_s *destination, const xx_list_s *source) {
+static bool bcw_copy_options(xx_list_s *destination, const xx_list_s *source)
+{
     size_t index;
     if (!source) return true;
     for (index = 0U; index < source->count; ++index) {
-        const xx_meta *original =
-            (const xx_meta *)xx_list_at((const xx_list_t *)source, index);
+        const xx_meta *original = (const xx_meta *)xx_list_at((const xx_list_t *)source, index);
         xx_meta copy;
         if (!original) continue;
         xx_meta_init(&copy, original->meta_id);
-        if (!xx_var_copy(&copy.var, &original->var) ||
-            !xx_list_append(destination, &copy)) {
+        if (!xx_var_copy(&copy.var, &original->var) || !xx_list_append(destination, &copy)) {
             xx_meta_cleanup(&copy);
             return false;
         }
@@ -547,19 +515,19 @@ static bool bcw_copy_options(xx_list_s *destination, const xx_list_s *source) {
     return true;
 }
 
-static const xx_var *bcw_option(const xx_list_s *options, uint32_t id) {
+static const xx_var *bcw_option(const xx_list_s *options, uint32_t id)
+{
     size_t index;
     if (!options) return NULL;
     for (index = 0U; index < options->count; ++index) {
-        const xx_meta *meta =
-            (const xx_meta *)xx_list_at((const xx_list_t *)options, index);
+        const xx_meta *meta = (const xx_meta *)xx_list_at((const xx_list_t *)options, index);
         if (meta && meta->meta_id == id) return &meta->var;
     }
     return NULL;
 }
 
-static bool bcw_set_record(xx_archive_record *record,
-                           const bcw_member *member) {
+static bool bcw_set_record(xx_archive_record *record, const bcw_member *member)
+{
     xx_archive_record_cleanup(record);
     xx_archive_record_init(record);
     record->header_offset = member->header_offset;
@@ -567,25 +535,18 @@ static bool bcw_set_record(xx_archive_record *record,
     record->data_offset = member->data_offset;
     record->compressed_size = member->packed_size;
     return xx_archive_record_set_original_name(record, member->name) &&
-           xx_archive_record_set_meta_u64(record, XX_META_ID_COMPRESSED_SIZE,
-                                          (uint64_t)member->packed_size) &&
-           xx_archive_record_set_meta_u64(record, XX_META_ID_UNCOMPRESSED_SIZE,
-                                          member->unpacked_size) &&
-           xx_archive_record_set_meta_u64(record, XX_META_ID_COMPRESSION_METHOD,
-                                          member->method) &&
-           xx_archive_record_set_meta_u64(record, XX_META_ID_CRC32,
-                                          member->crc) &&
-           xx_archive_record_set_meta_u64(record, XX_META_ID_TIMESTAMP,
-                                          member->dos_time) &&
-           xx_archive_record_set_meta_bool(record, XX_META_ID_IS_FOLDER,
-                                           member->folder);
+           xx_archive_record_set_meta_u64(record, XX_META_ID_COMPRESSED_SIZE, (uint64_t)member->packed_size) &&
+           xx_archive_record_set_meta_u64(record, XX_META_ID_UNCOMPRESSED_SIZE, member->unpacked_size) &&
+           xx_archive_record_set_meta_u64(record, XX_META_ID_COMPRESSION_METHOD, member->method) &&
+           xx_archive_record_set_meta_u64(record, XX_META_ID_CRC32, member->crc) && xx_archive_record_set_meta_u64(record, XX_META_ID_TIMESTAMP, member->dos_time) &&
+           xx_archive_record_set_meta_bool(record, XX_META_ID_IS_FOLDER, member->folder);
 }
 
 /* Replays the member's stream, this time into a buffer sized by what the
  * parse measured; the two passes must agree exactly or the member is
  * refused. */
-static bool bcw_decode_member_buffered(Abstractformat *format, const bcw_member *member,
-                              uint8_t **plain, size_t *plain_size, uint8_t *buffer, size_t buffer_capacity) {
+static bool bcw_decode_member_buffered(Abstractformat *format, const bcw_member *member, uint8_t **plain, size_t *plain_size, uint8_t *buffer, size_t buffer_capacity)
+{
     bcw_reader reader;
     bcw_lzw *lzw;
     uint8_t *output;
@@ -593,10 +554,7 @@ static bool bcw_decode_member_buffered(Abstractformat *format, const bcw_member 
     if (!format || !member || !plain || !plain_size) return false;
     *plain = NULL;
     *plain_size = 0U;
-    if (member->packed_size <= 0 || member->unpacked_size == 0U ||
-        member->unpacked_size > BCW_MAX_OUTPUT ||
-        member->unpacked_size > (uint64_t)SIZE_MAX)
-        return false;
+    if (member->packed_size <= 0 || member->unpacked_size == 0U || member->unpacked_size > BCW_MAX_OUTPUT || member->unpacked_size > (uint64_t)SIZE_MAX) return false;
     lzw = (bcw_lzw *)xx_mem_alloc(sizeof(*lzw));
     output = (uint8_t *)xx_mem_alloc((size_t)member->unpacked_size);
     if (!lzw || !output) {
@@ -604,10 +562,8 @@ static bool bcw_decode_member_buffered(Abstractformat *format, const bcw_member 
         if (output) xx_mem_free(output);
         return false;
     }
-    bcw_reader_init(&reader, format->device, member->data_offset,
-                    member->data_offset + member->packed_size, buffer, buffer_capacity);
-    if (!bcw_lzw_run(lzw, &reader, output, member->unpacked_size, &produced) ||
-        produced != member->unpacked_size) {
+    bcw_reader_init(&reader, format->device, member->data_offset, member->data_offset + member->packed_size, buffer, buffer_capacity);
+    if (!bcw_lzw_run(lzw, &reader, output, member->unpacked_size, &produced) || produced != member->unpacked_size) {
         xx_mem_free(lzw);
         xx_mem_free(output);
         return false;
@@ -618,8 +574,8 @@ static bool bcw_decode_member_buffered(Abstractformat *format, const bcw_member 
     return true;
 }
 
-static bool bcw_decode_member(Abstractformat *format, const bcw_member *member,
-                              uint8_t **plain, size_t *plain_size) {
+static bool bcw_decode_member(Abstractformat *format, const bcw_member *member, uint8_t **plain, size_t *plain_size)
+{
     size_t buffer_capacity = xx_get_file_buffer_size();
     uint8_t *buffer = (uint8_t *)xx_mem_alloc(buffer_capacity);
     bool buffer_result;
@@ -629,7 +585,8 @@ static bool bcw_decode_member(Abstractformat *format, const bcw_member *member,
     return buffer_result;
 }
 
-void xx_bcw_init(xx_bcw *archive, xx_io_device *device, int64_t base_address) {
+void xx_bcw_init(xx_bcw *archive, xx_io_device *device, int64_t base_address)
+{
     if (!archive) return;
     xx_mem_zero(archive, sizeof(*archive));
     xx_format_init(&archive->format, device, base_address);
@@ -642,38 +599,36 @@ void xx_bcw_init(xx_bcw *archive, xx_io_device *device, int64_t base_address) {
     archive->format.check_is_valid = xx_bcw_check_is_valid;
     archive->format.handle_base_info = xx_bcw_handle_base_info;
     archive->format.get_format_size = xx_bcw_get_format_size;
-    archive->format.get_number_of_archive_records =
-        xx_bcw_get_number_of_archive_records;
-    archive->format.create_archive_records_reading =
-        xx_bcw_create_archive_records_reading;
-    archive->format.get_current_archive_record =
-        xx_bcw_get_current_archive_record;
-    archive->format.unpack_current_archive_record =
-        xx_bcw_unpack_current_archive_record;
-    archive->format.archive_record_move_to_next =
-        xx_bcw_archive_record_move_to_next;
-    archive->format.free_archive_records_reading =
-        xx_bcw_free_archive_records_reading;
+    archive->format.get_number_of_archive_records = xx_bcw_get_number_of_archive_records;
+    archive->format.create_archive_records_reading = xx_bcw_create_archive_records_reading;
+    archive->format.get_current_archive_record = xx_bcw_get_current_archive_record;
+    archive->format.unpack_current_archive_record = xx_bcw_unpack_current_archive_record;
+    archive->format.archive_record_move_to_next = xx_bcw_archive_record_move_to_next;
+    archive->format.free_archive_records_reading = xx_bcw_free_archive_records_reading;
     archive->archive_end = -1;
 }
 
-xx_bcw *xx_bcw_create(xx_io_device *device, int64_t base_address) {
+xx_bcw *xx_bcw_create(xx_io_device *device, int64_t base_address)
+{
     xx_bcw *archive = (xx_bcw *)xx_mem_alloc(sizeof(*archive));
     if (archive) xx_bcw_init(archive, device, base_address);
     return archive;
 }
 
-void xx_bcw_destroy(xx_bcw *archive) {
+void xx_bcw_destroy(xx_bcw *archive)
+{
     if (archive) xx_format_cleanup_extra_parameters(&archive->format);
 }
 
-void xx_bcw_free(xx_bcw *archive) {
+void xx_bcw_free(xx_bcw *archive)
+{
     if (!archive) return;
     xx_bcw_destroy(archive);
     xx_mem_free(archive);
 }
 
-bool xx_bcw_check_is_valid(Abstractformat *format, xx_pd_struct *pd) {
+bool xx_bcw_check_is_valid(Abstractformat *format, xx_pd_struct *pd)
+{
     bcw_stream *stream;
     (void)pd;
     if (!bcw_parse(format, &stream)) return false;
@@ -681,7 +636,8 @@ bool xx_bcw_check_is_valid(Abstractformat *format, xx_pd_struct *pd) {
     return true;
 }
 
-bool xx_bcw_handle_base_info(Abstractformat *format, xx_pd_struct *pd) {
+bool xx_bcw_handle_base_info(Abstractformat *format, xx_pd_struct *pd)
+{
     bcw_stream *stream;
     xx_bcw *archive;
     (void)pd;
@@ -697,21 +653,18 @@ bool xx_bcw_handle_base_info(Abstractformat *format, xx_pd_struct *pd) {
     return true;
 }
 
-int64_t xx_bcw_get_format_size(Abstractformat *format, xx_pd_struct *pd) {
-    return format && (format->base_info_handled ||
-                      xx_bcw_handle_base_info(format, pd))
-               ? format->format_size : -1;
+int64_t xx_bcw_get_format_size(Abstractformat *format, xx_pd_struct *pd)
+{
+    return format && (format->base_info_handled || xx_bcw_handle_base_info(format, pd)) ? format->format_size : -1;
 }
 
-uint64_t xx_bcw_get_number_of_archive_records(Abstractformat *format,
-                                              xx_pd_struct *pd) {
-    return format && (format->base_info_handled ||
-                      xx_bcw_handle_base_info(format, pd))
-               ? ((xx_bcw *)format)->number_of_records : 0U;
+uint64_t xx_bcw_get_number_of_archive_records(Abstractformat *format, xx_pd_struct *pd)
+{
+    return format && (format->base_info_handled || xx_bcw_handle_base_info(format, pd)) ? ((xx_bcw *)format)->number_of_records : 0U;
 }
 
-xx_archive_record_state *xx_bcw_create_archive_records_reading(
-    Abstractformat *format, const xx_list_s *options, xx_pd_struct *pd) {
+xx_archive_record_state *xx_bcw_create_archive_records_reading(Abstractformat *format, const xx_list_s *options, xx_pd_struct *pd)
+{
     bcw_stream *stream;
     xx_archive_record_state *state;
     (void)pd;
@@ -725,8 +678,7 @@ xx_archive_record_state *xx_bcw_create_archive_records_reading(
     state->internal_state = stream;
     state->free_internal = bcw_stream_free;
     state->total_records = stream->count;
-    if (!bcw_copy_options(&state->options, options) ||
-        !bcw_set_record(&state->current_record, &stream->items[0])) {
+    if (!bcw_copy_options(&state->options, options) || !bcw_set_record(&state->current_record, &stream->items[0])) {
         xx_archive_record_state_free(state);
         return NULL;
     }
@@ -734,32 +686,26 @@ xx_archive_record_state *xx_bcw_create_archive_records_reading(
     return state;
 }
 
-const xx_archive_record *xx_bcw_get_current_archive_record(
-    Abstractformat *format, xx_archive_record_state *state) {
-    return format && state && state->format == format && state->has_record
-               ? &state->current_record : NULL;
+const xx_archive_record *xx_bcw_get_current_archive_record(Abstractformat *format, xx_archive_record_state *state)
+{
+    return format && state && state->format == format && state->has_record ? &state->current_record : NULL;
 }
 
-bool xx_bcw_archive_record_move_to_next(Abstractformat *format,
-                                        xx_archive_record_state *state,
-                                        xx_pd_struct *pd) {
+bool xx_bcw_archive_record_move_to_next(Abstractformat *format, xx_archive_record_state *state, xx_pd_struct *pd)
+{
     bcw_stream *stream;
     (void)pd;
-    if (!format || !state || state->format != format ||
-        !(stream = (bcw_stream *)state->internal_state) ||
-        ++stream->index >= stream->count) {
+    if (!format || !state || state->format != format || !(stream = (bcw_stream *)state->internal_state) || ++stream->index >= stream->count) {
         if (state) state->has_record = false;
         return false;
     }
     ++state->current_index;
-    state->has_record = bcw_set_record(&state->current_record,
-                                       &stream->items[stream->index]);
+    state->has_record = bcw_set_record(&state->current_record, &stream->items[stream->index]);
     return state->has_record;
 }
 
-bool xx_bcw_unpack_current_archive_record(Abstractformat *format,
-                                          xx_archive_record_state *state,
-                                          xx_pd_struct *pd) {
+bool xx_bcw_unpack_current_archive_record(Abstractformat *format, xx_archive_record_state *state, xx_pd_struct *pd)
+{
     bcw_stream *stream;
     bcw_member *member;
     const xx_var *path_option;
@@ -770,31 +716,24 @@ bool xx_bcw_unpack_current_archive_record(Abstractformat *format,
     size_t plain_size = 0U, written = 0U;
     bool result = false;
     bool created = false;
-    if (!format || !state || state->format != format || !state->has_record ||
-        !(stream = (bcw_stream *)state->internal_state) ||
-        stream->index >= stream->count || (pd && xx_pd_is_stopped(pd)))
+    if (!format || !state || state->format != format || !state->has_record || !(stream = (bcw_stream *)state->internal_state) || stream->index >= stream->count ||
+        (pd && xx_pd_is_stopped(pd)))
         return false;
     member = &stream->items[stream->index];
-    if (!bcw_safe_output_name(member->name) ||
-        !bcw_decode_member(format, member, &plain, &plain_size)) goto done;
+    if (!bcw_safe_output_name(member->name) || !bcw_decode_member(format, member, &plain, &plain_size)) goto done;
     path_option = bcw_option(&state->options, XX_META_ID_OPT_UNPACK_PATH);
     if (!path_option) {
         result = true;
         goto done;
     }
-    if (path_option->type == XX_VAR_TYPE_STRING ||
-        path_option->type == XX_VAR_TYPE_STRING_VIEW)
-        base = xx_var_get_str(path_option);
-    else if (path_option->type == XX_VAR_TYPE_WSTRING ||
-             path_option->type == XX_VAR_TYPE_WSTRING_VIEW) {
+    if (path_option->type == XX_VAR_TYPE_STRING || path_option->type == XX_VAR_TYPE_STRING_VIEW) base = xx_var_get_str(path_option);
+    else if (path_option->type == XX_VAR_TYPE_WSTRING || path_option->type == XX_VAR_TYPE_WSTRING_VIEW) {
         owned_base = xx_str_unicode_to_utf8(xx_var_get_wstr(path_option));
         base = owned_base;
     }
     if (!base) goto done;
-    path = (base[0] && base[xx_str_len(base) - 1U] != '/' &&
-            base[xx_str_len(base) - 1U] != '\\')
-               ? xx_str_concat3(base, "/", member->name)
-               : xx_str_concat(base, member->name);
+    path = (base[0] && base[xx_str_len(base) - 1U] != '/' && base[xx_str_len(base) - 1U] != '\\') ? xx_str_concat3(base, "/", member->name)
+                                                                                                  : xx_str_concat(base, member->name);
     if (!path) goto done;
     if (member->folder) {
         result = xx_store_create_dirs_a(path, true);
@@ -807,8 +746,7 @@ bool xx_bcw_unpack_current_archive_record(Abstractformat *format,
         if (!destination) goto done;
         result = true;
         while (written < plain_size) {
-            ssize_t amount = xx_io_write(destination, plain + written,
-                                         plain_size - written);
+            ssize_t amount = xx_io_write(destination, plain + written, plain_size - written);
             if (amount <= 0 || (size_t)amount > plain_size - written) {
                 result = false;
                 break;
@@ -825,8 +763,8 @@ done:
     return result;
 }
 
-void xx_bcw_free_archive_records_reading(Abstractformat *format,
-                                         xx_archive_record_state *state) {
+void xx_bcw_free_archive_records_reading(Abstractformat *format, xx_archive_record_state *state)
+{
     (void)format;
     xx_archive_record_state_free(state);
 }

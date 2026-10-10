@@ -11,7 +11,9 @@ extern "C" {
 #endif
 
 /* MTCVTS PSM 2.00 music module with MDH/PLX/SM8 components. */
-typedef struct xx_parsec_pmm { Abstractformat format; } xx_parsec_pmm;
+typedef struct xx_parsec_pmm {
+    Abstractformat format;
+} xx_parsec_pmm;
 
 XXFC_API void xx_parsec_pmm_init(xx_parsec_pmm *, xx_io_device *, int64_t);
 XXFC_API xx_parsec_pmm *xx_parsec_pmm_create(xx_io_device *, int64_t);

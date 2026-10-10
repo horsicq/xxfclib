@@ -36,7 +36,7 @@ typedef struct diskjuggler_member_s {
     int64_t data_offset;
     int64_t packed_size;
     uint64_t unpacked_size;
-    uint32_t method;      /* 0 = stored, non-zero = format codec */
+    uint32_t method; /* 0 = stored, non-zero = format codec */
     uint32_t track_lba;
     uint32_t track_sectors;
     uint32_t sector_size;
@@ -52,15 +52,12 @@ typedef struct diskjuggler_stream_s {
     int64_t archive_size;
 } diskjuggler_stream;
 
-static bool diskjuggler_read_at(xx_io_device *device, int64_t offset, void *buffer,
-                        size_t size) {
+static bool diskjuggler_read_at(xx_io_device *device, int64_t offset, void *buffer, size_t size)
+{
     size_t done = 0U;
-    if (!device || (!buffer && size != 0U) || offset < 0 ||
-        xx_io_seek64(device, offset, SEEK_SET) != 0)
-        return false;
+    if (!device || (!buffer && size != 0U) || offset < 0 || xx_io_seek64(device, offset, SEEK_SET) != 0) return false;
     while (done < size) {
-        ssize_t amount = xx_io_read(device, (uint8_t *)buffer + done,
-                                    size - done);
+        ssize_t amount = xx_io_read(device, (uint8_t *)buffer + done, size - done);
         if (amount <= 0 || (size_t)amount > size - done) return false;
         done += (size_t)amount;
     }
@@ -90,23 +87,19 @@ typedef struct diskjuggler_iso_view_s {
 /* Some CDI sessions have a correct little-endian directory extent and size,
  * but stale big-endian mirror fields.  Normalize only sectors bearing the
  * complete ISO '.' and '..' directory preamble. */
-static void diskjuggler_repair_directory(uint8_t *sector) {
+static void diskjuggler_repair_directory(uint8_t *sector)
+{
     size_t first, second, position;
     if (!sector) return;
     first = sector[0];
-    if (first < 34U || first + 34U > DISKJUGGLER_USER_SECTOR ||
-        sector[32] != 1U || sector[33] != 0U ||
-        (sector[25] & 2U) == 0U) return;
+    if (first < 34U || first + 34U > DISKJUGGLER_USER_SECTOR || sector[32] != 1U || sector[33] != 0U || (sector[25] & 2U) == 0U) return;
     second = sector[first];
-    if (second < 34U || first + second > DISKJUGGLER_USER_SECTOR ||
-        sector[first + 32U] != 1U || sector[first + 33U] != 1U ||
-        (sector[first + 25U] & 2U) == 0U) return;
+    if (second < 34U || first + second > DISKJUGGLER_USER_SECTOR || sector[first + 32U] != 1U || sector[first + 33U] != 1U || (sector[first + 25U] & 2U) == 0U) return;
     for (position = 0U; position < DISKJUGGLER_USER_SECTOR;) {
         size_t length = sector[position];
         size_t index;
         if (length == 0U) break;
-        if (length < 34U || length > DISKJUGGLER_USER_SECTOR - position ||
-            sector[position + 32U] > length - 33U) break;
+        if (length < 34U || length > DISKJUGGLER_USER_SECTOR - position || sector[position + 32U] > length - 33U) break;
         for (index = 0U; index < 4U; ++index) {
             sector[position + 6U + index] = sector[position + 5U - index];
             sector[position + 14U + index] = sector[position + 13U - index];
@@ -115,33 +108,32 @@ static void diskjuggler_repair_directory(uint8_t *sector) {
     }
 }
 
-static int64_t diskjuggler_view_size(xx_io_device *device) {
+static int64_t diskjuggler_view_size(xx_io_device *device)
+{
     return ((diskjuggler_iso_view *)device->priv)->logical_size;
 }
 
-static int64_t diskjuggler_view_tell(xx_io_device *device) {
+static int64_t diskjuggler_view_tell(xx_io_device *device)
+{
     return ((diskjuggler_iso_view *)device->priv)->position;
 }
 
-static int diskjuggler_view_seek64(xx_io_device *device, int64_t offset,
-                                   int whence) {
+static int diskjuggler_view_seek64(xx_io_device *device, int64_t offset, int whence)
+{
     diskjuggler_iso_view *view = (diskjuggler_iso_view *)device->priv;
-    int64_t base = whence == SEEK_SET ? 0 :
-                   whence == SEEK_CUR ? view->position :
-                   whence == SEEK_END ? view->logical_size : -1;
-    if (base < 0 || offset < -base ||
-        offset > view->logical_size - base) return -1;
+    int64_t base = whence == SEEK_SET ? 0 : whence == SEEK_CUR ? view->position : whence == SEEK_END ? view->logical_size : -1;
+    if (base < 0 || offset < -base || offset > view->logical_size - base) return -1;
     view->position = base + offset;
     return 0;
 }
 
-static int diskjuggler_view_seek(xx_io_device *device, long offset,
-                                 int whence) {
+static int diskjuggler_view_seek(xx_io_device *device, long offset, int whence)
+{
     return diskjuggler_view_seek64(device, offset, whence);
 }
 
-static ssize_t diskjuggler_view_read(xx_io_device *device, void *buffer,
-                                     size_t size) {
+static ssize_t diskjuggler_view_read(xx_io_device *device, void *buffer, size_t size)
+{
     diskjuggler_iso_view *view = (diskjuggler_iso_view *)device->priv;
     uint64_t sector, physical;
     size_t within, amount;
@@ -161,16 +153,11 @@ static ssize_t diskjuggler_view_read(xx_io_device *device, void *buffer,
     if (physical >= view->track_sectors) return -1;
     amount = DISKJUGGLER_USER_SECTOR - within;
     if (amount > size) amount = size;
-    if (amount > (size_t)(view->logical_size - view->position))
-        amount = (size_t)(view->logical_size - view->position);
+    if (amount > (size_t)(view->logical_size - view->position)) amount = (size_t)(view->logical_size - view->position);
     if (!view->cache_valid || view->cached_sector != sector) {
-        source_offset = view->track_offset +
-                        (int64_t)physical * view->sector_size +
-                        view->user_offset;
-        if (!diskjuggler_read_at(view->source, source_offset, view->cache,
-                                 sizeof(view->cache))) return -1;
-        if (view->repair_directory)
-            diskjuggler_repair_directory(view->cache);
+        source_offset = view->track_offset + (int64_t)physical * view->sector_size + view->user_offset;
+        if (!diskjuggler_read_at(view->source, source_offset, view->cache, sizeof(view->cache))) return -1;
+        if (view->repair_directory) diskjuggler_repair_directory(view->cache);
         view->cached_sector = sector;
         view->cache_valid = true;
     }
@@ -179,21 +166,14 @@ static ssize_t diskjuggler_view_read(xx_io_device *device, void *buffer,
     return (ssize_t)amount;
 }
 
-static bool diskjuggler_view_init(diskjuggler_iso_view *view,
-                                  xx_io_device *source,
-                                  const diskjuggler_member *track,
-                                  uint32_t user_offset) {
+static bool diskjuggler_view_init(diskjuggler_iso_view *view, xx_io_device *source, const diskjuggler_member *track, uint32_t user_offset)
+{
     uint64_t sectors;
-    if (!view || !source || !track ||
-        track->track_sectors <= DISKJUGGLER_LEADIN_SECTORS ||
-        user_offset > track->sector_size ||
+    if (!view || !source || !track || track->track_sectors <= DISKJUGGLER_LEADIN_SECTORS || user_offset > track->sector_size ||
         DISKJUGGLER_USER_SECTOR > track->sector_size - user_offset)
         return false;
-    sectors = (uint64_t)track->track_lba + track->track_sectors -
-              DISKJUGGLER_LEADIN_SECTORS;
-    if (sectors > (UINT64_C(2) * 1024U * 1024U * 1024U) /
-                      DISKJUGGLER_USER_SECTOR)
-        return false;
+    sectors = (uint64_t)track->track_lba + track->track_sectors - DISKJUGGLER_LEADIN_SECTORS;
+    if (sectors > (UINT64_C(2) * 1024U * 1024U * 1024U) / DISKJUGGLER_USER_SECTOR) return false;
     xx_mem_zero(view, sizeof(*view));
     view->source = source;
     view->logical_size = (int64_t)(sectors * DISKJUGGLER_USER_SECTOR);
@@ -213,8 +193,8 @@ static bool diskjuggler_view_init(diskjuggler_iso_view *view,
 
 /* Reader-owned names are built here, never taken from the container, so they
  * are safe by construction.  The helper only has to be CRT free. */
-static char *diskjuggler_make_name(const char *prefix, int a, int b,
-                           const char *suffix) {
+static char *diskjuggler_make_name(const char *prefix, int a, int b, const char *suffix)
+{
     char buffer[64];
     size_t used = 0U;
     size_t index;
@@ -253,7 +233,8 @@ static char *diskjuggler_make_name(const char *prefix, int a, int b,
     return result;
 }
 
-static void diskjuggler_stream_free(void *opaque) {
+static void diskjuggler_stream_free(void *opaque)
+{
     diskjuggler_stream *stream = (diskjuggler_stream *)opaque;
     size_t index;
     if (!stream) return;
@@ -263,23 +244,19 @@ static void diskjuggler_stream_free(void *opaque) {
     xx_mem_free(stream);
 }
 
-static bool diskjuggler_add_member(diskjuggler_stream *stream, const diskjuggler_member *member) {
+static bool diskjuggler_add_member(diskjuggler_stream *stream, const diskjuggler_member *member)
+{
     diskjuggler_member *grown;
-    if (!stream || !member || stream->count >= DISKJUGGLER_MAX_MEMBERS ||
-        stream->count > SIZE_MAX / sizeof(*grown) - 1U)
-        return false;
-    grown = (diskjuggler_member *)xx_mem_realloc(stream->items,
-                                         (stream->count + 1U) * sizeof(*grown));
+    if (!stream || !member || stream->count >= DISKJUGGLER_MAX_MEMBERS || stream->count > SIZE_MAX / sizeof(*grown) - 1U) return false;
+    grown = (diskjuggler_member *)xx_mem_realloc(stream->items, (stream->count + 1U) * sizeof(*grown));
     if (!grown) return false;
     stream->items = grown;
     stream->items[stream->count++] = *member;
     return true;
 }
 
-static bool diskjuggler_add_iso_track(Abstractformat *format,
-                                      const diskjuggler_member *track,
-                                      diskjuggler_stream *files,
-                                      bool multi_session) {
+static bool diskjuggler_add_iso_track(Abstractformat *format, const diskjuggler_member *track, diskjuggler_stream *files, bool multi_session)
+{
     static const uint32_t offsets[] = {0U, 8U, 16U, 24U};
     uint8_t sector[2352];
     diskjuggler_iso_view view;
@@ -290,20 +267,13 @@ static bool diskjuggler_add_iso_track(Abstractformat *format,
     size_t candidate;
     size_t initial_count;
     bool result = false;
-    if (!format || !format->device || !track || !files ||
-        track->sector_size > sizeof(sector) ||
-        track->track_sectors <= DISKJUGGLER_LEADIN_SECTORS + 17U ||
-        !diskjuggler_read_at(format->device,
-            track->data_offset + (int64_t)DISKJUGGLER_LEADIN_SECTORS *
-            track->sector_size + 16 * (int64_t)track->sector_size,
-            sector, track->sector_size))
+    if (!format || !format->device || !track || !files || track->sector_size > sizeof(sector) || track->track_sectors <= DISKJUGGLER_LEADIN_SECTORS + 17U ||
+        !diskjuggler_read_at(format->device, track->data_offset + (int64_t)DISKJUGGLER_LEADIN_SECTORS * track->sector_size + 16 * (int64_t)track->sector_size, sector,
+                             track->sector_size))
         return false;
-    for (candidate = 0U; candidate < sizeof(offsets) / sizeof(offsets[0]);
-         ++candidate) {
+    for (candidate = 0U; candidate < sizeof(offsets) / sizeof(offsets[0]); ++candidate) {
         uint32_t offset = offsets[candidate];
-        if (offset + DISKJUGGLER_USER_SECTOR <= track->sector_size &&
-            sector[offset] == 1U &&
-            xx_rt_memcmp(sector + offset + 1U, "CD001", 5U) == 0 &&
+        if (offset + DISKJUGGLER_USER_SECTOR <= track->sector_size && sector[offset] == 1U && xx_rt_memcmp(sector + offset + 1U, "CD001", 5U) == 0 &&
             sector[offset + 6U] == 1U) {
             user_offset = offset;
             break;
@@ -311,9 +281,7 @@ static bool diskjuggler_add_iso_track(Abstractformat *format,
     }
     if (user_offset == UINT32_MAX) return false;
     root_extent = xx_data_get_u32(sector + user_offset + 158U, 4, 0, false);
-    if (root_extent < track->track_lba ||
-        !diskjuggler_view_init(&view, format->device, track, user_offset))
-        return false;
+    if (root_extent < track->track_lba || !diskjuggler_view_init(&view, format->device, track, user_offset)) return false;
     initial_count = files->count;
     view.repair_directory = true;
     xx_iso9660_init(&iso, &view.device, 0);
@@ -321,28 +289,18 @@ static bool diskjuggler_add_iso_track(Abstractformat *format,
     state = xx_iso9660_create_archive_records_reading(&iso.format, NULL, NULL);
     if (!state) goto done;
     do {
-        const xx_archive_record *record =
-            xx_iso9660_get_current_archive_record(&iso.format, state);
+        const xx_archive_record *record = xx_iso9660_get_current_archive_record(&iso.format, state);
         const char *name;
         diskjuggler_member file;
         uint64_t first_sector, last_sector, last_track_sector;
         if (!record) break;
-        if (xx_archive_record_get_meta_bool(record, XX_META_ID_IS_FOLDER,
-                                             false))
-            continue;
+        if (xx_archive_record_get_meta_bool(record, XX_META_ID_IS_FOLDER, false)) continue;
         name = xx_archive_record_get_original_name(record);
-        if (!name || !name[0] || record->data_offset < 0 ||
-            record->compressed_size < 0)
-            goto done;
+        if (!name || !name[0] || record->data_offset < 0 || record->compressed_size < 0) goto done;
         if (record->compressed_size != 0) {
-            first_sector = (uint64_t)record->data_offset /
-                           DISKJUGGLER_USER_SECTOR;
-            last_sector = ((uint64_t)record->data_offset +
-                           (uint64_t)record->compressed_size - 1U) /
-                          DISKJUGGLER_USER_SECTOR;
-            last_track_sector = (uint64_t)track->track_lba +
-                                track->track_sectors -
-                                DISKJUGGLER_LEADIN_SECTORS;
+            first_sector = (uint64_t)record->data_offset / DISKJUGGLER_USER_SECTOR;
+            last_sector = ((uint64_t)record->data_offset + (uint64_t)record->compressed_size - 1U) / DISKJUGGLER_USER_SECTOR;
+            last_track_sector = (uint64_t)track->track_lba + track->track_sectors - DISKJUGGLER_LEADIN_SECTORS;
             /* Later session directories can refer back to earlier sessions.
              * Those members were already collected from their own track. */
             if (first_sector < track->track_lba) continue;
@@ -366,8 +324,7 @@ static bool diskjuggler_add_iso_track(Abstractformat *format,
             if (file.name) xx_mem_free(file.name);
             goto done;
         }
-    } while (xx_iso9660_archive_record_move_to_next(&iso.format, state,
-                                                      NULL));
+    } while (xx_iso9660_archive_record_move_to_next(&iso.format, state, NULL));
     result = true;
 done:
     if (state) xx_iso9660_free_archive_records_reading(&iso.format, state);
@@ -381,9 +338,8 @@ done:
     return result;
 }
 
-static diskjuggler_stream *diskjuggler_iso_files(Abstractformat *format,
-                                                 const diskjuggler_stream *tracks,
-                                                 bool multi_session) {
+static diskjuggler_stream *diskjuggler_iso_files(Abstractformat *format, const diskjuggler_stream *tracks, bool multi_session)
+{
     diskjuggler_stream *files;
     size_t index;
     if (!format || !tracks) return NULL;
@@ -405,10 +361,10 @@ static diskjuggler_stream *diskjuggler_iso_files(Abstractformat *format,
 #define DISKJUGGLER_MAX_HEADER (16 * 1024 * 1024)
 #define DISKJUGGLER_MAX_IMAGE INT64_C(0x80000000)
 
-static const uint8_t diskjuggler_mark[10] = {0,    0,    1,    0,    0,
-                                             0,    0xff, 0xff, 0xff, 0xff};
+static const uint8_t diskjuggler_mark[10] = {0, 0, 1, 0, 0, 0, 0xff, 0xff, 0xff, 0xff};
 
-static bool diskjuggler_within(int64_t total, int64_t offset, int64_t size) {
+static bool diskjuggler_within(int64_t total, int64_t offset, int64_t size)
+{
     return offset >= 0 && size >= 0 && offset <= total && size <= total - offset;
 }
 
@@ -418,40 +374,29 @@ static bool diskjuggler_within(int64_t total, int64_t offset, int64_t size) {
  * between producers, so the blocks are located by the sentinel pair and every
  * field is validated; the reconstructed extents must tile the data area exactly
  * up to the header, which is the check that makes the scan trustworthy. */
-static bool diskjuggler_parse(Abstractformat *format,
-                              diskjuggler_stream **result) {
+static bool diskjuggler_parse(Abstractformat *format, diskjuggler_stream **result)
+{
     uint8_t footer[8];
     uint8_t *header = NULL;
     diskjuggler_stream *stream = NULL;
     int64_t total, size, header_position, header_size, cursor, data_offset;
     uint32_t version, header_offset;
     int32_t sessions, expected_session = 0, expected_track = 0, index = 0;
-    if (!format || !format->device || !result || format->base_address < 0)
-        return false;
+    if (!format || !format->device || !result || format->base_address < 0) return false;
     total = xx_io_total_size(format->device);
     if (total < format->base_address) return false;
     size = total - format->base_address;
-    if (size < 16 || size > DISKJUGGLER_MAX_IMAGE ||
-        !diskjuggler_read_at(format->device, format->base_address + size - 8,
-                             footer, sizeof(footer)))
-        return false;
+    if (size < 16 || size > DISKJUGGLER_MAX_IMAGE || !diskjuggler_read_at(format->device, format->base_address + size - 8, footer, sizeof(footer))) return false;
     version = xx_data_get_u32(footer, 4, 0, false);
     header_offset = xx_data_get_u32(footer + 4U, 4, 0, false);
-    if (version != 0x80000004U && version != 0x80000005U &&
-        version != 0x80000006U)
-        return false;
-    header_position = (version == 0x80000006U)
-                          ? size - (int64_t)header_offset
-                          : (int64_t)header_offset;
+    if (version != 0x80000004U && version != 0x80000005U && version != 0x80000006U) return false;
+    header_position = (version == 0x80000006U) ? size - (int64_t)header_offset : (int64_t)header_offset;
     if (header_position <= 0 || header_position >= size - 8) return false;
     header_size = size - header_position;
     if (header_size < 16 || header_size > DISKJUGGLER_MAX_HEADER) return false;
     header = (uint8_t *)xx_mem_alloc((size_t)header_size);
     if (!header) return false;
-    if (!diskjuggler_read_at(format->device,
-                             format->base_address + header_position, header,
-                             (size_t)header_size))
-        goto fail;
+    if (!diskjuggler_read_at(format->device, format->base_address + header_position, header, (size_t)header_size)) goto fail;
     sessions = (int32_t)xx_data_get_u16(header, 2, 0, false);
     if (sessions < 1 || sessions > 99) goto fail;
     stream = (diskjuggler_stream *)xx_mem_calloc(1U, sizeof(*stream));
@@ -463,9 +408,7 @@ static bool diskjuggler_parse(Abstractformat *format,
         int32_t name_length, index_count, mode, session, number, sector_size;
         uint32_t cd_text_count, read_mode;
         diskjuggler_member member;
-        if (xx_rt_memcmp(header + cursor, diskjuggler_mark, 10) != 0 ||
-            xx_rt_memcmp(header + cursor + 10, diskjuggler_mark, 10) != 0)
-            continue;
+        if (xx_rt_memcmp(header + cursor, diskjuggler_mark, 10) != 0 || xx_rt_memcmp(header + cursor + 10, diskjuggler_mark, 10) != 0) continue;
         track_head = cursor + 8;
         if (!diskjuggler_within(header_size, track_head + 0x10, 1)) continue;
         name_length = header[track_head + 0x10];
@@ -474,11 +417,8 @@ static bool diskjuggler_parse(Abstractformat *format,
         index_count = (int32_t)xx_data_get_u16(header + index_count_position, 2, 0, false);
         if (index_count > 64) continue;
         indices_size = (int64_t)index_count * 4;
-        if (!diskjuggler_within(header_size, index_count_position + 2,
-                                indices_size + 4))
-            continue;
-        cd_text_count =
-            xx_data_get_u32(header + index_count_position + 2 + indices_size, 4, 0, false);
+        if (!diskjuggler_within(header_size, index_count_position + 2, indices_size + 4)) continue;
+        cd_text_count = xx_data_get_u32(header + index_count_position + 2 + indices_size, 4, 0, false);
         if (cd_text_count > 4096U) continue;
         cd_text_size = (int64_t)cd_text_count * 18;
         fixed = track_head + 0x36 + name_length + indices_size + cd_text_size;
@@ -488,15 +428,10 @@ static bool diskjuggler_parse(Abstractformat *format,
         if (mode > 2 || read_mode > 2U) continue;
         session = (int32_t)xx_data_get_u32(header + fixed + 0x0a, 4, 0, false);
         number = (int32_t)xx_data_get_u32(header + fixed + 0x0e, 4, 0, false);
-        if (session < 0 || session >= sessions || number < 0 || number > 999)
-            continue;
-        pregap = index_count != 0
-                     ? (int64_t)xx_data_get_u32(header + index_count_position + 2, 4, 0, false)
-                     : 0;
-        sectors = (index_count >= 2)
-                      ? (int64_t)xx_data_get_u32(header +
-                                                  index_count_position + 6, 4, 0, false)
-                      : (int64_t)xx_data_get_u32(header + fixed + 0x16, 4, 0, false);
+        if (session < 0 || session >= sessions || number < 0 || number > 999) continue;
+        pregap = index_count != 0 ? (int64_t)xx_data_get_u32(header + index_count_position + 2, 4, 0, false) : 0;
+        sectors =
+            (index_count >= 2) ? (int64_t)xx_data_get_u32(header + index_count_position + 6, 4, 0, false) : (int64_t)xx_data_get_u32(header + fixed + 0x16, 4, 0, false);
         if (sectors <= 0 || sectors > 1000000 || pregap > 1000000) continue;
         sector_size = read_mode == 0U ? 2048 : (read_mode == 1U ? 2336 : 2352);
         if (session == expected_session + 1 && number == 0) {
@@ -508,13 +443,10 @@ static bool diskjuggler_parse(Abstractformat *format,
         pregap_bytes = pregap * sector_size;
         packed_bytes = sectors * sector_size;
         if (pregap != 0) {
-            if (!diskjuggler_within(header_position, data_offset, pregap_bytes))
-                goto fail;
+            if (!diskjuggler_within(header_position, data_offset, pregap_bytes)) goto fail;
             xx_mem_zero(&member, sizeof(member));
-            member.name =
-                diskjuggler_make_name("track", index, -1, ".pregap.bin");
-            member.header_offset =
-                format->base_address + header_position + cursor;
+            member.name = diskjuggler_make_name("track", index, -1, ".pregap.bin");
+            member.header_offset = format->base_address + header_position + cursor;
             member.header_size = 20;
             member.data_offset = format->base_address + data_offset;
             member.packed_size = pregap_bytes;
@@ -525,8 +457,7 @@ static bool diskjuggler_parse(Abstractformat *format,
             }
             data_offset += pregap_bytes;
         }
-        if (!diskjuggler_within(header_position, data_offset, packed_bytes))
-            goto fail;
+        if (!diskjuggler_within(header_position, data_offset, packed_bytes)) goto fail;
         xx_mem_zero(&member, sizeof(member));
         member.name = diskjuggler_make_name("track", index, -1, ".bin");
         member.header_offset = format->base_address + header_position + cursor;
@@ -547,14 +478,11 @@ static bool diskjuggler_parse(Abstractformat *format,
         ++index;
         cursor += 19;
     }
-    if (stream->count == 0U || data_offset != header_position ||
-        sessions < expected_session + 1 || sessions > expected_session + 2)
-        goto fail;
+    if (stream->count == 0U || data_offset != header_position || sessions < expected_session + 1 || sessions > expected_session + 2) goto fail;
     xx_mem_free(header);
     stream->archive_size = size;
     {
-        diskjuggler_stream *files = diskjuggler_iso_files(format, stream,
-                                                          sessions > 1);
+        diskjuggler_stream *files = diskjuggler_iso_files(format, stream, sessions > 1);
         if (files) {
             diskjuggler_stream_free(stream);
             stream = files;
@@ -568,27 +496,18 @@ fail:
     return false;
 }
 
-static bool diskjuggler_decode(Abstractformat *format,
-                               const diskjuggler_member *member,
-                               uint8_t **plain, size_t *plain_size) {
+static bool diskjuggler_decode(Abstractformat *format, const diskjuggler_member *member, uint8_t **plain, size_t *plain_size)
+{
     diskjuggler_iso_view view;
     diskjuggler_member track;
     uint8_t *output;
-    if (!format || !member || !plain || !plain_size ||
-        member->packed_size < 0 ||
-        (uint64_t)member->packed_size > DISKJUGGLER_MAX_OUTPUT)
-        return false;
+    if (!format || !member || !plain || !plain_size || member->packed_size < 0 || (uint64_t)member->packed_size > DISKJUGGLER_MAX_OUTPUT) return false;
     track = *member;
     track.data_offset = member->track_offset;
-    if (!diskjuggler_view_init(&view, format->device, &track,
-                               member->user_offset))
-        return false;
-    output = (uint8_t *)xx_mem_alloc(member->packed_size != 0
-                                         ? (size_t)member->packed_size : 1U);
+    if (!diskjuggler_view_init(&view, format->device, &track, member->user_offset)) return false;
+    output = (uint8_t *)xx_mem_alloc(member->packed_size != 0 ? (size_t)member->packed_size : 1U);
     if (!output) return false;
-    if (member->packed_size != 0 &&
-        !diskjuggler_read_at(&view.device, member->data_offset, output,
-                             (size_t)member->packed_size)) {
+    if (member->packed_size != 0 && !diskjuggler_read_at(&view.device, member->data_offset, output, (size_t)member->packed_size)) {
         xx_mem_free(output);
         return false;
     }
@@ -597,17 +516,16 @@ static bool diskjuggler_decode(Abstractformat *format,
     return true;
 }
 
-static bool diskjuggler_copy_options(xx_list_s *destination, const xx_list_s *source) {
+static bool diskjuggler_copy_options(xx_list_s *destination, const xx_list_s *source)
+{
     size_t index;
     if (!source) return true;
     for (index = 0U; index < source->count; ++index) {
-        const xx_meta *original =
-            (const xx_meta *)xx_list_at((const xx_list_t *)source, index);
+        const xx_meta *original = (const xx_meta *)xx_list_at((const xx_list_t *)source, index);
         xx_meta copy;
         if (!original) continue;
         xx_meta_init(&copy, original->meta_id);
-        if (!xx_var_copy(&copy.var, &original->var) ||
-            !xx_list_append(destination, &copy)) {
+        if (!xx_var_copy(&copy.var, &original->var) || !xx_list_append(destination, &copy)) {
             xx_meta_cleanup(&copy);
             return false;
         }
@@ -615,19 +533,19 @@ static bool diskjuggler_copy_options(xx_list_s *destination, const xx_list_s *so
     return true;
 }
 
-static const xx_var *diskjuggler_option(const xx_list_s *options, uint32_t id) {
+static const xx_var *diskjuggler_option(const xx_list_s *options, uint32_t id)
+{
     size_t index;
     if (!options) return NULL;
     for (index = 0U; index < options->count; ++index) {
-        const xx_meta *meta =
-            (const xx_meta *)xx_list_at((const xx_list_t *)options, index);
+        const xx_meta *meta = (const xx_meta *)xx_list_at((const xx_list_t *)options, index);
         if (meta && meta->meta_id == id) return &meta->var;
     }
     return NULL;
 }
 
-static bool diskjuggler_set_record(xx_archive_record *record,
-                           const diskjuggler_member *member) {
+static bool diskjuggler_set_record(xx_archive_record *record, const diskjuggler_member *member)
+{
     xx_archive_record_cleanup(record);
     xx_archive_record_init(record);
     record->header_offset = member->header_offset;
@@ -635,32 +553,23 @@ static bool diskjuggler_set_record(xx_archive_record *record,
     record->data_offset = member->data_offset;
     record->compressed_size = member->packed_size;
     return xx_archive_record_set_original_name(record, member->name) &&
-           xx_archive_record_set_meta_u64(record, XX_META_ID_COMPRESSED_SIZE,
-                                          (uint64_t)member->packed_size) &&
-           xx_archive_record_set_meta_u64(record, XX_META_ID_UNCOMPRESSED_SIZE,
-                                          member->unpacked_size) &&
-           xx_archive_record_set_meta_u64(record, XX_META_ID_COMPRESSION_METHOD,
-                                          member->method) &&
-           xx_archive_record_set_meta_bool(record, XX_META_ID_IS_ENCRYPTED,
-                                           false) &&
-           xx_archive_record_set_meta_bool(record, XX_META_ID_IS_FOLDER, false);
+           xx_archive_record_set_meta_u64(record, XX_META_ID_COMPRESSED_SIZE, (uint64_t)member->packed_size) &&
+           xx_archive_record_set_meta_u64(record, XX_META_ID_UNCOMPRESSED_SIZE, member->unpacked_size) &&
+           xx_archive_record_set_meta_u64(record, XX_META_ID_COMPRESSION_METHOD, member->method) &&
+           xx_archive_record_set_meta_bool(record, XX_META_ID_IS_ENCRYPTED, false) && xx_archive_record_set_meta_bool(record, XX_META_ID_IS_FOLDER, false);
 }
 
 /* Stored members are copied verbatim; everything else goes to the format
  * codec above, which is the only place a size can grow. */
-static bool diskjuggler_extract(Abstractformat *format, const diskjuggler_member *member,
-                        uint8_t **plain, size_t *plain_size) {
+static bool diskjuggler_extract(Abstractformat *format, const diskjuggler_member *member, uint8_t **plain, size_t *plain_size)
+{
     uint8_t *output;
     if (!format || !member || !plain || !plain_size) return false;
     if (member->decode) return diskjuggler_decode(format, member, plain, plain_size);
-    if (member->packed_size < 0 ||
-        (uint64_t)member->packed_size > DISKJUGGLER_MAX_OUTPUT) return false;
-    output = (uint8_t *)xx_mem_alloc(member->packed_size != 0
-                                         ? (size_t)member->packed_size : 1U);
+    if (member->packed_size < 0 || (uint64_t)member->packed_size > DISKJUGGLER_MAX_OUTPUT) return false;
+    output = (uint8_t *)xx_mem_alloc(member->packed_size != 0 ? (size_t)member->packed_size : 1U);
     if (!output) return false;
-    if (member->packed_size != 0 &&
-        !diskjuggler_read_at(format->device, member->data_offset, output,
-                     (size_t)member->packed_size)) {
+    if (member->packed_size != 0 && !diskjuggler_read_at(format->device, member->data_offset, output, (size_t)member->packed_size)) {
         xx_mem_free(output);
         return false;
     }
@@ -669,7 +578,8 @@ static bool diskjuggler_extract(Abstractformat *format, const diskjuggler_member
     return true;
 }
 
-void xx_diskjuggler_init(xx_diskjuggler *archive, xx_io_device *device, int64_t base_address) {
+void xx_diskjuggler_init(xx_diskjuggler *archive, xx_io_device *device, int64_t base_address)
+{
     if (!archive) return;
     xx_mem_zero(archive, sizeof(*archive));
     xx_format_init(&archive->format, device, base_address);
@@ -682,38 +592,36 @@ void xx_diskjuggler_init(xx_diskjuggler *archive, xx_io_device *device, int64_t 
     archive->format.check_is_valid = xx_diskjuggler_check_is_valid;
     archive->format.handle_base_info = xx_diskjuggler_handle_base_info;
     archive->format.get_format_size = xx_diskjuggler_get_format_size;
-    archive->format.get_number_of_archive_records =
-        xx_diskjuggler_get_number_of_archive_records;
-    archive->format.create_archive_records_reading =
-        xx_diskjuggler_create_archive_records_reading;
-    archive->format.get_current_archive_record =
-        xx_diskjuggler_get_current_archive_record;
-    archive->format.unpack_current_archive_record =
-        xx_diskjuggler_unpack_current_archive_record;
-    archive->format.archive_record_move_to_next =
-        xx_diskjuggler_archive_record_move_to_next;
-    archive->format.free_archive_records_reading =
-        xx_diskjuggler_free_archive_records_reading;
+    archive->format.get_number_of_archive_records = xx_diskjuggler_get_number_of_archive_records;
+    archive->format.create_archive_records_reading = xx_diskjuggler_create_archive_records_reading;
+    archive->format.get_current_archive_record = xx_diskjuggler_get_current_archive_record;
+    archive->format.unpack_current_archive_record = xx_diskjuggler_unpack_current_archive_record;
+    archive->format.archive_record_move_to_next = xx_diskjuggler_archive_record_move_to_next;
+    archive->format.free_archive_records_reading = xx_diskjuggler_free_archive_records_reading;
     archive->archive_end = -1;
 }
 
-xx_diskjuggler *xx_diskjuggler_create(xx_io_device *device, int64_t base_address) {
+xx_diskjuggler *xx_diskjuggler_create(xx_io_device *device, int64_t base_address)
+{
     xx_diskjuggler *archive = (xx_diskjuggler *)xx_mem_alloc(sizeof(*archive));
     if (archive) xx_diskjuggler_init(archive, device, base_address);
     return archive;
 }
 
-void xx_diskjuggler_destroy(xx_diskjuggler *archive) {
+void xx_diskjuggler_destroy(xx_diskjuggler *archive)
+{
     if (archive) xx_format_cleanup_extra_parameters(&archive->format);
 }
 
-void xx_diskjuggler_free(xx_diskjuggler *archive) {
+void xx_diskjuggler_free(xx_diskjuggler *archive)
+{
     if (!archive) return;
     xx_diskjuggler_destroy(archive);
     xx_mem_free(archive);
 }
 
-bool xx_diskjuggler_check_is_valid(Abstractformat *format, xx_pd_struct *pd) {
+bool xx_diskjuggler_check_is_valid(Abstractformat *format, xx_pd_struct *pd)
+{
     diskjuggler_stream *stream;
     (void)pd;
     if (!diskjuggler_parse(format, &stream)) return false;
@@ -721,7 +629,8 @@ bool xx_diskjuggler_check_is_valid(Abstractformat *format, xx_pd_struct *pd) {
     return true;
 }
 
-bool xx_diskjuggler_handle_base_info(Abstractformat *format, xx_pd_struct *pd) {
+bool xx_diskjuggler_handle_base_info(Abstractformat *format, xx_pd_struct *pd)
+{
     diskjuggler_stream *stream;
     xx_diskjuggler *archive;
     (void)pd;
@@ -737,21 +646,18 @@ bool xx_diskjuggler_handle_base_info(Abstractformat *format, xx_pd_struct *pd) {
     return true;
 }
 
-int64_t xx_diskjuggler_get_format_size(Abstractformat *format, xx_pd_struct *pd) {
-    return format && (format->base_info_handled ||
-                      xx_diskjuggler_handle_base_info(format, pd))
-               ? format->format_size : -1;
+int64_t xx_diskjuggler_get_format_size(Abstractformat *format, xx_pd_struct *pd)
+{
+    return format && (format->base_info_handled || xx_diskjuggler_handle_base_info(format, pd)) ? format->format_size : -1;
 }
 
-uint64_t xx_diskjuggler_get_number_of_archive_records(Abstractformat *format,
-                                              xx_pd_struct *pd) {
-    return format && (format->base_info_handled ||
-                      xx_diskjuggler_handle_base_info(format, pd))
-               ? ((xx_diskjuggler *)format)->number_of_records : 0U;
+uint64_t xx_diskjuggler_get_number_of_archive_records(Abstractformat *format, xx_pd_struct *pd)
+{
+    return format && (format->base_info_handled || xx_diskjuggler_handle_base_info(format, pd)) ? ((xx_diskjuggler *)format)->number_of_records : 0U;
 }
 
-xx_archive_record_state *xx_diskjuggler_create_archive_records_reading(
-    Abstractformat *format, const xx_list_s *options, xx_pd_struct *pd) {
+xx_archive_record_state *xx_diskjuggler_create_archive_records_reading(Abstractformat *format, const xx_list_s *options, xx_pd_struct *pd)
+{
     diskjuggler_stream *stream;
     xx_archive_record_state *state;
     (void)pd;
@@ -765,8 +671,7 @@ xx_archive_record_state *xx_diskjuggler_create_archive_records_reading(
     state->internal_state = stream;
     state->free_internal = diskjuggler_stream_free;
     state->total_records = (int64_t)stream->count;
-    if (!diskjuggler_copy_options(&state->options, options) ||
-        !diskjuggler_set_record(&state->current_record, &stream->items[0])) {
+    if (!diskjuggler_copy_options(&state->options, options) || !diskjuggler_set_record(&state->current_record, &stream->items[0])) {
         xx_archive_record_state_free(state);
         return NULL;
     }
@@ -774,32 +679,26 @@ xx_archive_record_state *xx_diskjuggler_create_archive_records_reading(
     return state;
 }
 
-const xx_archive_record *xx_diskjuggler_get_current_archive_record(
-    Abstractformat *format, xx_archive_record_state *state) {
-    return format && state && state->format == format && state->has_record
-               ? &state->current_record : NULL;
+const xx_archive_record *xx_diskjuggler_get_current_archive_record(Abstractformat *format, xx_archive_record_state *state)
+{
+    return format && state && state->format == format && state->has_record ? &state->current_record : NULL;
 }
 
-bool xx_diskjuggler_archive_record_move_to_next(Abstractformat *format,
-                                        xx_archive_record_state *state,
-                                        xx_pd_struct *pd) {
+bool xx_diskjuggler_archive_record_move_to_next(Abstractformat *format, xx_archive_record_state *state, xx_pd_struct *pd)
+{
     diskjuggler_stream *stream;
     (void)pd;
-    if (!format || !state || state->format != format ||
-        !(stream = (diskjuggler_stream *)state->internal_state) ||
-        ++stream->index >= stream->count) {
+    if (!format || !state || state->format != format || !(stream = (diskjuggler_stream *)state->internal_state) || ++stream->index >= stream->count) {
         if (state) state->has_record = false;
         return false;
     }
     ++state->current_index;
-    state->has_record = diskjuggler_set_record(&state->current_record,
-                                       &stream->items[stream->index]);
+    state->has_record = diskjuggler_set_record(&state->current_record, &stream->items[stream->index]);
     return state->has_record;
 }
 
-bool xx_diskjuggler_unpack_current_archive_record(Abstractformat *format,
-                                          xx_archive_record_state *state,
-                                          xx_pd_struct *pd) {
+bool xx_diskjuggler_unpack_current_archive_record(Abstractformat *format, xx_archive_record_state *state, xx_pd_struct *pd)
+{
     diskjuggler_stream *stream;
     diskjuggler_member *member;
     const xx_var *path_option;
@@ -810,9 +709,8 @@ bool xx_diskjuggler_unpack_current_archive_record(Abstractformat *format,
     size_t plain_size = 0U, written = 0U;
     bool result = false;
     bool created = false;
-    if (!format || !state || state->format != format || !state->has_record ||
-        !(stream = (diskjuggler_stream *)state->internal_state) ||
-        stream->index >= stream->count || (pd && xx_pd_is_stopped(pd)))
+    if (!format || !state || state->format != format || !state->has_record || !(stream = (diskjuggler_stream *)state->internal_state) || stream->index >= stream->count ||
+        (pd && xx_pd_is_stopped(pd)))
         return false;
     member = &stream->items[stream->index];
     if (!diskjuggler_extract(format, member, &plain, &plain_size)) goto done;
@@ -821,19 +719,14 @@ bool xx_diskjuggler_unpack_current_archive_record(Abstractformat *format,
         result = true;
         goto done;
     }
-    if (path_option->type == XX_VAR_TYPE_STRING ||
-        path_option->type == XX_VAR_TYPE_STRING_VIEW)
-        base = xx_var_get_str(path_option);
-    else if (path_option->type == XX_VAR_TYPE_WSTRING ||
-             path_option->type == XX_VAR_TYPE_WSTRING_VIEW) {
+    if (path_option->type == XX_VAR_TYPE_STRING || path_option->type == XX_VAR_TYPE_STRING_VIEW) base = xx_var_get_str(path_option);
+    else if (path_option->type == XX_VAR_TYPE_WSTRING || path_option->type == XX_VAR_TYPE_WSTRING_VIEW) {
         owned_base = xx_str_unicode_to_utf8(xx_var_get_wstr(path_option));
         base = owned_base;
     }
     if (!base) goto done;
-    path = (base[0] && base[xx_str_len(base) - 1U] != '/' &&
-            base[xx_str_len(base) - 1U] != '\\')
-               ? xx_str_concat3(base, "/", member->name)
-               : xx_str_concat(base, member->name);
+    path = (base[0] && base[xx_str_len(base) - 1U] != '/' && base[xx_str_len(base) - 1U] != '\\') ? xx_str_concat3(base, "/", member->name)
+                                                                                                  : xx_str_concat(base, member->name);
     if (!path || !xx_store_create_dirs_a(path, false)) goto done;
     {
         xx_io_device *destination = xx_io_file_open(path, "wb");
@@ -841,8 +734,7 @@ bool xx_diskjuggler_unpack_current_archive_record(Abstractformat *format,
         if (!destination) goto done;
         result = true;
         while (written < plain_size) {
-            ssize_t amount = xx_io_write(destination, plain + written,
-                                         plain_size - written);
+            ssize_t amount = xx_io_write(destination, plain + written, plain_size - written);
             if (amount <= 0 || (size_t)amount > plain_size - written) {
                 result = false;
                 break;
@@ -859,8 +751,8 @@ done:
     return result;
 }
 
-void xx_diskjuggler_free_archive_records_reading(Abstractformat *format,
-                                         xx_archive_record_state *state) {
+void xx_diskjuggler_free_archive_records_reading(Abstractformat *format, xx_archive_record_state *state)
+{
     (void)format;
     xx_archive_record_state_free(state);
 }

@@ -72,43 +72,45 @@ typedef struct xx_riff XRiff;
 
 struct xx_riff {
     Abstractformat format;
-    uint32_t riff_size;         /**< The u32 at +4. */
-    char form_type[5];          /**< The four bytes at +8, NUL terminated. */
-    char first_chunk_id[5];     /**< ID of the first top-level chunk. */
-    uint32_t number_of_chunks;  /**< Top-level chunks after the form type. */
-    bool pad_outside;           /**< Last odd chunk's pad byte is past riff_size. */
+    uint32_t riff_size;        /**< The u32 at +4. */
+    char form_type[5];         /**< The four bytes at +8, NUL terminated. */
+    char first_chunk_id[5];    /**< ID of the first top-level chunk. */
+    uint32_t number_of_chunks; /**< Top-level chunks after the form type. */
+    bool pad_outside;          /**< Last odd chunk's pad byte is past riff_size. */
 };
 
-XXFC_API void xx_riff_init(xx_riff *riff, xx_io_device *dev,
-                           int64_t base_address);
+XXFC_API void xx_riff_init(xx_riff *riff, xx_io_device *dev, int64_t base_address);
 XXFC_API xx_riff *xx_riff_create(xx_io_device *dev, int64_t base_address);
 XXFC_API void xx_riff_destroy(xx_riff *riff);
 XXFC_API void xx_riff_free(xx_riff *riff);
 
 XXFC_API bool xx_riff_check_is_valid(Abstractformat *self, xx_pd_struct *pd);
 XXFC_API bool xx_riff_handle_base_info(Abstractformat *self, xx_pd_struct *pd);
-XXFC_API int64_t xx_riff_get_format_size(Abstractformat *self,
-                                         xx_pd_struct *pd);
+XXFC_API int64_t xx_riff_get_format_size(Abstractformat *self, xx_pd_struct *pd);
 
 XXFC_API uint32_t xx_riff_get_riff_size(const xx_riff *riff);
 XXFC_API const char *xx_riff_get_form_type(const xx_riff *riff);
 XXFC_API const char *xx_riff_get_first_chunk_id(const xx_riff *riff);
 XXFC_API uint32_t xx_riff_get_number_of_chunks(const xx_riff *riff);
 
-static inline Abstractformat *xx_riff_to_format(xx_riff *riff) {
+static inline Abstractformat *xx_riff_to_format(xx_riff *riff)
+{
     return riff ? &riff->format : NULL;
 }
-static inline void XRiff_init(xx_riff *riff, xx_io_device *dev,
-                              int64_t base_address) {
+static inline void XRiff_init(xx_riff *riff, xx_io_device *dev, int64_t base_address)
+{
     xx_riff_init(riff, dev, base_address);
 }
-static inline xx_riff *XRiff_create(xx_io_device *dev, int64_t base_address) {
+static inline xx_riff *XRiff_create(xx_io_device *dev, int64_t base_address)
+{
     return xx_riff_create(dev, base_address);
 }
-static inline void XRiff_free(xx_riff *riff) {
+static inline void XRiff_free(xx_riff *riff)
+{
     xx_riff_free(riff);
 }
-static inline bool XRiff_is_valid(xx_riff *riff, xx_pd_struct *pd) {
+static inline bool XRiff_is_valid(xx_riff *riff, xx_pd_struct *pd)
+{
     return riff ? xx_format_is_valid(&riff->format, pd) : false;
 }
 

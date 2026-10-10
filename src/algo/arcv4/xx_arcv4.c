@@ -35,11 +35,13 @@ typedef struct arcv4_bits_s {
     uint8_t bits_left;
 } arcv4_bits;
 
-static bool arcv4_node_valid(uint32_t node) {
+static bool arcv4_node_valid(uint32_t node)
+{
     return node >= ARCV4_ROOT && node <= ARCV4_NODES;
 }
 
-static void arcv4_model_init(arcv4_model *model) {
+static void arcv4_model_init(arcv4_model *model)
+{
     uint32_t index;
     xx_rt_memset(model, 0, sizeof(*model));
     for (index = 2U; index <= ARCV4_NODES; ++index) {
@@ -52,7 +54,8 @@ static void arcv4_model_init(arcv4_model *model) {
     }
 }
 
-static int arcv4_read_bit(arcv4_bits *bits) {
+static int arcv4_read_bit(arcv4_bits *bits)
+{
     int result;
     if (!bits) return -1;
     if (bits->bits_left == 0U) {
@@ -66,7 +69,8 @@ static int arcv4_read_bit(arcv4_bits *bits) {
     return result;
 }
 
-static int arcv4_read_bits(arcv4_bits *bits, unsigned count) {
+static int arcv4_read_bits(arcv4_bits *bits, unsigned count)
+{
     unsigned index;
     int value = 0;
     if (!bits || count > 16U) return -1;
@@ -78,8 +82,8 @@ static int arcv4_read_bits(arcv4_bits *bits, unsigned count) {
     return value;
 }
 
-static bool arcv4_propagate(arcv4_model *model, uint32_t node,
-                            uint32_t sibling) {
+static bool arcv4_propagate(arcv4_model *model, uint32_t node, uint32_t sibling)
+{
     uint32_t step;
     if (!model) return false;
     for (step = 0U; step <= ARCV4_NODES; ++step) {
@@ -89,13 +93,11 @@ static bool arcv4_propagate(arcv4_model *model, uint32_t node,
         if (!arcv4_node_valid(child) || !arcv4_node_valid(sibling)) return false;
         parent = model->parent[child];
         if (!arcv4_node_valid(parent)) return false;
-        model->frequency[parent] = (uint16_t)(model->frequency[child] +
-                                              model->frequency[sibling]);
+        model->frequency[parent] = (uint16_t)(model->frequency[child] + model->frequency[sibling]);
         if (parent == ARCV4_ROOT) {
             if (model->frequency[ARCV4_ROOT] == ARCV4_MAX_ROOT_FREQ) {
                 uint32_t index;
-                for (index = ARCV4_ROOT; index <= ARCV4_NODES; ++index)
-                    model->frequency[index] >>= 1U;
+                for (index = ARCV4_ROOT; index <= ARCV4_NODES; ++index) model->frequency[index] >>= 1U;
             }
             return true;
         }
@@ -109,7 +111,8 @@ static bool arcv4_propagate(arcv4_model *model, uint32_t node,
     return false;
 }
 
-static bool arcv4_update(arcv4_model *model, uint32_t node) {
+static bool arcv4_update(arcv4_model *model, uint32_t node)
+{
     uint32_t parent;
     uint32_t sibling;
     uint32_t step;
@@ -120,8 +123,7 @@ static bool arcv4_update(arcv4_model *model, uint32_t node) {
     if (parent == ARCV4_ROOT) return true;
     sibling = model->child0[parent];
     if (sibling == node) sibling = model->child1[parent];
-    if (!arcv4_node_valid(sibling) || !arcv4_propagate(model, node, sibling))
-        return false;
+    if (!arcv4_node_valid(sibling) || !arcv4_propagate(model, node, sibling)) return false;
 
     for (step = 0U; step <= ARCV4_NODES; ++step) {
         uint32_t grand = model->parent[parent];
@@ -133,10 +135,8 @@ static bool arcv4_update(arcv4_model *model, uint32_t node) {
         if (!arcv4_node_valid(uncle)) return false;
         if (model->frequency[uncle] < model->frequency[node]) {
             uint32_t node_sibling;
-            if (parent == left)
-                model->child1[grand] = (uint16_t)node;
-            else
-                model->child0[grand] = (uint16_t)node;
+            if (parent == left) model->child1[grand] = (uint16_t)node;
+            else model->child0[grand] = (uint16_t)node;
             node_sibling = model->child0[parent];
             if (node == node_sibling) {
                 node_sibling = model->child1[parent];
@@ -159,7 +159,8 @@ static bool arcv4_update(arcv4_model *model, uint32_t node) {
     return false;
 }
 
-static int arcv4_decode_symbol(arcv4_model *model, arcv4_bits *bits) {
+static int arcv4_decode_symbol(arcv4_model *model, arcv4_bits *bits)
+{
     uint32_t node = ARCV4_ROOT;
     uint32_t step;
     if (!model || !bits) return -2;
@@ -176,21 +177,16 @@ static int arcv4_decode_symbol(arcv4_model *model, arcv4_bits *bits) {
     return -2;
 }
 
-bool xx_arcv4_decode_memory(const uint8_t *input, size_t input_size,
-                            uint8_t *output, size_t output_size,
-                            size_t *written) {
-    static const uint16_t extra_bits[ARCV4_BUCKETS] = { 4U, 6U, 8U,
-                                                         10U, 12U, 14U };
-    static const uint16_t base_distance[ARCV4_BUCKETS] = { 0U, 16U, 80U,
-                                                            336U, 1360U, 5456U };
+bool xx_arcv4_decode_memory(const uint8_t *input, size_t input_size, uint8_t *output, size_t output_size, size_t *written)
+{
+    static const uint16_t extra_bits[ARCV4_BUCKETS] = {4U, 6U, 8U, 10U, 12U, 14U};
+    static const uint16_t base_distance[ARCV4_BUCKETS] = {0U, 16U, 80U, 336U, 1360U, 5456U};
     arcv4_model model;
     arcv4_bits bits;
     size_t produced = 0U;
     bool result = false;
     if (written) *written = 0U;
-    if ((!input && input_size != 0U) || (!output && output_size != 0U) ||
-        input_size == 0U)
-        return false;
+    if ((!input && input_size != 0U) || (!output && output_size != 0U) || input_size == 0U) return false;
     xx_rt_memset(&bits, 0, sizeof(bits));
     bits.input = input;
     bits.input_size = input_size;
@@ -213,15 +209,13 @@ bool xx_arcv4_decode_memory(const uint8_t *input, size_t input_size,
             size_t distance;
             size_t source;
             unsigned index;
-            if (bucket >= ARCV4_BUCKETS || length > output_size - produced)
-                break;
+            if (bucket >= ARCV4_BUCKETS || length > output_size - produced) break;
             extra = arcv4_read_bits(&bits, extra_bits[bucket]);
             if (extra < 0) break;
             distance = (size_t)base_distance[bucket] + (unsigned)extra + length;
             if (distance > produced) break;
             source = produced - distance;
-            for (index = 0U; index < length; ++index)
-                output[produced + index] = output[source + index];
+            for (index = 0U; index < length; ++index) output[produced + index] = output[source + index];
             produced += length;
         }
     }

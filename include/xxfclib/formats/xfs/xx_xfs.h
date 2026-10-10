@@ -7,11 +7,14 @@
 extern "C" {
 #endif
 typedef xx_volume xx_xfs;
-XXFC_API void xx_xfs_init(xx_xfs *,xx_io_device *,int64_t);
-XXFC_API xx_xfs *xx_xfs_create(xx_io_device *,int64_t);
+XXFC_API void xx_xfs_init(xx_xfs *, xx_io_device *, int64_t);
+XXFC_API xx_xfs *xx_xfs_create(xx_io_device *, int64_t);
 XXFC_API void xx_xfs_destroy(xx_xfs *);
 XXFC_API void xx_xfs_free(xx_xfs *);
-static inline Abstractformat *xx_xfs_to_format(xx_xfs *r) { return r?&r->format:NULL; }
+static inline Abstractformat *xx_xfs_to_format(xx_xfs *r)
+{
+    return r ? &r->format : NULL;
+}
 #ifdef __cplusplus
 }
 #endif

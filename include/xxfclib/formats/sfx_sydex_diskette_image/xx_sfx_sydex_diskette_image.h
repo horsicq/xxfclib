@@ -68,11 +68,11 @@ extern "C" {
  */
 typedef struct xx_sfx_sydex_diskette_image {
     Abstractformat format;
-    int64_t overlay_offset;  /**< Device offset of "WB". */
-    int64_t header_offset;   /**< Device offset of "SXD". */
-    int64_t data_offset;     /**< Device offset of the first track block. */
-    int64_t payload_end;     /**< Device offset behind the last block. */
-    uint64_t image_size;     /**< tracks * bytes per track. */
+    int64_t overlay_offset; /**< Device offset of "WB". */
+    int64_t header_offset;  /**< Device offset of "SXD". */
+    int64_t data_offset;    /**< Device offset of the first track block. */
+    int64_t payload_end;    /**< Device offset behind the last block. */
+    uint64_t image_size;    /**< tracks * bytes per track. */
     uint64_t number_of_records;
     uint32_t track_size;
     uint32_t track_count;
@@ -81,43 +81,27 @@ typedef struct xx_sfx_sydex_diskette_image {
     uint8_t heads;
     uint8_t cylinders;
     uint8_t stored_cylinders;
-    bool header_scanned;     /**< Found by the scan, not by the WB sizes. */
-    bool truncated;          /**< The block walk ran off the file. */
+    bool header_scanned; /**< Found by the scan, not by the WB sizes. */
+    bool truncated;      /**< The block walk ran off the file. */
 } xx_sfx_sydex_diskette_image;
 
 typedef xx_sfx_sydex_diskette_image xx_sfx_sydex_diskette_image_t;
 
-XXFC_API void xx_sfx_sydex_diskette_image_init(
-    xx_sfx_sydex_diskette_image *archive, xx_io_device *device,
-    int64_t base_address);
-XXFC_API xx_sfx_sydex_diskette_image *xx_sfx_sydex_diskette_image_create(
-    xx_io_device *device, int64_t base_address);
-XXFC_API void xx_sfx_sydex_diskette_image_destroy(
-    xx_sfx_sydex_diskette_image *archive);
-XXFC_API void xx_sfx_sydex_diskette_image_free(
-    xx_sfx_sydex_diskette_image *archive);
+XXFC_API void xx_sfx_sydex_diskette_image_init(xx_sfx_sydex_diskette_image *archive, xx_io_device *device, int64_t base_address);
+XXFC_API xx_sfx_sydex_diskette_image *xx_sfx_sydex_diskette_image_create(xx_io_device *device, int64_t base_address);
+XXFC_API void xx_sfx_sydex_diskette_image_destroy(xx_sfx_sydex_diskette_image *archive);
+XXFC_API void xx_sfx_sydex_diskette_image_free(xx_sfx_sydex_diskette_image *archive);
 
-XXFC_API bool xx_sfx_sydex_diskette_image_check_is_valid(Abstractformat *self,
-                                                         xx_pd_struct *pd);
-XXFC_API bool xx_sfx_sydex_diskette_image_handle_base_info(
-    Abstractformat *self, xx_pd_struct *pd);
-XXFC_API int64_t xx_sfx_sydex_diskette_image_get_format_size(
-    Abstractformat *self, xx_pd_struct *pd);
-XXFC_API uint64_t xx_sfx_sydex_diskette_image_get_number_of_archive_records(
-    Abstractformat *self, xx_pd_struct *pd);
+XXFC_API bool xx_sfx_sydex_diskette_image_check_is_valid(Abstractformat *self, xx_pd_struct *pd);
+XXFC_API bool xx_sfx_sydex_diskette_image_handle_base_info(Abstractformat *self, xx_pd_struct *pd);
+XXFC_API int64_t xx_sfx_sydex_diskette_image_get_format_size(Abstractformat *self, xx_pd_struct *pd);
+XXFC_API uint64_t xx_sfx_sydex_diskette_image_get_number_of_archive_records(Abstractformat *self, xx_pd_struct *pd);
 
-XXFC_API xx_archive_record_state *
-xx_sfx_sydex_diskette_image_create_archive_records_reading(
-    Abstractformat *self, const xx_list_s *options, xx_pd_struct *pd);
-XXFC_API const xx_archive_record *
-xx_sfx_sydex_diskette_image_get_current_archive_record(
-    Abstractformat *self, xx_archive_record_state *state);
-XXFC_API bool xx_sfx_sydex_diskette_image_unpack_current_archive_record(
-    Abstractformat *self, xx_archive_record_state *state, xx_pd_struct *pd);
-XXFC_API bool xx_sfx_sydex_diskette_image_archive_record_move_to_next(
-    Abstractformat *self, xx_archive_record_state *state, xx_pd_struct *pd);
-XXFC_API void xx_sfx_sydex_diskette_image_free_archive_records_reading(
-    Abstractformat *self, xx_archive_record_state *state);
+XXFC_API xx_archive_record_state *xx_sfx_sydex_diskette_image_create_archive_records_reading(Abstractformat *self, const xx_list_s *options, xx_pd_struct *pd);
+XXFC_API const xx_archive_record *xx_sfx_sydex_diskette_image_get_current_archive_record(Abstractformat *self, xx_archive_record_state *state);
+XXFC_API bool xx_sfx_sydex_diskette_image_unpack_current_archive_record(Abstractformat *self, xx_archive_record_state *state, xx_pd_struct *pd);
+XXFC_API bool xx_sfx_sydex_diskette_image_archive_record_move_to_next(Abstractformat *self, xx_archive_record_state *state, xx_pd_struct *pd);
+XXFC_API void xx_sfx_sydex_diskette_image_free_archive_records_reading(Abstractformat *self, xx_archive_record_state *state);
 
 /**
  * @brief Decode the whole image into @p destination (NULL only verifies).
@@ -125,9 +109,7 @@ XXFC_API void xx_sfx_sydex_diskette_image_free_archive_records_reading(
  * Succeeds only when every track decodes to exactly the track size and
  * matches its CRC.
  */
-XXFC_API bool xx_sfx_sydex_diskette_image_unpack_to_device(
-    xx_sfx_sydex_diskette_image *archive, xx_io_device *destination,
-    xx_pd_struct *pd);
+XXFC_API bool xx_sfx_sydex_diskette_image_unpack_to_device(xx_sfx_sydex_diskette_image *archive, xx_io_device *destination, xx_pd_struct *pd);
 
 /**
  * @brief Decode one LZHUF track block (ring preset to 0x00).
@@ -139,14 +121,10 @@ XXFC_API bool xx_sfx_sydex_diskette_image_unpack_to_device(
  * @return true when @p output_size bytes were produced without reading a
  *         single bit past the block
  */
-XXFC_API bool xx_sfx_sydex_diskette_image_lzhuf_decode(const uint8_t *input,
-                                                       size_t input_size,
-                                                       uint8_t *output,
-                                                       size_t output_size);
+XXFC_API bool xx_sfx_sydex_diskette_image_lzhuf_decode(const uint8_t *input, size_t input_size, uint8_t *output, size_t output_size);
 
 /** @brief CRC-16/ARC (reflected 0xA001, init 0), as the format uses it. */
-XXFC_API uint16_t xx_sfx_sydex_diskette_image_crc16(const uint8_t *data,
-                                                    size_t size);
+XXFC_API uint16_t xx_sfx_sydex_diskette_image_crc16(const uint8_t *data, size_t size);
 
 #ifdef __cplusplus
 }

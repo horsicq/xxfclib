@@ -37,13 +37,15 @@ typedef struct arcfs_lzw_reader_s {
     uint8_t max_bits;
 } arcfs_lzw_reader;
 
-static bool arcfs_sink_emit(arcfs_sink *sink, uint8_t value) {
+static bool arcfs_sink_emit(arcfs_sink *sink, uint8_t value)
+{
     if (!sink || sink->position >= sink->output_size) return false;
     sink->output[sink->position++] = value;
     return true;
 }
 
-static bool arcfs_sink_push(arcfs_sink *sink, uint8_t value) {
+static bool arcfs_sink_push(arcfs_sink *sink, uint8_t value)
+{
     size_t repeat;
     if (!sink) return false;
     if (!sink->rle90) return arcfs_sink_emit(sink, value);
@@ -67,18 +69,19 @@ static bool arcfs_sink_push(arcfs_sink *sink, uint8_t value) {
     return true;
 }
 
-static bool arcfs_reader_pad(arcfs_lzw_reader *reader) {
+static bool arcfs_reader_pad(arcfs_lzw_reader *reader)
+{
     size_t skip;
     if (!reader) return false;
-    skip = (size_t)((8U - (reader->group_count & 7U)) & 7U) *
-           (size_t)reader->width;
+    skip = (size_t)((8U - (reader->group_count & 7U)) & 7U) * (size_t)reader->width;
     if (skip > SIZE_MAX - reader->bit_position) return false;
     reader->bit_position += skip;
     reader->group_count = 0U;
     return reader->bit_position <= reader->bit_size;
 }
 
-static bool arcfs_reader_reset(arcfs_lzw_reader *reader) {
+static bool arcfs_reader_reset(arcfs_lzw_reader *reader)
+{
     if (!reader || !arcfs_reader_pad(reader)) return false;
     reader->width = 9U;
     reader->max_code = 0x1ffU;
@@ -86,28 +89,22 @@ static bool arcfs_reader_reset(arcfs_lzw_reader *reader) {
     return true;
 }
 
-static bool arcfs_reader_next(arcfs_lzw_reader *reader, uint32_t *code) {
+static bool arcfs_reader_next(arcfs_lzw_reader *reader, uint32_t *code)
+{
     uint32_t value = 0U;
     uint32_t index;
     if (!reader || !code) return false;
     if (reader->max_code < reader->free_code) {
-        if (!arcfs_reader_pad(reader) || reader->width >= reader->max_bits)
-            return false;
+        if (!arcfs_reader_pad(reader) || reader->width >= reader->max_bits) return false;
         ++reader->width;
-        reader->max_code = reader->width == reader->max_bits
-                               ? reader->capacity
-                               : ((UINT32_C(1) << reader->width) - 1U);
+        reader->max_code = reader->width == reader->max_bits ? reader->capacity : ((UINT32_C(1) << reader->width) - 1U);
     }
     /* The final code may use the pad bits of its final byte, but cannot begin
      * after the physical stream. */
-    if (reader->bit_position >= reader->bit_size ||
-        reader->width > SIZE_MAX - reader->bit_position)
-        return false;
+    if (reader->bit_position >= reader->bit_size || reader->width > SIZE_MAX - reader->bit_position) return false;
     for (index = 0U; index < reader->width; ++index) {
         size_t bit = reader->bit_position + (size_t)index;
-        if (bit < reader->bit_size)
-            value |= (uint32_t)((reader->input[bit >> 3U] >>
-                                 (bit & 7U)) & 1U) << index;
+        if (bit < reader->bit_size) value |= (uint32_t)((reader->input[bit >> 3U] >> (bit & 7U)) & 1U) << index;
     }
     reader->bit_position += reader->width;
     ++reader->group_count;
@@ -115,14 +112,12 @@ static bool arcfs_reader_next(arcfs_lzw_reader *reader, uint32_t *code) {
     return true;
 }
 
-bool xx_arcfs_rle90_decode_memory(const uint8_t *input, size_t input_size,
-                                  uint8_t *output, size_t output_size,
-                                  size_t *written) {
+bool xx_arcfs_rle90_decode_memory(const uint8_t *input, size_t input_size, uint8_t *output, size_t output_size, size_t *written)
+{
     arcfs_sink sink;
     size_t index;
     if (written) *written = 0U;
-    if ((!input && input_size != 0U) || (!output && output_size != 0U))
-        return false;
+    if ((!input && input_size != 0U) || (!output && output_size != 0U)) return false;
     xx_rt_memset(&sink, 0, sizeof(sink));
     sink.output = output;
     sink.output_size = output_size;
@@ -134,12 +129,10 @@ bool xx_arcfs_rle90_decode_memory(const uint8_t *input, size_t input_size,
     return !sink.escaped && sink.position == output_size;
 }
 
-bool xx_arcfs_lzw_decode_memory(const uint8_t *input, size_t input_size,
-                                uint8_t *output, size_t output_size,
-                                uint8_t max_bits, bool apply_rle90,
-                                size_t *written) {
+bool xx_arcfs_lzw_decode_memory(const uint8_t *input, size_t input_size, uint8_t *output, size_t output_size, uint8_t max_bits, bool apply_rle90, size_t *written)
+{
     arcfs_lzw_reader reader;
-    arcfs_sink sink = { 0 };
+    arcfs_sink sink = {0};
     uint16_t *prefix = NULL;
     uint8_t *suffix = NULL;
     uint8_t *stack = NULL;
@@ -149,9 +142,7 @@ bool xx_arcfs_lzw_decode_memory(const uint8_t *input, size_t input_size,
     bool result = false;
 
     if (written) *written = 0U;
-    if ((!input && input_size != 0U) || (!output && output_size != 0U) ||
-        max_bits < 9U || max_bits > 16U || input_size > SIZE_MAX / 8U)
-        return false;
+    if ((!input && input_size != 0U) || (!output && output_size != 0U) || max_bits < 9U || max_bits > 16U || input_size > SIZE_MAX / 8U) return false;
     if (output_size == 0U) return input_size == 0U;
     capacity = UINT32_C(1) << max_bits;
     if ((uint64_t)capacity * sizeof(*prefix) > SIZE_MAX) return false;
@@ -179,16 +170,13 @@ bool xx_arcfs_lzw_decode_memory(const uint8_t *input, size_t input_size,
         size_t stack_size = 0U;
         if (!arcfs_reader_next(&reader, &code)) goto done;
         if (code == ARCFS_LZW_CLEAR) {
-            if (!arcfs_reader_reset(&reader) || !arcfs_reader_next(&reader, &code) ||
-                code > 0xffU || !arcfs_sink_push(&sink, (uint8_t)code))
-                goto done;
+            if (!arcfs_reader_reset(&reader) || !arcfs_reader_next(&reader, &code) || code > 0xffU || !arcfs_sink_push(&sink, (uint8_t)code)) goto done;
             previous = (int32_t)code;
             previous_first = (uint8_t)code;
             continue;
         }
         if (previous < 0) {
-            if (code > 0xffU || !arcfs_sink_push(&sink, (uint8_t)code))
-                goto done;
+            if (code > 0xffU || !arcfs_sink_push(&sink, (uint8_t)code)) goto done;
             previous = (int32_t)code;
             previous_first = (uint8_t)code;
             continue;

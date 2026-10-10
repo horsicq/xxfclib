@@ -55,8 +55,7 @@
 #include "xxfclib/data/xx_data.h"
 
 #ifdef QSETUP_INSTALLATION_SUITE
-#define XX_QSETUP_INSTALLATION_SUITE_FILE_TYPE \
-    XX_FILE_TYPE_QSETUP_INSTALLATION_SUITE
+#define XX_QSETUP_INSTALLATION_SUITE_FILE_TYPE XX_FILE_TYPE_QSETUP_INSTALLATION_SUITE
 #else
 #define XX_QSETUP_INSTALLATION_SUITE_FILE_TYPE XX_FILE_TYPE_UNKNOWN
 #endif
@@ -98,28 +97,28 @@ static const char g_qs_http[6] = {'|', 'h', 't', 't', 'p', ':'};
 /* ---------------------------------------------------------------------- */
 /* Small helpers                                                           */
 
-static bool qs_read_at(xx_io_device *device, int64_t offset, void *buffer,
-                       size_t size) {
+static bool qs_read_at(xx_io_device *device, int64_t offset, void *buffer, size_t size)
+{
     size_t done = 0U;
-    if (!device || (!buffer && size != 0U) || offset < 0 ||
-        xx_io_seek64(device, offset, SEEK_SET) != 0)
-        return false;
+    if (!device || (!buffer && size != 0U) || offset < 0 || xx_io_seek64(device, offset, SEEK_SET) != 0) return false;
     while (done < size) {
-        ssize_t amount =
-            xx_io_read(device, (uint8_t *)buffer + done, size - done);
+        ssize_t amount = xx_io_read(device, (uint8_t *)buffer + done, size - done);
         if (amount <= 0 || (size_t)amount > size - done) return false;
         done += (size_t)amount;
     }
     return true;
 }
 
-static bool qs_stopped(xx_pd_struct *pd) { return pd && xx_pd_is_stopped(pd); }
+static bool qs_stopped(xx_pd_struct *pd)
+{
+    return pd && xx_pd_is_stopped(pd);
+}
 
 /* RFC 1950 header without a preset dictionary. */
-static bool qs_zlib_header_ok(const uint8_t *h) {
+static bool qs_zlib_header_ok(const uint8_t *h)
+{
     uint32_t cmf = h[0], flg = h[1];
-    return (cmf & 0x0FU) == 8U && (cmf >> 4U) <= 7U &&
-           ((cmf << 8U) | flg) % 31U == 0U && (flg & 0x20U) == 0U;
+    return (cmf & 0x0FU) == 8U && (cmf >> 4U) <= 7U && ((cmf << 8U) | flg) % 31U == 0U && (flg & 0x20U) == 0U;
 }
 
 /* ---------------------------------------------------------------------- */
@@ -134,7 +133,8 @@ typedef struct qs_location_s {
 /* Reads the PE headers far enough to know where the image ends, then checks
  * the two declared strings at that exact offset and the first record's size
  * word and zlib header.  Five small reads; cheap enough for every MZ file. */
-static bool qs_locate(Abstractformat *format, qs_location *out) {
+static bool qs_locate(Abstractformat *format, qs_location *out)
+{
     uint8_t mz[QS_MZ_HEADER];
     uint8_t nt[QS_NT_HEADER];
     uint8_t sections[QS_MAX_SECTIONS * QS_SECTION_SIZE];
@@ -142,63 +142,48 @@ static bool qs_locate(Abstractformat *format, qs_location *out) {
     uint8_t record[6];
     int64_t base, total, table, overlay = 0, container_size, records;
     uint32_t lfanew, nsec, optsz, index, length1, length2;
-    if (!format || !format->device || !out || format->base_address < 0)
-        return false;
+    if (!format || !format->device || !out || format->base_address < 0) return false;
     base = format->base_address;
     total = xx_io_total_size(format->device);
     if (total < base) return false;
     total -= base;
     if (total < (int64_t)QS_MZ_HEADER) return false;
-    if (!qs_read_at(format->device, base, mz, sizeof(mz)) || mz[0] != 'M' ||
-        mz[1] != 'Z')
-        return false;
+    if (!qs_read_at(format->device, base, mz, sizeof(mz)) || mz[0] != 'M' || mz[1] != 'Z') return false;
     lfanew = xx_data_get_u32(mz + 0x3C, 4, 0, false);
-    if (lfanew < QS_MIN_LFANEW || lfanew > QS_MAX_LFANEW ||
-        (int64_t)lfanew + (int64_t)sizeof(nt) > total ||
-        !qs_read_at(format->device, base + lfanew, nt, sizeof(nt)) ||
+    if (lfanew < QS_MIN_LFANEW || lfanew > QS_MAX_LFANEW || (int64_t)lfanew + (int64_t)sizeof(nt) > total || !qs_read_at(format->device, base + lfanew, nt, sizeof(nt)) ||
         nt[0] != 'P' || nt[1] != 'E' || nt[2] != 0 || nt[3] != 0)
         return false;
     nsec = xx_data_get_u16(nt + 6, 2, 0, false);
     optsz = xx_data_get_u16(nt + 20, 2, 0, false);
     if (nsec == 0U || nsec > QS_MAX_SECTIONS) return false;
     table = (int64_t)lfanew + (int64_t)QS_NT_HEADER + (int64_t)optsz;
-    if (table + (int64_t)nsec * (int64_t)QS_SECTION_SIZE > total ||
-        !qs_read_at(format->device, base + table, sections,
-                    nsec * QS_SECTION_SIZE))
-        return false;
+    if (table + (int64_t)nsec * (int64_t)QS_SECTION_SIZE > total || !qs_read_at(format->device, base + table, sections, nsec * QS_SECTION_SIZE)) return false;
     for (index = 0U; index < nsec; ++index) {
         const uint8_t *s = sections + index * QS_SECTION_SIZE;
         int64_t raw_size = (int64_t)xx_data_get_u32(s + 16, 4, 0, false);
         int64_t raw_ptr = (int64_t)xx_data_get_u32(s + 20, 4, 0, false);
-        if (raw_size != 0 && raw_ptr + raw_size > overlay)
-            overlay = raw_ptr + raw_size;
+        if (raw_size != 0 && raw_ptr + raw_size > overlay) overlay = raw_ptr + raw_size;
     }
     if (overlay <= 0 || overlay >= total) return false;
     container_size = total - overlay;
     if (container_size < QS_MIN_CONTAINER) return false;
 
-    if (!qs_read_at(format->device, base + overlay, head, sizeof(head)))
-        return false;
+    if (!qs_read_at(format->device, base + overlay, head, sizeof(head))) return false;
     length1 = xx_data_get_u32(head, 4, 0, false);
     if (length1 != 1U && length1 != 2U) return false;
     for (index = 0U; index < length1; ++index)
         if (head[4U + index] != '|') return false;
     length2 = xx_data_get_u32(head + 4U + length1, 4, 0, false);
     /* The product list must leave room for one record behind it. */
-    if (length2 < QS_MIN_STRING2 ||
-        (int64_t)length2 > container_size - (int64_t)(8U + length1) -
-                               (int64_t)(4U + QS_MIN_RECORD) ||
+    if (length2 < QS_MIN_STRING2 || (int64_t)length2 > container_size - (int64_t)(8U + length1) - (int64_t)(4U + QS_MIN_RECORD) ||
         xx_rt_memcmp(head + 8U + length1, g_qs_http, sizeof(g_qs_http)) != 0)
         return false;
     records = overlay + (int64_t)(8U + length1) + (int64_t)length2;
 
-    if (!qs_read_at(format->device, base + records, record, sizeof(record)))
-        return false;
+    if (!qs_read_at(format->device, base + records, record, sizeof(record))) return false;
     {
         int64_t size = (int64_t)xx_data_get_u32(record, 4, 0, false);
-        if (size < (int64_t)QS_MIN_RECORD || size > total - records - 4 ||
-            !qs_zlib_header_ok(record + 4))
-            return false;
+        if (size < (int64_t)QS_MIN_RECORD || size > total - records - 4 || !qs_zlib_header_ok(record + 4)) return false;
     }
     out->total = total;
     out->container = overlay;
@@ -224,7 +209,8 @@ typedef struct qs_sink_s {
     bool failed;
 } qs_sink;
 
-static void qs_adler(qs_sink *sink, const uint8_t *data, size_t size) {
+static void qs_adler(qs_sink *sink, const uint8_t *data, size_t size)
+{
     uint32_t a = sink->adler_a, b = sink->adler_b;
     while (size > 0U) {
         size_t chunk = size < QS_ADLER_BLOCK ? size : QS_ADLER_BLOCK;
@@ -240,14 +226,12 @@ static void qs_adler(qs_sink *sink, const uint8_t *data, size_t size) {
     sink->adler_b = b;
 }
 
-static ssize_t qs_sink_write(xx_io_device *self, const void *buffer,
-                             size_t size) {
+static ssize_t qs_sink_write(xx_io_device *self, const void *buffer, size_t size)
+{
     qs_sink *sink = self ? (qs_sink *)self->priv : NULL;
     const uint8_t *bytes = (const uint8_t *)buffer;
     size_t used = 0U, rest, done = 0U;
-    if (!sink || sink->failed || (!bytes && size != 0U) ||
-        size > (size_t)0x7FFFFFFF)
-        return -1;
+    if (!sink || sink->failed || (!bytes && size != 0U) || size > (size_t)0x7FFFFFFF) return -1;
     while (!sink->line_done && used < size) {
         if (bytes[used++] == 0U) {
             sink->line_done = true;
@@ -267,8 +251,7 @@ static ssize_t qs_sink_write(xx_io_device *self, const void *buffer,
     }
     qs_adler(sink, bytes + used, rest);
     while (sink->target && done < rest) {
-        ssize_t wrote =
-            xx_io_write(sink->target, bytes + used + done, rest - done);
+        ssize_t wrote = xx_io_write(sink->target, bytes + used + done, rest - done);
         if (wrote <= 0 || (size_t)wrote > rest - done) {
             sink->failed = true;
             return -1;
@@ -282,9 +265,8 @@ static ssize_t qs_sink_write(xx_io_device *self, const void *buffer,
 /* Inflates one whole record (absolute stream offset and size) into target.
  * The stream must decode completely, carry a header line of line_length
  * bytes and match its Adler-32.  *body receives the body size. */
-static bool qs_inflate(xx_io_device *device, int64_t offset, int64_t size,
-                       size_t line_length, xx_io_device *target,
-                       uint64_t *body, xx_pd_struct *pd) {
+static bool qs_inflate(xx_io_device *device, int64_t offset, int64_t size, size_t line_length, xx_io_device *target, uint64_t *body, xx_pd_struct *pd)
+{
     qs_sink sink;
     uint8_t trailer[4];
     uint32_t stored;
@@ -294,13 +276,10 @@ static bool qs_inflate(xx_io_device *device, int64_t offset, int64_t size,
     sink.device.priv = &sink;
     sink.target = target;
     sink.adler_a = 1U;
-    if (!xx_deflate_unpack_device(device, offset + 2, size - 2, &sink.device,
-                                  false, pd) ||
-        sink.failed || !sink.line_done || sink.line_length != line_length ||
+    if (!xx_deflate_unpack_device(device, offset + 2, size - 2, &sink.device, false, pd) || sink.failed || !sink.line_done || sink.line_length != line_length ||
         !qs_read_at(device, offset + size - 4, trailer, sizeof(trailer)))
         return false;
-    stored = ((uint32_t)trailer[0] << 24U) | ((uint32_t)trailer[1] << 16U) |
-             ((uint32_t)trailer[2] << 8U) | (uint32_t)trailer[3];
+    stored = ((uint32_t)trailer[0] << 24U) | ((uint32_t)trailer[1] << 16U) | ((uint32_t)trailer[2] << 8U) | (uint32_t)trailer[3];
     if (stored != ((sink.adler_b << 16U) | sink.adler_a)) return false;
     if (body) *body = sink.body;
     return true;
@@ -311,13 +290,11 @@ static bool qs_inflate(xx_io_device *device, int64_t offset, int64_t size,
  * bytes before the NUL).  The decoder stops as soon as the buffer is full,
  * so a record costs at most one input buffer and QS_MAX_HEADER_LINE + 1
  * decoded bytes however large its body is. */
-static bool qs_read_line(xx_io_device *device, int64_t offset, int64_t size,
-                         uint8_t *line, size_t *length, xx_pd_struct *pd) {
+static bool qs_read_line(xx_io_device *device, int64_t offset, int64_t size, uint8_t *line, size_t *length, xx_pd_struct *pd)
+{
     size_t written = 0U, index;
     if (size < (int64_t)QS_MIN_RECORD) return false;
-    (void)xx_deflate_unpack_device_to_memory(device, offset + 2, size - 2,
-                                             line, QS_MAX_HEADER_LINE + 1U,
-                                             &written, false, pd);
+    (void)xx_deflate_unpack_device_to_memory(device, offset + 2, size - 2, line, QS_MAX_HEADER_LINE + 1U, &written, false, pd);
     if (written > QS_MAX_HEADER_LINE + 1U) written = QS_MAX_HEADER_LINE + 1U;
     for (index = 0U; index < written; ++index) {
         if (line[index] == 0U) {
@@ -340,16 +317,15 @@ typedef struct qs_line_s {
 
 /* "|<name>|<seconds>|": exactly three '|', the last one closing the line,
  * and a decimal seconds field. */
-static bool qs_parse_line(const uint8_t *line, size_t length, qs_line *out) {
+static bool qs_parse_line(const uint8_t *line, size_t length, qs_line *out)
+{
     size_t first = 0U, second, index;
     uint64_t seconds = 0U;
     if (length < 4U || line[0] != '|' || line[length - 1U] != '|') return false;
     second = 1U;
     while (second < length - 1U && line[second] != '|') ++second;
     if (second >= length - 1U) return false;
-    if (second + 1U >= length - 1U ||
-        length - 1U - (second + 1U) > QS_MAX_SECONDS_DIGITS)
-        return false;
+    if (second + 1U >= length - 1U || length - 1U - (second + 1U) > QS_MAX_SECONDS_DIGITS) return false;
     for (index = second + 1U; index < length - 1U; ++index) {
         if (line[index] < '0' || line[index] > '9') return false;
         seconds = seconds * 10U + (uint64_t)(line[index] - '0');
@@ -366,15 +342,16 @@ static bool qs_parse_line(const uint8_t *line, size_t length, qs_line *out) {
     return true;
 }
 
-static char qs_upper(char c) {
+static char qs_upper(char c)
+{
     return (c >= 'a' && c <= 'z') ? (char)(c - 'a' + 'A') : c;
 }
 
 /* True when the name's stem (before its first dot, trailing spaces ignored)
  * is a Windows device name. */
-static bool qs_is_device(const uint8_t *name, size_t length) {
-    static const char *const names[] = {"CON",    "PRN",     "AUX",   "NUL",
-                                        "CONIN$", "CONOUT$", "CLOCK$"};
+static bool qs_is_device(const uint8_t *name, size_t length)
+{
+    static const char *const names[] = {"CON", "PRN", "AUX", "NUL", "CONIN$", "CONOUT$", "CLOCK$"};
     size_t stem = 0U, index, k;
     while (stem < length && name[stem] != '.') ++stem;
     while (stem > 0U && name[stem - 1U] == ' ') --stem;
@@ -386,27 +363,20 @@ static bool qs_is_device(const uint8_t *name, size_t length) {
     }
     /* COM0-9 / LPT0-9, and the superscript digits (cp1252 0xB9, 0xB2,
      * 0xB3) that Windows also reserves. */
-    if (stem == 4U && ((name[3] >= '0' && name[3] <= '9') ||
-                       name[3] == 0xB9U || name[3] == 0xB2U ||
-                       name[3] == 0xB3U)) {
-        char a = qs_upper((char)name[0]), b = qs_upper((char)name[1]),
-             c = qs_upper((char)name[2]);
-        if ((a == 'C' && b == 'O' && c == 'M') ||
-            (a == 'L' && b == 'P' && c == 'T'))
-            return true;
+    if (stem == 4U && ((name[3] >= '0' && name[3] <= '9') || name[3] == 0xB9U || name[3] == 0xB2U || name[3] == 0xB3U)) {
+        char a = qs_upper((char)name[0]), b = qs_upper((char)name[1]), c = qs_upper((char)name[2]);
+        if ((a == 'C' && b == 'O' && c == 'M') || (a == 'L' && b == 'P' && c == 'T')) return true;
     }
     return false;
 }
 
 /* Windows-1252 for 0x80..0x9F; 0 marks the five unassigned bytes.  The
  * remaining high bytes are the same code points as Latin-1. */
-static const uint16_t g_qs_cp1252[32] = {
-    0x20AC, 0,      0x201A, 0x0192, 0x201E, 0x2026, 0x2020, 0x2021,
-    0x02C6, 0x2030, 0x0160, 0x2039, 0x0152, 0,      0x017D, 0,
-    0,      0x2018, 0x2019, 0x201C, 0x201D, 0x2022, 0x2013, 0x2014,
-    0x02DC, 0x2122, 0x0161, 0x203A, 0x0153, 0,      0x017E, 0x0178};
+static const uint16_t g_qs_cp1252[32] = {0x20AC, 0,      0x201A, 0x0192, 0x201E, 0x2026, 0x2020, 0x2021, 0x02C6, 0x2030, 0x0160, 0x2039, 0x0152, 0, 0x017D, 0,
+                                         0,      0x2018, 0x2019, 0x201C, 0x201D, 0x2022, 0x2013, 0x2014, 0x02DC, 0x2122, 0x0161, 0x203A, 0x0153, 0, 0x017E, 0x0178};
 
-static uint32_t qs_code_point(uint8_t c) {
+static uint32_t qs_code_point(uint8_t c)
+{
     if (c < 0x80U || c >= 0xA0U) return c;
     return g_qs_cp1252[c - 0x80U];
 }
@@ -415,22 +385,23 @@ static uint32_t qs_code_point(uint8_t c) {
  * "." and "..", a trailing dot or space (Windows drops those, so "a.txt."
  * would land on "a.txt"), path separators and the other characters Windows
  * reserves, control bytes, unassigned code-page bytes and device names. */
-static bool qs_name_safe(const uint8_t *raw, size_t length) {
+static bool qs_name_safe(const uint8_t *raw, size_t length)
+{
     size_t index;
     if (length == 0U || length > QS_MAX_NAME) return false;
     if (raw[length - 1U] == '.' || raw[length - 1U] == ' ') return false;
     for (index = 0U; index < length; ++index) {
         uint8_t c = raw[index];
-        if (c < 0x20U || c == 0x7FU || c == '<' || c == '>' || c == ':' ||
-            c == '"' || c == '/' || c == '\\' || c == '|' || c == '?' ||
-            c == '*' || qs_code_point(c) == 0U)
+        if (c < 0x20U || c == 0x7FU || c == '<' || c == '>' || c == ':' || c == '"' || c == '/' || c == '\\' || c == '|' || c == '?' || c == '*' ||
+            qs_code_point(c) == 0U)
             return false;
     }
     return !qs_is_device(raw, length);
 }
 
 /* Converts a safe code-page name to UTF-8. */
-static char *qs_make_name(const uint8_t *raw, size_t length) {
+static char *qs_make_name(const uint8_t *raw, size_t length)
+{
     size_t out_length = 0U, index, o = 0U;
     char *name;
     for (index = 0U; index < length; ++index) {
@@ -456,14 +427,11 @@ static char *qs_make_name(const uint8_t *raw, size_t length) {
     return name;
 }
 
-static char *qs_generated_name(size_t index, uint32_t suffix) {
+static char *qs_generated_name(size_t index, uint32_t suffix)
+{
     char text[48];
-    if (suffix)
-        (void)xx_rt_snprintf(text, sizeof(text), "file_%04lu_%lu",
-                             (unsigned long)index, (unsigned long)suffix);
-    else
-        (void)xx_rt_snprintf(text, sizeof(text), "file_%04lu",
-                             (unsigned long)index);
+    if (suffix) (void)xx_rt_snprintf(text, sizeof(text), "file_%04lu_%lu", (unsigned long)index, (unsigned long)suffix);
+    else (void)xx_rt_snprintf(text, sizeof(text), "file_%04lu", (unsigned long)index);
     return xx_str_dup(text);
 }
 
@@ -472,7 +440,8 @@ static char *qs_generated_name(size_t index, uint32_t suffix) {
  * and "é.txt" are one file on NTFS.  The names are UTF-8 this reader built
  * from code-page bytes, so every sequence is well formed and at most three
  * bytes long.  Returns the folded code point and advances *s; 0 at the end. */
-static uint32_t qs_fold_next(const char **s) {
+static uint32_t qs_fold_next(const char **s)
+{
     const uint8_t *p = (const uint8_t *)*s;
     uint32_t cp;
     if (p[0] == 0U) return 0U;
@@ -483,8 +452,7 @@ static uint32_t qs_fold_next(const char **s) {
         cp = ((uint32_t)(p[0] & 0x1FU) << 6U) | (uint32_t)(p[1] & 0x3FU);
         *s += 2;
     } else if ((p[0] & 0xF0U) == 0xE0U && p[1] && p[2]) {
-        cp = ((uint32_t)(p[0] & 0x0FU) << 12U) |
-             ((uint32_t)(p[1] & 0x3FU) << 6U) | (uint32_t)(p[2] & 0x3FU);
+        cp = ((uint32_t)(p[0] & 0x0FU) << 12U) | ((uint32_t)(p[1] & 0x3FU) << 6U) | (uint32_t)(p[2] & 0x3FU);
         *s += 3;
     } else {
         cp = p[0];
@@ -493,17 +461,18 @@ static uint32_t qs_fold_next(const char **s) {
     if (cp >= 'a' && cp <= 'z') return cp - 0x20U;
     if (cp >= 0xE0U && cp <= 0xFEU && cp != 0xF7U) return cp - 0x20U;
     switch (cp) {
-    case 0xFFU: return 0x0178U;  /* y diaeresis */
-    case 0x0161U: return 0x0160U; /* s caron */
-    case 0x0153U: return 0x0152U; /* oe */
-    case 0x017EU: return 0x017DU; /* z caron */
-    default: return cp;
+        case 0xFFU: return 0x0178U;   /* y diaeresis */
+        case 0x0161U: return 0x0160U; /* s caron */
+        case 0x0153U: return 0x0152U; /* oe */
+        case 0x017EU: return 0x017DU; /* z caron */
+        default: return cp;
     }
 }
 
 /* Folded three-way compare: <0, 0 or >0.  Identical ASCII bytes fold
  * alike, so a shared prefix is skipped without folding. */
-static int qs_compare(const char *a, const char *b) {
+static int qs_compare(const char *a, const char *b)
+{
     for (;;) {
         uint32_t x, y;
         while (*a && *a == *b && (uint8_t)*a < 0x80U) {
@@ -525,7 +494,7 @@ static int qs_compare(const char *a, const char *b) {
  * member cap, which bounds the recursion. */
 typedef struct qs_node_s {
     const char *key;
-    uint32_t left;  /**< Node index + 1; 0 is none. */
+    uint32_t left; /**< Node index + 1; 0 is none. */
     uint32_t right;
     int32_t height;
 } qs_node;
@@ -539,17 +508,19 @@ typedef struct qs_names_s {
 
 #define QS_NODE(set, i) (&(set)->nodes[(i) - 1U])
 
-static int32_t qs_height(const qs_names *set, uint32_t n) {
+static int32_t qs_height(const qs_names *set, uint32_t n)
+{
     return n ? QS_NODE(set, n)->height : 0;
 }
 
-static void qs_fix_height(qs_names *set, uint32_t n) {
-    int32_t l = qs_height(set, QS_NODE(set, n)->left),
-            r = qs_height(set, QS_NODE(set, n)->right);
+static void qs_fix_height(qs_names *set, uint32_t n)
+{
+    int32_t l = qs_height(set, QS_NODE(set, n)->left), r = qs_height(set, QS_NODE(set, n)->right);
     QS_NODE(set, n)->height = (l > r ? l : r) + 1;
 }
 
-static uint32_t qs_rotate_right(qs_names *set, uint32_t n) {
+static uint32_t qs_rotate_right(qs_names *set, uint32_t n)
+{
     uint32_t l = QS_NODE(set, n)->left;
     QS_NODE(set, n)->left = QS_NODE(set, l)->right;
     QS_NODE(set, l)->right = n;
@@ -558,7 +529,8 @@ static uint32_t qs_rotate_right(qs_names *set, uint32_t n) {
     return l;
 }
 
-static uint32_t qs_rotate_left(qs_names *set, uint32_t n) {
+static uint32_t qs_rotate_left(qs_names *set, uint32_t n)
+{
     uint32_t r = QS_NODE(set, n)->right;
     QS_NODE(set, n)->right = QS_NODE(set, r)->left;
     QS_NODE(set, r)->left = n;
@@ -567,40 +539,35 @@ static uint32_t qs_rotate_left(qs_names *set, uint32_t n) {
     return r;
 }
 
-static uint32_t qs_balance(qs_names *set, uint32_t n) {
+static uint32_t qs_balance(qs_names *set, uint32_t n)
+{
     int32_t d;
     qs_fix_height(set, n);
-    d = qs_height(set, QS_NODE(set, n)->left) -
-        qs_height(set, QS_NODE(set, n)->right);
+    d = qs_height(set, QS_NODE(set, n)->left) - qs_height(set, QS_NODE(set, n)->right);
     if (d > 1) {
         uint32_t l = QS_NODE(set, n)->left;
-        if (qs_height(set, QS_NODE(set, l)->left) <
-            qs_height(set, QS_NODE(set, l)->right))
-            QS_NODE(set, n)->left = qs_rotate_left(set, l);
+        if (qs_height(set, QS_NODE(set, l)->left) < qs_height(set, QS_NODE(set, l)->right)) QS_NODE(set, n)->left = qs_rotate_left(set, l);
         return qs_rotate_right(set, n);
     }
     if (d < -1) {
         uint32_t r = QS_NODE(set, n)->right;
-        if (qs_height(set, QS_NODE(set, r)->right) <
-            qs_height(set, QS_NODE(set, r)->left))
-            QS_NODE(set, n)->right = qs_rotate_right(set, r);
+        if (qs_height(set, QS_NODE(set, r)->right) < qs_height(set, QS_NODE(set, r)->left)) QS_NODE(set, n)->right = qs_rotate_right(set, r);
         return qs_rotate_left(set, n);
     }
     return n;
 }
 
 /* The caller has checked that the key is absent and a node is free. */
-static uint32_t qs_insert_at(qs_names *set, uint32_t n, uint32_t fresh) {
+static uint32_t qs_insert_at(qs_names *set, uint32_t n, uint32_t fresh)
+{
     if (!n) return fresh;
-    if (qs_compare(QS_NODE(set, fresh)->key, QS_NODE(set, n)->key) < 0)
-        QS_NODE(set, n)->left = qs_insert_at(set, QS_NODE(set, n)->left, fresh);
-    else
-        QS_NODE(set, n)->right =
-            qs_insert_at(set, QS_NODE(set, n)->right, fresh);
+    if (qs_compare(QS_NODE(set, fresh)->key, QS_NODE(set, n)->key) < 0) QS_NODE(set, n)->left = qs_insert_at(set, QS_NODE(set, n)->left, fresh);
+    else QS_NODE(set, n)->right = qs_insert_at(set, QS_NODE(set, n)->right, fresh);
     return qs_balance(set, n);
 }
 
-static bool qs_names_has(const qs_names *set, const char *name) {
+static bool qs_names_has(const qs_names *set, const char *name)
+{
     uint32_t n = set->root;
     while (n) {
         int c = qs_compare(name, QS_NODE(set, n)->key);
@@ -610,7 +577,8 @@ static bool qs_names_has(const qs_names *set, const char *name) {
     return false;
 }
 
-static bool qs_names_insert(qs_names *set, const char *name) {
+static bool qs_names_insert(qs_names *set, const char *name)
+{
     qs_node *node;
     if (set->count >= set->capacity) return false;
     node = &set->nodes[set->count++];
@@ -627,12 +595,12 @@ static bool qs_names_insert(qs_names *set, const char *name) {
 typedef struct qs_member_s {
     int64_t stream_offset; /**< Absolute offset of the zlib stream. */
     int64_t stream_size;
-    uint8_t *raw;          /**< Name bytes from the header line, key kept. */
+    uint8_t *raw; /**< Name bytes from the header line, key kept. */
     size_t raw_length;
-    char *name;            /**< Unique UTF-8 output name. */
-    size_t line_length;    /**< Header line bytes before its NUL. */
-    uint32_t seconds;      /**< Since 1980-01-01. */
-    bool header_ok;        /**< The header line parsed. */
+    char *name;         /**< Unique UTF-8 output name. */
+    size_t line_length; /**< Header line bytes before its NUL. */
+    uint32_t seconds;   /**< Since 1980-01-01. */
+    bool header_ok;     /**< The header line parsed. */
     bool run_after;
 } qs_member;
 
@@ -646,7 +614,8 @@ typedef struct qs_list_s {
     bool complete;
 } qs_list;
 
-static void qs_list_free(void *opaque) {
+static void qs_list_free(void *opaque)
+{
     qs_list *list = (qs_list *)opaque;
     size_t index;
     if (!list) return;
@@ -660,14 +629,14 @@ static void qs_list_free(void *opaque) {
     xx_mem_free(list);
 }
 
-static bool qs_list_add(qs_list *list, const qs_member *member) {
+static bool qs_list_add(qs_list *list, const qs_member *member)
+{
     if (list->count >= QS_MAX_MEMBERS) return false;
     if (list->count == list->capacity) {
         size_t grown = list->capacity ? list->capacity * 2U : 32U;
         qs_member *items;
         if (grown > QS_MAX_MEMBERS) grown = QS_MAX_MEMBERS;
-        items = (qs_member *)xx_mem_realloc(list->items,
-                                            grown * sizeof(*items));
+        items = (qs_member *)xx_mem_realloc(list->items, grown * sizeof(*items));
         if (!items) return false;
         list->items = items;
         list->capacity = grown;
@@ -679,15 +648,12 @@ static bool qs_list_add(qs_list *list, const qs_member *member) {
 /* Decodes a record's header line.  Returns false only when memory runs
  * out; a line that does not parse leaves header_ok false.  Without a member
  * the line only has to parse. */
-static bool qs_read_header(Abstractformat *format, int64_t offset,
-                           int64_t size, uint8_t *buffer, qs_member *m,
-                           bool *parsed, xx_pd_struct *pd) {
+static bool qs_read_header(Abstractformat *format, int64_t offset, int64_t size, uint8_t *buffer, qs_member *m, bool *parsed, xx_pd_struct *pd)
+{
     qs_line line;
     size_t length = 0U;
     xx_mem_zero(&line, sizeof(line));
-    *parsed = qs_read_line(format->device, offset, size, buffer, &length,
-                           pd) &&
-              qs_parse_line(buffer, length, &line);
+    *parsed = qs_read_line(format->device, offset, size, buffer, &length, pd) && qs_parse_line(buffer, length, &line);
     if (!*parsed || !m) return true;
     m->header_ok = true;
     m->line_length = length;
@@ -704,8 +670,8 @@ static bool qs_read_header(Abstractformat *format, int64_t offset,
 /* "stem_k.ext" from a safe code-page name (k inserted before the last
  * dot, or appended), or NULL when that is not a safe name or memory runs
  * out; *failed tells the two apart. */
-static char *qs_suffixed_name(const uint8_t *raw, size_t length, uint32_t k,
-                              bool *failed) {
+static char *qs_suffixed_name(const uint8_t *raw, size_t length, uint32_t k, bool *failed)
+{
     uint8_t buffer[QS_MAX_NAME + 1U];
     char digits[16];
     size_t dot = length, d, n, o = 0U;
@@ -713,10 +679,8 @@ static char *qs_suffixed_name(const uint8_t *raw, size_t length, uint32_t k,
     while (dot > 0U && raw[dot - 1U] != '.') --dot;
     dot = dot ? dot - 1U : length;
     if (dot == 0U) dot = length; /* ".profile": suffix the whole name */
-    n = (size_t)xx_rt_snprintf(digits, sizeof(digits), "_%lu",
-                               (unsigned long)k);
-    if (n == 0U || n >= sizeof(digits) || length + n > QS_MAX_NAME)
-        return NULL;
+    n = (size_t)xx_rt_snprintf(digits, sizeof(digits), "_%lu", (unsigned long)k);
+    if (n == 0U || n >= sizeof(digits) || length + n > QS_MAX_NAME) return NULL;
     xx_rt_memcpy(buffer, raw, dot);
     o = dot;
     for (d = 0U; d < n; ++d) buffer[o++] = (uint8_t)digits[d];
@@ -735,7 +699,8 @@ static char *qs_suffixed_name(const uint8_t *raw, size_t length, uint32_t k,
 /* Output names: the installed name (index key dropped), then the keyed name,
  * then "name_1.ext" .. "name_16.ext", then "file_NNNN", then "file_NNNN_k",
  * whichever no earlier member took. */
-static bool qs_assign_names(qs_list *list, xx_pd_struct *pd) {
+static bool qs_assign_names(qs_list *list, xx_pd_struct *pd)
+{
     qs_names set;
     size_t index;
     bool ok = true;
@@ -775,13 +740,10 @@ static bool qs_assign_names(qs_list *list, xx_pd_struct *pd) {
                     break;
                 }
             }
-            for (suffix = 1U;
-                 candidate && qs_names_has(&set, candidate) && suffix <= 16U;
-                 ++suffix) {
+            for (suffix = 1U; candidate && qs_names_has(&set, candidate) && suffix <= 16U; ++suffix) {
                 bool failed;
                 xx_mem_free(candidate);
-                candidate = qs_suffixed_name(plain, plain_length, suffix,
-                                             &failed);
+                candidate = qs_suffixed_name(plain, plain_length, suffix, &failed);
                 if (failed) {
                     ok = false;
                     break;
@@ -791,8 +753,7 @@ static bool qs_assign_names(qs_list *list, xx_pd_struct *pd) {
         }
         /* At most count + 1 generated names are ever tried, and the set
          * holds at most count names. */
-        for (suffix = 0U; !candidate || qs_names_has(&set, candidate);
-             ++suffix) {
+        for (suffix = 0U; !candidate || qs_names_has(&set, candidate); ++suffix) {
             if (candidate) xx_mem_free(candidate);
             candidate = NULL;
             if (suffix > list->count + 1U) break;
@@ -823,8 +784,8 @@ static bool qs_assign_names(qs_list *list, xx_pd_struct *pd) {
  * a truncated carrier: the records that fit whole are kept.  A trailer that
  * disagrees with the walk means the walk went astray, and nothing is
  * published. */
-static bool qs_walk(Abstractformat *format, qs_list **result, bool members,
-                    xx_pd_struct *pd) {
+static bool qs_walk(Abstractformat *format, qs_list **result, bool members, xx_pd_struct *pd)
+{
     qs_list *list;
     uint8_t *buffer = NULL;
     int64_t base, position;
@@ -846,15 +807,11 @@ static bool qs_walk(Abstractformat *format, qs_list **result, bool members,
         bool parsed;
         if (qs_stopped(pd)) goto done;
         if (left < 4) break;
-        have = left < (int64_t)QS_TRAILER_SIZE ? (size_t)left
-                                               : QS_TRAILER_SIZE;
-        if (!qs_read_at(format->device, base + position, header, have))
-            break;
-        if (have == QS_TRAILER_SIZE &&
-            xx_data_get_u32(header + QS_TRAILER_MAGIC_AT, 4, 0, false) == QS_TRAILER_MAGIC &&
+        have = left < (int64_t)QS_TRAILER_SIZE ? (size_t)left : QS_TRAILER_SIZE;
+        if (!qs_read_at(format->device, base + position, header, have)) break;
+        if (have == QS_TRAILER_SIZE && xx_data_get_u32(header + QS_TRAILER_MAGIC_AT, 4, 0, false) == QS_TRAILER_MAGIC &&
             xx_data_get_u32(header + QS_TRAILER_SIZE_AT, 4, 0, false) == QS_TRAILER_SIZE) {
-            if ((int64_t)xx_data_get_u32(header + QS_TRAILER_OFFSET, 4, 0, false) !=
-                    list->location.container ||
+            if ((int64_t)xx_data_get_u32(header + QS_TRAILER_OFFSET, 4, 0, false) != list->location.container ||
                 (size_t)xx_data_get_u32(header + QS_TRAILER_COUNT, 4, 0, false) != list->count)
                 goto done;
             list->complete = true;
@@ -862,17 +819,13 @@ static bool qs_walk(Abstractformat *format, qs_list **result, bool members,
             break;
         }
         size = (int64_t)xx_data_get_u32(header, 4, 0, false);
-        if (size < (int64_t)QS_MIN_RECORD || size > left - 4 ||
-            !qs_zlib_header_ok(header + 4))
-            break;
+        if (size < (int64_t)QS_MIN_RECORD || size > left - 4 || !qs_zlib_header_ok(header + 4)) break;
         if (list->count >= QS_MAX_MEMBERS) goto done;
         xx_mem_zero(&member, sizeof(member));
         member.stream_offset = base + position + 4;
         member.stream_size = size;
         if (members || list->count == 0U) {
-            if (!qs_read_header(format, member.stream_offset, size, buffer,
-                                members ? &member : NULL, &parsed, pd))
-                goto done;
+            if (!qs_read_header(format, member.stream_offset, size, buffer, members ? &member : NULL, &parsed, pd)) goto done;
             if (list->count == 0U && !parsed) goto done;
         }
         if (members) {
@@ -902,17 +855,16 @@ done:
 /* ---------------------------------------------------------------------- */
 /* Records                                                                 */
 
-static bool qs_copy_options(xx_list_s *destination, const xx_list_s *source) {
+static bool qs_copy_options(xx_list_s *destination, const xx_list_s *source)
+{
     size_t index;
     if (!source) return true;
     for (index = 0U; index < source->count; ++index) {
-        const xx_meta *original =
-            (const xx_meta *)xx_list_at((const xx_list_t *)source, index);
+        const xx_meta *original = (const xx_meta *)xx_list_at((const xx_list_t *)source, index);
         xx_meta copy;
         if (!original) continue;
         xx_meta_init(&copy, original->meta_id);
-        if (!xx_var_copy(&copy.var, &original->var) ||
-            !xx_list_append(destination, &copy)) {
+        if (!xx_var_copy(&copy.var, &original->var) || !xx_list_append(destination, &copy)) {
             xx_meta_cleanup(&copy);
             return false;
         }
@@ -920,57 +872,47 @@ static bool qs_copy_options(xx_list_s *destination, const xx_list_s *source) {
     return true;
 }
 
-static const xx_var *qs_option(const xx_list_s *options, uint32_t id) {
+static const xx_var *qs_option(const xx_list_s *options, uint32_t id)
+{
     size_t index;
     if (!options) return NULL;
     for (index = 0U; index < options->count; ++index) {
-        const xx_meta *meta =
-            (const xx_meta *)xx_list_at((const xx_list_t *)options, index);
+        const xx_meta *meta = (const xx_meta *)xx_list_at((const xx_list_t *)options, index);
         if (meta && meta->meta_id == id) return &meta->var;
     }
     return NULL;
 }
 
-static bool qs_set_record(xx_archive_record *record, const qs_member *m) {
+static bool qs_set_record(xx_archive_record *record, const qs_member *m)
+{
     xx_archive_record_cleanup(record);
     xx_archive_record_init(record);
     record->header_offset = m->stream_offset - 4;
     record->header_size = 4;
     record->data_offset = m->stream_offset;
     record->compressed_size = m->stream_size;
-    if (!xx_archive_record_set_original_name(record, m->name) ||
-        !xx_archive_record_set_meta_u64(record, XX_META_ID_COMPRESSED_SIZE,
-                                        (uint64_t)m->stream_size) ||
-        !xx_archive_record_set_meta_u64(record, XX_META_ID_COMPRESSION_METHOD,
-                                        QS_METHOD_DEFLATE) ||
-        !xx_archive_record_set_meta_bool(record, XX_META_ID_IS_ENCRYPTED,
-                                         false) ||
-        !xx_archive_record_set_meta_bool(record, XX_META_ID_IS_FOLDER, false))
+    if (!xx_archive_record_set_original_name(record, m->name) || !xx_archive_record_set_meta_u64(record, XX_META_ID_COMPRESSED_SIZE, (uint64_t)m->stream_size) ||
+        !xx_archive_record_set_meta_u64(record, XX_META_ID_COMPRESSION_METHOD, QS_METHOD_DEFLATE) ||
+        !xx_archive_record_set_meta_bool(record, XX_META_ID_IS_ENCRYPTED, false) || !xx_archive_record_set_meta_bool(record, XX_META_ID_IS_FOLDER, false))
         return false;
     /* Unix seconds; 0 in the container means no stamp. */
-    if (m->header_ok && m->seconds != 0U &&
-        !xx_archive_record_set_meta_u64(
-            record, XX_META_ID_TIMESTAMP,
-            (uint64_t)m->seconds + QS_EPOCH_1980))
-        return false;
+    if (m->header_ok && m->seconds != 0U && !xx_archive_record_set_meta_u64(record, XX_META_ID_TIMESTAMP, (uint64_t)m->seconds + QS_EPOCH_1980)) return false;
     return true;
 }
 
 /* The whole stream is decoded here; nothing declares the body size ahead. */
-static bool qs_extract(Abstractformat *format, const qs_member *m,
-                       xx_io_device *destination, xx_pd_struct *pd) {
+static bool qs_extract(Abstractformat *format, const qs_member *m, xx_io_device *destination, xx_pd_struct *pd)
+{
     uint64_t body = 0U;
     if (!m->header_ok) return false;
-    return qs_inflate(format->device, m->stream_offset, m->stream_size,
-                      m->line_length, destination, &body, pd);
+    return qs_inflate(format->device, m->stream_offset, m->stream_size, m->line_length, destination, &body, pd);
 }
 
 /* ---------------------------------------------------------------------- */
 /* Public API                                                              */
 
-void xx_qsetup_installation_suite_init(xx_qsetup_installation_suite *archive,
-                                       xx_io_device *device,
-                                       int64_t base_address) {
+void xx_qsetup_installation_suite_init(xx_qsetup_installation_suite *archive, xx_io_device *device, int64_t base_address)
+{
     if (!archive) return;
     xx_mem_zero(archive, sizeof(*archive));
     xx_format_init(&archive->format, device, base_address);
@@ -978,46 +920,35 @@ void xx_qsetup_installation_suite_init(xx_qsetup_installation_suite *archive,
     archive->format.file_type = XX_QSETUP_INSTALLATION_SUITE_FILE_TYPE;
     archive->format.format_type = XX_TYPE_ARCHIVE;
     archive->format.is_archive = true;
-    xx_format_set_mime_type(&archive->format,
-                            "application/x-qsetup-installer");
+    xx_format_set_mime_type(&archive->format, "application/x-qsetup-installer");
     xx_format_set_extension(&archive->format, "exe");
-    archive->format.check_is_valid =
-        xx_qsetup_installation_suite_check_is_valid;
-    archive->format.handle_base_info =
-        xx_qsetup_installation_suite_handle_base_info;
-    archive->format.get_format_size =
-        xx_qsetup_installation_suite_get_format_size;
-    archive->format.get_number_of_archive_records =
-        xx_qsetup_installation_suite_get_number_of_archive_records;
-    archive->format.create_archive_records_reading =
-        xx_qsetup_installation_suite_create_archive_records_reading;
-    archive->format.get_current_archive_record =
-        xx_qsetup_installation_suite_get_current_archive_record;
-    archive->format.unpack_current_archive_record =
-        xx_qsetup_installation_suite_unpack_current_archive_record;
-    archive->format.archive_record_move_to_next =
-        xx_qsetup_installation_suite_archive_record_move_to_next;
-    archive->format.free_archive_records_reading =
-        xx_qsetup_installation_suite_free_archive_records_reading;
+    archive->format.check_is_valid = xx_qsetup_installation_suite_check_is_valid;
+    archive->format.handle_base_info = xx_qsetup_installation_suite_handle_base_info;
+    archive->format.get_format_size = xx_qsetup_installation_suite_get_format_size;
+    archive->format.get_number_of_archive_records = xx_qsetup_installation_suite_get_number_of_archive_records;
+    archive->format.create_archive_records_reading = xx_qsetup_installation_suite_create_archive_records_reading;
+    archive->format.get_current_archive_record = xx_qsetup_installation_suite_get_current_archive_record;
+    archive->format.unpack_current_archive_record = xx_qsetup_installation_suite_unpack_current_archive_record;
+    archive->format.archive_record_move_to_next = xx_qsetup_installation_suite_archive_record_move_to_next;
+    archive->format.free_archive_records_reading = xx_qsetup_installation_suite_free_archive_records_reading;
     archive->container_offset = -1;
     archive->records_offset = -1;
 }
 
-xx_qsetup_installation_suite *xx_qsetup_installation_suite_create(
-    xx_io_device *device, int64_t base_address) {
-    xx_qsetup_installation_suite *archive =
-        (xx_qsetup_installation_suite *)xx_mem_alloc(sizeof(*archive));
-    if (archive)
-        xx_qsetup_installation_suite_init(archive, device, base_address);
+xx_qsetup_installation_suite *xx_qsetup_installation_suite_create(xx_io_device *device, int64_t base_address)
+{
+    xx_qsetup_installation_suite *archive = (xx_qsetup_installation_suite *)xx_mem_alloc(sizeof(*archive));
+    if (archive) xx_qsetup_installation_suite_init(archive, device, base_address);
     return archive;
 }
 
-void xx_qsetup_installation_suite_destroy(
-    xx_qsetup_installation_suite *archive) {
+void xx_qsetup_installation_suite_destroy(xx_qsetup_installation_suite *archive)
+{
     if (archive) xx_format_cleanup_extra_parameters(&archive->format);
 }
 
-void xx_qsetup_installation_suite_free(xx_qsetup_installation_suite *archive) {
+void xx_qsetup_installation_suite_free(xx_qsetup_installation_suite *archive)
+{
     if (!archive) return;
     xx_qsetup_installation_suite_destroy(archive);
     xx_mem_free(archive);
@@ -1025,15 +956,15 @@ void xx_qsetup_installation_suite_free(xx_qsetup_installation_suite *archive) {
 
 /* Cheap: the PE headers, 16 bytes of the container and 6 bytes of the first
  * record. */
-bool xx_qsetup_installation_suite_check_is_valid(Abstractformat *format,
-                                                 xx_pd_struct *pd) {
+bool xx_qsetup_installation_suite_check_is_valid(Abstractformat *format, xx_pd_struct *pd)
+{
     qs_location location;
     (void)pd;
     return qs_locate(format, &location);
 }
 
-bool xx_qsetup_installation_suite_handle_base_info(Abstractformat *format,
-                                                   xx_pd_struct *pd) {
+bool xx_qsetup_installation_suite_handle_base_info(Abstractformat *format, xx_pd_struct *pd)
+{
     qs_list *list;
     xx_qsetup_installation_suite *archive;
     if (!format) return false;
@@ -1046,8 +977,7 @@ bool xx_qsetup_installation_suite_handle_base_info(Abstractformat *format,
     }
     archive = (xx_qsetup_installation_suite *)format;
     archive->number_of_records = list->count;
-    archive->container_offset =
-        format->base_address + list->location.container;
+    archive->container_offset = format->base_address + list->location.container;
     archive->records_offset = format->base_address + list->location.records;
     archive->complete = list->complete;
     format->number_of_archive_records = list->count;
@@ -1063,27 +993,20 @@ bool xx_qsetup_installation_suite_handle_base_info(Abstractformat *format,
     return true;
 }
 
-int64_t xx_qsetup_installation_suite_get_format_size(Abstractformat *format,
-                                                     xx_pd_struct *pd) {
-    return format && (format->base_info_handled ||
-                      xx_qsetup_installation_suite_handle_base_info(format,
-                                                                    pd))
-               ? format->format_size
-               : -1;
+int64_t xx_qsetup_installation_suite_get_format_size(Abstractformat *format, xx_pd_struct *pd)
+{
+    return format && (format->base_info_handled || xx_qsetup_installation_suite_handle_base_info(format, pd)) ? format->format_size : -1;
 }
 
-uint64_t xx_qsetup_installation_suite_get_number_of_archive_records(
-    Abstractformat *format, xx_pd_struct *pd) {
-    return format && (format->base_info_handled ||
-                      xx_qsetup_installation_suite_handle_base_info(format,
-                                                                    pd))
+uint64_t xx_qsetup_installation_suite_get_number_of_archive_records(Abstractformat *format, xx_pd_struct *pd)
+{
+    return format && (format->base_info_handled || xx_qsetup_installation_suite_handle_base_info(format, pd))
                ? ((xx_qsetup_installation_suite *)format)->number_of_records
                : 0U;
 }
 
-xx_archive_record_state *
-xx_qsetup_installation_suite_create_archive_records_reading(
-    Abstractformat *format, const xx_list_s *options, xx_pd_struct *pd) {
+xx_archive_record_state *xx_qsetup_installation_suite_create_archive_records_reading(Abstractformat *format, const xx_list_s *options, xx_pd_struct *pd)
+{
     qs_list *list;
     xx_archive_record_state *state;
     if (!qs_walk(format, &list, true, pd)) return NULL;
@@ -1096,8 +1019,7 @@ xx_qsetup_installation_suite_create_archive_records_reading(
     state->internal_state = list;
     state->free_internal = qs_list_free;
     state->total_records = (int64_t)list->count;
-    if (!qs_copy_options(&state->options, options) ||
-        !qs_set_record(&state->current_record, &list->items[0])) {
+    if (!qs_copy_options(&state->options, options) || !qs_set_record(&state->current_record, &list->items[0])) {
         xx_archive_record_state_free(state);
         return NULL;
     }
@@ -1105,33 +1027,27 @@ xx_qsetup_installation_suite_create_archive_records_reading(
     return state;
 }
 
-const xx_archive_record *
-xx_qsetup_installation_suite_get_current_archive_record(
-    Abstractformat *format, xx_archive_record_state *state) {
-    return format && state && state->format == format && state->has_record
-               ? &state->current_record
-               : NULL;
+const xx_archive_record *xx_qsetup_installation_suite_get_current_archive_record(Abstractformat *format, xx_archive_record_state *state)
+{
+    return format && state && state->format == format && state->has_record ? &state->current_record : NULL;
 }
 
-bool xx_qsetup_installation_suite_archive_record_move_to_next(
-    Abstractformat *format, xx_archive_record_state *state, xx_pd_struct *pd) {
+bool xx_qsetup_installation_suite_archive_record_move_to_next(Abstractformat *format, xx_archive_record_state *state, xx_pd_struct *pd)
+{
     qs_list *list;
     (void)pd;
-    if (!format || !state || state->format != format ||
-        !(list = (qs_list *)state->internal_state) ||
-        list->index + 1U >= list->count) {
+    if (!format || !state || state->format != format || !(list = (qs_list *)state->internal_state) || list->index + 1U >= list->count) {
         if (state) state->has_record = false;
         return false;
     }
     ++list->index;
     ++state->current_index;
-    state->has_record =
-        qs_set_record(&state->current_record, &list->items[list->index]);
+    state->has_record = qs_set_record(&state->current_record, &list->items[list->index]);
     return state->has_record;
 }
 
-bool xx_qsetup_installation_suite_unpack_current_archive_record(
-    Abstractformat *format, xx_archive_record_state *state, xx_pd_struct *pd) {
+bool xx_qsetup_installation_suite_unpack_current_archive_record(Abstractformat *format, xx_archive_record_state *state, xx_pd_struct *pd)
+{
     qs_list *list;
     qs_member *member;
     const xx_var *path_option;
@@ -1140,27 +1056,21 @@ bool xx_qsetup_installation_suite_unpack_current_archive_record(
     char *path = NULL;
     bool result = false;
     bool created = false;
-    if (!format || !state || state->format != format || !state->has_record ||
-        !(list = (qs_list *)state->internal_state) ||
-        list->index >= list->count || qs_stopped(pd))
+    if (!format || !state || state->format != format || !state->has_record || !(list = (qs_list *)state->internal_state) || list->index >= list->count || qs_stopped(pd))
         return false;
     member = &list->items[list->index];
     if (!member->header_ok || !member->name) return false;
     path_option = qs_option(&state->options, XX_META_ID_OPT_UNPACK_PATH);
     if (!path_option) return qs_extract(format, member, NULL, pd);
-    if (path_option->type == XX_VAR_TYPE_STRING ||
-        path_option->type == XX_VAR_TYPE_STRING_VIEW) {
+    if (path_option->type == XX_VAR_TYPE_STRING || path_option->type == XX_VAR_TYPE_STRING_VIEW) {
         base = xx_var_get_str(path_option);
-    } else if (path_option->type == XX_VAR_TYPE_WSTRING ||
-               path_option->type == XX_VAR_TYPE_WSTRING_VIEW) {
+    } else if (path_option->type == XX_VAR_TYPE_WSTRING || path_option->type == XX_VAR_TYPE_WSTRING_VIEW) {
         owned_base = xx_str_unicode_to_utf8(xx_var_get_wstr(path_option));
         base = owned_base;
     }
     if (!base) goto done;
-    path = (base[0] && base[xx_str_len(base) - 1U] != '/' &&
-            base[xx_str_len(base) - 1U] != '\\')
-               ? xx_str_concat3(base, "/", member->name)
-               : xx_str_concat(base, member->name);
+    path = (base[0] && base[xx_str_len(base) - 1U] != '/' && base[xx_str_len(base) - 1U] != '\\') ? xx_str_concat3(base, "/", member->name)
+                                                                                                  : xx_str_concat(base, member->name);
     if (!path || !xx_store_create_dirs_a(path, false)) goto done;
     {
         xx_io_device *destination = xx_io_file_open(path, "wb");
@@ -1176,8 +1086,8 @@ done:
     return result;
 }
 
-void xx_qsetup_installation_suite_free_archive_records_reading(
-    Abstractformat *format, xx_archive_record_state *state) {
+void xx_qsetup_installation_suite_free_archive_records_reading(Abstractformat *format, xx_archive_record_state *state)
+{
     (void)format;
     xx_archive_record_state_free(state);
 }

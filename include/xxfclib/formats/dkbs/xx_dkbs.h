@@ -81,38 +81,30 @@ struct xx_dkbs {
     Abstractformat format;
     uint64_t number_of_records;
     uint64_t number_of_members;
-    uint32_t data_size;   /**< Payload length from +0x68. */
-    uint32_t header_size; /**< Always XX_DKBS_HEADER_SIZE. */
+    uint32_t data_size;      /**< Payload length from +0x68. */
+    uint32_t header_size;    /**< Always XX_DKBS_HEADER_SIZE. */
     bool size_is_big_endian; /**< Which reading of +0x68 was accepted;
                                   handle_base_info mirrors it into
                                   format.endian. */
-    int64_t archive_end;  /**< base_address + header + payload, or -1. */
+    int64_t archive_end;     /**< base_address + header + payload, or -1. */
     void *internal;
 };
 
-XXFC_API void xx_dkbs_init(xx_dkbs *dkbs, xx_io_device *dev,
-                           int64_t base_address);
+XXFC_API void xx_dkbs_init(xx_dkbs *dkbs, xx_io_device *dev, int64_t base_address);
 XXFC_API xx_dkbs *xx_dkbs_create(xx_io_device *dev, int64_t base_address);
 XXFC_API void xx_dkbs_destroy(xx_dkbs *dkbs);
 XXFC_API void xx_dkbs_free(xx_dkbs *dkbs);
 
 XXFC_API bool xx_dkbs_check_is_valid(Abstractformat *self, xx_pd_struct *pd);
 XXFC_API bool xx_dkbs_handle_base_info(Abstractformat *self, xx_pd_struct *pd);
-XXFC_API int64_t xx_dkbs_get_format_size(Abstractformat *self,
-                                         xx_pd_struct *pd);
-XXFC_API uint64_t xx_dkbs_get_number_of_archive_records(Abstractformat *self,
-                                                        xx_pd_struct *pd);
+XXFC_API int64_t xx_dkbs_get_format_size(Abstractformat *self, xx_pd_struct *pd);
+XXFC_API uint64_t xx_dkbs_get_number_of_archive_records(Abstractformat *self, xx_pd_struct *pd);
 
-XXFC_API xx_archive_record_state *xx_dkbs_create_archive_records_reading(
-    Abstractformat *self, const xx_list_s *options, xx_pd_struct *pd);
-XXFC_API const xx_archive_record *xx_dkbs_get_current_archive_record(
-    Abstractformat *self, xx_archive_record_state *state);
-XXFC_API bool xx_dkbs_unpack_current_archive_record(
-    Abstractformat *self, xx_archive_record_state *state, xx_pd_struct *pd);
-XXFC_API bool xx_dkbs_archive_record_move_to_next(
-    Abstractformat *self, xx_archive_record_state *state, xx_pd_struct *pd);
-XXFC_API void xx_dkbs_free_archive_records_reading(
-    Abstractformat *self, xx_archive_record_state *state);
+XXFC_API xx_archive_record_state *xx_dkbs_create_archive_records_reading(Abstractformat *self, const xx_list_s *options, xx_pd_struct *pd);
+XXFC_API const xx_archive_record *xx_dkbs_get_current_archive_record(Abstractformat *self, xx_archive_record_state *state);
+XXFC_API bool xx_dkbs_unpack_current_archive_record(Abstractformat *self, xx_archive_record_state *state, xx_pd_struct *pd);
+XXFC_API bool xx_dkbs_archive_record_move_to_next(Abstractformat *self, xx_archive_record_state *state, xx_pd_struct *pd);
+XXFC_API void xx_dkbs_free_archive_records_reading(Abstractformat *self, xx_archive_record_state *state);
 
 XXFC_API uint64_t xx_dkbs_get_number_of_records(const xx_dkbs *dkbs);
 XXFC_API uint64_t xx_dkbs_get_number_of_members(const xx_dkbs *dkbs);
@@ -125,18 +117,24 @@ XXFC_API const char *xx_dkbs_get_version(const xx_dkbs *dkbs);
 /** @brief Boot device string from the header, or NULL. */
 XXFC_API const char *xx_dkbs_get_boot_device(const xx_dkbs *dkbs);
 
-static inline Abstractformat *xx_dkbs_to_format(xx_dkbs *dkbs) {
+static inline Abstractformat *xx_dkbs_to_format(xx_dkbs *dkbs)
+{
     return dkbs ? &dkbs->format : NULL;
 }
-static inline void XDkbs_init(xx_dkbs *dkbs, xx_io_device *dev,
-                              int64_t base_address) {
+static inline void XDkbs_init(xx_dkbs *dkbs, xx_io_device *dev, int64_t base_address)
+{
     xx_dkbs_init(dkbs, dev, base_address);
 }
-static inline xx_dkbs *XDkbs_create(xx_io_device *dev, int64_t base_address) {
+static inline xx_dkbs *XDkbs_create(xx_io_device *dev, int64_t base_address)
+{
     return xx_dkbs_create(dev, base_address);
 }
-static inline void XDkbs_free(xx_dkbs *dkbs) { xx_dkbs_free(dkbs); }
-static inline bool XDkbs_is_valid(xx_dkbs *dkbs, xx_pd_struct *pd) {
+static inline void XDkbs_free(xx_dkbs *dkbs)
+{
+    xx_dkbs_free(dkbs);
+}
+static inline bool XDkbs_is_valid(xx_dkbs *dkbs, xx_pd_struct *pd)
+{
     return dkbs ? xx_format_is_valid(&dkbs->format, pd) : false;
 }
 

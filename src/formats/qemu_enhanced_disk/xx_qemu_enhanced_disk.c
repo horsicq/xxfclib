@@ -52,9 +52,7 @@
 #define XX_QED_F_BACKING_FILE UINT64_C(0x01)
 #define XX_QED_F_NEED_CHECK UINT64_C(0x02)
 #define XX_QED_F_BACKING_FORMAT_NO_PROBE UINT64_C(0x04)
-#define XX_QED_FEATURE_MASK                                                    \
-    (XX_QED_F_BACKING_FILE | XX_QED_F_NEED_CHECK |                             \
-     XX_QED_F_BACKING_FORMAT_NO_PROBE)
+#define XX_QED_FEATURE_MASK (XX_QED_F_BACKING_FILE | XX_QED_F_NEED_CHECK | XX_QED_F_BACKING_FORMAT_NO_PROBE)
 
 /* L2 entry values that are not offsets. */
 #define XX_QED_CLUSTER_UNALLOCATED UINT64_C(0)
@@ -88,34 +86,34 @@
 #define XX_QED_MEMBER_NAME "disk.img"
 
 typedef struct xx_qed_private_s {
-    uint64_t *l1_table;          /**< l1_count validated L2 table offsets. */
-    char *backing_file;          /**< Owned, or NULL. */
+    uint64_t *l1_table; /**< l1_count validated L2 table offsets. */
+    char *backing_file; /**< Owned, or NULL. */
     int64_t input_size;
     int64_t base_address;
-    uint64_t file_size;          /**< Bytes past base, rounded down to a cluster. */
+    uint64_t file_size; /**< Bytes past base, rounded down to a cluster. */
     uint64_t image_size;
     uint64_t l1_table_offset;
     uint64_t features;
     uint64_t compat_features;
     uint64_t autoclear_features;
-    uint64_t header_bytes;       /**< header_size * cluster_size. */
-    uint64_t table_bytes;        /**< table_size * cluster_size. */
+    uint64_t header_bytes; /**< header_size * cluster_size. */
+    uint64_t table_bytes;  /**< table_size * cluster_size. */
     uint32_t cluster_size;
     uint32_t cluster_bits;
     uint32_t table_size;
     uint32_t header_size;
-    uint32_t entries_bits;       /**< log2 of the entries in one table. */
-    uint32_t l1_count;           /**< L1 entries the virtual size reaches. */
+    uint32_t entries_bits; /**< log2 of the entries in one table. */
+    uint32_t l1_count;     /**< L1 entries the virtual size reaches. */
     uint32_t backing_filename_offset;
     uint32_t backing_filename_size;
-    bool consumed;               /**< The single member has been stepped past. */
+    bool consumed; /**< The single member has been stepped past. */
 } xx_qed_private;
 
 /* One window of one L2 table, so that consecutive guest clusters do not
  * each cost a seek and an eight-byte read. */
 typedef struct xx_qed_l2_cache_s {
-    uint64_t table;              /**< Host offset of the cached table, 0 none. */
-    uint64_t first;              /**< Index of raw[0] within that table. */
+    uint64_t table; /**< Host offset of the cached table, 0 none. */
+    uint64_t first; /**< Index of raw[0] within that table. */
     uint8_t *raw;
     size_t entries;
     size_t bytes;
@@ -129,14 +127,12 @@ static void xx_qemu_enhanced_disk_vtable_destroy(Abstractformat *self);
 
 /* Every read goes through xx_io_seek64: a disk image routinely exceeds 2 GB
  * and long is 32 bits on Win64, so xx_io_seek() would truncate the offset. */
-static bool xx_qed_read_at_sized(xx_io_device *device, int64_t offset, void *data,
-                           size_t size, size_t io_capacity) {
-
+static bool xx_qed_read_at_sized(xx_io_device *device, int64_t offset, void *data, size_t size, size_t io_capacity)
+{
     uint8_t *out = (uint8_t *)data;
     size_t done = 0U;
 
-    if (!device || (!data && size != 0U) || offset < 0 ||
-        xx_io_seek64(device, offset, SEEK_SET) != 0) {
+    if (!device || (!data && size != 0U) || offset < 0 || xx_io_seek64(device, offset, SEEK_SET) != 0) {
         return false;
     }
     while (done < size) {
@@ -149,13 +145,13 @@ static bool xx_qed_read_at_sized(xx_io_device *device, int64_t offset, void *dat
     return true;
 }
 
-static bool xx_qed_read_at(xx_io_device *device, int64_t offset, void *data,
-                           size_t size) {
+static bool xx_qed_read_at(xx_io_device *device, int64_t offset, void *data, size_t size)
+{
     return xx_qed_read_at_sized(device, offset, data, size, xx_get_file_buffer_size());
 }
 
-static bool xx_qed_write_all(xx_io_device *output, const uint8_t *data,
-                             size_t size) {
+static bool xx_qed_write_all(xx_io_device *output, const uint8_t *data, size_t size)
+{
     const size_t io_capacity = xx_get_file_buffer_size();
     size_t done = 0U;
 
@@ -170,17 +166,18 @@ static bool xx_qed_write_all(xx_io_device *output, const uint8_t *data,
 }
 
 /* True when [offset, offset + size) lies inside [0, total_size). */
-static bool xx_qed_range_within(int64_t total_size, int64_t offset,
-                                int64_t size) {
-    return (total_size >= 0) && (offset >= 0) && (size >= 0) &&
-           (offset <= total_size) && (size <= total_size - offset);
+static bool xx_qed_range_within(int64_t total_size, int64_t offset, int64_t size)
+{
+    return (total_size >= 0) && (offset >= 0) && (size >= 0) && (offset <= total_size) && (size <= total_size - offset);
 }
 
-static bool xx_qed_is_power_of_two(uint32_t value) {
+static bool xx_qed_is_power_of_two(uint32_t value)
+{
     return value != 0U && (value & (value - 1U)) == 0U;
 }
 
-static uint32_t xx_qed_log2(uint32_t value) {
+static uint32_t xx_qed_log2(uint32_t value)
+{
     uint32_t bits = 0U;
 
     while (bits < 31U && (UINT32_C(1) << bits) < value) ++bits;
@@ -190,22 +187,20 @@ static uint32_t xx_qed_log2(uint32_t value) {
 /* A data cluster offset: cluster aligned, past the header area, and the
  * cluster ends inside the file. file_size is a whole number of clusters, so
  * "starts before the end" is the same as "ends inside". */
-static bool xx_qed_cluster_offset_ok(const xx_qed_private *parsed,
-                                     uint64_t offset) {
-    return (offset & (uint64_t)(parsed->cluster_size - 1U)) == 0U &&
-           offset >= parsed->header_bytes && offset < parsed->file_size;
+static bool xx_qed_cluster_offset_ok(const xx_qed_private *parsed, uint64_t offset)
+{
+    return (offset & (uint64_t)(parsed->cluster_size - 1U)) == 0U && offset >= parsed->header_bytes && offset < parsed->file_size;
 }
 
 /* An L1 or L2 table offset: a valid cluster offset whose whole table ends
  * inside the file. */
-static bool xx_qed_table_offset_ok(const xx_qed_private *parsed,
-                                   uint64_t offset) {
-    return xx_qed_cluster_offset_ok(parsed, offset) &&
-           parsed->file_size >= parsed->table_bytes &&
-           offset <= parsed->file_size - parsed->table_bytes;
+static bool xx_qed_table_offset_ok(const xx_qed_private *parsed, uint64_t offset)
+{
+    return xx_qed_cluster_offset_ok(parsed, offset) && parsed->file_size >= parsed->table_bytes && offset <= parsed->file_size - parsed->table_bytes;
 }
 
-static void xx_qed_private_cleanup(xx_qed_private *parsed) {
+static void xx_qed_private_cleanup(xx_qed_private *parsed)
+{
     if (!parsed) return;
     if (parsed->l1_table) xx_mem_free(parsed->l1_table);
     if (parsed->backing_file) xx_str_free(parsed->backing_file);
@@ -213,7 +208,8 @@ static void xx_qed_private_cleanup(xx_qed_private *parsed) {
     parsed->input_size = -1;
 }
 
-static void xx_qed_private_free(void *pointer) {
+static void xx_qed_private_free(void *pointer)
+{
     xx_qed_private *parsed = (xx_qed_private *)pointer;
 
     if (!parsed) return;
@@ -225,8 +221,8 @@ static void xx_qed_private_free(void *pointer) {
  * for information only - this reader never opens it - so a name that is too
  * long or holds control characters is simply not published. Its range has
  * already been checked against the header area. */
-static char *xx_qed_read_backing_file(xx_io_device *device,
-                                      const xx_qed_private *parsed) {
+static char *xx_qed_read_backing_file(xx_io_device *device, const xx_qed_private *parsed)
+{
     uint32_t size = parsed->backing_filename_size;
     uint32_t index;
     char *name;
@@ -234,10 +230,7 @@ static char *xx_qed_read_backing_file(xx_io_device *device,
     if (size == 0U || size > XX_QED_MAX_BACKING_NAME) return NULL;
     name = (char *)xx_mem_alloc((size_t)size + 1U);
     if (!name) return NULL;
-    if (!xx_qed_read_at(device,
-                        parsed->base_address +
-                            (int64_t)parsed->backing_filename_offset,
-                        name, (size_t)size)) {
+    if (!xx_qed_read_at(device, parsed->base_address + (int64_t)parsed->backing_filename_offset, name, (size_t)size)) {
         xx_mem_free(name);
         return NULL;
     }
@@ -254,8 +247,8 @@ static char *xx_qed_read_backing_file(xx_io_device *device,
 
 /* ---------------------------------------------------------------- parse -- */
 
-static bool xx_qed_parse(Abstractformat *self, xx_qed_private *parsed,
-                         xx_pd_struct *pd) {
+static bool xx_qed_parse(Abstractformat *self, xx_qed_private *parsed, xx_pd_struct *pd)
+{
     uint8_t header[XX_QED_HEADER_SIZE];
     uint8_t *raw_l1 = NULL;
     int64_t total_size;
@@ -271,15 +264,11 @@ static bool xx_qed_parse(Abstractformat *self, xx_qed_private *parsed,
         xx_mem_zero(parsed, sizeof(*parsed));
         parsed->input_size = -1;
     }
-    if (!self || !self->device || !parsed || self->base_address < 0 ||
-        (pd && xx_pd_is_stopped(pd))) {
+    if (!self || !self->device || !parsed || self->base_address < 0 || (pd && xx_pd_is_stopped(pd))) {
         return false;
     }
     total_size = xx_io_total_size(self->device);
-    if (!xx_qed_range_within(total_size, self->base_address,
-                             (int64_t)XX_QED_HEADER_SIZE) ||
-        !xx_qed_read_at(self->device, self->base_address, header,
-                        sizeof(header))) {
+    if (!xx_qed_range_within(total_size, self->base_address, (int64_t)XX_QED_HEADER_SIZE) || !xx_qed_read_at(self->device, self->base_address, header, sizeof(header))) {
         return false;
     }
     if (xx_data_get_u32(header, sizeof(header), 0U, false) != XX_QED_MAGIC) {
@@ -292,39 +281,29 @@ static bool xx_qed_parse(Abstractformat *self, xx_qed_private *parsed,
     parsed->header_size = xx_data_get_u32(header, sizeof(header), 12U, false);
     parsed->features = xx_data_get_u64(header, sizeof(header), 16U, false);
     parsed->compat_features = xx_data_get_u64(header, sizeof(header), 24U, false);
-    parsed->autoclear_features =
-        xx_data_get_u64(header, sizeof(header), 32U, false);
+    parsed->autoclear_features = xx_data_get_u64(header, sizeof(header), 32U, false);
     parsed->l1_table_offset = xx_data_get_u64(header, sizeof(header), 40U, false);
     parsed->image_size = xx_data_get_u64(header, sizeof(header), 48U, false);
-    parsed->backing_filename_offset =
-        xx_data_get_u32(header, sizeof(header), 56U, false);
-    parsed->backing_filename_size =
-        xx_data_get_u32(header, sizeof(header), 60U, false);
+    parsed->backing_filename_offset = xx_data_get_u32(header, sizeof(header), 56U, false);
+    parsed->backing_filename_size = xx_data_get_u32(header, sizeof(header), 60U, false);
 
     /* An unknown feature bit changes the on-disk format; QEMU refuses it
      * too. compat and autoclear bits are ignorable by definition. */
     if ((parsed->features & ~XX_QED_FEATURE_MASK) != 0U) goto fail;
-    if (!xx_qed_is_power_of_two(parsed->cluster_size) ||
-        parsed->cluster_size < XX_QED_MIN_CLUSTER_SIZE ||
-        parsed->cluster_size > XX_QED_MAX_CLUSTER_SIZE) {
+    if (!xx_qed_is_power_of_two(parsed->cluster_size) || parsed->cluster_size < XX_QED_MIN_CLUSTER_SIZE || parsed->cluster_size > XX_QED_MAX_CLUSTER_SIZE) {
         goto fail;
     }
-    if (!xx_qed_is_power_of_two(parsed->table_size) ||
-        parsed->table_size > XX_QED_MAX_TABLE_SIZE) {
+    if (!xx_qed_is_power_of_two(parsed->table_size) || parsed->table_size > XX_QED_MAX_TABLE_SIZE) {
         goto fail;
     }
-    if (parsed->header_size == 0U ||
-        parsed->header_size > UINT32_MAX / parsed->cluster_size) {
+    if (parsed->header_size == 0U || parsed->header_size > UINT32_MAX / parsed->cluster_size) {
         goto fail;
     }
     parsed->cluster_bits = xx_qed_log2(parsed->cluster_size);
     /* entries = table_size * cluster_size / 8, all powers of two. */
-    parsed->entries_bits =
-        parsed->cluster_bits + xx_qed_log2(parsed->table_size) - 3U;
-    parsed->header_bytes =
-        (uint64_t)parsed->header_size * (uint64_t)parsed->cluster_size;
-    parsed->table_bytes =
-        (uint64_t)parsed->table_size * (uint64_t)parsed->cluster_size;
+    parsed->entries_bits = parsed->cluster_bits + xx_qed_log2(parsed->table_size) - 3U;
+    parsed->header_bytes = (uint64_t)parsed->header_size * (uint64_t)parsed->cluster_size;
+    parsed->table_bytes = (uint64_t)parsed->table_size * (uint64_t)parsed->cluster_size;
 
     /* The virtual size is whole sectors and no larger than the two table
      * levels can address, entries * entries * cluster_size. */
@@ -344,10 +323,8 @@ static bool xx_qed_parse(Abstractformat *self, xx_qed_private *parsed,
     /* Only the L1 entries the virtual size can reach are read. l1_shift is
      * at most 26 + 27 and image_size at most 2^44, so nothing overflows. */
     l1_shift = parsed->cluster_bits + parsed->entries_bits;
-    needed_l1 = (parsed->image_size + (((uint64_t)1 << l1_shift) - 1U)) >>
-                l1_shift;
-    if (needed_l1 > ((uint64_t)1 << parsed->entries_bits) ||
-        needed_l1 > (uint64_t)XX_QED_MAX_L1_ENTRIES) {
+    needed_l1 = (parsed->image_size + (((uint64_t)1 << l1_shift) - 1U)) >> l1_shift;
+    if (needed_l1 > ((uint64_t)1 << parsed->entries_bits) || needed_l1 > (uint64_t)XX_QED_MAX_L1_ENTRIES) {
         goto fail;
     }
     parsed->l1_count = (uint32_t)needed_l1;
@@ -355,13 +332,9 @@ static bool xx_qed_parse(Abstractformat *self, xx_qed_private *parsed,
         size_t bytes = (size_t)parsed->l1_count * 8U;
 
         raw_l1 = (uint8_t *)xx_mem_alloc(bytes);
-        parsed->l1_table =
-            (uint64_t *)xx_mem_calloc(parsed->l1_count, sizeof(uint64_t));
+        parsed->l1_table = (uint64_t *)xx_mem_calloc(parsed->l1_count, sizeof(uint64_t));
         if (!raw_l1 || !parsed->l1_table) goto fail;
-        if (!xx_qed_read_at(self->device,
-                            self->base_address +
-                                (int64_t)parsed->l1_table_offset,
-                            raw_l1, bytes)) {
+        if (!xx_qed_read_at(self->device, self->base_address + (int64_t)parsed->l1_table_offset, raw_l1, bytes)) {
             goto fail;
         }
         /* Every reachable L1 entry is checked now, so a table offset that
@@ -369,8 +342,7 @@ static bool xx_qed_parse(Abstractformat *self, xx_qed_private *parsed,
          * is a refusal up front rather than a failure half way through an
          * extraction. */
         for (index = 0U; index < parsed->l1_count; ++index) {
-            uint64_t entry =
-                xx_data_get_u64(raw_l1, bytes, (size_t)index * 8U, false);
+            uint64_t entry = xx_data_get_u64(raw_l1, bytes, (size_t)index * 8U, false);
             if (entry != 0U && !xx_qed_table_offset_ok(parsed, entry)) {
                 goto fail;
             }
@@ -384,9 +356,7 @@ static bool xx_qed_parse(Abstractformat *self, xx_qed_private *parsed,
         /* The name has to sit inside the header area; QEMU refuses the
          * image otherwise. header_bytes <= L1 offset < file_size, so this
          * range is inside the device as well. */
-        if ((uint64_t)parsed->backing_filename_offset +
-                (uint64_t)parsed->backing_filename_size >
-            parsed->header_bytes) {
+        if ((uint64_t)parsed->backing_filename_offset + (uint64_t)parsed->backing_filename_size > parsed->header_bytes) {
             goto fail;
         }
         parsed->backing_file = xx_qed_read_backing_file(self->device, parsed);
@@ -404,13 +374,10 @@ fail:
 /* Map one guest cluster. Returns 1 with *host set for an allocated cluster,
  * 0 for a cluster that reads as zeros (unallocated or a zero cluster), and
  * -1 when the L2 entry is corrupt or cannot be read. */
-static int xx_qed_map_cluster(Abstractformat *self,
-                              const xx_qed_private *parsed,
-                              xx_qed_l2_cache *cache, uint64_t cluster,
-                              uint64_t *host) {
+static int xx_qed_map_cluster(Abstractformat *self, const xx_qed_private *parsed, xx_qed_l2_cache *cache, uint64_t cluster, uint64_t *host)
+{
     uint64_t l1_index = cluster >> parsed->entries_bits;
-    uint64_t l2_index =
-        cluster & (((uint64_t)1 << parsed->entries_bits) - 1U);
+    uint64_t l2_index = cluster & (((uint64_t)1 << parsed->entries_bits) - 1U);
     uint64_t first = l2_index - l2_index % (uint64_t)cache->entries;
     uint64_t table;
     uint64_t entry;
@@ -426,17 +393,13 @@ static int xx_qed_map_cluster(Abstractformat *self,
             uint64_t left = (parsed->table_bytes / 8U) - first;
             cache->bytes = (left < (uint64_t)cache->entries ? (size_t)left : cache->entries) * 8U;
         }
-        if (!xx_qed_read_at_sized(self->device,
-                            parsed->base_address + (int64_t)table +
-                                (int64_t)(first * 8U),
-                            cache->raw, cache->bytes, cache->io_capacity)) {
+        if (!xx_qed_read_at_sized(self->device, parsed->base_address + (int64_t)table + (int64_t)(first * 8U), cache->raw, cache->bytes, cache->io_capacity)) {
             return -1;
         }
         cache->table = table;
         cache->first = first;
     }
-    entry = xx_data_get_u64(cache->raw, cache->bytes,
-                            (size_t)(l2_index - first) * 8U, false);
+    entry = xx_data_get_u64(cache->raw, cache->bytes, (size_t)(l2_index - first) * 8U, false);
     if (entry == XX_QED_CLUSTER_UNALLOCATED || entry == XX_QED_CLUSTER_ZERO) {
         return 0;
     }
@@ -452,9 +415,8 @@ static int xx_qed_map_cluster(Abstractformat *self,
  * terabytes, and mapping every cluster of that just to answer "is this
  * readable?" is a denial of service with no destination to show for it.
  * With a destination the caller has asked for the whole disk and gets it. */
-static bool xx_qed_write_image(Abstractformat *self,
-                               const xx_qed_private *parsed,
-                               xx_io_device *output, xx_pd_struct *pd) {
+static bool xx_qed_write_image(Abstractformat *self, const xx_qed_private *parsed, xx_io_device *output, xx_pd_struct *pd)
+{
     xx_qed_l2_cache *cache;
     const size_t io_capacity = xx_get_file_buffer_size();
     uint8_t *buffer;
@@ -475,13 +437,15 @@ static bool xx_qed_write_image(Abstractformat *self,
     cache->entries = io_capacity / 8U;
     cache->raw = cache->entries ? (uint8_t *)xx_mem_alloc(io_capacity) : cache->single_entry;
     if (!cache->entries) cache->entries = 1U;
-    if (!cache->raw) { xx_mem_free(cache); xx_mem_free(buffer); return false; }
+    if (!cache->raw) {
+        xx_mem_free(cache);
+        xx_mem_free(buffer);
+        return false;
+    }
     cache->table = 0U;
     cache->first = 0U;
     while (remaining != 0U && budget != 0U) {
-        uint64_t chunk = remaining < (uint64_t)parsed->cluster_size
-                             ? remaining
-                             : (uint64_t)parsed->cluster_size;
+        uint64_t chunk = remaining < (uint64_t)parsed->cluster_size ? remaining : (uint64_t)parsed->cluster_size;
         uint64_t host = 0U;
         uint64_t done = 0U;
         int kind;
@@ -496,9 +460,7 @@ static bool xx_qed_write_image(Abstractformat *self,
             break;
         }
         while (output && done < chunk) {
-            size_t piece = chunk - done < (uint64_t)io_capacity
-                               ? (size_t)(chunk - done)
-                               : (size_t)io_capacity;
+            size_t piece = chunk - done < (uint64_t)io_capacity ? (size_t)(chunk - done) : (size_t)io_capacity;
             if (kind == 0) {
                 if (!buffer_is_zero) {
                     xx_mem_zero(buffer, io_capacity);
@@ -507,10 +469,7 @@ static bool xx_qed_write_image(Abstractformat *self,
             } else {
                 /* host + cluster_size <= file_size, checked by the map. */
                 buffer_is_zero = false;
-                if (!xx_qed_read_at(self->device,
-                                    parsed->base_address + (int64_t)host +
-                                        (int64_t)done,
-                                    buffer, piece)) {
+                if (!xx_qed_read_at(self->device, parsed->base_address + (int64_t)host + (int64_t)done, buffer, piece)) {
                     result = false;
                     break;
                 }
@@ -534,8 +493,8 @@ static bool xx_qed_write_image(Abstractformat *self,
 
 /* ------------------------------------------------------------ lifecycle -- */
 
-void xx_qemu_enhanced_disk_init(xx_qemu_enhanced_disk *archive,
-                                xx_io_device *dev, int64_t base_address) {
+void xx_qemu_enhanced_disk_init(xx_qemu_enhanced_disk *archive, xx_io_device *dev, int64_t base_address)
+{
     if (!archive) return;
     xx_mem_zero(archive, sizeof(*archive));
     xx_format_init(&archive->format, dev, base_address);
@@ -548,31 +507,25 @@ void xx_qemu_enhanced_disk_init(xx_qemu_enhanced_disk *archive,
     archive->format.check_is_valid = xx_qemu_enhanced_disk_check_is_valid;
     archive->format.handle_base_info = xx_qemu_enhanced_disk_handle_base_info;
     archive->format.get_format_size = xx_qemu_enhanced_disk_get_format_size;
-    archive->format.get_number_of_archive_records =
-        xx_qemu_enhanced_disk_get_number_of_archive_records;
-    archive->format.create_archive_records_reading =
-        xx_qemu_enhanced_disk_create_archive_records_reading;
-    archive->format.get_current_archive_record =
-        xx_qemu_enhanced_disk_get_current_archive_record;
-    archive->format.unpack_current_archive_record =
-        xx_qemu_enhanced_disk_unpack_current_archive_record;
-    archive->format.archive_record_move_to_next =
-        xx_qemu_enhanced_disk_archive_record_move_to_next;
-    archive->format.free_archive_records_reading =
-        xx_qemu_enhanced_disk_free_archive_records_reading;
+    archive->format.get_number_of_archive_records = xx_qemu_enhanced_disk_get_number_of_archive_records;
+    archive->format.create_archive_records_reading = xx_qemu_enhanced_disk_create_archive_records_reading;
+    archive->format.get_current_archive_record = xx_qemu_enhanced_disk_get_current_archive_record;
+    archive->format.unpack_current_archive_record = xx_qemu_enhanced_disk_unpack_current_archive_record;
+    archive->format.archive_record_move_to_next = xx_qemu_enhanced_disk_archive_record_move_to_next;
+    archive->format.free_archive_records_reading = xx_qemu_enhanced_disk_free_archive_records_reading;
     archive->format.destroy = xx_qemu_enhanced_disk_vtable_destroy;
 }
 
-xx_qemu_enhanced_disk *xx_qemu_enhanced_disk_create(xx_io_device *dev,
-                                                    int64_t base_address) {
-    xx_qemu_enhanced_disk *archive =
-        (xx_qemu_enhanced_disk *)xx_mem_alloc(sizeof(*archive));
+xx_qemu_enhanced_disk *xx_qemu_enhanced_disk_create(xx_io_device *dev, int64_t base_address)
+{
+    xx_qemu_enhanced_disk *archive = (xx_qemu_enhanced_disk *)xx_mem_alloc(sizeof(*archive));
 
     if (archive) xx_qemu_enhanced_disk_init(archive, dev, base_address);
     return archive;
 }
 
-void xx_qemu_enhanced_disk_destroy(xx_qemu_enhanced_disk *archive) {
+void xx_qemu_enhanced_disk_destroy(xx_qemu_enhanced_disk *archive)
+{
     if (!archive) return;
     if (archive->internal) {
         xx_qed_private_free(archive->internal);
@@ -581,11 +534,13 @@ void xx_qemu_enhanced_disk_destroy(xx_qemu_enhanced_disk *archive) {
     xx_format_cleanup_extra_parameters(&archive->format);
 }
 
-static void xx_qemu_enhanced_disk_vtable_destroy(Abstractformat *self) {
+static void xx_qemu_enhanced_disk_vtable_destroy(Abstractformat *self)
+{
     xx_qemu_enhanced_disk_destroy((xx_qemu_enhanced_disk *)self);
 }
 
-void xx_qemu_enhanced_disk_free(xx_qemu_enhanced_disk *archive) {
+void xx_qemu_enhanced_disk_free(xx_qemu_enhanced_disk *archive)
+{
     if (!archive) return;
     xx_qemu_enhanced_disk_destroy(archive);
     xx_mem_free(archive);
@@ -593,8 +548,8 @@ void xx_qemu_enhanced_disk_free(xx_qemu_enhanced_disk *archive) {
 
 /* --------------------------------------------------------------- format -- */
 
-bool xx_qemu_enhanced_disk_check_is_valid(Abstractformat *self,
-                                          xx_pd_struct *pd) {
+bool xx_qemu_enhanced_disk_check_is_valid(Abstractformat *self, xx_pd_struct *pd)
+{
     xx_qed_private parsed;
     bool result = xx_qed_parse(self, &parsed, pd);
 
@@ -602,8 +557,8 @@ bool xx_qemu_enhanced_disk_check_is_valid(Abstractformat *self,
     return result;
 }
 
-bool xx_qemu_enhanced_disk_handle_base_info(Abstractformat *self,
-                                            xx_pd_struct *pd) {
+bool xx_qemu_enhanced_disk_handle_base_info(Abstractformat *self, xx_pd_struct *pd)
+{
     xx_qemu_enhanced_disk *archive = (xx_qemu_enhanced_disk *)self;
     xx_qed_private *parsed;
 
@@ -628,8 +583,7 @@ bool xx_qemu_enhanced_disk_handle_base_info(Abstractformat *self,
     archive->header_size = parsed->header_size;
     archive->backing_filename_offset = parsed->backing_filename_offset;
     archive->backing_filename_size = parsed->backing_filename_size;
-    archive->has_backing_file =
-        (parsed->features & XX_QED_F_BACKING_FILE) != 0U;
+    archive->has_backing_file = (parsed->features & XX_QED_F_BACKING_FILE) != 0U;
     archive->needs_check = (parsed->features & XX_QED_F_NEED_CHECK) != 0U;
     /* Clusters are appended anywhere in the file and QEMU takes the file's
      * length as the image's extent, so the whole device is the format. */
@@ -642,53 +596,45 @@ bool xx_qemu_enhanced_disk_handle_base_info(Abstractformat *self,
     return true;
 }
 
-int64_t xx_qemu_enhanced_disk_get_format_size(Abstractformat *self,
-                                              xx_pd_struct *pd) {
-    if (!self ||
-        (!self->base_info_handled && !xx_format_handle_base_info(self, pd))) {
+int64_t xx_qemu_enhanced_disk_get_format_size(Abstractformat *self, xx_pd_struct *pd)
+{
+    if (!self || (!self->base_info_handled && !xx_format_handle_base_info(self, pd))) {
         return -1;
     }
     return self->format_size;
 }
 
-uint64_t xx_qemu_enhanced_disk_get_number_of_archive_records(
-    Abstractformat *self, xx_pd_struct *pd) {
-    if (!self ||
-        (!self->base_info_handled && !xx_format_handle_base_info(self, pd))) {
+uint64_t xx_qemu_enhanced_disk_get_number_of_archive_records(Abstractformat *self, xx_pd_struct *pd)
+{
+    if (!self || (!self->base_info_handled && !xx_format_handle_base_info(self, pd))) {
         return 0U;
     }
     return ((xx_qemu_enhanced_disk *)self)->number_of_records;
 }
 
-bool xx_qemu_enhanced_disk_unpack_to_device(xx_qemu_enhanced_disk *archive,
-                                            xx_io_device *output,
-                                            xx_pd_struct *pd) {
+bool xx_qemu_enhanced_disk_unpack_to_device(xx_qemu_enhanced_disk *archive, xx_io_device *output, xx_pd_struct *pd)
+{
     Abstractformat *self = archive ? &archive->format : NULL;
 
-    if (!self || !self->device || !output ||
-        (!self->base_info_handled && !xx_format_handle_base_info(self, pd)) ||
-        !archive->internal) {
+    if (!self || !self->device || !output || (!self->base_info_handled && !xx_format_handle_base_info(self, pd)) || !archive->internal) {
         return false;
     }
-    return xx_qed_write_image(self, (const xx_qed_private *)archive->internal,
-                              output, pd);
+    return xx_qed_write_image(self, (const xx_qed_private *)archive->internal, output, pd);
 }
 
 /* -------------------------------------------------------------- records -- */
 
-static bool xx_qed_copy_options(xx_list_s *destination,
-                                const xx_list_s *source) {
+static bool xx_qed_copy_options(xx_list_s *destination, const xx_list_s *source)
+{
     size_t index;
 
     if (!destination || !source) return source == NULL;
     for (index = 0U; index < source->count; ++index) {
-        const xx_meta *item =
-            (const xx_meta *)xx_list_at((const xx_list_t *)source, index);
+        const xx_meta *item = (const xx_meta *)xx_list_at((const xx_list_t *)source, index);
         xx_meta copy;
         if (!item) continue;
         xx_meta_init(&copy, item->meta_id);
-        if (!xx_var_copy(&copy.var, &item->var) ||
-            !xx_list_append(destination, &copy)) {
+        if (!xx_var_copy(&copy.var, &item->var) || !xx_list_append(destination, &copy)) {
             xx_meta_cleanup(&copy);
             return false;
         }
@@ -696,21 +642,20 @@ static bool xx_qed_copy_options(xx_list_s *destination,
     return true;
 }
 
-static const xx_var *xx_qed_find_option(const xx_list_s *options,
-                                        uint32_t meta_id) {
+static const xx_var *xx_qed_find_option(const xx_list_s *options, uint32_t meta_id)
+{
     size_t index;
 
     if (!options) return NULL;
     for (index = 0U; index < options->count; ++index) {
-        const xx_meta *item =
-            (const xx_meta *)xx_list_at((const xx_list_t *)options, index);
+        const xx_meta *item = (const xx_meta *)xx_list_at((const xx_list_t *)options, index);
         if (item && item->meta_id == meta_id) return &item->var;
     }
     return NULL;
 }
 
-static bool xx_qed_populate_record(xx_archive_record *record,
-                                   const xx_qed_private *parsed) {
+static bool xx_qed_populate_record(xx_archive_record *record, const xx_qed_private *parsed)
+{
     uint64_t stored = (uint64_t)(parsed->input_size - parsed->base_address);
 
     if (!record || !parsed) return false;
@@ -721,34 +666,25 @@ static bool xx_qed_populate_record(xx_archive_record *record,
     /* The guest image is scattered across the file, so there is no single
      * data extent; the record points at the L1 table, which is where reading
      * it begins. */
-    record->data_offset =
-        (int64_t)parsed->l1_table_offset + parsed->base_address;
+    record->data_offset = (int64_t)parsed->l1_table_offset + parsed->base_address;
     record->compressed_size = (int64_t)stored;
-    if (!xx_archive_record_set_original_name(record, XX_QED_MEMBER_NAME) ||
-        !xx_archive_record_set_meta_u64(record, XX_META_ID_UNCOMPRESSED_SIZE,
-                                        parsed->image_size) ||
-        !xx_archive_record_set_meta_u64(record, XX_META_ID_COMPRESSED_SIZE,
-                                        stored) ||
-        !xx_archive_record_set_meta_bool(record, XX_META_ID_IS_FOLDER, false) ||
-        !xx_archive_record_set_meta_bool(record, XX_META_ID_IS_ENCRYPTED,
-                                         false)) {
+    if (!xx_archive_record_set_original_name(record, XX_QED_MEMBER_NAME) || !xx_archive_record_set_meta_u64(record, XX_META_ID_UNCOMPRESSED_SIZE, parsed->image_size) ||
+        !xx_archive_record_set_meta_u64(record, XX_META_ID_COMPRESSED_SIZE, stored) || !xx_archive_record_set_meta_bool(record, XX_META_ID_IS_FOLDER, false) ||
+        !xx_archive_record_set_meta_bool(record, XX_META_ID_IS_ENCRYPTED, false)) {
         return false;
     }
-    if (parsed->backing_file &&
-        !xx_archive_record_set_meta_str(record, XX_META_ID_COMMENT,
-                                        parsed->backing_file)) {
+    if (parsed->backing_file && !xx_archive_record_set_meta_str(record, XX_META_ID_COMMENT, parsed->backing_file)) {
         return false;
     }
     return true;
 }
 
-xx_archive_record_state *xx_qemu_enhanced_disk_create_archive_records_reading(
-    Abstractformat *self, const xx_list_s *options, xx_pd_struct *pd) {
+xx_archive_record_state *xx_qemu_enhanced_disk_create_archive_records_reading(Abstractformat *self, const xx_list_s *options, xx_pd_struct *pd)
+{
     xx_archive_record_state *state;
     xx_qed_private *parsed;
 
-    if (!self || !self->device ||
-        (!self->base_info_handled && !xx_format_handle_base_info(self, pd))) {
+    if (!self || !self->device || (!self->base_info_handled && !xx_format_handle_base_info(self, pd))) {
         return NULL;
     }
     state = (xx_archive_record_state *)xx_mem_alloc(sizeof(*state));
@@ -759,8 +695,7 @@ xx_archive_record_state *xx_qemu_enhanced_disk_create_archive_records_reading(
         return NULL;
     }
     xx_archive_record_state_init(state, self);
-    if (!xx_qed_copy_options(&state->options, options) ||
-        !xx_qed_parse(self, parsed, pd)) {
+    if (!xx_qed_copy_options(&state->options, options) || !xx_qed_parse(self, parsed, pd)) {
         xx_qed_private_free(parsed);
         xx_archive_record_state_free(state);
         return NULL;
@@ -777,19 +712,16 @@ xx_archive_record_state *xx_qemu_enhanced_disk_create_archive_records_reading(
     return state;
 }
 
-const xx_archive_record *xx_qemu_enhanced_disk_get_current_archive_record(
-    Abstractformat *self, xx_archive_record_state *state) {
-    return self && state && state->format == self && state->has_record
-               ? &state->current_record
-               : NULL;
+const xx_archive_record *xx_qemu_enhanced_disk_get_current_archive_record(Abstractformat *self, xx_archive_record_state *state)
+{
+    return self && state && state->format == self && state->has_record ? &state->current_record : NULL;
 }
 
-bool xx_qemu_enhanced_disk_archive_record_move_to_next(
-    Abstractformat *self, xx_archive_record_state *state, xx_pd_struct *pd) {
+bool xx_qemu_enhanced_disk_archive_record_move_to_next(Abstractformat *self, xx_archive_record_state *state, xx_pd_struct *pd)
+{
     xx_qed_private *parsed;
 
-    if (!self || !state || state->format != self || !state->has_record ||
-        (pd && xx_pd_is_stopped(pd))) {
+    if (!self || !state || state->format != self || !state->has_record || (pd && xx_pd_is_stopped(pd))) {
         return false;
     }
     /* One member, so the first step is always the last. */
@@ -801,8 +733,8 @@ bool xx_qemu_enhanced_disk_archive_record_move_to_next(
     return false;
 }
 
-bool xx_qemu_enhanced_disk_unpack_current_archive_record(
-    Abstractformat *self, xx_archive_record_state *state, xx_pd_struct *pd) {
+bool xx_qemu_enhanced_disk_unpack_current_archive_record(Abstractformat *self, xx_archive_record_state *state, xx_pd_struct *pd)
+{
     xx_qed_private *parsed;
     const xx_var *option;
     const char *base = NULL;
@@ -813,8 +745,7 @@ bool xx_qemu_enhanced_disk_unpack_current_archive_record(
     bool result;
     bool created = false;
 
-    if (!self || !self->device || !state || state->format != self ||
-        !state->has_record || (pd && xx_pd_is_stopped(pd))) {
+    if (!self || !self->device || !state || state->format != self || !state->has_record || (pd && xx_pd_is_stopped(pd))) {
         return false;
     }
     parsed = (xx_qed_private *)state->internal_state;
@@ -826,11 +757,9 @@ bool xx_qemu_enhanced_disk_unpack_current_archive_record(
          * a real check that the L2 tables hold up. */
         return xx_qed_write_image(self, parsed, NULL, pd);
     }
-    if (option->type == XX_VAR_TYPE_STRING ||
-        option->type == XX_VAR_TYPE_STRING_VIEW) {
+    if (option->type == XX_VAR_TYPE_STRING || option->type == XX_VAR_TYPE_STRING_VIEW) {
         base = xx_var_get_str(option);
-    } else if (option->type == XX_VAR_TYPE_WSTRING ||
-               option->type == XX_VAR_TYPE_WSTRING_VIEW) {
+    } else if (option->type == XX_VAR_TYPE_WSTRING || option->type == XX_VAR_TYPE_WSTRING_VIEW) {
         owned_base = xx_str_unicode_to_utf8(xx_var_get_wstr(option));
         base = owned_base;
     }
@@ -839,8 +768,7 @@ bool xx_qemu_enhanced_disk_unpack_current_archive_record(
         return false;
     }
     base_length = xx_str_len(base);
-    if (base_length != 0U && base[base_length - 1U] != '/' &&
-        base[base_length - 1U] != '\\') {
+    if (base_length != 0U && base[base_length - 1U] != '/' && base[base_length - 1U] != '\\') {
         destination = xx_str_concat3(base, "/", XX_QED_MEMBER_NAME);
     } else {
         destination = xx_str_concat(base, XX_QED_MEMBER_NAME);
@@ -860,33 +788,32 @@ bool xx_qemu_enhanced_disk_unpack_current_archive_record(
     return result;
 }
 
-void xx_qemu_enhanced_disk_free_archive_records_reading(
-    Abstractformat *self, xx_archive_record_state *state) {
+void xx_qemu_enhanced_disk_free_archive_records_reading(Abstractformat *self, xx_archive_record_state *state)
+{
     (void)self;
     xx_archive_record_state_free(state);
 }
 
 /* ------------------------------------------------------------ accessors -- */
 
-uint64_t xx_qemu_enhanced_disk_get_image_size(
-    const xx_qemu_enhanced_disk *archive) {
+uint64_t xx_qemu_enhanced_disk_get_image_size(const xx_qemu_enhanced_disk *archive)
+{
     return archive ? archive->image_size : 0U;
 }
-uint32_t xx_qemu_enhanced_disk_get_cluster_size(
-    const xx_qemu_enhanced_disk *archive) {
+uint32_t xx_qemu_enhanced_disk_get_cluster_size(const xx_qemu_enhanced_disk *archive)
+{
     return archive ? archive->cluster_size : 0U;
 }
-uint32_t xx_qemu_enhanced_disk_get_table_size(
-    const xx_qemu_enhanced_disk *archive) {
+uint32_t xx_qemu_enhanced_disk_get_table_size(const xx_qemu_enhanced_disk *archive)
+{
     return archive ? archive->table_size : 0U;
 }
-uint64_t xx_qemu_enhanced_disk_get_features(
-    const xx_qemu_enhanced_disk *archive) {
+uint64_t xx_qemu_enhanced_disk_get_features(const xx_qemu_enhanced_disk *archive)
+{
     return archive ? archive->features : 0U;
 }
-const char *xx_qemu_enhanced_disk_get_backing_file(
-    const xx_qemu_enhanced_disk *archive) {
-    const xx_qed_private *parsed =
-        archive ? (const xx_qed_private *)archive->internal : NULL;
+const char *xx_qemu_enhanced_disk_get_backing_file(const xx_qemu_enhanced_disk *archive)
+{
+    const xx_qed_private *parsed = archive ? (const xx_qed_private *)archive->internal : NULL;
     return parsed ? parsed->backing_file : NULL;
 }

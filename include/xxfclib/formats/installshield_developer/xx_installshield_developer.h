@@ -47,8 +47,8 @@ typedef struct xx_installshield_developer {
     int64_t payload_offset;  /**< Overlay offset, relative to base_address. */
     int64_t payload_end;     /**< End of the last complete member. */
     uint32_t declared_count; /**< The file count in the payload header. */
-    bool damaged; /**< The chain stops early: truncated or corrupt tail. */
-    bool has_certificate; /**< A certificate table follows the chain. */
+    bool damaged;            /**< The chain stops early: truncated or corrupt tail. */
+    bool has_certificate;    /**< A certificate table follows the chain. */
 } xx_installshield_developer;
 
 typedef xx_installshield_developer xx_installshield_developer_t;
@@ -58,37 +58,21 @@ typedef xx_installshield_developer xx_installshield_developer_t;
 /** Size of one member record header. */
 #define XX_INSTALLSHIELD_DEVELOPER_RECORD_SIZE 0x138
 
-XXFC_API void xx_installshield_developer_init(
-    xx_installshield_developer *archive, xx_io_device *device,
-    int64_t base_address);
-XXFC_API xx_installshield_developer *xx_installshield_developer_create(
-    xx_io_device *device, int64_t base_address);
-XXFC_API void xx_installshield_developer_destroy(
-    xx_installshield_developer *archive);
-XXFC_API void xx_installshield_developer_free(
-    xx_installshield_developer *archive);
+XXFC_API void xx_installshield_developer_init(xx_installshield_developer *archive, xx_io_device *device, int64_t base_address);
+XXFC_API xx_installshield_developer *xx_installshield_developer_create(xx_io_device *device, int64_t base_address);
+XXFC_API void xx_installshield_developer_destroy(xx_installshield_developer *archive);
+XXFC_API void xx_installshield_developer_free(xx_installshield_developer *archive);
 
-XXFC_API bool xx_installshield_developer_check_is_valid(Abstractformat *self,
-                                                        xx_pd_struct *pd);
-XXFC_API bool xx_installshield_developer_handle_base_info(Abstractformat *self,
-                                                          xx_pd_struct *pd);
-XXFC_API int64_t xx_installshield_developer_get_format_size(
-    Abstractformat *self, xx_pd_struct *pd);
-XXFC_API uint64_t xx_installshield_developer_get_number_of_archive_records(
-    Abstractformat *self, xx_pd_struct *pd);
+XXFC_API bool xx_installshield_developer_check_is_valid(Abstractformat *self, xx_pd_struct *pd);
+XXFC_API bool xx_installshield_developer_handle_base_info(Abstractformat *self, xx_pd_struct *pd);
+XXFC_API int64_t xx_installshield_developer_get_format_size(Abstractformat *self, xx_pd_struct *pd);
+XXFC_API uint64_t xx_installshield_developer_get_number_of_archive_records(Abstractformat *self, xx_pd_struct *pd);
 
-XXFC_API xx_archive_record_state *
-xx_installshield_developer_create_archive_records_reading(
-    Abstractformat *self, const xx_list_s *options, xx_pd_struct *pd);
-XXFC_API const xx_archive_record *
-xx_installshield_developer_get_current_archive_record(
-    Abstractformat *self, xx_archive_record_state *state);
-XXFC_API bool xx_installshield_developer_unpack_current_archive_record(
-    Abstractformat *self, xx_archive_record_state *state, xx_pd_struct *pd);
-XXFC_API bool xx_installshield_developer_archive_record_move_to_next(
-    Abstractformat *self, xx_archive_record_state *state, xx_pd_struct *pd);
-XXFC_API void xx_installshield_developer_free_archive_records_reading(
-    Abstractformat *self, xx_archive_record_state *state);
+XXFC_API xx_archive_record_state *xx_installshield_developer_create_archive_records_reading(Abstractformat *self, const xx_list_s *options, xx_pd_struct *pd);
+XXFC_API const xx_archive_record *xx_installshield_developer_get_current_archive_record(Abstractformat *self, xx_archive_record_state *state);
+XXFC_API bool xx_installshield_developer_unpack_current_archive_record(Abstractformat *self, xx_archive_record_state *state, xx_pd_struct *pd);
+XXFC_API bool xx_installshield_developer_archive_record_move_to_next(Abstractformat *self, xx_archive_record_state *state, xx_pd_struct *pd);
+XXFC_API void xx_installshield_developer_free_archive_records_reading(Abstractformat *self, xx_archive_record_state *state);
 
 #ifdef __cplusplus
 }

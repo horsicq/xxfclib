@@ -7,11 +7,14 @@
 extern "C" {
 #endif
 typedef xx_volume xx_fossil_fs;
-XXFC_API void xx_fossil_fs_init(xx_fossil_fs *,xx_io_device *,int64_t);
-XXFC_API xx_fossil_fs *xx_fossil_fs_create(xx_io_device *,int64_t);
+XXFC_API void xx_fossil_fs_init(xx_fossil_fs *, xx_io_device *, int64_t);
+XXFC_API xx_fossil_fs *xx_fossil_fs_create(xx_io_device *, int64_t);
 XXFC_API void xx_fossil_fs_destroy(xx_fossil_fs *);
 XXFC_API void xx_fossil_fs_free(xx_fossil_fs *);
-static inline Abstractformat *xx_fossil_fs_to_format(xx_fossil_fs *r) { return r?&r->format:NULL; }
+static inline Abstractformat *xx_fossil_fs_to_format(xx_fossil_fs *r)
+{
+    return r ? &r->format : NULL;
+}
 #ifdef __cplusplus
 }
 #endif

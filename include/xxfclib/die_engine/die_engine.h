@@ -109,7 +109,11 @@ XXFC_API int xft_check(XFileType databaseType, XFileType fileType);
 /** @brief Opaque engine state. Defined in src/die_engine/. */
 typedef struct DieEngine DieEngine;
 
-typedef enum { DB_MAIN = 0, DB_EXTRA, DB_CUSTOM } DBKind;
+typedef enum {
+    DB_MAIN = 0,
+    DB_EXTRA,
+    DB_CUSTOM
+} DBKind;
 
 typedef struct {
     char *pName;     /* file name including the extension, e.g. "_PE.0.sg" */
@@ -205,7 +209,6 @@ typedef struct {
 
 XXFC_API void scan_result_free(ScanResult *pResult);
 
-
 /* ---------------------------------------------------------------- scan  */
 
 XXFC_API int die_engine_scan_file(const char *pFileName, DBase *pDb, ScanOptions *pOptions, ScanResult *pResult);
@@ -214,16 +217,14 @@ XXFC_API int die_engine_scan_file(const char *pFileName, DBase *pDb, ScanOptions
  * detection, including its COM/binary fallback passes. An explicit type runs
  * exactly that type's pass and reports that type in the result. Invalid types
  * fail with an empty result. */
-XXFC_API int die_engine_scan_file_type(const char *pFileName, DBase *pDb,
-    ScanOptions *pOptions, XFileType fileType, ScanResult *pResult);
+XXFC_API int die_engine_scan_file_type(const char *pFileName, DBase *pDb, ScanOptions *pOptions, XFileType fileType, ScanResult *pResult);
 
 /* Enumerates detected types without scanning signature databases. The preferred
  * type is first, followed by the other detected types in descending type order.
  * Names can be obtained with xft_to_string(). No callback runs when opening or
  * reading the file fails. The callback receives no borrowed file state. */
 typedef void (*die_engine_file_type_fn)(XFileType fileType, void *pUserData);
-XXFC_API int die_engine_detect_file_types(const char *pFileName,
-    die_engine_file_type_fn pTypeFn, void *pUserData);
+XXFC_API int die_engine_detect_file_types(const char *pFileName, die_engine_file_type_fn pTypeFn, void *pUserData);
 
 /* Scan an entire seekable device without taking ownership. The caller's
  * position is restored before return, even when the scan fails. Use a bounded

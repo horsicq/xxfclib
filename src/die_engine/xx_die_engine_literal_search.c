@@ -72,29 +72,23 @@ struct DieLiteralSearchCache {
     DieLiteralStreamCache *pStream;
 };
 
-static cd_i64 literal_find_native(const unsigned char *pData, size_t nSize,
-                                 const unsigned char *pNeedle, size_t nNeedleSize)
+static cd_i64 literal_find_native(const unsigned char *pData, size_t nSize, const unsigned char *pNeedle, size_t nNeedleSize)
 {
-    return xx_data_find_bytes_buffer_optimize(pData, nSize, 0, pNeedle,
-                                              nNeedleSize, NULL);
+    return xx_data_find_bytes_buffer_optimize(pData, nSize, 0, pNeedle, nNeedleSize, NULL);
 }
 
-static cd_i64 literal_find_native_after(const unsigned char *pData, size_t nSize,
-                                       const unsigned char *pNeedle, size_t nNeedleSize,
-                                       size_t nCursor)
+static cd_i64 literal_find_native_after(const unsigned char *pData, size_t nSize, const unsigned char *pNeedle, size_t nNeedleSize, size_t nCursor)
 {
     cd_i64 nFound;
 
     if (nCursor > nSize || nNeedleSize > nSize - nCursor) {
         return -1;
     }
-    nFound = literal_find_native(pData + nCursor, nSize - nCursor,
-                                pNeedle, nNeedleSize);
+    nFound = literal_find_native(pData + nCursor, nSize - nCursor, pNeedle, nNeedleSize);
     return nFound < 0 ? -1 : (cd_i64)nCursor + nFound;
 }
 
-static void literal_cache_set_owner(DieLiteralSearchCache *pCache,
-                                    const unsigned char *pData, cd_i64 nSize)
+static void literal_cache_set_owner(DieLiteralSearchCache *pCache, const unsigned char *pData, cd_i64 nSize)
 {
     if (pCache->pOwnerData != pData || pCache->nOwnerSize != nSize) {
         pCache->pOwnerData = pData;
@@ -109,13 +103,9 @@ static void literal_cache_set_owner(DieLiteralSearchCache *pCache,
     }
 }
 
-static void literal_aux_begin(DieLiteralSearchCache *pCache,
-                              const unsigned char *pData, size_t nSize,
-                              cd_i64 nOffset, const unsigned char *pNeedle)
+static void literal_aux_begin(DieLiteralSearchCache *pCache, const unsigned char *pData, size_t nSize, cd_i64 nOffset, const unsigned char *pNeedle)
 {
-    if (pCache->pAuxData != pData || pCache->nAuxSize != nSize ||
-        pCache->sAuxAnchor[0] != pNeedle[0] ||
-        pCache->sAuxAnchor[1] != pNeedle[1] || pCache->bAuxDisabled) {
+    if (pCache->pAuxData != pData || pCache->nAuxSize != nSize || pCache->sAuxAnchor[0] != pNeedle[0] || pCache->sAuxAnchor[1] != pNeedle[1] || pCache->bAuxDisabled) {
         pCache->pAuxData = pData;
         pCache->nAuxOffset = nOffset;
         pCache->nAuxSize = nSize;
@@ -129,8 +119,7 @@ static void literal_aux_begin(DieLiteralSearchCache *pCache,
     pCache->bAuxForPrimary = 1;
 }
 
-static void literal_aux_record(DieLiteralSearchCache *pCache,
-                               const struct XXDataLiteralDualBatch *pBatch)
+static void literal_aux_record(DieLiteralSearchCache *pCache, const struct XXDataLiteralDualBatch *pBatch)
 {
     size_t i;
     size_t nCovered = pCache->nAuxCursor;
@@ -146,8 +135,7 @@ static void literal_aux_record(DieLiteralSearchCache *pCache,
             return;
         }
         if (!pCache->pAuxPositions) {
-            pCache->pAuxPositions = (size_t *)x_malloc(
-                LITERAL_INDEX_MAX_POSITIONS * sizeof(size_t));
+            pCache->pAuxPositions = (size_t *)x_malloc(LITERAL_INDEX_MAX_POSITIONS * sizeof(size_t));
         }
         if (!pCache->pAuxPositions) {
             pCache->bAuxDisabled = 1;
@@ -169,9 +157,7 @@ static void literal_aux_record(DieLiteralSearchCache *pCache,
 
 /* Reuse only proved raw-anchor coverage. The native head/tail include all
  * starts outside it, including full needles crossing either byte boundary. */
-static int literal_aux_find(DieLiteralSearchCache *pCache, cd_i64 nOffset,
-                            size_t nSize, const unsigned char *pNeedle,
-                            size_t nNeedleSize, cd_i64 *pFound)
+static int literal_aux_find(DieLiteralSearchCache *pCache, cd_i64 nOffset, size_t nSize, const unsigned char *pNeedle, size_t nNeedleSize, cd_i64 *pFound)
 {
     cd_i64 nEnd = nOffset + (cd_i64)nSize;
     cd_i64 nLastStart = nEnd - (cd_i64)nNeedleSize;
@@ -183,9 +169,7 @@ static int literal_aux_find(DieLiteralSearchCache *pCache, cd_i64 nOffset,
     size_t i;
     cd_i64 nFound;
 
-    if (!pCache->bAuxComplete || pCache->bAuxDisabled || nNeedleSize < 3 ||
-        pCache->sAuxAnchor[0] != pNeedle[0] ||
-        pCache->sAuxAnchor[1] != pNeedle[2]) return 0;
+    if (!pCache->bAuxComplete || pCache->bAuxDisabled || nNeedleSize < 3 || pCache->sAuxAnchor[0] != pNeedle[0] || pCache->sAuxAnchor[1] != pNeedle[2]) return 0;
     nAuxEnd = pCache->nAuxOffset + (cd_i64)pCache->nAuxSize;
     if (nOffset > nAuxEnd - 3 || nLastStart < pCache->nAuxOffset) return 0;
 
@@ -194,15 +178,13 @@ static int literal_aux_find(DieLiteralSearchCache *pCache, cd_i64 nOffset,
         size_t nOverlap = nSize - nHeadSize;
         if (nOverlap > nNeedleSize - 1) nOverlap = nNeedleSize - 1;
         nHeadSize += nOverlap;
-        nFound = literal_find_native(pCache->pOwnerData + nOffset,
-                                     nHeadSize, pNeedle, nNeedleSize);
+        nFound = literal_find_native(pCache->pOwnerData + nOffset, nHeadSize, pNeedle, nNeedleSize);
         if (nFound >= 0) {
             *pFound = nOffset + nFound;
             return 1;
         }
     }
-    nStart = nOffset > pCache->nAuxOffset ?
-        (size_t)(nOffset - pCache->nAuxOffset) : 0;
+    nStart = nOffset > pCache->nAuxOffset ? (size_t)(nOffset - pCache->nAuxOffset) : 0;
     nLow = 0;
     nHigh = pCache->nAuxCount;
     while (nLow < nHigh) {
@@ -211,8 +193,7 @@ static int literal_aux_find(DieLiteralSearchCache *pCache, cd_i64 nOffset,
         else nHigh = nMiddle;
     }
     for (i = nLow; i < pCache->nAuxCount; ++i) {
-        cd_i64 nPosition = pCache->nAuxOffset +
-                           (cd_i64)pCache->pAuxPositions[i];
+        cd_i64 nPosition = pCache->nAuxOffset + (cd_i64)pCache->pAuxPositions[i];
         if (nPosition > nLastStart) break;
         if (!x_memcmp(pCache->pOwnerData + nPosition, pNeedle, nNeedleSize)) {
             *pFound = nPosition;
@@ -222,9 +203,7 @@ static int literal_aux_find(DieLiteralSearchCache *pCache, cd_i64 nOffset,
     nTailStart = nAuxEnd - 2;
     if (nTailStart < nOffset) nTailStart = nOffset;
     if (nTailStart <= nLastStart) {
-        nFound = literal_find_native(pCache->pOwnerData + nTailStart,
-                                     (size_t)(nEnd - nTailStart),
-                                     pNeedle, nNeedleSize);
+        nFound = literal_find_native(pCache->pOwnerData + nTailStart, (size_t)(nEnd - nTailStart), pNeedle, nNeedleSize);
         *pFound = nFound < 0 ? -1 : nTailStart + nFound;
     } else {
         *pFound = -1;
@@ -232,9 +211,7 @@ static int literal_aux_find(DieLiteralSearchCache *pCache, cd_i64 nOffset,
     return 1;
 }
 
-static void literal_cache_set_window(DieLiteralSearchCache *pCache,
-                                     const unsigned char *pData, size_t nSize,
-                                     const unsigned char *pNeedle)
+static void literal_cache_set_window(DieLiteralSearchCache *pCache, const unsigned char *pData, size_t nSize, const unsigned char *pNeedle)
 {
     pCache->pData = pData;
     pCache->nSize = nSize;
@@ -249,18 +226,15 @@ static void literal_cache_set_window(DieLiteralSearchCache *pCache,
     pCache->bAuxForPrimary = 0;
 }
 
-static cd_i64 literal_find_indexed(DieLiteralSearchCache *pCache,
-                                  const unsigned char *pData, size_t nSize,
-                                  const unsigned char *pNeedle, size_t nNeedleSize,
-                                  cd_i64 nWindowOffset)
+static cd_i64 literal_find_indexed(DieLiteralSearchCache *pCache, const unsigned char *pData, size_t nSize, const unsigned char *pNeedle, size_t nNeedleSize,
+                                   cd_i64 nWindowOffset)
 {
     size_t i;
     struct XXDataLiteralDualBatch sBatch;
     size_t *sPositions = sBatch.adjacent;
     cd_i64 nFound;
 
-    if (pCache->pData != pData || pCache->nSize != nSize ||
-        pCache->sAnchor[0] != pNeedle[0] || pCache->sAnchor[1] != pNeedle[1]) {
+    if (pCache->pData != pData || pCache->nSize != nSize || pCache->sAnchor[0] != pNeedle[0] || pCache->sAnchor[1] != pNeedle[1]) {
         literal_cache_set_window(pCache, pData, nSize, pNeedle);
     }
 
@@ -268,8 +242,7 @@ static cd_i64 literal_find_indexed(DieLiteralSearchCache *pCache,
      * the native SIMD filter already represents this two-byte prefix. Other
      * searches retain the lazy second-query path. */
     if (pCache->bDisabled || (!pCache->bActive && !pCache->bPreviousNegative &&
-                             (nSize - nNeedleSize < LITERAL_INDEX_MIN_WINDOW - 1 ||
-                              !xx_data_can_fuse_literal_prefix(pNeedle, nNeedleSize)))) {
+                              (nSize - nNeedleSize < LITERAL_INDEX_MIN_WINDOW - 1 || !xx_data_can_fuse_literal_prefix(pNeedle, nNeedleSize)))) {
         nFound = literal_find_native(pData, nSize, pNeedle, nNeedleSize);
         if (nFound < 0) {
             pCache->bPreviousNegative = 1;
@@ -281,8 +254,7 @@ static cd_i64 literal_find_indexed(DieLiteralSearchCache *pCache,
      * to this exact window. A complete needle must fit within the window. */
     for (i = 0; i < pCache->nCount; ++i) {
         size_t nPosition = pCache->pPositions[i];
-        if (nNeedleSize <= nSize - nPosition &&
-            !x_memcmp(pData + nPosition, pNeedle, nNeedleSize)) {
+        if (nNeedleSize <= nSize - nPosition && !x_memcmp(pData + nPosition, pNeedle, nNeedleSize)) {
             return (cd_i64)nPosition;
         }
     }
@@ -292,9 +264,7 @@ static cd_i64 literal_find_indexed(DieLiteralSearchCache *pCache,
 
     /* A new auxiliary index must cover starts from zero. The primary cursor
      * may already have advanced before a CPU-feature change enables fusion. */
-    if (!pCache->bAuxForPrimary && pCache->nCursor == 0 &&
-        nSize - nNeedleSize >= LITERAL_INDEX_MIN_WINDOW - 1 &&
-        xx_data_can_fuse_literal_prefix(pNeedle, nNeedleSize)) {
+    if (!pCache->bAuxForPrimary && pCache->nCursor == 0 && nSize - nNeedleSize >= LITERAL_INDEX_MIN_WINDOW - 1 && xx_data_can_fuse_literal_prefix(pNeedle, nNeedleSize)) {
         literal_aux_begin(pCache, pData, nSize, nWindowOffset, pNeedle);
     }
 
@@ -302,25 +272,19 @@ static cd_i64 literal_find_indexed(DieLiteralSearchCache *pCache,
         size_t nNext = pCache->nCursor;
         size_t nCount;
         int bAny;
-        int bDual = pCache->bAuxForPrimary && !pCache->bAuxDisabled &&
-                    !pCache->bAuxComplete;
+        int bDual = pCache->bAuxForPrimary && !pCache->bAuxDisabled && !pCache->bAuxComplete;
 
         if (bDual) {
-            bAny = xx_data_collect_literal_dual_buffer(pData, nSize,
-                pCache->nCursor, pCache->sAnchor, &sBatch) ? 1 : 0;
+            bAny = xx_data_collect_literal_dual_buffer(pData, nSize, pCache->nCursor, pCache->sAnchor, &sBatch) ? 1 : 0;
             nCount = sBatch.adjacent_count;
             nNext = sBatch.next;
-            if (!pCache->bActive && nCount &&
-                nNeedleSize <= nSize - sPositions[0] &&
-                !x_memcmp(pData + sPositions[0], pNeedle, nNeedleSize)) {
+            if (!pCache->bActive && nCount && nNeedleSize <= nSize - sPositions[0] && !x_memcmp(pData + sPositions[0], pNeedle, nNeedleSize)) {
                 pCache->nCursor = 0;
                 return (cd_i64)sPositions[0];
             }
             literal_aux_record(pCache, &sBatch);
         } else {
-            nCount = xx_data_collect_prefixes_buffer(pData, nSize,
-                pCache->nCursor, pCache->sAnchor, sPositions,
-                LITERAL_INDEX_BATCH_POSITIONS, &nNext);
+            nCount = xx_data_collect_prefixes_buffer(pData, nSize, pCache->nCursor, pCache->sAnchor, sPositions, LITERAL_INDEX_BATCH_POSITIONS, &nNext);
             bAny = nCount != 0;
         }
 
@@ -332,8 +296,7 @@ static cd_i64 literal_find_indexed(DieLiteralSearchCache *pCache,
         }
         for (i = 0; i < nCount; ++i) {
             size_t nPosition = sPositions[i];
-            int bMatch = nNeedleSize <= nSize - nPosition &&
-                         !x_memcmp(pData + nPosition, pNeedle, nNeedleSize);
+            int bMatch = nNeedleSize <= nSize - nPosition && !x_memcmp(pData + nPosition, pNeedle, nNeedleSize);
 
             /* An initial positive needs no primary index allocation.
              * Keep the cursor at zero so a later query can still start fresh. */
@@ -343,13 +306,11 @@ static cd_i64 literal_find_indexed(DieLiteralSearchCache *pCache,
             }
             if (!pCache->bActive) {
                 if (!pCache->pPositions) {
-                    pCache->pPositions = (size_t *)x_malloc(
-                        LITERAL_INDEX_MAX_POSITIONS * sizeof(size_t));
+                    pCache->pPositions = (size_t *)x_malloc(LITERAL_INDEX_MAX_POSITIONS * sizeof(size_t));
                 }
                 if (!pCache->pPositions) {
                     pCache->bDisabled = 1;
-                    return literal_find_native_after(pData, nSize, pNeedle,
-                                                     nNeedleSize, nPosition + 1);
+                    return literal_find_native_after(pData, nSize, pNeedle, nNeedleSize, nPosition + 1);
                 }
                 pCache->bActive = 1;
             }
@@ -358,9 +319,7 @@ static cd_i64 literal_find_indexed(DieLiteralSearchCache *pCache,
                  * overflow continue after this one, avoiding a repeated pass.
                  * Future queries use the native finder from the beginning. */
                 pCache->bDisabled = 1;
-                return bMatch ? (cd_i64)nPosition :
-                    literal_find_native_after(pData, nSize, pNeedle,
-                                              nNeedleSize, nPosition + 1);
+                return bMatch ? (cd_i64)nPosition : literal_find_native_after(pData, nSize, pNeedle, nNeedleSize, nPosition + 1);
             }
             pCache->pPositions[pCache->nCount++] = nPosition;
             pCache->nCursor = nPosition + 1;
@@ -384,10 +343,7 @@ static int literal_stream_stopped(DieEngine *pEngine)
     return pEngine->bStop || die_file_read_failed(&pEngine->file);
 }
 
-static const unsigned char *literal_stream_window(DieEngine *pEngine,
-                                                 cd_i64 nOffset, cd_i64 nSize,
-                                                 unsigned char sBridge[3],
-                                                 size_t *pnSize)
+static const unsigned char *literal_stream_window(DieEngine *pEngine, cd_i64 nOffset, cd_i64 nSize, unsigned char sBridge[3], size_t *pnSize)
 {
     const unsigned char *pData;
     size_t nCapacity = die_file_buffer_size(&pEngine->file);
@@ -398,8 +354,7 @@ static const unsigned char *literal_stream_window(DieEngine *pEngine,
     nRequest = (cd_u64)nSize > (cd_u64)nCapacity ? nCapacity : (size_t)nSize;
     *pnSize = nRequest;
     pData = die_file_window(&pEngine->file, nOffset, pnSize);
-    if (!pData || !*pnSize || *pnSize > nRequest ||
-        literal_stream_stopped(pEngine)) {
+    if (!pData || !*pnSize || *pnSize > nRequest || literal_stream_stopped(pEngine)) {
         *pnSize = 0;
         return NULL;
     }
@@ -408,8 +363,7 @@ static const unsigned char *literal_stream_window(DieEngine *pEngine,
      * at that capacity; this fixed bridge never grows with file or needle. */
     if (*pnSize < 3 && nSize > (cd_i64)*pnSize) {
         size_t nBridge = nSize < 3 ? (size_t)nSize : 3;
-        if (!die_file_read_at(&pEngine->file, nOffset, sBridge, nBridge) ||
-            literal_stream_stopped(pEngine)) {
+        if (!die_file_read_at(&pEngine->file, nOffset, sBridge, nBridge) || literal_stream_stopped(pEngine)) {
             *pnSize = 0;
             return NULL;
         }
@@ -421,9 +375,7 @@ static const unsigned char *literal_stream_window(DieEngine *pEngine,
 
 /* The caller has proved that the whole needle fits its logical query. Even
  * a needle larger than the file-buffer capacity is compared piecewise. */
-static int literal_stream_compare(DieEngine *pEngine, cd_i64 nOffset,
-                                  const unsigned char *pNeedle,
-                                  size_t nNeedleSize)
+static int literal_stream_compare(DieEngine *pEngine, cd_i64 nOffset, const unsigned char *pNeedle, size_t nNeedleSize)
 {
     size_t nDone = 0;
     size_t nCapacity = die_file_buffer_size(&pEngine->file);
@@ -456,9 +408,7 @@ static unsigned int literal_stream_byte_weight(unsigned char nByte)
 
 /* A fixed two-byte filter avoids allocating needle-sized overlap storage.
  * It is used when a needle does not comfortably fit the available view. */
-static cd_i64 literal_stream_pair_find(DieEngine *pEngine, cd_i64 nOffset,
-                                      cd_i64 nSize, const unsigned char *pNeedle,
-                                      size_t nNeedleSize)
+static cd_i64 literal_stream_pair_find(DieEngine *pEngine, cd_i64 nOffset, cd_i64 nSize, const unsigned char *pNeedle, size_t nNeedleSize)
 {
     size_t nAnchor = 0;
     unsigned int nWeight = 511;
@@ -470,8 +420,7 @@ static cd_i64 literal_stream_pair_find(DieEngine *pEngine, cd_i64 nOffset,
     for (i = 0; i + 1 < nNeedleSize; ++i) {
         unsigned int nCurrent;
         if ((i & 4095) == 0 && literal_stream_stopped(pEngine)) return -1;
-        nCurrent = literal_stream_byte_weight(pNeedle[i]) +
-                   literal_stream_byte_weight(pNeedle[i + 1]);
+        nCurrent = literal_stream_byte_weight(pNeedle[i]) + literal_stream_byte_weight(pNeedle[i + 1]);
         if (nCurrent < nWeight) {
             nWeight = nCurrent;
             nAnchor = i;
@@ -480,9 +429,7 @@ static cd_i64 literal_stream_pair_find(DieEngine *pEngine, cd_i64 nOffset,
     while (nCursor <= nAnchorSize - 2) {
         unsigned char sBridge[3];
         size_t nViewSize;
-        const unsigned char *pData = literal_stream_window(pEngine,
-            nOffset + (cd_i64)nAnchor + nCursor, nAnchorSize - nCursor,
-            sBridge, &nViewSize);
+        const unsigned char *pData = literal_stream_window(pEngine, nOffset + (cd_i64)nAnchor + nCursor, nAnchorSize - nCursor, sBridge, &nViewSize);
         cd_i64 nFound;
         int nMatch;
 
@@ -494,8 +441,7 @@ static cd_i64 literal_stream_pair_find(DieEngine *pEngine, cd_i64 nOffset,
             continue;
         }
         nCursor += nFound;
-        nMatch = literal_stream_compare(pEngine, nOffset + nCursor,
-                                         pNeedle, nNeedleSize);
+        nMatch = literal_stream_compare(pEngine, nOffset + nCursor, pNeedle, nNeedleSize);
         if (nMatch < 0) return -1;
         if (nMatch) return nOffset + nCursor;
         ++nCursor;
@@ -503,9 +449,7 @@ static cd_i64 literal_stream_pair_find(DieEngine *pEngine, cd_i64 nOffset,
     return -1;
 }
 
-static cd_i64 literal_stream_native(DieEngine *pEngine, cd_i64 nOffset,
-                                   cd_i64 nSize, const unsigned char *pNeedle,
-                                   size_t nNeedleSize)
+static cd_i64 literal_stream_native(DieEngine *pEngine, cd_i64 nOffset, cd_i64 nSize, const unsigned char *pNeedle, size_t nNeedleSize)
 {
     cd_i64 nCursor = 0;
     cd_i64 nLastStart = nSize - (cd_i64)nNeedleSize;
@@ -513,14 +457,12 @@ static cd_i64 literal_stream_native(DieEngine *pEngine, cd_i64 nOffset,
     while (nCursor <= nLastStart) {
         unsigned char sBridge[3];
         size_t nViewSize;
-        const unsigned char *pData = literal_stream_window(pEngine,
-            nOffset + nCursor, nSize - nCursor, sBridge, &nViewSize);
+        const unsigned char *pData = literal_stream_window(pEngine, nOffset + nCursor, nSize - nCursor, sBridge, &nViewSize);
         cd_i64 nFound;
 
         if (!pData) return -1;
         if (nNeedleSize >= 2 && nNeedleSize > nViewSize / 2) {
-            return literal_stream_pair_find(pEngine, nOffset + nCursor,
-                nSize - nCursor, pNeedle, nNeedleSize);
+            return literal_stream_pair_find(pEngine, nOffset + nCursor, nSize - nCursor, pNeedle, nNeedleSize);
         }
         if (nNeedleSize > nViewSize) return -1;
         nFound = literal_find_native(pData, nViewSize, pNeedle, nNeedleSize);
@@ -543,8 +485,7 @@ static void literal_stream_index_reset(DieLiteralStreamIndex *pIndex)
  * buffers. Their entry budget follows the captured file capacity (one entry
  * per capacity byte, capped at 65536); the 64KiB default preserves its budget.
  * A different owner can have a different budget, so release stale storage. */
-static void literal_stream_index_set_capacity(DieLiteralStreamIndex *pIndex,
-                                              size_t nCapacity)
+static void literal_stream_index_set_capacity(DieLiteralStreamIndex *pIndex, size_t nCapacity)
 {
     if (!nCapacity) nCapacity = 1;
     if (nCapacity > LITERAL_INDEX_MAX_POSITIONS) nCapacity = LITERAL_INDEX_MAX_POSITIONS;
@@ -570,8 +511,7 @@ static void literal_stream_abort(DieLiteralStreamCache *pCache)
     pCache->bAuxForPrimary = 0;
 }
 
-static int literal_stream_append(DieLiteralStreamIndex *pIndex, cd_i64 nPosition,
-                                 const unsigned char sPrefix[8], unsigned char nPrefixSize)
+static int literal_stream_append(DieLiteralStreamIndex *pIndex, cd_i64 nPosition, const unsigned char sPrefix[8], unsigned char nPrefixSize)
 {
     if (pIndex->nCount == pIndex->nCapacity) {
         pIndex->bDisabled = 1;
@@ -582,14 +522,13 @@ static int literal_stream_append(DieLiteralStreamIndex *pIndex, cd_i64 nPosition
         size_t nPositionsBytes = pIndex->nCapacity * sizeof(cd_i64);
         size_t nPrefixesBytes = pIndex->nCapacity * LITERAL_STREAM_PREFIX_BYTES;
 
-        pIndex->pStorage = (unsigned char *)x_malloc(
-            nPositionsBytes + nPrefixesBytes + pIndex->nCapacity);
+        pIndex->pStorage = (unsigned char *)x_malloc(nPositionsBytes + nPrefixesBytes + pIndex->nCapacity);
         if (!pIndex->pStorage) {
             pIndex->bDisabled = 1;
             return 0;
         }
         pIndex->pPositions = (cd_i64 *)pIndex->pStorage;
-        pIndex->pPrefixes = (unsigned char (*)[8])(pIndex->pStorage + nPositionsBytes);
+        pIndex->pPrefixes = (unsigned char(*)[8])(pIndex->pStorage + nPositionsBytes);
         pIndex->pPrefixSizes = pIndex->pStorage + nPositionsBytes + nPrefixesBytes;
     }
     pIndex->pPositions[pIndex->nCount] = nPosition;
@@ -599,10 +538,8 @@ static int literal_stream_append(DieLiteralStreamIndex *pIndex, cd_i64 nPosition
     return 1;
 }
 
-static int literal_stream_entry_match(DieEngine *pEngine,
-                                      const DieLiteralStreamIndex *pIndex,
-                                      size_t nEntry, cd_i64 nPosition,
-                                      const unsigned char *pNeedle, size_t nNeedleSize)
+static int literal_stream_entry_match(DieEngine *pEngine, const DieLiteralStreamIndex *pIndex, size_t nEntry, cd_i64 nPosition, const unsigned char *pNeedle,
+                                      size_t nNeedleSize)
 {
     size_t nSaved = pIndex->pPrefixSizes[nEntry];
     size_t nCompare = nSaved < nNeedleSize ? nSaved : nNeedleSize;
@@ -610,15 +547,12 @@ static int literal_stream_entry_match(DieEngine *pEngine,
     if (literal_stream_stopped(pEngine)) return -1;
     if (x_memcmp(pIndex->pPrefixes[nEntry], pNeedle, nCompare)) return 0;
     if (nNeedleSize <= nSaved) return 1;
-    return literal_stream_compare(pEngine, nPosition + (cd_i64)nSaved,
-                                  pNeedle + nSaved, nNeedleSize - nSaved);
+    return literal_stream_compare(pEngine, nPosition + (cd_i64)nSaved, pNeedle + nSaved, nNeedleSize - nSaved);
 }
 
 /* Capture bytes before another reader call can invalidate the borrowed view.
  * Positions at unproved chunk-edge starts are removed from both channels. */
-static size_t literal_stream_capture(const unsigned char *pData, size_t nViewSize,
-                                     size_t nSafeStarts, size_t *pPositions,
-                                     size_t nCount, unsigned char sPrefixes[128][8],
+static size_t literal_stream_capture(const unsigned char *pData, size_t nViewSize, size_t nSafeStarts, size_t *pPositions, size_t nCount, unsigned char sPrefixes[128][8],
                                      unsigned char sSizes[128])
 {
     size_t i;
@@ -637,9 +571,7 @@ static size_t literal_stream_capture(const unsigned char *pData, size_t nViewSiz
     return nKept;
 }
 
-static int literal_stream_aux_find(DieEngine *pEngine, DieLiteralStreamCache *pCache,
-                                   cd_i64 nOffset, cd_i64 nSize,
-                                   const unsigned char *pNeedle, size_t nNeedleSize,
+static int literal_stream_aux_find(DieEngine *pEngine, DieLiteralStreamCache *pCache, cd_i64 nOffset, cd_i64 nSize, const unsigned char *pNeedle, size_t nNeedleSize,
                                    cd_i64 *pFound)
 {
     cd_i64 nEnd = nOffset + nSize;
@@ -651,9 +583,9 @@ static int literal_stream_aux_find(DieEngine *pEngine, DieLiteralStreamCache *pC
     size_t nHigh;
     size_t i;
 
-    if (!pCache->bAuxValid || !pCache->auxiliary.bComplete ||
-        pCache->auxiliary.bDisabled || nNeedleSize < 3 ||
-        pCache->sAuxAnchor[0] != pNeedle[0] || pCache->sAuxAnchor[1] != pNeedle[2]) return 0;
+    if (!pCache->bAuxValid || !pCache->auxiliary.bComplete || pCache->auxiliary.bDisabled || nNeedleSize < 3 || pCache->sAuxAnchor[0] != pNeedle[0] ||
+        pCache->sAuxAnchor[1] != pNeedle[2])
+        return 0;
     nAuxEnd = pCache->nAuxOffset + pCache->nAuxSize;
     if (nOffset > nAuxEnd - 3 || nLastStart < pCache->nAuxOffset) return 0;
     if (nOffset < pCache->nAuxOffset) {
@@ -662,10 +594,15 @@ static int literal_stream_aux_find(DieEngine *pEngine, DieLiteralStreamCache *pC
         cd_i64 nFound;
 
         if ((cd_u64)nOverlap > (cd_u64)nNeedleSize - 1) nOverlap = (cd_i64)nNeedleSize - 1;
-        nFound = literal_stream_native(pEngine, nOffset, nHeadSize + nOverlap,
-                                       pNeedle, nNeedleSize);
-        if (literal_stream_stopped(pEngine)) { *pFound = -1; return 1; }
-        if (nFound >= 0) { *pFound = nFound; return 1; }
+        nFound = literal_stream_native(pEngine, nOffset, nHeadSize + nOverlap, pNeedle, nNeedleSize);
+        if (literal_stream_stopped(pEngine)) {
+            *pFound = -1;
+            return 1;
+        }
+        if (nFound >= 0) {
+            *pFound = nFound;
+            return 1;
+        }
     }
     nStart = nOffset > pCache->nAuxOffset ? nOffset - pCache->nAuxOffset : 0;
     nHigh = pCache->auxiliary.nCount;
@@ -678,35 +615,38 @@ static int literal_stream_aux_find(DieEngine *pEngine, DieLiteralStreamCache *pC
         cd_i64 nPosition = pCache->nAuxOffset + pCache->auxiliary.pPositions[i];
         int nMatch;
         if (nPosition > nLastStart) break;
-        nMatch = literal_stream_entry_match(pEngine, &pCache->auxiliary, i,
-                                            nPosition, pNeedle, nNeedleSize);
-        if (nMatch < 0) { *pFound = -1; return 1; }
-        if (nMatch) { *pFound = nPosition; return 1; }
+        nMatch = literal_stream_entry_match(pEngine, &pCache->auxiliary, i, nPosition, pNeedle, nNeedleSize);
+        if (nMatch < 0) {
+            *pFound = -1;
+            return 1;
+        }
+        if (nMatch) {
+            *pFound = nPosition;
+            return 1;
+        }
     }
     nTail = nAuxEnd - 2;
     if (nTail < nOffset) nTail = nOffset;
-    *pFound = nTail <= nLastStart ? literal_stream_native(pEngine, nTail,
-        nEnd - nTail, pNeedle, nNeedleSize) : -1;
+    *pFound = nTail <= nLastStart ? literal_stream_native(pEngine, nTail, nEnd - nTail, pNeedle, nNeedleSize) : -1;
     return 1;
 }
 
-static cd_i64 literal_stream_indexed(DieEngine *pEngine, DieLiteralStreamCache *pCache,
-                                     cd_i64 nOffset, cd_i64 nSize,
-                                     const unsigned char *pNeedle, size_t nNeedleSize)
+static cd_i64 literal_stream_indexed(DieEngine *pEngine, DieLiteralStreamCache *pCache, cd_i64 nOffset, cd_i64 nSize, const unsigned char *pNeedle, size_t nNeedleSize)
 {
     size_t i;
     cd_i64 nFound;
-    int bFuse = nSize - (cd_i64)nNeedleSize >= (cd_i64)LITERAL_INDEX_MIN_WINDOW - 1 &&
-                xx_data_can_fuse_literal_prefix(pNeedle, nNeedleSize);
+    int bFuse = nSize - (cd_i64)nNeedleSize >= (cd_i64)LITERAL_INDEX_MIN_WINDOW - 1 && xx_data_can_fuse_literal_prefix(pNeedle, nNeedleSize);
 
-    if (!pCache->bWindowValid || pCache->nOffset != nOffset || pCache->nSize != nSize ||
-        pCache->sAnchor[0] != pNeedle[0] || pCache->sAnchor[1] != pNeedle[1]) {
+    if (!pCache->bWindowValid || pCache->nOffset != nOffset || pCache->nSize != nSize || pCache->sAnchor[0] != pNeedle[0] || pCache->sAnchor[1] != pNeedle[1]) {
         literal_stream_index_reset(&pCache->primary);
         pCache->nOffset = nOffset;
         pCache->nSize = nSize;
-        pCache->sAnchor[0] = pNeedle[0]; pCache->sAnchor[1] = pNeedle[1];
+        pCache->sAnchor[0] = pNeedle[0];
+        pCache->sAnchor[1] = pNeedle[1];
         pCache->bWindowValid = 1;
-        pCache->bActive = 0; pCache->bPreviousNegative = 0; pCache->bAuxForPrimary = 0;
+        pCache->bActive = 0;
+        pCache->bPreviousNegative = 0;
+        pCache->bAuxForPrimary = 0;
     }
     if (pCache->primary.bDisabled || (!pCache->bActive && !pCache->bPreviousNegative && !bFuse)) {
         nFound = literal_stream_native(pEngine, nOffset, nSize, pNeedle, nNeedleSize);
@@ -717,19 +657,19 @@ static cd_i64 literal_stream_indexed(DieEngine *pEngine, DieLiteralStreamCache *
         cd_i64 nPosition = pCache->primary.pPositions[i];
         int nMatch;
         if ((cd_i64)nNeedleSize > nSize - nPosition) break;
-        nMatch = literal_stream_entry_match(pEngine, &pCache->primary, i,
-                                            nOffset + nPosition, pNeedle, nNeedleSize);
+        nMatch = literal_stream_entry_match(pEngine, &pCache->primary, i, nOffset + nPosition, pNeedle, nNeedleSize);
         if (nMatch < 0) return -1;
         if (nMatch) return nOffset + nPosition;
     }
     if (pCache->primary.bComplete) return -1;
     if (!pCache->bAuxForPrimary && pCache->primary.nCursor == 0 && bFuse) {
-        if (!pCache->bAuxValid || pCache->nAuxOffset != nOffset || pCache->nAuxSize != nSize ||
-            pCache->sAuxAnchor[0] != pNeedle[0] || pCache->sAuxAnchor[1] != pNeedle[1] ||
-            pCache->auxiliary.bDisabled) {
+        if (!pCache->bAuxValid || pCache->nAuxOffset != nOffset || pCache->nAuxSize != nSize || pCache->sAuxAnchor[0] != pNeedle[0] ||
+            pCache->sAuxAnchor[1] != pNeedle[1] || pCache->auxiliary.bDisabled) {
             literal_stream_index_reset(&pCache->auxiliary);
-            pCache->nAuxOffset = nOffset; pCache->nAuxSize = nSize;
-            pCache->sAuxAnchor[0] = pNeedle[0]; pCache->sAuxAnchor[1] = pNeedle[1];
+            pCache->nAuxOffset = nOffset;
+            pCache->nAuxSize = nSize;
+            pCache->sAuxAnchor[0] = pNeedle[0];
+            pCache->sAuxAnchor[1] = pNeedle[1];
             pCache->bAuxValid = 1;
         }
         pCache->bAuxForPrimary = 1;
@@ -743,27 +683,24 @@ static cd_i64 literal_stream_indexed(DieEngine *pEngine, DieLiteralStreamCache *
         unsigned char sBridge[3];
         cd_i64 nBase = pCache->primary.nCursor;
         size_t nViewSize, nSafeStarts, nNext, nCount, nAuxCount = 0;
-        int bDual = pCache->bAuxForPrimary && !pCache->auxiliary.bDisabled &&
-                    !pCache->auxiliary.bComplete;
-        const unsigned char *pData = literal_stream_window(pEngine,
-            nOffset + nBase, nSize - nBase, sBridge, &nViewSize);
+        int bDual = pCache->bAuxForPrimary && !pCache->auxiliary.bDisabled && !pCache->auxiliary.bComplete;
+        const unsigned char *pData = literal_stream_window(pEngine, nOffset + nBase, nSize - nBase, sBridge, &nViewSize);
 
         if (!pData || nViewSize < 2) return -1;
         nSafeStarts = nViewSize - ((bDual && (cd_i64)nViewSize < nSize - nBase) ? 2 : 1);
         if (bDual) {
             xx_data_collect_literal_dual_buffer(pData, nViewSize, 0, pCache->sAnchor, &sBatch);
-            nCount = sBatch.adjacent_count; nAuxCount = sBatch.skip_count; nNext = sBatch.next;
+            nCount = sBatch.adjacent_count;
+            nAuxCount = sBatch.skip_count;
+            nNext = sBatch.next;
         } else {
-            nCount = xx_data_collect_prefixes_buffer(pData, nViewSize, 0,
-                pCache->sAnchor, sBatch.adjacent, LITERAL_INDEX_BATCH_POSITIONS, &nNext);
+            nCount = xx_data_collect_prefixes_buffer(pData, nViewSize, 0, pCache->sAnchor, sBatch.adjacent, LITERAL_INDEX_BATCH_POSITIONS, &nNext);
         }
         if (literal_stream_stopped(pEngine)) return -1;
         if (nNext > nSafeStarts) nNext = nSafeStarts;
         if (!nNext) return -1;
-        nCount = literal_stream_capture(pData, nViewSize, nSafeStarts, sBatch.adjacent,
-                                        nCount, sPrimaryPrefixes, sPrimarySizes);
-        if (bDual) nAuxCount = literal_stream_capture(pData, nViewSize, nSafeStarts,
-            sBatch.skip, nAuxCount, sAuxPrefixes, sAuxSizes);
+        nCount = literal_stream_capture(pData, nViewSize, nSafeStarts, sBatch.adjacent, nCount, sPrimaryPrefixes, sPrimarySizes);
+        if (bDual) nAuxCount = literal_stream_capture(pData, nViewSize, nSafeStarts, sBatch.skip, nAuxCount, sAuxPrefixes, sAuxSizes);
         /* Preserve the allocation-free first positive behavior. */
         if (!pCache->bActive && nCount) {
             cd_i64 nPosition = nBase + (cd_i64)sBatch.adjacent[0];
@@ -772,21 +709,21 @@ static cd_i64 literal_stream_indexed(DieEngine *pEngine, DieLiteralStreamCache *
             if ((cd_i64)nNeedleSize <= nSize - nPosition) {
                 size_t nCompare = nSaved < nNeedleSize ? nSaved : nNeedleSize;
                 if (!x_memcmp(sPrimaryPrefixes[0], pNeedle, nCompare)) {
-                    nMatch = nNeedleSize <= nSaved ? 1 : literal_stream_compare(pEngine,
-                        nOffset + nPosition + (cd_i64)nSaved,
-                        pNeedle + nSaved, nNeedleSize - nSaved);
+                    nMatch = nNeedleSize <= nSaved ? 1 : literal_stream_compare(pEngine, nOffset + nPosition + (cd_i64)nSaved, pNeedle + nSaved, nNeedleSize - nSaved);
                 }
             }
             if (nMatch < 0) return -1;
-            if (nMatch) { pCache->primary.nCursor = 0; return nOffset + nPosition; }
+            if (nMatch) {
+                pCache->primary.nCursor = 0;
+                return nOffset + nPosition;
+            }
         }
         if (bDual) {
             cd_i64 nCovered = pCache->auxiliary.nCursor;
             for (i = 0; i < nAuxCount; ++i) {
                 cd_i64 nPosition = nBase + (cd_i64)sBatch.skip[i];
                 if (nPosition < nCovered) continue;
-                if (!literal_stream_append(&pCache->auxiliary, nPosition,
-                                           sAuxPrefixes[i], sAuxSizes[i])) break;
+                if (!literal_stream_append(&pCache->auxiliary, nPosition, sAuxPrefixes[i], sAuxSizes[i])) break;
             }
             if (!pCache->auxiliary.bDisabled) {
                 cd_i64 nCoveredEnd = nBase + (cd_i64)nNext;
@@ -803,9 +740,7 @@ static cd_i64 literal_stream_indexed(DieEngine *pEngine, DieLiteralStreamCache *
             if ((cd_i64)nNeedleSize <= nSize - nPosition) {
                 size_t nCompare = nSaved < nNeedleSize ? nSaved : nNeedleSize;
                 if (!x_memcmp(sPrimaryPrefixes[i], pNeedle, nCompare)) {
-                    nMatch = nNeedleSize <= nSaved ? 1 : literal_stream_compare(pEngine,
-                        nOffset + nPosition + (cd_i64)nSaved,
-                        pNeedle + nSaved, nNeedleSize - nSaved);
+                    nMatch = nNeedleSize <= nSaved ? 1 : literal_stream_compare(pEngine, nOffset + nPosition + (cd_i64)nSaved, pNeedle + nSaved, nNeedleSize - nSaved);
                 }
             }
             if (nMatch < 0) return -1;
@@ -813,12 +748,10 @@ static cd_i64 literal_stream_indexed(DieEngine *pEngine, DieLiteralStreamCache *
                 pCache->primary.nCursor = 0;
                 return nOffset + nPosition;
             }
-            if (!literal_stream_append(&pCache->primary, nPosition,
-                                        sPrimaryPrefixes[i], sPrimarySizes[i])) {
+            if (!literal_stream_append(&pCache->primary, nPosition, sPrimaryPrefixes[i], sPrimarySizes[i])) {
                 if (nMatch) return nOffset + nPosition;
-                return nSize - nPosition - 1 >= (cd_i64)nNeedleSize ?
-                    literal_stream_native(pEngine, nOffset + nPosition + 1,
-                        nSize - nPosition - 1, pNeedle, nNeedleSize) : -1;
+                return nSize - nPosition - 1 >= (cd_i64)nNeedleSize ? literal_stream_native(pEngine, nOffset + nPosition + 1, nSize - nPosition - 1, pNeedle, nNeedleSize)
+                                                                    : -1;
             }
             pCache->bActive = 1;
             pCache->primary.nCursor = nPosition + 1;
@@ -832,8 +765,7 @@ static cd_i64 literal_stream_indexed(DieEngine *pEngine, DieLiteralStreamCache *
     return -1;
 }
 
-static cd_i64 literal_stream_find(DieEngine *pEngine, cd_i64 nOffset, cd_i64 nSize,
-                                  const unsigned char *pNeedle, size_t nNeedleSize)
+static cd_i64 literal_stream_find(DieEngine *pEngine, cd_i64 nOffset, cd_i64 nSize, const unsigned char *pNeedle, size_t nNeedleSize)
 {
     DieLiteralStreamCache *pCache;
     cd_i64 nFound;
@@ -842,13 +774,11 @@ static cd_i64 literal_stream_find(DieEngine *pEngine, cd_i64 nOffset, cd_i64 nSi
     if (nNeedleSize < 4 || nSize < (cd_i64)LITERAL_INDEX_MIN_WINDOW) {
         return literal_stream_native(pEngine, nOffset, nSize, pNeedle, nNeedleSize);
     }
-    if (!pEngine->pLiteralSearchCache) pEngine->pLiteralSearchCache =
-        (DieLiteralSearchCache *)x_calloc(1, sizeof(DieLiteralSearchCache));
+    if (!pEngine->pLiteralSearchCache) pEngine->pLiteralSearchCache = (DieLiteralSearchCache *)x_calloc(1, sizeof(DieLiteralSearchCache));
     if (!pEngine->pLiteralSearchCache) {
         return literal_stream_native(pEngine, nOffset, nSize, pNeedle, nNeedleSize);
     }
-    if (!pEngine->pLiteralSearchCache->pStream) pEngine->pLiteralSearchCache->pStream =
-        (DieLiteralStreamCache *)x_calloc(1, sizeof(DieLiteralStreamCache));
+    if (!pEngine->pLiteralSearchCache->pStream) pEngine->pLiteralSearchCache->pStream = (DieLiteralStreamCache *)x_calloc(1, sizeof(DieLiteralStreamCache));
     pCache = pEngine->pLiteralSearchCache->pStream;
     if (!pCache) return literal_stream_native(pEngine, nOffset, nSize, pNeedle, nNeedleSize);
     if (pCache->pOwnerDevice != pEngine->file.pDevice || pCache->nOwnerSize != pEngine->file.nSize) {
@@ -866,9 +796,7 @@ static cd_i64 literal_stream_find(DieEngine *pEngine, cd_i64 nOffset, cd_i64 nSi
     return nFound;
 }
 
-cd_i64 die_engine_literal_find(DieEngine *pEngine, cd_i64 nOffset,
-                              cd_i64 nSize, const unsigned char *pNeedle,
-                              cd_i64 nNeedleSize)
+cd_i64 die_engine_literal_find(DieEngine *pEngine, cd_i64 nOffset, cd_i64 nSize, const unsigned char *pNeedle, cd_i64 nNeedleSize)
 {
     const unsigned char *pData;
     const unsigned char *pWhole;
@@ -880,8 +808,7 @@ cd_i64 die_engine_literal_find(DieEngine *pEngine, cd_i64 nOffset,
     if ((!pEngine->file.pData && !pEngine->file.pDevice) || !pNeedle) {
         return -1;
     }
-    if (nNeedleSize <= 0 || !die_range_clamp(&pEngine->file, nOffset, &nSize) ||
-        nNeedleSize > nSize) {
+    if (nNeedleSize <= 0 || !die_range_clamp(&pEngine->file, nOffset, &nSize) || nNeedleSize > nSize) {
         return -1;
     }
     pWhole = die_file_whole(&pEngine->file, die_file_search_access(&pEngine->file, nSize));
@@ -889,9 +816,7 @@ cd_i64 die_engine_literal_find(DieEngine *pEngine, cd_i64 nOffset,
         if ((cd_u64)nNeedleSize > (cd_u64)SIZE_MAX) return -1;
         return literal_stream_find(pEngine, nOffset, nSize, pNeedle, (size_t)nNeedleSize);
     }
-    if (nNeedleSize < 4 ||
-        nSize < (cd_i64)LITERAL_INDEX_MIN_WINDOW ||
-        (cd_u64)nSize > (cd_u64)SIZE_MAX || (cd_u64)nNeedleSize > (cd_u64)SIZE_MAX) {
+    if (nNeedleSize < 4 || nSize < (cd_i64)LITERAL_INDEX_MIN_WINDOW || (cd_u64)nSize > (cd_u64)SIZE_MAX || (cd_u64)nNeedleSize > (cd_u64)SIZE_MAX) {
         return die_find_bytes(&pEngine->file, nOffset, nSize, pNeedle, nNeedleSize);
     }
     if (!pEngine->pLiteralSearchCache) {
@@ -900,15 +825,12 @@ cd_i64 die_engine_literal_find(DieEngine *pEngine, cd_i64 nOffset,
     if (!pEngine->pLiteralSearchCache) {
         return die_find_bytes(&pEngine->file, nOffset, nSize, pNeedle, nNeedleSize);
     }
-    literal_cache_set_owner(pEngine->pLiteralSearchCache,
-                            pWhole, pEngine->file.nSize);
-    if (literal_aux_find(pEngine->pLiteralSearchCache, nOffset, (size_t)nSize,
-                         pNeedle, (size_t)nNeedleSize, &nFound)) {
+    literal_cache_set_owner(pEngine->pLiteralSearchCache, pWhole, pEngine->file.nSize);
+    if (literal_aux_find(pEngine->pLiteralSearchCache, nOffset, (size_t)nSize, pNeedle, (size_t)nNeedleSize, &nFound)) {
         return nFound;
     }
     pData = pWhole + nOffset;
-    nFound = literal_find_indexed(pEngine->pLiteralSearchCache, pData, (size_t)nSize,
-                                pNeedle, (size_t)nNeedleSize, nOffset);
+    nFound = literal_find_indexed(pEngine->pLiteralSearchCache, pData, (size_t)nSize, pNeedle, (size_t)nNeedleSize, nOffset);
     return nFound < 0 ? -1 : nOffset + nFound;
 }
 

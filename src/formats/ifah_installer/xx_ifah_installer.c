@@ -81,8 +81,8 @@
 #define IFAH_METHOD_DEFLATE 8U
 
 typedef struct ifah_layout_s {
-    int64_t payload;  /**< Absolute offset of the "IFAH" header. */
-    int64_t end;      /**< Absolute end of the last record. */
+    int64_t payload; /**< Absolute offset of the "IFAH" header. */
+    int64_t end;     /**< Absolute end of the last record. */
     uint32_t declared;
     uint32_t count;
     bool is_sfx;
@@ -100,7 +100,8 @@ typedef struct ifah_member_s {
 } ifah_member;
 
 /* The packed stream follows the header and the name. */
-static int64_t ifah_member_data(const ifah_member *member) {
+static int64_t ifah_member_data(const ifah_member *member)
+{
     return member->header + IFAH_RECORD + (int64_t)member->name_length;
 }
 
@@ -113,8 +114,8 @@ typedef struct ifah_stream_s {
     ifah_layout layout;
     ifah_member *items;
     size_t count;
-    size_t index;  /**< Current record. */
-    bool control;  /**< The current record's raw name has a control byte. */
+    size_t index; /**< Current record. */
+    bool control; /**< The current record's raw name has a control byte. */
     char name[IFAH_NAME_BUFFER];
 } ifah_stream;
 
@@ -128,19 +129,17 @@ typedef struct ifah_sink_s {
     uint32_t crc;
 } ifah_sink;
 
-static uint32_t ifah_le16(const uint8_t *bytes) {
+static uint32_t ifah_le16(const uint8_t *bytes)
+{
     return (uint32_t)bytes[0] | ((uint32_t)bytes[1] << 8U);
 }
 
-static bool ifah_read_at(xx_io_device *device, int64_t offset, void *buffer,
-                         size_t size) {
+static bool ifah_read_at(xx_io_device *device, int64_t offset, void *buffer, size_t size)
+{
     size_t done = 0U;
-    if (!device || (!buffer && size != 0U) || offset < 0 ||
-        xx_io_seek64(device, offset, SEEK_SET) != 0)
-        return false;
+    if (!device || (!buffer && size != 0U) || offset < 0 || xx_io_seek64(device, offset, SEEK_SET) != 0) return false;
     while (done < size) {
-        ssize_t amount = xx_io_read(device, (uint8_t *)buffer + done,
-                                    size - done);
+        ssize_t amount = xx_io_read(device, (uint8_t *)buffer + done, size - done);
         if (amount <= 0 || (size_t)amount > size - done) return false;
         done += (size_t)amount;
     }
@@ -149,15 +148,14 @@ static bool ifah_read_at(xx_io_device *device, int64_t offset, void *buffer,
 
 /* ---- output sink ------------------------------------------------------- */
 
-static ssize_t ifah_sink_write(xx_io_device *self, const void *buffer,
-                               size_t n) {
+static ssize_t ifah_sink_write(xx_io_device *self, const void *buffer, size_t n)
+{
     ifah_sink *sink = self ? (ifah_sink *)self->priv : NULL;
     size_t done = 0U;
     if (!sink || (!buffer && n != 0U)) return -1;
     if ((uint64_t)n > sink->limit - sink->written) return -1;
     while (sink->target && done < n) {
-        ssize_t amount = xx_io_write(sink->target,
-                                     (const uint8_t *)buffer + done, n - done);
+        ssize_t amount = xx_io_write(sink->target, (const uint8_t *)buffer + done, n - done);
         if (amount <= 0 || (size_t)amount > n - done) return -1;
         done += (size_t)amount;
     }
@@ -166,8 +164,8 @@ static ssize_t ifah_sink_write(xx_io_device *self, const void *buffer,
     return (ssize_t)n;
 }
 
-static void ifah_sink_init(ifah_sink *sink, xx_io_device *target,
-                           uint64_t limit) {
+static void ifah_sink_init(ifah_sink *sink, xx_io_device *target, uint64_t limit)
+{
     xx_mem_zero(sink, sizeof(*sink));
     sink->device.write = ifah_sink_write;
     sink->device.priv = sink;
@@ -181,8 +179,8 @@ static void ifah_sink_init(ifah_sink *sink, xx_io_device *target,
 /* Raw name -> ASCII path (see the header).  `out` holds at least
  * 3 * length + 1 bytes; returns the converted length.  `control` reports a
  * byte below 0x20 or 0x7F, which makes the name unsafe to extract. */
-static size_t ifah_convert_name(const uint8_t *raw, size_t length, char *out,
-                                bool *control) {
+static size_t ifah_convert_name(const uint8_t *raw, size_t length, char *out, bool *control)
+{
     static const char digits[] = "0123456789ABCDEF";
     size_t at = 0U, index;
     bool found = false;
@@ -207,13 +205,13 @@ static size_t ifah_convert_name(const uint8_t *raw, size_t length, char *out,
 /* 64-bit FNV-1a with ASCII folded to lower case, so names that a
  * case-insensitive file system treats as one hash alike.  A collision
  * between different names only renames a member needlessly. */
-static uint64_t ifah_name_hash(const char *name, size_t length) {
+static uint64_t ifah_name_hash(const char *name, size_t length)
+{
     uint64_t hash = UINT64_C(0xcbf29ce484222325);
     size_t index;
     for (index = 0U; index < length; ++index) {
         uint8_t c = (uint8_t)name[index];
-        if (c >= (uint8_t)'A' && c <= (uint8_t)'Z')
-            c = (uint8_t)(c - (uint8_t)'A' + (uint8_t)'a');
+        if (c >= (uint8_t)'A' && c <= (uint8_t)'Z') c = (uint8_t)(c - (uint8_t)'A' + (uint8_t)'a');
         hash ^= (uint64_t)c;
         hash *= UINT64_C(0x100000001b3);
     }
@@ -222,7 +220,8 @@ static uint64_t ifah_name_hash(const char *name, size_t length) {
 
 /* Insert "%_<index>" before the extension of the last component (or append
  * it when there is none).  `name` has room for IFAH_NAME_BUFFER bytes. */
-static void ifah_insert_suffix(char *name, size_t length, uint32_t index) {
+static void ifah_insert_suffix(char *name, size_t length, uint32_t index)
+{
     char suffix[2 + 10];
     char digits[10];
     size_t suffix_length = 0U, digit_count = 0U, component = 0U, at, tail;
@@ -243,23 +242,20 @@ static void ifah_insert_suffix(char *name, size_t length, uint32_t index) {
     while (digit_count != 0U) suffix[suffix_length++] = digits[--digit_count];
     if (length + suffix_length >= IFAH_NAME_BUFFER) return;
     tail = length - dot;
-    for (at = tail + 1U; at > 0U; --at)
-        name[dot + suffix_length + at - 1U] = name[dot + at - 1U];
+    for (at = tail + 1U; at > 0U; --at) name[dot + suffix_length + at - 1U] = name[dot + at - 1U];
     xx_rt_memcpy(name + dot, suffix, suffix_length);
 }
 
 /* A Windows device name (CON, PRN, AUX, NUL, COM0-9, LPT0-9, CLOCK$, CONIN$,
  * CONOUT$) as the part of a component before its first '.', trailing spaces
  * ignored. */
-static bool ifah_reserved_component(const char *segment, size_t length) {
-    static const char *const devices[] = {"CON",    "PRN",    "AUX",
-                                          "NUL",    "CLOCK$", "CONIN$",
-                                          "CONOUT$"};
+static bool ifah_reserved_component(const char *segment, size_t length)
+{
+    static const char *const devices[] = {"CON", "PRN", "AUX", "NUL", "CLOCK$", "CONIN$", "CONOUT$"};
     char stem[8];
     size_t stem_length = 0U, index;
     while (stem_length < length && segment[stem_length] != '.') ++stem_length;
-    while (stem_length != 0U && segment[stem_length - 1U] == ' ')
-        --stem_length;
+    while (stem_length != 0U && segment[stem_length - 1U] == ' ') --stem_length;
     if (stem_length < 3U || stem_length > sizeof(stem) - 1U) return false;
     for (index = 0U; index < stem_length; ++index) {
         char c = segment[index];
@@ -267,13 +263,10 @@ static bool ifah_reserved_component(const char *segment, size_t length) {
     }
     stem[stem_length] = 0;
     if (stem_length == 4U && stem[3] >= '0' && stem[3] <= '9' &&
-        ((stem[0] == 'C' && stem[1] == 'O' && stem[2] == 'M') ||
-         (stem[0] == 'L' && stem[1] == 'P' && stem[2] == 'T')))
+        ((stem[0] == 'C' && stem[1] == 'O' && stem[2] == 'M') || (stem[0] == 'L' && stem[1] == 'P' && stem[2] == 'T')))
         return true;
     for (index = 0U; index < sizeof(devices) / sizeof(devices[0]); ++index)
-        if (xx_str_len(devices[index]) == stem_length &&
-            xx_rt_memcmp(stem, devices[index], stem_length) == 0)
-            return true;
+        if (xx_str_len(devices[index]) == stem_length && xx_rt_memcmp(stem, devices[index], stem_length) == 0) return true;
     return false;
 }
 
@@ -281,23 +274,18 @@ static bool ifah_reserved_component(const char *segment, size_t length) {
  * components, components ending in '.' or ' ' (this covers "." and ".."),
  * device names, control characters and the characters no Windows path may
  * carry. */
-static bool ifah_safe_name(const char *name) {
+static bool ifah_safe_name(const char *name)
+{
     const char *segment;
     const char *at;
     if (!name || !name[0] || name[0] == '/') return false;
     segment = name;
     for (at = name;; ++at) {
         unsigned char c = (unsigned char)*at;
-        if (c == ':' || c == '<' || c == '>' || c == '"' || c == '|' ||
-            c == '?' || c == '*' || c == '\\' || c == 0x7FU ||
-            (c != 0U && c < 0x20U))
-            return false;
+        if (c == ':' || c == '<' || c == '>' || c == '"' || c == '|' || c == '?' || c == '*' || c == '\\' || c == 0x7FU || (c != 0U && c < 0x20U)) return false;
         if (c == '/' || c == 0U) {
             size_t length = (size_t)(at - segment);
-            if (length == 0U || segment[length - 1U] == '.' ||
-                segment[length - 1U] == ' ' ||
-                ifah_reserved_component(segment, length))
-                return false;
+            if (length == 0U || segment[length - 1U] == '.' || segment[length - 1U] == ' ' || ifah_reserved_component(segment, length)) return false;
             if (c == 0U) return true;
             segment = at + 1;
         }
@@ -308,39 +296,30 @@ static bool ifah_safe_name(const char *name) {
 
 /* The end of the section whose raw data ends last, from `base`, or -1 when
  * the image at `base` is not a PE image this reader can read. */
-static int64_t ifah_pe_overlay(xx_io_device *device, int64_t base,
-                               int64_t total) {
+static int64_t ifah_pe_overlay(xx_io_device *device, int64_t base, int64_t total)
+{
     uint8_t dos[IFAH_DOS_HEADER];
     uint8_t pe[IFAH_PE_HEADER];
     uint8_t table[IFAH_PE_MAX_SECTIONS * IFAH_PE_SECTION];
     uint32_t lfanew, sections, optional, index;
     uint64_t end = 0U;
     int64_t table_offset;
-    if (total - base < (int64_t)IFAH_DOS_HEADER ||
-        !ifah_read_at(device, base, dos, sizeof(dos)) || dos[0] != 'M' ||
-        dos[1] != 'Z')
-        return -1;
+    if (total - base < (int64_t)IFAH_DOS_HEADER || !ifah_read_at(device, base, dos, sizeof(dos)) || dos[0] != 'M' || dos[1] != 'Z') return -1;
     lfanew = xx_data_get_u32(dos + 0x3C, 4, 0, false);
-    if (lfanew < 4U || lfanew > IFAH_PE_MAX_LFANEW ||
-        (int64_t)lfanew + IFAH_PE_HEADER > total - base ||
-        !ifah_read_at(device, base + (int64_t)lfanew, pe, sizeof(pe)) ||
+    if (lfanew < 4U || lfanew > IFAH_PE_MAX_LFANEW || (int64_t)lfanew + IFAH_PE_HEADER > total - base || !ifah_read_at(device, base + (int64_t)lfanew, pe, sizeof(pe)) ||
         pe[0] != 'P' || pe[1] != 'E' || pe[2] != 0U || pe[3] != 0U)
         return -1;
     sections = ifah_le16(pe + 6);
     optional = ifah_le16(pe + 20);
     if (sections == 0U || sections > IFAH_PE_MAX_SECTIONS) return -1;
     table_offset = (int64_t)lfanew + IFAH_PE_HEADER + (int64_t)optional;
-    if (table_offset + (int64_t)(sections * IFAH_PE_SECTION) > total - base ||
-        !ifah_read_at(device, base + table_offset, table,
-                      (size_t)sections * IFAH_PE_SECTION))
+    if (table_offset + (int64_t)(sections * IFAH_PE_SECTION) > total - base || !ifah_read_at(device, base + table_offset, table, (size_t)sections * IFAH_PE_SECTION))
         return -1;
     for (index = 0U; index < sections; ++index) {
         const uint8_t *entry = table + (size_t)index * IFAH_PE_SECTION;
         uint32_t raw_size = xx_data_get_u32(entry + 16, 4, 0, false);
         uint32_t raw_pointer = xx_data_get_u32(entry + 20, 4, 0, false);
-        if (raw_size != 0U &&
-            (uint64_t)raw_pointer + (uint64_t)raw_size > end)
-            end = (uint64_t)raw_pointer + (uint64_t)raw_size;
+        if (raw_size != 0U && (uint64_t)raw_pointer + (uint64_t)raw_size > end) end = (uint64_t)raw_pointer + (uint64_t)raw_size;
     }
     if (end == 0U || end > (uint64_t)(total - base)) return -1;
     return (int64_t)end;
@@ -350,55 +329,40 @@ static int64_t ifah_pe_overlay(xx_io_device *device, int64_t base,
  * layout->payload.  With `items` NULL this is the probe and keeps nothing;
  * otherwise it fills items[] and keys[] (exactly layout->count of each),
  * using `name` (IFAH_NAME_BUFFER bytes) to hash every converted name. */
-static bool ifah_walk(xx_io_device *device, int64_t total, ifah_layout *layout,
-                      ifah_member *items, ifah_key *keys, char *name,
-                      xx_pd_struct *pd) {
+static bool ifah_walk(xx_io_device *device, int64_t total, ifah_layout *layout, ifah_member *items, ifah_key *keys, char *name, xx_pd_struct *pd)
+{
     uint8_t header[IFAH_RECORD_MAX];
     int64_t cursor;
     uint32_t count, index;
-    if (layout->payload < 0 ||
-        (int64_t)(IFAH_HEADER + IFAH_RECORD + 2) > total - layout->payload ||
-        !ifah_read_at(device, layout->payload, header, IFAH_HEADER) ||
-        header[0] != 'I' || header[1] != 'F' || header[2] != 'A' ||
-        header[3] != 'H')
+    if (layout->payload < 0 || (int64_t)(IFAH_HEADER + IFAH_RECORD + 2) > total - layout->payload || !ifah_read_at(device, layout->payload, header, IFAH_HEADER) ||
+        header[0] != 'I' || header[1] != 'F' || header[2] != 'A' || header[3] != 'H')
         return false;
     layout->declared = xx_data_get_u32(header + IFAH_SIZE_OFFSET, 4, 0, false);
     count = xx_data_get_u32(header + IFAH_COUNT_OFFSET, 4, 0, false);
-    if (count == 0U || count > IFAH_MAX_RECORDS ||
-        layout->declared > IFAH_MAX_FIELD)
-        return false;
+    if (count == 0U || count > IFAH_MAX_RECORDS || layout->declared > IFAH_MAX_FIELD) return false;
     cursor = layout->payload + IFAH_HEADER;
     for (index = 0U; index < count; ++index) {
         uint32_t unpacked, packed;
         size_t name_length, at;
         int64_t data;
-        if ((index & IFAH_POLL_MASK) == 0U && pd && xx_pd_is_stopped(pd))
-            return false;
-        if ((int64_t)IFAH_RECORD > total - cursor ||
-            !ifah_read_at(device, cursor, header, IFAH_RECORD) ||
-            header[0] != 'I' || header[1] != 'F' || header[2] != 'F' ||
+        if ((index & IFAH_POLL_MASK) == 0U && pd && xx_pd_is_stopped(pd)) return false;
+        if ((int64_t)IFAH_RECORD > total - cursor || !ifah_read_at(device, cursor, header, IFAH_RECORD) || header[0] != 'I' || header[1] != 'F' || header[2] != 'F' ||
             header[3] != 'H')
             return false;
         unpacked = xx_data_get_u32(header + IFAH_UNPACKED_OFFSET, 4, 0, false);
         packed = xx_data_get_u32(header + IFAH_PACKED_OFFSET, 4, 0, false);
         name_length = header[IFAH_NAME_LENGTH_OFFSET];
-        if (unpacked > IFAH_MAX_FIELD || packed > IFAH_MAX_FIELD ||
-            name_length == 0U ||
-            (uint64_t)unpacked > (uint64_t)packed * IFAH_DEFLATE_RATIO +
-                                     (packed ? IFAH_DEFLATE_SLACK : 0U))
+        if (unpacked > IFAH_MAX_FIELD || packed > IFAH_MAX_FIELD || name_length == 0U ||
+            (uint64_t)unpacked > (uint64_t)packed * IFAH_DEFLATE_RATIO + (packed ? IFAH_DEFLATE_SLACK : 0U))
             return false;
-        if ((int64_t)(IFAH_RECORD + name_length) > total - cursor ||
-            !ifah_read_at(device, cursor + IFAH_RECORD, header + IFAH_RECORD,
-                          name_length))
-            return false;
+        if ((int64_t)(IFAH_RECORD + name_length) > total - cursor || !ifah_read_at(device, cursor + IFAH_RECORD, header + IFAH_RECORD, name_length)) return false;
         /* The installer keeps names as C strings. */
         for (at = 0U; at < name_length; ++at)
             if (header[IFAH_RECORD + at] == 0U) return false;
         data = cursor + IFAH_RECORD + (int64_t)name_length;
         if ((int64_t)packed > total - data) return false;
         if (items) {
-            size_t converted = ifah_convert_name(header + IFAH_RECORD,
-                                                 name_length, name, NULL);
+            size_t converted = ifah_convert_name(header + IFAH_RECORD, name_length, name, NULL);
             ifah_member *member = &items[index];
             member->header = cursor;
             member->packed = packed;
@@ -420,20 +384,16 @@ static bool ifah_walk(xx_io_device *device, int64_t total, ifah_layout *layout,
 
 /* Find the package (at the base address, or as the overlay of the PE image
  * there) and walk it. */
-static bool ifah_scan(Abstractformat *format, ifah_layout *layout,
-                      xx_pd_struct *pd) {
+static bool ifah_scan(Abstractformat *format, ifah_layout *layout, xx_pd_struct *pd)
+{
     uint8_t magic[4];
     int64_t total, base;
-    if (!format || !format->device || !layout || format->base_address < 0)
-        return false;
+    if (!format || !format->device || !layout || format->base_address < 0) return false;
     base = format->base_address;
     total = xx_io_total_size(format->device);
-    if (total < base || total - base < (int64_t)(IFAH_HEADER + IFAH_RECORD + 2) ||
-        !ifah_read_at(format->device, base, magic, sizeof(magic)))
-        return false;
+    if (total < base || total - base < (int64_t)(IFAH_HEADER + IFAH_RECORD + 2) || !ifah_read_at(format->device, base, magic, sizeof(magic))) return false;
     xx_mem_zero(layout, sizeof(*layout));
-    if (magic[0] == 'I' && magic[1] == 'F' && magic[2] == 'A' &&
-        magic[3] == 'H') {
+    if (magic[0] == 'I' && magic[1] == 'F' && magic[2] == 'A' && magic[3] == 'H') {
         layout->payload = base;
         layout->is_sfx = false;
     } else if (magic[0] == 'M' && magic[1] == 'Z') {
@@ -444,16 +404,15 @@ static bool ifah_scan(Abstractformat *format, ifah_layout *layout,
     } else {
         return false;
     }
-    if (!ifah_walk(format->device, total, layout, NULL, NULL, NULL, pd))
-        return false;
+    if (!ifah_walk(format->device, total, layout, NULL, NULL, NULL, pd)) return false;
     /* The header gives the size of the whole setup file: exactly what the
      * stub and the chain add up to, and never less than the chain alone. */
-    if (layout->is_sfx)
-        return (int64_t)layout->declared == layout->end - base;
+    if (layout->is_sfx) return (int64_t)layout->declared == layout->end - base;
     return (int64_t)layout->declared >= layout->end - layout->payload;
 }
 
-static int ifah_compare_keys(const void *left, const void *right) {
+static int ifah_compare_keys(const void *left, const void *right)
+{
     const ifah_key *a = (const ifah_key *)left;
     const ifah_key *b = (const ifah_key *)right;
     if (a->hash != b->hash) return a->hash < b->hash ? -1 : 1;
@@ -462,26 +421,25 @@ static int ifah_compare_keys(const void *left, const void *right) {
 
 /* Sorting puts every group of equal (case-folded) names together, lowest
  * record index first; that one keeps its name and the rest are renamed. */
-static void ifah_mark_duplicates(ifah_member *items, ifah_key *keys,
-                                 size_t records) {
+static void ifah_mark_duplicates(ifah_member *items, ifah_key *keys, size_t records)
+{
     size_t index;
     if (records < 2U) return;
     xx_rt_qsort(keys, records, sizeof(*keys), ifah_compare_keys);
     for (index = 1U; index < records; ++index)
-        if (keys[index].hash == keys[index - 1U].hash &&
-            keys[index].index < records)
-            items[keys[index].index].renamed = true;
+        if (keys[index].hash == keys[index - 1U].hash && keys[index].index < records) items[keys[index].index].renamed = true;
 }
 
-static void ifah_stream_free(void *opaque) {
+static void ifah_stream_free(void *opaque)
+{
     ifah_stream *stream = (ifah_stream *)opaque;
     if (!stream) return;
     if (stream->items) xx_mem_free(stream->items);
     xx_mem_free(stream);
 }
 
-static bool ifah_open_stream(Abstractformat *format, ifah_stream **result,
-                             xx_pd_struct *pd) {
+static bool ifah_open_stream(Abstractformat *format, ifah_stream **result, xx_pd_struct *pd)
+{
     ifah_layout layout;
     ifah_stream *stream = NULL;
     ifah_key *keys = NULL;
@@ -492,17 +450,13 @@ static bool ifah_open_stream(Abstractformat *format, ifah_stream **result,
     if (!stream) return false;
     /* At most IFAH_MAX_RECORDS records, each proven by a header in the
      * file: 48 bytes of bookkeeping per record, never more. */
-    stream->items = (ifah_member *)xx_mem_calloc(layout.count,
-                                                 sizeof(*stream->items));
+    stream->items = (ifah_member *)xx_mem_calloc(layout.count, sizeof(*stream->items));
     keys = (ifah_key *)xx_mem_alloc((size_t)layout.count * sizeof(*keys));
     if (!stream->items || !keys) goto fail;
     /* The second walk must see exactly what the first one counted. */
     {
         ifah_layout check = layout;
-        if (!ifah_walk(format->device, total, &check, stream->items, keys,
-                       stream->name, pd) ||
-            check.count != layout.count || check.end != layout.end)
-            goto fail;
+        if (!ifah_walk(format->device, total, &check, stream->items, keys, stream->name, pd) || check.count != layout.count || check.end != layout.end) goto fail;
     }
     ifah_mark_duplicates(stream->items, keys, layout.count);
     xx_mem_free(keys);
@@ -518,40 +472,34 @@ fail:
 
 /* Leave record `index`'s converted (and for a duplicate suffixed) name in
  * stream->name after re-reading and re-checking its header. */
-static bool ifah_load_name(Abstractformat *format, ifah_stream *stream,
-                           size_t index) {
+static bool ifah_load_name(Abstractformat *format, ifah_stream *stream, size_t index)
+{
     uint8_t header[IFAH_RECORD_MAX];
     const ifah_member *member;
     size_t name_length, length;
     if (index >= stream->count) return false;
     member = &stream->items[index];
-    if (!ifah_read_at(format->device, member->header, header, IFAH_RECORD) ||
-        xx_data_get_u32(header + IFAH_PACKED_OFFSET, 4, 0, false) != member->packed ||
+    if (!ifah_read_at(format->device, member->header, header, IFAH_RECORD) || xx_data_get_u32(header + IFAH_PACKED_OFFSET, 4, 0, false) != member->packed ||
         xx_data_get_u32(header + IFAH_UNPACKED_OFFSET, 4, 0, false) != member->unpacked)
         return false;
     name_length = header[IFAH_NAME_LENGTH_OFFSET];
-    if (name_length == 0U || name_length != member->name_length ||
-        !ifah_read_at(format->device, member->header + IFAH_RECORD,
-                      header + IFAH_RECORD, name_length))
+    if (name_length == 0U || name_length != member->name_length || !ifah_read_at(format->device, member->header + IFAH_RECORD, header + IFAH_RECORD, name_length))
         return false;
-    length = ifah_convert_name(header + IFAH_RECORD, name_length,
-                               stream->name, &stream->control);
-    if (member->renamed)
-        ifah_insert_suffix(stream->name, length, (uint32_t)index);
+    length = ifah_convert_name(header + IFAH_RECORD, name_length, stream->name, &stream->control);
+    if (member->renamed) ifah_insert_suffix(stream->name, length, (uint32_t)index);
     return true;
 }
 
-static bool ifah_copy_options(xx_list_s *destination, const xx_list_s *source) {
+static bool ifah_copy_options(xx_list_s *destination, const xx_list_s *source)
+{
     size_t index;
     if (!source) return true;
     for (index = 0U; index < source->count; ++index) {
-        const xx_meta *original =
-            (const xx_meta *)xx_list_at((const xx_list_t *)source, index);
+        const xx_meta *original = (const xx_meta *)xx_list_at((const xx_list_t *)source, index);
         xx_meta copy;
         if (!original) continue;
         xx_meta_init(&copy, original->meta_id);
-        if (!xx_var_copy(&copy.var, &original->var) ||
-            !xx_list_append(destination, &copy)) {
+        if (!xx_var_copy(&copy.var, &original->var) || !xx_list_append(destination, &copy)) {
             xx_meta_cleanup(&copy);
             return false;
         }
@@ -559,8 +507,8 @@ static bool ifah_copy_options(xx_list_s *destination, const xx_list_s *source) {
     return true;
 }
 
-static bool ifah_set_record(Abstractformat *format, xx_archive_record *record,
-                            ifah_stream *stream, size_t index) {
+static bool ifah_set_record(Abstractformat *format, xx_archive_record *record, ifah_stream *stream, size_t index)
+{
     const ifah_member *member;
     xx_archive_record_cleanup(record);
     xx_archive_record_init(record);
@@ -570,46 +518,32 @@ static bool ifah_set_record(Abstractformat *format, xx_archive_record *record,
     record->header_size = IFAH_RECORD + (int64_t)member->name_length;
     record->data_offset = ifah_member_data(member);
     record->compressed_size = (int64_t)member->packed;
-    return xx_archive_record_set_original_name(record, stream->name) &&
-           xx_archive_record_set_meta_u64(record, XX_META_ID_COMPRESSED_SIZE,
-                                          member->packed) &&
-           xx_archive_record_set_meta_u64(record, XX_META_ID_UNCOMPRESSED_SIZE,
-                                          member->unpacked) &&
-           xx_archive_record_set_meta_u64(record, XX_META_ID_CRC32,
-                                          member->crc) &&
-           xx_archive_record_set_meta_u64(record, XX_META_ID_COMPRESSION_METHOD,
-                                          IFAH_METHOD_DEFLATE) &&
-           xx_archive_record_set_meta_u64(record, XX_META_ID_LAST_MOD_TIME,
-                                          member->dos_time) &&
-           xx_archive_record_set_meta_u64(record, XX_META_ID_LAST_MOD_DATE,
-                                          member->dos_date) &&
-           xx_archive_record_set_meta_bool(record, XX_META_ID_IS_ENCRYPTED,
-                                           false) &&
-           xx_archive_record_set_meta_bool(record, XX_META_ID_IS_FOLDER, false);
+    return xx_archive_record_set_original_name(record, stream->name) && xx_archive_record_set_meta_u64(record, XX_META_ID_COMPRESSED_SIZE, member->packed) &&
+           xx_archive_record_set_meta_u64(record, XX_META_ID_UNCOMPRESSED_SIZE, member->unpacked) &&
+           xx_archive_record_set_meta_u64(record, XX_META_ID_CRC32, member->crc) &&
+           xx_archive_record_set_meta_u64(record, XX_META_ID_COMPRESSION_METHOD, IFAH_METHOD_DEFLATE) &&
+           xx_archive_record_set_meta_u64(record, XX_META_ID_LAST_MOD_TIME, member->dos_time) &&
+           xx_archive_record_set_meta_u64(record, XX_META_ID_LAST_MOD_DATE, member->dos_date) &&
+           xx_archive_record_set_meta_bool(record, XX_META_ID_IS_ENCRYPTED, false) && xx_archive_record_set_meta_bool(record, XX_META_ID_IS_FOLDER, false);
 }
 
 /* Inflate record `index` into `destination` (NULL only verifies); succeeds
  * only with exactly the declared size and a matching CRC-32. */
-static bool ifah_extract(Abstractformat *format, const ifah_stream *stream,
-                         size_t index, xx_io_device *destination,
-                         xx_pd_struct *pd) {
+static bool ifah_extract(Abstractformat *format, const ifah_stream *stream, size_t index, xx_io_device *destination, xx_pd_struct *pd)
+{
     const ifah_member *member = &stream->items[index];
     ifah_sink sink;
     ifah_sink_init(&sink, destination, member->unpacked);
     /* No stream at all can only stand for an empty file. */
-    if (member->packed == 0U)
-        return member->unpacked == 0U && member->crc == 0U;
-    return xx_deflate_unpack_device(format->device, ifah_member_data(member),
-                                    (int64_t)member->packed, &sink.device,
-                                    false, pd) &&
-           sink.written == (uint64_t)member->unpacked &&
-           sink.crc == member->crc;
+    if (member->packed == 0U) return member->unpacked == 0U && member->crc == 0U;
+    return xx_deflate_unpack_device(format->device, ifah_member_data(member), (int64_t)member->packed, &sink.device, false, pd) &&
+           sink.written == (uint64_t)member->unpacked && sink.crc == member->crc;
 }
 
 /* ---- public API -------------------------------------------------------- */
 
-void xx_ifah_installer_init(xx_ifah_installer *archive, xx_io_device *device,
-                            int64_t base_address) {
+void xx_ifah_installer_init(xx_ifah_installer *archive, xx_io_device *device, int64_t base_address)
+{
     if (!archive) return;
     xx_mem_zero(archive, sizeof(*archive));
     xx_format_init(&archive->format, device, base_address);
@@ -622,46 +556,41 @@ void xx_ifah_installer_init(xx_ifah_installer *archive, xx_io_device *device,
     archive->format.check_is_valid = xx_ifah_installer_check_is_valid;
     archive->format.handle_base_info = xx_ifah_installer_handle_base_info;
     archive->format.get_format_size = xx_ifah_installer_get_format_size;
-    archive->format.get_number_of_archive_records =
-        xx_ifah_installer_get_number_of_archive_records;
-    archive->format.create_archive_records_reading =
-        xx_ifah_installer_create_archive_records_reading;
-    archive->format.get_current_archive_record =
-        xx_ifah_installer_get_current_archive_record;
-    archive->format.unpack_current_archive_record =
-        xx_ifah_installer_unpack_current_archive_record;
-    archive->format.archive_record_move_to_next =
-        xx_ifah_installer_archive_record_move_to_next;
-    archive->format.free_archive_records_reading =
-        xx_ifah_installer_free_archive_records_reading;
+    archive->format.get_number_of_archive_records = xx_ifah_installer_get_number_of_archive_records;
+    archive->format.create_archive_records_reading = xx_ifah_installer_create_archive_records_reading;
+    archive->format.get_current_archive_record = xx_ifah_installer_get_current_archive_record;
+    archive->format.unpack_current_archive_record = xx_ifah_installer_unpack_current_archive_record;
+    archive->format.archive_record_move_to_next = xx_ifah_installer_archive_record_move_to_next;
+    archive->format.free_archive_records_reading = xx_ifah_installer_free_archive_records_reading;
 }
 
-xx_ifah_installer *xx_ifah_installer_create(xx_io_device *device,
-                                            int64_t base_address) {
-    xx_ifah_installer *archive =
-        (xx_ifah_installer *)xx_mem_alloc(sizeof(*archive));
+xx_ifah_installer *xx_ifah_installer_create(xx_io_device *device, int64_t base_address)
+{
+    xx_ifah_installer *archive = (xx_ifah_installer *)xx_mem_alloc(sizeof(*archive));
     if (archive) xx_ifah_installer_init(archive, device, base_address);
     return archive;
 }
 
-void xx_ifah_installer_destroy(xx_ifah_installer *archive) {
+void xx_ifah_installer_destroy(xx_ifah_installer *archive)
+{
     if (archive) xx_format_cleanup_extra_parameters(&archive->format);
 }
 
-void xx_ifah_installer_free(xx_ifah_installer *archive) {
+void xx_ifah_installer_free(xx_ifah_installer *archive)
+{
     if (!archive) return;
     xx_ifah_installer_destroy(archive);
     xx_mem_free(archive);
 }
 
-bool xx_ifah_installer_check_is_valid(Abstractformat *format,
-                                      xx_pd_struct *pd) {
+bool xx_ifah_installer_check_is_valid(Abstractformat *format, xx_pd_struct *pd)
+{
     ifah_layout layout;
     return ifah_scan(format, &layout, pd);
 }
 
-bool xx_ifah_installer_handle_base_info(Abstractformat *format,
-                                        xx_pd_struct *pd) {
+bool xx_ifah_installer_handle_base_info(Abstractformat *format, xx_pd_struct *pd)
+{
     ifah_layout layout;
     xx_ifah_installer *archive;
     if (!ifah_scan(format, &layout, pd)) return false;
@@ -678,22 +607,18 @@ bool xx_ifah_installer_handle_base_info(Abstractformat *format,
     return true;
 }
 
-int64_t xx_ifah_installer_get_format_size(Abstractformat *format,
-                                          xx_pd_struct *pd) {
-    return format && (format->base_info_handled ||
-                      xx_ifah_installer_handle_base_info(format, pd))
-               ? format->format_size : -1;
+int64_t xx_ifah_installer_get_format_size(Abstractformat *format, xx_pd_struct *pd)
+{
+    return format && (format->base_info_handled || xx_ifah_installer_handle_base_info(format, pd)) ? format->format_size : -1;
 }
 
-uint64_t xx_ifah_installer_get_number_of_archive_records(Abstractformat *format,
-                                                         xx_pd_struct *pd) {
-    return format && (format->base_info_handled ||
-                      xx_ifah_installer_handle_base_info(format, pd))
-               ? ((xx_ifah_installer *)format)->number_of_records : 0U;
+uint64_t xx_ifah_installer_get_number_of_archive_records(Abstractformat *format, xx_pd_struct *pd)
+{
+    return format && (format->base_info_handled || xx_ifah_installer_handle_base_info(format, pd)) ? ((xx_ifah_installer *)format)->number_of_records : 0U;
 }
 
-xx_archive_record_state *xx_ifah_installer_create_archive_records_reading(
-    Abstractformat *format, const xx_list_s *options, xx_pd_struct *pd) {
+xx_archive_record_state *xx_ifah_installer_create_archive_records_reading(Abstractformat *format, const xx_list_s *options, xx_pd_struct *pd)
+{
     ifah_stream *stream;
     xx_archive_record_state *state;
     if (!ifah_open_stream(format, &stream, pd)) return NULL;
@@ -706,8 +631,7 @@ xx_archive_record_state *xx_ifah_installer_create_archive_records_reading(
     state->internal_state = stream;
     state->free_internal = ifah_stream_free;
     state->total_records = (uint64_t)stream->count;
-    if (!ifah_copy_options(&state->options, options) ||
-        !ifah_set_record(format, &state->current_record, stream, 0U)) {
+    if (!ifah_copy_options(&state->options, options) || !ifah_set_record(format, &state->current_record, stream, 0U)) {
         xx_archive_record_state_free(state);
         return NULL;
     }
@@ -715,31 +639,27 @@ xx_archive_record_state *xx_ifah_installer_create_archive_records_reading(
     return state;
 }
 
-const xx_archive_record *xx_ifah_installer_get_current_archive_record(
-    Abstractformat *format, xx_archive_record_state *state) {
-    return format && state && state->format == format && state->has_record
-               ? &state->current_record : NULL;
+const xx_archive_record *xx_ifah_installer_get_current_archive_record(Abstractformat *format, xx_archive_record_state *state)
+{
+    return format && state && state->format == format && state->has_record ? &state->current_record : NULL;
 }
 
-bool xx_ifah_installer_archive_record_move_to_next(
-    Abstractformat *format, xx_archive_record_state *state, xx_pd_struct *pd) {
+bool xx_ifah_installer_archive_record_move_to_next(Abstractformat *format, xx_archive_record_state *state, xx_pd_struct *pd)
+{
     ifah_stream *stream;
     (void)pd;
-    if (!format || !state || state->format != format ||
-        !(stream = (ifah_stream *)state->internal_state) ||
-        stream->index + 1U >= stream->count) {
+    if (!format || !state || state->format != format || !(stream = (ifah_stream *)state->internal_state) || stream->index + 1U >= stream->count) {
         if (state) state->has_record = false;
         return false;
     }
     ++stream->index;
     ++state->current_index;
-    state->has_record =
-        ifah_set_record(format, &state->current_record, stream, stream->index);
+    state->has_record = ifah_set_record(format, &state->current_record, stream, stream->index);
     return state->has_record;
 }
 
-bool xx_ifah_installer_unpack_current_archive_record(
-    Abstractformat *format, xx_archive_record_state *state, xx_pd_struct *pd) {
+bool xx_ifah_installer_unpack_current_archive_record(Abstractformat *format, xx_archive_record_state *state, xx_pd_struct *pd)
+{
     ifah_stream *stream;
     const ifah_member *member;
     const xx_var *option;
@@ -748,37 +668,28 @@ bool xx_ifah_installer_unpack_current_archive_record(
     char *path = NULL;
     bool result = false;
     bool created = false;
-    if (!format || !state || state->format != format || !state->has_record ||
-        !(stream = (ifah_stream *)state->internal_state) ||
-        stream->index >= stream->count || (pd && xx_pd_is_stopped(pd)))
+    if (!format || !state || state->format != format || !state->has_record || !(stream = (ifah_stream *)state->internal_state) || stream->index >= stream->count ||
+        (pd && xx_pd_is_stopped(pd)))
         return false;
     member = &stream->items[stream->index];
-    option = xx_format_resolve_extra_parameter(format, &state->options,
-                                               XX_META_ID_OPT_MAX_MEMBER_SIZE);
-    if (option && (uint64_t)member->unpacked > xx_var_get_u64(option))
-        return false;
-    option = xx_format_resolve_extra_parameter(format, &state->options,
-                                               XX_META_ID_OPT_UNPACK_PATH);
-    if (!option)
-        /* No destination: inflate the record through, which verifies it. */
+    option = xx_format_resolve_extra_parameter(format, &state->options, XX_META_ID_OPT_MAX_MEMBER_SIZE);
+    if (option && (uint64_t)member->unpacked > xx_var_get_u64(option)) return false;
+    option = xx_format_resolve_extra_parameter(format, &state->options, XX_META_ID_OPT_UNPACK_PATH);
+    if (!option) /* No destination: inflate the record through, which verifies it. */
         return ifah_extract(format, stream, stream->index, NULL, pd);
     /* stream->name was built from the file by ifah_load_name: refuse it
      * before anything is created when it could escape the output folder or
      * name a device. */
     if (stream->control || !ifah_safe_name(stream->name)) return false;
-    if (option->type == XX_VAR_TYPE_STRING ||
-        option->type == XX_VAR_TYPE_STRING_VIEW) {
+    if (option->type == XX_VAR_TYPE_STRING || option->type == XX_VAR_TYPE_STRING_VIEW) {
         base = xx_var_get_str(option);
-    } else if (option->type == XX_VAR_TYPE_WSTRING ||
-               option->type == XX_VAR_TYPE_WSTRING_VIEW) {
+    } else if (option->type == XX_VAR_TYPE_WSTRING || option->type == XX_VAR_TYPE_WSTRING_VIEW) {
         owned_base = xx_str_unicode_to_utf8(xx_var_get_wstr(option));
         base = owned_base;
     }
     if (!base) goto done;
-    path = (base[0] && base[xx_str_len(base) - 1U] != '/' &&
-            base[xx_str_len(base) - 1U] != '\\')
-               ? xx_str_concat3(base, "/", stream->name)
-               : xx_str_concat(base, stream->name);
+    path = (base[0] && base[xx_str_len(base) - 1U] != '/' && base[xx_str_len(base) - 1U] != '\\') ? xx_str_concat3(base, "/", stream->name)
+                                                                                                  : xx_str_concat(base, stream->name);
     if (!path || !xx_store_create_dirs_a(path, false)) goto done;
     {
         xx_io_device *destination = xx_io_file_open(path, "wb");
@@ -790,8 +701,7 @@ bool xx_ifah_installer_unpack_current_archive_record(
     if (result && (member->dos_date != 0U || member->dos_time != 0U))
         /* Best effort; a file system that refuses the stamp does not make
          * the extraction a failure. */
-        (void)xx_io_apply_dos_time_and_attrs_a(path, member->dos_date,
-                                               member->dos_time, 0U);
+        (void)xx_io_apply_dos_time_and_attrs_a(path, member->dos_date, member->dos_time, 0U);
 done:
     if (!result && path && created) xx_rt_remove(path);
     if (path) xx_str_free(path);
@@ -799,8 +709,8 @@ done:
     return result;
 }
 
-void xx_ifah_installer_free_archive_records_reading(
-    Abstractformat *format, xx_archive_record_state *state) {
+void xx_ifah_installer_free_archive_records_reading(Abstractformat *format, xx_archive_record_state *state)
+{
     (void)format;
     xx_archive_record_state_free(state);
 }

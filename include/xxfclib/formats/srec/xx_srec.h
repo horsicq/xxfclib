@@ -85,41 +85,31 @@ struct xx_srec {
     uint64_t declared_record_count;  /**< S5/S6 value, 0 when absent. */
     bool has_entry_point;
     bool has_record_count;
-    bool is_contiguous;              /**< Hint: records carry at least as many
-                                          bytes as the span (false = gaps). */
-    uint8_t address_width;           /**< Widest data address: 2, 3 or 4. */
-    int64_t stream_end;              /**< base_address + format_size, or -1. */
+    bool is_contiguous;    /**< Hint: records carry at least as many
+                                bytes as the span (false = gaps). */
+    uint8_t address_width; /**< Widest data address: 2, 3 or 4. */
+    int64_t stream_end;    /**< base_address + format_size, or -1. */
     void *internal;
 };
 
-XXFC_API void xx_srec_init(xx_srec *archive, xx_io_device *dev,
-                           int64_t base_address);
+XXFC_API void xx_srec_init(xx_srec *archive, xx_io_device *dev, int64_t base_address);
 XXFC_API xx_srec *xx_srec_create(xx_io_device *dev, int64_t base_address);
 XXFC_API void xx_srec_destroy(xx_srec *archive);
 XXFC_API void xx_srec_free(xx_srec *archive);
 
 XXFC_API bool xx_srec_check_is_valid(Abstractformat *self, xx_pd_struct *pd);
 XXFC_API bool xx_srec_handle_base_info(Abstractformat *self, xx_pd_struct *pd);
-XXFC_API int64_t xx_srec_get_format_size(Abstractformat *self,
-                                         xx_pd_struct *pd);
-XXFC_API uint64_t xx_srec_get_number_of_archive_records(Abstractformat *self,
-                                                        xx_pd_struct *pd);
+XXFC_API int64_t xx_srec_get_format_size(Abstractformat *self, xx_pd_struct *pd);
+XXFC_API uint64_t xx_srec_get_number_of_archive_records(Abstractformat *self, xx_pd_struct *pd);
 
-XXFC_API xx_archive_record_state *xx_srec_create_archive_records_reading(
-    Abstractformat *self, const xx_list_s *options, xx_pd_struct *pd);
-XXFC_API const xx_archive_record *xx_srec_get_current_archive_record(
-    Abstractformat *self, xx_archive_record_state *state);
-XXFC_API bool xx_srec_unpack_current_archive_record(
-    Abstractformat *self, xx_archive_record_state *state, xx_pd_struct *pd);
-XXFC_API bool xx_srec_archive_record_move_to_next(
-    Abstractformat *self, xx_archive_record_state *state, xx_pd_struct *pd);
-XXFC_API void xx_srec_free_archive_records_reading(
-    Abstractformat *self, xx_archive_record_state *state);
+XXFC_API xx_archive_record_state *xx_srec_create_archive_records_reading(Abstractformat *self, const xx_list_s *options, xx_pd_struct *pd);
+XXFC_API const xx_archive_record *xx_srec_get_current_archive_record(Abstractformat *self, xx_archive_record_state *state);
+XXFC_API bool xx_srec_unpack_current_archive_record(Abstractformat *self, xx_archive_record_state *state, xx_pd_struct *pd);
+XXFC_API bool xx_srec_archive_record_move_to_next(Abstractformat *self, xx_archive_record_state *state, xx_pd_struct *pd);
+XXFC_API void xx_srec_free_archive_records_reading(Abstractformat *self, xx_archive_record_state *state);
 
 /** Reassemble the image and write it to destination. */
-XXFC_API bool xx_srec_unpack_to_device(xx_srec *archive,
-                                       xx_io_device *destination,
-                                       xx_pd_struct *pd);
+XXFC_API bool xx_srec_unpack_to_device(xx_srec *archive, xx_io_device *destination, xx_pd_struct *pd);
 
 /** Bounded probe: true when the first non-empty line of the device is a
  *  well formed S-record whose checksum verifies.  Reads at most
@@ -145,18 +135,24 @@ XXFC_API int64_t xx_srec_get_stream_end(const xx_srec *archive);
 /** Text of the S0 header record, or NULL when it carried none. */
 XXFC_API const char *xx_srec_get_header_text(const xx_srec *archive);
 
-static inline Abstractformat *xx_srec_to_format(xx_srec *archive) {
+static inline Abstractformat *xx_srec_to_format(xx_srec *archive)
+{
     return archive ? &archive->format : NULL;
 }
-static inline void XSrec_init(xx_srec *archive, xx_io_device *dev,
-                              int64_t base_address) {
+static inline void XSrec_init(xx_srec *archive, xx_io_device *dev, int64_t base_address)
+{
     xx_srec_init(archive, dev, base_address);
 }
-static inline xx_srec *XSrec_create(xx_io_device *dev, int64_t base_address) {
+static inline xx_srec *XSrec_create(xx_io_device *dev, int64_t base_address)
+{
     return xx_srec_create(dev, base_address);
 }
-static inline void XSrec_free(xx_srec *archive) { xx_srec_free(archive); }
-static inline bool XSrec_is_valid(xx_srec *archive, xx_pd_struct *pd) {
+static inline void XSrec_free(xx_srec *archive)
+{
+    xx_srec_free(archive);
+}
+static inline bool XSrec_is_valid(xx_srec *archive, xx_pd_struct *pd)
+{
     return archive ? xx_format_is_valid(&archive->format, pd) : false;
 }
 

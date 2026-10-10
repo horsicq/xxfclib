@@ -88,19 +88,17 @@
 #define FA_BLOCK_DIR 3U
 #define FA_BLOCK_FOOTER 4U
 
-static const uint8_t XX_FREEARC_MAGIC[XX_FREEARC_SIGNATURE_SIZE] = {
-    'A', 'r', 'C', 0x01U};
+static const uint8_t XX_FREEARC_MAGIC[XX_FREEARC_SIGNATURE_SIZE] = {'A', 'r', 'C', 0x01U};
 
 static void xx_freearc_vtable_destroy(Abstractformat *self);
 
 /* ------------------------------------------------------------------ io */
 
-static bool fa_read_dev(xx_io_device *device, int64_t offset, uint8_t *buffer,
-                        size_t size) {
+static bool fa_read_dev(xx_io_device *device, int64_t offset, uint8_t *buffer, size_t size)
+{
     size_t completed = 0U;
 
-    if (!device || offset < 0 || xx_io_seek64(device, offset, SEEK_SET) != 0)
-        return false;
+    if (!device || offset < 0 || xx_io_seek64(device, offset, SEEK_SET) != 0) return false;
     while (completed < size) {
         size_t want = size - completed;
         ssize_t received;
@@ -112,17 +110,21 @@ static bool fa_read_dev(xx_io_device *device, int64_t offset, uint8_t *buffer,
     return true;
 }
 
-static bool xx_freearc_read_at(Abstractformat *self, int64_t offset,
-                               uint8_t *buffer, size_t size) {
+static bool xx_freearc_read_at(Abstractformat *self, int64_t offset, uint8_t *buffer, size_t size)
+{
     if (!self) return false;
     return fa_read_dev(self->device, offset, buffer, size);
 }
 
-static uint32_t fa_crc32(const uint8_t *data, size_t size) {
+static uint32_t fa_crc32(const uint8_t *data, size_t size)
+{
     return xx_crc32(XX_CRC_TYPE_CRC32, data, size);
 }
 
-static bool fa_stopped(xx_pd_struct *pd) { return pd && xx_pd_is_stopped(pd); }
+static bool fa_stopped(xx_pd_struct *pd)
+{
+    return pd && xx_pd_is_stopped(pd);
+}
 
 /* -------------------------------------------------------------- cursor */
 
@@ -132,7 +134,8 @@ typedef struct fa_cursor {
     size_t pos;
 } fa_cursor;
 
-static bool fa_num(fa_cursor *c, uint64_t *value) {
+static bool fa_num(fa_cursor *c, uint64_t *value)
+{
     uint8_t first;
     unsigned extra = 0U, i;
     uint64_t result = 0U;
@@ -142,13 +145,11 @@ static bool fa_num(fa_cursor *c, uint64_t *value) {
     while (extra < 8U && (first & (1U << extra))) ++extra;
     if (extra == 8U) {
         if (c->size - c->pos < 9U) return false;
-        for (i = 0U; i < 8U; ++i)
-            result |= (uint64_t)c->p[c->pos + 1U + i] << (8U * i);
+        for (i = 0U; i < 8U; ++i) result |= (uint64_t)c->p[c->pos + 1U + i] << (8U * i);
         c->pos += 9U;
     } else {
         if (c->size - c->pos < (size_t)extra + 1U) return false;
-        for (i = 0U; i <= extra; ++i)
-            result |= (uint64_t)c->p[c->pos + i] << (8U * i);
+        for (i = 0U; i <= extra; ++i) result |= (uint64_t)c->p[c->pos + i] << (8U * i);
         result >>= extra + 1U;
         c->pos += (size_t)extra + 1U;
     }
@@ -157,14 +158,16 @@ static bool fa_num(fa_cursor *c, uint64_t *value) {
     return true;
 }
 
-static bool fa_u32(fa_cursor *c, uint32_t *value) {
+static bool fa_u32(fa_cursor *c, uint32_t *value)
+{
     if (c->size - c->pos < 4U || c->pos > c->size) return false;
     *value = xx_data_get_u32(c->p + c->pos, 4, 0, false);
     c->pos += 4U;
     return true;
 }
 
-static bool fa_byte(fa_cursor *c, uint8_t *value) {
+static bool fa_byte(fa_cursor *c, uint8_t *value)
+{
     if (c->pos >= c->size) return false;
     *value = c->p[c->pos++];
     return true;
@@ -172,8 +175,8 @@ static bool fa_byte(fa_cursor *c, uint8_t *value) {
 
 /* A NUL-terminated string of at most @p limit bytes; *s points into the
  * buffer. */
-static bool fa_str(fa_cursor *c, const char **s, size_t *length,
-                   size_t limit) {
+static bool fa_str(fa_cursor *c, const char **s, size_t *length, size_t limit)
+{
     size_t i;
     for (i = c->pos; i < c->size; ++i) {
         if (c->p[i] == 0U) {
@@ -188,7 +191,8 @@ static bool fa_str(fa_cursor *c, const char **s, size_t *length,
     return false;
 }
 
-static char *fa_strndup(const char *s, size_t length) {
+static char *fa_strndup(const char *s, size_t length)
+{
     char *copy = (char *)xx_mem_alloc(length + 1U);
     if (!copy) return NULL;
     if (length) xx_rt_memcpy(copy, s, length);
@@ -198,7 +202,14 @@ static char *fa_strndup(const char *s, size_t length) {
 
 /* ------------------------------------------------------ method parsing */
 
-typedef enum fa_kind { FA_STORE, FA_LZMA, FA_REP, FA_EXE, FA_DELTA, FA_LZP } fa_kind;
+typedef enum fa_kind {
+    FA_STORE,
+    FA_LZMA,
+    FA_REP,
+    FA_EXE,
+    FA_DELTA,
+    FA_LZP
+} fa_kind;
 
 typedef struct fa_stage {
     fa_kind kind;
@@ -208,12 +219,19 @@ typedef struct fa_stage {
     uint64_t lzp_barrier;
 } fa_stage;
 
-static bool fa_is_digit(char c) { return c >= '0' && c <= '9'; }
+static bool fa_is_digit(char c)
+{
+    return c >= '0' && c <= '9';
+}
 
-static bool fa_decimal(const char *s, size_t n, uint64_t *value) {
+static bool fa_decimal(const char *s, size_t n, uint64_t *value)
+{
     uint64_t result = 0U;
     size_t i;
-    if (n && s[0] == '=') { ++s; --n; }
+    if (n && s[0] == '=') {
+        ++s;
+        --n;
+    }
     if (!n || n > 19U) return false;
     for (i = 0U; i < n; ++i) {
         if (!fa_is_digit(s[i])) return false;
@@ -223,23 +241,41 @@ static bool fa_decimal(const char *s, size_t n, uint64_t *value) {
     return true;
 }
 
-static bool fa_ends(const char *s, size_t n, const char *suffix, size_t k) {
+static bool fa_ends(const char *s, size_t n, const char *suffix, size_t k)
+{
     return n >= k && xx_rt_memcmp(s + n - k, suffix, k) == 0;
 }
 
 /* FreeArc memory sizes: "96mb", "1m", "32kb", "4k", "123b", "24" (a power
  * of two), "24^". */
-static bool fa_memory(const char *s, size_t n, uint64_t *value) {
+static bool fa_memory(const char *s, size_t n, uint64_t *value)
+{
     uint64_t multiplier = 1U, number = 0U;
     bool power = false;
-    if (fa_ends(s, n, "gb", 2U)) { multiplier = (uint64_t)1 << 30; n -= 2U; }
-    else if (fa_ends(s, n, "g", 1U)) { multiplier = (uint64_t)1 << 30; n -= 1U; }
-    else if (fa_ends(s, n, "mb", 2U)) { multiplier = (uint64_t)1 << 20; n -= 2U; }
-    else if (fa_ends(s, n, "m", 1U)) { multiplier = (uint64_t)1 << 20; n -= 1U; }
-    else if (fa_ends(s, n, "kb", 2U)) { multiplier = 1024U; n -= 2U; }
-    else if (fa_ends(s, n, "k", 1U)) { multiplier = 1024U; n -= 1U; }
-    else if (fa_ends(s, n, "b", 1U)) { n -= 1U; }
-    else { power = true; if (fa_ends(s, n, "^", 1U)) n -= 1U; }
+    if (fa_ends(s, n, "gb", 2U)) {
+        multiplier = (uint64_t)1 << 30;
+        n -= 2U;
+    } else if (fa_ends(s, n, "g", 1U)) {
+        multiplier = (uint64_t)1 << 30;
+        n -= 1U;
+    } else if (fa_ends(s, n, "mb", 2U)) {
+        multiplier = (uint64_t)1 << 20;
+        n -= 2U;
+    } else if (fa_ends(s, n, "m", 1U)) {
+        multiplier = (uint64_t)1 << 20;
+        n -= 1U;
+    } else if (fa_ends(s, n, "kb", 2U)) {
+        multiplier = 1024U;
+        n -= 2U;
+    } else if (fa_ends(s, n, "k", 1U)) {
+        multiplier = 1024U;
+        n -= 1U;
+    } else if (fa_ends(s, n, "b", 1U)) {
+        n -= 1U;
+    } else {
+        power = true;
+        if (fa_ends(s, n, "^", 1U)) n -= 1U;
+    }
     if (!fa_decimal(s, n, &number)) return false;
     if (power) {
         if (number >= 63U) return false;
@@ -251,26 +287,28 @@ static bool fa_memory(const char *s, size_t n, uint64_t *value) {
     return *value != 0U;
 }
 
-static bool fa_word_is(const char *s, size_t n, const char *word) {
+static bool fa_word_is(const char *s, size_t n, const char *word)
+{
     size_t k = xx_str_len(word);
     return n == k && xx_rt_memcmp(s, word, k) == 0;
 }
 
-static bool fa_parse_stage(const char *s, size_t n, fa_stage *stage) {
+static bool fa_parse_stage(const char *s, size_t n, fa_stage *stage)
+{
     size_t colon = 0U;
     const char *name = s;
     size_t name_len;
     while (colon < n && s[colon] != ':') ++colon;
     name_len = colon;
     xx_mem_zero(stage, sizeof(*stage));
-    stage->lc = 3U; stage->lp = 0U; stage->pb = 2U;
-    if (fa_word_is(name, name_len, "storing") ||
-        fa_word_is(name, name_len, "exe")) {
+    stage->lc = 3U;
+    stage->lp = 0U;
+    stage->pb = 2U;
+    if (fa_word_is(name, name_len, "storing") || fa_word_is(name, name_len, "exe")) {
         stage->kind = name[0] == 's' ? FA_STORE : FA_EXE;
         return colon == n;
     }
-    if (fa_word_is(name, name_len, "rep") ||
-        fa_word_is(name, name_len, "delta")) {
+    if (fa_word_is(name, name_len, "rep") || fa_word_is(name, name_len, "delta")) {
         stage->kind = name[0] == 'r' ? FA_REP : FA_DELTA;
         /* Encoder buffer options do not change the stream framing. */
         while (colon < n) {
@@ -290,7 +328,8 @@ static bool fa_parse_stage(const char *s, size_t n, fa_stage *stage) {
         stage->lzp_barrier = INT32_MAX;
         stage->lzp_smallest = 32U;
         while (colon < n) {
-            size_t start = ++colon, len; uint64_t v;
+            size_t start = ++colon, len;
+            uint64_t v;
             while (colon < n && s[colon] != ':') ++colon;
             len = colon - start;
             if (!len) return false;
@@ -302,8 +341,7 @@ static bool fa_parse_stage(const char *s, size_t n, fa_stage *stage) {
                 if (!fa_memory(s + start + 1U, len - 1U, &stage->lzp_barrier)) {
                     const char *value = s + start + 1U;
                     size_t length = len - 1U;
-                    if (length < 2U || value[length - 1U] != 'b' ||
-                        !fa_decimal(value, length - 1U, &v) || v) return false;
+                    if (length < 2U || value[length - 1U] != 'b' || !fa_decimal(value, length - 1U, &v) || v) return false;
                     stage->lzp_barrier = 0U;
                 }
             } else if (s[start] == 'l' || s[start] == 'h' || s[start] == 's') {
@@ -316,10 +354,8 @@ static bool fa_parse_stage(const char *s, size_t n, fa_stage *stage) {
                 stage->lzp_min_match = (uint32_t)v;
             } else if (!fa_memory(s + start, len, &stage->dictionary)) return false;
         }
-        return stage->dictionary >= 1U && stage->dictionary <= FA_MAX_SOLID &&
-               stage->lzp_min_match >= 4U && stage->lzp_min_match <= FA_MAX_SOLID &&
-               stage->lzp_smallest >= 4U && stage->lzp_smallest <= FA_MAX_SOLID &&
-               stage->lzp_hash_bits <= 20U && stage->lzp_barrier <= INT32_MAX;
+        return stage->dictionary >= 1U && stage->dictionary <= FA_MAX_SOLID && stage->lzp_min_match >= 4U && stage->lzp_min_match <= FA_MAX_SOLID &&
+               stage->lzp_smallest >= 4U && stage->lzp_smallest <= FA_MAX_SOLID && stage->lzp_hash_bits <= 20U && stage->lzp_barrier <= INT32_MAX;
     }
     if (!fa_word_is(name, name_len, "lzma")) return false;
     stage->kind = FA_LZMA;
@@ -330,23 +366,20 @@ static bool fa_parse_stage(const char *s, size_t n, fa_stage *stage) {
         while (colon < n && s[colon] != ':') ++colon;
         o = s + start;
         len = colon - start;
-        if (len && o[0] == '*') { ++o; --len; }
+        if (len && o[0] == '*') {
+            ++o;
+            --len;
+        }
         if (!len) return false;
-        if (fa_word_is(o, len, "fastest") || fa_word_is(o, len, "fast") ||
-            fa_word_is(o, len, "normal") || fa_word_is(o, len, "max") ||
-            fa_word_is(o, len, "ultra") || fa_word_is(o, len, "ht4") ||
-            fa_word_is(o, len, "hc4") || fa_word_is(o, len, "bt2") ||
-            fa_word_is(o, len, "bt3") || fa_word_is(o, len, "bt4"))
+        if (fa_word_is(o, len, "fastest") || fa_word_is(o, len, "fast") || fa_word_is(o, len, "normal") || fa_word_is(o, len, "max") || fa_word_is(o, len, "ultra") ||
+            fa_word_is(o, len, "ht4") || fa_word_is(o, len, "hc4") || fa_word_is(o, len, "bt2") || fa_word_is(o, len, "bt3") || fa_word_is(o, len, "bt4"))
             continue;
-        if (len > 2U && (xx_rt_memcmp(o, "lc", 2U) == 0 ||
-                         xx_rt_memcmp(o, "lp", 2U) == 0 ||
-                         xx_rt_memcmp(o, "pb", 2U) == 0)) {
+        if (len > 2U && (xx_rt_memcmp(o, "lc", 2U) == 0 || xx_rt_memcmp(o, "lp", 2U) == 0 || xx_rt_memcmp(o, "pb", 2U) == 0)) {
             if (!fa_decimal(o + 2, len - 2U, &v) || v > 8U) return false;
             if (o[0] == 'l' && o[1] == 'c') stage->lc = (uint32_t)v;
             else if (o[0] == 'l') stage->lp = (uint32_t)v;
             else stage->pb = (uint32_t)v;
-        } else if (len > 2U && (xx_rt_memcmp(o, "fb", 2U) == 0 ||
-                                xx_rt_memcmp(o, "mc", 2U) == 0)) {
+        } else if (len > 2U && (xx_rt_memcmp(o, "fb", 2U) == 0 || xx_rt_memcmp(o, "mc", 2U) == 0)) {
             if (!fa_decimal(o + 2, len - 2U, &v)) return false;
         } else if (len > 2U && xx_rt_memcmp(o, "mf", 2U) == 0) {
             continue;
@@ -362,12 +395,11 @@ static bool fa_parse_stage(const char *s, size_t n, fa_stage *stage) {
             return false;
         }
     }
-    return stage->lc <= 8U && stage->lp <= 4U && stage->pb <= 4U &&
-           stage->lc + stage->lp <= 4U;
+    return stage->lc <= 8U && stage->lp <= 4U && stage->pb <= 4U && stage->lc + stage->lp <= 4U;
 }
 
-static bool fa_parse_chain(const char *method, fa_stage *stages,
-                           size_t *count) {
+static bool fa_parse_chain(const char *method, fa_stage *stages, size_t *count)
+{
     size_t n, start = 0U, i;
     if (!method) return false;
     n = xx_str_len(method);
@@ -375,9 +407,7 @@ static bool fa_parse_chain(const char *method, fa_stage *stages,
     *count = 0U;
     for (i = 0U; i <= n; ++i) {
         if (i == n || method[i] == '+') {
-            if (i == start || *count >= FA_MAX_STAGES ||
-                !fa_parse_stage(method + start, i - start, &stages[*count]))
-                return false;
+            if (i == start || *count >= FA_MAX_STAGES || !fa_parse_stage(method + start, i - start, &stages[*count])) return false;
             ++*count;
             start = i + 1U;
         }
@@ -385,7 +415,8 @@ static bool fa_parse_chain(const char *method, fa_stage *stages,
     return *count > 0U;
 }
 
-bool xx_freearc_method_supported(const char *method) {
+bool xx_freearc_method_supported(const char *method)
+{
     fa_stage stages[FA_MAX_STAGES];
     size_t count;
     return fa_parse_chain(method, stages, &count);
@@ -393,13 +424,13 @@ bool xx_freearc_method_supported(const char *method) {
 
 /* -------------------------------------------------------------- codecs */
 
-static uint8_t *fa_alloc(size_t size) {
+static uint8_t *fa_alloc(size_t size)
+{
     return (uint8_t *)xx_mem_alloc(size ? size : 1U);
 }
 
-static bool fa_lzma(const fa_stage *st, const uint8_t *in, size_t in_size,
-                    int64_t expected, size_t cap, uint8_t **out,
-                    size_t *out_size) {
+static bool fa_lzma(const fa_stage *st, const uint8_t *in, size_t in_size, int64_t expected, size_t cap, uint8_t **out, size_t *out_size)
+{
     uint8_t props[5];
     uint64_t dict = (uint64_t)cap;
     size_t written = 0U;
@@ -417,10 +448,11 @@ static bool fa_lzma(const fa_stage *st, const uint8_t *in, size_t in_size,
     buffer = fa_alloc(cap);
     if (!buffer) return false;
     if (in_size == 0U) {
-        if (expected > 0) { xx_mem_free(buffer); return false; }
-    } else if (!xx_lzma_decompress_memory(in, in_size, props, sizeof(props),
-                                          expected, buffer, cap, &written) ||
-               written > cap) {
+        if (expected > 0) {
+            xx_mem_free(buffer);
+            return false;
+        }
+    } else if (!xx_lzma_decompress_memory(in, in_size, props, sizeof(props), expected, buffer, cap, &written) || written > cap) {
         xx_mem_free(buffer);
         return false;
     }
@@ -432,8 +464,8 @@ static bool fa_lzma(const fa_stage *st, const uint8_t *in, size_t in_size,
 /* REP: u32 window, then frames {u32 length, u32 count, count x u32 match
  * length, count x u32 distance, (count+1) x u32 literal length, literals},
  * ended by a zero frame length. */
-static bool fa_rep(const uint8_t *in, size_t in_size, size_t cap,
-                   uint8_t **out, size_t *out_size, xx_pd_struct *pd) {
+static bool fa_rep(const uint8_t *in, size_t in_size, size_t cap, uint8_t **out, size_t *out_size, xx_pd_struct *pd)
+{
     uint8_t *buffer;
     size_t cursor = 4U, produced = 0U;
     uint32_t window;
@@ -463,8 +495,7 @@ static bool fa_rep(const uint8_t *in, size_t in_size, size_t cap,
         for (i = 0U; i <= count; ++i) {
             uint32_t literal_size = xx_data_get_u32(in + literal_lengths + (size_t)i * 4U, 4, 0, false);
             uint32_t match_size, distance, j;
-            if (literal_size > end - literals ||
-                literal_size > cap - produced) goto fail;
+            if (literal_size > end - literals || literal_size > cap - produced) goto fail;
             xx_rt_memcpy(buffer + produced, in + literals, literal_size);
             produced += literal_size;
             literals += literal_size;
@@ -472,11 +503,8 @@ static bool fa_rep(const uint8_t *in, size_t in_size, size_t cap,
             match_size = xx_data_get_u32(in + lengths + (size_t)i * 4U, 4, 0, false);
             distance = xx_data_get_u32(in + distances + (size_t)i * 4U, 4, 0, false);
             if (match_size > cap - produced) goto fail;
-            if (match_size &&
-                (!distance || distance > window || distance > produced))
-                goto fail;
-            for (j = 0U; j < match_size; ++j)
-                buffer[produced + j] = buffer[produced + j - distance];
+            if (match_size && (!distance || distance > window || distance > produced)) goto fail;
+            for (j = 0U; j < match_size; ++j) buffer[produced + j] = buffer[produced + j - distance];
             produced += match_size;
         }
         if (literals != end) break;
@@ -493,20 +521,21 @@ fail:
  * table entries are output offsets, so no stream pointer can escape a block.
  * Derived independently from mirror/freearc Compression/LZP/C_LZP.cpp,
  * commit 71f3ab36df26401fff4301b4c8600a31a90d8da9. */
-static uint32_t fa_lzp_hash(const uint8_t *out, size_t pos, uint32_t mask) {
+static uint32_t fa_lzp_hash(const uint8_t *out, size_t pos, uint32_t mask)
+{
     uint32_t c = xx_data_get_u32(out + pos - 4U, 4, 0, false);
     uint32_t prior = xx_data_get_u32(out + pos - 5U, 4, 0, false);
     uint32_t rotate = (c >> 17U) | (c << 15U);
     return (c + 5U * rotate + 3U * prior) & mask;
 }
 
-static bool fa_lzp_block(const uint8_t *input, size_t size, uint8_t *output,
-                         size_t cap, const fa_stage *stage, uint32_t *table,
-                         xx_pd_struct *pd, size_t *written) {
+static bool fa_lzp_block(const uint8_t *input, size_t size, uint8_t *output, size_t cap, const fa_stage *stage, uint32_t *table, xx_pd_struct *pd, size_t *written)
+{
     size_t front = 12U, back = size, pos = 12U, hash_size, i;
     uint32_t mask, key, context, n = 1U, n1 = 1U;
     if (size < 13U || cap < 12U || stage->lzp_hash_bits > 20U) return false;
-    hash_size = (size_t)1U << stage->lzp_hash_bits; mask = (uint32_t)(hash_size - 1U);
+    hash_size = (size_t)1U << stage->lzp_hash_bits;
+    mask = (uint32_t)(hash_size - 1U);
     for (i = 0U; i < hash_size; ++i) {
         if ((i & 4095U) == 0U && fa_stopped(pd)) return false;
         table[i] = 5U;
@@ -518,7 +547,10 @@ static bool fa_lzp_block(const uint8_t *input, size_t size, uint8_t *output,
         uint8_t symbol = input[front++];
         uint32_t predictor = table[key];
         if (fa_stopped(pd)) return false;
-        if (--n == 0U) { table[key] = (uint32_t)pos; n = n1; }
+        if (--n == 0U) {
+            table[key] = (uint32_t)pos;
+            n = n1;
+        }
         if (symbol != 0xB5U || context != xx_data_get_u32(output + predictor - 4U, 4, 0, false)) {
             if (pos == cap) return false;
             output[pos++] = symbol;
@@ -531,8 +563,7 @@ static bool fa_lzp_block(const uint8_t *input, size_t size, uint8_t *output,
                 output[pos++] = symbol;
             } else {
                 size_t distance = pos - predictor, length, copied;
-                uint64_t wide = (distance > stage->lzp_barrier
-                    ? stage->lzp_smallest : stage->lzp_min_match) - 1U;
+                uint64_t wide = (distance > stage->lzp_barrier ? stage->lzp_smallest : stage->lzp_min_match) - 1U;
                 table[key] = (uint32_t)pos;
                 if (distance > (size_t)(n1 + 1U) * hash_size && n1 < 7U) ++n1;
                 while (end_token == 0U) {
@@ -542,7 +573,8 @@ static bool fa_lzp_block(const uint8_t *input, size_t size, uint8_t *output,
                 }
                 wide += end_token;
                 if (!distance || predictor >= pos || wide > cap - pos || !wide) return false;
-                length = (size_t)wide; copied = 0U;
+                length = (size_t)wide;
+                copied = 0U;
                 {
                     unsigned update = 2U * n1 + 2U;
                     while (copied < length) {
@@ -551,7 +583,8 @@ static bool fa_lzp_block(const uint8_t *input, size_t size, uint8_t *output,
                             update = 2U * n1 + 1U;
                             table[fa_lzp_hash(output, pos, mask)] = (uint32_t)pos;
                         }
-                        output[pos++] = output[predictor++]; ++copied;
+                        output[pos++] = output[predictor++];
+                        ++copied;
                     }
                 }
             }
@@ -561,27 +594,29 @@ static bool fa_lzp_block(const uint8_t *input, size_t size, uint8_t *output,
         key = fa_lzp_hash(output, pos, mask);
     }
     if (front != back || fa_stopped(pd)) return false;
-    *written = pos; return true;
+    *written = pos;
+    return true;
 }
 
-static bool fa_lzp(const fa_stage *stage, const uint8_t *in, size_t in_size,
-                   size_t cap, uint8_t **out, size_t *out_size,
-                   xx_pd_struct *pd) {
-    uint8_t *buffer = NULL; uint32_t *table = NULL;
+static bool fa_lzp(const fa_stage *stage, const uint8_t *in, size_t in_size, size_t cap, uint8_t **out, size_t *out_size, xx_pd_struct *pd)
+{
+    uint8_t *buffer = NULL;
+    uint32_t *table = NULL;
     size_t cursor = 0U, produced = 0U, hash_size;
     uint64_t table_init = 0U;
-    if (in_size > (size_t)FA_MAX_STAGE || stage->dictionary > FA_MAX_SOLID ||
-        stage->lzp_hash_bits > 20U) return false;
-    buffer = fa_alloc(cap); if (!buffer) return false;
+    if (in_size > (size_t)FA_MAX_STAGE || stage->dictionary > FA_MAX_SOLID || stage->lzp_hash_bits > 20U) return false;
+    buffer = fa_alloc(cap);
+    if (!buffer) return false;
     hash_size = (size_t)1U << stage->lzp_hash_bits;
     while (cursor < in_size) {
-        int32_t signed_length; size_t frame_length;
+        int32_t signed_length;
+        size_t frame_length;
         if (fa_stopped(pd) || in_size - cursor < 4U) goto fail;
-        signed_length = (int32_t)xx_data_get_u32(in + cursor, 4, 0, false); cursor += 4U;
+        signed_length = (int32_t)xx_data_get_u32(in + cursor, 4, 0, false);
+        cursor += 4U;
         if (!signed_length || signed_length == INT32_MIN) goto fail;
         frame_length = signed_length < 0 ? (size_t)(-(int64_t)signed_length) : (size_t)signed_length;
-        if (frame_length > in_size - cursor || frame_length > stage->dictionary ||
-            frame_length > cap - produced) goto fail;
+        if (frame_length > in_size - cursor || frame_length > stage->dictionary || frame_length > cap - produced) goto fail;
         if (signed_length < 0) {
             size_t copied = 0U;
             while (copied < frame_length) {
@@ -601,25 +636,27 @@ static bool fa_lzp(const fa_stage *stage, const uint8_t *in, size_t in_size,
                 if (!table) goto fail;
             }
             if (available > stage->dictionary) available = (size_t)stage->dictionary;
-            if (!fa_lzp_block(in + cursor, frame_length, buffer + produced,
-                              available, stage, table, pd, &decoded)) goto fail;
+            if (!fa_lzp_block(in + cursor, frame_length, buffer + produced, available, stage, table, pd, &decoded)) goto fail;
             produced += decoded;
         }
         cursor += frame_length;
     }
     if (fa_stopped(pd)) goto fail;
     if (table) xx_mem_free(table);
-    *out = buffer; *out_size = produced; return true;
+    *out = buffer;
+    *out_size = produced;
+    return true;
 fail:
     if (table) xx_mem_free(table);
-    xx_mem_free(buffer); return false;
+    xx_mem_free(buffer);
+    return false;
 }
 
 /* DELTA frames: u32 size, u32 table bytes (4 x tables), then skip[],
  * type[], rows[] (u32 each), then the frame's size data bytes. A table
  * type's low bits, below its leading one, flag each column immutable. */
-static bool fa_delta(const uint8_t *in, size_t in_size, size_t cap,
-                     uint8_t **out, size_t *out_size, xx_pd_struct *pd) {
+static bool fa_delta(const uint8_t *in, size_t in_size, size_t cap, uint8_t **out, size_t *out_size, xx_pd_struct *pd)
+{
     uint8_t *buffer, *shuffled = NULL;
     size_t cursor = 0U, produced = 0U;
     /* Every frame costs at least its own data bytes of input, so the output
@@ -634,10 +671,7 @@ static bool fa_delta(const uint8_t *in, size_t in_size, size_t cap,
         size = xx_data_get_u32(in + cursor, 4, 0, false);
         table_bytes = xx_data_get_u32(in + cursor + 4U, 4, 0, false);
         cursor += 8U;
-        if ((table_bytes & 3U) || table_bytes > 0x7fffffffU ||
-            (uint64_t)table_bytes * 3U + size > (uint64_t)(in_size - cursor) ||
-            size > cap - produced)
-            goto fail;
+        if ((table_bytes & 3U) || table_bytes > 0x7fffffffU || (uint64_t)table_bytes * 3U + size > (uint64_t)(in_size - cursor) || size > cap - produced) goto fail;
         skips = cursor;
         types = skips + table_bytes;
         rows = types + table_bytes;
@@ -661,9 +695,7 @@ static bool fa_delta(const uint8_t *in, size_t in_size, size_t cap,
                 type >>= 1;
             }
             bytes = (uint64_t)width * row_count;
-            if (!width || type != 1U || !row_count ||
-                skip > size - position || bytes > size - position - skip)
-                goto fail;
+            if (!width || type != 1U || !row_count || skip > size - position || bytes > size - position - skip) goto fail;
             position += skip;
             if (immutable_count && immutable_count != width) {
                 size_t a = 0U, b = (size_t)immutable_count * row_count;
@@ -671,9 +703,7 @@ static bool fa_delta(const uint8_t *in, size_t in_size, size_t cap,
                 if (!shuffled) goto fail;
                 xx_rt_memcpy(shuffled, block + position, (size_t)bytes);
                 for (row = 0U; row < row_count; ++row)
-                    for (column = 0U; column < width; ++column)
-                        block[position + (size_t)row * width + column] =
-                            shuffled[immutable[column] ? a++ : b++];
+                    for (column = 0U; column < width; ++column) block[position + (size_t)row * width + column] = shuffled[immutable[column] ? a++ : b++];
                 xx_mem_free(shuffled);
                 shuffled = NULL;
             }
@@ -682,7 +712,10 @@ static bool fa_delta(const uint8_t *in, size_t in_size, size_t cap,
                 for (column = 0U; column < width; ++column) {
                     size_t at = position + (size_t)row * width + column;
                     uint32_t sum;
-                    if (immutable[column]) { carry = 0U; continue; }
+                    if (immutable[column]) {
+                        carry = 0U;
+                        continue;
+                    }
                     sum = (uint32_t)block[at] + block[at - width] + carry;
                     block[at] = (uint8_t)sum;
                     carry = sum >> 8;
@@ -703,9 +736,13 @@ fail:
 
 /* x86 CALL/JMP converter, decoding direction, after Igor Pavlov's
  * public-domain Bra86.c. */
-static bool fa_ms_byte(uint8_t b) { return b == 0U || b == 0xFFU; }
+static bool fa_ms_byte(uint8_t b)
+{
+    return b == 0U || b == 0xFFU;
+}
 
-static void fa_exe(uint8_t *data, size_t size) {
+static void fa_exe(uint8_t *data, size_t size)
+{
     static const uint8_t allowed[8] = {1, 1, 1, 0, 1, 0, 0, 0};
     static const uint8_t bit_number[8] = {0, 1, 2, 2, 3, 3, 3, 3};
     size_t position = 0U, previous = (size_t)0 - 1U;
@@ -713,16 +750,14 @@ static void fa_exe(uint8_t *data, size_t size) {
     if (size < 5U) return;
     for (;;) {
         size_t distance;
-        while (position < size - 4U && (data[position] & 0xFEU) != 0xE8U)
-            ++position;
+        while (position < size - 4U && (data[position] & 0xFEU) != 0xE8U) ++position;
         if (position >= size - 4U) break;
         distance = position - previous;
         if (distance > 3U) {
             mask = 0U;
         } else {
             mask = (mask << (distance - 1U)) & 7U;
-            if (mask && (!allowed[mask] ||
-                         fa_ms_byte(data[position + 4U - bit_number[mask]]))) {
+            if (mask && (!allowed[mask] || fa_ms_byte(data[position + 4U - bit_number[mask]]))) {
                 previous = position;
                 mask = ((mask << 1) & 7U) | 1U;
                 ++position;
@@ -752,9 +787,8 @@ static void fa_exe(uint8_t *data, size_t size) {
     }
 }
 
-bool xx_freearc_decode_chain(const char *method, uint8_t *in, size_t in_size,
-                             int64_t expected, uint8_t **out,
-                             size_t *out_size, xx_pd_struct *pd) {
+bool xx_freearc_decode_chain(const char *method, uint8_t *in, size_t in_size, int64_t expected, uint8_t **out, size_t *out_size, xx_pd_struct *pd)
+{
     fa_stage stages[FA_MAX_STAGES];
     size_t count = 0U, i, cur_size = in_size;
     uint8_t *cur = in;
@@ -762,43 +796,38 @@ bool xx_freearc_decode_chain(const char *method, uint8_t *in, size_t in_size,
 
     if (out) *out = NULL;
     if (out_size) *out_size = 0U;
-    if (!in || !out || !out_size || expected < -1 ||
-        expected > FA_MAX_SOLID || !fa_parse_chain(method, stages, &count)) {
+    if (!in || !out || !out_size || expected < -1 || expected > FA_MAX_SOLID || !fa_parse_chain(method, stages, &count)) {
         if (in) xx_mem_free(in);
         return false;
     }
     /* Intermediate streams carry framing on top of the final bytes; allow
      * a quarter plus 1 MiB of it. With no final size, use the solid cap. */
-    bound = expected >= 0
-                ? (size_t)(expected + expected / 4 + 0x100000)
-                : (size_t)FA_MAX_SOLID;
+    bound = expected >= 0 ? (size_t)(expected + expected / 4 + 0x100000) : (size_t)FA_MAX_SOLID;
     for (i = count; i-- > 0U;) {
         uint8_t *next = NULL;
         size_t next_size = 0U;
         size_t cap = (i == 0U && expected >= 0) ? (size_t)expected : bound;
         bool ok;
-        if (fa_stopped(pd)) { xx_mem_free(cur); return false; }
+        if (fa_stopped(pd)) {
+            xx_mem_free(cur);
+            return false;
+        }
         switch (stages[i].kind) {
-        case FA_STORE:
-            next = cur; next_size = cur_size; ok = cur_size <= cap;
-            break;
-        case FA_EXE:
-            fa_exe(cur, cur_size);
-            next = cur; next_size = cur_size; ok = cur_size <= cap;
-            break;
-        case FA_LZMA:
-            ok = fa_lzma(&stages[i], cur, cur_size,
-                         (i == 0U) ? expected : -1, cap, &next, &next_size);
-            break;
-        case FA_REP:
-            ok = fa_rep(cur, cur_size, cap, &next, &next_size, pd);
-            break;
-        case FA_LZP:
-            ok = fa_lzp(&stages[i], cur, cur_size, cap, &next, &next_size, pd);
-            break;
-        default:
-            ok = fa_delta(cur, cur_size, cap, &next, &next_size, pd);
-            break;
+            case FA_STORE:
+                next = cur;
+                next_size = cur_size;
+                ok = cur_size <= cap;
+                break;
+            case FA_EXE:
+                fa_exe(cur, cur_size);
+                next = cur;
+                next_size = cur_size;
+                ok = cur_size <= cap;
+                break;
+            case FA_LZMA: ok = fa_lzma(&stages[i], cur, cur_size, (i == 0U) ? expected : -1, cap, &next, &next_size); break;
+            case FA_REP: ok = fa_rep(cur, cur_size, cap, &next, &next_size, pd); break;
+            case FA_LZP: ok = fa_lzp(&stages[i], cur, cur_size, cap, &next, &next_size, pd); break;
+            default: ok = fa_delta(cur, cur_size, cap, &next, &next_size, pd); break;
         }
         if (!ok) {
             if (next && next != cur) xx_mem_free(next);
@@ -820,7 +849,8 @@ bool xx_freearc_decode_chain(const char *method, uint8_t *in, size_t in_size,
 
 /* ------------------------------------------------------ probe (header) */
 
-static bool xx_freearc_probe(Abstractformat *self, xx_freearc *out) {
+static bool xx_freearc_probe(Abstractformat *self, xx_freearc *out)
+{
     uint8_t header[XX_FREEARC_HEADER_SIZE];
     uint8_t block_magic[XX_FREEARC_SIGNATURE_SIZE];
     int64_t total;
@@ -835,26 +865,19 @@ static bool xx_freearc_probe(Abstractformat *self, xx_freearc *out) {
     if (span < XX_FREEARC_MIN_SIZE) {
         return false;
     }
-    if (!xx_freearc_read_at(self, self->base_address, header,
-                            sizeof(header)) ||
-        xx_rt_memcmp(header, XX_FREEARC_MAGIC, XX_FREEARC_SIGNATURE_SIZE) !=
-            0) {
+    if (!xx_freearc_read_at(self, self->base_address, header, sizeof(header)) || xx_rt_memcmp(header, XX_FREEARC_MAGIC, XX_FREEARC_SIGNATURE_SIZE) != 0) {
         return false;
     }
     /* The first block repeats the magic at offset 8. Without this second
      * check a four-byte prefix would be the entire evidence. */
-    if (!xx_freearc_read_at(self, self->base_address + XX_FREEARC_HEADER_SIZE,
-                            block_magic, sizeof(block_magic)) ||
-        xx_rt_memcmp(block_magic, XX_FREEARC_MAGIC,
-                     XX_FREEARC_SIGNATURE_SIZE) != 0) {
+    if (!xx_freearc_read_at(self, self->base_address + XX_FREEARC_HEADER_SIZE, block_magic, sizeof(block_magic)) ||
+        xx_rt_memcmp(block_magic, XX_FREEARC_MAGIC, XX_FREEARC_SIGNATURE_SIZE) != 0) {
         return false;
     }
 
     if (out) {
-        out->flags = (uint16_t)((uint16_t)header[4] |
-                                ((uint16_t)header[5] << 8));
-        out->version = (uint16_t)((uint16_t)header[6] |
-                                  ((uint16_t)header[7] << 8));
+        out->flags = (uint16_t)((uint16_t)header[4] | ((uint16_t)header[5] << 8));
+        out->version = (uint16_t)((uint16_t)header[6] | ((uint16_t)header[7] << 8));
     }
     return true;
 }
@@ -872,23 +895,19 @@ typedef struct fa_desc {
 
 /* Parse a local descriptor starting at tail[start]; @p physical is the
  * archive-relative offset of tail[start]. */
-static bool fa_local_descriptor(const uint8_t *tail, size_t tail_size,
-                                size_t start, int64_t physical, fa_desc *d,
-                                size_t *end) {
+static bool fa_local_descriptor(const uint8_t *tail, size_t tail_size, size_t start, int64_t physical, fa_desc *d, size_t *end)
+{
     fa_cursor c;
     const char *method;
     size_t method_len, checked;
     uint64_t unpacked, packed;
     uint32_t own;
-    c.p = tail; c.size = tail_size; c.pos = start + 4U;
-    if (!fa_num(&c, &d->type) ||
-        !fa_str(&c, &method, &method_len, FA_MAX_METHOD) ||
-        !fa_num(&c, &unpacked) || !fa_num(&c, &packed) ||
-        !fa_u32(&c, &d->crc))
-        return false;
+    c.p = tail;
+    c.size = tail_size;
+    c.pos = start + 4U;
+    if (!fa_num(&c, &d->type) || !fa_str(&c, &method, &method_len, FA_MAX_METHOD) || !fa_num(&c, &unpacked) || !fa_num(&c, &packed) || !fa_u32(&c, &d->crc)) return false;
     checked = c.pos;
-    if (!fa_u32(&c, &own) || own != fa_crc32(tail + start, checked - start))
-        return false;
+    if (!fa_u32(&c, &own) || own != fa_crc32(tail + start, checked - start)) return false;
     if ((int64_t)packed > physical) return false;
     xx_rt_memcpy(d->method, method, method_len);
     d->method[method_len] = 0;
@@ -900,8 +919,8 @@ static bool fa_local_descriptor(const uint8_t *tail, size_t tail_size,
 }
 
 /* Find the footer descriptor in the last 4 KiB of the device. */
-static bool fa_find_footer(Abstractformat *self, fa_desc *footer,
-                           int64_t *archive_end) {
+static bool fa_find_footer(Abstractformat *self, fa_desc *footer, int64_t *archive_end)
+{
     uint8_t tail[FA_TAIL_SIZE];
     int64_t total, span, tail_rel;
     size_t tail_size, s;
@@ -912,15 +931,11 @@ static bool fa_find_footer(Abstractformat *self, fa_desc *footer,
     if (span < XX_FREEARC_MIN_SIZE) return false;
     tail_size = span < FA_TAIL_SIZE ? (size_t)span : FA_TAIL_SIZE;
     tail_rel = span - (int64_t)tail_size;
-    if (!xx_freearc_read_at(self, self->base_address + tail_rel, tail,
-                            tail_size))
-        return false;
+    if (!xx_freearc_read_at(self, self->base_address + tail_rel, tail, tail_size)) return false;
     for (s = tail_size - 4U + 1U; s-- > 0U;) {
         size_t end;
         if (xx_rt_memcmp(tail + s, XX_FREEARC_MAGIC, 4U) != 0) continue;
-        if (fa_local_descriptor(tail, tail_size, s, tail_rel + (int64_t)s,
-                                footer, &end) &&
-            footer->type == FA_BLOCK_FOOTER) {
+        if (fa_local_descriptor(tail, tail_size, s, tail_rel + (int64_t)s, footer, &end) && footer->type == FA_BLOCK_FOOTER) {
             if (archive_end) *archive_end = tail_rel + (int64_t)end;
             return true;
         }
@@ -929,22 +944,17 @@ static bool fa_find_footer(Abstractformat *self, fa_desc *footer,
 }
 
 /* Read and decode a control block, checking its CRC. */
-static bool fa_read_control(Abstractformat *self, const fa_desc *d,
-                            uint8_t **data, size_t *size, xx_pd_struct *pd) {
+static bool fa_read_control(Abstractformat *self, const fa_desc *d, uint8_t **data, size_t *size, xx_pd_struct *pd)
+{
     uint8_t *packed;
-    if (d->packed > FA_MAX_CONTROL || d->unpacked > FA_MAX_CONTROL ||
-        !xx_freearc_method_supported(d->method))
-        return false;
+    if (d->packed > FA_MAX_CONTROL || d->unpacked > FA_MAX_CONTROL || !xx_freearc_method_supported(d->method)) return false;
     packed = fa_alloc((size_t)d->packed);
     if (!packed) return false;
-    if (!xx_freearc_read_at(self, self->base_address + d->offset, packed,
-                            (size_t)d->packed)) {
+    if (!xx_freearc_read_at(self, self->base_address + d->offset, packed, (size_t)d->packed)) {
         xx_mem_free(packed);
         return false;
     }
-    if (!xx_freearc_decode_chain(d->method, packed, (size_t)d->packed,
-                                 d->unpacked, data, size, pd))
-        return false;
+    if (!xx_freearc_decode_chain(d->method, packed, (size_t)d->packed, d->unpacked, data, size, pd)) return false;
     if (fa_crc32(*data, *size) != d->crc) {
         xx_mem_free(*data);
         *data = NULL;
@@ -981,7 +991,8 @@ typedef struct fa_index {
     uint64_t name_bytes;
 } fa_index;
 
-static void fa_index_free(fa_index *ix) {
+static void fa_index_free(fa_index *ix)
+{
     size_t i;
     if (!ix) return;
     for (i = 0U; i < ix->block_count; ++i) xx_mem_free(ix->blocks[i].method);
@@ -991,7 +1002,8 @@ static void fa_index_free(fa_index *ix) {
     xx_mem_free(ix);
 }
 
-static bool fa_grow(void **array, size_t *cap, size_t need, size_t elem) {
+static bool fa_grow(void **array, size_t *cap, size_t need, size_t elem)
+{
     size_t n;
     void *grown;
     if (need <= *cap) return true;
@@ -1006,8 +1018,8 @@ static bool fa_grow(void **array, size_t *cap, size_t need, size_t elem) {
 }
 
 /* Parse one directory block's data (dir_offset archive-relative). */
-static bool fa_parse_dir(fa_index *ix, const uint8_t *data, size_t size,
-                         int64_t dir_offset, xx_pd_struct *pd) {
+static bool fa_parse_dir(fa_index *ix, const uint8_t *data, size_t size, int64_t dir_offset, xx_pd_struct *pd)
+{
     fa_cursor c;
     uint64_t nblocks, ndirs, nfiles = 0U, v, i;
     size_t first_block = ix->block_count, first_entry = ix->entry_count;
@@ -1016,22 +1028,18 @@ static bool fa_parse_dir(fa_index *ix, const uint8_t *data, size_t size,
     size_t *dir_lens = NULL;
     bool ok = false;
 
-    c.p = data; c.size = size; c.pos = 0U;
-    if (!fa_num(&c, &nblocks) || nblocks > FA_MAX_ENTRIES ||
-        nblocks > size) return false;
-    block_files = (uint64_t *)xx_mem_alloc((size_t)(nblocks ? nblocks : 1U) *
-                                           sizeof(uint64_t));
+    c.p = data;
+    c.size = size;
+    c.pos = 0U;
+    if (!fa_num(&c, &nblocks) || nblocks > FA_MAX_ENTRIES || nblocks > size) return false;
+    block_files = (uint64_t *)xx_mem_alloc((size_t)(nblocks ? nblocks : 1U) * sizeof(uint64_t));
     if (!block_files) return false;
     for (i = 0U; i < nblocks; ++i) {
-        if (!fa_num(&c, &block_files[i]) ||
-            block_files[i] > FA_MAX_ENTRIES - nfiles)
-            goto done;
+        if (!fa_num(&c, &block_files[i]) || block_files[i] > FA_MAX_ENTRIES - nfiles) goto done;
         nfiles += block_files[i];
     }
     if (nfiles > FA_MAX_ENTRIES - ix->entry_count || nfiles > size) goto done;
-    if (!fa_grow((void **)&ix->blocks, &ix->block_cap,
-                 ix->block_count + (size_t)nblocks, sizeof(fa_block)))
-        goto done;
+    if (!fa_grow((void **)&ix->blocks, &ix->block_cap, ix->block_count + (size_t)nblocks, sizeof(fa_block))) goto done;
     for (i = 0U; i < nblocks; ++i) {
         const char *m;
         size_t ml;
@@ -1053,24 +1061,18 @@ static bool fa_parse_dir(fa_index *ix, const uint8_t *data, size_t size,
         if (!fa_num(&c, &v) || (int64_t)v > dir_offset - b->offset) goto done;
         b->packed = (int64_t)v;
     }
-    if (!fa_num(&c, &ndirs) || ndirs > FA_MAX_ENTRIES || ndirs > size)
-        goto done;
-    dirs = (const char **)xx_mem_alloc((size_t)(ndirs ? ndirs : 1U) *
-                                       sizeof(char *));
-    dir_lens = (size_t *)xx_mem_alloc((size_t)(ndirs ? ndirs : 1U) *
-                                      sizeof(size_t));
+    if (!fa_num(&c, &ndirs) || ndirs > FA_MAX_ENTRIES || ndirs > size) goto done;
+    dirs = (const char **)xx_mem_alloc((size_t)(ndirs ? ndirs : 1U) * sizeof(char *));
+    dir_lens = (size_t *)xx_mem_alloc((size_t)(ndirs ? ndirs : 1U) * sizeof(size_t));
     if (!dirs || !dir_lens) goto done;
     for (i = 0U; i < ndirs; ++i)
         if (!fa_str(&c, &dirs[i], &dir_lens[i], FA_MAX_NAME)) goto done;
-    if (!fa_grow((void **)&ix->entries, &ix->entry_cap,
-                 ix->entry_count + (size_t)nfiles, sizeof(fa_entry)))
-        goto done;
+    if (!fa_grow((void **)&ix->entries, &ix->entry_cap, ix->entry_count + (size_t)nfiles, sizeof(fa_entry))) goto done;
     for (i = 0U; i < nfiles; ++i) {
         fa_entry *e = &ix->entries[ix->entry_count];
         const char *n;
         size_t nl;
-        if (fa_stopped(pd) || !fa_str(&c, &n, &nl, FA_MAX_NAME) || !nl)
-            goto done;
+        if (fa_stopped(pd) || !fa_str(&c, &n, &nl, FA_MAX_NAME) || !nl) goto done;
         xx_mem_zero(e, sizeof(*e));
         e->name = fa_strndup(n, nl);
         if (!e->name) goto done;
@@ -1083,9 +1085,7 @@ static bool fa_parse_dir(fa_index *ix, const uint8_t *data, size_t size,
         if (!fa_num(&c, &v) || (ndirs ? v >= ndirs : v != 0U)) goto done;
         nl = xx_str_len(e->name);
         dl = ndirs ? dir_lens[v] : 0U;
-        if (dl + 1U + nl > FA_MAX_NAME ||
-            ix->name_bytes + dl + nl + 2U > FA_MAX_NAME_BYTES)
-            goto done;
+        if (dl + 1U + nl > FA_MAX_NAME || ix->name_bytes + dl + nl + 2U > FA_MAX_NAME_BYTES) goto done;
         ix->name_bytes += dl + nl + 2U;
         if (dl) {
             joined = (char *)xx_mem_alloc(dl + 1U + nl + 1U);
@@ -1141,29 +1141,30 @@ done:
     return ok;
 }
 
-static fa_index *fa_build_index(Abstractformat *self, xx_pd_struct *pd) {
+static fa_index *fa_build_index(Abstractformat *self, xx_pd_struct *pd)
+{
     fa_desc footer;
     uint8_t *data = NULL;
     size_t size = 0U;
     fa_cursor c;
     uint64_t count, i;
     fa_index *ix;
-    if (!fa_find_footer(self, &footer, NULL) ||
-        !fa_read_control(self, &footer, &data, &size, pd))
-        return NULL;
+    if (!fa_find_footer(self, &footer, NULL) || !fa_read_control(self, &footer, &data, &size, pd)) return NULL;
     ix = (fa_index *)xx_mem_calloc(1U, sizeof(*ix));
-    if (!ix) { xx_mem_free(data); return NULL; }
-    c.p = data; c.size = size; c.pos = 0U;
-    if (!fa_num(&c, &count) || count < 1U || count > FA_MAX_CONTROL_BLOCKS)
-        goto fail;
+    if (!ix) {
+        xx_mem_free(data);
+        return NULL;
+    }
+    c.p = data;
+    c.size = size;
+    c.pos = 0U;
+    if (!fa_num(&c, &count) || count < 1U || count > FA_MAX_CONTROL_BLOCKS) goto fail;
     for (i = 0U; i < count; ++i) {
         fa_desc d;
         const char *m;
         size_t ml;
         uint64_t rel, unpacked, packed;
-        if (fa_stopped(pd) || !fa_num(&c, &d.type) ||
-            !fa_str(&c, &m, &ml, FA_MAX_METHOD) || !fa_num(&c, &rel) ||
-            !fa_num(&c, &unpacked) || !fa_num(&c, &packed) ||
+        if (fa_stopped(pd) || !fa_num(&c, &d.type) || !fa_str(&c, &m, &ml, FA_MAX_METHOD) || !fa_num(&c, &rel) || !fa_num(&c, &unpacked) || !fa_num(&c, &packed) ||
             !fa_u32(&c, &d.crc) || (int64_t)rel > footer.offset)
             goto fail;
         xx_rt_memcpy(d.method, m, ml);
@@ -1190,7 +1191,8 @@ fail:
     return NULL;
 }
 
-static fa_index *fa_index_get(Abstractformat *self, xx_pd_struct *pd) {
+static fa_index *fa_index_get(Abstractformat *self, xx_pd_struct *pd)
+{
     xx_freearc *archive = (xx_freearc *)self;
     if (!self) return NULL;
     if (!archive->index_tried) {
@@ -1204,8 +1206,8 @@ static fa_index *fa_index_get(Abstractformat *self, xx_pd_struct *pd) {
 
 /* --------------------------------------------------------- reader api */
 
-void xx_freearc_init(xx_freearc *archive, xx_io_device *device,
-                     int64_t base_address) {
+void xx_freearc_init(xx_freearc *archive, xx_io_device *device, int64_t base_address)
+{
     if (!archive) return;
     xx_mem_zero(archive, sizeof(*archive));
     xx_format_init(&archive->format, device, base_address);
@@ -1218,23 +1220,18 @@ void xx_freearc_init(xx_freearc *archive, xx_io_device *device,
     archive->format.check_is_valid = xx_freearc_check_is_valid;
     archive->format.handle_base_info = xx_freearc_handle_base_info;
     archive->format.get_format_size = xx_freearc_get_format_size;
-    archive->format.get_number_of_archive_records =
-        xx_freearc_get_number_of_archive_records;
-    archive->format.create_archive_records_reading =
-        xx_freearc_create_archive_records_reading;
-    archive->format.get_current_archive_record =
-        xx_freearc_get_current_archive_record;
-    archive->format.unpack_current_archive_record =
-        xx_freearc_unpack_current_archive_record;
-    archive->format.archive_record_move_to_next =
-        xx_freearc_archive_record_move_to_next;
-    archive->format.free_archive_records_reading =
-        xx_freearc_free_archive_records_reading;
+    archive->format.get_number_of_archive_records = xx_freearc_get_number_of_archive_records;
+    archive->format.create_archive_records_reading = xx_freearc_create_archive_records_reading;
+    archive->format.get_current_archive_record = xx_freearc_get_current_archive_record;
+    archive->format.unpack_current_archive_record = xx_freearc_unpack_current_archive_record;
+    archive->format.archive_record_move_to_next = xx_freearc_archive_record_move_to_next;
+    archive->format.free_archive_records_reading = xx_freearc_free_archive_records_reading;
     archive->format.destroy = xx_freearc_vtable_destroy;
     archive->archive_size = -1;
 }
 
-xx_freearc *xx_freearc_create(xx_io_device *device, int64_t base_address) {
+xx_freearc *xx_freearc_create(xx_io_device *device, int64_t base_address)
+{
     xx_freearc *archive = (xx_freearc *)xx_mem_alloc(sizeof(*archive));
 
     if (!archive) return NULL;
@@ -1242,7 +1239,8 @@ xx_freearc *xx_freearc_create(xx_io_device *device, int64_t base_address) {
     return archive;
 }
 
-void xx_freearc_destroy(xx_freearc *archive) {
+void xx_freearc_destroy(xx_freearc *archive)
+{
     if (!archive) return;
     /* Not xx_format_destroy: it dispatches back through format.destroy. */
     if (archive->format.close) archive->format.close(&archive->format);
@@ -1254,22 +1252,26 @@ void xx_freearc_destroy(xx_freearc *archive) {
     archive->version = 0U;
 }
 
-void xx_freearc_free(xx_freearc *archive) {
+void xx_freearc_free(xx_freearc *archive)
+{
     if (!archive) return;
     xx_freearc_destroy(archive);
     xx_mem_free(archive);
 }
 
-static void xx_freearc_vtable_destroy(Abstractformat *self) {
+static void xx_freearc_vtable_destroy(Abstractformat *self)
+{
     xx_freearc_destroy((xx_freearc *)self);
 }
 
-bool xx_freearc_check_is_valid(Abstractformat *self, xx_pd_struct *pd) {
+bool xx_freearc_check_is_valid(Abstractformat *self, xx_pd_struct *pd)
+{
     if (!self || (pd && xx_pd_is_stopped(pd))) return false;
     return xx_freearc_probe(self, NULL);
 }
 
-bool xx_freearc_handle_base_info(Abstractformat *self, xx_pd_struct *pd) {
+bool xx_freearc_handle_base_info(Abstractformat *self, xx_pd_struct *pd)
+{
     xx_freearc *archive = (xx_freearc *)self;
     fa_desc footer;
     int64_t end = -1;
@@ -1294,16 +1296,16 @@ bool xx_freearc_handle_base_info(Abstractformat *self, xx_pd_struct *pd) {
     return true;
 }
 
-int64_t xx_freearc_get_format_size(Abstractformat *self, xx_pd_struct *pd) {
-    if (!self ||
-        (!self->base_info_handled && !xx_format_handle_base_info(self, pd))) {
+int64_t xx_freearc_get_format_size(Abstractformat *self, xx_pd_struct *pd)
+{
+    if (!self || (!self->base_info_handled && !xx_format_handle_base_info(self, pd))) {
         return 0;
     }
     return self->is_valid ? self->format_size : 0;
 }
 
-uint64_t xx_freearc_get_number_of_archive_records(Abstractformat *self,
-                                                  xx_pd_struct *pd) {
+uint64_t xx_freearc_get_number_of_archive_records(Abstractformat *self, xx_pd_struct *pd)
+{
     fa_index *ix = fa_index_get(self, pd);
     return ix ? (uint64_t)ix->entry_count : 0U;
 }
@@ -1311,17 +1313,18 @@ uint64_t xx_freearc_get_number_of_archive_records(Abstractformat *self,
 /* ------------------------------------------------------ record reading */
 
 typedef struct fa_stream {
-    fa_index *ix;          /* borrowed from the archive */
+    fa_index *ix; /* borrowed from the archive */
     size_t index;
-    size_t cached_block;   /* (size_t)-1 when nothing is cached */
+    size_t cached_block; /* (size_t)-1 when nothing is cached */
     bool cached_ok;
     uint8_t *cache;
     size_t cache_size;
-    uint64_t *seen;        /* hashes of output names already used */
+    uint64_t *seen; /* hashes of output names already used */
     size_t seen_cap;
 } fa_stream;
 
-static void fa_stream_free(void *opaque) {
+static void fa_stream_free(void *opaque)
+{
     fa_stream *s = (fa_stream *)opaque;
     if (!s) return;
     if (s->cache) xx_mem_free(s->cache);
@@ -1329,17 +1332,16 @@ static void fa_stream_free(void *opaque) {
     xx_mem_free(s);
 }
 
-static bool fa_copy_options(xx_list_s *destination, const xx_list_s *source) {
+static bool fa_copy_options(xx_list_s *destination, const xx_list_s *source)
+{
     size_t index;
     if (!source) return true;
     for (index = 0U; index < source->count; ++index) {
-        const xx_meta *original =
-            (const xx_meta *)xx_list_at((const xx_list_t *)source, index);
+        const xx_meta *original = (const xx_meta *)xx_list_at((const xx_list_t *)source, index);
         xx_meta copy;
         if (!original) continue;
         xx_meta_init(&copy, original->meta_id);
-        if (!xx_var_copy(&copy.var, &original->var) ||
-            !xx_list_append(destination, &copy)) {
+        if (!xx_var_copy(&copy.var, &original->var) || !xx_list_append(destination, &copy)) {
             xx_meta_cleanup(&copy);
             return false;
         }
@@ -1347,19 +1349,19 @@ static bool fa_copy_options(xx_list_s *destination, const xx_list_s *source) {
     return true;
 }
 
-static const xx_var *fa_option(const xx_list_s *options, uint32_t id) {
+static const xx_var *fa_option(const xx_list_s *options, uint32_t id)
+{
     size_t index;
     if (!options) return NULL;
     for (index = 0U; index < options->count; ++index) {
-        const xx_meta *meta =
-            (const xx_meta *)xx_list_at((const xx_list_t *)options, index);
+        const xx_meta *meta = (const xx_meta *)xx_list_at((const xx_list_t *)options, index);
         if (meta && meta->meta_id == id) return &meta->var;
     }
     return NULL;
 }
 
-static bool fa_set_record(xx_archive_record *record, const fa_index *ix,
-                          size_t i) {
+static bool fa_set_record(xx_archive_record *record, const fa_index *ix, size_t i)
+{
     const fa_entry *e = &ix->entries[i];
     const fa_block *b = &ix->blocks[e->block];
     xx_archive_record_cleanup(record);
@@ -1368,20 +1370,13 @@ static bool fa_set_record(xx_archive_record *record, const fa_index *ix,
     record->header_size = 0;
     record->data_offset = b->offset;
     record->compressed_size = b->packed;
-    return xx_archive_record_set_original_name(record, e->name) &&
-           xx_archive_record_set_meta_u64(record, XX_META_ID_UNCOMPRESSED_SIZE,
-                                          (uint64_t)e->size) &&
-           xx_archive_record_set_meta_u64(record, XX_META_ID_CRC32, e->crc) &&
-           xx_archive_record_set_meta_u64(record, XX_META_ID_TIMESTAMP,
-                                          e->time) &&
-           xx_archive_record_set_meta_bool(record, XX_META_ID_IS_ENCRYPTED,
-                                           false) &&
-           xx_archive_record_set_meta_bool(record, XX_META_ID_IS_FOLDER,
-                                           e->folder);
+    return xx_archive_record_set_original_name(record, e->name) && xx_archive_record_set_meta_u64(record, XX_META_ID_UNCOMPRESSED_SIZE, (uint64_t)e->size) &&
+           xx_archive_record_set_meta_u64(record, XX_META_ID_CRC32, e->crc) && xx_archive_record_set_meta_u64(record, XX_META_ID_TIMESTAMP, e->time) &&
+           xx_archive_record_set_meta_bool(record, XX_META_ID_IS_ENCRYPTED, false) && xx_archive_record_set_meta_bool(record, XX_META_ID_IS_FOLDER, e->folder);
 }
 
-xx_archive_record_state *xx_freearc_create_archive_records_reading(
-    Abstractformat *self, const xx_list_s *options, xx_pd_struct *pd) {
+xx_archive_record_state *xx_freearc_create_archive_records_reading(Abstractformat *self, const xx_list_s *options, xx_pd_struct *pd)
+{
     fa_index *ix = fa_index_get(self, pd);
     fa_stream *stream;
     xx_archive_record_state *state;
@@ -1414,20 +1409,16 @@ xx_archive_record_state *xx_freearc_create_archive_records_reading(
     return state;
 }
 
-const xx_archive_record *xx_freearc_get_current_archive_record(
-    Abstractformat *self, xx_archive_record_state *state) {
-    return self && state && state->format == self && state->has_record
-               ? &state->current_record : NULL;
+const xx_archive_record *xx_freearc_get_current_archive_record(Abstractformat *self, xx_archive_record_state *state)
+{
+    return self && state && state->format == self && state->has_record ? &state->current_record : NULL;
 }
 
-bool xx_freearc_archive_record_move_to_next(Abstractformat *self,
-                                            xx_archive_record_state *state,
-                                            xx_pd_struct *pd) {
+bool xx_freearc_archive_record_move_to_next(Abstractformat *self, xx_archive_record_state *state, xx_pd_struct *pd)
+{
     fa_stream *stream;
     (void)pd;
-    if (!self || !state || state->format != self ||
-        !(stream = (fa_stream *)state->internal_state) ||
-        stream->index + 1U >= stream->ix->entry_count) {
+    if (!self || !state || state->format != self || !(stream = (fa_stream *)state->internal_state) || stream->index + 1U >= stream->ix->entry_count) {
         if (state) state->has_record = false;
         return false;
     }
@@ -1442,8 +1433,8 @@ bool xx_freearc_archive_record_move_to_next(Abstractformat *self,
 }
 
 /* Decode (or reuse) the solid block holding entry @p e. */
-static bool fa_load_block(Abstractformat *self, fa_stream *s, size_t block,
-                          xx_pd_struct *pd) {
+static bool fa_load_block(Abstractformat *self, fa_stream *s, size_t block, xx_pd_struct *pd)
+{
     const fa_block *b = &s->ix->blocks[block];
     uint8_t *packed;
     int64_t total;
@@ -1454,19 +1445,15 @@ static bool fa_load_block(Abstractformat *self, fa_stream *s, size_t block,
     s->cached_block = block;
     s->cached_ok = false;
     total = xx_io_total_size(self->device) - self->base_address;
-    if (!b->supported || b->unpacked > FA_MAX_SOLID ||
-        b->packed > FA_MAX_STAGE || b->offset < 0 || b->packed < 0 ||
-        b->offset > total || b->packed > total - b->offset)
+    if (!b->supported || b->unpacked > FA_MAX_SOLID || b->packed > FA_MAX_STAGE || b->offset < 0 || b->packed < 0 || b->offset > total || b->packed > total - b->offset)
         return false;
     packed = fa_alloc((size_t)b->packed);
     if (!packed) return false;
-    if (!xx_freearc_read_at(self, self->base_address + b->offset, packed,
-                            (size_t)b->packed)) {
+    if (!xx_freearc_read_at(self, self->base_address + b->offset, packed, (size_t)b->packed)) {
         xx_mem_free(packed);
         return false;
     }
-    if (!xx_freearc_decode_chain(b->method, packed, (size_t)b->packed,
-                                 b->unpacked, &s->cache, &s->cache_size, pd)) {
+    if (!xx_freearc_decode_chain(b->method, packed, (size_t)b->packed, b->unpacked, &s->cache, &s->cache_size, pd)) {
         /* A stopped decode may be retried later. */
         if (fa_stopped(pd)) s->cached_block = (size_t)-1;
         return false;
@@ -1475,11 +1462,13 @@ static bool fa_load_block(Abstractformat *self, fa_stream *s, size_t block,
     return true;
 }
 
-static char fa_upper(char c) {
+static char fa_upper(char c)
+{
     return (c >= 'a' && c <= 'z') ? (char)(c - 'a' + 'A') : c;
 }
 
-static bool fa_stem_is(const char *name, size_t stem, const char *word) {
+static bool fa_stem_is(const char *name, size_t stem, const char *word)
+{
     size_t i;
     for (i = 0U; i < stem; ++i)
         if (!word[i] || fa_upper(name[i]) != word[i]) return false;
@@ -1488,17 +1477,15 @@ static bool fa_stem_is(const char *name, size_t stem, const char *word) {
 
 /* One path component [s, s+n): no control or reserved characters, not only
  * dots and spaces, not a Windows device name. */
-static bool fa_safe_component(const char *s, size_t n) {
-    static const char *const devices[] = {"CON", "PRN", "AUX", "NUL",
-                                          "CONIN$", "CONOUT$", "CLOCK$"};
+static bool fa_safe_component(const char *s, size_t n)
+{
+    static const char *const devices[] = {"CON", "PRN", "AUX", "NUL", "CONIN$", "CONOUT$", "CLOCK$"};
     size_t i, stem = 0U;
     bool meaningful = false;
     if (!n) return false;
     for (i = 0U; i < n; ++i) {
         unsigned char c = (unsigned char)s[i];
-        if (c < 0x20U || c == 0x7FU || c == ':' || c == '<' || c == '>' ||
-            c == '"' || c == '|' || c == '?' || c == '*' || c == '\\')
-            return false;
+        if (c < 0x20U || c == 0x7FU || c == ':' || c == '<' || c == '>' || c == '"' || c == '|' || c == '?' || c == '*' || c == '\\') return false;
         if (c != '.' && c != ' ') meaningful = true;
     }
     if (!meaningful) return false;
@@ -1507,15 +1494,13 @@ static bool fa_safe_component(const char *s, size_t n) {
     for (i = 0U; i < sizeof(devices) / sizeof(devices[0]); ++i)
         if (fa_stem_is(s, stem, devices[i])) return false;
     if (stem == 4U && s[3] >= '0' && s[3] <= '9' &&
-        ((fa_upper(s[0]) == 'C' && fa_upper(s[1]) == 'O' &&
-          fa_upper(s[2]) == 'M') ||
-         (fa_upper(s[0]) == 'L' && fa_upper(s[1]) == 'P' &&
-          fa_upper(s[2]) == 'T')))
+        ((fa_upper(s[0]) == 'C' && fa_upper(s[1]) == 'O' && fa_upper(s[2]) == 'M') || (fa_upper(s[0]) == 'L' && fa_upper(s[1]) == 'P' && fa_upper(s[2]) == 'T')))
         return false;
     return true;
 }
 
-static bool fa_safe_path(const char *path) {
+static bool fa_safe_path(const char *path)
+{
     size_t start = 0U, i;
     if (!path || !path[0] || path[0] == '/') return false;
     for (i = 0U;; ++i) {
@@ -1528,7 +1513,8 @@ static bool fa_safe_path(const char *path) {
     return true;
 }
 
-static uint64_t fa_name_hash(const char *s) {
+static uint64_t fa_name_hash(const char *s)
+{
     uint64_t h = 1469598103934665603ULL;
     for (; *s; ++s) {
         h ^= (uint8_t)fa_upper(*s);
@@ -1538,7 +1524,8 @@ static uint64_t fa_name_hash(const char *s) {
 }
 
 /* Returns true if @p name was new (and records it). */
-static bool fa_seen_insert(fa_stream *s, const char *name) {
+static bool fa_seen_insert(fa_stream *s, const char *name)
+{
     uint64_t h = fa_name_hash(name);
     size_t i;
     if (!s->seen) {
@@ -1557,7 +1544,8 @@ static bool fa_seen_insert(fa_stream *s, const char *name) {
     return true;
 }
 
-static bool fa_write_file(const char *path, const uint8_t *data, size_t size) {
+static bool fa_write_file(const char *path, const uint8_t *data, size_t size)
+{
     xx_io_device *destination;
     bool created, result = true;
     size_t done = 0U;
@@ -1568,7 +1556,10 @@ static bool fa_write_file(const char *path, const uint8_t *data, size_t size) {
     while (done < size) {
         size_t part = size - done > 0x100000U ? 0x100000U : size - done;
         ssize_t w = xx_io_write(destination, data + done, part);
-        if (w <= 0 || (size_t)w > part) { result = false; break; }
+        if (w <= 0 || (size_t)w > part) {
+            result = false;
+            break;
+        }
         done += (size_t)w;
     }
     if (xx_io_close(destination) != 0) result = false;
@@ -1576,9 +1567,8 @@ static bool fa_write_file(const char *path, const uint8_t *data, size_t size) {
     return result;
 }
 
-bool xx_freearc_unpack_current_archive_record(Abstractformat *self,
-                                              xx_archive_record_state *state,
-                                              xx_pd_struct *pd) {
+bool xx_freearc_unpack_current_archive_record(Abstractformat *self, xx_archive_record_state *state, xx_pd_struct *pd)
+{
     fa_stream *stream;
     const fa_entry *e;
     const xx_var *path_option;
@@ -1586,27 +1576,21 @@ bool xx_freearc_unpack_current_archive_record(Abstractformat *self,
     char *owned_base = NULL, *path = NULL, *name = NULL;
     const uint8_t *slice = NULL;
     bool result = false;
-    if (!self || !state || state->format != self || !state->has_record ||
-        !(stream = (fa_stream *)state->internal_state) ||
-        stream->index >= stream->ix->entry_count || fa_stopped(pd))
+    if (!self || !state || state->format != self || !state->has_record || !(stream = (fa_stream *)state->internal_state) || stream->index >= stream->ix->entry_count ||
+        fa_stopped(pd))
         return false;
     e = &stream->ix->entries[stream->index];
     if (!e->folder) {
-        if (!fa_load_block(self, stream, e->block, pd) ||
-            e->offset > (int64_t)stream->cache_size ||
-            e->size > (int64_t)stream->cache_size - e->offset)
-            return false;
+        if (!fa_load_block(self, stream, e->block, pd) || e->offset > (int64_t)stream->cache_size || e->size > (int64_t)stream->cache_size - e->offset) return false;
         slice = stream->cache + e->offset;
         if (fa_crc32(slice, (size_t)e->size) != e->crc) return false;
     }
     path_option = fa_option(&state->options, XX_META_ID_OPT_UNPACK_PATH);
     if (!path_option) return true;
     if (!fa_safe_path(e->name)) return false;
-    if (path_option->type == XX_VAR_TYPE_STRING ||
-        path_option->type == XX_VAR_TYPE_STRING_VIEW) {
+    if (path_option->type == XX_VAR_TYPE_STRING || path_option->type == XX_VAR_TYPE_STRING_VIEW) {
         base = xx_var_get_str(path_option);
-    } else if (path_option->type == XX_VAR_TYPE_WSTRING ||
-               path_option->type == XX_VAR_TYPE_WSTRING_VIEW) {
+    } else if (path_option->type == XX_VAR_TYPE_WSTRING || path_option->type == XX_VAR_TYPE_WSTRING_VIEW) {
         owned_base = xx_str_unicode_to_utf8(xx_var_get_wstr(path_option));
         base = owned_base;
     }
@@ -1617,21 +1601,15 @@ bool xx_freearc_unpack_current_archive_record(Abstractformat *self,
         name = xx_str_concat(e->name, "");
     } else {
         char suffix[32];
-        (void)xx_rt_snprintf(suffix, sizeof(suffix), "~%llu",
-                             (unsigned long long)stream->index);
+        (void)xx_rt_snprintf(suffix, sizeof(suffix), "~%llu", (unsigned long long)stream->index);
         name = xx_str_concat(e->name, suffix);
         if (name) (void)fa_seen_insert(stream, name);
     }
     if (!name) goto done;
-    path = (base[0] && base[xx_str_len(base) - 1U] != '/' &&
-            base[xx_str_len(base) - 1U] != '\\')
-               ? xx_str_concat3(base, "/", name)
-               : xx_str_concat(base, name);
+    path = (base[0] && base[xx_str_len(base) - 1U] != '/' && base[xx_str_len(base) - 1U] != '\\') ? xx_str_concat3(base, "/", name) : xx_str_concat(base, name);
     if (!path) goto done;
-    if (e->folder)
-        result = xx_store_create_dirs_a(path, true);
-    else
-        result = fa_write_file(path, slice, (size_t)e->size);
+    if (e->folder) result = xx_store_create_dirs_a(path, true);
+    else result = fa_write_file(path, slice, (size_t)e->size);
 done:
     if (path) xx_str_free(path);
     if (name) xx_str_free(name);
@@ -1639,16 +1617,18 @@ done:
     return result;
 }
 
-void xx_freearc_free_archive_records_reading(Abstractformat *self,
-                                             xx_archive_record_state *state) {
+void xx_freearc_free_archive_records_reading(Abstractformat *self, xx_archive_record_state *state)
+{
     (void)self;
     xx_archive_record_state_free(state);
 }
 
-uint16_t xx_freearc_get_flags(const xx_freearc *archive) {
+uint16_t xx_freearc_get_flags(const xx_freearc *archive)
+{
     return archive ? archive->flags : 0U;
 }
 
-uint16_t xx_freearc_get_version(const xx_freearc *archive) {
+uint16_t xx_freearc_get_version(const xx_freearc *archive)
+{
     return archive ? archive->version : 0U;
 }

@@ -43,10 +43,8 @@ XXFC_API xx_tree_node_t *xx_tree_root(const xx_tree_t *tree);
 /* A tree has at most one root. These return NULL on invalid input or memory
  * failure. parent must belong to tree. Insertion preserves child order. */
 XXFC_API xx_tree_node_t *xx_tree_set_root(xx_tree_t *tree, const void *element);
-XXFC_API xx_tree_node_t *xx_tree_append_child(xx_tree_t *tree,
-    xx_tree_node_t *parent, const void *element);
-XXFC_API xx_tree_node_t *xx_tree_prepend_child(xx_tree_t *tree,
-    xx_tree_node_t *parent, const void *element);
+XXFC_API xx_tree_node_t *xx_tree_append_child(xx_tree_t *tree, xx_tree_node_t *parent, const void *element);
+XXFC_API xx_tree_node_t *xx_tree_prepend_child(xx_tree_t *tree, xx_tree_node_t *parent, const void *element);
 
 /* Borrowed node/value pointers remain valid until that node is removed or
  * its tree is cleared/destroyed. Reparenting keeps pointers stable. */

@@ -78,12 +78,14 @@ typedef struct pdb_stream_s {
 } pdb_stream;
 
 #include "xxfclib/global/xx_global.h"
-static size_t gb_pdb_capacity(void) {
+static size_t gb_pdb_capacity(void)
+{
     size_t n = xx_get_file_buffer_size();
     if (!n) n = XX_DEFAULT_FILE_BUFFER_SIZE;
     return n > (SIZE_MAX >> 1) ? SIZE_MAX >> 1 : n;
 }
-static ssize_t gb_pdb_read(xx_io_device *device, void *buffer, size_t size, size_t capacity) {
+static ssize_t gb_pdb_read(xx_io_device *device, void *buffer, size_t size, size_t capacity)
+{
     size_t done = 0;
     if (size > (SIZE_MAX >> 1)) return -1;
     while (done < size) {
@@ -97,7 +99,8 @@ static ssize_t gb_pdb_read(xx_io_device *device, void *buffer, size_t size, size
     }
     return (ssize_t)done;
 }
-static ssize_t gb_pdb_write(xx_io_device *device, const void *buffer, size_t size, size_t capacity) {
+static ssize_t gb_pdb_write(xx_io_device *device, const void *buffer, size_t size, size_t capacity)
+{
     size_t done = 0;
     if (size > (SIZE_MAX >> 1)) return -1;
     while (done < size) {
@@ -112,16 +115,13 @@ static ssize_t gb_pdb_write(xx_io_device *device, const void *buffer, size_t siz
     return (ssize_t)done;
 }
 
-static bool pdb_read_at(xx_io_device *device, int64_t offset, void *buffer,
-                        size_t size) {
+static bool pdb_read_at(xx_io_device *device, int64_t offset, void *buffer, size_t size)
+{
     const size_t file_io_capacity = gb_pdb_capacity();
     size_t done = 0U;
-    if (!device || (!buffer && size != 0U) || offset < 0 ||
-        xx_io_seek64(device, offset, SEEK_SET) != 0)
-        return false;
+    if (!device || (!buffer && size != 0U) || offset < 0 || xx_io_seek64(device, offset, SEEK_SET) != 0) return false;
     while (done < size) {
-        ssize_t amount = gb_pdb_read(device, (uint8_t *)buffer + done,
-                                    size - done, file_io_capacity);
+        ssize_t amount = gb_pdb_read(device, (uint8_t *)buffer + done, size - done, file_io_capacity);
         if (amount <= 0 || (size_t)amount > size - done) return false;
         done += (size_t)amount;
     }
@@ -132,8 +132,8 @@ static bool pdb_read_at(xx_io_device *device, int64_t offset, void *buffer,
  * through when it is NULL) in fixed chunks.  The last block runs to EOF, so a
  * member can be as large as the file itself; buffering it whole would let
  * one crafted database demand an allocation of the file's size. */
-static bool pdb_copy_range(xx_io_device *source, int64_t offset, int64_t size,
-                           xx_io_device *destination, xx_pd_struct *pd) {
+static bool pdb_copy_range(xx_io_device *source, int64_t offset, int64_t size, xx_io_device *destination, xx_pd_struct *pd)
+{
     const size_t file_io_capacity = gb_pdb_capacity();
     uint8_t *buffer;
     int64_t remaining = size;
@@ -143,18 +143,14 @@ static bool pdb_copy_range(xx_io_device *source, int64_t offset, int64_t size,
     buffer = (uint8_t *)xx_mem_alloc(file_io_capacity);
     if (!buffer) return false;
     while (ok && remaining > 0) {
-        size_t chunk = remaining > (int64_t)file_io_capacity
-                           ? (size_t)file_io_capacity
-                           : (size_t)remaining;
+        size_t chunk = remaining > (int64_t)file_io_capacity ? (size_t)file_io_capacity : (size_t)remaining;
         size_t written = 0U;
-        if ((pd && xx_pd_is_stopped(pd)) ||
-            !pdb_read_at(source, offset + (size - remaining), buffer, chunk)) {
+        if ((pd && xx_pd_is_stopped(pd)) || !pdb_read_at(source, offset + (size - remaining), buffer, chunk)) {
             ok = false;
             break;
         }
         while (destination && written < chunk) {
-            ssize_t amount = gb_pdb_write(destination, buffer + written,
-                                         chunk - written, file_io_capacity);
+            ssize_t amount = gb_pdb_write(destination, buffer + written, chunk - written, file_io_capacity);
             if (amount <= 0 || (size_t)amount > chunk - written) {
                 ok = false;
                 break;
@@ -167,15 +163,16 @@ static bool pdb_copy_range(xx_io_device *source, int64_t offset, int64_t size,
     return ok;
 }
 
-static bool pdb_range_within(int64_t total, int64_t offset, int64_t size) {
-    return total >= 0 && offset >= 0 && size >= 0 && offset <= total &&
-           size <= total - offset;
+static bool pdb_range_within(int64_t total, int64_t offset, int64_t size)
+{
+    return total >= 0 && offset >= 0 && size >= 0 && offset <= total && size <= total - offset;
 }
 
 /* The 32-byte name buffer is read at its FIELD size, never size - 1: a name
  * that fills the buffer completely puts its terminator in the last byte, and
  * reading one short would reject the record. */
-static bool pdb_check_name(const uint8_t *name) {
+static bool pdb_check_name(const uint8_t *name)
+{
     int32_t index;
     if (name[0] == 0U) return false;
     for (index = 0; index < PDB_NAME_SIZE; ++index) {
@@ -190,7 +187,8 @@ static bool pdb_check_name(const uint8_t *name) {
     return true;
 }
 
-static bool pdb_is_printable_4cc(uint32_t value) {
+static bool pdb_is_printable_4cc(uint32_t value)
+{
     int32_t index;
     for (index = 0; index < 4; ++index) {
         uint8_t c = (uint8_t)((value >> (8U * (3U - (unsigned)index))) & 0xffU);
@@ -200,7 +198,8 @@ static bool pdb_is_printable_4cc(uint32_t value) {
 }
 
 /* Write `value` as five decimal digits at `out`, returning the count. */
-static size_t pdb_write_number(char *out, uint32_t value) {
+static size_t pdb_write_number(char *out, uint32_t value)
+{
     size_t index;
     uint32_t divisor = 10000U;
     for (index = 0U; index < 5U; ++index) {
@@ -210,7 +209,8 @@ static size_t pdb_write_number(char *out, uint32_t value) {
     return 5U;
 }
 
-static size_t pdb_write_literal(char *out, const char *text) {
+static size_t pdb_write_literal(char *out, const char *text)
+{
     size_t index = 0U;
     while (text[index] != 0) {
         out[index] = text[index];
@@ -221,12 +221,12 @@ static size_t pdb_write_literal(char *out, const char *text) {
 
 /* A 4CC becomes a filename token: letters, digits, '_' and '-' survive,
  * everything else becomes '_'. */
-static size_t pdb_write_token(char *out, uint32_t value) {
+static size_t pdb_write_token(char *out, uint32_t value)
+{
     size_t index;
     for (index = 0U; index < 4U; ++index) {
         uint8_t c = (uint8_t)((value >> (8U * (3U - (unsigned)index))) & 0xffU);
-        bool keep = (c >= '0' && c <= '9') || (c >= 'A' && c <= 'Z') ||
-                    (c >= 'a' && c <= 'z') || c == '_' || c == '-';
+        bool keep = (c >= '0' && c <= '9') || (c >= 'A' && c <= 'Z') || (c >= 'a' && c <= 'z') || c == '_' || c == '-';
         out[index] = keep ? (char)c : '_';
     }
     return 4U;
@@ -252,7 +252,8 @@ static size_t pdb_write_token(char *out, uint32_t value) {
  * collide.  Within a shape, record names carry their unique entry index,
  * plain resource names are unique by construction, and suffixed names carry
  * their unique entry index. */
-static uint64_t pdb_resource_key(uint32_t type, uint32_t id, int32_t index) {
+static uint64_t pdb_resource_key(uint32_t type, uint32_t id, int32_t index)
+{
     uint32_t folded = 0U;
     size_t at;
     char token[4];
@@ -262,18 +263,19 @@ static uint64_t pdb_resource_key(uint32_t type, uint32_t id, int32_t index) {
         if (c >= 'A' && c <= 'Z') c = (uint8_t)(c - 'A' + 'a');
         folded = (folded << 8U) | (uint32_t)c;
     }
-    return ((uint64_t)folded << 32U) | ((uint64_t)(id & 0xffffU) << 16U) |
-           (uint64_t)((uint32_t)index & 0xffffU);
+    return ((uint64_t)folded << 32U) | ((uint64_t)(id & 0xffffU) << 16U) | (uint64_t)((uint32_t)index & 0xffffU);
 }
 
-static int pdb_compare_keys(const void *left, const void *right) {
+static int pdb_compare_keys(const void *left, const void *right)
+{
     uint64_t a = *(const uint64_t *)left;
     uint64_t b = *(const uint64_t *)right;
     return a < b ? -1 : (a > b ? 1 : 0);
 }
 
 /* Insert "_" + five digits in front of the ".bin" that ends `name`. */
-static bool pdb_append_index(char *name, uint32_t index) {
+static bool pdb_append_index(char *name, uint32_t index)
+{
     size_t length = 0U;
     size_t at;
     while (length < PDB_NAME_BUFFER && name[length] != 0) ++length;
@@ -288,28 +290,29 @@ static bool pdb_append_index(char *name, uint32_t index) {
 
 /* `resources` are the entry members in entry order and `keys` holds one
  * pdb_resource_key per entry; the keys are sorted in place. */
-static bool pdb_make_names_unique(pdb_member *resources, uint64_t *keys,
-                                  size_t count) {
+static bool pdb_make_names_unique(pdb_member *resources, uint64_t *keys, size_t count)
+{
     size_t index;
     if (count < 2U) return true;
     xx_rt_qsort(keys, count, sizeof(*keys), pdb_compare_keys);
     for (index = 1U; index < count; ++index) {
         uint32_t entry = (uint32_t)(keys[index] & 0xffffU);
         if ((keys[index] >> 16U) != (keys[index - 1U] >> 16U)) continue;
-        if (entry >= count || !pdb_append_index(resources[entry].name, entry))
-            return false;
+        if (entry >= count || !pdb_append_index(resources[entry].name, entry)) return false;
     }
     return true;
 }
 
-static void pdb_stream_free(void *opaque) {
+static void pdb_stream_free(void *opaque)
+{
     pdb_stream *stream = (pdb_stream *)opaque;
     if (!stream) return;
     if (stream->items) xx_mem_free(stream->items);
     xx_mem_free(stream);
 }
 
-static bool pdb_parse(Abstractformat *format, pdb_stream **result) {
+static bool pdb_parse(Abstractformat *format, pdb_stream **result)
+{
     uint8_t header[PDB_HEADER_SIZE];
     uint8_t *entries = NULL;
     uint64_t *keys = NULL;
@@ -321,15 +324,11 @@ static bool pdb_parse(Abstractformat *format, pdb_stream **result) {
     int32_t entry_count, index;
     size_t count = 0U, capacity;
     bool resource_database;
-    if (!format || !format->device || !result || format->base_address < 0)
-        return false;
+    if (!format || !format->device || !result || format->base_address < 0) return false;
     total = xx_io_total_size(format->device);
     if (total < format->base_address) return false;
     size = total - format->base_address;
-    if (size < (int64_t)PDB_HEADER_SIZE + 1 ||
-        !pdb_read_at(format->device, format->base_address, header,
-                     sizeof(header)))
-        return false;
+    if (size < (int64_t)PDB_HEADER_SIZE + 1 || !pdb_read_at(format->device, format->base_address, header, sizeof(header))) return false;
     if (!pdb_check_name(header)) return false;
     attributes = xx_data_get_u16(header + 0x20U, 2, 0, true);
     if ((attributes & PDB_ATTR_RESERVED_MASK) != 0U) return false;
@@ -341,13 +340,11 @@ static bool pdb_parse(Abstractformat *format, pdb_stream **result) {
      * legitimate stores binary there, and requiring them is what keeps this
      * permissive "header plus offset table" shape from matching unrelated
      * files. */
-    if (!pdb_is_printable_4cc(type) || !pdb_is_printable_4cc(creator))
-        return false;
+    if (!pdb_is_printable_4cc(type) || !pdb_is_printable_4cc(creator)) return false;
     resource_database = (attributes & PDB_ATTR_RESOURCE) != 0U;
     entry_count = (int32_t)xx_data_get_u16(header + 0x4cU, 2, 0, true);
     if (entry_count < 1 || entry_count > PDB_MAX_ENTRIES) return false;
-    entry_size = resource_database ? PDB_RESOURCE_ENTRY_SIZE
-                                   : PDB_RECORD_ENTRY_SIZE;
+    entry_size = resource_database ? PDB_RESOURCE_ENTRY_SIZE : PDB_RECORD_ENTRY_SIZE;
     table_size = entry_size * (int64_t)entry_count;
     if (!pdb_range_within(size, PDB_HEADER_SIZE, table_size)) return false;
     header_size = (int64_t)PDB_HEADER_SIZE + table_size;
@@ -361,15 +358,10 @@ static bool pdb_parse(Abstractformat *format, pdb_stream **result) {
         int64_t first = app_info != 0 ? app_info : sort_info;
         if (first == 0) {
             uint8_t entry[PDB_RESOURCE_ENTRY_SIZE];
-            if (!pdb_read_at(format->device,
-                             format->base_address + PDB_HEADER_SIZE, entry,
-                             (size_t)entry_size))
-                return false;
+            if (!pdb_read_at(format->device, format->base_address + PDB_HEADER_SIZE, entry, (size_t)entry_size)) return false;
             first = (int64_t)xx_data_get_u32(entry + (resource_database ? 6U : 0U), 4, 0, true);
         }
-        if (first < header_size || first - header_size > PDB_MAX_FILLER ||
-            first >= size)
-            return false;
+        if (first < header_size || first - header_size > PDB_MAX_FILLER || first >= size) return false;
     }
 
     entries = (uint8_t *)xx_mem_alloc((size_t)table_size);
@@ -377,11 +369,8 @@ static bool pdb_parse(Abstractformat *format, pdb_stream **result) {
     capacity = (size_t)entry_count + 2U;
     items = (pdb_member *)xx_mem_alloc(capacity * sizeof(*items));
     /* One uniqueness key per resource: at most 65535 * 8 bytes. */
-    if (resource_database)
-        keys = (uint64_t *)xx_mem_alloc((size_t)entry_count * sizeof(*keys));
-    if (!entries || !items || (resource_database && !keys) ||
-        !pdb_read_at(format->device, format->base_address + PDB_HEADER_SIZE,
-                     entries, (size_t)table_size))
+    if (resource_database) keys = (uint64_t *)xx_mem_alloc((size_t)entry_count * sizeof(*keys));
+    if (!entries || !items || (resource_database && !keys) || !pdb_read_at(format->device, format->base_address + PDB_HEADER_SIZE, entries, (size_t)table_size))
         goto fail;
 
     /* Block offsets are collected in file order: appInfo, sortInfo, then the
@@ -424,8 +413,7 @@ static bool pdb_parse(Abstractformat *format, pdb_stream **result) {
             member->kind = PDB_KIND_RECORD;
             member->offset = (int64_t)xx_data_get_u32(entry, 4, 0, true);
             member->attributes = (uint32_t)entry[4];
-            member->id = ((uint32_t)entry[5] << 16U) |
-                         ((uint32_t)entry[6] << 8U) | (uint32_t)entry[7];
+            member->id = ((uint32_t)entry[5] << 16U) | ((uint32_t)entry[6] << 8U) | (uint32_t)entry[7];
             at += pdb_write_literal(member->name + at, "record_");
             at += pdb_write_number(member->name + at, (uint32_t)index);
             at += pdb_write_literal(member->name + at, ".bin");
@@ -435,27 +423,21 @@ static bool pdb_parse(Abstractformat *format, pdb_stream **result) {
     /* Record names carry their entry index and are unique already; resource
      * names are not (see pdb_make_names_unique).  The entry members are the
      * last entry_count items, after the optional appInfo and sortInfo. */
-    if (resource_database &&
-        !pdb_make_names_unique(items + (count - (size_t)entry_count), keys,
-                               (size_t)entry_count))
-        goto fail;
+    if (resource_database && !pdb_make_names_unique(items + (count - (size_t)entry_count), keys, (size_t)entry_count)) goto fail;
 
     /* Monotonic, in range, and starting right behind the entry table apart
      * from the two-byte alignment filler PalmOS writers emit. */
-    if (items[0].offset - header_size < 0 ||
-        items[0].offset - header_size > PDB_MAX_FILLER) goto fail;
+    if (items[0].offset - header_size < 0 || items[0].offset - header_size > PDB_MAX_FILLER) goto fail;
     previous = header_size;
     for (index = 0; (size_t)index < count; ++index) {
-        if (items[index].offset < previous || items[index].offset > size)
-            goto fail;
+        if (items[index].offset < previous || items[index].offset > size) goto fail;
         previous = items[index].offset;
     }
     /* The final block must actually contain something; a database whose last
      * entry points at EOF is truncated, not merely empty. */
     if (previous >= size) goto fail;
     for (index = 0; (size_t)index < count; ++index) {
-        int64_t next = ((size_t)index + 1U < count) ? items[index + 1].offset
-                                                    : size;
+        int64_t next = ((size_t)index + 1U < count) ? items[index + 1].offset : size;
         items[index].size = next - items[index].offset;
         items[index].offset += format->base_address;
     }
@@ -478,17 +460,16 @@ fail:
     return false;
 }
 
-static bool pdb_copy_options(xx_list_s *destination, const xx_list_s *source) {
+static bool pdb_copy_options(xx_list_s *destination, const xx_list_s *source)
+{
     size_t index;
     if (!source) return true;
     for (index = 0U; index < source->count; ++index) {
-        const xx_meta *original =
-            (const xx_meta *)xx_list_at((const xx_list_t *)source, index);
+        const xx_meta *original = (const xx_meta *)xx_list_at((const xx_list_t *)source, index);
         xx_meta copy;
         if (!original) continue;
         xx_meta_init(&copy, original->meta_id);
-        if (!xx_var_copy(&copy.var, &original->var) ||
-            !xx_list_append(destination, &copy)) {
+        if (!xx_var_copy(&copy.var, &original->var) || !xx_list_append(destination, &copy)) {
             xx_meta_cleanup(&copy);
             return false;
         }
@@ -496,40 +477,34 @@ static bool pdb_copy_options(xx_list_s *destination, const xx_list_s *source) {
     return true;
 }
 
-static const xx_var *pdb_option(const xx_list_s *options, uint32_t id) {
+static const xx_var *pdb_option(const xx_list_s *options, uint32_t id)
+{
     size_t index;
     if (!options) return NULL;
     for (index = 0U; index < options->count; ++index) {
-        const xx_meta *meta =
-            (const xx_meta *)xx_list_at((const xx_list_t *)options, index);
+        const xx_meta *meta = (const xx_meta *)xx_list_at((const xx_list_t *)options, index);
         if (meta && meta->meta_id == id) return &meta->var;
     }
     return NULL;
 }
 
-static bool pdb_set_record(xx_archive_record *record,
-                           const pdb_member *member) {
+static bool pdb_set_record(xx_archive_record *record, const pdb_member *member)
+{
     xx_archive_record_cleanup(record);
     xx_archive_record_init(record);
     record->header_offset = member->offset;
     record->header_size = 0;
     record->data_offset = member->offset;
     record->compressed_size = member->size;
-    return xx_archive_record_set_original_name(record, member->name) &&
-           xx_archive_record_set_meta_u64(record, XX_META_ID_COMPRESSED_SIZE,
-                                          (uint64_t)member->size) &&
-           xx_archive_record_set_meta_u64(record, XX_META_ID_UNCOMPRESSED_SIZE,
-                                          (uint64_t)member->size) &&
-           xx_archive_record_set_meta_u64(record, XX_META_ID_COMPRESSION_METHOD,
-                                          0U) &&
-           xx_archive_record_set_meta_u64(record, XX_META_ID_ATTRIBUTES,
-                                          member->attributes) &&
-           xx_archive_record_set_meta_bool(record, XX_META_ID_IS_ENCRYPTED,
-                                           false) &&
+    return xx_archive_record_set_original_name(record, member->name) && xx_archive_record_set_meta_u64(record, XX_META_ID_COMPRESSED_SIZE, (uint64_t)member->size) &&
+           xx_archive_record_set_meta_u64(record, XX_META_ID_UNCOMPRESSED_SIZE, (uint64_t)member->size) &&
+           xx_archive_record_set_meta_u64(record, XX_META_ID_COMPRESSION_METHOD, 0U) &&
+           xx_archive_record_set_meta_u64(record, XX_META_ID_ATTRIBUTES, member->attributes) && xx_archive_record_set_meta_bool(record, XX_META_ID_IS_ENCRYPTED, false) &&
            xx_archive_record_set_meta_bool(record, XX_META_ID_IS_FOLDER, false);
 }
 
-void xx_pdb_init(xx_pdb *archive, xx_io_device *device, int64_t base_address) {
+void xx_pdb_init(xx_pdb *archive, xx_io_device *device, int64_t base_address)
+{
     if (!archive) return;
     xx_mem_zero(archive, sizeof(*archive));
     xx_format_init(&archive->format, device, base_address);
@@ -542,38 +517,36 @@ void xx_pdb_init(xx_pdb *archive, xx_io_device *device, int64_t base_address) {
     archive->format.check_is_valid = xx_pdb_check_is_valid;
     archive->format.handle_base_info = xx_pdb_handle_base_info;
     archive->format.get_format_size = xx_pdb_get_format_size;
-    archive->format.get_number_of_archive_records =
-        xx_pdb_get_number_of_archive_records;
-    archive->format.create_archive_records_reading =
-        xx_pdb_create_archive_records_reading;
-    archive->format.get_current_archive_record =
-        xx_pdb_get_current_archive_record;
-    archive->format.unpack_current_archive_record =
-        xx_pdb_unpack_current_archive_record;
-    archive->format.archive_record_move_to_next =
-        xx_pdb_archive_record_move_to_next;
-    archive->format.free_archive_records_reading =
-        xx_pdb_free_archive_records_reading;
+    archive->format.get_number_of_archive_records = xx_pdb_get_number_of_archive_records;
+    archive->format.create_archive_records_reading = xx_pdb_create_archive_records_reading;
+    archive->format.get_current_archive_record = xx_pdb_get_current_archive_record;
+    archive->format.unpack_current_archive_record = xx_pdb_unpack_current_archive_record;
+    archive->format.archive_record_move_to_next = xx_pdb_archive_record_move_to_next;
+    archive->format.free_archive_records_reading = xx_pdb_free_archive_records_reading;
     archive->header_size = -1;
 }
 
-xx_pdb *xx_pdb_create(xx_io_device *device, int64_t base_address) {
+xx_pdb *xx_pdb_create(xx_io_device *device, int64_t base_address)
+{
     xx_pdb *archive = (xx_pdb *)xx_mem_alloc(sizeof(*archive));
     if (archive) xx_pdb_init(archive, device, base_address);
     return archive;
 }
 
-void xx_pdb_destroy(xx_pdb *archive) {
+void xx_pdb_destroy(xx_pdb *archive)
+{
     if (archive) xx_format_cleanup_extra_parameters(&archive->format);
 }
 
-void xx_pdb_free(xx_pdb *archive) {
+void xx_pdb_free(xx_pdb *archive)
+{
     if (!archive) return;
     xx_pdb_destroy(archive);
     xx_mem_free(archive);
 }
 
-bool xx_pdb_check_is_valid(Abstractformat *format, xx_pd_struct *pd) {
+bool xx_pdb_check_is_valid(Abstractformat *format, xx_pd_struct *pd)
+{
     pdb_stream *stream;
     (void)pd;
     if (!pdb_parse(format, &stream)) return false;
@@ -581,7 +554,8 @@ bool xx_pdb_check_is_valid(Abstractformat *format, xx_pd_struct *pd) {
     return true;
 }
 
-bool xx_pdb_handle_base_info(Abstractformat *format, xx_pd_struct *pd) {
+bool xx_pdb_handle_base_info(Abstractformat *format, xx_pd_struct *pd)
+{
     pdb_stream *stream;
     xx_pdb *archive;
     (void)pd;
@@ -598,21 +572,18 @@ bool xx_pdb_handle_base_info(Abstractformat *format, xx_pd_struct *pd) {
     return true;
 }
 
-int64_t xx_pdb_get_format_size(Abstractformat *format, xx_pd_struct *pd) {
-    return format && (format->base_info_handled ||
-                      xx_pdb_handle_base_info(format, pd))
-               ? format->format_size : -1;
+int64_t xx_pdb_get_format_size(Abstractformat *format, xx_pd_struct *pd)
+{
+    return format && (format->base_info_handled || xx_pdb_handle_base_info(format, pd)) ? format->format_size : -1;
 }
 
-uint64_t xx_pdb_get_number_of_archive_records(Abstractformat *format,
-                                              xx_pd_struct *pd) {
-    return format && (format->base_info_handled ||
-                      xx_pdb_handle_base_info(format, pd))
-               ? ((xx_pdb *)format)->number_of_records : 0U;
+uint64_t xx_pdb_get_number_of_archive_records(Abstractformat *format, xx_pd_struct *pd)
+{
+    return format && (format->base_info_handled || xx_pdb_handle_base_info(format, pd)) ? ((xx_pdb *)format)->number_of_records : 0U;
 }
 
-xx_archive_record_state *xx_pdb_create_archive_records_reading(
-    Abstractformat *format, const xx_list_s *options, xx_pd_struct *pd) {
+xx_archive_record_state *xx_pdb_create_archive_records_reading(Abstractformat *format, const xx_list_s *options, xx_pd_struct *pd)
+{
     pdb_stream *stream;
     xx_archive_record_state *state;
     (void)pd;
@@ -626,8 +597,7 @@ xx_archive_record_state *xx_pdb_create_archive_records_reading(
     state->internal_state = stream;
     state->free_internal = pdb_stream_free;
     state->total_records = stream->count;
-    if (!pdb_copy_options(&state->options, options) ||
-        !pdb_set_record(&state->current_record, &stream->items[0])) {
+    if (!pdb_copy_options(&state->options, options) || !pdb_set_record(&state->current_record, &stream->items[0])) {
         xx_archive_record_state_free(state);
         return NULL;
     }
@@ -635,32 +605,26 @@ xx_archive_record_state *xx_pdb_create_archive_records_reading(
     return state;
 }
 
-const xx_archive_record *xx_pdb_get_current_archive_record(
-    Abstractformat *format, xx_archive_record_state *state) {
-    return format && state && state->format == format && state->has_record
-               ? &state->current_record : NULL;
+const xx_archive_record *xx_pdb_get_current_archive_record(Abstractformat *format, xx_archive_record_state *state)
+{
+    return format && state && state->format == format && state->has_record ? &state->current_record : NULL;
 }
 
-bool xx_pdb_archive_record_move_to_next(Abstractformat *format,
-                                        xx_archive_record_state *state,
-                                        xx_pd_struct *pd) {
+bool xx_pdb_archive_record_move_to_next(Abstractformat *format, xx_archive_record_state *state, xx_pd_struct *pd)
+{
     pdb_stream *stream;
     (void)pd;
-    if (!format || !state || state->format != format ||
-        !(stream = (pdb_stream *)state->internal_state) ||
-        ++stream->index >= stream->count) {
+    if (!format || !state || state->format != format || !(stream = (pdb_stream *)state->internal_state) || ++stream->index >= stream->count) {
         if (state) state->has_record = false;
         return false;
     }
     ++state->current_index;
-    state->has_record = pdb_set_record(&state->current_record,
-                                       &stream->items[stream->index]);
+    state->has_record = pdb_set_record(&state->current_record, &stream->items[stream->index]);
     return state->has_record;
 }
 
-bool xx_pdb_unpack_current_archive_record(Abstractformat *format,
-                                          xx_archive_record_state *state,
-                                          xx_pd_struct *pd) {
+bool xx_pdb_unpack_current_archive_record(Abstractformat *format, xx_archive_record_state *state, xx_pd_struct *pd)
+{
     pdb_stream *stream;
     pdb_member *member;
     const xx_var *path_option;
@@ -669,22 +633,16 @@ bool xx_pdb_unpack_current_archive_record(Abstractformat *format,
     char *path = NULL;
     bool result = false;
     bool created = false;
-    if (!format || !state || state->format != format || !state->has_record ||
-        !(stream = (pdb_stream *)state->internal_state) ||
-        stream->index >= stream->count || (pd && xx_pd_is_stopped(pd)))
+    if (!format || !state || state->format != format || !state->has_record || !(stream = (pdb_stream *)state->internal_state) || stream->index >= stream->count ||
+        (pd && xx_pd_is_stopped(pd)))
         return false;
     member = &stream->items[stream->index];
     if (member->size < 0 || member->offset < 0) return false;
     path_option = pdb_option(&state->options, XX_META_ID_OPT_UNPACK_PATH);
-    if (!path_option)
-        /* No destination: read the block through, which verifies it. */
-        return pdb_copy_range(format->device, member->offset, member->size,
-                              NULL, pd);
-    if (path_option->type == XX_VAR_TYPE_STRING ||
-        path_option->type == XX_VAR_TYPE_STRING_VIEW)
-        base = xx_var_get_str(path_option);
-    else if (path_option->type == XX_VAR_TYPE_WSTRING ||
-             path_option->type == XX_VAR_TYPE_WSTRING_VIEW) {
+    if (!path_option) /* No destination: read the block through, which verifies it. */
+        return pdb_copy_range(format->device, member->offset, member->size, NULL, pd);
+    if (path_option->type == XX_VAR_TYPE_STRING || path_option->type == XX_VAR_TYPE_STRING_VIEW) base = xx_var_get_str(path_option);
+    else if (path_option->type == XX_VAR_TYPE_WSTRING || path_option->type == XX_VAR_TYPE_WSTRING_VIEW) {
         owned_base = xx_str_unicode_to_utf8(xx_var_get_wstr(path_option));
         base = owned_base;
     }
@@ -692,17 +650,14 @@ bool xx_pdb_unpack_current_archive_record(Abstractformat *format,
     /* member->name is generated here, never taken from the file: "record_",
      * "appinfo", "sortinfo" or a 4CC reduced to [A-Za-z0-9_-], plus digits
      * and ".bin" - so it can carry no separator, drive or "..". */
-    path = (base[0] && base[xx_str_len(base) - 1U] != '/' &&
-            base[xx_str_len(base) - 1U] != '\\')
-               ? xx_str_concat3(base, "/", member->name)
-               : xx_str_concat(base, member->name);
+    path = (base[0] && base[xx_str_len(base) - 1U] != '/' && base[xx_str_len(base) - 1U] != '\\') ? xx_str_concat3(base, "/", member->name)
+                                                                                                  : xx_str_concat(base, member->name);
     if (!path || !xx_store_create_dirs_a(path, false)) goto done;
     {
         xx_io_device *destination = xx_io_file_open(path, "wb");
         created = destination != NULL;
         if (!destination) goto done;
-        result = pdb_copy_range(format->device, member->offset, member->size,
-                                destination, pd);
+        result = pdb_copy_range(format->device, member->offset, member->size, destination, pd);
         if (xx_io_close(destination) != 0) result = false;
     }
 done:
@@ -712,8 +667,8 @@ done:
     return result;
 }
 
-void xx_pdb_free_archive_records_reading(Abstractformat *format,
-                                         xx_archive_record_state *state) {
+void xx_pdb_free_archive_records_reading(Abstractformat *format, xx_archive_record_state *state)
+{
     (void)format;
     xx_archive_record_state_free(state);
 }

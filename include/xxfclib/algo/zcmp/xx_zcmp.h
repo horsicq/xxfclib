@@ -28,9 +28,7 @@ extern "C" {
  * (archives/xzcmparchive.cpp); the decode succeeds only when the concatenated
  * streams produce exactly that many bytes.  Trailing input after the last
  * needed block is tolerated, as in the reference. */
-XXFC_API bool xx_zcmp_decode_memory(const uint8_t *input, size_t input_size,
-                                    uint8_t *output, size_t output_size,
-                                    size_t *written);
+XXFC_API bool xx_zcmp_decode_memory(const uint8_t *input, size_t input_size, uint8_t *output, size_t output_size, size_t *written);
 
 #ifdef __cplusplus
 }

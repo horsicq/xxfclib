@@ -45,32 +45,23 @@ typedef struct xx_majiro {
 typedef xx_majiro xx_majiro_t;
 typedef xx_majiro XMajiro;
 
-XXFC_API void xx_majiro_init(xx_majiro *archive, xx_io_device *device,
-                           int64_t base_address);
+XXFC_API void xx_majiro_init(xx_majiro *archive, xx_io_device *device, int64_t base_address);
 XXFC_API xx_majiro *xx_majiro_create(xx_io_device *device, int64_t base_address);
 XXFC_API void xx_majiro_destroy(xx_majiro *archive);
 XXFC_API void xx_majiro_free(xx_majiro *archive);
 XXFC_API bool xx_majiro_check_is_valid(Abstractformat *self, xx_pd_struct *pd);
 XXFC_API bool xx_majiro_handle_base_info(Abstractformat *self, xx_pd_struct *pd);
 XXFC_API int64_t xx_majiro_get_format_size(Abstractformat *self, xx_pd_struct *pd);
-XXFC_API uint64_t xx_majiro_get_number_of_archive_records(
-    Abstractformat *self, xx_pd_struct *pd);
-XXFC_API xx_archive_record_state *xx_majiro_create_archive_records_reading(
-    Abstractformat *self, const xx_list_s *options, xx_pd_struct *pd);
-XXFC_API const xx_archive_record *xx_majiro_get_current_archive_record(
-    Abstractformat *self, xx_archive_record_state *state);
-XXFC_API bool xx_majiro_unpack_current_archive_record(
-    Abstractformat *self, xx_archive_record_state *state, xx_pd_struct *pd);
+XXFC_API uint64_t xx_majiro_get_number_of_archive_records(Abstractformat *self, xx_pd_struct *pd);
+XXFC_API xx_archive_record_state *xx_majiro_create_archive_records_reading(Abstractformat *self, const xx_list_s *options, xx_pd_struct *pd);
+XXFC_API const xx_archive_record *xx_majiro_get_current_archive_record(Abstractformat *self, xx_archive_record_state *state);
+XXFC_API bool xx_majiro_unpack_current_archive_record(Abstractformat *self, xx_archive_record_state *state, xx_pd_struct *pd);
 /** Copy the current member to a caller-owned device; NULL verifies it only.
  * Destination must differ from the input device. Options limiting member
  * size and extraction buffers are also honored by this direct C API. */
-XXFC_API bool xx_majiro_unpack_current_archive_record_to_device(
-    Abstractformat *self, xx_archive_record_state *state,
-    xx_io_device *destination, xx_pd_struct *pd);
-XXFC_API bool xx_majiro_archive_record_move_to_next(
-    Abstractformat *self, xx_archive_record_state *state, xx_pd_struct *pd);
-XXFC_API void xx_majiro_free_archive_records_reading(
-    Abstractformat *self, xx_archive_record_state *state);
+XXFC_API bool xx_majiro_unpack_current_archive_record_to_device(Abstractformat *self, xx_archive_record_state *state, xx_io_device *destination, xx_pd_struct *pd);
+XXFC_API bool xx_majiro_archive_record_move_to_next(Abstractformat *self, xx_archive_record_state *state, xx_pd_struct *pd);
+XXFC_API void xx_majiro_free_archive_records_reading(Abstractformat *self, xx_archive_record_state *state);
 
 #ifdef __cplusplus
 }

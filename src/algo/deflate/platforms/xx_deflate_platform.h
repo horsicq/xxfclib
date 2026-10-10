@@ -22,8 +22,8 @@ size_t xx_deflate_match_avx2(const uint8_t *, const uint8_t *, size_t);
 
 /* No load crosses the supplied extent, including an allocation/page end.
  * memcpy gives unaligned word loads without violating C aliasing rules. */
-static XX_DEFLATE_INLINE size_t xx_deflate_match_words(const uint8_t *a,
-                                                       const uint8_t *b, size_t maximum) {
+static XX_DEFLATE_INLINE size_t xx_deflate_match_words(const uint8_t *a, const uint8_t *b, size_t maximum)
+{
     size_t at = 0;
     while (maximum - at >= 8U) {
         uint64_t first, second, difference;

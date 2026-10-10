@@ -17,12 +17,12 @@ typedef struct xx_sfx_cab {
     bool inner_ready;
     bool resource_member;
 } xx_sfx_cab;
-XXFC_API void xx_sfx_cab_init(xx_sfx_cab *,xx_io_device *,int64_t);
-XXFC_API xx_sfx_cab *xx_sfx_cab_create(xx_io_device *,int64_t);
+XXFC_API void xx_sfx_cab_init(xx_sfx_cab *, xx_io_device *, int64_t);
+XXFC_API xx_sfx_cab *xx_sfx_cab_create(xx_io_device *, int64_t);
 XXFC_API void xx_sfx_cab_destroy(xx_sfx_cab *);
 XXFC_API void xx_sfx_cab_free(xx_sfx_cab *);
-XXFC_API bool xx_sfx_cab_check_is_valid(Abstractformat *,xx_pd_struct *);
-XXFC_API bool xx_sfx_cab_handle_base_info(Abstractformat *,xx_pd_struct *);
+XXFC_API bool xx_sfx_cab_check_is_valid(Abstractformat *, xx_pd_struct *);
+XXFC_API bool xx_sfx_cab_handle_base_info(Abstractformat *, xx_pd_struct *);
 #ifdef __cplusplus
 }
 #endif

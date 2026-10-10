@@ -117,29 +117,26 @@ typedef struct xx_gpfpack_stream_s {
 
 /* ------------------------------------------------------------ helpers --- */
 
-static bool xx_gpfpack_read_at(Abstractformat *self, int64_t offset,
-                               void *buffer, size_t size) {
+static bool xx_gpfpack_read_at(Abstractformat *self, int64_t offset, void *buffer, size_t size)
+{
     size_t done = 0U;
 
-    if (!self || !self->device || (!buffer && size != 0U) || offset < 0 ||
-        xx_io_seek64(self->device, offset, SEEK_SET) != 0)
-        return false;
+    if (!self || !self->device || (!buffer && size != 0U) || offset < 0 || xx_io_seek64(self->device, offset, SEEK_SET) != 0) return false;
     while (done < size) {
-        ssize_t amount =
-            xx_io_read(self->device, (uint8_t *)buffer + done, size - done);
+        ssize_t amount = xx_io_read(self->device, (uint8_t *)buffer + done, size - done);
         if (amount <= 0 || (size_t)amount > size - done) return false;
         done += (size_t)amount;
     }
     return true;
 }
 
-static bool xx_gpfpack_name_field_sane(const uint8_t *field, size_t *length) {
+static bool xx_gpfpack_name_field_sane(const uint8_t *field, size_t *length)
+{
     size_t index = 0U;
 
     while (index < XX_GPFPACK_NAME_FIELD && field[index] != 0U) {
         uint8_t c = field[index];
-        if (c < 0x20U || c > 0x7eU || c == '/' || c == '\\' || c == ':')
-            return false;
+        if (c < 0x20U || c > 0x7eU || c == '/' || c == '\\' || c == ':') return false;
         ++index;
     }
     if (index == 0U || index == XX_GPFPACK_NAME_FIELD) return false;
@@ -149,7 +146,8 @@ static bool xx_gpfpack_name_field_sane(const uint8_t *field, size_t *length) {
     return true;
 }
 
-static char *xx_gpfpack_normalize_name(const uint8_t *bytes, size_t size) {
+static char *xx_gpfpack_normalize_name(const uint8_t *bytes, size_t size)
+{
     char *name;
     size_t input;
     size_t output = 0U;
@@ -159,14 +157,10 @@ static char *xx_gpfpack_normalize_name(const uint8_t *bytes, size_t size) {
     if (!name) return NULL;
     for (input = 0U; input < size; ++input) {
         uint8_t c = bytes[input];
-        if (c < 0x20U || c == '/' || c == '\\' || c == ':' || c == '"' ||
-            c == '*' || c == '<' || c == '>' || c == '?' || c == '|')
-            name[output++] = '_';
-        else
-            name[output++] = (char)c;
+        if (c < 0x20U || c == '/' || c == '\\' || c == ':' || c == '"' || c == '*' || c == '<' || c == '>' || c == '?' || c == '|') name[output++] = '_';
+        else name[output++] = (char)c;
     }
-    while (output > 0U && (name[output - 1U] == ' ' || name[output - 1U] == '.'))
-        --output;
+    while (output > 0U && (name[output - 1U] == ' ' || name[output - 1U] == '.')) --output;
     if (output == 0U) name[output++] = '_';
     name[output] = 0;
     return name;
@@ -176,9 +170,8 @@ static char *xx_gpfpack_normalize_name(const uint8_t *bytes, size_t size) {
  * payload exactly; a chain that overruns the file or stops short of it is
  * not a GPFPACK payload.  Every length is bounded against the real remaining
  * extent before it is used to advance. */
-static bool xx_gpfpack_walk_blocks(Abstractformat *self, int64_t start,
-                                   int64_t span, uint64_t *blocks,
-                                   xx_pd_struct *pd) {
+static bool xx_gpfpack_walk_blocks(Abstractformat *self, int64_t start, int64_t span, uint64_t *blocks, xx_pd_struct *pd)
+{
     int64_t cursor = start;
     uint64_t count = 0U;
 
@@ -189,9 +182,7 @@ static bool xx_gpfpack_walk_blocks(Abstractformat *self, int64_t start,
 
         if (pd && xx_pd_is_stopped(pd)) return false;
         if (span - cursor < 4) return false;
-        if (!xx_gpfpack_read_at(self, self->base_address + cursor, field,
-                                sizeof(field)))
-            return false;
+        if (!xx_gpfpack_read_at(self, self->base_address + cursor, field, sizeof(field))) return false;
         bits = xx_data_get_u32(field, 4, 0, false);
         if (bits == 0U || bits > XX_GPFPACK_MAX_BLOCK_BITS) return false;
         bytes = (int64_t)((bits + 7U) / 8U);
@@ -205,7 +196,8 @@ static bool xx_gpfpack_walk_blocks(Abstractformat *self, int64_t start,
     return true;
 }
 
-static void xx_gpfpack_stream_free(void *pointer) {
+static void xx_gpfpack_stream_free(void *pointer)
+{
     xx_gpfpack_stream *stream = (xx_gpfpack_stream *)pointer;
 
     if (!stream) return;
@@ -213,8 +205,8 @@ static void xx_gpfpack_stream_free(void *pointer) {
     xx_mem_free(stream);
 }
 
-static xx_gpfpack_stream *xx_gpfpack_parse(Abstractformat *self,
-                                           xx_pd_struct *pd) {
+static xx_gpfpack_stream *xx_gpfpack_parse(Abstractformat *self, xx_pd_struct *pd)
+{
     uint8_t header[XX_GPFPACK_HEADER_SIZE];
     xx_gpfpack_stream *stream;
     int64_t total;
@@ -229,28 +221,17 @@ static xx_gpfpack_stream *xx_gpfpack_parse(Abstractformat *self,
     span = total - self->base_address;
     /* Header plus at least one block header and one payload byte. */
     if (span < (int64_t)XX_GPFPACK_HEADER_SIZE + 5) return NULL;
-    if (!xx_gpfpack_read_at(self, self->base_address, header, sizeof(header)))
-        return NULL;
+    if (!xx_gpfpack_read_at(self, self->base_address, header, sizeof(header))) return NULL;
     if (xx_data_get_u32(header, 4, 0, false) != XX_GPFPACK_CONSTANT) return NULL;
-    if (xx_rt_memcmp(header + XX_GPFPACK_TAG_OFFSET, "GPFPACK",
-                     XX_GPFPACK_TAG_SIZE) != 0)
-        return NULL;
+    if (xx_rt_memcmp(header + XX_GPFPACK_TAG_OFFSET, "GPFPACK", XX_GPFPACK_TAG_SIZE) != 0) return NULL;
     /* The reference reader requires the version word to be exactly 1, and every sample is. */
-    if (xx_data_get_u16(header + XX_GPFPACK_VERSION_OFFSET, 2, 0, false) !=
-        XX_GPFPACK_VERSION)
-        return NULL;
-    if (!xx_gpfpack_name_field_sane(header + XX_GPFPACK_NAME_OFFSET,
-                                    &name_length))
-        return NULL;
-    if (!xx_gpfpack_walk_blocks(self, (int64_t)XX_GPFPACK_HEADER_SIZE, span,
-                                &blocks, pd))
-        return NULL;
+    if (xx_data_get_u16(header + XX_GPFPACK_VERSION_OFFSET, 2, 0, false) != XX_GPFPACK_VERSION) return NULL;
+    if (!xx_gpfpack_name_field_sane(header + XX_GPFPACK_NAME_OFFSET, &name_length)) return NULL;
+    if (!xx_gpfpack_walk_blocks(self, (int64_t)XX_GPFPACK_HEADER_SIZE, span, &blocks, pd)) return NULL;
 
     stream = (xx_gpfpack_stream *)xx_mem_calloc(1U, sizeof(*stream));
     if (!stream) return NULL;
-    stream->member.name =
-        xx_gpfpack_normalize_name(header + XX_GPFPACK_NAME_OFFSET,
-                                  name_length);
+    stream->member.name = xx_gpfpack_normalize_name(header + XX_GPFPACK_NAME_OFFSET, name_length);
     if (!stream->member.name) {
         xx_mem_free(stream);
         return NULL;
@@ -280,12 +261,11 @@ typedef struct xx_gpfpack_bits_s {
     unsigned available;
 } xx_gpfpack_bits;
 
-static bool xx_gpfpack_bits_get(xx_gpfpack_bits *bits, unsigned width,
-                                unsigned *code) {
+static bool xx_gpfpack_bits_get(xx_gpfpack_bits *bits, unsigned width, unsigned *code)
+{
     while (bits->available < width) {
         if (bits->position >= bits->size) return false;
-        bits->accumulator +=
-            (uint32_t)bits->data[bits->position++] << (24U - bits->available);
+        bits->accumulator += (uint32_t)bits->data[bits->position++] << (24U - bits->available);
         bits->available += 8U;
     }
     *code = (unsigned)(bits->accumulator >> (32U - width));
@@ -296,10 +276,9 @@ static bool xx_gpfpack_bits_get(xx_gpfpack_bits *bits, unsigned width,
 
 /* The early width change, tested before every code and against the CURRENT
  * mask, so the widest code of a width is never used. */
-static bool xx_gpfpack_next_code(xx_gpfpack_bits *bits, unsigned *width,
-                                 unsigned next, unsigned *code) {
-    if (((1U << *width) - 1U) <= next && *width < XX_GPFPACK_LZW_MAX_BITS)
-        ++(*width);
+static bool xx_gpfpack_next_code(xx_gpfpack_bits *bits, unsigned *width, unsigned next, unsigned *code)
+{
+    if (((1U << *width) - 1U) <= next && *width < XX_GPFPACK_LZW_MAX_BITS) ++(*width);
     return xx_gpfpack_bits_get(bits, *width, code);
 }
 
@@ -311,7 +290,8 @@ typedef struct xx_gpfpack_sink_s {
     size_t count;
 } xx_gpfpack_sink;
 
-static bool xx_gpfpack_sink_put(xx_gpfpack_sink *sink, uint8_t value) {
+static bool xx_gpfpack_sink_put(xx_gpfpack_sink *sink, uint8_t value)
+{
     if (sink->count >= sink->limit) return false;
     if (sink->data) sink->data[sink->count] = value;
     ++sink->count;
@@ -324,7 +304,8 @@ typedef struct xx_gpfpack_lzw_s {
     uint8_t *stack;
 } xx_gpfpack_lzw;
 
-static void xx_gpfpack_lzw_cleanup(xx_gpfpack_lzw *lzw) {
+static void xx_gpfpack_lzw_cleanup(xx_gpfpack_lzw *lzw)
+{
     if (!lzw) return;
     xx_mem_free(lzw->prefix);
     xx_mem_free(lzw->suffix);
@@ -336,9 +317,9 @@ static void xx_gpfpack_lzw_cleanup(xx_gpfpack_lzw *lzw) {
 
 /* 32 KiB of tables is too much for the stack, so they are heap allocated
  * once for the whole chain and re-seeded per block. */
-static bool xx_gpfpack_lzw_setup(xx_gpfpack_lzw *lzw) {
-    lzw->prefix = (uint16_t *)xx_mem_alloc(XX_GPFPACK_LZW_TABLE *
-                                           sizeof(*lzw->prefix));
+static bool xx_gpfpack_lzw_setup(xx_gpfpack_lzw *lzw)
+{
+    lzw->prefix = (uint16_t *)xx_mem_alloc(XX_GPFPACK_LZW_TABLE * sizeof(*lzw->prefix));
     lzw->suffix = (uint8_t *)xx_mem_alloc(XX_GPFPACK_LZW_TABLE);
     lzw->stack = (uint8_t *)xx_mem_alloc(XX_GPFPACK_LZW_TABLE);
     if (!lzw->prefix || !lzw->suffix || !lzw->stack) {
@@ -348,7 +329,8 @@ static bool xx_gpfpack_lzw_setup(xx_gpfpack_lzw *lzw) {
     return true;
 }
 
-static void xx_gpfpack_lzw_seed(xx_gpfpack_lzw *lzw) {
+static void xx_gpfpack_lzw_seed(xx_gpfpack_lzw *lzw)
+{
     unsigned index;
 
     for (index = 0U; index < 0x100U; ++index) {
@@ -361,9 +343,8 @@ static void xx_gpfpack_lzw_seed(xx_gpfpack_lzw *lzw) {
  * @p bit_count is the block's declared bit length and @p input holds exactly
  * the (bit_count + 7) / 8 bytes the chain walk allotted it, so the decoder
  * can never read into the next block's header. */
-static bool xx_gpfpack_lzw_block(xx_gpfpack_lzw *lzw, const uint8_t *input,
-                                 size_t input_size, uint32_t bit_count,
-                                 xx_gpfpack_sink *sink) {
+static bool xx_gpfpack_lzw_block(xx_gpfpack_lzw *lzw, const uint8_t *input, size_t input_size, uint32_t bit_count, xx_gpfpack_sink *sink)
+{
     xx_gpfpack_bits bits;
     unsigned width = XX_GPFPACK_LZW_MIN_BITS;
     unsigned next = XX_GPFPACK_LZW_FIRST;
@@ -415,9 +396,7 @@ static bool xx_gpfpack_lzw_block(xx_gpfpack_lzw *lzw, const uint8_t *input,
             current = previous;
         }
         while (current > 0xffU) {
-            if (current >= XX_GPFPACK_LZW_TABLE ||
-                depth >= XX_GPFPACK_LZW_TABLE)
-                return false;
+            if (current >= XX_GPFPACK_LZW_TABLE || depth >= XX_GPFPACK_LZW_TABLE) return false;
             lzw->stack[depth++] = lzw->suffix[current];
             current = lzw->prefix[current];
         }
@@ -437,9 +416,8 @@ static bool xx_gpfpack_lzw_block(xx_gpfpack_lzw *lzw, const uint8_t *input,
 
 /* Walk the block chain in memory and decode every block into @p sink.  The
  * chain must land exactly on the end of the payload. */
-static bool xx_gpfpack_lzw_run(const uint8_t *payload, size_t payload_size,
-                               uint8_t *output, size_t limit,
-                               size_t *produced) {
+static bool xx_gpfpack_lzw_run(const uint8_t *payload, size_t payload_size, uint8_t *output, size_t limit, size_t *produced)
+{
     xx_gpfpack_lzw lzw;
     xx_gpfpack_sink sink;
     size_t cursor = 0U;
@@ -469,13 +447,11 @@ static bool xx_gpfpack_lzw_run(const uint8_t *payload, size_t payload_size,
         }
         cursor += 4U;
         block_bytes = (size_t)((bit_count + 7U) / 8U);
-        if (block_bytes > payload_size - cursor ||
-            ++blocks > XX_GPFPACK_MAX_BLOCKS) {
+        if (block_bytes > payload_size - cursor || ++blocks > XX_GPFPACK_MAX_BLOCKS) {
             result = false;
             break;
         }
-        if (!xx_gpfpack_lzw_block(&lzw, payload + cursor, block_bytes,
-                                  bit_count, &sink)) {
+        if (!xx_gpfpack_lzw_block(&lzw, payload + cursor, block_bytes, bit_count, &sink)) {
             result = false;
             break;
         }
@@ -487,19 +463,15 @@ static bool xx_gpfpack_lzw_run(const uint8_t *payload, size_t payload_size,
     return result;
 }
 
-static uint8_t *xx_gpfpack_read_packed(Abstractformat *self,
-                                       const xx_gpfpack_member *member,
-                                       size_t *size) {
+static uint8_t *xx_gpfpack_read_packed(Abstractformat *self, const xx_gpfpack_member *member, size_t *size)
+{
     uint8_t *packed;
 
     if (!self || !member || !size) return NULL;
-    if (member->compressed_size < 5 ||
-        member->compressed_size > XX_GPFPACK_MAX_PACKED)
-        return NULL;
+    if (member->compressed_size < 5 || member->compressed_size > XX_GPFPACK_MAX_PACKED) return NULL;
     packed = (uint8_t *)xx_mem_alloc((size_t)member->compressed_size);
     if (!packed) return NULL;
-    if (!xx_gpfpack_read_at(self, member->data_offset, packed,
-                            (size_t)member->compressed_size)) {
+    if (!xx_gpfpack_read_at(self, member->data_offset, packed, (size_t)member->compressed_size)) {
         xx_mem_free(packed);
         return NULL;
     }
@@ -509,8 +481,8 @@ static uint8_t *xx_gpfpack_read_packed(Abstractformat *self,
 
 /* The container stores no plaintext length, so it is measured by running the
  * chain once with no output buffer. */
-static bool xx_gpfpack_measure(Abstractformat *self,
-                               xx_gpfpack_member *member) {
+static bool xx_gpfpack_measure(Abstractformat *self, xx_gpfpack_member *member)
+{
     uint8_t *packed = NULL;
     size_t packed_size = 0U;
     size_t produced = 0U;
@@ -520,18 +492,15 @@ static bool xx_gpfpack_measure(Abstractformat *self,
     if (member->unpacked_size != 0U) return true;
     packed = xx_gpfpack_read_packed(self, member, &packed_size);
     if (!packed) return false;
-    result = xx_gpfpack_lzw_run(packed, packed_size, NULL,
-                                XX_GPFPACK_MAX_OUTPUT, &produced) &&
-             produced != 0U;
+    result = xx_gpfpack_lzw_run(packed, packed_size, NULL, XX_GPFPACK_MAX_OUTPUT, &produced) && produced != 0U;
     xx_mem_free(packed);
     if (!result) return false;
     member->unpacked_size = (uint64_t)produced;
     return true;
 }
 
-static bool xx_gpfpack_decode(Abstractformat *self,
-                              const xx_gpfpack_member *member, uint8_t **plain,
-                              size_t *plain_size) {
+static bool xx_gpfpack_decode(Abstractformat *self, const xx_gpfpack_member *member, uint8_t **plain, size_t *plain_size)
+{
     uint8_t *packed = NULL;
     uint8_t *output = NULL;
     size_t packed_size = 0U;
@@ -539,16 +508,12 @@ static bool xx_gpfpack_decode(Abstractformat *self,
     size_t output_size;
 
     if (!self || !member || !plain || !plain_size) return false;
-    if (member->unpacked_size == 0U || member->unpacked_size > SIZE_MAX)
-        return false;
+    if (member->unpacked_size == 0U || member->unpacked_size > SIZE_MAX) return false;
     output_size = (size_t)member->unpacked_size;
     packed = xx_gpfpack_read_packed(self, member, &packed_size);
     if (!packed) return false;
     output = (uint8_t *)xx_mem_alloc(output_size);
-    if (!output ||
-        !xx_gpfpack_lzw_run(packed, packed_size, output, output_size,
-                            &produced) ||
-        produced != output_size) {
+    if (!output || !xx_gpfpack_lzw_run(packed, packed_size, output, output_size, &produced) || produced != output_size) {
         xx_mem_free(packed);
         if (output) xx_mem_free(output);
         return false;
@@ -563,8 +528,8 @@ static bool xx_gpfpack_decode(Abstractformat *self,
 
 static void xx_gpfpack_vtable_destroy(Abstractformat *self);
 
-void xx_gpfpack_init(xx_gpfpack *archive, xx_io_device *device,
-                     int64_t base_address) {
+void xx_gpfpack_init(xx_gpfpack *archive, xx_io_device *device, int64_t base_address)
+{
     if (!archive) return;
     xx_mem_zero(archive, sizeof(*archive));
     xx_format_init(&archive->format, device, base_address);
@@ -577,22 +542,17 @@ void xx_gpfpack_init(xx_gpfpack *archive, xx_io_device *device,
     archive->format.check_is_valid = xx_gpfpack_check_is_valid;
     archive->format.handle_base_info = xx_gpfpack_handle_base_info;
     archive->format.get_format_size = xx_gpfpack_get_format_size;
-    archive->format.get_number_of_archive_records =
-        xx_gpfpack_get_number_of_archive_records;
-    archive->format.create_archive_records_reading =
-        xx_gpfpack_create_archive_records_reading;
-    archive->format.get_current_archive_record =
-        xx_gpfpack_get_current_archive_record;
-    archive->format.unpack_current_archive_record =
-        xx_gpfpack_unpack_current_archive_record;
-    archive->format.archive_record_move_to_next =
-        xx_gpfpack_archive_record_move_to_next;
-    archive->format.free_archive_records_reading =
-        xx_gpfpack_free_archive_records_reading;
+    archive->format.get_number_of_archive_records = xx_gpfpack_get_number_of_archive_records;
+    archive->format.create_archive_records_reading = xx_gpfpack_create_archive_records_reading;
+    archive->format.get_current_archive_record = xx_gpfpack_get_current_archive_record;
+    archive->format.unpack_current_archive_record = xx_gpfpack_unpack_current_archive_record;
+    archive->format.archive_record_move_to_next = xx_gpfpack_archive_record_move_to_next;
+    archive->format.free_archive_records_reading = xx_gpfpack_free_archive_records_reading;
     archive->format.destroy = xx_gpfpack_vtable_destroy;
 }
 
-xx_gpfpack *xx_gpfpack_create(xx_io_device *device, int64_t base_address) {
+xx_gpfpack *xx_gpfpack_create(xx_io_device *device, int64_t base_address)
+{
     xx_gpfpack *archive = (xx_gpfpack *)xx_mem_alloc(sizeof(*archive));
 
     if (!archive) return NULL;
@@ -600,26 +560,30 @@ xx_gpfpack *xx_gpfpack_create(xx_io_device *device, int64_t base_address) {
     return archive;
 }
 
-void xx_gpfpack_destroy(xx_gpfpack *archive) {
+void xx_gpfpack_destroy(xx_gpfpack *archive)
+{
     if (!archive) return;
     if (archive->format.close) archive->format.close(&archive->format);
     xx_format_cleanup_extra_parameters(&archive->format);
     archive->number_of_records = 0U;
 }
 
-void xx_gpfpack_free(xx_gpfpack *archive) {
+void xx_gpfpack_free(xx_gpfpack *archive)
+{
     if (!archive) return;
     xx_gpfpack_destroy(archive);
     xx_mem_free(archive);
 }
 
-static void xx_gpfpack_vtable_destroy(Abstractformat *self) {
+static void xx_gpfpack_vtable_destroy(Abstractformat *self)
+{
     xx_gpfpack_destroy((xx_gpfpack *)self);
 }
 
 /* ------------------------------------------------------------ format --- */
 
-bool xx_gpfpack_check_is_valid(Abstractformat *self, xx_pd_struct *pd) {
+bool xx_gpfpack_check_is_valid(Abstractformat *self, xx_pd_struct *pd)
+{
     xx_gpfpack_stream *stream;
 
     if (!self || (pd && xx_pd_is_stopped(pd))) return false;
@@ -629,7 +593,8 @@ bool xx_gpfpack_check_is_valid(Abstractformat *self, xx_pd_struct *pd) {
     return true;
 }
 
-bool xx_gpfpack_handle_base_info(Abstractformat *self, xx_pd_struct *pd) {
+bool xx_gpfpack_handle_base_info(Abstractformat *self, xx_pd_struct *pd)
+{
     xx_gpfpack *archive = (xx_gpfpack *)self;
     xx_gpfpack_stream *stream;
 
@@ -651,25 +616,22 @@ bool xx_gpfpack_handle_base_info(Abstractformat *self, xx_pd_struct *pd) {
     return true;
 }
 
-int64_t xx_gpfpack_get_format_size(Abstractformat *self, xx_pd_struct *pd) {
-    if (!self ||
-        (!self->base_info_handled && !xx_format_handle_base_info(self, pd)))
-        return 0;
+int64_t xx_gpfpack_get_format_size(Abstractformat *self, xx_pd_struct *pd)
+{
+    if (!self || (!self->base_info_handled && !xx_format_handle_base_info(self, pd))) return 0;
     return self->is_valid ? self->format_size : 0;
 }
 
-uint64_t xx_gpfpack_get_number_of_archive_records(Abstractformat *self,
-                                                  xx_pd_struct *pd) {
-    if (!self ||
-        (!self->base_info_handled && !xx_format_handle_base_info(self, pd)))
-        return 0U;
+uint64_t xx_gpfpack_get_number_of_archive_records(Abstractformat *self, xx_pd_struct *pd)
+{
+    if (!self || (!self->base_info_handled && !xx_format_handle_base_info(self, pd))) return 0U;
     return self->is_valid ? ((xx_gpfpack *)self)->number_of_records : 0U;
 }
 
 /* ----------------------------------------------------------- records --- */
 
-static bool xx_gpfpack_set_record(xx_archive_record *record,
-                                  const xx_gpfpack_member *member) {
+static bool xx_gpfpack_set_record(xx_archive_record *record, const xx_gpfpack_member *member)
+{
     xx_archive_record_cleanup(record);
     xx_archive_record_init(record);
     record->header_offset = member->header_offset;
@@ -677,31 +639,24 @@ static bool xx_gpfpack_set_record(xx_archive_record *record,
     record->data_offset = member->data_offset;
     record->compressed_size = member->compressed_size;
     return xx_archive_record_set_original_name(record, member->name) &&
-           xx_archive_record_set_meta_u64(record, XX_META_ID_COMPRESSED_SIZE,
-                                          (uint64_t)member->compressed_size) &&
+           xx_archive_record_set_meta_u64(record, XX_META_ID_COMPRESSED_SIZE, (uint64_t)member->compressed_size) &&
            /* Measured by running the chain; 0 when it would not decode. */
-           xx_archive_record_set_meta_u64(record, XX_META_ID_UNCOMPRESSED_SIZE,
-                                          member->unpacked_size) &&
-           xx_archive_record_set_meta_bool(record, XX_META_ID_IS_FOLDER,
-                                           false) &&
-           xx_archive_record_set_meta_bool(record, XX_META_ID_IS_ENCRYPTED,
-                                           false);
+           xx_archive_record_set_meta_u64(record, XX_META_ID_UNCOMPRESSED_SIZE, member->unpacked_size) &&
+           xx_archive_record_set_meta_bool(record, XX_META_ID_IS_FOLDER, false) && xx_archive_record_set_meta_bool(record, XX_META_ID_IS_ENCRYPTED, false);
 }
 
-static bool xx_gpfpack_copy_options(xx_list_s *target,
-                                    const xx_list_s *options) {
+static bool xx_gpfpack_copy_options(xx_list_s *target, const xx_list_s *options)
+{
     size_t index;
 
     if (!options) return true;
     if (!target) return false;
     for (index = 0U; index < options->count; ++index) {
-        const xx_meta *source =
-            (const xx_meta *)xx_list_at((const xx_list_t *)options, index);
+        const xx_meta *source = (const xx_meta *)xx_list_at((const xx_list_t *)options, index);
         xx_meta copied;
         if (!source) continue;
         xx_meta_init(&copied, source->meta_id);
-        if (!xx_var_copy(&copied.var, &source->var) ||
-            !xx_list_append(target, &copied)) {
+        if (!xx_var_copy(&copied.var, &source->var) || !xx_list_append(target, &copied)) {
             xx_meta_cleanup(&copied);
             return false;
         }
@@ -709,21 +664,20 @@ static bool xx_gpfpack_copy_options(xx_list_s *target,
     return true;
 }
 
-static const xx_var *xx_gpfpack_option(const xx_list_s *options,
-                                       uint32_t meta_id) {
+static const xx_var *xx_gpfpack_option(const xx_list_s *options, uint32_t meta_id)
+{
     size_t index;
 
     if (!options) return NULL;
     for (index = 0U; index < options->count; ++index) {
-        const xx_meta *meta =
-            (const xx_meta *)xx_list_at((const xx_list_t *)options, index);
+        const xx_meta *meta = (const xx_meta *)xx_list_at((const xx_list_t *)options, index);
         if (meta && meta->meta_id == meta_id) return &meta->var;
     }
     return NULL;
 }
 
-xx_archive_record_state *xx_gpfpack_create_archive_records_reading(
-    Abstractformat *self, const xx_list_s *options, xx_pd_struct *pd) {
+xx_archive_record_state *xx_gpfpack_create_archive_records_reading(Abstractformat *self, const xx_list_s *options, xx_pd_struct *pd)
+{
     xx_gpfpack_stream *stream;
     xx_archive_record_state *state;
 
@@ -743,8 +697,7 @@ xx_archive_record_state *xx_gpfpack_create_archive_records_reading(
     state->internal_state = stream;
     state->free_internal = xx_gpfpack_stream_free;
     state->total_records = (int64_t)stream->count;
-    if (!xx_gpfpack_copy_options(&state->options, options) ||
-        !xx_gpfpack_set_record(&state->current_record, &stream->member)) {
+    if (!xx_gpfpack_copy_options(&state->options, options) || !xx_gpfpack_set_record(&state->current_record, &stream->member)) {
         xx_archive_record_state_free(state);
         return NULL;
     }
@@ -753,16 +706,13 @@ xx_archive_record_state *xx_gpfpack_create_archive_records_reading(
     return state;
 }
 
-const xx_archive_record *xx_gpfpack_get_current_archive_record(
-    Abstractformat *self, xx_archive_record_state *state) {
-    return self && state && state->format == self && state->has_record
-               ? &state->current_record
-               : NULL;
+const xx_archive_record *xx_gpfpack_get_current_archive_record(Abstractformat *self, xx_archive_record_state *state)
+{
+    return self && state && state->format == self && state->has_record ? &state->current_record : NULL;
 }
 
-bool xx_gpfpack_archive_record_move_to_next(Abstractformat *self,
-                                            xx_archive_record_state *state,
-                                            xx_pd_struct *pd) {
+bool xx_gpfpack_archive_record_move_to_next(Abstractformat *self, xx_archive_record_state *state, xx_pd_struct *pd)
+{
     (void)pd;
     if (!self || !state || state->format != self) return false;
     /* A GPFPACK container holds exactly one member. */
@@ -772,9 +722,8 @@ bool xx_gpfpack_archive_record_move_to_next(Abstractformat *self,
     return false;
 }
 
-bool xx_gpfpack_unpack_current_archive_record(Abstractformat *self,
-                                              xx_archive_record_state *state,
-                                              xx_pd_struct *pd) {
+bool xx_gpfpack_unpack_current_archive_record(Abstractformat *self, xx_archive_record_state *state, xx_pd_struct *pd)
+{
     xx_gpfpack_stream *stream;
     const xx_var *path_option;
     const char *base = NULL;
@@ -785,43 +734,34 @@ bool xx_gpfpack_unpack_current_archive_record(Abstractformat *self,
     size_t written = 0U;
     bool result = false;
 
-    if (!self || !state || state->format != self || !state->has_record ||
-        (pd && xx_pd_is_stopped(pd)))
-        return false;
+    if (!self || !state || state->format != self || !state->has_record || (pd && xx_pd_is_stopped(pd))) return false;
     stream = (xx_gpfpack_stream *)state->internal_state;
     if (!stream) return false;
     if (!xx_gpfpack_measure(self, &stream->member)) return false;
-    if (!xx_gpfpack_decode(self, &stream->member, &plain, &plain_size))
-        return false;
+    if (!xx_gpfpack_decode(self, &stream->member, &plain, &plain_size)) return false;
     /* With no unpack path the caller only wanted to know the member decodes;
      * it does, so this is a success with nothing written. */
-    path_option =
-        xx_gpfpack_option(&state->options, XX_META_ID_OPT_UNPACK_PATH);
+    path_option = xx_gpfpack_option(&state->options, XX_META_ID_OPT_UNPACK_PATH);
     if (!path_option) {
         result = true;
         goto done;
     }
-    if (path_option->type == XX_VAR_TYPE_STRING ||
-        path_option->type == XX_VAR_TYPE_STRING_VIEW) {
+    if (path_option->type == XX_VAR_TYPE_STRING || path_option->type == XX_VAR_TYPE_STRING_VIEW) {
         base = xx_var_get_str(path_option);
-    } else if (path_option->type == XX_VAR_TYPE_WSTRING ||
-               path_option->type == XX_VAR_TYPE_WSTRING_VIEW) {
+    } else if (path_option->type == XX_VAR_TYPE_WSTRING || path_option->type == XX_VAR_TYPE_WSTRING_VIEW) {
         owned_base = xx_str_unicode_to_utf8(xx_var_get_wstr(path_option));
         base = owned_base;
     }
     if (!base) goto done;
-    path = (base[0] && base[xx_str_len(base) - 1U] != '/' &&
-            base[xx_str_len(base) - 1U] != '\\')
-               ? xx_str_concat3(base, "/", stream->member.name)
-               : xx_str_concat(base, stream->member.name);
+    path = (base[0] && base[xx_str_len(base) - 1U] != '/' && base[xx_str_len(base) - 1U] != '\\') ? xx_str_concat3(base, "/", stream->member.name)
+                                                                                                  : xx_str_concat(base, stream->member.name);
     if (!path || !xx_store_create_dirs_a(path, false)) goto done;
     {
         xx_io_device *destination = xx_io_file_open(path, "wb");
         if (!destination) goto done;
         result = true;
         while (written < plain_size) {
-            ssize_t amount =
-                xx_io_write(destination, plain + written, plain_size - written);
+            ssize_t amount = xx_io_write(destination, plain + written, plain_size - written);
             if (amount <= 0 || (size_t)amount > plain_size - written) {
                 result = false;
                 break;
@@ -837,8 +777,8 @@ done:
     return result;
 }
 
-void xx_gpfpack_free_archive_records_reading(Abstractformat *self,
-                                             xx_archive_record_state *state) {
+void xx_gpfpack_free_archive_records_reading(Abstractformat *self, xx_archive_record_state *state)
+{
     (void)self;
     xx_archive_record_state_free(state);
 }

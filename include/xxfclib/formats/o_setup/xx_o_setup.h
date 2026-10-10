@@ -68,39 +68,28 @@ typedef struct xx_o_setup {
 
 typedef xx_o_setup xx_o_setup_t;
 
-#define XX_O_SETUP_VARIANT_OLD 0U     /**< 12-byte "OSETUP" trailer. */
-#define XX_O_SETUP_VARIANT_SETUP 1U   /**< "OSETUPS\0": setup-only package. */
-#define XX_O_SETUP_VARIANT_ALL 2U     /**< "OSETUPA\0": all files. */
+#define XX_O_SETUP_VARIANT_OLD 0U   /**< 12-byte "OSETUP" trailer. */
+#define XX_O_SETUP_VARIANT_SETUP 1U /**< "OSETUPS\0": setup-only package. */
+#define XX_O_SETUP_VARIANT_ALL 2U   /**< "OSETUPA\0": all files. */
 
 #define XX_O_SETUP_METHOD_STORED 0U
 #define XX_O_SETUP_METHOD_SZDD 1U
 
-XXFC_API void xx_o_setup_init(xx_o_setup *archive, xx_io_device *device,
-                              int64_t base_address);
-XXFC_API xx_o_setup *xx_o_setup_create(xx_io_device *device,
-                                       int64_t base_address);
+XXFC_API void xx_o_setup_init(xx_o_setup *archive, xx_io_device *device, int64_t base_address);
+XXFC_API xx_o_setup *xx_o_setup_create(xx_io_device *device, int64_t base_address);
 XXFC_API void xx_o_setup_destroy(xx_o_setup *archive);
 XXFC_API void xx_o_setup_free(xx_o_setup *archive);
 
-XXFC_API bool xx_o_setup_check_is_valid(Abstractformat *self,
-                                        xx_pd_struct *pd);
-XXFC_API bool xx_o_setup_handle_base_info(Abstractformat *self,
-                                          xx_pd_struct *pd);
-XXFC_API int64_t xx_o_setup_get_format_size(Abstractformat *self,
-                                            xx_pd_struct *pd);
-XXFC_API uint64_t xx_o_setup_get_number_of_archive_records(
-    Abstractformat *self, xx_pd_struct *pd);
+XXFC_API bool xx_o_setup_check_is_valid(Abstractformat *self, xx_pd_struct *pd);
+XXFC_API bool xx_o_setup_handle_base_info(Abstractformat *self, xx_pd_struct *pd);
+XXFC_API int64_t xx_o_setup_get_format_size(Abstractformat *self, xx_pd_struct *pd);
+XXFC_API uint64_t xx_o_setup_get_number_of_archive_records(Abstractformat *self, xx_pd_struct *pd);
 
-XXFC_API xx_archive_record_state *xx_o_setup_create_archive_records_reading(
-    Abstractformat *self, const xx_list_s *options, xx_pd_struct *pd);
-XXFC_API const xx_archive_record *xx_o_setup_get_current_archive_record(
-    Abstractformat *self, xx_archive_record_state *state);
-XXFC_API bool xx_o_setup_unpack_current_archive_record(
-    Abstractformat *self, xx_archive_record_state *state, xx_pd_struct *pd);
-XXFC_API bool xx_o_setup_archive_record_move_to_next(
-    Abstractformat *self, xx_archive_record_state *state, xx_pd_struct *pd);
-XXFC_API void xx_o_setup_free_archive_records_reading(
-    Abstractformat *self, xx_archive_record_state *state);
+XXFC_API xx_archive_record_state *xx_o_setup_create_archive_records_reading(Abstractformat *self, const xx_list_s *options, xx_pd_struct *pd);
+XXFC_API const xx_archive_record *xx_o_setup_get_current_archive_record(Abstractformat *self, xx_archive_record_state *state);
+XXFC_API bool xx_o_setup_unpack_current_archive_record(Abstractformat *self, xx_archive_record_state *state, xx_pd_struct *pd);
+XXFC_API bool xx_o_setup_archive_record_move_to_next(Abstractformat *self, xx_archive_record_state *state, xx_pd_struct *pd);
+XXFC_API void xx_o_setup_free_archive_records_reading(Abstractformat *self, xx_archive_record_state *state);
 
 #ifdef __cplusplus
 }

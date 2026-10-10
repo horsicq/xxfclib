@@ -24,10 +24,11 @@
 #include "../aes/xx_aes_internal.h"
 #include "xxfclib/data/xx_data.h"
 
-#define XX_WINZIP_AES_MAX_DERIVED   66U
+#define XX_WINZIP_AES_MAX_DERIVED 66U
 #define XX_WINZIP_AES_PBKDF2_ROUNDS 1000U
 
-static void xx_crypto_clear(void *data, size_t size) {
+static void xx_crypto_clear(void *data, size_t size)
+{
     volatile uint8_t *bytes = (volatile uint8_t *)data;
     while (size > 0U) {
         *bytes++ = 0U;
@@ -35,23 +36,24 @@ static void xx_crypto_clear(void *data, size_t size) {
     }
 }
 
-static void xx_bytes_zero(uint8_t *data, size_t size) {
+static void xx_bytes_zero(uint8_t *data, size_t size)
+{
     size_t index;
     for (index = 0U; index < size; ++index) {
         data[index] = 0U;
     }
 }
 
-static void xx_bytes_copy(uint8_t *destination, const uint8_t *source, size_t size) {
+static void xx_bytes_copy(uint8_t *destination, const uint8_t *source, size_t size)
+{
     size_t index;
     for (index = 0U; index < size; ++index) {
         destination[index] = source[index];
     }
 }
 
-static bool xx_sha1_update_progress(xx_sha1_context *context,
-                                      const uint8_t *data, size_t data_size,
-                                      xx_pd_struct *pd) {
+static bool xx_sha1_update_progress(xx_sha1_context *context, const uint8_t *data, size_t data_size, xx_pd_struct *pd)
+{
     size_t done = 0;
     while (done < data_size) {
         size_t amount = data_size - done;
@@ -63,11 +65,9 @@ static bool xx_sha1_update_progress(xx_sha1_context *context,
     return !xx_pd_is_stopped(pd);
 }
 
-static bool xx_hmac_sha1_parts(const uint8_t *key, size_t key_size,
-                               const uint8_t *part1, size_t part1_size,
-                               const uint8_t *part2, size_t part2_size,
-                               uint8_t digest[XX_SHA1_DIGEST_SIZE],
-                               xx_pd_struct *pd) {
+static bool xx_hmac_sha1_parts(const uint8_t *key, size_t key_size, const uint8_t *part1, size_t part1_size, const uint8_t *part2, size_t part2_size,
+                               uint8_t digest[XX_SHA1_DIGEST_SIZE], xx_pd_struct *pd)
+{
     uint8_t key_block[XX_SHA1_BLOCK_SIZE];
     uint8_t inner_pad[XX_SHA1_BLOCK_SIZE];
     uint8_t outer_pad[XX_SHA1_BLOCK_SIZE];
@@ -93,8 +93,7 @@ static bool xx_hmac_sha1_parts(const uint8_t *key, size_t key_size,
 
     xx_sha1_init(&context);
     xx_sha1_update(&context, inner_pad, sizeof(inner_pad));
-    if (!xx_sha1_update_progress(&context, part1, part1_size, pd) ||
-        !xx_sha1_update_progress(&context, part2, part2_size, pd)) goto cleanup;
+    if (!xx_sha1_update_progress(&context, part1, part1_size, pd) || !xx_sha1_update_progress(&context, part2, part2_size, pd)) goto cleanup;
     xx_sha1_final(&context, inner_digest, XX_SHA1_DIGEST_SIZE);
 
     xx_sha1_init(&context);
@@ -113,10 +112,9 @@ cleanup:
     return success;
 }
 
-static bool xx_pbkdf2_hmac_sha1(const uint8_t *password, size_t password_size,
-                                const uint8_t *salt, size_t salt_size,
-                                uint8_t *derived, size_t derived_size,
-                                xx_pd_struct *pd) {
+static bool xx_pbkdf2_hmac_sha1(const uint8_t *password, size_t password_size, const uint8_t *salt, size_t salt_size, uint8_t *derived, size_t derived_size,
+                                xx_pd_struct *pd)
+{
     uint8_t current[XX_SHA1_DIGEST_SIZE];
     uint8_t accumulated[XX_SHA1_DIGEST_SIZE];
     uint8_t block_index[4];
@@ -130,13 +128,11 @@ static bool xx_pbkdf2_hmac_sha1(const uint8_t *password, size_t password_size,
         size_t amount;
 
         xx_data_set_u32(block_index, 4, 0, block_number, true);
-        if (!xx_hmac_sha1_parts(password, password_size, salt, salt_size,
-                           block_index, sizeof(block_index), current, pd)) goto cleanup;
+        if (!xx_hmac_sha1_parts(password, password_size, salt, salt_size, block_index, sizeof(block_index), current, pd)) goto cleanup;
         xx_bytes_copy(accumulated, current, sizeof(accumulated));
 
         for (iteration = 1U; iteration < XX_WINZIP_AES_PBKDF2_ROUNDS; ++iteration) {
-            if (!xx_hmac_sha1_parts(password, password_size, current, sizeof(current),
-                               NULL, 0U, current, pd)) goto cleanup;
+            if (!xx_hmac_sha1_parts(password, password_size, current, sizeof(current), NULL, 0U, current, pd)) goto cleanup;
             for (index = 0U; index < sizeof(accumulated); ++index) {
                 accumulated[index] ^= current[index];
             }
@@ -160,10 +156,8 @@ cleanup:
     return success;
 }
 
-static bool xx_winzip_aes_ctr_crypt(const xx_aes_context *context,
-                                    const uint8_t *input, uint8_t *output,
-                                    size_t size, size_t *written,
-                                    xx_pd_struct *pd) {
+static bool xx_winzip_aes_ctr_crypt(const xx_aes_context *context, const uint8_t *input, uint8_t *output, size_t size, size_t *written, xx_pd_struct *pd)
+{
     uint8_t counter[XX_AES_BLOCK_SIZE];
     uint8_t key_stream[XX_AES_BLOCK_SIZE];
     size_t offset = 0U;
@@ -206,8 +200,8 @@ cleanup:
     return success;
 }
 
-static bool xx_constant_time_equal(const uint8_t *left, const uint8_t *right,
-                                   size_t size) {
+static bool xx_constant_time_equal(const uint8_t *left, const uint8_t *right, size_t size)
+{
     uint8_t difference = 0U;
     size_t index;
     for (index = 0U; index < size; ++index) {
@@ -216,7 +210,8 @@ static bool xx_constant_time_equal(const uint8_t *left, const uint8_t *right,
     return difference == 0U;
 }
 
-size_t xx_winzip_aes_salt_size(uint8_t strength) {
+size_t xx_winzip_aes_salt_size(uint8_t strength)
+{
     switch (strength) {
         case XX_WINZIP_AES_STRENGTH_128: return 8U;
         case XX_WINZIP_AES_STRENGTH_192: return 12U;
@@ -225,7 +220,8 @@ size_t xx_winzip_aes_salt_size(uint8_t strength) {
     }
 }
 
-size_t xx_winzip_aes_key_size(uint8_t strength) {
+size_t xx_winzip_aes_key_size(uint8_t strength)
+{
     switch (strength) {
         case XX_WINZIP_AES_STRENGTH_128: return 16U;
         case XX_WINZIP_AES_STRENGTH_192: return 24U;
@@ -234,32 +230,15 @@ size_t xx_winzip_aes_key_size(uint8_t strength) {
     }
 }
 
-bool xx_winzip_aes_encrypt_envelope(const uint8_t *input,
-                                    size_t input_size,
-                                    const uint8_t *password,
-                                    size_t password_size,
-                                    uint8_t strength,
-                                    const uint8_t *salt,
-                                    size_t salt_size,
-                                    uint8_t *output,
-                                    size_t output_capacity,
-                                    size_t *output_size) {
-    return xx_winzip_aes_encrypt_envelope_progress(input,input_size,
-        password,password_size,strength,salt,salt_size,
-        output,output_capacity,output_size,NULL);
+bool xx_winzip_aes_encrypt_envelope(const uint8_t *input, size_t input_size, const uint8_t *password, size_t password_size, uint8_t strength, const uint8_t *salt,
+                                    size_t salt_size, uint8_t *output, size_t output_capacity, size_t *output_size)
+{
+    return xx_winzip_aes_encrypt_envelope_progress(input, input_size, password, password_size, strength, salt, salt_size, output, output_capacity, output_size, NULL);
 }
 
-bool xx_winzip_aes_encrypt_envelope_progress(const uint8_t *input,
-                                    size_t input_size,
-                                    const uint8_t *password,
-                                    size_t password_size,
-                                    uint8_t strength,
-                                    const uint8_t *salt,
-                                    size_t salt_size,
-                                    uint8_t *output,
-                                    size_t output_capacity,
-                                    size_t *output_size,
-                                    xx_pd_struct *pd) {
+bool xx_winzip_aes_encrypt_envelope_progress(const uint8_t *input, size_t input_size, const uint8_t *password, size_t password_size, uint8_t strength,
+                                             const uint8_t *salt, size_t salt_size, uint8_t *output, size_t output_capacity, size_t *output_size, xx_pd_struct *pd)
+{
     uint8_t derived[XX_WINZIP_AES_MAX_DERIVED];
     uint8_t computed_auth[XX_SHA1_DIGEST_SIZE];
     xx_aes_context aes_context;
@@ -281,13 +260,9 @@ bool xx_winzip_aes_encrypt_envelope_progress(const uint8_t *input,
     xx_bytes_zero((uint8_t *)&aes_context, sizeof(aes_context));
     if (xx_pd_is_stopped(pd)) goto cleanup;
 
-    overhead = expected_salt_size + XX_WINZIP_AES_PASSWORD_VERIFIER_SIZE +
-               XX_WINZIP_AES_AUTH_CODE_SIZE;
-    if (expected_salt_size == 0U || key_size == 0U ||
-        salt_size != expected_salt_size || !salt || !output ||
-        (input_size > 0U && !input) ||
-        (password_size > 0U && !password) ||
-        input_size > SIZE_MAX - overhead) {
+    overhead = expected_salt_size + XX_WINZIP_AES_PASSWORD_VERIFIER_SIZE + XX_WINZIP_AES_AUTH_CODE_SIZE;
+    if (expected_salt_size == 0U || key_size == 0U || salt_size != expected_salt_size || !salt || !output || (input_size > 0U && !input) ||
+        (password_size > 0U && !password) || input_size > SIZE_MAX - overhead) {
         goto cleanup;
     }
     envelope_size = overhead + input_size;
@@ -296,28 +271,22 @@ bool xx_winzip_aes_encrypt_envelope_progress(const uint8_t *input,
     }
 
     derived_size = (key_size * 2U) + XX_WINZIP_AES_PASSWORD_VERIFIER_SIZE;
-    if (derived_size > sizeof(derived) ||
-        !xx_pbkdf2_hmac_sha1(password, password_size, salt, salt_size,
-                             derived, derived_size, pd) ||
+    if (derived_size > sizeof(derived) || !xx_pbkdf2_hmac_sha1(password, password_size, salt, salt_size, derived, derived_size, pd) ||
         !xx_aes_internal_set_key(&aes_context, derived, key_size)) {
         goto cleanup;
     }
 
     xx_bytes_copy(output, salt, salt_size);
-    xx_bytes_copy(output + salt_size, derived + (key_size * 2U),
-                  XX_WINZIP_AES_PASSWORD_VERIFIER_SIZE);
+    xx_bytes_copy(output + salt_size, derived + (key_size * 2U), XX_WINZIP_AES_PASSWORD_VERIFIER_SIZE);
     encrypted_data = output + salt_size + XX_WINZIP_AES_PASSWORD_VERIFIER_SIZE;
     written = salt_size + XX_WINZIP_AES_PASSWORD_VERIFIER_SIZE;
-    if (!xx_winzip_aes_ctr_crypt(&aes_context, input, encrypted_data, input_size,
-                                 &payload_written, pd)) {
+    if (!xx_winzip_aes_ctr_crypt(&aes_context, input, encrypted_data, input_size, &payload_written, pd)) {
         written += payload_written;
         goto cleanup;
     }
     written += payload_written;
-    if (!xx_hmac_sha1_parts(derived + key_size, key_size,
-                       encrypted_data, input_size, NULL, 0U, computed_auth, pd)) goto cleanup;
-    xx_bytes_copy(encrypted_data + input_size, computed_auth,
-                  XX_WINZIP_AES_AUTH_CODE_SIZE);
+    if (!xx_hmac_sha1_parts(derived + key_size, key_size, encrypted_data, input_size, NULL, 0U, computed_auth, pd)) goto cleanup;
+    xx_bytes_copy(encrypted_data + input_size, computed_auth, XX_WINZIP_AES_AUTH_CODE_SIZE);
     written += XX_WINZIP_AES_AUTH_CODE_SIZE;
     if (xx_pd_is_stopped(pd)) goto cleanup;
 
@@ -334,27 +303,15 @@ cleanup:
     return success;
 }
 
-bool xx_winzip_aes_decrypt_envelope(const uint8_t *envelope,
-                                    size_t envelope_size,
-                                    const uint8_t *password,
-                                    size_t password_size,
-                                    uint8_t strength,
-                                    uint8_t *output,
-                                    size_t output_capacity,
-                                    size_t *output_size) {
-    return xx_winzip_aes_decrypt_envelope_progress(envelope,envelope_size,
-        password,password_size,strength,output,output_capacity,output_size,NULL);
+bool xx_winzip_aes_decrypt_envelope(const uint8_t *envelope, size_t envelope_size, const uint8_t *password, size_t password_size, uint8_t strength, uint8_t *output,
+                                    size_t output_capacity, size_t *output_size)
+{
+    return xx_winzip_aes_decrypt_envelope_progress(envelope, envelope_size, password, password_size, strength, output, output_capacity, output_size, NULL);
 }
 
-bool xx_winzip_aes_decrypt_envelope_progress(const uint8_t *envelope,
-                                    size_t envelope_size,
-                                    const uint8_t *password,
-                                    size_t password_size,
-                                    uint8_t strength,
-                                    uint8_t *output,
-                                    size_t output_capacity,
-                                    size_t *output_size,
-                                    xx_pd_struct *pd) {
+bool xx_winzip_aes_decrypt_envelope_progress(const uint8_t *envelope, size_t envelope_size, const uint8_t *password, size_t password_size, uint8_t strength,
+                                             uint8_t *output, size_t output_capacity, size_t *output_size, xx_pd_struct *pd)
+{
     uint8_t derived[XX_WINZIP_AES_MAX_DERIVED];
     uint8_t computed_auth[XX_SHA1_DIGEST_SIZE];
     xx_aes_context aes_context;
@@ -377,13 +334,11 @@ bool xx_winzip_aes_decrypt_envelope_progress(const uint8_t *envelope,
     xx_bytes_zero((uint8_t *)&aes_context, sizeof(aes_context));
     if (xx_pd_is_stopped(pd)) goto cleanup;
 
-    if (!envelope || salt_size == 0U || key_size == 0U ||
-        (password_size > 0U && !password)) {
+    if (!envelope || salt_size == 0U || key_size == 0U || (password_size > 0U && !password)) {
         goto cleanup;
     }
 
-    overhead = salt_size + XX_WINZIP_AES_PASSWORD_VERIFIER_SIZE +
-               XX_WINZIP_AES_AUTH_CODE_SIZE;
+    overhead = salt_size + XX_WINZIP_AES_PASSWORD_VERIFIER_SIZE + XX_WINZIP_AES_AUTH_CODE_SIZE;
     if (envelope_size < overhead) {
         goto cleanup;
     }
@@ -393,32 +348,26 @@ bool xx_winzip_aes_decrypt_envelope_progress(const uint8_t *envelope,
     }
 
     derived_size = (key_size * 2U) + XX_WINZIP_AES_PASSWORD_VERIFIER_SIZE;
-    if (derived_size > sizeof(derived) ||
-        !xx_pbkdf2_hmac_sha1(password, password_size, envelope, salt_size,
-                             derived, derived_size, pd)) {
+    if (derived_size > sizeof(derived) || !xx_pbkdf2_hmac_sha1(password, password_size, envelope, salt_size, derived, derived_size, pd)) {
         goto cleanup;
     }
 
     stored_verifier = envelope + salt_size;
-    if (!xx_constant_time_equal(derived + (key_size * 2U), stored_verifier,
-                                XX_WINZIP_AES_PASSWORD_VERIFIER_SIZE)) {
+    if (!xx_constant_time_equal(derived + (key_size * 2U), stored_verifier, XX_WINZIP_AES_PASSWORD_VERIFIER_SIZE)) {
         goto cleanup;
     }
 
     encrypted_data = stored_verifier + XX_WINZIP_AES_PASSWORD_VERIFIER_SIZE;
     stored_auth = encrypted_data + encrypted_size;
-    if (!xx_hmac_sha1_parts(derived + key_size, key_size,
-                       encrypted_data, encrypted_size, NULL, 0U, computed_auth, pd)) goto cleanup;
-    if (!xx_constant_time_equal(computed_auth, stored_auth,
-                                XX_WINZIP_AES_AUTH_CODE_SIZE)) {
+    if (!xx_hmac_sha1_parts(derived + key_size, key_size, encrypted_data, encrypted_size, NULL, 0U, computed_auth, pd)) goto cleanup;
+    if (!xx_constant_time_equal(computed_auth, stored_auth, XX_WINZIP_AES_AUTH_CODE_SIZE)) {
         goto cleanup;
     }
 
     if (!xx_aes_internal_set_key(&aes_context, derived, key_size)) {
         goto cleanup;
     }
-    if (!xx_winzip_aes_ctr_crypt(&aes_context, encrypted_data, output, encrypted_size,
-                                 &written, pd)) goto cleanup;
+    if (!xx_winzip_aes_ctr_crypt(&aes_context, encrypted_data, output, encrypted_size, &written, pd)) goto cleanup;
     if (output_size) {
         *output_size = encrypted_size;
     }
@@ -431,4 +380,3 @@ cleanup:
     xx_crypto_clear(computed_auth, sizeof(computed_auth));
     return success;
 }
-

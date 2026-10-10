@@ -43,18 +43,18 @@
 
 typedef struct {
     xx_io_device *dev;
-    uint8_t      *mem;
-    size_t        mem_cap;
-    size_t        mem_pos;
-    uint8_t      *obuf;
-    size_t        obuf_capacity;
-    size_t        obuf_pos;
-    int64_t       total_written;
-    uint64_t      low;
-    uint32_t      range;
-    int32_t       cache_size;
-    uint8_t       cache;
-    bool          error;
+    uint8_t *mem;
+    size_t mem_cap;
+    size_t mem_pos;
+    uint8_t *obuf;
+    size_t obuf_capacity;
+    size_t obuf_pos;
+    int64_t total_written;
+    uint64_t low;
+    uint32_t range;
+    int32_t cache_size;
+    uint8_t cache;
+    bool error;
     xx_pd_struct *pd;
 } lzma_range_enc;
 
@@ -118,12 +118,9 @@ static void re_shift_low(lzma_range_enc *re)
     re->low = (uint32_t)((re->low << 8) & 0xFFFFFFFFu);
 }
 
-_Static_assert(sizeof(lzma_prob) * CHAR_BIT <= 32 - RC_MOVE_BITS,
-               "Unsigned probability update requires discarded high wrap bits");
+_Static_assert(sizeof(lzma_prob) * CHAR_BIT <= 32 - RC_MOVE_BITS, "Unsigned probability update requires discarded high wrap bits");
 
-static XX_LZMA_INLINE uint32_t re_encode_bit_range(lzma_range_enc *re,
-                                                   lzma_prob *prob, int bit,
-                                                   uint32_t range)
+static XX_LZMA_INLINE uint32_t re_encode_bit_range(lzma_range_enc *re, lzma_prob *prob, int bit, uint32_t range)
 {
     uint32_t value = *prob;
     uint32_t bound = (range >> RC_BIT_MODEL_TOTAL_BITS) * value;
@@ -190,8 +187,7 @@ static void re_encode_literal(lzma_range_enc *re, lzma_prob *probs, uint32_t sym
     re->range = range;
 }
 
-static void re_encode_literal_matched(lzma_range_enc *re, lzma_prob *probs,
-                                      uint32_t symbol, uint32_t match_byte)
+static void re_encode_literal_matched(lzma_range_enc *re, lzma_prob *probs, uint32_t symbol, uint32_t match_byte)
 {
     uint32_t range = re->range;
     uint32_t context = 0x100u;
@@ -216,18 +212,20 @@ static void re_encode_direct(lzma_range_enc *re, uint32_t val, int n_bits)
     for (int i = n_bits - 1; i >= 0; i--) {
         re->range >>= 1;
         re->low += re->range & (0u - ((val >> i) & 1u));
-        if (re->range < RC_TOP_VALUE) { re->range <<= 8; re_shift_low(re); }
+        if (re->range < RC_TOP_VALUE) {
+            re->range <<= 8;
+            re_shift_low(re);
+        }
     }
 }
 
-static void re_init(lzma_range_enc *re, xx_io_device *dev, uint8_t *mem, size_t mem_cap,
-                    xx_pd_struct *pd, uint8_t *buffer, size_t buffer_capacity)
+static void re_init(lzma_range_enc *re, xx_io_device *dev, uint8_t *mem, size_t mem_cap, xx_pd_struct *pd, uint8_t *buffer, size_t buffer_capacity)
 {
     xx_rt_memset(re, 0, sizeof(*re));
-    re->dev     = dev;
-    re->mem     = mem;
+    re->dev = dev;
+    re->mem = mem;
     re->mem_cap = mem_cap;
-    re->range   = 0xFFFFFFFFu;
+    re->range = 0xFFFFFFFFu;
     re->cache_size = 1;
     re->pd = pd;
     re->obuf_capacity = buffer_capacity;
@@ -249,40 +247,40 @@ static bool re_flush(lzma_range_enc *re)
 #define HASH4_MASK (HASH4_SIZE - 1)
 
 typedef struct {
-    lzma_props     props;
-    lzma_prob     *lit_probs;
-    lzma_prob      is_match[LZMA_NUM_STATES][1 << LZMA_NUM_POS_BITS_MAX];
-    lzma_prob      is_rep[LZMA_NUM_STATES];
-    lzma_prob      is_rep_g0[LZMA_NUM_STATES];
-    lzma_prob      is_rep_g1[LZMA_NUM_STATES];
-    lzma_prob      is_rep_g2[LZMA_NUM_STATES];
-    lzma_prob      is_rep0_long[LZMA_NUM_STATES][1 << LZMA_NUM_POS_BITS_MAX];
-    lzma_prob      pos_slot[LZMA_NUM_LEN_TO_POS_STATES][1 << 6];
-    lzma_prob      pos_decoders[LZMA_FULL_DISTANCES - LZMA_NUM_LEN_TO_POS_STATES * 4];
-    lzma_prob      pos_align[1 << LZMA_NUM_ALIGN_BITS];
-    lzma_prob      len_choice[2];
-    lzma_prob      len_choice2[2];
-    lzma_prob      len_low [2][1 << LZMA_NUM_POS_BITS_MAX][8];
-    lzma_prob      len_mid [2][1 << LZMA_NUM_POS_BITS_MAX][8];
-    lzma_prob      len_high[2][256];
+    lzma_props props;
+    lzma_prob *lit_probs;
+    lzma_prob is_match[LZMA_NUM_STATES][1 << LZMA_NUM_POS_BITS_MAX];
+    lzma_prob is_rep[LZMA_NUM_STATES];
+    lzma_prob is_rep_g0[LZMA_NUM_STATES];
+    lzma_prob is_rep_g1[LZMA_NUM_STATES];
+    lzma_prob is_rep_g2[LZMA_NUM_STATES];
+    lzma_prob is_rep0_long[LZMA_NUM_STATES][1 << LZMA_NUM_POS_BITS_MAX];
+    lzma_prob pos_slot[LZMA_NUM_LEN_TO_POS_STATES][1 << 6];
+    lzma_prob pos_decoders[LZMA_FULL_DISTANCES - LZMA_NUM_LEN_TO_POS_STATES * 4];
+    lzma_prob pos_align[1 << LZMA_NUM_ALIGN_BITS];
+    lzma_prob len_choice[2];
+    lzma_prob len_choice2[2];
+    lzma_prob len_low[2][1 << LZMA_NUM_POS_BITS_MAX][8];
+    lzma_prob len_mid[2][1 << LZMA_NUM_POS_BITS_MAX][8];
+    lzma_prob len_high[2][256];
     /* Match finder */
-    uint32_t      *hash4;
-    uint32_t      *chain;
-    uint32_t       chain_mask;
-    uint32_t       chain_capacity;
-    uint32_t       hash_base;
-    uint32_t       hash_next;
+    uint32_t *hash4;
+    uint32_t *chain;
+    uint32_t chain_mask;
+    uint32_t chain_capacity;
+    uint32_t hash_base;
+    uint32_t hash_next;
     /* Owned scratch buffers survive independent LZMA2 chunk resets. */
-    uint8_t       *obuf;
-    size_t         obuf_capacity;
-    size_t         lit_capacity;
+    uint8_t *obuf;
+    size_t obuf_capacity;
+    size_t lit_capacity;
     /* Window */
-    uint8_t       *window;
-    uint32_t       win_pos;
-    uint32_t       win_size;
+    uint8_t *window;
+    uint32_t win_pos;
+    uint32_t win_size;
     /* Encoder state */
-    int            state;
-    uint32_t       rep[4];
+    int state;
+    uint32_t rep[4];
 } lzma_encoder;
 
 static void enc_probs_init(lzma_encoder *enc)
@@ -299,17 +297,20 @@ static void enc_probs_init(lzma_encoder *enc)
     }
     for (int i = 0; i < LZMA_NUM_LEN_TO_POS_STATES; i++)
         for (int j = 0; j < (1 << 6); j++) enc->pos_slot[i][j] = PROB_INIT_VAL;
-    for (size_t i = 0; i < LZMA_FULL_DISTANCES - LZMA_NUM_LEN_TO_POS_STATES * 4; i++)
-        enc->pos_decoders[i] = PROB_INIT_VAL;
+    for (size_t i = 0; i < LZMA_FULL_DISTANCES - LZMA_NUM_LEN_TO_POS_STATES * 4; i++) enc->pos_decoders[i] = PROB_INIT_VAL;
     for (int i = 0; i < (1 << LZMA_NUM_ALIGN_BITS); i++) enc->pos_align[i] = PROB_INIT_VAL;
     for (int w = 0; w < 2; w++) {
         enc->len_choice[w] = PROB_INIT_VAL;
         enc->len_choice2[w] = PROB_INIT_VAL;
         for (int pb = 0; pb < (1 << LZMA_NUM_POS_BITS_MAX); pb++) {
-            for (int i = 0; i < 8; i++) { enc->len_low[w][pb][i] = PROB_INIT_VAL; enc->len_mid[w][pb][i] = PROB_INIT_VAL; }
+            for (int i = 0; i < 8; i++) {
+                enc->len_low[w][pb][i] = PROB_INIT_VAL;
+                enc->len_mid[w][pb][i] = PROB_INIT_VAL;
+            }
         }
     }
-    for (int w = 0; w < 2; w++) for (int i = 0; i < 256; i++) enc->len_high[w][i] = PROB_INIT_VAL;
+    for (int w = 0; w < 2; w++)
+        for (int i = 0; i < 256; i++) enc->len_high[w][i] = PROB_INIT_VAL;
 }
 
 static void enc_destroy(lzma_encoder *enc)
@@ -382,8 +383,7 @@ static void enc_encode_len(lzma_range_enc *re, lzma_encoder *enc, int which, int
 
 static void enc_encode_dist(lzma_range_enc *re, lzma_encoder *enc, uint32_t dist, uint32_t len)
 {
-    uint32_t len_state = (len - LZMA_MATCH_MIN_LEN < (uint32_t)LZMA_NUM_LEN_TO_POS_STATES)
-                         ? len - LZMA_MATCH_MIN_LEN : (uint32_t)LZMA_NUM_LEN_TO_POS_STATES - 1;
+    uint32_t len_state = (len - LZMA_MATCH_MIN_LEN < (uint32_t)LZMA_NUM_LEN_TO_POS_STATES) ? len - LZMA_MATCH_MIN_LEN : (uint32_t)LZMA_NUM_LEN_TO_POS_STATES - 1;
 
     /* Find pos_slot */
     uint32_t pos_slot;
@@ -413,35 +413,30 @@ static void enc_encode_dist(lzma_range_enc *re, lzma_encoder *enc, uint32_t dist
 
 /* Reject short mismatches inline; vectorize only matching prefixes. This
  * keeps random-input candidates from paying an indirect SIMD call per byte. */
-static XX_LZMA_INLINE uint32_t enc_match_length(const xx_lzma_platform *platform,
-                                                const uint8_t *first,
-                                                const uint8_t *second,
-                                                size_t maximum)
+static XX_LZMA_INLINE uint32_t enc_match_length(const xx_lzma_platform *platform, const uint8_t *first, const uint8_t *second, size_t maximum)
 {
     size_t length = 0;
     while (length < maximum && length < 4) {
         if (first[length] != second[length]) return (uint32_t)length;
         ++length;
     }
-    if (maximum - length >= 16)
-        return (uint32_t)(length + platform->match_length(first + length,
-                              second + length, maximum - length));
+    if (maximum - length >= 16) return (uint32_t)(length + platform->match_length(first + length, second + length, maximum - length));
     while (length < maximum && first[length] == second[length]) ++length;
     return (uint32_t)length;
 }
 
 /* Simple hash chain match finder */
-static uint32_t enc_find_match(lzma_encoder *enc, const uint8_t *data, size_t pos,
-                               size_t data_size, uint32_t nice_len,
-                               uint32_t *out_dist, const xx_lzma_platform *platform)
+static uint32_t enc_find_match(lzma_encoder *enc, const uint8_t *data, size_t pos, size_t data_size, uint32_t nice_len, uint32_t *out_dist,
+                               const xx_lzma_platform *platform)
 {
     if (data_size - pos < 3) return 0;
 
     /* Hash4 */
-    uint32_t h = (uint32_t)data[pos] ^ ((uint32_t)data[pos+1] << 8) ^
-                 ((uint32_t)data[pos+2] << 16);
-    if (pos + 3 < data_size) h ^= (uint32_t)data[pos+3] << 24;
-    h ^= h >> 11; h ^= h << 15; h ^= h >> 18;
+    uint32_t h = (uint32_t)data[pos] ^ ((uint32_t)data[pos + 1] << 8) ^ ((uint32_t)data[pos + 2] << 16);
+    if (pos + 3 < data_size) h ^= (uint32_t)data[pos + 3] << 24;
+    h ^= h >> 11;
+    h ^= h << 15;
+    h ^= h >> 18;
     h &= HASH4_MASK;
 
     uint32_t best_len = 1, best_dist = 0;
@@ -455,9 +450,11 @@ static uint32_t enc_find_match(lzma_encoder *enc, const uint8_t *data, size_t po
         uint32_t dist = (uint32_t)pos - match_pos;
         const uint8_t *ref = data + match_pos;
         size_t avail = data_size - pos;
-        uint32_t len = enc_match_length(platform, ref, data + pos,
-                                        avail < nice_len ? avail : nice_len);
-        if (len > best_len) { best_len = len; best_dist = dist; }
+        uint32_t len = enc_match_length(platform, ref, data + pos, avail < nice_len ? avail : nice_len);
+        if (len > best_len) {
+            best_len = len;
+            best_dist = dist;
+        }
         if (len >= nice_len) break;
         cur = enc->chain[match_pos & enc->chain_mask];
     }
@@ -473,23 +470,34 @@ static uint32_t enc_find_match(lzma_encoder *enc, const uint8_t *data, size_t po
  * Public LZMA compression entry point
  * ========================================================================= */
 
-static bool enc_configure(int64_t uncomp_size, int level,
-                          lzma_props *props, uint32_t *nice_len)
+static bool enc_configure(int64_t uncomp_size, int level, lzma_props *props, uint32_t *nice_len)
 {
     uint32_t dict_size;
     uint32_t real_dict = 4096;
-    if (uncomp_size < 0 || (uint64_t)uncomp_size > UINT32_MAX - 1u ||
-        (uint64_t)uncomp_size > (uint64_t)SIZE_MAX) return false;
+    if (uncomp_size < 0 || (uint64_t)uncomp_size > UINT32_MAX - 1u || (uint64_t)uncomp_size > (uint64_t)SIZE_MAX) return false;
     if (level < 1) level = 1;
     if (level > 9) level = 9;
-    if      (level <= 1) { dict_size = 64 * 1024;        *nice_len = 32; }
-    else if (level <= 3) { dict_size = 1 * 1024 * 1024;  *nice_len = 64; }
-    else if (level <= 5) { dict_size = 16 * 1024 * 1024; *nice_len = 128; }
-    else if (level <= 7) { dict_size = 32 * 1024 * 1024; *nice_len = 192; }
-    else                 { dict_size = 64 * 1024 * 1024; *nice_len = 273; }
+    if (level <= 1) {
+        dict_size = 64 * 1024;
+        *nice_len = 32;
+    } else if (level <= 3) {
+        dict_size = 1 * 1024 * 1024;
+        *nice_len = 64;
+    } else if (level <= 5) {
+        dict_size = 16 * 1024 * 1024;
+        *nice_len = 128;
+    } else if (level <= 7) {
+        dict_size = 32 * 1024 * 1024;
+        *nice_len = 192;
+    } else {
+        dict_size = 64 * 1024 * 1024;
+        *nice_len = 273;
+    }
     if ((uint64_t)uncomp_size < dict_size) dict_size = (uint32_t)uncomp_size;
     while (real_dict < dict_size) real_dict <<= 1;
-    props->lc = 3; props->lp = 0; props->pb = 2;
+    props->lc = 3;
+    props->lp = 0;
+    props->pb = 2;
     props->dict_size = real_dict;
     return true;
 }
@@ -503,14 +511,12 @@ static void enc_write_properties(const lzma_props *props, uint8_t *output)
     output[4] = (uint8_t)(props->dict_size >> 24);
 }
 
-bool xx_lzma_get_properties(int64_t uncomp_size, int level,
-                            uint8_t *out_props, size_t *out_props_size)
+bool xx_lzma_get_properties(int64_t uncomp_size, int level, uint8_t *out_props, size_t *out_props_size)
 {
     lzma_props props;
     uint32_t nice_len;
     if (!out_props_size) return false;
-    if (!out_props || *out_props_size < XX_LZMA_PROPS_SIZE ||
-        !enc_configure(uncomp_size, level, &props, &nice_len)) {
+    if (!out_props || *out_props_size < XX_LZMA_PROPS_SIZE || !enc_configure(uncomp_size, level, &props, &nice_len)) {
         *out_props_size = 0;
         return false;
     }
@@ -519,15 +525,9 @@ bool xx_lzma_get_properties(int64_t uncomp_size, int level,
     return true;
 }
 
-static bool enc_compress_stream(lzma_encoder *workspace, xx_io_device *src_dev,
-                             const uint8_t *mem_src, size_t mem_src_size,
-                             int64_t src_offset, int64_t uncomp_size,
-                             xx_io_device *dst_dev,
-                             uint8_t *mem_dst, size_t mem_cap, size_t *out_written,
-                             int level,
-                             uint8_t *out_props, size_t *out_props_size,
-                             xx_pd_struct *pd,
-                             bool write_end_marker)
+static bool enc_compress_stream(lzma_encoder *workspace, xx_io_device *src_dev, const uint8_t *mem_src, size_t mem_src_size, int64_t src_offset, int64_t uncomp_size,
+                                xx_io_device *dst_dev, uint8_t *mem_dst, size_t mem_cap, size_t *out_written, int level, uint8_t *out_props, size_t *out_props_size,
+                                xx_pd_struct *pd, bool write_end_marker)
 {
     const xx_lzma_platform *platform = xx_lzma_platform_select();
     const size_t io_capacity = xx_get_file_buffer_size();
@@ -538,11 +538,8 @@ static bool enc_compress_stream(lzma_encoder *workspace, xx_io_device *src_dev,
             return false;
         }
     }
-    if (uncomp_size < 0 || (uint64_t)uncomp_size > (uint64_t)SIZE_MAX ||
-        (!dst_dev && !mem_dst) || (!src_dev && !mem_src && uncomp_size != 0) ||
-        (mem_src && (uint64_t)uncomp_size > (uint64_t)mem_src_size) ||
-        (src_dev && src_offset < 0) ||
-        (pd && xx_pd_is_stopped(pd))) {
+    if (uncomp_size < 0 || (uint64_t)uncomp_size > (uint64_t)SIZE_MAX || (!dst_dev && !mem_dst) || (!src_dev && !mem_src && uncomp_size != 0) ||
+        (mem_src && (uint64_t)uncomp_size > (uint64_t)mem_src_size) || (src_dev && src_offset < 0) || (pd && xx_pd_is_stopped(pd))) {
         if (out_props_size) *out_props_size = 0;
         return false;
     }
@@ -552,8 +549,7 @@ static bool enc_compress_stream(lzma_encoder *workspace, xx_io_device *src_dev,
         if (out_props_size) *out_props_size = 0;
         return false;
     }
-    if (workspace && (props.dict_size > workspace->chain_capacity ||
-        ((size_t)0x300 << (props.lc + props.lp)) > workspace->lit_capacity)) {
+    if (workspace && (props.dict_size > workspace->chain_capacity || ((size_t)0x300 << (props.lc + props.lp)) > workspace->lit_capacity)) {
         if (out_props_size) *out_props_size = 0;
         return false;
     }
@@ -581,12 +577,16 @@ static bool enc_compress_stream(lzma_encoder *workspace, xx_io_device *src_dev,
         owns_data = true;
         size_t done = 0;
         while (done < data_size) {
-            if (pd && xx_pd_is_stopped(pd)) { xx_mem_free(data); return false; }
+            if (pd && xx_pd_is_stopped(pd)) {
+                xx_mem_free(data);
+                return false;
+            }
             size_t request = data_size - done;
             if (request > io_capacity) request = io_capacity;
             ssize_t got = xx_io_read(src_dev, data + done, request);
             if (got <= 0 || (size_t)got > request) {
-                xx_mem_free(data); return false;
+                xx_mem_free(data);
+                return false;
             }
             done += (size_t)got;
         }
@@ -595,7 +595,10 @@ static bool enc_compress_stream(lzma_encoder *workspace, xx_io_device *src_dev,
     /* Standalone LZMA owns its workspace. LZMA2 supplies one workspace sized
      * for its largest chunk and reuses it until the complete stream ends. */
     lzma_encoder *enc = workspace ? workspace : enc_create(&props, io_capacity);
-    if (!enc) { if (owns_data) xx_mem_free(data); return false; }
+    if (!enc) {
+        if (owns_data) xx_mem_free(data);
+        return false;
+    }
     enc_reset(enc, &props, data_size);
 
     lzma_range_enc re;
@@ -605,7 +608,7 @@ static bool enc_compress_stream(lzma_encoder *workspace, xx_io_device *src_dev,
     int lp_mask = (1 << props.lp) - 1;
 
     bool ok = true;
-    for (size_t pos = 0; pos < data_size && ok; ) {
+    for (size_t pos = 0; pos < data_size && ok;) {
         if (pd && (pos & 0x3FFFu) == 0 && xx_pd_is_stopped(pd)) {
             ok = false;
             break;
@@ -622,8 +625,7 @@ static bool enc_compress_stream(lzma_encoder *workspace, xx_io_device *src_dev,
         if (enc->rep[0] <= (uint32_t)pos) {
             const uint8_t *ref = data + pos - enc->rep[0];
             size_t available = data_size - pos;
-            rep0_len = enc_match_length(platform, ref, data + pos,
-                                         available < 273 ? available : 273);
+            rep0_len = enc_match_length(platform, ref, data + pos, available < 273 ? available : 273);
         }
 
         if (match_len >= 2 && match_len >= rep0_len) {
@@ -632,9 +634,11 @@ static bool enc_compress_stream(lzma_encoder *workspace, xx_io_device *src_dev,
             re_encode_bit(&re, &enc->is_rep[state], 0);
             enc_encode_len(&re, enc, 0, pos_state, match_len);
             enc_encode_dist(&re, enc, dist - 1, match_len);
-            enc->rep[3] = enc->rep[2]; enc->rep[2] = enc->rep[1];
-            enc->rep[1] = enc->rep[0]; enc->rep[0] = dist;
-            enc->state  = (state < 7) ? 7 : 10;
+            enc->rep[3] = enc->rep[2];
+            enc->rep[2] = enc->rep[1];
+            enc->rep[1] = enc->rep[0];
+            enc->rep[0] = dist;
+            enc->state = (state < 7) ? 7 : 10;
             pos += match_len;
         } else if (rep0_len >= 2) {
             /* REP0 */
@@ -648,7 +652,7 @@ static bool enc_compress_stream(lzma_encoder *workspace, xx_io_device *src_dev,
         } else {
             /* LITERAL */
             uint8_t prev = (pos > 0) ? data[pos - 1] : 0;
-            uint8_t cur  = data[pos];
+            uint8_t cur = data[pos];
             uint32_t lit_ctx = ((uint32_t)pos & lp_mask) | ((uint32_t)prev >> (8 - props.lc));
             lzma_prob *lit = enc->lit_probs + (lit_ctx << 8) * 3;
 
@@ -678,8 +682,7 @@ static bool enc_compress_stream(lzma_encoder *workspace, xx_io_device *src_dev,
             enc_encode_len(&re, enc, 0, end_pos_state, LZMA_MATCH_MIN_LEN);
             re_encode_bittree(&re, enc->pos_slot[0], 6, 63);
             re_encode_direct(&re, (1u << (30 - LZMA_NUM_ALIGN_BITS)) - 1u, 30 - LZMA_NUM_ALIGN_BITS);
-            re_encode_bittree_rev(&re, enc->pos_align, LZMA_NUM_ALIGN_BITS,
-                                  (1 << LZMA_NUM_ALIGN_BITS) - 1);
+            re_encode_bittree_rev(&re, enc->pos_align, LZMA_NUM_ALIGN_BITS, (1 << LZMA_NUM_ALIGN_BITS) - 1);
         }
         ok = re_flush(&re);
         if (ok && out_written) *out_written = (size_t)re.total_written;
@@ -694,20 +697,12 @@ static bool enc_compress_stream(lzma_encoder *workspace, xx_io_device *src_dev,
     return ok;
 }
 
-bool xx_lzma_compress_stream(xx_io_device *src_dev,
-                             const uint8_t *mem_src, size_t mem_src_size,
-                             int64_t src_offset, int64_t uncomp_size,
-                             xx_io_device *dst_dev,
-                             uint8_t *mem_dst, size_t mem_cap, size_t *out_written,
-                             int level,
-                             uint8_t *out_props, size_t *out_props_size,
-                             xx_pd_struct *pd,
+bool xx_lzma_compress_stream(xx_io_device *src_dev, const uint8_t *mem_src, size_t mem_src_size, int64_t src_offset, int64_t uncomp_size, xx_io_device *dst_dev,
+                             uint8_t *mem_dst, size_t mem_cap, size_t *out_written, int level, uint8_t *out_props, size_t *out_props_size, xx_pd_struct *pd,
                              bool write_end_marker)
 {
-    return enc_compress_stream(NULL, src_dev, mem_src, mem_src_size,
-                               src_offset, uncomp_size, dst_dev,
-                               mem_dst, mem_cap, out_written, level,
-                               out_props, out_props_size, pd, write_end_marker);
+    return enc_compress_stream(NULL, src_dev, mem_src, mem_src_size, src_offset, uncomp_size, dst_dev, mem_dst, mem_cap, out_written, level, out_props, out_props_size,
+                               pd, write_end_marker);
 }
 
 /* =========================================================================
@@ -715,7 +710,7 @@ bool xx_lzma_compress_stream(xx_io_device *src_dev,
  * ========================================================================= */
 
 #define LZMA2_CHUNK_SIZE 65536u
-#define LZMA2_DICT_PROP  8u
+#define LZMA2_DICT_PROP 8u
 
 bool xx_lzma2_get_properties(uint8_t *out_props2_byte)
 {
@@ -747,16 +742,14 @@ static bool lzma2_sink_write(lzma2_sink *sink, const uint8_t *data, size_t size)
             done += (size_t)amount;
         }
     } else {
-        if (!sink->mem || sink->written > sink->mem_cap ||
-            size > sink->mem_cap - sink->written) return false;
+        if (!sink->mem || sink->written > sink->mem_cap || size > sink->mem_cap - sink->written) return false;
         if (size) xx_rt_memcpy(sink->mem + sink->written, data, size);
     }
     sink->written += size;
     return true;
 }
 
-static bool lzma2_read_exact(xx_io_device *dev, uint8_t *data, size_t size,
-                             xx_pd_struct *pd, size_t io_capacity)
+static bool lzma2_read_exact(xx_io_device *dev, uint8_t *data, size_t size, xx_pd_struct *pd, size_t io_capacity)
 {
     size_t done = 0;
     while (done < size) {
@@ -770,13 +763,8 @@ static bool lzma2_read_exact(xx_io_device *dev, uint8_t *data, size_t size,
     return true;
 }
 
-bool xx_lzma2_compress_stream(xx_io_device *src_dev,
-                              const uint8_t *mem_src, size_t mem_src_size,
-                              int64_t src_offset, int64_t uncomp_size,
-                              xx_io_device *dst_dev,
-                              uint8_t *mem_dst, size_t mem_cap, size_t *out_written,
-                              int level, uint8_t *out_props2_byte,
-                              xx_pd_struct *pd)
+bool xx_lzma2_compress_stream(xx_io_device *src_dev, const uint8_t *mem_src, size_t mem_src_size, int64_t src_offset, int64_t uncomp_size, xx_io_device *dst_dev,
+                              uint8_t *mem_dst, size_t mem_cap, size_t *out_written, int level, uint8_t *out_props2_byte, xx_pd_struct *pd)
 {
     const size_t io_capacity = xx_get_file_buffer_size();
     uint8_t *input = NULL;
@@ -790,11 +778,9 @@ bool xx_lzma2_compress_stream(xx_io_device *src_dev,
 
     if (out_written) *out_written = 0;
     if (out_props2_byte) *out_props2_byte = 0;
-    if (uncomp_size < 0 || (uint64_t)uncomp_size > (uint64_t)SIZE_MAX ||
-        (!src_dev && !mem_src && uncomp_size != 0) || (!dst_dev && !mem_dst) ||
-        (mem_src && (uint64_t)uncomp_size > (uint64_t)mem_src_size) ||
-        (src_dev && src_offset < 0) ||
-        (pd && xx_pd_is_stopped(pd))) return false;
+    if (uncomp_size < 0 || (uint64_t)uncomp_size > (uint64_t)SIZE_MAX || (!src_dev && !mem_src && uncomp_size != 0) || (!dst_dev && !mem_dst) ||
+        (mem_src && (uint64_t)uncomp_size > (uint64_t)mem_src_size) || (src_dev && src_offset < 0) || (pd && xx_pd_is_stopped(pd)))
+        return false;
 
     if (src_dev && xx_io_seek64(src_dev, src_offset, SEEK_SET) != 0) return false;
 
@@ -835,15 +821,12 @@ bool xx_lzma2_compress_stream(xx_io_device *src_dev,
             goto cleanup;
         }
 
-        compressed_ok = enc_compress_stream(workspace, NULL, input, chunk_size, 0,
-                                                 (int64_t)chunk_size, NULL,
-                                                 compressed, compressed_cap, &packed_size,
-                                                 level, props, &props_size, pd, false);
+        compressed_ok = enc_compress_stream(workspace, NULL, input, chunk_size, 0, (int64_t)chunk_size, NULL, compressed, compressed_cap, &packed_size, level, props,
+                                            &props_size, pd, false);
         if (pd && xx_pd_is_stopped(pd)) goto cleanup;
 
         unpack_minus_one = (uint32_t)chunk_size - 1u;
-        if (compressed_ok && props_size == XX_LZMA_PROPS_SIZE && props[0] == 0x5Du &&
-            packed_size > 0 && packed_size <= LZMA2_CHUNK_SIZE &&
+        if (compressed_ok && props_size == XX_LZMA_PROPS_SIZE && props[0] == 0x5Du && packed_size > 0 && packed_size <= LZMA2_CHUNK_SIZE &&
             packed_size + 6u < chunk_size + 3u) {
             uint32_t pack_minus_one = (uint32_t)packed_size - 1u;
             uint8_t header[6];
@@ -853,17 +836,14 @@ bool xx_lzma2_compress_stream(xx_io_device *src_dev,
             header[3] = (uint8_t)(pack_minus_one >> 8);
             header[4] = (uint8_t)pack_minus_one;
             header[5] = 0x5D;
-            if (!lzma2_sink_write(&sink, header, sizeof(header)) ||
-                !lzma2_sink_write(&sink, compressed, packed_size)) goto cleanup;
+            if (!lzma2_sink_write(&sink, header, sizeof(header)) || !lzma2_sink_write(&sink, compressed, packed_size)) goto cleanup;
             dictionary_initialized = true;
         } else {
             uint8_t header[3];
-            header[0] = dictionary_initialized ? LZMA2_CONTROL_COPY_DICT
-                                               : LZMA2_CONTROL_COPY_NO_DICT;
+            header[0] = dictionary_initialized ? LZMA2_CONTROL_COPY_DICT : LZMA2_CONTROL_COPY_NO_DICT;
             header[1] = (uint8_t)(unpack_minus_one >> 8);
             header[2] = (uint8_t)unpack_minus_one;
-            if (!lzma2_sink_write(&sink, header, sizeof(header)) ||
-                !lzma2_sink_write(&sink, input, chunk_size)) goto cleanup;
+            if (!lzma2_sink_write(&sink, header, sizeof(header)) || !lzma2_sink_write(&sink, input, chunk_size)) goto cleanup;
             dictionary_initialized = true;
         }
         source_pos += chunk_size;

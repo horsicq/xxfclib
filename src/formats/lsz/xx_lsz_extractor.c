@@ -15,62 +15,54 @@
 #include "../xx_format_extractor_engine.h"
 #include "xxfclib/formats/lsz/xx_lsz.h"
 
-static const uint8_t k_anchor0[] = { 0x37, 0xF0, 0xFF, 0xFF, 0x00, 0x03 };
+static const uint8_t k_anchor0[] = {0x37, 0xF0, 0xFF, 0xFF, 0x00, 0x03};
 
 static const xx_format_search_anchor k_anchors[] = {
-    { k_anchor0, sizeof(k_anchor0), 0U },
+    {k_anchor0, sizeof(k_anchor0), 0U},
 };
 
-static const xx_file_type_t k_types[] = { XX_FILE_TYPE_LSZ };
+static const xx_file_type_t k_types[] = {XX_FILE_TYPE_LSZ};
 
-static Abstractformat *xx_lsz_search_open(xx_io_device *window) {
+static Abstractformat *xx_lsz_search_open(xx_io_device *window)
+{
     xx_lsz *reader = xx_lsz_create(window, 0);
     return reader ? &reader->format : NULL;
 }
 
-static void xx_lsz_search_close(Abstractformat *format) {
+static void xx_lsz_search_close(Abstractformat *format)
+{
     /* The format is the first member, so this is the reader itself. */
     xx_lsz_free((xx_lsz *)format);
 }
 
 static const xx_format_search_desc k_desc = {
-    k_types, sizeof(k_types) / sizeof(k_types[0]),
-    k_anchors, sizeof(k_anchors) / sizeof(k_anchors[0]),
-    xx_lsz_search_open, xx_lsz_search_close, false
-};
+    k_types, sizeof(k_types) / sizeof(k_types[0]), k_anchors, sizeof(k_anchors) / sizeof(k_anchors[0]), xx_lsz_search_open, xx_lsz_search_close, false};
 
-static xx_format_search_state *xx_lsz_create_format_search(
-    xx_format_extractor *self, xx_io_device *device, const xx_list_s *options,
-    xx_pd_struct *pd) {
+static xx_format_search_state *xx_lsz_create_format_search(xx_format_extractor *self, xx_io_device *device, const xx_list_s *options, xx_pd_struct *pd)
+{
     (void)self;
     return xx_format_search_create(&k_desc, device, options, pd);
 }
 
-static const xx_format_search_info *xx_lsz_get_current_format_info(
-    xx_format_extractor *self, xx_format_search_state *state) {
+static const xx_format_search_info *xx_lsz_get_current_format_info(xx_format_extractor *self, xx_format_search_state *state)
+{
     (void)self;
     return xx_format_search_current(state);
 }
 
-static bool xx_lsz_format_search_find_next(xx_format_extractor *self,
-                                          xx_format_search_state *state,
-                                          xx_pd_struct *pd) {
+static bool xx_lsz_format_search_find_next(xx_format_extractor *self, xx_format_search_state *state, xx_pd_struct *pd)
+{
     (void)self;
     return xx_format_search_find_next(state, pd);
 }
 
-static void xx_lsz_free_format_search(xx_format_extractor *self,
-                                     xx_format_search_state *state) {
+static void xx_lsz_free_format_search(xx_format_extractor *self, xx_format_search_state *state)
+{
     (void)self;
     xx_format_search_free(state);
 }
 
-xx_format_extractor xx_lsz_extractor = {
-    xx_lsz_create_format_search,
-    xx_lsz_get_current_format_info,
-    xx_lsz_format_search_find_next,
-    xx_lsz_free_format_search
-};
+xx_format_extractor xx_lsz_extractor = {xx_lsz_create_format_search, xx_lsz_get_current_format_info, xx_lsz_format_search_find_next, xx_lsz_free_format_search};
 
 /* BEGIN GENERATED ABSTRACT EXTRACTOR */
 #include "../xx_format_abstract_extractor_adapter.h"

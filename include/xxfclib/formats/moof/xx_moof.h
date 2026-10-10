@@ -42,10 +42,10 @@ typedef struct xx_moof {
     Abstractformat format;
     uint64_t number_of_records;
     int64_t archive_end;
-    uint32_t disk_type;      /**< INFO disk type byte. */
-    uint32_t encoding;       /**< XX_MOOF_ENCODING_*, after decoding. */
-    uint64_t image_size;     /**< Size of image.img, 0 when nothing decoded. */
-    uint32_t good_sectors;   /**< Sectors that passed their checksum. */
+    uint32_t disk_type;    /**< INFO disk type byte. */
+    uint32_t encoding;     /**< XX_MOOF_ENCODING_*, after decoding. */
+    uint64_t image_size;   /**< Size of image.img, 0 when nothing decoded. */
+    uint32_t good_sectors; /**< Sectors that passed their checksum. */
 } xx_moof;
 
 typedef xx_moof xx_moof_t;
@@ -54,29 +54,21 @@ typedef xx_moof xx_moof_t;
 #define XX_MOOF_ENCODING_GCR 1U
 #define XX_MOOF_ENCODING_MFM 2U
 
-XXFC_API void xx_moof_init(xx_moof *archive, xx_io_device *device,
-                           int64_t base_address);
+XXFC_API void xx_moof_init(xx_moof *archive, xx_io_device *device, int64_t base_address);
 XXFC_API xx_moof *xx_moof_create(xx_io_device *device, int64_t base_address);
 XXFC_API void xx_moof_destroy(xx_moof *archive);
 XXFC_API void xx_moof_free(xx_moof *archive);
 
 XXFC_API bool xx_moof_check_is_valid(Abstractformat *self, xx_pd_struct *pd);
 XXFC_API bool xx_moof_handle_base_info(Abstractformat *self, xx_pd_struct *pd);
-XXFC_API int64_t xx_moof_get_format_size(Abstractformat *self,
-                                         xx_pd_struct *pd);
-XXFC_API uint64_t xx_moof_get_number_of_archive_records(Abstractformat *self,
-                                                        xx_pd_struct *pd);
+XXFC_API int64_t xx_moof_get_format_size(Abstractformat *self, xx_pd_struct *pd);
+XXFC_API uint64_t xx_moof_get_number_of_archive_records(Abstractformat *self, xx_pd_struct *pd);
 
-XXFC_API xx_archive_record_state *xx_moof_create_archive_records_reading(
-    Abstractformat *self, const xx_list_s *options, xx_pd_struct *pd);
-XXFC_API const xx_archive_record *xx_moof_get_current_archive_record(
-    Abstractformat *self, xx_archive_record_state *state);
-XXFC_API bool xx_moof_unpack_current_archive_record(
-    Abstractformat *self, xx_archive_record_state *state, xx_pd_struct *pd);
-XXFC_API bool xx_moof_archive_record_move_to_next(
-    Abstractformat *self, xx_archive_record_state *state, xx_pd_struct *pd);
-XXFC_API void xx_moof_free_archive_records_reading(
-    Abstractformat *self, xx_archive_record_state *state);
+XXFC_API xx_archive_record_state *xx_moof_create_archive_records_reading(Abstractformat *self, const xx_list_s *options, xx_pd_struct *pd);
+XXFC_API const xx_archive_record *xx_moof_get_current_archive_record(Abstractformat *self, xx_archive_record_state *state);
+XXFC_API bool xx_moof_unpack_current_archive_record(Abstractformat *self, xx_archive_record_state *state, xx_pd_struct *pd);
+XXFC_API bool xx_moof_archive_record_move_to_next(Abstractformat *self, xx_archive_record_state *state, xx_pd_struct *pd);
+XXFC_API void xx_moof_free_archive_records_reading(Abstractformat *self, xx_archive_record_state *state);
 
 #ifdef __cplusplus
 }

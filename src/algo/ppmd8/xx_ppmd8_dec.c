@@ -71,8 +71,7 @@ static inline uint8_t ppmd8_rd_byte(ppmd8_range_dec *rd)
     return rd->ibuf[rd->ibuf_pos++];
 }
 
-bool ppmd8_rd_init(CPpmd8 *p, ppmd8_range_dec *rd, xx_io_device *dev,
-                   const uint8_t *mem, size_t mem_size, int64_t remaining)
+bool ppmd8_rd_init(CPpmd8 *p, ppmd8_range_dec *rd, xx_io_device *dev, const uint8_t *mem, size_t mem_size, int64_t remaining)
 {
     xx_rt_memset(rd, 0, sizeof(*rd));
     rd->dev = dev;
@@ -87,8 +86,7 @@ bool ppmd8_rd_init(CPpmd8 *p, ppmd8_range_dec *rd, xx_io_device *dev,
     p->Low = 0;
     p->Range = 0xFFFFFFFFu;
     p->Code = 0;
-    for (int i = 0; i < 4; i++)
-        p->Code = (p->Code << 8) | (uint32_t)ppmd8_rd_byte(rd);
+    for (int i = 0; i < 4; i++) p->Code = (p->Code << 8) | (uint32_t)ppmd8_rd_byte(rd);
     return !rd->error && (p->Code < 0xFFFFFFFFu);
 }
 
@@ -104,8 +102,7 @@ static void RangeDec_Decode(CPpmd8 *p, ppmd8_range_dec *rd, uint32_t start, uint
     p->Code -= start;
     p->Range *= size;
 
-    while ((p->Low ^ (p->Low + p->Range)) < kTop ||
-           (p->Range < kBot && ((p->Range = (0 - p->Low) & (kBot - 1)), 1))) {
+    while ((p->Low ^ (p->Low + p->Range)) < kTop || (p->Range < kBot && ((p->Range = (0 - p->Low) & (kBot - 1)), 1))) {
         p->Code = (p->Code << 8) | (uint32_t)ppmd8_rd_byte(rd);
         p->Range <<= 8;
         p->Low <<= 8;
@@ -142,8 +139,7 @@ int Ppmd8_DecodeSymbol(CPpmd8 *p, ppmd8_range_dec *rd)
             }
         } while (--i);
 
-        if (count >= p->MinContext->SummFreq)
-            return -2;
+        if (count >= p->MinContext->SummFreq) return -2;
         RangeDec_Decode(p, rd, hiCnt, p->MinContext->SummFreq - hiCnt);
         PPMD_SetAllBitsIn256Bytes(charMask);
         MASK(s->Symbol) = 0;
@@ -176,8 +172,7 @@ int Ppmd8_DecodeSymbol(CPpmd8 *p, ppmd8_range_dec *rd)
         unsigned i, num, numMasked = p->MinContext->NumStats;
         do {
             p->OrderFall++;
-            if (!p->MinContext->Suffix)
-                return -1;
+            if (!p->MinContext->Suffix) return -1;
             p->MinContext = Ppmd8_GetContext(p, p->MinContext->Suffix);
         } while (p->MinContext->NumStats == numMasked);
 
@@ -209,8 +204,7 @@ int Ppmd8_DecodeSymbol(CPpmd8 *p, ppmd8_range_dec *rd)
             return (int)symbol;
         }
 
-        if (count >= freqSum)
-            return -2;
+        if (count >= freqSum) return -2;
 
         RangeDec_Decode(p, rd, hiCnt, freqSum - hiCnt);
         see->Summ = (uint16_t)(see->Summ + freqSum);
@@ -220,12 +214,8 @@ int Ppmd8_DecodeSymbol(CPpmd8 *p, ppmd8_range_dec *rd)
     }
 }
 
-bool xx_ppmd8_decompress_stream(ppmd8_range_dec *rd,
-                                int64_t uncomp_size,
-                                int order, uint32_t mem_mb, int restore_method,
-                                xx_io_device *dst_dev,
-                                uint8_t *mem_dst, size_t mem_cap, size_t *out_written,
-                                xx_pd_struct *pd)
+bool xx_ppmd8_decompress_stream(ppmd8_range_dec *rd, int64_t uncomp_size, int order, uint32_t mem_mb, int restore_method, xx_io_device *dst_dev, uint8_t *mem_dst,
+                                size_t mem_cap, size_t *out_written, xx_pd_struct *pd)
 {
     if (order < PPMD8_MIN_ORDER || order > PPMD8_MAX_ORDER) return false;
     if (restore_method < 0 || restore_method > 1) return false;
@@ -254,8 +244,7 @@ bool xx_ppmd8_decompress_stream(ppmd8_range_dec *rd,
 
     size_t opos = 0, tot = 0;
     size_t io_capacity = rd->io_capacity;
-    uint8_t *staging = io_capacity <= (size_t)-1 / 2U
-        ? (uint8_t *)xx_mem_alloc(io_capacity * 2U) : NULL;
+    uint8_t *staging = io_capacity <= (size_t)-1 / 2U ? (uint8_t *)xx_mem_alloc(io_capacity * 2U) : NULL;
     uint8_t *outbuf;
     if (!staging) {
         Ppmd8_Free(&ppmd);
@@ -269,7 +258,10 @@ bool xx_ppmd8_decompress_stream(ppmd8_range_dec *rd,
     bool ok = true;
 
     while (ok) {
-        if (pd && xx_pd_is_stopped(pd)) { ok = false; break; }
+        if (pd && xx_pd_is_stopped(pd)) {
+            ok = false;
+            break;
+        }
 
         if (uncomp_size >= 0 && (int64_t)tot + (int64_t)opos >= uncomp_size) {
             break;
@@ -289,9 +281,15 @@ bool xx_ppmd8_decompress_stream(ppmd8_range_dec *rd,
         if (opos >= io_capacity) {
             if (dst_dev) {
                 ssize_t w = xx_io_write(dst_dev, outbuf, opos);
-                if (w < 0 || (size_t)w != opos) { ok = false; break; }
+                if (w < 0 || (size_t)w != opos) {
+                    ok = false;
+                    break;
+                }
             } else if (mem_dst) {
-                if (tot + opos > mem_cap) { ok = false; break; }
+                if (tot + opos > mem_cap) {
+                    ok = false;
+                    break;
+                }
                 xx_rt_memcpy(mem_dst + tot, outbuf, opos);
             }
             tot += opos;
@@ -309,10 +307,8 @@ bool xx_ppmd8_decompress_stream(ppmd8_range_dec *rd,
             ssize_t w = xx_io_write(dst_dev, outbuf, opos);
             if (w < 0 || (size_t)w != opos) ok = false;
         } else if (mem_dst) {
-            if (tot + opos <= mem_cap)
-                xx_rt_memcpy(mem_dst + tot, outbuf, opos);
-            else
-                ok = false;
+            if (tot + opos <= mem_cap) xx_rt_memcpy(mem_dst + tot, outbuf, opos);
+            else ok = false;
         }
         tot += opos;
         if (pd && pd_level >= 0) xx_pd_set_current(pd, pd_level, (uint64_t)tot);

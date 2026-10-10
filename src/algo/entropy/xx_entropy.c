@@ -35,7 +35,8 @@ typedef struct xx_forward_bits {
     size_t bit_position;
 } xx_forward_bits;
 
-static unsigned xx_high_bit32(uint32_t value) {
+static unsigned xx_high_bit32(uint32_t value)
+{
     unsigned result = 0;
     while (value > 1U) {
         value >>= 1;
@@ -44,8 +45,8 @@ static unsigned xx_high_bit32(uint32_t value) {
     return result;
 }
 
-bool xx_reverse_bits_init(xx_reverse_bits *bits, const void *source,
-                          size_t source_size) {
+bool xx_reverse_bits_init(xx_reverse_bits *bits, const void *source, size_t source_size)
+{
     const uint8_t *bytes = (const uint8_t *)source;
     uint8_t final_byte;
     unsigned marker;
@@ -59,65 +60,60 @@ bool xx_reverse_bits_init(xx_reverse_bits *bits, const void *source,
     return true;
 }
 
-bool xx_reverse_bits_peek_padded(const xx_reverse_bits *bits, unsigned count,
-                                 uint32_t *value) {
+bool xx_reverse_bits_peek_padded(const xx_reverse_bits *bits, unsigned count, uint32_t *value)
+{
     size_t available;
     uint32_t result = 0;
     if (!bits || !bits->data || !value || count > 24U) return false;
-    available = bits->bit_position < (size_t)count
-                    ? bits->bit_position : (size_t)count;
+    available = bits->bit_position < (size_t)count ? bits->bit_position : (size_t)count;
     for (size_t index = 0; index < available; ++index) {
         size_t position = bits->bit_position - index - 1U;
-        result = (result << 1) |
-                 ((uint32_t)(bits->data[position >> 3] >> (position & 7U)) & 1U);
+        result = (result << 1) | ((uint32_t)(bits->data[position >> 3] >> (position & 7U)) & 1U);
     }
     result <<= (unsigned)((size_t)count - available);
     *value = result;
     return true;
 }
 
-bool xx_reverse_bits_skip(xx_reverse_bits *bits, unsigned count) {
+bool xx_reverse_bits_skip(xx_reverse_bits *bits, unsigned count)
+{
     if (!bits || (size_t)count > bits->bit_position) return false;
     bits->bit_position -= count;
     return true;
 }
 
-bool xx_reverse_bits_read(xx_reverse_bits *bits, unsigned count,
-                          uint32_t *value) {
-    if (!xx_reverse_bits_peek_padded(bits, count, value) ||
-        (size_t)count > bits->bit_position) {
+bool xx_reverse_bits_read(xx_reverse_bits *bits, unsigned count, uint32_t *value)
+{
+    if (!xx_reverse_bits_peek_padded(bits, count, value) || (size_t)count > bits->bit_position) {
         return false;
     }
     bits->bit_position -= count;
     return true;
 }
 
-static bool xx_forward_peek(const xx_forward_bits *bits, unsigned count,
-                            uint32_t *value) {
+static bool xx_forward_peek(const xx_forward_bits *bits, unsigned count, uint32_t *value)
+{
     uint32_t result = 0;
-    if (!bits || !value || count > 24U ||
-        bits->bit_position > bits->size * 8U ||
-        (size_t)count > bits->size * 8U - bits->bit_position) {
+    if (!bits || !value || count > 24U || bits->bit_position > bits->size * 8U || (size_t)count > bits->size * 8U - bits->bit_position) {
         return false;
     }
     for (unsigned index = 0; index < count; ++index) {
         size_t position = bits->bit_position + index;
-        result |= ((uint32_t)(bits->data[position >> 3] >> (position & 7U)) & 1U)
-                  << index;
+        result |= ((uint32_t)(bits->data[position >> 3] >> (position & 7U)) & 1U) << index;
     }
     *value = result;
     return true;
 }
 
-static bool xx_forward_read(xx_forward_bits *bits, unsigned count,
-                            uint32_t *value) {
+static bool xx_forward_read(xx_forward_bits *bits, unsigned count, uint32_t *value)
+{
     if (!xx_forward_peek(bits, count, value)) return false;
     bits->bit_position += count;
     return true;
 }
 
-bool xx_fse_build_table(const int16_t *normalized, unsigned maximum_symbol,
-                        unsigned table_log, xx_fse_table *table) {
+bool xx_fse_build_table(const int16_t *normalized, unsigned maximum_symbol, unsigned table_log, xx_fse_table *table)
+{
     uint16_t symbol_next[XX_FSE_MAX_SYMBOL_VALUE + 1U];
     uint8_t spread[1U << XX_FSE_MAX_TABLE_LOG];
     unsigned table_size;
@@ -126,8 +122,7 @@ bool xx_fse_build_table(const int16_t *normalized, unsigned maximum_symbol,
     unsigned step;
     unsigned total = 0;
 
-    if (!normalized || !table || maximum_symbol > XX_FSE_MAX_SYMBOL_VALUE ||
-        table_log == 0U || table_log > XX_FSE_MAX_TABLE_LOG) {
+    if (!normalized || !table || maximum_symbol > XX_FSE_MAX_SYMBOL_VALUE || table_log == 0U || table_log > XX_FSE_MAX_TABLE_LOG) {
         return false;
     }
     table_size = 1U << table_log;
@@ -166,15 +161,13 @@ bool xx_fse_build_table(const int16_t *normalized, unsigned maximum_symbol,
         unsigned bit_count = table_log - xx_high_bit32(next_state);
         table->entries[index].symbol = (uint8_t)symbol;
         table->entries[index].bit_count = (uint8_t)bit_count;
-        table->entries[index].new_state =
-            (uint16_t)((next_state << bit_count) - table_size);
+        table->entries[index].new_state = (uint16_t)((next_state << bit_count) - table_size);
     }
     return true;
 }
 
-bool xx_fse_read_table(const uint8_t *source, size_t source_size,
-                       unsigned maximum_symbol, unsigned maximum_table_log,
-                       xx_fse_table *table, size_t *out_consumed) {
+bool xx_fse_read_table(const uint8_t *source, size_t source_size, unsigned maximum_symbol, unsigned maximum_table_log, xx_fse_table *table, size_t *out_consumed)
+{
     int16_t normalized[XX_FSE_MAX_SYMBOL_VALUE + 1U] = {0};
     xx_forward_bits bits;
     uint32_t value;
@@ -186,9 +179,7 @@ bool xx_fse_read_table(const uint8_t *source, size_t source_size,
     bool previous_zero = false;
 
     if (out_consumed) *out_consumed = 0;
-    if (!source || source_size == 0U || !table ||
-        maximum_symbol > XX_FSE_MAX_SYMBOL_VALUE ||
-        maximum_table_log > XX_FSE_MAX_TABLE_LOG) {
+    if (!source || source_size == 0U || !table || maximum_symbol > XX_FSE_MAX_SYMBOL_VALUE || maximum_table_log > XX_FSE_MAX_TABLE_LOG) {
         return false;
     }
     bits.data = source;
@@ -219,8 +210,7 @@ bool xx_fse_read_table(const uint8_t *source, size_t source_size,
                 if (zero_end > maximum_symbol - 3U) return false;
                 zero_end += 3U;
             }
-            if (!xx_forward_read(&bits, 2, &value) ||
-                zero_end > maximum_symbol - value) {
+            if (!xx_forward_read(&bits, 2, &value) || zero_end > maximum_symbol - value) {
                 return false;
             }
             zero_end += value;
@@ -264,13 +254,11 @@ bool xx_fse_read_table(const uint8_t *source, size_t source_size,
     return true;
 }
 
-static bool xx_fse_advance_padded(xx_reverse_bits *bits,
-                                  const xx_fse_table *table,
-                                  unsigned *state, bool *overflow) {
+static bool xx_fse_advance_padded(xx_reverse_bits *bits, const xx_fse_table *table, unsigned *state, bool *overflow)
+{
     const xx_fse_entry *entry;
     uint32_t low_bits = 0;
-    if (!bits || !table || !state || !overflow ||
-        *state >= table->table_size) {
+    if (!bits || !table || !state || !overflow || *state >= table->table_size) {
         return false;
     }
     entry = &table->entries[*state];
@@ -278,23 +266,20 @@ static bool xx_fse_advance_padded(xx_reverse_bits *bits,
         return false;
     }
     *overflow = (size_t)entry->bit_count > bits->bit_position;
-    bits->bit_position = *overflow ? 0U :
-                         bits->bit_position - entry->bit_count;
+    bits->bit_position = *overflow ? 0U : bits->bit_position - entry->bit_count;
     *state = (unsigned)entry->new_state + low_bits;
     return *state < table->table_size;
 }
 
-bool xx_fse_decompress(const uint8_t *source, size_t source_size,
-                       const xx_fse_table *table, uint8_t *destination,
-                       size_t destination_capacity, size_t *out_written) {
+bool xx_fse_decompress(const uint8_t *source, size_t source_size, const xx_fse_table *table, uint8_t *destination, size_t destination_capacity, size_t *out_written)
+{
     xx_reverse_bits bits;
     uint32_t initial;
     unsigned states[2];
     size_t output = 0;
 
     if (out_written) *out_written = 0;
-    if (!source || !table || !destination || table->table_size == 0U ||
-        !xx_reverse_bits_init(&bits, source, source_size) ||
+    if (!source || !table || !destination || table->table_size == 0U || !xx_reverse_bits_init(&bits, source, source_size) ||
         !xx_reverse_bits_read(&bits, table->table_log, &initial)) {
         return false;
     }
@@ -306,25 +291,21 @@ bool xx_fse_decompress(const uint8_t *source, size_t source_size,
         for (unsigned lane = 0; lane < 2U; ++lane) {
             bool overflow;
             unsigned other = lane ^ 1U;
-            if (states[lane] >= table->table_size ||
-                output == destination_capacity) {
+            if (states[lane] >= table->table_size || output == destination_capacity) {
                 return false;
             }
             destination[output++] = table->entries[states[lane]].symbol;
-            if (!xx_fse_advance_padded(&bits, table, &states[lane],
-                                       &overflow)) {
+            if (!xx_fse_advance_padded(&bits, table, &states[lane], &overflow)) {
                 return false;
             }
             if (overflow) {
                 /* FSE interleaves two states.  The transition which crosses
                    the end marker consumes zero-padded bits; the untouched
                    state still contributes its current symbol. */
-                if (states[other] >= table->table_size ||
-                    output == destination_capacity) {
+                if (states[other] >= table->table_size || output == destination_capacity) {
                     return false;
                 }
-                destination[output++] =
-                    table->entries[states[other]].symbol;
+                destination[output++] = table->entries[states[other]].symbol;
                 if (out_written) *out_written = output;
                 return true;
             }
@@ -332,8 +313,8 @@ bool xx_fse_decompress(const uint8_t *source, size_t source_size,
     }
 }
 
-bool xx_huf_read_table(const uint8_t *source, size_t source_size,
-                       xx_huf_table *table, size_t *out_consumed) {
+bool xx_huf_read_table(const uint8_t *source, size_t source_size, xx_huf_table *table, size_t *out_consumed)
+{
     uint8_t weights[256] = {0};
     unsigned rank_count[13] = {0};
     unsigned rank_start[13] = {0};
@@ -359,13 +340,9 @@ bool xx_huf_read_table(const uint8_t *source, size_t source_size,
         size_t table_bytes;
         size_t decoded = 0;
         size_t compressed_size = source[0];
-        if (compressed_size == 0U || compressed_size + 1U > source_size ||
-            !xx_fse_read_table(source + 1U, compressed_size, 255U, 6U,
-                               &fse_table, &table_bytes) ||
-            table_bytes >= compressed_size ||
-            !xx_fse_decompress(source + 1U + table_bytes,
-                               compressed_size - table_bytes, &fse_table,
-                               weights, 255U, &decoded) || decoded == 0U) {
+        if (compressed_size == 0U || compressed_size + 1U > source_size || !xx_fse_read_table(source + 1U, compressed_size, 255U, 6U, &fse_table, &table_bytes) ||
+            table_bytes >= compressed_size || !xx_fse_decompress(source + 1U + table_bytes, compressed_size - table_bytes, &fse_table, weights, 255U, &decoded) ||
+            decoded == 0U) {
             return false;
         }
         weight_count = decoded;
@@ -411,8 +388,7 @@ bool xx_huf_read_table(const uint8_t *source, size_t source_size,
         if (start > (1U << table_log) - length) return false;
         for (unsigned index = 0; index < length; ++index) {
             table->entries[start + index].symbol = (uint8_t)symbol;
-            table->entries[start + index].bit_count =
-                (uint8_t)(table_log + 1U - weight);
+            table->entries[start + index].bit_count = (uint8_t)(table_log + 1U - weight);
         }
         rank_start[weight] += length;
     }
@@ -421,23 +397,18 @@ bool xx_huf_read_table(const uint8_t *source, size_t source_size,
     return true;
 }
 
-bool xx_huf_decode_1stream(const uint8_t *source, size_t source_size,
-                           const xx_huf_table *table,
-                           uint8_t *destination, size_t destination_size) {
+bool xx_huf_decode_1stream(const uint8_t *source, size_t source_size, const xx_huf_table *table, uint8_t *destination, size_t destination_size)
+{
     xx_reverse_bits bits;
-    if (!source || !table || !destination || table->table_log == 0U ||
-        table->table_log > 12U ||
-        !xx_reverse_bits_init(&bits, source, source_size)) return false;
+    if (!source || !table || !destination || table->table_log == 0U || table->table_log > 12U || !xx_reverse_bits_init(&bits, source, source_size)) return false;
     for (size_t index = 0; index < destination_size; ++index) {
         uint32_t slot;
         const xx_huf_entry *entry;
-        if (!xx_reverse_bits_peek_padded(&bits, table->table_log, &slot) ||
-            slot >= (1U << table->table_log)) {
+        if (!xx_reverse_bits_peek_padded(&bits, table->table_log, &slot) || slot >= (1U << table->table_log)) {
             return false;
         }
         entry = &table->entries[slot];
-        if (entry->bit_count == 0U ||
-            !xx_reverse_bits_skip(&bits, entry->bit_count)) {
+        if (entry->bit_count == 0U || !xx_reverse_bits_skip(&bits, entry->bit_count)) {
             return false;
         }
         destination[index] = entry->symbol;
@@ -445,22 +416,18 @@ bool xx_huf_decode_1stream(const uint8_t *source, size_t source_size,
     return bits.bit_position == 0U;
 }
 
-bool xx_huf_decode_4streams(const uint8_t *source, size_t source_size,
-                            const xx_huf_table *table,
-                            uint8_t *destination, size_t destination_size) {
+bool xx_huf_decode_4streams(const uint8_t *source, size_t source_size, const xx_huf_table *table, uint8_t *destination, size_t destination_size)
+{
     size_t lengths[4];
     size_t segment_size;
     size_t output_offsets[5];
     size_t input_offset = 6U;
 
-    if (!source || !table || !destination || source_size < 10U ||
-        destination_size < 6U) return false;
+    if (!source || !table || !destination || source_size < 10U || destination_size < 6U) return false;
     lengths[0] = (size_t)source[0] | ((size_t)source[1] << 8);
     lengths[1] = (size_t)source[2] | ((size_t)source[3] << 8);
     lengths[2] = (size_t)source[4] | ((size_t)source[5] << 8);
-    if (lengths[0] > source_size - 6U ||
-        lengths[1] > source_size - 6U - lengths[0] ||
-        lengths[2] > source_size - 6U - lengths[0] - lengths[1]) {
+    if (lengths[0] > source_size - 6U || lengths[1] > source_size - 6U - lengths[0] || lengths[2] > source_size - 6U - lengths[0] - lengths[1]) {
         return false;
     }
     lengths[3] = source_size - 6U - lengths[0] - lengths[1] - lengths[2];
@@ -473,10 +440,7 @@ bool xx_huf_decode_4streams(const uint8_t *source, size_t source_size,
     if (output_offsets[3] > destination_size) return false;
     for (unsigned lane = 0; lane < 4U; ++lane) {
         size_t lane_output = output_offsets[lane + 1U] - output_offsets[lane];
-        if (lengths[lane] == 0U ||
-            !xx_huf_decode_1stream(source + input_offset, lengths[lane], table,
-                                   destination + output_offsets[lane],
-                                   lane_output)) {
+        if (lengths[lane] == 0U || !xx_huf_decode_1stream(source + input_offset, lengths[lane], table, destination + output_offsets[lane], lane_output)) {
             return false;
         }
         input_offset += lengths[lane];
@@ -484,8 +448,8 @@ bool xx_huf_decode_4streams(const uint8_t *source, size_t source_size,
     return input_offset == source_size;
 }
 
-bool xx_huf_decompress(const uint8_t *source, size_t source_size,
-                       uint8_t *destination, size_t destination_size) {
+bool xx_huf_decompress(const uint8_t *source, size_t source_size, uint8_t *destination, size_t destination_size)
+{
     xx_huf_table table = {0};
     size_t tree_size;
     const uint8_t *payload;
@@ -506,22 +470,21 @@ bool xx_huf_decompress(const uint8_t *source, size_t source_size,
         }
         return true;
     }
-    if (!xx_huf_read_table(source, source_size, &table, &tree_size) ||
-        tree_size >= source_size) {
+    if (!xx_huf_read_table(source, source_size, &table, &tree_size) || tree_size >= source_size) {
         return false;
     }
     payload = source + tree_size;
     payload_size = source_size - tree_size;
     if (payload_size < 10U) return false;
     {
-        return xx_huf_decode_4streams(payload, payload_size, &table,
-                                      destination, destination_size);
+        return xx_huf_decode_4streams(payload, payload_size, &table, destination, destination_size);
     }
 }
 
 /* -------------------------------------------------------- Shannon Entropy */
 
-double xx_entropy_calculate(const void *data, size_t size) {
+double xx_entropy_calculate(const void *data, size_t size)
+{
     if (!data || size == 0) {
         return 0.0;
     }
@@ -567,6 +530,7 @@ double xx_entropy_calculate(const void *data, size_t size) {
     return result * inv_log2;
 }
 
-double xx_entropy(const void *data, size_t size) {
+double xx_entropy(const void *data, size_t size)
+{
     return xx_entropy_calculate(data, size);
 }

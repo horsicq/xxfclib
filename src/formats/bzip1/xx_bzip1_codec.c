@@ -89,13 +89,19 @@ void bzip1UpdateModel(Bzip1Model *pModel, uint32_t nSymbol)
 }
 
 typedef struct Bzip1Decoder {
- const uint8_t *input;size_t input_size,input_position;
- uint8_t *output;size_t output_size,output_capacity;xx_pd_struct *pd;
- uint32_t m_nBitBuffer;int m_nBitsLive,m_nPadBits;bool m_bFailed;
- uint32_t m_nBigR,m_nBigD;
- Bzip1Model m_byteModel,m_models[BZIP1_MODEL_COUNT];
- int m_nBlockLimit,m_nLast,m_nOrigPtr;
- char *m_baMtfBlock,*m_baBlock;int32_t *m_vecNext;
+    const uint8_t *input;
+    size_t input_size, input_position;
+    uint8_t *output;
+    size_t output_size, output_capacity;
+    xx_pd_struct *pd;
+    uint32_t m_nBitBuffer;
+    int m_nBitsLive, m_nPadBits;
+    bool m_bFailed;
+    uint32_t m_nBigR, m_nBigD;
+    Bzip1Model m_byteModel, m_models[BZIP1_MODEL_COUNT];
+    int m_nBlockLimit, m_nLast, m_nOrigPtr;
+    char *m_baMtfBlock, *m_baBlock;
+    int32_t *m_vecNext;
 } Bzip1Decoder;
 static bool bz1_nextInputByte(Bzip1Decoder *ctx, uint8_t *pnByte);
 static bool bz1_readBit(Bzip1Decoder *ctx, uint32_t *pnBit);
@@ -112,12 +118,20 @@ static bool bz1_emitByte(Bzip1Decoder *ctx, uint8_t nByte);
 static bool bz1_flushOutput(Bzip1Decoder *ctx);
 static bool bz1_unRleAndEmit(Bzip1Decoder *ctx, bool bLastBlock);
 static bool bz1_run(Bzip1Decoder *ctx);
-static bool bz1_nextInputByte(Bzip1Decoder *ctx, uint8_t *pnByte) {
-    if (ctx->input_position < ctx->input_size) { *pnByte=ctx->input[ctx->input_position++];return true; }
-    if (ctx->m_nPadBits >= BZIP1_MAX_PAD_BITS) { ctx->m_bFailed=true;return false; }
-    ctx->m_nPadBits+=8; *pnByte=0;return true;
+static bool bz1_nextInputByte(Bzip1Decoder *ctx, uint8_t *pnByte)
+{
+    if (ctx->input_position < ctx->input_size) {
+        *pnByte = ctx->input[ctx->input_position++];
+        return true;
+    }
+    if (ctx->m_nPadBits >= BZIP1_MAX_PAD_BITS) {
+        ctx->m_bFailed = true;
+        return false;
+    }
+    ctx->m_nPadBits += 8;
+    *pnByte = 0;
+    return true;
 }
-
 
 static bool bz1_readBit(Bzip1Decoder *ctx, uint32_t *pnBit)
 {
@@ -167,7 +181,7 @@ static bool bz1_decodeSymbol(Bzip1Decoder *ctx, Bzip1Model *pModel, uint32_t *pn
         return false;
     }
 
-    const uint32_t nTarget = ((nTotal-1 < ctx->m_nBigD/nScale) ? nTotal-1 : ctx->m_nBigD/nScale);
+    const uint32_t nTarget = ((nTotal - 1 < ctx->m_nBigD / nScale) ? nTotal - 1 : ctx->m_nBigD / nScale);
 
     uint32_t nSymbol = 0;
     uint32_t nHigh = 0;
@@ -242,14 +256,14 @@ static bool bz1_decodeUInt32(Bzip1Decoder *ctx, uint32_t *pnValue)
 --*/
 static void bz1_initStructuredModels(Bzip1Decoder *ctx)
 {
-    bzip1InitModel(&ctx->m_models[0], 11, 12, 1000);   // first level
-    bzip1InitModel(&ctx->m_models[1], 2, 4, 1000);     // 2..3
-    bzip1InitModel(&ctx->m_models[2], 4, 3, 1000);     // 4..7
-    bzip1InitModel(&ctx->m_models[3], 8, 3, 1000);     // 8..15
-    bzip1InitModel(&ctx->m_models[4], 16, 3, 1000);    // 16..31
-    bzip1InitModel(&ctx->m_models[5], 32, 3, 1000);    // 32..63
-    bzip1InitModel(&ctx->m_models[6], 64, 2, 1000);    // 64..127
-    bzip1InitModel(&ctx->m_models[7], 128, 1, 1000);   // 128..255
+    bzip1InitModel(&ctx->m_models[0], 11, 12, 1000);  // first level
+    bzip1InitModel(&ctx->m_models[1], 2, 4, 1000);    // 2..3
+    bzip1InitModel(&ctx->m_models[2], 4, 3, 1000);    // 4..7
+    bzip1InitModel(&ctx->m_models[3], 8, 3, 1000);    // 8..15
+    bzip1InitModel(&ctx->m_models[4], 16, 3, 1000);   // 16..31
+    bzip1InitModel(&ctx->m_models[5], 32, 3, 1000);   // 32..63
+    bzip1InitModel(&ctx->m_models[6], 64, 2, 1000);   // 64..127
+    bzip1InitModel(&ctx->m_models[7], 128, 1, 1000);  // 128..255
 }
 
 static bool bz1_decodeMTFValue(Bzip1Decoder *ctx, int32_t *pnValue)
@@ -279,7 +293,7 @@ static bool bz1_decodeMTFValue(Bzip1Decoder *ctx, int32_t *pnValue)
     // three: escape 4 selects model 1 and base 2^1 = 2, escape 10 selects model
     // 7 and base 2^7 = 128.  The sub-model then codes 1..bucketSize, so the
     // value is base + offset - 1.
-    const int32_t nModelIndex = (int32_t)(nSymbol) - 3;
+    const int32_t nModelIndex = (int32_t)(nSymbol)-3;
     if ((nModelIndex < 1) || (nModelIndex >= BZIP1_MODEL_COUNT)) {
         ctx->m_bFailed = true;
         return false;
@@ -309,7 +323,7 @@ static bool bz1_decodeBlockSymbols(Bzip1Decoder *ctx, bool *pbLastBlock)
         ctx->m_bFailed = true;
         return false;
     }
-    ctx->m_nOrigPtr = (int32_t)(nMagnitude) - 1;
+    ctx->m_nOrigPtr = (int32_t)(nMagnitude)-1;
 
     bz1_initStructuredModels(ctx);
 
@@ -465,20 +479,27 @@ static void bz1_applySpotTransform(Bzip1Decoder *ctx)
     }
 }
 
-static bool bz1_emitByte(Bzip1Decoder *ctx, uint8_t nByte) {
-    if(ctx->output_size>=1073741824U) return false;
-    if(ctx->output_size==ctx->output_capacity) {
-        size_t capacity=ctx->output_capacity ? ctx->output_capacity*2 : 65536;
-        void *new_output=xx_mem_realloc(ctx->output,capacity);
-        if(!new_output) {return false; } ctx->output=new_output;ctx->output_capacity=capacity;
+static bool bz1_emitByte(Bzip1Decoder *ctx, uint8_t nByte)
+{
+    if (ctx->output_size >= 1073741824U) return false;
+    if (ctx->output_size == ctx->output_capacity) {
+        size_t capacity = ctx->output_capacity ? ctx->output_capacity * 2 : 65536;
+        void *new_output = xx_mem_realloc(ctx->output, capacity);
+        if (!new_output) {
+            return false;
+        }
+        ctx->output = new_output;
+        ctx->output_capacity = capacity;
     }
-    ctx->output[ctx->output_size++]=nByte;
+    ctx->output[ctx->output_size++] = nByte;
     return true;
 }
 
-
-static bool bz1_flushOutput(Bzip1Decoder *ctx) { (void)ctx;return true; }
-
+static bool bz1_flushOutput(Bzip1Decoder *ctx)
+{
+    (void)ctx;
+    return true;
+}
 
 /*--
    Inverse RLE1: any run of four identical bytes is followed by one extra byte
@@ -550,9 +571,9 @@ static bool bz1_run(Bzip1Decoder *ctx)
     const int32_t nBlockSize100k = (int32_t)(nMagic[3] - (uint32_t)('0'));
     ctx->m_nBlockLimit = 100000 * nBlockSize100k;
 
-    ctx->m_baMtfBlock=(char *)xx_mem_alloc((size_t)ctx->m_nBlockLimit);
-    ctx->m_baBlock=(char *)xx_mem_alloc((size_t)ctx->m_nBlockLimit);
-    ctx->m_vecNext=(int32_t *)xx_mem_alloc((size_t)ctx->m_nBlockLimit*sizeof(int32_t));
+    ctx->m_baMtfBlock = (char *)xx_mem_alloc((size_t)ctx->m_nBlockLimit);
+    ctx->m_baBlock = (char *)xx_mem_alloc((size_t)ctx->m_nBlockLimit);
+    ctx->m_vecNext = (int32_t *)xx_mem_alloc((size_t)ctx->m_nBlockLimit * sizeof(int32_t));
     if (!ctx->m_baMtfBlock || !ctx->m_baBlock || !ctx->m_vecNext) {
         return false;
     }
@@ -584,23 +605,37 @@ static bool bz1_run(Bzip1Decoder *ctx)
     // by this point some bytes may already have reached the output device; the
     // false return is the contract that tells the caller to discard them, the
     // same contract XBZIP2Decoder and every other streaming decoder here uses.
-    if (nStoredCrc != xx_crc32(XX_CRC_TYPE_CRC32_BZIP2,
-                               ctx->output, ctx->output_size)) return false;
+    if (nStoredCrc != xx_crc32(XX_CRC_TYPE_CRC32_BZIP2, ctx->output, ctx->output_size)) return false;
 
     if (!bz1_flushOutput(ctx)) return false;
 
     return !ctx->m_bFailed;
 }
 
-
-bool xx_bzip1_decode(const uint8_t *input,size_t input_size,uint8_t **output,size_t *output_size,xx_pd_struct *pd) {
- Bzip1Decoder *ctx;bool ok;
- if(!output || !output_size || !input) {return false; } *output=NULL;*output_size=0;
- ctx=(Bzip1Decoder *)xx_mem_calloc(1,sizeof(*ctx));if(!ctx)return false;
- ctx->input=input;ctx->input_size=input_size;ctx->pd=pd;ctx->m_nBigR=BZIP1_R_INITIAL;
- bzip1InitModel(&ctx->m_byteModel,256,0,256);
- ok=bz1_run(ctx);
- if(ok){*output=ctx->output;*output_size=ctx->output_size;}else xx_mem_free(ctx->output);
- xx_mem_free(ctx->m_baMtfBlock);xx_mem_free(ctx->m_baBlock);xx_mem_free(ctx->m_vecNext);xx_mem_free(ctx);
- return ok;
+bool xx_bzip1_decode(const uint8_t *input, size_t input_size, uint8_t **output, size_t *output_size, xx_pd_struct *pd)
+{
+    Bzip1Decoder *ctx;
+    bool ok;
+    if (!output || !output_size || !input) {
+        return false;
+    }
+    *output = NULL;
+    *output_size = 0;
+    ctx = (Bzip1Decoder *)xx_mem_calloc(1, sizeof(*ctx));
+    if (!ctx) return false;
+    ctx->input = input;
+    ctx->input_size = input_size;
+    ctx->pd = pd;
+    ctx->m_nBigR = BZIP1_R_INITIAL;
+    bzip1InitModel(&ctx->m_byteModel, 256, 0, 256);
+    ok = bz1_run(ctx);
+    if (ok) {
+        *output = ctx->output;
+        *output_size = ctx->output_size;
+    } else xx_mem_free(ctx->output);
+    xx_mem_free(ctx->m_baMtfBlock);
+    xx_mem_free(ctx->m_baBlock);
+    xx_mem_free(ctx->m_vecNext);
+    xx_mem_free(ctx);
+    return ok;
 }

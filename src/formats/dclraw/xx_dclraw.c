@@ -100,22 +100,14 @@ typedef struct dclraw_stream_s {
 /* The codec's fixed Huffman trees, in the DCL specification's run form (high
  * nibble = repeat count - 1, low nibble = code length), and its length
  * table: the same constants the library decoder uses. */
-static const uint8_t dclraw_literal_runs[] = {
-    11,124,8,7,28,7,188,13,76,4,10,8,12,10,12,10,8,23,8,
-    9,7,6,7,8,7,6,55,8,23,24,12,11,7,9,11,12,6,7,22,5,
-    7,24,6,11,9,6,7,22,7,11,38,7,9,8,25,11,8,11,9,12,
-    8,12,5,38,5,38,5,11,7,5,6,21,6,10,53,8,7,24,10,27,
-    44,253,253,253,252,252,252,13,12,45,12,45,12,61,12,45,
-    44,173
-};
-static const uint8_t dclraw_length_runs[] = { 2,35,36,53,38,23 };
-static const uint8_t dclraw_distance_runs[] = { 2,20,53,230,247,151,248 };
-static const uint16_t dclraw_length_base[16] = {
-    3,2,4,5,6,7,8,9,10,12,16,24,40,72,136,264
-};
-static const uint8_t dclraw_length_extra[16] = {
-    0,0,0,0,0,0,0,0,1,2,3,4,5,6,7,8
-};
+static const uint8_t dclraw_literal_runs[] = {11, 124, 8,  7,  28, 7,  188, 13,  76,  4,   10,  8,   12, 10, 12, 10, 8,  23, 8,  9,  7,  6,  7,  8,  7,
+                                              6,  55,  8,  23, 24, 12, 11,  7,   9,   11,  12,  6,   7,  22, 5,  7,  24, 6,  11, 9,  6,  7,  22, 7,  11,
+                                              38, 7,   9,  8,  25, 11, 8,   11,  9,   12,  8,   12,  5,  38, 5,  38, 5,  11, 7,  5,  6,  21, 6,  10, 53,
+                                              8,  7,   24, 10, 27, 44, 253, 253, 253, 252, 252, 252, 13, 12, 45, 12, 45, 12, 61, 12, 45, 44, 173};
+static const uint8_t dclraw_length_runs[] = {2, 35, 36, 53, 38, 23};
+static const uint8_t dclraw_distance_runs[] = {2, 20, 53, 230, 247, 151, 248};
+static const uint16_t dclraw_length_base[16] = {3, 2, 4, 5, 6, 7, 8, 9, 10, 12, 16, 24, 40, 72, 136, 264};
+static const uint8_t dclraw_length_extra[16] = {0, 0, 0, 0, 0, 0, 0, 0, 1, 2, 3, 4, 5, 6, 7, 8};
 
 /* Longest code in each fixed tree; each tree is decoded through a table
  * indexed by that many upcoming stream bits. */
@@ -134,65 +126,61 @@ typedef struct dclraw_tree_s {
 typedef struct dclraw_scanner_s {
     xx_io_device *device;
     xx_pd_struct *pd;
-    int64_t base;          /* device offset of the volume's first byte */
-    int64_t size;          /* bytes in the volume */
+    int64_t base; /* device offset of the volume's first byte */
+    int64_t size; /* bytes in the volume */
     uint8_t *window;
     size_t window_size;
-    int64_t window_start;  /* volume offset of window[0] */
+    int64_t window_start; /* volume offset of window[0] */
     size_t window_fill;
-    int64_t offset;        /* volume offset of the next byte to pull */
-    uint64_t bits;         /* pulled, not yet used; LSB = next bit */
-    unsigned count;        /* number of valid bits in `bits` */
-    uint16_t *literal_table;  /* built on first literal-mode-1 stream */
+    int64_t offset;          /* volume offset of the next byte to pull */
+    uint64_t bits;           /* pulled, not yet used; LSB = next bit */
+    unsigned count;          /* number of valid bits in `bits` */
+    uint16_t *literal_table; /* built on first literal-mode-1 stream */
     uint16_t length_table[1U << DCLRAW_LENGTH_BITS];
     uint16_t distance_table[1U << DCLRAW_DISTANCE_BITS];
 } dclraw_scanner;
 
 static void xx_dclraw_vtable_destroy(Abstractformat *self);
 
-static bool dclraw_read_at(xx_io_device *device, int64_t offset, void *buffer,
-                           size_t size) {
+static bool dclraw_read_at(xx_io_device *device, int64_t offset, void *buffer, size_t size)
+{
     size_t done = 0U;
-    if (!device || (!buffer && size != 0U) || offset < 0 ||
-        xx_io_seek64(device, offset, SEEK_SET) != 0)
-        return false;
+    if (!device || (!buffer && size != 0U) || offset < 0 || xx_io_seek64(device, offset, SEEK_SET) != 0) return false;
     while (done < size) {
-        ssize_t amount = xx_io_read(device, (uint8_t *)buffer + done,
-                                    size - done);
+        ssize_t amount = xx_io_read(device, (uint8_t *)buffer + done, size - done);
         if (amount <= 0 || (size_t)amount > size - done) return false;
         done += (size_t)amount;
     }
     return true;
 }
 
-static bool dclraw_prelude_ok(const uint8_t *bytes) {
+static bool dclraw_prelude_ok(const uint8_t *bytes)
+{
     return bytes[0] <= 1U && bytes[1] >= 4U && bytes[1] <= 6U;
 }
 
 /* A member name that survives to the filesystem must be a plain relative
  * path; anything else makes the member invalid rather than renamed. */
-static bool dclraw_safe_output_name(const char *name) {
+static bool dclraw_safe_output_name(const char *name)
+{
     const char *segment;
     const char *at;
-    if (!name || !name[0] || name[0] == '/' || name[0] == '\\' ||
-        name[1] == ':') return false;
+    if (!name || !name[0] || name[0] == '/' || name[0] == '\\' || name[1] == ':') return false;
     segment = name;
     for (at = name;; ++at) {
         unsigned char c = (unsigned char)*at;
-        if (c == ':' || c == '<' || c == '>' || c == '"' || c == '|' ||
-            c == '?' || c == '*' || (c != 0U && c < 0x20U)) return false;
+        if (c == ':' || c == '<' || c == '>' || c == '"' || c == '|' || c == '?' || c == '*' || (c != 0U && c < 0x20U)) return false;
         if (c == '/' || c == '\\' || c == 0U) {
             size_t length = (size_t)(at - segment);
-            if (length == 0U || (length == 1U && segment[0] == '.') ||
-                (length == 2U && segment[0] == '.' && segment[1] == '.'))
-                return false;
+            if (length == 0U || (length == 1U && segment[0] == '.') || (length == 2U && segment[0] == '.' && segment[1] == '.')) return false;
             if (c == 0U) return true;
             segment = at + 1;
         }
     }
 }
 
-static void dclraw_stream_free(void *opaque) {
+static void dclraw_stream_free(void *opaque)
+{
     dclraw_stream *stream = (dclraw_stream *)opaque;
     size_t index;
     if (!stream) return;
@@ -204,15 +192,14 @@ static void dclraw_stream_free(void *opaque) {
 
 /* Geometric growth: a volume can hold thousands of tiny streams, and a
  * realloc per stream would make the probe quadratic. */
-static bool dclraw_add_member(dclraw_stream *stream,
-                              const dclraw_member *member) {
+static bool dclraw_add_member(dclraw_stream *stream, const dclraw_member *member)
+{
     if (!stream || !member || stream->count >= DCLRAW_MAX_MEMBERS) return false;
     if (stream->count == stream->capacity) {
         size_t wanted = stream->capacity ? stream->capacity * 2U : 16U;
         dclraw_member *grown;
         if (wanted > DCLRAW_MAX_MEMBERS) wanted = DCLRAW_MAX_MEMBERS;
-        grown = (dclraw_member *)xx_mem_realloc(stream->items,
-                                                wanted * sizeof(*grown));
+        grown = (dclraw_member *)xx_mem_realloc(stream->items, wanted * sizeof(*grown));
         if (!grown) return false;
         stream->items = grown;
         stream->capacity = wanted;
@@ -223,12 +210,12 @@ static bool dclraw_add_member(dclraw_stream *stream,
 
 /* Record geometry only; names are made once the stream count is final, so a
  * rejected file never allocates a single name. */
-static bool dclraw_name_members(dclraw_stream *stream) {
+static bool dclraw_name_members(dclraw_stream *stream)
+{
     size_t index;
     for (index = 0U; index < stream->count; ++index) {
         char name[32];
-        int length = xx_rt_snprintf(name, sizeof(name), "data_%05u",
-                                    (unsigned)index);
+        int length = xx_rt_snprintf(name, sizeof(name), "data_%05u", (unsigned)index);
         if (length <= 0 || (size_t)length >= sizeof(name)) return false;
         stream->items[index].name = xx_str_dup(name);
         if (!stream->items[index].name) return false;
@@ -260,8 +247,8 @@ static bool dclraw_name_members(dclraw_stream *stream) {
  *    with them is refused), and the codes are prefix-free, so the table
  *    answers exactly what the bit-by-bit walk would. */
 
-static bool dclraw_build_tree(dclraw_tree *tree, const uint8_t *runs,
-                              size_t run_count) {
+static bool dclraw_build_tree(dclraw_tree *tree, const uint8_t *runs, size_t run_count)
+{
     uint8_t lengths[256];
     unsigned offsets[DCLRAW_MAX_BITS + 1U];
     unsigned symbol_count = 0U;
@@ -271,9 +258,7 @@ static bool dclraw_build_tree(dclraw_tree *tree, const uint8_t *runs,
     for (index = 0U; index < run_count; ++index) {
         unsigned repeat = ((unsigned)runs[index] >> 4U) + 1U;
         length = (unsigned)runs[index] & 15U;
-        if (length > DCLRAW_MAX_BITS ||
-            repeat > (unsigned)sizeof(lengths) - symbol_count)
-            return false;
+        if (length > DCLRAW_MAX_BITS || repeat > (unsigned)sizeof(lengths) - symbol_count) return false;
         while (repeat--) lengths[symbol_count++] = (uint8_t)length;
     }
     if (symbol_count == 0U) return false;
@@ -287,8 +272,7 @@ static bool dclraw_build_tree(dclraw_tree *tree, const uint8_t *runs,
     }
     offsets[0] = 0U;
     offsets[1] = 0U;
-    for (length = 1U; length < DCLRAW_MAX_BITS; ++length)
-        offsets[length + 1U] = offsets[length] + tree->count[length];
+    for (length = 1U; length < DCLRAW_MAX_BITS; ++length) offsets[length + 1U] = offsets[length] + tree->count[length];
     for (index = 0U; index < symbol_count; ++index) {
         length = lengths[index];
         tree->symbol[offsets[length]++] = (uint16_t)index;
@@ -302,8 +286,8 @@ static bool dclraw_build_tree(dclraw_tree *tree, const uint8_t *runs,
  * order the decoder's canonical walk assigns them: at each length, codes
  * first .. first + count - 1 (bits inverted, most significant sent first)
  * map to consecutive entries of the symbol list. */
-static bool dclraw_make_table(uint16_t *table, unsigned table_bits,
-                              const uint8_t *runs, size_t run_count) {
+static bool dclraw_make_table(uint16_t *table, unsigned table_bits, const uint8_t *runs, size_t run_count)
+{
     dclraw_tree tree;
     unsigned first = 0U, position = 0U, length;
     if (!dclraw_build_tree(&tree, runs, run_count)) return false;
@@ -315,12 +299,8 @@ static bool dclraw_make_table(uint16_t *table, unsigned table_bits,
             unsigned code = first + index, at = position + index;
             unsigned stream_bits = 0U, bit, fill;
             if (at >= tree.symbols) continue;
-            for (bit = 0U; bit < length; ++bit)
-                stream_bits |= (((code >> (length - 1U - bit)) & 1U) ^ 1U)
-                               << bit;
-            for (fill = stream_bits; fill < (1U << table_bits);
-                 fill += 1U << length)
-                table[fill] = (uint16_t)((length << 8U) | tree.symbol[at]);
+            for (bit = 0U; bit < length; ++bit) stream_bits |= (((code >> (length - 1U - bit)) & 1U) ^ 1U) << bit;
+            for (fill = stream_bits; fill < (1U << table_bits); fill += 1U << length) table[fill] = (uint16_t)((length << 8U) | tree.symbol[at]);
         }
         position += tree.count[length];
         first = (first + tree.count[length]) << 1U;
@@ -328,39 +308,31 @@ static bool dclraw_make_table(uint16_t *table, unsigned table_bits,
     return true;
 }
 
-static bool dclraw_scanner_open(dclraw_scanner *scanner,
-                                xx_io_device *device, xx_pd_struct *pd,
-                                int64_t base, int64_t size) {
+static bool dclraw_scanner_open(dclraw_scanner *scanner, xx_io_device *device, xx_pd_struct *pd, int64_t base, int64_t size)
+{
     xx_mem_zero(scanner, sizeof(*scanner));
     scanner->device = device;
     scanner->pd = pd;
     scanner->base = base;
     scanner->size = size;
-    scanner->window_size = size < (int64_t)DCLRAW_WINDOW ? (size_t)size
-                                                          : DCLRAW_WINDOW;
-    if (size <= 0 ||
-        !dclraw_make_table(scanner->length_table, DCLRAW_LENGTH_BITS,
-                           dclraw_length_runs, sizeof(dclraw_length_runs)) ||
-        !dclraw_make_table(scanner->distance_table, DCLRAW_DISTANCE_BITS,
-                           dclraw_distance_runs,
-                           sizeof(dclraw_distance_runs)))
+    scanner->window_size = size < (int64_t)DCLRAW_WINDOW ? (size_t)size : DCLRAW_WINDOW;
+    if (size <= 0 || !dclraw_make_table(scanner->length_table, DCLRAW_LENGTH_BITS, dclraw_length_runs, sizeof(dclraw_length_runs)) ||
+        !dclraw_make_table(scanner->distance_table, DCLRAW_DISTANCE_BITS, dclraw_distance_runs, sizeof(dclraw_distance_runs)))
         return false;
     scanner->window = (uint8_t *)xx_mem_alloc(scanner->window_size);
     return scanner->window != NULL;
 }
 
 /* The literal tree is needed only by literal-mode-1 streams. */
-static bool dclraw_scanner_literals(dclraw_scanner *scanner) {
+static bool dclraw_scanner_literals(dclraw_scanner *scanner)
+{
     if (scanner->literal_table) return true;
-    scanner->literal_table = (uint16_t *)xx_mem_alloc(
-        sizeof(uint16_t) << DCLRAW_LITERAL_BITS);
-    return scanner->literal_table &&
-           dclraw_make_table(scanner->literal_table, DCLRAW_LITERAL_BITS,
-                             dclraw_literal_runs,
-                             sizeof(dclraw_literal_runs));
+    scanner->literal_table = (uint16_t *)xx_mem_alloc(sizeof(uint16_t) << DCLRAW_LITERAL_BITS);
+    return scanner->literal_table && dclraw_make_table(scanner->literal_table, DCLRAW_LITERAL_BITS, dclraw_literal_runs, sizeof(dclraw_literal_runs));
 }
 
-static void dclraw_scanner_close(dclraw_scanner *scanner) {
+static void dclraw_scanner_close(dclraw_scanner *scanner)
+{
     if (scanner->window) xx_mem_free(scanner->window);
     if (scanner->literal_table) xx_mem_free(scanner->literal_table);
     scanner->window = NULL;
@@ -371,21 +343,15 @@ static void dclraw_scanner_close(dclraw_scanner *scanner) {
  * the end of the volume, reading the next window from the device when the
  * current one is used up. A read error or a stop request just leaves the
  * cache short, which fails the stream like running out of input. */
-static void dclraw_refill(dclraw_scanner *scanner) {
+static void dclraw_refill(dclraw_scanner *scanner)
+{
     while (scanner->count <= 56U && scanner->offset < scanner->size) {
         size_t at;
-        if (scanner->offset < scanner->window_start ||
-            scanner->offset - scanner->window_start >=
-                (int64_t)scanner->window_fill) {
+        if (scanner->offset < scanner->window_start || scanner->offset - scanner->window_start >= (int64_t)scanner->window_fill) {
             int64_t left = scanner->size - scanner->offset;
-            size_t want = left < (int64_t)scanner->window_size
-                              ? (size_t)left : scanner->window_size;
+            size_t want = left < (int64_t)scanner->window_size ? (size_t)left : scanner->window_size;
             scanner->window_fill = 0U;
-            if ((scanner->pd && xx_pd_is_stopped(scanner->pd)) ||
-                !dclraw_read_at(scanner->device,
-                                scanner->base + scanner->offset,
-                                scanner->window, want))
-                return;
+            if ((scanner->pd && xx_pd_is_stopped(scanner->pd)) || !dclraw_read_at(scanner->device, scanner->base + scanner->offset, scanner->window, want)) return;
             scanner->window_start = scanner->offset;
             scanner->window_fill = want;
         }
@@ -407,18 +373,15 @@ static void dclraw_refill(dclraw_scanner *scanner) {
  * fewer, every bit left in the volume is already in it, so each read below
  * failing for want of bits is the decoder running out of input. */
 #define DCLRAW_TAKE(n) (bits >>= (n), count -= (n))
-static bool dclraw_scan_stream(dclraw_scanner *scanner, int64_t start,
-                               size_t limit, int64_t *consumed,
-                               size_t *produced) {
+static bool dclraw_scan_stream(dclraw_scanner *scanner, int64_t start, size_t limit, int64_t *consumed, size_t *produced)
+{
     const uint16_t *literal_table = NULL;
     uint64_t bits;
     unsigned count, literal_mode, dictionary_bits;
     size_t output_at = 0U;
     *consumed = 0;
     *produced = 0U;
-    if (start < 0 || start > scanner->size || scanner->size - start < 3 ||
-        limit == 0U)
-        return false;
+    if (start < 0 || start > scanner->size || scanner->size - start < 3 || limit == 0U) return false;
     scanner->offset = start;
     scanner->bits = 0U;
     scanner->count = 0U;
@@ -429,8 +392,7 @@ static bool dclraw_scan_stream(dclraw_scanner *scanner, int64_t start,
     literal_mode = (unsigned)(bits & 0xFFU);
     dictionary_bits = (unsigned)((bits >> 8U) & 0xFFU);
     DCLRAW_TAKE(16U);
-    if (literal_mode > 1U || dictionary_bits < 4U || dictionary_bits > 6U)
-        return false;
+    if (literal_mode > 1U || dictionary_bits < 4U || dictionary_bits > 6U) return false;
     if (literal_mode == 1U) {
         if (!dclraw_scanner_literals(scanner)) return false;
         literal_table = scanner->literal_table;
@@ -445,7 +407,7 @@ static bool dclraw_scan_stream(dclraw_scanner *scanner, int64_t start,
             count = scanner->count;
         }
         if (count < 1U) return false;
-        if ((bits & 1U) == 0U) {                      /* literal */
+        if ((bits & 1U) == 0U) { /* literal */
             DCLRAW_TAKE(1U);
             if (!literal_table) {
                 if (count < 8U) return false;
@@ -460,12 +422,11 @@ static bool dclraw_scan_stream(dclraw_scanner *scanner, int64_t start,
             ++output_at;
             continue;
         }
-        DCLRAW_TAKE(1U);                              /* match */
+        DCLRAW_TAKE(1U); /* match */
         {
             unsigned length_symbol, extra_bits, distance_bits;
             size_t distance;
-            entry = scanner->length_table[bits &
-                                          ((1U << DCLRAW_LENGTH_BITS) - 1U)];
+            entry = scanner->length_table[bits & ((1U << DCLRAW_LENGTH_BITS) - 1U)];
             length = entry >> 8U;
             if (length == 0U || length > count) return false;
             DCLRAW_TAKE(length);
@@ -473,22 +434,18 @@ static bool dclraw_scan_stream(dclraw_scanner *scanner, int64_t start,
             if (length_symbol >= 16U) return false;
             extra_bits = dclraw_length_extra[length_symbol];
             if (count < extra_bits) return false;
-            length = dclraw_length_base[length_symbol] +
-                     (unsigned)(bits & ((1U << extra_bits) - 1U));
+            length = dclraw_length_base[length_symbol] + (unsigned)(bits & ((1U << extra_bits) - 1U));
             DCLRAW_TAKE(extra_bits);
             if (length == 519U) break;
             distance_bits = length == 2U ? 2U : dictionary_bits;
-            entry = scanner->distance_table[bits &
-                                            ((1U << DCLRAW_DISTANCE_BITS) - 1U)];
+            entry = scanner->distance_table[bits & ((1U << DCLRAW_DISTANCE_BITS) - 1U)];
             if ((entry >> 8U) == 0U || (entry >> 8U) > count) return false;
             DCLRAW_TAKE(entry >> 8U);
             if (count < distance_bits) return false;
-            distance = ((size_t)(entry & 0xFFU) << distance_bits) +
-                       (size_t)(bits & ((1U << distance_bits) - 1U)) + 1U;
+            distance = ((size_t)(entry & 0xFFU) << distance_bits) + (size_t)(bits & ((1U << distance_bits) - 1U)) + 1U;
             DCLRAW_TAKE(distance_bits);
             /* The same two tests the decoder makes before it copies. */
-            if (distance > output_at || length > limit - output_at)
-                return false;
+            if (distance > output_at || length > limit - output_at) return false;
             output_at += length;
         }
     }
@@ -499,26 +456,20 @@ static bool dclraw_scan_stream(dclraw_scanner *scanner, int64_t start,
 }
 #undef DCLRAW_TAKE
 
-bool xx_dclraw_measure_stream(xx_io_device *device, int64_t base_address,
-                             int64_t packed_size, size_t max_output,
-                             int64_t *consumed, size_t *produced,
-                             xx_pd_struct *pd) {
+bool xx_dclraw_measure_stream(xx_io_device *device, int64_t base_address, int64_t packed_size, size_t max_output, int64_t *consumed, size_t *produced, xx_pd_struct *pd)
+{
     dclraw_scanner scanner;
     int64_t cursor, total, measured = 0;
     size_t raw_size = 0U;
     bool valid;
     if (consumed) *consumed = 0;
     if (produced) *produced = 0U;
-    if (!device || base_address < 0 || packed_size < DCLRAW_MIN_STREAM ||
-        max_output == 0U || (pd && xx_pd_is_stopped(pd))) return false;
+    if (!device || base_address < 0 || packed_size < DCLRAW_MIN_STREAM || max_output == 0U || (pd && xx_pd_is_stopped(pd))) return false;
     cursor = xx_io_tell(device);
     total = xx_io_total_size(device);
-    if (cursor < 0 || total < base_address || packed_size > total - base_address)
-        return false;
-    valid = dclraw_scanner_open(&scanner, device, pd, base_address, packed_size) &&
-            dclraw_scan_stream(&scanner, 0, max_output, &measured, &raw_size) &&
-            measured >= DCLRAW_MIN_STREAM && measured <= packed_size &&
-            raw_size <= max_output && !(pd && xx_pd_is_stopped(pd));
+    if (cursor < 0 || total < base_address || packed_size > total - base_address) return false;
+    valid = dclraw_scanner_open(&scanner, device, pd, base_address, packed_size) && dclraw_scan_stream(&scanner, 0, max_output, &measured, &raw_size) &&
+            measured >= DCLRAW_MIN_STREAM && measured <= packed_size && raw_size <= max_output && !(pd && xx_pd_is_stopped(pd));
     dclraw_scanner_close(&scanner);
     if (xx_io_seek64(device, cursor, SEEK_SET) != 0) valid = false;
     if (valid) {
@@ -528,15 +479,14 @@ bool xx_dclraw_measure_stream(xx_io_device *device, int64_t base_address,
     return valid;
 }
 
-static bool dclraw_parse(Abstractformat *format, xx_pd_struct *pd,
-                         dclraw_stream **result) {
+static bool dclraw_parse(Abstractformat *format, xx_pd_struct *pd, dclraw_stream **result)
+{
     uint8_t prelude[2];
     dclraw_scanner scanner;
     dclraw_stream *stream = NULL;
     int64_t total, size, position = 0;
     size_t budget = DCLRAW_MAX_OUTPUT, produced_total = 0U;
-    if (!format || !format->device || !result || format->base_address < 0)
-        return false;
+    if (!format || !format->device || !result || format->base_address < 0) return false;
     *result = NULL;
     if (pd && xx_pd_is_stopped(pd)) return false;
     total = xx_io_total_size(format->device);
@@ -544,12 +494,8 @@ static bool dclraw_parse(Abstractformat *format, xx_pd_struct *pd,
     size = total - format->base_address;
     if (size < 2 * DCLRAW_MIN_STREAM || size > DCLRAW_MAX_FILE) return false;
     /* Two bytes decide almost every file before anything is allocated. */
-    if (!dclraw_read_at(format->device, format->base_address, prelude,
-                        sizeof(prelude)) ||
-        !dclraw_prelude_ok(prelude))
-        return false;
-    if (!dclraw_scanner_open(&scanner, format->device, pd,
-                             format->base_address, size)) {
+    if (!dclraw_read_at(format->device, format->base_address, prelude, sizeof(prelude)) || !dclraw_prelude_ok(prelude)) return false;
+    if (!dclraw_scanner_open(&scanner, format->device, pd, format->base_address, size)) {
         dclraw_scanner_close(&scanner);
         return false;
     }
@@ -563,11 +509,7 @@ static bool dclraw_parse(Abstractformat *format, xx_pd_struct *pd,
         /* Each stream must reach its own end marker inside the budget left
          * by the ones before it. The first one is measured from the first
          * window alone unless it keeps decoding past it. */
-        if (!dclraw_scan_stream(&scanner, position, budget, &consumed,
-                                &produced) ||
-            consumed < DCLRAW_MIN_STREAM || consumed > left ||
-            produced > budget)
-            goto fail;
+        if (!dclraw_scan_stream(&scanner, position, budget, &consumed, &produced) || consumed < DCLRAW_MIN_STREAM || consumed > left || produced > budget) goto fail;
         /* A single stream that fills the file is dclft's, not ours. */
         if (position == 0 && consumed == left) goto fail;
         if (!stream) {
@@ -588,8 +530,7 @@ static bool dclraw_parse(Abstractformat *format, xx_pd_struct *pd,
     }
     dclraw_scanner_close(&scanner);
     /* An all-empty run of end codes is not a volume of files. */
-    if (!stream || stream->count < DCLRAW_MIN_MEMBERS ||
-        produced_total == 0U || !dclraw_name_members(stream)) {
+    if (!stream || stream->count < DCLRAW_MIN_MEMBERS || produced_total == 0U || !dclraw_name_members(stream)) {
         dclraw_stream_free(stream);
         return false;
     }
@@ -602,18 +543,16 @@ fail:
     return false;
 }
 
-static bool dclraw_copy_options(xx_list_s *destination,
-                                const xx_list_s *source) {
+static bool dclraw_copy_options(xx_list_s *destination, const xx_list_s *source)
+{
     size_t index;
     if (!source) return true;
     for (index = 0U; index < source->count; ++index) {
-        const xx_meta *original =
-            (const xx_meta *)xx_list_at((const xx_list_t *)source, index);
+        const xx_meta *original = (const xx_meta *)xx_list_at((const xx_list_t *)source, index);
         xx_meta copy;
         if (!original) continue;
         xx_meta_init(&copy, original->meta_id);
-        if (!xx_var_copy(&copy.var, &original->var) ||
-            !xx_list_append(destination, &copy)) {
+        if (!xx_var_copy(&copy.var, &original->var) || !xx_list_append(destination, &copy)) {
             xx_meta_cleanup(&copy);
             return false;
         }
@@ -621,19 +560,19 @@ static bool dclraw_copy_options(xx_list_s *destination,
     return true;
 }
 
-static const xx_var *dclraw_option(const xx_list_s *options, uint32_t id) {
+static const xx_var *dclraw_option(const xx_list_s *options, uint32_t id)
+{
     size_t index;
     if (!options) return NULL;
     for (index = 0U; index < options->count; ++index) {
-        const xx_meta *meta =
-            (const xx_meta *)xx_list_at((const xx_list_t *)options, index);
+        const xx_meta *meta = (const xx_meta *)xx_list_at((const xx_list_t *)options, index);
         if (meta && meta->meta_id == id) return &meta->var;
     }
     return NULL;
 }
 
-static bool dclraw_set_record(xx_archive_record *record,
-                              const dclraw_member *member) {
+static bool dclraw_set_record(xx_archive_record *record, const dclraw_member *member)
+{
     xx_archive_record_cleanup(record);
     xx_archive_record_init(record);
     record->header_offset = member->header_offset;
@@ -641,31 +580,22 @@ static bool dclraw_set_record(xx_archive_record *record,
     record->data_offset = member->data_offset;
     record->compressed_size = member->packed_size;
     return xx_archive_record_set_original_name(record, member->name) &&
-           xx_archive_record_set_meta_u64(record, XX_META_ID_COMPRESSED_SIZE,
-                                          (uint64_t)member->packed_size) &&
-           xx_archive_record_set_meta_u64(record, XX_META_ID_UNCOMPRESSED_SIZE,
-                                          member->unpacked_size) &&
-           xx_archive_record_set_meta_u64(record, XX_META_ID_COMPRESSION_METHOD,
-                                          member->method) &&
-           xx_archive_record_set_meta_bool(record, XX_META_ID_IS_FOLDER,
-                                           member->folder) &&
-           xx_archive_record_set_meta_bool(record, XX_META_ID_IS_ENCRYPTED,
-                                           false);
+           xx_archive_record_set_meta_u64(record, XX_META_ID_COMPRESSED_SIZE, (uint64_t)member->packed_size) &&
+           xx_archive_record_set_meta_u64(record, XX_META_ID_UNCOMPRESSED_SIZE, member->unpacked_size) &&
+           xx_archive_record_set_meta_u64(record, XX_META_ID_COMPRESSION_METHOD, member->method) &&
+           xx_archive_record_set_meta_bool(record, XX_META_ID_IS_FOLDER, member->folder) && xx_archive_record_set_meta_bool(record, XX_META_ID_IS_ENCRYPTED, false);
 }
 
 /* The plaintext length was measured by the scan in parse, so the output
  * allocation is bounded by what the decoder itself produced, never by a
  * stored field. An empty member (a stream that is only its end code) decodes
  * to nothing and allocates nothing. */
-static bool dclraw_decode_member(Abstractformat *format,
-                                 const dclraw_member *member, uint8_t **plain,
-                                 size_t *plain_size) {
+static bool dclraw_decode_member(Abstractformat *format, const dclraw_member *member, uint8_t **plain, size_t *plain_size)
+{
     uint8_t *packed = NULL;
     uint8_t *output = NULL;
     size_t written = 0U, output_size;
-    if (!format || !member || !plain || !plain_size ||
-        member->packed_size < DCLRAW_MIN_STREAM ||
-        member->packed_size > DCLRAW_MAX_FILE ||
+    if (!format || !member || !plain || !plain_size || member->packed_size < DCLRAW_MIN_STREAM || member->packed_size > DCLRAW_MAX_FILE ||
         member->unpacked_size > (uint64_t)DCLRAW_MAX_OUTPUT)
         return false;
     *plain = NULL;
@@ -674,12 +604,8 @@ static bool dclraw_decode_member(Abstractformat *format,
     output_size = (size_t)member->unpacked_size;
     packed = (uint8_t *)xx_mem_alloc((size_t)member->packed_size);
     output = (uint8_t *)xx_mem_alloc(output_size);
-    if (!packed || !output ||
-        !dclraw_read_at(format->device, member->data_offset, packed,
-                        (size_t)member->packed_size) ||
-        !xx_dcl_decode_memory(packed, (size_t)member->packed_size, output,
-                              output_size, &written) ||
-        written != output_size)
+    if (!packed || !output || !dclraw_read_at(format->device, member->data_offset, packed, (size_t)member->packed_size) ||
+        !xx_dcl_decode_memory(packed, (size_t)member->packed_size, output, output_size, &written) || written != output_size)
         goto fail;
     xx_mem_free(packed);
     *plain = output;
@@ -691,8 +617,8 @@ fail:
     return false;
 }
 
-void xx_dclraw_init(xx_dclraw *archive, xx_io_device *device,
-                    int64_t base_address) {
+void xx_dclraw_init(xx_dclraw *archive, xx_io_device *device, int64_t base_address)
+{
     if (!archive) return;
     xx_mem_zero(archive, sizeof(*archive));
     xx_format_init(&archive->format, device, base_address);
@@ -705,53 +631,53 @@ void xx_dclraw_init(xx_dclraw *archive, xx_io_device *device,
     archive->format.check_is_valid = xx_dclraw_check_is_valid;
     archive->format.handle_base_info = xx_dclraw_handle_base_info;
     archive->format.get_format_size = xx_dclraw_get_format_size;
-    archive->format.get_number_of_archive_records =
-        xx_dclraw_get_number_of_archive_records;
-    archive->format.create_archive_records_reading =
-        xx_dclraw_create_archive_records_reading;
-    archive->format.get_current_archive_record =
-        xx_dclraw_get_current_archive_record;
-    archive->format.unpack_current_archive_record =
-        xx_dclraw_unpack_current_archive_record;
-    archive->format.archive_record_move_to_next =
-        xx_dclraw_archive_record_move_to_next;
-    archive->format.free_archive_records_reading =
-        xx_dclraw_free_archive_records_reading;
+    archive->format.get_number_of_archive_records = xx_dclraw_get_number_of_archive_records;
+    archive->format.create_archive_records_reading = xx_dclraw_create_archive_records_reading;
+    archive->format.get_current_archive_record = xx_dclraw_get_current_archive_record;
+    archive->format.unpack_current_archive_record = xx_dclraw_unpack_current_archive_record;
+    archive->format.archive_record_move_to_next = xx_dclraw_archive_record_move_to_next;
+    archive->format.free_archive_records_reading = xx_dclraw_free_archive_records_reading;
     archive->format.destroy = xx_dclraw_vtable_destroy;
     archive->archive_end = -1;
 }
 
-xx_dclraw *xx_dclraw_create(xx_io_device *device, int64_t base_address) {
+xx_dclraw *xx_dclraw_create(xx_io_device *device, int64_t base_address)
+{
     xx_dclraw *archive = (xx_dclraw *)xx_mem_alloc(sizeof(*archive));
     if (archive) xx_dclraw_init(archive, device, base_address);
     return archive;
 }
 
-void xx_dclraw_destroy(xx_dclraw *archive) {
+void xx_dclraw_destroy(xx_dclraw *archive)
+{
     if (!archive) return;
     if (archive->format.close) archive->format.close(&archive->format);
     xx_format_cleanup_extra_parameters(&archive->format);
     archive->number_of_records = 0U;
 }
 
-void xx_dclraw_free(xx_dclraw *archive) {
+void xx_dclraw_free(xx_dclraw *archive)
+{
     if (!archive) return;
     xx_dclraw_destroy(archive);
     xx_mem_free(archive);
 }
 
-static void xx_dclraw_vtable_destroy(Abstractformat *self) {
+static void xx_dclraw_vtable_destroy(Abstractformat *self)
+{
     xx_dclraw_destroy((xx_dclraw *)self);
 }
 
-bool xx_dclraw_check_is_valid(Abstractformat *format, xx_pd_struct *pd) {
+bool xx_dclraw_check_is_valid(Abstractformat *format, xx_pd_struct *pd)
+{
     dclraw_stream *stream;
     if (!dclraw_parse(format, pd, &stream)) return false;
     dclraw_stream_free(stream);
     return true;
 }
 
-bool xx_dclraw_handle_base_info(Abstractformat *format, xx_pd_struct *pd) {
+bool xx_dclraw_handle_base_info(Abstractformat *format, xx_pd_struct *pd)
+{
     dclraw_stream *stream;
     xx_dclraw *archive;
     if (!format) return false;
@@ -771,23 +697,20 @@ bool xx_dclraw_handle_base_info(Abstractformat *format, xx_pd_struct *pd) {
     return true;
 }
 
-int64_t xx_dclraw_get_format_size(Abstractformat *format, xx_pd_struct *pd) {
-    if (!format ||
-        (!format->base_info_handled && !xx_dclraw_handle_base_info(format, pd)))
-        return 0;
+int64_t xx_dclraw_get_format_size(Abstractformat *format, xx_pd_struct *pd)
+{
+    if (!format || (!format->base_info_handled && !xx_dclraw_handle_base_info(format, pd))) return 0;
     return format->is_valid ? format->format_size : 0;
 }
 
-uint64_t xx_dclraw_get_number_of_archive_records(Abstractformat *format,
-                                                 xx_pd_struct *pd) {
-    if (!format ||
-        (!format->base_info_handled && !xx_dclraw_handle_base_info(format, pd)))
-        return 0U;
+uint64_t xx_dclraw_get_number_of_archive_records(Abstractformat *format, xx_pd_struct *pd)
+{
+    if (!format || (!format->base_info_handled && !xx_dclraw_handle_base_info(format, pd))) return 0U;
     return format->is_valid ? ((xx_dclraw *)format)->number_of_records : 0U;
 }
 
-xx_archive_record_state *xx_dclraw_create_archive_records_reading(
-    Abstractformat *format, const xx_list_s *options, xx_pd_struct *pd) {
+xx_archive_record_state *xx_dclraw_create_archive_records_reading(Abstractformat *format, const xx_list_s *options, xx_pd_struct *pd)
+{
     dclraw_stream *stream;
     xx_archive_record_state *state;
     if (!dclraw_parse(format, pd, &stream)) return NULL;
@@ -800,8 +723,7 @@ xx_archive_record_state *xx_dclraw_create_archive_records_reading(
     state->internal_state = stream;
     state->free_internal = dclraw_stream_free;
     state->total_records = (int64_t)stream->count;
-    if (!dclraw_copy_options(&state->options, options) ||
-        !dclraw_set_record(&state->current_record, &stream->items[0])) {
+    if (!dclraw_copy_options(&state->options, options) || !dclraw_set_record(&state->current_record, &stream->items[0])) {
         xx_archive_record_state_free(state);
         return NULL;
     }
@@ -810,19 +732,15 @@ xx_archive_record_state *xx_dclraw_create_archive_records_reading(
     return state;
 }
 
-const xx_archive_record *xx_dclraw_get_current_archive_record(
-    Abstractformat *format, xx_archive_record_state *state) {
-    return format && state && state->format == format && state->has_record
-               ? &state->current_record : NULL;
+const xx_archive_record *xx_dclraw_get_current_archive_record(Abstractformat *format, xx_archive_record_state *state)
+{
+    return format && state && state->format == format && state->has_record ? &state->current_record : NULL;
 }
 
-bool xx_dclraw_archive_record_move_to_next(Abstractformat *format,
-                                           xx_archive_record_state *state,
-                                           xx_pd_struct *pd) {
+bool xx_dclraw_archive_record_move_to_next(Abstractformat *format, xx_archive_record_state *state, xx_pd_struct *pd)
+{
     dclraw_stream *stream;
-    if (!format || !state || state->format != format || !state->has_record ||
-        (pd && xx_pd_is_stopped(pd)))
-        return false;
+    if (!format || !state || state->format != format || !state->has_record || (pd && xx_pd_is_stopped(pd))) return false;
     stream = (dclraw_stream *)state->internal_state;
     if (!stream || stream->index + 1U >= stream->count) {
         xx_archive_record_cleanup(&state->current_record);
@@ -832,14 +750,12 @@ bool xx_dclraw_archive_record_move_to_next(Abstractformat *format,
     }
     ++stream->index;
     ++state->current_index;
-    state->has_record = dclraw_set_record(&state->current_record,
-                                          &stream->items[stream->index]);
+    state->has_record = dclraw_set_record(&state->current_record, &stream->items[stream->index]);
     return state->has_record;
 }
 
-bool xx_dclraw_unpack_current_archive_record(Abstractformat *format,
-                                             xx_archive_record_state *state,
-                                             xx_pd_struct *pd) {
+bool xx_dclraw_unpack_current_archive_record(Abstractformat *format, xx_archive_record_state *state, xx_pd_struct *pd)
+{
     dclraw_stream *stream;
     dclraw_member *member;
     const xx_var *path_option;
@@ -850,32 +766,25 @@ bool xx_dclraw_unpack_current_archive_record(Abstractformat *format,
     size_t plain_size = 0U, written = 0U;
     bool result = false;
     bool created = false;
-    if (!format || !state || state->format != format || !state->has_record ||
-        !(stream = (dclraw_stream *)state->internal_state) ||
-        stream->index >= stream->count || (pd && xx_pd_is_stopped(pd)))
+    if (!format || !state || state->format != format || !state->has_record || !(stream = (dclraw_stream *)state->internal_state) || stream->index >= stream->count ||
+        (pd && xx_pd_is_stopped(pd)))
         return false;
     member = &stream->items[stream->index];
-    if (!dclraw_safe_output_name(member->name) ||
-        !dclraw_decode_member(format, member, &plain, &plain_size)) goto done;
+    if (!dclraw_safe_output_name(member->name) || !dclraw_decode_member(format, member, &plain, &plain_size)) goto done;
     path_option = dclraw_option(&state->options, XX_META_ID_OPT_UNPACK_PATH);
     if (!path_option) {
         /* No destination: decode and discard, which verifies the member. */
         result = true;
         goto done;
     }
-    if (path_option->type == XX_VAR_TYPE_STRING ||
-        path_option->type == XX_VAR_TYPE_STRING_VIEW)
-        base = xx_var_get_str(path_option);
-    else if (path_option->type == XX_VAR_TYPE_WSTRING ||
-             path_option->type == XX_VAR_TYPE_WSTRING_VIEW) {
+    if (path_option->type == XX_VAR_TYPE_STRING || path_option->type == XX_VAR_TYPE_STRING_VIEW) base = xx_var_get_str(path_option);
+    else if (path_option->type == XX_VAR_TYPE_WSTRING || path_option->type == XX_VAR_TYPE_WSTRING_VIEW) {
         owned_base = xx_str_unicode_to_utf8(xx_var_get_wstr(path_option));
         base = owned_base;
     }
     if (!base) goto done;
-    path = (base[0] && base[xx_str_len(base) - 1U] != '/' &&
-            base[xx_str_len(base) - 1U] != '\\')
-               ? xx_str_concat3(base, "/", member->name)
-               : xx_str_concat(base, member->name);
+    path = (base[0] && base[xx_str_len(base) - 1U] != '/' && base[xx_str_len(base) - 1U] != '\\') ? xx_str_concat3(base, "/", member->name)
+                                                                                                  : xx_str_concat(base, member->name);
     if (!path) goto done;
     if (!xx_store_create_dirs_a(path, false)) goto done;
     {
@@ -884,8 +793,7 @@ bool xx_dclraw_unpack_current_archive_record(Abstractformat *format,
         if (!destination) goto done;
         result = true;
         while (written < plain_size) {
-            ssize_t amount = xx_io_write(destination, plain + written,
-                                         plain_size - written);
+            ssize_t amount = xx_io_write(destination, plain + written, plain_size - written);
             if (amount <= 0 || (size_t)amount > plain_size - written) {
                 result = false;
                 break;
@@ -902,8 +810,8 @@ done:
     return result;
 }
 
-void xx_dclraw_free_archive_records_reading(Abstractformat *format,
-                                            xx_archive_record_state *state) {
+void xx_dclraw_free_archive_records_reading(Abstractformat *format, xx_archive_record_state *state)
+{
     (void)format;
     xx_archive_record_state_free(state);
 }

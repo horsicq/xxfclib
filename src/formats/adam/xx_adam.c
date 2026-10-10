@@ -64,25 +64,21 @@
 #define ADAM_SIGNATURE_SIZE 0x38U
 #define ADAM_ANY 0x100U
 static const uint16_t adam_signature[ADAM_SIGNATURE_SIZE] = {
-    0x55, 0xAA, 0x00, 0xFF,                          /* 0x40D check word  */
-    ADAM_ANY, ADAM_ANY, ADAM_ANY, ADAM_ANY,          /* volume size       */
-    ADAM_ANY, ADAM_ANY, ADAM_ANY, ADAM_ANY, ADAM_ANY, /* reserved, date   */
-    'B', 'O', 'O', 'T', 0x03,                        /* 0x41A BOOT name   */
-    ADAM_ANY, ADAM_ANY, ADAM_ANY, ADAM_ANY, ADAM_ANY, ADAM_ANY, ADAM_ANY,
-    ADAM_ANY,                                        /* attributes        */
-    0x00, 0x00, 0x00, 0x00,                          /* first block 0     */
-    0x01, 0x00, 0x01, 0x00,                          /* 1 allocated, used */
-    ADAM_ANY, ADAM_ANY, ADAM_ANY, ADAM_ANY, ADAM_ANY, /* last count, date */
-    'D', 'I', 'R', 'E', 'C', 'T', 'O', 'R', 'Y', 0x03, /* 0x434 DIRECTORY */
-    ADAM_ANY, ADAM_ANY,
-    ADAM_ANY,                                        /* attributes        */
-    0x01, 0x00, 0x00, 0x00                           /* first block 1     */
+    0x55,     0xAA,     0x00,     0xFF,                                                        /* 0x40D check word  */
+    ADAM_ANY, ADAM_ANY, ADAM_ANY, ADAM_ANY,                                                    /* volume size       */
+    ADAM_ANY, ADAM_ANY, ADAM_ANY, ADAM_ANY, ADAM_ANY,                                          /* reserved, date   */
+    'B',      'O',      'O',      'T',      0x03,                                              /* 0x41A BOOT name   */
+    ADAM_ANY, ADAM_ANY, ADAM_ANY, ADAM_ANY, ADAM_ANY, ADAM_ANY, ADAM_ANY, ADAM_ANY,            /* attributes        */
+    0x00,     0x00,     0x00,     0x00,                                                        /* first block 0     */
+    0x01,     0x00,     0x01,     0x00,                                                        /* 1 allocated, used */
+    ADAM_ANY, ADAM_ANY, ADAM_ANY, ADAM_ANY, ADAM_ANY,                                          /* last count, date */
+    'D',      'I',      'R',      'E',      'C',      'T',      'O',      'R',      'Y', 0x03, /* 0x434 DIRECTORY */
+    ADAM_ANY, ADAM_ANY, ADAM_ANY,                                                              /* attributes        */
+    0x01,     0x00,     0x00,     0x00                                                         /* first block 1     */
 };
 
 /* The capacities an Adam .dsk image comes in. */
-static const int64_t adam_image_sizes[] = {
-    INT64_C(163840), INT64_C(327680), INT64_C(737280), INT64_C(1474560)
-};
+static const int64_t adam_image_sizes[] = {INT64_C(163840), INT64_C(327680), INT64_C(737280), INT64_C(1474560)};
 #define ADAM_MIN_IMAGE INT64_C(163840)
 
 /* '_' + 11 name bytes + '~' + 4 digits + '.' + "STX" + NUL, rounded up. */
@@ -94,11 +90,11 @@ typedef struct adam_member_s {
     uint64_t timestamp;
     uint32_t first_block;
     uint32_t used_blocks;
-    uint32_t last_count;  /**< Bytes of the last used block, 0..1024. */
-    uint32_t entry;       /**< Directory slot index (descriptor = 0). */
+    uint32_t last_count; /**< Bytes of the last used block, 0..1024. */
+    uint32_t entry;      /**< Directory slot index (descriptor = 0). */
     uint8_t attributes;
     bool has_timestamp;
-    bool in_range;        /**< All used blocks lie inside the volume. */
+    bool in_range; /**< All used blocks lie inside the volume. */
 } adam_member;
 
 typedef struct adam_volume_s {
@@ -116,19 +112,17 @@ typedef struct adam_stream_s {
     size_t index;
 } adam_stream;
 
-static uint32_t adam_le16(const uint8_t *bytes) {
+static uint32_t adam_le16(const uint8_t *bytes)
+{
     return (uint32_t)bytes[0] | ((uint32_t)bytes[1] << 8U);
 }
 
-static bool adam_read_at(xx_io_device *device, int64_t offset, void *buffer,
-                         size_t size) {
+static bool adam_read_at(xx_io_device *device, int64_t offset, void *buffer, size_t size)
+{
     size_t done = 0U;
-    if (!device || (!buffer && size != 0U) || offset < 0 ||
-        xx_io_seek64(device, offset, SEEK_SET) != 0)
-        return false;
+    if (!device || (!buffer && size != 0U) || offset < 0 || xx_io_seek64(device, offset, SEEK_SET) != 0) return false;
     while (done < size) {
-        ssize_t amount = xx_io_read(device, (uint8_t *)buffer + done,
-                                    size - done);
+        ssize_t amount = xx_io_read(device, (uint8_t *)buffer + done, size - done);
         if (amount <= 0 || (size_t)amount > size - done) return false;
         done += (size_t)amount;
     }
@@ -138,59 +132,50 @@ static bool adam_read_at(xx_io_device *device, int64_t offset, void *buffer,
 /* EOS block @p block is image sectors 2B and 2B ^ 5.  Both lie in the same
  * group of eight sectors, and every image size is a whole number of groups,
  * so a block below volume_blocks is always fully inside the image. */
-static bool adam_read_block(xx_io_device *device, int64_t base,
-                            uint32_t volume_blocks, uint32_t block,
-                            uint8_t *out) {
+static bool adam_read_block(xx_io_device *device, int64_t base, uint32_t volume_blocks, uint32_t block, uint8_t *out)
+{
     uint32_t low, high;
     if (block >= volume_blocks) return false;
     low = block * 2U;
     high = low ^ 5U;
     if (high >= volume_blocks * 2U) return false;
-    return adam_read_at(device, base + (int64_t)low * ADAM_SECTOR, out,
-                        ADAM_SECTOR) &&
-           adam_read_at(device, base + (int64_t)high * ADAM_SECTOR,
-                        out + ADAM_SECTOR, ADAM_SECTOR);
+    return adam_read_at(device, base + (int64_t)low * ADAM_SECTOR, out, ADAM_SECTOR) &&
+           adam_read_at(device, base + (int64_t)high * ADAM_SECTOR, out + ADAM_SECTOR, ADAM_SECTOR);
 }
 
-static bool adam_is_standard_size(int64_t size) {
+static bool adam_is_standard_size(int64_t size)
+{
     size_t index;
-    for (index = 0U; index < sizeof(adam_image_sizes) /
-                                 sizeof(adam_image_sizes[0]);
-         ++index)
+    for (index = 0U; index < sizeof(adam_image_sizes) / sizeof(adam_image_sizes[0]); ++index)
         if (adam_image_sizes[index] == size) return true;
     return false;
 }
 
 /* File-type bytes EOS software writes: SmartBASIC 'A' and 'H', their
  * lower-case backup forms, 'C' from CopyCart, and 0x02 for boot programs. */
-static bool adam_is_file_type(uint8_t type) {
-    return type == 'A' || type == 'a' || type == 'H' || type == 'h' ||
-           type == 'C' || type == 0x02U;
+static bool adam_is_file_type(uint8_t type)
+{
+    return type == 'A' || type == 'a' || type == 'H' || type == 'h' || type == 'C' || type == 0x02U;
 }
 
 /* The volume check: size test, then the fixed bytes of block 1, then the
  * descriptor's directory size.  Two small reads at most, so it is cheap
  * enough to run as a late probe over every undetected file. */
-static bool adam_probe(Abstractformat *format, adam_volume *out) {
+static bool adam_probe(Abstractformat *format, adam_volume *out)
+{
     uint8_t window[ADAM_SIGNATURE_SIZE];
     uint8_t head[ADAM_SIGNATURE_OFFSET - 0x400U];
     adam_volume volume;
     int64_t total, size;
     size_t index;
-    if (!format || !format->device || !out || format->base_address < 0)
-        return false;
+    if (!format || !format->device || !out || format->base_address < 0) return false;
     total = xx_io_total_size(format->device);
     if (total < format->base_address) return false;
     size = total - format->base_address;
     if (size < ADAM_MIN_IMAGE) return false;
-    if (!adam_read_at(format->device,
-                      format->base_address + ADAM_SIGNATURE_OFFSET, window,
-                      sizeof(window)))
-        return false;
+    if (!adam_read_at(format->device, format->base_address + ADAM_SIGNATURE_OFFSET, window, sizeof(window))) return false;
     for (index = 0U; index < ADAM_SIGNATURE_SIZE; ++index)
-        if (adam_signature[index] != ADAM_ANY &&
-            adam_signature[index] != (uint16_t)window[index])
-            return false;
+        if (adam_signature[index] != ADAM_ANY && adam_signature[index] != (uint16_t)window[index]) return false;
     xx_mem_zero(&volume, sizeof(volume));
     /* window[4..7] is the descriptor's volume size (image offset 0x411). */
     volume.declared_blocks = xx_data_get_u32(window + 4U, 4, 0, false);
@@ -205,24 +190,18 @@ static bool adam_probe(Abstractformat *format, adam_volume *out) {
     }
     volume.volume_blocks = (uint32_t)(volume.image_size / ADAM_BLOCK);
     /* Volume name and directory size: image offsets 0x400..0x40C. */
-    if (!adam_read_at(format->device, format->base_address + 0x400,
-                      head, sizeof(head)))
-        return false;
+    if (!adam_read_at(format->device, format->base_address + 0x400, head, sizeof(head))) return false;
     volume.directory_blocks = (uint32_t)head[ADAM_NAME] & 0x7FU;
-    if (volume.directory_blocks == 0U ||
-        volume.directory_blocks >= volume.volume_blocks)
-        return false;
-    for (index = 0U; index < ADAM_NAME && head[index] != ADAM_ETX; ++index)
-        volume.name[index] = (head[index] >= 0x20U && head[index] < 0x7FU)
-                                 ? (char)head[index] : '_';
+    if (volume.directory_blocks == 0U || volume.directory_blocks >= volume.volume_blocks) return false;
+    for (index = 0U; index < ADAM_NAME && head[index] != ADAM_ETX; ++index) volume.name[index] = (head[index] >= 0x20U && head[index] < 0x7FU) ? (char)head[index] : '_';
     volume.name[index] = 0;
     *out = volume;
     return true;
 }
 
 /* Days from 1970-01-01 to the given proleptic Gregorian date. */
-static int64_t adam_days_from_civil(int64_t year, uint32_t month,
-                                    uint32_t day) {
+static int64_t adam_days_from_civil(int64_t year, uint32_t month, uint32_t day)
+{
     int64_t era, yoe, doy, doe;
     int64_t shifted = month > 2U ? (int64_t)month - 3 : (int64_t)month + 9;
     year -= month <= 2U ? 1 : 0;
@@ -233,20 +212,19 @@ static int64_t adam_days_from_civil(int64_t year, uint32_t month,
     return era * 146097 + doe - 719468;
 }
 
-static bool adam_bcd(uint8_t value, uint32_t *out) {
+static bool adam_bcd(uint8_t value, uint32_t *out)
+{
     if ((value & 0x0FU) > 9U || (value >> 4U) > 9U) return false;
     *out = (uint32_t)(value >> 4U) * 10U + (uint32_t)(value & 0x0FU);
     return true;
 }
 
 /* EOS stores BCD year (two digits), month, day.  00-49 are read as 20xx. */
-static bool adam_timestamp(const uint8_t *date, uint64_t *out) {
+static bool adam_timestamp(const uint8_t *date, uint64_t *out)
+{
     uint32_t year, month, day;
     int64_t days;
-    if (!adam_bcd(date[0], &year) || !adam_bcd(date[1], &month) ||
-        !adam_bcd(date[2], &day) || month < 1U || month > 12U || day < 1U ||
-        day > 31U)
-        return false;
+    if (!adam_bcd(date[0], &year) || !adam_bcd(date[1], &month) || !adam_bcd(date[2], &day) || month < 1U || month > 12U || day < 1U || day > 31U) return false;
     year += year < 50U ? 2000U : 1900U;
     days = adam_days_from_civil((int64_t)year, month, day);
     if (days < 0) return false;
@@ -254,49 +232,44 @@ static bool adam_timestamp(const uint8_t *date, uint64_t *out) {
     return true;
 }
 
-static char adam_fold(char c) {
+static char adam_fold(char c)
+{
     return (c >= 'a' && c <= 'z') ? (char)(c - 'a' + 'A') : c;
 }
 
 /* True when the first @p stem bytes of @p name are @p word, ignoring case. */
-static bool adam_stem_is(const char *name, size_t stem, const char *word) {
+static bool adam_stem_is(const char *name, size_t stem, const char *word)
+{
     size_t index;
     for (index = 0U; index < stem; ++index)
-        if (!word[index] || adam_fold(name[index]) != word[index])
-            return false;
+        if (!word[index] || adam_fold(name[index]) != word[index]) return false;
     return word[stem] == 0;
 }
 
 /* Windows resolves these stems to devices whatever the extension. */
-static bool adam_is_device_stem(const char *name, size_t length) {
-    static const char *const devices[] = {"CON",    "PRN",     "AUX",
-                                          "NUL",    "CONIN$",  "CONOUT$",
-                                          "CLOCK$"};
+static bool adam_is_device_stem(const char *name, size_t length)
+{
+    static const char *const devices[] = {"CON", "PRN", "AUX", "NUL", "CONIN$", "CONOUT$", "CLOCK$"};
     size_t stem = 0U, index;
     while (stem < length && name[stem] != '.') ++stem;
-    while (stem > 0U && (name[stem - 1U] == ' ' || name[stem - 1U] == '.'))
-        --stem;
+    while (stem > 0U && (name[stem - 1U] == ' ' || name[stem - 1U] == '.')) --stem;
     for (index = 0U; index < sizeof(devices) / sizeof(devices[0]); ++index)
         if (adam_stem_is(name, stem, devices[index])) return true;
     return stem == 4U && name[3] >= '0' && name[3] <= '9' &&
-           ((adam_fold(name[0]) == 'C' && adam_fold(name[1]) == 'O' &&
-             adam_fold(name[2]) == 'M') ||
-            (adam_fold(name[0]) == 'L' && adam_fold(name[1]) == 'P' &&
-             adam_fold(name[2]) == 'T'));
+           ((adam_fold(name[0]) == 'C' && adam_fold(name[1]) == 'O' && adam_fold(name[2]) == 'M') ||
+            (adam_fold(name[0]) == 'L' && adam_fold(name[1]) == 'P' && adam_fold(name[2]) == 'T'));
 }
 
 /* "<name>.<type>" from the name bytes before the type byte.  Printable ASCII
  * survives except the separators and wildcards Windows reserves and '~',
  * which is kept free for the duplicate suffix. */
-static void adam_make_name(const uint8_t *field, size_t name_length,
-                           uint8_t type, char *out) {
+static void adam_make_name(const uint8_t *field, size_t name_length, uint8_t type, char *out)
+{
     char stem[ADAM_NAME + 2U];
     size_t length = 0U, at = 0U, index;
     for (index = 0U; index < name_length && index < ADAM_NAME; ++index) {
         uint8_t c = field[index];
-        bool keep = c >= 0x20U && c < 0x7FU && c != '/' && c != '\\' &&
-                    c != ':' && c != '*' && c != '?' && c != '"' &&
-                    c != '<' && c != '>' && c != '|' && c != '~';
+        bool keep = c >= 0x20U && c < 0x7FU && c != '/' && c != '\\' && c != ':' && c != '*' && c != '?' && c != '"' && c != '<' && c != '>' && c != '|' && c != '~';
         stem[length++] = keep ? (char)c : '_';
     }
     if (length == 0U) stem[length++] = '_';
@@ -314,7 +287,8 @@ static void adam_make_name(const uint8_t *field, size_t name_length,
     out[at] = 0;
 }
 
-static int adam_compare_names(const void *left, const void *right) {
+static int adam_compare_names(const void *left, const void *right)
+{
     const adam_member *a = *(const adam_member *const *)left;
     const adam_member *b = *(const adam_member *const *)right;
     size_t index;
@@ -328,7 +302,8 @@ static int adam_compare_names(const void *left, const void *right) {
 }
 
 /* Insert "~<entry>" in front of the ".<type>" that ends @p member's name. */
-static bool adam_add_suffix(adam_member *member) {
+static bool adam_add_suffix(adam_member *member)
+{
     char digits[12];
     size_t length = xx_str_len(member->name), dot = length, count = 0U;
     size_t index;
@@ -341,11 +316,9 @@ static bool adam_add_suffix(adam_member *member) {
         value /= 10U;
     } while (value != 0U && count < sizeof(digits));
     if (length + 1U + count >= ADAM_NAME_BUFFER) return false;
-    for (index = length + 1U; index > dot; --index)
-        member->name[index - 1U + 1U + count] = member->name[index - 1U];
+    for (index = length + 1U; index > dot; --index) member->name[index - 1U + 1U + count] = member->name[index - 1U];
     member->name[dot] = '~';
-    for (index = 0U; index < count; ++index)
-        member->name[dot + 1U + index] = digits[count - 1U - index];
+    for (index = 0U; index < count; ++index) member->name[dot + 1U + index] = digits[count - 1U - index];
     return true;
 }
 
@@ -353,7 +326,8 @@ static bool adam_add_suffix(adam_member *member) {
  * together, earliest entry first.  That one keeps its name; the rest get
  * their unique entry number, and since no name from the disk contains '~'
  * a suffixed name cannot meet a plain one. */
-static bool adam_make_names_unique(adam_member *items, size_t count) {
+static bool adam_make_names_unique(adam_member *items, size_t count)
+{
     adam_member **order;
     size_t index;
     bool ok = true;
@@ -380,7 +354,8 @@ static bool adam_make_names_unique(adam_member *items, size_t count) {
     return ok;
 }
 
-static void adam_stream_free(void *opaque) {
+static void adam_stream_free(void *opaque)
+{
     adam_stream *stream = (adam_stream *)opaque;
     if (!stream) return;
     if (stream->items) xx_mem_free(stream->items);
@@ -388,7 +363,8 @@ static void adam_stream_free(void *opaque) {
 }
 
 /* Walk the directory blocks 1..directory_blocks, stopping at the hole. */
-static bool adam_parse(Abstractformat *format, adam_stream **result) {
+static bool adam_parse(Abstractformat *format, adam_stream **result)
+{
     adam_volume volume;
     adam_stream *stream = NULL;
     adam_member *items = NULL;
@@ -403,9 +379,7 @@ static bool adam_parse(Abstractformat *format, adam_stream **result) {
     current = 1U;
     offset = ADAM_ENTRY;
     entry = 1U;
-    if (!adam_read_block(format->device, format->base_address,
-                         volume.volume_blocks, current, block))
-        goto fail;
+    if (!adam_read_block(format->device, format->base_address, volume.volume_blocks, current, block)) goto fail;
     while (current <= volume.directory_blocks) {
         const uint8_t *slot = block + offset;
         uint8_t attributes = slot[ADAM_E_ATTR];
@@ -420,23 +394,16 @@ static bool adam_parse(Abstractformat *format, adam_stream **result) {
                 uint32_t first = xx_data_get_u32(slot + ADAM_E_START, 4, 0, false);
                 if (count >= capacity) goto fail;
                 member = &items[count++];
-                adam_make_name(slot, length - 1U, slot[length - 1U],
-                               member->name);
+                adam_make_name(slot, length - 1U, slot[length - 1U], member->name);
                 if (last > ADAM_BLOCK) last = ADAM_BLOCK;
                 member->first_block = first;
                 member->used_blocks = used;
                 member->last_count = last;
                 member->entry = entry;
                 member->attributes = attributes;
-                member->size = used == 0U
-                                   ? 0
-                                   : (int64_t)(used - 1U) * ADAM_BLOCK +
-                                         (int64_t)last;
-                member->in_range =
-                    used == 0U || (first < volume.volume_blocks &&
-                                   used <= volume.volume_blocks - first);
-                member->has_timestamp =
-                    adam_timestamp(slot + ADAM_E_DATE, &member->timestamp);
+                member->size = used == 0U ? 0 : (int64_t)(used - 1U) * ADAM_BLOCK + (int64_t)last;
+                member->in_range = used == 0U || (first < volume.volume_blocks && used <= volume.volume_blocks - first);
+                member->has_timestamp = adam_timestamp(slot + ADAM_E_DATE, &member->timestamp);
             }
         }
         ++entry;
@@ -444,9 +411,7 @@ static bool adam_parse(Abstractformat *format, adam_stream **result) {
         if (offset > ADAM_LAST_SLOT) {
             offset = 0U;
             if (++current > volume.directory_blocks) break;
-            if (!adam_read_block(format->device, format->base_address,
-                                 volume.volume_blocks, current, block))
-                goto fail;
+            if (!adam_read_block(format->device, format->base_address, volume.volume_blocks, current, block)) goto fail;
         }
     }
     if (!adam_make_names_unique(items, count)) goto fail;
@@ -465,9 +430,8 @@ fail:
 }
 
 /* Stream a member's blocks to @p destination (or just read them through). */
-static bool adam_copy_member(Abstractformat *format, const adam_volume *volume,
-                             const adam_member *member,
-                             xx_io_device *destination, xx_pd_struct *pd) {
+static bool adam_copy_member(Abstractformat *format, const adam_volume *volume, const adam_member *member, xx_io_device *destination, xx_pd_struct *pd)
+{
     uint8_t *block;
     uint32_t index;
     bool ok = true;
@@ -476,19 +440,14 @@ static bool adam_copy_member(Abstractformat *format, const adam_volume *volume,
     block = (uint8_t *)xx_mem_alloc(ADAM_BLOCK);
     if (!block) return false;
     for (index = 0U; ok && index < member->used_blocks; ++index) {
-        size_t amount = index + 1U == member->used_blocks
-                            ? (size_t)member->last_count : ADAM_BLOCK;
+        size_t amount = index + 1U == member->used_blocks ? (size_t)member->last_count : ADAM_BLOCK;
         size_t written = 0U;
-        if ((pd && xx_pd_is_stopped(pd)) ||
-            !adam_read_block(format->device, format->base_address,
-                             volume->volume_blocks,
-                             member->first_block + index, block)) {
+        if ((pd && xx_pd_is_stopped(pd)) || !adam_read_block(format->device, format->base_address, volume->volume_blocks, member->first_block + index, block)) {
             ok = false;
             break;
         }
         while (destination && written < amount) {
-            ssize_t done = xx_io_write(destination, block + written,
-                                       amount - written);
+            ssize_t done = xx_io_write(destination, block + written, amount - written);
             if (done <= 0 || (size_t)done > amount - written) {
                 ok = false;
                 break;
@@ -502,33 +461,32 @@ static bool adam_copy_member(Abstractformat *format, const adam_volume *volume,
 
 /* Names are built by adam_make_name and adam_add_suffix; this re-checks the
  * result before anything is created on disk. */
-static bool adam_safe_output_name(const char *name) {
+static bool adam_safe_output_name(const char *name)
+{
     size_t length, index;
     bool meaningful = false;
     if (!name || !name[0]) return false;
     length = xx_str_len(name);
     for (index = 0U; index < length; ++index) {
         char c = name[index];
-        if ((unsigned char)c < 0x20U || (unsigned char)c > 0x7EU ||
-            c == '/' || c == '\\' || c == ':' || c == '<' || c == '>' ||
-            c == '"' || c == '|' || c == '?' || c == '*')
+        if ((unsigned char)c < 0x20U || (unsigned char)c > 0x7EU || c == '/' || c == '\\' || c == ':' || c == '<' || c == '>' || c == '"' || c == '|' || c == '?' ||
+            c == '*')
             return false;
         if (c != '.' && c != ' ') meaningful = true;
     }
     return meaningful && !adam_is_device_stem(name, length);
 }
 
-static bool adam_copy_options(xx_list_s *destination, const xx_list_s *source) {
+static bool adam_copy_options(xx_list_s *destination, const xx_list_s *source)
+{
     size_t index;
     if (!source) return true;
     for (index = 0U; index < source->count; ++index) {
-        const xx_meta *original =
-            (const xx_meta *)xx_list_at((const xx_list_t *)source, index);
+        const xx_meta *original = (const xx_meta *)xx_list_at((const xx_list_t *)source, index);
         xx_meta copy;
         if (!original) continue;
         xx_meta_init(&copy, original->meta_id);
-        if (!xx_var_copy(&copy.var, &original->var) ||
-            !xx_list_append(destination, &copy)) {
+        if (!xx_var_copy(&copy.var, &original->var) || !xx_list_append(destination, &copy)) {
             xx_meta_cleanup(&copy);
             return false;
         }
@@ -536,49 +494,38 @@ static bool adam_copy_options(xx_list_s *destination, const xx_list_s *source) {
     return true;
 }
 
-static const xx_var *adam_option(const xx_list_s *options, uint32_t id) {
+static const xx_var *adam_option(const xx_list_s *options, uint32_t id)
+{
     size_t index;
     if (!options) return NULL;
     for (index = 0U; index < options->count; ++index) {
-        const xx_meta *meta =
-            (const xx_meta *)xx_list_at((const xx_list_t *)options, index);
+        const xx_meta *meta = (const xx_meta *)xx_list_at((const xx_list_t *)options, index);
         if (meta && meta->meta_id == id) return &meta->var;
     }
     return NULL;
 }
 
-static bool adam_set_record(Abstractformat *format, xx_archive_record *record,
-                            const adam_member *member) {
-    int64_t offset = format->base_address +
-                     (int64_t)(member->first_block * 2U) * ADAM_SECTOR;
+static bool adam_set_record(Abstractformat *format, xx_archive_record *record, const adam_member *member)
+{
+    int64_t offset = format->base_address + (int64_t)(member->first_block * 2U) * ADAM_SECTOR;
     xx_archive_record_cleanup(record);
     xx_archive_record_init(record);
     record->header_offset = format->base_address + 0x400;
     record->header_size = 0;
     record->data_offset = member->in_range ? offset : 0;
     record->compressed_size = member->size;
-    if (!xx_archive_record_set_original_name(record, member->name) ||
-        !xx_archive_record_set_meta_u64(record, XX_META_ID_COMPRESSED_SIZE,
-                                        (uint64_t)member->size) ||
-        !xx_archive_record_set_meta_u64(record, XX_META_ID_UNCOMPRESSED_SIZE,
-                                        (uint64_t)member->size) ||
-        !xx_archive_record_set_meta_u64(record, XX_META_ID_COMPRESSION_METHOD,
-                                        0U) ||
-        !xx_archive_record_set_meta_u64(record, XX_META_ID_ATTRIBUTES,
-                                        member->attributes) ||
-        !xx_archive_record_set_meta_bool(record, XX_META_ID_IS_ENCRYPTED,
-                                         false) ||
+    if (!xx_archive_record_set_original_name(record, member->name) || !xx_archive_record_set_meta_u64(record, XX_META_ID_COMPRESSED_SIZE, (uint64_t)member->size) ||
+        !xx_archive_record_set_meta_u64(record, XX_META_ID_UNCOMPRESSED_SIZE, (uint64_t)member->size) ||
+        !xx_archive_record_set_meta_u64(record, XX_META_ID_COMPRESSION_METHOD, 0U) ||
+        !xx_archive_record_set_meta_u64(record, XX_META_ID_ATTRIBUTES, member->attributes) || !xx_archive_record_set_meta_bool(record, XX_META_ID_IS_ENCRYPTED, false) ||
         !xx_archive_record_set_meta_bool(record, XX_META_ID_IS_FOLDER, false))
         return false;
-    if (member->has_timestamp &&
-        !xx_archive_record_set_meta_u64(record, XX_META_ID_TIMESTAMP,
-                                        member->timestamp))
-        return false;
+    if (member->has_timestamp && !xx_archive_record_set_meta_u64(record, XX_META_ID_TIMESTAMP, member->timestamp)) return false;
     return true;
 }
 
-void xx_adam_init(xx_adam *archive, xx_io_device *device,
-                  int64_t base_address) {
+void xx_adam_init(xx_adam *archive, xx_io_device *device, int64_t base_address)
+{
     if (!archive) return;
     xx_mem_zero(archive, sizeof(*archive));
     xx_format_init(&archive->format, device, base_address);
@@ -591,38 +538,36 @@ void xx_adam_init(xx_adam *archive, xx_io_device *device,
     archive->format.check_is_valid = xx_adam_check_is_valid;
     archive->format.handle_base_info = xx_adam_handle_base_info;
     archive->format.get_format_size = xx_adam_get_format_size;
-    archive->format.get_number_of_archive_records =
-        xx_adam_get_number_of_archive_records;
-    archive->format.create_archive_records_reading =
-        xx_adam_create_archive_records_reading;
-    archive->format.get_current_archive_record =
-        xx_adam_get_current_archive_record;
-    archive->format.unpack_current_archive_record =
-        xx_adam_unpack_current_archive_record;
-    archive->format.archive_record_move_to_next =
-        xx_adam_archive_record_move_to_next;
-    archive->format.free_archive_records_reading =
-        xx_adam_free_archive_records_reading;
+    archive->format.get_number_of_archive_records = xx_adam_get_number_of_archive_records;
+    archive->format.create_archive_records_reading = xx_adam_create_archive_records_reading;
+    archive->format.get_current_archive_record = xx_adam_get_current_archive_record;
+    archive->format.unpack_current_archive_record = xx_adam_unpack_current_archive_record;
+    archive->format.archive_record_move_to_next = xx_adam_archive_record_move_to_next;
+    archive->format.free_archive_records_reading = xx_adam_free_archive_records_reading;
     archive->image_size = -1;
 }
 
-xx_adam *xx_adam_create(xx_io_device *device, int64_t base_address) {
+xx_adam *xx_adam_create(xx_io_device *device, int64_t base_address)
+{
     xx_adam *archive = (xx_adam *)xx_mem_alloc(sizeof(*archive));
     if (archive) xx_adam_init(archive, device, base_address);
     return archive;
 }
 
-void xx_adam_destroy(xx_adam *archive) {
+void xx_adam_destroy(xx_adam *archive)
+{
     if (archive) xx_format_cleanup_extra_parameters(&archive->format);
 }
 
-void xx_adam_free(xx_adam *archive) {
+void xx_adam_free(xx_adam *archive)
+{
     if (!archive) return;
     xx_adam_destroy(archive);
     xx_mem_free(archive);
 }
 
-bool xx_adam_detection_hint(xx_io_device *device) {
+bool xx_adam_detection_hint(xx_io_device *device)
+{
     Abstractformat format;
     int64_t position;
     bool valid;
@@ -634,13 +579,15 @@ bool xx_adam_detection_hint(xx_io_device *device) {
     return valid;
 }
 
-bool xx_adam_check_is_valid(Abstractformat *format, xx_pd_struct *pd) {
+bool xx_adam_check_is_valid(Abstractformat *format, xx_pd_struct *pd)
+{
     adam_volume volume;
     (void)pd;
     return adam_probe(format, &volume);
 }
 
-bool xx_adam_handle_base_info(Abstractformat *format, xx_pd_struct *pd) {
+bool xx_adam_handle_base_info(Abstractformat *format, xx_pd_struct *pd)
+{
     adam_stream *stream;
     xx_adam *archive;
     (void)pd;
@@ -651,8 +598,7 @@ bool xx_adam_handle_base_info(Abstractformat *format, xx_pd_struct *pd) {
     archive->volume_blocks = stream->volume.volume_blocks;
     archive->declared_blocks = stream->volume.declared_blocks;
     archive->directory_blocks = stream->volume.directory_blocks;
-    xx_rt_memcpy(archive->volume_name, stream->volume.name,
-                 sizeof(archive->volume_name));
+    xx_rt_memcpy(archive->volume_name, stream->volume.name, sizeof(archive->volume_name));
     format->number_of_archive_records = stream->count;
     format->format_size = stream->volume.image_size;
     format->is_valid = true;
@@ -661,21 +607,18 @@ bool xx_adam_handle_base_info(Abstractformat *format, xx_pd_struct *pd) {
     return true;
 }
 
-int64_t xx_adam_get_format_size(Abstractformat *format, xx_pd_struct *pd) {
-    return format && (format->base_info_handled ||
-                      xx_adam_handle_base_info(format, pd))
-               ? format->format_size : -1;
+int64_t xx_adam_get_format_size(Abstractformat *format, xx_pd_struct *pd)
+{
+    return format && (format->base_info_handled || xx_adam_handle_base_info(format, pd)) ? format->format_size : -1;
 }
 
-uint64_t xx_adam_get_number_of_archive_records(Abstractformat *format,
-                                               xx_pd_struct *pd) {
-    return format && (format->base_info_handled ||
-                      xx_adam_handle_base_info(format, pd))
-               ? ((xx_adam *)format)->number_of_records : 0U;
+uint64_t xx_adam_get_number_of_archive_records(Abstractformat *format, xx_pd_struct *pd)
+{
+    return format && (format->base_info_handled || xx_adam_handle_base_info(format, pd)) ? ((xx_adam *)format)->number_of_records : 0U;
 }
 
-xx_archive_record_state *xx_adam_create_archive_records_reading(
-    Abstractformat *format, const xx_list_s *options, xx_pd_struct *pd) {
+xx_archive_record_state *xx_adam_create_archive_records_reading(Abstractformat *format, const xx_list_s *options, xx_pd_struct *pd)
+{
     adam_stream *stream;
     xx_archive_record_state *state;
     (void)pd;
@@ -705,33 +648,27 @@ xx_archive_record_state *xx_adam_create_archive_records_reading(
     return state;
 }
 
-const xx_archive_record *xx_adam_get_current_archive_record(
-    Abstractformat *format, xx_archive_record_state *state) {
-    return format && state && state->format == format && state->has_record
-               ? &state->current_record : NULL;
+const xx_archive_record *xx_adam_get_current_archive_record(Abstractformat *format, xx_archive_record_state *state)
+{
+    return format && state && state->format == format && state->has_record ? &state->current_record : NULL;
 }
 
-bool xx_adam_archive_record_move_to_next(Abstractformat *format,
-                                         xx_archive_record_state *state,
-                                         xx_pd_struct *pd) {
+bool xx_adam_archive_record_move_to_next(Abstractformat *format, xx_archive_record_state *state, xx_pd_struct *pd)
+{
     adam_stream *stream;
     (void)pd;
-    if (!format || !state || state->format != format ||
-        !(stream = (adam_stream *)state->internal_state) ||
-        stream->index + 1U >= stream->count) {
+    if (!format || !state || state->format != format || !(stream = (adam_stream *)state->internal_state) || stream->index + 1U >= stream->count) {
         if (state) state->has_record = false;
         return false;
     }
     ++stream->index;
     ++state->current_index;
-    state->has_record = adam_set_record(format, &state->current_record,
-                                        &stream->items[stream->index]);
+    state->has_record = adam_set_record(format, &state->current_record, &stream->items[stream->index]);
     return state->has_record;
 }
 
-bool xx_adam_unpack_current_archive_record(Abstractformat *format,
-                                           xx_archive_record_state *state,
-                                           xx_pd_struct *pd) {
+bool xx_adam_unpack_current_archive_record(Abstractformat *format, xx_archive_record_state *state, xx_pd_struct *pd)
+{
     adam_stream *stream;
     const adam_member *member;
     const xx_var *path_option;
@@ -740,37 +677,29 @@ bool xx_adam_unpack_current_archive_record(Abstractformat *format,
     char *path = NULL;
     bool result = false;
     bool created = false;
-    if (!format || !state || state->format != format || !state->has_record ||
-        !(stream = (adam_stream *)state->internal_state) ||
-        stream->index >= stream->count || (pd && xx_pd_is_stopped(pd)))
+    if (!format || !state || state->format != format || !state->has_record || !(stream = (adam_stream *)state->internal_state) || stream->index >= stream->count ||
+        (pd && xx_pd_is_stopped(pd)))
         return false;
     member = &stream->items[stream->index];
     if (!member->in_range) return false;
     path_option = adam_option(&state->options, XX_META_ID_OPT_UNPACK_PATH);
-    if (!path_option)
-        /* No destination: read the blocks through, which verifies them. */
+    if (!path_option) /* No destination: read the blocks through, which verifies them. */
         return adam_copy_member(format, &stream->volume, member, NULL, pd);
     if (!adam_safe_output_name(member->name)) return false;
-    if (path_option->type == XX_VAR_TYPE_STRING ||
-        path_option->type == XX_VAR_TYPE_STRING_VIEW)
-        base = xx_var_get_str(path_option);
-    else if (path_option->type == XX_VAR_TYPE_WSTRING ||
-             path_option->type == XX_VAR_TYPE_WSTRING_VIEW) {
+    if (path_option->type == XX_VAR_TYPE_STRING || path_option->type == XX_VAR_TYPE_STRING_VIEW) base = xx_var_get_str(path_option);
+    else if (path_option->type == XX_VAR_TYPE_WSTRING || path_option->type == XX_VAR_TYPE_WSTRING_VIEW) {
         owned_base = xx_str_unicode_to_utf8(xx_var_get_wstr(path_option));
         base = owned_base;
     }
     if (!base) goto done;
-    path = (base[0] && base[xx_str_len(base) - 1U] != '/' &&
-            base[xx_str_len(base) - 1U] != '\\')
-               ? xx_str_concat3(base, "/", member->name)
-               : xx_str_concat(base, member->name);
+    path = (base[0] && base[xx_str_len(base) - 1U] != '/' && base[xx_str_len(base) - 1U] != '\\') ? xx_str_concat3(base, "/", member->name)
+                                                                                                  : xx_str_concat(base, member->name);
     if (!path || !xx_store_create_dirs_a(path, false)) goto done;
     {
         xx_io_device *destination = xx_io_file_open(path, "wb");
         created = destination != NULL;
         if (!destination) goto done;
-        result = adam_copy_member(format, &stream->volume, member,
-                                  destination, pd);
+        result = adam_copy_member(format, &stream->volume, member, destination, pd);
         if (xx_io_close(destination) != 0) result = false;
     }
 done:
@@ -780,8 +709,8 @@ done:
     return result;
 }
 
-void xx_adam_free_archive_records_reading(Abstractformat *format,
-                                          xx_archive_record_state *state) {
+void xx_adam_free_archive_records_reading(Abstractformat *format, xx_archive_record_state *state)
+{
     (void)format;
     xx_archive_record_state_free(state);
 }

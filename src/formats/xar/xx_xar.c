@@ -91,17 +91,15 @@ static void xx_xar_vtable_destroy(Abstractformat *self);
 
 /* ------------------------------------------------------------- helpers -- */
 
-static bool xx_xar_read_at(Abstractformat *self, int64_t offset,
-                              uint8_t *buffer, size_t size) {
+static bool xx_xar_read_at(Abstractformat *self, int64_t offset, uint8_t *buffer, size_t size)
+{
     size_t completed = 0U;
 
-    if (!self || !self->device || offset < 0 ||
-        xx_io_seek64(self->device, offset, SEEK_SET) != 0) {
+    if (!self || !self->device || offset < 0 || xx_io_seek64(self->device, offset, SEEK_SET) != 0) {
         return false;
     }
     while (completed < size) {
-        ssize_t received =
-            xx_io_read(self->device, buffer + completed, size - completed);
+        ssize_t received = xx_io_read(self->device, buffer + completed, size - completed);
         if (received <= 0 || (size_t)received > size - completed) {
             return false;
         }
@@ -110,14 +108,14 @@ static bool xx_xar_read_at(Abstractformat *self, int64_t offset,
     return true;
 }
 
-static bool xx_xar_range_within(int64_t total, int64_t offset,
-                                   int64_t size) {
-    return offset >= 0 && size >= 0 && offset <= total &&
-           size <= total - offset;
+static bool xx_xar_range_within(int64_t total, int64_t offset, int64_t size)
+{
+    return offset >= 0 && size >= 0 && offset <= total && size <= total - offset;
 }
 
 /* Refuse anything that would escape the extraction directory. */
-static bool xx_xar_path_safe(const char *name) {
+static bool xx_xar_path_safe(const char *name)
+{
     const char *cursor = name;
 
     if (!name || !name[0] || name[0] == '/') return false;
@@ -132,7 +130,8 @@ static bool xx_xar_path_safe(const char *name) {
     return true;
 }
 
-static void xx_xar_stream_free(void *pointer) {
+static void xx_xar_stream_free(void *pointer)
+{
     xx_xar_stream *stream = (xx_xar_stream *)pointer;
     size_t index;
 
@@ -145,17 +144,15 @@ static void xx_xar_stream_free(void *pointer) {
 }
 
 /* Append a member, taking ownership of @p name. */
-static bool xx_xar_add(xx_xar_stream *stream,
-                          const xx_xar_member *member) {
-    xx_xar_member *grown = (xx_xar_member *)xx_mem_realloc(
-        stream->items, sizeof(*grown) * (stream->count + 1U));
+static bool xx_xar_add(xx_xar_stream *stream, const xx_xar_member *member)
+{
+    xx_xar_member *grown = (xx_xar_member *)xx_mem_realloc(stream->items, sizeof(*grown) * (stream->count + 1U));
 
     if (!grown) return false;
     stream->items = grown;
     stream->items[stream->count++] = *member;
     return true;
 }
-
 
 #define XX_XAR_HEADER_SIZE 28
 #define XX_XAR_MAX_HEADER_SIZE 1024
@@ -213,20 +210,20 @@ static bool xx_xar_emit(Abstractformat *self, xx_xar_stream *stream, const xx_xa
 static xx_xar_stream *xx_xar_parse(Abstractformat *self, xx_pd_struct *pd);
 static bool xx_xar_decode(Abstractformat *self, const xx_xar_member *member, uint8_t **out, size_t *out_size, xx_pd_struct *pd);
 
-
-
 /* What the element currently open is, in XAR terms. Kept per open element so
  * a <name> or an <offset> is only believed where the schema puts it: XAR
  * files embed foreign metadata (signatures, property lists) under <toc>, and
  * a stray <offset> there must not become a member's location. */
 
-static bool xx_xar_is_space(char value) {
+static bool xx_xar_is_space(char value)
+{
     return value == ' ' || value == '\t' || value == '\r' || value == '\n';
 }
 
 /* ASCII case-insensitive equality: encoding styles are MIME types, which are
  * case-insensitive by RFC 2045 even though every producer writes lower case. */
-static bool xx_xar_str_ieq(const char *left, const char *right) {
+static bool xx_xar_str_ieq(const char *left, const char *right)
+{
     size_t index = 0U;
 
     if (!left || !right) return false;
@@ -242,7 +239,8 @@ static bool xx_xar_str_ieq(const char *left, const char *right) {
 
 /* XAR writes every number as decimal text. Anything else -- empty, signed,
  * hexadecimal, or wider than int64 -- is a malformed table of contents. */
-static bool xx_xar_parse_u64(const char *text, int64_t *value) {
+static bool xx_xar_parse_u64(const char *text, int64_t *value)
+{
     uint64_t accumulator = 0U;
     size_t index = 0U;
     bool any = false;
@@ -264,27 +262,22 @@ static bool xx_xar_parse_u64(const char *text, int64_t *value) {
     return true;
 }
 
-static uint32_t xx_xar_method_from_style(const char *style) {
-    if (!style || style[0] == '\0' ||
-        xx_xar_str_ieq(style, "application/octet-stream")) {
+static uint32_t xx_xar_method_from_style(const char *style)
+{
+    if (!style || style[0] == '\0' || xx_xar_str_ieq(style, "application/octet-stream")) {
         return XX_XAR_METHOD_STORE;
     }
-    if (xx_xar_str_ieq(style, "application/x-gzip") ||
-        xx_xar_str_ieq(style, "application/gzip") ||
-        xx_xar_str_ieq(style, "application/zlib") ||
+    if (xx_xar_str_ieq(style, "application/x-gzip") || xx_xar_str_ieq(style, "application/gzip") || xx_xar_str_ieq(style, "application/zlib") ||
         xx_xar_str_ieq(style, "application/x-zlib")) {
         return XX_XAR_METHOD_ZLIB;
     }
-    if (xx_xar_str_ieq(style, "application/x-bzip2") ||
-        xx_xar_str_ieq(style, "application/bzip2")) {
+    if (xx_xar_str_ieq(style, "application/x-bzip2") || xx_xar_str_ieq(style, "application/bzip2")) {
         return XX_XAR_METHOD_BZIP2;
     }
-    if (xx_xar_str_ieq(style, "application/x-lzma") ||
-        xx_xar_str_ieq(style, "application/lzma")) {
+    if (xx_xar_str_ieq(style, "application/x-lzma") || xx_xar_str_ieq(style, "application/lzma")) {
         return XX_XAR_METHOD_LZMA;
     }
-    if (xx_xar_str_ieq(style, "application/x-xz") ||
-        xx_xar_str_ieq(style, "application/xz")) {
+    if (xx_xar_str_ieq(style, "application/x-xz") || xx_xar_str_ieq(style, "application/xz")) {
         return XX_XAR_METHOD_XZ;
     }
     return XX_XAR_METHOD_UNKNOWN;
@@ -295,7 +288,8 @@ static uint32_t xx_xar_method_from_style(const char *style) {
  * UTF-8 and only the C0 controls, DEL and the path separators are refused --
  * a name is one path component, and a '/' inside one would forge a
  * directory the table of contents never declared. */
-static bool xx_xar_name_is_ok(const char *name) {
+static bool xx_xar_name_is_ok(const char *name)
+{
     size_t index;
 
     if (!name || name[0] == '\0') return false;
@@ -311,7 +305,8 @@ static bool xx_xar_name_is_ok(const char *name) {
  * open, parents first. A frame with no name of its own is not fatal -- XAR
  * permits metadata-only entries -- so it contributes a placeholder and the
  * listing stays usable. */
-static char *xx_xar_build_path(const xx_xar_frame *frames, int count) {
+static char *xx_xar_build_path(const xx_xar_frame *frames, int count)
+{
     static const char unnamed[] = "unnamed";
     size_t total = 0U;
     size_t position = 0U;
@@ -341,9 +336,8 @@ static char *xx_xar_build_path(const xx_xar_frame *frames, int count) {
 
 /* Publish the <file> frame on top of the stack. Everything that can make an
  * archive a rejection rather than a member is decided here. */
-static bool xx_xar_emit(Abstractformat *self, xx_xar_stream *stream,
-                        const xx_xar_frame *frames, int count, int64_t span,
-                        int64_t heap_offset, int64_t *archive_size) {
+static bool xx_xar_emit(Abstractformat *self, xx_xar_stream *stream, const xx_xar_frame *frames, int count, int64_t span, int64_t heap_offset, int64_t *archive_size)
+{
     const xx_xar_frame *frame;
     xx_xar_member member;
     char *path;
@@ -408,7 +402,8 @@ static bool xx_xar_emit(Abstractformat *self, xx_xar_stream *stream,
     return true;
 }
 
-static xx_xar_stream *xx_xar_parse(Abstractformat *self, xx_pd_struct *pd) {
+static xx_xar_stream *xx_xar_parse(Abstractformat *self, xx_pd_struct *pd)
+{
     xx_xar_stream *stream = NULL;
     xx_xar_frame *frames = NULL;
     uint8_t *kinds = NULL;
@@ -443,8 +438,7 @@ static xx_xar_stream *xx_xar_parse(Abstractformat *self, xx_pd_struct *pd) {
     if (!xx_xar_read_at(self, self->base_address, header, sizeof(header))) {
         return NULL;
     }
-    if (header[0] != 'x' || header[1] != 'a' || header[2] != 'r' ||
-        header[3] != '!') {
+    if (header[0] != 'x' || header[1] != 'a' || header[2] != 'r' || header[3] != '!') {
         return NULL;
     }
 
@@ -457,8 +451,7 @@ static xx_xar_stream *xx_xar_parse(Abstractformat *self, xx_pd_struct *pd) {
     /* The header size may grow in a later revision, but it can never be
      * smaller than the fields already defined, and 1 KiB of header is far
      * past anything a real archive uses. */
-    if (header_size < XX_XAR_HEADER_SIZE ||
-        header_size > XX_XAR_MAX_HEADER_SIZE) {
+    if (header_size < XX_XAR_HEADER_SIZE || header_size > XX_XAR_MAX_HEADER_SIZE) {
         return NULL;
     }
     if (version > 1U) return NULL;
@@ -472,11 +465,7 @@ static xx_xar_stream *xx_xar_parse(Abstractformat *self, xx_pd_struct *pd) {
     if (!xx_xar_range_within(span, header_size, toc_packed)) return NULL;
 
     heap_offset = header_size + toc_packed;
-    digest_size = (checksum_alg == 1U)   ? 20
-                  : (checksum_alg == 2U) ? 16
-                  : (checksum_alg == 3U) ? 32
-                  : (checksum_alg == 4U) ? 64
-                                         : 0;
+    digest_size = (checksum_alg == 1U) ? 20 : (checksum_alg == 2U) ? 16 : (checksum_alg == 3U) ? 32 : (checksum_alg == 4U) ? 64 : 0;
     /* The digest is the first thing in the heap; a file with no room for it
      * is truncated whatever else it claims. The digest itself is not
      * verified here -- the hashes live outside this reader. */
@@ -486,8 +475,7 @@ static xx_xar_stream *xx_xar_parse(Abstractformat *self, xx_pd_struct *pd) {
     toc = (uint8_t *)xx_mem_alloc((size_t)toc_plain);
     if (!packed || !toc) goto fail;
     if (pd && xx_pd_is_stopped(pd)) goto fail;
-    if (!xx_xar_read_at(self, self->base_address + header_size, packed,
-                        (size_t)toc_packed)) {
+    if (!xx_xar_read_at(self, self->base_address + header_size, packed, (size_t)toc_packed)) {
         goto fail;
     }
     if (pd && xx_pd_is_stopped(pd)) goto fail;
@@ -501,13 +489,11 @@ static xx_xar_stream *xx_xar_parse(Abstractformat *self, xx_pd_struct *pd) {
     if (!xx_zlib_stream_header_is_valid(packed, (size_t)toc_packed)) {
         goto fail;
     }
-    if (!xx_zlib_stream_decode_memory(packed, (size_t)toc_packed, toc,
-                                      (size_t)toc_plain, &written)) {
+    if (!xx_zlib_stream_decode_memory(packed, (size_t)toc_packed, toc, (size_t)toc_plain, &written)) {
         goto fail;
     }
     if (written != (size_t)toc_plain) goto fail;
-    if (!xx_zlib_stream_trailer_matches(packed, (size_t)toc_packed, toc,
-                                        written)) {
+    if (!xx_zlib_stream_trailer_matches(packed, (size_t)toc_packed, toc, written)) {
         goto fail;
     }
     xx_mem_free(packed);
@@ -519,8 +505,7 @@ static xx_xar_stream *xx_xar_parse(Abstractformat *self, xx_pd_struct *pd) {
 
     /* Both stacks are heap allocated: XX_XAR_MAX_DEPTH frames on the stack
      * would put tens of kilobytes in this frame. */
-    frames = (xx_xar_frame *)xx_mem_alloc(sizeof(*frames) *
-                                          (size_t)XX_XAR_MAX_DEPTH);
+    frames = (xx_xar_frame *)xx_mem_alloc(sizeof(*frames) * (size_t)XX_XAR_MAX_DEPTH);
     kinds = (uint8_t *)xx_mem_alloc((size_t)XX_XAR_MAX_DEPTH);
     if (!frames || !kinds) goto fail;
     xx_mem_zero(frames, sizeof(*frames) * (size_t)XX_XAR_MAX_DEPTH);
@@ -548,8 +533,7 @@ static xx_xar_stream *xx_xar_parse(Abstractformat *self, xx_pd_struct *pd) {
         }
 
         if (node == XX_XML_TEXT) {
-            xx_xar_frame *frame =
-                frame_count > 0 ? &frames[frame_count - 1] : NULL;
+            xx_xar_frame *frame = frame_count > 0 ? &frames[frame_count - 1] : NULL;
             const char *text = xx_xml_text(&xml);
 
             /* Text is only believed while one of the five leaf elements is
@@ -576,22 +560,19 @@ static xx_xar_stream *xx_xar_parse(Abstractformat *self, xx_pd_struct *pd) {
                 frame->type_seen = true;
                 frame->is_folder = xx_xar_str_ieq(text, "directory");
             } else if (current_field == XX_XAR_KIND_OFFSET) {
-                if (frame->offset_seen ||
-                    !xx_xar_parse_u64(text, &frame->offset)) {
+                if (frame->offset_seen || !xx_xar_parse_u64(text, &frame->offset)) {
                     bad = true;
                     break;
                 }
                 frame->offset_seen = true;
             } else if (current_field == XX_XAR_KIND_LENGTH) {
-                if (frame->length_seen ||
-                    !xx_xar_parse_u64(text, &frame->length)) {
+                if (frame->length_seen || !xx_xar_parse_u64(text, &frame->length)) {
                     bad = true;
                     break;
                 }
                 frame->length_seen = true;
             } else if (current_field == XX_XAR_KIND_SIZE) {
-                if (frame->size_seen ||
-                    !xx_xar_parse_u64(text, &frame->size)) {
+                if (frame->size_seen || !xx_xar_parse_u64(text, &frame->size)) {
                     bad = true;
                     break;
                 }
@@ -610,9 +591,7 @@ static xx_xar_stream *xx_xar_parse(Abstractformat *self, xx_pd_struct *pd) {
             closing = kinds[--element_depth];
             current_field = XX_XAR_KIND_OTHER;
             if (closing == XX_XAR_KIND_FILE) {
-                if (frame_count <= 0 ||
-                    !xx_xar_emit(self, stream, frames, frame_count, span,
-                                 heap_offset, &archive_size)) {
+                if (frame_count <= 0 || !xx_xar_emit(self, stream, frames, frame_count, span, heap_offset, &archive_size)) {
                     bad = true;
                     break;
                 }
@@ -657,11 +636,8 @@ static xx_xar_stream *xx_xar_parse(Abstractformat *self, xx_pd_struct *pd) {
                 }
                 toc_seen = true;
                 kind = XX_XAR_KIND_TOC;
-            } else if ((parent == XX_XAR_KIND_TOC ||
-                        parent == XX_XAR_KIND_FILE) &&
-                       xx_xar_str_ieq(name, "file")) {
-                if (frame_count >= XX_XAR_MAX_DEPTH ||
-                    stream->count >= (size_t)XX_XAR_MAX_MEMBERS) {
+            } else if ((parent == XX_XAR_KIND_TOC || parent == XX_XAR_KIND_FILE) && xx_xar_str_ieq(name, "file")) {
+                if (frame_count >= XX_XAR_MAX_DEPTH || stream->count >= (size_t)XX_XAR_MAX_MEMBERS) {
                     bad = true;
                     break;
                 }
@@ -685,8 +661,7 @@ static xx_xar_stream *xx_xar_parse(Abstractformat *self, xx_pd_struct *pd) {
                     frames[frame_count - 1].inside_data = true;
                     kind = XX_XAR_KIND_DATA;
                 }
-            } else if (parent == XX_XAR_KIND_DATA && frame_count > 0 &&
-                       frames[frame_count - 1].inside_data) {
+            } else if (parent == XX_XAR_KIND_DATA && frame_count > 0 && frames[frame_count - 1].inside_data) {
                 xx_xar_frame *frame = &frames[frame_count - 1];
                 if (xx_xar_str_ieq(name, "offset")) {
                     kind = XX_XAR_KIND_OFFSET;
@@ -705,8 +680,7 @@ static xx_xar_stream *xx_xar_parse(Abstractformat *self, xx_pd_struct *pd) {
                         break;
                     }
                     frame->encoding_seen = true;
-                    frame->method = xx_xar_method_from_style(
-                        xx_xml_attribute_value(&xml, "style"));
+                    frame->method = xx_xar_method_from_style(xx_xml_attribute_value(&xml, "style"));
                     if (frame->method == XX_XAR_METHOD_UNKNOWN) {
                         bad = true;
                         break;
@@ -720,8 +694,7 @@ static xx_xar_stream *xx_xar_parse(Abstractformat *self, xx_pd_struct *pd) {
             /* A self-closing element is reported once and never pushed, so
              * its close has to be applied right here. */
             if (kind == XX_XAR_KIND_FILE) {
-                if (!xx_xar_emit(self, stream, frames, frame_count, span,
-                                 heap_offset, &archive_size)) {
+                if (!xx_xar_emit(self, stream, frames, frame_count, span, heap_offset, &archive_size)) {
                     bad = true;
                     break;
                 }
@@ -742,9 +715,7 @@ static xx_xar_stream *xx_xar_parse(Abstractformat *self, xx_pd_struct *pd) {
             break;
         }
         kinds[element_depth++] = (uint8_t)kind;
-        if (kind == XX_XAR_KIND_NAME || kind == XX_XAR_KIND_TYPE ||
-            kind == XX_XAR_KIND_OFFSET || kind == XX_XAR_KIND_LENGTH ||
-            kind == XX_XAR_KIND_SIZE) {
+        if (kind == XX_XAR_KIND_NAME || kind == XX_XAR_KIND_TYPE || kind == XX_XAR_KIND_OFFSET || kind == XX_XAR_KIND_LENGTH || kind == XX_XAR_KIND_SIZE) {
             current_field = kind;
         }
     }
@@ -755,8 +726,7 @@ static xx_xar_stream *xx_xar_parse(Abstractformat *self, xx_pd_struct *pd) {
 
     /* A document that stops mid-element, never names <xar>, or never opens a
      * <toc> is not a table of contents this reader may believe in part. */
-    if (bad || !root_seen || !toc_seen || element_depth != 0 ||
-        frame_count != 0) {
+    if (bad || !root_seen || !toc_seen || element_depth != 0 || frame_count != 0) {
         goto fail;
     }
 
@@ -782,7 +752,6 @@ fail:
     return NULL;
 }
 
-
 /* The container names a member's method with a MIME type; these are this
  * reader's own numbering of the ones XAR actually uses, and the parse stores
  * the value it mapped so a listing still shows what the archive said. An
@@ -795,9 +764,8 @@ fail:
 
 /* LZMA-Alone transport: 5 property bytes, then the 8-byte expanded size. */
 
-static bool xx_xar_decode(Abstractformat *self, const xx_xar_member *member,
-                          uint8_t **out, size_t *out_size,
-                          xx_pd_struct *pd) {
+static bool xx_xar_decode(Abstractformat *self, const xx_xar_member *member, uint8_t **out, size_t *out_size, xx_pd_struct *pd)
+{
     uint8_t *input = NULL;
     uint8_t *output = NULL;
     size_t packed_size;
@@ -811,8 +779,7 @@ static bool xx_xar_decode(Abstractformat *self, const xx_xar_member *member,
     if (member->compressed_size < 0 || member->uncompressed_size < 0) {
         return false;
     }
-    if (member->compressed_size > XX_XAR_MAX_DECODED ||
-        member->uncompressed_size > XX_XAR_MAX_DECODED) {
+    if (member->compressed_size > XX_XAR_MAX_DECODED || member->uncompressed_size > XX_XAR_MAX_DECODED) {
         return false;
     }
     if (pd && xx_pd_is_stopped(pd)) return false;
@@ -822,8 +789,7 @@ static bool xx_xar_decode(Abstractformat *self, const xx_xar_member *member,
 
     /* A directory, or a <file> carrying no <data>, has nothing in the heap:
      * an empty result is correct, not a short read. */
-    if (packed_size == 0U && plain_size == 0U &&
-        member->method == XX_XAR_METHOD_STORE) {
+    if (packed_size == 0U && plain_size == 0U && member->method == XX_XAR_METHOD_STORE) {
         output = (uint8_t *)xx_mem_alloc(1U);
         if (!output) return false;
         *out = output;
@@ -834,8 +800,7 @@ static bool xx_xar_decode(Abstractformat *self, const xx_xar_member *member,
     input = (uint8_t *)xx_mem_alloc(packed_size != 0U ? packed_size : 1U);
     output = (uint8_t *)xx_mem_alloc(plain_size != 0U ? plain_size : 1U);
     if (!input || !output) goto decode_fail;
-    if (packed_size != 0U &&
-        !xx_xar_read_at(self, member->data_offset, input, packed_size)) {
+    if (packed_size != 0U && !xx_xar_read_at(self, member->data_offset, input, packed_size)) {
         goto decode_fail;
     }
     if (pd && xx_pd_is_stopped(pd)) goto decode_fail;
@@ -853,20 +818,16 @@ static bool xx_xar_decode(Abstractformat *self, const xx_xar_member *member,
         if (!xx_zlib_stream_header_is_valid(input, packed_size)) {
             goto decode_fail;
         }
-        if (!xx_zlib_stream_decode_memory(input, packed_size, output,
-                                          plain_size, &written)) {
+        if (!xx_zlib_stream_decode_memory(input, packed_size, output, plain_size, &written)) {
             goto decode_fail;
         }
         /* <length> is the exact stored extent, so the RFC 1950 trailer is
          * inside the member and the checksum can be insisted on. */
-        if (written != plain_size ||
-            !xx_zlib_stream_trailer_matches(input, packed_size, output,
-                                            written)) {
+        if (written != plain_size || !xx_zlib_stream_trailer_matches(input, packed_size, output, written)) {
             goto decode_fail;
         }
     } else if (member->method == XX_XAR_METHOD_BZIP2) {
-        if (!xx_bzip2_decompress_memory(input, packed_size, output,
-                                        plain_size, &written)) {
+        if (!xx_bzip2_decompress_memory(input, packed_size, output, plain_size, &written)) {
             goto decode_fail;
         }
     } else if (member->method == XX_XAR_METHOD_LZMA) {
@@ -875,11 +836,8 @@ static bool xx_xar_decode(Abstractformat *self, const xx_xar_member *member,
          * the raw stream the decoder wants. */
         if (packed_size <= (size_t)XX_XAR_LZMA_ALONE_HEADER) goto decode_fail;
         if (!xx_lzma_alone_has_header(input, packed_size)) goto decode_fail;
-        if (!xx_lzma_decompress_memory(
-                input + XX_XAR_LZMA_ALONE_HEADER,
-                packed_size - (size_t)XX_XAR_LZMA_ALONE_HEADER, input,
-                (size_t)XX_LZMA_PROPS_SIZE, member->uncompressed_size, output,
-                plain_size, &written)) {
+        if (!xx_lzma_decompress_memory(input + XX_XAR_LZMA_ALONE_HEADER, packed_size - (size_t)XX_XAR_LZMA_ALONE_HEADER, input, (size_t)XX_LZMA_PROPS_SIZE,
+                                       member->uncompressed_size, output, plain_size, &written)) {
             goto decode_fail;
         }
     } else if (member->method == XX_XAR_METHOD_XZ) {
@@ -889,9 +847,7 @@ static bool xx_xar_decode(Abstractformat *self, const xx_xar_member *member,
         if (source && destination) {
             xx_xz xz;
             xx_xz_init(&xz, source, 0);
-            decoded = xx_xz_unpack_to_device(&xz, destination, pd) &&
-                      xz.format.format_size == (int64_t)packed_size &&
-                      xz.uncompressed_size == (uint64_t)plain_size &&
+            decoded = xx_xz_unpack_to_device(&xz, destination, pd) && xz.format.format_size == (int64_t)packed_size && xz.uncompressed_size == (uint64_t)plain_size &&
                       xx_io_tell(destination) == (int64_t)plain_size;
             xx_xz_destroy(&xz);
         }
@@ -921,8 +877,8 @@ decode_fail:
 
 /* ---------------------------------------------------------- lifecycle --- */
 
-void xx_xar_init(xx_xar *archive, xx_io_device *device,
-                    int64_t base_address) {
+void xx_xar_init(xx_xar *archive, xx_io_device *device, int64_t base_address)
+{
     if (!archive) return;
     xx_mem_zero(archive, sizeof(*archive));
     xx_format_init(&archive->format, device, base_address);
@@ -935,22 +891,17 @@ void xx_xar_init(xx_xar *archive, xx_io_device *device,
     archive->format.check_is_valid = xx_xar_check_is_valid;
     archive->format.handle_base_info = xx_xar_handle_base_info;
     archive->format.get_format_size = xx_xar_get_format_size;
-    archive->format.get_number_of_archive_records =
-        xx_xar_get_number_of_archive_records;
-    archive->format.create_archive_records_reading =
-        xx_xar_create_archive_records_reading;
-    archive->format.get_current_archive_record =
-        xx_xar_get_current_archive_record;
-    archive->format.unpack_current_archive_record =
-        xx_xar_unpack_current_archive_record;
-    archive->format.archive_record_move_to_next =
-        xx_xar_archive_record_move_to_next;
-    archive->format.free_archive_records_reading =
-        xx_xar_free_archive_records_reading;
+    archive->format.get_number_of_archive_records = xx_xar_get_number_of_archive_records;
+    archive->format.create_archive_records_reading = xx_xar_create_archive_records_reading;
+    archive->format.get_current_archive_record = xx_xar_get_current_archive_record;
+    archive->format.unpack_current_archive_record = xx_xar_unpack_current_archive_record;
+    archive->format.archive_record_move_to_next = xx_xar_archive_record_move_to_next;
+    archive->format.free_archive_records_reading = xx_xar_free_archive_records_reading;
     archive->format.destroy = xx_xar_vtable_destroy;
 }
 
-xx_xar *xx_xar_create(xx_io_device *device, int64_t base_address) {
+xx_xar *xx_xar_create(xx_io_device *device, int64_t base_address)
+{
     xx_xar *archive = (xx_xar *)xx_mem_alloc(sizeof(*archive));
 
     if (!archive) return NULL;
@@ -958,7 +909,8 @@ xx_xar *xx_xar_create(xx_io_device *device, int64_t base_address) {
     return archive;
 }
 
-void xx_xar_destroy(xx_xar *archive) {
+void xx_xar_destroy(xx_xar *archive)
+{
     if (!archive) return;
     /* Not xx_format_destroy: it dispatches through format.destroy, which is
      * the wrapper below, and the two would recurse. */
@@ -967,19 +919,22 @@ void xx_xar_destroy(xx_xar *archive) {
     archive->number_of_records = 0U;
 }
 
-void xx_xar_free(xx_xar *archive) {
+void xx_xar_free(xx_xar *archive)
+{
     if (!archive) return;
     xx_xar_destroy(archive);
     xx_mem_free(archive);
 }
 
-static void xx_xar_vtable_destroy(Abstractformat *self) {
+static void xx_xar_vtable_destroy(Abstractformat *self)
+{
     xx_xar_destroy((xx_xar *)self);
 }
 
 /* -------------------------------------------------------------- format -- */
 
-bool xx_xar_check_is_valid(Abstractformat *self, xx_pd_struct *pd) {
+bool xx_xar_check_is_valid(Abstractformat *self, xx_pd_struct *pd)
+{
     xx_xar_stream *stream;
 
     if (!self || (pd && xx_pd_is_stopped(pd))) return false;
@@ -989,7 +944,8 @@ bool xx_xar_check_is_valid(Abstractformat *self, xx_pd_struct *pd) {
     return true;
 }
 
-bool xx_xar_handle_base_info(Abstractformat *self, xx_pd_struct *pd) {
+bool xx_xar_handle_base_info(Abstractformat *self, xx_pd_struct *pd)
+{
     xx_xar *archive = (xx_xar *)self;
     xx_xar_stream *stream;
 
@@ -1010,18 +966,17 @@ bool xx_xar_handle_base_info(Abstractformat *self, xx_pd_struct *pd) {
     return true;
 }
 
-int64_t xx_xar_get_format_size(Abstractformat *self, xx_pd_struct *pd) {
-    if (!self ||
-        (!self->base_info_handled && !xx_format_handle_base_info(self, pd))) {
+int64_t xx_xar_get_format_size(Abstractformat *self, xx_pd_struct *pd)
+{
+    if (!self || (!self->base_info_handled && !xx_format_handle_base_info(self, pd))) {
         return 0;
     }
     return self->is_valid ? self->format_size : 0;
 }
 
-uint64_t xx_xar_get_number_of_archive_records(Abstractformat *self,
-                                                 xx_pd_struct *pd) {
-    if (!self ||
-        (!self->base_info_handled && !xx_format_handle_base_info(self, pd))) {
+uint64_t xx_xar_get_number_of_archive_records(Abstractformat *self, xx_pd_struct *pd)
+{
+    if (!self || (!self->base_info_handled && !xx_format_handle_base_info(self, pd))) {
         return 0U;
     }
     return self->is_valid ? ((xx_xar *)self)->number_of_records : 0U;
@@ -1029,8 +984,8 @@ uint64_t xx_xar_get_number_of_archive_records(Abstractformat *self,
 
 /* ------------------------------------------------------------- records -- */
 
-static bool xx_xar_set_record(xx_archive_record *record,
-                                 const xx_xar_member *member) {
+static bool xx_xar_set_record(xx_archive_record *record, const xx_xar_member *member)
+{
     xx_archive_record_cleanup(record);
     xx_archive_record_init(record);
     record->header_offset = member->header_offset;
@@ -1038,34 +993,24 @@ static bool xx_xar_set_record(xx_archive_record *record,
     record->data_offset = member->data_offset;
     record->compressed_size = member->compressed_size;
     return xx_archive_record_set_original_name(record, member->name) &&
-           xx_archive_record_set_meta_u64(record, XX_META_ID_COMPRESSED_SIZE,
-                                          (uint64_t)member->compressed_size) &&
-           xx_archive_record_set_meta_u64(
-               record, XX_META_ID_UNCOMPRESSED_SIZE,
-               (uint64_t)member->uncompressed_size) &&
-           xx_archive_record_set_meta_u64(record, XX_META_ID_COMPRESSION_METHOD,
-                                          member->method) &&
-           xx_archive_record_set_meta_u64(record, XX_META_ID_TIMESTAMP,
-                                          member->timestamp) &&
-           xx_archive_record_set_meta_bool(record, XX_META_ID_IS_FOLDER,
-                                           member->is_folder) &&
-           xx_archive_record_set_meta_bool(record, XX_META_ID_IS_ENCRYPTED,
-                                           false);
+           xx_archive_record_set_meta_u64(record, XX_META_ID_COMPRESSED_SIZE, (uint64_t)member->compressed_size) &&
+           xx_archive_record_set_meta_u64(record, XX_META_ID_UNCOMPRESSED_SIZE, (uint64_t)member->uncompressed_size) &&
+           xx_archive_record_set_meta_u64(record, XX_META_ID_COMPRESSION_METHOD, member->method) &&
+           xx_archive_record_set_meta_u64(record, XX_META_ID_TIMESTAMP, member->timestamp) &&
+           xx_archive_record_set_meta_bool(record, XX_META_ID_IS_FOLDER, member->is_folder) && xx_archive_record_set_meta_bool(record, XX_META_ID_IS_ENCRYPTED, false);
 }
 
-static bool xx_xar_copy_options(xx_list_s *target,
-                                   const xx_list_s *options) {
+static bool xx_xar_copy_options(xx_list_s *target, const xx_list_s *options)
+{
     size_t index;
 
     if (!target || !options) return options == NULL;
     for (index = 0U; index < options->count; ++index) {
-        const xx_meta *source =
-            (const xx_meta *)xx_list_at((const xx_list_t *)options, index);
+        const xx_meta *source = (const xx_meta *)xx_list_at((const xx_list_t *)options, index);
         xx_meta copied;
         if (!source) continue;
         xx_meta_init(&copied, source->meta_id);
-        if (!xx_var_copy(&copied.var, &source->var) ||
-            !xx_list_append(target, &copied)) {
+        if (!xx_var_copy(&copied.var, &source->var) || !xx_list_append(target, &copied)) {
             xx_meta_cleanup(&copied);
             return false;
         }
@@ -1073,21 +1018,20 @@ static bool xx_xar_copy_options(xx_list_s *target,
     return true;
 }
 
-static const xx_var *xx_xar_get_option(const xx_list_s *options,
-                                          uint32_t meta_id) {
+static const xx_var *xx_xar_get_option(const xx_list_s *options, uint32_t meta_id)
+{
     size_t index;
 
     if (!options) return NULL;
     for (index = 0U; index < options->count; ++index) {
-        const xx_meta *meta =
-            (const xx_meta *)xx_list_at((const xx_list_t *)options, index);
+        const xx_meta *meta = (const xx_meta *)xx_list_at((const xx_list_t *)options, index);
         if (meta && meta->meta_id == meta_id) return &meta->var;
     }
     return NULL;
 }
 
-xx_archive_record_state *xx_xar_create_archive_records_reading(
-    Abstractformat *self, const xx_list_s *options, xx_pd_struct *pd) {
+xx_archive_record_state *xx_xar_create_archive_records_reading(Abstractformat *self, const xx_list_s *options, xx_pd_struct *pd)
+{
     xx_xar_stream *stream;
     xx_archive_record_state *state;
 
@@ -1103,9 +1047,7 @@ xx_archive_record_state *xx_xar_create_archive_records_reading(
     state->internal_state = stream;
     state->free_internal = xx_xar_stream_free;
     state->total_records = (int64_t)stream->count;
-    if (!xx_xar_copy_options(&state->options, options) ||
-        (stream->count != 0U &&
-         !xx_xar_set_record(&state->current_record, &stream->items[0]))) {
+    if (!xx_xar_copy_options(&state->options, options) || (stream->count != 0U && !xx_xar_set_record(&state->current_record, &stream->items[0]))) {
         xx_archive_record_state_free(state);
         return NULL;
     }
@@ -1114,20 +1056,16 @@ xx_archive_record_state *xx_xar_create_archive_records_reading(
     return state;
 }
 
-const xx_archive_record *xx_xar_get_current_archive_record(
-    Abstractformat *self, xx_archive_record_state *state) {
-    return self && state && state->format == self && state->has_record
-               ? &state->current_record
-               : NULL;
+const xx_archive_record *xx_xar_get_current_archive_record(Abstractformat *self, xx_archive_record_state *state)
+{
+    return self && state && state->format == self && state->has_record ? &state->current_record : NULL;
 }
 
-bool xx_xar_archive_record_move_to_next(Abstractformat *self,
-                                           xx_archive_record_state *state,
-                                           xx_pd_struct *pd) {
+bool xx_xar_archive_record_move_to_next(Abstractformat *self, xx_archive_record_state *state, xx_pd_struct *pd)
+{
     xx_xar_stream *stream;
 
-    if (!self || !state || state->format != self || !state->has_record ||
-        (pd && xx_pd_is_stopped(pd))) {
+    if (!self || !state || state->format != self || !state->has_record || (pd && xx_pd_is_stopped(pd))) {
         return false;
     }
     stream = (xx_xar_stream *)state->internal_state;
@@ -1139,14 +1077,12 @@ bool xx_xar_archive_record_move_to_next(Abstractformat *self,
     }
     ++stream->index;
     ++state->current_index;
-    state->has_record = xx_xar_set_record(&state->current_record,
-                                             &stream->items[stream->index]);
+    state->has_record = xx_xar_set_record(&state->current_record, &stream->items[stream->index]);
     return state->has_record;
 }
 
-bool xx_xar_unpack_current_archive_record(Abstractformat *self,
-                                             xx_archive_record_state *state,
-                                             xx_pd_struct *pd) {
+bool xx_xar_unpack_current_archive_record(Abstractformat *self, xx_archive_record_state *state, xx_pd_struct *pd)
+{
     xx_xar_stream *stream;
     const xx_xar_member *member;
     const xx_var *path_option;
@@ -1158,8 +1094,7 @@ bool xx_xar_unpack_current_archive_record(Abstractformat *self,
     bool result = false;
     bool created = false;
 
-    if (!self || !state || state->format != self || !state->has_record ||
-        (pd && xx_pd_is_stopped(pd))) {
+    if (!self || !state || state->format != self || !state->has_record || (pd && xx_pd_is_stopped(pd))) {
         return false;
     }
     stream = (xx_xar_stream *)state->internal_state;
@@ -1167,8 +1102,7 @@ bool xx_xar_unpack_current_archive_record(Abstractformat *self,
     member = &stream->items[stream->index];
     if (!xx_xar_path_safe(member->name)) return false;
 
-    path_option = xx_xar_get_option(&state->options,
-                                       XX_META_ID_OPT_UNPACK_PATH);
+    path_option = xx_xar_get_option(&state->options, XX_META_ID_OPT_UNPACK_PATH);
     if (!path_option) {
         /* No destination: decode and discard, which verifies the member
          * without writing anything. */
@@ -1177,11 +1111,9 @@ bool xx_xar_unpack_current_archive_record(Abstractformat *self,
         xx_mem_free(plain);
         return result;
     }
-    if (path_option->type == XX_VAR_TYPE_STRING ||
-        path_option->type == XX_VAR_TYPE_STRING_VIEW) {
+    if (path_option->type == XX_VAR_TYPE_STRING || path_option->type == XX_VAR_TYPE_STRING_VIEW) {
         base_path = xx_var_get_str(path_option);
-    } else if (path_option->type == XX_VAR_TYPE_WSTRING ||
-               path_option->type == XX_VAR_TYPE_WSTRING_VIEW) {
+    } else if (path_option->type == XX_VAR_TYPE_WSTRING || path_option->type == XX_VAR_TYPE_WSTRING_VIEW) {
         converted_path = xx_str_unicode_to_utf8(xx_var_get_wstr(path_option));
         base_path = converted_path;
     }
@@ -1189,9 +1121,7 @@ bool xx_xar_unpack_current_archive_record(Abstractformat *self,
         xx_str_free(converted_path);
         return false;
     }
-    if (base_path[0] != '\0' &&
-        base_path[xx_str_len(base_path) - 1U] != '/' &&
-        base_path[xx_str_len(base_path) - 1U] != '\\') {
+    if (base_path[0] != '\0' && base_path[xx_str_len(base_path) - 1U] != '/' && base_path[xx_str_len(base_path) - 1U] != '\\') {
         target_path = xx_str_concat3(base_path, "/", member->name);
     } else {
         target_path = xx_str_concat(base_path, member->name);
@@ -1204,8 +1134,7 @@ bool xx_xar_unpack_current_archive_record(Abstractformat *self,
         xx_str_free(target_path);
         return result;
     }
-    if (!xx_store_create_dirs_a(target_path, false) ||
-        !xx_xar_decode(self, member, &plain, &plain_size, pd)) {
+    if (!xx_store_create_dirs_a(target_path, false) || !xx_xar_decode(self, member, &plain, &plain_size, pd)) {
         xx_str_free(target_path);
         return false;
     }
@@ -1216,8 +1145,7 @@ bool xx_xar_unpack_current_archive_record(Abstractformat *self,
 
         result = output != NULL;
         while (result && completed < plain_size) {
-            ssize_t sent = xx_io_write(output, plain + completed,
-                                       plain_size - completed);
+            ssize_t sent = xx_io_write(output, plain + completed, plain_size - completed);
             if (sent <= 0 || (size_t)sent > plain_size - completed) {
                 result = false;
                 break;
@@ -1232,8 +1160,8 @@ bool xx_xar_unpack_current_archive_record(Abstractformat *self,
     return result;
 }
 
-void xx_xar_free_archive_records_reading(Abstractformat *self,
-                                            xx_archive_record_state *state) {
+void xx_xar_free_archive_records_reading(Abstractformat *self, xx_archive_record_state *state)
+{
     (void)self;
     xx_archive_record_state_free(state);
 }

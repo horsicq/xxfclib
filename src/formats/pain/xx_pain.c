@@ -36,7 +36,6 @@
 #include "xxfclib/rt/xx_rt.h"
 #include "xxfclib/formats/pain/xx_pain.h"
 
-
 #include "xxfclib/algo/store/xx_store.h"
 #include "xxfclib/io/xx_io.h"
 #include "xxfclib/memory/xx_memory.h"
@@ -73,15 +72,12 @@ typedef struct pain_stream_s {
     int64_t archive_size;
 } pain_stream;
 
-static bool pain_read_at(xx_io_device *device, int64_t offset, void *buffer,
-                        size_t size) {
+static bool pain_read_at(xx_io_device *device, int64_t offset, void *buffer, size_t size)
+{
     size_t done = 0U;
-    if (!device || (!buffer && size != 0U) || offset < 0 ||
-        xx_io_seek64(device, offset, SEEK_SET) != 0)
-        return false;
+    if (!device || (!buffer && size != 0U) || offset < 0 || xx_io_seek64(device, offset, SEEK_SET) != 0) return false;
     while (done < size) {
-        ssize_t amount = xx_io_read(device, (uint8_t *)buffer + done,
-                                    size - done);
+        ssize_t amount = xx_io_read(device, (uint8_t *)buffer + done, size - done);
         if (amount <= 0 || (size_t)amount > size - done) return false;
         done += (size_t)amount;
     }
@@ -91,7 +87,8 @@ static bool pain_read_at(xx_io_device *device, int64_t offset, void *buffer,
 /* Every name field in these containers is a fixed-width buffer whose tail is
  * uninitialised builder heap, so only the bytes before the first NUL are ever
  * surfaced, and separators and traversal components are made harmless. */
-static char *pain_normalize_name(const uint8_t *bytes, size_t size) {
+static char *pain_normalize_name(const uint8_t *bytes, size_t size)
+{
     char *name;
     size_t input = 0U, output = 0U, limit = 0U;
     if ((!bytes && size != 0U) || size > SIZE_MAX - 2U) return NULL;
@@ -103,16 +100,12 @@ static char *pain_normalize_name(const uint8_t *bytes, size_t size) {
     if (!name) return NULL;
     while (input < size) {
         size_t start, end, component_start;
-        while (input < size && (bytes[input] == '/' || bytes[input] == '\\'))
-            ++input;
+        while (input < size && (bytes[input] == '/' || bytes[input] == '\\')) ++input;
         start = input;
-        while (input < size && bytes[input] != '/' && bytes[input] != '\\')
-            ++input;
+        while (input < size && bytes[input] != '/' && bytes[input] != '\\') ++input;
         end = input;
-        if (end == start || (end - start == 1U && bytes[start] == '.'))
-            continue;
-        if (end - start == 2U && bytes[start] == '.' &&
-            bytes[start + 1U] == '.') {
+        if (end == start || (end - start == 1U && bytes[start] == '.')) continue;
+        if (end - start == 2U && bytes[start] == '.' && bytes[start + 1U] == '.') {
             if (output != 0U) {
                 while (output != 0U && name[output - 1U] != '/') --output;
                 if (output != 0U) --output;
@@ -123,15 +116,10 @@ static char *pain_normalize_name(const uint8_t *bytes, size_t size) {
         component_start = output;
         while (start < end) {
             uint8_t c = bytes[start++];
-            if (c < 0x20U || c == '"' || c == '*' || c == ':' || c == '<' ||
-                c == '>' || c == '?' || c == '|' || c == 0U)
-                name[output++] = '_';
-            else
-                name[output++] = (char)c;
+            if (c < 0x20U || c == '"' || c == '*' || c == ':' || c == '<' || c == '>' || c == '?' || c == '|' || c == 0U) name[output++] = '_';
+            else name[output++] = (char)c;
         }
-        while (output > component_start &&
-               (name[output - 1U] == ' ' || name[output - 1U] == '.'))
-            --output;
+        while (output > component_start && (name[output - 1U] == ' ' || name[output - 1U] == '.')) --output;
         if (output == component_start) name[output++] = '_';
     }
     if (output == 0U) name[output++] = '_';
@@ -141,21 +129,18 @@ static char *pain_normalize_name(const uint8_t *bytes, size_t size) {
 
 /* A member name that survives to the filesystem must be a plain relative
  * path; anything else makes the member invalid rather than renamed. */
-static bool pain_safe_output_name(const char *name) {
+static bool pain_safe_output_name(const char *name)
+{
     const char *segment;
     const char *at;
-    if (!name || !name[0] || name[0] == '/' || name[0] == '\\' ||
-        name[1] == ':') return false;
+    if (!name || !name[0] || name[0] == '/' || name[0] == '\\' || name[1] == ':') return false;
     segment = name;
     for (at = name;; ++at) {
         unsigned char c = (unsigned char)*at;
-        if (c == ':' || c == '<' || c == '>' || c == '"' || c == '|' ||
-            c == '?' || c == '*' || (c != 0U && c < 0x20U)) return false;
+        if (c == ':' || c == '<' || c == '>' || c == '"' || c == '|' || c == '?' || c == '*' || (c != 0U && c < 0x20U)) return false;
         if (c == '/' || c == '\\' || c == 0U) {
             size_t length = (size_t)(at - segment);
-            if (length == 0U || (length == 1U && segment[0] == '.') ||
-                (length == 2U && segment[0] == '.' && segment[1] == '.'))
-                return false;
+            if (length == 0U || (length == 1U && segment[0] == '.') || (length == 2U && segment[0] == '.' && segment[1] == '.')) return false;
             if (c == 0U) return true;
             segment = at + 1;
         }
@@ -165,7 +150,8 @@ static bool pain_safe_output_name(const char *name) {
 /* The raw 8.3 fields of these DOS-era containers are the only evidence that a
  * candidate offset really is a header, so a byte that cannot appear in a name
  * rejects the file instead of being scrubbed. */
-static bool pain_plausible_raw_name(const uint8_t *bytes, size_t size) {
+static bool pain_plausible_raw_name(const uint8_t *bytes, size_t size)
+{
     size_t index;
     if (!bytes || size == 0U || bytes[0] == 0U) return false;
     for (index = 0U; index < size; ++index) {
@@ -176,7 +162,8 @@ static bool pain_plausible_raw_name(const uint8_t *bytes, size_t size) {
     return true;
 }
 
-static void pain_stream_free(void *opaque) {
+static void pain_stream_free(void *opaque)
+{
     pain_stream *stream = (pain_stream *)opaque;
     size_t index;
     if (!stream) return;
@@ -186,13 +173,11 @@ static void pain_stream_free(void *opaque) {
     xx_mem_free(stream);
 }
 
-static bool pain_add_member(pain_stream *stream, const pain_member *member) {
+static bool pain_add_member(pain_stream *stream, const pain_member *member)
+{
     pain_member *grown;
-    if (!stream || !member || stream->count >= PAIN_MAX_MEMBERS ||
-        stream->count > SIZE_MAX / sizeof(*grown) - 1U)
-        return false;
-    grown = (pain_member *)xx_mem_realloc(stream->items,
-                                         (stream->count + 1U) * sizeof(*grown));
+    if (!stream || !member || stream->count >= PAIN_MAX_MEMBERS || stream->count > SIZE_MAX / sizeof(*grown) - 1U) return false;
+    grown = (pain_member *)xx_mem_realloc(stream->items, (stream->count + 1U) * sizeof(*grown));
     if (!grown) return false;
     stream->items = grown;
     stream->items[stream->count++] = *member;
@@ -205,38 +190,31 @@ static bool pain_add_member(pain_stream *stream, const pain_member *member) {
 #define PAIN_METHOD_STORE 0U
 #define PAIN_METHOD_LZSS 3U
 
-static bool pain_parse(Abstractformat *format, pain_stream **result) {
+static bool pain_parse(Abstractformat *format, pain_stream **result)
+{
     uint8_t header[PAIN_HEADER_SIZE];
     uint8_t *directory = NULL;
     pain_stream *stream = NULL;
     int64_t total, size, directory_offset;
     uint32_t count, index;
     size_t directory_size;
-    if (!format || !format->device || !result || format->base_address < 0)
-        return false;
+    if (!format || !format->device || !result || format->base_address < 0) return false;
     total = xx_io_total_size(format->device);
     if (total < format->base_address) return false;
     size = total - format->base_address;
-    if (size < (int64_t)PAIN_HEADER_SIZE ||
-        !pain_read_at(format->device, format->base_address, header,
-                      sizeof(header)) ||
-        xx_rt_memcmp(header, "CRDATA00", 8U) != 0)
+    if (size < (int64_t)PAIN_HEADER_SIZE || !pain_read_at(format->device, format->base_address, header, sizeof(header)) || xx_rt_memcmp(header, "CRDATA00", 8U) != 0)
         return false;
     directory_offset = (int64_t)xx_data_get_u32(header + 8U, 4, 0, false);
     count = xx_data_get_u32(header + 12U, 4, 0, false);
     /* The directory must start inside the file and hold exactly count
      * entries, ending on the last byte. */
-    if (count == 0U || count > PAIN_MAX_MEMBERS ||
-        directory_offset < (int64_t)PAIN_HEADER_SIZE ||
-        directory_offset > size ||
+    if (count == 0U || count > PAIN_MAX_MEMBERS || directory_offset < (int64_t)PAIN_HEADER_SIZE || directory_offset > size ||
         (int64_t)count > (size - directory_offset) / (int64_t)PAIN_ENTRY_SIZE)
         return false;
     directory_size = (size_t)count * PAIN_ENTRY_SIZE;
     if (directory_offset + (int64_t)directory_size != size) return false;
     directory = (uint8_t *)xx_mem_alloc(directory_size);
-    if (!directory ||
-        !pain_read_at(format->device, format->base_address + directory_offset,
-                      directory, directory_size)) {
+    if (!directory || !pain_read_at(format->device, format->base_address + directory_offset, directory, directory_size)) {
         if (directory) xx_mem_free(directory);
         return false;
     }
@@ -252,20 +230,16 @@ static bool pain_parse(Abstractformat *format, pain_stream **result) {
         uint32_t method = xx_data_get_u32(entry + 4U, 4, 0, false);
         uint32_t packed = xx_data_get_u32(entry + 8U, 4, 0, false);
         uint32_t unpacked = xx_data_get_u32(entry + 12U, 4, 0, false);
-        if (method != PAIN_METHOD_STORE && method != PAIN_METHOD_LZSS)
-            goto fail;
+        if (method != PAIN_METHOD_STORE && method != PAIN_METHOD_LZSS) goto fail;
         if (!pain_plausible_raw_name(entry + 16U, PAIN_NAME_SIZE)) goto fail;
         /* Every declared extent has to live inside the body region. */
-        if ((int64_t)data_offset < (int64_t)PAIN_HEADER_SIZE ||
-            (int64_t)data_offset > directory_offset ||
-            (int64_t)packed > directory_offset - (int64_t)data_offset)
+        if ((int64_t)data_offset < (int64_t)PAIN_HEADER_SIZE || (int64_t)data_offset > directory_offset || (int64_t)packed > directory_offset - (int64_t)data_offset)
             goto fail;
         if (method == PAIN_METHOD_STORE && packed != unpacked) goto fail;
         xx_mem_zero(&member, sizeof(member));
         member.name = pain_normalize_name(entry + 16U, PAIN_NAME_SIZE);
         if (!member.name) goto fail;
-        member.header_offset = format->base_address + directory_offset +
-                               (int64_t)index * (int64_t)PAIN_ENTRY_SIZE;
+        member.header_offset = format->base_address + directory_offset + (int64_t)index * (int64_t)PAIN_ENTRY_SIZE;
         member.header_size = (int64_t)PAIN_ENTRY_SIZE;
         member.data_offset = format->base_address + (int64_t)data_offset;
         member.packed_size = (int64_t)packed;
@@ -286,17 +260,16 @@ fail:
     return false;
 }
 
-static bool pain_copy_options(xx_list_s *destination, const xx_list_s *source) {
+static bool pain_copy_options(xx_list_s *destination, const xx_list_s *source)
+{
     size_t index;
     if (!source) return true;
     for (index = 0U; index < source->count; ++index) {
-        const xx_meta *original =
-            (const xx_meta *)xx_list_at((const xx_list_t *)source, index);
+        const xx_meta *original = (const xx_meta *)xx_list_at((const xx_list_t *)source, index);
         xx_meta copy;
         if (!original) continue;
         xx_meta_init(&copy, original->meta_id);
-        if (!xx_var_copy(&copy.var, &original->var) ||
-            !xx_list_append(destination, &copy)) {
+        if (!xx_var_copy(&copy.var, &original->var) || !xx_list_append(destination, &copy)) {
             xx_meta_cleanup(&copy);
             return false;
         }
@@ -304,19 +277,19 @@ static bool pain_copy_options(xx_list_s *destination, const xx_list_s *source) {
     return true;
 }
 
-static const xx_var *pain_option(const xx_list_s *options, uint32_t id) {
+static const xx_var *pain_option(const xx_list_s *options, uint32_t id)
+{
     size_t index;
     if (!options) return NULL;
     for (index = 0U; index < options->count; ++index) {
-        const xx_meta *meta =
-            (const xx_meta *)xx_list_at((const xx_list_t *)options, index);
+        const xx_meta *meta = (const xx_meta *)xx_list_at((const xx_list_t *)options, index);
         if (meta && meta->meta_id == id) return &meta->var;
     }
     return NULL;
 }
 
-static bool pain_set_record(xx_archive_record *record,
-                           const pain_member *member) {
+static bool pain_set_record(xx_archive_record *record, const pain_member *member)
+{
     xx_archive_record_cleanup(record);
     xx_archive_record_init(record);
     record->header_offset = member->header_offset;
@@ -324,18 +297,11 @@ static bool pain_set_record(xx_archive_record *record,
     record->data_offset = member->data_offset;
     record->compressed_size = member->packed_size;
     return xx_archive_record_set_original_name(record, member->name) &&
-           xx_archive_record_set_meta_u64(record, XX_META_ID_COMPRESSED_SIZE,
-                                          (uint64_t)member->packed_size) &&
-           xx_archive_record_set_meta_u64(record, XX_META_ID_UNCOMPRESSED_SIZE,
-                                          member->unpacked_size) &&
-           xx_archive_record_set_meta_u64(record, XX_META_ID_COMPRESSION_METHOD,
-                                          member->method) &&
-           xx_archive_record_set_meta_u64(record, XX_META_ID_CRC32,
-                                          member->crc) &&
-           xx_archive_record_set_meta_u64(record, XX_META_ID_TIMESTAMP,
-                                          member->dos_time) &&
-           xx_archive_record_set_meta_bool(record, XX_META_ID_IS_FOLDER,
-                                           member->folder);
+           xx_archive_record_set_meta_u64(record, XX_META_ID_COMPRESSED_SIZE, (uint64_t)member->packed_size) &&
+           xx_archive_record_set_meta_u64(record, XX_META_ID_UNCOMPRESSED_SIZE, member->unpacked_size) &&
+           xx_archive_record_set_meta_u64(record, XX_META_ID_COMPRESSION_METHOD, member->method) &&
+           xx_archive_record_set_meta_u64(record, XX_META_ID_CRC32, member->crc) && xx_archive_record_set_meta_u64(record, XX_META_ID_TIMESTAMP, member->dos_time) &&
+           xx_archive_record_set_meta_bool(record, XX_META_ID_IS_FOLDER, member->folder);
 }
 
 #define PAIN_LZ_TABLE_SIZE 4096U
@@ -349,25 +315,22 @@ static bool pain_set_record(xx_archive_record *record,
 #define PAIN_MAX_EXPANSION 9U
 
 /* The three-byte hash both sides of the codec index the position table with. */
-static uint32_t pain_lz_hash(const uint8_t *at) {
-    uint32_t key = ((uint32_t)at[0] << 8) ^ ((uint32_t)at[1] << 4) ^
-                   (uint32_t)at[2];
+static uint32_t pain_lz_hash(const uint8_t *at)
+{
+    uint32_t key = ((uint32_t)at[0] << 8) ^ ((uint32_t)at[1] << 4) ^ (uint32_t)at[2];
     return ((key * UINT32_C(0x9E5F)) >> 4) & 0xFFFU;
 }
 
 /* The method 3 loop.  `table` holds output positions, -1 meaning a slot no
  * stream has written yet; every bound is checked against the real buffers
  * before anything is read or written. */
-static bool pain_lz_decode(const uint8_t *in, size_t in_size, uint8_t *out,
-                           size_t out_size, int64_t *table,
-                           size_t *produced) {
+static bool pain_lz_decode(const uint8_t *in, size_t in_size, uint8_t *out, size_t out_size, int64_t *table, size_t *produced)
+{
     size_t at = 0U, op = 0U, index;
     uint32_t flags = 1U;
     int literals = 0;
     int64_t remaining = (int64_t)in_size;
-    if ((!in && in_size != 0U) || (!out && out_size != 0U) || !table ||
-        !produced)
-        return false;
+    if ((!in && in_size != 0U) || (!out && out_size != 0U) || !table || !produced) return false;
     for (index = 0U; index < PAIN_LZ_TABLE_SIZE; ++index) table[index] = -1;
     *produced = 0U;
     /* An empty block produces nothing; the caller still has to match that
@@ -376,8 +339,7 @@ static bool pain_lz_decode(const uint8_t *in, size_t in_size, uint8_t *out,
     for (;;) {
         if (flags == 1U) {
             if (in_size - at < 2U) return false;
-            flags = ((uint32_t)in[at] | ((uint32_t)in[at + 1U] << 8)) |
-                    UINT32_C(0x10000);
+            flags = ((uint32_t)in[at] | ((uint32_t)in[at + 1U] << 8)) | UINT32_C(0x10000);
             at += 2U;
             remaining -= 2;
         }
@@ -396,8 +358,7 @@ static bool pain_lz_decode(const uint8_t *in, size_t in_size, uint8_t *out,
             int64_t source;
             if (in_size - at < 2U) return false;
             length = (size_t)(in[at] & 0x0FU) + 3U;
-            slot = (size_t)((((uint32_t)in[at] & 0xF0U) << 4) |
-                            (uint32_t)in[at + 1U]);
+            slot = (size_t)((((uint32_t)in[at] & 0xF0U) << 4) | (uint32_t)in[at + 1U]);
             at += 2U;
             remaining -= 2;
             if (out_size - op < length) return false;
@@ -422,9 +383,7 @@ static bool pain_lz_decode(const uint8_t *in, size_t in_size, uint8_t *out,
             if (literals > 0) {
                 size_t begin = start - (size_t)literals;
                 table[pain_lz_hash(out + begin)] = (int64_t)begin;
-                if (literals == 2)
-                    table[pain_lz_hash(out + begin + 1U)] =
-                        (int64_t)(begin + 1U);
+                if (literals == 2) table[pain_lz_hash(out + begin + 1U)] = (int64_t)(begin + 1U);
                 literals = 0;
             }
             table[slot] = (int64_t)start;
@@ -439,44 +398,33 @@ static bool pain_lz_decode(const uint8_t *in, size_t in_size, uint8_t *out,
 /* A method 3 payload is a uint32 block tag and then either the LZ stream or
  * the plaintext stored as is.  Nothing is emitted unless the block produces
  * exactly the plaintext length the directory declares. */
-static bool pain_decode_lzss(Abstractformat *format, const pain_member *member,
-                             uint8_t **plain, size_t *plain_size) {
+static bool pain_decode_lzss(Abstractformat *format, const pain_member *member, uint8_t **plain, size_t *plain_size)
+{
     uint8_t *packed = NULL;
     uint8_t *output = NULL;
     int64_t *table = NULL;
     size_t packed_size, body_size, output_size, produced = 0U;
     uint32_t tag;
-    if (member->packed_size < (int64_t)PAIN_LZ_BLOCK_HEADER ||
-        (uint64_t)member->packed_size > (uint64_t)SIZE_MAX ||
-        member->unpacked_size > (uint64_t)SIZE_MAX)
+    if (member->packed_size < (int64_t)PAIN_LZ_BLOCK_HEADER || (uint64_t)member->packed_size > (uint64_t)SIZE_MAX || member->unpacked_size > (uint64_t)SIZE_MAX)
         return false;
     packed_size = (size_t)member->packed_size;
     body_size = packed_size - PAIN_LZ_BLOCK_HEADER;
     /* Bound the declared plaintext by what the stream could possibly make of
      * its input, so a small member cannot ask for a large allocation. */
-    if (member->unpacked_size > (uint64_t)body_size * PAIN_MAX_EXPANSION)
-        return false;
+    if (member->unpacked_size > (uint64_t)body_size * PAIN_MAX_EXPANSION) return false;
     output_size = (size_t)member->unpacked_size;
     packed = (uint8_t *)xx_mem_alloc(packed_size);
     output = (uint8_t *)xx_mem_alloc(output_size != 0U ? output_size : 1U);
-    if (!packed || !output ||
-        !pain_read_at(format->device, member->data_offset, packed,
-                      packed_size))
-        goto fail;
+    if (!packed || !output || !pain_read_at(format->device, member->data_offset, packed, packed_size)) goto fail;
     tag = xx_data_get_u32(packed, 4, 0, false);
     if (tag == PAIN_LZ_BLOCK_STORED) {
         if (body_size != output_size) goto fail;
-        if (output_size != 0U)
-            xx_rt_memcpy(output, packed + PAIN_LZ_BLOCK_HEADER, output_size);
+        if (output_size != 0U) xx_rt_memcpy(output, packed + PAIN_LZ_BLOCK_HEADER, output_size);
     } else if (tag == PAIN_LZ_BLOCK_PACKED) {
         /* The position table is 32 KiB, which is too much to put on the
          * stack of a library call. */
         table = (int64_t *)xx_mem_alloc(PAIN_LZ_TABLE_SIZE * sizeof(*table));
-        if (!table ||
-            !pain_lz_decode(packed + PAIN_LZ_BLOCK_HEADER, body_size, output,
-                            output_size, table, &produced) ||
-            produced != output_size)
-            goto fail;
+        if (!table || !pain_lz_decode(packed + PAIN_LZ_BLOCK_HEADER, body_size, output, output_size, table, &produced) || produced != output_size) goto fail;
         xx_mem_free(table);
         table = NULL;
     } else {
@@ -493,25 +441,17 @@ fail:
     return false;
 }
 
-static bool pain_decode_member(Abstractformat *format,
-                               const pain_member *member, uint8_t **plain,
-                               size_t *plain_size) {
+static bool pain_decode_member(Abstractformat *format, const pain_member *member, uint8_t **plain, size_t *plain_size)
+{
     uint8_t *output;
     size_t output_size;
-    if (!format || !member || !plain || !plain_size ||
-        member->packed_size < 0 || member->unpacked_size > SIZE_MAX)
-        return false;
-    if (member->method == PAIN_METHOD_LZSS)
-        return pain_decode_lzss(format, member, plain, plain_size);
-    if (member->method != PAIN_METHOD_STORE ||
-        (uint64_t)member->packed_size != member->unpacked_size)
-        return false;
+    if (!format || !member || !plain || !plain_size || member->packed_size < 0 || member->unpacked_size > SIZE_MAX) return false;
+    if (member->method == PAIN_METHOD_LZSS) return pain_decode_lzss(format, member, plain, plain_size);
+    if (member->method != PAIN_METHOD_STORE || (uint64_t)member->packed_size != member->unpacked_size) return false;
     output_size = (size_t)member->unpacked_size;
     output = (uint8_t *)xx_mem_alloc(output_size != 0U ? output_size : 1U);
     if (!output) return false;
-    if (output_size != 0U &&
-        !pain_read_at(format->device, member->data_offset, output,
-                      output_size)) {
+    if (output_size != 0U && !pain_read_at(format->device, member->data_offset, output, output_size)) {
         xx_mem_free(output);
         return false;
     }
@@ -520,7 +460,8 @@ static bool pain_decode_member(Abstractformat *format,
     return true;
 }
 
-void xx_pain_init(xx_pain *archive, xx_io_device *device, int64_t base_address) {
+void xx_pain_init(xx_pain *archive, xx_io_device *device, int64_t base_address)
+{
     if (!archive) return;
     xx_mem_zero(archive, sizeof(*archive));
     xx_format_init(&archive->format, device, base_address);
@@ -533,38 +474,36 @@ void xx_pain_init(xx_pain *archive, xx_io_device *device, int64_t base_address) 
     archive->format.check_is_valid = xx_pain_check_is_valid;
     archive->format.handle_base_info = xx_pain_handle_base_info;
     archive->format.get_format_size = xx_pain_get_format_size;
-    archive->format.get_number_of_archive_records =
-        xx_pain_get_number_of_archive_records;
-    archive->format.create_archive_records_reading =
-        xx_pain_create_archive_records_reading;
-    archive->format.get_current_archive_record =
-        xx_pain_get_current_archive_record;
-    archive->format.unpack_current_archive_record =
-        xx_pain_unpack_current_archive_record;
-    archive->format.archive_record_move_to_next =
-        xx_pain_archive_record_move_to_next;
-    archive->format.free_archive_records_reading =
-        xx_pain_free_archive_records_reading;
+    archive->format.get_number_of_archive_records = xx_pain_get_number_of_archive_records;
+    archive->format.create_archive_records_reading = xx_pain_create_archive_records_reading;
+    archive->format.get_current_archive_record = xx_pain_get_current_archive_record;
+    archive->format.unpack_current_archive_record = xx_pain_unpack_current_archive_record;
+    archive->format.archive_record_move_to_next = xx_pain_archive_record_move_to_next;
+    archive->format.free_archive_records_reading = xx_pain_free_archive_records_reading;
     archive->archive_end = -1;
 }
 
-xx_pain *xx_pain_create(xx_io_device *device, int64_t base_address) {
+xx_pain *xx_pain_create(xx_io_device *device, int64_t base_address)
+{
     xx_pain *archive = (xx_pain *)xx_mem_alloc(sizeof(*archive));
     if (archive) xx_pain_init(archive, device, base_address);
     return archive;
 }
 
-void xx_pain_destroy(xx_pain *archive) {
+void xx_pain_destroy(xx_pain *archive)
+{
     if (archive) xx_format_cleanup_extra_parameters(&archive->format);
 }
 
-void xx_pain_free(xx_pain *archive) {
+void xx_pain_free(xx_pain *archive)
+{
     if (!archive) return;
     xx_pain_destroy(archive);
     xx_mem_free(archive);
 }
 
-bool xx_pain_check_is_valid(Abstractformat *format, xx_pd_struct *pd) {
+bool xx_pain_check_is_valid(Abstractformat *format, xx_pd_struct *pd)
+{
     pain_stream *stream;
     (void)pd;
     if (!pain_parse(format, &stream)) return false;
@@ -572,7 +511,8 @@ bool xx_pain_check_is_valid(Abstractformat *format, xx_pd_struct *pd) {
     return true;
 }
 
-bool xx_pain_handle_base_info(Abstractformat *format, xx_pd_struct *pd) {
+bool xx_pain_handle_base_info(Abstractformat *format, xx_pd_struct *pd)
+{
     pain_stream *stream;
     xx_pain *archive;
     (void)pd;
@@ -588,21 +528,18 @@ bool xx_pain_handle_base_info(Abstractformat *format, xx_pd_struct *pd) {
     return true;
 }
 
-int64_t xx_pain_get_format_size(Abstractformat *format, xx_pd_struct *pd) {
-    return format && (format->base_info_handled ||
-                      xx_pain_handle_base_info(format, pd))
-               ? format->format_size : -1;
+int64_t xx_pain_get_format_size(Abstractformat *format, xx_pd_struct *pd)
+{
+    return format && (format->base_info_handled || xx_pain_handle_base_info(format, pd)) ? format->format_size : -1;
 }
 
-uint64_t xx_pain_get_number_of_archive_records(Abstractformat *format,
-                                              xx_pd_struct *pd) {
-    return format && (format->base_info_handled ||
-                      xx_pain_handle_base_info(format, pd))
-               ? ((xx_pain *)format)->number_of_records : 0U;
+uint64_t xx_pain_get_number_of_archive_records(Abstractformat *format, xx_pd_struct *pd)
+{
+    return format && (format->base_info_handled || xx_pain_handle_base_info(format, pd)) ? ((xx_pain *)format)->number_of_records : 0U;
 }
 
-xx_archive_record_state *xx_pain_create_archive_records_reading(
-    Abstractformat *format, const xx_list_s *options, xx_pd_struct *pd) {
+xx_archive_record_state *xx_pain_create_archive_records_reading(Abstractformat *format, const xx_list_s *options, xx_pd_struct *pd)
+{
     pain_stream *stream;
     xx_archive_record_state *state;
     (void)pd;
@@ -616,8 +553,7 @@ xx_archive_record_state *xx_pain_create_archive_records_reading(
     state->internal_state = stream;
     state->free_internal = pain_stream_free;
     state->total_records = stream->count;
-    if (!pain_copy_options(&state->options, options) ||
-        !pain_set_record(&state->current_record, &stream->items[0])) {
+    if (!pain_copy_options(&state->options, options) || !pain_set_record(&state->current_record, &stream->items[0])) {
         xx_archive_record_state_free(state);
         return NULL;
     }
@@ -625,32 +561,26 @@ xx_archive_record_state *xx_pain_create_archive_records_reading(
     return state;
 }
 
-const xx_archive_record *xx_pain_get_current_archive_record(
-    Abstractformat *format, xx_archive_record_state *state) {
-    return format && state && state->format == format && state->has_record
-               ? &state->current_record : NULL;
+const xx_archive_record *xx_pain_get_current_archive_record(Abstractformat *format, xx_archive_record_state *state)
+{
+    return format && state && state->format == format && state->has_record ? &state->current_record : NULL;
 }
 
-bool xx_pain_archive_record_move_to_next(Abstractformat *format,
-                                        xx_archive_record_state *state,
-                                        xx_pd_struct *pd) {
+bool xx_pain_archive_record_move_to_next(Abstractformat *format, xx_archive_record_state *state, xx_pd_struct *pd)
+{
     pain_stream *stream;
     (void)pd;
-    if (!format || !state || state->format != format ||
-        !(stream = (pain_stream *)state->internal_state) ||
-        ++stream->index >= stream->count) {
+    if (!format || !state || state->format != format || !(stream = (pain_stream *)state->internal_state) || ++stream->index >= stream->count) {
         if (state) state->has_record = false;
         return false;
     }
     ++state->current_index;
-    state->has_record = pain_set_record(&state->current_record,
-                                       &stream->items[stream->index]);
+    state->has_record = pain_set_record(&state->current_record, &stream->items[stream->index]);
     return state->has_record;
 }
 
-bool xx_pain_unpack_current_archive_record(Abstractformat *format,
-                                          xx_archive_record_state *state,
-                                          xx_pd_struct *pd) {
+bool xx_pain_unpack_current_archive_record(Abstractformat *format, xx_archive_record_state *state, xx_pd_struct *pd)
+{
     pain_stream *stream;
     pain_member *member;
     const xx_var *path_option;
@@ -661,31 +591,24 @@ bool xx_pain_unpack_current_archive_record(Abstractformat *format,
     size_t plain_size = 0U, written = 0U;
     bool result = false;
     bool created = false;
-    if (!format || !state || state->format != format || !state->has_record ||
-        !(stream = (pain_stream *)state->internal_state) ||
-        stream->index >= stream->count || (pd && xx_pd_is_stopped(pd)))
+    if (!format || !state || state->format != format || !state->has_record || !(stream = (pain_stream *)state->internal_state) || stream->index >= stream->count ||
+        (pd && xx_pd_is_stopped(pd)))
         return false;
     member = &stream->items[stream->index];
-    if (!pain_safe_output_name(member->name) ||
-        !pain_decode_member(format, member, &plain, &plain_size)) goto done;
+    if (!pain_safe_output_name(member->name) || !pain_decode_member(format, member, &plain, &plain_size)) goto done;
     path_option = pain_option(&state->options, XX_META_ID_OPT_UNPACK_PATH);
     if (!path_option) {
         result = true;
         goto done;
     }
-    if (path_option->type == XX_VAR_TYPE_STRING ||
-        path_option->type == XX_VAR_TYPE_STRING_VIEW)
-        base = xx_var_get_str(path_option);
-    else if (path_option->type == XX_VAR_TYPE_WSTRING ||
-             path_option->type == XX_VAR_TYPE_WSTRING_VIEW) {
+    if (path_option->type == XX_VAR_TYPE_STRING || path_option->type == XX_VAR_TYPE_STRING_VIEW) base = xx_var_get_str(path_option);
+    else if (path_option->type == XX_VAR_TYPE_WSTRING || path_option->type == XX_VAR_TYPE_WSTRING_VIEW) {
         owned_base = xx_str_unicode_to_utf8(xx_var_get_wstr(path_option));
         base = owned_base;
     }
     if (!base) goto done;
-    path = (base[0] && base[xx_str_len(base) - 1U] != '/' &&
-            base[xx_str_len(base) - 1U] != '\\')
-               ? xx_str_concat3(base, "/", member->name)
-               : xx_str_concat(base, member->name);
+    path = (base[0] && base[xx_str_len(base) - 1U] != '/' && base[xx_str_len(base) - 1U] != '\\') ? xx_str_concat3(base, "/", member->name)
+                                                                                                  : xx_str_concat(base, member->name);
     if (!path) goto done;
     if (member->folder) {
         result = xx_store_create_dirs_a(path, true);
@@ -698,8 +621,7 @@ bool xx_pain_unpack_current_archive_record(Abstractformat *format,
         if (!destination) goto done;
         result = true;
         while (written < plain_size) {
-            ssize_t amount = xx_io_write(destination, plain + written,
-                                         plain_size - written);
+            ssize_t amount = xx_io_write(destination, plain + written, plain_size - written);
             if (amount <= 0 || (size_t)amount > plain_size - written) {
                 result = false;
                 break;
@@ -716,8 +638,8 @@ done:
     return result;
 }
 
-void xx_pain_free_archive_records_reading(Abstractformat *format,
-                                         xx_archive_record_state *state) {
+void xx_pain_free_archive_records_reading(Abstractformat *format, xx_archive_record_state *state)
+{
     (void)format;
     xx_archive_record_state_free(state);
 }

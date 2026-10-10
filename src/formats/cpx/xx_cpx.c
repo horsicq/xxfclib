@@ -119,15 +119,12 @@ typedef struct cpx_stream_s {
     uint8_t version;
 } cpx_stream;
 
-static bool cpx_read_at(xx_io_device *device, int64_t offset, void *buffer,
-                        size_t size) {
+static bool cpx_read_at(xx_io_device *device, int64_t offset, void *buffer, size_t size)
+{
     size_t done = 0U;
-    if (!device || (!buffer && size != 0U) || offset < 0 ||
-        xx_io_seek64(device, offset, SEEK_SET) != 0)
-        return false;
+    if (!device || (!buffer && size != 0U) || offset < 0 || xx_io_seek64(device, offset, SEEK_SET) != 0) return false;
     while (done < size) {
-        ssize_t amount = xx_io_read(device, (uint8_t *)buffer + done,
-                                    size - done);
+        ssize_t amount = xx_io_read(device, (uint8_t *)buffer + done, size - done);
         if (amount <= 0 || (size_t)amount > size - done) return false;
         done += (size_t)amount;
     }
@@ -144,9 +141,8 @@ typedef struct cpx_lzw_s {
     uint8_t stack[CPX_LZW_TABLE];
 } cpx_lzw;
 
-static bool cpx_lzw_decode(const uint8_t *input, size_t input_size,
-                           uint8_t *output, size_t output_size,
-                           size_t *written) {
+static bool cpx_lzw_decode(const uint8_t *input, size_t input_size, uint8_t *output, size_t output_size, size_t *written)
+{
     cpx_lzw *tables;
     size_t produced = 0U;
     size_t bit = 0U;
@@ -158,8 +154,7 @@ static bool cpx_lzw_decode(const uint8_t *input, size_t input_size,
     bool ok = false;
 
     if (written) *written = 0U;
-    if ((!input && input_size != 0U) || (!output && output_size != 0U))
-        return false;
+    if ((!input && input_size != 0U) || (!output && output_size != 0U)) return false;
     if (input_size > SIZE_MAX / 8U) return false;
     total_bits = input_size * 8U;
 
@@ -176,8 +171,7 @@ static bool cpx_lzw_decode(const uint8_t *input, size_t input_size,
         if (total_bits - bit < width) goto done;
         for (index = 0U; index < width; ++index) {
             size_t at = bit + index;
-            code = (code << 1U) |
-                   (uint32_t)((input[at >> 3U] >> (7U - (at & 7U))) & 1U);
+            code = (code << 1U) | (uint32_t)((input[at >> 3U] >> (7U - (at & 7U))) & 1U);
         }
         bit += width;
 
@@ -199,9 +193,7 @@ static bool cpx_lzw_decode(const uint8_t *input, size_t input_size,
             walk = (uint32_t)previous;
         }
         while (walk >= CPX_LZW_CLEAR) {
-            if ((walk >= CPX_LZW_TABLE) || (walk < CPX_LZW_FIRST) ||
-                (walk >= (uint32_t)next) || (depth >= sizeof(tables->stack)))
-                goto done;
+            if ((walk >= CPX_LZW_TABLE) || (walk < CPX_LZW_FIRST) || (walk >= (uint32_t)next) || (depth >= sizeof(tables->stack))) goto done;
             tables->stack[depth++] = tables->suffix[walk];
             walk = tables->prefix[walk];
         }
@@ -221,8 +213,7 @@ static bool cpx_lzw_decode(const uint8_t *input, size_t input_size,
         }
         previous = (int32_t)code;
         previous_first = first;
-        if ((next + 1U >= (1U << width)) && (width < CPX_LZW_MAX_BITS))
-            ++width;
+        if ((next + 1U >= (1U << width)) && (width < CPX_LZW_MAX_BITS)) ++width;
     }
     ok = (produced == output_size);
 
@@ -238,7 +229,8 @@ done:
 
 /* DOS 8.3 names with no path component.  Characters a host filesystem would
  * object to are neutralized; an empty result is rejected by the caller. */
-static char *cpx_normalize_name(const uint8_t *bytes, size_t size) {
+static char *cpx_normalize_name(const uint8_t *bytes, size_t size)
+{
     char *name;
     size_t input, output = 0U;
     if (size > CPX_MAX_NAME) return NULL;
@@ -247,34 +239,28 @@ static char *cpx_normalize_name(const uint8_t *bytes, size_t size) {
     for (input = 0U; input < size; ++input) {
         uint8_t c = bytes[input];
         if (c == 0U) break;
-        if (c < 0x20U || c == '/' || c == '\\' || c == '"' || c == '*' ||
-            c == ':' || c == '<' || c == '>' || c == '?' || c == '|')
-            name[output++] = '_';
-        else
-            name[output++] = (char)c;
+        if (c < 0x20U || c == '/' || c == '\\' || c == '"' || c == '*' || c == ':' || c == '<' || c == '>' || c == '?' || c == '|') name[output++] = '_';
+        else name[output++] = (char)c;
     }
-    while (output != 0U &&
-           (name[output - 1U] == ' ' || name[output - 1U] == '.'))
-        --output;
+    while (output != 0U && (name[output - 1U] == ' ' || name[output - 1U] == '.')) --output;
     name[output] = 0;
     return name;
 }
 
-static bool cpx_safe_output_name(const char *name) {
+static bool cpx_safe_output_name(const char *name)
+{
     size_t length;
     if (!name || !name[0]) return false;
-    if (name[0] == '.' && (!name[1] || (name[1] == '.' && !name[2])))
-        return false;
+    if (name[0] == '.' && (!name[1] || (name[1] == '.' && !name[2]))) return false;
     for (length = 0U; name[length]; ++length) {
         unsigned char c = (unsigned char)name[length];
-        if (c < 0x20U || c == '/' || c == '\\' || c == ':' || c == '<' ||
-            c == '>' || c == '"' || c == '|' || c == '?' || c == '*')
-            return false;
+        if (c < 0x20U || c == '/' || c == '\\' || c == ':' || c == '<' || c == '>' || c == '"' || c == '|' || c == '?' || c == '*') return false;
     }
     return true;
 }
 
-static void cpx_stream_free(void *opaque) {
+static void cpx_stream_free(void *opaque)
+{
     cpx_stream *stream = (cpx_stream *)opaque;
     size_t index;
     if (!stream) return;
@@ -284,7 +270,8 @@ static void cpx_stream_free(void *opaque) {
     xx_mem_free(stream);
 }
 
-static cpx_stream *cpx_stream_new(size_t count) {
+static cpx_stream *cpx_stream_new(size_t count)
+{
     cpx_stream *stream;
     if (count == 0U || count > CPX_MAX_MEMBERS) return NULL;
     stream = (cpx_stream *)xx_mem_calloc(1U, sizeof(*stream));
@@ -297,7 +284,8 @@ static cpx_stream *cpx_stream_new(size_t count) {
     return stream;
 }
 
-static bool cpx_check_size(uint64_t unpacked, int64_t packed) {
+static bool cpx_check_size(uint64_t unpacked, int64_t packed)
+{
     if (unpacked > CPX_MAX_UNPACKED) return false;
     if (packed < 0) return false;
     /* A tiny extent cannot legitimately declare a huge plaintext. */
@@ -307,15 +295,15 @@ static bool cpx_check_size(uint64_t unpacked, int64_t packed) {
 
 /* Heapsort: a member's extent is the distance to the next payload offset in
  * sorted order, and the record order is not that order. */
-static void cpx_sift(int64_t *values, size_t start, size_t count) {
+static void cpx_sift(int64_t *values, size_t start, size_t count)
+{
     size_t root = start;
     for (;;) {
         size_t child = root * 2U + 1U;
         size_t swap = root;
         if (child >= count) break;
         if (values[swap] < values[child]) swap = child;
-        if (child + 1U < count && values[swap] < values[child + 1U])
-            swap = child + 1U;
+        if (child + 1U < count && values[swap] < values[child + 1U]) swap = child + 1U;
         if (swap == root) break;
         {
             int64_t temporary = values[root];
@@ -326,7 +314,8 @@ static void cpx_sift(int64_t *values, size_t start, size_t count) {
     }
 }
 
-static void cpx_sort_offsets(int64_t *values, size_t count) {
+static void cpx_sort_offsets(int64_t *values, size_t count)
+{
     size_t index;
     if (count < 2U) return;
     for (index = count / 2U; index-- > 0U;) cpx_sift(values, index, count);
@@ -342,8 +331,8 @@ static void cpx_sort_offsets(int64_t *values, size_t count) {
 /* v1: flat directory                                                         */
 /* ------------------------------------------------------------------------- */
 
-static bool cpx_parse_v1(Abstractformat *format, int64_t size,
-                         const uint8_t *header, cpx_stream **result) {
+static bool cpx_parse_v1(Abstractformat *format, int64_t size, const uint8_t *header, cpx_stream **result)
+{
     cpx_stream *stream;
     uint8_t *directory = NULL;
     size_t count = (size_t)xx_data_get_u16(header + 4U, 2, 0, false);
@@ -358,10 +347,7 @@ static bool cpx_parse_v1(Abstractformat *format, int64_t size,
     stream = cpx_stream_new(count);
     if (!stream) return false;
     directory = (uint8_t *)xx_mem_alloc((size_t)directory_size);
-    if (!directory ||
-        !cpx_read_at(format->device, format->base_address + CPX_V1_HEADER_SIZE,
-                     directory, (size_t)directory_size))
-        goto fail;
+    if (!directory || !cpx_read_at(format->device, format->base_address + CPX_V1_HEADER_SIZE, directory, (size_t)directory_size)) goto fail;
 
     for (index = 0U; index < count; ++index) {
         const uint8_t *record = directory + index * CPX_V1_RECORD_SIZE;
@@ -387,8 +373,7 @@ static bool cpx_parse_v1(Abstractformat *format, int64_t size,
 
         member->name = cpx_normalize_name(record, CPX_V1_NAME_SIZE);
         if (!member->name || !member->name[0]) goto fail;
-        member->header_offset = format->base_address + CPX_V1_HEADER_SIZE +
-                                (int64_t)index * CPX_V1_RECORD_SIZE;
+        member->header_offset = format->base_address + CPX_V1_HEADER_SIZE + (int64_t)index * CPX_V1_RECORD_SIZE;
         member->header_size = CPX_V1_RECORD_SIZE;
         member->data_offset = format->base_address + offset;
         member->attributes = record[13];
@@ -403,11 +388,9 @@ static bool cpx_parse_v1(Abstractformat *format, int64_t size,
     /* Records need not be in offset order, so a member's extent runs to the
      * next offset in sorted order - or to the end of file for the last. */
     {
-        int64_t *sorted = (int64_t *)xx_mem_alloc(stream->count *
-                                                  sizeof(int64_t));
+        int64_t *sorted = (int64_t *)xx_mem_alloc(stream->count * sizeof(int64_t));
         if (!sorted) goto fail;
-        for (index = 0U; index < stream->count; ++index)
-            sorted[index] = stream->items[index].data_offset;
+        for (index = 0U; index < stream->count; ++index) sorted[index] = stream->items[index].data_offset;
         cpx_sort_offsets(sorted, stream->count);
         for (index = 0U; index < stream->count; ++index) {
             int64_t here = stream->items[index].data_offset;
@@ -428,10 +411,8 @@ static bool cpx_parse_v1(Abstractformat *format, int64_t size,
         if (stream->items[index].stored) {
             /* The low bits of a stored member's size field do not agree with
              * its extent across the corpus, so the extent is authoritative. */
-            stream->items[index].unpacked_size =
-                (uint64_t)stream->items[index].packed_size;
-        } else if (!cpx_check_size(stream->items[index].unpacked_size,
-                                   stream->items[index].packed_size)) {
+            stream->items[index].unpacked_size = (uint64_t)stream->items[index].packed_size;
+        } else if (!cpx_check_size(stream->items[index].unpacked_size, stream->items[index].packed_size)) {
             goto fail;
         }
     }
@@ -451,8 +432,8 @@ fail:
 /* v4: sectioned                                                              */
 /* ------------------------------------------------------------------------- */
 
-static bool cpx_parse_v4(Abstractformat *format, int64_t size,
-                         const uint8_t *header, cpx_stream **result) {
+static bool cpx_parse_v4(Abstractformat *format, int64_t size, const uint8_t *header, cpx_stream **result)
+{
     cpx_stream *stream = NULL;
     uint8_t *records = NULL;
     uint8_t *names = NULL;
@@ -467,28 +448,18 @@ static bool cpx_parse_v4(Abstractformat *format, int64_t size,
     size_t count, index;
 
     if (header_size < CPX_V4_HEADER_SIZE || header_size > size) return false;
-    if (record_size <= 0 || (record_size % CPX_V4_RECORD_SIZE) != 0)
-        return false;
-    if (record_offset < header_size || record_offset > size ||
-        size - record_offset < record_size)
-        return false;
-    if (name_size <= 0 || name_offset < header_size || name_offset > size ||
-        size - name_offset < name_size)
-        return false;
-    if (extra_size < 0 || extra_offset < 0 || extra_offset > size ||
-        size - extra_offset < extra_size)
-        return false;
+    if (record_size <= 0 || (record_size % CPX_V4_RECORD_SIZE) != 0) return false;
+    if (record_offset < header_size || record_offset > size || size - record_offset < record_size) return false;
+    if (name_size <= 0 || name_offset < header_size || name_offset > size || size - name_offset < name_size) return false;
+    if (extra_size < 0 || extra_offset < 0 || extra_offset > size || size - extra_offset < extra_size) return false;
 
     count = (size_t)(record_size / CPX_V4_RECORD_SIZE);
     stream = cpx_stream_new(count);
     if (!stream) return false;
     records = (uint8_t *)xx_mem_alloc((size_t)record_size);
     names = (uint8_t *)xx_mem_alloc((size_t)name_size);
-    if (!records || !names ||
-        !cpx_read_at(format->device, format->base_address + record_offset,
-                     records, (size_t)record_size) ||
-        !cpx_read_at(format->device, format->base_address + name_offset, names,
-                     (size_t)name_size))
+    if (!records || !names || !cpx_read_at(format->device, format->base_address + record_offset, records, (size_t)record_size) ||
+        !cpx_read_at(format->device, format->base_address + name_offset, names, (size_t)name_size))
         goto fail;
 
     for (index = 0U; index < count; ++index) {
@@ -506,12 +477,8 @@ static bool cpx_parse_v4(Abstractformat *format, int64_t size,
         member->name = cpx_normalize_name(names + name_at, (size_t)limit);
         if (!member->name || !member->name[0]) goto fail;
 
-        if (packed < 0 || offset < header_size || offset > size ||
-            size - offset < packed)
-            goto fail;
-        member->header_offset =
-            format->base_address + record_offset +
-            (int64_t)index * CPX_V4_RECORD_SIZE;
+        if (packed < 0 || offset < header_size || offset > size || size - offset < packed) goto fail;
+        member->header_offset = format->base_address + record_offset + (int64_t)index * CPX_V4_RECORD_SIZE;
         member->header_size = CPX_V4_RECORD_SIZE;
         member->data_offset = format->base_address + offset;
         member->packed_size = packed;
@@ -541,24 +508,18 @@ fail:
     return false;
 }
 
-static bool cpx_parse(Abstractformat *format, cpx_stream **result) {
+static bool cpx_parse(Abstractformat *format, cpx_stream **result)
+{
     uint8_t header[CPX_V4_HEADER_SIZE];
     int64_t total, size;
-    if (!format || !format->device || !result || format->base_address < 0)
-        return false;
+    if (!format || !format->device || !result || format->base_address < 0) return false;
     total = xx_io_total_size(format->device);
     if (total < format->base_address) return false;
     size = total - format->base_address;
     if (size < CPX_V1_HEADER_SIZE + CPX_V1_RECORD_SIZE) return false;
-    if (!cpx_read_at(format->device, format->base_address, header,
-                     (size_t)(size < (int64_t)sizeof(header)
-                                  ? size
-                                  : (int64_t)sizeof(header))))
-        return false;
-    if (header[1] != 0x16U || header[2] != 0x27U || header[3] != 0x93U)
-        return false;
-    if (header[0] == 0x28U || header[0] == 0x2aU)
-        return cpx_parse_v1(format, size, header, result);
+    if (!cpx_read_at(format->device, format->base_address, header, (size_t)(size < (int64_t)sizeof(header) ? size : (int64_t)sizeof(header)))) return false;
+    if (header[1] != 0x16U || header[2] != 0x27U || header[3] != 0x93U) return false;
+    if (header[0] == 0x28U || header[0] == 0x2aU) return cpx_parse_v1(format, size, header, result);
     if (header[0] == 0x2cU) {
         if (size < CPX_V4_HEADER_SIZE) return false;
         return cpx_parse_v4(format, size, header, result);
@@ -568,17 +529,16 @@ static bool cpx_parse(Abstractformat *format, cpx_stream **result) {
 
 /* ------------------------------------------------------------------------- */
 
-static bool cpx_copy_options(xx_list_s *destination, const xx_list_s *source) {
+static bool cpx_copy_options(xx_list_s *destination, const xx_list_s *source)
+{
     size_t index;
     if (!source) return true;
     for (index = 0U; index < source->count; ++index) {
-        const xx_meta *original =
-            (const xx_meta *)xx_list_at((const xx_list_t *)source, index);
+        const xx_meta *original = (const xx_meta *)xx_list_at((const xx_list_t *)source, index);
         xx_meta copy;
         if (!original) continue;
         xx_meta_init(&copy, original->meta_id);
-        if (!xx_var_copy(&copy.var, &original->var) ||
-            !xx_list_append(destination, &copy)) {
+        if (!xx_var_copy(&copy.var, &original->var) || !xx_list_append(destination, &copy)) {
             xx_meta_cleanup(&copy);
             return false;
         }
@@ -586,19 +546,19 @@ static bool cpx_copy_options(xx_list_s *destination, const xx_list_s *source) {
     return true;
 }
 
-static const xx_var *cpx_option(const xx_list_s *options, uint32_t id) {
+static const xx_var *cpx_option(const xx_list_s *options, uint32_t id)
+{
     size_t index;
     if (!options) return NULL;
     for (index = 0U; index < options->count; ++index) {
-        const xx_meta *meta =
-            (const xx_meta *)xx_list_at((const xx_list_t *)options, index);
+        const xx_meta *meta = (const xx_meta *)xx_list_at((const xx_list_t *)options, index);
         if (meta && meta->meta_id == id) return &meta->var;
     }
     return NULL;
 }
 
-static bool cpx_set_record(xx_archive_record *record,
-                           const cpx_member *member) {
+static bool cpx_set_record(xx_archive_record *record, const cpx_member *member)
+{
     xx_archive_record_cleanup(record);
     xx_archive_record_init(record);
     record->header_offset = member->header_offset;
@@ -606,48 +566,33 @@ static bool cpx_set_record(xx_archive_record *record,
     record->data_offset = member->data_offset;
     record->compressed_size = member->packed_size;
     return xx_archive_record_set_original_name(record, member->name) &&
-           xx_archive_record_set_meta_u64(record, XX_META_ID_COMPRESSED_SIZE,
-                                          (uint64_t)member->packed_size) &&
-           xx_archive_record_set_meta_u64(record, XX_META_ID_UNCOMPRESSED_SIZE,
-                                          member->unpacked_size) &&
-           xx_archive_record_set_meta_u64(record, XX_META_ID_COMPRESSION_METHOD,
-                                          member->stored ? 0U : 1U) &&
-           xx_archive_record_set_meta_u64(record, XX_META_ID_ATTRIBUTES,
-                                          member->attributes) &&
-           xx_archive_record_set_meta_u64(record, XX_META_ID_TIMESTAMP,
-                                          member->timestamp) &&
-           xx_archive_record_set_meta_u64(record, XX_META_ID_FLAGS,
-                                          member->flags) &&
-           xx_archive_record_set_meta_bool(record, XX_META_ID_IS_ENCRYPTED,
-                                           false) &&
-           xx_archive_record_set_meta_bool(record, XX_META_ID_IS_FOLDER, false);
+           xx_archive_record_set_meta_u64(record, XX_META_ID_COMPRESSED_SIZE, (uint64_t)member->packed_size) &&
+           xx_archive_record_set_meta_u64(record, XX_META_ID_UNCOMPRESSED_SIZE, member->unpacked_size) &&
+           xx_archive_record_set_meta_u64(record, XX_META_ID_COMPRESSION_METHOD, member->stored ? 0U : 1U) &&
+           xx_archive_record_set_meta_u64(record, XX_META_ID_ATTRIBUTES, member->attributes) &&
+           xx_archive_record_set_meta_u64(record, XX_META_ID_TIMESTAMP, member->timestamp) && xx_archive_record_set_meta_u64(record, XX_META_ID_FLAGS, member->flags) &&
+           xx_archive_record_set_meta_bool(record, XX_META_ID_IS_ENCRYPTED, false) && xx_archive_record_set_meta_bool(record, XX_META_ID_IS_FOLDER, false);
 }
 
-static bool cpx_decode_member(Abstractformat *format, const cpx_member *member,
-                              uint8_t **plain, size_t *plain_size) {
+static bool cpx_decode_member(Abstractformat *format, const cpx_member *member, uint8_t **plain, size_t *plain_size)
+{
     uint8_t *packed = NULL;
     uint8_t *output = NULL;
     size_t written = 0U;
     size_t output_size;
     bool decoded = false;
-    if (!format || !member || !plain || !plain_size ||
-        member->packed_size <= 0 || member->unpacked_size > SIZE_MAX)
-        return false;
+    if (!format || !member || !plain || !plain_size || member->packed_size <= 0 || member->unpacked_size > SIZE_MAX) return false;
     output_size = (size_t)member->unpacked_size;
     packed = (uint8_t *)xx_mem_alloc((size_t)member->packed_size);
     output = (uint8_t *)xx_mem_alloc(output_size != 0U ? output_size : 1U);
-    if (!packed || !output ||
-        !cpx_read_at(format->device, member->data_offset, packed,
-                     (size_t)member->packed_size))
-        goto fail;
+    if (!packed || !output || !cpx_read_at(format->device, member->data_offset, packed, (size_t)member->packed_size)) goto fail;
     if (member->stored) {
         if (output_size != (size_t)member->packed_size) goto fail;
         xx_rt_memcpy(output, packed, output_size);
         written = output_size;
         decoded = true;
     } else {
-        decoded = cpx_lzw_decode(packed, (size_t)member->packed_size, output,
-                                 output_size, &written);
+        decoded = cpx_lzw_decode(packed, (size_t)member->packed_size, output, output_size, &written);
     }
     if (!decoded || written != output_size) goto fail;
     xx_mem_free(packed);
@@ -660,7 +605,8 @@ fail:
     return false;
 }
 
-void xx_cpx_init(xx_cpx *archive, xx_io_device *device, int64_t base_address) {
+void xx_cpx_init(xx_cpx *archive, xx_io_device *device, int64_t base_address)
+{
     if (!archive) return;
     xx_mem_zero(archive, sizeof(*archive));
     xx_format_init(&archive->format, device, base_address);
@@ -673,38 +619,36 @@ void xx_cpx_init(xx_cpx *archive, xx_io_device *device, int64_t base_address) {
     archive->format.check_is_valid = xx_cpx_check_is_valid;
     archive->format.handle_base_info = xx_cpx_handle_base_info;
     archive->format.get_format_size = xx_cpx_get_format_size;
-    archive->format.get_number_of_archive_records =
-        xx_cpx_get_number_of_archive_records;
-    archive->format.create_archive_records_reading =
-        xx_cpx_create_archive_records_reading;
-    archive->format.get_current_archive_record =
-        xx_cpx_get_current_archive_record;
-    archive->format.unpack_current_archive_record =
-        xx_cpx_unpack_current_archive_record;
-    archive->format.archive_record_move_to_next =
-        xx_cpx_archive_record_move_to_next;
-    archive->format.free_archive_records_reading =
-        xx_cpx_free_archive_records_reading;
+    archive->format.get_number_of_archive_records = xx_cpx_get_number_of_archive_records;
+    archive->format.create_archive_records_reading = xx_cpx_create_archive_records_reading;
+    archive->format.get_current_archive_record = xx_cpx_get_current_archive_record;
+    archive->format.unpack_current_archive_record = xx_cpx_unpack_current_archive_record;
+    archive->format.archive_record_move_to_next = xx_cpx_archive_record_move_to_next;
+    archive->format.free_archive_records_reading = xx_cpx_free_archive_records_reading;
     archive->archive_end = -1;
 }
 
-xx_cpx *xx_cpx_create(xx_io_device *device, int64_t base_address) {
+xx_cpx *xx_cpx_create(xx_io_device *device, int64_t base_address)
+{
     xx_cpx *archive = (xx_cpx *)xx_mem_alloc(sizeof(*archive));
     if (archive) xx_cpx_init(archive, device, base_address);
     return archive;
 }
 
-void xx_cpx_destroy(xx_cpx *archive) {
+void xx_cpx_destroy(xx_cpx *archive)
+{
     if (archive) xx_format_cleanup_extra_parameters(&archive->format);
 }
 
-void xx_cpx_free(xx_cpx *archive) {
+void xx_cpx_free(xx_cpx *archive)
+{
     if (!archive) return;
     xx_cpx_destroy(archive);
     xx_mem_free(archive);
 }
 
-bool xx_cpx_check_is_valid(Abstractformat *format, xx_pd_struct *pd) {
+bool xx_cpx_check_is_valid(Abstractformat *format, xx_pd_struct *pd)
+{
     cpx_stream *stream;
     (void)pd;
     if (!cpx_parse(format, &stream)) return false;
@@ -712,7 +656,8 @@ bool xx_cpx_check_is_valid(Abstractformat *format, xx_pd_struct *pd) {
     return true;
 }
 
-bool xx_cpx_handle_base_info(Abstractformat *format, xx_pd_struct *pd) {
+bool xx_cpx_handle_base_info(Abstractformat *format, xx_pd_struct *pd)
+{
     cpx_stream *stream;
     xx_cpx *archive;
     (void)pd;
@@ -721,8 +666,7 @@ bool xx_cpx_handle_base_info(Abstractformat *format, xx_pd_struct *pd) {
     archive->number_of_records = stream->count;
     archive->archive_end = format->base_address + stream->archive_size;
     archive->container_version = stream->version;
-    format->file_type = (stream->version == 0x2cU) ? XX_CPX4_FILE_TYPE
-                                                   : XX_CPX_FILE_TYPE;
+    format->file_type = (stream->version == 0x2cU) ? XX_CPX4_FILE_TYPE : XX_CPX_FILE_TYPE;
     format->number_of_archive_records = stream->count;
     format->format_size = stream->archive_size;
     format->is_valid = true;
@@ -731,21 +675,18 @@ bool xx_cpx_handle_base_info(Abstractformat *format, xx_pd_struct *pd) {
     return true;
 }
 
-int64_t xx_cpx_get_format_size(Abstractformat *format, xx_pd_struct *pd) {
-    return format && (format->base_info_handled ||
-                      xx_cpx_handle_base_info(format, pd))
-               ? format->format_size : -1;
+int64_t xx_cpx_get_format_size(Abstractformat *format, xx_pd_struct *pd)
+{
+    return format && (format->base_info_handled || xx_cpx_handle_base_info(format, pd)) ? format->format_size : -1;
 }
 
-uint64_t xx_cpx_get_number_of_archive_records(Abstractformat *format,
-                                              xx_pd_struct *pd) {
-    return format && (format->base_info_handled ||
-                      xx_cpx_handle_base_info(format, pd))
-               ? ((xx_cpx *)format)->number_of_records : 0U;
+uint64_t xx_cpx_get_number_of_archive_records(Abstractformat *format, xx_pd_struct *pd)
+{
+    return format && (format->base_info_handled || xx_cpx_handle_base_info(format, pd)) ? ((xx_cpx *)format)->number_of_records : 0U;
 }
 
-xx_archive_record_state *xx_cpx_create_archive_records_reading(
-    Abstractformat *format, const xx_list_s *options, xx_pd_struct *pd) {
+xx_archive_record_state *xx_cpx_create_archive_records_reading(Abstractformat *format, const xx_list_s *options, xx_pd_struct *pd)
+{
     cpx_stream *stream;
     xx_archive_record_state *state;
     (void)pd;
@@ -759,8 +700,7 @@ xx_archive_record_state *xx_cpx_create_archive_records_reading(
     state->internal_state = stream;
     state->free_internal = cpx_stream_free;
     state->total_records = stream->count;
-    if (!cpx_copy_options(&state->options, options) ||
-        !cpx_set_record(&state->current_record, &stream->items[0])) {
+    if (!cpx_copy_options(&state->options, options) || !cpx_set_record(&state->current_record, &stream->items[0])) {
         xx_archive_record_state_free(state);
         return NULL;
     }
@@ -768,32 +708,26 @@ xx_archive_record_state *xx_cpx_create_archive_records_reading(
     return state;
 }
 
-const xx_archive_record *xx_cpx_get_current_archive_record(
-    Abstractformat *format, xx_archive_record_state *state) {
-    return format && state && state->format == format && state->has_record
-               ? &state->current_record : NULL;
+const xx_archive_record *xx_cpx_get_current_archive_record(Abstractformat *format, xx_archive_record_state *state)
+{
+    return format && state && state->format == format && state->has_record ? &state->current_record : NULL;
 }
 
-bool xx_cpx_archive_record_move_to_next(Abstractformat *format,
-                                        xx_archive_record_state *state,
-                                        xx_pd_struct *pd) {
+bool xx_cpx_archive_record_move_to_next(Abstractformat *format, xx_archive_record_state *state, xx_pd_struct *pd)
+{
     cpx_stream *stream;
     (void)pd;
-    if (!format || !state || state->format != format ||
-        !(stream = (cpx_stream *)state->internal_state) ||
-        ++stream->index >= stream->count) {
+    if (!format || !state || state->format != format || !(stream = (cpx_stream *)state->internal_state) || ++stream->index >= stream->count) {
         if (state) state->has_record = false;
         return false;
     }
     ++state->current_index;
-    state->has_record = cpx_set_record(&state->current_record,
-                                       &stream->items[stream->index]);
+    state->has_record = cpx_set_record(&state->current_record, &stream->items[stream->index]);
     return state->has_record;
 }
 
-bool xx_cpx_unpack_current_archive_record(Abstractformat *format,
-                                          xx_archive_record_state *state,
-                                          xx_pd_struct *pd) {
+bool xx_cpx_unpack_current_archive_record(Abstractformat *format, xx_archive_record_state *state, xx_pd_struct *pd)
+{
     cpx_stream *stream;
     cpx_member *member;
     const xx_var *path_option;
@@ -804,32 +738,24 @@ bool xx_cpx_unpack_current_archive_record(Abstractformat *format,
     size_t plain_size = 0U, written = 0U;
     bool result = false;
     bool created = false;
-    if (!format || !state || state->format != format || !state->has_record ||
-        !(stream = (cpx_stream *)state->internal_state) ||
-        stream->index >= stream->count || (pd && xx_pd_is_stopped(pd)))
+    if (!format || !state || state->format != format || !state->has_record || !(stream = (cpx_stream *)state->internal_state) || stream->index >= stream->count ||
+        (pd && xx_pd_is_stopped(pd)))
         return false;
     member = &stream->items[stream->index];
-    if (!cpx_safe_output_name(member->name) ||
-        !cpx_decode_member(format, member, &plain, &plain_size))
-        goto done;
+    if (!cpx_safe_output_name(member->name) || !cpx_decode_member(format, member, &plain, &plain_size)) goto done;
     path_option = cpx_option(&state->options, XX_META_ID_OPT_UNPACK_PATH);
     if (!path_option) {
         result = true;
         goto done;
     }
-    if (path_option->type == XX_VAR_TYPE_STRING ||
-        path_option->type == XX_VAR_TYPE_STRING_VIEW)
-        base = xx_var_get_str(path_option);
-    else if (path_option->type == XX_VAR_TYPE_WSTRING ||
-             path_option->type == XX_VAR_TYPE_WSTRING_VIEW) {
+    if (path_option->type == XX_VAR_TYPE_STRING || path_option->type == XX_VAR_TYPE_STRING_VIEW) base = xx_var_get_str(path_option);
+    else if (path_option->type == XX_VAR_TYPE_WSTRING || path_option->type == XX_VAR_TYPE_WSTRING_VIEW) {
         owned_base = xx_str_unicode_to_utf8(xx_var_get_wstr(path_option));
         base = owned_base;
     }
     if (!base) goto done;
-    path = (base[0] && base[xx_str_len(base) - 1U] != '/' &&
-            base[xx_str_len(base) - 1U] != '\\')
-               ? xx_str_concat3(base, "/", member->name)
-               : xx_str_concat(base, member->name);
+    path = (base[0] && base[xx_str_len(base) - 1U] != '/' && base[xx_str_len(base) - 1U] != '\\') ? xx_str_concat3(base, "/", member->name)
+                                                                                                  : xx_str_concat(base, member->name);
     if (!path) goto done;
     if (!xx_store_create_dirs_a(path, false)) goto done;
     {
@@ -838,8 +764,7 @@ bool xx_cpx_unpack_current_archive_record(Abstractformat *format,
         if (!destination) goto done;
         result = true;
         while (written < plain_size) {
-            ssize_t amount = xx_io_write(destination, plain + written,
-                                         plain_size - written);
+            ssize_t amount = xx_io_write(destination, plain + written, plain_size - written);
             if (amount <= 0 || (size_t)amount > plain_size - written) {
                 result = false;
                 break;
@@ -856,8 +781,8 @@ done:
     return result;
 }
 
-void xx_cpx_free_archive_records_reading(Abstractformat *format,
-                                         xx_archive_record_state *state) {
+void xx_cpx_free_archive_records_reading(Abstractformat *format, xx_archive_record_state *state)
+{
     (void)format;
     xx_archive_record_state_free(state);
 }

@@ -16,8 +16,8 @@
 #include "xxfclib/algo/sclsectors/xx_sclsectors.h"
 #include "xxfclib/rt/xx_rt.h"
 
-bool xx_sclsectors_decode_memory_ex(const uint8_t *prefix, size_t prefix_size, const uint8_t *input, size_t input_size, uint8_t *output,
-                                    size_t output_size, size_t *written)
+bool xx_sclsectors_decode_memory_ex(const uint8_t *prefix, size_t prefix_size, const uint8_t *input, size_t input_size, uint8_t *output, size_t output_size,
+                                    size_t *written)
 {
     size_t total = 0;
 

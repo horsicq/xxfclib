@@ -112,17 +112,15 @@ static void xx_shar_vtable_destroy(Abstractformat *self);
 
 /* ------------------------------------------------------------- helpers -- */
 
-static bool xx_shar_read_at(Abstractformat *self, int64_t offset,
-                            uint8_t *buffer, size_t size) {
+static bool xx_shar_read_at(Abstractformat *self, int64_t offset, uint8_t *buffer, size_t size)
+{
     size_t completed = 0U;
 
-    if (!self || !self->device || offset < 0 ||
-        xx_io_seek64(self->device, offset, SEEK_SET) != 0) {
+    if (!self || !self->device || offset < 0 || xx_io_seek64(self->device, offset, SEEK_SET) != 0) {
         return false;
     }
     while (completed < size) {
-        ssize_t received =
-            xx_io_read(self->device, buffer + completed, size - completed);
+        ssize_t received = xx_io_read(self->device, buffer + completed, size - completed);
         if (received <= 0 || (size_t)received > size - completed) {
             return false;
         }
@@ -134,7 +132,8 @@ static bool xx_shar_read_at(Abstractformat *self, int64_t offset,
 /* Refuse anything that would escape the extraction directory.  Shar member
  * names legitimately carry '/', so the separator itself stays legal and only
  * the traversal is rejected. */
-static bool xx_shar_path_safe(const char *name) {
+static bool xx_shar_path_safe(const char *name)
+{
     const char *cursor = name;
     bool has_component = false;
 
@@ -167,7 +166,8 @@ static bool xx_shar_path_safe(const char *name) {
  * Redundant "." components - shar emits "./name" constantly - are dropped,
  * and a component is trimmed of the trailing dots and spaces Windows strips
  * silently.  Returns NULL when nothing usable is left. */
-static char *xx_shar_make_extract_name(const char *name) {
+static char *xx_shar_make_extract_name(const char *name)
+{
     char *result;
     size_t output = 0U;
     const char *component;
@@ -197,9 +197,7 @@ static char *xx_shar_make_extract_name(const char *name) {
                     char byte = component[index];
                     result[output++] = (byte == ':') ? '_' : byte;
                 }
-                while (output > start && (result[output - 1U] == ' ' ||
-                                          result[output - 1U] == '.'))
-                    --output;
+                while (output > start && (result[output - 1U] == ' ' || result[output - 1U] == '.')) --output;
                 if (output == start) result[output++] = '_';
             }
             if (character == '\0') break;
@@ -214,7 +212,8 @@ static char *xx_shar_make_extract_name(const char *name) {
     return result;
 }
 
-static bool xx_shar_name_ok(const uint8_t *bytes, size_t length) {
+static bool xx_shar_name_ok(const uint8_t *bytes, size_t length)
+{
     size_t index;
 
     if (length < 1U || length > (size_t)XX_SHAR_MAX_NAME) return false;
@@ -226,18 +225,16 @@ static bool xx_shar_name_ok(const uint8_t *bytes, size_t length) {
         /* ':' stays legal: these are Unix names and ":patch.c" is a real one.
          * The drive-letter shape it could otherwise smuggle in is refused by
          * xx_shar_path_safe instead. */
-        if (character == '\\' || character == '*' ||
-            character == '?' || character == '"' || character == '\'' ||
-            character == '<' || character == '>' || character == '|' ||
-            character == '$' || character == '`' || character == ';' ||
-            character == '&') {
+        if (character == '\\' || character == '*' || character == '?' || character == '"' || character == '\'' || character == '<' || character == '>' ||
+            character == '|' || character == '$' || character == '`' || character == ';' || character == '&') {
             return false;
         }
     }
     return true;
 }
 
-static void xx_shar_stream_free(void *pointer) {
+static void xx_shar_stream_free(void *pointer)
+{
     xx_shar_stream *stream = (xx_shar_stream *)pointer;
     size_t index;
 
@@ -249,9 +246,9 @@ static void xx_shar_stream_free(void *pointer) {
     xx_mem_free(stream);
 }
 
-static bool xx_shar_add(xx_shar_stream *stream, const xx_shar_member *member) {
-    xx_shar_member *grown = (xx_shar_member *)xx_mem_realloc(
-        stream->items, sizeof(*grown) * (stream->count + 1U));
+static bool xx_shar_add(xx_shar_stream *stream, const xx_shar_member *member)
+{
+    xx_shar_member *grown = (xx_shar_member *)xx_mem_realloc(stream->items, sizeof(*grown) * (stream->count + 1U));
 
     if (!grown) return false;
     stream->items = grown;
@@ -259,14 +256,15 @@ static bool xx_shar_add(xx_shar_stream *stream, const xx_shar_member *member) {
     return true;
 }
 
-static bool xx_shar_blank(uint8_t character) {
+static bool xx_shar_blank(uint8_t character)
+{
     return character == ' ' || character == '\t';
 }
 
 /* Case-insensitive substring search over a bounded window; the banner test
  * is the only place that needs it. */
-static bool xx_shar_contains_ci(const uint8_t *data, size_t size,
-                                const char *needle, size_t needle_size) {
+static bool xx_shar_contains_ci(const uint8_t *data, size_t size, const char *needle, size_t needle_size)
+{
     size_t start;
 
     if (needle_size == 0U || size < needle_size) return false;
@@ -290,9 +288,8 @@ static bool xx_shar_contains_ci(const uint8_t *data, size_t size,
  * a single- or double-quoted string, or a run of non-separator bytes.  A
  * leading backslash (the `<< \DELIM` form) is skipped.  Returns false when
  * there is no word. */
-static bool xx_shar_word(const uint8_t *line, size_t size, size_t position,
-                         size_t *word_offset, size_t *word_size,
-                         size_t *next_position) {
+static bool xx_shar_word(const uint8_t *line, size_t size, size_t position, size_t *word_offset, size_t *word_size, size_t *next_position)
+{
     size_t start;
     size_t end;
 
@@ -317,9 +314,8 @@ static bool xx_shar_word(const uint8_t *line, size_t size, size_t position,
     end = position;
     while (end < size) {
         uint8_t character = line[end];
-        if (xx_shar_blank(character) || character == ';' || character == '&' ||
-            character == '|' || character == '<' || character == '>' ||
-            character == '(' || character == ')') {
+        if (xx_shar_blank(character) || character == ';' || character == '&' || character == '|' || character == '<' || character == '>' || character == '(' ||
+            character == ')') {
             break;
         }
         ++end;
@@ -346,22 +342,19 @@ typedef struct xx_shar_head_s {
  * precedes the here-document operator.  `s/^\t//` is the other spelling the
  * packers use.  Anything else leaves the body untouched, which is always
  * safe: a wrong strip would corrupt every line. */
-static uint8_t xx_shar_prefix(const uint8_t *line, size_t limit) {
+static uint8_t xx_shar_prefix(const uint8_t *line, size_t limit)
+{
     size_t index;
 
     if (limit < 5U) return 0U;
     for (index = 0U; index + 5U <= limit; ++index) {
-        if (line[index] != 's' || line[index + 1U] != '/' ||
-            line[index + 2U] != '^') {
+        if (line[index] != 's' || line[index + 1U] != '/' || line[index + 2U] != '^') {
             continue;
         }
-        if (line[index + 4U] == '/' && index + 5U < limit &&
-            line[index + 5U] == '/') {
+        if (line[index + 4U] == '/' && index + 5U < limit && line[index + 5U] == '/') {
             return line[index + 3U];
         }
-        if (line[index + 3U] == '\\' && line[index + 4U] == 't' &&
-            index + 6U < limit && line[index + 5U] == '/' &&
-            line[index + 6U] == '/') {
+        if (line[index + 3U] == '\\' && line[index + 4U] == 't' && index + 6U < limit && line[index + 5U] == '/' && line[index + 6U] == '/') {
             return (uint8_t)'\t';
         }
     }
@@ -370,8 +363,8 @@ static uint8_t xx_shar_prefix(const uint8_t *line, size_t limit) {
 
 /* Matches a `cat`/`sed` here-document line and fills @p head.  Everything
  * else on the line - test guards, trailing `&&`, echo noise - is ignored. */
-static bool xx_shar_match_head(const uint8_t *line, size_t size,
-                               xx_shar_head *head) {
+static bool xx_shar_match_head(const uint8_t *line, size_t size, xx_shar_head *head)
+{
     size_t start = 0U;
     size_t here;
     size_t position;
@@ -384,16 +377,13 @@ static bool xx_shar_match_head(const uint8_t *line, size_t size,
     /* Only these two commands write a here-document to a file in a shar.
      * Widening this is what turns an ordinary script into a false
      * positive. */
-    if (!(xx_rt_memcmp(line + start, "cat ", 4U) == 0 ||
-          xx_rt_memcmp(line + start, "sed ", 4U) == 0 ||
-          xx_rt_memcmp(line + start, "cat\t", 4U) == 0 ||
+    if (!(xx_rt_memcmp(line + start, "cat ", 4U) == 0 || xx_rt_memcmp(line + start, "sed ", 4U) == 0 || xx_rt_memcmp(line + start, "cat\t", 4U) == 0 ||
           xx_rt_memcmp(line + start, "sed\t", 4U) == 0)) {
         return false;
     }
 
     here = start;
-    while (here + 1U < size &&
-           !(line[here] == '<' && line[here + 1U] == '<')) {
+    while (here + 1U < size && !(line[here] == '<' && line[here + 1U] == '<')) {
         ++here;
     }
     if (here + 1U >= size) return false;
@@ -405,8 +395,7 @@ static bool xx_shar_match_head(const uint8_t *line, size_t size,
         head->strip_tabs = true;
         ++position;
     }
-    if (!xx_shar_word(line, size, position, &head->delim_offset,
-                      &head->delim_size, &delim_end)) {
+    if (!xx_shar_word(line, size, position, &head->delim_offset, &head->delim_size, &delim_end)) {
         return false;
     }
     if (head->delim_size > (size_t)XX_SHAR_MAX_DELIM) return false;
@@ -423,8 +412,7 @@ static bool xx_shar_match_head(const uint8_t *line, size_t size,
     if (redirect >= size) return false;
     ++redirect;
     if (redirect < size && line[redirect] == '>') ++redirect; /* `>>` */
-    if (!xx_shar_word(line, size, redirect, &head->name_offset,
-                      &head->name_size, &name_next)) {
+    if (!xx_shar_word(line, size, redirect, &head->name_offset, &head->name_size, &name_next)) {
         return false;
     }
     if (!xx_shar_name_ok(line + head->name_offset, head->name_size)) {
@@ -443,8 +431,8 @@ static bool xx_shar_match_head(const uint8_t *line, size_t size,
  * top of the body - so this matcher only recovers the delimiter, and the
  * caller decides whether the body really is uuencoded before publishing
  * anything.  A line carrying a '>' is left to xx_shar_match_head. */
-static bool xx_shar_match_here(const uint8_t *line, size_t size,
-                               xx_shar_head *head) {
+static bool xx_shar_match_here(const uint8_t *line, size_t size, xx_shar_head *head)
+{
     size_t start = 0U;
     size_t here;
     size_t position;
@@ -454,8 +442,7 @@ static bool xx_shar_match_here(const uint8_t *line, size_t size,
     while (start < size && xx_shar_blank(line[start])) ++start;
     if (size <= start) return false;
     here = start;
-    while (here + 1U < size &&
-           !(line[here] == '<' && line[here + 1U] == '<')) {
+    while (here + 1U < size && !(line[here] == '<' && line[here + 1U] == '<')) {
         ++here;
     }
     if (here + 1U >= size) return false;
@@ -466,8 +453,7 @@ static bool xx_shar_match_here(const uint8_t *line, size_t size,
         head->strip_tabs = true;
         ++position;
     }
-    if (!xx_shar_word(line, size, position, &head->delim_offset,
-                      &head->delim_size, &delim_end)) {
+    if (!xx_shar_word(line, size, position, &head->delim_offset, &head->delim_size, &delim_end)) {
         return false;
     }
     if (head->delim_size > (size_t)XX_SHAR_MAX_DELIM) return false;
@@ -485,15 +471,14 @@ static bool xx_shar_match_here(const uint8_t *line, size_t size,
 
 /* Parse a uuencode "begin <octal mode> <name>" line.  Returns the length of
  * the name, or 0 when the line is not a begin header. */
-static size_t xx_shar_uu_begin(const uint8_t *line, size_t size,
-                               size_t *name_offset) {
+static size_t xx_shar_uu_begin(const uint8_t *line, size_t size, size_t *name_offset)
+{
     size_t position = 0U;
     size_t digits = 0U;
 
     if (size != 0U && line[size - 1U] == '\r') --size;
     while (position < size && xx_shar_blank(line[position])) ++position;
-    if (size - position < 6U ||
-        xx_rt_memcmp(line + position, "begin ", 6U) != 0) {
+    if (size - position < 6U || xx_rt_memcmp(line + position, "begin ", 6U) != 0) {
         return 0U;
     }
     position += 6U;
@@ -503,8 +488,7 @@ static size_t xx_shar_uu_begin(const uint8_t *line, size_t size,
         ++digits;
     }
     /* A mode is three or four octal digits and must be followed by the name. */
-    if (digits < 3U || digits > 4U || position >= size ||
-        !xx_shar_blank(line[position])) {
+    if (digits < 3U || digits > 4U || position >= size || !xx_shar_blank(line[position])) {
         return 0U;
     }
     while (position < size && xx_shar_blank(line[position])) ++position;
@@ -515,8 +499,8 @@ static size_t xx_shar_uu_begin(const uint8_t *line, size_t size,
 
 /* One uuencoded line yields three plaintext bytes per four characters, but
  * the leading length byte is authoritative; this only measures. */
-static bool xx_shar_uu_measure(const uint8_t *body, size_t size,
-                               int64_t *plain_size) {
+static bool xx_shar_uu_measure(const uint8_t *body, size_t size, int64_t *plain_size)
+{
     size_t position = 0U;
     int64_t total = 0;
 
@@ -549,9 +533,8 @@ static bool xx_shar_uu_measure(const uint8_t *body, size_t size,
 
 /* Decode a uuencoded body into @p output, which the caller sized from
  * xx_shar_uu_measure.  Stops at the "end" line or at the end of the body. */
-static bool xx_shar_uu_decode(const uint8_t *body, size_t size,
-                              uint8_t *output, size_t capacity,
-                              size_t *written) {
+static bool xx_shar_uu_decode(const uint8_t *body, size_t size, uint8_t *output, size_t capacity, size_t *written)
+{
     size_t position = 0U;
     size_t produced = 0U;
 
@@ -577,19 +560,12 @@ static bool xx_shar_uu_decode(const uint8_t *body, size_t size,
             size_t index;
             uint8_t take = count > 3U ? 3U : count;
             if (cursor + 4U > position + length) return false;
-            for (index = 0U; index < 4U; ++index)
-                group[index] = (uint8_t)((body[cursor + index] - ' ') & 0x3FU);
+            for (index = 0U; index < 4U; ++index) group[index] = (uint8_t)((body[cursor + index] - ' ') & 0x3FU);
             cursor += 4U;
             if (produced + take > capacity) return false;
-            if (take > 0U)
-                output[produced++] =
-                    (uint8_t)((group[0] << 2) | (group[1] >> 4));
-            if (take > 1U)
-                output[produced++] =
-                    (uint8_t)((group[1] << 4) | (group[2] >> 2));
-            if (take > 2U)
-                output[produced++] =
-                    (uint8_t)((group[2] << 6) | group[3]);
+            if (take > 0U) output[produced++] = (uint8_t)((group[0] << 2) | (group[1] >> 4));
+            if (take > 1U) output[produced++] = (uint8_t)((group[1] << 4) | (group[2] >> 2));
+            if (take > 2U) output[produced++] = (uint8_t)((group[2] << 6) | group[3]);
             count = (uint8_t)(count - take);
         }
         position = end + 1U;
@@ -600,23 +576,21 @@ static bool xx_shar_uu_decode(const uint8_t *body, size_t size,
 
 /* ---------------------------------------------------------------- parse -- */
 
-static bool xx_shar_line_is_delim(const uint8_t *line, size_t size,
-                                  const uint8_t *delim, size_t delim_size,
-                                  bool strip_tabs) {
+static bool xx_shar_line_is_delim(const uint8_t *line, size_t size, const uint8_t *delim, size_t delim_size, bool strip_tabs)
+{
     size_t start = 0U;
 
     if (size != 0U && line[size - 1U] == '\r') --size;
     if (strip_tabs) {
         while (start < size && line[start] == '\t') ++start;
     }
-    return size - start == delim_size &&
-           xx_rt_memcmp(line + start, delim, delim_size) == 0;
+    return size - start == delim_size && xx_rt_memcmp(line + start, delim, delim_size) == 0;
 }
 
 /* Size of the body once the quoting prefix is removed: one byte per line
  * that actually carries it. */
-static int64_t xx_shar_plain_size(const uint8_t *body, size_t size,
-                                  uint8_t prefix) {
+static int64_t xx_shar_plain_size(const uint8_t *body, size_t size, uint8_t prefix)
+{
     size_t position = 0U;
     int64_t total = 0;
 
@@ -635,8 +609,8 @@ static int64_t xx_shar_plain_size(const uint8_t *body, size_t size,
     return total;
 }
 
-static xx_shar_stream *xx_shar_scan(Abstractformat *self, const uint8_t *data,
-                                    size_t size, xx_pd_struct *pd) {
+static xx_shar_stream *xx_shar_scan(Abstractformat *self, const uint8_t *data, size_t size, xx_pd_struct *pd)
+{
     xx_shar_stream *stream;
     xx_shar_member member;
     size_t position = 0U;
@@ -652,8 +626,7 @@ static xx_shar_stream *xx_shar_scan(Abstractformat *self, const uint8_t *data,
 
         if (pd && xx_pd_is_stopped(pd)) goto fail;
         while (line_end < size && data[line_end] != '\n') ++line_end;
-        if (!xx_shar_match_head(data + position, line_end - position, &head) &&
-            !xx_shar_match_here(data + position, line_end - position, &head)) {
+        if (!xx_shar_match_head(data + position, line_end - position, &head) && !xx_shar_match_here(data + position, line_end - position, &head)) {
             position = line_end + 1U;
             continue;
         }
@@ -669,9 +642,7 @@ static xx_shar_stream *xx_shar_scan(Abstractformat *self, const uint8_t *data,
             while (cursor < size) {
                 size_t end = cursor;
                 while (end < size && data[end] != '\n') ++end;
-                if (xx_shar_line_is_delim(data + cursor, end - cursor,
-                                          data + position + head.delim_offset,
-                                          head.delim_size, head.strip_tabs)) {
+                if (xx_shar_line_is_delim(data + cursor, end - cursor, data + position + head.delim_offset, head.delim_size, head.strip_tabs)) {
                     terminated = true;
                     break;
                 }
@@ -687,16 +658,11 @@ static xx_shar_stream *xx_shar_scan(Abstractformat *self, const uint8_t *data,
                 size_t first_end = body;
                 size_t name_offset = 0U;
                 size_t name_size;
-                while (first_end < cursor && data[first_end] != '\n')
-                    ++first_end;
-                name_size = xx_shar_uu_begin(data + body, first_end - body,
-                                             &name_offset);
-                if (name_size == 0U ||
-                    name_size > (size_t)XX_SHAR_MAX_NAME ||
-                    !xx_shar_name_ok(data + body + name_offset, name_size)) {
+                while (first_end < cursor && data[first_end] != '\n') ++first_end;
+                name_size = xx_shar_uu_begin(data + body, first_end - body, &name_offset);
+                if (name_size == 0U || name_size > (size_t)XX_SHAR_MAX_NAME || !xx_shar_name_ok(data + body + name_offset, name_size)) {
                     position = terminated ? cursor : size;
-                    while (position < size && data[position] != '\n')
-                        ++position;
+                    while (position < size && data[position] != '\n') ++position;
                     ++position;
                     continue;
                 }
@@ -727,19 +693,16 @@ static xx_shar_stream *xx_shar_scan(Abstractformat *self, const uint8_t *data,
             member.prefix = head.prefix;
             if (head.uu) {
                 member.method = XX_SHAR_METHOD_UU;
-                if (!xx_shar_uu_measure(data + body, cursor - body,
-                                        &member.uncompressed_size)) {
+                if (!xx_shar_uu_measure(data + body, cursor - body, &member.uncompressed_size)) {
                     xx_str_free(member.name);
                     position = terminated ? cursor : size;
-                    while (position < size && data[position] != '\n')
-                        ++position;
+                    while (position < size && data[position] != '\n') ++position;
                     ++position;
                     continue;
                 }
             } else {
                 member.method = head.prefix != 0U ? 1U : 0U;
-                member.uncompressed_size = xx_shar_plain_size(
-                    data + body, cursor - body, head.prefix);
+                member.uncompressed_size = xx_shar_plain_size(data + body, cursor - body, head.prefix);
             }
             member.truncated = !terminated;
             member.is_folder = false;
@@ -765,7 +728,8 @@ fail:
     return NULL;
 }
 
-static xx_shar_stream *xx_shar_parse(Abstractformat *self, xx_pd_struct *pd) {
+static xx_shar_stream *xx_shar_parse(Abstractformat *self, xx_pd_struct *pd)
+{
     xx_shar_stream *stream;
     uint8_t *data;
     int64_t total;
@@ -791,12 +755,10 @@ static xx_shar_stream *xx_shar_parse(Abstractformat *self, xx_pd_struct *pd) {
         xx_mem_free(data);
         return NULL;
     }
-    window = span < XX_SHAR_BANNER_WINDOW ? (size_t)span
-                                          : (size_t)XX_SHAR_BANNER_WINDOW;
+    window = span < XX_SHAR_BANNER_WINDOW ? (size_t)span : (size_t)XX_SHAR_BANNER_WINDOW;
     /* A here-document on its own is ordinary shell.  The banner is what says
      * the script was produced as an archive. */
-    if (!xx_shar_contains_ci(data, window, "shell archive", 13U) &&
-        !xx_shar_contains_ci(data, window, "shar archive", 12U) &&
+    if (!xx_shar_contains_ci(data, window, "shell archive", 13U) && !xx_shar_contains_ci(data, window, "shar archive", 12U) &&
         !xx_shar_contains_ci(data, window, "SHAR_EOF", 8U)) {
         xx_mem_free(data);
         return NULL;
@@ -822,8 +784,8 @@ typedef struct xx_shar_sink_s {
     bool failed;
 } xx_shar_sink;
 
-static ssize_t xx_shar_sink_write(xx_io_device *device, const void *buffer,
-                                  size_t size) {
+static ssize_t xx_shar_sink_write(xx_io_device *device, const void *buffer, size_t size)
+{
     xx_shar_sink *sink = device ? (xx_shar_sink *)device->priv : NULL;
     if (!sink || (!buffer && size != 0U)) return -1;
     if (size > (size_t)XX_SHAR_MAX_PLAIN - sink->size) {
@@ -857,15 +819,13 @@ static ssize_t xx_shar_sink_write(xx_io_device *device, const void *buffer,
  * the file through compress(1) before uuencoding it - run the Unix compress
  * decoder when the decoded bytes carry its header.  Anything else is handed
  * back as it decoded. */
-static bool xx_shar_expand_uu(const uint8_t *raw, size_t size,
-                              const xx_shar_member *member, uint8_t **out,
-                              size_t *out_size, xx_pd_struct *pd) {
+static bool xx_shar_expand_uu(const uint8_t *raw, size_t size, const xx_shar_member *member, uint8_t **out, size_t *out_size, xx_pd_struct *pd)
+{
     uint8_t *decoded;
     size_t capacity;
     size_t written = 0U;
 
-    if (member->uncompressed_size < 0 ||
-        member->uncompressed_size > XX_SHAR_MAX_PLAIN) {
+    if (member->uncompressed_size < 0 || member->uncompressed_size > XX_SHAR_MAX_PLAIN) {
         return false;
     }
     capacity = (size_t)member->uncompressed_size;
@@ -889,10 +849,7 @@ static bool xx_shar_expand_uu(const uint8_t *raw, size_t size,
         xx_mem_zero(&sink_device, sizeof(sink_device));
         sink_device.write = xx_shar_sink_write;
         sink_device.priv = &sink;
-        ok = source != NULL &&
-             xx_compress_decode_device(source, 0, (int64_t)written,
-                                       &sink_device, NULL, pd) &&
-             !sink.failed;
+        ok = source != NULL && xx_compress_decode_device(source, 0, (int64_t)written, &sink_device, NULL, pd) && !sink.failed;
         if (source) xx_io_close(source);
         xx_mem_free(decoded);
         if (!ok) {
@@ -909,9 +866,8 @@ static bool xx_shar_expand_uu(const uint8_t *raw, size_t size,
     }
 }
 
-static bool xx_shar_extract(Abstractformat *self, const xx_shar_member *member,
-                            uint8_t **out, size_t *out_size,
-                            xx_pd_struct *pd) {
+static bool xx_shar_extract(Abstractformat *self, const xx_shar_member *member, uint8_t **out, size_t *out_size, xx_pd_struct *pd)
+{
     uint8_t *raw;
     uint8_t *plain;
     size_t size;
@@ -922,8 +878,7 @@ static bool xx_shar_extract(Abstractformat *self, const xx_shar_member *member,
     *out_size = 0U;
     if (!self || !member) return false;
     if (pd && xx_pd_is_stopped(pd)) return false;
-    if (member->compressed_size < 0 ||
-        member->compressed_size > XX_SHAR_MAX_INPUT) {
+    if (member->compressed_size < 0 || member->compressed_size > XX_SHAR_MAX_INPUT) {
         return false;
     }
     size = (size_t)member->compressed_size;
@@ -972,8 +927,8 @@ static bool xx_shar_extract(Abstractformat *self, const xx_shar_member *member,
 
 /* ---------------------------------------------------------- lifecycle --- */
 
-void xx_shar_init(xx_shar *archive, xx_io_device *device,
-                  int64_t base_address) {
+void xx_shar_init(xx_shar *archive, xx_io_device *device, int64_t base_address)
+{
     if (!archive) return;
     xx_mem_zero(archive, sizeof(*archive));
     xx_format_init(&archive->format, device, base_address);
@@ -986,22 +941,17 @@ void xx_shar_init(xx_shar *archive, xx_io_device *device,
     archive->format.check_is_valid = xx_shar_check_is_valid;
     archive->format.handle_base_info = xx_shar_handle_base_info;
     archive->format.get_format_size = xx_shar_get_format_size;
-    archive->format.get_number_of_archive_records =
-        xx_shar_get_number_of_archive_records;
-    archive->format.create_archive_records_reading =
-        xx_shar_create_archive_records_reading;
-    archive->format.get_current_archive_record =
-        xx_shar_get_current_archive_record;
-    archive->format.unpack_current_archive_record =
-        xx_shar_unpack_current_archive_record;
-    archive->format.archive_record_move_to_next =
-        xx_shar_archive_record_move_to_next;
-    archive->format.free_archive_records_reading =
-        xx_shar_free_archive_records_reading;
+    archive->format.get_number_of_archive_records = xx_shar_get_number_of_archive_records;
+    archive->format.create_archive_records_reading = xx_shar_create_archive_records_reading;
+    archive->format.get_current_archive_record = xx_shar_get_current_archive_record;
+    archive->format.unpack_current_archive_record = xx_shar_unpack_current_archive_record;
+    archive->format.archive_record_move_to_next = xx_shar_archive_record_move_to_next;
+    archive->format.free_archive_records_reading = xx_shar_free_archive_records_reading;
     archive->format.destroy = xx_shar_vtable_destroy;
 }
 
-xx_shar *xx_shar_create(xx_io_device *device, int64_t base_address) {
+xx_shar *xx_shar_create(xx_io_device *device, int64_t base_address)
+{
     xx_shar *archive = (xx_shar *)xx_mem_alloc(sizeof(*archive));
 
     if (!archive) return NULL;
@@ -1009,7 +959,8 @@ xx_shar *xx_shar_create(xx_io_device *device, int64_t base_address) {
     return archive;
 }
 
-void xx_shar_destroy(xx_shar *archive) {
+void xx_shar_destroy(xx_shar *archive)
+{
     if (!archive) return;
     /* Not xx_format_destroy: it dispatches through format.destroy, which is
      * the wrapper below, and the two would recurse. */
@@ -1018,19 +969,22 @@ void xx_shar_destroy(xx_shar *archive) {
     archive->number_of_records = 0U;
 }
 
-void xx_shar_free(xx_shar *archive) {
+void xx_shar_free(xx_shar *archive)
+{
     if (!archive) return;
     xx_shar_destroy(archive);
     xx_mem_free(archive);
 }
 
-static void xx_shar_vtable_destroy(Abstractformat *self) {
+static void xx_shar_vtable_destroy(Abstractformat *self)
+{
     xx_shar_destroy((xx_shar *)self);
 }
 
 /* -------------------------------------------------------------- format -- */
 
-bool xx_shar_check_is_valid(Abstractformat *self, xx_pd_struct *pd) {
+bool xx_shar_check_is_valid(Abstractformat *self, xx_pd_struct *pd)
+{
     xx_shar_stream *stream;
 
     if (!self || (pd && xx_pd_is_stopped(pd))) return false;
@@ -1040,7 +994,8 @@ bool xx_shar_check_is_valid(Abstractformat *self, xx_pd_struct *pd) {
     return true;
 }
 
-bool xx_shar_handle_base_info(Abstractformat *self, xx_pd_struct *pd) {
+bool xx_shar_handle_base_info(Abstractformat *self, xx_pd_struct *pd)
+{
     xx_shar *archive = (xx_shar *)self;
     xx_shar_stream *stream;
 
@@ -1061,18 +1016,17 @@ bool xx_shar_handle_base_info(Abstractformat *self, xx_pd_struct *pd) {
     return true;
 }
 
-int64_t xx_shar_get_format_size(Abstractformat *self, xx_pd_struct *pd) {
-    if (!self ||
-        (!self->base_info_handled && !xx_format_handle_base_info(self, pd))) {
+int64_t xx_shar_get_format_size(Abstractformat *self, xx_pd_struct *pd)
+{
+    if (!self || (!self->base_info_handled && !xx_format_handle_base_info(self, pd))) {
         return 0;
     }
     return self->is_valid ? self->format_size : 0;
 }
 
-uint64_t xx_shar_get_number_of_archive_records(Abstractformat *self,
-                                               xx_pd_struct *pd) {
-    if (!self ||
-        (!self->base_info_handled && !xx_format_handle_base_info(self, pd))) {
+uint64_t xx_shar_get_number_of_archive_records(Abstractformat *self, xx_pd_struct *pd)
+{
+    if (!self || (!self->base_info_handled && !xx_format_handle_base_info(self, pd))) {
         return 0U;
     }
     return self->is_valid ? ((xx_shar *)self)->number_of_records : 0U;
@@ -1080,8 +1034,8 @@ uint64_t xx_shar_get_number_of_archive_records(Abstractformat *self,
 
 /* ------------------------------------------------------------- records -- */
 
-static bool xx_shar_set_record(xx_archive_record *record,
-                               const xx_shar_member *member) {
+static bool xx_shar_set_record(xx_archive_record *record, const xx_shar_member *member)
+{
     xx_archive_record_cleanup(record);
     xx_archive_record_init(record);
     record->header_offset = member->header_offset;
@@ -1089,31 +1043,23 @@ static bool xx_shar_set_record(xx_archive_record *record,
     record->data_offset = member->data_offset;
     record->compressed_size = member->compressed_size;
     return xx_archive_record_set_original_name(record, member->name) &&
-           xx_archive_record_set_meta_u64(record, XX_META_ID_COMPRESSED_SIZE,
-                                          (uint64_t)member->compressed_size) &&
-           xx_archive_record_set_meta_u64(record, XX_META_ID_UNCOMPRESSED_SIZE,
-                                          (uint64_t)member->uncompressed_size) &&
-           xx_archive_record_set_meta_u64(record, XX_META_ID_COMPRESSION_METHOD,
-                                          member->method) &&
-           xx_archive_record_set_meta_u64(record, XX_META_ID_TIMESTAMP, 0U) &&
-           xx_archive_record_set_meta_bool(record, XX_META_ID_IS_FOLDER,
-                                           member->is_folder) &&
-           xx_archive_record_set_meta_bool(record, XX_META_ID_IS_ENCRYPTED,
-                                           false);
+           xx_archive_record_set_meta_u64(record, XX_META_ID_COMPRESSED_SIZE, (uint64_t)member->compressed_size) &&
+           xx_archive_record_set_meta_u64(record, XX_META_ID_UNCOMPRESSED_SIZE, (uint64_t)member->uncompressed_size) &&
+           xx_archive_record_set_meta_u64(record, XX_META_ID_COMPRESSION_METHOD, member->method) && xx_archive_record_set_meta_u64(record, XX_META_ID_TIMESTAMP, 0U) &&
+           xx_archive_record_set_meta_bool(record, XX_META_ID_IS_FOLDER, member->is_folder) && xx_archive_record_set_meta_bool(record, XX_META_ID_IS_ENCRYPTED, false);
 }
 
-static bool xx_shar_copy_options(xx_list_s *target, const xx_list_s *options) {
+static bool xx_shar_copy_options(xx_list_s *target, const xx_list_s *options)
+{
     size_t index;
 
     if (!target || !options) return options == NULL;
     for (index = 0U; index < options->count; ++index) {
-        const xx_meta *source =
-            (const xx_meta *)xx_list_at((const xx_list_t *)options, index);
+        const xx_meta *source = (const xx_meta *)xx_list_at((const xx_list_t *)options, index);
         xx_meta copied;
         if (!source) continue;
         xx_meta_init(&copied, source->meta_id);
-        if (!xx_var_copy(&copied.var, &source->var) ||
-            !xx_list_append(target, &copied)) {
+        if (!xx_var_copy(&copied.var, &source->var) || !xx_list_append(target, &copied)) {
             xx_meta_cleanup(&copied);
             return false;
         }
@@ -1121,21 +1067,20 @@ static bool xx_shar_copy_options(xx_list_s *target, const xx_list_s *options) {
     return true;
 }
 
-static const xx_var *xx_shar_get_option(const xx_list_s *options,
-                                        uint32_t meta_id) {
+static const xx_var *xx_shar_get_option(const xx_list_s *options, uint32_t meta_id)
+{
     size_t index;
 
     if (!options) return NULL;
     for (index = 0U; index < options->count; ++index) {
-        const xx_meta *meta =
-            (const xx_meta *)xx_list_at((const xx_list_t *)options, index);
+        const xx_meta *meta = (const xx_meta *)xx_list_at((const xx_list_t *)options, index);
         if (meta && meta->meta_id == meta_id) return &meta->var;
     }
     return NULL;
 }
 
-xx_archive_record_state *xx_shar_create_archive_records_reading(
-    Abstractformat *self, const xx_list_s *options, xx_pd_struct *pd) {
+xx_archive_record_state *xx_shar_create_archive_records_reading(Abstractformat *self, const xx_list_s *options, xx_pd_struct *pd)
+{
     xx_shar_stream *stream;
     xx_archive_record_state *state;
 
@@ -1151,9 +1096,7 @@ xx_archive_record_state *xx_shar_create_archive_records_reading(
     state->internal_state = stream;
     state->free_internal = xx_shar_stream_free;
     state->total_records = (int64_t)stream->count;
-    if (!xx_shar_copy_options(&state->options, options) ||
-        (stream->count != 0U &&
-         !xx_shar_set_record(&state->current_record, &stream->items[0]))) {
+    if (!xx_shar_copy_options(&state->options, options) || (stream->count != 0U && !xx_shar_set_record(&state->current_record, &stream->items[0]))) {
         xx_archive_record_state_free(state);
         return NULL;
     }
@@ -1162,20 +1105,16 @@ xx_archive_record_state *xx_shar_create_archive_records_reading(
     return state;
 }
 
-const xx_archive_record *xx_shar_get_current_archive_record(
-    Abstractformat *self, xx_archive_record_state *state) {
-    return self && state && state->format == self && state->has_record
-               ? &state->current_record
-               : NULL;
+const xx_archive_record *xx_shar_get_current_archive_record(Abstractformat *self, xx_archive_record_state *state)
+{
+    return self && state && state->format == self && state->has_record ? &state->current_record : NULL;
 }
 
-bool xx_shar_archive_record_move_to_next(Abstractformat *self,
-                                         xx_archive_record_state *state,
-                                         xx_pd_struct *pd) {
+bool xx_shar_archive_record_move_to_next(Abstractformat *self, xx_archive_record_state *state, xx_pd_struct *pd)
+{
     xx_shar_stream *stream;
 
-    if (!self || !state || state->format != self || !state->has_record ||
-        (pd && xx_pd_is_stopped(pd))) {
+    if (!self || !state || state->format != self || !state->has_record || (pd && xx_pd_is_stopped(pd))) {
         return false;
     }
     stream = (xx_shar_stream *)state->internal_state;
@@ -1187,14 +1126,12 @@ bool xx_shar_archive_record_move_to_next(Abstractformat *self,
     }
     ++stream->index;
     ++state->current_index;
-    state->has_record =
-        xx_shar_set_record(&state->current_record, &stream->items[stream->index]);
+    state->has_record = xx_shar_set_record(&state->current_record, &stream->items[stream->index]);
     return state->has_record;
 }
 
-bool xx_shar_unpack_current_archive_record(Abstractformat *self,
-                                           xx_archive_record_state *state,
-                                           xx_pd_struct *pd) {
+bool xx_shar_unpack_current_archive_record(Abstractformat *self, xx_archive_record_state *state, xx_pd_struct *pd)
+{
     xx_shar_stream *stream;
     const xx_shar_member *member;
     const xx_var *path_option;
@@ -1206,8 +1143,7 @@ bool xx_shar_unpack_current_archive_record(Abstractformat *self,
     bool result = false;
     bool created = false;
 
-    if (!self || !state || state->format != self || !state->has_record ||
-        (pd && xx_pd_is_stopped(pd))) {
+    if (!self || !state || state->format != self || !state->has_record || (pd && xx_pd_is_stopped(pd))) {
         return false;
     }
     stream = (xx_shar_stream *)state->internal_state;
@@ -1223,11 +1159,9 @@ bool xx_shar_unpack_current_archive_record(Abstractformat *self,
         xx_mem_free(plain);
         return result;
     }
-    if (path_option->type == XX_VAR_TYPE_STRING ||
-        path_option->type == XX_VAR_TYPE_STRING_VIEW) {
+    if (path_option->type == XX_VAR_TYPE_STRING || path_option->type == XX_VAR_TYPE_STRING_VIEW) {
         base_path = xx_var_get_str(path_option);
-    } else if (path_option->type == XX_VAR_TYPE_WSTRING ||
-               path_option->type == XX_VAR_TYPE_WSTRING_VIEW) {
+    } else if (path_option->type == XX_VAR_TYPE_WSTRING || path_option->type == XX_VAR_TYPE_WSTRING_VIEW) {
         converted_path = xx_str_unicode_to_utf8(xx_var_get_wstr(path_option));
         base_path = converted_path;
     }
@@ -1241,9 +1175,7 @@ bool xx_shar_unpack_current_archive_record(Abstractformat *self,
             xx_str_free(converted_path);
             return false;
         }
-        if (base_path[0] != '\0' &&
-            base_path[xx_str_len(base_path) - 1U] != '/' &&
-            base_path[xx_str_len(base_path) - 1U] != '\\') {
+        if (base_path[0] != '\0' && base_path[xx_str_len(base_path) - 1U] != '/' && base_path[xx_str_len(base_path) - 1U] != '\\') {
             target_path = xx_str_concat3(base_path, "/", relative);
         } else {
             target_path = xx_str_concat(base_path, relative);
@@ -1253,8 +1185,7 @@ bool xx_shar_unpack_current_archive_record(Abstractformat *self,
     xx_str_free(converted_path);
     if (!target_path) return false;
 
-    if (!xx_store_create_dirs_a(target_path, false) ||
-        !xx_shar_extract(self, member, &plain, &plain_size, pd)) {
+    if (!xx_store_create_dirs_a(target_path, false) || !xx_shar_extract(self, member, &plain, &plain_size, pd)) {
         xx_str_free(target_path);
         return false;
     }
@@ -1265,8 +1196,7 @@ bool xx_shar_unpack_current_archive_record(Abstractformat *self,
 
         result = output != NULL;
         while (result && completed < plain_size) {
-            ssize_t sent =
-                xx_io_write(output, plain + completed, plain_size - completed);
+            ssize_t sent = xx_io_write(output, plain + completed, plain_size - completed);
             if (sent <= 0 || (size_t)sent > plain_size - completed) {
                 result = false;
                 break;
@@ -1281,8 +1211,8 @@ bool xx_shar_unpack_current_archive_record(Abstractformat *self,
     return result;
 }
 
-void xx_shar_free_archive_records_reading(Abstractformat *self,
-                                          xx_archive_record_state *state) {
+void xx_shar_free_archive_records_reading(Abstractformat *self, xx_archive_record_state *state)
+{
     (void)self;
     xx_archive_record_state_free(state);
 }

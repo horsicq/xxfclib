@@ -7,11 +7,14 @@
 extern "C" {
 #endif
 typedef xx_volume xx_solar_fs;
-XXFC_API void xx_solar_fs_init(xx_solar_fs *,xx_io_device *,int64_t);
-XXFC_API xx_solar_fs *xx_solar_fs_create(xx_io_device *,int64_t);
+XXFC_API void xx_solar_fs_init(xx_solar_fs *, xx_io_device *, int64_t);
+XXFC_API xx_solar_fs *xx_solar_fs_create(xx_io_device *, int64_t);
 XXFC_API void xx_solar_fs_destroy(xx_solar_fs *);
 XXFC_API void xx_solar_fs_free(xx_solar_fs *);
-static inline Abstractformat *xx_solar_fs_to_format(xx_solar_fs *r) { return r?&r->format:NULL; }
+static inline Abstractformat *xx_solar_fs_to_format(xx_solar_fs *r)
+{
+    return r ? &r->format : NULL;
+}
 #ifdef __cplusplus
 }
 #endif

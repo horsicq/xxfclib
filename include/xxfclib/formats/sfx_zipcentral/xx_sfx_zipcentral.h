@@ -20,12 +20,12 @@ typedef struct xx_sfx_zipcentral {
     bool checked_absolute;
     bool checked_relative;
 } xx_sfx_zipcentral;
-XXFC_API void xx_sfx_zipcentral_init(xx_sfx_zipcentral *,xx_io_device *,int64_t);
-XXFC_API xx_sfx_zipcentral *xx_sfx_zipcentral_create(xx_io_device *,int64_t);
+XXFC_API void xx_sfx_zipcentral_init(xx_sfx_zipcentral *, xx_io_device *, int64_t);
+XXFC_API xx_sfx_zipcentral *xx_sfx_zipcentral_create(xx_io_device *, int64_t);
 XXFC_API void xx_sfx_zipcentral_destroy(xx_sfx_zipcentral *);
 XXFC_API void xx_sfx_zipcentral_free(xx_sfx_zipcentral *);
-XXFC_API bool xx_sfx_zipcentral_check_is_valid(Abstractformat *,xx_pd_struct *);
-XXFC_API bool xx_sfx_zipcentral_handle_base_info(Abstractformat *,xx_pd_struct *);
+XXFC_API bool xx_sfx_zipcentral_check_is_valid(Abstractformat *, xx_pd_struct *);
+XXFC_API bool xx_sfx_zipcentral_handle_base_info(Abstractformat *, xx_pd_struct *);
 #ifdef __cplusplus
 }
 #endif

@@ -9,13 +9,15 @@
 #ifdef __cplusplus
 extern "C" {
 #endif
-typedef struct xx_bethesda_bsa { Abstractformat format; } xx_bethesda_bsa;
-XXFC_API void xx_bethesda_bsa_init(xx_bethesda_bsa *,xx_io_device *,int64_t);
-XXFC_API xx_bethesda_bsa *xx_bethesda_bsa_create(xx_io_device *,int64_t);
+typedef struct xx_bethesda_bsa {
+    Abstractformat format;
+} xx_bethesda_bsa;
+XXFC_API void xx_bethesda_bsa_init(xx_bethesda_bsa *, xx_io_device *, int64_t);
+XXFC_API xx_bethesda_bsa *xx_bethesda_bsa_create(xx_io_device *, int64_t);
 XXFC_API void xx_bethesda_bsa_destroy(xx_bethesda_bsa *);
 XXFC_API void xx_bethesda_bsa_free(xx_bethesda_bsa *);
-XXFC_API bool xx_bethesda_bsa_check_is_valid(Abstractformat *,xx_pd_struct *);
-XXFC_API bool xx_bethesda_bsa_handle_base_info(Abstractformat *,xx_pd_struct *);
+XXFC_API bool xx_bethesda_bsa_check_is_valid(Abstractformat *, xx_pd_struct *);
+XXFC_API bool xx_bethesda_bsa_handle_base_info(Abstractformat *, xx_pd_struct *);
 #ifdef __cplusplus
 }
 #endif

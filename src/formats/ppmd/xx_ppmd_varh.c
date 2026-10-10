@@ -43,13 +43,12 @@ typedef struct ppmdh_coder_s {
     xx_ppmdfile_source *source;
 } ppmdh_coder;
 
-static void ppmdh_normalize(ppmdh_coder *rc) {
+static void ppmdh_normalize(ppmdh_coder *rc)
+{
     /* Each pass shifts one byte in; `range` is non-zero after the reset
      * (the distance to the next 2^15 boundary), so the loop ends after a
      * handful of passes. */
-    while ((rc->low ^ (rc->low + rc->range)) < PPMDH_TOP ||
-           (rc->range < PPMDH_BOT &&
-            ((rc->range = (0U - rc->low) & (PPMDH_BOT - 1U)), 1))) {
+    while ((rc->low ^ (rc->low + rc->range)) < PPMDH_TOP || (rc->range < PPMDH_BOT && ((rc->range = (0U - rc->low) & (PPMDH_BOT - 1U)), 1))) {
         rc->code = (rc->code << 8) | xx_ppmdfile_source_byte(rc->source);
         rc->range <<= 8;
         rc->low <<= 8;
@@ -57,7 +56,8 @@ static void ppmdh_normalize(ppmdh_coder *rc) {
     }
 }
 
-static void ppmdh_decode(ppmdh_coder *rc, uint32_t start, uint32_t size) {
+static void ppmdh_decode(ppmdh_coder *rc, uint32_t start, uint32_t size)
+{
     start *= rc->range;
     rc->low += start;
     rc->code -= start;
@@ -66,7 +66,8 @@ static void ppmdh_decode(ppmdh_coder *rc, uint32_t start, uint32_t size) {
 }
 
 /* Returns false when `total` cannot be divided out of the range. */
-static bool ppmdh_threshold(ppmdh_coder *rc, uint32_t total, uint32_t *count) {
+static bool ppmdh_threshold(ppmdh_coder *rc, uint32_t total, uint32_t *count)
+{
     if (total == 0U || total > rc->range) return false;
     rc->range /= total;
     *count = rc->code / rc->range;
@@ -76,7 +77,8 @@ static bool ppmdh_threshold(ppmdh_coder *rc, uint32_t total, uint32_t *count) {
 #define PPMDH_MASK(sym) ((int8_t *)char_mask)[sym]
 
 /* -1 end marker, 0..255 symbol, -2 data error. */
-static int ppmdh_decode_symbol(CPpmd7 *p, ppmdh_coder *rc) {
+static int ppmdh_decode_symbol(CPpmd7 *p, ppmdh_coder *rc)
+{
     size_t char_mask[256 / sizeof(size_t)];
     if (p->MinContext->NumStats != 1) {
         CPpmd_State *s = Ppmd7_GetStats(p, p->MinContext);
@@ -186,13 +188,9 @@ static int ppmdh_decode_symbol(CPpmd7 *p, ppmdh_coder *rc) {
     }
 }
 
-xx_ppmdfile_status xx_ppmdfile_decode_varh(xx_ppmdfile_source *source,
-                                           unsigned order, uint32_t mem_size,
-                                           xx_ppmdfile_write_fn write,
-                                           void *write_context,
-                                           uint64_t max_output,
-                                           uint64_t *out_size,
-                                           xx_pd_struct *pd) {
+xx_ppmdfile_status xx_ppmdfile_decode_varh(xx_ppmdfile_source *source, unsigned order, uint32_t mem_size, xx_ppmdfile_write_fn write, void *write_context,
+                                           uint64_t max_output, uint64_t *out_size, xx_pd_struct *pd)
+{
     CPpmd7 *model;
     ppmdh_coder rc;
     uint8_t *out;
@@ -201,9 +199,7 @@ xx_ppmdfile_status xx_ppmdfile_decode_varh(xx_ppmdfile_source *source,
     xx_ppmdfile_status status = XX_PPMDFILE_OK;
     unsigned index;
     if (out_size) *out_size = 0U;
-    if (!source || order < PPMD7_MIN_ORDER || order > 16U ||
-        mem_size < XX_PPMD7_MIN_MEM_SIZE || mem_size > XX_PPMD7_MAX_MEM_SIZE)
-        return XX_PPMDFILE_BAD_PARAMS;
+    if (!source || order < PPMD7_MIN_ORDER || order > 16U || mem_size < XX_PPMD7_MIN_MEM_SIZE || mem_size > XX_PPMD7_MAX_MEM_SIZE) return XX_PPMDFILE_BAD_PARAMS;
     model = (CPpmd7 *)xx_mem_alloc(sizeof(*model));
     out = (uint8_t *)xx_mem_alloc(XX_PPMDFILE_OUT_BUFFER);
     if (!model || !out) {
@@ -223,8 +219,7 @@ xx_ppmdfile_status xx_ppmdfile_decode_varh(xx_ppmdfile_source *source,
     rc.low = 0U;
     rc.range = 0xFFFFFFFFU;
     rc.code = 0U;
-    for (index = 0U; index < 4U; ++index)
-        rc.code = (rc.code << 8) | xx_ppmdfile_source_byte(source);
+    for (index = 0U; index < 4U; ++index) rc.code = (rc.code << 8) | xx_ppmdfile_source_byte(source);
     if (source->io_error) status = XX_PPMDFILE_DATA_ERROR;
     else if (source->overrun) status = XX_PPMDFILE_TRUNCATED;
     else if (rc.code == 0xFFFFFFFFU) status = XX_PPMDFILE_DATA_ERROR;
@@ -265,9 +260,7 @@ xx_ppmdfile_status xx_ppmdfile_decode_varh(xx_ppmdfile_source *source,
             }
         }
     }
-    if (status == XX_PPMDFILE_OK && pending != 0U && write &&
-        !write(write_context, out, pending))
-        status = XX_PPMDFILE_WRITE_ERROR;
+    if (status == XX_PPMDFILE_OK && pending != 0U && write && !write(write_context, out, pending)) status = XX_PPMDFILE_WRITE_ERROR;
     if (out_size) *out_size = total;
     Ppmd7_Free(model);
     xx_mem_free(model);

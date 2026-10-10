@@ -117,12 +117,11 @@ static void cpio_writer_free(void *pointer);
 static void cpio_vtable_destroy(Abstractformat *self);
 static bool cpio_solaris_publish(cpio_stream *stream);
 
-static bool cpio_read_at(xx_io_device *device, int64_t offset, void *buffer,
-                         size_t size) {
+static bool cpio_read_at(xx_io_device *device, int64_t offset, void *buffer, size_t size)
+{
     size_t done = 0U;
     size_t capacity = xx_get_file_buffer_size();
-    if (!device || (!buffer && size != 0U) || offset < 0 ||
-        xx_io_seek64(device, offset, SEEK_SET) != 0) {
+    if (!device || (!buffer && size != 0U) || offset < 0 || xx_io_seek64(device, offset, SEEK_SET) != 0) {
         return false;
     }
     while (done < size) {
@@ -134,14 +133,15 @@ static bool cpio_read_at(xx_io_device *device, int64_t offset, void *buffer,
     return true;
 }
 
-static uint32_t cpio_read32(const uint8_t *data, bool big_endian) {
+static uint32_t cpio_read32(const uint8_t *data, bool big_endian)
+{
     uint16_t high = xx_data_get_u16(data, 2, 0, big_endian);
     uint16_t low = xx_data_get_u16(data + 2U, 2, 0, big_endian);
     return ((uint32_t)high << 16U) | low;
 }
 
-static bool cpio_parse_hex(const uint8_t *data, size_t size,
-                           uint64_t *result) {
+static bool cpio_parse_hex(const uint8_t *data, size_t size, uint64_t *result)
+{
     uint64_t value = 0U;
     size_t index;
     if (!data || !result || size == 0U || size > 16U) return false;
@@ -159,8 +159,8 @@ static bool cpio_parse_hex(const uint8_t *data, size_t size,
     return true;
 }
 
-static bool cpio_parse_octal(const uint8_t *data, size_t size,
-                             uint64_t *result) {
+static bool cpio_parse_octal(const uint8_t *data, size_t size, uint64_t *result)
+{
     uint64_t value = 0U;
     size_t index;
     if (!data || !result || size == 0U || size > 22U) return false;
@@ -175,18 +175,17 @@ static bool cpio_parse_octal(const uint8_t *data, size_t size,
     return true;
 }
 
-static bool cpio_add_i64(int64_t value, int64_t increment,
-                         int64_t *result) {
-    if (!result || value < 0 || increment < 0 ||
-        value > INT64_MAX - increment) {
+static bool cpio_add_i64(int64_t value, int64_t increment, int64_t *result)
+{
+    if (!result || value < 0 || increment < 0 || value > INT64_MAX - increment) {
         return false;
     }
     *result = value + increment;
     return true;
 }
 
-static bool cpio_align_i64(int64_t value, unsigned alignment,
-                           int64_t *result) {
+static bool cpio_align_i64(int64_t value, unsigned alignment, int64_t *result)
+{
     int64_t remainder;
     int64_t padding;
     if (!result || value < 0 || alignment == 0U) return false;
@@ -195,13 +194,11 @@ static bool cpio_align_i64(int64_t value, unsigned alignment,
     return cpio_add_i64(value, padding, result);
 }
 
-static bool cpio_variant_at(Abstractformat *format, int64_t relative_offset,
-                            xx_cpio_variant_t *variant) {
+static bool cpio_variant_at(Abstractformat *format, int64_t relative_offset, xx_cpio_variant_t *variant)
+{
     uint8_t magic[6];
     int64_t absolute_offset;
-    if (!format || !format->device || !variant || relative_offset < 0 ||
-        !cpio_add_i64(format->base_address, relative_offset,
-                      &absolute_offset) ||
+    if (!format || !format->device || !variant || relative_offset < 0 || !cpio_add_i64(format->base_address, relative_offset, &absolute_offset) ||
         !cpio_read_at(format->device, absolute_offset, magic, sizeof(magic))) {
         return false;
     }
@@ -209,12 +206,9 @@ static bool cpio_variant_at(Abstractformat *format, int64_t relative_offset,
     else if (xx_rt_memcmp(magic, "070702", 6U) == 0) *variant = XX_CPIO_VARIANT_CRC;
     else if (xx_rt_memcmp(magic, "070707", 6U) == 0) *variant = XX_CPIO_VARIANT_ODC;
     else if (xx_rt_memcmp(magic, "070727", 6U) == 0) *variant = XX_CPIO_VARIANT_AFIO;
-    else if (magic[0] == 0xC7U && magic[1] == 0x71U)
-        *variant = XX_CPIO_VARIANT_BINARY_LE;
-    else if (magic[0] == 0x71U && magic[1] == 0xC7U)
-        *variant = XX_CPIO_VARIANT_BINARY_BE;
-    else
-        *variant = XX_CPIO_VARIANT_UNKNOWN;
+    else if (magic[0] == 0xC7U && magic[1] == 0x71U) *variant = XX_CPIO_VARIANT_BINARY_LE;
+    else if (magic[0] == 0x71U && magic[1] == 0xC7U) *variant = XX_CPIO_VARIANT_BINARY_BE;
+    else *variant = XX_CPIO_VARIANT_UNKNOWN;
     return true;
 }
 
@@ -222,36 +216,29 @@ static bool cpio_variant_at(Abstractformat *format, int64_t relative_offset,
  * unsigned char, while the System V tools (Solaris among them) accumulate
  * in a plain, signed char, so both totals are produced and either one is
  * accepted as a match. */
-static bool cpio_checksum(Abstractformat *format, int64_t offset,
-                          uint64_t size, uint32_t *result,
-                          uint32_t *signed_result, xx_pd_struct *pd) {
+static bool cpio_checksum(Abstractformat *format, int64_t offset, uint64_t size, uint32_t *result, uint32_t *signed_result, xx_pd_struct *pd)
+{
     size_t capacity = xx_get_file_buffer_size();
     uint8_t *buffer;
     uint64_t remaining = size;
     int64_t position = offset;
     uint32_t sum = 0U;
     uint32_t signed_sum = 0U;
-    if (!format || !format->device || !result || !signed_result ||
-        offset < 0) {
+    if (!format || !format->device || !result || !signed_result || offset < 0) {
         return false;
     }
     buffer = (uint8_t *)xx_mem_alloc(capacity);
     if (!buffer) return false;
     while (remaining != 0U) {
-        size_t amount = remaining > capacity ? capacity :
-                                                     (size_t)remaining;
+        size_t amount = remaining > capacity ? capacity : (size_t)remaining;
         size_t index;
-        if ((pd && xx_pd_is_stopped(pd)) ||
-            !cpio_read_at(format->device, position, buffer, amount)) {
+        if ((pd && xx_pd_is_stopped(pd)) || !cpio_read_at(format->device, position, buffer, amount)) {
             xx_mem_free(buffer);
             return false;
         }
         for (index = 0U; index < amount; ++index) {
             sum += buffer[index];
-            signed_sum += buffer[index] < 0x80U
-                              ? (uint32_t)buffer[index]
-                              : (uint32_t)0U - (uint32_t)(0x100U -
-                                                          buffer[index]);
+            signed_sum += buffer[index] < 0x80U ? (uint32_t)buffer[index] : (uint32_t)0U - (uint32_t)(0x100U - buffer[index]);
         }
         remaining -= amount;
         if (!cpio_add_i64(position, (int64_t)amount, &position)) {
@@ -265,12 +252,11 @@ static bool cpio_checksum(Abstractformat *format, int64_t offset,
     return true;
 }
 
-static bool cpio_read_name(Abstractformat *format, int64_t offset,
-                           uint64_t size, char **result) {
+static bool cpio_read_name(Abstractformat *format, int64_t offset, uint64_t size, char **result)
+{
     char *name;
     size_t index;
-    if (!format || !result || size == 0U || size > XX_CPIO_MAX_NAME_SIZE ||
-        size > SIZE_MAX - 1U || offset < 0) {
+    if (!format || !result || size == 0U || size > XX_CPIO_MAX_NAME_SIZE || size > SIZE_MAX - 1U || offset < 0) {
         return false;
     }
     name = (char *)xx_mem_alloc((size_t)size + 1U);
@@ -315,47 +301,36 @@ typedef struct cpio_afio_sink_s {
     uint64_t limit;
 } cpio_afio_sink;
 
-static ssize_t cpio_afio_region_read(xx_io_device *device, void *buffer,
-                                     size_t size) {
+static ssize_t cpio_afio_region_read(xx_io_device *device, void *buffer, size_t size)
+{
     cpio_afio_region *region = device ? (cpio_afio_region *)device->priv : NULL;
     ssize_t got;
-    if (!region || !buffer || region->cursor < 0 ||
-        region->cursor > region->length) return -1;
-    if (size > (uint64_t)(region->length - region->cursor))
-        size = (size_t)(region->length - region->cursor);
+    if (!region || !buffer || region->cursor < 0 || region->cursor > region->length) return -1;
+    if (size > (uint64_t)(region->length - region->cursor)) size = (size_t)(region->length - region->cursor);
     if (size == 0U) return 0;
     if (region->one_byte) {
-        if (region->cache_start < 0 ||
-            region->cursor < region->cache_start ||
-            (uint64_t)(region->cursor - region->cache_start) >=
-                region->cache_size) {
+        if (region->cache_start < 0 || region->cursor < region->cache_start || (uint64_t)(region->cursor - region->cache_start) >= region->cache_size) {
             size_t request = sizeof(region->cache);
-            if ((uint64_t)request >
-                (uint64_t)(region->length - region->cursor))
-                request = (size_t)(region->length - region->cursor);
-            if (xx_io_seek64(region->source,
-                             region->offset + region->cursor,
-                             SEEK_SET) != 0) return -1;
+            if ((uint64_t)request > (uint64_t)(region->length - region->cursor)) request = (size_t)(region->length - region->cursor);
+            if (xx_io_seek64(region->source, region->offset + region->cursor, SEEK_SET) != 0) return -1;
             got = xx_io_read(region->source, region->cache, request);
             if (got <= 0 || (size_t)got > request) return -1;
             region->cache_start = region->cursor;
             region->cache_size = (size_t)got;
         }
-        *(uint8_t *)buffer =
-            region->cache[(size_t)(region->cursor - region->cache_start)];
+        *(uint8_t *)buffer = region->cache[(size_t)(region->cursor - region->cache_start)];
         ++region->cursor;
         return 1;
     }
-    if (xx_io_seek64(region->source, region->offset + region->cursor,
-                     SEEK_SET) != 0) return -1;
+    if (xx_io_seek64(region->source, region->offset + region->cursor, SEEK_SET) != 0) return -1;
     got = xx_io_read(region->source, buffer, size);
     if (got < 0 || (size_t)got > size) return -1;
     region->cursor += got;
     return got;
 }
 
-static int cpio_afio_region_seek(xx_io_device *device, int64_t offset,
-                                  int origin) {
+static int cpio_afio_region_seek(xx_io_device *device, int64_t offset, int origin)
+{
     cpio_afio_region *region = device ? (cpio_afio_region *)device->priv : NULL;
     int64_t base;
     if (!region) return -1;
@@ -363,32 +338,32 @@ static int cpio_afio_region_seek(xx_io_device *device, int64_t offset,
     else if (origin == SEEK_CUR) base = region->cursor;
     else if (origin == SEEK_END) base = region->length;
     else return -1;
-    if ((offset > 0 && base > INT64_MAX - offset) ||
-        (offset < 0 && base < INT64_MIN - offset)) return -1;
+    if ((offset > 0 && base > INT64_MAX - offset) || (offset < 0 && base < INT64_MIN - offset)) return -1;
     base += offset;
     if (base < 0 || base > region->length) return -1;
     region->cursor = base;
     return 0;
 }
 
-static int cpio_afio_region_seek_long(xx_io_device *device, long offset,
-                                       int origin) {
+static int cpio_afio_region_seek_long(xx_io_device *device, long offset, int origin)
+{
     return cpio_afio_region_seek(device, (int64_t)offset, origin);
 }
 
-static int64_t cpio_afio_region_tell(xx_io_device *device) {
+static int64_t cpio_afio_region_tell(xx_io_device *device)
+{
     cpio_afio_region *region = device ? (cpio_afio_region *)device->priv : NULL;
     return region ? region->cursor : -1;
 }
 
-static int64_t cpio_afio_region_size(xx_io_device *device) {
+static int64_t cpio_afio_region_size(xx_io_device *device)
+{
     cpio_afio_region *region = device ? (cpio_afio_region *)device->priv : NULL;
     return region ? region->length : -1;
 }
 
-static void cpio_afio_region_init(cpio_afio_region *region,
-                                   xx_io_device *source, int64_t offset,
-                                   int64_t length) {
+static void cpio_afio_region_init(cpio_afio_region *region, xx_io_device *source, int64_t offset, int64_t length)
+{
     xx_mem_zero(region, sizeof(*region));
     region->source = source;
     region->offset = offset;
@@ -402,11 +377,10 @@ static void cpio_afio_region_init(cpio_afio_region *region,
     region->device.total_size = cpio_afio_region_size;
 }
 
-static ssize_t cpio_afio_sink_write(xx_io_device *device,
-                                    const void *buffer, size_t size) {
+static ssize_t cpio_afio_sink_write(xx_io_device *device, const void *buffer, size_t size)
+{
     cpio_afio_sink *sink = device ? (cpio_afio_sink *)device->priv : NULL;
-    if (!sink || (!buffer && size != 0U) ||
-        (uint64_t)size > sink->limit - sink->written) return -1;
+    if (!sink || (!buffer && size != 0U) || (uint64_t)size > sink->limit - sink->written) return -1;
     if (sink->target) {
         ssize_t sent = xx_io_write(sink->target, buffer, size);
         if (sent <= 0 || (size_t)sent != size) return -1;
@@ -415,16 +389,13 @@ static ssize_t cpio_afio_sink_write(xx_io_device *device,
     return (ssize_t)size;
 }
 
-static bool cpio_afio_decode(xx_io_device *source, int64_t offset,
-                              uint64_t packed_size, uint32_t method,
-                              xx_io_device *destination, uint64_t limit,
-                              uint64_t *written, xx_pd_struct *pd) {
+static bool cpio_afio_decode(xx_io_device *source, int64_t offset, uint64_t packed_size, uint32_t method, xx_io_device *destination, uint64_t limit, uint64_t *written,
+                             xx_pd_struct *pd)
+{
     cpio_afio_region region;
     cpio_afio_sink sink;
     bool ok = false;
-    if (!source || !written || offset < 0 || packed_size > INT64_MAX ||
-        limit > XX_CPIO_AFIO_MAX_OUTPUT || (pd && xx_pd_is_stopped(pd)))
-        return false;
+    if (!source || !written || offset < 0 || packed_size > INT64_MAX || limit > XX_CPIO_AFIO_MAX_OUTPUT || (pd && xx_pd_is_stopped(pd))) return false;
     cpio_afio_region_init(&region, source, offset, (int64_t)packed_size);
     xx_mem_zero(&sink, sizeof(sink));
     sink.device.priv = &sink;
@@ -434,22 +405,18 @@ static bool cpio_afio_decode(xx_io_device *source, int64_t offset,
     if (method == XX_CPIO_AFIO_GZIP) {
         xx_gz reader;
         xx_gz_init(&reader, &region.device, 0);
-        ok = xx_gz_unpack_to_device(&reader, &sink.device, pd) &&
-             reader.format.format_size == (int64_t)packed_size;
+        ok = xx_gz_unpack_to_device(&reader, &sink.device, pd) && reader.format.format_size == (int64_t)packed_size;
         xx_gz_destroy(&reader);
     } else if (method == XX_CPIO_AFIO_BZIP2) {
         /* The generic bzip2 reader buffers input ahead of EOS. Serving one
          * byte at a time from a local cache lets the region cursor report
          * the actual consumed extent, so trailing garbage is rejected. */
         region.one_byte = true;
-        ok = xx_bzip2_unpack_device(&region.device, 0,
-                                    (int64_t)packed_size, &sink.device, pd) &&
-             region.cursor == (int64_t)packed_size;
+        ok = xx_bzip2_unpack_device(&region.device, 0, (int64_t)packed_size, &sink.device, pd) && region.cursor == (int64_t)packed_size;
     } else if (method == XX_CPIO_AFIO_XZ) {
         xx_xz reader;
         xx_xz_init(&reader, &region.device, 0);
-        ok = xx_xz_unpack_to_device(&reader, &sink.device, pd) &&
-             reader.format.format_size == (int64_t)packed_size;
+        ok = xx_xz_unpack_to_device(&reader, &sink.device, pd) && reader.format.format_size == (int64_t)packed_size;
         xx_xz_destroy(&reader);
     }
     if (!ok || (pd && xx_pd_is_stopped(pd))) return false;
@@ -457,22 +424,22 @@ static bool cpio_afio_decode(xx_io_device *source, int64_t offset,
     return true;
 }
 
-static uint32_t cpio_afio_method(xx_io_device *source, int64_t offset,
-                                  uint64_t packed_size) {
+static uint32_t cpio_afio_method(xx_io_device *source, int64_t offset, uint64_t packed_size)
+{
     uint8_t magic[6];
-    if (!source || packed_size < 6U ||
-        !cpio_read_at(source, offset, magic, sizeof(magic))) return 0U;
-    if (magic[0] == 0x1fU && magic[1] == 0x8bU && magic[2] == 8U)
-        return XX_CPIO_AFIO_GZIP;
-    if (magic[0] == 'B' && magic[1] == 'Z' && magic[2] == 'h' &&
-        magic[3] >= '1' && magic[3] <= '9') return XX_CPIO_AFIO_BZIP2;
-    if (xx_rt_memcmp(magic, "\xfd" "7zXZ\0", sizeof(magic)) == 0)
+    if (!source || packed_size < 6U || !cpio_read_at(source, offset, magic, sizeof(magic))) return 0U;
+    if (magic[0] == 0x1fU && magic[1] == 0x8bU && magic[2] == 8U) return XX_CPIO_AFIO_GZIP;
+    if (magic[0] == 'B' && magic[1] == 'Z' && magic[2] == 'h' && magic[3] >= '1' && magic[3] <= '9') return XX_CPIO_AFIO_BZIP2;
+    if (xx_rt_memcmp(magic,
+                     "\xfd"
+                     "7zXZ\0",
+                     sizeof(magic)) == 0)
         return XX_CPIO_AFIO_XZ;
     return 0U;
 }
 
-static bool cpio_parse_record(Abstractformat *format, int64_t relative_offset,
-                              cpio_member *member, xx_pd_struct *pd) {
+static bool cpio_parse_record(Abstractformat *format, int64_t relative_offset, cpio_member *member, xx_pd_struct *pd)
+{
     uint8_t header[XX_CPIO_AFIO_HEADER_SIZE];
     xx_cpio_variant_t variant;
     int64_t total_size;
@@ -492,31 +459,21 @@ static bool cpio_parse_record(Abstractformat *format, int64_t relative_offset,
     bool padded = false;
     size_t field;
 
-    if (!format || !format->device || !member || relative_offset < 0 ||
-        (pd && xx_pd_is_stopped(pd))) {
+    if (!format || !format->device || !member || relative_offset < 0 || (pd && xx_pd_is_stopped(pd))) {
         return false;
     }
     xx_mem_zero(member, sizeof(*member));
     total_size = xx_io_total_size(format->device);
-    if (format->base_address < 0 || total_size < format->base_address ||
-        relative_offset >= total_size - format->base_address ||
-        !cpio_add_i64(format->base_address, relative_offset,
-                      &absolute_offset) ||
-        !cpio_variant_at(format, relative_offset, &variant) ||
+    if (format->base_address < 0 || total_size < format->base_address || relative_offset >= total_size - format->base_address ||
+        !cpio_add_i64(format->base_address, relative_offset, &absolute_offset) || !cpio_variant_at(format, relative_offset, &variant) ||
         variant == XX_CPIO_VARIANT_UNKNOWN) {
         return false;
     }
-    header_size = variant == XX_CPIO_VARIANT_NEWC ||
-                          variant == XX_CPIO_VARIANT_CRC
-                      ? (int64_t)XX_CPIO_NEWC_HEADER_SIZE
-                      : variant == XX_CPIO_VARIANT_ODC
-                            ? (int64_t)XX_CPIO_ODC_HEADER_SIZE
-                            : variant == XX_CPIO_VARIANT_AFIO
-                                  ? (int64_t)XX_CPIO_AFIO_HEADER_SIZE
-                                  : (int64_t)XX_CPIO_BINARY_HEADER_SIZE;
-    if (header_size > total_size - absolute_offset ||
-        !cpio_read_at(format->device, absolute_offset, header,
-                      (size_t)header_size)) {
+    header_size = variant == XX_CPIO_VARIANT_NEWC || variant == XX_CPIO_VARIANT_CRC ? (int64_t)XX_CPIO_NEWC_HEADER_SIZE
+                  : variant == XX_CPIO_VARIANT_ODC                                  ? (int64_t)XX_CPIO_ODC_HEADER_SIZE
+                  : variant == XX_CPIO_VARIANT_AFIO                                 ? (int64_t)XX_CPIO_AFIO_HEADER_SIZE
+                                                                                    : (int64_t)XX_CPIO_BINARY_HEADER_SIZE;
+    if (header_size > total_size - absolute_offset || !cpio_read_at(format->device, absolute_offset, header, (size_t)header_size)) {
         return false;
     }
 
@@ -539,13 +496,10 @@ static bool cpio_parse_record(Abstractformat *format, int64_t relative_offset,
         has_check = variant == XX_CPIO_VARIANT_CRC;
         padded = true;
     } else if (variant == XX_CPIO_VARIANT_ODC) {
-        static const size_t offsets[] = {6U, 12U, 18U, 24U, 30U,
-                                         36U, 42U, 48U, 59U, 65U};
-        static const size_t widths[] = {6U, 6U, 6U, 6U, 6U,
-                                        6U, 6U, 11U, 6U, 11U};
+        static const size_t offsets[] = {6U, 12U, 18U, 24U, 30U, 36U, 42U, 48U, 59U, 65U};
+        static const size_t widths[] = {6U, 6U, 6U, 6U, 6U, 6U, 6U, 11U, 6U, 11U};
         for (field = 0U; field < 10U; ++field) {
-            if (!cpio_parse_octal(header + offsets[field], widths[field],
-                                  &value)) return false;
+            if (!cpio_parse_octal(header + offsets[field], widths[field], &value)) return false;
             if (field == 2U) member->mode = (uint32_t)value;
             else if (field == 3U) member->uid = (uint32_t)value;
             else if (field == 4U) member->gid = (uint32_t)value;
@@ -556,13 +510,10 @@ static bool cpio_parse_record(Abstractformat *format, int64_t relative_offset,
             else if (field == 9U) data_size = value;
         }
     } else if (variant == XX_CPIO_VARIANT_AFIO) {
-        if (header[30U] != 'm' || header[85U] != 'n' ||
-            header[98U] != 's' || header[115U] != ':') {
+        if (header[30U] != 'm' || header[85U] != 'n' || header[98U] != 's' || header[115U] != ':') {
             return false;
         }
-        if (!cpio_parse_hex(header + 6U, 8U, &value) ||
-            !cpio_parse_hex(header + 14U, 16U, &value) ||
-            !cpio_parse_octal(header + 31U, 6U, &value)) return false;
+        if (!cpio_parse_hex(header + 6U, 8U, &value) || !cpio_parse_hex(header + 14U, 16U, &value) || !cpio_parse_octal(header + 31U, 6U, &value)) return false;
         member->mode = (uint32_t)value;
         if (!cpio_parse_hex(header + 37U, 8U, &value)) return false;
         member->uid = (uint32_t)value;
@@ -574,10 +525,9 @@ static bool cpio_parse_record(Abstractformat *format, int64_t relative_offset,
         member->rdev = (uint32_t)value;
         if (!cpio_parse_hex(header + 69U, 16U, &value)) return false;
         member->mtime = value;
-        if (!cpio_parse_hex(header + 86U, 4U, &name_size) ||
-            !cpio_parse_hex(header + 90U, 4U, &value) ||
-            !cpio_parse_hex(header + 94U, 4U, &value) ||
-            !cpio_parse_hex(header + 99U, 16U, &data_size)) return false;
+        if (!cpio_parse_hex(header + 86U, 4U, &name_size) || !cpio_parse_hex(header + 90U, 4U, &value) || !cpio_parse_hex(header + 94U, 4U, &value) ||
+            !cpio_parse_hex(header + 99U, 16U, &data_size))
+            return false;
     } else {
         bool big_endian = variant == XX_CPIO_VARIANT_BINARY_BE;
         if (xx_data_get_u16(header, 2, 0, big_endian) != UINT16_C(0x71C7)) return false;
@@ -591,15 +541,11 @@ static bool cpio_parse_record(Abstractformat *format, int64_t relative_offset,
         data_size = cpio_read32(header + 22U, big_endian);
         binary = true;
     }
-    if (name_size == 0U || name_size > XX_CPIO_MAX_NAME_SIZE ||
-        data_size > (uint64_t)INT64_MAX ||
-        (has_check && expected_check > UINT32_MAX)) {
+    if (name_size == 0U || name_size > XX_CPIO_MAX_NAME_SIZE || data_size > (uint64_t)INT64_MAX || (has_check && expected_check > UINT32_MAX)) {
         return false;
     }
-    if (!cpio_add_i64(relative_offset, header_size, &name_offset) ||
-        !cpio_add_i64(name_offset, (int64_t)name_size, &name_end) ||
-        name_end > total_size - format->base_address ||
-        !cpio_add_i64(format->base_address, name_offset, &absolute_offset) ||
+    if (!cpio_add_i64(relative_offset, header_size, &name_offset) || !cpio_add_i64(name_offset, (int64_t)name_size, &name_end) ||
+        name_end > total_size - format->base_address || !cpio_add_i64(format->base_address, name_offset, &absolute_offset) ||
         !cpio_read_name(format, absolute_offset, name_size, &member->name)) {
         return false;
     }
@@ -608,44 +554,29 @@ static bool cpio_parse_record(Abstractformat *format, int64_t relative_offset,
         goto fail;
     }
     if (binary && !cpio_align_i64(data_relative, 2U, &data_relative)) goto fail;
-    if (!cpio_add_i64(data_relative, (int64_t)data_size, &data_end) ||
-        data_end > total_size - format->base_address) {
+    if (!cpio_add_i64(data_relative, (int64_t)data_size, &data_end) || data_end > total_size - format->base_address) {
         goto fail;
     }
     next_relative = data_end;
     if (padded && !cpio_align_i64(next_relative, 4U, &next_relative)) goto fail;
     if (binary && !cpio_align_i64(next_relative, 2U, &next_relative)) goto fail;
-    if (next_relative <= relative_offset ||
-        next_relative > total_size - format->base_address ||
-        !cpio_add_i64(format->base_address, data_relative,
-                      &member->data_offset)) {
+    if (next_relative <= relative_offset || next_relative > total_size - format->base_address ||
+        !cpio_add_i64(format->base_address, data_relative, &member->data_offset)) {
         goto fail;
     }
     member->header_size = data_relative - relative_offset;
     member->data_size = data_size;
     member->unpacked_size = data_size;
     member->next_offset = next_relative;
-    member->directory =
-        (member->mode & XX_CPIO_MODE_IFMT) == XX_CPIO_MODE_IFDIR ||
-        (member->name[0] &&
-         member->name[xx_str_len(member->name) - 1U] == '/');
-    member->regular = !member->directory &&
-                      ((member->mode & XX_CPIO_MODE_IFMT) == 0U ||
-                       (member->mode & XX_CPIO_MODE_IFMT) == XX_CPIO_MODE_IFREG);
-    if (member->regular &&
-        (variant == XX_CPIO_VARIANT_ODC ||
-         variant == XX_CPIO_VARIANT_AFIO)) {
+    member->directory = (member->mode & XX_CPIO_MODE_IFMT) == XX_CPIO_MODE_IFDIR || (member->name[0] && member->name[xx_str_len(member->name) - 1U] == '/');
+    member->regular = !member->directory && ((member->mode & XX_CPIO_MODE_IFMT) == 0U || (member->mode & XX_CPIO_MODE_IFMT) == XX_CPIO_MODE_IFREG);
+    if (member->regular && (variant == XX_CPIO_VARIANT_ODC || variant == XX_CPIO_VARIANT_AFIO)) {
         size_t length = xx_str_len(member->name);
-        if (length > 2U && member->name[length - 2U] == '.' &&
-            member->name[length - 1U] == 'z') {
-            uint32_t method = cpio_afio_method(format->device,
-                                               member->data_offset, data_size);
+        if (length > 2U && member->name[length - 2U] == '.' && member->name[length - 1U] == 'z') {
+            uint32_t method = cpio_afio_method(format->device, member->data_offset, data_size);
             if (method != 0U) {
                 uint64_t decoded = 0U;
-                if (!cpio_afio_decode(format->device, member->data_offset,
-                                      data_size, method, NULL,
-                                      XX_CPIO_AFIO_MAX_OUTPUT, &decoded, pd))
-                    goto fail;
+                if (!cpio_afio_decode(format->device, member->data_offset, data_size, method, NULL, XX_CPIO_AFIO_MAX_OUTPUT, &decoded, pd)) goto fail;
                 member->compression = method;
                 member->unpacked_size = decoded;
                 member->name[length - 2U] = '\0';
@@ -655,10 +586,8 @@ static bool cpio_parse_record(Abstractformat *format, int64_t relative_offset,
     if (has_check) {
         uint32_t calculated;
         uint32_t calculated_signed;
-        if (!cpio_checksum(format, member->data_offset, data_size, &calculated,
-                           &calculated_signed, pd) ||
-            (calculated != (uint32_t)expected_check &&
-             calculated_signed != (uint32_t)expected_check)) {
+        if (!cpio_checksum(format, member->data_offset, data_size, &calculated, &calculated_signed, pd) ||
+            (calculated != (uint32_t)expected_check && calculated_signed != (uint32_t)expected_check)) {
             goto fail;
         }
         member->check = (uint32_t)expected_check;
@@ -670,16 +599,15 @@ fail:
     return false;
 }
 
-static bool cpio_add_member(cpio_stream *stream, cpio_member *member) {
+static bool cpio_add_member(cpio_stream *stream, cpio_member *member)
+{
     cpio_member *items;
     size_t capacity;
     if (!stream || !member || !member->name) return false;
     if (stream->count == stream->capacity) {
         capacity = stream->capacity ? stream->capacity * 2U : 16U;
-        if (capacity < stream->capacity ||
-            capacity > SIZE_MAX / sizeof(*items)) return false;
-        items = (cpio_member *)xx_mem_realloc(stream->items,
-                                              capacity * sizeof(*items));
+        if (capacity < stream->capacity || capacity > SIZE_MAX / sizeof(*items)) return false;
+        items = (cpio_member *)xx_mem_realloc(stream->items, capacity * sizeof(*items));
         if (!items) return false;
         stream->items = items;
         stream->capacity = capacity;
@@ -689,7 +617,8 @@ static bool cpio_add_member(cpio_stream *stream, cpio_member *member) {
     return true;
 }
 
-static void cpio_stream_free(void *pointer) {
+static void cpio_stream_free(void *pointer)
+{
     cpio_stream *stream = (cpio_stream *)pointer;
     size_t index;
     if (!stream) return;
@@ -703,26 +632,22 @@ static void cpio_stream_free(void *pointer) {
     xx_mem_free(stream);
 }
 
-static bool cpio_solaris_present(Abstractformat *format) {
+static bool cpio_solaris_present(Abstractformat *format)
+{
     uint8_t magic[4];
-    return format && format->device && format->base_address >= 0 &&
-           cpio_read_at(format->device, format->base_address, magic,
-                        sizeof(magic)) &&
-           magic[0] == 0x19U && magic[1] == 0x9eU && magic[2] == 'T' &&
-           magic[3] == 'L';
+    return format && format->device && format->base_address >= 0 && cpio_read_at(format->device, format->base_address, magic, sizeof(magic)) && magic[0] == 0x19U &&
+           magic[1] == 0x9eU && magic[2] == 'T' && magic[3] == 'L';
 }
 
-static bool cpio_solaris_add_segment(cpio_stream *stream, int64_t offset) {
+static bool cpio_solaris_add_segment(cpio_stream *stream, int64_t offset)
+{
     int64_t *items;
     size_t capacity;
     if (!stream) return false;
     if (stream->segment_count == stream->segment_capacity) {
-        capacity = stream->segment_capacity ? stream->segment_capacity * 2U
-                                            : 8U;
-        if (capacity < stream->segment_capacity ||
-            capacity > SIZE_MAX / sizeof(*items)) return false;
-        items = (int64_t *)xx_mem_realloc(stream->segments,
-                                          capacity * sizeof(*items));
+        capacity = stream->segment_capacity ? stream->segment_capacity * 2U : 8U;
+        if (capacity < stream->segment_capacity || capacity > SIZE_MAX / sizeof(*items)) return false;
+        items = (int64_t *)xx_mem_realloc(stream->segments, capacity * sizeof(*items));
         if (!items) return false;
         stream->segments = items;
         stream->segment_capacity = capacity;
@@ -734,8 +659,8 @@ static bool cpio_solaris_add_segment(cpio_stream *stream, int64_t offset) {
 /* Decompresses every 'TL'/'TG' object into a single in-memory image and
  * records the image offset each object starts at.  Every declared size is
  * checked against the real file size before it is used. */
-static bool cpio_solaris_load(Abstractformat *format, cpio_stream *stream,
-                              xx_pd_struct *pd) {
+static bool cpio_solaris_load(Abstractformat *format, cpio_stream *stream, xx_pd_struct *pd)
+{
     uint8_t header[XX_CPIO_SOLARIS_TG_SIZE];
     uint8_t *table = NULL;
     int64_t total_size;
@@ -761,36 +686,29 @@ static bool cpio_solaris_load(Abstractformat *format, cpio_stream *stream,
         uint8_t *image;
         size_t written = stream->image_size;
         if (pd && xx_pd_is_stopped(pd)) goto fail;
-        if (!cpio_read_at(format->device, format->base_address + position,
-                          header, XX_CPIO_SOLARIS_TL_SIZE)) {
+        if (!cpio_read_at(format->device, format->base_address + position, header, XX_CPIO_SOLARIS_TL_SIZE)) {
             goto fail;
         }
-        if (header[0] == 0U && header[1] == 0U && header[2] == 0U &&
-            header[3] == 0U) {
+        if (header[0] == 0U && header[1] == 0U && header[2] == 0U && header[3] == 0U) {
             /* Objects sit on 512-byte boundaries with zero-filled gaps. */
             position += (int64_t)XX_CPIO_SOLARIS_BLOCK;
             continue;
         }
-        if (header[0] != 0x19U || header[1] != 0x9eU || header[2] != 'T' ||
-            header[3] != 'L') {
+        if (header[0] != 0x19U || header[1] != 0x9eU || header[2] != 'T' || header[3] != 'L') {
             break;
         }
         payload_size = (int64_t)xx_data_get_u32(header + 4U, 4, 0, false);
         body = position + (int64_t)XX_CPIO_SOLARIS_BLOCK;
-        if (payload_size < (int64_t)XX_CPIO_SOLARIS_TG_SIZE ||
-            body > available || payload_size > available - body) {
+        if (payload_size < (int64_t)XX_CPIO_SOLARIS_TG_SIZE || body > available || payload_size > available - body) {
             goto fail;
         }
-        if (!cpio_read_at(format->device, format->base_address + body, header,
-                          XX_CPIO_SOLARIS_TG_SIZE) ||
-            header[0] != 0x19U || header[1] != 0x9eU || header[2] != 'T' ||
+        if (!cpio_read_at(format->device, format->base_address + body, header, XX_CPIO_SOLARIS_TG_SIZE) || header[0] != 0x19U || header[1] != 0x9eU || header[2] != 'T' ||
             header[3] != 'G') {
             goto fail;
         }
         block_count = xx_data_get_u32(header + 4U, 4, 0, false);
         block_size = xx_data_get_u32(header + 8U, 4, 0, false);
-        if (block_count == 0U || block_count > XX_CPIO_SOLARIS_MAX_BLOCKS ||
-            block_size == 0U || block_size > XX_CPIO_SOLARIS_MAX_BLOCK_SIZE) {
+        if (block_count == 0U || block_count > XX_CPIO_SOLARIS_MAX_BLOCKS || block_size == 0U || block_size > XX_CPIO_SOLARIS_MAX_BLOCK_SIZE) {
             goto fail;
         }
         table_size = (int64_t)block_count * (int64_t)XX_CPIO_SOLARIS_ENTRY_SIZE;
@@ -798,58 +716,41 @@ static bool cpio_solaris_load(Abstractformat *format, cpio_stream *stream,
             goto fail;
         }
         table = (uint8_t *)xx_mem_alloc((size_t)table_size);
-        if (!table ||
-            !cpio_read_at(format->device,
-                          format->base_address + body +
-                              (int64_t)XX_CPIO_SOLARIS_TG_SIZE,
-                          table, (size_t)table_size)) {
+        if (!table || !cpio_read_at(format->device, format->base_address + body + (int64_t)XX_CPIO_SOLARIS_TG_SIZE, table, (size_t)table_size)) {
             goto fail;
         }
         for (entry = 0U; entry < block_count; ++entry) {
-            const uint8_t *item = table + (size_t)entry *
-                                              XX_CPIO_SOLARIS_ENTRY_SIZE;
+            const uint8_t *item = table + (size_t)entry * XX_CPIO_SOLARIS_ENTRY_SIZE;
             uint32_t plain = xx_data_get_u32(item, 4, 0, false);
             uint32_t packed = xx_data_get_u32(item + 4U, 4, 0, false);
             uint32_t offset = xx_data_get_u32(item + 8U, 4, 0, false);
-            if (plain == 0U || plain > block_size || packed == 0U ||
-                (int64_t)offset < (int64_t)XX_CPIO_SOLARIS_TG_SIZE +
-                                      table_size ||
-                (int64_t)offset > payload_size ||
+            if (plain == 0U || plain > block_size || packed == 0U || (int64_t)offset < (int64_t)XX_CPIO_SOLARIS_TG_SIZE + table_size || (int64_t)offset > payload_size ||
                 (int64_t)packed > payload_size - (int64_t)offset) {
                 goto fail;
             }
             object_output += plain;
-            if (object_output > XX_CPIO_SOLARIS_MAX_IMAGE ||
-                object_output + (uint64_t)stream->image_size >
-                    XX_CPIO_SOLARIS_MAX_IMAGE) {
+            if (object_output > XX_CPIO_SOLARIS_MAX_IMAGE || object_output + (uint64_t)stream->image_size > XX_CPIO_SOLARIS_MAX_IMAGE) {
                 goto fail;
             }
         }
-        if (object_output == 0U ||
-            object_output > (uint64_t)(SIZE_MAX - stream->image_size)) {
+        if (object_output == 0U || object_output > (uint64_t)(SIZE_MAX - stream->image_size)) {
             goto fail;
         }
-        image = (uint8_t *)xx_mem_realloc(stream->image,
-                                          stream->image_size +
-                                              (size_t)object_output);
+        image = (uint8_t *)xx_mem_realloc(stream->image, stream->image_size + (size_t)object_output);
         if (!image) goto fail;
         stream->image = image;
         if (!cpio_solaris_add_segment(stream, (int64_t)stream->image_size)) {
             goto fail;
         }
         for (entry = 0U; entry < block_count; ++entry) {
-            const uint8_t *item = table + (size_t)entry *
-                                              XX_CPIO_SOLARIS_ENTRY_SIZE;
+            const uint8_t *item = table + (size_t)entry * XX_CPIO_SOLARIS_ENTRY_SIZE;
             uint32_t plain = xx_data_get_u32(item, 4, 0, false);
             uint32_t packed = xx_data_get_u32(item + 4U, 4, 0, false);
             uint32_t offset = xx_data_get_u32(item + 8U, 4, 0, false);
             size_t produced = 0U;
             if ((pd && xx_pd_is_stopped(pd)) ||
-                !xx_deflate_unpack_device_to_memory(
-                    format->device,
-                    format->base_address + body + (int64_t)offset,
-                    (int64_t)packed, stream->image + written, (size_t)plain,
-                    &produced, false, pd) ||
+                !xx_deflate_unpack_device_to_memory(format->device, format->base_address + body + (int64_t)offset, (int64_t)packed, stream->image + written,
+                                                    (size_t)plain, &produced, false, pd) ||
                 produced != (size_t)plain) {
                 goto fail;
             }
@@ -858,16 +759,14 @@ static bool cpio_solaris_load(Abstractformat *format, cpio_stream *stream,
         xx_mem_free(table);
         table = NULL;
         stream->image_size = written;
-        if (!cpio_align_i64(payload_size, XX_CPIO_SOLARIS_BLOCK, &padded) ||
-            !cpio_add_i64(body, padded, &position)) {
+        if (!cpio_align_i64(payload_size, XX_CPIO_SOLARIS_BLOCK, &padded) || !cpio_add_i64(body, padded, &position)) {
             goto fail;
         }
         last_end = position;
         if (++objects > XX_CPIO_SOLARIS_MAX_OBJECTS) goto fail;
     }
     if (objects == 0U || stream->image_size == 0U) goto fail;
-    stream->image_device = xx_io_mem_open_ro(stream->image,
-                                             stream->image_size);
+    stream->image_device = xx_io_mem_open_ro(stream->image, stream->image_size);
     if (!stream->image_device) goto fail;
     stream->wrapped = true;
     stream->archive_size = last_end;
@@ -877,24 +776,20 @@ fail:
     return false;
 }
 
-static bool cpio_is_trailer(const cpio_member *member) {
+static bool cpio_is_trailer(const cpio_member *member)
+{
     return member && member->name && xx_str_cmp(member->name, "TRAILER!!!") == 0;
 }
 
-static bool cpio_afio_zero_trailer(xx_io_device *source,
-                                    const cpio_member *member,
-                                    xx_pd_struct *pd) {
+static bool cpio_afio_zero_trailer(xx_io_device *source, const cpio_member *member, xx_pd_struct *pd)
+{
     uint8_t buffer[4096];
     uint64_t done = 0U;
     if (!source || !member || member->data_offset < 0) return false;
     while (done < member->data_size) {
-        size_t amount = member->data_size - done < sizeof(buffer)
-                            ? (size_t)(member->data_size - done)
-                            : sizeof(buffer);
+        size_t amount = member->data_size - done < sizeof(buffer) ? (size_t)(member->data_size - done) : sizeof(buffer);
         size_t index;
-        if ((pd && xx_pd_is_stopped(pd)) ||
-            !cpio_read_at(source, member->data_offset + (int64_t)done,
-                          buffer, amount)) return false;
+        if ((pd && xx_pd_is_stopped(pd)) || !cpio_read_at(source, member->data_offset + (int64_t)done, buffer, amount)) return false;
         for (index = 0U; index < amount; ++index)
             if (buffer[index] != 0U) return false;
         done += amount;
@@ -902,16 +797,15 @@ static bool cpio_afio_zero_trailer(xx_io_device *source,
     return true;
 }
 
-static bool cpio_parse(Abstractformat *format, cpio_stream **result,
-                       xx_pd_struct *pd) {
+static bool cpio_parse(Abstractformat *format, cpio_stream **result, xx_pd_struct *pd)
+{
     cpio_stream *stream;
     Abstractformat view;
     Abstractformat *source;
     int64_t total_size;
     int64_t archive_size;
     size_t segment;
-    if (!format || !format->device || !result || format->base_address < 0 ||
-        (pd && xx_pd_is_stopped(pd))) return false;
+    if (!format || !format->device || !result || format->base_address < 0 || (pd && xx_pd_is_stopped(pd))) return false;
     total_size = xx_io_total_size(format->device);
     if (total_size < format->base_address) return false;
     stream = (cpio_stream *)xx_mem_calloc(1U, sizeof(*stream));
@@ -929,22 +823,18 @@ static bool cpio_parse(Abstractformat *format, cpio_stream **result,
     } else {
         source = format;
         archive_size = total_size - format->base_address;
-        if (archive_size < (int64_t)XX_CPIO_BINARY_HEADER_SIZE ||
-            !cpio_solaris_add_segment(stream, 0)) {
+        if (archive_size < (int64_t)XX_CPIO_BINARY_HEADER_SIZE || !cpio_solaris_add_segment(stream, 0)) {
             goto fail;
         }
     }
     for (segment = 0U; segment < stream->segment_count; ++segment) {
         int64_t offset = stream->segments[segment];
-        int64_t limit = segment + 1U < stream->segment_count
-                            ? stream->segments[segment + 1U]
-                            : archive_size;
+        int64_t limit = segment + 1U < stream->segment_count ? stream->segments[segment + 1U] : archive_size;
         bool trailer_seen = false;
         if (offset < 0 || offset >= limit || limit > archive_size) goto fail;
         while (offset < limit) {
             cpio_member member;
-            if ((pd && xx_pd_is_stopped(pd)) ||
-                !cpio_parse_record(source, offset, &member, pd)) {
+            if ((pd && xx_pd_is_stopped(pd)) || !cpio_parse_record(source, offset, &member, pd)) {
                 goto fail;
             }
             if (stream->first_variant == XX_CPIO_VARIANT_UNKNOWN) {
@@ -957,9 +847,7 @@ static bool cpio_parse(Abstractformat *format, cpio_stream **result,
                  * CPIO trailer. It is safe only when every padding byte is
                  * zero, and only for afio's ODC/large-ASCII variants. */
                 bool valid = member.data_size == 0U ||
-                    ((member.variant == XX_CPIO_VARIANT_ODC ||
-                      member.variant == XX_CPIO_VARIANT_AFIO) &&
-                     cpio_afio_zero_trailer(source->device, &member, pd));
+                             ((member.variant == XX_CPIO_VARIANT_ODC || member.variant == XX_CPIO_VARIANT_AFIO) && cpio_afio_zero_trailer(source->device, &member, pd));
                 xx_mem_free(member.name);
                 if (!valid) goto fail;
                 trailer_seen = true;
@@ -986,19 +874,17 @@ fail:
     return false;
 }
 
-static bool cpio_copy_options(xx_list_s *destination,
-                              const xx_list_s *source) {
+static bool cpio_copy_options(xx_list_s *destination, const xx_list_s *source)
+{
     size_t index;
     if (!destination) return false;
     if (!source) return true;
     for (index = 0U; index < source->count; ++index) {
-        const xx_meta *item = (const xx_meta *)xx_list_at(
-            (const xx_list_t *)source, index);
+        const xx_meta *item = (const xx_meta *)xx_list_at((const xx_list_t *)source, index);
         xx_meta copy;
         if (!item) continue;
         xx_meta_init(&copy, item->meta_id);
-        if (!xx_var_copy(&copy.var, &item->var) ||
-            !xx_list_append(destination, &copy)) {
+        if (!xx_var_copy(&copy.var, &item->var) || !xx_list_append(destination, &copy)) {
             xx_meta_cleanup(&copy);
             return false;
         }
@@ -1006,25 +892,25 @@ static bool cpio_copy_options(xx_list_s *destination,
     return true;
 }
 
-static const xx_var *cpio_option(const xx_list_s *options, uint32_t id) {
+static const xx_var *cpio_option(const xx_list_s *options, uint32_t id)
+{
     size_t index;
     if (!options) return NULL;
     for (index = 0U; index < options->count; ++index) {
-        const xx_meta *item = (const xx_meta *)xx_list_at(
-            (const xx_list_t *)options, index);
+        const xx_meta *item = (const xx_meta *)xx_list_at((const xx_list_t *)options, index);
         if (item && item->meta_id == id) return &item->var;
     }
     return NULL;
 }
 
 /* True when @p name is rooted ("/x", "\x") or carries a drive prefix. */
-static bool cpio_name_is_absolute(const char *name) {
-    return name && (name[0] == '/' || name[0] == '\\' ||
-                    (name[0] != '\0' && name[1] == ':'));
+static bool cpio_name_is_absolute(const char *name)
+{
+    return name && (name[0] == '/' || name[0] == '\\' || (name[0] != '\0' && name[1] == ':'));
 }
 
-static bool cpio_ascii_equal_nocase(const char *value, size_t length,
-                                    const char *expected) {
+static bool cpio_ascii_equal_nocase(const char *value, size_t length, const char *expected)
+{
     size_t index;
     if (xx_str_len(expected) != length) return false;
     for (index = 0U; index < length; ++index) {
@@ -1040,29 +926,22 @@ static bool cpio_ascii_equal_nocase(const char *value, size_t length,
  * UTF-8 superscript digit) or a name ending in '.' or ' ', which Win32 strips
  * and so aliases another path.  Checked on every platform, like TAR and ZIP,
  * so an archive refused on one host is refused on all. */
-static bool cpio_component_is_unsafe(const char *component, size_t length) {
+static bool cpio_component_is_unsafe(const char *component, size_t length)
+{
     size_t base = 0U;
-    if (component[length - 1U] == '.' || component[length - 1U] == ' ')
-        return true;
+    if (component[length - 1U] == '.' || component[length - 1U] == ' ') return true;
     while (base < length && component[base] != '.') ++base;
-    if (cpio_ascii_equal_nocase(component, base, "CON") ||
-        cpio_ascii_equal_nocase(component, base, "PRN") ||
-        cpio_ascii_equal_nocase(component, base, "AUX") ||
-        cpio_ascii_equal_nocase(component, base, "NUL") ||
-        cpio_ascii_equal_nocase(component, base, "CONIN$") ||
-        cpio_ascii_equal_nocase(component, base, "CONOUT$") ||
+    if (cpio_ascii_equal_nocase(component, base, "CON") || cpio_ascii_equal_nocase(component, base, "PRN") || cpio_ascii_equal_nocase(component, base, "AUX") ||
+        cpio_ascii_equal_nocase(component, base, "NUL") || cpio_ascii_equal_nocase(component, base, "CONIN$") || cpio_ascii_equal_nocase(component, base, "CONOUT$") ||
         cpio_ascii_equal_nocase(component, base, "CLOCK$")) {
         return true;
     }
-    if (base < 4U || !(cpio_ascii_equal_nocase(component, 3U, "COM") ||
-                       cpio_ascii_equal_nocase(component, 3U, "LPT"))) {
+    if (base < 4U || !(cpio_ascii_equal_nocase(component, 3U, "COM") || cpio_ascii_equal_nocase(component, 3U, "LPT"))) {
         return false;
     }
     return (base == 4U && component[3] >= '1' && component[3] <= '9') ||
            (base == 5U && (unsigned char)component[3] == 0xC2U &&
-            ((unsigned char)component[4] == 0xB9U ||
-             (unsigned char)component[4] == 0xB2U ||
-             (unsigned char)component[4] == 0xB3U));
+            ((unsigned char)component[4] == 0xB9U || (unsigned char)component[4] == 0xB2U || (unsigned char)component[4] == 0xB3U));
 }
 
 /* Returns an independently allocated, slash-normalized safe extraction name.
@@ -1075,7 +954,8 @@ static bool cpio_component_is_unsafe(const char *component, size_t length) {
  * "C:\..\x" cannot escape, as are device names and trailing dots/spaces
  * (cpio_component_is_unsafe).  A name with nothing left ("." or "/") denotes the
  * output root: NULL is returned and *is_root, when supplied, is set. */
-static char *cpio_safe_output_name(const char *source, bool *is_root) {
+static char *cpio_safe_output_name(const char *source, bool *is_root)
+{
     size_t length;
     size_t index;
     size_t start;
@@ -1086,9 +966,7 @@ static char *cpio_safe_output_name(const char *source, bool *is_root) {
     for (;;) {
         if (source[0] == '/' || source[0] == '\\') {
             ++source;
-        } else if (((source[0] >= 'A' && source[0] <= 'Z') ||
-                    (source[0] >= 'a' && source[0] <= 'z')) &&
-                   source[1] == ':') {
+        } else if (((source[0] >= 'A' && source[0] <= 'Z') || (source[0] >= 'a' && source[0] <= 'z')) && source[1] == ':') {
             source += 2;
         } else {
             break;
@@ -1102,8 +980,7 @@ static char *cpio_safe_output_name(const char *source, bool *is_root) {
         unsigned char c = (unsigned char)source[index];
         size_t size;
         if (index != length && c != '/' && c != '\\') {
-            if (c < 0x20U || c == 0x7fU || c == ':' || c == '<' || c == '>' ||
-                c == '"' || c == '|' || c == '?' || c == '*') {
+            if (c < 0x20U || c == 0x7fU || c == ':' || c == '<' || c == '>' || c == '"' || c == '|' || c == '?' || c == '*') {
                 xx_mem_free(name);
                 return NULL;
             }
@@ -1143,18 +1020,16 @@ static char *cpio_safe_output_name(const char *source, bool *is_root) {
  * only inner records with safe, extractable filesystem mappings.  In
  * particular, Solaris's /tmp/._xAtTr_* control entries must never become
  * host-absolute paths.  A plain CPIO retains its existing path policy. */
-static bool cpio_solaris_publish(cpio_stream *stream) {
+static bool cpio_solaris_publish(cpio_stream *stream)
+{
     cpio_member image;
     size_t read_index, safe_count = 0U;
     unsigned suffix;
     char image_name[32];
-    if (!stream || !stream->wrapped || !stream->image_device ||
-        stream->image_size == 0U) return false;
+    if (!stream || !stream->wrapped || !stream->image_device || stream->image_size == 0U) return false;
     for (read_index = 0U; read_index < stream->count; ++read_index) {
         cpio_member *member = &stream->items[read_index];
-        char *safe_name = cpio_name_is_absolute(member->name)
-                              ? NULL
-                              : cpio_safe_output_name(member->name, NULL);
+        char *safe_name = cpio_name_is_absolute(member->name) ? NULL : cpio_safe_output_name(member->name, NULL);
         if (safe_name && (member->regular || member->directory)) {
             xx_mem_free(safe_name);
             if (safe_count != read_index) {
@@ -1171,11 +1046,8 @@ static bool cpio_solaris_publish(cpio_stream *stream) {
     /* Avoid overwriting a real member on case-insensitive filesystems. */
     for (suffix = 0U; suffix < XX_CPIO_SOLARIS_NAME_ATTEMPTS; ++suffix) {
         bool occupied = false;
-        int length = suffix == 0U
-                         ? xx_rt_snprintf(image_name, sizeof(image_name),
-                                          "payload.cpio")
-                         : xx_rt_snprintf(image_name, sizeof(image_name),
-                                          "payload-%u.cpio", suffix);
+        int length =
+            suffix == 0U ? xx_rt_snprintf(image_name, sizeof(image_name), "payload.cpio") : xx_rt_snprintf(image_name, sizeof(image_name), "payload-%u.cpio", suffix);
         if (length < 0 || (size_t)length >= sizeof(image_name)) return false;
         for (read_index = 0U; read_index < safe_count; ++read_index) {
             if (xx_str_icmp(stream->items[read_index].name, image_name) == 0) {
@@ -1206,53 +1078,34 @@ static bool cpio_solaris_publish(cpio_stream *stream) {
      * independently useful compressed-container payload available. */
     if (safe_count != 0U) {
         cpio_member raw = stream->items[safe_count];
-        xx_mem_move(stream->items + 1U, stream->items,
-                    safe_count * sizeof(*stream->items));
+        xx_mem_move(stream->items + 1U, stream->items, safe_count * sizeof(*stream->items));
         stream->items[0] = raw;
     }
     return true;
 }
 
-static bool cpio_set_record(xx_archive_record *record,
-                            const cpio_member *member) {
+static bool cpio_set_record(xx_archive_record *record, const cpio_member *member)
+{
     if (!record || !member || !member->name) return false;
     xx_archive_record_cleanup(record);
     xx_archive_record_init(record);
     record->header_offset = member->header_offset;
     record->header_size = member->header_size;
     record->data_offset = member->data_offset;
-    record->compressed_size = member->data_size <= (uint64_t)INT64_MAX
-                                  ? (int64_t)member->data_size
-                                  : -1;
-    if (!xx_archive_record_set_original_name(record, member->name) ||
-        !xx_archive_record_set_meta_u64(record,
-                                        XX_META_ID_COMPRESSED_SIZE,
-                                        member->data_size) ||
-        !xx_archive_record_set_meta_u64(record,
-                                        XX_META_ID_UNCOMPRESSED_SIZE,
-                                        member->unpacked_size) ||
-        !xx_archive_record_set_meta_u64(record,
-                                        XX_META_ID_COMPRESSION_METHOD,
-                                        member->compression) ||
-        !xx_archive_record_set_meta_u64(record, XX_META_ID_ATTRIBUTES,
-                                        member->mode) ||
-        !xx_archive_record_set_meta_u64(record, XX_META_ID_TIMESTAMP,
-                                        member->mtime) ||
-        !xx_archive_record_set_meta_u64(record, XX_META_ID_FLAGS,
-                                        (uint64_t)member->variant) ||
-        !xx_archive_record_set_meta_bool(record, XX_META_ID_IS_FOLDER,
-                                         member->directory) ||
-        !xx_archive_record_set_meta_bool(record, XX_META_ID_IS_ENCRYPTED,
-                                         false)) {
+    record->compressed_size = member->data_size <= (uint64_t)INT64_MAX ? (int64_t)member->data_size : -1;
+    if (!xx_archive_record_set_original_name(record, member->name) || !xx_archive_record_set_meta_u64(record, XX_META_ID_COMPRESSED_SIZE, member->data_size) ||
+        !xx_archive_record_set_meta_u64(record, XX_META_ID_UNCOMPRESSED_SIZE, member->unpacked_size) ||
+        !xx_archive_record_set_meta_u64(record, XX_META_ID_COMPRESSION_METHOD, member->compression) ||
+        !xx_archive_record_set_meta_u64(record, XX_META_ID_ATTRIBUTES, member->mode) || !xx_archive_record_set_meta_u64(record, XX_META_ID_TIMESTAMP, member->mtime) ||
+        !xx_archive_record_set_meta_u64(record, XX_META_ID_FLAGS, (uint64_t)member->variant) ||
+        !xx_archive_record_set_meta_bool(record, XX_META_ID_IS_FOLDER, member->directory) || !xx_archive_record_set_meta_bool(record, XX_META_ID_IS_ENCRYPTED, false)) {
         return false;
     }
-    return member->variant != XX_CPIO_VARIANT_CRC ||
-           xx_archive_record_set_meta_u64(record, XX_META_ID_CRC32,
-                                          member->check);
+    return member->variant != XX_CPIO_VARIANT_CRC || xx_archive_record_set_meta_u64(record, XX_META_ID_CRC32, member->check);
 }
 
-static bool cpio_write_exact(xx_io_device *device, const void *data,
-                             size_t size, xx_pd_struct *pd) {
+static bool cpio_write_exact(xx_io_device *device, const void *data, size_t size, xx_pd_struct *pd)
+{
     const uint8_t *bytes = (const uint8_t *)data;
     size_t done = 0U;
     if (!device || (!data && size != 0U)) return false;
@@ -1266,9 +1119,8 @@ static bool cpio_write_exact(xx_io_device *device, const void *data,
     return true;
 }
 
-static bool cpio_write_padding(xx_io_device *device, int64_t position,
-                               unsigned alignment, int64_t *new_position,
-                               xx_pd_struct *pd) {
+static bool cpio_write_padding(xx_io_device *device, int64_t position, unsigned alignment, int64_t *new_position, xx_pd_struct *pd)
+{
     static const uint8_t zeros[4] = {0U, 0U, 0U, 0U};
     int64_t aligned;
     size_t padding;
@@ -1283,11 +1135,11 @@ static bool cpio_write_padding(xx_io_device *device, int64_t position,
     return true;
 }
 
-static bool cpio_put_hex(uint8_t *destination, size_t width, uint64_t value) {
+static bool cpio_put_hex(uint8_t *destination, size_t width, uint64_t value)
+{
     static const char digits[] = "0123456789ABCDEF";
     size_t index;
-    if (!destination || width == 0U || width > 16U ||
-        (width < 16U && value >= (UINT64_C(1) << (width * 4U)))) {
+    if (!destination || width == 0U || width > 16U || (width < 16U && value >= (UINT64_C(1) << (width * 4U)))) {
         return false;
     }
     for (index = width; index != 0U; --index) {
@@ -1297,8 +1149,8 @@ static bool cpio_put_hex(uint8_t *destination, size_t width, uint64_t value) {
     return value == 0U;
 }
 
-static bool cpio_copy_source(xx_io_device *source, uint64_t size,
-                             xx_io_device *destination, xx_pd_struct *pd) {
+static bool cpio_copy_source(xx_io_device *source, uint64_t size, xx_io_device *destination, xx_pd_struct *pd)
+{
     size_t capacity = xx_get_file_buffer_size();
     uint8_t *buffer;
     uint64_t remaining = size;
@@ -1307,16 +1159,14 @@ static bool cpio_copy_source(xx_io_device *source, uint64_t size,
     buffer = (uint8_t *)xx_mem_alloc(capacity);
     if (!buffer) return false;
     while (remaining != 0U) {
-        size_t amount = remaining > capacity ? capacity :
-                                                     (size_t)remaining;
+        size_t amount = remaining > capacity ? capacity : (size_t)remaining;
         size_t done = 0U;
         if (pd && xx_pd_is_stopped(pd)) goto failure;
         if (xx_io_read(source, buffer, amount) != (ssize_t)amount) {
             goto failure;
         }
         while (done < amount) {
-            ssize_t written = xx_io_write(destination, buffer + done,
-                                           amount - done);
+            ssize_t written = xx_io_write(destination, buffer + done, amount - done);
             if (written <= 0 || (size_t)written > amount - done) goto failure;
             done += (size_t)written;
         }
@@ -1329,69 +1179,50 @@ failure:
     return false;
 }
 
-static bool cpio_write_newc_member(Abstractformat *format,
-                                   cpio_writer *writer, const char *name,
-                                   uint32_t mode, uint64_t mtime,
-                                   xx_io_device *source, uint64_t source_size,
-                                   bool trailer, xx_pd_struct *pd) {
+static bool cpio_write_newc_member(Abstractformat *format, cpio_writer *writer, const char *name, uint32_t mode, uint64_t mtime, xx_io_device *source,
+                                   uint64_t source_size, bool trailer, xx_pd_struct *pd)
+{
     uint8_t header[XX_CPIO_NEWC_HEADER_SIZE];
     uint64_t name_size;
     int64_t position;
     int64_t next;
-    if (!format || !format->device || !writer || !name ||
-        source_size > UINT32_MAX || writer->position < format->base_address ||
-        (pd && xx_pd_is_stopped(pd))) {
+    if (!format || !format->device || !writer || !name || source_size > UINT32_MAX || writer->position < format->base_address || (pd && xx_pd_is_stopped(pd))) {
         return false;
     }
     name_size = (uint64_t)xx_str_len(name) + 1U;
-    if (name_size > UINT32_MAX ||
-        !cpio_add_i64(writer->position, (int64_t)XX_CPIO_NEWC_HEADER_SIZE,
-                      &position) ||
-        !cpio_add_i64(position, (int64_t)name_size, &next)) {
+    if (name_size > UINT32_MAX || !cpio_add_i64(writer->position, (int64_t)XX_CPIO_NEWC_HEADER_SIZE, &position) || !cpio_add_i64(position, (int64_t)name_size, &next)) {
         return false;
     }
     xx_mem_zero(header, sizeof(header));
     xx_mem_copy(header, "070701", 6U);
-    if (!cpio_put_hex(header + 6U, 8U, trailer ? 0U : writer->count + 1U) ||
-        !cpio_put_hex(header + 14U, 8U, mode) ||
-        !cpio_put_hex(header + 22U, 8U, 0U) ||
-        !cpio_put_hex(header + 30U, 8U, 0U) ||
-        !cpio_put_hex(header + 38U, 8U, 1U) ||
-        !cpio_put_hex(header + 46U, 8U, mtime) ||
-        !cpio_put_hex(header + 54U, 8U, source_size) ||
-        !cpio_put_hex(header + 62U, 8U, 0U) ||
-        !cpio_put_hex(header + 70U, 8U, 0U) ||
-        !cpio_put_hex(header + 78U, 8U, 0U) ||
-        !cpio_put_hex(header + 86U, 8U, 0U) ||
-        !cpio_put_hex(header + 94U, 8U, name_size) ||
-        !cpio_put_hex(header + 102U, 8U, 0U) ||
-        !cpio_write_exact(format->device, header, sizeof(header), pd) ||
+    if (!cpio_put_hex(header + 6U, 8U, trailer ? 0U : writer->count + 1U) || !cpio_put_hex(header + 14U, 8U, mode) || !cpio_put_hex(header + 22U, 8U, 0U) ||
+        !cpio_put_hex(header + 30U, 8U, 0U) || !cpio_put_hex(header + 38U, 8U, 1U) || !cpio_put_hex(header + 46U, 8U, mtime) ||
+        !cpio_put_hex(header + 54U, 8U, source_size) || !cpio_put_hex(header + 62U, 8U, 0U) || !cpio_put_hex(header + 70U, 8U, 0U) ||
+        !cpio_put_hex(header + 78U, 8U, 0U) || !cpio_put_hex(header + 86U, 8U, 0U) || !cpio_put_hex(header + 94U, 8U, name_size) ||
+        !cpio_put_hex(header + 102U, 8U, 0U) || !cpio_write_exact(format->device, header, sizeof(header), pd) ||
         !cpio_write_exact(format->device, name, (size_t)name_size, pd)) {
         return false;
     }
     writer->position = next;
-    if (!cpio_write_padding(format->device, writer->position, 4U,
-                            &writer->position, pd)) {
+    if (!cpio_write_padding(format->device, writer->position, 4U, &writer->position, pd)) {
         return false;
     }
-    if (source_size != 0U &&
-        !cpio_copy_source(source, source_size, format->device, pd)) {
+    if (source_size != 0U && !cpio_copy_source(source, source_size, format->device, pd)) {
         return false;
     }
-    if (!cpio_add_i64(writer->position, (int64_t)source_size,
-                      &writer->position) ||
-        !cpio_write_padding(format->device, writer->position, 4U,
-                            &writer->position, pd)) {
+    if (!cpio_add_i64(writer->position, (int64_t)source_size, &writer->position) || !cpio_write_padding(format->device, writer->position, 4U, &writer->position, pd)) {
         return false;
     }
     return true;
 }
 
-static void cpio_writer_free(void *pointer) {
+static void cpio_writer_free(void *pointer)
+{
     xx_mem_free(pointer);
 }
 
-static char *cpio_record_name_utf8(const xx_archive_record *record) {
+static char *cpio_record_name_utf8(const xx_archive_record *record)
+{
     const char *name;
     const wchar_t *wide_name;
     char *converted = NULL;
@@ -1410,8 +1241,8 @@ static char *cpio_record_name_utf8(const xx_archive_record *record) {
     return safe_name;
 }
 
-void xx_cpio_init(xx_cpio *archive, xx_io_device *device,
-                  int64_t base_address) {
+void xx_cpio_init(xx_cpio *archive, xx_io_device *device, int64_t base_address)
+{
     if (!archive) return;
     xx_mem_zero(archive, sizeof(*archive));
     xx_format_init(&archive->format, device, base_address);
@@ -1424,66 +1255,61 @@ void xx_cpio_init(xx_cpio *archive, xx_io_device *device,
     archive->format.check_is_valid = xx_cpio_check_is_valid;
     archive->format.handle_base_info = xx_cpio_handle_base_info;
     archive->format.get_format_size = xx_cpio_get_format_size;
-    archive->format.get_number_of_archive_records =
-        xx_cpio_get_number_of_archive_records;
-    archive->format.create_archive_records_reading =
-        xx_cpio_create_archive_records_reading;
-    archive->format.get_current_archive_record =
-        xx_cpio_get_current_archive_record;
-    archive->format.unpack_current_archive_record =
-        xx_cpio_unpack_current_archive_record;
-    archive->format.archive_record_move_to_next =
-        xx_cpio_archive_record_move_to_next;
-    archive->format.free_archive_records_reading =
-        xx_cpio_free_archive_records_reading;
-    archive->format.create_archive_records_writing =
-        xx_cpio_create_archive_records_writing;
+    archive->format.get_number_of_archive_records = xx_cpio_get_number_of_archive_records;
+    archive->format.create_archive_records_reading = xx_cpio_create_archive_records_reading;
+    archive->format.get_current_archive_record = xx_cpio_get_current_archive_record;
+    archive->format.unpack_current_archive_record = xx_cpio_unpack_current_archive_record;
+    archive->format.archive_record_move_to_next = xx_cpio_archive_record_move_to_next;
+    archive->format.free_archive_records_reading = xx_cpio_free_archive_records_reading;
+    archive->format.create_archive_records_writing = xx_cpio_create_archive_records_writing;
     archive->format.pack_archive_record = xx_cpio_pack_archive_record;
-    archive->format.finalize_archive_records_writing =
-        xx_cpio_finalize_archive_records_writing;
-    archive->format.free_archive_records_writing =
-        xx_cpio_free_archive_records_writing;
+    archive->format.finalize_archive_records_writing = xx_cpio_finalize_archive_records_writing;
+    archive->format.free_archive_records_writing = xx_cpio_free_archive_records_writing;
     archive->format.destroy = cpio_vtable_destroy;
     archive->archive_end = -1;
     archive->variant = XX_CPIO_VARIANT_UNKNOWN;
 }
 
-xx_cpio *xx_cpio_create(xx_io_device *device, int64_t base_address) {
+xx_cpio *xx_cpio_create(xx_io_device *device, int64_t base_address)
+{
     xx_cpio *archive = (xx_cpio *)xx_mem_alloc(sizeof(*archive));
     if (archive) xx_cpio_init(archive, device, base_address);
     return archive;
 }
 
-void xx_cpio_destroy(xx_cpio *archive) {
+void xx_cpio_destroy(xx_cpio *archive)
+{
     if (!archive) return;
     xx_format_cleanup_extra_parameters(&archive->format);
 }
 
-static void cpio_vtable_destroy(Abstractformat *self) {
+static void cpio_vtable_destroy(Abstractformat *self)
+{
     xx_cpio_destroy((xx_cpio *)self);
 }
 
-void xx_cpio_free(xx_cpio *archive) {
+void xx_cpio_free(xx_cpio *archive)
+{
     if (!archive) return;
     xx_cpio_destroy(archive);
     xx_mem_free(archive);
 }
 
-bool xx_cpio_check_is_valid(Abstractformat *self, xx_pd_struct *pd) {
+bool xx_cpio_check_is_valid(Abstractformat *self, xx_pd_struct *pd)
+{
     cpio_stream *stream = NULL;
     bool result = cpio_parse(self, &stream, pd);
     cpio_stream_free(stream);
     return result;
 }
 
-bool xx_cpio_handle_base_info(Abstractformat *self, xx_pd_struct *pd) {
+bool xx_cpio_handle_base_info(Abstractformat *self, xx_pd_struct *pd)
+{
     cpio_stream *stream = NULL;
     xx_cpio *archive;
     int64_t archive_end;
     int64_t total_size;
-    if (!self || !cpio_parse(self, &stream, pd) ||
-        !cpio_add_i64(self->base_address, stream->archive_size,
-                      &archive_end)) {
+    if (!self || !cpio_parse(self, &stream, pd) || !cpio_add_i64(self->base_address, stream->archive_size, &archive_end)) {
         if (stream) cpio_stream_free(stream);
         if (self) self->is_valid = false;
         return false;
@@ -1508,30 +1334,27 @@ bool xx_cpio_handle_base_info(Abstractformat *self, xx_pd_struct *pd) {
     return true;
 }
 
-int64_t xx_cpio_get_format_size(Abstractformat *self, xx_pd_struct *pd) {
-    if (!self || (!self->base_info_handled &&
-                  !xx_cpio_handle_base_info(self, pd))) {
+int64_t xx_cpio_get_format_size(Abstractformat *self, xx_pd_struct *pd)
+{
+    if (!self || (!self->base_info_handled && !xx_cpio_handle_base_info(self, pd))) {
         return -1;
     }
     return self->format_size;
 }
 
-uint64_t xx_cpio_get_number_of_archive_records(Abstractformat *self,
-                                                xx_pd_struct *pd) {
-    if (!self || (!self->base_info_handled &&
-                  !xx_cpio_handle_base_info(self, pd))) {
+uint64_t xx_cpio_get_number_of_archive_records(Abstractformat *self, xx_pd_struct *pd)
+{
+    if (!self || (!self->base_info_handled && !xx_cpio_handle_base_info(self, pd))) {
         return 0U;
     }
     return ((xx_cpio *)self)->number_of_records;
 }
 
-xx_archive_record_state *xx_cpio_create_archive_records_reading(
-    Abstractformat *self, const xx_list_s *options, xx_pd_struct *pd) {
+xx_archive_record_state *xx_cpio_create_archive_records_reading(Abstractformat *self, const xx_list_s *options, xx_pd_struct *pd)
+{
     cpio_stream *stream = NULL;
     xx_archive_record_state *state;
-    if (!self || (!self->base_info_handled &&
-                  !xx_cpio_handle_base_info(self, pd)) ||
-        !self->is_valid || !cpio_parse(self, &stream, pd)) {
+    if (!self || (!self->base_info_handled && !xx_cpio_handle_base_info(self, pd)) || !self->is_valid || !cpio_parse(self, &stream, pd)) {
         return NULL;
     }
     state = (xx_archive_record_state *)xx_mem_alloc(sizeof(*state));
@@ -1543,9 +1366,7 @@ xx_archive_record_state *xx_cpio_create_archive_records_reading(
     state->internal_state = stream;
     state->free_internal = cpio_stream_free;
     state->total_records = (int64_t)stream->count;
-    if (!cpio_copy_options(&state->options, options) ||
-        (stream->count != 0U &&
-         !cpio_set_record(&state->current_record, &stream->items[0]))) {
+    if (!cpio_copy_options(&state->options, options) || (stream->count != 0U && !cpio_set_record(&state->current_record, &stream->items[0]))) {
         xx_archive_record_state_free(state);
         return NULL;
     }
@@ -1556,20 +1377,15 @@ xx_archive_record_state *xx_cpio_create_archive_records_reading(
     return state;
 }
 
-const xx_archive_record *xx_cpio_get_current_archive_record(
-    Abstractformat *self, xx_archive_record_state *state) {
-    return self && state && state->format == self && state->has_record
-               ? &state->current_record
-               : NULL;
+const xx_archive_record *xx_cpio_get_current_archive_record(Abstractformat *self, xx_archive_record_state *state)
+{
+    return self && state && state->format == self && state->has_record ? &state->current_record : NULL;
 }
 
-bool xx_cpio_archive_record_move_to_next(Abstractformat *self,
-                                         xx_archive_record_state *state,
-                                         xx_pd_struct *pd) {
+bool xx_cpio_archive_record_move_to_next(Abstractformat *self, xx_archive_record_state *state, xx_pd_struct *pd)
+{
     cpio_stream *stream;
-    if (!self || !state || state->format != self || !state->has_record ||
-        !(stream = (cpio_stream *)state->internal_state) ||
-        (pd && xx_pd_is_stopped(pd))) {
+    if (!self || !state || state->format != self || !state->has_record || !(stream = (cpio_stream *)state->internal_state) || (pd && xx_pd_is_stopped(pd))) {
         return false;
     }
     ++stream->index;
@@ -1587,8 +1403,8 @@ bool xx_cpio_archive_record_move_to_next(Abstractformat *self,
     return true;
 }
 
-static xx_io_device *cpio_afio_stage(const char *destination,
-                                      char **stage_path) {
+static xx_io_device *cpio_afio_stage(const char *destination, char **stage_path)
+{
     unsigned attempt;
     if (!destination || !stage_path) return NULL;
     *stage_path = NULL;
@@ -1596,8 +1412,7 @@ static xx_io_device *cpio_afio_stage(const char *destination,
         char suffix[48];
         char *candidate;
         xx_io_device *device;
-        int width = xx_rt_snprintf(suffix, sizeof(suffix),
-                                    ".xxfc-afio-%u.tmp", attempt);
+        int width = xx_rt_snprintf(suffix, sizeof(suffix), ".xxfc-afio-%u.tmp", attempt);
         if (width < 0 || (size_t)width >= sizeof(suffix)) return NULL;
         candidate = xx_str_concat(destination, suffix);
         if (!candidate) return NULL;
@@ -1611,9 +1426,8 @@ static xx_io_device *cpio_afio_stage(const char *destination,
     return NULL;
 }
 
-bool xx_cpio_unpack_current_archive_record(Abstractformat *self,
-                                            xx_archive_record_state *state,
-                                            xx_pd_struct *pd) {
+bool xx_cpio_unpack_current_archive_record(Abstractformat *self, xx_archive_record_state *state, xx_pd_struct *pd)
+{
     cpio_stream *stream;
     const cpio_member *member;
     const xx_var *path_option;
@@ -1627,9 +1441,8 @@ bool xx_cpio_unpack_current_archive_record(Abstractformat *self,
     uint64_t written = 0U;
     bool is_root = false;
     bool result = false;
-    if (!self || !state || state->format != self || !state->has_record ||
-        !(stream = (cpio_stream *)state->internal_state) ||
-        stream->index >= stream->count || (pd && xx_pd_is_stopped(pd))) {
+    if (!self || !state || state->format != self || !state->has_record || !(stream = (cpio_stream *)state->internal_state) || stream->index >= stream->count ||
+        (pd && xx_pd_is_stopped(pd))) {
         return false;
     }
     member = &stream->items[stream->index];
@@ -1645,51 +1458,37 @@ bool xx_cpio_unpack_current_archive_record(Abstractformat *self,
     path_option = cpio_option(&state->options, XX_META_ID_OPT_UNPACK_PATH);
     if (!path_option) {
         result = member->compression == 0U ||
-                 (cpio_afio_decode(source, member->data_offset,
-                                   member->data_size, member->compression,
-                                   NULL, member->unpacked_size, &written,
-                                   pd) && written == member->unpacked_size);
+                 (cpio_afio_decode(source, member->data_offset, member->data_size, member->compression, NULL, member->unpacked_size, &written, pd) &&
+                  written == member->unpacked_size);
         goto cleanup;
     }
-    if (path_option->type == XX_VAR_TYPE_STRING ||
-        path_option->type == XX_VAR_TYPE_STRING_VIEW) {
+    if (path_option->type == XX_VAR_TYPE_STRING || path_option->type == XX_VAR_TYPE_STRING_VIEW) {
         base = xx_var_get_str(path_option);
-    } else if (path_option->type == XX_VAR_TYPE_WSTRING ||
-               path_option->type == XX_VAR_TYPE_WSTRING_VIEW) {
+    } else if (path_option->type == XX_VAR_TYPE_WSTRING || path_option->type == XX_VAR_TYPE_WSTRING_VIEW) {
         owned_base = xx_str_unicode_to_utf8(xx_var_get_wstr(path_option));
         base = owned_base;
     }
     if (!base) goto cleanup;
-    destination = (base[0] && base[xx_str_len(base) - 1U] != '/' &&
-                   base[xx_str_len(base) - 1U] != '\\')
-                      ? xx_str_concat3(base, "/", safe_name)
-                      : xx_str_concat(base, safe_name);
+    destination =
+        (base[0] && base[xx_str_len(base) - 1U] != '/' && base[xx_str_len(base) - 1U] != '\\') ? xx_str_concat3(base, "/", safe_name) : xx_str_concat(base, safe_name);
     if (!destination) goto cleanup;
     if (member->directory) {
         result = xx_store_create_dirs_a(destination, true);
     } else if (xx_store_create_dirs_a(destination, false)) {
         if (member->compression != 0U) {
-            const xx_var *overwrite_option = xx_format_resolve_extra_parameter(
-                self, &state->options, XX_META_ID_OPT_OVERWRITE);
+            const xx_var *overwrite_option = xx_format_resolve_extra_parameter(self, &state->options, XX_META_ID_OPT_OVERWRITE);
             bool overwrite = overwrite_option && xx_var_get_bool(overwrite_option);
             if (!overwrite && xx_io_file_exists_a(destination)) goto cleanup;
             stage = cpio_afio_stage(destination, &stage_path);
             if (!stage) goto cleanup;
-            result = cpio_afio_decode(source, member->data_offset,
-                                      member->data_size,
-                                      member->compression, stage,
-                                      member->unpacked_size, &written, pd) &&
+            result = cpio_afio_decode(source, member->data_offset, member->data_size, member->compression, stage, member->unpacked_size, &written, pd) &&
                      written == member->unpacked_size;
             if (xx_io_close(stage) != 0) result = false;
             stage = NULL;
-            if (result && !(pd && xx_pd_is_stopped(pd)))
-                result = xx_io_file_replace_a(stage_path, destination,
-                                               overwrite);
+            if (result && !(pd && xx_pd_is_stopped(pd))) result = xx_io_file_replace_a(stage_path, destination, overwrite);
         } else {
             /* Wrapped members live in the decompressed image, not the file. */
-            result = xx_store_unpack_device_to_file(
-                source, member->data_offset, (int64_t)member->data_size,
-                destination, pd);
+            result = xx_store_unpack_device_to_file(source, member->data_offset, (int64_t)member->data_size, destination, pd);
         }
     }
 cleanup:
@@ -1704,20 +1503,18 @@ cleanup:
     return result;
 }
 
-void xx_cpio_free_archive_records_reading(Abstractformat *self,
-                                          xx_archive_record_state *state) {
+void xx_cpio_free_archive_records_reading(Abstractformat *self, xx_archive_record_state *state)
+{
     (void)self;
     xx_archive_record_state_free(state);
 }
 
-xx_archive_write_state *xx_cpio_create_archive_records_writing(
-    Abstractformat *self, const xx_list_s *options, xx_pd_struct *pd) {
+xx_archive_write_state *xx_cpio_create_archive_records_writing(Abstractformat *self, const xx_list_s *options, xx_pd_struct *pd)
+{
     xx_archive_write_state *state;
     cpio_writer *writer;
     xx_cpio *archive;
-    if (!self || !self->device || !self->device->write ||
-        !self->device->seek || self->base_address < 0 ||
-        (pd && xx_pd_is_stopped(pd)) ||
+    if (!self || !self->device || !self->device->write || !self->device->seek || self->base_address < 0 || (pd && xx_pd_is_stopped(pd)) ||
         xx_io_seek64(self->device, self->base_address, SEEK_SET) != 0) {
         return NULL;
     }
@@ -1751,11 +1548,8 @@ xx_archive_write_state *xx_cpio_create_archive_records_writing(
     return state;
 }
 
-bool xx_cpio_pack_archive_record(Abstractformat *self,
-                                 xx_archive_write_state *state,
-                                 const xx_archive_record *record,
-                                 xx_io_device *source_dev,
-                                 xx_pd_struct *pd) {
+bool xx_cpio_pack_archive_record(Abstractformat *self, xx_archive_write_state *state, const xx_archive_record *record, xx_io_device *source_dev, xx_pd_struct *pd)
+{
     cpio_writer *writer;
     const xx_var *declared_size;
     const xx_var *method;
@@ -1765,37 +1559,27 @@ bool xx_cpio_pack_archive_record(Abstractformat *self,
     uint32_t mode;
     uint64_t mtime;
     bool directory;
-    if (!self || !state || state->format != self || !record ||
-        !(writer = (cpio_writer *)state->internal_state) ||
-        (pd && xx_pd_is_stopped(pd))) {
+    if (!self || !state || state->format != self || !record || !(writer = (cpio_writer *)state->internal_state) || (pd && xx_pd_is_stopped(pd))) {
         return false;
     }
-    if (writer->finalized || writer->failed || state->has_record ||
-        writer->count >= XX_CPIO_MAX_RECORDS) {
+    if (writer->finalized || writer->failed || state->has_record || writer->count >= XX_CPIO_MAX_RECORDS) {
         return false;
     }
-    method = xx_archive_record_find_meta(record,
-                                         XX_META_ID_COMPRESSION_METHOD);
-    if ((method && xx_var_get_u64(method) != 0U) ||
-        xx_archive_record_get_meta_bool(record, XX_META_ID_IS_ENCRYPTED,
-                                        false)) {
+    method = xx_archive_record_find_meta(record, XX_META_ID_COMPRESSION_METHOD);
+    if ((method && xx_var_get_u64(method) != 0U) || xx_archive_record_get_meta_bool(record, XX_META_ID_IS_ENCRYPTED, false)) {
         return false;
     }
     name = cpio_record_name_utf8(record);
     if (!name) return false;
-    directory = xx_archive_record_get_meta_bool(record,
-                                                 XX_META_ID_IS_FOLDER, false) ||
-                name[xx_str_len(name) - 1U] == '/';
+    directory = xx_archive_record_get_meta_bool(record, XX_META_ID_IS_FOLDER, false) || name[xx_str_len(name) - 1U] == '/';
     if (directory && source_dev) {
         xx_str_free(name);
         return false;
     }
-    declared_size = xx_archive_record_find_meta(
-        record, XX_META_ID_UNCOMPRESSED_SIZE);
+    declared_size = xx_archive_record_find_meta(record, XX_META_ID_UNCOMPRESSED_SIZE);
     if (!directory && source_dev) {
         source_size_i64 = xx_io_total_size(source_dev);
-        if (source_size_i64 < 0 ||
-            xx_io_seek64(source_dev, 0, SEEK_SET) != 0) {
+        if (source_size_i64 < 0 || xx_io_seek64(source_dev, 0, SEEK_SET) != 0) {
             xx_str_free(name);
             return false;
         }
@@ -1804,8 +1588,7 @@ bool xx_cpio_pack_archive_record(Abstractformat *self,
             xx_str_free(name);
             return false;
         }
-    } else if (!directory && declared_size &&
-               xx_var_get_u64(declared_size) != 0U) {
+    } else if (!directory && declared_size && xx_var_get_u64(declared_size) != 0U) {
         xx_str_free(name);
         return false;
     }
@@ -1813,15 +1596,11 @@ bool xx_cpio_pack_archive_record(Abstractformat *self,
         xx_str_free(name);
         return false;
     }
-    mode = (uint32_t)xx_archive_record_get_meta_u64(
-        record, XX_META_ID_ATTRIBUTES, directory ? 0755U : 0644U);
-    mode = (mode & 07777U) |
-           (directory ? XX_CPIO_MODE_IFDIR : XX_CPIO_MODE_IFREG);
+    mode = (uint32_t)xx_archive_record_get_meta_u64(record, XX_META_ID_ATTRIBUTES, directory ? 0755U : 0644U);
+    mode = (mode & 07777U) | (directory ? XX_CPIO_MODE_IFDIR : XX_CPIO_MODE_IFREG);
     mtime = xx_archive_record_get_meta_u64(record, XX_META_ID_TIMESTAMP, 0U);
     state->has_record = true;
-    if (!cpio_write_newc_member(self, writer, name, mode, mtime,
-                                directory ? NULL : source_dev, source_size,
-                                false, pd)) {
+    if (!cpio_write_newc_member(self, writer, name, mode, mtime, directory ? NULL : source_dev, source_size, false, pd)) {
         state->has_record = false;
         writer->failed = true;
         xx_str_free(name);
@@ -1835,18 +1614,16 @@ bool xx_cpio_pack_archive_record(Abstractformat *self,
     return true;
 }
 
-bool xx_cpio_finalize_archive_records_writing(
-    Abstractformat *self, xx_archive_write_state *state, xx_pd_struct *pd) {
+bool xx_cpio_finalize_archive_records_writing(Abstractformat *self, xx_archive_write_state *state, xx_pd_struct *pd)
+{
     cpio_writer *writer;
     xx_cpio *archive;
     int64_t total_size;
-    if (!self || !state || state->format != self || state->has_record ||
-        !(writer = (cpio_writer *)state->internal_state) ||
-        (pd && xx_pd_is_stopped(pd)) || writer->finalized || writer->failed) {
+    if (!self || !state || state->format != self || state->has_record || !(writer = (cpio_writer *)state->internal_state) || (pd && xx_pd_is_stopped(pd)) ||
+        writer->finalized || writer->failed) {
         return false;
     }
-    if (!cpio_write_newc_member(self, writer, "TRAILER!!!", 0U, 0U, NULL,
-                                0U, true, pd)) {
+    if (!cpio_write_newc_member(self, writer, "TRAILER!!!", 0U, 0U, NULL, 0U, true, pd)) {
         writer->failed = true;
         return false;
     }
@@ -1859,8 +1636,7 @@ bool xx_cpio_finalize_archive_records_writing(
     self->format_size = writer->position - self->base_address;
     total_size = xx_io_total_size(self->device);
     self->overlay_offset = writer->position < total_size ? writer->position : -1;
-    self->overlay_size = writer->position < total_size ?
-                             total_size - writer->position : 0;
+    self->overlay_size = writer->position < total_size ? total_size - writer->position : 0;
     self->is_valid = true;
     /* A subsequent read pass validates the emitted archive and rebuilds the
      * ordinary reader state from the finalized stream. */
@@ -1868,8 +1644,8 @@ bool xx_cpio_finalize_archive_records_writing(
     return true;
 }
 
-void xx_cpio_free_archive_records_writing(Abstractformat *self,
-                                          xx_archive_write_state *state) {
+void xx_cpio_free_archive_records_writing(Abstractformat *self, xx_archive_write_state *state)
+{
     (void)self;
     xx_archive_write_state_free(state);
 }

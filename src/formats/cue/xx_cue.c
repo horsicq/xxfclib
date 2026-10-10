@@ -82,38 +82,28 @@ typedef struct cue_mode_s {
 
 /* The modes CDRWIN defines, plus the /2048 and /2448 spellings other
  * producers write for cooked mode 2 and for sectors with subchannel. */
-static const cue_mode cue_modes[] = {
-    {"AUDIO", 2352U, CUE_KIND_AUDIO},
-    {"CDG", 2448U, CUE_KIND_CDG},
-    {"MODE1/2048", 2048U, CUE_KIND_COOKED},
-    {"MODE1/2352", 2352U, CUE_KIND_RAW},
-    {"MODE1/2448", 2448U, CUE_KIND_RAW},
-    {"MODE2/2048", 2048U, CUE_KIND_COOKED},
-    {"MODE2/2324", 2324U, CUE_KIND_RAW},
-    {"MODE2/2336", 2336U, CUE_KIND_RAW},
-    {"MODE2/2352", 2352U, CUE_KIND_RAW},
-    {"MODE2/2448", 2448U, CUE_KIND_RAW},
-    {"CDI/2336", 2336U, CUE_KIND_RAW},
-    {"CDI/2352", 2352U, CUE_KIND_RAW}
-};
+static const cue_mode cue_modes[] = {{"AUDIO", 2352U, CUE_KIND_AUDIO},    {"CDG", 2448U, CUE_KIND_CDG},        {"MODE1/2048", 2048U, CUE_KIND_COOKED},
+                                     {"MODE1/2352", 2352U, CUE_KIND_RAW}, {"MODE1/2448", 2448U, CUE_KIND_RAW}, {"MODE2/2048", 2048U, CUE_KIND_COOKED},
+                                     {"MODE2/2324", 2324U, CUE_KIND_RAW}, {"MODE2/2336", 2336U, CUE_KIND_RAW}, {"MODE2/2352", 2352U, CUE_KIND_RAW},
+                                     {"MODE2/2448", 2448U, CUE_KIND_RAW}, {"CDI/2336", 2336U, CUE_KIND_RAW},   {"CDI/2352", 2352U, CUE_KIND_RAW}};
 
 typedef struct cue_file_s {
-    char *name;           /* as written, quotes removed */
+    char *name; /* as written, quotes removed */
     uint8_t type;
     uint32_t first_point;
     uint32_t point_count;
     /* Filled in once a data device is attached. */
     bool usable;
-    int64_t base;         /* device offset of byte 0 of the track data */
-    int64_t size;         /* bytes of track data available */
+    int64_t base; /* device offset of byte 0 of the track data */
+    int64_t size; /* bytes of track data available */
 } cue_file;
 
 typedef struct cue_track_s {
     uint32_t number;
-    uint32_t mode;        /* index into cue_modes */
-    int32_t last_index;   /* highest INDEX number so far, -1 before any */
+    uint32_t mode;      /* index into cue_modes */
+    int32_t last_index; /* highest INDEX number so far, -1 before any */
     bool has_index1;
-    int64_t line_offset;  /* of the TRACK statement, in the sheet */
+    int64_t line_offset; /* of the TRACK statement, in the sheet */
     uint32_t line_size;
 } cue_track;
 
@@ -128,18 +118,18 @@ typedef struct cue_segment_s {
     uint32_t track;
     bool pregap;
     uint32_t file;
-    uint32_t frame_size;  /* bytes per frame of the owning track */
-    int64_t offset;       /* inside the file's track data */
-    int64_t length;       /* -1: runs to the end of the file */
+    uint32_t frame_size; /* bytes per frame of the owning track */
+    int64_t offset;      /* inside the file's track data */
+    int64_t length;      /* -1: runs to the end of the file */
 } cue_segment;
 
 typedef struct cue_member_s {
-    char name[24];        /* "track99.pregap.cdda" is the longest */
+    char name[24]; /* "track99.pregap.cdda" is the longest */
     uint32_t track;
     bool pregap;
     uint32_t first_segment;
     uint32_t segment_count;
-    int64_t size;         /* -1: not known from the sheet, or does not fit */
+    int64_t size; /* -1: not known from the sheet, or does not fit */
 } cue_member;
 
 typedef struct cue_sheet_s {
@@ -153,7 +143,7 @@ typedef struct cue_sheet_s {
     uint32_t segment_count;
     cue_member members[CUE_MAX_MEMBERS];
     uint32_t member_count;
-    uint32_t index;       /* record iteration cursor */
+    uint32_t index; /* record iteration cursor */
     int64_t sheet_size;
     xx_cue *owner;
 } cue_sheet;
@@ -162,12 +152,14 @@ typedef struct cue_sheet_s {
 /* Helpers                                                                 */
 
 #include "xxfclib/global/xx_global.h"
-static size_t gb_cue_capacity(void) {
+static size_t gb_cue_capacity(void)
+{
     size_t n = xx_get_file_buffer_size();
     if (!n) n = XX_DEFAULT_FILE_BUFFER_SIZE;
     return n > (SIZE_MAX >> 1) ? SIZE_MAX >> 1 : n;
 }
-static ssize_t gb_cue_read(xx_io_device *device, void *buffer, size_t size, size_t capacity) {
+static ssize_t gb_cue_read(xx_io_device *device, void *buffer, size_t size, size_t capacity)
+{
     size_t done = 0;
     if (size > (SIZE_MAX >> 1)) return -1;
     while (done < size) {
@@ -181,7 +173,8 @@ static ssize_t gb_cue_read(xx_io_device *device, void *buffer, size_t size, size
     }
     return (ssize_t)done;
 }
-static ssize_t gb_cue_write(xx_io_device *device, const void *buffer, size_t size, size_t capacity) {
+static ssize_t gb_cue_write(xx_io_device *device, const void *buffer, size_t size, size_t capacity)
+{
     size_t done = 0;
     if (size > (SIZE_MAX >> 1)) return -1;
     while (done < size) {
@@ -196,79 +189,73 @@ static ssize_t gb_cue_write(xx_io_device *device, const void *buffer, size_t siz
     return (ssize_t)done;
 }
 
-
-static bool cue_read_at(xx_io_device *device, int64_t offset, void *buffer,
-                        size_t size) {
+static bool cue_read_at(xx_io_device *device, int64_t offset, void *buffer, size_t size)
+{
     const size_t file_io_capacity = gb_cue_capacity();
     size_t done = 0U;
-    if (!device || (!buffer && size != 0U) || offset < 0 ||
-        xx_io_seek64(device, offset, SEEK_SET) != 0)
-        return false;
+    if (!device || (!buffer && size != 0U) || offset < 0 || xx_io_seek64(device, offset, SEEK_SET) != 0) return false;
     while (done < size) {
-        ssize_t amount = gb_cue_read(device, (uint8_t *)buffer + done,
-                                    size - done, file_io_capacity);
+        ssize_t amount = gb_cue_read(device, (uint8_t *)buffer + done, size - done, file_io_capacity);
         if (amount <= 0 || (size_t)amount > size - done) return false;
         done += (size_t)amount;
     }
     return true;
 }
 
-static uint32_t cue_le16(const uint8_t *b) {
+static uint32_t cue_le16(const uint8_t *b)
+{
     return (uint32_t)b[0] | ((uint32_t)b[1] << 8U);
 }
 
-static uint32_t cue_be16(const uint8_t *b) {
+static uint32_t cue_be16(const uint8_t *b)
+{
     return ((uint32_t)b[0] << 8U) | (uint32_t)b[1];
 }
 
-static uint8_t cue_upper(uint8_t c) {
+static uint8_t cue_upper(uint8_t c)
+{
     return (c >= 'a' && c <= 'z') ? (uint8_t)(c - 'a' + 'A') : c;
 }
 
-static bool cue_blank(uint8_t c) { return c == ' ' || c == '\t'; }
+static bool cue_blank(uint8_t c)
+{
+    return c == ' ' || c == '\t';
+}
 
-static bool cue_digit(uint8_t c) { return c >= '0' && c <= '9'; }
+static bool cue_digit(uint8_t c)
+{
+    return c >= '0' && c <= '9';
+}
 
 /* Case-insensitive: do the @p size bytes at @p text spell @p word? */
-static bool cue_word_is(const uint8_t *text, size_t size, const char *word) {
+static bool cue_word_is(const uint8_t *text, size_t size, const char *word)
+{
     size_t index;
     for (index = 0U; index < size; ++index)
-        if (!word[index] || cue_upper(text[index]) != (uint8_t)word[index])
-            return false;
+        if (!word[index] || cue_upper(text[index]) != (uint8_t)word[index]) return false;
     return word[size] == 0;
 }
 
 /* ---------------------------------------------------------------------- */
 /* Prefilter                                                               */
 
-bool xx_cue_test_magic(const uint8_t *magic, size_t magic_size) {
-    static const char *const openers[] = {"REM",        "FILE",
-                                          "TITLE",      "PERFORMER",
-                                          "SONGWRITER", "CATALOG",
-                                          "CDTEXTFILE"};
+bool xx_cue_test_magic(const uint8_t *magic, size_t magic_size)
+{
+    static const char *const openers[] = {"REM", "FILE", "TITLE", "PERFORMER", "SONGWRITER", "CATALOG", "CDTEXTFILE"};
     size_t position = 0U, start, index;
     if (!magic || magic_size < 8U) return false;
-    if (magic[0] == 0xEFU && magic[1] == 0xBBU && magic[2] == 0xBFU)
-        position = 3U;
-    while (position < magic_size &&
-           (cue_blank(magic[position]) || magic[position] == '\r' ||
-            magic[position] == '\n'))
-        ++position;
+    if (magic[0] == 0xEFU && magic[1] == 0xBBU && magic[2] == 0xBFU) position = 3U;
+    while (position < magic_size && (cue_blank(magic[position]) || magic[position] == '\r' || magic[position] == '\n')) ++position;
     start = position;
-    while (position < magic_size &&
-           ((magic[position] >= 'A' && magic[position] <= 'Z') ||
-            (magic[position] >= 'a' && magic[position] <= 'z')))
-        ++position;
+    while (position < magic_size && ((magic[position] >= 'A' && magic[position] <= 'Z') || (magic[position] >= 'a' && magic[position] <= 'z'))) ++position;
     /* The keyword must be followed by a blank (or end the line for REM)
      * inside the window; a keyword running to the window's end is not
      * enough evidence. */
     if (position == start || position >= magic_size) return false;
     for (index = 0U; index < sizeof(openers) / sizeof(openers[0]); ++index) {
-        if (!cue_word_is(magic + start, position - start, openers[index]))
-            continue;
+        if (!cue_word_is(magic + start, position - start, openers[index])) continue;
         if (cue_blank(magic[position])) return true;
-        return index == 0U &&
-               (magic[position] == '\r' || magic[position] == '\n');
+        return index == 0U && (magic[position] == '\r' || magic[position] == '\n');
     }
     return false;
 }
@@ -283,28 +270,27 @@ typedef struct cue_line_s {
 } cue_line;
 
 /* Next blank-separated token; false at the end of the line. */
-static bool cue_token(cue_line *line, const uint8_t **token, size_t *size) {
+static bool cue_token(cue_line *line, const uint8_t **token, size_t *size)
+{
     size_t start;
-    while (line->position < line->size && cue_blank(line->text[line->position]))
-        ++line->position;
+    while (line->position < line->size && cue_blank(line->text[line->position])) ++line->position;
     if (line->position >= line->size) return false;
     start = line->position;
-    while (line->position < line->size &&
-           !cue_blank(line->text[line->position]))
-        ++line->position;
+    while (line->position < line->size && !cue_blank(line->text[line->position])) ++line->position;
     *token = line->text + start;
     *size = line->position - start;
     return true;
 }
 
-static bool cue_line_done(cue_line *line) {
+static bool cue_line_done(cue_line *line)
+{
     const uint8_t *token;
     size_t size;
     return !cue_token(line, &token, &size);
 }
 
-static bool cue_number(const uint8_t *text, size_t size, uint32_t max_digits,
-                       uint32_t *value) {
+static bool cue_number(const uint8_t *text, size_t size, uint32_t max_digits, uint32_t *value)
+{
     uint32_t result = 0U;
     size_t index;
     if (size == 0U || size > max_digits) return false;
@@ -317,7 +303,8 @@ static bool cue_number(const uint8_t *text, size_t size, uint32_t max_digits,
 }
 
 /* mm:ss:ff, minutes 1..3 digits, seconds < 60, frames < 75. */
-static bool cue_msf(const uint8_t *text, size_t size, uint32_t *frames) {
+static bool cue_msf(const uint8_t *text, size_t size, uint32_t *frames)
+{
     size_t first = 0U, second;
     uint32_t minutes, seconds, frame;
     while (first < size && text[first] != ':') ++first;
@@ -325,22 +312,19 @@ static bool cue_msf(const uint8_t *text, size_t size, uint32_t *frames) {
     second = first + 1U;
     while (second < size && text[second] != ':') ++second;
     if (second >= size) return false;
-    if (!cue_number(text, first, 3U, &minutes) ||
-        !cue_number(text + first + 1U, second - first - 1U, 2U, &seconds) ||
-        !cue_number(text + second + 1U, size - second - 1U, 2U, &frame) ||
-        minutes > CUE_MAX_MINUTES || seconds >= 60U ||
-        frame >= CUE_FRAMES_PER_SECOND)
+    if (!cue_number(text, first, 3U, &minutes) || !cue_number(text + first + 1U, second - first - 1U, 2U, &seconds) ||
+        !cue_number(text + second + 1U, size - second - 1U, 2U, &frame) || minutes > CUE_MAX_MINUTES || seconds >= 60U || frame >= CUE_FRAMES_PER_SECOND)
         return false;
     *frames = (minutes * 60U + seconds) * CUE_FRAMES_PER_SECOND + frame;
     return true;
 }
 
-static bool cue_parse_file(cue_sheet *sheet, cue_line *line) {
+static bool cue_parse_file(cue_sheet *sheet, cue_line *line)
+{
     const uint8_t *rest, *type;
     size_t rest_size, type_start, type_size, name_size, index;
     cue_file *file;
-    while (line->position < line->size && cue_blank(line->text[line->position]))
-        ++line->position;
+    while (line->position < line->size && cue_blank(line->text[line->position])) ++line->position;
     rest = line->text + line->position;
     rest_size = line->size - line->position;
     while (rest_size != 0U && cue_blank(rest[rest_size - 1U])) --rest_size;
@@ -352,19 +336,15 @@ static bool cue_parse_file(cue_sheet *sheet, cue_line *line) {
     type_size = rest_size - type_start;
     name_size = type_start;
     while (name_size != 0U && cue_blank(rest[name_size - 1U])) --name_size;
-    if (type_size == 0U || type_size > CUE_MAX_TYPE || name_size == 0U)
-        return false;
+    if (type_size == 0U || type_size > CUE_MAX_TYPE || name_size == 0U) return false;
     for (index = 0U; index < type_size; ++index)
-        if (!cue_digit(type[index]) && !(cue_upper(type[index]) >= 'A' &&
-                                         cue_upper(type[index]) <= 'Z'))
-            return false;
+        if (!cue_digit(type[index]) && !(cue_upper(type[index]) >= 'A' && cue_upper(type[index]) <= 'Z')) return false;
     if (rest[0] == '"') {
         if (name_size < 3U || rest[name_size - 1U] != '"') return false;
         ++rest;
         name_size -= 2U;
     }
-    if (name_size > CUE_MAX_NAME || sheet->file_count >= XX_CUE_MAX_FILES)
-        return false;
+    if (name_size > CUE_MAX_NAME || sheet->file_count >= XX_CUE_MAX_FILES) return false;
     file = &sheet->files[sheet->file_count];
     xx_mem_zero(file, sizeof(*file));
     file->name = (char *)xx_mem_alloc(name_size + 1U);
@@ -374,23 +354,21 @@ static bool cue_parse_file(cue_sheet *sheet, cue_line *line) {
     if (cue_word_is(type, type_size, "BINARY")) file->type = CUE_FT_BINARY;
     else if (cue_word_is(type, type_size, "MOTOROLA")) file->type = CUE_FT_MOTOROLA;
     else if (cue_word_is(type, type_size, "WAVE")) file->type = CUE_FT_WAVE;
-    else if (cue_word_is(type, type_size, "AIFF") ||
-             cue_word_is(type, type_size, "AIFC")) file->type = CUE_FT_AIFF;
+    else if (cue_word_is(type, type_size, "AIFF") || cue_word_is(type, type_size, "AIFC")) file->type = CUE_FT_AIFF;
     else file->type = CUE_FT_OTHER;
     file->first_point = sheet->point_count;
     ++sheet->file_count;
     return true;
 }
 
-static bool cue_parse_track(cue_sheet *sheet, cue_line *line,
-                            int64_t line_offset) {
+static bool cue_parse_track(cue_sheet *sheet, cue_line *line, int64_t line_offset)
+{
     const uint8_t *token;
     size_t size, index;
     uint32_t number;
     cue_track *track;
-    if (sheet->file_count == 0U || sheet->track_count >= CUE_MAX_TRACKS ||
-        !cue_token(line, &token, &size) || !cue_number(token, size, 3U, &number) ||
-        number < 1U || number > CUE_MAX_TRACKS)
+    if (sheet->file_count == 0U || sheet->track_count >= CUE_MAX_TRACKS || !cue_token(line, &token, &size) || !cue_number(token, size, 3U, &number) || number < 1U ||
+        number > CUE_MAX_TRACKS)
         return false;
     if (sheet->track_count != 0U) {
         const cue_track *previous = &sheet->tracks[sheet->track_count - 1U];
@@ -401,9 +379,7 @@ static bool cue_parse_track(cue_sheet *sheet, cue_line *line,
     xx_mem_zero(track, sizeof(*track));
     for (index = 0U; index < sizeof(cue_modes) / sizeof(cue_modes[0]); ++index)
         if (cue_word_is(token, size, cue_modes[index].name)) break;
-    if (index == sizeof(cue_modes) / sizeof(cue_modes[0]) ||
-        !cue_line_done(line))
-        return false;
+    if (index == sizeof(cue_modes) / sizeof(cue_modes[0]) || !cue_line_done(line)) return false;
     track->number = number;
     track->mode = (uint32_t)index;
     track->last_index = -1;
@@ -413,17 +389,16 @@ static bool cue_parse_track(cue_sheet *sheet, cue_line *line,
     return true;
 }
 
-static bool cue_parse_index(cue_sheet *sheet, cue_line *line) {
+static bool cue_parse_index(cue_sheet *sheet, cue_line *line)
+{
     const uint8_t *token;
     size_t size;
     uint32_t number, frames, file_index;
     cue_track *track;
     cue_file *file;
     cue_point *point;
-    if (sheet->track_count == 0U || sheet->point_count >= CUE_MAX_POINTS ||
-        !cue_token(line, &token, &size) || !cue_number(token, size, 2U, &number) ||
-        number > CUE_MAX_INDEX || !cue_token(line, &token, &size) ||
-        !cue_msf(token, size, &frames) || !cue_line_done(line))
+    if (sheet->track_count == 0U || sheet->point_count >= CUE_MAX_POINTS || !cue_token(line, &token, &size) || !cue_number(token, size, 2U, &number) ||
+        number > CUE_MAX_INDEX || !cue_token(line, &token, &size) || !cue_msf(token, size, &frames) || !cue_line_done(line))
         return false;
     track = &sheet->tracks[sheet->track_count - 1U];
     /* Indexes rise inside a track; the first one is 00 or 01, and the
@@ -432,9 +407,7 @@ static bool cue_parse_index(cue_sheet *sheet, cue_line *line) {
     if (number >= 1U && !track->has_index1 && number != 1U) return false;
     file_index = sheet->file_count - 1U;
     file = &sheet->files[file_index];
-    if (file->point_count != 0U &&
-        frames < sheet->points[sheet->point_count - 1U].frame)
-        return false;
+    if (file->point_count != 0U && frames < sheet->points[sheet->point_count - 1U].frame) return false;
     point = &sheet->points[sheet->point_count++];
     point->track = sheet->track_count - 1U;
     point->index = number;
@@ -446,8 +419,8 @@ static bool cue_parse_index(cue_sheet *sheet, cue_line *line) {
     return true;
 }
 
-static bool cue_parse_line(cue_sheet *sheet, const uint8_t *text, size_t size,
-                           int64_t line_offset) {
+static bool cue_parse_line(cue_sheet *sheet, const uint8_t *text, size_t size, int64_t line_offset)
+{
     cue_line line;
     const uint8_t *keyword, *token;
     size_t keyword_size, token_size;
@@ -456,25 +429,20 @@ static bool cue_parse_line(cue_sheet *sheet, const uint8_t *text, size_t size,
     line.size = size;
     line.position = 0U;
     if (!cue_token(&line, &keyword, &keyword_size)) return true;
-    if (cue_word_is(keyword, keyword_size, "FILE"))
-        return cue_parse_file(sheet, &line);
-    if (cue_word_is(keyword, keyword_size, "TRACK"))
-        return cue_parse_track(sheet, &line, line_offset);
-    if (cue_word_is(keyword, keyword_size, "INDEX"))
-        return cue_parse_index(sheet, &line);
-    if (cue_word_is(keyword, keyword_size, "PREGAP") ||
-        cue_word_is(keyword, keyword_size, "POSTGAP")) {
+    if (cue_word_is(keyword, keyword_size, "FILE")) return cue_parse_file(sheet, &line);
+    if (cue_word_is(keyword, keyword_size, "TRACK")) return cue_parse_track(sheet, &line, line_offset);
+    if (cue_word_is(keyword, keyword_size, "INDEX")) return cue_parse_index(sheet, &line);
+    if (cue_word_is(keyword, keyword_size, "PREGAP") || cue_word_is(keyword, keyword_size, "POSTGAP")) {
         /* Silence the player generates: nothing of it is stored. */
-        return sheet->track_count != 0U &&
-               cue_token(&line, &token, &token_size) &&
-               cue_msf(token, token_size, &frames) && cue_line_done(&line);
+        return sheet->track_count != 0U && cue_token(&line, &token, &token_size) && cue_msf(token, token_size, &frames) && cue_line_done(&line);
     }
     /* REM, CATALOG, CDTEXTFILE, TITLE, PERFORMER, SONGWRITER, FLAGS, ISRC
      * and producer extensions carry no layout. */
     return true;
 }
 
-static void cue_sheet_free(void *opaque) {
+static void cue_sheet_free(void *opaque)
+{
     cue_sheet *sheet = (cue_sheet *)opaque;
     uint32_t index;
     if (!sheet) return;
@@ -486,23 +454,19 @@ static void cue_sheet_free(void *opaque) {
 /* Text: printable bytes, tab and line breaks; bytes >= 0x80 pass as UTF-8
  * or code page names.  A DOS end-of-file byte ends the sheet when only
  * more of them and line breaks follow it. */
-static bool cue_parse_text(cue_sheet *sheet, const uint8_t *text, size_t size,
-                           int64_t base) {
+static bool cue_parse_text(cue_sheet *sheet, const uint8_t *text, size_t size, int64_t base)
+{
     size_t position = 0U;
     bool end = false;
-    if (size >= 3U && text[0] == 0xEFU && text[1] == 0xBBU && text[2] == 0xBFU)
-        position = 3U;
+    if (size >= 3U && text[0] == 0xEFU && text[1] == 0xBBU && text[2] == 0xBFU) position = 3U;
     while (position < size && !end) {
         size_t start = position, stop;
-        while (position < size && text[position] != '\n' &&
-               text[position] != '\r') {
+        while (position < size && text[position] != '\n' && text[position] != '\r') {
             uint8_t c = text[position];
             if (c == 0x1AU) {
                 size_t tail;
                 for (tail = position; tail < size; ++tail)
-                    if (text[tail] != 0x1AU && text[tail] != '\r' &&
-                        text[tail] != '\n')
-                        return false;
+                    if (text[tail] != 0x1AU && text[tail] != '\r' && text[tail] != '\n') return false;
                 end = true;
                 break;
             }
@@ -510,40 +474,36 @@ static bool cue_parse_text(cue_sheet *sheet, const uint8_t *text, size_t size,
             ++position;
         }
         stop = position;
-        if (!cue_parse_line(sheet, text + start, stop - start,
-                            base + (int64_t)start))
-            return false;
+        if (!cue_parse_line(sheet, text + start, stop - start, base + (int64_t)start)) return false;
         if (end) break;
         if (position < size && text[position] == '\r') ++position;
         if (position < size && text[position] == '\n') ++position;
     }
-    return sheet->file_count != 0U && sheet->track_count != 0U &&
-           sheet->tracks[sheet->track_count - 1U].has_index1;
+    return sheet->file_count != 0U && sheet->track_count != 0U && sheet->tracks[sheet->track_count - 1U].has_index1;
 }
 
 /* ---------------------------------------------------------------------- */
 /* Layout                                                                  */
 
-static uint32_t cue_frame_size(const cue_sheet *sheet, uint32_t file,
-                               uint32_t track) {
+static uint32_t cue_frame_size(const cue_sheet *sheet, uint32_t file, uint32_t track)
+{
     /* WAVE and the other audio containers count frames of their PCM. */
-    if (sheet->files[file].type == CUE_FT_WAVE ||
-        sheet->files[file].type == CUE_FT_AIFF ||
-        sheet->files[file].type == CUE_FT_OTHER)
-        return CUE_AUDIO_FRAME;
+    if (sheet->files[file].type == CUE_FT_WAVE || sheet->files[file].type == CUE_FT_AIFF || sheet->files[file].type == CUE_FT_OTHER) return CUE_AUDIO_FRAME;
     return cue_modes[sheet->tracks[track].mode].sector_size;
 }
 
-static const char *cue_extension(uint8_t kind, bool pregap) {
+static const char *cue_extension(uint8_t kind, bool pregap)
+{
     switch (kind) {
-    case CUE_KIND_AUDIO: return "cdda";
-    case CUE_KIND_CDG: return "cdg";
-    case CUE_KIND_COOKED: return pregap ? "bin" : "iso";
-    default: return "bin";
+        case CUE_KIND_AUDIO: return "cdda";
+        case CUE_KIND_CDG: return "cdg";
+        case CUE_KIND_COOKED: return pregap ? "bin" : "iso";
+        default: return "bin";
     }
 }
 
-static void cue_make_name(cue_member *member, uint32_t number, uint8_t kind) {
+static void cue_make_name(cue_member *member, uint32_t number, uint8_t kind)
+{
     const char *suffix = cue_extension(kind, member->pregap);
     size_t used = 0U, index;
     static const char prefix[] = "track";
@@ -552,13 +512,11 @@ static void cue_make_name(cue_member *member, uint32_t number, uint8_t kind) {
     member->name[used++] = (char)('0' + (number / 10U) % 10U);
     member->name[used++] = (char)('0' + number % 10U);
     if (member->pregap) {
-        for (index = 0U; pregap[index]; ++index)
-            member->name[used++] = pregap[index];
+        for (index = 0U; pregap[index]; ++index) member->name[used++] = pregap[index];
     } else {
         member->name[used++] = '.';
     }
-    for (index = 0U; suffix[index] && used < sizeof(member->name) - 1U; ++index)
-        member->name[used++] = suffix[index];
+    for (index = 0U; suffix[index] && used < sizeof(member->name) - 1U; ++index) member->name[used++] = suffix[index];
     member->name[used] = 0;
 }
 
@@ -567,7 +525,8 @@ static void cue_make_name(cue_member *member, uint32_t number, uint8_t kind) {
  * the track body otherwise.  Bytes in front of a file's first point are the
  * pregap of that point's track (or body, past INDEX 01).  Segment lengths
  * accumulate the sector size of their own track, so a file may mix modes. */
-static bool cue_build(cue_sheet *sheet) {
+static bool cue_build(cue_sheet *sheet)
+{
     cue_segment *raw;
     uint32_t raw_count = 0U, file, track;
     raw = (cue_segment *)xx_mem_calloc(CUE_MAX_SEGMENTS, sizeof(*raw));
@@ -596,9 +555,7 @@ static bool cue_build(cue_sheet *sheet) {
             segment->frame_size = cue_frame_size(sheet, file, points[index].track);
             segment->offset = cursor;
             if (index + 1U < entry->point_count) {
-                segment->length =
-                    (int64_t)(points[index + 1U].frame - points[index].frame) *
-                    segment->frame_size;
+                segment->length = (int64_t)(points[index + 1U].frame - points[index].frame) * segment->frame_size;
                 cursor += segment->length;
             } else {
                 segment->length = -1;
@@ -617,9 +574,7 @@ static bool cue_build(cue_sheet *sheet) {
             bool unknown = false;
             member->first_segment = sheet->segment_count;
             for (index = 0U; index < raw_count; ++index) {
-                if (raw[index].track != track || raw[index].pregap != pregap ||
-                    raw[index].length == 0)
-                    continue;
+                if (raw[index].track != track || raw[index].pregap != pregap || raw[index].length == 0) continue;
                 sheet->segments[sheet->segment_count++] = raw[index];
                 ++count;
                 if (raw[index].length < 0) unknown = true;
@@ -631,8 +586,7 @@ static bool cue_build(cue_sheet *sheet) {
             member->pregap = pregap;
             member->segment_count = count;
             member->size = unknown ? -1 : total;
-            cue_make_name(member, sheet->tracks[track].number,
-                          cue_modes[sheet->tracks[track].mode].kind);
+            cue_make_name(member, sheet->tracks[track].number, cue_modes[sheet->tracks[track].mode].kind);
             ++sheet->member_count;
         }
     }
@@ -643,7 +597,8 @@ static bool cue_build(cue_sheet *sheet) {
 /* ---------------------------------------------------------------------- */
 /* Loading                                                                 */
 
-static cue_sheet *cue_load(Abstractformat *format) {
+static cue_sheet *cue_load(Abstractformat *format)
+{
     uint8_t prefix[CUE_PREFIX];
     uint8_t *text = NULL;
     cue_sheet *sheet = NULL;
@@ -655,14 +610,10 @@ static cue_sheet *cue_load(Abstractformat *format) {
     size = total - format->base_address;
     if (size < CUE_MIN_SHEET || size > XX_CUE_MAX_SHEET) return NULL;
     prefix_size = size < (int64_t)CUE_PREFIX ? (size_t)size : CUE_PREFIX;
-    if (!cue_read_at(format->device, format->base_address, prefix, prefix_size) ||
-        !xx_cue_test_magic(prefix, prefix_size))
-        return NULL;
+    if (!cue_read_at(format->device, format->base_address, prefix, prefix_size) || !xx_cue_test_magic(prefix, prefix_size)) return NULL;
     text = (uint8_t *)xx_mem_alloc((size_t)size);
     sheet = (cue_sheet *)xx_mem_calloc(1U, sizeof(*sheet));
-    if (!text || !sheet ||
-        !cue_read_at(format->device, format->base_address, text, (size_t)size) ||
-        !cue_parse_text(sheet, text, (size_t)size, format->base_address) ||
+    if (!text || !sheet || !cue_read_at(format->device, format->base_address, text, (size_t)size) || !cue_parse_text(sheet, text, (size_t)size, format->base_address) ||
         !cue_build(sheet)) {
         if (text) xx_mem_free(text);
         cue_sheet_free(sheet);
@@ -676,61 +627,44 @@ static cue_sheet *cue_load(Abstractformat *format) {
 
 /* WAVE data file: RIFF or RF64, a CD-audio "fmt " chunk (PCM, 2 channels,
  * 44.1 kHz, 16 bits), then the "data" chunk whose PCM the frames count. */
-static bool cue_wave_locate(xx_io_device *device, int64_t total, int64_t *base,
-                            int64_t *size) {
+static bool cue_wave_locate(xx_io_device *device, int64_t total, int64_t *base, int64_t *size)
+{
     uint8_t head[12], chunk[8], format_chunk[40], ds64[28];
     int64_t position = 12;
     uint32_t count;
     uint64_t riff_size64 = 0U, data_size64 = 0U;
     bool have_format = false, have_ds64 = false, rf64;
-    if (total < 12 || !cue_read_at(device, 0, head, sizeof(head)) ||
-        xx_rt_memcmp(head + 8, "WAVE", 4U) != 0)
-        return false;
+    if (total < 12 || !cue_read_at(device, 0, head, sizeof(head)) || xx_rt_memcmp(head + 8, "WAVE", 4U) != 0) return false;
     rf64 = xx_rt_memcmp(head, "RF64", 4U) == 0;
     if (!rf64 && xx_rt_memcmp(head, "RIFF", 4U) != 0) return false;
     if (rf64 && xx_data_get_u32(head + 4U, 4, 0, false) != UINT32_MAX) return false;
-    for (count = 0U; count < CUE_WAVE_MAX_CHUNKS && position <= total - 8;
-         ++count) {
+    for (count = 0U; count < CUE_WAVE_MAX_CHUNKS && position <= total - 8; ++count) {
         int64_t body = position + 8, length;
         if (!cue_read_at(device, position, chunk, sizeof(chunk))) return false;
         length = (int64_t)xx_data_get_u32(chunk + 4, 4, 0, false);
         if (rf64 && count == 0U) {
-            if (xx_rt_memcmp(chunk, "ds64", 4U) != 0 ||
-                length < 28 || length > total - body ||
-                !cue_read_at(device, body, ds64, sizeof(ds64))) return false;
+            if (xx_rt_memcmp(chunk, "ds64", 4U) != 0 || length < 28 || length > total - body || !cue_read_at(device, body, ds64, sizeof(ds64))) return false;
             riff_size64 = xx_data_get_u64(ds64, 8, 0, false);
             data_size64 = xx_data_get_u64(ds64 + 8U, 8, 0, false);
-            if (riff_size64 > (uint64_t)INT64_MAX - 8U ||
-                riff_size64 + 8U != (uint64_t)total ||
-                data_size64 > (uint64_t)INT64_MAX ||
-                (data_size64 & 3U) != 0U ||
-                xx_data_get_u64(ds64 + 16U, 8, 0, false) != data_size64 / 4U ||
-                xx_data_get_u32(ds64 + 24U, 4, 0, false) > ((uint32_t)length - 28U) / 12U)
+            if (riff_size64 > (uint64_t)INT64_MAX - 8U || riff_size64 + 8U != (uint64_t)total || data_size64 > (uint64_t)INT64_MAX || (data_size64 & 3U) != 0U ||
+                xx_data_get_u64(ds64 + 16U, 8, 0, false) != data_size64 / 4U || xx_data_get_u32(ds64 + 24U, 4, 0, false) > ((uint32_t)length - 28U) / 12U)
                 return false;
             have_ds64 = true;
         } else if (xx_rt_memcmp(chunk, "fmt ", 4U) == 0) {
             uint32_t tag;
             size_t want = length >= 40 ? 40U : 16U;
-            if (length < 16 || length > total - body ||
-                !cue_read_at(device, body, format_chunk, want))
-                return false;
+            if (length < 16 || length > total - body || !cue_read_at(device, body, format_chunk, want)) return false;
             tag = cue_le16(format_chunk);
-            if (tag == 0xFFFEU &&
-                (want < 40U || cue_le16(format_chunk + 24) != 1U))
-                return false;
-            if ((tag != 1U && tag != 0xFFFEU) ||
-                cue_le16(format_chunk + 2) != 2U ||
-                xx_data_get_u32(format_chunk + 4, 4, 0, false) != 44100U ||
-                cue_le16(format_chunk + 12) != 4U ||
-                cue_le16(format_chunk + 14) != 16U)
+            if (tag == 0xFFFEU && (want < 40U || cue_le16(format_chunk + 24) != 1U)) return false;
+            if ((tag != 1U && tag != 0xFFFEU) || cue_le16(format_chunk + 2) != 2U || xx_data_get_u32(format_chunk + 4, 4, 0, false) != 44100U ||
+                cue_le16(format_chunk + 12) != 4U || cue_le16(format_chunk + 14) != 16U)
                 return false;
             have_format = true;
         } else if (xx_rt_memcmp(chunk, "data", 4U) == 0) {
             if (!have_format) return false;
             *base = body;
             if (rf64) {
-                if (!have_ds64 || length != (int64_t)UINT32_MAX ||
-                    data_size64 > (uint64_t)(total - body)) return false;
+                if (!have_ds64 || length != (int64_t)UINT32_MAX || data_size64 > (uint64_t)(total - body)) return false;
                 *size = (int64_t)data_size64;
             } else {
                 *size = length < total - body ? length : total - body;
@@ -747,52 +681,42 @@ static bool cue_wave_locate(xx_io_device *device, int64_t total, int64_t *base,
 /* AIFF 1.3 and uncompressed AIFF-C: the 80-bit sample-rate field is the
  * exact extended-precision representation of 44100 Hz. Audio bytes are
  * exposed as stored in SSND, like WAVE's stored PCM; no byte swap is done. */
-static bool cue_aiff_locate(xx_io_device *device, int64_t total, int64_t *base,
-                            int64_t *size) {
-    static const uint8_t rate_44100[10] = {
-        0x40U, 0x0eU, 0xacU, 0x44U, 0, 0, 0, 0, 0, 0
-    };
+static bool cue_aiff_locate(xx_io_device *device, int64_t total, int64_t *base, int64_t *size)
+{
+    static const uint8_t rate_44100[10] = {0x40U, 0x0eU, 0xacU, 0x44U, 0, 0, 0, 0, 0, 0};
     uint8_t head[12], chunk[8], common[22], sound[8];
     int64_t position = 12, end, sound_base = -1, sound_size = -1;
     uint32_t count, frames = 0U;
     bool aifc, have_common = false;
-    if (total < 12 || !cue_read_at(device, 0, head, sizeof(head)) ||
-        xx_rt_memcmp(head, "FORM", 4U) != 0) return false;
+    if (total < 12 || !cue_read_at(device, 0, head, sizeof(head)) || xx_rt_memcmp(head, "FORM", 4U) != 0) return false;
     aifc = xx_rt_memcmp(head + 8, "AIFC", 4U) == 0;
     if (!aifc && xx_rt_memcmp(head + 8, "AIFF", 4U) != 0) return false;
     end = 8 + (int64_t)xx_data_get_u32(head + 4, 4, 0, true);
     if (end < 12 || end > total) return false;
-    for (count = 0U; count < CUE_WAVE_MAX_CHUNKS && position <= end - 8;
-         ++count) {
+    for (count = 0U; count < CUE_WAVE_MAX_CHUNKS && position <= end - 8; ++count) {
         int64_t body = position + 8, length;
         if (!cue_read_at(device, position, chunk, sizeof(chunk))) return false;
         length = (int64_t)xx_data_get_u32(chunk + 4, 4, 0, true);
         if (length > end - body) return false;
         if (xx_rt_memcmp(chunk, "COMM", 4U) == 0) {
-            if (have_common || length < (aifc ? 22 : 18) ||
-                !cue_read_at(device, body, common, aifc ? 22U : 18U) ||
-                cue_be16(common) != 2U || cue_be16(common + 6) != 16U ||
-                xx_rt_memcmp(common + 8, rate_44100, 10U) != 0 ||
-                (aifc && xx_rt_memcmp(common + 18, "NONE", 4U) != 0 &&
-                 xx_rt_memcmp(common + 18, "sowt", 4U) != 0)) return false;
+            if (have_common || length < (aifc ? 22 : 18) || !cue_read_at(device, body, common, aifc ? 22U : 18U) || cue_be16(common) != 2U ||
+                cue_be16(common + 6) != 16U || xx_rt_memcmp(common + 8, rate_44100, 10U) != 0 ||
+                (aifc && xx_rt_memcmp(common + 18, "NONE", 4U) != 0 && xx_rt_memcmp(common + 18, "sowt", 4U) != 0))
+                return false;
             frames = xx_data_get_u32(common + 2, 4, 0, true);
             if (!frames) return false;
             have_common = true;
         } else if (xx_rt_memcmp(chunk, "SSND", 4U) == 0) {
             uint32_t offset;
-            if (sound_base >= 0 || length < 8 ||
-                !cue_read_at(device, body, sound, sizeof(sound)))
-                return false;
+            if (sound_base >= 0 || length < 8 || !cue_read_at(device, body, sound, sizeof(sound))) return false;
             offset = xx_data_get_u32(sound, 4, 0, true);
-            if (xx_data_get_u32(sound + 4, 4, 0, true) != 0U || offset > (uint64_t)length - 8U)
-                return false;
+            if (xx_data_get_u32(sound + 4, 4, 0, true) != 0U || offset > (uint64_t)length - 8U) return false;
             sound_base = body + 8 + offset;
             sound_size = length - 8 - offset;
         }
         position = body + length + (length & 1);
     }
-    if (!have_common || sound_base < 0 || sound_size < (int64_t)frames * 4)
-        return false;
+    if (!have_common || sound_base < 0 || sound_size < (int64_t)frames * 4) return false;
     *base = sound_base;
     *size = (int64_t)frames * 4;
     return true;
@@ -801,20 +725,20 @@ static bool cue_aiff_locate(xx_io_device *device, int64_t total, int64_t *base,
 /* Bytes a segment covers once its file is measured: the stated length, or
  * for the last segment of a file every whole frame up to the file's end (a
  * trailing partial sector is not part of any track). -1 if it does not fit. */
-static int64_t cue_segment_length(const cue_segment *segment,
-                                  const cue_file *entry) {
+static int64_t cue_segment_length(const cue_segment *segment, const cue_file *entry)
+{
     int64_t room;
     if (!entry->usable || segment->offset > entry->size) return -1;
     room = entry->size - segment->offset;
-    if (segment->length < 0)
-        return room - room % (int64_t)segment->frame_size;
+    if (segment->length < 0) return room - room % (int64_t)segment->frame_size;
     return segment->length <= room ? segment->length : -1;
 }
 
 /* Measure what each attached data device holds and settle every member's
  * size: -1 when a data file is missing, unusable, or shorter than the sheet
  * says. */
-static void cue_resolve(cue_sheet *sheet) {
+static void cue_resolve(cue_sheet *sheet)
+{
     const xx_cue *owner = sheet->owner;
     uint32_t file, member;
     for (file = 0U; file < sheet->file_count; ++file) {
@@ -829,11 +753,9 @@ static void cue_resolve(cue_sheet *sheet) {
             entry->size = total;
             entry->usable = true;
         } else if (entry->type == CUE_FT_WAVE) {
-            entry->usable = cue_wave_locate(device, total, &entry->base,
-                                            &entry->size);
+            entry->usable = cue_wave_locate(device, total, &entry->base, &entry->size);
         } else if (entry->type == CUE_FT_AIFF) {
-            entry->usable = cue_aiff_locate(device, total, &entry->base,
-                                            &entry->size);
+            entry->usable = cue_aiff_locate(device, total, &entry->base, &entry->size);
         }
     }
     for (member = 0U; member < sheet->member_count; ++member) {
@@ -842,10 +764,8 @@ static void cue_resolve(cue_sheet *sheet) {
         uint32_t index;
         bool fits = true;
         for (index = 0U; index < item->segment_count && fits; ++index) {
-            const cue_segment *segment =
-                &sheet->segments[item->first_segment + index];
-            int64_t length =
-                cue_segment_length(segment, &sheet->files[segment->file]);
+            const cue_segment *segment = &sheet->segments[item->first_segment + index];
+            int64_t length = cue_segment_length(segment, &sheet->files[segment->file]);
             if (length < 0 || length > INT64_MAX - total) {
                 fits = false;
                 break;
@@ -859,17 +779,16 @@ static void cue_resolve(cue_sheet *sheet) {
 /* ---------------------------------------------------------------------- */
 /* Records                                                                 */
 
-static bool cue_copy_options(xx_list_s *destination, const xx_list_s *source) {
+static bool cue_copy_options(xx_list_s *destination, const xx_list_s *source)
+{
     size_t index;
     if (!source) return true;
     for (index = 0U; index < source->count; ++index) {
-        const xx_meta *original =
-            (const xx_meta *)xx_list_at((const xx_list_t *)source, index);
+        const xx_meta *original = (const xx_meta *)xx_list_at((const xx_list_t *)source, index);
         xx_meta copy;
         if (!original) continue;
         xx_meta_init(&copy, original->meta_id);
-        if (!xx_var_copy(&copy.var, &original->var) ||
-            !xx_list_append(destination, &copy)) {
+        if (!xx_var_copy(&copy.var, &original->var) || !xx_list_append(destination, &copy)) {
             xx_meta_cleanup(&copy);
             return false;
         }
@@ -877,19 +796,19 @@ static bool cue_copy_options(xx_list_s *destination, const xx_list_s *source) {
     return true;
 }
 
-static const xx_var *cue_option(const xx_list_s *options, uint32_t id) {
+static const xx_var *cue_option(const xx_list_s *options, uint32_t id)
+{
     size_t index;
     if (!options) return NULL;
     for (index = 0U; index < options->count; ++index) {
-        const xx_meta *meta =
-            (const xx_meta *)xx_list_at((const xx_list_t *)options, index);
+        const xx_meta *meta = (const xx_meta *)xx_list_at((const xx_list_t *)options, index);
         if (meta && meta->meta_id == id) return &meta->var;
     }
     return NULL;
 }
 
-static bool cue_set_record(xx_archive_record *record, const cue_sheet *sheet,
-                           const cue_member *member) {
+static bool cue_set_record(xx_archive_record *record, const cue_sheet *sheet, const cue_member *member)
+{
     const cue_track *track = &sheet->tracks[member->track];
     bool ok;
     xx_archive_record_cleanup(record);
@@ -899,26 +818,18 @@ static bool cue_set_record(xx_archive_record *record, const cue_sheet *sheet,
     /* The payload lives in a data file, not in the sheet's device. */
     record->data_offset = -1;
     record->compressed_size = member->size >= 0 ? member->size : 0;
-    ok = xx_archive_record_set_original_name(record, member->name) &&
-         xx_archive_record_set_meta_u64(record, XX_META_ID_COMPRESSION_METHOD,
-                                        0U) &&
-         xx_archive_record_set_meta_str(record, XX_META_ID_COMMENT,
-                                        cue_modes[track->mode].name) &&
-         xx_archive_record_set_meta_bool(record, XX_META_ID_IS_ENCRYPTED,
-                                         false) &&
-         xx_archive_record_set_meta_bool(record, XX_META_ID_IS_FOLDER, false);
+    ok = xx_archive_record_set_original_name(record, member->name) && xx_archive_record_set_meta_u64(record, XX_META_ID_COMPRESSION_METHOD, 0U) &&
+         xx_archive_record_set_meta_str(record, XX_META_ID_COMMENT, cue_modes[track->mode].name) &&
+         xx_archive_record_set_meta_bool(record, XX_META_ID_IS_ENCRYPTED, false) && xx_archive_record_set_meta_bool(record, XX_META_ID_IS_FOLDER, false);
     if (ok && member->size >= 0)
-        ok = xx_archive_record_set_meta_u64(record, XX_META_ID_COMPRESSED_SIZE,
-                                            (uint64_t)member->size) &&
-             xx_archive_record_set_meta_u64(record,
-                                            XX_META_ID_UNCOMPRESSED_SIZE,
-                                            (uint64_t)member->size);
+        ok = xx_archive_record_set_meta_u64(record, XX_META_ID_COMPRESSED_SIZE, (uint64_t)member->size) &&
+             xx_archive_record_set_meta_u64(record, XX_META_ID_UNCOMPRESSED_SIZE, (uint64_t)member->size);
     return ok;
 }
 
 /* Copy one member's segments to @p destination (NULL only reads them). */
-static bool cue_copy_member(const cue_sheet *sheet, const cue_member *member,
-                            xx_io_device *destination, xx_pd_struct *pd) {
+static bool cue_copy_member(const cue_sheet *sheet, const cue_member *member, xx_io_device *destination, xx_pd_struct *pd)
+{
     const size_t file_io_capacity = gb_cue_capacity();
     const xx_cue *owner = sheet->owner;
     uint8_t *buffer;
@@ -928,8 +839,7 @@ static bool cue_copy_member(const cue_sheet *sheet, const cue_member *member,
     buffer = (uint8_t *)xx_mem_alloc(file_io_capacity);
     if (!buffer) return false;
     for (index = 0U; index < member->segment_count && result; ++index) {
-        const cue_segment *segment =
-            &sheet->segments[member->first_segment + index];
+        const cue_segment *segment = &sheet->segments[member->first_segment + index];
         const cue_file *entry = &sheet->files[segment->file];
         xx_io_device *source = owner->data[segment->file];
         int64_t length = cue_segment_length(segment, entry), done = 0;
@@ -938,19 +848,14 @@ static bool cue_copy_member(const cue_sheet *sheet, const cue_member *member,
             break;
         }
         while (done < length) {
-            size_t amount = (length - done) > (int64_t)file_io_capacity
-                                ? file_io_capacity
-                                : (size_t)(length - done);
+            size_t amount = (length - done) > (int64_t)file_io_capacity ? file_io_capacity : (size_t)(length - done);
             size_t written = 0U;
-            if ((pd && xx_pd_is_stopped(pd)) ||
-                !cue_read_at(source, entry->base + segment->offset + done,
-                             buffer, amount)) {
+            if ((pd && xx_pd_is_stopped(pd)) || !cue_read_at(source, entry->base + segment->offset + done, buffer, amount)) {
                 result = false;
                 break;
             }
             while (destination && written < amount) {
-                ssize_t step = gb_cue_write(destination, buffer + written,
-                                           amount - written, file_io_capacity);
+                ssize_t step = gb_cue_write(destination, buffer + written, amount - written, file_io_capacity);
                 if (step <= 0 || (size_t)step > amount - written) {
                     result = false;
                     break;
@@ -968,11 +873,11 @@ static bool cue_copy_member(const cue_sheet *sheet, const cue_member *member,
 /* ---------------------------------------------------------------------- */
 /* Data files                                                              */
 
-static bool cue_stem_is(const char *name, size_t stem, const char *word) {
+static bool cue_stem_is(const char *name, size_t stem, const char *word)
+{
     size_t index;
     for (index = 0U; index < stem; ++index)
-        if (!word[index] || cue_upper((uint8_t)name[index]) != (uint8_t)word[index])
-            return false;
+        if (!word[index] || cue_upper((uint8_t)name[index]) != (uint8_t)word[index]) return false;
     return word[stem] == 0;
 }
 
@@ -980,26 +885,21 @@ static bool cue_stem_is(const char *name, size_t stem, const char *word) {
  * reader will open: empty, "."/"..", only dots and spaces, control or
  * reserved characters, a drive prefix alone, or a Windows device name (CON,
  * NUL, COM1, LPT1.TXT, CONIN$, COM superscript digits ...). */
-static const char *cue_safe_basename(const char *name) {
-    static const char *const devices[] = {"CON",    "PRN",     "AUX",
-                                          "NUL",    "CONIN$",  "CONOUT$",
-                                          "CLOCK$"};
+static const char *cue_safe_basename(const char *name)
+{
+    static const char *const devices[] = {"CON", "PRN", "AUX", "NUL", "CONIN$", "CONOUT$", "CLOCK$"};
     const char *base = name;
     size_t length, stem = 0U, index;
     bool meaningful = false;
     if (!name) return NULL;
     for (index = 0U; name[index]; ++index)
         if (name[index] == '/' || name[index] == '\\') base = name + index + 1U;
-    if (((base[0] >= 'A' && base[0] <= 'Z') || (base[0] >= 'a' && base[0] <= 'z')) &&
-        base[1] == ':')
-        base += 2;
+    if (((base[0] >= 'A' && base[0] <= 'Z') || (base[0] >= 'a' && base[0] <= 'z')) && base[1] == ':') base += 2;
     length = xx_str_len(base);
     if (length == 0U || length > CUE_MAX_BASENAME) return NULL;
     for (index = 0U; index < length; ++index) {
         uint8_t c = (uint8_t)base[index];
-        if (c < 0x20U || c == 0x7FU || c == ':' || c == '<' || c == '>' ||
-            c == '"' || c == '|' || c == '?' || c == '*')
-            return NULL;
+        if (c < 0x20U || c == 0x7FU || c == ':' || c == '<' || c == '>' || c == '"' || c == '|' || c == '?' || c == '*') return NULL;
         if (c != '.' && c != ' ') meaningful = true;
     }
     if (!meaningful) return NULL;
@@ -1007,34 +907,32 @@ static const char *cue_safe_basename(const char *name) {
     while (stem > 0U && base[stem - 1U] == ' ') --stem;
     for (index = 0U; index < sizeof(devices) / sizeof(devices[0]); ++index)
         if (cue_stem_is(base, stem, devices[index])) return NULL;
-    if ((cue_stem_is(base, 3U, "COM") || cue_stem_is(base, 3U, "LPT")) &&
-        stem >= 4U) {
+    if ((cue_stem_is(base, 3U, "COM") || cue_stem_is(base, 3U, "LPT")) && stem >= 4U) {
         const uint8_t *tail = (const uint8_t *)base + 3;
         if (stem == 4U && cue_digit(tail[0])) return NULL;
         /* U+00B9, U+00B2, U+00B3 in UTF-8 */
-        if (stem == 5U && tail[0] == 0xC2U &&
-            (tail[1] == 0xB9U || tail[1] == 0xB2U || tail[1] == 0xB3U))
-            return NULL;
+        if (stem == 5U && tail[0] == 0xC2U && (tail[1] == 0xB9U || tail[1] == 0xB2U || tail[1] == 0xB3U)) return NULL;
     }
     return base;
 }
 
-static void cue_release_data(xx_cue *archive, uint32_t index) {
-    if (archive->data_owned[index] && archive->data[index])
-        xx_io_close(archive->data[index]);
+static void cue_release_data(xx_cue *archive, uint32_t index)
+{
+    if (archive->data_owned[index] && archive->data[index]) xx_io_close(archive->data[index]);
     archive->data[index] = NULL;
     archive->data_owned[index] = false;
 }
 
-bool xx_cue_set_data_device(xx_cue *archive, uint32_t file_index,
-                            xx_io_device *device) {
+bool xx_cue_set_data_device(xx_cue *archive, uint32_t file_index, xx_io_device *device)
+{
     if (!archive || file_index >= XX_CUE_MAX_FILES) return false;
     cue_release_data(archive, file_index);
     archive->data[file_index] = device;
     return true;
 }
 
-uint32_t xx_cue_open_data_files(xx_cue *archive, const char *cue_path) {
+uint32_t xx_cue_open_data_files(xx_cue *archive, const char *cue_path)
+{
     cue_sheet *sheet;
     size_t directory = 0U, index;
     uint32_t file, opened = 0U;
@@ -1042,8 +940,7 @@ uint32_t xx_cue_open_data_files(xx_cue *archive, const char *cue_path) {
     sheet = cue_load(&archive->format);
     if (!sheet) return 0U;
     for (index = 0U; cue_path[index]; ++index)
-        if (cue_path[index] == '/' || cue_path[index] == '\\')
-            directory = index + 1U;
+        if (cue_path[index] == '/' || cue_path[index] == '\\') directory = index + 1U;
     for (file = 0U; file < sheet->file_count; ++file) {
         const char *base;
         char *path;
@@ -1071,24 +968,22 @@ uint32_t xx_cue_open_data_files(xx_cue *archive, const char *cue_path) {
     return opened;
 }
 
-uint32_t xx_cue_get_number_of_files(xx_cue *archive) {
-    return archive && (archive->format.base_info_handled ||
-                       xx_cue_handle_base_info(&archive->format, NULL))
-               ? archive->number_of_files : 0U;
+uint32_t xx_cue_get_number_of_files(xx_cue *archive)
+{
+    return archive && (archive->format.base_info_handled || xx_cue_handle_base_info(&archive->format, NULL)) ? archive->number_of_files : 0U;
 }
 
-uint32_t xx_cue_get_number_of_tracks(xx_cue *archive) {
-    return archive && (archive->format.base_info_handled ||
-                       xx_cue_handle_base_info(&archive->format, NULL))
-               ? archive->number_of_tracks : 0U;
+uint32_t xx_cue_get_number_of_tracks(xx_cue *archive)
+{
+    return archive && (archive->format.base_info_handled || xx_cue_handle_base_info(&archive->format, NULL)) ? archive->number_of_tracks : 0U;
 }
 
-char *xx_cue_get_file_name(xx_cue *archive, uint32_t file_index) {
+char *xx_cue_get_file_name(xx_cue *archive, uint32_t file_index)
+{
     cue_sheet *sheet;
     char *result = NULL;
     if (!archive || !(sheet = cue_load(&archive->format))) return NULL;
-    if (file_index < sheet->file_count)
-        result = xx_str_dup(sheet->files[file_index].name);
+    if (file_index < sheet->file_count) result = xx_str_dup(sheet->files[file_index].name);
     cue_sheet_free(sheet);
     return result;
 }
@@ -1096,7 +991,8 @@ char *xx_cue_get_file_name(xx_cue *archive, uint32_t file_index) {
 /* ---------------------------------------------------------------------- */
 /* Format interface                                                        */
 
-void xx_cue_init(xx_cue *archive, xx_io_device *device, int64_t base_address) {
+void xx_cue_init(xx_cue *archive, xx_io_device *device, int64_t base_address)
+{
     if (!archive) return;
     xx_mem_zero(archive, sizeof(*archive));
     xx_format_init(&archive->format, device, base_address);
@@ -1109,42 +1005,39 @@ void xx_cue_init(xx_cue *archive, xx_io_device *device, int64_t base_address) {
     archive->format.check_is_valid = xx_cue_check_is_valid;
     archive->format.handle_base_info = xx_cue_handle_base_info;
     archive->format.get_format_size = xx_cue_get_format_size;
-    archive->format.get_number_of_archive_records =
-        xx_cue_get_number_of_archive_records;
-    archive->format.create_archive_records_reading =
-        xx_cue_create_archive_records_reading;
-    archive->format.get_current_archive_record =
-        xx_cue_get_current_archive_record;
-    archive->format.unpack_current_archive_record =
-        xx_cue_unpack_current_archive_record;
-    archive->format.archive_record_move_to_next =
-        xx_cue_archive_record_move_to_next;
-    archive->format.free_archive_records_reading =
-        xx_cue_free_archive_records_reading;
+    archive->format.get_number_of_archive_records = xx_cue_get_number_of_archive_records;
+    archive->format.create_archive_records_reading = xx_cue_create_archive_records_reading;
+    archive->format.get_current_archive_record = xx_cue_get_current_archive_record;
+    archive->format.unpack_current_archive_record = xx_cue_unpack_current_archive_record;
+    archive->format.archive_record_move_to_next = xx_cue_archive_record_move_to_next;
+    archive->format.free_archive_records_reading = xx_cue_free_archive_records_reading;
     archive->sheet_size = -1;
 }
 
-xx_cue *xx_cue_create(xx_io_device *device, int64_t base_address) {
+xx_cue *xx_cue_create(xx_io_device *device, int64_t base_address)
+{
     xx_cue *archive = (xx_cue *)xx_mem_alloc(sizeof(*archive));
     if (archive) xx_cue_init(archive, device, base_address);
     return archive;
 }
 
-void xx_cue_destroy(xx_cue *archive) {
+void xx_cue_destroy(xx_cue *archive)
+{
     uint32_t index;
     if (!archive) return;
-    for (index = 0U; index < XX_CUE_MAX_FILES; ++index)
-        cue_release_data(archive, index);
+    for (index = 0U; index < XX_CUE_MAX_FILES; ++index) cue_release_data(archive, index);
     xx_format_cleanup_extra_parameters(&archive->format);
 }
 
-void xx_cue_free(xx_cue *archive) {
+void xx_cue_free(xx_cue *archive)
+{
     if (!archive) return;
     xx_cue_destroy(archive);
     xx_mem_free(archive);
 }
 
-bool xx_cue_check_is_valid(Abstractformat *format, xx_pd_struct *pd) {
+bool xx_cue_check_is_valid(Abstractformat *format, xx_pd_struct *pd)
+{
     cue_sheet *sheet;
     (void)pd;
     sheet = cue_load(format);
@@ -1153,7 +1046,8 @@ bool xx_cue_check_is_valid(Abstractformat *format, xx_pd_struct *pd) {
     return true;
 }
 
-bool xx_cue_handle_base_info(Abstractformat *format, xx_pd_struct *pd) {
+bool xx_cue_handle_base_info(Abstractformat *format, xx_pd_struct *pd)
+{
     cue_sheet *sheet;
     xx_cue *archive;
     (void)pd;
@@ -1171,21 +1065,18 @@ bool xx_cue_handle_base_info(Abstractformat *format, xx_pd_struct *pd) {
     return true;
 }
 
-int64_t xx_cue_get_format_size(Abstractformat *format, xx_pd_struct *pd) {
-    return format && (format->base_info_handled ||
-                      xx_cue_handle_base_info(format, pd))
-               ? format->format_size : -1;
+int64_t xx_cue_get_format_size(Abstractformat *format, xx_pd_struct *pd)
+{
+    return format && (format->base_info_handled || xx_cue_handle_base_info(format, pd)) ? format->format_size : -1;
 }
 
-uint64_t xx_cue_get_number_of_archive_records(Abstractformat *format,
-                                              xx_pd_struct *pd) {
-    return format && (format->base_info_handled ||
-                      xx_cue_handle_base_info(format, pd))
-               ? ((xx_cue *)format)->number_of_records : 0U;
+uint64_t xx_cue_get_number_of_archive_records(Abstractformat *format, xx_pd_struct *pd)
+{
+    return format && (format->base_info_handled || xx_cue_handle_base_info(format, pd)) ? ((xx_cue *)format)->number_of_records : 0U;
 }
 
-xx_archive_record_state *xx_cue_create_archive_records_reading(
-    Abstractformat *format, const xx_list_s *options, xx_pd_struct *pd) {
+xx_archive_record_state *xx_cue_create_archive_records_reading(Abstractformat *format, const xx_list_s *options, xx_pd_struct *pd)
+{
     cue_sheet *sheet;
     xx_archive_record_state *state;
     (void)pd;
@@ -1200,8 +1091,7 @@ xx_archive_record_state *xx_cue_create_archive_records_reading(
     state->internal_state = sheet;
     state->free_internal = cue_sheet_free;
     state->total_records = (int64_t)sheet->member_count;
-    if (!cue_copy_options(&state->options, options) ||
-        !cue_set_record(&state->current_record, sheet, &sheet->members[0])) {
+    if (!cue_copy_options(&state->options, options) || !cue_set_record(&state->current_record, sheet, &sheet->members[0])) {
         xx_archive_record_state_free(state);
         return NULL;
     }
@@ -1209,32 +1099,26 @@ xx_archive_record_state *xx_cue_create_archive_records_reading(
     return state;
 }
 
-const xx_archive_record *xx_cue_get_current_archive_record(
-    Abstractformat *format, xx_archive_record_state *state) {
-    return format && state && state->format == format && state->has_record
-               ? &state->current_record : NULL;
+const xx_archive_record *xx_cue_get_current_archive_record(Abstractformat *format, xx_archive_record_state *state)
+{
+    return format && state && state->format == format && state->has_record ? &state->current_record : NULL;
 }
 
-bool xx_cue_archive_record_move_to_next(Abstractformat *format,
-                                        xx_archive_record_state *state,
-                                        xx_pd_struct *pd) {
+bool xx_cue_archive_record_move_to_next(Abstractformat *format, xx_archive_record_state *state, xx_pd_struct *pd)
+{
     cue_sheet *sheet;
     (void)pd;
-    if (!format || !state || state->format != format ||
-        !(sheet = (cue_sheet *)state->internal_state) ||
-        ++sheet->index >= sheet->member_count) {
+    if (!format || !state || state->format != format || !(sheet = (cue_sheet *)state->internal_state) || ++sheet->index >= sheet->member_count) {
         if (state) state->has_record = false;
         return false;
     }
     ++state->current_index;
-    state->has_record = cue_set_record(&state->current_record, sheet,
-                                       &sheet->members[sheet->index]);
+    state->has_record = cue_set_record(&state->current_record, sheet, &sheet->members[sheet->index]);
     return state->has_record;
 }
 
-bool xx_cue_unpack_current_archive_record(Abstractformat *format,
-                                          xx_archive_record_state *state,
-                                          xx_pd_struct *pd) {
+bool xx_cue_unpack_current_archive_record(Abstractformat *format, xx_archive_record_state *state, xx_pd_struct *pd)
+{
     cue_sheet *sheet;
     const cue_member *member;
     const xx_var *path_option;
@@ -1243,29 +1127,24 @@ bool xx_cue_unpack_current_archive_record(Abstractformat *format,
     char *path = NULL;
     bool result = false;
     bool created = false;
-    if (!format || !state || state->format != format || !state->has_record ||
-        !(sheet = (cue_sheet *)state->internal_state) ||
-        sheet->index >= sheet->member_count || (pd && xx_pd_is_stopped(pd)))
+    if (!format || !state || state->format != format || !state->has_record || !(sheet = (cue_sheet *)state->internal_state) || sheet->index >= sheet->member_count ||
+        (pd && xx_pd_is_stopped(pd)))
         return false;
     member = &sheet->members[sheet->index];
     if (member->size < 0) return false;
     path_option = cue_option(&state->options, XX_META_ID_OPT_UNPACK_PATH);
     if (!path_option) return cue_copy_member(sheet, member, NULL, pd);
-    if (path_option->type == XX_VAR_TYPE_STRING ||
-        path_option->type == XX_VAR_TYPE_STRING_VIEW) {
+    if (path_option->type == XX_VAR_TYPE_STRING || path_option->type == XX_VAR_TYPE_STRING_VIEW) {
         base = xx_var_get_str(path_option);
-    } else if (path_option->type == XX_VAR_TYPE_WSTRING ||
-               path_option->type == XX_VAR_TYPE_WSTRING_VIEW) {
+    } else if (path_option->type == XX_VAR_TYPE_WSTRING || path_option->type == XX_VAR_TYPE_WSTRING_VIEW) {
         owned_base = xx_str_unicode_to_utf8(xx_var_get_wstr(path_option));
         base = owned_base;
     }
     if (!base) goto done;
     /* Member names are built by the reader ("trackNN..."), never taken
      * from the sheet, so they are safe by construction. */
-    path = (base[0] && base[xx_str_len(base) - 1U] != '/' &&
-            base[xx_str_len(base) - 1U] != '\\')
-               ? xx_str_concat3(base, "/", member->name)
-               : xx_str_concat(base, member->name);
+    path = (base[0] && base[xx_str_len(base) - 1U] != '/' && base[xx_str_len(base) - 1U] != '\\') ? xx_str_concat3(base, "/", member->name)
+                                                                                                  : xx_str_concat(base, member->name);
     if (!path || !xx_store_create_dirs_a(path, false)) goto done;
     {
         xx_io_device *destination = xx_io_file_open(path, "wb");
@@ -1282,8 +1161,8 @@ done:
     return result;
 }
 
-void xx_cue_free_archive_records_reading(Abstractformat *format,
-                                         xx_archive_record_state *state) {
+void xx_cue_free_archive_records_reading(Abstractformat *format, xx_archive_record_state *state)
+{
     (void)format;
     xx_archive_record_state_free(state);
 }

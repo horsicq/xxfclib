@@ -24,11 +24,7 @@ XXFC_API bool xx_lzma_alone_has_header(const uint8_t *data, size_t size);
  * 13-byte header and no unrelated trailing data.  An LZMA end marker is
  * required even when the header publishes a known expanded size.
  */
-XXFC_API bool xx_lzma_alone_decode_device(xx_io_device *source,
-                                          int64_t source_offset,
-                                          int64_t source_size,
-                                          xx_io_device *destination,
-                                          int64_t *output_size,
+XXFC_API bool xx_lzma_alone_decode_device(xx_io_device *source, int64_t source_offset, int64_t source_size, xx_io_device *destination, int64_t *output_size,
                                           xx_pd_struct *pd);
 
 #ifdef __cplusplus

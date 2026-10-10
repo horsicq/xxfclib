@@ -51,32 +51,21 @@ struct xx_squashfs {
     void *internal;
 };
 
-XXFC_API void xx_squashfs_init(xx_squashfs *squashfs, xx_io_device *dev,
-                               int64_t base_address);
-XXFC_API xx_squashfs *xx_squashfs_create(xx_io_device *dev,
-                                         int64_t base_address);
+XXFC_API void xx_squashfs_init(xx_squashfs *squashfs, xx_io_device *dev, int64_t base_address);
+XXFC_API xx_squashfs *xx_squashfs_create(xx_io_device *dev, int64_t base_address);
 XXFC_API void xx_squashfs_destroy(xx_squashfs *squashfs);
 XXFC_API void xx_squashfs_free(xx_squashfs *squashfs);
 
-XXFC_API bool xx_squashfs_check_is_valid(Abstractformat *self,
-                                         xx_pd_struct *pd);
-XXFC_API bool xx_squashfs_handle_base_info(Abstractformat *self,
-                                           xx_pd_struct *pd);
-XXFC_API int64_t xx_squashfs_get_format_size(Abstractformat *self,
-                                             xx_pd_struct *pd);
-XXFC_API uint64_t xx_squashfs_get_number_of_archive_records(
-    Abstractformat *self, xx_pd_struct *pd);
+XXFC_API bool xx_squashfs_check_is_valid(Abstractformat *self, xx_pd_struct *pd);
+XXFC_API bool xx_squashfs_handle_base_info(Abstractformat *self, xx_pd_struct *pd);
+XXFC_API int64_t xx_squashfs_get_format_size(Abstractformat *self, xx_pd_struct *pd);
+XXFC_API uint64_t xx_squashfs_get_number_of_archive_records(Abstractformat *self, xx_pd_struct *pd);
 
-XXFC_API xx_archive_record_state *xx_squashfs_create_archive_records_reading(
-    Abstractformat *self, const xx_list_s *options, xx_pd_struct *pd);
-XXFC_API const xx_archive_record *xx_squashfs_get_current_archive_record(
-    Abstractformat *self, xx_archive_record_state *state);
-XXFC_API bool xx_squashfs_unpack_current_archive_record(
-    Abstractformat *self, xx_archive_record_state *state, xx_pd_struct *pd);
-XXFC_API bool xx_squashfs_archive_record_move_to_next(
-    Abstractformat *self, xx_archive_record_state *state, xx_pd_struct *pd);
-XXFC_API void xx_squashfs_free_archive_records_reading(
-    Abstractformat *self, xx_archive_record_state *state);
+XXFC_API xx_archive_record_state *xx_squashfs_create_archive_records_reading(Abstractformat *self, const xx_list_s *options, xx_pd_struct *pd);
+XXFC_API const xx_archive_record *xx_squashfs_get_current_archive_record(Abstractformat *self, xx_archive_record_state *state);
+XXFC_API bool xx_squashfs_unpack_current_archive_record(Abstractformat *self, xx_archive_record_state *state, xx_pd_struct *pd);
+XXFC_API bool xx_squashfs_archive_record_move_to_next(Abstractformat *self, xx_archive_record_state *state, xx_pd_struct *pd);
+XXFC_API void xx_squashfs_free_archive_records_reading(Abstractformat *self, xx_archive_record_state *state);
 
 XXFC_API uint64_t xx_squashfs_get_number_of_records(const xx_squashfs *squashfs);
 XXFC_API uint64_t xx_squashfs_get_number_of_members(const xx_squashfs *squashfs);
@@ -89,21 +78,24 @@ XXFC_API int64_t xx_squashfs_get_bytes_used(const xx_squashfs *squashfs);
 /** Display name of a SquashFS compressor id ("GZIP", "XZ", ... or "Unknown"). */
 XXFC_API const char *xx_squashfs_compressor_to_string(uint32_t compressor);
 
-static inline Abstractformat *xx_squashfs_to_format(xx_squashfs *squashfs) {
+static inline Abstractformat *xx_squashfs_to_format(xx_squashfs *squashfs)
+{
     return squashfs ? &squashfs->format : NULL;
 }
-static inline void XSquashfs_init(xx_squashfs *squashfs, xx_io_device *dev,
-                                  int64_t base_address) {
+static inline void XSquashfs_init(xx_squashfs *squashfs, xx_io_device *dev, int64_t base_address)
+{
     xx_squashfs_init(squashfs, dev, base_address);
 }
-static inline xx_squashfs *XSquashfs_create(xx_io_device *dev,
-                                            int64_t base_address) {
+static inline xx_squashfs *XSquashfs_create(xx_io_device *dev, int64_t base_address)
+{
     return xx_squashfs_create(dev, base_address);
 }
-static inline void XSquashfs_free(xx_squashfs *squashfs) {
+static inline void XSquashfs_free(xx_squashfs *squashfs)
+{
     xx_squashfs_free(squashfs);
 }
-static inline bool XSquashfs_is_valid(xx_squashfs *squashfs, xx_pd_struct *pd) {
+static inline bool XSquashfs_is_valid(xx_squashfs *squashfs, xx_pd_struct *pd)
+{
     return squashfs ? xx_format_is_valid(&squashfs->format, pd) : false;
 }
 

@@ -42,7 +42,8 @@ typedef struct xx_arj_decoder_s {
     bool error;
 } xx_arj_decoder;
 
-static bool xx_arj_fill_bits(xx_arj_decoder *state, unsigned count) {
+static bool xx_arj_fill_bits(xx_arj_decoder *state, unsigned count)
+{
     if (!state || state->error || count > XX_ARJ_CODE_BITS) {
         if (state) state->error = true;
         return false;
@@ -50,38 +51,30 @@ static bool xx_arj_fill_bits(xx_arj_decoder *state, unsigned count) {
 
     state->bit_buf = (uint16_t)((uint32_t)state->bit_buf << count);
     while ((int)count > state->bit_count) {
-        state->bit_buf |= (uint16_t)((uint16_t)state->sub_bit_buf <<
-                                    (count - (unsigned)state->bit_count));
+        state->bit_buf |= (uint16_t)((uint16_t)state->sub_bit_buf << (count - (unsigned)state->bit_count));
         count -= (unsigned)state->bit_count;
-        state->sub_bit_buf = state->input_pos < state->input_size
-                                 ? state->input[state->input_pos++]
-                                 : 0U;
+        state->sub_bit_buf = state->input_pos < state->input_size ? state->input[state->input_pos++] : 0U;
         state->bit_count = 8;
     }
-    state->bit_buf |= (uint16_t)(state->sub_bit_buf >>
-                                (state->bit_count - (int)count));
+    state->bit_buf |= (uint16_t)(state->sub_bit_buf >> (state->bit_count - (int)count));
     state->bit_count -= (int)count;
     return true;
 }
 
-static uint16_t xx_arj_get_bits(xx_arj_decoder *state, unsigned count) {
+static uint16_t xx_arj_get_bits(xx_arj_decoder *state, unsigned count)
+{
     uint16_t result;
     if (!state || state->error || count > XX_ARJ_CODE_BITS) {
         if (state) state->error = true;
         return 0U;
     }
-    result = count == 0U ? 0U : (uint16_t)(state->bit_buf >>
-                                           (XX_ARJ_CODE_BITS - count));
+    result = count == 0U ? 0U : (uint16_t)(state->bit_buf >> (XX_ARJ_CODE_BITS - count));
     if (!xx_arj_fill_bits(state, count)) return 0U;
     return result;
 }
 
-static bool xx_arj_make_table(xx_arj_decoder *state,
-                              unsigned symbols,
-                              const uint8_t *lengths,
-                              unsigned table_bits,
-                              uint16_t *table,
-                              unsigned table_size) {
+static bool xx_arj_make_table(xx_arj_decoder *state, unsigned symbols, const uint8_t *lengths, unsigned table_bits, uint16_t *table, unsigned table_size)
+{
     uint16_t count[17] = {0};
     uint16_t weight[17] = {0};
     uint16_t start[18] = {0};
@@ -91,8 +84,7 @@ static bool xx_arj_make_table(xx_arj_decoder *state,
     unsigned jut_bits;
     uint16_t mask;
 
-    if (!state || !lengths || !table || table_bits == 0U ||
-        table_bits >= 17U || table_size < (1U << table_bits)) {
+    if (!state || !lengths || !table || table_bits == 0U || table_bits >= 17U || table_size < (1U << table_bits)) {
         if (state) state->error = true;
         return false;
     }
@@ -104,8 +96,7 @@ static bool xx_arj_make_table(xx_arj_decoder *state,
         ++count[lengths[i]];
     }
     for (i = 1U; i <= 16U; ++i) {
-        start[i + 1U] = (uint16_t)(start[i] +
-                                  (uint16_t)(count[i] << (16U - i)));
+        start[i + 1U] = (uint16_t)(start[i] + (uint16_t)(count[i] << (16U - i)));
     }
     if (start[17] != 0U) {
         state->error = true;
@@ -164,8 +155,7 @@ static bool xx_arj_make_table(xx_arj_decoder *state,
                     state->error = true;
                     return false;
                 }
-                slot = (code & mask) ? &state->right[*slot]
-                                     : &state->left[*slot];
+                slot = (code & mask) ? &state->right[*slot] : &state->left[*slot];
                 code <<= 1U;
             }
             *slot = (uint16_t)i;
@@ -175,10 +165,8 @@ static bool xx_arj_make_table(xx_arj_decoder *state,
     return true;
 }
 
-static bool xx_arj_read_pt_lengths(xx_arj_decoder *state,
-                                   unsigned count,
-                                   unsigned width,
-                                   int special) {
+static bool xx_arj_read_pt_lengths(xx_arj_decoder *state, unsigned count, unsigned width, int special)
+{
     unsigned n = xx_arj_get_bits(state, width);
     unsigned i;
     if (state->error || count > XX_ARJ_NPT) return false;
@@ -189,8 +177,7 @@ static bool xx_arj_read_pt_lengths(xx_arj_decoder *state,
             return false;
         }
         xx_rt_memset(state->pt_len, 0, count);
-        for (i = 0U; i < XX_ARJ_PTABLE_SIZE; ++i)
-            state->pt_table[i] = (uint16_t)symbol;
+        for (i = 0U; i < XX_ARJ_PTABLE_SIZE; ++i) state->pt_table[i] = (uint16_t)symbol;
         return true;
     }
     if (n > count || n > XX_ARJ_NPT) {
@@ -207,8 +194,7 @@ static bool xx_arj_read_pt_lengths(xx_arj_decoder *state,
                 ++length;
             }
         }
-        if (!xx_arj_fill_bits(state, length < 7U ? 3U : length - 3U))
-            return false;
+        if (!xx_arj_fill_bits(state, length < 7U ? 3U : length - 3U)) return false;
         state->pt_len[i++] = (uint8_t)length;
         if ((int)i == special) {
             unsigned skip = xx_arj_get_bits(state, 2U);
@@ -220,11 +206,11 @@ static bool xx_arj_read_pt_lengths(xx_arj_decoder *state,
         }
     }
     while (i < count) state->pt_len[i++] = 0U;
-    return xx_arj_make_table(state, count, state->pt_len, 8U,
-                             state->pt_table, XX_ARJ_PTABLE_SIZE);
+    return xx_arj_make_table(state, count, state->pt_len, 8U, state->pt_table, XX_ARJ_PTABLE_SIZE);
 }
 
-static bool xx_arj_read_c_lengths(xx_arj_decoder *state) {
+static bool xx_arj_read_c_lengths(xx_arj_decoder *state)
+{
     unsigned n = xx_arj_get_bits(state, 9U);
     unsigned i;
     if (state->error) return false;
@@ -235,8 +221,7 @@ static bool xx_arj_read_c_lengths(xx_arj_decoder *state) {
             return false;
         }
         xx_rt_memset(state->c_len, 0, sizeof(state->c_len));
-        for (i = 0U; i < XX_ARJ_CTABLE_SIZE; ++i)
-            state->c_table[i] = (uint16_t)symbol;
+        for (i = 0U; i < XX_ARJ_CTABLE_SIZE; ++i) state->c_table[i] = (uint16_t)symbol;
         return true;
     }
     if (n > XX_ARJ_NC) {
@@ -253,13 +238,11 @@ static bool xx_arj_read_c_lengths(xx_arj_decoder *state) {
                     state->error = true;
                     return false;
                 }
-                symbol = (state->bit_buf & test) ? state->right[symbol]
-                                                 : state->left[symbol];
+                symbol = (state->bit_buf & test) ? state->right[symbol] : state->left[symbol];
                 test >>= 1U;
             } while (symbol >= XX_ARJ_NT);
         }
-        if (symbol >= XX_ARJ_NPT ||
-            !xx_arj_fill_bits(state, state->pt_len[symbol])) return false;
+        if (symbol >= XX_ARJ_NPT || !xx_arj_fill_bits(state, state->pt_len[symbol])) return false;
         if (symbol <= 2U) {
             unsigned zeroes;
             if (symbol == 0U) zeroes = 1U;
@@ -275,17 +258,15 @@ static bool xx_arj_read_c_lengths(xx_arj_decoder *state) {
         }
     }
     while (i < XX_ARJ_NC) state->c_len[i++] = 0U;
-    return xx_arj_make_table(state, XX_ARJ_NC, state->c_len, 12U,
-                             state->c_table, XX_ARJ_CTABLE_SIZE);
+    return xx_arj_make_table(state, XX_ARJ_NC, state->c_len, 12U, state->c_table, XX_ARJ_CTABLE_SIZE);
 }
 
-static uint16_t xx_arj_decode_c(xx_arj_decoder *state) {
+static uint16_t xx_arj_decode_c(xx_arj_decoder *state)
+{
     unsigned symbol;
     if (state->block_size == 0U) {
         state->block_size = xx_arj_get_bits(state, 16U);
-        if (state->error || state->block_size == 0U ||
-            !xx_arj_read_pt_lengths(state, XX_ARJ_NT, 5U, 3) ||
-            !xx_arj_read_c_lengths(state) ||
+        if (state->error || state->block_size == 0U || !xx_arj_read_pt_lengths(state, XX_ARJ_NT, 5U, 3) || !xx_arj_read_c_lengths(state) ||
             !xx_arj_read_pt_lengths(state, XX_ARJ_NP, 5U, -1)) {
             state->error = true;
             return 0U;
@@ -300,8 +281,7 @@ static uint16_t xx_arj_decode_c(xx_arj_decoder *state) {
                 state->error = true;
                 return 0U;
             }
-            symbol = (state->bit_buf & test) ? state->right[symbol]
-                                             : state->left[symbol];
+            symbol = (state->bit_buf & test) ? state->right[symbol] : state->left[symbol];
             test >>= 1U;
         } while (symbol >= XX_ARJ_NC);
     }
@@ -309,7 +289,8 @@ static uint16_t xx_arj_decode_c(xx_arj_decoder *state) {
     return (uint16_t)symbol;
 }
 
-static uint16_t xx_arj_decode_p(xx_arj_decoder *state) {
+static uint16_t xx_arj_decode_p(xx_arj_decoder *state)
+{
     unsigned symbol = state->pt_table[state->bit_buf >> 8U];
     if (symbol >= XX_ARJ_NP) {
         uint16_t test = (uint16_t)(1U << 7U);
@@ -318,8 +299,7 @@ static uint16_t xx_arj_decode_p(xx_arj_decoder *state) {
                 state->error = true;
                 return 0U;
             }
-            symbol = (state->bit_buf & test) ? state->right[symbol]
-                                             : state->left[symbol];
+            symbol = (state->bit_buf & test) ? state->right[symbol] : state->left[symbol];
             test >>= 1U;
         } while (symbol >= XX_ARJ_NP);
     }
@@ -331,15 +311,13 @@ static uint16_t xx_arj_decode_p(xx_arj_decoder *state) {
     return (uint16_t)symbol;
 }
 
-static uint16_t xx_arj_decode_fast_value(xx_arj_decoder *state,
-                                         unsigned start,
-                                         unsigned stop) {
+static uint16_t xx_arj_decode_fast_value(xx_arj_decoder *state, unsigned start, unsigned stop)
+{
     uint16_t value = 0U;
     uint16_t add = 0U;
     uint16_t power = (uint16_t)(1U << start);
     unsigned width;
-    if (!state || state->error || state->get_len < 0 ||
-        state->get_len > (int)XX_ARJ_CODE_BITS) {
+    if (!state || state->error || state->get_len < 0 || state->get_len > (int)XX_ARJ_CODE_BITS) {
         if (state) state->error = true;
         return 0U;
     }
@@ -363,9 +341,7 @@ static uint16_t xx_arj_decode_fast_value(xx_arj_decoder *state,
                 return 0U;
             }
             state->get_buf |= (uint16_t)(state->bit_buf >> state->get_len);
-            if (!xx_arj_fill_bits(state,
-                                  XX_ARJ_CODE_BITS - (unsigned)state->get_len))
-                return 0U;
+            if (!xx_arj_fill_bits(state, XX_ARJ_CODE_BITS - (unsigned)state->get_len)) return 0U;
             state->get_len = (int)XX_ARJ_CODE_BITS;
         }
         value = (uint16_t)(state->get_buf >> (XX_ARJ_CODE_BITS - width));
@@ -375,12 +351,8 @@ static uint16_t xx_arj_decode_fast_value(xx_arj_decoder *state,
     return (uint16_t)(value + add);
 }
 
-static bool xx_arj_decode_compressed(uint8_t method,
-                                     const uint8_t *input,
-                                     size_t input_size,
-                                     uint8_t *output,
-                                     size_t output_size,
-                                     size_t *written) {
+static bool xx_arj_decode_compressed(uint8_t method, const uint8_t *input, size_t input_size, uint8_t *output, size_t output_size, size_t *written)
+{
     xx_arj_decoder state;
     uint8_t dictionary[XX_ARJ_DIC_SIZE];
     size_t produced = 0U;
@@ -394,8 +366,7 @@ static bool xx_arj_decode_compressed(uint8_t method,
     if (!xx_arj_fill_bits(&state, XX_ARJ_CODE_BITS)) return false;
 
     while (produced < output_size && !state.error) {
-        unsigned token = fastest ? xx_arj_decode_fast_value(&state, 0U, 7U)
-                                 : xx_arj_decode_c(&state);
+        unsigned token = fastest ? xx_arj_decode_fast_value(&state, 0U, 7U) : xx_arj_decode_c(&state);
         bool literal = fastest ? token == 0U : token <= 255U;
         if (state.error) break;
         if (literal) {
@@ -407,9 +378,7 @@ static bool xx_arj_decode_compressed(uint8_t method,
                 }
                 if (state.get_len < 8) {
                     state.get_buf |= (uint16_t)(state.bit_buf >> state.get_len);
-                    if (!xx_arj_fill_bits(&state,
-                                          XX_ARJ_CODE_BITS -
-                                              (unsigned)state.get_len)) break;
+                    if (!xx_arj_fill_bits(&state, XX_ARJ_CODE_BITS - (unsigned)state.get_len)) break;
                     state.get_len = (int)XX_ARJ_CODE_BITS;
                 }
                 byte = (uint8_t)(state.get_buf >> 8U);
@@ -421,14 +390,10 @@ static bool xx_arj_decode_compressed(uint8_t method,
             if (dict_pos == XX_ARJ_DIC_SIZE) dict_pos = 0U;
         } else {
             unsigned match_length = fastest ? token + 2U : token - 253U;
-            unsigned distance = fastest
-                                    ? xx_arj_decode_fast_value(&state, 9U, 13U)
-                                    : xx_arj_decode_p(&state);
+            unsigned distance = fastest ? xx_arj_decode_fast_value(&state, 9U, 13U) : xx_arj_decode_p(&state);
             size_t source;
             unsigned i;
-            if (state.error || match_length < XX_ARJ_THRESHOLD ||
-                match_length > XX_ARJ_MAX_MATCH ||
-                match_length > output_size - produced ||
+            if (state.error || match_length < XX_ARJ_THRESHOLD || match_length > XX_ARJ_MAX_MATCH || match_length > output_size - produced ||
                 distance >= XX_ARJ_DIC_SIZE) {
                 state.error = true;
                 break;
@@ -445,20 +410,13 @@ static bool xx_arj_decode_compressed(uint8_t method,
         }
     }
     if (written) *written = produced;
-    return !state.error && produced == output_size &&
-           state.input_pos == input_size &&
-           (fastest || state.block_size == 0U);
+    return !state.error && produced == output_size && state.input_pos == input_size && (fastest || state.block_size == 0U);
 }
 
-bool xx_arj_decode_memory(uint8_t method,
-                          const uint8_t *input,
-                          size_t input_size,
-                          uint8_t *output,
-                          size_t output_size,
-                          size_t *written) {
+bool xx_arj_decode_memory(uint8_t method, const uint8_t *input, size_t input_size, uint8_t *output, size_t output_size, size_t *written)
+{
     if (written) *written = 0U;
-    if ((!input && input_size != 0U) || (!output && output_size != 0U))
-        return false;
+    if ((!input && input_size != 0U) || (!output && output_size != 0U)) return false;
     if (method == 0U) {
         if (input_size != output_size) return false;
         if (output_size != 0U) xx_rt_memcpy(output, input, output_size);
@@ -466,6 +424,5 @@ bool xx_arj_decode_memory(uint8_t method,
         return true;
     }
     if (method < 1U || method > 4U || output_size == 0U) return false;
-    return xx_arj_decode_compressed(method, input, input_size, output,
-                                    output_size, written);
+    return xx_arj_decode_compressed(method, input, input_size, output, output_size, written);
 }

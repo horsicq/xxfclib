@@ -11,9 +11,7 @@
 #define GAMOS_WINDOW_SIZE 4096
 #define GAMOS_WINDOW_MASK 0xfff
 
-bool xx_gamos_decode_memory(const uint8_t *input, size_t input_size,
-                            uint8_t *output, size_t output_size,
-                            size_t *written)
+bool xx_gamos_decode_memory(const uint8_t *input, size_t input_size, uint8_t *output, size_t output_size, size_t *written)
 {
     uint8_t window[GAMOS_WINDOW_SIZE];
     size_t position = 0U;

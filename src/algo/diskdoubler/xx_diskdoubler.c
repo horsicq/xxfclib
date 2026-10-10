@@ -32,27 +32,25 @@ typedef struct dd_bits {
     bool ok;
 } dd_bits;
 
-static void dd_bits_init(dd_bits *reader, const uint8_t *data, size_t size,
-                         size_t byte_offset) {
+static void dd_bits_init(dd_bits *reader, const uint8_t *data, size_t size, size_t byte_offset)
+{
     reader->data = data;
     reader->size = size;
     reader->bit = (uint64_t)byte_offset * 8U;
     reader->ok = byte_offset <= size;
 }
 
-static uint32_t dd_bits_read(dd_bits *reader, unsigned count) {
+static uint32_t dd_bits_read(dd_bits *reader, unsigned count)
+{
     uint32_t value = 0U;
     unsigned i;
-    if (!reader->ok || count > 32U ||
-        reader->bit + (uint64_t)count > (uint64_t)reader->size * 8U) {
+    if (!reader->ok || count > 32U || reader->bit + (uint64_t)count > (uint64_t)reader->size * 8U) {
         reader->ok = false;
         return 0U;
     }
     for (i = 0U; i < count; ++i) {
         uint64_t bit = reader->bit++;
-        value = (value << 1) |
-                (uint32_t)((reader->data[(size_t)(bit >> 3)] >>
-                            (7U - (unsigned)(bit & 7U))) & 1U);
+        value = (value << 1) | (uint32_t)((reader->data[(size_t)(bit >> 3)] >> (7U - (unsigned)(bit & 7U))) & 1U);
     }
     return value;
 }
@@ -77,15 +75,16 @@ typedef struct dd_prefix {
     int32_t used;
 } dd_prefix;
 
-static void dd_prefix_reset(dd_prefix *code) {
+static void dd_prefix_reset(dd_prefix *code)
+{
     code->used = 1;
     code->child[0][0] = 0U;
     code->child[0][1] = 0U;
     code->symbol[0] = -1;
 }
 
-static bool dd_prefix_build(dd_prefix *code, const int32_t *lengths,
-                            int32_t count, int32_t maximum_length) {
+static bool dd_prefix_build(dd_prefix *code, const int32_t *lengths, int32_t count, int32_t maximum_length)
+{
     uint32_t value = 0U;
     int32_t symbols_left = 0;
     int32_t length, index;
@@ -104,8 +103,7 @@ static bool dd_prefix_build(dd_prefix *code, const int32_t *lengths,
             int32_t bit_position;
             if (lengths[index] != length) continue;
             if (value >= ((uint32_t)1 << length)) return false;
-            for (bit_position = length - 1; bit_position >= 0;
-                 --bit_position) {
+            for (bit_position = length - 1; bit_position >= 0; --bit_position) {
                 int32_t bit, next;
                 if (code->symbol[node] >= 0) return false;
                 bit = (int32_t)((value >> bit_position) & 1U);
@@ -120,8 +118,7 @@ static bool dd_prefix_build(dd_prefix *code, const int32_t *lengths,
                 }
                 node = next;
             }
-            if (code->symbol[node] >= 0 || code->child[node][0] != 0U ||
-                code->child[node][1] != 0U) {
+            if (code->symbol[node] >= 0 || code->child[node][0] != 0U || code->child[node][1] != 0U) {
                 return false;
             }
             code->symbol[node] = (int16_t)index;
@@ -133,7 +130,8 @@ static bool dd_prefix_build(dd_prefix *code, const int32_t *lengths,
     return symbols_left == 0;
 }
 
-static int32_t dd_prefix_symbol(const dd_prefix *code, dd_bits *reader) {
+static int32_t dd_prefix_symbol(const dd_prefix *code, dd_bits *reader)
+{
     int32_t node = 0;
     int32_t depth;
     for (depth = 0; depth <= 31; ++depth) {
@@ -147,15 +145,15 @@ static int32_t dd_prefix_symbol(const dd_prefix *code, dd_bits *reader) {
     return -1;
 }
 
-static uint32_t dd_be16(const uint8_t *data, size_t offset) {
+static uint32_t dd_be16(const uint8_t *data, size_t offset)
+{
     return ((uint32_t)data[offset] << 8) | (uint32_t)data[offset + 1U];
 }
 
 /* ============================================================== ADn (6/9) */
 
-bool xx_diskdoubler_adn_decode_memory(const uint8_t *input, size_t input_size,
-                                      uint8_t *output, size_t output_size,
-                                      size_t *written) {
+bool xx_diskdoubler_adn_decode_memory(const uint8_t *input, size_t input_size, uint8_t *output, size_t output_size, size_t *written)
+{
     size_t position = 0U;
     size_t produced = 0U;
 
@@ -171,16 +169,12 @@ bool xx_diskdoubler_adn_decode_memory(const uint8_t *input, size_t input_size,
         if (input_size < 12U || position > input_size - 12U) return false;
         compressed_size = dd_be16(input, position);
         uncompressed_size = dd_be16(input, position + 2U);
-        if (!compressed_size || !uncompressed_size ||
-            uncompressed_size > 0x2000U ||
-            compressed_size > input_size ||
-            position + 12U > input_size - compressed_size ||
+        if (!compressed_size || !uncompressed_size || uncompressed_size > 0x2000U || compressed_size > input_size || position + 12U > input_size - compressed_size ||
             uncompressed_size > output_size - produced) {
             return false;
         }
 
-        header_xor = (uint8_t)(compressed_size ^ (compressed_size >> 8) ^
-                               uncompressed_size ^ (uncompressed_size >> 8));
+        header_xor = (uint8_t)(compressed_size ^ (compressed_size >> 8) ^ uncompressed_size ^ (uncompressed_size >> 8));
         for (i = 4; i < 11; ++i) {
             header_xor ^= input[position + (size_t)i];
         }
@@ -195,8 +189,7 @@ bool xx_diskdoubler_adn_decode_memory(const uint8_t *input, size_t input_size,
              * least as large as the plaintext even though only the first
              * uncompressed_size bytes are used. */
             if (compressed_size < uncompressed_size) return false;
-            xx_rt_memcpy(output + produced, input + data_start,
-                         uncompressed_size);
+            xx_rt_memcpy(output + produced, input + data_start, uncompressed_size);
             produced += uncompressed_size;
         } else {
             dd_bits reader;
@@ -210,8 +203,7 @@ bool xx_diskdoubler_adn_decode_memory(const uint8_t *input, size_t input_size,
                     block[block_pos++] = (uint8_t)literal;
                 } else {
                     uint32_t far_offset = dd_bits_read(&reader, 1U);
-                    uint32_t offset = dd_bits_read(&reader,
-                                                   far_offset ? 12U : 8U);
+                    uint32_t offset = dd_bits_read(&reader, far_offset ? 12U : 8U);
                     uint32_t length;
                     size_t copy;
                     if (!dd_bits_read(&reader, 1U)) {
@@ -224,8 +216,7 @@ bool xx_diskdoubler_adn_decode_memory(const uint8_t *input, size_t input_size,
                     /* Back-references never leave the current block: the
                      * reference bounds the offset by the block's own output,
                      * not by the whole fork. */
-                    if (!reader.ok || offset == 0U ||
-                        (size_t)offset > block_pos || length > offset) {
+                    if (!reader.ok || offset == 0U || (size_t)offset > block_pos || length > offset) {
                         return false;
                     }
                     copy = length;
@@ -258,9 +249,8 @@ typedef struct ddn_scratch {
 
 /* Reads one DDn Huffman table description.  Returns the offset just past the
  * table, which the caller checks against the start of the next stream. */
-static bool ddn_read_code(const uint8_t *input, size_t input_size,
-                          size_t start, dd_prefix *code, int32_t *lengths,
-                          size_t *end_offset) {
+static bool ddn_read_code(const uint8_t *input, size_t input_size, size_t start, dd_prefix *code, int32_t *lengths, size_t *end_offset)
+{
     uint32_t header;
     int32_t code_count, byte_count, maximum_length, bit_count, i;
     bool zero_coding;
@@ -272,11 +262,8 @@ static bool ddn_read_code(const uint8_t *input, size_t input_size,
     byte_count = (int32_t)((header >> 13) & 0x7ffU);
     maximum_length = (int32_t)((header >> 8) & 0x1fU);
     bit_count = (int32_t)((header >> 3) & 0x1fU);
-    if (code_count <= 0 || code_count > 256 ||
-        (size_t)byte_count > input_size ||
-        start + 4U > input_size - (size_t)byte_count ||
-        maximum_length <= 0 || maximum_length > 31 ||
-        bit_count <= 0 || bit_count > 16) {
+    if (code_count <= 0 || code_count > 256 || (size_t)byte_count > input_size || start + 4U > input_size - (size_t)byte_count || maximum_length <= 0 ||
+        maximum_length > 31 || bit_count <= 0 || bit_count > 16) {
         return false;
     }
 
@@ -296,9 +283,8 @@ static bool ddn_read_code(const uint8_t *input, size_t input_size,
     return true;
 }
 
-bool xx_diskdoubler_ddn_decode_memory(const uint8_t *input, size_t input_size,
-                                      uint8_t *output, size_t output_size,
-                                      size_t *written) {
+bool xx_diskdoubler_ddn_decode_memory(const uint8_t *input, size_t input_size, uint8_t *output, size_t output_size, size_t *written)
+{
     ddn_scratch *scratch;
     int32_t lengths[256];
     size_t next_block = 0U;
@@ -335,8 +321,7 @@ bool xx_diskdoubler_ddn_decode_memory(const uint8_t *input, size_t input_size,
         length_packed = dd_be16(input, start + 8U);
         literal_packed = dd_be16(input, start + 10U);
         offset_packed = dd_be16(input, start + 12U);
-        if (!uncompressed_size || uncompressed_size > 65536U ||
-            (size_t)uncompressed_size > output_size - produced) {
+        if (!uncompressed_size || uncompressed_size > 65536U || (size_t)uncompressed_size > output_size - produced) {
             result = false;
             break;
         }
@@ -354,8 +339,7 @@ bool xx_diskdoubler_ddn_decode_memory(const uint8_t *input, size_t input_size,
                 result = false;
                 break;
             }
-            xx_rt_memcpy(output + produced, input + data_start,
-                         uncompressed_size);
+            xx_rt_memcpy(output + produced, input + data_start, uncompressed_size);
             produced += uncompressed_size;
             continue;
         }
@@ -370,9 +354,7 @@ bool xx_diskdoubler_ddn_decode_memory(const uint8_t *input, size_t input_size,
             break;
         }
 
-        if (!ddn_read_code(input, input_size, data_start, &scratch->code,
-                           lengths, &code_end) ||
-            code_end > literal_start) {
+        if (!ddn_read_code(input, input_size, data_start, &scratch->code, lengths, &code_end) || code_end > literal_start) {
             result = false;
             break;
         }
@@ -400,9 +382,7 @@ bool xx_diskdoubler_ddn_decode_memory(const uint8_t *input, size_t input_size,
         if (!result) break;
 
         if (flags & 0x80U) {
-            if (!ddn_read_code(input, input_size, literal_start,
-                               &scratch->code, lengths, &code_end) ||
-                code_end > length_start) {
+            if (!ddn_read_code(input, input_size, literal_start, &scratch->code, lengths, &code_end) || code_end > length_start) {
                 result = false;
                 break;
             }
@@ -417,19 +397,14 @@ bool xx_diskdoubler_ddn_decode_memory(const uint8_t *input, size_t input_size,
             }
             if (!result) break;
         } else {
-            if ((size_t)literal_count > input_size ||
-                literal_start > input_size - (size_t)literal_count ||
-                literal_start + literal_count > length_start) {
+            if ((size_t)literal_count > input_size || literal_start > input_size - (size_t)literal_count || literal_start + literal_count > length_start) {
                 result = false;
                 break;
             }
-            xx_rt_memcpy(scratch->literals, input + literal_start,
-                         literal_count);
+            xx_rt_memcpy(scratch->literals, input + literal_start, literal_count);
         }
 
-        if (!ddn_read_code(input, input_size, length_start, &scratch->code,
-                           lengths, &code_end) ||
-            code_end > next_block) {
+        if (!ddn_read_code(input, input_size, length_start, &scratch->code, lengths, &code_end) || code_end > next_block) {
             result = false;
             break;
         }
@@ -477,13 +452,11 @@ bool xx_diskdoubler_ddn_decode_memory(const uint8_t *input, size_t input_size,
                 if (length > block_end - produced) {
                     length = block_end - produced;
                 }
-                if (length > literal_count ||
-                    literal_index > literal_count - length) {
+                if (length > literal_count || literal_index > literal_count - length) {
                     result = false;
                     break;
                 }
-                xx_rt_memcpy(output + produced,
-                             scratch->literals + literal_index, length);
+                xx_rt_memcpy(output + produced, scratch->literals + literal_index, length);
                 produced += length;
                 literal_index += (uint32_t)length;
             }
@@ -511,23 +484,23 @@ typedef struct dd_lzw_bits {
 
 /* LSB-first, the Unix-compress packing.  Bit 0 is the low bit of the first
  * code byte, which is the byte right after the one-byte flags header. */
-static int32_t dd_lzw_read(dd_lzw_bits *reader, int32_t code_bits) {
+static int32_t dd_lzw_read(dd_lzw_bits *reader, int32_t code_bits)
+{
     int32_t code = 0;
     int32_t i;
-    if (code_bits < 1 || code_bits > DD_LZW_MAXBITS ||
-        reader->position + (uint64_t)code_bits > reader->total_bits) {
+    if (code_bits < 1 || code_bits > DD_LZW_MAXBITS || reader->position + (uint64_t)code_bits > reader->total_bits) {
         return -1;
     }
     for (i = 0; i < code_bits; ++i) {
         uint64_t bit = reader->position + (uint64_t)i;
-        code |= (int32_t)((reader->data[(size_t)(bit >> 3)] >>
-                           (unsigned)(bit & 7U)) & 1U) << i;
+        code |= (int32_t)((reader->data[(size_t)(bit >> 3)] >> (unsigned)(bit & 7U)) & 1U) << i;
     }
     reader->position += (uint64_t)code_bits;
     return code;
 }
 
-static bool dd_lzw_skip(dd_lzw_bits *reader, uint64_t count) {
+static bool dd_lzw_skip(dd_lzw_bits *reader, uint64_t count)
+{
     if (reader->position + count > reader->total_bits) return false;
     reader->position += count;
     return true;
@@ -537,11 +510,10 @@ static bool dd_lzw_skip(dd_lzw_bits *reader, uint64_t count) {
  * the tail of the current group as padding; the next code starts at the
  * following group boundary.  Deliberate: dropping this desynchronises every
  * real .Z stream. */
-static bool dd_lzw_align(dd_lzw_bits *reader, int32_t code_bits,
-                         uint64_t *group_start) {
+static bool dd_lzw_align(dd_lzw_bits *reader, int32_t code_bits, uint64_t *group_start)
+{
     uint64_t group_bits, used_bits, skip_bits;
-    if (code_bits < DD_LZW_MINBITS || code_bits > DD_LZW_MAXBITS ||
-        reader->position < *group_start) {
+    if (code_bits < DD_LZW_MINBITS || code_bits > DD_LZW_MAXBITS || reader->position < *group_start) {
         return false;
     }
     group_bits = (uint64_t)code_bits * 8U;
@@ -559,17 +531,17 @@ typedef struct dd_lzw_tables {
     uint8_t *stack;
 } dd_lzw_tables;
 
-static void dd_lzw_tables_free(dd_lzw_tables *tables) {
+static void dd_lzw_tables_free(dd_lzw_tables *tables)
+{
     xx_mem_free(tables->prefix);
     xx_mem_free(tables->bytes);
     tables->prefix = NULL;
     tables->bytes = NULL;
 }
 
-bool xx_diskdoubler_lzw_decode_memory(const uint8_t *input, size_t input_size,
-                                      uint8_t info1, uint8_t info2,
-                                      uint16_t checksum, uint8_t *output,
-                                      size_t output_size, size_t *written) {
+bool xx_diskdoubler_lzw_decode_memory(const uint8_t *input, size_t input_size, uint8_t info1, uint8_t info2, uint16_t checksum, uint8_t *output, size_t output_size,
+                                      size_t *written)
+{
     uint8_t xor_byte, magic1, magic2, flags;
     int32_t max_bits, max_code, next_code, code_bits, max_value;
     int32_t old_code;
@@ -606,8 +578,7 @@ bool xx_diskdoubler_lzw_decode_memory(const uint8_t *input, size_t input_size,
     if (max_bits < DD_LZW_MINBITS || max_bits > DD_LZW_MAXBITS) return false;
     max_code = (int32_t)1 << max_bits;
 
-    tables.prefix =
-        (uint16_t *)xx_mem_alloc((size_t)max_code * sizeof(uint16_t));
+    tables.prefix = (uint16_t *)xx_mem_alloc((size_t)max_code * sizeof(uint16_t));
     tables.bytes = (uint8_t *)xx_mem_alloc((size_t)max_code * 2U);
     if (!tables.prefix || !tables.bytes) {
         dd_lzw_tables_free(&tables);
@@ -689,8 +660,7 @@ bool xx_diskdoubler_lzw_decode_memory(const uint8_t *input, size_t input_size,
         }
 
         while (code >= 256) {
-            if (code >= next_code || code >= max_code ||
-                stack_top >= max_code) {
+            if (code >= next_code || code >= max_code || stack_top >= max_code) {
                 result = false;
                 break;
             }
@@ -706,8 +676,7 @@ bool xx_diskdoubler_lzw_decode_memory(const uint8_t *input, size_t input_size,
         final_char = tables.suffix[code];
         tables.stack[stack_top++] = final_char;
 
-        if ((size_t)stack_top > output_size ||
-            produced > output_size - (size_t)stack_top) {
+        if ((size_t)stack_top > output_size || produced > output_size - (size_t)stack_top) {
             result = false;
             break;
         }

@@ -49,58 +49,41 @@ typedef struct xx_encrypted_apple_disk_image XEncryptedAppleDiskImage;
 
 struct xx_encrypted_apple_disk_image {
     Abstractformat format;
-    uint64_t number_of_records;  /**< Always 1: the encrypted payload. */
-    uint64_t payload_offset;     /**< Absolute device offset of ciphertext. */
-    uint64_t payload_size;       /**< Ciphertext bytes present in the file. */
-    uint64_t data_length;        /**< v2: plaintext length; v1: 0 (unknown). */
-    uint32_t version;            /**< 1 or 2. */
-    uint32_t key_bits;           /**< v2: AES key size; v1: 0. */
-    uint32_t block_size;         /**< v2 block size; v1: 0. */
-    uint32_t number_of_keys;     /**< v2 key pointers; v1: 1. */
-    uint32_t kdf_iterations;     /**< PBKDF2 iterations of the first
-                                      passphrase key, 0 when none. */
-    uint8_t uuid[16];            /**< v2 only. */
-    bool truncated;              /**< Ciphertext shorter than declared. */
+    uint64_t number_of_records; /**< Always 1: the encrypted payload. */
+    uint64_t payload_offset;    /**< Absolute device offset of ciphertext. */
+    uint64_t payload_size;      /**< Ciphertext bytes present in the file. */
+    uint64_t data_length;       /**< v2: plaintext length; v1: 0 (unknown). */
+    uint32_t version;           /**< 1 or 2. */
+    uint32_t key_bits;          /**< v2: AES key size; v1: 0. */
+    uint32_t block_size;        /**< v2 block size; v1: 0. */
+    uint32_t number_of_keys;    /**< v2 key pointers; v1: 1. */
+    uint32_t kdf_iterations;    /**< PBKDF2 iterations of the first
+                                     passphrase key, 0 when none. */
+    uint8_t uuid[16];           /**< v2 only. */
+    bool truncated;             /**< Ciphertext shorter than declared. */
     void *internal;
 };
 
-XXFC_API void xx_encrypted_apple_disk_image_init(
-    xx_encrypted_apple_disk_image *image, xx_io_device *dev,
-    int64_t base_address);
-XXFC_API xx_encrypted_apple_disk_image *xx_encrypted_apple_disk_image_create(
-    xx_io_device *dev, int64_t base_address);
-XXFC_API void xx_encrypted_apple_disk_image_destroy(
-    xx_encrypted_apple_disk_image *image);
-XXFC_API void xx_encrypted_apple_disk_image_free(
-    xx_encrypted_apple_disk_image *image);
+XXFC_API void xx_encrypted_apple_disk_image_init(xx_encrypted_apple_disk_image *image, xx_io_device *dev, int64_t base_address);
+XXFC_API xx_encrypted_apple_disk_image *xx_encrypted_apple_disk_image_create(xx_io_device *dev, int64_t base_address);
+XXFC_API void xx_encrypted_apple_disk_image_destroy(xx_encrypted_apple_disk_image *image);
+XXFC_API void xx_encrypted_apple_disk_image_free(xx_encrypted_apple_disk_image *image);
 
-XXFC_API bool xx_encrypted_apple_disk_image_check_is_valid(Abstractformat *self,
-                                                           xx_pd_struct *pd);
-XXFC_API bool xx_encrypted_apple_disk_image_handle_base_info(
-    Abstractformat *self, xx_pd_struct *pd);
-XXFC_API int64_t xx_encrypted_apple_disk_image_get_format_size(
-    Abstractformat *self, xx_pd_struct *pd);
-XXFC_API uint64_t xx_encrypted_apple_disk_image_get_number_of_archive_records(
-    Abstractformat *self, xx_pd_struct *pd);
+XXFC_API bool xx_encrypted_apple_disk_image_check_is_valid(Abstractformat *self, xx_pd_struct *pd);
+XXFC_API bool xx_encrypted_apple_disk_image_handle_base_info(Abstractformat *self, xx_pd_struct *pd);
+XXFC_API int64_t xx_encrypted_apple_disk_image_get_format_size(Abstractformat *self, xx_pd_struct *pd);
+XXFC_API uint64_t xx_encrypted_apple_disk_image_get_number_of_archive_records(Abstractformat *self, xx_pd_struct *pd);
 
-XXFC_API xx_archive_record_state *
-xx_encrypted_apple_disk_image_create_archive_records_reading(
-    Abstractformat *self, const xx_list_s *options, xx_pd_struct *pd);
-XXFC_API const xx_archive_record *
-xx_encrypted_apple_disk_image_get_current_archive_record(
-    Abstractformat *self, xx_archive_record_state *state);
-XXFC_API bool xx_encrypted_apple_disk_image_unpack_current_archive_record(
-    Abstractformat *self, xx_archive_record_state *state, xx_pd_struct *pd);
-XXFC_API bool xx_encrypted_apple_disk_image_archive_record_move_to_next(
-    Abstractformat *self, xx_archive_record_state *state, xx_pd_struct *pd);
-XXFC_API void xx_encrypted_apple_disk_image_free_archive_records_reading(
-    Abstractformat *self, xx_archive_record_state *state);
+XXFC_API xx_archive_record_state *xx_encrypted_apple_disk_image_create_archive_records_reading(Abstractformat *self, const xx_list_s *options, xx_pd_struct *pd);
+XXFC_API const xx_archive_record *xx_encrypted_apple_disk_image_get_current_archive_record(Abstractformat *self, xx_archive_record_state *state);
+XXFC_API bool xx_encrypted_apple_disk_image_unpack_current_archive_record(Abstractformat *self, xx_archive_record_state *state, xx_pd_struct *pd);
+XXFC_API bool xx_encrypted_apple_disk_image_archive_record_move_to_next(Abstractformat *self, xx_archive_record_state *state, xx_pd_struct *pd);
+XXFC_API void xx_encrypted_apple_disk_image_free_archive_records_reading(Abstractformat *self, xx_archive_record_state *state);
 
-XXFC_API uint32_t xx_encrypted_apple_disk_image_get_version(
-    const xx_encrypted_apple_disk_image *image);
+XXFC_API uint32_t xx_encrypted_apple_disk_image_get_version(const xx_encrypted_apple_disk_image *image);
 
-static inline Abstractformat *xx_encrypted_apple_disk_image_to_format(
-    xx_encrypted_apple_disk_image *image) {
+static inline Abstractformat *xx_encrypted_apple_disk_image_to_format(xx_encrypted_apple_disk_image *image)
+{
     return image ? &image->format : NULL;
 }
 

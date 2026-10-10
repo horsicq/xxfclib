@@ -31,21 +31,20 @@
 #include <stddef.h>
 #include <stdint.h>
 
-bool xx_zstd_is_available(void) {
+bool xx_zstd_is_available(void)
+{
     return true;
 }
 
-size_t xx_zstd_compress_bound(size_t source_size) {
-    size_t blocks = source_size == 0U
-                        ? 1U
-                        : source_size / (128U * 1024U) +
-                              (source_size % (128U * 1024U) != 0U);
-    if (blocks > (SIZE_MAX - 13U) / 3U ||
-        source_size > SIZE_MAX - 13U - blocks * 3U) return 0U;
+size_t xx_zstd_compress_bound(size_t source_size)
+{
+    size_t blocks = source_size == 0U ? 1U : source_size / (128U * 1024U) + (source_size % (128U * 1024U) != 0U);
+    if (blocks > (SIZE_MAX - 13U) / 3U || source_size > SIZE_MAX - 13U - blocks * 3U) return 0U;
     return source_size + 13U + blocks * 3U;
 }
 
-static bool xx_zstd_read_exact(xx_io_device *device, void *buffer, size_t size, size_t io_capacity) {
+static bool xx_zstd_read_exact(xx_io_device *device, void *buffer, size_t size, size_t io_capacity)
+{
     uint8_t *bytes = (uint8_t *)buffer;
     size_t done = 0;
     while (done < size) {
@@ -61,8 +60,8 @@ static bool xx_zstd_read_exact(xx_io_device *device, void *buffer, size_t size, 
     return true;
 }
 
-static bool xx_zstd_write_exact(xx_io_device *device, const void *buffer,
-                                size_t size, xx_pd_struct *progress, size_t io_capacity) {
+static bool xx_zstd_write_exact(xx_io_device *device, const void *buffer, size_t size, xx_pd_struct *progress, size_t io_capacity)
+{
     const uint8_t *bytes = (const uint8_t *)buffer;
     size_t done = 0;
 
@@ -87,9 +86,8 @@ static bool xx_zstd_write_exact(xx_io_device *device, const void *buffer,
     return true;
 }
 
-bool xx_zstd_compress_memory(const void *source, size_t source_size,
-                             void *destination, size_t destination_capacity,
-                             size_t *out_written, int level) {
+bool xx_zstd_compress_memory(const void *source, size_t source_size, void *destination, size_t destination_capacity, size_t *out_written, int level)
+{
     const uint8_t *input = (const uint8_t *)source;
     uint8_t *output = (uint8_t *)destination;
     size_t required;
@@ -100,9 +98,8 @@ bool xx_zstd_compress_memory(const void *source, size_t source_size,
 
     (void)level;
     if (out_written) *out_written = 0U;
-    if (!out_written || (!input && source_size != 0U) || !output ||
-        (required = xx_zstd_compress_bound(source_size)) == 0U ||
-        destination_capacity < required) return false;
+    if (!out_written || (!input && source_size != 0U) || !output || (required = xx_zstd_compress_bound(source_size)) == 0U || destination_capacity < required)
+        return false;
 
     output[output_position++] = UINT8_C(0x28);
     output[output_position++] = UINT8_C(0xB5);
@@ -123,9 +120,7 @@ bool xx_zstd_compress_memory(const void *source, size_t source_size,
     }
     output[output_position++] = (uint8_t)((content_size_flag << 6) | 0x20U);
     {
-        uint64_t stored_size = content_size_bytes == 2U
-                                   ? (uint64_t)source_size - 256U
-                                   : (uint64_t)source_size;
+        uint64_t stored_size = content_size_bytes == 2U ? (uint64_t)source_size - 256U : (uint64_t)source_size;
         for (unsigned index = 0; index < content_size_bytes; ++index) {
             output[output_position++] = (uint8_t)(stored_size >> (index * 8U));
         }
@@ -150,42 +145,25 @@ bool xx_zstd_compress_memory(const void *source, size_t source_size,
     return true;
 }
 
-bool xx_zstd_decompress_memory(const void *source, size_t source_size,
-                              void *destination, size_t destination_size,
-                              size_t *out_written) {
-    return xx_zstd_decode_frames(source, source_size, destination,
-                                 destination_size, out_written);
+bool xx_zstd_decompress_memory(const void *source, size_t source_size, void *destination, size_t destination_size, size_t *out_written)
+{
+    return xx_zstd_decode_frames(source, source_size, destination, destination_size, out_written);
 }
 
-bool xx_zstd_decompress_memory_bounded(const void *source, size_t source_size,
-                                       void *destination, size_t destination_capacity,
-                                       size_t *out_written) {
-    return xx_zstd_decompress_memory_bounded_ex(source, source_size,
-                                                destination,
-                                                destination_capacity,
-                                                out_written, NULL);
+bool xx_zstd_decompress_memory_bounded(const void *source, size_t source_size, void *destination, size_t destination_capacity, size_t *out_written)
+{
+    return xx_zstd_decompress_memory_bounded_ex(source, source_size, destination, destination_capacity, out_written, NULL);
 }
 
-bool xx_zstd_decompress_memory_bounded_ex(const void *source,
-                                          size_t source_size,
-                                          void *destination,
-                                          size_t destination_capacity,
-                                          size_t *out_written,
-                                          bool *needs_more_output) {
-    return xx_zstd_decode_frames_bounded_retry(source, source_size,
-                                                destination,
-                                                destination_capacity,
-                                                out_written,
-                                                needs_more_output);
+bool xx_zstd_decompress_memory_bounded_ex(const void *source, size_t source_size, void *destination, size_t destination_capacity, size_t *out_written,
+                                          bool *needs_more_output)
+{
+    return xx_zstd_decode_frames_bounded_retry(source, source_size, destination, destination_capacity, out_written, needs_more_output);
 }
 
-static bool xx_zstd_pack_device_internal(xx_io_device *source,
-                                         int64_t source_offset,
-                                         int64_t uncompressed_size,
-                                         xx_io_device *destination, int level,
-                                         xx_pd_struct *progress,
-                                         size_t *out_compressed_size,
-                                         uint32_t *out_crc32) {
+static bool xx_zstd_pack_device_internal(xx_io_device *source, int64_t source_offset, int64_t uncompressed_size, xx_io_device *destination, int level,
+                                         xx_pd_struct *progress, size_t *out_compressed_size, uint32_t *out_crc32)
+{
     const size_t io_capacity = xx_get_file_buffer_size();
     uint8_t *input = NULL;
     uint8_t *output = NULL;
@@ -203,8 +181,7 @@ static bool xx_zstd_pack_device_internal(xx_io_device *source,
     if (out_crc32) {
         *out_crc32 = 0;
     }
-    if (!source || !destination || source_offset < 0 || uncompressed_size < 0 ||
-        (uint64_t)uncompressed_size > (uint64_t)SIZE_MAX ||
+    if (!source || !destination || source_offset < 0 || uncompressed_size < 0 || (uint64_t)uncompressed_size > (uint64_t)SIZE_MAX ||
         (progress && xx_pd_is_stopped(progress))) {
         return false;
     }
@@ -220,14 +197,12 @@ static bool xx_zstd_pack_device_internal(xx_io_device *source,
     if (!input || !output) {
         goto cleanup;
     }
-    if (source_offset >= 0 &&
-        xx_io_seek64(source, source_offset, SEEK_SET) != 0) {
+    if (source_offset >= 0 && xx_io_seek64(source, source_offset, SEEK_SET) != 0) {
         goto cleanup;
     }
 
     if (progress) {
-        progress_level = xx_pd_enter_level(progress, (uint64_t)input_size,
-                                           "Compressing Zstandard data");
+        progress_level = xx_pd_enter_level(progress, (uint64_t)input_size, "Compressing Zstandard data");
     }
     while (offset < input_size) {
         size_t chunk = input_size - offset;
@@ -252,9 +227,7 @@ static bool xx_zstd_pack_device_internal(xx_io_device *source,
     if (progress && xx_pd_is_stopped(progress)) {
         goto cleanup;
     }
-    if (!xx_zstd_compress_memory(input, input_size, output, output_capacity,
-                                 &compressed_size, level) ||
-        (uint64_t)compressed_size > (uint64_t)INT64_MAX ||
+    if (!xx_zstd_compress_memory(input, input_size, output, output_capacity, &compressed_size, level) || (uint64_t)compressed_size > (uint64_t)INT64_MAX ||
         (progress && xx_pd_is_stopped(progress))) {
         goto cleanup;
     }
@@ -279,19 +252,14 @@ cleanup:
     return success;
 }
 
-bool xx_zstd_pack_device(xx_io_device *source, int64_t source_offset,
-                         int64_t uncompressed_size, xx_io_device *destination,
-                         int level, xx_pd_struct *progress) {
-    return xx_zstd_pack_device_internal(source, source_offset,
-                                        uncompressed_size, destination, level,
-                                        progress, NULL, NULL);
+bool xx_zstd_pack_device(xx_io_device *source, int64_t source_offset, int64_t uncompressed_size, xx_io_device *destination, int level, xx_pd_struct *progress)
+{
+    return xx_zstd_pack_device_internal(source, source_offset, uncompressed_size, destination, level, progress, NULL, NULL);
 }
 
-bool xx_zstd_pack_source(xx_io_device *source, const char *source_path,
-                         int64_t *out_uncompressed_size,
-                         int64_t *out_compressed_size, uint32_t *out_crc32,
-                         xx_io_device *destination, int level,
-                         xx_pd_struct *progress) {
+bool xx_zstd_pack_source(xx_io_device *source, const char *source_path, int64_t *out_uncompressed_size, int64_t *out_compressed_size, uint32_t *out_crc32,
+                         xx_io_device *destination, int level, xx_pd_struct *progress)
+{
     xx_io_device *owned_source = NULL;
     xx_io_device *actual_source = source;
     int64_t uncompressed_size;
@@ -308,8 +276,7 @@ bool xx_zstd_pack_source(xx_io_device *source, const char *source_path,
     if (out_crc32) {
         *out_crc32 = 0;
     }
-    if (!out_uncompressed_size || !out_compressed_size || !out_crc32 ||
-        !destination || (!source && !source_path)) {
+    if (!out_uncompressed_size || !out_compressed_size || !out_crc32 || !destination || (!source && !source_path)) {
         return false;
     }
 
@@ -321,14 +288,11 @@ bool xx_zstd_pack_source(xx_io_device *source, const char *source_path,
         }
     }
     uncompressed_size = xx_io_size(actual_source);
-    if (uncompressed_size < 0 ||
-        (uint64_t)uncompressed_size > (uint64_t)SIZE_MAX) {
+    if (uncompressed_size < 0 || (uint64_t)uncompressed_size > (uint64_t)SIZE_MAX) {
         goto cleanup;
     }
 
-    success = xx_zstd_pack_device_internal(
-        actual_source, 0, uncompressed_size, destination, level, progress,
-        &compressed_size, &crc32);
+    success = xx_zstd_pack_device_internal(actual_source, 0, uncompressed_size, destination, level, progress, &compressed_size, &crc32);
     if (!success || (uint64_t)compressed_size > (uint64_t)INT64_MAX) {
         success = false;
         goto cleanup;
@@ -345,13 +309,11 @@ cleanup:
     return success;
 }
 
-bool xx_zstd_unpack_device_to_device(xx_io_device *source, int64_t source_offset,
-                                     int64_t compressed_size, xx_io_device *destination,
-                                     uint64_t uncompressed_size, xx_pd_struct *progress) {
+bool xx_zstd_unpack_device_to_device(xx_io_device *source, int64_t source_offset, int64_t compressed_size, xx_io_device *destination, uint64_t uncompressed_size,
+                                     xx_pd_struct *progress)
+{
     const size_t io_capacity = xx_get_file_buffer_size();
-    if (!source || !destination || source_offset < 0 || compressed_size < 0 ||
-        (uint64_t)compressed_size > (uint64_t)SIZE_MAX ||
-        uncompressed_size > (uint64_t)SIZE_MAX) {
+    if (!source || !destination || source_offset < 0 || compressed_size < 0 || (uint64_t)compressed_size > (uint64_t)SIZE_MAX || uncompressed_size > (uint64_t)SIZE_MAX) {
         return false;
     }
     if (progress && xx_pd_is_stopped(progress)) {
@@ -368,17 +330,13 @@ bool xx_zstd_unpack_device_to_device(xx_io_device *source, int64_t source_offset
         return false;
     }
 
-    bool success = xx_io_seek64(source, source_offset, SEEK_SET) == 0 &&
-                   xx_zstd_read_exact(source, input, input_size, io_capacity);
+    bool success = xx_io_seek64(source, source_offset, SEEK_SET) == 0 && xx_zstd_read_exact(source, input, input_size, io_capacity);
     if (success) {
         size_t result = 0;
-        success = xx_zstd_decompress_memory(input, input_size, output,
-                                            output_size, &result) &&
-                  result == output_size;
+        success = xx_zstd_decompress_memory(input, input_size, output, output_size, &result) && result == output_size;
     }
     if (success && output_size > 0) {
-        success = xx_zstd_write_exact(destination, output, output_size,
-                                      progress, io_capacity);
+        success = xx_zstd_write_exact(destination, output, output_size, progress, io_capacity);
     }
 
     xx_mem_free(input);
@@ -386,9 +344,9 @@ bool xx_zstd_unpack_device_to_device(xx_io_device *source, int64_t source_offset
     return success;
 }
 
-bool xx_zstd_unpack_device_to_file(xx_io_device *source, int64_t source_offset,
-                                   int64_t compressed_size, const char *destination_path,
-                                   uint64_t uncompressed_size, xx_pd_struct *progress) {
+bool xx_zstd_unpack_device_to_file(xx_io_device *source, int64_t source_offset, int64_t compressed_size, const char *destination_path, uint64_t uncompressed_size,
+                                   xx_pd_struct *progress)
+{
     if (!destination_path) {
         return false;
     }
@@ -396,8 +354,7 @@ bool xx_zstd_unpack_device_to_file(xx_io_device *source, int64_t source_offset,
     if (!destination) {
         return false;
     }
-    bool success = xx_zstd_unpack_device_to_device(source, source_offset, compressed_size,
-                                                   destination, uncompressed_size, progress);
+    bool success = xx_zstd_unpack_device_to_device(source, source_offset, compressed_size, destination, uncompressed_size, progress);
     xx_io_close(destination);
     if (!success) {
         xx_io_file_remove_a(destination_path);

@@ -41,18 +41,12 @@ extern "C" {
  * Shrink has no end marker, so expected_size is required and must match the
  * exact number of decoded bytes.
  */
-XXFC_API bool xx_shrink_unpack_device(xx_io_device *src_dev, int64_t src_offset,
-                                      int64_t comp_size, xx_io_device *dst_dev,
-                                      int64_t expected_size, xx_pd_struct *pd);
+XXFC_API bool xx_shrink_unpack_device(xx_io_device *src_dev, int64_t src_offset, int64_t comp_size, xx_io_device *dst_dev, int64_t expected_size, xx_pd_struct *pd);
 
 /**
  * @brief Decode a raw ZIP Shrink stream directly to a UTF-8 file path.
  */
-XXFC_API bool xx_shrink_unpack_device_to_file(xx_io_device *src_dev,
-                                              int64_t src_offset,
-                                              int64_t comp_size,
-                                              const char *dst_file_path,
-                                              int64_t expected_size,
+XXFC_API bool xx_shrink_unpack_device_to_file(xx_io_device *src_dev, int64_t src_offset, int64_t comp_size, const char *dst_file_path, int64_t expected_size,
                                               xx_pd_struct *pd);
 
 #ifdef __cplusplus

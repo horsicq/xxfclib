@@ -67,8 +67,7 @@ typedef struct xx_nrg {
 
 typedef xx_nrg xx_nrg_t;
 
-XXFC_API void xx_nrg_init(xx_nrg *archive, xx_io_device *device,
-                          int64_t base_address);
+XXFC_API void xx_nrg_init(xx_nrg *archive, xx_io_device *device, int64_t base_address);
 XXFC_API xx_nrg *xx_nrg_create(xx_io_device *device, int64_t base_address);
 XXFC_API void xx_nrg_destroy(xx_nrg *archive);
 XXFC_API void xx_nrg_free(xx_nrg *archive);
@@ -79,23 +78,17 @@ XXFC_API bool xx_nrg_probe_device(xx_io_device *device);
 
 XXFC_API bool xx_nrg_check_is_valid(Abstractformat *self, xx_pd_struct *pd);
 XXFC_API bool xx_nrg_handle_base_info(Abstractformat *self, xx_pd_struct *pd);
-XXFC_API int64_t xx_nrg_get_format_size(Abstractformat *self,
-                                        xx_pd_struct *pd);
-XXFC_API uint64_t xx_nrg_get_number_of_archive_records(Abstractformat *self,
-                                                       xx_pd_struct *pd);
+XXFC_API int64_t xx_nrg_get_format_size(Abstractformat *self, xx_pd_struct *pd);
+XXFC_API uint64_t xx_nrg_get_number_of_archive_records(Abstractformat *self, xx_pd_struct *pd);
 
-XXFC_API xx_archive_record_state *xx_nrg_create_archive_records_reading(
-    Abstractformat *self, const xx_list_s *options, xx_pd_struct *pd);
-XXFC_API const xx_archive_record *xx_nrg_get_current_archive_record(
-    Abstractformat *self, xx_archive_record_state *state);
-XXFC_API bool xx_nrg_unpack_current_archive_record(
-    Abstractformat *self, xx_archive_record_state *state, xx_pd_struct *pd);
-XXFC_API bool xx_nrg_archive_record_move_to_next(
-    Abstractformat *self, xx_archive_record_state *state, xx_pd_struct *pd);
-XXFC_API void xx_nrg_free_archive_records_reading(
-    Abstractformat *self, xx_archive_record_state *state);
+XXFC_API xx_archive_record_state *xx_nrg_create_archive_records_reading(Abstractformat *self, const xx_list_s *options, xx_pd_struct *pd);
+XXFC_API const xx_archive_record *xx_nrg_get_current_archive_record(Abstractformat *self, xx_archive_record_state *state);
+XXFC_API bool xx_nrg_unpack_current_archive_record(Abstractformat *self, xx_archive_record_state *state, xx_pd_struct *pd);
+XXFC_API bool xx_nrg_archive_record_move_to_next(Abstractformat *self, xx_archive_record_state *state, xx_pd_struct *pd);
+XXFC_API void xx_nrg_free_archive_records_reading(Abstractformat *self, xx_archive_record_state *state);
 
-static inline Abstractformat *xx_nrg_to_format(xx_nrg *archive) {
+static inline Abstractformat *xx_nrg_to_format(xx_nrg *archive)
+{
     return archive ? &archive->format : NULL;
 }
 

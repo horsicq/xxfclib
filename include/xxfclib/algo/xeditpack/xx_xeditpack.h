@@ -58,9 +58,7 @@ extern "C" {
  *
  * When the size came from the scan, @p written equals @p output_size exactly.
  */
-XXFC_API bool xx_xeditpack_decode_memory(const uint8_t *input,
-                                         size_t input_size, uint8_t *output,
-                                         size_t output_size, size_t *written);
+XXFC_API bool xx_xeditpack_decode_memory(const uint8_t *input, size_t input_size, uint8_t *output, size_t output_size, size_t *written);
 
 /**
  * @brief Measure an XEDIT PACK payload without storing it.
@@ -78,9 +76,7 @@ XXFC_API bool xx_xeditpack_decode_memory(const uint8_t *input,
  * @return true when the walk finished within the limit and produced at least
  *         one byte; this mirrors XXEditPackDecoder::measure().
  */
-XXFC_API bool xx_xeditpack_scan_memory(const uint8_t *input, size_t input_size,
-                                       size_t max_output, size_t *consumed,
-                                       size_t *produced);
+XXFC_API bool xx_xeditpack_scan_memory(const uint8_t *input, size_t input_size, size_t max_output, size_t *consumed, size_t *produced);
 
 #ifdef __cplusplus
 }

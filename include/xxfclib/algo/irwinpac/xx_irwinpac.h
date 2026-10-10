@@ -53,9 +53,7 @@ extern "C" {
  * @param written     Receives the produced size; set on every path.
  * @return true only on a complete decode.
  */
-XXFC_API bool xx_irwinpac_decode_memory(const uint8_t *input, size_t input_size,
-                                        uint8_t *output, size_t output_size,
-                                        size_t *written);
+XXFC_API bool xx_irwinpac_decode_memory(const uint8_t *input, size_t input_size, uint8_t *output, size_t output_size, size_t *written);
 
 /**
  * @brief Measure an IrwinPac stream without a destination buffer.
@@ -69,9 +67,7 @@ XXFC_API bool xx_irwinpac_decode_memory(const uint8_t *input, size_t input_size,
  * @param consumed    Receives the input bytes the chain occupies. May be NULL.
  * @param produced    Receives the decoded size. May be NULL.
  */
-XXFC_API bool xx_irwinpac_scan_memory(const uint8_t *input, size_t input_size,
-                                      size_t max_output, size_t *consumed,
-                                      size_t *produced);
+XXFC_API bool xx_irwinpac_scan_memory(const uint8_t *input, size_t input_size, size_t max_output, size_t *consumed, size_t *produced);
 
 #ifdef __cplusplus
 }

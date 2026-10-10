@@ -95,35 +95,28 @@ struct xx_boo {
     int64_t unpacked_size; /**< Measured decoded length, padding removed. */
 };
 
-XXFC_API void xx_boo_init(xx_boo *archive, xx_io_device *device,
-                          int64_t base_address);
+XXFC_API void xx_boo_init(xx_boo *archive, xx_io_device *device, int64_t base_address);
 XXFC_API xx_boo *xx_boo_create(xx_io_device *device, int64_t base_address);
 XXFC_API void xx_boo_destroy(xx_boo *archive);
 XXFC_API void xx_boo_free(xx_boo *archive);
 
 XXFC_API bool xx_boo_check_is_valid(Abstractformat *self, xx_pd_struct *pd);
 XXFC_API bool xx_boo_handle_base_info(Abstractformat *self, xx_pd_struct *pd);
-XXFC_API int64_t xx_boo_get_format_size(Abstractformat *self,
-                                        xx_pd_struct *pd);
-XXFC_API uint64_t xx_boo_get_number_of_archive_records(Abstractformat *self,
-                                                       xx_pd_struct *pd);
-XXFC_API xx_archive_record_state *xx_boo_create_archive_records_reading(
-    Abstractformat *self, const xx_list_s *options, xx_pd_struct *pd);
-XXFC_API const xx_archive_record *xx_boo_get_current_archive_record(
-    Abstractformat *self, xx_archive_record_state *state);
-XXFC_API bool xx_boo_unpack_current_archive_record(
-    Abstractformat *self, xx_archive_record_state *state, xx_pd_struct *pd);
-XXFC_API bool xx_boo_archive_record_move_to_next(
-    Abstractformat *self, xx_archive_record_state *state, xx_pd_struct *pd);
-XXFC_API void xx_boo_free_archive_records_reading(
-    Abstractformat *self, xx_archive_record_state *state);
+XXFC_API int64_t xx_boo_get_format_size(Abstractformat *self, xx_pd_struct *pd);
+XXFC_API uint64_t xx_boo_get_number_of_archive_records(Abstractformat *self, xx_pd_struct *pd);
+XXFC_API xx_archive_record_state *xx_boo_create_archive_records_reading(Abstractformat *self, const xx_list_s *options, xx_pd_struct *pd);
+XXFC_API const xx_archive_record *xx_boo_get_current_archive_record(Abstractformat *self, xx_archive_record_state *state);
+XXFC_API bool xx_boo_unpack_current_archive_record(Abstractformat *self, xx_archive_record_state *state, xx_pd_struct *pd);
+XXFC_API bool xx_boo_archive_record_move_to_next(Abstractformat *self, xx_archive_record_state *state, xx_pd_struct *pd);
+XXFC_API void xx_boo_free_archive_records_reading(Abstractformat *self, xx_archive_record_state *state);
 
 /** Absolute offset of the payload, or -1 before handle_base_info. */
 XXFC_API int64_t xx_boo_get_body_offset(const xx_boo *archive);
 /** Decoded length, or -1 before handle_base_info. */
 XXFC_API int64_t xx_boo_get_unpacked_size(const xx_boo *archive);
 
-static inline Abstractformat *xx_boo_to_format(xx_boo *archive) {
+static inline Abstractformat *xx_boo_to_format(xx_boo *archive)
+{
     return archive ? &archive->format : NULL;
 }
 

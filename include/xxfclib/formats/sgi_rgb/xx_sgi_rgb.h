@@ -9,13 +9,15 @@
 #ifdef __cplusplus
 extern "C" {
 #endif
-typedef struct xx_sgi_rgb { Abstractformat format; } xx_sgi_rgb;
-XXFC_API void xx_sgi_rgb_init(xx_sgi_rgb *,xx_io_device *,int64_t);
-XXFC_API xx_sgi_rgb *xx_sgi_rgb_create(xx_io_device *,int64_t);
+typedef struct xx_sgi_rgb {
+    Abstractformat format;
+} xx_sgi_rgb;
+XXFC_API void xx_sgi_rgb_init(xx_sgi_rgb *, xx_io_device *, int64_t);
+XXFC_API xx_sgi_rgb *xx_sgi_rgb_create(xx_io_device *, int64_t);
 XXFC_API void xx_sgi_rgb_destroy(xx_sgi_rgb *);
 XXFC_API void xx_sgi_rgb_free(xx_sgi_rgb *);
-XXFC_API bool xx_sgi_rgb_check_is_valid(Abstractformat *,xx_pd_struct *);
-XXFC_API bool xx_sgi_rgb_handle_base_info(Abstractformat *,xx_pd_struct *);
+XXFC_API bool xx_sgi_rgb_check_is_valid(Abstractformat *, xx_pd_struct *);
+XXFC_API bool xx_sgi_rgb_handle_base_info(Abstractformat *, xx_pd_struct *);
 #ifdef __cplusplus
 }
 #endif

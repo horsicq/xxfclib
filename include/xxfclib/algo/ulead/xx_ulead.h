@@ -48,7 +48,7 @@ typedef struct xx_ulead_header_s {
     uint64_t uncompressed_size; /**< the member's plaintext length         */
     uint32_t block_count;
     uint32_t last_block_size;
-    uint32_t layout;            /**< 1 or 2                                */
+    uint32_t layout; /**< 1 or 2                                */
     /** Latin-1, NUL-terminated; empty for the layout that stores no name. */
     char file_name[17];
 } xx_ulead_header;
@@ -63,9 +63,7 @@ typedef struct xx_ulead_header_s {
  * @param header      Receives the parsed header.
  * @return true when the header is a well-formed ULEAD header.
  */
-XXFC_API bool xx_ulead_parse_header(const uint8_t *input, size_t input_size,
-                                    uint64_t file_size,
-                                    xx_ulead_header *header);
+XXFC_API bool xx_ulead_parse_header(const uint8_t *input, size_t input_size, uint64_t file_size, xx_ulead_header *header);
 
 /**
  * @brief Decode a ULEAD member.
@@ -78,9 +76,7 @@ XXFC_API bool xx_ulead_parse_header(const uint8_t *input, size_t input_size,
  * @param written     Receives the produced byte count.  Set on every path.
  * @return true only when the whole member decoded.
  */
-XXFC_API bool xx_ulead_decode_memory(const uint8_t *input, size_t input_size,
-                                     uint8_t *output, size_t output_size,
-                                     size_t *written);
+XXFC_API bool xx_ulead_decode_memory(const uint8_t *input, size_t input_size, uint8_t *output, size_t output_size, size_t *written);
 
 #ifdef __cplusplus
 }

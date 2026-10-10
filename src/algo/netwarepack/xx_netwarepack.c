@@ -61,8 +61,7 @@ static bool nwp_read(nwp_bits *reader, unsigned bits, uint32_t *value)
     /* bits is never more than 13 here, so the accumulator cannot overflow. */
     while (reader->count < bits) {
         if (reader->position >= reader->size) return false;
-        reader->accumulator |=
-            (uint32_t)reader->data[reader->position] << reader->count;
+        reader->accumulator |= (uint32_t)reader->data[reader->position] << reader->count;
         reader->position++;
         reader->count += 8U;
     }
@@ -92,8 +91,7 @@ static int32_t nwp_allocate(nwp_state *state)
 /* Pre-order description reader.  `count` siblings sit at `depth`; each one is
  * a unary child count (k zero bits then a 1), an 8-bit symbol, and then its
  * own children one level down. */
-static bool nwp_read_table(nwp_bits *reader, nwp_entry *table,
-                           int32_t *total, int32_t count, int32_t depth)
+static bool nwp_read_table(nwp_bits *reader, nwp_entry *table, int32_t *total, int32_t count, int32_t depth)
 {
     int32_t i;
 
@@ -121,8 +119,7 @@ static bool nwp_read_table(nwp_bits *reader, nwp_entry *table,
         table[*total].depth = (uint8_t)depth;
         (*total)++;
 
-        if (!nwp_read_table(reader, table, total, children, depth + 1))
-            return false;
+        if (!nwp_read_table(reader, table, total, children, depth + 1)) return false;
     }
 
     return true;
@@ -133,9 +130,7 @@ static bool nwp_read_table(nwp_bits *reader, nwp_entry *table,
  * entry and everything after it become the 1 branch one level deeper, and
  * everything before it stays on the 0 branch at the same level.  A single
  * remaining entry is the leaf that carries its symbol. */
-static bool nwp_build_tree(nwp_state *state, int32_t node,
-                           const nwp_entry *table, int32_t start,
-                           int32_t count, int32_t depth)
+static bool nwp_build_tree(nwp_state *state, int32_t node, const nwp_entry *table, int32_t start, int32_t count, int32_t depth)
 {
     int32_t i;
 
@@ -169,18 +164,15 @@ static bool nwp_build_tree(nwp_state *state, int32_t node,
         state->nodes[node].left = left;
         state->nodes[node].right = right;
 
-        if (!nwp_build_tree(state, left, table, start, i - start, depth))
-            return false;
+        if (!nwp_build_tree(state, left, table, start, i - start, depth)) return false;
 
-        return nwp_build_tree(state, right, table, i, (start + count) - i,
-                              depth + 1);
+        return nwp_build_tree(state, right, table, i, (start + count) - i, depth + 1);
     }
 
     return false;
 }
 
-static bool nwp_read_tree(nwp_bits *reader, nwp_state *state,
-                          int32_t tree_index)
+static bool nwp_read_tree(nwp_bits *reader, nwp_state *state, int32_t tree_index)
 {
     nwp_entry table[NWP_MAX_TABLE_ENTRIES];
     int32_t count = 0;
@@ -205,8 +197,7 @@ static bool nwp_read_tree(nwp_bits *reader, nwp_state *state,
     return nwp_build_tree(state, root, table, 0, count, 1);
 }
 
-static bool nwp_decode_symbol(nwp_bits *reader, const nwp_state *state,
-                              int32_t tree_index, uint32_t *symbol)
+static bool nwp_decode_symbol(nwp_bits *reader, const nwp_state *state, int32_t tree_index, uint32_t *symbol)
 {
     int32_t node = state->root[tree_index];
     int32_t step;
@@ -229,9 +220,7 @@ static bool nwp_decode_symbol(nwp_bits *reader, const nwp_state *state,
     return false;
 }
 
-bool xx_netwarepack_decode_memory(const uint8_t *input, size_t input_size,
-                                  uint8_t *output, size_t output_size,
-                                  size_t *written)
+bool xx_netwarepack_decode_memory(const uint8_t *input, size_t input_size, uint8_t *output, size_t output_size, size_t *written)
 {
     nwp_bits reader;
     nwp_state *state;
@@ -342,8 +331,7 @@ bool xx_netwarepack_decode_memory(const uint8_t *input, size_t input_size,
                 break;
             }
 
-            source = (int32_t)(((uint32_t)position - distance) &
-                               NWP_WINDOW_MASK);
+            source = (int32_t)(((uint32_t)position - distance) & NWP_WINDOW_MASK);
 
             /* Deliberate, and matched from the reference: a match that would
              * run past the declared size is CLAMPED, not rejected.  The

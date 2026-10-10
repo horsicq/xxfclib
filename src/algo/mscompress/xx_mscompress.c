@@ -14,14 +14,9 @@
 #define XX_MSCOMPRESS_WINDOW_SIZE 4096U
 #define XX_MSCOMPRESS_MATCH_MINIMUM 3U
 
-static bool xx_mscompress_lzss_decode_impl(const uint8_t *input,
-                                           size_t input_size,
-                                           uint8_t *output,
-                                           size_t output_size,
-                                           unsigned position_bias,
-                                           bool allow_prefix,
-                                           size_t *written,
-                                           size_t *consumed) {
+static bool xx_mscompress_lzss_decode_impl(const uint8_t *input, size_t input_size, uint8_t *output, size_t output_size, unsigned position_bias, bool allow_prefix,
+                                           size_t *written, size_t *consumed)
+{
     uint8_t window[XX_MSCOMPRESS_WINDOW_SIZE];
     size_t input_position = 0U;
     size_t output_position = 0U;
@@ -30,8 +25,7 @@ static bool xx_mscompress_lzss_decode_impl(const uint8_t *input,
     size_t window_position = 0U;
     if (consumed) *consumed = 0U;
     if (written) *written = 0U;
-    if ((!input && input_size != 0U) || (!output && output_size != 0U) ||
-        (position_bias != 16U && position_bias != 18U)) {
+    if ((!input && input_size != 0U) || (!output && output_size != 0U) || (position_bias != 16U && position_bias != 18U)) {
         return false;
     }
     xx_rt_memset(window, 0x20, sizeof(window));
@@ -52,8 +46,7 @@ static bool xx_mscompress_lzss_decode_impl(const uint8_t *input,
             value = input[input_position++];
             output[output_position++] = value;
             window[window_position] = value;
-            window_position = (window_position + 1U) &
-                              (XX_MSCOMPRESS_WINDOW_SIZE - 1U);
+            window_position = (window_position + 1U) & (XX_MSCOMPRESS_WINDOW_SIZE - 1U);
         } else {
             uint8_t low;
             uint8_t high;
@@ -61,26 +54,20 @@ static bool xx_mscompress_lzss_decode_impl(const uint8_t *input,
             size_t match_length;
             size_t index;
             if (input_size - input_position < 2U) {
-                if (!allow_prefix || input_position != input_size)
-                    return false;
+                if (!allow_prefix || input_position != input_size) return false;
                 break;
             }
             low = input[input_position++];
             high = input[input_position++];
-            match_position = ((size_t)low |
-                              ((size_t)(high & UINT8_C(0xf0)) << 4U));
-            match_position = (match_position + position_bias) &
-                             (XX_MSCOMPRESS_WINDOW_SIZE - 1U);
-            match_length = (size_t)(high & UINT8_C(0x0f)) +
-                           XX_MSCOMPRESS_MATCH_MINIMUM;
+            match_position = ((size_t)low | ((size_t)(high & UINT8_C(0xf0)) << 4U));
+            match_position = (match_position + position_bias) & (XX_MSCOMPRESS_WINDOW_SIZE - 1U);
+            match_length = (size_t)(high & UINT8_C(0x0f)) + XX_MSCOMPRESS_MATCH_MINIMUM;
             if (match_length > output_size - output_position) return false;
             for (index = 0U; index < match_length; ++index) {
-                uint8_t value = window[(match_position + index) &
-                                       (XX_MSCOMPRESS_WINDOW_SIZE - 1U)];
+                uint8_t value = window[(match_position + index) & (XX_MSCOMPRESS_WINDOW_SIZE - 1U)];
                 output[output_position++] = value;
                 window[window_position] = value;
-                window_position = (window_position + 1U) &
-                                  (XX_MSCOMPRESS_WINDOW_SIZE - 1U);
+                window_position = (window_position + 1U) & (XX_MSCOMPRESS_WINDOW_SIZE - 1U);
             }
         }
         flag_bit = (flag_bit + 1U) & 7U;
@@ -90,23 +77,14 @@ static bool xx_mscompress_lzss_decode_impl(const uint8_t *input,
     return true;
 }
 
-bool xx_mscompress_lzss_decode(const uint8_t *input, size_t input_size,
-                               uint8_t *output, size_t output_size,
-                               unsigned position_bias, size_t *consumed) {
-    return xx_mscompress_lzss_decode_impl(input, input_size, output,
-                                         output_size, position_bias, false,
-                                         NULL, consumed);
+bool xx_mscompress_lzss_decode(const uint8_t *input, size_t input_size, uint8_t *output, size_t output_size, unsigned position_bias, size_t *consumed)
+{
+    return xx_mscompress_lzss_decode_impl(input, input_size, output, output_size, position_bias, false, NULL, consumed);
 }
 
-bool xx_mscompress_lzss_decode_prefix(const uint8_t *input,
-                                      size_t input_size,
-                                      uint8_t *output,
-                                      size_t output_capacity,
-                                      unsigned position_bias,
-                                      size_t *written,
-                                      size_t *consumed) {
+bool xx_mscompress_lzss_decode_prefix(const uint8_t *input, size_t input_size, uint8_t *output, size_t output_capacity, unsigned position_bias, size_t *written,
+                                      size_t *consumed)
+{
     if (!written) return false;
-    return xx_mscompress_lzss_decode_impl(input, input_size, output,
-                                         output_capacity, position_bias, true,
-                                         written, consumed);
+    return xx_mscompress_lzss_decode_impl(input, input_size, output, output_capacity, position_bias, true, written, consumed);
 }

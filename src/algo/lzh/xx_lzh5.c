@@ -75,8 +75,8 @@ typedef struct xx_lzh5_huff_s {
     uint16_t single_symbol;
 } xx_lzh5_huff;
 
-static void xx_lzh5_bits_init(xx_lzh5_bits *bits, const uint8_t *data,
-                              size_t size) {
+static void xx_lzh5_bits_init(xx_lzh5_bits *bits, const uint8_t *data, size_t size)
+{
     bits->data = data;
     bits->size = size;
     bits->position = 0U;
@@ -91,7 +91,8 @@ static void xx_lzh5_bits_init(xx_lzh5_bits *bits, const uint8_t *data,
  * normal; the flag only matters when the caller has not yet produced the
  * expected output, which is checked at the end.
  */
-static uint32_t xx_lzh5_read_bits(xx_lzh5_bits *bits, int count) {
+static uint32_t xx_lzh5_read_bits(xx_lzh5_bits *bits, int count)
+{
     uint32_t result;
 
     if (count <= 0) return 0U;
@@ -105,13 +106,13 @@ static uint32_t xx_lzh5_read_bits(xx_lzh5_bits *bits, int count) {
         bits->cache = (bits->cache << 8) | next;
         bits->available += 8;
     }
-    result = (bits->cache >> (bits->available - count)) &
-             ((count >= 32) ? 0xFFFFFFFFU : ((1U << count) - 1U));
+    result = (bits->cache >> (bits->available - count)) & ((count >= 32) ? 0xFFFFFFFFU : ((1U << count) - 1U));
     bits->available -= count;
     return result;
 }
 
-static XXFC_MAYBE_UNUSED uint32_t xx_lzh5_peek_bits(xx_lzh5_bits *bits, int count) {
+static XXFC_MAYBE_UNUSED uint32_t xx_lzh5_peek_bits(xx_lzh5_bits *bits, int count)
+{
     uint32_t result = xx_lzh5_read_bits(bits, count);
 
     bits->available += count;
@@ -123,8 +124,8 @@ static XXFC_MAYBE_UNUSED uint32_t xx_lzh5_peek_bits(xx_lzh5_bits *bits, int coun
  * complete code, which is the same Kraft-equality test the reference spells
  * as "the accumulated bit patterns must total 0x10000".
  */
-static bool xx_lzh5_build(xx_lzh5_huff *table, const uint8_t *lengths,
-                          int count) {
+static bool xx_lzh5_build(xx_lzh5_huff *table, const uint8_t *lengths, int count)
+{
     int length;
     int index;
     int code = 0;
@@ -153,10 +154,7 @@ static bool xx_lzh5_build(xx_lzh5_huff *table, const uint8_t *lengths,
 
     for (length = 1; length <= XX_LZH5_MAX_BITS; ++length) {
         table->first_code[length] = code;
-        table->first_index[length] = (length == 1)
-                                         ? 0
-                                         : table->first_index[length - 1] +
-                                               table->count[length - 1];
+        table->first_index[length] = (length == 1) ? 0 : table->first_index[length - 1] + table->count[length - 1];
         next_index[length] = table->first_index[length];
         code += table->count[length];
         /* An over-subscribed code would make this exceed the space available
@@ -180,18 +178,16 @@ static bool xx_lzh5_build(xx_lzh5_huff *table, const uint8_t *lengths,
     return true;
 }
 
-static int xx_lzh5_decode_symbol(xx_lzh5_bits *bits,
-                                 const xx_lzh5_huff *table) {
+static int xx_lzh5_decode_symbol(xx_lzh5_bits *bits, const xx_lzh5_huff *table)
+{
     int length;
     int code = 0;
 
     if (table->single) return (int)table->single_symbol;
     for (length = 1; length <= table->max_bits; ++length) {
         code = (code << 1) | (int)xx_lzh5_read_bits(bits, 1);
-        if (table->count[length] != 0 &&
-            code - table->first_code[length] < table->count[length]) {
-            return (int)table->symbols[table->first_index[length] +
-                                       (code - table->first_code[length])];
+        if (table->count[length] != 0 && code - table->first_code[length] < table->count[length]) {
+            return (int)table->symbols[table->first_index[length] + (code - table->first_code[length])];
         }
     }
     return -1;
@@ -203,7 +199,8 @@ static int xx_lzh5_decode_symbol(xx_lzh5_bits *bits,
  * 16. The reference resolves this through a 1024-entry lookup; counting the
  * leading ones is the same function.
  */
-static int xx_lzh5_read_pt_length(xx_lzh5_bits *bits) {
+static int xx_lzh5_read_pt_length(xx_lzh5_bits *bits)
+{
     int value = (int)xx_lzh5_read_bits(bits, 3);
     int extra = 0;
 
@@ -214,8 +211,8 @@ static int xx_lzh5_read_pt_length(xx_lzh5_bits *bits) {
 }
 
 /* Read a table of code lengths that is itself coded with the prefix code. */
-static bool xx_lzh5_read_pt(xx_lzh5_bits *bits, xx_lzh5_huff *table,
-                            int size, int count_bits, bool is_position) {
+static bool xx_lzh5_read_pt(xx_lzh5_bits *bits, xx_lzh5_huff *table, int size, int count_bits, bool is_position)
+{
     uint8_t lengths[63]; /* LHARK may declare up to 63 position lengths. */
     int available = (int)xx_lzh5_read_bits(bits, count_bits);
     int index = 0;
@@ -250,9 +247,8 @@ static bool xx_lzh5_read_pt(xx_lzh5_bits *bits, xx_lzh5_huff *table,
 }
 
 /* Read the literal/length table, which is coded with the pre-table. */
-static bool xx_lzh5_read_literal(xx_lzh5_bits *bits,
-                                 const xx_lzh5_huff *pre,
-                                 xx_lzh5_huff *table) {
+static bool xx_lzh5_read_literal(xx_lzh5_bits *bits, const xx_lzh5_huff *pre, xx_lzh5_huff *table)
+{
     uint8_t lengths[XX_LZH5_LT_SIZE];
     int available = (int)xx_lzh5_read_bits(bits, 9);
     int index = 0;
@@ -280,8 +276,7 @@ static bool xx_lzh5_read_literal(xx_lzh5_bits *bits,
             /* One and two introduce a run of zero lengths: a four-bit count
              * biased by three, or a nine-bit count biased by twenty. */
             int width = (symbol == 1) ? 4 : 9;
-            int run = (int)xx_lzh5_read_bits(bits, width) +
-                      ((width == 4) ? 3 : 20);
+            int run = (int)xx_lzh5_read_bits(bits, width) + ((width == 4) ? 3 : 20);
             if (index + run > available) return false;
             while (run-- > 0) lengths[index++] = 0U;
         }
@@ -289,9 +284,8 @@ static bool xx_lzh5_read_literal(xx_lzh5_bits *bits,
     return xx_lzh5_build(table, lengths, available);
 }
 
-bool xx_lzh5_decode_memory(const uint8_t *input, size_t input_size,
-                           uint8_t *output, size_t output_size, int method,
-                           size_t *written) {
+bool xx_lzh5_decode_memory(const uint8_t *input, size_t input_size, uint8_t *output, size_t output_size, int method, size_t *written)
+{
     xx_lzh5_bits bits;
     xx_lzh5_huff pre;
     xx_lzh5_huff literal;
@@ -326,10 +320,8 @@ bool xx_lzh5_decode_memory(const uint8_t *input, size_t input_size,
         if (bits.overrun) return false;
         if (block_symbols == 0) return false;
 
-        if (!xx_lzh5_read_pt(&bits, &pre, XX_LZH5_PT_SIZE, 5, false) ||
-            !xx_lzh5_read_literal(&bits, &pre, &literal) ||
-            !xx_lzh5_read_pt(&bits, &position, position_size,
-                             position_count_bits, true)) {
+        if (!xx_lzh5_read_pt(&bits, &pre, XX_LZH5_PT_SIZE, 5, false) || !xx_lzh5_read_literal(&bits, &pre, &literal) ||
+            !xx_lzh5_read_pt(&bits, &position, position_size, position_count_bits, true)) {
             return false;
         }
 
@@ -348,14 +340,12 @@ bool xx_lzh5_decode_memory(const uint8_t *input, size_t input_size,
                     if (symbol >= 264) {
                         if (symbol < 288) {
                             int nbits = (symbol - 260) / 4;
-                            length = ((4 + (symbol % 4)) << nbits) +
-                                     (int)xx_lzh5_read_bits(&bits, nbits) + 3;
+                            length = ((4 + (symbol % 4)) << nbits) + (int)xx_lzh5_read_bits(&bits, nbits) + 3;
                         } else {
                             length = 514;
                         }
                     }
-                    if (bits.overrun || (size_t)length > output_size - produced)
-                        return false;
+                    if (bits.overrun || (size_t)length > output_size - produced) return false;
                 }
                 int code = xx_lzh5_decode_symbol(&bits, &position);
                 size_t distance;
@@ -369,23 +359,18 @@ bool xx_lzh5_decode_memory(const uint8_t *input, size_t input_size,
                     distance = (size_t)code + 1U;
                 } else if (method == 9) {
                     int nbits = (code - 2) / 2;
-                    distance = (size_t)((2 + (code % 2)) << nbits) +
-                               (size_t)xx_lzh5_read_bits(&bits, nbits) + 1U;
+                    distance = (size_t)((2 + (code % 2)) << nbits) + (size_t)xx_lzh5_read_bits(&bits, nbits) + 1U;
                 } else {
-                    distance = ((size_t)1U << (code - 1)) +
-                               (size_t)xx_lzh5_read_bits(&bits, code - 1) + 1U;
+                    distance = ((size_t)1U << (code - 1)) + (size_t)xx_lzh5_read_bits(&bits, code - 1) + 1U;
                 }
                 if (bits.overrun) return false;
                 if (distance > ((size_t)1U << window_bits)) return false;
 
-                for (index = 0; index < (size_t)length && produced < output_size;
-                     ++index) {
+                for (index = 0; index < (size_t)length && produced < output_size; ++index) {
                     /* Before the start of output the window was pre-filled
                      * with spaces; reproduce that rather than reading out of
                      * bounds. */
-                    output[produced] = (distance > produced)
-                                           ? (uint8_t)XX_LZH5_WINDOW_FILL
-                                           : output[produced - distance];
+                    output[produced] = (distance > produced) ? (uint8_t)XX_LZH5_WINDOW_FILL : output[produced - distance];
                     ++produced;
                 }
             }

@@ -26,30 +26,19 @@ typedef struct xx_x68000_dim {
     uint64_t image_size;
 } xx_x68000_dim;
 
-XXFC_API void xx_x68000_dim_init(xx_x68000_dim *archive, xx_io_device *device,
-                                 int64_t base_address);
-XXFC_API xx_x68000_dim *xx_x68000_dim_create(xx_io_device *device,
-                                             int64_t base_address);
+XXFC_API void xx_x68000_dim_init(xx_x68000_dim *archive, xx_io_device *device, int64_t base_address);
+XXFC_API xx_x68000_dim *xx_x68000_dim_create(xx_io_device *device, int64_t base_address);
 XXFC_API void xx_x68000_dim_destroy(xx_x68000_dim *archive);
 XXFC_API void xx_x68000_dim_free(xx_x68000_dim *archive);
-XXFC_API bool xx_x68000_dim_check_is_valid(Abstractformat *self,
-                                           xx_pd_struct *pd);
-XXFC_API bool xx_x68000_dim_handle_base_info(Abstractformat *self,
-                                             xx_pd_struct *pd);
-XXFC_API int64_t xx_x68000_dim_get_format_size(Abstractformat *self,
-                                               xx_pd_struct *pd);
-XXFC_API uint64_t xx_x68000_dim_get_number_of_archive_records(
-    Abstractformat *self, xx_pd_struct *pd);
-XXFC_API xx_archive_record_state *xx_x68000_dim_create_archive_records_reading(
-    Abstractformat *self, const xx_list_s *options, xx_pd_struct *pd);
-XXFC_API const xx_archive_record *xx_x68000_dim_get_current_archive_record(
-    Abstractformat *self, xx_archive_record_state *state);
-XXFC_API bool xx_x68000_dim_unpack_current_archive_record(
-    Abstractformat *self, xx_archive_record_state *state, xx_pd_struct *pd);
-XXFC_API bool xx_x68000_dim_archive_record_move_to_next(
-    Abstractformat *self, xx_archive_record_state *state, xx_pd_struct *pd);
-XXFC_API void xx_x68000_dim_free_archive_records_reading(
-    Abstractformat *self, xx_archive_record_state *state);
+XXFC_API bool xx_x68000_dim_check_is_valid(Abstractformat *self, xx_pd_struct *pd);
+XXFC_API bool xx_x68000_dim_handle_base_info(Abstractformat *self, xx_pd_struct *pd);
+XXFC_API int64_t xx_x68000_dim_get_format_size(Abstractformat *self, xx_pd_struct *pd);
+XXFC_API uint64_t xx_x68000_dim_get_number_of_archive_records(Abstractformat *self, xx_pd_struct *pd);
+XXFC_API xx_archive_record_state *xx_x68000_dim_create_archive_records_reading(Abstractformat *self, const xx_list_s *options, xx_pd_struct *pd);
+XXFC_API const xx_archive_record *xx_x68000_dim_get_current_archive_record(Abstractformat *self, xx_archive_record_state *state);
+XXFC_API bool xx_x68000_dim_unpack_current_archive_record(Abstractformat *self, xx_archive_record_state *state, xx_pd_struct *pd);
+XXFC_API bool xx_x68000_dim_archive_record_move_to_next(Abstractformat *self, xx_archive_record_state *state, xx_pd_struct *pd);
+XXFC_API void xx_x68000_dim_free_archive_records_reading(Abstractformat *self, xx_archive_record_state *state);
 
 /* BEGIN GENERATED ABSTRACT EXTRACTOR */
 #ifdef __cplusplus

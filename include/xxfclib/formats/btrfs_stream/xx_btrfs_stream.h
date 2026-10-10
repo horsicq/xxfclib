@@ -63,39 +63,27 @@ typedef struct xx_btrfs_stream {
 
 typedef xx_btrfs_stream xx_btrfs_stream_t;
 
-XXFC_API void xx_btrfs_stream_init(xx_btrfs_stream *archive,
-                                   xx_io_device *device, int64_t base_address);
-XXFC_API xx_btrfs_stream *xx_btrfs_stream_create(xx_io_device *device,
-                                                 int64_t base_address);
+XXFC_API void xx_btrfs_stream_init(xx_btrfs_stream *archive, xx_io_device *device, int64_t base_address);
+XXFC_API xx_btrfs_stream *xx_btrfs_stream_create(xx_io_device *device, int64_t base_address);
 XXFC_API void xx_btrfs_stream_destroy(xx_btrfs_stream *archive);
 XXFC_API void xx_btrfs_stream_free(xx_btrfs_stream *archive);
 
-XXFC_API bool xx_btrfs_stream_check_is_valid(Abstractformat *self,
-                                             xx_pd_struct *pd);
-XXFC_API bool xx_btrfs_stream_handle_base_info(Abstractformat *self,
-                                               xx_pd_struct *pd);
-XXFC_API int64_t xx_btrfs_stream_get_format_size(Abstractformat *self,
-                                                 xx_pd_struct *pd);
-XXFC_API uint64_t xx_btrfs_stream_get_number_of_archive_records(
-    Abstractformat *self, xx_pd_struct *pd);
+XXFC_API bool xx_btrfs_stream_check_is_valid(Abstractformat *self, xx_pd_struct *pd);
+XXFC_API bool xx_btrfs_stream_handle_base_info(Abstractformat *self, xx_pd_struct *pd);
+XXFC_API int64_t xx_btrfs_stream_get_format_size(Abstractformat *self, xx_pd_struct *pd);
+XXFC_API uint64_t xx_btrfs_stream_get_number_of_archive_records(Abstractformat *self, xx_pd_struct *pd);
 
-XXFC_API xx_archive_record_state *xx_btrfs_stream_create_archive_records_reading(
-    Abstractformat *self, const xx_list_s *options, xx_pd_struct *pd);
-XXFC_API const xx_archive_record *xx_btrfs_stream_get_current_archive_record(
-    Abstractformat *self, xx_archive_record_state *state);
-XXFC_API bool xx_btrfs_stream_unpack_current_archive_record(
-    Abstractformat *self, xx_archive_record_state *state, xx_pd_struct *pd);
-XXFC_API bool xx_btrfs_stream_archive_record_move_to_next(
-    Abstractformat *self, xx_archive_record_state *state, xx_pd_struct *pd);
-XXFC_API void xx_btrfs_stream_free_archive_records_reading(
-    Abstractformat *self, xx_archive_record_state *state);
+XXFC_API xx_archive_record_state *xx_btrfs_stream_create_archive_records_reading(Abstractformat *self, const xx_list_s *options, xx_pd_struct *pd);
+XXFC_API const xx_archive_record *xx_btrfs_stream_get_current_archive_record(Abstractformat *self, xx_archive_record_state *state);
+XXFC_API bool xx_btrfs_stream_unpack_current_archive_record(Abstractformat *self, xx_archive_record_state *state, xx_pd_struct *pd);
+XXFC_API bool xx_btrfs_stream_archive_record_move_to_next(Abstractformat *self, xx_archive_record_state *state, xx_pd_struct *pd);
+XXFC_API void xx_btrfs_stream_free_archive_records_reading(Abstractformat *self, xx_archive_record_state *state);
 
 /**
  * @brief Raw CRC-32C as the send stream uses it: seed @p crc (0 to start),
  * no pre- or post-inversion.
  */
-XXFC_API uint32_t xx_btrfs_stream_crc32c(uint32_t crc, const void *data,
-                                         size_t size);
+XXFC_API uint32_t xx_btrfs_stream_crc32c(uint32_t crc, const void *data, size_t size);
 
 #ifdef __cplusplus
 }

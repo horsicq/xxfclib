@@ -33,8 +33,8 @@
 
 typedef struct xx_pcapng_source_s {
     xx_io_device *device;
-    int64_t limit;          /* device size; nothing at or past it is read */
-    uint8_t *buffer;        /* NULL: every fetch is a direct read */
+    int64_t limit;   /* device size; nothing at or past it is read */
+    uint8_t *buffer; /* NULL: every fetch is a direct read */
     size_t capacity;
     int64_t window_offset;
     size_t window_size;
@@ -60,13 +60,11 @@ static void xx_pcapng_vtable_destroy(Abstractformat *self);
 
 /* All positioning goes through seek64: long is 32-bit on Win64 and a
  * capture is easily larger than 2 GiB. */
-static bool xx_pcapng_read_at_sized(xx_io_device *device, int64_t offset, void *data,
-                              size_t size, size_t io_capacity) {
-
+static bool xx_pcapng_read_at_sized(xx_io_device *device, int64_t offset, void *data, size_t size, size_t io_capacity)
+{
     uint8_t *out = (uint8_t *)data;
     size_t done = 0U;
-    if (!device || (!data && size != 0U) || offset < 0 ||
-        xx_io_seek64(device, offset, SEEK_SET) != 0) {
+    if (!device || (!data && size != 0U) || offset < 0 || xx_io_seek64(device, offset, SEEK_SET) != 0) {
         return false;
     }
     while (done < size) {
@@ -81,21 +79,17 @@ static bool xx_pcapng_read_at_sized(xx_io_device *device, int64_t offset, void *
 
 /* Copy `size` (1..8) bytes at absolute `offset`, which must lie wholly
  * inside the device. */
-static bool xx_pcapng_fetch(xx_pcapng_source *source, int64_t offset,
-                            void *out, size_t size) {
+static bool xx_pcapng_fetch(xx_pcapng_source *source, int64_t offset, void *out, size_t size)
+{
     int64_t available;
     size_t want;
-    if (!source || !out || size == 0U || size > 8U || offset < 0 ||
-        source->limit < (int64_t)size ||
-        offset > source->limit - (int64_t)size) {
+    if (!source || !out || size == 0U || size > 8U || offset < 0 || source->limit < (int64_t)size || offset > source->limit - (int64_t)size) {
         return false;
     }
     if (!source->buffer || source->capacity < size) {
         return xx_pcapng_read_at_sized(source->device, offset, out, size, source->capacity);
     }
-    if (source->window_size < size || offset < source->window_offset ||
-        offset - source->window_offset >
-            (int64_t)(source->window_size - size)) {
+    if (source->window_size < size || offset < source->window_offset || offset - source->window_offset > (int64_t)(source->window_size - size)) {
         available = source->limit - offset;
         want = source->capacity;
         if (available < (int64_t)want) want = (size_t)available;
@@ -106,8 +100,7 @@ static bool xx_pcapng_fetch(xx_pcapng_source *source, int64_t offset,
         source->window_offset = offset;
         source->window_size = want;
     }
-    xx_rt_memcpy(out, source->buffer + (size_t)(offset - source->window_offset),
-                 size);
+    xx_rt_memcpy(out, source->buffer + (size_t)(offset - source->window_offset), size);
     return true;
 }
 
@@ -125,29 +118,21 @@ static bool xx_pcapng_fetch(xx_pcapng_source *source, int64_t offset,
  * stop where binwalk's stops.  Every accepted length is >= 4, so the walk
  * always advances.
  */
-static bool xx_pcapng_read_block(xx_pcapng_source *source, int64_t offset,
-                                 bool big_endian, uint32_t *type,
-                                 uint32_t *length) {
+static bool xx_pcapng_read_block(xx_pcapng_source *source, int64_t offset, bool big_endian, uint32_t *type, uint32_t *length)
+{
     uint8_t header[XX_PCAPNG_BLOCK_HEADER_SIZE];
     uint8_t trailer[XX_PCAPNG_BLOCK_TRAILER_SIZE];
     uint32_t block_type;
     uint32_t block_length;
-    if (!source || offset < 0 || offset > source->limit ||
-        source->limit - offset < (int64_t)XX_PCAPNG_BLOCK_HEADER_SIZE ||
+    if (!source || offset < 0 || offset > source->limit || source->limit - offset < (int64_t)XX_PCAPNG_BLOCK_HEADER_SIZE ||
         !xx_pcapng_fetch(source, offset, header, sizeof(header))) {
         return false;
     }
     block_type = xx_data_get_u32(header, sizeof(header), 0U, big_endian);
     block_length = xx_data_get_u32(header, sizeof(header), 4U, big_endian);
-    if ((block_type & XX_PCAPNG_BLOCK_TYPE_RESERVED_MASK) != 0U ||
-        block_length < XX_PCAPNG_BLOCK_TRAILER_SIZE ||
-        (int64_t)block_length > source->limit - offset ||
-        !xx_pcapng_fetch(source,
-                         offset + (int64_t)block_length -
-                             (int64_t)XX_PCAPNG_BLOCK_TRAILER_SIZE,
-                         trailer, sizeof(trailer)) ||
-        xx_data_get_u32(trailer, sizeof(trailer), 0U, big_endian) !=
-            block_length) {
+    if ((block_type & XX_PCAPNG_BLOCK_TYPE_RESERVED_MASK) != 0U || block_length < XX_PCAPNG_BLOCK_TRAILER_SIZE || (int64_t)block_length > source->limit - offset ||
+        !xx_pcapng_fetch(source, offset + (int64_t)block_length - (int64_t)XX_PCAPNG_BLOCK_TRAILER_SIZE, trailer, sizeof(trailer)) ||
+        xx_data_get_u32(trailer, sizeof(trailer), 0U, big_endian) != block_length) {
         return false;
     }
     if (type) *type = block_type;
@@ -155,7 +140,8 @@ static bool xx_pcapng_read_block(xx_pcapng_source *source, int64_t offset,
     return true;
 }
 
-static void xx_pcapng_private_reset(xx_pcapng_private *parsed) {
+static void xx_pcapng_private_reset(xx_pcapng_private *parsed)
+{
     if (!parsed) return;
     xx_mem_zero(parsed, sizeof(*parsed));
     parsed->input_size = -1;
@@ -188,8 +174,8 @@ static void xx_pcapng_private_reset(xx_pcapng_private *parsed) {
  * The walk after the SHB is binwalk's, unmodified, so on every file both
  * accept, both measure the same length.
  */
-static bool xx_pcapng_parse_head(xx_pcapng_source *source, int64_t start,
-                                 xx_pcapng_private *parsed) {
+static bool xx_pcapng_parse_head(xx_pcapng_source *source, int64_t start, xx_pcapng_private *parsed)
+{
     uint8_t shb[XX_PCAPNG_SHB_FIXED_SIZE];
     uint32_t magic;
     uint32_t type = 0U;
@@ -198,15 +184,12 @@ static bool xx_pcapng_parse_head(xx_pcapng_source *source, int64_t start,
     uint32_t second_length = 0U;
     int64_t second;
     bool big_endian;
-    if (!source || !parsed || start < 0 || source->limit < start ||
-        source->limit - start < (int64_t)XX_PCAPNG_SHB_MIN_SIZE) {
+    if (!source || !parsed || start < 0 || source->limit < start || source->limit - start < (int64_t)XX_PCAPNG_SHB_MIN_SIZE) {
         return false;
     }
     /* The fixed part goes through the same fetch path in 8-byte pieces, so
      * the window (when there is one) is filled by the first of them. */
-    if (!xx_pcapng_fetch(source, start, shb, 8U) ||
-        !xx_pcapng_fetch(source, start + 8, shb + 8, 8U) ||
-        !xx_pcapng_fetch(source, start + 16, shb + 16, 8U)) {
+    if (!xx_pcapng_fetch(source, start, shb, 8U) || !xx_pcapng_fetch(source, start + 8, shb + 8, 8U) || !xx_pcapng_fetch(source, start + 16, shb + 16, 8U)) {
         return false;
     }
     if (xx_data_get_u32(shb, sizeof(shb), 0U, false) != XX_PCAPNG_SHB_TYPE) {
@@ -222,19 +205,14 @@ static bool xx_pcapng_parse_head(xx_pcapng_source *source, int64_t start,
     }
     parsed->major_version = xx_data_get_u16(shb, sizeof(shb), 12U, big_endian);
     parsed->minor_version = xx_data_get_u16(shb, sizeof(shb), 14U, big_endian);
-    parsed->section_length =
-        xx_data_get_u64(shb, sizeof(shb), 16U, big_endian);
+    parsed->section_length = xx_data_get_u64(shb, sizeof(shb), 16U, big_endian);
     if (parsed->major_version != XX_PCAPNG_MAJOR_VERSION) return false;
-    if (!xx_pcapng_read_block(source, start, big_endian, &type, &length) ||
-        type != XX_PCAPNG_SHB_TYPE || length < XX_PCAPNG_SHB_MIN_SIZE ||
-        (length & 3U) != 0U) {
+    if (!xx_pcapng_read_block(source, start, big_endian, &type, &length) || type != XX_PCAPNG_SHB_TYPE || length < XX_PCAPNG_SHB_MIN_SIZE || (length & 3U) != 0U) {
         return false;
     }
     /* binwalk's is_offset_safe(): the next block starts before the end. */
     second = start + (int64_t)length;
-    if (second >= source->limit ||
-        !xx_pcapng_read_block(source, second, big_endian, &second_type,
-                              &second_length)) {
+    if (second >= source->limit || !xx_pcapng_read_block(source, second, big_endian, &second_type, &second_length)) {
         return false;
     }
     (void)second_type;
@@ -249,8 +227,8 @@ static bool xx_pcapng_parse_head(xx_pcapng_source *source, int64_t start,
  * A later SHB written in the same byte order is just another block to it;
  * one written in the other byte order fails (its length reads byte-swapped)
  * and ends the capture there, as it does for binwalk. */
-static bool xx_pcapng_walk(xx_pcapng_source *source, xx_pcapng_private *parsed,
-                           xx_pd_struct *pd) {
+static bool xx_pcapng_walk(xx_pcapng_source *source, xx_pcapng_private *parsed, xx_pd_struct *pd)
+{
     int64_t position;
     uint32_t type;
     uint32_t length;
@@ -260,36 +238,26 @@ static bool xx_pcapng_walk(xx_pcapng_source *source, xx_pcapng_private *parsed,
     parsed->blocks = 1U;
     parsed->sections = 1U;
     while (position < source->limit) {
-        if ((parsed->blocks % XX_PCAPNG_STOP_POLL) == 0U && pd &&
-            xx_pd_is_stopped(pd)) {
+        if ((parsed->blocks % XX_PCAPNG_STOP_POLL) == 0U && pd && xx_pd_is_stopped(pd)) {
             return false;
         }
-        if (!xx_pcapng_read_block(source, position, parsed->big_endian, &type,
-                                  &length)) {
+        if (!xx_pcapng_read_block(source, position, parsed->big_endian, &type, &length)) {
             break;
         }
         ++parsed->blocks;
         switch (type) {
-        case XX_PCAPNG_SHB_TYPE:
-            ++parsed->sections;
-            break;
-        case XX_PCAPNG_BLOCK_IDB:
-            ++parsed->interfaces;
-            /* type, length, link type, reserved, snap length, trailer */
-            if (parsed->link_type == XX_PCAPNG_LINK_TYPE_NONE &&
-                length >= 20U &&
-                xx_pcapng_fetch(source, position + 8, link, sizeof(link))) {
-                parsed->link_type = xx_data_get_u16(link, sizeof(link), 0U,
-                                                    parsed->big_endian);
-            }
-            break;
-        case XX_PCAPNG_BLOCK_PB:
-        case XX_PCAPNG_BLOCK_SPB:
-        case XX_PCAPNG_BLOCK_EPB:
-            ++parsed->packets;
-            break;
-        default:
-            break;
+            case XX_PCAPNG_SHB_TYPE: ++parsed->sections; break;
+            case XX_PCAPNG_BLOCK_IDB:
+                ++parsed->interfaces;
+                /* type, length, link type, reserved, snap length, trailer */
+                if (parsed->link_type == XX_PCAPNG_LINK_TYPE_NONE && length >= 20U && xx_pcapng_fetch(source, position + 8, link, sizeof(link))) {
+                    parsed->link_type = xx_data_get_u16(link, sizeof(link), 0U, parsed->big_endian);
+                }
+                break;
+            case XX_PCAPNG_BLOCK_PB:
+            case XX_PCAPNG_BLOCK_SPB:
+            case XX_PCAPNG_BLOCK_EPB: ++parsed->packets; break;
+            default: break;
         }
         /* read_block() proved 4 <= length <= limit - position. */
         position += (int64_t)length;
@@ -299,13 +267,12 @@ static bool xx_pcapng_walk(xx_pcapng_source *source, xx_pcapng_private *parsed,
     return true;
 }
 
-static bool xx_pcapng_parse(Abstractformat *self, xx_pcapng_private *parsed,
-                            bool full, xx_pd_struct *pd) {
+static bool xx_pcapng_parse(Abstractformat *self, xx_pcapng_private *parsed, bool full, xx_pd_struct *pd)
+{
     xx_pcapng_source source;
     bool result = false;
     xx_pcapng_private_reset(parsed);
-    if (!self || !self->device || !parsed || self->base_address < 0 ||
-        (pd && xx_pd_is_stopped(pd))) {
+    if (!self || !self->device || !parsed || self->base_address < 0 || (pd && xx_pd_is_stopped(pd))) {
         return false;
     }
     xx_mem_zero(&source, sizeof(source));
@@ -332,7 +299,8 @@ done:
 /* Public interface                                                          */
 /* ------------------------------------------------------------------------ */
 
-static void xx_pcapng_clear_fields(xx_pcapng *pcapng) {
+static void xx_pcapng_clear_fields(xx_pcapng *pcapng)
+{
     pcapng->big_endian = false;
     pcapng->major_version = 0U;
     pcapng->minor_version = 0U;
@@ -346,8 +314,8 @@ static void xx_pcapng_clear_fields(xx_pcapng *pcapng) {
     pcapng->capture_end = -1;
 }
 
-void xx_pcapng_init(xx_pcapng *pcapng, xx_io_device *dev,
-                    int64_t base_address) {
+void xx_pcapng_init(xx_pcapng *pcapng, xx_io_device *dev, int64_t base_address)
+{
     if (!pcapng) return;
     xx_mem_zero(pcapng, sizeof(*pcapng));
     xx_format_init(&pcapng->format, dev, base_address);
@@ -365,24 +333,28 @@ void xx_pcapng_init(xx_pcapng *pcapng, xx_io_device *dev,
     xx_components_install(&pcapng->format);
 }
 
-xx_pcapng *xx_pcapng_create(xx_io_device *dev, int64_t base_address) {
+xx_pcapng *xx_pcapng_create(xx_io_device *dev, int64_t base_address)
+{
     xx_pcapng *pcapng = (xx_pcapng *)xx_mem_alloc(sizeof(*pcapng));
     if (pcapng) xx_pcapng_init(pcapng, dev, base_address);
     return pcapng;
 }
 
-void xx_pcapng_destroy(xx_pcapng *pcapng) {
+void xx_pcapng_destroy(xx_pcapng *pcapng)
+{
     if (!pcapng) return;
     /* Nothing here owns heap memory beyond the base structure's extras; the
      * walk's read window lives only for the duration of one parse. */
     xx_format_cleanup_extra_parameters(&pcapng->format);
 }
 
-static void xx_pcapng_vtable_destroy(Abstractformat *self) {
+static void xx_pcapng_vtable_destroy(Abstractformat *self)
+{
     xx_pcapng_destroy((xx_pcapng *)self);
 }
 
-void xx_pcapng_free(xx_pcapng *pcapng) {
+void xx_pcapng_free(xx_pcapng *pcapng)
+{
     if (!pcapng) return;
     xx_pcapng_destroy(pcapng);
     xx_mem_free(pcapng);
@@ -391,12 +363,14 @@ void xx_pcapng_free(xx_pcapng *pcapng) {
 /* Bounded: the SHB and the one block after it, at most six small reads.
  * This is exactly binwalk's acceptance test (a valid SHB plus a second
  * valid block); the full walk only decides the length. */
-bool xx_pcapng_check_is_valid(Abstractformat *self, xx_pd_struct *pd) {
+bool xx_pcapng_check_is_valid(Abstractformat *self, xx_pd_struct *pd)
+{
     xx_pcapng_private parsed;
     return xx_pcapng_parse(self, &parsed, false, pd);
 }
 
-bool xx_pcapng_handle_base_info(Abstractformat *self, xx_pd_struct *pd) {
+bool xx_pcapng_handle_base_info(Abstractformat *self, xx_pd_struct *pd)
+{
     xx_pcapng_private parsed;
     xx_pcapng *pcapng = (xx_pcapng *)self;
     if (!self) return false;
@@ -435,71 +409,96 @@ bool xx_pcapng_handle_base_info(Abstractformat *self, xx_pd_struct *pd) {
     return true;
 }
 
-int64_t xx_pcapng_get_format_size(Abstractformat *self, xx_pd_struct *pd) {
-    if (!self ||
-        (!self->base_info_handled && !xx_format_handle_base_info(self, pd))) {
+int64_t xx_pcapng_get_format_size(Abstractformat *self, xx_pd_struct *pd)
+{
+    if (!self || (!self->base_info_handled && !xx_format_handle_base_info(self, pd))) {
         return -1;
     }
     return self->format_size;
 }
 
-bool xx_pcapng_is_big_endian(const xx_pcapng *pcapng) {
+bool xx_pcapng_is_big_endian(const xx_pcapng *pcapng)
+{
     return pcapng ? pcapng->big_endian : false;
 }
-uint16_t xx_pcapng_get_major_version(const xx_pcapng *pcapng) {
+uint16_t xx_pcapng_get_major_version(const xx_pcapng *pcapng)
+{
     return pcapng ? pcapng->major_version : 0U;
 }
-uint16_t xx_pcapng_get_minor_version(const xx_pcapng *pcapng) {
+uint16_t xx_pcapng_get_minor_version(const xx_pcapng *pcapng)
+{
     return pcapng ? pcapng->minor_version : 0U;
 }
-uint64_t xx_pcapng_get_number_of_blocks(const xx_pcapng *pcapng) {
+uint64_t xx_pcapng_get_number_of_blocks(const xx_pcapng *pcapng)
+{
     return pcapng ? pcapng->number_of_blocks : 0U;
 }
-uint64_t xx_pcapng_get_number_of_sections(const xx_pcapng *pcapng) {
+uint64_t xx_pcapng_get_number_of_sections(const xx_pcapng *pcapng)
+{
     return pcapng ? pcapng->number_of_sections : 0U;
 }
-uint64_t xx_pcapng_get_number_of_interfaces(const xx_pcapng *pcapng) {
+uint64_t xx_pcapng_get_number_of_interfaces(const xx_pcapng *pcapng)
+{
     return pcapng ? pcapng->number_of_interfaces : 0U;
 }
-uint64_t xx_pcapng_get_number_of_packets(const xx_pcapng *pcapng) {
+uint64_t xx_pcapng_get_number_of_packets(const xx_pcapng *pcapng)
+{
     return pcapng ? pcapng->number_of_packets : 0U;
 }
-uint32_t xx_pcapng_get_link_type(const xx_pcapng *pcapng) {
+uint32_t xx_pcapng_get_link_type(const xx_pcapng *pcapng)
+{
     return pcapng ? pcapng->link_type : XX_PCAPNG_LINK_TYPE_NONE;
 }
-int64_t xx_pcapng_get_capture_end(const xx_pcapng *pcapng) {
+int64_t xx_pcapng_get_capture_end(const xx_pcapng *pcapng)
+{
     return pcapng ? pcapng->capture_end : -1;
 }
 
 /* Encoded/structural component members; this does not decode media. */
-static bool xx_components_build(Abstractformat *f, xx_component_stream *s, xx_pd_struct *pd) {
-
-    xx_pcapng *p=(xx_pcapng *)f;
-    int64_t pos=0;
-    while(pos<f->format_size) {
-        uint8_t h[28]; uint32_t type,n; int64_t offset,size; char kind[15]="block-00000000"; unsigned j;
-        if(xx_pd_is_stopped(pd) || !xx_component_read(f,pos,h,8)) return false;
-        type=xx_data_get_u32(h,8,0,p->big_endian); n=xx_data_get_u32(h,8,4,p->big_endian);
-        if(n<4 || n>(uint64_t)(f->format_size-pos)) return false;
-        for(j=0;j<8;++j) kind[6+j]="0123456789ABCDEF"[(type>>((7-j)*4))&15];
-        offset=pos+8; size=n>=12 ? n-12 : 0;
-        if(n>=12) {
-            if(type==6 && n>=32 && xx_component_read(f,pos,h,28)) {
-                uint32_t cap=xx_data_get_u32(h,28,20,p->big_endian);
-                if(cap<=n-32) { offset=pos+28; size=cap; xx_rt_memcpy(kind,"packet-EPB",11); }
-            } else if(type==2 && n>=32 && xx_component_read(f,pos,h,28)) {
-                uint32_t cap=xx_data_get_u32(h,28,20,p->big_endian);
-                if(cap<=n-32) { offset=pos+28; size=cap; xx_rt_memcpy(kind,"packet-PB",10); }
-            } else if(type==3 && n>=16 && xx_component_read(f,pos+8,h,4)) {
-                uint32_t orig=xx_data_get_u32(h,4,0,p->big_endian);
+static bool xx_components_build(Abstractformat *f, xx_component_stream *s, xx_pd_struct *pd)
+{
+    xx_pcapng *p = (xx_pcapng *)f;
+    int64_t pos = 0;
+    while (pos < f->format_size) {
+        uint8_t h[28];
+        uint32_t type, n;
+        int64_t offset, size;
+        char kind[15] = "block-00000000";
+        unsigned j;
+        if (xx_pd_is_stopped(pd) || !xx_component_read(f, pos, h, 8)) return false;
+        type = xx_data_get_u32(h, 8, 0, p->big_endian);
+        n = xx_data_get_u32(h, 8, 4, p->big_endian);
+        if (n < 4 || n > (uint64_t)(f->format_size - pos)) return false;
+        for (j = 0; j < 8; ++j) kind[6 + j] = "0123456789ABCDEF"[(type >> ((7 - j) * 4)) & 15];
+        offset = pos + 8;
+        size = n >= 12 ? n - 12 : 0;
+        if (n >= 12) {
+            if (type == 6 && n >= 32 && xx_component_read(f, pos, h, 28)) {
+                uint32_t cap = xx_data_get_u32(h, 28, 20, p->big_endian);
+                if (cap <= n - 32) {
+                    offset = pos + 28;
+                    size = cap;
+                    xx_rt_memcpy(kind, "packet-EPB", 11);
+                }
+            } else if (type == 2 && n >= 32 && xx_component_read(f, pos, h, 28)) {
+                uint32_t cap = xx_data_get_u32(h, 28, 20, p->big_endian);
+                if (cap <= n - 32) {
+                    offset = pos + 28;
+                    size = cap;
+                    xx_rt_memcpy(kind, "packet-PB", 10);
+                }
+            } else if (type == 3 && n >= 16 && xx_component_read(f, pos + 8, h, 4)) {
+                uint32_t orig = xx_data_get_u32(h, 4, 0, p->big_endian);
                 /* SPB has no captured-size field. Preserve its padded packet
                  * body rather than guessing away bytes from a truncated frame. */
-                offset=pos+12; size=n-16; if(orig<(uint64_t)size) size=orig;
-                xx_rt_memcpy(kind,"packet-SPB",11);
+                offset = pos + 12;
+                size = n - 16;
+                if (orig < (uint64_t)size) size = orig;
+                xx_rt_memcpy(kind, "packet-SPB", 11);
             }
-            if(!xx_component_add(f,s,offset,size,kind)) return false;
+            if (!xx_component_add(f, s, offset, size, kind)) return false;
         }
-        pos+=n;
+        pos += n;
     }
     return true;
 }

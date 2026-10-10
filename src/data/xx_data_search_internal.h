@@ -18,10 +18,7 @@ bool xx_data_can_fuse_literal_prefix(const uint8_t *pat, size_t pattern_size);
  * fills, next is last emitted offset+1, preserving any remaining mask bits on
  * resumption. Otherwise next is past the scanned batch. Zero means exhausted;
  * invalid inputs return zero and set a non-NULL next to size. No allocation. */
-size_t xx_data_collect_prefixes_buffer(const uint8_t *data, size_t size,
-                                      size_t start, const uint8_t prefix[2],
-                                      size_t *positions, size_t capacity,
-                                      size_t *next);
+size_t xx_data_collect_prefixes_buffer(const uint8_t *data, size_t size, size_t start, const uint8_t prefix[2], size_t *positions, size_t capacity, size_t *next);
 
 typedef struct XXDataLiteralDualBatch {
     size_t adjacent[128];
@@ -39,8 +36,6 @@ typedef struct XXDataLiteralDualBatch {
  * False means exhausted or invalid; counts are zero and next is size or
  * size-1 when batch is non-NULL. Arrays beyond each count are unspecified.
  * No allocation, cancellation, or change to the public stateless finders. */
-bool xx_data_collect_literal_dual_buffer(const uint8_t *data, size_t size,
-                                         size_t start, const uint8_t prefix[2],
-                                         XXDataLiteralDualBatch *batch);
+bool xx_data_collect_literal_dual_buffer(const uint8_t *data, size_t size, size_t start, const uint8_t prefix[2], XXDataLiteralDualBatch *batch);
 
 #endif

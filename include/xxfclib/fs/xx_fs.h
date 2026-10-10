@@ -73,9 +73,9 @@ typedef enum xx_fs_entry_type_e {
  * @ref xx_fs_entry_free.
  */
 typedef struct xx_fs_entry_s {
-    char *name;                 /**< Entry name, without any directory part. */
-    char *path;                 /**< Full path, the listed directory joined with @c name. */
-    xx_fs_entry_type_t type;    /**< File or directory. */
+    char *name;              /**< Entry name, without any directory part. */
+    char *path;              /**< Full path, the listed directory joined with @c name. */
+    xx_fs_entry_type_t type; /**< File or directory. */
 } xx_fs_entry_t;
 
 /* --------------------------------------------------------------- queries */
@@ -149,8 +149,7 @@ typedef enum xx_fs_sort_e {
  * DIE signature database is loaded that way, and the order decides which of
  * two scripts claiming the same file wins.
  */
-XXFC_API bool xx_fs_list_dir_sorted(const char *path, xx_list_t *list,
-                                    xx_fs_sort_t order);
+XXFC_API bool xx_fs_list_dir_sorted(const char *path, xx_list_t *list, xx_fs_sort_t order);
 
 /**
  * @brief Append the path of every file under @p path to @p list.
@@ -160,8 +159,7 @@ XXFC_API bool xx_fs_list_dir_sorted(const char *path, xx_list_t *list,
  * @param recursive Descend into subdirectories.
  * @return false if @p path could not be walked.
  */
-XXFC_API bool xx_fs_find_files(const char *path, xx_list_t *list,
-                               bool recursive);
+XXFC_API bool xx_fs_find_files(const char *path, xx_list_t *list, bool recursive);
 
 /* ----------------------------------------------------------------- paths */
 
@@ -204,8 +202,7 @@ XXFC_API char *xx_fs_path_complete_suffix(const char *path);
  * self-consistent of the two -- it can report a complete suffix shorter than
  * the plain suffix of the same name -- which is why it is not the default.
  */
-XXFC_API char *xx_fs_path_complete_suffix_ex(const char *path,
-                                             bool skip_leading_dot);
+XXFC_API char *xx_fs_path_complete_suffix_ex(const char *path, bool skip_leading_dot);
 
 /** @brief The path with separators in the platform's native direction. */
 XXFC_API char *xx_fs_path_native(const char *path);

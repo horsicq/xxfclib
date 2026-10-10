@@ -88,44 +88,34 @@ struct xx_ihex {
     uint8_t entry_type;              /**< 3 or 5; 0 when absent. */
     bool has_entry_point;
     bool has_eof_record;
-    bool has_incomplete_records;    /**< A recognizable malformed record or
-                                         record-allocation cap stopped the
-                                         accepted prefix past 64 KiB. */
-    bool has_segment_records;        /**< At least one type 02 record. */
-    bool has_linear_records;         /**< At least one type 04 record. */
-    int64_t stream_end;              /**< base_address + format_size, or -1. */
+    bool has_incomplete_records; /**< A recognizable malformed record or
+                                      record-allocation cap stopped the
+                                      accepted prefix past 64 KiB. */
+    bool has_segment_records;    /**< At least one type 02 record. */
+    bool has_linear_records;     /**< At least one type 04 record. */
+    int64_t stream_end;          /**< base_address + format_size, or -1. */
     void *internal;
 };
 
-XXFC_API void xx_ihex_init(xx_ihex *archive, xx_io_device *dev,
-                           int64_t base_address);
+XXFC_API void xx_ihex_init(xx_ihex *archive, xx_io_device *dev, int64_t base_address);
 XXFC_API xx_ihex *xx_ihex_create(xx_io_device *dev, int64_t base_address);
 XXFC_API void xx_ihex_destroy(xx_ihex *archive);
 XXFC_API void xx_ihex_free(xx_ihex *archive);
 
 XXFC_API bool xx_ihex_check_is_valid(Abstractformat *self, xx_pd_struct *pd);
 XXFC_API bool xx_ihex_handle_base_info(Abstractformat *self, xx_pd_struct *pd);
-XXFC_API int64_t xx_ihex_get_format_size(Abstractformat *self,
-                                         xx_pd_struct *pd);
-XXFC_API uint64_t xx_ihex_get_number_of_archive_records(Abstractformat *self,
-                                                        xx_pd_struct *pd);
+XXFC_API int64_t xx_ihex_get_format_size(Abstractformat *self, xx_pd_struct *pd);
+XXFC_API uint64_t xx_ihex_get_number_of_archive_records(Abstractformat *self, xx_pd_struct *pd);
 
-XXFC_API xx_archive_record_state *xx_ihex_create_archive_records_reading(
-    Abstractformat *self, const xx_list_s *options, xx_pd_struct *pd);
-XXFC_API const xx_archive_record *xx_ihex_get_current_archive_record(
-    Abstractformat *self, xx_archive_record_state *state);
-XXFC_API bool xx_ihex_unpack_current_archive_record(
-    Abstractformat *self, xx_archive_record_state *state, xx_pd_struct *pd);
-XXFC_API bool xx_ihex_archive_record_move_to_next(
-    Abstractformat *self, xx_archive_record_state *state, xx_pd_struct *pd);
-XXFC_API void xx_ihex_free_archive_records_reading(
-    Abstractformat *self, xx_archive_record_state *state);
+XXFC_API xx_archive_record_state *xx_ihex_create_archive_records_reading(Abstractformat *self, const xx_list_s *options, xx_pd_struct *pd);
+XXFC_API const xx_archive_record *xx_ihex_get_current_archive_record(Abstractformat *self, xx_archive_record_state *state);
+XXFC_API bool xx_ihex_unpack_current_archive_record(Abstractformat *self, xx_archive_record_state *state, xx_pd_struct *pd);
+XXFC_API bool xx_ihex_archive_record_move_to_next(Abstractformat *self, xx_archive_record_state *state, xx_pd_struct *pd);
+XXFC_API void xx_ihex_free_archive_records_reading(Abstractformat *self, xx_archive_record_state *state);
 
 /** Decode block `index` and write its bytes to destination (NULL only
  *  verifies that the block decodes). */
-XXFC_API bool xx_ihex_unpack_block_to_device(xx_ihex *archive, uint64_t index,
-                                             xx_io_device *destination,
-                                             xx_pd_struct *pd);
+XXFC_API bool xx_ihex_unpack_block_to_device(xx_ihex *archive, uint64_t index, xx_io_device *destination, xx_pd_struct *pd);
 
 /** Bounded probe: true when the first non-empty line of the device is a
  *  well formed Intel HEX record whose checksum verifies.  Reads at most
@@ -144,27 +134,31 @@ XXFC_API uint64_t xx_ihex_get_number_of_lines(const xx_ihex *archive);
 XXFC_API uint64_t xx_ihex_get_data_bytes(const xx_ihex *archive);
 XXFC_API uint64_t xx_ihex_get_number_of_blocks(const xx_ihex *archive);
 /** Start address and size of block `index`; 0 when out of range. */
-XXFC_API uint64_t xx_ihex_get_block_address(const xx_ihex *archive,
-                                            uint64_t index);
-XXFC_API uint64_t xx_ihex_get_block_size(const xx_ihex *archive,
-                                         uint64_t index);
+XXFC_API uint64_t xx_ihex_get_block_address(const xx_ihex *archive, uint64_t index);
+XXFC_API uint64_t xx_ihex_get_block_size(const xx_ihex *archive, uint64_t index);
 XXFC_API uint64_t xx_ihex_get_load_address(const xx_ihex *archive);
 XXFC_API uint32_t xx_ihex_get_entry_point(const xx_ihex *archive);
 XXFC_API bool xx_ihex_get_has_entry_point(const xx_ihex *archive);
 XXFC_API int64_t xx_ihex_get_stream_end(const xx_ihex *archive);
 
-static inline Abstractformat *xx_ihex_to_format(xx_ihex *archive) {
+static inline Abstractformat *xx_ihex_to_format(xx_ihex *archive)
+{
     return archive ? &archive->format : NULL;
 }
-static inline void XIhex_init(xx_ihex *archive, xx_io_device *dev,
-                              int64_t base_address) {
+static inline void XIhex_init(xx_ihex *archive, xx_io_device *dev, int64_t base_address)
+{
     xx_ihex_init(archive, dev, base_address);
 }
-static inline xx_ihex *XIhex_create(xx_io_device *dev, int64_t base_address) {
+static inline xx_ihex *XIhex_create(xx_io_device *dev, int64_t base_address)
+{
     return xx_ihex_create(dev, base_address);
 }
-static inline void XIhex_free(xx_ihex *archive) { xx_ihex_free(archive); }
-static inline bool XIhex_is_valid(xx_ihex *archive, xx_pd_struct *pd) {
+static inline void XIhex_free(xx_ihex *archive)
+{
+    xx_ihex_free(archive);
+}
+static inline bool XIhex_is_valid(xx_ihex *archive, xx_pd_struct *pd)
+{
     return archive ? xx_format_is_valid(&archive->format, pd) : false;
 }
 

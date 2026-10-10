@@ -80,34 +80,24 @@ struct xx_dmsfw {
     void *internal;
 };
 
-XXFC_API void xx_dmsfw_init(xx_dmsfw *dmsfw, xx_io_device *dev,
-                            int64_t base_address);
+XXFC_API void xx_dmsfw_init(xx_dmsfw *dmsfw, xx_io_device *dev, int64_t base_address);
 XXFC_API xx_dmsfw *xx_dmsfw_create(xx_io_device *dev, int64_t base_address);
 XXFC_API void xx_dmsfw_destroy(xx_dmsfw *dmsfw);
 XXFC_API void xx_dmsfw_free(xx_dmsfw *dmsfw);
 
 XXFC_API bool xx_dmsfw_check_is_valid(Abstractformat *self, xx_pd_struct *pd);
-XXFC_API bool xx_dmsfw_handle_base_info(Abstractformat *self,
-                                        xx_pd_struct *pd);
-XXFC_API int64_t xx_dmsfw_get_format_size(Abstractformat *self,
-                                          xx_pd_struct *pd);
-XXFC_API uint64_t xx_dmsfw_get_number_of_archive_records(Abstractformat *self,
-                                                         xx_pd_struct *pd);
+XXFC_API bool xx_dmsfw_handle_base_info(Abstractformat *self, xx_pd_struct *pd);
+XXFC_API int64_t xx_dmsfw_get_format_size(Abstractformat *self, xx_pd_struct *pd);
+XXFC_API uint64_t xx_dmsfw_get_number_of_archive_records(Abstractformat *self, xx_pd_struct *pd);
 
-XXFC_API xx_archive_record_state *xx_dmsfw_create_archive_records_reading(
-    Abstractformat *self, const xx_list_s *options, xx_pd_struct *pd);
-XXFC_API const xx_archive_record *xx_dmsfw_get_current_archive_record(
-    Abstractformat *self, xx_archive_record_state *state);
-XXFC_API bool xx_dmsfw_unpack_current_archive_record(
-    Abstractformat *self, xx_archive_record_state *state, xx_pd_struct *pd);
-XXFC_API bool xx_dmsfw_archive_record_move_to_next(
-    Abstractformat *self, xx_archive_record_state *state, xx_pd_struct *pd);
-XXFC_API void xx_dmsfw_free_archive_records_reading(
-    Abstractformat *self, xx_archive_record_state *state);
+XXFC_API xx_archive_record_state *xx_dmsfw_create_archive_records_reading(Abstractformat *self, const xx_list_s *options, xx_pd_struct *pd);
+XXFC_API const xx_archive_record *xx_dmsfw_get_current_archive_record(Abstractformat *self, xx_archive_record_state *state);
+XXFC_API bool xx_dmsfw_unpack_current_archive_record(Abstractformat *self, xx_archive_record_state *state, xx_pd_struct *pd);
+XXFC_API bool xx_dmsfw_archive_record_move_to_next(Abstractformat *self, xx_archive_record_state *state, xx_pd_struct *pd);
+XXFC_API void xx_dmsfw_free_archive_records_reading(Abstractformat *self, xx_archive_record_state *state);
 
 /** Writes the un-swapped image (unswapped_size bytes) to @p output. */
-XXFC_API bool xx_dmsfw_unpack_to_device(xx_dmsfw *dmsfw, xx_io_device *output,
-                                        xx_pd_struct *pd);
+XXFC_API bool xx_dmsfw_unpack_to_device(xx_dmsfw *dmsfw, xx_io_device *output, xx_pd_struct *pd);
 
 XXFC_API uint64_t xx_dmsfw_get_number_of_records(const xx_dmsfw *dmsfw);
 XXFC_API uint64_t xx_dmsfw_get_number_of_members(const xx_dmsfw *dmsfw);
@@ -115,19 +105,24 @@ XXFC_API uint32_t xx_dmsfw_get_image_size(const xx_dmsfw *dmsfw);
 XXFC_API uint32_t xx_dmsfw_get_unswapped_size(const xx_dmsfw *dmsfw);
 XXFC_API int64_t xx_dmsfw_get_image_end(const xx_dmsfw *dmsfw);
 
-static inline Abstractformat *xx_dmsfw_to_format(xx_dmsfw *dmsfw) {
+static inline Abstractformat *xx_dmsfw_to_format(xx_dmsfw *dmsfw)
+{
     return dmsfw ? &dmsfw->format : NULL;
 }
-static inline void XDmsfw_init(xx_dmsfw *dmsfw, xx_io_device *dev,
-                               int64_t base_address) {
+static inline void XDmsfw_init(xx_dmsfw *dmsfw, xx_io_device *dev, int64_t base_address)
+{
     xx_dmsfw_init(dmsfw, dev, base_address);
 }
-static inline xx_dmsfw *XDmsfw_create(xx_io_device *dev,
-                                      int64_t base_address) {
+static inline xx_dmsfw *XDmsfw_create(xx_io_device *dev, int64_t base_address)
+{
     return xx_dmsfw_create(dev, base_address);
 }
-static inline void XDmsfw_free(xx_dmsfw *dmsfw) { xx_dmsfw_free(dmsfw); }
-static inline bool XDmsfw_is_valid(xx_dmsfw *dmsfw, xx_pd_struct *pd) {
+static inline void XDmsfw_free(xx_dmsfw *dmsfw)
+{
+    xx_dmsfw_free(dmsfw);
+}
+static inline bool XDmsfw_is_valid(xx_dmsfw *dmsfw, xx_pd_struct *pd)
+{
     return dmsfw ? xx_format_is_valid(&dmsfw->format, pd) : false;
 }
 

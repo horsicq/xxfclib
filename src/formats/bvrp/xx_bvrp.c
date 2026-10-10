@@ -57,15 +57,12 @@ typedef struct bvrp_stream_s {
     int64_t archive_size;
 } bvrp_stream;
 
-static bool bvrp_read_at(xx_io_device *device, int64_t offset, void *buffer,
-                        size_t size) {
+static bool bvrp_read_at(xx_io_device *device, int64_t offset, void *buffer, size_t size)
+{
     size_t done = 0U;
-    if (!device || (!buffer && size != 0U) || offset < 0 ||
-        xx_io_seek64(device, offset, SEEK_SET) != 0)
-        return false;
+    if (!device || (!buffer && size != 0U) || offset < 0 || xx_io_seek64(device, offset, SEEK_SET) != 0) return false;
     while (done < size) {
-        ssize_t amount = xx_io_read(device, (uint8_t *)buffer + done,
-                                    size - done);
+        ssize_t amount = xx_io_read(device, (uint8_t *)buffer + done, size - done);
         if (amount <= 0 || (size_t)amount > size - done) return false;
         done += (size_t)amount;
     }
@@ -75,7 +72,8 @@ static bool bvrp_read_at(xx_io_device *device, int64_t offset, void *buffer,
 /* Every name field in these containers is a fixed-width buffer whose tail is
  * uninitialised builder heap, so only the bytes before the first NUL are ever
  * surfaced, and separators and traversal components are made harmless. */
-static char *bvrp_normalize_name(const uint8_t *bytes, size_t size) {
+static char *bvrp_normalize_name(const uint8_t *bytes, size_t size)
+{
     char *name;
     size_t input = 0U, output = 0U, limit = 0U;
     if ((!bytes && size != 0U) || size > SIZE_MAX - 2U) return NULL;
@@ -87,16 +85,12 @@ static char *bvrp_normalize_name(const uint8_t *bytes, size_t size) {
     if (!name) return NULL;
     while (input < size) {
         size_t start, end, component_start;
-        while (input < size && (bytes[input] == '/' || bytes[input] == '\\'))
-            ++input;
+        while (input < size && (bytes[input] == '/' || bytes[input] == '\\')) ++input;
         start = input;
-        while (input < size && bytes[input] != '/' && bytes[input] != '\\')
-            ++input;
+        while (input < size && bytes[input] != '/' && bytes[input] != '\\') ++input;
         end = input;
-        if (end == start || (end - start == 1U && bytes[start] == '.'))
-            continue;
-        if (end - start == 2U && bytes[start] == '.' &&
-            bytes[start + 1U] == '.') {
+        if (end == start || (end - start == 1U && bytes[start] == '.')) continue;
+        if (end - start == 2U && bytes[start] == '.' && bytes[start + 1U] == '.') {
             if (output != 0U) {
                 while (output != 0U && name[output - 1U] != '/') --output;
                 if (output != 0U) --output;
@@ -107,15 +101,10 @@ static char *bvrp_normalize_name(const uint8_t *bytes, size_t size) {
         component_start = output;
         while (start < end) {
             uint8_t c = bytes[start++];
-            if (c < 0x20U || c == '"' || c == '*' || c == ':' || c == '<' ||
-                c == '>' || c == '?' || c == '|' || c == 0U)
-                name[output++] = '_';
-            else
-                name[output++] = (char)c;
+            if (c < 0x20U || c == '"' || c == '*' || c == ':' || c == '<' || c == '>' || c == '?' || c == '|' || c == 0U) name[output++] = '_';
+            else name[output++] = (char)c;
         }
-        while (output > component_start &&
-               (name[output - 1U] == ' ' || name[output - 1U] == '.'))
-            --output;
+        while (output > component_start && (name[output - 1U] == ' ' || name[output - 1U] == '.')) --output;
         if (output == component_start) name[output++] = '_';
     }
     if (output == 0U) name[output++] = '_';
@@ -125,21 +114,18 @@ static char *bvrp_normalize_name(const uint8_t *bytes, size_t size) {
 
 /* A member name that survives to the filesystem must be a plain relative
  * path; anything else makes the member invalid rather than renamed. */
-static bool bvrp_safe_output_name(const char *name) {
+static bool bvrp_safe_output_name(const char *name)
+{
     const char *segment;
     const char *at;
-    if (!name || !name[0] || name[0] == '/' || name[0] == '\\' ||
-        name[1] == ':') return false;
+    if (!name || !name[0] || name[0] == '/' || name[0] == '\\' || name[1] == ':') return false;
     segment = name;
     for (at = name;; ++at) {
         unsigned char c = (unsigned char)*at;
-        if (c == ':' || c == '<' || c == '>' || c == '"' || c == '|' ||
-            c == '?' || c == '*' || (c != 0U && c < 0x20U)) return false;
+        if (c == ':' || c == '<' || c == '>' || c == '"' || c == '|' || c == '?' || c == '*' || (c != 0U && c < 0x20U)) return false;
         if (c == '/' || c == '\\' || c == 0U) {
             size_t length = (size_t)(at - segment);
-            if (length == 0U || (length == 1U && segment[0] == '.') ||
-                (length == 2U && segment[0] == '.' && segment[1] == '.'))
-                return false;
+            if (length == 0U || (length == 1U && segment[0] == '.') || (length == 2U && segment[0] == '.' && segment[1] == '.')) return false;
             if (c == 0U) return true;
             segment = at + 1;
         }
@@ -149,7 +135,8 @@ static bool bvrp_safe_output_name(const char *name) {
 /* The raw 8.3 fields of these DOS-era containers are the only evidence that a
  * candidate offset really is a header, so a byte that cannot appear in a name
  * rejects the file instead of being scrubbed. */
-static bool bvrp_plausible_raw_name(const uint8_t *bytes, size_t size) {
+static bool bvrp_plausible_raw_name(const uint8_t *bytes, size_t size)
+{
     size_t index;
     if (!bytes || size == 0U || bytes[0] == 0U) return false;
     for (index = 0U; index < size; ++index) {
@@ -160,7 +147,8 @@ static bool bvrp_plausible_raw_name(const uint8_t *bytes, size_t size) {
     return true;
 }
 
-static void bvrp_stream_free(void *opaque) {
+static void bvrp_stream_free(void *opaque)
+{
     bvrp_stream *stream = (bvrp_stream *)opaque;
     size_t index;
     if (!stream) return;
@@ -170,13 +158,11 @@ static void bvrp_stream_free(void *opaque) {
     xx_mem_free(stream);
 }
 
-static bool bvrp_add_member(bvrp_stream *stream, const bvrp_member *member) {
+static bool bvrp_add_member(bvrp_stream *stream, const bvrp_member *member)
+{
     bvrp_member *grown;
-    if (!stream || !member || stream->count >= BVRP_MAX_MEMBERS ||
-        stream->count > SIZE_MAX / sizeof(*grown) - 1U)
-        return false;
-    grown = (bvrp_member *)xx_mem_realloc(stream->items,
-                                         (stream->count + 1U) * sizeof(*grown));
+    if (!stream || !member || stream->count >= BVRP_MAX_MEMBERS || stream->count > SIZE_MAX / sizeof(*grown) - 1U) return false;
+    grown = (bvrp_member *)xx_mem_realloc(stream->items, (stream->count + 1U) * sizeof(*grown));
     if (!grown) return false;
     stream->items = grown;
     stream->items[stream->count++] = *member;
@@ -190,34 +176,26 @@ static bool bvrp_add_member(bvrp_stream *stream, const bvrp_member *member) {
 #define BVRP_METHOD_STORED 0U
 #define BVRP_METHOD_LZHUF 1U
 
-static bool bvrp_parse(Abstractformat *format, bvrp_stream **result) {
+static bool bvrp_parse(Abstractformat *format, bvrp_stream **result)
+{
     uint8_t header[BVRP_HEADER_SIZE];
     bvrp_stream *stream = NULL;
     int64_t total, size, cursor;
     uint32_t count, index, first;
-    if (!format || !format->device || !result || format->base_address < 0)
-        return false;
+    if (!format || !format->device || !result || format->base_address < 0) return false;
     total = xx_io_total_size(format->device);
     if (total < format->base_address) return false;
     size = total - format->base_address;
-    if (size < (int64_t)(BVRP_HEADER_SIZE + BVRP_ENTRY_SIZE) ||
-        !bvrp_read_at(format->device, format->base_address, header,
-                      sizeof(header)))
-        return false;
+    if (size < (int64_t)(BVRP_HEADER_SIZE + BVRP_ENTRY_SIZE) || !bvrp_read_at(format->device, format->base_address, header, sizeof(header))) return false;
     /* The banner is not a flat space pad -- a CR/LF pair sits at 0x20 -- so
      * only the literal prefix and the vendor substring may be compared. */
     if (xx_rt_memcmp(header, "PAC - ", 6U) != 0 ||
-        !(xx_rt_memcmp(header + 6U, "(c) BVRP Software", 17U) == 0 ||
-          (header[6] == 0xa9U && header[7] == ' ' &&
-           xx_rt_memcmp(header + 8U, "BVRP Software", 13U) == 0)) ||
-        xx_rt_memcmp(header + 0x4cU, "\x00\x0d\x0a\x1a", 4U) != 0 ||
-        xx_data_get_u16(header + 0x50U, 2, 0, false) != BVRP_SIGNATURE)
+        !(xx_rt_memcmp(header + 6U, "(c) BVRP Software", 17U) == 0 || (header[6] == 0xa9U && header[7] == ' ' && xx_rt_memcmp(header + 8U, "BVRP Software", 13U) == 0)) ||
+        xx_rt_memcmp(header + 0x4cU, "\x00\x0d\x0a\x1a", 4U) != 0 || xx_data_get_u16(header + 0x50U, 2, 0, false) != BVRP_SIGNATURE)
         return false;
     first = xx_data_get_u32(header + 0x5cU, 4, 0, false);
     count = xx_data_get_u16(header + 0x60U, 2, 0, false);
-    if (count == 0U || count > BVRP_MAX_MEMBERS || first < 0x62U ||
-        (int64_t)first > size - (int64_t)BVRP_ENTRY_SIZE)
-        return false;
+    if (count == 0U || count > BVRP_MAX_MEMBERS || first < 0x62U || (int64_t)first > size - (int64_t)BVRP_ENTRY_SIZE) return false;
     stream = (bvrp_stream *)xx_mem_calloc(1U, sizeof(*stream));
     if (!stream) return false;
     cursor = (int64_t)first;
@@ -227,44 +205,27 @@ static bool bvrp_parse(Abstractformat *format, bvrp_stream **result) {
         bvrp_member member;
         uint32_t next, crc_field, tail_size;
         size_t name_size = 0U;
-        if (cursor < 0 || cursor > size - (int64_t)BVRP_ENTRY_SIZE ||
-            !bvrp_read_at(format->device, format->base_address + cursor, entry,
-                          sizeof(entry)))
-            goto fail;
-        if (!bvrp_plausible_raw_name(entry, BVRP_NAME_SIZE) ||
-            entry[0x1fU] != 0U)
-            goto fail;
+        if (cursor < 0 || cursor > size - (int64_t)BVRP_ENTRY_SIZE || !bvrp_read_at(format->device, format->base_address + cursor, entry, sizeof(entry))) goto fail;
+        if (!bvrp_plausible_raw_name(entry, BVRP_NAME_SIZE) || entry[0x1fU] != 0U) goto fail;
         next = xx_data_get_u32(entry + 0x13U, 4, 0, false);
         /* Strict forward progress both derives the payload slice and
          * guarantees the walk terminates. */
-        if ((int64_t)next < cursor + (int64_t)BVRP_ENTRY_SIZE ||
-            (int64_t)next > size)
-            goto fail;
+        if ((int64_t)next < cursor + (int64_t)BVRP_ENTRY_SIZE || (int64_t)next > size) goto fail;
         crc_field = xx_data_get_u32(entry + 0x1bU, 4, 0, false);
         tail_size = crc_field >> 16U;
-        while (name_size < BVRP_NAME_SIZE && entry[name_size] != 0U)
-            ++name_size;
+        while (name_size < BVRP_NAME_SIZE && entry[name_size] != 0U) ++name_size;
         /* PAC writers may append the NUL-terminated member name to each
          * compressed payload. Some record its length in the high CRC word;
          * others leave that word zero. The exact name and terminating NUL
          * identify the latter trailer without accepting arbitrary padding. */
-        if (tail_size == 0U && entry[0x12U] == BVRP_METHOD_LZHUF &&
-            (int64_t)(name_size + 1U) <=
-                next - cursor - BVRP_ENTRY_SIZE &&
-            bvrp_read_at(format->device,
-                          format->base_address + next - name_size - 1U,
-                          name_tail, name_size + 1U) &&
-            xx_rt_memcmp(name_tail, entry, name_size) == 0 &&
+        if (tail_size == 0U && entry[0x12U] == BVRP_METHOD_LZHUF && (int64_t)(name_size + 1U) <= next - cursor - BVRP_ENTRY_SIZE &&
+            bvrp_read_at(format->device, format->base_address + next - name_size - 1U, name_tail, name_size + 1U) && xx_rt_memcmp(name_tail, entry, name_size) == 0 &&
             name_tail[name_size] == 0U) {
             tail_size = (uint32_t)name_size + 1U;
         }
         if (tail_size != 0U) {
-            if (tail_size != name_size + 1U ||
-                (int64_t)tail_size > next - cursor - BVRP_ENTRY_SIZE ||
-                !bvrp_read_at(format->device,
-                              format->base_address + next - tail_size,
-                              name_tail, tail_size) ||
-                xx_rt_memcmp(name_tail, entry, name_size) != 0 ||
+            if (tail_size != name_size + 1U || (int64_t)tail_size > next - cursor - BVRP_ENTRY_SIZE ||
+                !bvrp_read_at(format->device, format->base_address + next - tail_size, name_tail, tail_size) || xx_rt_memcmp(name_tail, entry, name_size) != 0 ||
                 name_tail[name_size] != 0U)
                 goto fail;
         }
@@ -274,13 +235,11 @@ static bool bvrp_parse(Abstractformat *format, bvrp_stream **result) {
         member.header_offset = format->base_address + cursor;
         member.header_size = (int64_t)BVRP_ENTRY_SIZE;
         member.data_offset = member.header_offset + (int64_t)BVRP_ENTRY_SIZE;
-        member.packed_size = (int64_t)next - cursor -
-                             (int64_t)BVRP_ENTRY_SIZE - tail_size;
+        member.packed_size = (int64_t)next - cursor - (int64_t)BVRP_ENTRY_SIZE - tail_size;
         member.unpacked_size = xx_data_get_u32(entry + 0x17U, 4, 0, false);
         member.method = entry[0x12U];
         member.crc = crc_field & 0xffffU;
-        member.dos_time = ((uint32_t)xx_data_get_u16(entry + 0x0eU, 2, 0, false) << 16U) |
-                          xx_data_get_u16(entry + 0x10U, 2, 0, false);
+        member.dos_time = ((uint32_t)xx_data_get_u16(entry + 0x0eU, 2, 0, false) << 16U) | xx_data_get_u16(entry + 0x10U, 2, 0, false);
         if (!bvrp_add_member(stream, &member)) {
             xx_str_free(member.name);
             goto fail;
@@ -298,17 +257,16 @@ fail:
     return false;
 }
 
-static bool bvrp_copy_options(xx_list_s *destination, const xx_list_s *source) {
+static bool bvrp_copy_options(xx_list_s *destination, const xx_list_s *source)
+{
     size_t index;
     if (!source) return true;
     for (index = 0U; index < source->count; ++index) {
-        const xx_meta *original =
-            (const xx_meta *)xx_list_at((const xx_list_t *)source, index);
+        const xx_meta *original = (const xx_meta *)xx_list_at((const xx_list_t *)source, index);
         xx_meta copy;
         if (!original) continue;
         xx_meta_init(&copy, original->meta_id);
-        if (!xx_var_copy(&copy.var, &original->var) ||
-            !xx_list_append(destination, &copy)) {
+        if (!xx_var_copy(&copy.var, &original->var) || !xx_list_append(destination, &copy)) {
             xx_meta_cleanup(&copy);
             return false;
         }
@@ -316,19 +274,19 @@ static bool bvrp_copy_options(xx_list_s *destination, const xx_list_s *source) {
     return true;
 }
 
-static const xx_var *bvrp_option(const xx_list_s *options, uint32_t id) {
+static const xx_var *bvrp_option(const xx_list_s *options, uint32_t id)
+{
     size_t index;
     if (!options) return NULL;
     for (index = 0U; index < options->count; ++index) {
-        const xx_meta *meta =
-            (const xx_meta *)xx_list_at((const xx_list_t *)options, index);
+        const xx_meta *meta = (const xx_meta *)xx_list_at((const xx_list_t *)options, index);
         if (meta && meta->meta_id == id) return &meta->var;
     }
     return NULL;
 }
 
-static bool bvrp_set_record(xx_archive_record *record,
-                           const bvrp_member *member) {
+static bool bvrp_set_record(xx_archive_record *record, const bvrp_member *member)
+{
     xx_archive_record_cleanup(record);
     xx_archive_record_init(record);
     record->header_offset = member->header_offset;
@@ -336,52 +294,34 @@ static bool bvrp_set_record(xx_archive_record *record,
     record->data_offset = member->data_offset;
     record->compressed_size = member->packed_size;
     return xx_archive_record_set_original_name(record, member->name) &&
-           xx_archive_record_set_meta_u64(record, XX_META_ID_COMPRESSED_SIZE,
-                                          (uint64_t)member->packed_size) &&
-           xx_archive_record_set_meta_u64(record, XX_META_ID_UNCOMPRESSED_SIZE,
-                                          member->unpacked_size) &&
-           xx_archive_record_set_meta_u64(record, XX_META_ID_COMPRESSION_METHOD,
-                                          member->method) &&
-           xx_archive_record_set_meta_u64(record, XX_META_ID_CRC32,
-                                          member->crc) &&
-           xx_archive_record_set_meta_u64(record, XX_META_ID_TIMESTAMP,
-                                          member->dos_time) &&
-           xx_archive_record_set_meta_bool(record, XX_META_ID_IS_FOLDER,
-                                           member->folder);
+           xx_archive_record_set_meta_u64(record, XX_META_ID_COMPRESSED_SIZE, (uint64_t)member->packed_size) &&
+           xx_archive_record_set_meta_u64(record, XX_META_ID_UNCOMPRESSED_SIZE, member->unpacked_size) &&
+           xx_archive_record_set_meta_u64(record, XX_META_ID_COMPRESSION_METHOD, member->method) &&
+           xx_archive_record_set_meta_u64(record, XX_META_ID_CRC32, member->crc) && xx_archive_record_set_meta_u64(record, XX_META_ID_TIMESTAMP, member->dos_time) &&
+           xx_archive_record_set_meta_bool(record, XX_META_ID_IS_FOLDER, member->folder);
 }
 
-static bool bvrp_decode_member(Abstractformat *format,
-                               const bvrp_member *member, uint8_t **plain,
-                               size_t *plain_size) {
+static bool bvrp_decode_member(Abstractformat *format, const bvrp_member *member, uint8_t **plain, size_t *plain_size)
+{
     uint8_t *packed = NULL;
     uint8_t *output = NULL;
     size_t written = 0U, output_size;
-    if (!format || !member || !plain || !plain_size || member->packed_size < 0 ||
-        member->unpacked_size > SIZE_MAX ||
-        (member->method != BVRP_METHOD_LZHUF &&
-         member->method != BVRP_METHOD_STORED))
+    if (!format || !member || !plain || !plain_size || member->packed_size < 0 || member->unpacked_size > SIZE_MAX ||
+        (member->method != BVRP_METHOD_LZHUF && member->method != BVRP_METHOD_STORED))
         return false;
     output_size = (size_t)member->unpacked_size;
-    packed = (uint8_t *)xx_mem_alloc(member->packed_size != 0
-                                         ? (size_t)member->packed_size : 1U);
+    packed = (uint8_t *)xx_mem_alloc(member->packed_size != 0 ? (size_t)member->packed_size : 1U);
     output = (uint8_t *)xx_mem_alloc(output_size != 0U ? output_size : 1U);
-    if (!packed || !output ||
-        (member->packed_size != 0 &&
-         !bvrp_read_at(format->device, member->data_offset, packed,
-                       (size_t)member->packed_size)) ||
-        (member->method == BVRP_METHOD_STORED &&
-         (size_t)member->packed_size != output_size))
+    if (!packed || !output || (member->packed_size != 0 && !bvrp_read_at(format->device, member->data_offset, packed, (size_t)member->packed_size)) ||
+        (member->method == BVRP_METHOD_STORED && (size_t)member->packed_size != output_size))
         goto fail;
     if (member->method == BVRP_METHOD_STORED) {
         if (output_size != 0U) xx_rt_memcpy(output, packed, output_size);
         written = output_size;
-    } else if (!xx_lzh1_decode_memory(packed, (size_t)member->packed_size,
-                                      output, output_size, &written)) {
+    } else if (!xx_lzh1_decode_memory(packed, (size_t)member->packed_size, output, output_size, &written)) {
         goto fail;
     }
-    if (written != output_size ||
-        xx_crc16_arc_calc(0U, output, written) != (uint16_t)member->crc)
-        goto fail;
+    if (written != output_size || xx_crc16_arc_calc(0U, output, written) != (uint16_t)member->crc) goto fail;
     xx_mem_free(packed);
     *plain = output;
     *plain_size = written;
@@ -392,7 +332,8 @@ fail:
     return false;
 }
 
-void xx_bvrp_init(xx_bvrp *archive, xx_io_device *device, int64_t base_address) {
+void xx_bvrp_init(xx_bvrp *archive, xx_io_device *device, int64_t base_address)
+{
     if (!archive) return;
     xx_mem_zero(archive, sizeof(*archive));
     xx_format_init(&archive->format, device, base_address);
@@ -405,38 +346,36 @@ void xx_bvrp_init(xx_bvrp *archive, xx_io_device *device, int64_t base_address) 
     archive->format.check_is_valid = xx_bvrp_check_is_valid;
     archive->format.handle_base_info = xx_bvrp_handle_base_info;
     archive->format.get_format_size = xx_bvrp_get_format_size;
-    archive->format.get_number_of_archive_records =
-        xx_bvrp_get_number_of_archive_records;
-    archive->format.create_archive_records_reading =
-        xx_bvrp_create_archive_records_reading;
-    archive->format.get_current_archive_record =
-        xx_bvrp_get_current_archive_record;
-    archive->format.unpack_current_archive_record =
-        xx_bvrp_unpack_current_archive_record;
-    archive->format.archive_record_move_to_next =
-        xx_bvrp_archive_record_move_to_next;
-    archive->format.free_archive_records_reading =
-        xx_bvrp_free_archive_records_reading;
+    archive->format.get_number_of_archive_records = xx_bvrp_get_number_of_archive_records;
+    archive->format.create_archive_records_reading = xx_bvrp_create_archive_records_reading;
+    archive->format.get_current_archive_record = xx_bvrp_get_current_archive_record;
+    archive->format.unpack_current_archive_record = xx_bvrp_unpack_current_archive_record;
+    archive->format.archive_record_move_to_next = xx_bvrp_archive_record_move_to_next;
+    archive->format.free_archive_records_reading = xx_bvrp_free_archive_records_reading;
     archive->archive_end = -1;
 }
 
-xx_bvrp *xx_bvrp_create(xx_io_device *device, int64_t base_address) {
+xx_bvrp *xx_bvrp_create(xx_io_device *device, int64_t base_address)
+{
     xx_bvrp *archive = (xx_bvrp *)xx_mem_alloc(sizeof(*archive));
     if (archive) xx_bvrp_init(archive, device, base_address);
     return archive;
 }
 
-void xx_bvrp_destroy(xx_bvrp *archive) {
+void xx_bvrp_destroy(xx_bvrp *archive)
+{
     if (archive) xx_format_cleanup_extra_parameters(&archive->format);
 }
 
-void xx_bvrp_free(xx_bvrp *archive) {
+void xx_bvrp_free(xx_bvrp *archive)
+{
     if (!archive) return;
     xx_bvrp_destroy(archive);
     xx_mem_free(archive);
 }
 
-bool xx_bvrp_check_is_valid(Abstractformat *format, xx_pd_struct *pd) {
+bool xx_bvrp_check_is_valid(Abstractformat *format, xx_pd_struct *pd)
+{
     bvrp_stream *stream;
     (void)pd;
     if (!bvrp_parse(format, &stream)) return false;
@@ -444,7 +383,8 @@ bool xx_bvrp_check_is_valid(Abstractformat *format, xx_pd_struct *pd) {
     return true;
 }
 
-bool xx_bvrp_handle_base_info(Abstractformat *format, xx_pd_struct *pd) {
+bool xx_bvrp_handle_base_info(Abstractformat *format, xx_pd_struct *pd)
+{
     bvrp_stream *stream;
     xx_bvrp *archive;
     (void)pd;
@@ -460,21 +400,18 @@ bool xx_bvrp_handle_base_info(Abstractformat *format, xx_pd_struct *pd) {
     return true;
 }
 
-int64_t xx_bvrp_get_format_size(Abstractformat *format, xx_pd_struct *pd) {
-    return format && (format->base_info_handled ||
-                      xx_bvrp_handle_base_info(format, pd))
-               ? format->format_size : -1;
+int64_t xx_bvrp_get_format_size(Abstractformat *format, xx_pd_struct *pd)
+{
+    return format && (format->base_info_handled || xx_bvrp_handle_base_info(format, pd)) ? format->format_size : -1;
 }
 
-uint64_t xx_bvrp_get_number_of_archive_records(Abstractformat *format,
-                                              xx_pd_struct *pd) {
-    return format && (format->base_info_handled ||
-                      xx_bvrp_handle_base_info(format, pd))
-               ? ((xx_bvrp *)format)->number_of_records : 0U;
+uint64_t xx_bvrp_get_number_of_archive_records(Abstractformat *format, xx_pd_struct *pd)
+{
+    return format && (format->base_info_handled || xx_bvrp_handle_base_info(format, pd)) ? ((xx_bvrp *)format)->number_of_records : 0U;
 }
 
-xx_archive_record_state *xx_bvrp_create_archive_records_reading(
-    Abstractformat *format, const xx_list_s *options, xx_pd_struct *pd) {
+xx_archive_record_state *xx_bvrp_create_archive_records_reading(Abstractformat *format, const xx_list_s *options, xx_pd_struct *pd)
+{
     bvrp_stream *stream;
     xx_archive_record_state *state;
     (void)pd;
@@ -488,8 +425,7 @@ xx_archive_record_state *xx_bvrp_create_archive_records_reading(
     state->internal_state = stream;
     state->free_internal = bvrp_stream_free;
     state->total_records = stream->count;
-    if (!bvrp_copy_options(&state->options, options) ||
-        !bvrp_set_record(&state->current_record, &stream->items[0])) {
+    if (!bvrp_copy_options(&state->options, options) || !bvrp_set_record(&state->current_record, &stream->items[0])) {
         xx_archive_record_state_free(state);
         return NULL;
     }
@@ -497,32 +433,26 @@ xx_archive_record_state *xx_bvrp_create_archive_records_reading(
     return state;
 }
 
-const xx_archive_record *xx_bvrp_get_current_archive_record(
-    Abstractformat *format, xx_archive_record_state *state) {
-    return format && state && state->format == format && state->has_record
-               ? &state->current_record : NULL;
+const xx_archive_record *xx_bvrp_get_current_archive_record(Abstractformat *format, xx_archive_record_state *state)
+{
+    return format && state && state->format == format && state->has_record ? &state->current_record : NULL;
 }
 
-bool xx_bvrp_archive_record_move_to_next(Abstractformat *format,
-                                        xx_archive_record_state *state,
-                                        xx_pd_struct *pd) {
+bool xx_bvrp_archive_record_move_to_next(Abstractformat *format, xx_archive_record_state *state, xx_pd_struct *pd)
+{
     bvrp_stream *stream;
     (void)pd;
-    if (!format || !state || state->format != format ||
-        !(stream = (bvrp_stream *)state->internal_state) ||
-        ++stream->index >= stream->count) {
+    if (!format || !state || state->format != format || !(stream = (bvrp_stream *)state->internal_state) || ++stream->index >= stream->count) {
         if (state) state->has_record = false;
         return false;
     }
     ++state->current_index;
-    state->has_record = bvrp_set_record(&state->current_record,
-                                       &stream->items[stream->index]);
+    state->has_record = bvrp_set_record(&state->current_record, &stream->items[stream->index]);
     return state->has_record;
 }
 
-bool xx_bvrp_unpack_current_archive_record(Abstractformat *format,
-                                          xx_archive_record_state *state,
-                                          xx_pd_struct *pd) {
+bool xx_bvrp_unpack_current_archive_record(Abstractformat *format, xx_archive_record_state *state, xx_pd_struct *pd)
+{
     bvrp_stream *stream;
     bvrp_member *member;
     const xx_var *path_option;
@@ -533,31 +463,24 @@ bool xx_bvrp_unpack_current_archive_record(Abstractformat *format,
     size_t plain_size = 0U, written = 0U;
     bool result = false;
     bool created = false;
-    if (!format || !state || state->format != format || !state->has_record ||
-        !(stream = (bvrp_stream *)state->internal_state) ||
-        stream->index >= stream->count || (pd && xx_pd_is_stopped(pd)))
+    if (!format || !state || state->format != format || !state->has_record || !(stream = (bvrp_stream *)state->internal_state) || stream->index >= stream->count ||
+        (pd && xx_pd_is_stopped(pd)))
         return false;
     member = &stream->items[stream->index];
-    if (!bvrp_safe_output_name(member->name) ||
-        !bvrp_decode_member(format, member, &plain, &plain_size)) goto done;
+    if (!bvrp_safe_output_name(member->name) || !bvrp_decode_member(format, member, &plain, &plain_size)) goto done;
     path_option = bvrp_option(&state->options, XX_META_ID_OPT_UNPACK_PATH);
     if (!path_option) {
         result = true;
         goto done;
     }
-    if (path_option->type == XX_VAR_TYPE_STRING ||
-        path_option->type == XX_VAR_TYPE_STRING_VIEW)
-        base = xx_var_get_str(path_option);
-    else if (path_option->type == XX_VAR_TYPE_WSTRING ||
-             path_option->type == XX_VAR_TYPE_WSTRING_VIEW) {
+    if (path_option->type == XX_VAR_TYPE_STRING || path_option->type == XX_VAR_TYPE_STRING_VIEW) base = xx_var_get_str(path_option);
+    else if (path_option->type == XX_VAR_TYPE_WSTRING || path_option->type == XX_VAR_TYPE_WSTRING_VIEW) {
         owned_base = xx_str_unicode_to_utf8(xx_var_get_wstr(path_option));
         base = owned_base;
     }
     if (!base) goto done;
-    path = (base[0] && base[xx_str_len(base) - 1U] != '/' &&
-            base[xx_str_len(base) - 1U] != '\\')
-               ? xx_str_concat3(base, "/", member->name)
-               : xx_str_concat(base, member->name);
+    path = (base[0] && base[xx_str_len(base) - 1U] != '/' && base[xx_str_len(base) - 1U] != '\\') ? xx_str_concat3(base, "/", member->name)
+                                                                                                  : xx_str_concat(base, member->name);
     if (!path) goto done;
     if (member->folder) {
         result = xx_store_create_dirs_a(path, true);
@@ -570,8 +493,7 @@ bool xx_bvrp_unpack_current_archive_record(Abstractformat *format,
         if (!destination) goto done;
         result = true;
         while (written < plain_size) {
-            ssize_t amount = xx_io_write(destination, plain + written,
-                                         plain_size - written);
+            ssize_t amount = xx_io_write(destination, plain + written, plain_size - written);
             if (amount <= 0 || (size_t)amount > plain_size - written) {
                 result = false;
                 break;
@@ -588,8 +510,8 @@ done:
     return result;
 }
 
-void xx_bvrp_free_archive_records_reading(Abstractformat *format,
-                                         xx_archive_record_state *state) {
+void xx_bvrp_free_archive_records_reading(Abstractformat *format, xx_archive_record_state *state)
+{
     (void)format;
     xx_archive_record_state_free(state);
 }

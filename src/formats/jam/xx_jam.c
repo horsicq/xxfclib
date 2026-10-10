@@ -64,17 +64,15 @@ static void xx_jam_vtable_destroy(Abstractformat *self);
 
 /* ------------------------------------------------------------- helpers -- */
 
-static bool xx_jam_read_at(Abstractformat *self, int64_t offset,
-                              uint8_t *buffer, size_t size) {
+static bool xx_jam_read_at(Abstractformat *self, int64_t offset, uint8_t *buffer, size_t size)
+{
     size_t completed = 0U;
 
-    if (!self || !self->device || offset < 0 ||
-        xx_io_seek64(self->device, offset, SEEK_SET) != 0) {
+    if (!self || !self->device || offset < 0 || xx_io_seek64(self->device, offset, SEEK_SET) != 0) {
         return false;
     }
     while (completed < size) {
-        ssize_t received =
-            xx_io_read(self->device, buffer + completed, size - completed);
+        ssize_t received = xx_io_read(self->device, buffer + completed, size - completed);
         if (received <= 0 || (size_t)received > size - completed) {
             return false;
         }
@@ -83,14 +81,14 @@ static bool xx_jam_read_at(Abstractformat *self, int64_t offset,
     return true;
 }
 
-static bool xx_jam_range_within(int64_t total, int64_t offset,
-                                   int64_t size) {
-    return offset >= 0 && size >= 0 && offset <= total &&
-           size <= total - offset;
+static bool xx_jam_range_within(int64_t total, int64_t offset, int64_t size)
+{
+    return offset >= 0 && size >= 0 && offset <= total && size <= total - offset;
 }
 
 /* Refuse anything that would escape the extraction directory. */
-static bool xx_jam_path_safe(const char *name) {
+static bool xx_jam_path_safe(const char *name)
+{
     const char *cursor = name;
 
     if (!name || !name[0] || name[0] == '/') return false;
@@ -105,7 +103,8 @@ static bool xx_jam_path_safe(const char *name) {
     return true;
 }
 
-static void xx_jam_stream_free(void *pointer) {
+static void xx_jam_stream_free(void *pointer)
+{
     xx_jam_stream *stream = (xx_jam_stream *)pointer;
     size_t index;
 
@@ -118,10 +117,9 @@ static void xx_jam_stream_free(void *pointer) {
 }
 
 /* Append a member, taking ownership of @p name. */
-static bool xx_jam_add(xx_jam_stream *stream,
-                          const xx_jam_member *member) {
-    xx_jam_member *grown = (xx_jam_member *)xx_mem_realloc(
-        stream->items, sizeof(*grown) * (stream->count + 1U));
+static bool xx_jam_add(xx_jam_stream *stream, const xx_jam_member *member)
+{
+    xx_jam_member *grown = (xx_jam_member *)xx_mem_realloc(stream->items, sizeof(*grown) * (stream->count + 1U));
 
     if (!grown) return false;
     stream->items = grown;
@@ -129,26 +127,19 @@ static bool xx_jam_add(xx_jam_stream *stream,
     return true;
 }
 
-
 /* Every member is stored verbatim, so extraction is a bounded copy. */
-static bool xx_jam_decode(Abstractformat *self,
-                             const xx_jam_member *member, uint8_t **out,
-                             size_t *out_size, xx_pd_struct *pd) {
+static bool xx_jam_decode(Abstractformat *self, const xx_jam_member *member, uint8_t **out, size_t *out_size, xx_pd_struct *pd)
+{
     uint8_t *buffer;
 
     *out = NULL;
     *out_size = 0U;
-    if (member->compressed_size < 0 ||
-        (uint64_t)member->compressed_size > (uint64_t)SIZE_MAX) {
+    if (member->compressed_size < 0 || (uint64_t)member->compressed_size > (uint64_t)SIZE_MAX) {
         return false;
     }
-    buffer = (uint8_t *)xx_mem_alloc(
-        member->compressed_size != 0 ? (size_t)member->compressed_size : 1U);
+    buffer = (uint8_t *)xx_mem_alloc(member->compressed_size != 0 ? (size_t)member->compressed_size : 1U);
     if (!buffer) return false;
-    if (member->compressed_size != 0 &&
-        ((pd && xx_pd_is_stopped(pd)) ||
-         !xx_jam_read_at(self, member->data_offset, buffer,
-                            (size_t)member->compressed_size))) {
+    if (member->compressed_size != 0 && ((pd && xx_pd_is_stopped(pd)) || !xx_jam_read_at(self, member->data_offset, buffer, (size_t)member->compressed_size))) {
         xx_mem_free(buffer);
         return false;
     }
@@ -156,7 +147,6 @@ static bool xx_jam_decode(Abstractformat *self,
     *out_size = (size_t)member->compressed_size;
     return true;
 }
-
 
 #define XX_JAM_MAGIC_SIZE 3
 #define XX_JAM_ROOT_OFFSET 3
@@ -182,7 +172,8 @@ static bool xx_jam_decode(Abstractformat *self,
  * Bytes above 0x7E are deliberately permitted: the field is raw DOS bytes and
  * the name builder below escapes anything unsafe as %XX, so nothing
  * unprintable reaches the filesystem. */
-static bool xx_jam_name_valid(const uint8_t *raw) {
+static bool xx_jam_name_valid(const uint8_t *raw)
+{
     size_t index = 0U;
 
     while (index < (size_t)XX_JAM_NAME_SIZE && raw[index] != 0U) {
@@ -200,8 +191,8 @@ static bool xx_jam_name_valid(const uint8_t *raw) {
  * bytes: path separators and Windows reserved punctuation are escaped as %XX
  * rather than folded to '_', because escaping is reversible and cannot
  * collapse two distinct members onto one output file. */
-static char *xx_jam_join(const char *prefix, const uint8_t *raw,
-                         size_t fallback_index, bool trailing_slash) {
+static char *xx_jam_join(const char *prefix, const uint8_t *raw, size_t fallback_index, bool trailing_slash)
+{
     static const char hex_digits[] = "0123456789ABCDEF";
     char escaped[XX_JAM_NAME_BUFFER];
     size_t escaped_length = 0U;
@@ -209,12 +200,9 @@ static char *xx_jam_join(const char *prefix, const uint8_t *raw,
     size_t index;
     char *result;
 
-    for (index = 0U;
-         index < (size_t)XX_JAM_NAME_SIZE && raw[index] != 0U; ++index) {
+    for (index = 0U; index < (size_t)XX_JAM_NAME_SIZE && raw[index] != 0U; ++index) {
         uint8_t byte = raw[index];
-        bool safe = byte > 0x20U && byte < 0x7FU && byte != '%' &&
-                    byte != '/' && byte != '\\' && byte != ':' &&
-                    byte != '*' && byte != '?' && byte != '"' &&
+        bool safe = byte > 0x20U && byte < 0x7FU && byte != '%' && byte != '/' && byte != '\\' && byte != ':' && byte != '*' && byte != '?' && byte != '"' &&
                     byte != '<' && byte != '>' && byte != '|';
 
         if (safe) {
@@ -263,10 +251,9 @@ static char *xx_jam_join(const char *prefix, const uint8_t *raw,
     return result;
 }
 
-static bool xx_jam_walk(Abstractformat *self, xx_jam_stream *stream,
-                        int64_t span, int64_t node_offset, const char *prefix,
-                        int64_t *visited, size_t *visited_count, int depth,
-                        xx_pd_struct *pd) {
+static bool xx_jam_walk(Abstractformat *self, xx_jam_stream *stream, int64_t span, int64_t node_offset, const char *prefix, int64_t *visited, size_t *visited_count,
+                        int depth, xx_pd_struct *pd)
+{
     uint8_t entry[XX_JAM_FILE_ENTRY_SIZE];
     int64_t offset;
     int64_t file_count;
@@ -285,16 +272,13 @@ static bool xx_jam_walk(Abstractformat *self, xx_jam_stream *stream,
     if (*visited_count >= (size_t)XX_JAM_MAX_NODES) return false;
     visited[(*visited_count)++] = node_offset;
 
-    if (!xx_jam_range_within(span, node_offset, XX_JAM_COUNT_SIZE) ||
-        !xx_jam_read_at(self, self->base_address + node_offset, entry,
-                        (size_t)XX_JAM_COUNT_SIZE)) {
+    if (!xx_jam_range_within(span, node_offset, XX_JAM_COUNT_SIZE) || !xx_jam_read_at(self, self->base_address + node_offset, entry, (size_t)XX_JAM_COUNT_SIZE)) {
         return false;
     }
     file_count = (int64_t)(int32_t)xx_data_get_u32(entry, 4, 0, false);
     if (file_count < 0 || file_count > XX_JAM_MAX_MEMBERS) return false;
     offset = node_offset + XX_JAM_COUNT_SIZE;
-    if (!xx_jam_range_within(span, offset,
-                             file_count * XX_JAM_FILE_ENTRY_SIZE)) {
+    if (!xx_jam_range_within(span, offset, file_count * XX_JAM_FILE_ENTRY_SIZE)) {
         return false;
     }
 
@@ -306,14 +290,11 @@ static bool xx_jam_walk(Abstractformat *self, xx_jam_stream *stream,
 
         if (pd && xx_pd_is_stopped(pd)) return false;
         if (stream->count >= (size_t)XX_JAM_MAX_MEMBERS) return false;
-        if (!xx_jam_read_at(self, self->base_address + offset, entry,
-                            (size_t)XX_JAM_FILE_ENTRY_SIZE) ||
-            !xx_jam_name_valid(entry)) {
+        if (!xx_jam_read_at(self, self->base_address + offset, entry, (size_t)XX_JAM_FILE_ENTRY_SIZE) || !xx_jam_name_valid(entry)) {
             return false;
         }
         data_offset = (int64_t)(int32_t)xx_data_get_u32(entry + XX_JAM_NAME_SIZE, 4, 0, false);
-        data_size =
-            (int64_t)(int32_t)xx_data_get_u32(entry + XX_JAM_NAME_SIZE + 4, 4, 0, false);
+        data_size = (int64_t)(int32_t)xx_data_get_u32(entry + XX_JAM_NAME_SIZE + 4, 4, 0, false);
         /* Member data always sits past the magic; an entry pointing into the
          * three-byte header is a directory read out of unrelated bytes. */
         if (data_offset < XX_JAM_MAGIC_SIZE || data_size < 0) return false;
@@ -335,16 +316,13 @@ static bool xx_jam_walk(Abstractformat *self, xx_jam_stream *stream,
         offset += XX_JAM_FILE_ENTRY_SIZE;
     }
 
-    if (!xx_jam_range_within(span, offset, XX_JAM_COUNT_SIZE) ||
-        !xx_jam_read_at(self, self->base_address + offset, entry,
-                        (size_t)XX_JAM_COUNT_SIZE)) {
+    if (!xx_jam_range_within(span, offset, XX_JAM_COUNT_SIZE) || !xx_jam_read_at(self, self->base_address + offset, entry, (size_t)XX_JAM_COUNT_SIZE)) {
         return false;
     }
     dir_count = (int64_t)(int32_t)xx_data_get_u32(entry, 4, 0, false);
     if (dir_count < 0 || dir_count > XX_JAM_MAX_NODES) return false;
     offset += XX_JAM_COUNT_SIZE;
-    if (!xx_jam_range_within(span, offset,
-                             dir_count * XX_JAM_DIR_ENTRY_SIZE)) {
+    if (!xx_jam_range_within(span, offset, dir_count * XX_JAM_DIR_ENTRY_SIZE)) {
         return false;
     }
 
@@ -354,17 +332,14 @@ static bool xx_jam_walk(Abstractformat *self, xx_jam_stream *stream,
         bool walked;
 
         if (pd && xx_pd_is_stopped(pd)) return false;
-        if (!xx_jam_read_at(self, self->base_address + offset, entry,
-                            (size_t)XX_JAM_DIR_ENTRY_SIZE) ||
-            !xx_jam_name_valid(entry)) {
+        if (!xx_jam_read_at(self, self->base_address + offset, entry, (size_t)XX_JAM_DIR_ENTRY_SIZE) || !xx_jam_name_valid(entry)) {
             return false;
         }
         child_offset = (int64_t)(int32_t)xx_data_get_u32(entry + XX_JAM_NAME_SIZE, 4, 0, false);
         if (child_offset < XX_JAM_MAGIC_SIZE) return false;
         child_prefix = xx_jam_join(prefix, entry, (size_t)index, true);
         if (!child_prefix) return false;
-        walked = xx_jam_walk(self, stream, span, child_offset, child_prefix,
-                             visited, visited_count, depth + 1, pd);
+        walked = xx_jam_walk(self, stream, span, child_offset, child_prefix, visited, visited_count, depth + 1, pd);
         xx_str_free(child_prefix);
         if (!walked) return false;
         offset += XX_JAM_DIR_ENTRY_SIZE;
@@ -372,7 +347,8 @@ static bool xx_jam_walk(Abstractformat *self, xx_jam_stream *stream,
     return true;
 }
 
-static xx_jam_stream *xx_jam_parse(Abstractformat *self, xx_pd_struct *pd) {
+static xx_jam_stream *xx_jam_parse(Abstractformat *self, xx_pd_struct *pd)
+{
     xx_jam_stream *stream = NULL;
     int64_t *visited = NULL;
     size_t visited_count = 0U;
@@ -417,8 +393,7 @@ static xx_jam_stream *xx_jam_parse(Abstractformat *self, xx_pd_struct *pd) {
     visited = (int64_t *)xx_mem_alloc(sizeof(*visited) * XX_JAM_MAX_NODES);
     if (!visited) goto fail;
 
-    if (!xx_jam_walk(self, stream, span, XX_JAM_ROOT_OFFSET, "", visited,
-                     &visited_count, 0, pd)) {
+    if (!xx_jam_walk(self, stream, span, XX_JAM_ROOT_OFFSET, "", visited, &visited_count, 0, pd)) {
         goto fail;
     }
     if (stream->count == 0U) goto fail;
@@ -433,11 +408,10 @@ fail:
     return NULL;
 }
 
-
 /* ---------------------------------------------------------- lifecycle --- */
 
-void xx_jam_init(xx_jam *archive, xx_io_device *device,
-                    int64_t base_address) {
+void xx_jam_init(xx_jam *archive, xx_io_device *device, int64_t base_address)
+{
     if (!archive) return;
     xx_mem_zero(archive, sizeof(*archive));
     xx_format_init(&archive->format, device, base_address);
@@ -450,22 +424,17 @@ void xx_jam_init(xx_jam *archive, xx_io_device *device,
     archive->format.check_is_valid = xx_jam_check_is_valid;
     archive->format.handle_base_info = xx_jam_handle_base_info;
     archive->format.get_format_size = xx_jam_get_format_size;
-    archive->format.get_number_of_archive_records =
-        xx_jam_get_number_of_archive_records;
-    archive->format.create_archive_records_reading =
-        xx_jam_create_archive_records_reading;
-    archive->format.get_current_archive_record =
-        xx_jam_get_current_archive_record;
-    archive->format.unpack_current_archive_record =
-        xx_jam_unpack_current_archive_record;
-    archive->format.archive_record_move_to_next =
-        xx_jam_archive_record_move_to_next;
-    archive->format.free_archive_records_reading =
-        xx_jam_free_archive_records_reading;
+    archive->format.get_number_of_archive_records = xx_jam_get_number_of_archive_records;
+    archive->format.create_archive_records_reading = xx_jam_create_archive_records_reading;
+    archive->format.get_current_archive_record = xx_jam_get_current_archive_record;
+    archive->format.unpack_current_archive_record = xx_jam_unpack_current_archive_record;
+    archive->format.archive_record_move_to_next = xx_jam_archive_record_move_to_next;
+    archive->format.free_archive_records_reading = xx_jam_free_archive_records_reading;
     archive->format.destroy = xx_jam_vtable_destroy;
 }
 
-xx_jam *xx_jam_create(xx_io_device *device, int64_t base_address) {
+xx_jam *xx_jam_create(xx_io_device *device, int64_t base_address)
+{
     xx_jam *archive = (xx_jam *)xx_mem_alloc(sizeof(*archive));
 
     if (!archive) return NULL;
@@ -473,7 +442,8 @@ xx_jam *xx_jam_create(xx_io_device *device, int64_t base_address) {
     return archive;
 }
 
-void xx_jam_destroy(xx_jam *archive) {
+void xx_jam_destroy(xx_jam *archive)
+{
     if (!archive) return;
     /* Not xx_format_destroy: it dispatches through format.destroy, which is
      * the wrapper below, and the two would recurse. */
@@ -482,19 +452,22 @@ void xx_jam_destroy(xx_jam *archive) {
     archive->number_of_records = 0U;
 }
 
-void xx_jam_free(xx_jam *archive) {
+void xx_jam_free(xx_jam *archive)
+{
     if (!archive) return;
     xx_jam_destroy(archive);
     xx_mem_free(archive);
 }
 
-static void xx_jam_vtable_destroy(Abstractformat *self) {
+static void xx_jam_vtable_destroy(Abstractformat *self)
+{
     xx_jam_destroy((xx_jam *)self);
 }
 
 /* -------------------------------------------------------------- format -- */
 
-bool xx_jam_check_is_valid(Abstractformat *self, xx_pd_struct *pd) {
+bool xx_jam_check_is_valid(Abstractformat *self, xx_pd_struct *pd)
+{
     xx_jam_stream *stream;
 
     if (!self || (pd && xx_pd_is_stopped(pd))) return false;
@@ -504,7 +477,8 @@ bool xx_jam_check_is_valid(Abstractformat *self, xx_pd_struct *pd) {
     return true;
 }
 
-bool xx_jam_handle_base_info(Abstractformat *self, xx_pd_struct *pd) {
+bool xx_jam_handle_base_info(Abstractformat *self, xx_pd_struct *pd)
+{
     xx_jam *archive = (xx_jam *)self;
     xx_jam_stream *stream;
 
@@ -525,18 +499,17 @@ bool xx_jam_handle_base_info(Abstractformat *self, xx_pd_struct *pd) {
     return true;
 }
 
-int64_t xx_jam_get_format_size(Abstractformat *self, xx_pd_struct *pd) {
-    if (!self ||
-        (!self->base_info_handled && !xx_format_handle_base_info(self, pd))) {
+int64_t xx_jam_get_format_size(Abstractformat *self, xx_pd_struct *pd)
+{
+    if (!self || (!self->base_info_handled && !xx_format_handle_base_info(self, pd))) {
         return 0;
     }
     return self->is_valid ? self->format_size : 0;
 }
 
-uint64_t xx_jam_get_number_of_archive_records(Abstractformat *self,
-                                                 xx_pd_struct *pd) {
-    if (!self ||
-        (!self->base_info_handled && !xx_format_handle_base_info(self, pd))) {
+uint64_t xx_jam_get_number_of_archive_records(Abstractformat *self, xx_pd_struct *pd)
+{
+    if (!self || (!self->base_info_handled && !xx_format_handle_base_info(self, pd))) {
         return 0U;
     }
     return self->is_valid ? ((xx_jam *)self)->number_of_records : 0U;
@@ -544,8 +517,8 @@ uint64_t xx_jam_get_number_of_archive_records(Abstractformat *self,
 
 /* ------------------------------------------------------------- records -- */
 
-static bool xx_jam_set_record(xx_archive_record *record,
-                                 const xx_jam_member *member) {
+static bool xx_jam_set_record(xx_archive_record *record, const xx_jam_member *member)
+{
     xx_archive_record_cleanup(record);
     xx_archive_record_init(record);
     record->header_offset = member->header_offset;
@@ -553,34 +526,24 @@ static bool xx_jam_set_record(xx_archive_record *record,
     record->data_offset = member->data_offset;
     record->compressed_size = member->compressed_size;
     return xx_archive_record_set_original_name(record, member->name) &&
-           xx_archive_record_set_meta_u64(record, XX_META_ID_COMPRESSED_SIZE,
-                                          (uint64_t)member->compressed_size) &&
-           xx_archive_record_set_meta_u64(
-               record, XX_META_ID_UNCOMPRESSED_SIZE,
-               (uint64_t)member->uncompressed_size) &&
-           xx_archive_record_set_meta_u64(record, XX_META_ID_COMPRESSION_METHOD,
-                                          member->method) &&
-           xx_archive_record_set_meta_u64(record, XX_META_ID_TIMESTAMP,
-                                          member->timestamp) &&
-           xx_archive_record_set_meta_bool(record, XX_META_ID_IS_FOLDER,
-                                           member->is_folder) &&
-           xx_archive_record_set_meta_bool(record, XX_META_ID_IS_ENCRYPTED,
-                                           false);
+           xx_archive_record_set_meta_u64(record, XX_META_ID_COMPRESSED_SIZE, (uint64_t)member->compressed_size) &&
+           xx_archive_record_set_meta_u64(record, XX_META_ID_UNCOMPRESSED_SIZE, (uint64_t)member->uncompressed_size) &&
+           xx_archive_record_set_meta_u64(record, XX_META_ID_COMPRESSION_METHOD, member->method) &&
+           xx_archive_record_set_meta_u64(record, XX_META_ID_TIMESTAMP, member->timestamp) &&
+           xx_archive_record_set_meta_bool(record, XX_META_ID_IS_FOLDER, member->is_folder) && xx_archive_record_set_meta_bool(record, XX_META_ID_IS_ENCRYPTED, false);
 }
 
-static bool xx_jam_copy_options(xx_list_s *target,
-                                   const xx_list_s *options) {
+static bool xx_jam_copy_options(xx_list_s *target, const xx_list_s *options)
+{
     size_t index;
 
     if (!target || !options) return options == NULL;
     for (index = 0U; index < options->count; ++index) {
-        const xx_meta *source =
-            (const xx_meta *)xx_list_at((const xx_list_t *)options, index);
+        const xx_meta *source = (const xx_meta *)xx_list_at((const xx_list_t *)options, index);
         xx_meta copied;
         if (!source) continue;
         xx_meta_init(&copied, source->meta_id);
-        if (!xx_var_copy(&copied.var, &source->var) ||
-            !xx_list_append(target, &copied)) {
+        if (!xx_var_copy(&copied.var, &source->var) || !xx_list_append(target, &copied)) {
             xx_meta_cleanup(&copied);
             return false;
         }
@@ -588,21 +551,20 @@ static bool xx_jam_copy_options(xx_list_s *target,
     return true;
 }
 
-static const xx_var *xx_jam_get_option(const xx_list_s *options,
-                                          uint32_t meta_id) {
+static const xx_var *xx_jam_get_option(const xx_list_s *options, uint32_t meta_id)
+{
     size_t index;
 
     if (!options) return NULL;
     for (index = 0U; index < options->count; ++index) {
-        const xx_meta *meta =
-            (const xx_meta *)xx_list_at((const xx_list_t *)options, index);
+        const xx_meta *meta = (const xx_meta *)xx_list_at((const xx_list_t *)options, index);
         if (meta && meta->meta_id == meta_id) return &meta->var;
     }
     return NULL;
 }
 
-xx_archive_record_state *xx_jam_create_archive_records_reading(
-    Abstractformat *self, const xx_list_s *options, xx_pd_struct *pd) {
+xx_archive_record_state *xx_jam_create_archive_records_reading(Abstractformat *self, const xx_list_s *options, xx_pd_struct *pd)
+{
     xx_jam_stream *stream;
     xx_archive_record_state *state;
 
@@ -618,9 +580,7 @@ xx_archive_record_state *xx_jam_create_archive_records_reading(
     state->internal_state = stream;
     state->free_internal = xx_jam_stream_free;
     state->total_records = (int64_t)stream->count;
-    if (!xx_jam_copy_options(&state->options, options) ||
-        (stream->count != 0U &&
-         !xx_jam_set_record(&state->current_record, &stream->items[0]))) {
+    if (!xx_jam_copy_options(&state->options, options) || (stream->count != 0U && !xx_jam_set_record(&state->current_record, &stream->items[0]))) {
         xx_archive_record_state_free(state);
         return NULL;
     }
@@ -629,20 +589,16 @@ xx_archive_record_state *xx_jam_create_archive_records_reading(
     return state;
 }
 
-const xx_archive_record *xx_jam_get_current_archive_record(
-    Abstractformat *self, xx_archive_record_state *state) {
-    return self && state && state->format == self && state->has_record
-               ? &state->current_record
-               : NULL;
+const xx_archive_record *xx_jam_get_current_archive_record(Abstractformat *self, xx_archive_record_state *state)
+{
+    return self && state && state->format == self && state->has_record ? &state->current_record : NULL;
 }
 
-bool xx_jam_archive_record_move_to_next(Abstractformat *self,
-                                           xx_archive_record_state *state,
-                                           xx_pd_struct *pd) {
+bool xx_jam_archive_record_move_to_next(Abstractformat *self, xx_archive_record_state *state, xx_pd_struct *pd)
+{
     xx_jam_stream *stream;
 
-    if (!self || !state || state->format != self || !state->has_record ||
-        (pd && xx_pd_is_stopped(pd))) {
+    if (!self || !state || state->format != self || !state->has_record || (pd && xx_pd_is_stopped(pd))) {
         return false;
     }
     stream = (xx_jam_stream *)state->internal_state;
@@ -654,14 +610,12 @@ bool xx_jam_archive_record_move_to_next(Abstractformat *self,
     }
     ++stream->index;
     ++state->current_index;
-    state->has_record = xx_jam_set_record(&state->current_record,
-                                             &stream->items[stream->index]);
+    state->has_record = xx_jam_set_record(&state->current_record, &stream->items[stream->index]);
     return state->has_record;
 }
 
-bool xx_jam_unpack_current_archive_record(Abstractformat *self,
-                                             xx_archive_record_state *state,
-                                             xx_pd_struct *pd) {
+bool xx_jam_unpack_current_archive_record(Abstractformat *self, xx_archive_record_state *state, xx_pd_struct *pd)
+{
     xx_jam_stream *stream;
     const xx_jam_member *member;
     const xx_var *path_option;
@@ -673,8 +627,7 @@ bool xx_jam_unpack_current_archive_record(Abstractformat *self,
     bool result = false;
     bool created = false;
 
-    if (!self || !state || state->format != self || !state->has_record ||
-        (pd && xx_pd_is_stopped(pd))) {
+    if (!self || !state || state->format != self || !state->has_record || (pd && xx_pd_is_stopped(pd))) {
         return false;
     }
     stream = (xx_jam_stream *)state->internal_state;
@@ -682,8 +635,7 @@ bool xx_jam_unpack_current_archive_record(Abstractformat *self,
     member = &stream->items[stream->index];
     if (!xx_jam_path_safe(member->name)) return false;
 
-    path_option = xx_jam_get_option(&state->options,
-                                       XX_META_ID_OPT_UNPACK_PATH);
+    path_option = xx_jam_get_option(&state->options, XX_META_ID_OPT_UNPACK_PATH);
     if (!path_option) {
         /* No destination: decode and discard, which verifies the member
          * without writing anything. */
@@ -692,11 +644,9 @@ bool xx_jam_unpack_current_archive_record(Abstractformat *self,
         xx_mem_free(plain);
         return result;
     }
-    if (path_option->type == XX_VAR_TYPE_STRING ||
-        path_option->type == XX_VAR_TYPE_STRING_VIEW) {
+    if (path_option->type == XX_VAR_TYPE_STRING || path_option->type == XX_VAR_TYPE_STRING_VIEW) {
         base_path = xx_var_get_str(path_option);
-    } else if (path_option->type == XX_VAR_TYPE_WSTRING ||
-               path_option->type == XX_VAR_TYPE_WSTRING_VIEW) {
+    } else if (path_option->type == XX_VAR_TYPE_WSTRING || path_option->type == XX_VAR_TYPE_WSTRING_VIEW) {
         converted_path = xx_str_unicode_to_utf8(xx_var_get_wstr(path_option));
         base_path = converted_path;
     }
@@ -704,9 +654,7 @@ bool xx_jam_unpack_current_archive_record(Abstractformat *self,
         xx_str_free(converted_path);
         return false;
     }
-    if (base_path[0] != '\0' &&
-        base_path[xx_str_len(base_path) - 1U] != '/' &&
-        base_path[xx_str_len(base_path) - 1U] != '\\') {
+    if (base_path[0] != '\0' && base_path[xx_str_len(base_path) - 1U] != '/' && base_path[xx_str_len(base_path) - 1U] != '\\') {
         target_path = xx_str_concat3(base_path, "/", member->name);
     } else {
         target_path = xx_str_concat(base_path, member->name);
@@ -719,8 +667,7 @@ bool xx_jam_unpack_current_archive_record(Abstractformat *self,
         xx_str_free(target_path);
         return result;
     }
-    if (!xx_store_create_dirs_a(target_path, false) ||
-        !xx_jam_decode(self, member, &plain, &plain_size, pd)) {
+    if (!xx_store_create_dirs_a(target_path, false) || !xx_jam_decode(self, member, &plain, &plain_size, pd)) {
         xx_str_free(target_path);
         return false;
     }
@@ -731,8 +678,7 @@ bool xx_jam_unpack_current_archive_record(Abstractformat *self,
 
         result = output != NULL;
         while (result && completed < plain_size) {
-            ssize_t sent = xx_io_write(output, plain + completed,
-                                       plain_size - completed);
+            ssize_t sent = xx_io_write(output, plain + completed, plain_size - completed);
             if (sent <= 0 || (size_t)sent > plain_size - completed) {
                 result = false;
                 break;
@@ -747,8 +693,8 @@ bool xx_jam_unpack_current_archive_record(Abstractformat *self,
     return result;
 }
 
-void xx_jam_free_archive_records_reading(Abstractformat *self,
-                                            xx_archive_record_state *state) {
+void xx_jam_free_archive_records_reading(Abstractformat *self, xx_archive_record_state *state)
+{
     (void)self;
     xx_archive_record_state_free(state);
 }

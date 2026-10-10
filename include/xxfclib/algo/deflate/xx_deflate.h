@@ -37,10 +37,10 @@ extern "C" {
 #endif
 
 /* Compression levels */
-#define XX_DEFLATE_LEVEL_STORED   0
-#define XX_DEFLATE_LEVEL_FASTEST  1
-#define XX_DEFLATE_LEVEL_DEFAULT  6
-#define XX_DEFLATE_LEVEL_BEST     9
+#define XX_DEFLATE_LEVEL_STORED 0
+#define XX_DEFLATE_LEVEL_FASTEST 1
+#define XX_DEFLATE_LEVEL_DEFAULT 6
+#define XX_DEFLATE_LEVEL_BEST 9
 
 /* ========================================================================= */
 /* --- Deflate / Deflate64 Decompression (Unpacking)                     --- */
@@ -56,8 +56,7 @@ extern "C" {
  * @param pd Optional progress and cancellation monitor.
  * @return True on success, false on format error or cancellation.
  */
-XXFC_API bool xx_deflate_unpack_device(xx_io_device *src_dev, int64_t src_offset, int64_t comp_size,
-                                       xx_io_device *dst_dev, bool is_deflate64, xx_pd_struct *pd);
+XXFC_API bool xx_deflate_unpack_device(xx_io_device *src_dev, int64_t src_offset, int64_t comp_size, xx_io_device *dst_dev, bool is_deflate64, xx_pd_struct *pd);
 
 /** Decode one finite raw stream with an optional preset history. window_size
  * is zero for the native window, or a power of two from 256 through 32768
@@ -66,60 +65,50 @@ XXFC_API bool xx_deflate_unpack_device(xx_io_device *src_dev, int64_t src_offset
  * supplied, receives the exact stream length rounded up to its last byte,
  * excluding input read-ahead and trailing bytes. It is zero on failure.
  * comp_size must be nonnegative. The caller owns both devices. */
-XXFC_API bool xx_deflate_unpack_device_ex(
-    xx_io_device *src_dev, int64_t src_offset, int64_t comp_size,
-    xx_io_device *dst_dev, bool is_deflate64, size_t window_size,
-    const void *dictionary, size_t dictionary_size,
-    int64_t *out_consumed, xx_pd_struct *pd);
+XXFC_API bool xx_deflate_unpack_device_ex(xx_io_device *src_dev, int64_t src_offset, int64_t comp_size, xx_io_device *dst_dev, bool is_deflate64, size_t window_size,
+                                          const void *dictionary, size_t dictionary_size, int64_t *out_consumed, xx_pd_struct *pd);
 
 /**
  * @brief Unpack a Deflate / Deflate64 stream directly to a disk file (UTF-8 path).
  */
-XXFC_API bool xx_deflate_unpack_device_to_file(xx_io_device *src_dev, int64_t src_offset, int64_t comp_size,
-                                              const char *dst_file_path, bool is_deflate64, xx_pd_struct *pd);
+XXFC_API bool xx_deflate_unpack_device_to_file(xx_io_device *src_dev, int64_t src_offset, int64_t comp_size, const char *dst_file_path, bool is_deflate64,
+                                               xx_pd_struct *pd);
 
 /**
  * @brief Unpack a Deflate / Deflate64 stream directly to a disk file (wchar_t path).
  */
-XXFC_API bool xx_deflate_unpack_device_to_file_w(xx_io_device *src_dev, int64_t src_offset, int64_t comp_size,
-                                                const wchar_t *dst_file_path_w, bool is_deflate64, xx_pd_struct *pd);
+XXFC_API bool xx_deflate_unpack_device_to_file_w(xx_io_device *src_dev, int64_t src_offset, int64_t comp_size, const wchar_t *dst_file_path_w, bool is_deflate64,
+                                                 xx_pd_struct *pd);
 
 /**
  * @brief Unpack a Deflate / Deflate64 stream to a memory buffer.
  */
-XXFC_API bool xx_deflate_unpack_device_to_memory(xx_io_device *src_dev, int64_t src_offset, int64_t comp_size,
-                                                void *dst_buf, size_t dst_buf_size, size_t *out_written,
-                                                bool is_deflate64, xx_pd_struct *pd);
+XXFC_API bool xx_deflate_unpack_device_to_memory(xx_io_device *src_dev, int64_t src_offset, int64_t comp_size, void *dst_buf, size_t dst_buf_size, size_t *out_written,
+                                                 bool is_deflate64, xx_pd_struct *pd);
 
 /**
  * @brief Unpack a Deflate / Deflate64 stream from memory to an I/O device.
  */
-XXFC_API bool xx_deflate_unpack_memory_to_device(const void *src_buf, size_t comp_size,
-                                                xx_io_device *dst_dev, bool is_deflate64, xx_pd_struct *pd);
+XXFC_API bool xx_deflate_unpack_memory_to_device(const void *src_buf, size_t comp_size, xx_io_device *dst_dev, bool is_deflate64, xx_pd_struct *pd);
 
 /**
  * @brief Decode one raw Deflate stream and report the number of source bytes
  * consumed through its final block.  Bytes after the stream are left for the
  * caller, which is needed by container formats such as zlib.
  */
-XXFC_API bool xx_deflate_unpack_memory_to_device_ex(
-    const void *src_buf, size_t comp_size, xx_io_device *dst_dev,
-    size_t *out_consumed, bool is_deflate64, xx_pd_struct *pd);
+XXFC_API bool xx_deflate_unpack_memory_to_device_ex(const void *src_buf, size_t comp_size, xx_io_device *dst_dev, size_t *out_consumed, bool is_deflate64,
+                                                    xx_pd_struct *pd);
 
 /**
  * @brief Pure in-memory decompression of a Deflate or Deflate64 buffer.
  */
-XXFC_API bool xx_deflate_decompress_memory(const void *src_buf, size_t src_size,
-                                          void *dst_buf, size_t dst_buf_size, size_t *out_written,
-                                          bool is_deflate64);
+XXFC_API bool xx_deflate_decompress_memory(const void *src_buf, size_t src_size, void *dst_buf, size_t dst_buf_size, size_t *out_written, bool is_deflate64);
 
 /** Decode a raw Deflate stream whose back-references may use a prior 32 KiB
  * history, as in consecutive MSZIP cabinet blocks. The dictionary is not
  * included in the output. */
-XXFC_API bool xx_deflate_decompress_memory_with_dictionary(
-    const void *src_buf, size_t src_size, void *dst_buf, size_t dst_buf_size,
-    size_t *out_written, const void *dictionary, size_t dictionary_size,
-    bool is_deflate64);
+XXFC_API bool xx_deflate_decompress_memory_with_dictionary(const void *src_buf, size_t src_size, void *dst_buf, size_t dst_buf_size, size_t *out_written,
+                                                           const void *dictionary, size_t dictionary_size, bool is_deflate64);
 
 /* ========================================================================= */
 /* --- Deflate / Deflate64 Compression (Packing)                         --- */
@@ -136,32 +125,27 @@ XXFC_API bool xx_deflate_decompress_memory_with_dictionary(
  * @param pd Optional progress and cancellation monitor.
  * @return True on success, false on error or cancellation.
  */
-XXFC_API bool xx_deflate_pack_device(xx_io_device *src_dev, int64_t src_offset, int64_t uncomp_size,
-                                     xx_io_device *dst_dev, int level, bool is_deflate64, xx_pd_struct *pd);
+XXFC_API bool xx_deflate_pack_device(xx_io_device *src_dev, int64_t src_offset, int64_t uncomp_size, xx_io_device *dst_dev, int level, bool is_deflate64,
+                                     xx_pd_struct *pd);
 
 /** Compress with a selected LZ77 window. window_size is zero for the native
  * window, or a power of two from 256 through 32768 (65536 for Deflate64).
  * Smaller windows limit emitted back-reference distances. uncomp_size must
  * be nonnegative. The caller owns both devices. */
-XXFC_API bool xx_deflate_pack_device_ex(
-    xx_io_device *src_dev, int64_t src_offset, int64_t uncomp_size,
-    xx_io_device *dst_dev, int level, bool is_deflate64,
-    size_t window_size, xx_pd_struct *pd);
+XXFC_API bool xx_deflate_pack_device_ex(xx_io_device *src_dev, int64_t src_offset, int64_t uncomp_size, xx_io_device *dst_dev, int level, bool is_deflate64,
+                                        size_t window_size, xx_pd_struct *pd);
 
 /**
  * @brief Inspect an input source, compute its uncompressed size and CRC32, and compress
  * into dst_dev. Resets src_dev seek position upon completion.
  */
-XXFC_API bool xx_deflate_pack_source(xx_io_device *src_dev, const char *src_file_path,
-                                     int64_t *out_uncomp_size, int64_t *out_comp_size, uint32_t *out_crc32,
+XXFC_API bool xx_deflate_pack_source(xx_io_device *src_dev, const char *src_file_path, int64_t *out_uncomp_size, int64_t *out_comp_size, uint32_t *out_crc32,
                                      xx_io_device *dst_dev, int level, bool is_deflate64, xx_pd_struct *pd);
 
 /**
  * @brief Pure in-memory compression of a buffer using Deflate or Deflate64.
  */
-XXFC_API bool xx_deflate_compress_memory(const void *src_buf, size_t src_size,
-                                        void *dst_buf, size_t dst_buf_size, size_t *out_written,
-                                        int level, bool is_deflate64);
+XXFC_API bool xx_deflate_compress_memory(const void *src_buf, size_t src_size, void *dst_buf, size_t dst_buf_size, size_t *out_written, int level, bool is_deflate64);
 
 /* ========================================================================= */
 /* --- zlib stream wrapper (RFC 1950)                                    --- */
@@ -175,8 +159,7 @@ XXFC_API bool xx_deflate_compress_memory(const void *src_buf, size_t src_size,
  * reported invalid: the dictionary is not in the stream, so it cannot be
  * decoded here.
  */
-XXFC_API bool xx_zlib_stream_header_is_valid(const uint8_t *input,
-                                             size_t input_size);
+XXFC_API bool xx_zlib_stream_header_is_valid(const uint8_t *input, size_t input_size);
 
 /**
  * @brief Decode a zlib stream: header check, then raw Deflate.
@@ -185,10 +168,7 @@ XXFC_API bool xx_zlib_stream_header_is_valid(const uint8_t *input,
  * that records a member's exact compressed length may cut the stream at its
  * last Deflate byte. Use xx_zlib_stream_trailer_matches() where it is.
  */
-XXFC_API bool xx_zlib_stream_decode_memory(const uint8_t *input,
-                                           size_t input_size, uint8_t *output,
-                                           size_t output_size,
-                                           size_t *written);
+XXFC_API bool xx_zlib_stream_decode_memory(const uint8_t *input, size_t input_size, uint8_t *output, size_t output_size, size_t *written);
 
 /** @brief Adler-32 of @p data, as zlib defines it. */
 XXFC_API uint32_t xx_zlib_stream_adler32(const uint8_t *data, size_t size);
@@ -199,10 +179,7 @@ XXFC_API uint32_t xx_zlib_stream_adler32(const uint8_t *data, size_t size);
  * False when the stream is too short to carry a trailer at all, so a caller
  * must only use this where the container guarantees the full stream.
  */
-XXFC_API bool xx_zlib_stream_trailer_matches(const uint8_t *input,
-                                             size_t input_size,
-                                             const uint8_t *plain,
-                                             size_t plain_size);
+XXFC_API bool xx_zlib_stream_trailer_matches(const uint8_t *input, size_t input_size, const uint8_t *plain, size_t plain_size);
 
 #ifdef __cplusplus
 }

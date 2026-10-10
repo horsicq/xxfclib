@@ -29,19 +29,15 @@
 #include "xxfclib/scan/xx_scan.h"
 #include "xxfclib/strings/xx_string.h"
 
-
 typedef struct {
     int bTypes[XFT_COUNT];
 } DieFileTypeSet;
 
 static const char *g_die_file_type_names[XFT_COUNT] = {
-    "Unknown", "Binary", "COM", "MSDOS", "NE", "LE", "LX", "PE",
-    "PE32", "PE64", "ELF", "ELF32", "ELF64", "Mach-O", "Mach-O32",
-    "Mach-O64", "ZIP", "JAR", "APK", "IPA", "DEX", "NPM", "Mach-O FAT",
-    "Archive", "PDF", "CFBF", "Image", "JPEG", "PNG", "RAR", "ISO 9660",
-    "Amiga Hunk", "Atari ST", "Java Class", "Python Bytecode", "DOS/16M",
-    "DOS/4G", ".NET"
-};
+    "Unknown",    "Binary",          "COM",     "MSDOS",    "NE",       "LE",   "LX",  "PE",  "PE32",     "PE64",       "ELF",
+    "ELF32",      "ELF64",           "Mach-O",  "Mach-O32", "Mach-O64", "ZIP",  "JAR", "APK", "IPA",      "DEX",        "NPM",
+    "Mach-O FAT", "Archive",         "PDF",     "CFBF",     "Image",    "JPEG", "PNG", "RAR", "ISO 9660", "Amiga Hunk", "Atari ST",
+    "Java Class", "Python Bytecode", "DOS/16M", "DOS/4G",   ".NET"};
 
 const char *xft_to_string(XFileType type)
 {
@@ -83,48 +79,69 @@ static int die_file_type_set_detect(DieFile *file, DieFileTypeSet *set)
     types = xx_scan_get_file_types(NULL, file->pDevice, &options, NULL);
     if (!types) return 0;
     if (file->nSize >= 2 && xx_io_read_at(file->pDevice, 0, signature, sizeof(signature)) &&
-        ((signature[0] == 'M' && signature[1] == 'Z') ||
-         (signature[0] == 'Z' && signature[1] == 'M')))
+        ((signature[0] == 'M' && signature[1] == 'Z') || (signature[0] == 'Z' && signature[1] == 'M')))
         die_file_type_add(set, XFT_MSDOS);
     for (index = 0; index < xx_list_count(types); ++index) {
         xx_file_type_t type = *(xx_file_type_t *)xx_list_at(types, index);
         switch (type) {
             case XX_FILE_TYPE_DOTNET: {
                 cd_i64 optional = (cd_i64)xx_io_get_u32(file->pDevice, 0x3c, false) + 24;
-                die_file_type_add(set, XFT_MSDOS); die_file_type_add(set, XFT_PE);
+                die_file_type_add(set, XFT_MSDOS);
+                die_file_type_add(set, XFT_PE);
                 die_file_type_add(set, xx_io_get_u16(file->pDevice, optional, false) == XX_PE_MAGIC_64 ? XFT_PE64 : XFT_PE32);
                 die_file_type_add(set, XFT_CLI_ASSEMBLY);
                 break;
             }
             case XX_FILE_TYPE_PE32:
-                die_file_type_add(set, XFT_MSDOS); die_file_type_add(set, XFT_PE);
+                die_file_type_add(set, XFT_MSDOS);
+                die_file_type_add(set, XFT_PE);
                 die_file_type_add(set, XFT_PE32);
                 break;
             case XX_FILE_TYPE_PE64:
-                die_file_type_add(set, XFT_MSDOS); die_file_type_add(set, XFT_PE);
+                die_file_type_add(set, XFT_MSDOS);
+                die_file_type_add(set, XFT_PE);
                 die_file_type_add(set, XFT_PE64);
                 break;
             case XX_FILE_TYPE_ELF32:
-                die_file_type_add(set, XFT_ELF); die_file_type_add(set, XFT_ELF32); break;
+                die_file_type_add(set, XFT_ELF);
+                die_file_type_add(set, XFT_ELF32);
+                break;
             case XX_FILE_TYPE_ELF64:
-                die_file_type_add(set, XFT_ELF); die_file_type_add(set, XFT_ELF64); break;
+                die_file_type_add(set, XFT_ELF);
+                die_file_type_add(set, XFT_ELF64);
+                break;
             case XX_FILE_TYPE_MACHO32:
-                die_file_type_add(set, XFT_MACHO); die_file_type_add(set, XFT_MACHO32); break;
+                die_file_type_add(set, XFT_MACHO);
+                die_file_type_add(set, XFT_MACHO32);
+                break;
             case XX_FILE_TYPE_MACHO64:
-                die_file_type_add(set, XFT_MACHO); die_file_type_add(set, XFT_MACHO64); break;
+                die_file_type_add(set, XFT_MACHO);
+                die_file_type_add(set, XFT_MACHO64);
+                break;
             case XX_FILE_TYPE_ZIP:
-                die_file_type_add(set, XFT_ZIP); die_file_type_add(set, XFT_ARCHIVE); break;
+                die_file_type_add(set, XFT_ZIP);
+                die_file_type_add(set, XFT_ARCHIVE);
+                break;
             case XX_FILE_TYPE_JAR:
-                die_file_type_add(set, XFT_ZIP); die_file_type_add(set, XFT_ARCHIVE);
-                die_file_type_add(set, XFT_JAR); break;
+                die_file_type_add(set, XFT_ZIP);
+                die_file_type_add(set, XFT_ARCHIVE);
+                die_file_type_add(set, XFT_JAR);
+                break;
             case XX_FILE_TYPE_APK:
-                die_file_type_add(set, XFT_ZIP); die_file_type_add(set, XFT_ARCHIVE);
-                die_file_type_add(set, XFT_APK); die_file_type_add(set, XFT_JAR); break;
+                die_file_type_add(set, XFT_ZIP);
+                die_file_type_add(set, XFT_ARCHIVE);
+                die_file_type_add(set, XFT_APK);
+                die_file_type_add(set, XFT_JAR);
+                break;
             case XX_FILE_TYPE_IPA:
-                die_file_type_add(set, XFT_ZIP); die_file_type_add(set, XFT_ARCHIVE);
-                die_file_type_add(set, XFT_IPA); break;
+                die_file_type_add(set, XFT_ZIP);
+                die_file_type_add(set, XFT_ARCHIVE);
+                die_file_type_add(set, XFT_IPA);
+                break;
             case XX_FILE_TYPE_NPM:
-                die_file_type_add(set, XFT_NPM); die_file_type_add(set, XFT_ARCHIVE); break;
+                die_file_type_add(set, XFT_NPM);
+                die_file_type_add(set, XFT_ARCHIVE);
+                break;
             case XX_FILE_TYPE_DOS16M: die_file_type_add(set, XFT_DOS16M); break;
             case XX_FILE_TYPE_DOS4G: die_file_type_add(set, XFT_DOS4G); break;
             case XX_FILE_TYPE_NE: die_file_type_add(set, XFT_NE); break;
@@ -137,11 +154,17 @@ static int die_file_type_set_detect(DieFile *file, DieFileTypeSet *set)
             case XX_FILE_TYPE_PDF: die_file_type_add(set, XFT_PDF); break;
             case XX_FILE_TYPE_CFBF: die_file_type_add(set, XFT_CFBF); break;
             case XX_FILE_TYPE_JPEG:
-                die_file_type_add(set, XFT_JPEG); die_file_type_add(set, XFT_IMAGE); break;
+                die_file_type_add(set, XFT_JPEG);
+                die_file_type_add(set, XFT_IMAGE);
+                break;
             case XX_FILE_TYPE_PNG:
-                die_file_type_add(set, XFT_PNG); die_file_type_add(set, XFT_IMAGE); break;
+                die_file_type_add(set, XFT_PNG);
+                die_file_type_add(set, XFT_IMAGE);
+                break;
             case XX_FILE_TYPE_RAR:
-                die_file_type_add(set, XFT_RAR); die_file_type_add(set, XFT_ARCHIVE); break;
+                die_file_type_add(set, XFT_RAR);
+                die_file_type_add(set, XFT_ARCHIVE);
+                break;
             case XX_FILE_TYPE_ISO9660: die_file_type_add(set, XFT_ISO9660); break;
             case XX_FILE_TYPE_AMIGAHUNK: die_file_type_add(set, XFT_AMIGAHUNK); break;
             case XX_FILE_TYPE_ATARIST: die_file_type_add(set, XFT_ATARIST); break;
@@ -232,17 +255,14 @@ static void signature_set_error(DieEngine *pEngine, const char *pText)
     x_memcpy(pEngine->pLastError + sizeof(sPrefix) - 1, pText, nLength + 1);
 
     if (x_getenv("CDIE_TRACE")) {
-        x_fprintf(x_stderr(), "[cdie] %s: %s\n",
-                  pEngine->pCurrentScript ? pEngine->pCurrentScript : "",
-                  pEngine->pLastError);
+        x_fprintf(x_stderr(), "[cdie] %s: %s\n", pEngine->pCurrentScript ? pEngine->pCurrentScript : "", pEngine->pLastError);
     }
 }
 
 /* The general buffer parser retains partial records for its callers. DiE
  * rejects incomplete signatures, including odd nibble/pointer runs, rather
  * than matching the successfully parsed prefix. */
-static int signature_valid(const char *pNormalized, xx_data_signature *pSignature,
-                             int *pParserError)
+static int signature_valid(const char *pNormalized, xx_data_signature *pSignature, int *pParserError)
 {
     int bValid = xx_data_signature_parse(pSignature, pNormalized) ? 1 : 0;
     size_t i = 0;
@@ -267,8 +287,7 @@ static int signature_valid(const char *pNormalized, xx_data_signature *pSignatur
             while (pNormalized[i + 1] == '+') {
                 i++;
             }
-            if (!((pNormalized[i + 1] >= '0' && pNormalized[i + 1] <= '9') ||
-                  (pNormalized[i + 1] >= 'a' && pNormalized[i + 1] <= 'f'))) {
+            if (!((pNormalized[i + 1] >= '0' && pNormalized[i + 1] <= '9') || (pNormalized[i + 1] >= 'a' && pNormalized[i + 1] <= 'f'))) {
                 bValid = 0;
             }
         } else if (c == '%') {
@@ -299,8 +318,7 @@ static int signature_valid(const char *pNormalized, xx_data_signature *pSignatur
                     if (!bInBase) bValid = 0;
                     bInBase = 0;
                 } else if (bInBase) {
-                    if (!((cAddress >= '0' && cAddress <= '9') ||
-                          (cAddress >= 'a' && cAddress <= 'f'))) bValid = 0;
+                    if (!((cAddress >= '0' && cAddress <= '9') || (cAddress >= 'a' && cAddress <= 'f'))) bValid = 0;
                 } else {
                     break;
                 }
@@ -309,8 +327,7 @@ static int signature_valid(const char *pNormalized, xx_data_signature *pSignatur
             i = k - 1;
         } else if ((c >= '0' && c <= '9') || (c >= 'a' && c <= 'f')) {
             size_t nStart = i;
-            while ((pNormalized[i + 1] >= '0' && pNormalized[i + 1] <= '9') ||
-                   (pNormalized[i + 1] >= 'a' && pNormalized[i + 1] <= 'f')) {
+            while ((pNormalized[i + 1] >= '0' && pNormalized[i + 1] <= '9') || (pNormalized[i + 1] >= 'a' && pNormalized[i + 1] <= 'f')) {
                 i++;
             }
             if ((i - nStart + 1) % 2) {
@@ -323,9 +340,7 @@ static int signature_valid(const char *pNormalized, xx_data_signature *pSignatur
     }
     for (j = 0; j < pSignature->count; j++) {
         const xx_data_sig_record *pRecord = &pSignature->records[j];
-        if (((pRecord->kind == XX_DATA_SIG_REL_OFFSET) ||
-             (pRecord->kind == XX_DATA_SIG_ADDRESS)) &&
-            (pRecord->address_size != 1) && (pRecord->address_size != 2) &&
+        if (((pRecord->kind == XX_DATA_SIG_REL_OFFSET) || (pRecord->kind == XX_DATA_SIG_ADDRESS)) && (pRecord->address_size != 1) && (pRecord->address_size != 2) &&
             (pRecord->address_size != 4) && (pRecord->address_size != 8)) {
             bValid = 0;
         }
@@ -336,8 +351,7 @@ static int signature_valid(const char *pNormalized, xx_data_signature *pSignatur
 /* The reference's cached path compares hexadecimal characters, not parsed
  * records. It accepts a single wildcard nibble and odd hexadecimal lengths.
  * QString::mid also clips a negative starting position against the cache. */
-static int signature_compare_nibbles(DieFile *file, cd_i64 offset,
-                                     const char *text, size_t length)
+static int signature_compare_nibbles(DieFile *file, cd_i64 offset, const char *text, size_t length)
 {
     static const char digits[] = "0123456789abcdef";
     size_t total = length / 2 + length % 2, done = 0;
@@ -348,18 +362,14 @@ static int signature_compare_nibbles(DieFile *file, cd_i64 offset,
         for (i = 0; i < count; ++i) {
             size_t position = (done + i) * 2;
             if (text[position] != '.' && text[position] != digits[view[i] >> 4]) return 0;
-            if (position + 1 < length && text[position + 1] != '.' &&
-                text[position + 1] != digits[view[i] & 15]) return 0;
+            if (position + 1 < length && text[position + 1] != '.' && text[position + 1] != digits[view[i] & 15]) return 0;
         }
         done += count;
     }
     return 1;
 }
 
-static int signature_cached_compare(DieFile *pFile, cd_i64 nBase,
-                                    cd_u64 nCacheBytes, cd_u64 nDistance,
-                                    int bNegative, const char *pNormalized,
-                                    size_t nSliceBytes)
+static int signature_cached_compare(DieFile *pFile, cd_i64 nBase, cd_u64 nCacheBytes, cd_u64 nDistance, int bNegative, const char *pNormalized, size_t nSliceBytes)
 {
     size_t nLength = x_strlen(pNormalized);
     cd_u64 nAvailable;
@@ -384,8 +394,7 @@ static int signature_cached_compare(DieFile *pFile, cd_i64 nBase,
 /* A normalized literal needs neither allocated records nor an address map.
  * Return -1 for forms that still need the full signature parser. Cached
  * nibble comparisons must run first because they also accept odd lengths. */
-static int signature_literal_compare(DieFile *pFile, cd_i64 nOffset,
-                                      const char *pNormalized)
+static int signature_literal_compare(DieFile *pFile, cd_i64 nOffset, const char *pNormalized)
 {
     size_t nLength = x_strlen(pNormalized);
     size_t i;
@@ -395,17 +404,13 @@ static int signature_literal_compare(DieFile *pFile, cd_i64 nOffset,
         char c = pNormalized[i];
         if (!((c >= '0' && c <= '9') || (c >= 'a' && c <= 'f'))) return -1;
     }
-    if (nOffset < 0 || pFile->nSize < 0 ||
-        (cd_u64)nOffset > (cd_u64)pFile->nSize ||
-        (cd_u64)(nLength / 2) > (cd_u64)pFile->nSize - (cd_u64)nOffset) {
+    if (nOffset < 0 || pFile->nSize < 0 || (cd_u64)nOffset > (cd_u64)pFile->nSize || (cd_u64)(nLength / 2) > (cd_u64)pFile->nSize - (cd_u64)nOffset) {
         return 0;
     }
     return signature_compare_nibbles(pFile, nOffset, pNormalized, nLength);
 }
 
-int die_engine_signature_compare(DieEngine *pEngine, cd_i64 nOffset,
-                                  const char *pText, int nKind,
-                                  cd_i64 nCacheBase)
+int die_engine_signature_compare(DieEngine *pEngine, cd_i64 nOffset, const char *pText, int nKind, cd_i64 nCacheBase)
 {
     char *pNormalized = signature_normalize(pText);
     xx_data_signature signature;
@@ -422,16 +427,13 @@ int die_engine_signature_compare(DieEngine *pEngine, cd_i64 nOffset,
     if (!pNormalized) {
         return 0;
     }
-    if (nKind != 3 && nCacheBase >= 0 && nCacheBase < pEngine->file.nSize &&
-        (nKind != 2 || nCacheBase > 0)) {
+    if (nKind != 3 && nCacheBase >= 0 && nCacheBase < pEngine->file.nSize && (nKind != 2 || nCacheBase > 0)) {
         nCacheBytes = (cd_u64)(pEngine->file.nSize - nCacheBase);
         if (nCacheBytes > 256) nCacheBytes = 256;
-        nDistance = bNegative ? (cd_u64)nCacheBase - (cd_u64)nOffset :
-                               (cd_u64)nOffset - (cd_u64)nCacheBase;
+        nDistance = bNegative ? (cd_u64)nCacheBase - (cd_u64)nOffset : (cd_u64)nOffset - (cd_u64)nCacheBase;
         nCriterion = nKind == 1 ? nCacheBytes : nCacheBytes * 2;
         if (bNegative) {
-            nCacheLimit = nDistance > (cd_u64)-1 - nCriterion ? (cd_u64)-1 :
-                nDistance + nCriterion;
+            nCacheLimit = nDistance > (cd_u64)-1 - nCriterion ? (cd_u64)-1 : nDistance + nCriterion;
         } else if (nDistance < nCriterion) {
             nCacheLimit = nCriterion - nDistance;
         }
@@ -439,13 +441,9 @@ int die_engine_signature_compare(DieEngine *pEngine, cd_i64 nOffset,
     /* Header caching uses normalized length and bytes; EP/overlay caching
      * uses original text length and the hexadecimal cache's character count. */
     nSliceBytes = x_strlen(nKind == 1 ? pNormalized : (pText ? pText : ""));
-    if ((cd_u64)nSliceBytes < nCacheLimit &&
-        !x_strchr(pNormalized, '$') && !x_strchr(pNormalized, '#') &&
-        !x_strchr(pNormalized, '+') && !x_strchr(pNormalized, '%') &&
+    if ((cd_u64)nSliceBytes < nCacheLimit && !x_strchr(pNormalized, '$') && !x_strchr(pNormalized, '#') && !x_strchr(pNormalized, '+') && !x_strchr(pNormalized, '%') &&
         !x_strchr(pNormalized, '*')) {
-        bResult = signature_cached_compare(&pEngine->file, nCacheBase,
-                                           nCacheBytes, nDistance, bNegative,
-                                           pNormalized, nSliceBytes);
+        bResult = signature_cached_compare(&pEngine->file, nCacheBase, nCacheBytes, nDistance, bNegative, pNormalized, nSliceBytes);
         xx_str_free(pNormalized);
         return bResult;
     }
@@ -464,19 +462,15 @@ int die_engine_signature_compare(DieEngine *pEngine, cd_i64 nOffset,
         }
     } else {
         const unsigned char *pWhole = die_file_whole(&pEngine->file, 0);
-        bResult = pWhole ?
-            xx_data_signature_match(pWhole, (size_t)pEngine->file.nSize,
-                nOffset, &signature, &pEngine->sigContext, NULL) :
-            xx_io_signature_match(pEngine->file.pDevice, nOffset, &signature,
-                &pEngine->sigContext, NULL);
+        bResult = pWhole ? xx_data_signature_match(pWhole, (size_t)pEngine->file.nSize, nOffset, &signature, &pEngine->sigContext, NULL)
+                         : xx_io_signature_match(pEngine->file.pDevice, nOffset, &signature, &pEngine->sigContext, NULL);
     }
     xx_data_signature_free(&signature);
     xx_str_free(pNormalized);
     return bResult;
 }
 
-cd_i64 die_engine_signature_find(DieEngine *pEngine, cd_i64 nOffset,
-                                  cd_i64 nSize, const char *pText)
+cd_i64 die_engine_signature_find(DieEngine *pEngine, cd_i64 nOffset, cd_i64 nSize, const char *pText)
 {
     char *pNormalized;
     xx_data_signature signature;
@@ -500,21 +494,14 @@ cd_i64 die_engine_signature_find(DieEngine *pEngine, cd_i64 nOffset,
         if (bParserError) {
             signature_set_error(pEngine, pNormalized);
         }
-    } else if (signature.count == 1 &&
-               signature.records[0].kind == XX_DATA_SIG_BYTES) {
+    } else if (signature.count == 1 && signature.records[0].kind == XX_DATA_SIG_BYTES) {
         /* Validation already parsed this literal. Reuse its bytes instead
          * of normalizing and parsing the same signature a second time. */
-        nResult = die_engine_literal_find(pEngine, nOffset, nSize,
-                                           signature.records[0].data,
-                                           signature.records[0].data_size);
+        nResult = die_engine_literal_find(pEngine, nOffset, nSize, signature.records[0].data, signature.records[0].data_size);
     } else if (signature.count > 0) {
-        const unsigned char *pWhole = die_file_whole(&pEngine->file,
-            die_file_search_access(&pEngine->file, nSize < 0 ? pEngine->file.nSize - nOffset : nSize));
-        nResult = pWhole ?
-            xx_data_signature_find_text(pWhole, (size_t)pEngine->file.nSize,
-                nOffset, nSize, pText, &pEngine->sigContext) :
-            xx_io_signature_find_text(pEngine->file.pDevice, nOffset, nSize, pText,
-                &pEngine->sigContext);
+        const unsigned char *pWhole = die_file_whole(&pEngine->file, die_file_search_access(&pEngine->file, nSize < 0 ? pEngine->file.nSize - nOffset : nSize));
+        nResult = pWhole ? xx_data_signature_find_text(pWhole, (size_t)pEngine->file.nSize, nOffset, nSize, pText, &pEngine->sigContext)
+                         : xx_io_signature_find_text(pEngine->file.pDevice, nOffset, nSize, pText, &pEngine->sigContext);
     }
     xx_data_signature_free(&signature);
     xx_str_free(pNormalized);
@@ -631,9 +618,7 @@ static void add_msdos_zip_overlay(DieEngine *pEngine)
     ScanResult *pResult = pEngine->pResult;
     ScanRecord *pRecord = NULL;
 
-    if ((pEngine->fileType != XFT_MSDOS) || (nSize < 6) ||
-        !die_file_read_at(&pEngine->file, 0, header, sizeof(header)) ||
-        (header[0] != 'M') || (header[1] != 'Z')) {
+    if ((pEngine->fileType != XFT_MSDOS) || (nSize < 6) || !die_file_read_at(&pEngine->file, 0, header, sizeof(header)) || (header[0] != 'M') || (header[1] != 'Z')) {
         return;
     }
 
@@ -644,9 +629,8 @@ static void add_msdos_zip_overlay(DieEngine *pEngine)
         nOverlay -= 512 - nLastPage;
     }
 
-    if ((nOverlay < 0) || (nOverlay > nSize) || (nSize - nOverlay < 4) ||
-        !die_file_read_at(&pEngine->file, nOverlay, magic, sizeof(magic)) ||
-        (magic[0] != 'P') || (magic[1] != 'K') || (magic[2] != 3) || (magic[3] != 4)) {
+    if ((nOverlay < 0) || (nOverlay > nSize) || (nSize - nOverlay < 4) || !die_file_read_at(&pEngine->file, nOverlay, magic, sizeof(magic)) || (magic[0] != 'P') ||
+        (magic[1] != 'K') || (magic[2] != 3) || (magic[3] != 4)) {
         return;
     }
 
@@ -839,8 +823,7 @@ static void run_script(DieEngine *pEngine, DBSignature *pRecord, int bCallDetect
  * twice; the caller sorts the merged record list. bAddUnknown mirrors the
  * reference's _processDetect flag: when it is 0 an empty pass stays empty
  * instead of gaining the "Unknown" record.                                 */
-static int scan_run_pass(DieFile *pOpenedFile, XFileType fileType, int bIsCliAssembly, DBase *pDb, ScanOptions *pOptions, ScanResult *pResult,
-                         int bAddUnknown)
+static int scan_run_pass(DieFile *pOpenedFile, XFileType fileType, int bIsCliAssembly, DBase *pDb, ScanOptions *pOptions, ScanResult *pResult, int bAddUnknown)
 {
     /* Heap, not stack: DieEngine embeds every parser state by value and is
      * over 3 KB on its own. A frame that size walks past the guard page, and
@@ -900,8 +883,8 @@ static int scan_run_pass(DieFile *pOpenedFile, XFileType fileType, int bIsCliAss
     /* Every ZIP-family container (also an APK, which additionally parses its
      * AndroidManifest above) gets its central-directory record list and
      * MANIFEST.MF read for the archive-record and manifest predicates. */
-    if ((pEngine->fileType == XFT_APK) || (pEngine->fileType == XFT_JAR) || (pEngine->fileType == XFT_ZIP) ||
-        (pEngine->fileType == XFT_NPM) || (pEngine->fileType == XFT_IPA)) {
+    if ((pEngine->fileType == XFT_APK) || (pEngine->fileType == XFT_JAR) || (pEngine->fileType == XFT_ZIP) || (pEngine->fileType == XFT_NPM) ||
+        (pEngine->fileType == XFT_IPA)) {
         xx_zip_init(&pEngine->zip, pEngine->file.pDevice, 0);
         pEngine->bHasZip = xx_zip_analyze(&pEngine->zip, NULL);
     }
@@ -919,9 +902,7 @@ static int scan_run_pass(DieFile *pOpenedFile, XFileType fileType, int bIsCliAss
          * -- they make a relative jump wrap inside its segment -- so those
          * are the ones worth translating out of the engine's own file-type
          * enum. Everything else evaluates the same either way. */
-        binaryMap.file_type = (pEngine->fileType == XFT_COM)     ? XX_FILE_TYPE_COM
-                              : (pEngine->fileType == XFT_MSDOS) ? XX_FILE_TYPE_MSDOS
-                                                                 : XX_FILE_TYPE_BINARY;
+        binaryMap.file_type = (pEngine->fileType == XFT_COM) ? XX_FILE_TYPE_COM : (pEngine->fileType == XFT_MSDOS) ? XX_FILE_TYPE_MSDOS : XX_FILE_TYPE_BINARY;
         die_map_add_part(&binaryMap, 0, pEngine->file.nSize, 0, (cd_u64)pEngine->file.nSize, XX_FILE_PART_DATA, "Data");
         pEngine->pMap = &binaryMap;
     }
@@ -930,9 +911,7 @@ static int scan_run_pass(DieFile *pOpenedFile, XFileType fileType, int bIsCliAss
      * has always done, and what the signature databases were written
      * against; both are off by default in the library because refusing is
      * the better behaviour for anything new. */
-    xx_data_sig_context_from_memory_map_ex(&pEngine->sigContext, pEngine->pMap,
-                                           XX_MEMORY_MAP_LOOKUP_FIRST_MATCH,
-                                           true);
+    xx_data_sig_context_from_memory_map_ex(&pEngine->sigContext, pEngine->pMap, XX_MEMORY_MAP_LOOKUP_FIRST_MATCH, true);
 
     pResult->fileType = pEngine->fileType;
 
@@ -977,8 +956,7 @@ static int scan_run_pass(DieFile *pOpenedFile, XFileType fileType, int bIsCliAss
     /* cd_alloc_oom() is always false unless the soft out-of-memory policy is
      * armed, which only the shared library does; there it ends the scan at
      * the next script boundary instead of ending the process. */
-    for (i = 0; (i < pDb->nCount) && (!pEngine->bStop) && (!cd_alloc_oom()) &&
-         !die_file_read_failed(&pEngine->file); i++) {
+    for (i = 0; (i < pDb->nCount) && (!pEngine->bStop) && (!cd_alloc_oom()) && !die_file_read_failed(&pEngine->file); i++) {
         if (should_execute(&pDb->pRecords[i], pEngine->fileType, pEngine->bIsCliAssembly, pOptions)) {
             run_script(pEngine, &pDb->pRecords[i], 1);
         }
@@ -1129,8 +1107,7 @@ static int com_has_non_generic(ScanResult *pResult)
 /* The scan proper, over an already-populated DieFile (the struct is taken by
  * value and closed here). Both die_engine_scan_file and die_engine_scan_memory funnel
  * through this so the two entry points share one verified path. */
-static int scan_engine_run(DieFile *pOpenedFile, DBase *pDb, ScanOptions *pOptions,
-                           XFileType selectedType, ScanResult *pResult)
+static int scan_engine_run(DieFile *pOpenedFile, DBase *pDb, ScanOptions *pOptions, XFileType selectedType, ScanResult *pResult)
 {
     DieFileTypeSet set;
     XFileType fileType = XFT_BINARY;
@@ -1241,16 +1218,14 @@ int die_engine_scan_file(const char *pFileName, DBase *pDb, ScanOptions *pOption
     return die_engine_scan_file_type(pFileName, pDb, pOptions, XFT_UNKNOWN, pResult);
 }
 
-int die_engine_scan_file_type(const char *pFileName, DBase *pDb,
-                              ScanOptions *pOptions, XFileType fileType, ScanResult *pResult)
+int die_engine_scan_file_type(const char *pFileName, DBase *pDb, ScanOptions *pOptions, XFileType fileType, ScanResult *pResult)
 {
     DieFile file;
 
     if (!pResult) return 0;
     x_memset(pResult, 0, sizeof(*pResult));
 
-    if (!pFileName || !pFileName[0] || !pDb || !pOptions ||
-        (cd_u32)fileType >= (cd_u32)XFT_COUNT) return 0;
+    if (!pFileName || !pFileName[0] || !pDb || !pOptions || (cd_u32)fileType >= (cd_u32)XFT_COUNT) return 0;
 
     if (!die_file_open(&file, pFileName)) {
         return 0;
@@ -1262,8 +1237,7 @@ int die_engine_scan_file_type(const char *pFileName, DBase *pDb,
     return scan_engine_run(&file, pDb, pOptions, fileType, pResult);
 }
 
-int die_engine_detect_file_types(const char *pFileName,
-                                 die_engine_file_type_fn pTypeFn, void *pUserData)
+int die_engine_detect_file_types(const char *pFileName, die_engine_file_type_fn pTypeFn, void *pUserData)
 {
     DieFile file;
     DieFileTypeSet set;
@@ -1284,15 +1258,13 @@ int die_engine_detect_file_types(const char *pFileName,
     if (pTypeFn) {
         pTypeFn(preferred, pUserData);
         for (i = XFT_COUNT - 1; i > XFT_UNKNOWN; --i) {
-            if (i != (int)preferred && die_file_type_contains(&set, (XFileType)i))
-                pTypeFn((XFileType)i, pUserData);
+            if (i != (int)preferred && die_file_type_contains(&set, (XFileType)i)) pTypeFn((XFileType)i, pUserData);
         }
     }
     return 1;
 }
 
-int die_engine_scan_device(xx_io_device *pDevice, DBase *pDb,
-                           ScanOptions *pOptions, ScanResult *pResult)
+int die_engine_scan_device(xx_io_device *pDevice, DBase *pDb, ScanOptions *pOptions, ScanResult *pResult)
 {
     DieFile file;
     const char *pSourcePath;

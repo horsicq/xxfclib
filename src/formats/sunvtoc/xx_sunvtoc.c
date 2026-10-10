@@ -62,12 +62,11 @@ static void xx_sunvtoc_vtable_destroy(Abstractformat *self);
 /* Small helpers                                                       */
 /* ------------------------------------------------------------------ */
 
-static bool xx_sunvtoc_read_at(xx_io_device *device, int64_t offset,
-                               void *data, size_t size) {
+static bool xx_sunvtoc_read_at(xx_io_device *device, int64_t offset, void *data, size_t size)
+{
     uint8_t *out = (uint8_t *)data;
     size_t done = 0U;
-    if (!device || (!data && size != 0U) || offset < 0 ||
-        xx_io_seek64(device, offset, SEEK_SET) != 0) {
+    if (!device || (!data && size != 0U) || offset < 0 || xx_io_seek64(device, offset, SEEK_SET) != 0) {
         return false;
     }
     while (done < size) {
@@ -81,21 +80,20 @@ static bool xx_sunvtoc_read_at(xx_io_device *device, int64_t offset,
 /* The label is sound when the magic sits at +508 in the expected byte order
  * and the XOR of all 256 words is zero. XOR is order independent, so the
  * words are folded as they come. */
-static bool xx_sunvtoc_label_ok(const uint8_t sector[XX_SUNVTOC_SECTOR],
-                                bool big_endian) {
+static bool xx_sunvtoc_label_ok(const uint8_t sector[XX_SUNVTOC_SECTOR], bool big_endian)
+{
     uint16_t sum = 0U;
     size_t index;
-    uint16_t magic = xx_data_get_u16(sector, XX_SUNVTOC_SECTOR, 508U,
-                                     big_endian);
+    uint16_t magic = xx_data_get_u16(sector, XX_SUNVTOC_SECTOR, 508U, big_endian);
     if (magic != XX_SUNVTOC_MAGIC) return false;
     for (index = 0U; index < XX_SUNVTOC_SECTOR; index += 2U) {
-        sum = (uint16_t)(sum ^ (uint16_t)((sector[index] << 8U) |
-                                          sector[index + 1U]));
+        sum = (uint16_t)(sum ^ (uint16_t)((sector[index] << 8U) | sector[index + 1U]));
     }
     return sum == 0U;
 }
 
-static char *xx_sunvtoc_make_name(unsigned index) {
+static char *xx_sunvtoc_make_name(unsigned index)
+{
     static const char prefix[] = "slice";
     char digits[16];
     char buffer[sizeof(prefix) + sizeof(digits)];
@@ -112,7 +110,8 @@ static char *xx_sunvtoc_make_name(unsigned index) {
 }
 
 /* Tag names from the Solaris VTOC, plus the Linux ids fdisk writes. */
-static const char *xx_sunvtoc_tag_name(uint16_t tag) {
+static const char *xx_sunvtoc_tag_name(uint16_t tag)
+{
     switch (tag) {
         case 0x00U: return "unassigned";
         case 0x01U: return "boot";
@@ -136,9 +135,8 @@ static const char *xx_sunvtoc_tag_name(uint16_t tag) {
     }
 }
 
-static void xx_sunvtoc_make_comment(const xx_sunvtoc_entry *entry,
-                                    bool has_vtoc,
-                                    char out[XX_SUNVTOC_COMMENT_SIZE]) {
+static void xx_sunvtoc_make_comment(const xx_sunvtoc_entry *entry, bool has_vtoc, char out[XX_SUNVTOC_COMMENT_SIZE])
+{
     static const char hex[] = "0123456789ABCDEF";
     const char *text;
     size_t length;
@@ -165,14 +163,16 @@ static void xx_sunvtoc_make_comment(const xx_sunvtoc_entry *entry,
 /* Parsing                                                             */
 /* ------------------------------------------------------------------ */
 
-static void xx_sunvtoc_private_reset(xx_sunvtoc_private *parsed) {
+static void xx_sunvtoc_private_reset(xx_sunvtoc_private *parsed)
+{
     xx_rt_memset(parsed, 0, sizeof(*parsed));
     parsed->label_offset = -1;
     parsed->input_size = -1;
     parsed->archive_end = -1;
 }
 
-static void xx_sunvtoc_private_cleanup(xx_sunvtoc_private *parsed) {
+static void xx_sunvtoc_private_cleanup(xx_sunvtoc_private *parsed)
+{
     size_t index;
     if (!parsed) return;
     for (index = 0U; index < parsed->count; ++index) {
@@ -185,10 +185,8 @@ static void xx_sunvtoc_private_cleanup(xx_sunvtoc_private *parsed) {
  * sectors, one whose byte offset overflows, or one that starts at or past
  * the end of the device is skipped. Returns false only on allocation
  * failure. */
-static bool xx_sunvtoc_add_slice(Abstractformat *self,
-                                 xx_sunvtoc_private *parsed, uint32_t slot,
-                                 uint64_t start_sector, uint32_t count,
-                                 uint16_t tag, uint16_t flag) {
+static bool xx_sunvtoc_add_slice(Abstractformat *self, xx_sunvtoc_private *parsed, uint32_t slot, uint64_t start_sector, uint32_t count, uint16_t tag, uint16_t flag)
+{
     xx_sunvtoc_entry *entry;
     uint64_t start_bytes;
     uint64_t declared;
@@ -222,22 +220,18 @@ static bool xx_sunvtoc_add_slice(Abstractformat *self,
     return true;
 }
 
-static bool xx_sunvtoc_parse_sparc(Abstractformat *self,
-                                   xx_sunvtoc_private *parsed,
-                                   const uint8_t *s) {
+static bool xx_sunvtoc_parse_sparc(Abstractformat *self, xx_sunvtoc_private *parsed, const uint8_t *s)
+{
     uint32_t heads = xx_data_get_u16(s, XX_SUNVTOC_SECTOR, 436U, true);
     uint32_t sectors = xx_data_get_u16(s, XX_SUNVTOC_SECTOR, 438U, true);
     uint32_t slot;
     if (heads == 0U || sectors == 0U) return false;
     parsed->layout = XX_SUNVTOC_LAYOUT_SPARC;
     parsed->sectors_per_cylinder = heads * sectors; /* <= 0xFFFE0001 */
-    parsed->has_vtoc = xx_data_get_u32(s, XX_SUNVTOC_SECTOR, 188U, true) ==
-                       XX_SUNVTOC_SANITY;
+    parsed->has_vtoc = xx_data_get_u32(s, XX_SUNVTOC_SECTOR, 188U, true) == XX_SUNVTOC_SANITY;
     for (slot = 0U; slot < XX_SUNVTOC_SPARC_SLICES; ++slot) {
-        uint32_t cylinder = xx_data_get_u32(s, XX_SUNVTOC_SECTOR,
-                                            444U + slot * 8U, true);
-        uint32_t count = xx_data_get_u32(s, XX_SUNVTOC_SECTOR,
-                                         448U + slot * 8U, true);
+        uint32_t cylinder = xx_data_get_u32(s, XX_SUNVTOC_SECTOR, 444U + slot * 8U, true);
+        uint32_t count = xx_data_get_u32(s, XX_SUNVTOC_SECTOR, 448U + slot * 8U, true);
         uint16_t tag = 0U;
         uint16_t flag = 0U;
         if (parsed->has_vtoc) {
@@ -245,24 +239,19 @@ static bool xx_sunvtoc_parse_sparc(Abstractformat *self,
             flag = xx_data_get_u16(s, XX_SUNVTOC_SECTOR, 144U + slot * 4U, true);
         }
         /* Both factors are below 2^32, so the product fits 64 bits. */
-        if (!xx_sunvtoc_add_slice(self, parsed, slot,
-                                  (uint64_t)cylinder *
-                                      parsed->sectors_per_cylinder,
-                                  count, tag, flag)) {
+        if (!xx_sunvtoc_add_slice(self, parsed, slot, (uint64_t)cylinder * parsed->sectors_per_cylinder, count, tag, flag)) {
             return false;
         }
     }
     return true;
 }
 
-static bool xx_sunvtoc_parse_x86(Abstractformat *self,
-                                 xx_sunvtoc_private *parsed,
-                                 const uint8_t *s) {
+static bool xx_sunvtoc_parse_x86(Abstractformat *self, xx_sunvtoc_private *parsed, const uint8_t *s)
+{
     uint32_t nparts;
     uint32_t limit;
     uint32_t slot;
-    if (xx_data_get_u32(s, XX_SUNVTOC_SECTOR, 12U, false) != XX_SUNVTOC_SANITY ||
-        xx_data_get_u32(s, XX_SUNVTOC_SECTOR, 16U, false) != 1U ||
+    if (xx_data_get_u32(s, XX_SUNVTOC_SECTOR, 12U, false) != XX_SUNVTOC_SANITY || xx_data_get_u32(s, XX_SUNVTOC_SECTOR, 16U, false) != 1U ||
         xx_data_get_u16(s, XX_SUNVTOC_SECTOR, 28U, false) != XX_SUNVTOC_SECTOR) {
         return false;
     }
@@ -273,12 +262,8 @@ static bool xx_sunvtoc_parse_x86(Abstractformat *self,
     parsed->has_vtoc = true;
     for (slot = 0U; slot < limit; ++slot) {
         size_t at = 72U + (size_t)slot * 12U;
-        if (!xx_sunvtoc_add_slice(
-                self, parsed, slot,
-                xx_data_get_u32(s, XX_SUNVTOC_SECTOR, at + 4U, false),
-                xx_data_get_u32(s, XX_SUNVTOC_SECTOR, at + 8U, false),
-                xx_data_get_u16(s, XX_SUNVTOC_SECTOR, at, false),
-                xx_data_get_u16(s, XX_SUNVTOC_SECTOR, at + 2U, false))) {
+        if (!xx_sunvtoc_add_slice(self, parsed, slot, xx_data_get_u32(s, XX_SUNVTOC_SECTOR, at + 4U, false), xx_data_get_u32(s, XX_SUNVTOC_SECTOR, at + 8U, false),
+                                  xx_data_get_u16(s, XX_SUNVTOC_SECTOR, at, false), xx_data_get_u16(s, XX_SUNVTOC_SECTOR, at + 2U, false))) {
             return false;
         }
     }
@@ -288,37 +273,29 @@ static bool xx_sunvtoc_parse_x86(Abstractformat *self,
 /* Reads at most two sectors: the SPARC label in sector 0, else the x86
  * VTOC in sector 1. A cheap byte test on the magic comes first, so garbage
  * is refused after one 512-byte read. */
-static bool xx_sunvtoc_parse(Abstractformat *self, xx_sunvtoc_private *parsed,
-                             xx_pd_struct *pd) {
+static bool xx_sunvtoc_parse(Abstractformat *self, xx_sunvtoc_private *parsed, xx_pd_struct *pd)
+{
     uint8_t sector[XX_SUNVTOC_SECTOR];
     int64_t total_size;
     bool ok = false;
     if (parsed) xx_sunvtoc_private_reset(parsed);
-    if (!self || !self->device || !parsed || self->base_address < 0 ||
-        (pd && xx_pd_is_stopped(pd))) return false;
+    if (!self || !self->device || !parsed || self->base_address < 0 || (pd && xx_pd_is_stopped(pd))) return false;
     total_size = xx_io_total_size(self->device);
-    if (total_size <= self->base_address ||
-        total_size - self->base_address < (int64_t)XX_SUNVTOC_SECTOR) {
+    if (total_size <= self->base_address || total_size - self->base_address < (int64_t)XX_SUNVTOC_SECTOR) {
         return false;
     }
     parsed->input_size = total_size;
-    if (!xx_sunvtoc_read_at(self->device, self->base_address, sector,
-                            XX_SUNVTOC_SECTOR)) {
+    if (!xx_sunvtoc_read_at(self->device, self->base_address, sector, XX_SUNVTOC_SECTOR)) {
         return false;
     }
-    if (sector[508] == 0xDAU && sector[509] == 0xBEU &&
-        xx_sunvtoc_label_ok(sector, true)) {
+    if (sector[508] == 0xDAU && sector[509] == 0xBEU && xx_sunvtoc_label_ok(sector, true)) {
         parsed->label_offset = self->base_address;
         ok = xx_sunvtoc_parse_sparc(self, parsed, sector);
     }
-    if (!ok && parsed->count == 0U &&
-        total_size - self->base_address >= (int64_t)(XX_SUNVTOC_SECTOR * 2U)) {
+    if (!ok && parsed->count == 0U && total_size - self->base_address >= (int64_t)(XX_SUNVTOC_SECTOR * 2U)) {
         xx_sunvtoc_private_cleanup(parsed);
         parsed->input_size = total_size;
-        if (xx_sunvtoc_read_at(self->device,
-                               self->base_address + XX_SUNVTOC_SECTOR, sector,
-                               XX_SUNVTOC_SECTOR) &&
-            sector[508] == 0xBEU && sector[509] == 0xDAU &&
+        if (xx_sunvtoc_read_at(self->device, self->base_address + XX_SUNVTOC_SECTOR, sector, XX_SUNVTOC_SECTOR) && sector[508] == 0xBEU && sector[509] == 0xDAU &&
             xx_sunvtoc_label_ok(sector, false)) {
             parsed->label_offset = self->base_address + XX_SUNVTOC_SECTOR;
             ok = xx_sunvtoc_parse_x86(self, parsed, sector);
@@ -338,18 +315,16 @@ static bool xx_sunvtoc_parse(Abstractformat *self, xx_sunvtoc_private *parsed,
 /* Archive record plumbing                                             */
 /* ------------------------------------------------------------------ */
 
-static bool xx_sunvtoc_copy_options(xx_list_s *destination,
-                                    const xx_list_s *source) {
+static bool xx_sunvtoc_copy_options(xx_list_s *destination, const xx_list_s *source)
+{
     size_t index;
     if (!destination || !source) return source == NULL;
     for (index = 0U; index < source->count; ++index) {
-        const xx_meta *item = (const xx_meta *)xx_list_at(
-            (const xx_list_t *)source, index);
+        const xx_meta *item = (const xx_meta *)xx_list_at((const xx_list_t *)source, index);
         xx_meta copy;
         if (!item) continue;
         xx_meta_init(&copy, item->meta_id);
-        if (!xx_var_copy(&copy.var, &item->var) ||
-            !xx_list_append(destination, &copy)) {
+        if (!xx_var_copy(&copy.var, &item->var) || !xx_list_append(destination, &copy)) {
             xx_meta_cleanup(&copy);
             return false;
         }
@@ -357,21 +332,19 @@ static bool xx_sunvtoc_copy_options(xx_list_s *destination,
     return true;
 }
 
-static const xx_var *xx_sunvtoc_find_option(const xx_list_s *options,
-                                            uint32_t meta_id) {
+static const xx_var *xx_sunvtoc_find_option(const xx_list_s *options, uint32_t meta_id)
+{
     size_t index;
     if (!options) return NULL;
     for (index = 0U; index < options->count; ++index) {
-        const xx_meta *item = (const xx_meta *)xx_list_at(
-            (const xx_list_t *)options, index);
+        const xx_meta *item = (const xx_meta *)xx_list_at((const xx_list_t *)options, index);
         if (item && item->meta_id == meta_id) return &item->var;
     }
     return NULL;
 }
 
-static bool xx_sunvtoc_populate_record(xx_archive_record *record,
-                                       const xx_sunvtoc_entry *entry,
-                                       bool has_vtoc, int64_t label_offset) {
+static bool xx_sunvtoc_populate_record(xx_archive_record *record, const xx_sunvtoc_entry *entry, bool has_vtoc, int64_t label_offset)
+{
     char comment[XX_SUNVTOC_COMMENT_SIZE];
     if (!record || !entry || !entry->name) return false;
     xx_archive_record_cleanup(record);
@@ -381,21 +354,14 @@ static bool xx_sunvtoc_populate_record(xx_archive_record *record,
     record->header_size = (int64_t)XX_SUNVTOC_SECTOR;
     record->data_offset = entry->data_offset;
     record->compressed_size = entry->data_size;
-    return xx_archive_record_set_original_name(record, entry->name) &&
-           xx_archive_record_set_meta_u64(record, XX_META_ID_UNCOMPRESSED_SIZE,
-                                          (uint64_t)entry->data_size) &&
-           xx_archive_record_set_meta_u64(record, XX_META_ID_COMPRESSED_SIZE,
-                                          (uint64_t)entry->data_size) &&
-           xx_archive_record_set_meta_u64(record, XX_META_ID_COMPRESSION_METHOD,
-                                          0U) &&
-           xx_archive_record_set_meta_u64(record, XX_META_ID_ATTRIBUTES,
-                                          entry->flag) &&
-           xx_archive_record_set_meta_str(record, XX_META_ID_COMMENT,
-                                          comment) &&
-           xx_archive_record_set_meta_bool(record, XX_META_ID_IS_FOLDER, false);
+    return xx_archive_record_set_original_name(record, entry->name) && xx_archive_record_set_meta_u64(record, XX_META_ID_UNCOMPRESSED_SIZE, (uint64_t)entry->data_size) &&
+           xx_archive_record_set_meta_u64(record, XX_META_ID_COMPRESSED_SIZE, (uint64_t)entry->data_size) &&
+           xx_archive_record_set_meta_u64(record, XX_META_ID_COMPRESSION_METHOD, 0U) && xx_archive_record_set_meta_u64(record, XX_META_ID_ATTRIBUTES, entry->flag) &&
+           xx_archive_record_set_meta_str(record, XX_META_ID_COMMENT, comment) && xx_archive_record_set_meta_bool(record, XX_META_ID_IS_FOLDER, false);
 }
 
-static void xx_sunvtoc_archive_stream_free(void *pointer) {
+static void xx_sunvtoc_archive_stream_free(void *pointer)
+{
     xx_sunvtoc_archive_stream *stream = (xx_sunvtoc_archive_stream *)pointer;
     if (!stream) return;
     xx_sunvtoc_private_cleanup(&stream->parsed);
@@ -404,7 +370,8 @@ static void xx_sunvtoc_archive_stream_free(void *pointer) {
 
 /* Record names are generated ("slice<n>"), never read from the label; this
  * only refuses the impossible. */
-static bool xx_sunvtoc_safe_name(const char *name) {
+static bool xx_sunvtoc_safe_name(const char *name)
+{
     size_t index;
     if (!name || !name[0]) return false;
     for (index = 0U; name[index] != '\0'; ++index) {
@@ -420,8 +387,8 @@ static bool xx_sunvtoc_safe_name(const char *name) {
 /* Public API                                                          */
 /* ------------------------------------------------------------------ */
 
-void xx_sunvtoc_init(xx_sunvtoc *sunvtoc, xx_io_device *dev,
-                     int64_t base_address) {
+void xx_sunvtoc_init(xx_sunvtoc *sunvtoc, xx_io_device *dev, int64_t base_address)
+{
     if (!sunvtoc) return;
     xx_rt_memset(sunvtoc, 0, sizeof(*sunvtoc));
     xx_format_init(&sunvtoc->format, dev, base_address);
@@ -434,29 +401,25 @@ void xx_sunvtoc_init(xx_sunvtoc *sunvtoc, xx_io_device *dev,
     sunvtoc->format.check_is_valid = xx_sunvtoc_check_is_valid;
     sunvtoc->format.handle_base_info = xx_sunvtoc_handle_base_info;
     sunvtoc->format.get_format_size = xx_sunvtoc_get_format_size;
-    sunvtoc->format.get_number_of_archive_records =
-        xx_sunvtoc_get_number_of_archive_records;
-    sunvtoc->format.create_archive_records_reading =
-        xx_sunvtoc_create_archive_records_reading;
-    sunvtoc->format.get_current_archive_record =
-        xx_sunvtoc_get_current_archive_record;
-    sunvtoc->format.unpack_current_archive_record =
-        xx_sunvtoc_unpack_current_archive_record;
-    sunvtoc->format.archive_record_move_to_next =
-        xx_sunvtoc_archive_record_move_to_next;
-    sunvtoc->format.free_archive_records_reading =
-        xx_sunvtoc_free_archive_records_reading;
+    sunvtoc->format.get_number_of_archive_records = xx_sunvtoc_get_number_of_archive_records;
+    sunvtoc->format.create_archive_records_reading = xx_sunvtoc_create_archive_records_reading;
+    sunvtoc->format.get_current_archive_record = xx_sunvtoc_get_current_archive_record;
+    sunvtoc->format.unpack_current_archive_record = xx_sunvtoc_unpack_current_archive_record;
+    sunvtoc->format.archive_record_move_to_next = xx_sunvtoc_archive_record_move_to_next;
+    sunvtoc->format.free_archive_records_reading = xx_sunvtoc_free_archive_records_reading;
     sunvtoc->format.destroy = xx_sunvtoc_vtable_destroy;
     sunvtoc->archive_end = -1;
 }
 
-xx_sunvtoc *xx_sunvtoc_create(xx_io_device *dev, int64_t base_address) {
+xx_sunvtoc *xx_sunvtoc_create(xx_io_device *dev, int64_t base_address)
+{
     xx_sunvtoc *sunvtoc = (xx_sunvtoc *)xx_mem_alloc(sizeof(*sunvtoc));
     if (sunvtoc) xx_sunvtoc_init(sunvtoc, dev, base_address);
     return sunvtoc;
 }
 
-void xx_sunvtoc_destroy(xx_sunvtoc *sunvtoc) {
+void xx_sunvtoc_destroy(xx_sunvtoc *sunvtoc)
+{
     if (!sunvtoc) return;
     if (sunvtoc->internal) {
         xx_sunvtoc_private_cleanup((xx_sunvtoc_private *)sunvtoc->internal);
@@ -466,24 +429,28 @@ void xx_sunvtoc_destroy(xx_sunvtoc *sunvtoc) {
     xx_format_cleanup_extra_parameters(&sunvtoc->format);
 }
 
-static void xx_sunvtoc_vtable_destroy(Abstractformat *self) {
+static void xx_sunvtoc_vtable_destroy(Abstractformat *self)
+{
     xx_sunvtoc_destroy((xx_sunvtoc *)self);
 }
 
-void xx_sunvtoc_free(xx_sunvtoc *sunvtoc) {
+void xx_sunvtoc_free(xx_sunvtoc *sunvtoc)
+{
     if (!sunvtoc) return;
     xx_sunvtoc_destroy(sunvtoc);
     xx_mem_free(sunvtoc);
 }
 
-bool xx_sunvtoc_check_is_valid(Abstractformat *self, xx_pd_struct *pd) {
+bool xx_sunvtoc_check_is_valid(Abstractformat *self, xx_pd_struct *pd)
+{
     xx_sunvtoc_private parsed;
     bool result = xx_sunvtoc_parse(self, &parsed, pd);
     xx_sunvtoc_private_cleanup(&parsed);
     return result;
 }
 
-bool xx_sunvtoc_handle_base_info(Abstractformat *self, xx_pd_struct *pd) {
+bool xx_sunvtoc_handle_base_info(Abstractformat *self, xx_pd_struct *pd)
+{
     xx_sunvtoc_private *parsed;
     xx_sunvtoc *sunvtoc = (xx_sunvtoc *)self;
     int64_t total_size;
@@ -506,8 +473,7 @@ bool xx_sunvtoc_handle_base_info(Abstractformat *self, xx_pd_struct *pd) {
     sunvtoc->has_vtoc = parsed->has_vtoc;
     sunvtoc->sectors_per_cylinder = parsed->sectors_per_cylinder;
     sunvtoc->archive_end = parsed->archive_end;
-    self->endian = parsed->layout == XX_SUNVTOC_LAYOUT_X86 ? XX_ENDIAN_LITTLE
-                                                          : XX_ENDIAN_BIG;
+    self->endian = parsed->layout == XX_SUNVTOC_LAYOUT_X86 ? XX_ENDIAN_LITTLE : XX_ENDIAN_BIG;
     self->format_size = parsed->archive_end - self->base_address;
     total_size = xx_io_total_size(self->device);
     if (total_size > parsed->archive_end) {
@@ -523,25 +489,23 @@ bool xx_sunvtoc_handle_base_info(Abstractformat *self, xx_pd_struct *pd) {
     return true;
 }
 
-int64_t xx_sunvtoc_get_format_size(Abstractformat *self, xx_pd_struct *pd) {
-    if (!self || (!self->base_info_handled &&
-                  !xx_format_handle_base_info(self, pd))) return -1;
+int64_t xx_sunvtoc_get_format_size(Abstractformat *self, xx_pd_struct *pd)
+{
+    if (!self || (!self->base_info_handled && !xx_format_handle_base_info(self, pd))) return -1;
     return self->format_size;
 }
 
-uint64_t xx_sunvtoc_get_number_of_archive_records(Abstractformat *self,
-                                                  xx_pd_struct *pd) {
-    if (!self || (!self->base_info_handled &&
-                  !xx_format_handle_base_info(self, pd))) return 0U;
+uint64_t xx_sunvtoc_get_number_of_archive_records(Abstractformat *self, xx_pd_struct *pd)
+{
+    if (!self || (!self->base_info_handled && !xx_format_handle_base_info(self, pd))) return 0U;
     return ((xx_sunvtoc *)self)->number_of_records;
 }
 
-xx_archive_record_state *xx_sunvtoc_create_archive_records_reading(
-    Abstractformat *self, const xx_list_s *options, xx_pd_struct *pd) {
+xx_archive_record_state *xx_sunvtoc_create_archive_records_reading(Abstractformat *self, const xx_list_s *options, xx_pd_struct *pd)
+{
     xx_archive_record_state *state;
     xx_sunvtoc_archive_stream *stream;
-    if (!self || !self->device ||
-        (!self->base_info_handled && !xx_format_handle_base_info(self, pd))) {
+    if (!self || !self->device || (!self->base_info_handled && !xx_format_handle_base_info(self, pd))) {
         return NULL;
     }
     state = (xx_archive_record_state *)xx_mem_alloc(sizeof(*state));
@@ -552,8 +516,7 @@ xx_archive_record_state *xx_sunvtoc_create_archive_records_reading(
         return NULL;
     }
     xx_archive_record_state_init(state, self);
-    if (!xx_sunvtoc_copy_options(&state->options, options) ||
-        !xx_sunvtoc_parse(self, &stream->parsed, pd)) {
+    if (!xx_sunvtoc_copy_options(&state->options, options) || !xx_sunvtoc_parse(self, &stream->parsed, pd)) {
         xx_sunvtoc_archive_stream_free(stream);
         xx_archive_record_state_free(state);
         return NULL;
@@ -563,28 +526,22 @@ xx_archive_record_state *xx_sunvtoc_create_archive_records_reading(
     state->free_internal = xx_sunvtoc_archive_stream_free;
     state->total_records = (int64_t)stream->parsed.count;
     if (stream->parsed.count != 0U &&
-        xx_sunvtoc_populate_record(&state->current_record,
-                                   &stream->parsed.entries[0],
-                                   stream->parsed.has_vtoc,
-                                   stream->parsed.label_offset)) {
+        xx_sunvtoc_populate_record(&state->current_record, &stream->parsed.entries[0], stream->parsed.has_vtoc, stream->parsed.label_offset)) {
         state->has_record = true;
         state->current_index = 0;
     }
     return state;
 }
 
-const xx_archive_record *xx_sunvtoc_get_current_archive_record(
-    Abstractformat *self, xx_archive_record_state *state) {
-    return self && state && state->format == self && state->has_record
-               ? &state->current_record : NULL;
+const xx_archive_record *xx_sunvtoc_get_current_archive_record(Abstractformat *self, xx_archive_record_state *state)
+{
+    return self && state && state->format == self && state->has_record ? &state->current_record : NULL;
 }
 
-bool xx_sunvtoc_archive_record_move_to_next(Abstractformat *self,
-                                            xx_archive_record_state *state,
-                                            xx_pd_struct *pd) {
+bool xx_sunvtoc_archive_record_move_to_next(Abstractformat *self, xx_archive_record_state *state, xx_pd_struct *pd)
+{
     xx_sunvtoc_archive_stream *stream;
-    if (!self || !state || state->format != self || !state->has_record ||
-        !state->internal_state || (pd && xx_pd_is_stopped(pd))) return false;
+    if (!self || !state || state->format != self || !state->has_record || !state->internal_state || (pd && xx_pd_is_stopped(pd))) return false;
     stream = (xx_sunvtoc_archive_stream *)state->internal_state;
     ++stream->index;
     if (stream->index >= stream->parsed.count) {
@@ -593,10 +550,7 @@ bool xx_sunvtoc_archive_record_move_to_next(Abstractformat *self,
         state->has_record = false;
         return false;
     }
-    if (!xx_sunvtoc_populate_record(&state->current_record,
-                                    &stream->parsed.entries[stream->index],
-                                    stream->parsed.has_vtoc,
-                                    stream->parsed.label_offset)) {
+    if (!xx_sunvtoc_populate_record(&state->current_record, &stream->parsed.entries[stream->index], stream->parsed.has_vtoc, stream->parsed.label_offset)) {
         state->has_record = false;
         return false;
     }
@@ -604,9 +558,8 @@ bool xx_sunvtoc_archive_record_move_to_next(Abstractformat *self,
     return true;
 }
 
-bool xx_sunvtoc_unpack_current_archive_record(Abstractformat *self,
-                                              xx_archive_record_state *state,
-                                              xx_pd_struct *pd) {
+bool xx_sunvtoc_unpack_current_archive_record(Abstractformat *self, xx_archive_record_state *state, xx_pd_struct *pd)
+{
     const xx_archive_record *record;
     const xx_var *option;
     const char *name;
@@ -615,30 +568,24 @@ bool xx_sunvtoc_unpack_current_archive_record(Abstractformat *self,
     char *destination = NULL;
     size_t base_length;
     bool result = false;
-    if (!self || !self->device || !state || state->format != self ||
-        !state->has_record || (pd && xx_pd_is_stopped(pd))) return false;
+    if (!self || !self->device || !state || state->format != self || !state->has_record || (pd && xx_pd_is_stopped(pd))) return false;
     record = &state->current_record;
     name = xx_archive_record_get_original_name(record);
     if (!xx_sunvtoc_safe_name(name)) return false;
     option = xx_sunvtoc_find_option(&state->options, XX_META_ID_OPT_UNPACK_PATH);
     if (!option) {
         int64_t total = xx_io_total_size(self->device);
-        return record->data_offset >= 0 && record->compressed_size >= 0 &&
-               record->data_offset <= total &&
-               record->compressed_size <= total - record->data_offset;
+        return record->data_offset >= 0 && record->compressed_size >= 0 && record->data_offset <= total && record->compressed_size <= total - record->data_offset;
     }
-    if (option->type == XX_VAR_TYPE_STRING ||
-        option->type == XX_VAR_TYPE_STRING_VIEW) {
+    if (option->type == XX_VAR_TYPE_STRING || option->type == XX_VAR_TYPE_STRING_VIEW) {
         base = xx_var_get_str(option);
-    } else if (option->type == XX_VAR_TYPE_WSTRING ||
-               option->type == XX_VAR_TYPE_WSTRING_VIEW) {
+    } else if (option->type == XX_VAR_TYPE_WSTRING || option->type == XX_VAR_TYPE_WSTRING_VIEW) {
         owned_base = xx_str_unicode_to_utf8(xx_var_get_wstr(option));
         base = owned_base;
     }
     if (!base) goto cleanup;
     base_length = xx_str_len(base);
-    if (base_length != 0U && base[base_length - 1U] != '/' &&
-        base[base_length - 1U] != '\\') {
+    if (base_length != 0U && base[base_length - 1U] != '/' && base[base_length - 1U] != '\\') {
         char *with_slash = xx_str_concat(base, "/");
         if (!with_slash) goto cleanup;
         destination = xx_str_concat(with_slash, name);
@@ -649,10 +596,7 @@ bool xx_sunvtoc_unpack_current_archive_record(Abstractformat *self,
     if (!destination) goto cleanup;
     /* The store helper deletes its own output on failure. */
     if (xx_store_create_dirs_a(destination, false)) {
-        result = xx_store_unpack_device_to_file(self->device,
-                                                record->data_offset,
-                                                record->compressed_size,
-                                                destination, pd);
+        result = xx_store_unpack_device_to_file(self->device, record->data_offset, record->compressed_size, destination, pd);
     }
 cleanup:
     if (owned_base) xx_str_free(owned_base);
@@ -660,24 +604,27 @@ cleanup:
     return result;
 }
 
-void xx_sunvtoc_free_archive_records_reading(Abstractformat *self,
-                                             xx_archive_record_state *state) {
+void xx_sunvtoc_free_archive_records_reading(Abstractformat *self, xx_archive_record_state *state)
+{
     (void)self;
     xx_archive_record_state_free(state);
 }
 
-uint64_t xx_sunvtoc_get_number_of_records(const xx_sunvtoc *sunvtoc) {
+uint64_t xx_sunvtoc_get_number_of_records(const xx_sunvtoc *sunvtoc)
+{
     return sunvtoc ? sunvtoc->number_of_records : 0U;
 }
-uint32_t xx_sunvtoc_get_layout(const xx_sunvtoc *sunvtoc) {
+uint32_t xx_sunvtoc_get_layout(const xx_sunvtoc *sunvtoc)
+{
     return sunvtoc ? sunvtoc->layout : XX_SUNVTOC_LAYOUT_NONE;
 }
-int64_t xx_sunvtoc_get_archive_end(const xx_sunvtoc *sunvtoc) {
+int64_t xx_sunvtoc_get_archive_end(const xx_sunvtoc *sunvtoc)
+{
     return sunvtoc ? sunvtoc->archive_end : -1;
 }
 
-bool xx_sunvtoc_get_slice_info(const xx_sunvtoc *sunvtoc, uint64_t index,
-                               xx_sunvtoc_slice_info *info) {
+bool xx_sunvtoc_get_slice_info(const xx_sunvtoc *sunvtoc, uint64_t index, xx_sunvtoc_slice_info *info)
+{
     const xx_sunvtoc_private *parsed;
     const xx_sunvtoc_entry *entry;
     if (!sunvtoc || !info || !sunvtoc->internal) return false;

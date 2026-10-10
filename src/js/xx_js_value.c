@@ -23,7 +23,6 @@
 
 #include "xx_js_internal.h"
 
-
 /* --------------------------------------------------------------- strings  */
 
 JSStr *jsstr_new(JSCtx *pCtx, const char *pData, size_t nSize)
@@ -997,8 +996,7 @@ static JSVal jsobj_get_own_hashed(JSCtx *pCtx, JSObj *pObj, const char *pKey, si
 
     if (pObj->cls == JCLASS_UINT32_ARRAY) {
         int64_t index;
-        if ((nKeySize == 6 && xx_rt_memcmp(pKey, "length", 6) == 0)
-            || (nKeySize == 10 && xx_rt_memcmp(pKey, "byteLength", 10) == 0)) {
+        if ((nKeySize == 6 && xx_rt_memcmp(pKey, "length", 6) == 0) || (nKeySize == 10 && xx_rt_memcmp(pKey, "byteLength", 10) == 0)) {
             if (pbFound) *pbFound = 1;
             return js_num((double)pObj->nArrayLen * (nKeySize == 10 ? 4 : 1));
         }
@@ -1138,14 +1136,12 @@ void jsobj_put(JSCtx *pCtx, JSObj *pObj, const char *pKey, size_t nKeySize, JSVa
 
     if (pObj->cls == JCLASS_UINT32_ARRAY) {
         int64_t index;
-        if ((nKeySize == 6 && xx_rt_memcmp(pKey, "length", 6) == 0)
-            || (nKeySize == 10 && xx_rt_memcmp(pKey, "byteLength", 10) == 0)) {
+        if ((nKeySize == 6 && xx_rt_memcmp(pKey, "length", 6) == 0) || (nKeySize == 10 && xx_rt_memcmp(pKey, "byteLength", 10) == 0)) {
             js_release(pCtx, value);
             return;
         }
         if (js_is_array_index(pKey, nKeySize, &index)) {
-            if (index < pObj->nArrayLen)
-                pObj->pUint32Data[index] = (uint32_t)js_to_int32(pCtx, value);
+            if (index < pObj->nArrayLen) pObj->pUint32Data[index] = (uint32_t)js_to_int32(pCtx, value);
             js_release(pCtx, value);
             return;
         }

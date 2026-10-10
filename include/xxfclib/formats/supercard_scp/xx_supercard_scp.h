@@ -8,13 +8,15 @@
 #ifdef __cplusplus
 extern "C" {
 #endif
-typedef struct xx_supercard_scp { Abstractformat format; } xx_supercard_scp;
-XXFC_API void xx_supercard_scp_init(xx_supercard_scp *,xx_io_device *,int64_t);
-XXFC_API xx_supercard_scp *xx_supercard_scp_create(xx_io_device *,int64_t);
+typedef struct xx_supercard_scp {
+    Abstractformat format;
+} xx_supercard_scp;
+XXFC_API void xx_supercard_scp_init(xx_supercard_scp *, xx_io_device *, int64_t);
+XXFC_API xx_supercard_scp *xx_supercard_scp_create(xx_io_device *, int64_t);
 XXFC_API void xx_supercard_scp_destroy(xx_supercard_scp *);
 XXFC_API void xx_supercard_scp_free(xx_supercard_scp *);
-XXFC_API bool xx_supercard_scp_check_is_valid(Abstractformat *,xx_pd_struct *);
-XXFC_API bool xx_supercard_scp_handle_base_info(Abstractformat *,xx_pd_struct *);
+XXFC_API bool xx_supercard_scp_check_is_valid(Abstractformat *, xx_pd_struct *);
+XXFC_API bool xx_supercard_scp_handle_base_info(Abstractformat *, xx_pd_struct *);
 #ifdef __cplusplus
 }
 #endif

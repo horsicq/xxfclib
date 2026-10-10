@@ -21,15 +21,14 @@
  * SOFTWARE.
  */
 
-
 #define ALIGN_UP(v, a) (((a) == 0) ? (v) : ((((v) + (a) - 1) / (a)) * (a)))
 
 static const struct {
     uint32_t nType;
     const char *pName;
-} g_debugTypes[] = {{0, "UNKNOWN"},  {1, "COFF"},       {2, "CODEVIEW"},   {3, "FPO"},        {4, "MISC"},   {5, "EXCEPTION"},
-                    {6, "FIXUP"},    {7, "OMAP_TO_SRC"}, {8, "OMAP_FROM_SRC"}, {9, "BORLAND"}, {10, "RESERVED10"}, {11, "CLSID"},
-                    {12, "VC_FEATURE"}, {13, "POGO"},   {14, "ILTCG"},     {15, "MPX"},       {16, "REPRO"}, {20, "EX_DLLCHARACTERISTICS"}};
+} g_debugTypes[] = {{0, "UNKNOWN"},     {1, "COFF"},        {2, "CODEVIEW"},      {3, "FPO"},     {4, "MISC"},        {5, "EXCEPTION"},
+                    {6, "FIXUP"},       {7, "OMAP_TO_SRC"}, {8, "OMAP_FROM_SRC"}, {9, "BORLAND"}, {10, "RESERVED10"}, {11, "CLSID"},
+                    {12, "VC_FEATURE"}, {13, "POGO"},       {14, "ILTCG"},        {15, "MPX"},    {16, "REPRO"},      {20, "EX_DLLCHARACTERISTICS"}};
 
 const char *xx_pe_inspect_debug_type_name(uint32_t nType)
 {
@@ -71,8 +70,7 @@ int xx_pe_inspect_section_number_by_rva(xx_pe_inspection *pPE, uint32_t nRVA)
 
 static uint64_t inspect_rva_address(const xx_pe_inspection *pPE, uint64_t rva)
 {
-    if (!pPE || pPE->map.module_address == XX_INVALID_ADDRESS ||
-        rva >= XX_INVALID_ADDRESS - pPE->map.module_address) return XX_INVALID_ADDRESS;
+    if (!pPE || pPE->map.module_address == XX_INVALID_ADDRESS || rva >= XX_INVALID_ADDRESS - pPE->map.module_address) return XX_INVALID_ADDRESS;
     return pPE->map.module_address + rva;
 }
 
@@ -95,7 +93,11 @@ static void parse_sections(xx_pe_inspection *pPE, const xx_pe *reader)
     if (pPE->nSectionCount > 4096) pPE->nSectionCount = 4096;
     if (!pPE->nSectionCount) return;
     pPE->pSections = (xx_pe_inspect_section *)xx_mem_calloc((size_t)pPE->nSectionCount, sizeof(*pPE->pSections));
-    if (!pPE->pSections) { pPE->pInput->failed = true; pPE->nSectionCount = 0; return; }
+    if (!pPE->pSections) {
+        pPE->pInput->failed = true;
+        pPE->nSectionCount = 0;
+        return;
+    }
     for (i = 0; i < (uint16_t)pPE->nSectionCount; ++i) {
         xx_pe_section local = {0};
         const xx_pe_section *section;
@@ -117,7 +119,6 @@ static void parse_sections(xx_pe_inspection *pPE, const xx_pe *reader)
         pPE->pSections[i].nPointerToRawData = section->raw_offset;
         pPE->pSections[i].nCharacteristics = section->characteristics;
     }
-
 }
 
 static bool build_memory_map(xx_pe_inspection *pPE, const xx_pe *reader)
@@ -128,8 +129,7 @@ static bool build_memory_map(xx_pe_inspection *pPE, const xx_pe *reader)
     int64_t base;
     if (!reader || pPE->pInput->failed) return false;
     base = reader->format.base_address;
-    source = xx_format_get_memory_map((Abstractformat *)&reader->format,
-                                     XX_MEMORY_MAP_MODE_UNKNOWN, pPE->pInput->pd);
+    source = xx_format_get_memory_map((Abstractformat *)&reader->format, XX_MEMORY_MAP_MODE_UNKNOWN, pPE->pInput->pd);
     if (!source) return false;
     /* Own a copy of the reader's map with offsets relative to the borrowed
      * input view. This keeps disk images, memory dumps and overlay extents
@@ -138,8 +138,7 @@ static bool build_memory_map(xx_pe_inspection *pPE, const xx_pe *reader)
     pPE->map.records = NULL;
     pPE->map.record_count = pPE->map.record_capacity = 0;
     pPE->map.binary_offset = 0;
-    pPE->map.start_load_offset = source->start_load_offset >= base
-                                    ? source->start_load_offset - base : -1;
+    pPE->map.start_load_offset = source->start_load_offset >= base ? source->start_load_offset - base : -1;
     for (section = 0; section < pPE->nSectionCount; ++section) {
         pPE->pSections[section].nMappedOffset = pPE->pInput->size;
         pPE->pSections[section].nMappedSize = 0;
@@ -151,15 +150,13 @@ static bool build_memory_map(xx_pe_inspection *pPE, const xx_pe *reader)
             record.offset -= base;
         }
         if (!xx_memory_map_add_record(&pPE->map, &record)) return false;
-        if (!record.is_virtual && record.file_part == XX_FILE_PART_SECTION &&
-            record.file_part_number > 0 && record.file_part_number <= pPE->nSectionCount) {
+        if (!record.is_virtual && record.file_part == XX_FILE_PART_SECTION && record.file_part_number > 0 && record.file_part_number <= pPE->nSectionCount) {
             xx_pe_inspect_section *item = &pPE->pSections[record.file_part_number - 1];
             item->nMappedOffset = record.offset;
             item->nMappedSize = record.size;
         }
     }
-    pPE->nOverlayOffset = reader->format.overlay_offset >= base
-                             ? reader->format.overlay_offset - base : -1;
+    pPE->nOverlayOffset = reader->format.overlay_offset >= base ? reader->format.overlay_offset - base : -1;
     pPE->nOverlaySize = reader->format.overlay_size;
     return xx_memory_map_finalize(&pPE->map);
 }
@@ -169,10 +166,8 @@ static bool build_memory_map(xx_pe_inspection *pPE, const xx_pe *reader)
 static void parse_imports(xx_pe_inspection *pPE)
 {
     uint32_t nImportRVA = pPE->pDirRVA[XX_PE_INSPECT_DIR_IMPORT];
-    int64_t nOffset = nImportRVA ? xx_memory_map_address_to_offset(&pPE->map,
-        inspect_rva_address(pPE, nImportRVA)) : -1;
-    int bPartialFirst = nImportRVA && xx_memory_map_address_to_offset(&pPE->map,
-        inspect_rva_address(pPE, (uint64_t)nImportRVA + 18)) == -1;
+    int64_t nOffset = nImportRVA ? xx_memory_map_address_to_offset(&pPE->map, inspect_rva_address(pPE, nImportRVA)) : -1;
+    int bPartialFirst = nImportRVA && xx_memory_map_address_to_offset(&pPE->map, inspect_rva_address(pPE, (uint64_t)nImportRVA + 18)) == -1;
     int nCount = 0;
     int i = 0;
     int nTotalPositions = 0;
@@ -185,8 +180,7 @@ static void parse_imports(xx_pe_inspection *pPE)
     xx_buf_init(&hashBuf);
 
     for (nCount = 0; nCount < 4096 && !xx_pd_is_stopped(pPE->pInput->pd); nCount++) {
-        int64_t nBase = xx_memory_map_address_to_offset(&pPE->map,
-            inspect_rva_address(pPE, (uint64_t)nImportRVA + (uint64_t)nCount * 20));
+        int64_t nBase = xx_memory_map_address_to_offset(&pPE->map, inspect_rva_address(pPE, (uint64_t)nImportRVA + (uint64_t)nCount * 20));
         if (nBase < 0 || nBase > pPE->pInput->size - 20) break;
         uint32_t nOriginalFirstThunk = xx_exec_u32(pPE->pInput, nBase, false);
         uint32_t nName = xx_exec_u32(pPE->pInput, nBase + 12, false);
@@ -200,10 +194,8 @@ static void parse_imports(xx_pe_inspection *pPE)
 
         /* Native imports require a contiguous mapped descriptor, except for
          * the first partially mapped descriptor used by some Upack stubs. */
-        if (nBase > pPE->pInput->size - 20 ||
-            xx_memory_map_address_to_offset(&pPE->map, nDescriptorAddress) != nBase ||
-            (!(nCount == 0 && bPartialFirst) &&
-             xx_memory_map_address_to_offset(&pPE->map, nDescriptorAddress + 19) != nBase + 19)) {
+        if (nBase > pPE->pInput->size - 20 || xx_memory_map_address_to_offset(&pPE->map, nDescriptorAddress) != nBase ||
+            (!(nCount == 0 && bPartialFirst) && xx_memory_map_address_to_offset(&pPE->map, nDescriptorAddress + 19) != nBase + 19)) {
             break;
         }
         nNameOffset = xx_memory_map_address_to_offset(&pPE->map, inspect_rva_address(pPE, nName));
@@ -225,12 +217,15 @@ static void parse_imports(xx_pe_inspection *pPE)
     }
 
     pPE->pImports = (xx_pe_inspect_import *)xx_mem_calloc((size_t)nCount, sizeof(xx_pe_inspect_import));
-    if (!pPE->pImports) { pPE->pInput->failed = true; xx_buf_free(&hashBuf); return; }
+    if (!pPE->pImports) {
+        pPE->pInput->failed = true;
+        xx_buf_free(&hashBuf);
+        return;
+    }
     pPE->nImportCount = nCount;
 
     for (i = 0; i < nCount && !pPE->pInput->failed && !xx_pd_is_stopped(pPE->pInput->pd); i++) {
-        int64_t nBase = xx_memory_map_address_to_offset(&pPE->map,
-            inspect_rva_address(pPE, (uint64_t)nImportRVA + (uint64_t)i * 20));
+        int64_t nBase = xx_memory_map_address_to_offset(&pPE->map, inspect_rva_address(pPE, (uint64_t)nImportRVA + (uint64_t)i * 20));
         if (nBase < 0) break;
         uint32_t nOriginalFirstThunk = xx_exec_u32(pPE->pInput, nBase, false);
         uint32_t nName = xx_exec_u32(pPE->pInput, nBase + 12, false);
@@ -264,8 +259,7 @@ static void parse_imports(xx_pe_inspection *pPE)
                 uint64_t nAddress = inspect_rva_address(pPE, (uint64_t)nThunkRVA + (uint64_t)j * nWidth);
                 int64_t nCurrent = xx_memory_map_address_to_offset(&pPE->map, nAddress);
 
-                if (nCurrent < 0 || nCurrent > pPE->pInput->size - nWidth ||
-                    xx_memory_map_address_to_offset(&pPE->map, nAddress) != nCurrent ||
+                if (nCurrent < 0 || nCurrent > pPE->pInput->size - nWidth || xx_memory_map_address_to_offset(&pPE->map, nAddress) != nCurrent ||
                     xx_memory_map_address_to_offset(&pPE->map, nAddress + nWidth - 1) != nCurrent + nWidth - 1) {
                     break;
                 }
@@ -298,7 +292,11 @@ static void parse_imports(xx_pe_inspection *pPE)
                     }
                 }
 
-                if (!pFunctionName || !xx_list_append(&vecFunctions, &pFunctionName)) { xx_mem_free(pFunctionName); pPE->pInput->failed = true; break; }
+                if (!pFunctionName || !xx_list_append(&vecFunctions, &pFunctionName)) {
+                    xx_mem_free(pFunctionName);
+                    pPE->pInput->failed = true;
+                    break;
+                }
                 xx_buf_append_str(&posBuf, pFunctionName);
                 xx_buf_append_str(&hashBuf, pPE->pImports[i].pName);
                 xx_buf_append_str(&hashBuf, pFunctionName);
@@ -307,7 +305,8 @@ static void parse_imports(xx_pe_inspection *pPE)
 
         pPE->pImports[i].nFunctionCount = (int)vecFunctions.count;
         pPE->pImports[i].ppFunctions = (char **)vecFunctions.data;
-        vecFunctions.data = NULL; vecFunctions.count = vecFunctions.capacity = 0;
+        vecFunctions.data = NULL;
+        vecFunctions.count = vecFunctions.capacity = 0;
 
         pPE->pImports[i].nPositionHash = xx_exec_string_crc32c(posBuf.data ? posBuf.data : "");
         nTotalPositions += pPE->pImports[i].nFunctionCount;
@@ -383,13 +382,15 @@ static void parse_exports(xx_pe_inspection *pPE)
     nNamesOffset = xx_memory_map_address_to_offset(&pPE->map, inspect_rva_address(pPE, nAddressOfNames));
     nOrdinalsOffset = xx_memory_map_address_to_offset(&pPE->map, inspect_rva_address(pPE, nAddressOfOrdinals));
 
-    if ((nNamesOffset == -1) || (nOrdinalsOffset == -1) ||
-        (xx_memory_map_address_to_offset(&pPE->map, inspect_rva_address(pPE, nAddressOfFunctions)) == -1)) {
+    if ((nNamesOffset == -1) || (nOrdinalsOffset == -1) || (xx_memory_map_address_to_offset(&pPE->map, inspect_rva_address(pPE, nAddressOfFunctions)) == -1)) {
         return;
     }
 
     pPE->ppExportFunctions = (char **)xx_mem_calloc(nNumberOfFunctions, sizeof(char *));
-    if (!pPE->ppExportFunctions) { pPE->pInput->failed = true; return; }
+    if (!pPE->ppExportFunctions) {
+        pPE->pInput->failed = true;
+        return;
+    }
     for (i = 0; i < nNumberOfFunctions; i++) {
         pPE->ppExportFunctions[i] = xx_exec_copy_string(pPE->pInput, "");
         if (!pPE->ppExportFunctions[i]) {
@@ -543,12 +544,12 @@ static void parse_resources(xx_pe_inspection *pPE)
                 pResource->nLangId = irin2.nId;
                 /* A payload RVA of zero maps to the image header. Unlike an
                  * absent directory, it must not be turned into -1. */
-                pResource->nOffset = xx_memory_map_address_to_offset(&pPE->map,
-                    inspect_rva_address(pPE, xx_exec_u32(pPE->pInput, nDataEntry, false)));
+                pResource->nOffset = xx_memory_map_address_to_offset(&pPE->map, inspect_rva_address(pPE, xx_exec_u32(pPE->pInput, nDataEntry, false)));
                 pResource->nSize = xx_exec_u32(pPE->pInput, nDataEntry + 4, false);
 
                 if (pPE->pInput->failed || !xx_list_append(&vec, pResource)) {
-                    xx_mem_free(resource.pName); xx_mem_free(resource.pTypeName);
+                    xx_mem_free(resource.pName);
+                    xx_mem_free(resource.pTypeName);
                     pPE->pInput->failed = true;
                 }
                 xx_mem_free(irin2.pName);
@@ -581,7 +582,8 @@ static void parse_resources(xx_pe_inspection *pPE)
     pPE->nResourceCount = (int)vec.count;
 
     pPE->pResources = (xx_pe_inspect_resource *)vec.data;
-    vec.data = NULL; vec.count = vec.capacity = 0;
+    vec.data = NULL;
+    vec.count = vec.capacity = 0;
 
     xx_list_cleanup(&vec);
 }
@@ -608,13 +610,17 @@ static void version_add(xx_pe_inspection *pPE, const char *pKey, const char *pVa
     record.pKey = xx_exec_copy_string(pPE->pInput, pKey);
     record.pValue = xx_exec_copy_string(pPE->pInput, pValue);
     if (!record.pKey || !record.pValue) {
-        xx_mem_free(record.pKey); xx_mem_free(record.pValue);
-        pPE->pInput->failed = true; return;
+        xx_mem_free(record.pKey);
+        xx_mem_free(record.pValue);
+        pPE->pInput->failed = true;
+        return;
     }
     records = (xx_pe_inspect_version_record *)xx_mem_realloc(pPE->pVersionRecords, (size_t)(pPE->nVersionCount + 1) * sizeof(xx_pe_inspect_version_record));
     if (!records) {
-        xx_mem_free(record.pKey); xx_mem_free(record.pValue);
-        pPE->pInput->failed = true; return;
+        xx_mem_free(record.pKey);
+        xx_mem_free(record.pValue);
+        pPE->pInput->failed = true;
+        return;
     }
     pPE->pVersionRecords = records;
     pPE->pVersionRecords[pPE->nVersionCount] = record;
@@ -655,7 +661,10 @@ static uint32_t parse_version_block(xx_pe_inspection *pPE, int64_t nOffset, int6
      * xx_pe_inspection::__getResourcesVersion reads at most 256 units (read_unicodeString's
      * default) and advances by (sTitle.length() + 1) * sizeof(quint16).      */
     pTitle = xx_exec_unicode_n(pPE->pInput, nOffset + 6, 256, 0, &nTitleUnits);
-    if (!pTitle) { pPE->pInput->failed = true; return 0; }
+    if (!pTitle) {
+        pPE->pInput->failed = true;
+        return 0;
+    }
 
     nDelta = 6;
     nDelta += (nTitleUnits + 1) * 2;
@@ -759,9 +768,7 @@ static void parse_manifest(xx_pe_inspection *pPE)
             nSize = 4000;
         }
 
-        pPE->pManifest = nSize > 0
-                            ? xx_exec_string(pPE->pInput, pResource->nOffset, nSize)
-                            : xx_exec_copy_string(pPE->pInput, "");
+        pPE->pManifest = nSize > 0 ? xx_exec_string(pPE->pInput, pResource->nOffset, nSize) : xx_exec_copy_string(pPE->pInput, "");
     }
 }
 
@@ -788,7 +795,10 @@ static void parse_debug(xx_pe_inspection *pPE)
     }
 
     pPE->pDebugRecords = (xx_pe_inspect_debug_record *)xx_mem_calloc(nMax, sizeof(xx_pe_inspect_debug_record));
-    if (!pPE->pDebugRecords) { pPE->pInput->failed = true; return; }
+    if (!pPE->pDebugRecords) {
+        pPE->pInput->failed = true;
+        return;
+    }
 
     for (i = 0; i < nMax; i++) {
         int64_t nBase = nOffset + i * 28;
@@ -851,13 +861,17 @@ static void parse_rich(xx_pe_inspection *pPE)
                 pRecord->nVersion = (uint16_t)(nValue1 & 0xFFFF);
                 pRecord->nCount = nValue2;
 
-                if (!xx_list_append(&vec, pRecord)) { pPE->pInput->failed = true; break; }
+                if (!xx_list_append(&vec, pRecord)) {
+                    pPE->pInput->failed = true;
+                    break;
+                }
             }
 
             pPE->nRichCount = (int)vec.count;
 
             pPE->pRichRecords = (xx_pe_inspect_rich_record *)vec.data;
-            vec.data = NULL; vec.count = vec.capacity = 0;
+            vec.data = NULL;
+            vec.count = vec.capacity = 0;
 
             xx_list_cleanup(&vec);
             break;
@@ -913,9 +927,9 @@ static int inspect_parse_input(xx_pe_inspection *pPE, xx_executable_input *pFile
         return 0;
     }
 
-    if (pPE->nSizeOfOptionalHeader < (pPE->bIs64 ? 112 : 96) ||
-        nOptional > pFile->size - pPE->nSizeOfOptionalHeader ||
-        (int64_t)pPE->nNumberOfSections * 40 > pFile->size - nOptional - pPE->nSizeOfOptionalHeader) return 0;
+    if (pPE->nSizeOfOptionalHeader < (pPE->bIs64 ? 112 : 96) || nOptional > pFile->size - pPE->nSizeOfOptionalHeader ||
+        (int64_t)pPE->nNumberOfSections * 40 > pFile->size - nOptional - pPE->nSizeOfOptionalHeader)
+        return 0;
 
     pPE->nMajorLinkerVersion = xx_exec_u8(pFile, nOptional + 2);
     pPE->nMinorLinkerVersion = xx_exec_u8(pFile, nOptional + 3);
@@ -949,8 +963,14 @@ static int inspect_parse_input(xx_pe_inspection *pPE, xx_executable_input *pFile
         pPE->nNumberOfRvaAndSizes = xx_exec_u32(pFile, nOptional + 108, false);
 
         for (i = 0; i < 16; i++) {
-            pPE->pDirRVA[i] = reader ? reader->data_directory_rva[i] : ((uint32_t)i < pPE->nNumberOfRvaAndSizes && pPE->nSizeOfOptionalHeader >= 112 + (i + 1) * 8 ? xx_exec_u32(pFile, nOptional + 112 + i * 8, false) : 0);
-            pPE->pDirSize[i] = reader ? reader->data_directory_size[i] : ((uint32_t)i < pPE->nNumberOfRvaAndSizes && pPE->nSizeOfOptionalHeader >= 112 + (i + 1) * 8 ? xx_exec_u32(pFile, nOptional + 116 + i * 8, false) : 0);
+            pPE->pDirRVA[i] =
+                reader ? reader->data_directory_rva[i]
+                       : ((uint32_t)i < pPE->nNumberOfRvaAndSizes && pPE->nSizeOfOptionalHeader >= 112 + (i + 1) * 8 ? xx_exec_u32(pFile, nOptional + 112 + i * 8, false)
+                                                                                                                     : 0);
+            pPE->pDirSize[i] =
+                reader ? reader->data_directory_size[i]
+                       : ((uint32_t)i < pPE->nNumberOfRvaAndSizes && pPE->nSizeOfOptionalHeader >= 112 + (i + 1) * 8 ? xx_exec_u32(pFile, nOptional + 116 + i * 8, false)
+                                                                                                                     : 0);
         }
     } else {
         pPE->nBaseOfData = xx_exec_u32(pFile, nOptional + 24, false);
@@ -977,8 +997,14 @@ static int inspect_parse_input(xx_pe_inspection *pPE, xx_executable_input *pFile
         pPE->nNumberOfRvaAndSizes = xx_exec_u32(pFile, nOptional + 92, false);
 
         for (i = 0; i < 16; i++) {
-            pPE->pDirRVA[i] = reader ? reader->data_directory_rva[i] : ((uint32_t)i < pPE->nNumberOfRvaAndSizes && pPE->nSizeOfOptionalHeader >= 96 + (i + 1) * 8 ? xx_exec_u32(pFile, nOptional + 96 + i * 8, false) : 0);
-            pPE->pDirSize[i] = reader ? reader->data_directory_size[i] : ((uint32_t)i < pPE->nNumberOfRvaAndSizes && pPE->nSizeOfOptionalHeader >= 96 + (i + 1) * 8 ? xx_exec_u32(pFile, nOptional + 100 + i * 8, false) : 0);
+            pPE->pDirRVA[i] =
+                reader
+                    ? reader->data_directory_rva[i]
+                    : ((uint32_t)i < pPE->nNumberOfRvaAndSizes && pPE->nSizeOfOptionalHeader >= 96 + (i + 1) * 8 ? xx_exec_u32(pFile, nOptional + 96 + i * 8, false) : 0);
+            pPE->pDirSize[i] =
+                reader ? reader->data_directory_size[i]
+                       : ((uint32_t)i < pPE->nNumberOfRvaAndSizes && pPE->nSizeOfOptionalHeader >= 96 + (i + 1) * 8 ? xx_exec_u32(pFile, nOptional + 100 + i * 8, false)
+                                                                                                                    : 0);
         }
     }
 
@@ -993,7 +1019,10 @@ static int inspect_parse_input(xx_pe_inspection *pPE, xx_executable_input *pFile
     pPE->bValid = 1;
 
     parse_sections(pPE, reader);
-    if (!build_memory_map(pPE, reader)) { pFile->failed = true; return 0; }
+    if (!build_memory_map(pPE, reader)) {
+        pFile->failed = true;
+        return 0;
+    }
 
     pPE->nEntryPointAddress = inspect_rva_address(pPE, pPE->nAddressOfEntryPoint);
     pPE->nEntryPointOffset = pPE->nAddressOfEntryPoint ? xx_pe_inspect_rva_to_offset(pPE, pPE->nAddressOfEntryPoint) : -1;
@@ -1068,17 +1097,24 @@ int xx_pe_inspect_parse(xx_pe_inspection *pPE, xx_pe *reader, xx_pd_struct *pd)
     xx_rt_memset(pPE, 0, sizeof(*pPE));
     if (!reader || !reader->format.device) return 0;
     saved = xx_io_tell(reader->format.device);
-    if (!reader->format.base_info_handled &&
-        (!reader->format.handle_base_info || !reader->format.handle_base_info(&reader->format, pd))) {
+    if (!reader->format.base_info_handled && (!reader->format.handle_base_info || !reader->format.handle_base_info(&reader->format, pd))) {
         if (saved >= 0) xx_io_seek64(reader->format.device, saved, XX_RT_SEEK_SET);
         return 0;
     }
     input = xx_exec_input_create(&reader->format, pd);
-    if (!input) { if (saved >= 0) xx_io_seek64(reader->format.device, saved, XX_RT_SEEK_SET); return 0; }
+    if (!input) {
+        if (saved >= 0) xx_io_seek64(reader->format.device, saved, XX_RT_SEEK_SET);
+        return 0;
+    }
     result = inspect_parse_input(pPE, input, reader->format.base_info_handled ? reader : NULL);
     if (saved >= 0 && xx_io_seek64(reader->format.device, saved, XX_RT_SEEK_SET) != 0) input->failed = true;
-    if (!result || input->failed || xx_pd_is_stopped(pd)) { xx_pe_inspect_free(pPE); return 0; }
-    input->pd = NULL; input->parsing = false; input->read_work = 0;
+    if (!result || input->failed || xx_pd_is_stopped(pd)) {
+        xx_pe_inspect_free(pPE);
+        return 0;
+    }
+    input->pd = NULL;
+    input->parsing = false;
+    input->read_work = 0;
     return result;
 }
 

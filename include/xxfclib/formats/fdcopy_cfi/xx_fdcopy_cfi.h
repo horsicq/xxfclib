@@ -31,18 +31,14 @@ XXFC_API bool xx_fdcopy_cfi_check_is_valid(Abstractformat *, xx_pd_struct *);
 XXFC_API bool xx_fdcopy_cfi_handle_base_info(Abstractformat *, xx_pd_struct *);
 XXFC_API int64_t xx_fdcopy_cfi_get_format_size(Abstractformat *, xx_pd_struct *);
 XXFC_API uint64_t xx_fdcopy_cfi_get_number_of_archive_records(Abstractformat *, xx_pd_struct *);
-XXFC_API xx_archive_record_state *xx_fdcopy_cfi_create_archive_records_reading(
-    Abstractformat *, const xx_list_s *, xx_pd_struct *);
-XXFC_API const xx_archive_record *xx_fdcopy_cfi_get_current_archive_record(
-    Abstractformat *, xx_archive_record_state *);
-XXFC_API bool xx_fdcopy_cfi_archive_record_move_to_next(
-    Abstractformat *, xx_archive_record_state *, xx_pd_struct *);
-XXFC_API bool xx_fdcopy_cfi_unpack_current_archive_record(
-    Abstractformat *, xx_archive_record_state *, xx_pd_struct *);
-XXFC_API bool xx_fdcopy_cfi_extract_record_to_device(
-    Abstractformat *, xx_archive_record_state *, xx_io_device *, xx_pd_struct *);
+XXFC_API xx_archive_record_state *xx_fdcopy_cfi_create_archive_records_reading(Abstractformat *, const xx_list_s *, xx_pd_struct *);
+XXFC_API const xx_archive_record *xx_fdcopy_cfi_get_current_archive_record(Abstractformat *, xx_archive_record_state *);
+XXFC_API bool xx_fdcopy_cfi_archive_record_move_to_next(Abstractformat *, xx_archive_record_state *, xx_pd_struct *);
+XXFC_API bool xx_fdcopy_cfi_unpack_current_archive_record(Abstractformat *, xx_archive_record_state *, xx_pd_struct *);
+XXFC_API bool xx_fdcopy_cfi_extract_record_to_device(Abstractformat *, xx_archive_record_state *, xx_io_device *, xx_pd_struct *);
 XXFC_API void xx_fdcopy_cfi_free_archive_records_reading(Abstractformat *, xx_archive_record_state *);
-static inline Abstractformat *xx_fdcopy_cfi_to_format(xx_fdcopy_cfi *c) {
+static inline Abstractformat *xx_fdcopy_cfi_to_format(xx_fdcopy_cfi *c)
+{
     return c ? &c->format : NULL;
 }
 #ifdef __cplusplus

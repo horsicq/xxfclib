@@ -9,13 +9,15 @@
 #ifdef __cplusplus
 extern "C" {
 #endif
-typedef struct xx_sfx_arq { Abstractformat format; } xx_sfx_arq;
-XXFC_API void xx_sfx_arq_init(xx_sfx_arq *,xx_io_device *,int64_t);
-XXFC_API xx_sfx_arq *xx_sfx_arq_create(xx_io_device *,int64_t);
+typedef struct xx_sfx_arq {
+    Abstractformat format;
+} xx_sfx_arq;
+XXFC_API void xx_sfx_arq_init(xx_sfx_arq *, xx_io_device *, int64_t);
+XXFC_API xx_sfx_arq *xx_sfx_arq_create(xx_io_device *, int64_t);
 XXFC_API void xx_sfx_arq_destroy(xx_sfx_arq *);
 XXFC_API void xx_sfx_arq_free(xx_sfx_arq *);
-XXFC_API bool xx_sfx_arq_check_is_valid(Abstractformat *,xx_pd_struct *);
-XXFC_API bool xx_sfx_arq_handle_base_info(Abstractformat *,xx_pd_struct *);
+XXFC_API bool xx_sfx_arq_check_is_valid(Abstractformat *, xx_pd_struct *);
+XXFC_API bool xx_sfx_arq_handle_base_info(Abstractformat *, xx_pd_struct *);
 #ifdef __cplusplus
 }
 #endif

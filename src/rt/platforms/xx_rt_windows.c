@@ -42,20 +42,16 @@ typedef struct xx_rt_plain_sort_context_s {
     xx_rt_compare_fn fnCompare;
 } xx_rt_plain_sort_context;
 
-static int xx_rt_plain_sort_compare(const void *pLeft, const void *pRight,
-                                    void *pContext)
+static int xx_rt_plain_sort_compare(const void *pLeft, const void *pRight, void *pContext)
 {
-    xx_rt_plain_sort_context *pSort =
-        (xx_rt_plain_sort_context *)pContext;
+    xx_rt_plain_sort_context *pSort = (xx_rt_plain_sort_context *)pContext;
 
     return pSort->fnCompare(pLeft, pRight);
 }
 
-void xx_rt_qsort(void *pBase, size_t nCount, size_t nSize,
-                 xx_rt_compare_fn fnCompare)
+void xx_rt_qsort(void *pBase, size_t nCount, size_t nSize, xx_rt_compare_fn fnCompare)
 {
-    if ((pBase == NULL) || (fnCompare == NULL) || (nCount < 2) ||
-        (nSize == 0) || (nCount > ((size_t)-1) / nSize)) {
+    if ((pBase == NULL) || (fnCompare == NULL) || (nCount < 2) || (nSize == 0) || (nCount > ((size_t)-1) / nSize)) {
         return;
     }
 
@@ -65,8 +61,7 @@ void xx_rt_qsort(void *pBase, size_t nCount, size_t nSize,
         context.fnCompare = fnCompare;
         /* The heapsort itself is static in xx_rt.c, so this goes through
          * the public wrapper rather than reaching across the file. */
-        xx_rt_qsort_context(pBase, nCount, nSize,
-                            xx_rt_plain_sort_compare, &context);
+        xx_rt_qsort_context(pBase, nCount, nSize, xx_rt_plain_sort_compare, &context);
     }
 }
 
@@ -87,7 +82,6 @@ int xx_rt_rand(void)
     return (int)(nState % (XX_RT_RAND_MAX + 1));
 }
 
-
 /* Stream handles are the Win32 standard handles or a CreateFile handle. */
 void *xx_rt_stdout(void)
 {
@@ -103,8 +97,7 @@ int xx_rt_platform_write_stream(void *pStream, const char *pData, size_t nSize)
 {
     /* Diagnostic stdout/stderr remain available; archive workspace writes do
      * not, including legacy handles opened before the test scope. */
-    if (pStream != xx_rt_stdout() && pStream != xx_rt_stderr() &&
-        !xx_io_policy_mutation_allowed()) return -1;
+    if (pStream != xx_rt_stdout() && pStream != xx_rt_stderr() && !xx_io_policy_mutation_allowed()) return -1;
     DWORD nWritten = 0;
 
     if ((pStream == NULL) || (pStream == INVALID_HANDLE_VALUE) || (nSize == 0)) {
@@ -129,8 +122,8 @@ void *xx_rt_fopen(const char *pFileName, const char *pMode)
         return NULL;
     }
 
-    hFile = CreateFileW(pWide, bWrite ? GENERIC_WRITE : GENERIC_READ, bWrite ? 0 : (FILE_SHARE_READ | FILE_SHARE_WRITE), NULL,
-                        bWrite ? CREATE_ALWAYS : OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, NULL);
+    hFile = CreateFileW(pWide, bWrite ? GENERIC_WRITE : GENERIC_READ, bWrite ? 0 : (FILE_SHARE_READ | FILE_SHARE_WRITE), NULL, bWrite ? CREATE_ALWAYS : OPEN_EXISTING,
+                        FILE_ATTRIBUTE_NORMAL, NULL);
 
     xx_rt_free(pWide);
 
@@ -254,8 +247,6 @@ int xx_rt_fflush(void *pStream)
     return FlushFileBuffers((HANDLE)pStream) ? 0 : -1;
 }
 
-
-
 /* A printf subset covering everything cdie uses: %s %c %d %i %u %o %x %X %p
  * %e %E %f %F %g %G %% with the -, +, space, 0 and # flags, a width, a
  * precision, and the h, hh, l, ll and z length modifiers.
@@ -337,8 +328,7 @@ static int fmt_unsigned(char *pBuffer, unsigned long long nValue, unsigned int n
  * width. The precision zeros go straight into the sink, so a precision read
  * from the format or from va_arg cannot overrun the caller's digit buffer,
  * however large it is.                                                     */
-static void fmt_emit_number(XFormatSink *pSink, const char *pPrefix, int nPrefix, const char *pDigits, int nDigits, int nZeros, int nWidth, int bLeft,
-                            int bZero)
+static void fmt_emit_number(XFormatSink *pSink, const char *pPrefix, int nPrefix, const char *pDigits, int nDigits, int nZeros, int nWidth, int bLeft, int bZero)
 {
     /* nZeros comes from the precision and can be as large as an int holds,
      * so the field width is reduced by it rather than compared against a
@@ -664,7 +654,6 @@ XX_RT_PRINTF_LIKE(3, 0) int xx_rt_vsnprintf(char *pBuffer, size_t nSize, const c
 
     return (int)sink.nWritten;
 }
-
 
 long long xx_rt_clock_ms(void)
 {

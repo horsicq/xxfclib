@@ -28,35 +28,29 @@ static const int32_t sqx_l3extra[15] = {0, 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11,
 /* Match length base/extra.  The two trailing zero slots are deliberate: the
  * reference indexes this table with a symbol class that never reaches them,
  * and keeping them makes the bound check read the same way. */
-static const int32_t sqx_lenbase[26] = {0,  1,  2,  3,  4,  5,   6,   7,   8,   10,  12,  16, 20,
-                                        24, 32, 40, 48, 64, 80,  96,  128, 160, 192, 224, 0,  0};
+static const int32_t sqx_lenbase[26] = {0, 1, 2, 3, 4, 5, 6, 7, 8, 10, 12, 16, 20, 24, 32, 40, 48, 64, 80, 96, 128, 160, 192, 224, 0, 0};
 static const int32_t sqx_lenextra[26] = {0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 2, 2, 2, 3, 3, 3, 4, 4, 4, 5, 5, 5, 5, 5, 0, 0};
 /* Distance base/extra, dictionary < 2 MiB. */
 static const int32_t sqx_d48base[49] = {0,      1,      2,      3,      4,      6,      8,      12,     16,     24,     32,     48,     64,
                                         96,     128,    192,    256,    384,    512,    768,    1024,   1536,   2048,   3072,   4096,   6144,
                                         8192,   12288,  16384,  24576,  32768,  49152,  65536,  98304,  131072, 196608, 262144, 327680, 393216,
                                         458752, 524288, 589824, 655360, 720896, 786432, 851968, 917504, 983040, 1048576};
-static const int32_t sqx_d48extra[49] = {0,  0,  0,  0,  1,  1,  2,  2,  3,  3,  4,  4,  5,  5,  6,  6,  7,
-                                         7,  8,  8,  9,  9,  10, 10, 11, 11, 12, 12, 13, 13, 14, 14, 15, 15,
-                                         16, 16, 16, 16, 16, 16, 16, 16, 16, 16, 16, 16, 16, 16, 0};
+static const int32_t sqx_d48extra[49] = {0,  0,  0,  0,  1,  1,  2,  2,  3,  3,  4,  4,  5,  5,  6,  6,  7,  7,  8,  8,  9,  9,  10, 10, 11,
+                                         11, 12, 12, 13, 13, 14, 14, 15, 15, 16, 16, 16, 16, 16, 16, 16, 16, 16, 16, 16, 16, 16, 16, 0};
 /* Distance base/extra, dictionary == 2 MiB. */
-static const int32_t sqx_d50base[51] = {0,       1,       2,       3,       4,       6,       8,       12,      16,      24,     32,
-                                        48,      64,      96,      128,     192,     256,     384,     512,     768,     1024,   1536,
-                                        2048,    3072,    4096,    6144,    8192,    12288,   16384,   24576,   32768,   49152,  65536,
-                                        98304,   131072,  196608,  262144,  393216,  524288,  655360,  786432,  917504,  1048576, 1179648,
-                                        1310720, 1441792, 1572864, 1703936, 1835008, 1966080, 2097152};
-static const int32_t sqx_d50extra[51] = {0,  0,  0,  0,  1,  1,  2,  2,  3,  3,  4,  4,  5,  5,  6,  6,  7,
-                                         7,  8,  8,  9,  9,  10, 10, 11, 11, 12, 12, 13, 13, 14, 14, 15, 15,
-                                         16, 16, 17, 17, 17, 17, 17, 17, 17, 17, 17, 17, 17, 17, 17, 17, 0};
+static const int32_t sqx_d50base[51] = {0,      1,      2,      3,       4,       6,       8,       12,      16,      24,      32,      48,     64,
+                                        96,     128,    192,    256,     384,     512,     768,     1024,    1536,    2048,    3072,    4096,   6144,
+                                        8192,   12288,  16384,  24576,   32768,   49152,   65536,   98304,   131072,  196608,  262144,  393216, 524288,
+                                        655360, 786432, 917504, 1048576, 1179648, 1310720, 1441792, 1572864, 1703936, 1835008, 1966080, 2097152};
+static const int32_t sqx_d50extra[51] = {0,  0,  0,  0,  1,  1,  2,  2,  3,  3,  4,  4,  5,  5,  6,  6,  7,  7,  8,  8,  9,  9,  10, 10, 11, 11,
+                                         12, 12, 13, 13, 14, 14, 15, 15, 16, 16, 17, 17, 17, 17, 17, 17, 17, 17, 17, 17, 17, 17, 17, 17, 0};
 /* Distance base/extra, dictionary == 4 MiB. */
-static const int32_t sqx_d52base[53] = {0,       1,       2,       3,       4,       6,       8,       12,      16,      24,      32,
-                                        48,      64,      96,      128,     192,     256,     384,     512,     768,     1024,    1536,
-                                        2048,    3072,    4096,    6144,    8192,    12288,   16384,   24576,   32768,   49152,   65536,
-                                        98304,   131072,  196608,  262144,  393216,  524288,  786432,  1048576, 1310720, 1572864, 1835008,
-                                        2097152, 2359296, 2621440, 2883584, 3145728, 3407872, 3670016, 3932160, 4194304};
-static const int32_t sqx_d52extra[53] = {0,  0,  0,  0,  1,  1,  2,  2,  3,  3,  4,  4,  5,  5,  6,  6,  7,  7,
-                                         8,  8,  9,  9,  10, 10, 11, 11, 12, 12, 13, 13, 14, 14, 15, 15, 16, 16,
-                                         17, 17, 18, 18, 18, 18, 18, 18, 18, 18, 18, 18, 18, 18, 18, 18, 0};
+static const int32_t sqx_d52base[53] = {0,       1,       2,       3,       4,       6,       8,       12,      16,      24,      32,     48,     64,      96,
+                                        128,     192,     256,     384,     512,     768,     1024,    1536,    2048,    3072,    4096,   6144,   8192,    12288,
+                                        16384,   24576,   32768,   49152,   65536,   98304,   131072,  196608,  262144,  393216,  524288, 786432, 1048576, 1310720,
+                                        1572864, 1835008, 2097152, 2359296, 2621440, 2883584, 3145728, 3407872, 3670016, 3932160, 4194304};
+static const int32_t sqx_d52extra[53] = {0,  0,  0,  0,  1,  1,  2,  2,  3,  3,  4,  4,  5,  5,  6,  6,  7,  7,  8,  8,  9,  9,  10, 10, 11, 11, 12,
+                                         12, 13, 13, 14, 14, 15, 15, 16, 16, 17, 17, 18, 18, 18, 18, 18, 18, 18, 18, 18, 18, 18, 18, 18, 18, 0};
 
 /* ------------------------------------------------------------ bit reader -- */
 /* MSB-first inside little-endian 32-bit words.  The reference copies the
@@ -461,8 +455,8 @@ static bool sqx_state_init(sqx_state *state)
     return true;
 }
 
-static bool sqx_unpack_member(sqx_state *state, const uint8_t *packed, size_t packed_size, int64_t unpacked_size, uint16_t flags, uint8_t filter,
-                              uint8_t *out, size_t out_capacity)
+static bool sqx_unpack_member(sqx_state *state, const uint8_t *packed, size_t packed_size, int64_t unpacked_size, uint16_t flags, uint8_t filter, uint8_t *out,
+                              size_t out_capacity)
 {
     const int32_t *dist_base;
     const int32_t *dist_extra;
@@ -711,8 +705,8 @@ static bool sqx_unpack_member(sqx_state *state, const uint8_t *packed, size_t pa
     return ok;
 }
 
-XXFC_API bool xx_sqx_decode_memory(const uint8_t *input, size_t input_size, const xx_sqx_member *members, size_t member_count, size_t target_index,
-                                   uint8_t *output, size_t output_size, size_t *written)
+XXFC_API bool xx_sqx_decode_memory(const uint8_t *input, size_t input_size, const xx_sqx_member *members, size_t member_count, size_t target_index, uint8_t *output,
+                                   size_t output_size, size_t *written)
 {
     sqx_state state;
     size_t i;
@@ -761,8 +755,8 @@ XXFC_API bool xx_sqx_decode_memory(const uint8_t *input, size_t input_size, cons
         /* A failing member is not fatal to the replay: the reference keeps
          * the state as the failure left it and moves on.  Only the target
          * member's own result has to be complete. */
-        ok = sqx_unpack_member(&state, input + member->data_offset, (size_t)member->packed_size, (int64_t)member->unpacked_size, member->flags,
-                               member->filter, is_target ? output : 0, is_target ? (size_t)target_size : 0);
+        ok = sqx_unpack_member(&state, input + member->data_offset, (size_t)member->packed_size, (int64_t)member->unpacked_size, member->flags, member->filter,
+                               is_target ? output : 0, is_target ? (size_t)target_size : 0);
         if (is_target) {
             if (!ok || (state.produced < (int64_t)target_size)) {
                 result = false;

@@ -144,8 +144,7 @@ typedef uint64_t cd_u64;
  * comparator is tuned to this partitioning, and changing it reorders the
  * signature database and therefore the printed result.
  */
-void x_qsort(void *pBase, size_t nCount, size_t nSize,
-             int (*fnCompare)(const void *, const void *));
+void x_qsort(void *pBase, size_t nCount, size_t nSize, int (*fnCompare)(const void *, const void *));
 
 /* --------------------------------------------------------- allocation  -- */
 

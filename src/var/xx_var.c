@@ -27,14 +27,16 @@
 /* --- Lifecycle & Memory Management                                     --- */
 /* ========================================================================= */
 
-void xx_var_init(xx_var *var) {
+void xx_var_init(xx_var *var)
+{
     if (!var) {
         return;
     }
     xx_mem_zero(var, sizeof(xx_var));
 }
 
-void xx_var_cleanup(xx_var *var) {
+void xx_var_cleanup(xx_var *var)
+{
     if (!var) {
         return;
     }
@@ -72,7 +74,8 @@ void xx_var_cleanup(xx_var *var) {
     xx_mem_zero(var, sizeof(xx_var));
 }
 
-bool xx_var_copy(xx_var *dst, const xx_var *src) {
+bool xx_var_copy(xx_var *dst, const xx_var *src)
+{
     if (!dst) {
         return false;
     }
@@ -82,14 +85,11 @@ bool xx_var_copy(xx_var *dst, const xx_var *src) {
     }
 
     switch ((xx_var_type_t)src->type) {
-        case XX_VAR_TYPE_STRING:
-            return xx_var_set_str(dst, src->val.str.ptr);
+        case XX_VAR_TYPE_STRING: return xx_var_set_str(dst, src->val.str.ptr);
 
-        case XX_VAR_TYPE_WSTRING:
-            return xx_var_set_wstr(dst, src->val.wstr.ptr);
+        case XX_VAR_TYPE_WSTRING: return xx_var_set_wstr(dst, src->val.wstr.ptr);
 
-        case XX_VAR_TYPE_BYTES:
-            return xx_var_set_bytes(dst, src->val.bytes.data, src->val.bytes.size);
+        case XX_VAR_TYPE_BYTES: return xx_var_set_bytes(dst, src->val.bytes.data, src->val.bytes.size);
 
         case XX_VAR_TYPE_PTR:
             dst->type = src->type;
@@ -99,9 +99,7 @@ bool xx_var_copy(xx_var *dst, const xx_var *src) {
             dst->free_fn = NULL;
             return true;
 
-        default:
-            xx_mem_copy(dst, src, sizeof(xx_var));
-            return true;
+        default: xx_mem_copy(dst, src, sizeof(xx_var)); return true;
     }
 }
 
@@ -109,77 +107,88 @@ bool xx_var_copy(xx_var *dst, const xx_var *src) {
 /* --- Setters (Primitive Scalars - No Allocation)                       --- */
 /* ========================================================================= */
 
-void xx_var_set_i8(xx_var *var, int8_t val) {
+void xx_var_set_i8(xx_var *var, int8_t val)
+{
     if (!var) return;
     xx_var_cleanup(var);
     var->type = XX_VAR_TYPE_INT8;
     var->val.i8 = val;
 }
 
-void xx_var_set_i16(xx_var *var, int16_t val) {
+void xx_var_set_i16(xx_var *var, int16_t val)
+{
     if (!var) return;
     xx_var_cleanup(var);
     var->type = XX_VAR_TYPE_INT16;
     var->val.i16 = val;
 }
 
-void xx_var_set_i32(xx_var *var, int32_t val) {
+void xx_var_set_i32(xx_var *var, int32_t val)
+{
     if (!var) return;
     xx_var_cleanup(var);
     var->type = XX_VAR_TYPE_INT32;
     var->val.i32 = val;
 }
 
-void xx_var_set_i64(xx_var *var, int64_t val) {
+void xx_var_set_i64(xx_var *var, int64_t val)
+{
     if (!var) return;
     xx_var_cleanup(var);
     var->type = XX_VAR_TYPE_INT64;
     var->val.i64 = val;
 }
 
-void xx_var_set_u8(xx_var *var, uint8_t val) {
+void xx_var_set_u8(xx_var *var, uint8_t val)
+{
     if (!var) return;
     xx_var_cleanup(var);
     var->type = XX_VAR_TYPE_UINT8;
     var->val.u8 = val;
 }
 
-void xx_var_set_u16(xx_var *var, uint16_t val) {
+void xx_var_set_u16(xx_var *var, uint16_t val)
+{
     if (!var) return;
     xx_var_cleanup(var);
     var->type = XX_VAR_TYPE_UINT16;
     var->val.u16 = val;
 }
 
-void xx_var_set_u32(xx_var *var, uint32_t val) {
+void xx_var_set_u32(xx_var *var, uint32_t val)
+{
     if (!var) return;
     xx_var_cleanup(var);
     var->type = XX_VAR_TYPE_UINT32;
     var->val.u32 = val;
 }
 
-void xx_var_set_u64(xx_var *var, uint64_t val) {
+void xx_var_set_u64(xx_var *var, uint64_t val)
+{
     if (!var) return;
     xx_var_cleanup(var);
     var->type = XX_VAR_TYPE_UINT64;
     var->val.u64 = val;
 }
 
-void xx_var_set_float(xx_var *var, float val) {
+void xx_var_set_float(xx_var *var, float val)
+{
     if (!var) return;
     xx_var_cleanup(var);
     var->type = XX_VAR_TYPE_FLOAT;
     var->val.f = val;
 }
 
-void xx_var_set_double(xx_var *var, double val) {
+void xx_var_set_double(xx_var *var, double val)
+{
     if (!var) return;
     xx_var_cleanup(var);
     var->type = XX_VAR_TYPE_DOUBLE;
     var->val.d = val;
 }
 
-void xx_var_set_bool(xx_var *var, bool val) {
+void xx_var_set_bool(xx_var *var, bool val)
+{
     if (!var) return;
     xx_var_cleanup(var);
     var->type = XX_VAR_TYPE_BOOL;
@@ -190,7 +199,8 @@ void xx_var_set_bool(xx_var *var, bool val) {
 /* --- Setters (Dynamic Memory Allocated - Freed Automatically)           --- */
 /* ========================================================================= */
 
-bool xx_var_set_str(xx_var *var, const char *str) {
+bool xx_var_set_str(xx_var *var, const char *str)
+{
     if (!var) return false;
     xx_var_cleanup(var);
     if (!str) return false;
@@ -208,7 +218,8 @@ bool xx_var_set_str(xx_var *var, const char *str) {
     return true;
 }
 
-bool xx_var_set_str_take(xx_var *var, char *str, size_t len) {
+bool xx_var_set_str_take(xx_var *var, char *str, size_t len)
+{
     if (!var) return false;
     xx_var_cleanup(var);
 
@@ -220,7 +231,8 @@ bool xx_var_set_str_take(xx_var *var, char *str, size_t len) {
     return true;
 }
 
-bool xx_var_set_wstr(xx_var *var, const wchar_t *wstr) {
+bool xx_var_set_wstr(xx_var *var, const wchar_t *wstr)
+{
     if (!var) return false;
     xx_var_cleanup(var);
     if (!wstr) return false;
@@ -238,7 +250,8 @@ bool xx_var_set_wstr(xx_var *var, const wchar_t *wstr) {
     return true;
 }
 
-bool xx_var_set_wstr_take(xx_var *var, wchar_t *wstr, size_t len) {
+bool xx_var_set_wstr_take(xx_var *var, wchar_t *wstr, size_t len)
+{
     if (!var) return false;
     xx_var_cleanup(var);
 
@@ -250,14 +263,15 @@ bool xx_var_set_wstr_take(xx_var *var, wchar_t *wstr, size_t len) {
     return true;
 }
 
-bool xx_var_set_bytes(xx_var *var, const void *data, size_t size) {
+bool xx_var_set_bytes(xx_var *var, const void *data, size_t size)
+{
     if (!var) return false;
     xx_var_cleanup(var);
     if (size > 0 && !data) return false;
 
     uint8_t *buf = NULL;
     if (size > 0) {
-        buf = (uint8_t*)xx_mem_alloc(size);
+        buf = (uint8_t *)xx_mem_alloc(size);
         if (!buf) {
             return false;
         }
@@ -272,14 +286,15 @@ bool xx_var_set_bytes(xx_var *var, const void *data, size_t size) {
     return true;
 }
 
-bool xx_var_set_bytes_take(xx_var *var, void *data, size_t size) {
+bool xx_var_set_bytes_take(xx_var *var, void *data, size_t size)
+{
     if (!var) return false;
     xx_var_cleanup(var);
 
     var->type = XX_VAR_TYPE_BYTES;
     var->is_allocated = (data != NULL);
     var->free_fn = NULL;
-    var->val.bytes.data = (uint8_t*)data;
+    var->val.bytes.data = (uint8_t *)data;
     var->val.bytes.size = size;
     return true;
 }
@@ -288,40 +303,44 @@ bool xx_var_set_bytes_take(xx_var *var, void *data, size_t size) {
 /* --- Setters (Non-Owning Views - Not Freed)                             --- */
 /* ========================================================================= */
 
-void xx_var_set_str_view(xx_var *var, const char *str, size_t len) {
+void xx_var_set_str_view(xx_var *var, const char *str, size_t len)
+{
     if (!var) return;
     xx_var_cleanup(var);
 
     var->type = XX_VAR_TYPE_STRING_VIEW;
     var->is_allocated = false;
     var->free_fn = NULL;
-    var->val.str.ptr = (char*)str;
+    var->val.str.ptr = (char *)str;
     var->val.str.len = len;
 }
 
-void xx_var_set_wstr_view(xx_var *var, const wchar_t *wstr, size_t len) {
+void xx_var_set_wstr_view(xx_var *var, const wchar_t *wstr, size_t len)
+{
     if (!var) return;
     xx_var_cleanup(var);
 
     var->type = XX_VAR_TYPE_WSTRING_VIEW;
     var->is_allocated = false;
     var->free_fn = NULL;
-    var->val.wstr.ptr = (wchar_t*)wstr;
+    var->val.wstr.ptr = (wchar_t *)wstr;
     var->val.wstr.len = len;
 }
 
-void xx_var_set_bytes_view(xx_var *var, const void *data, size_t size) {
+void xx_var_set_bytes_view(xx_var *var, const void *data, size_t size)
+{
     if (!var) return;
     xx_var_cleanup(var);
 
     var->type = XX_VAR_TYPE_BYTES_VIEW;
     var->is_allocated = false;
     var->free_fn = NULL;
-    var->val.bytes.data = (uint8_t*)data;
+    var->val.bytes.data = (uint8_t *)data;
     var->val.bytes.size = size;
 }
 
-void xx_var_set_ptr(xx_var *var, void *ptr, bool is_allocated, xx_var_free_fn free_fn) {
+void xx_var_set_ptr(xx_var *var, void *ptr, bool is_allocated, xx_var_free_fn free_fn)
+{
     if (!var) return;
     xx_var_cleanup(var);
 
@@ -335,84 +354,89 @@ void xx_var_set_ptr(xx_var *var, void *ptr, bool is_allocated, xx_var_free_fn fr
 /* --- Getters                                                           --- */
 /* ========================================================================= */
 
-int64_t xx_var_get_i64(const xx_var *var) {
+int64_t xx_var_get_i64(const xx_var *var)
+{
     if (!var) return 0;
     switch ((xx_var_type_t)var->type) {
-        case XX_VAR_TYPE_INT8:   return (int64_t)var->val.i8;
-        case XX_VAR_TYPE_INT16:  return (int64_t)var->val.i16;
-        case XX_VAR_TYPE_INT32:  return (int64_t)var->val.i32;
-        case XX_VAR_TYPE_INT64:  return var->val.i64;
-        case XX_VAR_TYPE_UINT8:  return (int64_t)var->val.u8;
+        case XX_VAR_TYPE_INT8: return (int64_t)var->val.i8;
+        case XX_VAR_TYPE_INT16: return (int64_t)var->val.i16;
+        case XX_VAR_TYPE_INT32: return (int64_t)var->val.i32;
+        case XX_VAR_TYPE_INT64: return var->val.i64;
+        case XX_VAR_TYPE_UINT8: return (int64_t)var->val.u8;
         case XX_VAR_TYPE_UINT16: return (int64_t)var->val.u16;
         case XX_VAR_TYPE_UINT32: return (int64_t)var->val.u32;
         case XX_VAR_TYPE_UINT64: return (int64_t)var->val.u64;
-        case XX_VAR_TYPE_BOOL:   return var->val.b ? 1 : 0;
-        case XX_VAR_TYPE_FLOAT:  return (int64_t)var->val.f;
+        case XX_VAR_TYPE_BOOL: return var->val.b ? 1 : 0;
+        case XX_VAR_TYPE_FLOAT: return (int64_t)var->val.f;
         case XX_VAR_TYPE_DOUBLE: return (int64_t)var->val.d;
         default: return 0;
     }
 }
 
-uint64_t xx_var_get_u64(const xx_var *var) {
+uint64_t xx_var_get_u64(const xx_var *var)
+{
     if (!var) return 0;
     switch ((xx_var_type_t)var->type) {
-        case XX_VAR_TYPE_UINT8:  return (uint64_t)var->val.u8;
+        case XX_VAR_TYPE_UINT8: return (uint64_t)var->val.u8;
         case XX_VAR_TYPE_UINT16: return (uint64_t)var->val.u16;
         case XX_VAR_TYPE_UINT32: return (uint64_t)var->val.u32;
         case XX_VAR_TYPE_UINT64: return var->val.u64;
-        case XX_VAR_TYPE_INT8:   return (uint64_t)var->val.i8;
-        case XX_VAR_TYPE_INT16:  return (uint64_t)var->val.i16;
-        case XX_VAR_TYPE_INT32:  return (uint64_t)var->val.i32;
-        case XX_VAR_TYPE_INT64:  return (uint64_t)var->val.i64;
-        case XX_VAR_TYPE_BOOL:   return var->val.b ? 1 : 0;
-        case XX_VAR_TYPE_FLOAT:  return (uint64_t)var->val.f;
+        case XX_VAR_TYPE_INT8: return (uint64_t)var->val.i8;
+        case XX_VAR_TYPE_INT16: return (uint64_t)var->val.i16;
+        case XX_VAR_TYPE_INT32: return (uint64_t)var->val.i32;
+        case XX_VAR_TYPE_INT64: return (uint64_t)var->val.i64;
+        case XX_VAR_TYPE_BOOL: return var->val.b ? 1 : 0;
+        case XX_VAR_TYPE_FLOAT: return (uint64_t)var->val.f;
         case XX_VAR_TYPE_DOUBLE: return (uint64_t)var->val.d;
         default: return 0;
     }
 }
 
-double xx_var_get_double(const xx_var *var) {
+double xx_var_get_double(const xx_var *var)
+{
     if (!var) return 0.0;
     switch ((xx_var_type_t)var->type) {
         case XX_VAR_TYPE_DOUBLE: return var->val.d;
-        case XX_VAR_TYPE_FLOAT:  return (double)var->val.f;
-        case XX_VAR_TYPE_INT8:   return (double)var->val.i8;
-        case XX_VAR_TYPE_INT16:  return (double)var->val.i16;
-        case XX_VAR_TYPE_INT32:  return (double)var->val.i32;
-        case XX_VAR_TYPE_INT64:  return (double)var->val.i64;
-        case XX_VAR_TYPE_UINT8:  return (double)var->val.u8;
+        case XX_VAR_TYPE_FLOAT: return (double)var->val.f;
+        case XX_VAR_TYPE_INT8: return (double)var->val.i8;
+        case XX_VAR_TYPE_INT16: return (double)var->val.i16;
+        case XX_VAR_TYPE_INT32: return (double)var->val.i32;
+        case XX_VAR_TYPE_INT64: return (double)var->val.i64;
+        case XX_VAR_TYPE_UINT8: return (double)var->val.u8;
         case XX_VAR_TYPE_UINT16: return (double)var->val.u16;
         case XX_VAR_TYPE_UINT32: return (double)var->val.u32;
         case XX_VAR_TYPE_UINT64: return (double)var->val.u64;
-        case XX_VAR_TYPE_BOOL:   return var->val.b ? 1.0 : 0.0;
+        case XX_VAR_TYPE_BOOL: return var->val.b ? 1.0 : 0.0;
         default: return 0.0;
     }
 }
 
-bool xx_var_get_bool(const xx_var *var) {
+bool xx_var_get_bool(const xx_var *var)
+{
     if (!var) return false;
     switch ((xx_var_type_t)var->type) {
-        case XX_VAR_TYPE_BOOL:   return var->val.b;
-        case XX_VAR_TYPE_INT8:   return var->val.i8 != 0;
-        case XX_VAR_TYPE_INT16:  return var->val.i16 != 0;
-        case XX_VAR_TYPE_INT32:  return var->val.i32 != 0;
-        case XX_VAR_TYPE_INT64:  return var->val.i64 != 0;
-        case XX_VAR_TYPE_UINT8:  return var->val.u8 != 0;
+        case XX_VAR_TYPE_BOOL: return var->val.b;
+        case XX_VAR_TYPE_INT8: return var->val.i8 != 0;
+        case XX_VAR_TYPE_INT16: return var->val.i16 != 0;
+        case XX_VAR_TYPE_INT32: return var->val.i32 != 0;
+        case XX_VAR_TYPE_INT64: return var->val.i64 != 0;
+        case XX_VAR_TYPE_UINT8: return var->val.u8 != 0;
         case XX_VAR_TYPE_UINT16: return var->val.u16 != 0;
         case XX_VAR_TYPE_UINT32: return var->val.u32 != 0;
         case XX_VAR_TYPE_UINT64: return var->val.u64 != 0;
-        case XX_VAR_TYPE_FLOAT:  return var->val.f != 0.0f;
+        case XX_VAR_TYPE_FLOAT: return var->val.f != 0.0f;
         case XX_VAR_TYPE_DOUBLE: return var->val.d != 0.0;
         case XX_VAR_TYPE_STRING:
         case XX_VAR_TYPE_STRING_VIEW: return var->val.str.ptr != NULL && var->val.str.ptr[0] != '\0';
         case XX_VAR_TYPE_WSTRING:
         case XX_VAR_TYPE_WSTRING_VIEW: return var->val.wstr.ptr != NULL && var->val.wstr.ptr[0] != L'\0';
-        case XX_VAR_TYPE_PTR:    return var->val.ptr != NULL;
+        case XX_VAR_TYPE_PTR: return var->val.ptr != NULL;
         default: return false;
     }
 }
 
-const char* xx_var_get_str(const xx_var *var) {
+const char *xx_var_get_str(const xx_var *var)
+{
     if (!var) return NULL;
     if (var->type == XX_VAR_TYPE_STRING || var->type == XX_VAR_TYPE_STRING_VIEW) {
         return var->val.str.ptr;
@@ -420,7 +444,8 @@ const char* xx_var_get_str(const xx_var *var) {
     return NULL;
 }
 
-const wchar_t* xx_var_get_wstr(const xx_var *var) {
+const wchar_t *xx_var_get_wstr(const xx_var *var)
+{
     if (!var) return NULL;
     if (var->type == XX_VAR_TYPE_WSTRING || var->type == XX_VAR_TYPE_WSTRING_VIEW) {
         return var->val.wstr.ptr;
@@ -428,7 +453,8 @@ const wchar_t* xx_var_get_wstr(const xx_var *var) {
     return NULL;
 }
 
-const void* xx_var_get_bytes(const xx_var *var, size_t *out_size) {
+const void *xx_var_get_bytes(const xx_var *var, size_t *out_size)
+{
     if (!var) {
         if (out_size) *out_size = 0;
         return NULL;
@@ -441,7 +467,8 @@ const void* xx_var_get_bytes(const xx_var *var, size_t *out_size) {
     return NULL;
 }
 
-void* xx_var_get_ptr(const xx_var *var) {
+void *xx_var_get_ptr(const xx_var *var)
+{
     if (!var) return NULL;
     if (var->type == XX_VAR_TYPE_PTR) {
         return var->val.ptr;

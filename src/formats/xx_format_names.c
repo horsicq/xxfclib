@@ -24,81 +24,85 @@
  */
 #include "xxfclib/formats/xx_format.h"
 
-const char *xx_type_to_string(xx_format_type_t type) {
+const char *xx_type_to_string(xx_format_type_t type)
+{
     switch (type) {
         case XX_TYPE_CONSOLE_APPLICATION: return "Console application";
-        case XX_TYPE_GUI_APPLICATION:     return "GUI application";
-        case XX_TYPE_LIBRARY:             return "Library";
-        case XX_TYPE_DRIVER:              return "Driver";
-        case XX_TYPE_STATIC_LIBRARY:      return "Static library";
-        case XX_TYPE_SERVICE:             return "Service";
-        case XX_TYPE_DAEMON:              return "Daemon";
-        case XX_TYPE_BOOT:                return "Boot";
-        case XX_TYPE_FIRMWARE:            return "Firmware";
-        case XX_TYPE_OBJECT:              return "Object";
-        case XX_TYPE_PACKAGE:             return "Package";
-        case XX_TYPE_RAW:                 return "Raw";
-        case XX_TYPE_ARCHIVE:             return "Archive";
-        default:                          return "Unknown";
+        case XX_TYPE_GUI_APPLICATION: return "GUI application";
+        case XX_TYPE_LIBRARY: return "Library";
+        case XX_TYPE_DRIVER: return "Driver";
+        case XX_TYPE_STATIC_LIBRARY: return "Static library";
+        case XX_TYPE_SERVICE: return "Service";
+        case XX_TYPE_DAEMON: return "Daemon";
+        case XX_TYPE_BOOT: return "Boot";
+        case XX_TYPE_FIRMWARE: return "Firmware";
+        case XX_TYPE_OBJECT: return "Object";
+        case XX_TYPE_PACKAGE: return "Package";
+        case XX_TYPE_RAW: return "Raw";
+        case XX_TYPE_ARCHIVE: return "Archive";
+        default: return "Unknown";
     }
 }
 
-const char *xx_arch_to_string(xx_arch_t arch) {
+const char *xx_arch_to_string(xx_arch_t arch)
+{
     switch (arch) {
-        case XX_ARCH_X86_64:  return "x86_64";
-        case XX_ARCH_X86:     return "x86";
-        case XX_ARCH_X86_16:  return "x86_16";
-        case XX_ARCH_ARM:     return "arm";
-        case XX_ARCH_ARM64:   return "arm64";
-        case XX_ARCH_MIPS:    return "mips";
-        case XX_ARCH_MIPS64:  return "mips64";
-        case XX_ARCH_PPC:     return "ppc";
-        case XX_ARCH_PPC64:   return "ppc64";
-        case XX_ARCH_RISCV:   return "riscv";
+        case XX_ARCH_X86_64: return "x86_64";
+        case XX_ARCH_X86: return "x86";
+        case XX_ARCH_X86_16: return "x86_16";
+        case XX_ARCH_ARM: return "arm";
+        case XX_ARCH_ARM64: return "arm64";
+        case XX_ARCH_MIPS: return "mips";
+        case XX_ARCH_MIPS64: return "mips64";
+        case XX_ARCH_PPC: return "ppc";
+        case XX_ARCH_PPC64: return "ppc64";
+        case XX_ARCH_RISCV: return "riscv";
         case XX_ARCH_RISCV64: return "riscv64";
-        case XX_ARCH_SPARC:   return "sparc";
+        case XX_ARCH_SPARC: return "sparc";
         case XX_ARCH_SPARC64: return "sparc64";
-        case XX_ARCH_M68K:    return "m68k";
-        case XX_ARCH_AVR:     return "avr";
-        case XX_ARCH_SH:      return "sh";
-        case XX_ARCH_WASM:    return "wasm";
-        case XX_ARCH_JVM:     return "jvm";
-        case XX_ARCH_DOTNET:  return "cil";
-        case XX_ARCH_DALVIK:  return "dalvik";
+        case XX_ARCH_M68K: return "m68k";
+        case XX_ARCH_AVR: return "avr";
+        case XX_ARCH_SH: return "sh";
+        case XX_ARCH_WASM: return "wasm";
+        case XX_ARCH_JVM: return "jvm";
+        case XX_ARCH_DOTNET: return "cil";
+        case XX_ARCH_DALVIK: return "dalvik";
         case XX_ARCH_GENERIC: return "Generic";
-        default:              return "Unknown";
+        default: return "Unknown";
     }
 }
 
-const char *xx_os_to_string(xx_os_t os) {
+const char *xx_os_to_string(xx_os_t os)
+{
     switch (os) {
         case XX_OS_WINDOWS: return "Windows";
-        case XX_OS_LINUX:   return "Linux";
-        case XX_OS_MACOS:   return "macOS";
-        case XX_OS_UNIX:    return "Unix";
-        case XX_OS_DOS:     return "DOS";
+        case XX_OS_LINUX: return "Linux";
+        case XX_OS_MACOS: return "macOS";
+        case XX_OS_UNIX: return "Unix";
+        case XX_OS_DOS: return "DOS";
         case XX_OS_FREEBSD: return "FreeBSD";
         case XX_OS_ANDROID: return "Android";
-        case XX_OS_IOS:     return "iOS";
-        case XX_OS_OS2:     return "OS/2";
+        case XX_OS_IOS: return "iOS";
+        case XX_OS_OS2: return "OS/2";
         case XX_OS_GENERIC: return "Generic";
-        default:            return "Unknown";
+        default: return "Unknown";
     }
 }
 
-
-const char *xx_data_struct_type_to_string(xx_data_struct_type_t type) {
+const char *xx_data_struct_type_to_string(xx_data_struct_type_t type)
+{
     switch (type) {
-        case XX_DATA_STRUCT_TYPE_STRUCT:    return "struct";
-        case XX_DATA_STRUCT_TYPE_ENTRY:     return "entry";
-        case XX_DATA_STRUCT_TYPE_FOOTER:    return "footer";
-        case XX_DATA_STRUCT_TYPE_LOCATOR:   return "locator";
-        case XX_DATA_STRUCT_TYPE_RAW_DATA:  return "raw_data";
-        default:                            return "unknown";
+        case XX_DATA_STRUCT_TYPE_STRUCT: return "struct";
+        case XX_DATA_STRUCT_TYPE_ENTRY: return "entry";
+        case XX_DATA_STRUCT_TYPE_FOOTER: return "footer";
+        case XX_DATA_STRUCT_TYPE_LOCATOR: return "locator";
+        case XX_DATA_STRUCT_TYPE_RAW_DATA: return "raw_data";
+        default: return "unknown";
     }
 }
 
-const char *xx_format_file_type_to_string(xx_file_type_t type) {
+const char *xx_format_file_type_to_string(xx_file_type_t type)
+{
     switch (type) {
         case XX_FILE_TYPE_ZXML: return "ZXML compressed XML";
         case XX_FILE_TYPE_ZISOFS: return "ZISOFS compressed file";
@@ -333,21 +337,21 @@ const char *xx_format_file_type_to_string(xx_file_type_t type) {
         case XX_FILE_TYPE_YENC_ENCODED_FILE: return "yenc_encoded_file";
         case XX_FILE_TYPE_YPF: return "ypf";
 
-        case XX_FILE_TYPE_ZIP:    return "ZIP";
-        case XX_FILE_TYPE_ZIP64:  return "ZIP64";
-        case XX_FILE_TYPE_7ZIP:   return "7ZIP";
-        case XX_FILE_TYPE_RAR:    return "RAR";
-        case XX_FILE_TYPE_AR:     return "AR";
-        case XX_FILE_TYPE_BZ2:    return "BZ2";
-        case XX_FILE_TYPE_GZ:     return "GZ";
-        case XX_FILE_TYPE_XZ:     return "XZ";
-        case XX_FILE_TYPE_TAR:    return "TAR";
-        case XX_FILE_TYPE_JAR:    return "JAR";
-        case XX_FILE_TYPE_APK:    return "APK";
-        case XX_FILE_TYPE_IPA:    return "IPA";
-        case XX_FILE_TYPE_NPM:    return "NPM";
+        case XX_FILE_TYPE_ZIP: return "ZIP";
+        case XX_FILE_TYPE_ZIP64: return "ZIP64";
+        case XX_FILE_TYPE_7ZIP: return "7ZIP";
+        case XX_FILE_TYPE_RAR: return "RAR";
+        case XX_FILE_TYPE_AR: return "AR";
+        case XX_FILE_TYPE_BZ2: return "BZ2";
+        case XX_FILE_TYPE_GZ: return "GZ";
+        case XX_FILE_TYPE_XZ: return "XZ";
+        case XX_FILE_TYPE_TAR: return "TAR";
+        case XX_FILE_TYPE_JAR: return "JAR";
+        case XX_FILE_TYPE_APK: return "APK";
+        case XX_FILE_TYPE_IPA: return "IPA";
+        case XX_FILE_TYPE_NPM: return "NPM";
         case XX_FILE_TYPE_TAR_GZ: return "TAR.GZ";
-        case XX_FILE_TYPE_TAR_BZ2:return "TAR.BZ2";
+        case XX_FILE_TYPE_TAR_BZ2: return "TAR.BZ2";
         case XX_FILE_TYPE_TAR_XZ: return "TAR.XZ";
         case XX_FILE_TYPE_TAR_ZSTD: return "TAR.ZST";
         case XX_FILE_TYPE_ZSTD: return "ZSTD";
@@ -1318,7 +1322,8 @@ const char *xx_format_file_type_to_string(xx_file_type_t type) {
 
         case XX_FILE_TYPE_PTERO_BIGF: return "Ptero-Engine BIGF/ZBL archive";
         case XX_FILE_TYPE_RVZ: return "Dolphin RVZ GameCube image";
-#define XX_DIE_MUSIC_TYPE_NAME(type, name) case type: return name;
+#define XX_DIE_MUSIC_TYPE_NAME(type, name) \
+    case type: return name;
 #include "die_music/xx_die_music_type_names.inc"
 #undef XX_DIE_MUSIC_TYPE_NAME
         case XX_FILE_TYPE_DOOM_WAD: return "doom wad";
@@ -1695,6 +1700,6 @@ const char *xx_format_file_type_to_string(xx_file_type_t type) {
         case XX_FILE_TYPE_LE: return "LE";
         case XX_FILE_TYPE_LX: return "LX";
         case XX_FILE_TYPE_DEX: return "DEX";
-        default:                 return "UNKNOWN";
+        default: return "UNKNOWN";
     }
 }

@@ -9,13 +9,15 @@
 #ifdef __cplusplus
 extern "C" {
 #endif
-typedef struct xx_lucas_lab { Abstractformat format; } xx_lucas_lab;
-XXFC_API void xx_lucas_lab_init(xx_lucas_lab *,xx_io_device *,int64_t);
-XXFC_API xx_lucas_lab *xx_lucas_lab_create(xx_io_device *,int64_t);
+typedef struct xx_lucas_lab {
+    Abstractformat format;
+} xx_lucas_lab;
+XXFC_API void xx_lucas_lab_init(xx_lucas_lab *, xx_io_device *, int64_t);
+XXFC_API xx_lucas_lab *xx_lucas_lab_create(xx_io_device *, int64_t);
 XXFC_API void xx_lucas_lab_destroy(xx_lucas_lab *);
 XXFC_API void xx_lucas_lab_free(xx_lucas_lab *);
-XXFC_API bool xx_lucas_lab_check_is_valid(Abstractformat *,xx_pd_struct *);
-XXFC_API bool xx_lucas_lab_handle_base_info(Abstractformat *,xx_pd_struct *);
+XXFC_API bool xx_lucas_lab_check_is_valid(Abstractformat *, xx_pd_struct *);
+XXFC_API bool xx_lucas_lab_handle_base_info(Abstractformat *, xx_pd_struct *);
 #ifdef __cplusplus
 }
 #endif

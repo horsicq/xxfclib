@@ -34,33 +34,19 @@ typedef struct ivt_huff {
 } ivt_huff;
 
 /* RFC 1951 3.2.5 */
-static const uint16_t ivt_length_base[29] = {
-    3, 4, 5, 6, 7, 8, 9, 10, 11, 13, 15, 17, 19, 23, 27, 31, 35, 43,
-    51, 59, 67, 83, 99, 115, 131, 163, 195, 227, 258
-};
-static const uint8_t ivt_length_extra[29] = {
-    0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 1, 1, 2, 2, 2, 2, 3, 3,
-    3, 3, 4, 4, 4, 4, 5, 5, 5, 5, 0
-};
-static const uint16_t ivt_dist_base[30] = {
-    1, 2, 3, 4, 5, 7, 9, 13, 17, 25, 33, 49, 65, 97, 129, 193, 257, 385,
-    513, 769, 1025, 1537, 2049, 3073, 4097, 6145, 8193, 12289, 16385, 24577
-};
-static const uint8_t ivt_dist_extra[30] = {
-    0, 0, 0, 0, 1, 1, 2, 2, 3, 3, 4, 4, 5, 5, 6, 6, 7, 7,
-    8, 8, 9, 9, 10, 10, 11, 11, 12, 12, 13, 13
-};
-static const uint8_t ivt_clen_order[19] = {
-    16, 17, 18, 0, 8, 7, 9, 6, 10, 5, 11, 4, 12, 3, 13, 2, 14, 1, 15
-};
+static const uint16_t ivt_length_base[29] = {3, 4, 5, 6, 7, 8, 9, 10, 11, 13, 15, 17, 19, 23, 27, 31, 35, 43, 51, 59, 67, 83, 99, 115, 131, 163, 195, 227, 258};
+static const uint8_t ivt_length_extra[29] = {0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 1, 1, 2, 2, 2, 2, 3, 3, 3, 3, 4, 4, 4, 4, 5, 5, 5, 5, 0};
+static const uint16_t ivt_dist_base[30] = {1,   2,   3,   4,   5,   7,    9,    13,   17,   25,   33,   49,   65,    97,    129,
+                                           193, 257, 385, 513, 769, 1025, 1537, 2049, 3073, 4097, 6145, 8193, 12289, 16385, 24577};
+static const uint8_t ivt_dist_extra[30] = {0, 0, 0, 0, 1, 1, 2, 2, 3, 3, 4, 4, 5, 5, 6, 6, 7, 7, 8, 8, 9, 9, 10, 10, 11, 11, 12, 12, 13, 13};
+static const uint8_t ivt_clen_order[19] = {16, 17, 18, 0, 8, 7, 9, 6, 10, 5, 11, 4, 12, 3, 13, 2, 14, 1, 15};
 
 /* LSB-first, as DEFLATE specifies. */
 static bool ivt_get_bits(ivt_bits *reader, unsigned need, uint32_t *value)
 {
     while (reader->bit_count < need) {
         if (reader->offset >= reader->input_size) return false;
-        reader->bit_buffer |=
-            (uint32_t)reader->input[reader->offset++] << reader->bit_count;
+        reader->bit_buffer |= (uint32_t)reader->input[reader->offset++] << reader->bit_count;
         reader->bit_count += 8U;
     }
 
@@ -135,8 +121,8 @@ static int ivt_decode_symbol(ivt_bits *reader, const ivt_huff *table)
 
 typedef struct ivt_sink {
     uint8_t *output;
-    size_t position;   /* total bytes produced so far, history included */
-    size_t block_end;  /* position at which this block must stop */
+    size_t position;  /* total bytes produced so far, history included */
+    size_t block_end; /* position at which this block must stop */
 } ivt_sink;
 
 static bool ivt_put(ivt_sink *sink, uint8_t value)
@@ -181,10 +167,8 @@ static bool ivt_inflate(ivt_bits *reader, ivt_sink *sink)
             reader->bit_buffer = 0U;
             reader->bit_count = 0U;
             if ((reader->input_size - reader->offset) < 4U) return false;
-            stored_len = (uint32_t)reader->input[reader->offset] |
-                         ((uint32_t)reader->input[reader->offset + 1U] << 8);
-            stored_nlen = (uint32_t)reader->input[reader->offset + 2U] |
-                          ((uint32_t)reader->input[reader->offset + 3U] << 8);
+            stored_len = (uint32_t)reader->input[reader->offset] | ((uint32_t)reader->input[reader->offset + 1U] << 8);
+            stored_nlen = (uint32_t)reader->input[reader->offset + 2U] | ((uint32_t)reader->input[reader->offset + 3U] << 8);
             reader->offset += 4U;
             if (stored_len != ((~stored_nlen) & 0xFFFFU)) return false;
             if ((reader->input_size - reader->offset) < (size_t)stored_len) return false;
@@ -284,8 +268,7 @@ static bool ivt_inflate(ivt_bits *reader, ivt_sink *sink)
                 /* The dictionary is the preceding output, capped at the 32 KiB
                  * MSZIP hands to the next block.  A reference before that is a
                  * malformed stream: fail, never wrap or clamp. */
-                max_distance = (sink->position < IVT_WINDOW) ? sink->position
-                                                             : (size_t)IVT_WINDOW;
+                max_distance = (sink->position < IVT_WINDOW) ? sink->position : (size_t)IVT_WINDOW;
                 if (((size_t)distance == 0U) || ((size_t)distance > max_distance)) {
                     return false;
                 }
@@ -304,31 +287,25 @@ static bool ivt_inflate(ivt_bits *reader, ivt_sink *sink)
     return true;
 }
 
-bool xx_ivt_declared_size(const uint8_t *input, size_t input_size,
-                          size_t *declared)
+bool xx_ivt_declared_size(const uint8_t *input, size_t input_size, size_t *declared)
 {
     if (declared) *declared = 0U;
     if (!input || (input_size < IVT_HEADER_SIZE)) return false;
 
-    if (!(((input[0] == 'm') && (input[1] == 's') && (input[2] == 'z') &&
-           (input[3] == 'p')) ||
-          ((input[0] == 'n') && (input[1] == 's') && (input[2] == 'z') &&
-           (input[3] == 'p')))) {
+    if (!(((input[0] == 'm') && (input[1] == 's') && (input[2] == 'z') && (input[3] == 'p')) ||
+          ((input[0] == 'n') && (input[1] == 's') && (input[2] == 'z') && (input[3] == 'p')))) {
         return false;
     }
 
     if (declared) {
-        *declared = (size_t)((uint32_t)input[4] | ((uint32_t)input[5] << 8) |
-                             ((uint32_t)input[6] << 16) |
-                             ((uint32_t)input[7] << 24));
+        *declared = (size_t)((uint32_t)input[4] | ((uint32_t)input[5] << 8) | ((uint32_t)input[6] << 16) | ((uint32_t)input[7] << 24));
     }
     /* input[8..11] is a reserved word the reference does not inspect. */
 
     return true;
 }
 
-bool xx_ivt_decode_memory(const uint8_t *input, size_t input_size,
-                          uint8_t *output, size_t output_size, size_t *written)
+bool xx_ivt_decode_memory(const uint8_t *input, size_t input_size, uint8_t *output, size_t output_size, size_t *written)
 {
     ivt_sink sink;
     ivt_bits reader;
@@ -347,18 +324,15 @@ bool xx_ivt_decode_memory(const uint8_t *input, size_t input_size,
     sink.block_end = 0U;
 
     while ((position + 2U) <= input_size) {
-        block_uncompressed = (unsigned)input[position] |
-                             ((unsigned)input[position + 1U] << 8);
+        block_uncompressed = (unsigned)input[position] | ((unsigned)input[position + 1U] << 8);
         position += 2U;
         if (block_uncompressed == 0U) break;
 
         if ((position + 2U) > input_size) return false;
-        block_compressed = (unsigned)input[position] |
-                           ((unsigned)input[position + 1U] << 8);
+        block_compressed = (unsigned)input[position] | ((unsigned)input[position + 1U] << 8);
         position += 2U;
 
-        if ((block_compressed < 2U) || (block_uncompressed > IVT_MAX_BLOCK) ||
-            ((size_t)block_compressed > (input_size - position))) {
+        if ((block_compressed < 2U) || (block_uncompressed > IVT_MAX_BLOCK) || ((size_t)block_compressed > (input_size - position))) {
             return false;
         }
         if (block_uncompressed > (output_size - sink.position)) return false;

@@ -32,7 +32,7 @@
 #include <stddef.h>
 #include <stdint.h>
 
-#define XX_AES_BLOCK_SIZE         16U
+#define XX_AES_BLOCK_SIZE 16U
 #define XX_AES_MAX_ROUND_KEY_SIZE 240U
 
 typedef struct xx_aes_context {
@@ -46,11 +46,8 @@ typedef struct xx_aes_context {
 extern "C" {
 #endif
 
-bool xx_aes_internal_set_key(xx_aes_context *context,
-                              const uint8_t *key, size_t key_size);
-void xx_aes_internal_encrypt_block(const xx_aes_context *context,
-                                    const uint8_t input[XX_AES_BLOCK_SIZE],
-                                    uint8_t output[XX_AES_BLOCK_SIZE]);
+bool xx_aes_internal_set_key(xx_aes_context *context, const uint8_t *key, size_t key_size);
+void xx_aes_internal_encrypt_block(const xx_aes_context *context, const uint8_t input[XX_AES_BLOCK_SIZE], uint8_t output[XX_AES_BLOCK_SIZE]);
 
 #ifdef __cplusplus
 }

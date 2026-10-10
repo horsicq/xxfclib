@@ -60,29 +60,21 @@ typedef struct xx_ns2 {
 
 typedef xx_ns2 xx_ns2_t;
 
-XXFC_API void xx_ns2_init(xx_ns2 *archive, xx_io_device *device,
-                          int64_t base_address);
+XXFC_API void xx_ns2_init(xx_ns2 *archive, xx_io_device *device, int64_t base_address);
 XXFC_API xx_ns2 *xx_ns2_create(xx_io_device *device, int64_t base_address);
 XXFC_API void xx_ns2_destroy(xx_ns2 *archive);
 XXFC_API void xx_ns2_free(xx_ns2 *archive);
 
 XXFC_API bool xx_ns2_check_is_valid(Abstractformat *self, xx_pd_struct *pd);
 XXFC_API bool xx_ns2_handle_base_info(Abstractformat *self, xx_pd_struct *pd);
-XXFC_API int64_t xx_ns2_get_format_size(Abstractformat *self,
-                                        xx_pd_struct *pd);
-XXFC_API uint64_t xx_ns2_get_number_of_archive_records(Abstractformat *self,
-                                                       xx_pd_struct *pd);
+XXFC_API int64_t xx_ns2_get_format_size(Abstractformat *self, xx_pd_struct *pd);
+XXFC_API uint64_t xx_ns2_get_number_of_archive_records(Abstractformat *self, xx_pd_struct *pd);
 
-XXFC_API xx_archive_record_state *xx_ns2_create_archive_records_reading(
-    Abstractformat *self, const xx_list_s *options, xx_pd_struct *pd);
-XXFC_API const xx_archive_record *xx_ns2_get_current_archive_record(
-    Abstractformat *self, xx_archive_record_state *state);
-XXFC_API bool xx_ns2_unpack_current_archive_record(
-    Abstractformat *self, xx_archive_record_state *state, xx_pd_struct *pd);
-XXFC_API bool xx_ns2_archive_record_move_to_next(
-    Abstractformat *self, xx_archive_record_state *state, xx_pd_struct *pd);
-XXFC_API void xx_ns2_free_archive_records_reading(
-    Abstractformat *self, xx_archive_record_state *state);
+XXFC_API xx_archive_record_state *xx_ns2_create_archive_records_reading(Abstractformat *self, const xx_list_s *options, xx_pd_struct *pd);
+XXFC_API const xx_archive_record *xx_ns2_get_current_archive_record(Abstractformat *self, xx_archive_record_state *state);
+XXFC_API bool xx_ns2_unpack_current_archive_record(Abstractformat *self, xx_archive_record_state *state, xx_pd_struct *pd);
+XXFC_API bool xx_ns2_archive_record_move_to_next(Abstractformat *self, xx_archive_record_state *state, xx_pd_struct *pd);
+XXFC_API void xx_ns2_free_archive_records_reading(Abstractformat *self, xx_archive_record_state *state);
 
 #ifdef __cplusplus
 }

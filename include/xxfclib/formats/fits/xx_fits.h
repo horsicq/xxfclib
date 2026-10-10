@@ -9,13 +9,15 @@
 #ifdef __cplusplus
 extern "C" {
 #endif
-typedef struct xx_fits { Abstractformat format; } xx_fits;
-XXFC_API void xx_fits_init(xx_fits *,xx_io_device *,int64_t);
-XXFC_API xx_fits *xx_fits_create(xx_io_device *,int64_t);
+typedef struct xx_fits {
+    Abstractformat format;
+} xx_fits;
+XXFC_API void xx_fits_init(xx_fits *, xx_io_device *, int64_t);
+XXFC_API xx_fits *xx_fits_create(xx_io_device *, int64_t);
 XXFC_API void xx_fits_destroy(xx_fits *);
 XXFC_API void xx_fits_free(xx_fits *);
-XXFC_API bool xx_fits_check_is_valid(Abstractformat *,xx_pd_struct *);
-XXFC_API bool xx_fits_handle_base_info(Abstractformat *,xx_pd_struct *);
+XXFC_API bool xx_fits_check_is_valid(Abstractformat *, xx_pd_struct *);
+XXFC_API bool xx_fits_handle_base_info(Abstractformat *, xx_pd_struct *);
 #ifdef __cplusplus
 }
 #endif

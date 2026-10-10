@@ -26,14 +26,14 @@
 #include "xxfclib/formats/xx_memory_map.h"
 
 /* GEMDOS program header */
-#define XX_ATARIST_MAGIC       0x601AU
+#define XX_ATARIST_MAGIC 0x601AU
 #define XX_ATARIST_HEADER_SIZE 28U
 
 /* Wired serially; swap for XX_FILE_TYPE_ATARIST / XX_OS_ATARIST once
  * xxfc_defs.h carries them. Kept as local macros so that adding the
  * enumerators cannot be shadowed by a compatibility #define here. */
 #define XX_ATARIST_FILE_TYPE XX_FILE_TYPE_UNKNOWN
-#define XX_ATARIST_OS        XX_OS_GENERIC
+#define XX_ATARIST_OS XX_OS_GENERIC
 
 /* Forward declaration of vtable callbacks */
 static void xx_atarist_vtable_destroy(Abstractformat *self);
@@ -48,11 +48,8 @@ static void xx_atarist_vtable_destroy(Abstractformat *self);
  * Every field is attacker controlled, so the running total is accumulated in
  * uint64_t and clamped against @c binary_size at each step.
  */
-static bool xx_atarist_get_layout(const Abstractformat *format,
-                                  const xx_atarist *atarist,
-                                  int64_t *binary_size,
-                                  int64_t *declared_size,
-                                  int64_t *body_size) {
+static bool xx_atarist_get_layout(const Abstractformat *format, const xx_atarist *atarist, int64_t *binary_size, int64_t *declared_size, int64_t *body_size)
+{
     int64_t total_size;
     int64_t available;
     uint64_t limit;
@@ -100,15 +97,15 @@ static bool xx_atarist_get_layout(const Abstractformat *format,
     return true;
 }
 
-static bool xx_atarist_update_layout_metadata(xx_atarist *atarist) {
+static bool xx_atarist_update_layout_metadata(xx_atarist *atarist)
+{
     int64_t binary_size;
     int64_t declared_size;
     Abstractformat *format;
 
     if (!atarist) return false;
     format = &atarist->format;
-    if (!xx_atarist_get_layout(format, atarist, &binary_size, &declared_size,
-                               NULL)) {
+    if (!xx_atarist_get_layout(format, atarist, &binary_size, &declared_size, NULL)) {
         return false;
     }
 
@@ -128,17 +125,17 @@ static bool xx_atarist_update_layout_metadata(xx_atarist *atarist) {
     return true;
 }
 
-static bool xx_atarist_add_address(uint64_t base, uint64_t displacement,
-                                   uint64_t *result) {
-    if (!result || base == XX_INVALID_ADDRESS ||
-        displacement >= XX_INVALID_ADDRESS - base) {
+static bool xx_atarist_add_address(uint64_t base, uint64_t displacement, uint64_t *result)
+{
+    if (!result || base == XX_INVALID_ADDRESS || displacement >= XX_INVALID_ADDRESS - base) {
         return false;
     }
     *result = base + displacement;
     return true;
 }
 
-void xx_atarist_init(xx_atarist *atarist, xx_io_device *dev, int64_t base_address) {
+void xx_atarist_init(xx_atarist *atarist, xx_io_device *dev, int64_t base_address)
+{
     if (!atarist) {
         return;
     }
@@ -176,7 +173,8 @@ void xx_atarist_init(xx_atarist *atarist, xx_io_device *dev, int64_t base_addres
     atarist->relocation = 0;
 }
 
-xx_atarist *xx_atarist_create(xx_io_device *dev, int64_t base_address) {
+xx_atarist *xx_atarist_create(xx_io_device *dev, int64_t base_address)
+{
     xx_atarist *atarist = (xx_atarist *)xx_mem_alloc(sizeof(xx_atarist));
     if (!atarist) {
         return NULL;
@@ -185,7 +183,8 @@ xx_atarist *xx_atarist_create(xx_io_device *dev, int64_t base_address) {
     return atarist;
 }
 
-void xx_atarist_destroy(xx_atarist *atarist) {
+void xx_atarist_destroy(xx_atarist *atarist)
+{
     if (!atarist) {
         return;
     }
@@ -195,14 +194,16 @@ void xx_atarist_destroy(xx_atarist *atarist) {
     xx_format_cleanup_extra_parameters(&atarist->format);
 }
 
-static void xx_atarist_vtable_destroy(Abstractformat *self) {
+static void xx_atarist_vtable_destroy(Abstractformat *self)
+{
     if (self) {
         xx_atarist *atarist = (xx_atarist *)self;
         xx_atarist_destroy(atarist);
     }
 }
 
-void xx_atarist_free(xx_atarist *atarist) {
+void xx_atarist_free(xx_atarist *atarist)
+{
     if (!atarist) {
         return;
     }
@@ -210,18 +211,17 @@ void xx_atarist_free(xx_atarist *atarist) {
     xx_mem_free(atarist);
 }
 
-bool xx_atarist_check_is_valid(Abstractformat *self, xx_pd_struct *pd) {
+bool xx_atarist_check_is_valid(Abstractformat *self, xx_pd_struct *pd)
+{
     int64_t total_size;
     uint16_t magic;
 
-    if (!self || !self->device || self->base_address < 0 ||
-        xx_pd_is_stopped(pd)) {
+    if (!self || !self->device || self->base_address < 0 || xx_pd_is_stopped(pd)) {
         return false;
     }
 
     total_size = xx_io_total_size(self->device);
-    if (total_size < self->base_address ||
-        total_size - self->base_address < (int64_t)XX_ATARIST_HEADER_SIZE) {
+    if (total_size < self->base_address || total_size - self->base_address < (int64_t)XX_ATARIST_HEADER_SIZE) {
         return false;
     }
 
@@ -232,14 +232,14 @@ bool xx_atarist_check_is_valid(Abstractformat *self, xx_pd_struct *pd) {
     return (magic == XX_ATARIST_MAGIC);
 }
 
-bool xx_atarist_handle_base_info(Abstractformat *self, xx_pd_struct *pd) {
+bool xx_atarist_handle_base_info(Abstractformat *self, xx_pd_struct *pd)
+{
     int64_t total_size;
     int64_t available;
     xx_atarist *atarist;
     uint8_t header[XX_ATARIST_HEADER_SIZE];
 
-    if (!self || !self->device || self->base_address < 0 ||
-        xx_pd_is_stopped(pd)) {
+    if (!self || !self->device || self->base_address < 0 || xx_pd_is_stopped(pd)) {
         return false;
     }
 
@@ -262,8 +262,7 @@ bool xx_atarist_handle_base_info(Abstractformat *self, xx_pd_struct *pd) {
     }
 
     xx_mem_zero(header, sizeof(header));
-    if (xx_io_read(self->device, header, sizeof(header)) !=
-        (ssize_t)sizeof(header)) {
+    if (xx_io_read(self->device, header, sizeof(header)) != (ssize_t)sizeof(header)) {
         self->is_valid = false;
         return false;
     }
@@ -275,24 +274,12 @@ bool xx_atarist_handle_base_info(Abstractformat *self, xx_pd_struct *pd) {
         return false;
     }
 
-    atarist->text_size = ((uint32_t)header[2] << 24) |
-                         ((uint32_t)header[3] << 16) |
-                         ((uint32_t)header[4] << 8) | (uint32_t)header[5];
-    atarist->data_size = ((uint32_t)header[6] << 24) |
-                         ((uint32_t)header[7] << 16) |
-                         ((uint32_t)header[8] << 8) | (uint32_t)header[9];
-    atarist->bss_size = ((uint32_t)header[10] << 24) |
-                        ((uint32_t)header[11] << 16) |
-                        ((uint32_t)header[12] << 8) | (uint32_t)header[13];
-    atarist->symbol_size = ((uint32_t)header[14] << 24) |
-                           ((uint32_t)header[15] << 16) |
-                           ((uint32_t)header[16] << 8) | (uint32_t)header[17];
-    atarist->reserved = ((uint32_t)header[18] << 24) |
-                        ((uint32_t)header[19] << 16) |
-                        ((uint32_t)header[20] << 8) | (uint32_t)header[21];
-    atarist->flags = ((uint32_t)header[22] << 24) |
-                     ((uint32_t)header[23] << 16) |
-                     ((uint32_t)header[24] << 8) | (uint32_t)header[25];
+    atarist->text_size = ((uint32_t)header[2] << 24) | ((uint32_t)header[3] << 16) | ((uint32_t)header[4] << 8) | (uint32_t)header[5];
+    atarist->data_size = ((uint32_t)header[6] << 24) | ((uint32_t)header[7] << 16) | ((uint32_t)header[8] << 8) | (uint32_t)header[9];
+    atarist->bss_size = ((uint32_t)header[10] << 24) | ((uint32_t)header[11] << 16) | ((uint32_t)header[12] << 8) | (uint32_t)header[13];
+    atarist->symbol_size = ((uint32_t)header[14] << 24) | ((uint32_t)header[15] << 16) | ((uint32_t)header[16] << 8) | (uint32_t)header[17];
+    atarist->reserved = ((uint32_t)header[18] << 24) | ((uint32_t)header[19] << 16) | ((uint32_t)header[20] << 8) | (uint32_t)header[21];
+    atarist->flags = ((uint32_t)header[22] << 24) | ((uint32_t)header[23] << 16) | ((uint32_t)header[24] << 8) | (uint32_t)header[25];
     atarist->relocation = (uint16_t)(((uint16_t)header[26] << 8) | header[27]);
 
     self->format_type = XX_TYPE_GUI_APPLICATION;
@@ -307,17 +294,13 @@ bool xx_atarist_handle_base_info(Abstractformat *self, xx_pd_struct *pd) {
     return true;
 }
 
-int64_t xx_atarist_get_format_size(Abstractformat *self, xx_pd_struct *pd) {
-    return self && (self->base_info_handled ||
-                    xx_atarist_handle_base_info(self, pd))
-               ? self->format_size
-               : -1;
+int64_t xx_atarist_get_format_size(Abstractformat *self, xx_pd_struct *pd)
+{
+    return self && (self->base_info_handled || xx_atarist_handle_base_info(self, pd)) ? self->format_size : -1;
 }
 
-bool xx_atarist_get_memory_map(Abstractformat *self,
-                               xx_memory_map_mode_t mode,
-                               xx_memory_map *output,
-                               xx_pd_struct *pd) {
+bool xx_atarist_get_memory_map(Abstractformat *self, xx_memory_map_mode_t mode, xx_memory_map *output, xx_pd_struct *pd)
+{
     xx_atarist *atarist;
     int64_t binary_size;
     int64_t declared_size;
@@ -330,8 +313,7 @@ bool xx_atarist_get_memory_map(Abstractformat *self,
     uint64_t address;
     int32_t part_number;
 
-    if (!self || !output || !self->device || !self->base_info_handled ||
-        self->base_address < 0 || xx_pd_is_stopped(pd)) {
+    if (!self || !output || !self->device || !self->base_info_handled || self->base_address < 0 || xx_pd_is_stopped(pd)) {
         return false;
     }
     if (mode == XX_MEMORY_MAP_MODE_UNKNOWN) {
@@ -342,8 +324,7 @@ bool xx_atarist_get_memory_map(Abstractformat *self,
     }
 
     atarist = (xx_atarist *)self;
-    if (!xx_atarist_get_layout(self, atarist, &binary_size, &declared_size,
-                               &body_size)) {
+    if (!xx_atarist_get_layout(self, atarist, &binary_size, &declared_size, &body_size)) {
         return false;
     }
 
@@ -355,9 +336,7 @@ bool xx_atarist_get_memory_map(Abstractformat *self,
     data_present = body_size - text_present;
     symbol_present = declared_size - (int64_t)XX_ATARIST_HEADER_SIZE - body_size;
 
-    module_address = self->module_address != XX_INVALID_ADDRESS
-                         ? self->module_address
-                         : 0U;
+    module_address = self->module_address != XX_INVALID_ADDRESS ? self->module_address : 0U;
 
     output->binary_offset = self->base_address;
     output->module_address = module_address;
@@ -380,20 +359,14 @@ bool xx_atarist_get_memory_map(Abstractformat *self,
 
     offset = self->base_address;
     part_number = 0;
-    if (!xx_memory_map_add_part(output, offset, (int64_t)XX_ATARIST_HEADER_SIZE,
-                                XX_INVALID_ADDRESS, 0,
-                                XX_FILE_PART_HEADER, part_number,
-                                "GEMDOS header", false)) {
+    if (!xx_memory_map_add_part(output, offset, (int64_t)XX_ATARIST_HEADER_SIZE, XX_INVALID_ADDRESS, 0, XX_FILE_PART_HEADER, part_number, "GEMDOS header", false)) {
         return false;
     }
     offset += (int64_t)XX_ATARIST_HEADER_SIZE;
     part_number++;
 
     if (text_present > 0) {
-        if (!xx_memory_map_add_part(output, offset, text_present,
-                                    module_address, text_present,
-                                    XX_FILE_PART_SEGMENT, part_number,
-                                    "TEXT", false)) {
+        if (!xx_memory_map_add_part(output, offset, text_present, module_address, text_present, XX_FILE_PART_SEGMENT, part_number, "TEXT", false)) {
             return false;
         }
         offset += text_present;
@@ -401,14 +374,10 @@ bool xx_atarist_get_memory_map(Abstractformat *self,
     }
 
     if (data_present > 0) {
-        if (!xx_atarist_add_address(module_address, (uint64_t)text_present,
-                                    &address)) {
+        if (!xx_atarist_add_address(module_address, (uint64_t)text_present, &address)) {
             return false;
         }
-        if (!xx_memory_map_add_part(output, offset, data_present, address,
-                                    data_present,
-                                    XX_FILE_PART_SEGMENT, part_number,
-                                    "DATA", false)) {
+        if (!xx_memory_map_add_part(output, offset, data_present, address, data_present, XX_FILE_PART_SEGMENT, part_number, "DATA", false)) {
             return false;
         }
         offset += data_present;
@@ -416,25 +385,18 @@ bool xx_atarist_get_memory_map(Abstractformat *self,
     }
 
     if (atarist->bss_size > 0) {
-        if (!xx_atarist_add_address(module_address, (uint64_t)body_size,
-                                    &address)) {
+        if (!xx_atarist_add_address(module_address, (uint64_t)body_size, &address)) {
             return false;
         }
         /* BSS occupies no file bytes; emitted as a virtual-only tail. */
-        if (!xx_memory_map_add_part(output, -1, 0, address,
-                                    (int64_t)atarist->bss_size,
-                                    XX_FILE_PART_SEGMENT, part_number,
-                                    "BSS", false)) {
+        if (!xx_memory_map_add_part(output, -1, 0, address, (int64_t)atarist->bss_size, XX_FILE_PART_SEGMENT, part_number, "BSS", false)) {
             return false;
         }
         part_number++;
     }
 
     if (symbol_present > 0) {
-        if (!xx_memory_map_add_part(output, offset, symbol_present,
-                                    XX_INVALID_ADDRESS, 0,
-                                    XX_FILE_PART_DEBUG, part_number,
-                                    "Symbol table", false)) {
+        if (!xx_memory_map_add_part(output, offset, symbol_present, XX_INVALID_ADDRESS, 0, XX_FILE_PART_DEBUG, part_number, "Symbol table", false)) {
             return false;
         }
         offset += symbol_present;
@@ -445,16 +407,10 @@ bool xx_atarist_get_memory_map(Abstractformat *self,
         int64_t tail_size = binary_size - declared_size;
         if (atarist->relocation == 0) {
             /* ABSFLAG clear: the tail is the relocation table. */
-            if (!xx_memory_map_add_part(output, offset, tail_size,
-                                        XX_INVALID_ADDRESS, 0,
-                                        XX_FILE_PART_TABLE, part_number,
-                                        "Relocations", false)) {
+            if (!xx_memory_map_add_part(output, offset, tail_size, XX_INVALID_ADDRESS, 0, XX_FILE_PART_TABLE, part_number, "Relocations", false)) {
                 return false;
             }
-        } else if (!xx_memory_map_add_part(output, offset, tail_size,
-                                           XX_INVALID_ADDRESS, 0,
-                                           XX_FILE_PART_OVERLAY, part_number,
-                                           "Overlay", false)) {
+        } else if (!xx_memory_map_add_part(output, offset, tail_size, XX_INVALID_ADDRESS, 0, XX_FILE_PART_OVERLAY, part_number, "Overlay", false)) {
             return false;
         }
         part_number++;
@@ -464,50 +420,59 @@ bool xx_atarist_get_memory_map(Abstractformat *self,
 }
 
 /* --- Getters --- */
-uint16_t xx_atarist_get_magic(const xx_atarist *atarist) {
+uint16_t xx_atarist_get_magic(const xx_atarist *atarist)
+{
     return atarist ? atarist->magic : 0;
 }
 
-uint32_t xx_atarist_get_text_size(const xx_atarist *atarist) {
+uint32_t xx_atarist_get_text_size(const xx_atarist *atarist)
+{
     return atarist ? atarist->text_size : 0;
 }
 
-uint32_t xx_atarist_get_data_size(const xx_atarist *atarist) {
+uint32_t xx_atarist_get_data_size(const xx_atarist *atarist)
+{
     return atarist ? atarist->data_size : 0;
 }
 
-uint32_t xx_atarist_get_bss_size(const xx_atarist *atarist) {
+uint32_t xx_atarist_get_bss_size(const xx_atarist *atarist)
+{
     return atarist ? atarist->bss_size : 0;
 }
 
-uint32_t xx_atarist_get_symbol_size(const xx_atarist *atarist) {
+uint32_t xx_atarist_get_symbol_size(const xx_atarist *atarist)
+{
     return atarist ? atarist->symbol_size : 0;
 }
 
-uint32_t xx_atarist_get_reserved(const xx_atarist *atarist) {
+uint32_t xx_atarist_get_reserved(const xx_atarist *atarist)
+{
     return atarist ? atarist->reserved : 0;
 }
 
-uint32_t xx_atarist_get_flags(const xx_atarist *atarist) {
+uint32_t xx_atarist_get_flags(const xx_atarist *atarist)
+{
     return atarist ? atarist->flags : 0;
 }
 
-uint16_t xx_atarist_get_relocation(const xx_atarist *atarist) {
+uint16_t xx_atarist_get_relocation(const xx_atarist *atarist)
+{
     return atarist ? atarist->relocation : 0;
 }
 
-int64_t xx_atarist_get_text_offset(const xx_atarist *atarist) {
+int64_t xx_atarist_get_text_offset(const xx_atarist *atarist)
+{
     return atarist ? (int64_t)XX_ATARIST_HEADER_SIZE : -1;
 }
 
-int64_t xx_atarist_get_data_offset(const xx_atarist *atarist) {
+int64_t xx_atarist_get_data_offset(const xx_atarist *atarist)
+{
     int64_t binary_size;
     int64_t body_size;
     int64_t text_present;
 
     if (!atarist) return -1;
-    if (!xx_atarist_get_layout(&atarist->format, atarist, &binary_size, NULL,
-                               &body_size)) {
+    if (!xx_atarist_get_layout(&atarist->format, atarist, &binary_size, NULL, &body_size)) {
         return -1;
     }
     text_present = (int64_t)atarist->text_size;
@@ -518,14 +483,14 @@ int64_t xx_atarist_get_data_offset(const xx_atarist *atarist) {
     return (int64_t)XX_ATARIST_HEADER_SIZE + text_present;
 }
 
-int64_t xx_atarist_get_symbol_offset(const xx_atarist *atarist) {
+int64_t xx_atarist_get_symbol_offset(const xx_atarist *atarist)
+{
     int64_t binary_size;
     int64_t declared_size;
     int64_t body_size;
 
     if (!atarist) return -1;
-    if (!xx_atarist_get_layout(&atarist->format, atarist, &binary_size,
-                               &declared_size, &body_size)) {
+    if (!xx_atarist_get_layout(&atarist->format, atarist, &binary_size, &declared_size, &body_size)) {
         return -1;
     }
     if (declared_size - (int64_t)XX_ATARIST_HEADER_SIZE - body_size <= 0) {
@@ -534,27 +499,28 @@ int64_t xx_atarist_get_symbol_offset(const xx_atarist *atarist) {
     return (int64_t)XX_ATARIST_HEADER_SIZE + body_size;
 }
 
-int64_t xx_atarist_get_relocation_offset(const xx_atarist *atarist) {
+int64_t xx_atarist_get_relocation_offset(const xx_atarist *atarist)
+{
     int64_t binary_size;
     int64_t declared_size;
 
     if (!atarist || atarist->relocation != 0) return -1;
-    if (!xx_atarist_get_layout(&atarist->format, atarist, &binary_size,
-                               &declared_size, NULL)) {
+    if (!xx_atarist_get_layout(&atarist->format, atarist, &binary_size, &declared_size, NULL)) {
         return -1;
     }
     if (declared_size >= binary_size) return -1;
     return declared_size;
 }
 
-int64_t xx_atarist_get_image_size(const xx_atarist *atarist) {
+int64_t xx_atarist_get_image_size(const xx_atarist *atarist)
+{
     if (!atarist) return -1;
-    return (int64_t)atarist->text_size + (int64_t)atarist->data_size +
-           (int64_t)atarist->bss_size;
+    return (int64_t)atarist->text_size + (int64_t)atarist->data_size + (int64_t)atarist->bss_size;
 }
 
 /* --- Setters --- */
-void xx_atarist_set_text_size(xx_atarist *atarist, uint32_t val) {
+void xx_atarist_set_text_size(xx_atarist *atarist, uint32_t val)
+{
     if (atarist && atarist->text_size != val) {
         atarist->text_size = val;
         xx_format_invalidate_memory_map(&atarist->format);
@@ -564,7 +530,8 @@ void xx_atarist_set_text_size(xx_atarist *atarist, uint32_t val) {
     }
 }
 
-void xx_atarist_set_data_size(xx_atarist *atarist, uint32_t val) {
+void xx_atarist_set_data_size(xx_atarist *atarist, uint32_t val)
+{
     if (atarist && atarist->data_size != val) {
         atarist->data_size = val;
         xx_format_invalidate_memory_map(&atarist->format);
@@ -574,14 +541,16 @@ void xx_atarist_set_data_size(xx_atarist *atarist, uint32_t val) {
     }
 }
 
-void xx_atarist_set_bss_size(xx_atarist *atarist, uint32_t val) {
+void xx_atarist_set_bss_size(xx_atarist *atarist, uint32_t val)
+{
     if (atarist && atarist->bss_size != val) {
         atarist->bss_size = val;
         xx_format_invalidate_memory_map(&atarist->format);
     }
 }
 
-void xx_atarist_set_symbol_size(xx_atarist *atarist, uint32_t val) {
+void xx_atarist_set_symbol_size(xx_atarist *atarist, uint32_t val)
+{
     if (atarist && atarist->symbol_size != val) {
         atarist->symbol_size = val;
         xx_format_invalidate_memory_map(&atarist->format);
@@ -591,13 +560,15 @@ void xx_atarist_set_symbol_size(xx_atarist *atarist, uint32_t val) {
     }
 }
 
-void xx_atarist_set_flags(xx_atarist *atarist, uint32_t val) {
+void xx_atarist_set_flags(xx_atarist *atarist, uint32_t val)
+{
     if (atarist) {
         atarist->flags = val;
     }
 }
 
-void xx_atarist_set_relocation(xx_atarist *atarist, uint16_t val) {
+void xx_atarist_set_relocation(xx_atarist *atarist, uint16_t val)
+{
     if (atarist && atarist->relocation != val) {
         atarist->relocation = val;
         xx_format_invalidate_memory_map(&atarist->format);

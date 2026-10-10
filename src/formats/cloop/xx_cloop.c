@@ -93,13 +93,13 @@
 #define CLOOP_KIND_BACKREF 2
 
 typedef struct cloop_info_s {
-    int64_t span;          /**< Bytes from the base address to the end. */
-    int64_t data_end;      /**< Last table entry: the format size. */
+    int64_t span;     /**< Bytes from the base address to the end. */
+    int64_t data_end; /**< Last table entry: the format size. */
     uint64_t unpacked_size;
     uint32_t block_size;
     uint32_t block_count;
     uint32_t method;
-    uint32_t max_packed;   /**< Largest stored block accepted. */
+    uint32_t max_packed; /**< Largest stored block accepted. */
     uint32_t data_blocks;
     uint32_t zero_blocks;
     uint32_t backref_blocks;
@@ -114,35 +114,31 @@ typedef struct cloop_stream_s {
 
 typedef struct cloop_toc_s {
     xx_io_device *device;
-    int64_t base;      /**< Device offset of entry 0. */
-    uint32_t entries;  /**< n + 1. */
-    uint32_t start;    /**< Index of the first cached entry. */
-    uint32_t count;    /**< Cached entries. */
+    int64_t base;     /**< Device offset of entry 0. */
+    uint32_t entries; /**< n + 1. */
+    uint32_t start;   /**< Index of the first cached entry. */
+    uint32_t count;   /**< Cached entries. */
     uint8_t buffer[CLOOP_TOC_WINDOW * CLOOP_TOC_ENTRY];
 } cloop_toc;
 
-typedef bool (*cloop_visit_fn)(void *context, uint32_t index, int kind,
-                               uint64_t offset, uint64_t length);
+typedef bool (*cloop_visit_fn)(void *context, uint32_t index, int kind, uint64_t offset, uint64_t length);
 
 /* ------------------------------------------------------------- helpers -- */
 
-static bool cloop_read_at(xx_io_device *device, int64_t offset, void *buffer,
-                          size_t size) {
+static bool cloop_read_at(xx_io_device *device, int64_t offset, void *buffer, size_t size)
+{
     size_t done = 0U;
-    if (!device || (!buffer && size != 0U) || offset < 0 ||
-        xx_io_seek64(device, offset, SEEK_SET) != 0)
-        return false;
+    if (!device || (!buffer && size != 0U) || offset < 0 || xx_io_seek64(device, offset, SEEK_SET) != 0) return false;
     while (done < size) {
-        ssize_t amount = xx_io_read(device, (uint8_t *)buffer + done,
-                                    size - done);
+        ssize_t amount = xx_io_read(device, (uint8_t *)buffer + done, size - done);
         if (amount <= 0 || (size_t)amount > size - done) return false;
         done += (size_t)amount;
     }
     return true;
 }
 
-static bool cloop_write_all(xx_io_device *device, const uint8_t *data,
-                            size_t size) {
+static bool cloop_write_all(xx_io_device *device, const uint8_t *data, size_t size)
+{
     size_t done = 0U;
     if (!device) return true; /* verify-only pass */
     while (done < size) {
@@ -153,26 +149,23 @@ static bool cloop_write_all(xx_io_device *device, const uint8_t *data,
     return true;
 }
 
-static bool cloop_toc_get(cloop_toc *toc, uint32_t index, uint64_t *value) {
+static bool cloop_toc_get(cloop_toc *toc, uint32_t index, uint64_t *value)
+{
     if (index >= toc->entries) return false;
     if (index < toc->start || index - toc->start >= toc->count) {
         uint32_t want = toc->entries - index;
         if (want > CLOOP_TOC_WINDOW) want = CLOOP_TOC_WINDOW;
         toc->count = 0U;
-        if (!cloop_read_at(toc->device,
-                           toc->base + (int64_t)index * CLOOP_TOC_ENTRY,
-                           toc->buffer, (size_t)want * CLOOP_TOC_ENTRY))
-            return false;
+        if (!cloop_read_at(toc->device, toc->base + (int64_t)index * CLOOP_TOC_ENTRY, toc->buffer, (size_t)want * CLOOP_TOC_ENTRY)) return false;
         toc->start = index;
         toc->count = want;
     }
-    *value = xx_data_get_u64(toc->buffer +
-                        (size_t)(index - toc->start) * CLOOP_TOC_ENTRY, 8, 0, true);
+    *value = xx_data_get_u64(toc->buffer + (size_t)(index - toc->start) * CLOOP_TOC_ENTRY, 8, 0, true);
     return true;
 }
 
-static bool cloop_contains(const uint8_t *data, size_t size,
-                           const char *needle) {
+static bool cloop_contains(const uint8_t *data, size_t size, const char *needle)
+{
     size_t length = xx_str_len(needle);
     size_t at;
     if (length == 0U || length > size) return false;
@@ -189,9 +182,8 @@ static bool cloop_contains(const uint8_t *data, size_t size,
  * at max_packed, except that the block ending at the end of the data may be
  * followed by padding (geom_uzip trims it the same way); its read is then
  * limited to max_packed. The walk fills the block counters in `info`. */
-static bool cloop_walk(Abstractformat *format, cloop_info *info,
-                       cloop_visit_fn visit, void *context,
-                       xx_pd_struct *pd) {
+static bool cloop_walk(Abstractformat *format, cloop_info *info, cloop_visit_fn visit, void *context, xx_pd_struct *pd)
+{
     cloop_toc *toc;
     uint64_t first = 0U, last = 0U, frontier;
     uint64_t toc_end;
@@ -209,14 +201,10 @@ static bool cloop_walk(Abstractformat *format, cloop_info *info,
     info->zero_blocks = 0U;
     info->backref_blocks = 0U;
 
-    toc_end = (uint64_t)CLOOP_TOC_OFFSET +
-              (uint64_t)toc->entries * CLOOP_TOC_ENTRY;
-    if (!cloop_toc_get(toc, 0U, &first) ||
-        !cloop_toc_get(toc, info->block_count, &last))
-        goto done;
+    toc_end = (uint64_t)CLOOP_TOC_OFFSET + (uint64_t)toc->entries * CLOOP_TOC_ENTRY;
+    if (!cloop_toc_get(toc, 0U, &first) || !cloop_toc_get(toc, info->block_count, &last)) goto done;
     /* Data after the table, and the end of the data inside the file. */
-    if (first < toc_end || last < first || last > (uint64_t)info->span)
-        goto done;
+    if (first < toc_end || last < first || last > (uint64_t)info->span) goto done;
     frontier = first;
     for (index = 0U; index < info->block_count; ++index) {
         uint64_t offset = 0U, next = 0U, length;
@@ -229,8 +217,7 @@ static bool cloop_walk(Abstractformat *format, cloop_info *info,
              * out, and the decoder resolves which block starts there. */
             if (offset < first) goto done;
             ++info->backref_blocks;
-            if (visit && !visit(context, index, CLOOP_KIND_BACKREF, offset, 0U))
-                goto done;
+            if (visit && !visit(context, index, CLOOP_KIND_BACKREF, offset, 0U)) goto done;
             continue;
         }
         /* A new block: it runs to the first later entry at or above its
@@ -243,8 +230,7 @@ static bool cloop_walk(Abstractformat *format, cloop_info *info,
         length = next - offset;
         if (length == 0U) {
             ++info->zero_blocks;
-            if (visit && !visit(context, index, CLOOP_KIND_ZERO, offset, 0U))
-                goto done;
+            if (visit && !visit(context, index, CLOOP_KIND_ZERO, offset, 0U)) goto done;
             continue;
         }
         if (length > info->max_packed) {
@@ -253,8 +239,7 @@ static bool cloop_walk(Abstractformat *format, cloop_info *info,
         }
         ++info->data_blocks;
         frontier = next;
-        if (visit && !visit(context, index, CLOOP_KIND_DATA, offset, length))
-            goto done;
+        if (visit && !visit(context, index, CLOOP_KIND_DATA, offset, length)) goto done;
     }
     /* Only stored blocks can be the target of a back-reference. */
     if (info->backref_blocks != 0U && info->data_blocks == 0U) goto done;
@@ -267,24 +252,22 @@ done:
 
 /* --------------------------------------------------------------- parse -- */
 
-static uint32_t cloop_flavour(const uint8_t *preamble) {
+static uint32_t cloop_flavour(const uint8_t *preamble)
+{
     static const char prefix[] = "#!/bin/sh\n#";
     uint8_t letter;
     if (xx_rt_memcmp(preamble, prefix, sizeof(prefix) - 1U) != 0) return 0U;
     if (preamble[13] != '.' || preamble[14] != '0') return 0U;
     letter = preamble[11];
-    if ((letter == 'V' || letter == 'v') && preamble[12] == '2')
-        return CLOOP_METHOD_ZLIB;
-    if ((letter == 'L' || letter == 'l') && preamble[12] == '3')
-        return CLOOP_METHOD_XZ;
-    if ((letter == 'Z' || letter == 'z') && preamble[12] == '4')
-        return CLOOP_METHOD_ZSTD;
+    if ((letter == 'V' || letter == 'v') && preamble[12] == '2') return CLOOP_METHOD_ZLIB;
+    if ((letter == 'L' || letter == 'l') && preamble[12] == '3') return CLOOP_METHOD_XZ;
+    if ((letter == 'Z' || letter == 'z') && preamble[12] == '4') return CLOOP_METHOD_ZSTD;
     return 0U;
 }
 
 /* The first stored block has to open like its codec's stream. */
-static bool cloop_first_block_matches(void *context, uint32_t index, int kind,
-                                      uint64_t offset, uint64_t length) {
+static bool cloop_first_block_matches(void *context, uint32_t index, int kind, uint64_t offset, uint64_t length)
+{
     cloop_info *info = (cloop_info *)((void **)context)[0];
     Abstractformat *format = (Abstractformat *)((void **)context)[1];
     bool *checked = (bool *)((void **)context)[2];
@@ -294,32 +277,19 @@ static bool cloop_first_block_matches(void *context, uint32_t index, int kind,
     *checked = true;
     switch (info->method) {
         case CLOOP_METHOD_ZLIB:
-            return length >= 2U &&
-                   cloop_read_at(format->device,
-                                 format->base_address + (int64_t)offset, head,
-                                 2U) &&
-                   xx_zlib_stream_header_is_valid(head, 2U);
+            return length >= 2U && cloop_read_at(format->device, format->base_address + (int64_t)offset, head, 2U) && xx_zlib_stream_header_is_valid(head, 2U);
         case CLOOP_METHOD_XZ:
-            return length >= 6U &&
-                   cloop_read_at(format->device,
-                                 format->base_address + (int64_t)offset, head,
-                                 6U) &&
-                   head[0] == 0xFDU && head[1] == '7' && head[2] == 'z' &&
-                   head[3] == 'X' && head[4] == 'Z' && head[5] == 0U;
+            return length >= 6U && cloop_read_at(format->device, format->base_address + (int64_t)offset, head, 6U) && head[0] == 0xFDU && head[1] == '7' &&
+                   head[2] == 'z' && head[3] == 'X' && head[4] == 'Z' && head[5] == 0U;
         case CLOOP_METHOD_ZSTD:
-            return length >= 4U &&
-                   cloop_read_at(format->device,
-                                 format->base_address + (int64_t)offset, head,
-                                 4U) &&
-                   head[0] == 0x28U && head[1] == 0xB5U && head[2] == 0x2FU &&
-                   head[3] == 0xFDU;
-        default:
-            return false;
+            return length >= 4U && cloop_read_at(format->device, format->base_address + (int64_t)offset, head, 4U) && head[0] == 0x28U && head[1] == 0xB5U &&
+                   head[2] == 0x2FU && head[3] == 0xFDU;
+        default: return false;
     }
 }
 
-static bool cloop_parse(Abstractformat *format, cloop_info *out,
-                        xx_pd_struct *pd) {
+static bool cloop_parse(Abstractformat *format, cloop_info *out, xx_pd_struct *pd)
+{
     uint8_t header[CLOOP_TOC_OFFSET];
     cloop_info info;
     int64_t total;
@@ -327,27 +297,20 @@ static bool cloop_parse(Abstractformat *format, cloop_info *out,
     bool checked = false;
     void *context[3];
 
-    if (!format || !format->device || !out || format->base_address < 0)
-        return false;
+    if (!format || !format->device || !out || format->base_address < 0) return false;
     total = xx_io_total_size(format->device);
     if (total < format->base_address) return false;
     xx_mem_zero(&info, sizeof(info));
     info.span = total - format->base_address;
     /* The header and a table of at least two entries. */
-    if (info.span < CLOOP_TOC_OFFSET + 2 * CLOOP_TOC_ENTRY ||
-        !cloop_read_at(format->device, format->base_address, header,
-                       sizeof(header)))
-        return false;
+    if (info.span < CLOOP_TOC_OFFSET + 2 * CLOOP_TOC_ENTRY || !cloop_read_at(format->device, format->base_address, header, sizeof(header))) return false;
     info.method = cloop_flavour(header);
     if (info.method == 0U) return false;
 
     info.block_size = xx_data_get_u32(header + CLOOP_PREAMBLE_SIZE, 4, 0, true);
     info.block_count = xx_data_get_u32(header + CLOOP_PREAMBLE_SIZE + 4, 4, 0, true);
-    if (info.block_size == 0U || (info.block_size % CLOOP_BLOCK_UNIT) != 0U ||
-        info.block_size > CLOOP_MAX_BLOCK_SIZE)
-        return false;
-    if (info.block_count == 0U || info.block_count > CLOOP_MAX_BLOCKS)
-        return false;
+    if (info.block_size == 0U || (info.block_size % CLOOP_BLOCK_UNIT) != 0U || info.block_size > CLOOP_MAX_BLOCK_SIZE) return false;
+    if (info.block_count == 0U || info.block_count > CLOOP_MAX_BLOCKS) return false;
     toc_bytes = ((uint64_t)info.block_count + 1U) * CLOOP_TOC_ENTRY;
     if (toc_bytes > (uint64_t)(info.span - CLOOP_TOC_OFFSET)) return false;
     info.unpacked_size = (uint64_t)info.block_count * info.block_size;
@@ -359,14 +322,11 @@ static bool cloop_parse(Abstractformat *format, cloop_info *out,
     context[0] = &info;
     context[1] = format;
     context[2] = &checked;
-    if (!cloop_walk(format, &info, cloop_first_block_matches, context, pd))
-        return false;
+    if (!cloop_walk(format, &info, cloop_first_block_matches, context, pd)) return false;
     /* An image of nothing but zero blocks never proved its codec. */
     if (!checked) return false;
-    if (info.backref_blocks != 0U && info.data_blocks > CLOOP_MAX_TABLE)
-        return false;
-    info.iso = cloop_contains(header, CLOOP_PREAMBLE_SIZE, "iso9660") ||
-               cloop_contains(header, CLOOP_PREAMBLE_SIZE, "cd9660");
+    if (info.backref_blocks != 0U && info.data_blocks > CLOOP_MAX_TABLE) return false;
+    info.iso = cloop_contains(header, CLOOP_PREAMBLE_SIZE, "iso9660") || cloop_contains(header, CLOOP_PREAMBLE_SIZE, "cd9660");
     *out = info;
     return true;
 }
@@ -380,26 +340,23 @@ typedef struct cloop_decoder_s {
     xx_pd_struct *pd;
     uint8_t *packed;
     uint8_t *plain;
-    uint64_t *table_offset;    /**< Stored blocks, ascending offsets. */
+    uint64_t *table_offset; /**< Stored blocks, ascending offsets. */
     uint32_t *table_length;
     uint32_t table_count;
     uint32_t table_capacity;
 } cloop_decoder;
 
-static bool cloop_decode_zlib(const uint8_t *packed, size_t size,
-                              uint8_t *plain, size_t block_size) {
+static bool cloop_decode_zlib(const uint8_t *packed, size_t size, uint8_t *plain, size_t block_size)
+{
     xx_io_device *output;
     size_t consumed = 0U;
     int64_t produced;
     const uint8_t *trailer;
     bool decoded;
-    if (size < 2U + 4U || !xx_zlib_stream_header_is_valid(packed, size))
-        return false;
+    if (size < 2U + 4U || !xx_zlib_stream_header_is_valid(packed, size)) return false;
     output = xx_io_mem_open(plain, block_size);
     if (!output) return false;
-    decoded = xx_deflate_unpack_memory_to_device_ex(packed + 2U, size - 2U,
-                                                    output, &consumed, false,
-                                                    NULL);
+    decoded = xx_deflate_unpack_memory_to_device_ex(packed + 2U, size - 2U, output, &consumed, false, NULL);
     produced = xx_io_tell(output);
     xx_io_close(output);
     if (!decoded || produced != (int64_t)block_size) return false;
@@ -413,16 +370,15 @@ static bool cloop_decode_zlib(const uint8_t *packed, size_t size,
  * over a pair of memory devices; the library has no memory-to-memory entry
  * point for it. The output device holds exactly one block, so a stream that
  * decodes to more fails its write. */
-static bool cloop_decode_xz(const uint8_t *packed, size_t size, uint8_t *plain,
-                            size_t block_size) {
+static bool cloop_decode_xz(const uint8_t *packed, size_t size, uint8_t *plain, size_t block_size)
+{
     xx_io_device *source = xx_io_mem_open_ro(packed, size);
     xx_io_device *output = xx_io_mem_open(plain, block_size);
     bool result = false;
     if (source && output) {
         xx_xz xz;
         xx_xz_init(&xz, source, 0);
-        result = xx_xz_unpack_to_device(&xz, output, NULL) &&
-                 xx_io_tell(output) == (int64_t)block_size;
+        result = xx_xz_unpack_to_device(&xz, output, NULL) && xx_io_tell(output) == (int64_t)block_size;
         xx_xz_destroy(&xz);
     }
     if (source) xx_io_close(source);
@@ -430,36 +386,25 @@ static bool cloop_decode_xz(const uint8_t *packed, size_t size, uint8_t *plain,
     return result;
 }
 
-static bool cloop_decode_block(const cloop_decoder *decoder, uint64_t offset,
-                               uint64_t length) {
+static bool cloop_decode_block(const cloop_decoder *decoder, uint64_t offset, uint64_t length)
+{
     const cloop_info *info = decoder->info;
     size_t written = 0U;
     if (length == 0U || length > info->max_packed) return false;
-    if (!cloop_read_at(decoder->format->device,
-                       decoder->format->base_address + (int64_t)offset,
-                       decoder->packed, (size_t)length))
-        return false;
+    if (!cloop_read_at(decoder->format->device, decoder->format->base_address + (int64_t)offset, decoder->packed, (size_t)length)) return false;
     switch (info->method) {
-        case CLOOP_METHOD_ZLIB:
-            return cloop_decode_zlib(decoder->packed, (size_t)length,
-                                     decoder->plain, info->block_size);
-        case CLOOP_METHOD_XZ:
-            return cloop_decode_xz(decoder->packed, (size_t)length,
-                                   decoder->plain, info->block_size);
+        case CLOOP_METHOD_ZLIB: return cloop_decode_zlib(decoder->packed, (size_t)length, decoder->plain, info->block_size);
+        case CLOOP_METHOD_XZ: return cloop_decode_xz(decoder->packed, (size_t)length, decoder->plain, info->block_size);
         case CLOOP_METHOD_ZSTD:
             /* Complete frames filling the buffer exactly. */
-            return xx_zstd_decompress_memory(decoder->packed, (size_t)length,
-                                             decoder->plain, info->block_size,
-                                             &written) &&
-                   written == info->block_size;
-        default:
-            return false;
+            return xx_zstd_decompress_memory(decoder->packed, (size_t)length, decoder->plain, info->block_size, &written) && written == info->block_size;
+        default: return false;
     }
 }
 
 /* The stored block that starts at `offset`, if any. */
-static bool cloop_table_find(const cloop_decoder *decoder, uint64_t offset,
-                             uint64_t *length) {
+static bool cloop_table_find(const cloop_decoder *decoder, uint64_t offset, uint64_t *length)
+{
     uint32_t low = 0U, high = decoder->table_count;
     while (low < high) {
         uint32_t middle = low + (high - low) / 2U;
@@ -468,53 +413,41 @@ static bool cloop_table_find(const cloop_decoder *decoder, uint64_t offset,
             *length = decoder->table_length[middle];
             return true;
         }
-        if (value < offset)
-            low = middle + 1U;
-        else
-            high = middle;
+        if (value < offset) low = middle + 1U;
+        else high = middle;
     }
     return false;
 }
 
-static bool cloop_decode_visit(void *context, uint32_t index, int kind,
-                               uint64_t offset, uint64_t length) {
+static bool cloop_decode_visit(void *context, uint32_t index, int kind, uint64_t offset, uint64_t length)
+{
     cloop_decoder *decoder = (cloop_decoder *)context;
     const cloop_info *info = decoder->info;
     (void)index;
     if (decoder->pd && xx_pd_is_stopped(decoder->pd)) return false;
     if (kind == CLOOP_KIND_ZERO) {
         xx_mem_zero(decoder->plain, info->block_size);
-        return cloop_write_all(decoder->destination, decoder->plain,
-                               info->block_size);
+        return cloop_write_all(decoder->destination, decoder->plain, info->block_size);
     }
     if (kind == CLOOP_KIND_BACKREF) {
-        if (!decoder->table_offset ||
-            !cloop_table_find(decoder, offset, &length))
-            return false;
+        if (!decoder->table_offset || !cloop_table_find(decoder, offset, &length)) return false;
     } else if (decoder->table_offset) {
         /* Stored blocks are laid out in ascending order, so appending keeps
          * the table sorted for the binary search. */
-        if (decoder->table_count >= decoder->table_capacity ||
-            (decoder->table_count != 0U &&
-             decoder->table_offset[decoder->table_count - 1U] >= offset))
-            return false;
+        if (decoder->table_count >= decoder->table_capacity || (decoder->table_count != 0U && decoder->table_offset[decoder->table_count - 1U] >= offset)) return false;
         decoder->table_offset[decoder->table_count] = offset;
         decoder->table_length[decoder->table_count] = (uint32_t)length;
         ++decoder->table_count;
     }
-    return cloop_decode_block(decoder, offset, length) &&
-           cloop_write_all(decoder->destination, decoder->plain,
-                           info->block_size);
+    return cloop_decode_block(decoder, offset, length) && cloop_write_all(decoder->destination, decoder->plain, info->block_size);
 }
 
 /* Decode the whole image to `destination` (or nowhere, to verify it). The
  * two block buffers are bounded by the block size cap; the back-reference
  * table exists only for de-duplicated images and by parse is capped at
  * CLOOP_MAX_TABLE stored blocks. */
-static bool cloop_unpack_to_device(Abstractformat *format,
-                                   const cloop_info *parsed,
-                                   xx_io_device *destination,
-                                   xx_pd_struct *pd) {
+static bool cloop_unpack_to_device(Abstractformat *format, const cloop_info *parsed, xx_io_device *destination, xx_pd_struct *pd)
+{
     cloop_info info = *parsed;
     cloop_decoder decoder;
     bool result = false;
@@ -528,13 +461,10 @@ static bool cloop_unpack_to_device(Abstractformat *format,
     decoder.plain = (uint8_t *)xx_mem_alloc(info.block_size);
     if (!decoder.packed || !decoder.plain) goto done;
     if (info.backref_blocks != 0U) {
-        if (info.data_blocks == 0U || info.data_blocks > CLOOP_MAX_TABLE)
-            goto done;
+        if (info.data_blocks == 0U || info.data_blocks > CLOOP_MAX_TABLE) goto done;
         decoder.table_capacity = info.data_blocks;
-        decoder.table_offset = (uint64_t *)xx_mem_alloc(
-            (size_t)info.data_blocks * sizeof(uint64_t));
-        decoder.table_length = (uint32_t *)xx_mem_alloc(
-            (size_t)info.data_blocks * sizeof(uint32_t));
+        decoder.table_offset = (uint64_t *)xx_mem_alloc((size_t)info.data_blocks * sizeof(uint64_t));
+        decoder.table_length = (uint32_t *)xx_mem_alloc((size_t)info.data_blocks * sizeof(uint32_t));
         if (!decoder.table_offset || !decoder.table_length) goto done;
     }
     result = cloop_walk(format, &info, cloop_decode_visit, &decoder, pd);
@@ -565,13 +495,12 @@ typedef struct cloop_disk_s {
     bool cache_valid;
 } cloop_disk;
 
-static bool cloop_disk_index_visit(void *context, uint32_t index, int kind,
-                                    uint64_t offset, uint64_t length) {
+static bool cloop_disk_index_visit(void *context, uint32_t index, int kind, uint64_t offset, uint64_t length)
+{
     cloop_disk *disk = (cloop_disk *)context;
     if (kind == CLOOP_KIND_ZERO) return true;
     if (kind == CLOOP_KIND_DATA) {
-        if (length > UINT32_MAX || disk->stored_count >= disk->info.block_count)
-            return false;
+        if (length > UINT32_MAX || disk->stored_count >= disk->info.block_count) return false;
         disk->blocks[index].offset = offset;
         disk->blocks[index].length = (uint32_t)length;
         disk->stored_offsets[disk->stored_count] = offset;
@@ -594,7 +523,8 @@ static bool cloop_disk_index_visit(void *context, uint32_t index, int kind,
     return false;
 }
 
-static int cloop_disk_close_cb(xx_io_device *device) {
+static int cloop_disk_close_cb(xx_io_device *device)
+{
     cloop_disk *disk = (cloop_disk *)device;
     if (!disk) return -1;
     xx_mem_free(disk->blocks);
@@ -606,16 +536,18 @@ static int cloop_disk_close_cb(xx_io_device *device) {
     return 0;
 }
 
-static int64_t cloop_disk_size_cb(xx_io_device *device) {
+static int64_t cloop_disk_size_cb(xx_io_device *device)
+{
     return device ? (int64_t)((cloop_disk *)device)->info.unpacked_size : -1;
 }
 
-static int64_t cloop_disk_tell_cb(xx_io_device *device) {
+static int64_t cloop_disk_tell_cb(xx_io_device *device)
+{
     return device ? (int64_t)((cloop_disk *)device)->position : -1;
 }
 
-static int cloop_disk_seek64_cb(xx_io_device *device, int64_t offset,
-                                 int whence) {
+static int cloop_disk_seek64_cb(xx_io_device *device, int64_t offset, int whence)
+{
     cloop_disk *disk = (cloop_disk *)device;
     int64_t base;
     if (!disk) return -1;
@@ -623,18 +555,18 @@ static int cloop_disk_seek64_cb(xx_io_device *device, int64_t offset,
     else if (whence == SEEK_CUR) base = (int64_t)disk->position;
     else if (whence == SEEK_END) base = (int64_t)disk->info.unpacked_size;
     else return -1;
-    if (offset < -base || offset > (int64_t)disk->info.unpacked_size - base)
-        return -1;
+    if (offset < -base || offset > (int64_t)disk->info.unpacked_size - base) return -1;
     disk->position = (uint64_t)(base + offset);
     return 0;
 }
 
-static int cloop_disk_seek_cb(xx_io_device *device, long offset, int whence) {
+static int cloop_disk_seek_cb(xx_io_device *device, long offset, int whence)
+{
     return cloop_disk_seek64_cb(device, (int64_t)offset, whence);
 }
 
-static ssize_t cloop_disk_read_cb(xx_io_device *device, void *buffer,
-                                   size_t size) {
+static ssize_t cloop_disk_read_cb(xx_io_device *device, void *buffer, size_t size)
+{
     cloop_disk *disk = (cloop_disk *)device;
     cloop_decoder decoder;
     int64_t source_cursor;
@@ -643,8 +575,7 @@ static ssize_t cloop_disk_read_cb(xx_io_device *device, void *buffer,
     bool good = true;
     if (!disk || (!buffer && size)) return -1;
     if (size > 65536U) size = 65536U;
-    if (size > disk->info.unpacked_size - disk->position)
-        size = (size_t)(disk->info.unpacked_size - disk->position);
+    if (size > disk->info.unpacked_size - disk->position) size = (size_t)(disk->info.unpacked_size - disk->position);
     if (!size) return 0;
     source_cursor = xx_io_tell(disk->source->device);
     if (source_cursor < 0) return -1;
@@ -658,59 +589,51 @@ static ssize_t cloop_disk_read_cb(xx_io_device *device, void *buffer,
         uint32_t block = (uint32_t)(position / disk->info.block_size);
         size_t within = (size_t)(position % disk->info.block_size);
         size_t part = size - done;
-        if (part > disk->info.block_size - within)
-            part = disk->info.block_size - within;
-        if (block >= disk->info.block_count) { good = false; break; }
+        if (part > disk->info.block_size - within) part = disk->info.block_size - within;
+        if (block >= disk->info.block_count) {
+            good = false;
+            break;
+        }
         if (!disk->blocks[block].length) {
             xx_mem_zero((uint8_t *)buffer + done, part);
         } else {
             if (!disk->cache_valid || disk->cached_block != block) {
                 disk->cache_valid = false;
-                if (!cloop_decode_block(&decoder, disk->blocks[block].offset,
-                                        disk->blocks[block].length)) {
+                if (!cloop_decode_block(&decoder, disk->blocks[block].offset, disk->blocks[block].length)) {
                     good = false;
                     break;
                 }
                 disk->cached_block = block;
                 disk->cache_valid = true;
             }
-            xx_mem_copy((uint8_t *)buffer + done,
-                        disk->plain + within, part);
+            xx_mem_copy((uint8_t *)buffer + done, disk->plain + within, part);
         }
         position += part;
         done += part;
     }
-    if (xx_io_seek64(disk->source->device, source_cursor, SEEK_SET))
-        good = false;
+    if (xx_io_seek64(disk->source->device, source_cursor, SEEK_SET)) good = false;
     if (!good) return -1;
     disk->position = position;
     return (ssize_t)done;
 }
 
-static xx_io_device *cloop_disk_open(Abstractformat *source,
-                                      const cloop_info *info,
-                                      xx_pd_struct *pd) {
+static xx_io_device *cloop_disk_open(Abstractformat *source, const cloop_info *info, xx_pd_struct *pd)
+{
     cloop_disk *disk;
     int64_t cursor;
-    if (!source || !info || !info->block_count ||
-        info->block_count > CLOOP_NESTED_MAX_BLOCKS) return NULL;
+    if (!source || !info || !info->block_count || info->block_count > CLOOP_NESTED_MAX_BLOCKS) return NULL;
     disk = (cloop_disk *)xx_mem_calloc(1U, sizeof(*disk));
     if (!disk) return NULL;
     disk->source = source;
     disk->info = *info;
-    disk->blocks = (cloop_block *)xx_mem_calloc(info->block_count,
-                                                sizeof(*disk->blocks));
-    disk->stored_offsets = (uint64_t *)xx_mem_alloc(
-        (size_t)info->block_count * sizeof(uint64_t));
-    disk->stored_indices = (uint32_t *)xx_mem_alloc(
-        (size_t)info->block_count * sizeof(uint32_t));
+    disk->blocks = (cloop_block *)xx_mem_calloc(info->block_count, sizeof(*disk->blocks));
+    disk->stored_offsets = (uint64_t *)xx_mem_alloc((size_t)info->block_count * sizeof(uint64_t));
+    disk->stored_indices = (uint32_t *)xx_mem_alloc((size_t)info->block_count * sizeof(uint32_t));
     disk->packed = (uint8_t *)xx_mem_alloc(info->max_packed);
     disk->plain = (uint8_t *)xx_mem_alloc(info->block_size);
     cursor = xx_io_tell(source->device);
-    if (!disk->blocks || !disk->stored_offsets || !disk->stored_indices ||
-        !disk->packed || !disk->plain || cursor < 0 ||
-        !cloop_walk(source, &disk->info, cloop_disk_index_visit, disk, pd) ||
-        xx_io_seek64(source->device, cursor, SEEK_SET)) {
+    if (!disk->blocks || !disk->stored_offsets || !disk->stored_indices || !disk->packed || !disk->plain || cursor < 0 ||
+        !cloop_walk(source, &disk->info, cloop_disk_index_visit, disk, pd) || xx_io_seek64(source->device, cursor, SEEK_SET)) {
         if (cursor >= 0) (void)xx_io_seek64(source->device, cursor, SEEK_SET);
         cloop_disk_close_cb(&disk->device);
         return NULL;
@@ -725,35 +648,34 @@ static xx_io_device *cloop_disk_open(Abstractformat *source,
     return &disk->device;
 }
 
-xx_io_device *xx_cloop_open_disk_device(xx_cloop *archive,
-                                         xx_pd_struct *pd) {
+xx_io_device *xx_cloop_open_disk_device(xx_cloop *archive, xx_pd_struct *pd)
+{
     cloop_info info;
-    return archive && cloop_parse(&archive->format, &info, pd)
-               ? cloop_disk_open(&archive->format, &info, pd) : NULL;
+    return archive && cloop_parse(&archive->format, &info, pd) ? cloop_disk_open(&archive->format, &info, pd) : NULL;
 }
 
 /* ------------------------------------------------------------- records -- */
 
-static void cloop_stream_free(void *opaque) {
+static void cloop_stream_free(void *opaque)
+{
     if (opaque) xx_mem_free(opaque);
 }
 
-static const char *cloop_member_name(const cloop_info *info) {
+static const char *cloop_member_name(const cloop_info *info)
+{
     return info->iso ? "disk.iso" : "disk.img";
 }
 
-static bool cloop_copy_options(xx_list_s *destination,
-                               const xx_list_s *source) {
+static bool cloop_copy_options(xx_list_s *destination, const xx_list_s *source)
+{
     size_t index;
     if (!source) return true;
     for (index = 0U; index < source->count; ++index) {
-        const xx_meta *original =
-            (const xx_meta *)xx_list_at((const xx_list_t *)source, index);
+        const xx_meta *original = (const xx_meta *)xx_list_at((const xx_list_t *)source, index);
         xx_meta copy;
         if (!original) continue;
         xx_meta_init(&copy, original->meta_id);
-        if (!xx_var_copy(&copy.var, &original->var) ||
-            !xx_list_append(destination, &copy)) {
+        if (!xx_var_copy(&copy.var, &original->var) || !xx_list_append(destination, &copy)) {
             xx_meta_cleanup(&copy);
             return false;
         }
@@ -761,27 +683,24 @@ static bool cloop_copy_options(xx_list_s *destination,
     return true;
 }
 
-static const xx_var *cloop_option(const xx_list_s *options, uint32_t id) {
+static const xx_var *cloop_option(const xx_list_s *options, uint32_t id)
+{
     size_t index;
     if (!options) return NULL;
     for (index = 0U; index < options->count; ++index) {
-        const xx_meta *meta =
-            (const xx_meta *)xx_list_at((const xx_list_t *)options, index);
+        const xx_meta *meta = (const xx_meta *)xx_list_at((const xx_list_t *)options, index);
         if (meta && meta->meta_id == id) return &meta->var;
     }
     return NULL;
 }
 
-static xx_iso9660 *cloop_iso_open(Abstractformat *source,
-                                   const cloop_info *info,
-                                   xx_io_device **disk_out,
-                                   xx_pd_struct *pd) {
+static xx_iso9660 *cloop_iso_open(Abstractformat *source, const cloop_info *info, xx_io_device **disk_out, xx_pd_struct *pd)
+{
     xx_io_device *disk = cloop_disk_open(source, info, pd);
     xx_iso9660 *iso;
     if (!disk) return NULL;
     iso = xx_iso9660_create(disk, 0);
-    if (!iso || !xx_iso9660_handle_base_info(&iso->format, pd) ||
-        !xx_iso9660_get_number_of_archive_records(&iso->format, pd)) {
+    if (!iso || !xx_iso9660_handle_base_info(&iso->format, pd) || !xx_iso9660_get_number_of_archive_records(&iso->format, pd)) {
         if (iso) xx_iso9660_free(iso);
         xx_io_close(disk);
         return NULL;
@@ -790,37 +709,36 @@ static xx_iso9660 *cloop_iso_open(Abstractformat *source,
     return iso;
 }
 
-static bool cloop_iso_prefix_record(xx_archive_record_state *state) {
+static bool cloop_iso_prefix_record(xx_archive_record_state *state)
+{
     const char *name = xx_archive_record_get_original_name(&state->current_record);
     char *prefixed;
     bool result;
     if (!name) return false;
     prefixed = xx_str_concat("ISO/", name);
     if (!prefixed) return false;
-    result = xx_archive_record_set_original_name(&state->current_record,
-                                                  prefixed);
+    result = xx_archive_record_set_original_name(&state->current_record, prefixed);
     xx_str_free(prefixed);
     return result;
 }
 
-static bool cloop_iso_prefix_output(xx_archive_record_state *state) {
+static bool cloop_iso_prefix_output(xx_archive_record_state *state)
+{
     size_t i;
     for (i = 0U; i < state->options.count; ++i) {
         xx_meta *meta = (xx_meta *)xx_list_at(&state->options, i);
         const char *base = NULL;
         char *wide_base = NULL, *subdir;
         bool result;
-        if (!meta || meta->meta_id != XX_META_ID_OPT_UNPACK_PATH)
-            continue;
-        if (meta->var.type == XX_VAR_TYPE_STRING ||
-            meta->var.type == XX_VAR_TYPE_STRING_VIEW)
-            base = xx_var_get_str(&meta->var);
-        else if (meta->var.type == XX_VAR_TYPE_WSTRING ||
-                 meta->var.type == XX_VAR_TYPE_WSTRING_VIEW)
+        if (!meta || meta->meta_id != XX_META_ID_OPT_UNPACK_PATH) continue;
+        if (meta->var.type == XX_VAR_TYPE_STRING || meta->var.type == XX_VAR_TYPE_STRING_VIEW) base = xx_var_get_str(&meta->var);
+        else if (meta->var.type == XX_VAR_TYPE_WSTRING || meta->var.type == XX_VAR_TYPE_WSTRING_VIEW)
             base = wide_base = xx_str_unicode_to_utf8(xx_var_get_wstr(&meta->var));
-        if (!base) { xx_str_free(wide_base); return false; }
-        subdir = base[0] ? xx_str_concat3(base, "/", "ISO") :
-                           xx_str_dup("ISO");
+        if (!base) {
+            xx_str_free(wide_base);
+            return false;
+        }
+        subdir = base[0] ? xx_str_concat3(base, "/", "ISO") : xx_str_dup("ISO");
         xx_str_free(wide_base);
         if (!subdir) return false;
         result = xx_var_set_str(&meta->var, subdir);
@@ -830,36 +748,27 @@ static bool cloop_iso_prefix_output(xx_archive_record_state *state) {
     return true;
 }
 
-static bool cloop_set_record(Abstractformat *format,
-                             xx_archive_record *record,
-                             const cloop_info *info) {
+static bool cloop_set_record(Abstractformat *format, xx_archive_record *record, const cloop_info *info)
+{
     xx_archive_record_cleanup(record);
     xx_archive_record_init(record);
     record->header_offset = format->base_address;
-    record->header_size = CLOOP_TOC_OFFSET +
-                          ((int64_t)info->block_count + 1) * CLOOP_TOC_ENTRY;
+    record->header_size = CLOOP_TOC_OFFSET + ((int64_t)info->block_count + 1) * CLOOP_TOC_ENTRY;
     /* The decoder reads the table of contents again for itself, so the
      * member's extent is the whole container. */
     record->data_offset = format->base_address;
     record->compressed_size = info->data_end;
-    return xx_archive_record_set_original_name(record,
-                                               cloop_member_name(info)) &&
-           xx_archive_record_set_meta_u64(record, XX_META_ID_COMPRESSED_SIZE,
-                                          (uint64_t)info->data_end) &&
-           xx_archive_record_set_meta_u64(record, XX_META_ID_UNCOMPRESSED_SIZE,
-                                          info->unpacked_size) &&
-           xx_archive_record_set_meta_u64(record, XX_META_ID_COMPRESSION_METHOD,
-                                          info->method) &&
-           xx_archive_record_set_meta_u64(record, XX_META_ID_TIMESTAMP, 0U) &&
-           xx_archive_record_set_meta_bool(record, XX_META_ID_IS_ENCRYPTED,
-                                           false) &&
-           xx_archive_record_set_meta_bool(record, XX_META_ID_IS_FOLDER, false);
+    return xx_archive_record_set_original_name(record, cloop_member_name(info)) &&
+           xx_archive_record_set_meta_u64(record, XX_META_ID_COMPRESSED_SIZE, (uint64_t)info->data_end) &&
+           xx_archive_record_set_meta_u64(record, XX_META_ID_UNCOMPRESSED_SIZE, info->unpacked_size) &&
+           xx_archive_record_set_meta_u64(record, XX_META_ID_COMPRESSION_METHOD, info->method) && xx_archive_record_set_meta_u64(record, XX_META_ID_TIMESTAMP, 0U) &&
+           xx_archive_record_set_meta_bool(record, XX_META_ID_IS_ENCRYPTED, false) && xx_archive_record_set_meta_bool(record, XX_META_ID_IS_FOLDER, false);
 }
 
 /* ----------------------------------------------------------- lifecycle -- */
 
-void xx_cloop_init(xx_cloop *archive, xx_io_device *device,
-                   int64_t base_address) {
+void xx_cloop_init(xx_cloop *archive, xx_io_device *device, int64_t base_address)
+{
     if (!archive) return;
     xx_mem_zero(archive, sizeof(*archive));
     xx_format_init(&archive->format, device, base_address);
@@ -872,31 +781,28 @@ void xx_cloop_init(xx_cloop *archive, xx_io_device *device,
     archive->format.check_is_valid = xx_cloop_check_is_valid;
     archive->format.handle_base_info = xx_cloop_handle_base_info;
     archive->format.get_format_size = xx_cloop_get_format_size;
-    archive->format.get_number_of_archive_records =
-        xx_cloop_get_number_of_archive_records;
-    archive->format.create_archive_records_reading =
-        xx_cloop_create_archive_records_reading;
-    archive->format.get_current_archive_record =
-        xx_cloop_get_current_archive_record;
-    archive->format.unpack_current_archive_record =
-        xx_cloop_unpack_current_archive_record;
-    archive->format.archive_record_move_to_next =
-        xx_cloop_archive_record_move_to_next;
-    archive->format.free_archive_records_reading =
-        xx_cloop_free_archive_records_reading;
+    archive->format.get_number_of_archive_records = xx_cloop_get_number_of_archive_records;
+    archive->format.create_archive_records_reading = xx_cloop_create_archive_records_reading;
+    archive->format.get_current_archive_record = xx_cloop_get_current_archive_record;
+    archive->format.unpack_current_archive_record = xx_cloop_unpack_current_archive_record;
+    archive->format.archive_record_move_to_next = xx_cloop_archive_record_move_to_next;
+    archive->format.free_archive_records_reading = xx_cloop_free_archive_records_reading;
 }
 
-xx_cloop *xx_cloop_create(xx_io_device *device, int64_t base_address) {
+xx_cloop *xx_cloop_create(xx_io_device *device, int64_t base_address)
+{
     xx_cloop *archive = (xx_cloop *)xx_mem_alloc(sizeof(*archive));
     if (archive) xx_cloop_init(archive, device, base_address);
     return archive;
 }
 
-void xx_cloop_destroy(xx_cloop *archive) {
+void xx_cloop_destroy(xx_cloop *archive)
+{
     if (archive) xx_format_cleanup_extra_parameters(&archive->format);
 }
 
-void xx_cloop_free(xx_cloop *archive) {
+void xx_cloop_free(xx_cloop *archive)
+{
     if (!archive) return;
     xx_cloop_destroy(archive);
     xx_mem_free(archive);
@@ -904,12 +810,14 @@ void xx_cloop_free(xx_cloop *archive) {
 
 /* -------------------------------------------------------------- format -- */
 
-bool xx_cloop_check_is_valid(Abstractformat *format, xx_pd_struct *pd) {
+bool xx_cloop_check_is_valid(Abstractformat *format, xx_pd_struct *pd)
+{
     cloop_info info;
     return cloop_parse(format, &info, pd);
 }
 
-bool xx_cloop_handle_base_info(Abstractformat *format, xx_pd_struct *pd) {
+bool xx_cloop_handle_base_info(Abstractformat *format, xx_pd_struct *pd)
+{
     cloop_info info;
     xx_cloop *archive;
     xx_io_device *disk = NULL;
@@ -924,8 +832,7 @@ bool xx_cloop_handle_base_info(Abstractformat *format, xx_pd_struct *pd) {
     }
     archive = (xx_cloop *)format;
     iso = cloop_iso_open(format, &info, &disk, pd);
-    archive->number_of_records = iso ?
-        xx_iso9660_get_number_of_archive_records(&iso->format, pd) : 1U;
+    archive->number_of_records = iso ? xx_iso9660_get_number_of_archive_records(&iso->format, pd) : 1U;
     archive->unpacked_size = info.unpacked_size;
     archive->block_size = info.block_size;
     archive->block_count = info.block_count;
@@ -937,27 +844,25 @@ bool xx_cloop_handle_base_info(Abstractformat *format, xx_pd_struct *pd) {
     format->is_archive = true;
     format->is_valid = true;
     format->base_info_handled = true;
-    if (iso) { xx_iso9660_free(iso); xx_io_close(disk); }
+    if (iso) {
+        xx_iso9660_free(iso);
+        xx_io_close(disk);
+    }
     return true;
 }
 
-int64_t xx_cloop_get_format_size(Abstractformat *format, xx_pd_struct *pd) {
-    return format && (format->base_info_handled ||
-                      xx_cloop_handle_base_info(format, pd))
-               ? format->format_size
-               : -1;
+int64_t xx_cloop_get_format_size(Abstractformat *format, xx_pd_struct *pd)
+{
+    return format && (format->base_info_handled || xx_cloop_handle_base_info(format, pd)) ? format->format_size : -1;
 }
 
-uint64_t xx_cloop_get_number_of_archive_records(Abstractformat *format,
-                                                xx_pd_struct *pd) {
-    return format && (format->base_info_handled ||
-                      xx_cloop_handle_base_info(format, pd))
-               ? ((xx_cloop *)format)->number_of_records
-               : 0U;
+uint64_t xx_cloop_get_number_of_archive_records(Abstractformat *format, xx_pd_struct *pd)
+{
+    return format && (format->base_info_handled || xx_cloop_handle_base_info(format, pd)) ? ((xx_cloop *)format)->number_of_records : 0U;
 }
 
-xx_archive_record_state *xx_cloop_create_archive_records_reading(
-    Abstractformat *format, const xx_list_s *options, xx_pd_struct *pd) {
+xx_archive_record_state *xx_cloop_create_archive_records_reading(Abstractformat *format, const xx_list_s *options, xx_pd_struct *pd)
+{
     cloop_stream *stream;
     xx_archive_record_state *state;
     cloop_info info;
@@ -966,12 +871,9 @@ xx_archive_record_state *xx_cloop_create_archive_records_reading(
     if (!cloop_parse(format, &info, pd)) return NULL;
     iso = cloop_iso_open(format, &info, &disk, pd);
     if (iso) {
-        state = xx_iso9660_create_archive_records_reading(&iso->format,
-                                                            options, pd);
-        if (!state || !cloop_iso_prefix_output(state) ||
-            (state->has_record && !cloop_iso_prefix_record(state))) {
-            if (state) xx_iso9660_free_archive_records_reading(&iso->format,
-                                                                 state);
+        state = xx_iso9660_create_archive_records_reading(&iso->format, options, pd);
+        if (!state || !cloop_iso_prefix_output(state) || (state->has_record && !cloop_iso_prefix_record(state))) {
+            if (state) xx_iso9660_free_archive_records_reading(&iso->format, state);
             xx_iso9660_free(iso);
             xx_io_close(disk);
             return NULL;
@@ -991,8 +893,7 @@ xx_archive_record_state *xx_cloop_create_archive_records_reading(
     state->internal_state = stream;
     state->free_internal = cloop_stream_free;
     state->total_records = 1;
-    if (!cloop_copy_options(&state->options, options) ||
-        !cloop_set_record(format, &state->current_record, &stream->info)) {
+    if (!cloop_copy_options(&state->options, options) || !cloop_set_record(format, &state->current_record, &stream->info)) {
         xx_archive_record_state_free(state);
         return NULL;
     }
@@ -1000,22 +901,17 @@ xx_archive_record_state *xx_cloop_create_archive_records_reading(
     return state;
 }
 
-const xx_archive_record *xx_cloop_get_current_archive_record(
-    Abstractformat *format, xx_archive_record_state *state) {
-    if (format && state && state->format != format)
-        return xx_iso9660_get_current_archive_record(state->format, state);
-    return format && state && state->format == format && state->has_record
-               ? &state->current_record
-               : NULL;
+const xx_archive_record *xx_cloop_get_current_archive_record(Abstractformat *format, xx_archive_record_state *state)
+{
+    if (format && state && state->format != format) return xx_iso9660_get_current_archive_record(state->format, state);
+    return format && state && state->format == format && state->has_record ? &state->current_record : NULL;
 }
 
-bool xx_cloop_archive_record_move_to_next(Abstractformat *format,
-                                          xx_archive_record_state *state,
-                                          xx_pd_struct *pd) {
+bool xx_cloop_archive_record_move_to_next(Abstractformat *format, xx_archive_record_state *state, xx_pd_struct *pd)
+{
     cloop_stream *stream;
     if (format && state && state->format != format) {
-        if (!xx_iso9660_archive_record_move_to_next(state->format, state, pd))
-            return false;
+        if (!xx_iso9660_archive_record_move_to_next(state->format, state, pd)) return false;
         if (!cloop_iso_prefix_record(state)) {
             state->has_record = false;
             return false;
@@ -1023,18 +919,15 @@ bool xx_cloop_archive_record_move_to_next(Abstractformat *format,
         return true;
     }
     (void)pd;
-    if (!format || !state || state->format != format ||
-        !(stream = (cloop_stream *)state->internal_state) ||
-        ++stream->index >= stream->count) {
+    if (!format || !state || state->format != format || !(stream = (cloop_stream *)state->internal_state) || ++stream->index >= stream->count) {
         if (state) state->has_record = false;
         return false;
     }
     return false;
 }
 
-bool xx_cloop_unpack_current_archive_record(Abstractformat *format,
-                                            xx_archive_record_state *state,
-                                            xx_pd_struct *pd) {
+bool xx_cloop_unpack_current_archive_record(Abstractformat *format, xx_archive_record_state *state, xx_pd_struct *pd)
+{
     cloop_stream *stream;
     const xx_var *path_option;
     const char *base = NULL;
@@ -1043,38 +936,27 @@ bool xx_cloop_unpack_current_archive_record(Abstractformat *format,
     char *path = NULL;
     bool result = false;
     bool created = false;
-    if (format && state && state->format != format)
-        return xx_iso9660_unpack_current_archive_record(state->format,
-                                                         state, pd);
-    if (!format || !state || state->format != format || !state->has_record ||
-        !(stream = (cloop_stream *)state->internal_state) ||
-        stream->index >= stream->count || (pd && xx_pd_is_stopped(pd)))
+    if (format && state && state->format != format) return xx_iso9660_unpack_current_archive_record(state->format, state, pd);
+    if (!format || !state || state->format != format || !state->has_record || !(stream = (cloop_stream *)state->internal_state) || stream->index >= stream->count ||
+        (pd && xx_pd_is_stopped(pd)))
         return false;
     /* The name is one of two constants chosen here, never file data. */
     name = cloop_member_name(&stream->info);
     path_option = cloop_option(&state->options, XX_META_ID_OPT_UNPACK_PATH);
-    if (!path_option)
-        return cloop_unpack_to_device(format, &stream->info, NULL, pd);
-    if (path_option->type == XX_VAR_TYPE_STRING ||
-        path_option->type == XX_VAR_TYPE_STRING_VIEW)
-        base = xx_var_get_str(path_option);
-    else if (path_option->type == XX_VAR_TYPE_WSTRING ||
-             path_option->type == XX_VAR_TYPE_WSTRING_VIEW) {
+    if (!path_option) return cloop_unpack_to_device(format, &stream->info, NULL, pd);
+    if (path_option->type == XX_VAR_TYPE_STRING || path_option->type == XX_VAR_TYPE_STRING_VIEW) base = xx_var_get_str(path_option);
+    else if (path_option->type == XX_VAR_TYPE_WSTRING || path_option->type == XX_VAR_TYPE_WSTRING_VIEW) {
         owned_base = xx_str_unicode_to_utf8(xx_var_get_wstr(path_option));
         base = owned_base;
     }
     if (!base) goto done;
-    path = (base[0] && base[xx_str_len(base) - 1U] != '/' &&
-            base[xx_str_len(base) - 1U] != '\\')
-               ? xx_str_concat3(base, "/", name)
-               : xx_str_concat(base, name);
+    path = (base[0] && base[xx_str_len(base) - 1U] != '/' && base[xx_str_len(base) - 1U] != '\\') ? xx_str_concat3(base, "/", name) : xx_str_concat(base, name);
     if (!path || !xx_store_create_dirs_a(path, false)) goto done;
     {
         xx_io_device *destination = xx_io_file_open(path, "wb");
         created = destination != NULL;
         if (!destination) goto done;
-        result = cloop_unpack_to_device(format, &stream->info, destination,
-                                        pd);
+        result = cloop_unpack_to_device(format, &stream->info, destination, pd);
         if (xx_io_close(destination) != 0) result = false;
     }
 done:
@@ -1084,8 +966,8 @@ done:
     return result;
 }
 
-void xx_cloop_free_archive_records_reading(Abstractformat *format,
-                                           xx_archive_record_state *state) {
+void xx_cloop_free_archive_records_reading(Abstractformat *format, xx_archive_record_state *state)
+{
     if (format && state && state->format != format) {
         xx_iso9660 *iso = (xx_iso9660 *)state->format;
         xx_io_device *disk = iso->format.device;

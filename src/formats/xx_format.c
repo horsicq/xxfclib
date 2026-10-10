@@ -31,7 +31,8 @@
 #include <string.h>
 #include <wchar.h>
 
-xx_format_type_t xx_format_get_type(Abstractformat *f) {
+xx_format_type_t xx_format_get_type(Abstractformat *f)
+{
     if (!f) {
         return XX_TYPE_UNKNOWN;
     }
@@ -41,15 +42,16 @@ xx_format_type_t xx_format_get_type(Abstractformat *f) {
     return f->format_type;
 }
 
-void xx_format_set_type(Abstractformat *f, xx_format_type_t type) {
+void xx_format_set_type(Abstractformat *f, xx_format_type_t type)
+{
     if (f) {
-        if (f->format_type != type)
-            xx_format_invalidate_memory_map(f);
+        if (f->format_type != type) xx_format_invalidate_memory_map(f);
         f->format_type = type;
     }
 }
 
-xx_endian_t xx_format_get_endian(Abstractformat *f) {
+xx_endian_t xx_format_get_endian(Abstractformat *f)
+{
     if (!f) {
         return XX_ENDIAN_UNKNOWN;
     }
@@ -59,15 +61,16 @@ xx_endian_t xx_format_get_endian(Abstractformat *f) {
     return f->endian;
 }
 
-void xx_format_set_endian(Abstractformat *f, xx_endian_t endian) {
+void xx_format_set_endian(Abstractformat *f, xx_endian_t endian)
+{
     if (f) {
-        if (f->endian != endian)
-            xx_format_invalidate_memory_map(f);
+        if (f->endian != endian) xx_format_invalidate_memory_map(f);
         f->endian = endian;
     }
 }
 
-xx_os_t xx_format_get_os(Abstractformat *f) {
+xx_os_t xx_format_get_os(Abstractformat *f)
+{
     if (!f) {
         return XX_OS_UNKNOWN;
     }
@@ -77,13 +80,15 @@ xx_os_t xx_format_get_os(Abstractformat *f) {
     return f->os;
 }
 
-void xx_format_set_os(Abstractformat *f, xx_os_t os) {
+void xx_format_set_os(Abstractformat *f, xx_os_t os)
+{
     if (f) {
         f->os = os;
     }
 }
 
-xx_arch_t xx_format_get_arch(Abstractformat *f) {
+xx_arch_t xx_format_get_arch(Abstractformat *f)
+{
     if (!f) {
         return XX_ARCH_UNKNOWN;
     }
@@ -93,35 +98,30 @@ xx_arch_t xx_format_get_arch(Abstractformat *f) {
     return f->arch;
 }
 
-void xx_format_set_arch(Abstractformat *f, xx_arch_t arch) {
+void xx_format_set_arch(Abstractformat *f, xx_arch_t arch)
+{
     if (f) {
-        if (f->arch != arch)
-            xx_format_invalidate_memory_map(f);
+        if (f->arch != arch) xx_format_invalidate_memory_map(f);
         f->arch = arch;
     }
 }
 
-xx_file_type_t xx_format_get_parent_file_type(xx_file_type_t type) {
+xx_file_type_t xx_format_get_parent_file_type(xx_file_type_t type)
+{
     switch (type) {
-        case XX_FILE_TYPE_SFX_INFTOOL:
-            return XX_FILE_TYPE_PE32;
+        case XX_FILE_TYPE_SFX_INFTOOL: return XX_FILE_TYPE_PE32;
         /* ZIP containers. */
         case XX_FILE_TYPE_ZIP64:
         case XX_FILE_TYPE_JAR:
         case XX_FILE_TYPE_APK:
         case XX_FILE_TYPE_IPA:
-        case XX_FILE_TYPE_APKS:
-            return XX_FILE_TYPE_ZIP;
+        case XX_FILE_TYPE_APKS: return XX_FILE_TYPE_ZIP;
         /* An npm package is a tar.gz with a package/ root, and a tar.gz is a
          * gzip stream, so this walks two levels. */
-        case XX_FILE_TYPE_NPM:
-            return XX_FILE_TYPE_TAR_GZ;
-        case XX_FILE_TYPE_TAR_GZ:
-            return XX_FILE_TYPE_GZ;
-        case XX_FILE_TYPE_TAR_BZ2:
-            return XX_FILE_TYPE_BZ2;
-        case XX_FILE_TYPE_TAR_XZ:
-            return XX_FILE_TYPE_XZ;
+        case XX_FILE_TYPE_NPM: return XX_FILE_TYPE_TAR_GZ;
+        case XX_FILE_TYPE_TAR_GZ: return XX_FILE_TYPE_GZ;
+        case XX_FILE_TYPE_TAR_BZ2: return XX_FILE_TYPE_BZ2;
+        case XX_FILE_TYPE_TAR_XZ: return XX_FILE_TYPE_XZ;
         /* The remaining compressed-tar variants have no standalone type for
          * their outer stream, so they hang directly off BINARY. */
         case XX_FILE_TYPE_PE32:
@@ -129,19 +129,16 @@ xx_file_type_t xx_format_get_parent_file_type(xx_file_type_t type) {
         case XX_FILE_TYPE_DOTNET:
         case XX_FILE_TYPE_NE:
         case XX_FILE_TYPE_LE:
-        case XX_FILE_TYPE_LX:
-            return XX_FILE_TYPE_MSDOS;
+        case XX_FILE_TYPE_LX: return XX_FILE_TYPE_MSDOS;
         /* Nothing is more generic than a binary, so this ends the chain. */
         case XX_FILE_TYPE_UNKNOWN:
-        case XX_FILE_TYPE_BINARY:
-            return XX_FILE_TYPE_UNKNOWN;
-        default:
-            return XX_FILE_TYPE_BINARY;
+        case XX_FILE_TYPE_BINARY: return XX_FILE_TYPE_UNKNOWN;
+        default: return XX_FILE_TYPE_BINARY;
     }
 }
 
-size_t xx_format_get_file_type_chain(xx_file_type_t type,
-                                     xx_file_type_t *types, size_t capacity) {
+size_t xx_format_get_file_type_chain(xx_file_type_t type, xx_file_type_t *types, size_t capacity)
+{
     xx_file_type_t stack[XX_FILE_TYPE_CHAIN_MAX];
     size_t count = 0U;
     xx_file_type_t current = type;
@@ -168,14 +165,13 @@ size_t xx_format_get_file_type_chain(xx_file_type_t type,
     return count;
 }
 
-xx_file_type_t xx_format_get_pref_type(const xx_list_t *types) {
+xx_file_type_t xx_format_get_pref_type(const xx_list_t *types)
+{
     xx_file_type_t preferred = XX_FILE_TYPE_UNKNOWN;
     size_t preferred_depth = 0U;
     size_t index;
 
-    if (!types || types->elem_size != sizeof(xx_file_type_t) ||
-        types->count > types->capacity ||
-        types->count > SIZE_MAX / sizeof(xx_file_type_t) ||
+    if (!types || types->elem_size != sizeof(xx_file_type_t) || types->count > types->capacity || types->count > SIZE_MAX / sizeof(xx_file_type_t) ||
         (types->count && !types->data))
         return preferred;
 
@@ -183,9 +179,7 @@ xx_file_type_t xx_format_get_pref_type(const xx_list_t *types) {
         xx_file_type_t type;
         size_t depth;
         if (!xx_list_get(types, index, &type)) return XX_FILE_TYPE_UNKNOWN;
-        if (type == XX_FILE_TYPE_UNKNOWN ||
-            strcmp(xx_format_file_type_to_string(type), "UNKNOWN") == 0)
-            continue;
+        if (type == XX_FILE_TYPE_UNKNOWN || strcmp(xx_format_file_type_to_string(type), "UNKNOWN") == 0) continue;
         depth = xx_format_get_file_type_chain(type, NULL, 0U);
         /* A managed assembly adds DOTNET after its PE32/PE64 carrier even
          * though the width-independent parent table points to MSDOS. */
@@ -198,7 +192,8 @@ xx_file_type_t xx_format_get_pref_type(const xx_list_t *types) {
     return preferred;
 }
 
-xx_list_t *xx_format_get_file_types_device(xx_io_device *dev) {
+xx_list_t *xx_format_get_file_types_device(xx_io_device *dev)
+{
     xx_file_type_t chain[XX_FILE_TYPE_CHAIN_MAX];
     xx_list_t *list = xx_list_create(sizeof(xx_file_type_t), NULL);
     size_t count;
@@ -231,24 +226,19 @@ xx_list_t *xx_format_get_file_types_device(xx_io_device *dev) {
     return list;
 }
 
-xx_list_t *xx_format_get_file_types_detectors(
-    xx_io_device *device, int64_t base_address, bool is_mapped,
-    const xx_list_t *detectors) {
+xx_list_t *xx_format_get_file_types_detectors(xx_io_device *device, int64_t base_address, bool is_mapped, const xx_list_t *detectors)
+{
     xx_list_t *types;
     int64_t saved_position;
     int64_t total;
     size_t index;
 
-    if (detectors &&
-        (detectors->elem_size != sizeof(Abstractdetector *) ||
-         detectors->count > detectors->capacity ||
-         detectors->count > SIZE_MAX / sizeof(Abstractdetector *) ||
-         (detectors->count && !detectors->data)))
+    if (detectors && (detectors->elem_size != sizeof(Abstractdetector *) || detectors->count > detectors->capacity ||
+                      detectors->count > SIZE_MAX / sizeof(Abstractdetector *) || (detectors->count && !detectors->data)))
         return NULL;
     types = xx_list_create(sizeof(xx_file_type_t), NULL);
     if (!types) return NULL;
-    if (!device || !detectors || !detectors->count || base_address < 0)
-        return types;
+    if (!device || !detectors || !detectors->count || base_address < 0) return types;
 
     saved_position = xx_io_tell(device);
     if (saved_position < 0) {
@@ -263,16 +253,12 @@ xx_list_t *xx_format_get_file_types_detectors(
         Abstractdetector *detector;
         xx_file_type_t type;
         if (!xx_list_get(detectors, index, &detector)) goto failed;
-        if (!detector || !detector->fast_detect || !detector->file_type)
-            continue;
+        if (!detector || !detector->fast_detect || !detector->file_type) continue;
         if (xx_io_seek64(device, saved_position, SEEK_SET) != 0) goto failed;
         if (!detector->fast_detect(device, base_address, is_mapped)) continue;
         if (xx_io_seek64(device, saved_position, SEEK_SET) != 0) goto failed;
         type = detector->file_type(device, base_address, is_mapped);
-        if (type != XX_FILE_TYPE_UNKNOWN &&
-            !xx_list_contains(types, &type, NULL) &&
-            !xx_list_append(types, &type))
-            goto failed;
+        if (type != XX_FILE_TYPE_UNKNOWN && !xx_list_contains(types, &type, NULL) && !xx_list_append(types, &type)) goto failed;
     }
 done:
     if (xx_io_seek64(device, saved_position, SEEK_SET) != 0) goto failed;
@@ -283,7 +269,8 @@ failed:
     return NULL;
 }
 
-xx_file_type_t xx_format_get_file_type(Abstractformat *fmt) {
+xx_file_type_t xx_format_get_file_type(Abstractformat *fmt)
+{
     if (!fmt) {
         return XX_FILE_TYPE_UNKNOWN;
     }
@@ -294,14 +281,14 @@ xx_file_type_t xx_format_get_file_type(Abstractformat *fmt) {
         return fmt->file_type;
     }
     if (fmt->device) {
-        xx_format_set_file_type(fmt,
-                                xx_format_get_file_type_device(fmt->device));
+        xx_format_set_file_type(fmt, xx_format_get_file_type_device(fmt->device));
         return fmt->file_type;
     }
     return XX_FILE_TYPE_UNKNOWN;
 }
 
-const char *xx_format_data_struct_id_to_string(Abstractformat *f, uint32_t id) {
+const char *xx_format_data_struct_id_to_string(Abstractformat *f, uint32_t id)
+{
     if (id == XX_DATA_STRUCT_ID_RAW_DATA) {
         return "RAW_DATA";
     }
@@ -311,18 +298,21 @@ const char *xx_format_data_struct_id_to_string(Abstractformat *f, uint32_t id) {
     return "UNKNOWN";
 }
 
-uint32_t xx_format_data_struct_string_to_id(Abstractformat *f, const char *name) {
+uint32_t xx_format_data_struct_string_to_id(Abstractformat *f, const char *name)
+{
     if (f && f->data_struct_string_to_id) {
         return (f->data_struct_string_to_id)(f, name);
     }
     return 0;
 }
 
-static const char *xx_format_get_short_name(Abstractformat *f) {
+static const char *xx_format_get_short_name(Abstractformat *f)
+{
     return f ? xx_format_file_type_to_string(f->file_type) : "UNKNOWN";
 }
 
-wchar_t *xx_format_data_struct_to_string(Abstractformat *f, const xx_data_struct *ds) {
+wchar_t *xx_format_data_struct_to_string(Abstractformat *f, const xx_data_struct *ds)
+{
     if (!ds) {
         return NULL;
     }
@@ -333,14 +323,12 @@ wchar_t *xx_format_data_struct_to_string(Abstractformat *f, const xx_data_struct
     char buf[256];
     /* Global ids (e.g. RAW_DATA) are format-independent, so no "<FORMAT>::" prefix is added */
     if (ds->id == XX_DATA_STRUCT_ID_RAW_DATA) {
-        xx_rt_snprintf(buf, sizeof(buf), "%s?offset=%lld&entry_size=%lld&total_size=%lld&count=%llu&type=%s",
-                 id_name, (long long)ds->offset, (long long)ds->entry_size, (long long)ds->total_size,
-                 (unsigned long long)ds->count, type_name);
+        xx_rt_snprintf(buf, sizeof(buf), "%s?offset=%lld&entry_size=%lld&total_size=%lld&count=%llu&type=%s", id_name, (long long)ds->offset, (long long)ds->entry_size,
+                       (long long)ds->total_size, (unsigned long long)ds->count, type_name);
     } else {
         const char *format_name = xx_format_get_short_name(f);
-        xx_rt_snprintf(buf, sizeof(buf), "%s::%s?offset=%lld&entry_size=%lld&total_size=%lld&count=%llu&type=%s",
-                 format_name, id_name, (long long)ds->offset, (long long)ds->entry_size, (long long)ds->total_size,
-                 (unsigned long long)ds->count, type_name);
+        xx_rt_snprintf(buf, sizeof(buf), "%s::%s?offset=%lld&entry_size=%lld&total_size=%lld&count=%llu&type=%s", format_name, id_name, (long long)ds->offset,
+                       (long long)ds->entry_size, (long long)ds->total_size, (unsigned long long)ds->count, type_name);
     }
 
     return xx_str_ansi_to_unicode(buf);

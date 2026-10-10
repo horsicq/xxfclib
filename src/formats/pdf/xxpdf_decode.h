@@ -43,18 +43,14 @@ typedef struct xx_pdf_filter_spec {
  * SIZE_MAX means unlimited. Flate includes the library's configured I/O
  * buffer and 32 KiB history in its workspace budget. DCT/JPX preserve
  * their encoded payload and may occur only as the final filter. */
-bool xx_pdf_decode_stream(const uint8_t *input, size_t input_size,
-    const xx_pdf_filter_spec *filters, size_t filter_count, size_t output_limit,
-    size_t memory_limit, xx_pd_struct *pd, uint8_t **output,
-    size_t *output_size);
+bool xx_pdf_decode_stream(const uint8_t *input, size_t input_size, const xx_pdf_filter_spec *filters, size_t filter_count, size_t output_limit, size_t memory_limit,
+                          xx_pd_struct *pd, uint8_t **output, size_t *output_size);
 
 /* Same decoder, also reporting the actual retained allocation capacity.
  * The capacity includes padding reserved during growth or before PNG row
  * marker removal, and is zero on failure or on an empty allocation. */
-bool xx_pdf_decode_stream_ex(const uint8_t *input, size_t input_size,
-    const xx_pdf_filter_spec *filters, size_t filter_count, size_t output_limit,
-    size_t memory_limit, xx_pd_struct *pd, uint8_t **output,
-    size_t *output_size, size_t *output_capacity);
+bool xx_pdf_decode_stream_ex(const uint8_t *input, size_t input_size, const xx_pdf_filter_spec *filters, size_t filter_count, size_t output_limit, size_t memory_limit,
+                             xx_pd_struct *pd, uint8_t **output, size_t *output_size, size_t *output_capacity);
 
 #ifdef __cplusplus
 }

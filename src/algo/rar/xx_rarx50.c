@@ -34,21 +34,18 @@
 #include <stdint.h>
 #include "xxfclib/data/xx_data.h"
 
-#define XX_RARX50_LEVEL_SYMBOLS       20u
-#define XX_RARX50_MAIN_SYMBOLS        306u
-#define XX_RARX50_DISTANCE_SYMBOLS    64u
-#define XX_RARX50_ALIGN_SYMBOLS       16u
-#define XX_RARX50_LENGTH_SYMBOLS      44u
-#define XX_RARX50_TOTAL_LENGTHS       (XX_RARX50_MAIN_SYMBOLS + \
-                                       XX_RARX50_DISTANCE_SYMBOLS + \
-                                       XX_RARX50_ALIGN_SYMBOLS + \
-                                       XX_RARX50_LENGTH_SYMBOLS)
-#define XX_RARX50_MAX_HUFF_SYMBOLS    XX_RARX50_MAIN_SYMBOLS
-#define XX_RARX50_MAX_CODE_BITS       15u
-#define XX_RARX50_MAX_FILTERS         8192u
-#define XX_RARX50_MAX_FILTER_SIZE     (1u << 22)
-#define XX_RARX50_X86_FILE_SIZE       0x01000000u
-#define XX_RARX50_POLL_MASK           0x3fffu
+#define XX_RARX50_LEVEL_SYMBOLS 20u
+#define XX_RARX50_MAIN_SYMBOLS 306u
+#define XX_RARX50_DISTANCE_SYMBOLS 64u
+#define XX_RARX50_ALIGN_SYMBOLS 16u
+#define XX_RARX50_LENGTH_SYMBOLS 44u
+#define XX_RARX50_TOTAL_LENGTHS (XX_RARX50_MAIN_SYMBOLS + XX_RARX50_DISTANCE_SYMBOLS + XX_RARX50_ALIGN_SYMBOLS + XX_RARX50_LENGTH_SYMBOLS)
+#define XX_RARX50_MAX_HUFF_SYMBOLS XX_RARX50_MAIN_SYMBOLS
+#define XX_RARX50_MAX_CODE_BITS 15u
+#define XX_RARX50_MAX_FILTERS 8192u
+#define XX_RARX50_MAX_FILTER_SIZE (1u << 22)
+#define XX_RARX50_X86_FILE_SIZE 0x01000000u
+#define XX_RARX50_POLL_MASK 0x3fffu
 
 typedef struct xx_rarx50_bits_s {
     const uint8_t *data;
@@ -93,20 +90,18 @@ struct xx_rarx50_state {
     size_t window_size;
 };
 
-static bool xx_rarx50_cancelled(xx_pd_struct *progress) {
+static bool xx_rarx50_cancelled(xx_pd_struct *progress)
+{
     return progress && xx_pd_is_stopped(progress);
 }
 
-static xx_rarx_status_t xx_rarx50_read_bits(xx_rarx50_bits *bits,
-                                             unsigned count,
-                                             uint32_t *value) {
+static xx_rarx_status_t xx_rarx50_read_bits(xx_rarx50_bits *bits, unsigned count, uint32_t *value)
+{
     size_t end;
     uint32_t result = 0;
     unsigned remaining = count;
 
-    if (!bits || !value || count > 32u ||
-        bits->bit_position > bits->bit_limit ||
-        count > bits->bit_limit - bits->bit_position) {
+    if (!bits || !value || count > 32u || bits->bit_position > bits->bit_limit || count > bits->bit_limit - bits->bit_position) {
         return XX_RARX_STATUS_TRUNCATED;
     }
     end = bits->bit_position + count;
@@ -126,8 +121,8 @@ static xx_rarx_status_t xx_rarx50_read_bits(xx_rarx50_bits *bits,
     return XX_RARX_STATUS_OK;
 }
 
-static xx_rarx_status_t xx_rarx50_build_huffman(
-    xx_rarx50_huffman *table, const uint8_t *lengths, size_t length_count) {
+static xx_rarx_status_t xx_rarx50_build_huffman(xx_rarx50_huffman *table, const uint8_t *lengths, size_t length_count)
+{
     uint16_t next_index[XX_RARX50_MAX_CODE_BITS + 1u];
     int32_t available = 1;
     uint32_t code = 0;
@@ -182,9 +177,8 @@ static xx_rarx_status_t xx_rarx50_build_huffman(
     return XX_RARX_STATUS_OK;
 }
 
-static xx_rarx_status_t xx_rarx50_decode_huffman(
-    const xx_rarx50_huffman *table, xx_rarx50_bits *bits,
-    unsigned *symbol) {
+static xx_rarx_status_t xx_rarx50_decode_huffman(const xx_rarx50_huffman *table, xx_rarx50_bits *bits, unsigned *symbol)
+{
     uint32_t code = 0;
     unsigned length;
 
@@ -217,8 +211,8 @@ static xx_rarx_status_t xx_rarx50_decode_huffman(
     return XX_RARX_STATUS_CORRUPT;
 }
 
-static xx_rarx_status_t xx_rarx50_read_tables(xx_rarx50_state *state,
-                                               xx_rarx50_bits *bits) {
+static xx_rarx_status_t xx_rarx50_read_tables(xx_rarx50_state *state, xx_rarx50_bits *bits)
+{
     uint8_t level_lengths[XX_RARX50_LEVEL_SYMBOLS];
     uint8_t lengths[XX_RARX50_TOTAL_LENGTHS];
     xx_rarx50_huffman level_table;
@@ -252,8 +246,7 @@ static xx_rarx_status_t xx_rarx50_read_tables(xx_rarx50_state *state,
             level_lengths[position++] = (uint8_t)value;
         }
     }
-    status = xx_rarx50_build_huffman(&level_table, level_lengths,
-                                     XX_RARX50_LEVEL_SYMBOLS);
+    status = xx_rarx50_build_huffman(&level_table, level_lengths, XX_RARX50_LEVEL_SYMBOLS);
     if (status != XX_RARX_STATUS_OK) return status;
 
     position = 0;
@@ -269,8 +262,7 @@ static xx_rarx_status_t xx_rarx50_read_tables(xx_rarx50_state *state,
         }
         if (symbol == 16u || symbol == 17u) {
             if (position == 0) return XX_RARX_STATUS_CORRUPT;
-            status = xx_rarx50_read_bits(bits, symbol == 16u ? 3u : 7u,
-                                         &extra);
+            status = xx_rarx50_read_bits(bits, symbol == 16u ? 3u : 7u, &extra);
             if (status != XX_RARX_STATUS_OK) return status;
             count = (symbol == 16u ? 3u : 11u) + (size_t)extra;
             if (count > XX_RARX50_TOTAL_LENGTHS - position) {
@@ -283,8 +275,7 @@ static xx_rarx_status_t xx_rarx50_read_tables(xx_rarx50_state *state,
             continue;
         }
         if (symbol == 18u || symbol == 19u) {
-            status = xx_rarx50_read_bits(bits, symbol == 18u ? 3u : 7u,
-                                         &extra);
+            status = xx_rarx50_read_bits(bits, symbol == 18u ? 3u : 7u, &extra);
             if (status != XX_RARX_STATUS_OK) return status;
             count = (symbol == 18u ? 3u : 11u) + (size_t)extra;
             if (count > XX_RARX50_TOTAL_LENGTHS - position) {
@@ -297,23 +288,13 @@ static xx_rarx_status_t xx_rarx50_read_tables(xx_rarx50_state *state,
         return XX_RARX_STATUS_CORRUPT;
     }
 
-    status = xx_rarx50_build_huffman(&main_table, lengths,
-                                     XX_RARX50_MAIN_SYMBOLS);
+    status = xx_rarx50_build_huffman(&main_table, lengths, XX_RARX50_MAIN_SYMBOLS);
     if (status != XX_RARX_STATUS_OK) return status;
-    status = xx_rarx50_build_huffman(
-        &distance_table, lengths + XX_RARX50_MAIN_SYMBOLS,
-        XX_RARX50_DISTANCE_SYMBOLS);
+    status = xx_rarx50_build_huffman(&distance_table, lengths + XX_RARX50_MAIN_SYMBOLS, XX_RARX50_DISTANCE_SYMBOLS);
     if (status != XX_RARX_STATUS_OK) return status;
-    status = xx_rarx50_build_huffman(
-        &align_table,
-        lengths + XX_RARX50_MAIN_SYMBOLS + XX_RARX50_DISTANCE_SYMBOLS,
-        XX_RARX50_ALIGN_SYMBOLS);
+    status = xx_rarx50_build_huffman(&align_table, lengths + XX_RARX50_MAIN_SYMBOLS + XX_RARX50_DISTANCE_SYMBOLS, XX_RARX50_ALIGN_SYMBOLS);
     if (status != XX_RARX_STATUS_OK) return status;
-    status = xx_rarx50_build_huffman(
-        &length_table,
-        lengths + XX_RARX50_MAIN_SYMBOLS + XX_RARX50_DISTANCE_SYMBOLS +
-            XX_RARX50_ALIGN_SYMBOLS,
-        XX_RARX50_LENGTH_SYMBOLS);
+    status = xx_rarx50_build_huffman(&length_table, lengths + XX_RARX50_MAIN_SYMBOLS + XX_RARX50_DISTANCE_SYMBOLS + XX_RARX50_ALIGN_SYMBOLS, XX_RARX50_LENGTH_SYMBOLS);
     if (status != XX_RARX_STATUS_OK) return status;
 
     state->main_table = main_table;
@@ -321,10 +302,7 @@ static xx_rarx_status_t xx_rarx50_read_tables(xx_rarx50_state *state,
     state->align_table = align_table;
     state->length_table = length_table;
     state->align_mode = false;
-    for (i = XX_RARX50_MAIN_SYMBOLS + XX_RARX50_DISTANCE_SYMBOLS;
-         i < XX_RARX50_MAIN_SYMBOLS + XX_RARX50_DISTANCE_SYMBOLS +
-                 XX_RARX50_ALIGN_SYMBOLS;
-         ++i) {
+    for (i = XX_RARX50_MAIN_SYMBOLS + XX_RARX50_DISTANCE_SYMBOLS; i < XX_RARX50_MAIN_SYMBOLS + XX_RARX50_DISTANCE_SYMBOLS + XX_RARX50_ALIGN_SYMBOLS; ++i) {
         if (lengths[i] != 0 && lengths[i] != 4) {
             state->align_mode = true;
             break;
@@ -334,8 +312,8 @@ static xx_rarx_status_t xx_rarx50_read_tables(xx_rarx50_state *state,
     return XX_RARX_STATUS_OK;
 }
 
-static xx_rarx_status_t xx_rarx50_read_filter_integer(
-    xx_rarx50_bits *bits, uint32_t *value) {
+static xx_rarx_status_t xx_rarx50_read_filter_integer(xx_rarx50_bits *bits, uint32_t *value)
+{
     uint32_t width_code;
     uint32_t result = 0;
     unsigned i;
@@ -351,9 +329,8 @@ static xx_rarx_status_t xx_rarx50_read_filter_integer(
     return XX_RARX_STATUS_OK;
 }
 
-static xx_rarx_status_t xx_rarx50_append_filter(
-    xx_rarx50_filter **filters, size_t *filter_count, size_t current_position,
-    size_t output_size, xx_rarx50_bits *bits) {
+static xx_rarx_status_t xx_rarx50_append_filter(xx_rarx50_filter **filters, size_t *filter_count, size_t current_position, size_t output_size, xx_rarx50_bits *bits)
+{
     xx_rarx50_filter filter;
     xx_rarx50_filter *resized;
     uint32_t offset;
@@ -384,14 +361,12 @@ static xx_rarx_status_t xx_rarx50_append_filter(
     }
     filter.start = current_position + (size_t)offset;
     filter.length = (size_t)length;
-    if (filter.start > output_size ||
-        filter.length > output_size - filter.start) {
+    if (filter.start > output_size || filter.length > output_size - filter.start) {
         return XX_RARX_STATUS_CORRUPT;
     }
     if (*filter_count != 0) {
         const xx_rarx50_filter *previous = &(*filters)[*filter_count - 1u];
-        if (previous->length > SIZE_MAX - previous->start ||
-            filter.start < previous->start + previous->length) {
+        if (previous->length > SIZE_MAX - previous->start || filter.start < previous->start + previous->length) {
             return XX_RARX_STATUS_CORRUPT;
         }
     }
@@ -407,9 +382,7 @@ static xx_rarx_status_t xx_rarx50_append_filter(
     if (*filter_count == SIZE_MAX / sizeof(**filters)) {
         return XX_RARX_STATUS_LIMIT;
     }
-    resized = (xx_rarx50_filter *)xx_rarx_clear_resize(
-        *filters, *filter_count * sizeof(**filters),
-        (*filter_count + 1u) * sizeof(**filters));
+    resized = (xx_rarx50_filter *)xx_rarx_clear_resize(*filters, *filter_count * sizeof(**filters), (*filter_count + 1u) * sizeof(**filters));
     if (!resized) {
         return XX_RARX_STATUS_NO_MEMORY;
     }
@@ -419,8 +392,8 @@ static xx_rarx_status_t xx_rarx50_append_filter(
     return XX_RARX_STATUS_OK;
 }
 
-static xx_rarx_status_t xx_rarx50_length_from_slot(
-    unsigned slot, xx_rarx50_bits *bits, size_t *length) {
+static xx_rarx_status_t xx_rarx50_length_from_slot(unsigned slot, xx_rarx50_bits *bits, size_t *length)
+{
     unsigned bit_count = 0;
     uint32_t extra = 0;
     size_t base;
@@ -447,9 +420,8 @@ static xx_rarx_status_t xx_rarx50_length_from_slot(
     return XX_RARX_STATUS_OK;
 }
 
-static xx_rarx_status_t xx_rarx50_distance_from_slot(
-    unsigned slot, const xx_rarx50_huffman *align_table, bool align_mode,
-    xx_rarx50_bits *bits, size_t *distance) {
+static xx_rarx_status_t xx_rarx50_distance_from_slot(unsigned slot, const xx_rarx50_huffman *align_table, bool align_mode, xx_rarx50_bits *bits, size_t *distance)
+{
     unsigned bit_count;
     uint32_t extra = 0;
     size_t base;
@@ -489,7 +461,8 @@ static xx_rarx_status_t xx_rarx50_distance_from_slot(
     return XX_RARX_STATUS_OK;
 }
 
-static size_t xx_rarx50_length_bonus(size_t distance) {
+static size_t xx_rarx50_length_bonus(size_t distance)
+{
     size_t bonus = 0;
     if (distance > 0x100u) bonus++;
     if (distance > 0x2000u) bonus++;
@@ -497,17 +470,14 @@ static size_t xx_rarx50_length_bonus(size_t distance) {
     return bonus;
 }
 
-static xx_rarx_status_t xx_rarx50_copy_match(
-    const xx_rarx50_state *state, uint8_t *destination,
-    size_t *destination_position, size_t destination_size,
-    size_t window_size, size_t distance, size_t length) {
+static xx_rarx_status_t xx_rarx50_copy_match(const xx_rarx50_state *state, uint8_t *destination, size_t *destination_position, size_t destination_size,
+                                             size_t window_size, size_t distance, size_t length)
+{
     size_t output_position;
     size_t available;
     size_t i;
 
-    if (!state || !destination_position ||
-        *destination_position > destination_size ||
-        length > destination_size - *destination_position) {
+    if (!state || !destination_position || *destination_position > destination_size || length > destination_size - *destination_position) {
         return XX_RARX_STATUS_CORRUPT;
     }
     output_position = *destination_position;
@@ -544,9 +514,8 @@ static xx_rarx_status_t xx_rarx50_copy_match(
     return XX_RARX_STATUS_OK;
 }
 
-static xx_rarx_status_t xx_rarx50_remember_history(
-    xx_rarx50_state *state, const uint8_t *data, size_t data_size,
-    size_t window_size) {
+static xx_rarx_status_t xx_rarx50_remember_history(xx_rarx50_state *state, const uint8_t *data, size_t data_size, size_t window_size)
+{
     size_t old_keep;
     size_t data_keep;
     size_t wanted;
@@ -560,8 +529,7 @@ static xx_rarx_status_t xx_rarx50_remember_history(
     if (old_keep > state->history_size) old_keep = state->history_size;
     wanted = old_keep + data_keep;
     if (wanted > state->history_capacity) {
-        resized = (uint8_t *)xx_rarx_clear_resize(state->history,
-                            state->history_capacity, wanted);
+        resized = (uint8_t *)xx_rarx_clear_resize(state->history, state->history_capacity, wanted);
         if (!resized && wanted != 0) {
             return XX_RARX_STATUS_NO_MEMORY;
         }
@@ -569,22 +537,18 @@ static xx_rarx_status_t xx_rarx50_remember_history(
         state->history_capacity = wanted;
     }
     if (old_keep != 0 && old_keep != state->history_size) {
-        xx_mem_move(state->history,
-                    state->history + state->history_size - old_keep,
-                    old_keep);
+        xx_mem_move(state->history, state->history + state->history_size - old_keep, old_keep);
     }
     if (data_keep != 0) {
-        xx_mem_copy(state->history + old_keep,
-                    data + data_size - data_keep, data_keep);
+        xx_mem_copy(state->history + old_keep, data + data_size - data_keep, data_keep);
     }
     state->history_size = wanted;
-    if (wanted < state->history_capacity)
-        xx_mem_zero(state->history + wanted, state->history_capacity - wanted);
+    if (wanted < state->history_capacity) xx_mem_zero(state->history + wanted, state->history_capacity - wanted);
     return XX_RARX_STATUS_OK;
 }
 
-static xx_rarx_status_t xx_rarx50_filter_delta(
-    uint8_t *data, size_t size, unsigned channels, xx_pd_struct *progress) {
+static xx_rarx_status_t xx_rarx50_filter_delta(uint8_t *data, size_t size, unsigned channels, xx_pd_struct *progress)
+{
     uint8_t *decoded;
     size_t source_position = 0;
     unsigned channel;
@@ -598,8 +562,7 @@ static xx_rarx_status_t xx_rarx50_filter_delta(
         uint8_t previous = 0;
         size_t position;
         for (position = channel; position < size; position += channels) {
-            if ((source_position & XX_RARX50_POLL_MASK) == 0 &&
-                xx_rarx50_cancelled(progress)) {
+            if ((source_position & XX_RARX50_POLL_MASK) == 0 && xx_rarx50_cancelled(progress)) {
                 xx_rarx_clear_free(decoded, size != 0 ? size : 1u);
                 return XX_RARX_STATUS_CANCELLED;
             }
@@ -620,22 +583,19 @@ static xx_rarx_status_t xx_rarx50_filter_delta(
     return XX_RARX_STATUS_OK;
 }
 
-static xx_rarx_status_t xx_rarx50_filter_x86(
-    uint8_t *data, size_t size, uint32_t file_offset, bool include_e9,
-    xx_pd_struct *progress) {
+static xx_rarx_status_t xx_rarx50_filter_x86(uint8_t *data, size_t size, uint32_t file_offset, bool include_e9, xx_pd_struct *progress)
+{
     size_t position = 0;
 
     while (position + 4u < size) {
         uint8_t opcode;
-        if ((position & XX_RARX50_POLL_MASK) == 0 &&
-            xx_rarx50_cancelled(progress)) {
+        if ((position & XX_RARX50_POLL_MASK) == 0 && xx_rarx50_cancelled(progress)) {
             return XX_RARX_STATUS_CANCELLED;
         }
         opcode = data[position];
         if (opcode == 0xe8u || (include_e9 && opcode == 0xe9u)) {
             size_t address_position = position + 1u;
-            uint32_t offset = (file_offset + (uint32_t)address_position) &
-                              (XX_RARX50_X86_FILE_SIZE - 1u);
+            uint32_t offset = (file_offset + (uint32_t)address_position) & (XX_RARX50_X86_FILE_SIZE - 1u);
             uint32_t address = xx_data_get_u32(data + address_position, 4, 0, false);
             if (address < XX_RARX50_X86_FILE_SIZE) {
                 address -= offset;
@@ -652,21 +612,17 @@ static xx_rarx_status_t xx_rarx50_filter_x86(
     return XX_RARX_STATUS_OK;
 }
 
-static xx_rarx_status_t xx_rarx50_filter_arm(
-    uint8_t *data, size_t size, uint32_t file_offset,
-    xx_pd_struct *progress) {
+static xx_rarx_status_t xx_rarx50_filter_arm(uint8_t *data, size_t size, uint32_t file_offset, xx_pd_struct *progress)
+{
     size_t position;
     for (position = 0; position + 3u < size; position += 4u) {
         uint32_t value;
         uint32_t offset;
-        if ((position & XX_RARX50_POLL_MASK) == 0 &&
-            xx_rarx50_cancelled(progress)) {
+        if ((position & XX_RARX50_POLL_MASK) == 0 && xx_rarx50_cancelled(progress)) {
             return XX_RARX_STATUS_CANCELLED;
         }
         if (data[position + 3u] != 0xebu) continue;
-        value = (uint32_t)data[position] |
-                ((uint32_t)data[position + 1u] << 8) |
-                ((uint32_t)data[position + 2u] << 16);
+        value = (uint32_t)data[position] | ((uint32_t)data[position + 1u] << 8) | ((uint32_t)data[position + 2u] << 16);
         offset = (file_offset + (uint32_t)position) >> 2;
         value = (value - offset) & 0x00ffffffu;
         data[position] = (uint8_t)value;
@@ -676,10 +632,9 @@ static xx_rarx_status_t xx_rarx50_filter_arm(
     return XX_RARX_STATUS_OK;
 }
 
-static xx_rarx_status_t xx_rarx50_apply_filters(
-    uint8_t *destination, size_t destination_size,
-    const xx_rarx50_filter *filters, size_t filter_count,
-    xx_pd_struct *progress) {
+static xx_rarx_status_t xx_rarx50_apply_filters(uint8_t *destination, size_t destination_size, const xx_rarx50_filter *filters, size_t filter_count,
+                                                xx_pd_struct *progress)
+{
     size_t i;
     for (i = 0; i < filter_count; ++i) {
         const xx_rarx50_filter *filter = &filters[i];
@@ -688,50 +643,36 @@ static xx_rarx_status_t xx_rarx50_apply_filters(
         if (xx_rarx50_cancelled(progress)) {
             return XX_RARX_STATUS_CANCELLED;
         }
-        if (filter->start > destination_size ||
-            filter->length > destination_size - filter->start) {
+        if (filter->start > destination_size || filter->length > destination_size - filter->start) {
             return XX_RARX_STATUS_CORRUPT;
         }
         data = destination + filter->start;
         switch (filter->type) {
-            case XX_RARX50_FILTER_DELTA:
-                status = xx_rarx50_filter_delta(data, filter->length,
-                                                filter->channels, progress);
-                break;
-            case XX_RARX50_FILTER_E8:
-                status = xx_rarx50_filter_x86(
-                    data, filter->length, (uint32_t)filter->start, false,
-                    progress);
-                break;
-            case XX_RARX50_FILTER_E8E9:
-                status = xx_rarx50_filter_x86(
-                    data, filter->length, (uint32_t)filter->start, true,
-                    progress);
-                break;
-            case XX_RARX50_FILTER_ARM:
-                status = xx_rarx50_filter_arm(
-                    data, filter->length, (uint32_t)filter->start, progress);
-                break;
-            default:
-                status = XX_RARX_STATUS_UNSUPPORTED_FILTER;
-                break;
+            case XX_RARX50_FILTER_DELTA: status = xx_rarx50_filter_delta(data, filter->length, filter->channels, progress); break;
+            case XX_RARX50_FILTER_E8: status = xx_rarx50_filter_x86(data, filter->length, (uint32_t)filter->start, false, progress); break;
+            case XX_RARX50_FILTER_E8E9: status = xx_rarx50_filter_x86(data, filter->length, (uint32_t)filter->start, true, progress); break;
+            case XX_RARX50_FILTER_ARM: status = xx_rarx50_filter_arm(data, filter->length, (uint32_t)filter->start, progress); break;
+            default: status = XX_RARX_STATUS_UNSUPPORTED_FILTER; break;
         }
         if (status != XX_RARX_STATUS_OK) return status;
     }
     return XX_RARX_STATUS_OK;
 }
 
-xx_rarx50_state *xx_rarx50_create(void) {
+xx_rarx50_state *xx_rarx50_create(void)
+{
     return (xx_rarx50_state *)xx_mem_calloc(1, sizeof(xx_rarx50_state));
 }
 
-void xx_rarx50_destroy(xx_rarx50_state *state) {
+void xx_rarx50_destroy(xx_rarx50_state *state)
+{
     if (!state) return;
     xx_rarx_clear_free(state->history, state->history_capacity);
     xx_rarx_clear_free(state, sizeof(*state));
 }
 
-void xx_rarx50_reset(xx_rarx50_state *state) {
+void xx_rarx50_reset(xx_rarx50_state *state)
+{
     uint8_t *history;
     size_t capacity;
     if (!state) return;
@@ -743,13 +684,9 @@ void xx_rarx50_reset(xx_rarx50_state *state) {
     state->history_capacity = capacity;
 }
 
-xx_rarx_status_t xx_rarx50_decode(xx_rarx50_state *state,
-                                  const uint8_t *source, size_t source_size,
-                                  uint8_t *destination,
-                                  size_t destination_size,
-                                  size_t window_size, bool solid,
-                                  size_t *source_used,
-                                  xx_pd_struct *progress) {
+xx_rarx_status_t xx_rarx50_decode(xx_rarx50_state *state, const uint8_t *source, size_t source_size, uint8_t *destination, size_t destination_size, size_t window_size,
+                                  bool solid, size_t *source_used, xx_pd_struct *progress)
+{
     xx_rarx50_filter *filters = NULL;
     size_t filter_count = 0;
     size_t source_position = 0;
@@ -759,8 +696,7 @@ xx_rarx_status_t xx_rarx50_decode(xx_rarx50_state *state,
     xx_rarx_status_t status = XX_RARX_STATUS_OK;
 
     if (source_used) *source_used = 0;
-    if (!state || (!source && source_size != 0) ||
-        (!destination && destination_size != 0) || window_size == 0) {
+    if (!state || (!source && source_size != 0) || (!destination && destination_size != 0) || window_size == 0) {
         return XX_RARX_STATUS_INVALID_ARGUMENT;
     }
     if (xx_rarx50_cancelled(progress)) {
@@ -769,8 +705,7 @@ xx_rarx_status_t xx_rarx50_decode(xx_rarx50_state *state,
     if (!solid) {
         xx_rarx50_reset(state);
         state->window_size = window_size;
-    } else if (state->window_size == 0 ||
-               state->window_size != window_size) {
+    } else if (state->window_size == 0 || state->window_size != window_size) {
         return XX_RARX_STATUS_CORRUPT;
     }
 
@@ -789,8 +724,7 @@ xx_rarx_status_t xx_rarx50_decode(xx_rarx50_state *state,
             status = XX_RARX_STATUS_CANCELLED;
             goto cleanup;
         }
-        if (source_position > source_size ||
-            source_size - source_position < 3u) {
+        if (source_position > source_size || source_size - source_position < 3u) {
             status = XX_RARX_STATUS_TRUNCATED;
             goto cleanup;
         }
@@ -843,14 +777,11 @@ xx_rarx_status_t xx_rarx50_decode(xx_rarx50_state *state,
 
         while (bits.bit_position < bits.bit_limit) {
             unsigned symbol;
-            if (((destination_position + bits.bit_position) &
-                 XX_RARX50_POLL_MASK) == 0 &&
-                xx_rarx50_cancelled(progress)) {
+            if (((destination_position + bits.bit_position) & XX_RARX50_POLL_MASK) == 0 && xx_rarx50_cancelled(progress)) {
                 status = XX_RARX_STATUS_CANCELLED;
                 goto cleanup;
             }
-            status = xx_rarx50_decode_huffman(&state->main_table, &bits,
-                                              &symbol);
+            status = xx_rarx50_decode_huffman(&state->main_table, &bits, &symbol);
             if (status != XX_RARX_STATUS_OK) goto cleanup;
             if (symbol < 256u) {
                 if (destination_position >= destination_size) {
@@ -859,16 +790,12 @@ xx_rarx_status_t xx_rarx50_decode(xx_rarx50_state *state,
                 }
                 destination[destination_position++] = (uint8_t)symbol;
             } else if (symbol == 256u) {
-                status = xx_rarx50_append_filter(
-                    &filters, &filter_count, destination_position,
-                    destination_size, &bits);
+                status = xx_rarx50_append_filter(&filters, &filter_count, destination_position, destination_size, &bits);
                 if (status != XX_RARX_STATUS_OK) goto cleanup;
             } else if (symbol == 257u) {
                 if (state->last_length != 0) {
-                    status = xx_rarx50_copy_match(
-                        state, destination, &destination_position,
-                        destination_size, window_size,
-                        state->repeated_distance[0], state->last_length);
+                    status =
+                        xx_rarx50_copy_match(state, destination, &destination_position, destination_size, window_size, state->repeated_distance[0], state->last_length);
                     if (status != XX_RARX_STATUS_OK) goto cleanup;
                 }
             } else if (symbol <= 261u) {
@@ -881,21 +808,16 @@ xx_rarx_status_t xx_rarx50_decode(xx_rarx50_state *state,
                     status = XX_RARX_STATUS_CORRUPT;
                     goto cleanup;
                 }
-                status = xx_rarx50_decode_huffman(
-                    &state->length_table, &bits, &length_slot);
+                status = xx_rarx50_decode_huffman(&state->length_table, &bits, &length_slot);
                 if (status != XX_RARX_STATUS_OK) goto cleanup;
-                status = xx_rarx50_length_from_slot(length_slot, &bits,
-                                                    &length);
+                status = xx_rarx50_length_from_slot(length_slot, &bits, &length);
                 if (status != XX_RARX_STATUS_OK) goto cleanup;
                 for (index = repeated_index; index != 0; --index) {
-                    state->repeated_distance[index] =
-                        state->repeated_distance[index - 1u];
+                    state->repeated_distance[index] = state->repeated_distance[index - 1u];
                 }
                 state->repeated_distance[0] = distance;
                 state->last_length = length;
-                status = xx_rarx50_copy_match(
-                    state, destination, &destination_position,
-                    destination_size, window_size, distance, length);
+                status = xx_rarx50_copy_match(state, destination, &destination_position, destination_size, window_size, distance, length);
                 if (status != XX_RARX_STATUS_OK) goto cleanup;
             } else {
                 unsigned length_slot = symbol - 262u;
@@ -903,15 +825,11 @@ xx_rarx_status_t xx_rarx50_decode(xx_rarx50_state *state,
                 size_t distance;
                 size_t length;
                 size_t bonus;
-                status = xx_rarx50_length_from_slot(length_slot, &bits,
-                                                    &length);
+                status = xx_rarx50_length_from_slot(length_slot, &bits, &length);
                 if (status != XX_RARX_STATUS_OK) goto cleanup;
-                status = xx_rarx50_decode_huffman(
-                    &state->distance_table, &bits, &distance_slot);
+                status = xx_rarx50_decode_huffman(&state->distance_table, &bits, &distance_slot);
                 if (status != XX_RARX_STATUS_OK) goto cleanup;
-                status = xx_rarx50_distance_from_slot(
-                    distance_slot, &state->align_table, state->align_mode,
-                    &bits, &distance);
+                status = xx_rarx50_distance_from_slot(distance_slot, &state->align_table, state->align_mode, &bits, &distance);
                 if (status != XX_RARX_STATUS_OK) goto cleanup;
                 bonus = xx_rarx50_length_bonus(distance);
                 if (length > SIZE_MAX - bonus) {
@@ -919,17 +837,12 @@ xx_rarx_status_t xx_rarx50_decode(xx_rarx50_state *state,
                     goto cleanup;
                 }
                 length += bonus;
-                state->repeated_distance[3] =
-                    state->repeated_distance[2];
-                state->repeated_distance[2] =
-                    state->repeated_distance[1];
-                state->repeated_distance[1] =
-                    state->repeated_distance[0];
+                state->repeated_distance[3] = state->repeated_distance[2];
+                state->repeated_distance[2] = state->repeated_distance[1];
+                state->repeated_distance[1] = state->repeated_distance[0];
                 state->repeated_distance[0] = distance;
                 state->last_length = length;
-                status = xx_rarx50_copy_match(
-                    state, destination, &destination_position,
-                    destination_size, window_size, distance, length);
+                status = xx_rarx50_copy_match(state, destination, &destination_position, destination_size, window_size, distance, length);
                 if (status != XX_RARX_STATUS_OK) goto cleanup;
             }
         }
@@ -956,11 +869,9 @@ xx_rarx_status_t xx_rarx50_decode(xx_rarx50_state *state,
         status = XX_RARX_STATUS_TRUNCATED;
         goto cleanup;
     }
-    status = xx_rarx50_remember_history(state, destination,
-                                        destination_size, window_size);
+    status = xx_rarx50_remember_history(state, destination, destination_size, window_size);
     if (status != XX_RARX_STATUS_OK) goto cleanup;
-    status = xx_rarx50_apply_filters(destination, destination_size, filters,
-                                     filter_count, progress);
+    status = xx_rarx50_apply_filters(destination, destination_size, filters, filter_count, progress);
     if (status != XX_RARX_STATUS_OK) goto cleanup;
     if (source_used) *source_used = source_position;
 

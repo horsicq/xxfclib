@@ -78,10 +78,10 @@
 #define XX_CORELLTEC_PROBE_READ 0x20000
 
 typedef struct xx_corelltec_block_s {
-    int64_t file_offset;      /* absolute offset of the packed block */
-    int64_t compressed_size;  /* packed bytes the directory accounts for */
-    int64_t stream_size;      /* what the codec actually has to see */
-    int64_t uncompressed_size;/* plaintext bytes */
+    int64_t file_offset;       /* absolute offset of the packed block */
+    int64_t compressed_size;   /* packed bytes the directory accounts for */
+    int64_t stream_size;       /* what the codec actually has to see */
+    int64_t uncompressed_size; /* plaintext bytes */
 } xx_corelltec_block;
 
 typedef struct xx_corelltec_member_s {
@@ -107,67 +107,60 @@ static void xx_corelltec_vtable_destroy(Abstractformat *self);
 
 /* ------------------------------------------------------------- helpers -- */
 
-static bool xx_corelltec_read_at(Abstractformat *self, int64_t offset,
-                                 uint8_t *buffer, size_t size) {
+static bool xx_corelltec_read_at(Abstractformat *self, int64_t offset, uint8_t *buffer, size_t size)
+{
     size_t completed = 0U;
 
-    if (!self || !self->device || offset < 0 ||
-        xx_io_seek64(self->device, offset, SEEK_SET) != 0) {
+    if (!self || !self->device || offset < 0 || xx_io_seek64(self->device, offset, SEEK_SET) != 0) {
         return false;
     }
     while (completed < size) {
-        ssize_t received =
-            xx_io_read(self->device, buffer + completed, size - completed);
+        ssize_t received = xx_io_read(self->device, buffer + completed, size - completed);
         if (received <= 0 || (size_t)received > size - completed) return false;
         completed += (size_t)received;
     }
     return true;
 }
 
-static bool xx_corelltec_range_within(int64_t total, int64_t offset,
-                                      int64_t size) {
-    return total >= 0 && offset >= 0 && size >= 0 && offset <= total &&
-           size <= total - offset;
+static bool xx_corelltec_range_within(int64_t total, int64_t offset, int64_t size)
+{
+    return total >= 0 && offset >= 0 && size >= 0 && offset <= total && size <= total - offset;
 }
 
 /* Names can contain relative DOS subpaths, e.g. CSI\HCP_UTIV.CS_.  Validate
  * each component before normalizing the separators for the extraction API. */
-static bool xx_corelltec_name_valid(const uint8_t *name, size_t size) {
+static bool xx_corelltec_name_valid(const uint8_t *name, size_t size)
+{
     size_t index, component = 0U;
 
-    if (size < (size_t)XX_CORELLTEC_MIN_NAME_LENGTH ||
-        size > (size_t)XX_CORELLTEC_MAX_NAME_LENGTH) {
+    if (size < (size_t)XX_CORELLTEC_MIN_NAME_LENGTH || size > (size_t)XX_CORELLTEC_MAX_NAME_LENGTH) {
         return false;
     }
     for (index = 0U; index <= size; ++index) {
         const uint8_t character = index < size ? name[index] : 0U;
         if (character == '/' || character == '\\' || index == size) {
             const size_t length = index - component;
-            if (length == 0U ||
-                (length == 1U && name[component] == '.') ||
-                (length == 2U && name[component] == '.' &&
-                 name[component + 1U] == '.') ||
+            if (length == 0U || (length == 1U && name[component] == '.') || (length == 2U && name[component] == '.' && name[component + 1U] == '.') ||
                 name[index - 1U] == '.' || name[index - 1U] == ' ')
                 return false;
             component = index + 1U;
             continue;
         }
         if (character < 0x20U || character > 0x7eU) return false;
-        if (character == ':' || character == '<' || character == '>' ||
-            character == '"' || character == '|' || character == '*' ||
-            character == '?') {
+        if (character == ':' || character == '<' || character == '>' || character == '"' || character == '|' || character == '*' || character == '?') {
             return false;
         }
     }
     return true;
 }
 
-static bool xx_corelltec_path_safe(const char *name) {
-    return name && xx_corelltec_name_valid((const uint8_t *)name,
-                                           xx_str_len(name));
+static bool xx_corelltec_path_safe(const char *name)
+{
+    return name && xx_corelltec_name_valid((const uint8_t *)name, xx_str_len(name));
 }
 
-static void xx_corelltec_stream_free(void *pointer) {
+static void xx_corelltec_stream_free(void *pointer)
+{
     xx_corelltec_stream *stream = (xx_corelltec_stream *)pointer;
     size_t index;
 
@@ -181,10 +174,9 @@ static void xx_corelltec_stream_free(void *pointer) {
 }
 
 /* Append a member, taking ownership of member->name. */
-static bool xx_corelltec_add_member(xx_corelltec_stream *stream,
-                                    const xx_corelltec_member *member) {
-    xx_corelltec_member *grown = (xx_corelltec_member *)xx_mem_realloc(
-        stream->items, sizeof(*grown) * (stream->count + 1U));
+static bool xx_corelltec_add_member(xx_corelltec_stream *stream, const xx_corelltec_member *member)
+{
+    xx_corelltec_member *grown = (xx_corelltec_member *)xx_mem_realloc(stream->items, sizeof(*grown) * (stream->count + 1U));
 
     if (!grown) return false;
     stream->items = grown;
@@ -192,10 +184,9 @@ static bool xx_corelltec_add_member(xx_corelltec_stream *stream,
     return true;
 }
 
-static bool xx_corelltec_add_block(xx_corelltec_stream *stream,
-                                   const xx_corelltec_block *block) {
-    xx_corelltec_block *grown = (xx_corelltec_block *)xx_mem_realloc(
-        stream->blocks, sizeof(*grown) * (stream->block_count + 1U));
+static bool xx_corelltec_add_block(xx_corelltec_stream *stream, const xx_corelltec_block *block)
+{
+    xx_corelltec_block *grown = (xx_corelltec_block *)xx_mem_realloc(stream->blocks, sizeof(*grown) * (stream->block_count + 1U));
 
     if (!grown) return false;
     stream->blocks = grown;
@@ -209,8 +200,8 @@ static bool xx_corelltec_add_block(xx_corelltec_stream *stream,
  * strong, but a container that parses and then emits garbage at exit 0 is
  * worse than no support, so the codec has to agree before the file is
  * claimed. */
-static bool xx_corelltec_probe(Abstractformat *self,
-                               const xx_corelltec_block *block) {
+static bool xx_corelltec_probe(Abstractformat *self, const xx_corelltec_block *block)
+{
     uint8_t *packed;
     uint8_t *plain;
     size_t read_size;
@@ -219,12 +210,8 @@ static bool xx_corelltec_probe(Abstractformat *self,
     bool result;
 
     if (!self || !block) return false;
-    read_size = (size_t)((block->stream_size < XX_CORELLTEC_PROBE_READ)
-                             ? block->stream_size
-                             : XX_CORELLTEC_PROBE_READ);
-    probe_size = (size_t)((block->uncompressed_size < XX_CORELLTEC_PROBE_SIZE)
-                              ? block->uncompressed_size
-                              : XX_CORELLTEC_PROBE_SIZE);
+    read_size = (size_t)((block->stream_size < XX_CORELLTEC_PROBE_READ) ? block->stream_size : XX_CORELLTEC_PROBE_READ);
+    probe_size = (size_t)((block->uncompressed_size < XX_CORELLTEC_PROBE_SIZE) ? block->uncompressed_size : XX_CORELLTEC_PROBE_SIZE);
     if (read_size == 0U || probe_size == 0U) return false;
 
     packed = (uint8_t *)xx_mem_alloc(read_size);
@@ -242,9 +229,7 @@ static bool xx_corelltec_probe(Abstractformat *self,
      * block's plaintext it produces exactly that prefix, which is what a probe
      * wants. A short read of the packed stream is fine -- the probe stops long
      * before the block's end. */
-    result = xx_corelltec_decode_memory(packed, read_size, plain, probe_size,
-                                        &written) &&
-             written == probe_size;
+    result = xx_corelltec_decode_memory(packed, read_size, plain, probe_size, &written) && written == probe_size;
     xx_mem_free(plain);
     xx_mem_free(packed);
     return result;
@@ -252,9 +237,8 @@ static bool xx_corelltec_probe(Abstractformat *self,
 
 /* --------------------------------------------------------------- parse -- */
 
-static xx_corelltec_stream *xx_corelltec_parse(Abstractformat *self,
-                                               bool probe_stream,
-                                               xx_pd_struct *pd) {
+static xx_corelltec_stream *xx_corelltec_parse(Abstractformat *self, bool probe_stream, xx_pd_struct *pd)
+{
     xx_corelltec_stream *stream = NULL;
     xx_corelltec_member member;
     xx_corelltec_block block;
@@ -275,13 +259,11 @@ static xx_corelltec_stream *xx_corelltec_parse(Abstractformat *self,
     total = xx_io_total_size(self->device);
     if (total < self->base_address) return NULL;
     span = total - self->base_address;
-    if (span < (int64_t)(XX_CORELLTEC_HEADER_SIZE +
-                         XX_CORELLTEC_RECORD_FIXED_SIZE + 2)) {
+    if (span < (int64_t)(XX_CORELLTEC_HEADER_SIZE + XX_CORELLTEC_RECORD_FIXED_SIZE + 2)) {
         return NULL;
     }
     if (pd && xx_pd_is_stopped(pd)) return NULL;
-    if (!xx_corelltec_read_at(self, self->base_address, header,
-                              sizeof(header))) {
+    if (!xx_corelltec_read_at(self, self->base_address, header, sizeof(header))) {
         return NULL;
     }
     if (xx_rt_memcmp(header, "LTEC", 4U) != 0) return NULL;
@@ -303,12 +285,10 @@ static xx_corelltec_stream *xx_corelltec_parse(Abstractformat *self,
         int64_t name_size;
 
         if (pd && xx_pd_is_stopped(pd)) goto fail;
-        if (!xx_corelltec_range_within(span, offset,
-                                       XX_CORELLTEC_RECORD_FIXED_SIZE)) {
+        if (!xx_corelltec_range_within(span, offset, XX_CORELLTEC_RECORD_FIXED_SIZE)) {
             break;
         }
-        if (!xx_corelltec_read_at(self, self->base_address + offset, record,
-                                  sizeof(record))) {
+        if (!xx_corelltec_read_at(self, self->base_address + offset, record, sizeof(record))) {
             goto fail;
         }
         record_size = (int64_t)xx_data_get_u16(record, 2, 0, false);
@@ -318,26 +298,20 @@ static xx_corelltec_stream *xx_corelltec_parse(Abstractformat *self,
 
         /* The name field is the rest of the record, terminator included. */
         name_size = record_size - XX_CORELLTEC_RECORD_FIXED_SIZE;
-        if (name_size < (int64_t)XX_CORELLTEC_MIN_NAME_LENGTH + 1 ||
-            name_size > (int64_t)XX_CORELLTEC_MAX_NAME_LENGTH + 1) {
+        if (name_size < (int64_t)XX_CORELLTEC_MIN_NAME_LENGTH + 1 || name_size > (int64_t)XX_CORELLTEC_MAX_NAME_LENGTH + 1) {
             break;
         }
-        if (!xx_corelltec_range_within(
-                span, offset + XX_CORELLTEC_RECORD_FIXED_SIZE, name_size)) {
+        if (!xx_corelltec_range_within(span, offset + XX_CORELLTEC_RECORD_FIXED_SIZE, name_size)) {
             break;
         }
         name_field = (uint8_t *)xx_mem_alloc((size_t)name_size);
         if (!name_field) goto fail;
-        if (!xx_corelltec_read_at(
-                self,
-                self->base_address + offset + XX_CORELLTEC_RECORD_FIXED_SIZE,
-                name_field, (size_t)name_size)) {
+        if (!xx_corelltec_read_at(self, self->base_address + offset + XX_CORELLTEC_RECORD_FIXED_SIZE, name_field, (size_t)name_size)) {
             goto fail;
         }
         /* Fixed relationship, not a search: the terminator is the LAST byte of
          * the record, so a NUL anywhere else means this is not a record. */
-        if (name_field[name_size - 1] != 0U ||
-            !xx_corelltec_name_valid(name_field, (size_t)name_size - 1U)) {
+        if (name_field[name_size - 1] != 0U || !xx_corelltec_name_valid(name_field, (size_t)name_size - 1U)) {
             xx_mem_free(name_field);
             name_field = NULL;
             break;
@@ -386,8 +360,7 @@ static xx_corelltec_stream *xx_corelltec_parse(Abstractformat *self,
         if (!xx_corelltec_add_member(stream, &member)) goto fail;
         name = NULL;
 
-        stream->blocks[stream->block_count - 1U].uncompressed_size =
-            expected_in_block;
+        stream->blocks[stream->block_count - 1U].uncompressed_size = expected_in_block;
         if (expected_in_block > XX_CORELLTEC_MAX_BLOCK_SIZE) goto fail;
 
         offset += record_size;
@@ -408,17 +381,13 @@ static xx_corelltec_stream *xx_corelltec_parse(Abstractformat *self,
     for (index = 0U; index < stream->block_count; ++index) {
         xx_corelltec_block *current = &stream->blocks[index];
         const int64_t relative = current->file_offset;
-        const int64_t next_relative =
-            (index + 1U < stream->block_count)
-                ? stream->blocks[index + 1U].file_offset
-                : payload_size;
+        const int64_t next_relative = (index + 1U < stream->block_count) ? stream->blocks[index + 1U].file_offset : payload_size;
 
         if (relative >= payload_size) goto fail;
         if (next_relative <= relative) goto fail;
         current->file_offset = self->base_address + payload_offset + relative;
         current->compressed_size = next_relative - relative;
-        current->stream_size = current->compressed_size +
-                               (int64_t)XX_CORELLTEC_BLOCK_TAIL;
+        current->stream_size = current->compressed_size + (int64_t)XX_CORELLTEC_BLOCK_TAIL;
         if (current->stream_size > span - (payload_offset + relative)) {
             current->stream_size = span - (payload_offset + relative);
         }
@@ -443,11 +412,9 @@ fail:
 
 /* -------------------------------------------------------------- decode -- */
 
-static bool xx_corelltec_decode(Abstractformat *self,
-                                const xx_corelltec_stream *stream,
-                                const xx_corelltec_member *member,
-                                uint8_t **out, size_t *out_size,
-                                xx_pd_struct *pd) {
+static bool xx_corelltec_decode(Abstractformat *self, const xx_corelltec_stream *stream, const xx_corelltec_member *member, uint8_t **out, size_t *out_size,
+                                xx_pd_struct *pd)
+{
     const xx_corelltec_block *block;
     uint8_t *input;
     uint8_t *output;
@@ -457,30 +424,26 @@ static bool xx_corelltec_decode(Abstractformat *self,
     *out_size = 0U;
     if (!self || !stream || !member) return false;
     if (pd && xx_pd_is_stopped(pd)) return false;
-    if (member->block_index < 0 ||
-        (size_t)member->block_index >= stream->block_count) {
+    if (member->block_index < 0 || (size_t)member->block_index >= stream->block_count) {
         return false;
     }
     block = &stream->blocks[member->block_index];
     if (member->size <= 0 || member->size > XX_CORELLTEC_MAX_MEMBER_SIZE) {
         return false;
     }
-    if (block->stream_size <= 0 ||
-        block->stream_size > XX_CORELLTEC_MAX_BLOCK_SIZE) {
+    if (block->stream_size <= 0 || block->stream_size > XX_CORELLTEC_MAX_BLOCK_SIZE) {
         return false;
     }
     /* The codec produces offset_in_block + size bytes of block plaintext into
      * its own scratch and hands back the member's slice; the prefix cannot be
      * skipped because a match may reach back to the block's first byte. */
-    if (member->offset_in_block < 0 ||
-        member->offset_in_block > block->uncompressed_size - member->size) {
+    if (member->offset_in_block < 0 || member->offset_in_block > block->uncompressed_size - member->size) {
         return false;
     }
 
     input = (uint8_t *)xx_mem_alloc((size_t)block->stream_size);
     if (!input) return false;
-    if (!xx_corelltec_read_at(self, block->file_offset, input,
-                              (size_t)block->stream_size)) {
+    if (!xx_corelltec_read_at(self, block->file_offset, input, (size_t)block->stream_size)) {
         xx_mem_free(input);
         return false;
     }
@@ -489,9 +452,7 @@ static bool xx_corelltec_decode(Abstractformat *self,
         xx_mem_free(input);
         return false;
     }
-    if (!xx_corelltec_decode_member(input, (size_t)block->stream_size,
-                                    (size_t)member->offset_in_block, output,
-                                    (size_t)member->size, &written) ||
+    if (!xx_corelltec_decode_member(input, (size_t)block->stream_size, (size_t)member->offset_in_block, output, (size_t)member->size, &written) ||
         written != (size_t)member->size) {
         xx_mem_free(output);
         xx_mem_free(input);
@@ -505,8 +466,8 @@ static bool xx_corelltec_decode(Abstractformat *self,
 
 /* ---------------------------------------------------------- lifecycle --- */
 
-void xx_corelltec_init(xx_corelltec *archive, xx_io_device *device,
-                       int64_t base_address) {
+void xx_corelltec_init(xx_corelltec *archive, xx_io_device *device, int64_t base_address)
+{
     if (!archive) return;
     xx_mem_zero(archive, sizeof(*archive));
     xx_format_init(&archive->format, device, base_address);
@@ -519,22 +480,17 @@ void xx_corelltec_init(xx_corelltec *archive, xx_io_device *device,
     archive->format.check_is_valid = xx_corelltec_check_is_valid;
     archive->format.handle_base_info = xx_corelltec_handle_base_info;
     archive->format.get_format_size = xx_corelltec_get_format_size;
-    archive->format.get_number_of_archive_records =
-        xx_corelltec_get_number_of_archive_records;
-    archive->format.create_archive_records_reading =
-        xx_corelltec_create_archive_records_reading;
-    archive->format.get_current_archive_record =
-        xx_corelltec_get_current_archive_record;
-    archive->format.unpack_current_archive_record =
-        xx_corelltec_unpack_current_archive_record;
-    archive->format.archive_record_move_to_next =
-        xx_corelltec_archive_record_move_to_next;
-    archive->format.free_archive_records_reading =
-        xx_corelltec_free_archive_records_reading;
+    archive->format.get_number_of_archive_records = xx_corelltec_get_number_of_archive_records;
+    archive->format.create_archive_records_reading = xx_corelltec_create_archive_records_reading;
+    archive->format.get_current_archive_record = xx_corelltec_get_current_archive_record;
+    archive->format.unpack_current_archive_record = xx_corelltec_unpack_current_archive_record;
+    archive->format.archive_record_move_to_next = xx_corelltec_archive_record_move_to_next;
+    archive->format.free_archive_records_reading = xx_corelltec_free_archive_records_reading;
     archive->format.destroy = xx_corelltec_vtable_destroy;
 }
 
-xx_corelltec *xx_corelltec_create(xx_io_device *device, int64_t base_address) {
+xx_corelltec *xx_corelltec_create(xx_io_device *device, int64_t base_address)
+{
     xx_corelltec *archive = (xx_corelltec *)xx_mem_alloc(sizeof(*archive));
 
     if (!archive) return NULL;
@@ -542,7 +498,8 @@ xx_corelltec *xx_corelltec_create(xx_io_device *device, int64_t base_address) {
     return archive;
 }
 
-void xx_corelltec_destroy(xx_corelltec *archive) {
+void xx_corelltec_destroy(xx_corelltec *archive)
+{
     if (!archive) return;
     /* Not xx_format_destroy: it dispatches through format.destroy, which is
      * the wrapper below, and the two would recurse. */
@@ -552,19 +509,22 @@ void xx_corelltec_destroy(xx_corelltec *archive) {
     archive->number_of_blocks = 0U;
 }
 
-void xx_corelltec_free(xx_corelltec *archive) {
+void xx_corelltec_free(xx_corelltec *archive)
+{
     if (!archive) return;
     xx_corelltec_destroy(archive);
     xx_mem_free(archive);
 }
 
-static void xx_corelltec_vtable_destroy(Abstractformat *self) {
+static void xx_corelltec_vtable_destroy(Abstractformat *self)
+{
     xx_corelltec_destroy((xx_corelltec *)self);
 }
 
 /* -------------------------------------------------------------- format -- */
 
-bool xx_corelltec_check_is_valid(Abstractformat *self, xx_pd_struct *pd) {
+bool xx_corelltec_check_is_valid(Abstractformat *self, xx_pd_struct *pd)
+{
     xx_corelltec_stream *stream;
 
     if (!self || (pd && xx_pd_is_stopped(pd))) return false;
@@ -575,7 +535,8 @@ bool xx_corelltec_check_is_valid(Abstractformat *self, xx_pd_struct *pd) {
     return true;
 }
 
-bool xx_corelltec_handle_base_info(Abstractformat *self, xx_pd_struct *pd) {
+bool xx_corelltec_handle_base_info(Abstractformat *self, xx_pd_struct *pd)
+{
     xx_corelltec *archive = (xx_corelltec *)self;
     xx_corelltec_stream *stream;
 
@@ -602,18 +563,17 @@ bool xx_corelltec_handle_base_info(Abstractformat *self, xx_pd_struct *pd) {
     return true;
 }
 
-int64_t xx_corelltec_get_format_size(Abstractformat *self, xx_pd_struct *pd) {
-    if (!self ||
-        (!self->base_info_handled && !xx_format_handle_base_info(self, pd))) {
+int64_t xx_corelltec_get_format_size(Abstractformat *self, xx_pd_struct *pd)
+{
+    if (!self || (!self->base_info_handled && !xx_format_handle_base_info(self, pd))) {
         return 0;
     }
     return self->is_valid ? self->format_size : 0;
 }
 
-uint64_t xx_corelltec_get_number_of_archive_records(Abstractformat *self,
-                                                    xx_pd_struct *pd) {
-    if (!self ||
-        (!self->base_info_handled && !xx_format_handle_base_info(self, pd))) {
+uint64_t xx_corelltec_get_number_of_archive_records(Abstractformat *self, xx_pd_struct *pd)
+{
+    if (!self || (!self->base_info_handled && !xx_format_handle_base_info(self, pd))) {
         return 0U;
     }
     return self->is_valid ? ((xx_corelltec *)self)->number_of_records : 0U;
@@ -621,13 +581,11 @@ uint64_t xx_corelltec_get_number_of_archive_records(Abstractformat *self,
 
 /* ------------------------------------------------------------- records -- */
 
-static bool xx_corelltec_set_record(xx_archive_record *record,
-                                    const xx_corelltec_stream *stream,
-                                    const xx_corelltec_member *member) {
+static bool xx_corelltec_set_record(xx_archive_record *record, const xx_corelltec_stream *stream, const xx_corelltec_member *member)
+{
     const xx_corelltec_block *block;
 
-    if (member->block_index < 0 ||
-        (size_t)member->block_index >= stream->block_count) {
+    if (member->block_index < 0 || (size_t)member->block_index >= stream->block_count) {
         return false;
     }
     block = &stream->blocks[member->block_index];
@@ -641,35 +599,25 @@ static bool xx_corelltec_set_record(xx_archive_record *record,
     return xx_archive_record_set_original_name(record, member->name) &&
            /* The block's packed size, shared by every member of that block:
             * the format stores no per-member packed size. */
-           xx_archive_record_set_meta_u64(record, XX_META_ID_COMPRESSED_SIZE,
-                                          (uint64_t)block->compressed_size) &&
-           xx_archive_record_set_meta_u64(record, XX_META_ID_UNCOMPRESSED_SIZE,
-                                          (uint64_t)member->size) &&
-           xx_archive_record_set_meta_u64(record, XX_META_ID_COMPRESSION_METHOD,
-                                          0U) &&
+           xx_archive_record_set_meta_u64(record, XX_META_ID_COMPRESSED_SIZE, (uint64_t)block->compressed_size) &&
+           xx_archive_record_set_meta_u64(record, XX_META_ID_UNCOMPRESSED_SIZE, (uint64_t)member->size) &&
+           xx_archive_record_set_meta_u64(record, XX_META_ID_COMPRESSION_METHOD, 0U) &&
            /* Which slice of the block's plaintext the member owns. */
-           xx_archive_record_set_meta_u64(
-               record, XX_META_ID_RELATIVE_OFFSET_LOCAL_HEADER,
-               (uint64_t)member->offset_in_block) &&
-           xx_archive_record_set_meta_bool(record, XX_META_ID_IS_FOLDER,
-                                           false) &&
-           xx_archive_record_set_meta_bool(record, XX_META_ID_IS_ENCRYPTED,
-                                           false);
+           xx_archive_record_set_meta_u64(record, XX_META_ID_RELATIVE_OFFSET_LOCAL_HEADER, (uint64_t)member->offset_in_block) &&
+           xx_archive_record_set_meta_bool(record, XX_META_ID_IS_FOLDER, false) && xx_archive_record_set_meta_bool(record, XX_META_ID_IS_ENCRYPTED, false);
 }
 
-static bool xx_corelltec_copy_options(xx_list_s *target,
-                                      const xx_list_s *options) {
+static bool xx_corelltec_copy_options(xx_list_s *target, const xx_list_s *options)
+{
     size_t index;
 
     if (!target || !options) return options == NULL;
     for (index = 0U; index < options->count; ++index) {
-        const xx_meta *source =
-            (const xx_meta *)xx_list_at((const xx_list_t *)options, index);
+        const xx_meta *source = (const xx_meta *)xx_list_at((const xx_list_t *)options, index);
         xx_meta copied;
         if (!source) continue;
         xx_meta_init(&copied, source->meta_id);
-        if (!xx_var_copy(&copied.var, &source->var) ||
-            !xx_list_append(target, &copied)) {
+        if (!xx_var_copy(&copied.var, &source->var) || !xx_list_append(target, &copied)) {
             xx_meta_cleanup(&copied);
             return false;
         }
@@ -677,21 +625,20 @@ static bool xx_corelltec_copy_options(xx_list_s *target,
     return true;
 }
 
-static const xx_var *xx_corelltec_get_option(const xx_list_s *options,
-                                             uint32_t meta_id) {
+static const xx_var *xx_corelltec_get_option(const xx_list_s *options, uint32_t meta_id)
+{
     size_t index;
 
     if (!options) return NULL;
     for (index = 0U; index < options->count; ++index) {
-        const xx_meta *meta =
-            (const xx_meta *)xx_list_at((const xx_list_t *)options, index);
+        const xx_meta *meta = (const xx_meta *)xx_list_at((const xx_list_t *)options, index);
         if (meta && meta->meta_id == meta_id) return &meta->var;
     }
     return NULL;
 }
 
-xx_archive_record_state *xx_corelltec_create_archive_records_reading(
-    Abstractformat *self, const xx_list_s *options, xx_pd_struct *pd) {
+xx_archive_record_state *xx_corelltec_create_archive_records_reading(Abstractformat *self, const xx_list_s *options, xx_pd_struct *pd)
+{
     xx_corelltec_stream *stream;
     xx_archive_record_state *state;
 
@@ -707,10 +654,7 @@ xx_archive_record_state *xx_corelltec_create_archive_records_reading(
     state->internal_state = stream;
     state->free_internal = xx_corelltec_stream_free;
     state->total_records = (int64_t)stream->count;
-    if (!xx_corelltec_copy_options(&state->options, options) ||
-        (stream->count != 0U &&
-         !xx_corelltec_set_record(&state->current_record, stream,
-                                  &stream->items[0]))) {
+    if (!xx_corelltec_copy_options(&state->options, options) || (stream->count != 0U && !xx_corelltec_set_record(&state->current_record, stream, &stream->items[0]))) {
         xx_archive_record_state_free(state);
         return NULL;
     }
@@ -719,20 +663,16 @@ xx_archive_record_state *xx_corelltec_create_archive_records_reading(
     return state;
 }
 
-const xx_archive_record *xx_corelltec_get_current_archive_record(
-    Abstractformat *self, xx_archive_record_state *state) {
-    return self && state && state->format == self && state->has_record
-               ? &state->current_record
-               : NULL;
+const xx_archive_record *xx_corelltec_get_current_archive_record(Abstractformat *self, xx_archive_record_state *state)
+{
+    return self && state && state->format == self && state->has_record ? &state->current_record : NULL;
 }
 
-bool xx_corelltec_archive_record_move_to_next(Abstractformat *self,
-                                              xx_archive_record_state *state,
-                                              xx_pd_struct *pd) {
+bool xx_corelltec_archive_record_move_to_next(Abstractformat *self, xx_archive_record_state *state, xx_pd_struct *pd)
+{
     xx_corelltec_stream *stream;
 
-    if (!self || !state || state->format != self || !state->has_record ||
-        (pd && xx_pd_is_stopped(pd))) {
+    if (!self || !state || state->format != self || !state->has_record || (pd && xx_pd_is_stopped(pd))) {
         return false;
     }
     stream = (xx_corelltec_stream *)state->internal_state;
@@ -744,13 +684,12 @@ bool xx_corelltec_archive_record_move_to_next(Abstractformat *self,
     }
     ++stream->index;
     ++state->current_index;
-    state->has_record = xx_corelltec_set_record(&state->current_record, stream,
-                                                &stream->items[stream->index]);
+    state->has_record = xx_corelltec_set_record(&state->current_record, stream, &stream->items[stream->index]);
     return state->has_record;
 }
 
-bool xx_corelltec_unpack_current_archive_record(
-    Abstractformat *self, xx_archive_record_state *state, xx_pd_struct *pd) {
+bool xx_corelltec_unpack_current_archive_record(Abstractformat *self, xx_archive_record_state *state, xx_pd_struct *pd)
+{
     xx_corelltec_stream *stream;
     const xx_corelltec_member *member;
     const xx_var *path_option;
@@ -762,8 +701,7 @@ bool xx_corelltec_unpack_current_archive_record(
     bool result = false;
     bool created = false;
 
-    if (!self || !state || state->format != self || !state->has_record ||
-        (pd && xx_pd_is_stopped(pd))) {
+    if (!self || !state || state->format != self || !state->has_record || (pd && xx_pd_is_stopped(pd))) {
         return false;
     }
     stream = (xx_corelltec_stream *)state->internal_state;
@@ -771,19 +709,15 @@ bool xx_corelltec_unpack_current_archive_record(
     member = &stream->items[stream->index];
     if (!xx_corelltec_path_safe(member->name)) return false;
 
-    path_option =
-        xx_corelltec_get_option(&state->options, XX_META_ID_OPT_UNPACK_PATH);
+    path_option = xx_corelltec_get_option(&state->options, XX_META_ID_OPT_UNPACK_PATH);
     if (!path_option) {
-        result = xx_corelltec_decode(self, stream, member, &plain, &plain_size,
-                                     pd);
+        result = xx_corelltec_decode(self, stream, member, &plain, &plain_size, pd);
         xx_mem_free(plain);
         return result;
     }
-    if (path_option->type == XX_VAR_TYPE_STRING ||
-        path_option->type == XX_VAR_TYPE_STRING_VIEW) {
+    if (path_option->type == XX_VAR_TYPE_STRING || path_option->type == XX_VAR_TYPE_STRING_VIEW) {
         base_path = xx_var_get_str(path_option);
-    } else if (path_option->type == XX_VAR_TYPE_WSTRING ||
-               path_option->type == XX_VAR_TYPE_WSTRING_VIEW) {
+    } else if (path_option->type == XX_VAR_TYPE_WSTRING || path_option->type == XX_VAR_TYPE_WSTRING_VIEW) {
         converted_path = xx_str_unicode_to_utf8(xx_var_get_wstr(path_option));
         base_path = converted_path;
     }
@@ -791,8 +725,7 @@ bool xx_corelltec_unpack_current_archive_record(
         xx_str_free(converted_path);
         return false;
     }
-    if (base_path[0] != '\0' && base_path[xx_str_len(base_path) - 1U] != '/' &&
-        base_path[xx_str_len(base_path) - 1U] != '\\') {
+    if (base_path[0] != '\0' && base_path[xx_str_len(base_path) - 1U] != '/' && base_path[xx_str_len(base_path) - 1U] != '\\') {
         target_path = xx_str_concat3(base_path, "/", member->name);
     } else {
         target_path = xx_str_concat(base_path, member->name);
@@ -800,8 +733,7 @@ bool xx_corelltec_unpack_current_archive_record(
     xx_str_free(converted_path);
     if (!target_path) return false;
 
-    if (!xx_store_create_dirs_a(target_path, false) ||
-        !xx_corelltec_decode(self, stream, member, &plain, &plain_size, pd)) {
+    if (!xx_store_create_dirs_a(target_path, false) || !xx_corelltec_decode(self, stream, member, &plain, &plain_size, pd)) {
         xx_str_free(target_path);
         return false;
     }
@@ -812,8 +744,7 @@ bool xx_corelltec_unpack_current_archive_record(
 
         result = output != NULL;
         while (result && completed < plain_size) {
-            ssize_t sent =
-                xx_io_write(output, plain + completed, plain_size - completed);
+            ssize_t sent = xx_io_write(output, plain + completed, plain_size - completed);
             if (sent <= 0 || (size_t)sent > plain_size - completed) {
                 result = false;
                 break;
@@ -828,8 +759,8 @@ bool xx_corelltec_unpack_current_archive_record(
     return result;
 }
 
-void xx_corelltec_free_archive_records_reading(
-    Abstractformat *self, xx_archive_record_state *state) {
+void xx_corelltec_free_archive_records_reading(Abstractformat *self, xx_archive_record_state *state)
+{
     (void)self;
     xx_archive_record_state_free(state);
 }

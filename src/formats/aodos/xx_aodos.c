@@ -68,35 +68,23 @@ typedef struct aodos_tree_s {
     size_t used_count;
 } aodos_tree;
 
-static const uint8_t aodos_magic[4] = { 0xa0U, 0x00U, 0x16U, 0x01U };
+static const uint8_t aodos_magic[4] = {0xa0U, 0x00U, 0x16U, 0x01U};
 
 /* KOI8-R's upper half, kept as Unicode scalar values before UTF-8 emission. */
 static const uint16_t aodos_koi8r_high[128] = {
-    0x2500,0x2502,0x250c,0x2510,0x2514,0x2518,0x251c,0x2524,
-    0x252c,0x2534,0x253c,0x2580,0x2584,0x2588,0x258c,0x2590,
-    0x2591,0x2592,0x2593,0x2320,0x25a0,0x2219,0x221a,0x2248,
-    0x2264,0x2265,0x00a0,0x2321,0x00b0,0x00b2,0x00b7,0x00f7,
-    0x2550,0x2551,0x2552,0x0451,0x2553,0x2554,0x2555,0x2556,
-    0x2557,0x2558,0x2559,0x255a,0x255b,0x255c,0x255d,0x255e,
-    0x255f,0x2560,0x2561,0x0401,0x2562,0x2563,0x2564,0x2565,
-    0x2566,0x2567,0x2568,0x2569,0x256a,0x256b,0x256c,0x00a9,
-    0x044e,0x0430,0x0431,0x0446,0x0434,0x0435,0x0444,0x0433,
-    0x0445,0x0438,0x0439,0x043a,0x043b,0x043c,0x043d,0x043e,
-    0x043f,0x044f,0x0440,0x0441,0x0442,0x0443,0x0436,0x0432,
-    0x044c,0x044b,0x0437,0x0448,0x044d,0x0449,0x0447,0x044a,
-    0x042e,0x0410,0x0411,0x0426,0x0414,0x0415,0x0424,0x0413,
-    0x0425,0x0418,0x0419,0x041a,0x041b,0x041c,0x041d,0x041e,
-    0x041f,0x042f,0x0420,0x0421,0x0422,0x0423,0x0416,0x0412,
-    0x042c,0x042b,0x0417,0x0428,0x042d,0x0429,0x0427,0x042a
-};
+    0x2500, 0x2502, 0x250c, 0x2510, 0x2514, 0x2518, 0x251c, 0x2524, 0x252c, 0x2534, 0x253c, 0x2580, 0x2584, 0x2588, 0x258c, 0x2590, 0x2591, 0x2592, 0x2593,
+    0x2320, 0x25a0, 0x2219, 0x221a, 0x2248, 0x2264, 0x2265, 0x00a0, 0x2321, 0x00b0, 0x00b2, 0x00b7, 0x00f7, 0x2550, 0x2551, 0x2552, 0x0451, 0x2553, 0x2554,
+    0x2555, 0x2556, 0x2557, 0x2558, 0x2559, 0x255a, 0x255b, 0x255c, 0x255d, 0x255e, 0x255f, 0x2560, 0x2561, 0x0401, 0x2562, 0x2563, 0x2564, 0x2565, 0x2566,
+    0x2567, 0x2568, 0x2569, 0x256a, 0x256b, 0x256c, 0x00a9, 0x044e, 0x0430, 0x0431, 0x0446, 0x0434, 0x0435, 0x0444, 0x0433, 0x0445, 0x0438, 0x0439, 0x043a,
+    0x043b, 0x043c, 0x043d, 0x043e, 0x043f, 0x044f, 0x0440, 0x0441, 0x0442, 0x0443, 0x0436, 0x0432, 0x044c, 0x044b, 0x0437, 0x0448, 0x044d, 0x0449, 0x0447,
+    0x044a, 0x042e, 0x0410, 0x0411, 0x0426, 0x0414, 0x0415, 0x0424, 0x0413, 0x0425, 0x0418, 0x0419, 0x041a, 0x041b, 0x041c, 0x041d, 0x041e, 0x041f, 0x042f,
+    0x0420, 0x0421, 0x0422, 0x0423, 0x0416, 0x0412, 0x042c, 0x042b, 0x0417, 0x0428, 0x042d, 0x0429, 0x0427, 0x042a};
 
-static bool aodos_read_at(xx_io_device *device, int64_t offset, void *buffer,
-                          size_t size) {
+static bool aodos_read_at(xx_io_device *device, int64_t offset, void *buffer, size_t size)
+{
     size_t transfer_capacity = xx_get_file_buffer_size();
     size_t done = 0U;
-    if (!device || (!buffer && size != 0U) || offset < 0 ||
-        xx_io_seek64(device, offset, SEEK_SET) != 0)
-        return false;
+    if (!device || (!buffer && size != 0U) || offset < 0 || xx_io_seek64(device, offset, SEEK_SET) != 0) return false;
     while (done < size) {
         size_t request = size - done;
         ssize_t amount;
@@ -108,17 +96,17 @@ static bool aodos_read_at(xx_io_device *device, int64_t offset, void *buffer,
     return true;
 }
 
-static bool aodos_contains(const uint8_t *buffer, size_t size,
-                           const char *needle) {
+static bool aodos_contains(const uint8_t *buffer, size_t size, const char *needle)
+{
     size_t needle_size, index;
-    if (!buffer || !needle || !(needle_size = xx_rt_strlen(needle)) ||
-        needle_size > size) return false;
+    if (!buffer || !needle || !(needle_size = xx_rt_strlen(needle)) || needle_size > size) return false;
     for (index = 0U; index <= size - needle_size; ++index)
         if (xx_rt_memcmp(buffer + index, needle, needle_size) == 0) return true;
     return false;
 }
 
-static bool aodos_all_f6(const uint8_t *bytes, size_t size) {
+static bool aodos_all_f6(const uint8_t *bytes, size_t size)
+{
     size_t index;
     if (!bytes || size == 0U) return false;
     for (index = 0U; index < size; ++index)
@@ -126,7 +114,8 @@ static bool aodos_all_f6(const uint8_t *bytes, size_t size) {
     return true;
 }
 
-static bool aodos_all_zero(const uint8_t *bytes, size_t size) {
+static bool aodos_all_zero(const uint8_t *bytes, size_t size)
+{
     size_t index;
     if (!bytes || size == 0U) return false;
     for (index = 0U; index < size; ++index)
@@ -134,7 +123,8 @@ static bool aodos_all_zero(const uint8_t *bytes, size_t size) {
     return true;
 }
 
-static char *aodos_copy_string(const char *source) {
+static char *aodos_copy_string(const char *source)
+{
     size_t size;
     char *result;
     if (!source || (size = xx_str_len(source)) == SIZE_MAX) return NULL;
@@ -144,8 +134,8 @@ static char *aodos_copy_string(const char *source) {
     return result;
 }
 
-static bool aodos_append_utf8(char *output, size_t capacity, size_t *at,
-                              uint16_t codepoint) {
+static bool aodos_append_utf8(char *output, size_t capacity, size_t *at, uint16_t codepoint)
+{
     if (!output || !at) return false;
     if (codepoint < 0x80U) {
         if (*at >= capacity) return false;
@@ -163,7 +153,8 @@ static bool aodos_append_utf8(char *output, size_t capacity, size_t *at,
     return true;
 }
 
-static bool aodos_reserved_name(const char *name) {
+static bool aodos_reserved_name(const char *name)
+{
     char stem[16];
     size_t at = 0U;
     if (!name) return false;
@@ -173,15 +164,14 @@ static bool aodos_reserved_name(const char *name) {
         ++at;
     }
     stem[at] = 0;
-    if (xx_rt_strcmp(stem, "AUX") == 0 || xx_rt_strcmp(stem, "CON") == 0 ||
-        xx_rt_strcmp(stem, "NUL") == 0 || xx_rt_strcmp(stem, "PRN") == 0 ||
-        xx_rt_strcmp(stem, "CLOCK$") == 0) return true;
-    return at == 4U && (xx_rt_memcmp(stem, "COM", 3U) == 0 ||
-                        xx_rt_memcmp(stem, "LPT", 3U) == 0) &&
-           stem[3] >= '1' && stem[3] <= '9';
+    if (xx_rt_strcmp(stem, "AUX") == 0 || xx_rt_strcmp(stem, "CON") == 0 || xx_rt_strcmp(stem, "NUL") == 0 || xx_rt_strcmp(stem, "PRN") == 0 ||
+        xx_rt_strcmp(stem, "CLOCK$") == 0)
+        return true;
+    return at == 4U && (xx_rt_memcmp(stem, "COM", 3U) == 0 || xx_rt_memcmp(stem, "LPT", 3U) == 0) && stem[3] >= '1' && stem[3] <= '9';
 }
 
-static char *aodos_component(const uint8_t *bytes, size_t size) {
+static char *aodos_component(const uint8_t *bytes, size_t size)
+{
     char *result;
     size_t input, output = 0U, index;
     if (!bytes || size == 0U || size > (SIZE_MAX - 2U) / 3U) return NULL;
@@ -195,19 +185,16 @@ static char *aodos_component(const uint8_t *bytes, size_t size) {
     result = (char *)xx_mem_alloc(input * 3U + 2U);
     if (!result) return NULL;
     for (index = 0U; index < input; ++index) {
-        uint16_t codepoint = bytes[index] < 0x80U ? bytes[index] :
-                             aodos_koi8r_high[bytes[index] - 0x80U];
-        if (codepoint < 0x20U || codepoint == '"' || codepoint == '*' ||
-            codepoint == ':' || codepoint == '<' || codepoint == '>' ||
-            codepoint == '?' || codepoint == '|' || codepoint == '/' ||
-            codepoint == '\\') codepoint = '_';
+        uint16_t codepoint = bytes[index] < 0x80U ? bytes[index] : aodos_koi8r_high[bytes[index] - 0x80U];
+        if (codepoint < 0x20U || codepoint == '"' || codepoint == '*' || codepoint == ':' || codepoint == '<' || codepoint == '>' || codepoint == '?' ||
+            codepoint == '|' || codepoint == '/' || codepoint == '\\')
+            codepoint = '_';
         if (!aodos_append_utf8(result, input * 3U + 1U, &output, codepoint)) {
             xx_mem_free(result);
             return NULL;
         }
     }
-    while (output != 0U && (result[output - 1U] == ' ' ||
-                             result[output - 1U] == '.')) --output;
+    while (output != 0U && (result[output - 1U] == ' ' || result[output - 1U] == '.')) --output;
     if (output == 0U) result[output++] = '_';
     result[output] = 0;
     if (aodos_reserved_name(result)) {
@@ -217,7 +204,8 @@ static char *aodos_component(const uint8_t *bytes, size_t size) {
     return result;
 }
 
-static bool aodos_path_equal(const char *first, const char *second) {
+static bool aodos_path_equal(const char *first, const char *second)
+{
     size_t index = 0U;
     if (!first || !second) return false;
     while (first[index] && second[index]) {
@@ -231,16 +219,15 @@ static bool aodos_path_equal(const char *first, const char *second) {
     return first[index] == second[index];
 }
 
-static char *aodos_join(const char *parent, const char *leaf) {
+static char *aodos_join(const char *parent, const char *leaf)
+{
     size_t parent_size, leaf_size;
     char *result;
     if (!parent || !leaf) return NULL;
     parent_size = xx_str_len(parent);
     leaf_size = xx_str_len(leaf);
-    if (leaf_size > SIZE_MAX - parent_size - (parent_size != 0U ? 2U : 1U))
-        return NULL;
-    result = (char *)xx_mem_alloc(parent_size + leaf_size +
-                                  (parent_size != 0U ? 2U : 1U));
+    if (leaf_size > SIZE_MAX - parent_size - (parent_size != 0U ? 2U : 1U)) return NULL;
+    result = (char *)xx_mem_alloc(parent_size + leaf_size + (parent_size != 0U ? 2U : 1U));
     if (!result) return NULL;
     if (parent_size != 0U) {
         xx_rt_memcpy(result, parent, parent_size);
@@ -252,14 +239,13 @@ static char *aodos_join(const char *parent, const char *leaf) {
     return result;
 }
 
-static char *aodos_suffix(const char *leaf, unsigned suffix) {
+static char *aodos_suffix(const char *leaf, unsigned suffix)
+{
     char suffix_text[16];
     const char *dot;
     size_t leaf_size, suffix_size, before, after;
     char *result;
-    if (!leaf || suffix == 0U ||
-        xx_rt_snprintf(suffix_text, sizeof(suffix_text), "~%u", suffix) < 0)
-        return NULL;
+    if (!leaf || suffix == 0U || xx_rt_snprintf(suffix_text, sizeof(suffix_text), "~%u", suffix) < 0) return NULL;
     leaf_size = xx_str_len(leaf);
     suffix_size = xx_str_len(suffix_text);
     dot = xx_rt_strrchr(leaf, '.');
@@ -280,7 +266,8 @@ static char *aodos_suffix(const char *leaf, unsigned suffix) {
     return result;
 }
 
-static void aodos_tree_cleanup(aodos_tree *tree) {
+static void aodos_tree_cleanup(aodos_tree *tree)
+{
     size_t index;
     if (!tree) return;
     for (index = 0U; index < 256U; ++index) {
@@ -293,13 +280,12 @@ static void aodos_tree_cleanup(aodos_tree *tree) {
     xx_mem_zero(tree, sizeof(*tree));
 }
 
-static bool aodos_tree_claim(aodos_tree *tree, const char *parent,
-                             const char *leaf, char **result) {
+static bool aodos_tree_claim(aodos_tree *tree, const char *parent, const char *leaf, char **result)
+{
     unsigned suffix;
     if (!tree || !parent || !leaf || !result) return false;
     for (suffix = 1U; suffix <= AODOS_MAX_COLLISIONS; ++suffix) {
-        char *candidate_leaf = suffix == 1U ? aodos_copy_string(leaf) :
-                                                aodos_suffix(leaf, suffix - 1U);
+        char *candidate_leaf = suffix == 1U ? aodos_copy_string(leaf) : aodos_suffix(leaf, suffix - 1U);
         char *candidate;
         size_t index;
         bool used = false;
@@ -318,9 +304,7 @@ static bool aodos_tree_claim(aodos_tree *tree, const char *parent,
                 xx_mem_free(candidate);
                 return false;
             }
-            char **grown = (char **)xx_mem_realloc(tree->used,
-                                                    (tree->used_count + 1U) *
-                                                    sizeof(*grown));
+            char **grown = (char **)xx_mem_realloc(tree->used, (tree->used_count + 1U) * sizeof(*grown));
             char *stored;
             if (!grown) {
                 xx_mem_free(candidate);
@@ -341,8 +325,8 @@ static bool aodos_tree_claim(aodos_tree *tree, const char *parent,
     return false;
 }
 
-static bool aodos_tree_resolve(aodos_tree *tree, unsigned index,
-                               unsigned depth, const char **result) {
+static bool aodos_tree_resolve(aodos_tree *tree, unsigned index, unsigned depth, const char **result)
+{
     const char *parent_path;
     char *path;
     if (!tree || !result || depth > AODOS_MAX_DEPTH) return false;
@@ -356,9 +340,7 @@ static bool aodos_tree_resolve(aodos_tree *tree, unsigned index,
     }
     if (!tree->leaf[index] || tree->resolving[index]) return false;
     tree->resolving[index] = true;
-    if (!aodos_tree_resolve(tree, tree->parent[index], depth + 1U,
-                            &parent_path) ||
-        !aodos_tree_claim(tree, parent_path, tree->leaf[index], &path)) {
+    if (!aodos_tree_resolve(tree, tree->parent[index], depth + 1U, &parent_path) || !aodos_tree_claim(tree, parent_path, tree->leaf[index], &path)) {
         tree->resolving[index] = false;
         return false;
     }
@@ -368,7 +350,8 @@ static bool aodos_tree_resolve(aodos_tree *tree, unsigned index,
     return true;
 }
 
-static void aodos_stream_free(void *opaque) {
+static void aodos_stream_free(void *opaque)
+{
     aodos_stream *stream = (aodos_stream *)opaque;
     size_t index;
     if (!stream) return;
@@ -378,19 +361,19 @@ static void aodos_stream_free(void *opaque) {
     xx_mem_free(stream);
 }
 
-static bool aodos_add_member(aodos_stream *stream, const aodos_member *member) {
+static bool aodos_add_member(aodos_stream *stream, const aodos_member *member)
+{
     aodos_member *grown;
-    if (!stream || !member || stream->count >= AODOS_MAX_ENTRIES ||
-        stream->count > SIZE_MAX / sizeof(*grown) - 1U) return false;
-    grown = (aodos_member *)xx_mem_realloc(stream->items,
-                                           (stream->count + 1U) * sizeof(*grown));
+    if (!stream || !member || stream->count >= AODOS_MAX_ENTRIES || stream->count > SIZE_MAX / sizeof(*grown) - 1U) return false;
+    grown = (aodos_member *)xx_mem_realloc(stream->items, (stream->count + 1U) * sizeof(*grown));
     if (!grown) return false;
     stream->items = grown;
     stream->items[stream->count++] = *member;
     return true;
 }
 
-static bool aodos_parse(Abstractformat *format, aodos_stream **result) {
+static bool aodos_parse(Abstractformat *format, aodos_stream **result)
+{
     uint8_t boot[AODOS_BLOCK_SIZE];
     uint8_t *directory = NULL;
     aodos_raw *raw = NULL;
@@ -400,47 +383,36 @@ static bool aodos_parse(Abstractformat *format, aodos_stream **result) {
     size_t raw_count = 0U, index;
     bool terminator = false, ao_style;
     xx_mem_zero(&tree, sizeof(tree));
-    if (!format || !format->device || !result || format->base_address < 0)
-        return false;
+    if (!format || !format->device || !result || format->base_address < 0) return false;
     total = xx_io_total_size(format->device);
     if (total < format->base_address) return false;
     size = total - format->base_address;
-    if (size < (int64_t)AODOS_MIN_SIZE || size > (int64_t)AODOS_MAX_SIZE ||
-        !aodos_read_at(format->device, format->base_address, boot, sizeof(boot)))
-        return false;
+    if (size < (int64_t)AODOS_MIN_SIZE || size > (int64_t)AODOS_MAX_SIZE || !aodos_read_at(format->device, format->base_address, boot, sizeof(boot))) return false;
     /* AO-DOS and MKDOS share the directory layout.  Some BK images omit the
      * boot record entirely; the directory walk below is the decisive check. */
-    if (xx_rt_memcmp(boot, aodos_magic, sizeof(aodos_magic)) != 0 &&
-        !(boot[0] == 0xa0U && boot[1] == 0U &&
-          (boot[2] == 0x20U || boot[2] == 0x22U) && boot[3] == 1U) &&
-        !aodos_all_zero(boot, 4U)) return false;
+    if (xx_rt_memcmp(boot, aodos_magic, sizeof(aodos_magic)) != 0 && !(boot[0] == 0xa0U && boot[1] == 0U && (boot[2] == 0x20U || boot[2] == 0x22U) && boot[3] == 1U) &&
+        !aodos_all_zero(boot, 4U))
+        return false;
     ao_style = aodos_contains(boot, sizeof(boot), "AO-DOS");
     directory = (uint8_t *)xx_mem_alloc(AODOS_DIRECTORY_SIZE);
     raw = (aodos_raw *)xx_mem_calloc(AODOS_MAX_ENTRIES, sizeof(*raw));
     stream = (aodos_stream *)xx_mem_calloc(1U, sizeof(*stream));
-    if (!directory || !raw || !stream ||
-        !aodos_read_at(format->device,
-                       format->base_address + AODOS_DIRECTORY_OFFSET,
-                       directory, AODOS_DIRECTORY_SIZE)) goto fail;
+    if (!directory || !raw || !stream || !aodos_read_at(format->device, format->base_address + AODOS_DIRECTORY_OFFSET, directory, AODOS_DIRECTORY_SIZE)) goto fail;
     for (index = 0U; index < AODOS_MAX_ENTRIES; ++index) {
         const uint8_t *entry = directory + index * AODOS_ENTRY_SIZE;
         aodos_raw value;
         xx_mem_zero(&value, sizeof(value));
-        value.entry_offset = (int64_t)AODOS_DIRECTORY_OFFSET +
-                             (int64_t)index * AODOS_ENTRY_SIZE;
+        value.entry_offset = (int64_t)AODOS_DIRECTORY_OFFSET + (int64_t)index * AODOS_ENTRY_SIZE;
         value.word = xx_data_get_u16(entry, 2, 0, false);
         xx_rt_memcpy(value.name, entry + 2U, AODOS_NAME_SIZE);
         value.start_block = xx_data_get_u16(entry + 16U, 2, 0, false);
         value.block_count = xx_data_get_u16(entry + 18U, 2, 0, false);
         value.load_address = xx_data_get_u16(entry + 20U, 2, 0, false);
         value.byte_size = xx_data_get_u16(entry + 22U, 2, 0, false);
-        if (aodos_all_f6(value.name, sizeof(value.name)) ||
-            aodos_all_zero(value.name, sizeof(value.name))) {
-            if (raw_count == 0U ||
-                (aodos_all_f6(value.name, sizeof(value.name)) &&
-                 value.word != 0xffffU) ||
-                (aodos_all_zero(value.name, sizeof(value.name)) &&
-                 value.word != 0U)) goto fail;
+        if (aodos_all_f6(value.name, sizeof(value.name)) || aodos_all_zero(value.name, sizeof(value.name))) {
+            if (raw_count == 0U || (aodos_all_f6(value.name, sizeof(value.name)) && value.word != 0xffffU) ||
+                (aodos_all_zero(value.name, sizeof(value.name)) && value.word != 0U))
+                goto fail;
             terminator = true;
             break;
         }
@@ -449,8 +421,7 @@ static bool aodos_parse(Abstractformat *format, aodos_stream **result) {
         if (value.word == 0xffffU) {
             int64_t terminal_blocks = size / (int64_t)AODOS_BLOCK_SIZE;
             if (terminal_blocks > 1600) terminal_blocks = 1600;
-            if ((int64_t)value.start_block + value.block_count >=
-                terminal_blocks) {
+            if ((int64_t)value.start_block + value.block_count >= terminal_blocks) {
                 terminator = true;
                 break;
             }
@@ -459,37 +430,26 @@ static bool aodos_parse(Abstractformat *format, aodos_stream **result) {
         /* A damaged MKDOS directory can turn the final live record into a
          * disk-sized extent while retaining a small byte count.  Treat it as
          * the end of salvage, as with a deleted free-space record. */
-        if (!ao_style && raw_count != 0U &&
-            (uint32_t)value.block_count * AODOS_BLOCK_SIZE >
-                (uint32_t)value.byte_size + UINT32_C(65536) + AODOS_BLOCK_SIZE &&
-            (int64_t)value.start_block + value.block_count >=
-                ((size / (int64_t)AODOS_BLOCK_SIZE) < 1600 ?
-                 size / (int64_t)AODOS_BLOCK_SIZE : 1600)) {
+        if (!ao_style && raw_count != 0U && (uint32_t)value.block_count * AODOS_BLOCK_SIZE > (uint32_t)value.byte_size + UINT32_C(65536) + AODOS_BLOCK_SIZE &&
+            (int64_t)value.start_block + value.block_count >= ((size / (int64_t)AODOS_BLOCK_SIZE) < 1600 ? size / (int64_t)AODOS_BLOCK_SIZE : 1600)) {
             terminator = true;
             break;
         }
         if (value.name[0] == ' ') goto fail;
         for (size_t character = 0U; character < sizeof(value.name); ++character)
             if (value.name[character] < 0x20U) goto fail;
-        if ((int64_t)value.byte_size >
-            (int64_t)value.block_count * AODOS_BLOCK_SIZE) goto fail;
+        if ((int64_t)value.byte_size > (int64_t)value.block_count * AODOS_BLOCK_SIZE) goto fail;
         if (value.block_count != 0U) {
             if (value.start_block < 1U) goto fail;
-            if (first_extent < 0 ||
-                (int64_t)value.start_block * AODOS_BLOCK_SIZE < first_extent)
-                first_extent = (int64_t)value.start_block * AODOS_BLOCK_SIZE;
+            if (first_extent < 0 || (int64_t)value.start_block * AODOS_BLOCK_SIZE < first_extent) first_extent = (int64_t)value.start_block * AODOS_BLOCK_SIZE;
         }
         raw[raw_count++] = value;
     }
-    if (!terminator || first_extent < 0 ||
-        (int64_t)AODOS_DIRECTORY_OFFSET +
-            (int64_t)(raw_count + 1U) * AODOS_ENTRY_SIZE > first_extent)
-        goto fail;
+    if (!terminator || first_extent < 0 || (int64_t)AODOS_DIRECTORY_OFFSET + (int64_t)(raw_count + 1U) * AODOS_ENTRY_SIZE > first_extent) goto fail;
     for (index = 0U; index < raw_count; ++index) {
         unsigned own;
         char *leaf;
-        if (!(raw[index].name[0] == 0x7fU ||
-              (ao_style && (raw[index].word & 0xffU) != 0U))) continue;
+        if (!(raw[index].name[0] == 0x7fU || (ao_style && (raw[index].word & 0xffU) != 0U))) continue;
         own = raw[index].word & 0xffU;
         if (own == 0U) goto fail;
         if (tree.leaf[own]) goto fail;
@@ -509,8 +469,7 @@ static bool aodos_parse(Abstractformat *format, aodos_stream **result) {
         member.block_count = raw[index].block_count;
         member.load_address = raw[index].load_address;
         own = raw[index].word & 0xffU;
-        if (raw[index].name[0] == 0x7fU ||
-            (ao_style && own != 0U)) {
+        if (raw[index].name[0] == 0x7fU || (ao_style && own != 0U)) {
             const char *directory_path;
             if (!aodos_tree_resolve(&tree, own, 0U, &directory_path)) goto fail;
             member.name = aodos_copy_string(directory_path);
@@ -518,31 +477,23 @@ static bool aodos_parse(Abstractformat *format, aodos_stream **result) {
             member.data_offset = member.entry_offset;
         } else {
             char *leaf = aodos_component(raw[index].name, sizeof(raw[index].name));
-            uint32_t span = (uint32_t)raw[index].block_count *
-                            AODOS_BLOCK_SIZE;
+            uint32_t span = (uint32_t)raw[index].block_count * AODOS_BLOCK_SIZE;
             uint32_t data_size = raw[index].byte_size;
             /* On MKDOS media a full final sector can wrap the 16-bit byte
              * count.  The reference reader exposes the preceding complete sectors. */
-            if (!ao_style && span > UINT16_MAX &&
-                data_size == (span & UINT16_MAX))
-                data_size = span - AODOS_BLOCK_SIZE;
-            if ((int64_t)raw[index].start_block * AODOS_BLOCK_SIZE +
-                    data_size > size) {
+            if (!ao_style && span > UINT16_MAX && data_size == (span & UINT16_MAX)) data_size = span - AODOS_BLOCK_SIZE;
+            if ((int64_t)raw[index].start_block * AODOS_BLOCK_SIZE + data_size > size) {
                 if (leaf) xx_mem_free(leaf);
                 continue;
             }
-            if (!leaf || !aodos_tree_resolve(&tree,
-                                             raw[index].word >> 8U, 0U,
-                                             &parent_path) ||
-                !aodos_tree_claim(&tree, parent_path, leaf, &path)) {
+            if (!leaf || !aodos_tree_resolve(&tree, raw[index].word >> 8U, 0U, &parent_path) || !aodos_tree_claim(&tree, parent_path, leaf, &path)) {
                 if (leaf) xx_mem_free(leaf);
                 goto fail;
             }
             xx_mem_free(leaf);
             member.name = path;
             member.byte_size = data_size;
-            member.data_offset = format->base_address +
-                                 (int64_t)raw[index].start_block * AODOS_BLOCK_SIZE;
+            member.data_offset = format->base_address + (int64_t)raw[index].start_block * AODOS_BLOCK_SIZE;
         }
         if (!member.name || !aodos_add_member(stream, &member)) {
             if (member.name) xx_mem_free(member.name);
@@ -564,17 +515,16 @@ fail:
     return false;
 }
 
-static bool aodos_copy_options(xx_list_s *destination, const xx_list_s *source) {
+static bool aodos_copy_options(xx_list_s *destination, const xx_list_s *source)
+{
     size_t index;
     if (!source) return true;
     for (index = 0U; index < source->count; ++index) {
-        const xx_meta *item =
-            (const xx_meta *)xx_list_at((const xx_list_t *)source, index);
+        const xx_meta *item = (const xx_meta *)xx_list_at((const xx_list_t *)source, index);
         xx_meta copy;
         if (!item) continue;
         xx_meta_init(&copy, item->meta_id);
-        if (!xx_var_copy(&copy.var, &item->var) ||
-            !xx_list_append(destination, &copy)) {
+        if (!xx_var_copy(&copy.var, &item->var) || !xx_list_append(destination, &copy)) {
             xx_meta_cleanup(&copy);
             return false;
         }
@@ -582,19 +532,19 @@ static bool aodos_copy_options(xx_list_s *destination, const xx_list_s *source) 
     return true;
 }
 
-static const xx_var *aodos_option(const xx_list_s *options, uint32_t id) {
+static const xx_var *aodos_option(const xx_list_s *options, uint32_t id)
+{
     size_t index;
     if (!options) return NULL;
     for (index = 0U; index < options->count; ++index) {
-        const xx_meta *item =
-            (const xx_meta *)xx_list_at((const xx_list_t *)options, index);
+        const xx_meta *item = (const xx_meta *)xx_list_at((const xx_list_t *)options, index);
         if (item && item->meta_id == id) return &item->var;
     }
     return NULL;
 }
 
-static bool aodos_set_record(xx_archive_record *record,
-                             const aodos_member *member) {
+static bool aodos_set_record(xx_archive_record *record, const aodos_member *member)
+{
     xx_archive_record_cleanup(record);
     xx_archive_record_init(record);
     record->header_offset = member->entry_offset;
@@ -602,23 +552,14 @@ static bool aodos_set_record(xx_archive_record *record,
     record->data_offset = member->data_offset;
     record->compressed_size = member->folder ? 0 : member->byte_size;
     return xx_archive_record_set_original_name(record, member->name) &&
-           xx_archive_record_set_meta_u64(record, XX_META_ID_COMPRESSED_SIZE,
-                                          member->folder ? 0U : member->byte_size) &&
-           xx_archive_record_set_meta_u64(record, XX_META_ID_UNCOMPRESSED_SIZE,
-                                          member->folder ? 0U : member->byte_size) &&
-           xx_archive_record_set_meta_u64(record, XX_META_ID_COMPRESSION_METHOD,
-                                          0U) &&
-           xx_archive_record_set_meta_u64(record, XX_META_ID_ATTRIBUTES,
-                                          member->word) &&
-           xx_archive_record_set_meta_bool(record, XX_META_ID_IS_ENCRYPTED,
-                                           false) &&
-           xx_archive_record_set_meta_bool(record, XX_META_ID_IS_FOLDER,
-                                           member->folder);
+           xx_archive_record_set_meta_u64(record, XX_META_ID_COMPRESSED_SIZE, member->folder ? 0U : member->byte_size) &&
+           xx_archive_record_set_meta_u64(record, XX_META_ID_UNCOMPRESSED_SIZE, member->folder ? 0U : member->byte_size) &&
+           xx_archive_record_set_meta_u64(record, XX_META_ID_COMPRESSION_METHOD, 0U) && xx_archive_record_set_meta_u64(record, XX_META_ID_ATTRIBUTES, member->word) &&
+           xx_archive_record_set_meta_bool(record, XX_META_ID_IS_ENCRYPTED, false) && xx_archive_record_set_meta_bool(record, XX_META_ID_IS_FOLDER, member->folder);
 }
 
-static bool aodos_verify_data_buffered(Abstractformat *format,
-                              const aodos_member *member,
-                              xx_pd_struct *pd, uint8_t *buffer, size_t buffer_capacity) {
+static bool aodos_verify_data_buffered(Abstractformat *format, const aodos_member *member, xx_pd_struct *pd, uint8_t *buffer, size_t buffer_capacity)
+{
     size_t remaining;
     int64_t offset;
     if (!format || !member || member->folder) return member && member->folder;
@@ -626,17 +567,15 @@ static bool aodos_verify_data_buffered(Abstractformat *format,
     offset = member->data_offset;
     while (remaining != 0U) {
         size_t amount = remaining < buffer_capacity ? remaining : buffer_capacity;
-        if ((pd && xx_pd_is_stopped(pd)) ||
-            !aodos_read_at(format->device, offset, buffer, amount)) return false;
+        if ((pd && xx_pd_is_stopped(pd)) || !aodos_read_at(format->device, offset, buffer, amount)) return false;
         offset += (int64_t)amount;
         remaining -= amount;
     }
     return true;
 }
 
-static bool aodos_verify_data(Abstractformat *format,
-                              const aodos_member *member,
-                              xx_pd_struct *pd) {
+static bool aodos_verify_data(Abstractformat *format, const aodos_member *member, xx_pd_struct *pd)
+{
     size_t buffer_capacity = xx_get_file_buffer_size();
     uint8_t *buffer = (uint8_t *)xx_mem_alloc(buffer_capacity);
     bool buffer_result;
@@ -646,7 +585,8 @@ static bool aodos_verify_data(Abstractformat *format,
     return buffer_result;
 }
 
-void xx_aodos_init(xx_aodos *image, xx_io_device *device, int64_t base_address) {
+void xx_aodos_init(xx_aodos *image, xx_io_device *device, int64_t base_address)
+{
     if (!image) return;
     xx_mem_zero(image, sizeof(*image));
     xx_format_init(&image->format, device, base_address);
@@ -659,38 +599,36 @@ void xx_aodos_init(xx_aodos *image, xx_io_device *device, int64_t base_address) 
     image->format.check_is_valid = xx_aodos_check_is_valid;
     image->format.handle_base_info = xx_aodos_handle_base_info;
     image->format.get_format_size = xx_aodos_get_format_size;
-    image->format.get_number_of_archive_records =
-        xx_aodos_get_number_of_archive_records;
-    image->format.create_archive_records_reading =
-        xx_aodos_create_archive_records_reading;
-    image->format.get_current_archive_record =
-        xx_aodos_get_current_archive_record;
-    image->format.unpack_current_archive_record =
-        xx_aodos_unpack_current_archive_record;
-    image->format.archive_record_move_to_next =
-        xx_aodos_archive_record_move_to_next;
-    image->format.free_archive_records_reading =
-        xx_aodos_free_archive_records_reading;
+    image->format.get_number_of_archive_records = xx_aodos_get_number_of_archive_records;
+    image->format.create_archive_records_reading = xx_aodos_create_archive_records_reading;
+    image->format.get_current_archive_record = xx_aodos_get_current_archive_record;
+    image->format.unpack_current_archive_record = xx_aodos_unpack_current_archive_record;
+    image->format.archive_record_move_to_next = xx_aodos_archive_record_move_to_next;
+    image->format.free_archive_records_reading = xx_aodos_free_archive_records_reading;
     image->image_end = -1;
 }
 
-xx_aodos *xx_aodos_create(xx_io_device *device, int64_t base_address) {
+xx_aodos *xx_aodos_create(xx_io_device *device, int64_t base_address)
+{
     xx_aodos *image = (xx_aodos *)xx_mem_alloc(sizeof(*image));
     if (image) xx_aodos_init(image, device, base_address);
     return image;
 }
 
-void xx_aodos_destroy(xx_aodos *image) {
+void xx_aodos_destroy(xx_aodos *image)
+{
     if (image) xx_format_cleanup_extra_parameters(&image->format);
 }
 
-void xx_aodos_free(xx_aodos *image) {
+void xx_aodos_free(xx_aodos *image)
+{
     if (!image) return;
     xx_aodos_destroy(image);
     xx_mem_free(image);
 }
 
-bool xx_aodos_check_is_valid(Abstractformat *format, xx_pd_struct *pd) {
+bool xx_aodos_check_is_valid(Abstractformat *format, xx_pd_struct *pd)
+{
     aodos_stream *stream;
     (void)pd;
     if (!aodos_parse(format, &stream)) return false;
@@ -698,7 +636,8 @@ bool xx_aodos_check_is_valid(Abstractformat *format, xx_pd_struct *pd) {
     return true;
 }
 
-bool xx_aodos_handle_base_info(Abstractformat *format, xx_pd_struct *pd) {
+bool xx_aodos_handle_base_info(Abstractformat *format, xx_pd_struct *pd)
+{
     aodos_stream *stream;
     xx_aodos *image;
     (void)pd;
@@ -716,21 +655,18 @@ bool xx_aodos_handle_base_info(Abstractformat *format, xx_pd_struct *pd) {
     return true;
 }
 
-int64_t xx_aodos_get_format_size(Abstractformat *format, xx_pd_struct *pd) {
-    return format && (format->base_info_handled ||
-                      xx_aodos_handle_base_info(format, pd))
-               ? format->format_size : -1;
+int64_t xx_aodos_get_format_size(Abstractformat *format, xx_pd_struct *pd)
+{
+    return format && (format->base_info_handled || xx_aodos_handle_base_info(format, pd)) ? format->format_size : -1;
 }
 
-uint64_t xx_aodos_get_number_of_archive_records(Abstractformat *format,
-                                                 xx_pd_struct *pd) {
-    return format && (format->base_info_handled ||
-                      xx_aodos_handle_base_info(format, pd))
-               ? ((xx_aodos *)format)->number_of_records : 0U;
+uint64_t xx_aodos_get_number_of_archive_records(Abstractformat *format, xx_pd_struct *pd)
+{
+    return format && (format->base_info_handled || xx_aodos_handle_base_info(format, pd)) ? ((xx_aodos *)format)->number_of_records : 0U;
 }
 
-xx_archive_record_state *xx_aodos_create_archive_records_reading(
-    Abstractformat *format, const xx_list_s *options, xx_pd_struct *pd) {
+xx_archive_record_state *xx_aodos_create_archive_records_reading(Abstractformat *format, const xx_list_s *options, xx_pd_struct *pd)
+{
     aodos_stream *stream;
     xx_archive_record_state *state;
     (void)pd;
@@ -744,8 +680,7 @@ xx_archive_record_state *xx_aodos_create_archive_records_reading(
     state->internal_state = stream;
     state->free_internal = aodos_stream_free;
     state->total_records = stream->count;
-    if (!aodos_copy_options(&state->options, options) ||
-        !aodos_set_record(&state->current_record, &stream->items[0])) {
+    if (!aodos_copy_options(&state->options, options) || !aodos_set_record(&state->current_record, &stream->items[0])) {
         xx_archive_record_state_free(state);
         return NULL;
     }
@@ -753,32 +688,26 @@ xx_archive_record_state *xx_aodos_create_archive_records_reading(
     return state;
 }
 
-const xx_archive_record *xx_aodos_get_current_archive_record(
-    Abstractformat *format, xx_archive_record_state *state) {
-    return format && state && state->format == format && state->has_record
-               ? &state->current_record : NULL;
+const xx_archive_record *xx_aodos_get_current_archive_record(Abstractformat *format, xx_archive_record_state *state)
+{
+    return format && state && state->format == format && state->has_record ? &state->current_record : NULL;
 }
 
-bool xx_aodos_archive_record_move_to_next(Abstractformat *format,
-                                           xx_archive_record_state *state,
-                                           xx_pd_struct *pd) {
+bool xx_aodos_archive_record_move_to_next(Abstractformat *format, xx_archive_record_state *state, xx_pd_struct *pd)
+{
     aodos_stream *stream;
     (void)pd;
-    if (!format || !state || state->format != format ||
-        !(stream = (aodos_stream *)state->internal_state) ||
-        ++stream->index >= stream->count) {
+    if (!format || !state || state->format != format || !(stream = (aodos_stream *)state->internal_state) || ++stream->index >= stream->count) {
         if (state) state->has_record = false;
         return false;
     }
     ++state->current_index;
-    state->has_record = aodos_set_record(&state->current_record,
-                                         &stream->items[stream->index]);
+    state->has_record = aodos_set_record(&state->current_record, &stream->items[stream->index]);
     return state->has_record;
 }
 
-bool xx_aodos_unpack_current_archive_record(Abstractformat *format,
-                                             xx_archive_record_state *state,
-                                             xx_pd_struct *pd) {
+bool xx_aodos_unpack_current_archive_record(Abstractformat *format, xx_archive_record_state *state, xx_pd_struct *pd)
+{
     aodos_stream *stream;
     aodos_member *member;
     const xx_var *path_option;
@@ -786,44 +715,37 @@ bool xx_aodos_unpack_current_archive_record(Abstractformat *format,
     char *owned_base = NULL;
     char *path = NULL;
     bool result = false;
-    if (!format || !state || state->format != format || !state->has_record ||
-        !(stream = (aodos_stream *)state->internal_state) ||
-        stream->index >= stream->count || (pd && xx_pd_is_stopped(pd)))
+    if (!format || !state || state->format != format || !state->has_record || !(stream = (aodos_stream *)state->internal_state) || stream->index >= stream->count ||
+        (pd && xx_pd_is_stopped(pd)))
         return false;
     member = &stream->items[stream->index];
     path_option = aodos_option(&state->options, XX_META_ID_OPT_UNPACK_PATH);
     if (!path_option) {
         return aodos_verify_data(format, member, pd);
     }
-    if (path_option->type == XX_VAR_TYPE_STRING ||
-        path_option->type == XX_VAR_TYPE_STRING_VIEW)
-        base = xx_var_get_str(path_option);
-    else if (path_option->type == XX_VAR_TYPE_WSTRING ||
-             path_option->type == XX_VAR_TYPE_WSTRING_VIEW) {
+    if (path_option->type == XX_VAR_TYPE_STRING || path_option->type == XX_VAR_TYPE_STRING_VIEW) base = xx_var_get_str(path_option);
+    else if (path_option->type == XX_VAR_TYPE_WSTRING || path_option->type == XX_VAR_TYPE_WSTRING_VIEW) {
         owned_base = xx_str_unicode_to_utf8(xx_var_get_wstr(path_option));
         base = owned_base;
     }
     if (!base) goto done;
-    path = (base[0] && base[xx_str_len(base) - 1U] != '/' &&
-            base[xx_str_len(base) - 1U] != '\\')
-               ? xx_str_concat3(base, "/", member->name)
-               : xx_str_concat(base, member->name);
+    path = (base[0] && base[xx_str_len(base) - 1U] != '/' && base[xx_str_len(base) - 1U] != '\\') ? xx_str_concat3(base, "/", member->name)
+                                                                                                  : xx_str_concat(base, member->name);
     if (!path) goto done;
     if (member->folder) {
         result = xx_store_create_dirs_a(path, true);
         goto done;
     }
     if (!xx_store_create_dirs_a(path, false)) goto done;
-    result = xx_store_unpack_device_to_file(format->device, member->data_offset,
-                                            member->byte_size, path, pd);
+    result = xx_store_unpack_device_to_file(format->device, member->data_offset, member->byte_size, path, pd);
 done:
     if (path) xx_str_free(path);
     if (owned_base) xx_str_free(owned_base);
     return result;
 }
 
-void xx_aodos_free_archive_records_reading(Abstractformat *format,
-                                           xx_archive_record_state *state) {
+void xx_aodos_free_archive_records_reading(Abstractformat *format, xx_archive_record_state *state)
+{
     (void)format;
     xx_archive_record_state_free(state);
 }

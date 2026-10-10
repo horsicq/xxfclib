@@ -36,51 +36,51 @@ extern "C" {
 /* -------------------------------------------------------------------------
  * Bzip2 format constants
  * ------------------------------------------------------------------------- */
-#define BZ2_MAX_BLOCK_SIZE   900000   /* max block bytes after initial RLE */
-#define BZ2_N_GROUPS         6        /* max Huffman tables per block */
-#define BZ2_N_ITERS          4        /* Huffman refinement iterations */
-#define BZ2_MAX_ALPHA_SIZE   258      /* 256 symbols + RUNA + RUNB */
-#define BZ2_MAX_CODE_LEN     20       /* max Huffman code length */
-#define BZ2_RUNA             0
-#define BZ2_RUNB             1
-#define BZ2_MAX_SELECTORS    32767    /* 18002 theoretically sufficient */
-#define BZ2_NUM_OVERSHOOT    2
-#define BZ2_BWT_RADIX_BITS   16       /* BWT suffix-sort radix window */
+#define BZ2_MAX_BLOCK_SIZE 900000 /* max block bytes after initial RLE */
+#define BZ2_N_GROUPS 6            /* max Huffman tables per block */
+#define BZ2_N_ITERS 4             /* Huffman refinement iterations */
+#define BZ2_MAX_ALPHA_SIZE 258    /* 256 symbols + RUNA + RUNB */
+#define BZ2_MAX_CODE_LEN 20       /* max Huffman code length */
+#define BZ2_RUNA 0
+#define BZ2_RUNB 1
+#define BZ2_MAX_SELECTORS 32767 /* 18002 theoretically sufficient */
+#define BZ2_NUM_OVERSHOOT 2
+#define BZ2_BWT_RADIX_BITS 16 /* BWT suffix-sort radix window */
 
 /* -------------------------------------------------------------------------
  * Bit-stream reader
  * ------------------------------------------------------------------------- */
 typedef struct {
-    xx_io_device   *dev;
-    const uint8_t  *mem;
-    size_t          mem_size;
-    size_t          mem_pos;
-    uint8_t        *ibuf;
-    size_t          ibuf_capacity;
-    size_t          ibuf_pos;
-    size_t          ibuf_len;
-    int64_t         remaining;
-    uint64_t        bits;
-    int             n_bits;
-    bool            eof;
-    bool            error;
+    xx_io_device *dev;
+    const uint8_t *mem;
+    size_t mem_size;
+    size_t mem_pos;
+    uint8_t *ibuf;
+    size_t ibuf_capacity;
+    size_t ibuf_pos;
+    size_t ibuf_len;
+    int64_t remaining;
+    uint64_t bits;
+    int n_bits;
+    bool eof;
+    bool error;
 } bz2_bit_reader;
 
 /* -------------------------------------------------------------------------
  * Bit-stream writer
  * ------------------------------------------------------------------------- */
 typedef struct {
-    xx_io_device   *dev;
-    uint8_t        *mem;
-    size_t          mem_cap;
-    size_t          mem_pos;
-    uint8_t        *obuf;
-    size_t          obuf_capacity;
-    size_t          obuf_pos;
-    int64_t         total_written;
-    uint64_t        bits;
-    int             n_bits;
-    bool            error;
+    xx_io_device *dev;
+    uint8_t *mem;
+    size_t mem_cap;
+    size_t mem_pos;
+    uint8_t *obuf;
+    size_t obuf_capacity;
+    size_t obuf_pos;
+    int64_t total_written;
+    uint64_t bits;
+    int n_bits;
+    bool error;
 } bz2_bit_writer;
 
 /* -------------------------------------------------------------------------
@@ -90,27 +90,18 @@ typedef struct {
  * Buffers must not overlap. The declared block capacity is checked before
  * allocation; invalid arguments or allocation failure leave outputs intact.
  * Scratch storage is 16 * length bytes, at most 14,400,000 bytes. */
-bool xx_bzip2_bwt_transform(const uint8_t *src, int length,
-                             uint8_t *bwt, int *orig_ptr);
+bool xx_bzip2_bwt_transform(const uint8_t *src, int length, uint8_t *bwt, int *orig_ptr);
 
 /* Valid 1..20-bit prefix-code lengths for 1..258 symbols. Zero frequencies
  * receive weight 1. Invalid arguments leave the output unchanged. */
-bool xx_bzip2_huffman_lengths(const uint32_t *freq, int symbol_count,
-                               uint8_t *lengths);
+bool xx_bzip2_huffman_lengths(const uint32_t *freq, int symbol_count, uint8_t *lengths);
 
-bool xx_bzip2_decompress_stream(bz2_bit_reader *br,
-                                xx_io_device *dst_dev,
-                                uint8_t *mem_dst, size_t mem_cap, size_t *out_written,
-                                xx_pd_struct *pd);
+bool xx_bzip2_decompress_stream(bz2_bit_reader *br, xx_io_device *dst_dev, uint8_t *mem_dst, size_t mem_cap, size_t *out_written, xx_pd_struct *pd);
 
-bool xx_bzip2_compress_stream(xx_io_device *src_dev,
-                              const uint8_t *mem_src, size_t mem_src_size,
-                              int64_t src_offset, int64_t uncomp_size,
-                              bz2_bit_writer *bw, int block_size_100k,
-                              xx_pd_struct *pd);
+bool xx_bzip2_compress_stream(xx_io_device *src_dev, const uint8_t *mem_src, size_t mem_src_size, int64_t src_offset, int64_t uncomp_size, bz2_bit_writer *bw,
+                              int block_size_100k, xx_pd_struct *pd);
 
-bool bz2_br_init(bz2_bit_reader *br, xx_io_device *dev,
-                 const uint8_t *mem, size_t mem_size, int64_t remaining);
+bool bz2_br_init(bz2_bit_reader *br, xx_io_device *dev, const uint8_t *mem, size_t mem_size, int64_t remaining);
 void bz2_br_free(bz2_bit_reader *br);
 
 bool bz2_bw_init(bz2_bit_writer *bw, xx_io_device *dev, uint8_t *mem, size_t mem_cap);

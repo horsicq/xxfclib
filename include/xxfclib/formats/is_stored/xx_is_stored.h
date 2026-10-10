@@ -8,7 +8,9 @@
 extern "C" {
 #endif
 /** Atari stored wrapper using fixed XOR A9. */
-typedef struct xx_is_stored { Abstractformat format; } xx_is_stored;
+typedef struct xx_is_stored {
+    Abstractformat format;
+} xx_is_stored;
 XXFC_API void xx_is_stored_init(xx_is_stored *, xx_io_device *, int64_t);
 XXFC_API xx_is_stored *xx_is_stored_create(xx_io_device *, int64_t);
 XXFC_API void xx_is_stored_destroy(xx_is_stored *);

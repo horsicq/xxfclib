@@ -69,17 +69,15 @@ static void xx_stylus_vtable_destroy(Abstractformat *self);
 
 /* ------------------------------------------------------------- helpers -- */
 
-static bool xx_stylus_read_at(Abstractformat *self, int64_t offset,
-                              uint8_t *buffer, size_t size) {
+static bool xx_stylus_read_at(Abstractformat *self, int64_t offset, uint8_t *buffer, size_t size)
+{
     size_t completed = 0U;
 
-    if (!self || !self->device || offset < 0 ||
-        xx_io_seek64(self->device, offset, SEEK_SET) != 0) {
+    if (!self || !self->device || offset < 0 || xx_io_seek64(self->device, offset, SEEK_SET) != 0) {
         return false;
     }
     while (completed < size) {
-        ssize_t received =
-            xx_io_read(self->device, buffer + completed, size - completed);
+        ssize_t received = xx_io_read(self->device, buffer + completed, size - completed);
         if (received <= 0 || (size_t)received > size - completed) {
             return false;
         }
@@ -88,14 +86,14 @@ static bool xx_stylus_read_at(Abstractformat *self, int64_t offset,
     return true;
 }
 
-static bool xx_stylus_range_within(int64_t total, int64_t offset,
-                                   int64_t size) {
-    return offset >= 0 && size >= 0 && offset <= total &&
-           size <= total - offset;
+static bool xx_stylus_range_within(int64_t total, int64_t offset, int64_t size)
+{
+    return offset >= 0 && size >= 0 && offset <= total && size <= total - offset;
 }
 
 /* Refuse anything that would escape the extraction directory. */
-static bool xx_stylus_path_safe(const char *name) {
+static bool xx_stylus_path_safe(const char *name)
+{
     const char *cursor = name;
 
     if (!name || !name[0] || name[0] == '/') return false;
@@ -110,7 +108,8 @@ static bool xx_stylus_path_safe(const char *name) {
     return true;
 }
 
-static void xx_stylus_stream_free(void *pointer) {
+static void xx_stylus_stream_free(void *pointer)
+{
     xx_stylus_stream *stream = (xx_stylus_stream *)pointer;
     size_t index;
 
@@ -123,17 +122,15 @@ static void xx_stylus_stream_free(void *pointer) {
 }
 
 /* Append a member, taking ownership of @p name. */
-static bool xx_stylus_add(xx_stylus_stream *stream,
-                          const xx_stylus_member *member) {
-    xx_stylus_member *grown = (xx_stylus_member *)xx_mem_realloc(
-        stream->items, sizeof(*grown) * (stream->count + 1U));
+static bool xx_stylus_add(xx_stylus_stream *stream, const xx_stylus_member *member)
+{
+    xx_stylus_member *grown = (xx_stylus_member *)xx_mem_realloc(stream->items, sizeof(*grown) * (stream->count + 1U));
 
     if (!grown) return false;
     stream->items = grown;
     stream->items[stream->count++] = *member;
     return true;
 }
-
 
 #define XX_STYLUS_HEADER_SIZE 16
 #define XX_STYLUS_CRC32_OFFSET 0x0c
@@ -149,7 +146,6 @@ static uint8_t xx_stylus_to_lower(uint8_t character);
 static xx_stylus_stream *xx_stylus_parse(Abstractformat *self, xx_pd_struct *pd);
 static bool xx_stylus_decode(Abstractformat *self, const xx_stylus_member *member, uint8_t **out, size_t *out_size, xx_pd_struct *pd);
 
-
 /* Exactly one member; the cap exists only for shape. */
 
 /* The reference's measuring cap. Beyond it the reference publishes an unknown
@@ -160,14 +156,13 @@ static bool xx_stylus_decode(Abstractformat *self, const xx_stylus_member *membe
  * from the device's file name - so this placeholder plus the format's own
  * extension is the only truthful thing to publish. */
 
-static uint8_t xx_stylus_to_lower(uint8_t character) {
-    return (character >= 'A' && character <= 'Z')
-               ? (uint8_t)(character + 0x20U)
-               : character;
+static uint8_t xx_stylus_to_lower(uint8_t character)
+{
+    return (character >= 'A' && character <= 'Z') ? (uint8_t)(character + 0x20U) : character;
 }
 
-static xx_stylus_stream *xx_stylus_parse(Abstractformat *self,
-                                         xx_pd_struct *pd) {
+static xx_stylus_stream *xx_stylus_parse(Abstractformat *self, xx_pd_struct *pd)
+{
     xx_stylus_stream *stream;
     xx_stylus_member member;
     uint8_t header[XX_STYLUS_HEADER_SIZE];
@@ -194,8 +189,7 @@ static xx_stylus_stream *xx_stylus_parse(Abstractformat *self,
     /* Four bytes of magic. The 0x1a/0x07 pair is as much a part of it as the
      * two letters - "DP" alone is two bytes of ASCII and would match
      * constantly. */
-    if (header[0] != 'D' || header[1] != 'P' || header[2] != 0x1aU ||
-        header[3] != 0x07U) {
+    if (header[0] != 'D' || header[1] != 'P' || header[2] != 0x1aU || header[3] != 0x07U) {
         return NULL;
     }
     /* The version and the stream-kind byte are both fixed constants in this
@@ -209,15 +203,12 @@ static xx_stylus_stream *xx_stylus_parse(Abstractformat *self,
     if (header[6] != (uint8_t)XX_STYLUS_KIND_SDC) return NULL;
     /* Case-insensitive on purpose: the reference compares the tag that way
      * and lowercase "sdc" occurs in the wild. */
-    if (xx_stylus_to_lower(header[7]) != 's' ||
-        xx_stylus_to_lower(header[8]) != 'd' ||
-        xx_stylus_to_lower(header[9]) != 'c') {
+    if (xx_stylus_to_lower(header[7]) != 's' || xx_stylus_to_lower(header[8]) != 'd' || xx_stylus_to_lower(header[9]) != 'c') {
         return NULL;
     }
 
     compressed_size = span - XX_STYLUS_HEADER_SIZE;
-    if (!xx_stylus_range_within(span, XX_STYLUS_HEADER_SIZE,
-                                compressed_size)) {
+    if (!xx_stylus_range_within(span, XX_STYLUS_HEADER_SIZE, compressed_size)) {
         return NULL;
     }
     /* See the DIVERGENCE note: measuring is mandatory here, so the
@@ -226,8 +217,7 @@ static xx_stylus_stream *xx_stylus_parse(Abstractformat *self,
 
     packed = (uint8_t *)xx_mem_alloc((size_t)compressed_size);
     if (!packed) return NULL;
-    if (!xx_stylus_read_at(self, self->base_address + XX_STYLUS_HEADER_SIZE,
-                           packed, (size_t)compressed_size)) {
+    if (!xx_stylus_read_at(self, self->base_address + XX_STYLUS_HEADER_SIZE, packed, (size_t)compressed_size)) {
         xx_mem_free(packed);
         return NULL;
     }
@@ -240,9 +230,7 @@ static xx_stylus_stream *xx_stylus_parse(Abstractformat *self,
      * so a member that measures here is a member that decodes. A payload that
      * does NOT measure is not a Stylus stream, whatever the header says -
      * this is the format's second line of defence. */
-    measured = xx_stylus_scan_memory(packed, (size_t)compressed_size,
-                                     (size_t)XX_STYLUS_MAX_DECODED, &consumed,
-                                     &produced);
+    measured = xx_stylus_scan_memory(packed, (size_t)compressed_size, (size_t)XX_STYLUS_MAX_DECODED, &consumed, &produced);
     xx_mem_free(packed);
     if (!measured) return NULL;
     /* The format has no end marker: the stream ends when the input runs out,
@@ -289,7 +277,6 @@ fail:
     return NULL;
 }
 
-
 /* The container's own stream-kind byte at +0x06. It is the closest thing the
  * format has to a method field, so it is published unchanged and decode
  * refuses anything else: silently treating an unknown kind as stored would
@@ -298,9 +285,8 @@ fail:
 /* Both the scan ceiling in parse and the allocation cap here, so the two can
  * never disagree about what is too large. */
 
-static bool xx_stylus_decode(Abstractformat *self,
-                             const xx_stylus_member *member, uint8_t **out,
-                             size_t *out_size, xx_pd_struct *pd) {
+static bool xx_stylus_decode(Abstractformat *self, const xx_stylus_member *member, uint8_t **out, size_t *out_size, xx_pd_struct *pd)
+{
     uint8_t *input;
     uint8_t *output;
     size_t written = 0U;
@@ -310,19 +296,16 @@ static bool xx_stylus_decode(Abstractformat *self,
     if (!self || !member) return false;
     if (pd && xx_pd_is_stopped(pd)) return false;
     if (member->method != XX_STYLUS_KIND_SDC) return false;
-    if (member->compressed_size < 1 ||
-        member->compressed_size > XX_STYLUS_MAX_DECODED) {
+    if (member->compressed_size < 1 || member->compressed_size > XX_STYLUS_MAX_DECODED) {
         return false;
     }
-    if (member->uncompressed_size < 1 ||
-        member->uncompressed_size > XX_STYLUS_MAX_DECODED) {
+    if (member->uncompressed_size < 1 || member->uncompressed_size > XX_STYLUS_MAX_DECODED) {
         return false;
     }
 
     input = (uint8_t *)xx_mem_alloc((size_t)member->compressed_size);
     if (!input) return false;
-    if (!xx_stylus_read_at(self, member->data_offset, input,
-                           (size_t)member->compressed_size)) {
+    if (!xx_stylus_read_at(self, member->data_offset, input, (size_t)member->compressed_size)) {
         xx_mem_free(input);
         return false;
     }
@@ -340,9 +323,7 @@ static bool xx_stylus_decode(Abstractformat *self,
      * condition: xx_stylus_decode_memory() succeeds only when it filled the
      * buffer exactly, which is what keeps a truncated payload from being
      * reported as a short but successful member. */
-    if (!xx_stylus_decode_memory(input, (size_t)member->compressed_size,
-                                 output, (size_t)member->uncompressed_size,
-                                 &written) ||
+    if (!xx_stylus_decode_memory(input, (size_t)member->compressed_size, output, (size_t)member->uncompressed_size, &written) ||
         written != (size_t)member->uncompressed_size) {
         xx_mem_free(output);
         xx_mem_free(input);
@@ -356,8 +337,8 @@ static bool xx_stylus_decode(Abstractformat *self,
 
 /* ---------------------------------------------------------- lifecycle --- */
 
-void xx_stylus_init(xx_stylus *archive, xx_io_device *device,
-                    int64_t base_address) {
+void xx_stylus_init(xx_stylus *archive, xx_io_device *device, int64_t base_address)
+{
     if (!archive) return;
     xx_mem_zero(archive, sizeof(*archive));
     xx_format_init(&archive->format, device, base_address);
@@ -370,22 +351,17 @@ void xx_stylus_init(xx_stylus *archive, xx_io_device *device,
     archive->format.check_is_valid = xx_stylus_check_is_valid;
     archive->format.handle_base_info = xx_stylus_handle_base_info;
     archive->format.get_format_size = xx_stylus_get_format_size;
-    archive->format.get_number_of_archive_records =
-        xx_stylus_get_number_of_archive_records;
-    archive->format.create_archive_records_reading =
-        xx_stylus_create_archive_records_reading;
-    archive->format.get_current_archive_record =
-        xx_stylus_get_current_archive_record;
-    archive->format.unpack_current_archive_record =
-        xx_stylus_unpack_current_archive_record;
-    archive->format.archive_record_move_to_next =
-        xx_stylus_archive_record_move_to_next;
-    archive->format.free_archive_records_reading =
-        xx_stylus_free_archive_records_reading;
+    archive->format.get_number_of_archive_records = xx_stylus_get_number_of_archive_records;
+    archive->format.create_archive_records_reading = xx_stylus_create_archive_records_reading;
+    archive->format.get_current_archive_record = xx_stylus_get_current_archive_record;
+    archive->format.unpack_current_archive_record = xx_stylus_unpack_current_archive_record;
+    archive->format.archive_record_move_to_next = xx_stylus_archive_record_move_to_next;
+    archive->format.free_archive_records_reading = xx_stylus_free_archive_records_reading;
     archive->format.destroy = xx_stylus_vtable_destroy;
 }
 
-xx_stylus *xx_stylus_create(xx_io_device *device, int64_t base_address) {
+xx_stylus *xx_stylus_create(xx_io_device *device, int64_t base_address)
+{
     xx_stylus *archive = (xx_stylus *)xx_mem_alloc(sizeof(*archive));
 
     if (!archive) return NULL;
@@ -393,7 +369,8 @@ xx_stylus *xx_stylus_create(xx_io_device *device, int64_t base_address) {
     return archive;
 }
 
-void xx_stylus_destroy(xx_stylus *archive) {
+void xx_stylus_destroy(xx_stylus *archive)
+{
     if (!archive) return;
     /* Not xx_format_destroy: it dispatches through format.destroy, which is
      * the wrapper below, and the two would recurse. */
@@ -402,19 +379,22 @@ void xx_stylus_destroy(xx_stylus *archive) {
     archive->number_of_records = 0U;
 }
 
-void xx_stylus_free(xx_stylus *archive) {
+void xx_stylus_free(xx_stylus *archive)
+{
     if (!archive) return;
     xx_stylus_destroy(archive);
     xx_mem_free(archive);
 }
 
-static void xx_stylus_vtable_destroy(Abstractformat *self) {
+static void xx_stylus_vtable_destroy(Abstractformat *self)
+{
     xx_stylus_destroy((xx_stylus *)self);
 }
 
 /* -------------------------------------------------------------- format -- */
 
-bool xx_stylus_check_is_valid(Abstractformat *self, xx_pd_struct *pd) {
+bool xx_stylus_check_is_valid(Abstractformat *self, xx_pd_struct *pd)
+{
     xx_stylus_stream *stream;
 
     if (!self || (pd && xx_pd_is_stopped(pd))) return false;
@@ -424,7 +404,8 @@ bool xx_stylus_check_is_valid(Abstractformat *self, xx_pd_struct *pd) {
     return true;
 }
 
-bool xx_stylus_handle_base_info(Abstractformat *self, xx_pd_struct *pd) {
+bool xx_stylus_handle_base_info(Abstractformat *self, xx_pd_struct *pd)
+{
     xx_stylus *archive = (xx_stylus *)self;
     xx_stylus_stream *stream;
 
@@ -445,18 +426,17 @@ bool xx_stylus_handle_base_info(Abstractformat *self, xx_pd_struct *pd) {
     return true;
 }
 
-int64_t xx_stylus_get_format_size(Abstractformat *self, xx_pd_struct *pd) {
-    if (!self ||
-        (!self->base_info_handled && !xx_format_handle_base_info(self, pd))) {
+int64_t xx_stylus_get_format_size(Abstractformat *self, xx_pd_struct *pd)
+{
+    if (!self || (!self->base_info_handled && !xx_format_handle_base_info(self, pd))) {
         return 0;
     }
     return self->is_valid ? self->format_size : 0;
 }
 
-uint64_t xx_stylus_get_number_of_archive_records(Abstractformat *self,
-                                                 xx_pd_struct *pd) {
-    if (!self ||
-        (!self->base_info_handled && !xx_format_handle_base_info(self, pd))) {
+uint64_t xx_stylus_get_number_of_archive_records(Abstractformat *self, xx_pd_struct *pd)
+{
+    if (!self || (!self->base_info_handled && !xx_format_handle_base_info(self, pd))) {
         return 0U;
     }
     return self->is_valid ? ((xx_stylus *)self)->number_of_records : 0U;
@@ -464,8 +444,8 @@ uint64_t xx_stylus_get_number_of_archive_records(Abstractformat *self,
 
 /* ------------------------------------------------------------- records -- */
 
-static bool xx_stylus_set_record(xx_archive_record *record,
-                                 const xx_stylus_member *member) {
+static bool xx_stylus_set_record(xx_archive_record *record, const xx_stylus_member *member)
+{
     xx_archive_record_cleanup(record);
     xx_archive_record_init(record);
     record->header_offset = member->header_offset;
@@ -473,34 +453,24 @@ static bool xx_stylus_set_record(xx_archive_record *record,
     record->data_offset = member->data_offset;
     record->compressed_size = member->compressed_size;
     return xx_archive_record_set_original_name(record, member->name) &&
-           xx_archive_record_set_meta_u64(record, XX_META_ID_COMPRESSED_SIZE,
-                                          (uint64_t)member->compressed_size) &&
-           xx_archive_record_set_meta_u64(
-               record, XX_META_ID_UNCOMPRESSED_SIZE,
-               (uint64_t)member->uncompressed_size) &&
-           xx_archive_record_set_meta_u64(record, XX_META_ID_COMPRESSION_METHOD,
-                                          member->method) &&
-           xx_archive_record_set_meta_u64(record, XX_META_ID_TIMESTAMP,
-                                          member->timestamp) &&
-           xx_archive_record_set_meta_bool(record, XX_META_ID_IS_FOLDER,
-                                           member->is_folder) &&
-           xx_archive_record_set_meta_bool(record, XX_META_ID_IS_ENCRYPTED,
-                                           false);
+           xx_archive_record_set_meta_u64(record, XX_META_ID_COMPRESSED_SIZE, (uint64_t)member->compressed_size) &&
+           xx_archive_record_set_meta_u64(record, XX_META_ID_UNCOMPRESSED_SIZE, (uint64_t)member->uncompressed_size) &&
+           xx_archive_record_set_meta_u64(record, XX_META_ID_COMPRESSION_METHOD, member->method) &&
+           xx_archive_record_set_meta_u64(record, XX_META_ID_TIMESTAMP, member->timestamp) &&
+           xx_archive_record_set_meta_bool(record, XX_META_ID_IS_FOLDER, member->is_folder) && xx_archive_record_set_meta_bool(record, XX_META_ID_IS_ENCRYPTED, false);
 }
 
-static bool xx_stylus_copy_options(xx_list_s *target,
-                                   const xx_list_s *options) {
+static bool xx_stylus_copy_options(xx_list_s *target, const xx_list_s *options)
+{
     size_t index;
 
     if (!target || !options) return options == NULL;
     for (index = 0U; index < options->count; ++index) {
-        const xx_meta *source =
-            (const xx_meta *)xx_list_at((const xx_list_t *)options, index);
+        const xx_meta *source = (const xx_meta *)xx_list_at((const xx_list_t *)options, index);
         xx_meta copied;
         if (!source) continue;
         xx_meta_init(&copied, source->meta_id);
-        if (!xx_var_copy(&copied.var, &source->var) ||
-            !xx_list_append(target, &copied)) {
+        if (!xx_var_copy(&copied.var, &source->var) || !xx_list_append(target, &copied)) {
             xx_meta_cleanup(&copied);
             return false;
         }
@@ -508,21 +478,20 @@ static bool xx_stylus_copy_options(xx_list_s *target,
     return true;
 }
 
-static const xx_var *xx_stylus_get_option(const xx_list_s *options,
-                                          uint32_t meta_id) {
+static const xx_var *xx_stylus_get_option(const xx_list_s *options, uint32_t meta_id)
+{
     size_t index;
 
     if (!options) return NULL;
     for (index = 0U; index < options->count; ++index) {
-        const xx_meta *meta =
-            (const xx_meta *)xx_list_at((const xx_list_t *)options, index);
+        const xx_meta *meta = (const xx_meta *)xx_list_at((const xx_list_t *)options, index);
         if (meta && meta->meta_id == meta_id) return &meta->var;
     }
     return NULL;
 }
 
-xx_archive_record_state *xx_stylus_create_archive_records_reading(
-    Abstractformat *self, const xx_list_s *options, xx_pd_struct *pd) {
+xx_archive_record_state *xx_stylus_create_archive_records_reading(Abstractformat *self, const xx_list_s *options, xx_pd_struct *pd)
+{
     xx_stylus_stream *stream;
     xx_archive_record_state *state;
 
@@ -538,9 +507,7 @@ xx_archive_record_state *xx_stylus_create_archive_records_reading(
     state->internal_state = stream;
     state->free_internal = xx_stylus_stream_free;
     state->total_records = (int64_t)stream->count;
-    if (!xx_stylus_copy_options(&state->options, options) ||
-        (stream->count != 0U &&
-         !xx_stylus_set_record(&state->current_record, &stream->items[0]))) {
+    if (!xx_stylus_copy_options(&state->options, options) || (stream->count != 0U && !xx_stylus_set_record(&state->current_record, &stream->items[0]))) {
         xx_archive_record_state_free(state);
         return NULL;
     }
@@ -549,20 +516,16 @@ xx_archive_record_state *xx_stylus_create_archive_records_reading(
     return state;
 }
 
-const xx_archive_record *xx_stylus_get_current_archive_record(
-    Abstractformat *self, xx_archive_record_state *state) {
-    return self && state && state->format == self && state->has_record
-               ? &state->current_record
-               : NULL;
+const xx_archive_record *xx_stylus_get_current_archive_record(Abstractformat *self, xx_archive_record_state *state)
+{
+    return self && state && state->format == self && state->has_record ? &state->current_record : NULL;
 }
 
-bool xx_stylus_archive_record_move_to_next(Abstractformat *self,
-                                           xx_archive_record_state *state,
-                                           xx_pd_struct *pd) {
+bool xx_stylus_archive_record_move_to_next(Abstractformat *self, xx_archive_record_state *state, xx_pd_struct *pd)
+{
     xx_stylus_stream *stream;
 
-    if (!self || !state || state->format != self || !state->has_record ||
-        (pd && xx_pd_is_stopped(pd))) {
+    if (!self || !state || state->format != self || !state->has_record || (pd && xx_pd_is_stopped(pd))) {
         return false;
     }
     stream = (xx_stylus_stream *)state->internal_state;
@@ -574,14 +537,12 @@ bool xx_stylus_archive_record_move_to_next(Abstractformat *self,
     }
     ++stream->index;
     ++state->current_index;
-    state->has_record = xx_stylus_set_record(&state->current_record,
-                                             &stream->items[stream->index]);
+    state->has_record = xx_stylus_set_record(&state->current_record, &stream->items[stream->index]);
     return state->has_record;
 }
 
-bool xx_stylus_unpack_current_archive_record(Abstractformat *self,
-                                             xx_archive_record_state *state,
-                                             xx_pd_struct *pd) {
+bool xx_stylus_unpack_current_archive_record(Abstractformat *self, xx_archive_record_state *state, xx_pd_struct *pd)
+{
     xx_stylus_stream *stream;
     const xx_stylus_member *member;
     const xx_var *path_option;
@@ -593,8 +554,7 @@ bool xx_stylus_unpack_current_archive_record(Abstractformat *self,
     bool result = false;
     bool created = false;
 
-    if (!self || !state || state->format != self || !state->has_record ||
-        (pd && xx_pd_is_stopped(pd))) {
+    if (!self || !state || state->format != self || !state->has_record || (pd && xx_pd_is_stopped(pd))) {
         return false;
     }
     stream = (xx_stylus_stream *)state->internal_state;
@@ -602,8 +562,7 @@ bool xx_stylus_unpack_current_archive_record(Abstractformat *self,
     member = &stream->items[stream->index];
     if (!xx_stylus_path_safe(member->name)) return false;
 
-    path_option = xx_stylus_get_option(&state->options,
-                                       XX_META_ID_OPT_UNPACK_PATH);
+    path_option = xx_stylus_get_option(&state->options, XX_META_ID_OPT_UNPACK_PATH);
     if (!path_option) {
         /* No destination: decode and discard, which verifies the member
          * without writing anything. */
@@ -612,11 +571,9 @@ bool xx_stylus_unpack_current_archive_record(Abstractformat *self,
         xx_mem_free(plain);
         return result;
     }
-    if (path_option->type == XX_VAR_TYPE_STRING ||
-        path_option->type == XX_VAR_TYPE_STRING_VIEW) {
+    if (path_option->type == XX_VAR_TYPE_STRING || path_option->type == XX_VAR_TYPE_STRING_VIEW) {
         base_path = xx_var_get_str(path_option);
-    } else if (path_option->type == XX_VAR_TYPE_WSTRING ||
-               path_option->type == XX_VAR_TYPE_WSTRING_VIEW) {
+    } else if (path_option->type == XX_VAR_TYPE_WSTRING || path_option->type == XX_VAR_TYPE_WSTRING_VIEW) {
         converted_path = xx_str_unicode_to_utf8(xx_var_get_wstr(path_option));
         base_path = converted_path;
     }
@@ -624,9 +581,7 @@ bool xx_stylus_unpack_current_archive_record(Abstractformat *self,
         xx_str_free(converted_path);
         return false;
     }
-    if (base_path[0] != '\0' &&
-        base_path[xx_str_len(base_path) - 1U] != '/' &&
-        base_path[xx_str_len(base_path) - 1U] != '\\') {
+    if (base_path[0] != '\0' && base_path[xx_str_len(base_path) - 1U] != '/' && base_path[xx_str_len(base_path) - 1U] != '\\') {
         target_path = xx_str_concat3(base_path, "/", member->name);
     } else {
         target_path = xx_str_concat(base_path, member->name);
@@ -639,8 +594,7 @@ bool xx_stylus_unpack_current_archive_record(Abstractformat *self,
         xx_str_free(target_path);
         return result;
     }
-    if (!xx_store_create_dirs_a(target_path, false) ||
-        !xx_stylus_decode(self, member, &plain, &plain_size, pd)) {
+    if (!xx_store_create_dirs_a(target_path, false) || !xx_stylus_decode(self, member, &plain, &plain_size, pd)) {
         xx_str_free(target_path);
         return false;
     }
@@ -651,8 +605,7 @@ bool xx_stylus_unpack_current_archive_record(Abstractformat *self,
 
         result = output != NULL;
         while (result && completed < plain_size) {
-            ssize_t sent = xx_io_write(output, plain + completed,
-                                       plain_size - completed);
+            ssize_t sent = xx_io_write(output, plain + completed, plain_size - completed);
             if (sent <= 0 || (size_t)sent > plain_size - completed) {
                 result = false;
                 break;
@@ -667,8 +620,8 @@ bool xx_stylus_unpack_current_archive_record(Abstractformat *self,
     return result;
 }
 
-void xx_stylus_free_archive_records_reading(Abstractformat *self,
-                                            xx_archive_record_state *state) {
+void xx_stylus_free_archive_records_reading(Abstractformat *self, xx_archive_record_state *state)
+{
     (void)self;
     xx_archive_record_state_free(state);
 }

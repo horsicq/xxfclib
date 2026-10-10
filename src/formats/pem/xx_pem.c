@@ -33,10 +33,7 @@ typedef struct xx_pem_magic_s {
     const char *label; /* The label between "BEGIN " and the dashes. */
 } xx_pem_magic;
 
-#define XX_PEM_MAGIC(label, kind) \
-    { "-----BEGIN " label "-----", \
-      (uint8_t)(sizeof("-----BEGIN " label "-----") - 1U), (uint8_t)(kind), \
-      label }
+#define XX_PEM_MAGIC(label, kind) {"-----BEGIN " label "-----", (uint8_t)(sizeof("-----BEGIN " label "-----") - 1U), (uint8_t)(kind), label}
 
 /* binwalk src/signatures/pem.rs: pem_public_key_magic(),
  * pem_private_key_magic(), pem_certificate_magic() - in that order, which is
@@ -65,21 +62,14 @@ typedef struct xx_pem_end_s {
     uint8_t size;
 } xx_pem_end;
 
-#define XX_PEM_END(label) \
-    { "-----END " label "-----", \
-      (uint8_t)(sizeof("-----END " label "-----") - 1U) }
+#define XX_PEM_END(label) {"-----END " label "-----", (uint8_t)(sizeof("-----END " label "-----") - 1U)}
 
 /* binwalk src/extractors/pem.rs get_pem_size(): only these seven.  None is a
  * substring of another, so the first match by start is also the first by
  * end, which is what binwalk's find_overlapping_iter().next() returns. */
 static const xx_pem_end g_xx_pem_end[] = {
-    XX_PEM_END("PUBLIC KEY"),
-    XX_PEM_END("CERTIFICATE"),
-    XX_PEM_END("PRIVATE KEY"),
-    XX_PEM_END("EC PRIVATE KEY"),
-    XX_PEM_END("RSA PRIVATE KEY"),
-    XX_PEM_END("DSA PRIVATE KEY"),
-    XX_PEM_END("OPENSSH PRIVATE KEY"),
+    XX_PEM_END("PUBLIC KEY"),      XX_PEM_END("CERTIFICATE"),     XX_PEM_END("PRIVATE KEY"),         XX_PEM_END("EC PRIVATE KEY"),
+    XX_PEM_END("RSA PRIVATE KEY"), XX_PEM_END("DSA PRIVATE KEY"), XX_PEM_END("OPENSSH PRIVATE KEY"),
 };
 #define XX_PEM_END_COUNT (sizeof(g_xx_pem_end) / sizeof(g_xx_pem_end[0]))
 
@@ -127,13 +117,12 @@ static void xx_pem_vtable_destroy(Abstractformat *self);
 /* Device access                                                             */
 /* ------------------------------------------------------------------------ */
 
-static bool xx_pem_read_at(xx_io_device *device, int64_t offset, void *data,
-                           size_t size) {
+static bool xx_pem_read_at(xx_io_device *device, int64_t offset, void *data, size_t size)
+{
     const size_t io_capacity = xx_get_file_buffer_size();
     uint8_t *out = (uint8_t *)data;
     size_t done = 0U;
-    if (!device || (!data && size != 0U) || offset < 0 ||
-        xx_io_seek64(device, offset, SEEK_SET) != 0) {
+    if (!device || (!data && size != 0U) || offset < 0 || xx_io_seek64(device, offset, SEEK_SET) != 0) {
         return false;
     }
     while (done < size) {
@@ -146,8 +135,8 @@ static bool xx_pem_read_at(xx_io_device *device, int64_t offset, void *data,
     return true;
 }
 
-static bool xx_pem_reader_open(xx_pem_reader *reader, xx_io_device *device,
-                               xx_pd_struct *pd) {
+static bool xx_pem_reader_open(xx_pem_reader *reader, xx_io_device *device, xx_pd_struct *pd)
+{
     if (!reader) return false;
     xx_mem_zero(reader, sizeof(*reader));
     reader->device = device;
@@ -160,7 +149,8 @@ static bool xx_pem_reader_open(xx_pem_reader *reader, xx_io_device *device,
     return reader->buffer != NULL;
 }
 
-static void xx_pem_reader_close(xx_pem_reader *reader) {
+static void xx_pem_reader_close(xx_pem_reader *reader)
+{
     if (!reader) return;
     if (reader->buffer) xx_mem_free(reader->buffer);
     reader->buffer = NULL;
@@ -170,14 +160,13 @@ static void xx_pem_reader_close(xx_pem_reader *reader) {
 
 /* 1: *out holds the byte at pos.  0: pos is at or past the end.  -1: I/O
  * error or cancellation. */
-static int xx_pem_byte_at(xx_pem_reader *reader, int64_t pos, uint8_t *out) {
+static int xx_pem_byte_at(xx_pem_reader *reader, int64_t pos, uint8_t *out)
+{
     if (!reader || !reader->buffer || !out || pos < 0) return -1;
     if (pos >= reader->total) return 0;
-    if (reader->buffer_start < 0 || pos < reader->buffer_start ||
-        pos - reader->buffer_start >= (int64_t)reader->buffer_size) {
+    if (reader->buffer_start < 0 || pos < reader->buffer_start || pos - reader->buffer_start >= (int64_t)reader->buffer_size) {
         int64_t left = reader->total - pos;
-        size_t want = (uint64_t)left < (uint64_t)reader->io_capacity ? (size_t)left
-                                                        : reader->io_capacity;
+        size_t want = (uint64_t)left < (uint64_t)reader->io_capacity ? (size_t)left : reader->io_capacity;
         if (reader->pd && xx_pd_is_stopped(reader->pd)) return -1;
         reader->buffer_start = -1;
         reader->buffer_size = 0U;
@@ -195,7 +184,8 @@ static int xx_pem_byte_at(xx_pem_reader *reader, int64_t pos, uint8_t *out) {
 /* One block, exactly as binwalk's pem_parser() + get_pem_size() see it      */
 /* ------------------------------------------------------------------------ */
 
-static int xx_pem_base64_value(uint8_t c) {
+static int xx_pem_base64_value(uint8_t c)
+{
     if (c >= 'A' && c <= 'Z') return (int)(c - 'A');
     if (c >= 'a' && c <= 'z') return (int)(c - 'a') + 26;
     if (c >= '0' && c <= '9') return (int)(c - '0') + 52;
@@ -204,14 +194,13 @@ static int xx_pem_base64_value(uint8_t c) {
     return -1;
 }
 
-static int xx_pem_match_begin(xx_pem_reader *reader, int64_t start) {
+static int xx_pem_match_begin(xx_pem_reader *reader, int64_t start)
+{
     uint8_t head[XX_PEM_MAX_MAGIC_SIZE];
     size_t available;
     size_t index;
     if (!reader || start < 0 || start >= reader->total) return -1;
-    available = reader->total - start < (int64_t)sizeof(head)
-                    ? (size_t)(reader->total - start)
-                    : sizeof(head);
+    available = reader->total - start < (int64_t)sizeof(head) ? (size_t)(reader->total - start) : sizeof(head);
     if (available < XX_PEM_MIN_MAGIC_SIZE) return -1;
     for (index = 0U; index < available; ++index) {
         if (xx_pem_byte_at(reader, start + (int64_t)index, &head[index]) != 1) {
@@ -220,8 +209,7 @@ static int xx_pem_match_begin(xx_pem_reader *reader, int64_t start) {
     }
     for (index = 0U; index < XX_PEM_BEGIN_COUNT; ++index) {
         const xx_pem_magic *magic = &g_xx_pem_begin[index];
-        if (magic->size <= available &&
-            xx_rt_memcmp(head, magic->text, magic->size) == 0) {
+        if (magic->size <= available && xx_rt_memcmp(head, magic->text, magic->size) == 0) {
             return (int)index;
         }
     }
@@ -254,8 +242,8 @@ enum {
  * whatever binwalk would carve.  For the same reason an END line that
  * completes before the second delimiter always means rejection.
  */
-static bool xx_pem_parse_block(xx_pem_reader *reader, int64_t start,
-                               xx_pem_block *block) {
+static bool xx_pem_parse_block(xx_pem_reader *reader, int64_t start, xx_pem_block *block)
+{
     uint8_t history[XX_PEM_HISTORY_SIZE];
     size_t history_size = 0U;
     int phase = XX_PEM_PHASE_BEGIN_LINE;
@@ -277,9 +265,7 @@ static bool xx_pem_parse_block(xx_pem_reader *reader, int64_t start,
     magic_index = xx_pem_match_begin(reader, start);
     if (magic_index < 0) return false;
 
-    limit = reader->total - start > (int64_t)XX_PEM_MAX_BLOCK_SIZE
-                ? start + (int64_t)XX_PEM_MAX_BLOCK_SIZE
-                : reader->total;
+    limit = reader->total - start > (int64_t)XX_PEM_MAX_BLOCK_SIZE ? start + (int64_t)XX_PEM_MAX_BLOCK_SIZE : reader->total;
     for (pos = start;; ++pos) {
         uint8_t b;
         bool end_found = false;
@@ -291,20 +277,33 @@ static bool xx_pem_parse_block(xx_pem_reader *reader, int64_t start,
             if (b < 0x80U) {
                 /* ASCII */
             } else if (b >= 0xC2U && b <= 0xDFU) {
-                utf8_need = 1U; utf8_low = 0x80U; utf8_high = 0xBFU;
+                utf8_need = 1U;
+                utf8_low = 0x80U;
+                utf8_high = 0xBFU;
             } else if (b == 0xE0U) {
-                utf8_need = 2U; utf8_low = 0xA0U; utf8_high = 0xBFU;
-            } else if ((b >= 0xE1U && b <= 0xECU) || b == 0xEEU ||
-                       b == 0xEFU) {
-                utf8_need = 2U; utf8_low = 0x80U; utf8_high = 0xBFU;
+                utf8_need = 2U;
+                utf8_low = 0xA0U;
+                utf8_high = 0xBFU;
+            } else if ((b >= 0xE1U && b <= 0xECU) || b == 0xEEU || b == 0xEFU) {
+                utf8_need = 2U;
+                utf8_low = 0x80U;
+                utf8_high = 0xBFU;
             } else if (b == 0xEDU) {
-                utf8_need = 2U; utf8_low = 0x80U; utf8_high = 0x9FU;
+                utf8_need = 2U;
+                utf8_low = 0x80U;
+                utf8_high = 0x9FU;
             } else if (b == 0xF0U) {
-                utf8_need = 3U; utf8_low = 0x90U; utf8_high = 0xBFU;
+                utf8_need = 3U;
+                utf8_low = 0x90U;
+                utf8_high = 0xBFU;
             } else if (b >= 0xF1U && b <= 0xF3U) {
-                utf8_need = 3U; utf8_low = 0x80U; utf8_high = 0xBFU;
+                utf8_need = 3U;
+                utf8_low = 0x80U;
+                utf8_high = 0xBFU;
             } else if (b == 0xF4U) {
-                utf8_need = 3U; utf8_low = 0x80U; utf8_high = 0x8FU;
+                utf8_need = 3U;
+                utf8_low = 0x80U;
+                utf8_high = 0x8FU;
             } else {
                 return false;
             }
@@ -317,8 +316,7 @@ static bool xx_pem_parse_block(xx_pem_reader *reader, int64_t start,
 
         /* END line search over the last XX_PEM_MAX_END_SIZE bytes. */
         if (history_size == sizeof(history)) {
-            xx_rt_memcpy(history, history + sizeof(history) - XX_PEM_MAX_END_SIZE,
-                         XX_PEM_MAX_END_SIZE);
+            xx_rt_memcpy(history, history + sizeof(history) - XX_PEM_MAX_END_SIZE, XX_PEM_MAX_END_SIZE);
             history_size = XX_PEM_MAX_END_SIZE;
         }
         history[history_size++] = b;
@@ -326,9 +324,7 @@ static bool xx_pem_parse_block(xx_pem_reader *reader, int64_t start,
             size_t index;
             for (index = 0U; index < XX_PEM_END_COUNT; ++index) {
                 const xx_pem_end *end = &g_xx_pem_end[index];
-                if (history_size >= end->size &&
-                    xx_rt_memcmp(history + history_size - end->size,
-                                 end->text, end->size) == 0) {
+                if (history_size >= end->size && xx_rt_memcmp(history + history_size - end->size, end->text, end->size) == 0) {
                     end_found = true;
                     break;
                 }
@@ -408,8 +404,8 @@ static bool xx_pem_parse_block(xx_pem_reader *reader, int64_t start,
 }
 
 /* The next block of the same file: after blanks only, or none. */
-static bool xx_pem_next_block(xx_pem_reader *reader, int64_t after,
-                              xx_pem_block *block) {
+static bool xx_pem_next_block(xx_pem_reader *reader, int64_t after, xx_pem_block *block)
+{
     int64_t pos = after;
     if (!reader || after < 0) return false;
     while (pos < reader->total) {
@@ -429,7 +425,8 @@ static bool xx_pem_next_block(xx_pem_reader *reader, int64_t after,
 /* Whole file                                                                */
 /* ------------------------------------------------------------------------ */
 
-static void xx_pem_private_reset(xx_pem_private *parsed) {
+static void xx_pem_private_reset(xx_pem_private *parsed)
+{
     if (!parsed) return;
     xx_mem_zero(parsed, sizeof(*parsed));
     parsed->input_size = -1;
@@ -438,8 +435,8 @@ static void xx_pem_private_reset(xx_pem_private *parsed) {
     parsed->first_size = -1;
 }
 
-static void xx_pem_count_kind(xx_pem_private *parsed,
-                              const xx_pem_block *block) {
+static void xx_pem_count_kind(xx_pem_private *parsed, const xx_pem_block *block)
+{
     if (block->kind == XX_PEM_KIND_CERTIFICATE) ++parsed->certificates;
     else if (block->kind == XX_PEM_KIND_PUBLIC_KEY) ++parsed->public_keys;
     else if (block->kind == XX_PEM_KIND_PRIVATE_KEY) ++parsed->private_keys;
@@ -448,14 +445,13 @@ static void xx_pem_count_kind(xx_pem_private *parsed,
     }
 }
 
-static bool xx_pem_parse(Abstractformat *self, xx_pem_private *parsed,
-                         bool first_only, xx_pd_struct *pd) {
+static bool xx_pem_parse(Abstractformat *self, xx_pem_private *parsed, bool first_only, xx_pd_struct *pd)
+{
     xx_pem_reader reader;
     xx_pem_block block;
     bool result = false;
     xx_pem_private_reset(parsed);
-    if (!self || !self->device || !parsed || self->base_address < 0 ||
-        (pd && xx_pd_is_stopped(pd))) {
+    if (!self || !self->device || !parsed || self->base_address < 0 || (pd && xx_pd_is_stopped(pd))) {
         return false;
     }
     if (!xx_pem_reader_open(&reader, self->device, pd)) {
@@ -488,18 +484,16 @@ done:
 /* Record plumbing                                                           */
 /* ------------------------------------------------------------------------ */
 
-static bool xx_pem_copy_options(xx_list_s *destination,
-                                const xx_list_s *source) {
+static bool xx_pem_copy_options(xx_list_s *destination, const xx_list_s *source)
+{
     size_t index;
     if (!destination || !source) return source == NULL;
     for (index = 0U; index < source->count; ++index) {
-        const xx_meta *item =
-            (const xx_meta *)xx_list_at((const xx_list_t *)source, index);
+        const xx_meta *item = (const xx_meta *)xx_list_at((const xx_list_t *)source, index);
         xx_meta copy;
         if (!item) continue;
         xx_meta_init(&copy, item->meta_id);
-        if (!xx_var_copy(&copy.var, &item->var) ||
-            !xx_list_append(destination, &copy)) {
+        if (!xx_var_copy(&copy.var, &item->var) || !xx_list_append(destination, &copy)) {
             xx_meta_cleanup(&copy);
             return false;
         }
@@ -507,21 +501,20 @@ static bool xx_pem_copy_options(xx_list_s *destination,
     return true;
 }
 
-static const xx_var *xx_pem_find_option(const xx_list_s *options,
-                                        uint32_t meta_id) {
+static const xx_var *xx_pem_find_option(const xx_list_s *options, uint32_t meta_id)
+{
     size_t index;
     if (!options) return NULL;
     for (index = 0U; index < options->count; ++index) {
-        const xx_meta *item =
-            (const xx_meta *)xx_list_at((const xx_list_t *)options, index);
+        const xx_meta *item = (const xx_meta *)xx_list_at((const xx_list_t *)options, index);
         if (item && item->meta_id == meta_id) return &item->var;
     }
     return NULL;
 }
 
 /* "<kind>_<index>.pem", built from literals and a number only. */
-static bool xx_pem_record_name(char *name, size_t capacity, uint32_t kind,
-                               uint64_t index) {
+static bool xx_pem_record_name(char *name, size_t capacity, uint32_t kind, uint64_t index)
+{
     const char *prefix = xx_pem_kind_to_string(kind);
     char digits[24];
     size_t digit_count = 0U;
@@ -544,8 +537,8 @@ static bool xx_pem_record_name(char *name, size_t capacity, uint32_t kind,
     return true;
 }
 
-static bool xx_pem_populate_record(xx_archive_record *record,
-                                   const xx_pem_block *block, uint64_t index) {
+static bool xx_pem_populate_record(xx_archive_record *record, const xx_pem_block *block, uint64_t index)
+{
     char name[64];
     if (!record || !block || block->magic_index >= XX_PEM_BEGIN_COUNT) {
         return false;
@@ -559,20 +552,14 @@ static bool xx_pem_populate_record(xx_archive_record *record,
     record->header_size = 0;
     record->data_offset = block->offset;
     record->compressed_size = block->size;
-    return xx_archive_record_set_original_name(record, name) &&
-           xx_archive_record_set_meta_str(
-               record, XX_META_ID_COMMENT,
-               g_xx_pem_begin[block->magic_index].label) &&
-           xx_archive_record_set_meta_u64(record, XX_META_ID_COMPRESSED_SIZE,
-                                          (uint64_t)block->size) &&
-           xx_archive_record_set_meta_u64(record, XX_META_ID_UNCOMPRESSED_SIZE,
-                                          (uint64_t)block->size) &&
-           xx_archive_record_set_meta_u64(record, XX_META_ID_COMPRESSION_METHOD,
-                                          0U) &&
-           xx_archive_record_set_meta_bool(record, XX_META_ID_IS_FOLDER, false);
+    return xx_archive_record_set_original_name(record, name) && xx_archive_record_set_meta_str(record, XX_META_ID_COMMENT, g_xx_pem_begin[block->magic_index].label) &&
+           xx_archive_record_set_meta_u64(record, XX_META_ID_COMPRESSED_SIZE, (uint64_t)block->size) &&
+           xx_archive_record_set_meta_u64(record, XX_META_ID_UNCOMPRESSED_SIZE, (uint64_t)block->size) &&
+           xx_archive_record_set_meta_u64(record, XX_META_ID_COMPRESSION_METHOD, 0U) && xx_archive_record_set_meta_bool(record, XX_META_ID_IS_FOLDER, false);
 }
 
-static void xx_pem_archive_stream_free(void *pointer) {
+static void xx_pem_archive_stream_free(void *pointer)
+{
     xx_pem_archive_stream *stream = (xx_pem_archive_stream *)pointer;
     if (!stream) return;
     xx_pem_reader_close(&stream->reader);
@@ -583,16 +570,18 @@ static void xx_pem_archive_stream_free(void *pointer) {
 /* Public interface                                                          */
 /* ------------------------------------------------------------------------ */
 
-const char *xx_pem_kind_to_string(uint32_t kind) {
+const char *xx_pem_kind_to_string(uint32_t kind)
+{
     switch (kind) {
-    case XX_PEM_KIND_CERTIFICATE: return "certificate";
-    case XX_PEM_KIND_PUBLIC_KEY: return "public_key";
-    case XX_PEM_KIND_PRIVATE_KEY: return "private_key";
-    default: return NULL;
+        case XX_PEM_KIND_CERTIFICATE: return "certificate";
+        case XX_PEM_KIND_PUBLIC_KEY: return "public_key";
+        case XX_PEM_KIND_PRIVATE_KEY: return "private_key";
+        default: return NULL;
     }
 }
 
-void xx_pem_init(xx_pem *pem, xx_io_device *dev, int64_t base_address) {
+void xx_pem_init(xx_pem *pem, xx_io_device *dev, int64_t base_address)
+{
     if (!pem) return;
     xx_mem_zero(pem, sizeof(*pem));
     xx_format_init(&pem->format, dev, base_address);
@@ -604,30 +593,26 @@ void xx_pem_init(xx_pem *pem, xx_io_device *dev, int64_t base_address) {
     pem->format.check_is_valid = xx_pem_check_is_valid;
     pem->format.handle_base_info = xx_pem_handle_base_info;
     pem->format.get_format_size = xx_pem_get_format_size;
-    pem->format.get_number_of_archive_records =
-        xx_pem_get_number_of_archive_records;
-    pem->format.create_archive_records_reading =
-        xx_pem_create_archive_records_reading;
-    pem->format.get_current_archive_record =
-        xx_pem_get_current_archive_record;
-    pem->format.unpack_current_archive_record =
-        xx_pem_unpack_current_archive_record;
-    pem->format.archive_record_move_to_next =
-        xx_pem_archive_record_move_to_next;
-    pem->format.free_archive_records_reading =
-        xx_pem_free_archive_records_reading;
+    pem->format.get_number_of_archive_records = xx_pem_get_number_of_archive_records;
+    pem->format.create_archive_records_reading = xx_pem_create_archive_records_reading;
+    pem->format.get_current_archive_record = xx_pem_get_current_archive_record;
+    pem->format.unpack_current_archive_record = xx_pem_unpack_current_archive_record;
+    pem->format.archive_record_move_to_next = xx_pem_archive_record_move_to_next;
+    pem->format.free_archive_records_reading = xx_pem_free_archive_records_reading;
     pem->format.destroy = xx_pem_vtable_destroy;
     pem->first_block_size = -1;
     pem->archive_end = -1;
 }
 
-xx_pem *xx_pem_create(xx_io_device *dev, int64_t base_address) {
+xx_pem *xx_pem_create(xx_io_device *dev, int64_t base_address)
+{
     xx_pem *pem = (xx_pem *)xx_mem_alloc(sizeof(*pem));
     if (pem) xx_pem_init(pem, dev, base_address);
     return pem;
 }
 
-void xx_pem_destroy(xx_pem *pem) {
+void xx_pem_destroy(xx_pem *pem)
+{
     if (!pem) return;
     if (pem->internal) {
         xx_mem_free(pem->internal);
@@ -636,23 +621,27 @@ void xx_pem_destroy(xx_pem *pem) {
     xx_format_cleanup_extra_parameters(&pem->format);
 }
 
-static void xx_pem_vtable_destroy(Abstractformat *self) {
+static void xx_pem_vtable_destroy(Abstractformat *self)
+{
     xx_pem_destroy((xx_pem *)self);
 }
 
-void xx_pem_free(xx_pem *pem) {
+void xx_pem_free(xx_pem *pem)
+{
     if (!pem) return;
     xx_pem_destroy(pem);
     xx_mem_free(pem);
 }
 
-bool xx_pem_check_is_valid(Abstractformat *self, xx_pd_struct *pd) {
+bool xx_pem_check_is_valid(Abstractformat *self, xx_pd_struct *pd)
+{
     xx_pem_private parsed;
     /* The first block decides validity; the rest only extends the size. */
     return xx_pem_parse(self, &parsed, true, pd);
 }
 
-bool xx_pem_handle_base_info(Abstractformat *self, xx_pd_struct *pd) {
+bool xx_pem_handle_base_info(Abstractformat *self, xx_pd_struct *pd)
+{
     xx_pem_private *parsed;
     xx_pem *pem = (xx_pem *)self;
     int64_t total_size;
@@ -690,29 +679,27 @@ bool xx_pem_handle_base_info(Abstractformat *self, xx_pd_struct *pd) {
     return true;
 }
 
-int64_t xx_pem_get_format_size(Abstractformat *self, xx_pd_struct *pd) {
-    if (!self ||
-        (!self->base_info_handled && !xx_format_handle_base_info(self, pd))) {
+int64_t xx_pem_get_format_size(Abstractformat *self, xx_pd_struct *pd)
+{
+    if (!self || (!self->base_info_handled && !xx_format_handle_base_info(self, pd))) {
         return -1;
     }
     return self->format_size;
 }
 
-uint64_t xx_pem_get_number_of_archive_records(Abstractformat *self,
-                                              xx_pd_struct *pd) {
-    if (!self ||
-        (!self->base_info_handled && !xx_format_handle_base_info(self, pd))) {
+uint64_t xx_pem_get_number_of_archive_records(Abstractformat *self, xx_pd_struct *pd)
+{
+    if (!self || (!self->base_info_handled && !xx_format_handle_base_info(self, pd))) {
         return 0U;
     }
     return ((xx_pem *)self)->number_of_records;
 }
 
-xx_archive_record_state *xx_pem_create_archive_records_reading(
-    Abstractformat *self, const xx_list_s *options, xx_pd_struct *pd) {
+xx_archive_record_state *xx_pem_create_archive_records_reading(Abstractformat *self, const xx_list_s *options, xx_pd_struct *pd)
+{
     xx_archive_record_state *state;
     xx_pem_archive_stream *stream;
-    if (!self || !self->device ||
-        (!self->base_info_handled && !xx_format_handle_base_info(self, pd))) {
+    if (!self || !self->device || (!self->base_info_handled && !xx_format_handle_base_info(self, pd))) {
         return NULL;
     }
     state = (xx_archive_record_state *)xx_mem_alloc(sizeof(*state));
@@ -725,17 +712,14 @@ xx_archive_record_state *xx_pem_create_archive_records_reading(
     xx_archive_record_state_init(state, self);
     state->internal_state = stream;
     state->free_internal = xx_pem_archive_stream_free;
-    if (!xx_pem_copy_options(&state->options, options) ||
-        !xx_pem_reader_open(&stream->reader, self->device, NULL)) {
+    if (!xx_pem_copy_options(&state->options, options) || !xx_pem_reader_open(&stream->reader, self->device, NULL)) {
         xx_archive_record_state_free(state);
         return NULL;
     }
     stream->count = ((xx_pem *)self)->number_of_records;
     stream->index = 0U;
     state->total_records = (int64_t)stream->count;
-    if (stream->count != 0U &&
-        xx_pem_parse_block(&stream->reader, self->base_address,
-                           &stream->current) &&
+    if (stream->count != 0U && xx_pem_parse_block(&stream->reader, self->base_address, &stream->current) &&
         xx_pem_populate_record(&state->current_record, &stream->current, 0U)) {
         state->has_record = true;
         state->current_index = 0;
@@ -743,21 +727,17 @@ xx_archive_record_state *xx_pem_create_archive_records_reading(
     return state;
 }
 
-const xx_archive_record *xx_pem_get_current_archive_record(
-    Abstractformat *self, xx_archive_record_state *state) {
-    return self && state && state->format == self && state->has_record
-               ? &state->current_record
-               : NULL;
+const xx_archive_record *xx_pem_get_current_archive_record(Abstractformat *self, xx_archive_record_state *state)
+{
+    return self && state && state->format == self && state->has_record ? &state->current_record : NULL;
 }
 
-bool xx_pem_archive_record_move_to_next(Abstractformat *self,
-                                        xx_archive_record_state *state,
-                                        xx_pd_struct *pd) {
+bool xx_pem_archive_record_move_to_next(Abstractformat *self, xx_archive_record_state *state, xx_pd_struct *pd)
+{
     xx_pem_archive_stream *stream;
     xx_pem_block next;
     int64_t after;
-    if (!self || !state || state->format != self || !state->has_record ||
-        !state->internal_state || (pd && xx_pd_is_stopped(pd))) {
+    if (!self || !state || state->format != self || !state->has_record || !state->internal_state || (pd && xx_pd_is_stopped(pd))) {
         return false;
     }
     stream = (xx_pem_archive_stream *)state->internal_state;
@@ -774,8 +754,7 @@ bool xx_pem_archive_record_move_to_next(Abstractformat *self,
     stream->reader.pd = NULL;
     ++stream->index;
     stream->current = next;
-    if (!xx_pem_populate_record(&state->current_record, &stream->current,
-                                stream->index)) {
+    if (!xx_pem_populate_record(&state->current_record, &stream->current, stream->index)) {
         return false;
     }
     state->has_record = true;
@@ -783,9 +762,8 @@ bool xx_pem_archive_record_move_to_next(Abstractformat *self,
     return true;
 }
 
-bool xx_pem_unpack_current_archive_record(Abstractformat *self,
-                                          xx_archive_record_state *state,
-                                          xx_pd_struct *pd) {
+bool xx_pem_unpack_current_archive_record(Abstractformat *self, xx_archive_record_state *state, xx_pd_struct *pd)
+{
     const xx_archive_record *record;
     const xx_var *option;
     const char *name;
@@ -793,8 +771,7 @@ bool xx_pem_unpack_current_archive_record(Abstractformat *self,
     char *owned_base = NULL;
     char *destination = NULL;
     bool result = false;
-    if (!self || !self->device || !state || state->format != self ||
-        !state->has_record || (pd && xx_pd_is_stopped(pd))) {
+    if (!self || !self->device || !state || state->format != self || !state->has_record || (pd && xx_pd_is_stopped(pd))) {
         return false;
     }
     record = &state->current_record;
@@ -803,56 +780,54 @@ bool xx_pem_unpack_current_archive_record(Abstractformat *self,
     option = xx_pem_find_option(&state->options, XX_META_ID_OPT_UNPACK_PATH);
     if (!option) {
         int64_t total = xx_io_total_size(self->device);
-        return record->data_offset >= 0 && record->compressed_size >= 0 &&
-               record->data_offset <= total &&
-               record->compressed_size <= total - record->data_offset;
+        return record->data_offset >= 0 && record->compressed_size >= 0 && record->data_offset <= total && record->compressed_size <= total - record->data_offset;
     }
-    if (option->type == XX_VAR_TYPE_STRING ||
-        option->type == XX_VAR_TYPE_STRING_VIEW) {
+    if (option->type == XX_VAR_TYPE_STRING || option->type == XX_VAR_TYPE_STRING_VIEW) {
         base = xx_var_get_str(option);
-    } else if (option->type == XX_VAR_TYPE_WSTRING ||
-               option->type == XX_VAR_TYPE_WSTRING_VIEW) {
+    } else if (option->type == XX_VAR_TYPE_WSTRING || option->type == XX_VAR_TYPE_WSTRING_VIEW) {
         owned_base = xx_str_unicode_to_utf8(xx_var_get_wstr(option));
         base = owned_base;
     }
     if (!base) goto cleanup;
     /* The member name is "<kind>_<n>.pem", composed here from literals and a
      * number, so it cannot carry a path separator, a drive or "..". */
-    if (base[0] && base[xx_str_len(base) - 1U] != '/' &&
-        base[xx_str_len(base) - 1U] != '\\') {
+    if (base[0] && base[xx_str_len(base) - 1U] != '/' && base[xx_str_len(base) - 1U] != '\\') {
         destination = xx_str_concat3(base, "/", name);
     } else {
         destination = xx_str_concat(base, name);
     }
     if (!destination) goto cleanup;
     if (!xx_store_create_dirs_a(destination, false)) goto cleanup;
-    result = xx_store_unpack_device_to_file(self->device, record->data_offset,
-                                            record->compressed_size,
-                                            destination, pd);
+    result = xx_store_unpack_device_to_file(self->device, record->data_offset, record->compressed_size, destination, pd);
 cleanup:
     if (owned_base) xx_str_free(owned_base);
     if (destination) xx_str_free(destination);
     return result;
 }
 
-void xx_pem_free_archive_records_reading(Abstractformat *self,
-                                         xx_archive_record_state *state) {
+void xx_pem_free_archive_records_reading(Abstractformat *self, xx_archive_record_state *state)
+{
     (void)self;
     xx_archive_record_state_free(state);
 }
 
-uint64_t xx_pem_get_number_of_records(const xx_pem *pem) {
+uint64_t xx_pem_get_number_of_records(const xx_pem *pem)
+{
     return pem ? pem->number_of_records : 0U;
 }
-uint64_t xx_pem_get_number_of_members(const xx_pem *pem) {
+uint64_t xx_pem_get_number_of_members(const xx_pem *pem)
+{
     return pem ? pem->number_of_members : 0U;
 }
-uint32_t xx_pem_get_first_kind(const xx_pem *pem) {
+uint32_t xx_pem_get_first_kind(const xx_pem *pem)
+{
     return pem ? pem->first_kind : 0U;
 }
-int64_t xx_pem_get_first_block_size(const xx_pem *pem) {
+int64_t xx_pem_get_first_block_size(const xx_pem *pem)
+{
     return pem ? pem->first_block_size : -1;
 }
-int64_t xx_pem_get_archive_end(const xx_pem *pem) {
+int64_t xx_pem_get_archive_end(const xx_pem *pem)
+{
     return pem ? pem->archive_end : -1;
 }

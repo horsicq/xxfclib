@@ -62,47 +62,45 @@ struct xx_dlob {
     void *internal;
 };
 
-XXFC_API void xx_dlob_init(xx_dlob *dlob, xx_io_device *dev,
-                           int64_t base_address);
+XXFC_API void xx_dlob_init(xx_dlob *dlob, xx_io_device *dev, int64_t base_address);
 XXFC_API xx_dlob *xx_dlob_create(xx_io_device *dev, int64_t base_address);
 XXFC_API void xx_dlob_destroy(xx_dlob *dlob);
 XXFC_API void xx_dlob_free(xx_dlob *dlob);
 
 XXFC_API bool xx_dlob_check_is_valid(Abstractformat *self, xx_pd_struct *pd);
 XXFC_API bool xx_dlob_handle_base_info(Abstractformat *self, xx_pd_struct *pd);
-XXFC_API int64_t xx_dlob_get_format_size(Abstractformat *self,
-                                         xx_pd_struct *pd);
-XXFC_API uint64_t xx_dlob_get_number_of_archive_records(Abstractformat *self,
-                                                        xx_pd_struct *pd);
+XXFC_API int64_t xx_dlob_get_format_size(Abstractformat *self, xx_pd_struct *pd);
+XXFC_API uint64_t xx_dlob_get_number_of_archive_records(Abstractformat *self, xx_pd_struct *pd);
 
-XXFC_API xx_archive_record_state *xx_dlob_create_archive_records_reading(
-    Abstractformat *self, const xx_list_s *options, xx_pd_struct *pd);
-XXFC_API const xx_archive_record *xx_dlob_get_current_archive_record(
-    Abstractformat *self, xx_archive_record_state *state);
-XXFC_API bool xx_dlob_unpack_current_archive_record(
-    Abstractformat *self, xx_archive_record_state *state, xx_pd_struct *pd);
-XXFC_API bool xx_dlob_archive_record_move_to_next(
-    Abstractformat *self, xx_archive_record_state *state, xx_pd_struct *pd);
-XXFC_API void xx_dlob_free_archive_records_reading(
-    Abstractformat *self, xx_archive_record_state *state);
+XXFC_API xx_archive_record_state *xx_dlob_create_archive_records_reading(Abstractformat *self, const xx_list_s *options, xx_pd_struct *pd);
+XXFC_API const xx_archive_record *xx_dlob_get_current_archive_record(Abstractformat *self, xx_archive_record_state *state);
+XXFC_API bool xx_dlob_unpack_current_archive_record(Abstractformat *self, xx_archive_record_state *state, xx_pd_struct *pd);
+XXFC_API bool xx_dlob_archive_record_move_to_next(Abstractformat *self, xx_archive_record_state *state, xx_pd_struct *pd);
+XXFC_API void xx_dlob_free_archive_records_reading(Abstractformat *self, xx_archive_record_state *state);
 
 XXFC_API uint64_t xx_dlob_get_number_of_records(const xx_dlob *dlob);
 XXFC_API uint64_t xx_dlob_get_number_of_members(const xx_dlob *dlob);
 XXFC_API uint32_t xx_dlob_get_image_size(const xx_dlob *dlob);
 XXFC_API int64_t xx_dlob_get_archive_end(const xx_dlob *dlob);
 
-static inline Abstractformat *xx_dlob_to_format(xx_dlob *dlob) {
+static inline Abstractformat *xx_dlob_to_format(xx_dlob *dlob)
+{
     return dlob ? &dlob->format : NULL;
 }
-static inline void XDlob_init(xx_dlob *dlob, xx_io_device *dev,
-                              int64_t base_address) {
+static inline void XDlob_init(xx_dlob *dlob, xx_io_device *dev, int64_t base_address)
+{
     xx_dlob_init(dlob, dev, base_address);
 }
-static inline xx_dlob *XDlob_create(xx_io_device *dev, int64_t base_address) {
+static inline xx_dlob *XDlob_create(xx_io_device *dev, int64_t base_address)
+{
     return xx_dlob_create(dev, base_address);
 }
-static inline void XDlob_free(xx_dlob *dlob) { xx_dlob_free(dlob); }
-static inline bool XDlob_is_valid(xx_dlob *dlob, xx_pd_struct *pd) {
+static inline void XDlob_free(xx_dlob *dlob)
+{
+    xx_dlob_free(dlob);
+}
+static inline bool XDlob_is_valid(xx_dlob *dlob, xx_pd_struct *pd)
+{
     return dlob ? xx_format_is_valid(&dlob->format, pd) : false;
 }
 

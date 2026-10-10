@@ -7,12 +7,12 @@ extern "C" {
 #endif
 typedef xx_disk_additions_info xx_micral_n_raw;
 typedef xx_micral_n_raw xx_micral_n_raw_t;
-XXFC_API void xx_micral_n_raw_init(xx_micral_n_raw *,xx_io_device *,int64_t);
-XXFC_API xx_micral_n_raw *xx_micral_n_raw_create(xx_io_device *,int64_t);
+XXFC_API void xx_micral_n_raw_init(xx_micral_n_raw *, xx_io_device *, int64_t);
+XXFC_API xx_micral_n_raw *xx_micral_n_raw_create(xx_io_device *, int64_t);
 XXFC_API void xx_micral_n_raw_destroy(xx_micral_n_raw *);
 XXFC_API void xx_micral_n_raw_free(xx_micral_n_raw *);
-XXFC_API bool xx_micral_n_raw_check_is_valid(Abstractformat *,xx_pd_struct *);
-XXFC_API bool xx_micral_n_raw_handle_base_info(Abstractformat *,xx_pd_struct *);
+XXFC_API bool xx_micral_n_raw_check_is_valid(Abstractformat *, xx_pd_struct *);
+XXFC_API bool xx_micral_n_raw_handle_base_info(Abstractformat *, xx_pd_struct *);
 #ifdef __cplusplus
 }
 #endif

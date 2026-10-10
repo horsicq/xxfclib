@@ -9,13 +9,15 @@
 #ifdef __cplusplus
 extern "C" {
 #endif
-typedef struct xx_bioware_biff { Abstractformat format; } xx_bioware_biff;
-XXFC_API void xx_bioware_biff_init(xx_bioware_biff *,xx_io_device *,int64_t);
-XXFC_API xx_bioware_biff *xx_bioware_biff_create(xx_io_device *,int64_t);
+typedef struct xx_bioware_biff {
+    Abstractformat format;
+} xx_bioware_biff;
+XXFC_API void xx_bioware_biff_init(xx_bioware_biff *, xx_io_device *, int64_t);
+XXFC_API xx_bioware_biff *xx_bioware_biff_create(xx_io_device *, int64_t);
 XXFC_API void xx_bioware_biff_destroy(xx_bioware_biff *);
 XXFC_API void xx_bioware_biff_free(xx_bioware_biff *);
-XXFC_API bool xx_bioware_biff_check_is_valid(Abstractformat *,xx_pd_struct *);
-XXFC_API bool xx_bioware_biff_handle_base_info(Abstractformat *,xx_pd_struct *);
+XXFC_API bool xx_bioware_biff_check_is_valid(Abstractformat *, xx_pd_struct *);
+XXFC_API bool xx_bioware_biff_handle_base_info(Abstractformat *, xx_pd_struct *);
 #ifdef __cplusplus
 }
 #endif

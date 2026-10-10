@@ -8,14 +8,10 @@
 
 /* Complete 64-byte blocks; unaligned byte pointers are supported. These
  * routines update the chaining state without buffering or final padding. */
-void xx_sha1_blocks_scalar(uint32_t state[5], const uint8_t *blocks,
-                            size_t block_count);
-void xx_sha256_blocks_scalar(uint32_t state[8], const uint8_t *blocks,
-                              size_t block_count);
-void xx_sha1_blocks(uint32_t state[5], const uint8_t *blocks,
-                     size_t block_count);
-void xx_sha256_blocks(uint32_t state[8], const uint8_t *blocks,
-                       size_t block_count);
+void xx_sha1_blocks_scalar(uint32_t state[5], const uint8_t *blocks, size_t block_count);
+void xx_sha256_blocks_scalar(uint32_t state[8], const uint8_t *blocks, size_t block_count);
+void xx_sha1_blocks(uint32_t state[5], const uint8_t *blocks, size_t block_count);
+void xx_sha256_blocks(uint32_t state[8], const uint8_t *blocks, size_t block_count);
 
 /* Diagnostics and explicit per-call selection for regression tests. No
  * global override is used, so ordinary callers keep automatic dispatch. */
@@ -28,9 +24,7 @@ enum xx_sha_backend {
 unsigned xx_sha_backend_capabilities(void);
 int xx_sha_selected_backend(void);
 const char *xx_sha_backend_name(int backend);
-bool xx_sha1_blocks_backend(uint32_t state[5], const uint8_t *blocks,
-                             size_t block_count, int backend);
-bool xx_sha256_blocks_backend(uint32_t state[8], const uint8_t *blocks,
-                               size_t block_count, int backend);
+bool xx_sha1_blocks_backend(uint32_t state[5], const uint8_t *blocks, size_t block_count, int backend);
+bool xx_sha256_blocks_backend(uint32_t state[8], const uint8_t *blocks, size_t block_count, int backend);
 
 #endif /* XX_SHA_INTERNAL_H */

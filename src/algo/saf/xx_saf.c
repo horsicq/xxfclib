@@ -34,16 +34,15 @@ typedef struct saf_out_s {
 /* MSB first over a 32 bit accumulator.  Running out of input returns false,
  * which the token loop treats as "stop walking" -- exactly as the reference
  * does; the member is then rejected (or not) by the final size check. */
-static bool saf_read(saf_bits *bits, int32_t nbits, uint32_t *value) {
+static bool saf_read(saf_bits *bits, int32_t nbits, uint32_t *value)
+{
     if (nbits == 0) {
         *value = 0U;
         return true;
     }
     while (bits->count < nbits) {
         if (bits->position >= bits->size) return false;
-        bits->accumulator = (uint32_t)(bits->accumulator +
-                                       ((uint32_t)bits->data[bits->position]
-                                        << (24 - bits->count)));
+        bits->accumulator = (uint32_t)(bits->accumulator + ((uint32_t)bits->data[bits->position] << (24 - bits->count)));
         ++bits->position;
         bits->count += 8;
     }
@@ -55,7 +54,8 @@ static bool saf_read(saf_bits *bits, int32_t nbits, uint32_t *value) {
 
 /* 2 bits; the value 3 escapes to 2 more bits, and the value 3 there escapes to
  * a chain of 4 bit nibbles terminated by a nibble below 15. */
-static bool saf_read_length(saf_bits *bits, int32_t *length) {
+static bool saf_read_length(saf_bits *bits, int32_t *length)
+{
     uint32_t value = 0U;
     int32_t result;
     if (!saf_read(bits, 2, &value)) return false;
@@ -78,8 +78,8 @@ static bool saf_read_length(saf_bits *bits, int32_t *length) {
     return true;
 }
 
-static bool saf_put(saf_out *out, uint8_t *window, int32_t *index,
-                    uint8_t byte) {
+static bool saf_put(saf_out *out, uint8_t *window, int32_t *index, uint8_t byte)
+{
     if (out->position >= out->capacity) return false;
     window[*index] = byte;
     out->data[out->position] = byte;
@@ -93,7 +93,8 @@ static bool saf_put(saf_out *out, uint8_t *window, int32_t *index,
  * ends the walk without an error here, matching the reference: it stops the
  * loop and lets the whole-member size check decide.  Do not "fix" that into a
  * hard failure -- it would diverge from the shipped decoder. */
-static bool saf_decode_chunk(const uint8_t *data, size_t size, saf_out *out) {
+static bool saf_decode_chunk(const uint8_t *data, size_t size, saf_out *out)
+{
     saf_bits bits;
     uint8_t window[SAF_WINDOW];
     int32_t index = 0;
@@ -148,8 +149,8 @@ static bool saf_decode_chunk(const uint8_t *data, size_t size, saf_out *out) {
 /* The whole member: one stream for method 3, a chain of length-prefixed
  * chunks otherwise.  Split out so the differential harness can drive exactly
  * this code to measure a stream's length before comparing bytes. */
-static bool saf_decode_core(const uint8_t *input, size_t input_size,
-                            uint32_t method, saf_out *outp) {
+static bool saf_decode_core(const uint8_t *input, size_t input_size, uint32_t method, saf_out *outp)
+{
     saf_out out = *outp;
     bool ok = true;
 
@@ -163,10 +164,7 @@ static bool saf_decode_core(const uint8_t *input, size_t input_size,
                 ok = false;
                 break;
             }
-            chunk_size = (uint32_t)input[position] |
-                         ((uint32_t)input[position + 1] << 8) |
-                         ((uint32_t)input[position + 2] << 16) |
-                         ((uint32_t)input[position + 3] << 24);
+            chunk_size = (uint32_t)input[position] | ((uint32_t)input[position + 1] << 8) | ((uint32_t)input[position + 2] << 16) | ((uint32_t)input[position + 3] << 24);
             position += 4;
             /* The reference reads this length as a signed 32 bit value and
              * rejects a negative one, so the high bit is a hard error. */
@@ -190,10 +188,8 @@ static bool saf_decode_core(const uint8_t *input, size_t input_size,
     return ok;
 }
 
-XXFC_API bool xx_saf_decode_memory_method(const uint8_t *input,
-                                          size_t input_size, uint32_t method,
-                                          uint8_t *output, size_t output_size,
-                                          size_t *written) {
+XXFC_API bool xx_saf_decode_memory_method(const uint8_t *input, size_t input_size, uint32_t method, uint8_t *output, size_t output_size, size_t *written)
+{
     saf_out out;
 
     if (written) *written = 0;
@@ -210,9 +206,7 @@ XXFC_API bool xx_saf_decode_memory_method(const uint8_t *input,
     return true;
 }
 
-XXFC_API bool xx_saf_decode_memory(const uint8_t *input, size_t input_size,
-                                   uint8_t *output, size_t output_size,
-                                   size_t *written) {
-    return xx_saf_decode_memory_method(input, input_size, 3U, output,
-                                       output_size, written);
+XXFC_API bool xx_saf_decode_memory(const uint8_t *input, size_t input_size, uint8_t *output, size_t output_size, size_t *written)
+{
+    return xx_saf_decode_memory_method(input, input_size, 3U, output, output_size, written);
 }

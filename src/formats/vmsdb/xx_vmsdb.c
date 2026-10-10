@@ -116,8 +116,8 @@ typedef struct vmsdb_cursor_s {
     int64_t position;
 } vmsdb_cursor;
 
-static bool vmsdb_parse_tag(const uint8_t *data, int64_t available,
-                            vmsdb_tag *tag) {
+static bool vmsdb_parse_tag(const uint8_t *data, int64_t available, vmsdb_tag *tag)
+{
     uint8_t form;
     if (!data || !tag || available < 2) return false;
     xx_mem_zero(tag, sizeof(*tag));
@@ -152,35 +152,35 @@ static bool vmsdb_parse_tag(const uint8_t *data, int64_t available,
     return true;
 }
 
-static bool vmsdb_cursor_skip(vmsdb_cursor *cursor, int64_t size) {
+static bool vmsdb_cursor_skip(vmsdb_cursor *cursor, int64_t size)
+{
     if (size < 0 || size > cursor->size - cursor->position) return false;
     cursor->position += size;
     return true;
 }
 
-static bool vmsdb_cursor_read(vmsdb_cursor *cursor, uint8_t *buffer,
-                              int64_t size) {
+static bool vmsdb_cursor_read(vmsdb_cursor *cursor, uint8_t *buffer, int64_t size)
+{
     if (size < 0 || size > cursor->size - cursor->position) return false;
-    if (buffer && size != 0)
-        xx_rt_memcpy(buffer, cursor->image + cursor->position, (size_t)size);
+    if (buffer && size != 0) xx_rt_memcpy(buffer, cursor->image + cursor->position, (size_t)size);
     cursor->position += size;
     return true;
 }
 
 /* Reads an element header and steps over it. */
-static bool vmsdb_cursor_tag(vmsdb_cursor *cursor, vmsdb_tag *tag) {
+static bool vmsdb_cursor_tag(vmsdb_cursor *cursor, vmsdb_tag *tag)
+{
     int64_t available = cursor->size - cursor->position;
     if (available > 4) available = 4;
     if (available < 2) return false;
-    if (!vmsdb_parse_tag(cursor->image + cursor->position, available, tag))
-        return false;
+    if (!vmsdb_parse_tag(cursor->image + cursor->position, available, tag)) return false;
     return vmsdb_cursor_skip(cursor, tag->header_size);
 }
 
 /* A constructed element has no length, so the only way past it is to walk its
  * children to the end-of-contents marker. */
-static bool vmsdb_skip_element(vmsdb_cursor *cursor, const vmsdb_tag *tag,
-                               int32_t depth) {
+static bool vmsdb_skip_element(vmsdb_cursor *cursor, const vmsdb_tag *tag, int32_t depth)
+{
     if (depth > VMSDB_MAX_DEPTH) return false;
     if (!tag->constructed) return vmsdb_cursor_skip(cursor, tag->length);
     for (;;) {
@@ -191,7 +191,8 @@ static bool vmsdb_skip_element(vmsdb_cursor *cursor, const vmsdb_tag *tag,
     }
 }
 
-static bool vmsdb_enter_element(vmsdb_cursor *cursor, uint8_t wanted) {
+static bool vmsdb_enter_element(vmsdb_cursor *cursor, uint8_t wanted)
+{
     for (;;) {
         vmsdb_tag tag;
         if (!vmsdb_cursor_tag(cursor, &tag)) return false;
@@ -204,37 +205,33 @@ static bool vmsdb_enter_element(vmsdb_cursor *cursor, uint8_t wanted) {
 /* Names come out of the kit as flat VMS specifications such as
  * "[AMDS]AMDS$COMM.EXE".  Only the bytes a host filesystem cannot carry are
  * replaced; the name is never split into directories. */
-static char *vmsdb_make_name(const uint8_t *bytes, size_t size) {
+static char *vmsdb_make_name(const uint8_t *bytes, size_t size)
+{
     size_t start = 0U;
     size_t end = size;
     size_t index;
     char *name;
-    while (end > start && (bytes[end - 1U] == ' ' || bytes[end - 1U] == 0U ||
-                           bytes[end - 1U] == '\t'))
-        --end;
+    while (end > start && (bytes[end - 1U] == ' ' || bytes[end - 1U] == 0U || bytes[end - 1U] == '\t')) --end;
     while (start < end && (bytes[start] == ' ' || bytes[start] == '\t')) ++start;
     if (end == start) return NULL;
     name = (char *)xx_mem_alloc(end - start + 1U);
     if (!name) return NULL;
     for (index = start; index < end; ++index) {
         uint8_t c = bytes[index];
-        if (c < 0x20U || c == 0x7fU || c == '/' || c == '\\' || c == ':' ||
-            c == '<' || c == '>' || c == '"' || c == '|' || c == '?' ||
-            c == '*')
+        if (c < 0x20U || c == 0x7fU || c == '/' || c == '\\' || c == ':' || c == '<' || c == '>' || c == '"' || c == '|' || c == '?' || c == '*')
             name[index - start] = '_';
-        else
-            name[index - start] = (char)c;
+        else name[index - start] = (char)c;
     }
     name[end - start] = 0;
-    if (name[0] == '.' &&
-        (name[1] == 0 || (name[1] == '.' && name[2] == 0))) {
+    if (name[0] == '.' && (name[1] == 0 || (name[1] == '.' && name[2] == 0))) {
         xx_str_free(name);
         return NULL;
     }
     return name;
 }
 
-static void vmsdb_stream_free(void *opaque) {
+static void vmsdb_stream_free(void *opaque)
+{
     vmsdb_stream *stream = (vmsdb_stream *)opaque;
     size_t index;
     if (!stream) return;
@@ -245,45 +242,40 @@ static void vmsdb_stream_free(void *opaque) {
     xx_mem_free(stream);
 }
 
-static bool vmsdb_add_member(vmsdb_stream *stream, const vmsdb_member *member) {
+static bool vmsdb_add_member(vmsdb_stream *stream, const vmsdb_member *member)
+{
     vmsdb_member *grown;
-    if (!stream || !member || stream->count >= VMSDB_MAX_MEMBERS ||
-        stream->count > SIZE_MAX / sizeof(*grown) - 1U)
-        return false;
-    grown = (vmsdb_member *)xx_mem_realloc(
-        stream->items, (stream->count + 1U) * sizeof(*grown));
+    if (!stream || !member || stream->count >= VMSDB_MAX_MEMBERS || stream->count > SIZE_MAX / sizeof(*grown) - 1U) return false;
+    grown = (vmsdb_member *)xx_mem_realloc(stream->items, (stream->count + 1U) * sizeof(*grown));
     if (!grown) return false;
     stream->items = grown;
     stream->items[stream->count++] = *member;
     return true;
 }
 
-static bool vmsdb_read_at(xx_io_device *device, int64_t offset, void *buffer,
-                          size_t size) {
+static bool vmsdb_read_at(xx_io_device *device, int64_t offset, void *buffer, size_t size)
+{
     size_t done = 0U;
     const size_t io_capacity = xx_get_file_buffer_size();
-    if (!device || (!buffer && size != 0U) || offset < 0 ||
-        xx_io_seek64(device, offset, SEEK_SET) != 0)
-        return false;
+    if (!device || (!buffer && size != 0U) || offset < 0 || xx_io_seek64(device, offset, SEEK_SET) != 0) return false;
     while (done < size) {
         size_t request = size - done;
         if (request > io_capacity) request = io_capacity;
-        ssize_t amount =
-            xx_io_read(device, (uint8_t *)buffer + done, request);
+        ssize_t amount = xx_io_read(device, (uint8_t *)buffer + done, request);
         if (amount <= 0 || (size_t)amount > request) return false;
         done += (size_t)amount;
     }
     return true;
 }
 
-static bool vmsdb_check_magic(const uint8_t *magic) {
-    return xx_data_get_u32(magic, 4, 0, false) == UINT32_C(0x8074ffff) &&
-           xx_data_get_u32(magic + 4, 4, 0, false) == UINT32_C(0x018080a0) &&
+static bool vmsdb_check_magic(const uint8_t *magic)
+{
+    return xx_data_get_u32(magic, 4, 0, false) == UINT32_C(0x8074ffff) && xx_data_get_u32(magic + 4, 4, 0, false) == UINT32_C(0x018080a0) &&
            xx_data_get_u32(magic + 8, 4, 0, false) == UINT32_C(0x00018101);
 }
 
-static bool vmsdb_walk_members(vmsdb_stream *stream, int64_t base_address,
-                               xx_pd_struct *pd) {
+static bool vmsdb_walk_members(vmsdb_stream *stream, int64_t base_address, xx_pd_struct *pd)
+{
     vmsdb_cursor cursor;
     cursor.image = stream->image;
     cursor.size = stream->image_size;
@@ -294,9 +286,7 @@ static bool vmsdb_walk_members(vmsdb_stream *stream, int64_t base_address,
     if (!vmsdb_enter_element(&cursor, VMSDB_TAG_KIT)) return false;
     if (!vmsdb_enter_element(&cursor, VMSDB_TAG_PRODUCT)) return false;
     /* A kit without a file list is well formed and simply holds nothing. */
-    if (!vmsdb_enter_element(&cursor, VMSDB_TAG_FILELIST) ||
-        !vmsdb_enter_element(&cursor, VMSDB_TAG_FILES))
-        return true;
+    if (!vmsdb_enter_element(&cursor, VMSDB_TAG_FILELIST) || !vmsdb_enter_element(&cursor, VMSDB_TAG_FILES)) return true;
 
     while (stream->count < VMSDB_MAX_MEMBERS) {
         int64_t member_offset = cursor.position;
@@ -306,14 +296,10 @@ static bool vmsdb_walk_members(vmsdb_stream *stream, int64_t base_address,
         int64_t blocks, last_bytes, declared;
         vmsdb_member member;
         if (pd && xx_pd_is_stopped(pd)) return false;
-        if (!vmsdb_cursor_tag(&cursor, &tag) || tag.tag != VMSDB_TAG_MEMBER)
-            break;
-        if (!vmsdb_cursor_tag(&cursor, &tag) || tag.tag != VMSDB_TAG_SKIPPED)
-            break;
+        if (!vmsdb_cursor_tag(&cursor, &tag) || tag.tag != VMSDB_TAG_MEMBER) break;
+        if (!vmsdb_cursor_tag(&cursor, &tag) || tag.tag != VMSDB_TAG_SKIPPED) break;
         if (!vmsdb_skip_element(&cursor, &tag, 0)) break;
-        if (!vmsdb_cursor_tag(&cursor, &tag) || tag.tag != VMSDB_TAG_NAME ||
-            tag.length == 0 || tag.length > VMSDB_MAX_NAME_SIZE)
-            break;
+        if (!vmsdb_cursor_tag(&cursor, &tag) || tag.tag != VMSDB_TAG_NAME || tag.length == 0 || tag.length > VMSDB_MAX_NAME_SIZE) break;
         raw_name = (uint8_t *)xx_mem_alloc((size_t)tag.length);
         if (!raw_name) return false;
         if (!vmsdb_cursor_read(&cursor, raw_name, tag.length)) {
@@ -326,12 +312,9 @@ static bool vmsdb_walk_members(vmsdb_stream *stream, int64_t base_address,
         if (!member.name) break;
         member.header_offset = base_address + member_offset;
 
-        if (!vmsdb_cursor_tag(&cursor, &tag) || tag.tag != VMSDB_TAG_KIT ||
-            !vmsdb_cursor_tag(&cursor, &tag) ||
-            tag.tag != VMSDB_TAG_OCTETSTRING ||
-            tag.length != VMSDB_ATTRIBUTE_SIZE ||
-            !vmsdb_cursor_read(&cursor, attributes, VMSDB_ATTRIBUTE_SIZE) ||
-            !vmsdb_cursor_tag(&cursor, &tag) || tag.tag != VMSDB_TAG_EOC) {
+        if (!vmsdb_cursor_tag(&cursor, &tag) || tag.tag != VMSDB_TAG_KIT || !vmsdb_cursor_tag(&cursor, &tag) || tag.tag != VMSDB_TAG_OCTETSTRING ||
+            tag.length != VMSDB_ATTRIBUTE_SIZE || !vmsdb_cursor_read(&cursor, attributes, VMSDB_ATTRIBUTE_SIZE) || !vmsdb_cursor_tag(&cursor, &tag) ||
+            tag.tag != VMSDB_TAG_EOC) {
             xx_str_free(member.name);
             break;
         }
@@ -362,8 +345,7 @@ static bool vmsdb_walk_members(vmsdb_stream *stream, int64_t base_address,
                     break;
                 }
                 if (chunk.tag == VMSDB_TAG_EOC) break;
-                if (chunk.tag != VMSDB_TAG_OCTETSTRING || chunk.length == 0 ||
-                    !vmsdb_cursor_skip(&cursor, chunk.length)) {
+                if (chunk.tag != VMSDB_TAG_OCTETSTRING || chunk.length == 0 || !vmsdb_cursor_skip(&cursor, chunk.length)) {
                     ok = false;
                     break;
                 }
@@ -377,16 +359,14 @@ static bool vmsdb_walk_members(vmsdb_stream *stream, int64_t base_address,
             /* The stream deliberately takes in the end-of-contents marker: it
              * is the chunk walk's stop signal. */
             member.data_size = cursor.position - content_offset;
-            member.uncompressed_size =
-                (uint64_t)(declared < total ? declared : total);
+            member.uncompressed_size = (uint64_t)(declared < total ? declared : total);
             member.stored = false;
             if (!vmsdb_add_member(stream, &member)) {
                 xx_str_free(member.name);
                 return false;
             }
             /* TRAP: the enclosing 0x30's own end-of-contents marker. */
-            if (!vmsdb_cursor_tag(&cursor, &tag) || tag.tag != VMSDB_TAG_EOC)
-                break;
+            if (!vmsdb_cursor_tag(&cursor, &tag) || tag.tag != VMSDB_TAG_EOC) break;
         } else if (tag.tag == VMSDB_TAG_EOC && declared == 0) {
             /* An empty file writes no content element at all, so the marker
              * just read IS the member's own terminator. */
@@ -406,30 +386,24 @@ static bool vmsdb_walk_members(vmsdb_stream *stream, int64_t base_address,
     return true;
 }
 
-static bool vmsdb_parse(Abstractformat *format, bool walk,
-                        vmsdb_stream **result, xx_pd_struct *pd) {
+static bool vmsdb_parse(Abstractformat *format, bool walk, vmsdb_stream **result, xx_pd_struct *pd)
+{
     uint8_t magic[VMSDB_MAGIC_SIZE];
     vmsdb_stream *stream = NULL;
     int64_t total, size;
-    if (!format || !format->device || !result || format->base_address < 0)
-        return false;
+    if (!format || !format->device || !result || format->base_address < 0) return false;
     total = xx_io_total_size(format->device);
     if (total < format->base_address) return false;
     size = total - format->base_address;
     if (size < VMSDB_MIN_SIZE || size > VMSDB_MAX_INPUT) return false;
-    if (!vmsdb_read_at(format->device, format->base_address, magic,
-                       sizeof(magic)))
-        return false;
+    if (!vmsdb_read_at(format->device, format->base_address, magic, sizeof(magic))) return false;
     if (!vmsdb_check_magic(magic)) return false;
 
     stream = (vmsdb_stream *)xx_mem_calloc(1U, sizeof(*stream));
     if (!stream) return false;
     if (walk) {
         stream->image = (uint8_t *)xx_mem_alloc((size_t)size);
-        if (!stream->image ||
-            !vmsdb_read_at(format->device, format->base_address, stream->image,
-                           (size_t)size))
-            goto fail;
+        if (!stream->image || !vmsdb_read_at(format->device, format->base_address, stream->image, (size_t)size)) goto fail;
         stream->image_size = size;
         stream->base_address = format->base_address;
         if (!vmsdb_walk_members(stream, format->base_address, pd)) goto fail;
@@ -443,9 +417,8 @@ fail:
 
 /* Concatenates the 0x04 chunks of one member and cuts the result to the
  * declared length. */
-static bool vmsdb_decode(const vmsdb_stream *stream,
-                         const vmsdb_member *member, uint8_t **plain,
-                         size_t *plain_size) {
+static bool vmsdb_decode(const vmsdb_stream *stream, const vmsdb_member *member, uint8_t **plain, size_t *plain_size)
+{
     vmsdb_cursor cursor;
     uint8_t *output;
     int64_t produced = 0;
@@ -462,8 +435,7 @@ static bool vmsdb_decode(const vmsdb_stream *stream,
     }
     {
         int64_t relative = member->data_offset - stream->base_address;
-        if (relative < 0 || member->data_size < 0 ||
-            relative > stream->image_size - member->data_size) {
+        if (relative < 0 || member->data_size < 0 || relative > stream->image_size - member->data_size) {
             xx_mem_free(output);
             return false;
         }
@@ -480,8 +452,7 @@ static bool vmsdb_decode(const vmsdb_stream *stream,
         if (produced < expected) {
             int64_t portion = expected - produced;
             if (portion > chunk.length) portion = chunk.length;
-            xx_rt_memcpy(output + produced, cursor.image + cursor.position,
-                         (size_t)portion);
+            xx_rt_memcpy(output + produced, cursor.image + cursor.position, (size_t)portion);
             produced += portion;
         }
         if (!vmsdb_cursor_skip(&cursor, chunk.length)) goto fail;
@@ -495,33 +466,27 @@ fail:
     return false;
 }
 
-static bool vmsdb_safe_output_name(const char *name) {
-    if (!name || !name[0] || name[0] == '/' || name[0] == '\\' ||
-        name[1] == ':')
-        return false;
-    if (name[0] == '.' && (name[1] == 0 || (name[1] == '.' && name[2] == 0)))
-        return false;
+static bool vmsdb_safe_output_name(const char *name)
+{
+    if (!name || !name[0] || name[0] == '/' || name[0] == '\\' || name[1] == ':') return false;
+    if (name[0] == '.' && (name[1] == 0 || (name[1] == '.' && name[2] == 0))) return false;
     for (; *name; ++name) {
         unsigned char c = (unsigned char)*name;
-        if (c == '/' || c == '\\' || c == ':' || c == '<' || c == '>' ||
-            c == '"' || c == '|' || c == '?' || c == '*' || c < 0x20U)
-            return false;
+        if (c == '/' || c == '\\' || c == ':' || c == '<' || c == '>' || c == '"' || c == '|' || c == '?' || c == '*' || c < 0x20U) return false;
     }
     return true;
 }
 
-static bool vmsdb_copy_options(xx_list_s *destination,
-                               const xx_list_s *source) {
+static bool vmsdb_copy_options(xx_list_s *destination, const xx_list_s *source)
+{
     size_t index;
     if (!source) return true;
     for (index = 0U; index < source->count; ++index) {
-        const xx_meta *original =
-            (const xx_meta *)xx_list_at((const xx_list_t *)source, index);
+        const xx_meta *original = (const xx_meta *)xx_list_at((const xx_list_t *)source, index);
         xx_meta copy;
         if (!original) continue;
         xx_meta_init(&copy, original->meta_id);
-        if (!xx_var_copy(&copy.var, &original->var) ||
-            !xx_list_append(destination, &copy)) {
+        if (!xx_var_copy(&copy.var, &original->var) || !xx_list_append(destination, &copy)) {
             xx_meta_cleanup(&copy);
             return false;
         }
@@ -529,37 +494,32 @@ static bool vmsdb_copy_options(xx_list_s *destination,
     return true;
 }
 
-static const xx_var *vmsdb_option(const xx_list_s *options, uint32_t id) {
+static const xx_var *vmsdb_option(const xx_list_s *options, uint32_t id)
+{
     size_t index;
     if (!options) return NULL;
     for (index = 0U; index < options->count; ++index) {
-        const xx_meta *meta =
-            (const xx_meta *)xx_list_at((const xx_list_t *)options, index);
+        const xx_meta *meta = (const xx_meta *)xx_list_at((const xx_list_t *)options, index);
         if (meta && meta->meta_id == id) return &meta->var;
     }
     return NULL;
 }
 
-static bool vmsdb_set_record(xx_archive_record *record,
-                             const vmsdb_member *member) {
+static bool vmsdb_set_record(xx_archive_record *record, const vmsdb_member *member)
+{
     xx_archive_record_cleanup(record);
     xx_archive_record_init(record);
     record->header_offset = member->header_offset;
     record->header_size = member->data_offset - member->header_offset;
     record->data_offset = member->data_offset;
     record->compressed_size = member->data_size;
-    return xx_archive_record_set_original_name(record, member->name) &&
-           xx_archive_record_set_meta_u64(record, XX_META_ID_COMPRESSED_SIZE,
-                                          (uint64_t)member->data_size) &&
-           xx_archive_record_set_meta_u64(record, XX_META_ID_UNCOMPRESSED_SIZE,
-                                          member->uncompressed_size) &&
-           xx_archive_record_set_meta_u64(record, XX_META_ID_COMPRESSION_METHOD,
-                                          0U) &&
-           xx_archive_record_set_meta_bool(record, XX_META_ID_IS_FOLDER, false);
+    return xx_archive_record_set_original_name(record, member->name) && xx_archive_record_set_meta_u64(record, XX_META_ID_COMPRESSED_SIZE, (uint64_t)member->data_size) &&
+           xx_archive_record_set_meta_u64(record, XX_META_ID_UNCOMPRESSED_SIZE, member->uncompressed_size) &&
+           xx_archive_record_set_meta_u64(record, XX_META_ID_COMPRESSION_METHOD, 0U) && xx_archive_record_set_meta_bool(record, XX_META_ID_IS_FOLDER, false);
 }
 
-void xx_vmsdb_init(xx_vmsdb *archive, xx_io_device *device,
-                   int64_t base_address) {
+void xx_vmsdb_init(xx_vmsdb *archive, xx_io_device *device, int64_t base_address)
+{
     if (!archive) return;
     xx_mem_zero(archive, sizeof(*archive));
     xx_format_init(&archive->format, device, base_address);
@@ -572,45 +532,44 @@ void xx_vmsdb_init(xx_vmsdb *archive, xx_io_device *device,
     archive->format.check_is_valid = xx_vmsdb_check_is_valid;
     archive->format.handle_base_info = xx_vmsdb_handle_base_info;
     archive->format.get_format_size = xx_vmsdb_get_format_size;
-    archive->format.get_number_of_archive_records =
-        xx_vmsdb_get_number_of_archive_records;
-    archive->format.create_archive_records_reading =
-        xx_vmsdb_create_archive_records_reading;
-    archive->format.get_current_archive_record =
-        xx_vmsdb_get_current_archive_record;
-    archive->format.unpack_current_archive_record =
-        xx_vmsdb_unpack_current_archive_record;
-    archive->format.archive_record_move_to_next =
-        xx_vmsdb_archive_record_move_to_next;
-    archive->format.free_archive_records_reading =
-        xx_vmsdb_free_archive_records_reading;
+    archive->format.get_number_of_archive_records = xx_vmsdb_get_number_of_archive_records;
+    archive->format.create_archive_records_reading = xx_vmsdb_create_archive_records_reading;
+    archive->format.get_current_archive_record = xx_vmsdb_get_current_archive_record;
+    archive->format.unpack_current_archive_record = xx_vmsdb_unpack_current_archive_record;
+    archive->format.archive_record_move_to_next = xx_vmsdb_archive_record_move_to_next;
+    archive->format.free_archive_records_reading = xx_vmsdb_free_archive_records_reading;
     archive->archive_end = -1;
 }
 
-xx_vmsdb *xx_vmsdb_create(xx_io_device *device, int64_t base_address) {
+xx_vmsdb *xx_vmsdb_create(xx_io_device *device, int64_t base_address)
+{
     xx_vmsdb *archive = (xx_vmsdb *)xx_mem_alloc(sizeof(*archive));
     if (archive) xx_vmsdb_init(archive, device, base_address);
     return archive;
 }
 
-void xx_vmsdb_destroy(xx_vmsdb *archive) {
+void xx_vmsdb_destroy(xx_vmsdb *archive)
+{
     if (archive) xx_format_cleanup_extra_parameters(&archive->format);
 }
 
-void xx_vmsdb_free(xx_vmsdb *archive) {
+void xx_vmsdb_free(xx_vmsdb *archive)
+{
     if (!archive) return;
     xx_vmsdb_destroy(archive);
     xx_mem_free(archive);
 }
 
-bool xx_vmsdb_check_is_valid(Abstractformat *format, xx_pd_struct *pd) {
+bool xx_vmsdb_check_is_valid(Abstractformat *format, xx_pd_struct *pd)
+{
     vmsdb_stream *stream;
     if (!vmsdb_parse(format, false, &stream, pd)) return false;
     vmsdb_stream_free(stream);
     return true;
 }
 
-bool xx_vmsdb_handle_base_info(Abstractformat *format, xx_pd_struct *pd) {
+bool xx_vmsdb_handle_base_info(Abstractformat *format, xx_pd_struct *pd)
+{
     vmsdb_stream *stream;
     xx_vmsdb *archive;
     if (!format || !vmsdb_parse(format, true, &stream, pd)) return false;
@@ -625,23 +584,18 @@ bool xx_vmsdb_handle_base_info(Abstractformat *format, xx_pd_struct *pd) {
     return true;
 }
 
-int64_t xx_vmsdb_get_format_size(Abstractformat *format, xx_pd_struct *pd) {
-    return format && (format->base_info_handled ||
-                      xx_vmsdb_handle_base_info(format, pd))
-               ? format->format_size
-               : -1;
+int64_t xx_vmsdb_get_format_size(Abstractformat *format, xx_pd_struct *pd)
+{
+    return format && (format->base_info_handled || xx_vmsdb_handle_base_info(format, pd)) ? format->format_size : -1;
 }
 
-uint64_t xx_vmsdb_get_number_of_archive_records(Abstractformat *format,
-                                                xx_pd_struct *pd) {
-    return format && (format->base_info_handled ||
-                      xx_vmsdb_handle_base_info(format, pd))
-               ? ((xx_vmsdb *)format)->number_of_records
-               : 0U;
+uint64_t xx_vmsdb_get_number_of_archive_records(Abstractformat *format, xx_pd_struct *pd)
+{
+    return format && (format->base_info_handled || xx_vmsdb_handle_base_info(format, pd)) ? ((xx_vmsdb *)format)->number_of_records : 0U;
 }
 
-xx_archive_record_state *xx_vmsdb_create_archive_records_reading(
-    Abstractformat *format, const xx_list_s *options, xx_pd_struct *pd) {
+xx_archive_record_state *xx_vmsdb_create_archive_records_reading(Abstractformat *format, const xx_list_s *options, xx_pd_struct *pd)
+{
     vmsdb_stream *stream;
     xx_archive_record_state *state;
     if (!vmsdb_parse(format, true, &stream, pd)) return NULL;
@@ -658,8 +612,7 @@ xx_archive_record_state *xx_vmsdb_create_archive_records_reading(
     state->internal_state = stream;
     state->free_internal = vmsdb_stream_free;
     state->total_records = (int64_t)stream->count;
-    if (!vmsdb_copy_options(&state->options, options) ||
-        !vmsdb_set_record(&state->current_record, &stream->items[0])) {
+    if (!vmsdb_copy_options(&state->options, options) || !vmsdb_set_record(&state->current_record, &stream->items[0])) {
         xx_archive_record_state_free(state);
         return NULL;
     }
@@ -667,33 +620,26 @@ xx_archive_record_state *xx_vmsdb_create_archive_records_reading(
     return state;
 }
 
-const xx_archive_record *xx_vmsdb_get_current_archive_record(
-    Abstractformat *format, xx_archive_record_state *state) {
-    return format && state && state->format == format && state->has_record
-               ? &state->current_record
-               : NULL;
+const xx_archive_record *xx_vmsdb_get_current_archive_record(Abstractformat *format, xx_archive_record_state *state)
+{
+    return format && state && state->format == format && state->has_record ? &state->current_record : NULL;
 }
 
-bool xx_vmsdb_archive_record_move_to_next(Abstractformat *format,
-                                          xx_archive_record_state *state,
-                                          xx_pd_struct *pd) {
+bool xx_vmsdb_archive_record_move_to_next(Abstractformat *format, xx_archive_record_state *state, xx_pd_struct *pd)
+{
     vmsdb_stream *stream;
     (void)pd;
-    if (!format || !state || state->format != format ||
-        !(stream = (vmsdb_stream *)state->internal_state) ||
-        ++stream->index >= stream->count) {
+    if (!format || !state || state->format != format || !(stream = (vmsdb_stream *)state->internal_state) || ++stream->index >= stream->count) {
         if (state) state->has_record = false;
         return false;
     }
     ++state->current_index;
-    state->has_record =
-        vmsdb_set_record(&state->current_record, &stream->items[stream->index]);
+    state->has_record = vmsdb_set_record(&state->current_record, &stream->items[stream->index]);
     return state->has_record;
 }
 
-bool xx_vmsdb_unpack_current_archive_record(Abstractformat *format,
-                                            xx_archive_record_state *state,
-                                            xx_pd_struct *pd) {
+bool xx_vmsdb_unpack_current_archive_record(Abstractformat *format, xx_archive_record_state *state, xx_pd_struct *pd)
+{
     vmsdb_stream *stream;
     vmsdb_member *member;
     const xx_var *path_option;
@@ -705,9 +651,8 @@ bool xx_vmsdb_unpack_current_archive_record(Abstractformat *format,
     size_t written = 0U;
     bool result = false;
     bool created = false;
-    if (!format || !state || state->format != format || !state->has_record ||
-        !(stream = (vmsdb_stream *)state->internal_state) ||
-        stream->index >= stream->count || (pd && xx_pd_is_stopped(pd)))
+    if (!format || !state || state->format != format || !state->has_record || !(stream = (vmsdb_stream *)state->internal_state) || stream->index >= stream->count ||
+        (pd && xx_pd_is_stopped(pd)))
         return false;
     member = &stream->items[stream->index];
     if (!vmsdb_safe_output_name(member->name)) return false;
@@ -723,19 +668,14 @@ bool xx_vmsdb_unpack_current_archive_record(Abstractformat *format,
         result = true;
         goto done;
     }
-    if (path_option->type == XX_VAR_TYPE_STRING ||
-        path_option->type == XX_VAR_TYPE_STRING_VIEW)
-        base = xx_var_get_str(path_option);
-    else if (path_option->type == XX_VAR_TYPE_WSTRING ||
-             path_option->type == XX_VAR_TYPE_WSTRING_VIEW) {
+    if (path_option->type == XX_VAR_TYPE_STRING || path_option->type == XX_VAR_TYPE_STRING_VIEW) base = xx_var_get_str(path_option);
+    else if (path_option->type == XX_VAR_TYPE_WSTRING || path_option->type == XX_VAR_TYPE_WSTRING_VIEW) {
         owned_base = xx_str_unicode_to_utf8(xx_var_get_wstr(path_option));
         base = owned_base;
     }
     if (!base) goto done;
-    path = (base[0] && base[xx_str_len(base) - 1U] != '/' &&
-            base[xx_str_len(base) - 1U] != '\\')
-               ? xx_str_concat3(base, "/", member->name)
-               : xx_str_concat(base, member->name);
+    path = (base[0] && base[xx_str_len(base) - 1U] != '/' && base[xx_str_len(base) - 1U] != '\\') ? xx_str_concat3(base, "/", member->name)
+                                                                                                  : xx_str_concat(base, member->name);
     if (!path || !xx_store_create_dirs_a(path, false)) goto done;
     {
         xx_io_device *destination = xx_io_file_open(path, "wb");
@@ -743,8 +683,7 @@ bool xx_vmsdb_unpack_current_archive_record(Abstractformat *format,
         if (!destination) goto done;
         result = true;
         while (written < plain_size) {
-            ssize_t amount =
-                xx_io_write(destination, plain + written, plain_size - written);
+            ssize_t amount = xx_io_write(destination, plain + written, plain_size - written);
             if (amount <= 0 || (size_t)amount > plain_size - written) {
                 result = false;
                 break;
@@ -761,8 +700,8 @@ done:
     return result;
 }
 
-void xx_vmsdb_free_archive_records_reading(Abstractformat *format,
-                                           xx_archive_record_state *state) {
+void xx_vmsdb_free_archive_records_reading(Abstractformat *format, xx_archive_record_state *state)
+{
     (void)format;
     xx_archive_record_state_free(state);
 }

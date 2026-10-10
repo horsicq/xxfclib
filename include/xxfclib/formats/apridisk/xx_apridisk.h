@@ -31,19 +31,15 @@ XXFC_API bool xx_apridisk_check_is_valid(Abstractformat *, xx_pd_struct *);
 XXFC_API bool xx_apridisk_handle_base_info(Abstractformat *, xx_pd_struct *);
 XXFC_API int64_t xx_apridisk_get_format_size(Abstractformat *, xx_pd_struct *);
 XXFC_API uint64_t xx_apridisk_get_number_of_archive_records(Abstractformat *, xx_pd_struct *);
-XXFC_API xx_archive_record_state *xx_apridisk_create_archive_records_reading(
-    Abstractformat *, const xx_list_s *, xx_pd_struct *);
-XXFC_API const xx_archive_record *xx_apridisk_get_current_archive_record(
-    Abstractformat *, xx_archive_record_state *);
-XXFC_API bool xx_apridisk_archive_record_move_to_next(
-    Abstractformat *, xx_archive_record_state *, xx_pd_struct *);
-XXFC_API bool xx_apridisk_unpack_current_archive_record(
-    Abstractformat *, xx_archive_record_state *, xx_pd_struct *);
-XXFC_API bool xx_apridisk_extract_record_to_device(
-    Abstractformat *, xx_archive_record_state *, xx_io_device *, xx_pd_struct *);
+XXFC_API xx_archive_record_state *xx_apridisk_create_archive_records_reading(Abstractformat *, const xx_list_s *, xx_pd_struct *);
+XXFC_API const xx_archive_record *xx_apridisk_get_current_archive_record(Abstractformat *, xx_archive_record_state *);
+XXFC_API bool xx_apridisk_archive_record_move_to_next(Abstractformat *, xx_archive_record_state *, xx_pd_struct *);
+XXFC_API bool xx_apridisk_unpack_current_archive_record(Abstractformat *, xx_archive_record_state *, xx_pd_struct *);
+XXFC_API bool xx_apridisk_extract_record_to_device(Abstractformat *, xx_archive_record_state *, xx_io_device *, xx_pd_struct *);
 XXFC_API void xx_apridisk_free_archive_records_reading(Abstractformat *, xx_archive_record_state *);
 XXFC_API bool xx_apridisk_test_magic(const uint8_t *, size_t);
-static inline Abstractformat *xx_apridisk_to_format(xx_apridisk *a) {
+static inline Abstractformat *xx_apridisk_to_format(xx_apridisk *a)
+{
     return a ? &a->format : NULL;
 }
 #ifdef __cplusplus

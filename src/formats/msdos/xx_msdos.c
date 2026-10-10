@@ -40,11 +40,8 @@
 /* Forward declaration of vtable callbacks */
 static void xx_msdos_vtable_destroy(Abstractformat *self);
 
-static bool xx_msdos_get_layout(const Abstractformat *format,
-                                const xx_msdos *msdos,
-                                int64_t *binary_size,
-                                int64_t *image_size,
-                                int64_t *header_size) {
+static bool xx_msdos_get_layout(const Abstractformat *format, const xx_msdos *msdos, int64_t *binary_size, int64_t *image_size, int64_t *header_size)
+{
     int64_t total_size;
     int64_t available;
     uint64_t declared_size;
@@ -66,9 +63,7 @@ static bool xx_msdos_get_layout(const Abstractformat *format,
         declared_size = (uint64_t)available;
     } else {
         declared_size = ((uint64_t)msdos->pages_in_file - 1U) * 512U;
-        declared_size += msdos->bytes_on_last_page
-                             ? (uint64_t)msdos->bytes_on_last_page
-                             : 512U;
+        declared_size += msdos->bytes_on_last_page ? (uint64_t)msdos->bytes_on_last_page : 512U;
         if (declared_size > (uint64_t)available) {
             declared_size = (uint64_t)available;
         }
@@ -85,15 +80,15 @@ static bool xx_msdos_get_layout(const Abstractformat *format,
     return true;
 }
 
-static bool xx_msdos_update_layout_metadata(xx_msdos *msdos) {
+static bool xx_msdos_update_layout_metadata(xx_msdos *msdos)
+{
     int64_t binary_size;
     int64_t image_size;
     Abstractformat *format;
 
     if (!msdos) return false;
     format = &msdos->format;
-    if (!xx_msdos_get_layout(format, msdos, &binary_size, &image_size,
-                             NULL)) {
+    if (!xx_msdos_get_layout(format, msdos, &binary_size, &image_size, NULL)) {
         return false;
     }
     format->format_size = image_size;
@@ -107,17 +102,17 @@ static bool xx_msdos_update_layout_metadata(xx_msdos *msdos) {
     return true;
 }
 
-static bool xx_msdos_add_address(uint64_t base, uint64_t displacement,
-                                 uint64_t *result) {
-    if (!result || base == XX_INVALID_ADDRESS ||
-        displacement >= XX_INVALID_ADDRESS - base) {
+static bool xx_msdos_add_address(uint64_t base, uint64_t displacement, uint64_t *result)
+{
+    if (!result || base == XX_INVALID_ADDRESS || displacement >= XX_INVALID_ADDRESS - base) {
         return false;
     }
     *result = base + displacement;
     return true;
 }
 
-void xx_msdos_init(xx_msdos *msdos, xx_io_device *dev, int64_t base_address) {
+void xx_msdos_init(xx_msdos *msdos, xx_io_device *dev, int64_t base_address)
+{
     if (!msdos) {
         return;
     }
@@ -163,7 +158,8 @@ void xx_msdos_init(xx_msdos *msdos, xx_io_device *dev, int64_t base_address) {
     msdos->has_pe_header = false;
 }
 
-xx_msdos *xx_msdos_create(xx_io_device *dev, int64_t base_address) {
+xx_msdos *xx_msdos_create(xx_io_device *dev, int64_t base_address)
+{
     xx_msdos *msdos = (xx_msdos *)xx_mem_alloc(sizeof(xx_msdos));
     if (!msdos) {
         return NULL;
@@ -172,7 +168,8 @@ xx_msdos *xx_msdos_create(xx_io_device *dev, int64_t base_address) {
     return msdos;
 }
 
-void xx_msdos_destroy(xx_msdos *msdos) {
+void xx_msdos_destroy(xx_msdos *msdos)
+{
     if (!msdos) {
         return;
     }
@@ -182,14 +179,16 @@ void xx_msdos_destroy(xx_msdos *msdos) {
     xx_format_cleanup_extra_parameters(&msdos->format);
 }
 
-static void xx_msdos_vtable_destroy(Abstractformat *self) {
+static void xx_msdos_vtable_destroy(Abstractformat *self)
+{
     if (self) {
         xx_msdos *msdos = (xx_msdos *)self;
         xx_msdos_destroy(msdos);
     }
 }
 
-void xx_msdos_free(xx_msdos *msdos) {
+void xx_msdos_free(xx_msdos *msdos)
+{
     if (!msdos) {
         return;
     }
@@ -197,15 +196,14 @@ void xx_msdos_free(xx_msdos *msdos) {
     xx_mem_free(msdos);
 }
 
-bool xx_msdos_check_is_valid(Abstractformat *self, xx_pd_struct *pd) {
-    if (!self || !self->device || self->base_address < 0 ||
-        xx_pd_is_stopped(pd)) {
+bool xx_msdos_check_is_valid(Abstractformat *self, xx_pd_struct *pd)
+{
+    if (!self || !self->device || self->base_address < 0 || xx_pd_is_stopped(pd)) {
         return false;
     }
 
     int64_t total_size = xx_io_total_size(self->device);
-    if (total_size < self->base_address ||
-        total_size - self->base_address < XX_MSDOS_HEADER_MIN_SIZE) {
+    if (total_size < self->base_address || total_size - self->base_address < XX_MSDOS_HEADER_MIN_SIZE) {
         return false;
     }
 
@@ -214,15 +212,15 @@ bool xx_msdos_check_is_valid(Abstractformat *self, xx_pd_struct *pd) {
     return (signature == XX_MSDOS_SIGNATURE);
 }
 
-bool xx_msdos_handle_base_info(Abstractformat *self, xx_pd_struct *pd) {
+bool xx_msdos_handle_base_info(Abstractformat *self, xx_pd_struct *pd)
+{
     int64_t total_size;
     int64_t available;
     size_t read_size;
     xx_msdos *msdos;
     uint8_t header[XX_MSDOS_HEADER_MAX_SIZE];
 
-    if (!self || !self->device || self->base_address < 0 ||
-        xx_pd_is_stopped(pd)) {
+    if (!self || !self->device || self->base_address < 0 || xx_pd_is_stopped(pd)) {
         return false;
     }
 
@@ -247,9 +245,7 @@ bool xx_msdos_handle_base_info(Abstractformat *self, xx_pd_struct *pd) {
     }
 
     xx_mem_zero(header, sizeof(header));
-    read_size = available < (int64_t)sizeof(header)
-                    ? (size_t)available
-                    : sizeof(header);
+    read_size = available < (int64_t)sizeof(header) ? (size_t)available : sizeof(header);
     if (xx_io_read(self->device, header, read_size) != (ssize_t)read_size) {
         self->is_valid = false;
         return false;
@@ -281,11 +277,8 @@ bool xx_msdos_handle_base_info(Abstractformat *self, xx_pd_struct *pd) {
 
     /* Check for a PE/NE/LX/LE executable subheader at offset 0x3C (offset 60 in header). */
     if (read_size >= XX_MSDOS_HEADER_MAX_SIZE) {
-        uint32_t pe_offset_field =
-            (uint32_t)header[60] | ((uint32_t)header[61] << 8) |
-            ((uint32_t)header[62] << 16) | ((uint32_t)header[63] << 24);
-        if (pe_offset_field > 0U &&
-            (uint64_t)pe_offset_field + 2U <= (uint64_t)available) {
+        uint32_t pe_offset_field = (uint32_t)header[60] | ((uint32_t)header[61] << 8) | ((uint32_t)header[62] << 16) | ((uint32_t)header[63] << 24);
+        if (pe_offset_field > 0U && (uint64_t)pe_offset_field + 2U <= (uint64_t)available) {
             int64_t subheader_offset = self->base_address + (int64_t)pe_offset_field;
             uint32_t pe_sig = 0U;
             uint16_t short_sig = xx_io_get_u16(self->device, subheader_offset, false);
@@ -294,8 +287,7 @@ bool xx_msdos_handle_base_info(Abstractformat *self, xx_pd_struct *pd) {
                 pe_sig = xx_io_get_u32(self->device, subheader_offset, false);
             }
 
-            if (pe_sig == XX_PE_SIGNATURE || short_sig == XX_NE_SIGNATURE ||
-                short_sig == XX_LE_SIGNATURE || short_sig == XX_LX_SIGNATURE) {
+            if (pe_sig == XX_PE_SIGNATURE || short_sig == XX_NE_SIGNATURE || short_sig == XX_LE_SIGNATURE || short_sig == XX_LX_SIGNATURE) {
                 msdos->pe_offset = (int64_t)pe_offset_field;
                 msdos->has_pe_header = true;
                 if (pe_sig == XX_PE_SIGNATURE) {
@@ -317,17 +309,13 @@ bool xx_msdos_handle_base_info(Abstractformat *self, xx_pd_struct *pd) {
     return true;
 }
 
-int64_t xx_msdos_get_format_size(Abstractformat *self, xx_pd_struct *pd) {
-    return self && (self->base_info_handled ||
-                    xx_msdos_handle_base_info(self, pd))
-               ? self->format_size
-               : -1;
+int64_t xx_msdos_get_format_size(Abstractformat *self, xx_pd_struct *pd)
+{
+    return self && (self->base_info_handled || xx_msdos_handle_base_info(self, pd)) ? self->format_size : -1;
 }
 
-bool xx_msdos_get_memory_map(Abstractformat *self,
-                             xx_memory_map_mode_t mode,
-                             xx_memory_map *output,
-                             xx_pd_struct *pd) {
+bool xx_msdos_get_memory_map(Abstractformat *self, xx_memory_map_mode_t mode, xx_memory_map *output, xx_pd_struct *pd)
+{
     xx_msdos *msdos;
     int64_t binary_size;
     int64_t image_size;
@@ -339,8 +327,7 @@ bool xx_msdos_get_memory_map(Abstractformat *self,
     uint64_t entry_displacement;
     uint64_t address;
 
-    if (!self || !output || !self->device || !self->base_info_handled ||
-        self->base_address < 0 || xx_pd_is_stopped(pd)) {
+    if (!self || !output || !self->device || !self->base_info_handled || self->base_address < 0 || xx_pd_is_stopped(pd)) {
         return false;
     }
     if (mode == XX_MEMORY_MAP_MODE_UNKNOWN) {
@@ -351,15 +338,12 @@ bool xx_msdos_get_memory_map(Abstractformat *self,
     }
 
     msdos = (xx_msdos *)self;
-    if (!xx_msdos_get_layout(self, msdos, &binary_size, &image_size,
-                             &header_size)) {
+    if (!xx_msdos_get_layout(self, msdos, &binary_size, &image_size, &header_size)) {
         return false;
     }
     body_size = image_size - header_size;
     body_offset = self->base_address + header_size;
-    module_address = self->module_address != XX_INVALID_ADDRESS
-                         ? self->module_address
-                         : 0U;
+    module_address = self->module_address != XX_INVALID_ADDRESS ? self->module_address : 0U;
 
     output->binary_offset = self->base_address;
     output->module_address = module_address;
@@ -379,110 +363,115 @@ bool xx_msdos_get_memory_map(Abstractformat *self,
     if (entry_displacement >= UINT64_C(0x100000)) {
         entry_displacement -= UINT64_C(0x100000);
     }
-    if (code_displacement < (uint64_t)body_size &&
-        xx_msdos_add_address(module_address, code_displacement, &address) &&
-        address <= (uint64_t)INT64_MAX) {
+    if (code_displacement < (uint64_t)body_size && xx_msdos_add_address(module_address, code_displacement, &address) && address <= (uint64_t)INT64_MAX) {
         output->code_base = (int64_t)address;
     }
     if (entry_displacement < (uint64_t)body_size) {
-        (void)xx_msdos_add_address(module_address, entry_displacement,
-                                   &output->entry_point_address);
+        (void)xx_msdos_add_address(module_address, entry_displacement, &output->entry_point_address);
     }
 
-    if (!xx_memory_map_add_part(output, self->base_address, header_size,
-                                XX_INVALID_ADDRESS, 0,
-                                XX_FILE_PART_HEADER, 0,
-                                "MS-DOS header", false) ||
-        !xx_memory_map_add_part(output, body_offset, body_size,
-                                module_address, body_size,
-                                XX_FILE_PART_SEGMENT, 1,
-                                "MS-DOS image", false)) {
+    if (!xx_memory_map_add_part(output, self->base_address, header_size, XX_INVALID_ADDRESS, 0, XX_FILE_PART_HEADER, 0, "MS-DOS header", false) ||
+        !xx_memory_map_add_part(output, body_offset, body_size, module_address, body_size, XX_FILE_PART_SEGMENT, 1, "MS-DOS image", false)) {
         return false;
     }
     if (image_size < binary_size &&
-        !xx_memory_map_add_part(output, self->base_address + image_size,
-                                binary_size - image_size,
-                                XX_INVALID_ADDRESS, 0,
-                                XX_FILE_PART_OVERLAY, 2,
-                                "Overlay", false)) {
+        !xx_memory_map_add_part(output, self->base_address + image_size, binary_size - image_size, XX_INVALID_ADDRESS, 0, XX_FILE_PART_OVERLAY, 2, "Overlay", false)) {
         return false;
     }
     return !xx_pd_is_stopped(pd) && xx_memory_map_finalize(output);
 }
 
 /* --- Getters --- */
-uint16_t xx_msdos_get_signature(const xx_msdos *msdos) {
+uint16_t xx_msdos_get_signature(const xx_msdos *msdos)
+{
     return msdos ? msdos->signature : 0;
 }
 
-uint16_t xx_msdos_get_bytes_on_last_page(const xx_msdos *msdos) {
+uint16_t xx_msdos_get_bytes_on_last_page(const xx_msdos *msdos)
+{
     return msdos ? msdos->bytes_on_last_page : 0;
 }
 
-uint16_t xx_msdos_get_pages_in_file(const xx_msdos *msdos) {
+uint16_t xx_msdos_get_pages_in_file(const xx_msdos *msdos)
+{
     return msdos ? msdos->pages_in_file : 0;
 }
 
-uint16_t xx_msdos_get_relocations(const xx_msdos *msdos) {
+uint16_t xx_msdos_get_relocations(const xx_msdos *msdos)
+{
     return msdos ? msdos->relocations : 0;
 }
 
-uint16_t xx_msdos_get_header_size(const xx_msdos *msdos) {
+uint16_t xx_msdos_get_header_size(const xx_msdos *msdos)
+{
     return msdos ? msdos->header_size : 0;
 }
 
-uint16_t xx_msdos_get_minalloc(const xx_msdos *msdos) {
+uint16_t xx_msdos_get_minalloc(const xx_msdos *msdos)
+{
     return msdos ? msdos->minalloc : 0;
 }
 
-uint16_t xx_msdos_get_maxalloc(const xx_msdos *msdos) {
+uint16_t xx_msdos_get_maxalloc(const xx_msdos *msdos)
+{
     return msdos ? msdos->maxalloc : 0;
 }
 
-uint16_t xx_msdos_get_ss(const xx_msdos *msdos) {
+uint16_t xx_msdos_get_ss(const xx_msdos *msdos)
+{
     return msdos ? msdos->ss : 0;
 }
 
-uint16_t xx_msdos_get_sp(const xx_msdos *msdos) {
+uint16_t xx_msdos_get_sp(const xx_msdos *msdos)
+{
     return msdos ? msdos->sp : 0;
 }
 
-uint16_t xx_msdos_get_checksum(const xx_msdos *msdos) {
+uint16_t xx_msdos_get_checksum(const xx_msdos *msdos)
+{
     return msdos ? msdos->checksum : 0;
 }
 
-uint16_t xx_msdos_get_ip(const xx_msdos *msdos) {
+uint16_t xx_msdos_get_ip(const xx_msdos *msdos)
+{
     return msdos ? msdos->ip : 0;
 }
 
-uint16_t xx_msdos_get_cs(const xx_msdos *msdos) {
+uint16_t xx_msdos_get_cs(const xx_msdos *msdos)
+{
     return msdos ? msdos->cs : 0;
 }
 
-uint16_t xx_msdos_get_reloc_offset(const xx_msdos *msdos) {
+uint16_t xx_msdos_get_reloc_offset(const xx_msdos *msdos)
+{
     return msdos ? msdos->reloc_offset : 0;
 }
 
-uint16_t xx_msdos_get_overlay_number(const xx_msdos *msdos) {
+uint16_t xx_msdos_get_overlay_number(const xx_msdos *msdos)
+{
     return msdos ? msdos->overlay_number : 0;
 }
 
-int64_t xx_msdos_get_pe_offset(const xx_msdos *msdos) {
+int64_t xx_msdos_get_pe_offset(const xx_msdos *msdos)
+{
     return msdos ? msdos->pe_offset : -1;
 }
 
-bool xx_msdos_has_pe_header(const xx_msdos *msdos) {
+bool xx_msdos_has_pe_header(const xx_msdos *msdos)
+{
     return msdos ? msdos->has_pe_header : false;
 }
 
 /* --- Setters --- */
-void xx_msdos_set_signature(xx_msdos *msdos, uint16_t val) {
+void xx_msdos_set_signature(xx_msdos *msdos, uint16_t val)
+{
     if (msdos) {
         msdos->signature = val;
     }
 }
 
-void xx_msdos_set_bytes_on_last_page(xx_msdos *msdos, uint16_t val) {
+void xx_msdos_set_bytes_on_last_page(xx_msdos *msdos, uint16_t val)
+{
     if (msdos && msdos->bytes_on_last_page != val) {
         msdos->bytes_on_last_page = val;
         xx_format_invalidate_memory_map(&msdos->format);
@@ -492,7 +481,8 @@ void xx_msdos_set_bytes_on_last_page(xx_msdos *msdos, uint16_t val) {
     }
 }
 
-void xx_msdos_set_pages_in_file(xx_msdos *msdos, uint16_t val) {
+void xx_msdos_set_pages_in_file(xx_msdos *msdos, uint16_t val)
+{
     if (msdos && msdos->pages_in_file != val) {
         msdos->pages_in_file = val;
         xx_format_invalidate_memory_map(&msdos->format);
@@ -502,19 +492,22 @@ void xx_msdos_set_pages_in_file(xx_msdos *msdos, uint16_t val) {
     }
 }
 
-void xx_msdos_set_relocations(xx_msdos *msdos, uint16_t val) {
+void xx_msdos_set_relocations(xx_msdos *msdos, uint16_t val)
+{
     if (msdos) {
         msdos->relocations = val;
     }
 }
 
-void xx_msdos_set_pe_offset(xx_msdos *msdos, int64_t val) {
+void xx_msdos_set_pe_offset(xx_msdos *msdos, int64_t val)
+{
     if (msdos) {
         msdos->pe_offset = val;
     }
 }
 
-void xx_msdos_set_has_pe_header(xx_msdos *msdos, bool val) {
+void xx_msdos_set_has_pe_header(xx_msdos *msdos, bool val)
+{
     if (msdos) {
         msdos->has_pe_header = val;
     }

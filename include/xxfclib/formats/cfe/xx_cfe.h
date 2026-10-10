@@ -68,32 +68,36 @@ struct xx_cfe {
     int64_t image_size;  /**< base_address .. end of device, or -1. */
 };
 
-XXFC_API void xx_cfe_init(xx_cfe *cfe, xx_io_device *dev,
-                          int64_t base_address);
+XXFC_API void xx_cfe_init(xx_cfe *cfe, xx_io_device *dev, int64_t base_address);
 XXFC_API xx_cfe *xx_cfe_create(xx_io_device *dev, int64_t base_address);
 XXFC_API void xx_cfe_destroy(xx_cfe *cfe);
 XXFC_API void xx_cfe_free(xx_cfe *cfe);
 
 XXFC_API bool xx_cfe_check_is_valid(Abstractformat *self, xx_pd_struct *pd);
 XXFC_API bool xx_cfe_handle_base_info(Abstractformat *self, xx_pd_struct *pd);
-XXFC_API int64_t xx_cfe_get_format_size(Abstractformat *self,
-                                        xx_pd_struct *pd);
+XXFC_API int64_t xx_cfe_get_format_size(Abstractformat *self, xx_pd_struct *pd);
 
 XXFC_API int64_t xx_cfe_get_seal_offset(const xx_cfe *cfe);
 XXFC_API int64_t xx_cfe_get_image_size(const xx_cfe *cfe);
 
-static inline Abstractformat *xx_cfe_to_format(xx_cfe *cfe) {
+static inline Abstractformat *xx_cfe_to_format(xx_cfe *cfe)
+{
     return cfe ? &cfe->format : NULL;
 }
-static inline void XCfe_init(xx_cfe *cfe, xx_io_device *dev,
-                             int64_t base_address) {
+static inline void XCfe_init(xx_cfe *cfe, xx_io_device *dev, int64_t base_address)
+{
     xx_cfe_init(cfe, dev, base_address);
 }
-static inline xx_cfe *XCfe_create(xx_io_device *dev, int64_t base_address) {
+static inline xx_cfe *XCfe_create(xx_io_device *dev, int64_t base_address)
+{
     return xx_cfe_create(dev, base_address);
 }
-static inline void XCfe_free(xx_cfe *cfe) { xx_cfe_free(cfe); }
-static inline bool XCfe_is_valid(xx_cfe *cfe, xx_pd_struct *pd) {
+static inline void XCfe_free(xx_cfe *cfe)
+{
+    xx_cfe_free(cfe);
+}
+static inline bool XCfe_is_valid(xx_cfe *cfe, xx_pd_struct *pd)
+{
     return cfe ? xx_format_is_valid(&cfe->format, pd) : false;
 }
 

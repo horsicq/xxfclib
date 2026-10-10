@@ -27,9 +27,7 @@ extern "C" {
  * @param written     Receives the produced length (0 on failure).
  * @return true only when every block decoded within the capacity.
  */
-XXFC_API bool xx_qda_decode_memory(const uint8_t *input, size_t input_size,
-                                   uint8_t *output, size_t output_size,
-                                   size_t *written);
+XXFC_API bool xx_qda_decode_memory(const uint8_t *input, size_t input_size, uint8_t *output, size_t output_size, size_t *written);
 
 #ifdef __cplusplus
 }

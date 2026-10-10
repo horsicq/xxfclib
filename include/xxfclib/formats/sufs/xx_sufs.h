@@ -59,18 +59,17 @@ typedef struct xx_sufs XSufs;
 struct xx_sufs {
     Abstractformat format;
     uint64_t number_of_records;
-    uint32_t block_size;      /**< fs_bsize; 0 before base info. */
-    uint32_t fragment_size;   /**< fs_fsize. */
-    uint32_t group_count;     /**< fs_ncg. */
-    uint64_t fragment_count;  /**< fs_size. */
+    uint32_t block_size;     /**< fs_bsize; 0 before base info. */
+    uint32_t fragment_size;  /**< fs_fsize. */
+    uint32_t group_count;    /**< fs_ncg. */
+    uint64_t fragment_count; /**< fs_size. */
     bool big_endian;
     /* Explicitly enabled by the NeXT disk-image wrapper only. */
     bool nextstep_legacy;
     void *internal;
 };
 
-XXFC_API void xx_sufs_init(xx_sufs *sufs, xx_io_device *dev,
-                           int64_t base_address);
+XXFC_API void xx_sufs_init(xx_sufs *sufs, xx_io_device *dev, int64_t base_address);
 XXFC_API xx_sufs *xx_sufs_create(xx_io_device *dev, int64_t base_address);
 XXFC_API void xx_sufs_destroy(xx_sufs *sufs);
 XXFC_API void xx_sufs_free(xx_sufs *sufs);
@@ -78,39 +77,38 @@ XXFC_API void xx_sufs_enable_nextstep_legacy(xx_sufs *sufs);
 
 XXFC_API bool xx_sufs_check_is_valid(Abstractformat *self, xx_pd_struct *pd);
 XXFC_API bool xx_sufs_handle_base_info(Abstractformat *self, xx_pd_struct *pd);
-XXFC_API int64_t xx_sufs_get_format_size(Abstractformat *self,
-                                         xx_pd_struct *pd);
-XXFC_API uint64_t xx_sufs_get_number_of_archive_records(Abstractformat *self,
-                                                        xx_pd_struct *pd);
+XXFC_API int64_t xx_sufs_get_format_size(Abstractformat *self, xx_pd_struct *pd);
+XXFC_API uint64_t xx_sufs_get_number_of_archive_records(Abstractformat *self, xx_pd_struct *pd);
 
-XXFC_API xx_archive_record_state *xx_sufs_create_archive_records_reading(
-    Abstractformat *self, const xx_list_s *options, xx_pd_struct *pd);
-XXFC_API const xx_archive_record *xx_sufs_get_current_archive_record(
-    Abstractformat *self, xx_archive_record_state *state);
-XXFC_API bool xx_sufs_unpack_current_archive_record(
-    Abstractformat *self, xx_archive_record_state *state, xx_pd_struct *pd);
-XXFC_API bool xx_sufs_archive_record_move_to_next(
-    Abstractformat *self, xx_archive_record_state *state, xx_pd_struct *pd);
-XXFC_API void xx_sufs_free_archive_records_reading(
-    Abstractformat *self, xx_archive_record_state *state);
+XXFC_API xx_archive_record_state *xx_sufs_create_archive_records_reading(Abstractformat *self, const xx_list_s *options, xx_pd_struct *pd);
+XXFC_API const xx_archive_record *xx_sufs_get_current_archive_record(Abstractformat *self, xx_archive_record_state *state);
+XXFC_API bool xx_sufs_unpack_current_archive_record(Abstractformat *self, xx_archive_record_state *state, xx_pd_struct *pd);
+XXFC_API bool xx_sufs_archive_record_move_to_next(Abstractformat *self, xx_archive_record_state *state, xx_pd_struct *pd);
+XXFC_API void xx_sufs_free_archive_records_reading(Abstractformat *self, xx_archive_record_state *state);
 
 XXFC_API uint64_t xx_sufs_get_number_of_records(const xx_sufs *sufs);
 XXFC_API uint32_t xx_sufs_get_block_size(const xx_sufs *sufs);
 XXFC_API uint32_t xx_sufs_get_fragment_size(const xx_sufs *sufs);
 XXFC_API bool xx_sufs_is_big_endian(const xx_sufs *sufs);
 
-static inline Abstractformat *xx_sufs_to_format(xx_sufs *sufs) {
+static inline Abstractformat *xx_sufs_to_format(xx_sufs *sufs)
+{
     return sufs ? &sufs->format : NULL;
 }
-static inline void XSufs_init(xx_sufs *sufs, xx_io_device *dev,
-                              int64_t base_address) {
+static inline void XSufs_init(xx_sufs *sufs, xx_io_device *dev, int64_t base_address)
+{
     xx_sufs_init(sufs, dev, base_address);
 }
-static inline xx_sufs *XSufs_create(xx_io_device *dev, int64_t base_address) {
+static inline xx_sufs *XSufs_create(xx_io_device *dev, int64_t base_address)
+{
     return xx_sufs_create(dev, base_address);
 }
-static inline void XSufs_free(xx_sufs *sufs) { xx_sufs_free(sufs); }
-static inline bool XSufs_is_valid(xx_sufs *sufs, xx_pd_struct *pd) {
+static inline void XSufs_free(xx_sufs *sufs)
+{
+    xx_sufs_free(sufs);
+}
+static inline bool XSufs_is_valid(xx_sufs *sufs, xx_pd_struct *pd)
+{
     return sufs ? xx_format_is_valid(&sufs->format, pd) : false;
 }
 

@@ -45,7 +45,7 @@ typedef struct xx_csman_private_s {
     xx_csman_entry *entries;
     size_t count;
     size_t capacity;
-    uint8_t *plain;      /**< The entry table, inflated when necessary. */
+    uint8_t *plain; /**< The entry table, inflated when necessary. */
     size_t plain_size;
     int64_t input_size;
     int64_t data_offset; /**< Device offset of the data region. */
@@ -65,12 +65,11 @@ static void xx_csman_vtable_destroy(Abstractformat *self);
 
 /* seek64 rather than seek: `long` is 32-bit on Win64 and a DAT region can sit
  * anywhere in a multi-gigabyte firmware dump. */
-static bool xx_csman_read_at(xx_io_device *device, int64_t offset, void *data,
-                             size_t size) {
+static bool xx_csman_read_at(xx_io_device *device, int64_t offset, void *data, size_t size)
+{
     uint8_t *out = (uint8_t *)data;
     size_t done = 0U;
-    if (!device || (!data && size != 0U) || offset < 0 ||
-        xx_io_seek64(device, offset, SEEK_SET) != 0) {
+    if (!device || (!data && size != 0U) || offset < 0 || xx_io_seek64(device, offset, SEEK_SET) != 0) {
         return false;
     }
     while (done < size) {
@@ -81,16 +80,16 @@ static bool xx_csman_read_at(xx_io_device *device, int64_t offset, void *data,
     return true;
 }
 
-static bool xx_csman_range_within(int64_t total_size, int64_t offset,
-                                  int64_t size) {
-    return (total_size >= 0) && (offset >= 0) && (size >= 0) &&
-           (offset <= total_size) && (size <= total_size - offset);
+static bool xx_csman_range_within(int64_t total_size, int64_t offset, int64_t size)
+{
+    return (total_size >= 0) && (offset >= 0) && (size >= 0) && (offset <= total_size) && (size <= total_size - offset);
 }
 
 /* "<KEY>.dat" with the key as eight upper-case hex digits. When the same key
  * appears twice the ordinal is appended, mirroring the published extractor,
  * so a listing never names two members identically. */
-static char *xx_csman_make_name(uint32_t key, size_t duplicate_index) {
+static char *xx_csman_make_name(uint32_t key, size_t duplicate_index)
+{
     static const char digits[] = "0123456789ABCDEF";
     char buffer[32];
     size_t used = 0U;
@@ -121,7 +120,8 @@ static char *xx_csman_make_name(uint32_t key, size_t duplicate_index) {
     return name;
 }
 
-static void xx_csman_private_cleanup(xx_csman_private *parsed) {
+static void xx_csman_private_cleanup(xx_csman_private *parsed)
+{
     size_t index;
     if (!parsed) return;
     for (index = 0U; index < parsed->count; ++index) {
@@ -137,20 +137,17 @@ static void xx_csman_private_cleanup(xx_csman_private *parsed) {
     parsed->archive_end = -1;
 }
 
-static bool xx_csman_append_entry(xx_csman_private *parsed,
-                                  xx_csman_entry *entry) {
+static bool xx_csman_append_entry(xx_csman_private *parsed, xx_csman_entry *entry)
+{
     xx_csman_entry *grown;
     size_t capacity;
-    if (!parsed || !entry || !entry->name ||
-        parsed->count >= XX_CSMAN_MAX_ENTRIES) {
+    if (!parsed || !entry || !entry->name || parsed->count >= XX_CSMAN_MAX_ENTRIES) {
         return false;
     }
     if (parsed->count == parsed->capacity) {
         capacity = parsed->capacity ? parsed->capacity * 2U : 32U;
-        if (capacity < parsed->count ||
-            capacity > SIZE_MAX / sizeof(*parsed->entries)) return false;
-        grown = (xx_csman_entry *)xx_mem_realloc(
-            parsed->entries, capacity * sizeof(*parsed->entries));
+        if (capacity < parsed->count || capacity > SIZE_MAX / sizeof(*parsed->entries)) return false;
+        grown = (xx_csman_entry *)xx_mem_realloc(parsed->entries, capacity * sizeof(*parsed->entries));
         if (!grown) return false;
         parsed->entries = grown;
         parsed->capacity = capacity;
@@ -163,8 +160,8 @@ static bool xx_csman_append_entry(xx_csman_private *parsed,
 /* How many earlier entries already carry this key. The entry cap keeps this
  * linear scan bounded; a configuration store holds thousands of keys at most.
  */
-static size_t xx_csman_duplicate_index(const xx_csman_private *parsed,
-                                       uint32_t key) {
+static size_t xx_csman_duplicate_index(const xx_csman_private *parsed, uint32_t key)
+{
     size_t index;
     size_t seen = 0U;
     for (index = 0U; index < parsed->count; ++index) {
@@ -175,20 +172,18 @@ static size_t xx_csman_duplicate_index(const xx_csman_private *parsed,
 
 /* Load the entry table into parsed->plain, inflating the data region first
  * when the header says the two sizes differ. */
-static bool xx_csman_load_plain(Abstractformat *self, xx_csman_private *parsed,
-                                xx_pd_struct *pd) {
+static bool xx_csman_load_plain(Abstractformat *self, xx_csman_private *parsed, xx_pd_struct *pd)
+{
     uint8_t *raw;
     uint8_t *plain;
     size_t written = 0U;
-    if (parsed->compressed_size > XX_CSMAN_MAX_DATA_SIZE ||
-        parsed->decompressed_size > XX_CSMAN_MAX_PLAIN_SIZE ||
-        parsed->compressed_size == 0U || parsed->decompressed_size == 0U) {
+    if (parsed->compressed_size > XX_CSMAN_MAX_DATA_SIZE || parsed->decompressed_size > XX_CSMAN_MAX_PLAIN_SIZE || parsed->compressed_size == 0U ||
+        parsed->decompressed_size == 0U) {
         return false;
     }
     raw = (uint8_t *)xx_mem_alloc(parsed->compressed_size);
     if (!raw) return false;
-    if (!xx_csman_read_at(self->device, parsed->data_offset, raw,
-                          parsed->compressed_size)) {
+    if (!xx_csman_read_at(self->device, parsed->data_offset, raw, parsed->compressed_size)) {
         xx_mem_free(raw);
         return false;
     }
@@ -212,9 +207,7 @@ static bool xx_csman_load_plain(Abstractformat *self, xx_csman_private *parsed,
         xx_mem_free(raw);
         return false;
     }
-    if (!xx_zlib_stream_decode_memory(raw, parsed->compressed_size, plain,
-                                      parsed->decompressed_size, &written) ||
-        written == 0U || written > parsed->decompressed_size) {
+    if (!xx_zlib_stream_decode_memory(raw, parsed->compressed_size, plain, parsed->decompressed_size, &written) || written == 0U || written > parsed->decompressed_size) {
         xx_mem_free(raw);
         xx_mem_free(plain);
         return false;
@@ -225,8 +218,8 @@ static bool xx_csman_load_plain(Abstractformat *self, xx_csman_private *parsed,
     return true;
 }
 
-static bool xx_csman_parse(Abstractformat *self, xx_csman_private *parsed,
-                           xx_pd_struct *pd) {
+static bool xx_csman_parse(Abstractformat *self, xx_csman_private *parsed, xx_pd_struct *pd)
+{
     uint8_t header[XX_CSMAN_HEADER_SIZE];
     int64_t total_size;
     size_t cursor = 0U;
@@ -237,15 +230,11 @@ static bool xx_csman_parse(Abstractformat *self, xx_csman_private *parsed,
         parsed->data_offset = -1;
         parsed->archive_end = -1;
     }
-    if (!self || !self->device || !parsed || self->base_address < 0 ||
-        (pd && xx_pd_is_stopped(pd))) {
+    if (!self || !self->device || !parsed || self->base_address < 0 || (pd && xx_pd_is_stopped(pd))) {
         return false;
     }
     total_size = xx_io_total_size(self->device);
-    if (!xx_csman_range_within(total_size, self->base_address,
-                               XX_CSMAN_HEADER_SIZE) ||
-        !xx_csman_read_at(self->device, self->base_address, header,
-                          sizeof(header))) {
+    if (!xx_csman_range_within(total_size, self->base_address, XX_CSMAN_HEADER_SIZE) || !xx_csman_read_at(self->device, self->base_address, header, sizeof(header))) {
         goto fail;
     }
     /* The magic spells "CS" in a little endian image and "SC" in a big endian
@@ -257,15 +246,11 @@ static bool xx_csman_parse(Abstractformat *self, xx_csman_private *parsed,
     } else {
         goto fail;
     }
-    parsed->compressed_size = xx_data_get_u32(header, sizeof(header), 4U,
-                                              parsed->is_big_endian);
-    parsed->decompressed_size = xx_data_get_u32(header, sizeof(header), 12U,
-                                                parsed->is_big_endian);
-    parsed->is_compressed =
-        parsed->compressed_size != parsed->decompressed_size;
+    parsed->compressed_size = xx_data_get_u32(header, sizeof(header), 4U, parsed->is_big_endian);
+    parsed->decompressed_size = xx_data_get_u32(header, sizeof(header), 12U, parsed->is_big_endian);
+    parsed->is_compressed = parsed->compressed_size != parsed->decompressed_size;
     parsed->data_offset = self->base_address + XX_CSMAN_HEADER_SIZE;
-    if (!xx_csman_range_within(total_size, parsed->data_offset,
-                               (int64_t)parsed->compressed_size)) {
+    if (!xx_csman_range_within(total_size, parsed->data_offset, (int64_t)parsed->compressed_size)) {
         goto fail;
     }
     parsed->input_size = total_size;
@@ -276,8 +261,7 @@ static bool xx_csman_parse(Abstractformat *self, xx_csman_private *parsed,
         uint16_t size;
         xx_csman_entry entry;
         if (pd && xx_pd_is_stopped(pd)) goto fail;
-        key = xx_data_get_u32(parsed->plain, parsed->plain_size, cursor,
-                              parsed->is_big_endian);
+        key = xx_data_get_u32(parsed->plain, parsed->plain_size, cursor, parsed->is_big_endian);
         if (key == 0U) {
             /* The bare zero key is the end-of-table marker. */
             terminated = true;
@@ -287,16 +271,13 @@ static bool xx_csman_parse(Abstractformat *self, xx_csman_private *parsed,
         if (cursor + XX_CSMAN_ENTRY_HEADER_SIZE > parsed->plain_size) {
             goto fail;
         }
-        size = xx_data_get_u16(parsed->plain, parsed->plain_size, cursor + 4U,
-                               parsed->is_big_endian);
-        if ((size_t)size >
-            parsed->plain_size - cursor - XX_CSMAN_ENTRY_HEADER_SIZE) {
+        size = xx_data_get_u16(parsed->plain, parsed->plain_size, cursor + 4U, parsed->is_big_endian);
+        if ((size_t)size > parsed->plain_size - cursor - XX_CSMAN_ENTRY_HEADER_SIZE) {
             goto fail;
         }
         if (parsed->count >= XX_CSMAN_MAX_ENTRIES) goto fail;
         xx_mem_zero(&entry, sizeof(entry));
-        entry.name = xx_csman_make_name(
-            key, xx_csman_duplicate_index(parsed, key));
+        entry.name = xx_csman_make_name(key, xx_csman_duplicate_index(parsed, key));
         if (!entry.name) goto fail;
         entry.key = key;
         entry.size = size;
@@ -308,8 +289,7 @@ static bool xx_csman_parse(Abstractformat *self, xx_csman_private *parsed,
             entry.data_offset = -1;
         } else {
             entry.header_offset = parsed->data_offset + (int64_t)cursor;
-            entry.data_offset = parsed->data_offset +
-                                (int64_t)entry.plain_offset;
+            entry.data_offset = parsed->data_offset + (int64_t)entry.plain_offset;
         }
         if (!xx_csman_append_entry(parsed, &entry)) {
             if (entry.name) xx_str_free(entry.name);
@@ -324,18 +304,16 @@ fail:
     return false;
 }
 
-static bool xx_csman_copy_options(xx_list_s *destination,
-                                  const xx_list_s *source) {
+static bool xx_csman_copy_options(xx_list_s *destination, const xx_list_s *source)
+{
     size_t index;
     if (!destination || !source) return source == NULL;
     for (index = 0U; index < source->count; ++index) {
-        const xx_meta *item = (const xx_meta *)xx_list_at(
-            (const xx_list_t *)source, index);
+        const xx_meta *item = (const xx_meta *)xx_list_at((const xx_list_t *)source, index);
         xx_meta copy;
         if (!item) continue;
         xx_meta_init(&copy, item->meta_id);
-        if (!xx_var_copy(&copy.var, &item->var) ||
-            !xx_list_append(destination, &copy)) {
+        if (!xx_var_copy(&copy.var, &item->var) || !xx_list_append(destination, &copy)) {
             xx_meta_cleanup(&copy);
             return false;
         }
@@ -343,20 +321,19 @@ static bool xx_csman_copy_options(xx_list_s *destination,
     return true;
 }
 
-static const xx_var *xx_csman_find_option(const xx_list_s *options,
-                                          uint32_t meta_id) {
+static const xx_var *xx_csman_find_option(const xx_list_s *options, uint32_t meta_id)
+{
     size_t index;
     if (!options) return NULL;
     for (index = 0U; index < options->count; ++index) {
-        const xx_meta *item = (const xx_meta *)xx_list_at(
-            (const xx_list_t *)options, index);
+        const xx_meta *item = (const xx_meta *)xx_list_at((const xx_list_t *)options, index);
         if (item && item->meta_id == meta_id) return &item->var;
     }
     return NULL;
 }
 
-static bool xx_csman_populate_record(xx_archive_record *record,
-                                     const xx_csman_entry *entry) {
+static bool xx_csman_populate_record(xx_archive_record *record, const xx_csman_entry *entry)
+{
     if (!record || !entry || !entry->name) return false;
     xx_archive_record_cleanup(record);
     xx_archive_record_init(record);
@@ -364,26 +341,21 @@ static bool xx_csman_populate_record(xx_archive_record *record,
     record->header_size = XX_CSMAN_ENTRY_HEADER_SIZE;
     record->data_offset = entry->data_offset;
     record->compressed_size = entry->size;
-    return xx_archive_record_set_original_name(record, entry->name) &&
-           xx_archive_record_set_meta_u64(record,
-                                          XX_META_ID_UNCOMPRESSED_SIZE,
-                                          entry->size) &&
-           xx_archive_record_set_meta_u64(record, XX_META_ID_COMPRESSED_SIZE,
-                                          entry->size) &&
-           xx_archive_record_set_meta_u64(record,
-                                          XX_META_ID_COMPRESSION_METHOD, 0U) &&
-           xx_archive_record_set_meta_bool(record, XX_META_ID_IS_FOLDER,
-                                           false);
+    return xx_archive_record_set_original_name(record, entry->name) && xx_archive_record_set_meta_u64(record, XX_META_ID_UNCOMPRESSED_SIZE, entry->size) &&
+           xx_archive_record_set_meta_u64(record, XX_META_ID_COMPRESSED_SIZE, entry->size) && xx_archive_record_set_meta_u64(record, XX_META_ID_COMPRESSION_METHOD, 0U) &&
+           xx_archive_record_set_meta_bool(record, XX_META_ID_IS_FOLDER, false);
 }
 
-static void xx_csman_archive_stream_free(void *pointer) {
+static void xx_csman_archive_stream_free(void *pointer)
+{
     xx_csman_archive_stream *stream = (xx_csman_archive_stream *)pointer;
     if (!stream) return;
     xx_csman_private_cleanup(&stream->parsed);
     xx_mem_free(stream);
 }
 
-void xx_csman_init(xx_csman *csman, xx_io_device *dev, int64_t base_address) {
+void xx_csman_init(xx_csman *csman, xx_io_device *dev, int64_t base_address)
+{
     if (!csman) return;
     xx_mem_zero(csman, sizeof(*csman));
     xx_format_init(&csman->format, dev, base_address);
@@ -396,29 +368,25 @@ void xx_csman_init(xx_csman *csman, xx_io_device *dev, int64_t base_address) {
     csman->format.check_is_valid = xx_csman_check_is_valid;
     csman->format.handle_base_info = xx_csman_handle_base_info;
     csman->format.get_format_size = xx_csman_get_format_size;
-    csman->format.get_number_of_archive_records =
-        xx_csman_get_number_of_archive_records;
-    csman->format.create_archive_records_reading =
-        xx_csman_create_archive_records_reading;
-    csman->format.get_current_archive_record =
-        xx_csman_get_current_archive_record;
-    csman->format.unpack_current_archive_record =
-        xx_csman_unpack_current_archive_record;
-    csman->format.archive_record_move_to_next =
-        xx_csman_archive_record_move_to_next;
-    csman->format.free_archive_records_reading =
-        xx_csman_free_archive_records_reading;
+    csman->format.get_number_of_archive_records = xx_csman_get_number_of_archive_records;
+    csman->format.create_archive_records_reading = xx_csman_create_archive_records_reading;
+    csman->format.get_current_archive_record = xx_csman_get_current_archive_record;
+    csman->format.unpack_current_archive_record = xx_csman_unpack_current_archive_record;
+    csman->format.archive_record_move_to_next = xx_csman_archive_record_move_to_next;
+    csman->format.free_archive_records_reading = xx_csman_free_archive_records_reading;
     csman->format.destroy = xx_csman_vtable_destroy;
     csman->archive_end = -1;
 }
 
-xx_csman *xx_csman_create(xx_io_device *dev, int64_t base_address) {
+xx_csman *xx_csman_create(xx_io_device *dev, int64_t base_address)
+{
     xx_csman *csman = (xx_csman *)xx_mem_alloc(sizeof(*csman));
     if (csman) xx_csman_init(csman, dev, base_address);
     return csman;
 }
 
-void xx_csman_destroy(xx_csman *csman) {
+void xx_csman_destroy(xx_csman *csman)
+{
     if (!csman) return;
     if (csman->internal) {
         xx_csman_private_cleanup((xx_csman_private *)csman->internal);
@@ -428,24 +396,28 @@ void xx_csman_destroy(xx_csman *csman) {
     xx_format_cleanup_extra_parameters(&csman->format);
 }
 
-static void xx_csman_vtable_destroy(Abstractformat *self) {
+static void xx_csman_vtable_destroy(Abstractformat *self)
+{
     xx_csman_destroy((xx_csman *)self);
 }
 
-void xx_csman_free(xx_csman *csman) {
+void xx_csman_free(xx_csman *csman)
+{
     if (!csman) return;
     xx_csman_destroy(csman);
     xx_mem_free(csman);
 }
 
-bool xx_csman_check_is_valid(Abstractformat *self, xx_pd_struct *pd) {
+bool xx_csman_check_is_valid(Abstractformat *self, xx_pd_struct *pd)
+{
     xx_csman_private parsed;
     bool result = xx_csman_parse(self, &parsed, pd);
     xx_csman_private_cleanup(&parsed);
     return result;
 }
 
-bool xx_csman_handle_base_info(Abstractformat *self, xx_pd_struct *pd) {
+bool xx_csman_handle_base_info(Abstractformat *self, xx_pd_struct *pd)
+{
     xx_csman_private *parsed;
     xx_csman *csman = (xx_csman *)self;
     int64_t total_size;
@@ -484,25 +456,23 @@ bool xx_csman_handle_base_info(Abstractformat *self, xx_pd_struct *pd) {
     return true;
 }
 
-int64_t xx_csman_get_format_size(Abstractformat *self, xx_pd_struct *pd) {
-    if (!self || (!self->base_info_handled &&
-                  !xx_format_handle_base_info(self, pd))) return -1;
+int64_t xx_csman_get_format_size(Abstractformat *self, xx_pd_struct *pd)
+{
+    if (!self || (!self->base_info_handled && !xx_format_handle_base_info(self, pd))) return -1;
     return self->format_size;
 }
 
-uint64_t xx_csman_get_number_of_archive_records(Abstractformat *self,
-                                                xx_pd_struct *pd) {
-    if (!self || (!self->base_info_handled &&
-                  !xx_format_handle_base_info(self, pd))) return 0U;
+uint64_t xx_csman_get_number_of_archive_records(Abstractformat *self, xx_pd_struct *pd)
+{
+    if (!self || (!self->base_info_handled && !xx_format_handle_base_info(self, pd))) return 0U;
     return ((xx_csman *)self)->number_of_records;
 }
 
-xx_archive_record_state *xx_csman_create_archive_records_reading(
-    Abstractformat *self, const xx_list_s *options, xx_pd_struct *pd) {
+xx_archive_record_state *xx_csman_create_archive_records_reading(Abstractformat *self, const xx_list_s *options, xx_pd_struct *pd)
+{
     xx_archive_record_state *state;
     xx_csman_archive_stream *stream;
-    if (!self || !self->device ||
-        (!self->base_info_handled && !xx_format_handle_base_info(self, pd))) {
+    if (!self || !self->device || (!self->base_info_handled && !xx_format_handle_base_info(self, pd))) {
         return NULL;
     }
     state = (xx_archive_record_state *)xx_mem_alloc(sizeof(*state));
@@ -513,8 +483,7 @@ xx_archive_record_state *xx_csman_create_archive_records_reading(
         return NULL;
     }
     xx_archive_record_state_init(state, self);
-    if (!xx_csman_copy_options(&state->options, options) ||
-        !xx_csman_parse(self, &stream->parsed, pd)) {
+    if (!xx_csman_copy_options(&state->options, options) || !xx_csman_parse(self, &stream->parsed, pd)) {
         xx_csman_archive_stream_free(stream);
         xx_archive_record_state_free(state);
         return NULL;
@@ -523,27 +492,22 @@ xx_archive_record_state *xx_csman_create_archive_records_reading(
     state->internal_state = stream;
     state->free_internal = xx_csman_archive_stream_free;
     state->total_records = (int64_t)stream->parsed.count;
-    if (stream->parsed.count != 0U &&
-        xx_csman_populate_record(&state->current_record,
-                                 &stream->parsed.entries[0])) {
+    if (stream->parsed.count != 0U && xx_csman_populate_record(&state->current_record, &stream->parsed.entries[0])) {
         state->has_record = true;
         state->current_index = 0;
     }
     return state;
 }
 
-const xx_archive_record *xx_csman_get_current_archive_record(
-    Abstractformat *self, xx_archive_record_state *state) {
-    return self && state && state->format == self && state->has_record
-               ? &state->current_record : NULL;
+const xx_archive_record *xx_csman_get_current_archive_record(Abstractformat *self, xx_archive_record_state *state)
+{
+    return self && state && state->format == self && state->has_record ? &state->current_record : NULL;
 }
 
-bool xx_csman_archive_record_move_to_next(Abstractformat *self,
-                                          xx_archive_record_state *state,
-                                          xx_pd_struct *pd) {
+bool xx_csman_archive_record_move_to_next(Abstractformat *self, xx_archive_record_state *state, xx_pd_struct *pd)
+{
     xx_csman_archive_stream *stream;
-    if (!self || !state || state->format != self || !state->has_record ||
-        !state->internal_state || (pd && xx_pd_is_stopped(pd))) return false;
+    if (!self || !state || state->format != self || !state->has_record || !state->internal_state || (pd && xx_pd_is_stopped(pd))) return false;
     stream = (xx_csman_archive_stream *)state->internal_state;
     ++stream->index;
     if (stream->index >= stream->parsed.count) {
@@ -552,8 +516,7 @@ bool xx_csman_archive_record_move_to_next(Abstractformat *self,
         state->has_record = false;
         return false;
     }
-    if (!xx_csman_populate_record(&state->current_record,
-                                  &stream->parsed.entries[stream->index])) {
+    if (!xx_csman_populate_record(&state->current_record, &stream->parsed.entries[stream->index])) {
         state->has_record = false;
         return false;
     }
@@ -561,9 +524,8 @@ bool xx_csman_archive_record_move_to_next(Abstractformat *self,
     return true;
 }
 
-bool xx_csman_unpack_current_archive_record(Abstractformat *self,
-                                            xx_archive_record_state *state,
-                                            xx_pd_struct *pd) {
+bool xx_csman_unpack_current_archive_record(Abstractformat *self, xx_archive_record_state *state, xx_pd_struct *pd)
+{
     const xx_csman_archive_stream *stream;
     const xx_csman_entry *entry;
     const xx_var *option;
@@ -573,9 +535,7 @@ bool xx_csman_unpack_current_archive_record(Abstractformat *self,
     char *destination = NULL;
     xx_io_device *memory = NULL;
     bool result = false;
-    if (!self || !self->device || !state || state->format != self ||
-        !state->has_record || !state->internal_state ||
-        (pd && xx_pd_is_stopped(pd))) {
+    if (!self || !self->device || !state || state->format != self || !state->has_record || !state->internal_state || (pd && xx_pd_is_stopped(pd))) {
         return false;
     }
     stream = (const xx_csman_archive_stream *)state->internal_state;
@@ -587,37 +547,28 @@ bool xx_csman_unpack_current_archive_record(Abstractformat *self,
     if (!name || !name[0]) return false;
     /* The value bytes always exist in the plain buffer, compressed or not,
      * so they are served from there in both cases. */
-    if (entry->plain_offset > stream->parsed.plain_size ||
-        (size_t)entry->size >
-            stream->parsed.plain_size - entry->plain_offset) {
+    if (entry->plain_offset > stream->parsed.plain_size || (size_t)entry->size > stream->parsed.plain_size - entry->plain_offset) {
         return false;
     }
     option = xx_csman_find_option(&state->options, XX_META_ID_OPT_UNPACK_PATH);
     if (!option) return true;
-    if (option->type == XX_VAR_TYPE_STRING ||
-        option->type == XX_VAR_TYPE_STRING_VIEW) {
+    if (option->type == XX_VAR_TYPE_STRING || option->type == XX_VAR_TYPE_STRING_VIEW) {
         base = xx_var_get_str(option);
-    } else if (option->type == XX_VAR_TYPE_WSTRING ||
-               option->type == XX_VAR_TYPE_WSTRING_VIEW) {
+    } else if (option->type == XX_VAR_TYPE_WSTRING || option->type == XX_VAR_TYPE_WSTRING_VIEW) {
         owned_base = xx_str_unicode_to_utf8(xx_var_get_wstr(option));
         base = owned_base;
     }
     if (!base) goto cleanup;
-    if (base[0] && base[xx_str_len(base) - 1U] != '/' &&
-        base[xx_str_len(base) - 1U] != '\\') {
+    if (base[0] && base[xx_str_len(base) - 1U] != '/' && base[xx_str_len(base) - 1U] != '\\') {
         destination = xx_str_concat3(base, "/", name);
     } else {
         destination = xx_str_concat(base, name);
     }
     if (!destination) goto cleanup;
-    memory = xx_io_mem_open_ro(stream->parsed.plain,
-                               stream->parsed.plain_size);
+    memory = xx_io_mem_open_ro(stream->parsed.plain, stream->parsed.plain_size);
     if (!memory) goto cleanup;
     if (xx_store_create_dirs_a(destination, false)) {
-        result = xx_store_unpack_device_to_file(memory,
-                                                (int64_t)entry->plain_offset,
-                                                (int64_t)entry->size,
-                                                destination, pd);
+        result = xx_store_unpack_device_to_file(memory, (int64_t)entry->plain_offset, (int64_t)entry->size, destination, pd);
     }
 cleanup:
     if (memory) xx_io_close(memory);
@@ -626,24 +577,29 @@ cleanup:
     return result;
 }
 
-void xx_csman_free_archive_records_reading(Abstractformat *self,
-                                           xx_archive_record_state *state) {
+void xx_csman_free_archive_records_reading(Abstractformat *self, xx_archive_record_state *state)
+{
     (void)self;
     xx_archive_record_state_free(state);
 }
 
-uint64_t xx_csman_get_number_of_records(const xx_csman *csman) {
+uint64_t xx_csman_get_number_of_records(const xx_csman *csman)
+{
     return csman ? csman->number_of_records : 0U;
 }
-uint32_t xx_csman_get_compressed_size(const xx_csman *csman) {
+uint32_t xx_csman_get_compressed_size(const xx_csman *csman)
+{
     return csman ? csman->compressed_size : 0U;
 }
-uint32_t xx_csman_get_decompressed_size(const xx_csman *csman) {
+uint32_t xx_csman_get_decompressed_size(const xx_csman *csman)
+{
     return csman ? csman->decompressed_size : 0U;
 }
-bool xx_csman_get_is_compressed(const xx_csman *csman) {
+bool xx_csman_get_is_compressed(const xx_csman *csman)
+{
     return csman ? csman->is_compressed : false;
 }
-int64_t xx_csman_get_archive_end(const xx_csman *csman) {
+int64_t xx_csman_get_archive_end(const xx_csman *csman)
+{
     return csman ? csman->archive_end : -1;
 }

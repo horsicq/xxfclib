@@ -8,13 +8,15 @@
 #ifdef __cplusplus
 extern "C" {
 #endif
-typedef struct xx_pkcs12_pfx { Abstractformat format; } xx_pkcs12_pfx;
-XXFC_API void xx_pkcs12_pfx_init(xx_pkcs12_pfx *,xx_io_device *,int64_t);
-XXFC_API xx_pkcs12_pfx *xx_pkcs12_pfx_create(xx_io_device *,int64_t);
+typedef struct xx_pkcs12_pfx {
+    Abstractformat format;
+} xx_pkcs12_pfx;
+XXFC_API void xx_pkcs12_pfx_init(xx_pkcs12_pfx *, xx_io_device *, int64_t);
+XXFC_API xx_pkcs12_pfx *xx_pkcs12_pfx_create(xx_io_device *, int64_t);
 XXFC_API void xx_pkcs12_pfx_destroy(xx_pkcs12_pfx *);
 XXFC_API void xx_pkcs12_pfx_free(xx_pkcs12_pfx *);
-XXFC_API bool xx_pkcs12_pfx_check_is_valid(Abstractformat *,xx_pd_struct *);
-XXFC_API bool xx_pkcs12_pfx_handle_base_info(Abstractformat *,xx_pd_struct *);
+XXFC_API bool xx_pkcs12_pfx_check_is_valid(Abstractformat *, xx_pd_struct *);
+XXFC_API bool xx_pkcs12_pfx_handle_base_info(Abstractformat *, xx_pd_struct *);
 #ifdef __cplusplus
 }
 #endif

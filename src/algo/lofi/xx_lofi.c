@@ -56,8 +56,7 @@ static uint64_t lofi_index_at(const uint8_t *input, uint64_t i)
     return xx_data_get_u64(input + LOFI_INDEX_OFFSET + i * 8, 8, 0, true);
 }
 
-static bool lofi_parse_geometry(const uint8_t *input, size_t input_size,
-                                lofi_geometry *geometry)
+static bool lofi_parse_geometry(const uint8_t *input, size_t input_size, lofi_geometry *geometry)
 {
     uint64_t i;
     uint64_t previous;
@@ -89,26 +88,21 @@ static bool lofi_parse_geometry(const uint8_t *input, size_t input_size,
     /* Exactly the reference detector's rules: a positive segment size, more
      * than one index entry, and a final segment that is positive and no larger
      * than a full one. */
-    if ((geometry->segment_size == 0) ||
-        (geometry->segment_size > (uint64_t)LOFI_MAX_SEGMENT_SIZE)) {
+    if ((geometry->segment_size == 0) || (geometry->segment_size > (uint64_t)LOFI_MAX_SEGMENT_SIZE)) {
         return false;
     }
-    if ((geometry->index_entries <= 1) ||
-        (geometry->index_entries > (uint64_t)LOFI_MAX_INDEX_ENTRIES)) {
+    if ((geometry->index_entries <= 1) || (geometry->index_entries > (uint64_t)LOFI_MAX_INDEX_ENTRIES)) {
         return false;
     }
-    if ((geometry->last_segment_size == 0) ||
-        (geometry->last_segment_size > geometry->segment_size)) {
+    if ((geometry->last_segment_size == 0) || (geometry->last_segment_size > geometry->segment_size)) {
         return false;
     }
 
-    geometry->data_offset =
-        (uint64_t)LOFI_INDEX_OFFSET + geometry->index_entries * 8;
+    geometry->data_offset = (uint64_t)LOFI_INDEX_OFFSET + geometry->index_entries * 8;
     if (geometry->data_offset > (uint64_t)input_size) return false;
 
     segments = geometry->index_entries - 1;
-    geometry->image_size = (segments - 1) * geometry->segment_size +
-                           geometry->last_segment_size;
+    geometry->image_size = (segments - 1) * geometry->segment_size + geometry->last_segment_size;
 
     previous = 0;
     for (i = 0; i < geometry->index_entries; i++) {
@@ -136,8 +130,7 @@ static bool lofi_parse_geometry(const uint8_t *input, size_t input_size,
     return true;
 }
 
-bool xx_lofi_scan_memory(const uint8_t *input, size_t input_size,
-                         size_t max_output, size_t *consumed, size_t *produced)
+bool xx_lofi_scan_memory(const uint8_t *input, size_t input_size, size_t max_output, size_t *consumed, size_t *produced)
 {
     lofi_geometry geometry;
 
@@ -155,8 +148,7 @@ bool xx_lofi_scan_memory(const uint8_t *input, size_t input_size,
     return true;
 }
 
-bool xx_lofi_decode_memory(const uint8_t *input, size_t input_size,
-                           uint8_t *output, size_t output_size, size_t *written)
+bool xx_lofi_decode_memory(const uint8_t *input, size_t input_size, uint8_t *output, size_t output_size, size_t *written)
 {
     lofi_geometry geometry;
     const uint8_t *base;
@@ -185,35 +177,29 @@ bool xx_lofi_decode_memory(const uint8_t *input, size_t input_size,
         size_t segment_written = 0;
 
         segment = base + start;
-        want = (i + 1 == segments) ? geometry.last_segment_size
-                                   : geometry.segment_size;
+        want = (i + 1 == segments) ? geometry.last_segment_size : geometry.segment_size;
         if (produced + want > (uint64_t)output_size) return false;
         if (segment[0] == 0U) {
             /* Incompressible segments are explicitly stored, under either
              * algorithm. Their index extent must match the geometry. */
             if (segment_bytes - LOFI_SEGMENT_PREFIX != want) return false;
-            xx_rt_memcpy(output + (size_t)produced,
-                          segment + LOFI_SEGMENT_PREFIX, (size_t)want);
+            xx_rt_memcpy(output + (size_t)produced, segment + LOFI_SEGMENT_PREFIX, (size_t)want);
             segment_written = (size_t)want;
         } else if (segment[0] != 1U) {
             return false;
         } else if (geometry.zlib_segments) {
-            if (!xx_zlib_stream_decode_memory(segment + LOFI_SEGMENT_PREFIX,
-                    (size_t)(segment_bytes - LOFI_SEGMENT_PREFIX),
-                    output + (size_t)produced, (size_t)want, &segment_written) ||
-                !xx_zlib_stream_trailer_matches(segment + LOFI_SEGMENT_PREFIX,
-                    (size_t)(segment_bytes - LOFI_SEGMENT_PREFIX),
-                    output + (size_t)produced, segment_written)) return false;
-        } else {
-            if (segment_bytes <= LOFI_SEGMENT_PREFIX + LOFI_ALONE_HEADER)
+            if (!xx_zlib_stream_decode_memory(segment + LOFI_SEGMENT_PREFIX, (size_t)(segment_bytes - LOFI_SEGMENT_PREFIX), output + (size_t)produced, (size_t)want,
+                                              &segment_written) ||
+                !xx_zlib_stream_trailer_matches(segment + LOFI_SEGMENT_PREFIX, (size_t)(segment_bytes - LOFI_SEGMENT_PREFIX), output + (size_t)produced, segment_written))
                 return false;
+        } else {
+            if (segment_bytes <= LOFI_SEGMENT_PREFIX + LOFI_ALONE_HEADER) return false;
             props = segment + LOFI_SEGMENT_PREFIX;
             declared = xx_data_get_u64(props + 5, 8, 0, false);
-            if (declared != want || !xx_lzma_decompress_memory(
-                    segment + LOFI_SEGMENT_PREFIX + LOFI_ALONE_HEADER,
-                    (size_t)(segment_bytes - LOFI_SEGMENT_PREFIX - LOFI_ALONE_HEADER),
-                    props, 5, (int64_t)want, output + (size_t)produced,
-                    (size_t)want, &segment_written)) return false;
+            if (declared != want ||
+                !xx_lzma_decompress_memory(segment + LOFI_SEGMENT_PREFIX + LOFI_ALONE_HEADER, (size_t)(segment_bytes - LOFI_SEGMENT_PREFIX - LOFI_ALONE_HEADER), props, 5,
+                                           (int64_t)want, output + (size_t)produced, (size_t)want, &segment_written))
+                return false;
         }
         if ((uint64_t)segment_written != want) return false;
         produced += want;

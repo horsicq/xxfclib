@@ -69,12 +69,11 @@ typedef struct xx_mub_archive_stream_s {
 
 static void xx_mub_vtable_destroy(Abstractformat *self);
 
-static bool xx_mub_read_at(xx_io_device *device, int64_t offset, void *data,
-                           size_t size) {
+static bool xx_mub_read_at(xx_io_device *device, int64_t offset, void *data, size_t size)
+{
     uint8_t *out = (uint8_t *)data;
     size_t done = 0U;
-    if (!device || (!data && size != 0U) || offset < 0 ||
-        xx_io_seek64(device, offset, SEEK_SET) != 0) {
+    if (!device || (!data && size != 0U) || offset < 0 || xx_io_seek64(device, offset, SEEK_SET) != 0) {
         return false;
     }
     while (done < size) {
@@ -86,7 +85,8 @@ static bool xx_mub_read_at(xx_io_device *device, int64_t offset, void *data,
 }
 
 /* Name the slice after its CPU, matching the extension 7-Zip derives. */
-static void xx_mub_make_name(xx_mub_slice *slice) {
+static void xx_mub_make_name(xx_mub_slice *slice)
+{
     const char *ext = NULL;
     size_t len;
     switch (slice->cputype) {
@@ -102,23 +102,20 @@ static void xx_mub_make_name(xx_mub_slice *slice) {
     if (ext) {
         (void)xx_rt_snprintf(slice->name, sizeof(slice->name), "%s", ext);
     } else {
-        (void)xx_rt_snprintf(slice->name, sizeof(slice->name), "cpu%u%s",
-                             (unsigned)(slice->cputype & ~XX_MUB_CPU_ABI64),
+        (void)xx_rt_snprintf(slice->name, sizeof(slice->name), "cpu%u%s", (unsigned)(slice->cputype & ~XX_MUB_CPU_ABI64),
                              (slice->cputype & XX_MUB_CPU_ABI64) ? "_64" : "");
     }
     if (slice->cpusubtype != 0U &&
-        ((slice->cputype != 7U && slice->cputype != (XX_MUB_CPU_ABI64 | 7U)) ||
-         (slice->cpusubtype & ~XX_MUB_SUB_LIB64) != XX_MUB_SUB_I386_ALL)) {
+        ((slice->cputype != 7U && slice->cputype != (XX_MUB_CPU_ABI64 | 7U)) || (slice->cpusubtype & ~XX_MUB_SUB_LIB64) != XX_MUB_SUB_I386_ALL)) {
         len = xx_str_len(slice->name);
         if (len < sizeof(slice->name)) {
-            (void)xx_rt_snprintf(slice->name + len, sizeof(slice->name) - len,
-                                 "-%u", (unsigned)slice->cpusubtype);
+            (void)xx_rt_snprintf(slice->name + len, sizeof(slice->name) - len, "-%u", (unsigned)slice->cpusubtype);
         }
     }
 }
 
-static bool xx_mub_name_used(const xx_mub_private *parsed, uint32_t count,
-                             const char *name) {
+static bool xx_mub_name_used(const xx_mub_private *parsed, uint32_t count, const char *name)
+{
     uint32_t i;
     for (i = 0U; i < count; ++i) {
         if (xx_str_cmp(parsed->slices[i].name, name) == 0) return true;
@@ -126,15 +123,16 @@ static bool xx_mub_name_used(const xx_mub_private *parsed, uint32_t count,
     return false;
 }
 
-static void xx_mub_private_reset(xx_mub_private *parsed) {
+static void xx_mub_private_reset(xx_mub_private *parsed)
+{
     if (!parsed) return;
     xx_mem_zero(parsed, sizeof(*parsed));
     parsed->table_end = -1;
     parsed->archive_end = -1;
 }
 
-static bool xx_mub_parse(Abstractformat *self, xx_mub_private *parsed,
-                         xx_pd_struct *pd) {
+static bool xx_mub_parse(Abstractformat *self, xx_mub_private *parsed, xx_pd_struct *pd)
+{
     uint8_t table[XX_MUB_TABLE_MAX];
     int64_t total_size;
     int64_t avail;
@@ -146,18 +144,15 @@ static bool xx_mub_parse(Abstractformat *self, xx_mub_private *parsed,
     bool big_endian;
     bool fat64;
     xx_mub_private_reset(parsed);
-    if (!self || !self->device || !parsed || self->base_address < 0 ||
-        (pd && xx_pd_is_stopped(pd))) {
+    if (!self || !self->device || !parsed || self->base_address < 0 || (pd && xx_pd_is_stopped(pd))) {
         return false;
     }
     total_size = xx_io_total_size(self->device);
-    if (total_size < self->base_address ||
-        total_size - self->base_address < (int64_t)XX_MUB_HEADER_SIZE) {
+    if (total_size < self->base_address || total_size - self->base_address < (int64_t)XX_MUB_HEADER_SIZE) {
         return false;
     }
     avail = total_size - self->base_address;
-    if (!xx_mub_read_at(self->device, self->base_address, table,
-                        XX_MUB_HEADER_SIZE)) {
+    if (!xx_mub_read_at(self->device, self->base_address, table, XX_MUB_HEADER_SIZE)) {
         return false;
     }
     magic = xx_data_get_u32(table, sizeof(table), 0U, true);
@@ -177,8 +172,7 @@ static bool xx_mub_parse(Abstractformat *self, xx_mub_private *parsed,
     if (count == 0U || count > XX_MUB_MAX_SLICES) return false;
     rec_size = fat64 ? XX_MUB_ARCH64_SIZE : XX_MUB_ARCH_SIZE;
     table_size = XX_MUB_HEADER_SIZE + (size_t)count * rec_size;
-    if ((int64_t)table_size > avail ||
-        !xx_mub_read_at(self->device, self->base_address, table, table_size)) {
+    if ((int64_t)table_size > avail || !xx_mub_read_at(self->device, self->base_address, table, table_size)) {
         return false;
     }
     parsed->magic = magic;
@@ -190,8 +184,7 @@ static bool xx_mub_parse(Abstractformat *self, xx_mub_private *parsed,
         uint64_t offset;
         uint64_t size;
         slice->cputype = xx_data_get_u32(table, sizeof(table), at, big_endian);
-        slice->cpusubtype =
-            xx_data_get_u32(table, sizeof(table), at + 4U, big_endian);
+        slice->cpusubtype = xx_data_get_u32(table, sizeof(table), at + 4U, big_endian);
         if (fat64) {
             offset = xx_data_get_u64(table, sizeof(table), at + 8U, true);
             size = xx_data_get_u64(table, sizeof(table), at + 16U, true);
@@ -199,24 +192,17 @@ static bool xx_mub_parse(Abstractformat *self, xx_mub_private *parsed,
         } else {
             offset = xx_data_get_u32(table, sizeof(table), at + 8U, big_endian);
             size = xx_data_get_u32(table, sizeof(table), at + 12U, big_endian);
-            slice->align =
-                xx_data_get_u32(table, sizeof(table), at + 16U, big_endian);
+            slice->align = xx_data_get_u32(table, sizeof(table), at + 16U, big_endian);
         }
         /* Sanity limits after 7-Zip: a real cputype/cpusubtype is a small
          * number plus flag bits in the top byte; alignment is a shift. */
-        if (slice->align > 31U ||
-            (slice->cputype & XX_MUB_CPU_ARCH_MASK & ~XX_MUB_CPU_ABI_FLAGS) !=
-                0U ||
-            (slice->cpusubtype & XX_MUB_CPU_ARCH_MASK &
-             ~XX_MUB_SUB_FLAGS) != 0U ||
-            (slice->cputype & ~XX_MUB_CPU_ARCH_MASK) == 0U ||
-            (slice->cputype & ~XX_MUB_CPU_ARCH_MASK) >= 0x100U ||
-            (slice->cpusubtype & ~XX_MUB_CPU_ARCH_MASK) >= 0x100U) {
+        if (slice->align > 31U || (slice->cputype & XX_MUB_CPU_ARCH_MASK & ~XX_MUB_CPU_ABI_FLAGS) != 0U ||
+            (slice->cpusubtype & XX_MUB_CPU_ARCH_MASK & ~XX_MUB_SUB_FLAGS) != 0U || (slice->cputype & ~XX_MUB_CPU_ARCH_MASK) == 0U ||
+            (slice->cputype & ~XX_MUB_CPU_ARCH_MASK) >= 0x100U || (slice->cpusubtype & ~XX_MUB_CPU_ARCH_MASK) >= 0x100U) {
             return false;
         }
         /* The slice must lie past the table and wholly inside the device. */
-        if (offset < (uint64_t)table_size || offset > (uint64_t)avail ||
-            size > (uint64_t)avail - offset) {
+        if (offset < (uint64_t)table_size || offset > (uint64_t)avail || size > (uint64_t)avail - offset) {
             return false;
         }
         slice->offset = (int64_t)offset;
@@ -228,8 +214,7 @@ static bool xx_mub_parse(Abstractformat *self, xx_mub_private *parsed,
         if (xx_mub_name_used(parsed, i, slice->name)) {
             size_t len = xx_str_len(slice->name);
             if (len + 4U > sizeof(slice->name)) len = sizeof(slice->name) - 4U;
-            (void)xx_rt_snprintf(slice->name + len, sizeof(slice->name) - len,
-                                 "_%u", (unsigned)i);
+            (void)xx_rt_snprintf(slice->name + len, sizeof(slice->name) - len, "_%u", (unsigned)i);
             if (xx_mub_name_used(parsed, i, slice->name)) return false;
         }
     }
@@ -237,18 +222,16 @@ static bool xx_mub_parse(Abstractformat *self, xx_mub_private *parsed,
     return true;
 }
 
-static bool xx_mub_copy_options(xx_list_s *destination,
-                                const xx_list_s *source) {
+static bool xx_mub_copy_options(xx_list_s *destination, const xx_list_s *source)
+{
     size_t index;
     if (!destination || !source) return source == NULL;
     for (index = 0U; index < source->count; ++index) {
-        const xx_meta *item = (const xx_meta *)xx_list_at(
-            (const xx_list_t *)source, index);
+        const xx_meta *item = (const xx_meta *)xx_list_at((const xx_list_t *)source, index);
         xx_meta copy;
         if (!item) continue;
         xx_meta_init(&copy, item->meta_id);
-        if (!xx_var_copy(&copy.var, &item->var) ||
-            !xx_list_append(destination, &copy)) {
+        if (!xx_var_copy(&copy.var, &item->var) || !xx_list_append(destination, &copy)) {
             xx_meta_cleanup(&copy);
             return false;
         }
@@ -256,21 +239,19 @@ static bool xx_mub_copy_options(xx_list_s *destination,
     return true;
 }
 
-static const xx_var *xx_mub_find_option(const xx_list_s *options,
-                                        uint32_t meta_id) {
+static const xx_var *xx_mub_find_option(const xx_list_s *options, uint32_t meta_id)
+{
     size_t index;
     if (!options) return NULL;
     for (index = 0U; index < options->count; ++index) {
-        const xx_meta *item = (const xx_meta *)xx_list_at(
-            (const xx_list_t *)options, index);
+        const xx_meta *item = (const xx_meta *)xx_list_at((const xx_list_t *)options, index);
         if (item && item->meta_id == meta_id) return &item->var;
     }
     return NULL;
 }
 
-static bool xx_mub_populate_record(xx_archive_record *record,
-                                   const xx_mub_private *parsed,
-                                   int64_t base_address, uint32_t index) {
+static bool xx_mub_populate_record(xx_archive_record *record, const xx_mub_private *parsed, int64_t base_address, uint32_t index)
+{
     const xx_mub_slice *slice;
     if (!record || !parsed || index >= parsed->count) return false;
     slice = &parsed->slices[index];
@@ -280,26 +261,21 @@ static bool xx_mub_populate_record(xx_archive_record *record,
     record->header_size = parsed->table_end;
     record->data_offset = base_address + slice->offset;
     record->compressed_size = slice->size;
-    return xx_archive_record_set_original_name(record, slice->name) &&
-           xx_archive_record_set_meta_u64(record,
-                                          XX_META_ID_UNCOMPRESSED_SIZE,
-                                          (uint64_t)slice->size) &&
-           xx_archive_record_set_meta_u64(record, XX_META_ID_COMPRESSED_SIZE,
-                                          (uint64_t)slice->size) &&
-           xx_archive_record_set_meta_u64(record,
-                                          XX_META_ID_COMPRESSION_METHOD, 0U) &&
-           xx_archive_record_set_meta_bool(record, XX_META_ID_IS_FOLDER,
-                                           false);
+    return xx_archive_record_set_original_name(record, slice->name) && xx_archive_record_set_meta_u64(record, XX_META_ID_UNCOMPRESSED_SIZE, (uint64_t)slice->size) &&
+           xx_archive_record_set_meta_u64(record, XX_META_ID_COMPRESSED_SIZE, (uint64_t)slice->size) &&
+           xx_archive_record_set_meta_u64(record, XX_META_ID_COMPRESSION_METHOD, 0U) && xx_archive_record_set_meta_bool(record, XX_META_ID_IS_FOLDER, false);
 }
 
-static void xx_mub_archive_stream_free(void *pointer) {
+static void xx_mub_archive_stream_free(void *pointer)
+{
     xx_mub_archive_stream *stream = (xx_mub_archive_stream *)pointer;
     if (!stream) return;
     xx_mub_private_reset(&stream->parsed);
     xx_mem_free(stream);
 }
 
-void xx_mub_init(xx_mub *mub, xx_io_device *dev, int64_t base_address) {
+void xx_mub_init(xx_mub *mub, xx_io_device *dev, int64_t base_address)
+{
     if (!mub) return;
     xx_mem_zero(mub, sizeof(*mub));
     xx_format_init(&mub->format, dev, base_address);
@@ -312,28 +288,25 @@ void xx_mub_init(xx_mub *mub, xx_io_device *dev, int64_t base_address) {
     mub->format.check_is_valid = xx_mub_check_is_valid;
     mub->format.handle_base_info = xx_mub_handle_base_info;
     mub->format.get_format_size = xx_mub_get_format_size;
-    mub->format.get_number_of_archive_records =
-        xx_mub_get_number_of_archive_records;
-    mub->format.create_archive_records_reading =
-        xx_mub_create_archive_records_reading;
+    mub->format.get_number_of_archive_records = xx_mub_get_number_of_archive_records;
+    mub->format.create_archive_records_reading = xx_mub_create_archive_records_reading;
     mub->format.get_current_archive_record = xx_mub_get_current_archive_record;
-    mub->format.unpack_current_archive_record =
-        xx_mub_unpack_current_archive_record;
-    mub->format.archive_record_move_to_next =
-        xx_mub_archive_record_move_to_next;
-    mub->format.free_archive_records_reading =
-        xx_mub_free_archive_records_reading;
+    mub->format.unpack_current_archive_record = xx_mub_unpack_current_archive_record;
+    mub->format.archive_record_move_to_next = xx_mub_archive_record_move_to_next;
+    mub->format.free_archive_records_reading = xx_mub_free_archive_records_reading;
     mub->format.destroy = xx_mub_vtable_destroy;
     mub->archive_end = -1;
 }
 
-xx_mub *xx_mub_create(xx_io_device *dev, int64_t base_address) {
+xx_mub *xx_mub_create(xx_io_device *dev, int64_t base_address)
+{
     xx_mub *mub = (xx_mub *)xx_mem_alloc(sizeof(*mub));
     if (mub) xx_mub_init(mub, dev, base_address);
     return mub;
 }
 
-void xx_mub_destroy(xx_mub *mub) {
+void xx_mub_destroy(xx_mub *mub)
+{
     if (!mub) return;
     if (mub->internal) {
         xx_mem_free(mub->internal);
@@ -342,17 +315,20 @@ void xx_mub_destroy(xx_mub *mub) {
     xx_format_cleanup_extra_parameters(&mub->format);
 }
 
-static void xx_mub_vtable_destroy(Abstractformat *self) {
+static void xx_mub_vtable_destroy(Abstractformat *self)
+{
     xx_mub_destroy((xx_mub *)self);
 }
 
-void xx_mub_free(xx_mub *mub) {
+void xx_mub_free(xx_mub *mub)
+{
     if (!mub) return;
     xx_mub_destroy(mub);
     xx_mem_free(mub);
 }
 
-bool xx_mub_check_is_valid(Abstractformat *self, xx_pd_struct *pd) {
+bool xx_mub_check_is_valid(Abstractformat *self, xx_pd_struct *pd)
+{
     xx_mub_private *parsed;
     bool result;
     /* The slice table is ~700 bytes; keep it off the detector's stack. */
@@ -363,7 +339,8 @@ bool xx_mub_check_is_valid(Abstractformat *self, xx_pd_struct *pd) {
     return result;
 }
 
-bool xx_mub_handle_base_info(Abstractformat *self, xx_pd_struct *pd) {
+bool xx_mub_handle_base_info(Abstractformat *self, xx_pd_struct *pd)
+{
     xx_mub_private *parsed;
     xx_mub *mub = (xx_mub *)self;
     int64_t total_size;
@@ -381,8 +358,7 @@ bool xx_mub_handle_base_info(Abstractformat *self, xx_pd_struct *pd) {
     mub->magic = parsed->magic;
     mub->is_fat64 = parsed->magic == XX_MUB_MAGIC_FAT64;
     mub->archive_end = self->base_address + parsed->archive_end;
-    self->endian = parsed->magic == XX_MUB_MAGIC_LE ? XX_ENDIAN_LITTLE
-                                                    : XX_ENDIAN_BIG;
+    self->endian = parsed->magic == XX_MUB_MAGIC_LE ? XX_ENDIAN_LITTLE : XX_ENDIAN_BIG;
     self->format_size = parsed->archive_end;
     total_size = xx_io_total_size(self->device);
     if (total_size > mub->archive_end) {
@@ -398,25 +374,23 @@ bool xx_mub_handle_base_info(Abstractformat *self, xx_pd_struct *pd) {
     return true;
 }
 
-int64_t xx_mub_get_format_size(Abstractformat *self, xx_pd_struct *pd) {
-    if (!self || (!self->base_info_handled &&
-                  !xx_format_handle_base_info(self, pd))) return -1;
+int64_t xx_mub_get_format_size(Abstractformat *self, xx_pd_struct *pd)
+{
+    if (!self || (!self->base_info_handled && !xx_format_handle_base_info(self, pd))) return -1;
     return self->format_size;
 }
 
-uint64_t xx_mub_get_number_of_archive_records(Abstractformat *self,
-                                              xx_pd_struct *pd) {
-    if (!self || (!self->base_info_handled &&
-                  !xx_format_handle_base_info(self, pd))) return 0U;
+uint64_t xx_mub_get_number_of_archive_records(Abstractformat *self, xx_pd_struct *pd)
+{
+    if (!self || (!self->base_info_handled && !xx_format_handle_base_info(self, pd))) return 0U;
     return ((xx_mub *)self)->number_of_records;
 }
 
-xx_archive_record_state *xx_mub_create_archive_records_reading(
-    Abstractformat *self, const xx_list_s *options, xx_pd_struct *pd) {
+xx_archive_record_state *xx_mub_create_archive_records_reading(Abstractformat *self, const xx_list_s *options, xx_pd_struct *pd)
+{
     xx_archive_record_state *state;
     xx_mub_archive_stream *stream;
-    if (!self || !self->device ||
-        (!self->base_info_handled && !xx_format_handle_base_info(self, pd))) {
+    if (!self || !self->device || (!self->base_info_handled && !xx_format_handle_base_info(self, pd))) {
         return NULL;
     }
     state = (xx_archive_record_state *)xx_mem_alloc(sizeof(*state));
@@ -427,8 +401,7 @@ xx_archive_record_state *xx_mub_create_archive_records_reading(
         return NULL;
     }
     xx_archive_record_state_init(state, self);
-    if (!xx_mub_copy_options(&state->options, options) ||
-        !xx_mub_parse(self, &stream->parsed, pd)) {
+    if (!xx_mub_copy_options(&state->options, options) || !xx_mub_parse(self, &stream->parsed, pd)) {
         xx_mub_archive_stream_free(stream);
         xx_archive_record_state_free(state);
         return NULL;
@@ -437,32 +410,25 @@ xx_archive_record_state *xx_mub_create_archive_records_reading(
     state->internal_state = stream;
     state->free_internal = xx_mub_archive_stream_free;
     state->total_records = (int64_t)stream->parsed.count;
-    if (stream->parsed.count > 0U &&
-        xx_mub_populate_record(&state->current_record, &stream->parsed,
-                               self->base_address, 0U)) {
+    if (stream->parsed.count > 0U && xx_mub_populate_record(&state->current_record, &stream->parsed, self->base_address, 0U)) {
         state->has_record = true;
         state->current_index = 0;
     }
     return state;
 }
 
-const xx_archive_record *xx_mub_get_current_archive_record(
-    Abstractformat *self, xx_archive_record_state *state) {
-    return self && state && state->format == self && state->has_record
-               ? &state->current_record : NULL;
+const xx_archive_record *xx_mub_get_current_archive_record(Abstractformat *self, xx_archive_record_state *state)
+{
+    return self && state && state->format == self && state->has_record ? &state->current_record : NULL;
 }
 
-bool xx_mub_archive_record_move_to_next(Abstractformat *self,
-                                        xx_archive_record_state *state,
-                                        xx_pd_struct *pd) {
+bool xx_mub_archive_record_move_to_next(Abstractformat *self, xx_archive_record_state *state, xx_pd_struct *pd)
+{
     xx_mub_archive_stream *stream;
-    if (!self || !state || state->format != self || !state->has_record ||
-        !state->internal_state || (pd && xx_pd_is_stopped(pd))) return false;
+    if (!self || !state || state->format != self || !state->has_record || !state->internal_state || (pd && xx_pd_is_stopped(pd))) return false;
     stream = (xx_mub_archive_stream *)state->internal_state;
     ++stream->index;
-    if (stream->index < stream->parsed.count &&
-        xx_mub_populate_record(&state->current_record, &stream->parsed,
-                               self->base_address, stream->index)) {
+    if (stream->index < stream->parsed.count && xx_mub_populate_record(&state->current_record, &stream->parsed, self->base_address, stream->index)) {
         state->current_index = (int64_t)stream->index;
         return true;
     }
@@ -472,9 +438,8 @@ bool xx_mub_archive_record_move_to_next(Abstractformat *self,
     return false;
 }
 
-bool xx_mub_unpack_current_archive_record(Abstractformat *self,
-                                          xx_archive_record_state *state,
-                                          xx_pd_struct *pd) {
+bool xx_mub_unpack_current_archive_record(Abstractformat *self, xx_archive_record_state *state, xx_pd_struct *pd)
+{
     const xx_archive_record *record;
     const xx_var *option;
     const char *name;
@@ -482,8 +447,7 @@ bool xx_mub_unpack_current_archive_record(Abstractformat *self,
     char *owned_base = NULL;
     char *destination = NULL;
     bool result = false;
-    if (!self || !self->device || !state || state->format != self ||
-        !state->has_record || (pd && xx_pd_is_stopped(pd))) return false;
+    if (!self || !self->device || !state || state->format != self || !state->has_record || (pd && xx_pd_is_stopped(pd))) return false;
     record = &state->current_record;
     name = xx_archive_record_get_original_name(record);
     /* Names are built from numbers and fixed words, never from the file. */
@@ -491,21 +455,16 @@ bool xx_mub_unpack_current_archive_record(Abstractformat *self,
     option = xx_mub_find_option(&state->options, XX_META_ID_OPT_UNPACK_PATH);
     if (!option) {
         int64_t total = xx_io_total_size(self->device);
-        return record->data_offset >= 0 && record->compressed_size >= 0 &&
-               record->data_offset <= total &&
-               record->compressed_size <= total - record->data_offset;
+        return record->data_offset >= 0 && record->compressed_size >= 0 && record->data_offset <= total && record->compressed_size <= total - record->data_offset;
     }
-    if (option->type == XX_VAR_TYPE_STRING ||
-        option->type == XX_VAR_TYPE_STRING_VIEW) {
+    if (option->type == XX_VAR_TYPE_STRING || option->type == XX_VAR_TYPE_STRING_VIEW) {
         base = xx_var_get_str(option);
-    } else if (option->type == XX_VAR_TYPE_WSTRING ||
-               option->type == XX_VAR_TYPE_WSTRING_VIEW) {
+    } else if (option->type == XX_VAR_TYPE_WSTRING || option->type == XX_VAR_TYPE_WSTRING_VIEW) {
         owned_base = xx_str_unicode_to_utf8(xx_var_get_wstr(option));
         base = owned_base;
     }
     if (!base) goto cleanup;
-    if (base[0] && base[xx_str_len(base) - 1U] != '/' &&
-        base[xx_str_len(base) - 1U] != '\\') {
+    if (base[0] && base[xx_str_len(base) - 1U] != '/' && base[xx_str_len(base) - 1U] != '\\') {
         destination = xx_str_concat3(base, "/", name);
     } else {
         destination = xx_str_concat(base, name);
@@ -513,10 +472,7 @@ bool xx_mub_unpack_current_archive_record(Abstractformat *self,
     if (!destination) goto cleanup;
     if (xx_store_create_dirs_a(destination, false)) {
         /* The helper deletes its own output on failure. */
-        result = xx_store_unpack_device_to_file(self->device,
-                                                record->data_offset,
-                                                record->compressed_size,
-                                                destination, pd);
+        result = xx_store_unpack_device_to_file(self->device, record->data_offset, record->compressed_size, destination, pd);
     }
 cleanup:
     if (owned_base) xx_str_free(owned_base);
@@ -524,16 +480,18 @@ cleanup:
     return result;
 }
 
-void xx_mub_free_archive_records_reading(Abstractformat *self,
-                                         xx_archive_record_state *state) {
+void xx_mub_free_archive_records_reading(Abstractformat *self, xx_archive_record_state *state)
+{
     (void)self;
     xx_archive_record_state_free(state);
 }
 
-uint64_t xx_mub_get_number_of_records(const xx_mub *mub) {
+uint64_t xx_mub_get_number_of_records(const xx_mub *mub)
+{
     return mub ? mub->number_of_records : 0U;
 }
 
-int64_t xx_mub_get_archive_end(const xx_mub *mub) {
+int64_t xx_mub_get_archive_end(const xx_mub *mub)
+{
     return mub ? mub->archive_end : -1;
 }

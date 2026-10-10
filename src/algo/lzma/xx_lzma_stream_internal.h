@@ -27,7 +27,7 @@ typedef enum xx_lzma_stream_result_e {
 
 typedef struct xx_lzma_stream_info_s {
     uint64_t produced;
-    uint64_t consumed;  /* Raw data bytes, excluding any container header. */
+    uint64_t consumed; /* Raw data bytes, excluding any container header. */
     bool end_marker;
     bool zero_data;
     bool allocation_failed;
@@ -35,15 +35,12 @@ typedef struct xx_lzma_stream_info_s {
 
 typedef struct xx_lzma_stream_decoder_s xx_lzma_stream_decoder;
 
-bool xx_lzma_stream_read_exact_at(xx_io_device *device, int64_t offset,
-                                  void *data, size_t size,
-                                  xx_pd_struct *pd);
+bool xx_lzma_stream_read_exact_at(xx_io_device *device, int64_t offset, void *data, size_t size, xx_pd_struct *pd);
 size_t xx_lzma_stream_model_entries(const xx_lzma_stream_props *properties);
 
 /* Devices and progress data are borrowed. A NULL destination measures only.
  * The decoder may be reused for consecutive independent streams. */
-xx_lzma_stream_decoder *xx_lzma_stream_decoder_create(
-    xx_io_device *device, xx_io_device *destination, xx_pd_struct *pd);
+xx_lzma_stream_decoder *xx_lzma_stream_decoder_create(xx_io_device *device, xx_io_device *destination, xx_pd_struct *pd);
 void xx_lzma_stream_decoder_free(xx_lzma_stream_decoder *decoder);
 
 /* Decode the raw extent [data_offset, data_end). Known-size streams may omit
@@ -51,9 +48,7 @@ void xx_lzma_stream_decoder_free(xx_lzma_stream_decoder *decoder);
  * A nonzero probe_output permits a PARTIAL result before completion. Pending
  * output is not flushed on PARTIAL. Results always report produced/consumed
  * counts and distinguish allocation failures from invalid compressed data. */
-xx_lzma_stream_result xx_lzma_stream_decode(
-    xx_lzma_stream_decoder *decoder, const xx_lzma_stream_props *properties,
-    int64_t data_offset, int64_t data_end, uint64_t probe_output,
-    xx_lzma_stream_info *info);
+xx_lzma_stream_result xx_lzma_stream_decode(xx_lzma_stream_decoder *decoder, const xx_lzma_stream_props *properties, int64_t data_offset, int64_t data_end,
+                                            uint64_t probe_output, xx_lzma_stream_info *info);
 
 #endif /* XXFCLIB_LZMA_STREAM_INTERNAL_H */

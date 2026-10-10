@@ -20,25 +20,24 @@ typedef struct xx_lzma_alone_counter_s {
     bool failed;
 } xx_lzma_alone_counter;
 
-static bool xx_lzma_alone_read_exact_at(xx_io_device *device, int64_t offset,
-                                        void *buffer, size_t size, size_t io_capacity) {
+static bool xx_lzma_alone_read_exact_at(xx_io_device *device, int64_t offset, void *buffer, size_t size, size_t io_capacity)
+{
     size_t done = 0U;
-    if (!device || (!buffer && size != 0U) || offset < 0 ||
-        xx_io_seek64(device, offset, SEEK_SET) != 0) {
+    if (!device || (!buffer && size != 0U) || offset < 0 || xx_io_seek64(device, offset, SEEK_SET) != 0) {
         return false;
     }
     while (done < size) {
         size_t request = size - done;
         if (request > io_capacity) request = io_capacity;
-        ssize_t amount = xx_io_read(device, (uint8_t *)buffer + done,
-                                    request);
+        ssize_t amount = xx_io_read(device, (uint8_t *)buffer + done, request);
         if (amount <= 0 || (size_t)amount > request) return false;
         done += (size_t)amount;
     }
     return true;
 }
 
-static bool xx_lzma_alone_properties_are_valid(const uint8_t *properties) {
+static bool xx_lzma_alone_properties_are_valid(const uint8_t *properties)
+{
     uint32_t dictionary_size;
     unsigned value;
     unsigned pb;
@@ -52,30 +51,25 @@ static bool xx_lzma_alone_properties_are_valid(const uint8_t *properties) {
     lp = value / 9U;
     lc = value - lp * 9U;
     if (lc + lp > 4U) return false;
-    dictionary_size = (uint32_t)properties[1] |
-                      ((uint32_t)properties[2] << 8U) |
-                      ((uint32_t)properties[3] << 16U) |
-                      ((uint32_t)properties[4] << 24U);
+    dictionary_size = (uint32_t)properties[1] | ((uint32_t)properties[2] << 8U) | ((uint32_t)properties[3] << 16U) | ((uint32_t)properties[4] << 24U);
     return dictionary_size <= XX_LZMA_MAX_DICT_SIZE;
 }
 
-bool xx_lzma_alone_has_header(const uint8_t *data, size_t size) {
+bool xx_lzma_alone_has_header(const uint8_t *data, size_t size)
+{
     uint64_t declared_size;
-    if (!data || size < XX_LZMA_ALONE_HEADER_SIZE ||
-        !xx_lzma_alone_properties_are_valid(data)) {
+    if (!data || size < XX_LZMA_ALONE_HEADER_SIZE || !xx_lzma_alone_properties_are_valid(data)) {
         return false;
     }
     declared_size = xx_data_get_u64(data + 5U, 8, 0, false);
     return declared_size == UINT64_MAX || declared_size <= (uint64_t)INT64_MAX;
 }
 
-static ssize_t xx_lzma_alone_counter_write(xx_io_device *device,
-                                           const void *data, size_t size) {
-    xx_lzma_alone_counter *counter =
-        device ? (xx_lzma_alone_counter *)device->priv : NULL;
+static ssize_t xx_lzma_alone_counter_write(xx_io_device *device, const void *data, size_t size)
+{
+    xx_lzma_alone_counter *counter = device ? (xx_lzma_alone_counter *)device->priv : NULL;
     size_t done = 0U;
-    if (!counter || (!data && size != 0U) ||
-        (uint64_t)size > counter->maximum_size - counter->written) {
+    if (!counter || (!data && size != 0U) || (uint64_t)size > counter->maximum_size - counter->written) {
         if (counter) counter->failed = true;
         return -1;
     }
@@ -83,9 +77,7 @@ static ssize_t xx_lzma_alone_counter_write(xx_io_device *device,
         size_t request = size - done;
         ssize_t amount;
         if (request > counter->io_capacity) request = counter->io_capacity;
-        amount = xx_io_write(counter->destination,
-                                     (const uint8_t *)data + done,
-                                     request);
+        amount = xx_io_write(counter->destination, (const uint8_t *)data + done, request);
         if (amount <= 0 || (size_t)amount > request) {
             counter->failed = true;
             return -1;
@@ -96,10 +88,8 @@ static ssize_t xx_lzma_alone_counter_write(xx_io_device *device,
     return (ssize_t)size;
 }
 
-bool xx_lzma_alone_decode_device(xx_io_device *source, int64_t source_offset,
-                                 int64_t source_size,
-                                 xx_io_device *destination,
-                                 int64_t *output_size, xx_pd_struct *pd) {
+bool xx_lzma_alone_decode_device(xx_io_device *source, int64_t source_offset, int64_t source_size, xx_io_device *destination, int64_t *output_size, xx_pd_struct *pd)
+{
     const size_t io_capacity = xx_get_file_buffer_size();
     uint8_t header[XX_LZMA_ALONE_HEADER_SIZE];
     uint64_t declared_size;
@@ -110,16 +100,12 @@ bool xx_lzma_alone_decode_device(xx_io_device *source, int64_t source_offset,
     xx_io_device sink;
 
     if (output_size) *output_size = -1;
-    if (!source || !destination || source_offset < 0 ||
-        source_size < (int64_t)XX_LZMA_ALONE_HEADER_SIZE + 5 ||
-        (pd && xx_pd_is_stopped(pd))) {
+    if (!source || !destination || source_offset < 0 || source_size < (int64_t)XX_LZMA_ALONE_HEADER_SIZE + 5 || (pd && xx_pd_is_stopped(pd))) {
         return false;
     }
     total_size = xx_io_total_size(source);
     if (total_size < source_offset || source_size > total_size - source_offset ||
-        !xx_lzma_alone_read_exact_at(source, source_offset, header,
-                                     sizeof(header), io_capacity) ||
-        !xx_lzma_alone_has_header(header, sizeof(header))) {
+        !xx_lzma_alone_read_exact_at(source, source_offset, header, sizeof(header), io_capacity) || !xx_lzma_alone_has_header(header, sizeof(header))) {
         return false;
     }
     declared_size = xx_data_get_u64(header + 5U, 8, 0, false);
@@ -128,17 +114,13 @@ bool xx_lzma_alone_decode_device(xx_io_device *source, int64_t source_offset,
     xx_rt_memset(&counter, 0, sizeof(counter));
     counter.destination = destination;
     counter.io_capacity = io_capacity;
-    counter.maximum_size = declared_size == UINT64_MAX
-                               ? (uint64_t)INT64_MAX
-                               : declared_size;
+    counter.maximum_size = declared_size == UINT64_MAX ? (uint64_t)INT64_MAX : declared_size;
     xx_rt_memset(&sink, 0, sizeof(sink));
     sink.write = xx_lzma_alone_counter_write;
     sink.priv = &counter;
     /* Use the end marker rather than stopping at the header's size field.  A
      * bounded output sink still rejects an inflated or inconsistent claim. */
-    if (!xx_lzma_unpack_device(source, compressed_offset, compressed_size,
-                               header, XX_LZMA_PROPS_SIZE, -1, &sink, pd) ||
-        counter.failed ||
+    if (!xx_lzma_unpack_device(source, compressed_offset, compressed_size, header, XX_LZMA_PROPS_SIZE, -1, &sink, pd) || counter.failed ||
         (declared_size != UINT64_MAX && counter.written != declared_size)) {
         return false;
     }

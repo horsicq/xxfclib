@@ -7,7 +7,8 @@
 #define ADLER_MAX_DEFER 5552U
 
 XX_ADLER32_TARGET_SSE2
-uint32_t xx_adler32_sse2(uint32_t adler, const void *data, size_t size) {
+uint32_t xx_adler32_sse2(uint32_t adler, const void *data, size_t size)
+{
 #ifdef XX_ADLER32_X86
     const uint8_t *p = (const uint8_t *)data;
     uint32_t a = adler & 0xFFFFU;
@@ -22,10 +23,10 @@ uint32_t xx_adler32_sse2(uint32_t adler, const void *data, size_t size) {
          * accumulators stay within 32 bits, including a noncanonical seed. */
         size_t run = size < ADLER_MAX_DEFER ? size : ADLER_MAX_DEFER;
         uint32_t n = (uint32_t)(run & ~(size_t)15U);
-        __m128i weights_lo = _mm_setr_epi16((short)n, (short)(n-1U), (short)(n-2U), (short)(n-3U),
-                                             (short)(n-4U), (short)(n-5U), (short)(n-6U), (short)(n-7U));
-        __m128i weights_hi = _mm_setr_epi16((short)(n-8U), (short)(n-9U), (short)(n-10U), (short)(n-11U),
-                                             (short)(n-12U), (short)(n-13U), (short)(n-14U), (short)(n-15U));
+        __m128i weights_lo =
+            _mm_setr_epi16((short)n, (short)(n - 1U), (short)(n - 2U), (short)(n - 3U), (short)(n - 4U), (short)(n - 5U), (short)(n - 6U), (short)(n - 7U));
+        __m128i weights_hi =
+            _mm_setr_epi16((short)(n - 8U), (short)(n - 9U), (short)(n - 10U), (short)(n - 11U), (short)(n - 12U), (short)(n - 13U), (short)(n - 14U), (short)(n - 15U));
         __m128i sums = zero;
         __m128i weighted = zero;
         uint64_t sum_lanes[2];

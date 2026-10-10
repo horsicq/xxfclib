@@ -58,29 +58,21 @@ typedef struct xx_bgi {
 
 typedef xx_bgi xx_bgi_t;
 
-XXFC_API void xx_bgi_init(xx_bgi *archive, xx_io_device *device,
-                           int64_t base_address);
+XXFC_API void xx_bgi_init(xx_bgi *archive, xx_io_device *device, int64_t base_address);
 XXFC_API xx_bgi *xx_bgi_create(xx_io_device *device, int64_t base_address);
 XXFC_API void xx_bgi_destroy(xx_bgi *archive);
 XXFC_API void xx_bgi_free(xx_bgi *archive);
 
 XXFC_API bool xx_bgi_check_is_valid(Abstractformat *self, xx_pd_struct *pd);
 XXFC_API bool xx_bgi_handle_base_info(Abstractformat *self, xx_pd_struct *pd);
-XXFC_API int64_t xx_bgi_get_format_size(Abstractformat *self,
-                                         xx_pd_struct *pd);
-XXFC_API uint64_t xx_bgi_get_number_of_archive_records(Abstractformat *self,
-                                                        xx_pd_struct *pd);
+XXFC_API int64_t xx_bgi_get_format_size(Abstractformat *self, xx_pd_struct *pd);
+XXFC_API uint64_t xx_bgi_get_number_of_archive_records(Abstractformat *self, xx_pd_struct *pd);
 
-XXFC_API xx_archive_record_state *xx_bgi_create_archive_records_reading(
-    Abstractformat *self, const xx_list_s *options, xx_pd_struct *pd);
-XXFC_API const xx_archive_record *xx_bgi_get_current_archive_record(
-    Abstractformat *self, xx_archive_record_state *state);
-XXFC_API bool xx_bgi_unpack_current_archive_record(
-    Abstractformat *self, xx_archive_record_state *state, xx_pd_struct *pd);
-XXFC_API bool xx_bgi_archive_record_move_to_next(
-    Abstractformat *self, xx_archive_record_state *state, xx_pd_struct *pd);
-XXFC_API void xx_bgi_free_archive_records_reading(
-    Abstractformat *self, xx_archive_record_state *state);
+XXFC_API xx_archive_record_state *xx_bgi_create_archive_records_reading(Abstractformat *self, const xx_list_s *options, xx_pd_struct *pd);
+XXFC_API const xx_archive_record *xx_bgi_get_current_archive_record(Abstractformat *self, xx_archive_record_state *state);
+XXFC_API bool xx_bgi_unpack_current_archive_record(Abstractformat *self, xx_archive_record_state *state, xx_pd_struct *pd);
+XXFC_API bool xx_bgi_archive_record_move_to_next(Abstractformat *self, xx_archive_record_state *state, xx_pd_struct *pd);
+XXFC_API void xx_bgi_free_archive_records_reading(Abstractformat *self, xx_archive_record_state *state);
 
 #ifdef __cplusplus
 }

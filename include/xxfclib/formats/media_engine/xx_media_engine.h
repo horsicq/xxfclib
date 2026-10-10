@@ -16,8 +16,7 @@ extern "C" {
  * MP4 CENC takes its 32-digit hexadecimal AES key. Missing/incorrect keys are
  * reported as password errors. Other DRM systems may remain unsupported.
  */
-XXFC_API Abstractformat *xx_media_engine_create(xx_io_device *device,
-    int64_t base_address, const char *mode);
+XXFC_API Abstractformat *xx_media_engine_create(xx_io_device *device, int64_t base_address, const char *mode);
 XXFC_API void xx_media_engine_free(Abstractformat *format);
 XXFC_API xx_sevenzip_backend_status xx_media_engine_get_status(const Abstractformat *format);
 /* Returns the requested or detected mode; NULL before automatic detection. */

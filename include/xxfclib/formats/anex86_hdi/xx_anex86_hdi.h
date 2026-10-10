@@ -23,7 +23,9 @@ extern "C" {
 #endif
 typedef struct xx_anex86_hdi xx_anex86_hdi;
 typedef struct xx_anex86_hdi xx_anex86_hdi_t;
-struct xx_anex86_hdi { Abstractformat format; };
+struct xx_anex86_hdi {
+    Abstractformat format;
+};
 XXFC_API void xx_anex86_hdi_init(xx_anex86_hdi *reader, xx_io_device *device, int64_t base_address);
 XXFC_API xx_anex86_hdi *xx_anex86_hdi_create(xx_io_device *device, int64_t base_address);
 XXFC_API void xx_anex86_hdi_destroy(xx_anex86_hdi *reader);
@@ -33,9 +35,9 @@ XXFC_API bool xx_anex86_hdi_handle_base_info(Abstractformat *format, xx_pd_struc
 /** Stream the zero-based member to a borrowed device at its current cursor.
  * Output must differ from input. Failure may leave partial output.
  */
-XXFC_API bool xx_anex86_hdi_unpack_to_device(xx_anex86_hdi *reader, uint64_t record_index,
-    xx_io_device *output, xx_pd_struct *pd);
-static inline Abstractformat *xx_anex86_hdi_to_format(xx_anex86_hdi *reader) {
+XXFC_API bool xx_anex86_hdi_unpack_to_device(xx_anex86_hdi *reader, uint64_t record_index, xx_io_device *output, xx_pd_struct *pd);
+static inline Abstractformat *xx_anex86_hdi_to_format(xx_anex86_hdi *reader)
+{
     return reader ? &reader->format : NULL;
 }
 #ifdef __cplusplus

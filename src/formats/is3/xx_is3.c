@@ -74,11 +74,11 @@
 #define IS3_INST_SIGNATURE UINT32_C(0xD879AB2A)
 #define IS3_INST_VERSION UINT32_C(0x00000100)
 
-#define IS3_HEADER_SIZE 59U       /* through the file table size field */
+#define IS3_HEADER_SIZE 59U /* through the file table size field */
 #define IS3_DIR_FIXED_SIZE 6U
 #define IS3_FILE_FIXED_SIZE 30U
-#define IS3_INST_HEADER_SIZE 82U  /* through the file count field */
-#define IS3_INST_FIXED_SIZE 22U   /* fields plus the first name length */
+#define IS3_INST_HEADER_SIZE 82U /* through the file count field */
+#define IS3_INST_FIXED_SIZE 22U  /* fields plus the first name length */
 /* Largest entry the payload table can hold: the fixed part, the second name
  * length, and two maximal names. */
 #define IS3_INST_MAX_ENTRY (IS3_INST_FIXED_SIZE + 2U + 2U * IS3_MAX_NAME)
@@ -117,15 +117,12 @@ typedef struct is3_stream_s {
     bool payload_variant;
 } is3_stream;
 
-static bool is3_read_at(xx_io_device *device, int64_t offset, void *buffer,
-                        size_t size) {
+static bool is3_read_at(xx_io_device *device, int64_t offset, void *buffer, size_t size)
+{
     size_t done = 0U;
-    if (!device || (!buffer && size != 0U) || offset < 0 ||
-        xx_io_seek64(device, offset, SEEK_SET) != 0)
-        return false;
+    if (!device || (!buffer && size != 0U) || offset < 0 || xx_io_seek64(device, offset, SEEK_SET) != 0) return false;
     while (done < size) {
-        ssize_t amount = xx_io_read(device, (uint8_t *)buffer + done,
-                                    size - done);
+        ssize_t amount = xx_io_read(device, (uint8_t *)buffer + done, size - done);
         if (amount <= 0 || (size_t)amount > size - done) return false;
         done += (size_t)amount;
     }
@@ -136,7 +133,8 @@ static bool is3_read_at(xx_io_device *device, int64_t offset, void *buffer,
  * are ANSI byte strings, so non-ASCII bytes are retained verbatim for the
  * caller's configured code page while separators and traversal components are
  * made harmless. */
-static char *is3_normalize_name(const uint8_t *bytes, size_t size) {
+static char *is3_normalize_name(const uint8_t *bytes, size_t size)
+{
     char *name;
     size_t input = 0U, output = 0U;
     if ((!bytes && size != 0U) || size > SIZE_MAX - 2U) return NULL;
@@ -144,16 +142,12 @@ static char *is3_normalize_name(const uint8_t *bytes, size_t size) {
     if (!name) return NULL;
     while (input < size) {
         size_t start, end, component_start;
-        while (input < size && (bytes[input] == '/' || bytes[input] == '\\'))
-            ++input;
+        while (input < size && (bytes[input] == '/' || bytes[input] == '\\')) ++input;
         start = input;
-        while (input < size && bytes[input] != '/' && bytes[input] != '\\')
-            ++input;
+        while (input < size && bytes[input] != '/' && bytes[input] != '\\') ++input;
         end = input;
-        if (end == start || (end - start == 1U && bytes[start] == '.'))
-            continue;
-        if (end - start == 2U && bytes[start] == '.' &&
-            bytes[start + 1U] == '.') {
+        if (end == start || (end - start == 1U && bytes[start] == '.')) continue;
+        if (end - start == 2U && bytes[start] == '.' && bytes[start + 1U] == '.') {
             if (output != 0U) {
                 while (output != 0U && name[output - 1U] != '/') --output;
                 if (output != 0U) --output;
@@ -164,15 +158,10 @@ static char *is3_normalize_name(const uint8_t *bytes, size_t size) {
         component_start = output;
         while (start < end) {
             uint8_t c = bytes[start++];
-            if (c < 0x20U || c == '"' || c == '*' || c == ':' || c == '<' ||
-                c == '>' || c == '?' || c == '|' || c == 0U)
-                name[output++] = '_';
-            else
-                name[output++] = (char)c;
+            if (c < 0x20U || c == '"' || c == '*' || c == ':' || c == '<' || c == '>' || c == '?' || c == '|' || c == 0U) name[output++] = '_';
+            else name[output++] = (char)c;
         }
-        while (output > component_start &&
-               (name[output - 1U] == ' ' || name[output - 1U] == '.'))
-            --output;
+        while (output > component_start && (name[output - 1U] == ' ' || name[output - 1U] == '.')) --output;
         if (output == component_start) name[output++] = '_';
     }
     if (output == 0U) name[output++] = '_';
@@ -180,30 +169,26 @@ static char *is3_normalize_name(const uint8_t *bytes, size_t size) {
     return name;
 }
 
-static bool is3_safe_output_name(const char *name) {
+static bool is3_safe_output_name(const char *name)
+{
     const char *segment;
     const char *at;
-    if (!name || !name[0] || name[0] == '/' || name[0] == '\\' ||
-        name[1] == ':')
-        return false;
+    if (!name || !name[0] || name[0] == '/' || name[0] == '\\' || name[1] == ':') return false;
     segment = name;
     for (at = name;; ++at) {
         unsigned char c = (unsigned char)*at;
-        if (c == ':' || c == '<' || c == '>' || c == '"' || c == '|' ||
-            c == '?' || c == '*' || (c != 0U && c < 0x20U))
-            return false;
+        if (c == ':' || c == '<' || c == '>' || c == '"' || c == '|' || c == '?' || c == '*' || (c != 0U && c < 0x20U)) return false;
         if (c == '/' || c == '\\' || c == 0U) {
             size_t length = (size_t)(at - segment);
-            if (length == 0U || (length == 1U && segment[0] == '.') ||
-                (length == 2U && segment[0] == '.' && segment[1] == '.'))
-                return false;
+            if (length == 0U || (length == 1U && segment[0] == '.') || (length == 2U && segment[0] == '.' && segment[1] == '.')) return false;
             if (c == 0U) return true;
             segment = at + 1;
         }
     }
 }
 
-static void is3_stream_free(void *opaque) {
+static void is3_stream_free(void *opaque)
+{
     is3_stream *stream = (is3_stream *)opaque;
     size_t index;
     if (!stream) return;
@@ -213,13 +198,11 @@ static void is3_stream_free(void *opaque) {
     xx_mem_free(stream);
 }
 
-static bool is3_add_member(is3_stream *stream, const is3_member *member) {
+static bool is3_add_member(is3_stream *stream, const is3_member *member)
+{
     is3_member *grown;
-    if (!stream || !member || stream->count >= IS3_MAX_MEMBERS ||
-        stream->count > SIZE_MAX / sizeof(*grown) - 1U)
-        return false;
-    grown = (is3_member *)xx_mem_realloc(stream->items,
-                                         (stream->count + 1U) * sizeof(*grown));
+    if (!stream || !member || stream->count >= IS3_MAX_MEMBERS || stream->count > SIZE_MAX / sizeof(*grown) - 1U) return false;
+    grown = (is3_member *)xx_mem_realloc(stream->items, (stream->count + 1U) * sizeof(*grown));
     if (!grown) return false;
     stream->items = grown;
     stream->items[stream->count++] = *member;
@@ -228,8 +211,8 @@ static bool is3_add_member(is3_stream *stream, const is3_member *member) {
 
 /* Join a directory prefix and a member name into one normalized path.  Both
  * pieces are already bounded by the caller. */
-static char *is3_join_name(const uint8_t *directory, size_t directory_size,
-                           const uint8_t *file, size_t file_size) {
+static char *is3_join_name(const uint8_t *directory, size_t directory_size, const uint8_t *file, size_t file_size)
+{
     uint8_t staging[IS3_MAX_NAME * 2U + 2U];
     size_t used = 0U;
     if (directory_size > IS3_MAX_NAME || file_size > IS3_MAX_NAME) return NULL;
@@ -248,20 +231,18 @@ static char *is3_join_name(const uint8_t *directory, size_t directory_size,
 /* Record the data extent of one member.  A multi-volume cabinet lists every
  * file of the set in every volume's table, so an offset that runs past this
  * volume is normal and only means the payload is not here. */
-static void is3_set_extent(is3_member *member, int64_t base, int64_t size,
-                           uint32_t offset, uint32_t packed) {
+static void is3_set_extent(is3_member *member, int64_t base, int64_t size, uint32_t offset, uint32_t packed)
+{
     member->present = false;
     member->data_offset = -1;
     member->packed_size = (int64_t)packed;
-    if ((int64_t)offset > size || (int64_t)packed > size - (int64_t)offset ||
-        base > INT64_MAX - (int64_t)offset)
-        return;
+    if ((int64_t)offset > size || (int64_t)packed > size - (int64_t)offset || base > INT64_MAX - (int64_t)offset) return;
     member->data_offset = base + (int64_t)offset;
     member->present = true;
 }
 
-static bool is3_parse_cabinet(Abstractformat *format, const uint8_t *header,
-                              int64_t size, is3_stream *stream) {
+static bool is3_parse_cabinet(Abstractformat *format, const uint8_t *header, int64_t size, is3_stream *stream)
+{
     uint8_t *directories = NULL;
     uint8_t *files = NULL;
     uint32_t directory_offset, directory_size, file_offset, file_size;
@@ -280,22 +261,14 @@ static bool is3_parse_cabinet(Abstractformat *format, const uint8_t *header,
     /* Both tables have to be wholly inside this volume before a single byte
      * of them is read; the file and directory counts are 16-bit fields and
      * cannot overflow the member and directory ceilings. */
-    if (directory_count == 0U || file_count == 0U ||
-        (int64_t)directory_offset > size ||
-        (int64_t)directory_size > size - (int64_t)directory_offset ||
-        (int64_t)file_offset > size ||
-        (int64_t)file_size > size - (int64_t)file_offset ||
-        directory_size < IS3_DIR_FIXED_SIZE ||
-        file_size < IS3_FILE_FIXED_SIZE)
+    if (directory_count == 0U || file_count == 0U || (int64_t)directory_offset > size || (int64_t)directory_size > size - (int64_t)directory_offset ||
+        (int64_t)file_offset > size || (int64_t)file_size > size - (int64_t)file_offset || directory_size < IS3_DIR_FIXED_SIZE || file_size < IS3_FILE_FIXED_SIZE)
         return false;
 
     directories = (uint8_t *)xx_mem_alloc(directory_size);
     files = (uint8_t *)xx_mem_alloc(file_size);
-    if (!directories || !files ||
-        !is3_read_at(format->device, format->base_address + directory_offset,
-                     directories, directory_size) ||
-        !is3_read_at(format->device, format->base_address + file_offset, files,
-                     file_size))
+    if (!directories || !files || !is3_read_at(format->device, format->base_address + directory_offset, directories, directory_size) ||
+        !is3_read_at(format->device, format->base_address + file_offset, files, file_size))
         goto fail;
 
     for (index = 0U; index < directory_count; ++index) {
@@ -305,10 +278,8 @@ static bool is3_parse_cabinet(Abstractformat *format, const uint8_t *header,
         owned = xx_data_get_u16(directories + cursor_directory, 2, 0, false);
         entry_size = xx_data_get_u16(directories + cursor_directory + 2U, 2, 0, false);
         name_size = xx_data_get_u16(directories + cursor_directory + 4U, 2, 0, false);
-        if (entry_size < IS3_DIR_FIXED_SIZE ||
-            (uint32_t)entry_size > directory_size - cursor_directory ||
-            (uint32_t)name_size > (uint32_t)entry_size - IS3_DIR_FIXED_SIZE ||
-            name_size > IS3_MAX_NAME || owned > file_count - assigned)
+        if (entry_size < IS3_DIR_FIXED_SIZE || (uint32_t)entry_size > directory_size - cursor_directory ||
+            (uint32_t)name_size > (uint32_t)entry_size - IS3_DIR_FIXED_SIZE || name_size > IS3_MAX_NAME || owned > file_count - assigned)
             goto fail;
         for (owned_index = 0U; owned_index < owned; ++owned_index) {
             is3_member member;
@@ -319,28 +290,19 @@ static bool is3_parse_cabinet(Abstractformat *format, const uint8_t *header,
             entry = files + cursor_file;
             entry_bytes = xx_data_get_u16(entry + 23U, 2, 0, false);
             member_name_size = entry[29];
-            if (entry_bytes < IS3_FILE_FIXED_SIZE ||
-                (uint32_t)entry_bytes > file_size - cursor_file ||
-                (uint32_t)member_name_size >
-                    (uint32_t)entry_bytes - IS3_FILE_FIXED_SIZE)
+            if (entry_bytes < IS3_FILE_FIXED_SIZE || (uint32_t)entry_bytes > file_size - cursor_file ||
+                (uint32_t)member_name_size > (uint32_t)entry_bytes - IS3_FILE_FIXED_SIZE)
                 goto fail;
             xx_mem_zero(&member, sizeof(member));
             member.unpacked_size = xx_data_get_u32(entry + 3U, 4, 0, false);
             member.dos_time = xx_data_get_u32(entry + 15U, 4, 0, false);
             member.attributes = xx_data_get_u32(entry + 19U, 4, 0, false);
             member.volume = xx_data_get_u16(entry + 25U, 2, 0, false);
-            is3_set_extent(&member, format->base_address, size,
-                           xx_data_get_u32(entry + 11U, 4, 0, false), xx_data_get_u32(entry + 7U, 4, 0, false));
-            member.method = (member.unpacked_size ==
-                             (uint64_t)member.packed_size)
-                                ? IS3_METHOD_STORE
-                                : IS3_METHOD_DCL;
-            member.header_offset = format->base_address +
-                                   (int64_t)file_offset + (int64_t)cursor_file;
+            is3_set_extent(&member, format->base_address, size, xx_data_get_u32(entry + 11U, 4, 0, false), xx_data_get_u32(entry + 7U, 4, 0, false));
+            member.method = (member.unpacked_size == (uint64_t)member.packed_size) ? IS3_METHOD_STORE : IS3_METHOD_DCL;
+            member.header_offset = format->base_address + (int64_t)file_offset + (int64_t)cursor_file;
             member.header_size = (int64_t)entry_bytes;
-            member.name = is3_join_name(
-                directories + cursor_directory + IS3_DIR_FIXED_SIZE, name_size,
-                entry + IS3_FILE_FIXED_SIZE, member_name_size);
+            member.name = is3_join_name(directories + cursor_directory + IS3_DIR_FIXED_SIZE, name_size, entry + IS3_FILE_FIXED_SIZE, member_name_size);
             if (!member.name || !is3_add_member(stream, &member)) {
                 if (member.name) xx_str_free(member.name);
                 goto fail;
@@ -361,8 +323,8 @@ fail:
     return false;
 }
 
-static bool is3_parse_payload(Abstractformat *format, const uint8_t *header,
-                              int64_t size, is3_stream *stream) {
+static bool is3_parse_payload(Abstractformat *format, const uint8_t *header, int64_t size, is3_stream *stream)
+{
     uint8_t *table = NULL;
     uint32_t count, cursor = 0U, table_size;
     uint32_t index;
@@ -383,11 +345,7 @@ static bool is3_parse_payload(Abstractformat *format, const uint8_t *header,
     }
     if ((uint64_t)count * IS3_INST_FIXED_SIZE > table_size) return false;
     table = (uint8_t *)xx_mem_alloc(table_size);
-    if (!table ||
-        !is3_read_at(format->device,
-                     format->base_address + (int64_t)IS3_INST_HEADER_SIZE,
-                     table, table_size))
-        goto fail;
+    if (!table || !is3_read_at(format->device, format->base_address + (int64_t)IS3_INST_HEADER_SIZE, table, table_size)) goto fail;
 
     for (index = 0U; index < count; ++index) {
         is3_member member;
@@ -396,15 +354,11 @@ static bool is3_parse_payload(Abstractformat *format, const uint8_t *header,
         if (table_size - cursor < IS3_INST_FIXED_SIZE) goto fail;
         xx_mem_zero(&member, sizeof(member));
         member.unpacked_size = xx_data_get_u32(table + cursor + 8U, 4, 0, false);
-        is3_set_extent(&member, format->base_address, size,
-                       xx_data_get_u32(table + cursor, 4, 0, false), xx_data_get_u32(table + cursor + 4U, 4, 0, false));
-        member.method = (member.unpacked_size == (uint64_t)member.packed_size)
-                            ? IS3_METHOD_STORE
-                            : IS3_METHOD_DCL;
+        is3_set_extent(&member, format->base_address, size, xx_data_get_u32(table + cursor, 4, 0, false), xx_data_get_u32(table + cursor + 4U, 4, 0, false));
+        member.method = (member.unpacked_size == (uint64_t)member.packed_size) ? IS3_METHOD_STORE : IS3_METHOD_DCL;
         name_size = xx_data_get_u16(table + cursor + (IS3_INST_FIXED_SIZE - 2U), 2, 0, false);
         cursor += IS3_INST_FIXED_SIZE;
-        if (name_size > IS3_MAX_NAME || (uint32_t)name_size > table_size - cursor)
-            goto fail;
+        if (name_size > IS3_MAX_NAME || (uint32_t)name_size > table_size - cursor) goto fail;
         member.name = is3_normalize_name(table + cursor, name_size);
         cursor += name_size;
         if (!member.name) goto fail;
@@ -419,23 +373,18 @@ static bool is3_parse_payload(Abstractformat *format, const uint8_t *header,
             goto fail;
         }
         cursor += alias_size;
-        member.header_offset =
-            format->base_address + (int64_t)IS3_INST_HEADER_SIZE +
-            (int64_t)entry_start;
+        member.header_offset = format->base_address + (int64_t)IS3_INST_HEADER_SIZE + (int64_t)entry_start;
         member.header_size = (int64_t)(cursor - entry_start);
         if (!is3_add_member(stream, &member)) {
             xx_str_free(member.name);
             goto fail;
         }
-        if (member.present && (first_data < 0 || member.data_offset < first_data))
-            first_data = member.data_offset;
+        if (member.present && (first_data < 0 || member.data_offset < first_data)) first_data = member.data_offset;
     }
     /* The table must end exactly where the first payload begins.  Without a
      * table size in the header this is the only structural anchor the format
      * offers, and it is a strong one. */
-    if (first_data !=
-        format->base_address + (int64_t)IS3_INST_HEADER_SIZE + (int64_t)cursor)
-        goto fail;
+    if (first_data != format->base_address + (int64_t)IS3_INST_HEADER_SIZE + (int64_t)cursor) goto fail;
     xx_mem_free(table);
     stream->archive_size = size;
     stream->payload_variant = true;
@@ -445,34 +394,25 @@ fail:
     return false;
 }
 
-static bool is3_parse(Abstractformat *format, is3_stream **result) {
+static bool is3_parse(Abstractformat *format, is3_stream **result)
+{
     uint8_t header[IS3_INST_HEADER_SIZE];
     is3_stream *stream = NULL;
     int64_t total, size;
     uint32_t signature;
     bool parsed;
-    if (!format || !format->device || !result || format->base_address < 0)
-        return false;
+    if (!format || !format->device || !result || format->base_address < 0) return false;
     total = xx_io_total_size(format->device);
     if (total < format->base_address) return false;
     size = total - format->base_address;
-    if (size < (int64_t)IS3_HEADER_SIZE ||
-        !is3_read_at(format->device, format->base_address, header,
-                     size < (int64_t)sizeof(header) ? IS3_HEADER_SIZE
-                                                    : sizeof(header)))
+    if (size < (int64_t)IS3_HEADER_SIZE || !is3_read_at(format->device, format->base_address, header, size < (int64_t)sizeof(header) ? IS3_HEADER_SIZE : sizeof(header)))
         return false;
     signature = xx_data_get_u32(header, 4, 0, false);
-    if (signature != IS3_SIGNATURE && signature != IS3_INST_SIGNATURE)
-        return false;
-    if (signature == IS3_INST_SIGNATURE &&
-        (size < (int64_t)IS3_INST_HEADER_SIZE ||
-         xx_data_get_u32(header + 4U, 4, 0, false) != IS3_INST_VERSION))
-        return false;
+    if (signature != IS3_SIGNATURE && signature != IS3_INST_SIGNATURE) return false;
+    if (signature == IS3_INST_SIGNATURE && (size < (int64_t)IS3_INST_HEADER_SIZE || xx_data_get_u32(header + 4U, 4, 0, false) != IS3_INST_VERSION)) return false;
     stream = (is3_stream *)xx_mem_calloc(1U, sizeof(*stream));
     if (!stream) return false;
-    parsed = (signature == IS3_SIGNATURE)
-                 ? is3_parse_cabinet(format, header, size, stream)
-                 : is3_parse_payload(format, header, size, stream);
+    parsed = (signature == IS3_SIGNATURE) ? is3_parse_cabinet(format, header, size, stream) : is3_parse_payload(format, header, size, stream);
     if (!parsed || stream->count == 0U) {
         is3_stream_free(stream);
         return false;
@@ -481,17 +421,16 @@ static bool is3_parse(Abstractformat *format, is3_stream **result) {
     return true;
 }
 
-static bool is3_copy_options(xx_list_s *destination, const xx_list_s *source) {
+static bool is3_copy_options(xx_list_s *destination, const xx_list_s *source)
+{
     size_t index;
     if (!source) return true;
     for (index = 0U; index < source->count; ++index) {
-        const xx_meta *original =
-            (const xx_meta *)xx_list_at((const xx_list_t *)source, index);
+        const xx_meta *original = (const xx_meta *)xx_list_at((const xx_list_t *)source, index);
         xx_meta copy;
         if (!original) continue;
         xx_meta_init(&copy, original->meta_id);
-        if (!xx_var_copy(&copy.var, &original->var) ||
-            !xx_list_append(destination, &copy)) {
+        if (!xx_var_copy(&copy.var, &original->var) || !xx_list_append(destination, &copy)) {
             xx_meta_cleanup(&copy);
             return false;
         }
@@ -499,18 +438,19 @@ static bool is3_copy_options(xx_list_s *destination, const xx_list_s *source) {
     return true;
 }
 
-static const xx_var *is3_option(const xx_list_s *options, uint32_t id) {
+static const xx_var *is3_option(const xx_list_s *options, uint32_t id)
+{
     size_t index;
     if (!options) return NULL;
     for (index = 0U; index < options->count; ++index) {
-        const xx_meta *meta =
-            (const xx_meta *)xx_list_at((const xx_list_t *)options, index);
+        const xx_meta *meta = (const xx_meta *)xx_list_at((const xx_list_t *)options, index);
         if (meta && meta->meta_id == id) return &meta->var;
     }
     return NULL;
 }
 
-static bool is3_set_record(xx_archive_record *record, const is3_member *member) {
+static bool is3_set_record(xx_archive_record *record, const is3_member *member)
+{
     xx_archive_record_cleanup(record);
     xx_archive_record_init(record);
     record->header_offset = member->header_offset;
@@ -518,45 +458,29 @@ static bool is3_set_record(xx_archive_record *record, const is3_member *member) 
     record->data_offset = member->data_offset;
     record->compressed_size = member->packed_size;
     return xx_archive_record_set_original_name(record, member->name) &&
-           xx_archive_record_set_meta_u64(record, XX_META_ID_COMPRESSED_SIZE,
-                                          (uint64_t)member->packed_size) &&
-           xx_archive_record_set_meta_u64(record, XX_META_ID_UNCOMPRESSED_SIZE,
-                                          member->unpacked_size) &&
-           xx_archive_record_set_meta_u64(record, XX_META_ID_COMPRESSION_METHOD,
-                                          member->method) &&
-           xx_archive_record_set_meta_u64(record, XX_META_ID_ATTRIBUTES,
-                                          member->attributes) &&
-           xx_archive_record_set_meta_u64(record, XX_META_ID_TIMESTAMP,
-                                          member->dos_time) &&
-           xx_archive_record_set_meta_u64(record, XX_META_ID_DISK_NUMBER_START,
-                                          member->volume) &&
-           xx_archive_record_set_meta_bool(record, XX_META_ID_IS_ENCRYPTED,
-                                           false) &&
-           xx_archive_record_set_meta_bool(record, XX_META_ID_IS_FOLDER, false);
+           xx_archive_record_set_meta_u64(record, XX_META_ID_COMPRESSED_SIZE, (uint64_t)member->packed_size) &&
+           xx_archive_record_set_meta_u64(record, XX_META_ID_UNCOMPRESSED_SIZE, member->unpacked_size) &&
+           xx_archive_record_set_meta_u64(record, XX_META_ID_COMPRESSION_METHOD, member->method) &&
+           xx_archive_record_set_meta_u64(record, XX_META_ID_ATTRIBUTES, member->attributes) &&
+           xx_archive_record_set_meta_u64(record, XX_META_ID_TIMESTAMP, member->dos_time) &&
+           xx_archive_record_set_meta_u64(record, XX_META_ID_DISK_NUMBER_START, member->volume) &&
+           xx_archive_record_set_meta_bool(record, XX_META_ID_IS_ENCRYPTED, false) && xx_archive_record_set_meta_bool(record, XX_META_ID_IS_FOLDER, false);
 }
 
-static bool is3_decode_member(Abstractformat *format, const is3_member *member,
-                              uint8_t **plain, size_t *plain_size) {
+static bool is3_decode_member(Abstractformat *format, const is3_member *member, uint8_t **plain, size_t *plain_size)
+{
     uint8_t *packed = NULL;
     uint8_t *output = NULL;
     size_t written = 0U;
     size_t output_size;
     bool decoded = false;
-    if (!format || !member || !plain || !plain_size || !member->present ||
-        member->packed_size < 0 ||
-        member->unpacked_size > IS3_MAX_MEMBER_SIZE ||
+    if (!format || !member || !plain || !plain_size || !member->present || member->packed_size < 0 || member->unpacked_size > IS3_MAX_MEMBER_SIZE ||
         member->unpacked_size > SIZE_MAX)
         return false;
     output_size = (size_t)member->unpacked_size;
-    packed = (uint8_t *)xx_mem_alloc(member->packed_size != 0
-                                         ? (size_t)member->packed_size
-                                         : 1U);
+    packed = (uint8_t *)xx_mem_alloc(member->packed_size != 0 ? (size_t)member->packed_size : 1U);
     output = (uint8_t *)xx_mem_alloc(output_size != 0U ? output_size : 1U);
-    if (!packed || !output ||
-        (member->packed_size != 0 &&
-         !is3_read_at(format->device, member->data_offset, packed,
-                      (size_t)member->packed_size)))
-        goto fail;
+    if (!packed || !output || (member->packed_size != 0 && !is3_read_at(format->device, member->data_offset, packed, (size_t)member->packed_size))) goto fail;
     if (member->method == IS3_METHOD_STORE) {
         if (output_size != (size_t)member->packed_size) goto fail;
         if (output_size != 0U) xx_mem_copy(output, packed, output_size);
@@ -568,12 +492,9 @@ static bool is3_decode_member(Abstractformat *format, const is3_member *member,
         /* The exact-size DCL API rejects a zero-sized output buffer.  A
          * compressed empty file still has a real end marker; validate that
          * marker and the entire packed extent before publishing the file. */
-        decoded = xx_dcl_scan_memory(packed, (size_t)member->packed_size,
-                                     1U, &consumed, &produced) &&
-                  consumed == (size_t)member->packed_size && produced == 0U;
+        decoded = xx_dcl_scan_memory(packed, (size_t)member->packed_size, 1U, &consumed, &produced) && consumed == (size_t)member->packed_size && produced == 0U;
     } else {
-        decoded = xx_dcl_decode_memory(packed, (size_t)member->packed_size,
-                                       output, output_size, &written);
+        decoded = xx_dcl_decode_memory(packed, (size_t)member->packed_size, output, output_size, &written);
     }
     /* The stored plaintext length is the only integrity anchor the format
      * offers; a decode that does not reach it exactly is rejected. */
@@ -588,7 +509,8 @@ fail:
     return false;
 }
 
-void xx_is3_init(xx_is3 *archive, xx_io_device *device, int64_t base_address) {
+void xx_is3_init(xx_is3 *archive, xx_io_device *device, int64_t base_address)
+{
     if (!archive) return;
     xx_mem_zero(archive, sizeof(*archive));
     xx_format_init(&archive->format, device, base_address);
@@ -601,38 +523,36 @@ void xx_is3_init(xx_is3 *archive, xx_io_device *device, int64_t base_address) {
     archive->format.check_is_valid = xx_is3_check_is_valid;
     archive->format.handle_base_info = xx_is3_handle_base_info;
     archive->format.get_format_size = xx_is3_get_format_size;
-    archive->format.get_number_of_archive_records =
-        xx_is3_get_number_of_archive_records;
-    archive->format.create_archive_records_reading =
-        xx_is3_create_archive_records_reading;
-    archive->format.get_current_archive_record =
-        xx_is3_get_current_archive_record;
-    archive->format.unpack_current_archive_record =
-        xx_is3_unpack_current_archive_record;
-    archive->format.archive_record_move_to_next =
-        xx_is3_archive_record_move_to_next;
-    archive->format.free_archive_records_reading =
-        xx_is3_free_archive_records_reading;
+    archive->format.get_number_of_archive_records = xx_is3_get_number_of_archive_records;
+    archive->format.create_archive_records_reading = xx_is3_create_archive_records_reading;
+    archive->format.get_current_archive_record = xx_is3_get_current_archive_record;
+    archive->format.unpack_current_archive_record = xx_is3_unpack_current_archive_record;
+    archive->format.archive_record_move_to_next = xx_is3_archive_record_move_to_next;
+    archive->format.free_archive_records_reading = xx_is3_free_archive_records_reading;
     archive->archive_end = -1;
 }
 
-xx_is3 *xx_is3_create(xx_io_device *device, int64_t base_address) {
+xx_is3 *xx_is3_create(xx_io_device *device, int64_t base_address)
+{
     xx_is3 *archive = (xx_is3 *)xx_mem_alloc(sizeof(*archive));
     if (archive) xx_is3_init(archive, device, base_address);
     return archive;
 }
 
-void xx_is3_destroy(xx_is3 *archive) {
+void xx_is3_destroy(xx_is3 *archive)
+{
     if (archive) xx_format_cleanup_extra_parameters(&archive->format);
 }
 
-void xx_is3_free(xx_is3 *archive) {
+void xx_is3_free(xx_is3 *archive)
+{
     if (!archive) return;
     xx_is3_destroy(archive);
     xx_mem_free(archive);
 }
 
-bool xx_is3_check_is_valid(Abstractformat *format, xx_pd_struct *pd) {
+bool xx_is3_check_is_valid(Abstractformat *format, xx_pd_struct *pd)
+{
     is3_stream *stream;
     (void)pd;
     if (!is3_parse(format, &stream)) return false;
@@ -640,7 +560,8 @@ bool xx_is3_check_is_valid(Abstractformat *format, xx_pd_struct *pd) {
     return true;
 }
 
-bool xx_is3_handle_base_info(Abstractformat *format, xx_pd_struct *pd) {
+bool xx_is3_handle_base_info(Abstractformat *format, xx_pd_struct *pd)
+{
     is3_stream *stream;
     xx_is3 *archive;
     (void)pd;
@@ -656,25 +577,18 @@ bool xx_is3_handle_base_info(Abstractformat *format, xx_pd_struct *pd) {
     return true;
 }
 
-int64_t xx_is3_get_format_size(Abstractformat *format, xx_pd_struct *pd) {
-    return format &&
-                   (format->base_info_handled ||
-                    xx_is3_handle_base_info(format, pd))
-               ? format->format_size
-               : -1;
+int64_t xx_is3_get_format_size(Abstractformat *format, xx_pd_struct *pd)
+{
+    return format && (format->base_info_handled || xx_is3_handle_base_info(format, pd)) ? format->format_size : -1;
 }
 
-uint64_t xx_is3_get_number_of_archive_records(Abstractformat *format,
-                                              xx_pd_struct *pd) {
-    return format &&
-                   (format->base_info_handled ||
-                    xx_is3_handle_base_info(format, pd))
-               ? ((xx_is3 *)format)->number_of_records
-               : 0U;
+uint64_t xx_is3_get_number_of_archive_records(Abstractformat *format, xx_pd_struct *pd)
+{
+    return format && (format->base_info_handled || xx_is3_handle_base_info(format, pd)) ? ((xx_is3 *)format)->number_of_records : 0U;
 }
 
-xx_archive_record_state *xx_is3_create_archive_records_reading(
-    Abstractformat *format, const xx_list_s *options, xx_pd_struct *pd) {
+xx_archive_record_state *xx_is3_create_archive_records_reading(Abstractformat *format, const xx_list_s *options, xx_pd_struct *pd)
+{
     is3_stream *stream;
     xx_archive_record_state *state;
     (void)pd;
@@ -688,8 +602,7 @@ xx_archive_record_state *xx_is3_create_archive_records_reading(
     state->internal_state = stream;
     state->free_internal = is3_stream_free;
     state->total_records = stream->count;
-    if (!is3_copy_options(&state->options, options) ||
-        !is3_set_record(&state->current_record, &stream->items[0])) {
+    if (!is3_copy_options(&state->options, options) || !is3_set_record(&state->current_record, &stream->items[0])) {
         xx_archive_record_state_free(state);
         return NULL;
     }
@@ -697,33 +610,26 @@ xx_archive_record_state *xx_is3_create_archive_records_reading(
     return state;
 }
 
-const xx_archive_record *xx_is3_get_current_archive_record(
-    Abstractformat *format, xx_archive_record_state *state) {
-    return format && state && state->format == format && state->has_record
-               ? &state->current_record
-               : NULL;
+const xx_archive_record *xx_is3_get_current_archive_record(Abstractformat *format, xx_archive_record_state *state)
+{
+    return format && state && state->format == format && state->has_record ? &state->current_record : NULL;
 }
 
-bool xx_is3_archive_record_move_to_next(Abstractformat *format,
-                                        xx_archive_record_state *state,
-                                        xx_pd_struct *pd) {
+bool xx_is3_archive_record_move_to_next(Abstractformat *format, xx_archive_record_state *state, xx_pd_struct *pd)
+{
     is3_stream *stream;
     (void)pd;
-    if (!format || !state || state->format != format ||
-        !(stream = (is3_stream *)state->internal_state) ||
-        ++stream->index >= stream->count) {
+    if (!format || !state || state->format != format || !(stream = (is3_stream *)state->internal_state) || ++stream->index >= stream->count) {
         if (state) state->has_record = false;
         return false;
     }
     ++state->current_index;
-    state->has_record =
-        is3_set_record(&state->current_record, &stream->items[stream->index]);
+    state->has_record = is3_set_record(&state->current_record, &stream->items[stream->index]);
     return state->has_record;
 }
 
-bool xx_is3_unpack_current_archive_record(Abstractformat *format,
-                                          xx_archive_record_state *state,
-                                          xx_pd_struct *pd) {
+bool xx_is3_unpack_current_archive_record(Abstractformat *format, xx_archive_record_state *state, xx_pd_struct *pd)
+{
     is3_stream *stream;
     is3_member *member;
     const xx_var *path_option;
@@ -734,32 +640,24 @@ bool xx_is3_unpack_current_archive_record(Abstractformat *format,
     size_t plain_size = 0U, written = 0U;
     bool result = false;
     bool created = false;
-    if (!format || !state || state->format != format || !state->has_record ||
-        !(stream = (is3_stream *)state->internal_state) ||
-        stream->index >= stream->count || (pd && xx_pd_is_stopped(pd)))
+    if (!format || !state || state->format != format || !state->has_record || !(stream = (is3_stream *)state->internal_state) || stream->index >= stream->count ||
+        (pd && xx_pd_is_stopped(pd)))
         return false;
     member = &stream->items[stream->index];
-    if (!is3_safe_output_name(member->name) ||
-        !is3_decode_member(format, member, &plain, &plain_size))
-        goto done;
+    if (!is3_safe_output_name(member->name) || !is3_decode_member(format, member, &plain, &plain_size)) goto done;
     path_option = is3_option(&state->options, XX_META_ID_OPT_UNPACK_PATH);
     if (!path_option) {
         result = true;
         goto done;
     }
-    if (path_option->type == XX_VAR_TYPE_STRING ||
-        path_option->type == XX_VAR_TYPE_STRING_VIEW)
-        base = xx_var_get_str(path_option);
-    else if (path_option->type == XX_VAR_TYPE_WSTRING ||
-             path_option->type == XX_VAR_TYPE_WSTRING_VIEW) {
+    if (path_option->type == XX_VAR_TYPE_STRING || path_option->type == XX_VAR_TYPE_STRING_VIEW) base = xx_var_get_str(path_option);
+    else if (path_option->type == XX_VAR_TYPE_WSTRING || path_option->type == XX_VAR_TYPE_WSTRING_VIEW) {
         owned_base = xx_str_unicode_to_utf8(xx_var_get_wstr(path_option));
         base = owned_base;
     }
     if (!base) goto done;
-    path = (base[0] && base[xx_str_len(base) - 1U] != '/' &&
-            base[xx_str_len(base) - 1U] != '\\')
-               ? xx_str_concat3(base, "/", member->name)
-               : xx_str_concat(base, member->name);
+    path = (base[0] && base[xx_str_len(base) - 1U] != '/' && base[xx_str_len(base) - 1U] != '\\') ? xx_str_concat3(base, "/", member->name)
+                                                                                                  : xx_str_concat(base, member->name);
     if (!path || !xx_store_create_dirs_a(path, false)) goto done;
     {
         xx_io_device *destination = xx_io_file_open(path, "wb");
@@ -767,8 +665,7 @@ bool xx_is3_unpack_current_archive_record(Abstractformat *format,
         if (!destination) goto done;
         result = true;
         while (written < plain_size) {
-            ssize_t amount = xx_io_write(destination, plain + written,
-                                         plain_size - written);
+            ssize_t amount = xx_io_write(destination, plain + written, plain_size - written);
             if (amount <= 0 || (size_t)amount > plain_size - written) {
                 result = false;
                 break;
@@ -785,8 +682,8 @@ done:
     return result;
 }
 
-void xx_is3_free_archive_records_reading(Abstractformat *format,
-                                         xx_archive_record_state *state) {
+void xx_is3_free_archive_records_reading(Abstractformat *format, xx_archive_record_state *state)
+{
     (void)format;
     xx_archive_record_state_free(state);
 }

@@ -18,9 +18,8 @@
  * decode().  Here every structural check lives in the core, which cannot
  * reject anything scan() accepted -- the walks are identical -- and makes the
  * decode path strictly no laxer than the gate that feeds it. */
-static bool pcommos2_run(const uint8_t *input, size_t input_size,
-                         uint8_t *output, size_t max_output,
-                         size_t *produced) {
+static bool pcommos2_run(const uint8_t *input, size_t input_size, uint8_t *output, size_t max_output, size_t *produced)
+{
     size_t in_pos = 0U;
     size_t out_pos = 0U;
     size_t base = 0U; /* start of the current block in the plaintext */
@@ -40,8 +39,7 @@ static bool pcommos2_run(const uint8_t *input, size_t input_size,
     /* A block always opens with a literal run - there is nothing to match
      * against yet - and the stream always closes with the two markers. */
     if (input[0] < 0xE1U) return false;
-    if ((input[input_size - 1U] != 0xE0U) ||
-        (input[input_size - 2U] != 0xE0U)) {
+    if ((input[input_size - 1U] != 0xE0U) || (input[input_size - 2U] != 0xE0U)) {
         return false;
     }
 
@@ -53,8 +51,7 @@ static bool pcommos2_run(const uint8_t *input, size_t input_size,
 
             if (count == 0U) {
                 size_t block_size = out_pos - base;
-                if ((block_count >= 2U) &&
-                    (prev_prev_size != XX_PCOMMOS2_BLOCK_SIZE)) {
+                if ((block_count >= 2U) && (prev_prev_size != XX_PCOMMOS2_BLOCK_SIZE)) {
                     return false;
                 }
                 prev_prev_size = prev_size;
@@ -125,8 +122,7 @@ static bool pcommos2_run(const uint8_t *input, size_t input_size,
     if (out_pos != base) return false;
     if (block_count < 2U) return false;
     if (prev_size != 0U) return false;
-    if ((prev_prev_size == 0U) ||
-        (prev_prev_size > XX_PCOMMOS2_BLOCK_SIZE)) {
+    if ((prev_prev_size == 0U) || (prev_prev_size > XX_PCOMMOS2_BLOCK_SIZE)) {
         return false;
     }
     if (out_pos == 0U) return false;
@@ -135,9 +131,8 @@ static bool pcommos2_run(const uint8_t *input, size_t input_size,
     return true;
 }
 
-bool xx_pcommos2_scan_memory(const uint8_t *input, size_t input_size,
-                             size_t max_output, size_t *consumed,
-                             size_t *produced) {
+bool xx_pcommos2_scan_memory(const uint8_t *input, size_t input_size, size_t max_output, size_t *consumed, size_t *produced)
+{
     size_t out_size = 0U;
     if (consumed) *consumed = 0U;
     if (produced) *produced = 0U;
@@ -152,9 +147,8 @@ bool xx_pcommos2_scan_memory(const uint8_t *input, size_t input_size,
     return true;
 }
 
-bool xx_pcommos2_decode_memory(const uint8_t *input, size_t input_size,
-                               uint8_t *output, size_t output_size,
-                               size_t *written) {
+bool xx_pcommos2_decode_memory(const uint8_t *input, size_t input_size, uint8_t *output, size_t output_size, size_t *written)
+{
     size_t out_size = 0U;
     if (written) *written = 0U;
     if (!output || output_size == 0U) return false;

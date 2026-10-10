@@ -9,7 +9,8 @@
 #define XX_IPA_INFO_SUFFIX ".app/Info.plist"
 #define XX_IPA_INFO_LIMIT (UINT64_C(16) * UINT64_C(1024) * UINT64_C(1024))
 
-static void xx_ipa_apply_identity(Abstractformat *format) {
+static void xx_ipa_apply_identity(Abstractformat *format)
+{
     if (!format) {
         return;
     }
@@ -22,13 +23,15 @@ static void xx_ipa_apply_identity(Abstractformat *format) {
     xx_format_set_extension(format, "ipa");
 }
 
-static void xx_ipa_vtable_destroy(Abstractformat *self) {
+static void xx_ipa_vtable_destroy(Abstractformat *self)
+{
     if (self) {
         xx_ipa_destroy((xx_ipa *)self);
     }
 }
 
-void xx_ipa_init(xx_ipa *ipa, xx_io_device *dev, int64_t base_address) {
+void xx_ipa_init(xx_ipa *ipa, xx_io_device *dev, int64_t base_address)
+{
     Abstractformat *format;
 
     if (!ipa) {
@@ -45,7 +48,8 @@ void xx_ipa_init(xx_ipa *ipa, xx_io_device *dev, int64_t base_address) {
     format->destroy = xx_ipa_vtable_destroy;
 }
 
-xx_ipa *xx_ipa_create(xx_io_device *dev, int64_t base_address) {
+xx_ipa *xx_ipa_create(xx_io_device *dev, int64_t base_address)
+{
     xx_ipa *ipa = (xx_ipa *)xx_mem_alloc(sizeof(*ipa));
     if (!ipa) {
         return NULL;
@@ -54,13 +58,15 @@ xx_ipa *xx_ipa_create(xx_io_device *dev, int64_t base_address) {
     return ipa;
 }
 
-void xx_ipa_destroy(xx_ipa *ipa) {
+void xx_ipa_destroy(xx_ipa *ipa)
+{
     if (ipa) {
         xx_zip_destroy(&ipa->zip);
     }
 }
 
-void xx_ipa_free(xx_ipa *ipa) {
+void xx_ipa_free(xx_ipa *ipa)
+{
     if (!ipa) {
         return;
     }
@@ -68,13 +74,13 @@ void xx_ipa_free(xx_ipa *ipa) {
     xx_mem_free(ipa);
 }
 
-bool xx_ipa_check_is_valid(Abstractformat *self, xx_pd_struct *pd) {
-    return xx_zip_has_valid_file_pattern(
-        self, XX_IPA_INFO_PREFIX, XX_IPA_INFO_SUFFIX, true,
-        XX_IPA_INFO_LIMIT, pd);
+bool xx_ipa_check_is_valid(Abstractformat *self, xx_pd_struct *pd)
+{
+    return xx_zip_has_valid_file_pattern(self, XX_IPA_INFO_PREFIX, XX_IPA_INFO_SUFFIX, true, XX_IPA_INFO_LIMIT, pd);
 }
 
-bool xx_ipa_handle_base_info(Abstractformat *self, xx_pd_struct *pd) {
+bool xx_ipa_handle_base_info(Abstractformat *self, xx_pd_struct *pd)
+{
     bool result;
 
     if (!self) {

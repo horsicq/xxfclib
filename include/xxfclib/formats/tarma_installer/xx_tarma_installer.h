@@ -48,12 +48,12 @@ extern "C" {
 typedef struct xx_tarma_installer {
     Abstractformat format;
     uint64_t number_of_records;
-    uint64_t unpacked_size;   /**< Sum of the listed blocks' data sizes. */
+    uint64_t unpacked_size; /**< Sum of the listed blocks' data sizes. */
     uint32_t number_of_sections;
-    int64_t payload_offset;   /**< First section, relative to the base. */
-    int64_t payload_end;      /**< End of the last section, same origin. */
-    bool truncated;           /**< The last section runs past the file end. */
-    bool damaged;             /**< A section stopped decoding early. */
+    int64_t payload_offset; /**< First section, relative to the base. */
+    int64_t payload_end;    /**< End of the last section, same origin. */
+    bool truncated;         /**< The last section runs past the file end. */
+    bool damaged;           /**< A section stopped decoding early. */
 } xx_tarma_installer;
 
 typedef xx_tarma_installer xx_tarma_installer_t;
@@ -61,35 +61,21 @@ typedef xx_tarma_installer xx_tarma_installer_t;
 /** XX_META_ID_COMPRESSION_METHOD value (the ZIP method number of LZMA). */
 #define XX_TARMA_INSTALLER_METHOD_LZMA 14U
 
-XXFC_API void xx_tarma_installer_init(xx_tarma_installer *archive,
-                                      xx_io_device *device,
-                                      int64_t base_address);
-XXFC_API xx_tarma_installer *xx_tarma_installer_create(xx_io_device *device,
-                                                       int64_t base_address);
+XXFC_API void xx_tarma_installer_init(xx_tarma_installer *archive, xx_io_device *device, int64_t base_address);
+XXFC_API xx_tarma_installer *xx_tarma_installer_create(xx_io_device *device, int64_t base_address);
 XXFC_API void xx_tarma_installer_destroy(xx_tarma_installer *archive);
 XXFC_API void xx_tarma_installer_free(xx_tarma_installer *archive);
 
-XXFC_API bool xx_tarma_installer_check_is_valid(Abstractformat *self,
-                                                xx_pd_struct *pd);
-XXFC_API bool xx_tarma_installer_handle_base_info(Abstractformat *self,
-                                                  xx_pd_struct *pd);
-XXFC_API int64_t xx_tarma_installer_get_format_size(Abstractformat *self,
-                                                    xx_pd_struct *pd);
-XXFC_API uint64_t xx_tarma_installer_get_number_of_archive_records(
-    Abstractformat *self, xx_pd_struct *pd);
+XXFC_API bool xx_tarma_installer_check_is_valid(Abstractformat *self, xx_pd_struct *pd);
+XXFC_API bool xx_tarma_installer_handle_base_info(Abstractformat *self, xx_pd_struct *pd);
+XXFC_API int64_t xx_tarma_installer_get_format_size(Abstractformat *self, xx_pd_struct *pd);
+XXFC_API uint64_t xx_tarma_installer_get_number_of_archive_records(Abstractformat *self, xx_pd_struct *pd);
 
-XXFC_API xx_archive_record_state *
-xx_tarma_installer_create_archive_records_reading(Abstractformat *self,
-                                                  const xx_list_s *options,
-                                                  xx_pd_struct *pd);
-XXFC_API const xx_archive_record *xx_tarma_installer_get_current_archive_record(
-    Abstractformat *self, xx_archive_record_state *state);
-XXFC_API bool xx_tarma_installer_unpack_current_archive_record(
-    Abstractformat *self, xx_archive_record_state *state, xx_pd_struct *pd);
-XXFC_API bool xx_tarma_installer_archive_record_move_to_next(
-    Abstractformat *self, xx_archive_record_state *state, xx_pd_struct *pd);
-XXFC_API void xx_tarma_installer_free_archive_records_reading(
-    Abstractformat *self, xx_archive_record_state *state);
+XXFC_API xx_archive_record_state *xx_tarma_installer_create_archive_records_reading(Abstractformat *self, const xx_list_s *options, xx_pd_struct *pd);
+XXFC_API const xx_archive_record *xx_tarma_installer_get_current_archive_record(Abstractformat *self, xx_archive_record_state *state);
+XXFC_API bool xx_tarma_installer_unpack_current_archive_record(Abstractformat *self, xx_archive_record_state *state, xx_pd_struct *pd);
+XXFC_API bool xx_tarma_installer_archive_record_move_to_next(Abstractformat *self, xx_archive_record_state *state, xx_pd_struct *pd);
+XXFC_API void xx_tarma_installer_free_archive_records_reading(Abstractformat *self, xx_archive_record_state *state);
 
 /**
  * @brief Decode the current record's data into @p destination.
@@ -98,9 +84,7 @@ XXFC_API void xx_tarma_installer_free_archive_records_reading(
  * from one pass over each solid section; asking for a record again restarts
  * its section.
  */
-XXFC_API bool xx_tarma_installer_unpack_current_to_device(
-    Abstractformat *self, xx_archive_record_state *state,
-    xx_io_device *destination, xx_pd_struct *pd);
+XXFC_API bool xx_tarma_installer_unpack_current_to_device(Abstractformat *self, xx_archive_record_state *state, xx_io_device *destination, xx_pd_struct *pd);
 
 #ifdef __cplusplus
 }

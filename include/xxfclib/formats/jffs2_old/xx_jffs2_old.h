@@ -121,38 +121,30 @@ struct xx_jffs2_old {
     Abstractformat format;
     uint64_t number_of_records;
     uint64_t number_of_members;
-    uint64_t number_of_nodes;    /**< Validated nodes of any type. */
-    uint64_t number_of_dirents;  /**< Validated DIRENT nodes. */
-    uint64_t number_of_inodes;   /**< Validated INODE nodes. */
-    int64_t archive_end;         /**< One past the last validated node. */
-    uint32_t compression_mask;   /**< Bit n set when compr n was observed. */
+    uint64_t number_of_nodes;   /**< Validated nodes of any type. */
+    uint64_t number_of_dirents; /**< Validated DIRENT nodes. */
+    uint64_t number_of_inodes;  /**< Validated INODE nodes. */
+    int64_t archive_end;        /**< One past the last validated node. */
+    uint32_t compression_mask;  /**< Bit n set when compr n was observed. */
     bool is_big_endian;
     void *internal;
 };
 
-XXFC_API void xx_jffs2_old_init(xx_jffs2_old *jffs2_old, xx_io_device *dev,
-                            int64_t base_address);
+XXFC_API void xx_jffs2_old_init(xx_jffs2_old *jffs2_old, xx_io_device *dev, int64_t base_address);
 XXFC_API xx_jffs2_old *xx_jffs2_old_create(xx_io_device *dev, int64_t base_address);
 XXFC_API void xx_jffs2_old_destroy(xx_jffs2_old *jffs2_old);
 XXFC_API void xx_jffs2_old_free(xx_jffs2_old *jffs2_old);
 
 XXFC_API bool xx_jffs2_old_check_is_valid(Abstractformat *self, xx_pd_struct *pd);
 XXFC_API bool xx_jffs2_old_handle_base_info(Abstractformat *self, xx_pd_struct *pd);
-XXFC_API int64_t xx_jffs2_old_get_format_size(Abstractformat *self,
-                                          xx_pd_struct *pd);
-XXFC_API uint64_t xx_jffs2_old_get_number_of_archive_records(Abstractformat *self,
-                                                         xx_pd_struct *pd);
+XXFC_API int64_t xx_jffs2_old_get_format_size(Abstractformat *self, xx_pd_struct *pd);
+XXFC_API uint64_t xx_jffs2_old_get_number_of_archive_records(Abstractformat *self, xx_pd_struct *pd);
 
-XXFC_API xx_archive_record_state *xx_jffs2_old_create_archive_records_reading(
-    Abstractformat *self, const xx_list_s *options, xx_pd_struct *pd);
-XXFC_API const xx_archive_record *xx_jffs2_old_get_current_archive_record(
-    Abstractformat *self, xx_archive_record_state *state);
-XXFC_API bool xx_jffs2_old_unpack_current_archive_record(
-    Abstractformat *self, xx_archive_record_state *state, xx_pd_struct *pd);
-XXFC_API bool xx_jffs2_old_archive_record_move_to_next(
-    Abstractformat *self, xx_archive_record_state *state, xx_pd_struct *pd);
-XXFC_API void xx_jffs2_old_free_archive_records_reading(
-    Abstractformat *self, xx_archive_record_state *state);
+XXFC_API xx_archive_record_state *xx_jffs2_old_create_archive_records_reading(Abstractformat *self, const xx_list_s *options, xx_pd_struct *pd);
+XXFC_API const xx_archive_record *xx_jffs2_old_get_current_archive_record(Abstractformat *self, xx_archive_record_state *state);
+XXFC_API bool xx_jffs2_old_unpack_current_archive_record(Abstractformat *self, xx_archive_record_state *state, xx_pd_struct *pd);
+XXFC_API bool xx_jffs2_old_archive_record_move_to_next(Abstractformat *self, xx_archive_record_state *state, xx_pd_struct *pd);
+XXFC_API void xx_jffs2_old_free_archive_records_reading(Abstractformat *self, xx_archive_record_state *state);
 
 XXFC_API uint64_t xx_jffs2_old_get_number_of_records(const xx_jffs2_old *jffs2_old);
 XXFC_API uint64_t xx_jffs2_old_get_number_of_members(const xx_jffs2_old *jffs2_old);
@@ -166,18 +158,24 @@ XXFC_API bool xx_jffs2_old_get_is_big_endian(const xx_jffs2_old *jffs2_old);
 /** @brief Readable name for a compr byte, "Unknown" when unrecognised. */
 XXFC_API const char *xx_jffs2_old_compression_to_string(uint32_t compression);
 
-static inline Abstractformat *xx_jffs2_old_to_format(xx_jffs2_old *jffs2_old) {
+static inline Abstractformat *xx_jffs2_old_to_format(xx_jffs2_old *jffs2_old)
+{
     return jffs2_old ? &jffs2_old->format : NULL;
 }
-static inline void XJffs2Old_init(xx_jffs2_old *jffs2_old, xx_io_device *dev,
-                               int64_t base_address) {
+static inline void XJffs2Old_init(xx_jffs2_old *jffs2_old, xx_io_device *dev, int64_t base_address)
+{
     xx_jffs2_old_init(jffs2_old, dev, base_address);
 }
-static inline xx_jffs2_old *XJffs2Old_create(xx_io_device *dev, int64_t base_address) {
+static inline xx_jffs2_old *XJffs2Old_create(xx_io_device *dev, int64_t base_address)
+{
     return xx_jffs2_old_create(dev, base_address);
 }
-static inline void XJffs2Old_free(xx_jffs2_old *jffs2_old) { xx_jffs2_old_free(jffs2_old); }
-static inline bool XJffs2Old_is_valid(xx_jffs2_old *jffs2_old, xx_pd_struct *pd) {
+static inline void XJffs2Old_free(xx_jffs2_old *jffs2_old)
+{
+    xx_jffs2_old_free(jffs2_old);
+}
+static inline bool XJffs2Old_is_valid(xx_jffs2_old *jffs2_old, xx_pd_struct *pd)
+{
     return jffs2_old ? xx_format_is_valid(&jffs2_old->format, pd) : false;
 }
 

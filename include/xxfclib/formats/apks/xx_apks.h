@@ -14,12 +14,13 @@
 extern "C" {
 #endif
 
-typedef struct xx_apks { xx_zip zip; } xx_apks;
+typedef struct xx_apks {
+    xx_zip zip;
+} xx_apks;
 typedef xx_apks xx_apks_t;
 typedef xx_apks XAPKS;
 
-XXFC_API void xx_apks_init(xx_apks *apks, xx_io_device *device,
-                          int64_t base_address);
+XXFC_API void xx_apks_init(xx_apks *apks, xx_io_device *device, int64_t base_address);
 XXFC_API xx_apks *xx_apks_create(xx_io_device *device, int64_t base_address);
 XXFC_API void xx_apks_destroy(xx_apks *apks);
 XXFC_API void xx_apks_free(xx_apks *apks);
@@ -34,13 +35,16 @@ XXFC_API bool xx_apks_handle_base_info(Abstractformat *self, xx_pd_struct *pd);
  */
 XXFC_API xx_file_type_t xx_apks_detect(xx_io_device *device, int64_t base_address);
 
-static inline Abstractformat *xx_apks_to_format(xx_apks *apks) {
+static inline Abstractformat *xx_apks_to_format(xx_apks *apks)
+{
     return apks ? &apks->zip.format : NULL;
 }
-static inline const Abstractformat *xx_apks_to_format_const(const xx_apks *apks) {
+static inline const Abstractformat *xx_apks_to_format_const(const xx_apks *apks)
+{
     return apks ? &apks->zip.format : NULL;
 }
-static inline xx_zip *xx_apks_to_zip(xx_apks *apks) {
+static inline xx_zip *xx_apks_to_zip(xx_apks *apks)
+{
     return apks ? &apks->zip : NULL;
 }
 

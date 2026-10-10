@@ -44,13 +44,13 @@ extern "C" {
 
 typedef struct xx_clickteam_install_creator {
     Abstractformat format;
-    uint32_t generation;      /**< 1 = Install Creator 1.x, 2 = 2.x */
-    uint32_t list_version;    /**< 2.x file-list layout (20..40), 0 for 1.x */
-    int64_t overlay_offset;   /**< Device offset of the PE overlay */
-    int64_t data_offset;      /**< Device offset of the member region */
-    int64_t data_size;        /**< Size of the member region */
+    uint32_t generation;    /**< 1 = Install Creator 1.x, 2 = 2.x */
+    uint32_t list_version;  /**< 2.x file-list layout (20..40), 0 for 1.x */
+    int64_t overlay_offset; /**< Device offset of the PE overlay */
+    int64_t data_offset;    /**< Device offset of the member region */
+    int64_t data_size;      /**< Size of the member region */
     uint64_t number_of_records;
-    uint64_t unpacked_size;   /**< Sum of the members' unpacked sizes */
+    uint64_t unpacked_size; /**< Sum of the members' unpacked sizes */
 } xx_clickteam_install_creator;
 
 typedef xx_clickteam_install_creator xx_clickteam_install_creator_t;
@@ -61,37 +61,21 @@ typedef xx_clickteam_install_creator xx_clickteam_install_creator_t;
 #define XX_CLICKTEAM_METHOD_BZIP2 2U
 #define XX_CLICKTEAM_METHOD_CTDEFLATE 3U
 
-XXFC_API void xx_clickteam_install_creator_init(
-    xx_clickteam_install_creator *archive, xx_io_device *device,
-    int64_t base_address);
-XXFC_API xx_clickteam_install_creator *xx_clickteam_install_creator_create(
-    xx_io_device *device, int64_t base_address);
-XXFC_API void xx_clickteam_install_creator_destroy(
-    xx_clickteam_install_creator *archive);
-XXFC_API void xx_clickteam_install_creator_free(
-    xx_clickteam_install_creator *archive);
+XXFC_API void xx_clickteam_install_creator_init(xx_clickteam_install_creator *archive, xx_io_device *device, int64_t base_address);
+XXFC_API xx_clickteam_install_creator *xx_clickteam_install_creator_create(xx_io_device *device, int64_t base_address);
+XXFC_API void xx_clickteam_install_creator_destroy(xx_clickteam_install_creator *archive);
+XXFC_API void xx_clickteam_install_creator_free(xx_clickteam_install_creator *archive);
 
-XXFC_API bool xx_clickteam_install_creator_check_is_valid(Abstractformat *self,
-                                                          xx_pd_struct *pd);
-XXFC_API bool xx_clickteam_install_creator_handle_base_info(
-    Abstractformat *self, xx_pd_struct *pd);
-XXFC_API int64_t xx_clickteam_install_creator_get_format_size(
-    Abstractformat *self, xx_pd_struct *pd);
-XXFC_API uint64_t xx_clickteam_install_creator_get_number_of_archive_records(
-    Abstractformat *self, xx_pd_struct *pd);
+XXFC_API bool xx_clickteam_install_creator_check_is_valid(Abstractformat *self, xx_pd_struct *pd);
+XXFC_API bool xx_clickteam_install_creator_handle_base_info(Abstractformat *self, xx_pd_struct *pd);
+XXFC_API int64_t xx_clickteam_install_creator_get_format_size(Abstractformat *self, xx_pd_struct *pd);
+XXFC_API uint64_t xx_clickteam_install_creator_get_number_of_archive_records(Abstractformat *self, xx_pd_struct *pd);
 
-XXFC_API xx_archive_record_state *
-xx_clickteam_install_creator_create_archive_records_reading(
-    Abstractformat *self, const xx_list_s *options, xx_pd_struct *pd);
-XXFC_API const xx_archive_record *
-xx_clickteam_install_creator_get_current_archive_record(
-    Abstractformat *self, xx_archive_record_state *state);
-XXFC_API bool xx_clickteam_install_creator_unpack_current_archive_record(
-    Abstractformat *self, xx_archive_record_state *state, xx_pd_struct *pd);
-XXFC_API bool xx_clickteam_install_creator_archive_record_move_to_next(
-    Abstractformat *self, xx_archive_record_state *state, xx_pd_struct *pd);
-XXFC_API void xx_clickteam_install_creator_free_archive_records_reading(
-    Abstractformat *self, xx_archive_record_state *state);
+XXFC_API xx_archive_record_state *xx_clickteam_install_creator_create_archive_records_reading(Abstractformat *self, const xx_list_s *options, xx_pd_struct *pd);
+XXFC_API const xx_archive_record *xx_clickteam_install_creator_get_current_archive_record(Abstractformat *self, xx_archive_record_state *state);
+XXFC_API bool xx_clickteam_install_creator_unpack_current_archive_record(Abstractformat *self, xx_archive_record_state *state, xx_pd_struct *pd);
+XXFC_API bool xx_clickteam_install_creator_archive_record_move_to_next(Abstractformat *self, xx_archive_record_state *state, xx_pd_struct *pd);
+XXFC_API void xx_clickteam_install_creator_free_archive_records_reading(Abstractformat *self, xx_archive_record_state *state);
 
 /**
  * @brief Decode one Clickteam-Deflate stream held in memory.
@@ -100,9 +84,7 @@ XXFC_API void xx_clickteam_install_creator_free_archive_records_reading(
  * produces exactly @p output_size bytes.  @p consumed receives the number of
  * input bytes used through the final block.
  */
-XXFC_API bool xx_clickteam_install_creator_inflate_memory(
-    const uint8_t *stream, size_t stream_size, uint8_t *output,
-    size_t output_size, size_t *consumed);
+XXFC_API bool xx_clickteam_install_creator_inflate_memory(const uint8_t *stream, size_t stream_size, uint8_t *output, size_t output_size, size_t *consumed);
 
 #ifdef __cplusplus
 }

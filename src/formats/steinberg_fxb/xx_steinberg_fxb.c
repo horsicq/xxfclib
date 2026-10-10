@@ -3,30 +3,115 @@
  * Independent primary-layout implementation; stored encoded components only.
  */
 /* Layout: https://raw.githubusercontent.com/lsp-plugins/lsp-3rd-party/master/include/steinberg/vst2.h
- * Big-endian VST2 CcnK FxCk/FPCh presets and FxBk/FBCh banks, bank versions1/2 and presetversion1. Up to1024 programs/65536 normalized finite parameters and256MiB opaque plugin data. Validates signed chunk sizes, identities, program counts/current program and exact nesting. Exports descriptors, parameter arrays or declared opaque plugin state without interpreting/loading plugins. A standalone FPCh zero outer byteSize is accepted only with a complete signed inner chunk length, as emitted by Surge XT. Unknown versions/extensions rejected.
+ * Big-endian VST2 CcnK FxCk/FPCh presets and FxBk/FBCh banks, bank versions1/2 and presetversion1. Up to1024 programs/65536 normalized finite parameters and256MiB opaque
+ * plugin data. Validates signed chunk sizes, identities, program counts/current program and exact nesting. Exports descriptors, parameter arrays or declared opaque
+ * plugin state without interpreting/loading plugins. A standalone FPCh zero outer byteSize is accepted only with a complete signed inner chunk length, as emitted by
+ * Surge XT. Unknown versions/extensions rejected.
  */
 #include "xxfclib/formats/steinberg_fxb/xx_steinberg_fxb.h"
 #include "../common/xx_tracker_components.h"
 
-static bool tracker_component_program(Abstractformat *f,pm_stream *s,binary_cursor *c,uint32_t bankid,bool nested) {
- uint8_t h[56],p[4];uint32_t n,params,id,i;uint64_t at=c->at,end;if(!binary_get(c,h,56) || xx_rt_memcmp(h,"CcnK",4) || ((n=xx_data_get_u32(h+4, 4, 0, true))<48 && (n || nested || xx_rt_memcmp(h+8,"FPCh",4))) || n>INT32_MAX || !binary_range(at,8U+(uint64_t)n,c->end) || xx_data_get_u32(h+12, 4, 0, true)!=1 || !(id=xx_data_get_u32(h+16, 4, 0, true)) || (nested && id!=bankid) || !(params=xx_data_get_u32(h+24, 4, 0, true)) || params>65536 || !xx_rt_memchr(h+28,0,28) || !tracker_component_emit(f,s,"program-descriptor.bin",at,56,c->end)) return false;if(!n) {if(!pm_read(f,(int64_t)at+56,p,4) || !xx_data_get_u32(p, 4, 0, true) || xx_data_get_u32(p, 4, 0, true)>268435396 || !binary_range(at,60U+(uint64_t)xx_data_get_u32(p, 4, 0, true),c->end)) return false;n=52U+xx_data_get_u32(p, 4, 0, true);}end=at+8+n;
- if(!xx_rt_memcmp(h+8,"FxCk",4)) {if(n!=48U+(uint64_t)params*4) return false;for(i=0;i<params;++i) {if(!binary_get(c,p,4) || !tracker_component_finite(p) || xx_data_get_u32(p, 4, 0, true)>0x3f800000U) return false;}if(!tracker_component_emit(f,s,"parameters.bin",at+56,(uint64_t)params*4,c->end)) return false;}
- else if(!xx_rt_memcmp(h+8,"FPCh",4)) {uint32_t bytes;if(!binary_get(c,p,4) || !(bytes=xx_data_get_u32(p, 4, 0, true)) || bytes>INT32_MAX || n!=52U+(uint64_t)bytes || !tracker_component_emit(f,s,"chunk-size.bin",at+56,4,c->end) || !tracker_component_take_emit(c,s,"plugin-state.bin",bytes)) return false;}
- else { return false; } return c->at==end;
+static bool tracker_component_program(Abstractformat *f, pm_stream *s, binary_cursor *c, uint32_t bankid, bool nested)
+{
+    uint8_t h[56], p[4];
+    uint32_t n, params, id, i;
+    uint64_t at = c->at, end;
+    if (!binary_get(c, h, 56) || xx_rt_memcmp(h, "CcnK", 4) || ((n = xx_data_get_u32(h + 4, 4, 0, true)) < 48 && (n || nested || xx_rt_memcmp(h + 8, "FPCh", 4))) ||
+        n > INT32_MAX || !binary_range(at, 8U + (uint64_t)n, c->end) || xx_data_get_u32(h + 12, 4, 0, true) != 1 || !(id = xx_data_get_u32(h + 16, 4, 0, true)) ||
+        (nested && id != bankid) || !(params = xx_data_get_u32(h + 24, 4, 0, true)) || params > 65536 || !xx_rt_memchr(h + 28, 0, 28) ||
+        !tracker_component_emit(f, s, "program-descriptor.bin", at, 56, c->end))
+        return false;
+    if (!n) {
+        if (!pm_read(f, (int64_t)at + 56, p, 4) || !xx_data_get_u32(p, 4, 0, true) || xx_data_get_u32(p, 4, 0, true) > 268435396 ||
+            !binary_range(at, 60U + (uint64_t)xx_data_get_u32(p, 4, 0, true), c->end))
+            return false;
+        n = 52U + xx_data_get_u32(p, 4, 0, true);
+    }
+    end = at + 8 + n;
+    if (!xx_rt_memcmp(h + 8, "FxCk", 4)) {
+        if (n != 48U + (uint64_t)params * 4) return false;
+        for (i = 0; i < params; ++i) {
+            if (!binary_get(c, p, 4) || !tracker_component_finite(p) || xx_data_get_u32(p, 4, 0, true) > 0x3f800000U) return false;
+        }
+        if (!tracker_component_emit(f, s, "parameters.bin", at + 56, (uint64_t)params * 4, c->end)) return false;
+    } else if (!xx_rt_memcmp(h + 8, "FPCh", 4)) {
+        uint32_t bytes;
+        if (!binary_get(c, p, 4) || !(bytes = xx_data_get_u32(p, 4, 0, true)) || bytes > INT32_MAX || n != 52U + (uint64_t)bytes ||
+            !tracker_component_emit(f, s, "chunk-size.bin", at + 56, 4, c->end) || !tracker_component_take_emit(c, s, "plugin-state.bin", bytes))
+            return false;
+    } else {
+        return false;
+    }
+    return c->at == end;
 }
-static bool pm_parse(Abstractformat *f,pm_stream *s,xx_pd_struct *pd) {
- uint8_t h[156],p[4];uint32_t n,version,id,count,i;binary_cursor c={f,0,(uint64_t)pm_available(f),pd,0};
- if(!pm_read(f,0,h,28) || xx_rt_memcmp(h,"CcnK",4) || (n=xx_data_get_u32(h+4, 4, 0, true))>INT32_MAX || 8U+(uint64_t)n>c.end || 8U+(uint64_t)n>268435456) { return false; } if(!n) {if(xx_rt_memcmp(h+8,"FPCh",4) || !pm_read(f,56,p,4) || !xx_data_get_u32(p, 4, 0, true) || xx_data_get_u32(p, 4, 0, true)>268435396 || 60U+(uint64_t)xx_data_get_u32(p, 4, 0, true)>c.end) return false;n=52U+xx_data_get_u32(p, 4, 0, true);}c.end=8U+(uint64_t)n;
- if(!xx_rt_memcmp(h+8,"FxCk",4) || !xx_rt_memcmp(h+8,"FPCh",4)) {if(!tracker_component_program(f,s,&c,0,false)) return false;}
- else {if(!binary_get(&c,h,156) || (xx_rt_memcmp(h+8,"FxBk",4) && xx_rt_memcmp(h+8,"FBCh",4)) || ((version=xx_data_get_u32(h+12, 4, 0, true))!=1 && version!=2) || !(id=xx_data_get_u32(h+16, 4, 0, true)) || !(count=xx_data_get_u32(h+24, 4, 0, true)) || count>1024 || (version==2 && xx_data_get_u32(h+28, 4, 0, true)>=count) || !tracker_component_zero(h+32,124) || !tracker_component_emit(f,s,"bank-descriptor.bin",0,156,c.end)) return false;
-  if(!xx_rt_memcmp(h+8,"FxBk",4)) {for(i=0;i<count;++i) if(!tracker_component_program(f,s,&c,id,true)) return false;}
-  else {uint32_t bytes;if(!binary_get(&c,p,4) || !(bytes=xx_data_get_u32(p, 4, 0, true)) || bytes>INT32_MAX || c.at+(uint64_t)bytes!=c.end || !tracker_component_emit(f,s,"chunk-size.bin",156,4,c.end) || !tracker_component_take_emit(&c,s,"plugin-state.bin",bytes)) return false;}
- }if(c.at!=c.end) return false;s->size=(int64_t)c.end;return true;
+static bool pm_parse(Abstractformat *f, pm_stream *s, xx_pd_struct *pd)
+{
+    uint8_t h[156], p[4];
+    uint32_t n, version, id, count, i;
+    binary_cursor c = {f, 0, (uint64_t)pm_available(f), pd, 0};
+    if (!pm_read(f, 0, h, 28) || xx_rt_memcmp(h, "CcnK", 4) || (n = xx_data_get_u32(h + 4, 4, 0, true)) > INT32_MAX || 8U + (uint64_t)n > c.end ||
+        8U + (uint64_t)n > 268435456) {
+        return false;
+    }
+    if (!n) {
+        if (xx_rt_memcmp(h + 8, "FPCh", 4) || !pm_read(f, 56, p, 4) || !xx_data_get_u32(p, 4, 0, true) || xx_data_get_u32(p, 4, 0, true) > 268435396 ||
+            60U + (uint64_t)xx_data_get_u32(p, 4, 0, true) > c.end)
+            return false;
+        n = 52U + xx_data_get_u32(p, 4, 0, true);
+    }
+    c.end = 8U + (uint64_t)n;
+    if (!xx_rt_memcmp(h + 8, "FxCk", 4) || !xx_rt_memcmp(h + 8, "FPCh", 4)) {
+        if (!tracker_component_program(f, s, &c, 0, false)) return false;
+    } else {
+        if (!binary_get(&c, h, 156) || (xx_rt_memcmp(h + 8, "FxBk", 4) && xx_rt_memcmp(h + 8, "FBCh", 4)) ||
+            ((version = xx_data_get_u32(h + 12, 4, 0, true)) != 1 && version != 2) || !(id = xx_data_get_u32(h + 16, 4, 0, true)) ||
+            !(count = xx_data_get_u32(h + 24, 4, 0, true)) || count > 1024 || (version == 2 && xx_data_get_u32(h + 28, 4, 0, true) >= count) ||
+            !tracker_component_zero(h + 32, 124) || !tracker_component_emit(f, s, "bank-descriptor.bin", 0, 156, c.end))
+            return false;
+        if (!xx_rt_memcmp(h + 8, "FxBk", 4)) {
+            for (i = 0; i < count; ++i)
+                if (!tracker_component_program(f, s, &c, id, true)) return false;
+        } else {
+            uint32_t bytes;
+            if (!binary_get(&c, p, 4) || !(bytes = xx_data_get_u32(p, 4, 0, true)) || bytes > INT32_MAX || c.at + (uint64_t)bytes != c.end ||
+                !tracker_component_emit(f, s, "chunk-size.bin", 156, 4, c.end) || !tracker_component_take_emit(&c, s, "plugin-state.bin", bytes))
+                return false;
+        }
+    }
+    if (c.at != c.end) return false;
+    s->size = (int64_t)c.end;
+    return true;
 }
 
-void xx_steinberg_fxb_init(xx_steinberg_fxb *r,xx_io_device *d,int64_t b) { if(r) { xx_mem_zero(r,sizeof(*r)); pm_init(&r->format,d,b,XX_FILE_TYPE_STEINBERG_FXB,"fxb"); } }
-xx_steinberg_fxb *xx_steinberg_fxb_create(xx_io_device *d,int64_t b) { xx_steinberg_fxb *r=(xx_steinberg_fxb *)xx_mem_alloc(sizeof(*r)); if(r) xx_steinberg_fxb_init(r,d,b); return r; }
-void xx_steinberg_fxb_destroy(xx_steinberg_fxb *r) { if(r) xx_format_cleanup_extra_parameters(&r->format); }
-void xx_steinberg_fxb_free(xx_steinberg_fxb *r) { if(r) { xx_steinberg_fxb_destroy(r); xx_mem_free(r); } }
-bool xx_steinberg_fxb_check_is_valid(Abstractformat *f,xx_pd_struct *pd) { return pm_valid(f,pd); }
-bool xx_steinberg_fxb_handle_base_info(Abstractformat *f,xx_pd_struct *pd) { return pm_handle(f,pd); }
+void xx_steinberg_fxb_init(xx_steinberg_fxb *r, xx_io_device *d, int64_t b)
+{
+    if (r) {
+        xx_mem_zero(r, sizeof(*r));
+        pm_init(&r->format, d, b, XX_FILE_TYPE_STEINBERG_FXB, "fxb");
+    }
+}
+xx_steinberg_fxb *xx_steinberg_fxb_create(xx_io_device *d, int64_t b)
+{
+    xx_steinberg_fxb *r = (xx_steinberg_fxb *)xx_mem_alloc(sizeof(*r));
+    if (r) xx_steinberg_fxb_init(r, d, b);
+    return r;
+}
+void xx_steinberg_fxb_destroy(xx_steinberg_fxb *r)
+{
+    if (r) xx_format_cleanup_extra_parameters(&r->format);
+}
+void xx_steinberg_fxb_free(xx_steinberg_fxb *r)
+{
+    if (r) {
+        xx_steinberg_fxb_destroy(r);
+        xx_mem_free(r);
+    }
+}
+bool xx_steinberg_fxb_check_is_valid(Abstractformat *f, xx_pd_struct *pd)
+{
+    return pm_valid(f, pd);
+}
+bool xx_steinberg_fxb_handle_base_info(Abstractformat *f, xx_pd_struct *pd)
+{
+    return pm_handle(f, pd);
+}

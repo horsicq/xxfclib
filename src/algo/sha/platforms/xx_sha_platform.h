@@ -34,9 +34,7 @@
 #define XX_SHA_TARGET_SHA_NI
 #endif
 
-#if defined(XX_SHA_X86) && \
-    ((defined(_MSC_VER) && _MSC_VER >= 1910) || defined(__clang__) || \
-     (defined(__GNUC__) && __GNUC__ >= 5))
+#if defined(XX_SHA_X86) && ((defined(_MSC_VER) && _MSC_VER >= 1910) || defined(__clang__) || (defined(__GNUC__) && __GNUC__ >= 5))
 #define XX_SHA_HAVE_SHA_NI 1
 #endif
 

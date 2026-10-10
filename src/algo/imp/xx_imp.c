@@ -19,7 +19,7 @@
 #define IMP_MAX_WINDOW 0x80000
 #define IMP_MAX_DICT 0x20000000
 
-#define IMP_MAX_TABLE 512            /* 1 << 9 */
+#define IMP_MAX_TABLE 512 /* 1 << 9 */
 #define IMP_MAX_TREE (IMP_LITERAL_SYMBOLS * 2)
 
 static const int32_t imp_dist_sizes[3] = {0x2a, 0x0e, 0x1c};
@@ -29,14 +29,11 @@ static const uint32_t imp_len_base[20] = {11, 13, 15, 17, 19, 23, 27, 31, 35, 43
 static const uint8_t imp_len_extra[20] = {1, 1, 1, 1, 2, 2, 2, 2, 3, 3, 3, 3, 4, 4, 4, 4, 5, 5, 5, 5};
 static const uint32_t imp_len_mask[20] = {1, 1, 1, 1, 3, 3, 3, 3, 7, 7, 7, 7, 15, 15, 15, 15, 31, 31, 31, 31};
 
-static const uint32_t imp_dist_base[36] = {5,     7,     9,     13,    17,    25,    33,     49,     65,     97,     129,    193,
-                                           257,   385,   513,   769,   1025,  1537,  2049,   3073,   4097,   6145,   8193,   12289,
-                                           16385, 24577, 32769, 49153, 65537, 98305, 131073, 196609, 262145, 393217, 524289, 786433};
-static const uint8_t imp_dist_extra[36] = {1,  1,  2,  2,  3,  3,  4,  4,  5,  5,  6,  6,  7,  7,  8,  8,  9,  9,
-                                           10, 10, 11, 11, 12, 12, 13, 13, 14, 14, 15, 15, 16, 16, 17, 17, 18, 18};
-static const uint32_t imp_dist_mask[36] = {1,     1,     3,     3,     7,     7,     15,     15,     31,     31,     63,     63,
-                                           127,   127,   255,   255,   511,   511,   1023,   1023,   2047,   2047,   4095,   4095,
-                                           8191,  8191,  16383, 16383, 32767, 32767, 65535,  65535,  131071, 131071, 262143, 262143};
+static const uint32_t imp_dist_base[36] = {5,    7,    9,    13,   17,   25,    33,    49,    65,    97,    129,   193,   257,    385,    513,    769,    1025,   1537,
+                                           2049, 3073, 4097, 6145, 8193, 12289, 16385, 24577, 32769, 49153, 65537, 98305, 131073, 196609, 262145, 393217, 524289, 786433};
+static const uint8_t imp_dist_extra[36] = {1, 1, 2, 2, 3, 3, 4, 4, 5, 5, 6, 6, 7, 7, 8, 8, 9, 9, 10, 10, 11, 11, 12, 12, 13, 13, 14, 14, 15, 15, 16, 16, 17, 17, 18, 18};
+static const uint32_t imp_dist_mask[36] = {1,    1,    3,    3,    7,    7,    15,   15,   31,    31,    63,    63,    127,   127,   255,    255,    511,    511,
+                                           1023, 1023, 2047, 2047, 4095, 4095, 8191, 8191, 16383, 16383, 32767, 32767, 65535, 65535, 131071, 131071, 262143, 262143};
 
 static const uint32_t imp_windows[3][8] = {{0x8000, 0x10000, 0x12000, 0x18000, 0x1e000, 0x24000, 0x2a000, 0x30000},
                                            {0x8000, 0x10000, 0x12000, 0x18000, 0x1e000, 0x24000, 0x2a000, 0x30000},
@@ -505,8 +502,7 @@ typedef struct imp_lz_tables {
 
 /* Decodes into buffer[start .. start + block_length).  *produced gets the
  * number of bytes actually produced. */
-static bool imp_lz_decode(imp_bits *r, uint8_t *buffer, int64_t buffer_size, int64_t start, int64_t block_length, imp_records *recs,
-                          bool apply_filter, int64_t *produced)
+static bool imp_lz_decode(imp_bits *r, uint8_t *buffer, int64_t buffer_size, int64_t start, int64_t block_length, imp_records *recs, bool apply_filter, int64_t *produced)
 {
     imp_lz_tables *tables;
     uint8_t *lengths;
@@ -1139,8 +1135,8 @@ static bool imp_stream_read(imp_stream *s, int64_t from, int64_t length, uint8_t
 }
 
 /* ------------------------------------------------------------ public API -- */
-XXFC_API bool xx_imp_decode_memory(const uint8_t *input, size_t input_size, uint64_t stream_offset, uint8_t attributes, uint8_t *output,
-                                   size_t output_size, size_t *written)
+XXFC_API bool xx_imp_decode_memory(const uint8_t *input, size_t input_size, uint64_t stream_offset, uint8_t attributes, uint8_t *output, size_t output_size,
+                                   size_t *written)
 {
     imp_stream stream;
     uint8_t head[11];
@@ -1175,8 +1171,8 @@ XXFC_API bool xx_imp_decode_memory(const uint8_t *input, size_t input_size, uint
     return true;
 }
 
-XXFC_API bool xx_imp_decode_directory(const uint8_t *directory, size_t directory_size, uint32_t records, uint8_t *output, size_t output_size,
-                                      uint32_t *chunk_sizes, size_t chunk_capacity, size_t *chunk_count, size_t *written)
+XXFC_API bool xx_imp_decode_directory(const uint8_t *directory, size_t directory_size, uint32_t records, uint8_t *output, size_t output_size, uint32_t *chunk_sizes,
+                                      size_t chunk_capacity, size_t *chunk_count, size_t *written)
 {
     static const uint8_t tag[6] = {'I', 'M', 'P', 'D', 'E', 0};
     int64_t offset;

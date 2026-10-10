@@ -62,18 +62,18 @@ typedef struct xx_rpm {
     uint64_t number_of_records;
     uint8_t version_major;
     uint8_t version_minor;
-    uint16_t package_type;      /**< Lead +0x06: 0 binary, 1 source. */
-    uint16_t signature_type;    /**< Lead +0x4E: 0, 1 or 5. */
-    int64_t signature_offset;   /**< Absolute; -1 without a signature header. */
-    int64_t header_offset;      /**< Absolute offset of the main header. */
-    int64_t header_size;        /**< Main header, intro to end of store. */
-    int64_t payload_offset;     /**< Absolute. */
-    int64_t payload_size;       /**< Bytes present, up to the package end. */
-    int64_t declared_size;      /**< Package size (lead to payload end) from
-                                     signature tag 1000/270, INT64_MAX when
-                                     it overflows; -1 if none or ignored. */
-    bool truncated;             /**< The declared end lies past the device. */
-    char member_name[256];      /**< Name the payload member is published as. */
+    uint16_t package_type;    /**< Lead +0x06: 0 binary, 1 source. */
+    uint16_t signature_type;  /**< Lead +0x4E: 0, 1 or 5. */
+    int64_t signature_offset; /**< Absolute; -1 without a signature header. */
+    int64_t header_offset;    /**< Absolute offset of the main header. */
+    int64_t header_size;      /**< Main header, intro to end of store. */
+    int64_t payload_offset;   /**< Absolute. */
+    int64_t payload_size;     /**< Bytes present, up to the package end. */
+    int64_t declared_size;    /**< Package size (lead to payload end) from
+                                   signature tag 1000/270, INT64_MAX when
+                                   it overflows; -1 if none or ignored. */
+    bool truncated;           /**< The declared end lies past the device. */
+    char member_name[256];    /**< Name the payload member is published as. */
 } xx_rpm;
 
 typedef xx_rpm xx_rpm_t;
@@ -81,29 +81,21 @@ typedef xx_rpm xx_rpm_t;
 /** Lead size; the first header structure starts here. */
 #define XX_RPM_LEAD_SIZE 96
 
-XXFC_API void xx_rpm_init(xx_rpm *archive, xx_io_device *device,
-                          int64_t base_address);
+XXFC_API void xx_rpm_init(xx_rpm *archive, xx_io_device *device, int64_t base_address);
 XXFC_API xx_rpm *xx_rpm_create(xx_io_device *device, int64_t base_address);
 XXFC_API void xx_rpm_destroy(xx_rpm *archive);
 XXFC_API void xx_rpm_free(xx_rpm *archive);
 
 XXFC_API bool xx_rpm_check_is_valid(Abstractformat *self, xx_pd_struct *pd);
 XXFC_API bool xx_rpm_handle_base_info(Abstractformat *self, xx_pd_struct *pd);
-XXFC_API int64_t xx_rpm_get_format_size(Abstractformat *self,
-                                        xx_pd_struct *pd);
-XXFC_API uint64_t xx_rpm_get_number_of_archive_records(Abstractformat *self,
-                                                       xx_pd_struct *pd);
+XXFC_API int64_t xx_rpm_get_format_size(Abstractformat *self, xx_pd_struct *pd);
+XXFC_API uint64_t xx_rpm_get_number_of_archive_records(Abstractformat *self, xx_pd_struct *pd);
 
-XXFC_API xx_archive_record_state *xx_rpm_create_archive_records_reading(
-    Abstractformat *self, const xx_list_s *options, xx_pd_struct *pd);
-XXFC_API const xx_archive_record *xx_rpm_get_current_archive_record(
-    Abstractformat *self, xx_archive_record_state *state);
-XXFC_API bool xx_rpm_unpack_current_archive_record(
-    Abstractformat *self, xx_archive_record_state *state, xx_pd_struct *pd);
-XXFC_API bool xx_rpm_archive_record_move_to_next(
-    Abstractformat *self, xx_archive_record_state *state, xx_pd_struct *pd);
-XXFC_API void xx_rpm_free_archive_records_reading(
-    Abstractformat *self, xx_archive_record_state *state);
+XXFC_API xx_archive_record_state *xx_rpm_create_archive_records_reading(Abstractformat *self, const xx_list_s *options, xx_pd_struct *pd);
+XXFC_API const xx_archive_record *xx_rpm_get_current_archive_record(Abstractformat *self, xx_archive_record_state *state);
+XXFC_API bool xx_rpm_unpack_current_archive_record(Abstractformat *self, xx_archive_record_state *state, xx_pd_struct *pd);
+XXFC_API bool xx_rpm_archive_record_move_to_next(Abstractformat *self, xx_archive_record_state *state, xx_pd_struct *pd);
+XXFC_API void xx_rpm_free_archive_records_reading(Abstractformat *self, xx_archive_record_state *state);
 
 #ifdef __cplusplus
 }

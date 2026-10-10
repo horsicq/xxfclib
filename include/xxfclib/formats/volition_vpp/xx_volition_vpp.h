@@ -9,13 +9,15 @@
 #ifdef __cplusplus
 extern "C" {
 #endif
-typedef struct xx_volition_vpp { Abstractformat format; } xx_volition_vpp;
-XXFC_API void xx_volition_vpp_init(xx_volition_vpp *,xx_io_device *,int64_t);
-XXFC_API xx_volition_vpp *xx_volition_vpp_create(xx_io_device *,int64_t);
+typedef struct xx_volition_vpp {
+    Abstractformat format;
+} xx_volition_vpp;
+XXFC_API void xx_volition_vpp_init(xx_volition_vpp *, xx_io_device *, int64_t);
+XXFC_API xx_volition_vpp *xx_volition_vpp_create(xx_io_device *, int64_t);
 XXFC_API void xx_volition_vpp_destroy(xx_volition_vpp *);
 XXFC_API void xx_volition_vpp_free(xx_volition_vpp *);
-XXFC_API bool xx_volition_vpp_check_is_valid(Abstractformat *,xx_pd_struct *);
-XXFC_API bool xx_volition_vpp_handle_base_info(Abstractformat *,xx_pd_struct *);
+XXFC_API bool xx_volition_vpp_check_is_valid(Abstractformat *, xx_pd_struct *);
+XXFC_API bool xx_volition_vpp_handle_base_info(Abstractformat *, xx_pd_struct *);
 #ifdef __cplusplus
 }
 #endif

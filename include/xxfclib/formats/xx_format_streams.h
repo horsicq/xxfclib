@@ -115,21 +115,21 @@ typedef struct xx_metadata_record {
  * All offsets are absolute in the underlying device (-1 when unavailable),
  * addresses are virtual addresses (UINT64_MAX when unavailable).
  */
-#define XX_FORMAT_DECLARE_STREAM_STATE(kind) \
-    typedef struct xx_##kind##_state { \
-        Abstractformat *format; \
-        xx_##kind##_record current_record; \
-        bool has_record; \
-        bool failed; \
-        int64_t current_index; \
-        int64_t total_records; \
-        void *internal_state; \
-        void (*free_internal)(void *ptr); \
-    } xx_##kind##_state; \
-    XXFC_API void xx_##kind##_record_init(xx_##kind##_record *record); \
-    XXFC_API void xx_##kind##_record_cleanup(xx_##kind##_record *record); \
+#define XX_FORMAT_DECLARE_STREAM_STATE(kind)                                                \
+    typedef struct xx_##kind##_state {                                                      \
+        Abstractformat *format;                                                             \
+        xx_##kind##_record current_record;                                                  \
+        bool has_record;                                                                    \
+        bool failed;                                                                        \
+        int64_t current_index;                                                              \
+        int64_t total_records;                                                              \
+        void *internal_state;                                                               \
+        void (*free_internal)(void *ptr);                                                   \
+    } xx_##kind##_state;                                                                    \
+    XXFC_API void xx_##kind##_record_init(xx_##kind##_record *record);                      \
+    XXFC_API void xx_##kind##_record_cleanup(xx_##kind##_record *record);                   \
     XXFC_API void xx_##kind##_state_init(xx_##kind##_state *state, Abstractformat *format); \
-    XXFC_API void xx_##kind##_state_cleanup(xx_##kind##_state *state); \
+    XXFC_API void xx_##kind##_state_cleanup(xx_##kind##_state *state);                      \
     XXFC_API void xx_##kind##_state_free(xx_##kind##_state *state)
 
 XX_FORMAT_DECLARE_STREAM_STATE(import);

@@ -88,35 +88,31 @@ typedef struct diet_input_s {
     uint8_t buffer[DIET_IN_BUFFER];
 } diet_input;
 
-static bool diet_read_at(xx_io_device *device, int64_t offset, void *buffer,
-                         size_t size) {
+static bool diet_read_at(xx_io_device *device, int64_t offset, void *buffer, size_t size)
+{
     size_t done = 0U;
-    if (!device || (!buffer && size != 0U) || offset < 0 ||
-        xx_io_seek64(device, offset, SEEK_SET) != 0)
-        return false;
+    if (!device || (!buffer && size != 0U) || offset < 0 || xx_io_seek64(device, offset, SEEK_SET) != 0) return false;
     while (done < size) {
-        ssize_t amount = xx_io_read(device, (uint8_t *)buffer + done,
-                                    size - done);
+        ssize_t amount = xx_io_read(device, (uint8_t *)buffer + done, size - done);
         if (amount <= 0 || (size_t)amount > size - done) return false;
         done += (size_t)amount;
     }
     return true;
 }
 
-static uint16_t diet_crc16_arc(uint16_t crc, uint8_t value) {
+static uint16_t diet_crc16_arc(uint16_t crc, uint8_t value)
+{
     return xx_crc16_arc_calc(crc, &value, 1U);
 }
 
-static bool diet_input_byte(diet_input *in, uint8_t *out) {
+static bool diet_input_byte(diet_input *in, uint8_t *out)
+{
     if (in->position >= in->end) return false;
-    if (in->position < in->start ||
-        in->position - in->start >= (int64_t)in->length) {
+    if (in->position < in->start || in->position - in->start >= (int64_t)in->length) {
         int64_t available = in->end - in->position;
-        size_t want = available < (int64_t)DIET_IN_BUFFER
-                          ? (size_t)available : (size_t)DIET_IN_BUFFER;
+        size_t want = available < (int64_t)DIET_IN_BUFFER ? (size_t)available : (size_t)DIET_IN_BUFFER;
         in->length = 0U;
-        if (!diet_read_at(in->device, in->position, in->buffer, want))
-            return false;
+        if (!diet_read_at(in->device, in->position, in->buffer, want)) return false;
         in->start = in->position;
         in->length = want;
     }
@@ -143,10 +139,10 @@ typedef struct diet_decoder_s {
     uint8_t out[DIET_OUT_BUFFER];
 } diet_decoder;
 
-static bool diet_reload(diet_decoder *d) {
+static bool diet_reload(diet_decoder *d)
+{
     uint8_t lo, hi;
-    if (!diet_input_byte(&d->in, &lo) || !diet_input_byte(&d->in, &hi))
-        return false;
+    if (!diet_input_byte(&d->in, &lo) || !diet_input_byte(&d->in, &hi)) return false;
     d->bits = (uint32_t)lo | ((uint32_t)hi << 8U);
     d->nbits = 16U;
     return true;
@@ -156,7 +152,8 @@ static bool diet_reload(diet_decoder *d) {
  * any inline byte that follows.  A reload that finds no input is only an
  * error if another bit or byte is then needed: a stream may end exactly on
  * a word boundary after its stop code. */
-static unsigned diet_bit(diet_decoder *d) {
+static unsigned diet_bit(diet_decoder *d)
+{
     unsigned value;
     if (d->failed) return 0U;
     if (d->starved || (d->nbits == 0U && !diet_reload(d))) {
@@ -169,7 +166,8 @@ static unsigned diet_bit(diet_decoder *d) {
     return value;
 }
 
-static uint8_t diet_byte(diet_decoder *d) {
+static uint8_t diet_byte(diet_decoder *d)
+{
     uint8_t value = 0U;
     if (d->failed) return 0U;
     if (d->starved || !diet_input_byte(&d->in, &value)) {
@@ -179,15 +177,15 @@ static uint8_t diet_byte(diet_decoder *d) {
     return value;
 }
 
-static bool diet_flush(diet_decoder *d) {
+static bool diet_flush(diet_decoder *d)
+{
     size_t done = 0U;
     if (!d->sink) {
         d->out_length = 0U;
         return true;
     }
     while (done < d->out_length) {
-        ssize_t amount = xx_io_write(d->sink, d->out + done,
-                                     d->out_length - done);
+        ssize_t amount = xx_io_write(d->sink, d->out + done, d->out_length - done);
         if (amount <= 0 || (size_t)amount > d->out_length - done) return false;
         done += (size_t)amount;
     }
@@ -195,7 +193,8 @@ static bool diet_flush(diet_decoder *d) {
     return true;
 }
 
-static bool diet_emit(diet_decoder *d, uint8_t value) {
+static bool diet_emit(diet_decoder *d, uint8_t value)
+{
     if (d->written >= d->limit) return false;
     d->window[d->window_pos] = value;
     d->window_pos = (d->window_pos + 1U) & (DIET_WINDOW - 1U);
@@ -207,7 +206,8 @@ static bool diet_emit(diet_decoder *d, uint8_t value) {
     return true;
 }
 
-static unsigned diet_match_length(diet_decoder *d) {
+static unsigned diet_match_length(diet_decoder *d)
+{
     unsigned count;
     unsigned x1, x2;
     for (count = 1U; count <= 4U; ++count)
@@ -225,14 +225,14 @@ static unsigned diet_match_length(diet_decoder *d) {
 }
 
 /* Returns true at the stop code with every check passed. */
-static bool diet_decode(diet_decoder *d, xx_pd_struct *pd) {
+static bool diet_decode(diet_decoder *d, xx_pd_struct *pd)
+{
     uint64_t steps = 0U;
     for (;;) {
         unsigned position, length, v, a1, a2, a3, a4, a5, a6, a7, a8, i;
         uint32_t from;
         if (d->failed) return false;
-        if ((++steps & 0xFFFFU) == 0U && pd && xx_pd_is_stopped(pd))
-            return false;
+        if ((++steps & 0xFFFFU) == 0U && pd && xx_pd_is_stopped(pd)) return false;
         if (diet_bit(d)) {
             uint8_t literal = diet_byte(d);
             if (d->failed || !diet_emit(d, literal)) return false;
@@ -275,12 +275,10 @@ static bool diet_decode(diet_decoder *d, xx_pd_struct *pd) {
                     a6 = diet_bit(d);
                     a7 = diet_bit(d);
                     if (a7) {
-                        position = 4095U -
-                                   (1024U * a1 + 512U * a4 + 256U * a6 + v);
+                        position = 4095U - (1024U * a1 + 512U * a4 + 256U * a6 + v);
                     } else {
                         a8 = diet_bit(d);
-                        position = 8191U - (2048U * a1 + 1024U * a4 +
-                                            512U * a6 + 256U * a8 + v);
+                        position = 8191U - (2048U * a1 + 1024U * a4 + 512U * a6 + 256U * a8 + v);
                     }
                 }
             }
@@ -289,24 +287,21 @@ static bool diet_decode(diet_decoder *d, xx_pd_struct *pd) {
         if (d->failed) return false;
         /* The distance is position + 1: it may not reach before the first
          * output byte, and DIET never overlaps a match with its own output. */
-        if ((uint64_t)position + 1U > d->written || length > position + 1U)
-            return false;
-        from = (d->window_pos + DIET_WINDOW - 1U - position) &
-               (DIET_WINDOW - 1U);
+        if ((uint64_t)position + 1U > d->written || length > position + 1U) return false;
+        from = (d->window_pos + DIET_WINDOW - 1U - position) & (DIET_WINDOW - 1U);
         for (i = 0U; i < length; ++i) {
-            if (!diet_emit(d, d->window[(from + i) & (DIET_WINDOW - 1U)]))
-                return false;
+            if (!diet_emit(d, d->window[(from + i) & (DIET_WINDOW - 1U)])) return false;
         }
     }
 }
 
 /* ---- header ----------------------------------------------------------- */
 
-static const uint8_t diet_sig_int21[6] = {0xB4U, 0x4CU, 0xCDU, 0x21U,
-                                          0x9DU, 0x89U};
+static const uint8_t diet_sig_int21[6] = {0xB4U, 0x4CU, 0xCDU, 0x21U, 0x9DU, 0x89U};
 static const uint8_t diet_sig_dlz[5] = {0x9DU, 0x89U, 'd', 'l', 'z'};
 
-static bool diet_read_header(Abstractformat *format, diet_context *context) {
+static bool diet_read_header(Abstractformat *format, diet_context *context)
+{
     uint8_t header[DIET_V144_HEADER];
     int64_t total, size;
     size_t have;
@@ -318,16 +313,13 @@ static bool diet_read_header(Abstractformat *format, diet_context *context) {
     size = total - format->base_address;
     if (size < DIET_V100_HEADER + DIET_MIN_STREAM) return false;
     have = size < (int64_t)sizeof(header) ? (size_t)size : sizeof(header);
-    if (!diet_read_at(format->device, format->base_address, header, have))
-        return false;
+    if (!diet_read_at(format->device, format->base_address, header, have)) return false;
     if (xx_rt_memcmp(header, diet_sig_dlz, sizeof(diet_sig_dlz)) == 0) {
         context->version = 102U;
         context->header_size = DIET_V102_HEADER;
         fields = header + 5;
-    } else if (xx_rt_memcmp(header, diet_sig_int21, sizeof(diet_sig_int21)) ==
-               0) {
-        if (have >= 9U && header[6] == 'd' && header[7] == 'l' &&
-            header[8] == 'z') {
+    } else if (xx_rt_memcmp(header, diet_sig_int21, sizeof(diet_sig_int21)) == 0) {
+        if (have >= 9U && header[6] == 'd' && header[7] == 'l' && header[8] == 'z') {
             context->version = 144U;
             context->header_size = DIET_V144_HEADER;
             fields = header + 9;
@@ -345,16 +337,12 @@ static bool diet_read_header(Abstractformat *format, diet_context *context) {
         /* 0x80: "has following block" -- a multi-block file Deark does not
          * support either; the other flag bits concern EXE files. */
         if (fields[0] & 0x80U) return false;
-        declared = ((int64_t)(fields[0] & 0x0FU) << 16) |
-                   (int64_t)fields[1] | ((int64_t)fields[2] << 8);
-        if (declared < DIET_MIN_STREAM ||
-            declared > size - context->header_size)
-            return false;
+        declared = ((int64_t)(fields[0] & 0x0FU) << 16) | (int64_t)fields[1] | ((int64_t)fields[2] << 8);
+        if (declared < DIET_MIN_STREAM || declared > size - context->header_size) return false;
         context->stream_size = declared;
         context->stream_end = context->stream_offset + declared;
         context->crc_stored = (uint16_t)(fields[3] | (fields[4] << 8));
-        context->orig_len = ((uint32_t)(fields[5] & 0xFCU) << 14) |
-                            (uint32_t)fields[6] | ((uint32_t)fields[7] << 8);
+        context->orig_len = ((uint32_t)(fields[5] & 0xFCU) << 14) | (uint32_t)fields[6] | ((uint32_t)fields[7] << 8);
         context->orig_known = true;
         context->format_size = context->header_size + declared;
     } else {
@@ -367,8 +355,8 @@ static bool diet_read_header(Abstractformat *format, diet_context *context) {
 /* Decode the stream once: to `sink` when given, else only to validate and
  * measure.  Fills in the consumed size (v1.00), the CRC and the output
  * length. */
-static bool diet_run(Abstractformat *format, diet_context *context,
-                     xx_io_device *sink, xx_pd_struct *pd) {
+static bool diet_run(Abstractformat *format, diet_context *context, xx_io_device *sink, xx_pd_struct *pd)
+{
     diet_decoder *d;
     bool result = false;
     d = (diet_decoder *)xx_mem_alloc(sizeof(*d));
@@ -381,8 +369,7 @@ static bool diet_run(Abstractformat *format, diet_context *context,
     d->limit = context->orig_known ? context->orig_len : DIET_MAX_OUTPUT;
     d->sink = sink;
     if (!diet_decode(d, pd)) goto done;
-    if (context->orig_known && d->written != (uint64_t)context->orig_len)
-        goto done;
+    if (context->orig_known && d->written != (uint64_t)context->orig_len) goto done;
     if (!diet_flush(d)) goto done;
     if (!context->orig_known) {
         /* v1.00: the stream ends where the decoder stopped reading. */
@@ -403,29 +390,26 @@ done:
     return result;
 }
 
-static bool diet_parse(Abstractformat *format, diet_context *out,
-                       xx_pd_struct *pd) {
+static bool diet_parse(Abstractformat *format, diet_context *out, xx_pd_struct *pd)
+{
     diet_context context;
-    if (!diet_read_header(format, &context) ||
-        !diet_run(format, &context, NULL, pd))
-        return false;
+    if (!diet_read_header(format, &context) || !diet_run(format, &context, NULL, pd)) return false;
     *out = context;
     return true;
 }
 
 /* ---- archive API ------------------------------------------------------ */
 
-static bool diet_copy_options(xx_list_s *destination, const xx_list_s *source) {
+static bool diet_copy_options(xx_list_s *destination, const xx_list_s *source)
+{
     size_t index;
     if (!source) return true;
     for (index = 0U; index < source->count; ++index) {
-        const xx_meta *original =
-            (const xx_meta *)xx_list_at((const xx_list_t *)source, index);
+        const xx_meta *original = (const xx_meta *)xx_list_at((const xx_list_t *)source, index);
         xx_meta copy;
         if (!original) continue;
         xx_meta_init(&copy, original->meta_id);
-        if (!xx_var_copy(&copy.var, &original->var) ||
-            !xx_list_append(destination, &copy)) {
+        if (!xx_var_copy(&copy.var, &original->var) || !xx_list_append(destination, &copy)) {
             xx_meta_cleanup(&copy);
             return false;
         }
@@ -433,19 +417,19 @@ static bool diet_copy_options(xx_list_s *destination, const xx_list_s *source) {
     return true;
 }
 
-static const xx_var *diet_option(const xx_list_s *options, uint32_t id) {
+static const xx_var *diet_option(const xx_list_s *options, uint32_t id)
+{
     size_t index;
     if (!options) return NULL;
     for (index = 0U; index < options->count; ++index) {
-        const xx_meta *meta =
-            (const xx_meta *)xx_list_at((const xx_list_t *)options, index);
+        const xx_meta *meta = (const xx_meta *)xx_list_at((const xx_list_t *)options, index);
         if (meta && meta->meta_id == id) return &meta->var;
     }
     return NULL;
 }
 
-static bool diet_set_record(xx_archive_record *record,
-                            const diet_context *context) {
+static bool diet_set_record(xx_archive_record *record, const diet_context *context)
+{
     xx_archive_record_cleanup(record);
     xx_archive_record_init(record);
     record->header_offset = context->stream_offset - context->header_size;
@@ -453,23 +437,19 @@ static bool diet_set_record(xx_archive_record *record,
     record->data_offset = context->stream_offset;
     record->compressed_size = context->stream_size;
     return xx_archive_record_set_original_name(record, DIET_PAYLOAD_NAME) &&
-           xx_archive_record_set_meta_u64(record, XX_META_ID_COMPRESSED_SIZE,
-                                          (uint64_t)context->stream_size) &&
-           xx_archive_record_set_meta_u64(record, XX_META_ID_UNCOMPRESSED_SIZE,
-                                          context->unpacked_size) &&
-           xx_archive_record_set_meta_u64(record, XX_META_ID_COMPRESSION_METHOD,
-                                          1U) &&
-           xx_archive_record_set_meta_bool(record, XX_META_ID_IS_ENCRYPTED,
-                                           false) &&
+           xx_archive_record_set_meta_u64(record, XX_META_ID_COMPRESSED_SIZE, (uint64_t)context->stream_size) &&
+           xx_archive_record_set_meta_u64(record, XX_META_ID_UNCOMPRESSED_SIZE, context->unpacked_size) &&
+           xx_archive_record_set_meta_u64(record, XX_META_ID_COMPRESSION_METHOD, 1U) && xx_archive_record_set_meta_bool(record, XX_META_ID_IS_ENCRYPTED, false) &&
            xx_archive_record_set_meta_bool(record, XX_META_ID_IS_FOLDER, false);
 }
 
-static void diet_stream_free(void *opaque) {
+static void diet_stream_free(void *opaque)
+{
     if (opaque) xx_mem_free(opaque);
 }
 
-void xx_diet_compression_init(xx_diet_compression *archive,
-                              xx_io_device *device, int64_t base_address) {
+void xx_diet_compression_init(xx_diet_compression *archive, xx_io_device *device, int64_t base_address)
+{
     if (!archive) return;
     xx_mem_zero(archive, sizeof(*archive));
     xx_format_init(&archive->format, device, base_address);
@@ -482,46 +462,41 @@ void xx_diet_compression_init(xx_diet_compression *archive,
     archive->format.check_is_valid = xx_diet_compression_check_is_valid;
     archive->format.handle_base_info = xx_diet_compression_handle_base_info;
     archive->format.get_format_size = xx_diet_compression_get_format_size;
-    archive->format.get_number_of_archive_records =
-        xx_diet_compression_get_number_of_archive_records;
-    archive->format.create_archive_records_reading =
-        xx_diet_compression_create_archive_records_reading;
-    archive->format.get_current_archive_record =
-        xx_diet_compression_get_current_archive_record;
-    archive->format.unpack_current_archive_record =
-        xx_diet_compression_unpack_current_archive_record;
-    archive->format.archive_record_move_to_next =
-        xx_diet_compression_archive_record_move_to_next;
-    archive->format.free_archive_records_reading =
-        xx_diet_compression_free_archive_records_reading;
+    archive->format.get_number_of_archive_records = xx_diet_compression_get_number_of_archive_records;
+    archive->format.create_archive_records_reading = xx_diet_compression_create_archive_records_reading;
+    archive->format.get_current_archive_record = xx_diet_compression_get_current_archive_record;
+    archive->format.unpack_current_archive_record = xx_diet_compression_unpack_current_archive_record;
+    archive->format.archive_record_move_to_next = xx_diet_compression_archive_record_move_to_next;
+    archive->format.free_archive_records_reading = xx_diet_compression_free_archive_records_reading;
 }
 
-xx_diet_compression *xx_diet_compression_create(xx_io_device *device,
-                                                int64_t base_address) {
-    xx_diet_compression *archive =
-        (xx_diet_compression *)xx_mem_alloc(sizeof(*archive));
+xx_diet_compression *xx_diet_compression_create(xx_io_device *device, int64_t base_address)
+{
+    xx_diet_compression *archive = (xx_diet_compression *)xx_mem_alloc(sizeof(*archive));
     if (archive) xx_diet_compression_init(archive, device, base_address);
     return archive;
 }
 
-void xx_diet_compression_destroy(xx_diet_compression *archive) {
+void xx_diet_compression_destroy(xx_diet_compression *archive)
+{
     if (archive) xx_format_cleanup_extra_parameters(&archive->format);
 }
 
-void xx_diet_compression_free(xx_diet_compression *archive) {
+void xx_diet_compression_free(xx_diet_compression *archive)
+{
     if (!archive) return;
     xx_diet_compression_destroy(archive);
     xx_mem_free(archive);
 }
 
-bool xx_diet_compression_check_is_valid(Abstractformat *format,
-                                        xx_pd_struct *pd) {
+bool xx_diet_compression_check_is_valid(Abstractformat *format, xx_pd_struct *pd)
+{
     diet_context context;
     return diet_parse(format, &context, pd);
 }
 
-bool xx_diet_compression_handle_base_info(Abstractformat *format,
-                                          xx_pd_struct *pd) {
+bool xx_diet_compression_handle_base_info(Abstractformat *format, xx_pd_struct *pd)
+{
     diet_context context;
     xx_diet_compression *archive;
     if (!format || !diet_parse(format, &context, pd)) return false;
@@ -538,22 +513,18 @@ bool xx_diet_compression_handle_base_info(Abstractformat *format,
     return true;
 }
 
-int64_t xx_diet_compression_get_format_size(Abstractformat *format,
-                                            xx_pd_struct *pd) {
-    return format && (format->base_info_handled ||
-                      xx_diet_compression_handle_base_info(format, pd))
-               ? format->format_size : -1;
+int64_t xx_diet_compression_get_format_size(Abstractformat *format, xx_pd_struct *pd)
+{
+    return format && (format->base_info_handled || xx_diet_compression_handle_base_info(format, pd)) ? format->format_size : -1;
 }
 
-uint64_t xx_diet_compression_get_number_of_archive_records(
-    Abstractformat *format, xx_pd_struct *pd) {
-    return format && (format->base_info_handled ||
-                      xx_diet_compression_handle_base_info(format, pd))
-               ? ((xx_diet_compression *)format)->number_of_records : 0U;
+uint64_t xx_diet_compression_get_number_of_archive_records(Abstractformat *format, xx_pd_struct *pd)
+{
+    return format && (format->base_info_handled || xx_diet_compression_handle_base_info(format, pd)) ? ((xx_diet_compression *)format)->number_of_records : 0U;
 }
 
-xx_archive_record_state *xx_diet_compression_create_archive_records_reading(
-    Abstractformat *format, const xx_list_s *options, xx_pd_struct *pd) {
+xx_archive_record_state *xx_diet_compression_create_archive_records_reading(Abstractformat *format, const xx_list_s *options, xx_pd_struct *pd)
+{
     diet_stream *stream;
     xx_archive_record_state *state;
     diet_context context;
@@ -571,8 +542,7 @@ xx_archive_record_state *xx_diet_compression_create_archive_records_reading(
     state->internal_state = stream;
     state->free_internal = diet_stream_free;
     state->total_records = 1U;
-    if (!diet_copy_options(&state->options, options) ||
-        !diet_set_record(&state->current_record, &stream->context)) {
+    if (!diet_copy_options(&state->options, options) || !diet_set_record(&state->current_record, &stream->context)) {
         xx_archive_record_state_free(state);
         return NULL;
     }
@@ -580,27 +550,24 @@ xx_archive_record_state *xx_diet_compression_create_archive_records_reading(
     return state;
 }
 
-const xx_archive_record *xx_diet_compression_get_current_archive_record(
-    Abstractformat *format, xx_archive_record_state *state) {
-    return format && state && state->format == format && state->has_record
-               ? &state->current_record : NULL;
+const xx_archive_record *xx_diet_compression_get_current_archive_record(Abstractformat *format, xx_archive_record_state *state)
+{
+    return format && state && state->format == format && state->has_record ? &state->current_record : NULL;
 }
 
-bool xx_diet_compression_archive_record_move_to_next(
-    Abstractformat *format, xx_archive_record_state *state, xx_pd_struct *pd) {
+bool xx_diet_compression_archive_record_move_to_next(Abstractformat *format, xx_archive_record_state *state, xx_pd_struct *pd)
+{
     diet_stream *stream;
     (void)pd;
-    if (!format || !state || state->format != format ||
-        !(stream = (diet_stream *)state->internal_state) ||
-        ++stream->index >= stream->count) {
+    if (!format || !state || state->format != format || !(stream = (diet_stream *)state->internal_state) || ++stream->index >= stream->count) {
         if (state) state->has_record = false;
         return false;
     }
     return false;
 }
 
-bool xx_diet_compression_unpack_current_archive_record(
-    Abstractformat *format, xx_archive_record_state *state, xx_pd_struct *pd) {
+bool xx_diet_compression_unpack_current_archive_record(Abstractformat *format, xx_archive_record_state *state, xx_pd_struct *pd)
+{
     diet_stream *stream;
     const xx_var *path_option;
     const char *base = NULL;
@@ -608,9 +575,8 @@ bool xx_diet_compression_unpack_current_archive_record(
     char *path = NULL;
     bool result = false;
     bool created = false;
-    if (!format || !state || state->format != format || !state->has_record ||
-        !(stream = (diet_stream *)state->internal_state) ||
-        stream->index >= stream->count || (pd && xx_pd_is_stopped(pd)))
+    if (!format || !state || state->format != format || !state->has_record || !(stream = (diet_stream *)state->internal_state) || stream->index >= stream->count ||
+        (pd && xx_pd_is_stopped(pd)))
         return false;
     path_option = diet_option(&state->options, XX_META_ID_OPT_UNPACK_PATH);
     if (!path_option) {
@@ -618,19 +584,14 @@ bool xx_diet_compression_unpack_current_archive_record(
         diet_context context;
         return diet_parse(format, &context, pd);
     }
-    if (path_option->type == XX_VAR_TYPE_STRING ||
-        path_option->type == XX_VAR_TYPE_STRING_VIEW)
-        base = xx_var_get_str(path_option);
-    else if (path_option->type == XX_VAR_TYPE_WSTRING ||
-             path_option->type == XX_VAR_TYPE_WSTRING_VIEW) {
+    if (path_option->type == XX_VAR_TYPE_STRING || path_option->type == XX_VAR_TYPE_STRING_VIEW) base = xx_var_get_str(path_option);
+    else if (path_option->type == XX_VAR_TYPE_WSTRING || path_option->type == XX_VAR_TYPE_WSTRING_VIEW) {
         owned_base = xx_str_unicode_to_utf8(xx_var_get_wstr(path_option));
         base = owned_base;
     }
     if (!base) goto done;
-    path = (base[0] && base[xx_str_len(base) - 1U] != '/' &&
-            base[xx_str_len(base) - 1U] != '\\')
-               ? xx_str_concat3(base, "/", DIET_PAYLOAD_NAME)
-               : xx_str_concat(base, DIET_PAYLOAD_NAME);
+    path = (base[0] && base[xx_str_len(base) - 1U] != '/' && base[xx_str_len(base) - 1U] != '\\') ? xx_str_concat3(base, "/", DIET_PAYLOAD_NAME)
+                                                                                                  : xx_str_concat(base, DIET_PAYLOAD_NAME);
     if (!path || !xx_store_create_dirs_a(path, false)) goto done;
     {
         diet_context context = stream->context;
@@ -647,8 +608,8 @@ done:
     return result;
 }
 
-void xx_diet_compression_free_archive_records_reading(
-    Abstractformat *format, xx_archive_record_state *state) {
+void xx_diet_compression_free_archive_records_reading(Abstractformat *format, xx_archive_record_state *state)
+{
     (void)format;
     xx_archive_record_state_free(state);
 }

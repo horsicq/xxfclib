@@ -53,34 +53,26 @@ typedef struct xx_exfat {
 typedef xx_exfat xx_exfat_t;
 typedef xx_exfat XExfat;
 
-XXFC_API void xx_exfat_init(xx_exfat *volume, xx_io_device *device,
-                            int64_t base_address);
+XXFC_API void xx_exfat_init(xx_exfat *volume, xx_io_device *device, int64_t base_address);
 XXFC_API xx_exfat *xx_exfat_create(xx_io_device *device, int64_t base_address);
 XXFC_API void xx_exfat_destroy(xx_exfat *volume);
 XXFC_API void xx_exfat_free(xx_exfat *volume);
 XXFC_API bool xx_exfat_check_is_valid(Abstractformat *self, xx_pd_struct *pd);
 XXFC_API bool xx_exfat_handle_base_info(Abstractformat *self, xx_pd_struct *pd);
 XXFC_API int64_t xx_exfat_get_format_size(Abstractformat *self, xx_pd_struct *pd);
-XXFC_API uint64_t xx_exfat_get_number_of_archive_records(Abstractformat *self,
-                                                        xx_pd_struct *pd);
-XXFC_API xx_archive_record_state *xx_exfat_create_archive_records_reading(
-    Abstractformat *self, const xx_list_s *options, xx_pd_struct *pd);
-XXFC_API const xx_archive_record *xx_exfat_get_current_archive_record(
-    Abstractformat *self, xx_archive_record_state *state);
-XXFC_API bool xx_exfat_archive_record_move_to_next(
-    Abstractformat *self, xx_archive_record_state *state, xx_pd_struct *pd);
-XXFC_API bool xx_exfat_unpack_current_archive_record(
-    Abstractformat *self, xx_archive_record_state *state, xx_pd_struct *pd);
+XXFC_API uint64_t xx_exfat_get_number_of_archive_records(Abstractformat *self, xx_pd_struct *pd);
+XXFC_API xx_archive_record_state *xx_exfat_create_archive_records_reading(Abstractformat *self, const xx_list_s *options, xx_pd_struct *pd);
+XXFC_API const xx_archive_record *xx_exfat_get_current_archive_record(Abstractformat *self, xx_archive_record_state *state);
+XXFC_API bool xx_exfat_archive_record_move_to_next(Abstractformat *self, xx_archive_record_state *state, xx_pd_struct *pd);
+XXFC_API bool xx_exfat_unpack_current_archive_record(Abstractformat *self, xx_archive_record_state *state, xx_pd_struct *pd);
 /** Stream a regular member to a borrowed writable device. NULL verifies
  *  readable file bytes. Folders produce no bytes. Input position is preserved;
  *  destination advances and must differ from the volume's device. */
-XXFC_API bool xx_exfat_extract_record_to_device(
-    Abstractformat *self, xx_archive_record_state *state,
-    xx_io_device *destination, xx_pd_struct *pd);
-XXFC_API void xx_exfat_free_archive_records_reading(
-    Abstractformat *self, xx_archive_record_state *state);
+XXFC_API bool xx_exfat_extract_record_to_device(Abstractformat *self, xx_archive_record_state *state, xx_io_device *destination, xx_pd_struct *pd);
+XXFC_API void xx_exfat_free_archive_records_reading(Abstractformat *self, xx_archive_record_state *state);
 
-static inline Abstractformat *xx_exfat_to_format(xx_exfat *volume) {
+static inline Abstractformat *xx_exfat_to_format(xx_exfat *volume)
+{
     return volume ? &volume->format : NULL;
 }
 #ifdef __cplusplus

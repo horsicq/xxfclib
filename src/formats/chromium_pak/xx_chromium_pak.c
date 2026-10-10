@@ -11,18 +11,25 @@
 #define UE2_CHROMIUM_TYPE XX_FILE_TYPE_UNKNOWN
 #endif
 
-static ue2_index *chromium_parse(Abstractformat *f, uint32_t *version_out, uint32_t *encoding_out, xx_pd_struct *pd) {
+static ue2_index *chromium_parse(Abstractformat *f, uint32_t *version_out, uint32_t *encoding_out, xx_pd_struct *pd)
+{
     uint8_t h[12], *table = NULL, used[8192];
     uint32_t version, encoding, count, aliases, header, first, end, i, previous_id = 0;
     uint64_t directory_size;
     ue2_index *index = NULL;
     int64_t total = f && f->device ? xx_io_total_size(f->device) : -1;
-    if (!f || f->base_address < 0 || !ue2_range(total, f->base_address, 9) ||
-        !ue2_read(f, f->base_address, h, 9)) return NULL;
+    if (!f || f->base_address < 0 || !ue2_range(total, f->base_address, 9) || !ue2_read(f, f->base_address, h, 9)) return NULL;
     version = xx_data_get_u32(h, 4, 0, false);
-    if (version == 4) { count = xx_data_get_u32(h + 4, 4, 0, false); encoding = h[8]; aliases = 0; header = 9; }
-    else if (version == 5 && ue2_read(f, f->base_address, h, 12)) {
-        encoding = h[4]; count = xx_data_get_u16(h + 8, 2, 0, false); aliases = xx_data_get_u16(h + 10, 2, 0, false); header = 12;
+    if (version == 4) {
+        count = xx_data_get_u32(h + 4, 4, 0, false);
+        encoding = h[8];
+        aliases = 0;
+        header = 9;
+    } else if (version == 5 && ue2_read(f, f->base_address, h, 12)) {
+        encoding = h[4];
+        count = xx_data_get_u16(h + 8, 2, 0, false);
+        aliases = xx_data_get_u16(h + 10, 2, 0, false);
+        header = 12;
         if (h[5] || h[6] || h[7]) return NULL;
     } else return NULL;
     if (encoding > 2 || count > 65535U || count + aliases > 65535U) return NULL;
@@ -32,15 +39,17 @@ static ue2_index *chromium_parse(Abstractformat *f, uint32_t *version_out, uint3
     index = (ue2_index *)xx_mem_calloc(1, sizeof(*index));
     if (!table || !index || !ue2_read(f, f->base_address + header, table, (size_t)directory_size)) goto fail;
     xx_mem_zero(used, sizeof(used));
-    first = xx_data_get_u32(table + 2, 4, 0, false); end = xx_data_get_u32(table + (size_t)count * 6 + 2, 4, 0, false);
-    if (first != header + directory_size || xx_data_get_u16(table + (size_t)count * 6, 2, 0, false) != 0 ||
-        end < first || !ue2_range(total, f->base_address, end)) goto fail;
+    first = xx_data_get_u32(table + 2, 4, 0, false);
+    end = xx_data_get_u32(table + (size_t)count * 6 + 2, 4, 0, false);
+    if (first != header + directory_size || xx_data_get_u16(table + (size_t)count * 6, 2, 0, false) != 0 || end < first || !ue2_range(total, f->base_address, end))
+        goto fail;
     for (i = 0; i < count + aliases; ++i) {
         uint32_t id, offset, next;
         char name[48];
         if (pd && xx_pd_is_stopped(pd)) goto fail;
         if (i < count) {
-            id = xx_data_get_u16(table + (size_t)i * 6, 2, 0, false); offset = xx_data_get_u32(table + (size_t)i * 6 + 2, 4, 0, false);
+            id = xx_data_get_u16(table + (size_t)i * 6, 2, 0, false);
+            offset = xx_data_get_u32(table + (size_t)i * 6 + 2, 4, 0, false);
             next = xx_data_get_u32(table + ((size_t)i + 1) * 6 + 2, 4, 0, false);
             if (!id || (i && id <= previous_id)) goto fail;
             previous_id = id;
@@ -60,26 +69,51 @@ static ue2_index *chromium_parse(Abstractformat *f, uint32_t *version_out, uint3
     index->size = end;
     if (version_out) *version_out = version;
     if (encoding_out) *encoding_out = encoding;
-    xx_mem_free(table); return index;
+    xx_mem_free(table);
+    return index;
 fail:
-    xx_mem_free(table); ue2_index_free(index); return NULL;
+    xx_mem_free(table);
+    ue2_index_free(index);
+    return NULL;
 }
-static bool chromium_valid(Abstractformat *f, xx_pd_struct *pd) {
+static bool chromium_valid(Abstractformat *f, xx_pd_struct *pd)
+{
     ue2_index *index = chromium_parse(f, NULL, NULL, pd);
-    bool valid = index != NULL; ue2_index_free(index); return valid;
+    bool valid = index != NULL;
+    ue2_index_free(index);
+    return valid;
 }
-static bool chromium_info(Abstractformat *f, xx_pd_struct *pd) {
+static bool chromium_info(Abstractformat *f, xx_pd_struct *pd)
+{
     xx_chromium_pak *a = (xx_chromium_pak *)f;
     return ue2_accept(f, chromium_parse(f, &a->version, &a->encoding, pd));
 }
-void xx_chromium_pak_init(xx_chromium_pak *a, xx_io_device *device, int64_t base) {
-    if (!a) { return; } xx_mem_zero(a, sizeof(*a));
+void xx_chromium_pak_init(xx_chromium_pak *a, xx_io_device *device, int64_t base)
+{
+    if (!a) {
+        return;
+    }
+    xx_mem_zero(a, sizeof(*a));
     ue2_init_format(&a->format, device, base, UE2_CHROMIUM_TYPE, "pak", "application/x-chromium-pak");
-    a->format.check_is_valid = chromium_valid; a->format.handle_base_info = chromium_info;
+    a->format.check_is_valid = chromium_valid;
+    a->format.handle_base_info = chromium_info;
 }
-xx_chromium_pak *xx_chromium_pak_create(xx_io_device *device, int64_t base) {
+xx_chromium_pak *xx_chromium_pak_create(xx_io_device *device, int64_t base)
+{
     xx_chromium_pak *a = (xx_chromium_pak *)xx_mem_alloc(sizeof(*a));
-    if (a) { xx_chromium_pak_init(a, device, base); } return a;
+    if (a) {
+        xx_chromium_pak_init(a, device, base);
+    }
+    return a;
 }
-void xx_chromium_pak_destroy(xx_chromium_pak *a) { if (a) ue2_destroy_format(&a->format); }
-void xx_chromium_pak_free(xx_chromium_pak *a) { if (a) { xx_chromium_pak_destroy(a); xx_mem_free(a); } }
+void xx_chromium_pak_destroy(xx_chromium_pak *a)
+{
+    if (a) ue2_destroy_format(&a->format);
+}
+void xx_chromium_pak_free(xx_chromium_pak *a)
+{
+    if (a) {
+        xx_chromium_pak_destroy(a);
+        xx_mem_free(a);
+    }
+}

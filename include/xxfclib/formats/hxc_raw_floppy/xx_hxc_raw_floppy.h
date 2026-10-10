@@ -5,7 +5,11 @@
 #ifdef __cplusplus
 extern "C" {
 #endif
-enum { XX_HXC_RAW_SOURCE = 0, XX_HXC_RAW_FILL = 1, XX_HXC_RAW_INLINE = 2 };
+enum {
+    XX_HXC_RAW_SOURCE = 0,
+    XX_HXC_RAW_FILL = 1,
+    XX_HXC_RAW_INLINE = 2
+};
 /* Output runs are in logical cylinder/head/sector order. Source offsets are
  * relative to base_address. Inline data contains size*count bytes. */
 typedef struct xx_hxc_raw_extent {
@@ -43,7 +47,10 @@ XXFC_API void xx_hxc_raw_floppy_destroy(xx_hxc_raw_floppy *);
 XXFC_API void xx_hxc_raw_floppy_free(xx_hxc_raw_floppy *);
 XXFC_API bool xx_hxc_raw_floppy_check_is_valid(Abstractformat *, xx_pd_struct *);
 XXFC_API bool xx_hxc_raw_floppy_handle_base_info(Abstractformat *, xx_pd_struct *);
-static inline Abstractformat *xx_hxc_raw_floppy_to_format(xx_hxc_raw_floppy *r) { return r ? &r->format : NULL; }
+static inline Abstractformat *xx_hxc_raw_floppy_to_format(xx_hxc_raw_floppy *r)
+{
+    return r ? &r->format : NULL;
+}
 #ifdef __cplusplus
 }
 #endif

@@ -49,34 +49,24 @@ typedef struct xx_kwaj {
 
 typedef xx_kwaj xx_kwaj_t;
 
-XXFC_API void xx_kwaj_init(xx_kwaj *archive, xx_io_device *device,
-                           int64_t base_address);
+XXFC_API void xx_kwaj_init(xx_kwaj *archive, xx_io_device *device, int64_t base_address);
 XXFC_API xx_kwaj *xx_kwaj_create(xx_io_device *device, int64_t base_address);
 XXFC_API void xx_kwaj_destroy(xx_kwaj *archive);
 XXFC_API void xx_kwaj_free(xx_kwaj *archive);
 
 XXFC_API bool xx_kwaj_check_is_valid(Abstractformat *self, xx_pd_struct *pd);
 XXFC_API bool xx_kwaj_handle_base_info(Abstractformat *self, xx_pd_struct *pd);
-XXFC_API int64_t xx_kwaj_get_format_size(Abstractformat *self,
-                                         xx_pd_struct *pd);
-XXFC_API uint64_t xx_kwaj_get_number_of_archive_records(Abstractformat *self,
-                                                        xx_pd_struct *pd);
+XXFC_API int64_t xx_kwaj_get_format_size(Abstractformat *self, xx_pd_struct *pd);
+XXFC_API uint64_t xx_kwaj_get_number_of_archive_records(Abstractformat *self, xx_pd_struct *pd);
 
-XXFC_API xx_archive_record_state *xx_kwaj_create_archive_records_reading(
-    Abstractformat *self, const xx_list_s *options, xx_pd_struct *pd);
-XXFC_API const xx_archive_record *xx_kwaj_get_current_archive_record(
-    Abstractformat *self, xx_archive_record_state *state);
-XXFC_API bool xx_kwaj_unpack_current_archive_record(
-    Abstractformat *self, xx_archive_record_state *state, xx_pd_struct *pd);
-XXFC_API bool xx_kwaj_archive_record_move_to_next(
-    Abstractformat *self, xx_archive_record_state *state, xx_pd_struct *pd);
-XXFC_API void xx_kwaj_free_archive_records_reading(
-    Abstractformat *self, xx_archive_record_state *state);
+XXFC_API xx_archive_record_state *xx_kwaj_create_archive_records_reading(Abstractformat *self, const xx_list_s *options, xx_pd_struct *pd);
+XXFC_API const xx_archive_record *xx_kwaj_get_current_archive_record(Abstractformat *self, xx_archive_record_state *state);
+XXFC_API bool xx_kwaj_unpack_current_archive_record(Abstractformat *self, xx_archive_record_state *state, xx_pd_struct *pd);
+XXFC_API bool xx_kwaj_archive_record_move_to_next(Abstractformat *self, xx_archive_record_state *state, xx_pd_struct *pd);
+XXFC_API void xx_kwaj_free_archive_records_reading(Abstractformat *self, xx_archive_record_state *state);
 
 /** Decode the member to @p destination (the header must parse). */
-XXFC_API bool xx_kwaj_unpack_to_device(xx_kwaj *archive,
-                                       xx_io_device *destination,
-                                       xx_pd_struct *pd);
+XXFC_API bool xx_kwaj_unpack_to_device(xx_kwaj *archive, xx_io_device *destination, xx_pd_struct *pd);
 
 #ifdef __cplusplus
 }

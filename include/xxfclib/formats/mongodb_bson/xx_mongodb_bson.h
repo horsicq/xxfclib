@@ -8,13 +8,15 @@
 #ifdef __cplusplus
 extern "C" {
 #endif
-typedef struct xx_mongodb_bson { Abstractformat format; } xx_mongodb_bson;
-XXFC_API void xx_mongodb_bson_init(xx_mongodb_bson *,xx_io_device *,int64_t);
-XXFC_API xx_mongodb_bson *xx_mongodb_bson_create(xx_io_device *,int64_t);
+typedef struct xx_mongodb_bson {
+    Abstractformat format;
+} xx_mongodb_bson;
+XXFC_API void xx_mongodb_bson_init(xx_mongodb_bson *, xx_io_device *, int64_t);
+XXFC_API xx_mongodb_bson *xx_mongodb_bson_create(xx_io_device *, int64_t);
 XXFC_API void xx_mongodb_bson_destroy(xx_mongodb_bson *);
 XXFC_API void xx_mongodb_bson_free(xx_mongodb_bson *);
-XXFC_API bool xx_mongodb_bson_check_is_valid(Abstractformat *,xx_pd_struct *);
-XXFC_API bool xx_mongodb_bson_handle_base_info(Abstractformat *,xx_pd_struct *);
+XXFC_API bool xx_mongodb_bson_check_is_valid(Abstractformat *, xx_pd_struct *);
+XXFC_API bool xx_mongodb_bson_handle_base_info(Abstractformat *, xx_pd_struct *);
 #ifdef __cplusplus
 }
 #endif

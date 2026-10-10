@@ -39,20 +39,16 @@ typedef struct xx_ash0_tree_s {
     uint32_t root;
 } xx_ash0_tree;
 
-bool xx_ash0_parse_header(const uint8_t *input, size_t input_size,
-                          xx_ash0_header *header) {
+bool xx_ash0_parse_header(const uint8_t *input, size_t input_size, xx_ash0_header *header)
+{
     uint32_t size_word;
     uint32_t distance_offset;
-    if (!input || !header || input_size < XX_ASH0_MIN_SIZE ||
-        input[0] != 'A' || input[1] != 'S' || input[2] != 'H' ||
-        input[3] != '0') {
+    if (!input || !header || input_size < XX_ASH0_MIN_SIZE || input[0] != 'A' || input[1] != 'S' || input[2] != 'H' || input[3] != '0') {
         return false;
     }
     size_word = xx_data_get_u32(input + 4U, 4, 0, true);
     distance_offset = xx_data_get_u32(input + 8U, 4, 0, true);
-    if ((size_word & XX_ASH0_MAX_UNCOMPRESSED) == 0U ||
-        distance_offset < XX_ASH0_MIN_DISTANCE_OFFSET ||
-        distance_offset > input_size - XX_ASH0_WORD_SIZE) {
+    if ((size_word & XX_ASH0_MAX_UNCOMPRESSED) == 0U || distance_offset < XX_ASH0_MIN_DISTANCE_OFFSET || distance_offset > input_size - XX_ASH0_WORD_SIZE) {
         return false;
     }
     header->uncompressed_size = size_word & XX_ASH0_MAX_UNCOMPRESSED;
@@ -61,9 +57,8 @@ bool xx_ash0_parse_header(const uint8_t *input, size_t input_size,
     return true;
 }
 
-static bool xx_ash0_bit_reader_init(xx_ash0_bit_reader *reader,
-                                    const uint8_t *data, size_t start,
-                                    size_t end) {
+static bool xx_ash0_bit_reader_init(xx_ash0_bit_reader *reader, const uint8_t *data, size_t start, size_t end)
+{
     if (!reader || !data || start > end || end - start < XX_ASH0_WORD_SIZE) {
         return false;
     }
@@ -74,19 +69,19 @@ static bool xx_ash0_bit_reader_init(xx_ash0_bit_reader *reader,
     return true;
 }
 
-static bool xx_ash0_read_bit(xx_ash0_bit_reader *reader, uint32_t *value) {
+static bool xx_ash0_read_bit(xx_ash0_bit_reader *reader, uint32_t *value)
+{
     size_t byte_position;
     if (!reader || !value) return false;
     byte_position = reader->bit_position >> 3U;
     if (byte_position >= reader->end - reader->start) return false;
-    *value = (uint32_t)((reader->data[reader->start + byte_position] >>
-                         (7U - (reader->bit_position & 7U))) & 1U);
+    *value = (uint32_t)((reader->data[reader->start + byte_position] >> (7U - (reader->bit_position & 7U))) & 1U);
     ++reader->bit_position;
     return true;
 }
 
-static bool xx_ash0_read_bits(xx_ash0_bit_reader *reader, unsigned count,
-                              uint32_t *value) {
+static bool xx_ash0_read_bits(xx_ash0_bit_reader *reader, unsigned count, uint32_t *value)
+{
     uint32_t result = 0U;
     unsigned index;
     if (!reader || !value || count == 0U || count > 31U) return false;
@@ -99,7 +94,8 @@ static bool xx_ash0_read_bits(xx_ash0_bit_reader *reader, unsigned count,
     return true;
 }
 
-static void xx_ash0_tree_cleanup(xx_ash0_tree *tree) {
+static void xx_ash0_tree_cleanup(xx_ash0_tree *tree)
+{
     if (!tree) return;
     xx_rt_free(tree->seen);
     xx_rt_free(tree->pending);
@@ -108,7 +104,8 @@ static void xx_ash0_tree_cleanup(xx_ash0_tree *tree) {
     xx_rt_memset(tree, 0, sizeof(*tree));
 }
 
-static bool xx_ash0_tree_init(xx_ash0_tree *tree, unsigned width) {
+static bool xx_ash0_tree_init(xx_ash0_tree *tree, unsigned width)
+{
     uint32_t leaves;
     uint32_t table_size;
     if (!tree || width < 1U || width > 15U) return false;
@@ -129,13 +126,12 @@ static bool xx_ash0_tree_init(xx_ash0_tree *tree, unsigned width) {
     return true;
 }
 
-static bool xx_ash0_tree_attach(xx_ash0_tree *tree, uint32_t pending,
-                                uint32_t child) {
+static bool xx_ash0_tree_attach(xx_ash0_tree *tree, uint32_t pending, uint32_t child)
+{
     uint32_t node;
     if (!tree) return false;
     node = pending >> 1U;
-    if (node < tree->maximum_leaf || node >= tree->table_size ||
-        child >= tree->table_size) {
+    if (node < tree->maximum_leaf || node >= tree->table_size || child >= tree->table_size) {
         return false;
     }
     if ((pending & 1U) != 0U) tree->right[node] = child;
@@ -145,13 +141,12 @@ static bool xx_ash0_tree_attach(xx_ash0_tree *tree, uint32_t pending,
 
 /* Tree serialization is pre-order: an internal node is bit 1, a leaf is bit
  * 0 followed by its fixed-width value.  The root must be internal. */
-static bool xx_ash0_read_tree(xx_ash0_bit_reader *reader, unsigned width,
-                              xx_ash0_tree *tree) {
+static bool xx_ash0_read_tree(xx_ash0_bit_reader *reader, unsigned width, xx_ash0_tree *tree)
+{
     uint32_t first;
     uint32_t next_node;
     size_t pending_count = 0U;
-    if (!reader || !tree || !xx_ash0_tree_init(tree, width) ||
-        !xx_ash0_read_bit(reader, &first) || first == 0U) {
+    if (!reader || !tree || !xx_ash0_tree_init(tree, width) || !xx_ash0_read_bit(reader, &first) || first == 0U) {
         xx_ash0_tree_cleanup(tree);
         return false;
     }
@@ -167,8 +162,7 @@ static bool xx_ash0_read_tree(xx_ash0_bit_reader *reader, unsigned width,
         }
         if (marker != 0U) {
             uint32_t child;
-            if (next_node >= tree->table_size ||
-                pending_count > (size_t)tree->table_size - 2U) {
+            if (next_node >= tree->table_size || pending_count > (size_t)tree->table_size - 2U) {
                 xx_ash0_tree_cleanup(tree);
                 return false;
             }
@@ -181,9 +175,7 @@ static bool xx_ash0_read_tree(xx_ash0_bit_reader *reader, unsigned width,
             tree->pending[pending_count++] = child << 1U;
         } else {
             uint32_t value;
-            if (!xx_ash0_read_bits(reader, width, &value) ||
-                value >= tree->maximum_leaf || tree->seen[value] != 0U ||
-                !xx_ash0_tree_attach(tree, pending, value)) {
+            if (!xx_ash0_read_bits(reader, width, &value) || value >= tree->maximum_leaf || tree->seen[value] != 0U || !xx_ash0_tree_attach(tree, pending, value)) {
                 xx_ash0_tree_cleanup(tree);
                 return false;
             }
@@ -193,16 +185,15 @@ static bool xx_ash0_read_tree(xx_ash0_bit_reader *reader, unsigned width,
     return true;
 }
 
-static bool xx_ash0_read_code(xx_ash0_bit_reader *reader,
-                              const xx_ash0_tree *tree, uint32_t *value) {
+static bool xx_ash0_read_code(xx_ash0_bit_reader *reader, const xx_ash0_tree *tree, uint32_t *value)
+{
     uint32_t node;
     uint32_t guard = 0U;
     if (!reader || !tree || !value) return false;
     node = tree->root;
     while (node >= tree->maximum_leaf) {
         uint32_t bit;
-        if (node >= tree->table_size || ++guard > tree->table_size ||
-            !xx_ash0_read_bit(reader, &bit)) {
+        if (node >= tree->table_size || ++guard > tree->table_size || !xx_ash0_read_bit(reader, &bit)) {
             return false;
         }
         node = bit != 0U ? tree->right[node] : tree->left[node];
@@ -211,30 +202,23 @@ static bool xx_ash0_read_code(xx_ash0_bit_reader *reader,
     return true;
 }
 
-static bool xx_ash0_decode_attempt(const uint8_t *input, size_t input_size,
-                                   const xx_ash0_header *header,
-                                   uint8_t *output, size_t output_size,
-                                   unsigned distance_bits, bool *tight) {
+static bool xx_ash0_decode_attempt(const uint8_t *input, size_t input_size, const xx_ash0_header *header, uint8_t *output, size_t output_size, unsigned distance_bits,
+                                   bool *tight)
+{
     xx_ash0_bit_reader symbol_reader;
     xx_ash0_bit_reader distance_reader;
     xx_ash0_tree symbol_tree;
     xx_ash0_tree distance_tree;
     size_t output_position = 0U;
     bool result = false;
-    if (!input || !header || !output || !tight ||
-        output_size != (size_t)header->uncompressed_size ||
-        (distance_bits != 11U && distance_bits != 15U) ||
-        !xx_ash0_bit_reader_init(&symbol_reader, input, XX_ASH0_HEADER_SIZE,
-                                 (size_t)header->distance_offset) ||
-        !xx_ash0_bit_reader_init(&distance_reader, input,
-                                 (size_t)header->distance_offset,
-                                 input_size)) {
+    if (!input || !header || !output || !tight || output_size != (size_t)header->uncompressed_size || (distance_bits != 11U && distance_bits != 15U) ||
+        !xx_ash0_bit_reader_init(&symbol_reader, input, XX_ASH0_HEADER_SIZE, (size_t)header->distance_offset) ||
+        !xx_ash0_bit_reader_init(&distance_reader, input, (size_t)header->distance_offset, input_size)) {
         return false;
     }
     xx_rt_memset(&symbol_tree, 0, sizeof(symbol_tree));
     xx_rt_memset(&distance_tree, 0, sizeof(distance_tree));
-    if (!xx_ash0_read_tree(&symbol_reader, XX_ASH0_SYMBOL_BITS, &symbol_tree) ||
-        !xx_ash0_read_tree(&distance_reader, distance_bits, &distance_tree)) {
+    if (!xx_ash0_read_tree(&symbol_reader, XX_ASH0_SYMBOL_BITS, &symbol_tree) || !xx_ash0_read_tree(&distance_reader, distance_bits, &distance_tree)) {
         goto cleanup;
     }
     while (output_position < output_size) {
@@ -246,17 +230,14 @@ static bool xx_ash0_decode_attempt(const uint8_t *input, size_t input_size,
             output[output_position++] = (uint8_t)symbol;
         } else {
             uint32_t distance_symbol;
-            size_t length = (size_t)(symbol - XX_ASH0_LITERAL_LIMIT) +
-                            XX_ASH0_MIN_MATCH;
+            size_t length = (size_t)(symbol - XX_ASH0_LITERAL_LIMIT) + XX_ASH0_MIN_MATCH;
             size_t distance;
             size_t index;
-            if (!xx_ash0_read_code(&distance_reader, &distance_tree,
-                                   &distance_symbol)) {
+            if (!xx_ash0_read_code(&distance_reader, &distance_tree, &distance_symbol)) {
                 goto cleanup;
             }
             distance = (size_t)distance_symbol + 1U;
-            if (length > output_size - output_position ||
-                distance > output_position) {
+            if (length > output_size - output_position || distance > output_position) {
                 goto cleanup;
             }
             for (index = 0U; index < length; ++index) {
@@ -265,8 +246,7 @@ static bool xx_ash0_decode_attempt(const uint8_t *input, size_t input_size,
             }
         }
     }
-    *tight = ((input_size - (size_t)header->distance_offset) -
-              ((distance_reader.bit_position + 7U) >> 3U)) < 4U;
+    *tight = ((input_size - (size_t)header->distance_offset) - ((distance_reader.bit_position + 7U) >> 3U)) < 4U;
     result = true;
 cleanup:
     xx_ash0_tree_cleanup(&distance_tree);
@@ -274,29 +254,25 @@ cleanup:
     return result;
 }
 
-bool xx_ash0_decompress_memory(const uint8_t *input, size_t input_size,
-                               uint8_t *output, size_t output_size,
-                               unsigned *distance_bits) {
+bool xx_ash0_decompress_memory(const uint8_t *input, size_t input_size, uint8_t *output, size_t output_size, unsigned *distance_bits)
+{
     xx_ash0_header header;
     bool first_tight = false;
     bool second_tight = false;
     bool first_ok;
     bool second_ok;
     if (distance_bits) *distance_bits = 0U;
-    if (!input || !output || !xx_ash0_parse_header(input, input_size, &header) ||
-        output_size != (size_t)header.uncompressed_size) {
+    if (!input || !output || !xx_ash0_parse_header(input, input_size, &header) || output_size != (size_t)header.uncompressed_size) {
         return false;
     }
     /* A 15-bit distance tree is tried first: a too-narrow tree can otherwise
      * survive briefly with plausible, but wrong, match distances. */
-    first_ok = xx_ash0_decode_attempt(input, input_size, &header, output,
-                                      output_size, 15U, &first_tight);
+    first_ok = xx_ash0_decode_attempt(input, input_size, &header, output, output_size, 15U, &first_tight);
     if (first_ok && first_tight) {
         if (distance_bits) *distance_bits = 15U;
         return true;
     }
-    second_ok = xx_ash0_decode_attempt(input, input_size, &header, output,
-                                       output_size, 11U, &second_tight);
+    second_ok = xx_ash0_decode_attempt(input, input_size, &header, output, output_size, 11U, &second_tight);
     if (second_ok && second_tight) {
         if (distance_bits) *distance_bits = 11U;
         return true;
@@ -304,9 +280,7 @@ bool xx_ash0_decompress_memory(const uint8_t *input, size_t input_size,
     if (first_ok) {
         /* If both loose attempts survived, prefer the wider candidate and
          * materialize it again because the second attempt occupied output. */
-        if (second_ok && !xx_ash0_decode_attempt(input, input_size, &header,
-                                                  output, output_size, 15U,
-                                                  &first_tight)) {
+        if (second_ok && !xx_ash0_decode_attempt(input, input_size, &header, output, output_size, 15U, &first_tight)) {
             return false;
         }
         if (distance_bits) *distance_bits = 15U;

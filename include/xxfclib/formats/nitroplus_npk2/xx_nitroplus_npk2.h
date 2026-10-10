@@ -47,36 +47,26 @@ typedef struct xx_nitroplus_npk2 {
 } xx_nitroplus_npk2;
 typedef xx_nitroplus_npk2 xx_nitroplus_npk2_t;
 
-XXFC_API void xx_nitroplus_npk2_init(xx_nitroplus_npk2 *archive,
-    xx_io_device *device, int64_t base_address);
-XXFC_API xx_nitroplus_npk2 *xx_nitroplus_npk2_create(xx_io_device *device,
-    int64_t base_address);
+XXFC_API void xx_nitroplus_npk2_init(xx_nitroplus_npk2 *archive, xx_io_device *device, int64_t base_address);
+XXFC_API xx_nitroplus_npk2 *xx_nitroplus_npk2_create(xx_io_device *device, int64_t base_address);
 /** Copy a raw key, or clear it with NULL and a zero size. Parsed format
  * state is invalidated. Change keys only while no archive iterator exists. */
-XXFC_API bool xx_nitroplus_npk2_set_key(xx_nitroplus_npk2 *archive,
-    const uint8_t *key, size_t key_size);
+XXFC_API bool xx_nitroplus_npk2_set_key(xx_nitroplus_npk2 *archive, const uint8_t *key, size_t key_size);
 XXFC_API void xx_nitroplus_npk2_destroy(xx_nitroplus_npk2 *archive);
 XXFC_API void xx_nitroplus_npk2_free(xx_nitroplus_npk2 *archive);
 XXFC_API bool xx_nitroplus_npk2_check_is_valid(Abstractformat *self, xx_pd_struct *pd);
 XXFC_API bool xx_nitroplus_npk2_handle_base_info(Abstractformat *self, xx_pd_struct *pd);
 XXFC_API int64_t xx_nitroplus_npk2_get_format_size(Abstractformat *self, xx_pd_struct *pd);
-XXFC_API uint64_t xx_nitroplus_npk2_get_number_of_archive_records(
-    Abstractformat *self, xx_pd_struct *pd);
-XXFC_API xx_archive_record_state *xx_nitroplus_npk2_create_archive_records_reading(
-    Abstractformat *self, const xx_list_s *options, xx_pd_struct *pd);
-XXFC_API const xx_archive_record *xx_nitroplus_npk2_get_current_archive_record(
-    Abstractformat *self, xx_archive_record_state *state);
-XXFC_API bool xx_nitroplus_npk2_unpack_current_archive_record(
-    Abstractformat *self, xx_archive_record_state *state, xx_pd_struct *pd);
+XXFC_API uint64_t xx_nitroplus_npk2_get_number_of_archive_records(Abstractformat *self, xx_pd_struct *pd);
+XXFC_API xx_archive_record_state *xx_nitroplus_npk2_create_archive_records_reading(Abstractformat *self, const xx_list_s *options, xx_pd_struct *pd);
+XXFC_API const xx_archive_record *xx_nitroplus_npk2_get_current_archive_record(Abstractformat *self, xx_archive_record_state *state);
+XXFC_API bool xx_nitroplus_npk2_unpack_current_archive_record(Abstractformat *self, xx_archive_record_state *state, xx_pd_struct *pd);
 /** Verify the current complete file before copying it to destination.
  * NULL verifies only. Destination must differ from the input device. */
-XXFC_API bool xx_nitroplus_npk2_unpack_current_archive_record_to_device(
-    Abstractformat *self, xx_archive_record_state *state,
-    xx_io_device *destination, xx_pd_struct *pd);
-XXFC_API bool xx_nitroplus_npk2_archive_record_move_to_next(Abstractformat *self,
-    xx_archive_record_state *state, xx_pd_struct *pd);
-XXFC_API void xx_nitroplus_npk2_free_archive_records_reading(Abstractformat *self,
-    xx_archive_record_state *state);
+XXFC_API bool xx_nitroplus_npk2_unpack_current_archive_record_to_device(Abstractformat *self, xx_archive_record_state *state, xx_io_device *destination,
+                                                                        xx_pd_struct *pd);
+XXFC_API bool xx_nitroplus_npk2_archive_record_move_to_next(Abstractformat *self, xx_archive_record_state *state, xx_pd_struct *pd);
+XXFC_API void xx_nitroplus_npk2_free_archive_records_reading(Abstractformat *self, xx_archive_record_state *state);
 #ifdef __cplusplus
 }
 #endif

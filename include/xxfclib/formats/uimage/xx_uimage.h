@@ -71,45 +71,36 @@ struct xx_uimage {
     Abstractformat format;
     uint64_t number_of_records;
     uint64_t number_of_members;
-    uint32_t header_crc;      /**< ih_hcrc as stored. */
-    uint32_t data_crc;        /**< ih_dcrc as stored. */
-    uint32_t timestamp;       /**< ih_time. */
-    uint32_t data_size;       /**< ih_size. */
-    uint32_t load_address;    /**< ih_load. */
-    uint32_t entry_point;     /**< ih_ep. */
-    uint8_t os;               /**< ih_os. */
-    uint8_t cpu_arch;         /**< ih_arch. */
-    uint8_t image_type;       /**< ih_type. */
-    uint8_t compression;      /**< ih_comp. */
-    char name[33];            /**< ih_name, NUL terminated here. */
-    int64_t archive_end;      /**< base_address + 64 + ih_size, or -1. */
+    uint32_t header_crc;   /**< ih_hcrc as stored. */
+    uint32_t data_crc;     /**< ih_dcrc as stored. */
+    uint32_t timestamp;    /**< ih_time. */
+    uint32_t data_size;    /**< ih_size. */
+    uint32_t load_address; /**< ih_load. */
+    uint32_t entry_point;  /**< ih_ep. */
+    uint8_t os;            /**< ih_os. */
+    uint8_t cpu_arch;      /**< ih_arch. */
+    uint8_t image_type;    /**< ih_type. */
+    uint8_t compression;   /**< ih_comp. */
+    char name[33];         /**< ih_name, NUL terminated here. */
+    int64_t archive_end;   /**< base_address + 64 + ih_size, or -1. */
     void *internal;
 };
 
-XXFC_API void xx_uimage_init(xx_uimage *uimage, xx_io_device *dev,
-                             int64_t base_address);
+XXFC_API void xx_uimage_init(xx_uimage *uimage, xx_io_device *dev, int64_t base_address);
 XXFC_API xx_uimage *xx_uimage_create(xx_io_device *dev, int64_t base_address);
 XXFC_API void xx_uimage_destroy(xx_uimage *uimage);
 XXFC_API void xx_uimage_free(xx_uimage *uimage);
 
 XXFC_API bool xx_uimage_check_is_valid(Abstractformat *self, xx_pd_struct *pd);
-XXFC_API bool xx_uimage_handle_base_info(Abstractformat *self,
-                                         xx_pd_struct *pd);
-XXFC_API int64_t xx_uimage_get_format_size(Abstractformat *self,
-                                           xx_pd_struct *pd);
-XXFC_API uint64_t xx_uimage_get_number_of_archive_records(Abstractformat *self,
-                                                          xx_pd_struct *pd);
+XXFC_API bool xx_uimage_handle_base_info(Abstractformat *self, xx_pd_struct *pd);
+XXFC_API int64_t xx_uimage_get_format_size(Abstractformat *self, xx_pd_struct *pd);
+XXFC_API uint64_t xx_uimage_get_number_of_archive_records(Abstractformat *self, xx_pd_struct *pd);
 
-XXFC_API xx_archive_record_state *xx_uimage_create_archive_records_reading(
-    Abstractformat *self, const xx_list_s *options, xx_pd_struct *pd);
-XXFC_API const xx_archive_record *xx_uimage_get_current_archive_record(
-    Abstractformat *self, xx_archive_record_state *state);
-XXFC_API bool xx_uimage_unpack_current_archive_record(
-    Abstractformat *self, xx_archive_record_state *state, xx_pd_struct *pd);
-XXFC_API bool xx_uimage_archive_record_move_to_next(
-    Abstractformat *self, xx_archive_record_state *state, xx_pd_struct *pd);
-XXFC_API void xx_uimage_free_archive_records_reading(
-    Abstractformat *self, xx_archive_record_state *state);
+XXFC_API xx_archive_record_state *xx_uimage_create_archive_records_reading(Abstractformat *self, const xx_list_s *options, xx_pd_struct *pd);
+XXFC_API const xx_archive_record *xx_uimage_get_current_archive_record(Abstractformat *self, xx_archive_record_state *state);
+XXFC_API bool xx_uimage_unpack_current_archive_record(Abstractformat *self, xx_archive_record_state *state, xx_pd_struct *pd);
+XXFC_API bool xx_uimage_archive_record_move_to_next(Abstractformat *self, xx_archive_record_state *state, xx_pd_struct *pd);
+XXFC_API void xx_uimage_free_archive_records_reading(Abstractformat *self, xx_archive_record_state *state);
 
 /** Human-readable name for an ih_comp value; never NULL. */
 XXFC_API const char *xx_uimage_compression_to_string(uint8_t compression);
@@ -124,19 +115,24 @@ XXFC_API uint8_t xx_uimage_get_image_type(const xx_uimage *uimage);
 XXFC_API const char *xx_uimage_get_name(const xx_uimage *uimage);
 XXFC_API int64_t xx_uimage_get_archive_end(const xx_uimage *uimage);
 
-static inline Abstractformat *xx_uimage_to_format(xx_uimage *uimage) {
+static inline Abstractformat *xx_uimage_to_format(xx_uimage *uimage)
+{
     return uimage ? &uimage->format : NULL;
 }
-static inline void XUimage_init(xx_uimage *uimage, xx_io_device *dev,
-                                int64_t base_address) {
+static inline void XUimage_init(xx_uimage *uimage, xx_io_device *dev, int64_t base_address)
+{
     xx_uimage_init(uimage, dev, base_address);
 }
-static inline xx_uimage *XUimage_create(xx_io_device *dev,
-                                        int64_t base_address) {
+static inline xx_uimage *XUimage_create(xx_io_device *dev, int64_t base_address)
+{
     return xx_uimage_create(dev, base_address);
 }
-static inline void XUimage_free(xx_uimage *uimage) { xx_uimage_free(uimage); }
-static inline bool XUimage_is_valid(xx_uimage *uimage, xx_pd_struct *pd) {
+static inline void XUimage_free(xx_uimage *uimage)
+{
+    xx_uimage_free(uimage);
+}
+static inline bool XUimage_is_valid(xx_uimage *uimage, xx_pd_struct *pd)
+{
     return uimage ? xx_format_is_valid(&uimage->format, pd) : false;
 }
 

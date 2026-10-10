@@ -9,13 +9,15 @@
 #ifdef __cplusplus
 extern "C" {
 #endif
-typedef struct xx_lithtech_rez { Abstractformat format; } xx_lithtech_rez;
-XXFC_API void xx_lithtech_rez_init(xx_lithtech_rez *,xx_io_device *,int64_t);
-XXFC_API xx_lithtech_rez *xx_lithtech_rez_create(xx_io_device *,int64_t);
+typedef struct xx_lithtech_rez {
+    Abstractformat format;
+} xx_lithtech_rez;
+XXFC_API void xx_lithtech_rez_init(xx_lithtech_rez *, xx_io_device *, int64_t);
+XXFC_API xx_lithtech_rez *xx_lithtech_rez_create(xx_io_device *, int64_t);
 XXFC_API void xx_lithtech_rez_destroy(xx_lithtech_rez *);
 XXFC_API void xx_lithtech_rez_free(xx_lithtech_rez *);
-XXFC_API bool xx_lithtech_rez_check_is_valid(Abstractformat *,xx_pd_struct *);
-XXFC_API bool xx_lithtech_rez_handle_base_info(Abstractformat *,xx_pd_struct *);
+XXFC_API bool xx_lithtech_rez_check_is_valid(Abstractformat *, xx_pd_struct *);
+XXFC_API bool xx_lithtech_rez_handle_base_info(Abstractformat *, xx_pd_struct *);
 #ifdef __cplusplus
 }
 #endif

@@ -39,8 +39,7 @@
 /* Registration placeholder: xxfc_defs.h is shared and not edited from here,
  * so the alias macro that sits next to the enumerator is tested instead. */
 #ifdef CREATEINSTALL_INSTCRIN_EXTRACTOR
-#define XX_CREATEINSTALL_INSTCRIN_EXTRACTOR_FILE_TYPE \
-    XX_FILE_TYPE_CREATEINSTALL_INSTCRIN_EXTRACTOR
+#define XX_CREATEINSTALL_INSTCRIN_EXTRACTOR_FILE_TYPE XX_FILE_TYPE_CREATEINSTALL_INSTCRIN_EXTRACTOR
 #else
 #define XX_CREATEINSTALL_INSTCRIN_EXTRACTOR_FILE_TYPE XX_FILE_TYPE_UNKNOWN
 #endif
@@ -63,8 +62,8 @@
 #define CI_MIN_CONTAINER 0x40
 
 /* Codec. */
-#define CI_SYMBOLS 629U                  /* leaves 629..1257 */
-#define CI_NODES (2U * CI_SYMBOLS - 1U)   /* node 1 is the root */
+#define CI_SYMBOLS 629U                 /* leaves 629..1257 */
+#define CI_NODES (2U * CI_SYMBOLS - 1U) /* node 1 is the root */
 #define CI_EOF 256U
 #define CI_LENGTHS 62U
 #define CI_MIN_MATCH 3U
@@ -100,34 +99,30 @@
 #define CI_FILETIME_MIN UINT64_C(116444736000000000)
 #define CI_FILETIME_MAX UINT64_C(160000000000000000)
 
-static const uint8_t ci_signature[XX_CREATEINSTALL_INSTCRIN_SIGNATURE_SIZE] = {
-    0x61, 0x57, 0x41, 0x57, 0xAE, 0x40, 0x60, 0x1B};
+static const uint8_t ci_signature[XX_CREATEINSTALL_INSTCRIN_SIGNATURE_SIZE] = {0x61, 0x57, 0x41, 0x57, 0xAE, 0x40, 0x60, 0x1B};
 
 /* Extra bits of each distance slot and the running sum of 1 << bits in front
  * of it. */
 static const uint32_t ci_slot_bits[CI_SLOTS] = {4U, 6U, 8U, 10U, 12U, 14U};
-static const uint32_t ci_slot_base[CI_SLOTS] = {0U, 16U, 80U, 336U, 1360U,
-                                                5456U};
+static const uint32_t ci_slot_base[CI_SLOTS] = {0U, 16U, 80U, 336U, 1360U, 5456U};
 
 /* ---------------------------------------------------------------------- */
 /* Byte helpers                                                            */
 
-static uint32_t ci_le16(const uint8_t *bytes) {
+static uint32_t ci_le16(const uint8_t *bytes)
+{
     return (uint32_t)bytes[0] | ((uint32_t)bytes[1] << 8U);
 }
 
-static bool ci_read_at(xx_io_device *device, int64_t offset, void *buffer,
-                       size_t size) {
+static bool ci_read_at(xx_io_device *device, int64_t offset, void *buffer, size_t size)
+{
     size_t done = 0U;
     const size_t io_capacity = xx_get_file_buffer_size();
-    if (!device || (!buffer && size != 0U) || offset < 0 ||
-        xx_io_seek64(device, offset, SEEK_SET) != 0)
-        return false;
+    if (!device || (!buffer && size != 0U) || offset < 0 || xx_io_seek64(device, offset, SEEK_SET) != 0) return false;
     while (done < size) {
         size_t request = size - done;
         if (request > io_capacity) request = io_capacity;
-        ssize_t amount = xx_io_read(device, (uint8_t *)buffer + done,
-                                    request);
+        ssize_t amount = xx_io_read(device, (uint8_t *)buffer + done, request);
         if (amount <= 0 || (size_t)amount > request) return false;
         done += (size_t)amount;
     }
@@ -148,7 +143,8 @@ typedef struct ci_model_s {
 #define CI_NODE_OK(node) ((node) >= 1U && (node) <= CI_NODES)
 
 /* The complete tree: node i has children 2i and 2i + 1, every node weighs 1. */
-static void ci_model_reset(ci_model *model) {
+static void ci_model_reset(ci_model *model)
+{
     uint32_t index;
     xx_mem_zero(model, sizeof(*model));
     for (index = 2U; index <= CI_NODES; ++index) {
@@ -163,18 +159,17 @@ static void ci_model_reset(ci_model *model) {
 
 /* Recompute the weights from @p node up to the root, then halve every weight
  * once the root reaches the limit. */
-static void ci_propagate(ci_model *model, uint32_t node, uint32_t sibling) {
+static void ci_propagate(ci_model *model, uint32_t node, uint32_t sibling)
+{
     uint32_t steps = 0U, index;
     for (;;) {
         uint32_t child = node, above;
         node = model->parent[node];
-        if (!CI_NODE_OK(node) || !CI_NODE_OK(sibling) ||
-            ++steps > CI_NODES) {
+        if (!CI_NODE_OK(node) || !CI_NODE_OK(sibling) || ++steps > CI_NODES) {
             model->bad = true;
             return;
         }
-        model->weight[node] =
-            (uint16_t)(model->weight[child] + model->weight[sibling]);
+        model->weight[node] = (uint16_t)(model->weight[child] + model->weight[sibling]);
         if (node == 1U) break;
         above = model->parent[node];
         if (!CI_NODE_OK(above)) {
@@ -185,12 +180,12 @@ static void ci_propagate(ci_model *model, uint32_t node, uint32_t sibling) {
         if (sibling == node) sibling = model->right[above];
     }
     if (model->weight[1] == CI_WEIGHT_LIMIT)
-        for (index = 1U; index <= CI_NODES; ++index)
-            model->weight[index] = (uint16_t)(model->weight[index] >> 1U);
+        for (index = 1U; index <= CI_NODES; ++index) model->weight[index] = (uint16_t)(model->weight[index] >> 1U);
 }
 
 /* Count one occurrence of leaf @p node and move it up past lighter uncles. */
-static void ci_update(ci_model *model, uint32_t node) {
+static void ci_update(ci_model *model, uint32_t node)
+{
     uint32_t above, sibling, current, steps = 0U;
     model->weight[node] = (uint16_t)(model->weight[node] + 1U);
     above = model->parent[node];
@@ -219,10 +214,8 @@ static void ci_update(ci_model *model, uint32_t node) {
         }
         if (model->weight[uncle] < model->weight[node]) {
             uint32_t other;
-            if (current == grand_left)
-                model->right[grand] = (uint16_t)node;
-            else
-                model->left[grand] = (uint16_t)node;
+            if (current == grand_left) model->right[grand] = (uint16_t)node;
+            else model->left[grand] = (uint16_t)node;
             other = model->left[current];
             if (node == other) {
                 other = model->right[current];
@@ -263,9 +256,8 @@ typedef struct ci_input_s {
     size_t io_capacity;
 } ci_input;
 
-static void ci_input_open(ci_input *in, xx_io_device *device,
-                          const uint8_t *memory, int64_t offset,
-                          uint64_t size) {
+static void ci_input_open(ci_input *in, xx_io_device *device, const uint8_t *memory, int64_t offset, uint64_t size)
+{
     in->device = device;
     in->memory = memory;
     in->offset = offset;
@@ -277,13 +269,12 @@ static void ci_input_open(ci_input *in, xx_io_device *device,
     in->count = 0U;
 }
 
-static int32_t ci_byte(ci_input *in) {
+static int32_t ci_byte(ci_input *in)
+{
     if (in->position == in->length) {
         size_t amount;
         if (in->remaining == 0U) return -1;
-        amount = in->remaining < (uint64_t)in->io_capacity
-                     ? (size_t)in->remaining
-                     : (size_t)in->io_capacity;
+        amount = in->remaining < (uint64_t)in->io_capacity ? (size_t)in->remaining : (size_t)in->io_capacity;
         if (in->memory) {
             xx_rt_memcpy(in->buffer, in->memory, amount);
             in->memory += amount;
@@ -301,7 +292,8 @@ static int32_t ci_byte(ci_input *in) {
 }
 
 /* Most significant bit first. */
-static int32_t ci_bit(ci_input *in) {
+static int32_t ci_bit(ci_input *in)
+{
     int32_t bit;
     if (in->count == 0U) {
         int32_t value = ci_byte(in);
@@ -316,7 +308,8 @@ static int32_t ci_bit(ci_input *in) {
 }
 
 /* An extra-bits field: the first bit read is bit 0 of the value. */
-static int32_t ci_bits_lsb(ci_input *in, uint32_t width) {
+static int32_t ci_bits_lsb(ci_input *in, uint32_t width)
+{
     int32_t result = 0;
     uint32_t index;
     for (index = 0U; index < width; ++index) {
@@ -346,7 +339,8 @@ typedef struct ci_codec_s {
     size_t io_capacity;
 } ci_codec;
 
-static ci_codec *ci_codec_create(void) {
+static ci_codec *ci_codec_create(void)
+{
     const size_t capacity = xx_get_file_buffer_size();
     ci_codec *codec;
     if (capacity > (SIZE_MAX - sizeof(*codec)) / 2U) return NULL;
@@ -358,7 +352,8 @@ static ci_codec *ci_codec_create(void) {
     return codec;
 }
 
-static void ci_sink_none(ci_codec *codec) {
+static void ci_sink_none(ci_codec *codec)
+{
     codec->emit = false;
     codec->failed = false;
     codec->sink_device = NULL;
@@ -368,7 +363,8 @@ static void ci_sink_none(ci_codec *codec) {
     codec->staged = 0U;
 }
 
-static void ci_flush(ci_codec *codec) {
+static void ci_flush(ci_codec *codec)
+{
     size_t amount = codec->staged, done = 0U;
     codec->staged = 0U;
     if (amount == 0U || codec->failed) return;
@@ -377,12 +373,10 @@ static void ci_flush(ci_codec *codec) {
             codec->failed = true;
             return;
         }
-        xx_rt_memcpy(codec->sink_memory + codec->written, codec->stage,
-                     amount);
+        xx_rt_memcpy(codec->sink_memory + codec->written, codec->stage, amount);
     } else if (codec->sink_device) {
         while (done < amount) {
-            ssize_t wrote = xx_io_write(codec->sink_device, codec->stage + done,
-                                        amount - done);
+            ssize_t wrote = xx_io_write(codec->sink_device, codec->stage + done, amount - done);
             if (wrote <= 0 || (size_t)wrote > amount - done) {
                 codec->failed = true;
                 return;
@@ -393,7 +387,8 @@ static void ci_flush(ci_codec *codec) {
     codec->written += amount;
 }
 
-static void ci_emit(ci_codec *codec, uint32_t *position, uint8_t value) {
+static void ci_emit(ci_codec *codec, uint32_t *position, uint8_t value)
+{
     codec->window[*position] = value;
     *position = (*position + 1U) & CI_WINDOW_MASK;
     if (codec->emit) {
@@ -402,7 +397,8 @@ static void ci_emit(ci_codec *codec, uint32_t *position, uint8_t value) {
     }
 }
 
-static int32_t ci_symbol(ci_codec *codec) {
+static int32_t ci_symbol(ci_codec *codec)
+{
     uint32_t node = 1U, depth = 0U;
     for (;;) {
         int32_t bit = ci_bit(&codec->in);
@@ -419,9 +415,8 @@ static int32_t ci_symbol(ci_codec *codec) {
 /* One stream, from a fresh model and an empty window, starting on the next
  * byte boundary.  It may produce at most @p limit bytes and succeeds only on
  * its end symbol.  @p consumed counts every byte the bit reader touched. */
-static bool ci_decode_stream(ci_codec *codec, uint64_t limit,
-                             uint64_t *produced_out, uint64_t *consumed_out,
-                             xx_pd_struct *pd) {
+static bool ci_decode_stream(ci_codec *codec, uint64_t limit, uint64_t *produced_out, uint64_t *consumed_out, xx_pd_struct *pd)
+{
     uint64_t produced = 0U, start = codec->in.fetched;
     uint32_t position = 0U;
     unsigned long ticks = 0UL;
@@ -454,8 +449,7 @@ static bool ci_decode_stream(ci_codec *codec, uint64_t limit,
             distance = (uint64_t)extra + length + ci_slot_base[slot];
             /* The window starts empty for every stream: a match may never
              * reach behind this stream's first byte. */
-            if (distance > produced || (uint64_t)length > limit - produced)
-                break;
+            if (distance > produced || (uint64_t)length > limit - produced) break;
             source = (position - (uint32_t)distance) & CI_WINDOW_MASK;
             for (index = 0U; index < length; ++index) {
                 uint8_t value = codec->window[source];
@@ -474,13 +468,12 @@ static bool ci_decode_stream(ci_codec *codec, uint64_t limit,
 /* A member's chain: streams one after another until exactly @p size bytes
  * have been produced.  Every stream must produce something, so the chain
  * cannot spin. */
-static bool ci_decode_chain(ci_codec *codec, uint64_t size,
-                            uint64_t *consumed_out, xx_pd_struct *pd) {
+static bool ci_decode_chain(ci_codec *codec, uint64_t size, uint64_t *consumed_out, xx_pd_struct *pd)
+{
     uint64_t remaining = size, consumed = 0U;
     while (remaining > 0U) {
         uint64_t produced = 0U, used = 0U;
-        if (!ci_decode_stream(codec, remaining, &produced, &used, pd))
-            return false;
+        if (!ci_decode_stream(codec, remaining, &produced, &used, pd)) return false;
         if (produced == 0U || used == 0U || produced > remaining) return false;
         remaining -= produced;
         consumed += used;
@@ -490,17 +483,14 @@ static bool ci_decode_chain(ci_codec *codec, uint64_t size,
     return !codec->failed;
 }
 
-bool xx_createinstall_instcrin_extractor_decode_memory(
-    const uint8_t *packed, size_t packed_size, uint8_t *output,
-    size_t output_size, size_t *consumed) {
+bool xx_createinstall_instcrin_extractor_decode_memory(const uint8_t *packed, size_t packed_size, uint8_t *output, size_t output_size, size_t *consumed)
+{
     ci_codec *codec;
     uint64_t used = 0U;
     bool result;
     if (consumed) *consumed = 0U;
     if (output_size == 0U) return true;
-    if (!packed || !output || packed_size == 0U ||
-        (uint64_t)output_size > (uint64_t)CI_MAX_MEMBER)
-        return false;
+    if (!packed || !output || packed_size == 0U || (uint64_t)output_size > (uint64_t)CI_MAX_MEMBER) return false;
     codec = ci_codec_create();
     if (!codec) return false;
     ci_input_open(&codec->in, NULL, packed, 0, (uint64_t)packed_size);
@@ -508,8 +498,7 @@ bool xx_createinstall_instcrin_extractor_decode_memory(
     codec->emit = true;
     codec->sink_memory = output;
     codec->sink_capacity = (uint64_t)output_size;
-    result = ci_decode_chain(codec, (uint64_t)output_size, &used, NULL) &&
-             codec->written == (uint64_t)output_size;
+    result = ci_decode_chain(codec, (uint64_t)output_size, &used, NULL) && codec->written == (uint64_t)output_size;
     if (result && consumed) *consumed = (size_t)used;
     xx_mem_free(codec);
     return result;
@@ -520,8 +509,8 @@ bool xx_createinstall_instcrin_extractor_decode_memory(
 
 /* The overlay of the PE32 stub: past the headers and every section's raw
  * data.  Offsets are relative to the format base. */
-static bool ci_locate(Abstractformat *format, int64_t *available_out,
-                      int64_t *container_out) {
+static bool ci_locate(Abstractformat *format, int64_t *available_out, int64_t *container_out)
+{
     uint8_t dos[CI_DOS_HEADER];
     uint8_t pe[CI_PE_HEADER];
     uint8_t optional[CI_MIN_OPTIONAL];
@@ -535,28 +524,18 @@ static bool ci_locate(Abstractformat *format, int64_t *available_out,
     total = xx_io_total_size(format->device);
     if (total < base) return false;
     available = total - base;
-    if (available < CI_DOS_HEADER + CI_PE_HEADER + CI_MIN_CONTAINER ||
-        !ci_read_at(format->device, base, dos, sizeof(dos)) ||
-        dos[0] != 'M' || dos[1] != 'Z')
+    if (available < CI_DOS_HEADER + CI_PE_HEADER + CI_MIN_CONTAINER || !ci_read_at(format->device, base, dos, sizeof(dos)) || dos[0] != 'M' || dos[1] != 'Z')
         return false;
     lfanew = xx_data_get_u32(dos + 0x3c, 4, 0, false);
-    if (lfanew < CI_DOS_HEADER || lfanew > CI_MAX_LFANEW ||
-        (int64_t)lfanew > available - CI_PE_HEADER - CI_MIN_OPTIONAL ||
-        !ci_read_at(format->device, base + lfanew, pe, sizeof(pe)) ||
-        pe[0] != 'P' || pe[1] != 'E' || pe[2] != 0U || pe[3] != 0U)
+    if (lfanew < CI_DOS_HEADER || lfanew > CI_MAX_LFANEW || (int64_t)lfanew > available - CI_PE_HEADER - CI_MIN_OPTIONAL ||
+        !ci_read_at(format->device, base + lfanew, pe, sizeof(pe)) || pe[0] != 'P' || pe[1] != 'E' || pe[2] != 0U || pe[3] != 0U)
         return false;
     count = ci_le16(pe + 6);
     optional_size = ci_le16(pe + 20);
-    if (count == 0U || count > CI_MAX_SECTIONS ||
-        optional_size < CI_MIN_OPTIONAL || optional_size > CI_MAX_OPTIONAL)
-        return false;
+    if (count == 0U || count > CI_MAX_SECTIONS || optional_size < CI_MIN_OPTIONAL || optional_size > CI_MAX_OPTIONAL) return false;
     table = (int64_t)lfanew + CI_PE_HEADER + optional_size;
-    if (table > available - (int64_t)count * CI_SECTION_SIZE ||
-        !ci_read_at(format->device, base + lfanew + CI_PE_HEADER, optional,
-                    sizeof(optional)) ||
-        ci_le16(optional) != CI_PE32_MAGIC ||
-        !ci_read_at(format->device, base + table, sections,
-                    (size_t)count * CI_SECTION_SIZE))
+    if (table > available - (int64_t)count * CI_SECTION_SIZE || !ci_read_at(format->device, base + lfanew + CI_PE_HEADER, optional, sizeof(optional)) ||
+        ci_le16(optional) != CI_PE32_MAGIC || !ci_read_at(format->device, base + table, sections, (size_t)count * CI_SECTION_SIZE))
         return false;
     /* SizeOfHeaders, then the end of every section's raw data. */
     image_end = xx_data_get_u32(optional + 60, 4, 0, false);
@@ -564,14 +543,10 @@ static bool ci_locate(Abstractformat *format, int64_t *available_out,
         const uint8_t *section = sections + (size_t)index * CI_SECTION_SIZE;
         uint64_t raw_size = xx_data_get_u32(section + 16, 4, 0, false);
         uint64_t raw_pointer = xx_data_get_u32(section + 20, 4, 0, false);
-        if (raw_size != 0U && raw_pointer + raw_size > image_end)
-            image_end = raw_pointer + raw_size;
+        if (raw_size != 0U && raw_pointer + raw_size > image_end) image_end = raw_pointer + raw_size;
     }
-    if (image_end == 0U || image_end >= (uint64_t)available ||
-        (uint64_t)available - image_end < (uint64_t)CI_MIN_CONTAINER ||
-        !ci_read_at(format->device, base + (int64_t)image_end, head,
-                    sizeof(head)) ||
-        xx_rt_memcmp(head, ci_signature, sizeof(head)) != 0)
+    if (image_end == 0U || image_end >= (uint64_t)available || (uint64_t)available - image_end < (uint64_t)CI_MIN_CONTAINER ||
+        !ci_read_at(format->device, base + (int64_t)image_end, head, sizeof(head)) || xx_rt_memcmp(head, ci_signature, sizeof(head)) != 0)
         return false;
     if (available_out) *available_out = available;
     if (container_out) *container_out = (int64_t)image_end;
@@ -593,34 +568,27 @@ typedef struct ci_head_s {
 
 /* A record header that the walk could start on: a known type, a method of 0
  * or 1 and, where a name follows, a printable one that fits. */
-static bool ci_record_plausible(Abstractformat *format, int64_t available,
-                                int64_t offset) {
+static bool ci_record_plausible(Abstractformat *format, int64_t available, int64_t offset)
+{
     uint8_t header[CI_RECORD_HEADER];
     uint8_t name[CI_MAX_NAME];
     int32_t length, index;
     uint32_t type;
-    if (offset < 0 || offset > available - CI_RECORD_HEADER ||
-        !ci_read_at(format->device, format->base_address + offset, header,
-                    sizeof(header)))
-        return false;
+    if (offset < 0 || offset > available - CI_RECORD_HEADER || !ci_read_at(format->device, format->base_address + offset, header, sizeof(header))) return false;
     type = header[0];
-    if (type < CI_RECORD_FILE || type > CI_RECORD_END || header[14] > 1U)
-        return false;
+    if (type < CI_RECORD_FILE || type > CI_RECORD_END || header[14] > 1U) return false;
     if (type == CI_RECORD_LEAVE || type == CI_RECORD_END) return true;
     length = (int32_t)(int16_t)(uint16_t)ci_le16(header + 15);
-    if (length <= 0 || length > CI_MAX_NAME ||
-        (int64_t)length > available - offset - CI_RECORD_HEADER ||
-        !ci_read_at(format->device,
-                    format->base_address + offset + CI_RECORD_HEADER, name,
-                    (size_t)length))
+    if (length <= 0 || length > CI_MAX_NAME || (int64_t)length > available - offset - CI_RECORD_HEADER ||
+        !ci_read_at(format->device, format->base_address + offset + CI_RECORD_HEADER, name, (size_t)length))
         return false;
     for (index = 0; index < length; ++index)
         if (name[index] < 0x20U) return false;
     return true;
 }
 
-static bool ci_parse_head(Abstractformat *format, ci_codec *codec,
-                          ci_head *head, xx_pd_struct *pd) {
+static bool ci_parse_head(Abstractformat *format, ci_codec *codec, ci_head *head, xx_pd_struct *pd)
+{
     uint8_t frame[4];
     size_t have = 0U;
     uint64_t produced = 0U, consumed = 0U;
@@ -632,14 +600,9 @@ static bool ci_parse_head(Abstractformat *format, ci_codec *codec,
     if (!ci_locate(format, &head->available, &head->container)) return false;
 
     /* 1. The runtime stream. */
-    ci_input_open(&codec->in, format->device, NULL,
-                  format->base_address + head->container,
-                  (uint64_t)(head->available - head->container));
+    ci_input_open(&codec->in, format->device, NULL, format->base_address + head->container, (uint64_t)(head->available - head->container));
     ci_sink_none(codec);
-    if (!ci_decode_stream(codec, (uint64_t)CI_MAX_RUNTIME, &produced,
-                          &consumed, pd) ||
-        produced == 0U || consumed == 0U)
-        return false;
+    if (!ci_decode_stream(codec, (uint64_t)CI_MAX_RUNTIME, &produced, &consumed, pd) || produced == 0U || consumed == 0U) return false;
     head->runtime_size = (int64_t)produced;
     head->runtime_packed = (int64_t)consumed;
 
@@ -648,15 +611,12 @@ static bool ci_parse_head(Abstractformat *format, ci_codec *codec,
      *    the first dword whose top byte is zero is the fallback. */
     start = head->container + head->runtime_packed;
     if (start > head->available - CI_PRELUDE_HEAD) return false;
-    scan_size = (size_t)(head->available - start < CI_SCAN_LIMIT + 4
-                             ? head->available - start
-                             : CI_SCAN_LIMIT + 4);
+    scan_size = (size_t)(head->available - start < CI_SCAN_LIMIT + 4 ? head->available - start : CI_SCAN_LIMIT + 4);
     carrier_size = head->available > (int64_t)UINT32_MAX ? 0U : (uint32_t)head->available;
     for (index = 0U; index < scan_size;) {
         size_t amount = scan_size - index, at;
         if (amount > codec->io_capacity) amount = codec->io_capacity;
-        if (!ci_read_at(format->device, format->base_address + start + (int64_t)index,
-                        codec->stage, amount)) return false;
+        if (!ci_read_at(format->device, format->base_address + start + (int64_t)index, codec->stage, amount)) return false;
         for (at = 0U; at < amount; ++at) {
             uint32_t value;
             if (have == sizeof(frame)) {
@@ -666,23 +626,17 @@ static bool ci_parse_head(Abstractformat *format, ci_codec *codec,
             frame[have++] = codec->stage[at];
             if (have < sizeof(frame) || prelude >= 0) continue;
             value = xx_data_get_u32(frame, 4, 0, false);
-            if (carrier_size != 0U && value == carrier_size)
-                prelude = start + (int64_t)(index + at + 1U - sizeof(frame));
-            else if (fallback < 0 && (value >> 24U) == 0U)
-                fallback = start + (int64_t)(index + at + 1U - sizeof(frame));
+            if (carrier_size != 0U && value == carrier_size) prelude = start + (int64_t)(index + at + 1U - sizeof(frame));
+            else if (fallback < 0 && (value >> 24U) == 0U) fallback = start + (int64_t)(index + at + 1U - sizeof(frame));
         }
         index += amount;
     }
     if (prelude < 0) prelude = fallback;
-    if (prelude < 0 || prelude > head->available - CI_PRELUDE_HEAD)
-        return false;
+    if (prelude < 0 || prelude > head->available - CI_PRELUDE_HEAD) return false;
     head->prelude = prelude;
     {
         uint8_t skip_bytes[4];
-        if (!ci_read_at(format->device,
-                        format->base_address + prelude + CI_PRELUDE_SKIP,
-                        skip_bytes, sizeof(skip_bytes)))
-            return false;
+        if (!ci_read_at(format->device, format->base_address + prelude + CI_PRELUDE_SKIP, skip_bytes, sizeof(skip_bytes))) return false;
         skip = (int32_t)xx_data_get_u32(skip_bytes, 4, 0, false);
     }
     if (skip < 0 || (int64_t)skip > head->available - prelude) return false;
@@ -698,10 +652,8 @@ static bool ci_parse_head(Abstractformat *format, ci_codec *codec,
         first = CI_PRELUDE_SHORT;
         second = CI_PRELUDE_LONG;
     }
-    if (ci_record_plausible(format, head->available, prelude + first + skip))
-        head->candidates[head->candidate_count++] = prelude + first + skip;
-    if (ci_record_plausible(format, head->available, prelude + second + skip))
-        head->candidates[head->candidate_count++] = prelude + second + skip;
+    if (ci_record_plausible(format, head->available, prelude + first + skip)) head->candidates[head->candidate_count++] = prelude + first + skip;
+    if (ci_record_plausible(format, head->available, prelude + second + skip)) head->candidates[head->candidate_count++] = prelude + second + skip;
     return head->candidate_count > 0U;
 }
 
@@ -709,8 +661,8 @@ static bool ci_parse_head(Abstractformat *format, ci_codec *codec,
 /* Member table                                                            */
 
 typedef struct ci_member_s {
-    char *name;    /**< UTF-8, '/' separated, relative. */
-    char *key;     /**< Case-folded form used to keep names apart. */
+    char *name; /**< UTF-8, '/' separated, relative. */
+    char *key;  /**< Case-folded form used to keep names apart. */
     int64_t header_offset;
     int64_t data_offset;
     int64_t packed_size;
@@ -737,7 +689,8 @@ typedef struct ci_walk_s {
     int64_t archive_size;
 } ci_walk;
 
-static void ci_walk_free(ci_walk *walk) {
+static void ci_walk_free(ci_walk *walk)
+{
     size_t index;
     if (!walk) return;
     for (index = 0U; index < walk->count; ++index) {
@@ -749,11 +702,13 @@ static void ci_walk_free(ci_walk *walk) {
     xx_mem_free(walk);
 }
 
-static void ci_walk_free_opaque(void *opaque) {
+static void ci_walk_free_opaque(void *opaque)
+{
     ci_walk_free((ci_walk *)opaque);
 }
 
-static uint32_t ci_hash(const char *key) {
+static uint32_t ci_hash(const char *key)
+{
     uint32_t hash = 2166136261U;
     while (*key) {
         hash ^= (uint8_t)*key++;
@@ -762,7 +717,8 @@ static uint32_t ci_hash(const char *key) {
     return hash;
 }
 
-static bool ci_same(const char *left, const char *right) {
+static bool ci_same(const char *left, const char *right)
+{
     while (*left && *left == *right) {
         ++left;
         ++right;
@@ -771,20 +727,21 @@ static bool ci_same(const char *left, const char *right) {
 }
 
 /* Index + 1 of the member already using @p key, or 0. */
-static uint32_t ci_set_find(const ci_walk *walk, const char *key) {
+static uint32_t ci_set_find(const ci_walk *walk, const char *key)
+{
     size_t mask, slot;
     if (!walk->slots) return 0U;
     mask = walk->slot_count - 1U;
     slot = ci_hash(key) & mask;
     while (walk->slots[slot] != 0U) {
-        if (ci_same(walk->items[walk->slots[slot] - 1U].key, key))
-            return walk->slots[slot];
+        if (ci_same(walk->items[walk->slots[slot] - 1U].key, key)) return walk->slots[slot];
         slot = (slot + 1U) & mask;
     }
     return 0U;
 }
 
-static bool ci_set_insert(ci_walk *walk, size_t member) {
+static bool ci_set_insert(ci_walk *walk, size_t member)
+{
     size_t mask, slot, index;
     if (walk->slot_count == 0U || (walk->count + 1U) * 2U > walk->slot_count) {
         size_t grown = walk->slot_count ? walk->slot_count * 2U : 64U;
@@ -810,7 +767,8 @@ static bool ci_set_insert(ci_walk *walk, size_t member) {
 }
 
 /* Append ".<index>" (and "_<k>" when even that is taken) to both strings. */
-static bool ci_suffix(char **text, const char *suffix) {
+static bool ci_suffix(char **text, const char *suffix)
+{
     char *joined = xx_str_concat(*text, suffix);
     char *copy;
     size_t length;
@@ -828,8 +786,8 @@ static bool ci_suffix(char **text, const char *suffix) {
     return true;
 }
 
-static void ci_decimal(char *out, const char *prefix, size_t value,
-                       unsigned width) {
+static void ci_decimal(char *out, const char *prefix, size_t value, unsigned width)
+{
     char digits[24];
     unsigned count = 0U;
     size_t position = 0U;
@@ -845,30 +803,26 @@ static void ci_decimal(char *out, const char *prefix, size_t value,
 
 /* Two members that fold to the same name must not overwrite each other: the
  * later one gets its member index appended. */
-static bool ci_publish(ci_walk *walk, ci_member *member) {
+static bool ci_publish(ci_walk *walk, ci_member *member)
+{
     ci_member *grown;
     char suffix[40];
     unsigned attempt;
     if (walk->count >= CI_MAX_RECORDS) return false;
     if (walk->count == walk->capacity) {
         size_t capacity = walk->capacity ? walk->capacity * 2U : 32U;
-        grown = (ci_member *)xx_mem_realloc(walk->items,
-                                            capacity * sizeof(*grown));
+        grown = (ci_member *)xx_mem_realloc(walk->items, capacity * sizeof(*grown));
         if (!grown) return false;
         walk->items = grown;
         walk->capacity = capacity;
     }
     if (ci_set_find(walk, member->key) != 0U) {
         ci_decimal(suffix, ".", walk->count, 4U);
-        if (!ci_suffix(&member->name, suffix) ||
-            !ci_suffix(&member->key, suffix))
-            return false;
+        if (!ci_suffix(&member->name, suffix) || !ci_suffix(&member->key, suffix)) return false;
         for (attempt = 1U; ci_set_find(walk, member->key) != 0U; ++attempt) {
             if (attempt > 16U) return false;
             ci_decimal(suffix, "_", attempt, 1U);
-            if (!ci_suffix(&member->name, suffix) ||
-                !ci_suffix(&member->key, suffix))
-                return false;
+            if (!ci_suffix(&member->name, suffix) || !ci_suffix(&member->key, suffix)) return false;
         }
     }
     walk->name_bytes += xx_str_len(member->name) + xx_str_len(member->key);
@@ -883,81 +837,72 @@ static bool ci_publish(ci_walk *walk, ci_member *member) {
 /* Names                                                                   */
 
 /* Windows-1252 bytes 0x80..0x9F; 0 marks the five unassigned positions. */
-static const uint16_t ci_cp1252_high[32] = {
-    0x20AC, 0x0000, 0x201A, 0x0192, 0x201E, 0x2026, 0x2020, 0x2021,
-    0x02C6, 0x2030, 0x0160, 0x2039, 0x0152, 0x0000, 0x017D, 0x0000,
-    0x0000, 0x2018, 0x2019, 0x201C, 0x201D, 0x2022, 0x2013, 0x2014,
-    0x02DC, 0x2122, 0x0161, 0x203A, 0x0153, 0x0000, 0x017E, 0x0178};
+static const uint16_t ci_cp1252_high[32] = {0x20AC, 0x0000, 0x201A, 0x0192, 0x201E, 0x2026, 0x2020, 0x2021, 0x02C6, 0x2030, 0x0160,
+                                            0x2039, 0x0152, 0x0000, 0x017D, 0x0000, 0x0000, 0x2018, 0x2019, 0x201C, 0x201D, 0x2022,
+                                            0x2013, 0x2014, 0x02DC, 0x2122, 0x0161, 0x203A, 0x0153, 0x0000, 0x017E, 0x0178};
 
-static uint32_t ci_cp1252(uint8_t value) {
+static uint32_t ci_cp1252(uint8_t value)
+{
     if (value >= 0x80U && value < 0xA0U) return ci_cp1252_high[value - 0x80U];
     return value;
 }
 
 /* Lower-case fold of a Windows-1252 byte, as the file system would see it. */
-static uint8_t ci_fold(uint8_t value) {
+static uint8_t ci_fold(uint8_t value)
+{
     if (value >= 'A' && value <= 'Z') return (uint8_t)(value + 0x20U);
-    if (value >= 0xC0U && value <= 0xDEU && value != 0xD7U)
-        return (uint8_t)(value + 0x20U);
-    if (value == 0x8AU || value == 0x8CU || value == 0x8EU)
-        return (uint8_t)(value + 0x10U);
+    if (value >= 0xC0U && value <= 0xDEU && value != 0xD7U) return (uint8_t)(value + 0x20U);
+    if (value == 0x8AU || value == 0x8CU || value == 0x8EU) return (uint8_t)(value + 0x10U);
     if (value == 0x9FU) return 0xFFU;
     return value;
 }
 
-static uint8_t ci_upper_ascii(uint8_t value) {
+static uint8_t ci_upper_ascii(uint8_t value)
+{
     return (value >= 'a' && value <= 'z') ? (uint8_t)(value - 0x20U) : value;
 }
 
 /* CON, PRN, AUX, NUL, COM0-9, LPT0-9, CONIN$, CONOUT$ and CLOCK$, with or
  * without an extension, in any case. */
-static bool ci_is_device(const uint8_t *text, size_t length) {
-    static const char *const names[] = {"CON",    "PRN",     "AUX",
-                                        "NUL",    "CONIN$",  "CONOUT$",
-                                        "CLOCK$"};
+static bool ci_is_device(const uint8_t *text, size_t length)
+{
+    static const char *const names[] = {"CON", "PRN", "AUX", "NUL", "CONIN$", "CONOUT$", "CLOCK$"};
     size_t stem = 0U, index, position;
     while (stem < length && text[stem] != '.') ++stem;
     while (stem > 0U && text[stem - 1U] == ' ') --stem;
     for (index = 0U; index < sizeof(names) / sizeof(names[0]); ++index) {
         const char *name = names[index];
         for (position = 0U; position < stem && name[position]; ++position)
-            if (ci_upper_ascii(text[position]) != (uint8_t)name[position])
-                break;
+            if (ci_upper_ascii(text[position]) != (uint8_t)name[position]) break;
         if (position == stem && name[position] == 0) return true;
     }
     /* COM0-9 and LPT0-9, plus the superscript digits 1-3 (CP1252 0xB9,
      * 0xB2, 0xB3) that older Windows versions map to COM1-3 and LPT1-3. */
-    if (stem == 4U && ((text[3] >= '0' && text[3] <= '9') ||
-                       text[3] == 0xB9U || text[3] == 0xB2U ||
-                       text[3] == 0xB3U)) {
-        uint8_t a = ci_upper_ascii(text[0]), b = ci_upper_ascii(text[1]),
-                c = ci_upper_ascii(text[2]);
-        if ((a == 'C' && b == 'O' && c == 'M') ||
-            (a == 'L' && b == 'P' && c == 'T'))
-            return true;
+    if (stem == 4U && ((text[3] >= '0' && text[3] <= '9') || text[3] == 0xB9U || text[3] == 0xB2U || text[3] == 0xB3U)) {
+        uint8_t a = ci_upper_ascii(text[0]), b = ci_upper_ascii(text[1]), c = ci_upper_ascii(text[2]);
+        if ((a == 'C' && b == 'O' && c == 'M') || (a == 'L' && b == 'P' && c == 'T')) return true;
     }
     return false;
 }
 
 /* A component that could escape the output directory or that Windows would
  * not create as an ordinary file. */
-static bool ci_component_unsafe(const uint8_t *text, size_t length) {
+static bool ci_component_unsafe(const uint8_t *text, size_t length)
+{
     size_t index;
     bool meaningful = false;
     for (index = 0U; index < length; ++index) {
         uint8_t c = text[index];
-        if (c < 0x20U || c == 0x7FU || c == '<' || c == '>' || c == ':' ||
-            c == '"' || c == '|' || c == '?' || c == '*')
-            return true;
+        if (c < 0x20U || c == 0x7FU || c == '<' || c == '>' || c == ':' || c == '"' || c == '|' || c == '?' || c == '*') return true;
         if (c != '.' && c != ' ') meaningful = true;
     }
     return !meaningful || ci_is_device(text, length);
 }
 
 /* The characters Windows reserves in a name, and control bytes. */
-static bool ci_reserved_char(uint8_t c) {
-    return c < 0x20U || c == 0x7FU || c == '<' || c == '>' || c == ':' ||
-           c == '"' || c == '|' || c == '?' || c == '*';
+static bool ci_reserved_char(uint8_t c)
+{
+    return c < 0x20U || c == 0x7FU || c == '<' || c == '>' || c == ':' || c == '"' || c == '|' || c == '?' || c == '*';
 }
 
 /* One component in UTF-8 and its fold key.  The listed name is already
@@ -970,8 +915,8 @@ static bool ci_reserved_char(uint8_t c) {
  * the fold of exactly the name that is written: "a.txt." and "A.TXT" collide,
  * as do "a.txt" and "a_.txt", and a collision suffix appended to both
  * keeps them in step. */
-static bool ci_component_strings(const uint8_t *text, size_t length,
-                                 char **utf8_out, char **key_out) {
+static bool ci_component_strings(const uint8_t *text, size_t length, char **utf8_out, char **key_out)
+{
     uint8_t *clean = (uint8_t *)xx_mem_alloc(length + 2U);
     char *utf8 = (char *)xx_mem_alloc((length + 1U) * 3U + 1U);
     char *key = (char *)xx_mem_alloc(length + 2U);
@@ -988,15 +933,12 @@ static bool ci_component_strings(const uint8_t *text, size_t length,
     if (meaningful && ci_is_device(text, length)) clean[clean_length++] = '_';
     for (index = 0U; index < length; ++index) {
         uint8_t c = text[index];
-        if (!meaningful || ci_reserved_char(c) || ci_cp1252(c) == 0U)
-            c = (uint8_t)'_';
+        if (!meaningful || ci_reserved_char(c) || ci_cp1252(c) == 0U) c = (uint8_t)'_';
         clean[clean_length++] = c;
     }
     /* A meaningful component keeps at least one byte that is neither a dot
      * nor a space, so this never empties it. */
-    while (clean_length > 0U && (clean[clean_length - 1U] == '.' ||
-                                 clean[clean_length - 1U] == ' '))
-        --clean_length;
+    while (clean_length > 0U && (clean[clean_length - 1U] == '.' || clean[clean_length - 1U] == ' ')) --clean_length;
     for (index = 0U; index < clean_length; ++index) {
         uint32_t code = ci_cp1252(clean[index]);
         if (code < 0x80U) {
@@ -1012,8 +954,7 @@ static bool ci_component_strings(const uint8_t *text, size_t length,
     }
     utf8[out] = 0;
     key_length = clean_length;
-    for (index = 0U; index < key_length; ++index)
-        key[index] = (char)ci_fold(clean[index]);
+    for (index = 0U; index < key_length; ++index) key[index] = (char)ci_fold(clean[index]);
     key[key_length] = 0;
     xx_mem_free(clean);
     *utf8_out = utf8;
@@ -1028,7 +969,8 @@ typedef struct ci_dirs_s {
     uint32_t depth;
 } ci_dirs;
 
-static void ci_dirs_pop(ci_dirs *dirs) {
+static void ci_dirs_pop(ci_dirs *dirs)
+{
     if (dirs->depth == 0U) return;
     --dirs->depth;
     xx_mem_free(dirs->name[dirs->depth]);
@@ -1037,7 +979,8 @@ static void ci_dirs_pop(ci_dirs *dirs) {
     dirs->key[dirs->depth] = NULL;
 }
 
-static void ci_dirs_clear(ci_dirs *dirs) {
+static void ci_dirs_clear(ci_dirs *dirs)
+{
     while (dirs->depth) ci_dirs_pop(dirs);
 }
 
@@ -1047,11 +990,10 @@ static void ci_dirs_clear(ci_dirs *dirs) {
  * members.  A leading separator (an absolute or UNC path), a drive letter,
  * ".." or a reserved name makes the member unsafe: it is listed, but never
  * written.  @p push receives each component. */
-typedef bool (*ci_component_fn)(void *context, const uint8_t *text,
-                                size_t length, bool unsafe);
+typedef bool (*ci_component_fn)(void *context, const uint8_t *text, size_t length, bool unsafe);
 
-static bool ci_split_name(const uint8_t *raw, size_t length, void *context,
-                          ci_component_fn push, bool *any_unsafe) {
+static bool ci_split_name(const uint8_t *raw, size_t length, void *context, ci_component_fn push, bool *any_unsafe)
+{
     size_t start, index;
     bool pushed = false, leading_unsafe = false;
     if (length >= 2U && raw[0] == '"' && raw[length - 1U] == '"') {
@@ -1064,8 +1006,7 @@ static bool ci_split_name(const uint8_t *raw, size_t length, void *context,
         if (index == length || raw[index] == '\\' || raw[index] == '/') {
             size_t part = index - start;
             if (part != 0U && !(part == 1U && raw[start] == '.')) {
-                bool unsafe = ci_component_unsafe(raw + start, part) ||
-                              leading_unsafe;
+                bool unsafe = ci_component_unsafe(raw + start, part) || leading_unsafe;
                 if (!push(context, raw + start, part, unsafe)) return false;
                 if (unsafe) *any_unsafe = true;
                 pushed = true;
@@ -1081,13 +1022,11 @@ static bool ci_split_name(const uint8_t *raw, size_t length, void *context,
     return true;
 }
 
-static bool ci_push_dir(void *context, const uint8_t *text, size_t length,
-                        bool unsafe) {
+static bool ci_push_dir(void *context, const uint8_t *text, size_t length, bool unsafe)
+{
     ci_dirs *dirs = (ci_dirs *)context;
     if (dirs->depth >= CI_MAX_DEPTH) return false;
-    if (!ci_component_strings(text, length, &dirs->name[dirs->depth],
-                              &dirs->key[dirs->depth]))
-        return false;
+    if (!ci_component_strings(text, length, &dirs->name[dirs->depth], &dirs->key[dirs->depth])) return false;
     dirs->unsafe[dirs->depth] = unsafe;
     ++dirs->depth;
     return true;
@@ -1101,12 +1040,11 @@ typedef struct ci_path_s {
     bool overflow;
 } ci_path;
 
-static void ci_path_add(ci_path *path, const char *name, const char *key) {
+static void ci_path_add(ci_path *path, const char *name, const char *key)
+{
     size_t name_length = xx_str_len(name), key_length = xx_str_len(key);
     size_t separator = path->name_length ? 1U : 0U;
-    if (path->overflow ||
-        path->name_length + separator + name_length > CI_MAX_PATH ||
-        path->key_length + separator + key_length > CI_MAX_PATH) {
+    if (path->overflow || path->name_length + separator + name_length > CI_MAX_PATH || path->key_length + separator + key_length > CI_MAX_PATH) {
         path->overflow = true;
         return;
     }
@@ -1122,8 +1060,8 @@ static void ci_path_add(ci_path *path, const char *name, const char *key) {
     path->key[path->key_length] = 0;
 }
 
-static bool ci_push_path(void *context, const uint8_t *text, size_t length,
-                         bool unsafe) {
+static bool ci_push_path(void *context, const uint8_t *text, size_t length, bool unsafe)
+{
     ci_path *path = (ci_path *)context;
     char *name = NULL, *key = NULL;
     (void)unsafe;
@@ -1134,7 +1072,8 @@ static bool ci_push_path(void *context, const uint8_t *text, size_t length,
     return true;
 }
 
-static char *ci_strdup(const char *text, size_t length) {
+static char *ci_strdup(const char *text, size_t length)
+{
     char *copy = (char *)xx_mem_alloc(length + 1U);
     if (!copy) return NULL;
     xx_rt_memcpy(copy, text, length);
@@ -1145,9 +1084,8 @@ static char *ci_strdup(const char *text, size_t length) {
 /* ---------------------------------------------------------------------- */
 /* Walk                                                                    */
 
-static bool ci_walk_records(Abstractformat *format, ci_codec *codec,
-                            const ci_head *head, int64_t records,
-                            ci_walk **out, xx_pd_struct *pd) {
+static bool ci_walk_records(Abstractformat *format, ci_codec *codec, const ci_head *head, int64_t records, ci_walk **out, xx_pd_struct *pd)
+{
     ci_walk *walk;
     ci_dirs dirs;
     ci_path *path = NULL;
@@ -1188,10 +1126,7 @@ static bool ci_walk_records(Abstractformat *format, ci_codec *codec,
         bool unsafe = false;
         uint32_t level;
         if (pd && xx_pd_is_stopped(pd)) goto done;
-        if (position > available - CI_RECORD_HEADER ||
-            !ci_read_at(format->device, format->base_address + position,
-                        header, sizeof(header)))
-            goto done;
+        if (position > available - CI_RECORD_HEADER || !ci_read_at(format->device, format->base_address + position, header, sizeof(header))) goto done;
         position += CI_RECORD_HEADER;
         type = header[0];
         method = header[14];
@@ -1206,18 +1141,14 @@ static bool ci_walk_records(Abstractformat *format, ci_codec *codec,
         }
         if (type != CI_RECORD_FILE && type != CI_RECORD_ENTER) goto done;
         length = (int32_t)(int16_t)(uint16_t)ci_le16(header + 15);
-        if (length <= 0 || length > CI_MAX_NAME ||
-            (int64_t)length > available - position ||
-            !ci_read_at(format->device, format->base_address + position, raw,
-                        (size_t)length))
+        if (length <= 0 || length > CI_MAX_NAME || (int64_t)length > available - position ||
+            !ci_read_at(format->device, format->base_address + position, raw, (size_t)length))
             goto done;
         position += length;
 
         if (type == CI_RECORD_ENTER) {
             /* The directory becomes the current directory plus the name. */
-            if (!ci_split_name(raw, (size_t)length, &dirs, ci_push_dir,
-                               &unsafe))
-                goto done;
+            if (!ci_split_name(raw, (size_t)length, &dirs, ci_push_dir, &unsafe)) goto done;
             continue;
         }
 
@@ -1231,16 +1162,12 @@ static bool ci_walk_records(Abstractformat *format, ci_codec *codec,
             ci_path_add(path, dirs.name[level], dirs.key[level]);
             if (dirs.unsafe[level]) unsafe = true;
         }
-        if (!ci_split_name(raw, (size_t)length, path, ci_push_path, &unsafe) ||
-            path->overflow)
-            goto done;
+        if (!ci_split_name(raw, (size_t)length, path, ci_push_path, &unsafe) || path->overflow) goto done;
 
         if (position > available - 4) goto done;
         {
             uint8_t size_bytes[4];
-            if (!ci_read_at(format->device, format->base_address + position,
-                            size_bytes, sizeof(size_bytes)))
-                goto done;
+            if (!ci_read_at(format->device, format->base_address + position, size_bytes, sizeof(size_bytes))) goto done;
             size = (int64_t)(int32_t)xx_data_get_u32(size_bytes, 4, 0, false);
         }
         position += 4;
@@ -1262,13 +1189,9 @@ static bool ci_walk_records(Abstractformat *format, ci_codec *codec,
         } else {
             uint64_t consumed = 0U;
             if (position >= available) goto done;
-            ci_input_open(&codec->in, format->device, NULL,
-                          format->base_address + position,
-                          (uint64_t)(available - position));
+            ci_input_open(&codec->in, format->device, NULL, format->base_address + position, (uint64_t)(available - position));
             ci_sink_none(codec);
-            if (!ci_decode_chain(codec, (uint64_t)size, &consumed, pd) ||
-                consumed == 0U || consumed > (uint64_t)(available - position))
-                goto done;
+            if (!ci_decode_chain(codec, (uint64_t)size, &consumed, pd) || consumed == 0U || consumed > (uint64_t)(available - position)) goto done;
             member.packed_size = (int64_t)consumed;
         }
         position += member.packed_size;
@@ -1299,7 +1222,8 @@ done:
     return result;
 }
 
-static bool ci_walk_container(Abstractformat *format, ci_walk **out, xx_pd_struct *pd) {
+static bool ci_walk_container(Abstractformat *format, ci_walk **out, xx_pd_struct *pd)
+{
     ci_codec *codec;
     ci_head head;
     uint32_t index;
@@ -1309,9 +1233,7 @@ static bool ci_walk_container(Abstractformat *format, ci_walk **out, xx_pd_struc
     codec = ci_codec_create();
     if (!codec) return false;
     if (ci_parse_head(format, codec, &head, pd)) {
-        for (index = 0U; index < head.candidate_count && !result; ++index)
-            result = ci_walk_records(format, codec, &head,
-                                     head.candidates[index], out, pd);
+        for (index = 0U; index < head.candidate_count && !result; ++index) result = ci_walk_records(format, codec, &head, head.candidates[index], out, pd);
     }
     xx_mem_free(codec);
     return result;
@@ -1320,8 +1242,8 @@ static bool ci_walk_container(Abstractformat *format, ci_walk **out, xx_pd_struc
 /* ---------------------------------------------------------------------- */
 /* Member extraction                                                       */
 
-static bool ci_unpack_member(Abstractformat *format, const ci_member *member,
-                             xx_io_device *destination, xx_pd_struct *pd) {
+static bool ci_unpack_member(Abstractformat *format, const ci_member *member, xx_io_device *destination, xx_pd_struct *pd)
+{
     ci_codec *codec;
     bool result = false;
     if (member->unpacked_size == 0) return true;
@@ -1331,17 +1253,18 @@ static bool ci_unpack_member(Abstractformat *format, const ci_member *member,
         int64_t done = 0;
         bool ok = buffer != NULL;
         while (ok && done < member->unpacked_size) {
-            size_t amount = member->unpacked_size - done < (int64_t)capacity
-                                ? (size_t)(member->unpacked_size - done)
-                                : capacity;
+            size_t amount = member->unpacked_size - done < (int64_t)capacity ? (size_t)(member->unpacked_size - done) : capacity;
             size_t written = 0U;
-            if (pd && xx_pd_is_stopped(pd)) { ok = false; break; }
-            if (!ci_read_at(format->device,
-                            format->base_address + member->data_offset + done,
-                            buffer, amount)) { ok = false; break; }
+            if (pd && xx_pd_is_stopped(pd)) {
+                ok = false;
+                break;
+            }
+            if (!ci_read_at(format->device, format->base_address + member->data_offset + done, buffer, amount)) {
+                ok = false;
+                break;
+            }
             while (destination && written < amount) {
-                ssize_t wrote = xx_io_write(destination, buffer + written,
-                                            amount - written);
+                ssize_t wrote = xx_io_write(destination, buffer + written, amount - written);
                 if (wrote <= 0 || (size_t)wrote > amount - written) {
                     ok = false;
                     break;
@@ -1355,19 +1278,14 @@ static bool ci_unpack_member(Abstractformat *format, const ci_member *member,
     }
     codec = ci_codec_create();
     if (!codec) return false;
-    ci_input_open(&codec->in, format->device, NULL,
-                  format->base_address + member->data_offset,
-                  (uint64_t)member->packed_size);
+    ci_input_open(&codec->in, format->device, NULL, format->base_address + member->data_offset, (uint64_t)member->packed_size);
     ci_sink_none(codec);
     codec->emit = destination != NULL;
     codec->sink_device = destination;
     {
         uint64_t consumed = 0U;
-        result = ci_decode_chain(codec, (uint64_t)member->unpacked_size,
-                                 &consumed, pd) &&
-                 consumed == (uint64_t)member->packed_size &&
-                 (!destination ||
-                  codec->written == (uint64_t)member->unpacked_size);
+        result = ci_decode_chain(codec, (uint64_t)member->unpacked_size, &consumed, pd) && consumed == (uint64_t)member->packed_size &&
+                 (!destination || codec->written == (uint64_t)member->unpacked_size);
     }
     xx_mem_free(codec);
     return result;
@@ -1376,17 +1294,16 @@ static bool ci_unpack_member(Abstractformat *format, const ci_member *member,
 /* ---------------------------------------------------------------------- */
 /* Records                                                                 */
 
-static bool ci_copy_options(xx_list_s *destination, const xx_list_s *source) {
+static bool ci_copy_options(xx_list_s *destination, const xx_list_s *source)
+{
     size_t index;
     if (!source) return true;
     for (index = 0U; index < source->count; ++index) {
-        const xx_meta *original =
-            (const xx_meta *)xx_list_at((const xx_list_t *)source, index);
+        const xx_meta *original = (const xx_meta *)xx_list_at((const xx_list_t *)source, index);
         xx_meta copy;
         if (!original) continue;
         xx_meta_init(&copy, original->meta_id);
-        if (!xx_var_copy(&copy.var, &original->var) ||
-            !xx_list_append(destination, &copy)) {
+        if (!xx_var_copy(&copy.var, &original->var) || !xx_list_append(destination, &copy)) {
             xx_meta_cleanup(&copy);
             return false;
         }
@@ -1394,67 +1311,49 @@ static bool ci_copy_options(xx_list_s *destination, const xx_list_s *source) {
     return true;
 }
 
-static const xx_var *ci_option(const xx_list_s *options, uint32_t id) {
+static const xx_var *ci_option(const xx_list_s *options, uint32_t id)
+{
     size_t index;
     if (!options) return NULL;
     for (index = 0U; index < options->count; ++index) {
-        const xx_meta *meta =
-            (const xx_meta *)xx_list_at((const xx_list_t *)options, index);
+        const xx_meta *meta = (const xx_meta *)xx_list_at((const xx_list_t *)options, index);
         if (meta && meta->meta_id == id) return &meta->var;
     }
     return NULL;
 }
 
-static bool ci_set_record(Abstractformat *format, xx_archive_record *record,
-                          const ci_member *member, size_t index) {
-    uint64_t method = (member->method == 1U || member->unpacked_size == 0)
-                          ? 0U
-                          : 1U;
+static bool ci_set_record(Abstractformat *format, xx_archive_record *record, const ci_member *member, size_t index)
+{
+    uint64_t method = (member->method == 1U || member->unpacked_size == 0) ? 0U : 1U;
     xx_archive_record_cleanup(record);
     xx_archive_record_init(record);
     record->header_offset = format->base_address + member->header_offset;
-    record->header_size = index == 0U
-                              ? 0
-                              : member->data_offset - member->header_offset;
+    record->header_size = index == 0U ? 0 : member->data_offset - member->header_offset;
     record->data_offset = format->base_address + member->data_offset;
     record->compressed_size = member->packed_size;
     if (!xx_archive_record_set_original_name(record, member->name) ||
-        !xx_archive_record_set_meta_u64(record, XX_META_ID_COMPRESSED_SIZE,
-                                        (uint64_t)member->packed_size) ||
-        !xx_archive_record_set_meta_u64(record, XX_META_ID_UNCOMPRESSED_SIZE,
-                                        (uint64_t)member->unpacked_size) ||
-        !xx_archive_record_set_meta_u64(record, XX_META_ID_COMPRESSION_METHOD,
-                                        method) ||
-        !xx_archive_record_set_meta_u64(record, XX_META_ID_FLAGS,
-                                        member->flag) ||
-        !xx_archive_record_set_meta_bool(record, XX_META_ID_IS_ENCRYPTED,
-                                         false) ||
-        !xx_archive_record_set_meta_bool(record, XX_META_ID_IS_FOLDER, false))
+        !xx_archive_record_set_meta_u64(record, XX_META_ID_COMPRESSED_SIZE, (uint64_t)member->packed_size) ||
+        !xx_archive_record_set_meta_u64(record, XX_META_ID_UNCOMPRESSED_SIZE, (uint64_t)member->unpacked_size) ||
+        !xx_archive_record_set_meta_u64(record, XX_META_ID_COMPRESSION_METHOD, method) || !xx_archive_record_set_meta_u64(record, XX_META_ID_FLAGS, member->flag) ||
+        !xx_archive_record_set_meta_bool(record, XX_META_ID_IS_ENCRYPTED, false) || !xx_archive_record_set_meta_bool(record, XX_META_ID_IS_FOLDER, false))
         return false;
-    if (member->attributes != 0U &&
-        !xx_archive_record_set_meta_u64(record, XX_META_ID_ATTRIBUTES,
-                                        member->attributes))
-        return false;
-    if (member->filetime > CI_FILETIME_MIN &&
-        member->filetime < CI_FILETIME_MAX &&
-        !xx_archive_record_set_meta_u64(record, XX_META_ID_TIMESTAMP,
-                                        member->filetime))
+    if (member->attributes != 0U && !xx_archive_record_set_meta_u64(record, XX_META_ID_ATTRIBUTES, member->attributes)) return false;
+    if (member->filetime > CI_FILETIME_MIN && member->filetime < CI_FILETIME_MAX && !xx_archive_record_set_meta_u64(record, XX_META_ID_TIMESTAMP, member->filetime))
         return false;
     return true;
 }
 
 /* The walk already refused traversal; this is the last gate before a name
  * reaches the file system. */
-static bool ci_safe_output_name(const char *name) {
+static bool ci_safe_output_name(const char *name)
+{
     size_t index, start = 0U, length;
     if (!name || !name[0] || name[0] == '/' || name[0] == '\\') return false;
     length = xx_str_len(name);
     for (index = 0U; index <= length; ++index) {
         if (index == length || name[index] == '/') {
             size_t part = index - start;
-            if (part == 0U ||
-                ci_component_unsafe((const uint8_t *)name + start, part))
-                return false;
+            if (part == 0U || ci_component_unsafe((const uint8_t *)name + start, part)) return false;
             start = index + 1U;
         } else if (name[index] == '\\') {
             return false;
@@ -1463,9 +1362,8 @@ static bool ci_safe_output_name(const char *name) {
     return true;
 }
 
-void xx_createinstall_instcrin_extractor_init(
-    xx_createinstall_instcrin_extractor *archive, xx_io_device *device,
-    int64_t base_address) {
+void xx_createinstall_instcrin_extractor_init(xx_createinstall_instcrin_extractor *archive, xx_io_device *device, int64_t base_address)
+{
     if (!archive) return;
     xx_mem_zero(archive, sizeof(*archive));
     xx_format_init(&archive->format, device, base_address);
@@ -1473,42 +1371,30 @@ void xx_createinstall_instcrin_extractor_init(
     archive->format.file_type = CI_FILE_TYPE;
     archive->format.format_type = XX_TYPE_ARCHIVE;
     archive->format.is_archive = true;
-    xx_format_set_mime_type(&archive->format,
-                            "application/x-createinstall-installer");
+    xx_format_set_mime_type(&archive->format, "application/x-createinstall-installer");
     xx_format_set_extension(&archive->format, "exe");
-    archive->format.check_is_valid =
-        xx_createinstall_instcrin_extractor_check_is_valid;
-    archive->format.handle_base_info =
-        xx_createinstall_instcrin_extractor_handle_base_info;
-    archive->format.get_format_size =
-        xx_createinstall_instcrin_extractor_get_format_size;
-    archive->format.get_number_of_archive_records =
-        xx_createinstall_instcrin_extractor_get_number_of_archive_records;
-    archive->format.create_archive_records_reading =
-        xx_createinstall_instcrin_extractor_create_archive_records_reading;
-    archive->format.get_current_archive_record =
-        xx_createinstall_instcrin_extractor_get_current_archive_record;
-    archive->format.unpack_current_archive_record =
-        xx_createinstall_instcrin_extractor_unpack_current_archive_record;
-    archive->format.archive_record_move_to_next =
-        xx_createinstall_instcrin_extractor_archive_record_move_to_next;
-    archive->format.free_archive_records_reading =
-        xx_createinstall_instcrin_extractor_free_archive_records_reading;
+    archive->format.check_is_valid = xx_createinstall_instcrin_extractor_check_is_valid;
+    archive->format.handle_base_info = xx_createinstall_instcrin_extractor_handle_base_info;
+    archive->format.get_format_size = xx_createinstall_instcrin_extractor_get_format_size;
+    archive->format.get_number_of_archive_records = xx_createinstall_instcrin_extractor_get_number_of_archive_records;
+    archive->format.create_archive_records_reading = xx_createinstall_instcrin_extractor_create_archive_records_reading;
+    archive->format.get_current_archive_record = xx_createinstall_instcrin_extractor_get_current_archive_record;
+    archive->format.unpack_current_archive_record = xx_createinstall_instcrin_extractor_unpack_current_archive_record;
+    archive->format.archive_record_move_to_next = xx_createinstall_instcrin_extractor_archive_record_move_to_next;
+    archive->format.free_archive_records_reading = xx_createinstall_instcrin_extractor_free_archive_records_reading;
     archive->container_offset = -1;
     archive->records_offset = -1;
 }
 
-xx_createinstall_instcrin_extractor *xx_createinstall_instcrin_extractor_create(
-    xx_io_device *device, int64_t base_address) {
-    xx_createinstall_instcrin_extractor *archive =
-        (xx_createinstall_instcrin_extractor *)xx_mem_alloc(sizeof(*archive));
-    if (archive)
-        xx_createinstall_instcrin_extractor_init(archive, device, base_address);
+xx_createinstall_instcrin_extractor *xx_createinstall_instcrin_extractor_create(xx_io_device *device, int64_t base_address)
+{
+    xx_createinstall_instcrin_extractor *archive = (xx_createinstall_instcrin_extractor *)xx_mem_alloc(sizeof(*archive));
+    if (archive) xx_createinstall_instcrin_extractor_init(archive, device, base_address);
     return archive;
 }
 
-void xx_createinstall_instcrin_extractor_destroy(
-    xx_createinstall_instcrin_extractor *archive) {
+void xx_createinstall_instcrin_extractor_destroy(xx_createinstall_instcrin_extractor *archive)
+{
     if (!archive) return;
     if (archive->walk) {
         ci_walk_free((ci_walk *)archive->walk);
@@ -1517,15 +1403,15 @@ void xx_createinstall_instcrin_extractor_destroy(
     xx_format_cleanup_extra_parameters(&archive->format);
 }
 
-void xx_createinstall_instcrin_extractor_free(
-    xx_createinstall_instcrin_extractor *archive) {
+void xx_createinstall_instcrin_extractor_free(xx_createinstall_instcrin_extractor *archive)
+{
     if (!archive) return;
     xx_createinstall_instcrin_extractor_destroy(archive);
     xx_mem_free(archive);
 }
 
-bool xx_createinstall_instcrin_extractor_check_is_valid(Abstractformat *format,
-                                                        xx_pd_struct *pd) {
+bool xx_createinstall_instcrin_extractor_check_is_valid(Abstractformat *format, xx_pd_struct *pd)
+{
     ci_codec *codec;
     ci_head head;
     bool result;
@@ -1539,8 +1425,8 @@ bool xx_createinstall_instcrin_extractor_check_is_valid(Abstractformat *format,
     return result;
 }
 
-bool xx_createinstall_instcrin_extractor_handle_base_info(
-    Abstractformat *format, xx_pd_struct *pd) {
+bool xx_createinstall_instcrin_extractor_handle_base_info(Abstractformat *format, xx_pd_struct *pd)
+{
     xx_createinstall_instcrin_extractor *archive;
     ci_walk *walk = NULL;
     if (!format) return false;
@@ -1572,28 +1458,20 @@ bool xx_createinstall_instcrin_extractor_handle_base_info(
     return true;
 }
 
-int64_t xx_createinstall_instcrin_extractor_get_format_size(
-    Abstractformat *format, xx_pd_struct *pd) {
-    return format && (format->base_info_handled ||
-                      xx_createinstall_instcrin_extractor_handle_base_info(
-                          format, pd))
-               ? format->format_size
-               : -1;
+int64_t xx_createinstall_instcrin_extractor_get_format_size(Abstractformat *format, xx_pd_struct *pd)
+{
+    return format && (format->base_info_handled || xx_createinstall_instcrin_extractor_handle_base_info(format, pd)) ? format->format_size : -1;
 }
 
-uint64_t xx_createinstall_instcrin_extractor_get_number_of_archive_records(
-    Abstractformat *format, xx_pd_struct *pd) {
-    return format && (format->base_info_handled ||
-                      xx_createinstall_instcrin_extractor_handle_base_info(
-                          format, pd))
-               ? ((xx_createinstall_instcrin_extractor *)format)
-                     ->number_of_records
+uint64_t xx_createinstall_instcrin_extractor_get_number_of_archive_records(Abstractformat *format, xx_pd_struct *pd)
+{
+    return format && (format->base_info_handled || xx_createinstall_instcrin_extractor_handle_base_info(format, pd))
+               ? ((xx_createinstall_instcrin_extractor *)format)->number_of_records
                : 0U;
 }
 
-xx_archive_record_state *
-xx_createinstall_instcrin_extractor_create_archive_records_reading(
-    Abstractformat *format, const xx_list_s *options, xx_pd_struct *pd) {
+xx_archive_record_state *xx_createinstall_instcrin_extractor_create_archive_records_reading(Abstractformat *format, const xx_list_s *options, xx_pd_struct *pd)
+{
     xx_createinstall_instcrin_extractor *archive;
     xx_archive_record_state *state;
     ci_walk *walk = NULL;
@@ -1621,8 +1499,7 @@ xx_createinstall_instcrin_extractor_create_archive_records_reading(
     state->internal_state = walk;
     state->free_internal = ci_walk_free_opaque;
     state->total_records = (int64_t)walk->count;
-    if (!ci_copy_options(&state->options, options) ||
-        !ci_set_record(format, &state->current_record, &walk->items[0], 0U)) {
+    if (!ci_copy_options(&state->options, options) || !ci_set_record(format, &state->current_record, &walk->items[0], 0U)) {
         xx_archive_record_state_free(state);
         return NULL;
     }
@@ -1630,32 +1507,26 @@ xx_createinstall_instcrin_extractor_create_archive_records_reading(
     return state;
 }
 
-const xx_archive_record *
-xx_createinstall_instcrin_extractor_get_current_archive_record(
-    Abstractformat *format, xx_archive_record_state *state) {
-    return format && state && state->format == format && state->has_record
-               ? &state->current_record
-               : NULL;
+const xx_archive_record *xx_createinstall_instcrin_extractor_get_current_archive_record(Abstractformat *format, xx_archive_record_state *state)
+{
+    return format && state && state->format == format && state->has_record ? &state->current_record : NULL;
 }
 
-bool xx_createinstall_instcrin_extractor_archive_record_move_to_next(
-    Abstractformat *format, xx_archive_record_state *state, xx_pd_struct *pd) {
+bool xx_createinstall_instcrin_extractor_archive_record_move_to_next(Abstractformat *format, xx_archive_record_state *state, xx_pd_struct *pd)
+{
     ci_walk *walk;
     (void)pd;
-    if (!format || !state || state->format != format ||
-        !(walk = (ci_walk *)state->internal_state) ||
-        ++walk->index >= walk->count) {
+    if (!format || !state || state->format != format || !(walk = (ci_walk *)state->internal_state) || ++walk->index >= walk->count) {
         if (state) state->has_record = false;
         return false;
     }
     ++state->current_index;
-    state->has_record = ci_set_record(format, &state->current_record,
-                                      &walk->items[walk->index], walk->index);
+    state->has_record = ci_set_record(format, &state->current_record, &walk->items[walk->index], walk->index);
     return state->has_record;
 }
 
-bool xx_createinstall_instcrin_extractor_unpack_current_archive_record(
-    Abstractformat *format, xx_archive_record_state *state, xx_pd_struct *pd) {
+bool xx_createinstall_instcrin_extractor_unpack_current_archive_record(Abstractformat *format, xx_archive_record_state *state, xx_pd_struct *pd)
+{
     ci_walk *walk;
     const ci_member *member;
     const xx_var *path_option;
@@ -1664,27 +1535,22 @@ bool xx_createinstall_instcrin_extractor_unpack_current_archive_record(
     char *path = NULL;
     bool result = false;
     bool created = false;
-    if (!format || !state || state->format != format || !state->has_record ||
-        !(walk = (ci_walk *)state->internal_state) ||
-        walk->index >= walk->count || (pd && xx_pd_is_stopped(pd)))
+    if (!format || !state || state->format != format || !state->has_record || !(walk = (ci_walk *)state->internal_state) || walk->index >= walk->count ||
+        (pd && xx_pd_is_stopped(pd)))
         return false;
     member = &walk->items[walk->index];
     path_option = ci_option(&state->options, XX_META_ID_OPT_UNPACK_PATH);
     if (!path_option) return ci_unpack_member(format, member, NULL, pd);
     if (member->unsafe || !ci_safe_output_name(member->name)) return false;
-    if (path_option->type == XX_VAR_TYPE_STRING ||
-        path_option->type == XX_VAR_TYPE_STRING_VIEW) {
+    if (path_option->type == XX_VAR_TYPE_STRING || path_option->type == XX_VAR_TYPE_STRING_VIEW) {
         base = xx_var_get_str(path_option);
-    } else if (path_option->type == XX_VAR_TYPE_WSTRING ||
-               path_option->type == XX_VAR_TYPE_WSTRING_VIEW) {
+    } else if (path_option->type == XX_VAR_TYPE_WSTRING || path_option->type == XX_VAR_TYPE_WSTRING_VIEW) {
         owned_base = xx_str_unicode_to_utf8(xx_var_get_wstr(path_option));
         base = owned_base;
     }
     if (!base) goto done;
-    path = (base[0] && base[xx_str_len(base) - 1U] != '/' &&
-            base[xx_str_len(base) - 1U] != '\\')
-               ? xx_str_concat3(base, "/", member->name)
-               : xx_str_concat(base, member->name);
+    path = (base[0] && base[xx_str_len(base) - 1U] != '/' && base[xx_str_len(base) - 1U] != '\\') ? xx_str_concat3(base, "/", member->name)
+                                                                                                  : xx_str_concat(base, member->name);
     if (!path || !xx_store_create_dirs_a(path, false)) goto done;
     {
         xx_io_device *destination = xx_io_file_open(path, "wb");
@@ -1700,8 +1566,8 @@ done:
     return result;
 }
 
-void xx_createinstall_instcrin_extractor_free_archive_records_reading(
-    Abstractformat *format, xx_archive_record_state *state) {
+void xx_createinstall_instcrin_extractor_free_archive_records_reading(Abstractformat *format, xx_archive_record_state *state)
+{
     (void)format;
     xx_archive_record_state_free(state);
 }

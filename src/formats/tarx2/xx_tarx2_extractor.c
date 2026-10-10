@@ -17,62 +17,54 @@
 #include "../xx_format_extractor_engine.h"
 #include "xxfclib/formats/tarx2/xx_tarx2.h"
 
-static const uint8_t k_anchor0[] = { 0x78, 0x76, 0x95, 0x7D };
+static const uint8_t k_anchor0[] = {0x78, 0x76, 0x95, 0x7D};
 
 static const xx_format_search_anchor k_anchors[] = {
-    { k_anchor0, sizeof(k_anchor0), 0U },
+    {k_anchor0, sizeof(k_anchor0), 0U},
 };
 
-static const xx_file_type_t k_types[] = { XX_FILE_TYPE_TARX2 };
+static const xx_file_type_t k_types[] = {XX_FILE_TYPE_TARX2};
 
-static Abstractformat *xx_tarx2_search_open(xx_io_device *window) {
+static Abstractformat *xx_tarx2_search_open(xx_io_device *window)
+{
     xx_tarx2 *reader = xx_tarx2_create(window, 0);
     return reader ? &reader->format : NULL;
 }
 
-static void xx_tarx2_search_close(Abstractformat *format) {
+static void xx_tarx2_search_close(Abstractformat *format)
+{
     /* The format is the first member, so this is the reader itself. */
     xx_tarx2_free((xx_tarx2 *)format);
 }
 
 static const xx_format_search_desc k_desc = {
-    k_types, sizeof(k_types) / sizeof(k_types[0]),
-    k_anchors, sizeof(k_anchors) / sizeof(k_anchors[0]),
-    xx_tarx2_search_open, xx_tarx2_search_close, false
-};
+    k_types, sizeof(k_types) / sizeof(k_types[0]), k_anchors, sizeof(k_anchors) / sizeof(k_anchors[0]), xx_tarx2_search_open, xx_tarx2_search_close, false};
 
-static xx_format_search_state *xx_tarx2_create_format_search(
-    xx_format_extractor *self, xx_io_device *device, const xx_list_s *options,
-    xx_pd_struct *pd) {
+static xx_format_search_state *xx_tarx2_create_format_search(xx_format_extractor *self, xx_io_device *device, const xx_list_s *options, xx_pd_struct *pd)
+{
     (void)self;
     return xx_format_search_create(&k_desc, device, options, pd);
 }
 
-static const xx_format_search_info *xx_tarx2_get_current_format_info(
-    xx_format_extractor *self, xx_format_search_state *state) {
+static const xx_format_search_info *xx_tarx2_get_current_format_info(xx_format_extractor *self, xx_format_search_state *state)
+{
     (void)self;
     return xx_format_search_current(state);
 }
 
-static bool xx_tarx2_format_search_find_next(xx_format_extractor *self,
-                                          xx_format_search_state *state,
-                                          xx_pd_struct *pd) {
+static bool xx_tarx2_format_search_find_next(xx_format_extractor *self, xx_format_search_state *state, xx_pd_struct *pd)
+{
     (void)self;
     return xx_format_search_find_next(state, pd);
 }
 
-static void xx_tarx2_free_format_search(xx_format_extractor *self,
-                                     xx_format_search_state *state) {
+static void xx_tarx2_free_format_search(xx_format_extractor *self, xx_format_search_state *state)
+{
     (void)self;
     xx_format_search_free(state);
 }
 
-xx_format_extractor xx_tarx2_extractor = {
-    xx_tarx2_create_format_search,
-    xx_tarx2_get_current_format_info,
-    xx_tarx2_format_search_find_next,
-    xx_tarx2_free_format_search
-};
+xx_format_extractor xx_tarx2_extractor = {xx_tarx2_create_format_search, xx_tarx2_get_current_format_info, xx_tarx2_format_search_find_next, xx_tarx2_free_format_search};
 
 /* BEGIN GENERATED ABSTRACT EXTRACTOR */
 #include "../xx_format_abstract_extractor_adapter.h"

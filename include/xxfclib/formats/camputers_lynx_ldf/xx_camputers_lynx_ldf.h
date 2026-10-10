@@ -45,39 +45,23 @@ typedef xx_camputers_lynx_ldf xx_camputers_lynx_ldf_t;
 
 #define XX_CAMPUTERS_LYNX_LDF_SECTOR_SIZE 512U
 #define XX_CAMPUTERS_LYNX_LDF_SECTORS_PER_TRACK 10U
-#define XX_CAMPUTERS_LYNX_LDF_TRACK_SIZE \
-    (XX_CAMPUTERS_LYNX_LDF_SECTOR_SIZE * XX_CAMPUTERS_LYNX_LDF_SECTORS_PER_TRACK)
+#define XX_CAMPUTERS_LYNX_LDF_TRACK_SIZE (XX_CAMPUTERS_LYNX_LDF_SECTOR_SIZE * XX_CAMPUTERS_LYNX_LDF_SECTORS_PER_TRACK)
 
-XXFC_API void xx_camputers_lynx_ldf_init(xx_camputers_lynx_ldf *archive,
-                                         xx_io_device *device,
-                                         int64_t base_address);
-XXFC_API xx_camputers_lynx_ldf *xx_camputers_lynx_ldf_create(
-    xx_io_device *device, int64_t base_address);
+XXFC_API void xx_camputers_lynx_ldf_init(xx_camputers_lynx_ldf *archive, xx_io_device *device, int64_t base_address);
+XXFC_API xx_camputers_lynx_ldf *xx_camputers_lynx_ldf_create(xx_io_device *device, int64_t base_address);
 XXFC_API void xx_camputers_lynx_ldf_destroy(xx_camputers_lynx_ldf *archive);
 XXFC_API void xx_camputers_lynx_ldf_free(xx_camputers_lynx_ldf *archive);
 
-XXFC_API bool xx_camputers_lynx_ldf_check_is_valid(Abstractformat *self,
-                                                   xx_pd_struct *pd);
-XXFC_API bool xx_camputers_lynx_ldf_handle_base_info(Abstractformat *self,
-                                                     xx_pd_struct *pd);
-XXFC_API int64_t xx_camputers_lynx_ldf_get_format_size(Abstractformat *self,
-                                                       xx_pd_struct *pd);
-XXFC_API uint64_t xx_camputers_lynx_ldf_get_number_of_archive_records(
-    Abstractformat *self, xx_pd_struct *pd);
+XXFC_API bool xx_camputers_lynx_ldf_check_is_valid(Abstractformat *self, xx_pd_struct *pd);
+XXFC_API bool xx_camputers_lynx_ldf_handle_base_info(Abstractformat *self, xx_pd_struct *pd);
+XXFC_API int64_t xx_camputers_lynx_ldf_get_format_size(Abstractformat *self, xx_pd_struct *pd);
+XXFC_API uint64_t xx_camputers_lynx_ldf_get_number_of_archive_records(Abstractformat *self, xx_pd_struct *pd);
 
-XXFC_API xx_archive_record_state *
-xx_camputers_lynx_ldf_create_archive_records_reading(Abstractformat *self,
-                                                     const xx_list_s *options,
-                                                     xx_pd_struct *pd);
-XXFC_API const xx_archive_record *
-xx_camputers_lynx_ldf_get_current_archive_record(
-    Abstractformat *self, xx_archive_record_state *state);
-XXFC_API bool xx_camputers_lynx_ldf_unpack_current_archive_record(
-    Abstractformat *self, xx_archive_record_state *state, xx_pd_struct *pd);
-XXFC_API bool xx_camputers_lynx_ldf_archive_record_move_to_next(
-    Abstractformat *self, xx_archive_record_state *state, xx_pd_struct *pd);
-XXFC_API void xx_camputers_lynx_ldf_free_archive_records_reading(
-    Abstractformat *self, xx_archive_record_state *state);
+XXFC_API xx_archive_record_state *xx_camputers_lynx_ldf_create_archive_records_reading(Abstractformat *self, const xx_list_s *options, xx_pd_struct *pd);
+XXFC_API const xx_archive_record *xx_camputers_lynx_ldf_get_current_archive_record(Abstractformat *self, xx_archive_record_state *state);
+XXFC_API bool xx_camputers_lynx_ldf_unpack_current_archive_record(Abstractformat *self, xx_archive_record_state *state, xx_pd_struct *pd);
+XXFC_API bool xx_camputers_lynx_ldf_archive_record_move_to_next(Abstractformat *self, xx_archive_record_state *state, xx_pd_struct *pd);
+XXFC_API void xx_camputers_lynx_ldf_free_archive_records_reading(Abstractformat *self, xx_archive_record_state *state);
 
 /**
  * @brief Geometry implied by the image size.
@@ -85,8 +69,7 @@ XXFC_API void xx_camputers_lynx_ldf_free_archive_records_reading(
  * @return false when the bytes from base_address to the end of the device
  *         are not exactly one of the three LDF sizes.
  */
-XXFC_API bool xx_camputers_lynx_ldf_get_geometry(
-    xx_camputers_lynx_ldf *archive, uint32_t *cylinders, uint32_t *heads);
+XXFC_API bool xx_camputers_lynx_ldf_get_geometry(xx_camputers_lynx_ldf *archive, uint32_t *cylinders, uint32_t *heads);
 
 /**
  * @brief Copy the 5120 bytes of one track into @p buffer.
@@ -95,9 +78,7 @@ XXFC_API bool xx_camputers_lynx_ldf_get_geometry(
  * @param head      0 .. heads - 1
  * @param buffer    receives XX_CAMPUTERS_LYNX_LDF_TRACK_SIZE bytes
  */
-XXFC_API bool xx_camputers_lynx_ldf_read_track(xx_camputers_lynx_ldf *archive,
-                                               uint32_t cylinder,
-                                               uint32_t head, uint8_t *buffer);
+XXFC_API bool xx_camputers_lynx_ldf_read_track(xx_camputers_lynx_ldf *archive, uint32_t cylinder, uint32_t head, uint8_t *buffer);
 
 #ifdef __cplusplus
 }

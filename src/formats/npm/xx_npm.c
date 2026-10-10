@@ -17,7 +17,8 @@
 #define XX_NPM_RECORD_LIMIT 20000U
 #define XX_NPM_JSON_DEPTH_LIMIT 64U
 
-static void xx_npm_apply_identity(Abstractformat *format) {
+static void xx_npm_apply_identity(Abstractformat *format)
+{
     if (!format) {
         return;
     }
@@ -40,7 +41,8 @@ static void xx_npm_apply_identity(Abstractformat *format) {
  * package/package.json, so a lenient parse would weaken the identification
  * rather than just the validation.
  */
-static bool xx_npm_json_string_has_content(const char *text) {
+static bool xx_npm_json_string_has_content(const char *text)
+{
     size_t i;
 
     if (!text) return false;
@@ -51,7 +53,8 @@ static bool xx_npm_json_string_has_content(const char *text) {
     return false;
 }
 
-static bool xx_npm_package_json_is_valid(const uint8_t *data, size_t size) {
+static bool xx_npm_package_json_is_valid(const uint8_t *data, size_t size)
+{
     xx_json json;
     bool name_valid = false;
     bool version_valid = false;
@@ -67,8 +70,7 @@ static bool xx_npm_package_json_is_valid(const uint8_t *data, size_t size) {
             bool ok;
 
             if (!xx_json_object_key(&json, &key)) return false;
-            if (xx_str_cmp(key, "name") == 0 ||
-                xx_str_cmp(key, "version") == 0) {
+            if (xx_str_cmp(key, "name") == 0 || xx_str_cmp(key, "version") == 0) {
                 bool is_name = xx_str_cmp(key, "name") == 0;
                 /* The value must be a string; anything else leaves the flag
                  * false, which fails the check below rather than the parse. */
@@ -106,7 +108,8 @@ static bool xx_npm_package_json_is_valid(const uint8_t *data, size_t size) {
     return name_valid && version_valid;
 }
 
-static bool xx_npm_record_name_matches(const xx_archive_record *record) {
+static bool xx_npm_record_name_matches(const xx_archive_record *record)
+{
     const char *name;
     const wchar_t *name_w;
     char *owned_name = NULL;
@@ -129,8 +132,8 @@ static bool xx_npm_record_name_matches(const xx_archive_record *record) {
     return result;
 }
 
-static bool xx_npm_has_valid_package_json(Abstractformat *self,
-                                          xx_pd_struct *pd) {
+static bool xx_npm_has_valid_package_json(Abstractformat *self, xx_pd_struct *pd)
+{
     xx_tar_gz probe;
     xx_tar_common *common;
     xx_archive_record_state *state = NULL;
@@ -146,38 +149,24 @@ static bool xx_npm_has_valid_package_json(Abstractformat *self,
         return false;
     }
     common = (xx_tar_common *)probe.internal;
-    state = xx_tar_gz_create_archive_records_reading(
-        &probe.format, NULL, NULL);
+    state = xx_tar_gz_create_archive_records_reading(&probe.format, NULL, NULL);
     while (state && state->has_record && visited < XX_NPM_RECORD_LIMIT) {
-        const xx_archive_record *record =
-            xx_tar_gz_get_current_archive_record(&probe.format, state);
+        const xx_archive_record *record = xx_tar_gz_get_current_archive_record(&probe.format, state);
         ++visited;
         if (pd && xx_pd_is_stopped(pd)) {
             break;
         }
         if (xx_npm_record_name_matches(record)) {
-            uint64_t unpacked_size = xx_archive_record_get_meta_u64(
-                record, XX_META_ID_UNCOMPRESSED_SIZE, 0U);
-            bool is_folder = xx_archive_record_get_meta_bool(
-                record, XX_META_ID_IS_FOLDER, false);
-            if (common && common->decoded_data && !is_folder &&
-                unpacked_size > 0U &&
-                unpacked_size <= XX_NPM_PACKAGE_JSON_LIMIT &&
-                record->compressed_size == (int64_t)unpacked_size &&
-                record->data_offset >= 0 &&
-                (uint64_t)record->data_offset <=
-                    (uint64_t)common->decoded_size &&
-                unpacked_size <=
-                    (uint64_t)common->decoded_size -
-                        (uint64_t)record->data_offset) {
-                result = xx_npm_package_json_is_valid(
-                    common->decoded_data + (size_t)record->data_offset,
-                    (size_t)unpacked_size);
+            uint64_t unpacked_size = xx_archive_record_get_meta_u64(record, XX_META_ID_UNCOMPRESSED_SIZE, 0U);
+            bool is_folder = xx_archive_record_get_meta_bool(record, XX_META_ID_IS_FOLDER, false);
+            if (common && common->decoded_data && !is_folder && unpacked_size > 0U && unpacked_size <= XX_NPM_PACKAGE_JSON_LIMIT &&
+                record->compressed_size == (int64_t)unpacked_size && record->data_offset >= 0 && (uint64_t)record->data_offset <= (uint64_t)common->decoded_size &&
+                unpacked_size <= (uint64_t)common->decoded_size - (uint64_t)record->data_offset) {
+                result = xx_npm_package_json_is_valid(common->decoded_data + (size_t)record->data_offset, (size_t)unpacked_size);
             }
             break;
         }
-        if (!xx_tar_gz_archive_record_move_to_next(&probe.format, state,
-                                                    NULL)) {
+        if (!xx_tar_gz_archive_record_move_to_next(&probe.format, state, NULL)) {
             break;
         }
     }
@@ -188,13 +177,15 @@ static bool xx_npm_has_valid_package_json(Abstractformat *self,
     return result;
 }
 
-static void xx_npm_vtable_destroy(Abstractformat *self) {
+static void xx_npm_vtable_destroy(Abstractformat *self)
+{
     if (self) {
         xx_npm_destroy((xx_npm *)self);
     }
 }
 
-void xx_npm_init(xx_npm *npm, xx_io_device *dev, int64_t base_address) {
+void xx_npm_init(xx_npm *npm, xx_io_device *dev, int64_t base_address)
+{
     Abstractformat *format;
 
     if (!npm) {
@@ -211,7 +202,8 @@ void xx_npm_init(xx_npm *npm, xx_io_device *dev, int64_t base_address) {
     format->destroy = xx_npm_vtable_destroy;
 }
 
-xx_npm *xx_npm_create(xx_io_device *dev, int64_t base_address) {
+xx_npm *xx_npm_create(xx_io_device *dev, int64_t base_address)
+{
     xx_npm *npm = (xx_npm *)xx_mem_alloc(sizeof(*npm));
     if (!npm) {
         return NULL;
@@ -220,13 +212,15 @@ xx_npm *xx_npm_create(xx_io_device *dev, int64_t base_address) {
     return npm;
 }
 
-void xx_npm_destroy(xx_npm *npm) {
+void xx_npm_destroy(xx_npm *npm)
+{
     if (npm) {
         xx_tar_gz_destroy(&npm->tar_gz);
     }
 }
 
-void xx_npm_free(xx_npm *npm) {
+void xx_npm_free(xx_npm *npm)
+{
     if (!npm) {
         return;
     }
@@ -234,11 +228,13 @@ void xx_npm_free(xx_npm *npm) {
     xx_mem_free(npm);
 }
 
-bool xx_npm_check_is_valid(Abstractformat *self, xx_pd_struct *pd) {
+bool xx_npm_check_is_valid(Abstractformat *self, xx_pd_struct *pd)
+{
     return xx_npm_has_valid_package_json(self, pd);
 }
 
-bool xx_npm_handle_base_info(Abstractformat *self, xx_pd_struct *pd) {
+bool xx_npm_handle_base_info(Abstractformat *self, xx_pd_struct *pd)
+{
     bool result;
 
     if (!self) {

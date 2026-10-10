@@ -105,16 +105,13 @@ typedef struct xx_winlink_stream_s {
 
 /* ------------------------------------------------------------ helpers --- */
 
-static bool xx_winlink_read_at(Abstractformat *self, int64_t offset,
-                               void *buffer, size_t size) {
+static bool xx_winlink_read_at(Abstractformat *self, int64_t offset, void *buffer, size_t size)
+{
     size_t done = 0U;
 
-    if (!self || !self->device || (!buffer && size != 0U) || offset < 0 ||
-        xx_io_seek64(self->device, offset, SEEK_SET) != 0)
-        return false;
+    if (!self || !self->device || (!buffer && size != 0U) || offset < 0 || xx_io_seek64(self->device, offset, SEEK_SET) != 0) return false;
     while (done < size) {
-        ssize_t amount =
-            xx_io_read(self->device, (uint8_t *)buffer + done, size - done);
+        ssize_t amount = xx_io_read(self->device, (uint8_t *)buffer + done, size - done);
         if (amount <= 0 || (size_t)amount > size - done) return false;
         done += (size_t)amount;
     }
@@ -123,7 +120,8 @@ static bool xx_winlink_read_at(Abstractformat *self, int64_t offset,
 
 /* An MS-DOS packed date whose month or day is out of range is not a date,
  * and a header that carries one is not a WinLink header. */
-static bool xx_winlink_date_sane(uint16_t date) {
+static bool xx_winlink_date_sane(uint16_t date)
+{
     unsigned month = (unsigned)((date >> 5U) & 0x0fU);
     unsigned day = (unsigned)(date & 0x1fU);
 
@@ -135,8 +133,8 @@ static bool xx_winlink_date_sane(uint16_t date) {
  * characters, the terminating NUL, and then nothing but NULs to the end of
  * the fixed field.  Requiring the dot is what turns a field of printable
  * bytes into a real signature. */
-static bool xx_winlink_name_field_sane(const uint8_t *field, size_t size,
-                                       size_t *length) {
+static bool xx_winlink_name_field_sane(const uint8_t *field, size_t size, size_t *length)
+{
     size_t index = 0U;
     size_t run;
 
@@ -164,7 +162,8 @@ static bool xx_winlink_name_field_sane(const uint8_t *field, size_t size,
 
 /* Rewrite only the filesystem-facing form; the bytes themselves are kept for
  * the caller's code page. */
-static char *xx_winlink_normalize_name(const uint8_t *bytes, size_t size) {
+static char *xx_winlink_normalize_name(const uint8_t *bytes, size_t size)
+{
     char *name;
     size_t input;
     size_t output = 0U;
@@ -174,20 +173,17 @@ static char *xx_winlink_normalize_name(const uint8_t *bytes, size_t size) {
     if (!name) return NULL;
     for (input = 0U; input < size; ++input) {
         uint8_t c = bytes[input];
-        if (c < 0x20U || c == '/' || c == '\\' || c == ':' || c == '"' ||
-            c == '*' || c == '<' || c == '>' || c == '?' || c == '|')
-            name[output++] = '_';
-        else
-            name[output++] = (char)c;
+        if (c < 0x20U || c == '/' || c == '\\' || c == ':' || c == '"' || c == '*' || c == '<' || c == '>' || c == '?' || c == '|') name[output++] = '_';
+        else name[output++] = (char)c;
     }
-    while (output > 0U && (name[output - 1U] == ' ' || name[output - 1U] == '.'))
-        --output;
+    while (output > 0U && (name[output - 1U] == ' ' || name[output - 1U] == '.')) --output;
     if (output == 0U) name[output++] = '_';
     name[output] = 0;
     return name;
 }
 
-static void xx_winlink_stream_free(void *pointer) {
+static void xx_winlink_stream_free(void *pointer)
+{
     xx_winlink_stream *stream = (xx_winlink_stream *)pointer;
 
     if (!stream) return;
@@ -195,8 +191,8 @@ static void xx_winlink_stream_free(void *pointer) {
     xx_mem_free(stream);
 }
 
-static xx_winlink_stream *xx_winlink_parse(Abstractformat *self,
-                                           xx_pd_struct *pd) {
+static xx_winlink_stream *xx_winlink_parse(Abstractformat *self, xx_pd_struct *pd)
+{
     uint8_t header[XX_WINLINK_HEADER_SIZE];
     xx_winlink_stream *stream;
     int64_t total;
@@ -210,30 +206,22 @@ static xx_winlink_stream *xx_winlink_parse(Abstractformat *self,
     span = total - self->base_address;
     /* A member with no payload at all cannot be a packed file. */
     if (span <= (int64_t)XX_WINLINK_HEADER_SIZE) return NULL;
-    if (!xx_winlink_read_at(self, self->base_address, header, sizeof(header)))
-        return NULL;
-    if (header[0] != 0x02U || header[1] != 0x00U || header[2] != 0x00U)
-        return NULL;
-    if (header[XX_WINLINK_SENTINEL_OFFSET] != 0xffU ||
-        header[XX_WINLINK_SENTINEL_OFFSET + 1] != 0xffU ||
-        header[XX_WINLINK_SENTINEL_OFFSET + 2] != 0xffU ||
+    if (!xx_winlink_read_at(self, self->base_address, header, sizeof(header))) return NULL;
+    if (header[0] != 0x02U || header[1] != 0x00U || header[2] != 0x00U) return NULL;
+    if (header[XX_WINLINK_SENTINEL_OFFSET] != 0xffU || header[XX_WINLINK_SENTINEL_OFFSET + 1] != 0xffU || header[XX_WINLINK_SENTINEL_OFFSET + 2] != 0xffU ||
         header[XX_WINLINK_SENTINEL_OFFSET + 3] != 0xffU)
         return NULL;
     if (!xx_winlink_date_sane(xx_data_get_u16(header + 5, 2, 0, false))) return NULL;
-    if (!xx_winlink_name_field_sane(header + XX_WINLINK_NAME_OFFSET,
-                                    XX_WINLINK_NAME_FIELD, &name_length))
-        return NULL;
+    if (!xx_winlink_name_field_sane(header + XX_WINLINK_NAME_OFFSET, XX_WINLINK_NAME_FIELD, &name_length)) return NULL;
 
     stream = (xx_winlink_stream *)xx_mem_calloc(1U, sizeof(*stream));
     if (!stream) return NULL;
-    stream->member.name =
-        xx_winlink_normalize_name(header + XX_WINLINK_NAME_OFFSET, name_length);
+    stream->member.name = xx_winlink_normalize_name(header + XX_WINLINK_NAME_OFFSET, name_length);
     if (!stream->member.name) {
         xx_mem_free(stream);
         return NULL;
     }
-    stream->timestamp = ((uint32_t)xx_data_get_u16(header + 5, 2, 0, false) << 16U) |
-                        (uint32_t)xx_data_get_u16(header + 3, 2, 0, false);
+    stream->timestamp = ((uint32_t)xx_data_get_u16(header + 5, 2, 0, false) << 16U) | (uint32_t)xx_data_get_u16(header + 3, 2, 0, false);
     stream->member.timestamp = stream->timestamp;
     stream->member.header_offset = self->base_address;
     stream->member.header_size = XX_WINLINK_HEADER_SIZE;
@@ -257,12 +245,11 @@ typedef struct xx_winlink_bits_s {
     unsigned available;
 } xx_winlink_bits;
 
-static bool xx_winlink_bits_get(xx_winlink_bits *bits, unsigned width,
-                                unsigned *code) {
+static bool xx_winlink_bits_get(xx_winlink_bits *bits, unsigned width, unsigned *code)
+{
     while (bits->available < width) {
         if (bits->position >= bits->size) return false;
-        bits->accumulator +=
-            (uint32_t)bits->data[bits->position++] << (24U - bits->available);
+        bits->accumulator += (uint32_t)bits->data[bits->position++] << (24U - bits->available);
         bits->available += 8U;
     }
     *code = (unsigned)(bits->accumulator >> (32U - width));
@@ -274,10 +261,9 @@ static bool xx_winlink_bits_get(xx_winlink_bits *bits, unsigned width,
 /* The early width change: it is tested before every code, and against the
  * CURRENT mask rather than the next power of two, so the widest code of a
  * width is never used. */
-static bool xx_winlink_next_code(xx_winlink_bits *bits, unsigned *width,
-                                 unsigned next, unsigned *code) {
-    if (((1U << *width) - 1U) <= next && *width < XX_WINLINK_LZW_MAX_BITS)
-        ++(*width);
+static bool xx_winlink_next_code(xx_winlink_bits *bits, unsigned *width, unsigned next, unsigned *code)
+{
+    if (((1U << *width) - 1U) <= next && *width < XX_WINLINK_LZW_MAX_BITS) ++(*width);
     return xx_winlink_bits_get(bits, *width, code);
 }
 
@@ -289,7 +275,8 @@ typedef struct xx_winlink_sink_s {
     size_t count;
 } xx_winlink_sink;
 
-static bool xx_winlink_sink_put(xx_winlink_sink *sink, uint8_t value) {
+static bool xx_winlink_sink_put(xx_winlink_sink *sink, uint8_t value)
+{
     if (sink->count >= sink->limit) return false;
     if (sink->data) sink->data[sink->count] = value;
     ++sink->count;
@@ -302,7 +289,8 @@ typedef struct xx_winlink_lzw_s {
     uint8_t *stack;
 } xx_winlink_lzw;
 
-static void xx_winlink_lzw_cleanup(xx_winlink_lzw *lzw) {
+static void xx_winlink_lzw_cleanup(xx_winlink_lzw *lzw)
+{
     if (!lzw) return;
     xx_mem_free(lzw->prefix);
     xx_mem_free(lzw->suffix);
@@ -314,11 +302,11 @@ static void xx_winlink_lzw_cleanup(xx_winlink_lzw *lzw) {
 
 /* 64 KiB of tables is too much for the stack, so they are heap allocated
  * once per decode rather than per segment. */
-static bool xx_winlink_lzw_setup(xx_winlink_lzw *lzw) {
+static bool xx_winlink_lzw_setup(xx_winlink_lzw *lzw)
+{
     unsigned index;
 
-    lzw->prefix = (uint16_t *)xx_mem_alloc(XX_WINLINK_LZW_TABLE *
-                                           sizeof(*lzw->prefix));
+    lzw->prefix = (uint16_t *)xx_mem_alloc(XX_WINLINK_LZW_TABLE * sizeof(*lzw->prefix));
     lzw->suffix = (uint8_t *)xx_mem_alloc(XX_WINLINK_LZW_TABLE);
     lzw->stack = (uint8_t *)xx_mem_alloc(XX_WINLINK_LZW_TABLE);
     if (!lzw->prefix || !lzw->suffix || !lzw->stack) {
@@ -335,9 +323,8 @@ static bool xx_winlink_lzw_setup(xx_winlink_lzw *lzw) {
 /* Run the whole stream.  @p output may be NULL, in which case the run only
  * measures; @p limit bounds it either way.  Succeeds only on an explicit END
  * code, which every sample in the corpus reaches. */
-static bool xx_winlink_lzw_run(const uint8_t *input, size_t input_size,
-                               uint8_t *output, size_t limit,
-                               size_t *produced) {
+static bool xx_winlink_lzw_run(const uint8_t *input, size_t input_size, uint8_t *output, size_t limit, size_t *produced)
+{
     xx_winlink_lzw lzw;
     xx_winlink_bits bits;
     xx_winlink_sink sink;
@@ -397,9 +384,7 @@ static bool xx_winlink_lzw_run(const uint8_t *input, size_t input_size,
                 current = previous;
             }
             while (current > 0xffU) {
-                if (current >= XX_WINLINK_LZW_TABLE ||
-                    depth >= XX_WINLINK_LZW_TABLE)
-                    goto done;
+                if (current >= XX_WINLINK_LZW_TABLE || depth >= XX_WINLINK_LZW_TABLE) goto done;
                 lzw.stack[depth++] = lzw.suffix[current];
                 current = lzw.prefix[current];
             }
@@ -422,19 +407,15 @@ done:
     return finished;
 }
 
-static uint8_t *xx_winlink_read_packed(Abstractformat *self,
-                                       const xx_winlink_member *member,
-                                       size_t *size) {
+static uint8_t *xx_winlink_read_packed(Abstractformat *self, const xx_winlink_member *member, size_t *size)
+{
     uint8_t *packed;
 
     if (!self || !member || !size) return NULL;
-    if (member->compressed_size < 2 ||
-        member->compressed_size > XX_WINLINK_MAX_PACKED)
-        return NULL;
+    if (member->compressed_size < 2 || member->compressed_size > XX_WINLINK_MAX_PACKED) return NULL;
     packed = (uint8_t *)xx_mem_alloc((size_t)member->compressed_size);
     if (!packed) return NULL;
-    if (!xx_winlink_read_at(self, member->data_offset, packed,
-                            (size_t)member->compressed_size)) {
+    if (!xx_winlink_read_at(self, member->data_offset, packed, (size_t)member->compressed_size)) {
         xx_mem_free(packed);
         return NULL;
     }
@@ -444,8 +425,8 @@ static uint8_t *xx_winlink_read_packed(Abstractformat *self,
 
 /* The container stores no plaintext length, so it is measured by running the
  * stream once with no output buffer. */
-static bool xx_winlink_measure(Abstractformat *self,
-                               xx_winlink_member *member) {
+static bool xx_winlink_measure(Abstractformat *self, xx_winlink_member *member)
+{
     uint8_t *packed = NULL;
     size_t packed_size = 0U;
     size_t produced = 0U;
@@ -455,18 +436,15 @@ static bool xx_winlink_measure(Abstractformat *self,
     if (member->unpacked_size != 0U) return true;
     packed = xx_winlink_read_packed(self, member, &packed_size);
     if (!packed) return false;
-    result = xx_winlink_lzw_run(packed, packed_size, NULL,
-                                XX_WINLINK_MAX_OUTPUT, &produced) &&
-             produced != 0U;
+    result = xx_winlink_lzw_run(packed, packed_size, NULL, XX_WINLINK_MAX_OUTPUT, &produced) && produced != 0U;
     xx_mem_free(packed);
     if (!result) return false;
     member->unpacked_size = (uint64_t)produced;
     return true;
 }
 
-static bool xx_winlink_decode(Abstractformat *self,
-                              const xx_winlink_member *member, uint8_t **plain,
-                              size_t *plain_size) {
+static bool xx_winlink_decode(Abstractformat *self, const xx_winlink_member *member, uint8_t **plain, size_t *plain_size)
+{
     uint8_t *packed = NULL;
     uint8_t *output = NULL;
     size_t packed_size = 0U;
@@ -474,16 +452,12 @@ static bool xx_winlink_decode(Abstractformat *self,
     size_t output_size;
 
     if (!self || !member || !plain || !plain_size) return false;
-    if (member->unpacked_size == 0U || member->unpacked_size > SIZE_MAX)
-        return false;
+    if (member->unpacked_size == 0U || member->unpacked_size > SIZE_MAX) return false;
     output_size = (size_t)member->unpacked_size;
     packed = xx_winlink_read_packed(self, member, &packed_size);
     if (!packed) return false;
     output = (uint8_t *)xx_mem_alloc(output_size);
-    if (!output ||
-        !xx_winlink_lzw_run(packed, packed_size, output, output_size,
-                            &produced) ||
-        produced != output_size) {
+    if (!output || !xx_winlink_lzw_run(packed, packed_size, output, output_size, &produced) || produced != output_size) {
         xx_mem_free(packed);
         if (output) xx_mem_free(output);
         return false;
@@ -498,8 +472,8 @@ static bool xx_winlink_decode(Abstractformat *self,
 
 static void xx_winlink_vtable_destroy(Abstractformat *self);
 
-void xx_winlink_init(xx_winlink *archive, xx_io_device *device,
-                     int64_t base_address) {
+void xx_winlink_init(xx_winlink *archive, xx_io_device *device, int64_t base_address)
+{
     if (!archive) return;
     xx_mem_zero(archive, sizeof(*archive));
     xx_format_init(&archive->format, device, base_address);
@@ -512,22 +486,17 @@ void xx_winlink_init(xx_winlink *archive, xx_io_device *device,
     archive->format.check_is_valid = xx_winlink_check_is_valid;
     archive->format.handle_base_info = xx_winlink_handle_base_info;
     archive->format.get_format_size = xx_winlink_get_format_size;
-    archive->format.get_number_of_archive_records =
-        xx_winlink_get_number_of_archive_records;
-    archive->format.create_archive_records_reading =
-        xx_winlink_create_archive_records_reading;
-    archive->format.get_current_archive_record =
-        xx_winlink_get_current_archive_record;
-    archive->format.unpack_current_archive_record =
-        xx_winlink_unpack_current_archive_record;
-    archive->format.archive_record_move_to_next =
-        xx_winlink_archive_record_move_to_next;
-    archive->format.free_archive_records_reading =
-        xx_winlink_free_archive_records_reading;
+    archive->format.get_number_of_archive_records = xx_winlink_get_number_of_archive_records;
+    archive->format.create_archive_records_reading = xx_winlink_create_archive_records_reading;
+    archive->format.get_current_archive_record = xx_winlink_get_current_archive_record;
+    archive->format.unpack_current_archive_record = xx_winlink_unpack_current_archive_record;
+    archive->format.archive_record_move_to_next = xx_winlink_archive_record_move_to_next;
+    archive->format.free_archive_records_reading = xx_winlink_free_archive_records_reading;
     archive->format.destroy = xx_winlink_vtable_destroy;
 }
 
-xx_winlink *xx_winlink_create(xx_io_device *device, int64_t base_address) {
+xx_winlink *xx_winlink_create(xx_io_device *device, int64_t base_address)
+{
     xx_winlink *archive = (xx_winlink *)xx_mem_alloc(sizeof(*archive));
 
     if (!archive) return NULL;
@@ -535,26 +504,30 @@ xx_winlink *xx_winlink_create(xx_io_device *device, int64_t base_address) {
     return archive;
 }
 
-void xx_winlink_destroy(xx_winlink *archive) {
+void xx_winlink_destroy(xx_winlink *archive)
+{
     if (!archive) return;
     if (archive->format.close) archive->format.close(&archive->format);
     xx_format_cleanup_extra_parameters(&archive->format);
     archive->number_of_records = 0U;
 }
 
-void xx_winlink_free(xx_winlink *archive) {
+void xx_winlink_free(xx_winlink *archive)
+{
     if (!archive) return;
     xx_winlink_destroy(archive);
     xx_mem_free(archive);
 }
 
-static void xx_winlink_vtable_destroy(Abstractformat *self) {
+static void xx_winlink_vtable_destroy(Abstractformat *self)
+{
     xx_winlink_destroy((xx_winlink *)self);
 }
 
 /* ------------------------------------------------------------ format --- */
 
-bool xx_winlink_check_is_valid(Abstractformat *self, xx_pd_struct *pd) {
+bool xx_winlink_check_is_valid(Abstractformat *self, xx_pd_struct *pd)
+{
     xx_winlink_stream *stream;
 
     if (!self || (pd && xx_pd_is_stopped(pd))) return false;
@@ -564,7 +537,8 @@ bool xx_winlink_check_is_valid(Abstractformat *self, xx_pd_struct *pd) {
     return true;
 }
 
-bool xx_winlink_handle_base_info(Abstractformat *self, xx_pd_struct *pd) {
+bool xx_winlink_handle_base_info(Abstractformat *self, xx_pd_struct *pd)
+{
     xx_winlink *archive = (xx_winlink *)self;
     xx_winlink_stream *stream;
 
@@ -585,25 +559,22 @@ bool xx_winlink_handle_base_info(Abstractformat *self, xx_pd_struct *pd) {
     return true;
 }
 
-int64_t xx_winlink_get_format_size(Abstractformat *self, xx_pd_struct *pd) {
-    if (!self ||
-        (!self->base_info_handled && !xx_format_handle_base_info(self, pd)))
-        return 0;
+int64_t xx_winlink_get_format_size(Abstractformat *self, xx_pd_struct *pd)
+{
+    if (!self || (!self->base_info_handled && !xx_format_handle_base_info(self, pd))) return 0;
     return self->is_valid ? self->format_size : 0;
 }
 
-uint64_t xx_winlink_get_number_of_archive_records(Abstractformat *self,
-                                                  xx_pd_struct *pd) {
-    if (!self ||
-        (!self->base_info_handled && !xx_format_handle_base_info(self, pd)))
-        return 0U;
+uint64_t xx_winlink_get_number_of_archive_records(Abstractformat *self, xx_pd_struct *pd)
+{
+    if (!self || (!self->base_info_handled && !xx_format_handle_base_info(self, pd))) return 0U;
     return self->is_valid ? ((xx_winlink *)self)->number_of_records : 0U;
 }
 
 /* ----------------------------------------------------------- records --- */
 
-static bool xx_winlink_set_record(xx_archive_record *record,
-                                  const xx_winlink_member *member) {
+static bool xx_winlink_set_record(xx_archive_record *record, const xx_winlink_member *member)
+{
     xx_archive_record_cleanup(record);
     xx_archive_record_init(record);
     record->header_offset = member->header_offset;
@@ -611,33 +582,25 @@ static bool xx_winlink_set_record(xx_archive_record *record,
     record->data_offset = member->data_offset;
     record->compressed_size = member->compressed_size;
     return xx_archive_record_set_original_name(record, member->name) &&
-           xx_archive_record_set_meta_u64(record, XX_META_ID_COMPRESSED_SIZE,
-                                          (uint64_t)member->compressed_size) &&
+           xx_archive_record_set_meta_u64(record, XX_META_ID_COMPRESSED_SIZE, (uint64_t)member->compressed_size) &&
            /* Measured by running the stream; 0 when it would not decode. */
-           xx_archive_record_set_meta_u64(record, XX_META_ID_UNCOMPRESSED_SIZE,
-                                          member->unpacked_size) &&
-           xx_archive_record_set_meta_u64(record, XX_META_ID_TIMESTAMP,
-                                          member->timestamp) &&
-           xx_archive_record_set_meta_bool(record, XX_META_ID_IS_FOLDER,
-                                           false) &&
-           xx_archive_record_set_meta_bool(record, XX_META_ID_IS_ENCRYPTED,
-                                           false);
+           xx_archive_record_set_meta_u64(record, XX_META_ID_UNCOMPRESSED_SIZE, member->unpacked_size) &&
+           xx_archive_record_set_meta_u64(record, XX_META_ID_TIMESTAMP, member->timestamp) && xx_archive_record_set_meta_bool(record, XX_META_ID_IS_FOLDER, false) &&
+           xx_archive_record_set_meta_bool(record, XX_META_ID_IS_ENCRYPTED, false);
 }
 
-static bool xx_winlink_copy_options(xx_list_s *target,
-                                    const xx_list_s *options) {
+static bool xx_winlink_copy_options(xx_list_s *target, const xx_list_s *options)
+{
     size_t index;
 
     if (!options) return true;
     if (!target) return false;
     for (index = 0U; index < options->count; ++index) {
-        const xx_meta *source =
-            (const xx_meta *)xx_list_at((const xx_list_t *)options, index);
+        const xx_meta *source = (const xx_meta *)xx_list_at((const xx_list_t *)options, index);
         xx_meta copied;
         if (!source) continue;
         xx_meta_init(&copied, source->meta_id);
-        if (!xx_var_copy(&copied.var, &source->var) ||
-            !xx_list_append(target, &copied)) {
+        if (!xx_var_copy(&copied.var, &source->var) || !xx_list_append(target, &copied)) {
             xx_meta_cleanup(&copied);
             return false;
         }
@@ -645,21 +608,20 @@ static bool xx_winlink_copy_options(xx_list_s *target,
     return true;
 }
 
-static const xx_var *xx_winlink_option(const xx_list_s *options,
-                                       uint32_t meta_id) {
+static const xx_var *xx_winlink_option(const xx_list_s *options, uint32_t meta_id)
+{
     size_t index;
 
     if (!options) return NULL;
     for (index = 0U; index < options->count; ++index) {
-        const xx_meta *meta =
-            (const xx_meta *)xx_list_at((const xx_list_t *)options, index);
+        const xx_meta *meta = (const xx_meta *)xx_list_at((const xx_list_t *)options, index);
         if (meta && meta->meta_id == meta_id) return &meta->var;
     }
     return NULL;
 }
 
-xx_archive_record_state *xx_winlink_create_archive_records_reading(
-    Abstractformat *self, const xx_list_s *options, xx_pd_struct *pd) {
+xx_archive_record_state *xx_winlink_create_archive_records_reading(Abstractformat *self, const xx_list_s *options, xx_pd_struct *pd)
+{
     xx_winlink_stream *stream;
     xx_archive_record_state *state;
 
@@ -679,8 +641,7 @@ xx_archive_record_state *xx_winlink_create_archive_records_reading(
     state->internal_state = stream;
     state->free_internal = xx_winlink_stream_free;
     state->total_records = (int64_t)stream->count;
-    if (!xx_winlink_copy_options(&state->options, options) ||
-        !xx_winlink_set_record(&state->current_record, &stream->member)) {
+    if (!xx_winlink_copy_options(&state->options, options) || !xx_winlink_set_record(&state->current_record, &stream->member)) {
         xx_archive_record_state_free(state);
         return NULL;
     }
@@ -689,16 +650,13 @@ xx_archive_record_state *xx_winlink_create_archive_records_reading(
     return state;
 }
 
-const xx_archive_record *xx_winlink_get_current_archive_record(
-    Abstractformat *self, xx_archive_record_state *state) {
-    return self && state && state->format == self && state->has_record
-               ? &state->current_record
-               : NULL;
+const xx_archive_record *xx_winlink_get_current_archive_record(Abstractformat *self, xx_archive_record_state *state)
+{
+    return self && state && state->format == self && state->has_record ? &state->current_record : NULL;
 }
 
-bool xx_winlink_archive_record_move_to_next(Abstractformat *self,
-                                            xx_archive_record_state *state,
-                                            xx_pd_struct *pd) {
+bool xx_winlink_archive_record_move_to_next(Abstractformat *self, xx_archive_record_state *state, xx_pd_struct *pd)
+{
     (void)pd;
     if (!self || !state || state->format != self) return false;
     /* A WinLink container holds exactly one member. */
@@ -708,9 +666,8 @@ bool xx_winlink_archive_record_move_to_next(Abstractformat *self,
     return false;
 }
 
-bool xx_winlink_unpack_current_archive_record(Abstractformat *self,
-                                              xx_archive_record_state *state,
-                                              xx_pd_struct *pd) {
+bool xx_winlink_unpack_current_archive_record(Abstractformat *self, xx_archive_record_state *state, xx_pd_struct *pd)
+{
     xx_winlink_stream *stream;
     const xx_var *path_option;
     const char *base = NULL;
@@ -721,43 +678,34 @@ bool xx_winlink_unpack_current_archive_record(Abstractformat *self,
     size_t written = 0U;
     bool result = false;
 
-    if (!self || !state || state->format != self || !state->has_record ||
-        (pd && xx_pd_is_stopped(pd)))
-        return false;
+    if (!self || !state || state->format != self || !state->has_record || (pd && xx_pd_is_stopped(pd))) return false;
     stream = (xx_winlink_stream *)state->internal_state;
     if (!stream) return false;
     if (!xx_winlink_measure(self, &stream->member)) return false;
-    if (!xx_winlink_decode(self, &stream->member, &plain, &plain_size))
-        return false;
+    if (!xx_winlink_decode(self, &stream->member, &plain, &plain_size)) return false;
     /* With no unpack path the caller only wanted to know the member decodes;
      * it does, so this is a success with nothing written. */
-    path_option =
-        xx_winlink_option(&state->options, XX_META_ID_OPT_UNPACK_PATH);
+    path_option = xx_winlink_option(&state->options, XX_META_ID_OPT_UNPACK_PATH);
     if (!path_option) {
         result = true;
         goto done;
     }
-    if (path_option->type == XX_VAR_TYPE_STRING ||
-        path_option->type == XX_VAR_TYPE_STRING_VIEW) {
+    if (path_option->type == XX_VAR_TYPE_STRING || path_option->type == XX_VAR_TYPE_STRING_VIEW) {
         base = xx_var_get_str(path_option);
-    } else if (path_option->type == XX_VAR_TYPE_WSTRING ||
-               path_option->type == XX_VAR_TYPE_WSTRING_VIEW) {
+    } else if (path_option->type == XX_VAR_TYPE_WSTRING || path_option->type == XX_VAR_TYPE_WSTRING_VIEW) {
         owned_base = xx_str_unicode_to_utf8(xx_var_get_wstr(path_option));
         base = owned_base;
     }
     if (!base) goto done;
-    path = (base[0] && base[xx_str_len(base) - 1U] != '/' &&
-            base[xx_str_len(base) - 1U] != '\\')
-               ? xx_str_concat3(base, "/", stream->member.name)
-               : xx_str_concat(base, stream->member.name);
+    path = (base[0] && base[xx_str_len(base) - 1U] != '/' && base[xx_str_len(base) - 1U] != '\\') ? xx_str_concat3(base, "/", stream->member.name)
+                                                                                                  : xx_str_concat(base, stream->member.name);
     if (!path || !xx_store_create_dirs_a(path, false)) goto done;
     {
         xx_io_device *destination = xx_io_file_open(path, "wb");
         if (!destination) goto done;
         result = true;
         while (written < plain_size) {
-            ssize_t amount =
-                xx_io_write(destination, plain + written, plain_size - written);
+            ssize_t amount = xx_io_write(destination, plain + written, plain_size - written);
             if (amount <= 0 || (size_t)amount > plain_size - written) {
                 result = false;
                 break;
@@ -773,8 +721,8 @@ done:
     return result;
 }
 
-void xx_winlink_free_archive_records_reading(Abstractformat *self,
-                                             xx_archive_record_state *state) {
+void xx_winlink_free_archive_records_reading(Abstractformat *self, xx_archive_record_state *state)
+{
     (void)self;
     xx_archive_record_state_free(state);
 }

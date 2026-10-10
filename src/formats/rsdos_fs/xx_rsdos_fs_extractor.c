@@ -9,47 +9,39 @@
 #include "../xx_format_extractor_engine.h"
 #include "xxfclib/formats/rsdos_fs/xx_rsdos_fs.h"
 
+static const xx_file_type_t k_types[] = {XX_FILE_TYPE_RSDOS_FS};
 
-static const xx_file_type_t k_types[] = { XX_FILE_TYPE_RSDOS_FS };
-
-static Abstractformat *xx_rsdos_fs_search_open(xx_io_device *window) {
+static Abstractformat *xx_rsdos_fs_search_open(xx_io_device *window)
+{
     xx_rsdos_fs *reader = xx_rsdos_fs_create(window, 0);
     return reader ? &reader->format : NULL;
 }
-static void xx_rsdos_fs_search_close(Abstractformat *format) {
+static void xx_rsdos_fs_search_close(Abstractformat *format)
+{
     xx_rsdos_fs_free((xx_rsdos_fs *)format);
 }
-static const xx_format_search_desc k_desc = {
-    k_types, sizeof(k_types) / sizeof(k_types[0]),
-    NULL, 0U,
-    xx_rsdos_fs_search_open, xx_rsdos_fs_search_close, false
-};
-static xx_format_search_state *xx_rsdos_fs_search_create(
-    xx_format_extractor *self, xx_io_device *device, const xx_list_s *options,
-    xx_pd_struct *pd) {
+static const xx_format_search_desc k_desc = {k_types, sizeof(k_types) / sizeof(k_types[0]), NULL, 0U, xx_rsdos_fs_search_open, xx_rsdos_fs_search_close, false};
+static xx_format_search_state *xx_rsdos_fs_search_create(xx_format_extractor *self, xx_io_device *device, const xx_list_s *options, xx_pd_struct *pd)
+{
     (void)self;
     return xx_format_search_create(&k_desc, device, options, pd);
 }
-static const xx_format_search_info *xx_rsdos_fs_search_current(
-    xx_format_extractor *self, xx_format_search_state *state) {
+static const xx_format_search_info *xx_rsdos_fs_search_current(xx_format_extractor *self, xx_format_search_state *state)
+{
     (void)self;
     return xx_format_search_current(state);
 }
-static bool xx_rsdos_fs_search_next(xx_format_extractor *self,
-    xx_format_search_state *state, xx_pd_struct *pd) {
+static bool xx_rsdos_fs_search_next(xx_format_extractor *self, xx_format_search_state *state, xx_pd_struct *pd)
+{
     (void)self;
     return xx_format_search_find_next(state, pd);
 }
-static void xx_rsdos_fs_search_free(xx_format_extractor *self,
-    xx_format_search_state *state) {
+static void xx_rsdos_fs_search_free(xx_format_extractor *self, xx_format_search_state *state)
+{
     (void)self;
     xx_format_search_free(state);
 }
-xx_format_extractor xx_rsdos_fs_extractor = {
-    xx_rsdos_fs_search_create, xx_rsdos_fs_search_current,
-    xx_rsdos_fs_search_next, xx_rsdos_fs_search_free
-};
-
+xx_format_extractor xx_rsdos_fs_extractor = {xx_rsdos_fs_search_create, xx_rsdos_fs_search_current, xx_rsdos_fs_search_next, xx_rsdos_fs_search_free};
 
 /* BEGIN GENERATED ABSTRACT EXTRACTOR */
 #include "../xx_format_abstract_extractor_adapter.h"

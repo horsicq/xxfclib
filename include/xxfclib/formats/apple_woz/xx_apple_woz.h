@@ -13,13 +13,13 @@
 extern "C" {
 #endif
 typedef xx_apple_family_info xx_apple_woz;
-XXFC_API void xx_apple_woz_init(xx_apple_woz *,xx_io_device *,int64_t);
-XXFC_API xx_apple_woz *xx_apple_woz_create(xx_io_device *,int64_t);
+XXFC_API void xx_apple_woz_init(xx_apple_woz *, xx_io_device *, int64_t);
+XXFC_API xx_apple_woz *xx_apple_woz_create(xx_io_device *, int64_t);
 XXFC_API void xx_apple_woz_destroy(xx_apple_woz *);
 XXFC_API void xx_apple_woz_free(xx_apple_woz *);
-XXFC_API bool xx_apple_woz_check_is_valid(Abstractformat *,xx_pd_struct *);
-XXFC_API bool xx_apple_woz_handle_base_info(Abstractformat *,xx_pd_struct *);
-XXFC_API bool xx_apple_woz_extract_record_to_device(Abstractformat *,xx_archive_record_state *,xx_io_device *,xx_pd_struct *);
+XXFC_API bool xx_apple_woz_check_is_valid(Abstractformat *, xx_pd_struct *);
+XXFC_API bool xx_apple_woz_handle_base_info(Abstractformat *, xx_pd_struct *);
+XXFC_API bool xx_apple_woz_extract_record_to_device(Abstractformat *, xx_archive_record_state *, xx_io_device *, xx_pd_struct *);
 #ifdef __cplusplus
 }
 #endif

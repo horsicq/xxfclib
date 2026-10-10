@@ -89,23 +89,20 @@ typedef struct mpq_stream_s {
     uint64_t aux2;
 } mpq_stream;
 
-static bool mpq_read_at(xx_io_device *device, int64_t offset, void *buffer,
-                        size_t size) {
+static bool mpq_read_at(xx_io_device *device, int64_t offset, void *buffer, size_t size)
+{
     size_t done = 0U;
-    if (!device || (!buffer && size != 0U) || offset < 0 ||
-        xx_io_seek64(device, offset, SEEK_SET) != 0)
-        return false;
+    if (!device || (!buffer && size != 0U) || offset < 0 || xx_io_seek64(device, offset, SEEK_SET) != 0) return false;
     while (done < size) {
-        ssize_t amount = xx_io_read(device, (uint8_t *)buffer + done,
-                                    size - done);
+        ssize_t amount = xx_io_read(device, (uint8_t *)buffer + done, size - done);
         if (amount <= 0 || (size_t)amount > size - done) return false;
         done += (size_t)amount;
     }
     return true;
 }
 
-static bool mpq_write_all(xx_io_device *device, const void *data, size_t size,
-                          xx_pd_struct *pd) {
+static bool mpq_write_all(xx_io_device *device, const void *data, size_t size, xx_pd_struct *pd)
+{
     size_t done = 0U;
     if (!data && size != 0U) return false;
     if (pd && xx_pd_is_stopped(pd)) return false;
@@ -115,8 +112,7 @@ static bool mpq_write_all(xx_io_device *device, const void *data, size_t size,
         size_t want = size - done;
         if (want > 0x8000U) want = 0x8000U;
         if (pd && xx_pd_is_stopped(pd)) return false;
-        amount = xx_io_write(device, (const uint8_t *)data + done,
-                             want);
+        amount = xx_io_write(device, (const uint8_t *)data + done, want);
         if (amount <= 0 || (size_t)amount > want) return false;
         done += (size_t)amount;
     }
@@ -124,60 +120,102 @@ static bool mpq_write_all(xx_io_device *device, const void *data, size_t size,
 }
 
 /* Copy a run of source bytes straight through to the destination. */
-static bool mpq_copy_range(xx_io_device *source, int64_t offset, uint64_t size,
-                           xx_io_device *destination, xx_pd_struct *pd) {
+static bool mpq_copy_range(xx_io_device *source, int64_t offset, uint64_t size, xx_io_device *destination, xx_pd_struct *pd)
+{
     size_t capacity = xx_get_file_buffer_size();
     uint8_t *buffer = NULL;
     bool buffer_result = false;
     uint64_t left = size;
     int64_t saved_cursor = -1;
-    if (!source || offset < 0) { buffer_result = (false); goto buffer_done; }
+    if (!source || offset < 0) {
+        buffer_result = (false);
+        goto buffer_done;
+    }
     saved_cursor = xx_io_tell(source);
     if (saved_cursor < 0) goto buffer_done;
-    if (xx_io_seek64(source, offset, SEEK_SET) != 0) { buffer_result = (false); goto buffer_done; }
+    if (xx_io_seek64(source, offset, SEEK_SET) != 0) {
+        buffer_result = (false);
+        goto buffer_done;
+    }
     if (capacity == 0U) capacity = 4096U;
     if (capacity > (SIZE_MAX >> 1U)) capacity = SIZE_MAX >> 1U;
-    if (left) { if(capacity>left) capacity=(size_t)left; buffer = (uint8_t *)xx_mem_alloc(capacity); if (!buffer) { buffer_result = false; goto buffer_done; } }
+    if (left) {
+        if (capacity > left) capacity = (size_t)left;
+        buffer = (uint8_t *)xx_mem_alloc(capacity);
+        if (!buffer) {
+            buffer_result = false;
+            goto buffer_done;
+        }
+    }
     while (left != 0U) {
         size_t want = left < capacity ? (size_t)left : capacity;
         size_t done = 0U;
-        if (pd && xx_pd_is_stopped(pd)) { buffer_result = (false); goto buffer_done; }
+        if (pd && xx_pd_is_stopped(pd)) {
+            buffer_result = (false);
+            goto buffer_done;
+        }
         while (done < want) {
             ssize_t amount = xx_io_read(source, buffer + done, want - done);
-            if (amount <= 0 || (size_t)amount > want - done) { buffer_result = (false); goto buffer_done; }
+            if (amount <= 0 || (size_t)amount > want - done) {
+                buffer_result = (false);
+                goto buffer_done;
+            }
             done += (size_t)amount;
         }
-        if (!mpq_write_all(destination, buffer, want, pd)) { buffer_result = (false); goto buffer_done; }
+        if (!mpq_write_all(destination, buffer, want, pd)) {
+            buffer_result = (false);
+            goto buffer_done;
+        }
         left -= want;
     }
-    { buffer_result = (true); goto buffer_done; }
+    {
+        buffer_result = (true);
+        goto buffer_done;
+    }
 
 buffer_done:
-    if (saved_cursor >= 0 &&
-        xx_io_seek64(source, saved_cursor, SEEK_SET) != 0)
-        buffer_result = false;
+    if (saved_cursor >= 0 && xx_io_seek64(source, saved_cursor, SEEK_SET) != 0) buffer_result = false;
     xx_mem_free(buffer);
     return buffer_result;
 }
 
 /* Emit `size` zero bytes: the filler every sparse disk image needs. */
-static XXFC_MAYBE_UNUSED bool mpq_write_zeros(xx_io_device *destination, uint64_t size,
-                            xx_pd_struct *pd) {
+static XXFC_MAYBE_UNUSED bool mpq_write_zeros(xx_io_device *destination, uint64_t size, xx_pd_struct *pd)
+{
     size_t capacity = xx_get_file_buffer_size();
     uint8_t *buffer = NULL;
     bool buffer_result = false;
     uint64_t left = size;
-    if (!destination) { buffer_result = (true); goto buffer_done; }
+    if (!destination) {
+        buffer_result = (true);
+        goto buffer_done;
+    }
     if (capacity > (SIZE_MAX >> 1U)) capacity = SIZE_MAX >> 1U;
-    if (left) { if(capacity>left) capacity=(size_t)left; buffer = (uint8_t *)xx_mem_alloc(capacity); if (!buffer) { buffer_result = false; goto buffer_done; } }
-    if (!left) { buffer_result = true; goto buffer_done; }
+    if (left) {
+        if (capacity > left) capacity = (size_t)left;
+        buffer = (uint8_t *)xx_mem_alloc(capacity);
+        if (!buffer) {
+            buffer_result = false;
+            goto buffer_done;
+        }
+    }
+    if (!left) {
+        buffer_result = true;
+        goto buffer_done;
+    }
     xx_mem_zero(buffer, capacity);
     while (left != 0U) {
         size_t want = left < capacity ? (size_t)left : capacity;
-        if (!mpq_write_all(destination, buffer, want, pd)) { buffer_result = (false); goto buffer_done; }
+        if (!mpq_write_all(destination, buffer, want, pd)) {
+            buffer_result = (false);
+            goto buffer_done;
+        }
         left -= want;
     }
-    { buffer_result = (true); goto buffer_done; }
+    {
+        buffer_result = (true);
+        goto buffer_done;
+    }
 
 buffer_done:
     xx_mem_free(buffer);
@@ -186,8 +224,8 @@ buffer_done:
 
 /* Reader-owned names are built here, never taken from the container, so they
  * are safe by construction. */
-static char *mpq_make_name(const char *prefix, int64_t index,
-                           const char *suffix) {
+static char *mpq_make_name(const char *prefix, int64_t index, const char *suffix)
+{
     char buffer[96];
     size_t used = 0U;
     size_t at;
@@ -224,7 +262,8 @@ static char *mpq_make_name(const char *prefix, int64_t index,
 /* Names that DO come from the container are normalized here: separators are
  * unified, traversal components are removed and anything a filesystem would
  * choke on becomes '_'. */
-static XXFC_MAYBE_UNUSED char *mpq_clean_name(const uint8_t *bytes, size_t size) {
+static XXFC_MAYBE_UNUSED char *mpq_clean_name(const uint8_t *bytes, size_t size)
+{
     char *name;
     size_t input = 0U, output = 0U;
     if ((!bytes && size != 0U) || size > SIZE_MAX - 2U) return NULL;
@@ -232,16 +271,12 @@ static XXFC_MAYBE_UNUSED char *mpq_clean_name(const uint8_t *bytes, size_t size)
     if (!name) return NULL;
     while (input < size) {
         size_t start, end, component_start;
-        while (input < size && (bytes[input] == '/' || bytes[input] == '\\'))
-            ++input;
+        while (input < size && (bytes[input] == '/' || bytes[input] == '\\')) ++input;
         start = input;
-        while (input < size && bytes[input] != '/' && bytes[input] != '\\')
-            ++input;
+        while (input < size && bytes[input] != '/' && bytes[input] != '\\') ++input;
         end = input;
-        if (end == start || (end - start == 1U && bytes[start] == '.'))
-            continue;
-        if (end - start == 2U && bytes[start] == '.' &&
-            bytes[start + 1U] == '.') {
+        if (end == start || (end - start == 1U && bytes[start] == '.')) continue;
+        if (end - start == 2U && bytes[start] == '.' && bytes[start + 1U] == '.') {
             if (output != 0U) {
                 while (output != 0U && name[output - 1U] != '/') --output;
                 if (output != 0U) --output;
@@ -252,15 +287,10 @@ static XXFC_MAYBE_UNUSED char *mpq_clean_name(const uint8_t *bytes, size_t size)
         component_start = output;
         while (start < end) {
             uint8_t c = bytes[start++];
-            if (c < 0x20U || c == '"' || c == '*' || c == ':' || c == '<' ||
-                c == '>' || c == '?' || c == '|' || c == 0U)
-                name[output++] = '_';
-            else
-                name[output++] = (char)c;
+            if (c < 0x20U || c == '"' || c == '*' || c == ':' || c == '<' || c == '>' || c == '?' || c == '|' || c == 0U) name[output++] = '_';
+            else name[output++] = (char)c;
         }
-        while (output > component_start &&
-               (name[output - 1U] == ' ' || name[output - 1U] == '.'))
-            --output;
+        while (output > component_start && (name[output - 1U] == ' ' || name[output - 1U] == '.')) --output;
         if (output == component_start) name[output++] = '_';
     }
     if (output == 0U) name[output++] = '_';
@@ -268,30 +298,26 @@ static XXFC_MAYBE_UNUSED char *mpq_clean_name(const uint8_t *bytes, size_t size)
     return name;
 }
 
-static bool mpq_safe_output_name(const char *name) {
+static bool mpq_safe_output_name(const char *name)
+{
     const char *segment;
     const char *at;
-    if (!name || !name[0] || name[0] == '/' || name[0] == '\\' ||
-        name[1] == ':')
-        return false;
+    if (!name || !name[0] || name[0] == '/' || name[0] == '\\' || name[1] == ':') return false;
     segment = name;
     for (at = name;; ++at) {
         unsigned char c = (unsigned char)*at;
-        if (c == ':' || c == '<' || c == '>' || c == '"' || c == '|' ||
-            c == '?' || c == '*' || (c != 0U && c < 0x20U))
-            return false;
+        if (c == ':' || c == '<' || c == '>' || c == '"' || c == '|' || c == '?' || c == '*' || (c != 0U && c < 0x20U)) return false;
         if (c == '/' || c == '\\' || c == 0U) {
             size_t length = (size_t)(at - segment);
-            if (length == 0U || (length == 1U && segment[0] == '.') ||
-                (length == 2U && segment[0] == '.' && segment[1] == '.'))
-                return false;
+            if (length == 0U || (length == 1U && segment[0] == '.') || (length == 2U && segment[0] == '.' && segment[1] == '.')) return false;
             if (c == 0U) return true;
             segment = at + 1;
         }
     }
 }
 
-static void mpq_stream_free(void *opaque) {
+static void mpq_stream_free(void *opaque)
+{
     mpq_stream *stream = (mpq_stream *)opaque;
     size_t index;
     if (!stream) return;
@@ -301,13 +327,11 @@ static void mpq_stream_free(void *opaque) {
     xx_mem_free(stream);
 }
 
-static bool mpq_add_member(mpq_stream *stream, const mpq_member *member) {
+static bool mpq_add_member(mpq_stream *stream, const mpq_member *member)
+{
     mpq_member *grown;
-    if (!stream || !member || stream->count >= MPQ_MAX_MEMBERS ||
-        stream->count > SIZE_MAX / sizeof(*grown) - 1U)
-        return false;
-    grown = (mpq_member *)xx_mem_realloc(
-        stream->items, (stream->count + 1U) * sizeof(*grown));
+    if (!stream || !member || stream->count >= MPQ_MAX_MEMBERS || stream->count > SIZE_MAX / sizeof(*grown) - 1U) return false;
+    grown = (mpq_member *)xx_mem_realloc(stream->items, (stream->count + 1U) * sizeof(*grown));
     if (!grown) return false;
     stream->items = grown;
     stream->items[stream->count++] = *member;
@@ -344,7 +368,8 @@ static bool mpq_add_member(mpq_stream *stream, const mpq_member *member) {
 
 /* Storm's crypt table: 0x500 words from a fixed LCG.  It is the key schedule
  * for the hash and block tables, so it has to be reproduced bit for bit. */
-static void mpq_build_crypt_table(uint32_t *table) {
+static void mpq_build_crypt_table(uint32_t *table)
+{
     uint32_t seed = 0x00100001U;
     uint32_t i, j, index;
     for (i = 0U; i < 0x100U; ++i) {
@@ -359,8 +384,8 @@ static void mpq_build_crypt_table(uint32_t *table) {
     }
 }
 
-static void mpq_decrypt_block(const uint32_t *table, uint8_t *data,
-                              size_t size, uint32_t key) {
+static void mpq_decrypt_block(const uint32_t *table, uint8_t *data, size_t size, uint32_t key)
+{
     uint32_t seed = 0xeeeeeeeeU;
     size_t at;
     /* Storm encryption works on whole DWORDs; a trailing partial word is
@@ -378,14 +403,16 @@ static void mpq_decrypt_block(const uint32_t *table, uint8_t *data,
     }
 }
 
-static bool mpq_range_within(uint64_t limit, uint64_t offset, uint64_t size) {
+static bool mpq_range_within(uint64_t limit, uint64_t offset, uint64_t size)
+{
     return offset <= limit && size <= limit - offset;
 }
 
 /* Header at offset 0, then the encrypted hash and block tables.  A hash slot
  * names a block index; the block entry carries the offset, the two sizes and
  * the flags. */
-static bool mpq_parse_inner(Abstractformat *format, mpq_stream **result) {
+static bool mpq_parse_inner(Abstractformat *format, mpq_stream **result)
+{
     uint8_t header[MPQ_HEADER_SIZE_V3];
     uint32_t *crypt = NULL;
     uint8_t *hash_table = NULL;
@@ -400,8 +427,7 @@ static bool mpq_parse_inner(Abstractformat *format, mpq_stream **result) {
     uint64_t hash_bytes, block_bytes;
     uint32_t at;
 
-    if (!format || !format->device || !result || format->base_address < 0)
-        return false;
+    if (!format || !format->device || !result || format->base_address < 0) return false;
     total = xx_io_total_size(format->device);
     if (total < format->base_address) return false;
     size = total - format->base_address;
@@ -414,13 +440,9 @@ static bool mpq_parse_inner(Abstractformat *format, mpq_stream **result) {
     candidate = 0;
     do {
         uint64_t available = (uint64_t)(size - candidate);
-        size_t want = available < MPQ_HEADER_SIZE_V3
-                          ? (size_t)available
-                          : (size_t)MPQ_HEADER_SIZE_V3;
+        size_t want = available < MPQ_HEADER_SIZE_V3 ? (size_t)available : (size_t)MPQ_HEADER_SIZE_V3;
         xx_mem_zero(header, sizeof(header));
-        if (!mpq_read_at(format->device, format->base_address + candidate,
-                         header, want))
-            return false;
+        if (!mpq_read_at(format->device, format->base_address + candidate, header, want)) return false;
         if (xx_rt_memcmp(header, "MPQ\x1a", 4U) != 0) continue;
         header_size = xx_data_get_u32(header + 4U, 4, 0, false);
         archive_size = xx_data_get_u32(header + 8U, 4, 0, false);
@@ -430,16 +452,12 @@ static bool mpq_parse_inner(Abstractformat *format, mpq_stream **result) {
         block_offset = xx_data_get_u32(header + 20U, 4, 0, false);
         hash_entries = xx_data_get_u32(header + 24U, 4, 0, false);
         block_entries = xx_data_get_u32(header + 28U, 4, 0, false);
-        if (version > 3U || header_size < MPQ_HEADER_SIZE ||
-            (uint64_t)header_size > archive_size || archive_size > available ||
-            sector_shift > 15U || hash_entries == 0U ||
-            hash_entries > MPQ_MAX_TABLE_ENTRIES ||
-            (hash_entries & (hash_entries - 1U)) != 0U ||
-            block_entries == 0U || block_entries > MPQ_MAX_TABLE_ENTRIES)
+        if (version > 3U || header_size < MPQ_HEADER_SIZE || (uint64_t)header_size > archive_size || archive_size > available || sector_shift > 15U ||
+            hash_entries == 0U || hash_entries > MPQ_MAX_TABLE_ENTRIES || (hash_entries & (hash_entries - 1U)) != 0U || block_entries == 0U ||
+            block_entries > MPQ_MAX_TABLE_ENTRIES)
             continue;
         if (version >= 1U) {
-            if (header_size < MPQ_HEADER_SIZE_V1 || want < MPQ_HEADER_SIZE_V1)
-                continue;
+            if (header_size < MPQ_HEADER_SIZE_V1 || want < MPQ_HEADER_SIZE_V1) continue;
             hash_offset |= (uint64_t)xx_data_get_u16(header + 40U, 2, 0, false) << 32U;
             block_offset |= (uint64_t)xx_data_get_u16(header + 42U, 2, 0, false) << 32U;
         }
@@ -447,24 +465,17 @@ static bool mpq_parse_inner(Abstractformat *format, mpq_stream **result) {
             /* Narrow V3/V4 support uses their complete legacy tables and
              * 32-bit block offsets. HET/BET-only or >4 GiB layouts need a
              * separate index/offset implementation. */
-            if (header_size < MPQ_HEADER_SIZE_V2 ||
-                want < MPQ_HEADER_SIZE_V2 ||
-                xx_data_get_u64(header + 44U, 8, 0, false) != archive_size ||
-                xx_data_get_u64(header + 32U, 8, 0, false) != 0U ||
-                hash_offset > UINT32_MAX || block_offset > UINT32_MAX)
+            if (header_size < MPQ_HEADER_SIZE_V2 || want < MPQ_HEADER_SIZE_V2 || xx_data_get_u64(header + 44U, 8, 0, false) != archive_size ||
+                xx_data_get_u64(header + 32U, 8, 0, false) != 0U || hash_offset > UINT32_MAX || block_offset > UINT32_MAX)
                 continue;
         }
         if (version == 3U &&
-            (header_size < MPQ_HEADER_SIZE_V3 ||
-             want < MPQ_HEADER_SIZE_V3 ||
-             xx_data_get_u64(header + 68U, 8, 0, false) != (uint64_t)hash_entries * 16U ||
+            (header_size < MPQ_HEADER_SIZE_V3 || want < MPQ_HEADER_SIZE_V3 || xx_data_get_u64(header + 68U, 8, 0, false) != (uint64_t)hash_entries * 16U ||
              xx_data_get_u64(header + 76U, 8, 0, false) != (uint64_t)block_entries * 16U))
             continue;
         hash_bytes = (uint64_t)hash_entries * 16U;
         block_bytes = (uint64_t)block_entries * 16U;
-        if (!mpq_range_within(archive_size, hash_offset, hash_bytes) ||
-            !mpq_range_within(archive_size, block_offset, block_bytes))
-            continue;
+        if (!mpq_range_within(archive_size, hash_offset, hash_bytes) || !mpq_range_within(archive_size, block_offset, block_bytes)) continue;
         sector_size = 512U << sector_shift;
         found = candidate;
     } while (0);
@@ -477,17 +488,11 @@ static bool mpq_parse_inner(Abstractformat *format, mpq_stream **result) {
     block_table = (uint8_t *)xx_mem_alloc((size_t)block_bytes);
     if (!crypt || !hash_table || !block_table) goto fail;
     mpq_build_crypt_table(crypt);
-    if (!mpq_read_at(format->device,
-                     format->base_address + found + (int64_t)hash_offset,
-                     hash_table, (size_t)hash_bytes) ||
-        !mpq_read_at(format->device,
-                     format->base_address + found + (int64_t)block_offset,
-                     block_table, (size_t)block_bytes))
+    if (!mpq_read_at(format->device, format->base_address + found + (int64_t)hash_offset, hash_table, (size_t)hash_bytes) ||
+        !mpq_read_at(format->device, format->base_address + found + (int64_t)block_offset, block_table, (size_t)block_bytes))
         goto fail;
-    mpq_decrypt_block(crypt, hash_table, (size_t)hash_bytes,
-                      MPQ_HASH_TABLE_KEY);
-    mpq_decrypt_block(crypt, block_table, (size_t)block_bytes,
-                      MPQ_BLOCK_TABLE_KEY);
+    mpq_decrypt_block(crypt, hash_table, (size_t)hash_bytes, MPQ_HASH_TABLE_KEY);
+    mpq_decrypt_block(crypt, block_table, (size_t)block_bytes, MPQ_BLOCK_TABLE_KEY);
 
     stream = (mpq_stream *)xx_mem_calloc(1U, sizeof(*stream));
     if (!stream) goto fail;
@@ -502,28 +507,21 @@ static bool mpq_parse_inner(Abstractformat *format, mpq_stream **result) {
         mpq_member member;
         uint64_t file_offset, packed, unpacked;
         uint32_t flags;
-        if (block_index == MPQ_HASH_ENTRY_FREE ||
-            block_index == MPQ_HASH_ENTRY_DELETED)
-            continue;
+        if (block_index == MPQ_HASH_ENTRY_FREE || block_index == MPQ_HASH_ENTRY_DELETED) continue;
         if (block_index >= block_entries) goto fail;
         entry = block_table + (size_t)block_index * 16U;
         file_offset = xx_data_get_u32(entry, 4, 0, false);
         packed = xx_data_get_u32(entry + 4U, 4, 0, false);
         unpacked = xx_data_get_u32(entry + 8U, 4, 0, false);
         flags = xx_data_get_u32(entry + 12U, 4, 0, false);
-        if ((flags & MPQ_FILE_EXISTS) == 0U ||
-            (flags & MPQ_FILE_DELETE_MARKER) != 0U)
-            continue;
+        if ((flags & MPQ_FILE_EXISTS) == 0U || (flags & MPQ_FILE_DELETE_MARKER) != 0U) continue;
         if (!mpq_range_within(archive_size, file_offset, packed)) goto fail;
         xx_mem_zero(&member, sizeof(member));
         member.name = mpq_make_name("file_", (int64_t)block_index, ".bin");
         if (!member.name) goto fail;
-        member.header_offset =
-            format->base_address + found + (int64_t)block_offset +
-            (int64_t)((uint64_t)block_index * 16U);
+        member.header_offset = format->base_address + found + (int64_t)block_offset + (int64_t)((uint64_t)block_index * 16U);
         member.header_size = 16;
-        member.data_offset = format->base_address + found +
-                             (int64_t)file_offset;
+        member.data_offset = format->base_address + found + (int64_t)file_offset;
         member.packed_size = (int64_t)packed;
         member.unpacked_size = unpacked;
         member.flags = flags;
@@ -552,7 +550,8 @@ fail:
     return false;
 }
 
-static bool mpq_parse(Abstractformat *format, mpq_stream **result) {
+static bool mpq_parse(Abstractformat *format, mpq_stream **result)
+{
     int64_t cursor;
     bool parsed;
     if (!format || !format->device || !result) return false;
@@ -574,10 +573,8 @@ static bool mpq_parse(Abstractformat *format, mpq_stream **result) {
  * prefixes are declined. The final offset authenticates
  * the framing, not the contents: MPQ has no mandatory member checksum.
  * Primary semantics: StormLib SBaseCommon.cpp / SFileReadFile.cpp. */
-static bool mpq_sector_table_valid(const uint8_t *offsets, size_t count,
-                                    size_t table_size, size_t packed_size,
-                                    size_t raw_size, size_t sector_size,
-                                    bool has_checksums) {
+static bool mpq_sector_table_valid(const uint8_t *offsets, size_t count, size_t table_size, size_t packed_size, size_t raw_size, size_t sector_size, bool has_checksums)
+{
     size_t i;
     if (xx_data_get_u32(offsets, 4, 0, false) != table_size) return false;
     for (i = 0U; i < count; ++i) {
@@ -585,16 +582,14 @@ static bool mpq_sector_table_valid(const uint8_t *offsets, size_t count,
         uint32_t end = xx_data_get_u32(offsets + (i + 1U) * 4U, 4, 0, false);
         size_t want = raw_size - i * sector_size;
         if (want > sector_size) want = sector_size;
-        if (begin > packed_size || end > packed_size || end <= begin ||
-            (size_t)(end - begin) > want) return false;
+        if (begin > packed_size || end > packed_size || end <= begin || (size_t)(end - begin) > want) return false;
     }
     if (has_checksums) {
         uint32_t begin = xx_data_get_u32(offsets + count * 4U, 4, 0, false);
         uint32_t end = xx_data_get_u32(offsets + (count + 1U) * 4U, 4, 0, false);
         /* A compressed checksum table needs an additional codec chain.
          * Support the uncompressed table and verify each non-sentinel sum. */
-        return end == packed_size && end >= begin &&
-               (size_t)(end - begin) == count * 4U;
+        return end == packed_size && end >= begin && (size_t)(end - begin) == count * 4U;
     }
     return xx_data_get_u32(offsets + count * 4U, 4, 0, false) == packed_size;
 }
@@ -602,22 +597,18 @@ static bool mpq_sector_table_valid(const uint8_t *offsets, size_t count,
 /* Recover only uniquely validated keys, with no filename/key dictionary.
  * Offset-table encryption uses file-key minus one; data sector i uses
  * file-key plus i. All arithmetic intentionally wraps at 32 bits. */
-static bool mpq_sector_key(const uint32_t *crypt, const uint8_t *packed,
-                            size_t count, size_t table_size,
-                            size_t packed_size, size_t raw_size,
-                            size_t sector_size, bool has_checksums,
-                            uint8_t *offsets, uint32_t *file_key) {
+static bool mpq_sector_key(const uint32_t *crypt, const uint8_t *packed, size_t count, size_t table_size, size_t packed_size, size_t raw_size, size_t sector_size,
+                           bool has_checksums, uint8_t *offsets, uint32_t *file_key)
+{
     unsigned i;
     unsigned matches = 0U;
     uint32_t cipher = xx_data_get_u32(packed, 4, 0, false);
     for (i = 0U; i < 256U; ++i) {
-        uint32_t key = (cipher ^ (uint32_t)table_size) -
-                       (0xeeeeeeeeU + crypt[0x400U + i]);
+        uint32_t key = (cipher ^ (uint32_t)table_size) - (0xeeeeeeeeU + crypt[0x400U + i]);
         if ((key & 255U) != i) continue;
         xx_mem_copy(offsets, packed, table_size);
         mpq_decrypt_block(crypt, offsets, table_size, key);
-        if (mpq_sector_table_valid(offsets, count, table_size, packed_size,
-                                   raw_size, sector_size, has_checksums)) {
+        if (mpq_sector_table_valid(offsets, count, table_size, packed_size, raw_size, sector_size, has_checksums)) {
             *file_key = key + 1U;
             if (++matches > 1U) return false;
         }
@@ -628,9 +619,8 @@ static bool mpq_sector_key(const uint32_t *crypt, const uint8_t *packed,
     return true;
 }
 
-static bool mpq_wave_key(const uint32_t *crypt, const uint8_t *packed,
-                          size_t packed_size, size_t raw_size,
-                          uint32_t *file_key) {
+static bool mpq_wave_key(const uint32_t *crypt, const uint8_t *packed, size_t packed_size, size_t raw_size, uint32_t *file_key)
+{
     unsigned i;
     unsigned matches = 0U;
     uint8_t first[12];
@@ -638,13 +628,11 @@ static bool mpq_wave_key(const uint32_t *crypt, const uint8_t *packed,
     if (packed_size < sizeof(first) || raw_size < sizeof(first)) return false;
     cipher = xx_data_get_u32(packed, 4, 0, false);
     for (i = 0U; i < 256U; ++i) {
-        uint32_t key = (cipher ^ 0x46464952U) -
-                       (0xeeeeeeeeU + crypt[0x400U + i]);
+        uint32_t key = (cipher ^ 0x46464952U) - (0xeeeeeeeeU + crypt[0x400U + i]);
         if ((key & 255U) != i) continue;
         xx_mem_copy(first, packed, sizeof(first));
         mpq_decrypt_block(crypt, first, sizeof(first), key);
-        if (xx_data_get_u32(first, 4, 0, false) == 0x46464952U &&
-            xx_data_get_u32(first + 4U, 4, 0, false) == raw_size - 8U &&
+        if (xx_data_get_u32(first, 4, 0, false) == 0x46464952U && xx_data_get_u32(first + 4U, 4, 0, false) == raw_size - 8U &&
             xx_data_get_u32(first + 8U, 4, 0, false) == 0x45564157U) {
             *file_key = key;
             if (++matches > 1U) return false;
@@ -655,7 +643,8 @@ static bool mpq_wave_key(const uint32_t *crypt, const uint8_t *packed,
 
 /* Old sector CRC arrays actually contain Adler-32 over decrypted compressed
  * sectors, using seed zero (StormLib adler32(0,...)), before decompression. */
-static uint32_t mpq_sector_adler(const uint8_t *data, size_t size) {
+static uint32_t mpq_sector_adler(const uint8_t *data, size_t size)
+{
     uint32_t a = 0U, b = 0U;
     size_t i;
     for (i = 0U; i < size; ++i) {
@@ -668,23 +657,17 @@ static uint32_t mpq_sector_adler(const uint8_t *data, size_t size) {
 /* StormLib src/sparse/sparse.cpp: a BE32 declared output length followed by
  * literal runs (high bit, length 1..128) or zero runs (length 3..130). The
  * original reader clips overruns; require exact coverage and input here. */
-static bool mpq_sparse_decode(const uint8_t *source, size_t source_size,
-                              uint8_t *target, size_t target_size,
-                              xx_pd_struct *pd) {
+static bool mpq_sparse_decode(const uint8_t *source, size_t source_size, uint8_t *target, size_t target_size, xx_pd_struct *pd)
+{
     size_t at = 4U, written = 0U;
     uint32_t declared;
-    if (!source || !target || source_size < 5U || target_size > UINT32_MAX)
-        return false;
-    declared = ((uint32_t)source[0] << 24U) |
-               ((uint32_t)source[1] << 16U) |
-               ((uint32_t)source[2] << 8U) | (uint32_t)source[3];
+    if (!source || !target || source_size < 5U || target_size > UINT32_MAX) return false;
+    declared = ((uint32_t)source[0] << 24U) | ((uint32_t)source[1] << 16U) | ((uint32_t)source[2] << 8U) | (uint32_t)source[3];
     if (declared != target_size) return false;
     while (at < source_size) {
         uint8_t token = source[at++];
-        size_t run = (token & 0x80U) ? (size_t)(token & 0x7fU) + 1U
-                                       : (size_t)token + 3U;
-        if ((pd && xx_pd_is_stopped(pd)) || run > target_size - written)
-            return false;
+        size_t run = (token & 0x80U) ? (size_t)(token & 0x7fU) + 1U : (size_t)token + 3U;
+        if ((pd && xx_pd_is_stopped(pd)) || run > target_size - written) return false;
         if (token & 0x80U) {
             if (run > source_size - at) return false;
             xx_mem_copy(target + written, source + at, run);
@@ -697,39 +680,32 @@ static bool mpq_sparse_decode(const uint8_t *source, size_t source_size,
     return written == target_size;
 }
 
-static bool mpq_zlib_decode(const uint8_t *source, size_t source_size,
-                            uint8_t *target, size_t capacity,
-                            size_t *written, xx_pd_struct *pd) {
+static bool mpq_zlib_decode(const uint8_t *source, size_t source_size, uint8_t *target, size_t capacity, size_t *written, xx_pd_struct *pd)
+{
     xx_io_device *out;
     size_t consumed = 0U;
     int64_t actual;
     bool result;
-    if (!source || !target || !written || source_size < 6U ||
-        !xx_zlib_stream_header_is_valid(source, source_size)) return false;
+    if (!source || !target || !written || source_size < 6U || !xx_zlib_stream_header_is_valid(source, source_size)) return false;
     out = xx_io_mem_open(target, capacity);
     if (!out) return false;
-    result = xx_deflate_unpack_memory_to_device_ex(
-        source + 2U, source_size - 6U, out, &consumed, false, pd);
+    result = xx_deflate_unpack_memory_to_device_ex(source + 2U, source_size - 6U, out, &consumed, false, pd);
     actual = xx_io_tell(out);
     if (xx_io_close(out) != 0) result = false;
-    result = result && consumed == source_size - 6U && actual >= 0 &&
-             (uint64_t)actual <= capacity &&
-             xx_zlib_stream_trailer_matches(source, source_size, target,
-                                            (size_t)actual);
+    result = result && consumed == source_size - 6U && actual >= 0 && (uint64_t)actual <= capacity &&
+             xx_zlib_stream_trailer_matches(source, source_size, target, (size_t)actual);
     if (result) *written = (size_t)actual;
     return result;
 }
 
-static bool mpq_bzip2_decode(const uint8_t *source, size_t source_size,
-                             uint8_t *target, size_t capacity,
-                             size_t *written, xx_pd_struct *pd) {
+static bool mpq_bzip2_decode(const uint8_t *source, size_t source_size, uint8_t *target, size_t capacity, size_t *written, xx_pd_struct *pd)
+{
     xx_io_device *out;
     int64_t actual;
     bool result;
-    if (!source || !target || !written || source_size < 4U ||
-        source[0] != (uint8_t)'B' || source[1] != (uint8_t)'Z' ||
-        source[2] != (uint8_t)'h' || source[3] < (uint8_t)'1' ||
-        source[3] > (uint8_t)'9') return false;
+    if (!source || !target || !written || source_size < 4U || source[0] != (uint8_t)'B' || source[1] != (uint8_t)'Z' || source[2] != (uint8_t)'h' ||
+        source[3] < (uint8_t)'1' || source[3] > (uint8_t)'9')
+        return false;
     out = xx_io_mem_open(target, capacity);
     if (!out) return false;
     result = xx_bzip2_unpack_memory_to_device(source, source_size, out, pd);
@@ -744,174 +720,132 @@ static bool mpq_bzip2_decode(const uint8_t *source, size_t source_size,
  * actually shrinks the input by at least two bytes. Its intermediate frames
  * therefore fit in the uncompressed sector's allocation. Keep the accepted
  * combinations explicit: each has an original-writer sector oracle. */
-static bool mpq_decode_verified_chain(unsigned mask,
-                                      const uint8_t *source,
-                                      size_t source_size,
-                                      uint8_t *plain,size_t plain_size,
-                                      xx_pd_struct *pd) {
-    unsigned stages[5];size_t stage_count=0U,i,produced=0U;
+static bool mpq_decode_verified_chain(unsigned mask, const uint8_t *source, size_t source_size, uint8_t *plain, size_t plain_size, xx_pd_struct *pd)
+{
+    unsigned stages[5];
+    size_t stage_count = 0U, i, produced = 0U;
     uint8_t *scratch;
-    bool ok=true;
-    switch(mask) {
-    case 0x03U: case 0x09U: case 0x0aU: case 0x11U: case 0x18U:
-    case 0x21U: case 0x23U: case 0x29U: case 0x31U: break;
-    default: return false;
+    bool ok = true;
+    switch (mask) {
+        case 0x03U:
+        case 0x09U:
+        case 0x0aU:
+        case 0x11U:
+        case 0x18U:
+        case 0x21U:
+        case 0x23U:
+        case 0x29U:
+        case 0x31U: break;
+        default: return false;
     }
-    if(!source || !source_size || !plain || !plain_size ||
-       (pd && xx_pd_is_stopped(pd)))return false;
-    if(mask & MPQ_COMPRESSION_BZIP2)stages[stage_count++]=MPQ_COMPRESSION_BZIP2;
-    if(mask & MPQ_COMPRESSION_PKWARE)stages[stage_count++]=MPQ_COMPRESSION_PKWARE;
-    if(mask & MPQ_COMPRESSION_ZLIB)stages[stage_count++]=MPQ_COMPRESSION_ZLIB;
-    if(mask & MPQ_COMPRESSION_HUFFMAN)stages[stage_count++]=MPQ_COMPRESSION_HUFFMAN;
-    if(mask & MPQ_COMPRESSION_SPARSE)stages[stage_count++]=MPQ_COMPRESSION_SPARSE;
-    if(stage_count<2U || stage_count>5U)return false;
-    scratch=(uint8_t *)xx_mem_alloc(plain_size);
-    if(!scratch)return false;
-    for(i=0U;i<stage_count && ok;++i) {
-        unsigned stage=stages[i];
-        uint8_t *target=((stage_count-i)&1U)?plain:scratch;
-        produced=0U;
-        if(stage==MPQ_COMPRESSION_BZIP2)
-            ok=mpq_bzip2_decode(source,source_size,target,plain_size,
-                                  &produced,pd);
-        else if(stage==MPQ_COMPRESSION_PKWARE) {
-            size_t consumed=0U,scanned=0U;
-            ok=xx_dcl_scan_memory(source,source_size,plain_size,
-                                  &consumed,&scanned) &&
-               consumed==source_size && scanned>0U &&
-               xx_dcl_decode_memory(source,source_size,target,
-                                    scanned,&produced) &&
-               produced==scanned;
-        } else if(stage==MPQ_COMPRESSION_ZLIB)
-            ok=mpq_zlib_decode(source,source_size,target,plain_size,
-                                &produced,pd);
-        else if(stage==MPQ_COMPRESSION_HUFFMAN)
-            ok=mpq_huff_decode(source,source_size,target,plain_size,
-                                &produced,pd);
-        else if(stage==MPQ_COMPRESSION_SPARSE) {
-            ok=i+1U==stage_count &&
-               mpq_sparse_decode(source,source_size,target,plain_size,pd);
-            if(ok)produced=plain_size;
-        } else ok=false;
-        if(!ok || produced==0U || produced>plain_size ||
-           (pd && xx_pd_is_stopped(pd)))break;
-        source=target;source_size=produced;
+    if (!source || !source_size || !plain || !plain_size || (pd && xx_pd_is_stopped(pd))) return false;
+    if (mask & MPQ_COMPRESSION_BZIP2) stages[stage_count++] = MPQ_COMPRESSION_BZIP2;
+    if (mask & MPQ_COMPRESSION_PKWARE) stages[stage_count++] = MPQ_COMPRESSION_PKWARE;
+    if (mask & MPQ_COMPRESSION_ZLIB) stages[stage_count++] = MPQ_COMPRESSION_ZLIB;
+    if (mask & MPQ_COMPRESSION_HUFFMAN) stages[stage_count++] = MPQ_COMPRESSION_HUFFMAN;
+    if (mask & MPQ_COMPRESSION_SPARSE) stages[stage_count++] = MPQ_COMPRESSION_SPARSE;
+    if (stage_count < 2U || stage_count > 5U) return false;
+    scratch = (uint8_t *)xx_mem_alloc(plain_size);
+    if (!scratch) return false;
+    for (i = 0U; i < stage_count && ok; ++i) {
+        unsigned stage = stages[i];
+        uint8_t *target = ((stage_count - i) & 1U) ? plain : scratch;
+        produced = 0U;
+        if (stage == MPQ_COMPRESSION_BZIP2) ok = mpq_bzip2_decode(source, source_size, target, plain_size, &produced, pd);
+        else if (stage == MPQ_COMPRESSION_PKWARE) {
+            size_t consumed = 0U, scanned = 0U;
+            ok = xx_dcl_scan_memory(source, source_size, plain_size, &consumed, &scanned) && consumed == source_size && scanned > 0U &&
+                 xx_dcl_decode_memory(source, source_size, target, scanned, &produced) && produced == scanned;
+        } else if (stage == MPQ_COMPRESSION_ZLIB) ok = mpq_zlib_decode(source, source_size, target, plain_size, &produced, pd);
+        else if (stage == MPQ_COMPRESSION_HUFFMAN) ok = mpq_huff_decode(source, source_size, target, plain_size, &produced, pd);
+        else if (stage == MPQ_COMPRESSION_SPARSE) {
+            ok = i + 1U == stage_count && mpq_sparse_decode(source, source_size, target, plain_size, pd);
+            if (ok) produced = plain_size;
+        } else ok = false;
+        if (!ok || produced == 0U || produced > plain_size || (pd && xx_pd_is_stopped(pd))) break;
+        source = target;
+        source_size = produced;
     }
     xx_mem_free(scratch);
-    return ok && i==stage_count && produced==plain_size &&
-           (!pd || !xx_pd_is_stopped(pd));
+    return ok && i == stage_count && produced == plain_size && (!pd || !xx_pd_is_stopped(pd));
 }
 
 /* MPQ_FILE_COMPRESS sectors carry a method byte. 0x12 is Blizzard's special
  * LZMA method. Only original-producer-verified chain masks are dispatched;
  * arbitrary bit combinations are not inferred from their individual codecs. */
-static bool mpq_decode_multi_sector(const uint8_t *packed, size_t packed_size,
-                                    uint8_t *plain, size_t plain_size,
-                                    xx_pd_struct *pd) {
+static bool mpq_decode_multi_sector(const uint8_t *packed, size_t packed_size, uint8_t *plain, size_t plain_size, xx_pd_struct *pd)
+{
     const uint8_t *body;
     size_t body_size;
     size_t written = 0U;
     uint8_t *intermediate = NULL;
     bool ok = false;
-    if (!packed || !plain || packed_size < 2U || plain_size == 0U ||
-        (pd && xx_pd_is_stopped(pd))) return false;
+    if (!packed || !plain || packed_size < 2U || plain_size == 0U || (pd && xx_pd_is_stopped(pd))) return false;
     body = packed + 1U;
     body_size = packed_size - 1U;
     if (packed[0] == MPQ_COMPRESSION_HUFFMAN) {
-        ok = mpq_huff_decode(body, body_size, plain, plain_size,
-                             &written, pd);
-    } else if (packed[0] == MPQ_COMPRESSION_ADPCM_MONO ||
-               packed[0] == MPQ_COMPRESSION_ADPCM_STEREO) {
-        unsigned channels = packed[0] == MPQ_COMPRESSION_ADPCM_STEREO
-                                ? 2U : 1U;
-        ok = mpq_adpcm_decode(body, body_size, plain, plain_size,
-                              channels, pd);
+        ok = mpq_huff_decode(body, body_size, plain, plain_size, &written, pd);
+    } else if (packed[0] == MPQ_COMPRESSION_ADPCM_MONO || packed[0] == MPQ_COMPRESSION_ADPCM_STEREO) {
+        unsigned channels = packed[0] == MPQ_COMPRESSION_ADPCM_STEREO ? 2U : 1U;
+        ok = mpq_adpcm_decode(body, body_size, plain, plain_size, channels, pd);
         if (ok) written = plain_size;
-    } else if (packed[0] == (MPQ_COMPRESSION_HUFFMAN |
-                             MPQ_COMPRESSION_ADPCM_MONO) ||
-               packed[0] == (MPQ_COMPRESSION_HUFFMAN |
-                             MPQ_COMPRESSION_ADPCM_STEREO)) {
+    } else if (packed[0] == (MPQ_COMPRESSION_HUFFMAN | MPQ_COMPRESSION_ADPCM_MONO) || packed[0] == (MPQ_COMPRESSION_HUFFMAN | MPQ_COMPRESSION_ADPCM_STEREO)) {
         unsigned channels = packed[0] & MPQ_COMPRESSION_ADPCM_STEREO ? 2U : 1U;
         intermediate = (uint8_t *)xx_mem_alloc(plain_size);
         if (!intermediate) return false;
-        ok = mpq_huff_decode(body, body_size, intermediate, plain_size,
-                              &written, pd) &&
-             mpq_adpcm_decode(intermediate, written, plain, plain_size,
-                               channels, pd);
+        ok = mpq_huff_decode(body, body_size, intermediate, plain_size, &written, pd) && mpq_adpcm_decode(intermediate, written, plain, plain_size, channels, pd);
         if (ok) written = plain_size;
     } else if (packed[0] == MPQ_COMPRESSION_ZLIB) {
-        ok = mpq_zlib_decode(body, body_size, plain, plain_size,
-                             &written, pd);
+        ok = mpq_zlib_decode(body, body_size, plain, plain_size, &written, pd);
     } else if (packed[0] == MPQ_COMPRESSION_BZIP2) {
-        ok = mpq_bzip2_decode(body, body_size, plain, plain_size,
-                              &written, pd);
+        ok = mpq_bzip2_decode(body, body_size, plain, plain_size, &written, pd);
     } else if (packed[0] == MPQ_COMPRESSION_PKWARE) {
         size_t consumed = 0U, produced = 0U;
-        ok = xx_dcl_scan_memory(body, body_size, plain_size,
-                                &consumed, &produced) &&
-             consumed == body_size && produced == plain_size &&
-             xx_dcl_decode_memory(body, body_size, plain,
-                                  plain_size, &written);
+        ok = xx_dcl_scan_memory(body, body_size, plain_size, &consumed, &produced) && consumed == body_size && produced == plain_size &&
+             xx_dcl_decode_memory(body, body_size, plain, plain_size, &written);
     } else if (packed[0] == MPQ_COMPRESSION_SPARSE) {
         ok = mpq_sparse_decode(body, body_size, plain, plain_size, pd);
         written = ok ? plain_size : 0U;
-    } else if (packed[0] == (MPQ_COMPRESSION_SPARSE | MPQ_COMPRESSION_ZLIB) ||
-               packed[0] == (MPQ_COMPRESSION_SPARSE | MPQ_COMPRESSION_BZIP2)) {
+    } else if (packed[0] == (MPQ_COMPRESSION_SPARSE | MPQ_COMPRESSION_ZLIB) || packed[0] == (MPQ_COMPRESSION_SPARSE | MPQ_COMPRESSION_BZIP2)) {
         /* Successful StormLib sparse compression always shrinks its input.
          * Thus the intermediate frame cannot exceed the plain sector size. */
         intermediate = (uint8_t *)xx_mem_alloc(plain_size);
         if (!intermediate) return false;
-        ok = packed[0] == (MPQ_COMPRESSION_SPARSE | MPQ_COMPRESSION_ZLIB)
-                 ? mpq_zlib_decode(body, body_size, intermediate, plain_size,
-                                    &written, pd)
-                 : mpq_bzip2_decode(body, body_size, intermediate, plain_size,
-                                     &written, pd);
-        ok = ok && mpq_sparse_decode(intermediate, written, plain,
-                                      plain_size, pd);
+        ok = packed[0] == (MPQ_COMPRESSION_SPARSE | MPQ_COMPRESSION_ZLIB) ? mpq_zlib_decode(body, body_size, intermediate, plain_size, &written, pd)
+                                                                          : mpq_bzip2_decode(body, body_size, intermediate, plain_size, &written, pd);
+        ok = ok && mpq_sparse_decode(intermediate, written, plain, plain_size, pd);
         if (ok) written = plain_size;
     } else if (packed[0] == (MPQ_COMPRESSION_SPARSE | MPQ_COMPRESSION_PKWARE)) {
         size_t consumed = 0U, produced = 0U;
         intermediate = (uint8_t *)xx_mem_alloc(plain_size);
         if (!intermediate) return false;
-        ok = xx_dcl_scan_memory(body, body_size, plain_size,
-                                &consumed, &produced) &&
-             consumed == body_size && produced >= 5U &&
-             produced <= plain_size &&
-             xx_dcl_decode_memory(body, body_size, intermediate,
-                                  produced, &written) &&
-             written == produced &&
-             mpq_sparse_decode(intermediate, written, plain,
-                               plain_size, pd);
+        ok = xx_dcl_scan_memory(body, body_size, plain_size, &consumed, &produced) && consumed == body_size && produced >= 5U && produced <= plain_size &&
+             xx_dcl_decode_memory(body, body_size, intermediate, produced, &written) && written == produced &&
+             mpq_sparse_decode(intermediate, written, plain, plain_size, pd);
         if (ok) written = plain_size;
     } else if (packed[0] == MPQ_COMPRESSION_LZMA) {
         uint64_t declared;
         xx_io_device *out;
         int64_t actual;
         if (body_size < 15U || body[0] != 0U) return false;
-        declared = (uint64_t)xx_data_get_u32(body + 6U, 4, 0, false) |
-                   ((uint64_t)xx_data_get_u32(body + 10U, 4, 0, false) << 32U);
+        declared = (uint64_t)xx_data_get_u32(body + 6U, 4, 0, false) | ((uint64_t)xx_data_get_u32(body + 10U, 4, 0, false) << 32U);
         if (declared != plain_size) return false;
         out = xx_io_mem_open(plain, plain_size);
         if (!out) return false;
-        ok = xx_lzma_unpack_memory_to_device(body + 14U, body_size - 14U,
-                                              body + 1U, 5U,
-                                              (int64_t)plain_size, out, pd);
+        ok = xx_lzma_unpack_memory_to_device(body + 14U, body_size - 14U, body + 1U, 5U, (int64_t)plain_size, out, pd);
         actual = xx_io_tell(out);
         if (xx_io_close(out) != 0) ok = false;
         if (ok && actual >= 0) written = (size_t)actual;
     } else {
-        ok=mpq_decode_verified_chain(packed[0],body,body_size,
-                                     plain,plain_size,pd);
-        if(ok)written=plain_size;
+        ok = mpq_decode_verified_chain(packed[0], body, body_size, plain, plain_size, pd);
+        if (ok) written = plain_size;
     }
     if (intermediate) xx_mem_free(intermediate);
-    return ok && written == plain_size &&
-           (!pd || !xx_pd_is_stopped(pd));
+    return ok && written == plain_size && (!pd || !xx_pd_is_stopped(pd));
 }
 
-static bool mpq_write_member(Abstractformat *format, mpq_stream *stream,
-                             const mpq_member *member,
-                             xx_io_device *destination, xx_pd_struct *pd) {
+static bool mpq_write_member(Abstractformat *format, mpq_stream *stream, const mpq_member *member, xx_io_device *destination, xx_pd_struct *pd)
+{
     uint8_t *packed = NULL, *plain = NULL, *offsets = NULL;
     uint32_t crypt[0x500], key = 0U;
     size_t packed_size, raw_size, sector_size, count, table_size = 0U, i;
@@ -921,20 +855,15 @@ static bool mpq_write_member(Abstractformat *format, mpq_stream *stream,
     const char *reason = "Invalid MPQ sector framing or compressed data";
     if (!format || !format->device || !stream || !member) return false;
     if (pd && xx_pd_is_stopped(pd)) return false;
-    if ((member->flags & MPQ_FILE_PATCH) != 0U ||
-        (member->method != 0U && member->method != MPQ_FILE_IMPLODE &&
-         member->method != MPQ_FILE_COMPRESS)) {
-        xx_pd_set_error(pd, XXFC_ERR_INVALID_ARG,
-                        "MPQ patch or compression method unsupported");
+    if ((member->flags & MPQ_FILE_PATCH) != 0U || (member->method != 0U && member->method != MPQ_FILE_IMPLODE && member->method != MPQ_FILE_COMPRESS)) {
+        xx_pd_set_error(pd, XXFC_ERR_INVALID_ARG, "MPQ patch or compression method unsupported");
         return false;
     }
     if (!member->encrypted && member->method == 0U) {
         if ((uint64_t)member->packed_size != member->unpacked_size) return false;
-        return mpq_copy_range(format->device, member->data_offset,
-                              member->unpacked_size, destination, pd);
+        return mpq_copy_range(format->device, member->data_offset, member->unpacked_size, destination, pd);
     }
-    if (member->packed_size < 0 || member->packed_size > MPQ_DECODE_LIMIT ||
-        member->unpacked_size > MPQ_DECODE_LIMIT) {
+    if (member->packed_size < 0 || member->packed_size > MPQ_DECODE_LIMIT || member->unpacked_size > MPQ_DECODE_LIMIT) {
         xx_pd_set_error(pd, XXFC_ERR_OUT_OF_BOUNDS, "MPQ decode allocation limit");
         return false;
     }
@@ -953,33 +882,44 @@ static bool mpq_write_member(Abstractformat *format, mpq_stream *stream,
     count = single ? 1U : (raw_size + sector_size - 1U) / sector_size;
     packed = (uint8_t *)xx_mem_alloc(packed_size);
     plain = (uint8_t *)xx_mem_alloc(raw_size);
-    if (!packed || !plain) { error = XXFC_ERR_OUT_OF_MEMORY; reason = "MPQ decode allocation failed"; goto done; }
+    if (!packed || !plain) {
+        error = XXFC_ERR_OUT_OF_MEMORY;
+        reason = "MPQ decode allocation failed";
+        goto done;
+    }
     source_cursor = xx_io_tell(format->device);
-    if (source_cursor < 0) { error = XXFC_ERR_IO; goto done; }
+    if (source_cursor < 0) {
+        error = XXFC_ERR_IO;
+        goto done;
+    }
     if (!mpq_read_at(format->device, member->data_offset, packed, packed_size)) {
-        error = XXFC_ERR_IO; reason = "MPQ member read failed"; goto done;
+        error = XXFC_ERR_IO;
+        reason = "MPQ member read failed";
+        goto done;
     }
     mpq_build_crypt_table(crypt);
     if (compressed && !single) {
         table_size = (count + (checksums ? 2U : 1U)) * 4U;
         if (table_size > packed_size) goto done;
         offsets = (uint8_t *)xx_mem_alloc(table_size);
-        if (!offsets) { error = XXFC_ERR_OUT_OF_MEMORY; goto done; }
+        if (!offsets) {
+            error = XXFC_ERR_OUT_OF_MEMORY;
+            goto done;
+        }
         if (member->encrypted) {
-            if (!mpq_sector_key(crypt, packed, count, table_size, packed_size,
-                                 raw_size, sector_size, checksums, offsets, &key)) {
-                reason = "MPQ encrypted sector table has no unique valid key"; goto done;
+            if (!mpq_sector_key(crypt, packed, count, table_size, packed_size, raw_size, sector_size, checksums, offsets, &key)) {
+                reason = "MPQ encrypted sector table has no unique valid key";
+                goto done;
             }
         } else {
             xx_mem_copy(offsets, packed, table_size);
-            if (!mpq_sector_table_valid(offsets, count, table_size, packed_size,
-                                        raw_size, sector_size, checksums)) goto done;
+            if (!mpq_sector_table_valid(offsets, count, table_size, packed_size, raw_size, sector_size, checksums)) goto done;
         }
     } else {
-        if (member->encrypted &&
-            (compressed || !mpq_wave_key(crypt, packed, packed_size, raw_size, &key))) {
+        if (member->encrypted && (compressed || !mpq_wave_key(crypt, packed, packed_size, raw_size, &key))) {
             error = XXFC_ERR_INVALID_ARG;
-            reason = "MPQ encrypted member has no recoverable WAVE or sector-table key"; goto done;
+            reason = "MPQ encrypted member has no recoverable WAVE or sector-table key";
+            goto done;
         }
         if ((!compressed && packed_size != raw_size) || packed_size > raw_size) goto done;
     }
@@ -990,38 +930,38 @@ static bool mpq_write_member(Abstractformat *format, mpq_stream *stream,
         if (pd && xx_pd_is_stopped(pd)) goto done;
         if (!single && want > sector_size) want = sector_size;
         begin = offsets ? xx_data_get_u32(offsets + i * 4U, 4, 0, false) : raw_at;
-        end = offsets ? xx_data_get_u32(offsets + (i + 1U) * 4U, 4, 0, false) :
-                         (single ? packed_size : raw_at + want);
+        end = offsets ? xx_data_get_u32(offsets + (i + 1U) * 4U, 4, 0, false) : (single ? packed_size : raw_at + want);
         if (begin > end || end > packed_size) goto done;
         size = end - begin;
         if (member->encrypted) mpq_decrypt_block(crypt, packed + begin, size, key + (uint32_t)i);
         if (checksums) {
             size_t crc_at = xx_data_get_u32(offsets + count * 4U, 4, 0, false) + i * 4U;
             uint32_t expected = xx_data_get_u32(packed + crc_at, 4, 0, false);
-            if (expected != 0U && expected != UINT32_MAX &&
-                expected != mpq_sector_adler(packed + begin, size)) {
-                reason = "MPQ sector Adler-32 checksum mismatch"; goto done;
+            if (expected != 0U && expected != UINT32_MAX && expected != mpq_sector_adler(packed + begin, size)) {
+                reason = "MPQ sector Adler-32 checksum mismatch";
+                goto done;
             }
         }
         if (size == want) xx_mem_copy(plain + raw_at, packed + begin, want);
         else if (member->method == MPQ_FILE_COMPRESS) {
-            if (size > want ||
-                !mpq_decode_multi_sector(packed + begin, size,
-                                         plain + raw_at, want, pd)) goto done;
+            if (size > want || !mpq_decode_multi_sector(packed + begin, size, plain + raw_at, want, pd)) goto done;
         } else {
             size_t consumed = 0U, produced = 0U, written = 0U;
-            if (!compressed || size > want ||
-                !xx_dcl_scan_memory(packed + begin, size, want, &consumed, &produced) ||
-                consumed != size || produced != want ||
-                !xx_dcl_decode_memory(packed + begin, size, plain + raw_at, want, &written) ||
-                written != want) goto done;
+            if (!compressed || size > want || !xx_dcl_scan_memory(packed + begin, size, want, &consumed, &produced) || consumed != size || produced != want ||
+                !xx_dcl_decode_memory(packed + begin, size, plain + raw_at, want, &written) || written != want)
+                goto done;
         }
     }
     result = mpq_write_all(destination, plain, raw_size, pd);
-    if (!result) { error = XXFC_ERR_IO; reason = "MPQ output write failed"; }
+    if (!result) {
+        error = XXFC_ERR_IO;
+        reason = "MPQ output write failed";
+    }
 done:
     if (source_cursor >= 0 && xx_io_seek64(format->device, source_cursor, SEEK_SET) != 0) {
-        result = false; error = XXFC_ERR_IO; reason = "MPQ source cursor restore failed";
+        result = false;
+        error = XXFC_ERR_IO;
+        reason = "MPQ source cursor restore failed";
     }
     if (!result && !(pd && xx_pd_is_stopped(pd))) xx_pd_set_error(pd, error, reason);
     if (offsets) xx_mem_free(offsets);
@@ -1030,17 +970,16 @@ done:
     return result;
 }
 
-static bool mpq_copy_options(xx_list_s *destination, const xx_list_s *source) {
+static bool mpq_copy_options(xx_list_s *destination, const xx_list_s *source)
+{
     size_t index;
     if (!source) return true;
     for (index = 0U; index < source->count; ++index) {
-        const xx_meta *original =
-            (const xx_meta *)xx_list_at((const xx_list_t *)source, index);
+        const xx_meta *original = (const xx_meta *)xx_list_at((const xx_list_t *)source, index);
         xx_meta copy;
         if (!original) continue;
         xx_meta_init(&copy, original->meta_id);
-        if (!xx_var_copy(&copy.var, &original->var) ||
-            !xx_list_append(destination, &copy)) {
+        if (!xx_var_copy(&copy.var, &original->var) || !xx_list_append(destination, &copy)) {
             xx_meta_cleanup(&copy);
             return false;
         }
@@ -1048,26 +987,25 @@ static bool mpq_copy_options(xx_list_s *destination, const xx_list_s *source) {
     return true;
 }
 
-static const xx_var *mpq_option(Abstractformat *format,
-                                const xx_list_s *options, uint32_t id) {
+static const xx_var *mpq_option(Abstractformat *format, const xx_list_s *options, uint32_t id)
+{
     return xx_format_resolve_extra_parameter(format, options, id);
 }
 
-static bool mpq_same_path_folded(const char *a, const char *b) {
+static bool mpq_same_path_folded(const char *a, const char *b)
+{
     if (!a || !b) return false;
     for (;;) {
         unsigned char x = (unsigned char)*a++, y = (unsigned char)*b++;
-        if (x >= (unsigned char)'A' && x <= (unsigned char)'Z')
-            x = (unsigned char)(x + (unsigned char)('a' - 'A'));
-        if (y >= (unsigned char)'A' && y <= (unsigned char)'Z')
-            y = (unsigned char)(y + (unsigned char)('a' - 'A'));
+        if (x >= (unsigned char)'A' && x <= (unsigned char)'Z') x = (unsigned char)(x + (unsigned char)('a' - 'A'));
+        if (y >= (unsigned char)'A' && y <= (unsigned char)'Z') y = (unsigned char)(y + (unsigned char)('a' - 'A'));
         if (x != y) return false;
         if (x == 0U) return true;
     }
 }
 
-static bool mpq_set_record(xx_archive_record *record,
-                           const mpq_member *member) {
+static bool mpq_set_record(xx_archive_record *record, const mpq_member *member)
+{
     xx_archive_record_cleanup(record);
     xx_archive_record_init(record);
     record->header_offset = member->header_offset;
@@ -1075,27 +1013,17 @@ static bool mpq_set_record(xx_archive_record *record,
     record->data_offset = member->data_offset;
     record->compressed_size = member->packed_size;
     return xx_archive_record_set_original_name(record, member->name) &&
-           xx_archive_record_set_meta_u64(record, XX_META_ID_COMPRESSED_SIZE,
-                                          (uint64_t)member->packed_size) &&
-           xx_archive_record_set_meta_u64(record, XX_META_ID_UNCOMPRESSED_SIZE,
-                                          member->unpacked_size) &&
-           xx_archive_record_set_meta_u64(record, XX_META_ID_COMPRESSION_METHOD,
-                                          member->method) &&
-           xx_archive_record_set_meta_u64(record, XX_META_ID_CRC32,
-                                          member->crc32) &&
-           xx_archive_record_set_meta_u64(record, XX_META_ID_ATTRIBUTES,
-                                          member->attributes) &&
-           xx_archive_record_set_meta_u64(record, XX_META_ID_TIMESTAMP,
-                                          member->timestamp) &&
-           xx_archive_record_set_meta_u64(record, XX_META_ID_FLAGS,
-                                          member->flags) &&
-           xx_archive_record_set_meta_bool(record, XX_META_ID_IS_ENCRYPTED,
-                                           member->encrypted) &&
-           xx_archive_record_set_meta_bool(record, XX_META_ID_IS_FOLDER,
-                                           member->folder);
+           xx_archive_record_set_meta_u64(record, XX_META_ID_COMPRESSED_SIZE, (uint64_t)member->packed_size) &&
+           xx_archive_record_set_meta_u64(record, XX_META_ID_UNCOMPRESSED_SIZE, member->unpacked_size) &&
+           xx_archive_record_set_meta_u64(record, XX_META_ID_COMPRESSION_METHOD, member->method) &&
+           xx_archive_record_set_meta_u64(record, XX_META_ID_CRC32, member->crc32) && xx_archive_record_set_meta_u64(record, XX_META_ID_ATTRIBUTES, member->attributes) &&
+           xx_archive_record_set_meta_u64(record, XX_META_ID_TIMESTAMP, member->timestamp) && xx_archive_record_set_meta_u64(record, XX_META_ID_FLAGS, member->flags) &&
+           xx_archive_record_set_meta_bool(record, XX_META_ID_IS_ENCRYPTED, member->encrypted) &&
+           xx_archive_record_set_meta_bool(record, XX_META_ID_IS_FOLDER, member->folder);
 }
 
-void xx_mpq_init(xx_mpq *archive, xx_io_device *device, int64_t base_address) {
+void xx_mpq_init(xx_mpq *archive, xx_io_device *device, int64_t base_address)
+{
     if (!archive) return;
     xx_mem_zero(archive, sizeof(*archive));
     xx_format_init(&archive->format, device, base_address);
@@ -1108,38 +1036,36 @@ void xx_mpq_init(xx_mpq *archive, xx_io_device *device, int64_t base_address) {
     archive->format.check_is_valid = xx_mpq_check_is_valid;
     archive->format.handle_base_info = xx_mpq_handle_base_info;
     archive->format.get_format_size = xx_mpq_get_format_size;
-    archive->format.get_number_of_archive_records =
-        xx_mpq_get_number_of_archive_records;
-    archive->format.create_archive_records_reading =
-        xx_mpq_create_archive_records_reading;
-    archive->format.get_current_archive_record =
-        xx_mpq_get_current_archive_record;
-    archive->format.unpack_current_archive_record =
-        xx_mpq_unpack_current_archive_record;
-    archive->format.archive_record_move_to_next =
-        xx_mpq_archive_record_move_to_next;
-    archive->format.free_archive_records_reading =
-        xx_mpq_free_archive_records_reading;
+    archive->format.get_number_of_archive_records = xx_mpq_get_number_of_archive_records;
+    archive->format.create_archive_records_reading = xx_mpq_create_archive_records_reading;
+    archive->format.get_current_archive_record = xx_mpq_get_current_archive_record;
+    archive->format.unpack_current_archive_record = xx_mpq_unpack_current_archive_record;
+    archive->format.archive_record_move_to_next = xx_mpq_archive_record_move_to_next;
+    archive->format.free_archive_records_reading = xx_mpq_free_archive_records_reading;
     archive->archive_end = -1;
 }
 
-xx_mpq *xx_mpq_create(xx_io_device *device, int64_t base_address) {
+xx_mpq *xx_mpq_create(xx_io_device *device, int64_t base_address)
+{
     xx_mpq *archive = (xx_mpq *)xx_mem_alloc(sizeof(*archive));
     if (archive) xx_mpq_init(archive, device, base_address);
     return archive;
 }
 
-void xx_mpq_destroy(xx_mpq *archive) {
+void xx_mpq_destroy(xx_mpq *archive)
+{
     if (archive) xx_format_cleanup_extra_parameters(&archive->format);
 }
 
-void xx_mpq_free(xx_mpq *archive) {
+void xx_mpq_free(xx_mpq *archive)
+{
     if (!archive) return;
     xx_mpq_destroy(archive);
     xx_mem_free(archive);
 }
 
-bool xx_mpq_check_is_valid(Abstractformat *format, xx_pd_struct *pd) {
+bool xx_mpq_check_is_valid(Abstractformat *format, xx_pd_struct *pd)
+{
     mpq_stream *stream;
     (void)pd;
     if (!mpq_parse(format, &stream)) return false;
@@ -1147,7 +1073,8 @@ bool xx_mpq_check_is_valid(Abstractformat *format, xx_pd_struct *pd) {
     return true;
 }
 
-bool xx_mpq_handle_base_info(Abstractformat *format, xx_pd_struct *pd) {
+bool xx_mpq_handle_base_info(Abstractformat *format, xx_pd_struct *pd)
+{
     mpq_stream *stream;
     xx_mpq *archive;
     (void)pd;
@@ -1176,23 +1103,18 @@ bool xx_mpq_handle_base_info(Abstractformat *format, xx_pd_struct *pd) {
     return true;
 }
 
-int64_t xx_mpq_get_format_size(Abstractformat *format, xx_pd_struct *pd) {
-    return format && (format->base_info_handled ||
-                      xx_mpq_handle_base_info(format, pd))
-               ? format->format_size
-               : -1;
+int64_t xx_mpq_get_format_size(Abstractformat *format, xx_pd_struct *pd)
+{
+    return format && (format->base_info_handled || xx_mpq_handle_base_info(format, pd)) ? format->format_size : -1;
 }
 
-uint64_t xx_mpq_get_number_of_archive_records(Abstractformat *format,
-                                              xx_pd_struct *pd) {
-    return format && (format->base_info_handled ||
-                      xx_mpq_handle_base_info(format, pd))
-               ? ((xx_mpq *)format)->number_of_records
-               : 0U;
+uint64_t xx_mpq_get_number_of_archive_records(Abstractformat *format, xx_pd_struct *pd)
+{
+    return format && (format->base_info_handled || xx_mpq_handle_base_info(format, pd)) ? ((xx_mpq *)format)->number_of_records : 0U;
 }
 
-xx_archive_record_state *xx_mpq_create_archive_records_reading(
-    Abstractformat *format, const xx_list_s *options, xx_pd_struct *pd) {
+xx_archive_record_state *xx_mpq_create_archive_records_reading(Abstractformat *format, const xx_list_s *options, xx_pd_struct *pd)
+{
     mpq_stream *stream;
     xx_archive_record_state *state;
     (void)pd;
@@ -1206,8 +1128,7 @@ xx_archive_record_state *xx_mpq_create_archive_records_reading(
     state->internal_state = stream;
     state->free_internal = mpq_stream_free;
     state->total_records = stream->count;
-    if (!mpq_copy_options(&state->options, options) ||
-        !mpq_set_record(&state->current_record, &stream->items[0])) {
+    if (!mpq_copy_options(&state->options, options) || !mpq_set_record(&state->current_record, &stream->items[0])) {
         xx_archive_record_state_free(state);
         return NULL;
     }
@@ -1215,45 +1136,35 @@ xx_archive_record_state *xx_mpq_create_archive_records_reading(
     return state;
 }
 
-const xx_archive_record *xx_mpq_get_current_archive_record(
-    Abstractformat *format, xx_archive_record_state *state) {
-    return format && state && state->format == format && state->has_record
-               ? &state->current_record
-               : NULL;
+const xx_archive_record *xx_mpq_get_current_archive_record(Abstractformat *format, xx_archive_record_state *state)
+{
+    return format && state && state->format == format && state->has_record ? &state->current_record : NULL;
 }
 
-bool xx_mpq_archive_record_move_to_next(Abstractformat *format,
-                                        xx_archive_record_state *state,
-                                        xx_pd_struct *pd) {
+bool xx_mpq_archive_record_move_to_next(Abstractformat *format, xx_archive_record_state *state, xx_pd_struct *pd)
+{
     mpq_stream *stream;
     (void)pd;
-    if (!format || !state || state->format != format ||
-        !(stream = (mpq_stream *)state->internal_state) ||
-        ++stream->index >= stream->count) {
+    if (!format || !state || state->format != format || !(stream = (mpq_stream *)state->internal_state) || ++stream->index >= stream->count) {
         if (state) state->has_record = false;
         return false;
     }
     ++state->current_index;
-    state->has_record =
-        mpq_set_record(&state->current_record, &stream->items[stream->index]);
+    state->has_record = mpq_set_record(&state->current_record, &stream->items[stream->index]);
     return state->has_record;
 }
 
-bool xx_mpq_unpack_current_archive_record_to_device(
-    Abstractformat *format, xx_archive_record_state *state,
-    xx_io_device *destination, xx_pd_struct *pd) {
+bool xx_mpq_unpack_current_archive_record_to_device(Abstractformat *format, xx_archive_record_state *state, xx_io_device *destination, xx_pd_struct *pd)
+{
     mpq_stream *stream;
-    if (!format || !state || state->format != format || !state->has_record ||
-        !(stream = (mpq_stream *)state->internal_state) ||
-        stream->index >= stream->count || (pd && xx_pd_is_stopped(pd)))
+    if (!format || !state || state->format != format || !state->has_record || !(stream = (mpq_stream *)state->internal_state) || stream->index >= stream->count ||
+        (pd && xx_pd_is_stopped(pd)))
         return false;
-    return mpq_write_member(format, stream, &stream->items[stream->index],
-                            destination, pd);
+    return mpq_write_member(format, stream, &stream->items[stream->index], destination, pd);
 }
 
-bool xx_mpq_unpack_current_archive_record(Abstractformat *format,
-                                          xx_archive_record_state *state,
-                                          xx_pd_struct *pd) {
+bool xx_mpq_unpack_current_archive_record(Abstractformat *format, xx_archive_record_state *state, xx_pd_struct *pd)
+{
     mpq_stream *stream;
     mpq_member *member;
     const xx_var *path_option;
@@ -1267,62 +1178,46 @@ bool xx_mpq_unpack_current_archive_record(Abstractformat *format,
     bool overwrite = false;
     size_t prefix = 0U, index;
     unsigned attempt;
-    if (!format || !state || state->format != format || !state->has_record ||
-        !(stream = (mpq_stream *)state->internal_state) ||
-        stream->index >= stream->count || (pd && xx_pd_is_stopped(pd)))
+    if (!format || !state || state->format != format || !state->has_record || !(stream = (mpq_stream *)state->internal_state) || stream->index >= stream->count ||
+        (pd && xx_pd_is_stopped(pd)))
         return false;
     member = &stream->items[stream->index];
     if (!mpq_safe_output_name(member->name)) return false;
-    path_option = mpq_option(format, &state->options,
-                             XX_META_ID_OPT_UNPACK_PATH);
-    if (!path_option)
-        return xx_mpq_unpack_current_archive_record_to_device(
-            format, state, NULL, pd);
-    if (path_option->type == XX_VAR_TYPE_STRING ||
-        path_option->type == XX_VAR_TYPE_STRING_VIEW)
-        base = xx_var_get_str(path_option);
-    else if (path_option->type == XX_VAR_TYPE_WSTRING ||
-             path_option->type == XX_VAR_TYPE_WSTRING_VIEW) {
+    path_option = mpq_option(format, &state->options, XX_META_ID_OPT_UNPACK_PATH);
+    if (!path_option) return xx_mpq_unpack_current_archive_record_to_device(format, state, NULL, pd);
+    if (path_option->type == XX_VAR_TYPE_STRING || path_option->type == XX_VAR_TYPE_STRING_VIEW) base = xx_var_get_str(path_option);
+    else if (path_option->type == XX_VAR_TYPE_WSTRING || path_option->type == XX_VAR_TYPE_WSTRING_VIEW) {
         owned_base = xx_str_unicode_to_utf8(xx_var_get_wstr(path_option));
         base = owned_base;
     }
     if (!base) goto done;
-    overwrite_option = mpq_option(format, &state->options,
-                                   XX_META_ID_OPT_OVERWRITE);
+    overwrite_option = mpq_option(format, &state->options, XX_META_ID_OPT_OVERWRITE);
     if (overwrite_option) overwrite = xx_var_get_bool(overwrite_option);
-    path = (base[0] && base[xx_str_len(base) - 1U] != '/' &&
-            base[xx_str_len(base) - 1U] != '\\')
-               ? xx_str_concat3(base, "/", member->name)
-               : xx_str_concat(base, member->name);
+    path = (base[0] && base[xx_str_len(base) - 1U] != '/' && base[xx_str_len(base) - 1U] != '\\') ? xx_str_concat3(base, "/", member->name)
+                                                                                                  : xx_str_concat(base, member->name);
     if (!path) goto done;
     if (member->folder) {
         result = xx_store_create_dirs_a(path, true);
         goto done;
     }
-    if ((!overwrite && xx_io_file_exists_a(path)) ||
-        !xx_store_create_dirs_a(path, false)) goto done;
+    if ((!overwrite && xx_io_file_exists_a(path)) || !xx_store_create_dirs_a(path, false)) goto done;
     for (index = 0U; path[index]; ++index)
         if (path[index] == '/' || path[index] == '\\') prefix = index + 1U;
     stage_path = (char *)xx_mem_alloc(prefix + 50U);
     if (!stage_path) goto done;
     xx_mem_copy(stage_path, path, prefix);
-    for (attempt = 0U; attempt < 128U && !(pd && xx_pd_is_stopped(pd));
-         ++attempt) {
-        int written = xx_rt_snprintf(stage_path + prefix, 50U,
-                                     ".xxfc-mpq-%u-%u.tmp",
-                                     (unsigned)stream->index, attempt);
+    for (attempt = 0U; attempt < 128U && !(pd && xx_pd_is_stopped(pd)); ++attempt) {
+        int written = xx_rt_snprintf(stage_path + prefix, 50U, ".xxfc-mpq-%u-%u.tmp", (unsigned)stream->index, attempt);
         if (written <= 0 || written >= 50) goto done;
         if (mpq_same_path_folded(stage_path, path)) continue;
         destination = xx_io_file_open(stage_path, "wbx");
         if (destination) break;
     }
     if (!destination) goto done;
-    result = xx_mpq_unpack_current_archive_record_to_device(
-        format, state, destination, pd);
+    result = xx_mpq_unpack_current_archive_record_to_device(format, state, destination, pd);
     if (xx_io_close(destination) != 0) result = false;
     destination = NULL;
-    if (result && !(pd && xx_pd_is_stopped(pd)))
-        result = xx_io_file_replace_a(stage_path, path, overwrite);
+    if (result && !(pd && xx_pd_is_stopped(pd))) result = xx_io_file_replace_a(stage_path, path, overwrite);
     else result = false;
 done:
     if (destination) (void)xx_io_close(destination);
@@ -1333,8 +1228,8 @@ done:
     return result;
 }
 
-void xx_mpq_free_archive_records_reading(Abstractformat *format,
-                                         xx_archive_record_state *state) {
+void xx_mpq_free_archive_records_reading(Abstractformat *format, xx_archive_record_state *state)
+{
     (void)format;
     xx_archive_record_state_free(state);
 }

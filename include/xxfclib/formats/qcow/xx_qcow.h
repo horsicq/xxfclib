@@ -77,48 +77,40 @@ typedef struct xx_qcow XQcow;
 
 struct xx_qcow {
     Abstractformat format;
-    uint64_t number_of_records;   /**< Always 1: the guest disk image. */
-    uint64_t virtual_size;        /**< Guest-visible disk size in bytes. */
+    uint64_t number_of_records; /**< Always 1: the guest disk image. */
+    uint64_t virtual_size;      /**< Guest-visible disk size in bytes. */
     uint64_t l1_table_offset;
     uint64_t refcount_table_offset;
     uint64_t snapshots_offset;
     uint64_t incompatible_features; /**< Zero for version 2. */
-    uint32_t version;             /**< 2 or 3. */
+    uint32_t version;               /**< 2 or 3. */
     uint32_t cluster_bits;
     uint32_t cluster_size;
-    uint32_t crypt_method;        /**< 0 none, 1 AES, 2 LUKS. */
-    uint32_t l1_size;             /**< Entries in the L1 table. */
+    uint32_t crypt_method; /**< 0 none, 1 AES, 2 LUKS. */
+    uint32_t l1_size;      /**< Entries in the L1 table. */
     uint32_t nb_snapshots;
-    uint32_t refcount_order;      /**< 4 for version 2. */
-    uint8_t compression_type;     /**< 0 deflate, 1 zstd. */
+    uint32_t refcount_order;  /**< 4 for version 2. */
+    uint8_t compression_type; /**< 0 deflate, 1 zstd. */
     bool has_backing_file;
     bool is_encrypted;
     void *internal;
 };
 
-XXFC_API void xx_qcow_init(xx_qcow *qcow, xx_io_device *dev,
-                           int64_t base_address);
+XXFC_API void xx_qcow_init(xx_qcow *qcow, xx_io_device *dev, int64_t base_address);
 XXFC_API xx_qcow *xx_qcow_create(xx_io_device *dev, int64_t base_address);
 XXFC_API void xx_qcow_destroy(xx_qcow *qcow);
 XXFC_API void xx_qcow_free(xx_qcow *qcow);
 
 XXFC_API bool xx_qcow_check_is_valid(Abstractformat *self, xx_pd_struct *pd);
 XXFC_API bool xx_qcow_handle_base_info(Abstractformat *self, xx_pd_struct *pd);
-XXFC_API int64_t xx_qcow_get_format_size(Abstractformat *self,
-                                         xx_pd_struct *pd);
-XXFC_API uint64_t xx_qcow_get_number_of_archive_records(Abstractformat *self,
-                                                        xx_pd_struct *pd);
+XXFC_API int64_t xx_qcow_get_format_size(Abstractformat *self, xx_pd_struct *pd);
+XXFC_API uint64_t xx_qcow_get_number_of_archive_records(Abstractformat *self, xx_pd_struct *pd);
 
-XXFC_API xx_archive_record_state *xx_qcow_create_archive_records_reading(
-    Abstractformat *self, const xx_list_s *options, xx_pd_struct *pd);
-XXFC_API const xx_archive_record *xx_qcow_get_current_archive_record(
-    Abstractformat *self, xx_archive_record_state *state);
-XXFC_API bool xx_qcow_unpack_current_archive_record(
-    Abstractformat *self, xx_archive_record_state *state, xx_pd_struct *pd);
-XXFC_API bool xx_qcow_archive_record_move_to_next(
-    Abstractformat *self, xx_archive_record_state *state, xx_pd_struct *pd);
-XXFC_API void xx_qcow_free_archive_records_reading(
-    Abstractformat *self, xx_archive_record_state *state);
+XXFC_API xx_archive_record_state *xx_qcow_create_archive_records_reading(Abstractformat *self, const xx_list_s *options, xx_pd_struct *pd);
+XXFC_API const xx_archive_record *xx_qcow_get_current_archive_record(Abstractformat *self, xx_archive_record_state *state);
+XXFC_API bool xx_qcow_unpack_current_archive_record(Abstractformat *self, xx_archive_record_state *state, xx_pd_struct *pd);
+XXFC_API bool xx_qcow_archive_record_move_to_next(Abstractformat *self, xx_archive_record_state *state, xx_pd_struct *pd);
+XXFC_API void xx_qcow_free_archive_records_reading(Abstractformat *self, xx_archive_record_state *state);
 
 XXFC_API uint64_t xx_qcow_get_virtual_size(const xx_qcow *qcow);
 XXFC_API uint32_t xx_qcow_get_version(const xx_qcow *qcow);
@@ -127,18 +119,24 @@ XXFC_API uint32_t xx_qcow_get_crypt_method(const xx_qcow *qcow);
 /** The backing file name, or NULL. Owned by the reader. */
 XXFC_API const char *xx_qcow_get_backing_file(const xx_qcow *qcow);
 
-static inline Abstractformat *xx_qcow_to_format(xx_qcow *qcow) {
+static inline Abstractformat *xx_qcow_to_format(xx_qcow *qcow)
+{
     return qcow ? &qcow->format : NULL;
 }
-static inline void XQcow_init(xx_qcow *qcow, xx_io_device *dev,
-                              int64_t base_address) {
+static inline void XQcow_init(xx_qcow *qcow, xx_io_device *dev, int64_t base_address)
+{
     xx_qcow_init(qcow, dev, base_address);
 }
-static inline xx_qcow *XQcow_create(xx_io_device *dev, int64_t base_address) {
+static inline xx_qcow *XQcow_create(xx_io_device *dev, int64_t base_address)
+{
     return xx_qcow_create(dev, base_address);
 }
-static inline void XQcow_free(xx_qcow *qcow) { xx_qcow_free(qcow); }
-static inline bool XQcow_is_valid(xx_qcow *qcow, xx_pd_struct *pd) {
+static inline void XQcow_free(xx_qcow *qcow)
+{
+    xx_qcow_free(qcow);
+}
+static inline bool XQcow_is_valid(xx_qcow *qcow, xx_pd_struct *pd)
+{
     return qcow ? xx_format_is_valid(&qcow->format, pd) : false;
 }
 

@@ -94,8 +94,7 @@
 #define XX_STARKIT_METHOD_ZLIB 8U
 #define XX_STARKIT_HEADER_SIZE 8
 #define XX_STARKIT_FOOTER_SIZE 16
-#define XX_STARKIT_SCHEMA \
-    "dirs[name:S,parent:I,files[name:S,size:I,date:I,contents:B]]"
+#define XX_STARKIT_SCHEMA "dirs[name:S,parent:I,files[name:S,size:I,date:I,contents:B]]"
 /* Ceilings.  Descriptors are small; only the file bodies are large, and they
  * are read one member at a time at unpack. */
 #define XX_STARKIT_MAX_ROOT 4096
@@ -134,17 +133,15 @@ static void xx_starkit_vtable_destroy(Abstractformat *self);
 
 /* ------------------------------------------------------------- helpers -- */
 
-static bool xx_starkit_read_at(Abstractformat *self, int64_t offset,
-                              uint8_t *buffer, size_t size) {
+static bool xx_starkit_read_at(Abstractformat *self, int64_t offset, uint8_t *buffer, size_t size)
+{
     size_t completed = 0U;
 
-    if (!self || !self->device || offset < 0 ||
-        xx_io_seek64(self->device, offset, SEEK_SET) != 0) {
+    if (!self || !self->device || offset < 0 || xx_io_seek64(self->device, offset, SEEK_SET) != 0) {
         return false;
     }
     while (completed < size) {
-        ssize_t received =
-            xx_io_read(self->device, buffer + completed, size - completed);
+        ssize_t received = xx_io_read(self->device, buffer + completed, size - completed);
         if (received <= 0 || (size_t)received > size - completed) return false;
         completed += (size_t)received;
     }
@@ -152,7 +149,8 @@ static bool xx_starkit_read_at(Abstractformat *self, int64_t offset,
 }
 
 /* Refuse anything that would escape the extraction directory. */
-static bool xx_starkit_path_safe(const char *path) {
+static bool xx_starkit_path_safe(const char *path)
+{
     const char *cursor = path;
 
     if (!path || !path[0] || path[0] == '/') return false;
@@ -171,8 +169,8 @@ static bool xx_starkit_path_safe(const char *path) {
 
 /* Build a filesystem-safe name from raw 8-bit bytes.  Backslashes become
  * path separators, everything a filesystem would object to becomes '_'. */
-static char *xx_starkit_make_name(const uint8_t *raw, size_t size,
-                                 bool keep_path) {
+static char *xx_starkit_make_name(const uint8_t *raw, size_t size, bool keep_path)
+{
     char *text;
     size_t length = 0U;
     size_t index;
@@ -188,17 +186,13 @@ static char *xx_starkit_make_name(const uint8_t *raw, size_t size,
             text[length++] = '/';
             continue;
         }
-        if (c < 0x20U || c > 0x7eU || c == '/' || c == '\\' || c == ':' ||
-            c == '*' || c == '?' || c == '"' || c == '<' || c == '>' ||
-            c == '|') {
+        if (c < 0x20U || c > 0x7eU || c == '/' || c == '\\' || c == ':' || c == '*' || c == '?' || c == '"' || c == '<' || c == '>' || c == '|') {
             text[length++] = '_';
         } else {
             text[length++] = (char)c;
         }
     }
-    while (length != 0U &&
-           (text[length - 1U] == ' ' || text[length - 1U] == '.' ||
-            text[length - 1U] == '/')) {
+    while (length != 0U && (text[length - 1U] == ' ' || text[length - 1U] == '.' || text[length - 1U] == '/')) {
         --length;
     }
     while (length != 0U && text[0] == '/') {
@@ -210,7 +204,8 @@ static char *xx_starkit_make_name(const uint8_t *raw, size_t size,
     return text;
 }
 
-static void xx_starkit_stream_free(void *pointer) {
+static void xx_starkit_stream_free(void *pointer)
+{
     xx_starkit_stream *stream = (xx_starkit_stream *)pointer;
     size_t index;
 
@@ -225,15 +220,14 @@ static void xx_starkit_stream_free(void *pointer) {
 /* Grow the member vector one entry at a time.  The caller has already bounded
  * the member count against the real file size, so this cannot be driven to an
  * unbounded allocation by a small header. */
-static bool xx_starkit_add(xx_starkit_stream *stream,
-                          const xx_starkit_member *member) {
+static bool xx_starkit_add(xx_starkit_stream *stream, const xx_starkit_member *member)
+{
     if (!stream || !member) return false;
     if (stream->count == stream->capacity) {
         size_t wanted = stream->capacity ? stream->capacity * 2U : 16U;
         xx_starkit_member *grown;
         if (wanted > SIZE_MAX / sizeof(*grown)) return false;
-        grown = (xx_starkit_member *)xx_mem_realloc(stream->items,
-                                                   wanted * sizeof(*grown));
+        grown = (xx_starkit_member *)xx_mem_realloc(stream->items, wanted * sizeof(*grown));
         if (!grown) return false;
         stream->items = grown;
         stream->capacity = wanted;
@@ -263,7 +257,8 @@ typedef struct xx_starkit_cursor_s {
 
 /* Metakit's varint: seven bits per byte, most significant group first, and
  * the byte with its HIGH BIT SET ends the number. */
-static bool xx_starkit_varint(xx_starkit_cursor *cursor, uint64_t *value) {
+static bool xx_starkit_varint(xx_starkit_cursor *cursor, uint64_t *value)
+{
     uint64_t result = 0U;
     unsigned steps = 0U;
 
@@ -283,18 +278,17 @@ static bool xx_starkit_varint(xx_starkit_cursor *cursor, uint64_t *value) {
 }
 
 /* A column is a size, then a position only when the size is non-zero. */
-static bool xx_starkit_column(xx_starkit_cursor *cursor,
-                              xx_starkit_col *column) {
+static bool xx_starkit_column(xx_starkit_cursor *cursor, xx_starkit_col *column)
+{
     column->position = 0U;
     if (!xx_starkit_varint(cursor, &column->size)) return false;
-    return column->size == 0U ||
-           xx_starkit_varint(cursor, &column->position);
+    return column->size == 0U || xx_starkit_varint(cursor, &column->position);
 }
 
 /* An "S"/"B" property.  The sizes column is not written at all when the data
  * column is empty, which is what happens when every value is a memo. */
-static bool xx_starkit_property(xx_starkit_cursor *cursor,
-                                xx_starkit_prop *prop) {
+static bool xx_starkit_property(xx_starkit_cursor *cursor, xx_starkit_prop *prop)
+{
     if (!xx_starkit_column(cursor, &prop->data)) return false;
     prop->sizes.size = 0U;
     prop->sizes.position = 0U;
@@ -306,7 +300,8 @@ static bool xx_starkit_property(xx_starkit_cursor *cursor,
 
 /* Int columns are bit packed; the width is the widest of 32/16/8/4/2/1 bits
  * whose packed length still fits in the stored byte size. */
-static unsigned xx_starkit_width(uint64_t rows, uint64_t size) {
+static unsigned xx_starkit_width(uint64_t rows, uint64_t size)
+{
     static const unsigned choices[6] = {32U, 16U, 8U, 4U, 2U, 1U};
     unsigned index;
 
@@ -317,8 +312,8 @@ static unsigned xx_starkit_width(uint64_t rows, uint64_t size) {
     return 0U;
 }
 
-static uint64_t xx_starkit_int(const uint8_t *data, size_t size,
-                               unsigned width, uint64_t index) {
+static uint64_t xx_starkit_int(const uint8_t *data, size_t size, unsigned width, uint64_t index)
+{
     if (!data || width == 0U) return 0U;
     if (width >= 8U) {
         size_t bytes = (size_t)(width / 8U);
@@ -341,20 +336,16 @@ static uint64_t xx_starkit_int(const uint8_t *data, size_t size,
 }
 
 /* Read a bounded region of the file into a fresh buffer. */
-static uint8_t *xx_starkit_region(Abstractformat *self, int64_t span,
-                                  uint64_t offset, uint64_t size,
-                                  uint64_t limit) {
+static uint8_t *xx_starkit_region(Abstractformat *self, int64_t span, uint64_t offset, uint64_t size, uint64_t limit)
+{
     uint8_t *buffer;
 
-    if (size > limit || offset > (uint64_t)span ||
-        size > (uint64_t)span - offset) {
+    if (size > limit || offset > (uint64_t)span || size > (uint64_t)span - offset) {
         return NULL;
     }
     buffer = (uint8_t *)xx_mem_alloc(size != 0U ? (size_t)size : 1U);
     if (!buffer) return NULL;
-    if (size != 0U &&
-        !xx_starkit_read_at(self, self->base_address + (int64_t)offset,
-                            buffer, (size_t)size)) {
+    if (size != 0U && !xx_starkit_read_at(self, self->base_address + (int64_t)offset, buffer, (size_t)size)) {
         xx_mem_free(buffer);
         return NULL;
     }
@@ -365,9 +356,8 @@ static uint8_t *xx_starkit_region(Abstractformat *self, int64_t span,
  * @p index.  The per-row lengths INCLUDE the terminator, and they must add up
  * to the blob exactly -- that sum is one of the checks that keeps a
  * mis-parsed descriptor from producing plausible-looking names. */
-static bool xx_starkit_names_ok(const uint8_t *sizes, size_t sizes_size,
-                                unsigned width, uint64_t rows,
-                                uint64_t data_size) {
+static bool xx_starkit_names_ok(const uint8_t *sizes, size_t sizes_size, unsigned width, uint64_t rows, uint64_t data_size)
+{
     uint64_t total = 0U;
     uint64_t index;
 
@@ -379,7 +369,8 @@ static bool xx_starkit_names_ok(const uint8_t *sizes, size_t sizes_size,
     return total == data_size;
 }
 
-static void xx_starkit_free_paths(char **paths, uint64_t count) {
+static void xx_starkit_free_paths(char **paths, uint64_t count)
+{
     uint64_t index;
 
     if (!paths) return;
@@ -396,8 +387,8 @@ typedef struct xx_starkit_memo_s {
 
 /* Decode a memo column.  The stored row field is a DELTA from the previous
  * memo row plus one, so the rows come out strictly increasing. */
-static xx_starkit_memo *xx_starkit_memos(const uint8_t *buffer, size_t size,
-                                         uint64_t rows, uint64_t *count) {
+static xx_starkit_memo *xx_starkit_memos(const uint8_t *buffer, size_t size, uint64_t rows, uint64_t *count)
+{
     xx_starkit_cursor cursor;
     xx_starkit_memo *list;
     uint64_t used = 0U;
@@ -414,10 +405,7 @@ static xx_starkit_memo *xx_starkit_memos(const uint8_t *buffer, size_t size,
     while (cursor.at < size) {
         uint64_t delta;
         uint64_t row;
-        if (used >= rows ||
-            !xx_starkit_varint(&cursor, &delta) ||
-            !xx_starkit_varint(&cursor, &list[used].size) ||
-            !xx_starkit_varint(&cursor, &list[used].position)) {
+        if (used >= rows || !xx_starkit_varint(&cursor, &delta) || !xx_starkit_varint(&cursor, &list[used].size) || !xx_starkit_varint(&cursor, &list[used].position)) {
             xx_mem_free(list);
             return NULL;
         }
@@ -435,11 +423,10 @@ static xx_starkit_memo *xx_starkit_memos(const uint8_t *buffer, size_t size,
     return list;
 }
 
-
 /* --------------------------------------------------------------- parse -- */
 
-static xx_starkit_stream *xx_starkit_parse(Abstractformat *self,
-                                         xx_pd_struct *pd) {
+static xx_starkit_stream *xx_starkit_parse(Abstractformat *self, xx_pd_struct *pd)
+{
     xx_starkit_stream *stream = NULL;
     uint8_t head[XX_STARKIT_HEADER_SIZE];
     uint8_t footer[XX_STARKIT_FOOTER_SIZE];
@@ -477,23 +464,20 @@ static xx_starkit_stream *xx_starkit_parse(Abstractformat *self,
         return NULL;
     }
     /* The magic plus the file's own declared length. */
-    if (xx_rt_memcmp(head, "JL\x1a\x00", 4U) != 0 ||
-        (int64_t)xx_data_get_u32(head + 4, 4, 0, true) != span) {
+    if (xx_rt_memcmp(head, "JL\x1a\x00", 4U) != 0 || (int64_t)xx_data_get_u32(head + 4, 4, 0, true) != span) {
         /* Starpacks append an unchanged Metakit filesystem to an executable.
          * Its self-pointing final commit gives the exact container origin. */
         int64_t container_size, container_base;
         Abstractformat nested;
-        if (head[0] != 'M' || head[1] != 'Z' ||
-            !xx_starkit_read_at(self, total - XX_STARKIT_FOOTER_SIZE,
-                               footer, sizeof(footer)) ||
-            xx_data_get_u32(footer, 4, 0, true) != 0x80000000U) return NULL;
+        if (head[0] != 'M' || head[1] != 'Z' || !xx_starkit_read_at(self, total - XX_STARKIT_FOOTER_SIZE, footer, sizeof(footer)) ||
+            xx_data_get_u32(footer, 4, 0, true) != 0x80000000U)
+            return NULL;
         container_size = (int64_t)xx_data_get_u32(footer + 4, 4, 0, true) + XX_STARKIT_FOOTER_SIZE;
-        if (container_size < XX_STARKIT_HEADER_SIZE + XX_STARKIT_FOOTER_SIZE ||
-            container_size >= span) return NULL;
+        if (container_size < XX_STARKIT_HEADER_SIZE + XX_STARKIT_FOOTER_SIZE || container_size >= span) return NULL;
         container_base = total - container_size;
-        if (!xx_starkit_read_at(self, container_base, head, sizeof(head)) ||
-            xx_rt_memcmp(head, "JL\x1a\x00", 4U) != 0 ||
-            (int64_t)xx_data_get_u32(head + 4, 4, 0, true) != container_size) return NULL;
+        if (!xx_starkit_read_at(self, container_base, head, sizeof(head)) || xx_rt_memcmp(head, "JL\x1a\x00", 4U) != 0 ||
+            (int64_t)xx_data_get_u32(head + 4, 4, 0, true) != container_size)
+            return NULL;
         /* Borrow the device and metadata without mutating the caller's base.
          * The normal parser validates both commit pairs, schema, and columns. */
         nested = *self;
@@ -502,23 +486,18 @@ static xx_starkit_stream *xx_starkit_parse(Abstractformat *self,
         if (stream) stream->archive_size = span;
         return stream;
     }
-    if (!xx_starkit_read_at(self, self->base_address + span -
-                                      XX_STARKIT_FOOTER_SIZE,
-                            footer, sizeof(footer))) {
+    if (!xx_starkit_read_at(self, self->base_address + span - XX_STARKIT_FOOTER_SIZE, footer, sizeof(footer))) {
         return NULL;
     }
     /* The commit footer: an end marker that points at itself, then the tagged
      * size and position of the root block. */
-    if (xx_data_get_u32(footer, 4, 0, true) != 0x80000000U ||
-        (int64_t)xx_data_get_u32(footer + 4, 4, 0, true) !=
-            span - XX_STARKIT_FOOTER_SIZE ||
+    if (xx_data_get_u32(footer, 4, 0, true) != 0x80000000U || (int64_t)xx_data_get_u32(footer + 4, 4, 0, true) != span - XX_STARKIT_FOOTER_SIZE ||
         (xx_data_get_u32(footer + 8, 4, 0, true) & 0x80000000U) == 0U) {
         return NULL;
     }
     root_size = xx_data_get_u32(footer + 8, 4, 0, true) & 0x7fffffffU;
     root_position = xx_data_get_u32(footer + 12, 4, 0, true);
-    root = xx_starkit_region(self, span, root_position, root_size,
-                             XX_STARKIT_MAX_ROOT);
+    root = xx_starkit_region(self, span, root_position, root_size, XX_STARKIT_MAX_ROOT);
     if (!root) return NULL;
     if (root_size < 3U || root[0] != 0x80U || (root[1] & 0x80U) == 0U) {
         goto fail;
@@ -527,9 +506,7 @@ static xx_starkit_stream *xx_starkit_parse(Abstractformat *self,
     /* Only the mk4vfs schema is supported, and it is required verbatim: a
      * Metakit database with any other schema is not a Starkit, and guessing
      * at an unknown one would be worse than refusing. */
-    if (schema_size != xx_str_len(XX_STARKIT_SCHEMA) ||
-        root_size - 2U < schema_size ||
-        xx_rt_memcmp(root + 2, XX_STARKIT_SCHEMA, (size_t)schema_size) != 0) {
+    if (schema_size != xx_str_len(XX_STARKIT_SCHEMA) || root_size - 2U < schema_size || xx_rt_memcmp(root + 2, XX_STARKIT_SCHEMA, (size_t)schema_size) != 0) {
         goto fail;
     }
 
@@ -537,45 +514,34 @@ static xx_starkit_stream *xx_starkit_parse(Abstractformat *self,
     cursor.size = (size_t)root_size;
     cursor.at = (size_t)(2U + schema_size);
     /* Row count of the root view, then the "dirs" subview column. */
-    if (!xx_starkit_varint(&cursor, &value) || value != 1U ||
-        !xx_starkit_column(&cursor, &dir_files) || dir_files.size == 0U) {
+    if (!xx_starkit_varint(&cursor, &value) || value != 1U || !xx_starkit_column(&cursor, &dir_files) || dir_files.size == 0U) {
         goto fail;
     }
-    descriptor = xx_starkit_region(self, span, dir_files.position,
-                                   dir_files.size, XX_STARKIT_MAX_DESCRIPTOR);
+    descriptor = xx_starkit_region(self, span, dir_files.position, dir_files.size, XX_STARKIT_MAX_DESCRIPTOR);
     if (!descriptor) goto fail;
 
     cursor.buffer = descriptor;
     cursor.size = (size_t)dir_files.size;
     cursor.at = 0U;
-    if (!xx_starkit_varint(&cursor, &value) || value != 0U ||
-        !xx_starkit_varint(&cursor, &rows) || rows == 0U ||
-        rows > XX_STARKIT_MAX_DIRS ||
-        !xx_starkit_property(&cursor, &dir_name) ||
-        !xx_starkit_column(&cursor, &dir_parent) ||
-        !xx_starkit_column(&cursor, &dir_files)) {
+    if (!xx_starkit_varint(&cursor, &value) || value != 0U || !xx_starkit_varint(&cursor, &rows) || rows == 0U || rows > XX_STARKIT_MAX_DIRS ||
+        !xx_starkit_property(&cursor, &dir_name) || !xx_starkit_column(&cursor, &dir_parent) || !xx_starkit_column(&cursor, &dir_files)) {
         goto fail;
     }
     /* The descriptor must be consumed to the byte; a leftover tail means the
      * grammar did not match this file. */
-    if (cursor.at != cursor.size || dir_name.memo.size != 0U ||
-        dir_files.size == 0U) {
+    if (cursor.at != cursor.size || dir_name.memo.size != 0U || dir_files.size == 0U) {
         goto fail;
     }
     directories = rows;
 
-    dir_names = xx_starkit_region(self, span, dir_name.data.position,
-                                  dir_name.data.size, XX_STARKIT_MAX_COLUMN);
-    dir_sizes = xx_starkit_region(self, span, dir_name.sizes.position,
-                                  dir_name.sizes.size, XX_STARKIT_MAX_COLUMN);
-    dir_parents = xx_starkit_region(self, span, dir_parent.position,
-                                    dir_parent.size, XX_STARKIT_MAX_COLUMN);
+    dir_names = xx_starkit_region(self, span, dir_name.data.position, dir_name.data.size, XX_STARKIT_MAX_COLUMN);
+    dir_sizes = xx_starkit_region(self, span, dir_name.sizes.position, dir_name.sizes.size, XX_STARKIT_MAX_COLUMN);
+    dir_parents = xx_starkit_region(self, span, dir_parent.position, dir_parent.size, XX_STARKIT_MAX_COLUMN);
     if (!dir_names || !dir_sizes || !dir_parents) goto fail;
     dir_name_width = xx_starkit_width(rows, dir_name.sizes.size);
     dir_parent_width = xx_starkit_width(rows, dir_parent.size);
     if (dir_name_width == 0U || dir_parent_width == 0U) goto fail;
-    if (!xx_starkit_names_ok(dir_sizes, (size_t)dir_name.sizes.size,
-                             dir_name_width, rows, dir_name.data.size)) {
+    if (!xx_starkit_names_ok(dir_sizes, (size_t)dir_name.sizes.size, dir_name_width, rows, dir_name.data.size)) {
         goto fail;
     }
 
@@ -588,12 +554,8 @@ static xx_starkit_stream *xx_starkit_parse(Abstractformat *self,
     {
         uint64_t at = 0U;
         for (index = 0U; index < rows; ++index) {
-            uint64_t length =
-                xx_starkit_int(dir_sizes, (size_t)dir_name.sizes.size,
-                               dir_name_width, index);
-            uint64_t parent = xx_starkit_int(dir_parents,
-                                             (size_t)dir_parent.size,
-                                             dir_parent_width, index);
+            uint64_t length = xx_starkit_int(dir_sizes, (size_t)dir_name.sizes.size, dir_name_width, index);
+            uint64_t parent = xx_starkit_int(dir_parents, (size_t)dir_parent.size, dir_parent_width, index);
             char *name;
             if (index == 0U) {
                 paths[0] = xx_str_dup("");
@@ -602,8 +564,7 @@ static xx_starkit_stream *xx_starkit_parse(Abstractformat *self,
                 continue;
             }
             if (parent >= index) goto fail;
-            name = xx_starkit_make_name(dir_names + (size_t)at,
-                                        (size_t)(length - 1U), false);
+            name = xx_starkit_make_name(dir_names + (size_t)at, (size_t)(length - 1U), false);
             if (!name) goto fail;
             paths[index] = xx_str_concat3(paths[parent], name, "/");
             xx_str_free(name);
@@ -612,8 +573,7 @@ static xx_starkit_stream *xx_starkit_parse(Abstractformat *self,
         }
     }
 
-    subviews = xx_starkit_region(self, span, dir_files.position,
-                                 dir_files.size, XX_STARKIT_MAX_SUBVIEWS);
+    subviews = xx_starkit_region(self, span, dir_files.position, dir_files.size, XX_STARKIT_MAX_SUBVIEWS);
     if (!subviews) goto fail;
     views.buffer = subviews;
     views.size = (size_t)dir_files.size;
@@ -646,60 +606,41 @@ static xx_starkit_stream *xx_starkit_parse(Abstractformat *self,
         bool failed = false;
 
         if (pd && xx_pd_is_stopped(pd)) goto fail;
-        if (!xx_starkit_varint(&views, &value) || value != 0U ||
-            !xx_starkit_varint(&views, &file_rows)) {
+        if (!xx_starkit_varint(&views, &value) || value != 0U || !xx_starkit_varint(&views, &file_rows)) {
             goto fail;
         }
         /* A directory with no files writes no columns at all. */
         if (file_rows == 0U) continue;
-        if (file_rows > XX_STARKIT_MAX_ROWS ||
-            (uint64_t)stream->count + file_rows > XX_STARKIT_MAX_MEMBERS) {
+        if (file_rows > XX_STARKIT_MAX_ROWS || (uint64_t)stream->count + file_rows > XX_STARKIT_MAX_MEMBERS) {
             goto fail;
         }
-        if (!xx_starkit_property(&views, &file_name) ||
-            !xx_starkit_column(&views, &file_size) ||
-            !xx_starkit_column(&views, &file_date) ||
+        if (!xx_starkit_property(&views, &file_name) || !xx_starkit_column(&views, &file_size) || !xx_starkit_column(&views, &file_date) ||
             !xx_starkit_property(&views, &contents)) {
             goto fail;
         }
         if (file_name.memo.size != 0U) goto fail;
 
-        names = xx_starkit_region(self, span, file_name.data.position,
-                                  file_name.data.size, XX_STARKIT_MAX_COLUMN);
-        lengths = xx_starkit_region(self, span, file_name.sizes.position,
-                                    file_name.sizes.size,
-                                    XX_STARKIT_MAX_COLUMN);
-        sizes = xx_starkit_region(self, span, file_size.position,
-                                  file_size.size, XX_STARKIT_MAX_COLUMN);
-        content_sizes = xx_starkit_region(self, span, contents.sizes.position,
-                                          contents.sizes.size,
-                                          XX_STARKIT_MAX_COLUMN);
-        memo_bytes = xx_starkit_region(self, span, contents.memo.position,
-                                       contents.memo.size,
-                                       XX_STARKIT_MAX_COLUMN);
+        names = xx_starkit_region(self, span, file_name.data.position, file_name.data.size, XX_STARKIT_MAX_COLUMN);
+        lengths = xx_starkit_region(self, span, file_name.sizes.position, file_name.sizes.size, XX_STARKIT_MAX_COLUMN);
+        sizes = xx_starkit_region(self, span, file_size.position, file_size.size, XX_STARKIT_MAX_COLUMN);
+        content_sizes = xx_starkit_region(self, span, contents.sizes.position, contents.sizes.size, XX_STARKIT_MAX_COLUMN);
+        memo_bytes = xx_starkit_region(self, span, contents.memo.position, contents.memo.size, XX_STARKIT_MAX_COLUMN);
         name_width = xx_starkit_width(file_rows, file_name.sizes.size);
         size_width = xx_starkit_width(file_rows, file_size.size);
         content_width = xx_starkit_width(file_rows, contents.sizes.size);
-        if (!names || !lengths || !sizes || !content_sizes || !memo_bytes ||
-            name_width == 0U || size_width == 0U ||
-            !xx_starkit_names_ok(lengths, (size_t)file_name.sizes.size,
-                                 name_width, file_rows,
-                                 file_name.data.size)) {
+        if (!names || !lengths || !sizes || !content_sizes || !memo_bytes || name_width == 0U || size_width == 0U ||
+            !xx_starkit_names_ok(lengths, (size_t)file_name.sizes.size, name_width, file_rows, file_name.data.size)) {
             failed = true;
         }
         if (!failed && contents.memo.size != 0U) {
-            memos = xx_starkit_memos(memo_bytes, (size_t)contents.memo.size,
-                                     file_rows, &memo_count);
+            memos = xx_starkit_memos(memo_bytes, (size_t)contents.memo.size, file_rows, &memo_count);
             if (!memos) failed = true;
         }
         data_at = contents.data.position;
         for (row = 0U; !failed && row < file_rows; ++row) {
             xx_starkit_member member;
-            uint64_t name_length =
-                xx_starkit_int(lengths, (size_t)file_name.sizes.size,
-                               name_width, row);
-            uint64_t plain = xx_starkit_int(sizes, (size_t)file_size.size,
-                                            size_width, row);
+            uint64_t name_length = xx_starkit_int(lengths, (size_t)file_name.sizes.size, name_width, row);
+            uint64_t plain = xx_starkit_int(sizes, (size_t)file_size.size, size_width, row);
             uint64_t packed;
             uint64_t position;
 
@@ -708,25 +649,19 @@ static xx_starkit_stream *xx_starkit_parse(Abstractformat *self,
                 position = memos[memo_at].position;
                 ++memo_at;
             } else {
-                packed = xx_starkit_int(content_sizes,
-                                        (size_t)contents.sizes.size,
-                                        content_width, row);
+                packed = xx_starkit_int(content_sizes, (size_t)contents.sizes.size, content_width, row);
                 position = data_at;
                 data_at += packed;
             }
             /* Every extent is bounded against the real file, and a plain size
              * gets its own ceiling because the file does not bound it. */
-            if (plain > XX_STARKIT_MAX_PLAIN || packed > (uint64_t)span ||
-                position > (uint64_t)span ||
-                packed > (uint64_t)span - position) {
+            if (plain > XX_STARKIT_MAX_PLAIN || packed > (uint64_t)span || position > (uint64_t)span || packed > (uint64_t)span - position) {
                 failed = true;
                 break;
             }
             xx_mem_zero(&member, sizeof(member));
             {
-                char *leaf = xx_starkit_make_name(names + (size_t)name_at,
-                                                  (size_t)(name_length - 1U),
-                                                  false);
+                char *leaf = xx_starkit_make_name(names + (size_t)name_at, (size_t)(name_length - 1U), false);
                 if (!leaf) {
                     failed = true;
                     break;
@@ -739,14 +674,12 @@ static xx_starkit_stream *xx_starkit_parse(Abstractformat *self,
                 failed = true;
                 break;
             }
-            member.header_offset =
-                self->base_address + (int64_t)file_name.data.position;
+            member.header_offset = self->base_address + (int64_t)file_name.data.position;
             member.header_size = 0;
             member.data_offset = self->base_address + (int64_t)position;
             member.packed_size = (int64_t)packed;
             member.unpacked_size = plain;
-            member.method = packed == plain ? XX_STARKIT_METHOD_STORE
-                                            : XX_STARKIT_METHOD_ZLIB;
+            member.method = packed == plain ? XX_STARKIT_METHOD_STORE : XX_STARKIT_METHOD_ZLIB;
             if (!xx_starkit_add(stream, &member)) {
                 xx_str_free(member.name);
                 failed = true;
@@ -794,9 +727,8 @@ fail:
 /* mk4vfs stores a body raw when compression did not pay and as a zlib stream
  * otherwise; the row's own uncompressed size is the anchor either way, and a
  * decode that misses it is an error rather than a result. */
-static bool xx_starkit_decode(Abstractformat *self,
-                              const xx_starkit_member *member, uint8_t **out,
-                              size_t *out_size, xx_pd_struct *pd) {
+static bool xx_starkit_decode(Abstractformat *self, const xx_starkit_member *member, uint8_t **out, size_t *out_size, xx_pd_struct *pd)
+{
     uint8_t *packed = NULL;
     uint8_t *plain = NULL;
     size_t written = 0U;
@@ -805,8 +737,7 @@ static bool xx_starkit_decode(Abstractformat *self,
     *out_size = 0U;
     if (!self || !member || member->packed_size < 0) return false;
     if (pd && xx_pd_is_stopped(pd)) return false;
-    if (member->unpacked_size > (uint64_t)SIZE_MAX ||
-        (uint64_t)member->packed_size > (uint64_t)SIZE_MAX) {
+    if (member->unpacked_size > (uint64_t)SIZE_MAX || (uint64_t)member->packed_size > (uint64_t)SIZE_MAX) {
         return false;
     }
     if (member->packed_size == 0) {
@@ -814,8 +745,7 @@ static bool xx_starkit_decode(Abstractformat *self,
     }
     packed = (uint8_t *)xx_mem_alloc((size_t)member->packed_size);
     if (!packed) return false;
-    if (!xx_starkit_read_at(self, member->data_offset, packed,
-                            (size_t)member->packed_size)) {
+    if (!xx_starkit_read_at(self, member->data_offset, packed, (size_t)member->packed_size)) {
         xx_mem_free(packed);
         return false;
     }
@@ -828,12 +758,8 @@ static bool xx_starkit_decode(Abstractformat *self,
         *out_size = (size_t)member->packed_size;
         return true;
     }
-    plain = (uint8_t *)xx_mem_alloc(
-        member->unpacked_size != 0U ? (size_t)member->unpacked_size : 1U);
-    if (!plain ||
-        !xx_zlib_stream_decode_memory(packed, (size_t)member->packed_size,
-                                      plain, (size_t)member->unpacked_size,
-                                      &written) ||
+    plain = (uint8_t *)xx_mem_alloc(member->unpacked_size != 0U ? (size_t)member->unpacked_size : 1U);
+    if (!plain || !xx_zlib_stream_decode_memory(packed, (size_t)member->packed_size, plain, (size_t)member->unpacked_size, &written) ||
         written != member->unpacked_size) {
         xx_mem_free(packed);
         xx_mem_free(plain);
@@ -845,11 +771,10 @@ static bool xx_starkit_decode(Abstractformat *self,
     return true;
 }
 
-
 /* ---------------------------------------------------------- lifecycle --- */
 
-void xx_starkit_init(xx_starkit *archive, xx_io_device *device,
-                    int64_t base_address) {
+void xx_starkit_init(xx_starkit *archive, xx_io_device *device, int64_t base_address)
+{
     if (!archive) return;
     xx_mem_zero(archive, sizeof(*archive));
     xx_format_init(&archive->format, device, base_address);
@@ -862,22 +787,17 @@ void xx_starkit_init(xx_starkit *archive, xx_io_device *device,
     archive->format.check_is_valid = xx_starkit_check_is_valid;
     archive->format.handle_base_info = xx_starkit_handle_base_info;
     archive->format.get_format_size = xx_starkit_get_format_size;
-    archive->format.get_number_of_archive_records =
-        xx_starkit_get_number_of_archive_records;
-    archive->format.create_archive_records_reading =
-        xx_starkit_create_archive_records_reading;
-    archive->format.get_current_archive_record =
-        xx_starkit_get_current_archive_record;
-    archive->format.unpack_current_archive_record =
-        xx_starkit_unpack_current_archive_record;
-    archive->format.archive_record_move_to_next =
-        xx_starkit_archive_record_move_to_next;
-    archive->format.free_archive_records_reading =
-        xx_starkit_free_archive_records_reading;
+    archive->format.get_number_of_archive_records = xx_starkit_get_number_of_archive_records;
+    archive->format.create_archive_records_reading = xx_starkit_create_archive_records_reading;
+    archive->format.get_current_archive_record = xx_starkit_get_current_archive_record;
+    archive->format.unpack_current_archive_record = xx_starkit_unpack_current_archive_record;
+    archive->format.archive_record_move_to_next = xx_starkit_archive_record_move_to_next;
+    archive->format.free_archive_records_reading = xx_starkit_free_archive_records_reading;
     archive->format.destroy = xx_starkit_vtable_destroy;
 }
 
-xx_starkit *xx_starkit_create(xx_io_device *device, int64_t base_address) {
+xx_starkit *xx_starkit_create(xx_io_device *device, int64_t base_address)
+{
     xx_starkit *archive = (xx_starkit *)xx_mem_alloc(sizeof(*archive));
 
     if (!archive) return NULL;
@@ -885,7 +805,8 @@ xx_starkit *xx_starkit_create(xx_io_device *device, int64_t base_address) {
     return archive;
 }
 
-void xx_starkit_destroy(xx_starkit *archive) {
+void xx_starkit_destroy(xx_starkit *archive)
+{
     if (!archive) return;
     /* Not xx_format_destroy: it dispatches through format.destroy, which is
      * the wrapper below, and the two would recurse. */
@@ -894,19 +815,22 @@ void xx_starkit_destroy(xx_starkit *archive) {
     archive->number_of_records = 0U;
 }
 
-void xx_starkit_free(xx_starkit *archive) {
+void xx_starkit_free(xx_starkit *archive)
+{
     if (!archive) return;
     xx_starkit_destroy(archive);
     xx_mem_free(archive);
 }
 
-static void xx_starkit_vtable_destroy(Abstractformat *self) {
+static void xx_starkit_vtable_destroy(Abstractformat *self)
+{
     xx_starkit_destroy((xx_starkit *)self);
 }
 
 /* -------------------------------------------------------------- format -- */
 
-bool xx_starkit_check_is_valid(Abstractformat *self, xx_pd_struct *pd) {
+bool xx_starkit_check_is_valid(Abstractformat *self, xx_pd_struct *pd)
+{
     xx_starkit_stream *stream;
 
     if (!self || (pd && xx_pd_is_stopped(pd))) return false;
@@ -916,7 +840,8 @@ bool xx_starkit_check_is_valid(Abstractformat *self, xx_pd_struct *pd) {
     return true;
 }
 
-bool xx_starkit_handle_base_info(Abstractformat *self, xx_pd_struct *pd) {
+bool xx_starkit_handle_base_info(Abstractformat *self, xx_pd_struct *pd)
+{
     xx_starkit *archive = (xx_starkit *)self;
     xx_starkit_stream *stream;
 
@@ -937,18 +862,17 @@ bool xx_starkit_handle_base_info(Abstractformat *self, xx_pd_struct *pd) {
     return true;
 }
 
-int64_t xx_starkit_get_format_size(Abstractformat *self, xx_pd_struct *pd) {
-    if (!self ||
-        (!self->base_info_handled && !xx_format_handle_base_info(self, pd))) {
+int64_t xx_starkit_get_format_size(Abstractformat *self, xx_pd_struct *pd)
+{
+    if (!self || (!self->base_info_handled && !xx_format_handle_base_info(self, pd))) {
         return 0;
     }
     return self->is_valid ? self->format_size : 0;
 }
 
-uint64_t xx_starkit_get_number_of_archive_records(Abstractformat *self,
-                                                 xx_pd_struct *pd) {
-    if (!self ||
-        (!self->base_info_handled && !xx_format_handle_base_info(self, pd))) {
+uint64_t xx_starkit_get_number_of_archive_records(Abstractformat *self, xx_pd_struct *pd)
+{
+    if (!self || (!self->base_info_handled && !xx_format_handle_base_info(self, pd))) {
         return 0U;
     }
     return self->is_valid ? ((xx_starkit *)self)->number_of_records : 0U;
@@ -956,46 +880,36 @@ uint64_t xx_starkit_get_number_of_archive_records(Abstractformat *self,
 
 /* ------------------------------------------------------------- records -- */
 
-static bool xx_starkit_set_record(xx_archive_record *record,
-                                 const xx_starkit_member *member) {
+static bool xx_starkit_set_record(xx_archive_record *record, const xx_starkit_member *member)
+{
     xx_archive_record_cleanup(record);
     xx_archive_record_init(record);
     record->header_offset = member->header_offset;
     record->header_size = member->header_size;
     record->data_offset = member->data_offset;
     record->compressed_size = member->packed_size;
-    if (member->has_crc &&
-        !xx_archive_record_set_meta_u64(record, XX_META_ID_CRC32,
-                                        member->crc32)) {
+    if (member->has_crc && !xx_archive_record_set_meta_u64(record, XX_META_ID_CRC32, member->crc32)) {
         return false;
     }
     return xx_archive_record_set_original_name(record, member->name) &&
-           xx_archive_record_set_meta_u64(record, XX_META_ID_COMPRESSED_SIZE,
-                                          (uint64_t)member->packed_size) &&
-           xx_archive_record_set_meta_u64(record, XX_META_ID_UNCOMPRESSED_SIZE,
-                                          member->unpacked_size) &&
-           xx_archive_record_set_meta_u64(record, XX_META_ID_COMPRESSION_METHOD,
-                                          member->method) &&
-           xx_archive_record_set_meta_bool(record, XX_META_ID_IS_FOLDER,
-                                           member->is_folder) &&
-           xx_archive_record_set_meta_bool(record, XX_META_ID_IS_ENCRYPTED,
-                                           false);
+           xx_archive_record_set_meta_u64(record, XX_META_ID_COMPRESSED_SIZE, (uint64_t)member->packed_size) &&
+           xx_archive_record_set_meta_u64(record, XX_META_ID_UNCOMPRESSED_SIZE, member->unpacked_size) &&
+           xx_archive_record_set_meta_u64(record, XX_META_ID_COMPRESSION_METHOD, member->method) &&
+           xx_archive_record_set_meta_bool(record, XX_META_ID_IS_FOLDER, member->is_folder) && xx_archive_record_set_meta_bool(record, XX_META_ID_IS_ENCRYPTED, false);
 }
 
-static bool xx_starkit_copy_options(xx_list_s *target,
-                                   const xx_list_s *options) {
+static bool xx_starkit_copy_options(xx_list_s *target, const xx_list_s *options)
+{
     size_t index;
 
     if (!options) return true;
     if (!target) return false;
     for (index = 0U; index < options->count; ++index) {
-        const xx_meta *source =
-            (const xx_meta *)xx_list_at((const xx_list_t *)options, index);
+        const xx_meta *source = (const xx_meta *)xx_list_at((const xx_list_t *)options, index);
         xx_meta copied;
         if (!source) continue;
         xx_meta_init(&copied, source->meta_id);
-        if (!xx_var_copy(&copied.var, &source->var) ||
-            !xx_list_append(target, &copied)) {
+        if (!xx_var_copy(&copied.var, &source->var) || !xx_list_append(target, &copied)) {
             xx_meta_cleanup(&copied);
             return false;
         }
@@ -1003,21 +917,20 @@ static bool xx_starkit_copy_options(xx_list_s *target,
     return true;
 }
 
-static const xx_var *xx_starkit_get_option(const xx_list_s *options,
-                                          uint32_t meta_id) {
+static const xx_var *xx_starkit_get_option(const xx_list_s *options, uint32_t meta_id)
+{
     size_t index;
 
     if (!options) return NULL;
     for (index = 0U; index < options->count; ++index) {
-        const xx_meta *meta =
-            (const xx_meta *)xx_list_at((const xx_list_t *)options, index);
+        const xx_meta *meta = (const xx_meta *)xx_list_at((const xx_list_t *)options, index);
         if (meta && meta->meta_id == meta_id) return &meta->var;
     }
     return NULL;
 }
 
-xx_archive_record_state *xx_starkit_create_archive_records_reading(
-    Abstractformat *self, const xx_list_s *options, xx_pd_struct *pd) {
+xx_archive_record_state *xx_starkit_create_archive_records_reading(Abstractformat *self, const xx_list_s *options, xx_pd_struct *pd)
+{
     xx_starkit_stream *stream;
     xx_archive_record_state *state;
 
@@ -1033,9 +946,7 @@ xx_archive_record_state *xx_starkit_create_archive_records_reading(
     state->internal_state = stream;
     state->free_internal = xx_starkit_stream_free;
     state->total_records = (int64_t)stream->count;
-    if (!xx_starkit_copy_options(&state->options, options) ||
-        (stream->count != 0U &&
-         !xx_starkit_set_record(&state->current_record, &stream->items[0]))) {
+    if (!xx_starkit_copy_options(&state->options, options) || (stream->count != 0U && !xx_starkit_set_record(&state->current_record, &stream->items[0]))) {
         xx_archive_record_state_free(state);
         return NULL;
     }
@@ -1044,20 +955,16 @@ xx_archive_record_state *xx_starkit_create_archive_records_reading(
     return state;
 }
 
-const xx_archive_record *xx_starkit_get_current_archive_record(
-    Abstractformat *self, xx_archive_record_state *state) {
-    return self && state && state->format == self && state->has_record
-               ? &state->current_record
-               : NULL;
+const xx_archive_record *xx_starkit_get_current_archive_record(Abstractformat *self, xx_archive_record_state *state)
+{
+    return self && state && state->format == self && state->has_record ? &state->current_record : NULL;
 }
 
-bool xx_starkit_archive_record_move_to_next(Abstractformat *self,
-                                           xx_archive_record_state *state,
-                                           xx_pd_struct *pd) {
+bool xx_starkit_archive_record_move_to_next(Abstractformat *self, xx_archive_record_state *state, xx_pd_struct *pd)
+{
     xx_starkit_stream *stream;
 
-    if (!self || !state || state->format != self || !state->has_record ||
-        (pd && xx_pd_is_stopped(pd))) {
+    if (!self || !state || state->format != self || !state->has_record || (pd && xx_pd_is_stopped(pd))) {
         return false;
     }
     stream = (xx_starkit_stream *)state->internal_state;
@@ -1069,15 +976,12 @@ bool xx_starkit_archive_record_move_to_next(Abstractformat *self,
     }
     ++stream->index;
     ++state->current_index;
-    state->has_record =
-        xx_starkit_set_record(&state->current_record,
-                             &stream->items[stream->index]);
+    state->has_record = xx_starkit_set_record(&state->current_record, &stream->items[stream->index]);
     return state->has_record;
 }
 
-bool xx_starkit_unpack_current_archive_record(Abstractformat *self,
-                                             xx_archive_record_state *state,
-                                             xx_pd_struct *pd) {
+bool xx_starkit_unpack_current_archive_record(Abstractformat *self, xx_archive_record_state *state, xx_pd_struct *pd)
+{
     xx_starkit_stream *stream;
     const xx_starkit_member *member;
     const xx_var *path_option;
@@ -1091,20 +995,17 @@ bool xx_starkit_unpack_current_archive_record(Abstractformat *self,
     bool created = false;
     bool overwrite = false;
 
-    if (!self || !state || state->format != self || !state->has_record ||
-        (pd && xx_pd_is_stopped(pd))) {
+    if (!self || !state || state->format != self || !state->has_record || (pd && xx_pd_is_stopped(pd))) {
         return false;
     }
     stream = (xx_starkit_stream *)state->internal_state;
     if (!stream || stream->index >= stream->count) return false;
     member = &stream->items[stream->index];
     if (!xx_starkit_path_safe(member->name)) return false;
-    overwrite_option = xx_format_resolve_extra_parameter(
-        self, &state->options, XX_META_ID_OPT_OVERWRITE);
+    overwrite_option = xx_format_resolve_extra_parameter(self, &state->options, XX_META_ID_OPT_OVERWRITE);
     overwrite = overwrite_option && xx_var_get_bool(overwrite_option);
 
-    path_option =
-        xx_starkit_get_option(&state->options, XX_META_ID_OPT_UNPACK_PATH);
+    path_option = xx_starkit_get_option(&state->options, XX_META_ID_OPT_UNPACK_PATH);
     if (!path_option) {
         /* No destination: decode and discard, which verifies the member
          * without writing anything. */
@@ -1113,11 +1014,9 @@ bool xx_starkit_unpack_current_archive_record(Abstractformat *self,
         xx_mem_free(plain);
         return result;
     }
-    if (path_option->type == XX_VAR_TYPE_STRING ||
-        path_option->type == XX_VAR_TYPE_STRING_VIEW) {
+    if (path_option->type == XX_VAR_TYPE_STRING || path_option->type == XX_VAR_TYPE_STRING_VIEW) {
         base_path = xx_var_get_str(path_option);
-    } else if (path_option->type == XX_VAR_TYPE_WSTRING ||
-               path_option->type == XX_VAR_TYPE_WSTRING_VIEW) {
+    } else if (path_option->type == XX_VAR_TYPE_WSTRING || path_option->type == XX_VAR_TYPE_WSTRING_VIEW) {
         converted_path = xx_str_unicode_to_utf8(xx_var_get_wstr(path_option));
         base_path = converted_path;
     }
@@ -1125,8 +1024,7 @@ bool xx_starkit_unpack_current_archive_record(Abstractformat *self,
         xx_str_free(converted_path);
         return false;
     }
-    if (base_path[0] != '\0' && base_path[xx_str_len(base_path) - 1U] != '/' &&
-        base_path[xx_str_len(base_path) - 1U] != '\\') {
+    if (base_path[0] != '\0' && base_path[xx_str_len(base_path) - 1U] != '/' && base_path[xx_str_len(base_path) - 1U] != '\\') {
         target_path = xx_str_concat3(base_path, "/", member->name);
     } else {
         target_path = xx_str_concat(base_path, member->name);
@@ -1139,21 +1037,18 @@ bool xx_starkit_unpack_current_archive_record(Abstractformat *self,
         xx_str_free(target_path);
         return result;
     }
-    if (!xx_store_create_dirs_a(target_path, false) ||
-        !xx_starkit_decode(self, member, &plain, &plain_size, pd)) {
+    if (!xx_store_create_dirs_a(target_path, false) || !xx_starkit_decode(self, member, &plain, &plain_size, pd)) {
         xx_str_free(target_path);
         return false;
     }
     {
-        xx_io_device *output =
-            xx_io_file_open(target_path, overwrite ? "wb" : "wbx");
+        xx_io_device *output = xx_io_file_open(target_path, overwrite ? "wb" : "wbx");
         created = output != NULL;
         size_t completed = 0U;
 
         result = output != NULL;
         while (result && completed < plain_size) {
-            ssize_t sent =
-                xx_io_write(output, plain + completed, plain_size - completed);
+            ssize_t sent = xx_io_write(output, plain + completed, plain_size - completed);
             if (sent <= 0 || (size_t)sent > plain_size - completed) {
                 result = false;
                 break;
@@ -1168,8 +1063,8 @@ bool xx_starkit_unpack_current_archive_record(Abstractformat *self,
     return result;
 }
 
-void xx_starkit_free_archive_records_reading(Abstractformat *self,
-                                            xx_archive_record_state *state) {
+void xx_starkit_free_archive_records_reading(Abstractformat *self, xx_archive_record_state *state)
+{
     (void)self;
     xx_archive_record_state_free(state);
 }

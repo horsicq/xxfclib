@@ -58,18 +58,18 @@ typedef struct xx_rtpatch_state_s {
 
 /* ------------------------------------------------------------- bits --- */
 
-static void rtp_bits_init(xx_rtpatch_bits *reader, const uint8_t *data,
-                          size_t size) {
+static void rtp_bits_init(xx_rtpatch_bits *reader, const uint8_t *data, size_t size)
+{
     reader->data = data;
     reader->size = size;
     reader->position = 0;
     reader->bits_left = 8;
 }
 
-static bool rtp_read_bit(xx_rtpatch_bits *reader, uint32_t *value) {
+static bool rtp_read_bit(xx_rtpatch_bits *reader, uint32_t *value)
+{
     uint8_t byte;
-    if (!value || (reader->position >= reader->size) ||
-        (reader->bits_left < 1) || (reader->bits_left > 8)) {
+    if (!value || (reader->position >= reader->size) || (reader->bits_left < 1) || (reader->bits_left > 8)) {
         return false;
     }
     byte = reader->data[reader->position];
@@ -82,8 +82,8 @@ static bool rtp_read_bit(xx_rtpatch_bits *reader, uint32_t *value) {
     return true;
 }
 
-static bool rtp_read_bits(xx_rtpatch_bits *reader, int32_t count,
-                          uint32_t *value) {
+static bool rtp_read_bits(xx_rtpatch_bits *reader, int32_t count, uint32_t *value)
+{
     uint32_t result = 0;
     int32_t i;
     if (!value || (count < 0) || (count > 24)) return false;
@@ -96,8 +96,8 @@ static bool rtp_read_bits(xx_rtpatch_bits *reader, int32_t count,
     return true;
 }
 
-static bool rtp_set_cursor(xx_rtpatch_bits *reader, size_t position,
-                           int32_t bits_left) {
+static bool rtp_set_cursor(xx_rtpatch_bits *reader, size_t position, int32_t bits_left)
+{
     if ((position > reader->size) || (bits_left < 1) || (bits_left > 8)) {
         return false;
     }
@@ -108,41 +108,39 @@ static bool rtp_set_cursor(xx_rtpatch_bits *reader, size_t position,
 
 /* --------------------------------------------------- model accessors --- */
 
-static bool rtp_contains(const xx_rtpatch_tree *tree, int64_t offset,
-                         int64_t size) {
-    return (offset >= 0) && (size >= 0) &&
-           (offset <= (int64_t)tree->data_size) &&
-           (size <= (int64_t)tree->data_size - offset);
+static bool rtp_contains(const xx_rtpatch_tree *tree, int64_t offset, int64_t size)
+{
+    return (offset >= 0) && (size >= 0) && (offset <= (int64_t)tree->data_size) && (size <= (int64_t)tree->data_size - offset);
 }
 
-static uint16_t rtp_read16u(xx_rtpatch_tree *tree, int64_t offset) {
+static uint16_t rtp_read16u(xx_rtpatch_tree *tree, int64_t offset)
+{
     if (!rtp_contains(tree, offset, 2)) {
         tree->valid = false;
         return 0;
     }
-    return (uint16_t)((uint16_t)tree->data[(size_t)offset] |
-                      (uint16_t)((uint16_t)tree->data[(size_t)offset + 1] << 8));
+    return (uint16_t)((uint16_t)tree->data[(size_t)offset] | (uint16_t)((uint16_t)tree->data[(size_t)offset + 1] << 8));
 }
 
-static int16_t rtp_read16s(xx_rtpatch_tree *tree, int64_t offset) {
+static int16_t rtp_read16s(xx_rtpatch_tree *tree, int64_t offset)
+{
     return (int16_t)rtp_read16u(tree, offset);
 }
 
-static uint32_t rtp_read32(xx_rtpatch_tree *tree, int64_t offset) {
+static uint32_t rtp_read32(xx_rtpatch_tree *tree, int64_t offset)
+{
     if (!rtp_contains(tree, offset, 4)) {
         tree->valid = false;
         return 0;
     }
-    return (uint32_t)tree->data[(size_t)offset] |
-           ((uint32_t)tree->data[(size_t)offset + 1] << 8) |
-           ((uint32_t)tree->data[(size_t)offset + 2] << 16) |
+    return (uint32_t)tree->data[(size_t)offset] | ((uint32_t)tree->data[(size_t)offset + 1] << 8) | ((uint32_t)tree->data[(size_t)offset + 2] << 16) |
            ((uint32_t)tree->data[(size_t)offset + 3] << 24);
 }
 
 /* The reference passes qint64 values here and truncates to 16 bits; keep the
  * truncation, several callers depend on the wrap. */
-static void rtp_write16(xx_rtpatch_tree *tree, int64_t offset,
-                        uint32_t value) {
+static void rtp_write16(xx_rtpatch_tree *tree, int64_t offset, uint32_t value)
+{
     if (!rtp_contains(tree, offset, 2)) {
         tree->valid = false;
         return;
@@ -151,8 +149,8 @@ static void rtp_write16(xx_rtpatch_tree *tree, int64_t offset,
     tree->data[(size_t)offset + 1] = (uint8_t)((value >> 8) & 0xffU);
 }
 
-static void rtp_write32(xx_rtpatch_tree *tree, int64_t offset,
-                        uint32_t value) {
+static void rtp_write32(xx_rtpatch_tree *tree, int64_t offset, uint32_t value)
+{
     if (!rtp_contains(tree, offset, 4)) {
         tree->valid = false;
         return;
@@ -165,7 +163,8 @@ static void rtp_write32(xx_rtpatch_tree *tree, int64_t offset,
 
 /* The bit reader owns the compressed buffer; the tree needs raw bytes from it
  * for its own byte-at-a-time code walk, so it holds a borrowed pointer. */
-static uint8_t rtp_input_byte(xx_rtpatch_tree *tree, size_t offset) {
+static uint8_t rtp_input_byte(xx_rtpatch_tree *tree, size_t offset)
+{
     if (!tree->packed || (offset >= tree->packed_size)) {
         tree->valid = false;
         return 0;
@@ -175,7 +174,8 @@ static uint8_t rtp_input_byte(xx_rtpatch_tree *tree, size_t offset) {
 
 /* --------------------------------------------------------- model ops --- */
 
-static void rtp_build_limits(xx_rtpatch_tree *tree, int32_t start) {
+static void rtp_build_limits(xx_rtpatch_tree *tree, int32_t start)
+{
     uint32_t group_count_offset = rtp_read32(tree, 0x0c);
     uint32_t limit_offset = rtp_read32(tree, 0x10);
     int32_t levels = (int32_t)rtp_read16u(tree, 0x04);
@@ -189,29 +189,19 @@ static void rtp_build_limits(xx_rtpatch_tree *tree, int32_t start) {
     /* Signed 16-bit doubling that is allowed to wrap: done in uint32_t so the
      * bit pattern matches the reference's qint32 arithmetic without signed
      * overflow. */
-    accumulator = (start == 0)
-        ? 2U
-        : (uint32_t)((int32_t)rtp_read16s(tree,
-                                          (int64_t)limit_offset +
-                                              (int64_t)(start - 1) * 8)) * 2U;
+    accumulator = (start == 0) ? 2U : (uint32_t)((int32_t)rtp_read16s(tree, (int64_t)limit_offset + (int64_t)(start - 1) * 8)) * 2U;
     for (level = start; level < levels; ++level) {
-        uint32_t value = accumulator -
-            (uint32_t)((int32_t)rtp_read16s(
-                tree, (int64_t)group_count_offset + (int64_t)level * 2));
+        uint32_t value = accumulator - (uint32_t)((int32_t)rtp_read16s(tree, (int64_t)group_count_offset + (int64_t)level * 2));
         rtp_write16(tree, (int64_t)limit_offset + (int64_t)level * 8, value);
         accumulator = value * 2U;
-        rtp_write16(tree, (int64_t)limit_offset + (int64_t)level * 8 + 2,
-                    accumulator);
-        rtp_write16(tree, (int64_t)limit_offset + (int64_t)level * 8 + 4,
-                    value * 4U);
-        rtp_write16(tree, (int64_t)limit_offset + (int64_t)level * 8 + 6,
-                    value * 16U);
+        rtp_write16(tree, (int64_t)limit_offset + (int64_t)level * 8 + 2, accumulator);
+        rtp_write16(tree, (int64_t)limit_offset + (int64_t)level * 8 + 4, value * 4U);
+        rtp_write16(tree, (int64_t)limit_offset + (int64_t)level * 8 + 6, value * 16U);
     }
 }
 
-static bool rtp_init(xx_rtpatch_tree *tree, int32_t escape_bits,
-                     int32_t levels, uint32_t initial_period,
-                     uint32_t update_period) {
+static bool rtp_init(xx_rtpatch_tree *tree, int32_t escape_bits, int32_t levels, uint32_t initial_period, uint32_t update_period)
+{
     uint32_t group_count_offset;
     uint32_t symbol_table_offset;
     uint32_t slot_offset;
@@ -222,9 +212,8 @@ static bool rtp_init(xx_rtpatch_tree *tree, int32_t escape_bits,
     uint32_t i;
     int32_t j;
 
-    if ((escape_bits < 1) || (escape_bits > 8) || (levels < 2) ||
-        (levels > 24) || (initial_period == 0) || (update_period == 0) ||
-        (initial_period > 0xffffU) || (update_period > 0xffffU)) {
+    if ((escape_bits < 1) || (escape_bits > 8) || (levels < 2) || (levels > 24) || (initial_period == 0) || (update_period == 0) || (initial_period > 0xffffU) ||
+        (update_period > 0xffffU)) {
         return false;
     }
     tree->valid = true;
@@ -265,15 +254,13 @@ static bool rtp_init(xx_rtpatch_tree *tree, int32_t escape_bits,
     }
     rtp_write32(tree, symbol_table_offset, slot_offset);
     for (j = 1; j <= levels; ++j) {
-        rtp_write32(tree, (int64_t)symbol_table_offset + (int64_t)j * 4,
-                    slot_offset + 8U);
+        rtp_write32(tree, (int64_t)symbol_table_offset + (int64_t)j * 4, slot_offset + 8U);
     }
 
     weight_base = weight_offset + tree->alphabet * 2U;
     rtp_write32(tree, slot_offset, weight_base);
     for (i = 1; i <= tree->alphabet + 1U; ++i) {
-        rtp_write32(tree, (int64_t)slot_offset + (int64_t)i * 4,
-                    weight_base + 2U);
+        rtp_write32(tree, (int64_t)slot_offset + (int64_t)i * 4, weight_base + 2U);
     }
     /* Every symbol starts at 0x8000, i.e. "not yet seen": the top bit is what
      * the rebalancer sorts on, so this is deliberate, not a stray weight. */
@@ -281,8 +268,7 @@ static bool rtp_init(xx_rtpatch_tree *tree, int32_t escape_bits,
         rtp_write16(tree, (int64_t)weight_offset + (int64_t)i * 2, 0x8000U);
     }
     rtp_write16(tree, (int64_t)weight_offset + (int64_t)tree->alphabet * 2, 0);
-    rtp_write16(tree, (int64_t)weight_offset + (int64_t)tree->alphabet * 2 + 2,
-                0);
+    rtp_write16(tree, (int64_t)weight_offset + (int64_t)tree->alphabet * 2 + 2, 0);
     rtp_write16(tree, 0x24, tree->alphabet);
     for (i = 0; i < 0x30U; ++i) {
         rtp_write32(tree, (int64_t)limit_offset + (int64_t)i * 4, 0);
@@ -291,7 +277,8 @@ static bool rtp_init(xx_rtpatch_tree *tree, int32_t escape_bits,
     return tree->valid;
 }
 
-static bool rtp_update_frequency(xx_rtpatch_tree *tree, uint32_t symbol) {
+static bool rtp_update_frequency(xx_rtpatch_tree *tree, uint32_t symbol)
+{
     uint32_t weight_offset;
     uint32_t weight;
     int32_t counter;
@@ -307,7 +294,8 @@ static bool rtp_update_frequency(xx_rtpatch_tree *tree, uint32_t symbol) {
     return (uint16_t)counter == 0;
 }
 
-static int32_t rtp_add_symbol(xx_rtpatch_tree *tree, uint32_t new_symbol) {
+static int32_t rtp_add_symbol(xx_rtpatch_tree *tree, uint32_t new_symbol)
+{
     uint32_t weight_offset;
     uint32_t slot_offset;
     uint32_t group_count_offset;
@@ -327,8 +315,7 @@ static int32_t rtp_add_symbol(xx_rtpatch_tree *tree, uint32_t new_symbol) {
     rtp_write16(tree, (int64_t)weight_offset + (int64_t)new_symbol * 2, 1);
     slot_count = rtp_read16u(tree, 0x08);
     if (!tree->valid || (slot_count > tree->alphabet)) return -1;
-    rtp_write32(tree, (int64_t)slot_offset + (int64_t)slot_count * 4,
-                weight_offset + new_symbol * 2U);
+    rtp_write32(tree, (int64_t)slot_offset + (int64_t)slot_count * 4, weight_offset + new_symbol * 2U);
     ++slot_count;
     rtp_write16(tree, 0x08, slot_count);
     if (slot_count == 2) return tree->valid ? 0 : -1;
@@ -345,36 +332,25 @@ static int32_t rtp_add_symbol(xx_rtpatch_tree *tree, uint32_t new_symbol) {
     } else {
         if (group_count < 2) return -1;
         group = (group_count - 2U) & 0xffffU;
-        for (i = 0;
-             (i < levels) &&
-             (rtp_read16s(tree, (int64_t)group_count_offset +
-                                    (int64_t)group * 2) == 0);
-             ++i) {
+        for (i = 0; (i < levels) && (rtp_read16s(tree, (int64_t)group_count_offset + (int64_t)group * 2) == 0); ++i) {
             if (group == 0) return -1;
             group = (group - 1U) & 0xffffU;
         }
     }
-    rtp_write16(tree, (int64_t)group_count_offset + (int64_t)group * 2,
-                (uint32_t)((int32_t)rtp_read16s(
-                    tree, (int64_t)group_count_offset + (int64_t)group * 2) - 1));
+    rtp_write16(tree, (int64_t)group_count_offset + (int64_t)group * 2, (uint32_t)((int32_t)rtp_read16s(tree, (int64_t)group_count_offset + (int64_t)group * 2) - 1));
     rtp_write16(tree, (int64_t)group_count_offset + (int64_t)(group + 1U) * 2,
-                (uint32_t)((int32_t)rtp_read16s(
-                    tree, (int64_t)group_count_offset +
-                              (int64_t)(group + 1U) * 2) + 2));
-    next = rtp_read32(tree, (int64_t)symbol_table_offset +
-                                (int64_t)(group + 1U) * 4);
+                (uint32_t)((int32_t)rtp_read16s(tree, (int64_t)group_count_offset + (int64_t)(group + 1U) * 2) + 2));
+    next = rtp_read32(tree, (int64_t)symbol_table_offset + (int64_t)(group + 1U) * 4);
     if (next < 4) return -1;
-    rtp_write32(tree, (int64_t)symbol_table_offset + (int64_t)(group + 1U) * 4,
-                next - 4U);
+    rtp_write32(tree, (int64_t)symbol_table_offset + (int64_t)(group + 1U) * 4, next - 4U);
     for (i = group + 2U; i <= levels; ++i) {
-        rtp_write32(tree, (int64_t)symbol_table_offset + (int64_t)i * 4,
-                    rtp_read32(tree, (int64_t)symbol_table_offset +
-                                         (int64_t)i * 4) + 4U);
+        rtp_write32(tree, (int64_t)symbol_table_offset + (int64_t)i * 4, rtp_read32(tree, (int64_t)symbol_table_offset + (int64_t)i * 4) + 4U);
     }
     return tree->valid ? (int32_t)group : -1;
 }
 
-static void rtp_rebuild(xx_rtpatch_tree *tree) {
+static void rtp_rebuild(xx_rtpatch_tree *tree)
+{
     uint32_t slot_offset = rtp_read32(tree, 0x1c);
     uint32_t symbol_table_offset = rtp_read32(tree, 0x20);
     uint32_t group_count_offset = rtp_read32(tree, 0x0c);
@@ -389,16 +365,14 @@ static void rtp_rebuild(xx_rtpatch_tree *tree) {
     int32_t guard = 0;
     uint32_t i;
 
-    if (!tree->valid || (slot_count > tree->alphabet + 1U) || (levels == 0) ||
-        (levels > 24)) {
+    if (!tree->valid || (slot_count > tree->alphabet + 1U) || (levels == 0) || (levels > 24)) {
         tree->valid = false;
         return;
     }
     rtp_write16(tree, 0x2c, (uint32_t)(update_counter - 1));
 
     for (i = 0; i < slot_count; ++i) {
-        uint32_t pointer = rtp_read32(tree, (int64_t)slot_offset +
-                                                (int64_t)i * 4);
+        uint32_t pointer = rtp_read32(tree, (int64_t)slot_offset + (int64_t)i * 4);
         uint32_t weight = rtp_read16u(tree, (int64_t)pointer);
         /* The halving happens only when the rescale counter wraps to zero,
          * and it is applied after the decrement above -- keep that order. */
@@ -415,13 +389,11 @@ static void rtp_rebuild(xx_rtpatch_tree *tree) {
         uint32_t position = 0;
         bool done = false;
         int32_t bit_guard;
-        for (bit_guard = 0;
-             ((maximum_weight & mask) == 0) && (bit_guard < 16); ++bit_guard) {
+        for (bit_guard = 0; ((maximum_weight & mask) == 0) && (bit_guard < 16); ++bit_guard) {
             mask = (mask >> 1) | 0x8000U;
         }
         while ((position < slot_count) && !done && tree->valid) {
-            uint32_t current_pointer =
-                rtp_read32(tree, (int64_t)slot_offset + (int64_t)position * 4);
+            uint32_t current_pointer = rtp_read32(tree, (int64_t)slot_offset + (int64_t)position * 4);
             if ((rtp_read16u(tree, (int64_t)current_pointer) & mask) == 0) {
                 uint32_t scan = position + 1U;
                 uint32_t insertion = position;
@@ -436,11 +408,8 @@ static void rtp_rebuild(xx_rtpatch_tree *tree) {
                     if ((rtp_read16u(tree, (int64_t)scan_pointer) & mask) != 0) {
                         uint32_t saved;
                         last_insertion = insertion + 1U;
-                        saved = rtp_read32(tree, (int64_t)slot_offset +
-                                                     (int64_t)insertion * 4);
-                        rtp_write32(tree, (int64_t)slot_offset +
-                                              (int64_t)insertion * 4,
-                                    scan_pointer);
+                        saved = rtp_read32(tree, (int64_t)slot_offset + (int64_t)insertion * 4);
+                        rtp_write32(tree, (int64_t)slot_offset + (int64_t)insertion * 4, scan_pointer);
                         rtp_write32(tree, (int64_t)scan_slot, saved);
                     }
                     ++scan;
@@ -501,8 +470,7 @@ static void rtp_rebuild(xx_rtpatch_tree *tree) {
         last_weight = rtp_read16u(tree, (int64_t)last_weight_pointer);
         previous_weight = rtp_read16u(tree, (int64_t)previous_weight_pointer);
 
-        if ((group_size < 3) || (((levels - 1U) & 0xffffU) == level) ||
-            (first_weight < last_weight + previous_weight)) {
+        if ((group_size < 3) || (((levels - 1U) & 0xffffU) == level) || (first_weight < last_weight + previous_weight)) {
             uint32_t moving_table_offset = table_offset + 4U;
             bool found = false;
             int32_t accumulator = (int32_t)last_weight;
@@ -511,25 +479,16 @@ static void rtp_rebuild(xx_rtpatch_tree *tree) {
             uint32_t before_target;
 
             while (target_level < group_count) {
-                uint32_t target_table =
-                    symbol_table_offset + target_level * 4U;
+                uint32_t target_table = symbol_table_offset + target_level * 4U;
                 uint32_t target_slot = rtp_read32(tree, (int64_t)target_table);
                 uint32_t target_group_size;
                 uint32_t next_slot;
                 uint32_t next_weight;
-                accumulator =
-                    (accumulator -
-                     (int32_t)rtp_read16s(
-                         tree, (int64_t)rtp_read32(tree, (int64_t)target_slot))) &
-                    0xffff;
-                target_group_size =
-                    rtp_read16u(tree, (int64_t)group_count_offset +
-                                          (int64_t)target_level * 2);
+                accumulator = (accumulator - (int32_t)rtp_read16s(tree, (int64_t)rtp_read32(tree, (int64_t)target_slot))) & 0xffff;
+                target_group_size = rtp_read16u(tree, (int64_t)group_count_offset + (int64_t)target_level * 2);
                 next_slot = rtp_read32(tree, (int64_t)target_slot + 4);
                 next_weight = rtp_read16u(tree, (int64_t)next_slot);
-                if ((target_group_size > 1) &&
-                    ((accumulator & 0x8000) ||
-                     ((uint32_t)accumulator < next_weight))) {
+                if ((target_group_size > 1) && ((accumulator & 0x8000) || ((uint32_t)accumulator < next_weight))) {
                     found = true;
                     break;
                 }
@@ -540,9 +499,7 @@ static void rtp_rebuild(xx_rtpatch_tree *tree) {
                 continue;
             }
 
-            rtp_write16(tree, (int64_t)group_offset,
-                        (uint32_t)((int32_t)rtp_read16s(
-                            tree, (int64_t)group_offset) - 1));
+            rtp_write16(tree, (int64_t)group_offset, (uint32_t)((int32_t)rtp_read16s(tree, (int64_t)group_offset) - 1));
             ++moved;
             ++level;
             moving_value = rtp_read32(tree, (int64_t)moving_table_offset);
@@ -552,37 +509,24 @@ static void rtp_rebuild(xx_rtpatch_tree *tree) {
             }
             rtp_write32(tree, (int64_t)moving_table_offset, moving_value - 4U);
             rtp_write16(tree, (int64_t)group_count_offset + (int64_t)level * 2,
-                        (uint32_t)((int32_t)rtp_read16s(
-                            tree, (int64_t)group_count_offset +
-                                      (int64_t)level * 2) + 2));
-            rtp_write32(tree, (int64_t)table_offset + 8,
-                        rtp_read32(tree, (int64_t)table_offset + 8) + 4U);
+                        (uint32_t)((int32_t)rtp_read16s(tree, (int64_t)group_count_offset + (int64_t)level * 2) + 2));
+            rtp_write32(tree, (int64_t)table_offset + 8, rtp_read32(tree, (int64_t)table_offset + 8) + 4U);
             before_target = (target_level - 1U) & 0xffffU;
             if (level < before_target) {
                 uint32_t span = before_target - level;
                 uint32_t k;
                 level += span;
                 for (k = 0; k < span; ++k) {
-                    rtp_write32(tree, (int64_t)moving_table_offset + 8,
-                                rtp_read32(tree,
-                                           (int64_t)moving_table_offset + 8) +
-                                    4U);
+                    rtp_write32(tree, (int64_t)moving_table_offset + 8, rtp_read32(tree, (int64_t)moving_table_offset + 8) + 4U);
                     moving_table_offset += 4U;
                 }
             }
             rtp_write16(tree, (int64_t)group_count_offset + (int64_t)level * 2,
-                        (uint32_t)((int32_t)rtp_read16s(
-                            tree, (int64_t)group_count_offset +
-                                      (int64_t)level * 2) + 1));
-            rtp_write32(tree, (int64_t)moving_table_offset + 4,
-                        rtp_read32(tree, (int64_t)moving_table_offset + 4) + 4U);
-            rtp_write16(tree,
-                        (int64_t)group_count_offset + (int64_t)(level + 1U) * 2,
-                        (uint32_t)((int32_t)rtp_read16s(
-                            tree, (int64_t)group_count_offset +
-                                      (int64_t)(level + 1U) * 2) - 2));
-            if (rtp_read16s(tree, (int64_t)group_count_offset +
-                                      (int64_t)last_group * 2) == 0) {
+                        (uint32_t)((int32_t)rtp_read16s(tree, (int64_t)group_count_offset + (int64_t)level * 2) + 1));
+            rtp_write32(tree, (int64_t)moving_table_offset + 4, rtp_read32(tree, (int64_t)moving_table_offset + 4) + 4U);
+            rtp_write16(tree, (int64_t)group_count_offset + (int64_t)(level + 1U) * 2,
+                        (uint32_t)((int32_t)rtp_read16s(tree, (int64_t)group_count_offset + (int64_t)(level + 1U) * 2) - 2));
+            if (rtp_read16s(tree, (int64_t)group_count_offset + (int64_t)last_group * 2) == 0) {
                 if (group_count == 0) {
                     tree->valid = false;
                     return;
@@ -601,17 +545,10 @@ static void rtp_rebuild(xx_rtpatch_tree *tree) {
                 return;
             }
             ++moved;
-            rtp_write16(tree, (int64_t)group_offset - 2,
-                        (uint32_t)((int32_t)rtp_read16s(
-                            tree, (int64_t)group_offset - 2) + 1));
-            rtp_write16(tree, (int64_t)group_offset,
-                        (uint32_t)((int32_t)rtp_read16s(
-                            tree, (int64_t)group_offset) - 3));
-            rtp_write16(tree, (int64_t)group_offset + 2,
-                        (uint32_t)((int32_t)rtp_read16s(
-                            tree, (int64_t)group_offset + 2) + 2));
-            rtp_write32(tree, (int64_t)table_offset,
-                        rtp_read32(tree, (int64_t)table_offset) + 4U);
+            rtp_write16(tree, (int64_t)group_offset - 2, (uint32_t)((int32_t)rtp_read16s(tree, (int64_t)group_offset - 2) + 1));
+            rtp_write16(tree, (int64_t)group_offset, (uint32_t)((int32_t)rtp_read16s(tree, (int64_t)group_offset) - 3));
+            rtp_write16(tree, (int64_t)group_offset + 2, (uint32_t)((int32_t)rtp_read16s(tree, (int64_t)group_offset + 2) + 2));
+            rtp_write32(tree, (int64_t)table_offset, rtp_read32(tree, (int64_t)table_offset) + 4U);
             end = rtp_read32(tree, (int64_t)table_offset + 4);
             if (end < 8) {
                 tree->valid = false;
@@ -650,8 +587,8 @@ static void rtp_rebuild(xx_rtpatch_tree *tree) {
 
 /* ----------------------------------------------------- symbol decode --- */
 
-static bool rtp_decode_symbol(xx_rtpatch_tree *tree, xx_rtpatch_bits *reader,
-                              uint16_t *symbol) {
+static bool rtp_decode_symbol(xx_rtpatch_tree *tree, xx_rtpatch_bits *reader, uint16_t *symbol)
+{
     int32_t bits_left;
     uint8_t current;
     int32_t value;
@@ -684,23 +621,17 @@ static bool rtp_decode_symbol(xx_rtpatch_tree *tree, xx_rtpatch_bits *reader,
     /* Walk whole bytes until the accumulated code reaches this level's lower
      * limit.  A failed limit read yields 0, which ends the walk; the validity
      * check after the loop is what actually reports it. */
-    if ((uint32_t)value <
-        rtp_read16u(tree, (int64_t)limit_offset + (int64_t)index * 8)) {
+    if ((uint32_t)value < rtp_read16u(tree, (int64_t)limit_offset + (int64_t)index * 8)) {
         do {
             uint8_t next;
-            if (!rtp_set_cursor(reader, reader->position + 1,
-                                reader->bits_left) ||
-                (reader->position >= reader->size)) {
+            if (!rtp_set_cursor(reader, reader->position + 1, reader->bits_left) || (reader->position >= reader->size)) {
                 return false;
             }
             index += 8;
             total_bits += 8;
             next = rtp_input_byte(tree, reader->position);
-            value = (int32_t)((((uint32_t)value & 0xffU) << 8) |
-                              (uint32_t)next) &
-                    0xffff;
-        } while ((uint32_t)value <
-                 rtp_read16u(tree, (int64_t)limit_offset + (int64_t)index * 8));
+            value = (int32_t)((((uint32_t)value & 0xffU) << 8) | (uint32_t)next) & 0xffff;
+        } while ((uint32_t)value < rtp_read16u(tree, (int64_t)limit_offset + (int64_t)index * 8));
     }
     if (!tree->valid) return false;
 
@@ -709,8 +640,7 @@ static bool rtp_decode_symbol(xx_rtpatch_tree *tree, xx_rtpatch_bits *reader,
     while (count != 0) {
         int32_t threshold;
         if (index < 0) return false;
-        threshold = (int32_t)rtp_read16u(
-            tree, (int64_t)limit_offset + 2 + (int64_t)index * 8);
+        threshold = (int32_t)rtp_read16u(tree, (int64_t)limit_offset + 2 + (int64_t)index * 8);
         if (!tree->valid || (value < threshold)) break;
         --index;
         --count;
@@ -723,15 +653,11 @@ static bool rtp_decode_symbol(xx_rtpatch_tree *tree, xx_rtpatch_bits *reader,
     weight_offset = rtp_read32(tree, 0x18);
     level = (uint32_t)(index + 1) & 0xffffU;
     if (!tree->valid || (level > (uint32_t)rtp_read16u(tree, 0x04))) return false;
-    slot_array = rtp_read32(tree, (int64_t)symbol_table_offset +
-                                      (int64_t)level * 4);
-    base = (int32_t)rtp_read16s(tree,
-                                (int64_t)limit_offset + (int64_t)level * 8);
+    slot_array = rtp_read32(tree, (int64_t)symbol_table_offset + (int64_t)level * 4);
+    base = (int32_t)rtp_read16s(tree, (int64_t)limit_offset + (int64_t)level * 8);
     slot_index = (uint32_t)(value - base) & 0xffffU;
-    weight_pointer = rtp_read32(tree, (int64_t)slot_array +
-                                          (int64_t)slot_index * 4);
-    if (!tree->valid || (weight_pointer < weight_offset) ||
-        ((weight_pointer - weight_offset) & 1U)) {
+    weight_pointer = rtp_read32(tree, (int64_t)slot_array + (int64_t)slot_index * 4);
+    if (!tree->valid || (weight_pointer < weight_offset) || ((weight_pointer - weight_offset) & 1U)) {
         return false;
     }
     decoded = (weight_pointer - weight_offset) >> 1;
@@ -757,9 +683,7 @@ static bool rtp_decode_symbol(xx_rtpatch_tree *tree, xx_rtpatch_bits *reader,
     if (decoded == (uint32_t)rtp_read16u(tree, 0x24)) {
         uint32_t raw_symbol = 0;
         int32_t affected_level;
-        if (!rtp_read_bits(reader, (int32_t)rtp_read16u(tree, 0x06),
-                           &raw_symbol) ||
-            (raw_symbol >= tree->alphabet)) {
+        if (!rtp_read_bits(reader, (int32_t)rtp_read16u(tree, 0x06), &raw_symbol) || (raw_symbol >= tree->alphabet)) {
             return false;
         }
         affected_level = rtp_add_symbol(tree, raw_symbol);
@@ -776,9 +700,8 @@ static bool rtp_decode_symbol(xx_rtpatch_tree *tree, xx_rtpatch_bits *reader,
 
 /* ------------------------------------------------------- public API --- */
 
-bool xx_rtpatch_decode_memory(const uint8_t *input, size_t input_size,
-                              uint8_t *output, size_t output_size,
-                              size_t *written) {
+bool xx_rtpatch_decode_memory(const uint8_t *input, size_t input_size, uint8_t *output, size_t output_size, size_t *written)
+{
     xx_rtpatch_state *state;
     xx_rtpatch_bits reader;
     uint32_t magic = 0;
@@ -797,15 +720,9 @@ bool xx_rtpatch_decode_memory(const uint8_t *input, size_t input_size,
     }
 
     rtp_bits_init(&reader, input, input_size);
-    if (!rtp_read_bits(&reader, 16, &magic) ||
-        (magic != XX_RTPATCH_DIFF_MAGIC) ||
-        !rtp_read_bits(&reader, 8, &use_raw_literals) ||
-        !rtp_read_bits(&reader, 8, &reserved) ||
-        !rtp_read_bits(&reader, 12, &initial_period) ||
-        !rtp_read_bits(&reader, 12, &update_period) ||
-        !rtp_read_bits(&reader, 4, &window_flag) ||
-        (use_raw_literals > 1) || (reserved != 0xffU) ||
-        (initial_period == 0) || (update_period == 0)) {
+    if (!rtp_read_bits(&reader, 16, &magic) || (magic != XX_RTPATCH_DIFF_MAGIC) || !rtp_read_bits(&reader, 8, &use_raw_literals) ||
+        !rtp_read_bits(&reader, 8, &reserved) || !rtp_read_bits(&reader, 12, &initial_period) || !rtp_read_bits(&reader, 12, &update_period) ||
+        !rtp_read_bits(&reader, 4, &window_flag) || (use_raw_literals > 1) || (reserved != 0xffU) || (initial_period == 0) || (update_period == 0)) {
         return false;
     }
 
@@ -814,10 +731,8 @@ bool xx_rtpatch_decode_memory(const uint8_t *input, size_t input_size,
     state = (xx_rtpatch_state *)xx_mem_alloc(sizeof(xx_rtpatch_state));
     if (!state) return false;
 
-    if (((use_raw_literals == 0) &&
-         !rtp_init(&state->literal, 8, 0x10, initial_period, update_period)) ||
-        !rtp_init(&state->length, 6, 0x0c, initial_period, update_period) ||
-        !rtp_init(&state->distance, 6, 0x0c, initial_period, update_period)) {
+    if (((use_raw_literals == 0) && !rtp_init(&state->literal, 8, 0x10, initial_period, update_period)) ||
+        !rtp_init(&state->length, 6, 0x0c, initial_period, update_period) || !rtp_init(&state->distance, 6, 0x0c, initial_period, update_period)) {
         xx_mem_free(state);
         return false;
     }
@@ -838,8 +753,7 @@ bool xx_rtpatch_decode_memory(const uint8_t *input, size_t input_size,
             uint32_t symbol = 0;
             if (use_raw_literals == 0) {
                 uint16_t decoded_symbol = 0;
-                if (!rtp_decode_symbol(&state->literal, &reader,
-                                       &decoded_symbol)) {
+                if (!rtp_decode_symbol(&state->literal, &reader, &decoded_symbol)) {
                     ok = false;
                     break;
                 }
@@ -862,14 +776,11 @@ bool xx_rtpatch_decode_memory(const uint8_t *input, size_t input_size,
             size_t back;
             uint32_t i;
 
-            if (!rtp_read_bits(&reader, distance_bits, &distance_low) ||
-                !rtp_decode_symbol(&state->distance, &reader,
-                                   &distance_high)) {
+            if (!rtp_read_bits(&reader, distance_bits, &distance_low) || !rtp_decode_symbol(&state->distance, &reader, &distance_high)) {
                 ok = false;
                 break;
             }
-            distance = ((uint32_t)distance_high << (unsigned)distance_bits) |
-                       distance_low;
+            distance = ((uint32_t)distance_high << (unsigned)distance_bits) | distance_low;
             /* Distance 0 is the end-of-stream marker. */
             if (distance == 0) break;
             if (!rtp_decode_symbol(&state->length, &reader, &length_symbol)) {
@@ -889,9 +800,7 @@ bool xx_rtpatch_decode_memory(const uint8_t *input, size_t input_size,
                  * instead of failing.  That is what the reference decoder
                  * does and real RTPatch streams rely on it for their first
                  * window, so it must not be "fixed" into an error. */
-                output[produced] = (produced >= back)
-                                       ? output[produced - back]
-                                       : (uint8_t)0;
+                output[produced] = (produced >= back) ? output[produced - back] : (uint8_t)0;
                 ++produced;
             }
         }
@@ -908,9 +817,8 @@ bool xx_rtpatch_decode_memory(const uint8_t *input, size_t input_size,
     return true;
 }
 
-bool xx_rtpatch_text_decode_memory(const uint8_t *input, size_t input_size,
-                                   uint8_t *output, size_t output_size,
-                                   size_t *written) {
+bool xx_rtpatch_text_decode_memory(const uint8_t *input, size_t input_size, uint8_t *output, size_t output_size, size_t *written)
+{
     size_t position = 2;
     size_t produced = 0;
     uint32_t line_count;
@@ -935,15 +843,13 @@ bool xx_rtpatch_text_decode_memory(const uint8_t *input, size_t input_size,
          * the final byte of the run must be the NUL. */
         /* position < input_size holds here, so input_size - position cannot
          * wrap; the reference's signed form of this test did the same. */
-        if ((length == 0) || (length > input_size - position) ||
-            (input[position + length - 1] != 0)) {
+        if ((length == 0) || (length > input_size - position) || (input[position + length - 1] != 0)) {
             return false;
         }
         for (j = 0; j + 1 < length; ++j) {
             if (input[position + j] == 0) return false;
         }
-        if (((size_t)(length - 1) > output_size - produced) ||
-            ((size_t)2 > output_size - produced - (size_t)(length - 1))) {
+        if (((size_t)(length - 1) > output_size - produced) || ((size_t)2 > output_size - produced - (size_t)(length - 1))) {
             return false;
         }
         xx_rt_memcpy(output + produced, input + position, (size_t)(length - 1));

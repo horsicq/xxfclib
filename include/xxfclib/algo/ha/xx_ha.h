@@ -28,9 +28,7 @@ extern "C" {
  * @param written     Receives the number of bytes produced (0 on failure).
  * @return true only when exactly @p output_size bytes were decoded.
  */
-XXFC_API bool xx_ha_asc_decode_memory(const uint8_t *input, size_t input_size,
-                                      uint8_t *output, size_t output_size,
-                                      size_t *written);
+XXFC_API bool xx_ha_asc_decode_memory(const uint8_t *input, size_t input_size, uint8_t *output, size_t output_size, size_t *written);
 
 /**
  * @brief HA method 2, "HSC".
@@ -41,18 +39,14 @@ XXFC_API bool xx_ha_asc_decode_memory(const uint8_t *input, size_t input_size,
  *
  * Same length contract as xx_ha_asc_decode_memory().
  */
-XXFC_API bool xx_ha_hsc_decode_memory(const uint8_t *input, size_t input_size,
-                                      uint8_t *output, size_t output_size,
-                                      size_t *written);
+XXFC_API bool xx_ha_hsc_decode_memory(const uint8_t *input, size_t input_size, uint8_t *output, size_t output_size, size_t *written);
 
 /**
  * @brief Dispatch on the raw HA method nibble (1 = ASC, 2 = HSC).
  *
  * Method 0 (stored) is not handled here; the reader copies those itself.
  */
-XXFC_API bool xx_ha_decode_memory_method(unsigned method, const uint8_t *input,
-                                         size_t input_size, uint8_t *output,
-                                         size_t output_size, size_t *written);
+XXFC_API bool xx_ha_decode_memory_method(unsigned method, const uint8_t *input, size_t input_size, uint8_t *output, size_t output_size, size_t *written);
 
 #ifdef __cplusplus
 }

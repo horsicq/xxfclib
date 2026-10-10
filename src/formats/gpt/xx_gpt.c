@@ -104,13 +104,12 @@ static void xx_gpt_vtable_destroy(Abstractformat *self);
  * used deliberately: long is 32-bit on Win64 and a GPT disk is routinely
  * larger than 2 GiB - the backup header lives at the very end of it, which
  * the legacy seek could never reach. */
-static bool xx_gpt_read_at(xx_io_device *device, int64_t offset, void *data,
-                           size_t size) {
+static bool xx_gpt_read_at(xx_io_device *device, int64_t offset, void *data, size_t size)
+{
     size_t transfer_capacity = xx_get_file_buffer_size();
     uint8_t *out = (uint8_t *)data;
     size_t done = 0U;
-    if (!device || (!data && size != 0U) || offset < 0 ||
-        xx_io_seek64(device, offset, SEEK_SET) != 0) {
+    if (!device || (!data && size != 0U) || offset < 0 || xx_io_seek64(device, offset, SEEK_SET) != 0) {
         return false;
     }
     while (done < size) {
@@ -125,14 +124,13 @@ static bool xx_gpt_read_at(xx_io_device *device, int64_t offset, void *data,
 }
 
 /* True when [offset, offset + size) lies inside [0, total_size). */
-static bool xx_gpt_range_within(int64_t total_size, int64_t offset,
-                                int64_t size) {
-    return (total_size >= 0) && (offset >= 0) && (size >= 0) &&
-           (offset <= total_size) && (size <= total_size - offset);
+static bool xx_gpt_range_within(int64_t total_size, int64_t offset, int64_t size)
+{
+    return (total_size >= 0) && (offset >= 0) && (size >= 0) && (offset <= total_size) && (size <= total_size - offset);
 }
 
-static bool xx_gpt_lba_to_offset(int64_t base_address, uint64_t lba,
-                                 uint32_t block_size, int64_t *result) {
+static bool xx_gpt_lba_to_offset(int64_t base_address, uint64_t lba, uint32_t block_size, int64_t *result)
+{
     uint64_t bytes;
     if (!result || base_address < 0 || block_size == 0U) return false;
     if (lba > (uint64_t)INT64_MAX / block_size) return false;
@@ -144,7 +142,8 @@ static bool xx_gpt_lba_to_offset(int64_t base_address, uint64_t lba,
 
 /* Build a record name of the form "partition12"; see the MBR reader for the
  * same helper and the same reason it is hand rolled. */
-static char *xx_gpt_make_name(unsigned index) {
+static char *xx_gpt_make_name(unsigned index)
+{
     static const char prefix[] = "partition";
     char digits[16];
     char buffer[sizeof(prefix) + sizeof(digits)];
@@ -163,12 +162,11 @@ static char *xx_gpt_make_name(unsigned index) {
 /* Render the 16 on-disk bytes of a GUID in canonical uppercase text. The
  * first three fields are stored little endian and the last eight bytes in
  * display order, so only the first three are reversed. */
-static void xx_gpt_format_guid(const uint8_t *raw,
-                               char out[XX_GPT_GUID_TEXT_SIZE]) {
+static void xx_gpt_format_guid(const uint8_t *raw, char out[XX_GPT_GUID_TEXT_SIZE])
+{
     static const char digits[] = "0123456789ABCDEF";
     /* Byte index in the on-disk layout for each of the 32 nibble pairs. */
-    static const uint8_t order[16] = {3U, 2U,  1U,  0U,  5U,  4U,  7U,  6U,
-                                      8U, 9U, 10U, 11U, 12U, 13U, 14U, 15U};
+    static const uint8_t order[16] = {3U, 2U, 1U, 0U, 5U, 4U, 7U, 6U, 8U, 9U, 10U, 11U, 12U, 13U, 14U, 15U};
     size_t index;
     size_t used = 0U;
     for (index = 0U; index < 16U; ++index) {
@@ -181,7 +179,8 @@ static void xx_gpt_format_guid(const uint8_t *raw,
     out[used] = '\0';
 }
 
-static bool xx_gpt_guid_is_zero(const uint8_t *raw) {
+static bool xx_gpt_guid_is_zero(const uint8_t *raw)
+{
     size_t index;
     for (index = 0U; index < 16U; ++index) {
         if (raw[index] != 0U) return false;
@@ -189,50 +188,50 @@ static bool xx_gpt_guid_is_zero(const uint8_t *raw) {
     return true;
 }
 
-const char *xx_gpt_type_name(const char *type_guid) {
+const char *xx_gpt_type_name(const char *type_guid)
+{
     /* The types worth naming. Everything else is still published, since the
      * caller recurses into the payload and lets the detector decide. */
     static const struct {
         const char *guid;
         const char *name;
-    } table[] = {
-        {"C12A7328-F81F-11D2-BA4B-00A0C93EC93B", "EFI System"},
-        {"024DEE41-33E7-11D3-9D69-0008C781F39F", "MBR partition scheme"},
-        {"21686148-6449-6E6F-744E-656564454649", "BIOS boot"},
-        {"D3BFE2DE-3DAF-11DF-BA40-E3A556D89593", "Intel Fast Flash"},
-        {"F4019732-066E-4E12-8273-346C5641494F", "Sony boot"},
-        {"E3C9E316-0B5C-4DB8-817D-F92DF00215AE", "Microsoft reserved"},
-        {"EBD0A0A2-B9E5-4433-87C0-68B6B72699C7", "Microsoft basic data"},
-        {"5808C8AA-7E8F-42E0-85D2-E1E90434CFB3", "Windows LDM metadata"},
-        {"AF9B60A0-1431-4F62-BC68-3311714A69AD", "Windows LDM data"},
-        {"DE94BBA4-06D1-4D40-A16A-BFD50179D6AC", "Windows Recovery"},
-        {"E75CAF8F-F680-4CEE-AFA3-B001E56EFC2D", "Storage Spaces"},
-        {"0FC63DAF-8483-4772-8E79-3D69D8477DE4", "Linux filesystem"},
-        {"BC13C2FF-59E6-4262-A352-B275FD6F7172", "Linux extended boot"},
-        {"0657FD6D-A4AB-43C4-84E5-0933C84B4F4F", "Linux swap"},
-        {"E6D6D379-F507-44C2-A23C-238F2A3DF928", "Linux LVM"},
-        {"A19D880F-05FC-4D3B-A006-743F0F84911E", "Linux RAID"},
-        {"933AC7E1-2EB4-4F13-B844-0E14E2AEF915", "Linux /home"},
-        {"3B8F8425-20E0-4F3B-907F-1A25A76F98E8", "Linux /srv"},
-        {"4F68BCE3-E8CD-4DB1-96E7-FBCAF984B709", "Linux root (x86-64)"},
-        {"B921B045-1DF0-41C3-AF44-4C6F280D3FAE", "Linux root (arm64)"},
-        {"44479540-F297-41B2-9AF7-D131D5F0458A", "Linux root (x86)"},
-        {"CA7D7CCB-63ED-4C53-861C-1742536059CC", "Linux LUKS"},
-        {"48465300-0000-11AA-AA11-00306543ECAC", "Apple HFS+"},
-        {"7C3457EF-0000-11AA-AA11-00306543ECAC", "Apple APFS"},
-        {"55465300-0000-11AA-AA11-00306543ECAC", "Apple UFS"},
-        {"426F6F74-0000-11AA-AA11-00306543ECAC", "Apple boot (Recovery)"},
-        {"53746F72-6167-11AA-AA11-00306543ECAC", "Apple Core Storage"},
-        {"516E7CB4-6ECF-11D6-8FF8-00022D09712B", "FreeBSD data"},
-        {"516E7CB5-6ECF-11D6-8FF8-00022D09712B", "FreeBSD swap"},
-        {"516E7CB6-6ECF-11D6-8FF8-00022D09712B", "FreeBSD UFS"},
-        {"83BD6B9D-7F41-11DC-BE0B-001560B84F0F", "FreeBSD boot"},
-        {"6A898CC3-1DD2-11B2-99A6-080020736631", "Solaris /usr or Apple ZFS"},
-        {"9E1A2D38-C612-4316-AA26-8B49521E5A8B", "PowerPC PReP boot"},
-        {"FE3A2A5D-4F32-41A7-B725-ACCC3285A309", "ChromeOS kernel"},
-        {"3CB8E202-3B7E-47DD-8A3C-7FF2A13CFCEC", "ChromeOS rootfs"},
-        {"2E0A753D-9E48-43B0-8337-B15192CB1B5E", "ChromeOS reserved"},
-        {"BFBFAFE7-A34F-448A-9A5B-6213EB736C22", "Lenovo boot"}};
+    } table[] = {{"C12A7328-F81F-11D2-BA4B-00A0C93EC93B", "EFI System"},
+                 {"024DEE41-33E7-11D3-9D69-0008C781F39F", "MBR partition scheme"},
+                 {"21686148-6449-6E6F-744E-656564454649", "BIOS boot"},
+                 {"D3BFE2DE-3DAF-11DF-BA40-E3A556D89593", "Intel Fast Flash"},
+                 {"F4019732-066E-4E12-8273-346C5641494F", "Sony boot"},
+                 {"E3C9E316-0B5C-4DB8-817D-F92DF00215AE", "Microsoft reserved"},
+                 {"EBD0A0A2-B9E5-4433-87C0-68B6B72699C7", "Microsoft basic data"},
+                 {"5808C8AA-7E8F-42E0-85D2-E1E90434CFB3", "Windows LDM metadata"},
+                 {"AF9B60A0-1431-4F62-BC68-3311714A69AD", "Windows LDM data"},
+                 {"DE94BBA4-06D1-4D40-A16A-BFD50179D6AC", "Windows Recovery"},
+                 {"E75CAF8F-F680-4CEE-AFA3-B001E56EFC2D", "Storage Spaces"},
+                 {"0FC63DAF-8483-4772-8E79-3D69D8477DE4", "Linux filesystem"},
+                 {"BC13C2FF-59E6-4262-A352-B275FD6F7172", "Linux extended boot"},
+                 {"0657FD6D-A4AB-43C4-84E5-0933C84B4F4F", "Linux swap"},
+                 {"E6D6D379-F507-44C2-A23C-238F2A3DF928", "Linux LVM"},
+                 {"A19D880F-05FC-4D3B-A006-743F0F84911E", "Linux RAID"},
+                 {"933AC7E1-2EB4-4F13-B844-0E14E2AEF915", "Linux /home"},
+                 {"3B8F8425-20E0-4F3B-907F-1A25A76F98E8", "Linux /srv"},
+                 {"4F68BCE3-E8CD-4DB1-96E7-FBCAF984B709", "Linux root (x86-64)"},
+                 {"B921B045-1DF0-41C3-AF44-4C6F280D3FAE", "Linux root (arm64)"},
+                 {"44479540-F297-41B2-9AF7-D131D5F0458A", "Linux root (x86)"},
+                 {"CA7D7CCB-63ED-4C53-861C-1742536059CC", "Linux LUKS"},
+                 {"48465300-0000-11AA-AA11-00306543ECAC", "Apple HFS+"},
+                 {"7C3457EF-0000-11AA-AA11-00306543ECAC", "Apple APFS"},
+                 {"55465300-0000-11AA-AA11-00306543ECAC", "Apple UFS"},
+                 {"426F6F74-0000-11AA-AA11-00306543ECAC", "Apple boot (Recovery)"},
+                 {"53746F72-6167-11AA-AA11-00306543ECAC", "Apple Core Storage"},
+                 {"516E7CB4-6ECF-11D6-8FF8-00022D09712B", "FreeBSD data"},
+                 {"516E7CB5-6ECF-11D6-8FF8-00022D09712B", "FreeBSD swap"},
+                 {"516E7CB6-6ECF-11D6-8FF8-00022D09712B", "FreeBSD UFS"},
+                 {"83BD6B9D-7F41-11DC-BE0B-001560B84F0F", "FreeBSD boot"},
+                 {"6A898CC3-1DD2-11B2-99A6-080020736631", "Solaris /usr or Apple ZFS"},
+                 {"9E1A2D38-C612-4316-AA26-8B49521E5A8B", "PowerPC PReP boot"},
+                 {"FE3A2A5D-4F32-41A7-B725-ACCC3285A309", "ChromeOS kernel"},
+                 {"3CB8E202-3B7E-47DD-8A3C-7FF2A13CFCEC", "ChromeOS rootfs"},
+                 {"2E0A753D-9E48-43B0-8337-B15192CB1B5E", "ChromeOS reserved"},
+                 {"BFBFAFE7-A34F-448A-9A5B-6213EB736C22", "Lenovo boot"}};
     size_t index;
     if (!type_guid) return "Unknown";
     for (index = 0U; index < sizeof(table) / sizeof(table[0]); ++index) {
@@ -247,21 +246,20 @@ const char *xx_gpt_type_name(const char *type_guid) {
  * unpaired surrogate or a control character makes the label implausible, and
  * an empty string is returned instead of a half-decoded one - the record's
  * own name never comes from here, so nothing depends on the result. */
-static char *xx_gpt_decode_label(const uint8_t *raw) {
+static char *xx_gpt_decode_label(const uint8_t *raw)
+{
     char buffer[XX_GPT_NAME_UNITS * 3U + 1U];
     size_t used = 0U;
     size_t index = 0U;
     while (index < XX_GPT_NAME_UNITS) {
-        uint32_t unit = (uint32_t)raw[index * 2U] |
-                        ((uint32_t)raw[index * 2U + 1U] << 8);
+        uint32_t unit = (uint32_t)raw[index * 2U] | ((uint32_t)raw[index * 2U + 1U] << 8);
         uint32_t code = unit;
         ++index;
         if (unit == 0U) break;
         if (unit >= 0xD800U && unit <= 0xDBFFU) {
             uint32_t low;
             if (index >= XX_GPT_NAME_UNITS) return xx_str_create("");
-            low = (uint32_t)raw[index * 2U] |
-                  ((uint32_t)raw[index * 2U + 1U] << 8);
+            low = (uint32_t)raw[index * 2U] | ((uint32_t)raw[index * 2U + 1U] << 8);
             if (low < 0xDC00U || low > 0xDFFFU) return xx_str_create("");
             ++index;
             code = 0x10000U + ((unit - 0xD800U) << 10) + (low - 0xDC00U);
@@ -296,7 +294,8 @@ static char *xx_gpt_decode_label(const uint8_t *raw) {
 /* Header and entry array                                              */
 /* ------------------------------------------------------------------ */
 
-static void xx_gpt_private_cleanup(xx_gpt_private *parsed) {
+static void xx_gpt_private_cleanup(xx_gpt_private *parsed)
+{
     size_t index;
     if (!parsed) return;
     for (index = 0U; index < parsed->count; ++index) {
@@ -311,19 +310,17 @@ static void xx_gpt_private_cleanup(xx_gpt_private *parsed) {
     parsed->archive_end = -1;
 }
 
-static bool xx_gpt_append_entry(xx_gpt_private *parsed, xx_gpt_entry *entry) {
+static bool xx_gpt_append_entry(xx_gpt_private *parsed, xx_gpt_entry *entry)
+{
     xx_gpt_entry *grown;
     size_t capacity;
-    if (!parsed || !entry || !entry->name ||
-        parsed->count >= XX_GPT_MAX_ENTRY_COUNT) {
+    if (!parsed || !entry || !entry->name || parsed->count >= XX_GPT_MAX_ENTRY_COUNT) {
         return false;
     }
     if (parsed->count == parsed->capacity) {
         capacity = parsed->capacity ? parsed->capacity * 2U : 16U;
-        if (capacity < parsed->count ||
-            capacity > SIZE_MAX / sizeof(*parsed->entries)) return false;
-        grown = (xx_gpt_entry *)xx_mem_realloc(
-            parsed->entries, capacity * sizeof(*parsed->entries));
+        if (capacity < parsed->count || capacity > SIZE_MAX / sizeof(*parsed->entries)) return false;
+        grown = (xx_gpt_entry *)xx_mem_realloc(parsed->entries, capacity * sizeof(*parsed->entries));
         if (!grown) return false;
         parsed->entries = grown;
         parsed->capacity = capacity;
@@ -337,17 +334,14 @@ static bool xx_gpt_append_entry(xx_gpt_private *parsed, xx_gpt_entry *entry) {
  * must say it lives at LBA 1 and the backup at the last LBA, which is what
  * stops a stale or relocated header from being accepted in the wrong place.
  */
-static bool xx_gpt_read_header(xx_io_device *device, int64_t offset,
-                               uint32_t block_size, int64_t total_size,
-                               uint64_t expected_my_lba,
-                               xx_gpt_header *header) {
+static bool xx_gpt_read_header(xx_io_device *device, int64_t offset, uint32_t block_size, int64_t total_size, uint64_t expected_my_lba, xx_gpt_header *header)
+{
     uint8_t buffer[XX_GPT_BLOCK_SIZE_LARGE];
     uint32_t header_size;
     uint32_t stored_crc;
     uint32_t computed_crc;
     if (!device || !header || block_size > sizeof(buffer)) return false;
-    if (!xx_gpt_range_within(total_size, offset, block_size) ||
-        !xx_gpt_read_at(device, offset, buffer, block_size)) {
+    if (!xx_gpt_range_within(total_size, offset, block_size) || !xx_gpt_read_at(device, offset, buffer, block_size)) {
         return false;
     }
     if (xx_rt_memcmp(buffer, XX_GPT_SIGNATURE, 8U) != 0) return false;
@@ -376,8 +370,7 @@ static bool xx_gpt_read_header(xx_io_device *device, int64_t offset,
     header->first_usable_lba = xx_data_get_u64(buffer, block_size, 40U, false);
     header->last_usable_lba = xx_data_get_u64(buffer, block_size, 48U, false);
     xx_gpt_format_guid(buffer + 56, header->disk_guid);
-    header->partition_entry_lba = xx_data_get_u64(buffer, block_size, 72U,
-                                                  false);
+    header->partition_entry_lba = xx_data_get_u64(buffer, block_size, 72U, false);
     header->entry_count = xx_data_get_u32(buffer, block_size, 80U, false);
     header->entry_size = xx_data_get_u32(buffer, block_size, 84U, false);
     header->entries_crc = xx_data_get_u32(buffer, block_size, 88U, false);
@@ -388,22 +381,17 @@ static bool xx_gpt_read_header(xx_io_device *device, int64_t offset,
 /* Are the array's declared geometry and position usable at all? This runs
  * before any array byte is read, so a header claiming four billion entries
  * costs nothing. */
-static bool xx_gpt_array_geometry_ok(const xx_gpt_header *header,
-                                     int64_t base_address, uint32_t block_size,
-                                     int64_t total_size, int64_t *array_offset,
-                                     int64_t *array_size) {
+static bool xx_gpt_array_geometry_ok(const xx_gpt_header *header, int64_t base_address, uint32_t block_size, int64_t total_size, int64_t *array_offset,
+                                     int64_t *array_size)
+{
     uint64_t bytes;
     if (!header || !array_offset || !array_size) return false;
-    if (header->entry_count == 0U ||
-        header->entry_count > XX_GPT_MAX_ENTRY_COUNT) return false;
-    if (header->entry_size < XX_GPT_ENTRY_MIN_SIZE ||
-        header->entry_size > XX_GPT_MAX_ENTRY_SIZE ||
-        (header->entry_size % 8U) != 0U) return false;
+    if (header->entry_count == 0U || header->entry_count > XX_GPT_MAX_ENTRY_COUNT) return false;
+    if (header->entry_size < XX_GPT_ENTRY_MIN_SIZE || header->entry_size > XX_GPT_MAX_ENTRY_SIZE || (header->entry_size % 8U) != 0U) return false;
     bytes = (uint64_t)header->entry_count * header->entry_size;
     if (bytes > XX_GPT_MAX_ARRAY_BYTES) return false;
     if (header->partition_entry_lba == 0U) return false;
-    if (!xx_gpt_lba_to_offset(base_address, header->partition_entry_lba,
-                              block_size, array_offset)) {
+    if (!xx_gpt_lba_to_offset(base_address, header->partition_entry_lba, block_size, array_offset)) {
         return false;
     }
     if (!xx_gpt_range_within(total_size, *array_offset, (int64_t)bytes)) {
@@ -415,16 +403,15 @@ static bool xx_gpt_array_geometry_ok(const xx_gpt_header *header,
 
 /* Verify the entry array CRC by streaming. The array is never held in
  * memory, so its size never becomes an allocation. */
-static bool xx_gpt_array_crc_ok_buffered(xx_io_device *device, int64_t array_offset,
-                                int64_t array_size, uint32_t expected,
-                                xx_pd_struct *pd, uint8_t *buffer, size_t buffer_capacity) {
+static bool xx_gpt_array_crc_ok_buffered(xx_io_device *device, int64_t array_offset, int64_t array_size, uint32_t expected, xx_pd_struct *pd, uint8_t *buffer,
+                                         size_t buffer_capacity)
+{
     int64_t done = 0;
     uint32_t crc = 0U;
     if (xx_io_seek64(device, array_offset, SEEK_SET) != 0) return false;
     while (done < array_size) {
         int64_t remaining = array_size - done;
-        size_t want = (uint64_t)remaining < (uint64_t)buffer_capacity
-                          ? (size_t)remaining : buffer_capacity;
+        size_t want = (uint64_t)remaining < (uint64_t)buffer_capacity ? (size_t)remaining : buffer_capacity;
         ssize_t got;
         if (pd && xx_pd_is_stopped(pd)) return false;
         got = xx_io_read(device, buffer, want);
@@ -435,9 +422,8 @@ static bool xx_gpt_array_crc_ok_buffered(xx_io_device *device, int64_t array_off
     return crc == expected;
 }
 
-static bool xx_gpt_array_crc_ok(xx_io_device *device, int64_t array_offset,
-                                int64_t array_size, uint32_t expected,
-                                xx_pd_struct *pd) {
+static bool xx_gpt_array_crc_ok(xx_io_device *device, int64_t array_offset, int64_t array_size, uint32_t expected, xx_pd_struct *pd)
+{
     size_t buffer_capacity = xx_get_file_buffer_size();
     uint8_t *buffer = (uint8_t *)xx_mem_alloc(buffer_capacity);
     bool buffer_result;
@@ -451,13 +437,12 @@ static bool xx_gpt_array_crc_ok(xx_io_device *device, int64_t array_offset,
  * clamped to what the device holds, because a truncated dump is common and
  * its leading partitions are still usable; declared_size keeps the figure
  * the table actually stated. */
-static bool xx_gpt_collect_entries(Abstractformat *self, xx_gpt_private *parsed,
-                                   int64_t array_offset, xx_pd_struct *pd) {
+static bool xx_gpt_collect_entries(Abstractformat *self, xx_gpt_private *parsed, int64_t array_offset, xx_pd_struct *pd)
+{
     uint32_t index;
     for (index = 0U; index < parsed->header.entry_count; ++index) {
         uint8_t raw[XX_GPT_ENTRY_MIN_SIZE];
-        int64_t entry_offset = array_offset +
-                               (int64_t)index * parsed->header.entry_size;
+        int64_t entry_offset = array_offset + (int64_t)index * parsed->header.entry_size;
         xx_gpt_entry entry;
         uint64_t blocks;
         uint64_t declared;
@@ -477,8 +462,7 @@ static bool xx_gpt_collect_entries(Abstractformat *self, xx_gpt_private *parsed,
         if (entry.ending_lba < entry.starting_lba) continue;
         if (entry.starting_lba == 0U) continue; /* Would cover the MBR. */
         blocks = entry.ending_lba - entry.starting_lba + 1U;
-        if (!xx_gpt_lba_to_offset(self->base_address, entry.starting_lba,
-                                  parsed->block_size, &offset)) {
+        if (!xx_gpt_lba_to_offset(self->base_address, entry.starting_lba, parsed->block_size, &offset)) {
             continue;
         }
         if (offset >= parsed->input_size) continue;
@@ -515,10 +499,9 @@ static bool xx_gpt_collect_entries(Abstractformat *self, xx_gpt_private *parsed,
 
 /* Try one (block size, copy) combination. Returns true when the header
  * verified; *array_ok then says whether its entry array verified too. */
-static bool xx_gpt_try_header(Abstractformat *self, uint32_t block_size,
-                              bool backup, int64_t total_size,
-                              xx_gpt_header *header, int64_t *array_offset,
-                              bool *array_ok, xx_pd_struct *pd) {
+static bool xx_gpt_try_header(Abstractformat *self, uint32_t block_size, bool backup, int64_t total_size, xx_gpt_header *header, int64_t *array_offset, bool *array_ok,
+                              xx_pd_struct *pd)
+{
     int64_t header_offset;
     int64_t array_size;
     uint64_t expected_my_lba;
@@ -535,27 +518,22 @@ static bool xx_gpt_try_header(Abstractformat *self, uint32_t block_size,
     } else {
         expected_my_lba = 1U;
     }
-    if (!xx_gpt_lba_to_offset(self->base_address, expected_my_lba, block_size,
-                              &header_offset)) {
+    if (!xx_gpt_lba_to_offset(self->base_address, expected_my_lba, block_size, &header_offset)) {
         return false;
     }
-    if (!xx_gpt_read_header(self->device, header_offset, block_size, total_size,
-                            expected_my_lba, header)) {
+    if (!xx_gpt_read_header(self->device, header_offset, block_size, total_size, expected_my_lba, header)) {
         return false;
     }
-    if (!xx_gpt_array_geometry_ok(header, self->base_address, block_size,
-                                  total_size, array_offset, &array_size)) {
+    if (!xx_gpt_array_geometry_ok(header, self->base_address, block_size, total_size, array_offset, &array_size)) {
         return true; /* The header stands; its array does not. */
     }
-    *array_ok = xx_gpt_array_crc_ok(self->device, *array_offset, array_size,
-                                    header->entries_crc, pd);
+    *array_ok = xx_gpt_array_crc_ok(self->device, *array_offset, array_size, header->entries_crc, pd);
     return true;
 }
 
-static bool xx_gpt_parse(Abstractformat *self, xx_gpt_private *parsed,
-                         xx_pd_struct *pd) {
-    static const uint32_t block_sizes[2] = {XX_GPT_BLOCK_SIZE_SMALL,
-                                            XX_GPT_BLOCK_SIZE_LARGE};
+static bool xx_gpt_parse(Abstractformat *self, xx_gpt_private *parsed, xx_pd_struct *pd)
+{
+    static const uint32_t block_sizes[2] = {XX_GPT_BLOCK_SIZE_SMALL, XX_GPT_BLOCK_SIZE_LARGE};
     int64_t total_size;
     xx_gpt_header header;
     xx_gpt_header fallback_header;
@@ -576,8 +554,7 @@ static bool xx_gpt_parse(Abstractformat *self, xx_gpt_private *parsed,
         parsed->input_size = -1;
         parsed->archive_end = -1;
     }
-    if (!self || !self->device || !parsed || self->base_address < 0 ||
-        (pd && xx_pd_is_stopped(pd))) return false;
+    if (!self || !self->device || !parsed || self->base_address < 0 || (pd && xx_pd_is_stopped(pd))) return false;
     xx_mem_zero(&header, sizeof(header));
     xx_mem_zero(&fallback_header, sizeof(fallback_header));
     total_size = xx_io_total_size(self->device);
@@ -592,8 +569,7 @@ static bool xx_gpt_parse(Abstractformat *self, xx_gpt_private *parsed,
         for (index = 0U; index < 2U && !chosen; ++index) {
             bool array_ok = false;
             int64_t offset = -1;
-            if (!xx_gpt_try_header(self, block_sizes[index], backup, total_size,
-                                   &header, &offset, &array_ok, pd)) {
+            if (!xx_gpt_try_header(self, block_sizes[index], backup, total_size, &header, &offset, &array_ok, pd)) {
                 continue;
             }
             if (array_ok) {
@@ -626,8 +602,7 @@ static bool xx_gpt_parse(Abstractformat *self, xx_gpt_private *parsed,
         array_offset = fallback_array_offset;
     }
     parsed->input_size = total_size;
-    parsed->archive_end = self->base_address +
-                          (int64_t)parsed->block_size * 2;
+    parsed->archive_end = self->base_address + (int64_t)parsed->block_size * 2;
     if (!xx_gpt_collect_entries(self, parsed, array_offset, pd)) goto fail;
     if (parsed->count == 0U) goto fail;
     return true;
@@ -640,18 +615,16 @@ fail:
 /* Archive record plumbing                                             */
 /* ------------------------------------------------------------------ */
 
-static bool xx_gpt_copy_options(xx_list_s *destination,
-                                const xx_list_s *source) {
+static bool xx_gpt_copy_options(xx_list_s *destination, const xx_list_s *source)
+{
     size_t index;
     if (!destination || !source) return source == NULL;
     for (index = 0U; index < source->count; ++index) {
-        const xx_meta *item = (const xx_meta *)xx_list_at(
-            (const xx_list_t *)source, index);
+        const xx_meta *item = (const xx_meta *)xx_list_at((const xx_list_t *)source, index);
         xx_meta copy;
         if (!item) continue;
         xx_meta_init(&copy, item->meta_id);
-        if (!xx_var_copy(&copy.var, &item->var) ||
-            !xx_list_append(destination, &copy)) {
+        if (!xx_var_copy(&copy.var, &item->var) || !xx_list_append(destination, &copy)) {
             xx_meta_cleanup(&copy);
             return false;
         }
@@ -659,13 +632,12 @@ static bool xx_gpt_copy_options(xx_list_s *destination,
     return true;
 }
 
-static const xx_var *xx_gpt_find_option(const xx_list_s *options,
-                                        uint32_t meta_id) {
+static const xx_var *xx_gpt_find_option(const xx_list_s *options, uint32_t meta_id)
+{
     size_t index;
     if (!options) return NULL;
     for (index = 0U; index < options->count; ++index) {
-        const xx_meta *item = (const xx_meta *)xx_list_at(
-            (const xx_list_t *)options, index);
+        const xx_meta *item = (const xx_meta *)xx_list_at((const xx_list_t *)options, index);
         if (item && item->meta_id == meta_id) return &item->var;
     }
     return NULL;
@@ -675,8 +647,8 @@ static const xx_var *xx_gpt_find_option(const xx_list_s *options,
  * comment holds the readable type and the attributes field is published as
  * is; the GUIDs and the label reach a caller through
  * xx_gpt_get_partition_info(). */
-static bool xx_gpt_populate_record(xx_archive_record *record,
-                                   const xx_gpt_entry *entry) {
+static bool xx_gpt_populate_record(xx_archive_record *record, const xx_gpt_entry *entry)
+{
     if (!record || !entry || !entry->name) return false;
     xx_archive_record_cleanup(record);
     xx_archive_record_init(record);
@@ -684,21 +656,16 @@ static bool xx_gpt_populate_record(xx_archive_record *record,
     record->header_size = entry->header_size;
     record->data_offset = entry->data_offset;
     record->compressed_size = entry->data_size;
-    return xx_archive_record_set_original_name(record, entry->name) &&
-           xx_archive_record_set_meta_u64(record, XX_META_ID_UNCOMPRESSED_SIZE,
-                                          (uint64_t)entry->data_size) &&
-           xx_archive_record_set_meta_u64(record, XX_META_ID_COMPRESSED_SIZE,
-                                          (uint64_t)entry->data_size) &&
-           xx_archive_record_set_meta_u64(record, XX_META_ID_COMPRESSION_METHOD,
-                                          0U) &&
-           xx_archive_record_set_meta_u64(record, XX_META_ID_ATTRIBUTES,
-                                          entry->attributes) &&
-           xx_archive_record_set_meta_str(record, XX_META_ID_COMMENT,
-                                          xx_gpt_type_name(entry->type_guid)) &&
+    return xx_archive_record_set_original_name(record, entry->name) && xx_archive_record_set_meta_u64(record, XX_META_ID_UNCOMPRESSED_SIZE, (uint64_t)entry->data_size) &&
+           xx_archive_record_set_meta_u64(record, XX_META_ID_COMPRESSED_SIZE, (uint64_t)entry->data_size) &&
+           xx_archive_record_set_meta_u64(record, XX_META_ID_COMPRESSION_METHOD, 0U) &&
+           xx_archive_record_set_meta_u64(record, XX_META_ID_ATTRIBUTES, entry->attributes) &&
+           xx_archive_record_set_meta_str(record, XX_META_ID_COMMENT, xx_gpt_type_name(entry->type_guid)) &&
            xx_archive_record_set_meta_bool(record, XX_META_ID_IS_FOLDER, false);
 }
 
-static void xx_gpt_archive_stream_free(void *pointer) {
+static void xx_gpt_archive_stream_free(void *pointer)
+{
     xx_gpt_archive_stream *stream = (xx_gpt_archive_stream *)pointer;
     if (!stream) return;
     xx_gpt_private_cleanup(&stream->parsed);
@@ -708,14 +675,13 @@ static void xx_gpt_archive_stream_free(void *pointer) {
 /* The record names are generated here, never taken from the image - the
  * decoded label is deliberately kept out of the extraction path - so this
  * only has to refuse the impossible. */
-static bool xx_gpt_safe_name(const char *name) {
+static bool xx_gpt_safe_name(const char *name)
+{
     size_t index;
     if (!name || !name[0]) return false;
     for (index = 0U; name[index] != '\0'; ++index) {
         char ch = name[index];
-        if (!((ch >= 'a' && ch <= 'z') || (ch >= 'A' && ch <= 'Z') ||
-              (ch >= '0' && ch <= '9') || ch == '_' || ch == '-' ||
-              ch == '.')) {
+        if (!((ch >= 'a' && ch <= 'z') || (ch >= 'A' && ch <= 'Z') || (ch >= '0' && ch <= '9') || ch == '_' || ch == '-' || ch == '.')) {
             return false;
         }
     }
@@ -726,7 +692,8 @@ static bool xx_gpt_safe_name(const char *name) {
 /* Public API                                                          */
 /* ------------------------------------------------------------------ */
 
-void xx_gpt_init(xx_gpt *gpt, xx_io_device *dev, int64_t base_address) {
+void xx_gpt_init(xx_gpt *gpt, xx_io_device *dev, int64_t base_address)
+{
     if (!gpt) return;
     xx_mem_zero(gpt, sizeof(*gpt));
     xx_format_init(&gpt->format, dev, base_address);
@@ -739,27 +706,25 @@ void xx_gpt_init(xx_gpt *gpt, xx_io_device *dev, int64_t base_address) {
     gpt->format.check_is_valid = xx_gpt_check_is_valid;
     gpt->format.handle_base_info = xx_gpt_handle_base_info;
     gpt->format.get_format_size = xx_gpt_get_format_size;
-    gpt->format.get_number_of_archive_records =
-        xx_gpt_get_number_of_archive_records;
-    gpt->format.create_archive_records_reading =
-        xx_gpt_create_archive_records_reading;
+    gpt->format.get_number_of_archive_records = xx_gpt_get_number_of_archive_records;
+    gpt->format.create_archive_records_reading = xx_gpt_create_archive_records_reading;
     gpt->format.get_current_archive_record = xx_gpt_get_current_archive_record;
-    gpt->format.unpack_current_archive_record =
-        xx_gpt_unpack_current_archive_record;
+    gpt->format.unpack_current_archive_record = xx_gpt_unpack_current_archive_record;
     gpt->format.archive_record_move_to_next = xx_gpt_archive_record_move_to_next;
-    gpt->format.free_archive_records_reading =
-        xx_gpt_free_archive_records_reading;
+    gpt->format.free_archive_records_reading = xx_gpt_free_archive_records_reading;
     gpt->format.destroy = xx_gpt_vtable_destroy;
     gpt->archive_end = -1;
 }
 
-xx_gpt *xx_gpt_create(xx_io_device *dev, int64_t base_address) {
+xx_gpt *xx_gpt_create(xx_io_device *dev, int64_t base_address)
+{
     xx_gpt *gpt = (xx_gpt *)xx_mem_alloc(sizeof(*gpt));
     if (gpt) xx_gpt_init(gpt, dev, base_address);
     return gpt;
 }
 
-void xx_gpt_destroy(xx_gpt *gpt) {
+void xx_gpt_destroy(xx_gpt *gpt)
+{
     if (!gpt) return;
     if (gpt->internal) {
         xx_gpt_private_cleanup((xx_gpt_private *)gpt->internal);
@@ -769,24 +734,28 @@ void xx_gpt_destroy(xx_gpt *gpt) {
     xx_format_cleanup_extra_parameters(&gpt->format);
 }
 
-static void xx_gpt_vtable_destroy(Abstractformat *self) {
+static void xx_gpt_vtable_destroy(Abstractformat *self)
+{
     xx_gpt_destroy((xx_gpt *)self);
 }
 
-void xx_gpt_free(xx_gpt *gpt) {
+void xx_gpt_free(xx_gpt *gpt)
+{
     if (!gpt) return;
     xx_gpt_destroy(gpt);
     xx_mem_free(gpt);
 }
 
-bool xx_gpt_check_is_valid(Abstractformat *self, xx_pd_struct *pd) {
+bool xx_gpt_check_is_valid(Abstractformat *self, xx_pd_struct *pd)
+{
     xx_gpt_private parsed;
     bool result = xx_gpt_parse(self, &parsed, pd);
     xx_gpt_private_cleanup(&parsed);
     return result;
 }
 
-bool xx_gpt_handle_base_info(Abstractformat *self, xx_pd_struct *pd) {
+bool xx_gpt_handle_base_info(Abstractformat *self, xx_pd_struct *pd)
+{
     xx_gpt_private *parsed;
     xx_gpt *gpt = (xx_gpt *)self;
     int64_t total_size;
@@ -831,25 +800,23 @@ bool xx_gpt_handle_base_info(Abstractformat *self, xx_pd_struct *pd) {
     return true;
 }
 
-int64_t xx_gpt_get_format_size(Abstractformat *self, xx_pd_struct *pd) {
-    if (!self || (!self->base_info_handled &&
-                  !xx_format_handle_base_info(self, pd))) return -1;
+int64_t xx_gpt_get_format_size(Abstractformat *self, xx_pd_struct *pd)
+{
+    if (!self || (!self->base_info_handled && !xx_format_handle_base_info(self, pd))) return -1;
     return self->format_size;
 }
 
-uint64_t xx_gpt_get_number_of_archive_records(Abstractformat *self,
-                                              xx_pd_struct *pd) {
-    if (!self || (!self->base_info_handled &&
-                  !xx_format_handle_base_info(self, pd))) return 0U;
+uint64_t xx_gpt_get_number_of_archive_records(Abstractformat *self, xx_pd_struct *pd)
+{
+    if (!self || (!self->base_info_handled && !xx_format_handle_base_info(self, pd))) return 0U;
     return ((xx_gpt *)self)->number_of_records;
 }
 
-xx_archive_record_state *xx_gpt_create_archive_records_reading(
-    Abstractformat *self, const xx_list_s *options, xx_pd_struct *pd) {
+xx_archive_record_state *xx_gpt_create_archive_records_reading(Abstractformat *self, const xx_list_s *options, xx_pd_struct *pd)
+{
     xx_archive_record_state *state;
     xx_gpt_archive_stream *stream;
-    if (!self || !self->device ||
-        (!self->base_info_handled && !xx_format_handle_base_info(self, pd))) {
+    if (!self || !self->device || (!self->base_info_handled && !xx_format_handle_base_info(self, pd))) {
         return NULL;
     }
     state = (xx_archive_record_state *)xx_mem_alloc(sizeof(*state));
@@ -860,8 +827,7 @@ xx_archive_record_state *xx_gpt_create_archive_records_reading(
         return NULL;
     }
     xx_archive_record_state_init(state, self);
-    if (!xx_gpt_copy_options(&state->options, options) ||
-        !xx_gpt_parse(self, &stream->parsed, pd)) {
+    if (!xx_gpt_copy_options(&state->options, options) || !xx_gpt_parse(self, &stream->parsed, pd)) {
         xx_gpt_archive_stream_free(stream);
         xx_archive_record_state_free(state);
         return NULL;
@@ -870,27 +836,22 @@ xx_archive_record_state *xx_gpt_create_archive_records_reading(
     state->internal_state = stream;
     state->free_internal = xx_gpt_archive_stream_free;
     state->total_records = (int64_t)stream->parsed.count;
-    if (stream->parsed.count != 0U &&
-        xx_gpt_populate_record(&state->current_record,
-                               &stream->parsed.entries[0])) {
+    if (stream->parsed.count != 0U && xx_gpt_populate_record(&state->current_record, &stream->parsed.entries[0])) {
         state->has_record = true;
         state->current_index = 0;
     }
     return state;
 }
 
-const xx_archive_record *xx_gpt_get_current_archive_record(
-    Abstractformat *self, xx_archive_record_state *state) {
-    return self && state && state->format == self && state->has_record
-               ? &state->current_record : NULL;
+const xx_archive_record *xx_gpt_get_current_archive_record(Abstractformat *self, xx_archive_record_state *state)
+{
+    return self && state && state->format == self && state->has_record ? &state->current_record : NULL;
 }
 
-bool xx_gpt_archive_record_move_to_next(Abstractformat *self,
-                                        xx_archive_record_state *state,
-                                        xx_pd_struct *pd) {
+bool xx_gpt_archive_record_move_to_next(Abstractformat *self, xx_archive_record_state *state, xx_pd_struct *pd)
+{
     xx_gpt_archive_stream *stream;
-    if (!self || !state || state->format != self || !state->has_record ||
-        !state->internal_state || (pd && xx_pd_is_stopped(pd))) return false;
+    if (!self || !state || state->format != self || !state->has_record || !state->internal_state || (pd && xx_pd_is_stopped(pd))) return false;
     stream = (xx_gpt_archive_stream *)state->internal_state;
     ++stream->index;
     if (stream->index >= stream->parsed.count) {
@@ -899,8 +860,7 @@ bool xx_gpt_archive_record_move_to_next(Abstractformat *self,
         state->has_record = false;
         return false;
     }
-    if (!xx_gpt_populate_record(&state->current_record,
-                                &stream->parsed.entries[stream->index])) {
+    if (!xx_gpt_populate_record(&state->current_record, &stream->parsed.entries[stream->index])) {
         state->has_record = false;
         return false;
     }
@@ -908,9 +868,8 @@ bool xx_gpt_archive_record_move_to_next(Abstractformat *self,
     return true;
 }
 
-bool xx_gpt_unpack_current_archive_record(Abstractformat *self,
-                                          xx_archive_record_state *state,
-                                          xx_pd_struct *pd) {
+bool xx_gpt_unpack_current_archive_record(Abstractformat *self, xx_archive_record_state *state, xx_pd_struct *pd)
+{
     const xx_archive_record *record;
     const xx_var *option;
     const char *name;
@@ -918,29 +877,23 @@ bool xx_gpt_unpack_current_archive_record(Abstractformat *self,
     char *owned_base = NULL;
     char *destination = NULL;
     bool result;
-    if (!self || !self->device || !state || state->format != self ||
-        !state->has_record || (pd && xx_pd_is_stopped(pd))) return false;
+    if (!self || !self->device || !state || state->format != self || !state->has_record || (pd && xx_pd_is_stopped(pd))) return false;
     record = &state->current_record;
     name = xx_archive_record_get_original_name(record);
     if (!xx_gpt_safe_name(name)) return false;
     option = xx_gpt_find_option(&state->options, XX_META_ID_OPT_UNPACK_PATH);
     if (!option) {
         int64_t total = xx_io_total_size(self->device);
-        return record->data_offset >= 0 && record->compressed_size >= 0 &&
-               record->data_offset <= total &&
-               record->compressed_size <= total - record->data_offset;
+        return record->data_offset >= 0 && record->compressed_size >= 0 && record->data_offset <= total && record->compressed_size <= total - record->data_offset;
     }
-    if (option->type == XX_VAR_TYPE_STRING ||
-        option->type == XX_VAR_TYPE_STRING_VIEW) {
+    if (option->type == XX_VAR_TYPE_STRING || option->type == XX_VAR_TYPE_STRING_VIEW) {
         base = xx_var_get_str(option);
-    } else if (option->type == XX_VAR_TYPE_WSTRING ||
-               option->type == XX_VAR_TYPE_WSTRING_VIEW) {
+    } else if (option->type == XX_VAR_TYPE_WSTRING || option->type == XX_VAR_TYPE_WSTRING_VIEW) {
         owned_base = xx_str_unicode_to_utf8(xx_var_get_wstr(option));
         base = owned_base;
     }
     if (!base) goto cleanup;
-    if (base[0] && base[xx_str_len(base) - 1U] != '/' &&
-        base[xx_str_len(base) - 1U] != '\\') {
+    if (base[0] && base[xx_str_len(base) - 1U] != '/' && base[xx_str_len(base) - 1U] != '\\') {
         destination = xx_str_concat(base, "/");
         if (!destination) goto cleanup;
         {
@@ -953,10 +906,7 @@ bool xx_gpt_unpack_current_archive_record(Abstractformat *self,
     }
     if (!destination) goto cleanup;
     if (xx_store_create_dirs_a(destination, false)) {
-        result = xx_store_unpack_device_to_file(self->device,
-                                                record->data_offset,
-                                                record->compressed_size,
-                                                destination, pd);
+        result = xx_store_unpack_device_to_file(self->device, record->data_offset, record->compressed_size, destination, pd);
     } else {
         result = false;
     }
@@ -969,35 +919,41 @@ cleanup:
     return false;
 }
 
-void xx_gpt_free_archive_records_reading(Abstractformat *self,
-                                         xx_archive_record_state *state) {
+void xx_gpt_free_archive_records_reading(Abstractformat *self, xx_archive_record_state *state)
+{
     (void)self;
     xx_archive_record_state_free(state);
 }
 
-uint64_t xx_gpt_get_number_of_records(const xx_gpt *gpt) {
+uint64_t xx_gpt_get_number_of_records(const xx_gpt *gpt)
+{
     return gpt ? gpt->number_of_records : 0U;
 }
-uint64_t xx_gpt_get_number_of_members(const xx_gpt *gpt) {
+uint64_t xx_gpt_get_number_of_members(const xx_gpt *gpt)
+{
     return gpt ? gpt->number_of_members : 0U;
 }
-uint32_t xx_gpt_get_block_size(const xx_gpt *gpt) {
+uint32_t xx_gpt_get_block_size(const xx_gpt *gpt)
+{
     return gpt ? gpt->block_size : 0U;
 }
-bool xx_gpt_used_backup(const xx_gpt *gpt) {
+bool xx_gpt_used_backup(const xx_gpt *gpt)
+{
     return gpt ? gpt->used_backup : false;
 }
-int64_t xx_gpt_get_archive_end(const xx_gpt *gpt) {
+int64_t xx_gpt_get_archive_end(const xx_gpt *gpt)
+{
     return gpt ? gpt->archive_end : -1;
 }
 
-const char *xx_gpt_get_disk_guid(const xx_gpt *gpt) {
+const char *xx_gpt_get_disk_guid(const xx_gpt *gpt)
+{
     if (!gpt || !gpt->internal) return NULL;
     return ((const xx_gpt_private *)gpt->internal)->header.disk_guid;
 }
 
-bool xx_gpt_get_partition_info(const xx_gpt *gpt, uint64_t index,
-                               xx_gpt_partition_info *info) {
+bool xx_gpt_get_partition_info(const xx_gpt *gpt, uint64_t index, xx_gpt_partition_info *info)
+{
     const xx_gpt_private *parsed;
     const xx_gpt_entry *entry;
     if (!gpt || !info || !gpt->internal) return false;

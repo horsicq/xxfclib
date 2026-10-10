@@ -13,7 +13,10 @@ XXFC_API void xx_vtr_disk_init(xx_vtr_disk *, xx_io_device *, int64_t);
 XXFC_API xx_vtr_disk *xx_vtr_disk_create(xx_io_device *, int64_t);
 XXFC_API void xx_vtr_disk_destroy(xx_vtr_disk *);
 XXFC_API void xx_vtr_disk_free(xx_vtr_disk *);
-static inline Abstractformat *xx_vtr_disk_to_format(xx_vtr_disk *r) { return r ? &r->format : NULL; }
+static inline Abstractformat *xx_vtr_disk_to_format(xx_vtr_disk *r)
+{
+    return r ? &r->format : NULL;
+}
 #ifdef __cplusplus
 }
 #endif

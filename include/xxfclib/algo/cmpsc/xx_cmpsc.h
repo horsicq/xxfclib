@@ -19,12 +19,7 @@ extern "C" {
  * Unused bits in the last source byte are ignored, as defined by CMPSC.
  * written is reset to zero on failure. NULL output is valid only for size 0.
  */
-XXFC_API bool xx_cmpsc_zip_decode_memory(const uint8_t *input,
-                                        size_t input_size,
-                                        uint8_t *output,
-                                        size_t output_size,
-                                        size_t *written,
-                                        xx_pd_struct *pd);
+XXFC_API bool xx_cmpsc_zip_decode_memory(const uint8_t *input, size_t input_size, uint8_t *output, size_t output_size, size_t *written, xx_pd_struct *pd);
 
 /** Maximum payload size for the baseline CMPSC encoder, or zero on size
  * overflow. The result includes the header and a full 512-entry dictionary;
@@ -37,12 +32,7 @@ XXFC_API size_t xx_cmpsc_zip_encode_bound(size_t input_size);
  * mainframe hardware. NULL input is allowed only for an empty input; input and
  * output must not overlap. written is reset to zero on failure/cancellation.
  */
-XXFC_API bool xx_cmpsc_zip_encode_memory(const uint8_t *input,
-                                        size_t input_size,
-                                        uint8_t *output,
-                                        size_t output_capacity,
-                                        size_t *written,
-                                        xx_pd_struct *pd);
+XXFC_API bool xx_cmpsc_zip_encode_memory(const uint8_t *input, size_t input_size, uint8_t *output, size_t output_capacity, size_t *written, xx_pd_struct *pd);
 
 #ifdef __cplusplus
 }

@@ -12,16 +12,12 @@
 extern "C" {
 #endif
 
-XXFC_API bool xx_lzh1_decode_memory(const uint8_t *input, size_t input_size,
-                                    uint8_t *output, size_t output_size,
-                                    size_t *written);
+XXFC_API bool xx_lzh1_decode_memory(const uint8_t *input, size_t input_size, uint8_t *output, size_t output_size, size_t *written);
 
 /** Decode exactly one bounded LH1 stream without retaining its payload.
  * Devices are borrowed and used at their current positions. Short transfers
  * are retried. Cancellation and progress are checked every 4 KiB. */
-XXFC_API bool xx_lzh1_decode_to_device(xx_io_device *input, uint64_t input_size,
-                                      xx_io_device *output, uint64_t output_size,
-                                      uint64_t *written, xx_pd_struct *pd);
+XXFC_API bool xx_lzh1_decode_to_device(xx_io_device *input, uint64_t input_size, xx_io_device *output, uint64_t output_size, uint64_t *written, xx_pd_struct *pd);
 
 /**
  * @brief Decode an LHA -lh4-/-lh5-/-lh6-/-lh7- stream.
@@ -43,9 +39,7 @@ XXFC_API bool xx_lzh1_decode_to_device(xx_io_device *input, uint64_t input_size,
  * @return true when exactly @p output_size bytes were produced from a
  *         well-formed stream.
  */
-XXFC_API bool xx_lzh5_decode_memory(const uint8_t *input, size_t input_size,
-                                    uint8_t *output, size_t output_size,
-                                    int method, size_t *written);
+XXFC_API bool xx_lzh5_decode_memory(const uint8_t *input, size_t input_size, uint8_t *output, size_t output_size, int method, size_t *written);
 
 #ifdef __cplusplus
 }

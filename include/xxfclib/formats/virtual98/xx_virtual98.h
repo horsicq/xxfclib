@@ -25,7 +25,9 @@ extern "C" {
 
 typedef struct xx_virtual98 xx_virtual98;
 typedef struct xx_virtual98 xx_virtual98_t;
-struct xx_virtual98 { Abstractformat format; };
+struct xx_virtual98 {
+    Abstractformat format;
+};
 
 XXFC_API void xx_virtual98_init(xx_virtual98 *reader, xx_io_device *device, int64_t base_address);
 XXFC_API xx_virtual98 *xx_virtual98_create(xx_io_device *device, int64_t base_address);
@@ -37,9 +39,9 @@ XXFC_API bool xx_virtual98_handle_base_info(Abstractformat *format, xx_pd_struct
  * its current cursor. Failure may leave partial output; input cursor is restored.
  * Output must differ from input. This function does not close either device.
  */
-XXFC_API bool xx_virtual98_unpack_to_device(xx_virtual98 *reader, uint64_t record_index,
-    xx_io_device *output, xx_pd_struct *pd);
-static inline Abstractformat *xx_virtual98_to_format(xx_virtual98 *reader) {
+XXFC_API bool xx_virtual98_unpack_to_device(xx_virtual98 *reader, uint64_t record_index, xx_io_device *output, xx_pd_struct *pd);
+static inline Abstractformat *xx_virtual98_to_format(xx_virtual98 *reader)
+{
     return reader ? &reader->format : NULL;
 }
 #ifdef __cplusplus

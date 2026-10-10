@@ -75,40 +75,30 @@ typedef xx_rawcd xx_rawcd_t;
 /** Bytes of each sector audio.cdda keeps. */
 #define XX_RAWCD_AUDIO_FRAME 2352
 
-XXFC_API void xx_rawcd_init(xx_rawcd *archive, xx_io_device *device,
-                            int64_t base_address);
+XXFC_API void xx_rawcd_init(xx_rawcd *archive, xx_io_device *device, int64_t base_address);
 XXFC_API xx_rawcd *xx_rawcd_create(xx_io_device *device, int64_t base_address);
 XXFC_API void xx_rawcd_destroy(xx_rawcd *archive);
 XXFC_API void xx_rawcd_free(xx_rawcd *archive);
 
 XXFC_API bool xx_rawcd_check_is_valid(Abstractformat *self, xx_pd_struct *pd);
-XXFC_API bool xx_rawcd_handle_base_info(Abstractformat *self,
-                                        xx_pd_struct *pd);
-XXFC_API int64_t xx_rawcd_get_format_size(Abstractformat *self,
-                                          xx_pd_struct *pd);
-XXFC_API uint64_t xx_rawcd_get_number_of_archive_records(Abstractformat *self,
-                                                         xx_pd_struct *pd);
+XXFC_API bool xx_rawcd_handle_base_info(Abstractformat *self, xx_pd_struct *pd);
+XXFC_API int64_t xx_rawcd_get_format_size(Abstractformat *self, xx_pd_struct *pd);
+XXFC_API uint64_t xx_rawcd_get_number_of_archive_records(Abstractformat *self, xx_pd_struct *pd);
 
-XXFC_API xx_archive_record_state *xx_rawcd_create_archive_records_reading(
-    Abstractformat *self, const xx_list_s *options, xx_pd_struct *pd);
-XXFC_API const xx_archive_record *xx_rawcd_get_current_archive_record(
-    Abstractformat *self, xx_archive_record_state *state);
-XXFC_API bool xx_rawcd_unpack_current_archive_record(
-    Abstractformat *self, xx_archive_record_state *state, xx_pd_struct *pd);
-XXFC_API bool xx_rawcd_archive_record_move_to_next(
-    Abstractformat *self, xx_archive_record_state *state, xx_pd_struct *pd);
-XXFC_API void xx_rawcd_free_archive_records_reading(
-    Abstractformat *self, xx_archive_record_state *state);
+XXFC_API xx_archive_record_state *xx_rawcd_create_archive_records_reading(Abstractformat *self, const xx_list_s *options, xx_pd_struct *pd);
+XXFC_API const xx_archive_record *xx_rawcd_get_current_archive_record(Abstractformat *self, xx_archive_record_state *state);
+XXFC_API bool xx_rawcd_unpack_current_archive_record(Abstractformat *self, xx_archive_record_state *state, xx_pd_struct *pd);
+XXFC_API bool xx_rawcd_archive_record_move_to_next(Abstractformat *self, xx_archive_record_state *state, xx_pd_struct *pd);
+XXFC_API void xx_rawcd_free_archive_records_reading(Abstractformat *self, xx_archive_record_state *state);
 
 /**
  * @brief Write the cooked 2048-byte-sector image (image.iso) to
  * @p destination; NULL only reads it through.  Handles base info first.
  */
-XXFC_API bool xx_rawcd_cook_to_device(xx_rawcd *archive,
-                                      xx_io_device *destination,
-                                      xx_pd_struct *pd);
+XXFC_API bool xx_rawcd_cook_to_device(xx_rawcd *archive, xx_io_device *destination, xx_pd_struct *pd);
 
-static inline Abstractformat *xx_rawcd_to_format(xx_rawcd *archive) {
+static inline Abstractformat *xx_rawcd_to_format(xx_rawcd *archive)
+{
     return archive ? &archive->format : NULL;
 }
 

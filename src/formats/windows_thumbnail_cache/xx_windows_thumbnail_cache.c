@@ -12,53 +12,76 @@
 #define UE2_THUMBCACHE_TYPE XX_FILE_TYPE_UNKNOWN
 #endif
 
-static uint64_t thumb_crc(uint64_t crc, const uint8_t *data, size_t size) {
-    size_t i; unsigned bit;
+static uint64_t thumb_crc(uint64_t crc, const uint8_t *data, size_t size)
+{
+    size_t i;
+    unsigned bit;
     for (i = 0; i < size; ++i) {
         crc ^= data[i];
         for (bit = 0; bit < 8; ++bit) crc = (crc >> 1) ^ ((crc & 1) ? UINT64_C(0x92c64265d32139a4) : 0);
     }
     return crc;
 }
-static ue2_index *thumb_parse(Abstractformat *f, uint32_t *version_out, uint32_t *type_out, xx_pd_struct *pd) {
+static ue2_index *thumb_parse(Abstractformat *f, uint32_t *version_out, uint32_t *type_out, xx_pd_struct *pd)
+{
     uint8_t header[28], entry[56], magic[8];
     uint32_t version, type, header_size = 24, fields, entry_size, first, available;
     int64_t total = f && f->device ? xx_io_total_size(f->device) : -1, end, cursor;
     ue2_index *index = NULL;
     if (!f || f->base_address < 0 || !ue2_read(f, f->base_address, header, 24) || xx_rt_memcmp(header, "CMMM", 4)) return NULL;
-    version = xx_data_get_u32(header + 4, 4, 0, false); type = xx_data_get_u32(header + 8, 4, 0, false);
+    version = xx_data_get_u32(header + 4, 4, 0, false);
+    type = xx_data_get_u32(header + 8, 4, 0, false);
     if (version == 20 || version == 21) {
-        first = xx_data_get_u32(header + 12, 4, 0, false); available = xx_data_get_u32(header + 16, 4, 0, false);
+        first = xx_data_get_u32(header + 12, 4, 0, false);
+        available = xx_data_get_u32(header + 16, 4, 0, false);
         if (type > 4) return NULL;
     } else if (version == 26) {
-        first = xx_data_get_u32(header + 12, 4, 0, false); available = xx_data_get_u32(header + 16, 4, 0, false);
+        first = xx_data_get_u32(header + 12, 4, 0, false);
+        available = xx_data_get_u32(header + 16, 4, 0, false);
         if (type > 8) return NULL;
     } else if (version == 28 || version == 30 || version == 31 || version == 32) {
-        if (version == 28) { header_size = 28; if (!ue2_read(f, f->base_address, header, 28)) return NULL; }
-        first = xx_data_get_u32(header + 16, 4, 0, false); available = xx_data_get_u32(header + 20, 4, 0, false);
+        if (version == 28) {
+            header_size = 28;
+            if (!ue2_read(f, f->base_address, header, 28)) return NULL;
+        }
+        first = xx_data_get_u32(header + 16, 4, 0, false);
+        available = xx_data_get_u32(header + 20, 4, 0, false);
         if (type > (version == 31 ? 10U : version == 32 ? 13U : 8U)) return NULL;
     } else return NULL;
     end = total - f->base_address;
-    if (available) { if (available < header_size || available > end) return NULL; end = available; }
+    if (available) {
+        if (available < header_size || available > end) return NULL;
+        end = available;
+    }
     if (!first) first = header_size;
     if (first < header_size || first > end) return NULL;
     index = (ue2_index *)xx_mem_calloc(1, sizeof(*index));
     if (!index) return NULL;
-    fields = version == 20 ? 24 : 16; entry_size = version == 21 ? 48 : 56;
+    fields = version == 20 ? 24 : 16;
+    entry_size = version == 21 ? 48 : 56;
     cursor = first;
     while (cursor < end) {
         uint32_t length, identifier, padding, size;
         int64_t data;
         uint64_t hash;
-        char name[80]; const char *extension = "bin";
-        if ((pd && xx_pd_is_stopped(pd)) || !ue2_range(end, cursor, entry_size) ||
-            !ue2_read(f, f->base_address + cursor, entry, entry_size) || xx_rt_memcmp(entry, "CMMM", 4)) goto fail;
-        length = xx_data_get_u32(entry + 4, 4, 0, false); hash = xx_data_get_u64(entry + 8, 8, 0, false);
-        identifier = xx_data_get_u32(entry + fields, 4, 0, false); padding = xx_data_get_u32(entry + fields + 4, 4, 0, false); size = xx_data_get_u32(entry + fields + 8, 4, 0, false);
-        if (length < entry_size || !ue2_range(end, cursor, length) || identifier & 1U ||
-            identifier > 1024U * 1024U || (uint64_t)entry_size + identifier + padding + size > length) goto fail;
+        char name[80];
+        const char *extension = "bin";
+        if ((pd && xx_pd_is_stopped(pd)) || !ue2_range(end, cursor, entry_size) || !ue2_read(f, f->base_address + cursor, entry, entry_size) ||
+            xx_rt_memcmp(entry, "CMMM", 4))
+            goto fail;
+        length = xx_data_get_u32(entry + 4, 4, 0, false);
+        hash = xx_data_get_u64(entry + 8, 8, 0, false);
+        identifier = xx_data_get_u32(entry + fields, 4, 0, false);
+        padding = xx_data_get_u32(entry + fields + 4, 4, 0, false);
+        size = xx_data_get_u32(entry + fields + 8, 4, 0, false);
+        if (length < entry_size || !ue2_range(end, cursor, length) || identifier & 1U || identifier > 1024U * 1024U ||
+            (uint64_t)entry_size + identifier + padding + size > length)
+            goto fail;
         /* An unused terminal entry can reserve all remaining physical space. */
-        if (!identifier && !padding && !size && !hash) { cursor += length; continue; }
+        if (!identifier && !padding && !size && !hash) {
+            cursor += length;
+            continue;
+        }
         if (thumb_crc(UINT64_MAX, entry, entry_size - 8) != xx_data_get_u64(entry + entry_size - 8, 8, 0, false)) goto fail;
         if (size) {
             data = f->base_address + cursor + entry_size + identifier + padding;
@@ -75,17 +98,24 @@ static ue2_index *thumb_parse(Abstractformat *f, uint32_t *version_out, uint32_t
     if (version_out) *version_out = version;
     if (type_out) *type_out = type;
     return index;
-fail: ue2_index_free(index); return NULL;
+fail:
+    ue2_index_free(index);
+    return NULL;
 }
-static bool thumb_valid(Abstractformat *f, xx_pd_struct *pd) {
+static bool thumb_valid(Abstractformat *f, xx_pd_struct *pd)
+{
     ue2_index *index = thumb_parse(f, NULL, NULL, pd);
-    bool valid = index != NULL; ue2_index_free(index); return valid;
+    bool valid = index != NULL;
+    ue2_index_free(index);
+    return valid;
 }
-static bool thumb_info(Abstractformat *f, xx_pd_struct *pd) {
+static bool thumb_info(Abstractformat *f, xx_pd_struct *pd)
+{
     xx_windows_thumbnail_cache *a = (xx_windows_thumbnail_cache *)f;
     return ue2_accept(f, thumb_parse(f, &a->version, &a->cache_type, pd));
 }
-static bool thumb_unpack(Abstractformat *f, xx_archive_record_state *state, xx_pd_struct *pd) {
+static bool thumb_unpack(Abstractformat *f, xx_archive_record_state *state, xx_pd_struct *pd)
+{
     const ue2_member *m;
     ue2_state *s;
     uint8_t *buffer;
@@ -94,7 +124,8 @@ static bool thumb_unpack(Abstractformat *f, xx_archive_record_state *state, xx_p
     bool valid = false;
     int level;
     if (!ue2_current(f, state) || !state->internal_state) return false;
-    s = (ue2_state *)state->internal_state; m = &s->index->members[s->cursor];
+    s = (ue2_state *)state->internal_state;
+    m = &s->index->members[s->cursor];
     buffer = (uint8_t *)xx_mem_alloc(65536);
     if (!buffer) return false;
     level = xx_pd_enter_level(pd, (uint64_t)m->size, "Verifying thumbnail checksum");
@@ -114,22 +145,42 @@ static bool thumb_unpack(Abstractformat *f, xx_archive_record_state *state, xx_p
                 sample += 400;
             }
         }
-        done += take; xx_pd_set_current(pd, level, (uint64_t)done);
+        done += take;
+        xx_pd_set_current(pd, level, (uint64_t)done);
     }
     valid = !(pd && xx_pd_is_stopped(pd)) && (first ^ second) == m->tag;
 cleanup:
-    xx_pd_leave_level(pd, level); xx_mem_free(buffer);
+    xx_pd_leave_level(pd, level);
+    xx_mem_free(buffer);
     return valid && ue2_unpack(f, state, pd);
 }
-void xx_windows_thumbnail_cache_init(xx_windows_thumbnail_cache *a, xx_io_device *device, int64_t base) {
-    if (!a) { return; } xx_mem_zero(a, sizeof(*a));
+void xx_windows_thumbnail_cache_init(xx_windows_thumbnail_cache *a, xx_io_device *device, int64_t base)
+{
+    if (!a) {
+        return;
+    }
+    xx_mem_zero(a, sizeof(*a));
     ue2_init_format(&a->format, device, base, UE2_THUMBCACHE_TYPE, "db", "application/x-windows-thumbnail-cache");
-    a->format.check_is_valid = thumb_valid; a->format.handle_base_info = thumb_info;
+    a->format.check_is_valid = thumb_valid;
+    a->format.handle_base_info = thumb_info;
     a->format.unpack_current_archive_record = thumb_unpack;
 }
-xx_windows_thumbnail_cache *xx_windows_thumbnail_cache_create(xx_io_device *device, int64_t base) {
+xx_windows_thumbnail_cache *xx_windows_thumbnail_cache_create(xx_io_device *device, int64_t base)
+{
     xx_windows_thumbnail_cache *a = (xx_windows_thumbnail_cache *)xx_mem_alloc(sizeof(*a));
-    if (a) { xx_windows_thumbnail_cache_init(a, device, base); } return a;
+    if (a) {
+        xx_windows_thumbnail_cache_init(a, device, base);
+    }
+    return a;
 }
-void xx_windows_thumbnail_cache_destroy(xx_windows_thumbnail_cache *a) { if (a) ue2_destroy_format(&a->format); }
-void xx_windows_thumbnail_cache_free(xx_windows_thumbnail_cache *a) { if (a) { xx_windows_thumbnail_cache_destroy(a); xx_mem_free(a); } }
+void xx_windows_thumbnail_cache_destroy(xx_windows_thumbnail_cache *a)
+{
+    if (a) ue2_destroy_format(&a->format);
+}
+void xx_windows_thumbnail_cache_free(xx_windows_thumbnail_cache *a)
+{
+    if (a) {
+        xx_windows_thumbnail_cache_destroy(a);
+        xx_mem_free(a);
+    }
+}

@@ -62,17 +62,15 @@ static void xx_mi10_vtable_destroy(Abstractformat *self);
 
 /* ------------------------------------------------------------- helpers -- */
 
-static bool xx_mi10_read_at(Abstractformat *self, int64_t offset,
-                              uint8_t *buffer, size_t size) {
+static bool xx_mi10_read_at(Abstractformat *self, int64_t offset, uint8_t *buffer, size_t size)
+{
     size_t completed = 0U;
 
-    if (!self || !self->device || offset < 0 ||
-        xx_io_seek64(self->device, offset, SEEK_SET) != 0) {
+    if (!self || !self->device || offset < 0 || xx_io_seek64(self->device, offset, SEEK_SET) != 0) {
         return false;
     }
     while (completed < size) {
-        ssize_t received =
-            xx_io_read(self->device, buffer + completed, size - completed);
+        ssize_t received = xx_io_read(self->device, buffer + completed, size - completed);
         if (received <= 0 || (size_t)received > size - completed) {
             return false;
         }
@@ -81,14 +79,14 @@ static bool xx_mi10_read_at(Abstractformat *self, int64_t offset,
     return true;
 }
 
-static bool xx_mi10_range_within(int64_t total, int64_t offset,
-                                   int64_t size) {
-    return offset >= 0 && size >= 0 && offset <= total &&
-           size <= total - offset;
+static bool xx_mi10_range_within(int64_t total, int64_t offset, int64_t size)
+{
+    return offset >= 0 && size >= 0 && offset <= total && size <= total - offset;
 }
 
 /* Refuse anything that would escape the extraction directory. */
-static bool xx_mi10_path_safe(const char *name) {
+static bool xx_mi10_path_safe(const char *name)
+{
     const char *cursor = name;
 
     if (!name || !name[0] || name[0] == '/') return false;
@@ -103,7 +101,8 @@ static bool xx_mi10_path_safe(const char *name) {
     return true;
 }
 
-static void xx_mi10_stream_free(void *pointer) {
+static void xx_mi10_stream_free(void *pointer)
+{
     xx_mi10_stream *stream = (xx_mi10_stream *)pointer;
     size_t index;
 
@@ -116,17 +115,15 @@ static void xx_mi10_stream_free(void *pointer) {
 }
 
 /* Append a member, taking ownership of @p name. */
-static bool xx_mi10_add(xx_mi10_stream *stream,
-                          const xx_mi10_member *member) {
-    xx_mi10_member *grown = (xx_mi10_member *)xx_mem_realloc(
-        stream->items, sizeof(*grown) * (stream->count + 1U));
+static bool xx_mi10_add(xx_mi10_stream *stream, const xx_mi10_member *member)
+{
+    xx_mi10_member *grown = (xx_mi10_member *)xx_mem_realloc(stream->items, sizeof(*grown) * (stream->count + 1U));
 
     if (!grown) return false;
     stream->items = grown;
     stream->items[stream->count++] = *member;
     return true;
 }
-
 
 #define XX_MI10_MAX_MEMBERS 100000
 #define XX_MI10_NAME_BUFFER 32
@@ -143,15 +140,14 @@ static bool xx_mi10_add(xx_mi10_stream *stream,
 static xx_mi10_stream *xx_mi10_parse(Abstractformat *self, xx_pd_struct *pd);
 static bool xx_mi10_decode(Abstractformat *self, const xx_mi10_member *member, uint8_t **out, size_t *out_size, xx_pd_struct *pd);
 
-
 /* No block count is stored, so this is a runaway guard, not a format
  * limit. */
 
 /* "9999999999.bin" and a terminator. */
 
-static xx_mi10_stream *xx_mi10_parse(Abstractformat *self, xx_pd_struct *pd) {
-    static const uint8_t magic[4] = {(uint8_t)'M', (uint8_t)'I', (uint8_t)'1',
-                                     (uint8_t)'0'};
+static xx_mi10_stream *xx_mi10_parse(Abstractformat *self, xx_pd_struct *pd)
+{
+    static const uint8_t magic[4] = {(uint8_t)'M', (uint8_t)'I', (uint8_t)'1', (uint8_t)'0'};
     xx_mi10_stream *stream = NULL;
     uint8_t header[XX_MI10_HEADER_SIZE];
     uint8_t prefix[XX_MI10_STREAM_PREFIX_SIZE];
@@ -194,8 +190,7 @@ static xx_mi10_stream *xx_mi10_parse(Abstractformat *self, xx_pd_struct *pd) {
          * walk has drifted and must not be repaired by searching. */
         if ((offset & 1) != 0) goto fail;
         if (XX_MI10_HEADER_SIZE > span - offset) goto fail;
-        if (!xx_mi10_read_at(self, self->base_address + offset, header,
-                             sizeof(header))) {
+        if (!xx_mi10_read_at(self, self->base_address + offset, header, sizeof(header))) {
             goto fail;
         }
         if (xx_rt_memcmp(header, magic, sizeof(magic)) != 0) goto fail;
@@ -204,9 +199,7 @@ static xx_mi10_stream *xx_mi10_parse(Abstractformat *self, xx_pd_struct *pd) {
         uncompressed = xx_data_get_u32(header + 8, 4, 0, true);
         declared = xx_data_get_u32(header + 12, 4, 0, true);
         if (uncompressed == 0U || declared == 0U) goto fail;
-        if ((int64_t)uncompressed > XX_MI10_MAX_COMPRESSED ||
-            (int64_t)declared >
-                XX_MI10_MAX_COMPRESSED - XX_MI10_STREAM_PREFIX_SIZE) {
+        if ((int64_t)uncompressed > XX_MI10_MAX_COMPRESSED || (int64_t)declared > XX_MI10_MAX_COMPRESSED - XX_MI10_STREAM_PREFIX_SIZE) {
             goto fail;
         }
         /* The checksum is a plain sum of the decoded bytes, so it cannot
@@ -219,8 +212,7 @@ static xx_mi10_stream *xx_mi10_parse(Abstractformat *self, xx_pd_struct *pd) {
         /* A block running past EOF is a rejection, not a short read. */
         if (!xx_mi10_range_within(span, data_offset, data_size)) goto fail;
 
-        if (!xx_mi10_read_at(self, self->base_address + data_offset, prefix,
-                             sizeof(prefix))) {
+        if (!xx_mi10_read_at(self, self->base_address + data_offset, prefix, sizeof(prefix))) {
             goto fail;
         }
         /* The leading 0 marker is invariant in every known stream and is the
@@ -229,8 +221,7 @@ static xx_mi10_stream *xx_mi10_parse(Abstractformat *self, xx_pd_struct *pd) {
          * match. */
         if (prefix[0] != 0U) goto fail;
 
-        if (xx_rt_snprintf(buffer, sizeof(buffer), "%u.bin",
-                           (unsigned)(count + 1)) <= 0) {
+        if (xx_rt_snprintf(buffer, sizeof(buffer), "%u.bin", (unsigned)(count + 1)) <= 0) {
             goto fail;
         }
         name = xx_str_dup(buffer);
@@ -297,7 +288,6 @@ fail:
     return NULL;
 }
 
-
 /* The 0 marker and the escape byte sit in front of the token stream and are
  * part of what the decoder is handed, but the header's packed size counts
  * only the tokens. */
@@ -313,9 +303,8 @@ fail:
  * output_size and additionally insists the token cursor land exactly on
  * offset 2, so a stream that would decode short is reported as a failure
  * rather than as a partially filled buffer. */
-static bool xx_mi10_decode(Abstractformat *self, const xx_mi10_member *member,
-                           uint8_t **out, size_t *out_size,
-                           xx_pd_struct *pd) {
+static bool xx_mi10_decode(Abstractformat *self, const xx_mi10_member *member, uint8_t **out, size_t *out_size, xx_pd_struct *pd)
+{
     uint8_t *input;
     uint8_t *output;
     size_t written = 0U;
@@ -326,19 +315,16 @@ static bool xx_mi10_decode(Abstractformat *self, const xx_mi10_member *member,
     if (pd && xx_pd_is_stopped(pd)) return false;
     if (member->method != XX_MI10_METHOD_LZ) return false;
     /* The prefix plus at least one token byte; the decoder demands 3. */
-    if (member->compressed_size < XX_MI10_STREAM_PREFIX_SIZE + 1 ||
-        member->uncompressed_size < 1) {
+    if (member->compressed_size < XX_MI10_STREAM_PREFIX_SIZE + 1 || member->uncompressed_size < 1) {
         return false;
     }
-    if (member->compressed_size > XX_MI10_MAX_COMPRESSED ||
-        member->uncompressed_size > XX_MI10_MAX_DECODED) {
+    if (member->compressed_size > XX_MI10_MAX_COMPRESSED || member->uncompressed_size > XX_MI10_MAX_DECODED) {
         return false;
     }
 
     input = (uint8_t *)xx_mem_alloc((size_t)member->compressed_size);
     if (!input) return false;
-    if (!xx_mi10_read_at(self, member->data_offset, input,
-                         (size_t)member->compressed_size)) {
+    if (!xx_mi10_read_at(self, member->data_offset, input, (size_t)member->compressed_size)) {
         xx_mem_free(input);
         return false;
     }
@@ -355,8 +341,7 @@ static bool xx_mi10_decode(Abstractformat *self, const xx_mi10_member *member,
     /* The whole payload including the 0 marker and the escape byte is what
      * the decoder expects as input[0] and input[1]; trimming the prefix here
      * would leave the decoder with no escape byte. */
-    if (!xx_mi10_decode_memory(input, (size_t)member->compressed_size, output,
-                               (size_t)member->uncompressed_size, &written) ||
+    if (!xx_mi10_decode_memory(input, (size_t)member->compressed_size, output, (size_t)member->uncompressed_size, &written) ||
         written != (size_t)member->uncompressed_size) {
         xx_mem_free(output);
         xx_mem_free(input);
@@ -370,8 +355,8 @@ static bool xx_mi10_decode(Abstractformat *self, const xx_mi10_member *member,
 
 /* ---------------------------------------------------------- lifecycle --- */
 
-void xx_mi10_init(xx_mi10 *archive, xx_io_device *device,
-                    int64_t base_address) {
+void xx_mi10_init(xx_mi10 *archive, xx_io_device *device, int64_t base_address)
+{
     if (!archive) return;
     xx_mem_zero(archive, sizeof(*archive));
     xx_format_init(&archive->format, device, base_address);
@@ -384,22 +369,17 @@ void xx_mi10_init(xx_mi10 *archive, xx_io_device *device,
     archive->format.check_is_valid = xx_mi10_check_is_valid;
     archive->format.handle_base_info = xx_mi10_handle_base_info;
     archive->format.get_format_size = xx_mi10_get_format_size;
-    archive->format.get_number_of_archive_records =
-        xx_mi10_get_number_of_archive_records;
-    archive->format.create_archive_records_reading =
-        xx_mi10_create_archive_records_reading;
-    archive->format.get_current_archive_record =
-        xx_mi10_get_current_archive_record;
-    archive->format.unpack_current_archive_record =
-        xx_mi10_unpack_current_archive_record;
-    archive->format.archive_record_move_to_next =
-        xx_mi10_archive_record_move_to_next;
-    archive->format.free_archive_records_reading =
-        xx_mi10_free_archive_records_reading;
+    archive->format.get_number_of_archive_records = xx_mi10_get_number_of_archive_records;
+    archive->format.create_archive_records_reading = xx_mi10_create_archive_records_reading;
+    archive->format.get_current_archive_record = xx_mi10_get_current_archive_record;
+    archive->format.unpack_current_archive_record = xx_mi10_unpack_current_archive_record;
+    archive->format.archive_record_move_to_next = xx_mi10_archive_record_move_to_next;
+    archive->format.free_archive_records_reading = xx_mi10_free_archive_records_reading;
     archive->format.destroy = xx_mi10_vtable_destroy;
 }
 
-xx_mi10 *xx_mi10_create(xx_io_device *device, int64_t base_address) {
+xx_mi10 *xx_mi10_create(xx_io_device *device, int64_t base_address)
+{
     xx_mi10 *archive = (xx_mi10 *)xx_mem_alloc(sizeof(*archive));
 
     if (!archive) return NULL;
@@ -407,7 +387,8 @@ xx_mi10 *xx_mi10_create(xx_io_device *device, int64_t base_address) {
     return archive;
 }
 
-void xx_mi10_destroy(xx_mi10 *archive) {
+void xx_mi10_destroy(xx_mi10 *archive)
+{
     if (!archive) return;
     /* Not xx_format_destroy: it dispatches through format.destroy, which is
      * the wrapper below, and the two would recurse. */
@@ -416,19 +397,22 @@ void xx_mi10_destroy(xx_mi10 *archive) {
     archive->number_of_records = 0U;
 }
 
-void xx_mi10_free(xx_mi10 *archive) {
+void xx_mi10_free(xx_mi10 *archive)
+{
     if (!archive) return;
     xx_mi10_destroy(archive);
     xx_mem_free(archive);
 }
 
-static void xx_mi10_vtable_destroy(Abstractformat *self) {
+static void xx_mi10_vtable_destroy(Abstractformat *self)
+{
     xx_mi10_destroy((xx_mi10 *)self);
 }
 
 /* -------------------------------------------------------------- format -- */
 
-bool xx_mi10_check_is_valid(Abstractformat *self, xx_pd_struct *pd) {
+bool xx_mi10_check_is_valid(Abstractformat *self, xx_pd_struct *pd)
+{
     xx_mi10_stream *stream;
 
     if (!self || (pd && xx_pd_is_stopped(pd))) return false;
@@ -438,7 +422,8 @@ bool xx_mi10_check_is_valid(Abstractformat *self, xx_pd_struct *pd) {
     return true;
 }
 
-bool xx_mi10_handle_base_info(Abstractformat *self, xx_pd_struct *pd) {
+bool xx_mi10_handle_base_info(Abstractformat *self, xx_pd_struct *pd)
+{
     xx_mi10 *archive = (xx_mi10 *)self;
     xx_mi10_stream *stream;
 
@@ -459,18 +444,17 @@ bool xx_mi10_handle_base_info(Abstractformat *self, xx_pd_struct *pd) {
     return true;
 }
 
-int64_t xx_mi10_get_format_size(Abstractformat *self, xx_pd_struct *pd) {
-    if (!self ||
-        (!self->base_info_handled && !xx_format_handle_base_info(self, pd))) {
+int64_t xx_mi10_get_format_size(Abstractformat *self, xx_pd_struct *pd)
+{
+    if (!self || (!self->base_info_handled && !xx_format_handle_base_info(self, pd))) {
         return 0;
     }
     return self->is_valid ? self->format_size : 0;
 }
 
-uint64_t xx_mi10_get_number_of_archive_records(Abstractformat *self,
-                                                 xx_pd_struct *pd) {
-    if (!self ||
-        (!self->base_info_handled && !xx_format_handle_base_info(self, pd))) {
+uint64_t xx_mi10_get_number_of_archive_records(Abstractformat *self, xx_pd_struct *pd)
+{
+    if (!self || (!self->base_info_handled && !xx_format_handle_base_info(self, pd))) {
         return 0U;
     }
     return self->is_valid ? ((xx_mi10 *)self)->number_of_records : 0U;
@@ -478,8 +462,8 @@ uint64_t xx_mi10_get_number_of_archive_records(Abstractformat *self,
 
 /* ------------------------------------------------------------- records -- */
 
-static bool xx_mi10_set_record(xx_archive_record *record,
-                                 const xx_mi10_member *member) {
+static bool xx_mi10_set_record(xx_archive_record *record, const xx_mi10_member *member)
+{
     xx_archive_record_cleanup(record);
     xx_archive_record_init(record);
     record->header_offset = member->header_offset;
@@ -487,34 +471,24 @@ static bool xx_mi10_set_record(xx_archive_record *record,
     record->data_offset = member->data_offset;
     record->compressed_size = member->compressed_size;
     return xx_archive_record_set_original_name(record, member->name) &&
-           xx_archive_record_set_meta_u64(record, XX_META_ID_COMPRESSED_SIZE,
-                                          (uint64_t)member->compressed_size) &&
-           xx_archive_record_set_meta_u64(
-               record, XX_META_ID_UNCOMPRESSED_SIZE,
-               (uint64_t)member->uncompressed_size) &&
-           xx_archive_record_set_meta_u64(record, XX_META_ID_COMPRESSION_METHOD,
-                                          member->method) &&
-           xx_archive_record_set_meta_u64(record, XX_META_ID_TIMESTAMP,
-                                          member->timestamp) &&
-           xx_archive_record_set_meta_bool(record, XX_META_ID_IS_FOLDER,
-                                           member->is_folder) &&
-           xx_archive_record_set_meta_bool(record, XX_META_ID_IS_ENCRYPTED,
-                                           false);
+           xx_archive_record_set_meta_u64(record, XX_META_ID_COMPRESSED_SIZE, (uint64_t)member->compressed_size) &&
+           xx_archive_record_set_meta_u64(record, XX_META_ID_UNCOMPRESSED_SIZE, (uint64_t)member->uncompressed_size) &&
+           xx_archive_record_set_meta_u64(record, XX_META_ID_COMPRESSION_METHOD, member->method) &&
+           xx_archive_record_set_meta_u64(record, XX_META_ID_TIMESTAMP, member->timestamp) &&
+           xx_archive_record_set_meta_bool(record, XX_META_ID_IS_FOLDER, member->is_folder) && xx_archive_record_set_meta_bool(record, XX_META_ID_IS_ENCRYPTED, false);
 }
 
-static bool xx_mi10_copy_options(xx_list_s *target,
-                                   const xx_list_s *options) {
+static bool xx_mi10_copy_options(xx_list_s *target, const xx_list_s *options)
+{
     size_t index;
 
     if (!target || !options) return options == NULL;
     for (index = 0U; index < options->count; ++index) {
-        const xx_meta *source =
-            (const xx_meta *)xx_list_at((const xx_list_t *)options, index);
+        const xx_meta *source = (const xx_meta *)xx_list_at((const xx_list_t *)options, index);
         xx_meta copied;
         if (!source) continue;
         xx_meta_init(&copied, source->meta_id);
-        if (!xx_var_copy(&copied.var, &source->var) ||
-            !xx_list_append(target, &copied)) {
+        if (!xx_var_copy(&copied.var, &source->var) || !xx_list_append(target, &copied)) {
             xx_meta_cleanup(&copied);
             return false;
         }
@@ -522,21 +496,20 @@ static bool xx_mi10_copy_options(xx_list_s *target,
     return true;
 }
 
-static const xx_var *xx_mi10_get_option(const xx_list_s *options,
-                                          uint32_t meta_id) {
+static const xx_var *xx_mi10_get_option(const xx_list_s *options, uint32_t meta_id)
+{
     size_t index;
 
     if (!options) return NULL;
     for (index = 0U; index < options->count; ++index) {
-        const xx_meta *meta =
-            (const xx_meta *)xx_list_at((const xx_list_t *)options, index);
+        const xx_meta *meta = (const xx_meta *)xx_list_at((const xx_list_t *)options, index);
         if (meta && meta->meta_id == meta_id) return &meta->var;
     }
     return NULL;
 }
 
-xx_archive_record_state *xx_mi10_create_archive_records_reading(
-    Abstractformat *self, const xx_list_s *options, xx_pd_struct *pd) {
+xx_archive_record_state *xx_mi10_create_archive_records_reading(Abstractformat *self, const xx_list_s *options, xx_pd_struct *pd)
+{
     xx_mi10_stream *stream;
     xx_archive_record_state *state;
 
@@ -552,9 +525,7 @@ xx_archive_record_state *xx_mi10_create_archive_records_reading(
     state->internal_state = stream;
     state->free_internal = xx_mi10_stream_free;
     state->total_records = (int64_t)stream->count;
-    if (!xx_mi10_copy_options(&state->options, options) ||
-        (stream->count != 0U &&
-         !xx_mi10_set_record(&state->current_record, &stream->items[0]))) {
+    if (!xx_mi10_copy_options(&state->options, options) || (stream->count != 0U && !xx_mi10_set_record(&state->current_record, &stream->items[0]))) {
         xx_archive_record_state_free(state);
         return NULL;
     }
@@ -563,20 +534,16 @@ xx_archive_record_state *xx_mi10_create_archive_records_reading(
     return state;
 }
 
-const xx_archive_record *xx_mi10_get_current_archive_record(
-    Abstractformat *self, xx_archive_record_state *state) {
-    return self && state && state->format == self && state->has_record
-               ? &state->current_record
-               : NULL;
+const xx_archive_record *xx_mi10_get_current_archive_record(Abstractformat *self, xx_archive_record_state *state)
+{
+    return self && state && state->format == self && state->has_record ? &state->current_record : NULL;
 }
 
-bool xx_mi10_archive_record_move_to_next(Abstractformat *self,
-                                           xx_archive_record_state *state,
-                                           xx_pd_struct *pd) {
+bool xx_mi10_archive_record_move_to_next(Abstractformat *self, xx_archive_record_state *state, xx_pd_struct *pd)
+{
     xx_mi10_stream *stream;
 
-    if (!self || !state || state->format != self || !state->has_record ||
-        (pd && xx_pd_is_stopped(pd))) {
+    if (!self || !state || state->format != self || !state->has_record || (pd && xx_pd_is_stopped(pd))) {
         return false;
     }
     stream = (xx_mi10_stream *)state->internal_state;
@@ -588,14 +555,12 @@ bool xx_mi10_archive_record_move_to_next(Abstractformat *self,
     }
     ++stream->index;
     ++state->current_index;
-    state->has_record = xx_mi10_set_record(&state->current_record,
-                                             &stream->items[stream->index]);
+    state->has_record = xx_mi10_set_record(&state->current_record, &stream->items[stream->index]);
     return state->has_record;
 }
 
-bool xx_mi10_unpack_current_archive_record(Abstractformat *self,
-                                             xx_archive_record_state *state,
-                                             xx_pd_struct *pd) {
+bool xx_mi10_unpack_current_archive_record(Abstractformat *self, xx_archive_record_state *state, xx_pd_struct *pd)
+{
     xx_mi10_stream *stream;
     const xx_mi10_member *member;
     const xx_var *path_option;
@@ -607,8 +572,7 @@ bool xx_mi10_unpack_current_archive_record(Abstractformat *self,
     bool result = false;
     bool created = false;
 
-    if (!self || !state || state->format != self || !state->has_record ||
-        (pd && xx_pd_is_stopped(pd))) {
+    if (!self || !state || state->format != self || !state->has_record || (pd && xx_pd_is_stopped(pd))) {
         return false;
     }
     stream = (xx_mi10_stream *)state->internal_state;
@@ -616,8 +580,7 @@ bool xx_mi10_unpack_current_archive_record(Abstractformat *self,
     member = &stream->items[stream->index];
     if (!xx_mi10_path_safe(member->name)) return false;
 
-    path_option = xx_mi10_get_option(&state->options,
-                                       XX_META_ID_OPT_UNPACK_PATH);
+    path_option = xx_mi10_get_option(&state->options, XX_META_ID_OPT_UNPACK_PATH);
     if (!path_option) {
         /* No destination: decode and discard, which verifies the member
          * without writing anything. */
@@ -626,11 +589,9 @@ bool xx_mi10_unpack_current_archive_record(Abstractformat *self,
         xx_mem_free(plain);
         return result;
     }
-    if (path_option->type == XX_VAR_TYPE_STRING ||
-        path_option->type == XX_VAR_TYPE_STRING_VIEW) {
+    if (path_option->type == XX_VAR_TYPE_STRING || path_option->type == XX_VAR_TYPE_STRING_VIEW) {
         base_path = xx_var_get_str(path_option);
-    } else if (path_option->type == XX_VAR_TYPE_WSTRING ||
-               path_option->type == XX_VAR_TYPE_WSTRING_VIEW) {
+    } else if (path_option->type == XX_VAR_TYPE_WSTRING || path_option->type == XX_VAR_TYPE_WSTRING_VIEW) {
         converted_path = xx_str_unicode_to_utf8(xx_var_get_wstr(path_option));
         base_path = converted_path;
     }
@@ -638,9 +599,7 @@ bool xx_mi10_unpack_current_archive_record(Abstractformat *self,
         xx_str_free(converted_path);
         return false;
     }
-    if (base_path[0] != '\0' &&
-        base_path[xx_str_len(base_path) - 1U] != '/' &&
-        base_path[xx_str_len(base_path) - 1U] != '\\') {
+    if (base_path[0] != '\0' && base_path[xx_str_len(base_path) - 1U] != '/' && base_path[xx_str_len(base_path) - 1U] != '\\') {
         target_path = xx_str_concat3(base_path, "/", member->name);
     } else {
         target_path = xx_str_concat(base_path, member->name);
@@ -653,8 +612,7 @@ bool xx_mi10_unpack_current_archive_record(Abstractformat *self,
         xx_str_free(target_path);
         return result;
     }
-    if (!xx_store_create_dirs_a(target_path, false) ||
-        !xx_mi10_decode(self, member, &plain, &plain_size, pd)) {
+    if (!xx_store_create_dirs_a(target_path, false) || !xx_mi10_decode(self, member, &plain, &plain_size, pd)) {
         xx_str_free(target_path);
         return false;
     }
@@ -665,8 +623,7 @@ bool xx_mi10_unpack_current_archive_record(Abstractformat *self,
 
         result = output != NULL;
         while (result && completed < plain_size) {
-            ssize_t sent = xx_io_write(output, plain + completed,
-                                       plain_size - completed);
+            ssize_t sent = xx_io_write(output, plain + completed, plain_size - completed);
             if (sent <= 0 || (size_t)sent > plain_size - completed) {
                 result = false;
                 break;
@@ -681,8 +638,8 @@ bool xx_mi10_unpack_current_archive_record(Abstractformat *self,
     return result;
 }
 
-void xx_mi10_free_archive_records_reading(Abstractformat *self,
-                                            xx_archive_record_state *state) {
+void xx_mi10_free_archive_records_reading(Abstractformat *self, xx_archive_record_state *state)
+{
     (void)self;
     xx_archive_record_state_free(state);
 }

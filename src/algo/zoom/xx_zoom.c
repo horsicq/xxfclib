@@ -24,44 +24,29 @@
 #define ZOOM_SCRATCH 0x10000
 
 /* --- Zoom's LZHUF parameters (XLZHUFDecoder::getZoomOptions) ------------- */
-#define ZOOM_NCHAR 317                  /* 0x13D */
-#define ZOOM_T (ZOOM_NCHAR * 2 - 1)     /* 633   */
-#define ZOOM_R (ZOOM_T - 1)             /* 632   */
+#define ZOOM_NCHAR 317              /* 0x13D */
+#define ZOOM_T (ZOOM_NCHAR * 2 - 1) /* 633   */
+#define ZOOM_R (ZOOM_T - 1)         /* 632   */
 #define ZOOM_MAX_FREQ 0x8000
-#define ZOOM_EOF_CODE 316               /* 0x13C */
+#define ZOOM_EOF_CODE 316 /* 0x13C */
 #define ZOOM_RING_SIZE 0x1000
 #define ZOOM_RING_MASK (ZOOM_RING_SIZE - 1)
 
 /* LHA's classic "-lh1-" position tables.  Read-only, so sharing them across
  * threads is safe. */
 static const uint8_t zoom_d_code[256] = {
-    0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
-    0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
-    0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x01, 0x01, 0x01, 0x01,
-    0x01, 0x01, 0x01, 0x01, 0x01, 0x01, 0x01, 0x01, 0x01, 0x01, 0x01, 0x01,
-    0x02, 0x02, 0x02, 0x02, 0x02, 0x02, 0x02, 0x02, 0x02, 0x02, 0x02, 0x02,
-    0x02, 0x02, 0x02, 0x02, 0x03, 0x03, 0x03, 0x03, 0x03, 0x03, 0x03, 0x03,
-    0x03, 0x03, 0x03, 0x03, 0x03, 0x03, 0x03, 0x03, 0x04, 0x04, 0x04, 0x04,
-    0x04, 0x04, 0x04, 0x04, 0x05, 0x05, 0x05, 0x05, 0x05, 0x05, 0x05, 0x05,
-    0x06, 0x06, 0x06, 0x06, 0x06, 0x06, 0x06, 0x06, 0x07, 0x07, 0x07, 0x07,
-    0x07, 0x07, 0x07, 0x07, 0x08, 0x08, 0x08, 0x08, 0x08, 0x08, 0x08, 0x08,
-    0x09, 0x09, 0x09, 0x09, 0x09, 0x09, 0x09, 0x09, 0x0a, 0x0a, 0x0a, 0x0a,
-    0x0a, 0x0a, 0x0a, 0x0a, 0x0b, 0x0b, 0x0b, 0x0b, 0x0b, 0x0b, 0x0b, 0x0b,
-    0x0c, 0x0c, 0x0c, 0x0c, 0x0d, 0x0d, 0x0d, 0x0d, 0x0e, 0x0e, 0x0e, 0x0e,
-    0x0f, 0x0f, 0x0f, 0x0f, 0x10, 0x10, 0x10, 0x10, 0x11, 0x11, 0x11, 0x11,
-    0x12, 0x12, 0x12, 0x12, 0x13, 0x13, 0x13, 0x13, 0x14, 0x14, 0x14, 0x14,
-    0x15, 0x15, 0x15, 0x15, 0x16, 0x16, 0x16, 0x16, 0x17, 0x17, 0x17, 0x17,
-    0x18, 0x18, 0x19, 0x19, 0x1a, 0x1a, 0x1b, 0x1b, 0x1c, 0x1c, 0x1d, 0x1d,
-    0x1e, 0x1e, 0x1f, 0x1f, 0x20, 0x20, 0x21, 0x21, 0x22, 0x22, 0x23, 0x23,
-    0x24, 0x24, 0x25, 0x25, 0x26, 0x26, 0x27, 0x27, 0x28, 0x28, 0x29, 0x29,
-    0x2a, 0x2a, 0x2b, 0x2b, 0x2c, 0x2c, 0x2d, 0x2d, 0x2e, 0x2e, 0x2f, 0x2f,
-    0x30, 0x31, 0x32, 0x33, 0x34, 0x35, 0x36, 0x37, 0x38, 0x39, 0x3a, 0x3b,
-    0x3c, 0x3d, 0x3e, 0x3f
-};
+    0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+    0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x01, 0x01, 0x01, 0x01, 0x01, 0x01, 0x01, 0x01, 0x01, 0x01, 0x01, 0x01, 0x01, 0x01, 0x01, 0x01, 0x02, 0x02, 0x02, 0x02,
+    0x02, 0x02, 0x02, 0x02, 0x02, 0x02, 0x02, 0x02, 0x02, 0x02, 0x02, 0x02, 0x03, 0x03, 0x03, 0x03, 0x03, 0x03, 0x03, 0x03, 0x03, 0x03, 0x03, 0x03, 0x03, 0x03,
+    0x03, 0x03, 0x04, 0x04, 0x04, 0x04, 0x04, 0x04, 0x04, 0x04, 0x05, 0x05, 0x05, 0x05, 0x05, 0x05, 0x05, 0x05, 0x06, 0x06, 0x06, 0x06, 0x06, 0x06, 0x06, 0x06,
+    0x07, 0x07, 0x07, 0x07, 0x07, 0x07, 0x07, 0x07, 0x08, 0x08, 0x08, 0x08, 0x08, 0x08, 0x08, 0x08, 0x09, 0x09, 0x09, 0x09, 0x09, 0x09, 0x09, 0x09, 0x0a, 0x0a,
+    0x0a, 0x0a, 0x0a, 0x0a, 0x0a, 0x0a, 0x0b, 0x0b, 0x0b, 0x0b, 0x0b, 0x0b, 0x0b, 0x0b, 0x0c, 0x0c, 0x0c, 0x0c, 0x0d, 0x0d, 0x0d, 0x0d, 0x0e, 0x0e, 0x0e, 0x0e,
+    0x0f, 0x0f, 0x0f, 0x0f, 0x10, 0x10, 0x10, 0x10, 0x11, 0x11, 0x11, 0x11, 0x12, 0x12, 0x12, 0x12, 0x13, 0x13, 0x13, 0x13, 0x14, 0x14, 0x14, 0x14, 0x15, 0x15,
+    0x15, 0x15, 0x16, 0x16, 0x16, 0x16, 0x17, 0x17, 0x17, 0x17, 0x18, 0x18, 0x19, 0x19, 0x1a, 0x1a, 0x1b, 0x1b, 0x1c, 0x1c, 0x1d, 0x1d, 0x1e, 0x1e, 0x1f, 0x1f,
+    0x20, 0x20, 0x21, 0x21, 0x22, 0x22, 0x23, 0x23, 0x24, 0x24, 0x25, 0x25, 0x26, 0x26, 0x27, 0x27, 0x28, 0x28, 0x29, 0x29, 0x2a, 0x2a, 0x2b, 0x2b, 0x2c, 0x2c,
+    0x2d, 0x2d, 0x2e, 0x2e, 0x2f, 0x2f, 0x30, 0x31, 0x32, 0x33, 0x34, 0x35, 0x36, 0x37, 0x38, 0x39, 0x3a, 0x3b, 0x3c, 0x3d, 0x3e, 0x3f};
 
-static const uint8_t zoom_d_len[16] = {
-    3, 3, 4, 4, 4, 5, 5, 5, 5, 6, 6, 6, 7, 7, 7, 8
-};
+static const uint8_t zoom_d_len[16] = {3, 3, 4, 4, 4, 5, 5, 5, 5, 6, 6, 6, 7, 7, 7, 8};
 
 typedef struct zoom_huf {
     const uint8_t *data;
@@ -268,9 +253,7 @@ static int32_t zoom_huf_decode_position(zoom_huf *h)
 
 /* ---------------------------------------------------------- LZHUF core --- */
 
-static bool zoom_lzhuf_decode(zoom_ctx *ctx, const uint8_t *input,
-                              size_t input_size, uint8_t *output,
-                              size_t output_size)
+static bool zoom_lzhuf_decode(zoom_ctx *ctx, const uint8_t *input, size_t input_size, uint8_t *output, size_t output_size)
 {
     size_t produced = 0;
     int32_t ring = 0;
@@ -332,9 +315,7 @@ static bool zoom_lzhuf_decode(zoom_ctx *ctx, const uint8_t *input,
 
 /* ------------------------------------------------------------ RLE core --- */
 
-static bool zoom_rle_core(const uint8_t *input, size_t input_size,
-                          uint8_t *output, size_t output_size,
-                          size_t *produced_out)
+static bool zoom_rle_core(const uint8_t *input, size_t input_size, uint8_t *output, size_t output_size, size_t *produced_out)
 {
     size_t declared;
     size_t produced = 0;
@@ -347,8 +328,7 @@ static bool zoom_rle_core(const uint8_t *input, size_t input_size,
     /* The packer's own BE24 length.  It has to agree with the record's final
      * length exactly - a mismatch means the LZHUF stage handed over the wrong
      * bytes, not that this chunk is merely unusual. */
-    declared = ((size_t)input[0] << 16) | ((size_t)input[1] << 8) |
-               (size_t)input[2];
+    declared = ((size_t)input[0] << 16) | ((size_t)input[1] << 8) | (size_t)input[2];
     if (declared != output_size) return false;
 
     escape = input[3];
@@ -389,9 +369,7 @@ static bool zoom_rle_core(const uint8_t *input, size_t input_size,
     return produced == output_size;
 }
 
-bool xx_zoom_rle_decode_memory(const uint8_t *input, size_t input_size,
-                               uint8_t *output, size_t output_size,
-                               size_t *written)
+bool xx_zoom_rle_decode_memory(const uint8_t *input, size_t input_size, uint8_t *output, size_t output_size, size_t *written)
 {
     size_t produced = 0;
     bool ok;
@@ -426,9 +404,7 @@ static int32_t zoom_popcount(uint32_t mask)
     return result;
 }
 
-static bool zoom_parse_header(const uint8_t *file, size_t size,
-                              uint32_t *first, uint32_t *last,
-                              bool *protected_out, size_t *chunks_offset)
+static bool zoom_parse_header(const uint8_t *file, size_t size, uint32_t *first, uint32_t *last, bool *protected_out, size_t *chunks_offset)
 {
     size_t note;
     size_t offset;
@@ -436,8 +412,7 @@ static bool zoom_parse_header(const uint8_t *file, size_t size,
     uint32_t nlast;
 
     if (size < ZOOM_HEADER_SIZE) return false;
-    if ((file[0] != 'Z') || (file[1] != 'O') || (file[2] != 'M') ||
-        (file[3] != '5')) {
+    if ((file[0] != 'Z') || (file[1] != 'O') || (file[2] != 'M') || (file[3] != '5')) {
         return false;
     }
     if (file[6] != 5) return false;
@@ -465,8 +440,7 @@ static bool zoom_parse_header(const uint8_t *file, size_t size,
 
 /* One routine for both entry points: output == NULL discards, so the measure
  * and the decode can never disagree. */
-static bool zoom_emit(uint8_t *output, size_t limit, size_t *pos,
-                      const uint8_t *source, size_t count)
+static bool zoom_emit(uint8_t *output, size_t limit, size_t *pos, const uint8_t *source, size_t count)
 {
     if (count > (limit - *pos)) return false;
     if (output) {
@@ -481,10 +455,8 @@ static bool zoom_emit(uint8_t *output, size_t limit, size_t *pos,
     return true;
 }
 
-static bool zoom_image_core(zoom_ctx *ctx, const uint8_t *input,
-                            size_t input_size, uint8_t *output,
-                            size_t output_capacity, size_t max_output,
-                            size_t *consumed_out, size_t *produced_out)
+static bool zoom_image_core(zoom_ctx *ctx, const uint8_t *input, size_t input_size, uint8_t *output, size_t output_capacity, size_t max_output, size_t *consumed_out,
+                            size_t *produced_out)
 {
     uint32_t first = 0;
     uint32_t last = 0;
@@ -500,8 +472,7 @@ static bool zoom_image_core(zoom_ctx *ctx, const uint8_t *input,
     *consumed_out = 0;
     *produced_out = 0;
 
-    if (!zoom_parse_header(input, input_size, &first, &last, &is_protected,
-                           &offset)) {
+    if (!zoom_parse_header(input, input_size, &first, &last, &is_protected, &offset)) {
         return false;
     }
     if (is_protected) return false;
@@ -557,8 +528,7 @@ static bool zoom_image_core(zoom_ctx *ctx, const uint8_t *input,
         if (flag != 0) {
             size_t want = (middle_size != 0) ? middle_size : final_size;
             if (want > ZOOM_SCRATCH) goto corrupt;
-            if (!zoom_lzhuf_decode(ctx, buffer, buffer_size, ctx->stage_a,
-                                   want)) {
+            if (!zoom_lzhuf_decode(ctx, buffer, buffer_size, ctx->stage_a, want)) {
                 goto corrupt;
             }
             buffer = ctx->stage_a;
@@ -567,8 +537,7 @@ static bool zoom_image_core(zoom_ctx *ctx, const uint8_t *input,
         if (middle_size != 0) {
             size_t got = 0;
             if (final_size > ZOOM_SCRATCH) goto corrupt;
-            if (!zoom_rle_core(buffer, buffer_size, ctx->stage_b, final_size,
-                               &got)) {
+            if (!zoom_rle_core(buffer, buffer_size, ctx->stage_b, final_size, &got)) {
                 goto corrupt;
             }
             buffer = ctx->stage_b;
@@ -587,8 +556,7 @@ static bool zoom_image_core(zoom_ctx *ctx, const uint8_t *input,
             if (cyl[i] == ZOOM_SLOT_UNUSED) continue;
 
             while (current < (size_t)cyl[i]) {
-                if (!zoom_emit(output, image_size, &produced, NULL,
-                               ZOOM_CYLINDER_SIZE)) {
+                if (!zoom_emit(output, image_size, &produced, NULL, ZOOM_CYLINDER_SIZE)) {
                     goto corrupt;
                 }
                 ++current;
@@ -598,15 +566,13 @@ static bool zoom_image_core(zoom_ctx *ctx, const uint8_t *input,
             for (k = 0; k < ZOOM_SECTORS_PER_CYLINDER; ++k) {
                 if (bits & 1u) {
                     if (available < ZOOM_SECTOR_SIZE) goto corrupt;
-                    if (!zoom_emit(output, image_size, &produced,
-                                   buffer + source_pos, ZOOM_SECTOR_SIZE)) {
+                    if (!zoom_emit(output, image_size, &produced, buffer + source_pos, ZOOM_SECTOR_SIZE)) {
                         goto corrupt;
                     }
                     source_pos += ZOOM_SECTOR_SIZE;
                     available -= ZOOM_SECTOR_SIZE;
                 } else {
-                    if (!zoom_emit(output, image_size, &produced, NULL,
-                                   ZOOM_SECTOR_SIZE)) {
+                    if (!zoom_emit(output, image_size, &produced, NULL, ZOOM_SECTOR_SIZE)) {
                         goto corrupt;
                     }
                 }
@@ -626,8 +592,7 @@ static bool zoom_image_core(zoom_ctx *ctx, const uint8_t *input,
     *consumed_out = offset;
 
     while (current < cylinders) {
-        if (!zoom_emit(output, image_size, &produced, NULL,
-                       ZOOM_CYLINDER_SIZE)) {
+        if (!zoom_emit(output, image_size, &produced, NULL, ZOOM_CYLINDER_SIZE)) {
             goto corrupt;
         }
         ++current;
@@ -644,9 +609,7 @@ corrupt:
     return false;
 }
 
-static bool zoom_run(const uint8_t *input, size_t input_size, uint8_t *output,
-                     size_t output_capacity, size_t max_output,
-                     size_t *consumed, size_t *produced)
+static bool zoom_run(const uint8_t *input, size_t input_size, uint8_t *output, size_t output_capacity, size_t max_output, size_t *consumed, size_t *produced)
 {
     zoom_ctx *ctx;
     bool ok;
@@ -654,17 +617,14 @@ static bool zoom_run(const uint8_t *input, size_t input_size, uint8_t *output,
     ctx = (zoom_ctx *)xx_mem_alloc(sizeof(zoom_ctx));
     if (!ctx) return false;
 
-    ok = zoom_image_core(ctx, input, input_size, output, output_capacity,
-                         max_output, consumed, produced);
+    ok = zoom_image_core(ctx, input, input_size, output, output_capacity, max_output, consumed, produced);
 
     xx_mem_free(ctx);
 
     return ok;
 }
 
-bool xx_zoom_decode_memory(const uint8_t *input, size_t input_size,
-                           uint8_t *output, size_t output_size,
-                           size_t *written)
+bool xx_zoom_decode_memory(const uint8_t *input, size_t input_size, uint8_t *output, size_t output_size, size_t *written)
 {
     size_t consumed = 0;
     size_t produced = 0;
@@ -672,8 +632,7 @@ bool xx_zoom_decode_memory(const uint8_t *input, size_t input_size,
     if (written) *written = 0;
     if (!input || !output || (output_size == 0)) return false;
 
-    if (!zoom_run(input, input_size, output, output_size, output_size,
-                  &consumed, &produced)) {
+    if (!zoom_run(input, input_size, output, output_size, output_size, &consumed, &produced)) {
         return false;
     }
 
@@ -682,9 +641,7 @@ bool xx_zoom_decode_memory(const uint8_t *input, size_t input_size,
     return true;
 }
 
-bool xx_zoom_decode_prefix_memory(const uint8_t *input, size_t input_size,
-                                  uint8_t *output, size_t output_size,
-                                  size_t *written, bool *complete)
+bool xx_zoom_decode_prefix_memory(const uint8_t *input, size_t input_size, uint8_t *output, size_t output_size, size_t *written, bool *complete)
 {
     size_t consumed = 0;
     size_t produced = 0;
@@ -694,15 +651,13 @@ bool xx_zoom_decode_prefix_memory(const uint8_t *input, size_t input_size,
     if (complete) *complete = false;
     if (!input || !output || output_size == 0) return false;
 
-    ok = zoom_run(input, input_size, output, output_size, output_size,
-                  &consumed, &produced);
+    ok = zoom_run(input, input_size, output, output_size, output_size, &consumed, &produced);
     if (written) *written = produced;
     if (complete) *complete = ok;
     return ok || produced != 0;
 }
 
-bool xx_zoom_scan_memory(const uint8_t *input, size_t input_size,
-                         size_t max_output, size_t *consumed, size_t *produced)
+bool xx_zoom_scan_memory(const uint8_t *input, size_t input_size, size_t max_output, size_t *consumed, size_t *produced)
 {
     size_t local_consumed = 0;
     size_t local_produced = 0;
@@ -711,8 +666,7 @@ bool xx_zoom_scan_memory(const uint8_t *input, size_t input_size,
     if (produced) *produced = 0;
     if (!input) return false;
 
-    if (!zoom_run(input, input_size, NULL, 0, max_output, &local_consumed,
-                  &local_produced)) {
+    if (!zoom_run(input, input_size, NULL, 0, max_output, &local_consumed, &local_produced)) {
         return false;
     }
 

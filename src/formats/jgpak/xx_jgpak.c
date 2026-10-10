@@ -81,17 +81,15 @@ static void xx_jgpak_vtable_destroy(Abstractformat *self);
 
 /* ------------------------------------------------------------- helpers -- */
 
-static bool xx_jgpak_read_at(Abstractformat *self, int64_t offset,
-                              uint8_t *buffer, size_t size) {
+static bool xx_jgpak_read_at(Abstractformat *self, int64_t offset, uint8_t *buffer, size_t size)
+{
     size_t completed = 0U;
 
-    if (!self || !self->device || offset < 0 ||
-        xx_io_seek64(self->device, offset, SEEK_SET) != 0) {
+    if (!self || !self->device || offset < 0 || xx_io_seek64(self->device, offset, SEEK_SET) != 0) {
         return false;
     }
     while (completed < size) {
-        ssize_t received =
-            xx_io_read(self->device, buffer + completed, size - completed);
+        ssize_t received = xx_io_read(self->device, buffer + completed, size - completed);
         if (received <= 0 || (size_t)received > size - completed) {
             return false;
         }
@@ -100,14 +98,14 @@ static bool xx_jgpak_read_at(Abstractformat *self, int64_t offset,
     return true;
 }
 
-static bool xx_jgpak_range_within(int64_t total, int64_t offset,
-                                   int64_t size) {
-    return offset >= 0 && size >= 0 && offset <= total &&
-           size <= total - offset;
+static bool xx_jgpak_range_within(int64_t total, int64_t offset, int64_t size)
+{
+    return offset >= 0 && size >= 0 && offset <= total && size <= total - offset;
 }
 
 /* Refuse anything that would escape the extraction directory. */
-static bool xx_jgpak_path_safe(const char *name) {
+static bool xx_jgpak_path_safe(const char *name)
+{
     const char *cursor = name;
 
     if (!name || !name[0] || name[0] == '/') return false;
@@ -122,7 +120,8 @@ static bool xx_jgpak_path_safe(const char *name) {
     return true;
 }
 
-static void xx_jgpak_stream_free(void *pointer) {
+static void xx_jgpak_stream_free(void *pointer)
+{
     xx_jgpak_stream *stream = (xx_jgpak_stream *)pointer;
     size_t index;
 
@@ -135,17 +134,15 @@ static void xx_jgpak_stream_free(void *pointer) {
 }
 
 /* Append a member, taking ownership of @p name. */
-static bool xx_jgpak_add(xx_jgpak_stream *stream,
-                          const xx_jgpak_member *member) {
-    xx_jgpak_member *grown = (xx_jgpak_member *)xx_mem_realloc(
-        stream->items, sizeof(*grown) * (stream->count + 1U));
+static bool xx_jgpak_add(xx_jgpak_stream *stream, const xx_jgpak_member *member)
+{
+    xx_jgpak_member *grown = (xx_jgpak_member *)xx_mem_realloc(stream->items, sizeof(*grown) * (stream->count + 1U));
 
     if (!grown) return false;
     stream->items = grown;
     stream->items[stream->count++] = *member;
     return true;
 }
-
 
 #define XX_JGPAK_SIGNATURE_SIZE 7
 #define XX_JGPAK_TAIL_SIZE 24
@@ -162,7 +159,6 @@ static bool xx_jgpak_name_valid(const uint8_t *name, size_t size);
 static xx_jgpak_stream *xx_jgpak_parse(Abstractformat *self, xx_pd_struct *pd);
 static bool xx_jgpak_decode(Abstractformat *self, const xx_jgpak_member *member, uint8_t **out, size_t *out_size, xx_pd_struct *pd);
 
-
 /* Fixed part of a directory record, everything after the name. */
 /* The count is i32, but every member costs at least 26 directory bytes plus
  * one payload byte, so the writer cannot reach anything like this. */
@@ -174,7 +170,8 @@ static bool xx_jgpak_decode(Abstractformat *self, const xx_jgpak_member *member,
  * permits bytes above 0x7E here: the writer stores the name as the local
  * OEM code page gave it, so accented DOS file names are normal and are NOT
  * a rejection. */
-static bool xx_jgpak_name_valid(const uint8_t *name, size_t size) {
+static bool xx_jgpak_name_valid(const uint8_t *name, size_t size)
+{
     size_t index;
 
     if (size == 0U) return false;
@@ -182,9 +179,7 @@ static bool xx_jgpak_name_valid(const uint8_t *name, size_t size) {
         uint8_t byte = name[index];
 
         if (byte < 0x20U) return false;
-        if (byte == '/' || byte == '\\' || byte == ':' || byte == '*' ||
-            byte == '?' || byte == '"' || byte == '<' || byte == '>' ||
-            byte == '|') {
+        if (byte == '/' || byte == '\\' || byte == ':' || byte == '*' || byte == '?' || byte == '"' || byte == '<' || byte == '>' || byte == '|') {
             return false;
         }
     }
@@ -193,10 +188,9 @@ static bool xx_jgpak_name_valid(const uint8_t *name, size_t size) {
     return true;
 }
 
-static xx_jgpak_stream *xx_jgpak_parse(Abstractformat *self,
-                                       xx_pd_struct *pd) {
-    static const uint8_t signature[XX_JGPAK_SIGNATURE_SIZE] = {
-        'J', 'G', 'P', 'A', 'K', 0x00U, 0x01U};
+static xx_jgpak_stream *xx_jgpak_parse(Abstractformat *self, xx_pd_struct *pd)
+{
+    static const uint8_t signature[XX_JGPAK_SIGNATURE_SIZE] = {'J', 'G', 'P', 'A', 'K', 0x00U, 0x01U};
     xx_jgpak_stream *stream = NULL;
     uint8_t scratch[XX_JGPAK_RECORD_BUFFER];
     char name[XX_JGPAK_MAX_NAME_SIZE + 1];
@@ -216,14 +210,12 @@ static xx_jgpak_stream *xx_jgpak_parse(Abstractformat *self,
     /* Signature, two empty strings, the flag byte and the member count. */
     if (span < XX_JGPAK_SIGNATURE_SIZE + 4 + 4 + 1 + 4) return NULL;
 
-    if (!xx_jgpak_read_at(self, self->base_address, scratch,
-                          (size_t)XX_JGPAK_SIGNATURE_SIZE)) {
+    if (!xx_jgpak_read_at(self, self->base_address, scratch, (size_t)XX_JGPAK_SIGNATURE_SIZE)) {
         return NULL;
     }
     /* The literal signature, version byte included. Seven bytes is not much
      * on its own -- the payload tiling at the bottom is what decides. */
-    if (xx_rt_memcmp(scratch, signature, (size_t)XX_JGPAK_SIGNATURE_SIZE) !=
-        0) {
+    if (xx_rt_memcmp(scratch, signature, (size_t)XX_JGPAK_SIGNATURE_SIZE) != 0) {
         return NULL;
     }
     offset = XX_JGPAK_SIGNATURE_SIZE;
@@ -232,8 +224,7 @@ static xx_jgpak_stream *xx_jgpak_parse(Abstractformat *self,
         int64_t length;
 
         if (!xx_jgpak_range_within(span, offset, 4)) return NULL;
-        if (!xx_jgpak_read_at(self, self->base_address + offset, scratch,
-                              4U)) {
+        if (!xx_jgpak_read_at(self, self->base_address + offset, scratch, 4U)) {
             return NULL;
         }
         length = (int64_t)(int32_t)xx_data_get_u32(scratch, 4, 0, false);
@@ -245,13 +236,10 @@ static xx_jgpak_stream *xx_jgpak_parse(Abstractformat *self,
          * the detection and not cosmetic validation. Tab is the one control
          * byte the writer emits. */
         while (length > 0) {
-            size_t chunk = (size_t)((length > (int64_t)sizeof(scratch))
-                                        ? (int64_t)sizeof(scratch)
-                                        : length);
+            size_t chunk = (size_t)((length > (int64_t)sizeof(scratch)) ? (int64_t)sizeof(scratch) : length);
 
             if (pd && xx_pd_is_stopped(pd)) return NULL;
-            if (!xx_jgpak_read_at(self, self->base_address + offset, scratch,
-                                  chunk)) {
+            if (!xx_jgpak_read_at(self, self->base_address + offset, scratch, chunk)) {
                 return NULL;
             }
             for (position = 0U; position < chunk; ++position) {
@@ -296,8 +284,7 @@ static xx_jgpak_stream *xx_jgpak_parse(Abstractformat *self,
 
         if (pd && xx_pd_is_stopped(pd)) goto fail;
         if (!xx_jgpak_range_within(span, offset, 1)) goto fail;
-        if (!xx_jgpak_read_at(self, self->base_address + offset, scratch,
-                              1U)) {
+        if (!xx_jgpak_read_at(self, self->base_address + offset, scratch, 1U)) {
             goto fail;
         }
         name_size = (int64_t)scratch[0];
@@ -305,12 +292,10 @@ static xx_jgpak_stream *xx_jgpak_parse(Abstractformat *self,
          * of the previous one. */
         if (name_size == 0) goto fail;
         offset += 1;
-        if (!xx_jgpak_range_within(span, offset,
-                                   name_size + XX_JGPAK_TAIL_SIZE)) {
+        if (!xx_jgpak_range_within(span, offset, name_size + XX_JGPAK_TAIL_SIZE)) {
             goto fail;
         }
-        if (!xx_jgpak_read_at(self, self->base_address + offset, scratch,
-                              (size_t)(name_size + XX_JGPAK_TAIL_SIZE))) {
+        if (!xx_jgpak_read_at(self, self->base_address + offset, scratch, (size_t)(name_size + XX_JGPAK_TAIL_SIZE))) {
             goto fail;
         }
         if (!xx_jgpak_name_valid(scratch, (size_t)name_size)) goto fail;
@@ -343,8 +328,7 @@ static xx_jgpak_stream *xx_jgpak_parse(Abstractformat *self,
         member.method = XX_JGPAK_METHOD_LZH1;
         member.crc32 = xx_data_get_u32(tail + 16, 4, 0, false);
         /* Raw MS-DOS time and date, packed time | (date << 16). */
-        member.timestamp = (uint64_t)xx_data_get_u16(tail, 2, 0, false) |
-                           ((uint64_t)xx_data_get_u16(tail + 2, 2, 0, false) << 16);
+        member.timestamp = (uint64_t)xx_data_get_u16(tail, 2, 0, false) | ((uint64_t)xx_data_get_u16(tail + 2, 2, 0, false) << 16);
         member.is_folder = false;
         if (!xx_jgpak_add(stream, &member)) {
             xx_str_free(member.name);
@@ -362,8 +346,7 @@ static xx_jgpak_stream *xx_jgpak_parse(Abstractformat *self,
      * file". */
     expected = directory_end;
     for (position = 0U; position < stream->count; ++position) {
-        int64_t relative = stream->items[position].data_offset -
-                           self->base_address;
+        int64_t relative = stream->items[position].data_offset - self->base_address;
 
         if (relative != expected) goto fail;
         /* An empty stream cannot exist: LZHUF always emits at least one
@@ -384,7 +367,6 @@ fail:
     return NULL;
 }
 
-
 /* The directory's uncompressed size is attacker-controlled; refuse rather
  * than attempt an allocation above this. */
 
@@ -392,9 +374,8 @@ fail:
  * parse puts this single derived value in member.method so that a future
  * variant adding a real method field cannot silently reuse it. */
 
-static bool xx_jgpak_decode(Abstractformat *self,
-                            const xx_jgpak_member *member, uint8_t **out,
-                            size_t *out_size, xx_pd_struct *pd) {
+static bool xx_jgpak_decode(Abstractformat *self, const xx_jgpak_member *member, uint8_t **out, size_t *out_size, xx_pd_struct *pd)
+{
     uint8_t *packed = NULL;
     uint8_t *plain = NULL;
     size_t alloc_size = 0U;
@@ -404,8 +385,7 @@ static bool xx_jgpak_decode(Abstractformat *self,
     *out_size = 0U;
     if (!self || !member) return false;
     if (pd && xx_pd_is_stopped(pd)) return false;
-    if (member->compressed_size <= 0 || member->uncompressed_size < 0 ||
-        member->uncompressed_size > XX_JGPAK_MAX_DECODED ||
+    if (member->compressed_size <= 0 || member->uncompressed_size < 0 || member->uncompressed_size > XX_JGPAK_MAX_DECODED ||
         (uint64_t)member->compressed_size > (uint64_t)SIZE_MAX) {
         return false;
     }
@@ -415,8 +395,7 @@ static bool xx_jgpak_decode(Abstractformat *self,
 
     packed = (uint8_t *)xx_mem_alloc((size_t)member->compressed_size);
     if (!packed) return false;
-    if (!xx_jgpak_read_at(self, member->data_offset, packed,
-                          (size_t)member->compressed_size)) {
+    if (!xx_jgpak_read_at(self, member->data_offset, packed, (size_t)member->compressed_size)) {
         xx_mem_free(packed);
         return false;
     }
@@ -436,8 +415,7 @@ static bool xx_jgpak_decode(Abstractformat *self,
         return false;
     }
 
-    if (!xx_lzh1_decode_memory(packed, (size_t)member->compressed_size, plain,
-                               (size_t)member->uncompressed_size, &written) &&
+    if (!xx_lzh1_decode_memory(packed, (size_t)member->compressed_size, plain, (size_t)member->uncompressed_size, &written) &&
         written != (size_t)member->uncompressed_size) {
         xx_mem_free(packed);
         xx_mem_free(plain);
@@ -451,8 +429,7 @@ static bool xx_jgpak_decode(Abstractformat *self,
      * shared LH1 decoder reports a complete output even when its strict tail
      * check rejects those bytes. Only accept that output after checking the
      * container's finished CRC, never after a short or failed decode. */
-    if (written != (size_t)member->uncompressed_size ||
-        xx_crc32_calc(0U, plain, written) != member->crc32) {
+    if (written != (size_t)member->uncompressed_size || xx_crc32_calc(0U, plain, written) != member->crc32) {
         xx_mem_free(plain);
         return false;
     }
@@ -463,8 +440,8 @@ static bool xx_jgpak_decode(Abstractformat *self,
 
 /* ---------------------------------------------------------- lifecycle --- */
 
-void xx_jgpak_init(xx_jgpak *archive, xx_io_device *device,
-                    int64_t base_address) {
+void xx_jgpak_init(xx_jgpak *archive, xx_io_device *device, int64_t base_address)
+{
     if (!archive) return;
     xx_mem_zero(archive, sizeof(*archive));
     xx_format_init(&archive->format, device, base_address);
@@ -477,22 +454,17 @@ void xx_jgpak_init(xx_jgpak *archive, xx_io_device *device,
     archive->format.check_is_valid = xx_jgpak_check_is_valid;
     archive->format.handle_base_info = xx_jgpak_handle_base_info;
     archive->format.get_format_size = xx_jgpak_get_format_size;
-    archive->format.get_number_of_archive_records =
-        xx_jgpak_get_number_of_archive_records;
-    archive->format.create_archive_records_reading =
-        xx_jgpak_create_archive_records_reading;
-    archive->format.get_current_archive_record =
-        xx_jgpak_get_current_archive_record;
-    archive->format.unpack_current_archive_record =
-        xx_jgpak_unpack_current_archive_record;
-    archive->format.archive_record_move_to_next =
-        xx_jgpak_archive_record_move_to_next;
-    archive->format.free_archive_records_reading =
-        xx_jgpak_free_archive_records_reading;
+    archive->format.get_number_of_archive_records = xx_jgpak_get_number_of_archive_records;
+    archive->format.create_archive_records_reading = xx_jgpak_create_archive_records_reading;
+    archive->format.get_current_archive_record = xx_jgpak_get_current_archive_record;
+    archive->format.unpack_current_archive_record = xx_jgpak_unpack_current_archive_record;
+    archive->format.archive_record_move_to_next = xx_jgpak_archive_record_move_to_next;
+    archive->format.free_archive_records_reading = xx_jgpak_free_archive_records_reading;
     archive->format.destroy = xx_jgpak_vtable_destroy;
 }
 
-xx_jgpak *xx_jgpak_create(xx_io_device *device, int64_t base_address) {
+xx_jgpak *xx_jgpak_create(xx_io_device *device, int64_t base_address)
+{
     xx_jgpak *archive = (xx_jgpak *)xx_mem_alloc(sizeof(*archive));
 
     if (!archive) return NULL;
@@ -500,7 +472,8 @@ xx_jgpak *xx_jgpak_create(xx_io_device *device, int64_t base_address) {
     return archive;
 }
 
-void xx_jgpak_destroy(xx_jgpak *archive) {
+void xx_jgpak_destroy(xx_jgpak *archive)
+{
     if (!archive) return;
     /* Not xx_format_destroy: it dispatches through format.destroy, which is
      * the wrapper below, and the two would recurse. */
@@ -509,19 +482,22 @@ void xx_jgpak_destroy(xx_jgpak *archive) {
     archive->number_of_records = 0U;
 }
 
-void xx_jgpak_free(xx_jgpak *archive) {
+void xx_jgpak_free(xx_jgpak *archive)
+{
     if (!archive) return;
     xx_jgpak_destroy(archive);
     xx_mem_free(archive);
 }
 
-static void xx_jgpak_vtable_destroy(Abstractformat *self) {
+static void xx_jgpak_vtable_destroy(Abstractformat *self)
+{
     xx_jgpak_destroy((xx_jgpak *)self);
 }
 
 /* -------------------------------------------------------------- format -- */
 
-bool xx_jgpak_check_is_valid(Abstractformat *self, xx_pd_struct *pd) {
+bool xx_jgpak_check_is_valid(Abstractformat *self, xx_pd_struct *pd)
+{
     xx_jgpak_stream *stream;
 
     if (!self || (pd && xx_pd_is_stopped(pd))) return false;
@@ -531,7 +507,8 @@ bool xx_jgpak_check_is_valid(Abstractformat *self, xx_pd_struct *pd) {
     return true;
 }
 
-bool xx_jgpak_handle_base_info(Abstractformat *self, xx_pd_struct *pd) {
+bool xx_jgpak_handle_base_info(Abstractformat *self, xx_pd_struct *pd)
+{
     xx_jgpak *archive = (xx_jgpak *)self;
     xx_jgpak_stream *stream;
 
@@ -552,18 +529,17 @@ bool xx_jgpak_handle_base_info(Abstractformat *self, xx_pd_struct *pd) {
     return true;
 }
 
-int64_t xx_jgpak_get_format_size(Abstractformat *self, xx_pd_struct *pd) {
-    if (!self ||
-        (!self->base_info_handled && !xx_format_handle_base_info(self, pd))) {
+int64_t xx_jgpak_get_format_size(Abstractformat *self, xx_pd_struct *pd)
+{
+    if (!self || (!self->base_info_handled && !xx_format_handle_base_info(self, pd))) {
         return 0;
     }
     return self->is_valid ? self->format_size : 0;
 }
 
-uint64_t xx_jgpak_get_number_of_archive_records(Abstractformat *self,
-                                                 xx_pd_struct *pd) {
-    if (!self ||
-        (!self->base_info_handled && !xx_format_handle_base_info(self, pd))) {
+uint64_t xx_jgpak_get_number_of_archive_records(Abstractformat *self, xx_pd_struct *pd)
+{
+    if (!self || (!self->base_info_handled && !xx_format_handle_base_info(self, pd))) {
         return 0U;
     }
     return self->is_valid ? ((xx_jgpak *)self)->number_of_records : 0U;
@@ -571,8 +547,8 @@ uint64_t xx_jgpak_get_number_of_archive_records(Abstractformat *self,
 
 /* ------------------------------------------------------------- records -- */
 
-static bool xx_jgpak_set_record(xx_archive_record *record,
-                                 const xx_jgpak_member *member) {
+static bool xx_jgpak_set_record(xx_archive_record *record, const xx_jgpak_member *member)
+{
     xx_archive_record_cleanup(record);
     xx_archive_record_init(record);
     record->header_offset = member->header_offset;
@@ -580,34 +556,24 @@ static bool xx_jgpak_set_record(xx_archive_record *record,
     record->data_offset = member->data_offset;
     record->compressed_size = member->compressed_size;
     return xx_archive_record_set_original_name(record, member->name) &&
-           xx_archive_record_set_meta_u64(record, XX_META_ID_COMPRESSED_SIZE,
-                                          (uint64_t)member->compressed_size) &&
-           xx_archive_record_set_meta_u64(
-               record, XX_META_ID_UNCOMPRESSED_SIZE,
-               (uint64_t)member->uncompressed_size) &&
-           xx_archive_record_set_meta_u64(record, XX_META_ID_COMPRESSION_METHOD,
-                                          member->method) &&
-           xx_archive_record_set_meta_u64(record, XX_META_ID_TIMESTAMP,
-                                          member->timestamp) &&
-           xx_archive_record_set_meta_bool(record, XX_META_ID_IS_FOLDER,
-                                           member->is_folder) &&
-           xx_archive_record_set_meta_bool(record, XX_META_ID_IS_ENCRYPTED,
-                                           false);
+           xx_archive_record_set_meta_u64(record, XX_META_ID_COMPRESSED_SIZE, (uint64_t)member->compressed_size) &&
+           xx_archive_record_set_meta_u64(record, XX_META_ID_UNCOMPRESSED_SIZE, (uint64_t)member->uncompressed_size) &&
+           xx_archive_record_set_meta_u64(record, XX_META_ID_COMPRESSION_METHOD, member->method) &&
+           xx_archive_record_set_meta_u64(record, XX_META_ID_TIMESTAMP, member->timestamp) &&
+           xx_archive_record_set_meta_bool(record, XX_META_ID_IS_FOLDER, member->is_folder) && xx_archive_record_set_meta_bool(record, XX_META_ID_IS_ENCRYPTED, false);
 }
 
-static bool xx_jgpak_copy_options(xx_list_s *target,
-                                   const xx_list_s *options) {
+static bool xx_jgpak_copy_options(xx_list_s *target, const xx_list_s *options)
+{
     size_t index;
 
     if (!target || !options) return options == NULL;
     for (index = 0U; index < options->count; ++index) {
-        const xx_meta *source =
-            (const xx_meta *)xx_list_at((const xx_list_t *)options, index);
+        const xx_meta *source = (const xx_meta *)xx_list_at((const xx_list_t *)options, index);
         xx_meta copied;
         if (!source) continue;
         xx_meta_init(&copied, source->meta_id);
-        if (!xx_var_copy(&copied.var, &source->var) ||
-            !xx_list_append(target, &copied)) {
+        if (!xx_var_copy(&copied.var, &source->var) || !xx_list_append(target, &copied)) {
             xx_meta_cleanup(&copied);
             return false;
         }
@@ -615,21 +581,20 @@ static bool xx_jgpak_copy_options(xx_list_s *target,
     return true;
 }
 
-static const xx_var *xx_jgpak_get_option(const xx_list_s *options,
-                                          uint32_t meta_id) {
+static const xx_var *xx_jgpak_get_option(const xx_list_s *options, uint32_t meta_id)
+{
     size_t index;
 
     if (!options) return NULL;
     for (index = 0U; index < options->count; ++index) {
-        const xx_meta *meta =
-            (const xx_meta *)xx_list_at((const xx_list_t *)options, index);
+        const xx_meta *meta = (const xx_meta *)xx_list_at((const xx_list_t *)options, index);
         if (meta && meta->meta_id == meta_id) return &meta->var;
     }
     return NULL;
 }
 
-xx_archive_record_state *xx_jgpak_create_archive_records_reading(
-    Abstractformat *self, const xx_list_s *options, xx_pd_struct *pd) {
+xx_archive_record_state *xx_jgpak_create_archive_records_reading(Abstractformat *self, const xx_list_s *options, xx_pd_struct *pd)
+{
     xx_jgpak_stream *stream;
     xx_archive_record_state *state;
 
@@ -645,9 +610,7 @@ xx_archive_record_state *xx_jgpak_create_archive_records_reading(
     state->internal_state = stream;
     state->free_internal = xx_jgpak_stream_free;
     state->total_records = (int64_t)stream->count;
-    if (!xx_jgpak_copy_options(&state->options, options) ||
-        (stream->count != 0U &&
-         !xx_jgpak_set_record(&state->current_record, &stream->items[0]))) {
+    if (!xx_jgpak_copy_options(&state->options, options) || (stream->count != 0U && !xx_jgpak_set_record(&state->current_record, &stream->items[0]))) {
         xx_archive_record_state_free(state);
         return NULL;
     }
@@ -656,20 +619,16 @@ xx_archive_record_state *xx_jgpak_create_archive_records_reading(
     return state;
 }
 
-const xx_archive_record *xx_jgpak_get_current_archive_record(
-    Abstractformat *self, xx_archive_record_state *state) {
-    return self && state && state->format == self && state->has_record
-               ? &state->current_record
-               : NULL;
+const xx_archive_record *xx_jgpak_get_current_archive_record(Abstractformat *self, xx_archive_record_state *state)
+{
+    return self && state && state->format == self && state->has_record ? &state->current_record : NULL;
 }
 
-bool xx_jgpak_archive_record_move_to_next(Abstractformat *self,
-                                           xx_archive_record_state *state,
-                                           xx_pd_struct *pd) {
+bool xx_jgpak_archive_record_move_to_next(Abstractformat *self, xx_archive_record_state *state, xx_pd_struct *pd)
+{
     xx_jgpak_stream *stream;
 
-    if (!self || !state || state->format != self || !state->has_record ||
-        (pd && xx_pd_is_stopped(pd))) {
+    if (!self || !state || state->format != self || !state->has_record || (pd && xx_pd_is_stopped(pd))) {
         return false;
     }
     stream = (xx_jgpak_stream *)state->internal_state;
@@ -681,14 +640,12 @@ bool xx_jgpak_archive_record_move_to_next(Abstractformat *self,
     }
     ++stream->index;
     ++state->current_index;
-    state->has_record = xx_jgpak_set_record(&state->current_record,
-                                             &stream->items[stream->index]);
+    state->has_record = xx_jgpak_set_record(&state->current_record, &stream->items[stream->index]);
     return state->has_record;
 }
 
-bool xx_jgpak_unpack_current_archive_record(Abstractformat *self,
-                                             xx_archive_record_state *state,
-                                             xx_pd_struct *pd) {
+bool xx_jgpak_unpack_current_archive_record(Abstractformat *self, xx_archive_record_state *state, xx_pd_struct *pd)
+{
     xx_jgpak_stream *stream;
     const xx_jgpak_member *member;
     const xx_var *path_option;
@@ -700,8 +657,7 @@ bool xx_jgpak_unpack_current_archive_record(Abstractformat *self,
     bool result = false;
     bool created = false;
 
-    if (!self || !state || state->format != self || !state->has_record ||
-        (pd && xx_pd_is_stopped(pd))) {
+    if (!self || !state || state->format != self || !state->has_record || (pd && xx_pd_is_stopped(pd))) {
         return false;
     }
     stream = (xx_jgpak_stream *)state->internal_state;
@@ -709,8 +665,7 @@ bool xx_jgpak_unpack_current_archive_record(Abstractformat *self,
     member = &stream->items[stream->index];
     if (!xx_jgpak_path_safe(member->name)) return false;
 
-    path_option = xx_jgpak_get_option(&state->options,
-                                       XX_META_ID_OPT_UNPACK_PATH);
+    path_option = xx_jgpak_get_option(&state->options, XX_META_ID_OPT_UNPACK_PATH);
     if (!path_option) {
         /* No destination: decode and discard, which verifies the member
          * without writing anything. */
@@ -719,11 +674,9 @@ bool xx_jgpak_unpack_current_archive_record(Abstractformat *self,
         xx_mem_free(plain);
         return result;
     }
-    if (path_option->type == XX_VAR_TYPE_STRING ||
-        path_option->type == XX_VAR_TYPE_STRING_VIEW) {
+    if (path_option->type == XX_VAR_TYPE_STRING || path_option->type == XX_VAR_TYPE_STRING_VIEW) {
         base_path = xx_var_get_str(path_option);
-    } else if (path_option->type == XX_VAR_TYPE_WSTRING ||
-               path_option->type == XX_VAR_TYPE_WSTRING_VIEW) {
+    } else if (path_option->type == XX_VAR_TYPE_WSTRING || path_option->type == XX_VAR_TYPE_WSTRING_VIEW) {
         converted_path = xx_str_unicode_to_utf8(xx_var_get_wstr(path_option));
         base_path = converted_path;
     }
@@ -731,9 +684,7 @@ bool xx_jgpak_unpack_current_archive_record(Abstractformat *self,
         xx_str_free(converted_path);
         return false;
     }
-    if (base_path[0] != '\0' &&
-        base_path[xx_str_len(base_path) - 1U] != '/' &&
-        base_path[xx_str_len(base_path) - 1U] != '\\') {
+    if (base_path[0] != '\0' && base_path[xx_str_len(base_path) - 1U] != '/' && base_path[xx_str_len(base_path) - 1U] != '\\') {
         target_path = xx_str_concat3(base_path, "/", member->name);
     } else {
         target_path = xx_str_concat(base_path, member->name);
@@ -746,8 +697,7 @@ bool xx_jgpak_unpack_current_archive_record(Abstractformat *self,
         xx_str_free(target_path);
         return result;
     }
-    if (!xx_store_create_dirs_a(target_path, false) ||
-        !xx_jgpak_decode(self, member, &plain, &plain_size, pd)) {
+    if (!xx_store_create_dirs_a(target_path, false) || !xx_jgpak_decode(self, member, &plain, &plain_size, pd)) {
         xx_str_free(target_path);
         return false;
     }
@@ -758,8 +708,7 @@ bool xx_jgpak_unpack_current_archive_record(Abstractformat *self,
 
         result = output != NULL;
         while (result && completed < plain_size) {
-            ssize_t sent = xx_io_write(output, plain + completed,
-                                       plain_size - completed);
+            ssize_t sent = xx_io_write(output, plain + completed, plain_size - completed);
             if (sent <= 0 || (size_t)sent > plain_size - completed) {
                 result = false;
                 break;
@@ -774,8 +723,8 @@ bool xx_jgpak_unpack_current_archive_record(Abstractformat *self,
     return result;
 }
 
-void xx_jgpak_free_archive_records_reading(Abstractformat *self,
-                                            xx_archive_record_state *state) {
+void xx_jgpak_free_archive_records_reading(Abstractformat *self, xx_archive_record_state *state)
+{
     (void)self;
     xx_archive_record_state_free(state);
 }

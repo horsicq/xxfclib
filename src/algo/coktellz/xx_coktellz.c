@@ -11,9 +11,7 @@
 #define COKTEL_START_POS 4078U /* N - F, the classic Okumura start position */
 #define COKTEL_MATCH_MIN_LENGTH 3U
 
-XXFC_API bool xx_coktellz_decode_memory(const uint8_t *input,
-                                        size_t input_size, uint8_t *output,
-                                        size_t output_size, size_t *written)
+XXFC_API bool xx_coktellz_decode_memory(const uint8_t *input, size_t input_size, uint8_t *output, size_t output_size, size_t *written)
 {
     uint8_t window[COKTEL_WINDOW_SIZE];
     size_t offset = 0U;
@@ -66,9 +64,7 @@ XXFC_API bool xx_coktellz_decode_memory(const uint8_t *input,
 
             length = (unsigned)(second_byte & 0x0fU) + COKTEL_MATCH_MIN_LENGTH;
             /* No offset bias, unlike the MS SZDD variant (Coktel). */
-            position = (uint32_t)((((uint32_t)(second_byte & 0xf0U) << 4) |
-                                   (uint32_t)first_byte) &
-                                  COKTEL_WINDOW_MASK);
+            position = (uint32_t)((((uint32_t)(second_byte & 0xf0U) << 4) | (uint32_t)first_byte) & COKTEL_WINDOW_MASK);
 
             for (i = 0U; i < length; ++i) {
                 uint8_t byte;

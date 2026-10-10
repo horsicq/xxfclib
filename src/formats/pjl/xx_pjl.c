@@ -61,12 +61,12 @@ typedef struct xx_pjl_utf8_s {
 /* The per-byte text statistics, carried across chunks. */
 typedef struct xx_pjl_scan_s {
     xx_pjl_utf8 utf8;
-    int cmd_state;  /* matched bytes of "@PJL" at a command start, -1 off */
+    int cmd_state;      /* matched bytes of "@PJL" at a command start, -1 off */
     uint32_t uel_state; /* matched bytes of the UEL */
     uint64_t lines;     /* LF bytes seen */
     uint64_t commands;
     uint64_t uels;
-    uint8_t last;       /* the previous byte */
+    uint8_t last; /* the previous byte */
     bool ascii;
 } xx_pjl_scan;
 
@@ -75,14 +75,13 @@ static void xx_pjl_vtable_destroy(Abstractformat *self);
 /* ------------------------------------------------------------- helpers -- */
 
 /* All positioning goes through seek64: long is 32-bit on Win64. */
-static bool xx_pjl_read_at(xx_io_device *device, int64_t offset, void *data,
-                           size_t size) {
+static bool xx_pjl_read_at(xx_io_device *device, int64_t offset, void *data, size_t size)
+{
     const size_t io_capacity = xx_get_file_buffer_size();
     uint8_t *out = (uint8_t *)data;
     size_t done = 0U;
 
-    if (!device || (!data && size != 0U) || offset < 0 ||
-        xx_io_seek64(device, offset, SEEK_SET) != 0) {
+    if (!device || (!data && size != 0U) || offset < 0 || xx_io_seek64(device, offset, SEEK_SET) != 0) {
         return false;
     }
     while (done < size) {
@@ -96,7 +95,8 @@ static bool xx_pjl_read_at(xx_io_device *device, int64_t offset, void *data,
 }
 
 /* Feeds one non-NUL byte; false when the byte makes the text invalid. */
-static bool xx_pjl_utf8_feed(xx_pjl_utf8 *state, uint8_t c) {
+static bool xx_pjl_utf8_feed(xx_pjl_utf8 *state, uint8_t c)
+{
     if (state->pending != 0U) {
         if (c < state->lo || c > state->hi) return false;
         --state->pending;
@@ -131,7 +131,8 @@ static bool xx_pjl_utf8_feed(xx_pjl_utf8 *state, uint8_t c) {
     return true;
 }
 
-static void xx_pjl_scan_byte(xx_pjl_scan *scan, uint8_t c) {
+static void xx_pjl_scan_byte(xx_pjl_scan *scan, uint8_t c)
+{
     static const uint8_t prefix[] = XX_PJL_COMMAND_PREFIX;
     static const uint8_t uel[] = XX_PJL_UEL;
 
@@ -166,8 +167,8 @@ static void xx_pjl_scan_byte(xx_pjl_scan *scan, uint8_t c) {
 
 /* --------------------------------------------------------------- parse -- */
 
-static bool xx_pjl_parse(Abstractformat *self, xx_pjl_parsed *parsed,
-                         xx_pd_struct *pd) {
+static bool xx_pjl_parse(Abstractformat *self, xx_pjl_parsed *parsed, xx_pd_struct *pd)
+{
     uint8_t magic[XX_PJL_MAGIC_SIZE];
     xx_pjl_scan scan;
     uint8_t *buffer = NULL;
@@ -181,17 +182,12 @@ static bool xx_pjl_parse(Abstractformat *self, xx_pjl_parsed *parsed,
     parsed->text_offset = -1;
     parsed->text_size = -1;
     parsed->text_end = -1;
-    if (!self || !self->device || self->base_address < 0 ||
-        (pd && xx_pd_is_stopped(pd))) {
+    if (!self || !self->device || self->base_address < 0 || (pd && xx_pd_is_stopped(pd))) {
         return false;
     }
     parsed->input_size = xx_io_total_size(self->device);
-    if (parsed->input_size < self->base_address ||
-        parsed->input_size - self->base_address <
-            (int64_t)XX_PJL_MAGIC_SIZE ||
-        !xx_pjl_read_at(self->device, self->base_address, magic,
-                        sizeof(magic)) ||
-        xx_rt_memcmp(magic, XX_PJL_MAGIC, XX_PJL_MAGIC_SIZE) != 0) {
+    if (parsed->input_size < self->base_address || parsed->input_size - self->base_address < (int64_t)XX_PJL_MAGIC_SIZE ||
+        !xx_pjl_read_at(self->device, self->base_address, magic, sizeof(magic)) || xx_rt_memcmp(magic, XX_PJL_MAGIC, XX_PJL_MAGIC_SIZE) != 0) {
         return false;
     }
 
@@ -210,9 +206,7 @@ static bool xx_pjl_parse(Abstractformat *self, xx_pjl_parsed *parsed,
 
         if (pd && xx_pd_is_stopped(pd)) goto cleanup;
         if (remaining <= 0) break; /* end of input: no terminator */
-        want = (uint64_t)remaining < (uint64_t)io_capacity
-                   ? (size_t)remaining
-                   : (size_t)io_capacity;
+        want = (uint64_t)remaining < (uint64_t)io_capacity ? (size_t)remaining : (size_t)io_capacity;
         if (!xx_pjl_read_at(self->device, position, buffer, want)) {
             goto cleanup;
         }
@@ -249,7 +243,8 @@ cleanup:
 
 /* ----------------------------------------------------------- lifecycle -- */
 
-void xx_pjl_init(xx_pjl *pjl, xx_io_device *dev, int64_t base_address) {
+void xx_pjl_init(xx_pjl *pjl, xx_io_device *dev, int64_t base_address)
+{
     if (!pjl) return;
     xx_mem_zero(pjl, sizeof(*pjl));
     xx_format_init(&pjl->format, dev, base_address);
@@ -270,23 +265,27 @@ void xx_pjl_init(xx_pjl *pjl, xx_io_device *dev, int64_t base_address) {
     xx_components_install(&pjl->format);
 }
 
-xx_pjl *xx_pjl_create(xx_io_device *dev, int64_t base_address) {
+xx_pjl *xx_pjl_create(xx_io_device *dev, int64_t base_address)
+{
     xx_pjl *pjl = (xx_pjl *)xx_mem_alloc(sizeof(*pjl));
 
     if (pjl) xx_pjl_init(pjl, dev, base_address);
     return pjl;
 }
 
-void xx_pjl_destroy(xx_pjl *pjl) {
+void xx_pjl_destroy(xx_pjl *pjl)
+{
     if (!pjl) return;
     xx_format_cleanup_extra_parameters(&pjl->format);
 }
 
-static void xx_pjl_vtable_destroy(Abstractformat *self) {
+static void xx_pjl_vtable_destroy(Abstractformat *self)
+{
     xx_pjl_destroy((xx_pjl *)self);
 }
 
-void xx_pjl_free(xx_pjl *pjl) {
+void xx_pjl_free(xx_pjl *pjl)
+{
     if (!pjl) return;
     xx_pjl_destroy(pjl);
     xx_mem_free(pjl);
@@ -294,18 +293,20 @@ void xx_pjl_free(xx_pjl *pjl) {
 
 /* -------------------------------------------------------------- format -- */
 
-bool xx_pjl_check_magic(const uint8_t *magic, size_t magic_size) {
-    return magic && magic_size >= XX_PJL_MAGIC_SIZE &&
-           xx_rt_memcmp(magic, XX_PJL_MAGIC, XX_PJL_MAGIC_SIZE) == 0;
+bool xx_pjl_check_magic(const uint8_t *magic, size_t magic_size)
+{
+    return magic && magic_size >= XX_PJL_MAGIC_SIZE && xx_rt_memcmp(magic, XX_PJL_MAGIC, XX_PJL_MAGIC_SIZE) == 0;
 }
 
-bool xx_pjl_check_is_valid(Abstractformat *self, xx_pd_struct *pd) {
+bool xx_pjl_check_is_valid(Abstractformat *self, xx_pd_struct *pd)
+{
     xx_pjl_parsed parsed;
 
     return xx_pjl_parse(self, &parsed, pd);
 }
 
-bool xx_pjl_handle_base_info(Abstractformat *self, xx_pd_struct *pd) {
+bool xx_pjl_handle_base_info(Abstractformat *self, xx_pd_struct *pd)
+{
     xx_pjl *pjl = (xx_pjl *)self;
     xx_pjl_parsed parsed;
     int64_t format_end;
@@ -342,9 +343,9 @@ bool xx_pjl_handle_base_info(Abstractformat *self, xx_pd_struct *pd) {
     return true;
 }
 
-int64_t xx_pjl_get_format_size(Abstractformat *self, xx_pd_struct *pd) {
-    if (!self ||
-        (!self->base_info_handled && !xx_format_handle_base_info(self, pd))) {
+int64_t xx_pjl_get_format_size(Abstractformat *self, xx_pd_struct *pd)
+{
+    if (!self || (!self->base_info_handled && !xx_format_handle_base_info(self, pd))) {
         return -1;
     }
     return self->format_size;
@@ -352,42 +353,50 @@ int64_t xx_pjl_get_format_size(Abstractformat *self, xx_pd_struct *pd) {
 
 /* ------------------------------------------------------------ accessors -- */
 
-int64_t xx_pjl_get_text_offset(const xx_pjl *pjl) {
+int64_t xx_pjl_get_text_offset(const xx_pjl *pjl)
+{
     return pjl ? pjl->text_offset : -1;
 }
 
-int64_t xx_pjl_get_text_size(const xx_pjl *pjl) {
+int64_t xx_pjl_get_text_size(const xx_pjl *pjl)
+{
     return pjl ? pjl->text_size : -1;
 }
 
-int64_t xx_pjl_get_text_end(const xx_pjl *pjl) {
+int64_t xx_pjl_get_text_end(const xx_pjl *pjl)
+{
     return pjl ? pjl->text_end : -1;
 }
 
-uint64_t xx_pjl_get_number_of_lines(const xx_pjl *pjl) {
+uint64_t xx_pjl_get_number_of_lines(const xx_pjl *pjl)
+{
     return pjl ? pjl->number_of_lines : 0U;
 }
 
-uint64_t xx_pjl_get_number_of_commands(const xx_pjl *pjl) {
+uint64_t xx_pjl_get_number_of_commands(const xx_pjl *pjl)
+{
     return pjl ? pjl->number_of_commands : 0U;
 }
 
-uint64_t xx_pjl_get_number_of_uels(const xx_pjl *pjl) {
+uint64_t xx_pjl_get_number_of_uels(const xx_pjl *pjl)
+{
     return pjl ? pjl->number_of_uels : 0U;
 }
 
-bool xx_pjl_has_terminator(const xx_pjl *pjl) {
+bool xx_pjl_has_terminator(const xx_pjl *pjl)
+{
     return pjl ? pjl->has_terminator : false;
 }
 
-bool xx_pjl_is_ascii(const xx_pjl *pjl) {
+bool xx_pjl_is_ascii(const xx_pjl *pjl)
+{
     return pjl ? pjl->is_ascii : false;
 }
 
 /* Encoded/structural component members; this does not decode media. */
-static bool xx_components_build(Abstractformat *f, xx_component_stream *s, xx_pd_struct *pd) {
-
-    xx_pjl *p=(xx_pjl *)f;
+static bool xx_components_build(Abstractformat *f, xx_component_stream *s, xx_pd_struct *pd)
+{
+    xx_pjl *p = (xx_pjl *)f;
     (void)pd;
-    return xx_component_add(f,s,p->text_offset-f->base_address,p->text_size,"printer-commands");
+    return xx_component_add(f, s, p->text_offset - f->base_address, p->text_size, "printer-commands");
 }

@@ -11,7 +11,9 @@
 extern "C" {
 #endif
 
-typedef struct xx_soundfont2 { Abstractformat format; } xx_soundfont2;
+typedef struct xx_soundfont2 {
+    Abstractformat format;
+} xx_soundfont2;
 
 XXFC_API void xx_soundfont2_init(xx_soundfont2 *, xx_io_device *, int64_t);
 XXFC_API xx_soundfont2 *xx_soundfont2_create(xx_io_device *, int64_t);

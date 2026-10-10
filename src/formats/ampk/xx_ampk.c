@@ -52,45 +52,41 @@ typedef struct ampk_stream_s {
     bool complete;
 } ampk_stream;
 
-static bool ampk_read_at(xx_io_device *device, int64_t offset, void *buffer,
-                         size_t size) {
+static bool ampk_read_at(xx_io_device *device, int64_t offset, void *buffer, size_t size)
+{
     size_t done = 0U;
-    if (!device || (!buffer && size != 0U) || offset < 0 ||
-        xx_io_seek64(device, offset, SEEK_SET) != 0)
-        return false;
+    if (!device || (!buffer && size != 0U) || offset < 0 || xx_io_seek64(device, offset, SEEK_SET) != 0) return false;
     while (done < size) {
-        ssize_t amount = xx_io_read(device, (uint8_t *)buffer + done,
-                                    size - done);
+        ssize_t amount = xx_io_read(device, (uint8_t *)buffer + done, size - done);
         if (amount <= 0 || (size_t)amount > size - done) return false;
         done += (size_t)amount;
     }
     return true;
 }
 
-static bool ampk_valid_component(const uint8_t *name, size_t size) {
+static bool ampk_valid_component(const uint8_t *name, size_t size)
+{
     size_t index;
     if (!name || size == 0U) return false;
     for (index = 0U; index < size; ++index) {
         uint8_t value = name[index];
-        if (value < 0x20U || value == 0x7fU || value == '/' || value == '\\')
-            return false;
+        if (value < 0x20U || value == 0x7fU || value == '/' || value == '\\') return false;
     }
     return true;
 }
 
-static char *ampk_component(const uint8_t *bytes, size_t size) {
+static char *ampk_component(const uint8_t *bytes, size_t size)
+{
     char *result;
     size_t index, length = size, written = 0U;
     if (!ampk_valid_component(bytes, size)) return NULL;
-    while (length != 0U && (bytes[length - 1U] == ' ' ||
-                            bytes[length - 1U] == '.')) --length;
+    while (length != 0U && (bytes[length - 1U] == ' ' || bytes[length - 1U] == '.')) --length;
     if (length > (SIZE_MAX - 2U) / 2U) return NULL;
     result = (char *)xx_mem_alloc(length * 2U + 2U);
     if (!result) return NULL;
     for (index = 0U; index < length; ++index) {
         uint8_t value = bytes[index];
-        if (value == '"' || value == '*' || value == ':' || value == '<' ||
-            value == '>' || value == '?' || value == '|') value = '_';
+        if (value == '"' || value == '*' || value == ':' || value == '<' || value == '>' || value == '?' || value == '|') value = '_';
         /* AMPK names use Amiga Latin-1 bytes.  Filesystem-facing names are
          * UTF-8; passing a high byte through unchanged turns it into U+FFFD
          * when the path is converted on Windows. */
@@ -106,16 +102,14 @@ static char *ampk_component(const uint8_t *bytes, size_t size) {
     return result;
 }
 
-static char *ampk_join_path(char *const *directories, size_t depth,
-                            const char *component) {
+static char *ampk_join_path(char *const *directories, size_t depth, const char *component)
+{
     size_t index, length = 0U, at = 0U;
     char *result;
     if (!component || !component[0]) return NULL;
     for (index = 0U; index < depth; ++index) {
         size_t part;
-        if (!directories[index] ||
-            (part = xx_str_len(directories[index])) > SIZE_MAX - length - 1U)
-            return NULL;
+        if (!directories[index] || (part = xx_str_len(directories[index])) > SIZE_MAX - length - 1U) return NULL;
         length += part + 1U;
     }
     if (xx_str_len(component) > SIZE_MAX - length - 1U) return NULL;
@@ -133,29 +127,26 @@ static char *ampk_join_path(char *const *directories, size_t depth,
     return result;
 }
 
-static bool ampk_safe_output_name(const char *name) {
+static bool ampk_safe_output_name(const char *name)
+{
     const char *segment;
     const char *at;
-    if (!name || !name[0] || name[0] == '/' || name[0] == '\\' ||
-        name[1] == ':') return false;
+    if (!name || !name[0] || name[0] == '/' || name[0] == '\\' || name[1] == ':') return false;
     segment = name;
     for (at = name;; ++at) {
         unsigned char value = (unsigned char)*at;
-        if (value == ':' || value == '<' || value == '>' || value == '"' ||
-            value == '|' || value == '?' || value == '*' ||
-            (value != 0U && value < 0x20U)) return false;
+        if (value == ':' || value == '<' || value == '>' || value == '"' || value == '|' || value == '?' || value == '*' || (value != 0U && value < 0x20U)) return false;
         if (value == '/' || value == '\\' || value == 0U) {
             size_t length = (size_t)(at - segment);
-            if (length == 0U || (length == 1U && segment[0] == '.') ||
-                (length == 2U && segment[0] == '.' && segment[1] == '.'))
-                return false;
+            if (length == 0U || (length == 1U && segment[0] == '.') || (length == 2U && segment[0] == '.' && segment[1] == '.')) return false;
             if (value == 0U) return true;
             segment = at + 1;
         }
     }
 }
 
-static void ampk_stream_free(void *opaque) {
+static void ampk_stream_free(void *opaque)
+{
     ampk_stream *stream = (ampk_stream *)opaque;
     size_t index;
     if (!stream) return;
@@ -165,22 +156,21 @@ static void ampk_stream_free(void *opaque) {
     xx_mem_free(stream);
 }
 
-static bool ampk_add_member(ampk_stream *stream, const ampk_member *member) {
+static bool ampk_add_member(ampk_stream *stream, const ampk_member *member)
+{
     ampk_member *grown;
-    if (!stream || !member || stream->count >= AMPK_MAX_MEMBERS ||
-        stream->count > SIZE_MAX / sizeof(*grown) - 1U)
-        return false;
-    grown = (ampk_member *)xx_mem_realloc(stream->items,
-                                          (stream->count + 1U) * sizeof(*grown));
+    if (!stream || !member || stream->count >= AMPK_MAX_MEMBERS || stream->count > SIZE_MAX / sizeof(*grown) - 1U) return false;
+    grown = (ampk_member *)xx_mem_realloc(stream->items, (stream->count + 1U) * sizeof(*grown));
     if (!grown) return false;
     stream->items = grown;
     stream->items[stream->count++] = *member;
     return true;
 }
 
-static bool ampk_parse(Abstractformat *format, ampk_stream **result) {
+static bool ampk_parse(Abstractformat *format, ampk_stream **result)
+{
     uint8_t header[AMPK_HEADER_SIZE];
-    char *directories[AMPK_MAX_DEPTH] = { NULL };
+    char *directories[AMPK_MAX_DEPTH] = {NULL};
     ampk_stream *stream = NULL;
     int64_t total, size, cursor;
     uint16_t declared_directories, declared_files;
@@ -188,26 +178,19 @@ static bool ampk_parse(Abstractformat *format, ampk_stream **result) {
     uint64_t total_original = 0U, total_data = 0U;
     size_t depth = 0U, directory_count = 0U;
     bool stop_walk = false, salvaged_tail = false;
-    if (!format || !format->device || !result || format->base_address < 0)
-        return false;
+    if (!format || !format->device || !result || format->base_address < 0) return false;
     total = xx_io_total_size(format->device);
     if (total < format->base_address) return false;
     size = total - format->base_address;
-    if (size < (int64_t)AMPK_MIN_SIZE ||
-        !ampk_read_at(format->device, format->base_address, header,
-                      sizeof(header)) || xx_rt_memcmp(header, "AMPK", 4U) != 0 ||
+    if (size < (int64_t)AMPK_MIN_SIZE || !ampk_read_at(format->device, format->base_address, header, sizeof(header)) || xx_rt_memcmp(header, "AMPK", 4U) != 0 ||
         header[4] < 1U || header[4] > 4U || header[5] != 0U)
         return false;
     declared_directories = xx_data_get_u16(header + 6U, 2, 0, true);
     declared_files = xx_data_get_u16(header + 8U, 2, 0, true);
     declared_original = xx_data_get_u32(header + 10U, 4, 0, true);
     declared_data = xx_data_get_u32(header + 14U, 4, 0, true);
-    if (declared_files == 0U || declared_original == 0U || declared_data == 0U ||
-        declared_data > (uint64_t)(size - (int64_t)AMPK_HEADER_SIZE) ||
-        size - (int64_t)declared_data <
-            (int64_t)declared_files * (int64_t)(AMPK_PREFIX_SIZE + 1U +
-                                                 AMPK_TRAILER_SIZE) ||
-        declared_original < declared_data / 4U)
+    if (declared_files == 0U || declared_original == 0U || declared_data == 0U || declared_data > (uint64_t)(size - (int64_t)AMPK_HEADER_SIZE) ||
+        size - (int64_t)declared_data < (int64_t)declared_files * (int64_t)(AMPK_PREFIX_SIZE + 1U + AMPK_TRAILER_SIZE) || declared_original < declared_data / 4U)
         return false;
     stream = (ampk_stream *)xx_mem_calloc(1U, sizeof(*stream));
     if (!stream) return false;
@@ -216,25 +199,19 @@ static bool ampk_parse(Abstractformat *format, ampk_stream **result) {
     while (cursor < size && !stop_walk) {
         uint8_t prefix[AMPK_PREFIX_SIZE];
         uint8_t name_size;
-        if (size - cursor < (int64_t)sizeof(prefix) ||
-            !ampk_read_at(format->device, format->base_address + cursor,
-                          prefix, sizeof(prefix))) break;
+        if (size - cursor < (int64_t)sizeof(prefix) || !ampk_read_at(format->device, format->base_address + cursor, prefix, sizeof(prefix))) break;
         name_size = prefix[1];
         if (prefix[0] == AMPK_RECORD_END) {
-            if (xx_rt_memcmp(prefix, "\0\0\0\0\0\0", sizeof(prefix)) != 0 ||
-                depth == 0U) break;
+            if (xx_rt_memcmp(prefix, "\0\0\0\0\0\0", sizeof(prefix)) != 0 || depth == 0U) break;
             xx_mem_free(directories[--depth]);
             directories[depth] = NULL;
             cursor += (int64_t)sizeof(prefix);
         } else if (prefix[0] == AMPK_RECORD_DIRECTORY) {
             uint8_t raw_name[255];
             char *component;
-            if (name_size == 0U || depth >= AMPK_MAX_DEPTH ||
-                directory_count >= AMPK_MAX_MEMBERS ||
-                size - cursor < (int64_t)AMPK_PREFIX_SIZE + name_size ||
-                !ampk_read_at(format->device,
-                              format->base_address + cursor + AMPK_PREFIX_SIZE,
-                              raw_name, name_size)) break;
+            if (name_size == 0U || depth >= AMPK_MAX_DEPTH || directory_count >= AMPK_MAX_MEMBERS || size - cursor < (int64_t)AMPK_PREFIX_SIZE + name_size ||
+                !ampk_read_at(format->device, format->base_address + cursor + AMPK_PREFIX_SIZE, raw_name, name_size))
+                break;
             component = ampk_component(raw_name, name_size);
             if (!component) break;
             directories[depth++] = component;
@@ -248,14 +225,9 @@ static bool ampk_parse(Abstractformat *format, ampk_stream **result) {
             ampk_member member;
             uint64_t data_size;
             uint8_t comment_size;
-            if (name_size == 0U || xx_data_get_u32(prefix + 2U, 4, 0, true) != 0U ||
-                size - cursor < (int64_t)AMPK_PREFIX_SIZE + name_size +
-                                    AMPK_TRAILER_SIZE) break;
+            if (name_size == 0U || xx_data_get_u32(prefix + 2U, 4, 0, true) != 0U || size - cursor < (int64_t)AMPK_PREFIX_SIZE + name_size + AMPK_TRAILER_SIZE) break;
             header_size = AMPK_PREFIX_SIZE + name_size + AMPK_TRAILER_SIZE;
-            if (!ampk_read_at(format->device, format->base_address + cursor,
-                              record, header_size) ||
-                !ampk_valid_component(record + AMPK_PREFIX_SIZE, name_size))
-                break;
+            if (!ampk_read_at(format->device, format->base_address + cursor, record, header_size) || !ampk_valid_component(record + AMPK_PREFIX_SIZE, name_size)) break;
             trailer = record + AMPK_PREFIX_SIZE + name_size;
             xx_mem_zero(&member, sizeof(member));
             member.original_size = xx_data_get_u32(trailer, 4, 0, true);
@@ -269,22 +241,16 @@ static bool ampk_parse(Abstractformat *format, ampk_stream **result) {
              * data and is not included in its packed-size field. */
             header_size += comment_size;
             if (size - cursor < (int64_t)header_size) break;
-            data_size = member.method == 0U ? member.original_size
-                                             : member.declared_packed_size;
+            data_size = member.method == 0U ? member.original_size : member.declared_packed_size;
             /* A damaged member can have a zero packed-size field even though
              * its LH1 stream follows the header.  Decode that member from the
              * remaining bytes, but do not claim later records in the tail. */
-            if (member.method == 3U && member.original_size != 0U &&
-                member.declared_packed_size == 0U &&
-                size - cursor > (int64_t)header_size) {
+            if (member.method == 3U && member.original_size != 0U && member.declared_packed_size == 0U && size - cursor > (int64_t)header_size) {
                 data_size = (uint64_t)(size - cursor - (int64_t)header_size);
                 member.salvage_tail = true;
                 salvaged_tail = true;
             }
-            if (data_size > INT64_MAX || (member.original_size == 0U &&
-                data_size != 0U) || data_size > (uint64_t)(size - cursor -
-                                                            (int64_t)header_size))
-                break;
+            if (data_size > INT64_MAX || (member.original_size == 0U && data_size != 0U) || data_size > (uint64_t)(size - cursor - (int64_t)header_size)) break;
             component = ampk_component(record + AMPK_PREFIX_SIZE, name_size);
             member.name = ampk_join_path(directories, depth, component);
             xx_mem_free(component);
@@ -299,19 +265,15 @@ static bool ampk_parse(Abstractformat *format, ampk_stream **result) {
             }
             total_original += member.original_size;
             total_data += data_size;
-            cursor = member.data_offset - format->base_address +
-                     (int64_t)data_size;
+            cursor = member.data_offset - format->base_address + (int64_t)data_size;
         } else {
             stop_walk = true;
         }
     }
     if (stream->count == 0U) goto fail;
     stream->archive_size = cursor;
-    stream->complete = !salvaged_tail && cursor == size &&
-                       stream->count == declared_files &&
-                       directory_count == declared_directories &&
-                       total_original == declared_original &&
-                       (stream->version == 1U || total_data == declared_data);
+    stream->complete = !salvaged_tail && cursor == size && stream->count == declared_files && directory_count == declared_directories &&
+                       total_original == declared_original && (stream->version == 1U || total_data == declared_data);
     for (depth = 0U; depth < AMPK_MAX_DEPTH; ++depth) {
         if (directories[depth]) xx_mem_free(directories[depth]);
     }
@@ -325,17 +287,16 @@ fail:
     return false;
 }
 
-static bool ampk_copy_options(xx_list_s *destination, const xx_list_s *source) {
+static bool ampk_copy_options(xx_list_s *destination, const xx_list_s *source)
+{
     size_t index;
     if (!source) return true;
     for (index = 0U; index < source->count; ++index) {
-        const xx_meta *item =
-            (const xx_meta *)xx_list_at((const xx_list_t *)source, index);
+        const xx_meta *item = (const xx_meta *)xx_list_at((const xx_list_t *)source, index);
         xx_meta copy;
         if (!item) continue;
         xx_meta_init(&copy, item->meta_id);
-        if (!xx_var_copy(&copy.var, &item->var) ||
-            !xx_list_append(destination, &copy)) {
+        if (!xx_var_copy(&copy.var, &item->var) || !xx_list_append(destination, &copy)) {
             xx_meta_cleanup(&copy);
             return false;
         }
@@ -343,80 +304,56 @@ static bool ampk_copy_options(xx_list_s *destination, const xx_list_s *source) {
     return true;
 }
 
-static const xx_var *ampk_option(const xx_list_s *options, uint32_t id) {
+static const xx_var *ampk_option(const xx_list_s *options, uint32_t id)
+{
     size_t index;
     if (!options) return NULL;
     for (index = 0U; index < options->count; ++index) {
-        const xx_meta *item =
-            (const xx_meta *)xx_list_at((const xx_list_t *)options, index);
+        const xx_meta *item = (const xx_meta *)xx_list_at((const xx_list_t *)options, index);
         if (item && item->meta_id == id) return &item->var;
     }
     return NULL;
 }
 
-static bool ampk_set_record(xx_archive_record *record,
-                            const ampk_member *member) {
+static bool ampk_set_record(xx_archive_record *record, const ampk_member *member)
+{
     xx_archive_record_cleanup(record);
     xx_archive_record_init(record);
     record->header_offset = member->header_offset;
     record->header_size = member->header_size;
     record->data_offset = member->data_offset;
     record->compressed_size = member->data_size;
-    return xx_archive_record_set_original_name(record, member->name) &&
-           xx_archive_record_set_meta_u64(record, XX_META_ID_COMPRESSED_SIZE,
-                                          (uint64_t)member->data_size) &&
-           xx_archive_record_set_meta_u64(record, XX_META_ID_UNCOMPRESSED_SIZE,
-                                          member->original_size) &&
-           xx_archive_record_set_meta_u64(record, XX_META_ID_COMPRESSION_METHOD,
-                                          member->method) &&
-           xx_archive_record_set_meta_u64(record, XX_META_ID_ATTRIBUTES,
-                                          member->attributes) &&
-           xx_archive_record_set_meta_bool(record, XX_META_ID_IS_ENCRYPTED,
-                                           false) &&
-           xx_archive_record_set_meta_bool(record, XX_META_ID_IS_FOLDER,
-                                           false);
+    return xx_archive_record_set_original_name(record, member->name) && xx_archive_record_set_meta_u64(record, XX_META_ID_COMPRESSED_SIZE, (uint64_t)member->data_size) &&
+           xx_archive_record_set_meta_u64(record, XX_META_ID_UNCOMPRESSED_SIZE, member->original_size) &&
+           xx_archive_record_set_meta_u64(record, XX_META_ID_COMPRESSION_METHOD, member->method) &&
+           xx_archive_record_set_meta_u64(record, XX_META_ID_ATTRIBUTES, member->attributes) && xx_archive_record_set_meta_bool(record, XX_META_ID_IS_ENCRYPTED, false) &&
+           xx_archive_record_set_meta_bool(record, XX_META_ID_IS_FOLDER, false);
 }
 
-static bool ampk_decode_member(Abstractformat *format,
-                               const ampk_member *member,
-                               uint8_t **plain, size_t *plain_size) {
+static bool ampk_decode_member(Abstractformat *format, const ampk_member *member, uint8_t **plain, size_t *plain_size)
+{
     uint8_t *packed = NULL;
     uint8_t *output = NULL;
     size_t written = 0U;
     bool decoded = false;
-    if (!format || !member || !plain || !plain_size || member->data_size < 0)
-        return false;
-    if (member->method == 0U && (uint64_t)member->data_size !=
-                                   member->original_size) return false;
-    packed = (uint8_t *)xx_mem_alloc(member->data_size != 0
-                                         ? (size_t)member->data_size : 1U);
-    output = (uint8_t *)xx_mem_alloc(member->original_size != 0U
-                                         ? member->original_size : 1U);
-    if (!packed || !output ||
-        (member->data_size != 0 &&
-         !ampk_read_at(format->device, member->data_offset, packed,
-                       (size_t)member->data_size))) goto fail;
+    if (!format || !member || !plain || !plain_size || member->data_size < 0) return false;
+    if (member->method == 0U && (uint64_t)member->data_size != member->original_size) return false;
+    packed = (uint8_t *)xx_mem_alloc(member->data_size != 0 ? (size_t)member->data_size : 1U);
+    output = (uint8_t *)xx_mem_alloc(member->original_size != 0U ? member->original_size : 1U);
+    if (!packed || !output || (member->data_size != 0 && !ampk_read_at(format->device, member->data_offset, packed, (size_t)member->data_size))) goto fail;
     if (member->method == 0U) {
-        if (member->original_size != 0U)
-            xx_mem_copy(output, packed, member->original_size);
+        if (member->original_size != 0U) xx_mem_copy(output, packed, member->original_size);
         written = member->original_size;
         decoded = true;
     } else if (member->method == 1U) {
-        decoded = xx_ampk_lzari_decode_memory(packed, (size_t)member->data_size,
-                                               output, member->original_size,
-                                               &written);
+        decoded = xx_ampk_lzari_decode_memory(packed, (size_t)member->data_size, output, member->original_size, &written);
     } else if (member->method == 2U) {
-        decoded = xx_ampk_lzss_decode_memory(packed, (size_t)member->data_size,
-                                              output, member->original_size,
-                                              &written);
+        decoded = xx_ampk_lzss_decode_memory(packed, (size_t)member->data_size, output, member->original_size, &written);
     } else if (member->method == 3U) {
-        decoded = xx_lzh1_decode_memory(packed, (size_t)member->data_size,
-                                        output, member->original_size,
-                                        &written);
+        decoded = xx_lzh1_decode_memory(packed, (size_t)member->data_size, output, member->original_size, &written);
         /* The salvage window includes bytes after the member's LH1 stream;
          * the shared decoder rejects trailing bytes after filling output. */
-        if (member->salvage_tail && written == member->original_size)
-            decoded = true;
+        if (member->salvage_tail && written == member->original_size) decoded = true;
     }
     if (!decoded || written != member->original_size) goto fail;
     xx_mem_free(packed);
@@ -429,7 +366,8 @@ fail:
     return false;
 }
 
-void xx_ampk_init(xx_ampk *archive, xx_io_device *device, int64_t base_address) {
+void xx_ampk_init(xx_ampk *archive, xx_io_device *device, int64_t base_address)
+{
     if (!archive) return;
     xx_mem_zero(archive, sizeof(*archive));
     xx_format_init(&archive->format, device, base_address);
@@ -442,38 +380,36 @@ void xx_ampk_init(xx_ampk *archive, xx_io_device *device, int64_t base_address) 
     archive->format.check_is_valid = xx_ampk_check_is_valid;
     archive->format.handle_base_info = xx_ampk_handle_base_info;
     archive->format.get_format_size = xx_ampk_get_format_size;
-    archive->format.get_number_of_archive_records =
-        xx_ampk_get_number_of_archive_records;
-    archive->format.create_archive_records_reading =
-        xx_ampk_create_archive_records_reading;
-    archive->format.get_current_archive_record =
-        xx_ampk_get_current_archive_record;
-    archive->format.unpack_current_archive_record =
-        xx_ampk_unpack_current_archive_record;
-    archive->format.archive_record_move_to_next =
-        xx_ampk_archive_record_move_to_next;
-    archive->format.free_archive_records_reading =
-        xx_ampk_free_archive_records_reading;
+    archive->format.get_number_of_archive_records = xx_ampk_get_number_of_archive_records;
+    archive->format.create_archive_records_reading = xx_ampk_create_archive_records_reading;
+    archive->format.get_current_archive_record = xx_ampk_get_current_archive_record;
+    archive->format.unpack_current_archive_record = xx_ampk_unpack_current_archive_record;
+    archive->format.archive_record_move_to_next = xx_ampk_archive_record_move_to_next;
+    archive->format.free_archive_records_reading = xx_ampk_free_archive_records_reading;
     archive->archive_end = -1;
 }
 
-xx_ampk *xx_ampk_create(xx_io_device *device, int64_t base_address) {
+xx_ampk *xx_ampk_create(xx_io_device *device, int64_t base_address)
+{
     xx_ampk *archive = (xx_ampk *)xx_mem_alloc(sizeof(*archive));
     if (archive) xx_ampk_init(archive, device, base_address);
     return archive;
 }
 
-void xx_ampk_destroy(xx_ampk *archive) {
+void xx_ampk_destroy(xx_ampk *archive)
+{
     if (archive) xx_format_cleanup_extra_parameters(&archive->format);
 }
 
-void xx_ampk_free(xx_ampk *archive) {
+void xx_ampk_free(xx_ampk *archive)
+{
     if (!archive) return;
     xx_ampk_destroy(archive);
     xx_mem_free(archive);
 }
 
-bool xx_ampk_check_is_valid(Abstractformat *format, xx_pd_struct *pd) {
+bool xx_ampk_check_is_valid(Abstractformat *format, xx_pd_struct *pd)
+{
     ampk_stream *stream;
     (void)pd;
     if (!ampk_parse(format, &stream)) return false;
@@ -481,7 +417,8 @@ bool xx_ampk_check_is_valid(Abstractformat *format, xx_pd_struct *pd) {
     return true;
 }
 
-bool xx_ampk_handle_base_info(Abstractformat *format, xx_pd_struct *pd) {
+bool xx_ampk_handle_base_info(Abstractformat *format, xx_pd_struct *pd)
+{
     ampk_stream *stream;
     xx_ampk *archive;
     (void)pd;
@@ -494,29 +431,25 @@ bool xx_ampk_handle_base_info(Abstractformat *format, xx_pd_struct *pd) {
     format->number_of_archive_records = stream->count;
     format->format_size = stream->archive_size;
     format->overlay_offset = stream->complete ? -1 : archive->archive_end;
-    format->overlay_size = stream->complete ? 0 :
-                           xx_io_total_size(format->device) - archive->archive_end;
+    format->overlay_size = stream->complete ? 0 : xx_io_total_size(format->device) - archive->archive_end;
     format->is_valid = true;
     format->base_info_handled = true;
     ampk_stream_free(stream);
     return true;
 }
 
-int64_t xx_ampk_get_format_size(Abstractformat *format, xx_pd_struct *pd) {
-    return format && (format->base_info_handled ||
-                      xx_ampk_handle_base_info(format, pd))
-               ? format->format_size : -1;
+int64_t xx_ampk_get_format_size(Abstractformat *format, xx_pd_struct *pd)
+{
+    return format && (format->base_info_handled || xx_ampk_handle_base_info(format, pd)) ? format->format_size : -1;
 }
 
-uint64_t xx_ampk_get_number_of_archive_records(Abstractformat *format,
-                                                xx_pd_struct *pd) {
-    return format && (format->base_info_handled ||
-                      xx_ampk_handle_base_info(format, pd))
-               ? ((xx_ampk *)format)->number_of_records : 0U;
+uint64_t xx_ampk_get_number_of_archive_records(Abstractformat *format, xx_pd_struct *pd)
+{
+    return format && (format->base_info_handled || xx_ampk_handle_base_info(format, pd)) ? ((xx_ampk *)format)->number_of_records : 0U;
 }
 
-xx_archive_record_state *xx_ampk_create_archive_records_reading(
-    Abstractformat *format, const xx_list_s *options, xx_pd_struct *pd) {
+xx_archive_record_state *xx_ampk_create_archive_records_reading(Abstractformat *format, const xx_list_s *options, xx_pd_struct *pd)
+{
     ampk_stream *stream;
     xx_archive_record_state *state;
     (void)pd;
@@ -530,8 +463,7 @@ xx_archive_record_state *xx_ampk_create_archive_records_reading(
     state->internal_state = stream;
     state->free_internal = ampk_stream_free;
     state->total_records = stream->count;
-    if (!ampk_copy_options(&state->options, options) ||
-        !ampk_set_record(&state->current_record, &stream->items[0])) {
+    if (!ampk_copy_options(&state->options, options) || !ampk_set_record(&state->current_record, &stream->items[0])) {
         xx_archive_record_state_free(state);
         return NULL;
     }
@@ -539,32 +471,26 @@ xx_archive_record_state *xx_ampk_create_archive_records_reading(
     return state;
 }
 
-const xx_archive_record *xx_ampk_get_current_archive_record(
-    Abstractformat *format, xx_archive_record_state *state) {
-    return format && state && state->format == format && state->has_record
-               ? &state->current_record : NULL;
+const xx_archive_record *xx_ampk_get_current_archive_record(Abstractformat *format, xx_archive_record_state *state)
+{
+    return format && state && state->format == format && state->has_record ? &state->current_record : NULL;
 }
 
-bool xx_ampk_archive_record_move_to_next(Abstractformat *format,
-                                          xx_archive_record_state *state,
-                                          xx_pd_struct *pd) {
+bool xx_ampk_archive_record_move_to_next(Abstractformat *format, xx_archive_record_state *state, xx_pd_struct *pd)
+{
     ampk_stream *stream;
     (void)pd;
-    if (!format || !state || state->format != format ||
-        !(stream = (ampk_stream *)state->internal_state) ||
-        ++stream->index >= stream->count) {
+    if (!format || !state || state->format != format || !(stream = (ampk_stream *)state->internal_state) || ++stream->index >= stream->count) {
         if (state) state->has_record = false;
         return false;
     }
     ++state->current_index;
-    state->has_record = ampk_set_record(&state->current_record,
-                                        &stream->items[stream->index]);
+    state->has_record = ampk_set_record(&state->current_record, &stream->items[stream->index]);
     return state->has_record;
 }
 
-bool xx_ampk_unpack_current_archive_record(Abstractformat *format,
-                                            xx_archive_record_state *state,
-                                            xx_pd_struct *pd) {
+bool xx_ampk_unpack_current_archive_record(Abstractformat *format, xx_archive_record_state *state, xx_pd_struct *pd)
+{
     ampk_stream *stream;
     ampk_member *member;
     const xx_var *path_option;
@@ -575,31 +501,24 @@ bool xx_ampk_unpack_current_archive_record(Abstractformat *format,
     size_t plain_size = 0U, written = 0U;
     bool result = false;
     bool created = false;
-    if (!format || !state || state->format != format || !state->has_record ||
-        !(stream = (ampk_stream *)state->internal_state) ||
-        stream->index >= stream->count || (pd && xx_pd_is_stopped(pd)))
+    if (!format || !state || state->format != format || !state->has_record || !(stream = (ampk_stream *)state->internal_state) || stream->index >= stream->count ||
+        (pd && xx_pd_is_stopped(pd)))
         return false;
     member = &stream->items[stream->index];
-    if (!ampk_safe_output_name(member->name) ||
-        !ampk_decode_member(format, member, &plain, &plain_size)) goto done;
+    if (!ampk_safe_output_name(member->name) || !ampk_decode_member(format, member, &plain, &plain_size)) goto done;
     path_option = ampk_option(&state->options, XX_META_ID_OPT_UNPACK_PATH);
     if (!path_option) {
         result = true;
         goto done;
     }
-    if (path_option->type == XX_VAR_TYPE_STRING ||
-        path_option->type == XX_VAR_TYPE_STRING_VIEW)
-        base = xx_var_get_str(path_option);
-    else if (path_option->type == XX_VAR_TYPE_WSTRING ||
-             path_option->type == XX_VAR_TYPE_WSTRING_VIEW) {
+    if (path_option->type == XX_VAR_TYPE_STRING || path_option->type == XX_VAR_TYPE_STRING_VIEW) base = xx_var_get_str(path_option);
+    else if (path_option->type == XX_VAR_TYPE_WSTRING || path_option->type == XX_VAR_TYPE_WSTRING_VIEW) {
         owned_base = xx_str_unicode_to_utf8(xx_var_get_wstr(path_option));
         base = owned_base;
     }
     if (!base) goto done;
-    path = (base[0] && base[xx_str_len(base) - 1U] != '/' &&
-            base[xx_str_len(base) - 1U] != '\\')
-               ? xx_str_concat3(base, "/", member->name)
-               : xx_str_concat(base, member->name);
+    path = (base[0] && base[xx_str_len(base) - 1U] != '/' && base[xx_str_len(base) - 1U] != '\\') ? xx_str_concat3(base, "/", member->name)
+                                                                                                  : xx_str_concat(base, member->name);
     if (!path || !xx_store_create_dirs_a(path, false)) goto done;
     {
         xx_io_device *destination = xx_io_file_open(path, "wb");
@@ -607,8 +526,7 @@ bool xx_ampk_unpack_current_archive_record(Abstractformat *format,
         if (!destination) goto done;
         result = true;
         while (written < plain_size) {
-            ssize_t amount = xx_io_write(destination, plain + written,
-                                         plain_size - written);
+            ssize_t amount = xx_io_write(destination, plain + written, plain_size - written);
             if (amount <= 0 || (size_t)amount > plain_size - written) {
                 result = false;
                 break;
@@ -625,8 +543,8 @@ done:
     return result;
 }
 
-void xx_ampk_free_archive_records_reading(Abstractformat *format,
-                                          xx_archive_record_state *state) {
+void xx_ampk_free_archive_records_reading(Abstractformat *format, xx_archive_record_state *state)
+{
     (void)format;
     xx_archive_record_state_free(state);
 }

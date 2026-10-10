@@ -81,11 +81,8 @@
 #define SOFTPAQ2_METHOD_STORED 0U
 #define SOFTPAQ2_METHOD_IMPLODE 6U
 
-static const char softpaq2_banner[SOFTPAQ2_BANNER_SIZE] = {
-    'P', 'K', 'L', 'I', 'T', 'E', ' ', 'C', 'o', 'p', 'r', '.', ' ', '1', '9',
-    '9'};
-static const char softpaq2_tag[SOFTPAQ2_TAG_SIZE] = {'[', 'F', 'I', 'T', ']',
-                                                     0,   1,   0};
+static const char softpaq2_banner[SOFTPAQ2_BANNER_SIZE] = {'P', 'K', 'L', 'I', 'T', 'E', ' ', 'C', 'o', 'p', 'r', '.', ' ', '1', '9', '9'};
+static const char softpaq2_tag[SOFTPAQ2_TAG_SIZE] = {'[', 'F', 'I', 'T', ']', 0, 1, 0};
 
 typedef struct softpaq2_member_s {
     char *name;
@@ -114,32 +111,29 @@ typedef struct softpaq2_stream_s {
 
 /* --- little-endian helpers ---------------------------------------------- */
 
-static int64_t softpaq2_le32s(const uint8_t *bytes) {
+static int64_t softpaq2_le32s(const uint8_t *bytes)
+{
     return (int64_t)(int32_t)xx_data_get_u32(bytes, 4, 0, false);
 }
 
-static bool softpaq2_read_at(xx_io_device *device, int64_t offset,
-                             void *buffer, size_t size) {
+static bool softpaq2_read_at(xx_io_device *device, int64_t offset, void *buffer, size_t size)
+{
     size_t done = 0U;
     const size_t io_capacity = xx_get_file_buffer_size();
-    if (!device || (!buffer && size != 0U) || offset < 0 ||
-        xx_io_seek64(device, offset, SEEK_SET) != 0)
-        return false;
+    if (!device || (!buffer && size != 0U) || offset < 0 || xx_io_seek64(device, offset, SEEK_SET) != 0) return false;
     while (done < size) {
         size_t request = size - done;
         if (request > io_capacity) request = io_capacity;
-        ssize_t amount = xx_io_read(device, (uint8_t *)buffer + done,
-                                    request);
+        ssize_t amount = xx_io_read(device, (uint8_t *)buffer + done, request);
         if (amount <= 0 || (size_t)amount > request) return false;
         done += (size_t)amount;
     }
     return true;
 }
 
-static bool softpaq2_range_within(int64_t total, int64_t offset,
-                                  int64_t size) {
-    return total >= 0 && offset >= 0 && size >= 0 && offset <= total &&
-           size <= total - offset;
+static bool softpaq2_range_within(int64_t total, int64_t offset, int64_t size)
+{
+    return total >= 0 && offset >= 0 && size >= 0 && offset <= total && size <= total - offset;
 }
 
 /* --- member names -------------------------------------------------------
@@ -148,27 +142,24 @@ static bool softpaq2_range_within(int64_t total, int64_t offset,
  * reference extractor trims them and then concatenated verbatim.  Anything
  * that is not filesystem safe is escaped as %XX rather than folded to '_', so
  * two distinct members can never collapse onto one output file. */
-static char *softpaq2_make_name(const uint8_t *entry, size_t index) {
+static char *softpaq2_make_name(const uint8_t *entry, size_t index)
+{
     char *name;
     size_t output = 0U;
     unsigned part;
     /* Worst case every byte escapes to three characters. */
-    name = (char *)xx_mem_alloc(
-        (SOFTPAQ2_NAME_SIZE + SOFTPAQ2_EXT_SIZE) * 3U + 24U);
+    name = (char *)xx_mem_alloc((SOFTPAQ2_NAME_SIZE + SOFTPAQ2_EXT_SIZE) * 3U + 24U);
     if (!name) return NULL;
     for (part = 0U; part < 2U; ++part) {
         const uint8_t *field = (part == 0U) ? entry : entry + 0x09;
-        size_t field_size = (part == 0U) ? SOFTPAQ2_NAME_SIZE
-                                         : SOFTPAQ2_EXT_SIZE;
+        size_t field_size = (part == 0U) ? SOFTPAQ2_NAME_SIZE : SOFTPAQ2_EXT_SIZE;
         size_t length = 0U, start = 0U, i;
         while (length < field_size && field[length] != 0U) ++length;
         while (start < length && field[start] == ' ') ++start;
         while (length > start && field[length - 1U] == ' ') --length;
         for (i = start; i < length; ++i) {
             uint8_t c = field[i];
-            bool safe = c > 0x20U && c < 0x7fU && c != '%' && c != '/' &&
-                        c != '\\' && c != ':' && c != '*' && c != '?' &&
-                        c != '"' && c != '<' && c != '>' && c != '|';
+            bool safe = c > 0x20U && c < 0x7fU && c != '%' && c != '/' && c != '\\' && c != ':' && c != '*' && c != '?' && c != '"' && c != '<' && c != '>' && c != '|';
             if (safe) {
                 name[output++] = (char)c;
             } else {
@@ -200,7 +191,8 @@ static char *softpaq2_make_name(const uint8_t *entry, size_t index) {
     return name;
 }
 
-static bool softpaq2_safe_output_name(const char *name) {
+static bool softpaq2_safe_output_name(const char *name)
+{
     const char *at;
     size_t length;
     if (!name || !name[0]) return false;
@@ -209,16 +201,15 @@ static bool softpaq2_safe_output_name(const char *name) {
     if (length == 2U && name[0] == '.' && name[1] == '.') return false;
     for (at = name; *at; ++at) {
         unsigned char c = (unsigned char)*at;
-        if (c < 0x20U || c == '/' || c == '\\' || c == ':' || c == '*' ||
-            c == '?' || c == '"' || c == '<' || c == '>' || c == '|')
-            return false;
+        if (c < 0x20U || c == '/' || c == '\\' || c == ':' || c == '*' || c == '?' || c == '"' || c == '<' || c == '>' || c == '|') return false;
     }
     return true;
 }
 
 /* --- parsing ------------------------------------------------------------ */
 
-static void softpaq2_stream_free(void *opaque) {
+static void softpaq2_stream_free(void *opaque)
+{
     softpaq2_stream *stream = (softpaq2_stream *)opaque;
     size_t index;
     if (!stream) return;
@@ -228,14 +219,11 @@ static void softpaq2_stream_free(void *opaque) {
     xx_mem_free(stream);
 }
 
-static bool softpaq2_add_member(softpaq2_stream *stream,
-                                const softpaq2_member *member) {
+static bool softpaq2_add_member(softpaq2_stream *stream, const softpaq2_member *member)
+{
     softpaq2_member *grown;
-    if (!stream || !member || stream->count >= SOFTPAQ2_MAX_ENTRIES ||
-        stream->count > SIZE_MAX / sizeof(*grown) - 1U)
-        return false;
-    grown = (softpaq2_member *)xx_mem_realloc(
-        stream->items, (stream->count + 1U) * sizeof(*grown));
+    if (!stream || !member || stream->count >= SOFTPAQ2_MAX_ENTRIES || stream->count > SIZE_MAX / sizeof(*grown) - 1U) return false;
+    grown = (softpaq2_member *)xx_mem_realloc(stream->items, (stream->count + 1U) * sizeof(*grown));
     if (!grown) return false;
     stream->items = grown;
     stream->items[stream->count++] = *member;
@@ -245,10 +233,9 @@ static bool softpaq2_add_member(softpaq2_stream *stream,
 /* The locator has no fixed home, so the tag is searched for in overlapping
  * chunks and each hit is confirmed by its self-offset field before the
  * directory bounds it carries are trusted. */
-static bool softpaq2_find_locator(xx_io_device *device, int64_t base,
-                                  int64_t size, int64_t *locator_offset,
-                                  int64_t *directory_offset,
-                                  int64_t *split_offset, xx_pd_struct *pd) {
+static bool softpaq2_find_locator(xx_io_device *device, int64_t base, int64_t size, int64_t *locator_offset, int64_t *directory_offset, int64_t *split_offset,
+                                  xx_pd_struct *pd)
+{
     uint8_t *buffer;
     const size_t io_capacity = xx_get_file_buffer_size();
     int64_t cursor = 0;
@@ -258,8 +245,7 @@ static bool softpaq2_find_locator(xx_io_device *device, int64_t base,
     if (!buffer) return false;
     while (!found && size - cursor >= SOFTPAQ2_LOCATOR_SIZE) {
         int64_t remaining = size - cursor - SOFTPAQ2_LOCATOR_SIZE + 1;
-        size_t chunk = remaining > (int64_t)io_capacity
-                           ? io_capacity : (size_t)remaining;
+        size_t chunk = remaining > (int64_t)io_capacity ? io_capacity : (size_t)remaining;
         size_t limit, i;
         if (pd && xx_pd_is_stopped(pd)) break;
         if (!softpaq2_read_at(device, base + cursor, buffer, chunk)) break;
@@ -270,19 +256,14 @@ static bool softpaq2_find_locator(xx_io_device *device, int64_t base,
             int64_t directory, split;
             if (buffer[i] != (uint8_t)softpaq2_tag[0]) continue;
             if (candidate + SOFTPAQ2_LOCATOR_SIZE > size) break;
-            if (!softpaq2_read_at(device, base + candidate, locator,
-                                  sizeof(locator)))
-                continue;
-            if (xx_rt_memcmp(locator, softpaq2_tag, SOFTPAQ2_TAG_SIZE) != 0 ||
-                softpaq2_le32s(locator + 0x10) != candidate) continue;
+            if (!softpaq2_read_at(device, base + candidate, locator, sizeof(locator))) continue;
+            if (xx_rt_memcmp(locator, softpaq2_tag, SOFTPAQ2_TAG_SIZE) != 0 || softpaq2_le32s(locator + 0x10) != candidate) continue;
             directory = softpaq2_le32s(locator + 0x14);
             split = softpaq2_le32s(locator + 0x18);
             if (directory <= 0 || split <= directory || split > size) continue;
             /* Both tables tile their range exactly. */
-            if ((split - directory) % (int64_t)SOFTPAQ2_STORED_ENTRY_SIZE != 0)
-                continue;
-            if ((size - split) % (int64_t)SOFTPAQ2_PACKED_ENTRY_SIZE != 0)
-                continue;
+            if ((split - directory) % (int64_t)SOFTPAQ2_STORED_ENTRY_SIZE != 0) continue;
+            if ((size - split) % (int64_t)SOFTPAQ2_PACKED_ENTRY_SIZE != 0) continue;
             *locator_offset = candidate;
             *directory_offset = directory;
             *split_offset = split;
@@ -296,8 +277,8 @@ static bool softpaq2_find_locator(xx_io_device *device, int64_t base,
     return found;
 }
 
-static bool softpaq2_parse(Abstractformat *format, softpaq2_stream **result,
-                           xx_pd_struct *pd) {
+static bool softpaq2_parse(Abstractformat *format, softpaq2_stream **result, xx_pd_struct *pd)
+{
     uint8_t stub[SOFTPAQ2_STUB_PROBE];
     uint8_t *table = NULL;
     softpaq2_stream *stream = NULL;
@@ -305,8 +286,7 @@ static bool softpaq2_parse(Abstractformat *format, softpaq2_stream **result,
     int64_t locator_offset = 0, directory_offset = 0, split_offset = 0;
     int64_t stored_count, packed_count, i;
     size_t index = 0U;
-    if (!format || !format->device || !result || format->base_address < 0)
-        return false;
+    if (!format || !format->device || !result || format->base_address < 0) return false;
     total = xx_io_total_size(format->device);
     if (total < format->base_address) return false;
     size = total - format->base_address;
@@ -314,38 +294,23 @@ static bool softpaq2_parse(Abstractformat *format, softpaq2_stream **result,
     /* Cheap gate first: the extractor stub is always a PKLITE compressed DOS
      * executable, so the banner sits at a fixed offset.  Only then is it worth
      * hunting for the directory locator. */
-    if (!softpaq2_read_at(format->device, format->base_address, stub,
-                          sizeof(stub)))
-        return false;
+    if (!softpaq2_read_at(format->device, format->base_address, stub, sizeof(stub))) return false;
     if (stub[0] != 'M' || stub[1] != 'Z') return false;
-    if (xx_rt_memcmp(stub + SOFTPAQ2_PKLITE_OFFSET, softpaq2_banner,
-                     SOFTPAQ2_BANNER_SIZE) != 0)
-        return false;
-    if (!softpaq2_find_locator(format->device, format->base_address, size,
-                               &locator_offset, &directory_offset,
-                               &split_offset, pd))
-        return false;
+    if (xx_rt_memcmp(stub + SOFTPAQ2_PKLITE_OFFSET, softpaq2_banner, SOFTPAQ2_BANNER_SIZE) != 0) return false;
+    if (!softpaq2_find_locator(format->device, format->base_address, size, &locator_offset, &directory_offset, &split_offset, pd)) return false;
 
-    stored_count = (split_offset - directory_offset) /
-                   (int64_t)SOFTPAQ2_STORED_ENTRY_SIZE;
-    packed_count = (size - split_offset) /
-                   (int64_t)SOFTPAQ2_PACKED_ENTRY_SIZE;
+    stored_count = (split_offset - directory_offset) / (int64_t)SOFTPAQ2_STORED_ENTRY_SIZE;
+    packed_count = (size - split_offset) / (int64_t)SOFTPAQ2_PACKED_ENTRY_SIZE;
     if (stored_count + packed_count < 1) return false;
-    if (stored_count > (int64_t)SOFTPAQ2_MAX_ENTRIES ||
-        packed_count > (int64_t)SOFTPAQ2_MAX_ENTRIES)
-        return false;
+    if (stored_count > (int64_t)SOFTPAQ2_MAX_ENTRIES || packed_count > (int64_t)SOFTPAQ2_MAX_ENTRIES) return false;
 
     /* The whole directory lies inside the file by construction, so this
      * allocation is bounded by the real file size. */
     table_size = size - directory_offset;
-    if (table_size <= 0 || (uint64_t)table_size > (uint64_t)SIZE_MAX)
-        return false;
+    if (table_size <= 0 || (uint64_t)table_size > (uint64_t)SIZE_MAX) return false;
     table = (uint8_t *)xx_mem_alloc((size_t)table_size);
     if (!table) return false;
-    if (!softpaq2_read_at(format->device,
-                          format->base_address + directory_offset, table,
-                          (size_t)table_size))
-        goto fail;
+    if (!softpaq2_read_at(format->device, format->base_address + directory_offset, table, (size_t)table_size)) goto fail;
     stream = (softpaq2_stream *)xx_mem_calloc(1U, sizeof(*stream));
     if (!stream) goto fail;
 
@@ -362,8 +327,7 @@ static bool softpaq2_parse(Abstractformat *format, softpaq2_stream **result,
          * keeps it (and any other internal blob) out of the member list. */
         if (entry[0x16] == 0U) continue;
         xx_mem_zero(&member, sizeof(member));
-        member.header_offset = format->base_address + directory_offset +
-                               i * (int64_t)SOFTPAQ2_STORED_ENTRY_SIZE;
+        member.header_offset = format->base_address + directory_offset + i * (int64_t)SOFTPAQ2_STORED_ENTRY_SIZE;
         member.header_size = (int64_t)SOFTPAQ2_STORED_ENTRY_SIZE;
         member.data_offset = format->base_address + offset;
         member.packed_size = member_size;
@@ -379,19 +343,14 @@ static bool softpaq2_parse(Abstractformat *format, softpaq2_stream **result,
     }
 
     for (i = 0; i < packed_count; ++i) {
-        const uint8_t *entry = table +
-                               stored_count *
-                                   (int64_t)SOFTPAQ2_STORED_ENTRY_SIZE +
-                               i * (int64_t)SOFTPAQ2_PACKED_ENTRY_SIZE;
+        const uint8_t *entry = table + stored_count * (int64_t)SOFTPAQ2_STORED_ENTRY_SIZE + i * (int64_t)SOFTPAQ2_PACKED_ENTRY_SIZE;
         softpaq2_member member;
         uint16_t method;
         int64_t unpacked, packed, offset, stream_size;
         if (pd && xx_pd_is_stopped(pd)) goto fail;
         if (entry[0x08] != 0U || entry[0x0d] != 0U) goto fail;
         method = xx_data_get_u16(entry + 0x0e, 2, 0, false);
-        if (method != SOFTPAQ2_METHOD_STORED &&
-            method != SOFTPAQ2_METHOD_IMPLODE)
-            goto fail;
+        if (method != SOFTPAQ2_METHOD_STORED && method != SOFTPAQ2_METHOD_IMPLODE) goto fail;
         unpacked = softpaq2_le32s(entry + 0x18);
         packed = softpaq2_le32s(entry + 0x1c);
         offset = softpaq2_le32s(entry + 0x22);
@@ -400,10 +359,7 @@ static bool softpaq2_parse(Abstractformat *format, softpaq2_stream **result,
         if (!softpaq2_range_within(size, offset, stream_size)) goto fail;
         if ((uint64_t)unpacked > (uint64_t)SIZE_MAX) goto fail;
         xx_mem_zero(&member, sizeof(member));
-        member.header_offset = format->base_address + directory_offset +
-                               stored_count *
-                                   (int64_t)SOFTPAQ2_STORED_ENTRY_SIZE +
-                               i * (int64_t)SOFTPAQ2_PACKED_ENTRY_SIZE;
+        member.header_offset = format->base_address + directory_offset + stored_count * (int64_t)SOFTPAQ2_STORED_ENTRY_SIZE + i * (int64_t)SOFTPAQ2_PACKED_ENTRY_SIZE;
         member.header_size = (int64_t)SOFTPAQ2_PACKED_ENTRY_SIZE;
         member.data_offset = format->base_address + offset;
         member.packed_size = stream_size;
@@ -442,18 +398,16 @@ fail:
 
 /* --- record plumbing ---------------------------------------------------- */
 
-static bool softpaq2_copy_options(xx_list_s *destination,
-                                  const xx_list_s *source) {
+static bool softpaq2_copy_options(xx_list_s *destination, const xx_list_s *source)
+{
     size_t index;
     if (!source) return true;
     for (index = 0U; index < source->count; ++index) {
-        const xx_meta *original =
-            (const xx_meta *)xx_list_at((const xx_list_t *)source, index);
+        const xx_meta *original = (const xx_meta *)xx_list_at((const xx_list_t *)source, index);
         xx_meta copy;
         if (!original) continue;
         xx_meta_init(&copy, original->meta_id);
-        if (!xx_var_copy(&copy.var, &original->var) ||
-            !xx_list_append(destination, &copy)) {
+        if (!xx_var_copy(&copy.var, &original->var) || !xx_list_append(destination, &copy)) {
             xx_meta_cleanup(&copy);
             return false;
         }
@@ -461,19 +415,19 @@ static bool softpaq2_copy_options(xx_list_s *destination,
     return true;
 }
 
-static const xx_var *softpaq2_option(const xx_list_s *options, uint32_t id) {
+static const xx_var *softpaq2_option(const xx_list_s *options, uint32_t id)
+{
     size_t index;
     if (!options) return NULL;
     for (index = 0U; index < options->count; ++index) {
-        const xx_meta *meta =
-            (const xx_meta *)xx_list_at((const xx_list_t *)options, index);
+        const xx_meta *meta = (const xx_meta *)xx_list_at((const xx_list_t *)options, index);
         if (meta && meta->meta_id == id) return &meta->var;
     }
     return NULL;
 }
 
-static bool softpaq2_set_record(xx_archive_record *record,
-                                const softpaq2_member *member) {
+static bool softpaq2_set_record(xx_archive_record *record, const softpaq2_member *member)
+{
     xx_archive_record_cleanup(record);
     xx_archive_record_init(record);
     record->header_offset = member->header_offset;
@@ -481,62 +435,37 @@ static bool softpaq2_set_record(xx_archive_record *record,
     record->data_offset = member->data_offset;
     record->compressed_size = member->packed_size;
     return xx_archive_record_set_original_name(record, member->name) &&
-           xx_archive_record_set_meta_u64(record, XX_META_ID_COMPRESSED_SIZE,
-                                          (uint64_t)member->packed_size) &&
-           xx_archive_record_set_meta_u64(record, XX_META_ID_UNCOMPRESSED_SIZE,
-                                          member->unpacked_size) &&
-           xx_archive_record_set_meta_u64(record, XX_META_ID_COMPRESSION_METHOD,
-                                          member->method) &&
-           xx_archive_record_set_meta_u64(record, XX_META_ID_CRC32,
-                                          member->crc32) &&
-           xx_archive_record_set_meta_u64(record, XX_META_ID_ATTRIBUTES,
-                                          member->attributes) &&
-           xx_archive_record_set_meta_u64(
-               record, XX_META_ID_TIMESTAMP,
-               ((uint64_t)member->dos_date << 16U) |
-                   (uint64_t)member->dos_time) &&
-           xx_archive_record_set_meta_bool(record, XX_META_ID_IS_ENCRYPTED,
-                                           false) &&
-           xx_archive_record_set_meta_bool(record, XX_META_ID_IS_FOLDER,
-                                           false);
+           xx_archive_record_set_meta_u64(record, XX_META_ID_COMPRESSED_SIZE, (uint64_t)member->packed_size) &&
+           xx_archive_record_set_meta_u64(record, XX_META_ID_UNCOMPRESSED_SIZE, member->unpacked_size) &&
+           xx_archive_record_set_meta_u64(record, XX_META_ID_COMPRESSION_METHOD, member->method) &&
+           xx_archive_record_set_meta_u64(record, XX_META_ID_CRC32, member->crc32) && xx_archive_record_set_meta_u64(record, XX_META_ID_ATTRIBUTES, member->attributes) &&
+           xx_archive_record_set_meta_u64(record, XX_META_ID_TIMESTAMP, ((uint64_t)member->dos_date << 16U) | (uint64_t)member->dos_time) &&
+           xx_archive_record_set_meta_bool(record, XX_META_ID_IS_ENCRYPTED, false) && xx_archive_record_set_meta_bool(record, XX_META_ID_IS_FOLDER, false);
 }
 
-static bool softpaq2_decode_member(Abstractformat *format,
-                                   const softpaq2_member *member,
-                                   uint8_t **plain, size_t *plain_size) {
+static bool softpaq2_decode_member(Abstractformat *format, const softpaq2_member *member, uint8_t **plain, size_t *plain_size)
+{
     uint8_t *packed = NULL;
     uint8_t *output = NULL;
     size_t written = 0U;
     size_t output_size;
     bool decoded = false;
-    if (!format || !member || !plain || !plain_size || member->packed_size < 0 ||
-        member->unpacked_size > (uint64_t)SIZE_MAX)
-        return false;
+    if (!format || !member || !plain || !plain_size || member->packed_size < 0 || member->unpacked_size > (uint64_t)SIZE_MAX) return false;
     output_size = (size_t)member->unpacked_size;
-    if (member->method == SOFTPAQ2_METHOD_STORED &&
-        (uint64_t)member->packed_size != member->unpacked_size)
-        return false;
-    packed = (uint8_t *)xx_mem_alloc(
-        member->packed_size != 0 ? (size_t)member->packed_size : 1U);
+    if (member->method == SOFTPAQ2_METHOD_STORED && (uint64_t)member->packed_size != member->unpacked_size) return false;
+    packed = (uint8_t *)xx_mem_alloc(member->packed_size != 0 ? (size_t)member->packed_size : 1U);
     output = (uint8_t *)xx_mem_alloc(output_size != 0U ? output_size : 1U);
     if (!packed || !output) goto fail;
-    if (member->packed_size != 0 &&
-        !softpaq2_read_at(format->device, member->data_offset, packed,
-                          (size_t)member->packed_size))
-        goto fail;
+    if (member->packed_size != 0 && !softpaq2_read_at(format->device, member->data_offset, packed, (size_t)member->packed_size)) goto fail;
     /* The stored CRC covers the packed bytes, so it is the one integrity
      * check the container actually supports. */
-    if (member->has_crc &&
-        xx_crc32_calc(0U, packed, (size_t)member->packed_size) !=
-            member->crc32)
-        goto fail;
+    if (member->has_crc && xx_crc32_calc(0U, packed, (size_t)member->packed_size) != member->crc32) goto fail;
     if (member->method == SOFTPAQ2_METHOD_STORED) {
         if (output_size != 0U) xx_mem_copy(output, packed, output_size);
         written = output_size;
         decoded = true;
     } else if (member->method == SOFTPAQ2_METHOD_IMPLODE) {
-        decoded = xx_dcl_decode_memory(packed, (size_t)member->packed_size,
-                                       output, output_size, &written);
+        decoded = xx_dcl_decode_memory(packed, (size_t)member->packed_size, output, output_size, &written);
     }
     if (!decoded || written != output_size) goto fail;
     xx_mem_free(packed);
@@ -551,8 +480,8 @@ fail:
 
 /* --- lifecycle ---------------------------------------------------------- */
 
-void xx_softpaq2_init(xx_softpaq2 *archive, xx_io_device *device,
-                      int64_t base_address) {
+void xx_softpaq2_init(xx_softpaq2 *archive, xx_io_device *device, int64_t base_address)
+{
     if (!archive) return;
     xx_mem_zero(archive, sizeof(*archive));
     xx_format_init(&archive->format, device, base_address);
@@ -565,47 +494,46 @@ void xx_softpaq2_init(xx_softpaq2 *archive, xx_io_device *device,
     archive->format.check_is_valid = xx_softpaq2_check_is_valid;
     archive->format.handle_base_info = xx_softpaq2_handle_base_info;
     archive->format.get_format_size = xx_softpaq2_get_format_size;
-    archive->format.get_number_of_archive_records =
-        xx_softpaq2_get_number_of_archive_records;
-    archive->format.create_archive_records_reading =
-        xx_softpaq2_create_archive_records_reading;
-    archive->format.get_current_archive_record =
-        xx_softpaq2_get_current_archive_record;
-    archive->format.unpack_current_archive_record =
-        xx_softpaq2_unpack_current_archive_record;
-    archive->format.archive_record_move_to_next =
-        xx_softpaq2_archive_record_move_to_next;
-    archive->format.free_archive_records_reading =
-        xx_softpaq2_free_archive_records_reading;
+    archive->format.get_number_of_archive_records = xx_softpaq2_get_number_of_archive_records;
+    archive->format.create_archive_records_reading = xx_softpaq2_create_archive_records_reading;
+    archive->format.get_current_archive_record = xx_softpaq2_get_current_archive_record;
+    archive->format.unpack_current_archive_record = xx_softpaq2_unpack_current_archive_record;
+    archive->format.archive_record_move_to_next = xx_softpaq2_archive_record_move_to_next;
+    archive->format.free_archive_records_reading = xx_softpaq2_free_archive_records_reading;
     archive->locator_offset = -1;
     archive->directory_offset = -1;
     archive->split_offset = -1;
 }
 
-xx_softpaq2 *xx_softpaq2_create(xx_io_device *device, int64_t base_address) {
+xx_softpaq2 *xx_softpaq2_create(xx_io_device *device, int64_t base_address)
+{
     xx_softpaq2 *archive = (xx_softpaq2 *)xx_mem_alloc(sizeof(*archive));
     if (archive) xx_softpaq2_init(archive, device, base_address);
     return archive;
 }
 
-void xx_softpaq2_destroy(xx_softpaq2 *archive) {
+void xx_softpaq2_destroy(xx_softpaq2 *archive)
+{
     if (archive) xx_format_cleanup_extra_parameters(&archive->format);
 }
 
-void xx_softpaq2_free(xx_softpaq2 *archive) {
+void xx_softpaq2_free(xx_softpaq2 *archive)
+{
     if (!archive) return;
     xx_softpaq2_destroy(archive);
     xx_mem_free(archive);
 }
 
-bool xx_softpaq2_check_is_valid(Abstractformat *format, xx_pd_struct *pd) {
+bool xx_softpaq2_check_is_valid(Abstractformat *format, xx_pd_struct *pd)
+{
     softpaq2_stream *stream;
     if (!softpaq2_parse(format, &stream, pd)) return false;
     softpaq2_stream_free(stream);
     return true;
 }
 
-bool xx_softpaq2_handle_base_info(Abstractformat *format, xx_pd_struct *pd) {
+bool xx_softpaq2_handle_base_info(Abstractformat *format, xx_pd_struct *pd)
+{
     softpaq2_stream *stream;
     xx_softpaq2 *archive;
     if (!format || !softpaq2_parse(format, &stream, pd)) return false;
@@ -622,21 +550,18 @@ bool xx_softpaq2_handle_base_info(Abstractformat *format, xx_pd_struct *pd) {
     return true;
 }
 
-int64_t xx_softpaq2_get_format_size(Abstractformat *format, xx_pd_struct *pd) {
-    return format && (format->base_info_handled ||
-                      xx_softpaq2_handle_base_info(format, pd))
-               ? format->format_size : -1;
+int64_t xx_softpaq2_get_format_size(Abstractformat *format, xx_pd_struct *pd)
+{
+    return format && (format->base_info_handled || xx_softpaq2_handle_base_info(format, pd)) ? format->format_size : -1;
 }
 
-uint64_t xx_softpaq2_get_number_of_archive_records(Abstractformat *format,
-                                                   xx_pd_struct *pd) {
-    return format && (format->base_info_handled ||
-                      xx_softpaq2_handle_base_info(format, pd))
-               ? ((xx_softpaq2 *)format)->number_of_records : 0U;
+uint64_t xx_softpaq2_get_number_of_archive_records(Abstractformat *format, xx_pd_struct *pd)
+{
+    return format && (format->base_info_handled || xx_softpaq2_handle_base_info(format, pd)) ? ((xx_softpaq2 *)format)->number_of_records : 0U;
 }
 
-xx_archive_record_state *xx_softpaq2_create_archive_records_reading(
-    Abstractformat *format, const xx_list_s *options, xx_pd_struct *pd) {
+xx_archive_record_state *xx_softpaq2_create_archive_records_reading(Abstractformat *format, const xx_list_s *options, xx_pd_struct *pd)
+{
     softpaq2_stream *stream;
     xx_archive_record_state *state;
     if (!softpaq2_parse(format, &stream, pd)) return NULL;
@@ -649,8 +574,7 @@ xx_archive_record_state *xx_softpaq2_create_archive_records_reading(
     state->internal_state = stream;
     state->free_internal = softpaq2_stream_free;
     state->total_records = stream->count;
-    if (!softpaq2_copy_options(&state->options, options) ||
-        !softpaq2_set_record(&state->current_record, &stream->items[0])) {
+    if (!softpaq2_copy_options(&state->options, options) || !softpaq2_set_record(&state->current_record, &stream->items[0])) {
         xx_archive_record_state_free(state);
         return NULL;
     }
@@ -658,31 +582,26 @@ xx_archive_record_state *xx_softpaq2_create_archive_records_reading(
     return state;
 }
 
-const xx_archive_record *xx_softpaq2_get_current_archive_record(
-    Abstractformat *format, xx_archive_record_state *state) {
-    return format && state && state->format == format && state->has_record
-               ? &state->current_record : NULL;
+const xx_archive_record *xx_softpaq2_get_current_archive_record(Abstractformat *format, xx_archive_record_state *state)
+{
+    return format && state && state->format == format && state->has_record ? &state->current_record : NULL;
 }
 
-bool xx_softpaq2_archive_record_move_to_next(Abstractformat *format,
-                                             xx_archive_record_state *state,
-                                             xx_pd_struct *pd) {
+bool xx_softpaq2_archive_record_move_to_next(Abstractformat *format, xx_archive_record_state *state, xx_pd_struct *pd)
+{
     softpaq2_stream *stream;
     (void)pd;
-    if (!format || !state || state->format != format ||
-        !(stream = (softpaq2_stream *)state->internal_state) ||
-        ++stream->index >= stream->count) {
+    if (!format || !state || state->format != format || !(stream = (softpaq2_stream *)state->internal_state) || ++stream->index >= stream->count) {
         if (state) state->has_record = false;
         return false;
     }
     ++state->current_index;
-    state->has_record = softpaq2_set_record(&state->current_record,
-                                            &stream->items[stream->index]);
+    state->has_record = softpaq2_set_record(&state->current_record, &stream->items[stream->index]);
     return state->has_record;
 }
 
-bool xx_softpaq2_unpack_current_archive_record(
-    Abstractformat *format, xx_archive_record_state *state, xx_pd_struct *pd) {
+bool xx_softpaq2_unpack_current_archive_record(Abstractformat *format, xx_archive_record_state *state, xx_pd_struct *pd)
+{
     softpaq2_stream *stream;
     softpaq2_member *member;
     const xx_var *path_option;
@@ -693,32 +612,24 @@ bool xx_softpaq2_unpack_current_archive_record(
     size_t plain_size = 0U, written = 0U;
     bool result = false;
     bool created = false;
-    if (!format || !state || state->format != format || !state->has_record ||
-        !(stream = (softpaq2_stream *)state->internal_state) ||
-        stream->index >= stream->count || (pd && xx_pd_is_stopped(pd)))
+    if (!format || !state || state->format != format || !state->has_record || !(stream = (softpaq2_stream *)state->internal_state) || stream->index >= stream->count ||
+        (pd && xx_pd_is_stopped(pd)))
         return false;
     member = &stream->items[stream->index];
-    if (!softpaq2_safe_output_name(member->name) ||
-        !softpaq2_decode_member(format, member, &plain, &plain_size))
-        goto done;
+    if (!softpaq2_safe_output_name(member->name) || !softpaq2_decode_member(format, member, &plain, &plain_size)) goto done;
     path_option = softpaq2_option(&state->options, XX_META_ID_OPT_UNPACK_PATH);
     if (!path_option) {
         result = true;
         goto done;
     }
-    if (path_option->type == XX_VAR_TYPE_STRING ||
-        path_option->type == XX_VAR_TYPE_STRING_VIEW)
-        base = xx_var_get_str(path_option);
-    else if (path_option->type == XX_VAR_TYPE_WSTRING ||
-             path_option->type == XX_VAR_TYPE_WSTRING_VIEW) {
+    if (path_option->type == XX_VAR_TYPE_STRING || path_option->type == XX_VAR_TYPE_STRING_VIEW) base = xx_var_get_str(path_option);
+    else if (path_option->type == XX_VAR_TYPE_WSTRING || path_option->type == XX_VAR_TYPE_WSTRING_VIEW) {
         owned_base = xx_str_unicode_to_utf8(xx_var_get_wstr(path_option));
         base = owned_base;
     }
     if (!base) goto done;
-    path = (base[0] && base[xx_str_len(base) - 1U] != '/' &&
-            base[xx_str_len(base) - 1U] != '\\')
-               ? xx_str_concat3(base, "/", member->name)
-               : xx_str_concat(base, member->name);
+    path = (base[0] && base[xx_str_len(base) - 1U] != '/' && base[xx_str_len(base) - 1U] != '\\') ? xx_str_concat3(base, "/", member->name)
+                                                                                                  : xx_str_concat(base, member->name);
     if (!path) goto done;
     if (!xx_store_create_dirs_a(path, false)) goto done;
     {
@@ -727,8 +638,7 @@ bool xx_softpaq2_unpack_current_archive_record(
         if (!destination) goto done;
         result = true;
         while (written < plain_size) {
-            ssize_t amount = xx_io_write(destination, plain + written,
-                                         plain_size - written);
+            ssize_t amount = xx_io_write(destination, plain + written, plain_size - written);
             if (amount <= 0 || (size_t)amount > plain_size - written) {
                 result = false;
                 break;
@@ -745,8 +655,8 @@ done:
     return result;
 }
 
-void xx_softpaq2_free_archive_records_reading(
-    Abstractformat *format, xx_archive_record_state *state) {
+void xx_softpaq2_free_archive_records_reading(Abstractformat *format, xx_archive_record_state *state)
+{
     (void)format;
     xx_archive_record_state_free(state);
 }

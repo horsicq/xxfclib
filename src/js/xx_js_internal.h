@@ -199,8 +199,8 @@ JSScope *jsscope_new(JSCtx *pCtx, JSScope *pParent);
 JSScope *jsscope_ref(JSScope *pScope);
 void jsscope_unref(JSCtx *pCtx, JSScope *pScope);
 
-JSVal jsval_obj(JSObj *pObj);   /* takes ownership of one reference */
-JSVal jsval_str(JSStr *pStr);   /* takes ownership of one reference */
+JSVal jsval_obj(JSObj *pObj); /* takes ownership of one reference */
+JSVal jsval_str(JSStr *pStr); /* takes ownership of one reference */
 
 /* Raw property access (no prototype chain). */
 JSVal jsobj_get_own(JSCtx *pCtx, JSObj *pObj, const char *pKey, size_t nKeySize, int *pbFound);

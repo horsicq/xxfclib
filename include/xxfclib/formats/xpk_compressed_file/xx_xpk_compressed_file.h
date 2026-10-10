@@ -64,48 +64,32 @@ extern "C" {
 typedef struct xx_xpk_compressed_file {
     Abstractformat format;
     uint64_t number_of_records;
-    uint64_t unpacked_size;  /**< The header's unpacked length. */
-    uint32_t method;         /**< Sub-packer 4CC, big-endian value. */
-    uint32_t chunk_count;    /**< Data chunks (END not counted). */
+    uint64_t unpacked_size; /**< The header's unpacked length. */
+    uint32_t method;        /**< Sub-packer 4CC, big-endian value. */
+    uint32_t chunk_count;   /**< Data chunks (END not counted). */
     uint8_t flags;
 } xx_xpk_compressed_file;
 
 typedef xx_xpk_compressed_file xx_xpk_compressed_file_t;
 
-XXFC_API void xx_xpk_compressed_file_init(xx_xpk_compressed_file *archive,
-                                          xx_io_device *device,
-                                          int64_t base_address);
-XXFC_API xx_xpk_compressed_file *xx_xpk_compressed_file_create(
-    xx_io_device *device, int64_t base_address);
+XXFC_API void xx_xpk_compressed_file_init(xx_xpk_compressed_file *archive, xx_io_device *device, int64_t base_address);
+XXFC_API xx_xpk_compressed_file *xx_xpk_compressed_file_create(xx_io_device *device, int64_t base_address);
 XXFC_API void xx_xpk_compressed_file_destroy(xx_xpk_compressed_file *archive);
 XXFC_API void xx_xpk_compressed_file_free(xx_xpk_compressed_file *archive);
 
-XXFC_API bool xx_xpk_compressed_file_check_is_valid(Abstractformat *self,
-                                                    xx_pd_struct *pd);
-XXFC_API bool xx_xpk_compressed_file_handle_base_info(Abstractformat *self,
-                                                      xx_pd_struct *pd);
-XXFC_API int64_t xx_xpk_compressed_file_get_format_size(Abstractformat *self,
-                                                        xx_pd_struct *pd);
-XXFC_API uint64_t xx_xpk_compressed_file_get_number_of_archive_records(
-    Abstractformat *self, xx_pd_struct *pd);
+XXFC_API bool xx_xpk_compressed_file_check_is_valid(Abstractformat *self, xx_pd_struct *pd);
+XXFC_API bool xx_xpk_compressed_file_handle_base_info(Abstractformat *self, xx_pd_struct *pd);
+XXFC_API int64_t xx_xpk_compressed_file_get_format_size(Abstractformat *self, xx_pd_struct *pd);
+XXFC_API uint64_t xx_xpk_compressed_file_get_number_of_archive_records(Abstractformat *self, xx_pd_struct *pd);
 
-XXFC_API xx_archive_record_state *
-xx_xpk_compressed_file_create_archive_records_reading(
-    Abstractformat *self, const xx_list_s *options, xx_pd_struct *pd);
-XXFC_API const xx_archive_record *
-xx_xpk_compressed_file_get_current_archive_record(
-    Abstractformat *self, xx_archive_record_state *state);
-XXFC_API bool xx_xpk_compressed_file_unpack_current_archive_record(
-    Abstractformat *self, xx_archive_record_state *state, xx_pd_struct *pd);
-XXFC_API bool xx_xpk_compressed_file_archive_record_move_to_next(
-    Abstractformat *self, xx_archive_record_state *state, xx_pd_struct *pd);
-XXFC_API void xx_xpk_compressed_file_free_archive_records_reading(
-    Abstractformat *self, xx_archive_record_state *state);
+XXFC_API xx_archive_record_state *xx_xpk_compressed_file_create_archive_records_reading(Abstractformat *self, const xx_list_s *options, xx_pd_struct *pd);
+XXFC_API const xx_archive_record *xx_xpk_compressed_file_get_current_archive_record(Abstractformat *self, xx_archive_record_state *state);
+XXFC_API bool xx_xpk_compressed_file_unpack_current_archive_record(Abstractformat *self, xx_archive_record_state *state, xx_pd_struct *pd);
+XXFC_API bool xx_xpk_compressed_file_archive_record_move_to_next(Abstractformat *self, xx_archive_record_state *state, xx_pd_struct *pd);
+XXFC_API void xx_xpk_compressed_file_free_archive_records_reading(Abstractformat *self, xx_archive_record_state *state);
 
 /** Decode the whole stream into @p destination (NULL: verify only). */
-XXFC_API bool xx_xpk_compressed_file_unpack_to_device(
-    xx_xpk_compressed_file *archive, xx_io_device *destination,
-    xx_pd_struct *pd);
+XXFC_API bool xx_xpk_compressed_file_unpack_to_device(xx_xpk_compressed_file *archive, xx_io_device *destination, xx_pd_struct *pd);
 
 #ifdef __cplusplus
 }

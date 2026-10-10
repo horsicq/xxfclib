@@ -43,7 +43,7 @@ typedef struct xx_lzma86 {
     uint64_t uncompressed_size; /**< All streams, after handle_base_info. */
     int64_t stream_end;         /**< Device offset past the last stream. */
     uint64_t stream_count;
-    bool filtered;              /**< The first stream uses the x86 filter. */
+    bool filtered; /**< The first stream uses the x86 filter. */
 } xx_lzma86;
 
 typedef xx_lzma86 xx_lzma86_t;
@@ -52,40 +52,28 @@ typedef xx_lzma86 xx_lzma86_t;
  *  the 14-byte header and the first two range-coder bytes). */
 XXFC_API bool xx_lzma86_has_header(const uint8_t *data, size_t size);
 
-XXFC_API void xx_lzma86_init(xx_lzma86 *archive, xx_io_device *device,
-                             int64_t base_address);
-XXFC_API xx_lzma86 *xx_lzma86_create(xx_io_device *device,
-                                     int64_t base_address);
+XXFC_API void xx_lzma86_init(xx_lzma86 *archive, xx_io_device *device, int64_t base_address);
+XXFC_API xx_lzma86 *xx_lzma86_create(xx_io_device *device, int64_t base_address);
 XXFC_API void xx_lzma86_destroy(xx_lzma86 *archive);
 XXFC_API void xx_lzma86_free(xx_lzma86 *archive);
 
-XXFC_API bool xx_lzma86_check_is_valid(Abstractformat *self,
-                                       xx_pd_struct *pd);
-XXFC_API bool xx_lzma86_handle_base_info(Abstractformat *self,
-                                         xx_pd_struct *pd);
-XXFC_API int64_t xx_lzma86_get_format_size(Abstractformat *self,
-                                           xx_pd_struct *pd);
-XXFC_API uint64_t xx_lzma86_get_number_of_archive_records(
-    Abstractformat *self, xx_pd_struct *pd);
+XXFC_API bool xx_lzma86_check_is_valid(Abstractformat *self, xx_pd_struct *pd);
+XXFC_API bool xx_lzma86_handle_base_info(Abstractformat *self, xx_pd_struct *pd);
+XXFC_API int64_t xx_lzma86_get_format_size(Abstractformat *self, xx_pd_struct *pd);
+XXFC_API uint64_t xx_lzma86_get_number_of_archive_records(Abstractformat *self, xx_pd_struct *pd);
 
 /** Decode the payload (every stream measured by handle_base_info, in
  *  order, filtered where the stream says so) to a caller-provided device. */
-XXFC_API bool xx_lzma86_unpack_to_device(xx_lzma86 *archive,
-                                         xx_io_device *destination,
-                                         xx_pd_struct *pd);
+XXFC_API bool xx_lzma86_unpack_to_device(xx_lzma86 *archive, xx_io_device *destination, xx_pd_struct *pd);
 
-XXFC_API xx_archive_record_state *xx_lzma86_create_archive_records_reading(
-    Abstractformat *self, const xx_list_s *options, xx_pd_struct *pd);
-XXFC_API const xx_archive_record *xx_lzma86_get_current_archive_record(
-    Abstractformat *self, xx_archive_record_state *state);
-XXFC_API bool xx_lzma86_unpack_current_archive_record(
-    Abstractformat *self, xx_archive_record_state *state, xx_pd_struct *pd);
-XXFC_API bool xx_lzma86_archive_record_move_to_next(
-    Abstractformat *self, xx_archive_record_state *state, xx_pd_struct *pd);
-XXFC_API void xx_lzma86_free_archive_records_reading(
-    Abstractformat *self, xx_archive_record_state *state);
+XXFC_API xx_archive_record_state *xx_lzma86_create_archive_records_reading(Abstractformat *self, const xx_list_s *options, xx_pd_struct *pd);
+XXFC_API const xx_archive_record *xx_lzma86_get_current_archive_record(Abstractformat *self, xx_archive_record_state *state);
+XXFC_API bool xx_lzma86_unpack_current_archive_record(Abstractformat *self, xx_archive_record_state *state, xx_pd_struct *pd);
+XXFC_API bool xx_lzma86_archive_record_move_to_next(Abstractformat *self, xx_archive_record_state *state, xx_pd_struct *pd);
+XXFC_API void xx_lzma86_free_archive_records_reading(Abstractformat *self, xx_archive_record_state *state);
 
-static inline Abstractformat *xx_lzma86_to_format(xx_lzma86 *archive) {
+static inline Abstractformat *xx_lzma86_to_format(xx_lzma86 *archive)
+{
     return archive ? &archive->format : NULL;
 }
 

@@ -84,21 +84,21 @@ typedef struct xx_ewf2_ex01 XEwf2Ex01;
 
 struct xx_ewf2_ex01 {
     Abstractformat format;
-    uint64_t number_of_records;   /**< Always 1: the media image. */
-    uint64_t media_size;          /**< number_of_sectors * bytes_per_sector. */
+    uint64_t number_of_records; /**< Always 1: the media image. */
+    uint64_t media_size;        /**< number_of_sectors * bytes_per_sector. */
     uint64_t number_of_sectors;
     uint64_t number_of_chunks;
-    uint64_t table_entries;       /**< Chunk entries found in the segment. */
+    uint64_t table_entries; /**< Chunk entries found in the segment. */
     uint32_t sectors_per_chunk;
     uint32_t bytes_per_sector;
     uint32_t chunk_size;
     uint32_t segment_number;
-    uint16_t compression_method;  /**< 0 none, 1 zlib, 2 bzip2. */
+    uint16_t compression_method; /**< 0 none, 1 zlib, 2 bzip2. */
     uint8_t minor_version;
     bool has_geometry;
     bool is_encrypted;
-    bool is_last_segment;         /**< The chain ends in a "done" section. */
-    bool is_complete;             /**< Every chunk of the media is present. */
+    bool is_last_segment; /**< The chain ends in a "done" section. */
+    bool is_complete;     /**< Every chunk of the media is present. */
     bool has_md5;
     bool has_sha1;
     uint8_t md5[16];
@@ -107,32 +107,21 @@ struct xx_ewf2_ex01 {
     void *internal;
 };
 
-XXFC_API void xx_ewf2_ex01_init(xx_ewf2_ex01 *ewf, xx_io_device *dev,
-                                int64_t base_address);
-XXFC_API xx_ewf2_ex01 *xx_ewf2_ex01_create(xx_io_device *dev,
-                                           int64_t base_address);
+XXFC_API void xx_ewf2_ex01_init(xx_ewf2_ex01 *ewf, xx_io_device *dev, int64_t base_address);
+XXFC_API xx_ewf2_ex01 *xx_ewf2_ex01_create(xx_io_device *dev, int64_t base_address);
 XXFC_API void xx_ewf2_ex01_destroy(xx_ewf2_ex01 *ewf);
 XXFC_API void xx_ewf2_ex01_free(xx_ewf2_ex01 *ewf);
 
-XXFC_API bool xx_ewf2_ex01_check_is_valid(Abstractformat *self,
-                                          xx_pd_struct *pd);
-XXFC_API bool xx_ewf2_ex01_handle_base_info(Abstractformat *self,
-                                            xx_pd_struct *pd);
-XXFC_API int64_t xx_ewf2_ex01_get_format_size(Abstractformat *self,
-                                              xx_pd_struct *pd);
-XXFC_API uint64_t xx_ewf2_ex01_get_number_of_archive_records(
-    Abstractformat *self, xx_pd_struct *pd);
+XXFC_API bool xx_ewf2_ex01_check_is_valid(Abstractformat *self, xx_pd_struct *pd);
+XXFC_API bool xx_ewf2_ex01_handle_base_info(Abstractformat *self, xx_pd_struct *pd);
+XXFC_API int64_t xx_ewf2_ex01_get_format_size(Abstractformat *self, xx_pd_struct *pd);
+XXFC_API uint64_t xx_ewf2_ex01_get_number_of_archive_records(Abstractformat *self, xx_pd_struct *pd);
 
-XXFC_API xx_archive_record_state *xx_ewf2_ex01_create_archive_records_reading(
-    Abstractformat *self, const xx_list_s *options, xx_pd_struct *pd);
-XXFC_API const xx_archive_record *xx_ewf2_ex01_get_current_archive_record(
-    Abstractformat *self, xx_archive_record_state *state);
-XXFC_API bool xx_ewf2_ex01_unpack_current_archive_record(
-    Abstractformat *self, xx_archive_record_state *state, xx_pd_struct *pd);
-XXFC_API bool xx_ewf2_ex01_archive_record_move_to_next(
-    Abstractformat *self, xx_archive_record_state *state, xx_pd_struct *pd);
-XXFC_API void xx_ewf2_ex01_free_archive_records_reading(
-    Abstractformat *self, xx_archive_record_state *state);
+XXFC_API xx_archive_record_state *xx_ewf2_ex01_create_archive_records_reading(Abstractformat *self, const xx_list_s *options, xx_pd_struct *pd);
+XXFC_API const xx_archive_record *xx_ewf2_ex01_get_current_archive_record(Abstractformat *self, xx_archive_record_state *state);
+XXFC_API bool xx_ewf2_ex01_unpack_current_archive_record(Abstractformat *self, xx_archive_record_state *state, xx_pd_struct *pd);
+XXFC_API bool xx_ewf2_ex01_archive_record_move_to_next(Abstractformat *self, xx_archive_record_state *state, xx_pd_struct *pd);
+XXFC_API void xx_ewf2_ex01_free_archive_records_reading(Abstractformat *self, xx_archive_record_state *state);
 
 /**
  * @brief Write the media image to @p output (NULL only decodes and verifies).
@@ -140,29 +129,30 @@ XXFC_API void xx_ewf2_ex01_free_archive_records_reading(
  * Fails when a chunk is missing, damaged or fails its checksum, when the
  * image is encrypted, or when a recorded MD5 / SHA-1 does not match.
  */
-XXFC_API bool xx_ewf2_ex01_unpack_to_device(xx_ewf2_ex01 *ewf,
-                                            xx_io_device *output,
-                                            xx_pd_struct *pd);
+XXFC_API bool xx_ewf2_ex01_unpack_to_device(xx_ewf2_ex01 *ewf, xx_io_device *output, xx_pd_struct *pd);
 
 XXFC_API uint64_t xx_ewf2_ex01_get_media_size(const xx_ewf2_ex01 *ewf);
 XXFC_API uint32_t xx_ewf2_ex01_get_chunk_size(const xx_ewf2_ex01 *ewf);
 XXFC_API bool xx_ewf2_ex01_is_complete(const xx_ewf2_ex01 *ewf);
 
-static inline Abstractformat *xx_ewf2_ex01_to_format(xx_ewf2_ex01 *ewf) {
+static inline Abstractformat *xx_ewf2_ex01_to_format(xx_ewf2_ex01 *ewf)
+{
     return ewf ? &ewf->format : NULL;
 }
-static inline void XEwf2Ex01_init(xx_ewf2_ex01 *ewf, xx_io_device *dev,
-                                  int64_t base_address) {
+static inline void XEwf2Ex01_init(xx_ewf2_ex01 *ewf, xx_io_device *dev, int64_t base_address)
+{
     xx_ewf2_ex01_init(ewf, dev, base_address);
 }
-static inline xx_ewf2_ex01 *XEwf2Ex01_create(xx_io_device *dev,
-                                             int64_t base_address) {
+static inline xx_ewf2_ex01 *XEwf2Ex01_create(xx_io_device *dev, int64_t base_address)
+{
     return xx_ewf2_ex01_create(dev, base_address);
 }
-static inline void XEwf2Ex01_free(xx_ewf2_ex01 *ewf) {
+static inline void XEwf2Ex01_free(xx_ewf2_ex01 *ewf)
+{
     xx_ewf2_ex01_free(ewf);
 }
-static inline bool XEwf2Ex01_is_valid(xx_ewf2_ex01 *ewf, xx_pd_struct *pd) {
+static inline bool XEwf2Ex01_is_valid(xx_ewf2_ex01 *ewf, xx_pd_struct *pd)
+{
     return ewf ? xx_format_is_valid(&ewf->format, pd) : false;
 }
 

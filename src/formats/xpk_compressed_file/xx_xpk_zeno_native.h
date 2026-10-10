@@ -10,8 +10,8 @@
 #include "xx_xpk_lin_native.h"
 #include "xxfclib/memory/xx_memory.h"
 
-static bool xpk_zeno_native(const uint8_t *packed, size_t size,
-                            uint8_t *output, size_t wanted, xx_pd_struct *pd) {
+static bool xpk_zeno_native(const uint8_t *packed, size_t size, uint8_t *output, size_t wanted, xx_pd_struct *pd)
+{
     xpk_lin_stream stream;
     uint32_t *prefix = NULL;
     uint8_t *suffix = NULL, *stack = NULL;
@@ -19,23 +19,25 @@ static bool xpk_zeno_native(const uint8_t *packed, size_t size,
     size_t position = 0;
     bool valid = false;
     unsigned max_bits;
-    if (!packed || !output || size < 7U || !wanted ||
-        packed[0] || packed[1] || packed[2] || packed[3] ||
-        xx_pd_is_stopped(pd)) return false;
+    if (!packed || !output || size < 7U || !wanted || packed[0] || packed[1] || packed[2] || packed[3] || xx_pd_is_stopped(pd)) return false;
     max_bits = packed[4];
-    if (max_bits < 9U || max_bits > 20U ||
-        (size_t)packed[5] + 6U >= size) return false;
+    if (max_bits < 9U || max_bits > 20U || (size_t)packed[5] + 6U >= size) return false;
     capacity = UINT32_C(1) << max_bits;
     prefix = (uint32_t *)xx_mem_alloc((size_t)capacity * sizeof(*prefix));
     suffix = (uint8_t *)xx_mem_alloc(capacity);
     stack = (uint8_t *)xx_mem_alloc(5000U);
     if (!prefix || !suffix || !stack) goto done;
-    stream.data = packed; stream.front = (size_t)packed[5] + 6U; stream.back = size;
-    stream.cached = 0U; stream.available = 0U;
-    free_code = 259U; bits = 9U;
+    stream.data = packed;
+    stream.front = (size_t)packed[5] + 6U;
+    stream.back = size;
+    stream.cached = 0U;
+    stream.available = 0U;
+    free_code = 259U;
+    bits = 9U;
     if (!xpk_lin_bits(&stream, bits, &previous) || previous >= 256U) goto done;
     first = previous;
-    prefix[258] = 0U; suffix[258] = 0U;
+    prefix[258] = 0U;
+    suffix[258] = 0U;
     output[position++] = (uint8_t)first;
     while (position < wanted) {
         uint32_t code, cursor;
@@ -45,7 +47,8 @@ static bool xpk_zeno_native(const uint8_t *packed, size_t size,
         if (free_code + 3U >= (UINT32_C(1) << bits) && bits < max_bits) ++bits;
         if (!xpk_lin_bits(&stream, bits, &code) || code == 256U) goto done;
         if (code == 257U) {
-            bits = 9U; free_code = 258U;
+            bits = 9U;
+            free_code = 258U;
             /* This producer resets width/dictionary, but retains prev/first. */
             continue;
         }
@@ -76,7 +79,9 @@ static bool xpk_zeno_native(const uint8_t *packed, size_t size,
     }
     valid = !xx_pd_is_stopped(pd);
 done:
-    xx_mem_free(stack); xx_mem_free(suffix); xx_mem_free(prefix);
+    xx_mem_free(stack);
+    xx_mem_free(suffix);
+    xx_mem_free(prefix);
     return valid;
 }
 #endif

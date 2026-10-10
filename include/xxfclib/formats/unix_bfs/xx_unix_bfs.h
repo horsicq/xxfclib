@@ -7,11 +7,14 @@
 extern "C" {
 #endif
 typedef xx_volume xx_unix_bfs;
-XXFC_API void xx_unix_bfs_init(xx_unix_bfs *,xx_io_device *,int64_t);
-XXFC_API xx_unix_bfs *xx_unix_bfs_create(xx_io_device *,int64_t);
+XXFC_API void xx_unix_bfs_init(xx_unix_bfs *, xx_io_device *, int64_t);
+XXFC_API xx_unix_bfs *xx_unix_bfs_create(xx_io_device *, int64_t);
 XXFC_API void xx_unix_bfs_destroy(xx_unix_bfs *);
 XXFC_API void xx_unix_bfs_free(xx_unix_bfs *);
-static inline Abstractformat *xx_unix_bfs_to_format(xx_unix_bfs *r) { return r?&r->format:NULL; }
+static inline Abstractformat *xx_unix_bfs_to_format(xx_unix_bfs *r)
+{
+    return r ? &r->format : NULL;
+}
 #ifdef __cplusplus
 }
 #endif

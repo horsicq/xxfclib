@@ -13,7 +13,10 @@ XXFC_API void xx_speccydos_sdd_init(xx_speccydos_sdd *, xx_io_device *, int64_t)
 XXFC_API xx_speccydos_sdd *xx_speccydos_sdd_create(xx_io_device *, int64_t);
 XXFC_API void xx_speccydos_sdd_destroy(xx_speccydos_sdd *);
 XXFC_API void xx_speccydos_sdd_free(xx_speccydos_sdd *);
-static inline Abstractformat *xx_speccydos_sdd_to_format(xx_speccydos_sdd *r) { return r ? &r->format : NULL; }
+static inline Abstractformat *xx_speccydos_sdd_to_format(xx_speccydos_sdd *r)
+{
+    return r ? &r->format : NULL;
+}
 #ifdef __cplusplus
 }
 #endif

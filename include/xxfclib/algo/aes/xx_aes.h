@@ -53,30 +53,17 @@ extern "C" {
  * Wrong passwords are detected by the caller through the decoded-stream CRC or
  * parser validation because the 7-Zip AES coder has no password verifier.
  */
-XXFC_API bool xx_7zip_aes_decrypt(const uint8_t *input,
-                                  size_t input_size,
-                                  const uint8_t *password_utf16le,
-                                  size_t password_size,
-                                  const uint8_t *properties,
-                                  size_t properties_size,
-                                  uint8_t *output,
-                                  size_t output_capacity,
-                                  size_t plaintext_size);
+XXFC_API bool xx_7zip_aes_decrypt(const uint8_t *input, size_t input_size, const uint8_t *password_utf16le, size_t password_size, const uint8_t *properties,
+                                  size_t properties_size, uint8_t *output, size_t output_capacity, size_t plaintext_size);
 
 /** Bounded-memory 7z AES streams. Destinations should be private staging
  * devices: cancellation or failure can leave partial output. Encryption uses
  * fresh OS-random salt/IV and returns the 34-byte coder properties. Decryption
  * must be followed by the archive's CRC validation before publishing output. */
-XXFC_API bool xx_7zip_aes_encrypt_device(
-    xx_io_device *source, int64_t source_offset, int64_t plaintext_size,
-    const uint8_t *password_utf16le, size_t password_size,
-    uint8_t properties[34], size_t *properties_size,
-    xx_io_device *destination, int64_t *output_size, xx_pd_struct *pd);
-XXFC_API bool xx_7zip_aes_decrypt_device(
-    xx_io_device *source, int64_t source_offset, int64_t input_size,
-    const uint8_t *password_utf16le, size_t password_size,
-    const uint8_t *properties, size_t properties_size, int64_t plaintext_size,
-    xx_io_device *destination, xx_pd_struct *pd);
+XXFC_API bool xx_7zip_aes_encrypt_device(xx_io_device *source, int64_t source_offset, int64_t plaintext_size, const uint8_t *password_utf16le, size_t password_size,
+                                         uint8_t properties[34], size_t *properties_size, xx_io_device *destination, int64_t *output_size, xx_pd_struct *pd);
+XXFC_API bool xx_7zip_aes_decrypt_device(xx_io_device *source, int64_t source_offset, int64_t input_size, const uint8_t *password_utf16le, size_t password_size,
+                                         const uint8_t *properties, size_t properties_size, int64_t plaintext_size, xx_io_device *destination, xx_pd_struct *pd);
 
 /**
  * Decrypt complete AES-CBC blocks with a 16-, 24-, or 32-byte key.
@@ -85,9 +72,7 @@ XXFC_API bool xx_7zip_aes_decrypt_device(
  * performed. The caller must validate the decoded header/file checksum before
  * publishing plaintext. Zero input_size permits NULL input/output pointers.
  */
-XXFC_API bool xx_aes_cbc_decrypt(const uint8_t *input, size_t input_size,
-                                 const uint8_t *key, size_t key_size,
-                                 const uint8_t iv16[16], uint8_t *output);
+XXFC_API bool xx_aes_cbc_decrypt(const uint8_t *input, size_t input_size, const uint8_t *key, size_t key_size, const uint8_t iv16[16], uint8_t *output);
 
 /**
  * Derive RAR 3.x/4.x AES-128 key and IV. Password bytes are UTF-16LE without
@@ -96,10 +81,7 @@ XXFC_API bool xx_aes_cbc_decrypt(const uint8_t *input, size_t input_size,
  * compatibility. Odd password byte counts are rejected. Output buffers must
  * be disjoint from each other and the inputs; they are cleared on failure.
  */
-XXFC_API bool xx_rar3_aes_derive(const uint8_t *password_utf16le,
-                                 size_t password_size, const uint8_t *salt8,
-                                 uint8_t key16[16], uint8_t iv16[16],
-                                 xx_pd_struct *pd);
+XXFC_API bool xx_rar3_aes_derive(const uint8_t *password_utf16le, size_t password_size, const uint8_t *salt8, uint8_t key16[16], uint8_t iv16[16], xx_pd_struct *pd);
 
 /**
  * Derive RAR5 AES-256 key, checksum key and eight-byte password verifier.
@@ -108,30 +90,24 @@ XXFC_API bool xx_rar3_aes_derive(const uint8_t *password_utf16le,
  * Empty passwords are permitted. Output buffers must be disjoint from each
  * other and the inputs; all outputs are cleared on failure.
  */
-XXFC_API bool xx_rar5_aes_derive(const uint8_t *password_utf8,
-                                 size_t password_size, const uint8_t salt16[16],
-                                 uint8_t kdf_log, uint8_t key32[32],
-                                 uint8_t hash_key32[32], uint8_t check8[8],
-                                 xx_pd_struct *pd);
+XXFC_API bool xx_rar5_aes_derive(const uint8_t *password_utf8, size_t password_size, const uint8_t salt16[16], uint8_t kdf_log, uint8_t key32[32], uint8_t hash_key32[32],
+                                 uint8_t check8[8], xx_pd_struct *pd);
 
 /** Constant-time comparison of the stored verifier and its SHA-256 checksum. */
-XXFC_API bool xx_rar5_aes_check_password(const uint8_t stored12[12],
-                                         const uint8_t derived8[8]);
+XXFC_API bool xx_rar5_aes_check_password(const uint8_t stored12[12], const uint8_t derived8[8]);
 
 /** RAR5 keyed CRC transform, used when the file encryption MAC flag is set.
  * Native encoders normally leave that flag clear on intermediate split parts.
  * hash_key32 must point to the checksum key from xx_rar5_aes_derive.
  */
-XXFC_API uint32_t xx_rar5_aes_mac_crc32(const uint8_t hash_key32[32],
-                                       uint32_t crc32);
+XXFC_API uint32_t xx_rar5_aes_mac_crc32(const uint8_t hash_key32[32], uint32_t crc32);
 
 /** RAR5 keyed BLAKE2sp digest transform (HMAC-SHA256 of the 32-byte digest).
  * Apply when the file encryption MAC flag is set. Exact digest32/output32
  * aliasing is supported. Invalid inputs fail and
  * clear output32 when supplied.
  */
-XXFC_API bool xx_rar5_aes_mac_hash(const uint8_t hash_key32[32],
-                                   const uint8_t digest32[32], uint8_t output32[32]);
+XXFC_API bool xx_rar5_aes_mac_hash(const uint8_t hash_key32[32], const uint8_t digest32[32], uint8_t output32[32]);
 
 #ifdef __cplusplus
 }

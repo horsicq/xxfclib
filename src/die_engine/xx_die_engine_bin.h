@@ -45,7 +45,7 @@
  * classify what they found. */
 #include "xxfclib/die_engine/die_engine.h"
 #include "xxfclib/io/xx_io.h"
-#include "xxfclib/data/xx_data.h"   /* xx_io_get_* -- the field readers */
+#include "xxfclib/data/xx_data.h" /* xx_io_get_* -- the field readers */
 #include "xxfclib/formats/xx_memory_map.h"
 
 /* Resident bytes or a buffered file device, owned until die_file_close(). */
@@ -54,9 +54,8 @@ typedef struct {
     unsigned char *pData;  /**< Owned resident bytes plus NUL, or NULL. */
     cd_i64 nSize;          /**< Fixed declared size, including streamed files. */
     char *pFileName;
-    void *pDisasmContext;  /**< Private per-file decoder handles; released on close. */
+    void *pDisasmContext; /**< Private per-file decoder handles; released on close. */
 } DieFile;
-
 
 /** Clamp [nOffset, nOffset + *pnSize) to the file, so a negative size means
  *  "to the end". @return 0 when the range lies wholly outside the file. */
@@ -112,8 +111,7 @@ int die_file_read_device(DieFile *pFile, xx_io_device *pSource);
  *
  * @return 1 on success; 0 with the struct zeroed on failure.
  */
-int die_file_adopt(DieFile *pFile, unsigned char *pData, cd_i64 nSize,
-                   const char *pName);
+int die_file_adopt(DieFile *pFile, unsigned char *pData, cd_i64 nSize, const char *pName);
 
 void die_file_close(DieFile *pFile);
 
@@ -132,9 +130,7 @@ void die_file_close(DieFile *pFile);
  *
  * @return 0 if the map refused the records.
  */
-int die_map_add_part(xx_memory_map *pMap, cd_i64 nOffset, cd_i64 nSize,
-                     cd_u64 nAddress, cd_u64 nVirtualSize,
-                     xx_file_part_t filePart, const char *pName);
+int die_map_add_part(xx_memory_map *pMap, cd_i64 nOffset, cd_i64 nSize, cd_u64 nAddress, cd_u64 nVirtualSize, xx_file_part_t filePart, const char *pName);
 
 /* ------------------------------------------------------------- strings -- */
 
@@ -146,12 +142,10 @@ char *die_ansi_string(DieFile *pFile, cd_i64 nOffset, cd_i64 nMaxSize);
 /* Same bytes, same rules; separate name because the scripts distinguish. */
 char *die_utf8_string(DieFile *pFile, cd_i64 nOffset, cd_i64 nMaxSize);
 /* A NUL-terminated UTF-16 string converted to UTF-8. Caller frees. */
-char *die_unicode_string(DieFile *pFile, cd_i64 nOffset, cd_i64 nMaxSize,
-                         int bBigEndian);
+char *die_unicode_string(DieFile *pFile, cd_i64 nOffset, cd_i64 nMaxSize, int bBigEndian);
 /* As die_unicode_string, and also reports how many UTF-16 code units the
  * string occupies on disk -- which is not the length of the UTF-8 result. */
-char *die_unicode_string_n(DieFile *pFile, cd_i64 nOffset, cd_i64 nMaxSize,
-                           int bBigEndian, cd_i64 *pnUnits);
+char *die_unicode_string_n(DieFile *pFile, cd_i64 nOffset, cd_i64 nMaxSize, int bBigEndian, cd_i64 *pnUnits);
 /* UCSD/Pascal string: a uint8 length then that many bytes, with embedded
  * NULs shown as spaces (XBinary::read_ucsdString). Caller frees. */
 char *die_ucsd_string(DieFile *pFile, cd_i64 nOffset);
@@ -164,17 +158,12 @@ char *die_signature_hex(DieFile *pFile, cd_i64 nOffset, cd_i64 nSize);
 
 /* All of these clamp [nOffset, nOffset + nSize) to the file first, so a
  * negative nSize means "to the end", and return an absolute offset or -1. */
-cd_i64 die_find_bytes(DieFile *pFile, cd_i64 nOffset, cd_i64 nSize,
-                      const unsigned char *pNeedle, cd_i64 nNeedleSize);
-cd_i64 die_find_ansi_string(DieFile *pFile, cd_i64 nOffset, cd_i64 nSize,
-                            const char *pString);
-cd_i64 die_find_unicode_string(DieFile *pFile, cd_i64 nOffset, cd_i64 nSize,
-                               const char *pString, int bBigEndian);
+cd_i64 die_find_bytes(DieFile *pFile, cd_i64 nOffset, cd_i64 nSize, const unsigned char *pNeedle, cd_i64 nNeedleSize);
+cd_i64 die_find_ansi_string(DieFile *pFile, cd_i64 nOffset, cd_i64 nSize, const char *pString);
+cd_i64 die_find_unicode_string(DieFile *pFile, cd_i64 nOffset, cd_i64 nSize, const char *pString, int bBigEndian);
 cd_i64 die_find_u8(DieFile *pFile, cd_i64 nOffset, cd_i64 nSize, cd_u8 nValue);
-cd_i64 die_find_u16(DieFile *pFile, cd_i64 nOffset, cd_i64 nSize,
-                    cd_u16 nValue);
-cd_i64 die_find_u32(DieFile *pFile, cd_i64 nOffset, cd_i64 nSize,
-                    cd_u32 nValue);
+cd_i64 die_find_u16(DieFile *pFile, cd_i64 nOffset, cd_i64 nSize, cd_u16 nValue);
+cd_i64 die_find_u32(DieFile *pFile, cd_i64 nOffset, cd_i64 nSize, cd_u32 nValue);
 
 /* --------------------------------------------------------- statistics -- */
 

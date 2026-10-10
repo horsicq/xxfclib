@@ -13,10 +13,13 @@ XXFC_API void xx_apple_nib_init(xx_apple_nib *, xx_io_device *, int64_t);
 XXFC_API xx_apple_nib *xx_apple_nib_create(xx_io_device *, int64_t);
 XXFC_API void xx_apple_nib_destroy(xx_apple_nib *);
 XXFC_API void xx_apple_nib_free(xx_apple_nib *);
-XXFC_API bool xx_apple_nib_check_is_valid(Abstractformat *,xx_pd_struct *);
-XXFC_API bool xx_apple_nib_handle_base_info(Abstractformat *,xx_pd_struct *);
-XXFC_API bool xx_apple_nib_extract_record_to_device(Abstractformat *,xx_archive_record_state *,xx_io_device *,xx_pd_struct *);
-static inline Abstractformat *xx_apple_nib_to_format(xx_apple_nib *r) { return r ? &r->format : NULL; }
+XXFC_API bool xx_apple_nib_check_is_valid(Abstractformat *, xx_pd_struct *);
+XXFC_API bool xx_apple_nib_handle_base_info(Abstractformat *, xx_pd_struct *);
+XXFC_API bool xx_apple_nib_extract_record_to_device(Abstractformat *, xx_archive_record_state *, xx_io_device *, xx_pd_struct *);
+static inline Abstractformat *xx_apple_nib_to_format(xx_apple_nib *r)
+{
+    return r ? &r->format : NULL;
+}
 #ifdef __cplusplus
 }
 #endif

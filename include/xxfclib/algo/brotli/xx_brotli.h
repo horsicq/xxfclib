@@ -18,11 +18,7 @@ extern "C" {
  * wrapper used by the Brotli 7-Zip codec. The destination size is exact: a
  * successful call always writes exactly destination_size bytes.
  */
-XXFC_API bool xx_brotli_decompress_memory(const void *source,
-                                          size_t source_size,
-                                          void *destination,
-                                          size_t destination_size,
-                                          size_t *out_written);
+XXFC_API bool xx_brotli_decompress_memory(const void *source, size_t source_size, void *destination, size_t destination_size, size_t *out_written);
 
 /**
  * Decodes a complete Brotli stream into a bounded, library-allocated buffer.
@@ -30,10 +26,7 @@ XXFC_API bool xx_brotli_decompress_memory(const void *source,
  * useful for raw Brotli streams, which do not carry a universal expanded-size
  * field.
  */
-XXFC_API bool xx_brotli_decompress_alloc(const void *source,
-                                         size_t source_size,
-                                         uint8_t **out_data,
-                                         size_t *out_size);
+XXFC_API bool xx_brotli_decompress_alloc(const void *source, size_t source_size, uint8_t **out_data, size_t *out_size);
 
 #ifdef __cplusplus
 }

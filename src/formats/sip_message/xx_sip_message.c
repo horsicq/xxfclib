@@ -6,19 +6,220 @@
 #include "xxfclib/data/xx_data.h"
 #include "../common/xx_network_packet.h"
 
-static bool token(memory_blob *b,uint64_t p,uint64_t n){if(!n||n>64||!blob_span(b,p,n))return false;for(uint64_t i=0;i<n;++i){uint8_t c=b->p[(size_t)(p+i)];if(!((c>='A'&&c<='Z')||(c>='a'&&c<='z')||(c>='0'&&c<='9')||c=='-'||c=='_'))return false;}return true;}
-static bool prefix(memory_blob *b,uint64_t p,uint64_t n,const char *v){uint64_t z=xx_rt_strlen(v);return n>=z&&protocol_eq(b,p,z,v);}
-static bool authority(memory_blob *b,uint64_t p,uint64_t n){uint64_t end=p+n,label=p,hostend=end;unsigned labels=0;if(!n||n>255||!blob_span(b,p,n))return false;for(uint64_t i=p;i<end;++i)if(b->p[(size_t)i]==':'){uint64_t port;if(!protocol_dec(b,i+1,end-i-1,&port)||!port||port>65535)return false;hostend=i;break;}if(hostend==p)return false;for(uint64_t i=p;i<=hostend;++i){if(i==hostend||b->p[(size_t)i]=='.'){uint64_t z=i-label;if(!z||z>63||++labels>127||b->p[(size_t)label]=='-'||b->p[(size_t)i-1]=='-')return false;label=i+1;}else{uint8_t c=b->p[(size_t)i];if(!((c>='a'&&c<='z')||(c>='A'&&c<='Z')||(c>='0'&&c<='9')||c=='-'))return false;}}return true;}
-static bool sip_uri(memory_blob *b,uint64_t p,uint64_t n){if(!prefix(b,p,n,"sip:")||n<=4||n>512)return false;p+=4;n-=4;uint64_t host=p;for(uint64_t i=0;i<n;++i)if(b->p[(size_t)(p+i)]=='@'){if(host!=p||!i||!token(b,p,i))return false;host=p+i+1;}return authority(b,host,p+n-host);}
-static bool sip_address(memory_blob *b,uint64_t p,uint64_t n,bool from){if(n<7||b->p[(size_t)p]!='<')return false;uint64_t end=p+n,q=p+1;while(q<end&&b->p[(size_t)q]!='>')++q;if(q==end||!sip_uri(b,p+1,q-p-1))return false;++q;if(q==end)return !from;if(!prefix(b,q,end-q,";tag=")||!token(b,q+5,end-q-5))return false;return true;}
-static bool via(memory_blob *b,uint64_t p,uint64_t n){if(!prefix(b,p,n,"SIP/2.0/UDP ")||n>512)return false;uint64_t end=p+n,q=p+12;while(q<end&&b->p[(size_t)q]!=';')++q;if(!authority(b,p+12,q-p-12)||!prefix(b,q,end-q,";branch=z9hG4bK")||end-q<=15)return false;return token(b,q+8,end-q-8);}
-static XXFC_MAYBE_UNUSED bool rtsp_uri(memory_blob *b,uint64_t p,uint64_t n){if(protocol_eq(b,p,n,"*"))return true;if(!prefix(b,p,n,"rtsp://")||n>4096)return false;uint64_t end=p+n,q=p+7;while(q<end&&b->p[(size_t)q]!='/')++q;if(!authority(b,p+7,q-p-7))return false;while(q<end){uint8_t c=b->p[(size_t)q++];if(c=='%'){if(end-q<2)return false;for(unsigned i=0;i<2;++i){uint8_t x=b->p[(size_t)q++];if(!((x>='0'&&x<='9')||(x>='a'&&x<='f')||(x>='A'&&x<='F')))return false;}}else if(c<33||c>126||c=='#'||c=='\\')return false;}return true;}
-static bool pm_parse(Abstractformat *f,pm_stream *s,xx_pd_struct *pd){memory_blob b;uint64_t at=0,p,n,method=0,uri=0,un=0;uint64_t seen[128],lens[128],body=0;unsigned count=0,mask=0;bool ok=false;if(!blob_load(f,&b,pd))return false;BLOB_NEED(b.n>=32&&protocol_line(&b,&at,&p,&n,true)&&packet_ascii(&b,p,n,true));for(uint64_t i=0;i<n;++i)if(b.p[i]==' '){method=i;break;}BLOB_NEED(method&&token(&b,0,method));uri=method+1;for(uint64_t i=uri;i<n;++i)if(b.p[i]==' '){un=i-uri;break;}BLOB_NEED(un&&packet_ascii(&b,uri,un,false)&&protocol_eq(&b,uri+un+1,n-uri-un-1,"SIP/2.0"));BLOB_NEED((protocol_eq(&b,0,method,"MESSAGE")||protocol_eq(&b,0,method,"OPTIONS"))&&sip_uri(&b,uri,un)&&blob_add(f,s,&b,"request-line",0,at));while(true){uint64_t line=at;BLOB_NEED(protocol_line(&b,&at,&p,&n,true));if(!n)break;BLOB_NEED(count<128&&n<=4096&&packet_utf(&b,p,n));uint64_t key=0;for(uint64_t i=0;i<n;++i)if(b.p[(size_t)(p+i)]==':'){key=i;break;}BLOB_NEED(token(&b,p,key));for(unsigned j=0;j<count;++j){if(lens[j]==key){bool same=true;for(uint64_t k=0;k<key;++k)if((b.p[(size_t)(seen[j]+k)]|32)!=(b.p[(size_t)(p+k)]|32)){same=false;break;}BLOB_NEED(!same);}}seen[count]=p;lens[count++]=key;uint64_t value=p+key+1,end=p+n;while(value<end&&b.p[(size_t)value]==' ')++value;while(end>value&&b.p[(size_t)end-1]==' ')--end;BLOB_NEED(end>value);uint64_t z=end-value;if(security_ci(&b,p,key,"Content-Length")){BLOB_NEED(!(mask&1)&&protocol_dec(&b,value,z,&body));mask|=1;}else if(security_ci(&b,p,key,"CSeq")){uint64_t number=0,q=value;while(q<end&&b.p[(size_t)q]>='0'&&b.p[(size_t)q]<='9')++q;BLOB_NEED(protocol_dec(&b,value,q-value,&number)&&number>0);BLOB_NEED(q<end&&b.p[(size_t)q++]==' '&&end-q==method&&!xx_rt_memcmp(b.p+(size_t)q,b.p,(size_t)method));mask|=2;}else if(security_ci(&b,p,key,"Via")){BLOB_NEED(via(&b,value,z));mask|=4;}else if(security_ci(&b,p,key,"From")){BLOB_NEED(sip_address(&b,value,z,true));mask|=8;}else if(security_ci(&b,p,key,"To")){BLOB_NEED(sip_address(&b,value,z,false));mask|=16;}else if(security_ci(&b,p,key,"Call-ID")){BLOB_NEED(packet_ascii(&b,value,z,false));mask|=32;}else if(security_ci(&b,p,key,"Content-Type")){uint64_t slash=value;while(slash<end&&b.p[(size_t)slash]!='/')++slash;BLOB_NEED(slash<end&&token(&b,value,slash-value)&&token(&b,slash+1,end-slash-1));mask|=128;}else if(security_ci(&b,p,key,"Max-Forwards")){uint64_t hops;BLOB_NEED(protocol_dec(&b,value,z,&hops)&&hops<=255);mask|=64;}
-BLOB_NEED(blob_add(f,s,&b,"header",line,at-line));}BLOB_NEED((mask&127U)==127U&&body==b.n-at&&(!body||(mask&128)));if(body)BLOB_NEED(blob_add(f,s,&b,"message-body",at,body));s->size=(int64_t)b.n;ok=true;done:xx_mem_free(b.p);return ok;}
+static bool token(memory_blob *b, uint64_t p, uint64_t n)
+{
+    if (!n || n > 64 || !blob_span(b, p, n)) return false;
+    for (uint64_t i = 0; i < n; ++i) {
+        uint8_t c = b->p[(size_t)(p + i)];
+        if (!((c >= 'A' && c <= 'Z') || (c >= 'a' && c <= 'z') || (c >= '0' && c <= '9') || c == '-' || c == '_')) return false;
+    }
+    return true;
+}
+static bool prefix(memory_blob *b, uint64_t p, uint64_t n, const char *v)
+{
+    uint64_t z = xx_rt_strlen(v);
+    return n >= z && protocol_eq(b, p, z, v);
+}
+static bool authority(memory_blob *b, uint64_t p, uint64_t n)
+{
+    uint64_t end = p + n, label = p, hostend = end;
+    unsigned labels = 0;
+    if (!n || n > 255 || !blob_span(b, p, n)) return false;
+    for (uint64_t i = p; i < end; ++i)
+        if (b->p[(size_t)i] == ':') {
+            uint64_t port;
+            if (!protocol_dec(b, i + 1, end - i - 1, &port) || !port || port > 65535) return false;
+            hostend = i;
+            break;
+        }
+    if (hostend == p) return false;
+    for (uint64_t i = p; i <= hostend; ++i) {
+        if (i == hostend || b->p[(size_t)i] == '.') {
+            uint64_t z = i - label;
+            if (!z || z > 63 || ++labels > 127 || b->p[(size_t)label] == '-' || b->p[(size_t)i - 1] == '-') return false;
+            label = i + 1;
+        } else {
+            uint8_t c = b->p[(size_t)i];
+            if (!((c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z') || (c >= '0' && c <= '9') || c == '-')) return false;
+        }
+    }
+    return true;
+}
+static bool sip_uri(memory_blob *b, uint64_t p, uint64_t n)
+{
+    if (!prefix(b, p, n, "sip:") || n <= 4 || n > 512) return false;
+    p += 4;
+    n -= 4;
+    uint64_t host = p;
+    for (uint64_t i = 0; i < n; ++i)
+        if (b->p[(size_t)(p + i)] == '@') {
+            if (host != p || !i || !token(b, p, i)) return false;
+            host = p + i + 1;
+        }
+    return authority(b, host, p + n - host);
+}
+static bool sip_address(memory_blob *b, uint64_t p, uint64_t n, bool from)
+{
+    if (n < 7 || b->p[(size_t)p] != '<') return false;
+    uint64_t end = p + n, q = p + 1;
+    while (q < end && b->p[(size_t)q] != '>') ++q;
+    if (q == end || !sip_uri(b, p + 1, q - p - 1)) return false;
+    ++q;
+    if (q == end) return !from;
+    if (!prefix(b, q, end - q, ";tag=") || !token(b, q + 5, end - q - 5)) return false;
+    return true;
+}
+static bool via(memory_blob *b, uint64_t p, uint64_t n)
+{
+    if (!prefix(b, p, n, "SIP/2.0/UDP ") || n > 512) return false;
+    uint64_t end = p + n, q = p + 12;
+    while (q < end && b->p[(size_t)q] != ';') ++q;
+    if (!authority(b, p + 12, q - p - 12) || !prefix(b, q, end - q, ";branch=z9hG4bK") || end - q <= 15) return false;
+    return token(b, q + 8, end - q - 8);
+}
+static XXFC_MAYBE_UNUSED bool rtsp_uri(memory_blob *b, uint64_t p, uint64_t n)
+{
+    if (protocol_eq(b, p, n, "*")) return true;
+    if (!prefix(b, p, n, "rtsp://") || n > 4096) return false;
+    uint64_t end = p + n, q = p + 7;
+    while (q < end && b->p[(size_t)q] != '/') ++q;
+    if (!authority(b, p + 7, q - p - 7)) return false;
+    while (q < end) {
+        uint8_t c = b->p[(size_t)q++];
+        if (c == '%') {
+            if (end - q < 2) return false;
+            for (unsigned i = 0; i < 2; ++i) {
+                uint8_t x = b->p[(size_t)q++];
+                if (!((x >= '0' && x <= '9') || (x >= 'a' && x <= 'f') || (x >= 'A' && x <= 'F'))) return false;
+            }
+        } else if (c < 33 || c > 126 || c == '#' || c == '\\') return false;
+    }
+    return true;
+}
+static bool pm_parse(Abstractformat *f, pm_stream *s, xx_pd_struct *pd)
+{
+    memory_blob b;
+    uint64_t at = 0, p, n, method = 0, uri = 0, un = 0;
+    uint64_t seen[128], lens[128], body = 0;
+    unsigned count = 0, mask = 0;
+    bool ok = false;
+    if (!blob_load(f, &b, pd)) return false;
+    BLOB_NEED(b.n >= 32 && protocol_line(&b, &at, &p, &n, true) && packet_ascii(&b, p, n, true));
+    for (uint64_t i = 0; i < n; ++i)
+        if (b.p[i] == ' ') {
+            method = i;
+            break;
+        }
+    BLOB_NEED(method && token(&b, 0, method));
+    uri = method + 1;
+    for (uint64_t i = uri; i < n; ++i)
+        if (b.p[i] == ' ') {
+            un = i - uri;
+            break;
+        }
+    BLOB_NEED(un && packet_ascii(&b, uri, un, false) && protocol_eq(&b, uri + un + 1, n - uri - un - 1, "SIP/2.0"));
+    BLOB_NEED((protocol_eq(&b, 0, method, "MESSAGE") || protocol_eq(&b, 0, method, "OPTIONS")) && sip_uri(&b, uri, un) && blob_add(f, s, &b, "request-line", 0, at));
+    while (true) {
+        uint64_t line = at;
+        BLOB_NEED(protocol_line(&b, &at, &p, &n, true));
+        if (!n) break;
+        BLOB_NEED(count < 128 && n <= 4096 && packet_utf(&b, p, n));
+        uint64_t key = 0;
+        for (uint64_t i = 0; i < n; ++i)
+            if (b.p[(size_t)(p + i)] == ':') {
+                key = i;
+                break;
+            }
+        BLOB_NEED(token(&b, p, key));
+        for (unsigned j = 0; j < count; ++j) {
+            if (lens[j] == key) {
+                bool same = true;
+                for (uint64_t k = 0; k < key; ++k)
+                    if ((b.p[(size_t)(seen[j] + k)] | 32) != (b.p[(size_t)(p + k)] | 32)) {
+                        same = false;
+                        break;
+                    }
+                BLOB_NEED(!same);
+            }
+        }
+        seen[count] = p;
+        lens[count++] = key;
+        uint64_t value = p + key + 1, end = p + n;
+        while (value < end && b.p[(size_t)value] == ' ') ++value;
+        while (end > value && b.p[(size_t)end - 1] == ' ') --end;
+        BLOB_NEED(end > value);
+        uint64_t z = end - value;
+        if (security_ci(&b, p, key, "Content-Length")) {
+            BLOB_NEED(!(mask & 1) && protocol_dec(&b, value, z, &body));
+            mask |= 1;
+        } else if (security_ci(&b, p, key, "CSeq")) {
+            uint64_t number = 0, q = value;
+            while (q < end && b.p[(size_t)q] >= '0' && b.p[(size_t)q] <= '9') ++q;
+            BLOB_NEED(protocol_dec(&b, value, q - value, &number) && number > 0);
+            BLOB_NEED(q < end && b.p[(size_t)q++] == ' ' && end - q == method && !xx_rt_memcmp(b.p + (size_t)q, b.p, (size_t)method));
+            mask |= 2;
+        } else if (security_ci(&b, p, key, "Via")) {
+            BLOB_NEED(via(&b, value, z));
+            mask |= 4;
+        } else if (security_ci(&b, p, key, "From")) {
+            BLOB_NEED(sip_address(&b, value, z, true));
+            mask |= 8;
+        } else if (security_ci(&b, p, key, "To")) {
+            BLOB_NEED(sip_address(&b, value, z, false));
+            mask |= 16;
+        } else if (security_ci(&b, p, key, "Call-ID")) {
+            BLOB_NEED(packet_ascii(&b, value, z, false));
+            mask |= 32;
+        } else if (security_ci(&b, p, key, "Content-Type")) {
+            uint64_t slash = value;
+            while (slash < end && b.p[(size_t)slash] != '/') ++slash;
+            BLOB_NEED(slash < end && token(&b, value, slash - value) && token(&b, slash + 1, end - slash - 1));
+            mask |= 128;
+        } else if (security_ci(&b, p, key, "Max-Forwards")) {
+            uint64_t hops;
+            BLOB_NEED(protocol_dec(&b, value, z, &hops) && hops <= 255);
+            mask |= 64;
+        }
+        BLOB_NEED(blob_add(f, s, &b, "header", line, at - line));
+    }
+    BLOB_NEED((mask & 127U) == 127U && body == b.n - at && (!body || (mask & 128)));
+    if (body) BLOB_NEED(blob_add(f, s, &b, "message-body", at, body));
+    s->size = (int64_t)b.n;
+    ok = true;
+done:
+    xx_mem_free(b.p);
+    return ok;
+}
 
-void xx_sip_message_init(xx_sip_message *r,xx_io_device *d,int64_t b){if(r){xx_mem_zero(r,sizeof(*r));pm_init(&r->format,d,b,XX_FILE_TYPE_SIP_MESSAGE,"bin");}}
-xx_sip_message *xx_sip_message_create(xx_io_device *d,int64_t b){xx_sip_message *r=(xx_sip_message *)xx_mem_alloc(sizeof(*r));if(r)xx_sip_message_init(r,d,b);return r;}
-void xx_sip_message_destroy(xx_sip_message *r){if(r)xx_format_cleanup_extra_parameters(&r->format);}
-void xx_sip_message_free(xx_sip_message *r){if(r){xx_sip_message_destroy(r);xx_mem_free(r);}}
-bool xx_sip_message_check_is_valid(Abstractformat *f,xx_pd_struct *pd){return pm_valid(f,pd);}
-bool xx_sip_message_handle_base_info(Abstractformat *f,xx_pd_struct *pd){return pm_handle(f,pd);}
+void xx_sip_message_init(xx_sip_message *r, xx_io_device *d, int64_t b)
+{
+    if (r) {
+        xx_mem_zero(r, sizeof(*r));
+        pm_init(&r->format, d, b, XX_FILE_TYPE_SIP_MESSAGE, "bin");
+    }
+}
+xx_sip_message *xx_sip_message_create(xx_io_device *d, int64_t b)
+{
+    xx_sip_message *r = (xx_sip_message *)xx_mem_alloc(sizeof(*r));
+    if (r) xx_sip_message_init(r, d, b);
+    return r;
+}
+void xx_sip_message_destroy(xx_sip_message *r)
+{
+    if (r) xx_format_cleanup_extra_parameters(&r->format);
+}
+void xx_sip_message_free(xx_sip_message *r)
+{
+    if (r) {
+        xx_sip_message_destroy(r);
+        xx_mem_free(r);
+    }
+}
+bool xx_sip_message_check_is_valid(Abstractformat *f, xx_pd_struct *pd)
+{
+    return pm_valid(f, pd);
+}
+bool xx_sip_message_handle_base_info(Abstractformat *f, xx_pd_struct *pd)
+{
+    return pm_handle(f, pd);
+}

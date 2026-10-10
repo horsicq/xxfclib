@@ -82,7 +82,7 @@ struct xx_arcadyan {
     Abstractformat format;
     uint64_t number_of_records;
     uint64_t number_of_members;
-    uint64_t declared_size; /**< LZMA uncompressed size, UINT64_MAX if unset. */
+    uint64_t declared_size;   /**< LZMA uncompressed size, UINT64_MAX if unset. */
     uint32_t dictionary_size; /**< LZMA dictionary size from the header. */
     uint8_t properties;       /**< LZMA properties byte; always 0x5D. */
     int64_t stream_size;      /**< Bytes of LZMA-alone stream published. */
@@ -90,32 +90,21 @@ struct xx_arcadyan {
     void *internal;
 };
 
-XXFC_API void xx_arcadyan_init(xx_arcadyan *arc, xx_io_device *dev,
-                               int64_t base_address);
-XXFC_API xx_arcadyan *xx_arcadyan_create(xx_io_device *dev,
-                                         int64_t base_address);
+XXFC_API void xx_arcadyan_init(xx_arcadyan *arc, xx_io_device *dev, int64_t base_address);
+XXFC_API xx_arcadyan *xx_arcadyan_create(xx_io_device *dev, int64_t base_address);
 XXFC_API void xx_arcadyan_destroy(xx_arcadyan *arc);
 XXFC_API void xx_arcadyan_free(xx_arcadyan *arc);
 
-XXFC_API bool xx_arcadyan_check_is_valid(Abstractformat *self,
-                                         xx_pd_struct *pd);
-XXFC_API bool xx_arcadyan_handle_base_info(Abstractformat *self,
-                                           xx_pd_struct *pd);
-XXFC_API int64_t xx_arcadyan_get_format_size(Abstractformat *self,
-                                             xx_pd_struct *pd);
-XXFC_API uint64_t xx_arcadyan_get_number_of_archive_records(
-    Abstractformat *self, xx_pd_struct *pd);
+XXFC_API bool xx_arcadyan_check_is_valid(Abstractformat *self, xx_pd_struct *pd);
+XXFC_API bool xx_arcadyan_handle_base_info(Abstractformat *self, xx_pd_struct *pd);
+XXFC_API int64_t xx_arcadyan_get_format_size(Abstractformat *self, xx_pd_struct *pd);
+XXFC_API uint64_t xx_arcadyan_get_number_of_archive_records(Abstractformat *self, xx_pd_struct *pd);
 
-XXFC_API xx_archive_record_state *xx_arcadyan_create_archive_records_reading(
-    Abstractformat *self, const xx_list_s *options, xx_pd_struct *pd);
-XXFC_API const xx_archive_record *xx_arcadyan_get_current_archive_record(
-    Abstractformat *self, xx_archive_record_state *state);
-XXFC_API bool xx_arcadyan_unpack_current_archive_record(
-    Abstractformat *self, xx_archive_record_state *state, xx_pd_struct *pd);
-XXFC_API bool xx_arcadyan_archive_record_move_to_next(
-    Abstractformat *self, xx_archive_record_state *state, xx_pd_struct *pd);
-XXFC_API void xx_arcadyan_free_archive_records_reading(
-    Abstractformat *self, xx_archive_record_state *state);
+XXFC_API xx_archive_record_state *xx_arcadyan_create_archive_records_reading(Abstractformat *self, const xx_list_s *options, xx_pd_struct *pd);
+XXFC_API const xx_archive_record *xx_arcadyan_get_current_archive_record(Abstractformat *self, xx_archive_record_state *state);
+XXFC_API bool xx_arcadyan_unpack_current_archive_record(Abstractformat *self, xx_archive_record_state *state, xx_pd_struct *pd);
+XXFC_API bool xx_arcadyan_archive_record_move_to_next(Abstractformat *self, xx_archive_record_state *state, xx_pd_struct *pd);
+XXFC_API void xx_arcadyan_free_archive_records_reading(Abstractformat *self, xx_archive_record_state *state);
 
 XXFC_API uint64_t xx_arcadyan_get_number_of_records(const xx_arcadyan *arc);
 XXFC_API uint64_t xx_arcadyan_get_number_of_members(const xx_arcadyan *arc);
@@ -135,19 +124,24 @@ XXFC_API int64_t xx_arcadyan_get_archive_end(const xx_arcadyan *arc);
  */
 XXFC_API void xx_arcadyan_deobfuscate_prologue(void *data, size_t size);
 
-static inline Abstractformat *xx_arcadyan_to_format(xx_arcadyan *arc) {
+static inline Abstractformat *xx_arcadyan_to_format(xx_arcadyan *arc)
+{
     return arc ? &arc->format : NULL;
 }
-static inline void XArcadyan_init(xx_arcadyan *arc, xx_io_device *dev,
-                                  int64_t base_address) {
+static inline void XArcadyan_init(xx_arcadyan *arc, xx_io_device *dev, int64_t base_address)
+{
     xx_arcadyan_init(arc, dev, base_address);
 }
-static inline xx_arcadyan *XArcadyan_create(xx_io_device *dev,
-                                            int64_t base_address) {
+static inline xx_arcadyan *XArcadyan_create(xx_io_device *dev, int64_t base_address)
+{
     return xx_arcadyan_create(dev, base_address);
 }
-static inline void XArcadyan_free(xx_arcadyan *arc) { xx_arcadyan_free(arc); }
-static inline bool XArcadyan_is_valid(xx_arcadyan *arc, xx_pd_struct *pd) {
+static inline void XArcadyan_free(xx_arcadyan *arc)
+{
+    xx_arcadyan_free(arc);
+}
+static inline bool XArcadyan_is_valid(xx_arcadyan *arc, xx_pd_struct *pd)
+{
     return arc ? xx_format_is_valid(&arc->format, pd) : false;
 }
 

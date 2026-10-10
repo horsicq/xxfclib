@@ -9,13 +9,15 @@
 #ifdef __cplusplus
 extern "C" {
 #endif
-typedef struct xx_bioware_rim { Abstractformat format; } xx_bioware_rim;
-XXFC_API void xx_bioware_rim_init(xx_bioware_rim *,xx_io_device *,int64_t);
-XXFC_API xx_bioware_rim *xx_bioware_rim_create(xx_io_device *,int64_t);
+typedef struct xx_bioware_rim {
+    Abstractformat format;
+} xx_bioware_rim;
+XXFC_API void xx_bioware_rim_init(xx_bioware_rim *, xx_io_device *, int64_t);
+XXFC_API xx_bioware_rim *xx_bioware_rim_create(xx_io_device *, int64_t);
 XXFC_API void xx_bioware_rim_destroy(xx_bioware_rim *);
 XXFC_API void xx_bioware_rim_free(xx_bioware_rim *);
-XXFC_API bool xx_bioware_rim_check_is_valid(Abstractformat *,xx_pd_struct *);
-XXFC_API bool xx_bioware_rim_handle_base_info(Abstractformat *,xx_pd_struct *);
+XXFC_API bool xx_bioware_rim_check_is_valid(Abstractformat *, xx_pd_struct *);
+XXFC_API bool xx_bioware_rim_handle_base_info(Abstractformat *, xx_pd_struct *);
 #ifdef __cplusplus
 }
 #endif

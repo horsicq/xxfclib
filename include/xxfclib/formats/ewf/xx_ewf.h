@@ -81,21 +81,21 @@ typedef struct xx_ewf XEwf;
 
 struct xx_ewf {
     Abstractformat format;
-    uint64_t number_of_records;   /**< Always 1: the media image. */
-    uint64_t media_size;          /**< number_of_sectors * bytes_per_sector. */
+    uint64_t number_of_records; /**< Always 1: the media image. */
+    uint64_t media_size;        /**< number_of_sectors * bytes_per_sector. */
     uint64_t number_of_sectors;
-    uint64_t table_entries;       /**< Chunk entries found in the device. */
-    uint32_t number_of_chunks;    /**< As the volume section declares it. */
+    uint64_t table_entries;    /**< Chunk entries found in the device. */
+    uint32_t number_of_chunks; /**< As the volume section declares it. */
     uint32_t sectors_per_chunk;
     uint32_t bytes_per_sector;
     uint32_t chunk_size;
-    uint32_t segment_count;       /**< Segments found back to back. */
-    uint16_t first_segment;       /**< Segment number of the first one. */
+    uint32_t segment_count; /**< Segments found back to back. */
+    uint16_t first_segment; /**< Segment number of the first one. */
     uint8_t media_type;
     uint8_t media_flags;
     uint8_t compression_level;
-    bool is_smart;                /**< 94-byte EWF-S01 volume section. */
-    bool is_complete;             /**< Every chunk of the media is present. */
+    bool is_smart;    /**< 94-byte EWF-S01 volume section. */
+    bool is_complete; /**< Every chunk of the media is present. */
     bool has_md5;
     bool has_sha1;
     uint8_t md5[16];
@@ -111,19 +111,13 @@ XXFC_API void xx_ewf_free(xx_ewf *ewf);
 XXFC_API bool xx_ewf_check_is_valid(Abstractformat *self, xx_pd_struct *pd);
 XXFC_API bool xx_ewf_handle_base_info(Abstractformat *self, xx_pd_struct *pd);
 XXFC_API int64_t xx_ewf_get_format_size(Abstractformat *self, xx_pd_struct *pd);
-XXFC_API uint64_t xx_ewf_get_number_of_archive_records(Abstractformat *self,
-                                                       xx_pd_struct *pd);
+XXFC_API uint64_t xx_ewf_get_number_of_archive_records(Abstractformat *self, xx_pd_struct *pd);
 
-XXFC_API xx_archive_record_state *xx_ewf_create_archive_records_reading(
-    Abstractformat *self, const xx_list_s *options, xx_pd_struct *pd);
-XXFC_API const xx_archive_record *xx_ewf_get_current_archive_record(
-    Abstractformat *self, xx_archive_record_state *state);
-XXFC_API bool xx_ewf_unpack_current_archive_record(
-    Abstractformat *self, xx_archive_record_state *state, xx_pd_struct *pd);
-XXFC_API bool xx_ewf_archive_record_move_to_next(
-    Abstractformat *self, xx_archive_record_state *state, xx_pd_struct *pd);
-XXFC_API void xx_ewf_free_archive_records_reading(
-    Abstractformat *self, xx_archive_record_state *state);
+XXFC_API xx_archive_record_state *xx_ewf_create_archive_records_reading(Abstractformat *self, const xx_list_s *options, xx_pd_struct *pd);
+XXFC_API const xx_archive_record *xx_ewf_get_current_archive_record(Abstractformat *self, xx_archive_record_state *state);
+XXFC_API bool xx_ewf_unpack_current_archive_record(Abstractformat *self, xx_archive_record_state *state, xx_pd_struct *pd);
+XXFC_API bool xx_ewf_archive_record_move_to_next(Abstractformat *self, xx_archive_record_state *state, xx_pd_struct *pd);
+XXFC_API void xx_ewf_free_archive_records_reading(Abstractformat *self, xx_archive_record_state *state);
 
 /**
  * @brief Write the media image to @p output (NULL only decodes and verifies).
@@ -131,26 +125,31 @@ XXFC_API void xx_ewf_free_archive_records_reading(
  * Fails when a chunk is missing, damaged or fails its checksum, or when the
  * image records an MD5 that the media does not match.
  */
-XXFC_API bool xx_ewf_unpack_to_device(xx_ewf *ewf, xx_io_device *output,
-                                      xx_pd_struct *pd);
+XXFC_API bool xx_ewf_unpack_to_device(xx_ewf *ewf, xx_io_device *output, xx_pd_struct *pd);
 
 XXFC_API uint64_t xx_ewf_get_media_size(const xx_ewf *ewf);
 XXFC_API uint32_t xx_ewf_get_chunk_size(const xx_ewf *ewf);
 XXFC_API uint32_t xx_ewf_get_bytes_per_sector(const xx_ewf *ewf);
 XXFC_API bool xx_ewf_is_complete(const xx_ewf *ewf);
 
-static inline Abstractformat *xx_ewf_to_format(xx_ewf *ewf) {
+static inline Abstractformat *xx_ewf_to_format(xx_ewf *ewf)
+{
     return ewf ? &ewf->format : NULL;
 }
-static inline void XEwf_init(xx_ewf *ewf, xx_io_device *dev,
-                             int64_t base_address) {
+static inline void XEwf_init(xx_ewf *ewf, xx_io_device *dev, int64_t base_address)
+{
     xx_ewf_init(ewf, dev, base_address);
 }
-static inline xx_ewf *XEwf_create(xx_io_device *dev, int64_t base_address) {
+static inline xx_ewf *XEwf_create(xx_io_device *dev, int64_t base_address)
+{
     return xx_ewf_create(dev, base_address);
 }
-static inline void XEwf_free(xx_ewf *ewf) { xx_ewf_free(ewf); }
-static inline bool XEwf_is_valid(xx_ewf *ewf, xx_pd_struct *pd) {
+static inline void XEwf_free(xx_ewf *ewf)
+{
+    xx_ewf_free(ewf);
+}
+static inline bool XEwf_is_valid(xx_ewf *ewf, xx_pd_struct *pd)
+{
     return ewf ? xx_format_is_valid(&ewf->format, pd) : false;
 }
 

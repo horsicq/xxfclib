@@ -6,7 +6,8 @@
 #include "platforms/xx_settings_platform.h"
 #include "xxfclib/global/xx_settings_global.h"
 
-char *xx_settings_duplicate(const char *text, size_t size) {
+char *xx_settings_duplicate(const char *text, size_t size)
+{
     char *copy;
     if ((!text && size) || size == (size_t)-1) return NULL;
     copy = xx_rt_malloc(size + 1);
@@ -17,7 +18,8 @@ char *xx_settings_duplicate(const char *text, size_t size) {
     return copy;
 }
 
-bool xx_settings_buffer_append(xx_settings_buffer *buffer, const void *data, size_t size) {
+bool xx_settings_buffer_append(xx_settings_buffer *buffer, const void *data, size_t size)
+{
     size_t needed, capacity;
     char *allocation;
     if (size > XX_SETTINGS_MAX_FILE_SIZE || buffer->size > XX_SETTINGS_MAX_FILE_SIZE - size) return false;
@@ -36,11 +38,13 @@ bool xx_settings_buffer_append(xx_settings_buffer *buffer, const void *data, siz
     return true;
 }
 
-bool xx_settings_buffer_text(xx_settings_buffer *buffer, const char *text) {
+bool xx_settings_buffer_text(xx_settings_buffer *buffer, const char *text)
+{
     return xx_settings_buffer_append(buffer, text, xx_rt_strlen(text));
 }
 
-void xx_settings_value_release(xx_settings_value *value) {
+void xx_settings_value_release(xx_settings_value *value)
+{
     if (value->type == XX_SETTINGS_VALUE_STRING || value->type == XX_SETTINGS_VALUE_BYTES || value->type == XX_SETTINGS_VALUE_OPAQUE) {
         xx_rt_free((void *)value->data.buffer.data);
     } else if (value->type == XX_SETTINGS_VALUE_STRING_LIST) {
@@ -50,7 +54,8 @@ void xx_settings_value_release(xx_settings_value *value) {
     xx_rt_memset(value, 0, sizeof(*value));
 }
 
-static xxfc_status_t copy_value(xx_settings_value *destination, const xx_settings_value *source) {
+static xxfc_status_t copy_value(xx_settings_value *destination, const xx_settings_value *source)
+{
     *destination = *source;
     if (source->type == XX_SETTINGS_VALUE_STRING || source->type == XX_SETTINGS_VALUE_BYTES || source->type == XX_SETTINGS_VALUE_OPAQUE) {
         if ((!source->data.buffer.data && source->data.buffer.size) || source->data.buffer.size > XX_SETTINGS_MAX_FILE_SIZE) return XXFC_ERR_INVALID_ARG;
@@ -73,7 +78,10 @@ static xxfc_status_t copy_value(xx_settings_value *destination, const xx_setting
                 return XXFC_ERR_INVALID_ARG;
             }
             size_t item_size = xx_rt_strlen(source->data.list.items[i]);
-            if (item_size > XX_SETTINGS_MAX_FILE_SIZE - total_size) { xx_settings_value_release(destination); return XXFC_ERR_INVALID_ARG; }
+            if (item_size > XX_SETTINGS_MAX_FILE_SIZE - total_size) {
+                xx_settings_value_release(destination);
+                return XXFC_ERR_INVALID_ARG;
+            }
             total_size += item_size;
             items[i] = xx_settings_duplicate(source->data.list.items[i], item_size);
             if (!items[i]) {
@@ -88,7 +96,8 @@ static xxfc_status_t copy_value(xx_settings_value *destination, const xx_setting
     return XXFC_OK;
 }
 
-static xx_settings_entry *find_entry(const xx_settings *settings, const char *key) {
+static xx_settings_entry *find_entry(const xx_settings *settings, const char *key)
+{
     if (!settings || !key) return NULL;
     for (xx_settings_entry *entry = settings->entries; entry; entry = entry->next) {
         if (xx_rt_strcmp(entry->key, key) == 0) return entry;
@@ -96,7 +105,8 @@ static xx_settings_entry *find_entry(const xx_settings *settings, const char *ke
     return NULL;
 }
 
-static bool valid_key(const char *key) {
+static bool valid_key(const char *key)
+{
     size_t length;
     if (!key || !key[0] || key[0] == '/') return false;
     length = xx_rt_strlen(key);
@@ -107,7 +117,8 @@ static bool valid_key(const char *key) {
     return true;
 }
 
-static void free_entries(xx_settings_entry *entry) {
+static void free_entries(xx_settings_entry *entry)
+{
     while (entry) {
         xx_settings_entry *next = entry->next;
         xx_settings_value_release(&entry->value);
@@ -117,7 +128,8 @@ static void free_entries(xx_settings_entry *entry) {
     }
 }
 
-static void mark_clean(xx_settings *settings) {
+static void mark_clean(xx_settings *settings)
+{
     xx_settings_entry **link = &settings->entries;
     while (*link) {
         xx_settings_entry *entry = *link;
@@ -132,28 +144,36 @@ static void mark_clean(xx_settings *settings) {
     }
 }
 
-xx_settings *xx_settings_create_memory(void) {
+xx_settings *xx_settings_create_memory(void)
+{
     return xx_rt_calloc(1, sizeof(xx_settings));
 }
 
-xx_settings *xx_settings_create_ini(const char *path) {
+xx_settings *xx_settings_create_ini(const char *path)
+{
     xx_settings *settings;
     if (!path || !path[0]) return NULL;
     settings = xx_settings_create_memory();
     if (!settings) return NULL;
     settings->format = XX_SETTINGS_FORMAT_INI;
     settings->location = xx_settings_duplicate(path, xx_rt_strlen(path));
-    if (!settings->location) { xx_settings_destroy(settings); return NULL; }
+    if (!settings->location) {
+        xx_settings_destroy(settings);
+        return NULL;
+    }
     return settings;
 }
 
-static bool valid_component(const char *name) {
+static bool valid_component(const char *name)
+{
     if (!name || !name[0] || xx_rt_strcmp(name, ".") == 0 || xx_rt_strcmp(name, "..") == 0) return false;
-    for (const char *p = name; *p; ++p) if ((unsigned char)*p < 32 || *p == '/' || *p == '\\' || *p == ':') return false;
+    for (const char *p = name; *p; ++p)
+        if ((unsigned char)*p < 32 || *p == '/' || *p == '\\' || *p == ':') return false;
     return xx_rt_strlen(name) <= 255;
 }
 
-xx_settings *xx_settings_create_native(const char *organization, const char *application) {
+xx_settings *xx_settings_create_native(const char *organization, const char *application)
+{
     xx_settings *settings;
     if (!valid_component(organization) || !valid_component(application)) return NULL;
     settings = xx_settings_create_memory();
@@ -169,7 +189,8 @@ xx_settings *xx_settings_create_native(const char *organization, const char *app
     return settings;
 }
 
-void xx_settings_destroy(xx_settings *settings) {
+void xx_settings_destroy(xx_settings *settings)
+{
     if (!settings) return;
     if (xx_get_settings() == settings) xx_set_settings(NULL);
     free_entries(settings->entries);
@@ -179,17 +200,31 @@ void xx_settings_destroy(xx_settings *settings) {
     xx_rt_free(settings);
 }
 
-xx_settings_format_t xx_settings_get_format(const xx_settings *settings) { return settings ? settings->format : XX_SETTINGS_FORMAT_MEMORY; }
-const char *xx_settings_get_location(const xx_settings *settings) { return settings ? settings->location : NULL; }
-const char *xx_settings_get_organization(const xx_settings *settings) { return settings ? settings->organization : NULL; }
-const char *xx_settings_get_application(const xx_settings *settings) { return settings ? settings->application : NULL; }
+xx_settings_format_t xx_settings_get_format(const xx_settings *settings)
+{
+    return settings ? settings->format : XX_SETTINGS_FORMAT_MEMORY;
+}
+const char *xx_settings_get_location(const xx_settings *settings)
+{
+    return settings ? settings->location : NULL;
+}
+const char *xx_settings_get_organization(const xx_settings *settings)
+{
+    return settings ? settings->organization : NULL;
+}
+const char *xx_settings_get_application(const xx_settings *settings)
+{
+    return settings ? settings->application : NULL;
+}
 
-const xx_settings_value *xx_settings_get(const xx_settings *settings, const char *key) {
+const xx_settings_value *xx_settings_get(const xx_settings *settings, const char *key)
+{
     xx_settings_entry *entry = find_entry(settings, key);
     return entry && entry->value.type != XX_SETTINGS_VALUE_NONE ? &entry->value : NULL;
 }
 
-xxfc_status_t xx_settings_set(xx_settings *settings, const char *key, const xx_settings_value *value) {
+xxfc_status_t xx_settings_set(xx_settings *settings, const char *key, const xx_settings_value *value)
+{
     xx_settings_entry *entry;
     xx_settings_value copy;
     xxfc_status_t status;
@@ -215,12 +250,14 @@ xxfc_status_t xx_settings_set(xx_settings *settings, const char *key, const xx_s
     return XXFC_OK;
 }
 
-xxfc_status_t xx_settings_remove(xx_settings *settings, const char *key) {
+xxfc_status_t xx_settings_remove(xx_settings *settings, const char *key)
+{
     xx_settings_value value = {0};
     return xx_settings_set(settings, key, &value);
 }
 
-void xx_settings_clear(xx_settings *settings) {
+void xx_settings_clear(xx_settings *settings)
+{
     if (!settings) return;
     for (xx_settings_entry *entry = settings->entries; entry; entry = entry->next) {
         xx_settings_value_release(&entry->value);
@@ -228,20 +265,26 @@ void xx_settings_clear(xx_settings *settings) {
     }
 }
 
-size_t xx_settings_count(const xx_settings *settings) {
+size_t xx_settings_count(const xx_settings *settings)
+{
     size_t count = 0;
-    if (settings) for (xx_settings_entry *entry = settings->entries; entry; entry = entry->next) if (entry->value.type != XX_SETTINGS_VALUE_NONE) ++count;
+    if (settings)
+        for (xx_settings_entry *entry = settings->entries; entry; entry = entry->next)
+            if (entry->value.type != XX_SETTINGS_VALUE_NONE) ++count;
     return count;
 }
 
-const char *xx_settings_key_at(const xx_settings *settings, size_t index) {
-    if (settings) for (xx_settings_entry *entry = settings->entries; entry; entry = entry->next) {
-        if (entry->value.type != XX_SETTINGS_VALUE_NONE && index-- == 0) return entry->key;
-    }
+const char *xx_settings_key_at(const xx_settings *settings, size_t index)
+{
+    if (settings)
+        for (xx_settings_entry *entry = settings->entries; entry; entry = entry->next) {
+            if (entry->value.type != XX_SETTINGS_VALUE_NONE && index-- == 0) return entry->key;
+        }
     return NULL;
 }
 
-xxfc_status_t xx_settings_load(xx_settings *settings) {
+xxfc_status_t xx_settings_load(xx_settings *settings)
+{
     xx_settings temporary;
     xxfc_status_t status;
     if (!settings || settings->format == XX_SETTINGS_FORMAT_MEMORY) return XXFC_OK;
@@ -258,13 +301,18 @@ xxfc_status_t xx_settings_load(xx_settings *settings) {
     return status;
 }
 
-xxfc_status_t xx_settings_save(xx_settings *settings) {
+xxfc_status_t xx_settings_save(xx_settings *settings)
+{
     xxfc_status_t status;
     bool changed = false;
     if (!settings) return XXFC_OK;
-    for (xx_settings_entry *entry = settings->entries; entry; entry = entry->next) if (entry->dirty) changed = true;
+    for (xx_settings_entry *entry = settings->entries; entry; entry = entry->next)
+        if (entry->dirty) changed = true;
     if (!changed) return XXFC_OK;
-    if (settings->format == XX_SETTINGS_FORMAT_MEMORY) { mark_clean(settings); return XXFC_OK; }
+    if (settings->format == XX_SETTINGS_FORMAT_MEMORY) {
+        mark_clean(settings);
+        return XXFC_OK;
+    }
     if (settings->format == XX_SETTINGS_FORMAT_NATIVE) {
         status = xx_settings_platform_save_native(settings);
         if (status == XXFC_OK) mark_clean(settings);
@@ -289,7 +337,8 @@ xxfc_status_t xx_settings_save(xx_settings *settings) {
     return status;
 }
 
-bool xx_settings_is_writable(const xx_settings *settings) {
+bool xx_settings_is_writable(const xx_settings *settings)
+{
     if (!settings) return false;
     if (settings->format == XX_SETTINGS_FORMAT_MEMORY) return true;
     return settings->format == XX_SETTINGS_FORMAT_INI ? xx_settings_platform_file_writable(settings->location) : xx_settings_platform_native_writable(settings);

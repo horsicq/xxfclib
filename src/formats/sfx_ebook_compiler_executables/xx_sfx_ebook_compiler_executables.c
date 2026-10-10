@@ -34,8 +34,7 @@
 /* xxfc_defs.h is shared and is not edited from here, so the file-type
  * constant is resolved through the alias macro that the enumerator defines. */
 #ifdef SFX_EBOOK_COMPILER_EXECUTABLES
-#define XX_SFX_EBOOK_COMPILER_EXECUTABLES_FILE_TYPE \
-    XX_FILE_TYPE_SFX_EBOOK_COMPILER_EXECUTABLES
+#define XX_SFX_EBOOK_COMPILER_EXECUTABLES_FILE_TYPE XX_FILE_TYPE_SFX_EBOOK_COMPILER_EXECUTABLES
 #else
 #define XX_SFX_EBOOK_COMPILER_EXECUTABLES_FILE_TYPE XX_FILE_TYPE_UNKNOWN
 #endif
@@ -80,48 +79,45 @@
 
 /* --- small helpers --------------------------------------------------------- */
 
-static uint32_t ebk_le16(const uint8_t *bytes) {
+static uint32_t ebk_le16(const uint8_t *bytes)
+{
     return (uint32_t)bytes[0] | ((uint32_t)bytes[1] << 8U);
 }
 
-static bool ebk_read_at(xx_io_device *device, int64_t offset, void *buffer,
-                        size_t size) {
+static bool ebk_read_at(xx_io_device *device, int64_t offset, void *buffer, size_t size)
+{
     size_t done = 0U;
-    if (!device || (!buffer && size != 0U) || offset < 0 ||
-        xx_io_seek64(device, offset, SEEK_SET) != 0)
-        return false;
+    if (!device || (!buffer && size != 0U) || offset < 0 || xx_io_seek64(device, offset, SEEK_SET) != 0) return false;
     while (done < size) {
-        ssize_t amount = xx_io_read(device, (uint8_t *)buffer + done,
-                                    size - done);
+        ssize_t amount = xx_io_read(device, (uint8_t *)buffer + done, size - done);
         if (amount <= 0 || (size_t)amount > size - done) return false;
         done += (size_t)amount;
     }
     return true;
 }
 
-static bool ebk_stopped(xx_pd_struct *pd) {
+static bool ebk_stopped(xx_pd_struct *pd)
+{
     return pd && xx_pd_is_stopped(pd);
 }
 
 /* RFC 1950 header: Deflate, a window of at most 32 KiB, no preset
  * dictionary, and the check bits. */
-static bool ebk_zlib_header_ok(const uint8_t *header) {
-    return (header[0] & 0x0fU) == 8U && (header[0] >> 4U) <= 7U &&
-           (header[1] & 0x20U) == 0U &&
-           (((uint32_t)header[0] << 8U) | header[1]) % 31U == 0U;
+static bool ebk_zlib_header_ok(const uint8_t *header)
+{
+    return (header[0] & 0x0fU) == 8U && (header[0] >> 4U) <= 7U && (header[1] & 0x20U) == 0U && (((uint32_t)header[0] << 8U) | header[1]) % 31U == 0U;
 }
 
 /* --- names ----------------------------------------------------------------- */
 
 /* Windows-1252 0x80..0x9F.  The five undefined bytes keep their C1 code
  * point, which the name check refuses. */
-static const uint16_t ebk_cp1252_high[32] = {
-    0x20ACU, 0x0081U, 0x201AU, 0x0192U, 0x201EU, 0x2026U, 0x2020U, 0x2021U,
-    0x02C6U, 0x2030U, 0x0160U, 0x2039U, 0x0152U, 0x008DU, 0x017DU, 0x008FU,
-    0x0090U, 0x2018U, 0x2019U, 0x201CU, 0x201DU, 0x2022U, 0x2013U, 0x2014U,
-    0x02DCU, 0x2122U, 0x0161U, 0x203AU, 0x0153U, 0x009DU, 0x017EU, 0x0178U};
+static const uint16_t ebk_cp1252_high[32] = {0x20ACU, 0x0081U, 0x201AU, 0x0192U, 0x201EU, 0x2026U, 0x2020U, 0x2021U, 0x02C6U, 0x2030U, 0x0160U,
+                                             0x2039U, 0x0152U, 0x008DU, 0x017DU, 0x008FU, 0x0090U, 0x2018U, 0x2019U, 0x201CU, 0x201DU, 0x2022U,
+                                             0x2013U, 0x2014U, 0x02DCU, 0x2122U, 0x0161U, 0x203AU, 0x0153U, 0x009DU, 0x017EU, 0x0178U};
 
-static size_t ebk_put_utf8(char *out, uint8_t c) {
+static size_t ebk_put_utf8(char *out, uint8_t c)
+{
     uint32_t code = (c >= 0x80U && c < 0xA0U) ? ebk_cp1252_high[c - 0x80U] : c;
     if (code < 0x80U) {
         out[0] = (char)code;
@@ -138,7 +134,8 @@ static size_t ebk_put_utf8(char *out, uint8_t c) {
     return 3U;
 }
 
-static bool ebk_is_separator(uint8_t c) {
+static bool ebk_is_separator(uint8_t c)
+{
     return c == '\\' || c == '/';
 }
 
@@ -146,14 +143,12 @@ static bool ebk_is_separator(uint8_t c) {
  * leading separators are dropped and runs of separators collapse, so an
  * absolute Windows path becomes a relative one.  Whatever else is wrong
  * with the name is left for ebk_safe_output_name() to refuse. */
-static char *ebk_name(const uint8_t *bytes, size_t length) {
+static char *ebk_name(const uint8_t *bytes, size_t length)
+{
     char *out = (char *)xx_mem_alloc(length * 3U + 1U);
     size_t index = 0U, used = 0U;
     if (!out) return NULL;
-    if (length >= 2U && bytes[1] == ':' &&
-        ((bytes[0] >= 'A' && bytes[0] <= 'Z') ||
-         (bytes[0] >= 'a' && bytes[0] <= 'z')))
-        index = 2U;
+    if (length >= 2U && bytes[1] == ':' && ((bytes[0] >= 'A' && bytes[0] <= 'Z') || (bytes[0] >= 'a' && bytes[0] <= 'z'))) index = 2U;
     while (index < length && ebk_is_separator(bytes[index])) ++index;
     for (; index < length; ++index) {
         uint8_t c = bytes[index];
@@ -168,14 +163,14 @@ static char *ebk_name(const uint8_t *bytes, size_t length) {
     return out;
 }
 
-static char ebk_upper(char c) {
+static char ebk_upper(char c)
+{
     return (c >= 'a' && c <= 'z') ? (char)(c - 'a' + 'A') : c;
 }
 
-static bool ebk_is_device_stem(const char *name, size_t stem) {
-    static const char *const devices[] = {"CON",    "PRN",     "AUX",
-                                          "NUL",    "CONIN$",  "CONOUT$",
-                                          "CLOCK$"};
+static bool ebk_is_device_stem(const char *name, size_t stem)
+{
+    static const char *const devices[] = {"CON", "PRN", "AUX", "NUL", "CONIN$", "CONOUT$", "CLOCK$"};
     size_t k, i;
     for (k = 0U; k < sizeof(devices) / sizeof(devices[0]); ++k) {
         const char *word = devices[k];
@@ -184,10 +179,8 @@ static bool ebk_is_device_stem(const char *name, size_t stem) {
         if (i == stem && word[i] == 0) return true;
     }
     if (stem == 4U && name[3] >= '0' && name[3] <= '9' &&
-        ((ebk_upper(name[0]) == 'C' && ebk_upper(name[1]) == 'O' &&
-          ebk_upper(name[2]) == 'M') ||
-         (ebk_upper(name[0]) == 'L' && ebk_upper(name[1]) == 'P' &&
-          ebk_upper(name[2]) == 'T')))
+        ((ebk_upper(name[0]) == 'C' && ebk_upper(name[1]) == 'O' && ebk_upper(name[2]) == 'M') ||
+         (ebk_upper(name[0]) == 'L' && ebk_upper(name[1]) == 'P' && ebk_upper(name[2]) == 'T')))
         return true;
     return false;
 }
@@ -197,7 +190,8 @@ static bool ebk_is_device_stem(const char *name, size_t stem) {
  * nothing that climbs out), no drive colon or other character Windows
  * refuses, no C0/C1 control, no component that Windows would silently trim
  * (trailing dot or space), and no device name in any component. */
-static bool ebk_safe_output_name(const char *name) {
+static bool ebk_safe_output_name(const char *name)
+{
     size_t start = 0U, index = 0U;
     if (!name || !name[0]) return false;
     for (;;) {
@@ -205,19 +199,15 @@ static bool ebk_safe_output_name(const char *name) {
         if (c == '/' || c == 0U) {
             size_t length = index - start, stem = 0U;
             if (length == 0U) return false;
-            if (name[index - 1U] == '.' || name[index - 1U] == ' ')
-                return false;
+            if (name[index - 1U] == '.' || name[index - 1U] == ' ') return false;
             while (stem < length && name[start + stem] != '.') ++stem;
             while (stem > 0U && name[start + stem - 1U] == ' ') --stem;
             if (ebk_is_device_stem(name + start, stem)) return false;
             if (c == 0U) break;
             start = index + 1U;
-        } else if (c < 0x20U || c == 0x7fU || c == '\\' || c == ':' ||
-                   c == '*' || c == '?' || c == '"' || c == '<' || c == '>' ||
-                   c == '|') {
+        } else if (c < 0x20U || c == 0x7fU || c == '\\' || c == ':' || c == '*' || c == '?' || c == '"' || c == '<' || c == '>' || c == '|') {
             return false;
-        } else if (c == 0xC2U && (unsigned char)name[index + 1U] >= 0x80U &&
-                   (unsigned char)name[index + 1U] <= 0x9FU) {
+        } else if (c == 0xC2U && (unsigned char)name[index + 1U] >= 0x80U && (unsigned char)name[index + 1U] <= 0x9FU) {
             return false; /* U+0080..U+009F */
         }
         ++index;
@@ -228,7 +218,8 @@ static bool ebk_safe_output_name(const char *name) {
 /* Case folding as NTFS does it for the characters a Windows-1252 name can
  * produce: ASCII, Latin-1 and the Windows-1252 letter pairs.  Every mapping
  * keeps the UTF-8 length, so names fold in place. */
-static void ebk_fold(const char *name, char *out) {
+static void ebk_fold(const char *name, char *out)
+{
     const unsigned char *in = (const unsigned char *)name;
     unsigned char *folded = (unsigned char *)out;
     size_t index = 0U;
@@ -247,19 +238,18 @@ static void ebk_fold(const char *name, char *out) {
             index += 2U;
         } else if (c == 0xC5U && d != 0U) {
             folded[index] = c;
-            folded[index + 1U] = (d == 0xA1U || d == 0x93U || d == 0xBEU)
-                                     ? (unsigned char)(d - 1U) : d;
+            folded[index + 1U] = (d == 0xA1U || d == 0x93U || d == 0xBEU) ? (unsigned char)(d - 1U) : d;
             index += 2U;
         } else {
-            folded[index] = (c >= 'a' && c <= 'z') ? (unsigned char)(c - 0x20U)
-                                                   : c;
+            folded[index] = (c >= 'a' && c <= 'z') ? (unsigned char)(c - 0x20U) : c;
             ++index;
         }
     }
     folded[index] = 0U;
 }
 
-static uint32_t ebk_hash(const char *folded) {
+static uint32_t ebk_hash(const char *folded)
+{
     uint32_t hash = 2166136261U;
     for (; *folded; ++folded) {
         hash ^= (uint8_t)*folded;
@@ -270,7 +260,8 @@ static uint32_t ebk_hash(const char *folded) {
 
 /* "<name>_<number>", the number going in front of the last component's
  * extension. */
-static char *ebk_with_suffix(const char *name, size_t number) {
+static char *ebk_with_suffix(const char *name, size_t number)
+{
     char digits[24];
     size_t count = 0U, length = xx_str_len(name), dot = length, index, used;
     char *out;
@@ -297,7 +288,8 @@ static char *ebk_with_suffix(const char *name, size_t number) {
 }
 
 /* The decimal file index, the name used when a book has no name table. */
-static char *ebk_index_name(uint32_t index) {
+static char *ebk_index_name(uint32_t index)
+{
     char digits[16];
     size_t count = 0U, used = 0U;
     char *out;
@@ -319,13 +311,13 @@ typedef struct ebk_member_s {
     int64_t data_offset;   /**< eBook Creator: zlib stream; SBook: 1st chunk. */
     int64_t packed_span;   /**< SBook: all chunks with their size fields. */
     uint32_t header_size;
-    uint32_t packed_size;  /**< eBook Creator only. */
-    uint32_t raw_size;     /**< eBook Creator only. */
-    uint32_t chunks;       /**< SBook only. */
-    uint32_t dos_stamp;    /**< SBook only: time in the low half, date high. */
-    bool safe;             /**< The name may be used as an output path. */
-    char *name;            /**< UTF-8, '/' separators, unique if safe. */
-    char *folded;          /**< Case-folded name, only while deduplicating. */
+    uint32_t packed_size; /**< eBook Creator only. */
+    uint32_t raw_size;    /**< eBook Creator only. */
+    uint32_t chunks;      /**< SBook only. */
+    uint32_t dos_stamp;   /**< SBook only: time in the low half, date high. */
+    bool safe;            /**< The name may be used as an output path. */
+    char *name;           /**< UTF-8, '/' separators, unique if safe. */
+    char *folded;         /**< Case-folded name, only while deduplicating. */
 } ebk_member;
 
 typedef struct ebk_info_s {
@@ -349,7 +341,8 @@ typedef struct ebk_stream_s {
     uint32_t variant;
 } ebk_stream;
 
-static void ebk_members_free(ebk_member *items, size_t count) {
+static void ebk_members_free(ebk_member *items, size_t count)
+{
     size_t index;
     if (!items) return;
     for (index = 0U; index < count; ++index) {
@@ -359,7 +352,8 @@ static void ebk_members_free(ebk_member *items, size_t count) {
     xx_mem_free(items);
 }
 
-static void ebk_stream_free(void *opaque) {
+static void ebk_stream_free(void *opaque)
+{
     ebk_stream *stream = (ebk_stream *)opaque;
     if (!stream) return;
     ebk_members_free(stream->items, stream->count);
@@ -371,27 +365,21 @@ static void ebk_stream_free(void *opaque) {
 /* The PE headers must be present.  *overlay receives where the last
  * section's raw data ends, or -1 when a section claims bytes the file does
  * not have; *headers_end the end of the section table. */
-static bool ebk_pe(xx_io_device *device, int64_t base, int64_t size,
-                   int64_t *overlay, int64_t *headers_end) {
+static bool ebk_pe(xx_io_device *device, int64_t base, int64_t size, int64_t *overlay, int64_t *headers_end)
+{
     uint8_t dos[0x40], nt[24], table[EBK_MAX_SECTIONS * 40U];
     uint32_t sections, optional, index;
     int64_t lfanew, table_at, end = 0;
     bool fits = true;
-    if (size < EBK_MIN_FILE ||
-        !ebk_read_at(device, base, dos, sizeof(dos)) || dos[0] != 'M' ||
-        dos[1] != 'Z')
-        return false;
+    if (size < EBK_MIN_FILE || !ebk_read_at(device, base, dos, sizeof(dos)) || dos[0] != 'M' || dos[1] != 'Z') return false;
     lfanew = (int64_t)xx_data_get_u32(dos + 0x3c, 4, 0, false);
-    if (lfanew < 4 || lfanew > EBK_MAX_LFANEW || lfanew > size - 24 ||
-        !ebk_read_at(device, base + lfanew, nt, sizeof(nt)) || nt[0] != 'P' ||
-        nt[1] != 'E' || nt[2] != 0U || nt[3] != 0U)
+    if (lfanew < 4 || lfanew > EBK_MAX_LFANEW || lfanew > size - 24 || !ebk_read_at(device, base + lfanew, nt, sizeof(nt)) || nt[0] != 'P' || nt[1] != 'E' ||
+        nt[2] != 0U || nt[3] != 0U)
         return false;
     sections = ebk_le16(nt + 6);
     optional = ebk_le16(nt + 20);
     table_at = lfanew + 24 + (int64_t)optional;
-    if (sections == 0U || sections > EBK_MAX_SECTIONS ||
-        table_at > size - (int64_t)sections * 40 ||
-        !ebk_read_at(device, base + table_at, table, (size_t)sections * 40U))
+    if (sections == 0U || sections > EBK_MAX_SECTIONS || table_at > size - (int64_t)sections * 40 || !ebk_read_at(device, base + table_at, table, (size_t)sections * 40U))
         return false;
     for (index = 0U; index < sections; ++index) {
         const uint8_t *row = table + index * 40U;
@@ -408,12 +396,8 @@ static bool ebk_pe(xx_io_device *device, int64_t base, int64_t size,
 
 /* --- eBook Creator ------------------------------------------------------------ */
 
-static const uint8_t ebc_head_a[20] = {
-    0x00, 0x00, 0x02, 0x00, 0xFF, 0xFF, 0x01, 0x00, 0x0A, 0x00,
-    'C',  'U',  'p',  'd',  'a',  't',  'e',  'D',  'i',  'r'};
-static const uint8_t ebc_head_b[19] = {
-    0xFF, 0xFF, 0x01, 0x00, 0x0B, 0x00, 'C', 'U', 'p', 'd',
-    'a',  't',  'e',  'E',  'l',  'e',  'm', 0x01, 0x00};
+static const uint8_t ebc_head_a[20] = {0x00, 0x00, 0x02, 0x00, 0xFF, 0xFF, 0x01, 0x00, 0x0A, 0x00, 'C', 'U', 'p', 'd', 'a', 't', 'e', 'D', 'i', 'r'};
+static const uint8_t ebc_head_b[19] = {0xFF, 0xFF, 0x01, 0x00, 0x0B, 0x00, 'C', 'U', 'p', 'd', 'a', 't', 'e', 'E', 'l', 'e', 'm', 0x01, 0x00};
 
 /* Walks the file pack.  The first element's class record and id are part
  * of the 43-byte header; every later element opens with the class reference
@@ -421,9 +405,8 @@ static const uint8_t ebc_head_b[19] = {
  * block size - 4 bytes.  Each field is checked against the bytes present
  * before it is used.  With @p items the records are also kept (names come
  * later). */
-static bool ebc_walk(xx_io_device *device, int64_t base, int64_t size,
-                     int64_t at, uint32_t count, ebk_member *items,
-                     int64_t *pack_end, xx_pd_struct *pd) {
+static bool ebc_walk(xx_io_device *device, int64_t base, int64_t size, int64_t at, uint32_t count, ebk_member *items, int64_t *pack_end, xx_pd_struct *pd)
+{
     int64_t position = at + EBC_HEADER;
     uint32_t index;
     for (index = 0U; index < count; ++index) {
@@ -433,26 +416,18 @@ static bool ebc_walk(xx_io_device *device, int64_t base, int64_t size,
         uint32_t block, raw;
         if ((index & 0xFFU) == 0U && ebk_stopped(pd)) return false;
         if (index != 0U) {
-            if (size - position < (int64_t)sizeof(head) ||
-                !ebk_read_at(device, base + position, head, sizeof(head)) ||
-                ebk_le16(head) != EBC_CLASS_REF)
-                return false;
+            if (size - position < (int64_t)sizeof(head) || !ebk_read_at(device, base + position, head, sizeof(head)) || ebk_le16(head) != EBC_CLASS_REF) return false;
             header = position;
             sizes_at = position + EBC_ELEMENT_REF;
             fields = head + EBC_ELEMENT_REF;
-        } else if (size - position < 10 ||
-                   !ebk_read_at(device, base + position, head, 10U)) {
+        } else if (size - position < 10 || !ebk_read_at(device, base + position, head, 10U)) {
             return false;
         }
         block = xx_data_get_u32(fields, 4, 0, false);
         raw = xx_data_get_u32(fields + 4, 4, 0, false);
         /* The viewer reads both sizes as signed. */
-        if (block < 4U + EBK_MIN_PACKED || block > (uint32_t)INT32_MAX ||
-            raw > (uint32_t)INT32_MAX ||
-            (int64_t)block > size - sizes_at - 4 ||
-            (uint64_t)raw > (uint64_t)(block - 4U) * EBK_DEFLATE_RATIO +
-                                EBK_DEFLATE_SLACK ||
-            !ebk_zlib_header_ok(fields + 8))
+        if (block < 4U + EBK_MIN_PACKED || block > (uint32_t)INT32_MAX || raw > (uint32_t)INT32_MAX || (int64_t)block > size - sizes_at - 4 ||
+            (uint64_t)raw > (uint64_t)(block - 4U) * EBK_DEFLATE_RATIO + EBK_DEFLATE_SLACK || !ebk_zlib_header_ok(fields + 8))
             return false;
         if (items) {
             ebk_member *member = &items[index];
@@ -475,30 +450,21 @@ static bool ebc_walk(xx_io_device *device, int64_t base, int64_t size,
  * distinct file and the entries must fill the table exactly.  With @p items
  * each named file gets its name.  False means "no usable table", not "no
  * book". */
-static bool ebc_names(xx_io_device *device, int64_t base, int64_t size,
-                      int64_t at, uint32_t count, ebk_member *items,
-                      int64_t *table_at, uint32_t *table_size) {
+static bool ebc_names(xx_io_device *device, int64_t base, int64_t size, int64_t at, uint32_t count, ebk_member *items, int64_t *table_at, uint32_t *table_size)
+{
     uint8_t head[EBC_NAMES_HEADER];
     uint8_t *table = NULL, *seen = NULL;
     uint32_t length, entry;
     size_t position = 0U;
     bool result = false;
-    if (size - at < (int64_t)sizeof(head) ||
-        !ebk_read_at(device, base + at, head, sizeof(head)) ||
-        ebk_le16(head) != EBC_DIR_REF || ebk_le16(head + 4) == 0U ||
-        ebk_le16(head + 6) != EBC_CLASS_REF ||
-        ebk_le16(head + 8) != EBC_TYPE_NAMES)
+    if (size - at < (int64_t)sizeof(head) || !ebk_read_at(device, base + at, head, sizeof(head)) || ebk_le16(head) != EBC_DIR_REF || ebk_le16(head + 4) == 0U ||
+        ebk_le16(head + 6) != EBC_CLASS_REF || ebk_le16(head + 8) != EBC_TYPE_NAMES)
         return false;
     length = xx_data_get_u32(head + 10, 4, 0, false);
-    if (length > EBC_MAX_TABLE ||
-        (uint64_t)length < (uint64_t)count * (EBC_ENTRY_TAIL + 2U) ||
-        (int64_t)length > size - at - (int64_t)sizeof(head))
-        return false;
+    if (length > EBC_MAX_TABLE || (uint64_t)length < (uint64_t)count * (EBC_ENTRY_TAIL + 2U) || (int64_t)length > size - at - (int64_t)sizeof(head)) return false;
     table = (uint8_t *)xx_mem_alloc(length);
     seen = (uint8_t *)xx_mem_calloc(count, 1U);
-    if (!table || !seen ||
-        !ebk_read_at(device, base + at + (int64_t)sizeof(head), table, length))
-        goto done;
+    if (!table || !seen || !ebk_read_at(device, base + at + (int64_t)sizeof(head), table, length)) goto done;
     for (entry = 0U; entry < count; ++entry) {
         size_t name_start = position, name_length;
         uint32_t file;
@@ -507,10 +473,7 @@ static bool ebc_names(xx_io_device *device, int64_t base, int64_t size,
             ++position;
         }
         name_length = position - name_start;
-        if (position >= length || name_length == 0U ||
-            name_length > EBK_MAX_NAME ||
-            length - position - 1U < EBC_ENTRY_TAIL)
-            goto done;
+        if (position >= length || name_length == 0U || name_length > EBK_MAX_NAME || length - position - 1U < EBC_ENTRY_TAIL) goto done;
         file = xx_data_get_u32(table + position + 1U, 4, 0, false);
         if (file == 0U || file > count || seen[file - 1U]) goto done;
         seen[file - 1U] = 1U;
@@ -539,24 +502,18 @@ done:
     return result;
 }
 
-static bool ebc_scan(xx_io_device *device, int64_t base, int64_t size,
-                     int64_t at, bool with_names, ebk_info *info,
-                     xx_pd_struct *pd) {
+static bool ebc_scan(xx_io_device *device, int64_t base, int64_t size, int64_t at, bool with_names, ebk_info *info, xx_pd_struct *pd)
+{
     uint8_t head[EBC_HEADER];
     uint8_t tail[4];
     uint32_t count;
     int64_t pack_end = 0;
-    if (size - at < (int64_t)sizeof(head) ||
-        !ebk_read_at(device, base + at, head, sizeof(head)) ||
-        xx_rt_memcmp(head, ebc_head_a, sizeof(ebc_head_a)) != 0 ||
-        xx_rt_memcmp(head + EBC_ELEMENT0_CLASS, ebc_head_b,
-                     sizeof(ebc_head_b)) != 0)
+    if (size - at < (int64_t)sizeof(head) || !ebk_read_at(device, base + at, head, sizeof(head)) || xx_rt_memcmp(head, ebc_head_a, sizeof(ebc_head_a)) != 0 ||
+        xx_rt_memcmp(head + EBC_ELEMENT0_CLASS, ebc_head_b, sizeof(ebc_head_b)) != 0)
         return false;
     count = ebk_le16(head + 22);
     /* Every element takes at least its sizes and a minimal zlib stream. */
-    if (count == 0U ||
-        (int64_t)count > (size - at - (int64_t)EBC_HEADER) /
-                             (int64_t)(8U + EBK_MIN_PACKED) ||
+    if (count == 0U || (int64_t)count > (size - at - (int64_t)EBC_HEADER) / (int64_t)(8U + EBK_MIN_PACKED) ||
         !ebc_walk(device, base, size, at, count, NULL, &pack_end, pd))
         return false;
     info->variant = XX_SFX_EBOOK_VARIANT_EBOOK_CREATOR;
@@ -568,15 +525,10 @@ static bool ebc_scan(xx_io_device *device, int64_t base, int64_t size,
     info->names = -1;
     info->names_size = 0U;
     info->end = pack_end;
-    if (with_names &&
-        ebc_names(device, base, size, pack_end, count, NULL, &info->names,
-                  &info->names_size))
-        info->end = info->names + (int64_t)info->names_size;
+    if (with_names && ebc_names(device, base, size, pack_end, count, NULL, &info->names, &info->names_size)) info->end = info->names + (int64_t)info->names_size;
     /* The book ends with the store's offset and two letters. */
     info->has_trailer =
-        size - info->end >= EBC_TRAILER &&
-        ebk_read_at(device, base + size - EBC_TRAILER, tail, sizeof(tail)) &&
-        (int64_t)xx_data_get_u32(tail, 4, 0, false) == at;
+        size - info->end >= EBC_TRAILER && ebk_read_at(device, base + size - EBC_TRAILER, tail, sizeof(tail)) && (int64_t)xx_data_get_u32(tail, 4, 0, false) == at;
     if (info->has_trailer) info->end = size;
     return true;
 }
@@ -587,9 +539,9 @@ static bool ebc_scan(xx_io_device *device, int64_t base, int64_t size,
  * ends where the next u32 is 0: a chunk is never empty, and the next file
  * (or the marker) starts with a 0 field.  With @p items (room for @p
  * capacity files) the files are also recorded. */
-static bool sb_walk(xx_io_device *device, int64_t base, int64_t size,
-                    int64_t at, ebk_member *items, uint32_t capacity,
-                    uint32_t *count, int64_t *marker, xx_pd_struct *pd) {
+static bool sb_walk(xx_io_device *device, int64_t base, int64_t size, int64_t at, ebk_member *items, uint32_t capacity, uint32_t *count, int64_t *marker,
+                    xx_pd_struct *pd)
+{
     uint8_t record[EBK_MAX_NAME + 8U];
     int64_t position = at;
     uint32_t files = 0U;
@@ -598,16 +550,11 @@ static bool sb_walk(xx_io_device *device, int64_t base, int64_t size,
         uint32_t name_length, chunks = 0U;
         int64_t chunk_at;
         if ((files & 0xFFU) == 0U && ebk_stopped(pd)) return false;
-        if (size - position < (int64_t)sizeof(head) ||
-            !ebk_read_at(device, base + position, head, sizeof(head)))
-            return false;
+        if (size - position < (int64_t)sizeof(head) || !ebk_read_at(device, base + position, head, sizeof(head))) return false;
         name_length = xx_data_get_u32(head + 4, 4, 0, false);
         if (name_length == 0U && xx_data_get_u32(head, 4, 0, false) == 0U) break;
-        if (files >= SB_MAX_FILES || (items && files >= capacity) ||
-            name_length == 0U || name_length > EBK_MAX_NAME ||
-            (int64_t)name_length + 8 > size - position - 8 ||
-            !ebk_read_at(device, base + position + 8, record,
-                         (size_t)name_length + 8U))
+        if (files >= SB_MAX_FILES || (items && files >= capacity) || name_length == 0U || name_length > EBK_MAX_NAME || (int64_t)name_length + 8 > size - position - 8 ||
+            !ebk_read_at(device, base + position + 8, record, (size_t)name_length + 8U))
             return false;
         {
             uint32_t byte;
@@ -618,15 +565,11 @@ static bool sb_walk(xx_io_device *device, int64_t base, int64_t size,
         for (;;) {
             uint8_t chunk[6];
             uint32_t packed;
-            if (size - chunk_at < 4 ||
-                !ebk_read_at(device, base + chunk_at, chunk, 4U))
-                return false;
+            if (size - chunk_at < 4 || !ebk_read_at(device, base + chunk_at, chunk, 4U)) return false;
             packed = xx_data_get_u32(chunk, 4, 0, false);
             if (packed == 0U && chunks != 0U) break;
-            if (packed < EBK_MIN_PACKED || packed > SB_MAX_PACKED_CHUNK ||
-                (int64_t)packed > size - chunk_at - 4 ||
-                !ebk_read_at(device, base + chunk_at + 4, chunk + 4, 2U) ||
-                !ebk_zlib_header_ok(chunk + 4))
+            if (packed < EBK_MIN_PACKED || packed > SB_MAX_PACKED_CHUNK || (int64_t)packed > size - chunk_at - 4 ||
+                !ebk_read_at(device, base + chunk_at + 4, chunk + 4, 2U) || !ebk_zlib_header_ok(chunk + 4))
                 return false;
             chunk_at += 4 + (int64_t)packed;
             ++chunks;
@@ -652,19 +595,15 @@ static bool sb_walk(xx_io_device *device, int64_t base, int64_t size,
     return true;
 }
 
-static bool sb_scan(xx_io_device *device, int64_t base, int64_t size,
-                    int64_t at, ebk_info *info, xx_pd_struct *pd) {
+static bool sb_scan(xx_io_device *device, int64_t base, int64_t size, int64_t at, ebk_info *info, xx_pd_struct *pd)
+{
     uint8_t head[SB_HEADER];
     uint8_t tail[4];
     uint32_t count = 0U;
     int64_t marker = 0;
-    if (size - at < (int64_t)sizeof(head) ||
-        !ebk_read_at(device, base + at, head, sizeof(head)) ||
-        xx_data_get_u32(head, 4, 0, false) != 5U ||
-        (xx_rt_memcmp(head + 4, "Sbook", 5U) != 0 &&
-         xx_rt_memcmp(head + 4, "Ebook", 5U) != 0) ||
-        !sb_walk(device, base, size, at + SB_HEADER, NULL, 0U, &count, &marker,
-                 pd))
+    if (size - at < (int64_t)sizeof(head) || !ebk_read_at(device, base + at, head, sizeof(head)) || xx_data_get_u32(head, 4, 0, false) != 5U ||
+        (xx_rt_memcmp(head + 4, "Sbook", 5U) != 0 && xx_rt_memcmp(head + 4, "Ebook", 5U) != 0) ||
+        !sb_walk(device, base, size, at + SB_HEADER, NULL, 0U, &count, &marker, pd))
         return false;
     info->variant = XX_SFX_EBOOK_VARIANT_SBOOK_BUILDER;
     info->count = count;
@@ -679,9 +618,7 @@ static bool sb_scan(xx_io_device *device, int64_t base, int64_t size,
     info->tag[5] = 0;
     /* The last four bytes of the file give the store's offset. */
     info->has_trailer =
-        size - info->end >= SB_TRAILER &&
-        ebk_read_at(device, base + size - SB_TRAILER, tail, sizeof(tail)) &&
-        (int64_t)xx_data_get_u32(tail, 4, 0, false) == at;
+        size - info->end >= SB_TRAILER && ebk_read_at(device, base + size - SB_TRAILER, tail, sizeof(tail)) && (int64_t)xx_data_get_u32(tail, 4, 0, false) == at;
     if (info->has_trailer) info->end = size;
     return true;
 }
@@ -690,24 +627,20 @@ static bool sb_scan(xx_io_device *device, int64_t base, int64_t size,
 
 /* The store starts at the overlay; both builders also record its offset in
  * a trailer, which is tried when the overlay does not hold it. */
-static bool ebk_scan(Abstractformat *format, bool with_names, ebk_info *info,
-                     xx_pd_struct *pd) {
+static bool ebk_scan(Abstractformat *format, bool with_names, ebk_info *info, xx_pd_struct *pd)
+{
     int64_t candidates[3];
     int64_t total, size, overlay = -1, headers_end = 0;
     size_t count = 0U, index, other;
     uint8_t tail[6];
-    if (!format || !format->device || !info || format->base_address < 0)
-        return false;
+    if (!format || !format->device || !info || format->base_address < 0) return false;
     total = xx_io_total_size(format->device);
     if (total < format->base_address) return false;
     size = total - format->base_address;
     xx_rt_memset(info, 0, sizeof(*info));
-    if (!ebk_pe(format->device, format->base_address, size, &overlay,
-                &headers_end))
-        return false;
+    if (!ebk_pe(format->device, format->base_address, size, &overlay, &headers_end)) return false;
     if (overlay >= 0) candidates[count++] = overlay;
-    if (ebk_read_at(format->device, format->base_address + size - 6, tail,
-                    sizeof(tail))) {
+    if (ebk_read_at(format->device, format->base_address + size - 6, tail, sizeof(tail))) {
         candidates[count++] = (int64_t)xx_data_get_u32(tail + 2, 4, 0, false);
         candidates[count++] = (int64_t)xx_data_get_u32(tail, 4, 0, false);
     }
@@ -717,9 +650,7 @@ static bool ebk_scan(Abstractformat *format, bool with_names, ebk_info *info,
         for (other = 0U; other < index; ++other)
             if (candidates[other] == at) repeated = true;
         if (repeated || at < headers_end || at >= size) continue;
-        if (ebc_scan(format->device, format->base_address, size, at,
-                     with_names, info, pd) ||
-            sb_scan(format->device, format->base_address, size, at, info, pd))
+        if (ebc_scan(format->device, format->base_address, size, at, with_names, info, pd) || sb_scan(format->device, format->base_address, size, at, info, pd))
             return true;
         if (ebk_stopped(pd)) return false;
     }
@@ -728,9 +659,8 @@ static bool ebk_scan(Abstractformat *format, bool with_names, ebk_info *info,
 
 /* Folds @p member's current name and looks it up; *slot receives the slot
  * holding the same name, or the free slot where it would go. */
-static bool ebk_name_taken(ebk_member *items, const size_t *table,
-                           size_t slots, ebk_member *member, size_t *slot,
-                           bool *taken) {
+static bool ebk_name_taken(ebk_member *items, const size_t *table, size_t slots, ebk_member *member, size_t *slot, bool *taken)
+{
     member->folded = (char *)xx_mem_alloc(xx_str_len(member->name) + 1U);
     if (!member->folded) return false;
     ebk_fold(member->name, member->folded);
@@ -749,7 +679,8 @@ static bool ebk_name_taken(ebk_member *items, const size_t *table,
 /* Later duplicates (compared as Windows compares names) get "_2", "_3", ...
  * in front of their extension, so no file overwrites another.  Only names
  * that can be extracted take part. */
-static bool ebk_unique_names(ebk_member *items, size_t count) {
+static bool ebk_unique_names(ebk_member *items, size_t count)
+{
     size_t slots = 16U, index;
     size_t *table;
     bool result = false;
@@ -764,8 +695,7 @@ static bool ebk_unique_names(ebk_member *items, size_t count) {
         bool taken = false;
         if (!member->safe) continue;
         for (;;) {
-            if (!ebk_name_taken(items, table, slots, member, &slot, &taken))
-                break;
+            if (!ebk_name_taken(items, table, slots, member, &slot, &taken)) break;
             if (!taken) break;
             xx_mem_free(member->folded);
             member->folded = NULL;
@@ -814,15 +744,12 @@ typedef struct ebk_sink_s {
     bool failed;
 } ebk_sink;
 
-static ssize_t ebk_sink_write(xx_io_device *self, const void *buffer,
-                              size_t size) {
+static ssize_t ebk_sink_write(xx_io_device *self, const void *buffer, size_t size)
+{
     ebk_sink *sink = (ebk_sink *)self;
     const uint8_t *bytes = (const uint8_t *)buffer;
     size_t index = 0U, done = 0U;
-    if (!sink || (!buffer && size != 0U) || sink->failed ||
-        sink->written > sink->limit ||
-        (uint64_t)size > sink->limit - sink->written ||
-        size > ((size_t)-1 >> 1U)) {
+    if (!sink || (!buffer && size != 0U) || sink->failed || sink->written > sink->limit || (uint64_t)size > sink->limit - sink->written || size > ((size_t)-1 >> 1U)) {
         if (sink) sink->failed = true;
         return -1;
     }
@@ -850,31 +777,23 @@ static ssize_t ebk_sink_write(xx_io_device *self, const void *buffer,
 
 /* One zlib stream of @p packed bytes at @p data into the sink, which may
  * grow by at most @p room bytes; the stream's Adler-32 must match. */
-static bool ebk_inflate(xx_io_device *device, int64_t data, uint32_t packed,
-                        ebk_sink *sink, uint64_t room, xx_pd_struct *pd) {
+static bool ebk_inflate(xx_io_device *device, int64_t data, uint32_t packed, ebk_sink *sink, uint64_t room, xx_pd_struct *pd)
+{
     uint8_t header[2], trailer[4];
     uint32_t expected;
-    if (packed < EBK_MIN_PACKED ||
-        !ebk_read_at(device, data, header, sizeof(header)) ||
-        !ebk_zlib_header_ok(header) ||
-        !ebk_read_at(device, data + (int64_t)packed - 4, trailer,
-                     sizeof(trailer)))
+    if (packed < EBK_MIN_PACKED || !ebk_read_at(device, data, header, sizeof(header)) || !ebk_zlib_header_ok(header) ||
+        !ebk_read_at(device, data + (int64_t)packed - 4, trailer, sizeof(trailer)))
         return false;
-    expected = ((uint32_t)trailer[0] << 24U) | ((uint32_t)trailer[1] << 16U) |
-               ((uint32_t)trailer[2] << 8U) | (uint32_t)trailer[3];
+    expected = ((uint32_t)trailer[0] << 24U) | ((uint32_t)trailer[1] << 16U) | ((uint32_t)trailer[2] << 8U) | (uint32_t)trailer[3];
     sink->limit = sink->written + room;
     sink->adler_a = 1U;
     sink->adler_b = 0U;
-    if (!xx_deflate_unpack_device(device, data + 2, (int64_t)packed - 6,
-                                  &sink->device, false, pd) ||
-        sink->failed)
-        return false;
+    if (!xx_deflate_unpack_device(device, data + 2, (int64_t)packed - 6, &sink->device, false, pd) || sink->failed) return false;
     return ((sink->adler_b << 16U) | sink->adler_a) == expected;
 }
 
-static bool ebk_decode(Abstractformat *format, uint32_t variant,
-                       const ebk_member *member, xx_io_device *target,
-                       xx_pd_struct *pd) {
+static bool ebk_decode(Abstractformat *format, uint32_t variant, const ebk_member *member, xx_io_device *target, xx_pd_struct *pd)
+{
     ebk_sink sink;
     int64_t base = format->base_address, total, chunk_at;
     uint32_t chunk;
@@ -882,30 +801,22 @@ static bool ebk_decode(Abstractformat *format, uint32_t variant,
     sink.device.write = ebk_sink_write;
     sink.target = target;
     if (variant == XX_SFX_EBOOK_VARIANT_EBOOK_CREATOR) {
-        return ebk_inflate(format->device, base + member->data_offset,
-                           member->packed_size, &sink, member->raw_size, pd) &&
-               sink.written == (uint64_t)member->raw_size;
+        return ebk_inflate(format->device, base + member->data_offset, member->packed_size, &sink, member->raw_size, pd) && sink.written == (uint64_t)member->raw_size;
     }
-    if (variant != XX_SFX_EBOOK_VARIANT_SBOOK_BUILDER || member->chunks == 0U)
-        return false;
+    if (variant != XX_SFX_EBOOK_VARIANT_SBOOK_BUILDER || member->chunks == 0U) return false;
     total = xx_io_total_size(format->device);
     chunk_at = base + member->data_offset;
     for (chunk = 0U; chunk < member->chunks; ++chunk) {
         uint8_t field[4];
         uint32_t packed;
         uint64_t before = sink.written;
-        if (ebk_stopped(pd) || total - chunk_at < 4 ||
-            !ebk_read_at(format->device, chunk_at, field, sizeof(field)))
-            return false;
+        if (ebk_stopped(pd) || total - chunk_at < 4 || !ebk_read_at(format->device, chunk_at, field, sizeof(field))) return false;
         packed = xx_data_get_u32(field, 4, 0, false);
-        if (packed < EBK_MIN_PACKED || packed > SB_MAX_PACKED_CHUNK ||
-            (int64_t)packed > total - chunk_at - 4 ||
-            !ebk_inflate(format->device, chunk_at + 4, packed, &sink,
-                         SB_CHUNK, pd))
+        if (packed < EBK_MIN_PACKED || packed > SB_MAX_PACKED_CHUNK || (int64_t)packed > total - chunk_at - 4 ||
+            !ebk_inflate(format->device, chunk_at + 4, packed, &sink, SB_CHUNK, pd))
             return false;
         /* Only the last chunk may be short. */
-        if (chunk + 1U < member->chunks && sink.written - before != SB_CHUNK)
-            return false;
+        if (chunk + 1U < member->chunks && sink.written - before != SB_CHUNK) return false;
         chunk_at += 4 + (int64_t)packed;
     }
     return chunk_at == base + member->data_offset + member->packed_span;
@@ -913,17 +824,16 @@ static bool ebk_decode(Abstractformat *format, uint32_t variant,
 
 /* --- records --------------------------------------------------------------- */
 
-static bool ebk_copy_options(xx_list_s *destination, const xx_list_s *source) {
+static bool ebk_copy_options(xx_list_s *destination, const xx_list_s *source)
+{
     size_t index;
     if (!source) return true;
     for (index = 0U; index < source->count; ++index) {
-        const xx_meta *original =
-            (const xx_meta *)xx_list_at((const xx_list_t *)source, index);
+        const xx_meta *original = (const xx_meta *)xx_list_at((const xx_list_t *)source, index);
         xx_meta copy;
         if (!original) continue;
         xx_meta_init(&copy, original->meta_id);
-        if (!xx_var_copy(&copy.var, &original->var) ||
-            !xx_list_append(destination, &copy)) {
+        if (!xx_var_copy(&copy.var, &original->var) || !xx_list_append(destination, &copy)) {
             xx_meta_cleanup(&copy);
             return false;
         }
@@ -931,20 +841,19 @@ static bool ebk_copy_options(xx_list_s *destination, const xx_list_s *source) {
     return true;
 }
 
-static const xx_var *ebk_option(const xx_list_s *options, uint32_t id) {
+static const xx_var *ebk_option(const xx_list_s *options, uint32_t id)
+{
     size_t index;
     if (!options) return NULL;
     for (index = 0U; index < options->count; ++index) {
-        const xx_meta *meta =
-            (const xx_meta *)xx_list_at((const xx_list_t *)options, index);
+        const xx_meta *meta = (const xx_meta *)xx_list_at((const xx_list_t *)options, index);
         if (meta && meta->meta_id == id) return &meta->var;
     }
     return NULL;
 }
 
-static bool ebk_set_record(Abstractformat *format, uint32_t variant,
-                           xx_archive_record *record,
-                           const ebk_member *member) {
+static bool ebk_set_record(Abstractformat *format, uint32_t variant, xx_archive_record *record, const ebk_member *member)
+{
     xx_archive_record_cleanup(record);
     xx_archive_record_init(record);
     record->header_offset = format->base_address + member->header_offset;
@@ -952,30 +861,21 @@ static bool ebk_set_record(Abstractformat *format, uint32_t variant,
     record->data_offset = format->base_address + member->data_offset;
     record->compressed_size = member->packed_span;
     if (!xx_archive_record_set_original_name(record, member->name) ||
-        !xx_archive_record_set_meta_u64(record, XX_META_ID_COMPRESSED_SIZE,
-                                        (uint64_t)member->packed_span) ||
-        !xx_archive_record_set_meta_u64(record, XX_META_ID_COMPRESSION_METHOD,
-                                        EBK_METHOD_DEFLATE) ||
-        !xx_archive_record_set_meta_bool(record, XX_META_ID_IS_ENCRYPTED,
-                                         false) ||
-        !xx_archive_record_set_meta_bool(record, XX_META_ID_IS_FOLDER, false))
+        !xx_archive_record_set_meta_u64(record, XX_META_ID_COMPRESSED_SIZE, (uint64_t)member->packed_span) ||
+        !xx_archive_record_set_meta_u64(record, XX_META_ID_COMPRESSION_METHOD, EBK_METHOD_DEFLATE) ||
+        !xx_archive_record_set_meta_bool(record, XX_META_ID_IS_ENCRYPTED, false) || !xx_archive_record_set_meta_bool(record, XX_META_ID_IS_FOLDER, false))
         return false;
-    if (variant == XX_SFX_EBOOK_VARIANT_EBOOK_CREATOR)
-        return xx_archive_record_set_meta_u64(
-            record, XX_META_ID_UNCOMPRESSED_SIZE, member->raw_size);
+    if (variant == XX_SFX_EBOOK_VARIANT_EBOOK_CREATOR) return xx_archive_record_set_meta_u64(record, XX_META_ID_UNCOMPRESSED_SIZE, member->raw_size);
     /* SBook Builder keeps no unpacked size; the chunks give it only when
      * they are inflated. */
-    return xx_archive_record_set_meta_u64(record, XX_META_ID_LAST_MOD_TIME,
-                                          member->dos_stamp & 0xFFFFU) &&
-           xx_archive_record_set_meta_u64(record, XX_META_ID_LAST_MOD_DATE,
-                                          member->dos_stamp >> 16U);
+    return xx_archive_record_set_meta_u64(record, XX_META_ID_LAST_MOD_TIME, member->dos_stamp & 0xFFFFU) &&
+           xx_archive_record_set_meta_u64(record, XX_META_ID_LAST_MOD_DATE, member->dos_stamp >> 16U);
 }
 
 /* --- lifecycle ------------------------------------------------------------- */
 
-void xx_sfx_ebook_compiler_executables_init(
-    xx_sfx_ebook_compiler_executables *archive, xx_io_device *device,
-    int64_t base_address) {
+void xx_sfx_ebook_compiler_executables_init(xx_sfx_ebook_compiler_executables *archive, xx_io_device *device, int64_t base_address)
+{
     if (!archive) return;
     xx_rt_memset(archive, 0, sizeof(*archive));
     xx_format_init(&archive->format, device, base_address);
@@ -985,58 +885,47 @@ void xx_sfx_ebook_compiler_executables_init(
     archive->format.is_archive = true;
     xx_format_set_mime_type(&archive->format, "application/x-msdos-program");
     xx_format_set_extension(&archive->format, "exe");
-    archive->format.check_is_valid =
-        xx_sfx_ebook_compiler_executables_check_is_valid;
-    archive->format.handle_base_info =
-        xx_sfx_ebook_compiler_executables_handle_base_info;
-    archive->format.get_format_size =
-        xx_sfx_ebook_compiler_executables_get_format_size;
-    archive->format.get_number_of_archive_records =
-        xx_sfx_ebook_compiler_executables_get_number_of_archive_records;
-    archive->format.create_archive_records_reading =
-        xx_sfx_ebook_compiler_executables_create_archive_records_reading;
-    archive->format.get_current_archive_record =
-        xx_sfx_ebook_compiler_executables_get_current_archive_record;
-    archive->format.unpack_current_archive_record =
-        xx_sfx_ebook_compiler_executables_unpack_current_archive_record;
-    archive->format.archive_record_move_to_next =
-        xx_sfx_ebook_compiler_executables_archive_record_move_to_next;
-    archive->format.free_archive_records_reading =
-        xx_sfx_ebook_compiler_executables_free_archive_records_reading;
+    archive->format.check_is_valid = xx_sfx_ebook_compiler_executables_check_is_valid;
+    archive->format.handle_base_info = xx_sfx_ebook_compiler_executables_handle_base_info;
+    archive->format.get_format_size = xx_sfx_ebook_compiler_executables_get_format_size;
+    archive->format.get_number_of_archive_records = xx_sfx_ebook_compiler_executables_get_number_of_archive_records;
+    archive->format.create_archive_records_reading = xx_sfx_ebook_compiler_executables_create_archive_records_reading;
+    archive->format.get_current_archive_record = xx_sfx_ebook_compiler_executables_get_current_archive_record;
+    archive->format.unpack_current_archive_record = xx_sfx_ebook_compiler_executables_unpack_current_archive_record;
+    archive->format.archive_record_move_to_next = xx_sfx_ebook_compiler_executables_archive_record_move_to_next;
+    archive->format.free_archive_records_reading = xx_sfx_ebook_compiler_executables_free_archive_records_reading;
     archive->payload_offset = -1;
     archive->payload_end = -1;
     archive->names_offset = -1;
 }
 
-xx_sfx_ebook_compiler_executables *xx_sfx_ebook_compiler_executables_create(
-    xx_io_device *device, int64_t base_address) {
-    xx_sfx_ebook_compiler_executables *archive =
-        (xx_sfx_ebook_compiler_executables *)xx_mem_alloc(sizeof(*archive));
-    if (archive)
-        xx_sfx_ebook_compiler_executables_init(archive, device, base_address);
+xx_sfx_ebook_compiler_executables *xx_sfx_ebook_compiler_executables_create(xx_io_device *device, int64_t base_address)
+{
+    xx_sfx_ebook_compiler_executables *archive = (xx_sfx_ebook_compiler_executables *)xx_mem_alloc(sizeof(*archive));
+    if (archive) xx_sfx_ebook_compiler_executables_init(archive, device, base_address);
     return archive;
 }
 
-void xx_sfx_ebook_compiler_executables_destroy(
-    xx_sfx_ebook_compiler_executables *archive) {
+void xx_sfx_ebook_compiler_executables_destroy(xx_sfx_ebook_compiler_executables *archive)
+{
     if (archive) xx_format_cleanup_extra_parameters(&archive->format);
 }
 
-void xx_sfx_ebook_compiler_executables_free(
-    xx_sfx_ebook_compiler_executables *archive) {
+void xx_sfx_ebook_compiler_executables_free(xx_sfx_ebook_compiler_executables *archive)
+{
     if (!archive) return;
     xx_sfx_ebook_compiler_executables_destroy(archive);
     xx_mem_free(archive);
 }
 
-bool xx_sfx_ebook_compiler_executables_check_is_valid(Abstractformat *format,
-                                                      xx_pd_struct *pd) {
+bool xx_sfx_ebook_compiler_executables_check_is_valid(Abstractformat *format, xx_pd_struct *pd)
+{
     ebk_info info;
     return ebk_scan(format, false, &info, pd);
 }
 
-bool xx_sfx_ebook_compiler_executables_handle_base_info(Abstractformat *format,
-                                                        xx_pd_struct *pd) {
+bool xx_sfx_ebook_compiler_executables_handle_base_info(Abstractformat *format, xx_pd_struct *pd)
+{
     ebk_info info;
     xx_sfx_ebook_compiler_executables *archive;
     if (!format || !ebk_scan(format, true, &info, pd)) return false;
@@ -1057,26 +946,20 @@ bool xx_sfx_ebook_compiler_executables_handle_base_info(Abstractformat *format,
     return true;
 }
 
-int64_t xx_sfx_ebook_compiler_executables_get_format_size(
-    Abstractformat *format, xx_pd_struct *pd) {
-    return format && (format->base_info_handled ||
-                      xx_sfx_ebook_compiler_executables_handle_base_info(
-                          format, pd))
-               ? format->format_size : -1;
+int64_t xx_sfx_ebook_compiler_executables_get_format_size(Abstractformat *format, xx_pd_struct *pd)
+{
+    return format && (format->base_info_handled || xx_sfx_ebook_compiler_executables_handle_base_info(format, pd)) ? format->format_size : -1;
 }
 
-uint64_t xx_sfx_ebook_compiler_executables_get_number_of_archive_records(
-    Abstractformat *format, xx_pd_struct *pd) {
-    return format && (format->base_info_handled ||
-                      xx_sfx_ebook_compiler_executables_handle_base_info(
-                          format, pd))
+uint64_t xx_sfx_ebook_compiler_executables_get_number_of_archive_records(Abstractformat *format, xx_pd_struct *pd)
+{
+    return format && (format->base_info_handled || xx_sfx_ebook_compiler_executables_handle_base_info(format, pd))
                ? ((xx_sfx_ebook_compiler_executables *)format)->number_of_records
                : 0U;
 }
 
-xx_archive_record_state *
-xx_sfx_ebook_compiler_executables_create_archive_records_reading(
-    Abstractformat *format, const xx_list_s *options, xx_pd_struct *pd) {
+xx_archive_record_state *xx_sfx_ebook_compiler_executables_create_archive_records_reading(Abstractformat *format, const xx_list_s *options, xx_pd_struct *pd)
+{
     ebk_info info;
     ebk_stream *stream;
     xx_archive_record_state *state;
@@ -1089,33 +972,21 @@ xx_sfx_ebook_compiler_executables_create_archive_records_reading(
     stream->variant = info.variant;
     /* At most 65535 eBook Creator files, each proven by ten bytes in the
      * file; SBook files are counted by a walk that read each of them. */
-    stream->items = (ebk_member *)xx_mem_calloc(info.count,
-                                                sizeof(*stream->items));
+    stream->items = (ebk_member *)xx_mem_calloc(info.count, sizeof(*stream->items));
     stream->count = info.count;
     if (!stream->items) goto fail;
     if (info.variant == XX_SFX_EBOOK_VARIANT_EBOOK_CREATOR) {
-        if (!ebc_walk(format->device, format->base_address, size,
-                      info.payload, info.count, stream->items, &end, pd) ||
-            end != info.members_end)
-            goto fail;
-        if (info.names >= 0)
-            (void)ebc_names(format->device, format->base_address, size,
-                            info.members_end, info.count, stream->items, &end,
-                            &count);
+        if (!ebc_walk(format->device, format->base_address, size, info.payload, info.count, stream->items, &end, pd) || end != info.members_end) goto fail;
+        if (info.names >= 0) (void)ebc_names(format->device, format->base_address, size, info.members_end, info.count, stream->items, &end, &count);
         for (index = 0U; index < info.count; ++index) {
-            if (!stream->items[index].name &&
-                !(stream->items[index].name = ebk_index_name(index)))
-                goto fail;
+            if (!stream->items[index].name && !(stream->items[index].name = ebk_index_name(index))) goto fail;
         }
     } else {
-        if (!sb_walk(format->device, format->base_address, size, info.first,
-                     stream->items, info.count, &count, &end, pd) ||
-            count != info.count || end != info.members_end)
+        if (!sb_walk(format->device, format->base_address, size, info.first, stream->items, info.count, &count, &end, pd) || count != info.count ||
+            end != info.members_end)
             goto fail;
     }
-    for (index = 0U; index < info.count; ++index)
-        stream->items[index].safe =
-            ebk_safe_output_name(stream->items[index].name);
+    for (index = 0U; index < info.count; ++index) stream->items[index].safe = ebk_safe_output_name(stream->items[index].name);
     if (!ebk_unique_names(stream->items, stream->count)) goto fail;
     state = (xx_archive_record_state *)xx_mem_alloc(sizeof(*state));
     if (!state) goto fail;
@@ -1123,9 +994,7 @@ xx_sfx_ebook_compiler_executables_create_archive_records_reading(
     state->internal_state = stream;
     state->free_internal = ebk_stream_free;
     state->total_records = stream->count;
-    if (!ebk_copy_options(&state->options, options) ||
-        !ebk_set_record(format, stream->variant, &state->current_record,
-                        &stream->items[0])) {
+    if (!ebk_copy_options(&state->options, options) || !ebk_set_record(format, stream->variant, &state->current_record, &stream->items[0])) {
         xx_archive_record_state_free(state);
         return NULL;
     }
@@ -1136,27 +1005,22 @@ fail:
     return NULL;
 }
 
-const xx_archive_record *
-xx_sfx_ebook_compiler_executables_get_current_archive_record(
-    Abstractformat *format, xx_archive_record_state *state) {
-    return format && state && state->format == format && state->has_record
-               ? &state->current_record : NULL;
+const xx_archive_record *xx_sfx_ebook_compiler_executables_get_current_archive_record(Abstractformat *format, xx_archive_record_state *state)
+{
+    return format && state && state->format == format && state->has_record ? &state->current_record : NULL;
 }
 
-bool xx_sfx_ebook_compiler_executables_archive_record_move_to_next(
-    Abstractformat *format, xx_archive_record_state *state, xx_pd_struct *pd) {
+bool xx_sfx_ebook_compiler_executables_archive_record_move_to_next(Abstractformat *format, xx_archive_record_state *state, xx_pd_struct *pd)
+{
     ebk_stream *stream;
     (void)pd;
-    if (!format || !state || state->format != format ||
-        !(stream = (ebk_stream *)state->internal_state) ||
-        stream->index + 1U >= stream->count) {
+    if (!format || !state || state->format != format || !(stream = (ebk_stream *)state->internal_state) || stream->index + 1U >= stream->count) {
         if (state) state->has_record = false;
         return false;
     }
     ++stream->index;
     ++state->current_index;
-    if (!ebk_set_record(format, stream->variant, &state->current_record,
-                        &stream->items[stream->index])) {
+    if (!ebk_set_record(format, stream->variant, &state->current_record, &stream->items[stream->index])) {
         state->has_record = false;
         return false;
     }
@@ -1164,8 +1028,8 @@ bool xx_sfx_ebook_compiler_executables_archive_record_move_to_next(
     return true;
 }
 
-bool xx_sfx_ebook_compiler_executables_unpack_current_archive_record(
-    Abstractformat *format, xx_archive_record_state *state, xx_pd_struct *pd) {
+bool xx_sfx_ebook_compiler_executables_unpack_current_archive_record(Abstractformat *format, xx_archive_record_state *state, xx_pd_struct *pd)
+{
     ebk_stream *stream;
     const ebk_member *member;
     const xx_var *path_option;
@@ -1174,28 +1038,22 @@ bool xx_sfx_ebook_compiler_executables_unpack_current_archive_record(
     char *path = NULL;
     bool result = false;
     bool created = false;
-    if (!format || !state || state->format != format || !state->has_record ||
-        !(stream = (ebk_stream *)state->internal_state) ||
-        stream->index >= stream->count || ebk_stopped(pd))
+    if (!format || !state || state->format != format || !state->has_record || !(stream = (ebk_stream *)state->internal_state) || stream->index >= stream->count ||
+        ebk_stopped(pd))
         return false;
     member = &stream->items[stream->index];
     path_option = ebk_option(&state->options, XX_META_ID_OPT_UNPACK_PATH);
-    if (!path_option)
-        return ebk_decode(format, stream->variant, member, NULL, pd);
+    if (!path_option) return ebk_decode(format, stream->variant, member, NULL, pd);
     if (!member->safe || !ebk_safe_output_name(member->name)) return false;
-    if (path_option->type == XX_VAR_TYPE_STRING ||
-        path_option->type == XX_VAR_TYPE_STRING_VIEW) {
+    if (path_option->type == XX_VAR_TYPE_STRING || path_option->type == XX_VAR_TYPE_STRING_VIEW) {
         base = xx_var_get_str(path_option);
-    } else if (path_option->type == XX_VAR_TYPE_WSTRING ||
-               path_option->type == XX_VAR_TYPE_WSTRING_VIEW) {
+    } else if (path_option->type == XX_VAR_TYPE_WSTRING || path_option->type == XX_VAR_TYPE_WSTRING_VIEW) {
         owned_base = xx_str_unicode_to_utf8(xx_var_get_wstr(path_option));
         base = owned_base;
     }
     if (!base) goto done;
-    path = (base[0] && base[xx_str_len(base) - 1U] != '/' &&
-            base[xx_str_len(base) - 1U] != '\\')
-               ? xx_str_concat3(base, "/", member->name)
-               : xx_str_concat(base, member->name);
+    path = (base[0] && base[xx_str_len(base) - 1U] != '/' && base[xx_str_len(base) - 1U] != '\\') ? xx_str_concat3(base, "/", member->name)
+                                                                                                  : xx_str_concat(base, member->name);
     if (!path || !xx_store_create_dirs_a(path, false)) goto done;
     {
         xx_io_device *destination = xx_io_file_open(path, "wb");
@@ -1211,8 +1069,8 @@ done:
     return result;
 }
 
-void xx_sfx_ebook_compiler_executables_free_archive_records_reading(
-    Abstractformat *format, xx_archive_record_state *state) {
+void xx_sfx_ebook_compiler_executables_free_archive_records_reading(Abstractformat *format, xx_archive_record_state *state)
+{
     (void)format;
     xx_archive_record_state_free(state);
 }

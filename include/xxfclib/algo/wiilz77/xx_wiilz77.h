@@ -27,18 +27,12 @@ typedef struct xx_wiilz77_header_s {
 } xx_wiilz77_header;
 
 /** Parse a bare or ``LZ77``-tagged Nintendo LZ10/LZ11 header. */
-XXFC_API bool xx_wiilz77_parse_header(const uint8_t *input,
-                                      size_t input_size,
-                                      xx_wiilz77_header *header);
+XXFC_API bool xx_wiilz77_parse_header(const uint8_t *input, size_t input_size, xx_wiilz77_header *header);
 
 /** Decode one complete bare or tagged LZ10/LZ11 member.  The output buffer
  * must have exactly the declared size.  On success @p consumed_size receives
  * the number of bytes used from the member, excluding container padding. */
-XXFC_API bool xx_wiilz77_decompress_memory(const uint8_t *input,
-                                           size_t input_size,
-                                           uint8_t *output,
-                                           size_t output_size,
-                                           size_t *consumed_size);
+XXFC_API bool xx_wiilz77_decompress_memory(const uint8_t *input, size_t input_size, uint8_t *output, size_t output_size, size_t *consumed_size);
 
 #ifdef __cplusplus
 }

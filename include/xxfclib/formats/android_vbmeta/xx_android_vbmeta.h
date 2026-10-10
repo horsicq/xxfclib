@@ -8,13 +8,15 @@
 #ifdef __cplusplus
 extern "C" {
 #endif
-typedef struct xx_android_vbmeta { Abstractformat format; } xx_android_vbmeta;
-XXFC_API void xx_android_vbmeta_init(xx_android_vbmeta *,xx_io_device *,int64_t);
-XXFC_API xx_android_vbmeta *xx_android_vbmeta_create(xx_io_device *,int64_t);
+typedef struct xx_android_vbmeta {
+    Abstractformat format;
+} xx_android_vbmeta;
+XXFC_API void xx_android_vbmeta_init(xx_android_vbmeta *, xx_io_device *, int64_t);
+XXFC_API xx_android_vbmeta *xx_android_vbmeta_create(xx_io_device *, int64_t);
 XXFC_API void xx_android_vbmeta_destroy(xx_android_vbmeta *);
 XXFC_API void xx_android_vbmeta_free(xx_android_vbmeta *);
-XXFC_API bool xx_android_vbmeta_check_is_valid(Abstractformat *,xx_pd_struct *);
-XXFC_API bool xx_android_vbmeta_handle_base_info(Abstractformat *,xx_pd_struct *);
+XXFC_API bool xx_android_vbmeta_check_is_valid(Abstractformat *, xx_pd_struct *);
+XXFC_API bool xx_android_vbmeta_handle_base_info(Abstractformat *, xx_pd_struct *);
 #ifdef __cplusplus
 }
 #endif

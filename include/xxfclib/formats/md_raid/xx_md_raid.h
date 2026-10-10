@@ -7,11 +7,14 @@
 extern "C" {
 #endif
 typedef xx_volume xx_md_raid;
-XXFC_API void xx_md_raid_init(xx_md_raid *,xx_io_device *,int64_t);
-XXFC_API xx_md_raid *xx_md_raid_create(xx_io_device *,int64_t);
+XXFC_API void xx_md_raid_init(xx_md_raid *, xx_io_device *, int64_t);
+XXFC_API xx_md_raid *xx_md_raid_create(xx_io_device *, int64_t);
 XXFC_API void xx_md_raid_destroy(xx_md_raid *);
 XXFC_API void xx_md_raid_free(xx_md_raid *);
-static inline Abstractformat *xx_md_raid_to_format(xx_md_raid *r) { return r?&r->format:NULL; }
+static inline Abstractformat *xx_md_raid_to_format(xx_md_raid *r)
+{
+    return r ? &r->format : NULL;
+}
 #ifdef __cplusplus
 }
 #endif

@@ -34,9 +34,7 @@ extern "C" {
  * in @p output_size.  Running out of output capacity is a failure here.
  * @p written is set on every path (0 on failure).
  */
-XXFC_API bool xx_ti99arc_decode_memory(const uint8_t *input, size_t input_size,
-                                       uint8_t *output, size_t output_size,
-                                       size_t *written);
+XXFC_API bool xx_ti99arc_decode_memory(const uint8_t *input, size_t input_size, uint8_t *output, size_t output_size, size_t *written);
 
 /* Expand at most @p output_size bytes of the stream - the entry point the ARK
  * reader needs.
@@ -47,9 +45,7 @@ XXFC_API bool xx_ti99arc_decode_memory(const uint8_t *input, size_t input_size,
  * Returns false only on a structurally broken stream, or when nothing at all
  * was produced.
  */
-XXFC_API bool xx_ti99arc_expand_memory(const uint8_t *input, size_t input_size,
-                                       uint8_t *output, size_t output_size,
-                                       size_t *written, bool *complete);
+XXFC_API bool xx_ti99arc_expand_memory(const uint8_t *input, size_t input_size, uint8_t *output, size_t output_size, size_t *written, bool *complete);
 
 /* Measure a stream without a buffer.  Same core routine as the decoders, so
  * the measure and the decode cannot disagree.  @p consumed receives the input
@@ -57,9 +53,7 @@ XXFC_API bool xx_ti99arc_expand_memory(const uint8_t *input, size_t input_size,
  * the decoded size.  Both may be NULL.  Returns true when the stream decoded
  * to its end within @p max_output.
  */
-XXFC_API bool xx_ti99arc_scan_memory(const uint8_t *input, size_t input_size,
-                                     size_t max_output, size_t *consumed,
-                                     size_t *produced);
+XXFC_API bool xx_ti99arc_scan_memory(const uint8_t *input, size_t input_size, size_t max_output, size_t *consumed, size_t *produced);
 
 /* Full member extraction, driven by the properties blob the reader builds.
  * All fields little endian:
@@ -73,9 +67,7 @@ XXFC_API bool xx_ti99arc_scan_memory(const uint8_t *input, size_t input_size,
  * Needs scratch for the expanded stream, so it allocates internally.  Returns
  * true only when prefix_size + member_size bytes were produced.
  */
-XXFC_API bool xx_ti99arc_decode_member(const uint8_t *input, size_t input_size,
-                                       const uint8_t *props, size_t props_size,
-                                       uint8_t *output, size_t output_size,
+XXFC_API bool xx_ti99arc_decode_member(const uint8_t *input, size_t input_size, const uint8_t *props, size_t props_size, uint8_t *output, size_t output_size,
                                        size_t *written);
 
 /* 64 MiB.  The corpus tops out near 100 KiB; the cap only exists so a crafted

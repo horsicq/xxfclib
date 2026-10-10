@@ -313,12 +313,33 @@ static void parse_escape_class(REParser *pParser, unsigned char *pClass, int *pb
     *pbHandled = 1;
 
     switch (nChar) {
-        case 'd': class_add_digit(pClass); pParser->p++; return;
-        case 'D': class_add_digit(pClass); class_invert(pClass); pParser->p++; return;
-        case 'w': class_add_word(pClass); pParser->p++; return;
-        case 'W': class_add_word(pClass); class_invert(pClass); pParser->p++; return;
-        case 's': class_add_space(pClass, bStandalone); pParser->p++; return;
-        case 'S': class_add_space(pClass, bStandalone); class_invert(pClass); pParser->p++; return;
+        case 'd':
+            class_add_digit(pClass);
+            pParser->p++;
+            return;
+        case 'D':
+            class_add_digit(pClass);
+            class_invert(pClass);
+            pParser->p++;
+            return;
+        case 'w':
+            class_add_word(pClass);
+            pParser->p++;
+            return;
+        case 'W':
+            class_add_word(pClass);
+            class_invert(pClass);
+            pParser->p++;
+            return;
+        case 's':
+            class_add_space(pClass, bStandalone);
+            pParser->p++;
+            return;
+        case 'S':
+            class_add_space(pClass, bStandalone);
+            class_invert(pClass);
+            pParser->p++;
+            return;
         default: *pbHandled = 0; return;
     }
 }
@@ -470,8 +491,7 @@ static RENode *parse_class(REParser *pParser)
 
             if (*pParser->p == '\\') {
                 pParser->p++;
-                if (pParser->p < pParser->pEnd &&
-                    ((unsigned char)*pParser->p == 0xC2 || (unsigned char)*pParser->p == 0xC3)) {
+                if (pParser->p < pParser->pEnd && ((unsigned char)*pParser->p == 0xC2 || (unsigned char)*pParser->p == 0xC3)) {
                     int nWidth;
                     nTo = latin1_at(pParser->p, (size_t)(pParser->pEnd - pParser->p), 0, &nWidth);
                     pParser->p += nWidth;
@@ -1049,9 +1069,7 @@ static int single_match(REMatcher *pMatcher, RENode *pNode, size_t nPos)
 
             return (nChar == pNode->nChar) ? 1 : 0;
 
-        case RE_ANY:
-            nChar = latin1_at(pMatcher->pText, pMatcher->nSize, nPos, &nWidth);
-            return (nChar != '\n') ? nWidth : 0;
+        case RE_ANY: nChar = latin1_at(pMatcher->pText, pMatcher->nSize, nPos, &nWidth); return (nChar != '\n') ? nWidth : 0;
 
         case RE_CLASS:
             nChar = latin1_at(pMatcher->pText, pMatcher->nSize, nPos, &nWidth);
@@ -1162,10 +1180,8 @@ static int m_simple(REMatcher *pMatcher, RENode *pNode, RECont *pCont, size_t nP
         }
 
         if ((pNode->type == RE_CLASS || pNode->type == RE_ANY) && nCurrent >= nPos + 2 &&
-            ((unsigned char)pMatcher->pText[nCurrent - 2] == 0xC2 ||
-             (unsigned char)pMatcher->pText[nCurrent - 2] == 0xC3) &&
-            (unsigned char)pMatcher->pText[nCurrent - 1] >= 0x80 &&
-            (unsigned char)pMatcher->pText[nCurrent - 1] <= 0xBF) {
+            ((unsigned char)pMatcher->pText[nCurrent - 2] == 0xC2 || (unsigned char)pMatcher->pText[nCurrent - 2] == 0xC3) &&
+            (unsigned char)pMatcher->pText[nCurrent - 1] >= 0x80 && (unsigned char)pMatcher->pText[nCurrent - 1] <= 0xBF) {
             nCurrent -= 2;
         } else {
             nCurrent--;

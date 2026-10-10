@@ -6,7 +6,9 @@
 #ifdef __cplusplus
 extern "C" {
 #endif
-typedef struct xx_sm8 { Abstractformat format; } xx_sm8;
+typedef struct xx_sm8 {
+    Abstractformat format;
+} xx_sm8;
 XXFC_API void xx_sm8_init(xx_sm8 *, xx_io_device *, int64_t);
 XXFC_API xx_sm8 *xx_sm8_create(xx_io_device *, int64_t);
 XXFC_API void xx_sm8_destroy(xx_sm8 *);

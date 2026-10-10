@@ -44,7 +44,6 @@
 #include <stdio.h>
 #include "xxfclib/data/xx_data.h"
 
-
 #define XX_ASAR_HEADER_SIZE 16
 #define XX_ASAR_MAX_JSON_SIZE ((int64_t)16 * 1024 * 1024)
 /* The largest integer a JSON double represents exactly. */
@@ -76,12 +75,14 @@ typedef struct xx_asar_stream_s {
 /* ------------------------------------------------------------ tree walk -- */
 
 #include "xxfclib/global/xx_global.h"
-static size_t gb_asar_capacity(void) {
+static size_t gb_asar_capacity(void)
+{
     size_t n = xx_get_file_buffer_size();
     if (!n) n = XX_DEFAULT_FILE_BUFFER_SIZE;
     return n > (SIZE_MAX >> 1) ? SIZE_MAX >> 1 : n;
 }
-static ssize_t gb_asar_read(xx_io_device *device, void *buffer, size_t size, size_t capacity) {
+static ssize_t gb_asar_read(xx_io_device *device, void *buffer, size_t size, size_t capacity)
+{
     size_t done = 0;
     if (size > (SIZE_MAX >> 1)) return -1;
     while (done < size) {
@@ -95,7 +96,8 @@ static ssize_t gb_asar_read(xx_io_device *device, void *buffer, size_t size, siz
     }
     return (ssize_t)done;
 }
-static ssize_t gb_asar_write(xx_io_device *device, const void *buffer, size_t size, size_t capacity) {
+static ssize_t gb_asar_write(xx_io_device *device, const void *buffer, size_t size, size_t capacity)
+{
     size_t done = 0;
     if (size > (SIZE_MAX >> 1)) return -1;
     while (done < size) {
@@ -110,8 +112,8 @@ static ssize_t gb_asar_write(xx_io_device *device, const void *buffer, size_t si
     return (ssize_t)done;
 }
 
-
-static bool xx_asar_component_ok(const char *component) {
+static bool xx_asar_component_ok(const char *component)
+{
     if (!component || !component[0]) return false;
     if (xx_str_cmp(component, ".") == 0 || xx_str_cmp(component, "..") == 0) {
         return false;
@@ -124,7 +126,8 @@ static bool xx_asar_component_ok(const char *component) {
  * slashes, "." segments drop out, ".." pops, and anything absolute or escaping
  * the archive root is refused.
  */
-static char *xx_asar_normalize_link(const char *target) {
+static char *xx_asar_normalize_link(const char *target)
+{
     char *work;
     char *result;
     size_t length;
@@ -145,10 +148,7 @@ static char *xx_asar_normalize_link(const char *target) {
     }
     work[length] = '\0';
     /* Absolute, or a drive letter: outside the archive either way. */
-    if (work[0] == '/' ||
-        (length >= 2U && work[1] == ':' &&
-         ((work[0] >= 'A' && work[0] <= 'Z') ||
-          (work[0] >= 'a' && work[0] <= 'z')))) {
+    if (work[0] == '/' || (length >= 2U && work[1] == ':' && ((work[0] >= 'A' && work[0] <= 'Z') || (work[0] >= 'a' && work[0] <= 'z')))) {
         goto fail;
     }
     result[0] = '\0';
@@ -162,8 +162,7 @@ static char *xx_asar_normalize_link(const char *target) {
             if (part_length == 0U) goto fail; /* empty segment */
             if (part_length == 1U && work[cursor] == '.') {
                 /* drop */
-            } else if (part_length == 2U && work[cursor] == '.' &&
-                       work[cursor + 1U] == '.') {
+            } else if (part_length == 2U && work[cursor] == '.' && work[cursor + 1U] == '.') {
                 char *last;
                 if (out_length == 0U) goto fail; /* escapes the root */
                 result[out_length] = '\0';
@@ -202,12 +201,12 @@ typedef struct xx_asar_walk_s {
     int64_t max_end; /* furthest byte any member reaches */
 } xx_asar_walk;
 
-static bool xx_asar_append(xx_asar_walk *walk, const xx_asar_member *member) {
+static bool xx_asar_append(xx_asar_walk *walk, const xx_asar_member *member)
+{
     xx_asar_member *grown;
 
     if (walk->count >= XX_ASAR_MAX_RECORDS) return false;
-    grown = (xx_asar_member *)xx_mem_realloc(
-        walk->items, sizeof(*walk->items) * (walk->count + 1U));
+    grown = (xx_asar_member *)xx_mem_realloc(walk->items, sizeof(*walk->items) * (walk->count + 1U));
     if (!grown) return false;
     walk->items = grown;
     walk->items[walk->count++] = *member;
@@ -220,20 +219,21 @@ static bool xx_asar_append(xx_asar_walk *walk, const xx_asar_member *member) {
  * the part worth checking -- it ties the integrity data to the declared size,
  * so the two cannot drift apart unnoticed.
  */
-static bool xx_asar_hex64(const char *text) {
+static bool xx_asar_hex64(const char *text)
+{
     size_t i;
 
     if (!text) return false;
     for (i = 0U; i < 64U; ++i) {
         char c = text[i];
-        bool ok = (c >= '0' && c <= '9') || (c >= 'a' && c <= 'f') ||
-                  (c >= 'A' && c <= 'F');
+        bool ok = (c >= '0' && c <= '9') || (c >= 'a' && c <= 'f') || (c >= 'A' && c <= 'F');
         if (!ok) return false;
     }
     return text[64] == '\0';
 }
 
-static bool xx_asar_check_integrity(xx_json *json, int64_t file_size) {
+static bool xx_asar_check_integrity(xx_json *json, int64_t file_size)
+{
     bool has_algorithm = false;
     bool has_hash = false;
     bool has_block_size = false;
@@ -250,8 +250,7 @@ static bool xx_asar_check_integrity(xx_json *json, int64_t file_size) {
         if (!xx_json_object_key(json, &key)) return false;
         if (xx_str_cmp(key, "algorithm") == 0) {
             char *value = NULL;
-            ok = xx_json_string(json, &value) &&
-                 xx_str_cmp(value, "SHA256") == 0;
+            ok = xx_json_string(json, &value) && xx_str_cmp(value, "SHA256") == 0;
             xx_str_free(value);
             has_algorithm = ok;
         } else if (xx_str_cmp(key, "hash") == 0) {
@@ -260,8 +259,7 @@ static bool xx_asar_check_integrity(xx_json *json, int64_t file_size) {
             xx_str_free(value);
             has_hash = ok;
         } else if (xx_str_cmp(key, "blockSize") == 0) {
-            ok = xx_json_integer(json, XX_ASAR_MAX_FILE_SIZE, &block_size) &&
-                 block_size > 0;
+            ok = xx_json_integer(json, XX_ASAR_MAX_FILE_SIZE, &block_size) && block_size > 0;
             has_block_size = ok;
         } else if (xx_str_cmp(key, "blocks") == 0) {
             ok = xx_json_array_begin(json);
@@ -290,13 +288,10 @@ static bool xx_asar_check_integrity(xx_json *json, int64_t file_size) {
     if (!has_algorithm || !has_hash || !has_block_size || !has_blocks) {
         return false;
     }
-    return blocks ==
-           (file_size == 0 ? 1 : ((file_size - 1) / block_size) + 1);
+    return blocks == (file_size == 0 ? 1 : ((file_size - 1) / block_size) + 1);
 }
 
-static bool xx_asar_walk_files(xx_json *json, xx_asar_walk *walk,
-                               const char *parent, int depth,
-                               bool parent_unpacked, xx_pd_struct *pd);
+static bool xx_asar_walk_files(xx_json *json, xx_asar_walk *walk, const char *parent, int depth, bool parent_unpacked, xx_pd_struct *pd);
 
 /*
  * One directory entry. Which keys it carries decides what it is, and the keys
@@ -305,9 +300,8 @@ static bool xx_asar_walk_files(xx_json *json, xx_asar_walk *walk,
  * and size are known. A cursor is a plain struct, so remembering a position is
  * just a copy.
  */
-static bool xx_asar_walk_entry(xx_json *json, xx_asar_walk *walk,
-                               const char *path, int depth,
-                               bool parent_unpacked, xx_pd_struct *pd) {
+static bool xx_asar_walk_entry(xx_json *json, xx_asar_walk *walk, const char *path, int depth, bool parent_unpacked, xx_pd_struct *pd)
+{
     bool has_files = false;
     bool has_link = false;
     bool has_offset = false;
@@ -339,8 +333,7 @@ static bool xx_asar_walk_entry(xx_json *json, xx_asar_walk *walk,
             if (xx_str_cmp(key, "files") == 0) {
                 has_files = true;
                 files_cursor = *json;
-                ok = xx_json_peek(json) == XX_JSON_TYPE_OBJECT &&
-                     xx_json_skip(json);
+                ok = xx_json_peek(json) == XX_JSON_TYPE_OBJECT && xx_json_skip(json);
             } else if (xx_str_cmp(key, "link") == 0) {
                 char *raw = NULL;
                 has_link = true;
@@ -366,8 +359,7 @@ static bool xx_asar_walk_entry(xx_json *json, xx_asar_walk *walk,
                             ok = false;
                             break;
                         }
-                        if (offset >
-                            (XX_ASAR_MAX_FILE_SIZE - (raw[i] - '0')) / 10) {
+                        if (offset > (XX_ASAR_MAX_FILE_SIZE - (raw[i] - '0')) / 10) {
                             ok = false;
                             break;
                         }
@@ -378,8 +370,7 @@ static bool xx_asar_walk_entry(xx_json *json, xx_asar_walk *walk,
             } else if (xx_str_cmp(key, "integrity") == 0) {
                 has_integrity = true;
                 integrity_cursor = *json;
-                ok = xx_json_peek(json) == XX_JSON_TYPE_OBJECT &&
-                     xx_json_skip(json);
+                ok = xx_json_peek(json) == XX_JSON_TYPE_OBJECT && xx_json_skip(json);
             } else if (xx_str_cmp(key, "executable") == 0) {
                 has_executable = true;
                 ok = xx_json_bool(json, NULL);
@@ -407,8 +398,7 @@ static bool xx_asar_walk_entry(xx_json *json, xx_asar_walk *walk,
 
     if (has_files) {
         /* A folder carries nothing else. */
-        if (has_link || has_offset || has_size || has_integrity ||
-            has_executable) {
+        if (has_link || has_offset || has_size || has_integrity || has_executable) {
             xx_str_free(link_target);
             return false;
         }
@@ -419,8 +409,7 @@ static bool xx_asar_walk_entry(xx_json *json, xx_asar_walk *walk,
             return false;
         }
         /* The folder record precedes its children, so walk it now. */
-        return xx_asar_walk_files(&files_cursor, walk, path, depth + 1,
-                                  unpacked, pd);
+        return xx_asar_walk_files(&files_cursor, walk, path, depth + 1, unpacked, pd);
     }
     if (has_link) {
         if (has_offset || has_size || has_integrity || has_executable) {
@@ -441,8 +430,7 @@ static bool xx_asar_walk_entry(xx_json *json, xx_asar_walk *walk,
     xx_str_free(link_target);
     /* A file. "size" is mandatory, and "offset" is present exactly when the
      * bytes live inside the archive rather than in a sibling directory. */
-    if (!has_size || size < 0 || size > XX_ASAR_MAX_FILE_SIZE ||
-        (unpacked ? has_offset : !has_offset)) {
+    if (!has_size || size < 0 || size > XX_ASAR_MAX_FILE_SIZE || (unpacked ? has_offset : !has_offset)) {
         return false;
     }
     /* Now the size is known, so the integrity block's own block count can be
@@ -460,8 +448,7 @@ static bool xx_asar_walk_entry(xx_json *json, xx_asar_walk *walk,
             return false;
         }
         member.offset = walk->blob_offset + offset;
-        if (member.offset < walk->blob_offset ||
-            member.offset > walk->file_size - size) {
+        if (member.offset < walk->blob_offset || member.offset > walk->file_size - size) {
             xx_str_free(member.name);
             return false;
         }
@@ -476,9 +463,8 @@ static bool xx_asar_walk_entry(xx_json *json, xx_asar_walk *walk,
     return true;
 }
 
-static bool xx_asar_walk_files(xx_json *json, xx_asar_walk *walk,
-                               const char *parent, int depth,
-                               bool parent_unpacked, xx_pd_struct *pd) {
+static bool xx_asar_walk_files(xx_json *json, xx_asar_walk *walk, const char *parent, int depth, bool parent_unpacked, xx_pd_struct *pd)
+{
     if (depth < 0 || depth > XX_ASAR_MAX_TREE_DEPTH) return false;
     if (pd && xx_pd_is_stopped(pd)) return false;
     if (!xx_json_object_begin(json)) return false;
@@ -494,8 +480,7 @@ static bool xx_asar_walk_files(xx_json *json, xx_asar_walk *walk,
             xx_str_free(key);
             return false;
         }
-        path = (parent && parent[0]) ? xx_str_concat3(parent, "/", key)
-                                     : xx_str_dup(key);
+        path = (parent && parent[0]) ? xx_str_concat3(parent, "/", key) : xx_str_dup(key);
         xx_str_free(key);
         if (!path) return false;
         ok = xx_asar_walk_entry(json, walk, path, depth, parent_unpacked, pd);
@@ -509,18 +494,16 @@ static bool xx_asar_walk_files(xx_json *json, xx_asar_walk *walk,
 
 /* ------------------------------------------------------------- parsing -- */
 
-static bool xx_asar_read_at(Abstractformat *self, int64_t offset,
-                            uint8_t *buffer, size_t size) {
+static bool xx_asar_read_at(Abstractformat *self, int64_t offset, uint8_t *buffer, size_t size)
+{
     const size_t file_io_capacity = gb_asar_capacity();
     size_t completed = 0U;
 
-    if (!self || !self->device || offset < 0 ||
-        xx_io_seek64(self->device, offset, SEEK_SET) != 0) {
+    if (!self || !self->device || offset < 0 || xx_io_seek64(self->device, offset, SEEK_SET) != 0) {
         return false;
     }
     while (completed < size) {
-        ssize_t received =
-            gb_asar_read(self->device, buffer + completed, size - completed, file_io_capacity);
+        ssize_t received = gb_asar_read(self->device, buffer + completed, size - completed, file_io_capacity);
         if (received <= 0 || (size_t)received > size - completed) {
             return false;
         }
@@ -529,7 +512,8 @@ static bool xx_asar_read_at(Abstractformat *self, int64_t offset,
     return true;
 }
 
-static void xx_asar_stream_free(void *pointer) {
+static void xx_asar_stream_free(void *pointer)
+{
     xx_asar_stream *stream = (xx_asar_stream *)pointer;
     size_t index;
 
@@ -542,7 +526,8 @@ static void xx_asar_stream_free(void *pointer) {
     xx_mem_free(stream);
 }
 
-static xx_asar_stream *xx_asar_parse(Abstractformat *self, xx_pd_struct *pd) {
+static xx_asar_stream *xx_asar_parse(Abstractformat *self, xx_pd_struct *pd)
+{
     uint8_t header[XX_ASAR_HEADER_SIZE];
     uint8_t *json_bytes = NULL;
     xx_asar_stream *stream = NULL;
@@ -585,20 +570,16 @@ static xx_asar_stream *xx_asar_parse(Abstractformat *self, xx_pd_struct *pd) {
     aligned = ((uint64_t)json_size + 3U) & ~(uint64_t)3U;
     expected_string = 4U + aligned;
     expected_header = 4U + expected_string;
-    if ((uint64_t)json_string_size != expected_string ||
-        (uint64_t)header_size != expected_header) {
+    if ((uint64_t)json_string_size != expected_string || (uint64_t)header_size != expected_header) {
         return NULL;
     }
     blob_offset = 8 + (int64_t)header_size;
-    if (XX_ASAR_HEADER_SIZE + (int64_t)json_size > blob_offset ||
-        blob_offset > span) {
+    if (XX_ASAR_HEADER_SIZE + (int64_t)json_size > blob_offset || blob_offset > span) {
         return NULL;
     }
 
     json_bytes = (uint8_t *)xx_mem_alloc(json_size);
-    if (!json_bytes ||
-        !xx_asar_read_at(self, self->base_address + XX_ASAR_HEADER_SIZE,
-                         json_bytes, json_size)) {
+    if (!json_bytes || !xx_asar_read_at(self, self->base_address + XX_ASAR_HEADER_SIZE, json_bytes, json_size)) {
         xx_mem_free(json_bytes);
         return NULL;
     }
@@ -646,15 +627,14 @@ static xx_asar_stream *xx_asar_parse(Abstractformat *self, xx_pd_struct *pd) {
     xx_mem_free(json_bytes);
     return stream;
 
-fail:
-    {
-        size_t index;
-        for (index = 0U; index < walk.count; ++index) {
-            xx_str_free(walk.items[index].name);
-            xx_str_free(walk.items[index].link_target);
-        }
-        xx_mem_free(walk.items);
+fail: {
+    size_t index;
+    for (index = 0U; index < walk.count; ++index) {
+        xx_str_free(walk.items[index].name);
+        xx_str_free(walk.items[index].link_target);
     }
+    xx_mem_free(walk.items);
+}
     xx_mem_free(json_bytes);
     return NULL;
 }
@@ -663,8 +643,8 @@ fail:
 
 static void xx_asar_vtable_destroy(Abstractformat *self);
 
-void xx_asar_init(xx_asar *archive, xx_io_device *device,
-                  int64_t base_address) {
+void xx_asar_init(xx_asar *archive, xx_io_device *device, int64_t base_address)
+{
     if (!archive) return;
     xx_mem_zero(archive, sizeof(*archive));
     xx_format_init(&archive->format, device, base_address);
@@ -677,22 +657,17 @@ void xx_asar_init(xx_asar *archive, xx_io_device *device,
     archive->format.check_is_valid = xx_asar_check_is_valid;
     archive->format.handle_base_info = xx_asar_handle_base_info;
     archive->format.get_format_size = xx_asar_get_format_size;
-    archive->format.get_number_of_archive_records =
-        xx_asar_get_number_of_archive_records;
-    archive->format.create_archive_records_reading =
-        xx_asar_create_archive_records_reading;
-    archive->format.get_current_archive_record =
-        xx_asar_get_current_archive_record;
-    archive->format.unpack_current_archive_record =
-        xx_asar_unpack_current_archive_record;
-    archive->format.archive_record_move_to_next =
-        xx_asar_archive_record_move_to_next;
-    archive->format.free_archive_records_reading =
-        xx_asar_free_archive_records_reading;
+    archive->format.get_number_of_archive_records = xx_asar_get_number_of_archive_records;
+    archive->format.create_archive_records_reading = xx_asar_create_archive_records_reading;
+    archive->format.get_current_archive_record = xx_asar_get_current_archive_record;
+    archive->format.unpack_current_archive_record = xx_asar_unpack_current_archive_record;
+    archive->format.archive_record_move_to_next = xx_asar_archive_record_move_to_next;
+    archive->format.free_archive_records_reading = xx_asar_free_archive_records_reading;
     archive->format.destroy = xx_asar_vtable_destroy;
 }
 
-xx_asar *xx_asar_create(xx_io_device *device, int64_t base_address) {
+xx_asar *xx_asar_create(xx_io_device *device, int64_t base_address)
+{
     xx_asar *archive = (xx_asar *)xx_mem_alloc(sizeof(*archive));
 
     if (!archive) return NULL;
@@ -700,7 +675,8 @@ xx_asar *xx_asar_create(xx_io_device *device, int64_t base_address) {
     return archive;
 }
 
-void xx_asar_destroy(xx_asar *archive) {
+void xx_asar_destroy(xx_asar *archive)
+{
     if (!archive) return;
     /* Not xx_format_destroy: it dispatches back through format.destroy. */
     if (archive->format.close) archive->format.close(&archive->format);
@@ -708,19 +684,22 @@ void xx_asar_destroy(xx_asar *archive) {
     archive->number_of_records = 0U;
 }
 
-void xx_asar_free(xx_asar *archive) {
+void xx_asar_free(xx_asar *archive)
+{
     if (!archive) return;
     xx_asar_destroy(archive);
     xx_mem_free(archive);
 }
 
-static void xx_asar_vtable_destroy(Abstractformat *self) {
+static void xx_asar_vtable_destroy(Abstractformat *self)
+{
     xx_asar_destroy((xx_asar *)self);
 }
 
 /* -------------------------------------------------------------- format -- */
 
-bool xx_asar_check_is_valid(Abstractformat *self, xx_pd_struct *pd) {
+bool xx_asar_check_is_valid(Abstractformat *self, xx_pd_struct *pd)
+{
     xx_asar_stream *stream;
 
     if (!self || (pd && xx_pd_is_stopped(pd))) return false;
@@ -730,7 +709,8 @@ bool xx_asar_check_is_valid(Abstractformat *self, xx_pd_struct *pd) {
     return true;
 }
 
-bool xx_asar_handle_base_info(Abstractformat *self, xx_pd_struct *pd) {
+bool xx_asar_handle_base_info(Abstractformat *self, xx_pd_struct *pd)
+{
     xx_asar *archive = (xx_asar *)self;
     xx_asar_stream *stream;
 
@@ -754,18 +734,17 @@ bool xx_asar_handle_base_info(Abstractformat *self, xx_pd_struct *pd) {
     return true;
 }
 
-int64_t xx_asar_get_format_size(Abstractformat *self, xx_pd_struct *pd) {
-    if (!self ||
-        (!self->base_info_handled && !xx_format_handle_base_info(self, pd))) {
+int64_t xx_asar_get_format_size(Abstractformat *self, xx_pd_struct *pd)
+{
+    if (!self || (!self->base_info_handled && !xx_format_handle_base_info(self, pd))) {
         return 0;
     }
     return self->is_valid ? self->format_size : 0;
 }
 
-uint64_t xx_asar_get_number_of_archive_records(Abstractformat *self,
-                                               xx_pd_struct *pd) {
-    if (!self ||
-        (!self->base_info_handled && !xx_format_handle_base_info(self, pd))) {
+uint64_t xx_asar_get_number_of_archive_records(Abstractformat *self, xx_pd_struct *pd)
+{
+    if (!self || (!self->base_info_handled && !xx_format_handle_base_info(self, pd))) {
         return 0U;
     }
     return self->is_valid ? ((xx_asar *)self)->number_of_records : 0U;
@@ -773,40 +752,31 @@ uint64_t xx_asar_get_number_of_archive_records(Abstractformat *self,
 
 /* ------------------------------------------------------------- records -- */
 
-static bool xx_asar_set_record(xx_archive_record *record,
-                               const xx_asar_member *member) {
+static bool xx_asar_set_record(xx_archive_record *record, const xx_asar_member *member)
+{
     xx_archive_record_cleanup(record);
     xx_archive_record_init(record);
     record->header_offset = 0;
     record->header_size = 0;
     record->data_offset = member->offset;
     record->compressed_size = member->size;
-    return xx_archive_record_set_original_name(record, member->name) &&
-           xx_archive_record_set_meta_u64(record, XX_META_ID_COMPRESSED_SIZE,
-                                          (uint64_t)member->size) &&
-           xx_archive_record_set_meta_u64(record, XX_META_ID_UNCOMPRESSED_SIZE,
-                                          (uint64_t)member->size) &&
-           xx_archive_record_set_meta_bool(record, XX_META_ID_IS_FOLDER,
-                                           member->is_folder) &&
-           xx_archive_record_set_meta_bool(record, XX_META_ID_IS_ENCRYPTED,
-                                           false) &&
-           (!member->is_link ||
-            xx_archive_record_set_meta_str(record, XX_META_ID_LINK_TARGET,
-                                           member->link_target));
+    return xx_archive_record_set_original_name(record, member->name) && xx_archive_record_set_meta_u64(record, XX_META_ID_COMPRESSED_SIZE, (uint64_t)member->size) &&
+           xx_archive_record_set_meta_u64(record, XX_META_ID_UNCOMPRESSED_SIZE, (uint64_t)member->size) &&
+           xx_archive_record_set_meta_bool(record, XX_META_ID_IS_FOLDER, member->is_folder) && xx_archive_record_set_meta_bool(record, XX_META_ID_IS_ENCRYPTED, false) &&
+           (!member->is_link || xx_archive_record_set_meta_str(record, XX_META_ID_LINK_TARGET, member->link_target));
 }
 
-static bool xx_asar_copy_options(xx_list_s *target, const xx_list_s *options) {
+static bool xx_asar_copy_options(xx_list_s *target, const xx_list_s *options)
+{
     size_t index;
 
     if (!target || !options) return options == NULL;
     for (index = 0U; index < options->count; ++index) {
-        const xx_meta *source =
-            (const xx_meta *)xx_list_at((const xx_list_t *)options, index);
+        const xx_meta *source = (const xx_meta *)xx_list_at((const xx_list_t *)options, index);
         xx_meta copied;
         if (!source) continue;
         xx_meta_init(&copied, source->meta_id);
-        if (!xx_var_copy(&copied.var, &source->var) ||
-            !xx_list_append(target, &copied)) {
+        if (!xx_var_copy(&copied.var, &source->var) || !xx_list_append(target, &copied)) {
             xx_meta_cleanup(&copied);
             return false;
         }
@@ -814,21 +784,20 @@ static bool xx_asar_copy_options(xx_list_s *target, const xx_list_s *options) {
     return true;
 }
 
-static const xx_var *xx_asar_get_option(const xx_list_s *options,
-                                        uint32_t meta_id) {
+static const xx_var *xx_asar_get_option(const xx_list_s *options, uint32_t meta_id)
+{
     size_t index;
 
     if (!options) return NULL;
     for (index = 0U; index < options->count; ++index) {
-        const xx_meta *meta =
-            (const xx_meta *)xx_list_at((const xx_list_t *)options, index);
+        const xx_meta *meta = (const xx_meta *)xx_list_at((const xx_list_t *)options, index);
         if (meta && meta->meta_id == meta_id) return &meta->var;
     }
     return NULL;
 }
 
-xx_archive_record_state *xx_asar_create_archive_records_reading(
-    Abstractformat *self, const xx_list_s *options, xx_pd_struct *pd) {
+xx_archive_record_state *xx_asar_create_archive_records_reading(Abstractformat *self, const xx_list_s *options, xx_pd_struct *pd)
+{
     xx_asar_stream *stream;
     xx_archive_record_state *state;
 
@@ -844,9 +813,7 @@ xx_archive_record_state *xx_asar_create_archive_records_reading(
     state->internal_state = stream;
     state->free_internal = xx_asar_stream_free;
     state->total_records = (int64_t)stream->count;
-    if (!xx_asar_copy_options(&state->options, options) ||
-        (stream->count != 0U &&
-         !xx_asar_set_record(&state->current_record, &stream->items[0]))) {
+    if (!xx_asar_copy_options(&state->options, options) || (stream->count != 0U && !xx_asar_set_record(&state->current_record, &stream->items[0]))) {
         xx_archive_record_state_free(state);
         return NULL;
     }
@@ -855,20 +822,16 @@ xx_archive_record_state *xx_asar_create_archive_records_reading(
     return state;
 }
 
-const xx_archive_record *xx_asar_get_current_archive_record(
-    Abstractformat *self, xx_archive_record_state *state) {
-    return self && state && state->format == self && state->has_record
-               ? &state->current_record
-               : NULL;
+const xx_archive_record *xx_asar_get_current_archive_record(Abstractformat *self, xx_archive_record_state *state)
+{
+    return self && state && state->format == self && state->has_record ? &state->current_record : NULL;
 }
 
-bool xx_asar_archive_record_move_to_next(Abstractformat *self,
-                                         xx_archive_record_state *state,
-                                         xx_pd_struct *pd) {
+bool xx_asar_archive_record_move_to_next(Abstractformat *self, xx_archive_record_state *state, xx_pd_struct *pd)
+{
     xx_asar_stream *stream;
 
-    if (!self || !state || state->format != self || !state->has_record ||
-        (pd && xx_pd_is_stopped(pd))) {
+    if (!self || !state || state->format != self || !state->has_record || (pd && xx_pd_is_stopped(pd))) {
         return false;
     }
     stream = (xx_asar_stream *)state->internal_state;
@@ -880,13 +843,13 @@ bool xx_asar_archive_record_move_to_next(Abstractformat *self,
     }
     ++stream->index;
     ++state->current_index;
-    state->has_record = xx_asar_set_record(&state->current_record,
-                                           &stream->items[stream->index]);
+    state->has_record = xx_asar_set_record(&state->current_record, &stream->items[stream->index]);
     return state->has_record;
 }
 
 /* Refuse anything that would escape the extraction directory. */
-static bool xx_asar_path_safe(const char *name) {
+static bool xx_asar_path_safe(const char *name)
+{
     const char *cursor = name;
 
     if (!name || !name[0] || name[0] == '/') return false;
@@ -901,9 +864,8 @@ static bool xx_asar_path_safe(const char *name) {
     return true;
 }
 
-bool xx_asar_unpack_current_archive_record(Abstractformat *self,
-                                           xx_archive_record_state *state,
-                                           xx_pd_struct *pd) {
+bool xx_asar_unpack_current_archive_record(Abstractformat *self, xx_archive_record_state *state, xx_pd_struct *pd)
+{
     const size_t file_io_capacity = gb_asar_capacity();
     xx_asar_stream *stream;
     const xx_asar_member *member;
@@ -914,8 +876,7 @@ bool xx_asar_unpack_current_archive_record(Abstractformat *self,
     bool result = false;
     bool created = false;
 
-    if (!self || !state || state->format != self || !state->has_record ||
-        (pd && xx_pd_is_stopped(pd))) {
+    if (!self || !state || state->format != self || !state->has_record || (pd && xx_pd_is_stopped(pd))) {
         return false;
     }
     stream = (xx_asar_stream *)state->internal_state;
@@ -928,8 +889,7 @@ bool xx_asar_unpack_current_archive_record(Abstractformat *self,
      * honest; inventing a location would not be. */
     if (member->is_external) return false;
 
-    path_option = xx_asar_get_option(&state->options,
-                                     XX_META_ID_OPT_UNPACK_PATH);
+    path_option = xx_asar_get_option(&state->options, XX_META_ID_OPT_UNPACK_PATH);
     if (!path_option) {
         /* No destination: confirm the extent is readable, which is what
          * verifies a member without writing it. */
@@ -945,21 +905,16 @@ bool xx_asar_unpack_current_archive_record(Abstractformat *self,
         end = member->offset + member->size;
         result = true;
         while (result && position < end) {
-            size_t take = (size_t)(end - position < (int64_t)file_io_capacity
-                                       ? end - position
-                                       : (int64_t)file_io_capacity);
-            result = !(pd && xx_pd_is_stopped(pd)) &&
-                     xx_asar_read_at(self, position, buffer, take);
+            size_t take = (size_t)(end - position < (int64_t)file_io_capacity ? end - position : (int64_t)file_io_capacity);
+            result = !(pd && xx_pd_is_stopped(pd)) && xx_asar_read_at(self, position, buffer, take);
             position += (int64_t)take;
         }
         xx_mem_free(buffer);
         return result;
     }
-    if (path_option->type == XX_VAR_TYPE_STRING ||
-        path_option->type == XX_VAR_TYPE_STRING_VIEW) {
+    if (path_option->type == XX_VAR_TYPE_STRING || path_option->type == XX_VAR_TYPE_STRING_VIEW) {
         base_path = xx_var_get_str(path_option);
-    } else if (path_option->type == XX_VAR_TYPE_WSTRING ||
-               path_option->type == XX_VAR_TYPE_WSTRING_VIEW) {
+    } else if (path_option->type == XX_VAR_TYPE_WSTRING || path_option->type == XX_VAR_TYPE_WSTRING_VIEW) {
         converted_path = xx_str_unicode_to_utf8(xx_var_get_wstr(path_option));
         base_path = converted_path;
     }
@@ -967,9 +922,7 @@ bool xx_asar_unpack_current_archive_record(Abstractformat *self,
         xx_str_free(converted_path);
         return false;
     }
-    if (base_path[0] != '\0' &&
-        base_path[xx_str_len(base_path) - 1U] != '/' &&
-        base_path[xx_str_len(base_path) - 1U] != '\\') {
+    if (base_path[0] != '\0' && base_path[xx_str_len(base_path) - 1U] != '/' && base_path[xx_str_len(base_path) - 1U] != '\\') {
         target_path = xx_str_concat3(base_path, "/", member->name);
     } else {
         target_path = xx_str_concat(base_path, member->name);
@@ -1005,19 +958,15 @@ bool xx_asar_unpack_current_archive_record(Abstractformat *self,
 
         result = output != NULL && buffer != NULL;
         while (result && position < end) {
-            size_t take = (size_t)(end - position < (int64_t)file_io_capacity
-                                       ? end - position
-                                       : (int64_t)file_io_capacity);
+            size_t take = (size_t)(end - position < (int64_t)file_io_capacity ? end - position : (int64_t)file_io_capacity);
             size_t written = 0U;
 
-            if ((pd && xx_pd_is_stopped(pd)) ||
-                !xx_asar_read_at(self, position, buffer, take)) {
+            if ((pd && xx_pd_is_stopped(pd)) || !xx_asar_read_at(self, position, buffer, take)) {
                 result = false;
                 break;
             }
             while (written < take) {
-                ssize_t sent =
-                    gb_asar_write(output, buffer + written, take - written, file_io_capacity);
+                ssize_t sent = gb_asar_write(output, buffer + written, take - written, file_io_capacity);
                 if (sent <= 0 || (size_t)sent > take - written) {
                     result = false;
                     break;
@@ -1035,16 +984,18 @@ bool xx_asar_unpack_current_archive_record(Abstractformat *self,
     return result;
 }
 
-void xx_asar_free_archive_records_reading(Abstractformat *self,
-                                          xx_archive_record_state *state) {
+void xx_asar_free_archive_records_reading(Abstractformat *self, xx_archive_record_state *state)
+{
     (void)self;
     xx_archive_record_state_free(state);
 }
 
-int64_t xx_asar_get_blob_offset(const xx_asar *archive) {
+int64_t xx_asar_get_blob_offset(const xx_asar *archive)
+{
     return archive ? archive->blob_offset : 0;
 }
 
-int64_t xx_asar_get_json_size(const xx_asar *archive) {
+int64_t xx_asar_get_json_size(const xx_asar *archive)
+{
     return archive ? archive->json_size : 0;
 }

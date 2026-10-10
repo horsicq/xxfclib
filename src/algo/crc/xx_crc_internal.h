@@ -31,7 +31,8 @@ extern "C" {
 #endif
 
 /* Reflection helper */
-static inline uint64_t xx_crc_reflect(uint64_t val, uint8_t width) {
+static inline uint64_t xx_crc_reflect(uint64_t val, uint8_t width)
+{
     uint64_t res = 0;
     for (uint8_t i = 0; i < width; ++i) {
         if ((val >> i) & 1ULL) {
@@ -41,7 +42,8 @@ static inline uint64_t xx_crc_reflect(uint64_t val, uint8_t width) {
     return res;
 }
 
-static inline uint64_t xx_crc_mask(uint8_t width) {
+static inline uint64_t xx_crc_mask(uint8_t width)
+{
     if (width >= 64) {
         return 0xFFFFFFFFFFFFFFFFULL;
     }

@@ -47,40 +47,33 @@ typedef struct xx_mub XMub;
 struct xx_mub {
     Abstractformat format;
     uint64_t number_of_records;
-    uint32_t magic;         /**< First four bytes read big-endian. */
-    bool is_fat64;          /**< CA FE BA BF: 32-byte fat_arch_64 entries. */
-    int64_t archive_end;    /**< End of the furthest slice, or -1. */
+    uint32_t magic;      /**< First four bytes read big-endian. */
+    bool is_fat64;       /**< CA FE BA BF: 32-byte fat_arch_64 entries. */
+    int64_t archive_end; /**< End of the furthest slice, or -1. */
     void *internal;
 };
 
-XXFC_API void xx_mub_init(xx_mub *mub, xx_io_device *dev,
-                          int64_t base_address);
+XXFC_API void xx_mub_init(xx_mub *mub, xx_io_device *dev, int64_t base_address);
 XXFC_API xx_mub *xx_mub_create(xx_io_device *dev, int64_t base_address);
 XXFC_API void xx_mub_destroy(xx_mub *mub);
 XXFC_API void xx_mub_free(xx_mub *mub);
 
 XXFC_API bool xx_mub_check_is_valid(Abstractformat *self, xx_pd_struct *pd);
 XXFC_API bool xx_mub_handle_base_info(Abstractformat *self, xx_pd_struct *pd);
-XXFC_API int64_t xx_mub_get_format_size(Abstractformat *self,
-                                        xx_pd_struct *pd);
-XXFC_API uint64_t xx_mub_get_number_of_archive_records(Abstractformat *self,
-                                                       xx_pd_struct *pd);
+XXFC_API int64_t xx_mub_get_format_size(Abstractformat *self, xx_pd_struct *pd);
+XXFC_API uint64_t xx_mub_get_number_of_archive_records(Abstractformat *self, xx_pd_struct *pd);
 
-XXFC_API xx_archive_record_state *xx_mub_create_archive_records_reading(
-    Abstractformat *self, const xx_list_s *options, xx_pd_struct *pd);
-XXFC_API const xx_archive_record *xx_mub_get_current_archive_record(
-    Abstractformat *self, xx_archive_record_state *state);
-XXFC_API bool xx_mub_unpack_current_archive_record(
-    Abstractformat *self, xx_archive_record_state *state, xx_pd_struct *pd);
-XXFC_API bool xx_mub_archive_record_move_to_next(
-    Abstractformat *self, xx_archive_record_state *state, xx_pd_struct *pd);
-XXFC_API void xx_mub_free_archive_records_reading(
-    Abstractformat *self, xx_archive_record_state *state);
+XXFC_API xx_archive_record_state *xx_mub_create_archive_records_reading(Abstractformat *self, const xx_list_s *options, xx_pd_struct *pd);
+XXFC_API const xx_archive_record *xx_mub_get_current_archive_record(Abstractformat *self, xx_archive_record_state *state);
+XXFC_API bool xx_mub_unpack_current_archive_record(Abstractformat *self, xx_archive_record_state *state, xx_pd_struct *pd);
+XXFC_API bool xx_mub_archive_record_move_to_next(Abstractformat *self, xx_archive_record_state *state, xx_pd_struct *pd);
+XXFC_API void xx_mub_free_archive_records_reading(Abstractformat *self, xx_archive_record_state *state);
 
 XXFC_API uint64_t xx_mub_get_number_of_records(const xx_mub *mub);
 XXFC_API int64_t xx_mub_get_archive_end(const xx_mub *mub);
 
-static inline Abstractformat *xx_mub_to_format(xx_mub *mub) {
+static inline Abstractformat *xx_mub_to_format(xx_mub *mub)
+{
     return mub ? &mub->format : NULL;
 }
 

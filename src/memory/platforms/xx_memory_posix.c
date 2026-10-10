@@ -30,21 +30,24 @@
 #include "xxfclib/rt/xx_rt.h"
 #include <stdlib.h>
 
-void* xx_memory_platform_alloc(size_t size) {
+void *xx_memory_platform_alloc(size_t size)
+{
     if (size == 0) {
         return NULL;
     }
     return malloc(size);
 }
 
-void* xx_memory_platform_calloc(size_t count, size_t size) {
+void *xx_memory_platform_calloc(size_t count, size_t size)
+{
     if (count == 0 || size == 0) {
         return NULL;
     }
     return calloc(count, size);
 }
 
-void* xx_memory_platform_realloc(void *ptr, size_t new_size) {
+void *xx_memory_platform_realloc(void *ptr, size_t new_size)
+{
     if (!ptr) {
         if (new_size == 0) {
             return NULL;
@@ -58,17 +61,18 @@ void* xx_memory_platform_realloc(void *ptr, size_t new_size) {
     return realloc(ptr, new_size);
 }
 
-void xx_memory_platform_free(void *ptr) {
+void xx_memory_platform_free(void *ptr)
+{
     if (ptr) {
         free(ptr);
     }
 }
 
-size_t xx_memory_platform_usable_size(void *ptr) {
+size_t xx_memory_platform_usable_size(void *ptr)
+{
     (void)ptr;
     return 0;
 }
-
 
 /* Runtime allocation remains platform-specific. Its zero-size behavior is
  * separate from xx_memory_platform_* allocation. Memory operations themselves

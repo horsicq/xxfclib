@@ -42,11 +42,7 @@ extern "C" {
  * @param written      Receives the produced byte count (0 on failure).
  * @return true only when exactly @p output_size bytes were produced.
  */
-XXFC_API bool xx_diskdoubler_adn_decode_memory(const uint8_t *input,
-                                               size_t input_size,
-                                               uint8_t *output,
-                                               size_t output_size,
-                                               size_t *written);
+XXFC_API bool xx_diskdoubler_adn_decode_memory(const uint8_t *input, size_t input_size, uint8_t *output, size_t output_size, size_t *written);
 
 /**
  * @brief Decode a DiskDoubler "DDn" member (method 10).
@@ -63,11 +59,7 @@ XXFC_API bool xx_diskdoubler_adn_decode_memory(const uint8_t *input,
  * @param written      Receives the produced byte count (0 on failure).
  * @return true only when exactly @p output_size bytes were produced.
  */
-XXFC_API bool xx_diskdoubler_ddn_decode_memory(const uint8_t *input,
-                                               size_t input_size,
-                                               uint8_t *output,
-                                               size_t output_size,
-                                               size_t *written);
+XXFC_API bool xx_diskdoubler_ddn_decode_memory(const uint8_t *input, size_t input_size, uint8_t *output, size_t output_size, size_t *written);
 
 /**
  * @brief Decode a DiskDoubler LZW member (method 1).
@@ -88,13 +80,8 @@ XXFC_API bool xx_diskdoubler_ddn_decode_memory(const uint8_t *input,
  * @return true only when exactly @p output_size bytes were produced and the
  *         checksum matched.
  */
-XXFC_API bool xx_diskdoubler_lzw_decode_memory(const uint8_t *input,
-                                               size_t input_size,
-                                               uint8_t info1, uint8_t info2,
-                                               uint16_t checksum,
-                                               uint8_t *output,
-                                               size_t output_size,
-                                               size_t *written);
+XXFC_API bool xx_diskdoubler_lzw_decode_memory(const uint8_t *input, size_t input_size, uint8_t info1, uint8_t info2, uint16_t checksum, uint8_t *output,
+                                               size_t output_size, size_t *written);
 
 #ifdef __cplusplus
 }

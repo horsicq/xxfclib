@@ -61,9 +61,7 @@ extern "C" {
  * @param written     Receives the produced byte count.  Set on every path.
  * @return true only when exactly @p output_size bytes were produced.
  */
-XXFC_API bool xx_corelltec_decode_memory(const uint8_t *input,
-                                         size_t input_size, uint8_t *output,
-                                         size_t output_size, size_t *written);
+XXFC_API bool xx_corelltec_decode_memory(const uint8_t *input, size_t input_size, uint8_t *output, size_t output_size, size_t *written);
 
 /**
  * @brief Decode one member of a solid LTEC block.
@@ -80,11 +78,7 @@ XXFC_API bool xx_corelltec_decode_memory(const uint8_t *input,
  * @param written         Receives the produced byte count.  Set on every path.
  * @return true only when exactly @p output_size bytes were produced.
  */
-XXFC_API bool xx_corelltec_decode_member(const uint8_t *input,
-                                         size_t input_size,
-                                         size_t offset_in_block,
-                                         uint8_t *output, size_t output_size,
-                                         size_t *written);
+XXFC_API bool xx_corelltec_decode_member(const uint8_t *input, size_t input_size, size_t offset_in_block, uint8_t *output, size_t output_size, size_t *written);
 
 #ifdef __cplusplus
 }

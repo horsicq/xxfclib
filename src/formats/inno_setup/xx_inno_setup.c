@@ -58,9 +58,7 @@
 #define XX_INNO_SETUP_FILE_TYPE XX_FILE_TYPE_UNKNOWN
 #endif
 
-#define IV(a, b, c, d)                                               \
-    (((uint32_t)(a) << 24) | ((uint32_t)(b) << 16) | ((uint32_t)(c) << 8) | \
-     (uint32_t)(d))
+#define IV(a, b, c, d) (((uint32_t)(a) << 24) | ((uint32_t)(b) << 16) | ((uint32_t)(c) << 8) | (uint32_t)(d))
 
 /* Largest decompressed setup-0 block (header, entries, wizard images); a
  * 40,000-file installer needs about 15 MB. */
@@ -99,7 +97,12 @@ enum {
     INNO_H_SHA256
 };
 
-enum { INNO_F_NONE = 0, INNO_F_4108, INNO_F_5200, INNO_F_5309 };
+enum {
+    INNO_F_NONE = 0,
+    INNO_F_4108,
+    INNO_F_5200,
+    INNO_F_5309
+};
 
 enum {
     INNO_T_NONE = 0,
@@ -138,11 +141,11 @@ typedef struct inno_loc_s {
     int64_t chunk_offset; /* relative to the data area */
     int64_t sub_offset;   /* inside the decoded chunk */
     int64_t size;
-    int64_t chunk_size;   /* bytes after "zlb\x1a" */
+    int64_t chunk_size; /* bytes after "zlb\x1a" */
     uint64_t filetime;
-    uint64_t extent;  /* bytes of its chunk that the run of locations needs */
-    uint32_t users;   /* locations in that run */
-    bool bad_order;   /* its run is out of order: refused at unpack */
+    uint64_t extent; /* bytes of its chunk that the run of locations needs */
+    uint32_t users;  /* locations in that run */
+    bool bad_order;  /* its run is out of order: refused at unpack */
     uint8_t checksum[32];
     uint8_t hash_kind;
     uint8_t compression;
@@ -170,7 +173,7 @@ typedef struct inno_ctx_s {
     int64_t cache_chunk;
     uint8_t *cache;
     uint64_t cache_size;
-    struct ilz_s *lz;  /* decoder of the solid LZMA chunk being read */
+    struct ilz_s *lz; /* decoder of the solid LZMA chunk being read */
     int64_t lz_chunk;
     /* A solid chunk known to decode only up to bad_at: later members of it
      * fail at once instead of decoding the damaged prefix again. */
@@ -186,15 +189,16 @@ static void ilz_free(struct ilz_s *z);
 /* ---------------------------------------------------------------------- */
 /* Small helpers                                                           */
 
-static bool inno_stopped(xx_pd_struct *pd) { return pd && xx_pd_is_stopped(pd); }
+static bool inno_stopped(xx_pd_struct *pd)
+{
+    return pd && xx_pd_is_stopped(pd);
+}
 
-static bool inno_read_at(xx_io_device *device, int64_t offset, void *buffer,
-                         size_t size) {
+static bool inno_read_at(xx_io_device *device, int64_t offset, void *buffer, size_t size)
+{
     size_t done = 0U;
     const size_t io_capacity = xx_get_file_buffer_size();
-    if (!device || (!buffer && size) || offset < 0 ||
-        xx_io_seek64(device, offset, SEEK_SET) != 0)
-        return false;
+    if (!device || (!buffer && size) || offset < 0 || xx_io_seek64(device, offset, SEEK_SET) != 0) return false;
     while (done < size) {
         size_t request = size - done;
         if (request > io_capacity) request = io_capacity;
@@ -205,7 +209,8 @@ static bool inno_read_at(xx_io_device *device, int64_t offset, void *buffer,
     return true;
 }
 
-static uint32_t inno_crc32(const uint8_t *data, size_t size) {
+static uint32_t inno_crc32(const uint8_t *data, size_t size)
+{
     return xx_crc32_calc(0U, data, size);
 }
 
@@ -239,23 +244,24 @@ typedef struct inno_sink_s {
     uint64_t want; /* bytes to keep after them */
     uint64_t seen;
     uint64_t kept;
-    uint8_t *mem;  /* memory mode */
+    uint8_t *mem; /* memory mode */
     size_t mem_cap;
     size_t mem_limit;
     inno_out *out; /* streaming mode */
     bool failed;
 } inno_sink;
 
-static void inno_emit(inno_out *out, const uint8_t *data, size_t size) {
+static void inno_emit(inno_out *out, const uint8_t *data, size_t size)
+{
     size_t done = 0U;
     if (out->failed || !size) return;
     switch (out->hash_kind) {
-    case INNO_H_ADLER32: out->adler = xx_adler32_update(out->adler, data, size); break;
-    case INNO_H_CRC32: out->crc = xx_crc32_calc(out->crc, data, size); break;
-    case INNO_H_MD5:
-    case INNO_H_SHA1:
-    case INNO_H_SHA256: xx_hash_update(&out->hash, data, size); break;
-    default: break;
+        case INNO_H_ADLER32: out->adler = xx_adler32_update(out->adler, data, size); break;
+        case INNO_H_CRC32: out->crc = xx_crc32_calc(out->crc, data, size); break;
+        case INNO_H_MD5:
+        case INNO_H_SHA1:
+        case INNO_H_SHA256: xx_hash_update(&out->hash, data, size); break;
+        default: break;
     }
     if (!out->dest) return;
     while (done < size) {
@@ -271,7 +277,8 @@ static void inno_emit(inno_out *out, const uint8_t *data, size_t size) {
 }
 
 /* Inno 4.1.8 .. 5.1.x: CALL/JMP operands made absolute, byte by byte. */
-static void inno_filter_4108(inno_filter *f, uint8_t *data, size_t size) {
+static void inno_filter_4108(inno_filter *f, uint8_t *data, size_t size)
+{
     size_t i;
     for (i = 0U; i < size; ++i, ++f->pos) {
         uint8_t b = data[i];
@@ -292,13 +299,13 @@ static void inno_filter_4108(inno_filter *f, uint8_t *data, size_t size) {
 /* Inno 5.2.0 and later: 5-byte instructions that do not cross a 64 KiB
  * boundary, operand high byte 00 or FF; 5.3.9 also flips that byte.
  * Returns how many leading bytes are final; the rest wait for more data. */
-static size_t inno_filter_5200(inno_filter *f, uint8_t *data, size_t size) {
+static size_t inno_filter_5200(inno_filter *f, uint8_t *data, size_t size)
+{
     size_t i = 0U;
     while (i < size) {
         uint64_t pos = f->pos + i;
         uint8_t op = data[i];
-        if ((op != 0xE8U && op != 0xE9U) || (0x10000U - (pos % 0x10000U)) < 5U ||
-            pos + 5U > f->total) {
+        if ((op != 0xE8U && op != 0xE9U) || (0x10000U - (pos % 0x10000U)) < 5U || pos + 5U > f->total) {
             ++i;
             continue;
         }
@@ -306,15 +313,12 @@ static size_t inno_filter_5200(inno_filter *f, uint8_t *data, size_t size) {
         {
             uint8_t high = data[i + 4U];
             if (high == 0x00U || high == 0xFFU) {
-                uint32_t rel = (uint32_t)data[i + 1U] |
-                               ((uint32_t)data[i + 2U] << 8U) |
-                               ((uint32_t)data[i + 3U] << 16U);
+                uint32_t rel = (uint32_t)data[i + 1U] | ((uint32_t)data[i + 2U] << 8U) | ((uint32_t)data[i + 3U] << 16U);
                 rel -= (uint32_t)(pos + 5U) & 0x00FFFFFFU;
                 data[i + 1U] = (uint8_t)rel;
                 data[i + 2U] = (uint8_t)(rel >> 8U);
                 data[i + 3U] = (uint8_t)(rel >> 16U);
-                if (f->kind == INNO_F_5309 && (rel & 0x00800000U))
-                    data[i + 4U] = (uint8_t)~high;
+                if (f->kind == INNO_F_5309 && (rel & 0x00800000U)) data[i + 4U] = (uint8_t)~high;
             }
         }
         i += 5U;
@@ -323,7 +327,8 @@ static size_t inno_filter_5200(inno_filter *f, uint8_t *data, size_t size) {
     return i;
 }
 
-static void inno_out_feed(inno_out *out, const uint8_t *data, size_t size) {
+static void inno_out_feed(inno_out *out, const uint8_t *data, size_t size)
+{
     while (size && !out->failed) {
         size_t piece = size < out->io_capacity ? size : out->io_capacity;
         if (out->filter.kind == INNO_F_NONE) {
@@ -334,8 +339,7 @@ static void inno_out_feed(inno_out *out, const uint8_t *data, size_t size) {
             inno_emit(out, out->work, piece);
         } else {
             size_t total = out->filter.held + piece, done;
-            if (out->filter.held)
-                xx_rt_memcpy(out->work, out->filter.hold, out->filter.held);
+            if (out->filter.held) xx_rt_memcpy(out->work, out->filter.hold, out->filter.held);
             xx_rt_memcpy(out->work + out->filter.held, data, piece);
             done = inno_filter_5200(&out->filter, out->work, total);
             inno_emit(out, out->work, done);
@@ -344,16 +348,15 @@ static void inno_out_feed(inno_out *out, const uint8_t *data, size_t size) {
                 out->failed = true;
                 return;
             }
-            if (out->filter.held)
-                xx_rt_memcpy(out->filter.hold, out->work + done, out->filter.held);
+            if (out->filter.held) xx_rt_memcpy(out->filter.hold, out->work + done, out->filter.held);
         }
         data += piece;
         size -= piece;
     }
 }
 
-static bool inno_out_init(inno_out *out, const inno_loc *loc, xx_io_device *dest,
-                           size_t capacity) {
+static bool inno_out_init(inno_out *out, const inno_loc *loc, xx_io_device *dest, size_t capacity)
+{
     xx_mem_zero(out, sizeof(*out));
     out->io_capacity = capacity;
     /* Four held instruction bytes are semantic lookahead, independent of I/O. */
@@ -371,7 +374,8 @@ static bool inno_out_init(inno_out *out, const inno_loc *loc, xx_io_device *dest
 }
 
 /* Flush what the filter still holds and compare the stored checksum. */
-static bool inno_out_finish(inno_out *out, const inno_loc *loc) {
+static bool inno_out_finish(inno_out *out, const inno_loc *loc)
+{
     uint8_t digest[XX_HASH_MAX_DIGEST_SIZE];
     if (out->filter.held) {
         inno_emit(out, out->filter.hold, out->filter.held);
@@ -379,22 +383,17 @@ static bool inno_out_finish(inno_out *out, const inno_loc *loc) {
     }
     if (out->failed) return false;
     switch (out->hash_kind) {
-    case INNO_H_ADLER32: return out->adler == xx_data_get_u32(loc->checksum, 4, 0, false);
-    case INNO_H_CRC32: return out->crc == xx_data_get_u32(loc->checksum, 4, 0, false);
-    case INNO_H_MD5:
-        return xx_hash_final(&out->hash, digest, sizeof(digest)) &&
-               xx_rt_memcmp(digest, loc->checksum, XX_MD5_DIGEST_SIZE) == 0;
-    case INNO_H_SHA1:
-        return xx_hash_final(&out->hash, digest, sizeof(digest)) &&
-               xx_rt_memcmp(digest, loc->checksum, XX_SHA1_DIGEST_SIZE) == 0;
-    case INNO_H_SHA256:
-        return xx_hash_final(&out->hash, digest, sizeof(digest)) &&
-               xx_rt_memcmp(digest, loc->checksum, XX_SHA256_DIGEST_SIZE) == 0;
-    default: return true;
+        case INNO_H_ADLER32: return out->adler == xx_data_get_u32(loc->checksum, 4, 0, false);
+        case INNO_H_CRC32: return out->crc == xx_data_get_u32(loc->checksum, 4, 0, false);
+        case INNO_H_MD5: return xx_hash_final(&out->hash, digest, sizeof(digest)) && xx_rt_memcmp(digest, loc->checksum, XX_MD5_DIGEST_SIZE) == 0;
+        case INNO_H_SHA1: return xx_hash_final(&out->hash, digest, sizeof(digest)) && xx_rt_memcmp(digest, loc->checksum, XX_SHA1_DIGEST_SIZE) == 0;
+        case INNO_H_SHA256: return xx_hash_final(&out->hash, digest, sizeof(digest)) && xx_rt_memcmp(digest, loc->checksum, XX_SHA256_DIGEST_SIZE) == 0;
+        default: return true;
     }
 }
 
-static bool inno_sink_keep(inno_sink *s, const uint8_t *data, size_t size) {
+static bool inno_sink_keep(inno_sink *s, const uint8_t *data, size_t size)
+{
     if (s->out) {
         inno_out_feed(s->out, data, size);
         return !s->out->failed;
@@ -413,7 +412,8 @@ static bool inno_sink_keep(inno_sink *s, const uint8_t *data, size_t size) {
     return true;
 }
 
-static ssize_t inno_sink_write(xx_io_device *self, const void *buffer, size_t n) {
+static ssize_t inno_sink_write(xx_io_device *self, const void *buffer, size_t n)
+{
     inno_sink *s = self ? (inno_sink *)self->priv : NULL;
     const uint8_t *p = (const uint8_t *)buffer;
     size_t left = n;
@@ -441,27 +441,36 @@ static ssize_t inno_sink_write(xx_io_device *self, const void *buffer, size_t n)
     return (ssize_t)n;
 }
 
-static ssize_t inno_dev_read(xx_io_device *self, void *buffer, size_t n) {
-    (void)self; (void)buffer; (void)n;
+static ssize_t inno_dev_read(xx_io_device *self, void *buffer, size_t n)
+{
+    (void)self;
+    (void)buffer;
+    (void)n;
     return -1;
 }
 
-static int inno_dev_seek(xx_io_device *self, long offset, int whence) {
-    (void)self; (void)offset; (void)whence;
+static int inno_dev_seek(xx_io_device *self, long offset, int whence)
+{
+    (void)self;
+    (void)offset;
+    (void)whence;
     return -1;
 }
 
-static int inno_dev_close(xx_io_device *self) {
+static int inno_dev_close(xx_io_device *self)
+{
     (void)self;
     return 0;
 }
 
-static int64_t inno_dev_size(xx_io_device *self) {
+static int64_t inno_dev_size(xx_io_device *self)
+{
     inno_sink *s = self ? (inno_sink *)self->priv : NULL;
     return s ? (int64_t)s->kept : -1;
 }
 
-static void inno_sink_device(xx_io_device *device, inno_sink *sink) {
+static void inno_sink_device(xx_io_device *device, inno_sink *sink)
+{
     xx_mem_zero(device, sizeof(*device));
     device->read = inno_dev_read;
     device->write = inno_sink_write;
@@ -480,13 +489,15 @@ typedef struct icur_s {
     size_t o;
 } icur;
 
-static bool ic_skip(icur *c, uint64_t k) {
+static bool ic_skip(icur *c, uint64_t k)
+{
     if (k > (uint64_t)(c->n - c->o)) return false;
     c->o += (size_t)k;
     return true;
 }
 
-static bool ic_str(icur *c, const uint8_t **s, uint32_t *len) {
+static bool ic_str(icur *c, const uint8_t **s, uint32_t *len)
+{
     uint32_t l;
     if (c->n - c->o < 4U) return false;
     l = xx_data_get_u32(c->p + c->o, 4, 0, false);
@@ -497,7 +508,8 @@ static bool ic_str(icur *c, const uint8_t **s, uint32_t *len) {
     return true;
 }
 
-static bool ic_wstr(icur *c, const uint8_t **s, uint32_t *len) {
+static bool ic_wstr(icur *c, const uint8_t **s, uint32_t *len)
+{
     uint32_t l;
     if (c->n - c->o < 4U) return false;
     l = xx_data_get_u32(c->p + c->o, 4, 0, false);
@@ -508,7 +520,8 @@ static bool ic_wstr(icur *c, const uint8_t **s, uint32_t *len) {
     return true;
 }
 
-static bool ic_strs(icur *c, int count) {
+static bool ic_strs(icur *c, int count)
+{
     int i;
     for (i = 0; i < count; ++i)
         if (!ic_str(c, NULL, NULL)) return false;
@@ -517,7 +530,8 @@ static bool ic_strs(icur *c, int count) {
 
 /* count records of `wide` UTF-16 strings, `ansi` byte strings and `fixed`
  * bytes each */
-static bool ic_entries(icur *c, uint32_t count, int wide, int ansi, uint32_t fixed) {
+static bool ic_entries(icur *c, uint32_t count, int wide, int ansi, uint32_t fixed)
+{
     uint32_t i;
     int j;
     for (i = 0U; i < count; ++i) {
@@ -532,15 +546,14 @@ static bool ic_entries(icur *c, uint32_t count, int wide, int ansi, uint32_t fix
 
 /* 1.2.10: a Longint record size, `strings` strings and a `tail` byte tail
  * that must end exactly at the record end. */
-static bool ic_sized(icur *c, int strings, uint32_t tail, const uint8_t **name,
-                     uint32_t *name_len, size_t *tail_at) {
+static bool ic_sized(icur *c, int strings, uint32_t tail, const uint8_t **name, uint32_t *name_len, size_t *tail_at)
+{
     uint32_t size;
     size_t end;
     int i;
     if (c->n - c->o < 4U) return false;
     size = xx_data_get_u32(c->p + c->o, 4, 0, false);
-    if (size < (uint32_t)strings * 4U + tail || (size_t)size > c->n - c->o - 4U)
-        return false;
+    if (size < (uint32_t)strings * 4U + tail || (size_t)size > c->n - c->o - 4U) return false;
     end = c->o + 4U + size;
     c->o += 4U;
     for (i = 0; i < strings; ++i) {
@@ -561,7 +574,8 @@ static bool ic_sized(icur *c, int strings, uint32_t tail, const uint8_t **name,
 /* ---------------------------------------------------------------------- */
 /* Version ID                                                              */
 
-static bool inno_digits(const char *s, size_t n, size_t *pos, uint32_t *value) {
+static bool inno_digits(const char *s, size_t n, size_t *pos, uint32_t *value)
+{
     uint32_t v = 0U;
     size_t start = *pos;
     while (*pos < n && s[*pos] >= '0' && s[*pos] <= '9') {
@@ -574,7 +588,8 @@ static bool inno_digits(const char *s, size_t n, size_t *pos, uint32_t *value) {
     return true;
 }
 
-static bool inno_prefix(const char *s, size_t n, const char *prefix, size_t *pos) {
+static bool inno_prefix(const char *s, size_t n, const char *prefix, size_t *pos)
+{
     size_t i = 0U;
     while (prefix[i]) {
         if (*pos + i >= n || s[*pos + i] != prefix[i]) return false;
@@ -585,8 +600,8 @@ static bool inno_prefix(const char *s, size_t n, const char *prefix, size_t *pos
 }
 
 /* "a.b.c" or "a.b.c.d", each part a number */
-static bool inno_dotted(const char *s, size_t n, size_t *pos, uint32_t parts[4],
-                        int *count) {
+static bool inno_dotted(const char *s, size_t n, size_t *pos, uint32_t parts[4], int *count)
+{
     int k = 0;
     for (;;) {
         if (k == 4 || !inno_digits(s, n, pos, &parts[k])) return false;
@@ -601,7 +616,8 @@ static bool inno_dotted(const char *s, size_t n, size_t *pos, uint32_t parts[4],
     return k >= 3;
 }
 
-static bool inno_parse_version_id(const uint8_t *id, size_t avail, inno_ver *out) {
+static bool inno_parse_version_id(const uint8_t *id, size_t avail, inno_ver *out)
+{
     const char *s = (const char *)id;
     uint32_t parts[4] = {0U, 0U, 0U, 0U}, isx[4];
     size_t n = 0U, pos = 0U, i;
@@ -609,8 +625,7 @@ static bool inno_parse_version_id(const uint8_t *id, size_t avail, inno_ver *out
     bool isx_prefix = false;
     xx_mem_zero(out, sizeof(*out));
     /* 1.09 / 1.11: "iNNN-32\x1a" */
-    if (avail >= 8U && id[0] == 'i' && id[4] == '-' && id[5] == '3' && id[6] == '2' &&
-        id[7] == 0x1AU) {
+    if (avail >= 8U && id[0] == 'i' && id[4] == '-' && id[5] == '3' && id[6] == '2' && id[7] == 0x1AU) {
         if (xx_rt_memcmp(id + 1, "109", 3U) == 0 || xx_rt_memcmp(id + 1, "111", 3U) == 0) {
             out->short_id = id[2] == '0' ? 109U : 111U;
             out->v = out->short_id == 109U ? IV(1, 0, 9, 0) : IV(1, 1, 1, 0);
@@ -621,8 +636,7 @@ static bool inno_parse_version_id(const uint8_t *id, size_t avail, inno_ver *out
         return false;
     }
     /* 1.2.10: native-width 12-byte IDs */
-    if (avail >= 12U && (xx_rt_memcmp(id, "i1.2.10--16\x1a", 12U) == 0 ||
-                         xx_rt_memcmp(id, "i1.2.10--32\x1a", 12U) == 0)) {
+    if (avail >= 12U && (xx_rt_memcmp(id, "i1.2.10--16\x1a", 12U) == 0 || xx_rt_memcmp(id, "i1.2.10--32\x1a", 12U) == 0)) {
         out->v = IV(1, 2, 10, 0);
         out->win16 = id[9] == '1';
         out->id_size = 12U;
@@ -658,9 +672,7 @@ static bool inno_parse_version_id(const uint8_t *id, size_t avail, inno_ver *out
         if (pos != n) return false;
     }
     if (isx_prefix) out->isx = true;
-    if (parts[0] < 1U || parts[0] > 7U || parts[1] > 255U || parts[2] > 255U ||
-        parts[3] > 255U)
-        return false;
+    if (parts[0] < 1U || parts[0] > 7U || parts[1] > 255U || parts[2] > 255U || parts[3] > 255U) return false;
     out->v = IV(parts[0], parts[1], parts[2], parts[3]);
     if (out->v < IV(1, 3, 0, 0)) return false;
     if (parts[0] >= 6U) out->unicode = true;
@@ -683,16 +695,16 @@ static bool inno_parse_version_id(const uint8_t *id, size_t avail, inno_ver *out
 /* ---------------------------------------------------------------------- */
 /* Loader table                                                            */
 
-static bool inno_tag_is(const uint8_t *b, const char *tag2) {
-    return xx_rt_memcmp(b, "rDlPtS", 6U) == 0 && b[6] == (uint8_t)tag2[0] &&
-           b[7] == (uint8_t)tag2[1] && b[8] == 0x87U && b[9] == 0x65U &&
-           b[10] == 0x56U && b[11] == 0x78U;
+static bool inno_tag_is(const uint8_t *b, const char *tag2)
+{
+    return xx_rt_memcmp(b, "rDlPtS", 6U) == 0 && b[6] == (uint8_t)tag2[0] && b[7] == (uint8_t)tag2[1] && b[8] == 0x87U && b[9] == 0x65U && b[10] == 0x56U &&
+           b[11] == 0x78U;
 }
 
 /* 1.09 (Vx) and 1.11 (EOF40): ID, TotalSize, ExeOffset, ExeCompressedSize,
  * ExeUncompressedSize, ExeAdler, Offset0, Offset1. */
-static bool inno_table_legacy(const uint8_t *t, int64_t table_offset, int64_t size,
-                              int kind, inno_table *out) {
+static bool inno_table_legacy(const uint8_t *t, int64_t table_offset, int64_t size, int kind, inno_table *out)
+{
     uint64_t total = xx_data_get_u32(t + 12, 4, 0, false), exe = xx_data_get_u32(t + 16, 4, 0, false), exe_csize = xx_data_get_u32(t + 20, 4, 0, false),
              exe_usize = xx_data_get_u32(t + 24, 4, 0, false), off0 = xx_data_get_u32(t + 32, 4, 0, false), off1 = xx_data_get_u32(t + 36, 4, 0, false);
     uint64_t exe_end = exe + exe_csize;
@@ -703,15 +715,9 @@ static bool inno_table_legacy(const uint8_t *t, int64_t table_offset, int64_t si
      * wrapper) are allowed and become part of the enclosing file. */
     if (kind == INNO_T_EOF40 ? total != (uint64_t)size : total > (uint64_t)size) return false;
     size = (int64_t)total;
-    if (exe == 0U || exe_csize == 0U || exe_usize == 0U ||
-        exe_end != off0 || size < 12 || off0 > (uint64_t)(size - 8) ||
-        off1 > (uint64_t)(size - 12))
-        return false;
-    if (kind == INNO_T_EOF40)
-        layout = table_offset == size - 40 && off1 >= 12U && off1 < exe &&
-                 off0 + 8U <= (uint64_t)table_offset;
-    else
-        layout = (uint64_t)table_offset + 40U <= exe && off0 + 8U <= off1;
+    if (exe == 0U || exe_csize == 0U || exe_usize == 0U || exe_end != off0 || size < 12 || off0 > (uint64_t)(size - 8) || off1 > (uint64_t)(size - 12)) return false;
+    if (kind == INNO_T_EOF40) layout = table_offset == size - 40 && off1 >= 12U && off1 < exe && off0 + 8U <= (uint64_t)table_offset;
+    else layout = (uint64_t)table_offset + 40U <= exe && off0 + 8U <= off1;
     if (!layout) return false;
     xx_mem_zero(out, sizeof(*out));
     out->kind = kind;
@@ -725,16 +731,15 @@ static bool inno_table_legacy(const uint8_t *t, int64_t table_offset, int64_t si
 
 /* 1.2.10 .. 5.1.4: "Inno" at 0x30, then the table pointer and its
  * complement.  The tag selects the packed layout. */
-static bool inno_table_ptr(xx_io_device *d, int64_t base, int64_t size,
-                           const uint8_t *head, inno_table *out) {
+static bool inno_table_ptr(xx_io_device *d, int64_t base, int64_t size, const uint8_t *head, inno_table *out)
+{
     uint8_t t[44];
     uint32_t ptr = xx_data_get_u32(head + 0x34, 4, 0, false), nptr = xx_data_get_u32(head + 0x38, 4, 0, false);
     int loader = 0;
     uint32_t tsize;
     uint64_t total, exe, exe_csize = 0U, exe_usize, hdr, data, table_end;
     bool exe_ok, total_ok;
-    if (xx_data_get_u32(head + 0x30, 4, 0, false) != 0x6F6E6E49U || ptr != ~nptr || size < 12 ||
-        (uint64_t)ptr > (uint64_t)(size - 12) ||
+    if (xx_data_get_u32(head + 0x30, 4, 0, false) != 0x6F6E6E49U || ptr != ~nptr || size < 12 || (uint64_t)ptr > (uint64_t)(size - 12) ||
         !inno_read_at(d, base + ptr, t, 12U))
         return false;
     if (inno_tag_is(t, "02")) loader = 2;
@@ -744,9 +749,7 @@ static bool inno_table_ptr(xx_io_device *d, int64_t base, int64_t size,
     else if (inno_tag_is(t, "07")) loader = 7;
     else return false;
     tsize = (loader == 2 || loader == 6) ? 44U : 40U;
-    if ((uint64_t)ptr > (uint64_t)(size - (int64_t)tsize) ||
-        !inno_read_at(d, base + ptr, t, tsize))
-        return false;
+    if ((uint64_t)ptr > (uint64_t)(size - (int64_t)tsize) || !inno_read_at(d, base + ptr, t, tsize)) return false;
     if (loader >= 6 && xx_data_get_u32(t + tsize - 4U, 4, 0, false) != inno_crc32(t, tsize - 4U)) return false;
     total = xx_data_get_u32(t + 12, 4, 0, false);
     exe = xx_data_get_u32(t + 16, 4, 0, false);
@@ -761,11 +764,10 @@ static bool inno_table_ptr(xx_io_device *d, int64_t base, int64_t size,
         data = xx_data_get_u32(t + 32, 4, 0, false);
     }
     table_end = (uint64_t)ptr + tsize;
-    exe_ok = loader == 7 ? exe < total
-                         : (exe_csize > 0U && exe <= total && exe_csize <= total - exe);
+    exe_ok = loader == 7 ? exe < total : (exe_csize > 0U && exe <= total && exe_csize <= total - exe);
     total_ok = loader == 2 ? total == table_end : total >= table_end;
-    if (!total_ok || total > (uint64_t)size || exe_usize == 0U || exe == 0U || !exe_ok ||
-        hdr == 0U || hdr + 64U > total || (data != 0U && (total < 4U || data > total - 4U)))
+    if (!total_ok || total > (uint64_t)size || exe_usize == 0U || exe == 0U || !exe_ok || hdr == 0U || hdr + 64U > total ||
+        (data != 0U && (total < 4U || data > total - 4U)))
         return false;
     xx_mem_zero(out, sizeof(*out));
     out->kind = INNO_T_PTR;
@@ -779,18 +781,16 @@ static bool inno_table_ptr(xx_io_device *d, int64_t base, int64_t size,
 }
 
 /* 5.1.5 and later: revision 1 (44 bytes) or 2 (64 bytes), CRC-32 last. */
-static bool inno_table_new(xx_io_device *d, int64_t base, int64_t size,
-                           int64_t at, inno_table *out) {
+static bool inno_table_new(xx_io_device *d, int64_t base, int64_t size, int64_t at, inno_table *out)
+{
     uint8_t t[64];
     uint32_t rev, tsize;
     uint64_t total, exe, exe_usize, hdr, data, table_end;
     if (at < 0 || at > size - 16 || !inno_read_at(d, base + at, t, 16U)) return false;
-    if (xx_rt_memcmp(t, "rDlPtS", 6U) != 0 || xx_rt_memcmp(t + 6, g_inno_tag_new, 6U) != 0)
-        return false;
+    if (xx_rt_memcmp(t, "rDlPtS", 6U) != 0 || xx_rt_memcmp(t + 6, g_inno_tag_new, 6U) != 0) return false;
     rev = xx_data_get_u32(t + 12, 4, 0, false);
     tsize = rev == 1U ? 44U : (rev == 2U ? 64U : 0U);
-    if (!tsize || at > size - (int64_t)tsize || !inno_read_at(d, base + at, t, tsize))
-        return false;
+    if (!tsize || at > size - (int64_t)tsize || !inno_read_at(d, base + at, t, tsize)) return false;
     if (xx_data_get_u32(t + tsize - 4U, 4, 0, false) != inno_crc32(t, tsize - 4U)) return false;
     if (rev == 1U) {
         total = xx_data_get_u32(t + 16, 4, 0, false);
@@ -807,8 +807,7 @@ static bool inno_table_new(xx_io_device *d, int64_t base, int64_t size,
         if (xx_data_get_u32(t + 56, 4, 0, false) != 0U) return false;
     }
     table_end = (uint64_t)at + tsize;
-    if (total < table_end || total > (uint64_t)size || exe_usize == 0U || exe == 0U ||
-        exe >= total || hdr == 0U || hdr > total || total - hdr < 64U ||
+    if (total < table_end || total > (uint64_t)size || exe_usize == 0U || exe == 0U || exe >= total || hdr == 0U || hdr > total || total - hdr < 64U ||
         (data != 0U && data >= total))
         return false;
     xx_mem_zero(out, sizeof(*out));
@@ -833,22 +832,19 @@ typedef struct inno_pe_s {
     uint32_t res_size;
 } inno_pe;
 
-static bool inno_pe_parse(xx_io_device *d, int64_t base, int64_t size,
-                          const uint8_t *head, inno_pe *pe) {
+static bool inno_pe_parse(xx_io_device *d, int64_t base, int64_t size, const uint8_t *head, inno_pe *pe)
+{
     uint8_t h[24 + 240];
     uint32_t lfanew = xx_data_get_u32(head + 0x3C, 4, 0, false), i, opt, dirs;
     uint16_t magic;
     int64_t sect;
     pe->count = 0U;
     pe->res_rva = pe->res_size = 0U;
-    if (lfanew < 0x40U || (int64_t)lfanew > size - 24 - 96 ||
-        !inno_read_at(d, base + lfanew, h, 24U + 96U))
-        return false;
+    if (lfanew < 0x40U || (int64_t)lfanew > size - 24 - 96 || !inno_read_at(d, base + lfanew, h, 24U + 96U)) return false;
     if (xx_rt_memcmp(h, "PE\0\0", 4U) != 0) return false;
     pe->count = xx_data_get_u16(h + 6, 2, 0, false);
     opt = xx_data_get_u16(h + 20, 2, 0, false);
-    if (pe->count == 0U || pe->count > INNO_MAX_SECTIONS || opt < 96U || opt > 240U ||
-        (int64_t)lfanew + 24 + (int64_t)opt > size ||
+    if (pe->count == 0U || pe->count > INNO_MAX_SECTIONS || opt < 96U || opt > 240U || (int64_t)lfanew + 24 + (int64_t)opt > size ||
         !inno_read_at(d, base + lfanew, h, 24U + opt))
         return false;
     magic = xx_data_get_u16(h + 24, 2, 0, false);
@@ -878,8 +874,8 @@ static bool inno_pe_parse(xx_io_device *d, int64_t base, int64_t size,
     return true;
 }
 
-static int64_t inno_rva_to_offset(const inno_pe *pe, uint32_t rva, uint32_t len,
-                                  int64_t size) {
+static int64_t inno_rva_to_offset(const inno_pe *pe, uint32_t rva, uint32_t len, int64_t size)
+{
     uint32_t i;
     for (i = 0U; i < pe->count; ++i) {
         const inno_section *s = &pe->s[i];
@@ -897,22 +893,17 @@ static int64_t inno_rva_to_offset(const inno_pe *pe, uint32_t rva, uint32_t len,
 /* Resource directory: find the entry with numeric `id` (or the first entry
  * when id is 0xFFFFFFFF) in the directory at `dir` (relative to the
  * resource section start). */
-static bool inno_res_find(xx_io_device *d, int64_t base, int64_t res_off,
-                          uint32_t res_size, uint32_t dir, uint32_t id,
-                          uint32_t *value) {
+static bool inno_res_find(xx_io_device *d, int64_t base, int64_t res_off, uint32_t res_size, uint32_t dir, uint32_t id, uint32_t *value)
+{
     uint8_t h[16], e[64 * 8];
     uint32_t named, ids, i, k, batch;
-    if (dir > res_size || res_size - dir < 16U ||
-        !inno_read_at(d, base + res_off + dir, h, 16U))
-        return false;
+    if (dir > res_size || res_size - dir < 16U || !inno_read_at(d, base + res_off + dir, h, 16U)) return false;
     named = xx_data_get_u16(h + 12, 2, 0, false);
     ids = xx_data_get_u16(h + 14, 2, 0, false);
-    if (named + ids > INNO_MAX_RES_ENTRIES || (uint64_t)dir + 16U + (uint64_t)(named + ids) * 8U > res_size)
-        return false;
+    if (named + ids > INNO_MAX_RES_ENTRIES || (uint64_t)dir + 16U + (uint64_t)(named + ids) * 8U > res_size) return false;
     for (i = 0U; i < named + ids; i += batch) {
         batch = named + ids - i < 64U ? named + ids - i : 64U;
-        if (!inno_read_at(d, base + res_off + dir + 16 + (int64_t)i * 8, e, (size_t)batch * 8U))
-            return false;
+        if (!inno_read_at(d, base + res_off + dir + 16 + (int64_t)i * 8, e, (size_t)batch * 8U)) return false;
         for (k = 0U; k < batch; ++k) {
             const uint8_t *entry = e + k * 8U;
             if (id == 0xFFFFFFFFU || (i + k >= named && xx_data_get_u32(entry, 4, 0, false) == id)) {
@@ -924,8 +915,8 @@ static bool inno_res_find(xx_io_device *d, int64_t base, int64_t res_off,
     return false;
 }
 
-static bool inno_table_resource(xx_io_device *d, int64_t base, int64_t size,
-                                const inno_pe *pe, inno_table *out) {
+static bool inno_table_resource(xx_io_device *d, int64_t base, int64_t size, const inno_pe *pe, inno_table *out)
+{
     int64_t res_off;
     uint32_t v, entry;
     uint8_t de[16];
@@ -937,12 +928,9 @@ static bool inno_table_resource(xx_io_device *d, int64_t base, int64_t size,
         uint32_t cap = pe->res_size;
         if ((uint64_t)res_off + cap > (uint64_t)size) cap = (uint32_t)(size - res_off);
         /* RT_RCDATA -> 11111 -> first language */
-        if (!inno_res_find(d, base, res_off, cap, 0U, 10U, &v) || !(v & 0x80000000U) ||
-            !inno_res_find(d, base, res_off, cap, v & 0x7FFFFFFFU, 11111U, &v) ||
-            !(v & 0x80000000U) ||
-            !inno_res_find(d, base, res_off, cap, v & 0x7FFFFFFFU, 0xFFFFFFFFU, &entry) ||
-            (entry & 0x80000000U) || entry > cap || cap - entry < 16U ||
-            !inno_read_at(d, base + res_off + entry, de, 16U))
+        if (!inno_res_find(d, base, res_off, cap, 0U, 10U, &v) || !(v & 0x80000000U) || !inno_res_find(d, base, res_off, cap, v & 0x7FFFFFFFU, 11111U, &v) ||
+            !(v & 0x80000000U) || !inno_res_find(d, base, res_off, cap, v & 0x7FFFFFFFU, 0xFFFFFFFFU, &entry) || (entry & 0x80000000U) || entry > cap ||
+            cap - entry < 16U || !inno_read_at(d, base + res_off + entry, de, 16U))
             return false;
     }
     if (xx_data_get_u32(de + 4, 4, 0, false) < 44U) return false;
@@ -953,8 +941,8 @@ static bool inno_table_resource(xx_io_device *d, int64_t base, int64_t size,
 /* 1.09 keeps "rDlPtSVx" in the loader's DATA section.  Only the first
  * section of that name is scanned (the Delphi loader has one), so a crafted
  * section table cannot multiply the read. */
-static bool inno_table_vx(xx_io_device *d, int64_t base, int64_t size,
-                          const inno_pe *pe, inno_table *out) {
+static bool inno_table_vx(xx_io_device *d, int64_t base, int64_t size, const inno_pe *pe, inno_table *out)
+{
     uint32_t i;
     for (i = 0U; i < pe->count; ++i) {
         const inno_section *s = &pe->s[i];
@@ -962,15 +950,12 @@ static bool inno_table_vx(xx_io_device *d, int64_t base, int64_t size,
         uint32_t len = s->rawsize, k;
         bool found = false;
         if (xx_rt_memcmp(s->name, "DATA\0\0\0\0", 8U) != 0) continue;
-        if (len < 40U || len > INNO_DATA_SCAN_MAX || (int64_t)s->raw > size - (int64_t)len)
-            return false;
+        if (len < 40U || len > INNO_DATA_SCAN_MAX || (int64_t)s->raw > size - (int64_t)len) return false;
         buf = (uint8_t *)xx_mem_alloc(len);
         if (!buf) return false;
         if (inno_read_at(d, base + s->raw, buf, len)) {
             for (k = 0U; k + 40U <= len && !found; ++k)
-                if (buf[k] == 'r' && inno_tag_is(buf + k, "Vx"))
-                    found = inno_table_legacy(buf + k, (int64_t)s->raw + k, size,
-                                              INNO_T_VX, out);
+                if (buf[k] == 'r' && inno_tag_is(buf + k, "Vx")) found = inno_table_legacy(buf + k, (int64_t)s->raw + k, size, INNO_T_VX, out);
         }
         xx_mem_free(buf);
         return found;
@@ -978,7 +963,8 @@ static bool inno_table_vx(xx_io_device *d, int64_t base, int64_t size,
     return false;
 }
 
-static bool inno_find_table(Abstractformat *f, inno_table *out, int64_t *size_out) {
+static bool inno_find_table(Abstractformat *f, inno_table *out, int64_t *size_out)
+{
     xx_io_device *d;
     int64_t total, base, size;
     uint8_t head[0x40], t[40];
@@ -989,14 +975,10 @@ static bool inno_find_table(Abstractformat *f, inno_table *out, int64_t *size_ou
     total = xx_io_total_size(d);
     if (total < base + 0x40) return false;
     size = total - base;
-    if (!inno_read_at(d, base, head, sizeof(head)) || head[0] != 'M' || head[1] != 'Z')
-        return false;
+    if (!inno_read_at(d, base, head, sizeof(head)) || head[0] != 'M' || head[1] != 'Z') return false;
     if (size_out) *size_out = size;
-    if (xx_data_get_u32(head + 0x30, 4, 0, false) == 0x6F6E6E49U && inno_table_ptr(d, base, size, head, out))
-        return true;
-    if (size >= 40 + 0x40 && inno_read_at(d, base + size - 40, t, 40U) &&
-        inno_tag_is(t, "02") && inno_table_legacy(t, size - 40, size, INNO_T_EOF40, out))
-        return true;
+    if (xx_data_get_u32(head + 0x30, 4, 0, false) == 0x6F6E6E49U && inno_table_ptr(d, base, size, head, out)) return true;
+    if (size >= 40 + 0x40 && inno_read_at(d, base + size - 40, t, 40U) && inno_tag_is(t, "02") && inno_table_legacy(t, size - 40, size, INNO_T_EOF40, out)) return true;
     have_pe = inno_pe_parse(d, base, size, head, &pe);
     if (!have_pe) return false;
     if (inno_table_resource(d, base, size, &pe, out)) return true;
@@ -1004,31 +986,30 @@ static bool inno_find_table(Abstractformat *f, inno_table *out, int64_t *size_ou
 }
 
 /* The table generation and the setup-data version must agree. */
-static bool inno_generation_ok(const inno_table *t, const inno_ver *ver) {
+static bool inno_generation_ok(const inno_table *t, const inno_ver *ver)
+{
     uint32_t v = ver->v;
     switch (t->kind) {
-    case INNO_T_VX: return ver->short_id == 109U;
-    case INNO_T_EOF40: return ver->short_id == 111U;
-    case INNO_T_PTR:
-        if (ver->short_id) return false;
-        switch (t->loader) {
-        case 2: return v >= IV(1, 2, 10, 0) && v < IV(4, 0, 0, 0);
-        case 4: return v >= IV(4, 0, 0, 0) && v < IV(4, 0, 3, 0);
-        case 5: return v >= IV(4, 0, 3, 0) && v < IV(4, 0, 10, 0);
-        case 6: return v >= IV(4, 0, 10, 0) && v < IV(4, 1, 6, 0);
-        case 7: return v >= IV(4, 1, 6, 0) && v < IV(5, 1, 5, 0);
+        case INNO_T_VX: return ver->short_id == 109U;
+        case INNO_T_EOF40: return ver->short_id == 111U;
+        case INNO_T_PTR:
+            if (ver->short_id) return false;
+            switch (t->loader) {
+                case 2: return v >= IV(1, 2, 10, 0) && v < IV(4, 0, 0, 0);
+                case 4: return v >= IV(4, 0, 0, 0) && v < IV(4, 0, 3, 0);
+                case 5: return v >= IV(4, 0, 3, 0) && v < IV(4, 0, 10, 0);
+                case 6: return v >= IV(4, 0, 10, 0) && v < IV(4, 1, 6, 0);
+                case 7: return v >= IV(4, 1, 6, 0) && v < IV(5, 1, 5, 0);
+                default: return false;
+            }
+        case INNO_T_REV1: return !ver->short_id && !ver->win16 && v >= IV(5, 1, 5, 0) && v < IV(6, 5, 0, 0);
+        case INNO_T_REV2: return !ver->short_id && !ver->win16 && v >= IV(6, 5, 0, 0);
         default: return false;
-        }
-    case INNO_T_REV1:
-        return !ver->short_id && !ver->win16 && v >= IV(5, 1, 5, 0) && v < IV(6, 5, 0, 0);
-    case INNO_T_REV2:
-        return !ver->short_id && !ver->win16 && v >= IV(6, 5, 0, 0);
-    default: return false;
     }
 }
 
-static bool inno_probe(Abstractformat *f, inno_table *table, inno_ver *ver,
-                       int64_t *size_out) {
+static bool inno_probe(Abstractformat *f, inno_table *table, inno_ver *ver, int64_t *size_out)
+{
     uint8_t id[64];
     int64_t size = 0, avail;
     xx_mem_zero(id, sizeof(id));
@@ -1036,9 +1017,7 @@ static bool inno_probe(Abstractformat *f, inno_table *table, inno_ver *ver,
     if (table->header_offset < 0 || table->header_offset > size - 8) return false;
     avail = size - table->header_offset;
     if (avail > 64) avail = 64;
-    if (!inno_read_at(f->device, f->base_address + table->header_offset, id, (size_t)avail) ||
-        !inno_parse_version_id(id, (size_t)avail, ver))
-        return false;
+    if (!inno_read_at(f->device, f->base_address + table->header_offset, id, (size_t)avail) || !inno_parse_version_id(id, (size_t)avail, ver)) return false;
     if (ver->win16 && table->kind != INNO_T_PTR) return false;
     if (!inno_generation_ok(table, ver)) return false;
     if (size_out) *size_out = size;
@@ -1054,7 +1033,8 @@ typedef struct ibuf_s {
     bool inexact; /* LZMA stream that ended with its input, not a marker */
 } ibuf;
 
-static void ibuf_free(ibuf *b) {
+static void ibuf_free(ibuf *b)
+{
     if (b->p) xx_mem_free(b->p);
     b->p = NULL;
     b->n = 0U;
@@ -1062,8 +1042,8 @@ static void ibuf_free(ibuf *b) {
 
 /* Decode a zlib stream held in memory; `expected` is the exact size when
  * known, else 0 and the output may be anything up to the cap. */
-static bool inno_zlib_memory(const uint8_t *src, size_t n, size_t expected, ibuf *out,
-                             xx_pd_struct *pd) {
+static bool inno_zlib_memory(const uint8_t *src, size_t n, size_t expected, ibuf *out, xx_pd_struct *pd)
+{
     inno_sink sink;
     xx_io_device dev;
     bool ok;
@@ -1073,8 +1053,7 @@ static bool inno_zlib_memory(const uint8_t *src, size_t n, size_t expected, ibuf
     sink.mem_limit = expected ? expected : INNO_BLOCK_CAP + 1U;
     inno_sink_device(&dev, &sink);
     ok = xx_deflate_unpack_memory_to_device(src + 2, n - 2U, &dev, false, pd);
-    if (!ok || sink.failed || sink.kept > INNO_BLOCK_CAP ||
-        (expected && sink.kept != expected) || !sink.kept) {
+    if (!ok || sink.failed || sink.kept > INNO_BLOCK_CAP || (expected && sink.kept != expected) || !sink.kept) {
         if (sink.mem) xx_mem_free(sink.mem);
         return false;
     }
@@ -1083,7 +1062,8 @@ static bool inno_zlib_memory(const uint8_t *src, size_t n, size_t expected, ibuf
     return true;
 }
 
-static bool inno_lzma_memory(const uint8_t *src, size_t n, ibuf *out, xx_pd_struct *pd) {
+static bool inno_lzma_memory(const uint8_t *src, size_t n, ibuf *out, xx_pd_struct *pd)
+{
     inno_sink sink;
     xx_io_device dev;
     uint8_t props[5];
@@ -1116,7 +1096,8 @@ static bool inno_lzma_memory(const uint8_t *src, size_t n, ibuf *out, xx_pd_stru
 }
 
 /* Strip the per-4096-byte CRC-32 prefixes in place. */
-static bool inno_strip_crc(uint8_t *data, size_t n, size_t *out_n) {
+static bool inno_strip_crc(uint8_t *data, size_t n, size_t *out_n)
+{
     size_t in = 0U, o = 0U;
     while (in < n) {
         size_t chunk;
@@ -1135,9 +1116,8 @@ static bool inno_strip_crc(uint8_t *data, size_t n, size_t *out_n) {
 }
 
 /* One compressed setup-0 block at `off`; `limit` bounds it. */
-static bool inno_read_block(Abstractformat *f, int64_t off, int64_t limit,
-                            const inno_ver *ver, ibuf *out, int64_t *consumed,
-                            xx_pd_struct *pd) {
+static bool inno_read_block(Abstractformat *f, int64_t off, int64_t limit, const inno_ver *ver, ibuf *out, int64_t *consumed, xx_pd_struct *pd)
+{
     uint8_t h[13];
     uint32_t hsize, uncomp = 0U;
     uint64_t stored;
@@ -1148,16 +1128,13 @@ static bool inno_read_block(Abstractformat *f, int64_t off, int64_t limit,
     bool wide = ver->v >= IV(6, 7, 0, 0);
     xx_mem_zero(out, sizeof(*out));
     hsize = old ? 12U : (wide ? 13U : 9U);
-    if (off < 0 || limit - off < (int64_t)hsize ||
-        !inno_read_at(f->device, f->base_address + off, h, hsize))
-        return false;
+    if (off < 0 || limit - off < (int64_t)hsize || !inno_read_at(f->device, f->base_address + off, h, hsize)) return false;
     if (xx_data_get_u32(h, 4, 0, false) != inno_crc32(h + 4, hsize - 4U)) return false;
     if (old) {
         int32_t csize = (int32_t)xx_data_get_u32(h + 4, 4, 0, false);
         uint64_t payload;
         uncomp = xx_data_get_u32(h + 8, 4, 0, false);
-        if (uncomp == 0U || uncomp > INNO_BLOCK_CAP || (csize != -1 && csize <= 0))
-            return false;
+        if (uncomp == 0U || uncomp > INNO_BLOCK_CAP || (csize != -1 && csize <= 0)) return false;
         payload = csize == -1 ? uncomp : (uint32_t)csize;
         stored = payload + ((payload + 4095U) / 4096U) * 4U;
         compressed = csize != -1;
@@ -1166,14 +1143,10 @@ static bool inno_read_block(Abstractformat *f, int64_t off, int64_t limit,
         if (h[hsize - 1U] > 1U) return false;
         compressed = h[hsize - 1U] == 1U;
     }
-    if (stored == 0U || stored > INNO_STORED_CAP ||
-        stored > (uint64_t)(limit - off - (int64_t)hsize))
-        return false;
+    if (stored == 0U || stored > INNO_STORED_CAP || stored > (uint64_t)(limit - off - (int64_t)hsize)) return false;
     raw = (uint8_t *)xx_mem_alloc((size_t)stored);
     if (!raw) return false;
-    if (!inno_read_at(f->device, f->base_address + off + hsize, raw, (size_t)stored) ||
-        !inno_strip_crc(raw, (size_t)stored, &plain) || plain == 0U)
-        goto done;
+    if (!inno_read_at(f->device, f->base_address + off + hsize, raw, (size_t)stored) || !inno_strip_crc(raw, (size_t)stored, &plain) || plain == 0U) goto done;
     if (!compressed) {
         if (old && plain != uncomp) goto done;
         out->p = raw;
@@ -1193,24 +1166,21 @@ done:
 
 /* 1.09 / 1.11 record block: Adler-32 of the next 12 bytes, compressed size
  * (0xFFFFFFFF: stored), uncompressed size, Adler-32 of the data. */
-static bool inno_read_legacy_block(Abstractformat *f, int64_t off, int64_t limit,
-                                   ibuf *out, int64_t *consumed, xx_pd_struct *pd) {
+static bool inno_read_legacy_block(Abstractformat *f, int64_t off, int64_t limit, ibuf *out, int64_t *consumed, xx_pd_struct *pd)
+{
     uint8_t h[16];
     uint32_t csize, usize, adler;
     uint64_t payload;
     uint8_t *raw;
     bool ok = false;
     xx_mem_zero(out, sizeof(*out));
-    if (off < 0 || limit - off < 16 || !inno_read_at(f->device, f->base_address + off, h, 16U))
-        return false;
+    if (off < 0 || limit - off < 16 || !inno_read_at(f->device, f->base_address + off, h, 16U)) return false;
     if (xx_adler32(h + 4, 12U) != xx_data_get_u32(h, 4, 0, false)) return false;
     csize = xx_data_get_u32(h + 4, 4, 0, false);
     usize = xx_data_get_u32(h + 8, 4, 0, false);
     adler = xx_data_get_u32(h + 12, 4, 0, false);
     payload = csize == 0xFFFFFFFFU ? usize : csize;
-    if (usize == 0U || usize > INNO_LEGACY_BLOCK_CAP || payload == 0U ||
-        payload > INNO_LEGACY_BLOCK_CAP || payload > (uint64_t)(limit - off - 16))
-        return false;
+    if (usize == 0U || usize > INNO_LEGACY_BLOCK_CAP || payload == 0U || payload > INNO_LEGACY_BLOCK_CAP || payload > (uint64_t)(limit - off - 16)) return false;
     raw = (uint8_t *)xx_mem_alloc((size_t)payload);
     if (!raw) return false;
     if (inno_read_at(f->device, f->base_address + off + 16, raw, (size_t)payload)) {
@@ -1248,8 +1218,8 @@ typedef struct inno_rawlist_s {
     uint32_t cap;
 } inno_rawlist;
 
-static bool inno_raw_add(inno_rawlist *l, const uint8_t *name, uint32_t len, bool wide,
-                         uint32_t loc) {
+static bool inno_raw_add(inno_rawlist *l, const uint8_t *name, uint32_t len, bool wide, uint32_t loc)
+{
     if (l->count == l->cap) {
         uint32_t cap = l->cap ? l->cap * 2U : 64U;
         inno_raw *grown;
@@ -1278,7 +1248,8 @@ typedef struct inno_hdr_s {
     size_t end;
 } inno_hdr;
 
-static bool inno_counts(icur *c, inno_hdr *h, int n) {
+static bool inno_counts(icur *c, inno_hdr *h, int n)
+{
     int i;
     if (!ic_skip(c, (uint64_t)n * 4U)) return false;
     for (i = 0; i < n; ++i) {
@@ -1290,7 +1261,8 @@ static bool inno_counts(icur *c, inno_hdr *h, int n) {
 }
 
 /* 1.3 .. 4.2 setup header (ISX adds one string and four bytes). */
-static bool inno_hdr_pre5(icur *c, const inno_ver *ver, inno_hdr *h) {
+static bool inno_hdr_pre5(icur *c, const inno_ver *ver, inno_hdr *h)
+{
     uint32_t v = ver->v, wvr = v >= IV(1, 3, 19, 0) ? 20U : 8U;
     int nstr = 12, ncount = 10, prefix = 0, nflags = 0, bzip_flag = -1, enc_flag = -1;
     int i, obytes;
@@ -1309,24 +1281,29 @@ static bool inno_hdr_pre5(icur *c, const inno_ver *ver, inno_hdr *h) {
     if (ver->isx) ++nstr;
     if (!ic_strs(c, nstr)) return false;
     if (v >= IV(2, 0, 6, 0) && !ic_skip(c, 32U)) return false;
-    if (v >= IV(4, 0, 0, 0)) { ++ncount; ++prefix; }
-    if (v >= IV(4, 2, 1, 0)) { ++ncount; ++prefix; }
-    if (v >= IV(4, 1, 0, 0)) { ++ncount; ++prefix; }
-    if (v >= IV(2, 0, 0, 0)) { ncount += 3; prefix += 3; }
+    if (v >= IV(4, 0, 0, 0)) {
+        ++ncount;
+        ++prefix;
+    }
+    if (v >= IV(4, 2, 1, 0)) {
+        ++ncount;
+        ++prefix;
+    }
+    if (v >= IV(4, 1, 0, 0)) {
+        ++ncount;
+        ++prefix;
+    }
+    if (v >= IV(2, 0, 0, 0)) {
+        ncount += 3;
+        prefix += 3;
+    }
     if (!inno_counts(c, h, ncount)) return false;
     h->file_count = h->counts[prefix + 1];
     h->loc_count = h->counts[prefix + 2];
-    if (!ic_skip(c, wvr + 4U) || (v >= IV(1, 3, 3, 0) && !ic_skip(c, 4U)) ||
-        !ic_skip(c, 4U) || (v >= IV(2, 0, 0, 0) && !ic_skip(c, 4U)) ||
-        !ic_skip(c, v >= IV(4, 2, 0, 0) ? 16U : 4U) ||
-        (v >= IV(4, 2, 2, 0) && !ic_skip(c, 8U)) ||
-        !ic_skip(c, v >= IV(4, 0, 0, 0) ? 12U : 4U) ||
-        (v >= IV(2, 0, 0, 0) && !ic_skip(c, 1U)) || !ic_skip(c, 1U) ||
-        (v >= IV(2, 0, 0, 0) && !ic_skip(c, 1U)) ||
-        (v >= IV(1, 3, 6, 0) && !ic_skip(c, 1U)) ||
-        (v >= IV(3, 0, 0, 0) && v < IV(3, 0, 3, 0) && !ic_skip(c, 1U)) ||
-        (v >= IV(3, 0, 4, 0) && !ic_skip(c, 1U)) ||
-        (v >= IV(4, 0, 10, 0) && !ic_skip(c, 2U)))
+    if (!ic_skip(c, wvr + 4U) || (v >= IV(1, 3, 3, 0) && !ic_skip(c, 4U)) || !ic_skip(c, 4U) || (v >= IV(2, 0, 0, 0) && !ic_skip(c, 4U)) ||
+        !ic_skip(c, v >= IV(4, 2, 0, 0) ? 16U : 4U) || (v >= IV(4, 2, 2, 0) && !ic_skip(c, 8U)) || !ic_skip(c, v >= IV(4, 0, 0, 0) ? 12U : 4U) ||
+        (v >= IV(2, 0, 0, 0) && !ic_skip(c, 1U)) || !ic_skip(c, 1U) || (v >= IV(2, 0, 0, 0) && !ic_skip(c, 1U)) || (v >= IV(1, 3, 6, 0) && !ic_skip(c, 1U)) ||
+        (v >= IV(3, 0, 0, 0) && v < IV(3, 0, 3, 0) && !ic_skip(c, 1U)) || (v >= IV(3, 0, 4, 0) && !ic_skip(c, 1U)) || (v >= IV(4, 0, 10, 0) && !ic_skip(c, 2U)))
         return false;
     if (v >= IV(4, 1, 5, 0)) {
         comp_at = c->o;
@@ -1335,18 +1312,31 @@ static bool inno_hdr_pre5(icur *c, const inno_ver *ver, inno_hdr *h) {
     if (ver->isx && !ic_skip(c, 4U)) return false;
     /* Header option bits, in declaration order. */
 #define FL(x) (fl[nfl++] = (x))
-    FL(true); FL(true); FL(true); FL(true);
+    FL(true);
+    FL(true);
+    FL(true);
+    FL(true);
     FL(v < IV(1, 3, 6, 0));
-    FL(true); FL(true);
+    FL(true);
+    FL(true);
     FL(v < IV(3, 0, 0, 0) || v >= IV(3, 0, 3, 0));
     FL(v < IV(1, 3, 3, 0));
-    FL(true); FL(true); FL(true); FL(true); FL(true); FL(true);
+    FL(true);
+    FL(true);
+    FL(true);
+    FL(true);
+    FL(true);
+    FL(true);
     FL(v < IV(4, 1, 2, 0));
-    FL(true); FL(true); FL(true);
+    FL(true);
+    FL(true);
+    FL(true);
     FL(v < IV(3, 0, 4, 0));
     FL(v < IV(3, 0, 0, 0));
     FL(v < IV(1, 3, 6, 0));
-    FL(true); FL(true); FL(true);
+    FL(true);
+    FL(true);
+    FL(true);
     FL(v >= IV(1, 3, 3, 0));
     FL(v >= IV(1, 3, 10, 0));
     FL(v >= IV(1, 3, 20, 0));
@@ -1402,20 +1392,18 @@ static bool inno_hdr_pre5(icur *c, const inno_ver *ver, inno_hdr *h) {
             h->compression = m;
         }
     } else {
-        bool bzip = bzip_flag >= 0 &&
-                    (c->p[opt_at + (size_t)bzip_flag / 8U] & (1U << (bzip_flag & 7))) != 0;
+        bool bzip = bzip_flag >= 0 && (c->p[opt_at + (size_t)bzip_flag / 8U] & (1U << (bzip_flag & 7))) != 0;
         h->compression = bzip ? INNO_C_BZIP2 : INNO_C_ZLIB;
     }
-    h->encryption_used = enc_flag >= 0 &&
-                         (c->p[opt_at + (size_t)enc_flag / 8U] & (1U << (enc_flag & 7))) != 0;
+    h->encryption_used = enc_flag >= 0 && (c->p[opt_at + (size_t)enc_flag / 8U] & (1U << (enc_flag & 7))) != 0;
     h->end = c->o;
     return true;
 }
 
 /* 1.3 .. 4.2: every array up to the end of the block.  Collects the file
  * entries' destination strings and location indices. */
-static bool inno_files_pre5(icur *c, const inno_ver *ver, const inno_hdr *h,
-                            bool exact, inno_rawlist *out) {
+static bool inno_files_pre5(icur *c, const inno_ver *ver, const inno_hdr *h, bool exact, inno_rawlist *out)
+{
     uint32_t v = ver->v, wvr = v >= IV(1, 3, 19, 0) ? 20U : 8U, i;
     int ci = 0, lang = -1, msg = -1, perm = -1, type = -1, comp = -1, task = -1;
     int dir, file, data, icon, ini, reg, del, undel, run, unrun, x = ver->isx ? 1 : 0;
@@ -1429,11 +1417,17 @@ static bool inno_files_pre5(icur *c, const inno_ver *ver, const inno_hdr *h,
         comp = ci++;
         task = ci++;
     }
-    dir = ci++; file = ci++; data = ci++; icon = ci++; ini = ci++; reg = ci++;
-    del = ci++; undel = ci++; run = ci++; unrun = ci++;
-    if (ci != h->ncounts || h->counts[file] != h->file_count ||
-        h->counts[data] != h->loc_count)
-        return false;
+    dir = ci++;
+    file = ci++;
+    data = ci++;
+    icon = ci++;
+    ini = ci++;
+    reg = ci++;
+    del = ci++;
+    undel = ci++;
+    run = ci++;
+    unrun = ci++;
+    if (ci != h->ncounts || h->counts[file] != h->file_count || h->counts[data] != h->loc_count) return false;
     if (lang >= 0) {
         int strings = 7 + (v >= IV(4, 0, 1, 0) ? 3 : 0);
         uint32_t fixed = 4U + (v >= IV(4, 2, 2, 0) ? 4U : 0U) + (v < IV(4, 1, 0, 0) ? 20U : 16U);
@@ -1442,9 +1436,7 @@ static bool inno_files_pre5(icur *c, const inno_ver *ver, const inno_hdr *h,
         if (!ic_entries(c, 1U, 0, 5, 24U)) return false;
     }
     if (v < IV(4, 0, 0, 0)) {
-        if (!ic_strs(c, 1) || (v >= IV(2, 0, 0, 0) && !ic_strs(c, 1)) ||
-            (h->compression == INNO_C_BZIP2 && !ic_strs(c, 1)))
-            return false;
+        if (!ic_strs(c, 1) || (v >= IV(2, 0, 0, 0) && !ic_strs(c, 1)) || (h->compression == INNO_C_BZIP2 && !ic_strs(c, 1))) return false;
     }
     if (msg >= 0 && !ic_entries(c, h->counts[msg], 0, 2, 4U)) return false;
     if (perm >= 0 && !ic_entries(c, h->counts[perm], 0, 1, 0U)) return false;
@@ -1452,22 +1444,17 @@ static bool inno_files_pre5(icur *c, const inno_ver *ver, const inno_hdr *h,
         int ts = 2 + (v >= IV(4, 0, 0, 0)) + (v >= IV(4, 0, 1, 0)) + x;
         uint32_t tf = wvr + 1U + (v >= IV(4, 0, 3, 0) ? 1U : 0U) + (v >= IV(4, 0, 0, 0) ? 8U : 4U);
         int cs = 3 + (v >= IV(4, 0, 0, 0)) + (v >= IV(4, 0, 1, 0)) + x;
-        uint32_t cf = (v >= IV(4, 0, 0, 0) ? 8U : 4U) + (v >= IV(4, 0, 0, 0) ? 5U : 0U) +
-                      wvr + 1U + (v >= IV(4, 0, 0, 0) ? 8U : 4U);
+        uint32_t cf = (v >= IV(4, 0, 0, 0) ? 8U : 4U) + (v >= IV(4, 0, 0, 0) ? 5U : 0U) + wvr + 1U + (v >= IV(4, 0, 0, 0) ? 8U : 4U);
         int ks = 4 + (v >= IV(4, 0, 0, 0)) + (v >= IV(4, 0, 1, 0)) + x;
         uint32_t kf = (v >= IV(4, 0, 0, 0) ? 5U : 0U) + wvr + 1U;
-        if (!ic_entries(c, h->counts[type], 0, ts, tf) ||
-            !ic_entries(c, h->counts[comp], 0, cs, cf) ||
-            !ic_entries(c, h->counts[task], 0, ks, kf))
-            return false;
+        if (!ic_entries(c, h->counts[type], 0, ts, tf) || !ic_entries(c, h->counts[comp], 0, cs, cf) || !ic_entries(c, h->counts[task], 0, ks, kf)) return false;
     }
     if (v >= IV(2, 0, 0, 0)) cond += 2;
     if (v >= IV(4, 0, 0, 0)) ++cond;
     if (v >= IV(4, 0, 1, 0)) ++cond;
     if (v >= IV(4, 1, 0, 0)) cond += 2;
     cond += x;
-    if (!ic_entries(c, h->counts[dir], 0,
-                    1 + cond + (v >= IV(4, 0, 11, 0) && v < IV(4, 1, 0, 0)),
+    if (!ic_entries(c, h->counts[dir], 0, 1 + cond + (v >= IV(4, 0, 11, 0) && v < IV(4, 1, 0, 0)),
                     wvr + 1U + (v >= IV(2, 0, 11, 0) ? 4U : 0U) + (v >= IV(4, 1, 0, 0) ? 2U : 0U)))
         return false;
     fflags = 11;
@@ -1484,8 +1471,7 @@ static bool inno_files_pre5(icur *c, const inno_ver *ver, const inno_hdr *h,
     if (v >= IV(4, 2, 5, 0)) ++fflags;
     fbytes = (fflags + 7) / 8;
     if (fbytes == 3) fbytes = 4;
-    ffixed = wvr + 4U + 4U + (v >= IV(4, 0, 0, 0) ? 8U : 4U) + (v < IV(3, 0, 5, 0) ? 1U : 0U) +
-             (v >= IV(4, 1, 0, 0) ? 2U : 0U) + (uint32_t)fbytes + 1U;
+    ffixed = wvr + 4U + 4U + (v >= IV(4, 0, 0, 0) ? 8U : 4U) + (v < IV(3, 0, 5, 0) ? 1U : 0U) + (v >= IV(4, 1, 0, 0) ? 2U : 0U) + (uint32_t)fbytes + 1U;
     for (i = 0U; i < h->file_count; ++i) {
         const uint8_t *name = NULL;
         uint32_t len = 0U, loc;
@@ -1503,45 +1489,33 @@ static bool inno_files_pre5(icur *c, const inno_ver *ver, const inno_hdr *h,
         tail = c->o;
         if (!ic_skip(c, ffixed)) return false;
         loc = xx_data_get_u32(c->p + tail + wvr, 4, 0, false);
-        if (c->p[tail + ffixed - 1U] > 2U ||
-            (loc != 0xFFFFFFFFU && loc >= h->loc_count))
-            return false;
-        if (len && loc != 0xFFFFFFFFU && !inno_raw_add(out, name, len, false, loc))
-            return false;
+        if (c->p[tail + ffixed - 1U] > 2U || (loc != 0xFFFFFFFFU && loc >= h->loc_count)) return false;
+        if (len && loc != 0xFFFFFFFFU && !inno_raw_add(out, name, len, false, loc)) return false;
     }
     {
         int ics = 6 + cond;
-        uint32_t icf = wvr + 4U + (v >= IV(1, 3, 24, 0) ? 4U : 0U) +
-                       (v >= IV(1, 3, 15, 0) ? 1U : 0U) + (v >= IV(2, 0, 7, 0) ? 2U : 0U) + 1U;
+        uint32_t icf = wvr + 4U + (v >= IV(1, 3, 24, 0) ? 4U : 0U) + (v >= IV(1, 3, 15, 0) ? 1U : 0U) + (v >= IV(2, 0, 7, 0) ? 2U : 0U) + 1U;
         int rs = 3 + cond + (v >= IV(4, 0, 11, 0) && v < IV(4, 1, 0, 0));
-        uint32_t rf = wvr + 4U + (v >= IV(4, 1, 0, 0) ? 2U : 0U) + 1U +
-                      (v >= IV(1, 3, 12, 0) ? 2U : 1U);
-        int runs = 3 + cond + (v >= IV(1, 3, 9, 0)) + (v >= IV(2, 0, 2, 0)) +
-                   (v >= IV(2, 0, 0, 0));
+        uint32_t rf = wvr + 4U + (v >= IV(4, 1, 0, 0) ? 2U : 0U) + 1U + (v >= IV(1, 3, 12, 0) ? 2U : 1U);
+        int runs = 3 + cond + (v >= IV(1, 3, 9, 0)) + (v >= IV(2, 0, 2, 0)) + (v >= IV(2, 0, 0, 0));
         uint32_t runf = wvr + (v >= IV(1, 3, 24, 0) ? 4U : 0U) + 2U;
-        if (!ic_entries(c, h->counts[icon], 0, ics, icf) ||
-            !ic_entries(c, h->counts[ini], 0, 4 + cond, wvr + 1U) ||
-            !ic_entries(c, h->counts[reg], 0, rs, rf) ||
-            !ic_entries(c, h->counts[del], 0, 1 + cond, wvr + 1U) ||
-            !ic_entries(c, h->counts[undel], 0, 1 + cond, wvr + 1U) ||
-            !ic_entries(c, h->counts[run], 0, runs, runf) ||
-            !ic_entries(c, h->counts[unrun], 0, runs, runf))
+        if (!ic_entries(c, h->counts[icon], 0, ics, icf) || !ic_entries(c, h->counts[ini], 0, 4 + cond, wvr + 1U) || !ic_entries(c, h->counts[reg], 0, rs, rf) ||
+            !ic_entries(c, h->counts[del], 0, 1 + cond, wvr + 1U) || !ic_entries(c, h->counts[undel], 0, 1 + cond, wvr + 1U) ||
+            !ic_entries(c, h->counts[run], 0, runs, runf) || !ic_entries(c, h->counts[unrun], 0, runs, runf))
             return false;
     }
     if (v >= IV(4, 0, 0, 0)) {
-        bool decompressor = h->compression == INNO_C_BZIP2 ||
-                            (v == IV(4, 1, 5, 0) && h->compression == INNO_C_LZMA1) ||
-                            (v >= IV(4, 2, 6, 0) && h->compression == INNO_C_ZLIB);
-        if (!ic_strs(c, 2) || (decompressor && !ic_strs(c, 1)) ||
-            (h->encryption_used && !ic_strs(c, 1)))
-            return false;
+        bool decompressor =
+            h->compression == INNO_C_BZIP2 || (v == IV(4, 1, 5, 0) && h->compression == INNO_C_LZMA1) || (v >= IV(4, 2, 6, 0) && h->compression == INNO_C_ZLIB);
+        if (!ic_strs(c, 2) || (decompressor && !ic_strs(c, 1)) || (h->encryption_used && !ic_strs(c, 1))) return false;
     }
     if (exact) return c->o == c->n;
     return c->n - c->o <= 16U;
 }
 
 /* 1.2.10 (native 16- or 32-bit compiler): Longint-sized records. */
-static bool inno_hdr_1210(icur *c, const inno_ver *ver, inno_hdr *h) {
+static bool inno_hdr_1210(icur *c, const inno_ver *ver, inno_hdr *h)
+{
     uint32_t tail = ver->win16 ? 53U : 80U, width = ver->win16 ? 2U : 4U, i;
     uint32_t lic, before, after, image;
     size_t tail_at;
@@ -1562,9 +1536,7 @@ static bool inno_hdr_1210(icur *c, const inno_ver *ver, inno_hdr *h) {
     h->ncounts = 10;
     h->file_count = h->counts[1];
     h->loc_count = h->counts[2];
-    if (ver->win16 ? (c->p[tail_at + 52U] & 0xF8U) != 0
-                   : (xx_data_get_u32(c->p + tail_at + 76U, 4, 0, false) & 0xFF800000U) != 0)
-        return false;
+    if (ver->win16 ? (c->p[tail_at + 52U] & 0xF8U) != 0 : (xx_data_get_u32(c->p + tail_at + 76U, 4, 0, false) & 0xFF800000U) != 0) return false;
     if (ver->win16) {
         lic = xx_data_get_u16(c->p + tail_at + 20U, 2, 0, false);
         before = xx_data_get_u16(c->p + tail_at + 22U, 2, 0, false);
@@ -1574,8 +1546,7 @@ static bool inno_hdr_1210(icur *c, const inno_ver *ver, inno_hdr *h) {
         before = xx_data_get_u32(c->p + tail_at + 44U, 4, 0, false);
         after = xx_data_get_u32(c->p + tail_at + 48U, 4, 0, false);
     }
-    if (!ic_skip(c, lic) || !ic_skip(c, before) || !ic_skip(c, after) || c->n - c->o < 4U)
-        return false;
+    if (!ic_skip(c, lic) || !ic_skip(c, before) || !ic_skip(c, after) || c->n - c->o < 4U) return false;
     image = xx_data_get_u32(c->p + c->o, 4, 0, false);
     if (image > 0x7FFFFFFFU || !ic_skip(c, 4U) || !ic_skip(c, image)) return false;
     h->compression = INNO_C_ZLIB;
@@ -1583,8 +1554,8 @@ static bool inno_hdr_1210(icur *c, const inno_ver *ver, inno_hdr *h) {
     return true;
 }
 
-static bool inno_files_1210(icur *c, const inno_ver *ver, const inno_hdr *h,
-                            inno_rawlist *out) {
+static bool inno_files_1210(icur *c, const inno_ver *ver, const inno_hdr *h, inno_rawlist *out)
+{
     bool w16 = ver->win16;
     uint32_t i, k;
     size_t t;
@@ -1596,25 +1567,19 @@ static bool inno_files_1210(icur *c, const inno_ver *ver, const inno_hdr *h,
         int32_t loc;
         if (!ic_sized(c, 3, ftail, &name, &len, &t)) return false;
         loc = w16 ? (int32_t)(int16_t)xx_data_get_u16(c->p + t + 8U, 2, 0, false) : (int32_t)xx_data_get_u32(c->p + t + 8U, 4, 0, false);
-        if (c->p[t + (w16 ? 16U : 20U)] > 3U ||
-            (c->p[t + (w16 ? 18U : 22U)] & (w16 ? 0xFEU : 0xF0U)) ||
-            c->p[t + ftail - 1U] > (w16 ? 1U : 2U) || loc < -1 ||
+        if (c->p[t + (w16 ? 16U : 20U)] > 3U || (c->p[t + (w16 ? 18U : 22U)] & (w16 ? 0xFEU : 0xF0U)) || c->p[t + ftail - 1U] > (w16 ? 1U : 2U) || loc < -1 ||
             (loc >= 0 && (uint32_t)loc >= h->loc_count))
             return false;
-        if (len && loc >= 0 && !inno_raw_add(out, name, len, false, (uint32_t)loc))
-            return false;
+        if (len && loc >= 0 && !inno_raw_add(out, name, len, false, (uint32_t)loc)) return false;
     }
     for (i = 0U; i < h->counts[3]; ++i) {
         uint32_t it = w16 ? 11U : 13U;
-        if (!ic_sized(c, 6, it, NULL, NULL, &t) ||
-            (c->p[t + it - 1U] & (w16 ? 0xF8U : 0xF0U)))
-            return false;
+        if (!ic_sized(c, 6, it, NULL, NULL, &t) || (c->p[t + it - 1U] & (w16 ? 0xF8U : 0xF0U))) return false;
     }
     for (i = 0U; i < h->counts[4]; ++i)
         if (!ic_sized(c, 4, 9U, NULL, NULL, &t) || (c->p[t + 8U] & 0xE0U)) return false;
     for (i = 0U; i < h->counts[5]; ++i) {
-        if (!ic_sized(c, w16 ? 2 : 3, w16 ? 10U : 14U, NULL, NULL, &t) ||
-            c->p[t + (w16 ? 8U : 12U)] > (w16 ? 1U : 5U) ||
+        if (!ic_sized(c, w16 ? 2 : 3, w16 ? 10U : 14U, NULL, NULL, &t) || c->p[t + (w16 ? 8U : 12U)] > (w16 ? 1U : 5U) ||
             (c->p[t + (w16 ? 9U : 13U)] & (w16 ? 0xF0U : 0xC0U)))
             return false;
     }
@@ -1623,29 +1588,23 @@ static bool inno_files_1210(icur *c, const inno_ver *ver, const inno_hdr *h,
             if (!ic_sized(c, 1, 9U, NULL, NULL, &t) || c->p[t + 8U] > 2U) return false;
     for (k = 8U; k <= 9U; ++k)
         for (i = 0U; i < h->counts[k]; ++i)
-            if (!ic_sized(c, 3, 10U, NULL, NULL, &t) || c->p[t + 8U] > 2U ||
-                (c->p[t + 9U] & 0xFEU))
-                return false;
+            if (!ic_sized(c, 3, 10U, NULL, NULL, &t) || c->p[t + 8U] > 2U || (c->p[t + 9U] & 0xFEU)) return false;
     return c->o == c->n;
 }
 
 /* 5.0 .. 7.x setup header.  CloseApplicationsFilterExcludes is new in
  * 6.4.2: installers with the "6.4.0.1" ID do not have it. */
-static bool inno_hdr_5(icur *c, const inno_ver *ver, inno_hdr *h) {
+static bool inno_hdr_5(icur *c, const inno_ver *ver, inno_hdr *h)
+{
     uint32_t v = ver->v;
     uint8_t m;
     xx_mem_zero(h, sizeof(*h));
-    if (!ic_strs(c, 6) || (v >= IV(5, 1, 13, 0) && !ic_strs(c, 1)) || !ic_strs(c, 6) ||
-        (v < IV(5, 2, 5, 0) && !ic_strs(c, 3)) || !ic_strs(c, 7) ||
-        (v < IV(5, 2, 5, 0) && !ic_strs(c, 1)) || !ic_strs(c, 4) ||
-        (v >= IV(5, 3, 8, 0) && !ic_strs(c, 1)) || (v >= IV(5, 3, 10, 0) && !ic_strs(c, 1)) ||
-        (v >= IV(5, 5, 0, 0) && !ic_strs(c, 1)) || (v >= IV(5, 5, 6, 0) && !ic_strs(c, 1)) ||
-        (v >= IV(5, 6, 1, 0) && !ic_strs(c, 2)) || (v >= IV(6, 3, 0, 0) && !ic_strs(c, 2)) ||
-        (v >= IV(6, 4, 2, 0) && !ic_strs(c, 1)) || (v >= IV(6, 7, 0, 0) && !ic_strs(c, 6)) ||
-        (v >= IV(6, 5, 0, 0) && v < IV(6, 7, 0, 0) && !ic_strs(c, 1)) ||
-        (v >= IV(5, 2, 5, 0) && !ic_strs(c, 3)) ||
-        (v >= IV(5, 2, 1, 0) && v < IV(5, 3, 10, 0) && !ic_strs(c, 1)) ||
-        (v >= IV(5, 2, 5, 0) && !ic_strs(c, 1)))
+    if (!ic_strs(c, 6) || (v >= IV(5, 1, 13, 0) && !ic_strs(c, 1)) || !ic_strs(c, 6) || (v < IV(5, 2, 5, 0) && !ic_strs(c, 3)) || !ic_strs(c, 7) ||
+        (v < IV(5, 2, 5, 0) && !ic_strs(c, 1)) || !ic_strs(c, 4) || (v >= IV(5, 3, 8, 0) && !ic_strs(c, 1)) || (v >= IV(5, 3, 10, 0) && !ic_strs(c, 1)) ||
+        (v >= IV(5, 5, 0, 0) && !ic_strs(c, 1)) || (v >= IV(5, 5, 6, 0) && !ic_strs(c, 1)) || (v >= IV(5, 6, 1, 0) && !ic_strs(c, 2)) ||
+        (v >= IV(6, 3, 0, 0) && !ic_strs(c, 2)) || (v >= IV(6, 4, 2, 0) && !ic_strs(c, 1)) || (v >= IV(6, 7, 0, 0) && !ic_strs(c, 6)) ||
+        (v >= IV(6, 5, 0, 0) && v < IV(6, 7, 0, 0) && !ic_strs(c, 1)) || (v >= IV(5, 2, 5, 0) && !ic_strs(c, 3)) ||
+        (v >= IV(5, 2, 1, 0) && v < IV(5, 3, 10, 0) && !ic_strs(c, 1)) || (v >= IV(5, 2, 5, 0) && !ic_strs(c, 1)))
         return false;
     if (!ver->unicode && !ic_skip(c, 32U)) return false;
     if (!inno_counts(c, h, v >= IV(6, 5, 0, 0) ? 17 : 16)) return false;
@@ -1663,8 +1622,7 @@ static bool inno_hdr_5(icur *c, const inno_ver *ver, inno_hdr *h) {
     } else if (v >= IV(6, 5, 0, 0)) {
         if (!ic_skip(c, 48U)) return false;
     } else {
-        if (!ic_skip(c, 20U) || (v < IV(6, 4, 0, 1) && !ic_skip(c, 8U)) ||
-            (v < IV(5, 5, 7, 0) && !ic_skip(c, 4U)) || (v < IV(5, 0, 4, 0) && !ic_skip(c, 4U)) ||
+        if (!ic_skip(c, 20U) || (v < IV(6, 4, 0, 1) && !ic_skip(c, 8U)) || (v < IV(5, 5, 7, 0) && !ic_skip(c, 4U)) || (v < IV(5, 0, 4, 0) && !ic_skip(c, 4U)) ||
             (v >= IV(6, 0, 0, 0) && !ic_skip(c, 9U)) || (v >= IV(5, 5, 7, 0) && !ic_skip(c, 1U)))
             return false;
         if (v >= IV(6, 4, 0, 0)) {
@@ -1674,8 +1632,7 @@ static bool inno_hdr_5(icur *c, const inno_ver *ver, inno_hdr *h) {
         } else {
             if (!ic_skip(c, 24U)) return false;
         }
-        if (!ic_skip(c, 12U + 3U) || (v >= IV(5, 7, 0, 0) && !ic_skip(c, 1U)) || !ic_skip(c, 2U))
-            return false;
+        if (!ic_skip(c, 12U + 3U) || (v >= IV(5, 7, 0, 0) && !ic_skip(c, 1U)) || !ic_skip(c, 2U)) return false;
     }
     if (c->o >= c->n) return false;
     m = c->p[c->o++];
@@ -1686,8 +1643,7 @@ static bool inno_hdr_5(icur *c, const inno_ver *ver, inno_hdr *h) {
     } else if (v >= IV(6, 5, 0, 0)) {
         if (!ic_skip(c, 16U)) return false;
     } else {
-        if ((v >= IV(5, 1, 0, 0) && v < IV(6, 3, 0, 0) && !ic_skip(c, 2U)) ||
-            (v >= IV(5, 2, 1, 0) && v < IV(5, 3, 10, 0) && !ic_skip(c, 8U)) ||
+        if ((v >= IV(5, 1, 0, 0) && v < IV(6, 3, 0, 0) && !ic_skip(c, 2U)) || (v >= IV(5, 2, 1, 0) && v < IV(5, 3, 10, 0) && !ic_skip(c, 8U)) ||
             (v >= IV(5, 3, 3, 0) && !ic_skip(c, 2U)))
             return false;
         if (v >= IV(5, 5, 0, 0)) {
@@ -1702,14 +1658,13 @@ static bool inno_hdr_5(icur *c, const inno_ver *ver, inno_hdr *h) {
 }
 
 /* 5.x ANSI builds: arrays up to and including [Files]. */
-static bool inno_files_5ansi(icur *c, const inno_ver *ver, const inno_hdr *h,
-                             inno_rawlist *out) {
+static bool inno_files_5ansi(icur *c, const inno_ver *ver, const inno_hdr *h, inno_rawlist *out)
+{
     uint32_t v = ver->v, i;
     int nstr = v >= IV(5, 2, 5, 0) ? 10 : 9;
-    if (!ic_entries(c, h->counts[0], 0, 10, 24U + (v >= IV(5, 2, 3, 0) ? 1U : 0U)) ||
-        !ic_entries(c, h->counts[1], 0, 2, 4U) || !ic_entries(c, h->counts[2], 0, 1, 0U) ||
-        !ic_entries(c, h->counts[3], 0, 4, 30U) || !ic_entries(c, h->counts[4], 0, 5, 42U) ||
-        !ic_entries(c, h->counts[5], 0, 6, 26U) || !ic_entries(c, h->counts[6], 0, 7, 27U))
+    if (!ic_entries(c, h->counts[0], 0, 10, 24U + (v >= IV(5, 2, 3, 0) ? 1U : 0U)) || !ic_entries(c, h->counts[1], 0, 2, 4U) || !ic_entries(c, h->counts[2], 0, 1, 0U) ||
+        !ic_entries(c, h->counts[3], 0, 4, 30U) || !ic_entries(c, h->counts[4], 0, 5, 42U) || !ic_entries(c, h->counts[5], 0, 6, 26U) ||
+        !ic_entries(c, h->counts[6], 0, 7, 27U))
         return false;
     for (i = 0U; i < h->file_count; ++i) {
         const uint8_t *name = NULL;
@@ -1729,27 +1684,24 @@ static bool inno_files_5ansi(icur *c, const inno_ver *ver, const inno_hdr *h,
         if (!ic_skip(c, 43U)) return false;
         loc = xx_data_get_u32(c->p + tail + 20U, 4, 0, false);
         if (c->p[tail + 42U] > 1U || (loc != 0xFFFFFFFFU && loc >= h->loc_count)) return false;
-        if (len && loc != 0xFFFFFFFFU && !inno_raw_add(out, name, len, false, loc))
-            return false;
+        if (len && loc != 0xFFFFFFFFU && !inno_raw_add(out, name, len, false, loc)) return false;
     }
     return true;
 }
 
 /* 5.2.5 .. 6.x Unicode builds (UTF-16 strings). */
-static bool inno_files_unicode(icur *c, const inno_ver *ver, const inno_hdr *h, bool rev2,
-                               inno_rawlist *out) {
+static bool inno_files_unicode(icur *c, const inno_ver *ver, const inno_hdr *h, bool rev2, inno_rawlist *out)
+{
     uint32_t v = ver->v, i, major = v >> 24, minor = (v >> 16) & 0xFFU;
     bool legacy = !rev2 && (major == 5U || (major == 6U && minor <= 4U));
     bool modern = rev2 && ((major == 6U && minor >= 5U) || major == 7U);
     int fwide, fansi = 0;
     uint32_t ffixed, loc_at, type_at, verify_at = 0xFFFFFFFFU, bits_at = 0xFFFFFFFFU;
-    if ((!legacy && !modern) || (legacy && h->ncounts != 16) || (modern && h->ncounts != 17))
-        return false;
+    if ((!legacy && !modern) || (legacy && h->ncounts != 16) || (modern && h->ncounts != 17)) return false;
     if (legacy) {
-        if (!ic_entries(c, h->counts[0], 6, 4, v < IV(5, 3, 0, 0) ? 25U : 21U) ||
-            !ic_entries(c, h->counts[1], 2, 0, 4U) || !ic_entries(c, h->counts[2], 0, 1, 0U) ||
-            !ic_entries(c, h->counts[3], 4, 0, 30U) || !ic_entries(c, h->counts[4], 5, 0, 42U) ||
-            !ic_entries(c, h->counts[5], 6, 0, 26U) || !ic_entries(c, h->counts[6], 7, 0, 27U))
+        if (!ic_entries(c, h->counts[0], 6, 4, v < IV(5, 3, 0, 0) ? 25U : 21U) || !ic_entries(c, h->counts[1], 2, 0, 4U) || !ic_entries(c, h->counts[2], 0, 1, 0U) ||
+            !ic_entries(c, h->counts[3], 4, 0, 30U) || !ic_entries(c, h->counts[4], 5, 0, 42U) || !ic_entries(c, h->counts[5], 6, 0, 26U) ||
+            !ic_entries(c, h->counts[6], 7, 0, 27U))
             return false;
         fwide = 10;
         ffixed = 43U;
@@ -1766,9 +1718,8 @@ static bool inno_files_unicode(icur *c, const inno_ver *ver, const inno_hdr *h, 
             cf = 39U;
             tf = 23U;
         }
-        if (!ic_entries(c, h->counts[0], lw, 4, lf) || !ic_entries(c, h->counts[1], 2, 0, 4U) ||
-            !ic_entries(c, h->counts[2], 0, 1, 0U) || !ic_entries(c, h->counts[3], 4, 0, 30U) ||
-            !ic_entries(c, h->counts[4], 5, 0, cf) || !ic_entries(c, h->counts[5], 6, 0, tf) ||
+        if (!ic_entries(c, h->counts[0], lw, 4, lf) || !ic_entries(c, h->counts[1], 2, 0, 4U) || !ic_entries(c, h->counts[2], 0, 1, 0U) ||
+            !ic_entries(c, h->counts[3], 4, 0, 30U) || !ic_entries(c, h->counts[4], 5, 0, cf) || !ic_entries(c, h->counts[5], 6, 0, tf) ||
             !ic_entries(c, h->counts[6], 7, 0, 27U) || !ic_entries(c, h->counts[7], 3, 0, 0U))
             return false;
         fwide = 15;
@@ -1798,22 +1749,18 @@ static bool inno_files_unicode(icur *c, const inno_ver *ver, const inno_hdr *h, 
         tail = c->o;
         if (!ic_skip(c, ffixed)) return false;
         loc = xx_data_get_u32(c->p + tail + loc_at, 4, 0, false);
-        if (c->p[tail + type_at] > 1U ||
-            (verify_at != 0xFFFFFFFFU && c->p[tail + verify_at] > 2U) ||
-            (bits_at != 0xFFFFFFFFU && c->p[tail + bits_at] > 4U) ||
+        if (c->p[tail + type_at] > 1U || (verify_at != 0xFFFFFFFFU && c->p[tail + verify_at] > 2U) || (bits_at != 0xFFFFFFFFU && c->p[tail + bits_at] > 4U) ||
             (loc != 0xFFFFFFFFU && loc >= h->loc_count))
             return false;
-        if (len && loc != 0xFFFFFFFFU && !inno_raw_add(out, name, len, true, loc))
-            return false;
+        if (len && loc != 0xFFFFFFFFU && !inno_raw_add(out, name, len, true, loc)) return false;
     }
     return true;
 }
 
 /* File location table (setup-0 second block). */
-static bool inno_parse_locs(const ibuf *b, const inno_ver *ver, bool rev2, uint32_t count,
-                            uint8_t hdr_comp, inno_loc **out) {
-    uint32_t v = ver->v, i, esize = 0U, digest = 4U, time_at = 0U, flags_at = 0U,
-             flags_size = 1U, digest_at = 36U, shift = 0U;
+static bool inno_parse_locs(const ibuf *b, const inno_ver *ver, bool rev2, uint32_t count, uint8_t hdr_comp, inno_loc **out)
+{
+    uint32_t v = ver->v, i, esize = 0U, digest = 4U, time_at = 0U, flags_at = 0U, flags_size = 1U, digest_at = 36U, shift = 0U;
     uint8_t hkind = INNO_H_NONE;
     inno_loc *locs;
     bool wide_start = false;
@@ -1823,13 +1770,29 @@ static bool inno_parse_locs(const ibuf *b, const inno_ver *ver, bool rev2, uint3
         if (v == IV(1, 2, 10, 0) && ver->win16) {
             esize = 33U;
         } else if (v < IV(4, 0, 0, 0)) {
-            esize = 41U; time_at = 24U; flags_at = 40U; hkind = INNO_H_ADLER32; digest_at = 20U;
+            esize = 41U;
+            time_at = 24U;
+            flags_at = 40U;
+            hkind = INNO_H_ADLER32;
+            digest_at = 20U;
         } else if (v == IV(4, 0, 0, 0)) {
-            esize = 49U; time_at = 32U; flags_at = 48U; hkind = INNO_H_ADLER32; digest_at = 28U;
+            esize = 49U;
+            time_at = 32U;
+            flags_at = 48U;
+            hkind = INNO_H_ADLER32;
+            digest_at = 28U;
         } else if (v < IV(4, 2, 0, 0)) {
-            esize = 57U; time_at = 40U; flags_at = 56U; hkind = INNO_H_CRC32; digest_at = 36U;
+            esize = 57U;
+            time_at = 40U;
+            flags_at = 56U;
+            hkind = INNO_H_CRC32;
+            digest_at = 36U;
         } else {
-            esize = 69U; digest = 16U; time_at = 52U; flags_at = 68U; hkind = INNO_H_MD5;
+            esize = 69U;
+            digest = 16U;
+            time_at = 52U;
+            flags_at = 68U;
+            hkind = INNO_H_MD5;
             digest_at = 36U;
         }
     } else if (rev2) {
@@ -1837,28 +1800,54 @@ static bool inno_parse_locs(const ibuf *b, const inno_ver *ver, bool rev2, uint3
         wide_start = v >= IV(6, 5, 2, 0);
         shift = wide_start ? 4U : 0U;
         esize = wide_start ? 89U : 85U;
-        digest_at = 36U + shift; digest = 32U; time_at = 68U + shift; flags_at = 84U + shift;
+        digest_at = 36U + shift;
+        digest = 32U;
+        time_at = 68U + shift;
+        flags_at = 84U + shift;
         hkind = INNO_H_SHA256;
     } else if (v >= IV(6, 4, 3, 0)) {
-        esize = 85U; digest = 32U; time_at = 68U; flags_at = 84U; hkind = INNO_H_SHA256;
+        esize = 85U;
+        digest = 32U;
+        time_at = 68U;
+        flags_at = 84U;
+        hkind = INNO_H_SHA256;
     } else if (v >= IV(6, 4, 0, 0)) {
-        esize = 87U; digest = 32U; time_at = 68U; flags_at = 84U; flags_size = 2U;
+        esize = 87U;
+        digest = 32U;
+        time_at = 68U;
+        flags_at = 84U;
+        flags_size = 2U;
         hkind = INNO_H_SHA256;
     } else if (v >= IV(6, 3, 0, 0)) {
-        esize = 75U; digest = 20U; time_at = 56U; flags_at = 72U; flags_size = 2U;
+        esize = 75U;
+        digest = 20U;
+        time_at = 56U;
+        flags_at = 72U;
+        flags_size = 2U;
         hkind = INNO_H_SHA1;
     } else if (v >= IV(5, 3, 9, 0)) {
-        esize = 74U; digest = 20U; time_at = 56U; flags_at = 72U; flags_size = 2U;
+        esize = 74U;
+        digest = 20U;
+        time_at = 56U;
+        flags_at = 72U;
+        flags_size = 2U;
         hkind = INNO_H_SHA1;
     } else if (v >= IV(5, 1, 13, 0)) {
-        esize = 70U; digest = 16U; time_at = 52U; flags_at = 68U; flags_size = 2U;
+        esize = 70U;
+        digest = 16U;
+        time_at = 52U;
+        flags_at = 68U;
+        flags_size = 2U;
         hkind = INNO_H_MD5;
     } else {
-        esize = 69U; digest = 16U; time_at = 52U; flags_at = 68U; hkind = INNO_H_MD5;
+        esize = 69U;
+        digest = 16U;
+        time_at = 52U;
+        flags_at = 68U;
+        hkind = INNO_H_MD5;
     }
     if ((uint64_t)count * esize > b->n) return false;
-    if ((uint64_t)count * esize != b->n && !(b->inexact && b->n - (uint64_t)count * esize <= 16U))
-        return false;
+    if ((uint64_t)count * esize != b->n && !(b->inexact && b->n - (uint64_t)count * esize <= 16U)) return false;
     locs = (inno_loc *)xx_mem_calloc(count, sizeof(*locs));
     if (!locs) return false;
     for (i = 0U; i < count; ++i) {
@@ -1869,9 +1858,7 @@ static bool inno_parse_locs(const ibuf *b, const inno_ver *ver, bool rev2, uint3
             int16_t first = (int16_t)xx_data_get_u16(e, 2, 0, false), last = (int16_t)xx_data_get_u16(e + 2, 2, 0, false);
             int32_t start = (int32_t)xx_data_get_u32(e + 4, 4, 0, false), osize = (int32_t)xx_data_get_u32(e + 8, 4, 0, false),
                     csize = (int32_t)xx_data_get_u32(e + 12, 4, 0, false);
-            if (first <= 0 || last < first || start < 12 || osize < 0 || csize < 0 ||
-                (e[32] & ~0x03U))
-                goto fail;
+            if (first <= 0 || last < first || start < 12 || osize < 0 || csize < 0 || (e[32] & ~0x03U)) goto fail;
             l->first_slice = (uint32_t)(first - 1);
             l->last_slice = (uint32_t)(last - 1);
             l->chunk_offset = start;
@@ -1941,8 +1928,7 @@ static bool inno_parse_locs(const ibuf *b, const inno_ver *ver, bool rev2, uint3
             }
             if (l->first_slice > l->last_slice) goto fail;
         }
-        if (l->last_slice > 0x7FFFFFFFU || l->chunk_offset < 0 || l->sub_offset < 0 ||
-            l->size < 0 || l->chunk_size < 0 || l->sub_offset > INT64_MAX - l->size ||
+        if (l->last_slice > 0x7FFFFFFFU || l->chunk_offset < 0 || l->sub_offset < 0 || l->size < 0 || l->chunk_size < 0 || l->sub_offset > INT64_MAX - l->size ||
             l->compression == INNO_C_UNKNOWN || l->compression > INNO_C_LZMA2)
             goto fail;
         xx_rt_memcpy(l->checksum, e + digest_at, digest);
@@ -1959,13 +1945,11 @@ fail:
 /* ---------------------------------------------------------------------- */
 /* Names                                                                   */
 
-static const uint16_t g_cp1252_c1[32] = {
-    0x20AC, 0xFFFD, 0x201A, 0x0192, 0x201E, 0x2026, 0x2020, 0x2021,
-    0x02C6, 0x2030, 0x0160, 0x2039, 0x0152, 0xFFFD, 0x017D, 0xFFFD,
-    0xFFFD, 0x2018, 0x2019, 0x201C, 0x201D, 0x2022, 0x2013, 0x2014,
-    0x02DC, 0x2122, 0x0161, 0x203A, 0x0153, 0xFFFD, 0x017E, 0x0178};
+static const uint16_t g_cp1252_c1[32] = {0x20AC, 0xFFFD, 0x201A, 0x0192, 0x201E, 0x2026, 0x2020, 0x2021, 0x02C6, 0x2030, 0x0160, 0x2039, 0x0152, 0xFFFD, 0x017D, 0xFFFD,
+                                         0xFFFD, 0x2018, 0x2019, 0x201C, 0x201D, 0x2022, 0x2013, 0x2014, 0x02DC, 0x2122, 0x0161, 0x203A, 0x0153, 0xFFFD, 0x017E, 0x0178};
 
-static size_t inno_put_utf8(char *o, uint32_t cp) {
+static size_t inno_put_utf8(char *o, uint32_t cp)
+{
     if (cp < 0x80U) {
         if (o) o[0] = (char)cp;
         return 1U;
@@ -1995,7 +1979,8 @@ static size_t inno_put_utf8(char *o, uint32_t cp) {
 }
 
 /* Next code point of an ANSI (Windows-1252) or UTF-16LE name. */
-static uint32_t inno_next_cp(const inno_raw *r, uint32_t *i) {
+static uint32_t inno_next_cp(const inno_raw *r, uint32_t *i)
+{
     if (!r->wide) {
         uint8_t b = r->name[(*i)++];
         return (b >= 0x80U && b <= 0x9FU) ? g_cp1252_c1[b - 0x80U] : b;
@@ -2014,9 +1999,13 @@ static uint32_t inno_next_cp(const inno_raw *r, uint32_t *i) {
     }
 }
 
-static char inno_upper(char c) { return (c >= 'a' && c <= 'z') ? (char)(c - 'a' + 'A') : c; }
+static char inno_upper(char c)
+{
+    return (c >= 'a' && c <= 'z') ? (char)(c - 'a' + 'A') : c;
+}
 
-static bool inno_is_device(const char *comp, size_t length) {
+static bool inno_is_device(const char *comp, size_t length)
+{
     static const char *const names[] = {"CON", "PRN", "AUX", "NUL", "CONIN$", "CONOUT$", "CLOCK$"};
     size_t stem = 0U, index, k;
     while (stem < length && comp[stem] != '.') ++stem;
@@ -2030,8 +2019,7 @@ static bool inno_is_device(const char *comp, size_t length) {
     /* COM0-9 / LPT0-9, and COM / LPT followed by superscript 1, 2 or 3
      * (UTF-8 C2 B9, C2 B2, C2 B3), which Windows also reserves. */
     if ((stem == 4U && comp[3] >= '0' && comp[3] <= '9') ||
-        (stem == 5U && (uint8_t)comp[3] == 0xC2U &&
-         ((uint8_t)comp[4] == 0xB9U || (uint8_t)comp[4] == 0xB2U || (uint8_t)comp[4] == 0xB3U))) {
+        (stem == 5U && (uint8_t)comp[3] == 0xC2U && ((uint8_t)comp[4] == 0xB9U || (uint8_t)comp[4] == 0xB2U || (uint8_t)comp[4] == 0xB3U))) {
         char a = inno_upper(comp[0]), b = inno_upper(comp[1]), c = inno_upper(comp[2]);
         if ((a == 'C' && b == 'O' && c == 'M') || (a == 'L' && b == 'P' && c == 'T')) return true;
     }
@@ -2059,62 +2047,46 @@ typedef struct inno_fold_run_s {
 } inno_fold_run;
 
 static const inno_fold_run g_inno_fold[211] = {
-    {0xE0, 23, 1, -32}, {0xF8, 7, 1, -32}, {0x101, 24, 2, -1}, {0x130, 1, 1, -231},
-    {0x131, 1, 1, -232}, {0x133, 3, 2, -1}, {0x13A, 8, 2, -1}, {0x14B, 23, 2, -1},
-    {0x178, 1, 1, -121}, {0x17A, 3, 2, -1}, {0x17F, 1, 1, -300}, {0x183, 2, 2, -1},
-    {0x188, 1, 1, -1}, {0x18C, 1, 1, -1}, {0x192, 1, 1, -1}, {0x199, 1, 1, -1},
-    {0x1A1, 3, 2, -1}, {0x1A8, 1, 1, -1}, {0x1AD, 1, 1, -1}, {0x1B0, 1, 1, -1},
-    {0x1B4, 2, 2, -1}, {0x1B9, 1, 1, -1}, {0x1BD, 1, 1, -1}, {0x1C5, 1, 1, -1},
-    {0x1C6, 1, 1, -2}, {0x1C8, 1, 1, -1}, {0x1C9, 1, 1, -2}, {0x1CB, 1, 1, -1},
-    {0x1CC, 1, 1, -2}, {0x1CE, 8, 2, -1}, {0x1DD, 1, 1, -79}, {0x1DF, 9, 2, -1},
-    {0x1F2, 1, 1, -1}, {0x1F3, 1, 1, -2}, {0x1F5, 1, 1, -1}, {0x1F6, 1, 1, -97},
-    {0x1F7, 1, 1, -56}, {0x1F9, 20, 2, -1}, {0x220, 1, 1, -130}, {0x223, 9, 2, -1},
-    {0x23C, 1, 1, -1}, {0x23D, 1, 1, -163}, {0x242, 1, 1, -1}, {0x243, 1, 1, -195},
-    {0x247, 5, 2, -1}, {0x253, 1, 1, -210}, {0x254, 1, 1, -206}, {0x256, 2, 1, -205},
-    {0x259, 1, 1, -202}, {0x25B, 1, 1, -203}, {0x260, 1, 1, -205}, {0x263, 1, 1, -207},
-    {0x268, 1, 1, -209}, {0x269, 1, 1, -211}, {0x26F, 1, 1, -211}, {0x272, 1, 1, -213},
-    {0x275, 1, 1, -214}, {0x280, 1, 1, -218}, {0x283, 1, 1, -218}, {0x288, 1, 1, -218},
-    {0x289, 1, 1, -69}, {0x28A, 2, 1, -217}, {0x28C, 1, 1, -71}, {0x292, 1, 1, -219},
-    {0x371, 2, 2, -1}, {0x377, 1, 1, -1}, {0x399, 1, 1, -84}, {0x39C, 1, 1, -743},
-    {0x3AC, 1, 1, -38}, {0x3AD, 3, 1, -37}, {0x3B1, 8, 1, -32}, {0x3B9, 1, 1, -116},
-    {0x3BA, 2, 1, -32}, {0x3BC, 1, 1, -775}, {0x3BD, 5, 1, -32}, {0x3C2, 1, 1, -31},
-    {0x3C3, 9, 1, -32}, {0x3CC, 1, 1, -64}, {0x3CD, 2, 1, -63}, {0x3D0, 1, 1, -62},
-    {0x3D1, 1, 1, -57}, {0x3D5, 1, 1, -47}, {0x3D6, 1, 1, -54}, {0x3D7, 1, 1, -8},
-    {0x3D9, 12, 2, -1}, {0x3F0, 1, 1, -86}, {0x3F1, 1, 1, -80}, {0x3F3, 1, 1, -116},
-    {0x3F4, 1, 1, -92}, {0x3F5, 1, 1, -96}, {0x3F8, 1, 1, -1}, {0x3F9, 1, 1, -7},
-    {0x3FB, 1, 1, -1}, {0x3FD, 3, 1, -130}, {0x430, 32, 1, -32}, {0x450, 16, 1, -80},
-    {0x461, 17, 2, -1}, {0x48B, 27, 2, -1}, {0x4C2, 7, 2, -1}, {0x4CF, 1, 1, -15},
-    {0x4D1, 48, 2, -1}, {0x561, 38, 1, -48}, {0x13F8, 6, 1, -8}, {0x1C80, 1, 1, -6254},
-    {0x1C81, 1, 1, -6253}, {0x1C82, 1, 1, -6244}, {0x1C83, 2, 1, -6242}, {0x1C85, 1, 1, -6243},
-    {0x1C86, 1, 1, -6236}, {0x1C87, 1, 1, -6181}, {0x1C90, 43, 1, -3008}, {0x1CBD, 3, 1, -3008},
-    {0x1E01, 75, 2, -1}, {0x1E9B, 1, 1, -59}, {0x1E9E, 1, 1, -7615}, {0x1EA1, 48, 2, -1},
-    {0x1F08, 8, 1, -8}, {0x1F18, 6, 1, -8}, {0x1F28, 8, 1, -8}, {0x1F38, 8, 1, -8},
-    {0x1F48, 6, 1, -8}, {0x1F59, 4, 2, -8}, {0x1F68, 8, 1, -8}, {0x1F88, 8, 1, -8},
-    {0x1F98, 8, 1, -8}, {0x1FA8, 8, 1, -8}, {0x1FB8, 2, 1, -8}, {0x1FBA, 2, 1, -74},
-    {0x1FBC, 1, 1, -9}, {0x1FBE, 1, 1, -7289}, {0x1FC8, 4, 1, -86}, {0x1FCC, 1, 1, -9},
-    {0x1FD8, 2, 1, -8}, {0x1FDA, 2, 1, -100}, {0x1FE8, 2, 1, -8}, {0x1FEA, 2, 1, -112},
-    {0x1FEC, 1, 1, -7}, {0x1FF8, 2, 1, -128}, {0x1FFA, 2, 1, -126}, {0x1FFC, 1, 1, -9},
-    {0x2126, 1, 1, -7549}, {0x212A, 1, 1, -8415}, {0x212B, 1, 1, -8294}, {0x214E, 1, 1, -28},
-    {0x2170, 16, 1, -16}, {0x2184, 1, 1, -1}, {0x24D0, 26, 1, -26}, {0x2C30, 48, 1, -48},
-    {0x2C61, 1, 1, -1}, {0x2C62, 1, 1, -10743}, {0x2C63, 1, 1, -3814}, {0x2C64, 1, 1, -10727},
-    {0x2C65, 1, 1, -10795}, {0x2C66, 1, 1, -10792}, {0x2C68, 3, 2, -1}, {0x2C6D, 1, 1, -10780},
-    {0x2C6E, 1, 1, -10749}, {0x2C6F, 1, 1, -10783}, {0x2C70, 1, 1, -10782}, {0x2C73, 1, 1, -1},
-    {0x2C76, 1, 1, -1}, {0x2C7E, 2, 1, -10815}, {0x2C81, 50, 2, -1}, {0x2CEC, 2, 2, -1},
-    {0x2CF3, 1, 1, -1}, {0x2D00, 38, 1, -7264}, {0x2D27, 1, 1, -7264}, {0x2D2D, 1, 1, -7264},
-    {0xA641, 5, 2, -1}, {0xA64A, 1, 1, -35266}, {0xA64B, 1, 1, -35267}, {0xA64D, 17, 2, -1},
-    {0xA681, 14, 2, -1}, {0xA723, 7, 2, -1}, {0xA733, 31, 2, -1}, {0xA77A, 2, 2, -1},
-    {0xA77D, 1, 1, -35332}, {0xA77F, 5, 2, -1}, {0xA78C, 1, 1, -1}, {0xA78D, 1, 1, -42280},
-    {0xA791, 2, 2, -1}, {0xA797, 10, 2, -1}, {0xA7AA, 1, 1, -42308}, {0xA7AB, 1, 1, -42319},
-    {0xA7AC, 1, 1, -42315}, {0xA7AD, 1, 1, -42305}, {0xA7AE, 1, 1, -42308},
-    {0xA7B0, 1, 1, -42258}, {0xA7B1, 1, 1, -42282}, {0xA7B2, 1, 1, -42261}, {0xA7B5, 8, 2, -1},
-    {0xA7C4, 1, 1, -48}, {0xA7C5, 1, 1, -42307}, {0xA7C6, 1, 1, -35384}, {0xA7C8, 2, 2, -1},
-    {0xA7D1, 1, 1, -1}, {0xA7D7, 2, 2, -1}, {0xA7F6, 1, 1, -1}, {0xAB53, 1, 1, -928},
-    {0xAB70, 80, 1, -38864}, {0xFF41, 26, 1, -32}, {0x10428, 40, 1, -40}, {0x104D8, 36, 1, -40},
-    {0x10597, 11, 1, -39}, {0x105A3, 15, 1, -39}, {0x105B3, 7, 1, -39}, {0x105BB, 2, 1, -39},
-    {0x10CC0, 51, 1, -64}, {0x118C0, 32, 1, -32}, {0x16E60, 32, 1, -32}, {0x1E922, 34, 1, -34},
+    {0xE0, 23, 1, -32},     {0xF8, 7, 1, -32},       {0x101, 24, 2, -1},     {0x130, 1, 1, -231},    {0x131, 1, 1, -232},    {0x133, 3, 2, -1},
+    {0x13A, 8, 2, -1},      {0x14B, 23, 2, -1},      {0x178, 1, 1, -121},    {0x17A, 3, 2, -1},      {0x17F, 1, 1, -300},    {0x183, 2, 2, -1},
+    {0x188, 1, 1, -1},      {0x18C, 1, 1, -1},       {0x192, 1, 1, -1},      {0x199, 1, 1, -1},      {0x1A1, 3, 2, -1},      {0x1A8, 1, 1, -1},
+    {0x1AD, 1, 1, -1},      {0x1B0, 1, 1, -1},       {0x1B4, 2, 2, -1},      {0x1B9, 1, 1, -1},      {0x1BD, 1, 1, -1},      {0x1C5, 1, 1, -1},
+    {0x1C6, 1, 1, -2},      {0x1C8, 1, 1, -1},       {0x1C9, 1, 1, -2},      {0x1CB, 1, 1, -1},      {0x1CC, 1, 1, -2},      {0x1CE, 8, 2, -1},
+    {0x1DD, 1, 1, -79},     {0x1DF, 9, 2, -1},       {0x1F2, 1, 1, -1},      {0x1F3, 1, 1, -2},      {0x1F5, 1, 1, -1},      {0x1F6, 1, 1, -97},
+    {0x1F7, 1, 1, -56},     {0x1F9, 20, 2, -1},      {0x220, 1, 1, -130},    {0x223, 9, 2, -1},      {0x23C, 1, 1, -1},      {0x23D, 1, 1, -163},
+    {0x242, 1, 1, -1},      {0x243, 1, 1, -195},     {0x247, 5, 2, -1},      {0x253, 1, 1, -210},    {0x254, 1, 1, -206},    {0x256, 2, 1, -205},
+    {0x259, 1, 1, -202},    {0x25B, 1, 1, -203},     {0x260, 1, 1, -205},    {0x263, 1, 1, -207},    {0x268, 1, 1, -209},    {0x269, 1, 1, -211},
+    {0x26F, 1, 1, -211},    {0x272, 1, 1, -213},     {0x275, 1, 1, -214},    {0x280, 1, 1, -218},    {0x283, 1, 1, -218},    {0x288, 1, 1, -218},
+    {0x289, 1, 1, -69},     {0x28A, 2, 1, -217},     {0x28C, 1, 1, -71},     {0x292, 1, 1, -219},    {0x371, 2, 2, -1},      {0x377, 1, 1, -1},
+    {0x399, 1, 1, -84},     {0x39C, 1, 1, -743},     {0x3AC, 1, 1, -38},     {0x3AD, 3, 1, -37},     {0x3B1, 8, 1, -32},     {0x3B9, 1, 1, -116},
+    {0x3BA, 2, 1, -32},     {0x3BC, 1, 1, -775},     {0x3BD, 5, 1, -32},     {0x3C2, 1, 1, -31},     {0x3C3, 9, 1, -32},     {0x3CC, 1, 1, -64},
+    {0x3CD, 2, 1, -63},     {0x3D0, 1, 1, -62},      {0x3D1, 1, 1, -57},     {0x3D5, 1, 1, -47},     {0x3D6, 1, 1, -54},     {0x3D7, 1, 1, -8},
+    {0x3D9, 12, 2, -1},     {0x3F0, 1, 1, -86},      {0x3F1, 1, 1, -80},     {0x3F3, 1, 1, -116},    {0x3F4, 1, 1, -92},     {0x3F5, 1, 1, -96},
+    {0x3F8, 1, 1, -1},      {0x3F9, 1, 1, -7},       {0x3FB, 1, 1, -1},      {0x3FD, 3, 1, -130},    {0x430, 32, 1, -32},    {0x450, 16, 1, -80},
+    {0x461, 17, 2, -1},     {0x48B, 27, 2, -1},      {0x4C2, 7, 2, -1},      {0x4CF, 1, 1, -15},     {0x4D1, 48, 2, -1},     {0x561, 38, 1, -48},
+    {0x13F8, 6, 1, -8},     {0x1C80, 1, 1, -6254},   {0x1C81, 1, 1, -6253},  {0x1C82, 1, 1, -6244},  {0x1C83, 2, 1, -6242},  {0x1C85, 1, 1, -6243},
+    {0x1C86, 1, 1, -6236},  {0x1C87, 1, 1, -6181},   {0x1C90, 43, 1, -3008}, {0x1CBD, 3, 1, -3008},  {0x1E01, 75, 2, -1},    {0x1E9B, 1, 1, -59},
+    {0x1E9E, 1, 1, -7615},  {0x1EA1, 48, 2, -1},     {0x1F08, 8, 1, -8},     {0x1F18, 6, 1, -8},     {0x1F28, 8, 1, -8},     {0x1F38, 8, 1, -8},
+    {0x1F48, 6, 1, -8},     {0x1F59, 4, 2, -8},      {0x1F68, 8, 1, -8},     {0x1F88, 8, 1, -8},     {0x1F98, 8, 1, -8},     {0x1FA8, 8, 1, -8},
+    {0x1FB8, 2, 1, -8},     {0x1FBA, 2, 1, -74},     {0x1FBC, 1, 1, -9},     {0x1FBE, 1, 1, -7289},  {0x1FC8, 4, 1, -86},    {0x1FCC, 1, 1, -9},
+    {0x1FD8, 2, 1, -8},     {0x1FDA, 2, 1, -100},    {0x1FE8, 2, 1, -8},     {0x1FEA, 2, 1, -112},   {0x1FEC, 1, 1, -7},     {0x1FF8, 2, 1, -128},
+    {0x1FFA, 2, 1, -126},   {0x1FFC, 1, 1, -9},      {0x2126, 1, 1, -7549},  {0x212A, 1, 1, -8415},  {0x212B, 1, 1, -8294},  {0x214E, 1, 1, -28},
+    {0x2170, 16, 1, -16},   {0x2184, 1, 1, -1},      {0x24D0, 26, 1, -26},   {0x2C30, 48, 1, -48},   {0x2C61, 1, 1, -1},     {0x2C62, 1, 1, -10743},
+    {0x2C63, 1, 1, -3814},  {0x2C64, 1, 1, -10727},  {0x2C65, 1, 1, -10795}, {0x2C66, 1, 1, -10792}, {0x2C68, 3, 2, -1},     {0x2C6D, 1, 1, -10780},
+    {0x2C6E, 1, 1, -10749}, {0x2C6F, 1, 1, -10783},  {0x2C70, 1, 1, -10782}, {0x2C73, 1, 1, -1},     {0x2C76, 1, 1, -1},     {0x2C7E, 2, 1, -10815},
+    {0x2C81, 50, 2, -1},    {0x2CEC, 2, 2, -1},      {0x2CF3, 1, 1, -1},     {0x2D00, 38, 1, -7264}, {0x2D27, 1, 1, -7264},  {0x2D2D, 1, 1, -7264},
+    {0xA641, 5, 2, -1},     {0xA64A, 1, 1, -35266},  {0xA64B, 1, 1, -35267}, {0xA64D, 17, 2, -1},    {0xA681, 14, 2, -1},    {0xA723, 7, 2, -1},
+    {0xA733, 31, 2, -1},    {0xA77A, 2, 2, -1},      {0xA77D, 1, 1, -35332}, {0xA77F, 5, 2, -1},     {0xA78C, 1, 1, -1},     {0xA78D, 1, 1, -42280},
+    {0xA791, 2, 2, -1},     {0xA797, 10, 2, -1},     {0xA7AA, 1, 1, -42308}, {0xA7AB, 1, 1, -42319}, {0xA7AC, 1, 1, -42315}, {0xA7AD, 1, 1, -42305},
+    {0xA7AE, 1, 1, -42308}, {0xA7B0, 1, 1, -42258},  {0xA7B1, 1, 1, -42282}, {0xA7B2, 1, 1, -42261}, {0xA7B5, 8, 2, -1},     {0xA7C4, 1, 1, -48},
+    {0xA7C5, 1, 1, -42307}, {0xA7C6, 1, 1, -35384},  {0xA7C8, 2, 2, -1},     {0xA7D1, 1, 1, -1},     {0xA7D7, 2, 2, -1},     {0xA7F6, 1, 1, -1},
+    {0xAB53, 1, 1, -928},   {0xAB70, 80, 1, -38864}, {0xFF41, 26, 1, -32},   {0x10428, 40, 1, -40},  {0x104D8, 36, 1, -40},  {0x10597, 11, 1, -39},
+    {0x105A3, 15, 1, -39},  {0x105B3, 7, 1, -39},    {0x105BB, 2, 1, -39},   {0x10CC0, 51, 1, -64},  {0x118C0, 32, 1, -32},  {0x16E60, 32, 1, -32},
+    {0x1E922, 34, 1, -34},
 };
 
-static uint32_t inno_fold(uint32_t c) {
+static uint32_t inno_fold(uint32_t c)
+{
     size_t lo = 0U, hi = sizeof(g_inno_fold) / sizeof(g_inno_fold[0]);
     if (c < 0x80U) return (c >= 'a' && c <= 'z') ? c - 0x20U : c;
     while (lo < hi) {
@@ -2134,7 +2106,8 @@ static uint32_t inno_fold(uint32_t c) {
 
 /* Next code point of a name this reader produced (UTF-8); a stray byte is
  * returned as itself. */
-static uint32_t inno_utf8_next(const char **ps) {
+static uint32_t inno_utf8_next(const char **ps)
+{
     const uint8_t *s = (const uint8_t *)*ps;
     uint32_t c = s[0];
     size_t n = 1U, k;
@@ -2168,7 +2141,8 @@ static uint32_t inno_utf8_next(const char **ps) {
  * common).  *safe is cleared for absolute or drive paths, an empty name,
  * components made of dots and spaces only (".."), control characters and
  * device names. */
-static char *inno_make_name(const inno_raw *r, bool *safe) {
+static char *inno_make_name(const inno_raw *r, bool *safe)
+{
     uint32_t i = 0U;
     size_t length = 0U, o = 0U, start, rd = 0U, wr = 0U;
     char *name;
@@ -2184,9 +2158,7 @@ static char *inno_make_name(const inno_raw *r, bool *safe) {
         if (o == 0U && cp == '/') *safe = false;
         if (o == 1U && cp == ':') *safe = false;
         if (cp < 0x20U || cp == 0x7FU) *safe = false;
-        if (cp == ':' || cp == '*' || cp == '?' || cp == '"' || cp == '<' || cp == '>' ||
-            cp == '|')
-            cp = '_';
+        if (cp == ':' || cp == '*' || cp == '?' || cp == '"' || cp == '<' || cp == '>' || cp == '|') cp = '_';
         o += inno_put_utf8(name + o, cp);
     }
     while (rd <= o) {
@@ -2225,7 +2197,8 @@ static char *inno_make_name(const inno_raw *r, bool *safe) {
     return name;
 }
 
-static uint32_t inno_hash_name(const char *s) {
+static uint32_t inno_hash_name(const char *s)
+{
     uint32_t h = 2166136261U;
     while (*s) {
         h ^= inno_fold(inno_utf8_next(&s));
@@ -2234,7 +2207,8 @@ static uint32_t inno_hash_name(const char *s) {
     return h;
 }
 
-static bool inno_same_name(const char *a, const char *b) {
+static bool inno_same_name(const char *a, const char *b)
+{
     while (*a && *b)
         if (inno_fold(inno_utf8_next(&a)) != inno_fold(inno_utf8_next(&b))) return false;
     return *a == 0 && *b == 0;
@@ -2245,7 +2219,8 @@ typedef struct inno_names_s {
     size_t mask;
 } inno_names;
 
-static bool inno_names_has(const inno_names *set, const char *name) {
+static bool inno_names_has(const inno_names *set, const char *name)
+{
     size_t at = inno_hash_name(name) & set->mask;
     while (set->slots[at]) {
         if (inno_same_name(set->slots[at], name)) return true;
@@ -2254,14 +2229,16 @@ static bool inno_names_has(const inno_names *set, const char *name) {
     return false;
 }
 
-static void inno_names_put(inno_names *set, const char *name) {
+static void inno_names_put(inno_names *set, const char *name)
+{
     size_t at = inno_hash_name(name) & set->mask;
     while (set->slots[at]) at = (at + 1U) & set->mask;
     set->slots[at] = name;
 }
 
 /* name + "_N" before the extension of the last component */
-static char *inno_suffixed(const char *name, uint32_t n) {
+static char *inno_suffixed(const char *name, uint32_t n)
+{
     char digits[12];
     size_t nd = 0U, length = xx_str_len(name), insert = length, i, o = 0U, last = 0U;
     char *out;
@@ -2292,7 +2269,8 @@ static char *inno_suffixed(const char *name, uint32_t n) {
     return out;
 }
 
-static char *inno_number_name(uint32_t n) {
+static char *inno_number_name(uint32_t n)
+{
     char digits[12], *out;
     size_t nd = 0U, i;
     do {
@@ -2306,7 +2284,8 @@ static char *inno_number_name(uint32_t n) {
     return out;
 }
 
-static void inno_ctx_free(void *opaque) {
+static void inno_ctx_free(void *opaque)
+{
     inno_ctx *ctx = (inno_ctx *)opaque;
     uint32_t i;
     if (!ctx) return;
@@ -2321,7 +2300,8 @@ static void inno_ctx_free(void *opaque) {
 
 /* Build members from the raw [Files] list (or, when names is NULL, one
  * member per location called "<n>.bin"). */
-static bool inno_build_members(inno_ctx *ctx, const inno_rawlist *names) {
+static bool inno_build_members(inno_ctx *ctx, const inno_rawlist *names)
+{
     uint32_t count = names ? names->count : ctx->loc_count, i, seq = 2U;
     inno_names set;
     size_t slots = 16U;
@@ -2387,19 +2367,17 @@ static bool inno_build_members(inno_ctx *ctx, const inno_rawlist *names) {
  *
  * inno_set_budget then sets the decode budget of a reading session.
  */
-static void inno_group_locs(inno_ctx *ctx) {
+static void inno_group_locs(inno_ctx *ctx)
+{
     uint32_t i = 0U, j, k;
     bool have_prev = false;
     uint32_t prev_slice = 0U;
     int64_t prev_chunk = 0;
     while (i < ctx->loc_count) {
         uint64_t extent = 0U, end = 0U;
-        bool bad = have_prev && (ctx->locs[i].first_slice < prev_slice ||
-                                 (ctx->locs[i].first_slice == prev_slice &&
-                                  ctx->locs[i].chunk_offset <= prev_chunk));
+        bool bad = have_prev && (ctx->locs[i].first_slice < prev_slice || (ctx->locs[i].first_slice == prev_slice && ctx->locs[i].chunk_offset <= prev_chunk));
         j = i;
-        while (j < ctx->loc_count && ctx->locs[j].chunk_offset == ctx->locs[i].chunk_offset &&
-               ctx->locs[j].first_slice == ctx->locs[i].first_slice) {
+        while (j < ctx->loc_count && ctx->locs[j].chunk_offset == ctx->locs[i].chunk_offset && ctx->locs[j].first_slice == ctx->locs[i].first_slice) {
             const inno_loc *l = &ctx->locs[j];
             uint64_t e = (uint64_t)(l->sub_offset + l->size);
             if (e > extent) extent = e;
@@ -2446,24 +2424,27 @@ static void inno_group_locs(inno_ctx *ctx) {
 #define INNO_ZLIB_MAX_RATIO 1040U
 #define INNO_BZIP2_MAX_RATIO ((uint64_t)1U << 21)
 
-static uint64_t inno_max_expansion(uint8_t compression, uint64_t input) {
+static uint64_t inno_max_expansion(uint8_t compression, uint64_t input)
+{
     uint64_t ratio;
     switch (compression) {
-    case INNO_C_STORE: ratio = 1U; break;
-    case INNO_C_ZLIB: ratio = INNO_ZLIB_MAX_RATIO; break;
-    case INNO_C_BZIP2: ratio = INNO_BZIP2_MAX_RATIO; break;
-    case INNO_C_LZMA1:
-    case INNO_C_LZMA2: ratio = INNO_LZMA_MAX_RATIO; break;
-    default: return 0U; /* refused at unpack */
+        case INNO_C_STORE: ratio = 1U; break;
+        case INNO_C_ZLIB: ratio = INNO_ZLIB_MAX_RATIO; break;
+        case INNO_C_BZIP2: ratio = INNO_BZIP2_MAX_RATIO; break;
+        case INNO_C_LZMA1:
+        case INNO_C_LZMA2: ratio = INNO_LZMA_MAX_RATIO; break;
+        default: return 0U; /* refused at unpack */
     }
     return input > UINT64_MAX / ratio ? UINT64_MAX : input * ratio;
 }
 
-static bool inno_head_before(const inno_ctx *ctx, uint32_t x, uint32_t y) {
+static bool inno_head_before(const inno_ctx *ctx, uint32_t x, uint32_t y)
+{
     return ctx->locs[x].chunk_offset < ctx->locs[y].chunk_offset;
 }
 
-static void inno_set_budget(inno_ctx *ctx, int64_t device_size) {
+static void inno_set_budget(inno_ctx *ctx, int64_t device_size)
+{
     uint32_t i, j, n = 0U, width;
     uint8_t *used = NULL;
     uint32_t *heads = NULL, *tmp = NULL, *a, *b;
@@ -2480,18 +2461,14 @@ static void inno_set_budget(inno_ctx *ctx, int64_t device_size) {
     /* One head per used, in-order run of slice 0 (others are refused). */
     for (i = 0U; i < ctx->loc_count; i = j) {
         bool any = false;
-        for (j = i; j < ctx->loc_count && ctx->locs[j].chunk_offset == ctx->locs[i].chunk_offset &&
-                    ctx->locs[j].first_slice == ctx->locs[i].first_slice;
-             ++j)
+        for (j = i; j < ctx->loc_count && ctx->locs[j].chunk_offset == ctx->locs[i].chunk_offset && ctx->locs[j].first_slice == ctx->locs[i].first_slice; ++j)
             if (used[j]) any = true;
-        if (any && !ctx->locs[i].bad_order && ctx->locs[i].first_slice == 0U &&
-            ctx->locs[i].chunk_offset >= 0)
-            heads[n++] = i;
+        if (any && !ctx->locs[i].bad_order && ctx->locs[i].first_slice == 0U && ctx->locs[i].chunk_offset >= 0) heads[n++] = i;
     }
     /* Stable merge sort of the heads by chunk start. */
     a = heads;
     b = tmp;
-    for (width = 1U; width < n; width = width > n / 2U ? n : width * 2U) {
+    for (width = 1U; width<n; width = width> n / 2U ? n : width * 2U) {
         uint32_t lo;
         for (lo = 0U; lo < n; lo = n - lo <= 2U * width ? n : lo + 2U * width) {
             uint32_t mid = n - lo < width ? n : lo + width;
@@ -2511,19 +2488,15 @@ static void inno_set_budget(inno_ctx *ctx, int64_t device_size) {
         uint64_t start = (uint64_t)l->chunk_offset, span, end, cap;
         if (start >= area) continue;
         /* "zlb\x1a" + chunk bytes, clipped to the file */
-        span = l->chunk_size >= 0 && (uint64_t)l->chunk_size < area ? (uint64_t)l->chunk_size + 4U
-                                                                    : area;
+        span = l->chunk_size >= 0 && (uint64_t)l->chunk_size < area ? (uint64_t)l->chunk_size + 4U : area;
         if (span > area - start) span = area - start;
         end = start + span;
-        if (i + 1U < n && (uint64_t)ctx->locs[a[i + 1U]].chunk_offset < end)
-            end = (uint64_t)ctx->locs[a[i + 1U]].chunk_offset;
+        if (i + 1U < n && (uint64_t)ctx->locs[a[i + 1U]].chunk_offset < end) end = (uint64_t)ctx->locs[a[i + 1U]].chunk_offset;
         cap = inno_max_expansion(l->compression, end - start);
         cap = cap < l->extent ? cap : l->extent;
         need = need + cap < need ? UINT64_MAX : need + cap;
     }
-    ctx->work_left = need > (UINT64_MAX - INNO_WORK_FLOOR) / INNO_WORK_FACTOR
-                         ? UINT64_MAX
-                         : need * INNO_WORK_FACTOR + INNO_WORK_FLOOR;
+    ctx->work_left = need > (UINT64_MAX - INNO_WORK_FLOOR) / INNO_WORK_FACTOR ? UINT64_MAX : need * INNO_WORK_FACTOR + INNO_WORK_FLOOR;
 done:
     if (used) xx_mem_free(used);
     if (heads) xx_mem_free(heads);
@@ -2533,13 +2506,15 @@ done:
 /* Take n bytes of decode work from the session budget.  Work is charged
  * before it is done, so a refused charge only fails that member: one
  * location declaring more than the budget does not fail the others. */
-static bool inno_charge(inno_ctx *ctx, uint64_t n) {
+static bool inno_charge(inno_ctx *ctx, uint64_t n)
+{
     if (n > ctx->work_left) return false;
     ctx->work_left -= n;
     return true;
 }
 
-static bool inno_member_before(const inno_member *x, const inno_member *y) {
+static bool inno_member_before(const inno_member *x, const inno_member *y)
+{
     return x->pass != y->pass ? x->pass < y->pass : x->loc < y->loc;
 }
 
@@ -2550,7 +2525,8 @@ static bool inno_member_before(const inno_member *x, const inno_member *y) {
  * and so on, so a chunk is decoded (number of references of its most shared
  * location) times, not once per shared entry.  Stable merge sort through a
  * temporary array: O(n log n). */
-static bool inno_sort_members(inno_ctx *ctx) {
+static bool inno_sort_members(inno_ctx *ctx)
+{
     uint32_t n = ctx->member_count, width, i;
     inno_member *a = ctx->members, *b, *tmp;
     uint32_t *seen;
@@ -2558,17 +2534,16 @@ static bool inno_sort_members(inno_ctx *ctx) {
     if (n < 2U) return true;
     seen = (uint32_t *)xx_mem_calloc(ctx->loc_count ? ctx->loc_count : 1U, sizeof(*seen));
     if (!seen) return false;
-    for (i = 0U; i < n; ++i)
-        a[i].pass = a[i].loc < ctx->loc_count ? seen[a[i].loc]++ : 0U;
+    for (i = 0U; i < n; ++i) a[i].pass = a[i].loc < ctx->loc_count ? seen[a[i].loc]++ : 0U;
     xx_mem_free(seen);
     for (i = 1U; i < n; ++i)
         if (inno_member_before(&a[i], &a[i - 1U])) sorted = false;
     if (sorted) return true;
     b = (inno_member *)xx_mem_alloc((size_t)n * sizeof(*b));
     if (!b) return false;
-    for (width = 1U; width < n; width = width > n / 2U ? n : width * 2U) {
+    for (width = 1U; width<n; width = width> n / 2U ? n : width * 2U) {
         uint32_t lo;
-        for (lo = 0U; lo < n; lo = lo + 2U * width > n || lo + 2U * width < lo ? n : lo + 2U * width) {
+        for (lo = 0U; lo<n; lo = lo + 2U * width> n || lo + 2U * width < lo ? n : lo + 2U * width) {
             uint32_t mid = n - lo < width ? n : lo + width;
             uint32_t hi = n - mid < width ? n : mid + width, p = lo, q = mid, o = lo;
             while (p < mid && q < hi) b[o++] = inno_member_before(&a[q], &a[p]) ? a[q++] : a[p++];
@@ -2592,12 +2567,11 @@ static bool inno_sort_members(inno_ctx *ctx) {
 /* Setup-0 parsing                                                         */
 
 /* 1.09 / 1.11: one Adler-32 framed block per record. */
-static bool inno_parse_legacy(Abstractformat *f, inno_ctx *ctx, int64_t size,
-                              xx_pd_struct *pd) {
+static bool inno_parse_legacy(Abstractformat *f, inno_ctx *ctx, int64_t size, xx_pd_struct *pd)
+{
     const inno_table *t = &ctx->table;
     bool b109 = ctx->ver.short_id == 109U;
-    int64_t end = b109 ? t->data_offset : t->table_offset, cur, consumed = 0, data_end,
-            expected;
+    int64_t end = b109 ? t->data_offset : t->table_offset, cur, consumed = 0, data_end, expected;
     ibuf blk;
     uint32_t counts[9], infos[3] = {0U, 0U, 0U}, ncount, i, k;
     uint64_t blocks = 1U;
@@ -2648,13 +2622,10 @@ static bool inno_parse_legacy(Abstractformat *f, inno_ctx *ctx, int64_t size,
         ibuf_free(&blk);
         cur += consumed;
     }
-    if (!inno_read_at(f->device, f->base_address + t->data_offset, idsk, 12U) ||
-        xx_rt_memcmp(idsk, "idska32\x1a", 8U) != 0)
-        return false;
+    if (!inno_read_at(f->device, f->base_address + t->data_offset, idsk, 12U) || xx_rt_memcmp(idsk, "idska32\x1a", 8U) != 0) return false;
     data_end = b109 ? (int64_t)t->total_size : t->exe_offset;
     if (data_end <= t->data_offset + 12 || data_end > size ||
-        (b109 ? (uint64_t)xx_data_get_u32(idsk + 8, 4, 0, false) != (uint64_t)(data_end - t->data_offset)
-              : xx_data_get_u32(idsk + 8, 4, 0, false) != 0U))
+        (b109 ? (uint64_t)xx_data_get_u32(idsk + 8, 4, 0, false) != (uint64_t)(data_end - t->data_offset) : xx_data_get_u32(idsk + 8, 4, 0, false) != 0U))
         return false;
     ctx->loc_count = counts[1];
     if (counts[1]) {
@@ -2721,10 +2692,8 @@ static bool inno_parse_legacy(Abstractformat *f, inno_ctx *ctx, int64_t size,
             good = blk.n == 12U && xx_data_get_u32(blk.p, 4, 0, false) == 1U && xx_data_get_u32(blk.p + 4, 4, 0, false) == 1U &&
                    (int64_t)xx_data_get_u32(blk.p + 8, 4, 0, false) == expected;
             ibuf_free(&blk);
-            if (!good || expected > data_end - t->data_offset - 4 ||
-                l->chunk_size > data_end - t->data_offset - expected - 4 ||
-                !inno_read_at(f->device, f->base_address + t->data_offset + expected, magic, 4U) ||
-                xx_rt_memcmp(magic, "zlb\x1a", 4U) != 0)
+            if (!good || expected > data_end - t->data_offset - 4 || l->chunk_size > data_end - t->data_offset - expected - 4 ||
+                !inno_read_at(f->device, f->base_address + t->data_offset + expected, magic, 4U) || xx_rt_memcmp(magic, "zlb\x1a", 4U) != 0)
                 goto files_fail;
             l->chunk_offset = expected;
             expected += 4 + l->chunk_size;
@@ -2756,8 +2725,8 @@ bad_header:
     return false;
 }
 
-static bool inno_walk_files(icur *c, const inno_ver *ver, const inno_hdr *h, bool rev2,
-                            bool exact, inno_rawlist *names) {
+static bool inno_walk_files(icur *c, const inno_ver *ver, const inno_hdr *h, bool rev2, bool exact, inno_rawlist *names)
+{
     uint32_t v = ver->v;
     if (v == IV(1, 2, 10, 0)) return inno_files_1210(c, ver, h, names);
     if (v < IV(5, 0, 0, 0)) return inno_files_pre5(c, ver, h, exact, names);
@@ -2766,13 +2735,15 @@ static bool inno_walk_files(icur *c, const inno_ver *ver, const inno_hdr *h, boo
     return inno_files_5ansi(c, ver, h, names);
 }
 
-static bool inno_parse_header(icur *c, const inno_ver *ver, inno_hdr *h) {
+static bool inno_parse_header(icur *c, const inno_ver *ver, inno_hdr *h)
+{
     if (ver->v == IV(1, 2, 10, 0)) return inno_hdr_1210(c, ver, h);
     if (ver->v < IV(5, 0, 0, 0)) return inno_hdr_pre5(c, ver, h);
     return inno_hdr_5(c, ver, h);
 }
 
-static bool inno_parse(Abstractformat *f, inno_ctx *ctx, xx_pd_struct *pd) {
+static bool inno_parse(Abstractformat *f, inno_ctx *ctx, xx_pd_struct *pd)
+{
     int64_t size = 0, cur, consumed = 0;
     ibuf b1, b2;
     bool rev2, ok = false;
@@ -2796,8 +2767,8 @@ static bool inno_parse(Abstractformat *f, inno_ctx *ctx, xx_pd_struct *pd) {
     cur = ctx->table.header_offset + (int64_t)ctx->ver.id_size;
     if (rev2) {
         uint8_t e[53];
-        if (cur > size - 53 || !inno_read_at(f->device, f->base_address + cur, e, 53U) ||
-            xx_data_get_u32(e, 4, 0, false) != inno_crc32(e + 4, 49U) || e[4] > 2U || e[4] == 2U)
+        if (cur > size - 53 || !inno_read_at(f->device, f->base_address + cur, e, 53U) || xx_data_get_u32(e, 4, 0, false) != inno_crc32(e + 4, 49U) || e[4] > 2U ||
+            e[4] == 2U)
             return false;
         cur += 53;
     }
@@ -2809,22 +2780,32 @@ static bool inno_parse(Abstractformat *f, inno_ctx *ctx, xx_pd_struct *pd) {
         if (cur != ctx->table.table_offset) goto done;
         if (ctx->table.data_offset > 0) {
             uint8_t idsk[12];
-            if (ctx->table.data_offset > size - 12 ||
-                !inno_read_at(f->device, f->base_address + ctx->table.data_offset, idsk, 12U) ||
-                xx_rt_memcmp(idsk, ctx->ver.win16 ? "idska16\x1a" : "idska32\x1a", 8U) != 0 ||
-                xx_data_get_u32(idsk + 8, 4, 0, false) < 12U || ctx->table.exe_offset <= ctx->table.data_offset ||
-                (int64_t)xx_data_get_u32(idsk + 8, 4, 0, false) != ctx->table.exe_offset - ctx->table.data_offset)
+            if (ctx->table.data_offset > size - 12 || !inno_read_at(f->device, f->base_address + ctx->table.data_offset, idsk, 12U) ||
+                xx_rt_memcmp(idsk, ctx->ver.win16 ? "idska16\x1a" : "idska32\x1a", 8U) != 0 || xx_data_get_u32(idsk + 8, 4, 0, false) < 12U ||
+                ctx->table.exe_offset <= ctx->table.data_offset || (int64_t)xx_data_get_u32(idsk + 8, 4, 0, false) != ctx->table.exe_offset - ctx->table.data_offset)
                 goto done;
         }
     }
     cands[0] = ctx->ver;
     cands[1] = ctx->ver;
     switch (ctx->ver.v) {
-    case IV(1, 3, 21, 0): cands[1].v = IV(1, 3, 24, 0); ncand = 2; break;
-    case IV(2, 0, 1, 0): cands[1].v = IV(2, 0, 2, 0); ncand = 2; break;
-    case IV(3, 0, 3, 0): cands[1].v = IV(3, 0, 4, 0); ncand = 2; break;
-    case IV(4, 2, 3, 0): cands[1].v = IV(4, 2, 4, 0); ncand = 2; break;
-    default: break;
+        case IV(1, 3, 21, 0):
+            cands[1].v = IV(1, 3, 24, 0);
+            ncand = 2;
+            break;
+        case IV(2, 0, 1, 0):
+            cands[1].v = IV(2, 0, 2, 0);
+            ncand = 2;
+            break;
+        case IV(3, 0, 3, 0):
+            cands[1].v = IV(3, 0, 4, 0);
+            ncand = 2;
+            break;
+        case IV(4, 2, 3, 0):
+            cands[1].v = IV(4, 2, 4, 0);
+            ncand = 2;
+            break;
+        default: break;
     }
     for (k = 0; k < ncand; ++k) {
         inno_hdr h;
@@ -2837,11 +2818,9 @@ static bool inno_parse(Abstractformat *f, inno_ctx *ctx, xx_pd_struct *pd) {
         if (inno_stopped(pd)) goto done;
         if (!inno_parse_header(&c, &cands[k], &h)) continue;
         if (!h.loc_count) {
-            if (!inno_walk_files(&c, &cands[k], &h, rev2, !b1.inexact, &names) || names.count)
-                continue;
+            if (!inno_walk_files(&c, &cands[k], &h, rev2, !b1.inexact, &names) || names.count) continue;
         } else {
-            if (!inno_parse_locs(&b2, &cands[k], rev2, h.loc_count, h.compression, &locs))
-                continue;
+            if (!inno_parse_locs(&b2, &cands[k], rev2, h.loc_count, h.compression, &locs)) continue;
             if (!inno_walk_files(&c, &cands[k], &h, rev2, !b1.inexact, &names)) {
                 /* Unknown entry layout: keep the locations for "<n>.bin". */
                 if (chosen < 0 && !best_locs) {
@@ -2936,33 +2915,35 @@ typedef struct ilz_s {
     bool error;
     bool finished;
     bool lzma2;
-    bool copy;          /* LZMA2 uncompressed chunk */
-    uint8_t need;       /* LZMA2: lowest control byte the next LZMA chunk may use */
-    uint32_t chunk_left;/* LZMA2: unpacked bytes left in the chunk */
+    bool copy;           /* LZMA2 uncompressed chunk */
+    uint8_t need;        /* LZMA2: lowest control byte the next LZMA chunk may use */
+    uint32_t chunk_left; /* LZMA2: unpacked bytes left in the chunk */
     int lc, lp, pb;
     uint8_t *dict;
-    uint64_t dict_mask; /* current allocation - 1 */
-    uint64_t dict_alloc;/* full window allocation (a power of two) */
-    uint64_t dict_limit;/* declared window */
-    uint64_t ppos;      /* position since the last dictionary reset */
-    uint64_t filled;    /* valid window bytes */
-    uint64_t total;     /* bytes produced */
+    uint64_t dict_mask;  /* current allocation - 1 */
+    uint64_t dict_alloc; /* full window allocation (a power of two) */
+    uint64_t dict_limit; /* declared window */
+    uint64_t ppos;       /* position since the last dictionary reset */
+    uint64_t filled;     /* valid window bytes */
+    uint64_t total;      /* bytes produced */
     int state;
     uint32_t rep[4];
-    uint32_t pending;   /* match bytes still to copy */
+    uint32_t pending; /* match bytes still to copy */
     ilz_model m;
     uint16_t lit[ILZ_LIT_MAX];
     uint8_t *buf;
     size_t io_capacity;
 } ilz;
 
-static void ilz_free(ilz *z) {
+static void ilz_free(ilz *z)
+{
     if (!z) return;
     if (z->dict) xx_mem_free(z->dict);
     xx_mem_free(z);
 }
 
-static uint8_t ilz_byte(ilz *z) {
+static uint8_t ilz_byte(ilz *z)
+{
     int64_t at;
     if (z->in_pos >= z->in_limit) {
         z->error = true;
@@ -2984,7 +2965,8 @@ static uint8_t ilz_byte(ilz *z) {
     return z->buf[at];
 }
 
-static int ilz_bit(ilz *z, uint16_t *p) {
+static int ilz_bit(ilz *z, uint16_t *p)
+{
     uint32_t bound = (z->range >> 11U) * (uint32_t)*p;
     int bit;
     if (z->code < bound) {
@@ -3004,14 +2986,16 @@ static int ilz_bit(ilz *z, uint16_t *p) {
     return bit;
 }
 
-static uint32_t ilz_tree(ilz *z, uint16_t *p, int bits) {
+static uint32_t ilz_tree(ilz *z, uint16_t *p, int bits)
+{
     uint32_t m = 1U;
     int i;
     for (i = 0; i < bits; ++i) m = (m << 1U) | (uint32_t)ilz_bit(z, p + m);
     return m - (1U << bits);
 }
 
-static uint32_t ilz_tree_rev(ilz *z, uint16_t *p, int bits) {
+static uint32_t ilz_tree_rev(ilz *z, uint16_t *p, int bits)
+{
     uint32_t m = 1U, sym = 0U;
     int i;
     for (i = 0; i < bits; ++i) {
@@ -3022,7 +3006,8 @@ static uint32_t ilz_tree_rev(ilz *z, uint16_t *p, int bits) {
     return sym;
 }
 
-static uint32_t ilz_direct(ilz *z, int bits) {
+static uint32_t ilz_direct(ilz *z, int bits)
+{
     uint32_t result = 0U;
     int i;
     for (i = bits - 1; i >= 0; --i) {
@@ -3040,15 +3025,15 @@ static uint32_t ilz_direct(ilz *z, int bits) {
     return result;
 }
 
-static uint32_t ilz_len(ilz *z, int which, uint32_t ps) {
-    if (!ilz_bit(z, &z->m.len_choice[which]))
-        return 2U + ilz_tree(z, z->m.len_low[which][ps], 3);
-    if (!ilz_bit(z, &z->m.len_choice2[which]))
-        return 10U + ilz_tree(z, z->m.len_mid[which][ps], 3);
+static uint32_t ilz_len(ilz *z, int which, uint32_t ps)
+{
+    if (!ilz_bit(z, &z->m.len_choice[which])) return 2U + ilz_tree(z, z->m.len_low[which][ps], 3);
+    if (!ilz_bit(z, &z->m.len_choice2[which])) return 10U + ilz_tree(z, z->m.len_mid[which][ps], 3);
     return 18U + ilz_tree(z, z->m.len_high[which], 8);
 }
 
-static void ilz_reset_state(ilz *z) {
+static void ilz_reset_state(ilz *z)
+{
     uint16_t *p = (uint16_t *)&z->m;
     size_t i, n = sizeof(z->m) / sizeof(uint16_t), lits = (size_t)0x300U << (z->lc + z->lp);
     for (i = 0U; i < n; ++i) p[i] = 1024U;
@@ -3058,7 +3043,8 @@ static void ilz_reset_state(ilz *z) {
     z->pending = 0U;
 }
 
-static bool ilz_set_props(ilz *z, uint32_t d) {
+static bool ilz_set_props(ilz *z, uint32_t d)
+{
     if (d >= 9U * 5U * 5U) return false;
     z->lc = (int)(d % 9U);
     d /= 9U;
@@ -3067,7 +3053,8 @@ static bool ilz_set_props(ilz *z, uint32_t d) {
     return z->lc + z->lp <= 4;
 }
 
-static void ilz_rc_init(ilz *z) {
+static void ilz_rc_init(ilz *z)
+{
     int i;
     z->range = 0xFFFFFFFFU;
     z->code = 0U;
@@ -3077,7 +3064,8 @@ static void ilz_rc_init(ilz *z) {
 
 /* The window starts small and doubles while it has not wrapped yet, so a
  * large declared window costs memory only once that much was produced. */
-static void ilz_grow(ilz *z) {
+static void ilz_grow(ilz *z)
+{
     uint64_t cap = (z->dict_mask + 1U) * 2U;
     uint8_t *grown;
     if (cap > z->dict_alloc) cap = z->dict_alloc;
@@ -3090,7 +3078,8 @@ static void ilz_grow(ilz *z) {
     z->dict_mask = cap - 1U;
 }
 
-static void ilz_put(ilz *z, uint8_t b) {
+static void ilz_put(ilz *z, uint8_t b)
+{
     if (z->ppos > z->dict_mask && z->dict_mask + 1U < z->dict_alloc) ilz_grow(z);
     z->dict[(size_t)(z->ppos & z->dict_mask)] = b;
     ++z->ppos;
@@ -3099,7 +3088,8 @@ static void ilz_put(ilz *z, uint8_t b) {
 }
 
 /* LZMA2: read the next control byte and set up its chunk. */
-static void ilz2_chunk(ilz *z) {
+static void ilz2_chunk(ilz *z)
+{
     uint8_t c;
     z->in_pos = z->next_chunk;
     z->in_limit = z->in_end;
@@ -3164,7 +3154,8 @@ static void ilz2_chunk(ilz *z) {
 }
 
 /* Up to n more bytes of the chunk; fewer only at its end or on damage. */
-static size_t ilz_read(ilz *z, uint8_t *out, size_t n) {
+static size_t ilz_read(ilz *z, uint8_t *out, size_t n)
+{
     size_t done = 0U;
     while (done < n && !z->error && !z->finished) {
         uint32_t ps, len;
@@ -3198,8 +3189,7 @@ static size_t ilz_read(ilz *z, uint8_t *out, size_t n) {
         st = z->state;
         if (!ilz_bit(z, &z->m.is_match[st][ps])) {
             uint8_t prev = z->filled ? z->dict[(size_t)((z->ppos - 1U) & z->dict_mask)] : 0U;
-            uint32_t ctx = (((uint32_t)z->ppos & ((1U << z->lp) - 1U)) << z->lc) |
-                           ((uint32_t)prev >> (8 - z->lc));
+            uint32_t ctx = (((uint32_t)z->ppos & ((1U << z->lp) - 1U)) << z->lc) | ((uint32_t)prev >> (8 - z->lc));
             uint16_t *lit = z->lit + (size_t)ctx * 0x300U;
             uint32_t sym;
             if (st < 7) {
@@ -3290,8 +3280,7 @@ static size_t ilz_read(ilz *z, uint8_t *out, size_t n) {
             len = ilz_len(z, 1, ps);
             z->state = st < 7 ? 8 : 11;
         }
-        if (z->error || z->rep[0] == 0U || z->rep[0] > z->filled ||
-            (uint64_t)z->rep[0] > z->dict_limit) {
+        if (z->error || z->rep[0] == 0U || z->rep[0] > z->filled || (uint64_t)z->rep[0] > z->dict_limit) {
             z->error = true;
             break;
         }
@@ -3310,7 +3299,8 @@ static size_t ilz_read(ilz *z, uint8_t *out, size_t n) {
 /* Start decoding the chunk of `l`: "zlb\x1a", then 5 LZMA properties or
  * one LZMA2 dictionary byte.  The window is the declared one, but never
  * more than the part of the chunk the members need. */
-static ilz *ilz_open(xx_io_device *d, int64_t data_base, const inno_loc *l) {
+static ilz *ilz_open(xx_io_device *d, int64_t data_base, const inno_loc *l)
+{
     int64_t total = xx_io_total_size(d), at;
     uint8_t magic[4];
     uint64_t window, alloc = 4096U;
@@ -3319,9 +3309,7 @@ static ilz *ilz_open(xx_io_device *d, int64_t data_base, const inno_loc *l) {
     if (capacity > SIZE_MAX - sizeof(*z)) return NULL;
     if (data_base < 0 || l->chunk_offset > INT64_MAX - data_base) return NULL;
     at = data_base + l->chunk_offset;
-    if (total < 0 || at > total - 4 || l->chunk_size > total - at - 4 ||
-        !inno_read_at(d, at, magic, 4U) || xx_rt_memcmp(magic, "zlb\x1a", 4U) != 0)
-        return NULL;
+    if (total < 0 || at > total - 4 || l->chunk_size > total - at - 4 || !inno_read_at(d, at, magic, 4U) || xx_rt_memcmp(magic, "zlb\x1a", 4U) != 0) return NULL;
     z = (ilz *)xx_mem_calloc(1U, sizeof(*z) + capacity);
     if (!z) return NULL;
     z->buf = (uint8_t *)(z + 1);
@@ -3370,16 +3358,13 @@ fail:
 
 /* One member of a solid LZMA / LZMA2 chunk.  The chunk's decoder carries
  * on from the previous member when this one starts at or after it. */
-static bool inno_extract_solid_lzma(Abstractformat *f, inno_ctx *ctx, const inno_loc *l,
-                                    inno_out *out, xx_pd_struct *pd) {
+static bool inno_extract_solid_lzma(Abstractformat *f, inno_ctx *ctx, const inno_loc *l, inno_out *out, xx_pd_struct *pd)
+{
     uint8_t *piece;
     uint64_t skip, left;
     bool ok = true;
-    if (ctx->bad_chunk == l->chunk_offset &&
-        (uint64_t)l->sub_offset + (uint64_t)l->size > ctx->bad_at)
-        return false;
-    if (!ctx->lz || ctx->lz_chunk != l->chunk_offset || ctx->lz->error ||
-        ctx->lz->total > (uint64_t)l->sub_offset) {
+    if (ctx->bad_chunk == l->chunk_offset && (uint64_t)l->sub_offset + (uint64_t)l->size > ctx->bad_at) return false;
+    if (!ctx->lz || ctx->lz_chunk != l->chunk_offset || ctx->lz->error || ctx->lz->total > (uint64_t)l->sub_offset) {
         ilz_free(ctx->lz);
         ctx->lz = ilz_open(f->device, ctx->data_base, l);
         ctx->lz_chunk = l->chunk_offset;
@@ -3424,8 +3409,8 @@ static bool inno_extract_solid_lzma(Abstractformat *f, inno_ctx *ctx, const inno
 
 /* Decode chunk bytes [skip, skip + want) into sink.  The caller checks
  * sink->kept. */
-static bool inno_decode_chunk(Abstractformat *f, int64_t data_base, const inno_loc *l,
-                              inno_sink *sink, xx_pd_struct *pd) {
+static bool inno_decode_chunk(Abstractformat *f, int64_t data_base, const inno_loc *l, inno_sink *sink, xx_pd_struct *pd)
+{
     xx_io_device *d = f->device;
     const size_t io_capacity = sink->out ? sink->out->io_capacity : xx_get_file_buffer_size();
     int64_t total = xx_io_total_size(d), at, payload = l->chunk_size;
@@ -3434,83 +3419,74 @@ static bool inno_decode_chunk(Abstractformat *f, int64_t data_base, const inno_l
     uint64_t need = sink->skip + sink->want, window = need;
     if (data_base < 0 || l->chunk_offset > INT64_MAX - data_base) return false;
     at = data_base + l->chunk_offset;
-    if (at > total - 4 || payload > total - at - 4 ||
-        !inno_read_at(d, at, magic, 4U) || xx_rt_memcmp(magic, "zlb\x1a", 4U) != 0)
-        return false;
+    if (at > total - 4 || payload > total - at - 4 || !inno_read_at(d, at, magic, 4U) || xx_rt_memcmp(magic, "zlb\x1a", 4U) != 0) return false;
     at += 4;
     /* The declared sizes are not trusted for the dictionary: LZMA cannot
      * expand one input byte to more than about 7,600 output bytes (a
      * 273-byte rep match costs at least 13 near-certain bits), so a window
      * above payload * INNO_LZMA_MAX_RATIO is never needed. */
-    if (payload >= 0 && (uint64_t)payload < UINT64_MAX / INNO_LZMA_MAX_RATIO &&
-        window > (uint64_t)payload * INNO_LZMA_MAX_RATIO)
+    if (payload >= 0 && (uint64_t)payload < UINT64_MAX / INNO_LZMA_MAX_RATIO && window > (uint64_t)payload * INNO_LZMA_MAX_RATIO)
         window = (uint64_t)payload * INNO_LZMA_MAX_RATIO;
     inno_sink_device(&dev, sink);
     switch (l->compression) {
-    case INNO_C_STORE: {
-        uint8_t *buf;
-        uint64_t pos = sink->skip, left = sink->want;
-        bool ok = true;
-        if (need > (uint64_t)payload) return false;
-        buf = (uint8_t *)xx_mem_alloc(io_capacity);
-        if (!buf) return false;
-        sink->seen = sink->skip;
-        while (left && ok) {
-            size_t piece = left < io_capacity ? (size_t)left : io_capacity;
-            ok = !inno_stopped(pd) && inno_read_at(d, at + (int64_t)pos, buf, piece) &&
-                 inno_sink_write(&dev, buf, piece) == (ssize_t)piece;
-            pos += piece;
-            left -= piece;
+        case INNO_C_STORE: {
+            uint8_t *buf;
+            uint64_t pos = sink->skip, left = sink->want;
+            bool ok = true;
+            if (need > (uint64_t)payload) return false;
+            buf = (uint8_t *)xx_mem_alloc(io_capacity);
+            if (!buf) return false;
+            sink->seen = sink->skip;
+            while (left && ok) {
+                size_t piece = left < io_capacity ? (size_t)left : io_capacity;
+                ok = !inno_stopped(pd) && inno_read_at(d, at + (int64_t)pos, buf, piece) && inno_sink_write(&dev, buf, piece) == (ssize_t)piece;
+                pos += piece;
+                left -= piece;
+            }
+            xx_mem_free(buf);
+            return ok;
         }
-        xx_mem_free(buf);
-        return ok;
-    }
-    case INNO_C_ZLIB: {
-        uint8_t zh[2];
-        if (payload < 3 || !inno_read_at(d, at, zh, 2U) ||
-            !xx_zlib_stream_header_is_valid(zh, 2U))
-            return false;
-        (void)xx_deflate_unpack_device(d, at + 2, payload - 2, &dev, false, pd);
-        return true;
-    }
-    case INNO_C_BZIP2:
-        (void)xx_bzip2_unpack_device(d, at, payload, &dev, pd);
-        return true;
-    case INNO_C_LZMA1: {
-        uint8_t props[5];
-        uint32_t dict, cap = 4096U;
-        if (payload < 5 + 5 || !inno_read_at(d, at, props, 5U) || props[0] >= 9U * 5U * 5U)
-            return false;
-        dict = xx_data_get_u32(props + 1, 4, 0, false);
-        while ((uint64_t)cap < window && cap < 0x80000000U) cap <<= 1U;
-        if (dict > cap) {
-            props[1] = (uint8_t)cap;
-            props[2] = (uint8_t)(cap >> 8U);
-            props[3] = (uint8_t)(cap >> 16U);
-            props[4] = (uint8_t)(cap >> 24U);
+        case INNO_C_ZLIB: {
+            uint8_t zh[2];
+            if (payload < 3 || !inno_read_at(d, at, zh, 2U) || !xx_zlib_stream_header_is_valid(zh, 2U)) return false;
+            (void)xx_deflate_unpack_device(d, at + 2, payload - 2, &dev, false, pd);
+            return true;
         }
-        (void)xx_lzma_unpack_device(d, at + 5, payload - 5, props, 5U, (int64_t)need, &dev, pd);
-        return true;
-    }
-    case INNO_C_LZMA2: {
-        uint8_t p;
-        if (payload < 2 || !inno_read_at(d, at, &p, 1U) || p > 40U) return false;
-        while (p > 0U) {
-            uint8_t q = (uint8_t)(p - 1U);
-            uint64_t dsz = (uint64_t)(2U | (q & 1U)) << (q / 2U + 11U);
-            if (dsz < window) break;
-            p = q;
+        case INNO_C_BZIP2: (void)xx_bzip2_unpack_device(d, at, payload, &dev, pd); return true;
+        case INNO_C_LZMA1: {
+            uint8_t props[5];
+            uint32_t dict, cap = 4096U;
+            if (payload < 5 + 5 || !inno_read_at(d, at, props, 5U) || props[0] >= 9U * 5U * 5U) return false;
+            dict = xx_data_get_u32(props + 1, 4, 0, false);
+            while ((uint64_t)cap < window && cap < 0x80000000U) cap <<= 1U;
+            if (dict > cap) {
+                props[1] = (uint8_t)cap;
+                props[2] = (uint8_t)(cap >> 8U);
+                props[3] = (uint8_t)(cap >> 16U);
+                props[4] = (uint8_t)(cap >> 24U);
+            }
+            (void)xx_lzma_unpack_device(d, at + 5, payload - 5, props, 5U, (int64_t)need, &dev, pd);
+            return true;
         }
-        (void)xx_lzma2_unpack_device(d, at + 1, payload - 1, p, &dev, pd);
-        return true;
-    }
-    default: return false;
+        case INNO_C_LZMA2: {
+            uint8_t p;
+            if (payload < 2 || !inno_read_at(d, at, &p, 1U) || p > 40U) return false;
+            while (p > 0U) {
+                uint8_t q = (uint8_t)(p - 1U);
+                uint64_t dsz = (uint64_t)(2U | (q & 1U)) << (q / 2U + 11U);
+                if (dsz < window) break;
+                p = q;
+            }
+            (void)xx_lzma2_unpack_device(d, at + 1, payload - 1, p, &dev, pd);
+            return true;
+        }
+        default: return false;
     }
 }
 
 /* Produce one location's bytes into dest (NULL: verify only). */
-static bool inno_extract_loc(Abstractformat *f, inno_ctx *ctx, uint32_t index,
-                             xx_io_device *dest, xx_pd_struct *pd) {
+static bool inno_extract_loc(Abstractformat *f, inno_ctx *ctx, uint32_t index, xx_io_device *dest, xx_pd_struct *pd)
+{
     const inno_loc *l;
     inno_out *out;
     bool ok = false;
@@ -3519,9 +3495,7 @@ static bool inno_extract_loc(Abstractformat *f, inno_ctx *ctx, uint32_t index,
     if (io_capacity > SIZE_MAX - sizeof(*out) - 8U) return false;
     if (index >= ctx->loc_count || ctx->data_base < 0) return false;
     l = &ctx->locs[index];
-    if (l->encrypted || l->bad_order || l->first_slice != 0U || l->last_slice != 0U ||
-        l->compression > INNO_C_LZMA2)
-        return false;
+    if (l->encrypted || l->bad_order || l->first_slice != 0U || l->last_slice != 0U || l->compression > INNO_C_LZMA2) return false;
     out = (inno_out *)xx_mem_alloc(sizeof(*out) + io_capacity + 8U);
     if (!out) return false;
     if (!inno_out_init(out, l, dest, io_capacity)) goto done;
@@ -3544,14 +3518,12 @@ static bool inno_extract_loc(Abstractformat *f, inno_ctx *ctx, uint32_t index,
         ctx->cache_chunk = -1;
         ctx->cache_size = 0U;
     }
-    if (l->users > 1U &&
-        (l->compression == INNO_C_LZMA1 || l->compression == INNO_C_LZMA2)) {
+    if (l->users > 1U && (l->compression == INNO_C_LZMA1 || l->compression == INNO_C_LZMA2)) {
         ok = inno_extract_solid_lzma(f, ctx, l, out, pd) && inno_out_finish(out, l);
     } else if (l->users > 1U && extent <= INNO_CACHE_MAX && l->compression != INNO_C_STORE) {
         /* The cache holds the decodable prefix of the chunk; a damaged
          * chunk is decoded once, and only its intact members succeed. */
-        if (ctx->cache_chunk != l->chunk_offset ||
-            (ctx->cache_size < extent && ctx->bad_chunk != l->chunk_offset)) {
+        if (ctx->cache_chunk != l->chunk_offset || (ctx->cache_size < extent && ctx->bad_chunk != l->chunk_offset)) {
             inno_sink sink;
             bool started;
             if (ctx->cache) xx_mem_free(ctx->cache);
@@ -3575,9 +3547,7 @@ static bool inno_extract_loc(Abstractformat *f, inno_ctx *ctx, uint32_t index,
                 ctx->bad_at = sink.kept;
             }
         }
-        if ((uint64_t)l->sub_offset + (uint64_t)l->size > ctx->cache_size ||
-            !inno_charge(ctx, (uint64_t)l->size))
-            goto done;
+        if ((uint64_t)l->sub_offset + (uint64_t)l->size > ctx->cache_size || !inno_charge(ctx, (uint64_t)l->size)) goto done;
         inno_out_feed(out, ctx->cache + l->sub_offset, (size_t)l->size);
         ok = inno_out_finish(out, l);
     } else {
@@ -3587,8 +3557,7 @@ static bool inno_extract_loc(Abstractformat *f, inno_ctx *ctx, uint32_t index,
         sink.skip = (uint64_t)l->sub_offset;
         sink.want = (uint64_t)l->size;
         sink.out = out;
-        ok = inno_decode_chunk(f, ctx->data_base, l, &sink, pd) && !sink.failed &&
-             sink.kept == sink.want && inno_out_finish(out, l);
+        ok = inno_decode_chunk(f, ctx->data_base, l, &sink, pd) && !sink.failed && sink.kept == sink.want && inno_out_finish(out, l);
     }
 done:
     xx_mem_free(out);
@@ -3598,7 +3567,8 @@ done:
 /* ---------------------------------------------------------------------- */
 /* Records                                                                 */
 
-static bool inno_copy_options(xx_list_s *destination, const xx_list_s *source) {
+static bool inno_copy_options(xx_list_s *destination, const xx_list_s *source)
+{
     size_t index;
     if (!source) return true;
     for (index = 0U; index < source->count; ++index) {
@@ -3614,7 +3584,8 @@ static bool inno_copy_options(xx_list_s *destination, const xx_list_s *source) {
     return true;
 }
 
-static const xx_var *inno_option(const xx_list_s *options, uint32_t id) {
+static const xx_var *inno_option(const xx_list_s *options, uint32_t id)
+{
     size_t index;
     if (!options) return NULL;
     for (index = 0U; index < options->count; ++index) {
@@ -3624,8 +3595,8 @@ static const xx_var *inno_option(const xx_list_s *options, uint32_t id) {
     return NULL;
 }
 
-static bool inno_set_record(xx_archive_record *record, const inno_ctx *ctx,
-                            const inno_member *m) {
+static bool inno_set_record(xx_archive_record *record, const inno_ctx *ctx, const inno_member *m)
+{
     const inno_loc *l = &ctx->locs[m->loc];
     xx_archive_record_cleanup(record);
     xx_archive_record_init(record);
@@ -3633,22 +3604,18 @@ static bool inno_set_record(xx_archive_record *record, const inno_ctx *ctx,
     record->header_size = 0;
     record->data_offset = ctx->data_base >= 0 ? ctx->data_base + l->chunk_offset + 4 : -1;
     record->compressed_size = l->chunk_size;
-    return xx_archive_record_set_original_name(record, m->name) &&
-           xx_archive_record_set_meta_u64(record, XX_META_ID_UNCOMPRESSED_SIZE,
-                                          (uint64_t)l->size) &&
-           xx_archive_record_set_meta_u64(record, XX_META_ID_COMPRESSED_SIZE,
-                                          (uint64_t)l->chunk_size) &&
-           xx_archive_record_set_meta_u64(record, XX_META_ID_COMPRESSION_METHOD,
-                                          l->compression) &&
-           xx_archive_record_set_meta_u64(record, XX_META_ID_TIMESTAMP, l->filetime) &&
-           xx_archive_record_set_meta_bool(record, XX_META_ID_IS_ENCRYPTED, l->encrypted) &&
+    return xx_archive_record_set_original_name(record, m->name) && xx_archive_record_set_meta_u64(record, XX_META_ID_UNCOMPRESSED_SIZE, (uint64_t)l->size) &&
+           xx_archive_record_set_meta_u64(record, XX_META_ID_COMPRESSED_SIZE, (uint64_t)l->chunk_size) &&
+           xx_archive_record_set_meta_u64(record, XX_META_ID_COMPRESSION_METHOD, l->compression) &&
+           xx_archive_record_set_meta_u64(record, XX_META_ID_TIMESTAMP, l->filetime) && xx_archive_record_set_meta_bool(record, XX_META_ID_IS_ENCRYPTED, l->encrypted) &&
            xx_archive_record_set_meta_bool(record, XX_META_ID_IS_FOLDER, false);
 }
 
 /* ---------------------------------------------------------------------- */
 /* Public API                                                              */
 
-void xx_inno_setup_init(xx_inno_setup *archive, xx_io_device *device, int64_t base_address) {
+void xx_inno_setup_init(xx_inno_setup *archive, xx_io_device *device, int64_t base_address)
+{
     if (!archive) return;
     xx_mem_zero(archive, sizeof(*archive));
     xx_format_init(&archive->format, device, base_address);
@@ -3669,31 +3636,36 @@ void xx_inno_setup_init(xx_inno_setup *archive, xx_io_device *device, int64_t ba
     archive->format.free_archive_records_reading = xx_inno_setup_free_archive_records_reading;
 }
 
-xx_inno_setup *xx_inno_setup_create(xx_io_device *device, int64_t base_address) {
+xx_inno_setup *xx_inno_setup_create(xx_io_device *device, int64_t base_address)
+{
     xx_inno_setup *archive = (xx_inno_setup *)xx_mem_alloc(sizeof(*archive));
     if (archive) xx_inno_setup_init(archive, device, base_address);
     return archive;
 }
 
-void xx_inno_setup_destroy(xx_inno_setup *archive) {
+void xx_inno_setup_destroy(xx_inno_setup *archive)
+{
     if (archive) xx_format_cleanup_extra_parameters(&archive->format);
 }
 
-void xx_inno_setup_free(xx_inno_setup *archive) {
+void xx_inno_setup_free(xx_inno_setup *archive)
+{
     if (!archive) return;
     xx_inno_setup_destroy(archive);
     xx_mem_free(archive);
 }
 
 /* Cheap: the MZ header, the loader table and the 64-byte version ID. */
-bool xx_inno_setup_check_is_valid(Abstractformat *format, xx_pd_struct *pd) {
+bool xx_inno_setup_check_is_valid(Abstractformat *format, xx_pd_struct *pd)
+{
     inno_table table;
     inno_ver ver;
     (void)pd;
     return inno_probe(format, &table, &ver, NULL);
 }
 
-bool xx_inno_setup_handle_base_info(Abstractformat *format, xx_pd_struct *pd) {
+bool xx_inno_setup_handle_base_info(Abstractformat *format, xx_pd_struct *pd)
+{
     inno_ctx *ctx;
     xx_inno_setup *archive;
     if (!format) return false;
@@ -3725,21 +3697,18 @@ bool xx_inno_setup_handle_base_info(Abstractformat *format, xx_pd_struct *pd) {
     return true;
 }
 
-int64_t xx_inno_setup_get_format_size(Abstractformat *format, xx_pd_struct *pd) {
-    return format && (format->base_info_handled || xx_inno_setup_handle_base_info(format, pd))
-               ? format->format_size
-               : -1;
+int64_t xx_inno_setup_get_format_size(Abstractformat *format, xx_pd_struct *pd)
+{
+    return format && (format->base_info_handled || xx_inno_setup_handle_base_info(format, pd)) ? format->format_size : -1;
 }
 
-uint64_t xx_inno_setup_get_number_of_archive_records(Abstractformat *format,
-                                                     xx_pd_struct *pd) {
-    return format && (format->base_info_handled || xx_inno_setup_handle_base_info(format, pd))
-               ? ((xx_inno_setup *)format)->number_of_records
-               : 0U;
+uint64_t xx_inno_setup_get_number_of_archive_records(Abstractformat *format, xx_pd_struct *pd)
+{
+    return format && (format->base_info_handled || xx_inno_setup_handle_base_info(format, pd)) ? ((xx_inno_setup *)format)->number_of_records : 0U;
 }
 
-xx_archive_record_state *xx_inno_setup_create_archive_records_reading(
-    Abstractformat *format, const xx_list_s *options, xx_pd_struct *pd) {
+xx_archive_record_state *xx_inno_setup_create_archive_records_reading(Abstractformat *format, const xx_list_s *options, xx_pd_struct *pd)
+{
     inno_ctx *ctx;
     xx_archive_record_state *state;
     if (!format) return NULL;
@@ -3758,8 +3727,7 @@ xx_archive_record_state *xx_inno_setup_create_archive_records_reading(
     state->internal_state = ctx;
     state->free_internal = inno_ctx_free;
     state->total_records = (int64_t)ctx->member_count;
-    if (!inno_copy_options(&state->options, options) ||
-        !inno_set_record(&state->current_record, ctx, &ctx->members[0])) {
+    if (!inno_copy_options(&state->options, options) || !inno_set_record(&state->current_record, ctx, &ctx->members[0])) {
         xx_archive_record_state_free(state);
         return NULL;
     }
@@ -3767,20 +3735,16 @@ xx_archive_record_state *xx_inno_setup_create_archive_records_reading(
     return state;
 }
 
-const xx_archive_record *xx_inno_setup_get_current_archive_record(
-    Abstractformat *format, xx_archive_record_state *state) {
-    return format && state && state->format == format && state->has_record
-               ? &state->current_record
-               : NULL;
+const xx_archive_record *xx_inno_setup_get_current_archive_record(Abstractformat *format, xx_archive_record_state *state)
+{
+    return format && state && state->format == format && state->has_record ? &state->current_record : NULL;
 }
 
-bool xx_inno_setup_archive_record_move_to_next(Abstractformat *format,
-                                               xx_archive_record_state *state,
-                                               xx_pd_struct *pd) {
+bool xx_inno_setup_archive_record_move_to_next(Abstractformat *format, xx_archive_record_state *state, xx_pd_struct *pd)
+{
     inno_ctx *ctx;
     (void)pd;
-    if (!format || !state || state->format != format ||
-        !(ctx = (inno_ctx *)state->internal_state) || ++ctx->index >= ctx->member_count) {
+    if (!format || !state || state->format != format || !(ctx = (inno_ctx *)state->internal_state) || ++ctx->index >= ctx->member_count) {
         if (state) state->has_record = false;
         return false;
     }
@@ -3789,9 +3753,8 @@ bool xx_inno_setup_archive_record_move_to_next(Abstractformat *format,
     return state->has_record;
 }
 
-bool xx_inno_setup_unpack_current_archive_record(Abstractformat *format,
-                                                 xx_archive_record_state *state,
-                                                 xx_pd_struct *pd) {
+bool xx_inno_setup_unpack_current_archive_record(Abstractformat *format, xx_archive_record_state *state, xx_pd_struct *pd)
+{
     inno_ctx *ctx;
     inno_member *member;
     const xx_var *path_option;
@@ -3799,8 +3762,7 @@ bool xx_inno_setup_unpack_current_archive_record(Abstractformat *format,
     char *owned_base = NULL, *path = NULL;
     bool result = false;
     bool created = false;
-    if (!format || !state || state->format != format || !state->has_record ||
-        !(ctx = (inno_ctx *)state->internal_state) || ctx->index >= ctx->member_count ||
+    if (!format || !state || state->format != format || !state->has_record || !(ctx = (inno_ctx *)state->internal_state) || ctx->index >= ctx->member_count ||
         inno_stopped(pd))
         return false;
     member = &ctx->members[ctx->index];
@@ -3808,21 +3770,18 @@ bool xx_inno_setup_unpack_current_archive_record(Abstractformat *format,
     if (!path_option) return inno_extract_loc(format, ctx, member->loc, NULL, pd);
     if (!member->safe || !member->name) return false;
     /* Locations that are refused anyway get no output file. */
-    if (member->loc >= ctx->loc_count || ctx->data_base < 0 || ctx->locs[member->loc].encrypted ||
-        ctx->locs[member->loc].bad_order || ctx->locs[member->loc].first_slice != 0U ||
-        ctx->locs[member->loc].last_slice != 0U)
+    if (member->loc >= ctx->loc_count || ctx->data_base < 0 || ctx->locs[member->loc].encrypted || ctx->locs[member->loc].bad_order ||
+        ctx->locs[member->loc].first_slice != 0U || ctx->locs[member->loc].last_slice != 0U)
         return false;
     if (path_option->type == XX_VAR_TYPE_STRING || path_option->type == XX_VAR_TYPE_STRING_VIEW) {
         base = xx_var_get_str(path_option);
-    } else if (path_option->type == XX_VAR_TYPE_WSTRING ||
-               path_option->type == XX_VAR_TYPE_WSTRING_VIEW) {
+    } else if (path_option->type == XX_VAR_TYPE_WSTRING || path_option->type == XX_VAR_TYPE_WSTRING_VIEW) {
         owned_base = xx_str_unicode_to_utf8(xx_var_get_wstr(path_option));
         base = owned_base;
     }
     if (!base) goto done;
-    path = (base[0] && base[xx_str_len(base) - 1U] != '/' && base[xx_str_len(base) - 1U] != '\\')
-               ? xx_str_concat3(base, "/", member->name)
-               : xx_str_concat(base, member->name);
+    path = (base[0] && base[xx_str_len(base) - 1U] != '/' && base[xx_str_len(base) - 1U] != '\\') ? xx_str_concat3(base, "/", member->name)
+                                                                                                  : xx_str_concat(base, member->name);
     if (!path || !xx_store_create_dirs_a(path, false)) goto done;
     {
         xx_io_device *destination = xx_io_file_open(path, "wb");
@@ -3838,8 +3797,8 @@ done:
     return result;
 }
 
-void xx_inno_setup_free_archive_records_reading(Abstractformat *format,
-                                                xx_archive_record_state *state) {
+void xx_inno_setup_free_archive_records_reading(Abstractformat *format, xx_archive_record_state *state)
+{
     (void)format;
     xx_archive_record_state_free(state);
 }

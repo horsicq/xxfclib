@@ -143,39 +143,26 @@ struct xx_perform {
     char banner[XX_PERFORM_BANNER_SIZE + 1U];
 };
 
-XXFC_API void xx_perform_init(xx_perform *document, xx_io_device *device,
-                              int64_t base_address);
-XXFC_API xx_perform *xx_perform_create(xx_io_device *device,
-                                       int64_t base_address);
+XXFC_API void xx_perform_init(xx_perform *document, xx_io_device *device, int64_t base_address);
+XXFC_API xx_perform *xx_perform_create(xx_io_device *device, int64_t base_address);
 XXFC_API void xx_perform_destroy(xx_perform *document);
 XXFC_API void xx_perform_free(xx_perform *document);
 
-XXFC_API bool xx_perform_check_is_valid(Abstractformat *self,
-                                        xx_pd_struct *pd);
-XXFC_API bool xx_perform_handle_base_info(Abstractformat *self,
-                                          xx_pd_struct *pd);
-XXFC_API int64_t xx_perform_get_format_size(Abstractformat *self,
-                                            xx_pd_struct *pd);
-XXFC_API uint64_t xx_perform_get_number_of_archive_records(
-    Abstractformat *self, xx_pd_struct *pd);
+XXFC_API bool xx_perform_check_is_valid(Abstractformat *self, xx_pd_struct *pd);
+XXFC_API bool xx_perform_handle_base_info(Abstractformat *self, xx_pd_struct *pd);
+XXFC_API int64_t xx_perform_get_format_size(Abstractformat *self, xx_pd_struct *pd);
+XXFC_API uint64_t xx_perform_get_number_of_archive_records(Abstractformat *self, xx_pd_struct *pd);
 
 /** Decode the packed stream to @p destination.  @p destination may be NULL,
  *  in which case the stream is only validated and measured.  Fails unless the
  *  decoded bytes reproduce the CRC-16/ARC stored in the header. */
-XXFC_API bool xx_perform_unpack_to_device(xx_perform *document,
-                                          xx_io_device *destination,
-                                          xx_pd_struct *pd);
+XXFC_API bool xx_perform_unpack_to_device(xx_perform *document, xx_io_device *destination, xx_pd_struct *pd);
 
-XXFC_API xx_archive_record_state *xx_perform_create_archive_records_reading(
-    Abstractformat *self, const xx_list_s *options, xx_pd_struct *pd);
-XXFC_API const xx_archive_record *xx_perform_get_current_archive_record(
-    Abstractformat *self, xx_archive_record_state *state);
-XXFC_API bool xx_perform_unpack_current_archive_record(
-    Abstractformat *self, xx_archive_record_state *state, xx_pd_struct *pd);
-XXFC_API bool xx_perform_archive_record_move_to_next(
-    Abstractformat *self, xx_archive_record_state *state, xx_pd_struct *pd);
-XXFC_API void xx_perform_free_archive_records_reading(
-    Abstractformat *self, xx_archive_record_state *state);
+XXFC_API xx_archive_record_state *xx_perform_create_archive_records_reading(Abstractformat *self, const xx_list_s *options, xx_pd_struct *pd);
+XXFC_API const xx_archive_record *xx_perform_get_current_archive_record(Abstractformat *self, xx_archive_record_state *state);
+XXFC_API bool xx_perform_unpack_current_archive_record(Abstractformat *self, xx_archive_record_state *state, xx_pd_struct *pd);
+XXFC_API bool xx_perform_archive_record_move_to_next(Abstractformat *self, xx_archive_record_state *state, xx_pd_struct *pd);
+XXFC_API void xx_perform_free_archive_records_reading(Abstractformat *self, xx_archive_record_state *state);
 
 /** CRC-16/ARC of the decoded document as stored in the header. */
 XXFC_API uint16_t xx_perform_get_checksum(const xx_perform *document);
@@ -190,7 +177,8 @@ XXFC_API uint64_t xx_perform_get_uncompressed_size(const xx_perform *document);
 /** Banner of the decoded document, never NULL, empty when unknown. */
 XXFC_API const char *xx_perform_get_banner(const xx_perform *document);
 
-static inline Abstractformat *xx_perform_to_format(xx_perform *document) {
+static inline Abstractformat *xx_perform_to_format(xx_perform *document)
+{
     return document ? &document->format : NULL;
 }
 

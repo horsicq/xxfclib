@@ -24,7 +24,6 @@
 
 #include "xx_js_internal.h"
 
-
 #define ARG(i) (((i) < nArgc) ? pArgv[i] : js_undefined())
 
 /* Upper bounds on the two places where a nominal array length is turned
@@ -33,7 +32,7 @@
  * map, so no realistic script is refused, while the multiplication by
  * sizeof(JSVal) can no longer wrap size_t and the count still fits an int. */
 #define JS_MAX_SPREAD_ARGS 16777216
-#define JS_MAX_SORT_ITEMS  16777216
+#define JS_MAX_SORT_ITEMS 16777216
 
 /* ------------------------------------------------------------- utilities  */
 
@@ -344,25 +343,24 @@ static JSVal fn_uint32array_ctor(JSCtx *ctx, JSVal thisVal, int argc, JSVal *arg
 {
     int64_t count = 0, i;
     JSVal result;
-    (void)thisVal; (void)user;
+    (void)thisVal;
+    (void)user;
     if (argc && argv[0].tag == JT_NUM) {
         double value = argv[0].u.n;
-        if (!(value >= 0 && value <= 33554432.0) || (double)(int64_t)value != value)
-            return js_throw(ctx, "RangeError: Uint32Array length exceeds native budget");
+        if (!(value >= 0 && value <= 33554432.0) || (double)(int64_t)value != value) return js_throw(ctx, "RangeError: Uint32Array length exceeds native budget");
         count = (int64_t)value;
     } else if (argc && argv[0].tag == JT_OBJ) {
         count = js_array_length(ctx, argv[0]);
-        if (count < 0 || count > 33554432)
-            return js_throw(ctx, "RangeError: Uint32Array length exceeds native budget");
-    } else if (argc && argv[0].tag != JT_UNDEF)
-        return js_throw(ctx, "TypeError: Uint32Array requires length or array");
+        if (count < 0 || count > 33554432) return js_throw(ctx, "RangeError: Uint32Array length exceeds native budget");
+    } else if (argc && argv[0].tag != JT_UNDEF) return js_throw(ctx, "TypeError: Uint32Array requires length or array");
     result = js_new_uint32_array(ctx, NULL, (size_t)count);
     if (result.tag != JT_OBJ) return js_throw(ctx, "RangeError: Uint32Array allocation failed");
-    if (argc && argv[0].tag == JT_OBJ) for (i = 0; i < count; ++i) {
-        JSVal value = js_get_index(ctx, argv[0], i);
-        result.u.o->pUint32Data[i] = (uint32_t)js_to_int32(ctx, value);
-        js_release(ctx, value);
-    }
+    if (argc && argv[0].tag == JT_OBJ)
+        for (i = 0; i < count; ++i) {
+            JSVal value = js_get_index(ctx, argv[0], i);
+            result.u.o->pUint32Data[i] = (uint32_t)js_to_int32(ctx, value);
+            js_release(ctx, value);
+        }
     return result;
 }
 
@@ -835,7 +833,13 @@ static JSVal fn_array_sort(JSCtx *pCtx, JSVal thisVal, int nArgc, JSVal *pArgv, 
     return js_dup(thisVal);
 }
 
-typedef enum { ITER_FOREACH, ITER_MAP, ITER_FILTER, ITER_EVERY, ITER_SOME } IterKind;
+typedef enum {
+    ITER_FOREACH,
+    ITER_MAP,
+    ITER_FILTER,
+    ITER_EVERY,
+    ITER_SOME
+} IterKind;
 
 static JSVal array_iterate(JSCtx *pCtx, JSVal thisVal, int nArgc, JSVal *pArgv, IterKind kind)
 {
@@ -1335,8 +1339,7 @@ static size_t string_trim_space_size(const char *pData, size_t nSize)
         if (((pBytes[0] == 0xE1) && (pBytes[1] == 0x9A) && (pBytes[2] == 0x80)) ||
             ((pBytes[0] == 0xE2) && (pBytes[1] == 0x80) &&
              (((pBytes[2] >= 0x80) && (pBytes[2] <= 0x8B)) || (pBytes[2] == 0xA8) || (pBytes[2] == 0xA9) || (pBytes[2] == 0xAF))) ||
-            ((pBytes[0] == 0xE2) && (pBytes[1] == 0x81) && (pBytes[2] == 0x9F)) ||
-            ((pBytes[0] == 0xE3) && (pBytes[1] == 0x80) && (pBytes[2] == 0x80))) {
+            ((pBytes[0] == 0xE2) && (pBytes[1] == 0x81) && (pBytes[2] == 0x9F)) || ((pBytes[0] == 0xE3) && (pBytes[1] == 0x80) && (pBytes[2] == 0x80))) {
             return 3;
         }
     }
@@ -1359,11 +1362,9 @@ static size_t string_trim_last_size(const char *pData, size_t nStart, size_t nEn
     /* Do not treat a valid non-whitespace UTF-8 sequence's final 0xA0 as
      * a standalone Latin-1 NBSP; that would leave a truncated code point. */
     if (((nSize == 2) && (pBytes[nPos] >= 0xC2) && (pBytes[nPos] <= 0xDF)) ||
-        ((nSize == 3) && (pBytes[nPos] >= 0xE0) && (pBytes[nPos] <= 0xEF) &&
-         ((pBytes[nPos] != 0xE0) || (pBytes[nPos + 1] >= 0xA0)) &&
+        ((nSize == 3) && (pBytes[nPos] >= 0xE0) && (pBytes[nPos] <= 0xEF) && ((pBytes[nPos] != 0xE0) || (pBytes[nPos + 1] >= 0xA0)) &&
          ((pBytes[nPos] != 0xED) || (pBytes[nPos + 1] < 0xA0))) ||
-        ((nSize == 4) && (pBytes[nPos] >= 0xF0) && (pBytes[nPos] <= 0xF4) &&
-         ((pBytes[nPos] != 0xF0) || (pBytes[nPos + 1] >= 0x90)) &&
+        ((nSize == 4) && (pBytes[nPos] >= 0xF0) && (pBytes[nPos] <= 0xF4) && ((pBytes[nPos] != 0xF0) || (pBytes[nPos + 1] >= 0x90)) &&
          ((pBytes[nPos] != 0xF4) || (pBytes[nPos + 1] < 0x90)))) {
         return nSize;
     }
@@ -1929,8 +1930,16 @@ static JSVal fn_boolean_tostring(JSCtx *pCtx, JSVal thisVal, int nArgc, JSVal *p
 #define DATE_MS_PER_DAY 86400000.0
 
 typedef enum {
-    DATE_TIME, DATE_YEAR, DATE_MONTH, DATE_DATE, DATE_DAY, DATE_HOURS,
-    DATE_MINUTES, DATE_SECONDS, DATE_MS, DATE_TZOFFSET
+    DATE_TIME,
+    DATE_YEAR,
+    DATE_MONTH,
+    DATE_DATE,
+    DATE_DAY,
+    DATE_HOURS,
+    DATE_MINUTES,
+    DATE_SECONDS,
+    DATE_MS,
+    DATE_TZOFFSET
 } DateField;
 
 static int date_is_finite(double nValue)
@@ -2194,8 +2203,8 @@ static JSVal fn_date_toisostring(JSCtx *pCtx, JSVal thisVal, int nArgc, JSVal *p
 
     /* The millisecond field is truncated towards zero rather than floored,
      * so a negative time prints ".-01"; the reference does the same.      */
-    xx_rt_snprintf(sBuf, sizeof(sBuf), "%04d-%02d-%02dT%02d:%02d:%02d.%03dZ", (int)nYear, (int)nMonth, (int)nDate,
-               (int)(nInDay / 3600000), (int)((nInDay / 60000) % 60), (int)((nInDay / 1000) % 60), (int)xx_rt_fmod(nTime, 1000.0));
+    xx_rt_snprintf(sBuf, sizeof(sBuf), "%04d-%02d-%02dT%02d:%02d:%02d.%03dZ", (int)nYear, (int)nMonth, (int)nDate, (int)(nInDay / 3600000), (int)((nInDay / 60000) % 60),
+                   (int)((nInDay / 1000) % 60), (int)xx_rt_fmod(nTime, 1000.0));
 
     return js_str(pCtx, sBuf);
 }
@@ -2224,9 +2233,8 @@ static JSVal fn_date_tostring(JSCtx *pCtx, JSVal thisVal, int nArgc, JSVal *pArg
     nInDay = (int64_t)(nTime - (double)nDays * DATE_MS_PER_DAY);
     date_civil_from_days(nDays, &nYear, &nMonth, &nDate);
 
-    xx_rt_snprintf(sBuf, sizeof(sBuf), "%.3s %.3s %02d %04d %02d:%02d:%02d GMT+0000 (UTC)", pWeekDays + ((((nDays % 7) + 11) % 7) * 3),
-               pMonths + (nMonth - 1) * 3, (int)nDate, (int)nYear, (int)(nInDay / 3600000), (int)((nInDay / 60000) % 60),
-               (int)((nInDay / 1000) % 60));
+    xx_rt_snprintf(sBuf, sizeof(sBuf), "%.3s %.3s %02d %04d %02d:%02d:%02d GMT+0000 (UTC)", pWeekDays + ((((nDays % 7) + 11) % 7) * 3), pMonths + (nMonth - 1) * 3,
+                   (int)nDate, (int)nYear, (int)(nInDay / 3600000), (int)((nInDay / 60000) % 60), (int)((nInDay / 1000) % 60));
 
     return js_str(pCtx, sBuf);
 }
@@ -2234,8 +2242,20 @@ static JSVal fn_date_tostring(JSCtx *pCtx, JSVal thisVal, int nArgc, JSVal *pArg
 /* ------------------------------------------------------------------ Math  */
 
 typedef enum {
-    MATH_ABS, MATH_FLOOR, MATH_CEIL, MATH_ROUND, MATH_SQRT, MATH_LOG, MATH_EXP,
-    MATH_SIN, MATH_COS, MATH_TAN, MATH_TRUNC, MATH_SIGN, MATH_LOG2, MATH_LOG10
+    MATH_ABS,
+    MATH_FLOOR,
+    MATH_CEIL,
+    MATH_ROUND,
+    MATH_SQRT,
+    MATH_LOG,
+    MATH_EXP,
+    MATH_SIN,
+    MATH_COS,
+    MATH_TAN,
+    MATH_TRUNC,
+    MATH_SIGN,
+    MATH_LOG2,
+    MATH_LOG10
 } MathKind;
 
 static JSVal fn_math_unary(JSCtx *pCtx, JSVal thisVal, int nArgc, JSVal *pArgv, void *pUser)

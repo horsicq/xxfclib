@@ -119,31 +119,29 @@ static void xx_lzfsestream_vtable_destroy(Abstractformat *self);
 /* Device helpers                                                            */
 /* ------------------------------------------------------------------------ */
 
-static bool xx_lzfsestream_read_at_sized(xx_io_device *device, int64_t offset,
-                                   void *data, size_t size, size_t io_capacity) {
+static bool xx_lzfsestream_read_at_sized(xx_io_device *device, int64_t offset, void *data, size_t size, size_t io_capacity)
+{
     size_t done = 0U;
-    if (!device || (!data && size != 0U) || offset < 0 ||
-        xx_io_seek64(device, offset, SEEK_SET) != 0) {
+    if (!device || (!data && size != 0U) || offset < 0 || xx_io_seek64(device, offset, SEEK_SET) != 0) {
         return false;
     }
     while (done < size) {
         size_t request = size - done;
         if (request > io_capacity) request = io_capacity;
-        ssize_t amount = xx_io_read(device, (uint8_t *)data + done,
-                                    request);
+        ssize_t amount = xx_io_read(device, (uint8_t *)data + done, request);
         if (amount <= 0 || (size_t)amount > request) return false;
         done += (size_t)amount;
     }
     return true;
 }
 
-static bool xx_lzfsestream_read_at(xx_io_device *device, int64_t offset,
-                                   void *data, size_t size) {
+static bool xx_lzfsestream_read_at(xx_io_device *device, int64_t offset, void *data, size_t size)
+{
     return xx_lzfsestream_read_at_sized(device, offset, data, size, xx_get_file_buffer_size());
 }
 
-static bool xx_lzfsestream_write_all(xx_io_device *device, const void *data,
-                                     size_t size, xx_pd_struct *pd) {
+static bool xx_lzfsestream_write_all(xx_io_device *device, const void *data, size_t size, xx_pd_struct *pd)
+{
     const size_t io_capacity = xx_get_file_buffer_size();
     size_t done = 0U;
     if (!device || (!data && size != 0U)) return false;
@@ -152,8 +150,7 @@ static bool xx_lzfsestream_write_all(xx_io_device *device, const void *data,
         if (request > io_capacity) request = io_capacity;
         ssize_t amount;
         if (pd && xx_pd_is_stopped(pd)) return false;
-        amount = xx_io_write(device, (const uint8_t *)data + done,
-                             request);
+        amount = xx_io_write(device, (const uint8_t *)data + done, request);
         if (amount <= 0 || (size_t)amount > request) return false;
         done += (size_t)amount;
     }
@@ -163,30 +160,23 @@ static bool xx_lzfsestream_write_all(xx_io_device *device, const void *data,
 /* Copy `size` bytes at stream offset `offset` out of the window, refilling
  * it from the device first when they are not all inside.  Never reads at or
  * past window->limit. */
-static bool xx_lzfsestream_window_get(xx_lzfsestream_window *window,
-                                      uint64_t offset, uint8_t *out,
-                                      size_t size) {
+static bool xx_lzfsestream_window_get(xx_lzfsestream_window *window, uint64_t offset, uint8_t *out, size_t size)
+{
     size_t index;
     uint64_t skip;
-    if (!window || !window->buffer || !out || size == 0U ||
-        size > window->limit ||
-        offset > window->limit - size) {
+    if (!window || !window->buffer || !out || size == 0U || size > window->limit || offset > window->limit - size) {
         return false;
     }
     /* Complete header fields can be larger than the read-ahead buffer. */
     if (size > window->io_capacity) {
-        return xx_lzfsestream_read_at_sized(window->device, window->base + (int64_t)offset,
-                                     out, size, window->io_capacity);
+        return xx_lzfsestream_read_at_sized(window->device, window->base + (int64_t)offset, out, size, window->io_capacity);
     }
-    if (offset < window->start || offset - window->start > window->size ||
-        size > window->size - (size_t)(offset - window->start)) {
+    if (offset < window->start || offset - window->start > window->size || size > window->size - (size_t)(offset - window->start)) {
         uint64_t want = window->limit - offset;
         if (want > window->io_capacity) want = window->io_capacity;
         window->start = offset;
         window->size = 0U;
-        if (!xx_lzfsestream_read_at_sized(window->device,
-                                    window->base + (int64_t)offset,
-                                    window->buffer, (size_t)want, window->io_capacity)) {
+        if (!xx_lzfsestream_read_at_sized(window->device, window->base + (int64_t)offset, window->buffer, (size_t)want, window->io_capacity)) {
             return false;
         }
         window->size = (size_t)want;
@@ -211,9 +201,8 @@ static bool xx_lzfsestream_window_get(xx_lzfsestream_window *window,
  * declared n_raw_bytes no payload of that size could decode to.  It also
  * marks the checkpoints the staged decode verifies.
  */
-static bool xx_lzfsestream_walk_window(xx_lzfsestream_window *window,
-                                       xx_lzfsestream_scan *scan,
-                                       xx_pd_struct *pd) {
+static bool xx_lzfsestream_walk_window(xx_lzfsestream_window *window, xx_lzfsestream_scan *scan, xx_pd_struct *pd)
+{
     uint64_t cursor = 0U;
     uint64_t raw_total = 0U;
     uint64_t threshold = XX_LZFSESTREAM_DIRECT_OUTPUT;
@@ -230,8 +219,7 @@ static bool xx_lzfsestream_walk_window(xx_lzfsestream_window *window,
         if (pd && xx_pd_is_stopped(pd)) return false;
         if (cursor > window->limit) return false;
         remaining = window->limit - cursor;
-        if (remaining < 4U ||
-            !xx_lzfsestream_window_get(window, cursor, header, 4U)) {
+        if (remaining < 4U || !xx_lzfsestream_window_get(window, cursor, header, 4U)) {
             return false;
         }
         magic = xx_data_get_u32(header, 4U, 0U, false);
@@ -246,9 +234,7 @@ static bool xx_lzfsestream_walk_window(xx_lzfsestream_window *window,
         if (blocks >= XX_LZFSESTREAM_MAX_BLOCKS) return false;
 
         if (magic == XX_LZFSE_MAGIC_UNCOMPRESSED) {
-            if (remaining < XX_LZFSESTREAM_RAW_HEADER ||
-                !xx_lzfsestream_window_get(window, cursor, header,
-                                           XX_LZFSESTREAM_RAW_HEADER)) {
+            if (remaining < XX_LZFSESTREAM_RAW_HEADER || !xx_lzfsestream_window_get(window, cursor, header, XX_LZFSESTREAM_RAW_HEADER)) {
                 return false;
             }
             raw = xx_data_get_u32(header, XX_LZFSESTREAM_RAW_HEADER, 4U, false);
@@ -257,23 +243,17 @@ static bool xx_lzfsestream_walk_window(xx_lzfsestream_window *window,
             types |= XX_LZFSESTREAM_BLOCK_RAW;
         } else if (magic == XX_LZFSE_MAGIC_COMPRESSEDLZVN) {
             uint64_t payload;
-            if (remaining < XX_LZFSESTREAM_LZVN_HEADER ||
-                !xx_lzfsestream_window_get(window, cursor, header,
-                                           XX_LZFSESTREAM_LZVN_HEADER)) {
+            if (remaining < XX_LZFSESTREAM_LZVN_HEADER || !xx_lzfsestream_window_get(window, cursor, header, XX_LZFSESTREAM_LZVN_HEADER)) {
                 return false;
             }
             raw = xx_data_get_u32(header, XX_LZFSESTREAM_LZVN_HEADER, 4U, false);
-            payload = xx_data_get_u32(header, XX_LZFSESTREAM_LZVN_HEADER, 8U,
-                                      false);
-            if (payload < XX_LZFSESTREAM_LZVN_EOS ||
-                payload > remaining - XX_LZFSESTREAM_LZVN_HEADER ||
-                raw > payload * XX_LZFSESTREAM_LZVN_MAX_RATIO) {
+            payload = xx_data_get_u32(header, XX_LZFSESTREAM_LZVN_HEADER, 8U, false);
+            if (payload < XX_LZFSESTREAM_LZVN_EOS || payload > remaining - XX_LZFSESTREAM_LZVN_HEADER || raw > payload * XX_LZFSESTREAM_LZVN_MAX_RATIO) {
                 return false;
             }
             block_size = XX_LZFSESTREAM_LZVN_HEADER + payload;
             types |= XX_LZFSESTREAM_BLOCK_LZVN;
-        } else if (magic == XX_LZFSE_MAGIC_COMPRESSEDV1 ||
-                   magic == XX_LZFSE_MAGIC_COMPRESSEDV2) {
+        } else if (magic == XX_LZFSE_MAGIC_COMPRESSEDV1 || magic == XX_LZFSE_MAGIC_COMPRESSEDV2) {
             uint64_t header_size;
             uint64_t literals;
             uint64_t matches;
@@ -287,25 +267,20 @@ static bool xx_lzfsestream_walk_window(xx_lzfsestream_window *window,
                  * the scalars first, then 360 u16 frequencies and two bytes
                  * of alignment padding. */
                 header_size = XX_LZFSESTREAM_V1_HEADER;
-                if (remaining < header_size ||
-                    !xx_lzfsestream_window_get(window, cursor, header,
-                                               XX_LZFSESTREAM_V1_FIELDS)) {
+                if (remaining < header_size || !xx_lzfsestream_window_get(window, cursor, header, XX_LZFSESTREAM_V1_FIELDS)) {
                     return false;
                 }
                 raw = xx_data_get_u32(header, sizeof(header), 4U, false);
                 literals = xx_data_get_u32(header, sizeof(header), 12U, false);
                 matches = xx_data_get_u32(header, sizeof(header), 16U, false);
-                literal_payload =
-                    xx_data_get_u32(header, sizeof(header), 20U, false);
+                literal_payload = xx_data_get_u32(header, sizeof(header), 20U, false);
                 lmd_payload = xx_data_get_u32(header, sizeof(header), 24U, false);
                 types |= XX_LZFSESTREAM_BLOCK_V1;
             } else {
                 uint64_t v0;
                 uint64_t v1;
                 uint64_t v2;
-                if (remaining < XX_LZFSESTREAM_V2_FIXED ||
-                    !xx_lzfsestream_window_get(window, cursor, header,
-                                               XX_LZFSESTREAM_V2_FIXED)) {
+                if (remaining < XX_LZFSESTREAM_V2_FIXED || !xx_lzfsestream_window_get(window, cursor, header, XX_LZFSESTREAM_V2_FIXED)) {
                     return false;
                 }
                 raw = xx_data_get_u32(header, sizeof(header), 4U, false);
@@ -317,15 +292,12 @@ static bool xx_lzfsestream_walk_window(xx_lzfsestream_window *window,
                 literal_payload = (v0 >> 20) & XX_LZFSESTREAM_20BIT_MASK;
                 matches = (v0 >> 40) & XX_LZFSESTREAM_20BIT_MASK;
                 lmd_payload = (v1 >> 40) & XX_LZFSESTREAM_20BIT_MASK;
-                if (header_size < XX_LZFSESTREAM_V2_FIXED ||
-                    header_size > XX_LZFSESTREAM_V2_MAX_HEADER ||
-                    header_size > remaining) {
+                if (header_size < XX_LZFSESTREAM_V2_FIXED || header_size > XX_LZFSESTREAM_V2_MAX_HEADER || header_size > remaining) {
                     return false;
                 }
                 types |= XX_LZFSESTREAM_BLOCK_V2;
             }
-            if (literals > XX_LZFSESTREAM_FSE_MAX_LITERALS ||
-                matches > XX_LZFSESTREAM_FSE_MAX_MATCHES) {
+            if (literals > XX_LZFSESTREAM_FSE_MAX_LITERALS || matches > XX_LZFSESTREAM_FSE_MAX_MATCHES) {
                 return false;
             }
             /* Both payloads are at most 2^32 - 1 here, so the sum cannot
@@ -341,8 +313,7 @@ static bool xx_lzfsestream_walk_window(xx_lzfsestream_window *window,
              * lmd_payload < 2^32 nothing here wraps. */
             run_limit = matches * XX_LZFSESTREAM_FSE_MAX_RUN;
             match_limit = matches * XX_LZFSESTREAM_FSE_MAX_MATCH;
-            bit_limit = matches * XX_LZFSESTREAM_FSE_FREE_MATCH +
-                        lmd_payload * XX_LZFSESTREAM_FSE_MATCH_PER_BYTE;
+            bit_limit = matches * XX_LZFSESTREAM_FSE_FREE_MATCH + lmd_payload * XX_LZFSESTREAM_FSE_MATCH_PER_BYTE;
             if (run_limit > XX_LZFSESTREAM_FSE_LITERAL_BUFFER) {
                 run_limit = XX_LZFSESTREAM_FSE_LITERAL_BUFFER;
             }
@@ -379,8 +350,8 @@ static bool xx_lzfsestream_walk_window(xx_lzfsestream_window *window,
     return true;
 }
 
-static bool xx_lzfsestream_walk(Abstractformat *self, xx_lzfsestream_scan *scan,
-                                xx_pd_struct *pd) {
+static bool xx_lzfsestream_walk(Abstractformat *self, xx_lzfsestream_scan *scan, xx_pd_struct *pd)
+{
     xx_lzfsestream_window window;
     int64_t total_size;
     bool result;
@@ -390,8 +361,7 @@ static bool xx_lzfsestream_walk(Abstractformat *self, xx_lzfsestream_scan *scan,
     xx_mem_zero(scan, sizeof(*scan));
     scan->stream_size = -1;
     total_size = xx_io_total_size(self->device);
-    if (total_size < self->base_address ||
-        total_size - self->base_address < (int64_t)XX_LZFSESTREAM_MIN_SIZE) {
+    if (total_size < self->base_address || total_size - self->base_address < (int64_t)XX_LZFSESTREAM_MIN_SIZE) {
         return false;
     }
     xx_mem_zero(&window, sizeof(window));
@@ -417,8 +387,8 @@ static bool xx_lzfsestream_walk(Abstractformat *self, xx_lzfsestream_scan *scan,
 /* Decode input[0, end) followed by a bvx$ patched in over the next four
  * bytes, which must yield exactly `raw` bytes.  The caller guarantees that
  * end + 4 is within the input; the four bytes are restored afterwards. */
-static bool xx_lzfsestream_verify_prefix(uint8_t *input, size_t end,
-                                         size_t raw) {
+static bool xx_lzfsestream_verify_prefix(uint8_t *input, size_t end, size_t raw)
+{
     uint8_t saved[4];
     uint8_t *output;
     size_t written = 0U;
@@ -430,9 +400,7 @@ static bool xx_lzfsestream_verify_prefix(uint8_t *input, size_t end,
     input[end + 1U] = (uint8_t)((XX_LZFSE_MAGIC_ENDOFSTREAM >> 8) & 0xFFU);
     input[end + 2U] = (uint8_t)((XX_LZFSE_MAGIC_ENDOFSTREAM >> 16) & 0xFFU);
     input[end + 3U] = (uint8_t)((XX_LZFSE_MAGIC_ENDOFSTREAM >> 24) & 0xFFU);
-    decoded = xx_lzfse_decompress_memory(input, end + 4U, output, raw,
-                                         &written) &&
-              written == raw;
+    decoded = xx_lzfse_decompress_memory(input, end + 4U, output, raw, &written) && written == raw;
     xx_rt_memcpy(input + end, saved, sizeof(saved));
     xx_mem_free(output);
     return decoded;
@@ -444,10 +412,8 @@ static bool xx_lzfsestream_verify_prefix(uint8_t *input, size_t end,
  * compressed block yields exactly its n_raw_bytes and that the stream
  * reaches bvx$; the total is checked again here.  When destination is set
  * the output is written to it. */
-static bool xx_lzfsestream_decode(Abstractformat *self,
-                                  xx_lzfsestream_scan *scan,
-                                  xx_io_device *destination,
-                                  xx_pd_struct *pd) {
+static bool xx_lzfsestream_decode(Abstractformat *self, xx_lzfsestream_scan *scan, xx_io_device *destination, xx_pd_struct *pd)
+{
     uint8_t *input = NULL;
     uint8_t *output = NULL;
     size_t input_size;
@@ -456,11 +422,8 @@ static bool xx_lzfsestream_decode(Abstractformat *self,
     uint32_t index;
     bool result = false;
     if (!xx_lzfsestream_walk(self, scan, pd)) return false;
-    if (scan->stream_size < (int64_t)XX_LZFSESTREAM_MIN_SIZE ||
-        (uint64_t)scan->stream_size > XX_LZFSESTREAM_MAX_INPUT ||
-        (uint64_t)scan->stream_size > (uint64_t)SIZE_MAX ||
-        scan->uncompressed_size > XX_LZFSESTREAM_MAX_OUTPUT ||
-        scan->uncompressed_size > (uint64_t)SIZE_MAX ||
+    if (scan->stream_size < (int64_t)XX_LZFSESTREAM_MIN_SIZE || (uint64_t)scan->stream_size > XX_LZFSESTREAM_MAX_INPUT ||
+        (uint64_t)scan->stream_size > (uint64_t)SIZE_MAX || scan->uncompressed_size > XX_LZFSESTREAM_MAX_OUTPUT || scan->uncompressed_size > (uint64_t)SIZE_MAX ||
         scan->number_of_checkpoints > XX_LZFSESTREAM_MAX_CHECKPOINTS) {
         return false;
     }
@@ -468,21 +431,16 @@ static bool xx_lzfsestream_decode(Abstractformat *self,
     input_size = (size_t)scan->stream_size;
     output_size = (size_t)scan->uncompressed_size;
     input = (uint8_t *)xx_mem_alloc(input_size);
-    if (!input ||
-        !xx_lzfsestream_read_at(self->device, self->base_address, input,
-                                input_size)) {
+    if (!input || !xx_lzfsestream_read_at(self->device, self->base_address, input, input_size)) {
         goto cleanup;
     }
     for (index = 0U; index < scan->number_of_checkpoints; ++index) {
-        const xx_lzfsestream_checkpoint *checkpoint =
-            &scan->checkpoints[index];
+        const xx_lzfsestream_checkpoint *checkpoint = &scan->checkpoints[index];
         if (pd && xx_pd_is_stopped(pd)) goto cleanup;
         /* A checkpoint is where a data block starts, so the stream's own
          * bvx$ lies at least four bytes beyond it. */
-        if (checkpoint->offset > (uint64_t)(input_size - 4U) ||
-            checkpoint->raw > scan->uncompressed_size ||
-            !xx_lzfsestream_verify_prefix(input, (size_t)checkpoint->offset,
-                                          (size_t)checkpoint->raw)) {
+        if (checkpoint->offset > (uint64_t)(input_size - 4U) || checkpoint->raw > scan->uncompressed_size ||
+            !xx_lzfsestream_verify_prefix(input, (size_t)checkpoint->offset, (size_t)checkpoint->raw)) {
             goto cleanup;
         }
     }
@@ -490,14 +448,10 @@ static bool xx_lzfsestream_decode(Abstractformat *self,
     /* An empty stream still gets a buffer, so the decoder is never handed a
      * NULL destination. */
     output = (uint8_t *)xx_mem_alloc(output_size != 0U ? output_size : 1U);
-    if (!output ||
-        !xx_lzfse_decompress_memory(input, input_size, output, output_size,
-                                    &written) ||
-        written != output_size) {
+    if (!output || !xx_lzfse_decompress_memory(input, input_size, output, output_size, &written) || written != output_size) {
         goto cleanup;
     }
-    if (destination &&
-        !xx_lzfsestream_write_all(destination, output, output_size, pd)) {
+    if (destination && !xx_lzfsestream_write_all(destination, output, output_size, pd)) {
         goto cleanup;
     }
     result = true;
@@ -511,18 +465,16 @@ cleanup:
 /* Record plumbing                                                           */
 /* ------------------------------------------------------------------------ */
 
-static bool xx_lzfsestream_copy_options(xx_list_s *destination,
-                                        const xx_list_s *source) {
+static bool xx_lzfsestream_copy_options(xx_list_s *destination, const xx_list_s *source)
+{
     size_t index;
     if (!destination || !source) return source == NULL;
     for (index = 0U; index < source->count; ++index) {
-        const xx_meta *item =
-            (const xx_meta *)xx_list_at((const xx_list_t *)source, index);
+        const xx_meta *item = (const xx_meta *)xx_list_at((const xx_list_t *)source, index);
         xx_meta copy;
         if (!item) continue;
         xx_meta_init(&copy, item->meta_id);
-        if (!xx_var_copy(&copy.var, &item->var) ||
-            !xx_list_append(destination, &copy)) {
+        if (!xx_var_copy(&copy.var, &item->var) || !xx_list_append(destination, &copy)) {
             xx_meta_cleanup(&copy);
             return false;
         }
@@ -530,23 +482,21 @@ static bool xx_lzfsestream_copy_options(xx_list_s *destination,
     return true;
 }
 
-static const xx_var *xx_lzfsestream_find_option(const xx_list_s *options,
-                                                uint32_t meta_id) {
+static const xx_var *xx_lzfsestream_find_option(const xx_list_s *options, uint32_t meta_id)
+{
     size_t index;
     if (!options) return NULL;
     for (index = 0U; index < options->count; ++index) {
-        const xx_meta *item =
-            (const xx_meta *)xx_list_at((const xx_list_t *)options, index);
+        const xx_meta *item = (const xx_meta *)xx_list_at((const xx_list_t *)options, index);
         if (item && item->meta_id == meta_id) return &item->var;
     }
     return NULL;
 }
 
-static bool xx_lzfsestream_populate_record(Abstractformat *self,
-                                           xx_archive_record *record) {
+static bool xx_lzfsestream_populate_record(Abstractformat *self, xx_archive_record *record)
+{
     const xx_lzfsestream *archive;
-    if (!self || !record || !self->base_info_handled || !self->is_valid ||
-        self->format_size < (int64_t)XX_LZFSESTREAM_MIN_SIZE) {
+    if (!self || !record || !self->base_info_handled || !self->is_valid || self->format_size < (int64_t)XX_LZFSESTREAM_MIN_SIZE) {
         return false;
     }
     archive = (const xx_lzfsestream *)self;
@@ -558,24 +508,18 @@ static bool xx_lzfsestream_populate_record(Abstractformat *self,
     record->header_size = 0;
     record->data_offset = self->base_address;
     record->compressed_size = self->format_size;
-    return xx_archive_record_set_original_name(record,
-                                               XX_LZFSESTREAM_PAYLOAD_NAME) &&
-           xx_archive_record_set_meta_u64(record, XX_META_ID_UNCOMPRESSED_SIZE,
-                                          archive->uncompressed_size) &&
-           xx_archive_record_set_meta_u64(record, XX_META_ID_COMPRESSED_SIZE,
-                                          (uint64_t)self->format_size) &&
-           xx_archive_record_set_meta_bool(record, XX_META_ID_IS_FOLDER,
-                                           false) &&
-           xx_archive_record_set_meta_bool(record, XX_META_ID_IS_ENCRYPTED,
-                                           false);
+    return xx_archive_record_set_original_name(record, XX_LZFSESTREAM_PAYLOAD_NAME) &&
+           xx_archive_record_set_meta_u64(record, XX_META_ID_UNCOMPRESSED_SIZE, archive->uncompressed_size) &&
+           xx_archive_record_set_meta_u64(record, XX_META_ID_COMPRESSED_SIZE, (uint64_t)self->format_size) &&
+           xx_archive_record_set_meta_bool(record, XX_META_ID_IS_FOLDER, false) && xx_archive_record_set_meta_bool(record, XX_META_ID_IS_ENCRYPTED, false);
 }
 
 /* ------------------------------------------------------------------------ */
 /* Public interface                                                          */
 /* ------------------------------------------------------------------------ */
 
-void xx_lzfsestream_init(xx_lzfsestream *archive, xx_io_device *device,
-                         int64_t base_address) {
+void xx_lzfsestream_init(xx_lzfsestream *archive, xx_io_device *device, int64_t base_address)
+{
     if (!archive) return;
     xx_mem_zero(archive, sizeof(*archive));
     xx_format_init(&archive->format, device, base_address);
@@ -588,31 +532,25 @@ void xx_lzfsestream_init(xx_lzfsestream *archive, xx_io_device *device,
     archive->format.check_is_valid = xx_lzfsestream_check_is_valid;
     archive->format.handle_base_info = xx_lzfsestream_handle_base_info;
     archive->format.get_format_size = xx_lzfsestream_get_format_size;
-    archive->format.get_number_of_archive_records =
-        xx_lzfsestream_get_number_of_archive_records;
-    archive->format.create_archive_records_reading =
-        xx_lzfsestream_create_archive_records_reading;
-    archive->format.get_current_archive_record =
-        xx_lzfsestream_get_current_archive_record;
-    archive->format.unpack_current_archive_record =
-        xx_lzfsestream_unpack_current_archive_record;
-    archive->format.archive_record_move_to_next =
-        xx_lzfsestream_archive_record_move_to_next;
-    archive->format.free_archive_records_reading =
-        xx_lzfsestream_free_archive_records_reading;
+    archive->format.get_number_of_archive_records = xx_lzfsestream_get_number_of_archive_records;
+    archive->format.create_archive_records_reading = xx_lzfsestream_create_archive_records_reading;
+    archive->format.get_current_archive_record = xx_lzfsestream_get_current_archive_record;
+    archive->format.unpack_current_archive_record = xx_lzfsestream_unpack_current_archive_record;
+    archive->format.archive_record_move_to_next = xx_lzfsestream_archive_record_move_to_next;
+    archive->format.free_archive_records_reading = xx_lzfsestream_free_archive_records_reading;
     archive->format.destroy = xx_lzfsestream_vtable_destroy;
     archive->stream_end = -1;
 }
 
-xx_lzfsestream *xx_lzfsestream_create(xx_io_device *device,
-                                      int64_t base_address) {
-    xx_lzfsestream *archive =
-        (xx_lzfsestream *)xx_mem_alloc(sizeof(*archive));
+xx_lzfsestream *xx_lzfsestream_create(xx_io_device *device, int64_t base_address)
+{
+    xx_lzfsestream *archive = (xx_lzfsestream *)xx_mem_alloc(sizeof(*archive));
     if (archive) xx_lzfsestream_init(archive, device, base_address);
     return archive;
 }
 
-void xx_lzfsestream_destroy(xx_lzfsestream *archive) {
+void xx_lzfsestream_destroy(xx_lzfsestream *archive)
+{
     if (!archive) return;
     xx_format_cleanup_extra_parameters(&archive->format);
     archive->uncompressed_size = 0U;
@@ -621,22 +559,26 @@ void xx_lzfsestream_destroy(xx_lzfsestream *archive) {
     archive->block_types = 0U;
 }
 
-static void xx_lzfsestream_vtable_destroy(Abstractformat *self) {
+static void xx_lzfsestream_vtable_destroy(Abstractformat *self)
+{
     xx_lzfsestream_destroy((xx_lzfsestream *)self);
 }
 
-void xx_lzfsestream_free(xx_lzfsestream *archive) {
+void xx_lzfsestream_free(xx_lzfsestream *archive)
+{
     if (!archive) return;
     xx_lzfsestream_destroy(archive);
     xx_mem_free(archive);
 }
 
-bool xx_lzfsestream_check_is_valid(Abstractformat *self, xx_pd_struct *pd) {
+bool xx_lzfsestream_check_is_valid(Abstractformat *self, xx_pd_struct *pd)
+{
     xx_lzfsestream_scan scan;
     return xx_lzfsestream_decode(self, &scan, NULL, pd);
 }
 
-bool xx_lzfsestream_handle_base_info(Abstractformat *self, xx_pd_struct *pd) {
+bool xx_lzfsestream_handle_base_info(Abstractformat *self, xx_pd_struct *pd)
+{
     xx_lzfsestream_scan scan;
     xx_lzfsestream *archive;
     int64_t total_size;
@@ -679,54 +621,44 @@ bool xx_lzfsestream_handle_base_info(Abstractformat *self, xx_pd_struct *pd) {
     return true;
 }
 
-int64_t xx_lzfsestream_get_format_size(Abstractformat *self,
-                                       xx_pd_struct *pd) {
-    if (!self ||
-        (!self->base_info_handled && !xx_format_handle_base_info(self, pd))) {
+int64_t xx_lzfsestream_get_format_size(Abstractformat *self, xx_pd_struct *pd)
+{
+    if (!self || (!self->base_info_handled && !xx_format_handle_base_info(self, pd))) {
         return -1;
     }
     return self->format_size;
 }
 
-uint64_t xx_lzfsestream_get_number_of_archive_records(Abstractformat *self,
-                                                      xx_pd_struct *pd) {
-    if (!self ||
-        (!self->base_info_handled && !xx_format_handle_base_info(self, pd))) {
+uint64_t xx_lzfsestream_get_number_of_archive_records(Abstractformat *self, xx_pd_struct *pd)
+{
+    if (!self || (!self->base_info_handled && !xx_format_handle_base_info(self, pd))) {
         return 0U;
     }
     return 1U;
 }
 
-bool xx_lzfsestream_unpack_to_device(xx_lzfsestream *archive,
-                                     xx_io_device *destination,
-                                     xx_pd_struct *pd) {
+bool xx_lzfsestream_unpack_to_device(xx_lzfsestream *archive, xx_io_device *destination, xx_pd_struct *pd)
+{
     xx_lzfsestream_scan scan;
-    if (!archive || !destination ||
-        (!archive->format.base_info_handled &&
-         !xx_format_handle_base_info(&archive->format, pd)) ||
-        !archive->format.is_valid ||
+    if (!archive || !destination || (!archive->format.base_info_handled && !xx_format_handle_base_info(&archive->format, pd)) || !archive->format.is_valid ||
         !xx_lzfsestream_decode(&archive->format, &scan, destination, pd)) {
         return false;
     }
     /* The device may have changed between base info and now; the bytes
      * written are only the record if the stream is still the one sized. */
-    return scan.stream_size == archive->format.format_size &&
-           scan.uncompressed_size == archive->uncompressed_size;
+    return scan.stream_size == archive->format.format_size && scan.uncompressed_size == archive->uncompressed_size;
 }
 
-xx_archive_record_state *xx_lzfsestream_create_archive_records_reading(
-    Abstractformat *self, const xx_list_s *options, xx_pd_struct *pd) {
+xx_archive_record_state *xx_lzfsestream_create_archive_records_reading(Abstractformat *self, const xx_list_s *options, xx_pd_struct *pd)
+{
     xx_archive_record_state *state;
-    if (!self || !self->device ||
-        (!self->base_info_handled && !xx_format_handle_base_info(self, pd)) ||
-        !self->is_valid) {
+    if (!self || !self->device || (!self->base_info_handled && !xx_format_handle_base_info(self, pd)) || !self->is_valid) {
         return NULL;
     }
     state = (xx_archive_record_state *)xx_mem_alloc(sizeof(*state));
     if (!state) return NULL;
     xx_archive_record_state_init(state, self);
-    if (!xx_lzfsestream_copy_options(&state->options, options) ||
-        !xx_lzfsestream_populate_record(self, &state->current_record)) {
+    if (!xx_lzfsestream_copy_options(&state->options, options) || !xx_lzfsestream_populate_record(self, &state->current_record)) {
         xx_archive_record_state_free(state);
         return NULL;
     }
@@ -736,18 +668,14 @@ xx_archive_record_state *xx_lzfsestream_create_archive_records_reading(
     return state;
 }
 
-const xx_archive_record *xx_lzfsestream_get_current_archive_record(
-    Abstractformat *self, xx_archive_record_state *state) {
-    return self && state && state->format == self && state->has_record
-               ? &state->current_record
-               : NULL;
+const xx_archive_record *xx_lzfsestream_get_current_archive_record(Abstractformat *self, xx_archive_record_state *state)
+{
+    return self && state && state->format == self && state->has_record ? &state->current_record : NULL;
 }
 
-bool xx_lzfsestream_archive_record_move_to_next(Abstractformat *self,
-                                                xx_archive_record_state *state,
-                                                xx_pd_struct *pd) {
-    if (!self || !state || state->format != self || !state->has_record ||
-        (pd && xx_pd_is_stopped(pd))) {
+bool xx_lzfsestream_archive_record_move_to_next(Abstractformat *self, xx_archive_record_state *state, xx_pd_struct *pd)
+{
+    if (!self || !state || state->format != self || !state->has_record || (pd && xx_pd_is_stopped(pd))) {
         return false;
     }
     /* One record only, so the first move always ends the walk. */
@@ -757,8 +685,8 @@ bool xx_lzfsestream_archive_record_move_to_next(Abstractformat *self,
     return false;
 }
 
-bool xx_lzfsestream_unpack_current_archive_record(
-    Abstractformat *self, xx_archive_record_state *state, xx_pd_struct *pd) {
+bool xx_lzfsestream_unpack_current_archive_record(Abstractformat *self, xx_archive_record_state *state, xx_pd_struct *pd)
+{
     const xx_var *path_value;
     const char *base_path = NULL;
     char *owned_path = NULL;
@@ -766,23 +694,17 @@ bool xx_lzfsestream_unpack_current_archive_record(
     bool result;
     bool created = false;
     xx_lzfsestream *archive = (xx_lzfsestream *)self;
-    if (!self || !state || state->format != self || !state->has_record ||
-        (pd && xx_pd_is_stopped(pd))) {
+    if (!self || !state || state->format != self || !state->has_record || (pd && xx_pd_is_stopped(pd))) {
         return false;
     }
-    path_value =
-        xx_lzfsestream_find_option(&state->options, XX_META_ID_OPT_UNPACK_PATH);
+    path_value = xx_lzfsestream_find_option(&state->options, XX_META_ID_OPT_UNPACK_PATH);
     if (!path_value) {
         xx_lzfsestream_scan scan;
-        return xx_lzfsestream_decode(self, &scan, NULL, pd) &&
-               scan.stream_size == self->format_size &&
-               scan.uncompressed_size == archive->uncompressed_size;
+        return xx_lzfsestream_decode(self, &scan, NULL, pd) && scan.stream_size == self->format_size && scan.uncompressed_size == archive->uncompressed_size;
     }
-    if (path_value->type == XX_VAR_TYPE_STRING ||
-        path_value->type == XX_VAR_TYPE_STRING_VIEW) {
+    if (path_value->type == XX_VAR_TYPE_STRING || path_value->type == XX_VAR_TYPE_STRING_VIEW) {
         base_path = xx_var_get_str(path_value);
-    } else if (path_value->type == XX_VAR_TYPE_WSTRING ||
-               path_value->type == XX_VAR_TYPE_WSTRING_VIEW) {
+    } else if (path_value->type == XX_VAR_TYPE_WSTRING || path_value->type == XX_VAR_TYPE_WSTRING_VIEW) {
         owned_path = xx_str_unicode_to_utf8(xx_var_get_wstr(path_value));
         base_path = owned_path;
     }
@@ -792,14 +714,10 @@ bool xx_lzfsestream_unpack_current_archive_record(
     }
     /* The member name is the fixed literal above, never read from the file,
      * so it needs no sanitising before it becomes a path component. */
-    if (base_path[0] != '\0' &&
-        base_path[xx_str_len(base_path) - 1U] != '/' &&
-        base_path[xx_str_len(base_path) - 1U] != '\\') {
-        destination_path =
-            xx_str_concat3(base_path, "/", XX_LZFSESTREAM_PAYLOAD_NAME);
+    if (base_path[0] != '\0' && base_path[xx_str_len(base_path) - 1U] != '/' && base_path[xx_str_len(base_path) - 1U] != '\\') {
+        destination_path = xx_str_concat3(base_path, "/", XX_LZFSESTREAM_PAYLOAD_NAME);
     } else {
-        destination_path =
-            xx_str_concat(base_path, XX_LZFSESTREAM_PAYLOAD_NAME);
+        destination_path = xx_str_concat(base_path, XX_LZFSESTREAM_PAYLOAD_NAME);
     }
     if (owned_path) xx_str_free(owned_path);
     if (!destination_path || !xx_store_create_dirs_a(destination_path, false)) {
@@ -817,24 +735,28 @@ bool xx_lzfsestream_unpack_current_archive_record(
     return result;
 }
 
-void xx_lzfsestream_free_archive_records_reading(
-    Abstractformat *self, xx_archive_record_state *state) {
+void xx_lzfsestream_free_archive_records_reading(Abstractformat *self, xx_archive_record_state *state)
+{
     (void)self;
     xx_archive_record_state_free(state);
 }
 
-uint64_t xx_lzfsestream_get_uncompressed_size(const xx_lzfsestream *archive) {
+uint64_t xx_lzfsestream_get_uncompressed_size(const xx_lzfsestream *archive)
+{
     return archive ? archive->uncompressed_size : 0U;
 }
 
-int64_t xx_lzfsestream_get_stream_end(const xx_lzfsestream *archive) {
+int64_t xx_lzfsestream_get_stream_end(const xx_lzfsestream *archive)
+{
     return archive ? archive->stream_end : -1;
 }
 
-uint32_t xx_lzfsestream_get_number_of_blocks(const xx_lzfsestream *archive) {
+uint32_t xx_lzfsestream_get_number_of_blocks(const xx_lzfsestream *archive)
+{
     return archive ? archive->number_of_blocks : 0U;
 }
 
-uint32_t xx_lzfsestream_get_block_types(const xx_lzfsestream *archive) {
+uint32_t xx_lzfsestream_get_block_types(const xx_lzfsestream *archive)
+{
     return archive ? archive->block_types : 0U;
 }

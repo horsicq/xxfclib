@@ -54,7 +54,7 @@
 typedef struct xx_luks_private_s {
     int64_t input_size;
     int64_t base_address;
-    uint64_t payload_offset;  /**< Absolute device offset. */
+    uint64_t payload_offset; /**< Absolute device offset. */
     uint64_t payload_size;
     uint64_t header_size;
     uint64_t seqid;
@@ -78,13 +78,12 @@ static void xx_luks_vtable_destroy(Abstractformat *self);
 
 /* xx_io_seek64, never xx_io_seek: a LUKS volume is usually a whole disk and
  * long is 32 bits on Win64. */
-static bool xx_luks_read_at(xx_io_device *device, int64_t offset, void *data,
-                            size_t size) {
+static bool xx_luks_read_at(xx_io_device *device, int64_t offset, void *data, size_t size)
+{
     uint8_t *out = (uint8_t *)data;
     size_t done = 0U;
 
-    if (!device || (!data && size != 0U) || offset < 0 ||
-        xx_io_seek64(device, offset, SEEK_SET) != 0) {
+    if (!device || (!data && size != 0U) || offset < 0 || xx_io_seek64(device, offset, SEEK_SET) != 0) {
         return false;
     }
     while (done < size) {
@@ -95,17 +94,16 @@ static bool xx_luks_read_at(xx_io_device *device, int64_t offset, void *data,
     return true;
 }
 
-static bool xx_luks_range_within(int64_t total_size, int64_t offset,
-                                 int64_t size) {
-    return (total_size >= 0) && (offset >= 0) && (size >= 0) &&
-           (offset <= total_size) && (size <= total_size - offset);
+static bool xx_luks_range_within(int64_t total_size, int64_t offset, int64_t size)
+{
+    return (total_size >= 0) && (offset >= 0) && (size >= 0) && (offset <= total_size) && (size <= total_size - offset);
 }
 
 /* Copy a fixed-width, NUL-padded header string into a NUL-terminated buffer,
  * stopping at the first NUL and replacing anything unprintable with '?' so
  * that a hostile header cannot smuggle control bytes into a caller's log. */
-static void xx_luks_copy_field(char *destination, size_t destination_size,
-                               const uint8_t *source, size_t source_size) {
+static void xx_luks_copy_field(char *destination, size_t destination_size, const uint8_t *source, size_t source_size)
+{
     size_t index;
     size_t limit = destination_size - 1U;
 
@@ -113,21 +111,21 @@ static void xx_luks_copy_field(char *destination, size_t destination_size,
     for (index = 0U; index < limit; ++index) {
         uint8_t character = source[index];
         if (character == 0U) break;
-        destination[index] =
-            (character < 32U || character > 126U) ? '?' : (char)character;
+        destination[index] = (character < 32U || character > 126U) ? '?' : (char)character;
     }
     destination[index] = '\0';
 }
 
-static void xx_luks_private_free(void *pointer) {
+static void xx_luks_private_free(void *pointer)
+{
     if (pointer) xx_mem_free(pointer);
 }
 
 /* A two-call text builder for the record comment. The CRT is off limits, so
  * sprintf() is not available; these two keep *used a running length and
  * silently stop at the buffer's end rather than truncating mid-write. */
-static void xx_luks_append_text(char *buffer, size_t capacity, size_t *used,
-                                const char *text) {
+static void xx_luks_append_text(char *buffer, size_t capacity, size_t *used, const char *text)
+{
     size_t index = 0U;
 
     if (!text) return;
@@ -139,8 +137,8 @@ static void xx_luks_append_text(char *buffer, size_t capacity, size_t *used,
     buffer[*used] = '\0';
 }
 
-static void xx_luks_append_u64(char *buffer, size_t capacity, size_t *used,
-                               uint64_t value) {
+static void xx_luks_append_u64(char *buffer, size_t capacity, size_t *used, uint64_t value)
+{
     char digits[21];
     size_t count = 0U;
 
@@ -163,8 +161,8 @@ static void xx_luks_append_u64(char *buffer, size_t capacity, size_t *used,
  * "offset":"<digits>" after it. It is deliberately conservative - anything
  * unexpected leaves the offset inferred from hdr_size instead, and
  * payload_offset_exact records which of the two happened. */
-static bool xx_luks2_scan_segment_offset(const uint8_t *json, size_t size,
-                                         uint64_t *out_offset) {
+static bool xx_luks2_scan_segment_offset(const uint8_t *json, size_t size, uint64_t *out_offset)
+{
     static const char key_segments[] = "\"segments\"";
     static const char key_offset[] = "\"offset\"";
     size_t index;
@@ -173,8 +171,7 @@ static bool xx_luks2_scan_segment_offset(const uint8_t *json, size_t size,
 
     if (!json || !out_offset || size < sizeof(key_offset)) return false;
     for (index = 0U; index + sizeof(key_segments) - 1U <= size; ++index) {
-        if (xx_rt_memcmp(json + index, key_segments,
-                         sizeof(key_segments) - 1U) == 0) {
+        if (xx_rt_memcmp(json + index, key_segments, sizeof(key_segments) - 1U) == 0) {
             start = index + sizeof(key_segments) - 1U;
             found_segments = true;
             break;
@@ -186,13 +183,11 @@ static bool xx_luks2_scan_segment_offset(const uint8_t *json, size_t size,
         uint64_t value = 0U;
         unsigned digits = 0U;
 
-        if (xx_rt_memcmp(json + index, key_offset, sizeof(key_offset) - 1U) !=
-            0) {
+        if (xx_rt_memcmp(json + index, key_offset, sizeof(key_offset) - 1U) != 0) {
             continue;
         }
         cursor = index + sizeof(key_offset) - 1U;
-        while (cursor < size && (json[cursor] == ' ' || json[cursor] == ':' ||
-                                 json[cursor] == '"')) {
+        while (cursor < size && (json[cursor] == ' ' || json[cursor] == ':' || json[cursor] == '"')) {
             ++cursor;
         }
         while (cursor < size && json[cursor] >= '0' && json[cursor] <= '9') {
@@ -210,27 +205,21 @@ static bool xx_luks2_scan_segment_offset(const uint8_t *json, size_t size,
 
 /* ---------------------------------------------------------------- parse -- */
 
-static bool xx_luks_parse_v1(xx_io_device *device, xx_luks_private *parsed) {
+static bool xx_luks_parse_v1(xx_io_device *device, xx_luks_private *parsed)
+{
     uint8_t header[XX_LUKS1_HEADER_SIZE];
     uint64_t payload;
     unsigned slot;
 
-    if (!xx_luks_range_within(parsed->input_size, parsed->base_address,
-                              XX_LUKS1_HEADER_SIZE) ||
-        !xx_luks_read_at(device, parsed->base_address, header,
-                         sizeof(header))) {
+    if (!xx_luks_range_within(parsed->input_size, parsed->base_address, XX_LUKS1_HEADER_SIZE) || !xx_luks_read_at(device, parsed->base_address, header, sizeof(header))) {
         return false;
     }
-    xx_luks_copy_field(parsed->cipher_name, sizeof(parsed->cipher_name),
-                       header + 8, 32U);
-    xx_luks_copy_field(parsed->cipher_mode, sizeof(parsed->cipher_mode),
-                       header + 40, 32U);
-    xx_luks_copy_field(parsed->hash_spec, sizeof(parsed->hash_spec),
-                       header + 72, 32U);
+    xx_luks_copy_field(parsed->cipher_name, sizeof(parsed->cipher_name), header + 8, 32U);
+    xx_luks_copy_field(parsed->cipher_mode, sizeof(parsed->cipher_mode), header + 40, 32U);
+    xx_luks_copy_field(parsed->hash_spec, sizeof(parsed->hash_spec), header + 72, 32U);
     xx_luks_copy_field(parsed->uuid, sizeof(parsed->uuid), header + 168, 40U);
     /* The payload offset is in 512-byte sectors and must clear the header. */
-    payload = (uint64_t)xx_data_get_u32(header, sizeof(header), 104U, true) *
-              512U;
+    payload = (uint64_t)xx_data_get_u32(header, sizeof(header), 104U, true) * 512U;
     parsed->key_bytes = xx_data_get_u32(header, sizeof(header), 108U, true);
     parsed->mk_digest_iter = xx_data_get_u32(header, sizeof(header), 164U, true);
     if (payload < (uint64_t)XX_LUKS1_HEADER_SIZE) return false;
@@ -255,7 +244,8 @@ static bool xx_luks_parse_v1(xx_io_device *device, xx_luks_private *parsed) {
     return true;
 }
 
-static bool xx_luks_parse_v2(xx_io_device *device, xx_luks_private *parsed) {
+static bool xx_luks_parse_v2(xx_io_device *device, xx_luks_private *parsed)
+{
     uint8_t header[512];
     uint8_t *json = NULL;
     uint64_t hdr_size;
@@ -263,46 +253,33 @@ static bool xx_luks_parse_v2(xx_io_device *device, xx_luks_private *parsed) {
     uint64_t payload = 0U;
     size_t scan;
 
-    if (!xx_luks_range_within(parsed->input_size, parsed->base_address,
-                              XX_LUKS2_BINARY_HEADER_SIZE) ||
-        !xx_luks_read_at(device, parsed->base_address, header,
-                         sizeof(header))) {
+    if (!xx_luks_range_within(parsed->input_size, parsed->base_address, XX_LUKS2_BINARY_HEADER_SIZE) ||
+        !xx_luks_read_at(device, parsed->base_address, header, sizeof(header))) {
         return false;
     }
     hdr_size = xx_data_get_u64(header, sizeof(header), 8U, true);
-    if (hdr_size < XX_LUKS2_MIN_HEADER_SIZE ||
-        hdr_size > XX_LUKS2_MAX_HEADER_SIZE) {
+    if (hdr_size < XX_LUKS2_MIN_HEADER_SIZE || hdr_size > XX_LUKS2_MAX_HEADER_SIZE) {
         return false;
     }
-    if (!xx_luks_range_within(parsed->input_size, parsed->base_address,
-                              (int64_t)hdr_size)) {
+    if (!xx_luks_range_within(parsed->input_size, parsed->base_address, (int64_t)hdr_size)) {
         return false;
     }
     parsed->header_size = hdr_size;
     parsed->seqid = xx_data_get_u64(header, sizeof(header), 16U, true);
     xx_luks_copy_field(parsed->label, sizeof(parsed->label), header + 24, 48U);
-    xx_luks_copy_field(parsed->hash_spec, sizeof(parsed->hash_spec),
-                       header + 72, 32U);
+    xx_luks_copy_field(parsed->hash_spec, sizeof(parsed->hash_spec), header + 72, 32U);
     xx_luks_copy_field(parsed->uuid, sizeof(parsed->uuid), header + 168, 40U);
-    xx_luks_copy_field(parsed->subsystem, sizeof(parsed->subsystem),
-                       header + 208, 48U);
+    xx_luks_copy_field(parsed->subsystem, sizeof(parsed->subsystem), header + 208, 48U);
 
     /* The JSON area runs from the end of the 4096-byte binary header to
      * hdr_size. Only the first chunk of it is scanned. */
     json_size = hdr_size - (uint64_t)XX_LUKS2_BINARY_HEADER_SIZE;
-    scan = json_size > XX_LUKS2_JSON_SCAN ? XX_LUKS2_JSON_SCAN
-                                          : (size_t)json_size;
+    scan = json_size > XX_LUKS2_JSON_SCAN ? XX_LUKS2_JSON_SCAN : (size_t)json_size;
     if (scan != 0U) {
         json = (uint8_t *)xx_mem_alloc(scan);
-        if (json &&
-            xx_luks_read_at(device,
-                            parsed->base_address + XX_LUKS2_BINARY_HEADER_SIZE,
-                            json, scan)) {
-            if (xx_luks2_scan_segment_offset(json, scan, &payload) &&
-                payload >= hdr_size &&
-                payload <= (uint64_t)parsed->input_size) {
-                parsed->payload_offset =
-                    (uint64_t)parsed->base_address + payload;
+        if (json && xx_luks_read_at(device, parsed->base_address + XX_LUKS2_BINARY_HEADER_SIZE, json, scan)) {
+            if (xx_luks2_scan_segment_offset(json, scan, &payload) && payload >= hdr_size && payload <= (uint64_t)parsed->input_size) {
+                parsed->payload_offset = (uint64_t)parsed->base_address + payload;
                 parsed->payload_offset_exact = true;
             }
         }
@@ -321,8 +298,8 @@ static bool xx_luks_parse_v2(xx_io_device *device, xx_luks_private *parsed) {
     return true;
 }
 
-static bool xx_luks_parse_impl(Abstractformat *self, xx_luks_private *parsed,
-                          xx_pd_struct *pd) {
+static bool xx_luks_parse_impl(Abstractformat *self, xx_luks_private *parsed, xx_pd_struct *pd)
+{
     uint8_t magic[8];
     int64_t total_size;
 
@@ -330,14 +307,11 @@ static bool xx_luks_parse_impl(Abstractformat *self, xx_luks_private *parsed,
         xx_mem_zero(parsed, sizeof(*parsed));
         parsed->input_size = -1;
     }
-    if (!self || !self->device || !parsed || self->base_address < 0 ||
-        (pd && xx_pd_is_stopped(pd))) {
+    if (!self || !self->device || !parsed || self->base_address < 0 || (pd && xx_pd_is_stopped(pd))) {
         return false;
     }
     total_size = xx_io_total_size(self->device);
-    if (!xx_luks_range_within(total_size, self->base_address, 8) ||
-        !xx_luks_read_at(self->device, self->base_address, magic,
-                         sizeof(magic))) {
+    if (!xx_luks_range_within(total_size, self->base_address, 8) || !xx_luks_read_at(self->device, self->base_address, magic, sizeof(magic))) {
         return false;
     }
     if (xx_rt_memcmp(magic, "LUKS\xba\xbe", XX_LUKS_MAGIC_SIZE) != 0) {
@@ -360,14 +334,20 @@ static bool xx_luks_parse_impl(Abstractformat *self, xx_luks_private *parsed,
     return true;
 }
 
-static bool xx_luks_parse(Abstractformat *self, xx_luks_private *parsed, xx_pd_struct *pd) {
-    int64_t cursor=self&&self->device?xx_io_tell(self->device):-1; bool ok=xx_luks_parse_impl(self,parsed,pd);
-    if(cursor>=0&&xx_io_seek64(self->device,cursor,SEEK_SET)!=0) { ok=false; } return ok;
+static bool xx_luks_parse(Abstractformat *self, xx_luks_private *parsed, xx_pd_struct *pd)
+{
+    int64_t cursor = self && self->device ? xx_io_tell(self->device) : -1;
+    bool ok = xx_luks_parse_impl(self, parsed, pd);
+    if (cursor >= 0 && xx_io_seek64(self->device, cursor, SEEK_SET) != 0) {
+        ok = false;
+    }
+    return ok;
 }
 
 /* ------------------------------------------------------------ lifecycle -- */
 
-void xx_luks_init(xx_luks *luks, xx_io_device *dev, int64_t base_address) {
+void xx_luks_init(xx_luks *luks, xx_io_device *dev, int64_t base_address)
+{
     if (!luks) return;
     xx_mem_zero(luks, sizeof(*luks));
     xx_format_init(&luks->format, dev, base_address);
@@ -380,27 +360,25 @@ void xx_luks_init(xx_luks *luks, xx_io_device *dev, int64_t base_address) {
     luks->format.check_is_valid = xx_luks_check_is_valid;
     luks->format.handle_base_info = xx_luks_handle_base_info;
     luks->format.get_format_size = xx_luks_get_format_size;
-    luks->format.get_number_of_archive_records =
-        xx_luks_get_number_of_archive_records;
-    luks->format.create_archive_records_reading =
-        xx_luks_create_archive_records_reading;
+    luks->format.get_number_of_archive_records = xx_luks_get_number_of_archive_records;
+    luks->format.create_archive_records_reading = xx_luks_create_archive_records_reading;
     luks->format.get_current_archive_record = xx_luks_get_current_archive_record;
-    luks->format.unpack_current_archive_record =
-        xx_luks_unpack_current_archive_record;
+    luks->format.unpack_current_archive_record = xx_luks_unpack_current_archive_record;
     luks->format.archive_record_move_to_next = xx_luks_archive_record_move_to_next;
-    luks->format.free_archive_records_reading =
-        xx_luks_free_archive_records_reading;
+    luks->format.free_archive_records_reading = xx_luks_free_archive_records_reading;
     luks->format.destroy = xx_luks_vtable_destroy;
 }
 
-xx_luks *xx_luks_create(xx_io_device *dev, int64_t base_address) {
+xx_luks *xx_luks_create(xx_io_device *dev, int64_t base_address)
+{
     xx_luks *luks = (xx_luks *)xx_mem_alloc(sizeof(*luks));
 
     if (luks) xx_luks_init(luks, dev, base_address);
     return luks;
 }
 
-void xx_luks_destroy(xx_luks *luks) {
+void xx_luks_destroy(xx_luks *luks)
+{
     if (!luks) return;
     if (luks->internal) {
         xx_luks_private_free(luks->internal);
@@ -409,11 +387,13 @@ void xx_luks_destroy(xx_luks *luks) {
     xx_format_cleanup_extra_parameters(&luks->format);
 }
 
-static void xx_luks_vtable_destroy(Abstractformat *self) {
+static void xx_luks_vtable_destroy(Abstractformat *self)
+{
     xx_luks_destroy((xx_luks *)self);
 }
 
-void xx_luks_free(xx_luks *luks) {
+void xx_luks_free(xx_luks *luks)
+{
     if (!luks) return;
     xx_luks_destroy(luks);
     xx_mem_free(luks);
@@ -421,13 +401,15 @@ void xx_luks_free(xx_luks *luks) {
 
 /* --------------------------------------------------------------- format -- */
 
-bool xx_luks_check_is_valid(Abstractformat *self, xx_pd_struct *pd) {
+bool xx_luks_check_is_valid(Abstractformat *self, xx_pd_struct *pd)
+{
     xx_luks_private parsed;
 
     return xx_luks_parse(self, &parsed, pd);
 }
 
-bool xx_luks_handle_base_info(Abstractformat *self, xx_pd_struct *pd) {
+bool xx_luks_handle_base_info(Abstractformat *self, xx_pd_struct *pd)
+{
     xx_luks *luks = (xx_luks *)self;
     xx_luks_private *parsed;
 
@@ -451,10 +433,8 @@ bool xx_luks_handle_base_info(Abstractformat *self, xx_pd_struct *pd) {
     luks->mk_digest_iter = parsed->mk_digest_iter;
     luks->active_slots = parsed->active_slots;
     luks->payload_offset_exact = parsed->payload_offset_exact;
-    xx_mem_copy(luks->cipher_name, parsed->cipher_name,
-                sizeof(luks->cipher_name));
-    xx_mem_copy(luks->cipher_mode, parsed->cipher_mode,
-                sizeof(luks->cipher_mode));
+    xx_mem_copy(luks->cipher_name, parsed->cipher_name, sizeof(luks->cipher_name));
+    xx_mem_copy(luks->cipher_mode, parsed->cipher_mode, sizeof(luks->cipher_mode));
     xx_mem_copy(luks->hash_spec, parsed->hash_spec, sizeof(luks->hash_spec));
     xx_mem_copy(luks->uuid, parsed->uuid, sizeof(luks->uuid));
     xx_mem_copy(luks->label, parsed->label, sizeof(luks->label));
@@ -469,18 +449,17 @@ bool xx_luks_handle_base_info(Abstractformat *self, xx_pd_struct *pd) {
     return true;
 }
 
-int64_t xx_luks_get_format_size(Abstractformat *self, xx_pd_struct *pd) {
-    if (!self ||
-        (!self->base_info_handled && !xx_format_handle_base_info(self, pd))) {
+int64_t xx_luks_get_format_size(Abstractformat *self, xx_pd_struct *pd)
+{
+    if (!self || (!self->base_info_handled && !xx_format_handle_base_info(self, pd))) {
         return -1;
     }
     return self->format_size;
 }
 
-uint64_t xx_luks_get_number_of_archive_records(Abstractformat *self,
-                                               xx_pd_struct *pd) {
-    if (!self ||
-        (!self->base_info_handled && !xx_format_handle_base_info(self, pd))) {
+uint64_t xx_luks_get_number_of_archive_records(Abstractformat *self, xx_pd_struct *pd)
+{
+    if (!self || (!self->base_info_handled && !xx_format_handle_base_info(self, pd))) {
         return 0U;
     }
     return ((xx_luks *)self)->number_of_records;
@@ -488,19 +467,17 @@ uint64_t xx_luks_get_number_of_archive_records(Abstractformat *self,
 
 /* -------------------------------------------------------------- records -- */
 
-static bool xx_luks_copy_options(xx_list_s *destination,
-                                 const xx_list_s *source) {
+static bool xx_luks_copy_options(xx_list_s *destination, const xx_list_s *source)
+{
     size_t index;
 
     if (!destination || !source) return source == NULL;
     for (index = 0U; index < source->count; ++index) {
-        const xx_meta *item =
-            (const xx_meta *)xx_list_at((const xx_list_t *)source, index);
+        const xx_meta *item = (const xx_meta *)xx_list_at((const xx_list_t *)source, index);
         xx_meta copy;
         if (!item) continue;
         xx_meta_init(&copy, item->meta_id);
-        if (!xx_var_copy(&copy.var, &item->var) ||
-            !xx_list_append(destination, &copy)) {
+        if (!xx_var_copy(&copy.var, &item->var) || !xx_list_append(destination, &copy)) {
             xx_meta_cleanup(&copy);
             return false;
         }
@@ -508,8 +485,8 @@ static bool xx_luks_copy_options(xx_list_s *destination,
     return true;
 }
 
-static bool xx_luks_populate_record(xx_archive_record *record,
-                                    const xx_luks_private *parsed) {
+static bool xx_luks_populate_record(xx_archive_record *record, const xx_luks_private *parsed)
+{
     char detail[192];
     size_t used = 0U;
 
@@ -540,36 +517,25 @@ static bool xx_luks_populate_record(xx_archive_record *record,
         xx_luks_append_text(detail, sizeof(detail), &used, " label=");
         xx_luks_append_text(detail, sizeof(detail), &used, parsed->label);
         xx_luks_append_text(detail, sizeof(detail), &used, " payload=");
-        xx_luks_append_text(detail, sizeof(detail), &used,
-                            parsed->payload_offset_exact ? "from-json"
-                                                         : "inferred");
+        xx_luks_append_text(detail, sizeof(detail), &used, parsed->payload_offset_exact ? "from-json" : "inferred");
     }
     xx_luks_append_text(detail, sizeof(detail), &used, " ENCRYPTED");
     return xx_archive_record_set_original_name(record, XX_LUKS_MEMBER_NAME) &&
            /* Supported sector ciphers preserve the declared payload length. */
-           xx_archive_record_set_meta_u64(record, XX_META_ID_UNCOMPRESSED_SIZE,
-                                          parsed->payload_size) &&
-           xx_archive_record_set_meta_u64(record, XX_META_ID_COMPRESSED_SIZE,
-                                          parsed->payload_size) &&
-           xx_archive_record_set_meta_u64(record, XX_META_ID_COMPRESSION_METHOD,
-                                          0U) &&
-           xx_archive_record_set_meta_bool(record, XX_META_ID_IS_FOLDER,
-                                           false) &&
+           xx_archive_record_set_meta_u64(record, XX_META_ID_UNCOMPRESSED_SIZE, parsed->payload_size) &&
+           xx_archive_record_set_meta_u64(record, XX_META_ID_COMPRESSED_SIZE, parsed->payload_size) &&
+           xx_archive_record_set_meta_u64(record, XX_META_ID_COMPRESSION_METHOD, 0U) && xx_archive_record_set_meta_bool(record, XX_META_ID_IS_FOLDER, false) &&
            /* The point of this reader. */
-           xx_archive_record_set_meta_bool(record, XX_META_ID_IS_ENCRYPTED,
-                                           true) &&
-           xx_archive_record_set_meta_u64(record, XX_META_ID_ENCRYPTION_METHOD,
-                                          parsed->version) &&
-           xx_archive_record_set_meta_str(record, XX_META_ID_COMMENT, detail);
+           xx_archive_record_set_meta_bool(record, XX_META_ID_IS_ENCRYPTED, true) &&
+           xx_archive_record_set_meta_u64(record, XX_META_ID_ENCRYPTION_METHOD, parsed->version) && xx_archive_record_set_meta_str(record, XX_META_ID_COMMENT, detail);
 }
 
-xx_archive_record_state *xx_luks_create_archive_records_reading(
-    Abstractformat *self, const xx_list_s *options, xx_pd_struct *pd) {
+xx_archive_record_state *xx_luks_create_archive_records_reading(Abstractformat *self, const xx_list_s *options, xx_pd_struct *pd)
+{
     xx_archive_record_state *state;
     xx_luks_private *parsed;
 
-    if (!self || !self->device ||
-        (!self->base_info_handled && !xx_format_handle_base_info(self, pd))) {
+    if (!self || !self->device || (!self->base_info_handled && !xx_format_handle_base_info(self, pd))) {
         return NULL;
     }
     state = (xx_archive_record_state *)xx_mem_alloc(sizeof(*state));
@@ -580,8 +546,7 @@ xx_archive_record_state *xx_luks_create_archive_records_reading(
         return NULL;
     }
     xx_archive_record_state_init(state, self);
-    if (!xx_luks_copy_options(&state->options, options) ||
-        !xx_luks_parse(self, parsed, pd)) {
+    if (!xx_luks_copy_options(&state->options, options) || !xx_luks_parse(self, parsed, pd)) {
         xx_luks_private_free(parsed);
         xx_archive_record_state_free(state);
         return NULL;
@@ -598,20 +563,16 @@ xx_archive_record_state *xx_luks_create_archive_records_reading(
     return state;
 }
 
-const xx_archive_record *xx_luks_get_current_archive_record(
-    Abstractformat *self, xx_archive_record_state *state) {
-    return self && state && state->format == self && state->has_record
-               ? &state->current_record
-               : NULL;
+const xx_archive_record *xx_luks_get_current_archive_record(Abstractformat *self, xx_archive_record_state *state)
+{
+    return self && state && state->format == self && state->has_record ? &state->current_record : NULL;
 }
 
-bool xx_luks_archive_record_move_to_next(Abstractformat *self,
-                                         xx_archive_record_state *state,
-                                         xx_pd_struct *pd) {
+bool xx_luks_archive_record_move_to_next(Abstractformat *self, xx_archive_record_state *state, xx_pd_struct *pd)
+{
     xx_luks_private *parsed;
 
-    if (!self || !state || state->format != self || !state->has_record ||
-        (pd && xx_pd_is_stopped(pd))) {
+    if (!self || !state || state->format != self || !state->has_record || (pd && xx_pd_is_stopped(pd))) {
         return false;
     }
     parsed = (xx_luks_private *)state->internal_state;
@@ -622,75 +583,148 @@ bool xx_luks_archive_record_move_to_next(Abstractformat *self,
     return false;
 }
 
-static bool xx_luks_decode(Abstractformat *self, const xx_luks_private *parsed, dc_crypto *crypto, xx_io_device *output, xx_pd_struct *pd) {
-    uint8_t *buffer=(uint8_t*)xx_mem_alloc(65536); uint64_t done=0; bool result=false; int level;
-    if(!buffer) { return false; } level=xx_pd_enter_level(pd,parsed->payload_size,"Decoding LUKS1 payload");
-    while(done<parsed->payload_size) {
-        size_t n=(size_t)(parsed->payload_size-done),sent=0; if(n>65536) n=65536;
-        if(xx_pd_is_stopped(pd) || !dc_read_at(self->device,parsed->payload_offset+done,buffer,n) || !dc_decrypt(crypto,done/512,buffer,n,pd)) goto end;
-        while(output && sent<n) { ssize_t z=xx_io_write(output,buffer+sent,n-sent); if(z<=0||(size_t)z>n-sent) goto end; sent+=(size_t)z; }
-        done+=n; xx_pd_set_current(pd,level,done);
-    } result=!xx_pd_is_stopped(pd);
-end: xx_pd_leave_level(pd,level); dc_clear(buffer,65536); xx_mem_free(buffer); return result;
-}
-
-bool xx_luks_unpack_current_archive_record(Abstractformat *self, xx_archive_record_state *state, xx_pd_struct *pd) {
-    xx_luks_private *parsed; dc_crypto crypto; const uint8_t *pw; size_t pwn; char *owned=NULL,*wide=NULL,*path=NULL,*stage=NULL;
-    const xx_var *value; const char *base; xx_io_device *output=NULL; uint64_t memory,member; int64_t cursor; bool result=false,overwrite=false;
-    if(!self||!self->device||!state||state->format!=self||!state->has_record||xx_pd_is_stopped(pd)) return false;
-    parsed=(xx_luks_private*)state->internal_state; if(!parsed||parsed->consumed) return false;
-    xx_mem_zero(&crypto,sizeof(crypto)); cursor=xx_io_tell(self->device);
-    if(parsed->version!=1) { xx_pd_set_error(pd,XXFC_ERR_INVALID_ARG,"LUKS2 payload decryption is not supported"); goto done; }
-    if((parsed->payload_size&511U) || !dc_limit(self,&state->options,XX_META_ID_OPT_MEMORY_LIMIT,UINT64_MAX,&memory) ||
-       !dc_limit(self,&state->options,XX_META_ID_OPT_MAX_MEMBER_SIZE,UINT64_MAX,&member) || memory<65536+16384U || parsed->payload_size>member) goto done;
-    if(!dc_password(self,&state->options,&pw,&pwn,&owned,memory-(65536+16384U))) { xx_pd_set_error(pd,XXFC_ERR_INVALID_ARG,"LUKS1 password required"); goto done; }
-    if(!dc_luks_unlock(self->device,(uint64_t)parsed->base_address,(uint64_t)(parsed->input_size-parsed->base_address),false,pw,pwn,&crypto,pd)) {
-        if(!xx_pd_is_stopped(pd)) { xx_pd_set_error(pd,XXFC_ERR_GENERIC,"LUKS1 keyslot could not be unlocked (wrong password or unsupported parameters)"); } goto done;
+static bool xx_luks_decode(Abstractformat *self, const xx_luks_private *parsed, dc_crypto *crypto, xx_io_device *output, xx_pd_struct *pd)
+{
+    uint8_t *buffer = (uint8_t *)xx_mem_alloc(65536);
+    uint64_t done = 0;
+    bool result = false;
+    int level;
+    if (!buffer) {
+        return false;
     }
-    value=xx_format_resolve_extra_parameter(self,&state->options,XX_META_ID_OPT_UNPACK_PATH);
-    if(!value) { result=xx_luks_decode(self,parsed,&crypto,NULL,pd); goto done; }
-    base=NULL; if(value->type==XX_VAR_TYPE_STRING||value->type==XX_VAR_TYPE_STRING_VIEW) base=xx_var_get_str(value);
-    else if(value->type==XX_VAR_TYPE_WSTRING||value->type==XX_VAR_TYPE_WSTRING_VIEW) { wide=xx_str_unicode_to_utf8(xx_var_get_wstr(value)); base=wide; }
-    if(!base) goto done;
-    path=xx_str_concat3(base,(base[0]&&base[xx_str_len(base)-1]!='/'&&base[xx_str_len(base)-1]!='\\')?"/":"",XX_LUKS_MEMBER_NAME);
-    if(!path || !xx_store_create_dirs_a(path,false)) goto done;
-    value=xx_format_resolve_extra_parameter(self,&state->options,XX_META_ID_OPT_OVERWRITE);overwrite=value&&xx_var_get_bool(value);
-    if(dc_same_path(path,xx_io_source_path(self->device))||(!overwrite&&xx_io_file_exists_a(path))) goto done;
-    output=dc_stage(path,&stage);
-    result=output && xx_luks_decode(self,parsed,&crypto,output,pd);
-    if(output) { if(xx_io_close(output)!=0) result=false; output=NULL; }
-    if(result&&stage) result=!xx_pd_is_stopped(pd)&&xx_io_file_replace_a(stage,path,overwrite);
-done:
-    if(output) { xx_io_close(output); } if(owned) { dc_clear(owned,xx_str_len(owned)); xx_str_free(owned); }
-    if(stage) { if(!result) xx_io_file_remove_a(stage); xx_str_free(stage); }
-    if(wide) { xx_str_free(wide); } if(path) xx_str_free(path); dc_clear(&crypto,sizeof(crypto));
-    if(cursor>=0&&xx_io_seek64(self->device,cursor,SEEK_SET)!=0) { result=false; } return result;
+    level = xx_pd_enter_level(pd, parsed->payload_size, "Decoding LUKS1 payload");
+    while (done < parsed->payload_size) {
+        size_t n = (size_t)(parsed->payload_size - done), sent = 0;
+        if (n > 65536) n = 65536;
+        if (xx_pd_is_stopped(pd) || !dc_read_at(self->device, parsed->payload_offset + done, buffer, n) || !dc_decrypt(crypto, done / 512, buffer, n, pd)) goto end;
+        while (output && sent < n) {
+            ssize_t z = xx_io_write(output, buffer + sent, n - sent);
+            if (z <= 0 || (size_t)z > n - sent) goto end;
+            sent += (size_t)z;
+        }
+        done += n;
+        xx_pd_set_current(pd, level, done);
+    }
+    result = !xx_pd_is_stopped(pd);
+end:
+    xx_pd_leave_level(pd, level);
+    dc_clear(buffer, 65536);
+    xx_mem_free(buffer);
+    return result;
 }
 
-void xx_luks_free_archive_records_reading(Abstractformat *self,
-                                          xx_archive_record_state *state) {
+bool xx_luks_unpack_current_archive_record(Abstractformat *self, xx_archive_record_state *state, xx_pd_struct *pd)
+{
+    xx_luks_private *parsed;
+    dc_crypto crypto;
+    const uint8_t *pw;
+    size_t pwn;
+    char *owned = NULL, *wide = NULL, *path = NULL, *stage = NULL;
+    const xx_var *value;
+    const char *base;
+    xx_io_device *output = NULL;
+    uint64_t memory, member;
+    int64_t cursor;
+    bool result = false, overwrite = false;
+    if (!self || !self->device || !state || state->format != self || !state->has_record || xx_pd_is_stopped(pd)) return false;
+    parsed = (xx_luks_private *)state->internal_state;
+    if (!parsed || parsed->consumed) return false;
+    xx_mem_zero(&crypto, sizeof(crypto));
+    cursor = xx_io_tell(self->device);
+    if (parsed->version != 1) {
+        xx_pd_set_error(pd, XXFC_ERR_INVALID_ARG, "LUKS2 payload decryption is not supported");
+        goto done;
+    }
+    if ((parsed->payload_size & 511U) || !dc_limit(self, &state->options, XX_META_ID_OPT_MEMORY_LIMIT, UINT64_MAX, &memory) ||
+        !dc_limit(self, &state->options, XX_META_ID_OPT_MAX_MEMBER_SIZE, UINT64_MAX, &member) || memory < 65536 + 16384U || parsed->payload_size > member)
+        goto done;
+    if (!dc_password(self, &state->options, &pw, &pwn, &owned, memory - (65536 + 16384U))) {
+        xx_pd_set_error(pd, XXFC_ERR_INVALID_ARG, "LUKS1 password required");
+        goto done;
+    }
+    if (!dc_luks_unlock(self->device, (uint64_t)parsed->base_address, (uint64_t)(parsed->input_size - parsed->base_address), false, pw, pwn, &crypto, pd)) {
+        if (!xx_pd_is_stopped(pd)) {
+            xx_pd_set_error(pd, XXFC_ERR_GENERIC, "LUKS1 keyslot could not be unlocked (wrong password or unsupported parameters)");
+        }
+        goto done;
+    }
+    value = xx_format_resolve_extra_parameter(self, &state->options, XX_META_ID_OPT_UNPACK_PATH);
+    if (!value) {
+        result = xx_luks_decode(self, parsed, &crypto, NULL, pd);
+        goto done;
+    }
+    base = NULL;
+    if (value->type == XX_VAR_TYPE_STRING || value->type == XX_VAR_TYPE_STRING_VIEW) base = xx_var_get_str(value);
+    else if (value->type == XX_VAR_TYPE_WSTRING || value->type == XX_VAR_TYPE_WSTRING_VIEW) {
+        wide = xx_str_unicode_to_utf8(xx_var_get_wstr(value));
+        base = wide;
+    }
+    if (!base) goto done;
+    path = xx_str_concat3(base, (base[0] && base[xx_str_len(base) - 1] != '/' && base[xx_str_len(base) - 1] != '\\') ? "/" : "", XX_LUKS_MEMBER_NAME);
+    if (!path || !xx_store_create_dirs_a(path, false)) goto done;
+    value = xx_format_resolve_extra_parameter(self, &state->options, XX_META_ID_OPT_OVERWRITE);
+    overwrite = value && xx_var_get_bool(value);
+    if (dc_same_path(path, xx_io_source_path(self->device)) || (!overwrite && xx_io_file_exists_a(path))) goto done;
+    output = dc_stage(path, &stage);
+    result = output && xx_luks_decode(self, parsed, &crypto, output, pd);
+    if (output) {
+        if (xx_io_close(output) != 0) result = false;
+        output = NULL;
+    }
+    if (result && stage) result = !xx_pd_is_stopped(pd) && xx_io_file_replace_a(stage, path, overwrite);
+done:
+    if (output) {
+        xx_io_close(output);
+    }
+    if (owned) {
+        dc_clear(owned, xx_str_len(owned));
+        xx_str_free(owned);
+    }
+    if (stage) {
+        if (!result) xx_io_file_remove_a(stage);
+        xx_str_free(stage);
+    }
+    if (wide) {
+        xx_str_free(wide);
+    }
+    if (path) xx_str_free(path);
+    dc_clear(&crypto, sizeof(crypto));
+    if (cursor >= 0 && xx_io_seek64(self->device, cursor, SEEK_SET) != 0) {
+        result = false;
+    }
+    return result;
+}
+
+void xx_luks_free_archive_records_reading(Abstractformat *self, xx_archive_record_state *state)
+{
     (void)self;
     xx_archive_record_state_free(state);
 }
 
 /* ------------------------------------------------------------ accessors -- */
 
-uint32_t xx_luks_get_version(const xx_luks *luks) {
+uint32_t xx_luks_get_version(const xx_luks *luks)
+{
     return luks ? luks->version : 0U;
 }
-uint64_t xx_luks_get_payload_offset(const xx_luks *luks) {
+uint64_t xx_luks_get_payload_offset(const xx_luks *luks)
+{
     return luks ? luks->payload_offset : 0U;
 }
-const char *xx_luks_get_cipher_name(const xx_luks *luks) {
+const char *xx_luks_get_cipher_name(const xx_luks *luks)
+{
     return luks ? luks->cipher_name : NULL;
 }
-const char *xx_luks_get_cipher_mode(const xx_luks *luks) {
+const char *xx_luks_get_cipher_mode(const xx_luks *luks)
+{
     return luks ? luks->cipher_mode : NULL;
 }
-const char *xx_luks_get_uuid(const xx_luks *luks) {
+const char *xx_luks_get_uuid(const xx_luks *luks)
+{
     return luks ? luks->uuid : NULL;
 }
-bool xx_luks_is_key_slot_active(const xx_luks *luks, unsigned index) {
+bool xx_luks_is_key_slot_active(const xx_luks *luks, unsigned index)
+{
     if (!luks || index >= XX_LUKS_KEY_SLOTS) return false;
     return (luks->active_slots & (UINT32_C(1) << index)) != 0U;
 }

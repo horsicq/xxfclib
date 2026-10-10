@@ -23,7 +23,7 @@ extern "C" {
  */
 typedef struct xx_pdf {
     Abstractformat format;
-    void *document;               /* private parsed cross-reference index */
+    void *document; /* private parsed cross-reference index */
     uint32_t object_count;
     uint32_t stream_count;
     bool encrypted;
@@ -63,13 +63,11 @@ XXFC_API char *xx_pdf_get_info(xx_pdf *pdf, xx_pd_struct *pd);
 XXFC_API char *xx_pdf_get_header_comment_hex(xx_pdf *pdf, xx_pd_struct *pd);
 XXFC_API char *xx_pdf_get_encryption(xx_pdf *pdf, xx_pd_struct *pd);
 XXFC_API char *xx_pdf_get_permissions(xx_pdf *pdf, xx_pd_struct *pd);
-XXFC_API bool xx_pdf_get_values_by_key(xx_pdf *pdf, const char *key,
-                                      bool strings_only, size_t part_limit,
-                                      xx_list_s *out, xx_pd_struct *pd);
-XXFC_API bool xx_pdf_is_values_hex_by_key(xx_pdf *pdf, const char *key,
-                                         size_t part_limit, xx_pd_struct *pd);
+XXFC_API bool xx_pdf_get_values_by_key(xx_pdf *pdf, const char *key, bool strings_only, size_t part_limit, xx_list_s *out, xx_pd_struct *pd);
+XXFC_API bool xx_pdf_is_values_hex_by_key(xx_pdf *pdf, const char *key, size_t part_limit, xx_pd_struct *pd);
 
-static inline Abstractformat *xx_pdf_to_format(xx_pdf *pdf) {
+static inline Abstractformat *xx_pdf_to_format(xx_pdf *pdf)
+{
     return pdf ? &pdf->format : NULL;
 }
 

@@ -49,28 +49,20 @@ struct xx_wrzl {
     uint8_t flags;         /**< First block's next byte, retained for ABI. */
 };
 
-XXFC_API void xx_wrzl_init(xx_wrzl *archive, xx_io_device *device,
-                           int64_t base_address);
+XXFC_API void xx_wrzl_init(xx_wrzl *archive, xx_io_device *device, int64_t base_address);
 XXFC_API xx_wrzl *xx_wrzl_create(xx_io_device *device, int64_t base_address);
 XXFC_API void xx_wrzl_destroy(xx_wrzl *archive);
 XXFC_API void xx_wrzl_free(xx_wrzl *archive);
 
 XXFC_API bool xx_wrzl_check_is_valid(Abstractformat *self, xx_pd_struct *pd);
 XXFC_API bool xx_wrzl_handle_base_info(Abstractformat *self, xx_pd_struct *pd);
-XXFC_API int64_t xx_wrzl_get_format_size(Abstractformat *self,
-                                         xx_pd_struct *pd);
-XXFC_API uint64_t xx_wrzl_get_number_of_archive_records(Abstractformat *self,
-                                                        xx_pd_struct *pd);
-XXFC_API xx_archive_record_state *xx_wrzl_create_archive_records_reading(
-    Abstractformat *self, const xx_list_s *options, xx_pd_struct *pd);
-XXFC_API const xx_archive_record *xx_wrzl_get_current_archive_record(
-    Abstractformat *self, xx_archive_record_state *state);
-XXFC_API bool xx_wrzl_unpack_current_archive_record(
-    Abstractformat *self, xx_archive_record_state *state, xx_pd_struct *pd);
-XXFC_API bool xx_wrzl_archive_record_move_to_next(
-    Abstractformat *self, xx_archive_record_state *state, xx_pd_struct *pd);
-XXFC_API void xx_wrzl_free_archive_records_reading(
-    Abstractformat *self, xx_archive_record_state *state);
+XXFC_API int64_t xx_wrzl_get_format_size(Abstractformat *self, xx_pd_struct *pd);
+XXFC_API uint64_t xx_wrzl_get_number_of_archive_records(Abstractformat *self, xx_pd_struct *pd);
+XXFC_API xx_archive_record_state *xx_wrzl_create_archive_records_reading(Abstractformat *self, const xx_list_s *options, xx_pd_struct *pd);
+XXFC_API const xx_archive_record *xx_wrzl_get_current_archive_record(Abstractformat *self, xx_archive_record_state *state);
+XXFC_API bool xx_wrzl_unpack_current_archive_record(Abstractformat *self, xx_archive_record_state *state, xx_pd_struct *pd);
+XXFC_API bool xx_wrzl_archive_record_move_to_next(Abstractformat *self, xx_archive_record_state *state, xx_pd_struct *pd);
+XXFC_API void xx_wrzl_free_archive_records_reading(Abstractformat *self, xx_archive_record_state *state);
 
 /** Absolute offset of the packed stream, or -1 before handle_base_info. */
 XXFC_API int64_t xx_wrzl_get_packed_offset(const xx_wrzl *archive);

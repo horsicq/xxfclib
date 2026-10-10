@@ -121,8 +121,7 @@ static bool npack_emit(npack_state *state, uint8_t byte)
 }
 
 /* The one core routine.  `output` may be NULL to measure only. */
-static bool npack_run(const uint8_t *input, size_t input_size, uint8_t *output,
-                      size_t output_cap, size_t *produced, size_t *consumed)
+static bool npack_run(const uint8_t *input, size_t input_size, uint8_t *output, size_t output_cap, size_t *produced, size_t *consumed)
 {
     npack_bits reader;
     npack_state state;
@@ -199,9 +198,7 @@ static bool npack_run(const uint8_t *input, size_t input_size, uint8_t *output,
     return true;
 }
 
-bool xx_npack_decode_memory(const uint8_t *input, size_t input_size,
-                            uint8_t *output, size_t output_size,
-                            size_t *written)
+bool xx_npack_decode_memory(const uint8_t *input, size_t input_size, uint8_t *output, size_t output_size, size_t *written)
 {
     size_t produced = 0U;
 
@@ -215,9 +212,7 @@ bool xx_npack_decode_memory(const uint8_t *input, size_t input_size,
     return true;
 }
 
-bool xx_npack_scan_memory(const uint8_t *input, size_t input_size,
-                          size_t max_output, size_t *consumed,
-                          size_t *produced)
+bool xx_npack_scan_memory(const uint8_t *input, size_t input_size, size_t max_output, size_t *consumed, size_t *produced)
 {
     if (consumed) *consumed = 0U;
     if (produced) *produced = 0U;

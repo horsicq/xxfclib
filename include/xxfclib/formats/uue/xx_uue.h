@@ -78,35 +78,24 @@ typedef xx_uue xx_uue_t;
 #define XX_UUE_METHOD_UU 0U
 #define XX_UUE_METHOD_XX 1U
 
-XXFC_API void xx_uue_init(xx_uue *archive, xx_io_device *device,
-                          int64_t base_address);
+XXFC_API void xx_uue_init(xx_uue *archive, xx_io_device *device, int64_t base_address);
 XXFC_API xx_uue *xx_uue_create(xx_io_device *device, int64_t base_address);
 XXFC_API void xx_uue_destroy(xx_uue *archive);
 XXFC_API void xx_uue_free(xx_uue *archive);
 
 XXFC_API bool xx_uue_check_is_valid(Abstractformat *self, xx_pd_struct *pd);
 XXFC_API bool xx_uue_handle_base_info(Abstractformat *self, xx_pd_struct *pd);
-XXFC_API int64_t xx_uue_get_format_size(Abstractformat *self,
-                                        xx_pd_struct *pd);
-XXFC_API uint64_t xx_uue_get_number_of_archive_records(Abstractformat *self,
-                                                       xx_pd_struct *pd);
+XXFC_API int64_t xx_uue_get_format_size(Abstractformat *self, xx_pd_struct *pd);
+XXFC_API uint64_t xx_uue_get_number_of_archive_records(Abstractformat *self, xx_pd_struct *pd);
 
-XXFC_API xx_archive_record_state *xx_uue_create_archive_records_reading(
-    Abstractformat *self, const xx_list_s *options, xx_pd_struct *pd);
-XXFC_API const xx_archive_record *xx_uue_get_current_archive_record(
-    Abstractformat *self, xx_archive_record_state *state);
-XXFC_API bool xx_uue_unpack_current_archive_record(
-    Abstractformat *self, xx_archive_record_state *state, xx_pd_struct *pd);
-XXFC_API bool xx_uue_archive_record_move_to_next(
-    Abstractformat *self, xx_archive_record_state *state, xx_pd_struct *pd);
-XXFC_API void xx_uue_free_archive_records_reading(
-    Abstractformat *self, xx_archive_record_state *state);
+XXFC_API xx_archive_record_state *xx_uue_create_archive_records_reading(Abstractformat *self, const xx_list_s *options, xx_pd_struct *pd);
+XXFC_API const xx_archive_record *xx_uue_get_current_archive_record(Abstractformat *self, xx_archive_record_state *state);
+XXFC_API bool xx_uue_unpack_current_archive_record(Abstractformat *self, xx_archive_record_state *state, xx_pd_struct *pd);
+XXFC_API bool xx_uue_archive_record_move_to_next(Abstractformat *self, xx_archive_record_state *state, xx_pd_struct *pd);
+XXFC_API void xx_uue_free_archive_records_reading(Abstractformat *self, xx_archive_record_state *state);
 
 /** Decode the current record to `destination`. */
-XXFC_API bool xx_uue_unpack_current_to_device(Abstractformat *self,
-                                              xx_archive_record_state *state,
-                                              xx_io_device *destination,
-                                              xx_pd_struct *pd);
+XXFC_API bool xx_uue_unpack_current_to_device(Abstractformat *self, xx_archive_record_state *state, xx_io_device *destination, xx_pd_struct *pd);
 
 #ifdef __cplusplus
 }

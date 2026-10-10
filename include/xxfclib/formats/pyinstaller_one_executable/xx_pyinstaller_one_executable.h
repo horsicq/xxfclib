@@ -58,13 +58,13 @@ extern "C" {
  */
 typedef struct xx_pyinstaller_one_executable {
     Abstractformat format;
-    uint64_t number_of_records;  /**< TOC entries that are files. */
-    uint64_t number_of_entries;  /**< All TOC entries, options included. */
-    int64_t package_offset;      /**< Package start, relative to base. */
-    int64_t cookie_offset;       /**< Cookie start, relative to base. */
-    uint32_t cookie_size;        /**< 88, or 24 for PyInstaller 2.0. */
-    uint32_t python_version;     /**< The cookie's Python version field. */
-    char python_library[65];     /**< The cookie's library name, or "". */
+    uint64_t number_of_records; /**< TOC entries that are files. */
+    uint64_t number_of_entries; /**< All TOC entries, options included. */
+    int64_t package_offset;     /**< Package start, relative to base. */
+    int64_t cookie_offset;      /**< Cookie start, relative to base. */
+    uint32_t cookie_size;       /**< 88, or 24 for PyInstaller 2.0. */
+    uint32_t python_version;    /**< The cookie's Python version field. */
+    char python_library[65];    /**< The cookie's library name, or "". */
 } xx_pyinstaller_one_executable;
 
 typedef xx_pyinstaller_one_executable xx_pyinstaller_one_executable_t;
@@ -77,40 +77,23 @@ typedef xx_pyinstaller_one_executable xx_pyinstaller_one_executable_t;
  * TOC and member bounds. Signed PE files also need the normal MZ probe,
  * because their cookie can precede a large certificate table.
  */
-XXFC_API bool xx_pyinstaller_one_executable_has_tail_cookie(
-    xx_io_device *device);
+XXFC_API bool xx_pyinstaller_one_executable_has_tail_cookie(xx_io_device *device);
 
-XXFC_API void xx_pyinstaller_one_executable_init(
-    xx_pyinstaller_one_executable *archive, xx_io_device *device,
-    int64_t base_address);
-XXFC_API xx_pyinstaller_one_executable *xx_pyinstaller_one_executable_create(
-    xx_io_device *device, int64_t base_address);
-XXFC_API void xx_pyinstaller_one_executable_destroy(
-    xx_pyinstaller_one_executable *archive);
-XXFC_API void xx_pyinstaller_one_executable_free(
-    xx_pyinstaller_one_executable *archive);
+XXFC_API void xx_pyinstaller_one_executable_init(xx_pyinstaller_one_executable *archive, xx_io_device *device, int64_t base_address);
+XXFC_API xx_pyinstaller_one_executable *xx_pyinstaller_one_executable_create(xx_io_device *device, int64_t base_address);
+XXFC_API void xx_pyinstaller_one_executable_destroy(xx_pyinstaller_one_executable *archive);
+XXFC_API void xx_pyinstaller_one_executable_free(xx_pyinstaller_one_executable *archive);
 
-XXFC_API bool xx_pyinstaller_one_executable_check_is_valid(Abstractformat *self,
-                                                           xx_pd_struct *pd);
-XXFC_API bool xx_pyinstaller_one_executable_handle_base_info(
-    Abstractformat *self, xx_pd_struct *pd);
-XXFC_API int64_t xx_pyinstaller_one_executable_get_format_size(
-    Abstractformat *self, xx_pd_struct *pd);
-XXFC_API uint64_t xx_pyinstaller_one_executable_get_number_of_archive_records(
-    Abstractformat *self, xx_pd_struct *pd);
+XXFC_API bool xx_pyinstaller_one_executable_check_is_valid(Abstractformat *self, xx_pd_struct *pd);
+XXFC_API bool xx_pyinstaller_one_executable_handle_base_info(Abstractformat *self, xx_pd_struct *pd);
+XXFC_API int64_t xx_pyinstaller_one_executable_get_format_size(Abstractformat *self, xx_pd_struct *pd);
+XXFC_API uint64_t xx_pyinstaller_one_executable_get_number_of_archive_records(Abstractformat *self, xx_pd_struct *pd);
 
-XXFC_API xx_archive_record_state *
-xx_pyinstaller_one_executable_create_archive_records_reading(
-    Abstractformat *self, const xx_list_s *options, xx_pd_struct *pd);
-XXFC_API const xx_archive_record *
-xx_pyinstaller_one_executable_get_current_archive_record(
-    Abstractformat *self, xx_archive_record_state *state);
-XXFC_API bool xx_pyinstaller_one_executable_unpack_current_archive_record(
-    Abstractformat *self, xx_archive_record_state *state, xx_pd_struct *pd);
-XXFC_API bool xx_pyinstaller_one_executable_archive_record_move_to_next(
-    Abstractformat *self, xx_archive_record_state *state, xx_pd_struct *pd);
-XXFC_API void xx_pyinstaller_one_executable_free_archive_records_reading(
-    Abstractformat *self, xx_archive_record_state *state);
+XXFC_API xx_archive_record_state *xx_pyinstaller_one_executable_create_archive_records_reading(Abstractformat *self, const xx_list_s *options, xx_pd_struct *pd);
+XXFC_API const xx_archive_record *xx_pyinstaller_one_executable_get_current_archive_record(Abstractformat *self, xx_archive_record_state *state);
+XXFC_API bool xx_pyinstaller_one_executable_unpack_current_archive_record(Abstractformat *self, xx_archive_record_state *state, xx_pd_struct *pd);
+XXFC_API bool xx_pyinstaller_one_executable_archive_record_move_to_next(Abstractformat *self, xx_archive_record_state *state, xx_pd_struct *pd);
+XXFC_API void xx_pyinstaller_one_executable_free_archive_records_reading(Abstractformat *self, xx_archive_record_state *state);
 
 #ifdef __cplusplus
 }

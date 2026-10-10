@@ -66,43 +66,29 @@ extern "C" {
 typedef struct xx_d_link_fpkg_cpkg {
     Abstractformat format;
     uint64_t number_of_records;
-    bool is_fpkg;                 /**< "FPKG" (true) or "CPKG" (false). */
+    bool is_fpkg; /**< "FPKG" (true) or "CPKG" (false). */
     uint32_t first_entry_offset;
-    int64_t archive_end;          /**< Absolute end of the last entry, or -1. */
+    int64_t archive_end;                            /**< Absolute end of the last entry, or -1. */
     char model[XX_D_LINK_FPKG_CPKG_MAX_MODEL + 1U]; /**< FPKG model, or "". */
 } xx_d_link_fpkg_cpkg;
 
 typedef xx_d_link_fpkg_cpkg xx_d_link_fpkg_cpkg_t;
 
-XXFC_API void xx_d_link_fpkg_cpkg_init(xx_d_link_fpkg_cpkg *archive,
-                                       xx_io_device *device,
-                                       int64_t base_address);
-XXFC_API xx_d_link_fpkg_cpkg *xx_d_link_fpkg_cpkg_create(xx_io_device *device,
-                                                         int64_t base_address);
+XXFC_API void xx_d_link_fpkg_cpkg_init(xx_d_link_fpkg_cpkg *archive, xx_io_device *device, int64_t base_address);
+XXFC_API xx_d_link_fpkg_cpkg *xx_d_link_fpkg_cpkg_create(xx_io_device *device, int64_t base_address);
 XXFC_API void xx_d_link_fpkg_cpkg_destroy(xx_d_link_fpkg_cpkg *archive);
 XXFC_API void xx_d_link_fpkg_cpkg_free(xx_d_link_fpkg_cpkg *archive);
 
-XXFC_API bool xx_d_link_fpkg_cpkg_check_is_valid(Abstractformat *self,
-                                                 xx_pd_struct *pd);
-XXFC_API bool xx_d_link_fpkg_cpkg_handle_base_info(Abstractformat *self,
-                                                   xx_pd_struct *pd);
-XXFC_API int64_t xx_d_link_fpkg_cpkg_get_format_size(Abstractformat *self,
-                                                     xx_pd_struct *pd);
-XXFC_API uint64_t xx_d_link_fpkg_cpkg_get_number_of_archive_records(
-    Abstractformat *self, xx_pd_struct *pd);
+XXFC_API bool xx_d_link_fpkg_cpkg_check_is_valid(Abstractformat *self, xx_pd_struct *pd);
+XXFC_API bool xx_d_link_fpkg_cpkg_handle_base_info(Abstractformat *self, xx_pd_struct *pd);
+XXFC_API int64_t xx_d_link_fpkg_cpkg_get_format_size(Abstractformat *self, xx_pd_struct *pd);
+XXFC_API uint64_t xx_d_link_fpkg_cpkg_get_number_of_archive_records(Abstractformat *self, xx_pd_struct *pd);
 
-XXFC_API xx_archive_record_state *
-xx_d_link_fpkg_cpkg_create_archive_records_reading(Abstractformat *self,
-                                                   const xx_list_s *options,
-                                                   xx_pd_struct *pd);
-XXFC_API const xx_archive_record *xx_d_link_fpkg_cpkg_get_current_archive_record(
-    Abstractformat *self, xx_archive_record_state *state);
-XXFC_API bool xx_d_link_fpkg_cpkg_unpack_current_archive_record(
-    Abstractformat *self, xx_archive_record_state *state, xx_pd_struct *pd);
-XXFC_API bool xx_d_link_fpkg_cpkg_archive_record_move_to_next(
-    Abstractformat *self, xx_archive_record_state *state, xx_pd_struct *pd);
-XXFC_API void xx_d_link_fpkg_cpkg_free_archive_records_reading(
-    Abstractformat *self, xx_archive_record_state *state);
+XXFC_API xx_archive_record_state *xx_d_link_fpkg_cpkg_create_archive_records_reading(Abstractformat *self, const xx_list_s *options, xx_pd_struct *pd);
+XXFC_API const xx_archive_record *xx_d_link_fpkg_cpkg_get_current_archive_record(Abstractformat *self, xx_archive_record_state *state);
+XXFC_API bool xx_d_link_fpkg_cpkg_unpack_current_archive_record(Abstractformat *self, xx_archive_record_state *state, xx_pd_struct *pd);
+XXFC_API bool xx_d_link_fpkg_cpkg_archive_record_move_to_next(Abstractformat *self, xx_archive_record_state *state, xx_pd_struct *pd);
+XXFC_API void xx_d_link_fpkg_cpkg_free_archive_records_reading(Abstractformat *self, xx_archive_record_state *state);
 
 #ifdef __cplusplus
 }

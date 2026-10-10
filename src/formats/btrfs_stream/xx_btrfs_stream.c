@@ -135,18 +135,29 @@ enum {
 #define BS_FALLOC_KEEP_SIZE 0x1U
 #define BS_FALLOC_PUNCH_HOLE 0x2U
 
-enum { BS_T_FILE = 0, BS_T_DIR = 1, BS_T_LINK = 2, BS_T_SPECIAL = 3 };
-enum { BS_OP_WRITE = 0, BS_OP_ENCODED, BS_OP_CLONE, BS_OP_TRUNC, BS_OP_ZERO };
+enum {
+    BS_T_FILE = 0,
+    BS_T_DIR = 1,
+    BS_T_LINK = 2,
+    BS_T_SPECIAL = 3
+};
+enum {
+    BS_OP_WRITE = 0,
+    BS_OP_ENCODED,
+    BS_OP_CLONE,
+    BS_OP_TRUNC,
+    BS_OP_ZERO
+};
 
 typedef struct bs_op_s {
-    uint64_t off;   /**< File offset (TRUNC: new size). */
-    uint64_t len;   /**< Bytes affected in the file. */
-    uint64_t a;     /**< ENCODED: unencoded offset; CLONE: source offset. */
-    uint64_t b;     /**< ENCODED: unencoded length; CLONE: source op limit. */
-    int64_t data;   /**< Device offset of the data (WRITE / ENCODED). */
+    uint64_t off; /**< File offset (TRUNC: new size). */
+    uint64_t len; /**< Bytes affected in the file. */
+    uint64_t a;   /**< ENCODED: unencoded offset; CLONE: source offset. */
+    uint64_t b;   /**< ENCODED: unencoded length; CLONE: source op limit. */
+    int64_t data; /**< Device offset of the data (WRITE / ENCODED). */
     uint32_t data_len;
-    uint32_t next;  /**< Next op of the same node. */
-    uint32_t src;   /**< CLONE: source node. */
+    uint32_t next; /**< Next op of the same node. */
+    uint32_t src;  /**< CLONE: source node. */
     uint8_t kind;
     uint8_t comp;
 } bs_op;
@@ -157,7 +168,7 @@ typedef struct bs_node_s {
     uint32_t mode;
     uint32_t first_op;
     uint32_t last_op;
-    uint32_t dentry;  /**< Directory's own dentry (BS_NONE for the root). */
+    uint32_t dentry; /**< Directory's own dentry (BS_NONE for the root). */
     char *link;
     uint8_t type;
     bool oversize;
@@ -194,7 +205,7 @@ typedef struct bs_tree_s {
     bool incremental;
     bool damaged;
     bool has_end;
-    int64_t end;       /**< Stream bytes consumed (relative to the start). */
+    int64_t end; /**< Stream bytes consumed (relative to the start). */
     uint64_t commands;
 } bs_tree;
 
@@ -212,28 +223,26 @@ typedef struct bs_stream_s {
 
 /* ------------------------------------------------------------ helpers --- */
 
-static bool bs_read_at(xx_io_device *device, int64_t offset, void *buffer,
-                       size_t size) {
+static bool bs_read_at(xx_io_device *device, int64_t offset, void *buffer, size_t size)
+{
     size_t done = 0U;
-    if (!device || (!buffer && size != 0U) || offset < 0 ||
-        xx_io_seek64(device, offset, SEEK_SET) != 0)
-        return false;
+    if (!device || (!buffer && size != 0U) || offset < 0 || xx_io_seek64(device, offset, SEEK_SET) != 0) return false;
     while (done < size) {
-        ssize_t amount = xx_io_read(device, (uint8_t *)buffer + done,
-                                    size - done);
+        ssize_t amount = xx_io_read(device, (uint8_t *)buffer + done, size - done);
         if (amount <= 0 || (size_t)amount > size - done) return false;
         done += (size_t)amount;
     }
     return true;
 }
 
-uint32_t xx_btrfs_stream_crc32c(uint32_t crc, const void *data, size_t size) {
+uint32_t xx_btrfs_stream_crc32c(uint32_t crc, const void *data, size_t size)
+{
     /* xx_crc32c_calc inverts on entry and exit; undo both. */
     return ~xx_crc32c_calc(~crc, data, size);
 }
 
-static bool bs_grow(void **array, size_t *capacity, size_t count,
-                    size_t element, size_t limit) {
+static bool bs_grow(void **array, size_t *capacity, size_t count, size_t element, size_t limit)
+{
     size_t wanted;
     void *grown;
     if (count < *capacity) return true;
@@ -250,7 +259,8 @@ static bool bs_grow(void **array, size_t *capacity, size_t count,
 
 /* --------------------------------------------------------------- tree --- */
 
-static void bs_tree_free(bs_tree *tree) {
+static void bs_tree_free(bs_tree *tree)
+{
     size_t index;
     if (!tree) return;
     for (index = 0U; index < tree->node_count; ++index)
@@ -265,7 +275,8 @@ static void bs_tree_free(bs_tree *tree) {
     xx_mem_zero(tree, sizeof(*tree));
 }
 
-static uint32_t bs_hash(uint32_t parent, const char *name, size_t length) {
+static uint32_t bs_hash(uint32_t parent, const char *name, size_t length)
+{
     uint32_t hash = 2166136261U ^ (parent * 0x9E3779B1U);
     size_t index;
     for (index = 0U; index < length; ++index) {
@@ -275,7 +286,8 @@ static uint32_t bs_hash(uint32_t parent, const char *name, size_t length) {
     return hash;
 }
 
-static bool bs_rehash(bs_tree *tree, size_t buckets) {
+static bool bs_rehash(bs_tree *tree, size_t buckets)
+{
     uint32_t *table;
     size_t index;
     table = (uint32_t *)xx_mem_alloc(buckets * sizeof(uint32_t));
@@ -285,8 +297,7 @@ static bool bs_rehash(bs_tree *tree, size_t buckets) {
         bs_dentry *d = &tree->dents[index];
         uint32_t slot;
         if (!d->alive) continue;
-        slot = bs_hash(d->parent, d->name, xx_str_len(d->name)) &
-               (uint32_t)(buckets - 1U);
+        slot = bs_hash(d->parent, d->name, xx_str_len(d->name)) & (uint32_t)(buckets - 1U);
         d->hnext = table[slot];
         table[slot] = (uint32_t)index;
     }
@@ -296,30 +307,27 @@ static bool bs_rehash(bs_tree *tree, size_t buckets) {
     return true;
 }
 
-static uint32_t bs_lookup(const bs_tree *tree, uint32_t parent,
-                          const char *name, size_t length) {
+static uint32_t bs_lookup(const bs_tree *tree, uint32_t parent, const char *name, size_t length)
+{
     uint32_t index;
     size_t steps = 0U;
     if (!tree->buckets) return BS_NONE;
-    index = tree->buckets[bs_hash(parent, name, length) &
-                          (uint32_t)(tree->bucket_count - 1U)];
+    index = tree->buckets[bs_hash(parent, name, length) & (uint32_t)(tree->bucket_count - 1U)];
     while (index != BS_NONE && steps++ <= tree->dent_count) {
         const bs_dentry *d = &tree->dents[index];
-        if (d->parent == parent && xx_rt_memcmp(d->name, name, length) == 0 &&
-            d->name[length] == 0)
-            return index;
+        if (d->parent == parent && xx_rt_memcmp(d->name, name, length) == 0 && d->name[length] == 0) return index;
         index = d->hnext;
     }
     return BS_NONE;
 }
 
-static void bs_unhash(bs_tree *tree, uint32_t dentry) {
+static void bs_unhash(bs_tree *tree, uint32_t dentry)
+{
     bs_dentry *d = &tree->dents[dentry];
     uint32_t *link;
     size_t steps = 0U;
     if (!tree->buckets) return;
-    link = &tree->buckets[bs_hash(d->parent, d->name, xx_str_len(d->name)) &
-                          (uint32_t)(tree->bucket_count - 1U)];
+    link = &tree->buckets[bs_hash(d->parent, d->name, xx_str_len(d->name)) & (uint32_t)(tree->bucket_count - 1U)];
     while (*link != BS_NONE && steps++ <= tree->dent_count) {
         if (*link == dentry) {
             *link = d->hnext;
@@ -330,19 +338,18 @@ static void bs_unhash(bs_tree *tree, uint32_t dentry) {
     d->hnext = BS_NONE;
 }
 
-static void bs_hash_in(bs_tree *tree, uint32_t dentry) {
+static void bs_hash_in(bs_tree *tree, uint32_t dentry)
+{
     bs_dentry *d = &tree->dents[dentry];
-    uint32_t slot = bs_hash(d->parent, d->name, xx_str_len(d->name)) &
-                    (uint32_t)(tree->bucket_count - 1U);
+    uint32_t slot = bs_hash(d->parent, d->name, xx_str_len(d->name)) & (uint32_t)(tree->bucket_count - 1U);
     d->hnext = tree->buckets[slot];
     tree->buckets[slot] = dentry;
 }
 
-static uint32_t bs_new_node(bs_tree *tree, uint8_t type) {
+static uint32_t bs_new_node(bs_tree *tree, uint8_t type)
+{
     bs_node *node;
-    if (!bs_grow((void **)&tree->nodes, &tree->node_cap, tree->node_count,
-                 sizeof(bs_node), BS_MAX_NODES))
-        return BS_NONE;
+    if (!bs_grow((void **)&tree->nodes, &tree->node_cap, tree->node_count, sizeof(bs_node), BS_MAX_NODES)) return BS_NONE;
     node = &tree->nodes[tree->node_count];
     xx_mem_zero(node, sizeof(*node));
     node->type = type;
@@ -351,17 +358,12 @@ static uint32_t bs_new_node(bs_tree *tree, uint8_t type) {
     return (uint32_t)tree->node_count++;
 }
 
-static uint32_t bs_new_dentry(bs_tree *tree, uint32_t parent,
-                              const char *name, size_t length,
-                              uint32_t node) {
+static uint32_t bs_new_dentry(bs_tree *tree, uint32_t parent, const char *name, size_t length, uint32_t node)
+{
     bs_dentry *d;
     char *copy;
-    if (!bs_grow((void **)&tree->dents, &tree->dent_cap, tree->dent_count,
-                 sizeof(bs_dentry), BS_MAX_DENTRIES))
-        return BS_NONE;
-    if (tree->dent_count + 1U > tree->bucket_count / 2U &&
-        !bs_rehash(tree, tree->bucket_count ? tree->bucket_count * 2U : 256U))
-        return BS_NONE;
+    if (!bs_grow((void **)&tree->dents, &tree->dent_cap, tree->dent_count, sizeof(bs_dentry), BS_MAX_DENTRIES)) return BS_NONE;
+    if (tree->dent_count + 1U > tree->bucket_count / 2U && !bs_rehash(tree, tree->bucket_count ? tree->bucket_count * 2U : 256U)) return BS_NONE;
     copy = (char *)xx_mem_alloc(length + 1U);
     if (!copy) return BS_NONE;
     xx_mem_copy(copy, name, length);
@@ -373,22 +375,22 @@ static uint32_t bs_new_dentry(bs_tree *tree, uint32_t parent,
     d->alive = true;
     d->hnext = BS_NONE;
     bs_hash_in(tree, (uint32_t)tree->dent_count);
-    if (tree->nodes[node].type == BS_T_DIR)
-        tree->nodes[node].dentry = (uint32_t)tree->dent_count;
+    if (tree->nodes[node].type == BS_T_DIR) tree->nodes[node].dentry = (uint32_t)tree->dent_count;
     return (uint32_t)tree->dent_count++;
 }
 
-static void bs_kill_dentry(bs_tree *tree, uint32_t dentry) {
+static void bs_kill_dentry(bs_tree *tree, uint32_t dentry)
+{
     bs_dentry *d = &tree->dents[dentry];
     if (!d->alive) return;
     bs_unhash(tree, dentry);
     d->alive = false;
-    if (tree->nodes[d->node].dentry == dentry)
-        tree->nodes[d->node].dentry = BS_NONE;
+    if (tree->nodes[d->node].dentry == dentry) tree->nodes[d->node].dentry = BS_NONE;
 }
 
 /* A path component: 1..255 bytes, no separator, no NUL, not a dot name. */
-static bool bs_component_ok(const uint8_t *p, size_t length) {
+static bool bs_component_ok(const uint8_t *p, size_t length)
+{
     size_t index;
     if (length == 0U || length > BS_MAX_NAME) return false;
     if (length == 1U && p[0] == '.') return false;
@@ -401,14 +403,12 @@ static bool bs_component_ok(const uint8_t *p, size_t length) {
 /* Resolve every component but the last.  In an incremental stream a
  * missing directory stands for one the parent snapshot holds, so it is
  * created on the fly; a full stream always creates parents first. */
-static bool bs_resolve_parent(bs_tree *tree, const bs_attr *path,
-                              uint32_t *parent, const char **name,
-                              size_t *name_length) {
+static bool bs_resolve_parent(bs_tree *tree, const bs_attr *path, uint32_t *parent, const char **name, size_t *name_length)
+{
     const uint8_t *p;
     size_t length, start = 0U, index, depth = 0U;
     uint32_t dir = 0U;
-    if (!path || !path->present || path->len == 0U || path->len > BS_MAX_PATH)
-        return false;
+    if (!path || !path->present || path->len == 0U || path->len > BS_MAX_PATH) return false;
     p = path->p;
     length = path->len;
     for (index = 0U; index <= length; ++index) {
@@ -422,15 +422,13 @@ static bool bs_resolve_parent(bs_tree *tree, const bs_attr *path,
         }
         if (++depth >= BS_MAX_DEPTH) return false;
         {
-            uint32_t d = bs_lookup(tree, dir, (const char *)(p + start),
-                                   index - start);
+            uint32_t d = bs_lookup(tree, dir, (const char *)(p + start), index - start);
             if (d == BS_NONE) {
                 uint32_t node;
                 if (!tree->incremental) return false;
                 node = bs_new_node(tree, BS_T_DIR);
                 if (node == BS_NONE) return false;
-                d = bs_new_dentry(tree, dir, (const char *)(p + start),
-                                  index - start, node);
+                d = bs_new_dentry(tree, dir, (const char *)(p + start), index - start, node);
                 if (d == BS_NONE) return false;
             }
             if (tree->nodes[tree->dents[d].node].type != BS_T_DIR) return false;
@@ -444,7 +442,8 @@ static bool bs_resolve_parent(bs_tree *tree, const bs_attr *path,
 /* The dentry a path names, or BS_NONE.  In an incremental stream an
  * unknown path is created as a regular file of the parent snapshot when
  * @p implicit is set. */
-static uint32_t bs_find(bs_tree *tree, const bs_attr *path, bool implicit) {
+static uint32_t bs_find(bs_tree *tree, const bs_attr *path, bool implicit)
+{
     uint32_t parent, d;
     const char *name;
     size_t length;
@@ -458,11 +457,10 @@ static uint32_t bs_find(bs_tree *tree, const bs_attr *path, bool implicit) {
     return d;
 }
 
-static bool bs_add_op(bs_tree *tree, uint32_t node, const bs_op *op) {
+static bool bs_add_op(bs_tree *tree, uint32_t node, const bs_op *op)
+{
     bs_node *n = &tree->nodes[node];
-    if (!bs_grow((void **)&tree->ops, &tree->op_cap, tree->op_count,
-                 sizeof(bs_op), BS_MAX_OPS))
-        return false;
+    if (!bs_grow((void **)&tree->ops, &tree->op_cap, tree->op_count, sizeof(bs_op), BS_MAX_OPS)) return false;
     tree->ops[tree->op_count] = *op;
     tree->ops[tree->op_count].next = BS_NONE;
     if (n->last_op == BS_NONE) n->first_op = (uint32_t)tree->op_count;
@@ -472,7 +470,8 @@ static bool bs_add_op(bs_tree *tree, uint32_t node, const bs_op *op) {
     return true;
 }
 
-static void bs_extend(bs_node *node, uint64_t off, uint64_t len) {
+static void bs_extend(bs_node *node, uint64_t off, uint64_t len)
+{
     uint64_t end;
     if (len > BS_MAX_FILE_SIZE || off > BS_MAX_FILE_SIZE - len) {
         node->oversize = true;
@@ -484,8 +483,8 @@ static void bs_extend(bs_node *node, uint64_t off, uint64_t len) {
 
 /* ----------------------------------------------------------- commands --- */
 
-static bool bs_parse_tlvs(const bs_tree *tree, const uint8_t *payload,
-                          uint32_t length, bs_attr *attrs) {
+static bool bs_parse_tlvs(const bs_tree *tree, const uint8_t *payload, uint32_t length, bs_attr *attrs)
+{
     uint32_t pos = 0U;
     xx_mem_zero(attrs, sizeof(bs_attr) * BS_A_COUNT);
     while (pos < length) {
@@ -511,13 +510,15 @@ static bool bs_parse_tlvs(const bs_tree *tree, const uint8_t *payload,
     return true;
 }
 
-static bool bs_u64(const bs_attr *attrs, int type, uint64_t *value) {
+static bool bs_u64(const bs_attr *attrs, int type, uint64_t *value)
+{
     if (!attrs[type].present || attrs[type].len != 8U) return false;
     *value = xx_data_get_u64(attrs[type].p, 8, 0, false);
     return true;
 }
 
-static bool bs_u32(const bs_attr *attrs, int type, uint32_t *value) {
+static bool bs_u32(const bs_attr *attrs, int type, uint32_t *value)
+{
     if (!attrs[type].present) return false;
     if (attrs[type].len == 4U) *value = xx_data_get_u32(attrs[type].p, 4, 0, false);
     else if (attrs[type].len == 8U) {
@@ -528,17 +529,15 @@ static bool bs_u32(const bs_attr *attrs, int type, uint32_t *value) {
     return true;
 }
 
-static bool bs_cmd_create(bs_tree *tree, uint16_t cmd, const bs_attr *attrs) {
+static bool bs_cmd_create(bs_tree *tree, uint16_t cmd, const bs_attr *attrs)
+{
     uint32_t parent, node, d;
     const char *name;
     size_t length;
     uint8_t type;
     uint64_t mode;
-    if (!bs_resolve_parent(tree, &attrs[BS_A_PATH], &parent, &name, &length))
-        return false;
-    type = cmd == BS_C_MKFILE ? BS_T_FILE
-           : cmd == BS_C_MKDIR ? BS_T_DIR
-           : cmd == BS_C_SYMLINK ? BS_T_LINK : BS_T_SPECIAL;
+    if (!bs_resolve_parent(tree, &attrs[BS_A_PATH], &parent, &name, &length)) return false;
+    type = cmd == BS_C_MKFILE ? BS_T_FILE : cmd == BS_C_MKDIR ? BS_T_DIR : cmd == BS_C_SYMLINK ? BS_T_LINK : BS_T_SPECIAL;
     d = bs_lookup(tree, parent, name, length);
     if (d != BS_NONE) {
         /* An incremental stream may recreate a name it just cleared up;
@@ -548,8 +547,7 @@ static bool bs_cmd_create(bs_tree *tree, uint16_t cmd, const bs_attr *attrs) {
     }
     node = bs_new_node(tree, type);
     if (node == BS_NONE) return false;
-    if (type == BS_T_SPECIAL && bs_u64(attrs, BS_A_MODE, &mode))
-        tree->nodes[node].mode = (uint32_t)mode;
+    if (type == BS_T_SPECIAL && bs_u64(attrs, BS_A_MODE, &mode)) tree->nodes[node].mode = (uint32_t)mode;
     if (type == BS_T_LINK) {
         const bs_attr *target = &attrs[BS_A_PATH_LINK];
         char *copy;
@@ -568,15 +566,14 @@ static bool bs_cmd_create(bs_tree *tree, uint16_t cmd, const bs_attr *attrs) {
     return bs_new_dentry(tree, parent, name, length, node) != BS_NONE;
 }
 
-static bool bs_cmd_rename(bs_tree *tree, const bs_attr *attrs) {
+static bool bs_cmd_rename(bs_tree *tree, const bs_attr *attrs)
+{
     uint32_t from, parent, existing, moved, walk;
     const char *name;
     size_t length, steps;
     char *copy;
     from = bs_find(tree, &attrs[BS_A_PATH], true);
-    if (from == BS_NONE ||
-        !bs_resolve_parent(tree, &attrs[BS_A_PATH_TO], &parent, &name, &length))
-        return false;
+    if (from == BS_NONE || !bs_resolve_parent(tree, &attrs[BS_A_PATH_TO], &parent, &name, &length)) return false;
     moved = tree->dents[from].node;
     /* A directory must not move below itself. */
     if (tree->nodes[moved].type == BS_T_DIR) {
@@ -604,21 +601,20 @@ static bool bs_cmd_rename(bs_tree *tree, const bs_attr *attrs) {
     return true;
 }
 
-static bool bs_cmd_link(bs_tree *tree, const bs_attr *attrs) {
+static bool bs_cmd_link(bs_tree *tree, const bs_attr *attrs)
+{
     uint32_t target, parent;
     const char *name;
     size_t length;
     target = bs_find(tree, &attrs[BS_A_PATH_LINK], true);
-    if (target == BS_NONE ||
-        tree->nodes[tree->dents[target].node].type == BS_T_DIR ||
-        !bs_resolve_parent(tree, &attrs[BS_A_PATH], &parent, &name, &length) ||
+    if (target == BS_NONE || tree->nodes[tree->dents[target].node].type == BS_T_DIR || !bs_resolve_parent(tree, &attrs[BS_A_PATH], &parent, &name, &length) ||
         bs_lookup(tree, parent, name, length) != BS_NONE)
         return false;
-    return bs_new_dentry(tree, parent, name, length,
-                         tree->dents[target].node) != BS_NONE;
+    return bs_new_dentry(tree, parent, name, length, tree->dents[target].node) != BS_NONE;
 }
 
-static bool bs_cmd_remove(bs_tree *tree, const bs_attr *attrs, bool dir) {
+static bool bs_cmd_remove(bs_tree *tree, const bs_attr *attrs, bool dir)
+{
     uint32_t d = bs_find(tree, &attrs[BS_A_PATH], false);
     if (d == BS_NONE) return tree->incremental;
     if ((tree->nodes[tree->dents[d].node].type == BS_T_DIR) != dir) return false;
@@ -626,7 +622,8 @@ static bool bs_cmd_remove(bs_tree *tree, const bs_attr *attrs, bool dir) {
     return true;
 }
 
-static uint32_t bs_file_node(bs_tree *tree, const bs_attr *attrs) {
+static uint32_t bs_file_node(bs_tree *tree, const bs_attr *attrs)
+{
     uint32_t d = bs_find(tree, &attrs[BS_A_PATH], true);
     uint32_t node;
     if (d == BS_NONE) return BS_NONE;
@@ -634,14 +631,12 @@ static uint32_t bs_file_node(bs_tree *tree, const bs_attr *attrs) {
     return tree->nodes[node].type == BS_T_FILE ? node : BS_NONE;
 }
 
-static bool bs_cmd_write(bs_tree *tree, const bs_attr *attrs,
-                         const uint8_t *payload, int64_t payload_offset) {
+static bool bs_cmd_write(bs_tree *tree, const bs_attr *attrs, const uint8_t *payload, int64_t payload_offset)
+{
     uint32_t node = bs_file_node(tree, attrs);
     uint64_t off;
     bs_op op;
-    if (node == BS_NONE || !bs_u64(attrs, BS_A_FILE_OFFSET, &off) ||
-        !attrs[BS_A_DATA].present)
-        return false;
+    if (node == BS_NONE || !bs_u64(attrs, BS_A_FILE_OFFSET, &off) || !attrs[BS_A_DATA].present) return false;
     if (attrs[BS_A_DATA].len == 0U) return true;
     xx_mem_zero(&op, sizeof(op));
     op.kind = BS_OP_WRITE;
@@ -653,25 +648,17 @@ static bool bs_cmd_write(bs_tree *tree, const bs_attr *attrs,
     return bs_add_op(tree, node, &op);
 }
 
-static bool bs_cmd_encoded(bs_tree *tree, const bs_attr *attrs,
-                           const uint8_t *payload, int64_t payload_offset) {
+static bool bs_cmd_encoded(bs_tree *tree, const bs_attr *attrs, const uint8_t *payload, int64_t payload_offset)
+{
     uint32_t node = bs_file_node(tree, attrs);
     uint64_t off, file_len, ulen, uoff;
     uint32_t comp, enc = 0U;
     bs_op op;
-    if (node == BS_NONE || !bs_u64(attrs, BS_A_FILE_OFFSET, &off) ||
-        !bs_u64(attrs, BS_A_UNENCODED_FILE_LEN, &file_len) ||
-        !bs_u64(attrs, BS_A_UNENCODED_LEN, &ulen) ||
-        !bs_u64(attrs, BS_A_UNENCODED_OFFSET, &uoff) ||
-        !bs_u32(attrs, BS_A_COMPRESSION, &comp) ||
-        !attrs[BS_A_DATA].present)
+    if (node == BS_NONE || !bs_u64(attrs, BS_A_FILE_OFFSET, &off) || !bs_u64(attrs, BS_A_UNENCODED_FILE_LEN, &file_len) || !bs_u64(attrs, BS_A_UNENCODED_LEN, &ulen) ||
+        !bs_u64(attrs, BS_A_UNENCODED_OFFSET, &uoff) || !bs_u32(attrs, BS_A_COMPRESSION, &comp) || !attrs[BS_A_DATA].present)
         return false;
-    if (attrs[BS_A_ENCRYPTION].present &&
-        (!bs_u32(attrs, BS_A_ENCRYPTION, &enc) || enc != 0U))
-        return false;
-    if (comp > 7U || ulen == 0U || ulen > BS_MAX_UNENCODED ||
-        uoff > ulen || file_len > ulen - uoff)
-        return false;
+    if (attrs[BS_A_ENCRYPTION].present && (!bs_u32(attrs, BS_A_ENCRYPTION, &enc) || enc != 0U)) return false;
+    if (comp > 7U || ulen == 0U || ulen > BS_MAX_UNENCODED || uoff > ulen || file_len > ulen - uoff) return false;
     if (file_len == 0U) return true;
     xx_mem_zero(&op, sizeof(op));
     op.kind = BS_OP_ENCODED;
@@ -686,15 +673,13 @@ static bool bs_cmd_encoded(bs_tree *tree, const bs_attr *attrs,
     return bs_add_op(tree, node, &op);
 }
 
-static bool bs_cmd_clone(bs_tree *tree, const bs_attr *attrs) {
+static bool bs_cmd_clone(bs_tree *tree, const bs_attr *attrs)
+{
     uint32_t node = bs_file_node(tree, attrs), src_d;
     uint64_t off, len, src_off;
     bs_op op;
     bool same_subvol;
-    if (node == BS_NONE || !bs_u64(attrs, BS_A_FILE_OFFSET, &off) ||
-        !bs_u64(attrs, BS_A_CLONE_LEN, &len) ||
-        !bs_u64(attrs, BS_A_CLONE_OFFSET, &src_off))
-        return false;
+    if (node == BS_NONE || !bs_u64(attrs, BS_A_FILE_OFFSET, &off) || !bs_u64(attrs, BS_A_CLONE_LEN, &len) || !bs_u64(attrs, BS_A_CLONE_OFFSET, &src_off)) return false;
     if (len == 0U) return true;
     xx_mem_zero(&op, sizeof(op));
     op.kind = BS_OP_CLONE;
@@ -703,24 +688,19 @@ static bool bs_cmd_clone(bs_tree *tree, const bs_attr *attrs) {
     op.a = src_off;
     op.b = tree->op_count;
     op.src = BS_NONE;
-    same_subvol = !attrs[BS_A_CLONE_UUID].present ||
-                  (attrs[BS_A_CLONE_UUID].len == 16U && tree->have_uuid &&
-                   xx_rt_memcmp(attrs[BS_A_CLONE_UUID].p, tree->subvol_uuid,
-                                16U) == 0);
+    same_subvol =
+        !attrs[BS_A_CLONE_UUID].present || (attrs[BS_A_CLONE_UUID].len == 16U && tree->have_uuid && xx_rt_memcmp(attrs[BS_A_CLONE_UUID].p, tree->subvol_uuid, 16U) == 0);
     if (same_subvol) {
         src_d = bs_find(tree, &attrs[BS_A_CLONE_PATH], false);
-        if (src_d != BS_NONE &&
-            tree->nodes[tree->dents[src_d].node].type == BS_T_FILE)
-            op.src = tree->dents[src_d].node;
+        if (src_d != BS_NONE && tree->nodes[tree->dents[src_d].node].type == BS_T_FILE) op.src = tree->dents[src_d].node;
     }
-    if (op.src == BS_NONE || len > BS_MAX_FILE_SIZE ||
-        src_off > BS_MAX_FILE_SIZE - len)
-        tree->nodes[node].unresolved = true;
+    if (op.src == BS_NONE || len > BS_MAX_FILE_SIZE || src_off > BS_MAX_FILE_SIZE - len) tree->nodes[node].unresolved = true;
     bs_extend(&tree->nodes[node], op.off, op.len);
     return bs_add_op(tree, node, &op);
 }
 
-static bool bs_cmd_truncate(bs_tree *tree, const bs_attr *attrs) {
+static bool bs_cmd_truncate(bs_tree *tree, const bs_attr *attrs)
+{
     uint32_t node = bs_file_node(tree, attrs);
     uint64_t size;
     bs_op op;
@@ -736,13 +716,11 @@ static bool bs_cmd_truncate(bs_tree *tree, const bs_attr *attrs) {
     return bs_add_op(tree, node, &op);
 }
 
-static bool bs_cmd_fallocate(bs_tree *tree, const bs_attr *attrs) {
+static bool bs_cmd_fallocate(bs_tree *tree, const bs_attr *attrs)
+{
     uint32_t node = bs_file_node(tree, attrs), mode;
     uint64_t off, len;
-    if (node == BS_NONE || !bs_u32(attrs, BS_A_FALLOCATE_MODE, &mode) ||
-        !bs_u64(attrs, BS_A_FILE_OFFSET, &off) ||
-        !bs_u64(attrs, BS_A_SIZE, &len))
-        return false;
+    if (node == BS_NONE || !bs_u32(attrs, BS_A_FALLOCATE_MODE, &mode) || !bs_u64(attrs, BS_A_FILE_OFFSET, &off) || !bs_u64(attrs, BS_A_SIZE, &len)) return false;
     if (len == 0U) return true;
     if ((mode & BS_FALLOC_PUNCH_HOLE) != 0U) {
         bs_op op;
@@ -756,7 +734,8 @@ static bool bs_cmd_fallocate(bs_tree *tree, const bs_attr *attrs) {
     return true;
 }
 
-static bool bs_cmd_meta(bs_tree *tree, uint16_t cmd, const bs_attr *attrs) {
+static bool bs_cmd_meta(bs_tree *tree, uint16_t cmd, const bs_attr *attrs)
+{
     uint32_t d = bs_find(tree, &attrs[BS_A_PATH], true);
     bs_node *node;
     uint64_t value;
@@ -766,8 +745,7 @@ static bool bs_cmd_meta(bs_tree *tree, uint16_t cmd, const bs_attr *attrs) {
         if (!bs_u64(attrs, BS_A_MODE, &value)) return false;
         node->mode = (node->mode & ~07777U) | ((uint32_t)value & 07777U);
     } else if (cmd == BS_C_UTIMES) {
-        if (!attrs[BS_A_MTIME].present || attrs[BS_A_MTIME].len != 12U)
-            return false;
+        if (!attrs[BS_A_MTIME].present || attrs[BS_A_MTIME].len != 12U) return false;
         node->mtime = (int64_t)xx_data_get_u64(attrs[BS_A_MTIME].p, 8, 0, false);
     }
     return true;
@@ -775,56 +753,45 @@ static bool bs_cmd_meta(bs_tree *tree, uint16_t cmd, const bs_attr *attrs) {
 
 /* Apply one command.  False marks the command as not applicable (the
  * stream is then flagged damaged, and parsing goes on). */
-static bool bs_apply(bs_tree *tree, uint16_t cmd, const uint8_t *payload,
-                     uint32_t length, int64_t payload_offset) {
+static bool bs_apply(bs_tree *tree, uint16_t cmd, const uint8_t *payload, uint32_t length, int64_t payload_offset)
+{
     bs_attr attrs[BS_A_COUNT];
     if (!bs_parse_tlvs(tree, payload, length, attrs)) return false;
     switch (cmd) {
-    case BS_C_SUBVOL:
-    case BS_C_SNAPSHOT:
-        if (attrs[BS_A_UUID].present && attrs[BS_A_UUID].len == 16U &&
-            !tree->have_uuid) {
-            xx_mem_copy(tree->subvol_uuid, attrs[BS_A_UUID].p, 16U);
-            tree->have_uuid = true;
-        }
-        return true;
-    case BS_C_MKFILE:
-    case BS_C_MKDIR:
-    case BS_C_MKNOD:
-    case BS_C_MKFIFO:
-    case BS_C_MKSOCK:
-    case BS_C_SYMLINK:
-        return bs_cmd_create(tree, cmd, attrs);
-    case BS_C_RENAME:
-        return bs_cmd_rename(tree, attrs);
-    case BS_C_LINK:
-        return bs_cmd_link(tree, attrs);
-    case BS_C_UNLINK:
-        return bs_cmd_remove(tree, attrs, false);
-    case BS_C_RMDIR:
-        return bs_cmd_remove(tree, attrs, true);
-    case BS_C_WRITE:
-        return bs_cmd_write(tree, attrs, payload, payload_offset);
-    case BS_C_ENCODED_WRITE:
-        return bs_cmd_encoded(tree, attrs, payload, payload_offset);
-    case BS_C_CLONE:
-        return bs_cmd_clone(tree, attrs);
-    case BS_C_TRUNCATE:
-        return bs_cmd_truncate(tree, attrs);
-    case BS_C_FALLOCATE:
-        return bs_cmd_fallocate(tree, attrs);
-    case BS_C_CHMOD:
-    case BS_C_UTIMES:
-        return bs_cmd_meta(tree, cmd, attrs);
-    default:
-        /* CHOWN, xattrs, UPDATE_EXTENT, FILEATTR, ENABLE_VERITY, END:
-         * nothing to rebuild. */
-        return true;
+        case BS_C_SUBVOL:
+        case BS_C_SNAPSHOT:
+            if (attrs[BS_A_UUID].present && attrs[BS_A_UUID].len == 16U && !tree->have_uuid) {
+                xx_mem_copy(tree->subvol_uuid, attrs[BS_A_UUID].p, 16U);
+                tree->have_uuid = true;
+            }
+            return true;
+        case BS_C_MKFILE:
+        case BS_C_MKDIR:
+        case BS_C_MKNOD:
+        case BS_C_MKFIFO:
+        case BS_C_MKSOCK:
+        case BS_C_SYMLINK: return bs_cmd_create(tree, cmd, attrs);
+        case BS_C_RENAME: return bs_cmd_rename(tree, attrs);
+        case BS_C_LINK: return bs_cmd_link(tree, attrs);
+        case BS_C_UNLINK: return bs_cmd_remove(tree, attrs, false);
+        case BS_C_RMDIR: return bs_cmd_remove(tree, attrs, true);
+        case BS_C_WRITE: return bs_cmd_write(tree, attrs, payload, payload_offset);
+        case BS_C_ENCODED_WRITE: return bs_cmd_encoded(tree, attrs, payload, payload_offset);
+        case BS_C_CLONE: return bs_cmd_clone(tree, attrs);
+        case BS_C_TRUNCATE: return bs_cmd_truncate(tree, attrs);
+        case BS_C_FALLOCATE: return bs_cmd_fallocate(tree, attrs);
+        case BS_C_CHMOD:
+        case BS_C_UTIMES: return bs_cmd_meta(tree, cmd, attrs);
+        default:
+            /* CHOWN, xattrs, UPDATE_EXTENT, FILEATTR, ENABLE_VERITY, END:
+             * nothing to rebuild. */
+            return true;
     }
 }
 
 /* Header and first command only: cheap enough for detection. */
-static bool bs_probe(Abstractformat *format, uint32_t *version_out) {
+static bool bs_probe(Abstractformat *format, uint32_t *version_out)
+{
     uint8_t head[BS_HEADER_SIZE + BS_CMD_HEADER];
     uint8_t *payload;
     int64_t total, size;
@@ -835,29 +802,20 @@ static bool bs_probe(Abstractformat *format, uint32_t *version_out) {
     total = xx_io_total_size(format->device);
     if (total < format->base_address) return false;
     size = total - format->base_address;
-    if (size < (int64_t)sizeof(head) ||
-        !bs_read_at(format->device, format->base_address, head, sizeof(head)) ||
-        xx_rt_memcmp(head, "btrfs-stream", BS_MAGIC_SIZE) != 0)
+    if (size < (int64_t)sizeof(head) || !bs_read_at(format->device, format->base_address, head, sizeof(head)) || xx_rt_memcmp(head, "btrfs-stream", BS_MAGIC_SIZE) != 0)
         return false;
     version = xx_data_get_u32(head + BS_MAGIC_SIZE, 4, 0, false);
     if (version < 1U || version > 3U) return false;
     length = xx_data_get_u32(head + BS_HEADER_SIZE, 4, 0, false);
     cmd = xx_data_get_u16(head + BS_HEADER_SIZE + 4U, 2, 0, false);
     crc = xx_data_get_u32(head + BS_HEADER_SIZE + 6U, 4, 0, false);
-    if ((cmd != BS_C_SUBVOL && cmd != BS_C_SNAPSHOT) || length == 0U ||
-        length > BS_PROBE_MAX_CMD ||
-        (int64_t)length > size - (int64_t)sizeof(head))
-        return false;
+    if ((cmd != BS_C_SUBVOL && cmd != BS_C_SNAPSHOT) || length == 0U || length > BS_PROBE_MAX_CMD || (int64_t)length > size - (int64_t)sizeof(head)) return false;
     payload = (uint8_t *)xx_mem_alloc(length);
     if (!payload) return false;
-    ok = bs_read_at(format->device,
-                    format->base_address + (int64_t)sizeof(head), payload,
-                    length);
+    ok = bs_read_at(format->device, format->base_address + (int64_t)sizeof(head), payload, length);
     if (ok) {
-        head[BS_HEADER_SIZE + 6U] = head[BS_HEADER_SIZE + 7U] =
-            head[BS_HEADER_SIZE + 8U] = head[BS_HEADER_SIZE + 9U] = 0U;
-        computed = xx_btrfs_stream_crc32c(0U, head + BS_HEADER_SIZE,
-                                          BS_CMD_HEADER);
+        head[BS_HEADER_SIZE + 6U] = head[BS_HEADER_SIZE + 7U] = head[BS_HEADER_SIZE + 8U] = head[BS_HEADER_SIZE + 9U] = 0U;
+        computed = xx_btrfs_stream_crc32c(0U, head + BS_HEADER_SIZE, BS_CMD_HEADER);
         computed = xx_btrfs_stream_crc32c(computed, payload, length);
         ok = computed == crc;
     }
@@ -866,7 +824,8 @@ static bool bs_probe(Abstractformat *format, uint32_t *version_out) {
     return ok;
 }
 
-static bool bs_parse(Abstractformat *format, bs_tree *tree, xx_pd_struct *pd) {
+static bool bs_parse(Abstractformat *format, bs_tree *tree, xx_pd_struct *pd)
+{
     uint8_t header[BS_CMD_HEADER];
     int64_t total, pos, base;
     uint32_t root;
@@ -888,20 +847,15 @@ static bool bs_parse(Abstractformat *format, bs_tree *tree, xx_pd_struct *pd) {
             bs_tree_free(tree);
             return false;
         }
-        if (tree->commands >= BS_MAX_COMMANDS ||
-            !bs_read_at(format->device, base + pos, header, sizeof(header))) {
+        if (tree->commands >= BS_MAX_COMMANDS || !bs_read_at(format->device, base + pos, header, sizeof(header))) {
             tree->damaged = true;
             break;
         }
         length = xx_data_get_u32(header, 4, 0, false);
         cmd = xx_data_get_u16(header + 4U, 2, 0, false);
         crc = xx_data_get_u32(header + 6U, 4, 0, false);
-        if (cmd == BS_C_UNSPEC || cmd > BS_C_ENABLE_VERITY ||
-            length > BS_MAX_CMD ||
-            (int64_t)length > total - pos - (int64_t)BS_CMD_HEADER ||
-            (length && !bs_read_at(format->device,
-                                   base + pos + (int64_t)BS_CMD_HEADER,
-                                   tree->buf, length))) {
+        if (cmd == BS_C_UNSPEC || cmd > BS_C_ENABLE_VERITY || length > BS_MAX_CMD || (int64_t)length > total - pos - (int64_t)BS_CMD_HEADER ||
+            (length && !bs_read_at(format->device, base + pos + (int64_t)BS_CMD_HEADER, tree->buf, length))) {
             tree->damaged = true;
             break;
         }
@@ -914,9 +868,7 @@ static bool bs_parse(Abstractformat *format, bs_tree *tree, xx_pd_struct *pd) {
         }
         if (tree->commands == 0U && cmd == BS_C_SNAPSHOT) tree->incremental = true;
         ++tree->commands;
-        if (!bs_apply(tree, cmd, tree->buf, length,
-                      base + pos + (int64_t)BS_CMD_HEADER))
-            tree->damaged = true;
+        if (!bs_apply(tree, cmd, tree->buf, length, base + pos + (int64_t)BS_CMD_HEADER)) tree->damaged = true;
         pos += (int64_t)BS_CMD_HEADER + (int64_t)length;
         if (cmd == BS_C_END) {
             tree->has_end = true;
@@ -931,7 +883,8 @@ static bool bs_parse(Abstractformat *format, bs_tree *tree, xx_pd_struct *pd) {
 }
 
 /* Full path of a live dentry, or NULL when an ancestor was removed. */
-static char *bs_path_of(const bs_tree *tree, uint32_t dentry) {
+static char *bs_path_of(const bs_tree *tree, uint32_t dentry)
+{
     uint32_t chain[BS_MAX_DEPTH];
     size_t depth = 0U, total = 0U, index;
     uint32_t cur = dentry;
@@ -939,8 +892,7 @@ static char *bs_path_of(const bs_tree *tree, uint32_t dentry) {
     for (;;) {
         const bs_dentry *d;
         uint32_t parent;
-        if (cur == BS_NONE || cur >= tree->dent_count || depth >= BS_MAX_DEPTH)
-            return NULL;
+        if (cur == BS_NONE || cur >= tree->dent_count || depth >= BS_MAX_DEPTH) return NULL;
         d = &tree->dents[cur];
         if (!d->alive) return NULL;
         chain[depth++] = cur;
@@ -965,19 +917,20 @@ static char *bs_path_of(const bs_tree *tree, uint32_t dentry) {
 
 /* ------------------------------------------------------------- stream --- */
 
-static void bs_stream_free(void *opaque) {
+static void bs_stream_free(void *opaque)
+{
     bs_stream *stream = (bs_stream *)opaque;
     size_t index;
     if (!stream) return;
     for (index = 0U; index < stream->count; ++index)
-        if (stream->entries[index].path)
-            xx_mem_free(stream->entries[index].path);
+        if (stream->entries[index].path) xx_mem_free(stream->entries[index].path);
     if (stream->entries) xx_mem_free(stream->entries);
     bs_tree_free(&stream->tree);
     xx_mem_free(stream);
 }
 
-static bs_stream *bs_stream_build(Abstractformat *format, xx_pd_struct *pd) {
+static bs_stream *bs_stream_build(Abstractformat *format, xx_pd_struct *pd)
+{
     bs_stream *stream = (bs_stream *)xx_mem_calloc(1U, sizeof(*stream));
     size_t index, live = 0U;
     if (!stream) return NULL;
@@ -1016,62 +969,51 @@ typedef struct bs_ctx_s {
 } bs_ctx;
 
 /* Decode an ENCODED_WRITE extent into @p out (exactly op->b bytes). */
-static bool bs_decode(bs_ctx *ctx, const bs_op *op, uint8_t *out) {
+static bool bs_decode(bs_ctx *ctx, const bs_op *op, uint8_t *out)
+{
     uint8_t *in;
     size_t size = (size_t)op->b, written = 0U;
     bool ok = false;
-    if (op->b == 0U || op->b > BS_MAX_UNENCODED || op->data_len > BS_MAX_CMD)
-        return false;
+    if (op->b == 0U || op->b > BS_MAX_UNENCODED || op->data_len > BS_MAX_CMD) return false;
     in = (uint8_t *)xx_mem_alloc(op->data_len ? op->data_len : 1U);
     if (!in) return false;
     xx_mem_zero(out, size);
     if (!bs_read_at(ctx->device, op->data, in, op->data_len)) goto done;
     switch (op->comp) {
-    case 0:
-        if (op->data_len < size) goto done;
-        xx_mem_copy(out, in, size);
-        ok = true;
-        break;
-    case 1:
-        ok = op->data_len > 0U &&
-             xx_zlib_stream_decode_memory(in, op->data_len, out, size,
-                                          &written) &&
-             written <= size;
-        break;
-    case 2:
-        ok = op->data_len > 0U &&
-             xx_zstd_decompress_memory(in, op->data_len, out, size, &written) &&
-             written <= size;
-        break;
-    default: {
-        /* LZO framing: u32 total length, then {u32 segment length, LZO1X
-         * data} segments that never straddle a sector; fewer than four
-         * bytes left in a sector are padding. */
-        size_t sector = (size_t)0x1000U << (op->comp - 3U);
-        size_t total, pos = 4U, produced = 0U;
-        if (op->data_len < 4U) goto done;
-        total = xx_data_get_u32(in, 4, 0, false);
-        if (total < 4U || total > op->data_len) goto done;
-        while (pos < total) {
-            size_t room = sector - (pos % sector), seg, part = 0U, want;
-            if (room < 4U) {
-                pos += room;
-                continue;
+        case 0:
+            if (op->data_len < size) goto done;
+            xx_mem_copy(out, in, size);
+            ok = true;
+            break;
+        case 1: ok = op->data_len > 0U && xx_zlib_stream_decode_memory(in, op->data_len, out, size, &written) && written <= size; break;
+        case 2: ok = op->data_len > 0U && xx_zstd_decompress_memory(in, op->data_len, out, size, &written) && written <= size; break;
+        default: {
+            /* LZO framing: u32 total length, then {u32 segment length, LZO1X
+             * data} segments that never straddle a sector; fewer than four
+             * bytes left in a sector are padding. */
+            size_t sector = (size_t)0x1000U << (op->comp - 3U);
+            size_t total, pos = 4U, produced = 0U;
+            if (op->data_len < 4U) goto done;
+            total = xx_data_get_u32(in, 4, 0, false);
+            if (total < 4U || total > op->data_len) goto done;
+            while (pos < total) {
+                size_t room = sector - (pos % sector), seg, part = 0U, want;
+                if (room < 4U) {
+                    pos += room;
+                    continue;
+                }
+                if (total - pos < 4U) goto done;
+                seg = xx_data_get_u32(in + pos, 4, 0, false);
+                pos += 4U;
+                if (seg == 0U || seg > total - pos || produced >= size) goto done;
+                want = size - produced < sector ? size - produced : sector;
+                if (!xx_lzo1x_decompress(in + pos, seg, out + produced, want, &part) || part > want) goto done;
+                produced += part;
+                pos += seg;
             }
-            if (total - pos < 4U) goto done;
-            seg = xx_data_get_u32(in + pos, 4, 0, false);
-            pos += 4U;
-            if (seg == 0U || seg > total - pos || produced >= size) goto done;
-            want = size - produced < sector ? size - produced : sector;
-            if (!xx_lzo1x_decompress(in + pos, seg, out + produced, want, &part) ||
-                part > want)
-                goto done;
-            produced += part;
-            pos += seg;
+            ok = true;
+            break;
         }
-        ok = true;
-        break;
-    }
     }
 done:
     xx_mem_free(in);
@@ -1079,67 +1021,54 @@ done:
 }
 
 /* Bytes [off, off + len) of @p node as they stood before op @p limit. */
-static bool bs_overlay(bs_ctx *ctx, uint32_t node, uint64_t limit,
-                       uint64_t off, size_t len, uint8_t *out, unsigned depth) {
+static bool bs_overlay(bs_ctx *ctx, uint32_t node, uint64_t limit, uint64_t off, size_t len, uint8_t *out, unsigned depth)
+{
     const bs_tree *tree = ctx->tree;
     uint32_t index;
     uint64_t end = off + len;
     if (depth > BS_CLONE_DEPTH || node >= tree->node_count) return false;
     xx_mem_zero(out, len);
-    for (index = tree->nodes[node].first_op;
-         index != BS_NONE && (uint64_t)index < limit;
-         index = tree->ops[index].next) {
+    for (index = tree->nodes[node].first_op; index != BS_NONE && (uint64_t)index < limit; index = tree->ops[index].next) {
         const bs_op *op = &tree->ops[index];
         uint64_t s, e;
         if (ctx->budget == 0U) return false;
         --ctx->budget;
         if (op->kind == BS_OP_TRUNC) {
-            if (op->off < end)
-                xx_mem_zero(out + (op->off > off ? op->off - off : 0U),
-                            (size_t)(end - (op->off > off ? op->off : off)));
+            if (op->off < end) xx_mem_zero(out + (op->off > off ? op->off - off : 0U), (size_t)(end - (op->off > off ? op->off : off)));
             continue;
         }
         s = op->off > off ? op->off : off;
         e = op->off + op->len < end ? op->off + op->len : end;
         if (s >= e) continue;
         switch (op->kind) {
-        case BS_OP_WRITE:
-            if (!bs_read_at(ctx->device, op->data + (int64_t)(s - op->off),
-                            out + (s - off), (size_t)(e - s)))
-                return false;
-            break;
-        case BS_OP_ENCODED: {
-            uint8_t *dec = (uint8_t *)xx_mem_alloc((size_t)op->b);
-            bool ok = dec && bs_decode(ctx, op, dec);
-            if (ok)
-                xx_mem_copy(out + (s - off), dec + op->a + (s - op->off),
-                            (size_t)(e - s));
-            if (dec) xx_mem_free(dec);
-            if (!ok) return false;
-            break;
-        }
-        case BS_OP_CLONE:
-            if (op->src == BS_NONE ||
-                !bs_overlay(ctx, op->src, op->b, op->a + (s - op->off),
-                            (size_t)(e - s), out + (s - off), depth + 1U))
-                return false;
-            break;
-        default: /* ZERO */
-            xx_mem_zero(out + (s - off), (size_t)(e - s));
-            break;
+            case BS_OP_WRITE:
+                if (!bs_read_at(ctx->device, op->data + (int64_t)(s - op->off), out + (s - off), (size_t)(e - s))) return false;
+                break;
+            case BS_OP_ENCODED: {
+                uint8_t *dec = (uint8_t *)xx_mem_alloc((size_t)op->b);
+                bool ok = dec && bs_decode(ctx, op, dec);
+                if (ok) xx_mem_copy(out + (s - off), dec + op->a + (s - op->off), (size_t)(e - s));
+                if (dec) xx_mem_free(dec);
+                if (!ok) return false;
+                break;
+            }
+            case BS_OP_CLONE:
+                if (op->src == BS_NONE || !bs_overlay(ctx, op->src, op->b, op->a + (s - op->off), (size_t)(e - s), out + (s - off), depth + 1U)) return false;
+                break;
+            default: /* ZERO */ xx_mem_zero(out + (s - off), (size_t)(e - s)); break;
         }
     }
     return true;
 }
 
 typedef struct bs_sink_s {
-    xx_io_device *device;  /**< NULL: verify only. */
-    uint64_t phys;         /**< Bytes the output holds. */
+    xx_io_device *device; /**< NULL: verify only. */
+    uint64_t phys;        /**< Bytes the output holds. */
     uint8_t *zeros;
 } bs_sink;
 
-static bool bs_sink_put(bs_sink *sink, uint64_t at, const uint8_t *data,
-                        size_t size) {
+static bool bs_sink_put(bs_sink *sink, uint64_t at, const uint8_t *data, size_t size)
+{
     size_t done = 0U;
     if (!sink->device || size == 0U) return true;
     if (xx_io_seek64(sink->device, (int64_t)at, SEEK_SET) != 0) return false;
@@ -1151,7 +1080,8 @@ static bool bs_sink_put(bs_sink *sink, uint64_t at, const uint8_t *data,
     return true;
 }
 
-static bool bs_sink_zero(bs_sink *sink, uint64_t at, uint64_t size) {
+static bool bs_sink_zero(bs_sink *sink, uint64_t at, uint64_t size)
+{
     while (size) {
         size_t part = size > BS_CHUNK ? BS_CHUNK : (size_t)size;
         if (!bs_sink_put(sink, at, sink->zeros, part)) return false;
@@ -1163,16 +1093,16 @@ static bool bs_sink_zero(bs_sink *sink, uint64_t at, uint64_t size) {
 
 /* Explicitly zero any gap before @p at, so the output never depends on how
  * the host fills a seek past the end. */
-static bool bs_sink_reach(bs_sink *sink, uint64_t at) {
+static bool bs_sink_reach(bs_sink *sink, uint64_t at)
+{
     if (at <= sink->phys) return true;
     if (!bs_sink_zero(sink, sink->phys, at - sink->phys)) return false;
     sink->phys = at;
     return true;
 }
 
-static bool bs_materialize(xx_io_device *device, const bs_tree *tree,
-                           uint32_t node_index, xx_io_device *destination,
-                           uint64_t max_size, xx_pd_struct *pd) {
+static bool bs_materialize(xx_io_device *device, const bs_tree *tree, uint32_t node_index, xx_io_device *destination, uint64_t max_size, xx_pd_struct *pd)
+{
     const bs_node *node = &tree->nodes[node_index];
     bs_ctx ctx;
     bs_sink sink;
@@ -1180,9 +1110,7 @@ static bool bs_materialize(xx_io_device *device, const bs_tree *tree,
     uint64_t final_size = node->size;
     uint32_t index;
     bool ok = false;
-    if (node->oversize || node->unresolved || final_size > BS_MAX_FILE_SIZE ||
-        (max_size && final_size > max_size))
-        return false;
+    if (node->oversize || node->unresolved || final_size > BS_MAX_FILE_SIZE || (max_size && final_size > max_size)) return false;
     ctx.device = device;
     ctx.tree = tree;
     ctx.budget = BS_STEP_BUDGET;
@@ -1198,8 +1126,7 @@ static bool bs_materialize(xx_io_device *device, const bs_tree *tree,
         if (pd && xx_pd_is_stopped(pd)) goto done;
         if (op->kind == BS_OP_TRUNC) {
             uint64_t stop = sink.phys < final_size ? sink.phys : final_size;
-            if (op->off < stop && !bs_sink_zero(&sink, op->off, stop - op->off))
-                goto done;
+            if (op->off < stop && !bs_sink_zero(&sink, op->off, stop - op->off)) goto done;
             continue;
         }
         s = op->off;
@@ -1207,41 +1134,33 @@ static bool bs_materialize(xx_io_device *device, const bs_tree *tree,
         e = op->len > final_size - s ? final_size : s + op->len;
         if (!bs_sink_reach(&sink, s)) goto done;
         switch (op->kind) {
-        case BS_OP_WRITE: {
-            uint64_t at = s;
-            while (at < e) {
-                size_t part = e - at > BS_CHUNK ? BS_CHUNK : (size_t)(e - at);
-                if (!bs_read_at(device, op->data + (int64_t)(at - op->off),
-                                chunk, part) ||
-                    !bs_sink_put(&sink, at, chunk, part))
-                    goto done;
-                at += part;
+            case BS_OP_WRITE: {
+                uint64_t at = s;
+                while (at < e) {
+                    size_t part = e - at > BS_CHUNK ? BS_CHUNK : (size_t)(e - at);
+                    if (!bs_read_at(device, op->data + (int64_t)(at - op->off), chunk, part) || !bs_sink_put(&sink, at, chunk, part)) goto done;
+                    at += part;
+                }
+                break;
             }
-            break;
-        }
-        case BS_OP_ENCODED:
-            dec = (uint8_t *)xx_mem_alloc((size_t)op->b);
-            if (!dec || !bs_decode(&ctx, op, dec) ||
-                !bs_sink_put(&sink, s, dec + op->a, (size_t)(e - s)))
-                goto done;
-            xx_mem_free(dec);
-            dec = NULL;
-            break;
-        case BS_OP_CLONE: {
-            uint64_t at = s;
-            while (at < e) {
-                size_t part = e - at > BS_CHUNK ? BS_CHUNK : (size_t)(e - at);
-                if (!bs_overlay(&ctx, op->src, op->b, op->a + (at - op->off),
-                                part, chunk, 1U) ||
-                    !bs_sink_put(&sink, at, chunk, part))
-                    goto done;
-                at += part;
+            case BS_OP_ENCODED:
+                dec = (uint8_t *)xx_mem_alloc((size_t)op->b);
+                if (!dec || !bs_decode(&ctx, op, dec) || !bs_sink_put(&sink, s, dec + op->a, (size_t)(e - s))) goto done;
+                xx_mem_free(dec);
+                dec = NULL;
+                break;
+            case BS_OP_CLONE: {
+                uint64_t at = s;
+                while (at < e) {
+                    size_t part = e - at > BS_CHUNK ? BS_CHUNK : (size_t)(e - at);
+                    if (!bs_overlay(&ctx, op->src, op->b, op->a + (at - op->off), part, chunk, 1U) || !bs_sink_put(&sink, at, chunk, part)) goto done;
+                    at += part;
+                }
+                break;
             }
-            break;
-        }
-        default:
-            if (!bs_sink_zero(&sink, s, e - s)) goto done;
-            break;
+            default:
+                if (!bs_sink_zero(&sink, s, e - s)) goto done;
+                break;
         }
         if (e > sink.phys) sink.phys = e;
     }
@@ -1255,48 +1174,43 @@ done:
 
 /* ------------------------------------------------------------- naming --- */
 
-static char bs_upper(char c) {
+static char bs_upper(char c)
+{
     return (c >= 'a' && c <= 'z') ? (char)(c - 'a' + 'A') : c;
 }
 
-static bool bs_device_name(const char *name, size_t length) {
-    static const char *const devices[] = {"CON", "PRN", "AUX", "NUL",
-                                          "CONIN$", "CONOUT$", "CLOCK$"};
+static bool bs_device_name(const char *name, size_t length)
+{
+    static const char *const devices[] = {"CON", "PRN", "AUX", "NUL", "CONIN$", "CONOUT$", "CLOCK$"};
     size_t stem = 0U, index, k;
     while (stem < length && name[stem] != '.') ++stem;
     while (stem > 0U && name[stem - 1U] == ' ') --stem;
     for (index = 0U; index < sizeof(devices) / sizeof(devices[0]); ++index) {
         const char *word = devices[index];
-        for (k = 0U; k < stem && word[k] && bs_upper(name[k]) == word[k]; ++k) {}
+        for (k = 0U; k < stem && word[k] && bs_upper(name[k]) == word[k]; ++k) {
+        }
         if (k == stem && word[k] == 0) return true;
     }
     if (stem == 4U && name[3] >= '0' && name[3] <= '9' &&
-        ((bs_upper(name[0]) == 'C' && bs_upper(name[1]) == 'O' &&
-          bs_upper(name[2]) == 'M') ||
-         (bs_upper(name[0]) == 'L' && bs_upper(name[1]) == 'P' &&
-          bs_upper(name[2]) == 'T')))
+        ((bs_upper(name[0]) == 'C' && bs_upper(name[1]) == 'O' && bs_upper(name[2]) == 'M') ||
+         (bs_upper(name[0]) == 'L' && bs_upper(name[1]) == 'P' && bs_upper(name[2]) == 'T')))
         return true;
     return false;
 }
 
 /* Extraction-time check: every component must stay inside the output
  * directory on every host the library builds for. */
-static bool bs_safe_path(const char *path) {
+static bool bs_safe_path(const char *path)
+{
     const char *component = path, *cursor;
     if (!path || !path[0] || path[0] == '/' || path[0] == '\\') return false;
     for (cursor = path;; ++cursor) {
         unsigned char ch = (unsigned char)*cursor;
-        if (ch == ':' || ch == '<' || ch == '>' || ch == '"' || ch == '|' ||
-            ch == '?' || ch == '*' || ch == '\\' || (ch != 0U && ch < 32U) ||
-            ch == 0x7FU)
-            return false;
+        if (ch == ':' || ch == '<' || ch == '>' || ch == '"' || ch == '|' || ch == '?' || ch == '*' || ch == '\\' || (ch != 0U && ch < 32U) || ch == 0x7FU) return false;
         if (ch == '/' || ch == 0U) {
             size_t length = (size_t)(cursor - component);
-            if (length == 0U || (length == 1U && component[0] == '.') ||
-                (length == 2U && component[0] == '.' && component[1] == '.') ||
-                component[length - 1U] == ' ' ||
-                component[length - 1U] == '.' ||
-                bs_device_name(component, length))
+            if (length == 0U || (length == 1U && component[0] == '.') || (length == 2U && component[0] == '.' && component[1] == '.') || component[length - 1U] == ' ' ||
+                component[length - 1U] == '.' || bs_device_name(component, length))
                 return false;
             if (ch == 0U) return true;
             component = cursor + 1;
@@ -1306,17 +1220,16 @@ static bool bs_safe_path(const char *path) {
 
 /* ------------------------------------------------------------- record --- */
 
-static bool bs_copy_options(xx_list_s *destination, const xx_list_s *source) {
+static bool bs_copy_options(xx_list_s *destination, const xx_list_s *source)
+{
     size_t index;
     if (!source) return true;
     for (index = 0U; index < source->count; ++index) {
-        const xx_meta *original =
-            (const xx_meta *)xx_list_at((const xx_list_t *)source, index);
+        const xx_meta *original = (const xx_meta *)xx_list_at((const xx_list_t *)source, index);
         xx_meta copy;
         if (!original) continue;
         xx_meta_init(&copy, original->meta_id);
-        if (!xx_var_copy(&copy.var, &original->var) ||
-            !xx_list_append(destination, &copy)) {
+        if (!xx_var_copy(&copy.var, &original->var) || !xx_list_append(destination, &copy)) {
             xx_meta_cleanup(&copy);
             return false;
         }
@@ -1324,54 +1237,42 @@ static bool bs_copy_options(xx_list_s *destination, const xx_list_s *source) {
     return true;
 }
 
-static const xx_var *bs_option(const xx_list_s *options, uint32_t id) {
+static const xx_var *bs_option(const xx_list_s *options, uint32_t id)
+{
     size_t index;
     if (!options) return NULL;
     for (index = 0U; index < options->count; ++index) {
-        const xx_meta *meta =
-            (const xx_meta *)xx_list_at((const xx_list_t *)options, index);
+        const xx_meta *meta = (const xx_meta *)xx_list_at((const xx_list_t *)options, index);
         if (meta && meta->meta_id == id) return &meta->var;
     }
     return NULL;
 }
 
-static bool bs_set_record(xx_archive_record *record, const bs_stream *stream) {
+static bool bs_set_record(xx_archive_record *record, const bs_stream *stream)
+{
     const bs_entry *entry = &stream->entries[stream->index];
-    const bs_node *node =
-        &stream->tree.nodes[stream->tree.dents[entry->dentry].node];
-    uint64_t size = node->type == BS_T_DIR || node->type == BS_T_SPECIAL
-                        ? 0U : node->size;
+    const bs_node *node = &stream->tree.nodes[stream->tree.dents[entry->dentry].node];
+    uint64_t size = node->type == BS_T_DIR || node->type == BS_T_SPECIAL ? 0U : node->size;
     xx_archive_record_cleanup(record);
     xx_archive_record_init(record);
     record->header_offset = -1;
     record->header_size = 0;
     record->data_offset = -1;
     record->compressed_size = (int64_t)size;
-    if (!xx_archive_record_set_original_name(record, entry->path) ||
-        !xx_archive_record_set_meta_u64(record, XX_META_ID_UNCOMPRESSED_SIZE,
-                                        size) ||
-        !xx_archive_record_set_meta_u64(record, XX_META_ID_COMPRESSED_SIZE,
-                                        size) ||
-        !xx_archive_record_set_meta_u64(record, XX_META_ID_ATTRIBUTES,
-                                        node->mode) ||
-        !xx_archive_record_set_meta_u64(record, XX_META_ID_TIMESTAMP,
-                                        (uint64_t)node->mtime) ||
-        !xx_archive_record_set_meta_bool(record, XX_META_ID_IS_ENCRYPTED,
-                                         false) ||
-        !xx_archive_record_set_meta_bool(record, XX_META_ID_IS_FOLDER,
-                                         node->type == BS_T_DIR))
+    if (!xx_archive_record_set_original_name(record, entry->path) || !xx_archive_record_set_meta_u64(record, XX_META_ID_UNCOMPRESSED_SIZE, size) ||
+        !xx_archive_record_set_meta_u64(record, XX_META_ID_COMPRESSED_SIZE, size) || !xx_archive_record_set_meta_u64(record, XX_META_ID_ATTRIBUTES, node->mode) ||
+        !xx_archive_record_set_meta_u64(record, XX_META_ID_TIMESTAMP, (uint64_t)node->mtime) ||
+        !xx_archive_record_set_meta_bool(record, XX_META_ID_IS_ENCRYPTED, false) ||
+        !xx_archive_record_set_meta_bool(record, XX_META_ID_IS_FOLDER, node->type == BS_T_DIR))
         return false;
-    if (node->type == BS_T_LINK && node->link &&
-        !xx_archive_record_set_meta_str(record, XX_META_ID_LINK_TARGET,
-                                        node->link))
-        return false;
+    if (node->type == BS_T_LINK && node->link && !xx_archive_record_set_meta_str(record, XX_META_ID_LINK_TARGET, node->link)) return false;
     return true;
 }
 
 /* ---------------------------------------------------------------- API --- */
 
-void xx_btrfs_stream_init(xx_btrfs_stream *archive, xx_io_device *device,
-                          int64_t base_address) {
+void xx_btrfs_stream_init(xx_btrfs_stream *archive, xx_io_device *device, int64_t base_address)
+{
     if (!archive) return;
     xx_mem_zero(archive, sizeof(*archive));
     xx_format_init(&archive->format, device, base_address);
@@ -1384,46 +1285,42 @@ void xx_btrfs_stream_init(xx_btrfs_stream *archive, xx_io_device *device,
     archive->format.check_is_valid = xx_btrfs_stream_check_is_valid;
     archive->format.handle_base_info = xx_btrfs_stream_handle_base_info;
     archive->format.get_format_size = xx_btrfs_stream_get_format_size;
-    archive->format.get_number_of_archive_records =
-        xx_btrfs_stream_get_number_of_archive_records;
-    archive->format.create_archive_records_reading =
-        xx_btrfs_stream_create_archive_records_reading;
-    archive->format.get_current_archive_record =
-        xx_btrfs_stream_get_current_archive_record;
-    archive->format.unpack_current_archive_record =
-        xx_btrfs_stream_unpack_current_archive_record;
-    archive->format.archive_record_move_to_next =
-        xx_btrfs_stream_archive_record_move_to_next;
-    archive->format.free_archive_records_reading =
-        xx_btrfs_stream_free_archive_records_reading;
+    archive->format.get_number_of_archive_records = xx_btrfs_stream_get_number_of_archive_records;
+    archive->format.create_archive_records_reading = xx_btrfs_stream_create_archive_records_reading;
+    archive->format.get_current_archive_record = xx_btrfs_stream_get_current_archive_record;
+    archive->format.unpack_current_archive_record = xx_btrfs_stream_unpack_current_archive_record;
+    archive->format.archive_record_move_to_next = xx_btrfs_stream_archive_record_move_to_next;
+    archive->format.free_archive_records_reading = xx_btrfs_stream_free_archive_records_reading;
     archive->stream_size = -1;
 }
 
-xx_btrfs_stream *xx_btrfs_stream_create(xx_io_device *device,
-                                        int64_t base_address) {
-    xx_btrfs_stream *archive =
-        (xx_btrfs_stream *)xx_mem_alloc(sizeof(*archive));
+xx_btrfs_stream *xx_btrfs_stream_create(xx_io_device *device, int64_t base_address)
+{
+    xx_btrfs_stream *archive = (xx_btrfs_stream *)xx_mem_alloc(sizeof(*archive));
     if (archive) xx_btrfs_stream_init(archive, device, base_address);
     return archive;
 }
 
-void xx_btrfs_stream_destroy(xx_btrfs_stream *archive) {
+void xx_btrfs_stream_destroy(xx_btrfs_stream *archive)
+{
     if (archive) xx_format_cleanup_extra_parameters(&archive->format);
 }
 
-void xx_btrfs_stream_free(xx_btrfs_stream *archive) {
+void xx_btrfs_stream_free(xx_btrfs_stream *archive)
+{
     if (!archive) return;
     xx_btrfs_stream_destroy(archive);
     xx_mem_free(archive);
 }
 
-bool xx_btrfs_stream_check_is_valid(Abstractformat *format, xx_pd_struct *pd) {
+bool xx_btrfs_stream_check_is_valid(Abstractformat *format, xx_pd_struct *pd)
+{
     (void)pd;
     return bs_probe(format, NULL);
 }
 
-bool xx_btrfs_stream_handle_base_info(Abstractformat *format,
-                                      xx_pd_struct *pd) {
+bool xx_btrfs_stream_handle_base_info(Abstractformat *format, xx_pd_struct *pd)
+{
     xx_btrfs_stream *archive;
     bs_stream *stream;
     if (!format) return false;
@@ -1445,22 +1342,18 @@ bool xx_btrfs_stream_handle_base_info(Abstractformat *format,
     return true;
 }
 
-int64_t xx_btrfs_stream_get_format_size(Abstractformat *format,
-                                        xx_pd_struct *pd) {
-    return format && (format->base_info_handled ||
-                      xx_btrfs_stream_handle_base_info(format, pd))
-               ? format->format_size : -1;
+int64_t xx_btrfs_stream_get_format_size(Abstractformat *format, xx_pd_struct *pd)
+{
+    return format && (format->base_info_handled || xx_btrfs_stream_handle_base_info(format, pd)) ? format->format_size : -1;
 }
 
-uint64_t xx_btrfs_stream_get_number_of_archive_records(Abstractformat *format,
-                                                       xx_pd_struct *pd) {
-    return format && (format->base_info_handled ||
-                      xx_btrfs_stream_handle_base_info(format, pd))
-               ? ((xx_btrfs_stream *)format)->number_of_records : 0U;
+uint64_t xx_btrfs_stream_get_number_of_archive_records(Abstractformat *format, xx_pd_struct *pd)
+{
+    return format && (format->base_info_handled || xx_btrfs_stream_handle_base_info(format, pd)) ? ((xx_btrfs_stream *)format)->number_of_records : 0U;
 }
 
-xx_archive_record_state *xx_btrfs_stream_create_archive_records_reading(
-    Abstractformat *format, const xx_list_s *options, xx_pd_struct *pd) {
+xx_archive_record_state *xx_btrfs_stream_create_archive_records_reading(Abstractformat *format, const xx_list_s *options, xx_pd_struct *pd)
+{
     bs_stream *stream;
     xx_archive_record_state *state;
     if (!format) return NULL;
@@ -1489,20 +1382,16 @@ xx_archive_record_state *xx_btrfs_stream_create_archive_records_reading(
     return state;
 }
 
-const xx_archive_record *xx_btrfs_stream_get_current_archive_record(
-    Abstractformat *format, xx_archive_record_state *state) {
-    return format && state && state->format == format && state->has_record
-               ? &state->current_record : NULL;
+const xx_archive_record *xx_btrfs_stream_get_current_archive_record(Abstractformat *format, xx_archive_record_state *state)
+{
+    return format && state && state->format == format && state->has_record ? &state->current_record : NULL;
 }
 
-bool xx_btrfs_stream_archive_record_move_to_next(Abstractformat *format,
-                                                 xx_archive_record_state *state,
-                                                 xx_pd_struct *pd) {
+bool xx_btrfs_stream_archive_record_move_to_next(Abstractformat *format, xx_archive_record_state *state, xx_pd_struct *pd)
+{
     bs_stream *stream;
     (void)pd;
-    if (!format || !state || state->format != format ||
-        !(stream = (bs_stream *)state->internal_state) ||
-        stream->index + 1U >= stream->count) {
+    if (!format || !state || state->format != format || !(stream = (bs_stream *)state->internal_state) || stream->index + 1U >= stream->count) {
         if (state) state->has_record = false;
         return false;
     }
@@ -1515,8 +1404,8 @@ bool xx_btrfs_stream_archive_record_move_to_next(Abstractformat *format,
     return true;
 }
 
-bool xx_btrfs_stream_unpack_current_archive_record(
-    Abstractformat *format, xx_archive_record_state *state, xx_pd_struct *pd) {
+bool xx_btrfs_stream_unpack_current_archive_record(Abstractformat *format, xx_archive_record_state *state, xx_pd_struct *pd)
+{
     bs_stream *stream;
     const bs_entry *entry;
     const bs_node *node;
@@ -1527,9 +1416,7 @@ bool xx_btrfs_stream_unpack_current_archive_record(
     uint64_t max_size = 0U;
     xx_io_device *destination = NULL;
     bool result = false, created = false;
-    if (!format || !format->device || !state || state->format != format ||
-        !state->has_record ||
-        !(stream = (bs_stream *)state->internal_state) ||
+    if (!format || !format->device || !state || state->format != format || !state->has_record || !(stream = (bs_stream *)state->internal_state) ||
         stream->index >= stream->count || (pd && xx_pd_is_stopped(pd)))
         return false;
     entry = &stream->entries[stream->index];
@@ -1541,22 +1428,17 @@ bool xx_btrfs_stream_unpack_current_archive_record(
     path_option = bs_option(&state->options, XX_META_ID_OPT_UNPACK_PATH);
     if (!path_option) {
         if (node->type != BS_T_FILE) return true;
-        return bs_materialize(format->device, &stream->tree, node_index, NULL,
-                              max_size, pd);
+        return bs_materialize(format->device, &stream->tree, node_index, NULL, max_size, pd);
     }
-    if (path_option->type == XX_VAR_TYPE_STRING ||
-        path_option->type == XX_VAR_TYPE_STRING_VIEW) {
+    if (path_option->type == XX_VAR_TYPE_STRING || path_option->type == XX_VAR_TYPE_STRING_VIEW) {
         base = xx_var_get_str(path_option);
-    } else if (path_option->type == XX_VAR_TYPE_WSTRING ||
-               path_option->type == XX_VAR_TYPE_WSTRING_VIEW) {
+    } else if (path_option->type == XX_VAR_TYPE_WSTRING || path_option->type == XX_VAR_TYPE_WSTRING_VIEW) {
         owned_base = xx_str_unicode_to_utf8(xx_var_get_wstr(path_option));
         base = owned_base;
     }
     if (!base) goto done;
-    path = (base[0] && base[xx_str_len(base) - 1U] != '/' &&
-            base[xx_str_len(base) - 1U] != '\\')
-               ? xx_str_concat3(base, "/", entry->path)
-               : xx_str_concat(base, entry->path);
+    path = (base[0] && base[xx_str_len(base) - 1U] != '/' && base[xx_str_len(base) - 1U] != '\\') ? xx_str_concat3(base, "/", entry->path)
+                                                                                                  : xx_str_concat(base, entry->path);
     if (!path) goto done;
     if (node->type == BS_T_DIR) {
         result = xx_store_create_dirs_a(path, true);
@@ -1575,13 +1457,9 @@ bool xx_btrfs_stream_unpack_current_archive_record(
         /* The library creates no links: the target is kept as the file's
          * contents rather than dropped. */
         size_t length = node->link ? xx_str_len(node->link) : 0U;
-        result = node->link != NULL &&
-                 (length == 0U ||
-                  xx_store_unpack_memory_to_device(node->link, length,
-                                                   destination, pd));
+        result = node->link != NULL && (length == 0U || xx_store_unpack_memory_to_device(node->link, length, destination, pd));
     } else {
-        result = bs_materialize(format->device, &stream->tree, node_index,
-                                destination, max_size, pd);
+        result = bs_materialize(format->device, &stream->tree, node_index, destination, max_size, pd);
     }
     if (xx_io_close(destination) != 0) result = false;
     destination = NULL;
@@ -1593,8 +1471,8 @@ done:
     return result;
 }
 
-void xx_btrfs_stream_free_archive_records_reading(
-    Abstractformat *format, xx_archive_record_state *state) {
+void xx_btrfs_stream_free_archive_records_reading(Abstractformat *format, xx_archive_record_state *state)
+{
     (void)format;
     xx_archive_record_state_free(state);
 }

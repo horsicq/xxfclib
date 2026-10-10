@@ -42,18 +42,16 @@ XXFC_API bool xx_aaruformat_check_is_valid(Abstractformat *, xx_pd_struct *);
 XXFC_API bool xx_aaruformat_handle_base_info(Abstractformat *, xx_pd_struct *);
 XXFC_API int64_t xx_aaruformat_get_format_size(Abstractformat *, xx_pd_struct *);
 XXFC_API uint64_t xx_aaruformat_get_number_of_archive_records(Abstractformat *, xx_pd_struct *);
-XXFC_API xx_archive_record_state *xx_aaruformat_create_archive_records_reading(
-    Abstractformat *, const xx_list_s *, xx_pd_struct *);
-XXFC_API const xx_archive_record *xx_aaruformat_get_current_archive_record(
-    Abstractformat *, xx_archive_record_state *);
-XXFC_API bool xx_aaruformat_archive_record_move_to_next(
-    Abstractformat *, xx_archive_record_state *, xx_pd_struct *);
-XXFC_API bool xx_aaruformat_unpack_current_archive_record(
-    Abstractformat *, xx_archive_record_state *, xx_pd_struct *);
-XXFC_API bool xx_aaruformat_extract_record_to_device(
-    Abstractformat *, xx_archive_record_state *, xx_io_device *, xx_pd_struct *);
+XXFC_API xx_archive_record_state *xx_aaruformat_create_archive_records_reading(Abstractformat *, const xx_list_s *, xx_pd_struct *);
+XXFC_API const xx_archive_record *xx_aaruformat_get_current_archive_record(Abstractformat *, xx_archive_record_state *);
+XXFC_API bool xx_aaruformat_archive_record_move_to_next(Abstractformat *, xx_archive_record_state *, xx_pd_struct *);
+XXFC_API bool xx_aaruformat_unpack_current_archive_record(Abstractformat *, xx_archive_record_state *, xx_pd_struct *);
+XXFC_API bool xx_aaruformat_extract_record_to_device(Abstractformat *, xx_archive_record_state *, xx_io_device *, xx_pd_struct *);
 XXFC_API void xx_aaruformat_free_archive_records_reading(Abstractformat *, xx_archive_record_state *);
-static inline Abstractformat *xx_aaruformat_to_format(xx_aaruformat *v){return v?&v->format:NULL;}
+static inline Abstractformat *xx_aaruformat_to_format(xx_aaruformat *v)
+{
+    return v ? &v->format : NULL;
+}
 #ifdef __cplusplus
 }
 #endif

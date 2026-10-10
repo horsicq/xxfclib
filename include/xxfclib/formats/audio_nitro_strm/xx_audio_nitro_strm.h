@@ -5,7 +5,9 @@
 #ifdef __cplusplus
 extern "C" {
 #endif
-typedef struct xx_audio_nitro_strm { Abstractformat format; } xx_audio_nitro_strm;
+typedef struct xx_audio_nitro_strm {
+    Abstractformat format;
+} xx_audio_nitro_strm;
 XXFC_API void xx_audio_nitro_strm_init(xx_audio_nitro_strm *, xx_io_device *, int64_t);
 XXFC_API xx_audio_nitro_strm *xx_audio_nitro_strm_create(xx_io_device *, int64_t);
 XXFC_API void xx_audio_nitro_strm_destroy(xx_audio_nitro_strm *);

@@ -20,13 +20,11 @@ typedef struct xpk_tdcs_bits_s {
     unsigned remaining;
 } xpk_tdcs_bits;
 
-static bool xpk_tdcs_control(xpk_tdcs_bits *bits, unsigned *control) {
+static bool xpk_tdcs_control(xpk_tdcs_bits *bits, unsigned *control)
+{
     if (!bits->remaining) {
-        if (bits->cursor > bits->size || bits->size - bits->cursor < 4U)
-            return false;
-        bits->word = ((uint32_t)bits->data[bits->cursor] << 24U) |
-                     ((uint32_t)bits->data[bits->cursor + 1U] << 16U) |
-                     ((uint32_t)bits->data[bits->cursor + 2U] << 8U) |
+        if (bits->cursor > bits->size || bits->size - bits->cursor < 4U) return false;
+        bits->word = ((uint32_t)bits->data[bits->cursor] << 24U) | ((uint32_t)bits->data[bits->cursor + 1U] << 16U) | ((uint32_t)bits->data[bits->cursor + 2U] << 8U) |
                      (uint32_t)bits->data[bits->cursor + 3U];
         bits->cursor += 4U;
         bits->remaining = 16U;
@@ -36,14 +34,15 @@ static bool xpk_tdcs_control(xpk_tdcs_bits *bits, unsigned *control) {
     return true;
 }
 
-static bool xpk_tdcs_byte(xpk_tdcs_bits *bits, uint8_t *value) {
+static bool xpk_tdcs_byte(xpk_tdcs_bits *bits, uint8_t *value)
+{
     if (bits->cursor >= bits->size) return false;
     *value = bits->data[bits->cursor++];
     return true;
 }
 
-static bool xpk_tdcs_native(const uint8_t *packed, size_t size,
-                            uint8_t *output, size_t wanted, xx_pd_struct *pd) {
+static bool xpk_tdcs_native(const uint8_t *packed, size_t size, uint8_t *output, size_t wanted, xx_pd_struct *pd)
+{
     xpk_tdcs_bits bits;
     size_t position = 0U;
     if (!packed || (wanted && !output) || xx_pd_is_stopped(pd)) return false;
@@ -64,8 +63,7 @@ static bool xpk_tdcs_native(const uint8_t *packed, size_t size,
             position++;
             continue;
         }
-        if (!xpk_tdcs_byte(&bits, &hi) || !xpk_tdcs_byte(&bits, &lo))
-            return false;
+        if (!xpk_tdcs_byte(&bits, &hi) || !xpk_tdcs_byte(&bits, &lo)) return false;
         word = ((uint32_t)hi << 8U) | (uint32_t)lo;
         if (control == 1U) {
             count = (word & 3U) + 3U;
@@ -78,8 +76,7 @@ static bool xpk_tdcs_native(const uint8_t *packed, size_t size,
             distance = (word ^ 0xffffU) + 1U;
             count = (uint32_t)lo + 3U;
         }
-        if (!distance || distance > position || count > wanted - position)
-            return false;
+        if (!distance || distance > position || count > wanted - position) return false;
         for (i = 0U; i < count; ++i) {
             if ((i & 1023U) == 0U && xx_pd_is_stopped(pd)) return false;
             output[position] = output[position - distance];

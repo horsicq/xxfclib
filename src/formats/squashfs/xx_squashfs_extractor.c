@@ -18,68 +18,61 @@
 #include "../xx_format_extractor_engine.h"
 #include "xxfclib/formats/squashfs/xx_squashfs.h"
 
-static const uint8_t k_anchor0[] = { 0x68, 0x73, 0x71, 0x73 };
-static const uint8_t k_anchor1[] = { 0x73, 0x71, 0x73, 0x68 };
-static const uint8_t k_anchor2[] = { 0x68, 0x73, 0x71, 0x74 };
-static const uint8_t k_anchor3[] = { 0x73, 0x68, 0x73, 0x71 };
+static const uint8_t k_anchor0[] = {0x68, 0x73, 0x71, 0x73};
+static const uint8_t k_anchor1[] = {0x73, 0x71, 0x73, 0x68};
+static const uint8_t k_anchor2[] = {0x68, 0x73, 0x71, 0x74};
+static const uint8_t k_anchor3[] = {0x73, 0x68, 0x73, 0x71};
 
 static const xx_format_search_anchor k_anchors[] = {
-    { k_anchor0, sizeof(k_anchor0), 0U },
-    { k_anchor1, sizeof(k_anchor1), 0U },
-    { k_anchor2, sizeof(k_anchor2), 0U },
-    { k_anchor3, sizeof(k_anchor3), 0U },
+    {k_anchor0, sizeof(k_anchor0), 0U},
+    {k_anchor1, sizeof(k_anchor1), 0U},
+    {k_anchor2, sizeof(k_anchor2), 0U},
+    {k_anchor3, sizeof(k_anchor3), 0U},
 };
 
-static const xx_file_type_t k_types[] = { XX_FILE_TYPE_SQUASHFS };
+static const xx_file_type_t k_types[] = {XX_FILE_TYPE_SQUASHFS};
 
-static Abstractformat *xx_squashfs_search_open(xx_io_device *window) {
+static Abstractformat *xx_squashfs_search_open(xx_io_device *window)
+{
     xx_squashfs *reader = xx_squashfs_create(window, 0);
     return reader ? &reader->format : NULL;
 }
 
-static void xx_squashfs_search_close(Abstractformat *format) {
+static void xx_squashfs_search_close(Abstractformat *format)
+{
     /* The format is the first member, so this is the reader itself. */
     xx_squashfs_free((xx_squashfs *)format);
 }
 
 static const xx_format_search_desc k_desc = {
-    k_types, sizeof(k_types) / sizeof(k_types[0]),
-    k_anchors, sizeof(k_anchors) / sizeof(k_anchors[0]),
-    xx_squashfs_search_open, xx_squashfs_search_close, false
-};
+    k_types, sizeof(k_types) / sizeof(k_types[0]), k_anchors, sizeof(k_anchors) / sizeof(k_anchors[0]), xx_squashfs_search_open, xx_squashfs_search_close, false};
 
-static xx_format_search_state *xx_squashfs_create_format_search(
-    xx_format_extractor *self, xx_io_device *device, const xx_list_s *options,
-    xx_pd_struct *pd) {
+static xx_format_search_state *xx_squashfs_create_format_search(xx_format_extractor *self, xx_io_device *device, const xx_list_s *options, xx_pd_struct *pd)
+{
     (void)self;
     return xx_format_search_create(&k_desc, device, options, pd);
 }
 
-static const xx_format_search_info *xx_squashfs_get_current_format_info(
-    xx_format_extractor *self, xx_format_search_state *state) {
+static const xx_format_search_info *xx_squashfs_get_current_format_info(xx_format_extractor *self, xx_format_search_state *state)
+{
     (void)self;
     return xx_format_search_current(state);
 }
 
-static bool xx_squashfs_format_search_find_next(xx_format_extractor *self,
-                                          xx_format_search_state *state,
-                                          xx_pd_struct *pd) {
+static bool xx_squashfs_format_search_find_next(xx_format_extractor *self, xx_format_search_state *state, xx_pd_struct *pd)
+{
     (void)self;
     return xx_format_search_find_next(state, pd);
 }
 
-static void xx_squashfs_free_format_search(xx_format_extractor *self,
-                                     xx_format_search_state *state) {
+static void xx_squashfs_free_format_search(xx_format_extractor *self, xx_format_search_state *state)
+{
     (void)self;
     xx_format_search_free(state);
 }
 
-xx_format_extractor xx_squashfs_extractor = {
-    xx_squashfs_create_format_search,
-    xx_squashfs_get_current_format_info,
-    xx_squashfs_format_search_find_next,
-    xx_squashfs_free_format_search
-};
+xx_format_extractor xx_squashfs_extractor = {xx_squashfs_create_format_search, xx_squashfs_get_current_format_info, xx_squashfs_format_search_find_next,
+                                             xx_squashfs_free_format_search};
 
 /* BEGIN GENERATED ABSTRACT EXTRACTOR */
 #include "../xx_format_abstract_extractor_adapter.h"

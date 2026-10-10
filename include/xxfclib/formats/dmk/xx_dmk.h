@@ -35,7 +35,9 @@
 #ifdef __cplusplus
 extern "C" {
 #endif
-typedef struct xx_dmk { Abstractformat format; } xx_dmk;
+typedef struct xx_dmk {
+    Abstractformat format;
+} xx_dmk;
 typedef xx_dmk xx_dmk_t;
 typedef xx_dmk XDmk;
 XXFC_API void xx_dmk_init(xx_dmk *reader, xx_io_device *device, int64_t base_address);
@@ -45,8 +47,7 @@ XXFC_API void xx_dmk_free(xx_dmk *reader);
 XXFC_API bool xx_dmk_check_is_valid(Abstractformat *format, xx_pd_struct *pd);
 XXFC_API bool xx_dmk_handle_base_info(Abstractformat *format, xx_pd_struct *pd);
 /** Stream the selected member to a borrowed output device. */
-XXFC_API bool xx_dmk_unpack_to_device(xx_dmk *reader, uint64_t record_index,
-                                      xx_io_device *output, xx_pd_struct *pd);
+XXFC_API bool xx_dmk_unpack_to_device(xx_dmk *reader, uint64_t record_index, xx_io_device *output, xx_pd_struct *pd);
 #ifdef __cplusplus
 }
 #endif

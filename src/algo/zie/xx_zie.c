@@ -24,7 +24,8 @@ static const char ZIE_ZIP_PLAIN[4] = {'P', 'K', 0x03, 0x04};
  * no dot is rejected.  (2) The extension loop returns true for a field that
  * simply runs out after exactly three extension characters (i == 4), which is
  * how a name that fills the field without a NUL is accepted. */
-static bool zie_name_ok(const uint8_t *name, int32_t size) {
+static bool zie_name_ok(const uint8_t *name, int32_t size)
+{
     int32_t n;
     int32_t p;
     int32_t i;
@@ -69,18 +70,18 @@ static bool zie_name_ok(const uint8_t *name, int32_t size) {
     }
 }
 
-bool xx_zie_is_valid_header(const uint8_t *header, size_t header_size) {
+bool xx_zie_is_valid_header(const uint8_t *header, size_t header_size)
+{
     if (!header || (header_size < XX_ZIE_HEADER_SIZE)) return false;
-    if ((header[0] != 'P') || (header[1] != 'I') || (header[2] != 'T') ||
-        (header[3] != '2')) {
+    if ((header[0] != 'P') || (header[1] != 'I') || (header[2] != 'T') || (header[3] != '2')) {
         return false;
     }
 
     return zie_name_ok(header + XX_ZIE_NAME_OFFSET, (int32_t)XX_ZIE_NAME_SIZE);
 }
 
-bool xx_zie_file_name(const uint8_t *header, size_t header_size, char *output,
-                      size_t output_size, size_t *length) {
+bool xx_zie_file_name(const uint8_t *header, size_t header_size, char *output, size_t output_size, size_t *length)
+{
     size_t i;
     if (length) *length = 0U;
     if (!header || (header_size < XX_ZIE_HEADER_SIZE)) return false;
@@ -97,9 +98,8 @@ bool xx_zie_file_name(const uint8_t *header, size_t header_size, char *output,
     return true;
 }
 
-bool xx_zie_resolve_method(const uint8_t *header, size_t header_size,
-                           const uint8_t *probe, size_t probe_size,
-                           uint64_t payload_size, xx_zie_method *method) {
+bool xx_zie_resolve_method(const uint8_t *header, size_t header_size, const uint8_t *probe, size_t probe_size, uint64_t payload_size, xx_zie_method *method)
+{
     xx_zie_method work;
     uint64_t size;
     uint32_t length_base;
@@ -128,13 +128,10 @@ bool xx_zie_resolve_method(const uint8_t *header, size_t header_size,
         /* Position 0..3 always sits inside the first 0xC0000 bytes, so the
          * large-payload phase shift applies to the probe whenever it applies
          * at all. */
-        const uint32_t rot = (size >= (uint64_t)XX_ZIE_LARGE_PAYLOAD_SIZE)
-                                 ? ((base + 8U) & 0xFU)
-                                 : base;
+        const uint32_t rot = (size >= (uint64_t)XX_ZIE_LARGE_PAYLOAD_SIZE) ? ((base + 8U) & 0xFU) : base;
         bool match = true;
         for (i = 0; i < 4; ++i) {
-            const uint8_t plain =
-                (uint8_t)(probe[i] ^ work.key[((uint32_t)i + rot) & 0xFU]);
+            const uint8_t plain = (uint8_t)(probe[i] ^ work.key[((uint32_t)i + rot) & 0xFU]);
             if (plain != (uint8_t)ZIE_ZIP_PLAIN[i]) {
                 match = false;
                 break;
@@ -152,19 +149,16 @@ bool xx_zie_resolve_method(const uint8_t *header, size_t header_size,
     return false;
 }
 
-static void zie_xor_range(const uint8_t *input, uint8_t *output,
-                          const uint8_t *key, uint32_t base, size_t from,
-                          size_t to) {
+static void zie_xor_range(const uint8_t *input, uint8_t *output, const uint8_t *key, uint32_t base, size_t from, size_t to)
+{
     size_t position;
     for (position = from; position < to; ++position) {
-        output[position] =
-            (uint8_t)(input[position] ^ key[(position + base) & 0xFU]);
+        output[position] = (uint8_t)(input[position] ^ key[(position + base) & 0xFU]);
     }
 }
 
-bool xx_zie_decode_method(const uint8_t *input, size_t input_size,
-                          const xx_zie_method *method, uint8_t *output,
-                          size_t output_size, size_t *written) {
+bool xx_zie_decode_method(const uint8_t *input, size_t input_size, const xx_zie_method *method, uint8_t *output, size_t output_size, size_t *written)
+{
     size_t size;
     uint32_t base;
     size_t position;
@@ -178,10 +172,8 @@ bool xx_zie_decode_method(const uint8_t *input, size_t input_size,
     base = method->base & 0xFU;
 
     if (size >= XX_ZIE_LARGE_PAYLOAD_SIZE) {
-        zie_xor_range(input, output, method->key, (base + 8U) & 0xFU, 0U,
-                      XX_ZIE_LARGE_PAYLOAD_SIZE);
-        zie_xor_range(input, output, method->key, base,
-                      XX_ZIE_LARGE_PAYLOAD_SIZE, size);
+        zie_xor_range(input, output, method->key, (base + 8U) & 0xFU, 0U, XX_ZIE_LARGE_PAYLOAD_SIZE);
+        zie_xor_range(input, output, method->key, base, XX_ZIE_LARGE_PAYLOAD_SIZE, size);
     } else {
         zie_xor_range(input, output, method->key, base, 0U, size);
     }
@@ -196,9 +188,8 @@ bool xx_zie_decode_method(const uint8_t *input, size_t input_size,
     return true;
 }
 
-bool xx_zie_decode_memory(const uint8_t *input, size_t input_size,
-                          uint8_t *output, size_t output_size,
-                          size_t *written) {
+bool xx_zie_decode_memory(const uint8_t *input, size_t input_size, uint8_t *output, size_t output_size, size_t *written)
+{
     xx_zie_method method;
     size_t payload_size;
 
@@ -207,12 +198,9 @@ bool xx_zie_decode_memory(const uint8_t *input, size_t input_size,
     if (!input || (input_size <= XX_ZIE_HEADER_SIZE)) return false;
 
     payload_size = input_size - XX_ZIE_HEADER_SIZE;
-    if (!xx_zie_resolve_method(input, input_size, input + XX_ZIE_HEADER_SIZE,
-                               payload_size, (uint64_t)payload_size,
-                               &method)) {
+    if (!xx_zie_resolve_method(input, input_size, input + XX_ZIE_HEADER_SIZE, payload_size, (uint64_t)payload_size, &method)) {
         return false;
     }
 
-    return xx_zie_decode_method(input + XX_ZIE_HEADER_SIZE, payload_size,
-                                &method, output, output_size, written);
+    return xx_zie_decode_method(input + XX_ZIE_HEADER_SIZE, payload_size, &method, output, output_size, written);
 }

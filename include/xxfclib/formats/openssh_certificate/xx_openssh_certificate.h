@@ -7,13 +7,15 @@
 #ifdef __cplusplus
 extern "C" {
 #endif
-typedef struct xx_openssh_certificate {Abstractformat format;} xx_openssh_certificate;
-XXFC_API void xx_openssh_certificate_init(xx_openssh_certificate *,xx_io_device *,int64_t);
-XXFC_API xx_openssh_certificate *xx_openssh_certificate_create(xx_io_device *,int64_t);
+typedef struct xx_openssh_certificate {
+    Abstractformat format;
+} xx_openssh_certificate;
+XXFC_API void xx_openssh_certificate_init(xx_openssh_certificate *, xx_io_device *, int64_t);
+XXFC_API xx_openssh_certificate *xx_openssh_certificate_create(xx_io_device *, int64_t);
 XXFC_API void xx_openssh_certificate_destroy(xx_openssh_certificate *);
 XXFC_API void xx_openssh_certificate_free(xx_openssh_certificate *);
-XXFC_API bool xx_openssh_certificate_check_is_valid(Abstractformat *,xx_pd_struct *);
-XXFC_API bool xx_openssh_certificate_handle_base_info(Abstractformat *,xx_pd_struct *);
+XXFC_API bool xx_openssh_certificate_check_is_valid(Abstractformat *, xx_pd_struct *);
+XXFC_API bool xx_openssh_certificate_handle_base_info(Abstractformat *, xx_pd_struct *);
 #ifdef __cplusplus
 }
 #endif

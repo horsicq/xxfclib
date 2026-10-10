@@ -13,59 +13,52 @@
 #include "../xx_format_extractor_engine.h"
 #include "xxfclib/formats/mpeg_program_stream/xx_mpeg_program_stream.h"
 
-static const xx_file_type_t k_types[] = { XX_FILE_TYPE_MPEG_PROGRAM_STREAM };
+static const xx_file_type_t k_types[] = {XX_FILE_TYPE_MPEG_PROGRAM_STREAM};
 
-static Abstractformat *xx_mpeg_program_stream_search_open(xx_io_device *window) {
+static Abstractformat *xx_mpeg_program_stream_search_open(xx_io_device *window)
+{
     xx_mpeg_program_stream *reader = xx_mpeg_program_stream_create(window, 0);
     return reader ? &reader->format : NULL;
 }
 
-static void xx_mpeg_program_stream_search_close(Abstractformat *format) {
+static void xx_mpeg_program_stream_search_close(Abstractformat *format)
+{
     /* The format is the first member, so this is the reader itself. */
     xx_mpeg_program_stream_free((xx_mpeg_program_stream *)format);
 }
 
-static const uint8_t anchor_0[] = {0x00,0x00,0x01,0xba};
-static const xx_format_search_anchor anchors[] = { { anchor_0,sizeof(anchor_0),0 } };
+static const uint8_t anchor_0[] = {0x00, 0x00, 0x01, 0xba};
+static const xx_format_search_anchor anchors[] = {{anchor_0, sizeof(anchor_0), 0}};
 
 static const xx_format_search_desc k_desc = {
-    k_types, sizeof(k_types) / sizeof(k_types[0]),
-    anchors, 1U,
-    xx_mpeg_program_stream_search_open, xx_mpeg_program_stream_search_close, false
-};
+    k_types, sizeof(k_types) / sizeof(k_types[0]), anchors, 1U, xx_mpeg_program_stream_search_open, xx_mpeg_program_stream_search_close, false};
 
-static xx_format_search_state *xx_mpeg_program_stream_create_format_search(
-    xx_format_extractor *self, xx_io_device *device, const xx_list_s *options,
-    xx_pd_struct *pd) {
+static xx_format_search_state *xx_mpeg_program_stream_create_format_search(xx_format_extractor *self, xx_io_device *device, const xx_list_s *options, xx_pd_struct *pd)
+{
     (void)self;
     return xx_format_search_create(&k_desc, device, options, pd);
 }
 
-static const xx_format_search_info *xx_mpeg_program_stream_get_current_format_info(
-    xx_format_extractor *self, xx_format_search_state *state) {
+static const xx_format_search_info *xx_mpeg_program_stream_get_current_format_info(xx_format_extractor *self, xx_format_search_state *state)
+{
     (void)self;
     return xx_format_search_current(state);
 }
 
-static bool xx_mpeg_program_stream_format_search_find_next(xx_format_extractor *self,
-                                          xx_format_search_state *state,
-                                          xx_pd_struct *pd) {
+static bool xx_mpeg_program_stream_format_search_find_next(xx_format_extractor *self, xx_format_search_state *state, xx_pd_struct *pd)
+{
     (void)self;
     return xx_format_search_find_next(state, pd);
 }
 
-static void xx_mpeg_program_stream_free_format_search(xx_format_extractor *self,
-                                     xx_format_search_state *state) {
+static void xx_mpeg_program_stream_free_format_search(xx_format_extractor *self, xx_format_search_state *state)
+{
     (void)self;
     xx_format_search_free(state);
 }
 
-xx_format_extractor xx_mpeg_program_stream_extractor = {
-    xx_mpeg_program_stream_create_format_search,
-    xx_mpeg_program_stream_get_current_format_info,
-    xx_mpeg_program_stream_format_search_find_next,
-    xx_mpeg_program_stream_free_format_search
-};
+xx_format_extractor xx_mpeg_program_stream_extractor = {xx_mpeg_program_stream_create_format_search, xx_mpeg_program_stream_get_current_format_info,
+                                                        xx_mpeg_program_stream_format_search_find_next, xx_mpeg_program_stream_free_format_search};
 
 /* BEGIN GENERATED ABSTRACT EXTRACTOR */
 #include "../xx_format_abstract_extractor_adapter.h"

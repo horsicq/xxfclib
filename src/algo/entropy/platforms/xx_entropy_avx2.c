@@ -27,35 +27,34 @@
 #include "xx_entropy_platform.h"
 #include "xxfclib/rt/xx_rt.h"
 
-#if (defined(_MSC_VER) && (defined(_M_IX86) || defined(_M_X64))) || \
-    ((defined(__GNUC__) || defined(__clang__)) && (defined(__i386__) || defined(__x86_64__)))
-#  if defined(_MSC_VER)
-#    include <intrin.h>
-#    include <immintrin.h>
-#  else
-#    include <immintrin.h>
-#  endif
+#if (defined(_MSC_VER) && (defined(_M_IX86) || defined(_M_X64))) || ((defined(__GNUC__) || defined(__clang__)) && (defined(__i386__) || defined(__x86_64__)))
+#if defined(_MSC_VER)
+#include <intrin.h>
+#include <immintrin.h>
+#else
+#include <immintrin.h>
+#endif
 #endif
 
 #if defined(__GNUC__) || defined(__clang__)
-#  define XX_TARGET_AVX2 __attribute__((__target__("avx2")))
-#  define XX_ALIGN32 __attribute__((aligned(32)))
+#define XX_TARGET_AVX2 __attribute__((__target__("avx2")))
+#define XX_ALIGN32 __attribute__((aligned(32)))
 #elif defined(_MSC_VER)
-#  define XX_TARGET_AVX2
-#  define XX_ALIGN32 __declspec(align(32))
+#define XX_TARGET_AVX2
+#define XX_ALIGN32 __declspec(align(32))
 #else
-#  define XX_TARGET_AVX2
-#  define XX_ALIGN32
+#define XX_TARGET_AVX2
+#define XX_ALIGN32
 #endif
 
 XX_TARGET_AVX2
-double xx_entropy_calculate_avx2(const void *data, size_t size) {
+double xx_entropy_calculate_avx2(const void *data, size_t size)
+{
     if (!data || size == 0) {
         return 0.0;
     }
 
-#if (defined(_MSC_VER) && (defined(_M_IX86) || defined(_M_X64))) || \
-    ((defined(__GNUC__) || defined(__clang__)) && (defined(__i386__) || defined(__x86_64__)))
+#if (defined(_MSC_VER) && (defined(_M_IX86) || defined(_M_X64))) || ((defined(__GNUC__) || defined(__clang__)) && (defined(__i386__) || defined(__x86_64__)))
 
     const uint8_t *p = (const uint8_t *)data;
     XX_ALIGN32 uint32_t c[8][256] = {{0}};
@@ -65,14 +64,38 @@ double xx_entropy_calculate_avx2(const void *data, size_t size) {
 
     for (; i < limit; i += 32) {
         _mm_prefetch((const char *)(p + i + 512), _MM_HINT_T0);
-        c[0][p[i]]++;     c[1][p[i+1]]++;   c[2][p[i+2]]++;   c[3][p[i+3]]++;
-        c[4][p[i+4]]++;   c[5][p[i+5]]++;   c[6][p[i+6]]++;   c[7][p[i+7]]++;
-        c[0][p[i+8]]++;   c[1][p[i+9]]++;   c[2][p[i+10]]++;  c[3][p[i+11]]++;
-        c[4][p[i+12]]++;  c[5][p[i+13]]++;  c[6][p[i+14]]++;  c[7][p[i+15]]++;
-        c[0][p[i+16]]++;  c[1][p[i+17]]++;  c[2][p[i+18]]++;  c[3][p[i+19]]++;
-        c[4][p[i+20]]++;  c[5][p[i+21]]++;  c[6][p[i+22]]++;  c[7][p[i+23]]++;
-        c[0][p[i+24]]++;  c[1][p[i+25]]++;  c[2][p[i+26]]++;  c[3][p[i+27]]++;
-        c[4][p[i+28]]++;  c[5][p[i+29]]++;  c[6][p[i+30]]++;  c[7][p[i+31]]++;
+        c[0][p[i]]++;
+        c[1][p[i + 1]]++;
+        c[2][p[i + 2]]++;
+        c[3][p[i + 3]]++;
+        c[4][p[i + 4]]++;
+        c[5][p[i + 5]]++;
+        c[6][p[i + 6]]++;
+        c[7][p[i + 7]]++;
+        c[0][p[i + 8]]++;
+        c[1][p[i + 9]]++;
+        c[2][p[i + 10]]++;
+        c[3][p[i + 11]]++;
+        c[4][p[i + 12]]++;
+        c[5][p[i + 13]]++;
+        c[6][p[i + 14]]++;
+        c[7][p[i + 15]]++;
+        c[0][p[i + 16]]++;
+        c[1][p[i + 17]]++;
+        c[2][p[i + 18]]++;
+        c[3][p[i + 19]]++;
+        c[4][p[i + 20]]++;
+        c[5][p[i + 21]]++;
+        c[6][p[i + 22]]++;
+        c[7][p[i + 23]]++;
+        c[0][p[i + 24]]++;
+        c[1][p[i + 25]]++;
+        c[2][p[i + 26]]++;
+        c[3][p[i + 27]]++;
+        c[4][p[i + 28]]++;
+        c[5][p[i + 29]]++;
+        c[6][p[i + 30]]++;
+        c[7][p[i + 31]]++;
     }
     for (; i < size; i++) {
         c[0][p[i]]++;

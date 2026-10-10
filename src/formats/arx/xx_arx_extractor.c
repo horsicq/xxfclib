@@ -34,100 +34,77 @@
 #include "../xx_format_extractor_engine.h"
 #include "xxfclib/formats/arx/xx_arx.h"
 
-static const uint8_t k_anchor0[] = { 0x2D, 0x6C, 0x68, 0x30, 0x2D, 0x00 };
-static const uint8_t k_anchor1[] = { 0x2D, 0x6C, 0x7A, 0x30, 0x2D, 0x00 };
-static const uint8_t k_anchor2[] = { 0x2D, 0x6C, 0x68, 0x31, 0x2D, 0x00 };
-static const uint8_t k_anchor3[] = { 0x2D, 0x6C, 0x7A, 0x31, 0x2D, 0x00 };
-static const uint8_t k_anchor4[] = { 0x2D, 0x6C, 0x68, 0x32, 0x2D, 0x00 };
-static const uint8_t k_anchor5[] = { 0x2D, 0x6C, 0x7A, 0x32, 0x2D, 0x00 };
-static const uint8_t k_anchor6[] = { 0x2D, 0x6C, 0x68, 0x33, 0x2D, 0x00 };
-static const uint8_t k_anchor7[] = { 0x2D, 0x6C, 0x7A, 0x33, 0x2D, 0x00 };
-static const uint8_t k_anchor8[] = { 0x2D, 0x6C, 0x68, 0x34, 0x2D, 0x00 };
-static const uint8_t k_anchor9[] = { 0x2D, 0x6C, 0x7A, 0x34, 0x2D, 0x00 };
-static const uint8_t k_anchor10[] = { 0x2D, 0x6C, 0x68, 0x35, 0x2D, 0x00 };
-static const uint8_t k_anchor11[] = { 0x2D, 0x6C, 0x7A, 0x35, 0x2D, 0x00 };
-static const uint8_t k_anchor12[] = { 0x2D, 0x6C, 0x68, 0x36, 0x2D, 0x00 };
-static const uint8_t k_anchor13[] = { 0x2D, 0x6C, 0x7A, 0x36, 0x2D, 0x00 };
-static const uint8_t k_anchor14[] = { 0x2D, 0x6C, 0x68, 0x37, 0x2D, 0x00 };
-static const uint8_t k_anchor15[] = { 0x2D, 0x6C, 0x7A, 0x37, 0x2D, 0x00 };
-static const uint8_t k_anchor16[] = { 0x2D, 0x6C, 0x68, 0x38, 0x2D, 0x00 };
-static const uint8_t k_anchor17[] = { 0x2D, 0x6C, 0x7A, 0x38, 0x2D, 0x00 };
-static const uint8_t k_anchor18[] = { 0x2D, 0x6C, 0x68, 0x39, 0x2D, 0x00 };
-static const uint8_t k_anchor19[] = { 0x2D, 0x6C, 0x7A, 0x39, 0x2D, 0x00 };
+static const uint8_t k_anchor0[] = {0x2D, 0x6C, 0x68, 0x30, 0x2D, 0x00};
+static const uint8_t k_anchor1[] = {0x2D, 0x6C, 0x7A, 0x30, 0x2D, 0x00};
+static const uint8_t k_anchor2[] = {0x2D, 0x6C, 0x68, 0x31, 0x2D, 0x00};
+static const uint8_t k_anchor3[] = {0x2D, 0x6C, 0x7A, 0x31, 0x2D, 0x00};
+static const uint8_t k_anchor4[] = {0x2D, 0x6C, 0x68, 0x32, 0x2D, 0x00};
+static const uint8_t k_anchor5[] = {0x2D, 0x6C, 0x7A, 0x32, 0x2D, 0x00};
+static const uint8_t k_anchor6[] = {0x2D, 0x6C, 0x68, 0x33, 0x2D, 0x00};
+static const uint8_t k_anchor7[] = {0x2D, 0x6C, 0x7A, 0x33, 0x2D, 0x00};
+static const uint8_t k_anchor8[] = {0x2D, 0x6C, 0x68, 0x34, 0x2D, 0x00};
+static const uint8_t k_anchor9[] = {0x2D, 0x6C, 0x7A, 0x34, 0x2D, 0x00};
+static const uint8_t k_anchor10[] = {0x2D, 0x6C, 0x68, 0x35, 0x2D, 0x00};
+static const uint8_t k_anchor11[] = {0x2D, 0x6C, 0x7A, 0x35, 0x2D, 0x00};
+static const uint8_t k_anchor12[] = {0x2D, 0x6C, 0x68, 0x36, 0x2D, 0x00};
+static const uint8_t k_anchor13[] = {0x2D, 0x6C, 0x7A, 0x36, 0x2D, 0x00};
+static const uint8_t k_anchor14[] = {0x2D, 0x6C, 0x68, 0x37, 0x2D, 0x00};
+static const uint8_t k_anchor15[] = {0x2D, 0x6C, 0x7A, 0x37, 0x2D, 0x00};
+static const uint8_t k_anchor16[] = {0x2D, 0x6C, 0x68, 0x38, 0x2D, 0x00};
+static const uint8_t k_anchor17[] = {0x2D, 0x6C, 0x7A, 0x38, 0x2D, 0x00};
+static const uint8_t k_anchor18[] = {0x2D, 0x6C, 0x68, 0x39, 0x2D, 0x00};
+static const uint8_t k_anchor19[] = {0x2D, 0x6C, 0x7A, 0x39, 0x2D, 0x00};
 
 static const xx_format_search_anchor k_anchors[] = {
-    { k_anchor0, sizeof(k_anchor0), 2U },
-    { k_anchor1, sizeof(k_anchor1), 2U },
-    { k_anchor2, sizeof(k_anchor2), 2U },
-    { k_anchor3, sizeof(k_anchor3), 2U },
-    { k_anchor4, sizeof(k_anchor4), 2U },
-    { k_anchor5, sizeof(k_anchor5), 2U },
-    { k_anchor6, sizeof(k_anchor6), 2U },
-    { k_anchor7, sizeof(k_anchor7), 2U },
-    { k_anchor8, sizeof(k_anchor8), 2U },
-    { k_anchor9, sizeof(k_anchor9), 2U },
-    { k_anchor10, sizeof(k_anchor10), 2U },
-    { k_anchor11, sizeof(k_anchor11), 2U },
-    { k_anchor12, sizeof(k_anchor12), 2U },
-    { k_anchor13, sizeof(k_anchor13), 2U },
-    { k_anchor14, sizeof(k_anchor14), 2U },
-    { k_anchor15, sizeof(k_anchor15), 2U },
-    { k_anchor16, sizeof(k_anchor16), 2U },
-    { k_anchor17, sizeof(k_anchor17), 2U },
-    { k_anchor18, sizeof(k_anchor18), 2U },
-    { k_anchor19, sizeof(k_anchor19), 2U },
+    {k_anchor0, sizeof(k_anchor0), 2U},   {k_anchor1, sizeof(k_anchor1), 2U},   {k_anchor2, sizeof(k_anchor2), 2U},   {k_anchor3, sizeof(k_anchor3), 2U},
+    {k_anchor4, sizeof(k_anchor4), 2U},   {k_anchor5, sizeof(k_anchor5), 2U},   {k_anchor6, sizeof(k_anchor6), 2U},   {k_anchor7, sizeof(k_anchor7), 2U},
+    {k_anchor8, sizeof(k_anchor8), 2U},   {k_anchor9, sizeof(k_anchor9), 2U},   {k_anchor10, sizeof(k_anchor10), 2U}, {k_anchor11, sizeof(k_anchor11), 2U},
+    {k_anchor12, sizeof(k_anchor12), 2U}, {k_anchor13, sizeof(k_anchor13), 2U}, {k_anchor14, sizeof(k_anchor14), 2U}, {k_anchor15, sizeof(k_anchor15), 2U},
+    {k_anchor16, sizeof(k_anchor16), 2U}, {k_anchor17, sizeof(k_anchor17), 2U}, {k_anchor18, sizeof(k_anchor18), 2U}, {k_anchor19, sizeof(k_anchor19), 2U},
 };
 
-static const xx_file_type_t k_types[] = { XX_FILE_TYPE_ARX };
+static const xx_file_type_t k_types[] = {XX_FILE_TYPE_ARX};
 
-static Abstractformat *xx_arx_search_open(xx_io_device *window) {
+static Abstractformat *xx_arx_search_open(xx_io_device *window)
+{
     xx_arx *reader = xx_arx_create(window, 0);
     return reader ? &reader->format : NULL;
 }
 
-static void xx_arx_search_close(Abstractformat *format) {
+static void xx_arx_search_close(Abstractformat *format)
+{
     /* The format is the first member, so this is the reader itself. */
     xx_arx_free((xx_arx *)format);
 }
 
 static const xx_format_search_desc k_desc = {
-    k_types, sizeof(k_types) / sizeof(k_types[0]),
-    k_anchors, sizeof(k_anchors) / sizeof(k_anchors[0]),
-    xx_arx_search_open, xx_arx_search_close, false
-};
+    k_types, sizeof(k_types) / sizeof(k_types[0]), k_anchors, sizeof(k_anchors) / sizeof(k_anchors[0]), xx_arx_search_open, xx_arx_search_close, false};
 
-static xx_format_search_state *xx_arx_create_format_search(
-    xx_format_extractor *self, xx_io_device *device, const xx_list_s *options,
-    xx_pd_struct *pd) {
+static xx_format_search_state *xx_arx_create_format_search(xx_format_extractor *self, xx_io_device *device, const xx_list_s *options, xx_pd_struct *pd)
+{
     (void)self;
     return xx_format_search_create(&k_desc, device, options, pd);
 }
 
-static const xx_format_search_info *xx_arx_get_current_format_info(
-    xx_format_extractor *self, xx_format_search_state *state) {
+static const xx_format_search_info *xx_arx_get_current_format_info(xx_format_extractor *self, xx_format_search_state *state)
+{
     (void)self;
     return xx_format_search_current(state);
 }
 
-static bool xx_arx_format_search_find_next(xx_format_extractor *self,
-                                          xx_format_search_state *state,
-                                          xx_pd_struct *pd) {
+static bool xx_arx_format_search_find_next(xx_format_extractor *self, xx_format_search_state *state, xx_pd_struct *pd)
+{
     (void)self;
     return xx_format_search_find_next(state, pd);
 }
 
-static void xx_arx_free_format_search(xx_format_extractor *self,
-                                     xx_format_search_state *state) {
+static void xx_arx_free_format_search(xx_format_extractor *self, xx_format_search_state *state)
+{
     (void)self;
     xx_format_search_free(state);
 }
 
-xx_format_extractor xx_arx_extractor = {
-    xx_arx_create_format_search,
-    xx_arx_get_current_format_info,
-    xx_arx_format_search_find_next,
-    xx_arx_free_format_search
-};
+xx_format_extractor xx_arx_extractor = {xx_arx_create_format_search, xx_arx_get_current_format_info, xx_arx_format_search_find_next, xx_arx_free_format_search};
 
 /* BEGIN GENERATED ABSTRACT EXTRACTOR */
 #include "../xx_format_abstract_extractor_adapter.h"

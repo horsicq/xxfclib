@@ -2,37 +2,147 @@
 #include "xxfclib/formats/tracker_archimedes/xx_tracker_archimedes.h"
 #include "../common/xx_disk_music_components.h"
 #include "xxfclib/data/xx_data.h"
-static bool pm_parse(Abstractformat *f,pm_stream *s,xx_pd_struct *pd) {
-
- disk_music_blob b={0};uint64_t at=8;uint32_t ch=0,np=0,no=0,pat=0,ins=0;uint64_t rows_at=0,orders_at=0;unsigned seen=0;bool ok=false;
- DISK_MUSIC_NEED(disk_music_load(f,&b,pd)&&disk_music_tag(&b,0,"MUSX",4)&&disk_music_span(&b,0,8)&&xx_data_get_u32(b.p+4, 4, 0, false)==b.n-8&&disk_music_emit(f,s,&b,"descriptor.musx",0,8));
- while(at<b.n){uint64_t q=at+8;uint32_t n;unsigned bit=0;DISK_MUSIC_NEED(disk_music_work(&b,1)&&disk_music_span(&b,at,8));n=xx_data_get_u32(b.p+(size_t)at+4, 4, 0, false);DISK_MUSIC_NEED(disk_music_span(&b,q,n));
- if(disk_music_tag(&b,at,"MVOX",4)){bit=1;DISK_MUSIC_NEED(n==4);ch=xx_data_get_u32(b.p+(size_t)q, 4, 0, false);DISK_MUSIC_NEED(ch&&ch<=8);}
- else if(disk_music_tag(&b,at,"MLEN",4)){bit=2;DISK_MUSIC_NEED(n==4);no=xx_data_get_u32(b.p+(size_t)q, 4, 0, false);DISK_MUSIC_NEED(no&&no<=128);}
- else if(disk_music_tag(&b,at,"PNUM",4)){bit=4;DISK_MUSIC_NEED(n==4);np=xx_data_get_u32(b.p+(size_t)q, 4, 0, false);DISK_MUSIC_NEED(np&&np<=64);}
- else if(disk_music_tag(&b,at,"PLEN",4)){bit=8;DISK_MUSIC_NEED(n==64);rows_at=q;}
- else if(disk_music_tag(&b,at,"SEQU",4)){bit=16;DISK_MUSIC_NEED(n==128);orders_at=q;}
- else if(disk_music_tag(&b,at,"MNAM",4)){bit=32;DISK_MUSIC_NEED(n==32);}
- else if(disk_music_tag(&b,at,"ANAM",4)){bit=64;DISK_MUSIC_NEED(n==32);}
- else if(disk_music_tag(&b,at,"TINF",4)){bit=128;DISK_MUSIC_NEED(n==4);}
- else if(disk_music_tag(&b,at,"STER",4)){unsigned j;bit=256;DISK_MUSIC_NEED(n==8);for(j=0;j<8;++j)DISK_MUSIC_NEED(b.p[(size_t)q+j]<=7);}
- else if(disk_music_tag(&b,at,"PATT",4)){uint32_t j,rows;DISK_MUSIC_NEED((seen&31)==31&&pat<np);rows=b.p[(size_t)rows_at+pat];DISK_MUSIC_NEED(rows&&n==rows*ch*4);for(j=0;j<rows*ch;++j){const uint8_t *v=b.p+(size_t)q+j*4;DISK_MUSIC_NEED(disk_music_work(&b,1)&&v[2]<=36&&v[3]<=72);}++pat;}
- else if(disk_music_tag(&b,at,"SAMP",4)){uint64_t x=q,finish=q+n,data_at;uint32_t namelen,len,loop,z;DISK_MUSIC_NEED(pat==np&&ins<36&&disk_music_span(&b,x,8)&&disk_music_tag(&b,x,"SNAM",4));namelen=xx_data_get_u32(b.p+(size_t)x+4, 4, 0, false);DISK_MUSIC_NEED(namelen<=32&&8+namelen<=finish-x);x+=8+namelen;
- DISK_MUSIC_NEED(x<=finish&&56<=finish-x&&disk_music_tag(&b,x,"SVOL",4)&&xx_data_get_u32(b.p+(size_t)x+4, 4, 0, false)==4&&xx_data_get_u32(b.p+(size_t)x+8, 4, 0, false)<=255);x+=12;
- DISK_MUSIC_NEED(disk_music_tag(&b,x,"SLEN",4)&&xx_data_get_u32(b.p+(size_t)x+4, 4, 0, false)==4);len=xx_data_get_u32(b.p+(size_t)x+8, 4, 0, false);x+=12;
- DISK_MUSIC_NEED(disk_music_tag(&b,x,"ROFS",4)&&xx_data_get_u32(b.p+(size_t)x+4, 4, 0, false)==4);loop=xx_data_get_u32(b.p+(size_t)x+8, 4, 0, false);x+=12;
- DISK_MUSIC_NEED(disk_music_tag(&b,x,"RLEN",4)&&xx_data_get_u32(b.p+(size_t)x+4, 4, 0, false)==4);z=xx_data_get_u32(b.p+(size_t)x+8, 4, 0, false);x+=12;
- DISK_MUSIC_NEED(disk_music_tag(&b,x,"SDAT",4)&&xx_data_get_u32(b.p+(size_t)x+4, 4, 0, false)==len);data_at=x+8;DISK_MUSIC_NEED(len==finish-data_at);if(z>2)DISK_MUSIC_NEED(loop<=len&&z<=len-loop);else if(z==2&&loop)DISK_MUSIC_NEED(loop<len);
- DISK_MUSIC_NEED(disk_music_emit(f,s,&b,"sample-descriptor.musx",at,data_at-at));if(len)DISK_MUSIC_NEED(disk_music_emit(f,s,&b,"sample.vidc",data_at,len));++ins;at=finish;continue;}
- else DISK_MUSIC_NEED(false);
- if(bit){DISK_MUSIC_NEED(!(seen&bit)&&!pat&&!ins);seen|=bit;}DISK_MUSIC_NEED(disk_music_emit(f,s,&b,"chunk.musx",at,8+n));at=q+n;
- }
- DISK_MUSIC_NEED((seen&31)==31&&pat==np&&ins==36);{uint32_t j;for(j=0;j<no;++j)DISK_MUSIC_NEED(b.p[(size_t)orders_at+j]<np);}s->size=(int64_t)b.n;ok=true;
-done:xx_mem_free(b.p);return ok;
+static bool pm_parse(Abstractformat *f, pm_stream *s, xx_pd_struct *pd)
+{
+    disk_music_blob b = {0};
+    uint64_t at = 8;
+    uint32_t ch = 0, np = 0, no = 0, pat = 0, ins = 0;
+    uint64_t rows_at = 0, orders_at = 0;
+    unsigned seen = 0;
+    bool ok = false;
+    DISK_MUSIC_NEED(disk_music_load(f, &b, pd) && disk_music_tag(&b, 0, "MUSX", 4) && disk_music_span(&b, 0, 8) && xx_data_get_u32(b.p + 4, 4, 0, false) == b.n - 8 &&
+                    disk_music_emit(f, s, &b, "descriptor.musx", 0, 8));
+    while (at < b.n) {
+        uint64_t q = at + 8;
+        uint32_t n;
+        unsigned bit = 0;
+        DISK_MUSIC_NEED(disk_music_work(&b, 1) && disk_music_span(&b, at, 8));
+        n = xx_data_get_u32(b.p + (size_t)at + 4, 4, 0, false);
+        DISK_MUSIC_NEED(disk_music_span(&b, q, n));
+        if (disk_music_tag(&b, at, "MVOX", 4)) {
+            bit = 1;
+            DISK_MUSIC_NEED(n == 4);
+            ch = xx_data_get_u32(b.p + (size_t)q, 4, 0, false);
+            DISK_MUSIC_NEED(ch && ch <= 8);
+        } else if (disk_music_tag(&b, at, "MLEN", 4)) {
+            bit = 2;
+            DISK_MUSIC_NEED(n == 4);
+            no = xx_data_get_u32(b.p + (size_t)q, 4, 0, false);
+            DISK_MUSIC_NEED(no && no <= 128);
+        } else if (disk_music_tag(&b, at, "PNUM", 4)) {
+            bit = 4;
+            DISK_MUSIC_NEED(n == 4);
+            np = xx_data_get_u32(b.p + (size_t)q, 4, 0, false);
+            DISK_MUSIC_NEED(np && np <= 64);
+        } else if (disk_music_tag(&b, at, "PLEN", 4)) {
+            bit = 8;
+            DISK_MUSIC_NEED(n == 64);
+            rows_at = q;
+        } else if (disk_music_tag(&b, at, "SEQU", 4)) {
+            bit = 16;
+            DISK_MUSIC_NEED(n == 128);
+            orders_at = q;
+        } else if (disk_music_tag(&b, at, "MNAM", 4)) {
+            bit = 32;
+            DISK_MUSIC_NEED(n == 32);
+        } else if (disk_music_tag(&b, at, "ANAM", 4)) {
+            bit = 64;
+            DISK_MUSIC_NEED(n == 32);
+        } else if (disk_music_tag(&b, at, "TINF", 4)) {
+            bit = 128;
+            DISK_MUSIC_NEED(n == 4);
+        } else if (disk_music_tag(&b, at, "STER", 4)) {
+            unsigned j;
+            bit = 256;
+            DISK_MUSIC_NEED(n == 8);
+            for (j = 0; j < 8; ++j) DISK_MUSIC_NEED(b.p[(size_t)q + j] <= 7);
+        } else if (disk_music_tag(&b, at, "PATT", 4)) {
+            uint32_t j, rows;
+            DISK_MUSIC_NEED((seen & 31) == 31 && pat < np);
+            rows = b.p[(size_t)rows_at + pat];
+            DISK_MUSIC_NEED(rows && n == rows * ch * 4);
+            for (j = 0; j < rows * ch; ++j) {
+                const uint8_t *v = b.p + (size_t)q + j * 4;
+                DISK_MUSIC_NEED(disk_music_work(&b, 1) && v[2] <= 36 && v[3] <= 72);
+            }
+            ++pat;
+        } else if (disk_music_tag(&b, at, "SAMP", 4)) {
+            uint64_t x = q, finish = q + n, data_at;
+            uint32_t namelen, len, loop, z;
+            DISK_MUSIC_NEED(pat == np && ins < 36 && disk_music_span(&b, x, 8) && disk_music_tag(&b, x, "SNAM", 4));
+            namelen = xx_data_get_u32(b.p + (size_t)x + 4, 4, 0, false);
+            DISK_MUSIC_NEED(namelen <= 32 && 8 + namelen <= finish - x);
+            x += 8 + namelen;
+            DISK_MUSIC_NEED(x <= finish && 56 <= finish - x && disk_music_tag(&b, x, "SVOL", 4) && xx_data_get_u32(b.p + (size_t)x + 4, 4, 0, false) == 4 &&
+                            xx_data_get_u32(b.p + (size_t)x + 8, 4, 0, false) <= 255);
+            x += 12;
+            DISK_MUSIC_NEED(disk_music_tag(&b, x, "SLEN", 4) && xx_data_get_u32(b.p + (size_t)x + 4, 4, 0, false) == 4);
+            len = xx_data_get_u32(b.p + (size_t)x + 8, 4, 0, false);
+            x += 12;
+            DISK_MUSIC_NEED(disk_music_tag(&b, x, "ROFS", 4) && xx_data_get_u32(b.p + (size_t)x + 4, 4, 0, false) == 4);
+            loop = xx_data_get_u32(b.p + (size_t)x + 8, 4, 0, false);
+            x += 12;
+            DISK_MUSIC_NEED(disk_music_tag(&b, x, "RLEN", 4) && xx_data_get_u32(b.p + (size_t)x + 4, 4, 0, false) == 4);
+            z = xx_data_get_u32(b.p + (size_t)x + 8, 4, 0, false);
+            x += 12;
+            DISK_MUSIC_NEED(disk_music_tag(&b, x, "SDAT", 4) && xx_data_get_u32(b.p + (size_t)x + 4, 4, 0, false) == len);
+            data_at = x + 8;
+            DISK_MUSIC_NEED(len == finish - data_at);
+            if (z > 2) DISK_MUSIC_NEED(loop <= len && z <= len - loop);
+            else if (z == 2 && loop) DISK_MUSIC_NEED(loop < len);
+            DISK_MUSIC_NEED(disk_music_emit(f, s, &b, "sample-descriptor.musx", at, data_at - at));
+            if (len) DISK_MUSIC_NEED(disk_music_emit(f, s, &b, "sample.vidc", data_at, len));
+            ++ins;
+            at = finish;
+            continue;
+        } else DISK_MUSIC_NEED(false);
+        if (bit) {
+            DISK_MUSIC_NEED(!(seen & bit) && !pat && !ins);
+            seen |= bit;
+        }
+        DISK_MUSIC_NEED(disk_music_emit(f, s, &b, "chunk.musx", at, 8 + n));
+        at = q + n;
+    }
+    DISK_MUSIC_NEED((seen & 31) == 31 && pat == np && ins == 36);
+    {
+        uint32_t j;
+        for (j = 0; j < no; ++j) DISK_MUSIC_NEED(b.p[(size_t)orders_at + j] < np);
+    }
+    s->size = (int64_t)b.n;
+    ok = true;
+done:
+    xx_mem_free(b.p);
+    return ok;
 }
-void xx_tracker_archimedes_init(xx_tracker_archimedes *r,xx_io_device *d,int64_t b) {if(r){xx_mem_zero(r,sizeof(*r));pm_init(&r->format,d,b,XX_FILE_TYPE_TRACKER_ARCHIMEDES,"tracker_archimedes");}}
-xx_tracker_archimedes *xx_tracker_archimedes_create(xx_io_device *d,int64_t b) {xx_tracker_archimedes *r=(xx_tracker_archimedes *)xx_mem_alloc(sizeof(*r));if(r)xx_tracker_archimedes_init(r,d,b);return r;}
-void xx_tracker_archimedes_destroy(xx_tracker_archimedes *r) {if(r)xx_format_cleanup_extra_parameters(&r->format);}
-void xx_tracker_archimedes_free(xx_tracker_archimedes *r) {if(r){xx_tracker_archimedes_destroy(r);xx_mem_free(r);}}
-bool xx_tracker_archimedes_check_is_valid(Abstractformat *f,xx_pd_struct *pd) {return pm_valid(f,pd);}
-bool xx_tracker_archimedes_handle_base_info(Abstractformat *f,xx_pd_struct *pd) {return pm_handle(f,pd);}
+void xx_tracker_archimedes_init(xx_tracker_archimedes *r, xx_io_device *d, int64_t b)
+{
+    if (r) {
+        xx_mem_zero(r, sizeof(*r));
+        pm_init(&r->format, d, b, XX_FILE_TYPE_TRACKER_ARCHIMEDES, "tracker_archimedes");
+    }
+}
+xx_tracker_archimedes *xx_tracker_archimedes_create(xx_io_device *d, int64_t b)
+{
+    xx_tracker_archimedes *r = (xx_tracker_archimedes *)xx_mem_alloc(sizeof(*r));
+    if (r) xx_tracker_archimedes_init(r, d, b);
+    return r;
+}
+void xx_tracker_archimedes_destroy(xx_tracker_archimedes *r)
+{
+    if (r) xx_format_cleanup_extra_parameters(&r->format);
+}
+void xx_tracker_archimedes_free(xx_tracker_archimedes *r)
+{
+    if (r) {
+        xx_tracker_archimedes_destroy(r);
+        xx_mem_free(r);
+    }
+}
+bool xx_tracker_archimedes_check_is_valid(Abstractformat *f, xx_pd_struct *pd)
+{
+    return pm_valid(f, pd);
+}
+bool xx_tracker_archimedes_handle_base_info(Abstractformat *f, xx_pd_struct *pd)
+{
+    return pm_handle(f, pd);
+}

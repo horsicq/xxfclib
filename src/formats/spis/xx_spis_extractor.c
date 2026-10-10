@@ -15,62 +15,54 @@
 #include "../xx_format_extractor_engine.h"
 #include "xxfclib/formats/spis/xx_spis.h"
 
-static const uint8_t k_anchor0[] = { 0x53, 0x50, 0x49, 0x53, 0x1A };
+static const uint8_t k_anchor0[] = {0x53, 0x50, 0x49, 0x53, 0x1A};
 
 static const xx_format_search_anchor k_anchors[] = {
-    { k_anchor0, sizeof(k_anchor0), 0U },
+    {k_anchor0, sizeof(k_anchor0), 0U},
 };
 
-static const xx_file_type_t k_types[] = { XX_FILE_TYPE_SPIS };
+static const xx_file_type_t k_types[] = {XX_FILE_TYPE_SPIS};
 
-static Abstractformat *xx_spis_search_open(xx_io_device *window) {
+static Abstractformat *xx_spis_search_open(xx_io_device *window)
+{
     xx_spis *reader = xx_spis_create(window, 0);
     return reader ? &reader->format : NULL;
 }
 
-static void xx_spis_search_close(Abstractformat *format) {
+static void xx_spis_search_close(Abstractformat *format)
+{
     /* The format is the first member, so this is the reader itself. */
     xx_spis_free((xx_spis *)format);
 }
 
 static const xx_format_search_desc k_desc = {
-    k_types, sizeof(k_types) / sizeof(k_types[0]),
-    k_anchors, sizeof(k_anchors) / sizeof(k_anchors[0]),
-    xx_spis_search_open, xx_spis_search_close, false
-};
+    k_types, sizeof(k_types) / sizeof(k_types[0]), k_anchors, sizeof(k_anchors) / sizeof(k_anchors[0]), xx_spis_search_open, xx_spis_search_close, false};
 
-static xx_format_search_state *xx_spis_create_format_search(
-    xx_format_extractor *self, xx_io_device *device, const xx_list_s *options,
-    xx_pd_struct *pd) {
+static xx_format_search_state *xx_spis_create_format_search(xx_format_extractor *self, xx_io_device *device, const xx_list_s *options, xx_pd_struct *pd)
+{
     (void)self;
     return xx_format_search_create(&k_desc, device, options, pd);
 }
 
-static const xx_format_search_info *xx_spis_get_current_format_info(
-    xx_format_extractor *self, xx_format_search_state *state) {
+static const xx_format_search_info *xx_spis_get_current_format_info(xx_format_extractor *self, xx_format_search_state *state)
+{
     (void)self;
     return xx_format_search_current(state);
 }
 
-static bool xx_spis_format_search_find_next(xx_format_extractor *self,
-                                          xx_format_search_state *state,
-                                          xx_pd_struct *pd) {
+static bool xx_spis_format_search_find_next(xx_format_extractor *self, xx_format_search_state *state, xx_pd_struct *pd)
+{
     (void)self;
     return xx_format_search_find_next(state, pd);
 }
 
-static void xx_spis_free_format_search(xx_format_extractor *self,
-                                     xx_format_search_state *state) {
+static void xx_spis_free_format_search(xx_format_extractor *self, xx_format_search_state *state)
+{
     (void)self;
     xx_format_search_free(state);
 }
 
-xx_format_extractor xx_spis_extractor = {
-    xx_spis_create_format_search,
-    xx_spis_get_current_format_info,
-    xx_spis_format_search_find_next,
-    xx_spis_free_format_search
-};
+xx_format_extractor xx_spis_extractor = {xx_spis_create_format_search, xx_spis_get_current_format_info, xx_spis_format_search_find_next, xx_spis_free_format_search};
 
 /* BEGIN GENERATED ABSTRACT EXTRACTOR */
 #include "../xx_format_abstract_extractor_adapter.h"

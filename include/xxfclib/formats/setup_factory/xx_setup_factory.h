@@ -48,13 +48,13 @@ extern "C" {
 typedef struct xx_setup_factory {
     Abstractformat format;
     uint64_t number_of_records;
-    int64_t overlay_offset;  /**< Relative to the format's base address. */
-    int64_t payload_offset;  /**< First payload byte, same origin. */
-    int64_t payload_end;     /**< End of the last member present, same origin. */
+    int64_t overlay_offset; /**< Relative to the format's base address. */
+    int64_t payload_offset; /**< First payload byte, same origin. */
+    int64_t payload_end;    /**< End of the last member present, same origin. */
     uint32_t engine_count;
-    uint32_t layout;         /**< XX_SETUP_FACTORY_LAYOUT_* */
-    uint32_t schema;         /**< CArchive schema number of CFileInfo. */
-    bool truncated;          /**< The payload runs past the end of the file. */
+    uint32_t layout; /**< XX_SETUP_FACTORY_LAYOUT_* */
+    uint32_t schema; /**< CArchive schema number of CFileInfo. */
+    bool truncated;  /**< The payload runs past the end of the file. */
 } xx_setup_factory;
 
 typedef xx_setup_factory xx_setup_factory_t;
@@ -69,33 +69,21 @@ typedef xx_setup_factory xx_setup_factory_t;
 #define XX_SETUP_FACTORY_METHOD_DCL 1U
 #define XX_SETUP_FACTORY_METHOD_UNKNOWN 0xFFU
 
-XXFC_API void xx_setup_factory_init(xx_setup_factory *archive,
-                                    xx_io_device *device,
-                                    int64_t base_address);
-XXFC_API xx_setup_factory *xx_setup_factory_create(xx_io_device *device,
-                                                   int64_t base_address);
+XXFC_API void xx_setup_factory_init(xx_setup_factory *archive, xx_io_device *device, int64_t base_address);
+XXFC_API xx_setup_factory *xx_setup_factory_create(xx_io_device *device, int64_t base_address);
 XXFC_API void xx_setup_factory_destroy(xx_setup_factory *archive);
 XXFC_API void xx_setup_factory_free(xx_setup_factory *archive);
 
-XXFC_API bool xx_setup_factory_check_is_valid(Abstractformat *self,
-                                              xx_pd_struct *pd);
-XXFC_API bool xx_setup_factory_handle_base_info(Abstractformat *self,
-                                                xx_pd_struct *pd);
-XXFC_API int64_t xx_setup_factory_get_format_size(Abstractformat *self,
-                                                  xx_pd_struct *pd);
-XXFC_API uint64_t xx_setup_factory_get_number_of_archive_records(
-    Abstractformat *self, xx_pd_struct *pd);
+XXFC_API bool xx_setup_factory_check_is_valid(Abstractformat *self, xx_pd_struct *pd);
+XXFC_API bool xx_setup_factory_handle_base_info(Abstractformat *self, xx_pd_struct *pd);
+XXFC_API int64_t xx_setup_factory_get_format_size(Abstractformat *self, xx_pd_struct *pd);
+XXFC_API uint64_t xx_setup_factory_get_number_of_archive_records(Abstractformat *self, xx_pd_struct *pd);
 
-XXFC_API xx_archive_record_state *xx_setup_factory_create_archive_records_reading(
-    Abstractformat *self, const xx_list_s *options, xx_pd_struct *pd);
-XXFC_API const xx_archive_record *xx_setup_factory_get_current_archive_record(
-    Abstractformat *self, xx_archive_record_state *state);
-XXFC_API bool xx_setup_factory_unpack_current_archive_record(
-    Abstractformat *self, xx_archive_record_state *state, xx_pd_struct *pd);
-XXFC_API bool xx_setup_factory_archive_record_move_to_next(
-    Abstractformat *self, xx_archive_record_state *state, xx_pd_struct *pd);
-XXFC_API void xx_setup_factory_free_archive_records_reading(
-    Abstractformat *self, xx_archive_record_state *state);
+XXFC_API xx_archive_record_state *xx_setup_factory_create_archive_records_reading(Abstractformat *self, const xx_list_s *options, xx_pd_struct *pd);
+XXFC_API const xx_archive_record *xx_setup_factory_get_current_archive_record(Abstractformat *self, xx_archive_record_state *state);
+XXFC_API bool xx_setup_factory_unpack_current_archive_record(Abstractformat *self, xx_archive_record_state *state, xx_pd_struct *pd);
+XXFC_API bool xx_setup_factory_archive_record_move_to_next(Abstractformat *self, xx_archive_record_state *state, xx_pd_struct *pd);
+XXFC_API void xx_setup_factory_free_archive_records_reading(Abstractformat *self, xx_archive_record_state *state);
 
 #ifdef __cplusplus
 }

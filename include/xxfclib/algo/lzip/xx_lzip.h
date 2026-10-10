@@ -30,13 +30,8 @@ XXFC_API bool xx_lzip_has_header(const uint8_t *data, size_t size);
  * The source extent must contain exactly the Lzip stream.  Each member's
  * LZMA end marker, decoded byte count, and CRC-32 trailer are verified.
  */
-XXFC_API bool xx_lzip_decode_device(xx_io_device *source,
-                                    int64_t source_offset,
-                                    int64_t source_size,
-                                    xx_io_device *destination,
-                                    int64_t *output_size,
-                                    size_t *member_count,
-                                    xx_pd_struct *pd);
+XXFC_API bool xx_lzip_decode_device(xx_io_device *source, int64_t source_offset, int64_t source_size, xx_io_device *destination, int64_t *output_size,
+                                    size_t *member_count, xx_pd_struct *pd);
 
 #ifdef __cplusplus
 }

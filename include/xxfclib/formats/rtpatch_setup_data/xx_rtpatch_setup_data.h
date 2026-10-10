@@ -65,35 +65,21 @@ typedef xx_rtpatch_setup_data xx_rtpatch_setup_data_t;
 
 #define XX_RTPATCH_SETUP_DATA_METHOD_RTPATCH 1U
 
-XXFC_API void xx_rtpatch_setup_data_init(xx_rtpatch_setup_data *archive,
-                                         xx_io_device *device,
-                                         int64_t base_address);
-XXFC_API xx_rtpatch_setup_data *xx_rtpatch_setup_data_create(
-    xx_io_device *device, int64_t base_address);
+XXFC_API void xx_rtpatch_setup_data_init(xx_rtpatch_setup_data *archive, xx_io_device *device, int64_t base_address);
+XXFC_API xx_rtpatch_setup_data *xx_rtpatch_setup_data_create(xx_io_device *device, int64_t base_address);
 XXFC_API void xx_rtpatch_setup_data_destroy(xx_rtpatch_setup_data *archive);
 XXFC_API void xx_rtpatch_setup_data_free(xx_rtpatch_setup_data *archive);
 
-XXFC_API bool xx_rtpatch_setup_data_check_is_valid(Abstractformat *self,
-                                                   xx_pd_struct *pd);
-XXFC_API bool xx_rtpatch_setup_data_handle_base_info(Abstractformat *self,
-                                                     xx_pd_struct *pd);
-XXFC_API int64_t xx_rtpatch_setup_data_get_format_size(Abstractformat *self,
-                                                       xx_pd_struct *pd);
-XXFC_API uint64_t xx_rtpatch_setup_data_get_number_of_archive_records(
-    Abstractformat *self, xx_pd_struct *pd);
+XXFC_API bool xx_rtpatch_setup_data_check_is_valid(Abstractformat *self, xx_pd_struct *pd);
+XXFC_API bool xx_rtpatch_setup_data_handle_base_info(Abstractformat *self, xx_pd_struct *pd);
+XXFC_API int64_t xx_rtpatch_setup_data_get_format_size(Abstractformat *self, xx_pd_struct *pd);
+XXFC_API uint64_t xx_rtpatch_setup_data_get_number_of_archive_records(Abstractformat *self, xx_pd_struct *pd);
 
-XXFC_API xx_archive_record_state *
-xx_rtpatch_setup_data_create_archive_records_reading(
-    Abstractformat *self, const xx_list_s *options, xx_pd_struct *pd);
-XXFC_API const xx_archive_record *
-xx_rtpatch_setup_data_get_current_archive_record(
-    Abstractformat *self, xx_archive_record_state *state);
-XXFC_API bool xx_rtpatch_setup_data_unpack_current_archive_record(
-    Abstractformat *self, xx_archive_record_state *state, xx_pd_struct *pd);
-XXFC_API bool xx_rtpatch_setup_data_archive_record_move_to_next(
-    Abstractformat *self, xx_archive_record_state *state, xx_pd_struct *pd);
-XXFC_API void xx_rtpatch_setup_data_free_archive_records_reading(
-    Abstractformat *self, xx_archive_record_state *state);
+XXFC_API xx_archive_record_state *xx_rtpatch_setup_data_create_archive_records_reading(Abstractformat *self, const xx_list_s *options, xx_pd_struct *pd);
+XXFC_API const xx_archive_record *xx_rtpatch_setup_data_get_current_archive_record(Abstractformat *self, xx_archive_record_state *state);
+XXFC_API bool xx_rtpatch_setup_data_unpack_current_archive_record(Abstractformat *self, xx_archive_record_state *state, xx_pd_struct *pd);
+XXFC_API bool xx_rtpatch_setup_data_archive_record_move_to_next(Abstractformat *self, xx_archive_record_state *state, xx_pd_struct *pd);
+XXFC_API void xx_rtpatch_setup_data_free_archive_records_reading(Abstractformat *self, xx_archive_record_state *state);
 
 #ifdef __cplusplus
 }

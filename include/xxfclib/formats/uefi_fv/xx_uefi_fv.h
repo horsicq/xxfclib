@@ -58,12 +58,12 @@ extern "C" {
 #endif
 
 /** Compression of one published record, reported as XX_META_ID_COMPRESSION_METHOD. */
-#define XX_UEFI_FV_METHOD_STORE 0U     /**< Bytes lie on the device as-is. */
-#define XX_UEFI_FV_METHOD_LZMA 1U      /**< LZMA_CUSTOM_DECOMPRESS payload. */
-#define XX_UEFI_FV_METHOD_TIANO 2U     /**< EFI standard or Tiano-guided compression. */
-#define XX_UEFI_FV_METHOD_UNKNOWN 3U   /**< Unrecognised GUID-defined codec. */
-#define XX_UEFI_FV_METHOD_LZMAF86 4U   /**< LZMAF86 guided section. */
-#define XX_UEFI_FV_METHOD_BROTLI 5U    /**< Brotli guided section. */
+#define XX_UEFI_FV_METHOD_STORE 0U   /**< Bytes lie on the device as-is. */
+#define XX_UEFI_FV_METHOD_LZMA 1U    /**< LZMA_CUSTOM_DECOMPRESS payload. */
+#define XX_UEFI_FV_METHOD_TIANO 2U   /**< EFI standard or Tiano-guided compression. */
+#define XX_UEFI_FV_METHOD_UNKNOWN 3U /**< Unrecognised GUID-defined codec. */
+#define XX_UEFI_FV_METHOD_LZMAF86 4U /**< LZMAF86 guided section. */
+#define XX_UEFI_FV_METHOD_BROTLI 5U  /**< Brotli guided section. */
 
 typedef struct xx_uefi_fv xx_uefi_fv;
 typedef struct xx_uefi_fv xx_uefi_fv_t;
@@ -73,40 +73,31 @@ struct xx_uefi_fv {
     Abstractformat format;
     uint64_t number_of_records;
     uint64_t number_of_members;
-    uint64_t number_of_volumes;  /**< Volumes entered, the nested ones too. */
-    uint64_t number_of_files;    /**< FFS files found across all volumes. */
-    uint64_t fv_length;          /**< FvLength of the outermost volume. */
-    uint16_t header_length;      /**< HeaderLength of the outermost volume. */
-    uint16_t checksum;           /**< Its Checksum field; verified at parse. */
+    uint64_t number_of_volumes; /**< Volumes entered, the nested ones too. */
+    uint64_t number_of_files;   /**< FFS files found across all volumes. */
+    uint64_t fv_length;         /**< FvLength of the outermost volume. */
+    uint16_t header_length;     /**< HeaderLength of the outermost volume. */
+    uint16_t checksum;          /**< Its Checksum field; verified at parse. */
     uint8_t revision;
-    int64_t archive_end;         /**< base_address + fv_length, or -1. */
+    int64_t archive_end; /**< base_address + fv_length, or -1. */
     void *internal;
 };
 
-XXFC_API void xx_uefi_fv_init(xx_uefi_fv *fv, xx_io_device *dev,
-                              int64_t base_address);
+XXFC_API void xx_uefi_fv_init(xx_uefi_fv *fv, xx_io_device *dev, int64_t base_address);
 XXFC_API xx_uefi_fv *xx_uefi_fv_create(xx_io_device *dev, int64_t base_address);
 XXFC_API void xx_uefi_fv_destroy(xx_uefi_fv *fv);
 XXFC_API void xx_uefi_fv_free(xx_uefi_fv *fv);
 
 XXFC_API bool xx_uefi_fv_check_is_valid(Abstractformat *self, xx_pd_struct *pd);
-XXFC_API bool xx_uefi_fv_handle_base_info(Abstractformat *self,
-                                          xx_pd_struct *pd);
-XXFC_API int64_t xx_uefi_fv_get_format_size(Abstractformat *self,
-                                            xx_pd_struct *pd);
-XXFC_API uint64_t xx_uefi_fv_get_number_of_archive_records(Abstractformat *self,
-                                                           xx_pd_struct *pd);
+XXFC_API bool xx_uefi_fv_handle_base_info(Abstractformat *self, xx_pd_struct *pd);
+XXFC_API int64_t xx_uefi_fv_get_format_size(Abstractformat *self, xx_pd_struct *pd);
+XXFC_API uint64_t xx_uefi_fv_get_number_of_archive_records(Abstractformat *self, xx_pd_struct *pd);
 
-XXFC_API xx_archive_record_state *xx_uefi_fv_create_archive_records_reading(
-    Abstractformat *self, const xx_list_s *options, xx_pd_struct *pd);
-XXFC_API const xx_archive_record *xx_uefi_fv_get_current_archive_record(
-    Abstractformat *self, xx_archive_record_state *state);
-XXFC_API bool xx_uefi_fv_unpack_current_archive_record(
-    Abstractformat *self, xx_archive_record_state *state, xx_pd_struct *pd);
-XXFC_API bool xx_uefi_fv_archive_record_move_to_next(
-    Abstractformat *self, xx_archive_record_state *state, xx_pd_struct *pd);
-XXFC_API void xx_uefi_fv_free_archive_records_reading(
-    Abstractformat *self, xx_archive_record_state *state);
+XXFC_API xx_archive_record_state *xx_uefi_fv_create_archive_records_reading(Abstractformat *self, const xx_list_s *options, xx_pd_struct *pd);
+XXFC_API const xx_archive_record *xx_uefi_fv_get_current_archive_record(Abstractformat *self, xx_archive_record_state *state);
+XXFC_API bool xx_uefi_fv_unpack_current_archive_record(Abstractformat *self, xx_archive_record_state *state, xx_pd_struct *pd);
+XXFC_API bool xx_uefi_fv_archive_record_move_to_next(Abstractformat *self, xx_archive_record_state *state, xx_pd_struct *pd);
+XXFC_API void xx_uefi_fv_free_archive_records_reading(Abstractformat *self, xx_archive_record_state *state);
 
 XXFC_API uint64_t xx_uefi_fv_get_number_of_records(const xx_uefi_fv *fv);
 XXFC_API uint64_t xx_uefi_fv_get_number_of_members(const xx_uefi_fv *fv);
@@ -117,19 +108,24 @@ XXFC_API uint16_t xx_uefi_fv_get_checksum(const xx_uefi_fv *fv);
 XXFC_API uint8_t xx_uefi_fv_get_revision(const xx_uefi_fv *fv);
 XXFC_API int64_t xx_uefi_fv_get_archive_end(const xx_uefi_fv *fv);
 
-static inline Abstractformat *xx_uefi_fv_to_format(xx_uefi_fv *fv) {
+static inline Abstractformat *xx_uefi_fv_to_format(xx_uefi_fv *fv)
+{
     return fv ? &fv->format : NULL;
 }
-static inline void XUefiFv_init(xx_uefi_fv *fv, xx_io_device *dev,
-                                int64_t base_address) {
+static inline void XUefiFv_init(xx_uefi_fv *fv, xx_io_device *dev, int64_t base_address)
+{
     xx_uefi_fv_init(fv, dev, base_address);
 }
-static inline xx_uefi_fv *XUefiFv_create(xx_io_device *dev,
-                                         int64_t base_address) {
+static inline xx_uefi_fv *XUefiFv_create(xx_io_device *dev, int64_t base_address)
+{
     return xx_uefi_fv_create(dev, base_address);
 }
-static inline void XUefiFv_free(xx_uefi_fv *fv) { xx_uefi_fv_free(fv); }
-static inline bool XUefiFv_is_valid(xx_uefi_fv *fv, xx_pd_struct *pd) {
+static inline void XUefiFv_free(xx_uefi_fv *fv)
+{
+    xx_uefi_fv_free(fv);
+}
+static inline bool XUefiFv_is_valid(xx_uefi_fv *fv, xx_pd_struct *pd)
+{
     return fv ? xx_format_is_valid(&fv->format, pd) : false;
 }
 

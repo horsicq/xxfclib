@@ -10,16 +10,18 @@ extern "C" {
 #endif
 typedef xx_apple_family_info xx_cffa;
 typedef xx_cffa xx_cffa_t;
-XXFC_API void xx_cffa_init(xx_cffa *,xx_io_device *,int64_t);
-XXFC_API xx_cffa *xx_cffa_create(xx_io_device *,int64_t);
+XXFC_API void xx_cffa_init(xx_cffa *, xx_io_device *, int64_t);
+XXFC_API xx_cffa *xx_cffa_create(xx_io_device *, int64_t);
 XXFC_API void xx_cffa_destroy(xx_cffa *);
 XXFC_API void xx_cffa_free(xx_cffa *);
-XXFC_API bool xx_cffa_check_is_valid(Abstractformat *,xx_pd_struct *);
-XXFC_API bool xx_cffa_handle_base_info(Abstractformat *,xx_pd_struct *);
-XXFC_API bool xx_cffa_extract_record_to_device(Abstractformat *,xx_archive_record_state *,xx_io_device *,xx_pd_struct *);
-static inline Abstractformat *xx_cffa_to_format(xx_cffa *r) { return r ? &r->format : NULL; }
+XXFC_API bool xx_cffa_check_is_valid(Abstractformat *, xx_pd_struct *);
+XXFC_API bool xx_cffa_handle_base_info(Abstractformat *, xx_pd_struct *);
+XXFC_API bool xx_cffa_extract_record_to_device(Abstractformat *, xx_archive_record_state *, xx_io_device *, xx_pd_struct *);
+static inline Abstractformat *xx_cffa_to_format(xx_cffa *r)
+{
+    return r ? &r->format : NULL;
+}
 #ifdef __cplusplus
 }
 #endif
 #endif
-

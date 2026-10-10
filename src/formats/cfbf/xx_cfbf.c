@@ -39,17 +39,47 @@ void xx_cfbf_destroy(xx_cfbf *r)
 }
 void xx_cfbf_free(xx_cfbf *r)
 {
-    if (r) { xx_cfbf_destroy(r); xx_mem_free(r); }
+    if (r) {
+        xx_cfbf_destroy(r);
+        xx_mem_free(r);
+    }
 }
-bool xx_cfbf_check_is_valid(Abstractformat *f, xx_pd_struct *pd) { return xx_binder_check_is_valid(f, pd); }
-bool xx_cfbf_handle_base_info(Abstractformat *f, xx_pd_struct *pd) { return xx_binder_handle_base_info(f, pd); }
-int64_t xx_cfbf_get_format_size(Abstractformat *f, xx_pd_struct *pd) { return xx_binder_get_format_size(f, pd); }
-uint64_t xx_cfbf_get_number_of_archive_records(Abstractformat *f, xx_pd_struct *pd) { return xx_binder_get_number_of_archive_records(f, pd); }
-xx_archive_record_state *xx_cfbf_create_archive_records_reading(Abstractformat *f, const xx_list_s *o, xx_pd_struct *pd) { return xx_binder_create_archive_records_reading(f, o, pd); }
-const xx_archive_record *xx_cfbf_get_current_archive_record(Abstractformat *f, xx_archive_record_state *s) { return xx_binder_get_current_archive_record(f, s); }
-bool xx_cfbf_unpack_current_archive_record(Abstractformat *f, xx_archive_record_state *s, xx_pd_struct *pd) { return xx_binder_unpack_current_archive_record(f, s, pd); }
-bool xx_cfbf_archive_record_move_to_next(Abstractformat *f, xx_archive_record_state *s, xx_pd_struct *pd) { return xx_binder_archive_record_move_to_next(f, s, pd); }
-void xx_cfbf_free_archive_records_reading(Abstractformat *f, xx_archive_record_state *s) { xx_binder_free_archive_records_reading(f, s); }
+bool xx_cfbf_check_is_valid(Abstractformat *f, xx_pd_struct *pd)
+{
+    return xx_binder_check_is_valid(f, pd);
+}
+bool xx_cfbf_handle_base_info(Abstractformat *f, xx_pd_struct *pd)
+{
+    return xx_binder_handle_base_info(f, pd);
+}
+int64_t xx_cfbf_get_format_size(Abstractformat *f, xx_pd_struct *pd)
+{
+    return xx_binder_get_format_size(f, pd);
+}
+uint64_t xx_cfbf_get_number_of_archive_records(Abstractformat *f, xx_pd_struct *pd)
+{
+    return xx_binder_get_number_of_archive_records(f, pd);
+}
+xx_archive_record_state *xx_cfbf_create_archive_records_reading(Abstractformat *f, const xx_list_s *o, xx_pd_struct *pd)
+{
+    return xx_binder_create_archive_records_reading(f, o, pd);
+}
+const xx_archive_record *xx_cfbf_get_current_archive_record(Abstractformat *f, xx_archive_record_state *s)
+{
+    return xx_binder_get_current_archive_record(f, s);
+}
+bool xx_cfbf_unpack_current_archive_record(Abstractformat *f, xx_archive_record_state *s, xx_pd_struct *pd)
+{
+    return xx_binder_unpack_current_archive_record(f, s, pd);
+}
+bool xx_cfbf_archive_record_move_to_next(Abstractformat *f, xx_archive_record_state *s, xx_pd_struct *pd)
+{
+    return xx_binder_archive_record_move_to_next(f, s, pd);
+}
+void xx_cfbf_free_archive_records_reading(Abstractformat *f, xx_archive_record_state *s)
+{
+    xx_binder_free_archive_records_reading(f, s);
+}
 xx_file_type_t xx_cfbf_detect(xx_io_device *d, int64_t base)
 {
     xx_cfbf r;

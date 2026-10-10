@@ -9,13 +9,15 @@
 #ifdef __cplusplus
 extern "C" {
 #endif
-typedef struct xx_esp_archive { Abstractformat format; } xx_esp_archive;
-XXFC_API void xx_esp_archive_init(xx_esp_archive *,xx_io_device *,int64_t);
-XXFC_API xx_esp_archive *xx_esp_archive_create(xx_io_device *,int64_t);
+typedef struct xx_esp_archive {
+    Abstractformat format;
+} xx_esp_archive;
+XXFC_API void xx_esp_archive_init(xx_esp_archive *, xx_io_device *, int64_t);
+XXFC_API xx_esp_archive *xx_esp_archive_create(xx_io_device *, int64_t);
 XXFC_API void xx_esp_archive_destroy(xx_esp_archive *);
 XXFC_API void xx_esp_archive_free(xx_esp_archive *);
-XXFC_API bool xx_esp_archive_check_is_valid(Abstractformat *,xx_pd_struct *);
-XXFC_API bool xx_esp_archive_handle_base_info(Abstractformat *,xx_pd_struct *);
+XXFC_API bool xx_esp_archive_check_is_valid(Abstractformat *, xx_pd_struct *);
+XXFC_API bool xx_esp_archive_handle_base_info(Abstractformat *, xx_pd_struct *);
 #ifdef __cplusplus
 }
 #endif

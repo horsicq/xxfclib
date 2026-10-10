@@ -18,7 +18,8 @@
 #endif
 
 XX_MEMORY_TARGET_AVX2
-void xx_memory_copy_avx2(uint8_t *destination, const uint8_t *source, size_t size) {
+void xx_memory_copy_avx2(uint8_t *destination, const uint8_t *source, size_t size)
+{
 #ifdef XX_MEMORY_X86
     size_t at = 0;
     for (; size - at >= 128; at += 128) {
@@ -41,8 +42,7 @@ void xx_memory_copy_avx2(uint8_t *destination, const uint8_t *source, size_t siz
         at += 16;
     }
     /* Volatile tails stay bounded and do not become CRT memcpy calls. */
-    for (; at < size; ++at)
-        ((volatile uint8_t *)destination)[at] = ((const volatile uint8_t *)source)[at];
+    for (; at < size; ++at) ((volatile uint8_t *)destination)[at] = ((const volatile uint8_t *)source)[at];
     _mm256_zeroupper();
 #else
     xx_memory_copy_scalar(destination, source, size);
@@ -50,7 +50,8 @@ void xx_memory_copy_avx2(uint8_t *destination, const uint8_t *source, size_t siz
 }
 
 XX_MEMORY_TARGET_AVX2
-void xx_memory_move_avx2(uint8_t *destination, const uint8_t *source, size_t size) {
+void xx_memory_move_avx2(uint8_t *destination, const uint8_t *source, size_t size)
+{
 #ifdef XX_MEMORY_X86
     uintptr_t d = (uintptr_t)destination, s = (uintptr_t)source;
     size_t at;
@@ -82,7 +83,8 @@ void xx_memory_move_avx2(uint8_t *destination, const uint8_t *source, size_t siz
 }
 
 XX_MEMORY_TARGET_AVX2
-void xx_memory_set_avx2(uint8_t *destination, uint8_t value, size_t size) {
+void xx_memory_set_avx2(uint8_t *destination, uint8_t value, size_t size)
+{
 #ifdef XX_MEMORY_X86
     __m256i bytes = _mm256_set1_epi8((char)value);
     size_t at = 0;
@@ -92,8 +94,7 @@ void xx_memory_set_avx2(uint8_t *destination, uint8_t value, size_t size) {
         _mm256_storeu_si256((__m256i *)(void *)(destination + at + 64), bytes);
         _mm256_storeu_si256((__m256i *)(void *)(destination + at + 96), bytes);
     }
-    for (; size - at >= 32; at += 32)
-        _mm256_storeu_si256((__m256i *)(void *)(destination + at), bytes);
+    for (; size - at >= 32; at += 32) _mm256_storeu_si256((__m256i *)(void *)(destination + at), bytes);
     _mm256_zeroupper();
     xx_memory_set_scalar(destination + at, value, size - at);
 #else
@@ -102,7 +103,8 @@ void xx_memory_set_avx2(uint8_t *destination, uint8_t value, size_t size) {
 }
 
 XX_MEMORY_TARGET_AVX2
-int xx_memory_compare_avx2(const uint8_t *first, const uint8_t *second, size_t size) {
+int xx_memory_compare_avx2(const uint8_t *first, const uint8_t *second, size_t size)
+{
 #ifdef XX_MEMORY_X86
     size_t at = 0;
     for (; size - at >= 32; at += 32) {
@@ -130,7 +132,8 @@ int xx_memory_compare_avx2(const uint8_t *first, const uint8_t *second, size_t s
 }
 
 XX_MEMORY_TARGET_AVX2
-const uint8_t *xx_memory_find_avx2(const uint8_t *source, uint8_t value, size_t size) {
+const uint8_t *xx_memory_find_avx2(const uint8_t *source, uint8_t value, size_t size)
+{
 #ifdef XX_MEMORY_X86
     __m256i wanted = _mm256_set1_epi8((char)value);
     size_t at = 0;

@@ -72,17 +72,15 @@ static void xx_swagpacket_vtable_destroy(Abstractformat *self);
 
 /* ------------------------------------------------------------- helpers -- */
 
-static bool xx_swagpacket_read_at(Abstractformat *self, int64_t offset,
-                              uint8_t *buffer, size_t size) {
+static bool xx_swagpacket_read_at(Abstractformat *self, int64_t offset, uint8_t *buffer, size_t size)
+{
     size_t completed = 0U;
 
-    if (!self || !self->device || offset < 0 ||
-        xx_io_seek64(self->device, offset, SEEK_SET) != 0) {
+    if (!self || !self->device || offset < 0 || xx_io_seek64(self->device, offset, SEEK_SET) != 0) {
         return false;
     }
     while (completed < size) {
-        ssize_t received =
-            xx_io_read(self->device, buffer + completed, size - completed);
+        ssize_t received = xx_io_read(self->device, buffer + completed, size - completed);
         if (received <= 0 || (size_t)received > size - completed) {
             return false;
         }
@@ -91,14 +89,14 @@ static bool xx_swagpacket_read_at(Abstractformat *self, int64_t offset,
     return true;
 }
 
-static bool xx_swagpacket_range_within(int64_t total, int64_t offset,
-                                   int64_t size) {
-    return offset >= 0 && size >= 0 && offset <= total &&
-           size <= total - offset;
+static bool xx_swagpacket_range_within(int64_t total, int64_t offset, int64_t size)
+{
+    return offset >= 0 && size >= 0 && offset <= total && size <= total - offset;
 }
 
 /* Refuse anything that would escape the extraction directory. */
-static bool xx_swagpacket_path_safe(const char *name) {
+static bool xx_swagpacket_path_safe(const char *name)
+{
     const char *cursor = name;
 
     if (!name || !name[0] || name[0] == '/') return false;
@@ -113,7 +111,8 @@ static bool xx_swagpacket_path_safe(const char *name) {
     return true;
 }
 
-static void xx_swagpacket_stream_free(void *pointer) {
+static void xx_swagpacket_stream_free(void *pointer)
+{
     xx_swagpacket_stream *stream = (xx_swagpacket_stream *)pointer;
     size_t index;
 
@@ -126,10 +125,9 @@ static void xx_swagpacket_stream_free(void *pointer) {
 }
 
 /* Append a member, taking ownership of @p name. */
-static bool xx_swagpacket_add(xx_swagpacket_stream *stream,
-                          const xx_swagpacket_member *member) {
-    xx_swagpacket_member *grown = (xx_swagpacket_member *)xx_mem_realloc(
-        stream->items, sizeof(*grown) * (stream->count + 1U));
+static bool xx_swagpacket_add(xx_swagpacket_stream *stream, const xx_swagpacket_member *member)
+{
+    xx_swagpacket_member *grown = (xx_swagpacket_member *)xx_mem_realloc(stream->items, sizeof(*grown) * (stream->count + 1U));
 
     if (!grown) return false;
     stream->items = grown;
@@ -137,26 +135,19 @@ static bool xx_swagpacket_add(xx_swagpacket_stream *stream,
     return true;
 }
 
-
 /* Every member is stored verbatim, so extraction is a bounded copy. */
-static bool xx_swagpacket_decode(Abstractformat *self,
-                             const xx_swagpacket_member *member, uint8_t **out,
-                             size_t *out_size, xx_pd_struct *pd) {
+static bool xx_swagpacket_decode(Abstractformat *self, const xx_swagpacket_member *member, uint8_t **out, size_t *out_size, xx_pd_struct *pd)
+{
     uint8_t *buffer;
 
     *out = NULL;
     *out_size = 0U;
-    if (member->compressed_size < 0 ||
-        (uint64_t)member->compressed_size > (uint64_t)SIZE_MAX) {
+    if (member->compressed_size < 0 || (uint64_t)member->compressed_size > (uint64_t)SIZE_MAX) {
         return false;
     }
-    buffer = (uint8_t *)xx_mem_alloc(
-        member->compressed_size != 0 ? (size_t)member->compressed_size : 1U);
+    buffer = (uint8_t *)xx_mem_alloc(member->compressed_size != 0 ? (size_t)member->compressed_size : 1U);
     if (!buffer) return false;
-    if (member->compressed_size != 0 &&
-        ((pd && xx_pd_is_stopped(pd)) ||
-         !xx_swagpacket_read_at(self, member->data_offset, buffer,
-                            (size_t)member->compressed_size))) {
+    if (member->compressed_size != 0 && ((pd && xx_pd_is_stopped(pd)) || !xx_swagpacket_read_at(self, member->data_offset, buffer, (size_t)member->compressed_size))) {
         xx_mem_free(buffer);
         return false;
     }
@@ -164,7 +155,6 @@ static bool xx_swagpacket_decode(Abstractformat *self,
     *out_size = (size_t)member->compressed_size;
     return true;
 }
-
 
 #define XX_SWAGPACKET_BLOCK_SIZE 128
 #define XX_SWAGPACKET_BANNER_SIZE 48
@@ -190,8 +180,8 @@ static bool xx_swagpacket_decode(Abstractformat *self,
  * field in a SWAG packet is space-padded ASCII decimal, so there is no
  * multi-byte word anywhere in the container to decode. */
 
-static bool xx_swagpacket_is_spaces(const uint8_t *block, int32_t offset,
-                                    int32_t size) {
+static bool xx_swagpacket_is_spaces(const uint8_t *block, int32_t offset, int32_t size)
+{
     int32_t i;
 
     for (i = 0; i < size; ++i) {
@@ -203,8 +193,8 @@ static bool xx_swagpacket_is_spaces(const uint8_t *block, int32_t offset,
 /* A space-padded unsigned decimal: digits first, spaces after, nothing else.
  * An empty field fails, so a blank block count can never read as zero and
  * stall the walk. */
-static bool xx_swagpacket_field_number(const uint8_t *block, int32_t offset,
-                                       int32_t size, int64_t *result) {
+static bool xx_swagpacket_field_number(const uint8_t *block, int32_t offset, int32_t size, int64_t *result)
+{
     int64_t value = 0;
     int32_t digits = 0;
     bool padding = false;
@@ -215,8 +205,7 @@ static bool xx_swagpacket_field_number(const uint8_t *block, int32_t offset,
 
         if (character == (uint8_t)' ') {
             padding = true;
-        } else if (character >= (uint8_t)'0' && character <= (uint8_t)'9' &&
-                   !padding) {
+        } else if (character >= (uint8_t)'0' && character <= (uint8_t)'9' && !padding) {
             value = value * 10 + (int64_t)(character - (uint8_t)'0');
             ++digits;
             if (value > (int64_t)XX_SWAGPACKET_MAX_BLOCKS) return false;
@@ -233,13 +222,13 @@ static bool xx_swagpacket_field_number(const uint8_t *block, int32_t offset,
  * side, so it is compared trimmed. It must be the plain 1-based ordinal with
  * no leading zeros -- that is what the reference's string compare against the
  * decimal ordinal amounts to. */
-static bool xx_swagpacket_index_is(const uint8_t *block, int64_t expected) {
+static bool xx_swagpacket_index_is(const uint8_t *block, int64_t expected)
+{
     int64_t value = 0;
     int32_t i = 0;
     int32_t digits = 0;
 
-    while (i < XX_SWAGPACKET_REC_INDEX_SIZE &&
-           block[XX_SWAGPACKET_REC_INDEX_OFFSET + i] == (uint8_t)' ') {
+    while (i < XX_SWAGPACKET_REC_INDEX_SIZE && block[XX_SWAGPACKET_REC_INDEX_OFFSET + i] == (uint8_t)' ') {
         ++i;
     }
     while (i < XX_SWAGPACKET_REC_INDEX_SIZE) {
@@ -263,9 +252,9 @@ static bool xx_swagpacket_index_is(const uint8_t *block, int64_t expected) {
     return value == expected;
 }
 
-static bool xx_swagpacket_two_digits(const uint8_t *block, int32_t offset) {
-    return block[offset] >= (uint8_t)'0' && block[offset] <= (uint8_t)'9' &&
-           block[offset + 1] >= (uint8_t)'0' && block[offset + 1] <= (uint8_t)'9';
+static bool xx_swagpacket_two_digits(const uint8_t *block, int32_t offset)
+{
+    return block[offset] >= (uint8_t)'0' && block[offset] <= (uint8_t)'9' && block[offset + 1] >= (uint8_t)'0' && block[offset + 1] <= (uint8_t)'9';
 }
 
 /* "MM-DD-YY" at +0x08 and "HH:MM" at +0x10, both fixed width with fixed
@@ -273,7 +262,8 @@ static bool xx_swagpacket_two_digits(const uint8_t *block, int32_t offset) {
  * conversion that would also swallow a space; SWAGOLX always zero-pads, so
  * digits are required here. Calendar validity is deliberately not enforced,
  * matching the reference walk, which only rejects an unparsable stamp. */
-static bool xx_swagpacket_stamp_ok(const uint8_t *block) {
+static bool xx_swagpacket_stamp_ok(const uint8_t *block)
+{
     if (block[XX_SWAGPACKET_REC_DATE_OFFSET + 2] != (uint8_t)'-') return false;
     if (block[XX_SWAGPACKET_REC_DATE_OFFSET + 5] != (uint8_t)'-') return false;
     if (!xx_swagpacket_two_digits(block, XX_SWAGPACKET_REC_DATE_OFFSET)) {
@@ -299,7 +289,8 @@ static bool xx_swagpacket_stamp_ok(const uint8_t *block) {
  * naming available; it is zero-padded to four digits like the reference. The
  * digits are emitted by hand rather than through a format string so the width
  * behaviour does not depend on the runtime printf subset. */
-static bool xx_swagpacket_make_name(int64_t ordinal, char *buffer) {
+static bool xx_swagpacket_make_name(int64_t ordinal, char *buffer)
+{
     char digits[24];
     int32_t count = 0;
     int32_t length = 0;
@@ -321,8 +312,8 @@ static bool xx_swagpacket_make_name(int64_t ordinal, char *buffer) {
     return true;
 }
 
-static xx_swagpacket_stream *xx_swagpacket_parse(Abstractformat *self,
-                                                 xx_pd_struct *pd) {
+static xx_swagpacket_stream *xx_swagpacket_parse(Abstractformat *self, xx_pd_struct *pd)
+{
     xx_swagpacket_stream *stream = NULL;
     uint8_t block[XX_SWAGPACKET_BLOCK_SIZE];
     char name[XX_SWAGPACKET_NAME_SIZE];
@@ -339,26 +330,22 @@ static xx_swagpacket_stream *xx_swagpacket_parse(Abstractformat *self,
     /* A packet needs the file header block plus at least one member block. */
     if (span < (int64_t)XX_SWAGPACKET_BLOCK_SIZE * 2) return NULL;
 
-    if (!xx_swagpacket_read_at(self, self->base_address, block,
-                               sizeof(block))) {
+    if (!xx_swagpacket_read_at(self, self->base_address, block, sizeof(block))) {
         return NULL;
     }
     /* The 48-byte banner is the only magic the format has, and it is written
      * verbatim by SWAGOLX.EXE. Everything else in this function is shape, so
      * shortening this compare is what would let noise in. */
-    if (xx_rt_memcmp(block, "SWAGOLX.EXE (c) 1993 GDSOFT  ALL RIGHTS RESERVED",
-                     XX_SWAGPACKET_BANNER_SIZE) != 0) {
+    if (xx_rt_memcmp(block, "SWAGOLX.EXE (c) 1993 GDSOFT  ALL RIGHTS RESERVED", XX_SWAGPACKET_BANNER_SIZE) != 0) {
         return NULL;
     }
     if (block[XX_SWAGPACKET_BANNER_PAD_OFFSET] != (uint8_t)' ') return NULL;
     /* Nine fixed spaces between the count and the title: a cheap check that
      * the header block really has this layout and not merely the banner. */
-    if (!xx_swagpacket_is_spaces(block, XX_SWAGPACKET_GAP_OFFSET,
-                                 XX_SWAGPACKET_GAP_SIZE)) {
+    if (!xx_swagpacket_is_spaces(block, XX_SWAGPACKET_GAP_OFFSET, XX_SWAGPACKET_GAP_SIZE)) {
         return NULL;
     }
-    if (!xx_swagpacket_field_number(block, XX_SWAGPACKET_COUNT_OFFSET,
-                                    XX_SWAGPACKET_COUNT_SIZE, &count)) {
+    if (!xx_swagpacket_field_number(block, XX_SWAGPACKET_COUNT_OFFSET, XX_SWAGPACKET_COUNT_SIZE, &count)) {
         return NULL;
     }
     /* The field is five digits wide, so the cap is the field, not a policy. */
@@ -375,18 +362,14 @@ static xx_swagpacket_stream *xx_swagpacket_parse(Abstractformat *self,
         int64_t region;
 
         if (pd && xx_pd_is_stopped(pd)) goto fail;
-        if (!xx_swagpacket_range_within(span, offset,
-                                        XX_SWAGPACKET_BLOCK_SIZE)) {
+        if (!xx_swagpacket_range_within(span, offset, XX_SWAGPACKET_BLOCK_SIZE)) {
             goto fail;
         }
-        if (!xx_swagpacket_read_at(self, self->base_address + offset, block,
-                                   sizeof(block))) {
+        if (!xx_swagpacket_read_at(self, self->base_address + offset, block, sizeof(block))) {
             goto fail;
         }
 
-        if (!xx_swagpacket_field_number(block, XX_SWAGPACKET_REC_BLOCKS_OFFSET,
-                                        XX_SWAGPACKET_REC_BLOCKS_SIZE,
-                                        &blocks)) {
+        if (!xx_swagpacket_field_number(block, XX_SWAGPACKET_REC_BLOCKS_OFFSET, XX_SWAGPACKET_REC_BLOCKS_SIZE, &blocks)) {
             goto fail;
         }
         /* The block count covers the member header too, so even a payload-less
@@ -407,8 +390,7 @@ static xx_swagpacket_stream *xx_swagpacket_parse(Abstractformat *self,
         /* Per-member sanity cap: the 7-digit field can describe a gigabyte of
          * snippet, which no packet has. */
         if (region > (int64_t)XX_SWAGPACKET_MAX_REGION) goto fail;
-        if (!xx_swagpacket_range_within(
-                span, offset + XX_SWAGPACKET_BLOCK_SIZE, region)) {
+        if (!xx_swagpacket_range_within(span, offset + XX_SWAGPACKET_BLOCK_SIZE, region)) {
             goto fail;
         }
 
@@ -422,8 +404,7 @@ static xx_swagpacket_stream *xx_swagpacket_parse(Abstractformat *self,
         if (!member.name) goto fail;
         member.header_offset = self->base_address + offset;
         member.header_size = XX_SWAGPACKET_BLOCK_SIZE;
-        member.data_offset =
-            self->base_address + offset + XX_SWAGPACKET_BLOCK_SIZE;
+        member.data_offset = self->base_address + offset + XX_SWAGPACKET_BLOCK_SIZE;
         member.compressed_size = region;
         member.uncompressed_size = region;
         /* The stamp is validated above but not published: the packet records
@@ -455,11 +436,10 @@ fail:
     return NULL;
 }
 
-
 /* ---------------------------------------------------------- lifecycle --- */
 
-void xx_swagpacket_init(xx_swagpacket *archive, xx_io_device *device,
-                    int64_t base_address) {
+void xx_swagpacket_init(xx_swagpacket *archive, xx_io_device *device, int64_t base_address)
+{
     if (!archive) return;
     xx_mem_zero(archive, sizeof(*archive));
     xx_format_init(&archive->format, device, base_address);
@@ -472,22 +452,17 @@ void xx_swagpacket_init(xx_swagpacket *archive, xx_io_device *device,
     archive->format.check_is_valid = xx_swagpacket_check_is_valid;
     archive->format.handle_base_info = xx_swagpacket_handle_base_info;
     archive->format.get_format_size = xx_swagpacket_get_format_size;
-    archive->format.get_number_of_archive_records =
-        xx_swagpacket_get_number_of_archive_records;
-    archive->format.create_archive_records_reading =
-        xx_swagpacket_create_archive_records_reading;
-    archive->format.get_current_archive_record =
-        xx_swagpacket_get_current_archive_record;
-    archive->format.unpack_current_archive_record =
-        xx_swagpacket_unpack_current_archive_record;
-    archive->format.archive_record_move_to_next =
-        xx_swagpacket_archive_record_move_to_next;
-    archive->format.free_archive_records_reading =
-        xx_swagpacket_free_archive_records_reading;
+    archive->format.get_number_of_archive_records = xx_swagpacket_get_number_of_archive_records;
+    archive->format.create_archive_records_reading = xx_swagpacket_create_archive_records_reading;
+    archive->format.get_current_archive_record = xx_swagpacket_get_current_archive_record;
+    archive->format.unpack_current_archive_record = xx_swagpacket_unpack_current_archive_record;
+    archive->format.archive_record_move_to_next = xx_swagpacket_archive_record_move_to_next;
+    archive->format.free_archive_records_reading = xx_swagpacket_free_archive_records_reading;
     archive->format.destroy = xx_swagpacket_vtable_destroy;
 }
 
-xx_swagpacket *xx_swagpacket_create(xx_io_device *device, int64_t base_address) {
+xx_swagpacket *xx_swagpacket_create(xx_io_device *device, int64_t base_address)
+{
     xx_swagpacket *archive = (xx_swagpacket *)xx_mem_alloc(sizeof(*archive));
 
     if (!archive) return NULL;
@@ -495,7 +470,8 @@ xx_swagpacket *xx_swagpacket_create(xx_io_device *device, int64_t base_address) 
     return archive;
 }
 
-void xx_swagpacket_destroy(xx_swagpacket *archive) {
+void xx_swagpacket_destroy(xx_swagpacket *archive)
+{
     if (!archive) return;
     /* Not xx_format_destroy: it dispatches through format.destroy, which is
      * the wrapper below, and the two would recurse. */
@@ -504,19 +480,22 @@ void xx_swagpacket_destroy(xx_swagpacket *archive) {
     archive->number_of_records = 0U;
 }
 
-void xx_swagpacket_free(xx_swagpacket *archive) {
+void xx_swagpacket_free(xx_swagpacket *archive)
+{
     if (!archive) return;
     xx_swagpacket_destroy(archive);
     xx_mem_free(archive);
 }
 
-static void xx_swagpacket_vtable_destroy(Abstractformat *self) {
+static void xx_swagpacket_vtable_destroy(Abstractformat *self)
+{
     xx_swagpacket_destroy((xx_swagpacket *)self);
 }
 
 /* -------------------------------------------------------------- format -- */
 
-bool xx_swagpacket_check_is_valid(Abstractformat *self, xx_pd_struct *pd) {
+bool xx_swagpacket_check_is_valid(Abstractformat *self, xx_pd_struct *pd)
+{
     xx_swagpacket_stream *stream;
 
     if (!self || (pd && xx_pd_is_stopped(pd))) return false;
@@ -526,7 +505,8 @@ bool xx_swagpacket_check_is_valid(Abstractformat *self, xx_pd_struct *pd) {
     return true;
 }
 
-bool xx_swagpacket_handle_base_info(Abstractformat *self, xx_pd_struct *pd) {
+bool xx_swagpacket_handle_base_info(Abstractformat *self, xx_pd_struct *pd)
+{
     xx_swagpacket *archive = (xx_swagpacket *)self;
     xx_swagpacket_stream *stream;
 
@@ -547,18 +527,17 @@ bool xx_swagpacket_handle_base_info(Abstractformat *self, xx_pd_struct *pd) {
     return true;
 }
 
-int64_t xx_swagpacket_get_format_size(Abstractformat *self, xx_pd_struct *pd) {
-    if (!self ||
-        (!self->base_info_handled && !xx_format_handle_base_info(self, pd))) {
+int64_t xx_swagpacket_get_format_size(Abstractformat *self, xx_pd_struct *pd)
+{
+    if (!self || (!self->base_info_handled && !xx_format_handle_base_info(self, pd))) {
         return 0;
     }
     return self->is_valid ? self->format_size : 0;
 }
 
-uint64_t xx_swagpacket_get_number_of_archive_records(Abstractformat *self,
-                                                 xx_pd_struct *pd) {
-    if (!self ||
-        (!self->base_info_handled && !xx_format_handle_base_info(self, pd))) {
+uint64_t xx_swagpacket_get_number_of_archive_records(Abstractformat *self, xx_pd_struct *pd)
+{
+    if (!self || (!self->base_info_handled && !xx_format_handle_base_info(self, pd))) {
         return 0U;
     }
     return self->is_valid ? ((xx_swagpacket *)self)->number_of_records : 0U;
@@ -566,8 +545,8 @@ uint64_t xx_swagpacket_get_number_of_archive_records(Abstractformat *self,
 
 /* ------------------------------------------------------------- records -- */
 
-static bool xx_swagpacket_set_record(xx_archive_record *record,
-                                 const xx_swagpacket_member *member) {
+static bool xx_swagpacket_set_record(xx_archive_record *record, const xx_swagpacket_member *member)
+{
     xx_archive_record_cleanup(record);
     xx_archive_record_init(record);
     record->header_offset = member->header_offset;
@@ -575,34 +554,24 @@ static bool xx_swagpacket_set_record(xx_archive_record *record,
     record->data_offset = member->data_offset;
     record->compressed_size = member->compressed_size;
     return xx_archive_record_set_original_name(record, member->name) &&
-           xx_archive_record_set_meta_u64(record, XX_META_ID_COMPRESSED_SIZE,
-                                          (uint64_t)member->compressed_size) &&
-           xx_archive_record_set_meta_u64(
-               record, XX_META_ID_UNCOMPRESSED_SIZE,
-               (uint64_t)member->uncompressed_size) &&
-           xx_archive_record_set_meta_u64(record, XX_META_ID_COMPRESSION_METHOD,
-                                          member->method) &&
-           xx_archive_record_set_meta_u64(record, XX_META_ID_TIMESTAMP,
-                                          member->timestamp) &&
-           xx_archive_record_set_meta_bool(record, XX_META_ID_IS_FOLDER,
-                                           member->is_folder) &&
-           xx_archive_record_set_meta_bool(record, XX_META_ID_IS_ENCRYPTED,
-                                           false);
+           xx_archive_record_set_meta_u64(record, XX_META_ID_COMPRESSED_SIZE, (uint64_t)member->compressed_size) &&
+           xx_archive_record_set_meta_u64(record, XX_META_ID_UNCOMPRESSED_SIZE, (uint64_t)member->uncompressed_size) &&
+           xx_archive_record_set_meta_u64(record, XX_META_ID_COMPRESSION_METHOD, member->method) &&
+           xx_archive_record_set_meta_u64(record, XX_META_ID_TIMESTAMP, member->timestamp) &&
+           xx_archive_record_set_meta_bool(record, XX_META_ID_IS_FOLDER, member->is_folder) && xx_archive_record_set_meta_bool(record, XX_META_ID_IS_ENCRYPTED, false);
 }
 
-static bool xx_swagpacket_copy_options(xx_list_s *target,
-                                   const xx_list_s *options) {
+static bool xx_swagpacket_copy_options(xx_list_s *target, const xx_list_s *options)
+{
     size_t index;
 
     if (!target || !options) return options == NULL;
     for (index = 0U; index < options->count; ++index) {
-        const xx_meta *source =
-            (const xx_meta *)xx_list_at((const xx_list_t *)options, index);
+        const xx_meta *source = (const xx_meta *)xx_list_at((const xx_list_t *)options, index);
         xx_meta copied;
         if (!source) continue;
         xx_meta_init(&copied, source->meta_id);
-        if (!xx_var_copy(&copied.var, &source->var) ||
-            !xx_list_append(target, &copied)) {
+        if (!xx_var_copy(&copied.var, &source->var) || !xx_list_append(target, &copied)) {
             xx_meta_cleanup(&copied);
             return false;
         }
@@ -610,21 +579,20 @@ static bool xx_swagpacket_copy_options(xx_list_s *target,
     return true;
 }
 
-static const xx_var *xx_swagpacket_get_option(const xx_list_s *options,
-                                          uint32_t meta_id) {
+static const xx_var *xx_swagpacket_get_option(const xx_list_s *options, uint32_t meta_id)
+{
     size_t index;
 
     if (!options) return NULL;
     for (index = 0U; index < options->count; ++index) {
-        const xx_meta *meta =
-            (const xx_meta *)xx_list_at((const xx_list_t *)options, index);
+        const xx_meta *meta = (const xx_meta *)xx_list_at((const xx_list_t *)options, index);
         if (meta && meta->meta_id == meta_id) return &meta->var;
     }
     return NULL;
 }
 
-xx_archive_record_state *xx_swagpacket_create_archive_records_reading(
-    Abstractformat *self, const xx_list_s *options, xx_pd_struct *pd) {
+xx_archive_record_state *xx_swagpacket_create_archive_records_reading(Abstractformat *self, const xx_list_s *options, xx_pd_struct *pd)
+{
     xx_swagpacket_stream *stream;
     xx_archive_record_state *state;
 
@@ -640,9 +608,7 @@ xx_archive_record_state *xx_swagpacket_create_archive_records_reading(
     state->internal_state = stream;
     state->free_internal = xx_swagpacket_stream_free;
     state->total_records = (int64_t)stream->count;
-    if (!xx_swagpacket_copy_options(&state->options, options) ||
-        (stream->count != 0U &&
-         !xx_swagpacket_set_record(&state->current_record, &stream->items[0]))) {
+    if (!xx_swagpacket_copy_options(&state->options, options) || (stream->count != 0U && !xx_swagpacket_set_record(&state->current_record, &stream->items[0]))) {
         xx_archive_record_state_free(state);
         return NULL;
     }
@@ -651,20 +617,16 @@ xx_archive_record_state *xx_swagpacket_create_archive_records_reading(
     return state;
 }
 
-const xx_archive_record *xx_swagpacket_get_current_archive_record(
-    Abstractformat *self, xx_archive_record_state *state) {
-    return self && state && state->format == self && state->has_record
-               ? &state->current_record
-               : NULL;
+const xx_archive_record *xx_swagpacket_get_current_archive_record(Abstractformat *self, xx_archive_record_state *state)
+{
+    return self && state && state->format == self && state->has_record ? &state->current_record : NULL;
 }
 
-bool xx_swagpacket_archive_record_move_to_next(Abstractformat *self,
-                                           xx_archive_record_state *state,
-                                           xx_pd_struct *pd) {
+bool xx_swagpacket_archive_record_move_to_next(Abstractformat *self, xx_archive_record_state *state, xx_pd_struct *pd)
+{
     xx_swagpacket_stream *stream;
 
-    if (!self || !state || state->format != self || !state->has_record ||
-        (pd && xx_pd_is_stopped(pd))) {
+    if (!self || !state || state->format != self || !state->has_record || (pd && xx_pd_is_stopped(pd))) {
         return false;
     }
     stream = (xx_swagpacket_stream *)state->internal_state;
@@ -676,14 +638,12 @@ bool xx_swagpacket_archive_record_move_to_next(Abstractformat *self,
     }
     ++stream->index;
     ++state->current_index;
-    state->has_record = xx_swagpacket_set_record(&state->current_record,
-                                             &stream->items[stream->index]);
+    state->has_record = xx_swagpacket_set_record(&state->current_record, &stream->items[stream->index]);
     return state->has_record;
 }
 
-bool xx_swagpacket_unpack_current_archive_record(Abstractformat *self,
-                                             xx_archive_record_state *state,
-                                             xx_pd_struct *pd) {
+bool xx_swagpacket_unpack_current_archive_record(Abstractformat *self, xx_archive_record_state *state, xx_pd_struct *pd)
+{
     xx_swagpacket_stream *stream;
     const xx_swagpacket_member *member;
     const xx_var *path_option;
@@ -695,8 +655,7 @@ bool xx_swagpacket_unpack_current_archive_record(Abstractformat *self,
     bool result = false;
     bool created = false;
 
-    if (!self || !state || state->format != self || !state->has_record ||
-        (pd && xx_pd_is_stopped(pd))) {
+    if (!self || !state || state->format != self || !state->has_record || (pd && xx_pd_is_stopped(pd))) {
         return false;
     }
     stream = (xx_swagpacket_stream *)state->internal_state;
@@ -704,8 +663,7 @@ bool xx_swagpacket_unpack_current_archive_record(Abstractformat *self,
     member = &stream->items[stream->index];
     if (!xx_swagpacket_path_safe(member->name)) return false;
 
-    path_option = xx_swagpacket_get_option(&state->options,
-                                       XX_META_ID_OPT_UNPACK_PATH);
+    path_option = xx_swagpacket_get_option(&state->options, XX_META_ID_OPT_UNPACK_PATH);
     if (!path_option) {
         /* No destination: decode and discard, which verifies the member
          * without writing anything. */
@@ -714,11 +672,9 @@ bool xx_swagpacket_unpack_current_archive_record(Abstractformat *self,
         xx_mem_free(plain);
         return result;
     }
-    if (path_option->type == XX_VAR_TYPE_STRING ||
-        path_option->type == XX_VAR_TYPE_STRING_VIEW) {
+    if (path_option->type == XX_VAR_TYPE_STRING || path_option->type == XX_VAR_TYPE_STRING_VIEW) {
         base_path = xx_var_get_str(path_option);
-    } else if (path_option->type == XX_VAR_TYPE_WSTRING ||
-               path_option->type == XX_VAR_TYPE_WSTRING_VIEW) {
+    } else if (path_option->type == XX_VAR_TYPE_WSTRING || path_option->type == XX_VAR_TYPE_WSTRING_VIEW) {
         converted_path = xx_str_unicode_to_utf8(xx_var_get_wstr(path_option));
         base_path = converted_path;
     }
@@ -726,9 +682,7 @@ bool xx_swagpacket_unpack_current_archive_record(Abstractformat *self,
         xx_str_free(converted_path);
         return false;
     }
-    if (base_path[0] != '\0' &&
-        base_path[xx_str_len(base_path) - 1U] != '/' &&
-        base_path[xx_str_len(base_path) - 1U] != '\\') {
+    if (base_path[0] != '\0' && base_path[xx_str_len(base_path) - 1U] != '/' && base_path[xx_str_len(base_path) - 1U] != '\\') {
         target_path = xx_str_concat3(base_path, "/", member->name);
     } else {
         target_path = xx_str_concat(base_path, member->name);
@@ -741,8 +695,7 @@ bool xx_swagpacket_unpack_current_archive_record(Abstractformat *self,
         xx_str_free(target_path);
         return result;
     }
-    if (!xx_store_create_dirs_a(target_path, false) ||
-        !xx_swagpacket_decode(self, member, &plain, &plain_size, pd)) {
+    if (!xx_store_create_dirs_a(target_path, false) || !xx_swagpacket_decode(self, member, &plain, &plain_size, pd)) {
         xx_str_free(target_path);
         return false;
     }
@@ -753,8 +706,7 @@ bool xx_swagpacket_unpack_current_archive_record(Abstractformat *self,
 
         result = output != NULL;
         while (result && completed < plain_size) {
-            ssize_t sent = xx_io_write(output, plain + completed,
-                                       plain_size - completed);
+            ssize_t sent = xx_io_write(output, plain + completed, plain_size - completed);
             if (sent <= 0 || (size_t)sent > plain_size - completed) {
                 result = false;
                 break;
@@ -769,8 +721,8 @@ bool xx_swagpacket_unpack_current_archive_record(Abstractformat *self,
     return result;
 }
 
-void xx_swagpacket_free_archive_records_reading(Abstractformat *self,
-                                            xx_archive_record_state *state) {
+void xx_swagpacket_free_archive_records_reading(Abstractformat *self, xx_archive_record_state *state)
+{
     (void)self;
     xx_archive_record_state_free(state);
 }

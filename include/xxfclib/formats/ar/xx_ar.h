@@ -51,11 +51,11 @@ typedef enum xx_ar_data_struct_id_e {
 } xx_ar_data_struct_id_t;
 
 struct xx_ar {
-    Abstractformat format;             /**< Base format structure (first member). */
-    uint64_t number_of_records;        /**< User-visible archive members. */
-    uint64_t number_of_members;        /**< All members, including index/name tables. */
-    int64_t archive_end;               /**< Absolute end offset in the device. */
-    bool is_thin;                      /**< Thin archives are detected but unsupported. */
+    Abstractformat format;      /**< Base format structure (first member). */
+    uint64_t number_of_records; /**< User-visible archive members. */
+    uint64_t number_of_members; /**< All members, including index/name tables. */
+    int64_t archive_end;        /**< Absolute end offset in the device. */
+    bool is_thin;               /**< Thin archives are detected but unsupported. */
 };
 
 XXFC_API void xx_ar_init(xx_ar *ar, xx_io_device *dev, int64_t base_address);
@@ -91,27 +91,33 @@ XXFC_API uint64_t xx_ar_get_number_of_members(const xx_ar *ar);
 XXFC_API int64_t xx_ar_get_archive_end(const xx_ar *ar);
 XXFC_API bool xx_ar_is_thin(const xx_ar *ar);
 
-static inline Abstractformat *xx_ar_to_format(xx_ar *ar) {
+static inline Abstractformat *xx_ar_to_format(xx_ar *ar)
+{
     return ar ? &ar->format : NULL;
 }
 
-static inline const Abstractformat *xx_ar_to_format_const(const xx_ar *ar) {
+static inline const Abstractformat *xx_ar_to_format_const(const xx_ar *ar)
+{
     return ar ? &ar->format : NULL;
 }
 
-static inline void XAr_init(xx_ar *ar, xx_io_device *dev, int64_t base_address) {
+static inline void XAr_init(xx_ar *ar, xx_io_device *dev, int64_t base_address)
+{
     xx_ar_init(ar, dev, base_address);
 }
 
-static inline xx_ar *XAr_create(xx_io_device *dev, int64_t base_address) {
+static inline xx_ar *XAr_create(xx_io_device *dev, int64_t base_address)
+{
     return xx_ar_create(dev, base_address);
 }
 
-static inline void XAr_free(xx_ar *ar) {
+static inline void XAr_free(xx_ar *ar)
+{
     xx_ar_free(ar);
 }
 
-static inline bool XAr_is_valid(xx_ar *ar, xx_pd_struct *pd) {
+static inline bool XAr_is_valid(xx_ar *ar, xx_pd_struct *pd)
+{
     return ar ? xx_format_is_valid(&ar->format, pd) : false;
 }
 

@@ -22,32 +22,21 @@ typedef struct xx_doom_wad {
 
 typedef xx_doom_wad xx_doom_wad_t;
 
-XXFC_API void xx_doom_wad_init(xx_doom_wad *archive, xx_io_device *device,
-                             int64_t base_address);
-XXFC_API xx_doom_wad *xx_doom_wad_create(xx_io_device *device,
-                                     int64_t base_address);
+XXFC_API void xx_doom_wad_init(xx_doom_wad *archive, xx_io_device *device, int64_t base_address);
+XXFC_API xx_doom_wad *xx_doom_wad_create(xx_io_device *device, int64_t base_address);
 XXFC_API void xx_doom_wad_destroy(xx_doom_wad *archive);
 XXFC_API void xx_doom_wad_free(xx_doom_wad *archive);
 
-XXFC_API bool xx_doom_wad_check_is_valid(Abstractformat *self,
-                                       xx_pd_struct *pd);
-XXFC_API bool xx_doom_wad_handle_base_info(Abstractformat *self,
-                                         xx_pd_struct *pd);
-XXFC_API int64_t xx_doom_wad_get_format_size(Abstractformat *self,
-                                           xx_pd_struct *pd);
-XXFC_API uint64_t xx_doom_wad_get_number_of_archive_records(
-    Abstractformat *self, xx_pd_struct *pd);
+XXFC_API bool xx_doom_wad_check_is_valid(Abstractformat *self, xx_pd_struct *pd);
+XXFC_API bool xx_doom_wad_handle_base_info(Abstractformat *self, xx_pd_struct *pd);
+XXFC_API int64_t xx_doom_wad_get_format_size(Abstractformat *self, xx_pd_struct *pd);
+XXFC_API uint64_t xx_doom_wad_get_number_of_archive_records(Abstractformat *self, xx_pd_struct *pd);
 
-XXFC_API xx_archive_record_state *xx_doom_wad_create_archive_records_reading(
-    Abstractformat *self, const xx_list_s *options, xx_pd_struct *pd);
-XXFC_API const xx_archive_record *xx_doom_wad_get_current_archive_record(
-    Abstractformat *self, xx_archive_record_state *state);
-XXFC_API bool xx_doom_wad_unpack_current_archive_record(
-    Abstractformat *self, xx_archive_record_state *state, xx_pd_struct *pd);
-XXFC_API bool xx_doom_wad_archive_record_move_to_next(
-    Abstractformat *self, xx_archive_record_state *state, xx_pd_struct *pd);
-XXFC_API void xx_doom_wad_free_archive_records_reading(
-    Abstractformat *self, xx_archive_record_state *state);
+XXFC_API xx_archive_record_state *xx_doom_wad_create_archive_records_reading(Abstractformat *self, const xx_list_s *options, xx_pd_struct *pd);
+XXFC_API const xx_archive_record *xx_doom_wad_get_current_archive_record(Abstractformat *self, xx_archive_record_state *state);
+XXFC_API bool xx_doom_wad_unpack_current_archive_record(Abstractformat *self, xx_archive_record_state *state, xx_pd_struct *pd);
+XXFC_API bool xx_doom_wad_archive_record_move_to_next(Abstractformat *self, xx_archive_record_state *state, xx_pd_struct *pd);
+XXFC_API void xx_doom_wad_free_archive_records_reading(Abstractformat *self, xx_archive_record_state *state);
 
 #ifdef __cplusplus
 }

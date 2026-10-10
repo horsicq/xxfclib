@@ -65,50 +65,42 @@ typedef struct xx_luks XLuks;
 
 struct xx_luks {
     Abstractformat format;
-    uint64_t number_of_records;  /**< Always 1: the encrypted payload. */
-    uint64_t payload_offset;     /**< Byte offset of the data segment. */
-    uint64_t payload_size;       /**< Bytes from payload_offset to the end. */
-    uint64_t header_size;        /**< LUKS2 hdr_size; 592 for LUKS1. */
-    uint64_t seqid;              /**< LUKS2 only. */
-    uint32_t version;            /**< 1 or 2. */
-    uint32_t key_bytes;          /**< LUKS1 master key length. */
-    uint32_t mk_digest_iter;     /**< LUKS1 only. */
-    uint32_t active_slots;       /**< LUKS1 bitmask of enabled key slots. */
+    uint64_t number_of_records; /**< Always 1: the encrypted payload. */
+    uint64_t payload_offset;    /**< Byte offset of the data segment. */
+    uint64_t payload_size;      /**< Bytes from payload_offset to the end. */
+    uint64_t header_size;       /**< LUKS2 hdr_size; 592 for LUKS1. */
+    uint64_t seqid;             /**< LUKS2 only. */
+    uint32_t version;           /**< 1 or 2. */
+    uint32_t key_bytes;         /**< LUKS1 master key length. */
+    uint32_t mk_digest_iter;    /**< LUKS1 only. */
+    uint32_t active_slots;      /**< LUKS1 bitmask of enabled key slots. */
     /* NUL-terminated copies of the header's fixed-width name fields. */
     char cipher_name[33];
     char cipher_mode[33];
     char hash_spec[33];
     char uuid[41];
-    char label[49];              /**< LUKS2 only. */
-    char subsystem[49];          /**< LUKS2 only. */
-    bool payload_offset_exact;   /**< False when a LUKS2 offset was inferred. */
+    char label[49];            /**< LUKS2 only. */
+    char subsystem[49];        /**< LUKS2 only. */
+    bool payload_offset_exact; /**< False when a LUKS2 offset was inferred. */
     void *internal;
 };
 
-XXFC_API void xx_luks_init(xx_luks *luks, xx_io_device *dev,
-                           int64_t base_address);
+XXFC_API void xx_luks_init(xx_luks *luks, xx_io_device *dev, int64_t base_address);
 XXFC_API xx_luks *xx_luks_create(xx_io_device *dev, int64_t base_address);
 XXFC_API void xx_luks_destroy(xx_luks *luks);
 XXFC_API void xx_luks_free(xx_luks *luks);
 
 XXFC_API bool xx_luks_check_is_valid(Abstractformat *self, xx_pd_struct *pd);
 XXFC_API bool xx_luks_handle_base_info(Abstractformat *self, xx_pd_struct *pd);
-XXFC_API int64_t xx_luks_get_format_size(Abstractformat *self,
-                                         xx_pd_struct *pd);
-XXFC_API uint64_t xx_luks_get_number_of_archive_records(Abstractformat *self,
-                                                        xx_pd_struct *pd);
+XXFC_API int64_t xx_luks_get_format_size(Abstractformat *self, xx_pd_struct *pd);
+XXFC_API uint64_t xx_luks_get_number_of_archive_records(Abstractformat *self, xx_pd_struct *pd);
 
-XXFC_API xx_archive_record_state *xx_luks_create_archive_records_reading(
-    Abstractformat *self, const xx_list_s *options, xx_pd_struct *pd);
-XXFC_API const xx_archive_record *xx_luks_get_current_archive_record(
-    Abstractformat *self, xx_archive_record_state *state);
+XXFC_API xx_archive_record_state *xx_luks_create_archive_records_reading(Abstractformat *self, const xx_list_s *options, xx_pd_struct *pd);
+XXFC_API const xx_archive_record *xx_luks_get_current_archive_record(Abstractformat *self, xx_archive_record_state *state);
 /** Decode a supported LUKS1 payload with an explicitly supplied password. */
-XXFC_API bool xx_luks_unpack_current_archive_record(
-    Abstractformat *self, xx_archive_record_state *state, xx_pd_struct *pd);
-XXFC_API bool xx_luks_archive_record_move_to_next(
-    Abstractformat *self, xx_archive_record_state *state, xx_pd_struct *pd);
-XXFC_API void xx_luks_free_archive_records_reading(
-    Abstractformat *self, xx_archive_record_state *state);
+XXFC_API bool xx_luks_unpack_current_archive_record(Abstractformat *self, xx_archive_record_state *state, xx_pd_struct *pd);
+XXFC_API bool xx_luks_archive_record_move_to_next(Abstractformat *self, xx_archive_record_state *state, xx_pd_struct *pd);
+XXFC_API void xx_luks_free_archive_records_reading(Abstractformat *self, xx_archive_record_state *state);
 
 XXFC_API uint32_t xx_luks_get_version(const xx_luks *luks);
 XXFC_API uint64_t xx_luks_get_payload_offset(const xx_luks *luks);
@@ -118,18 +110,24 @@ XXFC_API const char *xx_luks_get_uuid(const xx_luks *luks);
 /** True when key slot index is enabled. LUKS1 only; LUKS2 slots are JSON. */
 XXFC_API bool xx_luks_is_key_slot_active(const xx_luks *luks, unsigned index);
 
-static inline Abstractformat *xx_luks_to_format(xx_luks *luks) {
+static inline Abstractformat *xx_luks_to_format(xx_luks *luks)
+{
     return luks ? &luks->format : NULL;
 }
-static inline void XLuks_init(xx_luks *luks, xx_io_device *dev,
-                              int64_t base_address) {
+static inline void XLuks_init(xx_luks *luks, xx_io_device *dev, int64_t base_address)
+{
     xx_luks_init(luks, dev, base_address);
 }
-static inline xx_luks *XLuks_create(xx_io_device *dev, int64_t base_address) {
+static inline xx_luks *XLuks_create(xx_io_device *dev, int64_t base_address)
+{
     return xx_luks_create(dev, base_address);
 }
-static inline void XLuks_free(xx_luks *luks) { xx_luks_free(luks); }
-static inline bool XLuks_is_valid(xx_luks *luks, xx_pd_struct *pd) {
+static inline void XLuks_free(xx_luks *luks)
+{
+    xx_luks_free(luks);
+}
+static inline bool XLuks_is_valid(xx_luks *luks, xx_pd_struct *pd)
+{
     return luks ? xx_format_is_valid(&luks->format, pd) : false;
 }
 

@@ -7,13 +7,15 @@
 #ifdef __cplusplus
 extern "C" {
 #endif
-typedef struct xx_icmp_message {Abstractformat format;} xx_icmp_message;
-XXFC_API void xx_icmp_message_init(xx_icmp_message *,xx_io_device *,int64_t);
-XXFC_API xx_icmp_message *xx_icmp_message_create(xx_io_device *,int64_t);
+typedef struct xx_icmp_message {
+    Abstractformat format;
+} xx_icmp_message;
+XXFC_API void xx_icmp_message_init(xx_icmp_message *, xx_io_device *, int64_t);
+XXFC_API xx_icmp_message *xx_icmp_message_create(xx_io_device *, int64_t);
 XXFC_API void xx_icmp_message_destroy(xx_icmp_message *);
 XXFC_API void xx_icmp_message_free(xx_icmp_message *);
-XXFC_API bool xx_icmp_message_check_is_valid(Abstractformat *,xx_pd_struct *);
-XXFC_API bool xx_icmp_message_handle_base_info(Abstractformat *,xx_pd_struct *);
+XXFC_API bool xx_icmp_message_check_is_valid(Abstractformat *, xx_pd_struct *);
+XXFC_API bool xx_icmp_message_handle_base_info(Abstractformat *, xx_pd_struct *);
 #ifdef __cplusplus
 }
 #endif

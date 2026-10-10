@@ -38,7 +38,8 @@
 #endif
 #include <windows.h>
 
-static DWORD xx_fs_windows_attributes(const char *path) {
+static DWORD xx_fs_windows_attributes(const char *path)
+{
     void *wide;
     DWORD attributes;
 
@@ -54,25 +55,24 @@ static DWORD xx_fs_windows_attributes(const char *path) {
     return attributes;
 }
 
-xx_fs_platform_kind_t xx_fs_platform_stat(const char *path) {
+xx_fs_platform_kind_t xx_fs_platform_stat(const char *path)
+{
     DWORD attributes = xx_fs_windows_attributes(path);
 
     if (attributes == INVALID_FILE_ATTRIBUTES) {
         return XX_FS_PLATFORM_MISSING;
     }
-    return (attributes & FILE_ATTRIBUTE_DIRECTORY) ? XX_FS_PLATFORM_DIR
-                                                   : XX_FS_PLATFORM_FILE;
+    return (attributes & FILE_ATTRIBUTE_DIRECTORY) ? XX_FS_PLATFORM_DIR : XX_FS_PLATFORM_FILE;
 }
 
 /* "." and ".." are filtered here so neither implementation's caller has to. */
-static bool xx_fs_windows_is_dot(const char *name) {
-    return name && name[0] == '.' &&
-           (name[1] == '\0' || (name[1] == '.' && name[2] == '\0'));
+static bool xx_fs_windows_is_dot(const char *name)
+{
+    return name && name[0] == '.' && (name[1] == '\0' || (name[1] == '.' && name[2] == '\0'));
 }
 
-bool xx_fs_platform_enumerate(const char *path,
-                              xx_fs_platform_entry_fn callback,
-                              void *context) {
+bool xx_fs_platform_enumerate(const char *path, xx_fs_platform_entry_fn callback, void *context)
+{
     size_t length;
     char *pattern;
     void *wide;
@@ -90,8 +90,7 @@ bool xx_fs_platform_enumerate(const char *path,
         return false;
     }
     xx_rt_memcpy(pattern, path, length);
-    if (length > 0U && pattern[length - 1U] != '/' &&
-        pattern[length - 1U] != '\\') {
+    if (length > 0U && pattern[length - 1U] != '/' && pattern[length - 1U] != '\\') {
         pattern[length++] = '\\';
     }
     pattern[length] = '*';
@@ -114,8 +113,7 @@ bool xx_fs_platform_enumerate(const char *path,
             continue;
         }
         if (!xx_fs_windows_is_dot(name)) {
-            bool is_dir =
-                (find_data.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY) != 0;
+            bool is_dir = (find_data.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY) != 0;
             if (!callback(context, name, is_dir)) {
                 xx_rt_free(name);
                 result = false;
@@ -129,7 +127,8 @@ bool xx_fs_platform_enumerate(const char *path,
     return result;
 }
 
-char xx_fs_platform_separator(void) {
+char xx_fs_platform_separator(void)
+{
     return '\\';
 }
 

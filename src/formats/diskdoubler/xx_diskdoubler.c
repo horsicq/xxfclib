@@ -280,17 +280,15 @@ static void xx_diskdoubler_vtable_destroy(Abstractformat *self);
 
 /* ------------------------------------------------------------- helpers -- */
 
-static bool xx_diskdoubler_read_at(Abstractformat *self, int64_t offset,
-                                   uint8_t *buffer, size_t size) {
+static bool xx_diskdoubler_read_at(Abstractformat *self, int64_t offset, uint8_t *buffer, size_t size)
+{
     size_t completed = 0U;
 
-    if (!self || !self->device || offset < 0 ||
-        xx_io_seek64(self->device, offset, SEEK_SET) != 0) {
+    if (!self || !self->device || offset < 0 || xx_io_seek64(self->device, offset, SEEK_SET) != 0) {
         return false;
     }
     while (completed < size) {
-        ssize_t received =
-            xx_io_read(self->device, buffer + completed, size - completed);
+        ssize_t received = xx_io_read(self->device, buffer + completed, size - completed);
         if (received <= 0 || (size_t)received > size - completed) {
             return false;
         }
@@ -299,34 +297,35 @@ static bool xx_diskdoubler_read_at(Abstractformat *self, int64_t offset,
     return true;
 }
 
-static bool xx_diskdoubler_range_within(int64_t total, int64_t offset,
-                                        int64_t size) {
-    return offset >= 0 && size >= 0 && offset <= total &&
-           size <= total - offset;
+static bool xx_diskdoubler_range_within(int64_t total, int64_t offset, int64_t size)
+{
+    return offset >= 0 && size >= 0 && offset <= total && size <= total - offset;
 }
 
 /* CRC-16/CCITT, MSB-first, zero seed, no final xor. Every header of every
  * DiskDoubler form carries one, and it is what keeps a file whose first
  * bytes merely look like a signature from being claimed. */
-static uint16_t xx_diskdoubler_header_crc(const uint8_t *data, int32_t size) {
+static uint16_t xx_diskdoubler_header_crc(const uint8_t *data, int32_t size)
+{
     return xx_crc16_xmodem_calc(0U, data, (size_t)size);
 }
 
 /* A header whose last two bytes are the CRC of the bytes before them. */
-static bool xx_diskdoubler_crc_ok(const uint8_t *header, int32_t size) {
-    return size >= 2 && xx_diskdoubler_header_crc(header, size - 2) ==
-                            xx_data_get_u16(header + size - 2, 2, 0, true);
+static bool xx_diskdoubler_crc_ok(const uint8_t *header, int32_t size)
+{
+    return size >= 2 && xx_diskdoubler_header_crc(header, size - 2) == xx_data_get_u16(header + size - 2, 2, 0, true);
 }
 
-static char xx_diskdoubler_upper_ascii(char c) {
+static char xx_diskdoubler_upper_ascii(char c)
+{
     return (c >= 'a' && c <= 'z') ? (char)(c - 'a' + 'A') : c;
 }
 
 /* CON, PRN, AUX, NUL, COM0-9, LPT0-9, CONIN$, CONOUT$ and CLOCK$, with or
  * without an extension, in any case. */
-static bool xx_diskdoubler_is_device(const char *name, size_t length) {
-    static const char *const words[] = {"CON", "PRN", "AUX", "NUL",
-                                        "CONIN$", "CONOUT$", "CLOCK$"};
+static bool xx_diskdoubler_is_device(const char *name, size_t length)
+{
+    static const char *const words[] = {"CON", "PRN", "AUX", "NUL", "CONIN$", "CONOUT$", "CLOCK$"};
     size_t stem = 0U;
     size_t word;
     size_t index;
@@ -344,8 +343,7 @@ static bool xx_diskdoubler_is_device(const char *name, size_t length) {
         char a = xx_diskdoubler_upper_ascii(name[0]);
         char b = xx_diskdoubler_upper_ascii(name[1]);
         char c = xx_diskdoubler_upper_ascii(name[2]);
-        if ((a == 'C' && b == 'O' && c == 'M') ||
-            (a == 'L' && b == 'P' && c == 'T')) {
+        if ((a == 'C' && b == 'O' && c == 'M') || (a == 'L' && b == 'P' && c == 'T')) {
             return true;
         }
     }
@@ -356,7 +354,8 @@ static bool xx_diskdoubler_is_device(const char *name, size_t length) {
  * letter, no empty or dot component, no backslash, colon or control byte,
  * no device name. The listing never builds such a name; this only proves
  * it. */
-static bool xx_diskdoubler_path_safe(const char *name) {
+static bool xx_diskdoubler_path_safe(const char *name)
+{
     const char *cursor = name;
 
     if (!name || !name[0] || name[0] == '/') return false;
@@ -379,7 +378,8 @@ static bool xx_diskdoubler_path_safe(const char *name) {
     return true;
 }
 
-static void xx_diskdoubler_stream_free(void *pointer) {
+static void xx_diskdoubler_stream_free(void *pointer)
+{
     xx_diskdoubler_stream *stream = (xx_diskdoubler_stream *)pointer;
     size_t index;
 
@@ -393,16 +393,15 @@ static void xx_diskdoubler_stream_free(void *pointer) {
 
 /* Append a member, taking ownership of its name. On failure the name is
  * NOT freed; the caller still owns it. */
-static bool xx_diskdoubler_add(xx_diskdoubler_stream *stream,
-                               const xx_diskdoubler_member *member) {
+static bool xx_diskdoubler_add(xx_diskdoubler_stream *stream, const xx_diskdoubler_member *member)
+{
     if (stream->count >= stream->capacity) {
         size_t limit = (size_t)XX_DISKDOUBLER_MAX_RECORDS * 2U + 2U;
         size_t grown = stream->capacity ? stream->capacity * 2U : 4U;
         xx_diskdoubler_member *items;
         if (grown > limit) grown = limit;
         if (stream->count >= grown) return false;
-        items = (xx_diskdoubler_member *)xx_mem_realloc(
-            stream->items, sizeof(*items) * grown);
+        items = (xx_diskdoubler_member *)xx_mem_realloc(stream->items, sizeof(*items) * grown);
         if (!items) return false;
         stream->items = items;
         stream->capacity = grown;
@@ -411,7 +410,8 @@ static bool xx_diskdoubler_add(xx_diskdoubler_stream *stream,
     return true;
 }
 
-static char *xx_diskdoubler_copy_string(const char *text) {
+static char *xx_diskdoubler_copy_string(const char *text)
+{
     size_t length = xx_str_len(text);
     char *copy = (char *)xx_mem_alloc(length + 1U);
 
@@ -423,9 +423,15 @@ static char *xx_diskdoubler_copy_string(const char *text) {
  * reference reader lists it as supported but has no dispatch arm for it, so a
  * method-8 fork lists there and then silently fails to extract. This reader
  * implements it, so accepting it in the parse is honest. */
-static bool xx_diskdoubler_method_known(uint8_t method) {
+static bool xx_diskdoubler_method_known(uint8_t method)
+{
     switch (method & 0x7fU) {
-        case 0: case 1: case 6: case 8: case 9: case 10: return true;
+        case 0:
+        case 1:
+        case 6:
+        case 8:
+        case 9:
+        case 10: return true;
         default: return false;
     }
 }
@@ -433,9 +439,8 @@ static bool xx_diskdoubler_method_known(uint8_t method) {
 /* Validate one compressed file's 84-byte header, with @p room bytes
  * available from the header's first byte. A standalone file may have a
  * truncated resource fork while retaining a complete data fork. */
-static bool xx_diskdoubler_check_forks(const uint8_t *header, int64_t room,
-                                       xx_diskdoubler_forks *forks,
-                                       bool allow_truncated_resource) {
+static bool xx_diskdoubler_check_forks(const uint8_t *header, int64_t room, xx_diskdoubler_forks *forks, bool allow_truncated_resource)
+{
     uint16_t stored_crc;
 
     xx_mem_zero(forks, sizeof(*forks));
@@ -447,28 +452,21 @@ static bool xx_diskdoubler_check_forks(const uint8_t *header, int64_t room,
      * therefore "no CRC recorded" rather than "CRC of zero", and skipping the
      * check is the documented behaviour, not a loosening. Every other value
      * must match exactly. */
-    if (stored_crc != 0U &&
-        xx_diskdoubler_header_crc(header, XX_DISKDOUBLER_CRC_OFFSET) !=
-            stored_crc) {
+    if (stored_crc != 0U && xx_diskdoubler_header_crc(header, XX_DISKDOUBLER_CRC_OFFSET) != stored_crc) {
         return false;
     }
 
-    forks->data_plain =
-        (int64_t)xx_data_get_u32(header + XX_DISKDOUBLER_OFF_DATA_PLAIN, 4, 0, true);
-    forks->data_packed =
-        (int64_t)xx_data_get_u32(header + XX_DISKDOUBLER_OFF_DATA_PACKED, 4, 0, true);
-    forks->rsrc_plain =
-        (int64_t)xx_data_get_u32(header + XX_DISKDOUBLER_OFF_RSRC_PLAIN, 4, 0, true);
-    forks->rsrc_packed =
-        (int64_t)xx_data_get_u32(header + XX_DISKDOUBLER_OFF_RSRC_PACKED, 4, 0, true);
+    forks->data_plain = (int64_t)xx_data_get_u32(header + XX_DISKDOUBLER_OFF_DATA_PLAIN, 4, 0, true);
+    forks->data_packed = (int64_t)xx_data_get_u32(header + XX_DISKDOUBLER_OFF_DATA_PACKED, 4, 0, true);
+    forks->rsrc_plain = (int64_t)xx_data_get_u32(header + XX_DISKDOUBLER_OFF_RSRC_PLAIN, 4, 0, true);
+    forks->rsrc_packed = (int64_t)xx_data_get_u32(header + XX_DISKDOUBLER_OFF_RSRC_PACKED, 4, 0, true);
     forks->data_method = header[XX_DISKDOUBLER_OFF_DATA_METHOD];
     forks->rsrc_method = header[XX_DISKDOUBLER_OFF_RSRC_METHOD];
 
     /* A nonzero delta selector means a pre-filter was applied to the fork
      * before compression. No decoder here undoes one, and decoding without it
      * produces plausible-looking garbage, so the whole file is refused. */
-    if (xx_data_get_u16(header + XX_DISKDOUBLER_OFF_DATA_DELTA, 2, 0, true) != 0U ||
-        xx_data_get_u16(header + XX_DISKDOUBLER_OFF_RSRC_DELTA, 2, 0, true) != 0U) {
+    if (xx_data_get_u16(header + XX_DISKDOUBLER_OFF_DATA_DELTA, 2, 0, true) != 0U || xx_data_get_u16(header + XX_DISKDOUBLER_OFF_RSRC_DELTA, 2, 0, true) != 0U) {
         return false;
     }
 
@@ -479,8 +477,7 @@ static bool xx_diskdoubler_check_forks(const uint8_t *header, int64_t room,
      * defines. */
     forks->want_data = (forks->data_plain != 0) || (forks->rsrc_plain == 0);
     forks->want_rsrc = forks->rsrc_plain != 0;
-    if (forks->want_data && forks->data_plain != 0 &&
-        !xx_diskdoubler_method_known(forks->data_method)) {
+    if (forks->want_data && forks->data_plain != 0 && !xx_diskdoubler_method_known(forks->data_method)) {
         return false;
     }
     if (forks->want_rsrc && !xx_diskdoubler_method_known(forks->rsrc_method)) {
@@ -488,29 +485,24 @@ static bool xx_diskdoubler_check_forks(const uint8_t *header, int64_t room,
     }
 
     /* Both packed sizes are below 2^32, so the sum cannot overflow. */
-    forks->end = XX_DISKDOUBLER_HEADER_SIZE + forks->data_packed +
-                 forks->rsrc_packed;
-    if (forks->end > room &&
-        (!allow_truncated_resource || !forks->want_data ||
-         XX_DISKDOUBLER_HEADER_SIZE + forks->data_packed > room))
-        return false;
+    forks->end = XX_DISKDOUBLER_HEADER_SIZE + forks->data_packed + forks->rsrc_packed;
+    if (forks->end > room && (!allow_truncated_resource || !forks->want_data || XX_DISKDOUBLER_HEADER_SIZE + forks->data_packed > room)) return false;
 
     /* A stored fork's two lengths are the same number written twice. A
      * mismatch means the method byte is not describing this stream, which is
      * the cheapest way a random file with a valid-looking header gives itself
      * away. */
-    if ((forks->data_method & 0x7fU) == 0U &&
-        forks->data_packed != forks->data_plain) {
+    if ((forks->data_method & 0x7fU) == 0U && forks->data_packed != forks->data_plain) {
         return false;
     }
-    if ((forks->rsrc_method & 0x7fU) == 0U &&
-        forks->rsrc_packed != forks->rsrc_plain) {
+    if ((forks->rsrc_method & 0x7fU) == 0U && forks->rsrc_packed != forks->rsrc_plain) {
         return false;
     }
     return true;
 }
 
-static void xx_diskdoubler_member_zero(xx_diskdoubler_member *member) {
+static void xx_diskdoubler_member_zero(xx_diskdoubler_member *member)
+{
     xx_mem_zero(member, sizeof(*member));
     /* The Macintosh dates (seconds since 1904-01-01 local time, with no zone
      * recorded) are left unset: converting them to the UNIX epoch would
@@ -521,10 +513,8 @@ static void xx_diskdoubler_member_zero(xx_diskdoubler_member *member) {
 /* Publish the listed forks of the compressed file whose header is at
  * @p header_offset (absolute). Takes ownership of @p data_name and
  * @p rsrc_name only on success; a NULL name means that fork is not listed. */
-static bool xx_diskdoubler_publish_forks(xx_diskdoubler_stream *stream,
-                                         int64_t header_offset,
-                                         const xx_diskdoubler_forks *forks,
-                                         char *data_name, char *rsrc_name) {
+static bool xx_diskdoubler_publish_forks(xx_diskdoubler_stream *stream, int64_t header_offset, const xx_diskdoubler_forks *forks, char *data_name, char *rsrc_name)
+{
     xx_diskdoubler_member member;
     size_t first = stream->count;
 
@@ -540,8 +530,7 @@ static bool xx_diskdoubler_publish_forks(xx_diskdoubler_stream *stream,
         /* The container's own byte, high bit and all; decode masks it. When
          * the data fork is empty it is a stored zero-length member whatever
          * its method byte says: there is no stream for a codec. */
-        member.method =
-            forks->data_plain != 0 ? (uint32_t)forks->data_method : 0U;
+        member.method = forks->data_plain != 0 ? (uint32_t)forks->data_method : 0U;
         if (!xx_diskdoubler_add(stream, &member)) return false;
     }
     if (rsrc_name) {
@@ -550,8 +539,7 @@ static bool xx_diskdoubler_publish_forks(xx_diskdoubler_stream *stream,
         member.kind = XX_DISKDOUBLER_KIND_DD;
         member.header_offset = header_offset;
         member.header_size = XX_DISKDOUBLER_HEADER_SIZE;
-        member.data_offset = header_offset + XX_DISKDOUBLER_HEADER_SIZE +
-                             forks->data_packed;
+        member.data_offset = header_offset + XX_DISKDOUBLER_HEADER_SIZE + forks->data_packed;
         member.compressed_size = forks->rsrc_packed;
         member.uncompressed_size = forks->rsrc_plain;
         member.method = (uint32_t)forks->rsrc_method;
@@ -566,11 +554,9 @@ static bool xx_diskdoubler_publish_forks(xx_diskdoubler_stream *stream,
 
 /* Publish a fork that is stored as is inside an archive record. Takes
  * ownership of @p name only on success. */
-static bool xx_diskdoubler_publish_raw(xx_diskdoubler_stream *stream,
-                                       char *name, int64_t header_offset,
-                                       int64_t header_size, int64_t offset,
-                                       int64_t size, uint8_t check,
-                                       uint16_t check_value) {
+static bool xx_diskdoubler_publish_raw(xx_diskdoubler_stream *stream, char *name, int64_t header_offset, int64_t header_size, int64_t offset, int64_t size, uint8_t check,
+                                       uint16_t check_value)
+{
     xx_diskdoubler_member member;
 
     xx_diskdoubler_member_zero(&member);
@@ -592,25 +578,16 @@ static bool xx_diskdoubler_publish_raw(xx_diskdoubler_stream *stream,
 /* Mac OS Roman 0x80..0xFF as Unicode (Apple's ROMAN.TXT, with the euro sign
  * Mac OS 8.5 put at 0xDB). */
 static const uint16_t xx_diskdoubler_mac_roman[128] = {
-    0x00C4, 0x00C5, 0x00C7, 0x00C9, 0x00D1, 0x00D6, 0x00DC, 0x00E1,
-    0x00E0, 0x00E2, 0x00E4, 0x00E3, 0x00E5, 0x00E7, 0x00E9, 0x00E8,
-    0x00EA, 0x00EB, 0x00ED, 0x00EC, 0x00EE, 0x00EF, 0x00F1, 0x00F3,
-    0x00F2, 0x00F4, 0x00F6, 0x00F5, 0x00FA, 0x00F9, 0x00FB, 0x00FC,
-    0x2020, 0x00B0, 0x00A2, 0x00A3, 0x00A7, 0x2022, 0x00B6, 0x00DF,
-    0x00AE, 0x00A9, 0x2122, 0x00B4, 0x00A8, 0x2260, 0x00C6, 0x00D8,
-    0x221E, 0x00B1, 0x2264, 0x2265, 0x00A5, 0x00B5, 0x2202, 0x2211,
-    0x220F, 0x03C0, 0x222B, 0x00AA, 0x00BA, 0x03A9, 0x00E6, 0x00F8,
-    0x00BF, 0x00A1, 0x00AC, 0x221A, 0x0192, 0x2248, 0x2206, 0x00AB,
-    0x00BB, 0x2026, 0x00A0, 0x00C0, 0x00C3, 0x00D5, 0x0152, 0x0153,
-    0x2013, 0x2014, 0x201C, 0x201D, 0x2018, 0x2019, 0x00F7, 0x25CA,
-    0x00FF, 0x0178, 0x2044, 0x20AC, 0x2039, 0x203A, 0xFB01, 0xFB02,
-    0x2021, 0x00B7, 0x201A, 0x201E, 0x2030, 0x00C2, 0x00CA, 0x00C1,
-    0x00CB, 0x00C8, 0x00CD, 0x00CE, 0x00CF, 0x00CC, 0x00D3, 0x00D4,
-    0xF8FF, 0x00D2, 0x00DA, 0x00DB, 0x00D9, 0x0131, 0x02C6, 0x02DC,
-    0x00AF, 0x02D8, 0x02D9, 0x02DA, 0x00B8, 0x02DD, 0x02DB, 0x02C7
-};
+    0x00C4, 0x00C5, 0x00C7, 0x00C9, 0x00D1, 0x00D6, 0x00DC, 0x00E1, 0x00E0, 0x00E2, 0x00E4, 0x00E3, 0x00E5, 0x00E7, 0x00E9, 0x00E8, 0x00EA, 0x00EB, 0x00ED,
+    0x00EC, 0x00EE, 0x00EF, 0x00F1, 0x00F3, 0x00F2, 0x00F4, 0x00F6, 0x00F5, 0x00FA, 0x00F9, 0x00FB, 0x00FC, 0x2020, 0x00B0, 0x00A2, 0x00A3, 0x00A7, 0x2022,
+    0x00B6, 0x00DF, 0x00AE, 0x00A9, 0x2122, 0x00B4, 0x00A8, 0x2260, 0x00C6, 0x00D8, 0x221E, 0x00B1, 0x2264, 0x2265, 0x00A5, 0x00B5, 0x2202, 0x2211, 0x220F,
+    0x03C0, 0x222B, 0x00AA, 0x00BA, 0x03A9, 0x00E6, 0x00F8, 0x00BF, 0x00A1, 0x00AC, 0x221A, 0x0192, 0x2248, 0x2206, 0x00AB, 0x00BB, 0x2026, 0x00A0, 0x00C0,
+    0x00C3, 0x00D5, 0x0152, 0x0153, 0x2013, 0x2014, 0x201C, 0x201D, 0x2018, 0x2019, 0x00F7, 0x25CA, 0x00FF, 0x0178, 0x2044, 0x20AC, 0x2039, 0x203A, 0xFB01,
+    0xFB02, 0x2021, 0x00B7, 0x201A, 0x201E, 0x2030, 0x00C2, 0x00CA, 0x00C1, 0x00CB, 0x00C8, 0x00CD, 0x00CE, 0x00CF, 0x00CC, 0x00D3, 0x00D4, 0xF8FF, 0x00D2,
+    0x00DA, 0x00DB, 0x00D9, 0x0131, 0x02C6, 0x02DC, 0x00AF, 0x02D8, 0x02D9, 0x02DA, 0x00B8, 0x02DD, 0x02DB, 0x02C7};
 
-static size_t xx_diskdoubler_put_utf8(char *out, uint32_t code) {
+static size_t xx_diskdoubler_put_utf8(char *out, uint32_t code)
+{
     if (code < 0x80U) {
         out[0] = (char)code;
         return 1U;
@@ -629,28 +606,24 @@ static size_t xx_diskdoubler_put_utf8(char *out, uint32_t code) {
 /* One stored Mac OS Roman name (at most 63 bytes) made into one safe UTF-8
  * path component. Returns its length; @p out must hold
  * XX_DISKDOUBLER_COMPONENT_BUFFER bytes. */
-static size_t xx_diskdoubler_component(const uint8_t *bytes, size_t size,
-                                       char *out) {
+static size_t xx_diskdoubler_component(const uint8_t *bytes, size_t size, char *out)
+{
     size_t input;
     size_t output = 0U;
 
     if (size > 63U) size = 63U;
     for (input = 0U; input < size; ++input) {
         uint8_t c = bytes[input];
-        if (c < 0x20U || c == 0x7FU || c == '/' || c == '\\' || c == ':' ||
-            c == '*' || c == '?' || c == '"' || c == '<' || c == '>' ||
-            c == '|') {
+        if (c < 0x20U || c == 0x7FU || c == '/' || c == '\\' || c == ':' || c == '*' || c == '?' || c == '"' || c == '<' || c == '>' || c == '|') {
             out[output++] = '_';
         } else if (c < 0x80U) {
             out[output++] = (char)c;
         } else {
-            output += xx_diskdoubler_put_utf8(
-                out + output, xx_diskdoubler_mac_roman[c - 0x80U]);
+            output += xx_diskdoubler_put_utf8(out + output, xx_diskdoubler_mac_roman[c - 0x80U]);
         }
     }
     /* Windows drops these, which would let "." and ".." through. */
-    while (output != 0U &&
-           (out[output - 1U] == ' ' || out[output - 1U] == '.')) {
+    while (output != 0U && (out[output - 1U] == ' ' || out[output - 1U] == '.')) {
         --output;
     }
     if (output == 0U) out[output++] = '_';
@@ -677,7 +650,8 @@ typedef struct xx_diskdoubler_names_s {
     size_t used;
 } xx_diskdoubler_names;
 
-static uint32_t xx_diskdoubler_fold_next(const char **cursor) {
+static uint32_t xx_diskdoubler_fold_next(const char **cursor)
+{
     const uint8_t *s = (const uint8_t *)*cursor;
     uint32_t code = s[0];
     size_t used = 1U;
@@ -687,8 +661,7 @@ static uint32_t xx_diskdoubler_fold_next(const char **cursor) {
         code = ((code & 0x1FU) << 6) | (s[1] & 0x3FU);
         used = 2U;
     } else if ((code & 0xF0U) == 0xE0U && s[1] != 0U && s[2] != 0U) {
-        code = ((code & 0x0FU) << 12) | ((uint32_t)(s[1] & 0x3FU) << 6) |
-               (s[2] & 0x3FU);
+        code = ((code & 0x0FU) << 12) | ((uint32_t)(s[1] & 0x3FU) << 6) | (s[2] & 0x3FU);
         used = 3U;
     }
     *cursor += used;
@@ -703,7 +676,8 @@ static uint32_t xx_diskdoubler_fold_next(const char **cursor) {
     return code;
 }
 
-static uint32_t xx_diskdoubler_hash(const char *name) {
+static uint32_t xx_diskdoubler_hash(const char *name)
+{
     uint32_t hash = 2166136261U;
     uint32_t code;
 
@@ -714,7 +688,8 @@ static uint32_t xx_diskdoubler_hash(const char *name) {
     return hash;
 }
 
-static bool xx_diskdoubler_same(const char *left, const char *right) {
+static bool xx_diskdoubler_same(const char *left, const char *right)
+{
     for (;;) {
         uint32_t a = xx_diskdoubler_fold_next(&left);
         uint32_t b = xx_diskdoubler_fold_next(&right);
@@ -725,13 +700,12 @@ static bool xx_diskdoubler_same(const char *left, const char *right) {
 
 /* The slot holding @p name, or the empty slot where it belongs. False when
  * the probe ran too long. */
-static bool xx_diskdoubler_names_find(const xx_diskdoubler_names *names,
-                                      const char *name, size_t *found) {
+static bool xx_diskdoubler_names_find(const xx_diskdoubler_names *names, const char *name, size_t *found)
+{
     size_t slot = (size_t)xx_diskdoubler_hash(name) & names->mask;
     uint32_t probes = 0U;
 
-    while (names->slots[slot] &&
-           !xx_diskdoubler_same(names->slots[slot], name)) {
+    while (names->slots[slot] && !xx_diskdoubler_same(names->slots[slot], name)) {
         if (++probes > XX_DISKDOUBLER_MAX_PROBES) return false;
         slot = (slot + 1U) & names->mask;
     }
@@ -739,14 +713,16 @@ static bool xx_diskdoubler_names_find(const xx_diskdoubler_names *names,
     return true;
 }
 
-static void xx_diskdoubler_names_cleanup(xx_diskdoubler_names *names) {
+static void xx_diskdoubler_names_cleanup(xx_diskdoubler_names *names)
+{
     if (names->slots) xx_mem_free((void *)names->slots);
     if (names->hints) xx_mem_free(names->hints);
     xx_mem_zero(names, sizeof(*names));
 }
 
 /* Make room for two more names, keeping the table at most half full. */
-static bool xx_diskdoubler_names_reserve(xx_diskdoubler_names *names) {
+static bool xx_diskdoubler_names_reserve(xx_diskdoubler_names *names)
+{
     size_t size = names->slots ? names->mask + 1U : 0U;
     size_t grown;
     const char **slots;
@@ -765,8 +741,7 @@ static bool xx_diskdoubler_names_reserve(xx_diskdoubler_names *names) {
     /* The new table is at most a quarter full, so every probe below ends. */
     for (index = 0U; index < size; ++index) {
         if (names->slots[index]) {
-            size_t slot =
-                (size_t)xx_diskdoubler_hash(names->slots[index]) & (grown - 1U);
+            size_t slot = (size_t)xx_diskdoubler_hash(names->slots[index]) & (grown - 1U);
             while (slots[slot]) slot = (slot + 1U) & (grown - 1U);
             slots[slot] = names->slots[index];
             hints[slot] = names->hints[index];
@@ -783,7 +758,7 @@ static bool xx_diskdoubler_names_reserve(xx_diskdoubler_names *names) {
 /* ------------------------------------------------------ archive build -- */
 
 typedef struct xx_diskdoubler_folder_s {
-    char *path;            /* owned here; the name table points at it */
+    char *path; /* owned here; the name table points at it */
     int64_t header_offset;
     int64_t header_size;
     bool has_child;
@@ -805,18 +780,19 @@ typedef struct xx_diskdoubler_build_s {
     xx_diskdoubler_folder *folders;
     size_t folder_count;
     size_t folder_capacity;
-    char **owned;          /* reserved stems no member owns */
+    char **owned; /* reserved stems no member owns */
     size_t owned_count;
     size_t owned_capacity;
     size_t stack[XX_DISKDOUBLER_MAX_DEPTH]; /* DDAR's open folders */
     size_t depth;
     size_t name_bytes;
     uint32_t records;
-    uint64_t claims;       /* names claimed or being claimed */
-    uint64_t attempts;     /* candidate names tried, whole parse */
+    uint64_t claims;   /* names claimed or being claimed */
+    uint64_t attempts; /* candidate names tried, whole parse */
 } xx_diskdoubler_build;
 
-static void xx_diskdoubler_build_cleanup(xx_diskdoubler_build *build) {
+static void xx_diskdoubler_build_cleanup(xx_diskdoubler_build *build)
+{
     size_t index;
 
     xx_diskdoubler_names_cleanup(&build->names);
@@ -837,11 +813,11 @@ static void xx_diskdoubler_build_cleanup(xx_diskdoubler_build *build) {
     build->owned_count = 0U;
 }
 
-static bool xx_diskdoubler_keep(xx_diskdoubler_build *build, char *name) {
+static bool xx_diskdoubler_keep(xx_diskdoubler_build *build, char *name)
+{
     if (build->owned_count >= build->owned_capacity) {
         size_t grown = build->owned_capacity ? build->owned_capacity * 2U : 16U;
-        char **owned = (char **)xx_mem_realloc(build->owned,
-                                               sizeof(*owned) * grown);
+        char **owned = (char **)xx_mem_realloc(build->owned, sizeof(*owned) * grown);
         if (!owned) return false;
         build->owned = owned;
         build->owned_capacity = grown;
@@ -850,14 +826,15 @@ static bool xx_diskdoubler_keep(xx_diskdoubler_build *build, char *name) {
     return true;
 }
 
-static char *xx_diskdoubler_budget_alloc(xx_diskdoubler_build *build,
-                                         size_t size) {
+static char *xx_diskdoubler_budget_alloc(xx_diskdoubler_build *build, size_t size)
+{
     if (size > XX_DISKDOUBLER_MAX_NAME_BYTES - build->name_bytes) return NULL;
     build->name_bytes += size;
     return (char *)xx_mem_alloc(size);
 }
 
-static void xx_diskdoubler_release(xx_diskdoubler_build *build, char *name) {
+static void xx_diskdoubler_release(xx_diskdoubler_build *build, char *name)
+{
     if (!name) return;
     build->name_bytes -= xx_str_len(name) + 1U;
     xx_mem_free(name);
@@ -865,10 +842,8 @@ static void xx_diskdoubler_release(xx_diskdoubler_build *build, char *name) {
 
 /* "<parent>/<stem>[_<n>]<extension>[.rsrc]", or NULL when it would be too
  * long or memory runs out. */
-static char *xx_diskdoubler_candidate(xx_diskdoubler_build *build,
-                                      const char *parent, const char *component,
-                                      size_t component_length, uint32_t suffix,
-                                      bool resource) {
+static char *xx_diskdoubler_candidate(xx_diskdoubler_build *build, const char *parent, const char *component, size_t component_length, uint32_t suffix, bool resource)
+{
     char digits[16];
     size_t digit_count = 0U;
     size_t parent_length = parent ? xx_str_len(parent) : 0U;
@@ -879,8 +854,7 @@ static char *xx_diskdoubler_candidate(xx_diskdoubler_build *build,
     char *cursor;
 
     if (suffix != 0U) {
-        int written = xx_rt_snprintf(digits, sizeof(digits), "_%u",
-                                     (unsigned)suffix);
+        int written = xx_rt_snprintf(digits, sizeof(digits), "_%u", (unsigned)suffix);
         if (written <= 0 || (size_t)written >= sizeof(digits)) return NULL;
         digit_count = (size_t)written;
         /* The number goes before a final extension, never at the start. */
@@ -891,8 +865,7 @@ static char *xx_diskdoubler_candidate(xx_diskdoubler_build *build,
             }
         }
     }
-    total = parent_length + (parent_length ? 1U : 0U) + component_length +
-            digit_count + (resource ? 5U : 0U);
+    total = parent_length + (parent_length ? 1U : 0U) + component_length + digit_count + (resource ? 5U : 0U);
     if (total > (size_t)XX_DISKDOUBLER_MAX_PATH) return NULL;
     result = xx_diskdoubler_budget_alloc(build, total + 1U);
     if (!result) return NULL;
@@ -928,10 +901,8 @@ static char *xx_diskdoubler_candidate(xx_diskdoubler_build *build,
  * only a starting point (every candidate is still looked up), so two
  * families sharing one hint can at worst skip a free suffix, never reuse a
  * taken one. */
-static bool xx_diskdoubler_claim(xx_diskdoubler_build *build,
-                                 const char *parent, const char *component,
-                                 size_t length, bool want_rsrc, char **plain,
-                                 char **rsrc) {
+static bool xx_diskdoubler_claim(xx_diskdoubler_build *build, const char *parent, const char *component, size_t length, bool want_rsrc, char **plain, char **rsrc)
+{
     size_t base_slot = (size_t)-1;
     uint32_t suffix = 0U;
     uint32_t attempts;
@@ -940,18 +911,14 @@ static bool xx_diskdoubler_claim(xx_diskdoubler_build *build,
     *rsrc = NULL;
     if (!xx_diskdoubler_names_reserve(&build->names)) return false;
     ++build->claims;
-    for (attempts = 0U; attempts < XX_DISKDOUBLER_MAX_CLAIM_ATTEMPTS;
-         ++attempts) {
-        char *candidate = xx_diskdoubler_candidate(build, parent, component,
-                                                   length, suffix, false);
+    for (attempts = 0U; attempts < XX_DISKDOUBLER_MAX_CLAIM_ATTEMPTS; ++attempts) {
+        char *candidate = xx_diskdoubler_candidate(build, parent, component, length, suffix, false);
         char *resource = NULL;
         size_t slot = 0U;
         size_t rsrc_slot = 0U;
         bool free_name;
 
-        if (++build->attempts >
-            (uint64_t)XX_DISKDOUBLER_CLAIM_BASE +
-                build->claims * XX_DISKDOUBLER_CLAIM_PER_NAME) {
+        if (++build->attempts > (uint64_t)XX_DISKDOUBLER_CLAIM_BASE + build->claims * XX_DISKDOUBLER_CLAIM_PER_NAME) {
             xx_diskdoubler_release(build, candidate);
             return false;
         }
@@ -962,11 +929,8 @@ static bool xx_diskdoubler_claim(xx_diskdoubler_build *build,
         }
         free_name = build->names.slots[slot] == NULL;
         if (free_name && want_rsrc) {
-            resource = xx_diskdoubler_candidate(build, parent, component,
-                                                length, suffix, true);
-            if (!resource ||
-                !xx_diskdoubler_names_find(&build->names, resource,
-                                           &rsrc_slot)) {
+            resource = xx_diskdoubler_candidate(build, parent, component, length, suffix, true);
+            if (!resource || !xx_diskdoubler_names_find(&build->names, resource, &rsrc_slot)) {
                 xx_diskdoubler_release(build, resource);
                 xx_diskdoubler_release(build, candidate);
                 return false;
@@ -979,8 +943,7 @@ static bool xx_diskdoubler_claim(xx_diskdoubler_build *build,
             ++build->names.used;
             if (resource) {
                 /* Re-found: the plain name may have taken its slot. */
-                if (!xx_diskdoubler_names_find(&build->names, resource,
-                                               &rsrc_slot)) {
+                if (!xx_diskdoubler_names_find(&build->names, resource, &rsrc_slot)) {
                     /* The plain name is in the table and owned by nobody
                      * yet; the build is abandoned, so drop the pointer. */
                     build->names.slots[slot] = NULL;
@@ -1025,10 +988,9 @@ static bool xx_diskdoubler_claim(xx_diskdoubler_build *build,
 
 /* Make @p parent (a folder path, or NULL for the top) the home of a new
  * folder named by @p name, and return that folder's index. */
-static bool xx_diskdoubler_new_folder(xx_diskdoubler_build *build,
-                                      const char *parent, const uint8_t *name,
-                                      size_t name_size, int64_t header_offset,
-                                      int64_t header_size, size_t *index) {
+static bool xx_diskdoubler_new_folder(xx_diskdoubler_build *build, const char *parent, const uint8_t *name, size_t name_size, int64_t header_offset, int64_t header_size,
+                                      size_t *index)
+{
     char component[XX_DISKDOUBLER_COMPONENT_BUFFER];
     size_t length = xx_diskdoubler_component(name, name_size, component);
     char *plain = NULL;
@@ -1036,16 +998,13 @@ static bool xx_diskdoubler_new_folder(xx_diskdoubler_build *build,
     xx_diskdoubler_folder *folder;
 
     if (build->folder_count >= build->folder_capacity) {
-        size_t grown =
-            build->folder_capacity ? build->folder_capacity * 2U : 16U;
-        xx_diskdoubler_folder *folders = (xx_diskdoubler_folder *)
-            xx_mem_realloc(build->folders, sizeof(*folders) * grown);
+        size_t grown = build->folder_capacity ? build->folder_capacity * 2U : 16U;
+        xx_diskdoubler_folder *folders = (xx_diskdoubler_folder *)xx_mem_realloc(build->folders, sizeof(*folders) * grown);
         if (!folders) return false;
         build->folders = folders;
         build->folder_capacity = grown;
     }
-    if (!xx_diskdoubler_claim(build, parent, component, length, false, &plain,
-                              &rsrc)) {
+    if (!xx_diskdoubler_claim(build, parent, component, length, false, &plain, &rsrc)) {
         return false;
     }
     folder = &build->folders[build->folder_count];
@@ -1058,21 +1017,18 @@ static bool xx_diskdoubler_new_folder(xx_diskdoubler_build *build,
 }
 
 /* Publish a compressed file found inside an archive record. */
-static bool xx_diskdoubler_add_packed(xx_diskdoubler_build *build,
-                                      const char *parent, const uint8_t *name,
-                                      size_t name_size, int64_t header_offset,
-                                      const xx_diskdoubler_forks *forks) {
+static bool xx_diskdoubler_add_packed(xx_diskdoubler_build *build, const char *parent, const uint8_t *name, size_t name_size, int64_t header_offset,
+                                      const xx_diskdoubler_forks *forks)
+{
     char component[XX_DISKDOUBLER_COMPONENT_BUFFER];
     size_t length = xx_diskdoubler_component(name, name_size, component);
     char *plain = NULL;
     char *rsrc = NULL;
 
-    if (!xx_diskdoubler_claim(build, parent, component, length,
-                              forks->want_rsrc, &plain, &rsrc)) {
+    if (!xx_diskdoubler_claim(build, parent, component, length, forks->want_rsrc, &plain, &rsrc)) {
         return false;
     }
-    if (!xx_diskdoubler_publish_forks(build->stream, header_offset, forks,
-                                      forks->want_data ? plain : NULL, rsrc)) {
+    if (!xx_diskdoubler_publish_forks(build->stream, header_offset, forks, forks->want_data ? plain : NULL, rsrc)) {
         /* Neither name found an owner; the name table still points at them
          * but is discarded with the build. */
         xx_mem_free(plain);
@@ -1089,13 +1045,9 @@ static bool xx_diskdoubler_add_packed(xx_diskdoubler_build *build,
 }
 
 /* Publish a file whose forks are stored raw inside an archive record. */
-static bool xx_diskdoubler_add_raw(xx_diskdoubler_build *build,
-                                   const char *parent, const uint8_t *name,
-                                   size_t name_size, int64_t header_offset,
-                                   int64_t header_size, int64_t data_offset,
-                                   int64_t data_size, int64_t rsrc_size,
-                                   uint8_t check, uint16_t data_check,
-                                   uint16_t rsrc_check) {
+static bool xx_diskdoubler_add_raw(xx_diskdoubler_build *build, const char *parent, const uint8_t *name, size_t name_size, int64_t header_offset, int64_t header_size,
+                                   int64_t data_offset, int64_t data_size, int64_t rsrc_size, uint8_t check, uint16_t data_check, uint16_t rsrc_check)
+{
     char component[XX_DISKDOUBLER_COMPONENT_BUFFER];
     size_t length = xx_diskdoubler_component(name, name_size, component);
     bool want_rsrc = rsrc_size != 0;
@@ -1103,14 +1055,11 @@ static bool xx_diskdoubler_add_raw(xx_diskdoubler_build *build,
     char *plain = NULL;
     char *rsrc = NULL;
 
-    if (!xx_diskdoubler_claim(build, parent, component, length, want_rsrc,
-                              &plain, &rsrc)) {
+    if (!xx_diskdoubler_claim(build, parent, component, length, want_rsrc, &plain, &rsrc)) {
         return false;
     }
     if (want_data) {
-        if (!xx_diskdoubler_publish_raw(build->stream, plain, header_offset,
-                                        header_size, data_offset, data_size,
-                                        check, data_check)) {
+        if (!xx_diskdoubler_publish_raw(build->stream, plain, header_offset, header_size, data_offset, data_size, check, data_check)) {
             xx_mem_free(plain);
             if (rsrc) xx_mem_free(rsrc);
             return false;
@@ -1120,10 +1069,7 @@ static bool xx_diskdoubler_add_raw(xx_diskdoubler_build *build,
         if (rsrc) xx_mem_free(rsrc);
         return false;
     }
-    if (want_rsrc &&
-        !xx_diskdoubler_publish_raw(build->stream, rsrc, header_offset,
-                                    header_size, data_offset + data_size,
-                                    rsrc_size, check, rsrc_check)) {
+    if (want_rsrc && !xx_diskdoubler_publish_raw(build->stream, rsrc, header_offset, header_size, data_offset + data_size, rsrc_size, check, rsrc_check)) {
         xx_mem_free(rsrc);
         return false;
     }
@@ -1132,7 +1078,8 @@ static bool xx_diskdoubler_add_raw(xx_diskdoubler_build *build,
 
 /* Folders nothing was placed in become folder records, so extraction
  * recreates them. */
-static bool xx_diskdoubler_add_empty_folders(xx_diskdoubler_build *build) {
+static bool xx_diskdoubler_add_empty_folders(xx_diskdoubler_build *build)
+{
     size_t index;
 
     for (index = 0U; index < build->folder_count; ++index) {
@@ -1161,8 +1108,8 @@ static bool xx_diskdoubler_add_empty_folders(xx_diskdoubler_build *build) {
 /* ------------------------------------------------------------- parsing -- */
 
 /* A standalone compressed file. */
-static bool xx_diskdoubler_parse_single(Abstractformat *self, int64_t span,
-                                        xx_diskdoubler_stream *stream) {
+static bool xx_diskdoubler_parse_single(Abstractformat *self, int64_t span, xx_diskdoubler_stream *stream)
+{
     uint8_t header[XX_DISKDOUBLER_HEADER_SIZE];
     uint8_t trailer[XX_DISKDOUBLER_HEADER_SIZE];
     xx_diskdoubler_forks forks;
@@ -1170,9 +1117,7 @@ static bool xx_diskdoubler_parse_single(Abstractformat *self, int64_t span,
     char *data_name = NULL;
     char *rsrc_name = NULL;
 
-    if (span < XX_DISKDOUBLER_HEADER_SIZE ||
-        !xx_diskdoubler_read_at(self, self->base_address, header,
-                                sizeof(header)) ||
+    if (span < XX_DISKDOUBLER_HEADER_SIZE || !xx_diskdoubler_read_at(self, self->base_address, header, sizeof(header)) ||
         !xx_diskdoubler_check_forks(header, span, &forks, true)) {
         return false;
     }
@@ -1184,8 +1129,7 @@ static bool xx_diskdoubler_parse_single(Abstractformat *self, int64_t span,
     trailing = span - forks.end;
     if (trailing > 0) {
         if (trailing != XX_DISKDOUBLER_HEADER_SIZE) return false;
-        if (!xx_diskdoubler_read_at(self, self->base_address + forks.end,
-                                    trailer, sizeof(trailer))) {
+        if (!xx_diskdoubler_read_at(self, self->base_address + forks.end, trailer, sizeof(trailer))) {
             return false;
         }
         if (xx_rt_memcmp(trailer, header, sizeof(header)) != 0) return false;
@@ -1205,8 +1149,7 @@ static bool xx_diskdoubler_parse_single(Abstractformat *self, int64_t span,
             return false;
         }
     }
-    if (!xx_diskdoubler_publish_forks(stream, self->base_address, &forks,
-                                      data_name, rsrc_name)) {
+    if (!xx_diskdoubler_publish_forks(stream, self->base_address, &forks, data_name, rsrc_name)) {
         if (data_name) xx_mem_free(data_name);
         if (rsrc_name) xx_mem_free(rsrc_name);
         return false;
@@ -1217,31 +1160,26 @@ static bool xx_diskdoubler_parse_single(Abstractformat *self, int64_t span,
 
 /* A compressed file as a record's body at @p offset (relative to the base),
  * with @p room bytes of the record left for it. */
-static bool xx_diskdoubler_read_forks(Abstractformat *self, int64_t offset,
-                                      int64_t room,
-                                      xx_diskdoubler_forks *forks) {
+static bool xx_diskdoubler_read_forks(Abstractformat *self, int64_t offset, int64_t room, xx_diskdoubler_forks *forks)
+{
     uint8_t header[XX_DISKDOUBLER_HEADER_SIZE];
 
-    return room >= XX_DISKDOUBLER_HEADER_SIZE &&
-           xx_diskdoubler_read_at(self, self->base_address + offset, header,
-                                  sizeof(header)) &&
+    return room >= XX_DISKDOUBLER_HEADER_SIZE && xx_diskdoubler_read_at(self, self->base_address + offset, header, sizeof(header)) &&
            xx_diskdoubler_check_forks(header, room, forks, false);
 }
 
 /* Record @p value (1 = top, n + 2 = folder n) as what DDA2 folder id @p id
  * stands for. Ids beyond the cap are not recorded. */
-static bool xx_diskdoubler_ids_set(xx_diskdoubler_ids *ids, uint32_t id,
-                                   uint32_t value) {
+static bool xx_diskdoubler_ids_set(xx_diskdoubler_ids *ids, uint32_t id, uint32_t value)
+{
     if (id > XX_DISKDOUBLER_MAX_FOLDER_ID) return true;
     if ((size_t)id >= ids->size) {
         size_t grown = ids->size ? ids->size : 64U;
         uint32_t *values;
         while (grown <= (size_t)id) grown *= 2U;
-        values = (uint32_t *)xx_mem_realloc(ids->values,
-                                            sizeof(*values) * grown);
+        values = (uint32_t *)xx_mem_realloc(ids->values, sizeof(*values) * grown);
         if (!values) return false;
-        xx_mem_zero(values + ids->size,
-                    sizeof(*values) * (grown - ids->size));
+        xx_mem_zero(values + ids->size, sizeof(*values) * (grown - ids->size));
         ids->values = values;
         ids->size = grown;
     }
@@ -1251,8 +1189,8 @@ static bool xx_diskdoubler_ids_set(xx_diskdoubler_ids *ids, uint32_t id,
 
 /* The path a DDA2 record naming parent id @p id lives under, or NULL for
  * the top of the output. */
-static const char *xx_diskdoubler_dda2_parent(xx_diskdoubler_build *build,
-                                              uint32_t id) {
+static const char *xx_diskdoubler_dda2_parent(xx_diskdoubler_build *build, uint32_t id)
+{
     uint32_t value;
     xx_diskdoubler_folder *folder;
 
@@ -1269,56 +1207,40 @@ static const char *xx_diskdoubler_dda2_parent(xx_diskdoubler_build *build,
 /* The archive's end: the footer's stated extent when it checks out, else
  * the header's stated size when it agrees with the walk, else the end
  * record itself. */
-static int64_t xx_diskdoubler_dda2_end(Abstractformat *self, int64_t span,
-                                       const uint8_t *archive,
-                                       int64_t end_record) {
+static int64_t xx_diskdoubler_dda2_end(Abstractformat *self, int64_t span, const uint8_t *archive, int64_t end_record)
+{
     uint8_t footer[XX_DISKDOUBLER_DDA2_FOOTER];
     int64_t position = end_record + XX_DISKDOUBLER_DDA2_END_SIZE;
-    int64_t stated_size =
-        (int64_t)xx_data_get_u32(archive + XX_DISKDOUBLER_DDA2_OFF_SIZE, 4, 0, true);
+    int64_t stated_size = (int64_t)xx_data_get_u32(archive + XX_DISKDOUBLER_DDA2_OFF_SIZE, 4, 0, true);
 
-    if (xx_diskdoubler_range_within(span, position,
-                                    XX_DISKDOUBLER_DDA2_FOOTER) &&
-        xx_diskdoubler_read_at(self, self->base_address + position, footer,
-                               sizeof(footer)) &&
+    if (xx_diskdoubler_range_within(span, position, XX_DISKDOUBLER_DDA2_FOOTER) && xx_diskdoubler_read_at(self, self->base_address + position, footer, sizeof(footer)) &&
         xx_data_get_u16(footer, 2, 0, true) == XX_DISKDOUBLER_DDA2_FOOTER_MAGIC) {
         int64_t index_size = (int64_t)xx_data_get_u32(footer + 2, 4, 0, true);
         int64_t index_start = position + XX_DISKDOUBLER_DDA2_FOOTER;
         /* The index is a few bytes per record; one this large is not. */
-        if (index_size <= (int64_t)XX_DISKDOUBLER_MAX_RECORDS * 8 &&
-            xx_diskdoubler_range_within(span, index_start, index_size)) {
-            uint8_t *index = (uint8_t *)xx_mem_alloc(
-                index_size ? (size_t)index_size : 1U);
-            bool ok = index != NULL &&
-                      xx_diskdoubler_read_at(self,
-                                             self->base_address + index_start,
-                                             index, (size_t)index_size) &&
-                      xx_diskdoubler_header_crc(index, (int32_t)index_size) ==
-                          xx_data_get_u16(footer + 6, 2, 0, true);
+        if (index_size <= (int64_t)XX_DISKDOUBLER_MAX_RECORDS * 8 && xx_diskdoubler_range_within(span, index_start, index_size)) {
+            uint8_t *index = (uint8_t *)xx_mem_alloc(index_size ? (size_t)index_size : 1U);
+            bool ok = index != NULL && xx_diskdoubler_read_at(self, self->base_address + index_start, index, (size_t)index_size) &&
+                      xx_diskdoubler_header_crc(index, (int32_t)index_size) == xx_data_get_u16(footer + 6, 2, 0, true);
             if (index) xx_mem_free(index);
             if (ok) return index_start + index_size;
         }
     }
-    if ((int64_t)xx_data_get_u32(archive + XX_DISKDOUBLER_DDA2_OFF_END, 4, 0, true) ==
-            end_record &&
-        stated_size >= position && stated_size <= span) {
+    if ((int64_t)xx_data_get_u32(archive + XX_DISKDOUBLER_DDA2_OFF_END, 4, 0, true) == end_record && stated_size >= position && stated_size <= span) {
         return stated_size;
     }
     return position;
 }
 
-static bool xx_diskdoubler_parse_dda2(xx_diskdoubler_build *build,
-                                      int64_t span) {
+static bool xx_diskdoubler_parse_dda2(xx_diskdoubler_build *build, int64_t span)
+{
     Abstractformat *self = build->self;
     uint8_t archive[XX_DISKDOUBLER_DDA2_HEADER];
     uint8_t record[XX_DISKDOUBLER_DDA2_STORED_HEADER];
     int64_t position = XX_DISKDOUBLER_DDA2_HEADER;
 
-    if (span < XX_DISKDOUBLER_DDA2_HEADER + XX_DISKDOUBLER_DDA2_END_SIZE ||
-        !xx_diskdoubler_read_at(self, self->base_address, archive,
-                                sizeof(archive)) ||
-        xx_data_get_u32(archive, 4, 0, true) != XX_DISKDOUBLER_DDA2_MAGIC ||
-        xx_data_get_u16(archive + 4, 2, 0, true) != XX_DISKDOUBLER_DDA2_HEADER ||
+    if (span < XX_DISKDOUBLER_DDA2_HEADER + XX_DISKDOUBLER_DDA2_END_SIZE || !xx_diskdoubler_read_at(self, self->base_address, archive, sizeof(archive)) ||
+        xx_data_get_u32(archive, 4, 0, true) != XX_DISKDOUBLER_DDA2_MAGIC || xx_data_get_u16(archive + 4, 2, 0, true) != XX_DISKDOUBLER_DDA2_HEADER ||
         !xx_diskdoubler_crc_ok(archive, XX_DISKDOUBLER_DDA2_HEADER)) {
         return false;
     }
@@ -1333,10 +1255,8 @@ static bool xx_diskdoubler_parse_dda2(xx_diskdoubler_build *build,
 
         if (build->pd && xx_pd_is_stopped(build->pd)) return false;
         /* No end record before the data runs out: not a whole archive. */
-        if (!xx_diskdoubler_range_within(span, position,
-                                         XX_DISKDOUBLER_DDA2_END_SIZE) ||
-            !xx_diskdoubler_read_at(self, self->base_address + position,
-                                    record, XX_DISKDOUBLER_DDA2_END_SIZE) ||
+        if (!xx_diskdoubler_range_within(span, position, XX_DISKDOUBLER_DDA2_END_SIZE) ||
+            !xx_diskdoubler_read_at(self, self->base_address + position, record, XX_DISKDOUBLER_DDA2_END_SIZE) ||
             xx_data_get_u32(record, 4, 0, true) != XX_DISKDOUBLER_DDA2_MAGIC) {
             return false;
         }
@@ -1352,23 +1272,17 @@ static bool xx_diskdoubler_parse_dda2(xx_diskdoubler_build *build,
             /* A stored file, unless its header says otherwise; then the
              * compressed form, as The Unarchiver reads every file record. */
             header_size = XX_DISKDOUBLER_DDA2_STORED_HEADER;
-            if (!xx_diskdoubler_range_within(span, position, header_size) ||
-                !xx_diskdoubler_read_at(self, self->base_address + position,
-                                        record, (size_t)header_size) ||
+            if (!xx_diskdoubler_range_within(span, position, header_size) || !xx_diskdoubler_read_at(self, self->base_address + position, record, (size_t)header_size) ||
                 !xx_diskdoubler_crc_ok(record, header_size)) {
                 header_size = XX_DISKDOUBLER_DDA2_PACKED_HEADER;
             }
         }
-        if (!xx_diskdoubler_range_within(span, position, header_size) ||
-            !xx_diskdoubler_read_at(self, self->base_address + position,
-                                    record, (size_t)header_size) ||
+        if (!xx_diskdoubler_range_within(span, position, header_size) || !xx_diskdoubler_read_at(self, self->base_address + position, record, (size_t)header_size) ||
             !xx_diskdoubler_crc_ok(record, header_size)) {
             return false;
         }
-        record_size = (int64_t)xx_data_get_u32(
-            record + XX_DISKDOUBLER_DDA2_OFF_RECORD_SIZE, 4, 0, true);
-        if (record_size < header_size ||
-            !xx_diskdoubler_range_within(span, position, record_size)) {
+        record_size = (int64_t)xx_data_get_u32(record + XX_DISKDOUBLER_DDA2_OFF_RECORD_SIZE, 4, 0, true);
+        if (record_size < header_size || !xx_diskdoubler_range_within(span, position, record_size)) {
             return false;
         }
         parent_id = xx_data_get_u32(record + XX_DISKDOUBLER_DDA2_OFF_PARENT, 4, 0, true);
@@ -1378,61 +1292,47 @@ static bool xx_diskdoubler_parse_dda2(xx_diskdoubler_build *build,
         }
 
         if (header_size == XX_DISKDOUBLER_DDA2_FOLDER_HEADER) {
-            uint32_t id = xx_data_get_u32(
-                record + XX_DISKDOUBLER_DDA2_OFF_FOLDER_ID, 4, 0, true);
+            uint32_t id = xx_data_get_u32(record + XX_DISKDOUBLER_DDA2_OFF_FOLDER_ID, 4, 0, true);
             if (parent_id <= XX_DISKDOUBLER_DDA2_ROOT_PARENT) {
                 /* The archive's own folder: its children are the top. */
                 if (!xx_diskdoubler_ids_set(&build->ids, id, 1U)) return false;
             } else {
                 size_t index = 0U;
                 parent = xx_diskdoubler_dda2_parent(build, parent_id);
-                if (!xx_diskdoubler_new_folder(
-                        build, parent, record + 7, name_size,
-                        self->base_address + position, header_size, &index) ||
-                    !xx_diskdoubler_ids_set(&build->ids, id,
-                                            (uint32_t)index + 2U)) {
+                if (!xx_diskdoubler_new_folder(build, parent, record + 7, name_size, self->base_address + position, header_size, &index) ||
+                    !xx_diskdoubler_ids_set(&build->ids, id, (uint32_t)index + 2U)) {
                     return false;
                 }
             }
         } else if (header_size == XX_DISKDOUBLER_DDA2_PACKED_HEADER) {
             xx_diskdoubler_forks forks;
             parent = xx_diskdoubler_dda2_parent(build, parent_id);
-            if (!xx_diskdoubler_read_forks(self, position + header_size,
-                                           record_size - header_size,
-                                           &forks) ||
-                !xx_diskdoubler_add_packed(
-                    build, parent, record + 7, name_size,
-                    self->base_address + position + header_size, &forks)) {
+            if (!xx_diskdoubler_read_forks(self, position + header_size, record_size - header_size, &forks) ||
+                !xx_diskdoubler_add_packed(build, parent, record + 7, name_size, self->base_address + position + header_size, &forks)) {
                 return false;
             }
         } else {
-            int64_t data_size = (int64_t)xx_data_get_u32(
-                record + XX_DISKDOUBLER_DDA2_OFF_DATA_SIZE, 4, 0, true);
-            int64_t rsrc_size = (int64_t)xx_data_get_u32(
-                record + XX_DISKDOUBLER_DDA2_OFF_RSRC_SIZE, 4, 0, true);
+            int64_t data_size = (int64_t)xx_data_get_u32(record + XX_DISKDOUBLER_DDA2_OFF_DATA_SIZE, 4, 0, true);
+            int64_t rsrc_size = (int64_t)xx_data_get_u32(record + XX_DISKDOUBLER_DDA2_OFF_RSRC_SIZE, 4, 0, true);
             parent = xx_diskdoubler_dda2_parent(build, parent_id);
             /* Both sizes are below 2^32, so the sum cannot overflow. */
             if (data_size + rsrc_size > record_size - header_size ||
-                !xx_diskdoubler_add_raw(
-                    build, parent, record + 7, name_size,
-                    self->base_address + position, header_size,
-                    self->base_address + position + header_size, data_size,
-                    rsrc_size, XX_DISKDOUBLER_CHECK_XOR8,
-                    record[XX_DISKDOUBLER_DDA2_OFF_DATA_XOR],
-                    record[XX_DISKDOUBLER_DDA2_OFF_RSRC_XOR])) {
+                !xx_diskdoubler_add_raw(build, parent, record + 7, name_size, self->base_address + position, header_size, self->base_address + position + header_size,
+                                        data_size, rsrc_size, XX_DISKDOUBLER_CHECK_XOR8, record[XX_DISKDOUBLER_DDA2_OFF_DATA_XOR],
+                                        record[XX_DISKDOUBLER_DDA2_OFF_RSRC_XOR])) {
                 return false;
             }
         }
         position += record_size;
     }
 
-    build->stream->archive_size =
-        xx_diskdoubler_dda2_end(self, span, archive, position);
+    build->stream->archive_size = xx_diskdoubler_dda2_end(self, span, archive, position);
     return xx_diskdoubler_add_empty_folders(build);
 }
 
 /* The folder a DDAR record lives in, or NULL for the top. */
-static const char *xx_diskdoubler_ddar_parent(xx_diskdoubler_build *build) {
+static const char *xx_diskdoubler_ddar_parent(xx_diskdoubler_build *build)
+{
     xx_diskdoubler_folder *folder;
 
     if (build->depth == 0U) return NULL;
@@ -1441,18 +1341,15 @@ static const char *xx_diskdoubler_ddar_parent(xx_diskdoubler_build *build) {
     return folder->path;
 }
 
-static bool xx_diskdoubler_parse_ddar(xx_diskdoubler_build *build,
-                                      int64_t span) {
+static bool xx_diskdoubler_parse_ddar(xx_diskdoubler_build *build, int64_t span)
+{
     Abstractformat *self = build->self;
     uint8_t archive[XX_DISKDOUBLER_DDAR_HEADER];
     uint8_t record[XX_DISKDOUBLER_DDAR_RECORD];
     int64_t position = XX_DISKDOUBLER_DDAR_HEADER;
 
-    if (span < XX_DISKDOUBLER_DDAR_HEADER ||
-        !xx_diskdoubler_read_at(self, self->base_address, archive,
-                                sizeof(archive)) ||
-        xx_data_get_u32(archive, 4, 0, true) != XX_DISKDOUBLER_DDAR_MAGIC ||
-        !xx_diskdoubler_crc_ok(archive, XX_DISKDOUBLER_DDAR_HEADER)) {
+    if (span < XX_DISKDOUBLER_DDAR_HEADER || !xx_diskdoubler_read_at(self, self->base_address, archive, sizeof(archive)) ||
+        xx_data_get_u32(archive, 4, 0, true) != XX_DISKDOUBLER_DDAR_MAGIC || !xx_diskdoubler_crc_ok(archive, XX_DISKDOUBLER_DDAR_HEADER)) {
         return false;
     }
 
@@ -1472,11 +1369,8 @@ static bool xx_diskdoubler_parse_ddar(xx_diskdoubler_build *build,
         xx_diskdoubler_forks forks;
 
         if (build->pd && xx_pd_is_stopped(build->pd)) return false;
-        if (!xx_diskdoubler_range_within(span, position,
-                                         XX_DISKDOUBLER_DDAR_RECORD) ||
-            !xx_diskdoubler_read_at(self, self->base_address + position,
-                                    record, sizeof(record)) ||
-            xx_data_get_u32(record, 4, 0, true) != XX_DISKDOUBLER_DDAR_MAGIC ||
+        if (!xx_diskdoubler_range_within(span, position, XX_DISKDOUBLER_DDAR_RECORD) ||
+            !xx_diskdoubler_read_at(self, self->base_address + position, record, sizeof(record)) || xx_data_get_u32(record, 4, 0, true) != XX_DISKDOUBLER_DDAR_MAGIC ||
             !xx_diskdoubler_crc_ok(record, XX_DISKDOUBLER_DDAR_RECORD)) {
             if (build->records == 0U) return false;
             break;
@@ -1486,10 +1380,8 @@ static bool xx_diskdoubler_parse_ddar(xx_diskdoubler_build *build,
         if (name_size > XX_DISKDOUBLER_DDAR_NAME_MAX) {
             name_size = XX_DISKDOUBLER_DDAR_NAME_MAX;
         }
-        data_size = (int64_t)xx_data_get_u32(
-            record + XX_DISKDOUBLER_DDAR_OFF_DATA_SIZE, 4, 0, true);
-        rsrc_size = (int64_t)xx_data_get_u32(
-            record + XX_DISKDOUBLER_DDAR_OFF_RSRC_SIZE, 4, 0, true);
+        data_size = (int64_t)xx_data_get_u32(record + XX_DISKDOUBLER_DDAR_OFF_DATA_SIZE, 4, 0, true);
+        rsrc_size = (int64_t)xx_data_get_u32(record + XX_DISKDOUBLER_DDAR_OFF_RSRC_SIZE, 4, 0, true);
         body = position + XX_DISKDOUBLER_DDAR_RECORD;
 
         /* Folder-end records may repeat the previous file's fork lengths.
@@ -1505,11 +1397,7 @@ static bool xx_diskdoubler_parse_ddar(xx_diskdoubler_build *build,
             if (data_size != 0 || rsrc_size != 0) return false;
             if (build->depth >= XX_DISKDOUBLER_MAX_DEPTH) return false;
             parent = xx_diskdoubler_ddar_parent(build);
-            if (!xx_diskdoubler_new_folder(build, parent, record + 9,
-                                           name_size,
-                                           self->base_address + position,
-                                           XX_DISKDOUBLER_DDAR_RECORD,
-                                           &index)) {
+            if (!xx_diskdoubler_new_folder(build, parent, record + 9, name_size, self->base_address + position, XX_DISKDOUBLER_DDAR_RECORD, &index)) {
                 return false;
             }
             build->stack[build->depth++] = index;
@@ -1523,23 +1411,13 @@ static bool xx_diskdoubler_parse_ddar(xx_diskdoubler_build *build,
         parent = xx_diskdoubler_ddar_parent(build);
         /* The usual case: the data fork holds a whole compressed file.
          * Anything else is kept as stored forks. */
-        if (rsrc_size == 0 &&
-            xx_diskdoubler_read_forks(self, body, data_size, &forks)) {
-            if (!xx_diskdoubler_add_packed(build, parent, record + 9,
-                                           name_size,
-                                           self->base_address + body,
-                                           &forks)) {
+        if (rsrc_size == 0 && xx_diskdoubler_read_forks(self, body, data_size, &forks)) {
+            if (!xx_diskdoubler_add_packed(build, parent, record + 9, name_size, self->base_address + body, &forks)) {
                 return false;
             }
-        } else if (!xx_diskdoubler_add_raw(
-                       build, parent, record + 9, name_size,
-                       self->base_address + position,
-                       XX_DISKDOUBLER_DDAR_RECORD, self->base_address + body,
-                       data_size, rsrc_size, XX_DISKDOUBLER_CHECK_SUM16,
-                       xx_data_get_u16(record +
-                                           XX_DISKDOUBLER_DDAR_OFF_DATA_SUM, 2, 0, true),
-                       xx_data_get_u16(record +
-                                           XX_DISKDOUBLER_DDAR_OFF_RSRC_SUM, 2, 0, true))) {
+        } else if (!xx_diskdoubler_add_raw(build, parent, record + 9, name_size, self->base_address + position, XX_DISKDOUBLER_DDAR_RECORD, self->base_address + body,
+                                           data_size, rsrc_size, XX_DISKDOUBLER_CHECK_SUM16, xx_data_get_u16(record + XX_DISKDOUBLER_DDAR_OFF_DATA_SUM, 2, 0, true),
+                                           xx_data_get_u16(record + XX_DISKDOUBLER_DDAR_OFF_RSRC_SUM, 2, 0, true))) {
             return false;
         }
         position = body + data_size + rsrc_size;
@@ -1548,8 +1426,8 @@ static bool xx_diskdoubler_parse_ddar(xx_diskdoubler_build *build,
     return xx_diskdoubler_add_empty_folders(build);
 }
 
-static xx_diskdoubler_stream *xx_diskdoubler_parse(Abstractformat *self,
-                                                   xx_pd_struct *pd) {
+static xx_diskdoubler_stream *xx_diskdoubler_parse(Abstractformat *self, xx_pd_struct *pd)
+{
     xx_diskdoubler_stream *stream;
     uint8_t magic[4];
     int64_t total;
@@ -1564,14 +1442,11 @@ static xx_diskdoubler_stream *xx_diskdoubler_parse(Abstractformat *self,
     if (span < (int64_t)sizeof(magic)) return NULL;
     if (span > XX_DISKDOUBLER_MAX_SIZE) return NULL;
     if (pd && xx_pd_is_stopped(pd)) return NULL;
-    if (!xx_diskdoubler_read_at(self, self->base_address, magic,
-                                sizeof(magic))) {
+    if (!xx_diskdoubler_read_at(self, self->base_address, magic, sizeof(magic))) {
         return NULL;
     }
     signature = xx_data_get_u32(magic, 4, 0, true);
-    if (signature != XX_DISKDOUBLER_MAGIC &&
-        signature != XX_DISKDOUBLER_DDA2_MAGIC &&
-        signature != XX_DISKDOUBLER_DDAR_MAGIC) {
+    if (signature != XX_DISKDOUBLER_MAGIC && signature != XX_DISKDOUBLER_DDA2_MAGIC && signature != XX_DISKDOUBLER_DDAR_MAGIC) {
         return NULL;
     }
 
@@ -1587,9 +1462,7 @@ static xx_diskdoubler_stream *xx_diskdoubler_parse(Abstractformat *self,
         build.self = self;
         build.pd = pd;
         build.stream = stream;
-        ok = signature == XX_DISKDOUBLER_DDA2_MAGIC
-                 ? xx_diskdoubler_parse_dda2(&build, span)
-                 : xx_diskdoubler_parse_ddar(&build, span);
+        ok = signature == XX_DISKDOUBLER_DDA2_MAGIC ? xx_diskdoubler_parse_dda2(&build, span) : xx_diskdoubler_parse_ddar(&build, span);
         xx_diskdoubler_build_cleanup(&build);
     }
     if (ok && pd && xx_pd_is_stopped(pd)) ok = false;
@@ -1616,31 +1489,26 @@ static xx_diskdoubler_stream *xx_diskdoubler_parse(Abstractformat *self,
  * Method 8 (Compact Pro) has none: its RLE count 1 means "repeat to the end
  * of the fork", so a few bytes can legitimately fill any size, and only
  * XX_DISKDOUBLER_MAX_DECODED limits it. Stored forks must match exactly. */
-static uint64_t xx_diskdoubler_max_plain(uint32_t method, uint64_t packed) {
+static uint64_t xx_diskdoubler_max_plain(uint32_t method, uint64_t packed)
+{
     uint64_t codes;
 
     switch (method) {
-    case XX_DISKDOUBLER_METHOD_STORE:
-        return packed;
-    case XX_DISKDOUBLER_METHOD_LZW:
-        if (packed < 3U) return 0U;
-        codes = ((packed - 3U) * 8U) / 9U;
-        return codes * (codes + 1U) / 2U;
-    case XX_DISKDOUBLER_METHOD_ADN_6:
-    case XX_DISKDOUBLER_METHOD_ADN_9:
-        return (packed / 13U) * 0x2000U;
-    case XX_DISKDOUBLER_METHOD_DDN:
-        return (packed / 22U) * 0x10000U;
-    default:
-        return (uint64_t)XX_DISKDOUBLER_MAX_DECODED;
+        case XX_DISKDOUBLER_METHOD_STORE: return packed;
+        case XX_DISKDOUBLER_METHOD_LZW:
+            if (packed < 3U) return 0U;
+            codes = ((packed - 3U) * 8U) / 9U;
+            return codes * (codes + 1U) / 2U;
+        case XX_DISKDOUBLER_METHOD_ADN_6:
+        case XX_DISKDOUBLER_METHOD_ADN_9: return (packed / 13U) * 0x2000U;
+        case XX_DISKDOUBLER_METHOD_DDN: return (packed / 22U) * 0x10000U;
+        default: return (uint64_t)XX_DISKDOUBLER_MAX_DECODED;
     }
 }
 
 /* A fork stored as is, proven by the check its record carries. */
-static bool xx_diskdoubler_decode_raw(Abstractformat *self,
-                                      const xx_diskdoubler_member *member,
-                                      uint8_t **out, size_t *out_size,
-                                      xx_pd_struct *pd) {
+static bool xx_diskdoubler_decode_raw(Abstractformat *self, const xx_diskdoubler_member *member, uint8_t **out, size_t *out_size, xx_pd_struct *pd)
+{
     uint8_t *plain;
     size_t size = (size_t)member->uncompressed_size;
     size_t index;
@@ -1649,8 +1517,7 @@ static bool xx_diskdoubler_decode_raw(Abstractformat *self,
     if (member->compressed_size != member->uncompressed_size) return false;
     plain = (uint8_t *)xx_mem_alloc(size ? size : 1U);
     if (!plain) return false;
-    if (size != 0U &&
-        !xx_diskdoubler_read_at(self, member->data_offset, plain, size)) {
+    if (size != 0U && !xx_diskdoubler_read_at(self, member->data_offset, plain, size)) {
         xx_mem_free(plain);
         return false;
     }
@@ -1661,9 +1528,7 @@ static bool xx_diskdoubler_decode_raw(Abstractformat *self,
             check = (check + plain[index]) & 0xffffU;
         }
     }
-    if ((member->check != XX_DISKDOUBLER_CHECK_NONE &&
-         check != (uint32_t)member->check_value) ||
-        (pd && xx_pd_is_stopped(pd))) {
+    if ((member->check != XX_DISKDOUBLER_CHECK_NONE && check != (uint32_t)member->check_value) || (pd && xx_pd_is_stopped(pd))) {
         xx_mem_free(plain);
         return false;
     }
@@ -1678,10 +1543,8 @@ static bool xx_diskdoubler_decode_raw(Abstractformat *self,
  * cached in the member struct: the LZW codec needs three header fields (two
  * info bytes and the fork's additive checksum), and the fork's identity --
  * data or resource -- decides which checksum to use. */
-static bool xx_diskdoubler_decode(Abstractformat *self,
-                                  const xx_diskdoubler_member *member,
-                                  uint8_t **out, size_t *out_size,
-                                  xx_pd_struct *pd) {
+static bool xx_diskdoubler_decode(Abstractformat *self, const xx_diskdoubler_member *member, uint8_t **out, size_t *out_size, xx_pd_struct *pd)
+{
     uint8_t header[XX_DISKDOUBLER_HEADER_SIZE];
     uint8_t *packed = NULL;
     uint8_t *plain = NULL;
@@ -1702,8 +1565,7 @@ static bool xx_diskdoubler_decode(Abstractformat *self,
     if (member->compressed_size < 0 || member->uncompressed_size < 0) {
         return false;
     }
-    if (member->compressed_size > XX_DISKDOUBLER_MAX_DECODED ||
-        member->uncompressed_size > XX_DISKDOUBLER_MAX_DECODED) {
+    if (member->compressed_size > XX_DISKDOUBLER_MAX_DECODED || member->uncompressed_size > XX_DISKDOUBLER_MAX_DECODED) {
         return false;
     }
     if (member->kind == XX_DISKDOUBLER_KIND_RAW) {
@@ -1724,50 +1586,37 @@ static bool xx_diskdoubler_decode(Abstractformat *self,
         return true;
     }
     if (member->compressed_size == 0) return false;
-    if ((uint64_t)member->uncompressed_size >
-        xx_diskdoubler_max_plain(method,
-                                 (uint64_t)member->compressed_size)) {
+    if ((uint64_t)member->uncompressed_size > xx_diskdoubler_max_plain(method, (uint64_t)member->compressed_size)) {
         return false;
     }
 
     plain_size = (size_t)member->uncompressed_size;
     packed_size = (size_t)member->compressed_size;
 
-    if (!xx_diskdoubler_read_at(self, member->header_offset, header,
-                                sizeof(header))) {
+    if (!xx_diskdoubler_read_at(self, member->header_offset, header, sizeof(header))) {
         return false;
     }
-    data_plain = (int64_t)xx_data_get_u32(header +
-                                              XX_DISKDOUBLER_OFF_DATA_PLAIN, 4, 0, true);
-    data_packed = (int64_t)xx_data_get_u32(header +
-                                               XX_DISKDOUBLER_OFF_DATA_PACKED, 4, 0, true);
-    rsrc_plain = (int64_t)xx_data_get_u32(header +
-                                              XX_DISKDOUBLER_OFF_RSRC_PLAIN, 4, 0, true);
+    data_plain = (int64_t)xx_data_get_u32(header + XX_DISKDOUBLER_OFF_DATA_PLAIN, 4, 0, true);
+    data_packed = (int64_t)xx_data_get_u32(header + XX_DISKDOUBLER_OFF_DATA_PACKED, 4, 0, true);
+    rsrc_plain = (int64_t)xx_data_get_u32(header + XX_DISKDOUBLER_OFF_RSRC_PLAIN, 4, 0, true);
 
     /* Which fork this member is. Normally the offset decides it, but when the
      * data fork is absent (plaintext zero) parse publishes only the resource
      * fork and, if the data fork's packed length is also zero, both forks
      * would start at the same offset. The second clause disambiguates that. */
-    is_resource = (member->data_offset !=
-                   member->header_offset + XX_DISKDOUBLER_HEADER_SIZE) ||
-                  (data_plain == 0 && rsrc_plain != 0);
+    is_resource = (member->data_offset != member->header_offset + XX_DISKDOUBLER_HEADER_SIZE) || (data_plain == 0 && rsrc_plain != 0);
     /* The recomputed start must be the one parse published, or the header
      * being read here does not belong to this member. */
-    if (member->data_offset !=
-        member->header_offset + XX_DISKDOUBLER_HEADER_SIZE +
-            (is_resource ? data_packed : 0)) {
+    if (member->data_offset != member->header_offset + XX_DISKDOUBLER_HEADER_SIZE + (is_resource ? data_packed : 0)) {
         return false;
     }
-    if ((uint32_t)header[is_resource ? XX_DISKDOUBLER_OFF_RSRC_METHOD
-                                     : XX_DISKDOUBLER_OFF_DATA_METHOD] !=
-        member->method) {
+    if ((uint32_t)header[is_resource ? XX_DISKDOUBLER_OFF_RSRC_METHOD : XX_DISKDOUBLER_OFF_DATA_METHOD] != member->method) {
         return false;
     }
 
     packed = (uint8_t *)xx_mem_alloc(packed_size);
     if (!packed) return false;
-    if (!xx_diskdoubler_read_at(self, member->data_offset, packed,
-                                packed_size)) {
+    if (!xx_diskdoubler_read_at(self, member->data_offset, packed, packed_size)) {
         xx_mem_free(packed);
         return false;
     }
@@ -1800,22 +1649,15 @@ static bool xx_diskdoubler_decode(Abstractformat *self,
          * it needs the header's per-fork checksum word plus the two info
          * bytes that tell it whether the .Z header and the plaintext are
          * XOR-masked with 0x5a. */
-        uint16_t checksum = xx_data_get_u16(
-            header + (is_resource ? XX_DISKDOUBLER_OFF_RSRC_CHECKSUM
-                                  : XX_DISKDOUBLER_OFF_DATA_CHECKSUM), 2, 0, true);
-        ok = xx_diskdoubler_lzw_decode_memory(
-            packed, packed_size, header[XX_DISKDOUBLER_OFF_INFO1],
-            header[XX_DISKDOUBLER_OFF_INFO2], checksum, plain, plain_size,
-            &written);
-    } else if (method == XX_DISKDOUBLER_METHOD_ADN_6 ||
-               method == XX_DISKDOUBLER_METHOD_ADN_9) {
+        uint16_t checksum = xx_data_get_u16(header + (is_resource ? XX_DISKDOUBLER_OFF_RSRC_CHECKSUM : XX_DISKDOUBLER_OFF_DATA_CHECKSUM), 2, 0, true);
+        ok = xx_diskdoubler_lzw_decode_memory(packed, packed_size, header[XX_DISKDOUBLER_OFF_INFO1], header[XX_DISKDOUBLER_OFF_INFO2], checksum, plain, plain_size,
+                                              &written);
+    } else if (method == XX_DISKDOUBLER_METHOD_ADN_6 || method == XX_DISKDOUBLER_METHOD_ADN_9) {
         /* 6 and 9 differ only in what the compressor was willing to emit; the
          * stream syntax is identical, so one entry point serves both. */
-        ok = xx_diskdoubler_adn_decode_memory(packed, packed_size, plain,
-                                              plain_size, &written);
+        ok = xx_diskdoubler_adn_decode_memory(packed, packed_size, plain, plain_size, &written);
     } else if (method == XX_DISKDOUBLER_METHOD_DDN) {
-        ok = xx_diskdoubler_ddn_decode_memory(packed, packed_size, plain,
-                                              plain_size, &written);
+        ok = xx_diskdoubler_ddn_decode_memory(packed, packed_size, plain, plain_size, &written);
     } else if (method == XX_DISKDOUBLER_METHOD_COMPACT_PRO) {
         /* Method 8 is Compact Pro's LZH codec verbatim. Two things differ
          * from a .cpt member: a 16-byte preamble precedes the coded stream,
@@ -1823,11 +1665,8 @@ static bool xx_diskdoubler_decode(Abstractformat *self,
          * Pro's 0x1fff0, which is why this calls the generic
          * xx_compactpro_decode_memory rather than the _lzh_ wrapper. */
         if (packed_size > (size_t)XX_DISKDOUBLER_CPT_PREAMBLE) {
-            ok = xx_compactpro_decode_memory(
-                packed + XX_DISKDOUBLER_CPT_PREAMBLE,
-                packed_size - (size_t)XX_DISKDOUBLER_CPT_PREAMBLE, true,
-                (uint32_t)XX_COMPACTPRO_DD_BLOCK_SIZE, plain, plain_size,
-                &written);
+            ok = xx_compactpro_decode_memory(packed + XX_DISKDOUBLER_CPT_PREAMBLE, packed_size - (size_t)XX_DISKDOUBLER_CPT_PREAMBLE, true,
+                                             (uint32_t)XX_COMPACTPRO_DD_BLOCK_SIZE, plain, plain_size, &written);
         }
     } else {
         /* A codec number the format defines but this reader does not
@@ -1851,8 +1690,8 @@ static bool xx_diskdoubler_decode(Abstractformat *self,
 
 /* ---------------------------------------------------------- lifecycle --- */
 
-void xx_diskdoubler_init(xx_diskdoubler *archive, xx_io_device *device,
-                         int64_t base_address) {
+void xx_diskdoubler_init(xx_diskdoubler *archive, xx_io_device *device, int64_t base_address)
+{
     if (!archive) return;
     xx_mem_zero(archive, sizeof(*archive));
     xx_format_init(&archive->format, device, base_address);
@@ -1865,23 +1704,17 @@ void xx_diskdoubler_init(xx_diskdoubler *archive, xx_io_device *device,
     archive->format.check_is_valid = xx_diskdoubler_check_is_valid;
     archive->format.handle_base_info = xx_diskdoubler_handle_base_info;
     archive->format.get_format_size = xx_diskdoubler_get_format_size;
-    archive->format.get_number_of_archive_records =
-        xx_diskdoubler_get_number_of_archive_records;
-    archive->format.create_archive_records_reading =
-        xx_diskdoubler_create_archive_records_reading;
-    archive->format.get_current_archive_record =
-        xx_diskdoubler_get_current_archive_record;
-    archive->format.unpack_current_archive_record =
-        xx_diskdoubler_unpack_current_archive_record;
-    archive->format.archive_record_move_to_next =
-        xx_diskdoubler_archive_record_move_to_next;
-    archive->format.free_archive_records_reading =
-        xx_diskdoubler_free_archive_records_reading;
+    archive->format.get_number_of_archive_records = xx_diskdoubler_get_number_of_archive_records;
+    archive->format.create_archive_records_reading = xx_diskdoubler_create_archive_records_reading;
+    archive->format.get_current_archive_record = xx_diskdoubler_get_current_archive_record;
+    archive->format.unpack_current_archive_record = xx_diskdoubler_unpack_current_archive_record;
+    archive->format.archive_record_move_to_next = xx_diskdoubler_archive_record_move_to_next;
+    archive->format.free_archive_records_reading = xx_diskdoubler_free_archive_records_reading;
     archive->format.destroy = xx_diskdoubler_vtable_destroy;
 }
 
-xx_diskdoubler *xx_diskdoubler_create(xx_io_device *device,
-                                      int64_t base_address) {
+xx_diskdoubler *xx_diskdoubler_create(xx_io_device *device, int64_t base_address)
+{
     xx_diskdoubler *archive = (xx_diskdoubler *)xx_mem_alloc(sizeof(*archive));
 
     if (!archive) return NULL;
@@ -1889,7 +1722,8 @@ xx_diskdoubler *xx_diskdoubler_create(xx_io_device *device,
     return archive;
 }
 
-void xx_diskdoubler_destroy(xx_diskdoubler *archive) {
+void xx_diskdoubler_destroy(xx_diskdoubler *archive)
+{
     if (!archive) return;
     /* Not xx_format_destroy: it dispatches through format.destroy, which is
      * the wrapper below, and the two would recurse. */
@@ -1898,19 +1732,22 @@ void xx_diskdoubler_destroy(xx_diskdoubler *archive) {
     archive->number_of_records = 0U;
 }
 
-void xx_diskdoubler_free(xx_diskdoubler *archive) {
+void xx_diskdoubler_free(xx_diskdoubler *archive)
+{
     if (!archive) return;
     xx_diskdoubler_destroy(archive);
     xx_mem_free(archive);
 }
 
-static void xx_diskdoubler_vtable_destroy(Abstractformat *self) {
+static void xx_diskdoubler_vtable_destroy(Abstractformat *self)
+{
     xx_diskdoubler_destroy((xx_diskdoubler *)self);
 }
 
 /* -------------------------------------------------------------- format -- */
 
-bool xx_diskdoubler_check_is_valid(Abstractformat *self, xx_pd_struct *pd) {
+bool xx_diskdoubler_check_is_valid(Abstractformat *self, xx_pd_struct *pd)
+{
     xx_diskdoubler_stream *stream;
 
     if (!self || (pd && xx_pd_is_stopped(pd))) return false;
@@ -1920,7 +1757,8 @@ bool xx_diskdoubler_check_is_valid(Abstractformat *self, xx_pd_struct *pd) {
     return true;
 }
 
-bool xx_diskdoubler_handle_base_info(Abstractformat *self, xx_pd_struct *pd) {
+bool xx_diskdoubler_handle_base_info(Abstractformat *self, xx_pd_struct *pd)
+{
     xx_diskdoubler *archive = (xx_diskdoubler *)self;
     xx_diskdoubler_stream *stream;
 
@@ -1941,19 +1779,17 @@ bool xx_diskdoubler_handle_base_info(Abstractformat *self, xx_pd_struct *pd) {
     return true;
 }
 
-int64_t xx_diskdoubler_get_format_size(Abstractformat *self,
-                                       xx_pd_struct *pd) {
-    if (!self ||
-        (!self->base_info_handled && !xx_format_handle_base_info(self, pd))) {
+int64_t xx_diskdoubler_get_format_size(Abstractformat *self, xx_pd_struct *pd)
+{
+    if (!self || (!self->base_info_handled && !xx_format_handle_base_info(self, pd))) {
         return 0;
     }
     return self->is_valid ? self->format_size : 0;
 }
 
-uint64_t xx_diskdoubler_get_number_of_archive_records(Abstractformat *self,
-                                                      xx_pd_struct *pd) {
-    if (!self ||
-        (!self->base_info_handled && !xx_format_handle_base_info(self, pd))) {
+uint64_t xx_diskdoubler_get_number_of_archive_records(Abstractformat *self, xx_pd_struct *pd)
+{
+    if (!self || (!self->base_info_handled && !xx_format_handle_base_info(self, pd))) {
         return 0U;
     }
     return self->is_valid ? ((xx_diskdoubler *)self)->number_of_records : 0U;
@@ -1961,8 +1797,8 @@ uint64_t xx_diskdoubler_get_number_of_archive_records(Abstractformat *self,
 
 /* ------------------------------------------------------------- records -- */
 
-static bool xx_diskdoubler_set_record(xx_archive_record *record,
-                                      const xx_diskdoubler_member *member) {
+static bool xx_diskdoubler_set_record(xx_archive_record *record, const xx_diskdoubler_member *member)
+{
     xx_archive_record_cleanup(record);
     xx_archive_record_init(record);
     record->header_offset = member->header_offset;
@@ -1970,34 +1806,24 @@ static bool xx_diskdoubler_set_record(xx_archive_record *record,
     record->data_offset = member->data_offset;
     record->compressed_size = member->compressed_size;
     return xx_archive_record_set_original_name(record, member->name) &&
-           xx_archive_record_set_meta_u64(record, XX_META_ID_COMPRESSED_SIZE,
-                                          (uint64_t)member->compressed_size) &&
-           xx_archive_record_set_meta_u64(
-               record, XX_META_ID_UNCOMPRESSED_SIZE,
-               (uint64_t)member->uncompressed_size) &&
-           xx_archive_record_set_meta_u64(record, XX_META_ID_COMPRESSION_METHOD,
-                                          member->method) &&
-           xx_archive_record_set_meta_u64(record, XX_META_ID_TIMESTAMP,
-                                          member->timestamp) &&
-           xx_archive_record_set_meta_bool(record, XX_META_ID_IS_FOLDER,
-                                           member->is_folder) &&
-           xx_archive_record_set_meta_bool(record, XX_META_ID_IS_ENCRYPTED,
-                                           false);
+           xx_archive_record_set_meta_u64(record, XX_META_ID_COMPRESSED_SIZE, (uint64_t)member->compressed_size) &&
+           xx_archive_record_set_meta_u64(record, XX_META_ID_UNCOMPRESSED_SIZE, (uint64_t)member->uncompressed_size) &&
+           xx_archive_record_set_meta_u64(record, XX_META_ID_COMPRESSION_METHOD, member->method) &&
+           xx_archive_record_set_meta_u64(record, XX_META_ID_TIMESTAMP, member->timestamp) &&
+           xx_archive_record_set_meta_bool(record, XX_META_ID_IS_FOLDER, member->is_folder) && xx_archive_record_set_meta_bool(record, XX_META_ID_IS_ENCRYPTED, false);
 }
 
-static bool xx_diskdoubler_copy_options(xx_list_s *target,
-                                        const xx_list_s *options) {
+static bool xx_diskdoubler_copy_options(xx_list_s *target, const xx_list_s *options)
+{
     size_t index;
 
     if (!target || !options) return options == NULL;
     for (index = 0U; index < options->count; ++index) {
-        const xx_meta *source =
-            (const xx_meta *)xx_list_at((const xx_list_t *)options, index);
+        const xx_meta *source = (const xx_meta *)xx_list_at((const xx_list_t *)options, index);
         xx_meta copied;
         if (!source) continue;
         xx_meta_init(&copied, source->meta_id);
-        if (!xx_var_copy(&copied.var, &source->var) ||
-            !xx_list_append(target, &copied)) {
+        if (!xx_var_copy(&copied.var, &source->var) || !xx_list_append(target, &copied)) {
             xx_meta_cleanup(&copied);
             return false;
         }
@@ -2005,21 +1831,20 @@ static bool xx_diskdoubler_copy_options(xx_list_s *target,
     return true;
 }
 
-static const xx_var *xx_diskdoubler_get_option(const xx_list_s *options,
-                                               uint32_t meta_id) {
+static const xx_var *xx_diskdoubler_get_option(const xx_list_s *options, uint32_t meta_id)
+{
     size_t index;
 
     if (!options) return NULL;
     for (index = 0U; index < options->count; ++index) {
-        const xx_meta *meta =
-            (const xx_meta *)xx_list_at((const xx_list_t *)options, index);
+        const xx_meta *meta = (const xx_meta *)xx_list_at((const xx_list_t *)options, index);
         if (meta && meta->meta_id == meta_id) return &meta->var;
     }
     return NULL;
 }
 
-xx_archive_record_state *xx_diskdoubler_create_archive_records_reading(
-    Abstractformat *self, const xx_list_s *options, xx_pd_struct *pd) {
+xx_archive_record_state *xx_diskdoubler_create_archive_records_reading(Abstractformat *self, const xx_list_s *options, xx_pd_struct *pd)
+{
     xx_diskdoubler_stream *stream;
     xx_archive_record_state *state;
 
@@ -2035,10 +1860,7 @@ xx_archive_record_state *xx_diskdoubler_create_archive_records_reading(
     state->internal_state = stream;
     state->free_internal = xx_diskdoubler_stream_free;
     state->total_records = (int64_t)stream->count;
-    if (!xx_diskdoubler_copy_options(&state->options, options) ||
-        (stream->count != 0U &&
-         !xx_diskdoubler_set_record(&state->current_record,
-                                    &stream->items[0]))) {
+    if (!xx_diskdoubler_copy_options(&state->options, options) || (stream->count != 0U && !xx_diskdoubler_set_record(&state->current_record, &stream->items[0]))) {
         xx_archive_record_state_free(state);
         return NULL;
     }
@@ -2047,20 +1869,16 @@ xx_archive_record_state *xx_diskdoubler_create_archive_records_reading(
     return state;
 }
 
-const xx_archive_record *xx_diskdoubler_get_current_archive_record(
-    Abstractformat *self, xx_archive_record_state *state) {
-    return self && state && state->format == self && state->has_record
-               ? &state->current_record
-               : NULL;
+const xx_archive_record *xx_diskdoubler_get_current_archive_record(Abstractformat *self, xx_archive_record_state *state)
+{
+    return self && state && state->format == self && state->has_record ? &state->current_record : NULL;
 }
 
-bool xx_diskdoubler_archive_record_move_to_next(Abstractformat *self,
-                                                xx_archive_record_state *state,
-                                                xx_pd_struct *pd) {
+bool xx_diskdoubler_archive_record_move_to_next(Abstractformat *self, xx_archive_record_state *state, xx_pd_struct *pd)
+{
     xx_diskdoubler_stream *stream;
 
-    if (!self || !state || state->format != self || !state->has_record ||
-        (pd && xx_pd_is_stopped(pd))) {
+    if (!self || !state || state->format != self || !state->has_record || (pd && xx_pd_is_stopped(pd))) {
         return false;
     }
     stream = (xx_diskdoubler_stream *)state->internal_state;
@@ -2072,13 +1890,12 @@ bool xx_diskdoubler_archive_record_move_to_next(Abstractformat *self,
     }
     ++stream->index;
     ++state->current_index;
-    state->has_record = xx_diskdoubler_set_record(&state->current_record,
-                                                  &stream->items[stream->index]);
+    state->has_record = xx_diskdoubler_set_record(&state->current_record, &stream->items[stream->index]);
     return state->has_record;
 }
 
-bool xx_diskdoubler_unpack_current_archive_record(
-    Abstractformat *self, xx_archive_record_state *state, xx_pd_struct *pd) {
+bool xx_diskdoubler_unpack_current_archive_record(Abstractformat *self, xx_archive_record_state *state, xx_pd_struct *pd)
+{
     xx_diskdoubler_stream *stream;
     const xx_diskdoubler_member *member;
     const xx_var *path_option;
@@ -2090,8 +1907,7 @@ bool xx_diskdoubler_unpack_current_archive_record(
     bool result = false;
     bool created = false;
 
-    if (!self || !state || state->format != self || !state->has_record ||
-        (pd && xx_pd_is_stopped(pd))) {
+    if (!self || !state || state->format != self || !state->has_record || (pd && xx_pd_is_stopped(pd))) {
         return false;
     }
     stream = (xx_diskdoubler_stream *)state->internal_state;
@@ -2099,8 +1915,7 @@ bool xx_diskdoubler_unpack_current_archive_record(
     member = &stream->items[stream->index];
     if (!xx_diskdoubler_path_safe(member->name)) return false;
 
-    path_option = xx_diskdoubler_get_option(&state->options,
-                                            XX_META_ID_OPT_UNPACK_PATH);
+    path_option = xx_diskdoubler_get_option(&state->options, XX_META_ID_OPT_UNPACK_PATH);
     if (!path_option) {
         /* No destination: decode and discard, which verifies the member
          * without writing anything. */
@@ -2109,11 +1924,9 @@ bool xx_diskdoubler_unpack_current_archive_record(
         xx_mem_free(plain);
         return result;
     }
-    if (path_option->type == XX_VAR_TYPE_STRING ||
-        path_option->type == XX_VAR_TYPE_STRING_VIEW) {
+    if (path_option->type == XX_VAR_TYPE_STRING || path_option->type == XX_VAR_TYPE_STRING_VIEW) {
         base_path = xx_var_get_str(path_option);
-    } else if (path_option->type == XX_VAR_TYPE_WSTRING ||
-               path_option->type == XX_VAR_TYPE_WSTRING_VIEW) {
+    } else if (path_option->type == XX_VAR_TYPE_WSTRING || path_option->type == XX_VAR_TYPE_WSTRING_VIEW) {
         converted_path = xx_str_unicode_to_utf8(xx_var_get_wstr(path_option));
         base_path = converted_path;
     }
@@ -2121,9 +1934,7 @@ bool xx_diskdoubler_unpack_current_archive_record(
         xx_str_free(converted_path);
         return false;
     }
-    if (base_path[0] != '\0' &&
-        base_path[xx_str_len(base_path) - 1U] != '/' &&
-        base_path[xx_str_len(base_path) - 1U] != '\\') {
+    if (base_path[0] != '\0' && base_path[xx_str_len(base_path) - 1U] != '/' && base_path[xx_str_len(base_path) - 1U] != '\\') {
         target_path = xx_str_concat3(base_path, "/", member->name);
     } else {
         target_path = xx_str_concat(base_path, member->name);
@@ -2136,8 +1947,7 @@ bool xx_diskdoubler_unpack_current_archive_record(
         xx_str_free(target_path);
         return result;
     }
-    if (!xx_store_create_dirs_a(target_path, false) ||
-        !xx_diskdoubler_decode(self, member, &plain, &plain_size, pd)) {
+    if (!xx_store_create_dirs_a(target_path, false) || !xx_diskdoubler_decode(self, member, &plain, &plain_size, pd)) {
         xx_str_free(target_path);
         return false;
     }
@@ -2148,8 +1958,7 @@ bool xx_diskdoubler_unpack_current_archive_record(
 
         result = output != NULL;
         while (result && completed < plain_size) {
-            ssize_t sent = xx_io_write(output, plain + completed,
-                                       plain_size - completed);
+            ssize_t sent = xx_io_write(output, plain + completed, plain_size - completed);
             if (sent <= 0 || (size_t)sent > plain_size - completed) {
                 result = false;
                 break;
@@ -2164,8 +1973,8 @@ bool xx_diskdoubler_unpack_current_archive_record(
     return result;
 }
 
-void xx_diskdoubler_free_archive_records_reading(
-    Abstractformat *self, xx_archive_record_state *state) {
+void xx_diskdoubler_free_archive_records_reading(Abstractformat *self, xx_archive_record_state *state)
+{
     (void)self;
     xx_archive_record_state_free(state);
 }

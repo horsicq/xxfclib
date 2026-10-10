@@ -37,8 +37,14 @@ typedef struct xx_settings_value_s {
         int64_t integer;
         uint64_t unsigned_integer;
         double real;
-        struct { const char *data; size_t size; } buffer; /**< UTF-8 string or binary data. */
-        struct { const char *const *items; size_t count; } list;
+        struct {
+            const char *data;
+            size_t size;
+        } buffer; /**< UTF-8 string or binary data. */
+        struct {
+            const char *const *items;
+            size_t count;
+        } list;
     } data;
 } xx_settings_value;
 

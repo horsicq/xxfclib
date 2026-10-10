@@ -23,14 +23,13 @@
 
 typedef ki_blowfish nss_blowfish;
 
-static bool nss_crypto_init_key(nss_blowfish *cipher,
-                                const uint8_t key[4]) {
+static bool nss_crypto_init_key(nss_blowfish *cipher, const uint8_t key[4])
+{
     return cipher && key && ki_bf_init(cipher, key, 4U);
 }
 
-static bool nss_crypto_init_password_bytes(nss_blowfish *cipher,
-                                           const uint8_t *password,
-                                           size_t length) {
+static bool nss_crypto_init_password_bytes(nss_blowfish *cipher, const uint8_t *password, size_t length)
+{
     uint8_t digest[XX_MD5_DIGEST_SIZE];
     static const uint8_t empty = 0U;
     bool ok;
@@ -38,37 +37,29 @@ static bool nss_crypto_init_password_bytes(nss_blowfish *cipher,
     /* The original UI accepts at most 50 one-byte characters.  Allow a
      * modestly longer caller-provided value without an unbounded hash. */
     if (length > 1024U) return false;
-    ok = xx_md5_memory(password ? password : &empty, length, digest) &&
-         nss_crypto_init_key(cipher, digest + 4U);
+    ok = xx_md5_memory(password ? password : &empty, length, digest) && nss_crypto_init_key(cipher, digest + 4U);
     xx_rt_memset(digest, 0, sizeof(digest));
     return ok;
 }
 
-static XXFC_MAYBE_UNUSED bool nss_crypto_init_password(nss_blowfish *cipher,
-                                     const char *password) {
-    return password && nss_crypto_init_password_bytes(
-        cipher, (const uint8_t *)password, xx_rt_strlen(password));
+static XXFC_MAYBE_UNUSED bool nss_crypto_init_password(nss_blowfish *cipher, const char *password)
+{
+    return password && nss_crypto_init_password_bytes(cipher, (const uint8_t *)password, xx_rt_strlen(password));
 }
 
 /* out may equal ciphertext for in-place decoding.  The verifier is checked
  * before any output is written, so a wrong key never emits named plaintext. */
-static bool nss_crypto_decrypt_member(const nss_blowfish *cipher,
-                                      const uint8_t iv[8],
-                                      const uint8_t *ciphertext,
-                                      size_t ciphertext_size,
-                                      uint8_t *out, size_t out_capacity,
-                                      size_t *out_size) {
-    static const uint8_t verifier[8] = {
-        'S', 'Y', 'M', 'A', 'N', 'T', 'E', 'C'
-    };
+static bool nss_crypto_decrypt_member(const nss_blowfish *cipher, const uint8_t iv[8], const uint8_t *ciphertext, size_t ciphertext_size, uint8_t *out,
+                                      size_t out_capacity, size_t *out_size)
+{
+    static const uint8_t verifier[8] = {'S', 'Y', 'M', 'A', 'N', 'T', 'E', 'C'};
     uint8_t previous[8], current[8], plain[8];
     uint32_t left, right;
     size_t at, j;
     if (out_size) *out_size = 0U;
-    if (!cipher || !iv || !ciphertext || !out_size ||
-        ciphertext_size < 8U || (ciphertext_size & 7U) != 0U ||
-        (!out && ciphertext_size > 8U) ||
-        out_capacity < ciphertext_size - 8U) return false;
+    if (!cipher || !iv || !ciphertext || !out_size || ciphertext_size < 8U || (ciphertext_size & 7U) != 0U || (!out && ciphertext_size > 8U) ||
+        out_capacity < ciphertext_size - 8U)
+        return false;
     xx_rt_memcpy(previous, iv, sizeof(previous));
     for (at = 0U; at < ciphertext_size; at += 8U) {
         xx_rt_memcpy(current, ciphertext + at, sizeof(current));
@@ -97,7 +88,8 @@ static bool nss_crypto_decrypt_member(const nss_blowfish *cipher,
     return true;
 }
 
-static void nss_crypto_cleanup(nss_blowfish *cipher) {
+static void nss_crypto_cleanup(nss_blowfish *cipher)
+{
     if (cipher) xx_rt_memset(cipher, 0, sizeof(*cipher));
 }
 

@@ -20,34 +20,21 @@ typedef struct xx_nextstep_diskimage {
     uint64_t disk_size;
 } xx_nextstep_diskimage;
 typedef xx_nextstep_diskimage xx_nextstep_diskimage_t;
-XXFC_API void xx_nextstep_diskimage_init(xx_nextstep_diskimage *,
-                                         xx_io_device *, int64_t);
-XXFC_API xx_nextstep_diskimage *xx_nextstep_diskimage_create(
-    xx_io_device *, int64_t);
+XXFC_API void xx_nextstep_diskimage_init(xx_nextstep_diskimage *, xx_io_device *, int64_t);
+XXFC_API xx_nextstep_diskimage *xx_nextstep_diskimage_create(xx_io_device *, int64_t);
 XXFC_API void xx_nextstep_diskimage_destroy(xx_nextstep_diskimage *);
 XXFC_API void xx_nextstep_diskimage_free(xx_nextstep_diskimage *);
-XXFC_API bool xx_nextstep_diskimage_check_is_valid(Abstractformat *,
-                                                   xx_pd_struct *);
-XXFC_API bool xx_nextstep_diskimage_handle_base_info(Abstractformat *,
-                                                     xx_pd_struct *);
-XXFC_API int64_t xx_nextstep_diskimage_get_format_size(Abstractformat *,
-                                                       xx_pd_struct *);
-XXFC_API uint64_t xx_nextstep_diskimage_get_number_of_archive_records(
-    Abstractformat *, xx_pd_struct *);
-XXFC_API xx_archive_record_state *
-xx_nextstep_diskimage_create_archive_records_reading(
-    Abstractformat *, const xx_list_s *, xx_pd_struct *);
-XXFC_API const xx_archive_record *
-xx_nextstep_diskimage_get_current_archive_record(
-    Abstractformat *, xx_archive_record_state *);
-XXFC_API bool xx_nextstep_diskimage_archive_record_move_to_next(
-    Abstractformat *, xx_archive_record_state *, xx_pd_struct *);
-XXFC_API bool xx_nextstep_diskimage_unpack_current_archive_record(
-    Abstractformat *, xx_archive_record_state *, xx_pd_struct *);
-XXFC_API void xx_nextstep_diskimage_free_archive_records_reading(
-    Abstractformat *, xx_archive_record_state *);
-static inline Abstractformat *xx_nextstep_diskimage_to_format(
-    xx_nextstep_diskimage *image) {
+XXFC_API bool xx_nextstep_diskimage_check_is_valid(Abstractformat *, xx_pd_struct *);
+XXFC_API bool xx_nextstep_diskimage_handle_base_info(Abstractformat *, xx_pd_struct *);
+XXFC_API int64_t xx_nextstep_diskimage_get_format_size(Abstractformat *, xx_pd_struct *);
+XXFC_API uint64_t xx_nextstep_diskimage_get_number_of_archive_records(Abstractformat *, xx_pd_struct *);
+XXFC_API xx_archive_record_state *xx_nextstep_diskimage_create_archive_records_reading(Abstractformat *, const xx_list_s *, xx_pd_struct *);
+XXFC_API const xx_archive_record *xx_nextstep_diskimage_get_current_archive_record(Abstractformat *, xx_archive_record_state *);
+XXFC_API bool xx_nextstep_diskimage_archive_record_move_to_next(Abstractformat *, xx_archive_record_state *, xx_pd_struct *);
+XXFC_API bool xx_nextstep_diskimage_unpack_current_archive_record(Abstractformat *, xx_archive_record_state *, xx_pd_struct *);
+XXFC_API void xx_nextstep_diskimage_free_archive_records_reading(Abstractformat *, xx_archive_record_state *);
+static inline Abstractformat *xx_nextstep_diskimage_to_format(xx_nextstep_diskimage *image)
+{
     return image ? &image->format : NULL;
 }
 #ifdef __cplusplus

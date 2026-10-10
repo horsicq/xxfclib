@@ -123,16 +123,14 @@ struct xx_logfs {
     void *internal;
 };
 
-XXFC_API void xx_logfs_init(xx_logfs *logfs, xx_io_device *dev,
-                            int64_t base_address);
+XXFC_API void xx_logfs_init(xx_logfs *logfs, xx_io_device *dev, int64_t base_address);
 XXFC_API xx_logfs *xx_logfs_create(xx_io_device *dev, int64_t base_address);
 XXFC_API void xx_logfs_destroy(xx_logfs *logfs);
 XXFC_API void xx_logfs_free(xx_logfs *logfs);
 
 XXFC_API bool xx_logfs_check_is_valid(Abstractformat *self, xx_pd_struct *pd);
 XXFC_API bool xx_logfs_handle_base_info(Abstractformat *self, xx_pd_struct *pd);
-XXFC_API int64_t xx_logfs_get_format_size(Abstractformat *self,
-                                          xx_pd_struct *pd);
+XXFC_API int64_t xx_logfs_get_format_size(Abstractformat *self, xx_pd_struct *pd);
 
 XXFC_API uint64_t xx_logfs_get_filesystem_size(const xx_logfs *logfs);
 XXFC_API uint32_t xx_logfs_get_segment_size(const xx_logfs *logfs);
@@ -144,19 +142,24 @@ XXFC_API bool xx_logfs_get_mirror_valid(const xx_logfs *logfs);
 /** The kernel's crc32_le: init 0xFFFFFFFF, reflected, no final complement. */
 XXFC_API uint32_t xx_logfs_crc32(const void *data, size_t size);
 
-static inline Abstractformat *xx_logfs_to_format(xx_logfs *logfs) {
+static inline Abstractformat *xx_logfs_to_format(xx_logfs *logfs)
+{
     return logfs ? &logfs->format : NULL;
 }
-static inline void XLogfs_init(xx_logfs *logfs, xx_io_device *dev,
-                               int64_t base_address) {
+static inline void XLogfs_init(xx_logfs *logfs, xx_io_device *dev, int64_t base_address)
+{
     xx_logfs_init(logfs, dev, base_address);
 }
-static inline xx_logfs *XLogfs_create(xx_io_device *dev,
-                                      int64_t base_address) {
+static inline xx_logfs *XLogfs_create(xx_io_device *dev, int64_t base_address)
+{
     return xx_logfs_create(dev, base_address);
 }
-static inline void XLogfs_free(xx_logfs *logfs) { xx_logfs_free(logfs); }
-static inline bool XLogfs_is_valid(xx_logfs *logfs, xx_pd_struct *pd) {
+static inline void XLogfs_free(xx_logfs *logfs)
+{
+    xx_logfs_free(logfs);
+}
+static inline bool XLogfs_is_valid(xx_logfs *logfs, xx_pd_struct *pd)
+{
     return logfs ? xx_format_is_valid(&logfs->format, pd) : false;
 }
 

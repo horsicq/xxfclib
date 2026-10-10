@@ -31,9 +31,7 @@
 #define XX_LZFSE_D_STATES 256
 #define XX_LZFSE_LITERAL_STATES 1024
 
-#define XX_LZFSE_FREQ_SYMBOLS                                                 \
-    (XX_LZFSE_L_SYMBOLS + XX_LZFSE_M_SYMBOLS + XX_LZFSE_D_SYMBOLS +           \
-     XX_LZFSE_LITERAL_SYMBOLS)
+#define XX_LZFSE_FREQ_SYMBOLS (XX_LZFSE_L_SYMBOLS + XX_LZFSE_M_SYMBOLS + XX_LZFSE_D_SYMBOLS + XX_LZFSE_LITERAL_SYMBOLS)
 
 #define XX_LZFSE_MATCHES_PER_BLOCK 10000U
 #define XX_LZFSE_LITERALS_PER_BLOCK (4U * XX_LZFSE_MATCHES_PER_BLOCK)
@@ -57,34 +55,24 @@
 /* L, M and D are each an FSE-coded base plus a raw remainder.  The tables are
  * reproduced from the reference; the encoder and decoder must agree on them
  * exactly or the streams decode to plausible garbage. */
-static const uint8_t xx_lzfse_l_extra_bits[XX_LZFSE_L_SYMBOLS] = {
-    0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 2, 3, 5, 8};
-static const int32_t xx_lzfse_l_base_value[XX_LZFSE_L_SYMBOLS] = {
-    0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 20, 28, 60};
-static const uint8_t xx_lzfse_m_extra_bits[XX_LZFSE_M_SYMBOLS] = {
-    0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 3, 5, 8, 11};
-static const int32_t xx_lzfse_m_base_value[XX_LZFSE_M_SYMBOLS] = {
-    0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 24, 56, 312};
-static const uint8_t xx_lzfse_d_extra_bits[XX_LZFSE_D_SYMBOLS] = {
-    0,  0,  0,  0,  1,  1,  1,  1,  2,  2,  2,  2,  3,  3,  3,  3,
-    4,  4,  4,  4,  5,  5,  5,  5,  6,  6,  6,  6,  7,  7,  7,  7,
-    8,  8,  8,  8,  9,  9,  9,  9,  10, 10, 10, 10, 11, 11, 11, 11,
-    12, 12, 12, 12, 13, 13, 13, 13, 14, 14, 14, 14, 15, 15, 15, 15};
+static const uint8_t xx_lzfse_l_extra_bits[XX_LZFSE_L_SYMBOLS] = {0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 2, 3, 5, 8};
+static const int32_t xx_lzfse_l_base_value[XX_LZFSE_L_SYMBOLS] = {0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 20, 28, 60};
+static const uint8_t xx_lzfse_m_extra_bits[XX_LZFSE_M_SYMBOLS] = {0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 3, 5, 8, 11};
+static const int32_t xx_lzfse_m_base_value[XX_LZFSE_M_SYMBOLS] = {0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 24, 56, 312};
+static const uint8_t xx_lzfse_d_extra_bits[XX_LZFSE_D_SYMBOLS] = {0,  0,  0,  0,  1,  1,  1,  1,  2,  2,  2,  2,  3,  3,  3,  3,  4,  4,  4,  4,  5,  5,
+                                                                  5,  5,  6,  6,  6,  6,  7,  7,  7,  7,  8,  8,  8,  8,  9,  9,  9,  9,  10, 10, 10, 10,
+                                                                  11, 11, 11, 11, 12, 12, 12, 12, 13, 13, 13, 13, 14, 14, 14, 14, 15, 15, 15, 15};
 static const int32_t xx_lzfse_d_base_value[XX_LZFSE_D_SYMBOLS] = {
-    0,      1,      2,      3,      4,      6,      8,      10,
-    12,     16,     20,     24,     28,     36,     44,     52,
-    60,     76,     92,     108,    124,    156,    188,    220,
-    252,    316,    380,    444,    508,    636,    764,    892,
-    1020,   1276,   1532,   1788,   2044,   2556,   3068,   3580,
-    4092,   5116,   6140,   7164,   8188,   10236,  12284,  14332,
-    16380,  20476,  24572,  28668,  32764,  40956,  49148,  57340,
-    65532,  81916,  98300,  114684, 131068, 163836, 196604, 229372};
+    0,    1,     2,     3,     4,     6,     8,     10,    12,    16,    20,    24,    28,    36,    44,    52,     60,     76,     92,     108,   124,  156,
+    188,  220,   252,   316,   380,   444,   508,   636,   764,   892,   1020,  1276,  1532,  1788,  2044,  2556,   3068,   3580,   4092,   5116,  6140, 7164,
+    8188, 10236, 12284, 14332, 16380, 20476, 24572, 28668, 32764, 40956, 49148, 57340, 65532, 81916, 98300, 114684, 131068, 163836, 196604, 229372};
 
 /* ------------------------------------------------------------------------ */
 /* Small helpers                                                             */
 /* ------------------------------------------------------------------------ */
 
-static uint64_t xx_lzfse_load_n(const uint8_t *data, size_t size) {
+static uint64_t xx_lzfse_load_n(const uint8_t *data, size_t size)
+{
     uint64_t value = 0U;
     size_t index;
     for (index = 0U; index < size; ++index) {
@@ -93,7 +81,8 @@ static uint64_t xx_lzfse_load_n(const uint8_t *data, size_t size) {
     return value;
 }
 
-static int xx_lzfse_clz32(uint32_t value) {
+static int xx_lzfse_clz32(uint32_t value)
+{
     int count = 0;
     if (value == 0U) return 32;
     while ((value & UINT32_C(0x80000000)) == 0U) {
@@ -104,7 +93,8 @@ static int xx_lzfse_clz32(uint32_t value) {
 }
 
 /* Keep only the low nbits of value; nbits is always in [0, 64]. */
-static uint64_t xx_lzfse_mask_lsb64(uint64_t value, int nbits) {
+static uint64_t xx_lzfse_mask_lsb64(uint64_t value, int nbits)
+{
     if (nbits <= 0) return 0U;
     if (nbits >= 64) return value;
     return value & ((UINT64_C(1) << nbits) - 1U);
@@ -125,9 +115,8 @@ typedef struct xx_lzfse_in_stream_s {
 
 /* Position the cursor and prime the accumulator.  nbits is the encoder's
  * final bit count, carried in the block header, and is in [-7, 0]. */
-static bool xx_lzfse_in_init(xx_lzfse_in_stream *stream, int nbits,
-                             const uint8_t *buffer, size_t *cursor,
-                             size_t buffer_start, size_t buffer_size) {
+static bool xx_lzfse_in_init(xx_lzfse_in_stream *stream, int nbits, const uint8_t *buffer, size_t *cursor, size_t buffer_start, size_t buffer_size)
+{
     size_t position = *cursor;
     if (nbits != 0) {
         if (position < buffer_start + 8U) return false;
@@ -141,8 +130,7 @@ static bool xx_lzfse_in_init(xx_lzfse_in_stream *stream, int nbits,
         stream->accum_nbits = 56;
     }
     (void)buffer_size;
-    if (stream->accum_nbits < 56 || stream->accum_nbits >= 64 ||
-        (stream->accum >> stream->accum_nbits) != 0U) {
+    if (stream->accum_nbits < 56 || stream->accum_nbits >= 64 || (stream->accum >> stream->accum_nbits) != 0U) {
         /* The encoder zeroes the bits above accum_nbits, so anything there
          * means the payload is not the one the header describes. */
         return false;
@@ -152,9 +140,8 @@ static bool xx_lzfse_in_init(xx_lzfse_in_stream *stream, int nbits,
 }
 
 /* Refill to between 56 and 63 bits, stepping the cursor down by whole bytes. */
-static bool xx_lzfse_in_flush(xx_lzfse_in_stream *stream, const uint8_t *buffer,
-                              size_t *cursor, size_t buffer_start,
-                              size_t buffer_size) {
+static bool xx_lzfse_in_flush(xx_lzfse_in_stream *stream, const uint8_t *buffer, size_t *cursor, size_t buffer_start, size_t buffer_size)
+{
     int nbits = (63 - stream->accum_nbits) & -8;
     size_t position;
     uint64_t incoming;
@@ -175,8 +162,8 @@ static bool xx_lzfse_in_flush(xx_lzfse_in_stream *stream, const uint8_t *buffer,
 }
 
 /* Take the top n bits off the accumulator. */
-static bool xx_lzfse_in_pull(xx_lzfse_in_stream *stream, int nbits,
-                             uint64_t *out_value) {
+static bool xx_lzfse_in_pull(xx_lzfse_in_stream *stream, int nbits, uint64_t *out_value)
+{
     if (nbits < 0 || nbits > stream->accum_nbits) return false;
     stream->accum_nbits -= nbits;
     *out_value = stream->accum >> stream->accum_nbits;
@@ -192,16 +179,16 @@ static bool xx_lzfse_in_pull(xx_lzfse_in_stream *stream, int nbits,
  * fields into an int32_t and unpacks them with shifts, which silently assumes
  * a little-endian struct layout; they are kept as named fields here. */
 typedef struct xx_lzfse_decoder_entry_s {
-    int8_t k;        /**< Bits of state to read back from the stream. */
-    uint8_t symbol;  /**< The byte this state emits. */
-    int16_t delta;   /**< Added to the bits read, giving the next state. */
+    int8_t k;       /**< Bits of state to read back from the stream. */
+    uint8_t symbol; /**< The byte this state emits. */
+    int16_t delta;  /**< Added to the bits read, giving the next state. */
 } xx_lzfse_decoder_entry;
 
 /* One decoder state for L, M or D, where the symbol stands for a base value
  * plus a raw remainder read from the same stream. */
 typedef struct xx_lzfse_value_decoder_entry_s {
-    uint8_t total_bits;  /**< State bits plus value bits. */
-    uint8_t value_bits;  /**< Just the raw remainder. */
+    uint8_t total_bits; /**< State bits plus value bits. */
+    uint8_t value_bits; /**< Just the raw remainder. */
     int16_t delta;
     int32_t vbase;
 } xx_lzfse_value_decoder_entry;
@@ -209,9 +196,8 @@ typedef struct xx_lzfse_value_decoder_entry_s {
 /* Build the state table for one stream.  The frequencies are normalised so
  * that they sum to nstates; a shortfall leaves the tail of the table zeroed,
  * which decodes to symbol 0 and state 0 and so can never leave the table. */
-static bool xx_lzfse_init_decoder_table(int nstates, int nsymbols,
-                                        const uint16_t *freq,
-                                        xx_lzfse_decoder_entry *table) {
+static bool xx_lzfse_init_decoder_table(int nstates, int nsymbols, const uint16_t *freq, xx_lzfse_decoder_entry *table)
+{
     int n_clz = xx_lzfse_clz32((uint32_t)nstates);
     int sum_of_freq = 0;
     int index;
@@ -247,9 +233,9 @@ static bool xx_lzfse_init_decoder_table(int nstates, int nsymbols,
     return true;
 }
 
-static bool xx_lzfse_init_value_decoder_table(
-    int nstates, int nsymbols, const uint16_t *freq, const uint8_t *value_bits,
-    const int32_t *value_base, xx_lzfse_value_decoder_entry *table) {
+static bool xx_lzfse_init_value_decoder_table(int nstates, int nsymbols, const uint16_t *freq, const uint8_t *value_bits, const int32_t *value_base,
+                                              xx_lzfse_value_decoder_entry *table)
+{
     int n_clz = xx_lzfse_clz32((uint32_t)nstates);
     int sum_of_freq = 0;
     int index;
@@ -283,7 +269,8 @@ static bool xx_lzfse_init_value_decoder_table(
     return true;
 }
 
-static bool xx_lzfse_check_freq(const uint16_t *freq, int count, int nstates) {
+static bool xx_lzfse_check_freq(const uint16_t *freq, int count, int nstates)
+{
     int sum = 0;
     int index;
     for (index = 0; index < count; ++index) sum += (int)freq[index];
@@ -310,7 +297,8 @@ typedef struct xx_lzfse_block_header_s {
     uint16_t freq[XX_LZFSE_FREQ_SYMBOLS];
 } xx_lzfse_block_header;
 
-static uint32_t xx_lzfse_get_field(uint64_t value, int offset, int nbits) {
+static uint32_t xx_lzfse_get_field(uint64_t value, int offset, int nbits)
+{
     if (nbits >= 32) return (uint32_t)(value >> offset);
     return (uint32_t)((value >> offset) & ((UINT64_C(1) << nbits) - 1U));
 }
@@ -318,13 +306,10 @@ static uint32_t xx_lzfse_get_field(uint64_t value, int offset, int nbits) {
 /* Decode one frequency from the low bits of accum, reporting how many bits it
  * consumed.  The short values are a five-bit prefix code; the two long forms
  * carry their remainder in the bits above it. */
-static int xx_lzfse_decode_freq_value(uint32_t bits, int *out_nbits) {
-    static const int8_t nbits_table[32] = {
-        2, 3, 2, 5, 2, 3, 2, 8,  2, 3, 2, 5, 2, 3, 2, 14,
-        2, 3, 2, 5, 2, 3, 2, 8,  2, 3, 2, 5, 2, 3, 2, 14};
-    static const int8_t value_table[32] = {
-        0, 2, 1, 4, 0, 3, 1, -1, 0, 2, 1, 5, 0, 3, 1, -1,
-        0, 2, 1, 6, 0, 3, 1, -1, 0, 2, 1, 7, 0, 3, 1, -1};
+static int xx_lzfse_decode_freq_value(uint32_t bits, int *out_nbits)
+{
+    static const int8_t nbits_table[32] = {2, 3, 2, 5, 2, 3, 2, 8, 2, 3, 2, 5, 2, 3, 2, 14, 2, 3, 2, 5, 2, 3, 2, 8, 2, 3, 2, 5, 2, 3, 2, 14};
+    static const int8_t value_table[32] = {0, 2, 1, 4, 0, 3, 1, -1, 0, 2, 1, 5, 0, 3, 1, -1, 0, 2, 1, 6, 0, 3, 1, -1, 0, 2, 1, 7, 0, 3, 1, -1};
     uint32_t low = bits & 31U;
     int n = nbits_table[low];
     *out_nbits = n;
@@ -335,9 +320,8 @@ static int xx_lzfse_decode_freq_value(uint32_t bits, int *out_nbits) {
 
 /* Unpack a v2 header, whose scalars are bit-packed into three 64-bit words
  * and whose frequency tables are stored in the prefix code above. */
-static bool xx_lzfse_decode_header_v2(const uint8_t *data, size_t size,
-                                      xx_lzfse_block_header *header,
-                                      size_t *out_header_size) {
+static bool xx_lzfse_decode_header_v2(const uint8_t *data, size_t size, xx_lzfse_block_header *header, size_t *out_header_size)
+{
     uint64_t v0;
     uint64_t v1;
     uint64_t v2;
@@ -352,8 +336,7 @@ static bool xx_lzfse_decode_header_v2(const uint8_t *data, size_t size,
     v1 = xx_lzfse_load_n(data + 16U, 8U);
     v2 = xx_lzfse_load_n(data + 24U, 8U);
     header_size = xx_lzfse_get_field(v2, 0, 32);
-    if (header_size < XX_LZFSE_V2_FIXED_SIZE ||
-        header_size > XX_LZFSE_V2_MAX_SIZE || (size_t)header_size > size) {
+    if (header_size < XX_LZFSE_V2_FIXED_SIZE || header_size > XX_LZFSE_V2_MAX_SIZE || (size_t)header_size > size) {
         return false;
     }
     xx_rt_memset(header, 0, sizeof(*header));
@@ -399,9 +382,8 @@ static bool xx_lzfse_decode_header_v2(const uint8_t *data, size_t size,
 
 /* Unpack a v1 header, whose fields sit in the stream at the offsets the
  * reference's struct gives them. */
-static bool xx_lzfse_decode_header_v1(const uint8_t *data, size_t size,
-                                      xx_lzfse_block_header *header,
-                                      size_t *out_header_size) {
+static bool xx_lzfse_decode_header_v1(const uint8_t *data, size_t size, xx_lzfse_block_header *header, size_t *out_header_size)
+{
     int index;
     if (size < XX_LZFSE_V1_SIZE) return false;
     xx_rt_memset(header, 0, sizeof(*header));
@@ -420,42 +402,31 @@ static bool xx_lzfse_decode_header_v1(const uint8_t *data, size_t size,
     header->m_state = (uint16_t)xx_lzfse_load_n(data + 46U, 2U);
     header->d_state = (uint16_t)xx_lzfse_load_n(data + 48U, 2U);
     for (index = 0; index < XX_LZFSE_FREQ_SYMBOLS; ++index) {
-        header->freq[index] = (uint16_t)xx_lzfse_load_n(
-            data + XX_LZFSE_V1_FREQ_OFFSET + (size_t)index * 2U, 2U);
+        header->freq[index] = (uint16_t)xx_lzfse_load_n(data + XX_LZFSE_V1_FREQ_OFFSET + (size_t)index * 2U, 2U);
     }
     *out_header_size = XX_LZFSE_V1_SIZE;
     return true;
 }
 
-static bool xx_lzfse_check_header(const xx_lzfse_block_header *header) {
+static bool xx_lzfse_check_header(const xx_lzfse_block_header *header)
+{
     if (header->n_literals > XX_LZFSE_LITERALS_PER_BLOCK) return false;
     if (header->n_matches > XX_LZFSE_MATCHES_PER_BLOCK) return false;
-    if (header->literal_state[0] >= XX_LZFSE_LITERAL_STATES ||
-        header->literal_state[1] >= XX_LZFSE_LITERAL_STATES ||
-        header->literal_state[2] >= XX_LZFSE_LITERAL_STATES ||
-        header->literal_state[3] >= XX_LZFSE_LITERAL_STATES) {
+    if (header->literal_state[0] >= XX_LZFSE_LITERAL_STATES || header->literal_state[1] >= XX_LZFSE_LITERAL_STATES ||
+        header->literal_state[2] >= XX_LZFSE_LITERAL_STATES || header->literal_state[3] >= XX_LZFSE_LITERAL_STATES) {
         return false;
     }
-    if (header->l_state >= XX_LZFSE_L_STATES ||
-        header->m_state >= XX_LZFSE_M_STATES ||
-        header->d_state >= XX_LZFSE_D_STATES) {
+    if (header->l_state >= XX_LZFSE_L_STATES || header->m_state >= XX_LZFSE_M_STATES || header->d_state >= XX_LZFSE_D_STATES) {
         return false;
     }
     /* literal_bits and lmd_bits index straight into the bit reader's
      * initialisation, which only accepts [-7, 0]. */
     if (header->literal_bits > 0 || header->literal_bits < -7) return false;
     if (header->lmd_bits > 0 || header->lmd_bits < -7) return false;
-    return xx_lzfse_check_freq(header->freq, XX_LZFSE_L_SYMBOLS,
-                               XX_LZFSE_L_STATES) &&
-           xx_lzfse_check_freq(header->freq + XX_LZFSE_L_SYMBOLS,
-                               XX_LZFSE_M_SYMBOLS, XX_LZFSE_M_STATES) &&
-           xx_lzfse_check_freq(
-               header->freq + XX_LZFSE_L_SYMBOLS + XX_LZFSE_M_SYMBOLS,
-               XX_LZFSE_D_SYMBOLS, XX_LZFSE_D_STATES) &&
-           xx_lzfse_check_freq(header->freq + XX_LZFSE_L_SYMBOLS +
-                                   XX_LZFSE_M_SYMBOLS + XX_LZFSE_D_SYMBOLS,
-                               XX_LZFSE_LITERAL_SYMBOLS,
-                               XX_LZFSE_LITERAL_STATES);
+    return xx_lzfse_check_freq(header->freq, XX_LZFSE_L_SYMBOLS, XX_LZFSE_L_STATES) &&
+           xx_lzfse_check_freq(header->freq + XX_LZFSE_L_SYMBOLS, XX_LZFSE_M_SYMBOLS, XX_LZFSE_M_STATES) &&
+           xx_lzfse_check_freq(header->freq + XX_LZFSE_L_SYMBOLS + XX_LZFSE_M_SYMBOLS, XX_LZFSE_D_SYMBOLS, XX_LZFSE_D_STATES) &&
+           xx_lzfse_check_freq(header->freq + XX_LZFSE_L_SYMBOLS + XX_LZFSE_M_SYMBOLS + XX_LZFSE_D_SYMBOLS, XX_LZFSE_LITERAL_SYMBOLS, XX_LZFSE_LITERAL_STATES);
 }
 
 /* ------------------------------------------------------------------------ */
@@ -466,14 +437,14 @@ static bool xx_lzfse_check_header(const xx_lzfse_block_header *header) {
  * dispatch table assigns them. */
 typedef enum xx_lzvn_opcode_e {
     XX_LZVN_OPC_UNDEFINED = 0,
-    XX_LZVN_OPC_SMALL_D,   /**< LLMMMDDD DDDDDDDD literal...  */
-    XX_LZVN_OPC_MEDIUM_D,  /**< 101LLMMM DDDDDDMM DDDDDDDD literal... */
-    XX_LZVN_OPC_LARGE_D,   /**< LLMMM111 DDDDDDDD DDDDDDDD literal... */
-    XX_LZVN_OPC_PREVIOUS_D,/**< LLMMM110, reusing the last distance */
-    XX_LZVN_OPC_SMALL_M,   /**< 1111MMMM */
-    XX_LZVN_OPC_LARGE_M,   /**< 11110000 MMMMMMMM */
-    XX_LZVN_OPC_SMALL_L,   /**< 1110LLLL literal... */
-    XX_LZVN_OPC_LARGE_L,   /**< 11100000 LLLLLLLL literal... */
+    XX_LZVN_OPC_SMALL_D,    /**< LLMMMDDD DDDDDDDD literal...  */
+    XX_LZVN_OPC_MEDIUM_D,   /**< 101LLMMM DDDDDDMM DDDDDDDD literal... */
+    XX_LZVN_OPC_LARGE_D,    /**< LLMMM111 DDDDDDDD DDDDDDDD literal... */
+    XX_LZVN_OPC_PREVIOUS_D, /**< LLMMM110, reusing the last distance */
+    XX_LZVN_OPC_SMALL_M,    /**< 1111MMMM */
+    XX_LZVN_OPC_LARGE_M,    /**< 11110000 MMMMMMMM */
+    XX_LZVN_OPC_SMALL_L,    /**< 1110LLLL literal... */
+    XX_LZVN_OPC_LARGE_L,    /**< 11100000 LLLLLLLL literal... */
     XX_LZVN_OPC_NOP,
     XX_LZVN_OPC_EOS
 } xx_lzvn_opcode;
@@ -481,7 +452,8 @@ typedef enum xx_lzvn_opcode_e {
 /* Classify one opcode byte.  The distance-bearing opcodes occupy three
  * disjoint ranges of the byte, split by their low three bits; everything
  * outside those ranges is either a single-purpose opcode or undefined. */
-static xx_lzvn_opcode xx_lzvn_classify(uint8_t opcode) {
+static xx_lzvn_opcode xx_lzvn_classify(uint8_t opcode)
+{
     unsigned high = (unsigned)opcode >> 3;
     unsigned low = (unsigned)opcode & 7U;
     if (opcode >= 0xF1U) return XX_LZVN_OPC_SMALL_M;
@@ -492,8 +464,7 @@ static xx_lzvn_opcode xx_lzvn_classify(uint8_t opcode) {
     if (opcode == 0x06U) return XX_LZVN_OPC_EOS;
     if (opcode == 0x0EU || opcode == 0x16U) return XX_LZVN_OPC_NOP;
     /* The ranges that carry a distance: 0x00-0x6F, 0x80-0x9F, 0xC0-0xCF. */
-    if (high <= 13U || (high >= 16U && high <= 19U) ||
-        (high >= 24U && high <= 25U)) {
+    if (high <= 13U || (high >= 16U && high <= 19U) || (high >= 24U && high <= 25U)) {
         if (low < 6U) return XX_LZVN_OPC_SMALL_D;
         if (low == 7U) return XX_LZVN_OPC_LARGE_D;
         /* low == 6: the "previous distance" form, but only in the upper two
@@ -510,9 +481,8 @@ static xx_lzvn_opcode xx_lzvn_classify(uint8_t opcode) {
  * far as destination[0]: inside an LZFSE stream an LZVN block's matches are
  * validated against the whole output, not against the block.  The payload
  * must end with the eight-byte end-of-stream opcode. */
-static bool xx_lzvn_decode(const uint8_t *source, size_t source_size,
-                           uint8_t *destination, size_t limit,
-                           size_t *position, size_t *out_consumed) {
+static bool xx_lzvn_decode(const uint8_t *source, size_t source_size, uint8_t *destination, size_t limit, size_t *position, size_t *out_consumed)
+{
     size_t cursor = 0U;
     size_t pos = *position;
     uint32_t distance = 0U;
@@ -534,8 +504,7 @@ static bool xx_lzvn_decode(const uint8_t *source, size_t source_size,
                 /* Every opcode must be followed by at least one more byte,
                  * because a well-formed stream always ends with eos. */
                 if (source_size - cursor <= opcode_size + literal) return false;
-                distance = (((uint32_t)opcode & 7U) << 8) |
-                           (uint32_t)source[cursor + 1U];
+                distance = (((uint32_t)opcode & 7U) << 8) | (uint32_t)source[cursor + 1U];
                 has_literal = true;
                 has_match = true;
                 break;
@@ -544,10 +513,8 @@ static bool xx_lzvn_decode(const uint8_t *source, size_t source_size,
                 opcode_size = 3U;
                 literal = ((size_t)opcode >> 3) & 3U;
                 if (source_size - cursor <= opcode_size + literal) return false;
-                pair = (uint32_t)source[cursor + 1U] |
-                       ((uint32_t)source[cursor + 2U] << 8);
-                match = (size_t)(((((uint32_t)opcode & 7U) << 2) |
-                                  (pair & 3U)) + 3U);
+                pair = (uint32_t)source[cursor + 1U] | ((uint32_t)source[cursor + 2U] << 8);
+                match = (size_t)(((((uint32_t)opcode & 7U) << 2) | (pair & 3U)) + 3U);
                 distance = (pair >> 2) & 0x3FFFU;
                 has_literal = true;
                 has_match = true;
@@ -558,8 +525,7 @@ static bool xx_lzvn_decode(const uint8_t *source, size_t source_size,
                 literal = ((size_t)opcode >> 6) & 3U;
                 match = (((size_t)opcode >> 3) & 7U) + 3U;
                 if (source_size - cursor <= opcode_size + literal) return false;
-                distance = (uint32_t)source[cursor + 1U] |
-                           ((uint32_t)source[cursor + 2U] << 8);
+                distance = (uint32_t)source[cursor + 1U] | ((uint32_t)source[cursor + 2U] << 8);
                 has_literal = true;
                 has_match = true;
                 break;
@@ -653,8 +619,8 @@ typedef struct xx_lzfse_work_s {
     xx_lzfse_block_header header;
 } xx_lzfse_work;
 
-static bool xx_lzfse_decode_literals(xx_lzfse_work *work, const uint8_t *source,
-                                     size_t source_size, size_t payload_end) {
+static bool xx_lzfse_decode_literals(xx_lzfse_work *work, const uint8_t *source, size_t source_size, size_t payload_end)
+{
     const xx_lzfse_block_header *header = &work->header;
     xx_lzfse_in_stream stream;
     size_t cursor = payload_end;
@@ -668,8 +634,7 @@ static bool xx_lzfse_decode_literals(xx_lzfse_work *work, const uint8_t *source,
      * whole input, not just the start of this payload, so the same bound is
      * used here: a valid stream never needs it, but rejecting it would
      * reject streams the reference accepts. */
-    if (!xx_lzfse_in_init(&stream, header->literal_bits, source, &cursor, 0U,
-                          source_size)) {
+    if (!xx_lzfse_in_init(&stream, header->literal_bits, source, &cursor, 0U, source_size)) {
         return false;
     }
     for (index = 0U; index < header->n_literals; index += 4U) {
@@ -689,10 +654,9 @@ static bool xx_lzfse_decode_literals(xx_lzfse_work *work, const uint8_t *source,
     return true;
 }
 
-static bool xx_lzfse_decode_lmd(xx_lzfse_work *work, const uint8_t *source,
-                                size_t lmd_start, size_t lmd_end,
-                                uint8_t *destination, size_t destination_size,
-                                size_t *position) {
+static bool xx_lzfse_decode_lmd(xx_lzfse_work *work, const uint8_t *source, size_t lmd_start, size_t lmd_end, uint8_t *destination, size_t destination_size,
+                                size_t *position)
+{
     const xx_lzfse_block_header *header = &work->header;
     xx_lzfse_in_stream stream;
     size_t cursor = lmd_end;
@@ -703,8 +667,7 @@ static bool xx_lzfse_decode_lmd(xx_lzfse_work *work, const uint8_t *source,
     uint16_t d_state = header->d_state;
     int32_t distance = -1;
     uint32_t symbols = header->n_matches;
-    if (!xx_lzfse_in_init(&stream, header->lmd_bits, source, &cursor, lmd_start,
-                          lmd_end)) {
+    if (!xx_lzfse_in_init(&stream, header->lmd_bits, source, &cursor, lmd_start, lmd_end)) {
         return false;
     }
     while (symbols-- > 0U) {
@@ -720,27 +683,21 @@ static bool xx_lzfse_decode_lmd(xx_lzfse_work *work, const uint8_t *source,
         }
         entry = work->l_decoder[l_state];
         if (!xx_lzfse_in_pull(&stream, entry.total_bits, &bits)) return false;
-        l_state = (uint16_t)((int32_t)entry.delta +
-                             (int32_t)(bits >> entry.value_bits));
+        l_state = (uint16_t)((int32_t)entry.delta + (int32_t)(bits >> entry.value_bits));
         if (l_state >= XX_LZFSE_L_STATES) return false;
-        run_length = entry.vbase +
-                     (int32_t)xx_lzfse_mask_lsb64(bits, entry.value_bits);
+        run_length = entry.vbase + (int32_t)xx_lzfse_mask_lsb64(bits, entry.value_bits);
 
         entry = work->m_decoder[m_state];
         if (!xx_lzfse_in_pull(&stream, entry.total_bits, &bits)) return false;
-        m_state = (uint16_t)((int32_t)entry.delta +
-                             (int32_t)(bits >> entry.value_bits));
+        m_state = (uint16_t)((int32_t)entry.delta + (int32_t)(bits >> entry.value_bits));
         if (m_state >= XX_LZFSE_M_STATES) return false;
-        match_length = entry.vbase +
-                       (int32_t)xx_lzfse_mask_lsb64(bits, entry.value_bits);
+        match_length = entry.vbase + (int32_t)xx_lzfse_mask_lsb64(bits, entry.value_bits);
 
         entry = work->d_decoder[d_state];
         if (!xx_lzfse_in_pull(&stream, entry.total_bits, &bits)) return false;
-        d_state = (uint16_t)((int32_t)entry.delta +
-                             (int32_t)(bits >> entry.value_bits));
+        d_state = (uint16_t)((int32_t)entry.delta + (int32_t)(bits >> entry.value_bits));
         if (d_state >= XX_LZFSE_D_STATES) return false;
-        new_distance = entry.vbase +
-                       (int32_t)xx_lzfse_mask_lsb64(bits, entry.value_bits);
+        new_distance = entry.vbase + (int32_t)xx_lzfse_mask_lsb64(bits, entry.value_bits);
         /* A zero distance repeats the previous one.  The first triplet of a
          * block has no previous one, so the sentinel keeps it from passing. */
         if (new_distance != 0) distance = new_distance;
@@ -751,8 +708,7 @@ static bool xx_lzfse_decode_lmd(xx_lzfse_work *work, const uint8_t *source,
         }
         if ((size_t)run_length > destination_size - pos) return false;
         if (run_length != 0) {
-            xx_rt_memcpy(destination + pos, work->literals + literal_cursor,
-                         (size_t)run_length);
+            xx_rt_memcpy(destination + pos, work->literals + literal_cursor, (size_t)run_length);
             pos += (size_t)run_length;
             literal_cursor += (size_t)run_length;
         }
@@ -761,8 +717,7 @@ static bool xx_lzfse_decode_lmd(xx_lzfse_work *work, const uint8_t *source,
         if (distance <= 0 || (uint64_t)distance > (uint64_t)pos) return false;
         if ((size_t)match_length > destination_size - pos) return false;
         for (index = 0U; index < (size_t)match_length; ++index) {
-            destination[pos + index] =
-                destination[pos + index - (size_t)distance];
+            destination[pos + index] = destination[pos + index - (size_t)distance];
         }
         pos += (size_t)match_length;
     }
@@ -770,12 +725,9 @@ static bool xx_lzfse_decode_lmd(xx_lzfse_work *work, const uint8_t *source,
     return true;
 }
 
-static bool xx_lzfse_decode_compressed(xx_lzfse_work *work, uint32_t magic,
-                                       const uint8_t *source,
-                                       size_t source_size, size_t *cursor,
-                                       uint8_t *destination,
-                                       size_t destination_size,
-                                       size_t *position) {
+static bool xx_lzfse_decode_compressed(xx_lzfse_work *work, uint32_t magic, const uint8_t *source, size_t source_size, size_t *cursor, uint8_t *destination,
+                                       size_t destination_size, size_t *position)
+{
     xx_lzfse_block_header *header = &work->header;
     size_t header_size = 0U;
     size_t block_start = *cursor;
@@ -785,14 +737,10 @@ static bool xx_lzfse_decode_compressed(xx_lzfse_work *work, uint32_t magic,
     size_t produced;
     size_t before = *position;
     if (magic == XX_LZFSE_MAGIC_COMPRESSEDV2) {
-        if (!xx_lzfse_decode_header_v2(source + block_start,
-                                       source_size - block_start, header,
-                                       &header_size)) {
+        if (!xx_lzfse_decode_header_v2(source + block_start, source_size - block_start, header, &header_size)) {
             return false;
         }
-    } else if (!xx_lzfse_decode_header_v1(source + block_start,
-                                          source_size - block_start, header,
-                                          &header_size)) {
+    } else if (!xx_lzfse_decode_header_v1(source + block_start, source_size - block_start, header, &header_size)) {
         return false;
     }
     /* The whole encoded block must be present before decoding starts. */
@@ -813,29 +761,19 @@ static bool xx_lzfse_decode_compressed(xx_lzfse_work *work, uint32_t magic,
     xx_rt_memset(work->m_decoder, 0, sizeof(work->m_decoder));
     xx_rt_memset(work->d_decoder, 0, sizeof(work->d_decoder));
     xx_rt_memset(work->literals, 0, sizeof(work->literals));
-    if (!xx_lzfse_init_value_decoder_table(
-            XX_LZFSE_L_STATES, XX_LZFSE_L_SYMBOLS, header->freq,
-            xx_lzfse_l_extra_bits, xx_lzfse_l_base_value, work->l_decoder) ||
-        !xx_lzfse_init_value_decoder_table(
-            XX_LZFSE_M_STATES, XX_LZFSE_M_SYMBOLS,
-            header->freq + XX_LZFSE_L_SYMBOLS, xx_lzfse_m_extra_bits,
-            xx_lzfse_m_base_value, work->m_decoder) ||
-        !xx_lzfse_init_value_decoder_table(
-            XX_LZFSE_D_STATES, XX_LZFSE_D_SYMBOLS,
-            header->freq + XX_LZFSE_L_SYMBOLS + XX_LZFSE_M_SYMBOLS,
-            xx_lzfse_d_extra_bits, xx_lzfse_d_base_value, work->d_decoder) ||
-        !xx_lzfse_init_decoder_table(
-            XX_LZFSE_LITERAL_STATES, XX_LZFSE_LITERAL_SYMBOLS,
-            header->freq + XX_LZFSE_L_SYMBOLS + XX_LZFSE_M_SYMBOLS +
-                XX_LZFSE_D_SYMBOLS,
-            work->literal_decoder)) {
+    if (!xx_lzfse_init_value_decoder_table(XX_LZFSE_L_STATES, XX_LZFSE_L_SYMBOLS, header->freq, xx_lzfse_l_extra_bits, xx_lzfse_l_base_value, work->l_decoder) ||
+        !xx_lzfse_init_value_decoder_table(XX_LZFSE_M_STATES, XX_LZFSE_M_SYMBOLS, header->freq + XX_LZFSE_L_SYMBOLS, xx_lzfse_m_extra_bits, xx_lzfse_m_base_value,
+                                           work->m_decoder) ||
+        !xx_lzfse_init_value_decoder_table(XX_LZFSE_D_STATES, XX_LZFSE_D_SYMBOLS, header->freq + XX_LZFSE_L_SYMBOLS + XX_LZFSE_M_SYMBOLS, xx_lzfse_d_extra_bits,
+                                           xx_lzfse_d_base_value, work->d_decoder) ||
+        !xx_lzfse_init_decoder_table(XX_LZFSE_LITERAL_STATES, XX_LZFSE_LITERAL_SYMBOLS, header->freq + XX_LZFSE_L_SYMBOLS + XX_LZFSE_M_SYMBOLS + XX_LZFSE_D_SYMBOLS,
+                                     work->literal_decoder)) {
         return false;
     }
     if (!xx_lzfse_decode_literals(work, source, source_size, lmd_start)) {
         return false;
     }
-    if (!xx_lzfse_decode_lmd(work, source, lmd_start, lmd_end, destination,
-                             destination_size, position)) {
+    if (!xx_lzfse_decode_lmd(work, source, lmd_start, lmd_end, destination, destination_size, position)) {
         return false;
     }
     produced = *position - before;
@@ -850,28 +788,26 @@ static bool xx_lzfse_decode_compressed(xx_lzfse_work *work, uint32_t magic,
 /* Public interface                                                          */
 /* ------------------------------------------------------------------------ */
 
-bool xx_lzfse_is_available(void) { return true; }
+bool xx_lzfse_is_available(void)
+{
+    return true;
+}
 
-bool xx_lzfse_header_is_valid(const void *source, size_t source_size) {
+bool xx_lzfse_header_is_valid(const void *source, size_t source_size)
+{
     uint32_t magic;
     if (!source || source_size < 4U) return false;
     magic = xx_data_get_u32((const uint8_t *)source, 4, 0, false);
-    return magic == XX_LZFSE_MAGIC_ENDOFSTREAM ||
-           magic == XX_LZFSE_MAGIC_UNCOMPRESSED ||
-           magic == XX_LZFSE_MAGIC_COMPRESSEDV1 ||
-           magic == XX_LZFSE_MAGIC_COMPRESSEDV2 ||
+    return magic == XX_LZFSE_MAGIC_ENDOFSTREAM || magic == XX_LZFSE_MAGIC_UNCOMPRESSED || magic == XX_LZFSE_MAGIC_COMPRESSEDV1 || magic == XX_LZFSE_MAGIC_COMPRESSEDV2 ||
            magic == XX_LZFSE_MAGIC_COMPRESSEDLZVN;
 }
 
-bool xx_lzvn_decompress_memory(const void *source, size_t source_size,
-                               void *destination, size_t destination_size,
-                               size_t *out_written, size_t *out_consumed) {
+bool xx_lzvn_decompress_memory(const void *source, size_t source_size, void *destination, size_t destination_size, size_t *out_written, size_t *out_consumed)
+{
     size_t position = 0U;
     size_t consumed = 0U;
     if (!source || !destination) return false;
-    if (!xx_lzvn_decode((const uint8_t *)source, source_size,
-                        (uint8_t *)destination, destination_size, &position,
-                        &consumed)) {
+    if (!xx_lzvn_decode((const uint8_t *)source, source_size, (uint8_t *)destination, destination_size, &position, &consumed)) {
         return false;
     }
     if (out_written) *out_written = position;
@@ -879,9 +815,8 @@ bool xx_lzvn_decompress_memory(const void *source, size_t source_size,
     return true;
 }
 
-bool xx_lzfse_decompress_memory(const void *source, size_t source_size,
-                                void *destination, size_t destination_size,
-                                size_t *out_written) {
+bool xx_lzfse_decompress_memory(const void *source, size_t source_size, void *destination, size_t destination_size, size_t *out_written)
+{
     const uint8_t *input = (const uint8_t *)source;
     uint8_t *output = (uint8_t *)destination;
     xx_lzfse_work *work = NULL;
@@ -925,30 +860,24 @@ bool xx_lzfse_decompress_memory(const void *source, size_t source_size,
             cursor += XX_LZFSE_LZVN_HEADER_SIZE;
             if ((size_t)payload > source_size - cursor) goto done;
             if ((size_t)raw > destination_size - position) goto done;
-            if (!xx_lzvn_decode(input + cursor, (size_t)payload, output,
-                                position + (size_t)raw, &position,
-                                &consumed)) {
+            if (!xx_lzvn_decode(input + cursor, (size_t)payload, output, position + (size_t)raw, &position, &consumed)) {
                 goto done;
             }
             /* The header's two counts are the contract for the block; a
              * payload that stops early, or expands to the wrong size, is a
              * different stream than the one described. */
-            if (consumed != (size_t)payload ||
-                position - before != (size_t)raw) {
+            if (consumed != (size_t)payload || position - before != (size_t)raw) {
                 goto done;
             }
             cursor += (size_t)payload;
             continue;
         }
-        if (magic == XX_LZFSE_MAGIC_COMPRESSEDV1 ||
-            magic == XX_LZFSE_MAGIC_COMPRESSEDV2) {
+        if (magic == XX_LZFSE_MAGIC_COMPRESSEDV1 || magic == XX_LZFSE_MAGIC_COMPRESSEDV2) {
             if (!work) {
                 work = (xx_lzfse_work *)xx_mem_alloc(sizeof(*work));
                 if (!work) goto done;
             }
-            if (!xx_lzfse_decode_compressed(work, magic, input, source_size,
-                                            &cursor, output, destination_size,
-                                            &position)) {
+            if (!xx_lzfse_decode_compressed(work, magic, input, source_size, &cursor, output, destination_size, &position)) {
                 goto done;
             }
             continue;

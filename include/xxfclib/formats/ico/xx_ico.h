@@ -9,13 +9,15 @@
 #ifdef __cplusplus
 extern "C" {
 #endif
-typedef struct xx_ico { Abstractformat format; } xx_ico;
-XXFC_API void xx_ico_init(xx_ico *,xx_io_device *,int64_t);
-XXFC_API xx_ico *xx_ico_create(xx_io_device *,int64_t);
+typedef struct xx_ico {
+    Abstractformat format;
+} xx_ico;
+XXFC_API void xx_ico_init(xx_ico *, xx_io_device *, int64_t);
+XXFC_API xx_ico *xx_ico_create(xx_io_device *, int64_t);
 XXFC_API void xx_ico_destroy(xx_ico *);
 XXFC_API void xx_ico_free(xx_ico *);
-XXFC_API bool xx_ico_check_is_valid(Abstractformat *,xx_pd_struct *);
-XXFC_API bool xx_ico_handle_base_info(Abstractformat *,xx_pd_struct *);
+XXFC_API bool xx_ico_check_is_valid(Abstractformat *, xx_pd_struct *);
+XXFC_API bool xx_ico_handle_base_info(Abstractformat *, xx_pd_struct *);
 #ifdef __cplusplus
 }
 #endif

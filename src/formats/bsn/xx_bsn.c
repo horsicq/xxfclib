@@ -94,25 +94,25 @@ typedef struct xx_bsn_stream_s {
     size_t capacity;
     size_t index;
     int64_t archive_size;
-    uint8_t history[32768];size_t history_size,decoded_until;
-    uint8_t *cached;size_t cached_size,cached_index;
+    uint8_t history[32768];
+    size_t history_size, decoded_until;
+    uint8_t *cached;
+    size_t cached_size, cached_index;
 } xx_bsn_stream;
 
 static void xx_bsn_vtable_destroy(Abstractformat *self);
 
 /* ------------------------------------------------------------- helpers -- */
 
-static bool xx_bsn_read_at(Abstractformat *self, int64_t offset,
-                              uint8_t *buffer, size_t size) {
+static bool xx_bsn_read_at(Abstractformat *self, int64_t offset, uint8_t *buffer, size_t size)
+{
     size_t completed = 0U;
 
-    if (!self || !self->device || offset < 0 ||
-        xx_io_seek64(self->device, offset, SEEK_SET) != 0) {
+    if (!self || !self->device || offset < 0 || xx_io_seek64(self->device, offset, SEEK_SET) != 0) {
         return false;
     }
     while (completed < size) {
-        ssize_t received =
-            xx_io_read(self->device, buffer + completed, size - completed);
+        ssize_t received = xx_io_read(self->device, buffer + completed, size - completed);
         if (received <= 0 || (size_t)received > size - completed) return false;
         completed += (size_t)received;
     }
@@ -120,7 +120,8 @@ static bool xx_bsn_read_at(Abstractformat *self, int64_t offset,
 }
 
 /* Refuse anything that would escape the extraction directory. */
-static bool xx_bsn_path_safe(const char *path) {
+static bool xx_bsn_path_safe(const char *path)
+{
     const char *cursor = path;
 
     if (!path || !path[0] || path[0] == '/') return false;
@@ -139,8 +140,8 @@ static bool xx_bsn_path_safe(const char *path) {
 
 /* Build a filesystem-safe name from raw 8-bit bytes.  Backslashes become
  * path separators, everything a filesystem would object to becomes '_'. */
-static char *xx_bsn_make_name(const uint8_t *raw, size_t size,
-                                 bool keep_path) {
+static char *xx_bsn_make_name(const uint8_t *raw, size_t size, bool keep_path)
+{
     char *text;
     size_t length = 0U;
     size_t index;
@@ -156,17 +157,13 @@ static char *xx_bsn_make_name(const uint8_t *raw, size_t size,
             text[length++] = '/';
             continue;
         }
-        if (c < 0x20U || c > 0x7eU || c == '/' || c == '\\' || c == ':' ||
-            c == '*' || c == '?' || c == '"' || c == '<' || c == '>' ||
-            c == '|') {
+        if (c < 0x20U || c > 0x7eU || c == '/' || c == '\\' || c == ':' || c == '*' || c == '?' || c == '"' || c == '<' || c == '>' || c == '|') {
             text[length++] = '_';
         } else {
             text[length++] = (char)c;
         }
     }
-    while (length != 0U &&
-           (text[length - 1U] == ' ' || text[length - 1U] == '.' ||
-            text[length - 1U] == '/')) {
+    while (length != 0U && (text[length - 1U] == ' ' || text[length - 1U] == '.' || text[length - 1U] == '/')) {
         --length;
     }
     while (length != 0U && text[0] == '/') {
@@ -178,7 +175,8 @@ static char *xx_bsn_make_name(const uint8_t *raw, size_t size,
     return text;
 }
 
-static void xx_bsn_stream_free(void *pointer) {
+static void xx_bsn_stream_free(void *pointer)
+{
     xx_bsn_stream *stream = (xx_bsn_stream *)pointer;
     size_t index;
 
@@ -194,15 +192,14 @@ static void xx_bsn_stream_free(void *pointer) {
 /* Grow the member vector one entry at a time.  The caller has already bounded
  * the member count against the real file size, so this cannot be driven to an
  * unbounded allocation by a small header. */
-static bool xx_bsn_add(xx_bsn_stream *stream,
-                          const xx_bsn_member *member) {
+static bool xx_bsn_add(xx_bsn_stream *stream, const xx_bsn_member *member)
+{
     if (!stream || !member) return false;
     if (stream->count == stream->capacity) {
         size_t wanted = stream->capacity ? stream->capacity * 2U : 16U;
         xx_bsn_member *grown;
         if (wanted > SIZE_MAX / sizeof(*grown)) return false;
-        grown = (xx_bsn_member *)xx_mem_realloc(stream->items,
-                                                   wanted * sizeof(*grown));
+        grown = (xx_bsn_member *)xx_mem_realloc(stream->items, wanted * sizeof(*grown));
         if (!grown) return false;
         stream->items = grown;
         stream->capacity = wanted;
@@ -211,11 +208,10 @@ static bool xx_bsn_add(xx_bsn_stream *stream,
     return true;
 }
 
-
 /* --------------------------------------------------------------- parse -- */
 
-static xx_bsn_stream *xx_bsn_parse(Abstractformat *self,
-                                         xx_pd_struct *pd) {
+static xx_bsn_stream *xx_bsn_parse(Abstractformat *self, xx_pd_struct *pd)
+{
     xx_bsn_stream *stream = NULL;
     uint8_t head[XX_BSN_ARCHIVE_HEADER_SIZE];
     uint8_t *header = NULL;
@@ -252,8 +248,7 @@ static xx_bsn_stream *xx_bsn_parse(Abstractformat *self,
 
         if (pd && xx_pd_is_stopped(pd)) goto fail;
         if (span - cursor < XX_BSN_TRAILER_SIZE) goto fail;
-        if (!xx_bsn_read_at(self, self->base_address + cursor, prefix,
-                            XX_BSN_TRAILER_SIZE)) {
+        if (!xx_bsn_read_at(self, self->base_address + cursor, prefix, XX_BSN_TRAILER_SIZE)) {
             goto fail;
         }
         /* The two-byte zero trailer closes the archive. */
@@ -262,12 +257,10 @@ static xx_bsn_stream *xx_bsn_parse(Abstractformat *self,
             stream->archive_size = cursor + XX_BSN_TRAILER_SIZE;
             return stream;
         }
-        if (span - cursor < XX_BSN_MEMBER_PREFIX_SIZE ||
-            stream->count >= XX_BSN_MAX_MEMBERS) {
+        if (span - cursor < XX_BSN_MEMBER_PREFIX_SIZE || stream->count >= XX_BSN_MAX_MEMBERS) {
             goto fail;
         }
-        if (!xx_bsn_read_at(self, self->base_address + cursor, prefix,
-                            sizeof(prefix))) {
+        if (!xx_bsn_read_at(self, self->base_address + cursor, prefix, sizeof(prefix))) {
             goto fail;
         }
         if (xx_data_get_u32(prefix, 4, 0, true) != XX_BSN_MEMBER_MAGIC) goto fail;
@@ -275,8 +268,7 @@ static xx_bsn_stream *xx_bsn_parse(Abstractformat *self,
         /* The body size is gated to the one shape the format can produce
          * before it is used to size a read. */
         body_size = xx_data_get_u16(prefix + 4, 2, 0, true);
-        if (body_size < XX_BSN_HEADER_BODY_OVERHEAD ||
-            body_size > XX_BSN_HEADER_BODY_OVERHEAD + XX_BSN_MAX_NAME_SIZE) {
+        if (body_size < XX_BSN_HEADER_BODY_OVERHEAD || body_size > XX_BSN_HEADER_BODY_OVERHEAD + XX_BSN_MAX_NAME_SIZE) {
             goto fail;
         }
         name_size = body_size - XX_BSN_HEADER_BODY_OVERHEAD;
@@ -285,8 +277,7 @@ static xx_bsn_stream *xx_bsn_parse(Abstractformat *self,
 
         header = (uint8_t *)xx_mem_alloc((size_t)header_size);
         if (!header) goto fail;
-        if (!xx_bsn_read_at(self, self->base_address + cursor, header,
-                            (size_t)header_size)) {
+        if (!xx_bsn_read_at(self, self->base_address + cursor, header, (size_t)header_size)) {
             goto fail;
         }
         body = header + XX_BSN_MEMBER_PREFIX_SIZE;
@@ -308,24 +299,17 @@ static xx_bsn_stream *xx_bsn_parse(Abstractformat *self,
         /* The CRC32 over the header body is the decisive gate: it holds for
          * every header in the corpus, so reaching this point by accident is a
          * ~2^-32 event. */
-        if (xx_crc32_calc(0U, body, body_size) !=
-            xx_data_get_u32(header + XX_BSN_MEMBER_PREFIX_SIZE + body_size, 4, 0, true)) {
+        if (xx_crc32_calc(0U, body, body_size) != xx_data_get_u32(header + XX_BSN_MEMBER_PREFIX_SIZE + body_size, 4, 0, true)) {
             goto fail;
         }
 
         xx_mem_zero(&member, sizeof(member));
-        plain = (uint64_t)xx_data_get_u32(body + XX_BSN_NAME_OFFSET + name_size +
-                                      1U, 4, 0, true);
-        packed = (uint64_t)xx_data_get_u32(body + XX_BSN_NAME_OFFSET + name_size +
-                                       5U, 4, 0, true);
-        member.crc32 =
-            xx_data_get_u32(body + XX_BSN_NAME_OFFSET + name_size + 9U, 4, 0, true);
+        plain = (uint64_t)xx_data_get_u32(body + XX_BSN_NAME_OFFSET + name_size + 1U, 4, 0, true);
+        packed = (uint64_t)xx_data_get_u32(body + XX_BSN_NAME_OFFSET + name_size + 5U, 4, 0, true);
+        member.crc32 = xx_data_get_u32(body + XX_BSN_NAME_OFFSET + name_size + 9U, 4, 0, true);
         member.has_crc = true;
-        member.is_folder =
-            (xx_data_get_u32(body, 4, 0, true) & XX_BSN_ATTR_DIRECTORY) != 0U;
-        member.method = (xx_data_get_u32(body, 4, 0, true) & XX_BSN_ATTR_STORED) != 0U
-                            ? XX_BSN_METHOD_STORE
-                            : XX_BSN_METHOD_SOLID_LZ;
+        member.is_folder = (xx_data_get_u32(body, 4, 0, true) & XX_BSN_ATTR_DIRECTORY) != 0U;
+        member.method = (xx_data_get_u32(body, 4, 0, true) & XX_BSN_ATTR_STORED) != 0U ? XX_BSN_METHOD_STORE : XX_BSN_METHOD_SOLID_LZ;
 
         /* Bound the payload against the real file before the cursor moves. */
         if (packed > (uint64_t)(span - cursor - header_size)) goto fail;
@@ -333,13 +317,11 @@ static xx_bsn_stream *xx_bsn_parse(Abstractformat *self,
          * fields must agree; that pair is what keeps the attribute bits
          * honest when a header is otherwise plausible. */
         if (member.is_folder && (packed != 0U || plain != 0U)) goto fail;
-        if (!member.is_folder && member.method == XX_BSN_METHOD_STORE &&
-            packed != plain) {
+        if (!member.is_folder && member.method == XX_BSN_METHOD_STORE && packed != plain) {
             goto fail;
         }
 
-        member.name = xx_bsn_make_name(body + XX_BSN_NAME_OFFSET,
-                                       (size_t)name_size, true);
+        member.name = xx_bsn_make_name(body + XX_BSN_NAME_OFFSET, (size_t)name_size, true);
         if (!member.name) goto fail;
         member.header_offset = self->base_address + cursor;
         member.header_size = header_size;
@@ -361,61 +343,71 @@ fail:
     return NULL;
 }
 
-bool xx_bsn_lz_decode(const uint8_t *,size_t,const uint8_t *,size_t,uint8_t *,size_t,xx_pd_struct *);
+bool xx_bsn_lz_decode(const uint8_t *, size_t, const uint8_t *, size_t, uint8_t *, size_t, xx_pd_struct *);
 
 /* Keep only the dictionary tail and the current member, not the entire archive. */
-static bool xx_bsn_decode(Abstractformat *self, xx_bsn_stream *stream,
-                         const xx_bsn_member *member, uint8_t **out,
-                         size_t *out_size, xx_pd_struct *pd) {
-    size_t wanted = (size_t)(member-stream->items);
-    *out=NULL;*out_size=0;
-    if(!self || wanted>=stream->count || (pd && xx_pd_is_stopped(pd)))return false;
-    if(member->is_folder)return true;
-    while(stream->decoded_until<=wanted) {
-        xx_bsn_member *m=&stream->items[stream->decoded_until];
-        uint8_t *packed=NULL,*plain=NULL;size_t size;
+static bool xx_bsn_decode(Abstractformat *self, xx_bsn_stream *stream, const xx_bsn_member *member, uint8_t **out, size_t *out_size, xx_pd_struct *pd)
+{
+    size_t wanted = (size_t)(member - stream->items);
+    *out = NULL;
+    *out_size = 0;
+    if (!self || wanted >= stream->count || (pd && xx_pd_is_stopped(pd))) return false;
+    if (member->is_folder) return true;
+    while (stream->decoded_until <= wanted) {
+        xx_bsn_member *m = &stream->items[stream->decoded_until];
+        uint8_t *packed = NULL, *plain = NULL;
+        size_t size;
         bool valid;
-        if(pd && xx_pd_is_stopped(pd))return false;
-        if(m->is_folder){++stream->decoded_until;continue;}
-        if(m->packed_size<0 || m->packed_size>268435456 || m->unpacked_size>268435456)return false;
-        size=(size_t)m->unpacked_size;
-        plain=(uint8_t *)xx_mem_alloc(size?size:1);if(!plain)return false;
-        if(m->method==XX_BSN_METHOD_STORE) {
-            valid=(uint64_t)m->packed_size==m->unpacked_size &&
-                  xx_bsn_read_at(self,m->data_offset,plain,size);
+        if (pd && xx_pd_is_stopped(pd)) return false;
+        if (m->is_folder) {
+            ++stream->decoded_until;
+            continue;
+        }
+        if (m->packed_size < 0 || m->packed_size > 268435456 || m->unpacked_size > 268435456) return false;
+        size = (size_t)m->unpacked_size;
+        plain = (uint8_t *)xx_mem_alloc(size ? size : 1);
+        if (!plain) return false;
+        if (m->method == XX_BSN_METHOD_STORE) {
+            valid = (uint64_t)m->packed_size == m->unpacked_size && xx_bsn_read_at(self, m->data_offset, plain, size);
         } else {
-            packed=(uint8_t *)xx_mem_alloc(m->packed_size?(size_t)m->packed_size:1);
-            valid=packed && xx_bsn_read_at(self,m->data_offset,packed,(size_t)m->packed_size) &&
-                xx_bsn_lz_decode(packed,(size_t)m->packed_size,stream->history,
-                    stream->history_size,plain,size,pd);
+            packed = (uint8_t *)xx_mem_alloc(m->packed_size ? (size_t)m->packed_size : 1);
+            valid = packed && xx_bsn_read_at(self, m->data_offset, packed, (size_t)m->packed_size) &&
+                    xx_bsn_lz_decode(packed, (size_t)m->packed_size, stream->history, stream->history_size, plain, size, pd);
         }
         xx_mem_free(packed);
-        if(!valid || (m->has_crc && xx_crc32_calc(0U,plain,size)!=m->crc32)) {
-            xx_mem_free(plain);return false;
+        if (!valid || (m->has_crc && xx_crc32_calc(0U, plain, size) != m->crc32)) {
+            xx_mem_free(plain);
+            return false;
         }
-        if(size>=sizeof(stream->history)) {
-            xx_rt_memcpy(stream->history,plain+size-sizeof(stream->history),sizeof(stream->history));
-            stream->history_size=sizeof(stream->history);
+        if (size >= sizeof(stream->history)) {
+            xx_rt_memcpy(stream->history, plain + size - sizeof(stream->history), sizeof(stream->history));
+            stream->history_size = sizeof(stream->history);
         } else {
-            size_t keep=stream->history_size;
-            if(keep>sizeof(stream->history)-size) {
-                keep=sizeof(stream->history)-size;
-                xx_rt_memmove(stream->history,stream->history+stream->history_size-keep,keep);
+            size_t keep = stream->history_size;
+            if (keep > sizeof(stream->history) - size) {
+                keep = sizeof(stream->history) - size;
+                xx_rt_memmove(stream->history, stream->history + stream->history_size - keep, keep);
             }
-            xx_rt_memcpy(stream->history+keep,plain,size);stream->history_size=keep+size;
+            xx_rt_memcpy(stream->history + keep, plain, size);
+            stream->history_size = keep + size;
         }
-        xx_mem_free(stream->cached);stream->cached=plain;stream->cached_size=size;
-        stream->cached_index=stream->decoded_until++;
+        xx_mem_free(stream->cached);
+        stream->cached = plain;
+        stream->cached_size = size;
+        stream->cached_index = stream->decoded_until++;
     }
-    if(stream->cached_index!=wanted || !stream->cached)return false;
-    *out=(uint8_t *)xx_mem_alloc(stream->cached_size?stream->cached_size:1);if(!*out)return false;
-    xx_rt_memcpy(*out,stream->cached,stream->cached_size);*out_size=stream->cached_size;return true;
+    if (stream->cached_index != wanted || !stream->cached) return false;
+    *out = (uint8_t *)xx_mem_alloc(stream->cached_size ? stream->cached_size : 1);
+    if (!*out) return false;
+    xx_rt_memcpy(*out, stream->cached, stream->cached_size);
+    *out_size = stream->cached_size;
+    return true;
 }
 
 /* ---------------------------------------------------------- lifecycle --- */
 
-void xx_bsn_init(xx_bsn *archive, xx_io_device *device,
-                    int64_t base_address) {
+void xx_bsn_init(xx_bsn *archive, xx_io_device *device, int64_t base_address)
+{
     if (!archive) return;
     xx_mem_zero(archive, sizeof(*archive));
     xx_format_init(&archive->format, device, base_address);
@@ -428,22 +420,17 @@ void xx_bsn_init(xx_bsn *archive, xx_io_device *device,
     archive->format.check_is_valid = xx_bsn_check_is_valid;
     archive->format.handle_base_info = xx_bsn_handle_base_info;
     archive->format.get_format_size = xx_bsn_get_format_size;
-    archive->format.get_number_of_archive_records =
-        xx_bsn_get_number_of_archive_records;
-    archive->format.create_archive_records_reading =
-        xx_bsn_create_archive_records_reading;
-    archive->format.get_current_archive_record =
-        xx_bsn_get_current_archive_record;
-    archive->format.unpack_current_archive_record =
-        xx_bsn_unpack_current_archive_record;
-    archive->format.archive_record_move_to_next =
-        xx_bsn_archive_record_move_to_next;
-    archive->format.free_archive_records_reading =
-        xx_bsn_free_archive_records_reading;
+    archive->format.get_number_of_archive_records = xx_bsn_get_number_of_archive_records;
+    archive->format.create_archive_records_reading = xx_bsn_create_archive_records_reading;
+    archive->format.get_current_archive_record = xx_bsn_get_current_archive_record;
+    archive->format.unpack_current_archive_record = xx_bsn_unpack_current_archive_record;
+    archive->format.archive_record_move_to_next = xx_bsn_archive_record_move_to_next;
+    archive->format.free_archive_records_reading = xx_bsn_free_archive_records_reading;
     archive->format.destroy = xx_bsn_vtable_destroy;
 }
 
-xx_bsn *xx_bsn_create(xx_io_device *device, int64_t base_address) {
+xx_bsn *xx_bsn_create(xx_io_device *device, int64_t base_address)
+{
     xx_bsn *archive = (xx_bsn *)xx_mem_alloc(sizeof(*archive));
 
     if (!archive) return NULL;
@@ -451,7 +438,8 @@ xx_bsn *xx_bsn_create(xx_io_device *device, int64_t base_address) {
     return archive;
 }
 
-void xx_bsn_destroy(xx_bsn *archive) {
+void xx_bsn_destroy(xx_bsn *archive)
+{
     if (!archive) return;
     /* Not xx_format_destroy: it dispatches through format.destroy, which is
      * the wrapper below, and the two would recurse. */
@@ -460,19 +448,22 @@ void xx_bsn_destroy(xx_bsn *archive) {
     archive->number_of_records = 0U;
 }
 
-void xx_bsn_free(xx_bsn *archive) {
+void xx_bsn_free(xx_bsn *archive)
+{
     if (!archive) return;
     xx_bsn_destroy(archive);
     xx_mem_free(archive);
 }
 
-static void xx_bsn_vtable_destroy(Abstractformat *self) {
+static void xx_bsn_vtable_destroy(Abstractformat *self)
+{
     xx_bsn_destroy((xx_bsn *)self);
 }
 
 /* -------------------------------------------------------------- format -- */
 
-bool xx_bsn_check_is_valid(Abstractformat *self, xx_pd_struct *pd) {
+bool xx_bsn_check_is_valid(Abstractformat *self, xx_pd_struct *pd)
+{
     xx_bsn_stream *stream;
 
     if (!self || (pd && xx_pd_is_stopped(pd))) return false;
@@ -482,7 +473,8 @@ bool xx_bsn_check_is_valid(Abstractformat *self, xx_pd_struct *pd) {
     return true;
 }
 
-bool xx_bsn_handle_base_info(Abstractformat *self, xx_pd_struct *pd) {
+bool xx_bsn_handle_base_info(Abstractformat *self, xx_pd_struct *pd)
+{
     xx_bsn *archive = (xx_bsn *)self;
     xx_bsn_stream *stream;
 
@@ -503,18 +495,17 @@ bool xx_bsn_handle_base_info(Abstractformat *self, xx_pd_struct *pd) {
     return true;
 }
 
-int64_t xx_bsn_get_format_size(Abstractformat *self, xx_pd_struct *pd) {
-    if (!self ||
-        (!self->base_info_handled && !xx_format_handle_base_info(self, pd))) {
+int64_t xx_bsn_get_format_size(Abstractformat *self, xx_pd_struct *pd)
+{
+    if (!self || (!self->base_info_handled && !xx_format_handle_base_info(self, pd))) {
         return 0;
     }
     return self->is_valid ? self->format_size : 0;
 }
 
-uint64_t xx_bsn_get_number_of_archive_records(Abstractformat *self,
-                                                 xx_pd_struct *pd) {
-    if (!self ||
-        (!self->base_info_handled && !xx_format_handle_base_info(self, pd))) {
+uint64_t xx_bsn_get_number_of_archive_records(Abstractformat *self, xx_pd_struct *pd)
+{
+    if (!self || (!self->base_info_handled && !xx_format_handle_base_info(self, pd))) {
         return 0U;
     }
     return self->is_valid ? ((xx_bsn *)self)->number_of_records : 0U;
@@ -522,46 +513,36 @@ uint64_t xx_bsn_get_number_of_archive_records(Abstractformat *self,
 
 /* ------------------------------------------------------------- records -- */
 
-static bool xx_bsn_set_record(xx_archive_record *record,
-                                 const xx_bsn_member *member) {
+static bool xx_bsn_set_record(xx_archive_record *record, const xx_bsn_member *member)
+{
     xx_archive_record_cleanup(record);
     xx_archive_record_init(record);
     record->header_offset = member->header_offset;
     record->header_size = member->header_size;
     record->data_offset = member->data_offset;
     record->compressed_size = member->packed_size;
-    if (member->has_crc &&
-        !xx_archive_record_set_meta_u64(record, XX_META_ID_CRC32,
-                                        member->crc32)) {
+    if (member->has_crc && !xx_archive_record_set_meta_u64(record, XX_META_ID_CRC32, member->crc32)) {
         return false;
     }
     return xx_archive_record_set_original_name(record, member->name) &&
-           xx_archive_record_set_meta_u64(record, XX_META_ID_COMPRESSED_SIZE,
-                                          (uint64_t)member->packed_size) &&
-           xx_archive_record_set_meta_u64(record, XX_META_ID_UNCOMPRESSED_SIZE,
-                                          member->unpacked_size) &&
-           xx_archive_record_set_meta_u64(record, XX_META_ID_COMPRESSION_METHOD,
-                                          member->method) &&
-           xx_archive_record_set_meta_bool(record, XX_META_ID_IS_FOLDER,
-                                           member->is_folder) &&
-           xx_archive_record_set_meta_bool(record, XX_META_ID_IS_ENCRYPTED,
-                                           false);
+           xx_archive_record_set_meta_u64(record, XX_META_ID_COMPRESSED_SIZE, (uint64_t)member->packed_size) &&
+           xx_archive_record_set_meta_u64(record, XX_META_ID_UNCOMPRESSED_SIZE, member->unpacked_size) &&
+           xx_archive_record_set_meta_u64(record, XX_META_ID_COMPRESSION_METHOD, member->method) &&
+           xx_archive_record_set_meta_bool(record, XX_META_ID_IS_FOLDER, member->is_folder) && xx_archive_record_set_meta_bool(record, XX_META_ID_IS_ENCRYPTED, false);
 }
 
-static bool xx_bsn_copy_options(xx_list_s *target,
-                                   const xx_list_s *options) {
+static bool xx_bsn_copy_options(xx_list_s *target, const xx_list_s *options)
+{
     size_t index;
 
     if (!options) return true;
     if (!target) return false;
     for (index = 0U; index < options->count; ++index) {
-        const xx_meta *source =
-            (const xx_meta *)xx_list_at((const xx_list_t *)options, index);
+        const xx_meta *source = (const xx_meta *)xx_list_at((const xx_list_t *)options, index);
         xx_meta copied;
         if (!source) continue;
         xx_meta_init(&copied, source->meta_id);
-        if (!xx_var_copy(&copied.var, &source->var) ||
-            !xx_list_append(target, &copied)) {
+        if (!xx_var_copy(&copied.var, &source->var) || !xx_list_append(target, &copied)) {
             xx_meta_cleanup(&copied);
             return false;
         }
@@ -569,21 +550,20 @@ static bool xx_bsn_copy_options(xx_list_s *target,
     return true;
 }
 
-static const xx_var *xx_bsn_get_option(const xx_list_s *options,
-                                          uint32_t meta_id) {
+static const xx_var *xx_bsn_get_option(const xx_list_s *options, uint32_t meta_id)
+{
     size_t index;
 
     if (!options) return NULL;
     for (index = 0U; index < options->count; ++index) {
-        const xx_meta *meta =
-            (const xx_meta *)xx_list_at((const xx_list_t *)options, index);
+        const xx_meta *meta = (const xx_meta *)xx_list_at((const xx_list_t *)options, index);
         if (meta && meta->meta_id == meta_id) return &meta->var;
     }
     return NULL;
 }
 
-xx_archive_record_state *xx_bsn_create_archive_records_reading(
-    Abstractformat *self, const xx_list_s *options, xx_pd_struct *pd) {
+xx_archive_record_state *xx_bsn_create_archive_records_reading(Abstractformat *self, const xx_list_s *options, xx_pd_struct *pd)
+{
     xx_bsn_stream *stream;
     xx_archive_record_state *state;
 
@@ -599,9 +579,7 @@ xx_archive_record_state *xx_bsn_create_archive_records_reading(
     state->internal_state = stream;
     state->free_internal = xx_bsn_stream_free;
     state->total_records = (int64_t)stream->count;
-    if (!xx_bsn_copy_options(&state->options, options) ||
-        (stream->count != 0U &&
-         !xx_bsn_set_record(&state->current_record, &stream->items[0]))) {
+    if (!xx_bsn_copy_options(&state->options, options) || (stream->count != 0U && !xx_bsn_set_record(&state->current_record, &stream->items[0]))) {
         xx_archive_record_state_free(state);
         return NULL;
     }
@@ -610,20 +588,16 @@ xx_archive_record_state *xx_bsn_create_archive_records_reading(
     return state;
 }
 
-const xx_archive_record *xx_bsn_get_current_archive_record(
-    Abstractformat *self, xx_archive_record_state *state) {
-    return self && state && state->format == self && state->has_record
-               ? &state->current_record
-               : NULL;
+const xx_archive_record *xx_bsn_get_current_archive_record(Abstractformat *self, xx_archive_record_state *state)
+{
+    return self && state && state->format == self && state->has_record ? &state->current_record : NULL;
 }
 
-bool xx_bsn_archive_record_move_to_next(Abstractformat *self,
-                                           xx_archive_record_state *state,
-                                           xx_pd_struct *pd) {
+bool xx_bsn_archive_record_move_to_next(Abstractformat *self, xx_archive_record_state *state, xx_pd_struct *pd)
+{
     xx_bsn_stream *stream;
 
-    if (!self || !state || state->format != self || !state->has_record ||
-        (pd && xx_pd_is_stopped(pd))) {
+    if (!self || !state || state->format != self || !state->has_record || (pd && xx_pd_is_stopped(pd))) {
         return false;
     }
     stream = (xx_bsn_stream *)state->internal_state;
@@ -635,15 +609,12 @@ bool xx_bsn_archive_record_move_to_next(Abstractformat *self,
     }
     ++stream->index;
     ++state->current_index;
-    state->has_record =
-        xx_bsn_set_record(&state->current_record,
-                             &stream->items[stream->index]);
+    state->has_record = xx_bsn_set_record(&state->current_record, &stream->items[stream->index]);
     return state->has_record;
 }
 
-bool xx_bsn_unpack_current_archive_record(Abstractformat *self,
-                                             xx_archive_record_state *state,
-                                             xx_pd_struct *pd) {
+bool xx_bsn_unpack_current_archive_record(Abstractformat *self, xx_archive_record_state *state, xx_pd_struct *pd)
+{
     xx_bsn_stream *stream;
     const xx_bsn_member *member;
     const xx_var *path_option;
@@ -655,8 +626,7 @@ bool xx_bsn_unpack_current_archive_record(Abstractformat *self,
     bool result = false;
     bool created = false;
 
-    if (!self || !state || state->format != self || !state->has_record ||
-        (pd && xx_pd_is_stopped(pd))) {
+    if (!self || !state || state->format != self || !state->has_record || (pd && xx_pd_is_stopped(pd))) {
         return false;
     }
     stream = (xx_bsn_stream *)state->internal_state;
@@ -664,8 +634,7 @@ bool xx_bsn_unpack_current_archive_record(Abstractformat *self,
     member = &stream->items[stream->index];
     if (!xx_bsn_path_safe(member->name)) return false;
 
-    path_option =
-        xx_bsn_get_option(&state->options, XX_META_ID_OPT_UNPACK_PATH);
+    path_option = xx_bsn_get_option(&state->options, XX_META_ID_OPT_UNPACK_PATH);
     if (!path_option) {
         /* No destination: decode and discard, which verifies the member
          * without writing anything. */
@@ -674,11 +643,9 @@ bool xx_bsn_unpack_current_archive_record(Abstractformat *self,
         xx_mem_free(plain);
         return result;
     }
-    if (path_option->type == XX_VAR_TYPE_STRING ||
-        path_option->type == XX_VAR_TYPE_STRING_VIEW) {
+    if (path_option->type == XX_VAR_TYPE_STRING || path_option->type == XX_VAR_TYPE_STRING_VIEW) {
         base_path = xx_var_get_str(path_option);
-    } else if (path_option->type == XX_VAR_TYPE_WSTRING ||
-               path_option->type == XX_VAR_TYPE_WSTRING_VIEW) {
+    } else if (path_option->type == XX_VAR_TYPE_WSTRING || path_option->type == XX_VAR_TYPE_WSTRING_VIEW) {
         converted_path = xx_str_unicode_to_utf8(xx_var_get_wstr(path_option));
         base_path = converted_path;
     }
@@ -686,8 +653,7 @@ bool xx_bsn_unpack_current_archive_record(Abstractformat *self,
         xx_str_free(converted_path);
         return false;
     }
-    if (base_path[0] != '\0' && base_path[xx_str_len(base_path) - 1U] != '/' &&
-        base_path[xx_str_len(base_path) - 1U] != '\\') {
+    if (base_path[0] != '\0' && base_path[xx_str_len(base_path) - 1U] != '/' && base_path[xx_str_len(base_path) - 1U] != '\\') {
         target_path = xx_str_concat3(base_path, "/", member->name);
     } else {
         target_path = xx_str_concat(base_path, member->name);
@@ -700,8 +666,7 @@ bool xx_bsn_unpack_current_archive_record(Abstractformat *self,
         xx_str_free(target_path);
         return result;
     }
-    if (!xx_store_create_dirs_a(target_path, false) ||
-        !xx_bsn_decode(self, stream, member, &plain, &plain_size, pd)) {
+    if (!xx_store_create_dirs_a(target_path, false) || !xx_bsn_decode(self, stream, member, &plain, &plain_size, pd)) {
         xx_str_free(target_path);
         return false;
     }
@@ -712,8 +677,7 @@ bool xx_bsn_unpack_current_archive_record(Abstractformat *self,
 
         result = output != NULL;
         while (result && completed < plain_size) {
-            ssize_t sent =
-                xx_io_write(output, plain + completed, plain_size - completed);
+            ssize_t sent = xx_io_write(output, plain + completed, plain_size - completed);
             if (sent <= 0 || (size_t)sent > plain_size - completed) {
                 result = false;
                 break;
@@ -728,8 +692,8 @@ bool xx_bsn_unpack_current_archive_record(Abstractformat *self,
     return result;
 }
 
-void xx_bsn_free_archive_records_reading(Abstractformat *self,
-                                            xx_archive_record_state *state) {
+void xx_bsn_free_archive_records_reading(Abstractformat *self, xx_archive_record_state *state)
+{
     (void)self;
     xx_archive_record_state_free(state);
 }

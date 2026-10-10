@@ -9,13 +9,15 @@
 #ifdef __cplusplus
 extern "C" {
 #endif
-typedef struct xx_sfx_ain { Abstractformat format; } xx_sfx_ain;
-XXFC_API void xx_sfx_ain_init(xx_sfx_ain *,xx_io_device *,int64_t);
-XXFC_API xx_sfx_ain *xx_sfx_ain_create(xx_io_device *,int64_t);
+typedef struct xx_sfx_ain {
+    Abstractformat format;
+} xx_sfx_ain;
+XXFC_API void xx_sfx_ain_init(xx_sfx_ain *, xx_io_device *, int64_t);
+XXFC_API xx_sfx_ain *xx_sfx_ain_create(xx_io_device *, int64_t);
 XXFC_API void xx_sfx_ain_destroy(xx_sfx_ain *);
 XXFC_API void xx_sfx_ain_free(xx_sfx_ain *);
-XXFC_API bool xx_sfx_ain_check_is_valid(Abstractformat *,xx_pd_struct *);
-XXFC_API bool xx_sfx_ain_handle_base_info(Abstractformat *,xx_pd_struct *);
+XXFC_API bool xx_sfx_ain_check_is_valid(Abstractformat *, xx_pd_struct *);
+XXFC_API bool xx_sfx_ain_handle_base_info(Abstractformat *, xx_pd_struct *);
 #ifdef __cplusplus
 }
 #endif

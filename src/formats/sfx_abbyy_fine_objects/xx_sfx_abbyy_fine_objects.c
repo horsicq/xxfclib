@@ -69,32 +69,30 @@
 #define AFO_WINDOW 4096U
 #define AFO_RENAME_LIMIT 100000U
 
-static const uint8_t afo_finear_magic[9] = {'F', 'I', 'N', 'E', 'A',
-                                            'R', 0xddU, 0x88U, 0xddU};
+static const uint8_t afo_finear_magic[9] = {'F', 'I', 'N', 'E', 'A', 'R', 0xddU, 0x88U, 0xddU};
 static const char afo_tag[AFO_TAG_SIZE + 1U] = "ArcUpdateABBYY";
 
 /* --- small helpers --------------------------------------------------------- */
 
-static uint32_t afo_le16(const uint8_t *bytes) {
+static uint32_t afo_le16(const uint8_t *bytes)
+{
     return (uint32_t)bytes[0] | ((uint32_t)bytes[1] << 8U);
 }
 
-static bool afo_read_at(xx_io_device *device, int64_t offset, void *buffer,
-                        size_t size) {
+static bool afo_read_at(xx_io_device *device, int64_t offset, void *buffer, size_t size)
+{
     size_t done = 0U;
-    if (!device || (!buffer && size != 0U) || offset < 0 ||
-        xx_io_seek64(device, offset, SEEK_SET) != 0)
-        return false;
+    if (!device || (!buffer && size != 0U) || offset < 0 || xx_io_seek64(device, offset, SEEK_SET) != 0) return false;
     while (done < size) {
-        ssize_t amount = xx_io_read(device, (uint8_t *)buffer + done,
-                                    size - done);
+        ssize_t amount = xx_io_read(device, (uint8_t *)buffer + done, size - done);
         if (amount <= 0 || (size_t)amount > size - done) return false;
         done += (size_t)amount;
     }
     return true;
 }
 
-static bool afo_stopped(xx_pd_struct *pd) {
+static bool afo_stopped(xx_pd_struct *pd)
+{
     return pd && xx_pd_is_stopped(pd);
 }
 
@@ -110,8 +108,8 @@ typedef struct afo_cursor_s {
     uint8_t window[AFO_WINDOW];
 } afo_cursor;
 
-static void afo_cursor_init(afo_cursor *cursor, xx_io_device *device,
-                            int64_t base, int64_t size, int64_t at) {
+static void afo_cursor_init(afo_cursor *cursor, xx_io_device *device, int64_t base, int64_t size, int64_t at)
+{
     cursor->device = device;
     cursor->base = base;
     cursor->size = size;
@@ -121,20 +119,17 @@ static void afo_cursor_init(afo_cursor *cursor, xx_io_device *device,
 }
 
 /* Copies @p count bytes (or skips them when @p out is NULL). */
-static bool afo_cursor_read(afo_cursor *cursor, uint8_t *out, size_t count) {
+static bool afo_cursor_read(afo_cursor *cursor, uint8_t *out, size_t count)
+{
     while (count != 0U) {
         size_t index, chunk;
-        if (cursor->position < cursor->window_at ||
-            cursor->position - cursor->window_at >=
-                (int64_t)cursor->window_size) {
+        if (cursor->position < cursor->window_at || cursor->position - cursor->window_at >= (int64_t)cursor->window_size) {
             int64_t left = cursor->size - cursor->position;
             size_t want;
             if (cursor->position < 0 || left <= 0) return false;
             want = left < (int64_t)AFO_WINDOW ? (size_t)left : AFO_WINDOW;
             cursor->window_size = 0U;
-            if (!afo_read_at(cursor->device, cursor->base + cursor->position,
-                             cursor->window, want))
-                return false;
+            if (!afo_read_at(cursor->device, cursor->base + cursor->position, cursor->window, want)) return false;
             cursor->window_at = cursor->position;
             cursor->window_size = want;
         }
@@ -151,7 +146,8 @@ static bool afo_cursor_read(afo_cursor *cursor, uint8_t *out, size_t count) {
     return true;
 }
 
-static bool afo_cursor_u32(afo_cursor *cursor, uint32_t *value) {
+static bool afo_cursor_u32(afo_cursor *cursor, uint32_t *value)
+{
     uint8_t bytes[4];
     if (!afo_cursor_read(cursor, bytes, sizeof(bytes))) return false;
     *value = xx_data_get_u32(bytes, 4, 0, false);
@@ -159,12 +155,10 @@ static bool afo_cursor_u32(afo_cursor *cursor, uint32_t *value) {
 }
 
 /* One Pascal string into @p text (256 bytes); *length receives its size. */
-static bool afo_cursor_pstring(afo_cursor *cursor, uint8_t *text,
-                               size_t *length) {
+static bool afo_cursor_pstring(afo_cursor *cursor, uint8_t *text, size_t *length)
+{
     uint8_t size;
-    if (!afo_cursor_read(cursor, &size, 1U) ||
-        !afo_cursor_read(cursor, text, size))
-        return false;
+    if (!afo_cursor_read(cursor, &size, 1U) || !afo_cursor_read(cursor, text, size)) return false;
     *length = size;
     return true;
 }
@@ -173,25 +167,20 @@ static bool afo_cursor_pstring(afo_cursor *cursor, uint8_t *text,
 
 /* The overlay: where the last section's raw data ends.  A section that
  * claims bytes beyond the file cannot belong to a complete setup. */
-static bool afo_overlay(xx_io_device *device, int64_t base, int64_t size,
-                        int64_t *overlay) {
+static bool afo_overlay(xx_io_device *device, int64_t base, int64_t size, int64_t *overlay)
+{
     uint8_t dos[0x40], nt[24], table[AFO_MAX_SECTIONS * 40U];
     uint32_t sections, optional, index;
     int64_t lfanew, table_at, end = 0;
-    if (size < AFO_MIN_FILE || !afo_read_at(device, base, dos, sizeof(dos)) ||
-        dos[0] != 'M' || dos[1] != 'Z')
-        return false;
+    if (size < AFO_MIN_FILE || !afo_read_at(device, base, dos, sizeof(dos)) || dos[0] != 'M' || dos[1] != 'Z') return false;
     lfanew = (int64_t)xx_data_get_u32(dos + 0x3c, 4, 0, false);
-    if (lfanew < 4 || lfanew > AFO_MAX_LFANEW || lfanew > size - 24 ||
-        !afo_read_at(device, base + lfanew, nt, sizeof(nt)) || nt[0] != 'P' ||
-        nt[1] != 'E' || nt[2] != 0U || nt[3] != 0U)
+    if (lfanew < 4 || lfanew > AFO_MAX_LFANEW || lfanew > size - 24 || !afo_read_at(device, base + lfanew, nt, sizeof(nt)) || nt[0] != 'P' || nt[1] != 'E' ||
+        nt[2] != 0U || nt[3] != 0U)
         return false;
     sections = afo_le16(nt + 6);
     optional = afo_le16(nt + 20);
     table_at = lfanew + 24 + (int64_t)optional;
-    if (sections == 0U || sections > AFO_MAX_SECTIONS ||
-        table_at > size - (int64_t)sections * 40 ||
-        !afo_read_at(device, base + table_at, table, (size_t)sections * 40U))
+    if (sections == 0U || sections > AFO_MAX_SECTIONS || table_at > size - (int64_t)sections * 40 || !afo_read_at(device, base + table_at, table, (size_t)sections * 40U))
         return false;
     for (index = 0U; index < sections; ++index) {
         const uint8_t *row = table + index * 40U;
@@ -219,20 +208,16 @@ typedef struct afo_info_s {
 } afo_info;
 
 /* A FINEAR header that fits a stream of @p stream_size bytes. */
-static bool afo_finear_ok(const uint8_t *header, uint32_t stream_size,
-                          uint32_t *plain, uint32_t *crc) {
+static bool afo_finear_ok(const uint8_t *header, uint32_t stream_size, uint32_t *plain, uint32_t *crc)
+{
     uint64_t body, declared;
     uint32_t checksum;
-    if (stream_size < AFO_FINEAR_SIZE ||
-        xx_rt_memcmp(header, afo_finear_magic, sizeof(afo_finear_magic)) != 0)
-        return false;
+    if (stream_size < AFO_FINEAR_SIZE || xx_rt_memcmp(header, afo_finear_magic, sizeof(afo_finear_magic)) != 0) return false;
     body = (uint64_t)stream_size - AFO_FINEAR_SIZE;
     checksum = xx_data_get_u32(header + 9, 4, 0, false);
     declared = xx_data_get_u32(header + 13, 4, 0, false);
     /* A 16-bit CRC stored in a 32-bit slot. */
-    if (checksum > 0xffffU || body > AFO_MAX_BODY ||
-        declared > AFO_MAX_PLAIN || declared > body * AFO_LH1_RATIO)
-        return false;
+    if (checksum > 0xffffU || body > AFO_MAX_BODY || declared > AFO_MAX_PLAIN || declared > body * AFO_LH1_RATIO) return false;
     if (plain) *plain = (uint32_t)declared;
     if (crc) *crc = checksum;
     return true;
@@ -241,36 +226,27 @@ static bool afo_finear_ok(const uint8_t *header, uint32_t stream_size,
 /* Finds and checks the whole payload: both tables, the classes, the three
  * strings, the trailer (its stub size must name the overlay) and every
  * member's FINEAR header. */
-static bool afo_scan(Abstractformat *format, afo_info *info,
-                     xx_pd_struct *pd) {
+static bool afo_scan(Abstractformat *format, afo_info *info, xx_pd_struct *pd)
+{
     afo_cursor cursor;
     uint8_t text[256];
     uint8_t trailer[AFO_TRAILER_SIZE];
     int64_t total, size, sum = 0, stream_at;
     uint32_t count, second, classes, index;
     size_t length, byte;
-    if (!format || !format->device || !info || format->base_address < 0)
-        return false;
+    if (!format || !format->device || !info || format->base_address < 0) return false;
     total = xx_io_total_size(format->device);
     if (total < format->base_address) return false;
     size = total - format->base_address;
     xx_rt_memset(info, 0, sizeof(*info));
-    if (!afo_overlay(format->device, format->base_address, size,
-                     &info->overlay) ||
-        size - info->overlay < AFO_FIXED_BYTES + AFO_MIN_MEMBER)
-        return false;
-    afo_cursor_init(&cursor, format->device, format->base_address, size,
-                    info->overlay);
-    if (!afo_cursor_u32(&cursor, &count) || count == 0U ||
-        count > AFO_MAX_COUNT ||
-        (int64_t)count > (size - info->overlay - AFO_FIXED_BYTES) /
-                             AFO_MIN_MEMBER)
+    if (!afo_overlay(format->device, format->base_address, size, &info->overlay) || size - info->overlay < AFO_FIXED_BYTES + AFO_MIN_MEMBER) return false;
+    afo_cursor_init(&cursor, format->device, format->base_address, size, info->overlay);
+    if (!afo_cursor_u32(&cursor, &count) || count == 0U || count > AFO_MAX_COUNT || (int64_t)count > (size - info->overlay - AFO_FIXED_BYTES) / AFO_MIN_MEMBER)
         return false;
     info->names_at = cursor.position;
     for (index = 0U; index < count; ++index) {
         if ((index & 0xffU) == 0U && afo_stopped(pd)) return false;
-        if (!afo_cursor_pstring(&cursor, text, &length) || length == 0U)
-            return false;
+        if (!afo_cursor_pstring(&cursor, text, &length) || length == 0U) return false;
         for (byte = 0U; byte < length; ++byte)
             if (text[byte] < 0x20U) return false;
     }
@@ -278,29 +254,21 @@ static bool afo_scan(Abstractformat *format, afo_info *info,
     info->sizes_at = cursor.position;
     for (index = 0U; index < count; ++index) {
         uint32_t stream_size;
-        if (!afo_cursor_u32(&cursor, &stream_size) ||
-            stream_size < AFO_FINEAR_SIZE)
-            return false;
+        if (!afo_cursor_u32(&cursor, &stream_size) || stream_size < AFO_FINEAR_SIZE) return false;
         sum += (int64_t)stream_size;
         if (sum > size) return false;
     }
-    if (!afo_cursor_u32(&cursor, &classes) || classes > AFO_MAX_COUNT ||
-        (int64_t)classes > size - cursor.position)
-        return false;
+    if (!afo_cursor_u32(&cursor, &classes) || classes > AFO_MAX_COUNT || (int64_t)classes > size - cursor.position) return false;
     for (index = 0U; index < classes + AFO_EXTRA_STRINGS; ++index) {
         if ((index & 0xffU) == 0U && afo_stopped(pd)) return false;
         if (!afo_cursor_pstring(&cursor, text, &length)) return false;
     }
     if (!afo_cursor_read(&cursor, NULL, AFO_DATES_SIZE)) return false;
     info->streams_at = cursor.position;
-    if (sum > size - info->streams_at - (int64_t)AFO_TRAILER_SIZE)
-        return false;
+    if (sum > size - info->streams_at - (int64_t)AFO_TRAILER_SIZE) return false;
     info->trailer_at = info->streams_at + sum;
-    if (!afo_read_at(format->device,
-                     format->base_address + info->trailer_at, trailer,
-                     sizeof(trailer)) ||
-        (int64_t)xx_data_get_u32(trailer, 4, 0, false) != info->overlay ||
-        xx_rt_memcmp(trailer + 4, afo_tag, AFO_TAG_SIZE + 1U) != 0)
+    if (!afo_read_at(format->device, format->base_address + info->trailer_at, trailer, sizeof(trailer)) ||
+        (int64_t)xx_data_get_u32(trailer, 4, 0, false) != info->overlay || xx_rt_memcmp(trailer + 4, afo_tag, AFO_TAG_SIZE + 1U) != 0)
         return false;
     /* Every member must start with a FINEAR header that fits its size. */
     cursor.position = info->sizes_at;
@@ -309,9 +277,7 @@ static bool afo_scan(Abstractformat *format, afo_info *info,
         uint8_t header[AFO_FINEAR_SIZE];
         uint32_t stream_size;
         if ((index & 0xffU) == 0U && afo_stopped(pd)) return false;
-        if (!afo_cursor_u32(&cursor, &stream_size) ||
-            !afo_read_at(format->device, format->base_address + stream_at,
-                         header, sizeof(header)) ||
+        if (!afo_cursor_u32(&cursor, &stream_size) || !afo_read_at(format->device, format->base_address + stream_at, header, sizeof(header)) ||
             !afo_finear_ok(header, stream_size, NULL, NULL))
             return false;
         stream_at += (int64_t)stream_size;
@@ -326,53 +292,45 @@ static bool afo_scan(Abstractformat *format, afo_info *info,
 /* Windows-1251 0x80..0xFF.  The undefined 0x98 keeps its C1 code point; the
  * name check refuses it. */
 static const uint16_t afo_cp1251_high[128] = {
-    0x0402U, 0x0403U, 0x201AU, 0x0453U, 0x201EU, 0x2026U, 0x2020U, 0x2021U,
-    0x20ACU, 0x2030U, 0x0409U, 0x2039U, 0x040AU, 0x040CU, 0x040BU, 0x040FU,
-    0x0452U, 0x2018U, 0x2019U, 0x201CU, 0x201DU, 0x2022U, 0x2013U, 0x2014U,
-    0x0098U, 0x2122U, 0x0459U, 0x203AU, 0x045AU, 0x045CU, 0x045BU, 0x045FU,
-    0x00A0U, 0x040EU, 0x045EU, 0x0408U, 0x00A4U, 0x0490U, 0x00A6U, 0x00A7U,
-    0x0401U, 0x00A9U, 0x0404U, 0x00ABU, 0x00ACU, 0x00ADU, 0x00AEU, 0x0407U,
-    0x00B0U, 0x00B1U, 0x0406U, 0x0456U, 0x0491U, 0x00B5U, 0x00B6U, 0x00B7U,
-    0x0451U, 0x2116U, 0x0454U, 0x00BBU, 0x0458U, 0x0405U, 0x0455U, 0x0457U,
-    0x0410U, 0x0411U, 0x0412U, 0x0413U, 0x0414U, 0x0415U, 0x0416U, 0x0417U,
-    0x0418U, 0x0419U, 0x041AU, 0x041BU, 0x041CU, 0x041DU, 0x041EU, 0x041FU,
-    0x0420U, 0x0421U, 0x0422U, 0x0423U, 0x0424U, 0x0425U, 0x0426U, 0x0427U,
-    0x0428U, 0x0429U, 0x042AU, 0x042BU, 0x042CU, 0x042DU, 0x042EU, 0x042FU,
-    0x0430U, 0x0431U, 0x0432U, 0x0433U, 0x0434U, 0x0435U, 0x0436U, 0x0437U,
-    0x0438U, 0x0439U, 0x043AU, 0x043BU, 0x043CU, 0x043DU, 0x043EU, 0x043FU,
-    0x0440U, 0x0441U, 0x0442U, 0x0443U, 0x0444U, 0x0445U, 0x0446U, 0x0447U,
-    0x0448U, 0x0449U, 0x044AU, 0x044BU, 0x044CU, 0x044DU, 0x044EU, 0x044FU};
+    0x0402U, 0x0403U, 0x201AU, 0x0453U, 0x201EU, 0x2026U, 0x2020U, 0x2021U, 0x20ACU, 0x2030U, 0x0409U, 0x2039U, 0x040AU, 0x040CU, 0x040BU, 0x040FU,
+    0x0452U, 0x2018U, 0x2019U, 0x201CU, 0x201DU, 0x2022U, 0x2013U, 0x2014U, 0x0098U, 0x2122U, 0x0459U, 0x203AU, 0x045AU, 0x045CU, 0x045BU, 0x045FU,
+    0x00A0U, 0x040EU, 0x045EU, 0x0408U, 0x00A4U, 0x0490U, 0x00A6U, 0x00A7U, 0x0401U, 0x00A9U, 0x0404U, 0x00ABU, 0x00ACU, 0x00ADU, 0x00AEU, 0x0407U,
+    0x00B0U, 0x00B1U, 0x0406U, 0x0456U, 0x0491U, 0x00B5U, 0x00B6U, 0x00B7U, 0x0451U, 0x2116U, 0x0454U, 0x00BBU, 0x0458U, 0x0405U, 0x0455U, 0x0457U,
+    0x0410U, 0x0411U, 0x0412U, 0x0413U, 0x0414U, 0x0415U, 0x0416U, 0x0417U, 0x0418U, 0x0419U, 0x041AU, 0x041BU, 0x041CU, 0x041DU, 0x041EU, 0x041FU,
+    0x0420U, 0x0421U, 0x0422U, 0x0423U, 0x0424U, 0x0425U, 0x0426U, 0x0427U, 0x0428U, 0x0429U, 0x042AU, 0x042BU, 0x042CU, 0x042DU, 0x042EU, 0x042FU,
+    0x0430U, 0x0431U, 0x0432U, 0x0433U, 0x0434U, 0x0435U, 0x0436U, 0x0437U, 0x0438U, 0x0439U, 0x043AU, 0x043BU, 0x043CU, 0x043DU, 0x043EU, 0x043FU,
+    0x0440U, 0x0441U, 0x0442U, 0x0443U, 0x0444U, 0x0445U, 0x0446U, 0x0447U, 0x0448U, 0x0449U, 0x044AU, 0x044BU, 0x044CU, 0x044DU, 0x044EU, 0x044FU};
 
 /* Upper case as Windows compares names, applied to Windows-1251 bytes:
  * ASCII, the Cyrillic alphabet and the extra Cyrillic letters of the
  * 0x80..0xBF block. */
-static uint8_t afo_fold(uint8_t c) {
+static uint8_t afo_fold(uint8_t c)
+{
     if (c >= 'a' && c <= 'z') return (uint8_t)(c - 0x20U);
     if (c >= 0xE0U) return (uint8_t)(c - 0x20U);
     switch (c) {
-    case 0x83U: return 0x81U;
-    case 0x90U: return 0x80U;
-    case 0x9AU: return 0x8AU;
-    case 0x9CU: return 0x8CU;
-    case 0x9DU: return 0x8DU;
-    case 0x9EU: return 0x8EU;
-    case 0x9FU: return 0x8FU;
-    case 0xA2U: return 0xA1U;
-    case 0xB3U: return 0xB2U;
-    case 0xB4U: return 0xA5U;
-    case 0xB8U: return 0xA8U;
-    case 0xBAU: return 0xAAU;
-    case 0xBCU: return 0xA3U;
-    case 0xBEU: return 0xBDU;
-    case 0xBFU: return 0xAFU;
-    default: return c;
+        case 0x83U: return 0x81U;
+        case 0x90U: return 0x80U;
+        case 0x9AU: return 0x8AU;
+        case 0x9CU: return 0x8CU;
+        case 0x9DU: return 0x8DU;
+        case 0x9EU: return 0x8EU;
+        case 0x9FU: return 0x8FU;
+        case 0xA2U: return 0xA1U;
+        case 0xB3U: return 0xB2U;
+        case 0xB4U: return 0xA5U;
+        case 0xB8U: return 0xA8U;
+        case 0xBAU: return 0xAAU;
+        case 0xBCU: return 0xA3U;
+        case 0xBEU: return 0xBDU;
+        case 0xBFU: return 0xAFU;
+        default: return c;
     }
 }
 
-static bool afo_is_device_stem(const uint8_t *name, size_t stem) {
-    static const char *const devices[] = {"CON",    "PRN",     "AUX",
-                                          "NUL",    "CONIN$",  "CONOUT$",
-                                          "CLOCK$"};
+static bool afo_is_device_stem(const uint8_t *name, size_t stem)
+{
+    static const char *const devices[] = {"CON", "PRN", "AUX", "NUL", "CONIN$", "CONOUT$", "CLOCK$"};
     size_t k, i;
     for (k = 0U; k < sizeof(devices) / sizeof(devices[0]); ++k) {
         const char *word = devices[k];
@@ -381,10 +339,8 @@ static bool afo_is_device_stem(const uint8_t *name, size_t stem) {
         if (i == stem && word[i] == 0) return true;
     }
     return stem == 4U && name[3] >= '0' && name[3] <= '9' &&
-           ((afo_fold(name[0]) == 'C' && afo_fold(name[1]) == 'O' &&
-             afo_fold(name[2]) == 'M') ||
-            (afo_fold(name[0]) == 'L' && afo_fold(name[1]) == 'P' &&
-             afo_fold(name[2]) == 'T'));
+           ((afo_fold(name[0]) == 'C' && afo_fold(name[1]) == 'O' && afo_fold(name[2]) == 'M') ||
+            (afo_fold(name[0]) == 'L' && afo_fold(name[1]) == 'P' && afo_fold(name[2]) == 'T'));
 }
 
 /* Whether a '/'-separated Windows-1251 name may become a path below the
@@ -392,7 +348,8 @@ static bool afo_is_device_stem(const uint8_t *name, size_t stem) {
  * nothing that climbs out), no drive colon or other character Windows
  * refuses, no control byte, no component that Windows would silently trim
  * (trailing dot or space) and no device name in any component. */
-static bool afo_safe_name(const uint8_t *name, size_t length) {
+static bool afo_safe_name(const uint8_t *name, size_t length)
+{
     size_t start = 0U, index;
     if (length == 0U) return false;
     for (index = 0U; index <= length; ++index) {
@@ -400,15 +357,12 @@ static bool afo_safe_name(const uint8_t *name, size_t length) {
         if (c == '/') {
             size_t part = index - start, stem = 0U;
             if (part == 0U) return false;
-            if (name[index - 1U] == '.' || name[index - 1U] == ' ')
-                return false;
+            if (name[index - 1U] == '.' || name[index - 1U] == ' ') return false;
             while (stem < part && name[start + stem] != '.') ++stem;
             while (stem > 0U && name[start + stem - 1U] == ' ') --stem;
             if (afo_is_device_stem(name + start, stem)) return false;
             start = index + 1U;
-        } else if (c < 0x20U || c == 0x7fU || c == 0x98U || c == ':' ||
-                   c == '*' || c == '?' || c == '"' || c == '<' || c == '>' ||
-                   c == '|') {
+        } else if (c < 0x20U || c == 0x7fU || c == 0x98U || c == ':' || c == '*' || c == '?' || c == '"' || c == '<' || c == '>' || c == '|') {
             return false;
         }
     }
@@ -416,14 +370,13 @@ static bool afo_safe_name(const uint8_t *name, size_t length) {
 }
 
 /* Windows-1251 to UTF-8. */
-static char *afo_utf8(const uint8_t *name, size_t length) {
+static char *afo_utf8(const uint8_t *name, size_t length)
+{
     char *out = (char *)xx_mem_alloc(length * 3U + 1U);
     size_t index, used = 0U;
     if (!out) return NULL;
     for (index = 0U; index < length; ++index) {
-        uint32_t code = name[index] < 0x80U
-                            ? name[index]
-                            : afo_cp1251_high[name[index] - 0x80U];
+        uint32_t code = name[index] < 0x80U ? name[index] : afo_cp1251_high[name[index] - 0x80U];
         if (code < 0x80U) {
             out[used++] = (char)code;
         } else if (code < 0x800U) {
@@ -446,11 +399,11 @@ typedef struct afo_member_s {
     uint32_t stream_size; /* whole FINEAR stream */
     uint32_t plain_size;
     uint32_t crc;
-    uint32_t suffix;      /* last "_<n>" given to a duplicate of this name */
-    bool safe;            /* the name may be used as an output path */
-    uint8_t *raw;         /* Windows-1251, '/' separators, NUL-terminated */
+    uint32_t suffix; /* last "_<n>" given to a duplicate of this name */
+    bool safe;       /* the name may be used as an output path */
+    uint8_t *raw;    /* Windows-1251, '/' separators, NUL-terminated */
     size_t raw_size;
-    char *name;           /* UTF-8, final */
+    char *name; /* UTF-8, final */
 } afo_member;
 
 typedef struct afo_stream_s {
@@ -459,7 +412,8 @@ typedef struct afo_stream_s {
     size_t index;
 } afo_stream;
 
-static void afo_members_free(afo_member *items, size_t count) {
+static void afo_members_free(afo_member *items, size_t count)
+{
     size_t index;
     if (!items) return;
     for (index = 0U; index < count; ++index) {
@@ -469,14 +423,16 @@ static void afo_members_free(afo_member *items, size_t count) {
     xx_mem_free(items);
 }
 
-static void afo_stream_free(void *opaque) {
+static void afo_stream_free(void *opaque)
+{
     afo_stream *stream = (afo_stream *)opaque;
     if (!stream) return;
     afo_members_free(stream->items, stream->count);
     xx_mem_free(stream);
 }
 
-static uint32_t afo_hash(const uint8_t *name, size_t length) {
+static uint32_t afo_hash(const uint8_t *name, size_t length)
+{
     uint32_t hash = 2166136261U;
     size_t index;
     for (index = 0U; index < length; ++index) {
@@ -486,7 +442,8 @@ static uint32_t afo_hash(const uint8_t *name, size_t length) {
     return hash;
 }
 
-static bool afo_same(const afo_member *a, const uint8_t *name, size_t length) {
+static bool afo_same(const afo_member *a, const uint8_t *name, size_t length)
+{
     size_t index;
     if (a->raw_size != length) return false;
     for (index = 0U; index < length; ++index)
@@ -496,8 +453,8 @@ static bool afo_same(const afo_member *a, const uint8_t *name, size_t length) {
 
 /* "<name>_<number>", the number going in front of the last component's
  * extension. */
-static uint8_t *afo_with_suffix(const uint8_t *name, size_t length,
-                                size_t number, size_t *out_length) {
+static uint8_t *afo_with_suffix(const uint8_t *name, size_t length, size_t number, size_t *out_length)
+{
     uint8_t digits[24];
     size_t count = 0U, dot = length, index, used;
     uint8_t *out;
@@ -531,7 +488,8 @@ static uint8_t *afo_with_suffix(const uint8_t *name, size_t length,
  * that can be extracted take part.  The member that holds a name keeps the
  * last suffix handed out for it, so n copies of one name cost O(n) probes,
  * not O(n^2); a global budget bounds whatever is left. */
-static bool afo_unique_names(afo_member *items, size_t count) {
+static bool afo_unique_names(afo_member *items, size_t count)
+{
     size_t slots = 16U, index;
     size_t budget = count * 4U + 64U;
     size_t *table;
@@ -549,8 +507,7 @@ static bool afo_unique_names(afo_member *items, size_t count) {
             size_t number;
             slot = afo_hash(member->raw, member->raw_size) & (slots - 1U);
             while (table[slot] != SIZE_MAX) {
-                if (afo_same(&items[table[slot]], member->raw,
-                             member->raw_size)) {
+                if (afo_same(&items[table[slot]], member->raw, member->raw_size)) {
                     taken = true;
                     break;
                 }
@@ -567,8 +524,7 @@ static bool afo_unique_names(afo_member *items, size_t count) {
             number = ++items[owner].suffix;
             {
                 size_t next_size = 0U;
-                uint8_t *next = afo_with_suffix(stored, stored_size, number,
-                                                &next_size);
+                uint8_t *next = afo_with_suffix(stored, stored_size, number, &next_size);
                 if (!next) {
                     if (member->raw != stored) xx_mem_free(member->raw);
                     member->raw = stored;
@@ -598,25 +554,22 @@ static bool afo_unique_names(afo_member *items, size_t count) {
 }
 
 /* Reads the member table the scan has accepted. */
-static bool afo_load(Abstractformat *format, const afo_info *info,
-                     afo_member *items, xx_pd_struct *pd) {
+static bool afo_load(Abstractformat *format, const afo_info *info, afo_member *items, xx_pd_struct *pd)
+{
     afo_cursor cursor;
     uint8_t text[256];
     int64_t size = xx_io_total_size(format->device) - format->base_address;
     int64_t stream_at = info->streams_at;
     uint32_t index;
-    afo_cursor_init(&cursor, format->device, format->base_address, size,
-                    info->names_at);
+    afo_cursor_init(&cursor, format->device, format->base_address, size, info->names_at);
     for (index = 0U; index < info->count; ++index) {
         afo_member *member = &items[index];
         size_t length = 0U, byte;
         if ((index & 0xffU) == 0U && afo_stopped(pd)) return false;
-        if (!afo_cursor_pstring(&cursor, text, &length) || length == 0U)
-            return false;
+        if (!afo_cursor_pstring(&cursor, text, &length) || length == 0U) return false;
         member->raw = (uint8_t *)xx_mem_alloc(length + 1U);
         if (!member->raw) return false;
-        for (byte = 0U; byte < length; ++byte)
-            member->raw[byte] = text[byte] == '\\' ? (uint8_t)'/' : text[byte];
+        for (byte = 0U; byte < length; ++byte) member->raw[byte] = text[byte] == '\\' ? (uint8_t)'/' : text[byte];
         member->raw[length] = 0U;
         member->raw_size = length;
         member->safe = afo_safe_name(member->raw, length);
@@ -625,18 +578,13 @@ static bool afo_load(Abstractformat *format, const afo_info *info,
     for (index = 0U; index < info->count; ++index) {
         afo_member *member = &items[index];
         uint8_t header[AFO_FINEAR_SIZE];
-        if (!afo_cursor_u32(&cursor, &member->stream_size) ||
-            !afo_read_at(format->device, format->base_address + stream_at,
-                         header, sizeof(header)) ||
-            !afo_finear_ok(header, member->stream_size, &member->plain_size,
-                           &member->crc))
+        if (!afo_cursor_u32(&cursor, &member->stream_size) || !afo_read_at(format->device, format->base_address + stream_at, header, sizeof(header)) ||
+            !afo_finear_ok(header, member->stream_size, &member->plain_size, &member->crc))
             return false;
         member->offset = stream_at;
         stream_at += (int64_t)member->stream_size;
     }
-    if (stream_at != info->trailer_at ||
-        !afo_unique_names(items, info->count))
-        return false;
+    if (stream_at != info->trailer_at || !afo_unique_names(items, info->count)) return false;
     for (index = 0U; index < info->count; ++index) {
         items[index].name = afo_utf8(items[index].raw, items[index].raw_size);
         if (!items[index].name) return false;
@@ -648,27 +596,21 @@ static bool afo_load(Abstractformat *format, const afo_info *info,
 
 /* Decodes one member into a new buffer.  Fails closed: a body that does not
  * reproduce the stored size and CRC-16/ARC is not returned at all. */
-static bool afo_decode(Abstractformat *format, const afo_member *member,
-                       uint8_t **plain_out, xx_pd_struct *pd) {
+static bool afo_decode(Abstractformat *format, const afo_member *member, uint8_t **plain_out, xx_pd_struct *pd)
+{
     uint8_t header[AFO_FINEAR_SIZE];
     uint32_t plain = 0U, crc = 0U;
     size_t body, written = 0U;
     uint8_t *packed = NULL, *output = NULL;
     int64_t at = format->base_address + member->offset;
-    if (afo_stopped(pd) || !afo_read_at(format->device, at, header,
-                                        sizeof(header)) ||
-        !afo_finear_ok(header, member->stream_size, &plain, &crc) ||
+    if (afo_stopped(pd) || !afo_read_at(format->device, at, header, sizeof(header)) || !afo_finear_ok(header, member->stream_size, &plain, &crc) ||
         plain != member->plain_size || crc != member->crc)
         return false;
     body = (size_t)member->stream_size - AFO_FINEAR_SIZE;
     packed = (uint8_t *)xx_mem_alloc(body != 0U ? body : 1U);
     output = (uint8_t *)xx_mem_alloc(plain != 0U ? (size_t)plain : 1U);
-    if (!packed || !output ||
-        !afo_read_at(format->device, at + (int64_t)AFO_FINEAR_SIZE, packed,
-                     body) ||
-        !xx_lzh1_decode_memory(packed, body, output, (size_t)plain,
-                               &written) ||
-        written != (size_t)plain ||
+    if (!packed || !output || !afo_read_at(format->device, at + (int64_t)AFO_FINEAR_SIZE, packed, body) ||
+        !xx_lzh1_decode_memory(packed, body, output, (size_t)plain, &written) || written != (size_t)plain ||
         (uint32_t)xx_crc16(XX_CRC_TYPE_CRC16_ARC, output, written) != crc)
         goto fail;
     xx_mem_free(packed);
@@ -680,8 +622,8 @@ fail:
     return false;
 }
 
-static bool afo_write_all(xx_io_device *device, const uint8_t *data,
-                          size_t size) {
+static bool afo_write_all(xx_io_device *device, const uint8_t *data, size_t size)
+{
     size_t done = 0U;
     while (done < size) {
         ssize_t amount = xx_io_write(device, data + done, size - done);
@@ -693,17 +635,16 @@ static bool afo_write_all(xx_io_device *device, const uint8_t *data,
 
 /* --- records --------------------------------------------------------------- */
 
-static bool afo_copy_options(xx_list_s *destination, const xx_list_s *source) {
+static bool afo_copy_options(xx_list_s *destination, const xx_list_s *source)
+{
     size_t index;
     if (!source) return true;
     for (index = 0U; index < source->count; ++index) {
-        const xx_meta *original =
-            (const xx_meta *)xx_list_at((const xx_list_t *)source, index);
+        const xx_meta *original = (const xx_meta *)xx_list_at((const xx_list_t *)source, index);
         xx_meta copy;
         if (!original) continue;
         xx_meta_init(&copy, original->meta_id);
-        if (!xx_var_copy(&copy.var, &original->var) ||
-            !xx_list_append(destination, &copy)) {
+        if (!xx_var_copy(&copy.var, &original->var) || !xx_list_append(destination, &copy)) {
             xx_meta_cleanup(&copy);
             return false;
         }
@@ -711,45 +652,35 @@ static bool afo_copy_options(xx_list_s *destination, const xx_list_s *source) {
     return true;
 }
 
-static const xx_var *afo_option(const xx_list_s *options, uint32_t id) {
+static const xx_var *afo_option(const xx_list_s *options, uint32_t id)
+{
     size_t index;
     if (!options) return NULL;
     for (index = 0U; index < options->count; ++index) {
-        const xx_meta *meta =
-            (const xx_meta *)xx_list_at((const xx_list_t *)options, index);
+        const xx_meta *meta = (const xx_meta *)xx_list_at((const xx_list_t *)options, index);
         if (meta && meta->meta_id == id) return &meta->var;
     }
     return NULL;
 }
 
-static bool afo_set_record(Abstractformat *format, xx_archive_record *record,
-                           const afo_member *member) {
+static bool afo_set_record(Abstractformat *format, xx_archive_record *record, const afo_member *member)
+{
     xx_archive_record_cleanup(record);
     xx_archive_record_init(record);
     record->header_offset = format->base_address + member->offset;
     record->header_size = (int64_t)AFO_FINEAR_SIZE;
-    record->data_offset =
-        format->base_address + member->offset + (int64_t)AFO_FINEAR_SIZE;
-    record->compressed_size =
-        (int64_t)member->stream_size - (int64_t)AFO_FINEAR_SIZE;
-    return xx_archive_record_set_original_name(record, member->name) &&
-           xx_archive_record_set_meta_u64(record, XX_META_ID_UNCOMPRESSED_SIZE,
-                                          member->plain_size) &&
-           xx_archive_record_set_meta_u64(
-               record, XX_META_ID_COMPRESSED_SIZE,
-               (uint64_t)record->compressed_size) &&
-           xx_archive_record_set_meta_u64(record, XX_META_ID_COMPRESSION_METHOD,
-                                          AFO_METHOD_LH1) &&
-           xx_archive_record_set_meta_bool(record, XX_META_ID_IS_ENCRYPTED,
-                                           false) &&
-           xx_archive_record_set_meta_bool(record, XX_META_ID_IS_FOLDER, false);
+    record->data_offset = format->base_address + member->offset + (int64_t)AFO_FINEAR_SIZE;
+    record->compressed_size = (int64_t)member->stream_size - (int64_t)AFO_FINEAR_SIZE;
+    return xx_archive_record_set_original_name(record, member->name) && xx_archive_record_set_meta_u64(record, XX_META_ID_UNCOMPRESSED_SIZE, member->plain_size) &&
+           xx_archive_record_set_meta_u64(record, XX_META_ID_COMPRESSED_SIZE, (uint64_t)record->compressed_size) &&
+           xx_archive_record_set_meta_u64(record, XX_META_ID_COMPRESSION_METHOD, AFO_METHOD_LH1) &&
+           xx_archive_record_set_meta_bool(record, XX_META_ID_IS_ENCRYPTED, false) && xx_archive_record_set_meta_bool(record, XX_META_ID_IS_FOLDER, false);
 }
 
 /* --- lifecycle ------------------------------------------------------------- */
 
-void xx_sfx_abbyy_fine_objects_init(xx_sfx_abbyy_fine_objects *archive,
-                                    xx_io_device *device,
-                                    int64_t base_address) {
+void xx_sfx_abbyy_fine_objects_init(xx_sfx_abbyy_fine_objects *archive, xx_io_device *device, int64_t base_address)
+{
     if (!archive) return;
     xx_rt_memset(archive, 0, sizeof(*archive));
     xx_format_init(&archive->format, device, base_address);
@@ -760,53 +691,46 @@ void xx_sfx_abbyy_fine_objects_init(xx_sfx_abbyy_fine_objects *archive,
     xx_format_set_mime_type(&archive->format, "application/x-msdos-program");
     xx_format_set_extension(&archive->format, "exe");
     archive->format.check_is_valid = xx_sfx_abbyy_fine_objects_check_is_valid;
-    archive->format.handle_base_info =
-        xx_sfx_abbyy_fine_objects_handle_base_info;
-    archive->format.get_format_size =
-        xx_sfx_abbyy_fine_objects_get_format_size;
-    archive->format.get_number_of_archive_records =
-        xx_sfx_abbyy_fine_objects_get_number_of_archive_records;
-    archive->format.create_archive_records_reading =
-        xx_sfx_abbyy_fine_objects_create_archive_records_reading;
-    archive->format.get_current_archive_record =
-        xx_sfx_abbyy_fine_objects_get_current_archive_record;
-    archive->format.unpack_current_archive_record =
-        xx_sfx_abbyy_fine_objects_unpack_current_archive_record;
-    archive->format.archive_record_move_to_next =
-        xx_sfx_abbyy_fine_objects_archive_record_move_to_next;
-    archive->format.free_archive_records_reading =
-        xx_sfx_abbyy_fine_objects_free_archive_records_reading;
+    archive->format.handle_base_info = xx_sfx_abbyy_fine_objects_handle_base_info;
+    archive->format.get_format_size = xx_sfx_abbyy_fine_objects_get_format_size;
+    archive->format.get_number_of_archive_records = xx_sfx_abbyy_fine_objects_get_number_of_archive_records;
+    archive->format.create_archive_records_reading = xx_sfx_abbyy_fine_objects_create_archive_records_reading;
+    archive->format.get_current_archive_record = xx_sfx_abbyy_fine_objects_get_current_archive_record;
+    archive->format.unpack_current_archive_record = xx_sfx_abbyy_fine_objects_unpack_current_archive_record;
+    archive->format.archive_record_move_to_next = xx_sfx_abbyy_fine_objects_archive_record_move_to_next;
+    archive->format.free_archive_records_reading = xx_sfx_abbyy_fine_objects_free_archive_records_reading;
     archive->overlay_offset = -1;
     archive->streams_offset = -1;
     archive->trailer_offset = -1;
 }
 
-xx_sfx_abbyy_fine_objects *xx_sfx_abbyy_fine_objects_create(
-    xx_io_device *device, int64_t base_address) {
-    xx_sfx_abbyy_fine_objects *archive =
-        (xx_sfx_abbyy_fine_objects *)xx_mem_alloc(sizeof(*archive));
+xx_sfx_abbyy_fine_objects *xx_sfx_abbyy_fine_objects_create(xx_io_device *device, int64_t base_address)
+{
+    xx_sfx_abbyy_fine_objects *archive = (xx_sfx_abbyy_fine_objects *)xx_mem_alloc(sizeof(*archive));
     if (archive) xx_sfx_abbyy_fine_objects_init(archive, device, base_address);
     return archive;
 }
 
-void xx_sfx_abbyy_fine_objects_destroy(xx_sfx_abbyy_fine_objects *archive) {
+void xx_sfx_abbyy_fine_objects_destroy(xx_sfx_abbyy_fine_objects *archive)
+{
     if (archive) xx_format_cleanup_extra_parameters(&archive->format);
 }
 
-void xx_sfx_abbyy_fine_objects_free(xx_sfx_abbyy_fine_objects *archive) {
+void xx_sfx_abbyy_fine_objects_free(xx_sfx_abbyy_fine_objects *archive)
+{
     if (!archive) return;
     xx_sfx_abbyy_fine_objects_destroy(archive);
     xx_mem_free(archive);
 }
 
-bool xx_sfx_abbyy_fine_objects_check_is_valid(Abstractformat *format,
-                                              xx_pd_struct *pd) {
+bool xx_sfx_abbyy_fine_objects_check_is_valid(Abstractformat *format, xx_pd_struct *pd)
+{
     afo_info info;
     return afo_scan(format, &info, pd);
 }
 
-bool xx_sfx_abbyy_fine_objects_handle_base_info(Abstractformat *format,
-                                                xx_pd_struct *pd) {
+bool xx_sfx_abbyy_fine_objects_handle_base_info(Abstractformat *format, xx_pd_struct *pd)
+{
     afo_info info;
     xx_sfx_abbyy_fine_objects *archive;
     if (!format || !afo_scan(format, &info, pd)) return false;
@@ -823,32 +747,26 @@ bool xx_sfx_abbyy_fine_objects_handle_base_info(Abstractformat *format,
     return true;
 }
 
-int64_t xx_sfx_abbyy_fine_objects_get_format_size(Abstractformat *format,
-                                                  xx_pd_struct *pd) {
-    return format && (format->base_info_handled ||
-                      xx_sfx_abbyy_fine_objects_handle_base_info(format, pd))
-               ? format->format_size : -1;
+int64_t xx_sfx_abbyy_fine_objects_get_format_size(Abstractformat *format, xx_pd_struct *pd)
+{
+    return format && (format->base_info_handled || xx_sfx_abbyy_fine_objects_handle_base_info(format, pd)) ? format->format_size : -1;
 }
 
-uint64_t xx_sfx_abbyy_fine_objects_get_number_of_archive_records(
-    Abstractformat *format, xx_pd_struct *pd) {
-    return format && (format->base_info_handled ||
-                      xx_sfx_abbyy_fine_objects_handle_base_info(format, pd))
-               ? ((xx_sfx_abbyy_fine_objects *)format)->number_of_records
-               : 0U;
+uint64_t xx_sfx_abbyy_fine_objects_get_number_of_archive_records(Abstractformat *format, xx_pd_struct *pd)
+{
+    return format && (format->base_info_handled || xx_sfx_abbyy_fine_objects_handle_base_info(format, pd)) ? ((xx_sfx_abbyy_fine_objects *)format)->number_of_records
+                                                                                                           : 0U;
 }
 
-xx_archive_record_state *
-xx_sfx_abbyy_fine_objects_create_archive_records_reading(
-    Abstractformat *format, const xx_list_s *options, xx_pd_struct *pd) {
+xx_archive_record_state *xx_sfx_abbyy_fine_objects_create_archive_records_reading(Abstractformat *format, const xx_list_s *options, xx_pd_struct *pd)
+{
     afo_info info;
     afo_stream *stream;
     xx_archive_record_state *state;
     if (!afo_scan(format, &info, pd)) return NULL;
     stream = (afo_stream *)xx_mem_calloc(1U, sizeof(*stream));
     if (!stream) return NULL;
-    stream->items =
-        (afo_member *)xx_mem_calloc(info.count, sizeof(*stream->items));
+    stream->items = (afo_member *)xx_mem_calloc(info.count, sizeof(*stream->items));
     stream->count = info.count;
     if (!stream->items || !afo_load(format, &info, stream->items, pd)) {
         afo_stream_free(stream);
@@ -863,8 +781,7 @@ xx_sfx_abbyy_fine_objects_create_archive_records_reading(
     state->internal_state = stream;
     state->free_internal = afo_stream_free;
     state->total_records = (int64_t)stream->count;
-    if (!afo_copy_options(&state->options, options) ||
-        !afo_set_record(format, &state->current_record, &stream->items[0])) {
+    if (!afo_copy_options(&state->options, options) || !afo_set_record(format, &state->current_record, &stream->items[0])) {
         xx_archive_record_state_free(state);
         return NULL;
     }
@@ -872,26 +789,22 @@ xx_sfx_abbyy_fine_objects_create_archive_records_reading(
     return state;
 }
 
-const xx_archive_record *xx_sfx_abbyy_fine_objects_get_current_archive_record(
-    Abstractformat *format, xx_archive_record_state *state) {
-    return format && state && state->format == format && state->has_record
-               ? &state->current_record : NULL;
+const xx_archive_record *xx_sfx_abbyy_fine_objects_get_current_archive_record(Abstractformat *format, xx_archive_record_state *state)
+{
+    return format && state && state->format == format && state->has_record ? &state->current_record : NULL;
 }
 
-bool xx_sfx_abbyy_fine_objects_archive_record_move_to_next(
-    Abstractformat *format, xx_archive_record_state *state, xx_pd_struct *pd) {
+bool xx_sfx_abbyy_fine_objects_archive_record_move_to_next(Abstractformat *format, xx_archive_record_state *state, xx_pd_struct *pd)
+{
     afo_stream *stream;
     (void)pd;
-    if (!format || !state || state->format != format ||
-        !(stream = (afo_stream *)state->internal_state) ||
-        stream->index + 1U >= stream->count) {
+    if (!format || !state || state->format != format || !(stream = (afo_stream *)state->internal_state) || stream->index + 1U >= stream->count) {
         if (state) state->has_record = false;
         return false;
     }
     ++stream->index;
     ++state->current_index;
-    if (!afo_set_record(format, &state->current_record,
-                        &stream->items[stream->index])) {
+    if (!afo_set_record(format, &state->current_record, &stream->items[stream->index])) {
         state->has_record = false;
         return false;
     }
@@ -899,8 +812,8 @@ bool xx_sfx_abbyy_fine_objects_archive_record_move_to_next(
     return true;
 }
 
-bool xx_sfx_abbyy_fine_objects_unpack_current_archive_record(
-    Abstractformat *format, xx_archive_record_state *state, xx_pd_struct *pd) {
+bool xx_sfx_abbyy_fine_objects_unpack_current_archive_record(Abstractformat *format, xx_archive_record_state *state, xx_pd_struct *pd)
+{
     afo_stream *stream;
     const afo_member *member;
     const xx_var *path_option;
@@ -910,9 +823,8 @@ bool xx_sfx_abbyy_fine_objects_unpack_current_archive_record(
     uint8_t *plain = NULL;
     bool result = false;
     bool created = false;
-    if (!format || !state || state->format != format || !state->has_record ||
-        !(stream = (afo_stream *)state->internal_state) ||
-        stream->index >= stream->count || afo_stopped(pd))
+    if (!format || !state || state->format != format || !state->has_record || !(stream = (afo_stream *)state->internal_state) || stream->index >= stream->count ||
+        afo_stopped(pd))
         return false;
     member = &stream->items[stream->index];
     path_option = afo_option(&state->options, XX_META_ID_OPT_UNPACK_PATH);
@@ -921,21 +833,16 @@ bool xx_sfx_abbyy_fine_objects_unpack_current_archive_record(
         xx_mem_free(plain);
         return true;
     }
-    if (!member->safe || !afo_safe_name(member->raw, member->raw_size))
-        return false;
-    if (path_option->type == XX_VAR_TYPE_STRING ||
-        path_option->type == XX_VAR_TYPE_STRING_VIEW) {
+    if (!member->safe || !afo_safe_name(member->raw, member->raw_size)) return false;
+    if (path_option->type == XX_VAR_TYPE_STRING || path_option->type == XX_VAR_TYPE_STRING_VIEW) {
         base = xx_var_get_str(path_option);
-    } else if (path_option->type == XX_VAR_TYPE_WSTRING ||
-               path_option->type == XX_VAR_TYPE_WSTRING_VIEW) {
+    } else if (path_option->type == XX_VAR_TYPE_WSTRING || path_option->type == XX_VAR_TYPE_WSTRING_VIEW) {
         owned_base = xx_str_unicode_to_utf8(xx_var_get_wstr(path_option));
         base = owned_base;
     }
     if (!base || !afo_decode(format, member, &plain, pd)) goto done;
-    path = (base[0] && base[xx_str_len(base) - 1U] != '/' &&
-            base[xx_str_len(base) - 1U] != '\\')
-               ? xx_str_concat3(base, "/", member->name)
-               : xx_str_concat(base, member->name);
+    path = (base[0] && base[xx_str_len(base) - 1U] != '/' && base[xx_str_len(base) - 1U] != '\\') ? xx_str_concat3(base, "/", member->name)
+                                                                                                  : xx_str_concat(base, member->name);
     if (!path || !xx_store_create_dirs_a(path, false)) goto done;
     {
         xx_io_device *destination = xx_io_file_open(path, "wb");
@@ -952,8 +859,8 @@ done:
     return result;
 }
 
-void xx_sfx_abbyy_fine_objects_free_archive_records_reading(
-    Abstractformat *format, xx_archive_record_state *state) {
+void xx_sfx_abbyy_fine_objects_free_archive_records_reading(Abstractformat *format, xx_archive_record_state *state)
+{
     (void)format;
     xx_archive_record_state_free(state);
 }

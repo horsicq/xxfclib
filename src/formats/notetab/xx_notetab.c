@@ -68,8 +68,8 @@
 #define NOTETAB_MAX_INPUT (64 * 1024 * 1024)
 
 typedef struct notetab_clip_s {
-    char *name;         /* sanitised heading + ".txt" */
-    uint8_t *prefix;    /* heading + CRLF CRLF, prepended on extraction */
+    char *name;      /* sanitised heading + ".txt" */
+    uint8_t *prefix; /* heading + CRLF CRLF, prepended on extraction */
     size_t prefix_size;
     int64_t body_offset;
     int64_t body_size;
@@ -83,27 +83,25 @@ typedef struct notetab_stream_s {
     int64_t header_size;
 } notetab_stream;
 
-static bool notetab_read_at(xx_io_device *device, int64_t offset,
-                            void *buffer, size_t size) {
+static bool notetab_read_at(xx_io_device *device, int64_t offset, void *buffer, size_t size)
+{
     size_t done = 0U;
-    if (!device || (!buffer && size != 0U) || offset < 0 ||
-        xx_io_seek64(device, offset, SEEK_SET) != 0)
-        return false;
+    if (!device || (!buffer && size != 0U) || offset < 0 || xx_io_seek64(device, offset, SEEK_SET) != 0) return false;
     while (done < size) {
-        ssize_t amount = xx_io_read(device, (uint8_t *)buffer + done,
-                                    size - done);
+        ssize_t amount = xx_io_read(device, (uint8_t *)buffer + done, size - done);
         if (amount <= 0 || (size_t)amount > size - done) return false;
         done += (size_t)amount;
     }
     return true;
 }
 
-static bool notetab_is_version_digit(uint8_t digit) {
+static bool notetab_is_version_digit(uint8_t digit)
+{
     return digit == (uint8_t)'4' || digit == (uint8_t)'5';
 }
 
-static bool notetab_contains(const uint8_t *data, size_t size,
-                             const char *needle) {
+static bool notetab_contains(const uint8_t *data, size_t size, const char *needle)
+{
     size_t needle_size = xx_rt_strlen(needle);
     size_t index;
     if (needle_size == 0U || size < needle_size) return false;
@@ -114,18 +112,16 @@ static bool notetab_contains(const uint8_t *data, size_t size,
 
 /* The declaration line alone ("= V4 ") is far too weak a signature, so the
  * keyword gate of the reference reader is reproduced exactly. */
-static bool notetab_check_declaration(const uint8_t *data, int64_t size) {
+static bool notetab_check_declaration(const uint8_t *data, int64_t size)
+{
     int64_t probe, line_end, at;
-    static const char *const keywords[] = {"Outline", "MultiLine",
-                                           "NoSorting", "TabWidth",
-                                           "AutoReplace"};
+    static const char *const keywords[] = {"Outline", "MultiLine", "NoSorting", "TabWidth", "AutoReplace"};
     size_t index;
     if (!data || size < (int64_t)NOTETAB_TAG_SIZE) return false;
     if (xx_rt_memcmp(data, "= V", 3U) != 0) return false;
     if (!notetab_is_version_digit(data[3])) return false;
     if (data[4] != (uint8_t)' ') return false;
-    probe = size < NOTETAB_DECLARATION_LIMIT ? size
-                                             : NOTETAB_DECLARATION_LIMIT;
+    probe = size < NOTETAB_DECLARATION_LIMIT ? size : NOTETAB_DECLARATION_LIMIT;
     line_end = probe;
     for (at = 0; at < probe; ++at) {
         if (data[at] == (uint8_t)'\r' || data[at] == (uint8_t)'\n') {
@@ -134,16 +130,14 @@ static bool notetab_check_declaration(const uint8_t *data, int64_t size) {
         }
     }
     for (index = 0U; index < sizeof(keywords) / sizeof(keywords[0]); ++index)
-        if (notetab_contains(data, (size_t)line_end, keywords[index]))
-            return true;
+        if (notetab_contains(data, (size_t)line_end, keywords[index])) return true;
     return false;
 }
 
 /* Returns false at end of input.  A CRLF or LFCR pair counts as one
  * terminator; a doubled CR or a doubled LF does not. */
-static bool notetab_read_line(const uint8_t *data, int64_t size,
-                              int64_t *position, int64_t *line_offset,
-                              int64_t *line_size) {
+static bool notetab_read_line(const uint8_t *data, int64_t size, int64_t *position, int64_t *line_offset, int64_t *line_size)
+{
     int64_t start = *position;
     int64_t current;
     *line_offset = start;
@@ -156,9 +150,7 @@ static bool notetab_read_line(const uint8_t *data, int64_t size,
             ++current;
             if (current < size) {
                 uint8_t next = data[current];
-                if ((c == (uint8_t)'\r' && next == (uint8_t)'\n') ||
-                    (c == (uint8_t)'\n' && next == (uint8_t)'\r'))
-                    ++current;
+                if ((c == (uint8_t)'\r' && next == (uint8_t)'\n') || (c == (uint8_t)'\n' && next == (uint8_t)'\r')) ++current;
             }
             break;
         }
@@ -171,12 +163,9 @@ static bool notetab_read_line(const uint8_t *data, int64_t size,
 
 /* @p tag_size is 3 for the quoted dialect and 2 for the unquoted one; the
  * caller has already decided which this document uses. */
-static bool notetab_is_heading(const uint8_t *data, int64_t size,
-                               int64_t line_offset, int64_t line_size,
-                               size_t tag_size) {
-    const char *tag = (tag_size == NOTETAB_HEADING_TAG_PLAIN_SIZE)
-                          ? NOTETAB_HEADING_TAG_PLAIN
-                          : NOTETAB_HEADING_TAG;
+static bool notetab_is_heading(const uint8_t *data, int64_t size, int64_t line_offset, int64_t line_size, size_t tag_size)
+{
+    const char *tag = (tag_size == NOTETAB_HEADING_TAG_PLAIN_SIZE) ? NOTETAB_HEADING_TAG_PLAIN : NOTETAB_HEADING_TAG;
     if (line_size < (int64_t)tag_size) return false;
     if (line_offset < 0 || line_offset > size - (int64_t)tag_size) return false;
     return xx_rt_memcmp(data + line_offset, tag, tag_size) == 0;
@@ -187,20 +176,14 @@ static bool notetab_is_heading(const uint8_t *data, int64_t size,
  * text rather than a heading.  Deciding per line instead would split quoted
  * documents whose clips store H= lines.  Returns 0 when the body opens no
  * clip at all in either dialect, which is not a clipbook. */
-static size_t notetab_pick_dialect(const uint8_t *data, int64_t size,
-                                   int64_t body_start) {
+static size_t notetab_pick_dialect(const uint8_t *data, int64_t size, int64_t body_start)
+{
     int64_t position = body_start;
     int64_t line_offset, line_size;
     bool saw_plain = false;
-    while (notetab_read_line(data, size, &position, &line_offset,
-                             &line_size)) {
-        if (notetab_is_heading(data, size, line_offset, line_size,
-                               NOTETAB_HEADING_TAG_SIZE))
-            return NOTETAB_HEADING_TAG_SIZE;
-        if (!saw_plain &&
-            notetab_is_heading(data, size, line_offset, line_size,
-                               NOTETAB_HEADING_TAG_PLAIN_SIZE))
-            saw_plain = true;
+    while (notetab_read_line(data, size, &position, &line_offset, &line_size)) {
+        if (notetab_is_heading(data, size, line_offset, line_size, NOTETAB_HEADING_TAG_SIZE)) return NOTETAB_HEADING_TAG_SIZE;
+        if (!saw_plain && notetab_is_heading(data, size, line_offset, line_size, NOTETAB_HEADING_TAG_PLAIN_SIZE)) saw_plain = true;
     }
     return saw_plain ? NOTETAB_HEADING_TAG_PLAIN_SIZE : 0U;
 }
@@ -209,7 +192,8 @@ static size_t notetab_pick_dialect(const uint8_t *data, int64_t size,
  * tabs inside them.  Folding the reserved set to '_' reproduces the output
  * names of the reference tool and keeps the member from being read as a
  * path. */
-static char *notetab_build_name(const uint8_t *bytes, size_t size) {
+static char *notetab_build_name(const uint8_t *bytes, size_t size)
+{
     char *name;
     size_t index, output = 0U;
     if (size > SIZE_MAX - 8U) return NULL;
@@ -217,11 +201,8 @@ static char *notetab_build_name(const uint8_t *bytes, size_t size) {
     if (!name) return NULL;
     for (index = 0U; index < size; ++index) {
         uint8_t c = bytes[index];
-        bool reserved = c < 0x20U || c == (uint8_t)'<' || c == (uint8_t)'>' ||
-                        c == (uint8_t)':' || c == (uint8_t)'"' ||
-                        c == (uint8_t)'/' || c == (uint8_t)'\\' ||
-                        c == (uint8_t)'|' || c == (uint8_t)'?' ||
-                        c == (uint8_t)'*';
+        bool reserved = c < 0x20U || c == (uint8_t)'<' || c == (uint8_t)'>' || c == (uint8_t)':' || c == (uint8_t)'"' || c == (uint8_t)'/' || c == (uint8_t)'\\' ||
+                        c == (uint8_t)'|' || c == (uint8_t)'?' || c == (uint8_t)'*';
         name[output++] = reserved ? '_' : (char)c;
     }
     if (output == 0U) name[output++] = '_';
@@ -233,52 +214,44 @@ static char *notetab_build_name(const uint8_t *bytes, size_t size) {
     return name;
 }
 
-static bool notetab_safe_output_name(const char *name) {
+static bool notetab_safe_output_name(const char *name)
+{
     const char *at;
-    if (!name || !name[0] || name[0] == '/' || name[0] == '\\' ||
-        name[1] == ':') return false;
+    if (!name || !name[0] || name[0] == '/' || name[0] == '\\' || name[1] == ':') return false;
     for (at = name; *at; ++at) {
         unsigned char c = (unsigned char)*at;
-        if (c == ':' || c == '<' || c == '>' || c == '"' || c == '|' ||
-            c == '?' || c == '*' || c == '/' || c == '\\' || c < 0x20U)
-            return false;
+        if (c == ':' || c == '<' || c == '>' || c == '"' || c == '|' || c == '?' || c == '*' || c == '/' || c == '\\' || c < 0x20U) return false;
     }
-    if (name[0] == '.' && (!name[1] || (name[1] == '.' && !name[2])))
-        return false;
+    if (name[0] == '.' && (!name[1] || (name[1] == '.' && !name[2]))) return false;
     return true;
 }
 
-static void notetab_stream_free(void *opaque) {
+static void notetab_stream_free(void *opaque)
+{
     notetab_stream *stream = (notetab_stream *)opaque;
     size_t index;
     if (!stream) return;
     for (index = 0U; index < stream->count; ++index) {
         if (stream->items[index].name) xx_str_free(stream->items[index].name);
-        if (stream->items[index].prefix)
-            xx_mem_free(stream->items[index].prefix);
+        if (stream->items[index].prefix) xx_mem_free(stream->items[index].prefix);
     }
     if (stream->items) xx_mem_free(stream->items);
     xx_mem_free(stream);
 }
 
-static bool notetab_add_clip(notetab_stream *stream,
-                             const notetab_clip *clip) {
+static bool notetab_add_clip(notetab_stream *stream, const notetab_clip *clip)
+{
     notetab_clip *grown;
-    if (!stream || !clip || stream->count >= NOTETAB_MAX_CLIPS ||
-        stream->count > SIZE_MAX / sizeof(*grown) - 1U)
-        return false;
-    grown = (notetab_clip *)xx_mem_realloc(stream->items,
-                                           (stream->count + 1U) *
-                                               sizeof(*grown));
+    if (!stream || !clip || stream->count >= NOTETAB_MAX_CLIPS || stream->count > SIZE_MAX / sizeof(*grown) - 1U) return false;
+    grown = (notetab_clip *)xx_mem_realloc(stream->items, (stream->count + 1U) * sizeof(*grown));
     if (!grown) return false;
     stream->items = grown;
     stream->items[stream->count++] = *clip;
     return true;
 }
 
-static bool notetab_emit(notetab_stream *stream, const uint8_t *data,
-                         int64_t name_offset, int64_t name_size,
-                         int64_t body_offset, int64_t body_end) {
+static bool notetab_emit(notetab_stream *stream, const uint8_t *data, int64_t name_offset, int64_t name_size, int64_t body_offset, int64_t body_end)
+{
     notetab_clip clip;
     uint8_t *prefix;
     size_t prefix_size;
@@ -289,8 +262,7 @@ static bool notetab_emit(notetab_stream *stream, const uint8_t *data,
     prefix_size = (size_t)name_size + 4U;
     prefix = (uint8_t *)xx_mem_alloc(prefix_size);
     if (!prefix) return false;
-    if (name_size != 0)
-        xx_rt_memcpy(prefix, data + name_offset, (size_t)name_size);
+    if (name_size != 0) xx_rt_memcpy(prefix, data + name_offset, (size_t)name_size);
     prefix[name_size] = (uint8_t)'\r';
     prefix[name_size + 1] = (uint8_t)'\n';
     prefix[name_size + 2] = (uint8_t)'\r';
@@ -310,25 +282,22 @@ static bool notetab_emit(notetab_stream *stream, const uint8_t *data,
     return true;
 }
 
-static bool notetab_parse(Abstractformat *format, notetab_stream **result) {
+static bool notetab_parse(Abstractformat *format, notetab_stream **result)
+{
     notetab_stream *stream = NULL;
     uint8_t *data = NULL;
     int64_t total, size, position, line_offset, line_size;
     int64_t name_offset = -1, name_size = 0, body_offset = -1;
     int64_t body_start;
     size_t tag_size;
-    if (!format || !format->device || !result || format->base_address < 0)
-        return false;
+    if (!format || !format->device || !result || format->base_address < 0) return false;
     total = xx_io_total_size(format->device);
     if (total < format->base_address) return false;
     size = total - format->base_address;
-    if (size < (int64_t)NOTETAB_TAG_SIZE || size > NOTETAB_MAX_INPUT)
-        return false;
+    if (size < (int64_t)NOTETAB_TAG_SIZE || size > NOTETAB_MAX_INPUT) return false;
     data = (uint8_t *)xx_mem_alloc((size_t)size);
     if (!data) return false;
-    if (!notetab_read_at(format->device, format->base_address, data,
-                         (size_t)size) ||
-        !notetab_check_declaration(data, size)) {
+    if (!notetab_read_at(format->device, format->base_address, data, (size_t)size) || !notetab_check_declaration(data, size)) {
         xx_mem_free(data);
         return false;
     }
@@ -340,10 +309,8 @@ static bool notetab_parse(Abstractformat *format, notetab_stream **result) {
     stream->input_size = size;
     position = 0;
     /* Line 1 is the declaration, line 2 is skipped unconditionally. */
-    if (!notetab_read_line(data, size, &position, &line_offset, &line_size))
-        goto fail;
-    if (!notetab_read_line(data, size, &position, &line_offset, &line_size))
-        goto fail;
+    if (!notetab_read_line(data, size, &position, &line_offset, &line_size)) goto fail;
+    if (!notetab_read_line(data, size, &position, &line_offset, &line_size)) goto fail;
     body_start = position;
     /* One decision for the whole document, taken before a single clip is
      * cut; see the dialect note at the top of this file. */
@@ -353,24 +320,18 @@ static bool notetab_parse(Abstractformat *format, notetab_stream **result) {
      * no clip: it is the library's preamble (';' comments and blank lines),
      * and it is counted as header rather than made a parse error. */
     position = body_start;
-    while (notetab_read_line(data, size, &position, &line_offset,
-                             &line_size)) {
-        if (notetab_is_heading(data, size, line_offset, line_size, tag_size))
-            break;
+    while (notetab_read_line(data, size, &position, &line_offset, &line_size)) {
+        if (notetab_is_heading(data, size, line_offset, line_size, tag_size)) break;
         body_start = position;
     }
     stream->header_size = body_start;
     position = body_start;
-    while (notetab_read_line(data, size, &position, &line_offset,
-                             &line_size)) {
-        bool heading =
-            notetab_is_heading(data, size, line_offset, line_size, tag_size);
+    while (notetab_read_line(data, size, &position, &line_offset, &line_size)) {
+        bool heading = notetab_is_heading(data, size, line_offset, line_size, tag_size);
         if (heading) {
             /* A heading closes the clip that was open; that clip's body ends
              * at the first byte of this line. */
-            if (name_offset >= 0 && body_offset >= 0 &&
-                !notetab_emit(stream, data, name_offset, name_size,
-                              body_offset, line_offset)) goto fail;
+            if (name_offset >= 0 && body_offset >= 0 && !notetab_emit(stream, data, name_offset, name_size, body_offset, line_offset)) goto fail;
             name_offset = -1;
             body_offset = -1;
         }
@@ -381,8 +342,7 @@ static bool notetab_parse(Abstractformat *format, notetab_stream **result) {
              * this grammar does not describe. */
             if (!heading) goto fail;
             available = line_size - (int64_t)tag_size;
-            probe = available < NOTETAB_MAX_NAME + 1 ? available
-                                                     : NOTETAB_MAX_NAME + 1;
+            probe = available < NOTETAB_MAX_NAME + 1 ? available : NOTETAB_MAX_NAME + 1;
             name_offset = line_offset + (int64_t)tag_size;
             name_size = -1;
             if (tag_size == NOTETAB_HEADING_TAG_SIZE) {
@@ -401,10 +361,7 @@ static bool notetab_parse(Abstractformat *format, notetab_stream **result) {
              * into every unquoted clip's file name. */
             if (name_size < 0) {
                 name_size = available;
-                while (name_size > 0 &&
-                       (data[name_offset + name_size - 1] == (uint8_t)'\r' ||
-                        data[name_offset + name_size - 1] == (uint8_t)'\n'))
-                    --name_size;
+                while (name_size > 0 && (data[name_offset + name_size - 1] == (uint8_t)'\r' || data[name_offset + name_size - 1] == (uint8_t)'\n')) --name_size;
                 if (name_size > NOTETAB_MAX_NAME) name_size = NOTETAB_MAX_NAME;
             }
             if (name_size > NOTETAB_MAX_NAME) name_size = NOTETAB_MAX_NAME;
@@ -415,9 +372,7 @@ static bool notetab_parse(Abstractformat *format, notetab_stream **result) {
     }
     /* The document ends without a closing heading: the final clip's body
      * runs to end of file. */
-    if (name_offset >= 0 && body_offset >= 0 &&
-        !notetab_emit(stream, data, name_offset, name_size, body_offset,
-                      size)) goto fail;
+    if (name_offset >= 0 && body_offset >= 0 && !notetab_emit(stream, data, name_offset, name_size, body_offset, size)) goto fail;
     if (stream->count == 0U) goto fail;
     xx_mem_free(data);
     *result = stream;
@@ -428,18 +383,16 @@ fail:
     return false;
 }
 
-static bool notetab_copy_options(xx_list_s *destination,
-                                 const xx_list_s *source) {
+static bool notetab_copy_options(xx_list_s *destination, const xx_list_s *source)
+{
     size_t index;
     if (!source) return true;
     for (index = 0U; index < source->count; ++index) {
-        const xx_meta *original =
-            (const xx_meta *)xx_list_at((const xx_list_t *)source, index);
+        const xx_meta *original = (const xx_meta *)xx_list_at((const xx_list_t *)source, index);
         xx_meta copy;
         if (!original) continue;
         xx_meta_init(&copy, original->meta_id);
-        if (!xx_var_copy(&copy.var, &original->var) ||
-            !xx_list_append(destination, &copy)) {
+        if (!xx_var_copy(&copy.var, &original->var) || !xx_list_append(destination, &copy)) {
             xx_meta_cleanup(&copy);
             return false;
         }
@@ -447,40 +400,32 @@ static bool notetab_copy_options(xx_list_s *destination,
     return true;
 }
 
-static const xx_var *notetab_option(const xx_list_s *options, uint32_t id) {
+static const xx_var *notetab_option(const xx_list_s *options, uint32_t id)
+{
     size_t index;
     if (!options) return NULL;
     for (index = 0U; index < options->count; ++index) {
-        const xx_meta *meta =
-            (const xx_meta *)xx_list_at((const xx_list_t *)options, index);
+        const xx_meta *meta = (const xx_meta *)xx_list_at((const xx_list_t *)options, index);
         if (meta && meta->meta_id == id) return &meta->var;
     }
     return NULL;
 }
 
-static bool notetab_set_record(xx_archive_record *record,
-                               const notetab_clip *clip) {
+static bool notetab_set_record(xx_archive_record *record, const notetab_clip *clip)
+{
     xx_archive_record_cleanup(record);
     xx_archive_record_init(record);
     record->header_offset = clip->body_offset;
     record->header_size = 0;
     record->data_offset = clip->body_offset;
     record->compressed_size = clip->body_size;
-    return xx_archive_record_set_original_name(record, clip->name) &&
-           xx_archive_record_set_meta_u64(record, XX_META_ID_COMPRESSED_SIZE,
-                                          (uint64_t)clip->body_size) &&
-           xx_archive_record_set_meta_u64(record,
-                                          XX_META_ID_UNCOMPRESSED_SIZE,
-                                          (uint64_t)clip->body_size +
-                                              clip->prefix_size) &&
-           xx_archive_record_set_meta_u64(record,
-                                          XX_META_ID_COMPRESSION_METHOD, 0U) &&
-           xx_archive_record_set_meta_bool(record, XX_META_ID_IS_FOLDER,
-                                           false);
+    return xx_archive_record_set_original_name(record, clip->name) && xx_archive_record_set_meta_u64(record, XX_META_ID_COMPRESSED_SIZE, (uint64_t)clip->body_size) &&
+           xx_archive_record_set_meta_u64(record, XX_META_ID_UNCOMPRESSED_SIZE, (uint64_t)clip->body_size + clip->prefix_size) &&
+           xx_archive_record_set_meta_u64(record, XX_META_ID_COMPRESSION_METHOD, 0U) && xx_archive_record_set_meta_bool(record, XX_META_ID_IS_FOLDER, false);
 }
 
-void xx_notetab_init(xx_notetab *archive, xx_io_device *device,
-                     int64_t base_address) {
+void xx_notetab_init(xx_notetab *archive, xx_io_device *device, int64_t base_address)
+{
     if (!archive) return;
     xx_mem_zero(archive, sizeof(*archive));
     xx_format_init(&archive->format, device, base_address);
@@ -493,37 +438,35 @@ void xx_notetab_init(xx_notetab *archive, xx_io_device *device,
     archive->format.check_is_valid = xx_notetab_check_is_valid;
     archive->format.handle_base_info = xx_notetab_handle_base_info;
     archive->format.get_format_size = xx_notetab_get_format_size;
-    archive->format.get_number_of_archive_records =
-        xx_notetab_get_number_of_archive_records;
-    archive->format.create_archive_records_reading =
-        xx_notetab_create_archive_records_reading;
-    archive->format.get_current_archive_record =
-        xx_notetab_get_current_archive_record;
-    archive->format.unpack_current_archive_record =
-        xx_notetab_unpack_current_archive_record;
-    archive->format.archive_record_move_to_next =
-        xx_notetab_archive_record_move_to_next;
-    archive->format.free_archive_records_reading =
-        xx_notetab_free_archive_records_reading;
+    archive->format.get_number_of_archive_records = xx_notetab_get_number_of_archive_records;
+    archive->format.create_archive_records_reading = xx_notetab_create_archive_records_reading;
+    archive->format.get_current_archive_record = xx_notetab_get_current_archive_record;
+    archive->format.unpack_current_archive_record = xx_notetab_unpack_current_archive_record;
+    archive->format.archive_record_move_to_next = xx_notetab_archive_record_move_to_next;
+    archive->format.free_archive_records_reading = xx_notetab_free_archive_records_reading;
 }
 
-xx_notetab *xx_notetab_create(xx_io_device *device, int64_t base_address) {
+xx_notetab *xx_notetab_create(xx_io_device *device, int64_t base_address)
+{
     xx_notetab *archive = (xx_notetab *)xx_mem_alloc(sizeof(*archive));
     if (archive) xx_notetab_init(archive, device, base_address);
     return archive;
 }
 
-void xx_notetab_destroy(xx_notetab *archive) {
+void xx_notetab_destroy(xx_notetab *archive)
+{
     if (archive) xx_format_cleanup_extra_parameters(&archive->format);
 }
 
-void xx_notetab_free(xx_notetab *archive) {
+void xx_notetab_free(xx_notetab *archive)
+{
     if (!archive) return;
     xx_notetab_destroy(archive);
     xx_mem_free(archive);
 }
 
-bool xx_notetab_check_is_valid(Abstractformat *format, xx_pd_struct *pd) {
+bool xx_notetab_check_is_valid(Abstractformat *format, xx_pd_struct *pd)
+{
     notetab_stream *stream;
     (void)pd;
     if (!notetab_parse(format, &stream)) return false;
@@ -531,7 +474,8 @@ bool xx_notetab_check_is_valid(Abstractformat *format, xx_pd_struct *pd) {
     return true;
 }
 
-bool xx_notetab_handle_base_info(Abstractformat *format, xx_pd_struct *pd) {
+bool xx_notetab_handle_base_info(Abstractformat *format, xx_pd_struct *pd)
+{
     notetab_stream *stream;
     xx_notetab *archive;
     (void)pd;
@@ -546,22 +490,18 @@ bool xx_notetab_handle_base_info(Abstractformat *format, xx_pd_struct *pd) {
     return true;
 }
 
-int64_t xx_notetab_get_format_size(Abstractformat *format,
-                                   xx_pd_struct *pd) {
-    return format && (format->base_info_handled ||
-                      xx_notetab_handle_base_info(format, pd))
-               ? format->format_size : -1;
+int64_t xx_notetab_get_format_size(Abstractformat *format, xx_pd_struct *pd)
+{
+    return format && (format->base_info_handled || xx_notetab_handle_base_info(format, pd)) ? format->format_size : -1;
 }
 
-uint64_t xx_notetab_get_number_of_archive_records(Abstractformat *format,
-                                                  xx_pd_struct *pd) {
-    return format && (format->base_info_handled ||
-                      xx_notetab_handle_base_info(format, pd))
-               ? ((xx_notetab *)format)->number_of_records : 0U;
+uint64_t xx_notetab_get_number_of_archive_records(Abstractformat *format, xx_pd_struct *pd)
+{
+    return format && (format->base_info_handled || xx_notetab_handle_base_info(format, pd)) ? ((xx_notetab *)format)->number_of_records : 0U;
 }
 
-xx_archive_record_state *xx_notetab_create_archive_records_reading(
-    Abstractformat *format, const xx_list_s *options, xx_pd_struct *pd) {
+xx_archive_record_state *xx_notetab_create_archive_records_reading(Abstractformat *format, const xx_list_s *options, xx_pd_struct *pd)
+{
     notetab_stream *stream;
     xx_archive_record_state *state;
     (void)pd;
@@ -575,8 +515,7 @@ xx_archive_record_state *xx_notetab_create_archive_records_reading(
     state->internal_state = stream;
     state->free_internal = notetab_stream_free;
     state->total_records = stream->count;
-    if (!notetab_copy_options(&state->options, options) ||
-        !notetab_set_record(&state->current_record, &stream->items[0])) {
+    if (!notetab_copy_options(&state->options, options) || !notetab_set_record(&state->current_record, &stream->items[0])) {
         xx_archive_record_state_free(state);
         return NULL;
     }
@@ -584,32 +523,26 @@ xx_archive_record_state *xx_notetab_create_archive_records_reading(
     return state;
 }
 
-const xx_archive_record *xx_notetab_get_current_archive_record(
-    Abstractformat *format, xx_archive_record_state *state) {
-    return format && state && state->format == format && state->has_record
-               ? &state->current_record : NULL;
+const xx_archive_record *xx_notetab_get_current_archive_record(Abstractformat *format, xx_archive_record_state *state)
+{
+    return format && state && state->format == format && state->has_record ? &state->current_record : NULL;
 }
 
-bool xx_notetab_archive_record_move_to_next(Abstractformat *format,
-                                            xx_archive_record_state *state,
-                                            xx_pd_struct *pd) {
+bool xx_notetab_archive_record_move_to_next(Abstractformat *format, xx_archive_record_state *state, xx_pd_struct *pd)
+{
     notetab_stream *stream;
     (void)pd;
-    if (!format || !state || state->format != format ||
-        !(stream = (notetab_stream *)state->internal_state) ||
-        ++stream->index >= stream->count) {
+    if (!format || !state || state->format != format || !(stream = (notetab_stream *)state->internal_state) || ++stream->index >= stream->count) {
         if (state) state->has_record = false;
         return false;
     }
     ++state->current_index;
-    state->has_record = notetab_set_record(&state->current_record,
-                                           &stream->items[stream->index]);
+    state->has_record = notetab_set_record(&state->current_record, &stream->items[stream->index]);
     return state->has_record;
 }
 
-bool xx_notetab_unpack_current_archive_record(Abstractformat *format,
-                                              xx_archive_record_state *state,
-                                              xx_pd_struct *pd) {
+bool xx_notetab_unpack_current_archive_record(Abstractformat *format, xx_archive_record_state *state, xx_pd_struct *pd)
+{
     notetab_stream *stream;
     notetab_clip *clip;
     const xx_var *path_option;
@@ -620,19 +553,14 @@ bool xx_notetab_unpack_current_archive_record(Abstractformat *format,
     size_t previous;
     bool result = false;
     bool created = false;
-    if (!format || !state || state->format != format || !state->has_record ||
-        !(stream = (notetab_stream *)state->internal_state) ||
-        stream->index >= stream->count || (pd && xx_pd_is_stopped(pd)))
+    if (!format || !state || state->format != format || !state->has_record || !(stream = (notetab_stream *)state->internal_state) || stream->index >= stream->count ||
+        (pd && xx_pd_is_stopped(pd)))
         return false;
     clip = &stream->items[stream->index];
-    if (!notetab_safe_output_name(clip->name) || clip->body_size < 0 ||
-        (uint64_t)clip->body_size > (uint64_t)SIZE_MAX) return false;
+    if (!notetab_safe_output_name(clip->name) || clip->body_size < 0 || (uint64_t)clip->body_size > (uint64_t)SIZE_MAX) return false;
     if (clip->body_size != 0) {
         body = (uint8_t *)xx_mem_alloc((size_t)clip->body_size);
-        if (!body ||
-            !notetab_read_at(format->device,
-                             format->base_address + clip->body_offset, body,
-                             (size_t)clip->body_size)) goto done;
+        if (!body || !notetab_read_at(format->device, format->base_address + clip->body_offset, body, (size_t)clip->body_size)) goto done;
     }
     path_option = notetab_option(&state->options, XX_META_ID_OPT_UNPACK_PATH);
     /* Windows folds case in output paths. NoteTab can store both H="cds" and
@@ -649,19 +577,14 @@ bool xx_notetab_unpack_current_archive_record(Abstractformat *format,
         result = true;
         goto done;
     }
-    if (path_option->type == XX_VAR_TYPE_STRING ||
-        path_option->type == XX_VAR_TYPE_STRING_VIEW)
-        base = xx_var_get_str(path_option);
-    else if (path_option->type == XX_VAR_TYPE_WSTRING ||
-             path_option->type == XX_VAR_TYPE_WSTRING_VIEW) {
+    if (path_option->type == XX_VAR_TYPE_STRING || path_option->type == XX_VAR_TYPE_STRING_VIEW) base = xx_var_get_str(path_option);
+    else if (path_option->type == XX_VAR_TYPE_WSTRING || path_option->type == XX_VAR_TYPE_WSTRING_VIEW) {
         owned_base = xx_str_unicode_to_utf8(xx_var_get_wstr(path_option));
         base = owned_base;
     }
     if (!base) goto done;
-    path = (base[0] && base[xx_str_len(base) - 1U] != '/' &&
-            base[xx_str_len(base) - 1U] != '\\')
-               ? xx_str_concat3(base, "/", clip->name)
-               : xx_str_concat(base, clip->name);
+    path =
+        (base[0] && base[xx_str_len(base) - 1U] != '/' && base[xx_str_len(base) - 1U] != '\\') ? xx_str_concat3(base, "/", clip->name) : xx_str_concat(base, clip->name);
     if (!path || !xx_store_create_dirs_a(path, false)) goto done;
     {
         xx_io_device *destination = xx_io_file_open(path, "wb");
@@ -670,8 +593,7 @@ bool xx_notetab_unpack_current_archive_record(Abstractformat *format,
         if (!destination) goto done;
         result = true;
         while (written < clip->prefix_size) {
-            ssize_t amount = xx_io_write(destination, clip->prefix + written,
-                                         clip->prefix_size - written);
+            ssize_t amount = xx_io_write(destination, clip->prefix + written, clip->prefix_size - written);
             if (amount <= 0 || (size_t)amount > clip->prefix_size - written) {
                 result = false;
                 break;
@@ -680,10 +602,8 @@ bool xx_notetab_unpack_current_archive_record(Abstractformat *format,
         }
         written = 0U;
         while (result && written < (size_t)clip->body_size) {
-            ssize_t amount = xx_io_write(destination, body + written,
-                                         (size_t)clip->body_size - written);
-            if (amount <= 0 ||
-                (size_t)amount > (size_t)clip->body_size - written) {
+            ssize_t amount = xx_io_write(destination, body + written, (size_t)clip->body_size - written);
+            if (amount <= 0 || (size_t)amount > (size_t)clip->body_size - written) {
                 result = false;
                 break;
             }
@@ -699,8 +619,8 @@ done:
     return result;
 }
 
-void xx_notetab_free_archive_records_reading(
-    Abstractformat *format, xx_archive_record_state *state) {
+void xx_notetab_free_archive_records_reading(Abstractformat *format, xx_archive_record_state *state)
+{
     (void)format;
     xx_archive_record_state_free(state);
 }

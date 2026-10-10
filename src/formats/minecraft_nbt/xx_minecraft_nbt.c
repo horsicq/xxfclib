@@ -6,13 +6,133 @@
 #include "xxfclib/formats/minecraft_nbt/xx_minecraft_nbt.h"
 #include "../common/xx_container_wire_helpers.h"
 
-static bool nb_text(memory_blob *b,uint64_t *at,uint64_t end) {uint64_t n,i;bool high=false;if(!record_span(*at,2,end) || !blob_span(b,*at,2)) return false;n=xx_data_get_u16(b->p+(size_t)*at, 2, 0, true);*at+=2;if(!record_span(*at,n,end) || !blob_span(b,*at,n)) return false;for(i=0;i<n;) {uint8_t c=b->p[(size_t)(*at+i++)];uint32_t code;if(c<128) {if(!c || high) return false;continue;}if(c>=192 && c<=223) {if(i==n || (b->p[(size_t)(*at+i)]&192)!=128 || high) return false;code=((uint32_t)c&31)<<6;code|=b->p[(size_t)(*at+i++)]&63;if(code && code<128) return false;}else if(c>=224 && c<=239) {if(n-i<2 || (b->p[(size_t)(*at+i)]&192)!=128 || (b->p[(size_t)(*at+i+1)]&192)!=128) return false;code=((uint32_t)c&15)<<12;code|=(b->p[(size_t)(*at+i++)]&63U)<<6;code|=b->p[(size_t)(*at+i++)]&63U;if(code<2048) return false;if(code>=0xd800 && code<=0xdbff) {if(high) return false;high=true;}else if(code>=0xdc00 && code<=0xdfff) {if(!high) return false;high=false;}else if(high) return false;}else return false;}*at+=n;return !high;}
-static bool nb_value(memory_blob *b,uint64_t *at,uint64_t end,uint8_t t,unsigned depth,unsigned *work) {uint64_t n,width;uint8_t kind;if(depth>32 || ++*work>262144 || !blob_span(b,*at,0)) return false;if(t>=1 && t<=6) {n=t==1 ? 1:t==2 ? 2:t==3 || t==5 ? 4:8;}else if(t==8) return nb_text(b,at,end);else if(t==7 || t==11 || t==12) {if(!record_span(*at,4,end)) return false;n=xx_data_get_u32(b->p+(size_t)*at, 4, 0, true);*at+=4;if(n>1048576) return false;width=t==7 ? 1:t==11 ? 4:8;n*=width;}else if(t==9) {if(!record_span(*at,5,end)) return false;kind=b->p[(size_t)(*at)++];n=xx_data_get_u32(b->p+(size_t)*at, 4, 0, true);*at+=4;if(kind>12 || (!kind && n) || n>65536) return false;for(uint64_t i=0;i<n;++i) if(!nb_value(b,at,end,kind,depth+1,work)) return false;return true;}else if(t==10) {unsigned count=0;while(*at<end) {if(!blob_span(b,*at,1)) return false;kind=b->p[(size_t)(*at)++];if(!kind) return true;if(++count>4096 || !nb_text(b,at,end) || !nb_value(b,at,end,kind,depth+1,work)) return false;}return false;}else return false;if(!record_span(*at,n,end) || !blob_span(b,*at,n)) return false;*at+=n;return true;}
-static bool pm_parse(Abstractformat *f,pm_stream *s,xx_pd_struct *pd) {memory_blob b;uint64_t at=1,start;unsigned work=0,count=0;bool ok=false;if(!blob_load(f,&b,pd)) return false;BLOB_NEED(b.n>=16 && b.p[0]==10 && nb_text(&b,&at,b.n) && blob_add(f,s,&b,"nbt-root-header",0,at));while(at<b.n && b.p[(size_t)at]) {uint8_t kind;start=at;kind=b.p[(size_t)at++];BLOB_NEED(++count<=2048 && nb_text(&b,&at,b.n) && nb_value(&b,&at,b.n,kind,0,&work) && blob_add(f,s,&b,"encoded-named-tag",start,at-start));}BLOB_NEED(count && at+1==b.n && !b.p[(size_t)at] && blob_add(f,s,&b,"compound-end",at,1));s->size=(int64_t)b.n;ok=true;done:xx_mem_free(b.p);return ok;}
+static bool nb_text(memory_blob *b, uint64_t *at, uint64_t end)
+{
+    uint64_t n, i;
+    bool high = false;
+    if (!record_span(*at, 2, end) || !blob_span(b, *at, 2)) return false;
+    n = xx_data_get_u16(b->p + (size_t)*at, 2, 0, true);
+    *at += 2;
+    if (!record_span(*at, n, end) || !blob_span(b, *at, n)) return false;
+    for (i = 0; i < n;) {
+        uint8_t c = b->p[(size_t)(*at + i++)];
+        uint32_t code;
+        if (c < 128) {
+            if (!c || high) return false;
+            continue;
+        }
+        if (c >= 192 && c <= 223) {
+            if (i == n || (b->p[(size_t)(*at + i)] & 192) != 128 || high) return false;
+            code = ((uint32_t)c & 31) << 6;
+            code |= b->p[(size_t)(*at + i++)] & 63;
+            if (code && code < 128) return false;
+        } else if (c >= 224 && c <= 239) {
+            if (n - i < 2 || (b->p[(size_t)(*at + i)] & 192) != 128 || (b->p[(size_t)(*at + i + 1)] & 192) != 128) return false;
+            code = ((uint32_t)c & 15) << 12;
+            code |= (b->p[(size_t)(*at + i++)] & 63U) << 6;
+            code |= b->p[(size_t)(*at + i++)] & 63U;
+            if (code < 2048) return false;
+            if (code >= 0xd800 && code <= 0xdbff) {
+                if (high) return false;
+                high = true;
+            } else if (code >= 0xdc00 && code <= 0xdfff) {
+                if (!high) return false;
+                high = false;
+            } else if (high) return false;
+        } else return false;
+    }
+    *at += n;
+    return !high;
+}
+static bool nb_value(memory_blob *b, uint64_t *at, uint64_t end, uint8_t t, unsigned depth, unsigned *work)
+{
+    uint64_t n, width;
+    uint8_t kind;
+    if (depth > 32 || ++*work > 262144 || !blob_span(b, *at, 0)) return false;
+    if (t >= 1 && t <= 6) {
+        n = t == 1 ? 1 : t == 2 ? 2 : t == 3 || t == 5 ? 4 : 8;
+    } else if (t == 8) return nb_text(b, at, end);
+    else if (t == 7 || t == 11 || t == 12) {
+        if (!record_span(*at, 4, end)) return false;
+        n = xx_data_get_u32(b->p + (size_t)*at, 4, 0, true);
+        *at += 4;
+        if (n > 1048576) return false;
+        width = t == 7 ? 1 : t == 11 ? 4 : 8;
+        n *= width;
+    } else if (t == 9) {
+        if (!record_span(*at, 5, end)) return false;
+        kind = b->p[(size_t)(*at)++];
+        n = xx_data_get_u32(b->p + (size_t)*at, 4, 0, true);
+        *at += 4;
+        if (kind > 12 || (!kind && n) || n > 65536) return false;
+        for (uint64_t i = 0; i < n; ++i)
+            if (!nb_value(b, at, end, kind, depth + 1, work)) return false;
+        return true;
+    } else if (t == 10) {
+        unsigned count = 0;
+        while (*at < end) {
+            if (!blob_span(b, *at, 1)) return false;
+            kind = b->p[(size_t)(*at)++];
+            if (!kind) return true;
+            if (++count > 4096 || !nb_text(b, at, end) || !nb_value(b, at, end, kind, depth + 1, work)) return false;
+        }
+        return false;
+    } else return false;
+    if (!record_span(*at, n, end) || !blob_span(b, *at, n)) return false;
+    *at += n;
+    return true;
+}
+static bool pm_parse(Abstractformat *f, pm_stream *s, xx_pd_struct *pd)
+{
+    memory_blob b;
+    uint64_t at = 1, start;
+    unsigned work = 0, count = 0;
+    bool ok = false;
+    if (!blob_load(f, &b, pd)) return false;
+    BLOB_NEED(b.n >= 16 && b.p[0] == 10 && nb_text(&b, &at, b.n) && blob_add(f, s, &b, "nbt-root-header", 0, at));
+    while (at < b.n && b.p[(size_t)at]) {
+        uint8_t kind;
+        start = at;
+        kind = b.p[(size_t)at++];
+        BLOB_NEED(++count <= 2048 && nb_text(&b, &at, b.n) && nb_value(&b, &at, b.n, kind, 0, &work) && blob_add(f, s, &b, "encoded-named-tag", start, at - start));
+    }
+    BLOB_NEED(count && at + 1 == b.n && !b.p[(size_t)at] && blob_add(f, s, &b, "compound-end", at, 1));
+    s->size = (int64_t)b.n;
+    ok = true;
+done:
+    xx_mem_free(b.p);
+    return ok;
+}
 
-void xx_minecraft_nbt_init(xx_minecraft_nbt *r,xx_io_device *d,int64_t b) { if(r) { xx_mem_zero(r,sizeof(*r)); pm_init(&r->format,d,b,XX_FILE_TYPE_MINECRAFT_NBT,"nbt"); } }
-xx_minecraft_nbt *xx_minecraft_nbt_create(xx_io_device *d,int64_t b) { xx_minecraft_nbt *r=(xx_minecraft_nbt *)xx_mem_alloc(sizeof(*r)); if(r) xx_minecraft_nbt_init(r,d,b); return r; }
-void xx_minecraft_nbt_destroy(xx_minecraft_nbt *r) { if(r) xx_format_cleanup_extra_parameters(&r->format); }
-void xx_minecraft_nbt_free(xx_minecraft_nbt *r) { if(r) { xx_minecraft_nbt_destroy(r); xx_mem_free(r); } }
-bool xx_minecraft_nbt_check_is_valid(Abstractformat *f,xx_pd_struct *pd) { return pm_valid(f,pd); }
-bool xx_minecraft_nbt_handle_base_info(Abstractformat *f,xx_pd_struct *pd) { return pm_handle(f,pd); }
+void xx_minecraft_nbt_init(xx_minecraft_nbt *r, xx_io_device *d, int64_t b)
+{
+    if (r) {
+        xx_mem_zero(r, sizeof(*r));
+        pm_init(&r->format, d, b, XX_FILE_TYPE_MINECRAFT_NBT, "nbt");
+    }
+}
+xx_minecraft_nbt *xx_minecraft_nbt_create(xx_io_device *d, int64_t b)
+{
+    xx_minecraft_nbt *r = (xx_minecraft_nbt *)xx_mem_alloc(sizeof(*r));
+    if (r) xx_minecraft_nbt_init(r, d, b);
+    return r;
+}
+void xx_minecraft_nbt_destroy(xx_minecraft_nbt *r)
+{
+    if (r) xx_format_cleanup_extra_parameters(&r->format);
+}
+void xx_minecraft_nbt_free(xx_minecraft_nbt *r)
+{
+    if (r) {
+        xx_minecraft_nbt_destroy(r);
+        xx_mem_free(r);
+    }
+}
+bool xx_minecraft_nbt_check_is_valid(Abstractformat *f, xx_pd_struct *pd)
+{
+    return pm_valid(f, pd);
+}
+bool xx_minecraft_nbt_handle_base_info(Abstractformat *f, xx_pd_struct *pd)
+{
+    return pm_handle(f, pd);
+}

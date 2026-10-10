@@ -57,13 +57,13 @@ typedef enum xx_7zip_data_struct_id_e {
  * separate folders per nonempty file; see the writer APIs below.
  */
 struct xx_7zip {
-    Abstractformat format;             /**< Base format (must be first). */
-    uint64_t       number_of_records;  /**< FilesInfo record count. */
-    int64_t        next_header_offset; /**< Absolute device offset. */
-    uint64_t       next_header_size;   /**< Stored next-header byte count. */
-    uint32_t       next_header_crc;    /**< CRC-32 from the start header. */
-    bool           is_header_encoded; /**< Stored next header is encoded. */
-    void          *internal;           /**< Private parsed representation. */
+    Abstractformat format;      /**< Base format (must be first). */
+    uint64_t number_of_records; /**< FilesInfo record count. */
+    int64_t next_header_offset; /**< Absolute device offset. */
+    uint64_t next_header_size;  /**< Stored next-header byte count. */
+    uint32_t next_header_crc;   /**< CRC-32 from the start header. */
+    bool is_header_encoded;     /**< Stored next header is encoded. */
+    void *internal;             /**< Private parsed representation. */
 };
 
 XXFC_API void xx_7zip_init(xx_7zip *archive, xx_io_device *dev, int64_t base_address);
@@ -87,7 +87,8 @@ XXFC_API void xx_7zip_free_archive_records_reading(Abstractformat *self, xx_arch
  * LZMA, LZMA2, BZip2, PPMd7, Deflate, Deflate64 and Zstandard. Password options
  * encrypt file payloads with AES-256; filenames remain visible. */
 XXFC_API xx_archive_write_state *xx_7zip_create_archive_records_writing(Abstractformat *self, const xx_list_s *options, xx_pd_struct *pd);
-XXFC_API bool xx_7zip_pack_archive_record(Abstractformat *self, xx_archive_write_state *state, const xx_archive_record *record, xx_io_device *source_dev, xx_pd_struct *pd);
+XXFC_API bool xx_7zip_pack_archive_record(Abstractformat *self, xx_archive_write_state *state, const xx_archive_record *record, xx_io_device *source_dev,
+                                          xx_pd_struct *pd);
 XXFC_API bool xx_7zip_finalize_archive_records_writing(Abstractformat *self, xx_archive_write_state *state, xx_pd_struct *pd);
 XXFC_API void xx_7zip_free_archive_records_writing(Abstractformat *self, xx_archive_write_state *state);
 
@@ -108,124 +109,155 @@ XXFC_API int64_t xx_7zip_get_next_header_offset(const xx_7zip *archive);
 XXFC_API uint64_t xx_7zip_get_next_header_size(const xx_7zip *archive);
 XXFC_API bool xx_7zip_is_header_encoded(const xx_7zip *archive);
 
-static inline Abstractformat *xx_7zip_to_format(xx_7zip *archive) {
+static inline Abstractformat *xx_7zip_to_format(xx_7zip *archive)
+{
     return archive ? &archive->format : NULL;
 }
 
-static inline const Abstractformat *xx_7zip_to_format_const(const xx_7zip *archive) {
+static inline const Abstractformat *xx_7zip_to_format_const(const xx_7zip *archive)
+{
     return archive ? &archive->format : NULL;
 }
 
-static inline void X7Zip_init(xx_7zip *archive, xx_io_device *dev, int64_t base_address) {
+static inline void X7Zip_init(xx_7zip *archive, xx_io_device *dev, int64_t base_address)
+{
     xx_7zip_init(archive, dev, base_address);
 }
 
-static inline xx_7zip *X7Zip_create(xx_io_device *dev, int64_t base_address) {
+static inline xx_7zip *X7Zip_create(xx_io_device *dev, int64_t base_address)
+{
     return xx_7zip_create(dev, base_address);
 }
 
-static inline void X7Zip_free(xx_7zip *archive) {
+static inline void X7Zip_free(xx_7zip *archive)
+{
     xx_7zip_free(archive);
 }
 
-static inline bool X7Zip_is_valid(xx_7zip *archive, xx_pd_struct *pd) {
+static inline bool X7Zip_is_valid(xx_7zip *archive, xx_pd_struct *pd)
+{
     return archive ? xx_format_is_valid(&archive->format, pd) : false;
 }
 
-static inline bool X7Zip_check_is_valid(xx_7zip *archive, xx_pd_struct *pd) {
+static inline bool X7Zip_check_is_valid(xx_7zip *archive, xx_pd_struct *pd)
+{
     return archive ? xx_7zip_check_is_valid(&archive->format, pd) : false;
 }
 
-static inline bool X7Zip_handle_base_info(xx_7zip *archive, xx_pd_struct *pd) {
+static inline bool X7Zip_handle_base_info(xx_7zip *archive, xx_pd_struct *pd)
+{
     return archive ? xx_format_handle_base_info(&archive->format, pd) : false;
 }
 
-static inline uint64_t X7Zip_get_number_of_records(const xx_7zip *archive) {
+static inline uint64_t X7Zip_get_number_of_records(const xx_7zip *archive)
+{
     return xx_7zip_get_number_of_records(archive);
 }
 
-static inline int64_t X7Zip_get_next_header_offset(const xx_7zip *archive) {
+static inline int64_t X7Zip_get_next_header_offset(const xx_7zip *archive)
+{
     return xx_7zip_get_next_header_offset(archive);
 }
 
-static inline uint64_t X7Zip_get_next_header_size(const xx_7zip *archive) {
+static inline uint64_t X7Zip_get_next_header_size(const xx_7zip *archive)
+{
     return xx_7zip_get_next_header_size(archive);
 }
 
-static inline bool X7Zip_is_header_encoded(const xx_7zip *archive) {
+static inline bool X7Zip_is_header_encoded(const xx_7zip *archive)
+{
     return xx_7zip_is_header_encoded(archive);
 }
 
-static inline xx_archive_record_state *X7Zip_create_archive_records_reading(xx_7zip *archive, const xx_list_s *options, xx_pd_struct *pd) {
+static inline xx_archive_record_state *X7Zip_create_archive_records_reading(xx_7zip *archive, const xx_list_s *options, xx_pd_struct *pd)
+{
     return archive ? xx_7zip_create_archive_records_reading(&archive->format, options, pd) : NULL;
 }
 
-static inline const xx_archive_record *X7Zip_get_current_archive_record(xx_7zip *archive, xx_archive_record_state *state) {
+static inline const xx_archive_record *X7Zip_get_current_archive_record(xx_7zip *archive, xx_archive_record_state *state)
+{
     return archive ? xx_7zip_get_current_archive_record(&archive->format, state) : NULL;
 }
 
-static inline bool X7Zip_unpack_current_archive_record(xx_7zip *archive, xx_archive_record_state *state, xx_pd_struct *pd) {
+static inline bool X7Zip_unpack_current_archive_record(xx_7zip *archive, xx_archive_record_state *state, xx_pd_struct *pd)
+{
     return archive ? xx_7zip_unpack_current_archive_record(&archive->format, state, pd) : false;
 }
 
-static inline bool X7Zip_archive_record_move_to_next(xx_7zip *archive, xx_archive_record_state *state, xx_pd_struct *pd) {
+static inline bool X7Zip_archive_record_move_to_next(xx_7zip *archive, xx_archive_record_state *state, xx_pd_struct *pd)
+{
     return archive ? xx_7zip_archive_record_move_to_next(&archive->format, state, pd) : false;
 }
 
-static inline void X7Zip_free_archive_records_reading(xx_7zip *archive, xx_archive_record_state *state) {
+static inline void X7Zip_free_archive_records_reading(xx_7zip *archive, xx_archive_record_state *state)
+{
     if (archive) xx_7zip_free_archive_records_reading(&archive->format, state);
 }
 
-static inline xx_archive_write_state *X7Zip_create_archive_records_writing(xx_7zip *archive, const xx_list_s *options, xx_pd_struct *pd) {
+static inline xx_archive_write_state *X7Zip_create_archive_records_writing(xx_7zip *archive, const xx_list_s *options, xx_pd_struct *pd)
+{
     return archive ? xx_7zip_create_archive_records_writing(&archive->format, options, pd) : NULL;
 }
-static inline bool X7Zip_pack_archive_record(xx_7zip *archive, xx_archive_write_state *state, const xx_archive_record *record, xx_io_device *source, xx_pd_struct *pd) {
+static inline bool X7Zip_pack_archive_record(xx_7zip *archive, xx_archive_write_state *state, const xx_archive_record *record, xx_io_device *source, xx_pd_struct *pd)
+{
     return archive ? xx_7zip_pack_archive_record(&archive->format, state, record, source, pd) : false;
 }
-static inline bool X7Zip_finalize_archive_records_writing(xx_7zip *archive, xx_archive_write_state *state, xx_pd_struct *pd) {
+static inline bool X7Zip_finalize_archive_records_writing(xx_7zip *archive, xx_archive_write_state *state, xx_pd_struct *pd)
+{
     return archive ? xx_7zip_finalize_archive_records_writing(&archive->format, state, pd) : false;
 }
-static inline void X7Zip_free_archive_records_writing(xx_7zip *archive, xx_archive_write_state *state) {
+static inline void X7Zip_free_archive_records_writing(xx_7zip *archive, xx_archive_write_state *state)
+{
     if (archive) xx_7zip_free_archive_records_writing(&archive->format, state);
 }
 
-static inline const char *X7Zip_data_struct_id_to_string(xx_7zip *archive, uint32_t id) {
+static inline const char *X7Zip_data_struct_id_to_string(xx_7zip *archive, uint32_t id)
+{
     return archive ? xx_7zip_data_struct_id_to_string(&archive->format, id) : "UNKNOWN";
 }
 
-static inline uint32_t X7Zip_data_struct_string_to_id(xx_7zip *archive, const char *name) {
+static inline uint32_t X7Zip_data_struct_string_to_id(xx_7zip *archive, const char *name)
+{
     return archive ? xx_7zip_data_struct_string_to_id(&archive->format, name) : XX_7ZIP_DS_UNKNOWN;
 }
 
-static inline xx_data_struct_state *X7Zip_create_data_structs_reading(xx_7zip *archive, xx_pd_struct *pd) {
+static inline xx_data_struct_state *X7Zip_create_data_structs_reading(xx_7zip *archive, xx_pd_struct *pd)
+{
     return archive ? xx_7zip_create_data_structs_reading(&archive->format, pd) : NULL;
 }
 
-static inline const xx_data_struct *X7Zip_get_current_data_struct(xx_7zip *archive, xx_data_struct_state *state) {
+static inline const xx_data_struct *X7Zip_get_current_data_struct(xx_7zip *archive, xx_data_struct_state *state)
+{
     return archive ? xx_7zip_get_current_data_struct(&archive->format, state) : NULL;
 }
 
-static inline bool X7Zip_data_struct_move_to_next(xx_7zip *archive, xx_data_struct_state *state, xx_pd_struct *pd) {
+static inline bool X7Zip_data_struct_move_to_next(xx_7zip *archive, xx_data_struct_state *state, xx_pd_struct *pd)
+{
     return archive ? xx_7zip_data_struct_move_to_next(&archive->format, state, pd) : false;
 }
 
-static inline void X7Zip_free_data_structs_reading(xx_7zip *archive, xx_data_struct_state *state) {
+static inline void X7Zip_free_data_structs_reading(xx_7zip *archive, xx_data_struct_state *state)
+{
     if (archive) xx_7zip_free_data_structs_reading(&archive->format, state);
 }
 
-static inline xx_data_struct_record_state *X7Zip_create_data_struct_records_reading(xx_7zip *archive, const xx_data_struct *ds, xx_pd_struct *pd) {
+static inline xx_data_struct_record_state *X7Zip_create_data_struct_records_reading(xx_7zip *archive, const xx_data_struct *ds, xx_pd_struct *pd)
+{
     return archive ? xx_7zip_create_data_struct_records_reading(&archive->format, ds, pd) : NULL;
 }
 
-static inline const xx_data_struct_record *X7Zip_get_current_data_struct_record(xx_7zip *archive, xx_data_struct_record_state *state) {
+static inline const xx_data_struct_record *X7Zip_get_current_data_struct_record(xx_7zip *archive, xx_data_struct_record_state *state)
+{
     return archive ? xx_7zip_get_current_data_struct_record(&archive->format, state) : NULL;
 }
 
-static inline bool X7Zip_data_struct_record_move_to_next(xx_7zip *archive, xx_data_struct_record_state *state, xx_pd_struct *pd) {
+static inline bool X7Zip_data_struct_record_move_to_next(xx_7zip *archive, xx_data_struct_record_state *state, xx_pd_struct *pd)
+{
     return archive ? xx_7zip_data_struct_record_move_to_next(&archive->format, state, pd) : false;
 }
 
-static inline void X7Zip_free_data_struct_records_reading(xx_7zip *archive, xx_data_struct_record_state *state) {
+static inline void X7Zip_free_data_struct_records_reading(xx_7zip *archive, xx_data_struct_record_state *state)
+{
     if (archive) xx_7zip_free_data_struct_records_reading(&archive->format, state);
 }
 

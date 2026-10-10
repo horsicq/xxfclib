@@ -94,29 +94,21 @@ typedef xx_btoa xx_btoa_t;
 #define XX_BTOA_VARIANT_NEW 2U   /**< "xbtoa5 ..." (btoa 5.x). */
 #define XX_BTOA_VARIANT_ADOBE 3U /**< "<~" ... "~>". */
 
-XXFC_API void xx_btoa_init(xx_btoa *archive, xx_io_device *device,
-                           int64_t base_address);
+XXFC_API void xx_btoa_init(xx_btoa *archive, xx_io_device *device, int64_t base_address);
 XXFC_API xx_btoa *xx_btoa_create(xx_io_device *device, int64_t base_address);
 XXFC_API void xx_btoa_destroy(xx_btoa *archive);
 XXFC_API void xx_btoa_free(xx_btoa *archive);
 
 XXFC_API bool xx_btoa_check_is_valid(Abstractformat *self, xx_pd_struct *pd);
 XXFC_API bool xx_btoa_handle_base_info(Abstractformat *self, xx_pd_struct *pd);
-XXFC_API int64_t xx_btoa_get_format_size(Abstractformat *self,
-                                         xx_pd_struct *pd);
-XXFC_API uint64_t xx_btoa_get_number_of_archive_records(Abstractformat *self,
-                                                        xx_pd_struct *pd);
+XXFC_API int64_t xx_btoa_get_format_size(Abstractformat *self, xx_pd_struct *pd);
+XXFC_API uint64_t xx_btoa_get_number_of_archive_records(Abstractformat *self, xx_pd_struct *pd);
 
-XXFC_API xx_archive_record_state *xx_btoa_create_archive_records_reading(
-    Abstractformat *self, const xx_list_s *options, xx_pd_struct *pd);
-XXFC_API const xx_archive_record *xx_btoa_get_current_archive_record(
-    Abstractformat *self, xx_archive_record_state *state);
-XXFC_API bool xx_btoa_unpack_current_archive_record(
-    Abstractformat *self, xx_archive_record_state *state, xx_pd_struct *pd);
-XXFC_API bool xx_btoa_archive_record_move_to_next(
-    Abstractformat *self, xx_archive_record_state *state, xx_pd_struct *pd);
-XXFC_API void xx_btoa_free_archive_records_reading(
-    Abstractformat *self, xx_archive_record_state *state);
+XXFC_API xx_archive_record_state *xx_btoa_create_archive_records_reading(Abstractformat *self, const xx_list_s *options, xx_pd_struct *pd);
+XXFC_API const xx_archive_record *xx_btoa_get_current_archive_record(Abstractformat *self, xx_archive_record_state *state);
+XXFC_API bool xx_btoa_unpack_current_archive_record(Abstractformat *self, xx_archive_record_state *state, xx_pd_struct *pd);
+XXFC_API bool xx_btoa_archive_record_move_to_next(Abstractformat *self, xx_archive_record_state *state, xx_pd_struct *pd);
+XXFC_API void xx_btoa_free_archive_records_reading(Abstractformat *self, xx_archive_record_state *state);
 
 #ifdef __cplusplus
 }

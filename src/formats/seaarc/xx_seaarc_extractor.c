@@ -26,84 +26,68 @@
 #include "../xx_format_extractor_engine.h"
 #include "xxfclib/formats/seaarc/xx_seaarc.h"
 
-static const uint8_t k_anchor0[] = { 0x1A, 0x01 };
-static const uint8_t k_anchor1[] = { 0x1A, 0x02 };
-static const uint8_t k_anchor2[] = { 0x1A, 0x03 };
-static const uint8_t k_anchor3[] = { 0x1A, 0x04 };
-static const uint8_t k_anchor4[] = { 0x1A, 0x05 };
-static const uint8_t k_anchor5[] = { 0x1A, 0x06 };
-static const uint8_t k_anchor6[] = { 0x1A, 0x07 };
-static const uint8_t k_anchor7[] = { 0x1A, 0x08 };
-static const uint8_t k_anchor8[] = { 0x1A, 0x09 };
-static const uint8_t k_anchor9[] = { 0x1A, 0x0A };
-static const uint8_t k_anchor10[] = { 0x1A, 0x0B };
-static const uint8_t k_anchor11[] = { 0x1A, 0x7F };
+static const uint8_t k_anchor0[] = {0x1A, 0x01};
+static const uint8_t k_anchor1[] = {0x1A, 0x02};
+static const uint8_t k_anchor2[] = {0x1A, 0x03};
+static const uint8_t k_anchor3[] = {0x1A, 0x04};
+static const uint8_t k_anchor4[] = {0x1A, 0x05};
+static const uint8_t k_anchor5[] = {0x1A, 0x06};
+static const uint8_t k_anchor6[] = {0x1A, 0x07};
+static const uint8_t k_anchor7[] = {0x1A, 0x08};
+static const uint8_t k_anchor8[] = {0x1A, 0x09};
+static const uint8_t k_anchor9[] = {0x1A, 0x0A};
+static const uint8_t k_anchor10[] = {0x1A, 0x0B};
+static const uint8_t k_anchor11[] = {0x1A, 0x7F};
 
 static const xx_format_search_anchor k_anchors[] = {
-    { k_anchor0, sizeof(k_anchor0), 0U },
-    { k_anchor1, sizeof(k_anchor1), 0U },
-    { k_anchor2, sizeof(k_anchor2), 0U },
-    { k_anchor3, sizeof(k_anchor3), 0U },
-    { k_anchor4, sizeof(k_anchor4), 0U },
-    { k_anchor5, sizeof(k_anchor5), 0U },
-    { k_anchor6, sizeof(k_anchor6), 0U },
-    { k_anchor7, sizeof(k_anchor7), 0U },
-    { k_anchor8, sizeof(k_anchor8), 0U },
-    { k_anchor9, sizeof(k_anchor9), 0U },
-    { k_anchor10, sizeof(k_anchor10), 0U },
-    { k_anchor11, sizeof(k_anchor11), 0U },
+    {k_anchor0, sizeof(k_anchor0), 0U}, {k_anchor1, sizeof(k_anchor1), 0U}, {k_anchor2, sizeof(k_anchor2), 0U},   {k_anchor3, sizeof(k_anchor3), 0U},
+    {k_anchor4, sizeof(k_anchor4), 0U}, {k_anchor5, sizeof(k_anchor5), 0U}, {k_anchor6, sizeof(k_anchor6), 0U},   {k_anchor7, sizeof(k_anchor7), 0U},
+    {k_anchor8, sizeof(k_anchor8), 0U}, {k_anchor9, sizeof(k_anchor9), 0U}, {k_anchor10, sizeof(k_anchor10), 0U}, {k_anchor11, sizeof(k_anchor11), 0U},
 };
 
-static const xx_file_type_t k_types[] = { XX_FILE_TYPE_SEAARC };
+static const xx_file_type_t k_types[] = {XX_FILE_TYPE_SEAARC};
 
-static Abstractformat *xx_seaarc_search_open(xx_io_device *window) {
+static Abstractformat *xx_seaarc_search_open(xx_io_device *window)
+{
     xx_seaarc *reader = xx_seaarc_create(window, 0);
     return reader ? &reader->format : NULL;
 }
 
-static void xx_seaarc_search_close(Abstractformat *format) {
+static void xx_seaarc_search_close(Abstractformat *format)
+{
     /* The format is the first member, so this is the reader itself. */
     xx_seaarc_free((xx_seaarc *)format);
 }
 
 static const xx_format_search_desc k_desc = {
-    k_types, sizeof(k_types) / sizeof(k_types[0]),
-    k_anchors, sizeof(k_anchors) / sizeof(k_anchors[0]),
-    xx_seaarc_search_open, xx_seaarc_search_close, false
-};
+    k_types, sizeof(k_types) / sizeof(k_types[0]), k_anchors, sizeof(k_anchors) / sizeof(k_anchors[0]), xx_seaarc_search_open, xx_seaarc_search_close, false};
 
-static xx_format_search_state *xx_seaarc_create_format_search(
-    xx_format_extractor *self, xx_io_device *device, const xx_list_s *options,
-    xx_pd_struct *pd) {
+static xx_format_search_state *xx_seaarc_create_format_search(xx_format_extractor *self, xx_io_device *device, const xx_list_s *options, xx_pd_struct *pd)
+{
     (void)self;
     return xx_format_search_create(&k_desc, device, options, pd);
 }
 
-static const xx_format_search_info *xx_seaarc_get_current_format_info(
-    xx_format_extractor *self, xx_format_search_state *state) {
+static const xx_format_search_info *xx_seaarc_get_current_format_info(xx_format_extractor *self, xx_format_search_state *state)
+{
     (void)self;
     return xx_format_search_current(state);
 }
 
-static bool xx_seaarc_format_search_find_next(xx_format_extractor *self,
-                                          xx_format_search_state *state,
-                                          xx_pd_struct *pd) {
+static bool xx_seaarc_format_search_find_next(xx_format_extractor *self, xx_format_search_state *state, xx_pd_struct *pd)
+{
     (void)self;
     return xx_format_search_find_next(state, pd);
 }
 
-static void xx_seaarc_free_format_search(xx_format_extractor *self,
-                                     xx_format_search_state *state) {
+static void xx_seaarc_free_format_search(xx_format_extractor *self, xx_format_search_state *state)
+{
     (void)self;
     xx_format_search_free(state);
 }
 
-xx_format_extractor xx_seaarc_extractor = {
-    xx_seaarc_create_format_search,
-    xx_seaarc_get_current_format_info,
-    xx_seaarc_format_search_find_next,
-    xx_seaarc_free_format_search
-};
+xx_format_extractor xx_seaarc_extractor = {xx_seaarc_create_format_search, xx_seaarc_get_current_format_info, xx_seaarc_format_search_find_next,
+                                           xx_seaarc_free_format_search};
 
 /* BEGIN GENERATED ABSTRACT EXTRACTOR */
 #include "../xx_format_abstract_extractor_adapter.h"

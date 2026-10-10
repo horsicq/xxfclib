@@ -85,12 +85,14 @@
 #define XX_DMS_DEEP_NODES (XX_DMS_DEEP_SYMBOLS * 2U - 1U)
 #define XX_DMS_DEEP_ROOT (XX_DMS_DEEP_SYMBOLS * 2U - 2U)
 
-static uint16_t xx_dms_crc16(const uint8_t *data, size_t size) {
+static uint16_t xx_dms_crc16(const uint8_t *data, size_t size)
+{
     return xx_crc16_arc_calc(0U, data, size);
 }
 
 /* The per-track checksum is a plain additive sum truncated to 16 bits. */
-static uint16_t xx_dms_checksum(const uint8_t *data, size_t size) {
+static uint16_t xx_dms_checksum(const uint8_t *data, size_t size)
+{
     uint16_t total = 0U;
     size_t index;
     if (!data) return 0U;
@@ -133,11 +135,11 @@ typedef struct xx_dms_private_s {
     uint32_t raw_offset;
     uint32_t image_size;
     uint32_t track_size;
-    uint32_t extra_size;   /**< Bytes the stored extra chunks unpack to. */
-    uint32_t first_track;  /**< The track range the image was taken from. */
+    uint32_t extra_size;  /**< Bytes the stored extra chunks unpack to. */
+    uint32_t first_track; /**< The track range the image was taken from. */
     uint32_t last_track;
-    uint32_t context_size; /**< Largest LZ window any recorded track needs. */
-    uint32_t tmp_size;     /**< Largest intermediate buffer any track needs. */
+    uint32_t context_size;   /**< Largest LZ window any recorded track needs. */
+    uint32_t tmp_size;       /**< Largest intermediate buffer any track needs. */
     uint32_t missing_tracks; /**< Tracks of [first, last] with no chunk. */
     bool is_hd;
     bool is_obfuscated;
@@ -156,7 +158,8 @@ typedef struct xx_dms_input_s {
     bool failed;
 } xx_dms_input;
 
-static uint8_t xx_dms_read_byte(xx_dms_input *input) {
+static uint8_t xx_dms_read_byte(xx_dms_input *input)
+{
     if (!input || input->offset >= input->end) {
         if (input) input->failed = true;
         return 0U;
@@ -170,14 +173,16 @@ typedef struct xx_dms_bits_s {
     uint8_t length;
 } xx_dms_bits;
 
-static void xx_dms_bits_reset(xx_dms_bits *bits) {
+static void xx_dms_bits_reset(xx_dms_bits *bits)
+{
     if (!bits) return;
     bits->content = 0U;
     bits->length = 0U;
 }
 
 /* MSB-first, byte fed. count is never more than 32 in this decoder. */
-static uint32_t xx_dms_read_bits(xx_dms_bits *bits, uint32_t count) {
+static uint32_t xx_dms_read_bits(xx_dms_bits *bits, uint32_t count)
+{
     uint32_t result = 0U;
     if (!bits || count > 32U) {
         if (bits && bits->input) bits->input->failed = true;
@@ -191,15 +196,14 @@ static uint32_t xx_dms_read_bits(xx_dms_bits *bits, uint32_t count) {
         }
         take = (count < (uint32_t)bits->length) ? (uint8_t)count : bits->length;
         bits->length = (uint8_t)(bits->length - take);
-        result = (result << take) |
-                 ((bits->content >> bits->length) &
-                  ((take == 32U) ? 0xffffffffU : ((1U << take) - 1U)));
+        result = (result << take) | ((bits->content >> bits->length) & ((take == 32U) ? 0xffffffffU : ((1U << take) - 1U)));
         count -= take;
     }
     return result;
 }
 
-static uint32_t xx_dms_read_bit(xx_dms_bits *bits) {
+static uint32_t xx_dms_read_bit(xx_dms_bits *bits)
+{
     return xx_dms_read_bits(bits, 1U);
 }
 
@@ -211,7 +215,8 @@ typedef struct xx_dms_output_s {
     bool failed;
 } xx_dms_output;
 
-static void xx_dms_write_byte(xx_dms_output *output, uint8_t value) {
+static void xx_dms_write_byte(xx_dms_output *output, uint8_t value)
+{
     if (!output || output->offset >= output->end) {
         if (output) output->failed = true;
         return;
@@ -219,7 +224,8 @@ static void xx_dms_write_byte(xx_dms_output *output, uint8_t value) {
     output->data[output->offset++] = value;
 }
 
-static bool xx_dms_output_eof(const xx_dms_output *output) {
+static bool xx_dms_output_eof(const xx_dms_output *output)
+{
     return !output || output->offset >= output->end;
 }
 
@@ -238,7 +244,8 @@ typedef struct xx_dms_huff_s {
     uint32_t empty_value; /**< Used when the table holds no codes at all. */
 } xx_dms_huff;
 
-static void xx_dms_huff_reset(xx_dms_huff *huff) {
+static void xx_dms_huff_reset(xx_dms_huff *huff)
+{
     if (!huff) return;
     huff->count = 0U;
     huff->empty_value = 0U;
@@ -246,26 +253,19 @@ static void xx_dms_huff_reset(xx_dms_huff *huff) {
 
 /* Insert one code, exactly as the reference builds its tree: walk from the
  * most significant bit down, creating the spine as it goes. */
-static bool xx_dms_huff_insert(xx_dms_huff *huff, uint32_t length,
-                               uint32_t code, uint32_t value) {
+static bool xx_dms_huff_insert(xx_dms_huff *huff, uint32_t length, uint32_t code, uint32_t value)
+{
     size_t index = 0U;
     int32_t current_bit;
     if (!huff || !huff->nodes || length > 32U) return false;
     for (current_bit = (int32_t)length; current_bit >= 0; --current_bit) {
-        uint32_t code_bit =
-            (current_bit != 0 &&
-             ((code >> (uint32_t)(current_bit - 1)) & 1U) != 0U)
-                ? 1U
-                : 0U;
+        uint32_t code_bit = (current_bit != 0 && ((code >> (uint32_t)(current_bit - 1)) & 1U) != 0U) ? 1U : 0U;
         if (index != huff->count) {
             uint32_t *branch;
-            if (current_bit == 0 ||
-                (huff->nodes[index].left == 0U &&
-                 huff->nodes[index].right == 0U)) {
+            if (current_bit == 0 || (huff->nodes[index].left == 0U && huff->nodes[index].right == 0U)) {
                 return false;
             }
-            branch = code_bit ? &huff->nodes[index].right
-                              : &huff->nodes[index].left;
+            branch = code_bit ? &huff->nodes[index].right : &huff->nodes[index].left;
             if (*branch == 0U) {
                 *branch = (uint32_t)huff->count;
                 index = huff->count;
@@ -274,14 +274,8 @@ static bool xx_dms_huff_insert(xx_dms_huff *huff, uint32_t length,
             }
         } else {
             if (huff->count >= huff->capacity) return false;
-            huff->nodes[huff->count].left =
-                (current_bit != 0 && code_bit == 0U)
-                    ? (uint32_t)(huff->count + 1U)
-                    : 0U;
-            huff->nodes[huff->count].right =
-                (current_bit != 0 && code_bit != 0U)
-                    ? (uint32_t)(huff->count + 1U)
-                    : 0U;
+            huff->nodes[huff->count].left = (current_bit != 0 && code_bit == 0U) ? (uint32_t)(huff->count + 1U) : 0U;
+            huff->nodes[huff->count].right = (current_bit != 0 && code_bit != 0U) ? (uint32_t)(huff->count + 1U) : 0U;
             huff->nodes[huff->count].value = (current_bit != 0) ? 0U : value;
             ++huff->count;
             index = huff->count;
@@ -291,9 +285,8 @@ static bool xx_dms_huff_insert(xx_dms_huff *huff, uint32_t length,
 }
 
 /* Build the canonical ("orderly") table Deflate and friends also use. */
-static bool xx_dms_huff_create_orderly(xx_dms_huff *huff,
-                                       const uint8_t *lengths,
-                                       uint32_t table_length) {
+static bool xx_dms_huff_create_orderly(xx_dms_huff *huff, const uint8_t *lengths, uint32_t table_length)
+{
     uint16_t first_index[33];
     uint16_t last_index[33];
     uint16_t next_index[512];
@@ -329,10 +322,8 @@ static bool xx_dms_huff_create_orderly(xx_dms_huff *huff,
         if (first_index[depth] != 0xffffU) {
             next_index[last_index[depth]] = (uint16_t)table_length;
         }
-        for (index = first_index[depth]; index < table_length;
-             index = next_index[index]) {
-            if (!xx_dms_huff_insert(huff, depth, code >> (max_depth - depth),
-                                    index)) {
+        for (index = first_index[depth]; index < table_length; index = next_index[index]) {
+            if (!xx_dms_huff_insert(huff, depth, code >> (max_depth - depth), index)) {
                 return false;
             }
             code += 1U << (max_depth - depth);
@@ -341,8 +332,8 @@ static bool xx_dms_huff_create_orderly(xx_dms_huff *huff,
     return true;
 }
 
-static uint32_t xx_dms_huff_decode(const xx_dms_huff *huff,
-                                   xx_dms_bits *bits) {
+static uint32_t xx_dms_huff_decode(const xx_dms_huff *huff, xx_dms_bits *bits)
+{
     size_t index = 0U;
     if (!huff) {
         if (bits && bits->input) bits->input->failed = true;
@@ -352,8 +343,7 @@ static uint32_t xx_dms_huff_decode(const xx_dms_huff *huff,
      * and stored it in place of the code lengths. */
     if (huff->count == 0U) return huff->empty_value;
     while (huff->nodes[index].left != 0U || huff->nodes[index].right != 0U) {
-        index = xx_dms_read_bit(bits) ? huff->nodes[index].right
-                                      : huff->nodes[index].left;
+        index = xx_dms_read_bit(bits) ? huff->nodes[index].right : huff->nodes[index].left;
         if (index == 0U || index >= huff->count) {
             if (bits && bits->input) bits->input->failed = true;
             return 0U;
@@ -379,7 +369,8 @@ typedef struct xx_dms_deep_s {
     bool ready;
 } xx_dms_deep;
 
-static void xx_dms_deep_reset(xx_dms_deep *deep) {
+static void xx_dms_deep_reset(xx_dms_deep *deep)
+{
     uint32_t index;
     uint32_t inner;
     uint32_t leaf;
@@ -392,10 +383,8 @@ static void xx_dms_deep_reset(xx_dms_deep *deep) {
         deep->nodes[index].right_leaf = 0U;
         deep->code_map[index] = index;
     }
-    for (inner = XX_DMS_DEEP_SYMBOLS, leaf = 0U; inner < XX_DMS_DEEP_NODES;
-         ++inner, leaf += 2U) {
-        deep->nodes[inner].frequency = deep->nodes[leaf].frequency +
-                                       deep->nodes[leaf + 1U].frequency;
+    for (inner = XX_DMS_DEEP_SYMBOLS, leaf = 0U; inner < XX_DMS_DEEP_NODES; ++inner, leaf += 2U) {
+        deep->nodes[inner].frequency = deep->nodes[leaf].frequency + deep->nodes[leaf + 1U].frequency;
         deep->nodes[inner].index = inner;
         deep->nodes[inner].parent = XX_DMS_DEEP_SYMBOLS + (inner >> 1U);
         deep->nodes[inner].left_leaf = leaf;
@@ -405,8 +394,8 @@ static void xx_dms_deep_reset(xx_dms_deep *deep) {
     deep->ready = true;
 }
 
-static uint32_t xx_dms_deep_decode(const xx_dms_deep *deep,
-                                   xx_dms_bits *bits) {
+static uint32_t xx_dms_deep_decode(const xx_dms_deep *deep, xx_dms_bits *bits)
+{
     uint32_t code = XX_DMS_DEEP_ROOT;
     uint32_t guard = 0U;
     if (!deep || !deep->ready) {
@@ -414,8 +403,7 @@ static uint32_t xx_dms_deep_decode(const xx_dms_deep *deep,
         return 0U;
     }
     while (code >= XX_DMS_DEEP_SYMBOLS) {
-        code = xx_dms_read_bit(bits) ? deep->nodes[code].right_leaf
-                                     : deep->nodes[code].left_leaf;
+        code = xx_dms_read_bit(bits) ? deep->nodes[code].right_leaf : deep->nodes[code].left_leaf;
         /* The tree is built here, never read from the file, so these two
          * guards can only fire on a logic error - but an out-of-range index
          * would be an out-of-bounds read, so they stay. */
@@ -428,19 +416,21 @@ static uint32_t xx_dms_deep_decode(const xx_dms_deep *deep,
     return code;
 }
 
-static uint32_t *xx_dms_deep_parent_leaf(xx_dms_deep *deep, uint32_t code) {
+static uint32_t *xx_dms_deep_parent_leaf(xx_dms_deep *deep, uint32_t code)
+{
     xx_dms_deep_node *parent = &deep->nodes[deep->nodes[code].parent];
-    return (parent->left_leaf == code) ? &parent->left_leaf
-                                       : &parent->right_leaf;
+    return (parent->left_leaf == code) ? &parent->left_leaf : &parent->right_leaf;
 }
 
-static void xx_dms_deep_swap(uint32_t *left, uint32_t *right) {
+static void xx_dms_deep_swap(uint32_t *left, uint32_t *right)
+{
     uint32_t temporary = *left;
     *left = *right;
     *right = temporary;
 }
 
-static void xx_dms_deep_update(xx_dms_deep *deep, uint32_t code) {
+static void xx_dms_deep_update(xx_dms_deep *deep, uint32_t code)
+{
     if (!deep || code >= XX_DMS_DEEP_SYMBOLS) return;
     while (code != XX_DMS_DEEP_ROOT) {
         uint32_t index;
@@ -450,23 +440,17 @@ static void xx_dms_deep_update(xx_dms_deep *deep, uint32_t code) {
         index = deep->nodes[code].index;
         dest_index = index;
         frequency = deep->nodes[code].frequency;
-        while (dest_index != XX_DMS_DEEP_ROOT &&
-               frequency >
-                   deep->nodes[deep->code_map[dest_index + 1U]].frequency) {
+        while (dest_index != XX_DMS_DEEP_ROOT && frequency > deep->nodes[deep->code_map[dest_index + 1U]].frequency) {
             ++dest_index;
         }
         if (index != dest_index) {
             uint32_t dest_code = deep->code_map[dest_index];
-            xx_dms_deep_swap(&deep->nodes[code].index,
-                             &deep->nodes[dest_code].index);
-            xx_dms_deep_swap(&deep->code_map[index],
-                             &deep->code_map[dest_index]);
+            xx_dms_deep_swap(&deep->nodes[code].index, &deep->nodes[dest_code].index);
+            xx_dms_deep_swap(&deep->code_map[index], &deep->code_map[dest_index]);
             /* The parent links must be swapped before the parents are, so
              * that each lookup still resolves against the old parent. */
-            xx_dms_deep_swap(xx_dms_deep_parent_leaf(deep, code),
-                             xx_dms_deep_parent_leaf(deep, dest_code));
-            xx_dms_deep_swap(&deep->nodes[code].parent,
-                             &deep->nodes[dest_code].parent);
+            xx_dms_deep_swap(xx_dms_deep_parent_leaf(deep, code), xx_dms_deep_parent_leaf(deep, dest_code));
+            xx_dms_deep_swap(&deep->nodes[code].parent, &deep->nodes[dest_code].parent);
         }
         code = deep->nodes[code].parent;
         if (code >= XX_DMS_DEEP_NODES) return;
@@ -476,27 +460,24 @@ static void xx_dms_deep_update(xx_dms_deep *deep, uint32_t code) {
 
 /* Halve every frequency, rounding up, and rebuild the tree around the new
  * ordering. Called when the root frequency saturates. */
-static void xx_dms_deep_halve(xx_dms_deep *deep) {
+static void xx_dms_deep_halve(xx_dms_deep *deep)
+{
     uint32_t index;
     uint32_t slot;
     uint32_t inner;
     uint32_t leaf;
     if (!deep) return;
-    for (index = 0U, slot = 0U;
-         index < XX_DMS_DEEP_NODES - 1U && slot < XX_DMS_DEEP_SYMBOLS;
-         ++index) {
+    for (index = 0U, slot = 0U; index < XX_DMS_DEEP_NODES - 1U && slot < XX_DMS_DEEP_SYMBOLS; ++index) {
         if (deep->code_map[index] < XX_DMS_DEEP_SYMBOLS) {
             deep->nodes[deep->code_map[index]].index = slot++;
         }
     }
     for (index = 0U; index < XX_DMS_DEEP_SYMBOLS; ++index) {
         deep->nodes[index].frequency = (deep->nodes[index].frequency + 1U) >> 1U;
-        deep->nodes[index].parent =
-            XX_DMS_DEEP_SYMBOLS + (deep->nodes[index].index >> 1U);
+        deep->nodes[index].parent = XX_DMS_DEEP_SYMBOLS + (deep->nodes[index].index >> 1U);
         deep->code_map[deep->nodes[index].index] = index;
     }
-    for (inner = XX_DMS_DEEP_SYMBOLS, leaf = 0U;
-         inner < XX_DMS_DEEP_NODES; ++inner, leaf += 2U) {
+    for (inner = XX_DMS_DEEP_SYMBOLS, leaf = 0U; inner < XX_DMS_DEEP_NODES; ++inner, leaf += 2U) {
         uint32_t left = deep->code_map[leaf];
         uint32_t right = deep->code_map[leaf + 1U];
         uint32_t frequency;
@@ -512,18 +493,12 @@ static void xx_dms_deep_halve(xx_dms_deep *deep) {
         /* Bubble the new internal node down to its place. The "position > 0"
          * guard is not in the reference; the invariant makes it unreachable,
          * but without it a broken state would index code_map[-1]. */
-        for (position = inner;
-             position > 0U &&
-             frequency < deep->nodes[deep->code_map[position - 1U]].frequency;
-             --position) {
+        for (position = inner; position > 0U && frequency < deep->nodes[deep->code_map[position - 1U]].frequency; --position) {
             uint32_t code = deep->code_map[position];
             uint32_t dest_code = deep->code_map[position - 1U];
-            xx_dms_deep_swap(&deep->nodes[code].index,
-                             &deep->nodes[dest_code].index);
-            xx_dms_deep_swap(&deep->nodes[code].parent,
-                             &deep->nodes[dest_code].parent);
-            xx_dms_deep_swap(&deep->code_map[position],
-                             &deep->code_map[position - 1U]);
+            xx_dms_deep_swap(&deep->nodes[code].index, &deep->nodes[dest_code].index);
+            xx_dms_deep_swap(&deep->nodes[code].parent, &deep->nodes[dest_code].parent);
+            xx_dms_deep_swap(&deep->code_map[position], &deep->code_map[position - 1U]);
         }
     }
 }
@@ -537,10 +512,9 @@ typedef struct xx_dms_vlc_s {
     uint32_t offsets[XX_DMS_VLC_COUNT];
 } xx_dms_vlc;
 
-static void xx_dms_vlc_init(xx_dms_vlc *vlc) {
-    static const uint8_t lengths[XX_DMS_VLC_COUNT] = {7, 7, 8,  8,  8,  9,
-                                                      9, 9, 9,  10, 10, 10,
-                                                      11, 11, 11, 12};
+static void xx_dms_vlc_init(xx_dms_vlc *vlc)
+{
+    static const uint8_t lengths[XX_DMS_VLC_COUNT] = {7, 7, 8, 8, 8, 9, 9, 9, 9, 10, 10, 10, 11, 11, 11, 12};
     uint32_t total = 0U;
     uint32_t index;
     if (!vlc) return;
@@ -557,12 +531,12 @@ typedef struct xx_dms_decoder_s {
     xx_dms_input input;
     xx_dms_bits bits;
     xx_dms_output output;
-    uint8_t *raw;      /**< The assembled image. */
+    uint8_t *raw; /**< The assembled image. */
     size_t raw_size;
-    uint8_t *context;  /**< The LZ window, shared across tracks. */
+    uint8_t *context; /**< The LZ window, shared across tracks. */
     uint32_t context_size;
     uint32_t context_location;
-    uint8_t *tmp;      /**< Intermediate buffer for the two stage modes. */
+    uint8_t *tmp; /**< Intermediate buffer for the two stage modes. */
     uint32_t tmp_size;
     bool init_context;
     xx_dms_deep deep;
@@ -575,8 +549,8 @@ typedef struct xx_dms_decoder_s {
     xx_dms_vlc vlc;
 } xx_dms_decoder;
 
-static uint32_t xx_dms_vlc_decode(const xx_dms_vlc *vlc, xx_dms_bits *bits,
-                                  uint32_t base) {
+static uint32_t xx_dms_vlc_decode(const xx_dms_vlc *vlc, xx_dms_bits *bits, uint32_t base)
+{
     if (!vlc || base >= XX_DMS_VLC_COUNT) {
         if (bits && bits->input) bits->input->failed = true;
         return 0U;
@@ -586,9 +560,8 @@ static uint32_t xx_dms_vlc_decode(const xx_dms_vlc *vlc, xx_dms_bits *bits,
 
 /* MEDIUM's distance escape: the top four bits come from the length symbol
  * that was just decoded, the rest from the stream. */
-static uint32_t xx_dms_vlc_decode_distance(const xx_dms_vlc *vlc,
-                                           xx_dms_bits *bits, uint32_t base,
-                                           uint32_t count) {
+static uint32_t xx_dms_vlc_decode_distance(const xx_dms_vlc *vlc, xx_dms_bits *bits, uint32_t base, uint32_t count)
+{
     uint32_t bit_count;
     if (!vlc || base >= XX_DMS_VLC_COUNT) {
         if (bits && bits->input) bits->input->failed = true;
@@ -599,11 +572,11 @@ static uint32_t xx_dms_vlc_decode_distance(const xx_dms_vlc *vlc,
         if (bits && bits->input) bits->input->failed = true;
         return 0U;
     }
-    return vlc->offsets[base] + (((count & 0xfU) << (bit_count - 4U)) |
-                                 xx_dms_read_bits(bits, bit_count - 4U));
+    return vlc->offsets[base] + (((count & 0xfU) << (bit_count - 4U)) | xx_dms_read_bits(bits, bit_count - 4U));
 }
 
-static void xx_dms_init_context(xx_dms_decoder *decoder) {
+static void xx_dms_init_context(xx_dms_decoder *decoder)
+{
     if (!decoder || !decoder->init_context) return;
     if (decoder->context && decoder->context_size != 0U) {
         xx_mem_zero(decoder->context, decoder->context_size);
@@ -613,16 +586,16 @@ static void xx_dms_init_context(xx_dms_decoder *decoder) {
     decoder->init_context = false;
 }
 
-static bool xx_dms_stalled(const xx_dms_decoder *decoder,
-                           const xx_dms_output *output) {
+static bool xx_dms_stalled(const xx_dms_decoder *decoder, const xx_dms_output *output)
+{
     return decoder->input.failed || output->failed;
 }
 
 /* --- the seven modes ----------------------------------------------------- */
 
 /* Mode 0: the chunk is the track. */
-static void xx_dms_unpack_none(xx_dms_decoder *decoder,
-                               xx_dms_output *output) {
+static void xx_dms_unpack_none(xx_dms_decoder *decoder, xx_dms_output *output)
+{
     while (!xx_dms_output_eof(output) && !decoder->input.failed) {
         xx_dms_write_byte(output, xx_dms_read_byte(&decoder->input));
         if (output->failed) break;
@@ -633,7 +606,8 @@ static void xx_dms_unpack_none(xx_dms_decoder *decoder,
  * count of 0xff escapes to a 16-bit count. Mode 1 runs it on the chunk
  * directly; modes 2..4 and the heavy modes with flag bit 2 run it over the
  * output of their LZ stage. */
-static void xx_dms_unrle(xx_dms_output *output, xx_dms_input *input) {
+static void xx_dms_unrle(xx_dms_output *output, xx_dms_input *input)
+{
     while (!xx_dms_output_eof(output) && !input->failed) {
         uint8_t value = xx_dms_read_byte(input);
         uint32_t count = 1U;
@@ -660,8 +634,8 @@ static void xx_dms_unrle(xx_dms_output *output, xx_dms_input *input) {
 }
 
 /* Mode 2: a 256-byte window, two-bit lengths, eight-bit distances. */
-static void xx_dms_unpack_quick(xx_dms_decoder *decoder,
-                                xx_dms_output *output) {
+static void xx_dms_unpack_quick(xx_dms_decoder *decoder, xx_dms_output *output)
+{
     xx_dms_init_context(decoder);
     while (!xx_dms_output_eof(output) && !xx_dms_stalled(decoder, output)) {
         if (xx_dms_read_bits(&decoder->bits, 1U)) {
@@ -671,9 +645,7 @@ static void xx_dms_unpack_quick(xx_dms_decoder *decoder,
             decoder->context_location &= 0xffU;
         } else {
             uint32_t count = xx_dms_read_bits(&decoder->bits, 2U) + 2U;
-            uint8_t offset = (uint8_t)(decoder->context_location -
-                                       xx_dms_read_bits(&decoder->bits, 8U) -
-                                       1U);
+            uint8_t offset = (uint8_t)(decoder->context_location - xx_dms_read_bits(&decoder->bits, 8U) - 1U);
             uint32_t step;
             for (step = 0U; step < count; ++step) {
                 uint8_t value = decoder->context[(step + offset) & 0xffU];
@@ -691,8 +663,8 @@ static void xx_dms_unpack_quick(xx_dms_decoder *decoder,
 
 /* Mode 3: a 16 KiB window with the shared variable length code table used
  * for both the length and, four bits at a time, the distance. */
-static void xx_dms_unpack_medium(xx_dms_decoder *decoder,
-                                 xx_dms_output *output) {
+static void xx_dms_unpack_medium(xx_dms_decoder *decoder, xx_dms_output *output)
+{
     xx_dms_init_context(decoder);
     while (!xx_dms_output_eof(output) && !xx_dms_stalled(decoder, output)) {
         if (xx_dms_read_bits(&decoder->bits, 1U)) {
@@ -701,11 +673,8 @@ static void xx_dms_unpack_medium(xx_dms_decoder *decoder,
             xx_dms_write_byte(output, value);
             decoder->context_location &= 0x3fffU;
         } else {
-            uint32_t count = xx_dms_vlc_decode(
-                &decoder->vlc, &decoder->bits,
-                xx_dms_read_bits(&decoder->bits, 4U));
-            uint32_t raw_distance = xx_dms_vlc_decode_distance(
-                &decoder->vlc, &decoder->bits, (count >> 4U) & 0xfU, count);
+            uint32_t count = xx_dms_vlc_decode(&decoder->vlc, &decoder->bits, xx_dms_read_bits(&decoder->bits, 4U));
+            uint32_t raw_distance = xx_dms_vlc_decode_distance(&decoder->vlc, &decoder->bits, (count >> 4U) & 0xfU, count);
             uint32_t offset;
             uint32_t step;
             count = (count >> 8U) + 3U;
@@ -726,8 +695,8 @@ static void xx_dms_unpack_medium(xx_dms_decoder *decoder,
 
 /* Mode 4: the same 16 KiB window, but the literal/length alphabet is an
  * adaptive Huffman tree carried across tracks. */
-static void xx_dms_unpack_deep(xx_dms_decoder *decoder,
-                               xx_dms_output *output) {
+static void xx_dms_unpack_deep(xx_dms_decoder *decoder, xx_dms_output *output)
+{
     xx_dms_init_context(decoder);
     if (!decoder->deep.ready) xx_dms_deep_reset(&decoder->deep);
     while (!xx_dms_output_eof(output) && !xx_dms_stalled(decoder, output)) {
@@ -743,11 +712,7 @@ static void xx_dms_unpack_deep(xx_dms_decoder *decoder,
             decoder->context_location &= 0x3fffU;
         } else {
             uint32_t count = symbol - 253U; /* the shortest match is three */
-            uint32_t offset =
-                decoder->context_location -
-                xx_dms_vlc_decode(&decoder->vlc, &decoder->bits,
-                                  xx_dms_read_bits(&decoder->bits, 4U)) -
-                1U;
+            uint32_t offset = decoder->context_location - xx_dms_vlc_decode(&decoder->vlc, &decoder->bits, xx_dms_read_bits(&decoder->bits, 4U)) - 1U;
             uint32_t step;
             for (step = 0U; step < count; ++step) {
                 uint8_t value = decoder->context[(step + offset) & 0x3fffU];
@@ -766,9 +731,8 @@ static void xx_dms_unpack_deep(xx_dms_decoder *decoder,
 /* Read one of the heavy modes' two Huffman tables. A zero code count means
  * the alphabet collapsed to a single value, which follows in place of the
  * code lengths. */
-static void xx_dms_read_table(xx_dms_decoder *decoder, xx_dms_huff *huff,
-                              bool *ready, uint32_t count_bits,
-                              uint32_t value_bits) {
+static void xx_dms_read_table(xx_dms_decoder *decoder, xx_dms_huff *huff, bool *ready, uint32_t count_bits, uint32_t value_bits)
+{
     uint8_t lengths[512];
     uint32_t count;
     uint32_t index;
@@ -808,9 +772,8 @@ static void xx_dms_read_table(xx_dms_decoder *decoder, xx_dms_huff *huff,
 
 /* Modes 5 and 6: a 4 KiB or 8 KiB window with two static Huffman tables,
  * and a "same distance as last time" escape. */
-static void xx_dms_unpack_heavy(xx_dms_decoder *decoder,
-                                xx_dms_output *output, bool init_tables,
-                                bool use_8k) {
+static void xx_dms_unpack_heavy(xx_dms_decoder *decoder, xx_dms_output *output, bool init_tables, bool use_8k)
+{
     uint32_t mask = use_8k ? 0x1fffU : 0xfffU;
     uint32_t bit_length = use_8k ? 14U : 13U;
     xx_dms_init_context(decoder);
@@ -822,10 +785,8 @@ static void xx_dms_unpack_heavy(xx_dms_decoder *decoder,
         decoder->heavy_last_initialized = true;
     }
     if (init_tables) {
-        xx_dms_read_table(decoder, &decoder->symbol_decoder,
-                          &decoder->symbol_ready, 9U, 5U);
-        xx_dms_read_table(decoder, &decoder->offset_decoder,
-                          &decoder->offset_ready, 5U, 4U);
+        xx_dms_read_table(decoder, &decoder->symbol_decoder, &decoder->symbol_ready, 9U, 5U);
+        xx_dms_read_table(decoder, &decoder->offset_decoder, &decoder->offset_ready, 5U, 4U);
     }
     /* A track that uses the tables without ever having read them is
      * malformed. The reference dereferences the null decoder here; this
@@ -835,8 +796,7 @@ static void xx_dms_unpack_heavy(xx_dms_decoder *decoder,
         return;
     }
     while (!xx_dms_output_eof(output) && !xx_dms_stalled(decoder, output)) {
-        uint32_t symbol =
-            xx_dms_huff_decode(&decoder->symbol_decoder, &decoder->bits);
+        uint32_t symbol = xx_dms_huff_decode(&decoder->symbol_decoder, &decoder->bits);
         if (decoder->input.failed) break;
         if (symbol < 256U) {
             decoder->context[decoder->context_location++] = (uint8_t)symbol;
@@ -844,8 +804,7 @@ static void xx_dms_unpack_heavy(xx_dms_decoder *decoder,
             decoder->context_location &= mask;
         } else {
             uint32_t count = symbol - 253U;
-            uint32_t offset_length =
-                xx_dms_huff_decode(&decoder->offset_decoder, &decoder->bits);
+            uint32_t offset_length = xx_dms_huff_decode(&decoder->offset_decoder, &decoder->bits);
             uint32_t raw_offset = decoder->heavy_last_offset;
             uint32_t offset;
             uint32_t step;
@@ -856,9 +815,7 @@ static void xx_dms_unpack_heavy(xx_dms_decoder *decoder,
                         decoder->input.failed = true;
                         break;
                     }
-                    raw_offset = (1U << (offset_length - 1U)) |
-                                 xx_dms_read_bits(&decoder->bits,
-                                                  offset_length - 1U);
+                    raw_offset = (1U << (offset_length - 1U)) | xx_dms_read_bits(&decoder->bits, offset_length - 1U);
                 } else {
                     raw_offset = 0U;
                 }
@@ -880,7 +837,8 @@ static void xx_dms_unpack_heavy(xx_dms_decoder *decoder,
 
 /* A track that stopped short of a 1 KiB sector boundary did not decode; the
  * reference treats that as fatal for the archive and so does this. */
-static bool xx_dms_handle_track_size(const xx_dms_output *output) {
+static bool xx_dms_handle_track_size(const xx_dms_output *output)
+{
     return xx_dms_output_eof(output) || (output->offset & 0x3ffU) == 0U;
 }
 
@@ -889,17 +847,15 @@ static bool xx_dms_handle_track_size(const xx_dms_output *output) {
  * really missing is rebuilt: a complete track whose checksum disagrees is
  * left alone so that the caller's checksum test rejects it, and the fix
  * never touches a byte outside the chunk's own slot. */
-static bool xx_dms_apply_fix(xx_dms_decoder *decoder, xx_dms_output *output,
-                             uint32_t mode, uint32_t raw_length,
-                             size_t image_offset, uint16_t file_sum) {
+static bool xx_dms_apply_fix(xx_dms_decoder *decoder, xx_dms_output *output, uint32_t mode, uint32_t raw_length, size_t image_offset, uint16_t file_sum)
+{
     size_t missing;
     uint16_t proto_sum;
     if (mode < XX_DMS_MODE_HEAVY1) return xx_dms_handle_track_size(output);
     missing = output->end - output->offset;
     if (missing == 0U) return true;
     if (missing > 1U || raw_length < missing) return false;
-    proto_sum = xx_dms_checksum(decoder->raw + image_offset,
-                                raw_length - missing);
+    proto_sum = xx_dms_checksum(decoder->raw + image_offset, raw_length - missing);
     xx_dms_write_byte(output, 0U);
     if (output->failed) return false;
     if (proto_sum != file_sum) {
@@ -914,15 +870,12 @@ static bool xx_dms_apply_fix(xx_dms_decoder *decoder, xx_dms_output *output,
 }
 
 /* Decode one track into its slot in the image. */
-static bool xx_dms_process_track(xx_dms_decoder *decoder,
-                                 const xx_dms_track *track,
-                                 const uint8_t *packed, size_t packed_size,
-                                 size_t chunk_start, uint16_t file_sum,
-                                 bool *state_ok) {
+static bool xx_dms_process_track(xx_dms_decoder *decoder, const xx_dms_track *track, const uint8_t *packed, size_t packed_size, size_t chunk_start, uint16_t file_sum,
+                                 bool *state_ok)
+{
     bool do_rle;
     if (state_ok) *state_ok = false;
-    if (chunk_start > packed_size ||
-        (size_t)track->packed_size > packed_size - chunk_start) {
+    if (chunk_start > packed_size || (size_t)track->packed_size > packed_size - chunk_start) {
         return false;
     }
     decoder->input.data = packed;
@@ -931,9 +884,7 @@ static bool xx_dms_process_track(xx_dms_decoder *decoder,
     decoder->input.failed = false;
     xx_dms_bits_reset(&decoder->bits);
 
-    do_rle = (track->mode >= XX_DMS_MODE_QUICK &&
-              track->mode <= XX_DMS_MODE_DEEP) ||
-             (track->mode >= XX_DMS_MODE_HEAVY1 && (track->flags & 4U) != 0U);
+    do_rle = (track->mode >= XX_DMS_MODE_QUICK && track->mode <= XX_DMS_MODE_DEEP) || (track->mode >= XX_DMS_MODE_HEAVY1 && (track->flags & 4U) != 0U);
 
     if (do_rle) {
         xx_dms_output stage;
@@ -945,13 +896,10 @@ static bool xx_dms_process_track(xx_dms_decoder *decoder,
         stage.end = track->tmp_size;
         stage.failed = false;
         switch (track->mode) {
-        case XX_DMS_MODE_QUICK: xx_dms_unpack_quick(decoder, &stage); break;
-        case XX_DMS_MODE_MEDIUM: xx_dms_unpack_medium(decoder, &stage); break;
-        case XX_DMS_MODE_DEEP: xx_dms_unpack_deep(decoder, &stage); break;
-        default:
-            xx_dms_unpack_heavy(decoder, &stage, (track->flags & 2U) != 0U,
-                                track->mode == XX_DMS_MODE_HEAVY2);
-            break;
+            case XX_DMS_MODE_QUICK: xx_dms_unpack_quick(decoder, &stage); break;
+            case XX_DMS_MODE_MEDIUM: xx_dms_unpack_medium(decoder, &stage); break;
+            case XX_DMS_MODE_DEEP: xx_dms_unpack_deep(decoder, &stage); break;
+            default: xx_dms_unpack_heavy(decoder, &stage, (track->flags & 2U) != 0U, track->mode == XX_DMS_MODE_HEAVY2); break;
         }
         produced = stage.offset;
         /* A HEAVY chunk's context and Huffman tables are updated by this
@@ -959,9 +907,7 @@ static bool xx_dms_process_track(xx_dms_decoder *decoder,
          * usable even when the independent RLE expansion or plaintext
          * checksum fails. Packed CRC verification happens in run_chunk.
          * Other modes keep the conservative broken-chain behaviour. */
-        if (state_ok && track->mode >= XX_DMS_MODE_HEAVY1 &&
-            !decoder->input.failed && !stage.failed &&
-            stage.offset == stage.end) {
+        if (state_ok && track->mode >= XX_DMS_MODE_HEAVY1 && !decoder->input.failed && !stage.failed && stage.offset == stage.end) {
             *state_ok = true;
         }
         /* Whatever the LZ stage managed to produce is fed to the RLE stage;
@@ -982,22 +928,15 @@ static bool xx_dms_process_track(xx_dms_decoder *decoder,
         decoder->output.end = (size_t)track->image_offset + track->raw_size;
         decoder->output.failed = false;
         switch (track->mode) {
-        case XX_DMS_MODE_NONE: xx_dms_unpack_none(decoder, &decoder->output); break;
-        case XX_DMS_MODE_SIMPLE:
-            xx_dms_unrle(&decoder->output, &decoder->input);
-            break;
-        case XX_DMS_MODE_QUICK: xx_dms_unpack_quick(decoder, &decoder->output); break;
-        case XX_DMS_MODE_MEDIUM: xx_dms_unpack_medium(decoder, &decoder->output); break;
-        case XX_DMS_MODE_DEEP: xx_dms_unpack_deep(decoder, &decoder->output); break;
-        default:
-            xx_dms_unpack_heavy(decoder, &decoder->output,
-                                (track->flags & 2U) != 0U,
-                                track->mode == XX_DMS_MODE_HEAVY2);
-            break;
+            case XX_DMS_MODE_NONE: xx_dms_unpack_none(decoder, &decoder->output); break;
+            case XX_DMS_MODE_SIMPLE: xx_dms_unrle(&decoder->output, &decoder->input); break;
+            case XX_DMS_MODE_QUICK: xx_dms_unpack_quick(decoder, &decoder->output); break;
+            case XX_DMS_MODE_MEDIUM: xx_dms_unpack_medium(decoder, &decoder->output); break;
+            case XX_DMS_MODE_DEEP: xx_dms_unpack_deep(decoder, &decoder->output); break;
+            default: xx_dms_unpack_heavy(decoder, &decoder->output, (track->flags & 2U) != 0U, track->mode == XX_DMS_MODE_HEAVY2); break;
         }
     }
-    if (!xx_dms_apply_fix(decoder, &decoder->output, track->mode,
-                          track->raw_size, track->image_offset, file_sum)) {
+    if (!xx_dms_apply_fix(decoder, &decoder->output, track->mode, track->raw_size, track->image_offset, file_sum)) {
         return false;
     }
     /* Flag bit 0 keeps the LZ context alive into the next track. */
@@ -1007,12 +946,11 @@ static bool xx_dms_process_track(xx_dms_decoder *decoder,
 
 /* --- device access ------------------------------------------------------- */
 
-static bool xx_dms_read_at(xx_io_device *device, int64_t offset, void *data,
-                           size_t size) {
+static bool xx_dms_read_at(xx_io_device *device, int64_t offset, void *data, size_t size)
+{
     uint8_t *out = (uint8_t *)data;
     size_t done = 0U;
-    if (!device || (!data && size != 0U) || offset < 0 ||
-        xx_io_seek64(device, offset, SEEK_SET) != 0) {
+    if (!device || (!data && size != 0U) || offset < 0 || xx_io_seek64(device, offset, SEEK_SET) != 0) {
         return false;
     }
     while (done < size) {
@@ -1023,13 +961,13 @@ static bool xx_dms_read_at(xx_io_device *device, int64_t offset, void *data,
     return true;
 }
 
-static bool xx_dms_range_within(int64_t total_size, int64_t offset,
-                                int64_t size) {
-    return (total_size >= 0) && (offset >= 0) && (size >= 0) &&
-           (offset <= total_size) && (size <= total_size - offset);
+static bool xx_dms_range_within(int64_t total_size, int64_t offset, int64_t size)
+{
+    return (total_size >= 0) && (offset >= 0) && (size >= 0) && (offset <= total_size) && (size <= total_size - offset);
 }
 
-static void xx_dms_private_cleanup(xx_dms_private *parsed) {
+static void xx_dms_private_cleanup(xx_dms_private *parsed)
+{
     if (!parsed) return;
     if (parsed->tracks) xx_mem_free(parsed->tracks);
     xx_mem_zero(parsed, sizeof(*parsed));
@@ -1056,23 +994,20 @@ static void xx_dms_private_cleanup(xx_dms_private *parsed) {
 /* Whether a chunk can be a disk track at all. From xDMS's unpack rule, a
  * chunk of 2048 bytes or less never is - those are boot-block ads - and
  * one claiming more than a physical track holds could not be placed. */
-static bool xx_dms_is_disk_chunk(const xx_dms_track *track,
-                                 uint32_t track_size) {
-    return track->number < XX_DMS_TRACKS_PER_DISK &&
-           track->raw_size > XX_DMS_SHORT_CHUNK_SIZE &&
-           track->raw_size <= track_size;
+static bool xx_dms_is_disk_chunk(const xx_dms_track *track, uint32_t track_size)
+{
+    return track->number < XX_DMS_TRACKS_PER_DISK && track->raw_size > XX_DMS_SHORT_CHUNK_SIZE && track->raw_size <= track_size;
 }
 
-static bool xx_dms_parse(Abstractformat *self, xx_dms_private *parsed,
-                         xx_pd_struct *pd) {
-    static const uint32_t context_sizes[XX_DMS_MODE_MAX + 1U] = {
-        0U, 0U, 256U, 16384U, 16384U, 4096U, 8192U};
+static bool xx_dms_parse(Abstractformat *self, xx_dms_private *parsed, xx_pd_struct *pd)
+{
+    static const uint32_t context_sizes[XX_DMS_MODE_MAX + 1U] = {0U, 0U, 256U, 16384U, 16384U, 4096U, 8192U};
     uint8_t header[XX_DMS_HEADER_SIZE];
     int32_t chosen[XX_DMS_TRACKS_PER_DISK];
     int64_t total_size;
     int64_t available;
     int64_t offset;
-    uint32_t carrier_size=0U;
+    uint32_t carrier_size = 0U;
     uint32_t info;
     uint32_t track_size;
     uint32_t header_first;
@@ -1091,39 +1026,42 @@ static bool xx_dms_parse(Abstractformat *self, xx_dms_private *parsed,
         parsed->input_size = -1;
         parsed->archive_end = -1;
     }
-    if (!self || !self->device || !parsed || self->base_address < 0 ||
-        (pd && xx_pd_is_stopped(pd))) {
+    if (!self || !self->device || !parsed || self->base_address < 0 || (pd && xx_pd_is_stopped(pd))) {
         return false;
     }
     total_size = xx_io_total_size(self->device);
-    if (!xx_dms_range_within(total_size, self->base_address,
-                             XX_DMS_HEADER_SIZE) ||
-        !xx_dms_read_at(self->device, self->base_address, header,
-                        sizeof(header))) {
+    if (!xx_dms_range_within(total_size, self->base_address, XX_DMS_HEADER_SIZE) || !xx_dms_read_at(self->device, self->base_address, header, sizeof(header))) {
         goto fail;
     }
     /* Exact HUNK executable wrappers from DMS 2.03/2.04. Only their declared
      * static payload offsets are interpreted; no executable code runs. */
-    if(xx_data_get_u32(header,sizeof(header),0U,true)==0x3F3U) {
-        uint8_t stub[88]; uint32_t kind;
-        if(!xx_dms_range_within(total_size,self->base_address,sizeof(stub)) || !xx_dms_read_at(self->device,self->base_address,stub,sizeof(stub))) goto fail;
-        kind=xx_data_get_u32(stub,sizeof(stub),20U,true);
-        if(kind==0x1605U && xx_data_get_u32(stub,sizeof(stub),24U,true)==0x1C24U &&
-            xx_data_get_u32(stub,sizeof(stub),64U,true)==0x303C05CDU && xx_data_get_u32(stub,sizeof(stub),68U,true)==0x421B51C8U && xx_data_get_u32(stub,sizeof(stub),72U,true)==0xFFFC47F9U) carrier_size=0x58C4U;
-        else if((kind==0x2462U || kind==0x2466U) && xx_data_get_u32(stub,sizeof(stub),44U,true)==0xABCDU &&
-            xx_data_get_u32(stub,sizeof(stub),76U,true)==0x48E7FFF6U && xx_data_get_u32(stub,sizeof(stub),80U,true)==0x61000030U && xx_data_get_u32(stub,sizeof(stub),84U,true)==0x4CDF6FFFU) carrier_size=kind==0x2462U?0x45D0U:0x45E0U;
-        else if(kind==0x3269U && xx_data_get_u32(stub,sizeof(stub),36U,true)==0x60000006U && xx_data_get_u32(stub,sizeof(stub),40U,true)==0x24E2U &&
-            xx_data_get_u32(stub,sizeof(stub),44U,true)==0x48E77EFEU && xx_data_get_u32(stub,sizeof(stub),48U,true)==0x24482400U && xx_data_get_u32(stub,sizeof(stub),64U,true)==0x3B61425BU) carrier_size=0x537CU;
+    if (xx_data_get_u32(header, sizeof(header), 0U, true) == 0x3F3U) {
+        uint8_t stub[88];
+        uint32_t kind;
+        if (!xx_dms_range_within(total_size, self->base_address, sizeof(stub)) || !xx_dms_read_at(self->device, self->base_address, stub, sizeof(stub))) goto fail;
+        kind = xx_data_get_u32(stub, sizeof(stub), 20U, true);
+        if (kind == 0x1605U && xx_data_get_u32(stub, sizeof(stub), 24U, true) == 0x1C24U && xx_data_get_u32(stub, sizeof(stub), 64U, true) == 0x303C05CDU &&
+            xx_data_get_u32(stub, sizeof(stub), 68U, true) == 0x421B51C8U && xx_data_get_u32(stub, sizeof(stub), 72U, true) == 0xFFFC47F9U)
+            carrier_size = 0x58C4U;
+        else if ((kind == 0x2462U || kind == 0x2466U) && xx_data_get_u32(stub, sizeof(stub), 44U, true) == 0xABCDU &&
+                 xx_data_get_u32(stub, sizeof(stub), 76U, true) == 0x48E7FFF6U && xx_data_get_u32(stub, sizeof(stub), 80U, true) == 0x61000030U &&
+                 xx_data_get_u32(stub, sizeof(stub), 84U, true) == 0x4CDF6FFFU)
+            carrier_size = kind == 0x2462U ? 0x45D0U : 0x45E0U;
+        else if (kind == 0x3269U && xx_data_get_u32(stub, sizeof(stub), 36U, true) == 0x60000006U && xx_data_get_u32(stub, sizeof(stub), 40U, true) == 0x24E2U &&
+                 xx_data_get_u32(stub, sizeof(stub), 44U, true) == 0x48E77EFEU && xx_data_get_u32(stub, sizeof(stub), 48U, true) == 0x24482400U &&
+                 xx_data_get_u32(stub, sizeof(stub), 64U, true) == 0x3B61425BU)
+            carrier_size = 0x537CU;
         else goto fail;
-        if(!xx_dms_range_within(total_size,self->base_address+carrier_size,sizeof(header)) || !xx_dms_read_at(self->device,self->base_address+carrier_size,header,sizeof(header))) goto fail;
+        if (!xx_dms_range_within(total_size, self->base_address + carrier_size, sizeof(header)) ||
+            !xx_dms_read_at(self->device, self->base_address + carrier_size, header, sizeof(header)))
+            goto fail;
     }
-    if(xx_rt_memcmp(header,"DMS!",4U)) goto fail;
+    if (xx_rt_memcmp(header, "DMS!", 4U)) goto fail;
     parsed->input_size = total_size;
     available = total_size - self->base_address;
     /* The header CRC is the detector: four magic bytes alone are far too
      * weak, and every real encoder fills this in. */
-    if (xx_dms_crc16(header + 4, 50U) !=
-        xx_data_get_u16(header, sizeof(header), 54U, true)) {
+    if (xx_dms_crc16(header + 4, 50U) != xx_data_get_u16(header, sizeof(header), 54U, true)) {
         goto fail;
     }
     info = xx_data_get_u16(header, sizeof(header), 10U, true);
@@ -1140,20 +1078,17 @@ static bool xx_dms_parse(Abstractformat *self, xx_dms_private *parsed,
     parsed->image_size = track_size * XX_DMS_TRACKS_PER_DISK;
     header_first = xx_data_get_u16(header, sizeof(header), 16U, true);
     header_last = xx_data_get_u16(header, sizeof(header), 18U, true);
-    header_range =
-        !(header_first == 0U && header_last == 0U &&
-          (xx_data_get_u32(header, sizeof(header), 20U, true) == 0U ||
-           xx_data_get_u32(header, sizeof(header), 24U, true) == 0U)) &&
-        header_first <= header_last && header_last < XX_DMS_TRACKS_PER_DISK;
+    header_range = !(header_first == 0U && header_last == 0U &&
+                     (xx_data_get_u32(header, sizeof(header), 20U, true) == 0U || xx_data_get_u32(header, sizeof(header), 24U, true) == 0U)) &&
+                   header_first <= header_last && header_last < XX_DMS_TRACKS_PER_DISK;
 
-    parsed->tracks = (xx_dms_track *)xx_mem_calloc(XX_DMS_MAX_TRACKS,
-                                                   sizeof(*parsed->tracks));
+    parsed->tracks = (xx_dms_track *)xx_mem_calloc(XX_DMS_MAX_TRACKS, sizeof(*parsed->tracks));
     if (!parsed->tracks) goto fail;
 
     /* The chain ends at the first thing that is not a well formed chunk:
      * trailing data is overlay. Only a first chunk that is broken makes
      * the file something other than DMS. */
-    offset = carrier_size+XX_DMS_HEADER_SIZE;
+    offset = carrier_size + XX_DMS_HEADER_SIZE;
     while (offset + (int64_t)XX_DMS_TRACK_HEADER_SIZE <= available) {
         uint8_t entry[XX_DMS_TRACK_HEADER_SIZE];
         xx_dms_track *track;
@@ -1165,8 +1100,7 @@ static bool xx_dms_parse(Abstractformat *self, xx_dms_private *parsed,
         bool usable;
         if (pd && xx_pd_is_stopped(pd)) goto fail;
         if (parsed->count >= XX_DMS_MAX_TRACKS) break;
-        if (!xx_dms_read_at(self->device, self->base_address + offset, entry,
-                            sizeof(entry))) {
+        if (!xx_dms_read_at(self->device, self->base_address + offset, entry, sizeof(entry))) {
             goto fail;
         }
         number = xx_data_get_u16(entry, sizeof(entry), 2U, true);
@@ -1177,17 +1111,10 @@ static bool xx_dms_parse(Abstractformat *self, xx_dms_private *parsed,
         raw_length = xx_data_get_u16(entry, sizeof(entry), 10U, true);
         /* 80 is the FILE_ID.DIZ chunk and anything from 0x8000 up is a
          * banner; the numbers between have no meaning. */
-        usable = entry[0] == 'T' && entry[1] == 'R' &&
-                 xx_dms_crc16(entry, 18U) ==
-                     xx_data_get_u16(entry, sizeof(entry), 18U, true) &&
-                 !(number > XX_DMS_TRACKS_PER_DISK && number < 0x8000U) &&
-                 mode <= XX_DMS_MODE_MAX &&
-                 offset + (int64_t)XX_DMS_TRACK_HEADER_SIZE +
-                         (int64_t)packed_length <=
-                     available &&
-                 offset + (int64_t)XX_DMS_TRACK_HEADER_SIZE +
-                         (int64_t)packed_length <=
-                     XX_DMS_MAX_PACKED_SIZE;
+        usable = entry[0] == 'T' && entry[1] == 'R' && xx_dms_crc16(entry, 18U) == xx_data_get_u16(entry, sizeof(entry), 18U, true) &&
+                 !(number > XX_DMS_TRACKS_PER_DISK && number < 0x8000U) && mode <= XX_DMS_MODE_MAX &&
+                 offset + (int64_t)XX_DMS_TRACK_HEADER_SIZE + (int64_t)packed_length <= available &&
+                 offset + (int64_t)XX_DMS_TRACK_HEADER_SIZE + (int64_t)packed_length <= XX_DMS_MAX_PACKED_SIZE;
         if (!usable) {
             if (parsed->count == 0U) goto fail;
             break;
@@ -1195,23 +1122,18 @@ static bool xx_dms_parse(Abstractformat *self, xx_dms_private *parsed,
         if (context_sizes[mode] > parsed->context_size) {
             parsed->context_size = context_sizes[mode];
         }
-        if (((mode >= XX_DMS_MODE_QUICK && mode <= XX_DMS_MODE_DEEP) ||
-             (mode >= XX_DMS_MODE_HEAVY1 && (flags & 4U) != 0U)) &&
-            tmp_length > parsed->tmp_size) {
+        if (((mode >= XX_DMS_MODE_QUICK && mode <= XX_DMS_MODE_DEEP) || (mode >= XX_DMS_MODE_HEAVY1 && (flags & 4U) != 0U)) && tmp_length > parsed->tmp_size) {
             parsed->tmp_size = tmp_length;
         }
         track = &parsed->tracks[parsed->count];
         track->number = number;
         track->header_offset = self->base_address + offset;
-        track->data_offset =
-            self->base_address + offset + (int64_t)XX_DMS_TRACK_HEADER_SIZE;
+        track->data_offset = self->base_address + offset + (int64_t)XX_DMS_TRACK_HEADER_SIZE;
         track->packed_size = packed_length;
         track->tmp_size = tmp_length;
         track->raw_size = raw_length;
-        track->checksum = (uint16_t)xx_data_get_u16(entry, sizeof(entry), 14U,
-                                                    true);
-        track->data_crc = (uint16_t)xx_data_get_u16(entry, sizeof(entry), 16U,
-                                                    true);
+        track->checksum = (uint16_t)xx_data_get_u16(entry, sizeof(entry), 14U, true);
+        track->data_crc = (uint16_t)xx_data_get_u16(entry, sizeof(entry), 16U, true);
         track->flags = flags;
         track->mode = mode;
         track->is_info = (number >= XX_DMS_TRACKS_PER_DISK);
@@ -1229,8 +1151,7 @@ static bool xx_dms_parse(Abstractformat *self, xx_dms_private *parsed,
     if (offset > XX_DMS_MAX_PACKED_SIZE || offset > available) goto fail;
     parsed->packed_size = (uint32_t)offset;
     parsed->archive_end = self->base_address + offset;
-    if (parsed->context_size > XX_DMS_MAX_CONTEXT_SIZE ||
-        parsed->tmp_size > XX_DMS_MAX_TMP_SIZE) {
+    if (parsed->context_size > XX_DMS_MAX_CONTEXT_SIZE || parsed->tmp_size > XX_DMS_MAX_TMP_SIZE) {
         goto fail;
     }
 
@@ -1245,8 +1166,7 @@ static bool xx_dms_parse(Abstractformat *self, xx_dms_private *parsed,
         }
         for (index = 0U; index < parsed->count; ++index) {
             const xx_dms_track *track = &parsed->tracks[index];
-            if (xx_dms_is_disk_chunk(track, track_size) &&
-                track->number >= first && track->number <= last) {
+            if (xx_dms_is_disk_chunk(track, track_size) && track->number >= first && track->number <= last) {
                 chosen[track->number] = (int32_t)index;
             }
         }
@@ -1273,11 +1193,8 @@ static bool xx_dms_parse(Abstractformat *self, xx_dms_private *parsed,
         if (chosen[number] < 0) ++parsed->missing_tracks;
     }
     parsed->raw_offset = lowest_real * track_size;
-    parsed->raw_size =
-        (highest_real - lowest_real) * track_size +
-        parsed->tracks[chosen[highest_real]].raw_size;
-    if (parsed->raw_size == 0U || parsed->raw_size > XX_DMS_MAX_IMAGE_SIZE ||
-        parsed->raw_size > parsed->image_size) {
+    parsed->raw_size = (highest_real - lowest_real) * track_size + parsed->tracks[chosen[highest_real]].raw_size;
+    if (parsed->raw_size == 0U || parsed->raw_size > XX_DMS_MAX_IMAGE_SIZE || parsed->raw_size > parsed->image_size) {
         goto fail;
     }
     for (number = lowest_real; number <= highest_real; ++number) {
@@ -1288,8 +1205,7 @@ static bool xx_dms_parse(Abstractformat *self, xx_dms_private *parsed,
         position = number * track_size - parsed->raw_offset;
         /* Holds by construction; checked because the numbers are from the
          * file and a slip here would be an out-of-bounds write. */
-        if (position > parsed->raw_size ||
-            track->raw_size > parsed->raw_size - position) {
+        if (position > parsed->raw_size || track->raw_size > parsed->raw_size - position) {
             goto fail;
         }
         track->is_real = true;
@@ -1318,7 +1234,8 @@ fail:
 
 /* --- decode everything --------------------------------------------------- */
 
-static void xx_dms_decoder_free(xx_dms_decoder *decoder) {
+static void xx_dms_decoder_free(xx_dms_decoder *decoder)
+{
     if (!decoder) return;
     if (decoder->context) xx_mem_free(decoder->context);
     if (decoder->tmp) xx_mem_free(decoder->tmp);
@@ -1327,10 +1244,9 @@ static void xx_dms_decoder_free(xx_dms_decoder *decoder) {
     xx_mem_free(decoder);
 }
 
-static xx_dms_decoder *xx_dms_decoder_create(const xx_dms_private *parsed,
-                                             uint8_t *raw, size_t raw_size) {
-    xx_dms_decoder *decoder =
-        (xx_dms_decoder *)xx_mem_calloc(1U, sizeof(*decoder));
+static xx_dms_decoder *xx_dms_decoder_create(const xx_dms_private *parsed, uint8_t *raw, size_t raw_size)
+{
+    xx_dms_decoder *decoder = (xx_dms_decoder *)xx_mem_calloc(1U, sizeof(*decoder));
     if (!decoder) return NULL;
     decoder->raw = raw;
     decoder->raw_size = raw_size;
@@ -1345,10 +1261,8 @@ static xx_dms_decoder *xx_dms_decoder_create(const xx_dms_private *parsed,
         decoder->tmp = (uint8_t *)xx_mem_calloc(parsed->tmp_size, 1U);
         if (!decoder->tmp) goto fail;
     }
-    decoder->symbol_decoder.nodes = (xx_dms_huff_node *)xx_mem_calloc(
-        XX_DMS_SYMBOL_NODES, sizeof(xx_dms_huff_node));
-    decoder->offset_decoder.nodes = (xx_dms_huff_node *)xx_mem_calloc(
-        XX_DMS_OFFSET_NODES, sizeof(xx_dms_huff_node));
+    decoder->symbol_decoder.nodes = (xx_dms_huff_node *)xx_mem_calloc(XX_DMS_SYMBOL_NODES, sizeof(xx_dms_huff_node));
+    decoder->offset_decoder.nodes = (xx_dms_huff_node *)xx_mem_calloc(XX_DMS_OFFSET_NODES, sizeof(xx_dms_huff_node));
     if (!decoder->symbol_decoder.nodes || !decoder->offset_decoder.nodes) {
         goto fail;
     }
@@ -1364,7 +1278,8 @@ fail:
 
 /* Forget everything a previous chunk left behind, as if the archive
  * started here. */
-static void xx_dms_decoder_restart(xx_dms_decoder *decoder) {
+static void xx_dms_decoder_restart(xx_dms_decoder *decoder)
+{
     if (!decoder) return;
     decoder->init_context = true;
     decoder->deep.ready = false;
@@ -1376,33 +1291,26 @@ static void xx_dms_decoder_restart(xx_dms_decoder *decoder) {
 
 /* Make destination continue exactly where source stands. Both were created
  * from the same parse, so every buffer has the same size. */
-static bool xx_dms_decoder_copy_state(xx_dms_decoder *destination,
-                                      const xx_dms_decoder *source) {
-    if (!destination || !source ||
-        destination->context_size != source->context_size ||
-        source->symbol_decoder.count > destination->symbol_decoder.capacity ||
+static bool xx_dms_decoder_copy_state(xx_dms_decoder *destination, const xx_dms_decoder *source)
+{
+    if (!destination || !source || destination->context_size != source->context_size || source->symbol_decoder.count > destination->symbol_decoder.capacity ||
         source->offset_decoder.count > destination->offset_decoder.capacity) {
         return false;
     }
     if (source->context_size != 0U) {
         if (!destination->context || !source->context) return false;
-        xx_rt_memcpy(destination->context, source->context,
-                     source->context_size);
+        xx_rt_memcpy(destination->context, source->context, source->context_size);
     }
     destination->context_location = source->context_location;
     destination->init_context = source->init_context;
     destination->deep = source->deep;
     if (source->symbol_decoder.count != 0U) {
-        xx_rt_memcpy(destination->symbol_decoder.nodes,
-                     source->symbol_decoder.nodes,
-                     source->symbol_decoder.count * sizeof(xx_dms_huff_node));
+        xx_rt_memcpy(destination->symbol_decoder.nodes, source->symbol_decoder.nodes, source->symbol_decoder.count * sizeof(xx_dms_huff_node));
     }
     destination->symbol_decoder.count = source->symbol_decoder.count;
     destination->symbol_decoder.empty_value = source->symbol_decoder.empty_value;
     if (source->offset_decoder.count != 0U) {
-        xx_rt_memcpy(destination->offset_decoder.nodes,
-                     source->offset_decoder.nodes,
-                     source->offset_decoder.count * sizeof(xx_dms_huff_node));
+        xx_rt_memcpy(destination->offset_decoder.nodes, source->offset_decoder.nodes, source->offset_decoder.count * sizeof(xx_dms_huff_node));
     }
     destination->offset_decoder.count = source->offset_decoder.count;
     destination->offset_decoder.empty_value = source->offset_decoder.empty_value;
@@ -1424,19 +1332,15 @@ typedef struct xx_dms_chain_s {
  * when the packed bytes match their CRC, the decoder filled the track, the
  * stored additive checksum matches, and no state the chunk inherits came
  * from a chunk that failed. */
-static bool xx_dms_run_chunk(xx_dms_chain *chain, const xx_dms_track *track,
-                             const uint8_t *packed, size_t packed_size,
-                             size_t chunk_start, uint8_t *target,
-                             size_t target_size) {
+static bool xx_dms_run_chunk(xx_dms_chain *chain, const xx_dms_track *track, const uint8_t *packed, size_t packed_size, size_t chunk_start, uint8_t *target,
+                             size_t target_size)
+{
     xx_dms_decoder *decoder = chain->decoder;
     bool uses_context = track->mode >= XX_DMS_MODE_QUICK;
     bool uses_tables = track->mode >= XX_DMS_MODE_HEAVY1;
     bool state_ok = false;
-    bool ok = target != NULL && chunk_start <= packed_size &&
-              (size_t)track->packed_size <= packed_size - chunk_start &&
-              (size_t)track->image_offset <= target_size &&
-              (size_t)track->raw_size <=
-                  target_size - (size_t)track->image_offset;
+    bool ok = target != NULL && chunk_start <= packed_size && (size_t)track->packed_size <= packed_size - chunk_start && (size_t)track->image_offset <= target_size &&
+              (size_t)track->raw_size <= target_size - (size_t)track->image_offset;
     decoder->raw = target;
     decoder->raw_size = target_size;
     /* A reset is pending exactly when the chain's previous chunk cleared
@@ -1444,18 +1348,13 @@ static bool xx_dms_run_chunk(xx_dms_chain *chain, const xx_dms_track *track,
      * with flag bit 1 brings its own tables. */
     if (uses_context && decoder->init_context) chain->context_broken = false;
     if (uses_tables && (track->flags & 2U) != 0U) chain->tables_broken = false;
-    ok = ok &&
-         xx_dms_crc16(packed + chunk_start, track->packed_size) ==
-             track->data_crc &&
-         !(uses_context && chain->context_broken) &&
+    ok = ok && xx_dms_crc16(packed + chunk_start, track->packed_size) == track->data_crc && !(uses_context && chain->context_broken) &&
          !(uses_tables && chain->tables_broken);
     if (ok) {
-        ok = xx_dms_process_track(decoder, track, packed, packed_size,
-                                  chunk_start, track->checksum, &state_ok);
+        ok = xx_dms_process_track(decoder, track, packed, packed_size, chunk_start, track->checksum, &state_ok);
     }
     if (ok) {
-        ok = xx_dms_checksum(decoder->raw + track->image_offset,
-                             track->raw_size) == track->checksum;
+        ok = xx_dms_checksum(decoder->raw + track->image_offset, track->raw_size) == track->checksum;
     }
     if (!ok && !state_ok) {
         if (uses_context) chain->context_broken = true;
@@ -1474,7 +1373,8 @@ typedef struct xx_dms_result_s {
     bool image_ok;     /**< Every real track verified. */
 } xx_dms_result;
 
-static void xx_dms_result_cleanup(xx_dms_result *result) {
+static void xx_dms_result_cleanup(xx_dms_result *result)
+{
     if (!result) return;
     if (result->image) xx_mem_free(result->image);
     if (result->extra) xx_mem_free(result->extra);
@@ -1495,9 +1395,8 @@ static void xx_dms_result_cleanup(xx_dms_result *result) {
  *  - banners and FILE_ID.DIZ start from scratch, each on its own.
  * Every chunk is verified against its CRC and checksum, so a wrong guess
  * about the state can only make a chunk fail, never make it lie. */
-static bool xx_dms_decode_all(Abstractformat *self,
-                              const xx_dms_private *parsed,
-                              xx_dms_result *result, xx_pd_struct *pd) {
+static bool xx_dms_decode_all(Abstractformat *self, const xx_dms_private *parsed, xx_dms_result *result, xx_pd_struct *pd)
+{
     xx_dms_chain main_chain;
     xx_dms_chain extra_chain;
     xx_dms_chain info_chain;
@@ -1509,13 +1408,10 @@ static bool xx_dms_decode_all(Abstractformat *self,
     xx_mem_zero(&main_chain, sizeof(main_chain));
     xx_mem_zero(&extra_chain, sizeof(extra_chain));
     xx_mem_zero(&info_chain, sizeof(info_chain));
-    if (!self || !self->device || !parsed || parsed->is_obfuscated ||
-        !parsed->tracks || parsed->count == 0U) {
+    if (!self || !self->device || !parsed || parsed->is_obfuscated || !parsed->tracks || parsed->count == 0U) {
         return false;
     }
-    if (parsed->packed_size == 0U || parsed->raw_size == 0U ||
-        (int64_t)parsed->packed_size > XX_DMS_MAX_PACKED_SIZE ||
-        parsed->raw_size > XX_DMS_MAX_IMAGE_SIZE ||
+    if (parsed->packed_size == 0U || parsed->raw_size == 0U || (int64_t)parsed->packed_size > XX_DMS_MAX_PACKED_SIZE || parsed->raw_size > XX_DMS_MAX_IMAGE_SIZE ||
         parsed->extra_size > XX_DMS_MAX_EXTRA_SIZE) {
         return false;
     }
@@ -1527,22 +1423,17 @@ static bool xx_dms_decode_all(Abstractformat *self,
         result->extra = (uint8_t *)xx_mem_calloc(parsed->extra_size, 1U);
         if (!result->extra) goto done;
     }
-    if (!xx_dms_read_at(self->device, self->base_address, packed,
-                        parsed->packed_size)) {
+    if (!xx_dms_read_at(self->device, self->base_address, packed, parsed->packed_size)) {
         goto done;
     }
-    main_chain.decoder =
-        xx_dms_decoder_create(parsed, result->image, parsed->raw_size);
+    main_chain.decoder = xx_dms_decoder_create(parsed, result->image, parsed->raw_size);
     if (!main_chain.decoder) goto done;
     if (result->extra) {
-        extra_chain.decoder =
-            xx_dms_decoder_create(parsed, result->extra, parsed->extra_size);
-        info_chain.decoder =
-            xx_dms_decoder_create(parsed, result->extra, parsed->extra_size);
+        extra_chain.decoder = xx_dms_decoder_create(parsed, result->extra, parsed->extra_size);
+        info_chain.decoder = xx_dms_decoder_create(parsed, result->extra, parsed->extra_size);
         if (!extra_chain.decoder || !info_chain.decoder) goto done;
     }
-    result->image_ok =
-        parsed->data_count != 0U && parsed->missing_tracks == 0U;
+    result->image_ok = parsed->data_count != 0U && parsed->missing_tracks == 0U;
     for (index = 0U; index < parsed->count; ++index) {
         const xx_dms_track *track = &parsed->tracks[index];
         xx_dms_chain *chain;
@@ -1559,8 +1450,7 @@ static bool xx_dms_decode_all(Abstractformat *self,
         } else {
             chain = &extra_chain;
             if (follows_real && extra_chain.decoder) {
-                if (!xx_dms_decoder_copy_state(extra_chain.decoder,
-                                               main_chain.decoder)) {
+                if (!xx_dms_decoder_copy_state(extra_chain.decoder, main_chain.decoder)) {
                     goto done;
                 }
                 extra_chain.context_broken = main_chain.context_broken;
@@ -1570,10 +1460,8 @@ static bool xx_dms_decode_all(Abstractformat *self,
         if (!track->is_info) follows_real = track->is_real;
         if (!track->is_stored || !chain->decoder) continue;
         chunk_start = (size_t)(track->data_offset - self->base_address);
-        track_ok = xx_dms_run_chunk(
-            chain, track, packed, parsed->packed_size, chunk_start,
-            track->is_real ? result->image : result->extra,
-            track->is_real ? parsed->raw_size : parsed->extra_size);
+        track_ok = xx_dms_run_chunk(chain, track, packed, parsed->packed_size, chunk_start, track->is_real ? result->image : result->extra,
+                                    track->is_real ? parsed->raw_size : parsed->extra_size);
         result->track_ok[index] = track_ok ? 1U : 0U;
         if (track->is_real && !track_ok) result->image_ok = false;
     }
@@ -1594,23 +1482,21 @@ typedef struct xx_dms_archive_stream_s {
     size_t index;
     xx_dms_result result; /**< Decoded lazily, on the first extraction. */
     bool decoded;
-    bool decode_failed;   /**< Never retried: one full decode per listing. */
+    bool decode_failed; /**< Never retried: one full decode per listing. */
 } xx_dms_archive_stream;
 
 static void xx_dms_vtable_destroy(Abstractformat *self);
 
-static bool xx_dms_copy_options(xx_list_s *destination,
-                                const xx_list_s *source) {
+static bool xx_dms_copy_options(xx_list_s *destination, const xx_list_s *source)
+{
     size_t index;
     if (!destination || !source) return source == NULL;
     for (index = 0U; index < source->count; ++index) {
-        const xx_meta *item =
-            (const xx_meta *)xx_list_at((const xx_list_t *)source, index);
+        const xx_meta *item = (const xx_meta *)xx_list_at((const xx_list_t *)source, index);
         xx_meta copy;
         if (!item) continue;
         xx_meta_init(&copy, item->meta_id);
-        if (!xx_var_copy(&copy.var, &item->var) ||
-            !xx_list_append(destination, &copy)) {
+        if (!xx_var_copy(&copy.var, &item->var) || !xx_list_append(destination, &copy)) {
             xx_meta_cleanup(&copy);
             return false;
         }
@@ -1618,34 +1504,34 @@ static bool xx_dms_copy_options(xx_list_s *destination,
     return true;
 }
 
-static const xx_var *xx_dms_find_option(const xx_list_s *options,
-                                        uint32_t meta_id) {
+static const xx_var *xx_dms_find_option(const xx_list_s *options, uint32_t meta_id)
+{
     size_t index;
     if (!options) return NULL;
     for (index = 0U; index < options->count; ++index) {
-        const xx_meta *item =
-            (const xx_meta *)xx_list_at((const xx_list_t *)options, index);
+        const xx_meta *item = (const xx_meta *)xx_list_at((const xx_list_t *)options, index);
         if (item && item->meta_id == meta_id) return &item->var;
     }
     return NULL;
 }
 
-const char *xx_dms_mode_to_string(uint32_t mode) {
+const char *xx_dms_mode_to_string(uint32_t mode)
+{
     switch (mode) {
-    case XX_DMS_MODE_NONE: return "NONE";
-    case XX_DMS_MODE_SIMPLE: return "SIMPLE";
-    case XX_DMS_MODE_QUICK: return "QUICK";
-    case XX_DMS_MODE_MEDIUM: return "MEDIUM";
-    case XX_DMS_MODE_DEEP: return "DEEP";
-    case XX_DMS_MODE_HEAVY1: return "HEAVY1";
-    case XX_DMS_MODE_HEAVY2: return "HEAVY2";
-    default: return "Unknown";
+        case XX_DMS_MODE_NONE: return "NONE";
+        case XX_DMS_MODE_SIMPLE: return "SIMPLE";
+        case XX_DMS_MODE_QUICK: return "QUICK";
+        case XX_DMS_MODE_MEDIUM: return "MEDIUM";
+        case XX_DMS_MODE_DEEP: return "DEEP";
+        case XX_DMS_MODE_HEAVY1: return "HEAVY1";
+        case XX_DMS_MODE_HEAVY2: return "HEAVY2";
+        default: return "Unknown";
     }
 }
 
 /* Append the decimal digits of value, zero padded to width, CRT free. */
-static size_t xx_dms_put_number(char *out, size_t at, uint32_t value,
-                                uint32_t width) {
+static size_t xx_dms_put_number(char *out, size_t at, uint32_t value, uint32_t width)
+{
     char digits[10];
     uint32_t count = 0U;
     do {
@@ -1657,7 +1543,8 @@ static size_t xx_dms_put_number(char *out, size_t at, uint32_t value,
     return at;
 }
 
-static size_t xx_dms_put_text(char *out, size_t at, const char *text) {
+static size_t xx_dms_put_text(char *out, size_t at, const char *text)
+{
     while (*text) out[at++] = *text++;
     return at;
 }
@@ -1666,9 +1553,8 @@ static size_t xx_dms_put_text(char *out, size_t at, const char *text) {
  * A real track is "track_NNNNN" - one per track number, so unique. Any
  * other chunk is "extra_III_track_NNNNN", where III is its position in the
  * file, so two banners or two ads never share a name. */
-static bool xx_dms_populate_record(xx_archive_record *record,
-                                   const xx_dms_private *parsed,
-                                   size_t index) {
+static bool xx_dms_populate_record(xx_archive_record *record, const xx_dms_private *parsed, size_t index)
+{
     char name[48];
     bool folder = false;
     uint64_t uncompressed;
@@ -1710,23 +1596,15 @@ static bool xx_dms_populate_record(xx_archive_record *record,
         method = xx_dms_mode_to_string(mode);
     }
     name[length] = '\0';
-    return xx_archive_record_set_original_name(record, name) &&
-           xx_archive_record_set_meta_u64(record, XX_META_ID_UNCOMPRESSED_SIZE,
-                                          uncompressed) &&
-           xx_archive_record_set_meta_u64(record, XX_META_ID_COMPRESSED_SIZE,
-                                          compressed) &&
-           xx_archive_record_set_meta_u64(record,
-                                          XX_META_ID_COMPRESSION_METHOD,
-                                          mode) &&
-           xx_archive_record_set_meta_str(record, XX_META_ID_COMMENT,
-                                          method) &&
-           xx_archive_record_set_meta_bool(record, XX_META_ID_IS_ENCRYPTED,
-                                           parsed->is_obfuscated) &&
-           xx_archive_record_set_meta_bool(record, XX_META_ID_IS_FOLDER,
-                                           folder);
+    return xx_archive_record_set_original_name(record, name) && xx_archive_record_set_meta_u64(record, XX_META_ID_UNCOMPRESSED_SIZE, uncompressed) &&
+           xx_archive_record_set_meta_u64(record, XX_META_ID_COMPRESSED_SIZE, compressed) &&
+           xx_archive_record_set_meta_u64(record, XX_META_ID_COMPRESSION_METHOD, mode) && xx_archive_record_set_meta_str(record, XX_META_ID_COMMENT, method) &&
+           xx_archive_record_set_meta_bool(record, XX_META_ID_IS_ENCRYPTED, parsed->is_obfuscated) &&
+           xx_archive_record_set_meta_bool(record, XX_META_ID_IS_FOLDER, folder);
 }
 
-static void xx_dms_archive_stream_free(void *pointer) {
+static void xx_dms_archive_stream_free(void *pointer)
+{
     xx_dms_archive_stream *stream = (xx_dms_archive_stream *)pointer;
     if (!stream) return;
     xx_dms_result_cleanup(&stream->result);
@@ -1734,18 +1612,16 @@ static void xx_dms_archive_stream_free(void *pointer) {
     xx_mem_free(stream);
 }
 
-static bool xx_dms_safe_name(const char *name) {
+static bool xx_dms_safe_name(const char *name)
+{
     size_t index;
     if (!name || !name[0] || name[0] == '/' || name[0] == '\\') return false;
-    if (name[0] == '.' &&
-        (name[1] == '\0' || (name[1] == '.' && name[2] == '\0'))) {
+    if (name[0] == '.' && (name[1] == '\0' || (name[1] == '.' && name[2] == '\0'))) {
         return false;
     }
     for (index = 0U; name[index] != '\0'; ++index) {
         unsigned char ch = (unsigned char)name[index];
-        if (ch < 32U || ch == 127U || ch == ':' || ch == '<' || ch == '>' ||
-            ch == '"' || ch == '|' || ch == '?' || ch == '*' || ch == '/' ||
-            ch == '\\') {
+        if (ch < 32U || ch == 127U || ch == ':' || ch == '<' || ch == '>' || ch == '"' || ch == '|' || ch == '?' || ch == '*' || ch == '/' || ch == '\\') {
             return false;
         }
     }
@@ -1755,29 +1631,23 @@ static bool xx_dms_safe_name(const char *name) {
 /* A disk whose only missing tracks are at the advertised end still has a
  * useful, byte-exact ADF prefix.  Never publish an image with an interior
  * hole, a missing first track, or an unverified track. */
-static bool xx_dms_verified_image_prefix(const xx_dms_private *parsed,
-                                         const xx_dms_result *result) {
+static bool xx_dms_verified_image_prefix(const xx_dms_private *parsed, const xx_dms_result *result)
+{
     uint8_t present[XX_DMS_TRACKS_PER_DISK] = {0};
     uint32_t highest, number;
     size_t index;
-    if (!parsed || !result || !result->image || !result->track_ok ||
-        parsed->missing_tracks == 0U || parsed->first_track != 0U ||
-        parsed->raw_offset != 0U || parsed->track_size == 0U ||
-        parsed->raw_size == 0U) return false;
+    if (!parsed || !result || !result->image || !result->track_ok || parsed->missing_tracks == 0U || parsed->first_track != 0U || parsed->raw_offset != 0U ||
+        parsed->track_size == 0U || parsed->raw_size == 0U)
+        return false;
     highest = (parsed->raw_size - 1U) / parsed->track_size;
-    if (highest >= XX_DMS_TRACKS_PER_DISK ||
-        parsed->last_track <= highest ||
-        parsed->missing_tracks != parsed->last_track - highest) return false;
+    if (highest >= XX_DMS_TRACKS_PER_DISK || parsed->last_track <= highest || parsed->missing_tracks != parsed->last_track - highest) return false;
     for (index = 0U; index < parsed->count; ++index) {
         const xx_dms_track *track = &parsed->tracks[index];
         uint32_t expected;
         if (!track->is_real) continue;
         number = track->number;
-        if (number > highest || present[number] || !result->track_ok[index] ||
-            track->image_offset != number * parsed->track_size) return false;
-        expected = number == highest
-                       ? parsed->raw_size - number * parsed->track_size
-                       : parsed->track_size;
+        if (number > highest || present[number] || !result->track_ok[index] || track->image_offset != number * parsed->track_size) return false;
+        expected = number == highest ? parsed->raw_size - number * parsed->track_size : parsed->track_size;
         if (track->raw_size != expected) return false;
         present[number] = 1U;
     }
@@ -1786,8 +1656,8 @@ static bool xx_dms_verified_image_prefix(const xx_dms_private *parsed,
     return true;
 }
 
-static bool xx_dms_write_blob(const char *path, const uint8_t *data,
-                              size_t size) {
+static bool xx_dms_write_blob(const char *path, const uint8_t *data, size_t size)
+{
     xx_io_device *output;
     size_t done = 0U;
     bool result;
@@ -1811,7 +1681,8 @@ static bool xx_dms_write_blob(const char *path, const uint8_t *data,
 
 /* --- public surface ------------------------------------------------------ */
 
-void xx_dms_init(xx_dms *dms, xx_io_device *dev, int64_t base_address) {
+void xx_dms_init(xx_dms *dms, xx_io_device *dev, int64_t base_address)
+{
     if (!dms) return;
     xx_mem_zero(dms, sizeof(*dms));
     xx_format_init(&dms->format, dev, base_address);
@@ -1824,27 +1695,25 @@ void xx_dms_init(xx_dms *dms, xx_io_device *dev, int64_t base_address) {
     dms->format.check_is_valid = xx_dms_check_is_valid;
     dms->format.handle_base_info = xx_dms_handle_base_info;
     dms->format.get_format_size = xx_dms_get_format_size;
-    dms->format.get_number_of_archive_records =
-        xx_dms_get_number_of_archive_records;
-    dms->format.create_archive_records_reading =
-        xx_dms_create_archive_records_reading;
+    dms->format.get_number_of_archive_records = xx_dms_get_number_of_archive_records;
+    dms->format.create_archive_records_reading = xx_dms_create_archive_records_reading;
     dms->format.get_current_archive_record = xx_dms_get_current_archive_record;
-    dms->format.unpack_current_archive_record =
-        xx_dms_unpack_current_archive_record;
+    dms->format.unpack_current_archive_record = xx_dms_unpack_current_archive_record;
     dms->format.archive_record_move_to_next = xx_dms_archive_record_move_to_next;
-    dms->format.free_archive_records_reading =
-        xx_dms_free_archive_records_reading;
+    dms->format.free_archive_records_reading = xx_dms_free_archive_records_reading;
     dms->format.destroy = xx_dms_vtable_destroy;
     dms->archive_end = -1;
 }
 
-xx_dms *xx_dms_create(xx_io_device *dev, int64_t base_address) {
+xx_dms *xx_dms_create(xx_io_device *dev, int64_t base_address)
+{
     xx_dms *dms = (xx_dms *)xx_mem_alloc(sizeof(*dms));
     if (dms) xx_dms_init(dms, dev, base_address);
     return dms;
 }
 
-void xx_dms_destroy(xx_dms *dms) {
+void xx_dms_destroy(xx_dms *dms)
+{
     if (!dms) return;
     if (dms->internal) {
         xx_dms_private_cleanup((xx_dms_private *)dms->internal);
@@ -1854,24 +1723,28 @@ void xx_dms_destroy(xx_dms *dms) {
     xx_format_cleanup_extra_parameters(&dms->format);
 }
 
-static void xx_dms_vtable_destroy(Abstractformat *self) {
+static void xx_dms_vtable_destroy(Abstractformat *self)
+{
     xx_dms_destroy((xx_dms *)self);
 }
 
-void xx_dms_free(xx_dms *dms) {
+void xx_dms_free(xx_dms *dms)
+{
     if (!dms) return;
     xx_dms_destroy(dms);
     xx_mem_free(dms);
 }
 
-bool xx_dms_check_is_valid(Abstractformat *self, xx_pd_struct *pd) {
+bool xx_dms_check_is_valid(Abstractformat *self, xx_pd_struct *pd)
+{
     xx_dms_private parsed;
     bool result = xx_dms_parse(self, &parsed, pd);
     xx_dms_private_cleanup(&parsed);
     return result;
 }
 
-bool xx_dms_handle_base_info(Abstractformat *self, xx_pd_struct *pd) {
+bool xx_dms_handle_base_info(Abstractformat *self, xx_pd_struct *pd)
+{
     xx_dms_private *parsed;
     xx_dms *dms = (xx_dms *)self;
     int64_t total_size;
@@ -1915,29 +1788,27 @@ bool xx_dms_handle_base_info(Abstractformat *self, xx_pd_struct *pd) {
     return true;
 }
 
-int64_t xx_dms_get_format_size(Abstractformat *self, xx_pd_struct *pd) {
-    if (!self ||
-        (!self->base_info_handled && !xx_format_handle_base_info(self, pd))) {
+int64_t xx_dms_get_format_size(Abstractformat *self, xx_pd_struct *pd)
+{
+    if (!self || (!self->base_info_handled && !xx_format_handle_base_info(self, pd))) {
         return -1;
     }
     return self->format_size;
 }
 
-uint64_t xx_dms_get_number_of_archive_records(Abstractformat *self,
-                                              xx_pd_struct *pd) {
-    if (!self ||
-        (!self->base_info_handled && !xx_format_handle_base_info(self, pd))) {
+uint64_t xx_dms_get_number_of_archive_records(Abstractformat *self, xx_pd_struct *pd)
+{
+    if (!self || (!self->base_info_handled && !xx_format_handle_base_info(self, pd))) {
         return 0U;
     }
     return ((xx_dms *)self)->number_of_records;
 }
 
-xx_archive_record_state *xx_dms_create_archive_records_reading(
-    Abstractformat *self, const xx_list_s *options, xx_pd_struct *pd) {
+xx_archive_record_state *xx_dms_create_archive_records_reading(Abstractformat *self, const xx_list_s *options, xx_pd_struct *pd)
+{
     xx_archive_record_state *state;
     xx_dms_archive_stream *stream;
-    if (!self || !self->device ||
-        (!self->base_info_handled && !xx_format_handle_base_info(self, pd))) {
+    if (!self || !self->device || (!self->base_info_handled && !xx_format_handle_base_info(self, pd))) {
         return NULL;
     }
     state = (xx_archive_record_state *)xx_mem_alloc(sizeof(*state));
@@ -1948,8 +1819,7 @@ xx_archive_record_state *xx_dms_create_archive_records_reading(
         return NULL;
     }
     xx_archive_record_state_init(state, self);
-    if (!xx_dms_copy_options(&state->options, options) ||
-        !xx_dms_parse(self, &stream->parsed, pd)) {
+    if (!xx_dms_copy_options(&state->options, options) || !xx_dms_parse(self, &stream->parsed, pd)) {
         xx_dms_archive_stream_free(stream);
         xx_archive_record_state_free(state);
         return NULL;
@@ -1965,19 +1835,15 @@ xx_archive_record_state *xx_dms_create_archive_records_reading(
     return state;
 }
 
-const xx_archive_record *xx_dms_get_current_archive_record(
-    Abstractformat *self, xx_archive_record_state *state) {
-    return self && state && state->format == self && state->has_record
-               ? &state->current_record
-               : NULL;
+const xx_archive_record *xx_dms_get_current_archive_record(Abstractformat *self, xx_archive_record_state *state)
+{
+    return self && state && state->format == self && state->has_record ? &state->current_record : NULL;
 }
 
-bool xx_dms_archive_record_move_to_next(Abstractformat *self,
-                                        xx_archive_record_state *state,
-                                        xx_pd_struct *pd) {
+bool xx_dms_archive_record_move_to_next(Abstractformat *self, xx_archive_record_state *state, xx_pd_struct *pd)
+{
     xx_dms_archive_stream *stream;
-    if (!self || !state || state->format != self || !state->has_record ||
-        !state->internal_state || (pd && xx_pd_is_stopped(pd))) {
+    if (!self || !state || state->format != self || !state->has_record || !state->internal_state || (pd && xx_pd_is_stopped(pd))) {
         return false;
     }
     stream = (xx_dms_archive_stream *)state->internal_state;
@@ -1988,8 +1854,7 @@ bool xx_dms_archive_record_move_to_next(Abstractformat *self,
         state->has_record = false;
         return false;
     }
-    if (!xx_dms_populate_record(&state->current_record, &stream->parsed,
-                               stream->index)) {
+    if (!xx_dms_populate_record(&state->current_record, &stream->parsed, stream->index)) {
         state->has_record = false;
         return false;
     }
@@ -1997,9 +1862,8 @@ bool xx_dms_archive_record_move_to_next(Abstractformat *self,
     return true;
 }
 
-bool xx_dms_unpack_current_archive_record(Abstractformat *self,
-                                          xx_archive_record_state *state,
-                                          xx_pd_struct *pd) {
+bool xx_dms_unpack_current_archive_record(Abstractformat *self, xx_archive_record_state *state, xx_pd_struct *pd)
+{
     xx_dms_archive_stream *stream;
     const xx_var *option;
     const char *base = NULL;
@@ -2008,9 +1872,7 @@ bool xx_dms_unpack_current_archive_record(Abstractformat *self,
     const uint8_t *blob;
     size_t blob_size;
     bool result;
-    if (!self || !self->device || !state || state->format != self ||
-        !state->has_record || !state->internal_state ||
-        (pd && xx_pd_is_stopped(pd))) {
+    if (!self || !self->device || !state || state->format != self || !state->has_record || !state->internal_state || (pd && xx_pd_is_stopped(pd))) {
         return false;
     }
     stream = (xx_dms_archive_stream *)state->internal_state;
@@ -2030,9 +1892,7 @@ bool xx_dms_unpack_current_archive_record(Abstractformat *self,
     if (stream->index == 0U) {
         /* A verified prefix is useful when only trailing advertised tracks
          * are absent; its published size is the real decoded length. */
-        if (!stream->result.image_ok &&
-            !xx_dms_verified_image_prefix(&stream->parsed, &stream->result))
-            return false;
+        if (!stream->result.image_ok && !xx_dms_verified_image_prefix(&stream->parsed, &stream->result)) return false;
         blob = stream->result.image;
         blob_size = stream->parsed.raw_size;
     } else {
@@ -2040,15 +1900,12 @@ bool xx_dms_unpack_current_archive_record(Abstractformat *self,
         const xx_dms_track *track = &stream->parsed.tracks[chunk];
         const uint8_t *arena;
         size_t arena_size;
-        if (!stream->result.track_ok || !stream->result.track_ok[chunk] ||
-            !track->is_stored) {
+        if (!stream->result.track_ok || !stream->result.track_ok[chunk] || !track->is_stored) {
             return false;
         }
         arena = track->is_real ? stream->result.image : stream->result.extra;
-        arena_size = track->is_real ? stream->parsed.raw_size
-                                    : stream->parsed.extra_size;
-        if (!arena || (size_t)track->image_offset > arena_size ||
-            track->raw_size > arena_size - (size_t)track->image_offset) {
+        arena_size = track->is_real ? stream->parsed.raw_size : stream->parsed.extra_size;
+        if (!arena || (size_t)track->image_offset > arena_size || track->raw_size > arena_size - (size_t)track->image_offset) {
             return false;
         }
         blob = arena + track->image_offset;
@@ -2056,29 +1913,24 @@ bool xx_dms_unpack_current_archive_record(Abstractformat *self,
     }
     option = xx_dms_find_option(&state->options, XX_META_ID_OPT_UNPACK_PATH);
     if (!option) return true; /* Decoded and discarded: the record verifies. */
-    if (option->type == XX_VAR_TYPE_STRING ||
-        option->type == XX_VAR_TYPE_STRING_VIEW) {
+    if (option->type == XX_VAR_TYPE_STRING || option->type == XX_VAR_TYPE_STRING_VIEW) {
         base = xx_var_get_str(option);
-    } else if (option->type == XX_VAR_TYPE_WSTRING ||
-               option->type == XX_VAR_TYPE_WSTRING_VIEW) {
+    } else if (option->type == XX_VAR_TYPE_WSTRING || option->type == XX_VAR_TYPE_WSTRING_VIEW) {
         owned_base = xx_str_unicode_to_utf8(xx_var_get_wstr(option));
         base = owned_base;
     }
     if (!base) goto cleanup;
     {
-        const char *name = xx_archive_record_get_original_name(
-            &state->current_record);
+        const char *name = xx_archive_record_get_original_name(&state->current_record);
         if (!xx_dms_safe_name(name)) goto cleanup;
-        if (base[0] && base[xx_str_len(base) - 1U] != '/' &&
-            base[xx_str_len(base) - 1U] != '\\') {
+        if (base[0] && base[xx_str_len(base) - 1U] != '/' && base[xx_str_len(base) - 1U] != '\\') {
             destination = xx_str_concat3(base, "/", name);
         } else {
             destination = xx_str_concat(base, name);
         }
     }
     if (!destination) goto cleanup;
-    result = xx_store_create_dirs_a(destination, false) &&
-             xx_dms_write_blob(destination, blob, blob_size);
+    result = xx_store_create_dirs_a(destination, false) && xx_dms_write_blob(destination, blob, blob_size);
     if (owned_base) xx_str_free(owned_base);
     xx_str_free(destination);
     return result;
@@ -2088,27 +1940,33 @@ cleanup:
     return false;
 }
 
-void xx_dms_free_archive_records_reading(Abstractformat *self,
-                                         xx_archive_record_state *state) {
+void xx_dms_free_archive_records_reading(Abstractformat *self, xx_archive_record_state *state)
+{
     (void)self;
     xx_archive_record_state_free(state);
 }
 
-uint64_t xx_dms_get_number_of_records(const xx_dms *dms) {
+uint64_t xx_dms_get_number_of_records(const xx_dms *dms)
+{
     return dms ? dms->number_of_records : 0U;
 }
-uint64_t xx_dms_get_number_of_members(const xx_dms *dms) {
+uint64_t xx_dms_get_number_of_members(const xx_dms *dms)
+{
     return dms ? dms->number_of_members : 0U;
 }
-uint64_t xx_dms_get_number_of_tracks(const xx_dms *dms) {
+uint64_t xx_dms_get_number_of_tracks(const xx_dms *dms)
+{
     return dms ? dms->number_of_tracks : 0U;
 }
-uint32_t xx_dms_get_image_size(const xx_dms *dms) {
+uint32_t xx_dms_get_image_size(const xx_dms *dms)
+{
     return dms ? dms->image_size : 0U;
 }
-uint32_t xx_dms_get_raw_size(const xx_dms *dms) {
+uint32_t xx_dms_get_raw_size(const xx_dms *dms)
+{
     return dms ? dms->raw_size : 0U;
 }
-int64_t xx_dms_get_archive_end(const xx_dms *dms) {
+int64_t xx_dms_get_archive_end(const xx_dms *dms)
+{
     return dms ? dms->archive_end : -1;
 }

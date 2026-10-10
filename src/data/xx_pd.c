@@ -39,13 +39,14 @@ typedef struct pd_observer_state {
 
 static xx_tls_key pd_observer_key;
 
-static void pd_observer_release(pd_observer_state *state) {
+static void pd_observer_release(pd_observer_state *state)
+{
     xx_tls_set(&pd_observer_key, NULL);
     xx_mem_free(state);
 }
 
-xx_pd_observer xx_pd_set_observer(const xx_pd_struct *pd,
-                                xx_pd_observer_fn callback, void *user_data) {
+xx_pd_observer xx_pd_set_observer(const xx_pd_struct *pd, xx_pd_observer_fn callback, void *user_data)
+{
     pd_observer_state *state = (pd_observer_state *)xx_tls_get(&pd_observer_key);
     xx_pd_observer previous;
 
@@ -74,11 +75,11 @@ xx_pd_observer xx_pd_set_observer(const xx_pd_struct *pd,
     return previous;
 }
 
-static bool poll_observer(const xx_pd_struct *pd) {
+static bool poll_observer(const xx_pd_struct *pd)
+{
     pd_observer_state *state = (pd_observer_state *)xx_tls_get(&pd_observer_key);
     bool stopped;
-    if (!pd || !state || pd != state->observer.progress || !state->observer.callback || state->active)
-        return false;
+    if (!pd || !state || pd != state->observer.progress || !state->observer.callback || state->active) return false;
     state->active = true;
     stopped = state->observer.callback(pd, state->observer.user_data);
     state->active = false;
@@ -86,17 +87,20 @@ static bool poll_observer(const xx_pd_struct *pd) {
     return stopped;
 }
 
-static void notify_observer(xx_pd_struct *pd) {
+static void notify_observer(xx_pd_struct *pd)
+{
     if (poll_observer(pd)) pd->is_stop = true;
 }
 
-xx_pd_struct xx_pd_init(void) {
+xx_pd_struct xx_pd_init(void)
+{
     xx_pd_struct pd;
     xx_mem_zero(&pd, sizeof(pd));
     return pd;
 }
 
-int xx_pd_enter_level(xx_pd_struct *pd, uint64_t total, const char *status) {
+int xx_pd_enter_level(xx_pd_struct *pd, uint64_t total, const char *status)
+{
     if (!pd) {
         return -1;
     }
@@ -127,7 +131,8 @@ int xx_pd_enter_level(xx_pd_struct *pd, uint64_t total, const char *status) {
     return -1;
 }
 
-void xx_pd_set_current(xx_pd_struct *pd, int level, uint64_t current) {
+void xx_pd_set_current(xx_pd_struct *pd, int level, uint64_t current)
+{
     if (!pd || level < 0 || level >= XX_PD_LEVELS) {
         return;
     }
@@ -135,7 +140,8 @@ void xx_pd_set_current(xx_pd_struct *pd, int level, uint64_t current) {
     notify_observer(pd);
 }
 
-void xx_pd_increment_current(xx_pd_struct *pd, int level, uint64_t delta) {
+void xx_pd_increment_current(xx_pd_struct *pd, int level, uint64_t delta)
+{
     if (!pd || level < 0 || level >= XX_PD_LEVELS) {
         return;
     }
@@ -143,7 +149,8 @@ void xx_pd_increment_current(xx_pd_struct *pd, int level, uint64_t delta) {
     notify_observer(pd);
 }
 
-void xx_pd_leave_level(xx_pd_struct *pd, int level) {
+void xx_pd_leave_level(xx_pd_struct *pd, int level)
+{
     if (!pd || level < 0 || level >= XX_PD_LEVELS) {
         return;
     }
@@ -154,18 +161,21 @@ void xx_pd_leave_level(xx_pd_struct *pd, int level) {
     notify_observer(pd);
 }
 
-void xx_pd_stop(xx_pd_struct *pd) {
+void xx_pd_stop(xx_pd_struct *pd)
+{
     if (pd) {
         pd->is_stop = true;
         notify_observer(pd);
     }
 }
 
-bool xx_pd_is_stopped(const xx_pd_struct *pd) {
+bool xx_pd_is_stopped(const xx_pd_struct *pd)
+{
     return pd ? pd->is_stop || poll_observer(pd) : false;
 }
 
-void xx_pd_set_error(xx_pd_struct *pd, int error_code, const char *error_str) {
+void xx_pd_set_error(xx_pd_struct *pd, int error_code, const char *error_str)
+{
     if (!pd) {
         return;
     }
@@ -186,7 +196,8 @@ void xx_pd_set_error(xx_pd_struct *pd, int error_code, const char *error_str) {
     notify_observer(pd);
 }
 
-void xx_pd_clear_error(xx_pd_struct *pd) {
+void xx_pd_clear_error(xx_pd_struct *pd)
+{
     if (!pd) {
         return;
     }

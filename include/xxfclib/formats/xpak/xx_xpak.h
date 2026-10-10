@@ -56,29 +56,21 @@ typedef xx_xpak xx_xpak_t;
 /** Length of the fixed, NUL-padded member name field at 0x08. */
 #define XX_XPAK_NAME_FIELD 13
 
-XXFC_API void xx_xpak_init(xx_xpak *archive, xx_io_device *device,
-                           int64_t base_address);
+XXFC_API void xx_xpak_init(xx_xpak *archive, xx_io_device *device, int64_t base_address);
 XXFC_API xx_xpak *xx_xpak_create(xx_io_device *device, int64_t base_address);
 XXFC_API void xx_xpak_destroy(xx_xpak *archive);
 XXFC_API void xx_xpak_free(xx_xpak *archive);
 
 XXFC_API bool xx_xpak_check_is_valid(Abstractformat *self, xx_pd_struct *pd);
 XXFC_API bool xx_xpak_handle_base_info(Abstractformat *self, xx_pd_struct *pd);
-XXFC_API int64_t xx_xpak_get_format_size(Abstractformat *self,
-                                         xx_pd_struct *pd);
-XXFC_API uint64_t xx_xpak_get_number_of_archive_records(Abstractformat *self,
-                                                        xx_pd_struct *pd);
+XXFC_API int64_t xx_xpak_get_format_size(Abstractformat *self, xx_pd_struct *pd);
+XXFC_API uint64_t xx_xpak_get_number_of_archive_records(Abstractformat *self, xx_pd_struct *pd);
 
-XXFC_API xx_archive_record_state *xx_xpak_create_archive_records_reading(
-    Abstractformat *self, const xx_list_s *options, xx_pd_struct *pd);
-XXFC_API const xx_archive_record *xx_xpak_get_current_archive_record(
-    Abstractformat *self, xx_archive_record_state *state);
-XXFC_API bool xx_xpak_unpack_current_archive_record(
-    Abstractformat *self, xx_archive_record_state *state, xx_pd_struct *pd);
-XXFC_API bool xx_xpak_archive_record_move_to_next(
-    Abstractformat *self, xx_archive_record_state *state, xx_pd_struct *pd);
-XXFC_API void xx_xpak_free_archive_records_reading(
-    Abstractformat *self, xx_archive_record_state *state);
+XXFC_API xx_archive_record_state *xx_xpak_create_archive_records_reading(Abstractformat *self, const xx_list_s *options, xx_pd_struct *pd);
+XXFC_API const xx_archive_record *xx_xpak_get_current_archive_record(Abstractformat *self, xx_archive_record_state *state);
+XXFC_API bool xx_xpak_unpack_current_archive_record(Abstractformat *self, xx_archive_record_state *state, xx_pd_struct *pd);
+XXFC_API bool xx_xpak_archive_record_move_to_next(Abstractformat *self, xx_archive_record_state *state, xx_pd_struct *pd);
+XXFC_API void xx_xpak_free_archive_records_reading(Abstractformat *self, xx_archive_record_state *state);
 
 /**
  * @brief Decode the member into @p destination (NULL only verifies).
@@ -86,9 +78,7 @@ XXFC_API void xx_xpak_free_archive_records_reading(
  * Succeeds only when the stream reaches its end symbol inside the archive
  * after producing exactly the declared unpacked size.
  */
-XXFC_API bool xx_xpak_unpack_to_device(xx_xpak *archive,
-                                       xx_io_device *destination,
-                                       xx_pd_struct *pd);
+XXFC_API bool xx_xpak_unpack_to_device(xx_xpak *archive, xx_io_device *destination, xx_pd_struct *pd);
 
 /**
  * @brief Decode one packed stream (codec header included) held in memory.
@@ -99,9 +89,7 @@ XXFC_API bool xx_xpak_unpack_to_device(xx_xpak *archive,
  * @param consumed     optional; bytes of @p stream the decoder used
  * @return true when the end symbol arrives after exactly @p output_size bytes
  */
-XXFC_API bool xx_xpak_decode_memory(const uint8_t *stream, size_t stream_size,
-                                    uint8_t *output, size_t output_size,
-                                    size_t *consumed);
+XXFC_API bool xx_xpak_decode_memory(const uint8_t *stream, size_t stream_size, uint8_t *output, size_t output_size, size_t *consumed);
 
 #ifdef __cplusplus
 }

@@ -66,35 +66,21 @@ typedef xx_stos_memory_bank xx_stos_memory_bank_t;
 /** Largest number of members accepted (three u16 sprite counts). */
 #define XX_STOS_MEMORY_BANK_MAX_RECORDS 65535U
 
-XXFC_API void xx_stos_memory_bank_init(xx_stos_memory_bank *archive,
-                                       xx_io_device *device,
-                                       int64_t base_address);
-XXFC_API xx_stos_memory_bank *xx_stos_memory_bank_create(xx_io_device *device,
-                                                         int64_t base_address);
+XXFC_API void xx_stos_memory_bank_init(xx_stos_memory_bank *archive, xx_io_device *device, int64_t base_address);
+XXFC_API xx_stos_memory_bank *xx_stos_memory_bank_create(xx_io_device *device, int64_t base_address);
 XXFC_API void xx_stos_memory_bank_destroy(xx_stos_memory_bank *archive);
 XXFC_API void xx_stos_memory_bank_free(xx_stos_memory_bank *archive);
 
-XXFC_API bool xx_stos_memory_bank_check_is_valid(Abstractformat *self,
-                                                 xx_pd_struct *pd);
-XXFC_API bool xx_stos_memory_bank_handle_base_info(Abstractformat *self,
-                                                   xx_pd_struct *pd);
-XXFC_API int64_t xx_stos_memory_bank_get_format_size(Abstractformat *self,
-                                                     xx_pd_struct *pd);
-XXFC_API uint64_t xx_stos_memory_bank_get_number_of_archive_records(
-    Abstractformat *self, xx_pd_struct *pd);
+XXFC_API bool xx_stos_memory_bank_check_is_valid(Abstractformat *self, xx_pd_struct *pd);
+XXFC_API bool xx_stos_memory_bank_handle_base_info(Abstractformat *self, xx_pd_struct *pd);
+XXFC_API int64_t xx_stos_memory_bank_get_format_size(Abstractformat *self, xx_pd_struct *pd);
+XXFC_API uint64_t xx_stos_memory_bank_get_number_of_archive_records(Abstractformat *self, xx_pd_struct *pd);
 
-XXFC_API xx_archive_record_state *
-xx_stos_memory_bank_create_archive_records_reading(Abstractformat *self,
-                                                   const xx_list_s *options,
-                                                   xx_pd_struct *pd);
-XXFC_API const xx_archive_record *xx_stos_memory_bank_get_current_archive_record(
-    Abstractformat *self, xx_archive_record_state *state);
-XXFC_API bool xx_stos_memory_bank_unpack_current_archive_record(
-    Abstractformat *self, xx_archive_record_state *state, xx_pd_struct *pd);
-XXFC_API bool xx_stos_memory_bank_archive_record_move_to_next(
-    Abstractformat *self, xx_archive_record_state *state, xx_pd_struct *pd);
-XXFC_API void xx_stos_memory_bank_free_archive_records_reading(
-    Abstractformat *self, xx_archive_record_state *state);
+XXFC_API xx_archive_record_state *xx_stos_memory_bank_create_archive_records_reading(Abstractformat *self, const xx_list_s *options, xx_pd_struct *pd);
+XXFC_API const xx_archive_record *xx_stos_memory_bank_get_current_archive_record(Abstractformat *self, xx_archive_record_state *state);
+XXFC_API bool xx_stos_memory_bank_unpack_current_archive_record(Abstractformat *self, xx_archive_record_state *state, xx_pd_struct *pd);
+XXFC_API bool xx_stos_memory_bank_archive_record_move_to_next(Abstractformat *self, xx_archive_record_state *state, xx_pd_struct *pd);
+XXFC_API void xx_stos_memory_bank_free_archive_records_reading(Abstractformat *self, xx_archive_record_state *state);
 
 #ifdef __cplusplus
 }

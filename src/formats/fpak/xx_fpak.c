@@ -82,7 +82,7 @@ typedef struct xx_fpak_segment_s {
     int64_t header_offset;
     int64_t header_size; /**< 30 + name length. */
     int64_t data_offset;
-    int64_t data_size;  /**< This slice. */
+    int64_t data_size;   /**< This slice. */
     int64_t packed_size; /**< The whole member. */
     int64_t raw_size;    /**< The whole member. */
     uint32_t crc32;
@@ -143,30 +143,28 @@ static void xx_fpak_vtable_destroy(Abstractformat *self);
 
 /* ------------------------------------------------------------- helpers -- */
 
-static bool xx_fpak_read_at(Abstractformat *self, int64_t offset,
-                            uint8_t *buffer, size_t size) {
+static bool xx_fpak_read_at(Abstractformat *self, int64_t offset, uint8_t *buffer, size_t size)
+{
     size_t completed = 0U;
 
-    if (!self || !self->device || offset < 0 || (!buffer && size != 0U) ||
-        xx_io_seek64(self->device, offset, SEEK_SET) != 0) {
+    if (!self || !self->device || offset < 0 || (!buffer && size != 0U) || xx_io_seek64(self->device, offset, SEEK_SET) != 0) {
         return false;
     }
     while (completed < size) {
-        ssize_t received =
-            xx_io_read(self->device, buffer + completed, size - completed);
+        ssize_t received = xx_io_read(self->device, buffer + completed, size - completed);
         if (received <= 0 || (size_t)received > size - completed) return false;
         completed += (size_t)received;
     }
     return true;
 }
 
-static bool xx_fpak_range_within(int64_t total, int64_t offset,
-                                 int64_t size) {
-    return total >= 0 && offset >= 0 && size >= 0 && offset <= total &&
-           size <= total - offset;
+static bool xx_fpak_range_within(int64_t total, int64_t offset, int64_t size)
+{
+    return total >= 0 && offset >= 0 && size >= 0 && offset <= total && size <= total - offset;
 }
 
-static bool xx_fpak_printable_ascii(const uint8_t *data, size_t size) {
+static bool xx_fpak_printable_ascii(const uint8_t *data, size_t size)
+{
     size_t index;
 
     if (!data || size == 0U) return false;
@@ -179,15 +177,15 @@ static bool xx_fpak_printable_ascii(const uint8_t *data, size_t size) {
 /* Field-range validity only, which is what the reference's
  * isValidDosDateTime() amounts to: day 1-31, month 1-12, hour 0-23,
  * minute 0-59, two-second tick 0-29. */
-static bool xx_fpak_valid_dos_date_time(uint16_t date, uint16_t time) {
+static bool xx_fpak_valid_dos_date_time(uint16_t date, uint16_t time)
+{
     unsigned day = date & 0x1fU;
     unsigned month = (date >> 5) & 0x0fU;
     unsigned hour = (time >> 11) & 0x1fU;
     unsigned minute = (time >> 5) & 0x3fU;
     unsigned tick = time & 0x1fU;
 
-    return day >= 1U && day <= 31U && month >= 1U && month <= 12U &&
-           hour <= 23U && minute <= 59U && tick <= 29U;
+    return day >= 1U && day <= 31U && month >= 1U && month <= 12U && hour <= 23U && minute <= 59U && tick <= 29U;
 }
 
 /* Build the member name from the raw field.  Member names carry DOS
@@ -195,7 +193,8 @@ static bool xx_fpak_valid_dos_date_time(uint16_t date, uint16_t time) {
  * backslash - so the separator is translated rather than rejected, and every
  * traversal protection is applied per component instead of to the whole
  * string. */
-static char *xx_fpak_safe_name(const uint8_t *field, size_t length) {
+static char *xx_fpak_safe_name(const uint8_t *field, size_t length)
+{
     char *name;
     size_t index;
     const char *cursor;
@@ -207,9 +206,7 @@ static char *xx_fpak_safe_name(const uint8_t *field, size_t length) {
     if (field[length - 1U] == '\\' || field[length - 1U] == '/') return NULL;
     for (index = 0U; index < length; ++index) {
         uint8_t character = field[index];
-        if (character == ':' || character == '*' || character == '?' ||
-            character == '"' || character == '<' || character == '>' ||
-            character == '|') {
+        if (character == ':' || character == '*' || character == '?' || character == '"' || character == '<' || character == '>' || character == '|') {
             return NULL;
         }
     }
@@ -228,9 +225,8 @@ static char *xx_fpak_safe_name(const uint8_t *field, size_t length) {
         size_t part;
         while (*end && *end != '/') ++end;
         part = (size_t)(end - cursor);
-        if (part == 0U || (part == 1U && cursor[0] == '.') ||
-            (part == 2U && cursor[0] == '.' && cursor[1] == '.') ||
-            cursor[part - 1U] == ' ' || cursor[part - 1U] == '.') {
+        if (part == 0U || (part == 1U && cursor[0] == '.') || (part == 2U && cursor[0] == '.' && cursor[1] == '.') || cursor[part - 1U] == ' ' ||
+            cursor[part - 1U] == '.') {
             xx_str_free(name);
             return NULL;
         }
@@ -239,7 +235,8 @@ static char *xx_fpak_safe_name(const uint8_t *field, size_t length) {
     return name;
 }
 
-static void xx_fpak_stream_free(void *pointer) {
+static void xx_fpak_stream_free(void *pointer)
+{
     xx_fpak_stream *stream = (xx_fpak_stream *)pointer;
     size_t index;
 
@@ -255,32 +252,28 @@ static void xx_fpak_stream_free(void *pointer) {
     xx_mem_free(stream);
 }
 
-static bool xx_fpak_add_segment(xx_fpak_stream *stream,
-                                const xx_fpak_segment *segment) {
+static bool xx_fpak_add_segment(xx_fpak_stream *stream, const xx_fpak_segment *segment)
+{
     xx_fpak_segment *grown;
 
-    if (!stream || !segment ||
-        stream->segment_count >= (size_t)XX_FPAK_MAX_SEGMENTS) {
+    if (!stream || !segment || stream->segment_count >= (size_t)XX_FPAK_MAX_SEGMENTS) {
         return false;
     }
-    grown = (xx_fpak_segment *)xx_mem_realloc(
-        stream->segments, sizeof(*grown) * (stream->segment_count + 1U));
+    grown = (xx_fpak_segment *)xx_mem_realloc(stream->segments, sizeof(*grown) * (stream->segment_count + 1U));
     if (!grown) return false;
     stream->segments = grown;
     stream->segments[stream->segment_count++] = *segment;
     return true;
 }
 
-static bool xx_fpak_add_member(xx_fpak_stream *stream,
-                               const xx_fpak_member *member) {
+static bool xx_fpak_add_member(xx_fpak_stream *stream, const xx_fpak_member *member)
+{
     xx_fpak_member *grown;
 
-    if (!stream || !member ||
-        stream->member_count >= (size_t)XX_FPAK_MAX_SEGMENTS) {
+    if (!stream || !member || stream->member_count >= (size_t)XX_FPAK_MAX_SEGMENTS) {
         return false;
     }
-    grown = (xx_fpak_member *)xx_mem_realloc(
-        stream->members, sizeof(*grown) * (stream->member_count + 1U));
+    grown = (xx_fpak_member *)xx_mem_realloc(stream->members, sizeof(*grown) * (stream->member_count + 1U));
     if (!grown) return false;
     stream->members = grown;
     stream->members[stream->member_count++] = *member;
@@ -289,7 +282,8 @@ static bool xx_fpak_add_member(xx_fpak_stream *stream,
 
 /* Name a member that this volume cannot complete.  The reference appends
  * ".partNN" so the record is still listable and obviously partial. */
-static char *xx_fpak_part_name(const char *base, unsigned part) {
+static char *xx_fpak_part_name(const char *base, unsigned part)
+{
     char suffix[16];
 
     if (!base) return NULL;
@@ -302,7 +296,8 @@ static char *xx_fpak_part_name(const char *base, unsigned part) {
 /* The first segment of a continuation volume is not part one of anything: it
  * carries the MIDDLE of a member whose stream began on the previous volume.
  * ".partNN" would be a false claim, so it gets its own suffix. */
-static char *xx_fpak_fragment_name(const char *base) {
+static char *xx_fpak_fragment_name(const char *base)
+{
     if (!base) return NULL;
     return xx_str_concat(base, ".fragment");
 }
@@ -318,9 +313,8 @@ static char *xx_fpak_fragment_name(const char *base) {
  * assembly of the split members that follow it.  Since this reader never
  * opens a sibling, it is always true here - but the parameter is kept so the
  * distinction survives if sibling support is added. */
-static bool xx_fpak_read_volume(Abstractformat *self, xx_fpak_stream *stream,
-                                bool allow_truncated_tail,
-                                xx_pd_struct *pd) {
+static bool xx_fpak_read_volume(Abstractformat *self, xx_fpak_stream *stream, bool allow_truncated_tail, xx_pd_struct *pd)
+{
     uint8_t header[XX_FPAK_GLOBAL_HEADER_SIZE];
     uint8_t fixed[XX_FPAK_SEGMENT_HEADER_SIZE];
     uint8_t name_field[XX_FPAK_MAX_NAME];
@@ -340,10 +334,8 @@ static bool xx_fpak_read_volume(Abstractformat *self, xx_fpak_stream *stream,
     if (span < 4 || span > XX_FPAK_MAX_SIZE) return false;
 
     if (!xx_fpak_read_at(self, self->base_address, header, 4U)) return false;
-    lead = header[0] == 'F' && header[1] == 'P' && header[2] == 'A' &&
-           header[3] == 'K';
-    if (!lead && !(header[0] == 'F' && header[1] == 'P' && header[2] == 'A' &&
-                   header[3] == 'C')) {
+    lead = header[0] == 'F' && header[1] == 'P' && header[2] == 'A' && header[3] == 'K';
+    if (!lead && !(header[0] == 'F' && header[1] == 'P' && header[2] == 'A' && header[3] == 'C')) {
         return false;
     }
 
@@ -353,8 +345,7 @@ static bool xx_fpak_read_volume(Abstractformat *self, xx_fpak_stream *stream,
         uint8_t description[XX_FPAK_MAX_DESCRIPTION];
 
         if (span < XX_FPAK_GLOBAL_HEADER_SIZE) return false;
-        if (!xx_fpak_read_at(self, self->base_address, header,
-                             sizeof(header))) {
+        if (!xx_fpak_read_at(self, self->base_address, header, sizeof(header))) {
             return false;
         }
         stream->version = xx_data_get_u16(header + 4, 2, 0, false);
@@ -364,18 +355,12 @@ static bool xx_fpak_read_volume(Abstractformat *self, xx_fpak_stream *stream,
         /* +6 is NOT a version count: it is the number of members in the whole
          * distribution set, so a lead volume of a large set carries a large
          * value.  Restricting it rejects most real volumes. */
-        if (stream->version < 1U || stream->total_packed < 1 ||
-            stream->total_packed > XX_FPAK_MAX_SIZE ||
-            stream->total_raw < 1 || stream->total_raw > XX_FPAK_MAX_SIZE ||
-            description_size < 1 ||
-            description_size > XX_FPAK_MAX_DESCRIPTION ||
-            !xx_fpak_range_within(span, XX_FPAK_GLOBAL_HEADER_SIZE,
-                                  description_size)) {
+        if (stream->version < 1U || stream->total_packed < 1 || stream->total_packed > XX_FPAK_MAX_SIZE || stream->total_raw < 1 ||
+            stream->total_raw > XX_FPAK_MAX_SIZE || description_size < 1 || description_size > XX_FPAK_MAX_DESCRIPTION ||
+            !xx_fpak_range_within(span, XX_FPAK_GLOBAL_HEADER_SIZE, description_size)) {
             return false;
         }
-        if (!xx_fpak_read_at(self,
-                             self->base_address + XX_FPAK_GLOBAL_HEADER_SIZE,
-                             description, (size_t)description_size) ||
+        if (!xx_fpak_read_at(self, self->base_address + XX_FPAK_GLOBAL_HEADER_SIZE, description, (size_t)description_size) ||
             !xx_fpak_printable_ascii(description, (size_t)description_size)) {
             return false;
         }
@@ -406,15 +391,12 @@ static bool xx_fpak_read_volume(Abstractformat *self, xx_fpak_stream *stream,
             return false;
         }
 
-        malformed = !xx_fpak_range_within(span, position,
-                                          XX_FPAK_SEGMENT_HEADER_SIZE);
+        malformed = !xx_fpak_range_within(span, position, XX_FPAK_SEGMENT_HEADER_SIZE);
         if (!malformed) {
-            if (!xx_fpak_read_at(self, self->base_address + position, fixed,
-                                 sizeof(fixed))) {
+            if (!xx_fpak_read_at(self, self->base_address + position, fixed, sizeof(fixed))) {
                 return false;
             }
-            malformed = !(fixed[0] == 'F' && fixed[1] == 'P' &&
-                          fixed[2] == 'P' && fixed[3] == 'F');
+            malformed = !(fixed[0] == 'F' && fixed[1] == 'P' && fixed[2] == 'P' && fixed[3] == 'F');
         }
         if (!malformed) {
             segment_flags = xx_data_get_u16(fixed + 4, 2, 0, false);
@@ -426,24 +408,13 @@ static bool xx_fpak_read_volume(Abstractformat *self, xx_fpak_stream *stream,
             raw_size = (int64_t)xx_data_get_u32(fixed + 20, 4, 0, false);
             segment_size = (int64_t)xx_data_get_u32(fixed + 24, 4, 0, false);
             name_size = (int64_t)xx_data_get_u16(fixed + 28, 2, 0, false);
-            malformed =
-                (segment_method != XX_FPAK_METHOD_STORED &&
-                 segment_method != XX_FPAK_METHOD_IMPLODED) ||
-                packed_size < 1 || packed_size > XX_FPAK_MAX_SIZE ||
-                raw_size < 1 || raw_size > XX_FPAK_MAX_SIZE ||
-                segment_size < 1 || segment_size > packed_size ||
-                name_size < 1 || name_size > XX_FPAK_MAX_NAME ||
-                !xx_fpak_range_within(span,
-                                      position + XX_FPAK_SEGMENT_HEADER_SIZE,
-                                      name_size + segment_size) ||
-                ((dos_time != 0U || dos_date != 0U) &&
-                 !xx_fpak_valid_dos_date_time(dos_date, dos_time));
+            malformed = (segment_method != XX_FPAK_METHOD_STORED && segment_method != XX_FPAK_METHOD_IMPLODED) || packed_size < 1 || packed_size > XX_FPAK_MAX_SIZE ||
+                        raw_size < 1 || raw_size > XX_FPAK_MAX_SIZE || segment_size < 1 || segment_size > packed_size || name_size < 1 || name_size > XX_FPAK_MAX_NAME ||
+                        !xx_fpak_range_within(span, position + XX_FPAK_SEGMENT_HEADER_SIZE, name_size + segment_size) ||
+                        ((dos_time != 0U || dos_date != 0U) && !xx_fpak_valid_dos_date_time(dos_date, dos_time));
         }
         if (!malformed) {
-            if (!xx_fpak_read_at(
-                    self,
-                    self->base_address + position + XX_FPAK_SEGMENT_HEADER_SIZE,
-                    name_field, (size_t)name_size)) {
+            if (!xx_fpak_read_at(self, self->base_address + position + XX_FPAK_SEGMENT_HEADER_SIZE, name_field, (size_t)name_size)) {
                 return false;
             }
             name = xx_fpak_safe_name(name_field, (size_t)name_size);
@@ -476,8 +447,7 @@ static bool xx_fpak_read_volume(Abstractformat *self, xx_fpak_stream *stream,
             xx_str_free(name);
             return false;
         }
-        position = segment.data_offset - self->base_address +
-                   segment.data_size;
+        position = segment.data_offset - self->base_address + segment.data_size;
     }
 
     if (pd && xx_pd_is_stopped(pd)) return false;
@@ -498,18 +468,15 @@ static bool xx_fpak_read_volume(Abstractformat *self, xx_fpak_stream *stream,
 /* Fold the segment chain into members.  Consecutive segments belong to the
  * same member while their repeated fields agree and their slice sizes have not
  * yet added up to the packed size they all declare. */
-static xx_fpak_assembly xx_fpak_assemble(xx_fpak_stream *stream,
-                                         int64_t expected_packed,
-                                         int64_t expected_raw,
-                                         xx_fpak_member *partial) {
+static xx_fpak_assembly xx_fpak_assemble(xx_fpak_stream *stream, int64_t expected_packed, int64_t expected_raw, xx_fpak_member *partial)
+{
     int64_t completed_packed = 0;
     int64_t completed_raw = 0;
     xx_fpak_member current;
     size_t index;
 
     if (partial) xx_mem_zero(partial, sizeof(*partial));
-    if (!stream || !partial || stream->segment_count == 0U ||
-        expected_packed < 1 || expected_raw < 1) {
+    if (!stream || !partial || stream->segment_count == 0U || expected_packed < 1 || expected_raw < 1) {
         return XX_FPAK_ASSEMBLY_MALFORMED;
     }
     xx_mem_zero(&current, sizeof(current));
@@ -531,20 +498,14 @@ static xx_fpak_assembly xx_fpak_assemble(xx_fpak_stream *stream,
              * published; ownership is taken at that point. */
             current.name = segment->name;
         } else {
-            const xx_fpak_segment *first =
-                &stream->segments[current.first_segment];
-            if (first->packed_size != segment->packed_size ||
-                first->raw_size != segment->raw_size ||
-                first->crc32 != segment->crc32 ||
-                first->dos_time != segment->dos_time ||
-                first->dos_date != segment->dos_date ||
-                !xx_str_equals(first->name, segment->name)) {
+            const xx_fpak_segment *first = &stream->segments[current.first_segment];
+            if (first->packed_size != segment->packed_size || first->raw_size != segment->raw_size || first->crc32 != segment->crc32 ||
+                first->dos_time != segment->dos_time || first->dos_date != segment->dos_date || !xx_str_equals(first->name, segment->name)) {
                 return XX_FPAK_ASSEMBLY_MALFORMED;
             }
         }
 
-        if (current.compressed_size >
-            current.packed_size - segment->data_size) {
+        if (current.compressed_size > current.packed_size - segment->data_size) {
             return XX_FPAK_ASSEMBLY_MALFORMED;
         }
         ++current.segment_count;
@@ -554,8 +515,7 @@ static xx_fpak_assembly xx_fpak_assemble(xx_fpak_stream *stream,
             published.complete = true;
             published.name = xx_str_dup(current.name);
             if (!published.name) return XX_FPAK_ASSEMBLY_MALFORMED;
-            if (completed_packed > expected_packed - current.packed_size ||
-                completed_raw > expected_raw - current.raw_size) {
+            if (completed_packed > expected_packed - current.packed_size || completed_raw > expected_raw - current.raw_size) {
                 xx_str_free(published.name);
                 return XX_FPAK_ASSEMBLY_MALFORMED;
             }
@@ -573,15 +533,14 @@ static xx_fpak_assembly xx_fpak_assemble(xx_fpak_stream *stream,
     if (completed_packed > expected_packed || completed_raw > expected_raw) {
         return XX_FPAK_ASSEMBLY_MALFORMED;
     }
-    if (current.segment_count == 0U && completed_packed == expected_packed &&
-        completed_raw == expected_raw) {
+    if (current.segment_count == 0U && completed_packed == expected_packed && completed_raw == expected_raw) {
         return XX_FPAK_ASSEMBLY_COMPLETE;
     }
     return XX_FPAK_ASSEMBLY_INCOMPLETE;
 }
 
-static xx_fpak_stream *xx_fpak_parse(Abstractformat *self,
-                                     xx_pd_struct *pd) {
+static xx_fpak_stream *xx_fpak_parse(Abstractformat *self, xx_pd_struct *pd)
+{
     xx_fpak_stream *stream;
 
     if (!self || !self->device) return NULL;
@@ -623,12 +582,8 @@ static xx_fpak_stream *xx_fpak_parse(Abstractformat *self,
              * before this one.  Every later incomplete segment starts here
              * and really is a prefix. */
             member.continuation = !member.complete && index == 0U;
-            member.name = member.complete
-                              ? xx_str_dup(segment->name)
-                              : (member.continuation
-                                     ? xx_fpak_fragment_name(segment->name)
-                                     : xx_fpak_part_name(segment->name,
-                                                         ++part));
+            member.name =
+                member.complete ? xx_str_dup(segment->name) : (member.continuation ? xx_fpak_fragment_name(segment->name) : xx_fpak_part_name(segment->name, ++part));
             if (!member.name) goto fail;
             if (!xx_fpak_add_member(stream, &member)) {
                 xx_str_free(member.name);
@@ -637,8 +592,7 @@ static xx_fpak_stream *xx_fpak_parse(Abstractformat *self,
         }
     } else {
         xx_fpak_member partial;
-        xx_fpak_assembly status = xx_fpak_assemble(
-            stream, stream->total_packed, stream->total_raw, &partial);
+        xx_fpak_assembly status = xx_fpak_assemble(stream, stream->total_packed, stream->total_raw, &partial);
 
         if (status == XX_FPAK_ASSEMBLY_MALFORMED) goto fail;
         if (status == XX_FPAK_ASSEMBLY_INCOMPLETE) {
@@ -676,11 +630,8 @@ fail:
 /* ------------------------------------------------------------ extraction -- */
 
 /* Concatenate the member's slices, re-proving each segment header first. */
-static bool xx_fpak_read_member_data(Abstractformat *self,
-                                     const xx_fpak_stream *stream,
-                                     const xx_fpak_member *member,
-                                     uint8_t **out, size_t *out_size,
-                                     xx_pd_struct *pd) {
+static bool xx_fpak_read_member_data(Abstractformat *self, const xx_fpak_stream *stream, const xx_fpak_member *member, uint8_t **out, size_t *out_size, xx_pd_struct *pd)
+{
     uint8_t *packed;
     size_t offset = 0U;
     size_t index;
@@ -688,36 +639,27 @@ static bool xx_fpak_read_member_data(Abstractformat *self,
     if (!out || !out_size) return false;
     *out = NULL;
     *out_size = 0U;
-    if (!self || !stream || !member || member->segment_count == 0U ||
-        member->compressed_size < 1 ||
-        member->compressed_size > XX_FPAK_MAX_SIZE) {
+    if (!self || !stream || !member || member->segment_count == 0U || member->compressed_size < 1 || member->compressed_size > XX_FPAK_MAX_SIZE) {
         return false;
     }
-    if (member->first_segment > stream->segment_count ||
-        member->segment_count > stream->segment_count - member->first_segment) {
+    if (member->first_segment > stream->segment_count || member->segment_count > stream->segment_count - member->first_segment) {
         return false;
     }
     packed = (uint8_t *)xx_mem_alloc((size_t)member->compressed_size);
     if (!packed) return false;
 
     for (index = 0U; index < member->segment_count; ++index) {
-        const xx_fpak_segment *segment =
-            &stream->segments[member->first_segment + index];
+        const xx_fpak_segment *segment = &stream->segments[member->first_segment + index];
         uint8_t fixed[XX_FPAK_SEGMENT_HEADER_SIZE];
 
         if (pd && xx_pd_is_stopped(pd)) goto fail;
-        if (!xx_fpak_read_at(self, segment->header_offset, fixed,
-                             sizeof(fixed)) ||
-            xx_rt_memcmp(fixed, segment->pinned_header, sizeof(fixed)) != 0) {
+        if (!xx_fpak_read_at(self, segment->header_offset, fixed, sizeof(fixed)) || xx_rt_memcmp(fixed, segment->pinned_header, sizeof(fixed)) != 0) {
             goto fail;
         }
-        if (segment->data_size < 0 ||
-            (uint64_t)segment->data_size >
-                (uint64_t)member->compressed_size - offset) {
+        if (segment->data_size < 0 || (uint64_t)segment->data_size > (uint64_t)member->compressed_size - offset) {
             goto fail;
         }
-        if (!xx_fpak_read_at(self, segment->data_offset, packed + offset,
-                             (size_t)segment->data_size)) {
+        if (!xx_fpak_read_at(self, segment->data_offset, packed + offset, (size_t)segment->data_size)) {
             goto fail;
         }
         offset += (size_t)segment->data_size;
@@ -736,9 +678,8 @@ fail:
  * plaintext length AND match its CRC-32; a member this volume cannot complete
  * produces the prefix its slice decodes to, which no CRC can cover, and is
  * published under the ".partNN" name the parse gave it. */
-static bool xx_fpak_decode(Abstractformat *self, const xx_fpak_stream *stream,
-                           const xx_fpak_member *member, uint8_t **out,
-                           size_t *out_size, xx_pd_struct *pd) {
+static bool xx_fpak_decode(Abstractformat *self, const xx_fpak_stream *stream, const xx_fpak_member *member, uint8_t **out, size_t *out_size, xx_pd_struct *pd)
+{
     uint8_t *packed = NULL;
     uint8_t *plain = NULL;
     size_t packed_size = 0U;
@@ -765,8 +706,7 @@ static bool xx_fpak_decode(Abstractformat *self, const xx_fpak_stream *stream,
     if (member->continuation) return false;
     plain_size = (size_t)member->raw_size;
 
-    if (!xx_fpak_read_member_data(self, stream, member, &packed, &packed_size,
-                                  pd)) {
+    if (!xx_fpak_read_member_data(self, stream, member, &packed, &packed_size, pd)) {
         return false;
     }
     plain = (uint8_t *)xx_mem_alloc(plain_size);
@@ -784,10 +724,7 @@ static bool xx_fpak_decode(Abstractformat *self, const xx_fpak_stream *stream,
          * covers the whole member and cannot speak for a prefix, so the only
          * checks left are that the decode stopped on exhaustion rather than a
          * desync and that it produced something. */
-        if (!xx_fpak_decode_partial_profile(packed, packed_size,
-                                            member->method, member->flags,
-                                            plain, plain_size, &written) ||
-            written == 0U || written > plain_size ||
+        if (!xx_fpak_decode_partial_profile(packed, packed_size, member->method, member->flags, plain, plain_size, &written) || written == 0U || written > plain_size ||
             (pd && xx_pd_is_stopped(pd))) {
             goto fail;
         }
@@ -796,10 +733,8 @@ static bool xx_fpak_decode(Abstractformat *self, const xx_fpak_stream *stream,
         *out_size = written;
         return true;
     }
-    if (!xx_fpak_decode_memory_profile(packed, packed_size, member->method,
-                                       member->flags, plain, plain_size,
-                                       &written) ||
-        written != plain_size || (pd && xx_pd_is_stopped(pd))) {
+    if (!xx_fpak_decode_memory_profile(packed, packed_size, member->method, member->flags, plain, plain_size, &written) || written != plain_size ||
+        (pd && xx_pd_is_stopped(pd))) {
         goto fail;
     }
     /* The only thing that catches a wrong-profile decode. */
@@ -817,19 +752,17 @@ fail:
 
 /* -------------------------------------------------------------- records -- */
 
-static bool xx_fpak_copy_options(xx_list_s *target,
-                                 const xx_list_s *options) {
+static bool xx_fpak_copy_options(xx_list_s *target, const xx_list_s *options)
+{
     size_t index;
 
     if (!target || !options) return options == NULL;
     for (index = 0U; index < options->count; ++index) {
-        const xx_meta *source =
-            (const xx_meta *)xx_list_at((const xx_list_t *)options, index);
+        const xx_meta *source = (const xx_meta *)xx_list_at((const xx_list_t *)options, index);
         xx_meta copied;
         if (!source) continue;
         xx_meta_init(&copied, source->meta_id);
-        if (!xx_var_copy(&copied.var, &source->var) ||
-            !xx_list_append(target, &copied)) {
+        if (!xx_var_copy(&copied.var, &source->var) || !xx_list_append(target, &copied)) {
             xx_meta_cleanup(&copied);
             return false;
         }
@@ -837,28 +770,24 @@ static bool xx_fpak_copy_options(xx_list_s *target,
     return true;
 }
 
-static const xx_var *xx_fpak_get_option(const xx_list_s *options,
-                                        uint32_t meta_id) {
+static const xx_var *xx_fpak_get_option(const xx_list_s *options, uint32_t meta_id)
+{
     size_t index;
 
     if (!options) return NULL;
     for (index = 0U; index < options->count; ++index) {
-        const xx_meta *meta =
-            (const xx_meta *)xx_list_at((const xx_list_t *)options, index);
+        const xx_meta *meta = (const xx_meta *)xx_list_at((const xx_list_t *)options, index);
         if (meta && meta->meta_id == meta_id) return &meta->var;
     }
     return NULL;
 }
 
-static bool xx_fpak_set_record(xx_archive_record *record,
-                               const xx_fpak_stream *stream,
-                               const xx_fpak_member *member) {
+static bool xx_fpak_set_record(xx_archive_record *record, const xx_fpak_stream *stream, const xx_fpak_member *member)
+{
     const xx_fpak_segment *first;
     bool ok;
 
-    if (!record || !stream || !member || !member->name ||
-        member->segment_count == 0U ||
-        member->first_segment >= stream->segment_count) {
+    if (!record || !stream || !member || !member->name || member->segment_count == 0U || member->first_segment >= stream->segment_count) {
         return false;
     }
     first = &stream->segments[member->first_segment];
@@ -872,44 +801,27 @@ static bool xx_fpak_set_record(xx_archive_record *record,
     record->data_offset = first->data_offset;
     record->compressed_size = first->data_size;
     ok = xx_archive_record_set_original_name(record, member->name) &&
-         xx_archive_record_set_meta_u64(
-             record, XX_META_ID_COMPRESSED_SIZE,
-             (uint64_t)(member->complete ? member->packed_size
-                                         : member->compressed_size)) &&
-         xx_archive_record_set_meta_u64(
-             record, XX_META_ID_UNCOMPRESSED_SIZE,
-             (uint64_t)(member->complete ? member->raw_size
-                                         : member->compressed_size)) &&
-         xx_archive_record_set_meta_u64(record, XX_META_ID_COMPRESSION_METHOD,
-                                        member->method) &&
+         xx_archive_record_set_meta_u64(record, XX_META_ID_COMPRESSED_SIZE, (uint64_t)(member->complete ? member->packed_size : member->compressed_size)) &&
+         xx_archive_record_set_meta_u64(record, XX_META_ID_UNCOMPRESSED_SIZE, (uint64_t)(member->complete ? member->raw_size : member->compressed_size)) &&
+         xx_archive_record_set_meta_u64(record, XX_META_ID_COMPRESSION_METHOD, member->method) &&
          /* The PKZIP general-purpose word: only 0x02 (8 KiB dictionary) and
           * 0x04 (literal tree) reach the codec, but a record that names a
           * codec without its profile is not self-describing. */
-         xx_archive_record_set_meta_u64(record, XX_META_ID_FLAGS,
-                                        member->flags) &&
-         xx_archive_record_set_meta_bool(record, XX_META_ID_IS_FOLDER,
-                                         false) &&
-         xx_archive_record_set_meta_bool(record, XX_META_ID_IS_ENCRYPTED,
-                                         false);
+         xx_archive_record_set_meta_u64(record, XX_META_ID_FLAGS, member->flags) && xx_archive_record_set_meta_bool(record, XX_META_ID_IS_FOLDER, false) &&
+         xx_archive_record_set_meta_bool(record, XX_META_ID_IS_ENCRYPTED, false);
     if (ok && member->complete) {
-        ok = xx_archive_record_set_meta_u64(record, XX_META_ID_CRC32,
-                                            member->crc32) &&
-             xx_archive_record_set_meta_u64(record, XX_META_ID_LAST_MOD_TIME,
-                                            member->dos_time) &&
-             xx_archive_record_set_meta_u64(record, XX_META_ID_LAST_MOD_DATE,
-                                            member->dos_date) &&
-             xx_archive_record_set_meta_u64(
-                 record, XX_META_ID_TIMESTAMP,
-                 ((uint64_t)member->dos_date << 16) |
-                     (uint64_t)member->dos_time);
+        ok = xx_archive_record_set_meta_u64(record, XX_META_ID_CRC32, member->crc32) &&
+             xx_archive_record_set_meta_u64(record, XX_META_ID_LAST_MOD_TIME, member->dos_time) &&
+             xx_archive_record_set_meta_u64(record, XX_META_ID_LAST_MOD_DATE, member->dos_date) &&
+             xx_archive_record_set_meta_u64(record, XX_META_ID_TIMESTAMP, ((uint64_t)member->dos_date << 16) | (uint64_t)member->dos_time);
     }
     return ok;
 }
 
 /* ---------------------------------------------------------- lifecycle --- */
 
-void xx_fpak_init(xx_fpak *archive, xx_io_device *device,
-                  int64_t base_address) {
+void xx_fpak_init(xx_fpak *archive, xx_io_device *device, int64_t base_address)
+{
     if (!archive) return;
     xx_mem_zero(archive, sizeof(*archive));
     xx_format_init(&archive->format, device, base_address);
@@ -923,30 +835,26 @@ void xx_fpak_init(xx_fpak *archive, xx_io_device *device,
     archive->format.check_is_valid = xx_fpak_check_is_valid;
     archive->format.handle_base_info = xx_fpak_handle_base_info;
     archive->format.get_format_size = xx_fpak_get_format_size;
-    archive->format.get_number_of_archive_records =
-        xx_fpak_get_number_of_archive_records;
-    archive->format.create_archive_records_reading =
-        xx_fpak_create_archive_records_reading;
-    archive->format.get_current_archive_record =
-        xx_fpak_get_current_archive_record;
-    archive->format.unpack_current_archive_record =
-        xx_fpak_unpack_current_archive_record;
-    archive->format.archive_record_move_to_next =
-        xx_fpak_archive_record_move_to_next;
-    archive->format.free_archive_records_reading =
-        xx_fpak_free_archive_records_reading;
+    archive->format.get_number_of_archive_records = xx_fpak_get_number_of_archive_records;
+    archive->format.create_archive_records_reading = xx_fpak_create_archive_records_reading;
+    archive->format.get_current_archive_record = xx_fpak_get_current_archive_record;
+    archive->format.unpack_current_archive_record = xx_fpak_unpack_current_archive_record;
+    archive->format.archive_record_move_to_next = xx_fpak_archive_record_move_to_next;
+    archive->format.free_archive_records_reading = xx_fpak_free_archive_records_reading;
     archive->format.destroy = xx_fpak_vtable_destroy;
     archive->archive_size = -1;
 }
 
-xx_fpak *xx_fpak_create(xx_io_device *device, int64_t base_address) {
+xx_fpak *xx_fpak_create(xx_io_device *device, int64_t base_address)
+{
     xx_fpak *archive = (xx_fpak *)xx_mem_alloc(sizeof(*archive));
 
     if (archive) xx_fpak_init(archive, device, base_address);
     return archive;
 }
 
-void xx_fpak_destroy(xx_fpak *archive) {
+void xx_fpak_destroy(xx_fpak *archive)
+{
     if (!archive) return;
     /* Not xx_format_destroy: it dispatches through format.destroy, which is
      * the wrapper below, and the two would recurse. */
@@ -960,11 +868,13 @@ void xx_fpak_destroy(xx_fpak *archive) {
     archive->archive_size = -1;
 }
 
-static void xx_fpak_vtable_destroy(Abstractformat *self) {
+static void xx_fpak_vtable_destroy(Abstractformat *self)
+{
     xx_fpak_destroy((xx_fpak *)self);
 }
 
-void xx_fpak_free(xx_fpak *archive) {
+void xx_fpak_free(xx_fpak *archive)
+{
     if (!archive) return;
     xx_fpak_destroy(archive);
     xx_mem_free(archive);
@@ -972,7 +882,8 @@ void xx_fpak_free(xx_fpak *archive) {
 
 /* -------------------------------------------------------------- format -- */
 
-bool xx_fpak_check_is_valid(Abstractformat *self, xx_pd_struct *pd) {
+bool xx_fpak_check_is_valid(Abstractformat *self, xx_pd_struct *pd)
+{
     xx_fpak_stream *stream;
 
     if (!self || (pd && xx_pd_is_stopped(pd))) return false;
@@ -989,7 +900,8 @@ bool xx_fpak_check_is_valid(Abstractformat *self, xx_pd_struct *pd) {
     return true;
 }
 
-bool xx_fpak_handle_base_info(Abstractformat *self, xx_pd_struct *pd) {
+bool xx_fpak_handle_base_info(Abstractformat *self, xx_pd_struct *pd)
+{
     xx_fpak *archive = (xx_fpak *)self;
     xx_fpak_stream *stream;
     int64_t total;
@@ -1029,8 +941,7 @@ bool xx_fpak_handle_base_info(Abstractformat *self, xx_pd_struct *pd) {
         self->overlay_offset = -1;
         self->overlay_size = 0;
     }
-    if (xx_rt_snprintf(self->version, sizeof(self->version), "%u",
-                       (unsigned)stream->version) <= 0) {
+    if (xx_rt_snprintf(self->version, sizeof(self->version), "%u", (unsigned)stream->version) <= 0) {
         self->version[0] = '\0';
     }
     self->file_type = XX_FILE_TYPE_FPAK;
@@ -1044,18 +955,17 @@ bool xx_fpak_handle_base_info(Abstractformat *self, xx_pd_struct *pd) {
     return true;
 }
 
-int64_t xx_fpak_get_format_size(Abstractformat *self, xx_pd_struct *pd) {
-    if (!self ||
-        (!self->base_info_handled && !xx_format_handle_base_info(self, pd))) {
+int64_t xx_fpak_get_format_size(Abstractformat *self, xx_pd_struct *pd)
+{
+    if (!self || (!self->base_info_handled && !xx_format_handle_base_info(self, pd))) {
         return 0;
     }
     return self->is_valid ? self->format_size : 0;
 }
 
-uint64_t xx_fpak_get_number_of_archive_records(Abstractformat *self,
-                                               xx_pd_struct *pd) {
-    if (!self ||
-        (!self->base_info_handled && !xx_format_handle_base_info(self, pd))) {
+uint64_t xx_fpak_get_number_of_archive_records(Abstractformat *self, xx_pd_struct *pd)
+{
+    if (!self || (!self->base_info_handled && !xx_format_handle_base_info(self, pd))) {
         return 0U;
     }
     return self->is_valid ? ((xx_fpak *)self)->number_of_records : 0U;
@@ -1063,8 +973,8 @@ uint64_t xx_fpak_get_number_of_archive_records(Abstractformat *self,
 
 /* ------------------------------------------------------------- records -- */
 
-xx_archive_record_state *xx_fpak_create_archive_records_reading(
-    Abstractformat *self, const xx_list_s *options, xx_pd_struct *pd) {
+xx_archive_record_state *xx_fpak_create_archive_records_reading(Abstractformat *self, const xx_list_s *options, xx_pd_struct *pd)
+{
     xx_fpak_stream *stream;
     xx_archive_record_state *state;
 
@@ -1080,10 +990,7 @@ xx_archive_record_state *xx_fpak_create_archive_records_reading(
     state->internal_state = stream;
     state->free_internal = xx_fpak_stream_free;
     state->total_records = (int64_t)stream->member_count;
-    if (!xx_fpak_copy_options(&state->options, options) ||
-        (stream->member_count != 0U &&
-         !xx_fpak_set_record(&state->current_record, stream,
-                             &stream->members[0]))) {
+    if (!xx_fpak_copy_options(&state->options, options) || (stream->member_count != 0U && !xx_fpak_set_record(&state->current_record, stream, &stream->members[0]))) {
         xx_archive_record_state_free(state);
         return NULL;
     }
@@ -1092,20 +999,16 @@ xx_archive_record_state *xx_fpak_create_archive_records_reading(
     return state;
 }
 
-const xx_archive_record *xx_fpak_get_current_archive_record(
-    Abstractformat *self, xx_archive_record_state *state) {
-    return self && state && state->format == self && state->has_record
-               ? &state->current_record
-               : NULL;
+const xx_archive_record *xx_fpak_get_current_archive_record(Abstractformat *self, xx_archive_record_state *state)
+{
+    return self && state && state->format == self && state->has_record ? &state->current_record : NULL;
 }
 
-bool xx_fpak_archive_record_move_to_next(Abstractformat *self,
-                                         xx_archive_record_state *state,
-                                         xx_pd_struct *pd) {
+bool xx_fpak_archive_record_move_to_next(Abstractformat *self, xx_archive_record_state *state, xx_pd_struct *pd)
+{
     xx_fpak_stream *stream;
 
-    if (!self || !state || state->format != self || !state->has_record ||
-        (pd && xx_pd_is_stopped(pd))) {
+    if (!self || !state || state->format != self || !state->has_record || (pd && xx_pd_is_stopped(pd))) {
         return false;
     }
     stream = (xx_fpak_stream *)state->internal_state;
@@ -1117,14 +1020,12 @@ bool xx_fpak_archive_record_move_to_next(Abstractformat *self,
     }
     ++stream->index;
     ++state->current_index;
-    state->has_record = xx_fpak_set_record(&state->current_record, stream,
-                                           &stream->members[stream->index]);
+    state->has_record = xx_fpak_set_record(&state->current_record, stream, &stream->members[stream->index]);
     return state->has_record;
 }
 
-bool xx_fpak_unpack_current_archive_record(Abstractformat *self,
-                                           xx_archive_record_state *state,
-                                           xx_pd_struct *pd) {
+bool xx_fpak_unpack_current_archive_record(Abstractformat *self, xx_archive_record_state *state, xx_pd_struct *pd)
+{
     xx_fpak_stream *stream;
     const xx_fpak_member *member;
     const xx_var *path_option;
@@ -1136,8 +1037,7 @@ bool xx_fpak_unpack_current_archive_record(Abstractformat *self,
     bool result = false;
     bool created = false;
 
-    if (!self || !state || state->format != self || !state->has_record ||
-        (pd && xx_pd_is_stopped(pd))) {
+    if (!self || !state || state->format != self || !state->has_record || (pd && xx_pd_is_stopped(pd))) {
         return false;
     }
     stream = (xx_fpak_stream *)state->internal_state;
@@ -1149,8 +1049,7 @@ bool xx_fpak_unpack_current_archive_record(Abstractformat *self,
      * member's published name, so the caller cannot mistake the file for the
      * whole thing. */
 
-    path_option = xx_fpak_get_option(&state->options,
-                                     XX_META_ID_OPT_UNPACK_PATH);
+    path_option = xx_fpak_get_option(&state->options, XX_META_ID_OPT_UNPACK_PATH);
     if (!path_option) {
         /* No destination: decode and discard, which verifies the member
          * without writing anything.  A complete member is CRC-checked on the
@@ -1160,11 +1059,9 @@ bool xx_fpak_unpack_current_archive_record(Abstractformat *self,
         xx_mem_free(plain);
         return result;
     }
-    if (path_option->type == XX_VAR_TYPE_STRING ||
-        path_option->type == XX_VAR_TYPE_STRING_VIEW) {
+    if (path_option->type == XX_VAR_TYPE_STRING || path_option->type == XX_VAR_TYPE_STRING_VIEW) {
         base_path = xx_var_get_str(path_option);
-    } else if (path_option->type == XX_VAR_TYPE_WSTRING ||
-               path_option->type == XX_VAR_TYPE_WSTRING_VIEW) {
+    } else if (path_option->type == XX_VAR_TYPE_WSTRING || path_option->type == XX_VAR_TYPE_WSTRING_VIEW) {
         converted_path = xx_str_unicode_to_utf8(xx_var_get_wstr(path_option));
         base_path = converted_path;
     }
@@ -1172,9 +1069,7 @@ bool xx_fpak_unpack_current_archive_record(Abstractformat *self,
         xx_str_free(converted_path);
         return false;
     }
-    if (base_path[0] != '\0' &&
-        base_path[xx_str_len(base_path) - 1U] != '/' &&
-        base_path[xx_str_len(base_path) - 1U] != '\\') {
+    if (base_path[0] != '\0' && base_path[xx_str_len(base_path) - 1U] != '/' && base_path[xx_str_len(base_path) - 1U] != '\\') {
         target_path = xx_str_concat3(base_path, "/", member->name);
     } else {
         target_path = xx_str_concat(base_path, member->name);
@@ -1182,8 +1077,7 @@ bool xx_fpak_unpack_current_archive_record(Abstractformat *self,
     xx_str_free(converted_path);
     if (!target_path) return false;
 
-    if (!xx_store_create_dirs_a(target_path, false) ||
-        !xx_fpak_decode(self, stream, member, &plain, &plain_size, pd)) {
+    if (!xx_store_create_dirs_a(target_path, false) || !xx_fpak_decode(self, stream, member, &plain, &plain_size, pd)) {
         xx_str_free(target_path);
         return false;
     }
@@ -1194,8 +1088,7 @@ bool xx_fpak_unpack_current_archive_record(Abstractformat *self,
         created = output != NULL;
         result = output != NULL;
         while (result && completed < plain_size) {
-            ssize_t sent = xx_io_write(output, plain + completed,
-                                       plain_size - completed);
+            ssize_t sent = xx_io_write(output, plain + completed, plain_size - completed);
             if (sent <= 0 || (size_t)sent > plain_size - completed) {
                 result = false;
                 break;
@@ -1210,29 +1103,31 @@ bool xx_fpak_unpack_current_archive_record(Abstractformat *self,
     } else if (member->dos_date != 0U || member->dos_time != 0U) {
         /* Best effort; a file system that refuses the stamp does not make the
          * extraction a failure. */
-        (void)xx_io_apply_dos_time_and_attrs_a(target_path, member->dos_date,
-                                               member->dos_time, 0U);
+        (void)xx_io_apply_dos_time_and_attrs_a(target_path, member->dos_date, member->dos_time, 0U);
     }
     xx_str_free(target_path);
     return result;
 }
 
-void xx_fpak_free_archive_records_reading(Abstractformat *self,
-                                          xx_archive_record_state *state) {
+void xx_fpak_free_archive_records_reading(Abstractformat *self, xx_archive_record_state *state)
+{
     (void)self;
     xx_archive_record_state_free(state);
 }
 
 /* ----------------------------------------------------------- accessors -- */
 
-uint64_t xx_fpak_get_number_of_records(const xx_fpak *archive) {
+uint64_t xx_fpak_get_number_of_records(const xx_fpak *archive)
+{
     return archive ? archive->number_of_records : 0U;
 }
 
-int64_t xx_fpak_get_archive_size(const xx_fpak *archive) {
+int64_t xx_fpak_get_archive_size(const xx_fpak *archive)
+{
     return archive ? archive->archive_size : -1;
 }
 
-uint16_t xx_fpak_get_version(const xx_fpak *archive) {
+uint16_t xx_fpak_get_version(const xx_fpak *archive)
+{
     return archive ? archive->version : 0U;
 }

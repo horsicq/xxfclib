@@ -20,8 +20,7 @@ typedef struct xx_shortcuts_s xx_shortcuts;
  * NULL path means "shortcuts.ini". Missing files retain defaults; unknown
  * actions are appended. Does not write the file. Key syntax is validated by
  * the consumer. On failure *out is NULL. Strings/lists belong to the result. */
-XXFC_API xxfc_status_t xx_shortcuts_load(const char *utf8_path,
-    const xx_shortcut *defaults, size_t count, xx_shortcuts **out);
+XXFC_API xxfc_status_t xx_shortcuts_load(const char *utf8_path, const xx_shortcut *defaults, size_t count, xx_shortcuts **out);
 XXFC_API void xx_shortcuts_destroy(xx_shortcuts *shortcuts);
 XXFC_API size_t xx_shortcuts_count(const xx_shortcuts *shortcuts);
 XXFC_API const xx_shortcut *xx_shortcuts_at(const xx_shortcuts *shortcuts, size_t index);

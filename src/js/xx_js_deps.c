@@ -33,14 +33,16 @@ static void *g_oom_reserve = NULL;
 static bool g_oom_soft = false;
 static bool g_oom_raised = false;
 
-static void xx_js_default_oom_handler(void) {
+static void xx_js_default_oom_handler(void)
+{
     xx_rt_fprintf(xx_rt_stderr(), "xxfclib: out of memory\n");
     xx_rt_exit(3);
 }
 
 static xx_js_oom_handler_fn g_oom_handler = xx_js_default_oom_handler;
 
-xx_js_oom_handler_fn xx_js_set_oom_handler(xx_js_oom_handler_fn handler) {
+xx_js_oom_handler_fn xx_js_set_oom_handler(xx_js_oom_handler_fn handler)
+{
     xx_js_oom_handler_fn previous = g_oom_handler;
     g_oom_handler = handler ? handler : xx_js_default_oom_handler;
     return previous;
@@ -49,13 +51,15 @@ xx_js_oom_handler_fn xx_js_set_oom_handler(xx_js_oom_handler_fn handler) {
 /* Every path that runs out of memory ends here. The handler is not expected to
  * return; if it does, there is nothing left to do but stop, because the caller
  * is about to dereference the NULL it cannot check for. */
-static void xx_js_out_of_memory(void) {
+static void xx_js_out_of_memory(void)
+{
     g_oom_handler();
     /* The handler returned when it should not have. */
     xx_js_default_oom_handler();
 }
 
-bool xx_js_begin_soft_oom(void) {
+bool xx_js_begin_soft_oom(void)
+{
     if (g_oom_soft) {
         return true;
     }
@@ -70,14 +74,16 @@ bool xx_js_begin_soft_oom(void) {
     return true;
 }
 
-void xx_js_end_soft_oom(void) {
+void xx_js_end_soft_oom(void)
+{
     xx_rt_free(g_oom_reserve);
     g_oom_reserve = NULL;
     g_oom_soft = false;
     g_oom_raised = false;
 }
 
-bool xx_js_oom_raised(void) {
+bool xx_js_oom_raised(void)
+{
     return g_oom_raised;
 }
 
@@ -85,7 +91,8 @@ bool xx_js_oom_raised(void) {
  * somewhere to come from. Returns true when a retry is worth making; with no
  * soft policy in force, or once the reserve is spent, the caller goes to the
  * handler instead. */
-static bool xx_js_out_of_memory_retry(void) {
+static bool xx_js_out_of_memory_retry(void)
+{
     if (!g_oom_soft) {
         return false;
     }
@@ -98,7 +105,8 @@ static bool xx_js_out_of_memory_retry(void) {
     return true;
 }
 
-void *xx_js_malloc(size_t size) {
+void *xx_js_malloc(size_t size)
+{
     size_t request = size ? size : 1U;
     void *result = xx_rt_malloc(request);
 
@@ -111,7 +119,8 @@ void *xx_js_malloc(size_t size) {
     return result;
 }
 
-void *xx_js_calloc(size_t count, size_t size) {
+void *xx_js_calloc(size_t count, size_t size)
+{
     size_t request_count = count ? count : 1U;
     size_t request_size = size ? size : 1U;
     void *result = xx_rt_calloc(request_count, request_size);
@@ -125,7 +134,8 @@ void *xx_js_calloc(size_t count, size_t size) {
     return result;
 }
 
-void *xx_js_realloc(void *ptr, size_t size) {
+void *xx_js_realloc(void *ptr, size_t size)
+{
     size_t request = size ? size : 1U;
     void *result = xx_rt_realloc(ptr, request);
 
@@ -138,11 +148,13 @@ void *xx_js_realloc(void *ptr, size_t size) {
     return result;
 }
 
-void xx_js_free(void *ptr) {
+void xx_js_free(void *ptr)
+{
     xx_rt_free(ptr);
 }
 
-char *xx_js_strndup(const char *text, size_t size) {
+char *xx_js_strndup(const char *text, size_t size)
+{
     char *result = (char *)xx_js_malloc(size + 1U);
 
     if (size) {
@@ -152,14 +164,16 @@ char *xx_js_strndup(const char *text, size_t size) {
     return result;
 }
 
-char *xx_js_strdup(const char *text) {
+char *xx_js_strdup(const char *text)
+{
     if (!text) {
         return NULL;
     }
     return xx_js_strndup(text, xx_rt_strlen(text));
 }
 
-uint32_t xx_js_hash_str(const char *text, size_t size) {
+uint32_t xx_js_hash_str(const char *text, size_t size)
+{
     /* FNV-1a */
     uint32_t hash = 2166136261u;
     size_t index;

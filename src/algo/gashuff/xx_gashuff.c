@@ -31,20 +31,19 @@ typedef struct xx_gashuff_node_s {
     bool is_leaf;
 } xx_gashuff_node;
 
-static bool xx_gashuff_read_bit(xx_gashuff_bit_reader *reader,
-                                uint32_t *value) {
+static bool xx_gashuff_read_bit(xx_gashuff_bit_reader *reader, uint32_t *value)
+{
     size_t bit;
     if (!reader || !value || reader->bit_position >= reader->bit_size) {
         return false;
     }
     bit = reader->bit_position++;
-    *value = (uint32_t)((reader->data[bit >> 3U] >>
-                         (7U - (unsigned)(bit & 7U))) & 1U);
+    *value = (uint32_t)((reader->data[bit >> 3U] >> (7U - (unsigned)(bit & 7U))) & 1U);
     return true;
 }
 
-static bool xx_gashuff_read_lsb_field(xx_gashuff_bit_reader *reader,
-                                      unsigned width, uint32_t *value) {
+static bool xx_gashuff_read_lsb_field(xx_gashuff_bit_reader *reader, unsigned width, uint32_t *value)
+{
     uint32_t result = 0U;
     unsigned index;
     if (!reader || !value || width == 0U || width > 16U) return false;
@@ -57,9 +56,8 @@ static bool xx_gashuff_read_lsb_field(xx_gashuff_bit_reader *reader,
     return true;
 }
 
-static bool xx_gashuff_validate_tree(const xx_gashuff_node *nodes,
-                                     uint16_t node_count,
-                                     uint16_t root_index) {
+static bool xx_gashuff_validate_tree(const xx_gashuff_node *nodes, uint16_t node_count, uint16_t root_index)
+{
     uint8_t visited[XX_GASHUFF_MAX_RECORDS];
     uint8_t symbols[256];
     uint16_t stack[XX_GASHUFF_MAX_RECORDS];
@@ -68,8 +66,7 @@ static bool xx_gashuff_validate_tree(const xx_gashuff_node *nodes,
     unsigned internal_count = 0U;
     unsigned leaf_count = 0U;
     uint16_t record_count = (uint16_t)(node_count + 1U);
-    if (!nodes || node_count < 3U || root_index >= record_count ||
-        nodes[root_index].is_leaf) {
+    if (!nodes || node_count < 3U || root_index >= record_count || nodes[root_index].is_leaf) {
         return false;
     }
     xx_rt_memset(visited, 0, sizeof(visited));
@@ -87,10 +84,7 @@ static bool xx_gashuff_validate_tree(const xx_gashuff_node *nodes,
             symbols[node->symbol] = 1U;
             ++leaf_count;
         } else {
-            if (node->child_zero >= record_count ||
-                node->child_one >= record_count ||
-                node->child_zero == node->child_one ||
-                stack_size > (size_t)record_count - 2U) {
+            if (node->child_zero >= record_count || node->child_one >= record_count || node->child_zero == node->child_one || stack_size > (size_t)record_count - 2U) {
                 return false;
             }
             stack[stack_size++] = node->child_zero;
@@ -98,15 +92,12 @@ static bool xx_gashuff_validate_tree(const xx_gashuff_node *nodes,
             ++internal_count;
         }
     }
-    return leaf_count >= 2U && leaf_count == internal_count + 1U &&
-           internal_count == (unsigned)(node_count / 2U) &&
+    return leaf_count >= 2U && leaf_count == internal_count + 1U && internal_count == (unsigned)(node_count / 2U) &&
            visited_count == (size_t)record_count - (node_count & 1U);
 }
 
-static bool xx_gashuff_parse_internal(const uint8_t *input,
-                                      size_t input_size,
-                                      xx_gashuff_node *nodes,
-                                      xx_gashuff_info *info) {
+static bool xx_gashuff_parse_internal(const uint8_t *input, size_t input_size, xx_gashuff_node *nodes, xx_gashuff_info *info)
+{
     xx_gashuff_bit_reader reader;
     uint32_t uncompressed_size;
     uint16_t node_count;
@@ -116,15 +107,13 @@ static bool xx_gashuff_parse_internal(const uint8_t *input,
     unsigned internal_count = 0U;
     size_t max_tree_bytes;
     if (info) xx_rt_memset(info, 0, sizeof(*info));
-    if (!input || !nodes || input_size < 11U ||
-        input_size > XX_GASHUFF_MAX_INPUT || input_size > SIZE_MAX / 8U) {
+    if (!input || !nodes || input_size < 11U || input_size > XX_GASHUFF_MAX_INPUT || input_size > SIZE_MAX / 8U) {
         return false;
     }
     uncompressed_size = xx_data_get_u32(input, 4, 0, false);
     node_count = xx_data_get_u16(input + 4U, 2, 0, false);
     root_index = xx_data_get_u16(input + 6U, 2, 0, false);
-    if (uncompressed_size == 0U || uncompressed_size > XX_GASHUFF_MAX_OUTPUT ||
-        node_count < 3U || node_count > XX_GASHUFF_MAX_NODES) {
+    if (uncompressed_size == 0U || uncompressed_size > XX_GASHUFF_MAX_OUTPUT || node_count < 3U || node_count > XX_GASHUFF_MAX_NODES) {
         return false;
     }
     record_count = (uint16_t)(node_count + 1U);
@@ -132,8 +121,7 @@ static bool xx_gashuff_parse_internal(const uint8_t *input,
         return false;
     }
     max_tree_bytes = ((size_t)record_count * 21U + 7U) / 8U;
-    if (input_size - XX_GASHUFF_HEADER_SIZE >
-        (size_t)uncompressed_size + max_tree_bytes + 16U) {
+    if (input_size - XX_GASHUFF_HEADER_SIZE > (size_t)uncompressed_size + max_tree_bytes + 16U) {
         return false;
     }
     xx_rt_memset(&reader, 0, sizeof(reader));
@@ -152,22 +140,19 @@ static bool xx_gashuff_parse_internal(const uint8_t *input,
         } else {
             uint32_t encoded_one;
             uint32_t encoded_zero;
-            if (!xx_gashuff_read_lsb_field(&reader, 10U, &encoded_one) ||
-                !xx_gashuff_read_lsb_field(&reader, 10U, &encoded_zero) ||
-                (encoded_one & 1U) == 0U || (encoded_zero & 1U) == 0U) {
+            if (!xx_gashuff_read_lsb_field(&reader, 10U, &encoded_one) || !xx_gashuff_read_lsb_field(&reader, 10U, &encoded_zero) || (encoded_one & 1U) == 0U ||
+                (encoded_zero & 1U) == 0U) {
                 return false;
             }
             nodes[index].child_one = (uint16_t)((encoded_one - 1U) >> 1U);
             nodes[index].child_zero = (uint16_t)((encoded_zero - 1U) >> 1U);
-            if (nodes[index].child_one >= record_count ||
-                nodes[index].child_zero >= record_count) {
+            if (nodes[index].child_one >= record_count || nodes[index].child_zero >= record_count) {
                 return false;
             }
             ++internal_count;
         }
     }
-    if (internal_count != (unsigned)(node_count / 2U) ||
-        !xx_gashuff_validate_tree(nodes, node_count, root_index) ||
+    if (internal_count != (unsigned)(node_count / 2U) || !xx_gashuff_validate_tree(nodes, node_count, root_index) ||
         reader.bit_size - reader.bit_position < (size_t)uncompressed_size) {
         return false;
     }
@@ -181,42 +166,35 @@ static bool xx_gashuff_parse_internal(const uint8_t *input,
     return true;
 }
 
-bool xx_gashuff_parse_memory(const uint8_t *input, size_t input_size,
-                             xx_gashuff_info *info) {
+bool xx_gashuff_parse_memory(const uint8_t *input, size_t input_size, xx_gashuff_info *info)
+{
     xx_gashuff_node nodes[XX_GASHUFF_MAX_RECORDS];
     return xx_gashuff_parse_internal(input, input_size, nodes, info);
 }
 
-bool xx_gashuff_decompress_memory(
-    const uint8_t *input, size_t input_size, uint8_t *output,
-    size_t output_size, size_t *consumed_size, xx_gashuff_info *info) {
+bool xx_gashuff_decompress_memory(const uint8_t *input, size_t input_size, uint8_t *output, size_t output_size, size_t *consumed_size, xx_gashuff_info *info)
+{
     xx_gashuff_node nodes[XX_GASHUFF_MAX_RECORDS];
     xx_gashuff_info parsed;
     xx_gashuff_bit_reader reader;
     size_t output_position;
     if (consumed_size) *consumed_size = 0U;
     if (info) xx_rt_memset(info, 0, sizeof(*info));
-    if (!input || !output ||
-        !xx_gashuff_parse_internal(input, input_size, nodes, &parsed) ||
-        output_size != (size_t)parsed.uncompressed_size) {
+    if (!input || !output || !xx_gashuff_parse_internal(input, input_size, nodes, &parsed) || output_size != (size_t)parsed.uncompressed_size) {
         return false;
     }
     reader.data = input;
     reader.bit_size = input_size * 8U;
     reader.bit_position = parsed.payload_bit_offset;
-    for (output_position = 0U; output_position < output_size;
-         ++output_position) {
+    for (output_position = 0U; output_position < output_size; ++output_position) {
         uint16_t current = parsed.root_index;
         unsigned guard = 0U;
         while (!nodes[current].is_leaf) {
             uint32_t bit;
-            if (current >= (uint16_t)(parsed.node_count + 1U) ||
-                ++guard > (unsigned)parsed.node_count + 1U ||
-                !xx_gashuff_read_bit(&reader, &bit)) {
+            if (current >= (uint16_t)(parsed.node_count + 1U) || ++guard > (unsigned)parsed.node_count + 1U || !xx_gashuff_read_bit(&reader, &bit)) {
                 return false;
             }
-            current = bit != 0U ? nodes[current].child_one
-                                : nodes[current].child_zero;
+            current = bit != 0U ? nodes[current].child_one : nodes[current].child_zero;
         }
         output[output_position] = nodes[current].symbol;
     }

@@ -9,13 +9,15 @@
 #ifdef __cplusplus
 extern "C" {
 #endif
-typedef struct xx_jasc_palette {Abstractformat format;} xx_jasc_palette;
-XXFC_API void xx_jasc_palette_init(xx_jasc_palette *,xx_io_device *,int64_t);
-XXFC_API xx_jasc_palette *xx_jasc_palette_create(xx_io_device *,int64_t);
+typedef struct xx_jasc_palette {
+    Abstractformat format;
+} xx_jasc_palette;
+XXFC_API void xx_jasc_palette_init(xx_jasc_palette *, xx_io_device *, int64_t);
+XXFC_API xx_jasc_palette *xx_jasc_palette_create(xx_io_device *, int64_t);
 XXFC_API void xx_jasc_palette_destroy(xx_jasc_palette *);
 XXFC_API void xx_jasc_palette_free(xx_jasc_palette *);
-XXFC_API bool xx_jasc_palette_check_is_valid(Abstractformat *,xx_pd_struct *);
-XXFC_API bool xx_jasc_palette_handle_base_info(Abstractformat *,xx_pd_struct *);
+XXFC_API bool xx_jasc_palette_check_is_valid(Abstractformat *, xx_pd_struct *);
+XXFC_API bool xx_jasc_palette_handle_base_info(Abstractformat *, xx_pd_struct *);
 #ifdef __cplusplus
 }
 #endif

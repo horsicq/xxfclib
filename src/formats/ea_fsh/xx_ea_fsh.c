@@ -68,8 +68,8 @@ static void xx_ea_fsh_vtable_destroy(Abstractformat *self);
 
 /* ------------------------------------------------------------- helpers -- */
 
-static bool xx_ea_fsh_read_from(xx_io_device *dev, int64_t offset,
-                                uint8_t *out, size_t size) {
+static bool xx_ea_fsh_read_from(xx_io_device *dev, int64_t offset, uint8_t *out, size_t size)
+{
     size_t done = 0U;
 
     if (!dev || offset < 0 || xx_io_seek64(dev, offset, SEEK_SET) != 0) {
@@ -83,46 +83,43 @@ static bool xx_ea_fsh_read_from(xx_io_device *dev, int64_t offset,
     return true;
 }
 
-static bool xx_ea_fsh_is_magic(const uint8_t *h) {
-    return h[0] == 'S' && h[1] == 'H' && h[2] == 'P' &&
-           (h[3] == 'I' || h[3] == 'P' || h[3] == 'S' || h[3] == 'X');
+static bool xx_ea_fsh_is_magic(const uint8_t *h)
+{
+    return h[0] == 'S' && h[1] == 'H' && h[2] == 'P' && (h[3] == 'I' || h[3] == 'P' || h[3] == 'S' || h[3] == 'X');
 }
 
-static char xx_ea_fsh_upper(char c) {
+static char xx_ea_fsh_upper(char c)
+{
     return (c >= 'a' && c <= 'z') ? (char)(c - 'a' + 'A') : c;
 }
 
-static bool xx_ea_fsh_is_device_stem(const char *stem, size_t len) {
+static bool xx_ea_fsh_is_device_stem(const char *stem, size_t len)
+{
     char u[4];
     size_t i;
 
     if (len != 3U && len != 4U) return false;
     for (i = 0U; i < len; ++i) u[i] = xx_ea_fsh_upper(stem[i]);
     if (len == 3U) {
-        return !xx_rt_memcmp(u, "CON", 3U) || !xx_rt_memcmp(u, "PRN", 3U) ||
-               !xx_rt_memcmp(u, "AUX", 3U) || !xx_rt_memcmp(u, "NUL", 3U);
+        return !xx_rt_memcmp(u, "CON", 3U) || !xx_rt_memcmp(u, "PRN", 3U) || !xx_rt_memcmp(u, "AUX", 3U) || !xx_rt_memcmp(u, "NUL", 3U);
     }
-    return (!xx_rt_memcmp(u, "COM", 3U) || !xx_rt_memcmp(u, "LPT", 3U)) &&
-           u[3] >= '1' && u[3] <= '9';
+    return (!xx_rt_memcmp(u, "COM", 3U) || !xx_rt_memcmp(u, "LPT", 3U)) && u[3] >= '1' && u[3] <= '9';
 }
 
 /* Last line of defence: the names built below always pass this. */
-static bool xx_ea_fsh_path_safe(const char *name) {
+static bool xx_ea_fsh_path_safe(const char *name)
+{
     size_t len, i, stem;
 
     if (!name || !*name) return false;
     len = xx_str_len(name);
     for (i = 0U; i < len; ++i) {
         unsigned char c = (unsigned char)name[i];
-        if (c < 32U || c >= 127U || c == '/' || c == '\\' || c == ':' ||
-            c == '*' || c == '?' || c == '"' || c == '<' || c == '>' ||
-            c == '|') {
+        if (c < 32U || c >= 127U || c == '/' || c == '\\' || c == ':' || c == '*' || c == '?' || c == '"' || c == '<' || c == '>' || c == '|') {
             return false;
         }
     }
-    if ((len == 1U && name[0] == '.') ||
-        (len == 2U && name[0] == '.' && name[1] == '.') ||
-        name[len - 1U] == '.' || name[len - 1U] == ' ') {
+    if ((len == 1U && name[0] == '.') || (len == 2U && name[0] == '.' && name[1] == '.') || name[len - 1U] == '.' || name[len - 1U] == ' ') {
         return false;
     }
     for (stem = 0U; stem < len && name[stem] != '.'; ++stem) {
@@ -135,16 +132,15 @@ static bool xx_ea_fsh_path_safe(const char *name) {
         char u[7];
         size_t k, n = stem < 7U ? stem : 7U;
         for (k = 0U; k < n; ++k) u[k] = xx_ea_fsh_upper(name[k]);
-        if ((stem == 6U && (!xx_rt_memcmp(u, "CONIN$", 6U) ||
-                            !xx_rt_memcmp(u, "CLOCK$", 6U))) ||
-            (stem == 7U && !xx_rt_memcmp(u, "CONOUT$", 7U))) {
+        if ((stem == 6U && (!xx_rt_memcmp(u, "CONIN$", 6U) || !xx_rt_memcmp(u, "CLOCK$", 6U))) || (stem == 7U && !xx_rt_memcmp(u, "CONOUT$", 7U))) {
             return false;
         }
     }
     return true;
 }
 
-static char *xx_ea_fsh_make_name(const uint8_t *tag, uint32_t index) {
+static char *xx_ea_fsh_make_name(const uint8_t *tag, uint32_t index)
+{
     char buffer[32];
     size_t len = 0U, at = 0U, i;
     char clean[5];
@@ -152,9 +148,7 @@ static char *xx_ea_fsh_make_name(const uint8_t *tag, uint32_t index) {
     while (len < 4U && tag[len]) ++len;
     for (i = 0U; i < len; ++i) {
         unsigned char c = tag[i];
-        if (c < 32U || c >= 127U || c == '/' || c == '\\' || c == ':' ||
-            c == '*' || c == '?' || c == '"' || c == '<' || c == '>' ||
-            c == '|') {
+        if (c < 32U || c >= 127U || c == '/' || c == '\\' || c == ':' || c == '*' || c == '?' || c == '"' || c == '<' || c == '>' || c == '|') {
             c = '_';
         }
         clean[i] = (char)c;
@@ -173,12 +167,12 @@ static char *xx_ea_fsh_make_name(const uint8_t *tag, uint32_t index) {
         if (xx_ea_fsh_is_device_stem(clean, stem)) buffer[at++] = '_';
     }
     for (i = 0U; i < len; ++i) buffer[at++] = clean[i];
-    (void)xx_rt_snprintf(buffer + at, sizeof(buffer) - at, ".%06u",
-                         (unsigned)index);
+    (void)xx_rt_snprintf(buffer + at, sizeof(buffer) - at, ".%06u", (unsigned)index);
     return xx_str_dup(buffer);
 }
 
-static void xx_ea_fsh_stream_free(void *pointer) {
+static void xx_ea_fsh_stream_free(void *pointer)
+{
     xx_ea_fsh_stream *s = (xx_ea_fsh_stream *)pointer;
     size_t i;
 
@@ -189,13 +183,13 @@ static void xx_ea_fsh_stream_free(void *pointer) {
 }
 
 /* Heapsort of member indices by (data_offset, index). */
-static bool xx_ea_fsh_less(const xx_ea_fsh_member *m, uint32_t a, uint32_t b) {
-    return m[a].data_offset < m[b].data_offset ||
-           (m[a].data_offset == m[b].data_offset && m[a].index < m[b].index);
+static bool xx_ea_fsh_less(const xx_ea_fsh_member *m, uint32_t a, uint32_t b)
+{
+    return m[a].data_offset < m[b].data_offset || (m[a].data_offset == m[b].data_offset && m[a].index < m[b].index);
 }
 
-static void xx_ea_fsh_sift(const xx_ea_fsh_member *m, uint32_t *order,
-                           size_t root, size_t n) {
+static void xx_ea_fsh_sift(const xx_ea_fsh_member *m, uint32_t *order, size_t root, size_t n)
+{
     for (;;) {
         size_t child = root * 2U + 1U;
         uint32_t t;
@@ -211,8 +205,8 @@ static void xx_ea_fsh_sift(const xx_ea_fsh_member *m, uint32_t *order,
     }
 }
 
-static void xx_ea_fsh_sort(const xx_ea_fsh_member *m, uint32_t *order,
-                           size_t n) {
+static void xx_ea_fsh_sort(const xx_ea_fsh_member *m, uint32_t *order, size_t n)
+{
     size_t i;
 
     if (n < 2U) return;
@@ -225,8 +219,8 @@ static void xx_ea_fsh_sort(const xx_ea_fsh_member *m, uint32_t *order,
     }
 }
 
-static xx_ea_fsh_stream *xx_ea_fsh_parse(Abstractformat *self,
-                                         xx_pd_struct *pd) {
+static xx_ea_fsh_stream *xx_ea_fsh_parse(Abstractformat *self, xx_pd_struct *pd)
+{
     uint8_t header[XX_EA_FSH_HEADER_SIZE];
     uint8_t *chunk = NULL;
     uint32_t *order = NULL;
@@ -235,17 +229,13 @@ static xx_ea_fsh_stream *xx_ea_fsh_parse(Abstractformat *self,
     uint32_t count, i;
     size_t k;
 
-    if (!self || !self->device || self->base_address < 0 ||
-        (pd && xx_pd_is_stopped(pd))) {
+    if (!self || !self->device || self->base_address < 0 || (pd && xx_pd_is_stopped(pd))) {
         return NULL;
     }
     total = xx_io_total_size(self->device);
     if (total < self->base_address) return NULL;
     span = total - self->base_address;
-    if (span < XX_EA_FSH_HEADER_SIZE ||
-        !xx_ea_fsh_read_from(self->device, self->base_address, header,
-                             sizeof(header)) ||
-        !xx_ea_fsh_is_magic(header)) {
+    if (span < XX_EA_FSH_HEADER_SIZE || !xx_ea_fsh_read_from(self->device, self->base_address, header, sizeof(header)) || !xx_ea_fsh_is_magic(header)) {
         return NULL;
     }
     /* The directory id is four printable ASCII characters. */
@@ -269,8 +259,7 @@ static xx_ea_fsh_stream *xx_ea_fsh_parse(Abstractformat *self,
     s->archive_size = end;
     if (count == 0U) return s;
 
-    s->items = (xx_ea_fsh_member *)xx_mem_alloc((size_t)count *
-                                                sizeof(xx_ea_fsh_member));
+    s->items = (xx_ea_fsh_member *)xx_mem_alloc((size_t)count * sizeof(xx_ea_fsh_member));
     order = (uint32_t *)xx_mem_alloc((size_t)count * sizeof(uint32_t));
     chunk = (uint8_t *)xx_mem_alloc(XX_EA_FSH_DIR_CHUNK * XX_EA_FSH_ENTRY_SIZE);
     if (!s->items || !order || !chunk) goto fail;
@@ -280,10 +269,7 @@ static xx_ea_fsh_stream *xx_ea_fsh_parse(Abstractformat *self,
         uint32_t n = count - i, j;
         if (n > XX_EA_FSH_DIR_CHUNK) n = XX_EA_FSH_DIR_CHUNK;
         if ((pd && xx_pd_is_stopped(pd)) ||
-            !xx_ea_fsh_read_from(self->device,
-                                 self->base_address + XX_EA_FSH_HEADER_SIZE +
-                                     (int64_t)i * XX_EA_FSH_ENTRY_SIZE,
-                                 chunk, (size_t)n * XX_EA_FSH_ENTRY_SIZE)) {
+            !xx_ea_fsh_read_from(self->device, self->base_address + XX_EA_FSH_HEADER_SIZE + (int64_t)i * XX_EA_FSH_ENTRY_SIZE, chunk, (size_t)n * XX_EA_FSH_ENTRY_SIZE)) {
             goto fail;
         }
         for (j = 0U; j < n; ++j, ++i) {
@@ -297,8 +283,7 @@ static xx_ea_fsh_stream *xx_ea_fsh_parse(Abstractformat *self,
             if (!m->name) goto fail;
             s->count = (size_t)i + 1U;
             m->index = i;
-            m->header_offset = self->base_address + XX_EA_FSH_HEADER_SIZE +
-                               (int64_t)i * XX_EA_FSH_ENTRY_SIZE;
+            m->header_offset = self->base_address + XX_EA_FSH_HEADER_SIZE + (int64_t)i * XX_EA_FSH_ENTRY_SIZE;
             m->data_offset = offset; /* relative until the sizes are set */
             order[i] = i;
         }
@@ -308,8 +293,7 @@ static xx_ea_fsh_stream *xx_ea_fsh_parse(Abstractformat *self,
     next = end;
     for (k = count; k > 0U; --k) {
         xx_ea_fsh_member *m = &s->items[order[k - 1U]];
-        if (k < count &&
-            s->items[order[k]].data_offset > m->data_offset) {
+        if (k < count && s->items[order[k]].data_offset > m->data_offset) {
             next = s->items[order[k]].data_offset;
         }
         m->size = next - m->data_offset;
@@ -330,8 +314,8 @@ fail:
 
 /* ---------------------------------------------------------- lifecycle --- */
 
-void xx_ea_fsh_init(xx_ea_fsh *archive, xx_io_device *device,
-                    int64_t base_address) {
+void xx_ea_fsh_init(xx_ea_fsh *archive, xx_io_device *device, int64_t base_address)
+{
     if (!archive) return;
     xx_mem_zero(archive, sizeof(*archive));
     xx_format_init(&archive->format, device, base_address);
@@ -344,22 +328,17 @@ void xx_ea_fsh_init(xx_ea_fsh *archive, xx_io_device *device,
     archive->format.check_is_valid = xx_ea_fsh_check_is_valid;
     archive->format.handle_base_info = xx_ea_fsh_handle_base_info;
     archive->format.get_format_size = xx_ea_fsh_get_format_size;
-    archive->format.get_number_of_archive_records =
-        xx_ea_fsh_get_number_of_archive_records;
-    archive->format.create_archive_records_reading =
-        xx_ea_fsh_create_archive_records_reading;
-    archive->format.get_current_archive_record =
-        xx_ea_fsh_get_current_archive_record;
-    archive->format.unpack_current_archive_record =
-        xx_ea_fsh_unpack_current_archive_record;
-    archive->format.archive_record_move_to_next =
-        xx_ea_fsh_archive_record_move_to_next;
-    archive->format.free_archive_records_reading =
-        xx_ea_fsh_free_archive_records_reading;
+    archive->format.get_number_of_archive_records = xx_ea_fsh_get_number_of_archive_records;
+    archive->format.create_archive_records_reading = xx_ea_fsh_create_archive_records_reading;
+    archive->format.get_current_archive_record = xx_ea_fsh_get_current_archive_record;
+    archive->format.unpack_current_archive_record = xx_ea_fsh_unpack_current_archive_record;
+    archive->format.archive_record_move_to_next = xx_ea_fsh_archive_record_move_to_next;
+    archive->format.free_archive_records_reading = xx_ea_fsh_free_archive_records_reading;
     archive->format.destroy = xx_ea_fsh_vtable_destroy;
 }
 
-xx_ea_fsh *xx_ea_fsh_create(xx_io_device *device, int64_t base_address) {
+xx_ea_fsh *xx_ea_fsh_create(xx_io_device *device, int64_t base_address)
+{
     xx_ea_fsh *archive = (xx_ea_fsh *)xx_mem_alloc(sizeof(*archive));
 
     if (!archive) return NULL;
@@ -367,7 +346,8 @@ xx_ea_fsh *xx_ea_fsh_create(xx_io_device *device, int64_t base_address) {
     return archive;
 }
 
-void xx_ea_fsh_destroy(xx_ea_fsh *archive) {
+void xx_ea_fsh_destroy(xx_ea_fsh *archive)
+{
     if (!archive) return;
     /* Not xx_format_destroy: it dispatches through format.destroy, which is
      * the wrapper below, and the two would recurse. */
@@ -376,19 +356,22 @@ void xx_ea_fsh_destroy(xx_ea_fsh *archive) {
     archive->number_of_records = 0U;
 }
 
-void xx_ea_fsh_free(xx_ea_fsh *archive) {
+void xx_ea_fsh_free(xx_ea_fsh *archive)
+{
     if (!archive) return;
     xx_ea_fsh_destroy(archive);
     xx_mem_free(archive);
 }
 
-static void xx_ea_fsh_vtable_destroy(Abstractformat *self) {
+static void xx_ea_fsh_vtable_destroy(Abstractformat *self)
+{
     xx_ea_fsh_destroy((xx_ea_fsh *)self);
 }
 
 /* -------------------------------------------------------------- format -- */
 
-bool xx_ea_fsh_check_is_valid(Abstractformat *self, xx_pd_struct *pd) {
+bool xx_ea_fsh_check_is_valid(Abstractformat *self, xx_pd_struct *pd)
+{
     xx_ea_fsh_stream *stream;
 
     if (!self || (pd && xx_pd_is_stopped(pd))) return false;
@@ -398,7 +381,8 @@ bool xx_ea_fsh_check_is_valid(Abstractformat *self, xx_pd_struct *pd) {
     return true;
 }
 
-bool xx_ea_fsh_handle_base_info(Abstractformat *self, xx_pd_struct *pd) {
+bool xx_ea_fsh_handle_base_info(Abstractformat *self, xx_pd_struct *pd)
+{
     xx_ea_fsh *archive = (xx_ea_fsh *)self;
     xx_ea_fsh_stream *stream;
 
@@ -421,18 +405,17 @@ bool xx_ea_fsh_handle_base_info(Abstractformat *self, xx_pd_struct *pd) {
     return true;
 }
 
-int64_t xx_ea_fsh_get_format_size(Abstractformat *self, xx_pd_struct *pd) {
-    if (!self ||
-        (!self->base_info_handled && !xx_format_handle_base_info(self, pd))) {
+int64_t xx_ea_fsh_get_format_size(Abstractformat *self, xx_pd_struct *pd)
+{
+    if (!self || (!self->base_info_handled && !xx_format_handle_base_info(self, pd))) {
         return 0;
     }
     return self->is_valid ? self->format_size : 0;
 }
 
-uint64_t xx_ea_fsh_get_number_of_archive_records(Abstractformat *self,
-                                                 xx_pd_struct *pd) {
-    if (!self ||
-        (!self->base_info_handled && !xx_format_handle_base_info(self, pd))) {
+uint64_t xx_ea_fsh_get_number_of_archive_records(Abstractformat *self, xx_pd_struct *pd)
+{
+    if (!self || (!self->base_info_handled && !xx_format_handle_base_info(self, pd))) {
         return 0U;
     }
     return self->is_valid ? ((xx_ea_fsh *)self)->number_of_records : 0U;
@@ -440,40 +423,31 @@ uint64_t xx_ea_fsh_get_number_of_archive_records(Abstractformat *self,
 
 /* ------------------------------------------------------------- records -- */
 
-static bool xx_ea_fsh_set_record(xx_archive_record *record,
-                                 const xx_ea_fsh_member *member) {
+static bool xx_ea_fsh_set_record(xx_archive_record *record, const xx_ea_fsh_member *member)
+{
     xx_archive_record_cleanup(record);
     xx_archive_record_init(record);
     record->header_offset = member->header_offset;
     record->header_size = XX_EA_FSH_ENTRY_SIZE;
     record->data_offset = member->data_offset;
     record->compressed_size = member->size;
-    return xx_archive_record_set_original_name(record, member->name) &&
-           xx_archive_record_set_meta_u64(record, XX_META_ID_COMPRESSED_SIZE,
-                                          (uint64_t)member->size) &&
-           xx_archive_record_set_meta_u64(record, XX_META_ID_UNCOMPRESSED_SIZE,
-                                          (uint64_t)member->size) &&
-           xx_archive_record_set_meta_u64(record, XX_META_ID_COMPRESSION_METHOD,
-                                          0U) &&
-           xx_archive_record_set_meta_bool(record, XX_META_ID_IS_FOLDER,
-                                           false) &&
-           xx_archive_record_set_meta_bool(record, XX_META_ID_IS_ENCRYPTED,
-                                           false);
+    return xx_archive_record_set_original_name(record, member->name) && xx_archive_record_set_meta_u64(record, XX_META_ID_COMPRESSED_SIZE, (uint64_t)member->size) &&
+           xx_archive_record_set_meta_u64(record, XX_META_ID_UNCOMPRESSED_SIZE, (uint64_t)member->size) &&
+           xx_archive_record_set_meta_u64(record, XX_META_ID_COMPRESSION_METHOD, 0U) && xx_archive_record_set_meta_bool(record, XX_META_ID_IS_FOLDER, false) &&
+           xx_archive_record_set_meta_bool(record, XX_META_ID_IS_ENCRYPTED, false);
 }
 
-static bool xx_ea_fsh_copy_options(xx_list_s *target,
-                                   const xx_list_s *options) {
+static bool xx_ea_fsh_copy_options(xx_list_s *target, const xx_list_s *options)
+{
     size_t index;
 
     if (!target || !options) return options == NULL;
     for (index = 0U; index < options->count; ++index) {
-        const xx_meta *source =
-            (const xx_meta *)xx_list_at((const xx_list_t *)options, index);
+        const xx_meta *source = (const xx_meta *)xx_list_at((const xx_list_t *)options, index);
         xx_meta copied;
         if (!source) continue;
         xx_meta_init(&copied, source->meta_id);
-        if (!xx_var_copy(&copied.var, &source->var) ||
-            !xx_list_append(target, &copied)) {
+        if (!xx_var_copy(&copied.var, &source->var) || !xx_list_append(target, &copied)) {
             xx_meta_cleanup(&copied);
             return false;
         }
@@ -481,21 +455,20 @@ static bool xx_ea_fsh_copy_options(xx_list_s *target,
     return true;
 }
 
-static const xx_var *xx_ea_fsh_get_option(const xx_list_s *options,
-                                          uint32_t meta_id) {
+static const xx_var *xx_ea_fsh_get_option(const xx_list_s *options, uint32_t meta_id)
+{
     size_t index;
 
     if (!options) return NULL;
     for (index = 0U; index < options->count; ++index) {
-        const xx_meta *meta =
-            (const xx_meta *)xx_list_at((const xx_list_t *)options, index);
+        const xx_meta *meta = (const xx_meta *)xx_list_at((const xx_list_t *)options, index);
         if (meta && meta->meta_id == meta_id) return &meta->var;
     }
     return NULL;
 }
 
-xx_archive_record_state *xx_ea_fsh_create_archive_records_reading(
-    Abstractformat *self, const xx_list_s *options, xx_pd_struct *pd) {
+xx_archive_record_state *xx_ea_fsh_create_archive_records_reading(Abstractformat *self, const xx_list_s *options, xx_pd_struct *pd)
+{
     xx_ea_fsh_stream *stream;
     xx_archive_record_state *state;
 
@@ -511,9 +484,7 @@ xx_archive_record_state *xx_ea_fsh_create_archive_records_reading(
     state->internal_state = stream;
     state->free_internal = xx_ea_fsh_stream_free;
     state->total_records = (int64_t)stream->count;
-    if (!xx_ea_fsh_copy_options(&state->options, options) ||
-        (stream->count != 0U &&
-         !xx_ea_fsh_set_record(&state->current_record, &stream->items[0]))) {
+    if (!xx_ea_fsh_copy_options(&state->options, options) || (stream->count != 0U && !xx_ea_fsh_set_record(&state->current_record, &stream->items[0]))) {
         xx_archive_record_state_free(state);
         return NULL;
     }
@@ -522,20 +493,16 @@ xx_archive_record_state *xx_ea_fsh_create_archive_records_reading(
     return state;
 }
 
-const xx_archive_record *xx_ea_fsh_get_current_archive_record(
-    Abstractformat *self, xx_archive_record_state *state) {
-    return self && state && state->format == self && state->has_record
-               ? &state->current_record
-               : NULL;
+const xx_archive_record *xx_ea_fsh_get_current_archive_record(Abstractformat *self, xx_archive_record_state *state)
+{
+    return self && state && state->format == self && state->has_record ? &state->current_record : NULL;
 }
 
-bool xx_ea_fsh_archive_record_move_to_next(Abstractformat *self,
-                                           xx_archive_record_state *state,
-                                           xx_pd_struct *pd) {
+bool xx_ea_fsh_archive_record_move_to_next(Abstractformat *self, xx_archive_record_state *state, xx_pd_struct *pd)
+{
     xx_ea_fsh_stream *stream;
 
-    if (!self || !state || state->format != self || !state->has_record ||
-        (pd && xx_pd_is_stopped(pd))) {
+    if (!self || !state || state->format != self || !state->has_record || (pd && xx_pd_is_stopped(pd))) {
         return false;
     }
     stream = (xx_ea_fsh_stream *)state->internal_state;
@@ -547,25 +514,20 @@ bool xx_ea_fsh_archive_record_move_to_next(Abstractformat *self,
     }
     ++stream->index;
     ++state->current_index;
-    state->has_record = xx_ea_fsh_set_record(&state->current_record,
-                                             &stream->items[stream->index]);
+    state->has_record = xx_ea_fsh_set_record(&state->current_record, &stream->items[stream->index]);
     return state->has_record;
 }
 
 /* Verification without a destination: read the member through. */
-static bool xx_ea_fsh_verify(Abstractformat *self,
-                             const xx_ea_fsh_member *member,
-                             xx_pd_struct *pd) {
+static bool xx_ea_fsh_verify(Abstractformat *self, const xx_ea_fsh_member *member, xx_pd_struct *pd)
+{
     uint8_t buffer[4096];
     int64_t done = 0;
 
     while (done < member->size) {
         int64_t left = member->size - done;
-        size_t n = left < (int64_t)sizeof(buffer) ? (size_t)left
-                                                  : sizeof(buffer);
-        if ((pd && xx_pd_is_stopped(pd)) ||
-            !xx_ea_fsh_read_from(self->device, member->data_offset + done,
-                                 buffer, n)) {
+        size_t n = left < (int64_t)sizeof(buffer) ? (size_t)left : sizeof(buffer);
+        if ((pd && xx_pd_is_stopped(pd)) || !xx_ea_fsh_read_from(self->device, member->data_offset + done, buffer, n)) {
             return false;
         }
         done += (int64_t)n;
@@ -573,9 +535,8 @@ static bool xx_ea_fsh_verify(Abstractformat *self,
     return true;
 }
 
-bool xx_ea_fsh_unpack_current_archive_record(Abstractformat *self,
-                                             xx_archive_record_state *state,
-                                             xx_pd_struct *pd) {
+bool xx_ea_fsh_unpack_current_archive_record(Abstractformat *self, xx_archive_record_state *state, xx_pd_struct *pd)
+{
     xx_ea_fsh_stream *stream;
     const xx_ea_fsh_member *member;
     const xx_var *path_option;
@@ -584,8 +545,7 @@ bool xx_ea_fsh_unpack_current_archive_record(Abstractformat *self,
     char *target_path = NULL;
     bool result;
 
-    if (!self || !state || state->format != self || !state->has_record ||
-        (pd && xx_pd_is_stopped(pd))) {
+    if (!self || !state || state->format != self || !state->has_record || (pd && xx_pd_is_stopped(pd))) {
         return false;
     }
     stream = (xx_ea_fsh_stream *)state->internal_state;
@@ -593,14 +553,11 @@ bool xx_ea_fsh_unpack_current_archive_record(Abstractformat *self,
     member = &stream->items[stream->index];
     if (!xx_ea_fsh_path_safe(member->name)) return false;
 
-    path_option = xx_ea_fsh_get_option(&state->options,
-                                       XX_META_ID_OPT_UNPACK_PATH);
+    path_option = xx_ea_fsh_get_option(&state->options, XX_META_ID_OPT_UNPACK_PATH);
     if (!path_option) return xx_ea_fsh_verify(self, member, pd);
-    if (path_option->type == XX_VAR_TYPE_STRING ||
-        path_option->type == XX_VAR_TYPE_STRING_VIEW) {
+    if (path_option->type == XX_VAR_TYPE_STRING || path_option->type == XX_VAR_TYPE_STRING_VIEW) {
         base_path = xx_var_get_str(path_option);
-    } else if (path_option->type == XX_VAR_TYPE_WSTRING ||
-               path_option->type == XX_VAR_TYPE_WSTRING_VIEW) {
+    } else if (path_option->type == XX_VAR_TYPE_WSTRING || path_option->type == XX_VAR_TYPE_WSTRING_VIEW) {
         converted_path = xx_str_unicode_to_utf8(xx_var_get_wstr(path_option));
         base_path = converted_path;
     }
@@ -608,9 +565,7 @@ bool xx_ea_fsh_unpack_current_archive_record(Abstractformat *self,
         xx_str_free(converted_path);
         return false;
     }
-    if (base_path[0] != '\0' &&
-        base_path[xx_str_len(base_path) - 1U] != '/' &&
-        base_path[xx_str_len(base_path) - 1U] != '\\') {
+    if (base_path[0] != '\0' && base_path[xx_str_len(base_path) - 1U] != '/' && base_path[xx_str_len(base_path) - 1U] != '\\') {
         target_path = xx_str_concat3(base_path, "/", member->name);
     } else {
         target_path = xx_str_concat(base_path, member->name);
@@ -620,15 +575,13 @@ bool xx_ea_fsh_unpack_current_archive_record(Abstractformat *self,
 
     /* xx_store_unpack_device_to_file removes its own output on failure,
      * and only when it created it. */
-    result = xx_store_create_dirs_a(target_path, false) &&
-             xx_store_unpack_device_to_file(self->device, member->data_offset,
-                                            member->size, target_path, pd);
+    result = xx_store_create_dirs_a(target_path, false) && xx_store_unpack_device_to_file(self->device, member->data_offset, member->size, target_path, pd);
     xx_str_free(target_path);
     return result;
 }
 
-void xx_ea_fsh_free_archive_records_reading(Abstractformat *self,
-                                            xx_archive_record_state *state) {
+void xx_ea_fsh_free_archive_records_reading(Abstractformat *self, xx_archive_record_state *state)
+{
     (void)self;
     xx_archive_record_state_free(state);
 }

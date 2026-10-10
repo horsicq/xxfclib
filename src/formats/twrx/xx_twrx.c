@@ -98,33 +98,20 @@ typedef struct twrx_sink_s {
 /* CP437, 0x80..0xFF.  The names are DOS names; the only high byte in the
  * reference corpus is 0xF6, the producer's part marker, which is U+00F7. */
 static const uint16_t twrx_cp437_high[128] = {
-    0x00C7, 0x00FC, 0x00E9, 0x00E2, 0x00E4, 0x00E0, 0x00E5, 0x00E7,
-    0x00EA, 0x00EB, 0x00E8, 0x00EF, 0x00EE, 0x00EC, 0x00C4, 0x00C5,
-    0x00C9, 0x00E6, 0x00C6, 0x00F4, 0x00F6, 0x00F2, 0x00FB, 0x00F9,
-    0x00FF, 0x00D6, 0x00DC, 0x00A2, 0x00A3, 0x00A5, 0x20A7, 0x0192,
-    0x00E1, 0x00ED, 0x00F3, 0x00FA, 0x00F1, 0x00D1, 0x00AA, 0x00BA,
-    0x00BF, 0x2310, 0x00AC, 0x00BD, 0x00BC, 0x00A1, 0x00AB, 0x00BB,
-    0x2591, 0x2592, 0x2593, 0x2502, 0x2524, 0x2561, 0x2562, 0x2556,
-    0x2555, 0x2563, 0x2551, 0x2557, 0x255D, 0x255C, 0x255B, 0x2510,
-    0x2514, 0x2534, 0x252C, 0x251C, 0x2500, 0x253C, 0x255E, 0x255F,
-    0x255A, 0x2554, 0x2569, 0x2566, 0x2560, 0x2550, 0x256C, 0x2567,
-    0x2568, 0x2564, 0x2565, 0x2559, 0x2558, 0x2552, 0x2553, 0x256B,
-    0x256A, 0x2518, 0x250C, 0x2588, 0x2584, 0x258C, 0x2590, 0x2580,
-    0x03B1, 0x00DF, 0x0393, 0x03C0, 0x03A3, 0x03C3, 0x00B5, 0x03C4,
-    0x03A6, 0x0398, 0x03A9, 0x03B4, 0x221E, 0x03C6, 0x03B5, 0x2229,
-    0x2261, 0x00B1, 0x2265, 0x2264, 0x2320, 0x2321, 0x00F7, 0x2248,
-    0x00B0, 0x2219, 0x00B7, 0x221A, 0x207F, 0x00B2, 0x25A0, 0x00A0
-};
+    0x00C7, 0x00FC, 0x00E9, 0x00E2, 0x00E4, 0x00E0, 0x00E5, 0x00E7, 0x00EA, 0x00EB, 0x00E8, 0x00EF, 0x00EE, 0x00EC, 0x00C4, 0x00C5, 0x00C9, 0x00E6, 0x00C6,
+    0x00F4, 0x00F6, 0x00F2, 0x00FB, 0x00F9, 0x00FF, 0x00D6, 0x00DC, 0x00A2, 0x00A3, 0x00A5, 0x20A7, 0x0192, 0x00E1, 0x00ED, 0x00F3, 0x00FA, 0x00F1, 0x00D1,
+    0x00AA, 0x00BA, 0x00BF, 0x2310, 0x00AC, 0x00BD, 0x00BC, 0x00A1, 0x00AB, 0x00BB, 0x2591, 0x2592, 0x2593, 0x2502, 0x2524, 0x2561, 0x2562, 0x2556, 0x2555,
+    0x2563, 0x2551, 0x2557, 0x255D, 0x255C, 0x255B, 0x2510, 0x2514, 0x2534, 0x252C, 0x251C, 0x2500, 0x253C, 0x255E, 0x255F, 0x255A, 0x2554, 0x2569, 0x2566,
+    0x2560, 0x2550, 0x256C, 0x2567, 0x2568, 0x2564, 0x2565, 0x2559, 0x2558, 0x2552, 0x2553, 0x256B, 0x256A, 0x2518, 0x250C, 0x2588, 0x2584, 0x258C, 0x2590,
+    0x2580, 0x03B1, 0x00DF, 0x0393, 0x03C0, 0x03A3, 0x03C3, 0x00B5, 0x03C4, 0x03A6, 0x0398, 0x03A9, 0x03B4, 0x221E, 0x03C6, 0x03B5, 0x2229, 0x2261, 0x00B1,
+    0x2265, 0x2264, 0x2320, 0x2321, 0x00F7, 0x2248, 0x00B0, 0x2219, 0x00B7, 0x221A, 0x207F, 0x00B2, 0x25A0, 0x00A0};
 
-static bool twrx_read_at(xx_io_device *device, int64_t offset, void *buffer,
-                         size_t size) {
+static bool twrx_read_at(xx_io_device *device, int64_t offset, void *buffer, size_t size)
+{
     size_t done = 0U;
-    if (!device || (!buffer && size != 0U) || offset < 0 ||
-        xx_io_seek64(device, offset, SEEK_SET) != 0)
-        return false;
+    if (!device || (!buffer && size != 0U) || offset < 0 || xx_io_seek64(device, offset, SEEK_SET) != 0) return false;
     while (done < size) {
-        ssize_t amount = xx_io_read(device, (uint8_t *)buffer + done,
-                                    size - done);
+        ssize_t amount = xx_io_read(device, (uint8_t *)buffer + done, size - done);
         if (amount <= 0 || (size_t)amount > size - done) return false;
         done += (size_t)amount;
     }
@@ -134,11 +121,13 @@ static bool twrx_read_at(xx_io_device *device, int64_t offset, void *buffer,
 /* Reflected CRC-32 with a zero seed and no final complement.  xx_crc32_calc
  * complements on entry and on exit, so seeding it with ~0 and complementing
  * its result cancels both. */
-static uint32_t twrx_crc(const uint8_t *data, size_t size) {
+static uint32_t twrx_crc(const uint8_t *data, size_t size)
+{
     return ~xx_crc32_calc(0xFFFFFFFFU, data, size);
 }
 
-static size_t twrx_put_utf8(char *out, uint16_t code) {
+static size_t twrx_put_utf8(char *out, uint16_t code)
+{
     if (code < 0x80U) {
         out[0] = (char)code;
         return 1U;
@@ -154,8 +143,8 @@ static size_t twrx_put_utf8(char *out, uint16_t code) {
     return 3U;
 }
 
-static bool twrx_same_upper(const char *text, const char *upper,
-                            size_t length) {
+static bool twrx_same_upper(const char *text, const char *upper, size_t length)
+{
     size_t index;
     for (index = 0U; index < length; ++index) {
         char c = text[index];
@@ -170,25 +159,20 @@ static bool twrx_same_upper(const char *text, const char *upper,
  * or CLOCK$.  Windows resolves such a name to the device whatever folder it
  * sits in and whatever extension follows it, and ignores spaces before the
  * extension, so only the part before the first '.' is compared. */
-static bool twrx_is_device_name(const char *component, size_t length) {
-    static const char *const plain[] = {"CON", "PRN", "AUX", "NUL",
-                                        "CONIN$", "CONOUT$", "CLOCK$"};
+static bool twrx_is_device_name(const char *component, size_t length)
+{
+    static const char *const plain[] = {"CON", "PRN", "AUX", "NUL", "CONIN$", "CONOUT$", "CLOCK$"};
     size_t base = 0U, index;
     const unsigned char *bytes = (const unsigned char *)component;
     if (!component) return false;
     while (base < length && component[base] != '.') ++base;
     while (base != 0U && component[base - 1U] == ' ') --base;
     for (index = 0U; index < sizeof(plain) / sizeof(plain[0]); ++index)
-        if (base == xx_str_len(plain[index]) &&
-            twrx_same_upper(component, plain[index], base))
-            return true;
-    if (base < 4U || (!twrx_same_upper(component, "COM", 3U) &&
-                      !twrx_same_upper(component, "LPT", 3U)))
-        return false;
+        if (base == xx_str_len(plain[index]) && twrx_same_upper(component, plain[index], base)) return true;
+    if (base < 4U || (!twrx_same_upper(component, "COM", 3U) && !twrx_same_upper(component, "LPT", 3U))) return false;
     if (base == 4U) return bytes[3] >= '0' && bytes[3] <= '9';
     /* U+00B9, U+00B2, U+00B3 in UTF-8; CP437 0xFD becomes U+00B2. */
-    return base == 5U && bytes[3] == 0xC2U &&
-           (bytes[4] == 0xB9U || bytes[4] == 0xB2U || bytes[4] == 0xB3U);
+    return base == 5U && bytes[3] == 0xC2U && (bytes[4] == 0xB9U || bytes[4] == 0xB2U || bytes[4] == 0xB3U);
 }
 
 /* Builds the UTF-8 display name and flags a name that must not be extracted:
@@ -197,11 +181,11 @@ static bool twrx_is_device_name(const char *component, size_t length) {
  * components are dropped, characters a path may not hold become '_'.  An
  * unsafe name is still listed, with its ".." components removed, but unpack
  * refuses it. */
-static char *twrx_make_name(const uint8_t *bytes, size_t size, bool *unsafe) {
+static char *twrx_make_name(const uint8_t *bytes, size_t size, bool *unsafe)
+{
     char *name;
     size_t input = 0U, output = 0U;
-    if (!unsafe || (!bytes && size != 0U) || size > (SIZE_MAX - 2U) / 3U)
-        return NULL;
+    if (!unsafe || (!bytes && size != 0U) || size > (SIZE_MAX - 2U) / 3U) return NULL;
     *unsafe = false;
     if (size != 0U && (bytes[0] == '/' || bytes[0] == '\\')) *unsafe = true;
     if (size >= 2U && bytes[1] == ':') *unsafe = true;
@@ -209,16 +193,12 @@ static char *twrx_make_name(const uint8_t *bytes, size_t size, bool *unsafe) {
     if (!name) return NULL;
     while (input < size) {
         size_t start, end, component_start;
-        while (input < size && (bytes[input] == '/' || bytes[input] == '\\'))
-            ++input;
+        while (input < size && (bytes[input] == '/' || bytes[input] == '\\')) ++input;
         start = input;
-        while (input < size && bytes[input] != '/' && bytes[input] != '\\')
-            ++input;
+        while (input < size && bytes[input] != '/' && bytes[input] != '\\') ++input;
         end = input;
-        if (end == start || (end - start == 1U && bytes[start] == '.'))
-            continue;
-        if (end - start == 2U && bytes[start] == '.' &&
-            bytes[start + 1U] == '.') {
+        if (end == start || (end - start == 1U && bytes[start] == '.')) continue;
+        if (end - start == 2U && bytes[start] == '.' && bytes[start + 1U] == '.') {
             *unsafe = true;
             continue;
         }
@@ -232,23 +212,17 @@ static char *twrx_make_name(const uint8_t *bytes, size_t size, bool *unsafe) {
             } else if (c == ':') {
                 *unsafe = true;
                 name[output++] = '_';
-            } else if (c == '"' || c == '*' || c == '<' || c == '>' ||
-                       c == '?' || c == '|') {
+            } else if (c == '"' || c == '*' || c == '<' || c == '>' || c == '?' || c == '|') {
                 name[output++] = '_';
             } else if (c >= 0x80U) {
-                output += twrx_put_utf8(name + output,
-                                        twrx_cp437_high[c - 0x80U]);
+                output += twrx_put_utf8(name + output, twrx_cp437_high[c - 0x80U]);
             } else {
                 name[output++] = (char)c;
             }
         }
-        while (output > component_start &&
-               (name[output - 1U] == ' ' || name[output - 1U] == '.'))
-            --output;
+        while (output > component_start && (name[output - 1U] == ' ' || name[output - 1U] == '.')) --output;
         if (output == component_start) name[output++] = '_';
-        if (twrx_is_device_name(name + component_start,
-                                output - component_start))
-            *unsafe = true;
+        if (twrx_is_device_name(name + component_start, output - component_start)) *unsafe = true;
     }
     if (output == 0U) name[output++] = '_';
     name[output] = 0;
@@ -256,21 +230,18 @@ static char *twrx_make_name(const uint8_t *bytes, size_t size, bool *unsafe) {
 }
 
 /* Last line of defence on the path actually joined to the output folder. */
-static bool twrx_safe_output_name(const char *name) {
+static bool twrx_safe_output_name(const char *name)
+{
     const char *segment;
     const char *at;
-    if (!name || !name[0] || name[0] == '/' || name[0] == '\\' ||
-        name[1] == ':') return false;
+    if (!name || !name[0] || name[0] == '/' || name[0] == '\\' || name[1] == ':') return false;
     segment = name;
     for (at = name;; ++at) {
         unsigned char c = (unsigned char)*at;
-        if (c == ':' || c == '<' || c == '>' || c == '"' || c == '|' ||
-            c == '?' || c == '*' || (c != 0U && c < 0x20U)) return false;
+        if (c == ':' || c == '<' || c == '>' || c == '"' || c == '|' || c == '?' || c == '*' || (c != 0U && c < 0x20U)) return false;
         if (c == '/' || c == '\\' || c == 0U) {
             size_t length = (size_t)(at - segment);
-            if (length == 0U || (length == 1U && segment[0] == '.') ||
-                (length == 2U && segment[0] == '.' && segment[1] == '.') ||
-                twrx_is_device_name(segment, length))
+            if (length == 0U || (length == 1U && segment[0] == '.') || (length == 2U && segment[0] == '.' && segment[1] == '.') || twrx_is_device_name(segment, length))
                 return false;
             if (c == 0U) return true;
             segment = at + 1;
@@ -278,7 +249,8 @@ static bool twrx_safe_output_name(const char *name) {
     }
 }
 
-static void twrx_stream_free(void *opaque) {
+static void twrx_stream_free(void *opaque)
+{
     twrx_stream *stream = (twrx_stream *)opaque;
     size_t index;
     if (!stream) return;
@@ -288,17 +260,14 @@ static void twrx_stream_free(void *opaque) {
     xx_mem_free(stream);
 }
 
-static bool twrx_add_member(twrx_stream *stream, const twrx_member *member) {
-    if (!stream || !member || stream->count >= (size_t)TWRX_MAX_ENTRIES)
-        return false;
+static bool twrx_add_member(twrx_stream *stream, const twrx_member *member)
+{
+    if (!stream || !member || stream->count >= (size_t)TWRX_MAX_ENTRIES) return false;
     if (stream->count == stream->capacity) {
         size_t capacity = stream->capacity == 0U ? 16U : stream->capacity * 2U;
         twrx_member *grown;
         if (capacity > SIZE_MAX / sizeof(*grown)) return false;
-        grown = (twrx_member *)(stream->items
-                                    ? xx_mem_realloc(stream->items,
-                                                     capacity * sizeof(*grown))
-                                    : xx_mem_alloc(capacity * sizeof(*grown)));
+        grown = (twrx_member *)(stream->items ? xx_mem_realloc(stream->items, capacity * sizeof(*grown)) : xx_mem_alloc(capacity * sizeof(*grown)));
         if (!grown) return false;
         stream->items = grown;
         stream->capacity = capacity;
@@ -307,13 +276,13 @@ static bool twrx_add_member(twrx_stream *stream, const twrx_member *member) {
     return true;
 }
 
-static bool twrx_parse(Abstractformat *format, twrx_stream **result) {
+static bool twrx_parse(Abstractformat *format, twrx_stream **result)
+{
     uint8_t header[TWRX_BLOCK_HEADER_SIZE];
     uint8_t raw_name[TWRX_MAX_NAME];
     twrx_stream *stream = NULL;
     int64_t total, size, cursor = 0;
-    if (!format || !format->device || !result || format->base_address < 0)
-        return false;
+    if (!format || !format->device || !result || format->base_address < 0) return false;
     total = xx_io_total_size(format->device);
     if (total < format->base_address) return false;
     size = total - format->base_address;
@@ -323,9 +292,7 @@ static bool twrx_parse(Abstractformat *format, twrx_stream **result) {
     while (cursor < size) {
         twrx_member member;
         int64_t packed, unpacked, name_length, data_offset;
-        if (size - cursor < (int64_t)TWRX_BLOCK_HEADER_SIZE ||
-            !twrx_read_at(format->device, format->base_address + cursor,
-                          header, sizeof(header))) goto fail;
+        if (size - cursor < (int64_t)TWRX_BLOCK_HEADER_SIZE || !twrx_read_at(format->device, format->base_address + cursor, header, sizeof(header))) goto fail;
         if (xx_rt_memcmp(header, "TWRX", 4U) != 0) goto fail;
         /* Only one version word exists; anything else is a layout this
          * reader has never been validated against. */
@@ -334,26 +301,19 @@ static bool twrx_parse(Abstractformat *format, twrx_stream **result) {
         packed = (int64_t)xx_data_get_u32(header + 0x12U, 4, 0, false);
         unpacked = (int64_t)xx_data_get_u32(header + 0x16U, 4, 0, false);
         name_length = (int64_t)xx_data_get_u32(header + 0x1aU, 4, 0, false);
-        if (name_length <= 0 || name_length > (int64_t)TWRX_MAX_NAME)
-            goto fail;
+        if (name_length <= 0 || name_length > (int64_t)TWRX_MAX_NAME) goto fail;
         if (packed > TWRX_MAX_MEMBER || unpacked > TWRX_MAX_MEMBER) goto fail;
-        if (name_length > size - cursor - (int64_t)TWRX_BLOCK_HEADER_SIZE)
-            goto fail;
+        if (name_length > size - cursor - (int64_t)TWRX_BLOCK_HEADER_SIZE) goto fail;
         data_offset = cursor + (int64_t)TWRX_BLOCK_HEADER_SIZE + name_length;
         if (packed > size - data_offset) goto fail;
-        if (!twrx_read_at(format->device,
-                          format->base_address + cursor +
-                              TWRX_BLOCK_HEADER_SIZE,
-                          raw_name, (size_t)name_length)) goto fail;
+        if (!twrx_read_at(format->device, format->base_address + cursor + TWRX_BLOCK_HEADER_SIZE, raw_name, (size_t)name_length)) goto fail;
         xx_mem_zero(&member, sizeof(member));
         member.method = xx_data_get_u16(header + 8U, 2, 0, false);
         /* A stored member that disagrees with itself about its own length is
          * not a stored member.  This holds for every stored member of the
          * corpus. */
-        if (member.method == TWRX_METHOD_STORED && packed != unpacked)
-            goto fail;
-        member.name = twrx_make_name(raw_name, (size_t)name_length,
-                                     &member.unsafe_name);
+        if (member.method == TWRX_METHOD_STORED && packed != unpacked) goto fail;
+        member.name = twrx_make_name(raw_name, (size_t)name_length, &member.unsafe_name);
         if (!member.name) goto fail;
         member.tag = xx_data_get_u32(header + 0x0aU, 4, 0, false);
         member.check = xx_data_get_u32(header + 0x0eU, 4, 0, false);
@@ -378,18 +338,16 @@ fail:
     return false;
 }
 
-static bool twrx_copy_options(xx_list_s *destination,
-                              const xx_list_s *source) {
+static bool twrx_copy_options(xx_list_s *destination, const xx_list_s *source)
+{
     size_t index;
     if (!source) return true;
     for (index = 0U; index < source->count; ++index) {
-        const xx_meta *original =
-            (const xx_meta *)xx_list_at((const xx_list_t *)source, index);
+        const xx_meta *original = (const xx_meta *)xx_list_at((const xx_list_t *)source, index);
         xx_meta copy;
         if (!original) continue;
         xx_meta_init(&copy, original->meta_id);
-        if (!xx_var_copy(&copy.var, &original->var) ||
-            !xx_list_append(destination, &copy)) {
+        if (!xx_var_copy(&copy.var, &original->var) || !xx_list_append(destination, &copy)) {
             xx_meta_cleanup(&copy);
             return false;
         }
@@ -397,19 +355,19 @@ static bool twrx_copy_options(xx_list_s *destination,
     return true;
 }
 
-static const xx_var *twrx_option(const xx_list_s *options, uint32_t id) {
+static const xx_var *twrx_option(const xx_list_s *options, uint32_t id)
+{
     size_t index;
     if (!options) return NULL;
     for (index = 0U; index < options->count; ++index) {
-        const xx_meta *meta =
-            (const xx_meta *)xx_list_at((const xx_list_t *)options, index);
+        const xx_meta *meta = (const xx_meta *)xx_list_at((const xx_list_t *)options, index);
         if (meta && meta->meta_id == id) return &meta->var;
     }
     return NULL;
 }
 
-static bool twrx_set_record(xx_archive_record *record,
-                            const twrx_member *member) {
+static bool twrx_set_record(xx_archive_record *record, const twrx_member *member)
+{
     xx_archive_record_cleanup(record);
     xx_archive_record_init(record);
     record->header_offset = member->header_offset;
@@ -417,27 +375,20 @@ static bool twrx_set_record(xx_archive_record *record,
     record->data_offset = member->data_offset;
     record->compressed_size = member->packed_size;
     return xx_archive_record_set_original_name(record, member->name) &&
-           xx_archive_record_set_meta_u64(record, XX_META_ID_COMPRESSED_SIZE,
-                                          (uint64_t)member->packed_size) &&
-           xx_archive_record_set_meta_u64(record, XX_META_ID_UNCOMPRESSED_SIZE,
-                                          (uint64_t)member->unpacked_size) &&
-           xx_archive_record_set_meta_u64(record, XX_META_ID_COMPRESSION_METHOD,
-                                          member->method) &&
-           xx_archive_record_set_meta_bool(record, XX_META_ID_IS_ENCRYPTED,
-                                           false) &&
-           xx_archive_record_set_meta_bool(record, XX_META_ID_IS_FOLDER, false);
+           xx_archive_record_set_meta_u64(record, XX_META_ID_COMPRESSED_SIZE, (uint64_t)member->packed_size) &&
+           xx_archive_record_set_meta_u64(record, XX_META_ID_UNCOMPRESSED_SIZE, (uint64_t)member->unpacked_size) &&
+           xx_archive_record_set_meta_u64(record, XX_META_ID_COMPRESSION_METHOD, member->method) &&
+           xx_archive_record_set_meta_bool(record, XX_META_ID_IS_ENCRYPTED, false) && xx_archive_record_set_meta_bool(record, XX_META_ID_IS_FOLDER, false);
 }
 
-static ssize_t twrx_sink_write(xx_io_device *device, const void *data,
-                               size_t size) {
+static ssize_t twrx_sink_write(xx_io_device *device, const void *data, size_t size)
+{
     twrx_sink *sink = device ? (twrx_sink *)device->priv : NULL;
     size_t done = 0U;
     /* limit never exceeds TWRX_MAX_MEMBER, so size fits ssize_t here. */
-    if (!sink || (!data && size != 0U) || size > sink->limit - sink->size)
-        return -1;
+    if (!sink || (!data && size != 0U) || size > sink->limit - sink->size) return -1;
     while (sink->target && done < size) {
-        ssize_t amount = xx_io_write(sink->target, (const uint8_t *)data + done,
-                                     size - done);
+        ssize_t amount = xx_io_write(sink->target, (const uint8_t *)data + done, size - done);
         if (amount <= 0 || (size_t)amount > size - done) return -1;
         done += (size_t)amount;
     }
@@ -447,20 +398,15 @@ static ssize_t twrx_sink_write(xx_io_device *device, const void *data,
 
 /* Whether a member's claimed size is one its method could reach from its
  * packed size.  Checked before anything is read or allocated. */
-static bool twrx_expansion_possible(const twrx_member *member) {
+static bool twrx_expansion_possible(const twrx_member *member)
+{
     uint64_t packed = (uint64_t)member->packed_size;
     uint64_t unpacked = (uint64_t)member->unpacked_size;
     switch (member->method) {
-    case TWRX_METHOD_STORED:
-        return unpacked == packed;
-    case TWRX_METHOD_DCL:
-        return unpacked <= packed * TWRX_DCL_MAX_RATIO;
-    case TWRX_METHOD_DEFLATE:
-        return packed > TWRX_DEFLATE_PREFIX &&
-               unpacked <= (packed - TWRX_DEFLATE_PREFIX) *
-                               TWRX_DEFLATE_MAX_RATIO;
-    default:
-        return false;
+        case TWRX_METHOD_STORED: return unpacked == packed;
+        case TWRX_METHOD_DCL: return unpacked <= packed * TWRX_DCL_MAX_RATIO;
+        case TWRX_METHOD_DEFLATE: return packed > TWRX_DEFLATE_PREFIX && unpacked <= (packed - TWRX_DEFLATE_PREFIX) * TWRX_DEFLATE_MAX_RATIO;
+        default: return false;
     }
 }
 
@@ -469,14 +415,12 @@ static bool twrx_expansion_possible(const twrx_member *member) {
  * produce exactly the unpacked size.  `packed` must be followed by
  * TWRX_DEFLATE_GUARD zero bytes; the output goes to `target`, or nowhere
  * when it is NULL. */
-static bool twrx_inflate(const uint8_t *packed, size_t packed_size,
-                         xx_io_device *target, size_t plain_size,
-                         xx_pd_struct *pd) {
+static bool twrx_inflate(const uint8_t *packed, size_t packed_size, xx_io_device *target, size_t plain_size, xx_pd_struct *pd)
+{
     xx_io_device device;
     twrx_sink sink;
     size_t stream_size, consumed = 0U;
-    if (packed_size <= TWRX_DEFLATE_PREFIX ||
-        xx_data_get_u16(packed, 2, 0, false) != TWRX_METHOD_DEFLATE ||
+    if (packed_size <= TWRX_DEFLATE_PREFIX || xx_data_get_u16(packed, 2, 0, false) != TWRX_METHOD_DEFLATE ||
         (size_t)xx_data_get_u32(packed + 2U, 4, 0, false) != packed_size - TWRX_DEFLATE_PREFIX)
         return false;
     stream_size = packed_size - TWRX_DEFLATE_PREFIX;
@@ -486,10 +430,7 @@ static bool twrx_inflate(const uint8_t *packed, size_t packed_size,
     sink.size = 0U;
     device.write = twrx_sink_write;
     device.priv = &sink;
-    return xx_deflate_unpack_memory_to_device_ex(
-               packed + TWRX_DEFLATE_PREFIX,
-               stream_size + TWRX_DEFLATE_GUARD, &device, &consumed, false,
-               pd) &&
+    return xx_deflate_unpack_memory_to_device_ex(packed + TWRX_DEFLATE_PREFIX, stream_size + TWRX_DEFLATE_GUARD, &device, &consumed, false, pd) &&
            consumed == stream_size && sink.size == plain_size;
 }
 
@@ -497,30 +438,25 @@ static bool twrx_inflate(const uint8_t *packed, size_t packed_size,
  * header bytes included, that decodes to exactly `plain_size` bytes and ends
  * on the payload's last byte.  The scan keeps only its sliding window, so a
  * hostile size claim costs no allocation. */
-static bool twrx_dcl_measure(const uint8_t *packed, size_t packed_size,
-                             size_t plain_size) {
+static bool twrx_dcl_measure(const uint8_t *packed, size_t packed_size, size_t plain_size)
+{
     size_t consumed = 0U, produced = 0U;
     /* The scan refuses a zero limit; an empty member's stream must then hold
      * nothing but the end code. */
-    return packed_size >= 3U &&
-           xx_dcl_scan_memory(packed, packed_size,
-                              plain_size != 0U ? plain_size : 1U, &consumed,
-                              &produced) &&
-           produced == plain_size && consumed == packed_size;
+    return packed_size >= 3U && xx_dcl_scan_memory(packed, packed_size, plain_size != 0U ? plain_size : 1U, &consumed, &produced) && produced == plain_size &&
+           consumed == packed_size;
 }
 
 /* Method 6, second step, after twrx_dcl_measure: the decode proper. */
-static bool twrx_explode(const uint8_t *packed, size_t packed_size,
-                         uint8_t *plain, size_t plain_size) {
+static bool twrx_explode(const uint8_t *packed, size_t packed_size, uint8_t *plain, size_t plain_size)
+{
     size_t written = 0U;
     if (plain_size == 0U) return true;
-    return xx_dcl_decode_memory(packed, packed_size, plain, plain_size,
-                                &written) &&
-           written == plain_size;
+    return xx_dcl_decode_memory(packed, packed_size, plain, plain_size, &written) && written == plain_size;
 }
 
-void xx_twrx_init(xx_twrx *archive, xx_io_device *device,
-                  int64_t base_address) {
+void xx_twrx_init(xx_twrx *archive, xx_io_device *device, int64_t base_address)
+{
     if (!archive) return;
     xx_mem_zero(archive, sizeof(*archive));
     xx_format_init(&archive->format, device, base_address);
@@ -533,37 +469,35 @@ void xx_twrx_init(xx_twrx *archive, xx_io_device *device,
     archive->format.check_is_valid = xx_twrx_check_is_valid;
     archive->format.handle_base_info = xx_twrx_handle_base_info;
     archive->format.get_format_size = xx_twrx_get_format_size;
-    archive->format.get_number_of_archive_records =
-        xx_twrx_get_number_of_archive_records;
-    archive->format.create_archive_records_reading =
-        xx_twrx_create_archive_records_reading;
-    archive->format.get_current_archive_record =
-        xx_twrx_get_current_archive_record;
-    archive->format.unpack_current_archive_record =
-        xx_twrx_unpack_current_archive_record;
-    archive->format.archive_record_move_to_next =
-        xx_twrx_archive_record_move_to_next;
-    archive->format.free_archive_records_reading =
-        xx_twrx_free_archive_records_reading;
+    archive->format.get_number_of_archive_records = xx_twrx_get_number_of_archive_records;
+    archive->format.create_archive_records_reading = xx_twrx_create_archive_records_reading;
+    archive->format.get_current_archive_record = xx_twrx_get_current_archive_record;
+    archive->format.unpack_current_archive_record = xx_twrx_unpack_current_archive_record;
+    archive->format.archive_record_move_to_next = xx_twrx_archive_record_move_to_next;
+    archive->format.free_archive_records_reading = xx_twrx_free_archive_records_reading;
 }
 
-xx_twrx *xx_twrx_create(xx_io_device *device, int64_t base_address) {
+xx_twrx *xx_twrx_create(xx_io_device *device, int64_t base_address)
+{
     xx_twrx *archive = (xx_twrx *)xx_mem_alloc(sizeof(*archive));
     if (archive) xx_twrx_init(archive, device, base_address);
     return archive;
 }
 
-void xx_twrx_destroy(xx_twrx *archive) {
+void xx_twrx_destroy(xx_twrx *archive)
+{
     if (archive) xx_format_cleanup_extra_parameters(&archive->format);
 }
 
-void xx_twrx_free(xx_twrx *archive) {
+void xx_twrx_free(xx_twrx *archive)
+{
     if (!archive) return;
     xx_twrx_destroy(archive);
     xx_mem_free(archive);
 }
 
-bool xx_twrx_check_is_valid(Abstractformat *format, xx_pd_struct *pd) {
+bool xx_twrx_check_is_valid(Abstractformat *format, xx_pd_struct *pd)
+{
     twrx_stream *stream;
     (void)pd;
     if (!twrx_parse(format, &stream)) return false;
@@ -571,7 +505,8 @@ bool xx_twrx_check_is_valid(Abstractformat *format, xx_pd_struct *pd) {
     return true;
 }
 
-bool xx_twrx_handle_base_info(Abstractformat *format, xx_pd_struct *pd) {
+bool xx_twrx_handle_base_info(Abstractformat *format, xx_pd_struct *pd)
+{
     twrx_stream *stream;
     xx_twrx *archive;
     (void)pd;
@@ -586,21 +521,18 @@ bool xx_twrx_handle_base_info(Abstractformat *format, xx_pd_struct *pd) {
     return true;
 }
 
-int64_t xx_twrx_get_format_size(Abstractformat *format, xx_pd_struct *pd) {
-    return format && (format->base_info_handled ||
-                      xx_twrx_handle_base_info(format, pd))
-               ? format->format_size : -1;
+int64_t xx_twrx_get_format_size(Abstractformat *format, xx_pd_struct *pd)
+{
+    return format && (format->base_info_handled || xx_twrx_handle_base_info(format, pd)) ? format->format_size : -1;
 }
 
-uint64_t xx_twrx_get_number_of_archive_records(Abstractformat *format,
-                                               xx_pd_struct *pd) {
-    return format && (format->base_info_handled ||
-                      xx_twrx_handle_base_info(format, pd))
-               ? ((xx_twrx *)format)->number_of_records : 0U;
+uint64_t xx_twrx_get_number_of_archive_records(Abstractformat *format, xx_pd_struct *pd)
+{
+    return format && (format->base_info_handled || xx_twrx_handle_base_info(format, pd)) ? ((xx_twrx *)format)->number_of_records : 0U;
 }
 
-xx_archive_record_state *xx_twrx_create_archive_records_reading(
-    Abstractformat *format, const xx_list_s *options, xx_pd_struct *pd) {
+xx_archive_record_state *xx_twrx_create_archive_records_reading(Abstractformat *format, const xx_list_s *options, xx_pd_struct *pd)
+{
     twrx_stream *stream;
     xx_archive_record_state *state;
     (void)pd;
@@ -614,8 +546,7 @@ xx_archive_record_state *xx_twrx_create_archive_records_reading(
     state->internal_state = stream;
     state->free_internal = twrx_stream_free;
     state->total_records = stream->count;
-    if (!twrx_copy_options(&state->options, options) ||
-        !twrx_set_record(&state->current_record, &stream->items[0])) {
+    if (!twrx_copy_options(&state->options, options) || !twrx_set_record(&state->current_record, &stream->items[0])) {
         xx_archive_record_state_free(state);
         return NULL;
     }
@@ -623,32 +554,26 @@ xx_archive_record_state *xx_twrx_create_archive_records_reading(
     return state;
 }
 
-const xx_archive_record *xx_twrx_get_current_archive_record(
-    Abstractformat *format, xx_archive_record_state *state) {
-    return format && state && state->format == format && state->has_record
-               ? &state->current_record : NULL;
+const xx_archive_record *xx_twrx_get_current_archive_record(Abstractformat *format, xx_archive_record_state *state)
+{
+    return format && state && state->format == format && state->has_record ? &state->current_record : NULL;
 }
 
-bool xx_twrx_archive_record_move_to_next(Abstractformat *format,
-                                         xx_archive_record_state *state,
-                                         xx_pd_struct *pd) {
+bool xx_twrx_archive_record_move_to_next(Abstractformat *format, xx_archive_record_state *state, xx_pd_struct *pd)
+{
     twrx_stream *stream;
     (void)pd;
-    if (!format || !state || state->format != format ||
-        !(stream = (twrx_stream *)state->internal_state) ||
-        ++stream->index >= stream->count) {
+    if (!format || !state || state->format != format || !(stream = (twrx_stream *)state->internal_state) || ++stream->index >= stream->count) {
         if (state) state->has_record = false;
         return false;
     }
     ++state->current_index;
-    state->has_record = twrx_set_record(&state->current_record,
-                                        &stream->items[stream->index]);
+    state->has_record = twrx_set_record(&state->current_record, &stream->items[stream->index]);
     return state->has_record;
 }
 
-bool xx_twrx_unpack_current_archive_record(Abstractformat *format,
-                                           xx_archive_record_state *state,
-                                           xx_pd_struct *pd) {
+bool xx_twrx_unpack_current_archive_record(Abstractformat *format, xx_archive_record_state *state, xx_pd_struct *pd)
+{
     twrx_stream *stream;
     twrx_member *member;
     const xx_var *path_option;
@@ -660,27 +585,19 @@ bool xx_twrx_unpack_current_archive_record(Abstractformat *format,
     size_t packed_size, plain_size, written = 0U;
     bool result = false;
     bool created = false;
-    if (!format || !state || state->format != format || !state->has_record ||
-        !(stream = (twrx_stream *)state->internal_state) ||
-        stream->index >= stream->count || (pd && xx_pd_is_stopped(pd)))
+    if (!format || !state || state->format != format || !state->has_record || !(stream = (twrx_stream *)state->internal_state) || stream->index >= stream->count ||
+        (pd && xx_pd_is_stopped(pd)))
         return false;
     member = &stream->items[stream->index];
-    if (member->unsafe_name || !twrx_safe_output_name(member->name))
-        return false;
+    if (member->unsafe_name || !twrx_safe_output_name(member->name)) return false;
     /* Sizes were capped at TWRX_MAX_MEMBER by the walk; an unknown method or
      * an impossible expansion is refused before anything is allocated. */
-    if (member->packed_size < 0 || member->unpacked_size < 0 ||
-        member->packed_size > TWRX_MAX_MEMBER ||
-        member->unpacked_size > TWRX_MAX_MEMBER ||
-        (uint64_t)member->packed_size > (uint64_t)SIZE_MAX ||
-        (uint64_t)member->unpacked_size > (uint64_t)SIZE_MAX ||
-        !twrx_expansion_possible(member))
+    if (member->packed_size < 0 || member->unpacked_size < 0 || member->packed_size > TWRX_MAX_MEMBER || member->unpacked_size > TWRX_MAX_MEMBER ||
+        (uint64_t)member->packed_size > (uint64_t)SIZE_MAX || (uint64_t)member->unpacked_size > (uint64_t)SIZE_MAX || !twrx_expansion_possible(member))
         return false;
     /* A DCL member is the only one with two buffers; together they stay
      * within the per-member cap.  Both sizes are capped, so this sum fits. */
-    if (member->method == TWRX_METHOD_DCL &&
-        member->packed_size + member->unpacked_size > TWRX_MAX_MEMBER)
-        return false;
+    if (member->method == TWRX_METHOD_DCL && member->packed_size + member->unpacked_size > TWRX_MAX_MEMBER) return false;
     packed_size = (size_t)member->packed_size;
     plain_size = (size_t)member->unpacked_size;
     /* The packed size is bounded by the file itself, so this allocation is
@@ -688,10 +605,7 @@ bool xx_twrx_unpack_current_archive_record(Abstractformat *format,
     packed = (uint8_t *)xx_mem_alloc(packed_size + TWRX_DEFLATE_GUARD);
     if (!packed) return false;
     xx_rt_memset(packed + packed_size, 0, TWRX_DEFLATE_GUARD);
-    if (packed_size != 0U &&
-        !twrx_read_at(format->device, member->data_offset, packed,
-                      packed_size))
-        goto done;
+    if (packed_size != 0U && !twrx_read_at(format->device, member->data_offset, packed, packed_size)) goto done;
     /* A zero check dword means the producer stored none. */
     if (member->check != 0U && twrx_crc(packed, packed_size) != member->check) {
         xx_pd_set_error(pd, XXFC_ERR_INVALID_ARG, "TWRX packed-data CRC-32 mismatch");
@@ -706,18 +620,14 @@ bool xx_twrx_unpack_current_archive_record(Abstractformat *format,
          * really decodes to the claimed size is given one. */
         if (!twrx_dcl_measure(packed, packed_size, plain_size)) goto done;
         plain = (uint8_t *)xx_mem_alloc(plain_size != 0U ? plain_size : 1U);
-        if (!plain ||
-            !twrx_explode(packed, packed_size, plain, plain_size))
-            goto done;
+        if (!plain || !twrx_explode(packed, packed_size, plain, plain_size)) goto done;
         xx_mem_free(packed);
         packed = NULL;
     } else {
         /* Deflate is verified into no buffer at all; the bytes are produced
          * again, straight into the file, once it is known to be sound. */
         if (!twrx_inflate(packed, packed_size, NULL, plain_size, pd)) {
-            if (!(pd && xx_pd_is_stopped(pd)))
-                xx_pd_set_error(pd, XXFC_ERR_INVALID_ARG,
-                                "TWRX Deflate stream is invalid or has wrong decoded length");
+            if (!(pd && xx_pd_is_stopped(pd))) xx_pd_set_error(pd, XXFC_ERR_INVALID_ARG, "TWRX Deflate stream is invalid or has wrong decoded length");
             goto done;
         }
     }
@@ -726,31 +636,23 @@ bool xx_twrx_unpack_current_archive_record(Abstractformat *format,
         result = true;
         goto done;
     }
-    if (path_option->type == XX_VAR_TYPE_STRING ||
-        path_option->type == XX_VAR_TYPE_STRING_VIEW)
-        base = xx_var_get_str(path_option);
-    else if (path_option->type == XX_VAR_TYPE_WSTRING ||
-             path_option->type == XX_VAR_TYPE_WSTRING_VIEW) {
+    if (path_option->type == XX_VAR_TYPE_STRING || path_option->type == XX_VAR_TYPE_STRING_VIEW) base = xx_var_get_str(path_option);
+    else if (path_option->type == XX_VAR_TYPE_WSTRING || path_option->type == XX_VAR_TYPE_WSTRING_VIEW) {
         owned_base = xx_str_unicode_to_utf8(xx_var_get_wstr(path_option));
         base = owned_base;
     }
     if (!base) goto done;
-    path = (base[0] && base[xx_str_len(base) - 1U] != '/' &&
-            base[xx_str_len(base) - 1U] != '\\')
-               ? xx_str_concat3(base, "/", member->name)
-               : xx_str_concat(base, member->name);
+    path = (base[0] && base[xx_str_len(base) - 1U] != '/' && base[xx_str_len(base) - 1U] != '\\') ? xx_str_concat3(base, "/", member->name)
+                                                                                                  : xx_str_concat(base, member->name);
     if (!path || !xx_store_create_dirs_a(path, false)) goto done;
     {
         xx_io_device *destination = xx_io_file_open(path, "wb");
         created = destination != NULL;
         if (!destination) goto done;
         result = true;
-        if (member->method == TWRX_METHOD_DEFLATE)
-            result = twrx_inflate(packed, packed_size, destination, plain_size,
-                                  pd);
+        if (member->method == TWRX_METHOD_DEFLATE) result = twrx_inflate(packed, packed_size, destination, plain_size, pd);
         while (plain && written < plain_size) {
-            ssize_t amount = xx_io_write(destination, plain + written,
-                                         plain_size - written);
+            ssize_t amount = xx_io_write(destination, plain + written, plain_size - written);
             if (amount <= 0 || (size_t)amount > plain_size - written) {
                 result = false;
                 break;
@@ -768,8 +670,8 @@ done:
     return result;
 }
 
-void xx_twrx_free_archive_records_reading(Abstractformat *format,
-                                          xx_archive_record_state *state) {
+void xx_twrx_free_archive_records_reading(Abstractformat *format, xx_archive_record_state *state)
+{
     (void)format;
     xx_archive_record_state_free(state);
 }

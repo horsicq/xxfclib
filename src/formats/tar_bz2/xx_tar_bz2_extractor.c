@@ -23,78 +23,65 @@
 #include "../xx_format_extractor_engine.h"
 #include "xxfclib/formats/tar_bz2/xx_tar_bz2.h"
 
-static const uint8_t k_anchor0[] = { 0x42, 0x5A, 0x68, 0x31 };
-static const uint8_t k_anchor1[] = { 0x42, 0x5A, 0x68, 0x32 };
-static const uint8_t k_anchor2[] = { 0x42, 0x5A, 0x68, 0x33 };
-static const uint8_t k_anchor3[] = { 0x42, 0x5A, 0x68, 0x34 };
-static const uint8_t k_anchor4[] = { 0x42, 0x5A, 0x68, 0x35 };
-static const uint8_t k_anchor5[] = { 0x42, 0x5A, 0x68, 0x36 };
-static const uint8_t k_anchor6[] = { 0x42, 0x5A, 0x68, 0x37 };
-static const uint8_t k_anchor7[] = { 0x42, 0x5A, 0x68, 0x38 };
-static const uint8_t k_anchor8[] = { 0x42, 0x5A, 0x68, 0x39 };
+static const uint8_t k_anchor0[] = {0x42, 0x5A, 0x68, 0x31};
+static const uint8_t k_anchor1[] = {0x42, 0x5A, 0x68, 0x32};
+static const uint8_t k_anchor2[] = {0x42, 0x5A, 0x68, 0x33};
+static const uint8_t k_anchor3[] = {0x42, 0x5A, 0x68, 0x34};
+static const uint8_t k_anchor4[] = {0x42, 0x5A, 0x68, 0x35};
+static const uint8_t k_anchor5[] = {0x42, 0x5A, 0x68, 0x36};
+static const uint8_t k_anchor6[] = {0x42, 0x5A, 0x68, 0x37};
+static const uint8_t k_anchor7[] = {0x42, 0x5A, 0x68, 0x38};
+static const uint8_t k_anchor8[] = {0x42, 0x5A, 0x68, 0x39};
 
 static const xx_format_search_anchor k_anchors[] = {
-    { k_anchor0, sizeof(k_anchor0), 0U },
-    { k_anchor1, sizeof(k_anchor1), 0U },
-    { k_anchor2, sizeof(k_anchor2), 0U },
-    { k_anchor3, sizeof(k_anchor3), 0U },
-    { k_anchor4, sizeof(k_anchor4), 0U },
-    { k_anchor5, sizeof(k_anchor5), 0U },
-    { k_anchor6, sizeof(k_anchor6), 0U },
-    { k_anchor7, sizeof(k_anchor7), 0U },
-    { k_anchor8, sizeof(k_anchor8), 0U },
+    {k_anchor0, sizeof(k_anchor0), 0U}, {k_anchor1, sizeof(k_anchor1), 0U}, {k_anchor2, sizeof(k_anchor2), 0U},
+    {k_anchor3, sizeof(k_anchor3), 0U}, {k_anchor4, sizeof(k_anchor4), 0U}, {k_anchor5, sizeof(k_anchor5), 0U},
+    {k_anchor6, sizeof(k_anchor6), 0U}, {k_anchor7, sizeof(k_anchor7), 0U}, {k_anchor8, sizeof(k_anchor8), 0U},
 };
 
-static const xx_file_type_t k_types[] = { XX_FILE_TYPE_TAR_BZ2 };
+static const xx_file_type_t k_types[] = {XX_FILE_TYPE_TAR_BZ2};
 
-static Abstractformat *xx_tar_bz2_search_open(xx_io_device *window) {
+static Abstractformat *xx_tar_bz2_search_open(xx_io_device *window)
+{
     xx_tar_bz2 *reader = xx_tar_bz2_create(window, 0);
     return reader ? &reader->format : NULL;
 }
 
-static void xx_tar_bz2_search_close(Abstractformat *format) {
+static void xx_tar_bz2_search_close(Abstractformat *format)
+{
     /* The format is the first member, so this is the reader itself. */
     xx_tar_bz2_free((xx_tar_bz2 *)format);
 }
 
 static const xx_format_search_desc k_desc = {
-    k_types, sizeof(k_types) / sizeof(k_types[0]),
-    k_anchors, sizeof(k_anchors) / sizeof(k_anchors[0]),
-    xx_tar_bz2_search_open, xx_tar_bz2_search_close, false
-};
+    k_types, sizeof(k_types) / sizeof(k_types[0]), k_anchors, sizeof(k_anchors) / sizeof(k_anchors[0]), xx_tar_bz2_search_open, xx_tar_bz2_search_close, false};
 
-static xx_format_search_state *xx_tar_bz2_create_format_search(
-    xx_format_extractor *self, xx_io_device *device, const xx_list_s *options,
-    xx_pd_struct *pd) {
+static xx_format_search_state *xx_tar_bz2_create_format_search(xx_format_extractor *self, xx_io_device *device, const xx_list_s *options, xx_pd_struct *pd)
+{
     (void)self;
     return xx_format_search_create(&k_desc, device, options, pd);
 }
 
-static const xx_format_search_info *xx_tar_bz2_get_current_format_info(
-    xx_format_extractor *self, xx_format_search_state *state) {
+static const xx_format_search_info *xx_tar_bz2_get_current_format_info(xx_format_extractor *self, xx_format_search_state *state)
+{
     (void)self;
     return xx_format_search_current(state);
 }
 
-static bool xx_tar_bz2_format_search_find_next(xx_format_extractor *self,
-                                          xx_format_search_state *state,
-                                          xx_pd_struct *pd) {
+static bool xx_tar_bz2_format_search_find_next(xx_format_extractor *self, xx_format_search_state *state, xx_pd_struct *pd)
+{
     (void)self;
     return xx_format_search_find_next(state, pd);
 }
 
-static void xx_tar_bz2_free_format_search(xx_format_extractor *self,
-                                     xx_format_search_state *state) {
+static void xx_tar_bz2_free_format_search(xx_format_extractor *self, xx_format_search_state *state)
+{
     (void)self;
     xx_format_search_free(state);
 }
 
-xx_format_extractor xx_tar_bz2_extractor = {
-    xx_tar_bz2_create_format_search,
-    xx_tar_bz2_get_current_format_info,
-    xx_tar_bz2_format_search_find_next,
-    xx_tar_bz2_free_format_search
-};
+xx_format_extractor xx_tar_bz2_extractor = {xx_tar_bz2_create_format_search, xx_tar_bz2_get_current_format_info, xx_tar_bz2_format_search_find_next,
+                                            xx_tar_bz2_free_format_search};
 
 /* BEGIN GENERATED ABSTRACT EXTRACTOR */
 #include "../xx_format_abstract_extractor_adapter.h"

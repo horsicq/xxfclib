@@ -23,7 +23,8 @@ typedef struct xx_tarx1_tables_s {
     uint8_t inverse_top_byte[256];
 } xx_tarx1_tables;
 
-static void xx_tarx1_make_tables(xx_tarx1_tables *tables) {
+static void xx_tarx1_make_tables(xx_tarx1_tables *tables)
+{
     unsigned index;
     if (!tables) return;
     for (index = 0U; index < 256U; ++index) {
@@ -33,15 +34,13 @@ static void xx_tarx1_make_tables(xx_tarx1_tables *tables) {
         tables->transform[index] = ~xx_crc32_calc(UINT32_MAX, &byte, 1U);
     }
     for (index = 0U; index < 256U; ++index) {
-        tables->inverse_top_byte[tables->transform[index] >> 24U] =
-            (uint8_t)index;
+        tables->inverse_top_byte[tables->transform[index] >> 24U] = (uint8_t)index;
     }
 }
 
 /* Reverse the one-byte carry fold used while the seed is recovered. */
-static uint8_t xx_tarx1_reverse_fold(uint32_t candidate_low,
-                                     uint32_t table_index,
-                                     uint32_t encrypted_byte) {
+static uint8_t xx_tarx1_reverse_fold(uint32_t candidate_low, uint32_t table_index, uint32_t encrypted_byte)
+{
     uint32_t value = (candidate_low ^ table_index ^ encrypted_byte) & 255U;
     uint32_t carry = 0U;
     unsigned bit;
@@ -50,13 +49,13 @@ static uint8_t xx_tarx1_reverse_fold(uint32_t candidate_low,
         uint32_t mask = (width - 1U) & 255U;
         carry = value ^ carry;
         value = carry;
-        carry = (carry + (candidate_low & mask) +
-                 ((encrypted_byte & mask) ^ carry)) & width;
+        carry = (carry + (candidate_low & mask) + ((encrypted_byte & mask) ^ carry)) & width;
     }
     return (uint8_t)value;
 }
 
-static bool xx_tarx1_recover_seed(const uint8_t *window, uint32_t *seed) {
+static bool xx_tarx1_recover_seed(const uint8_t *window, uint32_t *seed)
+{
     xx_tarx1_tables tables;
     uint32_t anchor;
     uint32_t found_seed = 0U;
@@ -73,19 +72,14 @@ static bool xx_tarx1_recover_seed(const uint8_t *window, uint32_t *seed) {
         unsigned index;
         for (index = 0U; index < 4U; ++index) {
             uint32_t value = (anchor >> (index * 8U)) & 255U;
-            state_words[index] = tables.transform[
-                ((value + candidate) ^ value) & 255U];
+            state_words[index] = tables.transform[((value + candidate) ^ value) & 255U];
         }
-        signature = ((state_words[0] >> 24U) ^ (state_words[1] >> 16U) ^
-                     (state_words[2] >> 8U) ^ state_words[3]) & 255U;
+        signature = ((state_words[0] >> 24U) ^ (state_words[1] >> 16U) ^ (state_words[2] >> 8U) ^ state_words[3]) & 255U;
         if (signature != window[XX_TARX1_CHECK_OFFSET]) continue;
-        state = (state_words[0] << 8U) ^ (state_words[1] << 16U) ^
-                (state_words[2] << 24U) ^ anchor;
-        for (position = (int)XX_TARX1_ANCHOR_OFFSET - 1; position >= 0;
-             --position) {
+        state = (state_words[0] << 8U) ^ (state_words[1] << 16U) ^ (state_words[2] << 24U) ^ anchor;
+        for (position = (int)XX_TARX1_ANCHOR_OFFSET - 1; position >= 0; --position) {
             uint8_t index_byte = tables.inverse_top_byte[state >> 24U];
-            uint8_t folded = xx_tarx1_reverse_fold(candidate, index_byte,
-                                                     window[position]);
+            uint8_t folded = xx_tarx1_reverse_fold(candidate, index_byte, window[position]);
             state = ((state ^ tables.transform[index_byte]) << 8U) + folded;
         }
         if ((state & 255U) == candidate) {
@@ -98,26 +92,24 @@ static bool xx_tarx1_recover_seed(const uint8_t *window, uint32_t *seed) {
     return true;
 }
 
-static bool xx_tarx1_read_exact_at(xx_io_device *device, int64_t offset,
-                                   void *data, size_t size, size_t io_capacity) {
+static bool xx_tarx1_read_exact_at(xx_io_device *device, int64_t offset, void *data, size_t size, size_t io_capacity)
+{
     size_t done = 0U;
-    if (!device || (!data && size != 0U) || offset < 0 ||
-        xx_io_seek64(device, offset, SEEK_SET) != 0) {
+    if (!device || (!data && size != 0U) || offset < 0 || xx_io_seek64(device, offset, SEEK_SET) != 0) {
         return false;
     }
     while (done < size) {
         size_t request = size - done;
         if (request > io_capacity) request = io_capacity;
-        ssize_t amount = xx_io_read(device, (uint8_t *)data + done,
-                                    request);
+        ssize_t amount = xx_io_read(device, (uint8_t *)data + done, request);
         if (amount <= 0 || (size_t)amount > request) return false;
         done += (size_t)amount;
     }
     return true;
 }
 
-static bool xx_tarx1_write_all(xx_io_device *device, const uint8_t *data,
-                               size_t size, size_t io_capacity) {
+static bool xx_tarx1_write_all(xx_io_device *device, const uint8_t *data, size_t size, size_t io_capacity)
+{
     size_t done = 0U;
     if (!device || (!data && size != 0U)) return false;
     while (done < size) {
@@ -130,20 +122,18 @@ static bool xx_tarx1_write_all(xx_io_device *device, const uint8_t *data,
     return true;
 }
 
-bool xx_tarx1_has_header(const uint8_t *data, size_t size) {
-    return data && size >= XX_TARX1_MAGIC_SIZE &&
-           data[0] == (uint8_t)'T' && data[1] == (uint8_t)'a' &&
-           data[2] == (uint8_t)'R' && data[3] == (uint8_t)'x';
+bool xx_tarx1_has_header(const uint8_t *data, size_t size)
+{
+    return data && size >= XX_TARX1_MAGIC_SIZE && data[0] == (uint8_t)'T' && data[1] == (uint8_t)'a' && data[2] == (uint8_t)'R' && data[3] == (uint8_t)'x';
 }
 
-bool xx_tarx1_decode_device(xx_io_device *source, int64_t source_offset,
-                            int64_t source_size, xx_io_device *destination,
-                            int64_t *output_size, xx_pd_struct *pd) {
+bool xx_tarx1_decode_device(xx_io_device *source, int64_t source_offset, int64_t source_size, xx_io_device *destination, int64_t *output_size, xx_pd_struct *pd)
+{
     uint8_t magic[XX_TARX1_MAGIC_SIZE];
     uint8_t key_window[XX_TARX1_KEY_WINDOW_SIZE];
-    uint8_t *input=NULL,*output=NULL;
-    size_t capacity=xx_get_file_buffer_size();
-    bool result=false;
+    uint8_t *input = NULL, *output = NULL;
+    size_t capacity = xx_get_file_buffer_size();
+    bool result = false;
     xx_tarx1_tables tables;
     int64_t total_size;
     int64_t cipher_offset;
@@ -154,43 +144,33 @@ bool xx_tarx1_decode_device(xx_io_device *source, int64_t source_offset,
 
     if (capacity > (SIZE_MAX >> 1)) capacity = SIZE_MAX >> 1;
     if (output_size) *output_size = -1;
-    if (!source || !destination || source_offset < 0 ||
-        source_size < (int64_t)(XX_TARX1_MAGIC_SIZE +
-                                 XX_TARX1_KEY_WINDOW_SIZE) ||
-        (source_size & 511) != (int64_t)XX_TARX1_MAGIC_SIZE ||
-        (pd && xx_pd_is_stopped(pd))) {
+    if (!source || !destination || source_offset < 0 || source_size < (int64_t)(XX_TARX1_MAGIC_SIZE + XX_TARX1_KEY_WINDOW_SIZE) ||
+        (source_size & 511) != (int64_t)XX_TARX1_MAGIC_SIZE || (pd && xx_pd_is_stopped(pd))) {
         return false;
     }
     total_size = xx_io_total_size(source);
-    if (total_size < source_offset || source_size > total_size - source_offset ||
-        !xx_tarx1_read_exact_at(source, source_offset, magic, sizeof(magic), capacity) ||
+    if (total_size < source_offset || source_size > total_size - source_offset || !xx_tarx1_read_exact_at(source, source_offset, magic, sizeof(magic), capacity) ||
         !xx_tarx1_has_header(magic, sizeof(magic))) {
         return false;
     }
     cipher_offset = source_offset + (int64_t)sizeof(magic);
     cipher_size = source_size - (int64_t)sizeof(magic);
-    if (cipher_size <= 0 ||
-        !xx_tarx1_read_exact_at(source, cipher_offset, key_window,
-                                 sizeof(key_window), capacity) ||
-        !xx_tarx1_recover_seed(key_window, &seed) ||
+    if (cipher_size <= 0 || !xx_tarx1_read_exact_at(source, cipher_offset, key_window, sizeof(key_window), capacity) || !xx_tarx1_recover_seed(key_window, &seed) ||
         xx_io_seek64(source, cipher_offset, SEEK_SET) != 0) {
         return false;
     }
-    if ((uint64_t)cipher_size < capacity) capacity=(size_t)cipher_size;
-    input=(uint8_t *)xx_mem_alloc(capacity);
-    output=(uint8_t *)xx_mem_alloc(capacity);
+    if ((uint64_t)cipher_size < capacity) capacity = (size_t)cipher_size;
+    input = (uint8_t *)xx_mem_alloc(capacity);
+    output = (uint8_t *)xx_mem_alloc(capacity);
     if (!input || !output) goto done;
     xx_tarx1_make_tables(&tables);
     state = seed;
     remaining = cipher_size;
     while (remaining != 0) {
-        size_t requested = (uint64_t)remaining > capacity
-                               ? capacity
-                               : (size_t)remaining;
+        size_t requested = (uint64_t)remaining > capacity ? capacity : (size_t)remaining;
         ssize_t amount = xx_io_read(source, input, requested);
         size_t index;
-        if ((pd && xx_pd_is_stopped(pd)) || amount <= 0 ||
-            (size_t)amount > requested) {
+        if ((pd && xx_pd_is_stopped(pd)) || amount <= 0 || (size_t)amount > requested) {
             goto done;
         }
         for (index = 0U; index < (size_t)amount; ++index) {
@@ -205,7 +185,7 @@ bool xx_tarx1_decode_device(xx_io_device *source, int64_t source_offset,
         remaining -= amount;
     }
     if (output_size) *output_size = cipher_size;
-    result=true;
+    result = true;
 done:
     xx_mem_free(input);
     xx_mem_free(output);

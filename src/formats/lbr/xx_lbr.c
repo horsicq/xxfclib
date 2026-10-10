@@ -109,17 +109,16 @@ typedef struct lbr_name_key_s {
     uint32_t item;
 } lbr_name_key;
 
-static uint32_t lbr_le16(const uint8_t *bytes) {
+static uint32_t lbr_le16(const uint8_t *bytes)
+{
     return (uint32_t)bytes[0] | ((uint32_t)bytes[1] << 8U);
 }
 
-static bool lbr_read_at_sized(xx_io_device *device, int64_t offset, void *buffer,
-                        size_t size, size_t transfer_capacity) {
+static bool lbr_read_at_sized(xx_io_device *device, int64_t offset, void *buffer, size_t size, size_t transfer_capacity)
+{
     size_t done = 0U;
 
-    if (!device || (!buffer && size != 0U) || offset < 0 ||
-        xx_io_seek64(device, offset, SEEK_SET) != 0)
-        return false;
+    if (!device || (!buffer && size != 0U) || offset < 0 || xx_io_seek64(device, offset, SEEK_SET) != 0) return false;
     while (done < size) {
         size_t request = size - done;
         if (request > transfer_capacity) request = transfer_capacity;
@@ -130,15 +129,15 @@ static bool lbr_read_at_sized(xx_io_device *device, int64_t offset, void *buffer
     return true;
 }
 
-static bool lbr_read_at(xx_io_device *device, int64_t offset, void *buffer,
-                        size_t size) {
+static bool lbr_read_at(xx_io_device *device, int64_t offset, void *buffer, size_t size)
+{
     return lbr_read_at_sized(device, offset, buffer, size, xx_get_file_buffer_size());
 }
 
 /* Stream `size` bytes at `offset` into `destination` (or just read them
  * through when it is NULL) in fixed chunks. */
-static bool lbr_copy_range(xx_io_device *source, int64_t offset, int64_t size,
-                           xx_io_device *destination, xx_pd_struct *pd) {
+static bool lbr_copy_range(xx_io_device *source, int64_t offset, int64_t size, xx_io_device *destination, xx_pd_struct *pd)
+{
     uint8_t *buffer;
     size_t capacity = xx_get_file_buffer_size();
     int64_t remaining = size;
@@ -148,18 +147,14 @@ static bool lbr_copy_range(xx_io_device *source, int64_t offset, int64_t size,
     buffer = (uint8_t *)xx_mem_alloc(capacity);
     if (!buffer) return false;
     while (ok && remaining > 0) {
-        size_t chunk = (uint64_t)remaining > (uint64_t)capacity
-                           ? capacity
-                           : (size_t)remaining;
+        size_t chunk = (uint64_t)remaining > (uint64_t)capacity ? capacity : (size_t)remaining;
         size_t written = 0U;
-        if ((pd && xx_pd_is_stopped(pd)) ||
-            !lbr_read_at(source, offset + (size - remaining), buffer, chunk)) {
+        if ((pd && xx_pd_is_stopped(pd)) || !lbr_read_at(source, offset + (size - remaining), buffer, chunk)) {
             ok = false;
             break;
         }
         while (destination && written < chunk) {
-            ssize_t amount = xx_io_write(destination, buffer + written,
-                                         chunk - written);
+            ssize_t amount = xx_io_write(destination, buffer + written, chunk - written);
             if (amount <= 0 || (size_t)amount > chunk - written) {
                 ok = false;
                 break;
@@ -173,31 +168,28 @@ static bool lbr_copy_range(xx_io_device *source, int64_t offset, int64_t size,
 }
 
 /* Directory entry `index`, reading the directory a chunk at a time. */
-static const uint8_t *lbr_dir_entry(lbr_dir_reader *reader, uint32_t index) {
+static const uint8_t *lbr_dir_entry(lbr_dir_reader *reader, uint32_t index)
+{
     if (index >= reader->entries) return NULL;
-    if (reader->loaded == 0U || index < reader->first ||
-        index - reader->first >= reader->loaded) {
+    if (reader->loaded == 0U || index < reader->first || index - reader->first >= reader->loaded) {
         uint32_t first = index - index % reader->batch_entries;
         uint32_t count = reader->entries - first;
         if (count > reader->batch_entries) count = reader->batch_entries;
         reader->loaded = 0U;
-        if (!lbr_read_at_sized(reader->device,
-                         reader->base + (int64_t)first * LBR_ENTRY,
-                         reader->buffer, (size_t)count * XX_LBR_ENTRY_SIZE, reader->io_capacity))
+        if (!lbr_read_at_sized(reader->device, reader->base + (int64_t)first * LBR_ENTRY, reader->buffer, (size_t)count * XX_LBR_ENTRY_SIZE, reader->io_capacity))
             return NULL;
         reader->first = first;
         reader->loaded = count;
     }
-    return reader->buffer +
-           (size_t)(index - reader->first) * XX_LBR_ENTRY_SIZE;
+    return reader->buffer + (size_t)(index - reader->first) * XX_LBR_ENTRY_SIZE;
 }
 
 /* One space-padded 8.3 component.  Bit 7 is a CP/M attribute flag and is
  * dropped.  Characters are printable ASCII, spaces only as trailing padding;
  * the characters Windows reserves and '~' become '_'.  So a decoded name
  * never holds a separator, a drive colon, a control byte, a space or a '~'. */
-static bool lbr_decode_field(const uint8_t *field, size_t width, char *out,
-                             size_t *length) {
+static bool lbr_decode_field(const uint8_t *field, size_t width, char *out, size_t *length)
+{
     size_t index, used = 0U;
     bool ended = false;
     for (index = 0U; index < width; ++index) {
@@ -211,9 +203,7 @@ static bool lbr_decode_field(const uint8_t *field, size_t width, char *out,
          * (such as "SAME~1.TXT" for a renamed "SAME.TXT (2)") holds one, so
          * a stored name could otherwise open an earlier member through its
          * alias and overwrite it. */
-        if (c == '/' || c == '\\' || c == ':' || c == '<' || c == '>' ||
-            c == '"' || c == '|' || c == '?' || c == '*' || c == '~')
-            c = '_';
+        if (c == '/' || c == '\\' || c == ':' || c == '<' || c == '>' || c == '"' || c == '|' || c == '?' || c == '*' || c == '~') c = '_';
         out[used++] = (char)c;
     }
     *length = used;
@@ -221,15 +211,13 @@ static bool lbr_decode_field(const uint8_t *field, size_t width, char *out,
 }
 
 /* LBR time of day is in DOS layout; an impossible one is ignored. */
-static bool lbr_timestamp(uint32_t date, uint32_t time, uint64_t *out) {
+static bool lbr_timestamp(uint32_t date, uint32_t time, uint64_t *out)
+{
     int64_t seconds;
-    uint32_t hours = time >> 11U, minutes = (time >> 5U) & 0x3FU,
-             halves = time & 0x1FU;
+    uint32_t hours = time >> 11U, minutes = (time >> 5U) & 0x3FU, halves = time & 0x1FU;
     if (date == 0U) return false;
     seconds = (LBR_EPOCH_DAYS + (int64_t)date) * INT64_C(86400);
-    if (hours < 24U && minutes < 60U && halves < 30U)
-        seconds += (int64_t)hours * 3600 + (int64_t)minutes * 60 +
-                   (int64_t)halves * 2;
+    if (hours < 24U && minutes < 60U && halves < 30U) seconds += (int64_t)hours * 3600 + (int64_t)minutes * 60 + (int64_t)halves * 2;
     *out = (uint64_t)seconds;
     return true;
 }
@@ -237,10 +225,8 @@ static bool lbr_timestamp(uint32_t date, uint32_t time, uint64_t *out) {
 /* Classify one directory entry.  For an active entry fill `member` (offsets
  * relative to the library start) and say whether its data is inside the
  * `size` bytes present. */
-static lbr_entry_kind lbr_decode_entry(const uint8_t *entry,
-                                       uint32_t directory_sectors,
-                                       int64_t size, lbr_member *member,
-                                       bool *present) {
+static lbr_entry_kind lbr_decode_entry(const uint8_t *entry, uint32_t directory_sectors, int64_t size, lbr_member *member, bool *present)
+{
     size_t name_length, ext_length;
     uint32_t pad;
     uint32_t date, time;
@@ -249,18 +235,15 @@ static lbr_entry_kind lbr_decode_entry(const uint8_t *entry,
      * counts as deleted, as in Deark and XArchive. */
     if (entry[0] != LBR_STATUS_ACTIVE) return LBR_ENTRY_DELETED;
     xx_mem_zero(member, sizeof(*member));
-    if (!lbr_decode_field(entry + 1U, LBR_NAME_FIELD, member->name,
-                          &name_length) ||
-        !lbr_decode_field(entry + 1U + LBR_NAME_FIELD, LBR_EXT_FIELD,
-                          member->name + name_length + 1U, &ext_length))
+    if (!lbr_decode_field(entry + 1U, LBR_NAME_FIELD, member->name, &name_length) ||
+        !lbr_decode_field(entry + 1U + LBR_NAME_FIELD, LBR_EXT_FIELD, member->name + name_length + 1U, &ext_length))
         return LBR_ENTRY_BAD;
     if (name_length == 0U) {
         /* A blank name is extracted as "_" (Deark does the same); the
          * extension, if any, moves up behind it. */
         size_t at;
         member->name[0] = '_';
-        for (at = ext_length; at > 0U; --at)
-            member->name[1U + at] = member->name[at];
+        for (at = ext_length; at > 0U; --at) member->name[1U + at] = member->name[at];
         name_length = 1U;
     }
     if (ext_length > 0U) {
@@ -276,12 +259,10 @@ static lbr_entry_kind lbr_decode_entry(const uint8_t *entry,
      * more is not a pad count at all (Deark ignores it the same way). */
     if (pad >= (uint32_t)LBR_SECTOR || member->sectors == 0U) pad = 0U;
     /* A member may not start inside the directory. */
-    if (member->sectors != 0U && member->start_sector < directory_sectors)
-        return LBR_ENTRY_BAD;
+    if (member->sectors != 0U && member->start_sector < directory_sectors) return LBR_ENTRY_BAD;
     member->offset = (int64_t)member->start_sector * LBR_SECTOR;
     member->size = (int64_t)member->sectors * LBR_SECTOR - (int64_t)pad;
-    *present = member->sectors == 0U ||
-               (member->offset <= size && member->size <= size - member->offset);
+    *present = member->sectors == 0U || (member->offset <= size && member->size <= size - member->offset);
     if (member->sectors == 0U) member->offset = 0;
     date = lbr_le16(entry + 20U);
     time = lbr_le16(entry + 24U);
@@ -293,13 +274,15 @@ static lbr_entry_kind lbr_decode_entry(const uint8_t *entry,
     return LBR_ENTRY_ACTIVE;
 }
 
-static int lbr_compare_extents(const void *left, const void *right) {
+static int lbr_compare_extents(const void *left, const void *right)
+{
     const lbr_extent *a = (const lbr_extent *)left;
     const lbr_extent *b = (const lbr_extent *)right;
     return a->start < b->start ? -1 : (a->start > b->start ? 1 : 0);
 }
 
-static int lbr_compare_keys(const void *left, const void *right) {
+static int lbr_compare_keys(const void *left, const void *right)
+{
     const lbr_name_key *a = (const lbr_name_key *)left;
     const lbr_name_key *b = (const lbr_name_key *)right;
     int order = xx_str_cmp(a->key, b->key);
@@ -310,7 +293,8 @@ static int lbr_compare_keys(const void *left, const void *right) {
 /* No two members may share a sector: LU never writes that, and entries that
  * all point at one large extent would turn a small file into a huge
  * extraction. */
-static bool lbr_check_overlap(const lbr_member *items, size_t count) {
+static bool lbr_check_overlap(const lbr_member *items, size_t count)
+{
     lbr_extent *extents;
     size_t used = 0U, index;
     bool ok = true;
@@ -320,8 +304,7 @@ static bool lbr_check_overlap(const lbr_member *items, size_t count) {
     for (index = 0U; index < count; ++index) {
         if (items[index].sectors == 0U) continue;
         extents[used].start = (int64_t)items[index].start_sector;
-        extents[used].end = (int64_t)items[index].start_sector +
-                            (int64_t)items[index].sectors;
+        extents[used].end = (int64_t)items[index].start_sector + (int64_t)items[index].sectors;
         ++used;
     }
     if (used > 1U) {
@@ -339,7 +322,8 @@ static bool lbr_check_overlap(const lbr_member *items, size_t count) {
 /* Append " (<entry>)" to a name.  Decoded names never contain a space, so a
  * renamed member cannot collide with a stored one, and the entry index is
  * unique, so renamed members cannot collide with each other. */
-static bool lbr_append_entry(char *name, uint32_t entry) {
+static bool lbr_append_entry(char *name, uint32_t entry)
+{
     char digits[12];
     size_t length = xx_str_len(name), count = 0U;
     if (entry == 0U) digits[count++] = '0';
@@ -360,7 +344,8 @@ static bool lbr_append_entry(char *name, uint32_t entry) {
  * twice, or names equal but for case.  Every later member of such a group
  * is renamed so extraction never overwrites an earlier one, even on a
  * case-insensitive file system. */
-static bool lbr_make_names_unique(lbr_member *items, size_t count) {
+static bool lbr_make_names_unique(lbr_member *items, size_t count)
+{
     lbr_name_key *keys;
     size_t index;
     if (count < 2U) return true;
@@ -368,11 +353,9 @@ static bool lbr_make_names_unique(lbr_member *items, size_t count) {
     if (!keys) return false;
     for (index = 0U; index < count; ++index) {
         size_t at;
-        for (at = 0U; at + 1U < LBR_NAME_BUFFER && items[index].name[at];
-             ++at) {
+        for (at = 0U; at + 1U < LBR_NAME_BUFFER && items[index].name[at]; ++at) {
             char c = items[index].name[at];
-            keys[index].key[at] =
-                (c >= 'a' && c <= 'z') ? (char)(c - 'a' + 'A') : c;
+            keys[index].key[at] = (c >= 'a' && c <= 'z') ? (char)(c - 'a' + 'A') : c;
         }
         keys[index].key[at] = 0;
         keys[index].item = (uint32_t)index;
@@ -391,14 +374,16 @@ static bool lbr_make_names_unique(lbr_member *items, size_t count) {
     return true;
 }
 
-static void lbr_stream_free(void *opaque) {
+static void lbr_stream_free(void *opaque)
+{
     lbr_stream *stream = (lbr_stream *)opaque;
     if (!stream) return;
     if (stream->items) xx_mem_free(stream->items);
     xx_mem_free(stream);
 }
 
-static bool lbr_parse(Abstractformat *format, lbr_stream **result) {
+static bool lbr_parse(Abstractformat *format, lbr_stream **result)
+{
     lbr_dir_reader *reader = NULL;
     lbr_stream *stream = NULL;
     lbr_member *items = NULL;
@@ -410,16 +395,12 @@ static bool lbr_parse(Abstractformat *format, lbr_stream **result) {
     uint32_t data_members = 0U;
     size_t count = 0U;
     size_t pass;
-    if (!format || !format->device || !result || format->base_address < 0)
-        return false;
+    if (!format || !format->device || !result || format->base_address < 0) return false;
     *result = NULL;
     total = xx_io_total_size(format->device);
     if (total < format->base_address) return false;
     size = total - format->base_address;
-    if (size < LBR_SECTOR ||
-        !lbr_read_at(format->device, format->base_address, header,
-                     sizeof(header)))
-        return false;
+    if (size < LBR_SECTOR || !lbr_read_at(format->device, format->base_address, header, sizeof(header))) return false;
     /* The directory's own entry: active, blank name, first sector 0. */
     if (header[0] != LBR_STATUS_ACTIVE) return false;
     for (index = 1U; index < 12U; ++index)
@@ -461,8 +442,7 @@ static bool lbr_parse(Abstractformat *format, lbr_stream **result) {
             const uint8_t *entry = lbr_dir_entry(reader, index);
             lbr_entry_kind kind;
             if (!entry) goto fail;
-            kind = lbr_decode_entry(entry, directory_sectors, size, &member,
-                                    &present);
+            kind = lbr_decode_entry(entry, directory_sectors, size, &member, &present);
             /* The first unused entry ends the directory; whatever follows
              * it is ignored, as Deark and XArchive do. */
             if (kind == LBR_ENTRY_END) break;
@@ -481,8 +461,7 @@ static bool lbr_parse(Abstractformat *format, lbr_stream **result) {
             if (!present) continue;
             if (count >= (size_t)present_count) goto fail;
             member.entry = index;
-            member.header_offset =
-                format->base_address + (int64_t)index * LBR_ENTRY;
+            member.header_offset = format->base_address + (int64_t)index * LBR_ENTRY;
             member.offset += format->base_address;
             items[count++] = member;
         }
@@ -492,22 +471,18 @@ static bool lbr_parse(Abstractformat *format, lbr_stream **result) {
              * listing, and a bare directory header is too weak a signature
              * to claim a file on. */
             if (data_members == 0U) goto fail;
-            items = (lbr_member *)xx_mem_alloc((size_t)present_count *
-                                               sizeof(*items));
+            items = (lbr_member *)xx_mem_alloc((size_t)present_count * sizeof(*items));
             if (!items) goto fail;
         }
     }
     if (count != (size_t)present_count) goto fail;
-    if (!lbr_check_overlap(items, count) ||
-        !lbr_make_names_unique(items, count))
-        goto fail;
+    if (!lbr_check_overlap(items, count) || !lbr_make_names_unique(items, count)) goto fail;
 
     archive_size = directory_size;
     for (index = 0U; (size_t)index < count; ++index) {
         int64_t end;
         if (items[index].sectors == 0U) continue;
-        end = ((int64_t)items[index].start_sector +
-               (int64_t)items[index].sectors) * LBR_SECTOR;
+        end = ((int64_t)items[index].start_sector + (int64_t)items[index].sectors) * LBR_SECTOR;
         if (end > archive_size) archive_size = end;
     }
     /* A truncated library owns everything that is left of it. */
@@ -530,17 +505,16 @@ fail:
     return false;
 }
 
-static bool lbr_copy_options(xx_list_s *destination, const xx_list_s *source) {
+static bool lbr_copy_options(xx_list_s *destination, const xx_list_s *source)
+{
     size_t index;
     if (!source) return true;
     for (index = 0U; index < source->count; ++index) {
-        const xx_meta *original =
-            (const xx_meta *)xx_list_at((const xx_list_t *)source, index);
+        const xx_meta *original = (const xx_meta *)xx_list_at((const xx_list_t *)source, index);
         xx_meta copy;
         if (!original) continue;
         xx_meta_init(&copy, original->meta_id);
-        if (!xx_var_copy(&copy.var, &original->var) ||
-            !xx_list_append(destination, &copy)) {
+        if (!xx_var_copy(&copy.var, &original->var) || !xx_list_append(destination, &copy)) {
             xx_meta_cleanup(&copy);
             return false;
         }
@@ -548,26 +522,27 @@ static bool lbr_copy_options(xx_list_s *destination, const xx_list_s *source) {
     return true;
 }
 
-static const xx_var *lbr_option(const xx_list_s *options, uint32_t id) {
+static const xx_var *lbr_option(const xx_list_s *options, uint32_t id)
+{
     size_t index;
     if (!options) return NULL;
     for (index = 0U; index < options->count; ++index) {
-        const xx_meta *meta =
-            (const xx_meta *)xx_list_at((const xx_list_t *)options, index);
+        const xx_meta *meta = (const xx_meta *)xx_list_at((const xx_list_t *)options, index);
         if (meta && meta->meta_id == id) return &meta->var;
     }
     return NULL;
 }
 
-static char lbr_upper(char c) {
+static char lbr_upper(char c)
+{
     return (c >= 'a' && c <= 'z') ? (char)(c - 'a' + 'A') : c;
 }
 
-static bool lbr_stem_is(const char *name, size_t stem, const char *word) {
+static bool lbr_stem_is(const char *name, size_t stem, const char *word)
+{
     size_t index;
     for (index = 0U; index < stem; ++index)
-        if (!word[index] || lbr_upper(name[index]) != word[index])
-            return false;
+        if (!word[index] || lbr_upper(name[index]) != word[index]) return false;
     return word[stem] == 0;
 }
 
@@ -576,62 +551,49 @@ static bool lbr_stem_is(const char *name, size_t stem, const char *word) {
  * names Windows would resolve to "." or "..", names ending in a dot (which
  * Windows strips, so "A." would land on "A"), and device names such as CON,
  * LPT1.TXT or CONIN$, with or without an extension and in any case. */
-static bool lbr_safe_output_name(const char *name) {
-    static const char *const devices[] = {"CON",    "PRN",     "AUX",
-                                          "NUL",    "CONIN$",  "CONOUT$",
-                                          "CLOCK$"};
+static bool lbr_safe_output_name(const char *name)
+{
+    static const char *const devices[] = {"CON", "PRN", "AUX", "NUL", "CONIN$", "CONOUT$", "CLOCK$"};
     size_t length, stem = 0U, index;
     bool meaningful = false;
     if (!name || !name[0]) return false;
     length = xx_str_len(name);
     for (index = 0U; index < length; ++index) {
         char c = name[index];
-        if ((unsigned char)c < 0x20U || (unsigned char)c > 0x7EU ||
-            c == '/' || c == '\\' || c == ':' || c == '<' || c == '>' ||
-            c == '"' || c == '|' || c == '?' || c == '*')
+        if ((unsigned char)c < 0x20U || (unsigned char)c > 0x7EU || c == '/' || c == '\\' || c == ':' || c == '<' || c == '>' || c == '"' || c == '|' || c == '?' ||
+            c == '*')
             return false;
         if (c != '.' && c != ' ') meaningful = true;
     }
-    if (!meaningful || name[length - 1U] == '.' || name[length - 1U] == ' ')
-        return false;
+    if (!meaningful || name[length - 1U] == '.' || name[length - 1U] == ' ') return false;
     while (stem < length && name[stem] != '.') ++stem;
     while (stem > 0U && name[stem - 1U] == ' ') --stem;
     for (index = 0U; index < sizeof(devices) / sizeof(devices[0]); ++index)
         if (lbr_stem_is(name, stem, devices[index])) return false;
     if (stem == 4U && name[3] >= '0' && name[3] <= '9' &&
-        ((lbr_upper(name[0]) == 'C' && lbr_upper(name[1]) == 'O' &&
-          lbr_upper(name[2]) == 'M') ||
-         (lbr_upper(name[0]) == 'L' && lbr_upper(name[1]) == 'P' &&
-          lbr_upper(name[2]) == 'T')))
+        ((lbr_upper(name[0]) == 'C' && lbr_upper(name[1]) == 'O' && lbr_upper(name[2]) == 'M') ||
+         (lbr_upper(name[0]) == 'L' && lbr_upper(name[1]) == 'P' && lbr_upper(name[2]) == 'T')))
         return false;
     return true;
 }
 
-static bool lbr_set_record(xx_archive_record *record,
-                           const lbr_member *member) {
+static bool lbr_set_record(xx_archive_record *record, const lbr_member *member)
+{
     xx_archive_record_cleanup(record);
     xx_archive_record_init(record);
     record->header_offset = member->header_offset;
     record->header_size = XX_LBR_ENTRY_SIZE;
     record->data_offset = member->offset;
     record->compressed_size = member->size;
-    if (member->has_timestamp &&
-        !xx_archive_record_set_meta_u64(record, XX_META_ID_TIMESTAMP,
-                                        member->timestamp))
-        return false;
-    return xx_archive_record_set_original_name(record, member->name) &&
-           xx_archive_record_set_meta_u64(record, XX_META_ID_COMPRESSED_SIZE,
-                                          (uint64_t)member->size) &&
-           xx_archive_record_set_meta_u64(record, XX_META_ID_UNCOMPRESSED_SIZE,
-                                          (uint64_t)member->size) &&
-           xx_archive_record_set_meta_u64(record, XX_META_ID_COMPRESSION_METHOD,
-                                          0U) &&
-           xx_archive_record_set_meta_bool(record, XX_META_ID_IS_ENCRYPTED,
-                                           false) &&
+    if (member->has_timestamp && !xx_archive_record_set_meta_u64(record, XX_META_ID_TIMESTAMP, member->timestamp)) return false;
+    return xx_archive_record_set_original_name(record, member->name) && xx_archive_record_set_meta_u64(record, XX_META_ID_COMPRESSED_SIZE, (uint64_t)member->size) &&
+           xx_archive_record_set_meta_u64(record, XX_META_ID_UNCOMPRESSED_SIZE, (uint64_t)member->size) &&
+           xx_archive_record_set_meta_u64(record, XX_META_ID_COMPRESSION_METHOD, 0U) && xx_archive_record_set_meta_bool(record, XX_META_ID_IS_ENCRYPTED, false) &&
            xx_archive_record_set_meta_bool(record, XX_META_ID_IS_FOLDER, false);
 }
 
-void xx_lbr_init(xx_lbr *archive, xx_io_device *device, int64_t base_address) {
+void xx_lbr_init(xx_lbr *archive, xx_io_device *device, int64_t base_address)
+{
     if (!archive) return;
     xx_mem_zero(archive, sizeof(*archive));
     xx_format_init(&archive->format, device, base_address);
@@ -644,37 +606,35 @@ void xx_lbr_init(xx_lbr *archive, xx_io_device *device, int64_t base_address) {
     archive->format.check_is_valid = xx_lbr_check_is_valid;
     archive->format.handle_base_info = xx_lbr_handle_base_info;
     archive->format.get_format_size = xx_lbr_get_format_size;
-    archive->format.get_number_of_archive_records =
-        xx_lbr_get_number_of_archive_records;
-    archive->format.create_archive_records_reading =
-        xx_lbr_create_archive_records_reading;
-    archive->format.get_current_archive_record =
-        xx_lbr_get_current_archive_record;
-    archive->format.unpack_current_archive_record =
-        xx_lbr_unpack_current_archive_record;
-    archive->format.archive_record_move_to_next =
-        xx_lbr_archive_record_move_to_next;
-    archive->format.free_archive_records_reading =
-        xx_lbr_free_archive_records_reading;
+    archive->format.get_number_of_archive_records = xx_lbr_get_number_of_archive_records;
+    archive->format.create_archive_records_reading = xx_lbr_create_archive_records_reading;
+    archive->format.get_current_archive_record = xx_lbr_get_current_archive_record;
+    archive->format.unpack_current_archive_record = xx_lbr_unpack_current_archive_record;
+    archive->format.archive_record_move_to_next = xx_lbr_archive_record_move_to_next;
+    archive->format.free_archive_records_reading = xx_lbr_free_archive_records_reading;
 }
 
-xx_lbr *xx_lbr_create(xx_io_device *device, int64_t base_address) {
+xx_lbr *xx_lbr_create(xx_io_device *device, int64_t base_address)
+{
     xx_lbr *archive = (xx_lbr *)xx_mem_alloc(sizeof(*archive));
     if (archive) xx_lbr_init(archive, device, base_address);
     return archive;
 }
 
-void xx_lbr_destroy(xx_lbr *archive) {
+void xx_lbr_destroy(xx_lbr *archive)
+{
     if (archive) xx_format_cleanup_extra_parameters(&archive->format);
 }
 
-void xx_lbr_free(xx_lbr *archive) {
+void xx_lbr_free(xx_lbr *archive)
+{
     if (!archive) return;
     xx_lbr_destroy(archive);
     xx_mem_free(archive);
 }
 
-bool xx_lbr_check_is_valid(Abstractformat *format, xx_pd_struct *pd) {
+bool xx_lbr_check_is_valid(Abstractformat *format, xx_pd_struct *pd)
+{
     lbr_stream *stream;
     (void)pd;
     if (!lbr_parse(format, &stream)) return false;
@@ -682,7 +642,8 @@ bool xx_lbr_check_is_valid(Abstractformat *format, xx_pd_struct *pd) {
     return true;
 }
 
-bool xx_lbr_handle_base_info(Abstractformat *format, xx_pd_struct *pd) {
+bool xx_lbr_handle_base_info(Abstractformat *format, xx_pd_struct *pd)
+{
     lbr_stream *stream;
     xx_lbr *archive;
     (void)pd;
@@ -700,21 +661,18 @@ bool xx_lbr_handle_base_info(Abstractformat *format, xx_pd_struct *pd) {
     return true;
 }
 
-int64_t xx_lbr_get_format_size(Abstractformat *format, xx_pd_struct *pd) {
-    return format && (format->base_info_handled ||
-                      xx_lbr_handle_base_info(format, pd))
-               ? format->format_size : -1;
+int64_t xx_lbr_get_format_size(Abstractformat *format, xx_pd_struct *pd)
+{
+    return format && (format->base_info_handled || xx_lbr_handle_base_info(format, pd)) ? format->format_size : -1;
 }
 
-uint64_t xx_lbr_get_number_of_archive_records(Abstractformat *format,
-                                              xx_pd_struct *pd) {
-    return format && (format->base_info_handled ||
-                      xx_lbr_handle_base_info(format, pd))
-               ? ((xx_lbr *)format)->number_of_records : 0U;
+uint64_t xx_lbr_get_number_of_archive_records(Abstractformat *format, xx_pd_struct *pd)
+{
+    return format && (format->base_info_handled || xx_lbr_handle_base_info(format, pd)) ? ((xx_lbr *)format)->number_of_records : 0U;
 }
 
-xx_archive_record_state *xx_lbr_create_archive_records_reading(
-    Abstractformat *format, const xx_list_s *options, xx_pd_struct *pd) {
+xx_archive_record_state *xx_lbr_create_archive_records_reading(Abstractformat *format, const xx_list_s *options, xx_pd_struct *pd)
+{
     lbr_stream *stream;
     xx_archive_record_state *state;
     (void)pd;
@@ -733,8 +691,7 @@ xx_archive_record_state *xx_lbr_create_archive_records_reading(
     state->internal_state = stream;
     state->free_internal = lbr_stream_free;
     state->total_records = stream->count;
-    if (!lbr_copy_options(&state->options, options) ||
-        !lbr_set_record(&state->current_record, &stream->items[0])) {
+    if (!lbr_copy_options(&state->options, options) || !lbr_set_record(&state->current_record, &stream->items[0])) {
         xx_archive_record_state_free(state);
         return NULL;
     }
@@ -742,32 +699,26 @@ xx_archive_record_state *xx_lbr_create_archive_records_reading(
     return state;
 }
 
-const xx_archive_record *xx_lbr_get_current_archive_record(
-    Abstractformat *format, xx_archive_record_state *state) {
-    return format && state && state->format == format && state->has_record
-               ? &state->current_record : NULL;
+const xx_archive_record *xx_lbr_get_current_archive_record(Abstractformat *format, xx_archive_record_state *state)
+{
+    return format && state && state->format == format && state->has_record ? &state->current_record : NULL;
 }
 
-bool xx_lbr_archive_record_move_to_next(Abstractformat *format,
-                                        xx_archive_record_state *state,
-                                        xx_pd_struct *pd) {
+bool xx_lbr_archive_record_move_to_next(Abstractformat *format, xx_archive_record_state *state, xx_pd_struct *pd)
+{
     lbr_stream *stream;
     (void)pd;
-    if (!format || !state || state->format != format ||
-        !(stream = (lbr_stream *)state->internal_state) ||
-        ++stream->index >= stream->count) {
+    if (!format || !state || state->format != format || !(stream = (lbr_stream *)state->internal_state) || ++stream->index >= stream->count) {
         if (state) state->has_record = false;
         return false;
     }
     ++state->current_index;
-    state->has_record = lbr_set_record(&state->current_record,
-                                       &stream->items[stream->index]);
+    state->has_record = lbr_set_record(&state->current_record, &stream->items[stream->index]);
     return state->has_record;
 }
 
-bool xx_lbr_unpack_current_archive_record(Abstractformat *format,
-                                          xx_archive_record_state *state,
-                                          xx_pd_struct *pd) {
+bool xx_lbr_unpack_current_archive_record(Abstractformat *format, xx_archive_record_state *state, xx_pd_struct *pd)
+{
     lbr_stream *stream;
     lbr_member *member;
     const xx_var *path_option;
@@ -776,38 +727,29 @@ bool xx_lbr_unpack_current_archive_record(Abstractformat *format,
     char *path = NULL;
     bool result = false;
     bool created = false;
-    if (!format || !state || state->format != format || !state->has_record ||
-        !(stream = (lbr_stream *)state->internal_state) ||
-        stream->index >= stream->count || (pd && xx_pd_is_stopped(pd)))
+    if (!format || !state || state->format != format || !state->has_record || !(stream = (lbr_stream *)state->internal_state) || stream->index >= stream->count ||
+        (pd && xx_pd_is_stopped(pd)))
         return false;
     member = &stream->items[stream->index];
     if (member->size < 0 || member->offset < 0) return false;
     path_option = lbr_option(&state->options, XX_META_ID_OPT_UNPACK_PATH);
-    if (!path_option)
-        /* No destination: read the member through, which verifies it. */
-        return lbr_copy_range(format->device, member->offset, member->size,
-                              NULL, pd);
+    if (!path_option) /* No destination: read the member through, which verifies it. */
+        return lbr_copy_range(format->device, member->offset, member->size, NULL, pd);
     if (!lbr_safe_output_name(member->name)) return false;
-    if (path_option->type == XX_VAR_TYPE_STRING ||
-        path_option->type == XX_VAR_TYPE_STRING_VIEW)
-        base = xx_var_get_str(path_option);
-    else if (path_option->type == XX_VAR_TYPE_WSTRING ||
-             path_option->type == XX_VAR_TYPE_WSTRING_VIEW) {
+    if (path_option->type == XX_VAR_TYPE_STRING || path_option->type == XX_VAR_TYPE_STRING_VIEW) base = xx_var_get_str(path_option);
+    else if (path_option->type == XX_VAR_TYPE_WSTRING || path_option->type == XX_VAR_TYPE_WSTRING_VIEW) {
         owned_base = xx_str_unicode_to_utf8(xx_var_get_wstr(path_option));
         base = owned_base;
     }
     if (!base) goto done;
-    path = (base[0] && base[xx_str_len(base) - 1U] != '/' &&
-            base[xx_str_len(base) - 1U] != '\\')
-               ? xx_str_concat3(base, "/", member->name)
-               : xx_str_concat(base, member->name);
+    path = (base[0] && base[xx_str_len(base) - 1U] != '/' && base[xx_str_len(base) - 1U] != '\\') ? xx_str_concat3(base, "/", member->name)
+                                                                                                  : xx_str_concat(base, member->name);
     if (!path || !xx_store_create_dirs_a(path, false)) goto done;
     {
         xx_io_device *destination = xx_io_file_open(path, "wb");
         created = destination != NULL;
         if (!destination) goto done;
-        result = lbr_copy_range(format->device, member->offset, member->size,
-                                destination, pd);
+        result = lbr_copy_range(format->device, member->offset, member->size, destination, pd);
         if (xx_io_close(destination) != 0) result = false;
     }
 done:
@@ -817,8 +759,8 @@ done:
     return result;
 }
 
-void xx_lbr_free_archive_records_reading(Abstractformat *format,
-                                         xx_archive_record_state *state) {
+void xx_lbr_free_archive_records_reading(Abstractformat *format, xx_archive_record_state *state)
+{
     (void)format;
     xx_archive_record_state_free(state);
 }

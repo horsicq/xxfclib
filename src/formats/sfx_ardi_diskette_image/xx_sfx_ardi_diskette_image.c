@@ -32,8 +32,7 @@
 /* Registration placeholder: picks up the real file type as soon as the
  * enumerator (and its alias macro) exist in xxfc_defs.h. */
 #ifdef SFX_ARDI_DISKETTE_IMAGE
-#define XX_SFX_ARDI_DISKETTE_IMAGE_FILE_TYPE \
-    XX_FILE_TYPE_SFX_ARDI_DISKETTE_IMAGE
+#define XX_SFX_ARDI_DISKETTE_IMAGE_FILE_TYPE XX_FILE_TYPE_SFX_ARDI_DISKETTE_IMAGE
 #else
 #define XX_SFX_ARDI_DISKETTE_IMAGE_FILE_TYPE XX_FILE_TYPE_UNKNOWN
 #endif
@@ -42,8 +41,7 @@
 #define ARDI_TRAILER_SIZE 51
 #define ARDI_TAIL_TEXT_SIZE 31
 #define ARDI_RECORD_SIZE 0x33
-#define ARDI_MIN_SIZE \
-    (ARDI_MZ_HEADER + ARDI_RECORD_SIZE + 1 + ARDI_TRAILER_SIZE)
+#define ARDI_MIN_SIZE (ARDI_MZ_HEADER + ARDI_RECORD_SIZE + 1 + ARDI_TRAILER_SIZE)
 
 #define ARDI_OFF_BPS 0x00
 #define ARDI_OFF_TOTAL 0x08
@@ -88,22 +86,20 @@ static const char ardi_tail_suffix[] = "-Daniel Valot"; /* then 0x00 */
 /* ---------------------------------------------------------------------- */
 /* Small helpers                                                           */
 
-static uint32_t ardi_le16(const uint8_t *bytes) {
+static uint32_t ardi_le16(const uint8_t *bytes)
+{
     return (uint32_t)bytes[0] | ((uint32_t)bytes[1] << 8U);
 }
 
-static bool ardi_read_at(xx_io_device *device, int64_t offset, void *buffer,
-                         size_t size) {
+static bool ardi_read_at(xx_io_device *device, int64_t offset, void *buffer, size_t size)
+{
     size_t done = 0U;
     const size_t io_capacity = xx_get_file_buffer_size();
-    if (!device || (!buffer && size != 0U) || offset < 0 ||
-        xx_io_seek64(device, offset, SEEK_SET) != 0)
-        return false;
+    if (!device || (!buffer && size != 0U) || offset < 0 || xx_io_seek64(device, offset, SEEK_SET) != 0) return false;
     while (done < size) {
         size_t request = size - done;
         if (request > io_capacity) request = io_capacity;
-        ssize_t amount =
-            xx_io_read(device, (uint8_t *)buffer + done, request);
+        ssize_t amount = xx_io_read(device, (uint8_t *)buffer + done, request);
         if (amount <= 0 || (size_t)amount > request) return false;
         done += (size_t)amount;
     }
@@ -111,13 +107,11 @@ static bool ardi_read_at(xx_io_device *device, int64_t offset, void *buffer,
 }
 
 /* Reads up to @p size bytes; returns how many arrived. */
-static size_t ardi_read_some(xx_io_device *device, int64_t offset,
-                             uint8_t *buffer, size_t size) {
+static size_t ardi_read_some(xx_io_device *device, int64_t offset, uint8_t *buffer, size_t size)
+{
     size_t done = 0U;
     const size_t io_capacity = xx_get_file_buffer_size();
-    if (!device || !buffer || offset < 0 ||
-        xx_io_seek64(device, offset, SEEK_SET) != 0)
-        return 0U;
+    if (!device || !buffer || offset < 0 || xx_io_seek64(device, offset, SEEK_SET) != 0) return 0U;
     while (done < size) {
         size_t request = size - done;
         if (request > io_capacity) request = io_capacity;
@@ -132,11 +126,11 @@ static size_t ardi_read_some(xx_io_device *device, int64_t offset,
 /* Container                                                               */
 
 typedef struct ardi_context_s {
-    int64_t size;         /* device bytes from base_address on */
-    int64_t record;       /* relative to base_address */
-    int64_t stream;       /* relative */
+    int64_t size;   /* device bytes from base_address on */
+    int64_t record; /* relative to base_address */
+    int64_t stream; /* relative */
     int64_t stream_size;
-    int64_t trailer;      /* relative */
+    int64_t trailer; /* relative */
     uint64_t image_size;
     uint32_t image_crc;
     uint16_t total_sectors;
@@ -149,28 +143,20 @@ typedef struct ardi_context_s {
 
 /* The record predicate: the reference's field checks, and the declared
  * stream has to end on the byte where the trailer starts. */
-static bool ardi_accept(Abstractformat *format, ardi_context *context,
-                        int64_t record) {
+static bool ardi_accept(Abstractformat *format, ardi_context *context, int64_t record)
+{
     uint8_t r[ARDI_RECORD_SIZE];
     uint32_t total, packed;
-    if (record < ARDI_MZ_HEADER ||
-        record > context->trailer - (int64_t)ARDI_RECORD_SIZE - 1)
-        return false;
-    if (!ardi_read_at(format->device, format->base_address + record, r,
-                      sizeof(r)))
-        return false;
-    if (ardi_le16(r + ARDI_OFF_SIGNATURE) != ARDI_SIGNATURE ||
-        xx_data_get_u32(r + ARDI_OFF_CONSTANT, 4, 0, false) != ARDI_CONSTANT ||
-        r[ARDI_OFF_ZERO] != 0U ||
+    if (record < ARDI_MZ_HEADER || record > context->trailer - (int64_t)ARDI_RECORD_SIZE - 1) return false;
+    if (!ardi_read_at(format->device, format->base_address + record, r, sizeof(r))) return false;
+    if (ardi_le16(r + ARDI_OFF_SIGNATURE) != ARDI_SIGNATURE || xx_data_get_u32(r + ARDI_OFF_CONSTANT, 4, 0, false) != ARDI_CONSTANT || r[ARDI_OFF_ZERO] != 0U ||
         ardi_le16(r + ARDI_OFF_BPS) != ARDI_BYTES_PER_SECTOR)
         return false;
     total = ardi_le16(r + ARDI_OFF_TOTAL);
     packed = xx_data_get_u32(r + ARDI_OFF_PACKED, 4, 0, false);
     if (total == 0U || packed == 0U) return false;
     /* record <= trailer - 0x34, so this cannot overflow. */
-    if (record + (int64_t)ARDI_RECORD_SIZE + (int64_t)packed !=
-        context->trailer)
-        return false;
+    if (record + (int64_t)ARDI_RECORD_SIZE + (int64_t)packed != context->trailer) return false;
     context->record = record;
     context->stream = record + (int64_t)ARDI_RECORD_SIZE;
     context->stream_size = (int64_t)packed;
@@ -185,22 +171,17 @@ static bool ardi_accept(Abstractformat *format, ardi_context *context,
 
 /* Where the NE segment data ends: the highest segment end, relocation
  * records included.  -1 when the tables do not lead anywhere usable. */
-static int64_t ardi_ne_end(Abstractformat *format, const ardi_context *context) {
+static int64_t ardi_ne_end(Abstractformat *format, const ardi_context *context)
+{
     uint8_t mz[ARDI_MZ_HEADER];
     uint8_t ne[ARDI_NE_HEADER];
     uint8_t *table;
     int64_t header, table_offset, end = -1;
     uint32_t count, shift, index;
-    if (!ardi_read_at(format->device, format->base_address, mz, sizeof(mz)))
-        return -1;
+    if (!ardi_read_at(format->device, format->base_address, mz, sizeof(mz))) return -1;
     header = (int64_t)xx_data_get_u32(mz + 0x3C, 4, 0, false);
-    if (header < ARDI_MZ_HEADER ||
-        header > context->trailer - (int64_t)ARDI_NE_HEADER)
-        return -1;
-    if (!ardi_read_at(format->device, format->base_address + header, ne,
-                      sizeof(ne)) ||
-        ne[0] != 'N' || ne[1] != 'E')
-        return -1;
+    if (header < ARDI_MZ_HEADER || header > context->trailer - (int64_t)ARDI_NE_HEADER) return -1;
+    if (!ardi_read_at(format->device, format->base_address + header, ne, sizeof(ne)) || ne[0] != 'N' || ne[1] != 'E') return -1;
     count = ardi_le16(ne + 0x1C);
     shift = ardi_le16(ne + 0x32);
     if (shift == 0U) shift = 9U; /* the loader's default */
@@ -209,8 +190,7 @@ static int64_t ardi_ne_end(Abstractformat *format, const ardi_context *context) 
     if (table_offset + (int64_t)count * 8 > context->trailer) return -1;
     table = (uint8_t *)xx_mem_alloc((size_t)count * 8U);
     if (!table) return -1;
-    if (!ardi_read_at(format->device, format->base_address + table_offset,
-                      table, (size_t)count * 8U)) {
+    if (!ardi_read_at(format->device, format->base_address + table_offset, table, (size_t)count * 8U)) {
         xx_mem_free(table);
         return -1;
     }
@@ -221,18 +201,14 @@ static int64_t ardi_ne_end(Abstractformat *format, const ardi_context *context) 
         uint32_t flags = ardi_le16(entry + 4U);
         int64_t segment_end;
         if (sector == 0U) continue; /* no data in the file */
-        segment_end = ((int64_t)sector << shift) +
-                      (int64_t)(length ? length : 0x10000U);
+        segment_end = ((int64_t)sector << shift) + (int64_t)(length ? length : 0x10000U);
         if (segment_end > context->trailer) {
             end = -1;
             break;
         }
         if (flags & ARDI_NE_RELOCATIONS) {
             uint8_t word[2];
-            if (segment_end > context->trailer - 2 ||
-                !ardi_read_at(format->device,
-                              format->base_address + segment_end, word,
-                              sizeof(word))) {
+            if (segment_end > context->trailer - 2 || !ardi_read_at(format->device, format->base_address + segment_end, word, sizeof(word))) {
                 end = -1;
                 break;
             }
@@ -246,13 +222,12 @@ static int64_t ardi_ne_end(Abstractformat *format, const ardi_context *context) 
 
 /* The reference's search: the 85 04 00 00 00 run at +0x2A, bounded by
  * ARDI_MAX_SCAN and ARDI_MAX_CANDIDATES. */
-static bool ardi_scan(Abstractformat *format, ardi_context *context,
-                      xx_pd_struct *pd) {
+static bool ardi_scan(Abstractformat *format, ardi_context *context, xx_pd_struct *pd)
+{
     uint8_t *buffer;
     const size_t io_capacity = xx_get_file_buffer_size();
     int64_t first = ARDI_MZ_HEADER + ARDI_OFF_CONSTANT;
-    int64_t last = context->trailer - (int64_t)ARDI_RECORD_SIZE - 1 +
-                   ARDI_OFF_CONSTANT; /* last needle start */
+    int64_t last = context->trailer - (int64_t)ARDI_RECORD_SIZE - 1 + ARDI_OFF_CONSTANT; /* last needle start */
     int64_t position;
     int candidates = 0;
     bool found = false;
@@ -261,31 +236,24 @@ static bool ardi_scan(Abstractformat *format, ardi_context *context,
     buffer = (uint8_t *)xx_mem_alloc(io_capacity);
     if (!buffer) return false;
     for (position = first; position <= last && !found;) {
-        size_t want = (uint64_t)(last - position + 1) < io_capacity ?
-                          (size_t)(last - position + 1) : io_capacity;
+        size_t want = (uint64_t)(last - position + 1) < io_capacity ? (size_t)(last - position + 1) : io_capacity;
         size_t got, index, limit;
         if (pd && xx_pd_is_stopped(pd)) break;
-        if ((int64_t)want > context->trailer - position)
-            want = (size_t)(context->trailer - position);
-        got = ardi_read_some(format->device, format->base_address + position,
-                             buffer, want);
+        if ((int64_t)want > context->trailer - position) want = (size_t)(context->trailer - position);
+        got = ardi_read_some(format->device, format->base_address + position, buffer, want);
         if (!got) break;
         limit = got;
-        if ((int64_t)limit > last - position + 1)
-            limit = (size_t)(last - position + 1);
+        if ((int64_t)limit > last - position + 1) limit = (size_t)(last - position + 1);
         for (index = 0U; index < limit; ++index) {
             uint8_t frame[5];
             const uint8_t *bytes = buffer + index;
             if (buffer[index] != 0x85U) continue;
             if (got - index < sizeof(frame)) {
-                if (ardi_read_some(format->device, format->base_address + position + (int64_t)index,
-                                   frame, sizeof(frame)) != sizeof(frame)) continue;
+                if (ardi_read_some(format->device, format->base_address + position + (int64_t)index, frame, sizeof(frame)) != sizeof(frame)) continue;
                 bytes = frame;
             }
-            if (bytes[1] != 0x04U || bytes[2] != 0U || bytes[3] != 0U || bytes[4] != 0U)
-                continue;
-            if (ardi_accept(format, context,
-                            position + (int64_t)index - ARDI_OFF_CONSTANT)) {
+            if (bytes[1] != 0x04U || bytes[2] != 0U || bytes[3] != 0U || bytes[4] != 0U) continue;
+            if (ardi_accept(format, context, position + (int64_t)index - ARDI_OFF_CONSTANT)) {
                 found = true;
                 break;
             }
@@ -298,32 +266,24 @@ static bool ardi_scan(Abstractformat *format, ardi_context *context,
     return found;
 }
 
-static bool ardi_parse(Abstractformat *format, ardi_context *out,
-                       xx_pd_struct *pd) {
+static bool ardi_parse(Abstractformat *format, ardi_context *out, xx_pd_struct *pd)
+{
     uint8_t mz[2];
     uint8_t tail[ARDI_TAIL_TEXT_SIZE];
     ardi_context context;
     int64_t total, ne_end;
     size_t index;
-    if (!format || !format->device || !out || format->base_address < 0)
-        return false;
+    if (!format || !format->device || !out || format->base_address < 0) return false;
     total = xx_io_total_size(format->device);
     if (total < format->base_address) return false;
     xx_mem_zero(&context, sizeof(context));
     context.size = total - format->base_address;
     if (context.size < ARDI_MIN_SIZE) return false;
-    if (!ardi_read_at(format->device, format->base_address, mz, sizeof(mz)) ||
-        mz[0] != 'M' || mz[1] != 'Z')
-        return false;
+    if (!ardi_read_at(format->device, format->base_address, mz, sizeof(mz)) || mz[0] != 'M' || mz[1] != 'Z') return false;
 
     /* The EOF trailer gates everything else: one short read. */
-    if (!ardi_read_at(format->device,
-                      format->base_address + context.size -
-                          ARDI_TAIL_TEXT_SIZE,
-                      tail, sizeof(tail)) ||
-        xx_rt_memcmp(tail, ardi_tail_prefix, 13U) != 0 ||
-        xx_rt_memcmp(tail + 17U, ardi_tail_suffix, 13U) != 0 ||
-        tail[30] != 0U)
+    if (!ardi_read_at(format->device, format->base_address + context.size - ARDI_TAIL_TEXT_SIZE, tail, sizeof(tail)) || xx_rt_memcmp(tail, ardi_tail_prefix, 13U) != 0 ||
+        xx_rt_memcmp(tail + 17U, ardi_tail_suffix, 13U) != 0 || tail[30] != 0U)
         return false;
     for (index = 0U; index < 4U; ++index) {
         uint8_t digit = tail[13U + index];
@@ -350,24 +310,25 @@ static bool ardi_parse(Abstractformat *format, ardi_context *out,
  * single byte more.  Refusing a write is also how the measuring pass stops
  * the decoder once the prologue is complete. */
 typedef struct ardi_sink_s {
-    uint8_t *prologue;          /* ARDI_MAX_PROLOGUE bytes */
+    uint8_t *prologue; /* ARDI_MAX_PROLOGUE bytes */
     size_t fill;
-    size_t cursor;              /* next record header in the prologue */
+    size_t cursor; /* next record header in the prologue */
     uint32_t records;
     size_t prologue_size;
     bool prologue_done;
     bool stop_after_prologue;
-    bool stopped;               /* refused on purpose (measuring pass) */
-    bool failed;                /* malformed prologue, too much output,
-                                   or the destination refused a write */
+    bool stopped; /* refused on purpose (measuring pass) */
+    bool failed;  /* malformed prologue, too much output,
+                     or the destination refused a write */
     uint64_t image_expected;
     uint64_t image_written;
     uint32_t crc;
-    xx_io_device *destination;  /* NULL: verify only */
+    xx_io_device *destination; /* NULL: verify only */
 } ardi_sink;
 
 /* 1: prologue complete; 0: needs more bytes; -1: malformed. */
-static int ardi_prologue_walk(ardi_sink *sink) {
+static int ardi_prologue_walk(ardi_sink *sink)
+{
     for (;;) {
         uint32_t length;
         if (sink->cursor >= sink->fill) return 0;
@@ -380,34 +341,29 @@ static int ardi_prologue_walk(ardi_sink *sink) {
         if (sink->fill - sink->cursor < 5U) return 0;
         length = xx_data_get_u32(sink->prologue + sink->cursor + 1U, 4, 0, false);
         /* cursor + 5 + length must leave room for the 0xFF tag. */
-        if ((uint64_t)length >=
-            (uint64_t)ARDI_MAX_PROLOGUE - sink->cursor - 5U)
-            return -1;
+        if ((uint64_t)length >= (uint64_t)ARDI_MAX_PROLOGUE - sink->cursor - 5U) return -1;
         sink->cursor += 5U + (size_t)length;
         ++sink->records;
     }
 }
 
-static bool ardi_write_all(xx_io_device *destination, const uint8_t *data,
-                           size_t size) {
+static bool ardi_write_all(xx_io_device *destination, const uint8_t *data, size_t size)
+{
     size_t written = 0U;
     while (written < size) {
-        ssize_t amount =
-            xx_io_write(destination, data + written, size - written);
+        ssize_t amount = xx_io_write(destination, data + written, size - written);
         if (amount <= 0 || (size_t)amount > size - written) return false;
         written += (size_t)amount;
     }
     return true;
 }
 
-static ssize_t ardi_sink_write(xx_io_device *self, const void *buffer,
-                               size_t size) {
+static ssize_t ardi_sink_write(xx_io_device *self, const void *buffer, size_t size)
+{
     ardi_sink *sink = self ? (ardi_sink *)self->priv : NULL;
     const uint8_t *data = (const uint8_t *)buffer;
     size_t left = size;
-    if (!sink || (!data && size != 0U) || sink->failed || sink->stopped ||
-        size > ((size_t)-1) / 2U)
-        return -1;
+    if (!sink || (!data && size != 0U) || sink->failed || sink->stopped || size > ((size_t)-1) / 2U) return -1;
     while (left != 0U && !sink->prologue_done) {
         size_t room = ARDI_MAX_PROLOGUE - sink->fill;
         size_t take = left < room ? left : room;
@@ -444,8 +400,7 @@ static ssize_t ardi_sink_write(xx_io_device *self, const void *buffer,
             return -1;
         }
         sink->crc = xx_crc32_calc(sink->crc, data, left);
-        if (sink->destination &&
-            !ardi_write_all(sink->destination, data, left)) {
+        if (sink->destination && !ardi_write_all(sink->destination, data, left)) {
             sink->failed = true;
             return -1;
         }
@@ -454,21 +409,20 @@ static ssize_t ardi_sink_write(xx_io_device *self, const void *buffer,
     return (ssize_t)size;
 }
 
-static bool ardi_inflate(Abstractformat *format, const ardi_context *context,
-                         ardi_sink *sink, xx_pd_struct *pd) {
+static bool ardi_inflate(Abstractformat *format, const ardi_context *context, ardi_sink *sink, xx_pd_struct *pd)
+{
     xx_io_device device;
     xx_mem_zero(&device, sizeof(device));
     device.write = ardi_sink_write;
     device.priv = sink;
     sink->prologue = (uint8_t *)xx_mem_alloc(ARDI_MAX_PROLOGUE);
     if (!sink->prologue) return false;
-    return xx_deflate_unpack_device(format->device,
-                                    format->base_address + context->stream,
-                                    context->stream_size, &device, false, pd);
+    return xx_deflate_unpack_device(format->device, format->base_address + context->stream, context->stream_size, &device, false, pd);
 }
 
 /* Keeps printable ASCII, turns every run of anything else into one space. */
-static void ardi_copy_label(char *label, const uint8_t *text, size_t size) {
+static void ardi_copy_label(char *label, const uint8_t *text, size_t size)
+{
     size_t index, used = 0U;
     bool space = false;
     for (index = 0U; index < size && text[index] != 0U; ++index) {
@@ -491,8 +445,8 @@ static void ardi_copy_label(char *label, const uint8_t *text, size_t size) {
 
 /* The measuring pass: inflate until the prologue is complete, which takes
  * one output buffer of the decoder, and pick up the first label text. */
-static int64_t ardi_measure(Abstractformat *format, const ardi_context *context,
-                            char *label, xx_pd_struct *pd) {
+static int64_t ardi_measure(Abstractformat *format, const ardi_context *context, char *label, xx_pd_struct *pd)
+{
     ardi_sink sink;
     int64_t result = -1;
     size_t cursor = 0U;
@@ -510,8 +464,7 @@ static int64_t ardi_measure(Abstractformat *format, const ardi_context *context,
             length = (size_t)xx_data_get_u32(sink.prologue + cursor + 1U, 4, 0, false);
             if (length > sink.prologue_size - cursor - 5U) break;
             if (tag == ARDI_TAG_TEXT && length > 4U) {
-                ardi_copy_label(label, sink.prologue + cursor + 9U,
-                                length - 4U);
+                ardi_copy_label(label, sink.prologue + cursor + 9U, length - 4U);
                 break;
             }
             cursor += 5U + length;
@@ -521,18 +474,16 @@ static int64_t ardi_measure(Abstractformat *format, const ardi_context *context,
     return result;
 }
 
-static bool ardi_decode(Abstractformat *format, const ardi_context *context,
-                        xx_io_device *destination, xx_pd_struct *pd) {
+static bool ardi_decode(Abstractformat *format, const ardi_context *context, xx_io_device *destination, xx_pd_struct *pd)
+{
     ardi_sink sink;
     bool inflated, result;
     xx_mem_zero(&sink, sizeof(sink));
     sink.image_expected = context->image_size;
     sink.destination = destination;
     inflated = ardi_inflate(format, context, &sink, pd);
-    result = inflated && sink.prologue && sink.prologue_done &&
-             !sink.failed && !sink.stopped &&
-             sink.image_written == context->image_size &&
-             sink.crc == context->image_crc;
+    result =
+        inflated && sink.prologue && sink.prologue_done && !sink.failed && !sink.stopped && sink.image_written == context->image_size && sink.crc == context->image_crc;
     if (sink.prologue) xx_mem_free(sink.prologue);
     return result;
 }
@@ -546,22 +497,21 @@ typedef struct ardi_stream_s {
     size_t count;
 } ardi_stream;
 
-static void ardi_stream_free(void *opaque) {
+static void ardi_stream_free(void *opaque)
+{
     if (opaque) xx_mem_free(opaque);
 }
 
-static bool ardi_copy_options(xx_list_s *destination,
-                              const xx_list_s *source) {
+static bool ardi_copy_options(xx_list_s *destination, const xx_list_s *source)
+{
     size_t index;
     if (!source) return true;
     for (index = 0U; index < source->count; ++index) {
-        const xx_meta *original =
-            (const xx_meta *)xx_list_at((const xx_list_t *)source, index);
+        const xx_meta *original = (const xx_meta *)xx_list_at((const xx_list_t *)source, index);
         xx_meta copy;
         if (!original) continue;
         xx_meta_init(&copy, original->meta_id);
-        if (!xx_var_copy(&copy.var, &original->var) ||
-            !xx_list_append(destination, &copy)) {
+        if (!xx_var_copy(&copy.var, &original->var) || !xx_list_append(destination, &copy)) {
             xx_meta_cleanup(&copy);
             return false;
         }
@@ -569,19 +519,19 @@ static bool ardi_copy_options(xx_list_s *destination,
     return true;
 }
 
-static const xx_var *ardi_option(const xx_list_s *options, uint32_t id) {
+static const xx_var *ardi_option(const xx_list_s *options, uint32_t id)
+{
     size_t index;
     if (!options) return NULL;
     for (index = 0U; index < options->count; ++index) {
-        const xx_meta *meta =
-            (const xx_meta *)xx_list_at((const xx_list_t *)options, index);
+        const xx_meta *meta = (const xx_meta *)xx_list_at((const xx_list_t *)options, index);
         if (meta && meta->meta_id == id) return &meta->var;
     }
     return NULL;
 }
 
-static bool ardi_set_record(Abstractformat *format, xx_archive_record *record,
-                            const ardi_context *context, const char *label) {
+static bool ardi_set_record(Abstractformat *format, xx_archive_record *record, const ardi_context *context, const char *label)
+{
     xx_archive_record_cleanup(record);
     xx_archive_record_init(record);
     record->header_offset = format->base_address + context->record;
@@ -589,30 +539,21 @@ static bool ardi_set_record(Abstractformat *format, xx_archive_record *record,
     record->data_offset = format->base_address + context->stream;
     record->compressed_size = context->stream_size;
     if (!xx_archive_record_set_original_name(record, ARDI_MEMBER_NAME) ||
-        !xx_archive_record_set_meta_u64(record, XX_META_ID_COMPRESSED_SIZE,
-                                        (uint64_t)context->stream_size) ||
-        !xx_archive_record_set_meta_u64(record, XX_META_ID_UNCOMPRESSED_SIZE,
-                                        context->image_size) ||
-        !xx_archive_record_set_meta_u64(record, XX_META_ID_COMPRESSION_METHOD,
-                                        ARDI_METHOD_DEFLATE) ||
-        !xx_archive_record_set_meta_u64(record, XX_META_ID_CRC32,
-                                        context->image_crc) ||
-        !xx_archive_record_set_meta_bool(record, XX_META_ID_IS_ENCRYPTED,
-                                         false) ||
+        !xx_archive_record_set_meta_u64(record, XX_META_ID_COMPRESSED_SIZE, (uint64_t)context->stream_size) ||
+        !xx_archive_record_set_meta_u64(record, XX_META_ID_UNCOMPRESSED_SIZE, context->image_size) ||
+        !xx_archive_record_set_meta_u64(record, XX_META_ID_COMPRESSION_METHOD, ARDI_METHOD_DEFLATE) ||
+        !xx_archive_record_set_meta_u64(record, XX_META_ID_CRC32, context->image_crc) || !xx_archive_record_set_meta_bool(record, XX_META_ID_IS_ENCRYPTED, false) ||
         !xx_archive_record_set_meta_bool(record, XX_META_ID_IS_FOLDER, false))
         return false;
-    if (label && label[0] &&
-        !xx_archive_record_set_meta_str(record, XX_META_ID_COMMENT, label))
-        return false;
+    if (label && label[0] && !xx_archive_record_set_meta_str(record, XX_META_ID_COMMENT, label)) return false;
     return true;
 }
 
 /* ---------------------------------------------------------------------- */
 /* Public API                                                              */
 
-void xx_sfx_ardi_diskette_image_init(xx_sfx_ardi_diskette_image *archive,
-                                     xx_io_device *device,
-                                     int64_t base_address) {
+void xx_sfx_ardi_diskette_image_init(xx_sfx_ardi_diskette_image *archive, xx_io_device *device, int64_t base_address)
+{
     if (!archive) return;
     xx_mem_zero(archive, sizeof(*archive));
     xx_format_init(&archive->format, device, base_address);
@@ -623,54 +564,47 @@ void xx_sfx_ardi_diskette_image_init(xx_sfx_ardi_diskette_image *archive,
     xx_format_set_mime_type(&archive->format, "application/x-msdos-program");
     xx_format_set_extension(&archive->format, "exe");
     archive->format.check_is_valid = xx_sfx_ardi_diskette_image_check_is_valid;
-    archive->format.handle_base_info =
-        xx_sfx_ardi_diskette_image_handle_base_info;
-    archive->format.get_format_size =
-        xx_sfx_ardi_diskette_image_get_format_size;
-    archive->format.get_number_of_archive_records =
-        xx_sfx_ardi_diskette_image_get_number_of_archive_records;
-    archive->format.create_archive_records_reading =
-        xx_sfx_ardi_diskette_image_create_archive_records_reading;
-    archive->format.get_current_archive_record =
-        xx_sfx_ardi_diskette_image_get_current_archive_record;
-    archive->format.unpack_current_archive_record =
-        xx_sfx_ardi_diskette_image_unpack_current_archive_record;
-    archive->format.archive_record_move_to_next =
-        xx_sfx_ardi_diskette_image_archive_record_move_to_next;
-    archive->format.free_archive_records_reading =
-        xx_sfx_ardi_diskette_image_free_archive_records_reading;
+    archive->format.handle_base_info = xx_sfx_ardi_diskette_image_handle_base_info;
+    archive->format.get_format_size = xx_sfx_ardi_diskette_image_get_format_size;
+    archive->format.get_number_of_archive_records = xx_sfx_ardi_diskette_image_get_number_of_archive_records;
+    archive->format.create_archive_records_reading = xx_sfx_ardi_diskette_image_create_archive_records_reading;
+    archive->format.get_current_archive_record = xx_sfx_ardi_diskette_image_get_current_archive_record;
+    archive->format.unpack_current_archive_record = xx_sfx_ardi_diskette_image_unpack_current_archive_record;
+    archive->format.archive_record_move_to_next = xx_sfx_ardi_diskette_image_archive_record_move_to_next;
+    archive->format.free_archive_records_reading = xx_sfx_ardi_diskette_image_free_archive_records_reading;
     archive->record_offset = -1;
     archive->stream_offset = -1;
     archive->trailer_offset = -1;
     archive->prologue_size = -1;
 }
 
-xx_sfx_ardi_diskette_image *xx_sfx_ardi_diskette_image_create(
-    xx_io_device *device, int64_t base_address) {
-    xx_sfx_ardi_diskette_image *archive =
-        (xx_sfx_ardi_diskette_image *)xx_mem_alloc(sizeof(*archive));
+xx_sfx_ardi_diskette_image *xx_sfx_ardi_diskette_image_create(xx_io_device *device, int64_t base_address)
+{
+    xx_sfx_ardi_diskette_image *archive = (xx_sfx_ardi_diskette_image *)xx_mem_alloc(sizeof(*archive));
     if (archive) xx_sfx_ardi_diskette_image_init(archive, device, base_address);
     return archive;
 }
 
-void xx_sfx_ardi_diskette_image_destroy(xx_sfx_ardi_diskette_image *archive) {
+void xx_sfx_ardi_diskette_image_destroy(xx_sfx_ardi_diskette_image *archive)
+{
     if (archive) xx_format_cleanup_extra_parameters(&archive->format);
 }
 
-void xx_sfx_ardi_diskette_image_free(xx_sfx_ardi_diskette_image *archive) {
+void xx_sfx_ardi_diskette_image_free(xx_sfx_ardi_diskette_image *archive)
+{
     if (!archive) return;
     xx_sfx_ardi_diskette_image_destroy(archive);
     xx_mem_free(archive);
 }
 
-bool xx_sfx_ardi_diskette_image_check_is_valid(Abstractformat *format,
-                                               xx_pd_struct *pd) {
+bool xx_sfx_ardi_diskette_image_check_is_valid(Abstractformat *format, xx_pd_struct *pd)
+{
     ardi_context context;
     return ardi_parse(format, &context, pd);
 }
 
-bool xx_sfx_ardi_diskette_image_handle_base_info(Abstractformat *format,
-                                                 xx_pd_struct *pd) {
+bool xx_sfx_ardi_diskette_image_handle_base_info(Abstractformat *format, xx_pd_struct *pd)
+{
     ardi_context context;
     xx_sfx_ardi_diskette_image *archive;
     char version[16];
@@ -691,8 +625,7 @@ bool xx_sfx_ardi_diskette_image_handle_base_info(Abstractformat *format,
     xx_rt_memcpy(archive->year, context.year, sizeof(archive->year));
     /* A stream whose prologue cannot be taken apart still leaves a valid
      * container; the member then fails to extract. */
-    archive->prologue_size =
-        ardi_measure(format, &context, archive->label, pd);
+    archive->prologue_size = ardi_measure(format, &context, archive->label, pd);
     archive->number_of_records = 1U;
     xx_rt_memcpy(version, "1991-", 5U);
     xx_rt_memcpy(version + 5, context.year, 5U);
@@ -704,42 +637,33 @@ bool xx_sfx_ardi_diskette_image_handle_base_info(Abstractformat *format,
     return true;
 }
 
-int64_t xx_sfx_ardi_diskette_image_get_format_size(Abstractformat *format,
-                                                   xx_pd_struct *pd) {
-    return format && (format->base_info_handled ||
-                      xx_sfx_ardi_diskette_image_handle_base_info(format, pd))
-               ? format->format_size
-               : -1;
+int64_t xx_sfx_ardi_diskette_image_get_format_size(Abstractformat *format, xx_pd_struct *pd)
+{
+    return format && (format->base_info_handled || xx_sfx_ardi_diskette_image_handle_base_info(format, pd)) ? format->format_size : -1;
 }
 
-uint64_t xx_sfx_ardi_diskette_image_get_number_of_archive_records(
-    Abstractformat *format, xx_pd_struct *pd) {
-    return format && (format->base_info_handled ||
-                      xx_sfx_ardi_diskette_image_handle_base_info(format, pd))
-               ? ((xx_sfx_ardi_diskette_image *)format)->number_of_records
-               : 0U;
+uint64_t xx_sfx_ardi_diskette_image_get_number_of_archive_records(Abstractformat *format, xx_pd_struct *pd)
+{
+    return format && (format->base_info_handled || xx_sfx_ardi_diskette_image_handle_base_info(format, pd)) ? ((xx_sfx_ardi_diskette_image *)format)->number_of_records
+                                                                                                            : 0U;
 }
 
-bool xx_sfx_ardi_diskette_image_unpack_to_device(
-    xx_sfx_ardi_diskette_image *archive, xx_io_device *destination,
-    xx_pd_struct *pd) {
+bool xx_sfx_ardi_diskette_image_unpack_to_device(xx_sfx_ardi_diskette_image *archive, xx_io_device *destination, xx_pd_struct *pd)
+{
     ardi_context context;
     if (!archive || !ardi_parse(&archive->format, &context, pd)) return false;
     return ardi_decode(&archive->format, &context, destination, pd);
 }
 
-xx_archive_record_state *
-xx_sfx_ardi_diskette_image_create_archive_records_reading(
-    Abstractformat *format, const xx_list_s *options, xx_pd_struct *pd) {
+xx_archive_record_state *xx_sfx_ardi_diskette_image_create_archive_records_reading(Abstractformat *format, const xx_list_s *options, xx_pd_struct *pd)
+{
     ardi_stream *stream;
     xx_archive_record_state *state;
     ardi_context context;
     const char *label = NULL;
     if (!ardi_parse(format, &context, pd)) return NULL;
     /* The label comes from the prologue, which handle_base_info reads. */
-    if (format->base_info_handled ||
-        xx_sfx_ardi_diskette_image_handle_base_info(format, pd))
-        label = ((xx_sfx_ardi_diskette_image *)format)->label;
+    if (format->base_info_handled || xx_sfx_ardi_diskette_image_handle_base_info(format, pd)) label = ((xx_sfx_ardi_diskette_image *)format)->label;
     stream = (ardi_stream *)xx_mem_calloc(1U, sizeof(*stream));
     if (!stream) return NULL;
     stream->context = context;
@@ -753,9 +677,7 @@ xx_sfx_ardi_diskette_image_create_archive_records_reading(
     state->internal_state = stream;
     state->free_internal = ardi_stream_free;
     state->total_records = 1;
-    if (!ardi_copy_options(&state->options, options) ||
-        !ardi_set_record(format, &state->current_record, &stream->context,
-                         label)) {
+    if (!ardi_copy_options(&state->options, options) || !ardi_set_record(format, &state->current_record, &stream->context, label)) {
         xx_archive_record_state_free(state);
         return NULL;
     }
@@ -763,28 +685,24 @@ xx_sfx_ardi_diskette_image_create_archive_records_reading(
     return state;
 }
 
-const xx_archive_record *xx_sfx_ardi_diskette_image_get_current_archive_record(
-    Abstractformat *format, xx_archive_record_state *state) {
-    return format && state && state->format == format && state->has_record
-               ? &state->current_record
-               : NULL;
+const xx_archive_record *xx_sfx_ardi_diskette_image_get_current_archive_record(Abstractformat *format, xx_archive_record_state *state)
+{
+    return format && state && state->format == format && state->has_record ? &state->current_record : NULL;
 }
 
-bool xx_sfx_ardi_diskette_image_archive_record_move_to_next(
-    Abstractformat *format, xx_archive_record_state *state, xx_pd_struct *pd) {
+bool xx_sfx_ardi_diskette_image_archive_record_move_to_next(Abstractformat *format, xx_archive_record_state *state, xx_pd_struct *pd)
+{
     ardi_stream *stream;
     (void)pd;
-    if (!format || !state || state->format != format ||
-        !(stream = (ardi_stream *)state->internal_state) ||
-        ++stream->index >= stream->count) {
+    if (!format || !state || state->format != format || !(stream = (ardi_stream *)state->internal_state) || ++stream->index >= stream->count) {
         if (state) state->has_record = false;
         return false;
     }
     return false;
 }
 
-bool xx_sfx_ardi_diskette_image_unpack_current_archive_record(
-    Abstractformat *format, xx_archive_record_state *state, xx_pd_struct *pd) {
+bool xx_sfx_ardi_diskette_image_unpack_current_archive_record(Abstractformat *format, xx_archive_record_state *state, xx_pd_struct *pd)
+{
     ardi_stream *stream;
     const xx_var *path_option;
     const char *base = NULL;
@@ -792,27 +710,22 @@ bool xx_sfx_ardi_diskette_image_unpack_current_archive_record(
     char *path = NULL;
     bool result = false;
     bool created = false;
-    if (!format || !state || state->format != format || !state->has_record ||
-        !(stream = (ardi_stream *)state->internal_state) ||
-        stream->index >= stream->count || (pd && xx_pd_is_stopped(pd)))
+    if (!format || !state || state->format != format || !state->has_record || !(stream = (ardi_stream *)state->internal_state) || stream->index >= stream->count ||
+        (pd && xx_pd_is_stopped(pd)))
         return false;
     path_option = ardi_option(&state->options, XX_META_ID_OPT_UNPACK_PATH);
     if (!path_option) return ardi_decode(format, &stream->context, NULL, pd);
-    if (path_option->type == XX_VAR_TYPE_STRING ||
-        path_option->type == XX_VAR_TYPE_STRING_VIEW) {
+    if (path_option->type == XX_VAR_TYPE_STRING || path_option->type == XX_VAR_TYPE_STRING_VIEW) {
         base = xx_var_get_str(path_option);
-    } else if (path_option->type == XX_VAR_TYPE_WSTRING ||
-               path_option->type == XX_VAR_TYPE_WSTRING_VIEW) {
+    } else if (path_option->type == XX_VAR_TYPE_WSTRING || path_option->type == XX_VAR_TYPE_WSTRING_VIEW) {
         owned_base = xx_str_unicode_to_utf8(xx_var_get_wstr(path_option));
         base = owned_base;
     }
     if (!base) goto done;
     /* The member name is the reader's own constant, never taken from the
      * file, so it needs no sanitising. */
-    path = (base[0] && base[xx_str_len(base) - 1U] != '/' &&
-            base[xx_str_len(base) - 1U] != '\\')
-               ? xx_str_concat3(base, "/", ARDI_MEMBER_NAME)
-               : xx_str_concat(base, ARDI_MEMBER_NAME);
+    path = (base[0] && base[xx_str_len(base) - 1U] != '/' && base[xx_str_len(base) - 1U] != '\\') ? xx_str_concat3(base, "/", ARDI_MEMBER_NAME)
+                                                                                                  : xx_str_concat(base, ARDI_MEMBER_NAME);
     if (!path || !xx_store_create_dirs_a(path, false)) goto done;
     {
         xx_io_device *destination = xx_io_file_open(path, "wb");
@@ -828,8 +741,8 @@ done:
     return result;
 }
 
-void xx_sfx_ardi_diskette_image_free_archive_records_reading(
-    Abstractformat *format, xx_archive_record_state *state) {
+void xx_sfx_ardi_diskette_image_free_archive_records_reading(Abstractformat *format, xx_archive_record_state *state)
+{
     (void)format;
     xx_archive_record_state_free(state);
 }

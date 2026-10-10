@@ -115,7 +115,11 @@
 #define ZPI_METHOD_DCL 1U
 #define ZPI_RENAME_PASSES 4U
 
-enum { ZPI_UNMEASURED = 0, ZPI_MEASURED = 1, ZPI_UNMEASURABLE = 2 };
+enum {
+    ZPI_UNMEASURED = 0,
+    ZPI_MEASURED = 1,
+    ZPI_UNMEASURABLE = 2
+};
 
 typedef struct zpi_member_s {
     char *name;
@@ -125,9 +129,9 @@ typedef struct zpi_member_s {
     int64_t compressed_size;
     int64_t uncompressed_size;
     uint32_t timestamp;
-    uint32_t record;   /* zero-based position in the archive */
+    uint32_t record; /* zero-based position in the archive */
     int measure;
-    bool safe;         /* the name may be written below the destination */
+    bool safe; /* the name may be written below the destination */
 } zpi_member;
 
 typedef struct zpi_stream_s {
@@ -138,22 +142,19 @@ typedef struct zpi_stream_s {
 } zpi_stream;
 
 typedef struct zpi_layout_s {
-    int64_t span;            /* bytes from base to EOF */
-    int64_t header;          /* "-ZPAK" header, relative to base */
-    int64_t trailer;         /* trailer, relative to base */
+    int64_t span;    /* bytes from base to EOF */
+    int64_t header;  /* "-ZPAK" header, relative to base */
+    int64_t trailer; /* trailer, relative to base */
     uint32_t count;
     uint16_t version;
 } zpi_layout;
 
 /* ------------------------------------------------------------- helpers -- */
 
-static bool zpi_read(Abstractformat *self, int64_t relative, uint8_t *buffer,
-                     size_t size) {
+static bool zpi_read(Abstractformat *self, int64_t relative, uint8_t *buffer, size_t size)
+{
     size_t done = 0U;
-    if (!self || !self->device || relative < 0 ||
-        self->base_address > INT64_MAX - relative ||
-        xx_io_seek64(self->device, self->base_address + relative, SEEK_SET) !=
-            0) {
+    if (!self || !self->device || relative < 0 || self->base_address > INT64_MAX - relative || xx_io_seek64(self->device, self->base_address + relative, SEEK_SET) != 0) {
         return false;
     }
     while (done < size) {
@@ -164,23 +165,24 @@ static bool zpi_read(Abstractformat *self, int64_t relative, uint8_t *buffer,
     return true;
 }
 
-static bool zpi_is_prelude(const uint8_t *prelude) {
-    return prelude[0] <= ZPI_DCL_MAX_LITERAL_MODE &&
-           prelude[1] >= ZPI_DCL_MIN_DICT_BITS &&
-           prelude[1] <= ZPI_DCL_MAX_DICT_BITS;
+static bool zpi_is_prelude(const uint8_t *prelude)
+{
+    return prelude[0] <= ZPI_DCL_MAX_LITERAL_MODE && prelude[1] >= ZPI_DCL_MIN_DICT_BITS && prelude[1] <= ZPI_DCL_MAX_DICT_BITS;
 }
 
-static bool zpi_prelude_at(Abstractformat *self, int64_t relative) {
+static bool zpi_prelude_at(Abstractformat *self, int64_t relative)
+{
     uint8_t prelude[2];
-    return zpi_read(self, relative, prelude, sizeof(prelude)) &&
-           zpi_is_prelude(prelude);
+    return zpi_read(self, relative, prelude, sizeof(prelude)) && zpi_is_prelude(prelude);
 }
 
-static char zpi_fold(char c) {
+static char zpi_fold(char c)
+{
     return (c >= 'a' && c <= 'z') ? (char)(c - 'a' + 'A') : c;
 }
 
-static int zpi_name_compare(const char *a, const char *b) {
+static int zpi_name_compare(const char *a, const char *b)
+{
     for (;;) {
         char x = zpi_fold(*a++);
         char y = zpi_fold(*b++);
@@ -189,7 +191,8 @@ static int zpi_name_compare(const char *a, const char *b) {
     }
 }
 
-static void zpi_stream_free(void *opaque) {
+static void zpi_stream_free(void *opaque)
+{
     zpi_stream *stream = (zpi_stream *)opaque;
     size_t index;
     if (!stream) return;
@@ -206,7 +209,8 @@ static void zpi_stream_free(void *opaque) {
  * neither a separator nor a blank: anything else means the record is not
  * what this parser thinks it is. The probe and the listing apply the same
  * test, so zpi_normalise below never runs out of name. */
-static bool zpi_name_printable(const uint8_t *name, size_t length) {
+static bool zpi_name_printable(const uint8_t *name, size_t length)
+{
     size_t index;
     bool component = false;
     if (length == 0U) return false;
@@ -222,7 +226,8 @@ static bool zpi_name_printable(const uint8_t *name, size_t length) {
 /* '\' and '/' both separate; empty components (the leading install-root
  * separator, a doubled one) are dropped and blank padding is trimmed from
  * each component. Returns NULL when nothing is left or allocation fails. */
-static char *zpi_normalise(const uint8_t *name, size_t length) {
+static char *zpi_normalise(const uint8_t *name, size_t length)
+{
     char *out = xx_str_create_len(length);
     size_t start = 0U;
     size_t at = 0U;
@@ -246,8 +251,7 @@ static char *zpi_normalise(const uint8_t *name, size_t length) {
          * refuse ("..", "..."). */
         {
             size_t trimmed = end;
-            while (trimmed > begin && (name[trimmed - 1U] == '.' ||
-                                       name[trimmed - 1U] == ' ')) {
+            while (trimmed > begin && (name[trimmed - 1U] == '.' || name[trimmed - 1U] == ' ')) {
                 --trimmed;
             }
             if (trimmed > begin) end = trimmed;
@@ -260,8 +264,7 @@ static char *zpi_normalise(const uint8_t *name, size_t length) {
          * system. */
         while (begin < end) {
             char c = (char)name[begin++];
-            if (c == '~' && begin < end && name[begin] >= '0' &&
-                name[begin] <= '9') {
+            if (c == '~' && begin < end && name[begin] >= '0' && name[begin] <= '9') {
                 c = '_';
             }
             out[at++] = c;
@@ -275,8 +278,8 @@ static char *zpi_normalise(const uint8_t *name, size_t length) {
     return out;
 }
 
-static bool zpi_stem_is(const char *component, size_t stem,
-                        const char *device) {
+static bool zpi_stem_is(const char *component, size_t stem, const char *device)
+{
     size_t index;
     for (index = 0U; index < stem; ++index) {
         if (!device[index] || zpi_fold(component[index]) != device[index]) {
@@ -289,19 +292,16 @@ static bool zpi_stem_is(const char *component, size_t stem,
 /* One '/'-free component of an output path: no reserved punctuation, not
  * only dots and blanks (which Windows resolves to "." or ".."), and not a
  * DOS device name with or without an extension. */
-static bool zpi_component_safe(const char *component, size_t length) {
-    static const char *const devices[] = {"CON",    "PRN",     "AUX",
-                                          "NUL",    "CONIN$",  "CONOUT$",
-                                          "CLOCK$"};
+static bool zpi_component_safe(const char *component, size_t length)
+{
+    static const char *const devices[] = {"CON", "PRN", "AUX", "NUL", "CONIN$", "CONOUT$", "CLOCK$"};
     size_t index;
     size_t stem = 0U;
     bool meaningful = false;
     if (length == 0U) return false;
     for (index = 0U; index < length; ++index) {
         char c = component[index];
-        if ((unsigned char)c < 0x20U || (unsigned char)c > 0x7EU ||
-            c == '\\' || c == ':' || c == '<' || c == '>' || c == '"' ||
-            c == '|' || c == '?' || c == '*') {
+        if ((unsigned char)c < 0x20U || (unsigned char)c > 0x7EU || c == '\\' || c == ':' || c == '<' || c == '>' || c == '"' || c == '|' || c == '?' || c == '*') {
             return false;
         }
         if (c != '.' && c != ' ') meaningful = true;
@@ -313,16 +313,15 @@ static bool zpi_component_safe(const char *component, size_t length) {
         if (zpi_stem_is(component, stem, devices[index])) return false;
     }
     if (stem == 4U && component[3] >= '0' && component[3] <= '9' &&
-        ((zpi_fold(component[0]) == 'C' && zpi_fold(component[1]) == 'O' &&
-          zpi_fold(component[2]) == 'M') ||
-         (zpi_fold(component[0]) == 'L' && zpi_fold(component[1]) == 'P' &&
-          zpi_fold(component[2]) == 'T'))) {
+        ((zpi_fold(component[0]) == 'C' && zpi_fold(component[1]) == 'O' && zpi_fold(component[2]) == 'M') ||
+         (zpi_fold(component[0]) == 'L' && zpi_fold(component[1]) == 'P' && zpi_fold(component[2]) == 'T'))) {
         return false;
     }
     return true;
 }
 
-static bool zpi_path_safe(const char *path) {
+static bool zpi_path_safe(const char *path)
+{
     const char *cursor = path;
     if (!path || !path[0] || path[0] == '/') return false;
     while (*cursor) {
@@ -334,7 +333,8 @@ static bool zpi_path_safe(const char *path) {
     return true;
 }
 
-static size_t zpi_put_decimal(char *out, uint64_t value) {
+static size_t zpi_put_decimal(char *out, uint64_t value)
+{
     char digits[24];
     size_t count = 0U;
     size_t index;
@@ -349,7 +349,8 @@ static size_t zpi_put_decimal(char *out, uint64_t value) {
 }
 
 /* "<stem>_<number>[_<pass>]<extension>", in the last path component. */
-static char *zpi_renamed(const char *name, uint64_t number, unsigned pass) {
+static char *zpi_renamed(const char *name, uint64_t number, unsigned pass)
+{
     size_t length = xx_str_len(name);
     size_t component = 0U;
     size_t insert = length;
@@ -384,14 +385,16 @@ static char *zpi_renamed(const char *name, uint64_t number, unsigned pass) {
     return out;
 }
 
-static bool zpi_less(const zpi_member *a, const zpi_member *b) {
+static bool zpi_less(const zpi_member *a, const zpi_member *b)
+{
     int order = zpi_name_compare(a->name, b->name);
     if (order != 0) return order < 0;
     return a->record < b->record;
 }
 
 /* Shell sort of an index array by folded name, then record number. */
-static void zpi_sort(size_t *order, size_t count, const zpi_member *items) {
+static void zpi_sort(size_t *order, size_t count, const zpi_member *items)
+{
     size_t gap = 1U;
     size_t index;
     for (index = 0U; index < count; ++index) order[index] = index;
@@ -400,8 +403,7 @@ static void zpi_sort(size_t *order, size_t count, const zpi_member *items) {
         for (index = gap; index < count; ++index) {
             size_t value = order[index];
             size_t slot = index;
-            while (slot >= gap &&
-                   zpi_less(&items[value], &items[order[slot - gap]])) {
+            while (slot >= gap && zpi_less(&items[value], &items[order[slot - gap]])) {
                 order[slot] = order[slot - gap];
                 slot -= gap;
             }
@@ -413,7 +415,8 @@ static void zpi_sort(size_t *order, size_t count, const zpi_member *items) {
 /* The earliest record keeps a shared name, later ones get their record
  * number appended; whatever still collides after the last pass is listed
  * but not extracted. */
-static bool zpi_make_unique(zpi_stream *stream) {
+static bool zpi_make_unique(zpi_stream *stream)
+{
     size_t *order;
     unsigned pass;
     size_t index;
@@ -428,8 +431,7 @@ static bool zpi_make_unique(zpi_stream *stream) {
         for (index = 1U; index < stream->count; ++index) {
             zpi_member *later = &stream->items[order[index]];
             char *renamed;
-            if (zpi_name_compare(stream->items[anchor].name, later->name) !=
-                0) {
+            if (zpi_name_compare(stream->items[anchor].name, later->name) != 0) {
                 anchor = order[index];
                 continue;
             }
@@ -437,8 +439,7 @@ static bool zpi_make_unique(zpi_stream *stream) {
                 later->safe = false;
                 continue;
             }
-            renamed = zpi_renamed(later->name, (uint64_t)later->record + 1U,
-                                  pass);
+            renamed = zpi_renamed(later->name, (uint64_t)later->record + 1U, pass);
             if (!renamed) {
                 xx_mem_free(order);
                 return false;
@@ -456,14 +457,14 @@ static bool zpi_make_unique(zpi_stream *stream) {
 /* --------------------------------------------------------------- parse -- */
 
 /* Append a member, taking ownership of its name. */
-static bool zpi_add(zpi_stream *stream, const zpi_member *member) {
+static bool zpi_add(zpi_stream *stream, const zpi_member *member)
+{
     if (stream->count == stream->capacity) {
         size_t grown = stream->capacity ? stream->capacity * 2U : 16U;
         zpi_member *items;
         if (grown > ZPI_MAX_MEMBERS) grown = ZPI_MAX_MEMBERS;
         if (grown <= stream->count) return false;
-        items = (zpi_member *)xx_mem_realloc(stream->items,
-                                             grown * sizeof(*items));
+        items = (zpi_member *)xx_mem_realloc(stream->items, grown * sizeof(*items));
         if (!items) return false;
         stream->items = items;
         stream->capacity = grown;
@@ -473,8 +474,8 @@ static bool zpi_add(zpi_stream *stream, const zpi_member *member) {
 }
 
 /* Records a validated member in @p stream (when one is given). */
-static bool zpi_emit(zpi_stream *stream, const uint8_t *name, size_t length,
-                     const zpi_member *fields) {
+static bool zpi_emit(zpi_stream *stream, const uint8_t *name, size_t length, const zpi_member *fields)
+{
     zpi_member member;
     if (!stream) return true;
     member = *fields;
@@ -489,10 +490,9 @@ static bool zpi_emit(zpi_stream *stream, const uint8_t *name, size_t length,
     return true;
 }
 
-static bool zpi_walk_v1(Abstractformat *self, const zpi_layout *layout,
-                        zpi_stream *stream, xx_pd_struct *pd) {
-    int64_t directory = layout->trailer -
-                        (int64_t)layout->count * ZPI_V1_ENTRY;
+static bool zpi_walk_v1(Abstractformat *self, const zpi_layout *layout, zpi_stream *stream, xx_pd_struct *pd)
+{
+    int64_t directory = layout->trailer - (int64_t)layout->count * ZPI_V1_ENTRY;
     int64_t offset = layout->header + ZPI_HEADER_SIZE;
     uint32_t index;
     /* The payload must hold at least one minimal stream before the
@@ -528,9 +528,7 @@ static bool zpi_walk_v1(Abstractformat *self, const zpi_layout *layout,
         fields.header_size = ZPI_V1_ENTRY;
         fields.data_offset = self->base_address + offset;
         fields.compressed_size = packed;
-        fields.timestamp =
-            ((uint32_t)xx_data_get_u16(entry + ZPI_V1_NAME + 8, 2, 0, false) << 16) |
-            (uint32_t)xx_data_get_u16(entry + ZPI_V1_NAME + 10, 2, 0, false);
+        fields.timestamp = ((uint32_t)xx_data_get_u16(entry + ZPI_V1_NAME + 8, 2, 0, false) << 16) | (uint32_t)xx_data_get_u16(entry + ZPI_V1_NAME + 10, 2, 0, false);
         fields.record = index;
         if (!zpi_emit(stream, entry, terminator, &fields)) return false;
         offset += packed;
@@ -540,8 +538,8 @@ static bool zpi_walk_v1(Abstractformat *self, const zpi_layout *layout,
     return offset == directory;
 }
 
-static bool zpi_walk_v2(Abstractformat *self, const zpi_layout *layout,
-                        zpi_stream *stream, xx_pd_struct *pd) {
+static bool zpi_walk_v2(Abstractformat *self, const zpi_layout *layout, zpi_stream *stream, xx_pd_struct *pd)
+{
     int64_t offset = layout->header + ZPI_HEADER_SIZE;
     uint32_t index;
     for (index = 0U; index < layout->count; ++index) {
@@ -553,17 +551,13 @@ static bool zpi_walk_v2(Abstractformat *self, const zpi_layout *layout,
         int64_t data;
         size_t length = 0U;
         if (pd && xx_pd_is_stopped(pd)) return false;
-        if (offset > layout->trailer - ZPI_V2_RECORD ||
-            !zpi_read(self, offset, record, sizeof(record)) ||
-            record[0] != ZPI_V2_TAG) {
+        if (offset > layout->trailer - ZPI_V2_RECORD || !zpi_read(self, offset, record, sizeof(record)) || record[0] != ZPI_V2_TAG) {
             return false;
         }
         packed = (int64_t)(int32_t)xx_data_get_u32(record + 2, 4, 0, false);
         /* record + 6 is writer scratch, deliberately not read. */
         name_size = (int64_t)(int16_t)xx_data_get_u16(record + 14, 2, 0, false);
-        if (packed < ZPI_MIN_PACKED || name_size <= 0 ||
-            name_size > ZPI_MAX_NAME ||
-            name_size > layout->trailer - offset - ZPI_V2_RECORD) {
+        if (packed < ZPI_MIN_PACKED || name_size <= 0 || name_size > ZPI_MAX_NAME || name_size > layout->trailer - offset - ZPI_V2_RECORD) {
             return false;
         }
         data = offset + ZPI_V2_RECORD + name_size;
@@ -581,29 +575,26 @@ static bool zpi_walk_v2(Abstractformat *self, const zpi_layout *layout,
         fields.header_size = ZPI_V2_RECORD + name_size;
         fields.data_offset = self->base_address + data;
         fields.compressed_size = packed;
-        fields.timestamp = ((uint32_t)xx_data_get_u16(record + 10, 2, 0, false) << 16) |
-                           (uint32_t)xx_data_get_u16(record + 12, 2, 0, false);
+        fields.timestamp = ((uint32_t)xx_data_get_u16(record + 10, 2, 0, false) << 16) | (uint32_t)xx_data_get_u16(record + 12, 2, 0, false);
         fields.record = index;
         if (!zpi_emit(stream, name, length, &fields)) return false;
         offset = data + packed;
     }
     /* No directory to land on: the filler in front of the trailer is the
      * only structural check left. */
-    return offset <= layout->trailer &&
-           layout->trailer - offset <= ZPI_V2_MAX_GAP;
+    return offset <= layout->trailer && layout->trailer - offset <= ZPI_V2_MAX_GAP;
 }
 
 /* Reads the trailer of one version and checks the header it points at. */
-static bool zpi_locate(Abstractformat *self, int64_t span, uint16_t version,
-                       zpi_layout *layout) {
+static bool zpi_locate(Abstractformat *self, int64_t span, uint16_t version, zpi_layout *layout)
+{
     uint8_t trailer[ZPI_V2_TRAILER];
     uint8_t header[ZPI_HEADER_PROBE];
     int64_t trailer_size = version == 2U ? ZPI_V2_TRAILER : ZPI_V1_TRAILER;
     int64_t trailer_offset = span - trailer_size;
     int64_t header_offset;
     int64_t count;
-    if (trailer_offset < ZPI_MIN_STUB + ZPI_HEADER_SIZE + ZPI_MIN_PACKED ||
-        !zpi_read(self, trailer_offset, trailer, (size_t)trailer_size)) {
+    if (trailer_offset < ZPI_MIN_STUB + ZPI_HEADER_SIZE + ZPI_MIN_PACKED || !zpi_read(self, trailer_offset, trailer, (size_t)trailer_size)) {
         return false;
     }
     if (version == 2U) {
@@ -616,17 +607,14 @@ static bool zpi_locate(Abstractformat *self, int64_t span, uint16_t version,
     if (count < 1 || count > ZPI_MAX_MEMBERS) return false;
     /* A self-extractor always has a stub in front of its archive; the bare
      * archive at offset 0 belongs to xx_ibmzpak. */
-    if (header_offset < ZPI_MIN_STUB ||
-        header_offset > trailer_offset - ZPI_HEADER_PROBE) {
+    if (header_offset < ZPI_MIN_STUB || header_offset > trailer_offset - ZPI_HEADER_PROBE) {
         return false;
     }
-    if (!zpi_read(self, header_offset, header, sizeof(header)) ||
-        xx_rt_memcmp(header, "-ZPAK", 5U) != 0 || header[5] != 0U ||
+    if (!zpi_read(self, header_offset, header, sizeof(header)) || xx_rt_memcmp(header, "-ZPAK", 5U) != 0 || header[5] != 0U ||
         xx_data_get_u16(header + 6, 2, 0, false) != version) {
         return false;
     }
-    if (version == 2U ? header[8] != ZPI_V2_TAG
-                      : !zpi_is_prelude(header + 8)) {
+    if (version == 2U ? header[8] != ZPI_V2_TAG : !zpi_is_prelude(header + 8)) {
         return false;
     }
     layout->span = span;
@@ -638,8 +626,8 @@ static bool zpi_locate(Abstractformat *self, int64_t span, uint16_t version,
 }
 
 /* Validates the container; with @p stream also collects the members. */
-static bool zpi_parse(Abstractformat *self, zpi_layout *layout,
-                      zpi_stream *stream, xx_pd_struct *pd) {
+static bool zpi_parse(Abstractformat *self, zpi_layout *layout, zpi_stream *stream, xx_pd_struct *pd)
+{
     uint8_t mz[2];
     int64_t total;
     int64_t span;
@@ -651,20 +639,16 @@ static bool zpi_parse(Abstractformat *self, zpi_layout *layout,
     total = xx_io_total_size(self->device);
     if (total < self->base_address) return false;
     span = total - self->base_address;
-    if (span < ZPI_MIN_STUB + ZPI_HEADER_SIZE + ZPI_MIN_PACKED +
-                   ZPI_V1_TRAILER ||
-        !zpi_read(self, 0, mz, sizeof(mz)) || mz[0] != 'M' || mz[1] != 'Z') {
+    if (span < ZPI_MIN_STUB + ZPI_HEADER_SIZE + ZPI_MIN_PACKED + ZPI_V1_TRAILER || !zpi_read(self, 0, mz, sizeof(mz)) || mz[0] != 'M' || mz[1] != 'Z') {
         return false;
     }
     for (version = 2U; version >= 1U; --version) {
         bool walked;
         xx_mem_zero(layout, sizeof(*layout));
         if (!zpi_locate(self, span, version, layout)) continue;
-        walked = version == 2U ? zpi_walk_v2(self, layout, stream, pd)
-                               : zpi_walk_v1(self, layout, stream, pd);
+        walked = version == 2U ? zpi_walk_v2(self, layout, stream, pd) : zpi_walk_v1(self, layout, stream, pd);
         if (walked) {
-            return !stream || (stream->count == layout->count &&
-                               zpi_make_unique(stream));
+            return !stream || (stream->count == layout->count && zpi_make_unique(stream));
         }
         if (stream) {
             size_t index;
@@ -679,17 +663,15 @@ static bool zpi_parse(Abstractformat *self, zpi_layout *layout,
 
 /* ------------------------------------------------------------- members -- */
 
-static uint8_t *zpi_load(Abstractformat *self, const zpi_member *member) {
+static uint8_t *zpi_load(Abstractformat *self, const zpi_member *member)
+{
     uint8_t *packed;
-    if (member->compressed_size < ZPI_MIN_PACKED ||
-        member->compressed_size > ZPI_MAX_PACKED ||
-        (uint64_t)member->compressed_size > (uint64_t)SIZE_MAX) {
+    if (member->compressed_size < ZPI_MIN_PACKED || member->compressed_size > ZPI_MAX_PACKED || (uint64_t)member->compressed_size > (uint64_t)SIZE_MAX) {
         return NULL;
     }
     packed = (uint8_t *)xx_mem_alloc((size_t)member->compressed_size);
     if (!packed) return NULL;
-    if (!zpi_read(self, member->data_offset - self->base_address, packed,
-                  (size_t)member->compressed_size)) {
+    if (!zpi_read(self, member->data_offset - self->base_address, packed, (size_t)member->compressed_size)) {
         xx_mem_free(packed);
         return NULL;
     }
@@ -698,7 +680,8 @@ static uint8_t *zpi_load(Abstractformat *self, const zpi_member *member) {
 
 /* Recovers the plaintext length, which the container does not store. The
  * decoder must stop exactly at the stored compressed size. */
-static void zpi_measure(Abstractformat *self, zpi_member *member) {
+static void zpi_measure(Abstractformat *self, zpi_member *member)
+{
     uint8_t *packed;
     size_t consumed = 0U;
     size_t produced = 0U;
@@ -706,9 +689,7 @@ static void zpi_measure(Abstractformat *self, zpi_member *member) {
     member->measure = ZPI_UNMEASURABLE;
     packed = zpi_load(self, member);
     if (!packed) return;
-    if (xx_dcl_scan_memory(packed, (size_t)member->compressed_size,
-                           ZPI_MAX_DECODED, &consumed, &produced) &&
-        consumed == (size_t)member->compressed_size &&
+    if (xx_dcl_scan_memory(packed, (size_t)member->compressed_size, ZPI_MAX_DECODED, &consumed, &produced) && consumed == (size_t)member->compressed_size &&
         produced <= ZPI_MAX_DECODED) {
         member->uncompressed_size = (int64_t)produced;
         member->measure = ZPI_MEASURED;
@@ -716,8 +697,8 @@ static void zpi_measure(Abstractformat *self, zpi_member *member) {
     xx_mem_free(packed);
 }
 
-static bool zpi_decode(Abstractformat *self, zpi_member *member,
-                       uint8_t **out, size_t *out_size, xx_pd_struct *pd) {
+static bool zpi_decode(Abstractformat *self, zpi_member *member, uint8_t **out, size_t *out_size, xx_pd_struct *pd)
+{
     uint8_t *packed;
     uint8_t *plain;
     size_t written = 0U;
@@ -734,8 +715,7 @@ static bool zpi_decode(Abstractformat *self, zpi_member *member,
         xx_mem_free(packed);
         return false;
     }
-    if (!xx_dcl_decode_memory(packed, (size_t)member->compressed_size, plain,
-                              (size_t)member->uncompressed_size, &written) ||
+    if (!xx_dcl_decode_memory(packed, (size_t)member->compressed_size, plain, (size_t)member->uncompressed_size, &written) ||
         written != (size_t)member->uncompressed_size) {
         xx_mem_free(plain);
         xx_mem_free(packed);
@@ -747,8 +727,8 @@ static bool zpi_decode(Abstractformat *self, zpi_member *member,
     return true;
 }
 
-static bool zpi_set_record(Abstractformat *self, xx_archive_record *record,
-                           zpi_member *member) {
+static bool zpi_set_record(Abstractformat *self, xx_archive_record *record, zpi_member *member)
+{
     bool result;
     zpi_measure(self, member);
     xx_archive_record_cleanup(record);
@@ -757,30 +737,22 @@ static bool zpi_set_record(Abstractformat *self, xx_archive_record *record,
     record->header_size = member->header_size;
     record->data_offset = member->data_offset;
     record->compressed_size = member->compressed_size;
-    result =
-        xx_archive_record_set_original_name(record, member->name) &&
-        xx_archive_record_set_meta_u64(record, XX_META_ID_COMPRESSED_SIZE,
-                                       (uint64_t)member->compressed_size) &&
-        xx_archive_record_set_meta_u64(record, XX_META_ID_COMPRESSION_METHOD,
-                                       ZPI_METHOD_DCL) &&
-        xx_archive_record_set_meta_u64(record, XX_META_ID_TIMESTAMP,
-                                       member->timestamp) &&
-        xx_archive_record_set_meta_bool(record, XX_META_ID_IS_FOLDER, false) &&
-        xx_archive_record_set_meta_bool(record, XX_META_ID_IS_ENCRYPTED,
-                                        false);
+    result = xx_archive_record_set_original_name(record, member->name) &&
+             xx_archive_record_set_meta_u64(record, XX_META_ID_COMPRESSED_SIZE, (uint64_t)member->compressed_size) &&
+             xx_archive_record_set_meta_u64(record, XX_META_ID_COMPRESSION_METHOD, ZPI_METHOD_DCL) &&
+             xx_archive_record_set_meta_u64(record, XX_META_ID_TIMESTAMP, member->timestamp) && xx_archive_record_set_meta_bool(record, XX_META_ID_IS_FOLDER, false) &&
+             xx_archive_record_set_meta_bool(record, XX_META_ID_IS_ENCRYPTED, false);
     /* A stream the decoder cannot measure has no honest size to publish. */
     if (result && member->measure == ZPI_MEASURED) {
-        result = xx_archive_record_set_meta_u64(
-            record, XX_META_ID_UNCOMPRESSED_SIZE,
-            (uint64_t)member->uncompressed_size);
+        result = xx_archive_record_set_meta_u64(record, XX_META_ID_UNCOMPRESSED_SIZE, (uint64_t)member->uncompressed_size);
     }
     return result;
 }
 
 /* ---------------------------------------------------------- lifecycle --- */
 
-void xx_ibm_zpak_installer_init(xx_ibm_zpak_installer *archive,
-                                xx_io_device *device, int64_t base_address) {
+void xx_ibm_zpak_installer_init(xx_ibm_zpak_installer *archive, xx_io_device *device, int64_t base_address)
+{
     if (!archive) return;
     xx_mem_zero(archive, sizeof(*archive));
     xx_format_init(&archive->format, device, base_address);
@@ -793,35 +765,30 @@ void xx_ibm_zpak_installer_init(xx_ibm_zpak_installer *archive,
     archive->format.check_is_valid = xx_ibm_zpak_installer_check_is_valid;
     archive->format.handle_base_info = xx_ibm_zpak_installer_handle_base_info;
     archive->format.get_format_size = xx_ibm_zpak_installer_get_format_size;
-    archive->format.get_number_of_archive_records =
-        xx_ibm_zpak_installer_get_number_of_archive_records;
-    archive->format.create_archive_records_reading =
-        xx_ibm_zpak_installer_create_archive_records_reading;
-    archive->format.get_current_archive_record =
-        xx_ibm_zpak_installer_get_current_archive_record;
-    archive->format.unpack_current_archive_record =
-        xx_ibm_zpak_installer_unpack_current_archive_record;
-    archive->format.archive_record_move_to_next =
-        xx_ibm_zpak_installer_archive_record_move_to_next;
-    archive->format.free_archive_records_reading =
-        xx_ibm_zpak_installer_free_archive_records_reading;
+    archive->format.get_number_of_archive_records = xx_ibm_zpak_installer_get_number_of_archive_records;
+    archive->format.create_archive_records_reading = xx_ibm_zpak_installer_create_archive_records_reading;
+    archive->format.get_current_archive_record = xx_ibm_zpak_installer_get_current_archive_record;
+    archive->format.unpack_current_archive_record = xx_ibm_zpak_installer_unpack_current_archive_record;
+    archive->format.archive_record_move_to_next = xx_ibm_zpak_installer_archive_record_move_to_next;
+    archive->format.free_archive_records_reading = xx_ibm_zpak_installer_free_archive_records_reading;
 }
 
-xx_ibm_zpak_installer *xx_ibm_zpak_installer_create(xx_io_device *device,
-                                                    int64_t base_address) {
-    xx_ibm_zpak_installer *archive =
-        (xx_ibm_zpak_installer *)xx_mem_alloc(sizeof(*archive));
+xx_ibm_zpak_installer *xx_ibm_zpak_installer_create(xx_io_device *device, int64_t base_address)
+{
+    xx_ibm_zpak_installer *archive = (xx_ibm_zpak_installer *)xx_mem_alloc(sizeof(*archive));
     if (archive) xx_ibm_zpak_installer_init(archive, device, base_address);
     return archive;
 }
 
-void xx_ibm_zpak_installer_destroy(xx_ibm_zpak_installer *archive) {
+void xx_ibm_zpak_installer_destroy(xx_ibm_zpak_installer *archive)
+{
     if (!archive) return;
     xx_format_cleanup_extra_parameters(&archive->format);
     archive->number_of_records = 0U;
 }
 
-void xx_ibm_zpak_installer_free(xx_ibm_zpak_installer *archive) {
+void xx_ibm_zpak_installer_free(xx_ibm_zpak_installer *archive)
+{
     if (!archive) return;
     xx_ibm_zpak_installer_destroy(archive);
     xx_mem_free(archive);
@@ -829,14 +796,14 @@ void xx_ibm_zpak_installer_free(xx_ibm_zpak_installer *archive) {
 
 /* -------------------------------------------------------------- format -- */
 
-bool xx_ibm_zpak_installer_check_is_valid(Abstractformat *self,
-                                          xx_pd_struct *pd) {
+bool xx_ibm_zpak_installer_check_is_valid(Abstractformat *self, xx_pd_struct *pd)
+{
     zpi_layout layout;
     return zpi_parse(self, &layout, NULL, pd);
 }
 
-bool xx_ibm_zpak_installer_handle_base_info(Abstractformat *self,
-                                            xx_pd_struct *pd) {
+bool xx_ibm_zpak_installer_handle_base_info(Abstractformat *self, xx_pd_struct *pd)
+{
     xx_ibm_zpak_installer *archive = (xx_ibm_zpak_installer *)self;
     zpi_layout layout;
     if (!self) return false;
@@ -859,38 +826,34 @@ bool xx_ibm_zpak_installer_handle_base_info(Abstractformat *self,
     return true;
 }
 
-int64_t xx_ibm_zpak_installer_get_format_size(Abstractformat *self,
-                                              xx_pd_struct *pd) {
-    if (!self ||
-        (!self->base_info_handled && !xx_format_handle_base_info(self, pd))) {
+int64_t xx_ibm_zpak_installer_get_format_size(Abstractformat *self, xx_pd_struct *pd)
+{
+    if (!self || (!self->base_info_handled && !xx_format_handle_base_info(self, pd))) {
         return 0;
     }
     return self->is_valid ? self->format_size : 0;
 }
 
-uint64_t xx_ibm_zpak_installer_get_number_of_archive_records(
-    Abstractformat *self, xx_pd_struct *pd) {
-    if (!self ||
-        (!self->base_info_handled && !xx_format_handle_base_info(self, pd))) {
+uint64_t xx_ibm_zpak_installer_get_number_of_archive_records(Abstractformat *self, xx_pd_struct *pd)
+{
+    if (!self || (!self->base_info_handled && !xx_format_handle_base_info(self, pd))) {
         return 0U;
     }
-    return self->is_valid ? ((xx_ibm_zpak_installer *)self)->number_of_records
-                          : 0U;
+    return self->is_valid ? ((xx_ibm_zpak_installer *)self)->number_of_records : 0U;
 }
 
 /* ------------------------------------------------------------- records -- */
 
-static bool zpi_copy_options(xx_list_s *target, const xx_list_s *options) {
+static bool zpi_copy_options(xx_list_s *target, const xx_list_s *options)
+{
     size_t index;
     if (!options) return true;
     for (index = 0U; index < options->count; ++index) {
-        const xx_meta *source =
-            (const xx_meta *)xx_list_at((const xx_list_t *)options, index);
+        const xx_meta *source = (const xx_meta *)xx_list_at((const xx_list_t *)options, index);
         xx_meta copied;
         if (!source) continue;
         xx_meta_init(&copied, source->meta_id);
-        if (!xx_var_copy(&copied.var, &source->var) ||
-            !xx_list_append(target, &copied)) {
+        if (!xx_var_copy(&copied.var, &source->var) || !xx_list_append(target, &copied)) {
             xx_meta_cleanup(&copied);
             return false;
         }
@@ -898,19 +861,19 @@ static bool zpi_copy_options(xx_list_s *target, const xx_list_s *options) {
     return true;
 }
 
-static const xx_var *zpi_option(const xx_list_s *options, uint32_t meta_id) {
+static const xx_var *zpi_option(const xx_list_s *options, uint32_t meta_id)
+{
     size_t index;
     if (!options) return NULL;
     for (index = 0U; index < options->count; ++index) {
-        const xx_meta *meta =
-            (const xx_meta *)xx_list_at((const xx_list_t *)options, index);
+        const xx_meta *meta = (const xx_meta *)xx_list_at((const xx_list_t *)options, index);
         if (meta && meta->meta_id == meta_id) return &meta->var;
     }
     return NULL;
 }
 
-xx_archive_record_state *xx_ibm_zpak_installer_create_archive_records_reading(
-    Abstractformat *self, const xx_list_s *options, xx_pd_struct *pd) {
+xx_archive_record_state *xx_ibm_zpak_installer_create_archive_records_reading(Abstractformat *self, const xx_list_s *options, xx_pd_struct *pd)
+{
     zpi_stream *stream;
     zpi_layout layout;
     xx_archive_record_state *state;
@@ -930,8 +893,7 @@ xx_archive_record_state *xx_ibm_zpak_installer_create_archive_records_reading(
     state->internal_state = stream;
     state->free_internal = zpi_stream_free;
     state->total_records = (int64_t)stream->count;
-    if (!zpi_copy_options(&state->options, options) ||
-        !zpi_set_record(self, &state->current_record, &stream->items[0])) {
+    if (!zpi_copy_options(&state->options, options) || !zpi_set_record(self, &state->current_record, &stream->items[0])) {
         xx_archive_record_state_free(state);
         return NULL;
     }
@@ -940,18 +902,15 @@ xx_archive_record_state *xx_ibm_zpak_installer_create_archive_records_reading(
     return state;
 }
 
-const xx_archive_record *xx_ibm_zpak_installer_get_current_archive_record(
-    Abstractformat *self, xx_archive_record_state *state) {
-    return self && state && state->format == self && state->has_record
-               ? &state->current_record
-               : NULL;
+const xx_archive_record *xx_ibm_zpak_installer_get_current_archive_record(Abstractformat *self, xx_archive_record_state *state)
+{
+    return self && state && state->format == self && state->has_record ? &state->current_record : NULL;
 }
 
-bool xx_ibm_zpak_installer_archive_record_move_to_next(
-    Abstractformat *self, xx_archive_record_state *state, xx_pd_struct *pd) {
+bool xx_ibm_zpak_installer_archive_record_move_to_next(Abstractformat *self, xx_archive_record_state *state, xx_pd_struct *pd)
+{
     zpi_stream *stream;
-    if (!self || !state || state->format != self || !state->has_record ||
-        (pd && xx_pd_is_stopped(pd))) {
+    if (!self || !state || state->format != self || !state->has_record || (pd && xx_pd_is_stopped(pd))) {
         return false;
     }
     stream = (zpi_stream *)state->internal_state;
@@ -963,13 +922,12 @@ bool xx_ibm_zpak_installer_archive_record_move_to_next(
     }
     ++stream->index;
     ++state->current_index;
-    state->has_record = zpi_set_record(self, &state->current_record,
-                                       &stream->items[stream->index]);
+    state->has_record = zpi_set_record(self, &state->current_record, &stream->items[stream->index]);
     return state->has_record;
 }
 
-bool xx_ibm_zpak_installer_unpack_current_archive_record(
-    Abstractformat *self, xx_archive_record_state *state, xx_pd_struct *pd) {
+bool xx_ibm_zpak_installer_unpack_current_archive_record(Abstractformat *self, xx_archive_record_state *state, xx_pd_struct *pd)
+{
     zpi_stream *stream;
     zpi_member *member;
     const xx_var *path_option;
@@ -981,8 +939,7 @@ bool xx_ibm_zpak_installer_unpack_current_archive_record(
     bool result = false;
     bool created = false;
 
-    if (!self || !state || state->format != self || !state->has_record ||
-        (pd && xx_pd_is_stopped(pd))) {
+    if (!self || !state || state->format != self || !state->has_record || (pd && xx_pd_is_stopped(pd))) {
         return false;
     }
     stream = (zpi_stream *)state->internal_state;
@@ -997,11 +954,9 @@ bool xx_ibm_zpak_installer_unpack_current_archive_record(
         return result;
     }
     if (!member->safe) return false;
-    if (path_option->type == XX_VAR_TYPE_STRING ||
-        path_option->type == XX_VAR_TYPE_STRING_VIEW) {
+    if (path_option->type == XX_VAR_TYPE_STRING || path_option->type == XX_VAR_TYPE_STRING_VIEW) {
         base_path = xx_var_get_str(path_option);
-    } else if (path_option->type == XX_VAR_TYPE_WSTRING ||
-               path_option->type == XX_VAR_TYPE_WSTRING_VIEW) {
+    } else if (path_option->type == XX_VAR_TYPE_WSTRING || path_option->type == XX_VAR_TYPE_WSTRING_VIEW) {
         converted_path = xx_str_unicode_to_utf8(xx_var_get_wstr(path_option));
         base_path = converted_path;
     }
@@ -1009,9 +964,7 @@ bool xx_ibm_zpak_installer_unpack_current_archive_record(
         xx_str_free(converted_path);
         return false;
     }
-    if (base_path[0] != '\0' &&
-        base_path[xx_str_len(base_path) - 1U] != '/' &&
-        base_path[xx_str_len(base_path) - 1U] != '\\') {
+    if (base_path[0] != '\0' && base_path[xx_str_len(base_path) - 1U] != '/' && base_path[xx_str_len(base_path) - 1U] != '\\') {
         target_path = xx_str_concat3(base_path, "/", member->name);
     } else {
         target_path = xx_str_concat(base_path, member->name);
@@ -1020,8 +973,7 @@ bool xx_ibm_zpak_installer_unpack_current_archive_record(
     if (!target_path) return false;
 
     /* Decode first, so a bad stream never leaves an empty file behind. */
-    if (!zpi_decode(self, member, &plain, &plain_size, pd) ||
-        !xx_store_create_dirs_a(target_path, false)) {
+    if (!zpi_decode(self, member, &plain, &plain_size, pd) || !xx_store_create_dirs_a(target_path, false)) {
         xx_mem_free(plain);
         xx_str_free(target_path);
         return false;
@@ -1032,8 +984,7 @@ bool xx_ibm_zpak_installer_unpack_current_archive_record(
         size_t completed = 0U;
         result = output != NULL;
         while (result && completed < plain_size) {
-            ssize_t sent =
-                xx_io_write(output, plain + completed, plain_size - completed);
+            ssize_t sent = xx_io_write(output, plain + completed, plain_size - completed);
             if (sent <= 0 || (size_t)sent > plain_size - completed) {
                 result = false;
                 break;
@@ -1048,8 +999,8 @@ bool xx_ibm_zpak_installer_unpack_current_archive_record(
     return result;
 }
 
-void xx_ibm_zpak_installer_free_archive_records_reading(
-    Abstractformat *self, xx_archive_record_state *state) {
+void xx_ibm_zpak_installer_free_archive_records_reading(Abstractformat *self, xx_archive_record_state *state)
+{
     (void)self;
     xx_archive_record_state_free(state);
 }

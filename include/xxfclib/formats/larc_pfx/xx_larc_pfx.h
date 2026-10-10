@@ -5,7 +5,9 @@
 #ifdef __cplusplus
 extern "C" {
 #endif
-typedef struct xx_larc_pfx { Abstractformat format; } xx_larc_pfx;
+typedef struct xx_larc_pfx {
+    Abstractformat format;
+} xx_larc_pfx;
 XXFC_API void xx_larc_pfx_init(xx_larc_pfx *, xx_io_device *, int64_t);
 XXFC_API xx_larc_pfx *xx_larc_pfx_create(xx_io_device *, int64_t);
 XXFC_API void xx_larc_pfx_destroy(xx_larc_pfx *);

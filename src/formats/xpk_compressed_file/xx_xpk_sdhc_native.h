@@ -11,42 +11,47 @@
 #include <stdint.h>
 #include <string.h>
 
-typedef bool (*xpk_sdhc_child_decoder)(const uint8_t *packed,size_t size,
-                                        uint8_t *output,size_t wanted,
-                                        void *opaque,xx_pd_struct *pd);
-static bool xpk_sdhc_byte_delta(uint8_t *data,size_t size,xx_pd_struct *pd) {
-    uint8_t accumulator=0U;
+typedef bool (*xpk_sdhc_child_decoder)(const uint8_t *packed, size_t size, uint8_t *output, size_t wanted, void *opaque, xx_pd_struct *pd);
+static bool xpk_sdhc_byte_delta(uint8_t *data, size_t size, xx_pd_struct *pd)
+{
+    uint8_t accumulator = 0U;
     size_t i;
-    for(i=0U;i<size;++i) {
-        if((i&1023U)==0U && xx_pd_is_stopped(pd))return false;
-        accumulator=(uint8_t)(accumulator+data[i]);data[i]=accumulator;
+    for (i = 0U; i < size; ++i) {
+        if ((i & 1023U) == 0U && xx_pd_is_stopped(pd)) return false;
+        accumulator = (uint8_t)(accumulator + data[i]);
+        data[i] = accumulator;
     }
     return true;
 }
-static bool xpk_sdhc_mono_delta(uint8_t *data,size_t size,xx_pd_struct *pd) {
-    uint16_t accumulator=0U;
+static bool xpk_sdhc_mono_delta(uint8_t *data, size_t size, xx_pd_struct *pd)
+{
+    uint16_t accumulator = 0U;
     size_t i;
-    for(i=0U;i<size;i+=2U) {
+    for (i = 0U; i < size; i += 2U) {
         uint16_t value;
-        if((i&1023U)==0U && xx_pd_is_stopped(pd))return false;
-        value=(uint16_t)(((uint16_t)data[i]<<8U)|data[i+1U]);
-        accumulator=(uint16_t)(accumulator+value);
-        data[i]=(uint8_t)(accumulator>>8U);data[i+1U]=(uint8_t)accumulator;
+        if ((i & 1023U) == 0U && xx_pd_is_stopped(pd)) return false;
+        value = (uint16_t)(((uint16_t)data[i] << 8U) | data[i + 1U]);
+        accumulator = (uint16_t)(accumulator + value);
+        data[i] = (uint8_t)(accumulator >> 8U);
+        data[i + 1U] = (uint8_t)accumulator;
     }
     return true;
 }
-static bool xpk_sdhc_stereo_delta(uint8_t *data,size_t size,xx_pd_struct *pd) {
-    uint16_t left=0U,right=0U;
+static bool xpk_sdhc_stereo_delta(uint8_t *data, size_t size, xx_pd_struct *pd)
+{
+    uint16_t left = 0U, right = 0U;
     size_t i;
-    for(i=0U;i<size;i+=4U) {
+    for (i = 0U; i < size; i += 4U) {
         uint16_t value;
-        if((i&1023U)==0U && xx_pd_is_stopped(pd))return false;
-        value=(uint16_t)(((uint16_t)data[i]<<8U)|data[i+1U]);
-        left=(uint16_t)(left+value);
-        value=(uint16_t)(((uint16_t)data[i+2U]<<8U)|data[i+3U]);
-        right=(uint16_t)(right+value);
-        data[i]=(uint8_t)(left>>8U);data[i+1U]=(uint8_t)left;
-        data[i+2U]=(uint8_t)(right>>8U);data[i+3U]=(uint8_t)right;
+        if ((i & 1023U) == 0U && xx_pd_is_stopped(pd)) return false;
+        value = (uint16_t)(((uint16_t)data[i] << 8U) | data[i + 1U]);
+        left = (uint16_t)(left + value);
+        value = (uint16_t)(((uint16_t)data[i + 2U] << 8U) | data[i + 3U]);
+        right = (uint16_t)(right + value);
+        data[i] = (uint8_t)(left >> 8U);
+        data[i + 1U] = (uint8_t)left;
+        data[i + 2U] = (uint8_t)(right >> 8U);
+        data[i + 3U] = (uint8_t)right;
     }
     return true;
 }
@@ -54,42 +59,41 @@ static bool xpk_sdhc_stereo_delta(uint8_t *data,size_t size,xx_pd_struct *pd) {
  * XPK decoder supplied by the outer dispatcher. A cycle/depth guard belongs
  * to that dispatcher. The caller's child function must fill exactly wanted.
  */
-static bool xpk_sdhc_native(const uint8_t *packed,size_t size,uint8_t *output,
-                            size_t wanted,xpk_sdhc_child_decoder child,
-                            void *opaque,xx_pd_struct *pd) {
+static bool xpk_sdhc_native(const uint8_t *packed, size_t size, uint8_t *output, size_t wanted, xpk_sdhc_child_decoder child, void *opaque, xx_pd_struct *pd)
+{
     unsigned mode;
     size_t length;
-    if(!packed || !output || size<2U || xx_pd_is_stopped(pd))return false;
-    mode=((unsigned)packed[0]<<8U)|packed[1];
-    if(mode&0x8000U) {
-        if(!child || size<6U || packed[2]!='X' || packed[3]!='P' ||
-           packed[4]!='K' || packed[5]!='F' ||
-           !child(packed+2U,size-2U,output,wanted,opaque,pd))return false;
+    if (!packed || !output || size < 2U || xx_pd_is_stopped(pd)) return false;
+    mode = ((unsigned)packed[0] << 8U) | packed[1];
+    if (mode & 0x8000U) {
+        if (!child || size < 6U || packed[2] != 'X' || packed[3] != 'P' || packed[4] != 'K' || packed[5] != 'F' ||
+            !child(packed + 2U, size - 2U, output, wanted, opaque, pd))
+            return false;
     } else {
-        if(size-2U!=wanted)return false;
-        memcpy(output,packed+2U,wanted);
+        if (size - 2U != wanted) return false;
+        memcpy(output, packed + 2U, wanted);
     }
-    length=wanted&~(size_t)3U;
-    switch(mode&15U) {
-    case 1U:
-        if(!xpk_sdhc_byte_delta(output,length,pd))return false;
-        /* fall through */
-    case 0U:
-        if(!xpk_sdhc_byte_delta(output,length,pd))return false;
-        break;
-    case 3U:
-        if(!xpk_sdhc_mono_delta(output,length,pd))return false;
-        /* fall through */
-    case 2U:
-        if(!xpk_sdhc_mono_delta(output,length,pd))return false;
-        break;
-    case 11U:
-        if(!xpk_sdhc_stereo_delta(output,length,pd))return false;
-        /* fall through */
-    case 10U:
-        if(!xpk_sdhc_stereo_delta(output,length,pd))return false;
-        break;
-    default:return false;
+    length = wanted & ~(size_t)3U;
+    switch (mode & 15U) {
+        case 1U:
+            if (!xpk_sdhc_byte_delta(output, length, pd)) return false;
+            /* fall through */
+        case 0U:
+            if (!xpk_sdhc_byte_delta(output, length, pd)) return false;
+            break;
+        case 3U:
+            if (!xpk_sdhc_mono_delta(output, length, pd)) return false;
+            /* fall through */
+        case 2U:
+            if (!xpk_sdhc_mono_delta(output, length, pd)) return false;
+            break;
+        case 11U:
+            if (!xpk_sdhc_stereo_delta(output, length, pd)) return false;
+            /* fall through */
+        case 10U:
+            if (!xpk_sdhc_stereo_delta(output, length, pd)) return false;
+            break;
+        default: return false;
     }
     return !xx_pd_is_stopped(pd);
 }

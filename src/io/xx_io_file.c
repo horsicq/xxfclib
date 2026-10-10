@@ -37,12 +37,14 @@ typedef struct xx_io_file_state {
 
 static int xx_io_file_close_cb(xx_io_device *self);
 
-static xx_io_file_state *xx_io_file_state_of(xx_io_device *self) {
+static xx_io_file_state *xx_io_file_state_of(xx_io_device *self)
+{
     if (!self || self->close != xx_io_file_close_cb) return NULL;
     return (xx_io_file_state *)self->priv;
 }
 
-static ssize_t xx_io_file_read_cb(xx_io_device *self, void *buf, size_t n) {
+static ssize_t xx_io_file_read_cb(xx_io_device *self, void *buf, size_t n)
+{
     xx_io_file_state *state = xx_io_file_state_of(self);
     if (!state || !state->handle) {
         return -1;
@@ -50,7 +52,8 @@ static ssize_t xx_io_file_read_cb(xx_io_device *self, void *buf, size_t n) {
     return xx_io_platform_file_read(state->handle, buf, n);
 }
 
-static ssize_t xx_io_file_write_cb(xx_io_device *self, const void *buf, size_t n) {
+static ssize_t xx_io_file_write_cb(xx_io_device *self, const void *buf, size_t n)
+{
     xx_io_file_state *state = xx_io_file_state_of(self);
     if (!state || !state->handle) {
         return -1;
@@ -58,7 +61,8 @@ static ssize_t xx_io_file_write_cb(xx_io_device *self, const void *buf, size_t n
     return xx_io_platform_file_write(state->handle, buf, n);
 }
 
-static int xx_io_file_seek_cb(xx_io_device *self, long off, int whence) {
+static int xx_io_file_seek_cb(xx_io_device *self, long off, int whence)
+{
     xx_io_file_state *state = xx_io_file_state_of(self);
     if (!state || !state->handle) {
         return -1;
@@ -66,7 +70,8 @@ static int xx_io_file_seek_cb(xx_io_device *self, long off, int whence) {
     return xx_io_platform_file_seek(state->handle, off, whence);
 }
 
-static int xx_io_file_seek64_cb(xx_io_device *self, int64_t off, int whence) {
+static int xx_io_file_seek64_cb(xx_io_device *self, int64_t off, int whence)
+{
     xx_io_file_state *state = xx_io_file_state_of(self);
     if (!state || !state->handle) {
         return -1;
@@ -74,7 +79,8 @@ static int xx_io_file_seek64_cb(xx_io_device *self, int64_t off, int whence) {
     return xx_io_platform_file_seek64(state->handle, off, whence);
 }
 
-static int64_t xx_io_file_tell_cb(xx_io_device *self) {
+static int64_t xx_io_file_tell_cb(xx_io_device *self)
+{
     xx_io_file_state *state = xx_io_file_state_of(self);
     if (!state || !state->handle) {
         return -1;
@@ -82,7 +88,8 @@ static int64_t xx_io_file_tell_cb(xx_io_device *self) {
     return xx_io_platform_file_tell(state->handle);
 }
 
-static int xx_io_file_close_cb(xx_io_device *self) {
+static int xx_io_file_close_cb(xx_io_device *self)
+{
     xx_io_file_state *state;
     int rc = 0;
     if (!self) {
@@ -98,7 +105,8 @@ static int xx_io_file_close_cb(xx_io_device *self) {
     return rc;
 }
 
-static int64_t xx_io_file_total_size_cb(xx_io_device *self) {
+static int64_t xx_io_file_total_size_cb(xx_io_device *self)
+{
     xx_io_file_state *state = xx_io_file_state_of(self);
     if (!state || !state->handle) {
         return -1;
@@ -106,7 +114,8 @@ static int64_t xx_io_file_total_size_cb(xx_io_device *self) {
     return xx_io_platform_file_size(state->handle);
 }
 
-static xx_io_device* xx_io_file_wrap(void *handle, const char *path) {
+static xx_io_device *xx_io_file_wrap(void *handle, const char *path)
+{
     xx_io_file_state *state;
     xx_io_device *dev;
     size_t path_size;
@@ -135,7 +144,7 @@ static xx_io_device* xx_io_file_wrap(void *handle, const char *path) {
     }
     state->handle = handle;
 
-    dev = (xx_io_device*)xx_mem_calloc(1, sizeof(xx_io_device));
+    dev = (xx_io_device *)xx_mem_calloc(1, sizeof(xx_io_device));
     if (!dev) {
         xx_mem_free(state->path);
         xx_mem_free(state);
@@ -143,75 +152,80 @@ static xx_io_device* xx_io_file_wrap(void *handle, const char *path) {
         return NULL;
     }
 
-    dev->read           = xx_io_file_read_cb;
-    dev->write          = xx_io_file_write_cb;
-    dev->seek           = xx_io_file_seek_cb;
-    dev->close          = xx_io_file_close_cb;
-    dev->total_size     = xx_io_file_total_size_cb;
+    dev->read = xx_io_file_read_cb;
+    dev->write = xx_io_file_write_cb;
+    dev->seek = xx_io_file_seek_cb;
+    dev->close = xx_io_file_close_cb;
+    dev->total_size = xx_io_file_total_size_cb;
     dev->get_total_size = xx_io_file_total_size_cb;
-    dev->size           = xx_io_file_total_size_cb;
-    dev->priv           = state;
-    dev->seek64         = xx_io_file_seek64_cb;
-    dev->tell           = xx_io_file_tell_cb;
+    dev->size = xx_io_file_total_size_cb;
+    dev->priv = state;
+    dev->seek64 = xx_io_file_seek64_cb;
+    dev->tell = xx_io_file_tell_cb;
 
     return dev;
 }
 
-xx_io_device* xx_io_file_open(const char *path, const char *mode) {
+xx_io_device *xx_io_file_open(const char *path, const char *mode)
+{
     if (!path || !mode) return NULL;
     return xx_io_file_wrap(xx_io_platform_file_open(path, mode), path);
 }
 
-xx_io_device* xx_io_temp_open(void) {
+xx_io_device *xx_io_temp_open(void)
+{
     if (xx_io_memory_only_active()) return xx_io_memory_temp_open();
     return xx_io_file_wrap(xx_io_platform_temp_open(), NULL);
 }
 
-const char *xx_io_source_path(xx_io_device *device) {
+const char *xx_io_source_path(xx_io_device *device)
+{
     xx_io_file_state *state;
     xx_io_volume volume;
     int64_t child_size;
     while (device) {
         state = xx_io_file_state_of(device);
         if (state) return state->path;
-        if (xx_io_multivolume_count(device) != 1U ||
-            !xx_io_multivolume_get_volume(device, 0U, &volume, NULL))
-            return NULL;
+        if (xx_io_multivolume_count(device) != 1U || !xx_io_multivolume_get_volume(device, 0U, &volume, NULL)) return NULL;
         child_size = xx_io_total_size(volume.device);
-        if (volume.offset != 0 || child_size < 0 || volume.size != child_size)
-            return NULL;
+        if (volume.offset != 0 || child_size < 0 || volume.size != child_size) return NULL;
         device = volume.device;
     }
     return NULL;
 }
 
-xx_io_device* io_file_open(const char *path, const char *mode) {
+xx_io_device *io_file_open(const char *path, const char *mode)
+{
     return xx_io_file_open(path, mode);
 }
 
-bool xx_io_file_exists_a(const char *path) {
+bool xx_io_file_exists_a(const char *path)
+{
     return xx_io_platform_file_exists_a(path);
 }
 
-bool xx_io_file_exists_w(const wchar_t *path) {
+bool xx_io_file_exists_w(const wchar_t *path)
+{
     return xx_io_platform_file_exists_w(path);
 }
 
-bool xx_io_file_remove_a(const char *path) {
+bool xx_io_file_remove_a(const char *path)
+{
     return xx_io_platform_file_remove_a(path);
 }
 
-bool xx_io_file_remove_w(const wchar_t *path) {
+bool xx_io_file_remove_w(const wchar_t *path)
+{
     return xx_io_platform_file_remove_w(path);
 }
 
-bool xx_io_file_replace_a(const char *source, const char *destination,
-                          bool overwrite) {
+bool xx_io_file_replace_a(const char *source, const char *destination, bool overwrite)
+{
     return xx_io_platform_file_replace_a(source, destination, overwrite);
 }
 
-bool xx_io_file_replace_w(const wchar_t *source, const wchar_t *destination,
-                          bool overwrite) {
+bool xx_io_file_replace_w(const wchar_t *source, const wchar_t *destination, bool overwrite)
+{
     return xx_io_platform_file_replace_w(source, destination, overwrite);
 }
 
@@ -219,18 +233,22 @@ bool xx_io_file_replace_w(const wchar_t *source, const wchar_t *destination,
 /* --- Directory and File Attribute Operations                          --- */
 /* ========================================================================= */
 
-bool xx_io_create_dirs_w(const wchar_t *path, bool is_dir) {
+bool xx_io_create_dirs_w(const wchar_t *path, bool is_dir)
+{
     return xx_io_platform_create_dirs_w(path, is_dir);
 }
 
-bool xx_io_create_dirs_a(const char *path, bool is_dir) {
+bool xx_io_create_dirs_a(const char *path, bool is_dir)
+{
     return xx_io_platform_create_dirs_a(path, is_dir);
 }
 
-bool xx_io_apply_dos_time_and_attrs_w(const wchar_t *path, uint16_t dos_date, uint16_t dos_time, uint32_t attrs) {
+bool xx_io_apply_dos_time_and_attrs_w(const wchar_t *path, uint16_t dos_date, uint16_t dos_time, uint32_t attrs)
+{
     return xx_io_platform_apply_dos_time_and_attrs_w(path, dos_date, dos_time, attrs);
 }
 
-bool xx_io_apply_dos_time_and_attrs_a(const char *path, uint16_t dos_date, uint16_t dos_time, uint32_t attrs) {
+bool xx_io_apply_dos_time_and_attrs_a(const char *path, uint16_t dos_date, uint16_t dos_time, uint32_t attrs)
+{
     return xx_io_platform_apply_dos_time_and_attrs_a(path, dos_date, dos_time, attrs);
 }

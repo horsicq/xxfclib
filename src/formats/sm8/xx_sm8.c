@@ -10,17 +10,14 @@
 
 static bool pm_parse(Abstractformat *f, pm_stream *s, xx_pd_struct *pd)
 {
-    static const uint8_t magic[6] = {'S','M','8',0,0,1};
+    static const uint8_t magic[6] = {'S', 'M', '8', 0, 0, 1};
     uint8_t header[10];
     uint16_t pcm_size;
     int64_t available = pm_available(f);
-    if ((pd && xx_pd_is_stopped(pd)) || available < 10 ||
-        !pm_read(f, 0, header, sizeof(header)) ||
-        xx_rt_memcmp(header, magic, sizeof(magic))) return false;
+    if ((pd && xx_pd_is_stopped(pd)) || available < 10 || !pm_read(f, 0, header, sizeof(header)) || xx_rt_memcmp(header, magic, sizeof(magic))) return false;
     pcm_size = xx_data_get_u16(header, sizeof(header), 6, false);
     if (available != 10 + (int64_t)pcm_size) return false;
-    if (!pm_add(f, s, "header.bin", 0, 10) ||
-        !pm_add(f, s, "samples-u8.pcm", 10, pcm_size)) return false;
+    if (!pm_add(f, s, "header.bin", 0, 10) || !pm_add(f, s, "samples-u8.pcm", 10, pcm_size)) return false;
     s->size = available;
     return true;
 }
@@ -48,10 +45,19 @@ void xx_sm8_destroy(xx_sm8 *r)
 }
 void xx_sm8_free(xx_sm8 *r)
 {
-    if (r) { xx_sm8_destroy(r); xx_mem_free(r); }
+    if (r) {
+        xx_sm8_destroy(r);
+        xx_mem_free(r);
+    }
 }
-bool xx_sm8_check_is_valid(Abstractformat *f, xx_pd_struct *pd) { return pm_valid(f, pd); }
-bool xx_sm8_handle_base_info(Abstractformat *f, xx_pd_struct *pd) { return pm_handle(f, pd); }
+bool xx_sm8_check_is_valid(Abstractformat *f, xx_pd_struct *pd)
+{
+    return pm_valid(f, pd);
+}
+bool xx_sm8_handle_base_info(Abstractformat *f, xx_pd_struct *pd)
+{
+    return pm_handle(f, pd);
+}
 xx_file_type_t xx_sm8_detect(xx_io_device *d, int64_t b)
 {
     xx_sm8 reader;

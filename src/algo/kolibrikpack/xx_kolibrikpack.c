@@ -87,7 +87,8 @@ typedef struct kpack_probs_s {
     uint16_t literal[KPACK_LITERAL_SIZE];
 } kpack_probs;
 
-static uint32_t kpack_next_byte(kpack_rc *rc) {
+static uint32_t kpack_next_byte(kpack_rc *rc)
+{
     if (rc->position < rc->size) {
         const uint32_t result = rc->data[rc->position];
         ++rc->position;
@@ -102,14 +103,16 @@ static uint32_t kpack_next_byte(kpack_rc *rc) {
     return 0U;
 }
 
-static void kpack_normalize(kpack_rc *rc) {
+static void kpack_normalize(kpack_rc *rc)
+{
     while (rc->range < KPACK_TOP_VALUE) {
         rc->range <<= 8;
         rc->code = (rc->code << 8) | kpack_next_byte(rc);
     }
 }
 
-static void kpack_rc_init(kpack_rc *rc, const uint8_t *data, uint64_t size, uint64_t position) {
+static void kpack_rc_init(kpack_rc *rc, const uint8_t *data, uint64_t size, uint64_t position)
+{
     uint32_t b0;
     uint32_t b1;
     uint32_t b2;
@@ -130,7 +133,8 @@ static void kpack_rc_init(kpack_rc *rc, const uint8_t *data, uint64_t size, uint
     rc->code = b0 | (b1 << 8) | (b2 << 16) | (b3 << 24);
 }
 
-static uint32_t kpack_decode_bit(kpack_rc *rc, uint16_t *prob) {
+static uint32_t kpack_decode_bit(kpack_rc *rc, uint16_t *prob)
+{
     const uint32_t bound = (rc->range >> KPACK_NUM_BIT_MODEL_TOTAL_BITS) * (uint32_t)(*prob);
     uint32_t result = 0U;
 
@@ -149,7 +153,8 @@ static uint32_t kpack_decode_bit(kpack_rc *rc, uint16_t *prob) {
     return result;
 }
 
-static uint32_t kpack_decode_direct_bits(kpack_rc *rc, int32_t count) {
+static uint32_t kpack_decode_direct_bits(kpack_rc *rc, int32_t count)
+{
     uint32_t result = 0U;
     int32_t i;
 
@@ -167,7 +172,8 @@ static uint32_t kpack_decode_direct_bits(kpack_rc *rc, int32_t count) {
     return result;
 }
 
-static uint32_t kpack_bit_tree_decode(kpack_rc *rc, uint16_t *probs, int32_t bits) {
+static uint32_t kpack_bit_tree_decode(kpack_rc *rc, uint16_t *probs, int32_t bits)
+{
     uint32_t model = 1U;
     int32_t i;
 
@@ -178,7 +184,8 @@ static uint32_t kpack_bit_tree_decode(kpack_rc *rc, uint16_t *probs, int32_t bit
     return model - (1U << bits);
 }
 
-static uint32_t kpack_bit_tree_reverse_decode(kpack_rc *rc, uint16_t *probs, int32_t bits) {
+static uint32_t kpack_bit_tree_reverse_decode(kpack_rc *rc, uint16_t *probs, int32_t bits)
+{
     uint32_t model = 1U;
     uint32_t symbol = 0U;
     int32_t i;
@@ -192,7 +199,8 @@ static uint32_t kpack_bit_tree_reverse_decode(kpack_rc *rc, uint16_t *probs, int
     return symbol;
 }
 
-static uint32_t kpack_decode_length(kpack_rc *rc, uint16_t *choice, uint16_t *low, uint16_t *mid, uint16_t *high, uint32_t pos_state) {
+static uint32_t kpack_decode_length(kpack_rc *rc, uint16_t *choice, uint16_t *low, uint16_t *mid, uint16_t *high, uint32_t pos_state)
+{
     if (kpack_decode_bit(rc, &choice[0]) == 0U) {
         return kpack_bit_tree_decode(rc, low + (pos_state << 3), 3) + 2U;
     }
@@ -204,7 +212,8 @@ static uint32_t kpack_decode_length(kpack_rc *rc, uint16_t *choice, uint16_t *lo
     return kpack_bit_tree_decode(rc, high, 8) + 18U;
 }
 
-static void kpack_probs_init(kpack_probs *probs) {
+static void kpack_probs_init(kpack_probs *probs)
+{
     size_t i;
     uint16_t *raw = (uint16_t *)probs;
     const size_t count = sizeof(kpack_probs) / sizeof(uint16_t);
@@ -213,7 +222,8 @@ static void kpack_probs_init(kpack_probs *probs) {
 }
 
 /* Raw LZMA1 body with kpack's fixed lc=3 lp=0 pb=2 model. */
-static bool kpack_decode_lzma(const uint8_t *input, uint64_t input_size, uint64_t stream_offset, uint8_t *output, uint64_t output_size) {
+static bool kpack_decode_lzma(const uint8_t *input, uint64_t input_size, uint64_t stream_offset, uint8_t *output, uint64_t output_size)
+{
     kpack_rc rc;
     kpack_probs *probs;
     uint64_t out_pos = 0U;
@@ -379,7 +389,8 @@ static bool kpack_decode_lzma(const uint8_t *input, uint64_t input_size, uint64_
 /* Undo kpack's x86 "call trick": absolute 32-bit targets stored big-endian
  * behind E8/E9 (and, for calltrick2, 0F 80..8F) become relative displacements
  * again.  Count and marker byte come from the container's 5-byte trailer. */
-static bool kpack_undo_call_trick(uint8_t *data, uint64_t size, uint32_t count, uint8_t marker, bool call_trick2) {
+static bool kpack_undo_call_trick(uint8_t *data, uint64_t size, uint32_t count, uint8_t marker, bool call_trick2)
+{
     uint64_t pos = 0U;
 
     while (count) {
@@ -435,7 +446,8 @@ static bool kpack_undo_call_trick(uint8_t *data, uint64_t size, uint32_t count, 
     return true;
 }
 
-static bool kpack_check_header(const uint8_t *data, uint64_t file_size, uint32_t *unpacked_size, uint32_t *flags) {
+static bool kpack_check_header(const uint8_t *data, uint64_t file_size, uint32_t *unpacked_size, uint32_t *flags)
+{
     uint32_t size_value;
     uint32_t flag_value;
     uint64_t minimum_size;
@@ -468,7 +480,8 @@ static bool kpack_check_header(const uint8_t *data, uint64_t file_size, uint32_t
     return true;
 }
 
-bool xx_kolibrikpack_check_header(const uint8_t *input, size_t input_size, size_t *produced) {
+bool xx_kolibrikpack_check_header(const uint8_t *input, size_t input_size, size_t *produced)
+{
     uint32_t unpacked_size = 0U;
 
     if (produced) *produced = 0U;
@@ -479,7 +492,8 @@ bool xx_kolibrikpack_check_header(const uint8_t *input, size_t input_size, size_
     return true;
 }
 
-bool xx_kolibrikpack_decode_memory(const uint8_t *input, size_t input_size, uint8_t *output, size_t output_size, size_t *written) {
+bool xx_kolibrikpack_decode_memory(const uint8_t *input, size_t input_size, uint8_t *output, size_t output_size, size_t *written)
+{
     uint32_t unpacked_size = 0U;
     uint32_t flags = 0U;
     uint64_t stream_size;

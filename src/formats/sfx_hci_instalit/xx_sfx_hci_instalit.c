@@ -84,7 +84,11 @@ enum {
     SH_ENTRY_MEMBER
 };
 
-enum { SH_CRC_NONE = 0, SH_CRC_32, SH_CRC_16 };
+enum {
+    SH_CRC_NONE = 0,
+    SH_CRC_32,
+    SH_CRC_16
+};
 
 typedef struct sh_entry_s {
     char *name;
@@ -128,13 +132,14 @@ static void sh_vtable_destroy(Abstractformat *self);
 /* Little helpers                                                            */
 /* ------------------------------------------------------------------------ */
 
-static char sh_upper(char c) {
+static char sh_upper(char c)
+{
     return (c >= 'a' && c <= 'z') ? (char)(c - 'a' + 'A') : c;
 }
 
 /* All positioning goes through seek64: long is 32-bit on Win64. */
-static bool sh_read_at(xx_io_device *device, int64_t offset, void *data,
-                       size_t size) {
+static bool sh_read_at(xx_io_device *device, int64_t offset, void *data, size_t size)
+{
     uint8_t *out = (uint8_t *)data;
     size_t done = 0U;
     if (!device || (!data && size != 0U) || offset < 0) return false;
@@ -149,23 +154,22 @@ static bool sh_read_at(xx_io_device *device, int64_t offset, void *data,
 }
 
 /* True when [offset, offset + size) lies inside [0, limit). */
-static bool sh_within(int64_t limit, int64_t offset, int64_t size) {
-    return limit >= 0 && offset >= 0 && size >= 0 && offset <= limit &&
-           size <= limit - offset;
+static bool sh_within(int64_t limit, int64_t offset, int64_t size)
+{
+    return limit >= 0 && offset >= 0 && size >= 0 && offset <= limit && size <= limit - offset;
 }
 
 /* Read [base + offset, + size) into a fresh buffer; size is capped by the
  * caller and checked against the image here. */
-static uint8_t *sh_read_block(Abstractformat *self, int64_t image_size,
-                              int64_t offset, int64_t size) {
+static uint8_t *sh_read_block(Abstractformat *self, int64_t image_size, int64_t offset, int64_t size)
+{
     uint8_t *buffer;
     if (!sh_within(image_size, offset, size) || size > SH_MAX_PACKED) {
         return NULL;
     }
     buffer = (uint8_t *)xx_mem_alloc(size ? (size_t)size : 1U);
     if (!buffer) return NULL;
-    if (!sh_read_at(self->device, self->base_address + offset, buffer,
-                    (size_t)size)) {
+    if (!sh_read_at(self->device, self->base_address + offset, buffer, (size_t)size)) {
         xx_mem_free(buffer);
         return NULL;
     }
@@ -184,7 +188,8 @@ typedef struct sh_bits_s {
     unsigned count;
 } sh_bits;
 
-static void sh_bits_init(sh_bits *bits, const uint8_t *data, size_t size) {
+static void sh_bits_init(sh_bits *bits, const uint8_t *data, size_t size)
+{
     bits->data = data;
     bits->size = size;
     bits->position = 0U;
@@ -192,14 +197,16 @@ static void sh_bits_init(sh_bits *bits, const uint8_t *data, size_t size) {
     bits->count = 0U;
 }
 
-static void sh_bits_fill(sh_bits *bits, unsigned want) {
+static void sh_bits_fill(sh_bits *bits, unsigned want)
+{
     while (bits->count < want && bits->position < bits->size) {
         bits->buffer |= (uint64_t)bits->data[bits->position++] << bits->count;
         bits->count += 8U;
     }
 }
 
-static bool sh_bits_get(sh_bits *bits, unsigned n, uint32_t *value) {
+static bool sh_bits_get(sh_bits *bits, unsigned n, uint32_t *value)
+{
     if (n == 0U) {
         *value = 0U;
         return true;
@@ -214,12 +221,14 @@ static bool sh_bits_get(sh_bits *bits, unsigned n, uint32_t *value) {
 }
 
 /* The next n bits without consuming them, zero padded past the end. */
-static uint32_t sh_bits_peek(sh_bits *bits, unsigned n) {
+static uint32_t sh_bits_peek(sh_bits *bits, unsigned n)
+{
     sh_bits_fill(bits, n);
     return (uint32_t)(bits->buffer & ((UINT64_C(1) << n) - 1U));
 }
 
-static size_t sh_bits_consumed(const sh_bits *bits) {
+static size_t sh_bits_consumed(const sh_bits *bits)
+{
     size_t buffered = bits->count / 8U;
     return bits->position > buffered ? bits->position - buffered : 0U;
 }
@@ -233,7 +242,8 @@ static size_t sh_bits_consumed(const sh_bits *bits) {
  * length the symbols are handed out in the order of the codes' bit-reversed
  * values.  The table maps the next eight stream bits (first bit lowest) to
  * a symbol; sh_lzh_length gives how many of them it uses. */
-static uint8_t sh_lzh_length(unsigned symbol) {
+static uint8_t sh_lzh_length(unsigned symbol)
+{
     if (symbol < 1U) return 3U;
     if (symbol < 4U) return 4U;
     if (symbol < 12U) return 5U;
@@ -242,7 +252,8 @@ static uint8_t sh_lzh_length(unsigned symbol) {
     return 8U;
 }
 
-static unsigned sh_reverse(unsigned value, unsigned width) {
+static unsigned sh_reverse(unsigned value, unsigned width)
+{
     unsigned result = 0U, index;
     for (index = 0U; index < width; ++index) {
         result = (result << 1U) | ((value >> index) & 1U);
@@ -250,7 +261,8 @@ static unsigned sh_reverse(unsigned value, unsigned width) {
     return result;
 }
 
-static void sh_lzh_build_table(uint8_t table[256]) {
+static void sh_lzh_build_table(uint8_t table[256])
+{
     unsigned code = 0U, previous = 0U, symbol = 0U;
     while (symbol < 64U) {
         unsigned length = sh_lzh_length(symbol);
@@ -274,18 +286,14 @@ static void sh_lzh_build_table(uint8_t table[256]) {
         }
         for (index = 0U; index < count; ++index) {
             for (fill = 0U; fill < (1U << (8U - length)); ++fill) {
-                table[reversed[index] | (fill << length)] =
-                    (uint8_t)(first + index);
+                table[reversed[index] | (fill << length)] = (uint8_t)(first + index);
             }
         }
     }
 }
 
-bool xx_sfx_hci_instalit_lzh_decode_memory(const uint8_t *input,
-                                           size_t input_size,
-                                           uint8_t *output,
-                                           size_t output_size,
-                                           size_t *consumed) {
+bool xx_sfx_hci_instalit_lzh_decode_memory(const uint8_t *input, size_t input_size, uint8_t *output, size_t output_size, size_t *consumed)
+{
     uint16_t tree[SH_LZH_MAX_NODES];
     uint8_t table[256];
     uint8_t window[SH_LZH_WINDOW];
@@ -299,15 +307,12 @@ bool xx_sfx_hci_instalit_lzh_decode_memory(const uint8_t *input,
     if (consumed) *consumed = 0U;
     if (!input || (!output && output_size != 0U)) return false;
     sh_bits_init(&bits, input, input_size);
-    if (!sh_bits_get(&bits, 16U, &nodes) || nodes < 2U ||
-        nodes >= SH_LZH_MAX_NODES || !sh_bits_get(&bits, 8U, &width) ||
-        width < 1U || width > 10U) {
+    if (!sh_bits_get(&bits, 16U, &nodes) || nodes < 2U || nodes >= SH_LZH_MAX_NODES || !sh_bits_get(&bits, 8U, &width) || width < 1U || width > 10U) {
         return false;
     }
     for (index = 0U; index < nodes; ++index) {
         if (!sh_bits_get(&bits, width, &value)) return false;
-        tree[index] = (uint16_t)(value >= nodes ? ((value - nodes) | 0x8000U)
-                                                : value);
+        tree[index] = (uint16_t)(value >= nodes ? ((value - nodes) | 0x8000U) : value);
     }
     sh_lzh_build_table(table);
     xx_rt_memset(window, ' ', sizeof(window));
@@ -348,8 +353,7 @@ bool xx_sfx_hci_instalit_lzh_decode_memory(const uint8_t *input,
                 }
             }
             if (!sh_bits_get(&bits, low_bits, &low)) return false;
-            source = (position - ((high << low_bits) + low + 1U)) &
-                     (SH_LZH_WINDOW - 1U);
+            source = (position - ((high << low_bits) + low + 1U)) & (SH_LZH_WINDOW - 1U);
             if (length > output_size - produced) return false;
             while (length-- > 0U) {
                 uint8_t byte = window[source];
@@ -378,13 +382,15 @@ typedef struct sh_rle_s {
     bool escape;
 } sh_rle;
 
-static bool sh_rle_emit(sh_rle *rle, uint8_t byte, size_t repeat) {
+static bool sh_rle_emit(sh_rle *rle, uint8_t byte, size_t repeat)
+{
     if (repeat > rle->size - rle->produced) return false;
     while (repeat-- > 0U) rle->output[rle->produced++] = byte;
     return true;
 }
 
-static bool sh_rle_push(sh_rle *rle, uint8_t byte) {
+static bool sh_rle_push(sh_rle *rle, uint8_t byte)
+{
     if (rle->escape) {
         rle->escape = false;
         if (byte == 0U) {
@@ -402,8 +408,8 @@ static bool sh_rle_push(sh_rle *rle, uint8_t byte) {
     return sh_rle_emit(rle, byte, 1U);
 }
 
-static bool sh_grow(void **buffer, size_t *capacity, size_t needed,
-                    size_t element, size_t limit) {
+static bool sh_grow(void **buffer, size_t *capacity, size_t needed, size_t element, size_t limit)
+{
     size_t next;
     void *grown;
     if (needed <= *capacity) return true;
@@ -418,11 +424,8 @@ static bool sh_grow(void **buffer, size_t *capacity, size_t needed,
     return true;
 }
 
-bool xx_sfx_hci_instalit_lzw_decode_memory(const uint8_t *input,
-                                           size_t input_size,
-                                           uint8_t *output,
-                                           size_t output_size,
-                                           size_t *consumed) {
+bool xx_sfx_hci_instalit_lzw_decode_memory(const uint8_t *input, size_t input_size, uint8_t *output, size_t output_size, size_t *consumed)
+{
     sh_bits bits;
     sh_rle rle;
     uint8_t *history = NULL;
@@ -433,8 +436,7 @@ bool xx_sfx_hci_instalit_lzw_decode_memory(const uint8_t *input,
     bool result = false;
 
     if (consumed) *consumed = 0U;
-    if (!input || (!output && output_size != 0U) ||
-        (int64_t)output_size > SH_MAX_UNPACKED) {
+    if (!input || (!output && output_size != 0U) || (int64_t)output_size > SH_MAX_UNPACKED) {
         return false;
     }
     /* Before run-length expansion a stream is at most twice its output
@@ -452,9 +454,7 @@ bool xx_sfx_hci_instalit_lzw_decode_memory(const uint8_t *input,
         size_t start = history_size, length, index;
         if (!sh_bits_get(&bits, 1U, &flag)) goto done;
         if (flag == 0U) {
-            if (!sh_bits_get(&bits, 8U, &value) ||
-                !sh_grow((void **)&history, &history_capacity,
-                         history_size + 1U, 1U, history_limit)) {
+            if (!sh_bits_get(&bits, 8U, &value) || !sh_grow((void **)&history, &history_capacity, history_size + 1U, 1U, history_limit)) {
                 goto done;
             }
             history[history_size++] = (uint8_t)value;
@@ -475,11 +475,8 @@ bool xx_sfx_hci_instalit_lzw_decode_memory(const uint8_t *input,
              * are contiguous, so that is one run of the history.  v equal
              * to the token count is the usual LZW case of the entry being
              * defined by this very token. */
-            length = ((size_t)value < tokens ? starts[value]
-                                             : history_size) -
-                     source + 1U;
-            if (!sh_grow((void **)&history, &history_capacity,
-                         history_size + length, 1U, history_limit)) {
+            length = ((size_t)value < tokens ? starts[value] : history_size) - source + 1U;
+            if (!sh_grow((void **)&history, &history_capacity, history_size + length, 1U, history_limit)) {
                 goto done;
             }
             for (index = 0U; index < length; ++index) {
@@ -487,9 +484,7 @@ bool xx_sfx_hci_instalit_lzw_decode_memory(const uint8_t *input,
             }
             history_size += length;
         }
-        if (!sh_grow((void **)&starts, &token_capacity, tokens + 1U,
-                     sizeof(uint32_t), history_limit) ||
-            start > UINT32_MAX) {
+        if (!sh_grow((void **)&starts, &token_capacity, tokens + 1U, sizeof(uint32_t), history_limit) || start > UINT32_MAX) {
             goto done;
         }
         starts[tokens++] = (uint32_t)start;
@@ -510,7 +505,8 @@ done:
 /* Layout bookkeeping                                                        */
 /* ------------------------------------------------------------------------ */
 
-static void sh_layout_cleanup(sh_layout *layout) {
+static void sh_layout_cleanup(sh_layout *layout)
+{
     size_t index;
     if (!layout) return;
     for (index = 0U; index < layout->count; ++index) {
@@ -522,12 +518,11 @@ static void sh_layout_cleanup(sh_layout *layout) {
     xx_mem_zero(layout, sizeof(*layout));
 }
 
-static sh_entry *sh_layout_add(sh_layout *layout) {
+static sh_entry *sh_layout_add(sh_layout *layout)
+{
     sh_entry *entry;
     if (layout->count >= SH_MAX_RECORDS + SH_MAX_EXEFILES + 1U) return NULL;
-    if (!sh_grow((void **)&layout->entries, &layout->capacity,
-                 layout->count + 1U, sizeof(sh_entry),
-                 SH_MAX_RECORDS + SH_MAX_EXEFILES + 1U)) {
+    if (!sh_grow((void **)&layout->entries, &layout->capacity, layout->count + 1U, sizeof(sh_entry), SH_MAX_RECORDS + SH_MAX_EXEFILES + 1U)) {
         return NULL;
     }
     entry = &layout->entries[layout->count++];
@@ -540,7 +535,8 @@ static sh_entry *sh_layout_add(sh_layout *layout) {
 /* Member names                                                              */
 /* ------------------------------------------------------------------------ */
 
-static bool sh_stem_is(const char *name, size_t stem, const char *device) {
+static bool sh_stem_is(const char *name, size_t stem, const char *device)
+{
     size_t index;
     for (index = 0U; index < stem; ++index) {
         if (!device[index] || sh_upper(name[index]) != device[index]) {
@@ -553,10 +549,9 @@ static bool sh_stem_is(const char *name, size_t stem, const char *device) {
 /* A single path component that is safe to create on any host: printable
  * ASCII without separators or wildcards, not only dots and spaces, not
  * ending in a dot or space, and not a DOS device name. */
-static bool sh_safe_name(const char *name) {
-    static const char *const devices[] = {"CON",    "PRN",     "AUX",
-                                          "NUL",    "CONIN$",  "CONOUT$",
-                                          "CLOCK$"};
+static bool sh_safe_name(const char *name)
+{
+    static const char *const devices[] = {"CON", "PRN", "AUX", "NUL", "CONIN$", "CONOUT$", "CLOCK$"};
     size_t length, stem = 0U, index;
     bool meaningful = false;
     if (!name || !name[0]) return false;
@@ -564,9 +559,8 @@ static bool sh_safe_name(const char *name) {
     if (length > SH_MAX_NAME) return false;
     for (index = 0U; index < length; ++index) {
         char c = name[index];
-        if ((unsigned char)c < 0x20U || (unsigned char)c > 0x7EU ||
-            c == '/' || c == '\\' || c == ':' || c == '<' || c == '>' ||
-            c == '"' || c == '|' || c == '?' || c == '*') {
+        if ((unsigned char)c < 0x20U || (unsigned char)c > 0x7EU || c == '/' || c == '\\' || c == ':' || c == '<' || c == '>' || c == '"' || c == '|' || c == '?' ||
+            c == '*') {
             return false;
         }
         if (c != '.' && c != ' ') meaningful = true;
@@ -581,26 +575,24 @@ static bool sh_safe_name(const char *name) {
         if (sh_stem_is(name, stem, devices[index])) return false;
     }
     if (stem == 4U && name[3] >= '0' && name[3] <= '9' &&
-        ((sh_upper(name[0]) == 'C' && sh_upper(name[1]) == 'O' &&
-          sh_upper(name[2]) == 'M') ||
-         (sh_upper(name[0]) == 'L' && sh_upper(name[1]) == 'P' &&
-          sh_upper(name[2]) == 'T'))) {
+        ((sh_upper(name[0]) == 'C' && sh_upper(name[1]) == 'O' && sh_upper(name[2]) == 'M') ||
+         (sh_upper(name[0]) == 'L' && sh_upper(name[1]) == 'P' && sh_upper(name[2]) == 'T'))) {
         return false;
     }
     return true;
 }
 
 /* Take the stored name when it is safe, otherwise a generated one. */
-static char *sh_make_name(const char *stored, const char *fallback_prefix,
-                          size_t ordinal) {
+static char *sh_make_name(const char *stored, const char *fallback_prefix, size_t ordinal)
+{
     char buffer[32];
     if (stored && sh_safe_name(stored)) return xx_str_dup(stored);
-    (void)xx_rt_snprintf(buffer, sizeof(buffer), "%s%u", fallback_prefix,
-                         (unsigned)ordinal);
+    (void)xx_rt_snprintf(buffer, sizeof(buffer), "%s%u", fallback_prefix, (unsigned)ordinal);
     return xx_str_dup(buffer);
 }
 
-static bool sh_same_name(const char *left, const char *right) {
+static bool sh_same_name(const char *left, const char *right)
+{
     while (*left && *right) {
         if (sh_upper(*left) != sh_upper(*right)) return false;
         ++left;
@@ -609,8 +601,8 @@ static bool sh_same_name(const char *left, const char *right) {
     return *left == *right;
 }
 
-static bool sh_name_taken(const sh_layout *layout, size_t upto,
-                          const char *name) {
+static bool sh_name_taken(const sh_layout *layout, size_t upto, const char *name)
+{
     size_t index;
     for (index = 0U; index < upto; ++index) {
         if (sh_same_name(layout->entries[index].name, name)) return true;
@@ -621,7 +613,8 @@ static bool sh_name_taken(const sh_layout *layout, size_t upto,
 /* Catalogs repeat names (the same file for two target directories), and a
  * case-insensitive host would let the second overwrite the first.  A later
  * duplicate becomes "<stem>_<n><ext>" with the first free n. */
-static bool sh_dedupe(sh_layout *layout) {
+static bool sh_dedupe(sh_layout *layout)
+{
     size_t index;
     for (index = 1U; index < layout->count; ++index) {
         char *name = layout->entries[index].name;
@@ -637,8 +630,7 @@ static bool sh_dedupe(sh_layout *layout) {
             if (stem > SH_MAX_NAME) return false;
             xx_rt_memcpy(head, name, stem);
             head[stem] = '\0';
-            (void)xx_rt_snprintf(candidate, sizeof(candidate), "%s_%u%s", head,
-                                 (unsigned)attempt, name + stem);
+            (void)xx_rt_snprintf(candidate, sizeof(candidate), "%s_%u%s", head, (unsigned)attempt, name + stem);
             if (!sh_name_taken(layout, layout->count, candidate)) {
                 char *copy = xx_str_dup(candidate);
                 if (!copy) return false;
@@ -658,16 +650,17 @@ static bool sh_dedupe(sh_layout *layout) {
 
 typedef struct sh_ne_s {
     int64_t ne_offset;
-    int64_t table_offset;   /* resource table, relative to base */
-    uint8_t *table;         /* resource table bytes */
+    int64_t table_offset; /* resource table, relative to base */
+    uint8_t *table;       /* resource table bytes */
     size_t table_size;
     unsigned shift;
-    uint8_t *names;         /* RT_NAMETABLE data, concatenated */
+    uint8_t *names; /* RT_NAMETABLE data, concatenated */
     size_t names_size;
-    int64_t extent;         /* end of the NE image as its tables describe it */
+    int64_t extent; /* end of the NE image as its tables describe it */
 } sh_ne;
 
-static void sh_ne_cleanup(sh_ne *ne) {
+static void sh_ne_cleanup(sh_ne *ne)
+{
     if (ne->table) xx_mem_free(ne->table);
     if (ne->names) xx_mem_free(ne->names);
     xx_mem_zero(ne, sizeof(*ne));
@@ -675,8 +668,8 @@ static void sh_ne_cleanup(sh_ne *ne) {
 
 /* Walk the type blocks; calls back through the loop in the callers below.
  * Returns the offset of the next type block or 0 at the end / on error. */
-static bool sh_ne_type_at(const sh_ne *ne, size_t at, uint16_t *type_id,
-                          uint16_t *count, size_t *rows) {
+static bool sh_ne_type_at(const sh_ne *ne, size_t at, uint16_t *type_id, uint16_t *count, size_t *rows)
+{
     if (at > ne->table_size || ne->table_size - at < 2U) return false;
     *type_id = xx_data_get_u16(ne->table + at, 2, 0, false);
     if (*type_id == 0U) {
@@ -692,13 +685,12 @@ static bool sh_ne_type_at(const sh_ne *ne, size_t at, uint16_t *type_id,
 }
 
 /* A Pascal string inside the resource table. */
-static bool sh_ne_pascal(const sh_ne *ne, uint16_t offset, char *out,
-                         size_t out_size) {
+static bool sh_ne_pascal(const sh_ne *ne, uint16_t offset, char *out, size_t out_size)
+{
     size_t length;
     if ((size_t)offset >= ne->table_size) return false;
     length = ne->table[offset];
-    if (length == 0U || length >= out_size ||
-        length > ne->table_size - offset - 1U) {
+    if (length == 0U || length >= out_size || length > ne->table_size - offset - 1U) {
         return false;
     }
     xx_rt_memcpy(out, ne->table + offset + 1U, length);
@@ -706,14 +698,15 @@ static bool sh_ne_pascal(const sh_ne *ne, uint16_t offset, char *out,
     return true;
 }
 
-static bool sh_is_exefile(const char *name) {
+static bool sh_is_exefile(const char *name)
+{
     return sh_same_name(name, "EXEFILE");
 }
 
 /* Look (type, id) up in the RT_NAMETABLE data.  want_type selects the type
  * name, otherwise the id name is returned. */
-static bool sh_ne_nametable(const sh_ne *ne, uint16_t type_id, uint16_t id,
-                            bool want_type, char *out, size_t out_size) {
+static bool sh_ne_nametable(const sh_ne *ne, uint16_t type_id, uint16_t id, bool want_type, char *out, size_t out_size)
+{
     size_t at = 0U;
     unsigned guard = 0U;
     while (ne->names && at + 6U <= ne->names_size && guard++ < 65536U) {
@@ -732,8 +725,7 @@ static bool sh_ne_nametable(const sh_ne *ne, uint16_t type_id, uint16_t id,
         id_name = (const char *)ne->names + cursor;
         while (cursor < end && ne->names[cursor]) ++cursor;
         if (cursor >= end) break;
-        if (entry_type == (uint16_t)(type_id | 0x8000U) &&
-            (want_type || (entry_id | 0x8000U) == (id | 0x8000U))) {
+        if (entry_type == (uint16_t)(type_id | 0x8000U) && (want_type || (entry_id | 0x8000U) == (id | 0x8000U))) {
             const char *pick = want_type ? type_name : id_name;
             length = xx_str_len(pick);
             if (length > 0U && length < out_size) {
@@ -748,8 +740,8 @@ static bool sh_ne_nametable(const sh_ne *ne, uint16_t type_id, uint16_t id,
 
 /* Read the MZ and NE headers and the resource table, plus any RT_NAMETABLE
  * data.  With full set the image extent is measured too. */
-static bool sh_ne_load(Abstractformat *self, int64_t image_size, sh_ne *ne,
-                       bool full) {
+static bool sh_ne_load(Abstractformat *self, int64_t image_size, sh_ne *ne, bool full)
+{
     uint8_t mz[64], header[64];
     uint32_t lfanew;
     uint16_t table_rel, names_rel;
@@ -757,16 +749,12 @@ static bool sh_ne_load(Abstractformat *self, int64_t image_size, sh_ne *ne,
     unsigned types = 0U;
 
     xx_mem_zero(ne, sizeof(*ne));
-    if (image_size < 0x80 ||
-        !sh_read_at(self->device, self->base_address, mz, sizeof(mz)) ||
-        mz[0] != 'M' || mz[1] != 'Z') {
+    if (image_size < 0x80 || !sh_read_at(self->device, self->base_address, mz, sizeof(mz)) || mz[0] != 'M' || mz[1] != 'Z') {
         return false;
     }
     lfanew = xx_data_get_u32(mz + 0x3C, 4, 0, false);
-    if (lfanew < 0x40U || !sh_within(image_size, lfanew, 64) ||
-        !sh_read_at(self->device, self->base_address + lfanew, header,
-                    sizeof(header)) ||
-        header[0] != 'N' || header[1] != 'E') {
+    if (lfanew < 0x40U || !sh_within(image_size, lfanew, 64) || !sh_read_at(self->device, self->base_address + lfanew, header, sizeof(header)) || header[0] != 'N' ||
+        header[1] != 'E') {
         return false;
     }
     ne->ne_offset = lfanew;
@@ -779,9 +767,7 @@ static bool sh_ne_load(Abstractformat *self, int64_t image_size, sh_ne *ne,
         return false;
     }
     ne->table = (uint8_t *)xx_mem_alloc(ne->table_size);
-    if (!ne->table ||
-        !sh_read_at(self->device, self->base_address + ne->table_offset,
-                    ne->table, ne->table_size)) {
+    if (!ne->table || !sh_read_at(self->device, self->base_address + ne->table_offset, ne->table, ne->table_size)) {
         sh_ne_cleanup(ne);
         return false;
     }
@@ -797,8 +783,7 @@ static bool sh_ne_load(Abstractformat *self, int64_t image_size, sh_ne *ne,
     for (;;) {
         uint16_t type_id, count, row;
         size_t rows;
-        if (!sh_ne_type_at(ne, at, &type_id, &count, &rows) ||
-            ++types > SH_MAX_RESOURCE_TYPES) {
+        if (!sh_ne_type_at(ne, at, &type_id, &count, &rows) || ++types > SH_MAX_RESOURCE_TYPES) {
             sh_ne_cleanup(ne);
             return false;
         }
@@ -807,22 +792,17 @@ static bool sh_ne_load(Abstractformat *self, int64_t image_size, sh_ne *ne,
             const uint8_t *entry = ne->table + rows + (size_t)row * 12U;
             int64_t offset = (int64_t)xx_data_get_u16(entry, 2, 0, false) << ne->shift;
             int64_t length = (int64_t)xx_data_get_u16(entry + 2U, 2, 0, false) << ne->shift;
-            if (sh_within(image_size, offset, length) &&
-                offset + length > ne->extent) {
+            if (sh_within(image_size, offset, length) && offset + length > ne->extent) {
                 ne->extent = offset + length;
             }
-            if (type_id == 0x800FU && length > 0 &&
-                sh_within(image_size, offset, length) &&
-                (size_t)length <= SH_MAX_NAMETABLE - ne->names_size) {
-                uint8_t *grown = (uint8_t *)xx_mem_realloc(
-                    ne->names, ne->names_size + (size_t)length);
+            if (type_id == 0x800FU && length > 0 && sh_within(image_size, offset, length) && (size_t)length <= SH_MAX_NAMETABLE - ne->names_size) {
+                uint8_t *grown = (uint8_t *)xx_mem_realloc(ne->names, ne->names_size + (size_t)length);
                 if (!grown) {
                     sh_ne_cleanup(ne);
                     return false;
                 }
                 ne->names = grown;
-                if (!sh_read_at(self->device, self->base_address + offset,
-                                ne->names + ne->names_size, (size_t)length)) {
+                if (!sh_read_at(self->device, self->base_address + offset, ne->names + ne->names_size, (size_t)length)) {
                     sh_ne_cleanup(ne);
                     return false;
                 }
@@ -842,31 +822,23 @@ static bool sh_ne_load(Abstractformat *self, int64_t image_size, sh_ne *ne,
         uint16_t nonres_size = xx_data_get_u16(header + 0x20, 2, 0, false);
         uint16_t index;
         if (align == 0U) align = 9U;
-        if (nonres != 0U && sh_within(image_size, nonres, nonres_size) &&
-            (int64_t)nonres + nonres_size > ne->extent) {
+        if (nonres != 0U && sh_within(image_size, nonres, nonres_size) && (int64_t)nonres + nonres_size > ne->extent) {
             ne->extent = (int64_t)nonres + nonres_size;
         }
-        if (align <= 15U && segments > 0U &&
-            sh_within(image_size, (int64_t)lfanew + segment_rel,
-                      (int64_t)segments * 8)) {
+        if (align <= 15U && segments > 0U && sh_within(image_size, (int64_t)lfanew + segment_rel, (int64_t)segments * 8)) {
             for (index = 0U; index < segments; ++index) {
                 uint8_t segment[8];
                 int64_t offset, length, end;
-                if (!sh_read_at(self->device,
-                                self->base_address + lfanew + segment_rel +
-                                    (int64_t)index * 8,
-                                segment, sizeof(segment))) {
+                if (!sh_read_at(self->device, self->base_address + lfanew + segment_rel + (int64_t)index * 8, segment, sizeof(segment))) {
                     break;
                 }
                 if (xx_data_get_u16(segment, 2, 0, false) == 0U) continue;
                 offset = (int64_t)xx_data_get_u16(segment, 2, 0, false) << align;
                 length = xx_data_get_u16(segment + 2U, 2, 0, false) ? xx_data_get_u16(segment + 2U, 2, 0, false) : 0x10000;
                 end = offset + length;
-                if ((xx_data_get_u16(segment + 4U, 2, 0, false) & 0x0100U) != 0U &&
-                    sh_within(image_size, end, 2)) {
+                if ((xx_data_get_u16(segment + 4U, 2, 0, false) & 0x0100U) != 0U && sh_within(image_size, end, 2)) {
                     uint8_t relocs[2];
-                    if (sh_read_at(self->device, self->base_address + end,
-                                   relocs, 2U)) {
+                    if (sh_read_at(self->device, self->base_address + end, relocs, 2U)) {
                         end += 2 + (int64_t)xx_data_get_u16(relocs, 2, 0, false) * 8;
                     }
                 }
@@ -879,9 +851,8 @@ static bool sh_ne_load(Abstractformat *self, int64_t image_size, sh_ne *ne,
 
 /* Find the EXEFILE resources.  With layout NULL this only reports whether
  * at least one plausible one exists (the detection probe). */
-static bool sh_ne_exefiles(Abstractformat *self, int64_t image_size,
-                           const sh_ne *ne, sh_layout *layout,
-                           xx_pd_struct *pd) {
+static bool sh_ne_exefiles(Abstractformat *self, int64_t image_size, const sh_ne *ne, sh_layout *layout, xx_pd_struct *pd)
+{
     size_t at = 2U;
     unsigned types = 0U, found = 0U;
     for (;;) {
@@ -889,8 +860,7 @@ static bool sh_ne_exefiles(Abstractformat *self, int64_t image_size,
         size_t rows;
         char type_name[64];
         bool named;
-        if (!sh_ne_type_at(ne, at, &type_id, &count, &rows) ||
-            ++types > SH_MAX_RESOURCE_TYPES) {
+        if (!sh_ne_type_at(ne, at, &type_id, &count, &rows) || ++types > SH_MAX_RESOURCE_TYPES) {
             return false;
         }
         if (type_id == 0U) break;
@@ -898,8 +868,7 @@ static bool sh_ne_exefiles(Abstractformat *self, int64_t image_size,
         if ((type_id & 0x8000U) == 0U) {
             named = sh_ne_pascal(ne, type_id, type_name, sizeof(type_name));
         } else {
-            named = sh_ne_nametable(ne, type_id, 0U, true, type_name,
-                                    sizeof(type_name));
+            named = sh_ne_nametable(ne, type_id, 0U, true, type_name, sizeof(type_name));
         }
         if (!named || !sh_is_exefile(type_name)) continue;
         for (row = 0U; row < count; ++row) {
@@ -911,15 +880,12 @@ static bool sh_ne_exefiles(Abstractformat *self, int64_t image_size,
             bool dcl, raw;
             uint32_t packed = 0U;
             if (pd && xx_pd_is_stopped(pd)) return false;
-            if (length < 10 || !sh_within(image_size, offset, length) ||
-                !sh_read_at(self->device, self->base_address + offset, head,
-                            sizeof(head))) {
+            if (length < 10 || !sh_within(image_size, offset, length) || !sh_read_at(self->device, self->base_address + offset, head, sizeof(head))) {
                 continue;
             }
             raw = head[0] == 'M' && head[1] == 'Z';
             packed = xx_data_get_u32(head + 4U, 4, 0, false);
-            dcl = !raw && head[8] <= 1U && head[9] >= 4U && head[9] <= 6U &&
-                  packed >= 3U && (int64_t)packed <= length - 8;
+            dcl = !raw && head[8] <= 1U && head[9] >= 4U && head[9] <= 6U && packed >= 3U && (int64_t)packed <= length - 8;
             if (!raw && !dcl) continue;
             ++found;
             if (!layout) return true;
@@ -932,16 +898,13 @@ static bool sh_ne_exefiles(Abstractformat *self, int64_t image_size,
                 if ((id & 0x8000U) == 0U) {
                     have_name = sh_ne_pascal(ne, id, stored, sizeof(stored));
                 } else {
-                    have_name = sh_ne_nametable(ne, type_id, id, false,
-                                                stored, sizeof(stored));
+                    have_name = sh_ne_nametable(ne, type_id, id, false, stored, sizeof(stored));
                     if (!have_name) {
-                        (void)xx_rt_snprintf(stored, sizeof(stored), "#%u",
-                                             (unsigned)(id & 0x7FFFU));
+                        (void)xx_rt_snprintf(stored, sizeof(stored), "#%u", (unsigned)(id & 0x7FFFU));
                         have_name = true;
                     }
                 }
-                entry->name = sh_make_name(have_name ? stored : NULL,
-                                           "EXEFILE_", found);
+                entry->name = sh_make_name(have_name ? stored : NULL, "EXEFILE_", found);
                 if (!entry->name) return false;
                 entry->header_offset = self->base_address + offset;
                 if (raw) {
@@ -968,21 +931,17 @@ static bool sh_ne_exefiles(Abstractformat *self, int64_t image_size,
 }
 
 /* DCL streams in EXEFILE resources carry no unpacked size: measure it. */
-static void sh_measure_exefiles(Abstractformat *self, int64_t image_size,
-                                sh_layout *layout) {
+static void sh_measure_exefiles(Abstractformat *self, int64_t image_size, sh_layout *layout)
+{
     size_t index;
     for (index = 0U; index < layout->count; ++index) {
         sh_entry *entry = &layout->entries[index];
         uint8_t *packed;
         size_t consumed = 0U, produced = 0U;
         if (entry->kind != SH_ENTRY_EXEFILE_DCL) continue;
-        packed = sh_read_block(self, image_size,
-                               entry->data_offset - self->base_address,
-                               entry->packed_size);
+        packed = sh_read_block(self, image_size, entry->data_offset - self->base_address, entry->packed_size);
         if (!packed) continue;
-        if (xx_dcl_scan_memory(packed, (size_t)entry->packed_size,
-                               (size_t)SH_MAX_UNPACKED, &consumed,
-                               &produced)) {
+        if (xx_dcl_scan_memory(packed, (size_t)entry->packed_size, (size_t)SH_MAX_UNPACKED, &consumed, &produced)) {
             entry->unpacked_size = (int64_t)produced;
         }
         xx_mem_free(packed);
@@ -1001,26 +960,21 @@ typedef struct sh_footer_s {
     uint32_t pvm;
 } sh_footer;
 
-static bool sh_tag_at(Abstractformat *self, int64_t offset, const char *tag,
-                      size_t size) {
+static bool sh_tag_at(Abstractformat *self, int64_t offset, const char *tag, size_t size)
+{
     uint8_t buffer[16];
-    if (size > sizeof(buffer) ||
-        !sh_read_at(self->device, self->base_address + offset, buffer, size)) {
+    if (size > sizeof(buffer) || !sh_read_at(self->device, self->base_address + offset, buffer, size)) {
         return false;
     }
     return xx_rt_memcmp(buffer, tag, size) == 0;
 }
 
-static bool sh_read_footer(Abstractformat *self, int64_t image_size,
-                           sh_footer *footer) {
+static bool sh_read_footer(Abstractformat *self, int64_t image_size, sh_footer *footer)
+{
     uint8_t raw[SH_FOOTER_SIZE];
     unsigned index;
     xx_mem_zero(footer, sizeof(*footer));
-    if (image_size < SH_FOOTER_SIZE ||
-        !sh_read_at(self->device,
-                    self->base_address + image_size - SH_FOOTER_SIZE, raw,
-                    sizeof(raw)) ||
-        raw[0] != SH_FOOTER_TAG) {
+    if (image_size < SH_FOOTER_SIZE || !sh_read_at(self->device, self->base_address + image_size - SH_FOOTER_SIZE, raw, sizeof(raw)) || raw[0] != SH_FOOTER_TAG) {
         return false;
     }
     for (index = 1U; index <= SH_SERIAL_DIGITS; ++index) {
@@ -1036,19 +990,16 @@ static bool sh_read_footer(Abstractformat *self, int64_t image_size,
 
 /* [PVM] must sit below the end of its records, which must sit below the
  * footer; [PVL], when present, must come first. */
-static bool sh_footer_catalog_ok(Abstractformat *self,
-                                 const sh_footer *footer) {
+static bool sh_footer_catalog_ok(Abstractformat *self, const sh_footer *footer)
+{
     if (footer->pvm == 0U) {
         return footer->pvl == 0U && footer->records_end == 0U;
     }
-    if ((int64_t)footer->pvm + SH_BLOCK_TAG_SIZE > footer->records_end ||
-        (int64_t)footer->records_end > footer->offset ||
+    if ((int64_t)footer->pvm + SH_BLOCK_TAG_SIZE > footer->records_end || (int64_t)footer->records_end > footer->offset ||
         !sh_tag_at(self, footer->pvm, "\x05[PVM]", SH_BLOCK_TAG_SIZE)) {
         return false;
     }
-    if (footer->pvl != 0U &&
-        ((int64_t)footer->pvl + SH_BLOCK_TAG_SIZE > footer->pvm ||
-         !sh_tag_at(self, footer->pvl, "\x05[PVL]", SH_BLOCK_TAG_SIZE))) {
+    if (footer->pvl != 0U && ((int64_t)footer->pvl + SH_BLOCK_TAG_SIZE > footer->pvm || !sh_tag_at(self, footer->pvl, "\x05[PVL]", SH_BLOCK_TAG_SIZE))) {
         return false;
     }
     return true;
@@ -1056,7 +1007,8 @@ static bool sh_footer_catalog_ok(Abstractformat *self,
 
 /* The stored name: NUL terminated inside its 13 bytes and not empty.  Its
  * characters are judged later, when the output name is chosen. */
-static bool sh_record_name(const uint8_t *record, char *name) {
+static bool sh_record_name(const uint8_t *record, char *name)
+{
     size_t index;
     for (index = 0U; index < SH_REC_NAME_SIZE; ++index) {
         uint8_t c = record[6U + index];
@@ -1070,7 +1022,8 @@ static bool sh_record_name(const uint8_t *record, char *name) {
 
 /* The catalog stride: 47 for 0x1A records; 55 or 59 for 0x1C records,
  * whichever tiles the catalog with a tag and a name at every step. */
-static uint32_t sh_catalog_stride(const uint8_t *catalog, size_t size) {
+static uint32_t sh_catalog_stride(const uint8_t *catalog, size_t size)
+{
     static const uint32_t strides[] = {SH_REC_SIZE_NEW, SH_REC_SIZE_WIDE};
     size_t pick, at;
     char name[SH_REC_NAME_SIZE + 1U];
@@ -1078,8 +1031,7 @@ static uint32_t sh_catalog_stride(const uint8_t *catalog, size_t size) {
     if (catalog[0] == SH_REC_TAG_OLD) {
         if (size % SH_REC_SIZE_OLD != 0U) return 0U;
         for (at = 0U; at < size; at += SH_REC_SIZE_OLD) {
-            if (catalog[at] != SH_REC_TAG_OLD ||
-                !sh_record_name(catalog + at, name)) {
+            if (catalog[at] != SH_REC_TAG_OLD || !sh_record_name(catalog + at, name)) {
                 return 0U;
             }
         }
@@ -1089,8 +1041,7 @@ static uint32_t sh_catalog_stride(const uint8_t *catalog, size_t size) {
     for (pick = 0U; pick < 2U; ++pick) {
         bool ok = size % strides[pick] == 0U;
         for (at = 0U; ok && at < size; at += strides[pick]) {
-            ok = catalog[at] == SH_REC_TAG_NEW &&
-                 sh_record_name(catalog + at, name);
+            ok = catalog[at] == SH_REC_TAG_NEW && sh_record_name(catalog + at, name);
         }
         if (ok) return strides[pick];
     }
@@ -1099,11 +1050,9 @@ static uint32_t sh_catalog_stride(const uint8_t *catalog, size_t size) {
 
 /* Add the members this file holds: same disk as the first record and data
  * wholly between data_base and data_end. */
-static bool sh_catalog_members(Abstractformat *self, const uint8_t *catalog,
-                               size_t size, uint32_t stride,
-                               int64_t catalog_offset, int64_t data_base,
-                               int64_t data_end, bool data_here,
-                               sh_layout *layout, xx_pd_struct *pd) {
+static bool sh_catalog_members(Abstractformat *self, const uint8_t *catalog, size_t size, uint32_t stride, int64_t catalog_offset, int64_t data_base, int64_t data_end,
+                               bool data_here, sh_layout *layout, xx_pd_struct *pd)
+{
     size_t at, ordinal = 0U;
     bool old = stride == SH_REC_SIZE_OLD;
     uint8_t first_disk = old ? catalog[0x1E] : catalog[0x20];
@@ -1117,10 +1066,7 @@ static bool sh_catalog_members(Abstractformat *self, const uint8_t *catalog,
         sh_entry *entry;
         ++ordinal;
         if (pd && xx_pd_is_stopped(pd)) return false;
-        if (!data_here || disk != first_disk ||
-            !sh_within(data_end, data_base + (int64_t)offset,
-                       (int64_t)packed) ||
-            (int64_t)unpacked > SH_MAX_UNPACKED) {
+        if (!data_here || disk != first_disk || !sh_within(data_end, data_base + (int64_t)offset, (int64_t)packed) || (int64_t)unpacked > SH_MAX_UNPACKED) {
             ++layout->members_elsewhere;
             continue;
         }
@@ -1157,8 +1103,8 @@ static bool sh_catalog_members(Abstractformat *self, const uint8_t *catalog,
 
 /* full = false is the detection probe: only headers, the resource table and
  * the footer are read, and nothing is decoded. */
-static bool sh_parse(Abstractformat *self, sh_layout *layout, bool full,
-                     xx_pd_struct *pd) {
+static bool sh_parse(Abstractformat *self, sh_layout *layout, bool full, xx_pd_struct *pd)
+{
     int64_t total, image_size;
     sh_footer footer;
     sh_ne ne;
@@ -1168,8 +1114,7 @@ static bool sh_parse(Abstractformat *self, sh_layout *layout, bool full,
 
     xx_mem_zero(layout, sizeof(*layout));
     xx_mem_zero(&ne, sizeof(ne));
-    if (!self || !self->device || self->base_address < 0 ||
-        (pd && xx_pd_is_stopped(pd))) {
+    if (!self || !self->device || self->base_address < 0 || (pd && xx_pd_is_stopped(pd))) {
         return false;
     }
     total = xx_io_total_size(self->device);
@@ -1199,20 +1144,16 @@ static bool sh_parse(Abstractformat *self, sh_layout *layout, bool full,
         int64_t catalog_offset = (int64_t)footer.pvm + SH_BLOCK_TAG_SIZE;
         int64_t catalog_size = (int64_t)footer.records_end - catalog_offset;
         uint32_t stride;
-        if (catalog_size <= 0 ||
-            catalog_size > (int64_t)SH_MAX_RECORDS * SH_REC_SIZE_WIDE) {
+        if (catalog_size <= 0 || catalog_size > (int64_t)SH_MAX_RECORDS * SH_REC_SIZE_WIDE) {
             if (!is_ne) goto done;
         } else {
-            catalog = sh_read_block(self, image_size, catalog_offset,
-                                    catalog_size);
-            stride = catalog ? sh_catalog_stride(catalog, (size_t)catalog_size)
-                             : 0U;
+            catalog = sh_read_block(self, image_size, catalog_offset, catalog_size);
+            stride = catalog ? sh_catalog_stride(catalog, (size_t)catalog_size) : 0U;
             if (stride == 0U) {
                 if (!is_ne) goto done;
             } else {
                 layout->record_size = stride;
-                layout->catalog_records =
-                    (uint32_t)((size_t)catalog_size / stride);
+                layout->catalog_records = (uint32_t)((size_t)catalog_size / stride);
                 if (!is_ne) {
                     /* A volume's first member starts its data. */
                     if (xx_data_get_u32(catalog + 1U, 4, 0, false) != 0U) goto done;
@@ -1222,12 +1163,8 @@ static bool sh_parse(Abstractformat *self, sh_layout *layout, bool full,
         if (full && layout->record_size != 0U) {
             /* SFX: data follows [PVL]; volume: data starts at offset 0. */
             bool data_here = !is_ne || footer.pvl != 0U;
-            int64_t data_base =
-                is_ne ? (int64_t)footer.pvl + SH_BLOCK_TAG_SIZE : 0;
-            if (!sh_catalog_members(self, catalog, (size_t)catalog_size,
-                                    layout->record_size, catalog_offset,
-                                    data_base, footer.pvm, data_here, layout,
-                                    pd)) {
+            int64_t data_base = is_ne ? (int64_t)footer.pvl + SH_BLOCK_TAG_SIZE : 0;
+            if (!sh_catalog_members(self, catalog, (size_t)catalog_size, layout->record_size, catalog_offset, data_base, footer.pvm, data_here, layout, pd)) {
                 goto done;
             }
         }
@@ -1236,12 +1173,9 @@ static bool sh_parse(Abstractformat *self, sh_layout *layout, bool full,
     /* The obfuscated script lives in the SFX only; a volume's pointer names
      * an offset in its setup program. */
     if (is_ne && has_footer && footer.script != 0U) {
-        int64_t script_end = footer.pvl != 0U ? (int64_t)footer.pvl
-                                              : footer.offset;
+        int64_t script_end = footer.pvl != 0U ? (int64_t)footer.pvl : footer.offset;
         int64_t body = (int64_t)footer.script + SH_SCRIPT_TAG_SIZE;
-        if (body <= script_end && script_end - body <= SH_MAX_SCRIPT &&
-            sh_tag_at(self, footer.script, "\x08[SCRIPT]",
-                      SH_SCRIPT_TAG_SIZE)) {
+        if (body <= script_end && script_end - body <= SH_MAX_SCRIPT && sh_tag_at(self, footer.script, "\x08[SCRIPT]", SH_SCRIPT_TAG_SIZE)) {
             layout->has_script = true;
             if (full) {
                 sh_entry *entry = sh_layout_add(layout);
@@ -1260,8 +1194,7 @@ static bool sh_parse(Abstractformat *self, sh_layout *layout, bool full,
     }
 
     if (layout->kind == XX_SFX_HCI_INSTALIT_KIND_SFX && !has_footer) {
-        layout->size = ne.extent > 0 && ne.extent <= image_size ? ne.extent
-                                                                : image_size;
+        layout->size = ne.extent > 0 && ne.extent <= image_size ? ne.extent : image_size;
     } else {
         layout->size = image_size;
     }
@@ -1282,8 +1215,8 @@ done:
 /* Decoding one entry                                                        */
 /* ------------------------------------------------------------------------ */
 
-static bool sh_crc_ok(const sh_entry *entry, const uint8_t *data,
-                      size_t size) {
+static bool sh_crc_ok(const sh_entry *entry, const uint8_t *data, size_t size)
+{
     if (entry->crc_kind == SH_CRC_32) {
         return xx_crc32_calc(0U, data, size) == entry->crc;
     }
@@ -1298,7 +1231,8 @@ static bool sh_crc_ok(const sh_entry *entry, const uint8_t *data,
  * least ~22 bits on a 518-byte match, the 0xD0 codec at least 4 bits on a
  * 60-byte match; LZW phrases and the 0x90 runs can grow faster, so 0xE0 gets
  * a looser bound. */
-static bool sh_ratio_ok(uint8_t method, int64_t packed, int64_t unpacked) {
+static bool sh_ratio_ok(uint8_t method, int64_t packed, int64_t unpacked)
+{
     int64_t factor;
     switch (method) {
         case SH_METHOD_DCL: factor = 256; break;
@@ -1311,9 +1245,8 @@ static bool sh_ratio_ok(uint8_t method, int64_t packed, int64_t unpacked) {
 }
 
 /* Produce the entry's bytes in memory.  *out is owned by the caller. */
-static bool sh_decode_entry(Abstractformat *self, const sh_entry *entry,
-                            uint64_t max_member, uint8_t **out,
-                            size_t *out_size, xx_pd_struct *pd) {
+static bool sh_decode_entry(Abstractformat *self, const sh_entry *entry, uint64_t max_member, uint8_t **out, size_t *out_size, xx_pd_struct *pd)
+{
     int64_t total = xx_io_total_size(self->device);
     int64_t image_size = total - self->base_address;
     uint8_t *packed = NULL, *plain = NULL;
@@ -1323,14 +1256,11 @@ static bool sh_decode_entry(Abstractformat *self, const sh_entry *entry,
     *out = NULL;
     *out_size = 0U;
     if (pd && xx_pd_is_stopped(pd)) return false;
-    if (entry->unpacked_size < 0 || entry->unpacked_size > SH_MAX_UNPACKED ||
-        (uint64_t)entry->unpacked_size > max_member ||
-        entry->packed_size < 0 || entry->packed_size > SH_MAX_PACKED) {
+    if (entry->unpacked_size < 0 || entry->unpacked_size > SH_MAX_UNPACKED || (uint64_t)entry->unpacked_size > max_member || entry->packed_size < 0 ||
+        entry->packed_size > SH_MAX_PACKED) {
         return false;
     }
-    packed = sh_read_block(self, image_size,
-                           entry->data_offset - self->base_address,
-                           entry->packed_size);
+    packed = sh_read_block(self, image_size, entry->data_offset - self->base_address, entry->packed_size);
     if (!packed) return false;
     if (entry->kind == SH_ENTRY_EXEFILE_RAW || entry->kind == SH_ENTRY_SCRIPT) {
         if (entry->kind == SH_ENTRY_SCRIPT) {
@@ -1342,24 +1272,19 @@ static bool sh_decode_entry(Abstractformat *self, const sh_entry *entry,
         *out_size = (size_t)entry->packed_size;
         return true;
     }
-    if (!sh_ratio_ok(entry->method, entry->packed_size,
-                     entry->unpacked_size)) {
+    if (!sh_ratio_ok(entry->method, entry->packed_size, entry->unpacked_size)) {
         goto done;
     }
     if (entry->method == SH_METHOD_DCL && entry->unpacked_size > 0) {
         /* Measure first (a sliding window, no allocation): the buffer is
          * sized only for a stream that really produces the declared size. */
         size_t produced = 0U;
-        if (!xx_dcl_scan_memory(packed, (size_t)entry->packed_size,
-                                (size_t)entry->unpacked_size + 1U, &consumed,
-                                &produced) ||
+        if (!xx_dcl_scan_memory(packed, (size_t)entry->packed_size, (size_t)entry->unpacked_size + 1U, &consumed, &produced) ||
             produced != (size_t)entry->unpacked_size) {
             goto done;
         }
     }
-    plain = (uint8_t *)xx_mem_alloc(entry->unpacked_size
-                                        ? (size_t)entry->unpacked_size
-                                        : 1U);
+    plain = (uint8_t *)xx_mem_alloc(entry->unpacked_size ? (size_t)entry->unpacked_size : 1U);
     if (!plain) goto done;
     switch (entry->method) {
         case SH_METHOD_DCL:
@@ -1367,25 +1292,13 @@ static bool sh_decode_entry(Abstractformat *self, const sh_entry *entry,
                 /* xx_dcl_decode_memory wants room for one byte; an empty
                  * member is a stream that reaches its end marker at once. */
                 size_t produced = 1U;
-                ok = xx_dcl_scan_memory(packed, (size_t)entry->packed_size, 1U,
-                                        &consumed, &produced) &&
-                     produced == 0U;
+                ok = xx_dcl_scan_memory(packed, (size_t)entry->packed_size, 1U, &consumed, &produced) && produced == 0U;
             } else {
-                ok = xx_dcl_decode_memory(packed, (size_t)entry->packed_size,
-                                          plain, (size_t)entry->unpacked_size,
-                                          &consumed);
+                ok = xx_dcl_decode_memory(packed, (size_t)entry->packed_size, plain, (size_t)entry->unpacked_size, &consumed);
             }
             break;
-        case SH_METHOD_LZH:
-            ok = xx_sfx_hci_instalit_lzh_decode_memory(
-                packed, (size_t)entry->packed_size, plain,
-                (size_t)entry->unpacked_size, &consumed);
-            break;
-        case SH_METHOD_LZW:
-            ok = xx_sfx_hci_instalit_lzw_decode_memory(
-                packed, (size_t)entry->packed_size, plain,
-                (size_t)entry->unpacked_size, &consumed);
-            break;
+        case SH_METHOD_LZH: ok = xx_sfx_hci_instalit_lzh_decode_memory(packed, (size_t)entry->packed_size, plain, (size_t)entry->unpacked_size, &consumed); break;
+        case SH_METHOD_LZW: ok = xx_sfx_hci_instalit_lzw_decode_memory(packed, (size_t)entry->packed_size, plain, (size_t)entry->unpacked_size, &consumed); break;
         case SH_METHOD_STORE:
             /* sh_ratio_ok has held the two sizes equal. */
             xx_rt_memcpy(plain, packed, (size_t)entry->unpacked_size);
@@ -1413,17 +1326,16 @@ done:
 /* Record plumbing                                                           */
 /* ------------------------------------------------------------------------ */
 
-static bool sh_copy_options(xx_list_s *destination, const xx_list_s *source) {
+static bool sh_copy_options(xx_list_s *destination, const xx_list_s *source)
+{
     size_t index;
     if (!destination || !source) return source == NULL;
     for (index = 0U; index < source->count; ++index) {
-        const xx_meta *item =
-            (const xx_meta *)xx_list_at((const xx_list_t *)source, index);
+        const xx_meta *item = (const xx_meta *)xx_list_at((const xx_list_t *)source, index);
         xx_meta copy;
         if (!item) continue;
         xx_meta_init(&copy, item->meta_id);
-        if (!xx_var_copy(&copy.var, &item->var) ||
-            !xx_list_append(destination, &copy)) {
+        if (!xx_var_copy(&copy.var, &item->var) || !xx_list_append(destination, &copy)) {
             xx_meta_cleanup(&copy);
             return false;
         }
@@ -1431,20 +1343,19 @@ static bool sh_copy_options(xx_list_s *destination, const xx_list_s *source) {
     return true;
 }
 
-static const xx_var *sh_find_option(const xx_list_s *options,
-                                    uint32_t meta_id) {
+static const xx_var *sh_find_option(const xx_list_s *options, uint32_t meta_id)
+{
     size_t index;
     if (!options) return NULL;
     for (index = 0U; index < options->count; ++index) {
-        const xx_meta *item =
-            (const xx_meta *)xx_list_at((const xx_list_t *)options, index);
+        const xx_meta *item = (const xx_meta *)xx_list_at((const xx_list_t *)options, index);
         if (item && item->meta_id == meta_id) return &item->var;
     }
     return NULL;
 }
 
-static bool sh_populate_record(xx_archive_record *record,
-                               const sh_entry *entry) {
+static bool sh_populate_record(xx_archive_record *record, const sh_entry *entry)
+{
     bool ok;
     xx_archive_record_cleanup(record);
     xx_archive_record_init(record);
@@ -1452,36 +1363,25 @@ static bool sh_populate_record(xx_archive_record *record,
     record->header_size = entry->header_size;
     record->data_offset = entry->data_offset;
     record->compressed_size = entry->packed_size;
-    ok = xx_archive_record_set_original_name(record, entry->name) &&
-         xx_archive_record_set_meta_u64(record, XX_META_ID_COMPRESSED_SIZE,
-                                        (uint64_t)entry->packed_size) &&
-         xx_archive_record_set_meta_u64(record, XX_META_ID_COMPRESSION_METHOD,
-                                        entry->method) &&
-         xx_archive_record_set_meta_bool(record, XX_META_ID_IS_FOLDER,
-                                         false) &&
-         xx_archive_record_set_meta_bool(record, XX_META_ID_IS_ENCRYPTED,
-                                         false);
+    ok = xx_archive_record_set_original_name(record, entry->name) && xx_archive_record_set_meta_u64(record, XX_META_ID_COMPRESSED_SIZE, (uint64_t)entry->packed_size) &&
+         xx_archive_record_set_meta_u64(record, XX_META_ID_COMPRESSION_METHOD, entry->method) && xx_archive_record_set_meta_bool(record, XX_META_ID_IS_FOLDER, false) &&
+         xx_archive_record_set_meta_bool(record, XX_META_ID_IS_ENCRYPTED, false);
     if (ok && entry->unpacked_size >= 0) {
-        ok = xx_archive_record_set_meta_u64(
-            record, XX_META_ID_UNCOMPRESSED_SIZE,
-            (uint64_t)entry->unpacked_size);
+        ok = xx_archive_record_set_meta_u64(record, XX_META_ID_UNCOMPRESSED_SIZE, (uint64_t)entry->unpacked_size);
     }
     if (ok && entry->crc_kind == SH_CRC_32) {
-        ok = xx_archive_record_set_meta_u64(record, XX_META_ID_CRC32,
-                                            entry->crc);
+        ok = xx_archive_record_set_meta_u64(record, XX_META_ID_CRC32, entry->crc);
     }
     if (ok && entry->has_dos_time) {
-        ok = xx_archive_record_set_meta_u64(record, XX_META_ID_ATTRIBUTES,
-                                            entry->attributes) &&
-             xx_archive_record_set_meta_u64(record, XX_META_ID_LAST_MOD_DATE,
-                                            entry->dos_date) &&
-             xx_archive_record_set_meta_u64(record, XX_META_ID_LAST_MOD_TIME,
-                                            entry->dos_time);
+        ok = xx_archive_record_set_meta_u64(record, XX_META_ID_ATTRIBUTES, entry->attributes) &&
+             xx_archive_record_set_meta_u64(record, XX_META_ID_LAST_MOD_DATE, entry->dos_date) &&
+             xx_archive_record_set_meta_u64(record, XX_META_ID_LAST_MOD_TIME, entry->dos_time);
     }
     return ok;
 }
 
-static void sh_stream_free(void *pointer) {
+static void sh_stream_free(void *pointer)
+{
     sh_stream *stream = (sh_stream *)pointer;
     if (!stream) return;
     sh_layout_cleanup(&stream->layout);
@@ -1492,8 +1392,8 @@ static void sh_stream_free(void *pointer) {
 /* Public interface                                                          */
 /* ------------------------------------------------------------------------ */
 
-void xx_sfx_hci_instalit_init(xx_sfx_hci_instalit *archive,
-                              xx_io_device *device, int64_t base_address) {
+void xx_sfx_hci_instalit_init(xx_sfx_hci_instalit *archive, xx_io_device *device, int64_t base_address)
+{
     if (!archive) return;
     xx_mem_zero(archive, sizeof(*archive));
     xx_format_init(&archive->format, device, base_address);
@@ -1506,30 +1406,24 @@ void xx_sfx_hci_instalit_init(xx_sfx_hci_instalit *archive,
     archive->format.check_is_valid = xx_sfx_hci_instalit_check_is_valid;
     archive->format.handle_base_info = xx_sfx_hci_instalit_handle_base_info;
     archive->format.get_format_size = xx_sfx_hci_instalit_get_format_size;
-    archive->format.get_number_of_archive_records =
-        xx_sfx_hci_instalit_get_number_of_archive_records;
-    archive->format.create_archive_records_reading =
-        xx_sfx_hci_instalit_create_archive_records_reading;
-    archive->format.get_current_archive_record =
-        xx_sfx_hci_instalit_get_current_archive_record;
-    archive->format.unpack_current_archive_record =
-        xx_sfx_hci_instalit_unpack_current_archive_record;
-    archive->format.archive_record_move_to_next =
-        xx_sfx_hci_instalit_archive_record_move_to_next;
-    archive->format.free_archive_records_reading =
-        xx_sfx_hci_instalit_free_archive_records_reading;
+    archive->format.get_number_of_archive_records = xx_sfx_hci_instalit_get_number_of_archive_records;
+    archive->format.create_archive_records_reading = xx_sfx_hci_instalit_create_archive_records_reading;
+    archive->format.get_current_archive_record = xx_sfx_hci_instalit_get_current_archive_record;
+    archive->format.unpack_current_archive_record = xx_sfx_hci_instalit_unpack_current_archive_record;
+    archive->format.archive_record_move_to_next = xx_sfx_hci_instalit_archive_record_move_to_next;
+    archive->format.free_archive_records_reading = xx_sfx_hci_instalit_free_archive_records_reading;
     archive->format.destroy = sh_vtable_destroy;
 }
 
-xx_sfx_hci_instalit *xx_sfx_hci_instalit_create(xx_io_device *device,
-                                                int64_t base_address) {
-    xx_sfx_hci_instalit *archive =
-        (xx_sfx_hci_instalit *)xx_mem_alloc(sizeof(*archive));
+xx_sfx_hci_instalit *xx_sfx_hci_instalit_create(xx_io_device *device, int64_t base_address)
+{
+    xx_sfx_hci_instalit *archive = (xx_sfx_hci_instalit *)xx_mem_alloc(sizeof(*archive));
     if (archive) xx_sfx_hci_instalit_init(archive, device, base_address);
     return archive;
 }
 
-void xx_sfx_hci_instalit_destroy(xx_sfx_hci_instalit *archive) {
+void xx_sfx_hci_instalit_destroy(xx_sfx_hci_instalit *archive)
+{
     if (!archive) return;
     if (archive->internal) {
         sh_layout_cleanup((sh_layout *)archive->internal);
@@ -1539,26 +1433,28 @@ void xx_sfx_hci_instalit_destroy(xx_sfx_hci_instalit *archive) {
     xx_format_cleanup_extra_parameters(&archive->format);
 }
 
-static void sh_vtable_destroy(Abstractformat *self) {
+static void sh_vtable_destroy(Abstractformat *self)
+{
     xx_sfx_hci_instalit_destroy((xx_sfx_hci_instalit *)self);
 }
 
-void xx_sfx_hci_instalit_free(xx_sfx_hci_instalit *archive) {
+void xx_sfx_hci_instalit_free(xx_sfx_hci_instalit *archive)
+{
     if (!archive) return;
     xx_sfx_hci_instalit_destroy(archive);
     xx_mem_free(archive);
 }
 
-bool xx_sfx_hci_instalit_check_is_valid(Abstractformat *self,
-                                        xx_pd_struct *pd) {
+bool xx_sfx_hci_instalit_check_is_valid(Abstractformat *self, xx_pd_struct *pd)
+{
     sh_layout layout;
     bool result = sh_parse(self, &layout, false, pd);
     sh_layout_cleanup(&layout);
     return result;
 }
 
-bool xx_sfx_hci_instalit_handle_base_info(Abstractformat *self,
-                                          xx_pd_struct *pd) {
+bool xx_sfx_hci_instalit_handle_base_info(Abstractformat *self, xx_pd_struct *pd)
+{
     xx_sfx_hci_instalit *archive = (xx_sfx_hci_instalit *)self;
     sh_layout *layout;
     int64_t total;
@@ -1583,9 +1479,7 @@ bool xx_sfx_hci_instalit_handle_base_info(Abstractformat *self,
     archive->members_elsewhere = layout->members_elsewhere;
     archive->has_footer = layout->has_footer;
     archive->has_script = layout->has_script;
-    xx_format_set_extension(self, layout->kind == XX_SFX_HCI_INSTALIT_KIND_SFX
-                                      ? "exe"
-                                      : "001");
+    xx_format_set_extension(self, layout->kind == XX_SFX_HCI_INSTALIT_KIND_SFX ? "exe" : "001");
     self->format_size = layout->size;
     total = xx_io_total_size(self->device);
     if (total > self->base_address + layout->size) {
@@ -1601,30 +1495,27 @@ bool xx_sfx_hci_instalit_handle_base_info(Abstractformat *self,
     return true;
 }
 
-int64_t xx_sfx_hci_instalit_get_format_size(Abstractformat *self,
-                                            xx_pd_struct *pd) {
-    if (!self ||
-        (!self->base_info_handled && !xx_format_handle_base_info(self, pd))) {
+int64_t xx_sfx_hci_instalit_get_format_size(Abstractformat *self, xx_pd_struct *pd)
+{
+    if (!self || (!self->base_info_handled && !xx_format_handle_base_info(self, pd))) {
         return -1;
     }
     return self->format_size;
 }
 
-uint64_t xx_sfx_hci_instalit_get_number_of_archive_records(
-    Abstractformat *self, xx_pd_struct *pd) {
-    if (!self ||
-        (!self->base_info_handled && !xx_format_handle_base_info(self, pd))) {
+uint64_t xx_sfx_hci_instalit_get_number_of_archive_records(Abstractformat *self, xx_pd_struct *pd)
+{
+    if (!self || (!self->base_info_handled && !xx_format_handle_base_info(self, pd))) {
         return 0U;
     }
     return ((xx_sfx_hci_instalit *)self)->number_of_records;
 }
 
-xx_archive_record_state *xx_sfx_hci_instalit_create_archive_records_reading(
-    Abstractformat *self, const xx_list_s *options, xx_pd_struct *pd) {
+xx_archive_record_state *xx_sfx_hci_instalit_create_archive_records_reading(Abstractformat *self, const xx_list_s *options, xx_pd_struct *pd)
+{
     xx_archive_record_state *state;
     sh_stream *stream;
-    if (!self || !self->device ||
-        (!self->base_info_handled && !xx_format_handle_base_info(self, pd))) {
+    if (!self || !self->device || (!self->base_info_handled && !xx_format_handle_base_info(self, pd))) {
         return NULL;
     }
     state = (xx_archive_record_state *)xx_mem_alloc(sizeof(*state));
@@ -1635,8 +1526,7 @@ xx_archive_record_state *xx_sfx_hci_instalit_create_archive_records_reading(
         return NULL;
     }
     xx_archive_record_state_init(state, self);
-    if (!sh_copy_options(&state->options, options) ||
-        !sh_parse(self, &stream->layout, true, pd)) {
+    if (!sh_copy_options(&state->options, options) || !sh_parse(self, &stream->layout, true, pd)) {
         sh_stream_free(stream);
         xx_archive_record_state_free(state);
         return NULL;
@@ -1645,27 +1535,22 @@ xx_archive_record_state *xx_sfx_hci_instalit_create_archive_records_reading(
     state->internal_state = stream;
     state->free_internal = sh_stream_free;
     state->total_records = (int64_t)stream->layout.count;
-    if (stream->layout.count != 0U &&
-        sh_populate_record(&state->current_record,
-                           &stream->layout.entries[0])) {
+    if (stream->layout.count != 0U && sh_populate_record(&state->current_record, &stream->layout.entries[0])) {
         state->has_record = true;
         state->current_index = 0;
     }
     return state;
 }
 
-const xx_archive_record *xx_sfx_hci_instalit_get_current_archive_record(
-    Abstractformat *self, xx_archive_record_state *state) {
-    return self && state && state->format == self && state->has_record
-               ? &state->current_record
-               : NULL;
+const xx_archive_record *xx_sfx_hci_instalit_get_current_archive_record(Abstractformat *self, xx_archive_record_state *state)
+{
+    return self && state && state->format == self && state->has_record ? &state->current_record : NULL;
 }
 
-bool xx_sfx_hci_instalit_archive_record_move_to_next(
-    Abstractformat *self, xx_archive_record_state *state, xx_pd_struct *pd) {
+bool xx_sfx_hci_instalit_archive_record_move_to_next(Abstractformat *self, xx_archive_record_state *state, xx_pd_struct *pd)
+{
     sh_stream *stream;
-    if (!self || !state || state->format != self || !state->has_record ||
-        !state->internal_state || (pd && xx_pd_is_stopped(pd))) {
+    if (!self || !state || state->format != self || !state->has_record || !state->internal_state || (pd && xx_pd_is_stopped(pd))) {
         return false;
     }
     stream = (sh_stream *)state->internal_state;
@@ -1676,8 +1561,7 @@ bool xx_sfx_hci_instalit_archive_record_move_to_next(
         state->has_record = false;
         return false;
     }
-    if (!sh_populate_record(&state->current_record,
-                            &stream->layout.entries[stream->index])) {
+    if (!sh_populate_record(&state->current_record, &stream->layout.entries[stream->index])) {
         state->has_record = false;
         return false;
     }
@@ -1685,8 +1569,8 @@ bool xx_sfx_hci_instalit_archive_record_move_to_next(
     return true;
 }
 
-bool xx_sfx_hci_instalit_unpack_current_archive_record(
-    Abstractformat *self, xx_archive_record_state *state, xx_pd_struct *pd) {
+bool xx_sfx_hci_instalit_unpack_current_archive_record(Abstractformat *self, xx_archive_record_state *state, xx_pd_struct *pd)
+{
     sh_stream *stream;
     const sh_entry *entry;
     const xx_var *option;
@@ -1698,9 +1582,7 @@ bool xx_sfx_hci_instalit_unpack_current_archive_record(
     uint64_t max_member = UINT64_MAX;
     bool created = false;
     bool result = false;
-    if (!self || !self->device || !state || state->format != self ||
-        !state->has_record || !state->internal_state ||
-        (pd && xx_pd_is_stopped(pd))) {
+    if (!self || !self->device || !state || state->format != self || !state->has_record || !state->internal_state || (pd && xx_pd_is_stopped(pd))) {
         return false;
     }
     stream = (sh_stream *)state->internal_state;
@@ -1718,17 +1600,14 @@ bool xx_sfx_hci_instalit_unpack_current_archive_record(
         xx_mem_free(data);
         return true;
     }
-    if (option->type == XX_VAR_TYPE_STRING ||
-        option->type == XX_VAR_TYPE_STRING_VIEW) {
+    if (option->type == XX_VAR_TYPE_STRING || option->type == XX_VAR_TYPE_STRING_VIEW) {
         base = xx_var_get_str(option);
-    } else if (option->type == XX_VAR_TYPE_WSTRING ||
-               option->type == XX_VAR_TYPE_WSTRING_VIEW) {
+    } else if (option->type == XX_VAR_TYPE_WSTRING || option->type == XX_VAR_TYPE_WSTRING_VIEW) {
         owned_base = xx_str_unicode_to_utf8(xx_var_get_wstr(option));
         base = owned_base;
     }
     if (!base) goto cleanup;
-    if (base[0] && base[xx_str_len(base) - 1U] != '/' &&
-        base[xx_str_len(base) - 1U] != '\\') {
+    if (base[0] && base[xx_str_len(base) - 1U] != '/' && base[xx_str_len(base) - 1U] != '\\') {
         destination = xx_str_concat3(base, "/", entry->name);
     } else {
         destination = xx_str_concat(base, entry->name);
@@ -1753,8 +1632,7 @@ bool xx_sfx_hci_instalit_unpack_current_archive_record(
         if (xx_io_close(output) != 0) result = false;
     }
     if (result && entry->has_dos_time) {
-        (void)xx_store_apply_dos_time_and_attrs_a(destination, entry->dos_date,
-                                                  entry->dos_time, 0U);
+        (void)xx_store_apply_dos_time_and_attrs_a(destination, entry->dos_date, entry->dos_time, 0U);
     }
 cleanup:
     if (!result && destination && created) xx_rt_remove(destination);
@@ -1764,8 +1642,8 @@ cleanup:
     return result;
 }
 
-void xx_sfx_hci_instalit_free_archive_records_reading(
-    Abstractformat *self, xx_archive_record_state *state) {
+void xx_sfx_hci_instalit_free_archive_records_reading(Abstractformat *self, xx_archive_record_state *state)
+{
     (void)self;
     xx_archive_record_state_free(state);
 }

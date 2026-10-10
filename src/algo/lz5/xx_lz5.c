@@ -40,17 +40,20 @@
 #define XX_LZ5_XXH_P4 UINT32_C(668265263)
 #define XX_LZ5_XXH_P5 UINT32_C(374761393)
 
-static uint32_t xx_lz5_rotl(uint32_t value, unsigned bits) {
+static uint32_t xx_lz5_rotl(uint32_t value, unsigned bits)
+{
     return (value << bits) | (value >> (32U - bits));
 }
 
-static uint32_t xx_lz5_xxh_round(uint32_t state, uint32_t word) {
+static uint32_t xx_lz5_xxh_round(uint32_t state, uint32_t word)
+{
     state += word * XX_LZ5_XXH_P2;
     state = xx_lz5_rotl(state, 13);
     return state * XX_LZ5_XXH_P1;
 }
 
-static uint32_t xx_lz5_xxh32(const uint8_t *data, size_t size) {
+static uint32_t xx_lz5_xxh32(const uint8_t *data, size_t size)
+{
     const uint8_t *cursor = data;
     const uint8_t *end = data + size;
     uint32_t hash;
@@ -68,8 +71,7 @@ static uint32_t xx_lz5_xxh32(const uint8_t *data, size_t size) {
             d = xx_lz5_xxh_round(d, xx_data_get_u32(cursor + 12, 4, 0, false));
             cursor += 16;
         } while (cursor <= limit);
-        hash = xx_lz5_rotl(a, 1) + xx_lz5_rotl(b, 7) +
-               xx_lz5_rotl(c, 12) + xx_lz5_rotl(d, 18);
+        hash = xx_lz5_rotl(a, 1) + xx_lz5_rotl(b, 7) + xx_lz5_rotl(c, 12) + xx_lz5_rotl(d, 18);
     } else {
         hash = XX_LZ5_XXH_P5;
     }
@@ -90,8 +92,8 @@ static uint32_t xx_lz5_xxh32(const uint8_t *data, size_t size) {
     return hash ^ (hash >> 16);
 }
 
-static bool xx_lz5_add_length(const uint8_t **cursor, const uint8_t *end,
-                              size_t *length) {
+static bool xx_lz5_add_length(const uint8_t **cursor, const uint8_t *end, size_t *length)
+{
     uint8_t value;
     do {
         if (*cursor == end) return false;
@@ -102,9 +104,8 @@ static bool xx_lz5_add_length(const uint8_t **cursor, const uint8_t *end,
     return true;
 }
 
-static bool xx_lz5_decode_block(const uint8_t *source, size_t source_size,
-                                uint8_t *destination, size_t destination_capacity,
-                                size_t history_size, size_t *out_written) {
+static bool xx_lz5_decode_block(const uint8_t *source, size_t source_size, uint8_t *destination, size_t destination_capacity, size_t history_size, size_t *out_written)
+{
     const uint8_t *input = source;
     const uint8_t *end = source + source_size;
     size_t output = history_size;
@@ -122,20 +123,17 @@ static bool xx_lz5_decode_block(const uint8_t *source, size_t source_size,
 
         if ((token >> 6) != 0U) {
             literal_length = (size_t)((token >> 3) & 3U);
-            if (literal_length == 3U &&
-                !xx_lz5_add_length(&input, end, &literal_length)) {
+            if (literal_length == 3U && !xx_lz5_add_length(&input, end, &literal_length)) {
                 return false;
             }
         } else {
             literal_length = (size_t)((token >> 3) & 7U);
-            if (literal_length == 7U &&
-                !xx_lz5_add_length(&input, end, &literal_length)) {
+            if (literal_length == 7U && !xx_lz5_add_length(&input, end, &literal_length)) {
                 return false;
             }
         }
 
-        if (literal_length > (size_t)(end - input) ||
-            literal_length > destination_capacity - output) {
+        if (literal_length > (size_t)(end - input) || literal_length > destination_capacity - output) {
             return false;
         }
         for (size_t index = 0; index < literal_length; ++index) {
@@ -157,8 +155,7 @@ static bool xx_lz5_decode_block(const uint8_t *source, size_t source_size,
             input += 2;
         } else if ((token >> 5) == 2U) {
             if ((size_t)(end - input) < 3U) return false;
-            distance = (size_t)input[0] | ((size_t)input[1] << 8) |
-                       ((size_t)input[2] << 16);
+            distance = (size_t)input[0] | ((size_t)input[1] << 8) | ((size_t)input[2] << 16);
             input += 3;
         } else {
             distance = last_distance;
@@ -167,8 +164,7 @@ static bool xx_lz5_decode_block(const uint8_t *source, size_t source_size,
         last_distance = distance;
 
         match_length = (size_t)(token & 7U);
-        if (match_length == 7U &&
-            !xx_lz5_add_length(&input, end, &match_length)) {
+        if (match_length == 7U && !xx_lz5_add_length(&input, end, &match_length)) {
             return false;
         }
         if (match_length > SIZE_MAX - 3U) return false;
@@ -184,7 +180,8 @@ static bool xx_lz5_decode_block(const uint8_t *source, size_t source_size,
     return true;
 }
 
-static bool xx_lz5_block_limit(uint8_t descriptor, size_t *limit) {
+static bool xx_lz5_block_limit(uint8_t descriptor, size_t *limit)
+{
     unsigned id = (descriptor >> 4) & 7U;
     size_t value = 64U * 1024U;
     if (id == 0U) return false;
@@ -196,9 +193,8 @@ static bool xx_lz5_block_limit(uint8_t descriptor, size_t *limit) {
     return true;
 }
 
-bool xx_lz5_decompress_memory(const void *source, size_t source_size,
-                              void *destination, size_t destination_size,
-                              size_t *out_written) {
+bool xx_lz5_decompress_memory(const void *source, size_t source_size, void *destination, size_t destination_size, size_t *out_written)
+{
     const uint8_t *input = (const uint8_t *)source;
     const uint8_t *end;
     uint8_t *output = (uint8_t *)destination;
@@ -243,9 +239,7 @@ bool xx_lz5_decompress_memory(const void *source, size_t source_size,
         descriptor_start = input;
         flags = *input++;
         descriptor = *input++;
-        if ((flags >> 6) != 1U || (flags & 3U) != 0U ||
-            (descriptor & UINT8_C(0x8F)) != 0U ||
-            !xx_lz5_block_limit(descriptor, &block_limit)) {
+        if ((flags >> 6) != 1U || (flags & 3U) != 0U || (descriptor & UINT8_C(0x8F)) != 0U || !xx_lz5_block_limit(descriptor, &block_limit)) {
             return false;
         }
         independent = (flags & UINT8_C(0x20)) != 0U;
@@ -257,9 +251,7 @@ bool xx_lz5_decompress_memory(const void *source, size_t source_size,
             content_size = xx_data_get_u64(input, 8, 0, false);
             input += 8;
         }
-        if (input == end ||
-            *input != (uint8_t)(xx_lz5_xxh32(
-                descriptor_start, (size_t)(input - descriptor_start)) >> 8)) {
+        if (input == end || *input != (uint8_t)(xx_lz5_xxh32(descriptor_start, (size_t)(input - descriptor_start)) >> 8)) {
             return false;
         }
         ++input;
@@ -278,15 +270,13 @@ bool xx_lz5_decompress_memory(const void *source, size_t source_size,
             if (stored_size == 0U) break;
             uncompressed = (stored_size & UINT32_C(0x80000000)) != 0U;
             block_size = (size_t)(stored_size & UINT32_C(0x7FFFFFFF));
-            if (block_size == 0U || block_size > block_limit ||
-                (size_t)(end - input) < block_size) {
+            if (block_size == 0U || block_size > block_limit || (size_t)(end - input) < block_size) {
                 return false;
             }
             block_data = input;
             input += block_size;
             if (block_checksum) {
-                if ((size_t)(end - input) < 4U ||
-                    xx_data_get_u32(input, 4, 0, false) != xx_lz5_xxh32(block_data, block_size)) {
+                if ((size_t)(end - input) < 4U || xx_data_get_u32(input, 4, 0, false) != xx_lz5_xxh32(block_data, block_size)) {
                     return false;
                 }
                 input += 4;
@@ -299,18 +289,14 @@ bool xx_lz5_decompress_memory(const void *source, size_t source_size,
                 }
                 block_output = block_size;
             } else if (independent) {
-                if (!xx_lz5_decode_block(
-                        block_data, block_size, output + output_position,
-                        destination_size - output_position, 0, &block_output) ||
+                if (!xx_lz5_decode_block(block_data, block_size, output + output_position, destination_size - output_position, 0, &block_output) ||
                     block_output > block_limit) {
                     return false;
                 }
             } else {
                 size_t history = output_position - frame_output_start;
-                if (!xx_lz5_decode_block(
-                        block_data, block_size, output + frame_output_start,
-                        destination_size - frame_output_start, history,
-                        &block_output) || block_output > block_limit) {
+                if (!xx_lz5_decode_block(block_data, block_size, output + frame_output_start, destination_size - frame_output_start, history, &block_output) ||
+                    block_output > block_limit) {
                     return false;
                 }
             }
@@ -318,17 +304,12 @@ bool xx_lz5_decompress_memory(const void *source, size_t source_size,
         }
 
         if (content_checksum) {
-            if ((size_t)(end - input) < 4U ||
-                xx_data_get_u32(input, 4, 0, false) != xx_lz5_xxh32(
-                    output + frame_output_start,
-                    output_position - frame_output_start)) {
+            if ((size_t)(end - input) < 4U || xx_data_get_u32(input, 4, 0, false) != xx_lz5_xxh32(output + frame_output_start, output_position - frame_output_start)) {
                 return false;
             }
             input += 4;
         }
-        if (has_content_size &&
-            (content_size > SIZE_MAX ||
-             (size_t)content_size != output_position - frame_output_start)) {
+        if (has_content_size && (content_size > SIZE_MAX || (size_t)content_size != output_position - frame_output_start)) {
             return false;
         }
         saw_frame = true;

@@ -1,7 +1,8 @@
 /* SPDX-License-Identifier: MIT
  * Primary reference: https://manual.q-chem.com/latest/Ch3.S3.html
- * Q-Chem molecule/rem input subset: balanced complete comment/rem/molecule sections, unique recognized settings, checked charge/multiplicity and finite element coordinates for H through Xe and consistent charge/spin electron parity. Original settings/molecule sections exported; includes, basis/ECP blocks, fragments, variables and job chains declined.
- * Bounded32MiB input,4096 components and bounded work.
+ * Q-Chem molecule/rem input subset: balanced complete comment/rem/molecule sections, unique recognized settings, checked charge/multiplicity and finite element
+ * coordinates for H through Xe and consistent charge/spin electron parity. Original settings/molecule sections exported; includes, basis/ECP blocks, fragments, variables
+ * and job chains declined. Bounded32MiB input,4096 components and bounded work.
  */
 #ifndef XX_QCHEM_INPUT_H
 #define XX_QCHEM_INPUT_H
@@ -9,13 +10,15 @@
 #ifdef __cplusplus
 extern "C" {
 #endif
-typedef struct xx_qchem_input {Abstractformat format;} xx_qchem_input;
-XXFC_API void xx_qchem_input_init(xx_qchem_input *,xx_io_device *,int64_t);
-XXFC_API xx_qchem_input *xx_qchem_input_create(xx_io_device *,int64_t);
+typedef struct xx_qchem_input {
+    Abstractformat format;
+} xx_qchem_input;
+XXFC_API void xx_qchem_input_init(xx_qchem_input *, xx_io_device *, int64_t);
+XXFC_API xx_qchem_input *xx_qchem_input_create(xx_io_device *, int64_t);
 XXFC_API void xx_qchem_input_destroy(xx_qchem_input *);
 XXFC_API void xx_qchem_input_free(xx_qchem_input *);
-XXFC_API bool xx_qchem_input_check_is_valid(Abstractformat *,xx_pd_struct *);
-XXFC_API bool xx_qchem_input_handle_base_info(Abstractformat *,xx_pd_struct *);
+XXFC_API bool xx_qchem_input_check_is_valid(Abstractformat *, xx_pd_struct *);
+XXFC_API bool xx_qchem_input_handle_base_info(Abstractformat *, xx_pd_struct *);
 #ifdef __cplusplus
 }
 #endif

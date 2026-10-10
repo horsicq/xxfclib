@@ -20,7 +20,8 @@
 #define XX_ZLIB_CM_DEFLATE 8U
 #define XX_ZLIB_FDICT 0x20U
 
-bool xx_zlib_stream_header_is_valid(const uint8_t *input, size_t input_size) {
+bool xx_zlib_stream_header_is_valid(const uint8_t *input, size_t input_size)
+{
     uint8_t cmf;
     uint8_t flg;
 
@@ -39,9 +40,8 @@ bool xx_zlib_stream_header_is_valid(const uint8_t *input, size_t input_size) {
     return true;
 }
 
-bool xx_zlib_stream_decode_memory(const uint8_t *input, size_t input_size,
-                                  uint8_t *output, size_t output_size,
-                                  size_t *written) {
+bool xx_zlib_stream_decode_memory(const uint8_t *input, size_t input_size, uint8_t *output, size_t output_size, size_t *written)
+{
     size_t produced = 0U;
 
     if (written) *written = 0U;
@@ -49,16 +49,15 @@ bool xx_zlib_stream_decode_memory(const uint8_t *input, size_t input_size,
     /* The Adler-32 trailer is not required to be present: a container that
      * stores the member's compressed length exactly may cut the stream at the
      * last Deflate byte. Only the header is subtracted here. */
-    if (!xx_deflate_decompress_memory(input + XX_ZLIB_HEADER_SIZE,
-                                      input_size - XX_ZLIB_HEADER_SIZE, output,
-                                      output_size, &produced, false)) {
+    if (!xx_deflate_decompress_memory(input + XX_ZLIB_HEADER_SIZE, input_size - XX_ZLIB_HEADER_SIZE, output, output_size, &produced, false)) {
         return false;
     }
     if (written) *written = produced;
     return true;
 }
 
-uint32_t xx_zlib_stream_adler32(const uint8_t *data, size_t size) {
+uint32_t xx_zlib_stream_adler32(const uint8_t *data, size_t size)
+{
     uint32_t a = 1U;
     uint32_t b = 0U;
     /* With reduced initial sums, 5552 worst-case bytes fit in uint32_t.
@@ -67,14 +66,22 @@ uint32_t xx_zlib_stream_adler32(const uint8_t *data, size_t size) {
         size_t chunk = size < 5552U ? size : 5552U;
         size -= chunk;
         while (chunk >= 8U) {
-            a += data[0]; b += a;
-            a += data[1]; b += a;
-            a += data[2]; b += a;
-            a += data[3]; b += a;
-            a += data[4]; b += a;
-            a += data[5]; b += a;
-            a += data[6]; b += a;
-            a += data[7]; b += a;
+            a += data[0];
+            b += a;
+            a += data[1];
+            b += a;
+            a += data[2];
+            b += a;
+            a += data[3];
+            b += a;
+            a += data[4];
+            b += a;
+            a += data[5];
+            b += a;
+            a += data[6];
+            b += a;
+            a += data[7];
+            b += a;
             data += 8U;
             chunk -= 8U;
         }
@@ -89,8 +96,8 @@ uint32_t xx_zlib_stream_adler32(const uint8_t *data, size_t size) {
     return (b << 16) | a;
 }
 
-bool xx_zlib_stream_trailer_matches(const uint8_t *input, size_t input_size,
-                                    const uint8_t *plain, size_t plain_size) {
+bool xx_zlib_stream_trailer_matches(const uint8_t *input, size_t input_size, const uint8_t *plain, size_t plain_size)
+{
     size_t at;
     uint32_t stored;
 
@@ -98,7 +105,6 @@ bool xx_zlib_stream_trailer_matches(const uint8_t *input, size_t input_size,
         return false;
     }
     at = input_size - XX_ZLIB_TRAILER_SIZE;
-    stored = ((uint32_t)input[at] << 24) | ((uint32_t)input[at + 1U] << 16) |
-             ((uint32_t)input[at + 2U] << 8) | (uint32_t)input[at + 3U];
+    stored = ((uint32_t)input[at] << 24) | ((uint32_t)input[at + 1U] << 16) | ((uint32_t)input[at + 2U] << 8) | (uint32_t)input[at + 3U];
     return stored == xx_zlib_stream_adler32(plain, plain_size);
 }

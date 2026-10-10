@@ -45,9 +45,8 @@
 /* The two ROM ID strings binwalk keys on.  They are exactly twelve bytes,
  * which is the whole rom_id field, so there is no NUL terminator in the
  * file and the comparison is a fixed-length one. */
-static const char xx_dlke_rom_ids[2][XX_DLKE_ROM_ID_SIZE] = {
-    {'D', 'L', 'K', '6', 'E', '8', '2', '0', '2', '0', '0', '1'},
-    {'D', 'L', 'K', '6', 'E', '6', '1', '1', '0', '0', '0', '2'}};
+static const char xx_dlke_rom_ids[2][XX_DLKE_ROM_ID_SIZE] = {{'D', 'L', 'K', '6', 'E', '8', '2', '0', '2', '0', '0', '1'},
+                                                             {'D', 'L', 'K', '6', 'E', '6', '1', '1', '0', '0', '0', '2'}};
 
 typedef struct xx_dlke_header_s {
     uint32_t data_size;
@@ -88,13 +87,12 @@ static void xx_dlke_vtable_destroy(Abstractformat *self);
 /* All positioning goes through seek64: the container is bounded by 32-bit
  * length fields but its base address inside a larger flash dump is not, and
  * long is 32-bit on Win64. */
-static bool xx_dlke_read_at(xx_io_device *device, int64_t offset, void *data,
-                            size_t size) {
+static bool xx_dlke_read_at(xx_io_device *device, int64_t offset, void *data, size_t size)
+{
     uint8_t *out = (uint8_t *)data;
     size_t done = 0U;
 
-    if (!device || (!data && size != 0U) || offset < 0 ||
-        xx_io_seek64(device, offset, SEEK_SET) != 0) {
+    if (!device || (!data && size != 0U) || offset < 0 || xx_io_seek64(device, offset, SEEK_SET) != 0) {
         return false;
     }
     while (done < size) {
@@ -105,7 +103,8 @@ static bool xx_dlke_read_at(xx_io_device *device, int64_t offset, void *data,
     return true;
 }
 
-static bool xx_dlke_add(int64_t left, uint64_t right, int64_t *result) {
+static bool xx_dlke_add(int64_t left, uint64_t right, int64_t *result)
+{
     if (!result || left < 0 || right > (uint64_t)(INT64_MAX - left)) {
         return false;
     }
@@ -114,13 +113,13 @@ static bool xx_dlke_add(int64_t left, uint64_t right, int64_t *result) {
 }
 
 /* True when [offset, offset + size) lies inside [0, total_size). */
-static bool xx_dlke_range_within(int64_t total_size, int64_t offset,
-                                 int64_t size) {
-    return (total_size >= 0) && (offset >= 0) && (size >= 0) &&
-           (offset <= total_size) && (size <= total_size - offset);
+static bool xx_dlke_range_within(int64_t total_size, int64_t offset, int64_t size)
+{
+    return (total_size >= 0) && (offset >= 0) && (size >= 0) && (offset <= total_size) && (size <= total_size - offset);
 }
 
-static void xx_dlke_private_cleanup(xx_dlke_private *parsed) {
+static void xx_dlke_private_cleanup(xx_dlke_private *parsed)
+{
     size_t index;
 
     if (!parsed) return;
@@ -134,7 +133,8 @@ static void xx_dlke_private_cleanup(xx_dlke_private *parsed) {
     parsed->archive_end = -1;
 }
 
-static void xx_dlke_stream_free(void *pointer) {
+static void xx_dlke_stream_free(void *pointer)
+{
     xx_dlke_stream *stream = (xx_dlke_stream *)pointer;
 
     if (!stream) return;
@@ -145,22 +145,17 @@ static void xx_dlke_stream_free(void *pointer) {
 /* A full JBOOT ARM header validation.  Every must-be-zero field is checked:
  * without them the header has no magic at all in its first sixty-four bytes
  * and any twelve-byte string would look like a ROM ID. */
-static bool xx_dlke_parse_arm_header(const uint8_t *header,
-                                     xx_dlke_header *out) {
+static bool xx_dlke_parse_arm_header(const uint8_t *header, xx_dlke_header *out)
+{
     const size_t size = XX_DLKE_HEADER_SIZE;
 
     if (!header || !out) return false;
-    if (xx_data_get_u32(header, size, 20U, false) != 0U ||
-        xx_data_get_u16(header, size, 24U, false) != 0U ||
-        xx_data_get_u32(header, size, 48U, false) != 0U ||
-        xx_data_get_u32(header, size, 52U, false) != 0U ||
-        xx_data_get_u32(header, size, 56U, false) != 0U ||
-        xx_data_get_u32(header, size, 60U, false) != 0U ||
+    if (xx_data_get_u32(header, size, 20U, false) != 0U || xx_data_get_u16(header, size, 24U, false) != 0U || xx_data_get_u32(header, size, 48U, false) != 0U ||
+        xx_data_get_u32(header, size, 52U, false) != 0U || xx_data_get_u32(header, size, 56U, false) != 0U || xx_data_get_u32(header, size, 60U, false) != 0U ||
         xx_data_get_u16(header, size, 68U, false) != 0U) {
         return false;
     }
-    if (xx_data_get_u8(header, size, 26U) != 1U ||
-        xx_data_get_u8(header, size, 27U) != 0U) {
+    if (xx_data_get_u8(header, size, 26U) != 1U || xx_data_get_u8(header, size, 27U) != 0U) {
         return false;
     }
     if (xx_data_get_u16(header, size, 64U, false) != XX_DLKE_ARM_MAGIC) {
@@ -176,12 +171,12 @@ static bool xx_dlke_parse_arm_header(const uint8_t *header,
     return true;
 }
 
-static bool xx_dlke_rom_id_known(const uint8_t *header) {
+static bool xx_dlke_rom_id_known(const uint8_t *header)
+{
     size_t index;
 
     for (index = 0U; index < 2U; ++index) {
-        if (xx_rt_memcmp(header, xx_dlke_rom_ids[index], XX_DLKE_ROM_ID_SIZE) ==
-            0) {
+        if (xx_rt_memcmp(header, xx_dlke_rom_ids[index], XX_DLKE_ROM_ID_SIZE) == 0) {
             return true;
         }
     }
@@ -190,8 +185,8 @@ static bool xx_dlke_rom_id_known(const uint8_t *header) {
 
 /* --------------------------------------------------------------- parse -- */
 
-static bool xx_dlke_parse(Abstractformat *self, xx_dlke_private *parsed,
-                          xx_pd_struct *pd) {
+static bool xx_dlke_parse(Abstractformat *self, xx_dlke_private *parsed, xx_pd_struct *pd)
+{
     uint8_t header[XX_DLKE_HEADER_SIZE];
     xx_dlke_header signature_header;
     xx_dlke_header crypt_header;
@@ -205,16 +200,13 @@ static bool xx_dlke_parse(Abstractformat *self, xx_dlke_private *parsed,
         parsed->input_size = -1;
         parsed->archive_end = -1;
     }
-    if (!self || !self->device || !parsed || self->base_address < 0 ||
-        (pd && xx_pd_is_stopped(pd))) {
+    if (!self || !self->device || !parsed || self->base_address < 0 || (pd && xx_pd_is_stopped(pd))) {
         return false;
     }
     parsed->input_size = xx_io_total_size(self->device);
 
-    if (!xx_dlke_range_within(parsed->input_size, self->base_address,
-                              (int64_t)XX_DLKE_HEADER_SIZE) ||
-        !xx_dlke_read_at(self->device, self->base_address, header,
-                         XX_DLKE_HEADER_SIZE)) {
+    if (!xx_dlke_range_within(parsed->input_size, self->base_address, (int64_t)XX_DLKE_HEADER_SIZE) ||
+        !xx_dlke_read_at(self->device, self->base_address, header, XX_DLKE_HEADER_SIZE)) {
         goto fail;
     }
     /* The ROM ID is the only thing that separates DLKE from an ordinary JBOOT
@@ -232,29 +224,21 @@ static bool xx_dlke_parse(Abstractformat *self, xx_dlke_private *parsed,
     /* Bound the declared signature size against the device HERE, before the
      * second header's position is computed from it: an unbounded data_size
      * would otherwise turn into an out-of-range seek. */
-    if (!xx_dlke_add(self->base_address, XX_DLKE_HEADER_SIZE,
-                     &signature_offset) ||
-        !xx_dlke_range_within(parsed->input_size, signature_offset,
-                              (int64_t)signature_header.data_size)) {
+    if (!xx_dlke_add(self->base_address, XX_DLKE_HEADER_SIZE, &signature_offset) ||
+        !xx_dlke_range_within(parsed->input_size, signature_offset, (int64_t)signature_header.data_size)) {
         goto fail;
     }
-    if (!xx_dlke_add(signature_offset, signature_header.data_size,
-                     &crypt_header_offset) ||
-        !xx_dlke_range_within(parsed->input_size, crypt_header_offset,
-                              (int64_t)XX_DLKE_HEADER_SIZE) ||
-        !xx_dlke_read_at(self->device, crypt_header_offset, header,
-                         XX_DLKE_HEADER_SIZE)) {
+    if (!xx_dlke_add(signature_offset, signature_header.data_size, &crypt_header_offset) ||
+        !xx_dlke_range_within(parsed->input_size, crypt_header_offset, (int64_t)XX_DLKE_HEADER_SIZE) ||
+        !xx_dlke_read_at(self->device, crypt_header_offset, header, XX_DLKE_HEADER_SIZE)) {
         goto fail;
     }
     if (!xx_dlke_parse_arm_header(header, &crypt_header)) goto fail;
     parsed->payload_size = crypt_header.data_size;
 
-    if (!xx_dlke_add(crypt_header_offset, XX_DLKE_HEADER_SIZE,
-                     &payload_offset) ||
-        !xx_dlke_range_within(parsed->input_size, payload_offset,
-                              (int64_t)crypt_header.data_size) ||
-        !xx_dlke_add(payload_offset, crypt_header.data_size,
-                     &parsed->archive_end)) {
+    if (!xx_dlke_add(crypt_header_offset, XX_DLKE_HEADER_SIZE, &payload_offset) ||
+        !xx_dlke_range_within(parsed->input_size, payload_offset, (int64_t)crypt_header.data_size) ||
+        !xx_dlke_add(payload_offset, crypt_header.data_size, &parsed->archive_end)) {
         goto fail;
     }
 
@@ -283,19 +267,17 @@ fail:
 
 /* ------------------------------------------------------------- records -- */
 
-static bool xx_dlke_copy_options(xx_list_s *destination,
-                                 const xx_list_s *source) {
+static bool xx_dlke_copy_options(xx_list_s *destination, const xx_list_s *source)
+{
     size_t index;
 
     if (!destination || !source) return source == NULL;
     for (index = 0U; index < source->count; ++index) {
-        const xx_meta *item =
-            (const xx_meta *)xx_list_at((const xx_list_t *)source, index);
+        const xx_meta *item = (const xx_meta *)xx_list_at((const xx_list_t *)source, index);
         xx_meta copy;
         if (!item) continue;
         xx_meta_init(&copy, item->meta_id);
-        if (!xx_var_copy(&copy.var, &item->var) ||
-            !xx_list_append(destination, &copy)) {
+        if (!xx_var_copy(&copy.var, &item->var) || !xx_list_append(destination, &copy)) {
             xx_meta_cleanup(&copy);
             return false;
         }
@@ -303,21 +285,20 @@ static bool xx_dlke_copy_options(xx_list_s *destination,
     return true;
 }
 
-static const xx_var *xx_dlke_find_option(const xx_list_s *options,
-                                         uint32_t meta_id) {
+static const xx_var *xx_dlke_find_option(const xx_list_s *options, uint32_t meta_id)
+{
     size_t index;
 
     if (!options) return NULL;
     for (index = 0U; index < options->count; ++index) {
-        const xx_meta *item =
-            (const xx_meta *)xx_list_at((const xx_list_t *)options, index);
+        const xx_meta *item = (const xx_meta *)xx_list_at((const xx_list_t *)options, index);
         if (item && item->meta_id == meta_id) return &item->var;
     }
     return NULL;
 }
 
-static bool xx_dlke_populate_record(xx_archive_record *record,
-                                    const xx_dlke_entry *entry) {
+static bool xx_dlke_populate_record(xx_archive_record *record, const xx_dlke_entry *entry)
+{
     if (!record || !entry || !entry->name) return false;
     xx_archive_record_cleanup(record);
     xx_archive_record_init(record);
@@ -325,22 +306,16 @@ static bool xx_dlke_populate_record(xx_archive_record *record,
     record->header_size = (int64_t)XX_DLKE_HEADER_SIZE;
     record->data_offset = entry->data_offset;
     record->compressed_size = entry->data_size;
-    return xx_archive_record_set_original_name(record, entry->name) &&
-           xx_archive_record_set_meta_u64(record, XX_META_ID_COMPRESSED_SIZE,
-                                          (uint64_t)entry->data_size) &&
-           xx_archive_record_set_meta_u64(record, XX_META_ID_UNCOMPRESSED_SIZE,
-                                          (uint64_t)entry->data_size) &&
-           xx_archive_record_set_meta_u64(record, XX_META_ID_COMPRESSION_METHOD,
-                                          0U) &&
-           xx_archive_record_set_meta_bool(record, XX_META_ID_IS_FOLDER,
-                                           false) &&
-           xx_archive_record_set_meta_bool(record, XX_META_ID_IS_ENCRYPTED,
-                                           entry->encrypted);
+    return xx_archive_record_set_original_name(record, entry->name) && xx_archive_record_set_meta_u64(record, XX_META_ID_COMPRESSED_SIZE, (uint64_t)entry->data_size) &&
+           xx_archive_record_set_meta_u64(record, XX_META_ID_UNCOMPRESSED_SIZE, (uint64_t)entry->data_size) &&
+           xx_archive_record_set_meta_u64(record, XX_META_ID_COMPRESSION_METHOD, 0U) && xx_archive_record_set_meta_bool(record, XX_META_ID_IS_FOLDER, false) &&
+           xx_archive_record_set_meta_bool(record, XX_META_ID_IS_ENCRYPTED, entry->encrypted);
 }
 
 /* ----------------------------------------------------------- lifecycle -- */
 
-void xx_dlke_init(xx_dlke *dlke, xx_io_device *dev, int64_t base_address) {
+void xx_dlke_init(xx_dlke *dlke, xx_io_device *dev, int64_t base_address)
+{
     if (!dlke) return;
     xx_mem_zero(dlke, sizeof(*dlke));
     xx_format_init(&dlke->format, dev, base_address);
@@ -353,31 +328,28 @@ void xx_dlke_init(xx_dlke *dlke, xx_io_device *dev, int64_t base_address) {
     dlke->format.check_is_valid = xx_dlke_check_is_valid;
     dlke->format.handle_base_info = xx_dlke_handle_base_info;
     dlke->format.get_format_size = xx_dlke_get_format_size;
-    dlke->format.get_number_of_archive_records =
-        xx_dlke_get_number_of_archive_records;
-    dlke->format.create_archive_records_reading =
-        xx_dlke_create_archive_records_reading;
+    dlke->format.get_number_of_archive_records = xx_dlke_get_number_of_archive_records;
+    dlke->format.create_archive_records_reading = xx_dlke_create_archive_records_reading;
     dlke->format.get_current_archive_record = xx_dlke_get_current_archive_record;
-    dlke->format.unpack_current_archive_record =
-        xx_dlke_unpack_current_archive_record;
-    dlke->format.archive_record_move_to_next =
-        xx_dlke_archive_record_move_to_next;
-    dlke->format.free_archive_records_reading =
-        xx_dlke_free_archive_records_reading;
+    dlke->format.unpack_current_archive_record = xx_dlke_unpack_current_archive_record;
+    dlke->format.archive_record_move_to_next = xx_dlke_archive_record_move_to_next;
+    dlke->format.free_archive_records_reading = xx_dlke_free_archive_records_reading;
     dlke->format.destroy = xx_dlke_vtable_destroy;
     dlke->signature_offset = -1;
     dlke->payload_offset = -1;
     dlke->archive_end = -1;
 }
 
-xx_dlke *xx_dlke_create(xx_io_device *dev, int64_t base_address) {
+xx_dlke *xx_dlke_create(xx_io_device *dev, int64_t base_address)
+{
     xx_dlke *dlke = (xx_dlke *)xx_mem_alloc(sizeof(*dlke));
 
     if (dlke) xx_dlke_init(dlke, dev, base_address);
     return dlke;
 }
 
-void xx_dlke_destroy(xx_dlke *dlke) {
+void xx_dlke_destroy(xx_dlke *dlke)
+{
     if (!dlke) return;
     if (dlke->internal) {
         xx_dlke_private_cleanup((xx_dlke_private *)dlke->internal);
@@ -387,11 +359,13 @@ void xx_dlke_destroy(xx_dlke *dlke) {
     xx_format_cleanup_extra_parameters(&dlke->format);
 }
 
-static void xx_dlke_vtable_destroy(Abstractformat *self) {
+static void xx_dlke_vtable_destroy(Abstractformat *self)
+{
     xx_dlke_destroy((xx_dlke *)self);
 }
 
-void xx_dlke_free(xx_dlke *dlke) {
+void xx_dlke_free(xx_dlke *dlke)
+{
     if (!dlke) return;
     xx_dlke_destroy(dlke);
     xx_mem_free(dlke);
@@ -399,7 +373,8 @@ void xx_dlke_free(xx_dlke *dlke) {
 
 /* -------------------------------------------------------------- format -- */
 
-bool xx_dlke_check_is_valid(Abstractformat *self, xx_pd_struct *pd) {
+bool xx_dlke_check_is_valid(Abstractformat *self, xx_pd_struct *pd)
+{
     xx_dlke_private parsed;
     bool result = xx_dlke_parse(self, &parsed, pd);
 
@@ -407,7 +382,8 @@ bool xx_dlke_check_is_valid(Abstractformat *self, xx_pd_struct *pd) {
     return result;
 }
 
-bool xx_dlke_handle_base_info(Abstractformat *self, xx_pd_struct *pd) {
+bool xx_dlke_handle_base_info(Abstractformat *self, xx_pd_struct *pd)
+{
     xx_dlke *dlke = (xx_dlke *)self;
     xx_dlke_private *parsed;
     int64_t total_size;
@@ -448,18 +424,17 @@ bool xx_dlke_handle_base_info(Abstractformat *self, xx_pd_struct *pd) {
     return true;
 }
 
-int64_t xx_dlke_get_format_size(Abstractformat *self, xx_pd_struct *pd) {
-    if (!self ||
-        (!self->base_info_handled && !xx_format_handle_base_info(self, pd))) {
+int64_t xx_dlke_get_format_size(Abstractformat *self, xx_pd_struct *pd)
+{
+    if (!self || (!self->base_info_handled && !xx_format_handle_base_info(self, pd))) {
         return -1;
     }
     return self->format_size;
 }
 
-uint64_t xx_dlke_get_number_of_archive_records(Abstractformat *self,
-                                               xx_pd_struct *pd) {
-    if (!self ||
-        (!self->base_info_handled && !xx_format_handle_base_info(self, pd))) {
+uint64_t xx_dlke_get_number_of_archive_records(Abstractformat *self, xx_pd_struct *pd)
+{
+    if (!self || (!self->base_info_handled && !xx_format_handle_base_info(self, pd))) {
         return 0U;
     }
     return ((xx_dlke *)self)->number_of_records;
@@ -467,13 +442,12 @@ uint64_t xx_dlke_get_number_of_archive_records(Abstractformat *self,
 
 /* ------------------------------------------------------ record reading -- */
 
-xx_archive_record_state *xx_dlke_create_archive_records_reading(
-    Abstractformat *self, const xx_list_s *options, xx_pd_struct *pd) {
+xx_archive_record_state *xx_dlke_create_archive_records_reading(Abstractformat *self, const xx_list_s *options, xx_pd_struct *pd)
+{
     xx_archive_record_state *state;
     xx_dlke_stream *stream;
 
-    if (!self || !self->device ||
-        (!self->base_info_handled && !xx_format_handle_base_info(self, pd))) {
+    if (!self || !self->device || (!self->base_info_handled && !xx_format_handle_base_info(self, pd))) {
         return NULL;
     }
     state = (xx_archive_record_state *)xx_mem_alloc(sizeof(*state));
@@ -484,8 +458,7 @@ xx_archive_record_state *xx_dlke_create_archive_records_reading(
         return NULL;
     }
     xx_archive_record_state_init(state, self);
-    if (!xx_dlke_copy_options(&state->options, options) ||
-        !xx_dlke_parse(self, &stream->parsed, pd)) {
+    if (!xx_dlke_copy_options(&state->options, options) || !xx_dlke_parse(self, &stream->parsed, pd)) {
         xx_dlke_stream_free(stream);
         xx_archive_record_state_free(state);
         return NULL;
@@ -494,29 +467,23 @@ xx_archive_record_state *xx_dlke_create_archive_records_reading(
     state->internal_state = stream;
     state->free_internal = xx_dlke_stream_free;
     state->total_records = (int64_t)stream->parsed.count;
-    if (stream->parsed.count != 0U &&
-        xx_dlke_populate_record(&state->current_record,
-                                &stream->parsed.entries[0])) {
+    if (stream->parsed.count != 0U && xx_dlke_populate_record(&state->current_record, &stream->parsed.entries[0])) {
         state->has_record = true;
         state->current_index = 0;
     }
     return state;
 }
 
-const xx_archive_record *xx_dlke_get_current_archive_record(
-    Abstractformat *self, xx_archive_record_state *state) {
-    return self && state && state->format == self && state->has_record
-               ? &state->current_record
-               : NULL;
+const xx_archive_record *xx_dlke_get_current_archive_record(Abstractformat *self, xx_archive_record_state *state)
+{
+    return self && state && state->format == self && state->has_record ? &state->current_record : NULL;
 }
 
-bool xx_dlke_archive_record_move_to_next(Abstractformat *self,
-                                         xx_archive_record_state *state,
-                                         xx_pd_struct *pd) {
+bool xx_dlke_archive_record_move_to_next(Abstractformat *self, xx_archive_record_state *state, xx_pd_struct *pd)
+{
     xx_dlke_stream *stream;
 
-    if (!self || !state || state->format != self || !state->has_record ||
-        !state->internal_state || (pd && xx_pd_is_stopped(pd))) {
+    if (!self || !state || state->format != self || !state->has_record || !state->internal_state || (pd && xx_pd_is_stopped(pd))) {
         return false;
     }
     stream = (xx_dlke_stream *)state->internal_state;
@@ -527,8 +494,7 @@ bool xx_dlke_archive_record_move_to_next(Abstractformat *self,
         state->has_record = false;
         return false;
     }
-    if (!xx_dlke_populate_record(&state->current_record,
-                                 &stream->parsed.entries[stream->index])) {
+    if (!xx_dlke_populate_record(&state->current_record, &stream->parsed.entries[stream->index])) {
         state->has_record = false;
         return false;
     }
@@ -536,9 +502,8 @@ bool xx_dlke_archive_record_move_to_next(Abstractformat *self,
     return true;
 }
 
-bool xx_dlke_unpack_current_archive_record(Abstractformat *self,
-                                           xx_archive_record_state *state,
-                                           xx_pd_struct *pd) {
+bool xx_dlke_unpack_current_archive_record(Abstractformat *self, xx_archive_record_state *state, xx_pd_struct *pd)
+{
     const xx_archive_record *record;
     const xx_dlke_stream *stream;
     const xx_var *option;
@@ -548,9 +513,7 @@ bool xx_dlke_unpack_current_archive_record(Abstractformat *self,
     char *destination = NULL;
     bool result = false;
 
-    if (!self || !self->device || !state || state->format != self ||
-        !state->has_record || !state->internal_state ||
-        (pd && xx_pd_is_stopped(pd))) {
+    if (!self || !self->device || !state || state->format != self || !state->has_record || !state->internal_state || (pd && xx_pd_is_stopped(pd))) {
         return false;
     }
     stream = (const xx_dlke_stream *)state->internal_state;
@@ -569,56 +532,53 @@ bool xx_dlke_unpack_current_archive_record(Abstractformat *self,
     if (!option) {
         /* No destination: report whether the signature's span is addressable. */
         int64_t total = xx_io_total_size(self->device);
-        return record->data_offset >= 0 && record->compressed_size >= 0 &&
-               record->data_offset <= total &&
-               record->compressed_size <= total - record->data_offset;
+        return record->data_offset >= 0 && record->compressed_size >= 0 && record->data_offset <= total && record->compressed_size <= total - record->data_offset;
     }
-    if (option->type == XX_VAR_TYPE_STRING ||
-        option->type == XX_VAR_TYPE_STRING_VIEW) {
+    if (option->type == XX_VAR_TYPE_STRING || option->type == XX_VAR_TYPE_STRING_VIEW) {
         base = xx_var_get_str(option);
-    } else if (option->type == XX_VAR_TYPE_WSTRING ||
-               option->type == XX_VAR_TYPE_WSTRING_VIEW) {
+    } else if (option->type == XX_VAR_TYPE_WSTRING || option->type == XX_VAR_TYPE_WSTRING_VIEW) {
         owned_base = xx_str_unicode_to_utf8(xx_var_get_wstr(option));
         base = owned_base;
     }
     if (!base) goto cleanup;
-    if (base[0] && base[xx_str_len(base) - 1U] != '/' &&
-        base[xx_str_len(base) - 1U] != '\\') {
+    if (base[0] && base[xx_str_len(base) - 1U] != '/' && base[xx_str_len(base) - 1U] != '\\') {
         destination = xx_str_concat3(base, "/", name);
     } else {
         destination = xx_str_concat(base, name);
     }
     if (!destination) goto cleanup;
     if (!xx_store_create_dirs_a(destination, false)) goto cleanup;
-    result = xx_store_unpack_device_to_file(self->device, record->data_offset,
-                                            record->compressed_size,
-                                            destination, pd);
+    result = xx_store_unpack_device_to_file(self->device, record->data_offset, record->compressed_size, destination, pd);
 cleanup:
     if (owned_base) xx_str_free(owned_base);
     if (destination) xx_str_free(destination);
     return result;
 }
 
-void xx_dlke_free_archive_records_reading(Abstractformat *self,
-                                          xx_archive_record_state *state) {
+void xx_dlke_free_archive_records_reading(Abstractformat *self, xx_archive_record_state *state)
+{
     (void)self;
     xx_archive_record_state_free(state);
 }
 
 /* ------------------------------------------------------------ accessors -- */
 
-const char *xx_dlke_get_rom_id(const xx_dlke *dlke) {
+const char *xx_dlke_get_rom_id(const xx_dlke *dlke)
+{
     return dlke ? dlke->rom_id : "";
 }
 
-uint32_t xx_dlke_get_signature_size(const xx_dlke *dlke) {
+uint32_t xx_dlke_get_signature_size(const xx_dlke *dlke)
+{
     return dlke ? dlke->signature_size : 0U;
 }
 
-uint32_t xx_dlke_get_payload_size(const xx_dlke *dlke) {
+uint32_t xx_dlke_get_payload_size(const xx_dlke *dlke)
+{
     return dlke ? dlke->payload_size : 0U;
 }
 
-int64_t xx_dlke_get_archive_end(const xx_dlke *dlke) {
+int64_t xx_dlke_get_archive_end(const xx_dlke *dlke)
+{
     return dlke ? dlke->archive_end : -1;
 }

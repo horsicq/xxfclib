@@ -82,17 +82,15 @@ static void xx_bwcf_vtable_destroy(Abstractformat *self);
 
 /* ------------------------------------------------------------- helpers -- */
 
-static bool xx_bwcf_read_at(Abstractformat *self, int64_t offset,
-                              uint8_t *buffer, size_t size) {
+static bool xx_bwcf_read_at(Abstractformat *self, int64_t offset, uint8_t *buffer, size_t size)
+{
     size_t completed = 0U;
 
-    if (!self || !self->device || offset < 0 ||
-        xx_io_seek64(self->device, offset, SEEK_SET) != 0) {
+    if (!self || !self->device || offset < 0 || xx_io_seek64(self->device, offset, SEEK_SET) != 0) {
         return false;
     }
     while (completed < size) {
-        ssize_t received =
-            xx_io_read(self->device, buffer + completed, size - completed);
+        ssize_t received = xx_io_read(self->device, buffer + completed, size - completed);
         if (received <= 0 || (size_t)received > size - completed) {
             return false;
         }
@@ -101,14 +99,14 @@ static bool xx_bwcf_read_at(Abstractformat *self, int64_t offset,
     return true;
 }
 
-static bool xx_bwcf_range_within(int64_t total, int64_t offset,
-                                   int64_t size) {
-    return offset >= 0 && size >= 0 && offset <= total &&
-           size <= total - offset;
+static bool xx_bwcf_range_within(int64_t total, int64_t offset, int64_t size)
+{
+    return offset >= 0 && size >= 0 && offset <= total && size <= total - offset;
 }
 
 /* Refuse anything that would escape the extraction directory. */
-static bool xx_bwcf_path_safe(const char *name) {
+static bool xx_bwcf_path_safe(const char *name)
+{
     const char *cursor = name;
 
     if (!name || !name[0] || name[0] == '/') return false;
@@ -123,7 +121,8 @@ static bool xx_bwcf_path_safe(const char *name) {
     return true;
 }
 
-static void xx_bwcf_stream_free(void *pointer) {
+static void xx_bwcf_stream_free(void *pointer)
+{
     xx_bwcf_stream *stream = (xx_bwcf_stream *)pointer;
     size_t index;
 
@@ -136,17 +135,15 @@ static void xx_bwcf_stream_free(void *pointer) {
 }
 
 /* Append a member, taking ownership of @p name. */
-static bool xx_bwcf_add(xx_bwcf_stream *stream,
-                          const xx_bwcf_member *member) {
-    xx_bwcf_member *grown = (xx_bwcf_member *)xx_mem_realloc(
-        stream->items, sizeof(*grown) * (stream->count + 1U));
+static bool xx_bwcf_add(xx_bwcf_stream *stream, const xx_bwcf_member *member)
+{
+    xx_bwcf_member *grown = (xx_bwcf_member *)xx_mem_realloc(stream->items, sizeof(*grown) * (stream->count + 1U));
 
     if (!grown) return false;
     stream->items = grown;
     stream->items[stream->count++] = *member;
     return true;
 }
-
 
 #define XX_BWCF_HEADER_SIZE 0x56
 #define XX_BWCF_DESCRIPTION_OFFSET 0x05
@@ -172,7 +169,6 @@ static size_t xx_bwcf_field_length(const uint8_t *field, size_t size);
 static xx_bwcf_stream *xx_bwcf_parse(Abstractformat *self, xx_pd_struct *pd);
 static bool xx_bwcf_decode(Abstractformat *self, const xx_bwcf_member *member, uint8_t **out, size_t *out_size, xx_pd_struct *pd);
 
-
 /* Each half of a version 2 name is u8 length prefixed, so 255 is the field's
  * own ceiling rather than a policy limit. */
 /* Directory plus name plus a separating NUL, with the version 1 field (which
@@ -181,9 +177,9 @@ static bool xx_bwcf_decode(Abstractformat *self, const xx_bwcf_member *member, u
 /* DOS date/time -> Unix seconds. Written out rather than taken from a helper
  * because there is no CRT here; an out-of-range field yields 0 (unknown)
  * instead of a bogus instant. */
-static uint64_t xx_bwcf_dos_to_unix(uint16_t dos_date, uint16_t dos_time) {
-    static const int32_t days_before_month[12] = {
-        0, 31, 59, 90, 120, 151, 181, 212, 243, 273, 304, 334};
+static uint64_t xx_bwcf_dos_to_unix(uint16_t dos_date, uint16_t dos_time)
+{
+    static const int32_t days_before_month[12] = {0, 31, 59, 90, 120, 151, 181, 212, 243, 273, 304, 334};
     int32_t year;
     int32_t month;
     int32_t day;
@@ -206,13 +202,11 @@ static uint64_t xx_bwcf_dos_to_unix(uint16_t dos_date, uint16_t dos_time) {
 
     days = 0;
     for (cursor = 1970; cursor < year; ++cursor) {
-        bool leap = ((cursor % 4) == 0 && (cursor % 100) != 0) ||
-                    ((cursor % 400) == 0);
+        bool leap = ((cursor % 4) == 0 && (cursor % 100) != 0) || ((cursor % 400) == 0);
         days += leap ? 366 : 365;
     }
     days += days_before_month[month - 1];
-    if (month > 2 && (((year % 4) == 0 && (year % 100) != 0) ||
-                      ((year % 400) == 0))) {
+    if (month > 2 && (((year % 4) == 0 && (year % 100) != 0) || ((year % 400) == 0))) {
         days += 1;
     }
     days += day - 1;
@@ -224,8 +218,8 @@ static uint64_t xx_bwcf_dos_to_unix(uint16_t dos_date, uint16_t dos_time) {
  * Everything here is a rejection rather than a sanitisation: the container
  * states this path as the member's destination, and quietly rewriting it
  * would publish a name the archive does not carry. */
-static bool xx_bwcf_append_name(char *buffer, size_t *length,
-                                const uint8_t *data, size_t size) {
+static bool xx_bwcf_append_name(char *buffer, size_t *length, const uint8_t *data, size_t size)
+{
     size_t cursor;
 
     for (cursor = 0U; cursor < size; ++cursor) {
@@ -244,14 +238,16 @@ static bool xx_bwcf_append_name(char *buffer, size_t *length,
 }
 
 /* Length of the NUL terminated string inside a fixed width field. */
-static size_t xx_bwcf_field_length(const uint8_t *field, size_t size) {
+static size_t xx_bwcf_field_length(const uint8_t *field, size_t size)
+{
     size_t cursor = 0U;
 
     while (cursor < size && field[cursor] != 0U) ++cursor;
     return cursor;
 }
 
-static xx_bwcf_stream *xx_bwcf_parse(Abstractformat *self, xx_pd_struct *pd) {
+static xx_bwcf_stream *xx_bwcf_parse(Abstractformat *self, xx_pd_struct *pd)
+{
     static const uint8_t magic[4] = {'B', 'W', 'C', 'F'};
     static const uint8_t v2_tag[4] = {'M', 'F', 'T', 'S'};
     xx_bwcf_stream *stream;
@@ -322,16 +318,13 @@ static xx_bwcf_stream *xx_bwcf_parse(Abstractformat *self, xx_pd_struct *pd) {
         file_length = 0U;
 
         if (version == 1) {
-            if (!xx_bwcf_range_within(span, offset,
-                                      XX_BWCF_V1_NAME_FIELD_SIZE)) {
+            if (!xx_bwcf_range_within(span, offset, XX_BWCF_V1_NAME_FIELD_SIZE)) {
                 goto fail;
             }
-            if (!xx_bwcf_read_at(self, self->base_address + offset, name_field,
-                                 sizeof(name_field))) {
+            if (!xx_bwcf_read_at(self, self->base_address + offset, name_field, sizeof(name_field))) {
                 goto fail;
             }
-            file_length =
-                xx_bwcf_field_length(name_field, sizeof(name_field));
+            file_length = xx_bwcf_field_length(name_field, sizeof(name_field));
             if (file_length > (size_t)XX_BWCF_MAX_NAME_SIZE) goto fail;
             for (half = 0; half < (int32_t)file_length; ++half) {
                 file_name[half] = name_field[half];
@@ -343,8 +336,7 @@ static xx_bwcf_stream *xx_bwcf_parse(Abstractformat *self, xx_pd_struct *pd) {
             if (!xx_bwcf_range_within(span, offset, XX_BWCF_V2_TAG_SIZE)) {
                 goto fail;
             }
-            if (!xx_bwcf_read_at(self, self->base_address + offset, tag,
-                                 sizeof(tag))) {
+            if (!xx_bwcf_read_at(self, self->base_address + offset, tag, sizeof(tag))) {
                 goto fail;
             }
             /* Every version 2 record restates this tag. It is what keeps the
@@ -361,8 +353,7 @@ static xx_bwcf_stream *xx_bwcf_parse(Abstractformat *self, xx_pd_struct *pd) {
                 int64_t length;
 
                 if (!xx_bwcf_range_within(span, offset, 1)) goto fail;
-                if (!xx_bwcf_read_at(self, self->base_address + offset,
-                                     &length_byte, 1U)) {
+                if (!xx_bwcf_read_at(self, self->base_address + offset, &length_byte, 1U)) {
                     goto fail;
                 }
                 offset += 1;
@@ -370,9 +361,7 @@ static xx_bwcf_stream *xx_bwcf_parse(Abstractformat *self, xx_pd_struct *pd) {
                 if (length > (int64_t)XX_BWCF_MAX_NAME_SIZE) goto fail;
                 if (length > 0) {
                     if (!xx_bwcf_range_within(span, offset, length)) goto fail;
-                    if (!xx_bwcf_read_at(self, self->base_address + offset,
-                                         (half == 0) ? file_name : directory,
-                                         (size_t)length)) {
+                    if (!xx_bwcf_read_at(self, self->base_address + offset, (half == 0) ? file_name : directory, (size_t)length)) {
                         goto fail;
                     }
                     offset += length;
@@ -390,8 +379,7 @@ static xx_bwcf_stream *xx_bwcf_parse(Abstractformat *self, xx_pd_struct *pd) {
         if (!xx_bwcf_range_within(span, offset, XX_BWCF_DESCRIPTOR_SIZE)) {
             goto fail;
         }
-        if (!xx_bwcf_read_at(self, self->base_address + offset, descriptor,
-                             sizeof(descriptor))) {
+        if (!xx_bwcf_read_at(self, self->base_address + offset, descriptor, sizeof(descriptor))) {
             goto fail;
         }
         offset += XX_BWCF_DESCRIPTOR_SIZE;
@@ -413,13 +401,11 @@ static xx_bwcf_stream *xx_bwcf_parse(Abstractformat *self, xx_pd_struct *pd) {
         if (!xx_bwcf_range_within(span, offset, block_size)) goto fail;
         /* The format defines exactly two methods; anything else means the
          * descriptor was read at the wrong offset. */
-        if (method != (uint8_t)XX_BWCF_METHOD_LZHUF &&
-            method != (uint8_t)XX_BWCF_METHOD_STORE) {
+        if (method != (uint8_t)XX_BWCF_METHOD_LZHUF && method != (uint8_t)XX_BWCF_METHOD_STORE) {
             goto fail;
         }
 
-        if (!xx_bwcf_read_at(self, self->base_address + offset, prefix,
-                             sizeof(prefix))) {
+        if (!xx_bwcf_read_at(self, self->base_address + offset, prefix, sizeof(prefix))) {
             goto fail;
         }
         repeated_size = (int64_t)(int32_t)xx_data_get_u32(prefix, 4, 0, false);
@@ -431,18 +417,15 @@ static xx_bwcf_stream *xx_bwcf_parse(Abstractformat *self, xx_pd_struct *pd) {
         if (repeated_size != uncompressed_size) goto fail;
         /* A stored member's block is exactly the payload plus the prefix, so
          * the block size is a third, derived copy of the same number. */
-        if (method == (uint8_t)XX_BWCF_METHOD_STORE &&
-            block_size != uncompressed_size + XX_BWCF_BLOCK_PREFIX_SIZE) {
+        if (method == (uint8_t)XX_BWCF_METHOD_STORE && block_size != uncompressed_size + XX_BWCF_BLOCK_PREFIX_SIZE) {
             goto fail;
         }
 
         combined_length = 0U;
-        if (!xx_bwcf_append_name(combined, &combined_length, directory,
-                                 directory_length)) {
+        if (!xx_bwcf_append_name(combined, &combined_length, directory, directory_length)) {
             goto fail;
         }
-        if (!xx_bwcf_append_name(combined, &combined_length, file_name,
-                                 file_length)) {
+        if (!xx_bwcf_append_name(combined, &combined_length, file_name, file_length)) {
             goto fail;
         }
         combined[combined_length] = '\0';
@@ -461,13 +444,11 @@ static xx_bwcf_stream *xx_bwcf_parse(Abstractformat *self, xx_pd_struct *pd) {
         member.header_size = offset - header_offset;
         /* Past the block's repeat of the uncompressed size: that prefix is
          * framing, not the first four bytes of the LZHUF stream. */
-        member.data_offset =
-            self->base_address + offset + XX_BWCF_BLOCK_PREFIX_SIZE;
+        member.data_offset = self->base_address + offset + XX_BWCF_BLOCK_PREFIX_SIZE;
         member.compressed_size = block_size - XX_BWCF_BLOCK_PREFIX_SIZE;
         member.uncompressed_size = uncompressed_size;
         member.method = (uint32_t)method;
-        member.timestamp = xx_bwcf_dos_to_unix(
-            xx_data_get_u16(descriptor + 0x02, 2, 0, false), xx_data_get_u16(descriptor + 0x00, 2, 0, false));
+        member.timestamp = xx_bwcf_dos_to_unix(xx_data_get_u16(descriptor + 0x02, 2, 0, false), xx_data_get_u16(descriptor + 0x00, 2, 0, false));
         member.is_folder = false;
 
         if (!xx_bwcf_add(stream, &member)) {
@@ -487,15 +468,13 @@ fail:
     return NULL;
 }
 
-
 /* A member's uncompressed size is attacker-controlled; refuse rather than
  * attempt an allocation the container merely claims to need. Parse admits
  * members up to the reference's 512 MiB, so a member between this ceiling
  * and that one lists but refuses to extract - which is the right way round. */
 
-static bool xx_bwcf_decode(Abstractformat *self, const xx_bwcf_member *member,
-                           uint8_t **out, size_t *out_size,
-                           xx_pd_struct *pd) {
+static bool xx_bwcf_decode(Abstractformat *self, const xx_bwcf_member *member, uint8_t **out, size_t *out_size, xx_pd_struct *pd)
+{
     uint8_t *packed = NULL;
     uint8_t *plain = NULL;
     size_t written = 0U;
@@ -506,12 +485,10 @@ static bool xx_bwcf_decode(Abstractformat *self, const xx_bwcf_member *member,
     if (member->compressed_size < 0 || member->uncompressed_size < 0) {
         return false;
     }
-    if (member->uncompressed_size > (int64_t)XX_BWCF_MAX_DECODED ||
-        member->compressed_size > (int64_t)XX_BWCF_MAX_DECODED) {
+    if (member->uncompressed_size > (int64_t)XX_BWCF_MAX_DECODED || member->compressed_size > (int64_t)XX_BWCF_MAX_DECODED) {
         return false;
     }
-    if ((uint64_t)member->uncompressed_size > (uint64_t)SIZE_MAX ||
-        (uint64_t)member->compressed_size > (uint64_t)SIZE_MAX) {
+    if ((uint64_t)member->uncompressed_size > (uint64_t)SIZE_MAX || (uint64_t)member->compressed_size > (uint64_t)SIZE_MAX) {
         return false;
     }
     if (pd && xx_pd_is_stopped(pd)) return false;
@@ -522,13 +499,9 @@ static bool xx_bwcf_decode(Abstractformat *self, const xx_bwcf_member *member,
          * different records. Copying the shorter of the two would hand the
          * caller a truncated file that reports success. */
         if (member->compressed_size != member->uncompressed_size) return false;
-        plain = (uint8_t *)xx_mem_alloc(
-            member->uncompressed_size != 0 ? (size_t)member->uncompressed_size
-                                           : 1U);
+        plain = (uint8_t *)xx_mem_alloc(member->uncompressed_size != 0 ? (size_t)member->uncompressed_size : 1U);
         if (!plain) return false;
-        if (member->uncompressed_size != 0 &&
-            !xx_bwcf_read_at(self, member->data_offset, plain,
-                             (size_t)member->uncompressed_size)) {
+        if (member->uncompressed_size != 0 && !xx_bwcf_read_at(self, member->data_offset, plain, (size_t)member->uncompressed_size)) {
             xx_mem_free(plain);
             return false;
         }
@@ -549,8 +522,7 @@ static bool xx_bwcf_decode(Abstractformat *self, const xx_bwcf_member *member,
 
     packed = (uint8_t *)xx_mem_alloc((size_t)member->compressed_size);
     if (!packed) return false;
-    if (!xx_bwcf_read_at(self, member->data_offset, packed,
-                         (size_t)member->compressed_size)) {
+    if (!xx_bwcf_read_at(self, member->data_offset, packed, (size_t)member->compressed_size)) {
         xx_mem_free(packed);
         return false;
     }
@@ -559,9 +531,7 @@ static bool xx_bwcf_decode(Abstractformat *self, const xx_bwcf_member *member,
         return false;
     }
 
-    plain = (uint8_t *)xx_mem_alloc(
-        member->uncompressed_size != 0 ? (size_t)member->uncompressed_size
-                                       : 1U);
+    plain = (uint8_t *)xx_mem_alloc(member->uncompressed_size != 0 ? (size_t)member->uncompressed_size : 1U);
     if (!plain) {
         xx_mem_free(packed);
         return false;
@@ -574,8 +544,7 @@ static bool xx_bwcf_decode(Abstractformat *self, const xx_bwcf_member *member,
      * stop condition - asking for fewer bytes than the member holds succeeds
      * and silently truncates. The length passed is the container's own, which
      * parse has already matched against the block's second copy. */
-    if (!xx_lzhuf_decode_memory(packed, (size_t)member->compressed_size, plain,
-                                (size_t)member->uncompressed_size, &written)) {
+    if (!xx_lzhuf_decode_memory(packed, (size_t)member->compressed_size, plain, (size_t)member->uncompressed_size, &written)) {
         xx_mem_free(plain);
         xx_mem_free(packed);
         return false;
@@ -592,8 +561,8 @@ static bool xx_bwcf_decode(Abstractformat *self, const xx_bwcf_member *member,
 
 /* ---------------------------------------------------------- lifecycle --- */
 
-void xx_bwcf_init(xx_bwcf *archive, xx_io_device *device,
-                    int64_t base_address) {
+void xx_bwcf_init(xx_bwcf *archive, xx_io_device *device, int64_t base_address)
+{
     if (!archive) return;
     xx_mem_zero(archive, sizeof(*archive));
     xx_format_init(&archive->format, device, base_address);
@@ -606,22 +575,17 @@ void xx_bwcf_init(xx_bwcf *archive, xx_io_device *device,
     archive->format.check_is_valid = xx_bwcf_check_is_valid;
     archive->format.handle_base_info = xx_bwcf_handle_base_info;
     archive->format.get_format_size = xx_bwcf_get_format_size;
-    archive->format.get_number_of_archive_records =
-        xx_bwcf_get_number_of_archive_records;
-    archive->format.create_archive_records_reading =
-        xx_bwcf_create_archive_records_reading;
-    archive->format.get_current_archive_record =
-        xx_bwcf_get_current_archive_record;
-    archive->format.unpack_current_archive_record =
-        xx_bwcf_unpack_current_archive_record;
-    archive->format.archive_record_move_to_next =
-        xx_bwcf_archive_record_move_to_next;
-    archive->format.free_archive_records_reading =
-        xx_bwcf_free_archive_records_reading;
+    archive->format.get_number_of_archive_records = xx_bwcf_get_number_of_archive_records;
+    archive->format.create_archive_records_reading = xx_bwcf_create_archive_records_reading;
+    archive->format.get_current_archive_record = xx_bwcf_get_current_archive_record;
+    archive->format.unpack_current_archive_record = xx_bwcf_unpack_current_archive_record;
+    archive->format.archive_record_move_to_next = xx_bwcf_archive_record_move_to_next;
+    archive->format.free_archive_records_reading = xx_bwcf_free_archive_records_reading;
     archive->format.destroy = xx_bwcf_vtable_destroy;
 }
 
-xx_bwcf *xx_bwcf_create(xx_io_device *device, int64_t base_address) {
+xx_bwcf *xx_bwcf_create(xx_io_device *device, int64_t base_address)
+{
     xx_bwcf *archive = (xx_bwcf *)xx_mem_alloc(sizeof(*archive));
 
     if (!archive) return NULL;
@@ -629,7 +593,8 @@ xx_bwcf *xx_bwcf_create(xx_io_device *device, int64_t base_address) {
     return archive;
 }
 
-void xx_bwcf_destroy(xx_bwcf *archive) {
+void xx_bwcf_destroy(xx_bwcf *archive)
+{
     if (!archive) return;
     /* Not xx_format_destroy: it dispatches through format.destroy, which is
      * the wrapper below, and the two would recurse. */
@@ -638,19 +603,22 @@ void xx_bwcf_destroy(xx_bwcf *archive) {
     archive->number_of_records = 0U;
 }
 
-void xx_bwcf_free(xx_bwcf *archive) {
+void xx_bwcf_free(xx_bwcf *archive)
+{
     if (!archive) return;
     xx_bwcf_destroy(archive);
     xx_mem_free(archive);
 }
 
-static void xx_bwcf_vtable_destroy(Abstractformat *self) {
+static void xx_bwcf_vtable_destroy(Abstractformat *self)
+{
     xx_bwcf_destroy((xx_bwcf *)self);
 }
 
 /* -------------------------------------------------------------- format -- */
 
-bool xx_bwcf_check_is_valid(Abstractformat *self, xx_pd_struct *pd) {
+bool xx_bwcf_check_is_valid(Abstractformat *self, xx_pd_struct *pd)
+{
     xx_bwcf_stream *stream;
 
     if (!self || (pd && xx_pd_is_stopped(pd))) return false;
@@ -660,7 +628,8 @@ bool xx_bwcf_check_is_valid(Abstractformat *self, xx_pd_struct *pd) {
     return true;
 }
 
-bool xx_bwcf_handle_base_info(Abstractformat *self, xx_pd_struct *pd) {
+bool xx_bwcf_handle_base_info(Abstractformat *self, xx_pd_struct *pd)
+{
     xx_bwcf *archive = (xx_bwcf *)self;
     xx_bwcf_stream *stream;
 
@@ -681,18 +650,17 @@ bool xx_bwcf_handle_base_info(Abstractformat *self, xx_pd_struct *pd) {
     return true;
 }
 
-int64_t xx_bwcf_get_format_size(Abstractformat *self, xx_pd_struct *pd) {
-    if (!self ||
-        (!self->base_info_handled && !xx_format_handle_base_info(self, pd))) {
+int64_t xx_bwcf_get_format_size(Abstractformat *self, xx_pd_struct *pd)
+{
+    if (!self || (!self->base_info_handled && !xx_format_handle_base_info(self, pd))) {
         return 0;
     }
     return self->is_valid ? self->format_size : 0;
 }
 
-uint64_t xx_bwcf_get_number_of_archive_records(Abstractformat *self,
-                                                 xx_pd_struct *pd) {
-    if (!self ||
-        (!self->base_info_handled && !xx_format_handle_base_info(self, pd))) {
+uint64_t xx_bwcf_get_number_of_archive_records(Abstractformat *self, xx_pd_struct *pd)
+{
+    if (!self || (!self->base_info_handled && !xx_format_handle_base_info(self, pd))) {
         return 0U;
     }
     return self->is_valid ? ((xx_bwcf *)self)->number_of_records : 0U;
@@ -700,8 +668,8 @@ uint64_t xx_bwcf_get_number_of_archive_records(Abstractformat *self,
 
 /* ------------------------------------------------------------- records -- */
 
-static bool xx_bwcf_set_record(xx_archive_record *record,
-                                 const xx_bwcf_member *member) {
+static bool xx_bwcf_set_record(xx_archive_record *record, const xx_bwcf_member *member)
+{
     xx_archive_record_cleanup(record);
     xx_archive_record_init(record);
     record->header_offset = member->header_offset;
@@ -709,34 +677,24 @@ static bool xx_bwcf_set_record(xx_archive_record *record,
     record->data_offset = member->data_offset;
     record->compressed_size = member->compressed_size;
     return xx_archive_record_set_original_name(record, member->name) &&
-           xx_archive_record_set_meta_u64(record, XX_META_ID_COMPRESSED_SIZE,
-                                          (uint64_t)member->compressed_size) &&
-           xx_archive_record_set_meta_u64(
-               record, XX_META_ID_UNCOMPRESSED_SIZE,
-               (uint64_t)member->uncompressed_size) &&
-           xx_archive_record_set_meta_u64(record, XX_META_ID_COMPRESSION_METHOD,
-                                          member->method) &&
-           xx_archive_record_set_meta_u64(record, XX_META_ID_TIMESTAMP,
-                                          member->timestamp) &&
-           xx_archive_record_set_meta_bool(record, XX_META_ID_IS_FOLDER,
-                                           member->is_folder) &&
-           xx_archive_record_set_meta_bool(record, XX_META_ID_IS_ENCRYPTED,
-                                           false);
+           xx_archive_record_set_meta_u64(record, XX_META_ID_COMPRESSED_SIZE, (uint64_t)member->compressed_size) &&
+           xx_archive_record_set_meta_u64(record, XX_META_ID_UNCOMPRESSED_SIZE, (uint64_t)member->uncompressed_size) &&
+           xx_archive_record_set_meta_u64(record, XX_META_ID_COMPRESSION_METHOD, member->method) &&
+           xx_archive_record_set_meta_u64(record, XX_META_ID_TIMESTAMP, member->timestamp) &&
+           xx_archive_record_set_meta_bool(record, XX_META_ID_IS_FOLDER, member->is_folder) && xx_archive_record_set_meta_bool(record, XX_META_ID_IS_ENCRYPTED, false);
 }
 
-static bool xx_bwcf_copy_options(xx_list_s *target,
-                                   const xx_list_s *options) {
+static bool xx_bwcf_copy_options(xx_list_s *target, const xx_list_s *options)
+{
     size_t index;
 
     if (!target || !options) return options == NULL;
     for (index = 0U; index < options->count; ++index) {
-        const xx_meta *source =
-            (const xx_meta *)xx_list_at((const xx_list_t *)options, index);
+        const xx_meta *source = (const xx_meta *)xx_list_at((const xx_list_t *)options, index);
         xx_meta copied;
         if (!source) continue;
         xx_meta_init(&copied, source->meta_id);
-        if (!xx_var_copy(&copied.var, &source->var) ||
-            !xx_list_append(target, &copied)) {
+        if (!xx_var_copy(&copied.var, &source->var) || !xx_list_append(target, &copied)) {
             xx_meta_cleanup(&copied);
             return false;
         }
@@ -744,21 +702,20 @@ static bool xx_bwcf_copy_options(xx_list_s *target,
     return true;
 }
 
-static const xx_var *xx_bwcf_get_option(const xx_list_s *options,
-                                          uint32_t meta_id) {
+static const xx_var *xx_bwcf_get_option(const xx_list_s *options, uint32_t meta_id)
+{
     size_t index;
 
     if (!options) return NULL;
     for (index = 0U; index < options->count; ++index) {
-        const xx_meta *meta =
-            (const xx_meta *)xx_list_at((const xx_list_t *)options, index);
+        const xx_meta *meta = (const xx_meta *)xx_list_at((const xx_list_t *)options, index);
         if (meta && meta->meta_id == meta_id) return &meta->var;
     }
     return NULL;
 }
 
-xx_archive_record_state *xx_bwcf_create_archive_records_reading(
-    Abstractformat *self, const xx_list_s *options, xx_pd_struct *pd) {
+xx_archive_record_state *xx_bwcf_create_archive_records_reading(Abstractformat *self, const xx_list_s *options, xx_pd_struct *pd)
+{
     xx_bwcf_stream *stream;
     xx_archive_record_state *state;
 
@@ -774,9 +731,7 @@ xx_archive_record_state *xx_bwcf_create_archive_records_reading(
     state->internal_state = stream;
     state->free_internal = xx_bwcf_stream_free;
     state->total_records = (int64_t)stream->count;
-    if (!xx_bwcf_copy_options(&state->options, options) ||
-        (stream->count != 0U &&
-         !xx_bwcf_set_record(&state->current_record, &stream->items[0]))) {
+    if (!xx_bwcf_copy_options(&state->options, options) || (stream->count != 0U && !xx_bwcf_set_record(&state->current_record, &stream->items[0]))) {
         xx_archive_record_state_free(state);
         return NULL;
     }
@@ -785,20 +740,16 @@ xx_archive_record_state *xx_bwcf_create_archive_records_reading(
     return state;
 }
 
-const xx_archive_record *xx_bwcf_get_current_archive_record(
-    Abstractformat *self, xx_archive_record_state *state) {
-    return self && state && state->format == self && state->has_record
-               ? &state->current_record
-               : NULL;
+const xx_archive_record *xx_bwcf_get_current_archive_record(Abstractformat *self, xx_archive_record_state *state)
+{
+    return self && state && state->format == self && state->has_record ? &state->current_record : NULL;
 }
 
-bool xx_bwcf_archive_record_move_to_next(Abstractformat *self,
-                                           xx_archive_record_state *state,
-                                           xx_pd_struct *pd) {
+bool xx_bwcf_archive_record_move_to_next(Abstractformat *self, xx_archive_record_state *state, xx_pd_struct *pd)
+{
     xx_bwcf_stream *stream;
 
-    if (!self || !state || state->format != self || !state->has_record ||
-        (pd && xx_pd_is_stopped(pd))) {
+    if (!self || !state || state->format != self || !state->has_record || (pd && xx_pd_is_stopped(pd))) {
         return false;
     }
     stream = (xx_bwcf_stream *)state->internal_state;
@@ -810,14 +761,12 @@ bool xx_bwcf_archive_record_move_to_next(Abstractformat *self,
     }
     ++stream->index;
     ++state->current_index;
-    state->has_record = xx_bwcf_set_record(&state->current_record,
-                                             &stream->items[stream->index]);
+    state->has_record = xx_bwcf_set_record(&state->current_record, &stream->items[stream->index]);
     return state->has_record;
 }
 
-bool xx_bwcf_unpack_current_archive_record(Abstractformat *self,
-                                             xx_archive_record_state *state,
-                                             xx_pd_struct *pd) {
+bool xx_bwcf_unpack_current_archive_record(Abstractformat *self, xx_archive_record_state *state, xx_pd_struct *pd)
+{
     xx_bwcf_stream *stream;
     const xx_bwcf_member *member;
     const xx_var *path_option;
@@ -829,8 +778,7 @@ bool xx_bwcf_unpack_current_archive_record(Abstractformat *self,
     bool result = false;
     bool created = false;
 
-    if (!self || !state || state->format != self || !state->has_record ||
-        (pd && xx_pd_is_stopped(pd))) {
+    if (!self || !state || state->format != self || !state->has_record || (pd && xx_pd_is_stopped(pd))) {
         return false;
     }
     stream = (xx_bwcf_stream *)state->internal_state;
@@ -838,8 +786,7 @@ bool xx_bwcf_unpack_current_archive_record(Abstractformat *self,
     member = &stream->items[stream->index];
     if (!xx_bwcf_path_safe(member->name)) return false;
 
-    path_option = xx_bwcf_get_option(&state->options,
-                                       XX_META_ID_OPT_UNPACK_PATH);
+    path_option = xx_bwcf_get_option(&state->options, XX_META_ID_OPT_UNPACK_PATH);
     if (!path_option) {
         /* No destination: decode and discard, which verifies the member
          * without writing anything. */
@@ -848,11 +795,9 @@ bool xx_bwcf_unpack_current_archive_record(Abstractformat *self,
         xx_mem_free(plain);
         return result;
     }
-    if (path_option->type == XX_VAR_TYPE_STRING ||
-        path_option->type == XX_VAR_TYPE_STRING_VIEW) {
+    if (path_option->type == XX_VAR_TYPE_STRING || path_option->type == XX_VAR_TYPE_STRING_VIEW) {
         base_path = xx_var_get_str(path_option);
-    } else if (path_option->type == XX_VAR_TYPE_WSTRING ||
-               path_option->type == XX_VAR_TYPE_WSTRING_VIEW) {
+    } else if (path_option->type == XX_VAR_TYPE_WSTRING || path_option->type == XX_VAR_TYPE_WSTRING_VIEW) {
         converted_path = xx_str_unicode_to_utf8(xx_var_get_wstr(path_option));
         base_path = converted_path;
     }
@@ -860,9 +805,7 @@ bool xx_bwcf_unpack_current_archive_record(Abstractformat *self,
         xx_str_free(converted_path);
         return false;
     }
-    if (base_path[0] != '\0' &&
-        base_path[xx_str_len(base_path) - 1U] != '/' &&
-        base_path[xx_str_len(base_path) - 1U] != '\\') {
+    if (base_path[0] != '\0' && base_path[xx_str_len(base_path) - 1U] != '/' && base_path[xx_str_len(base_path) - 1U] != '\\') {
         target_path = xx_str_concat3(base_path, "/", member->name);
     } else {
         target_path = xx_str_concat(base_path, member->name);
@@ -875,8 +818,7 @@ bool xx_bwcf_unpack_current_archive_record(Abstractformat *self,
         xx_str_free(target_path);
         return result;
     }
-    if (!xx_store_create_dirs_a(target_path, false) ||
-        !xx_bwcf_decode(self, member, &plain, &plain_size, pd)) {
+    if (!xx_store_create_dirs_a(target_path, false) || !xx_bwcf_decode(self, member, &plain, &plain_size, pd)) {
         xx_str_free(target_path);
         return false;
     }
@@ -887,8 +829,7 @@ bool xx_bwcf_unpack_current_archive_record(Abstractformat *self,
 
         result = output != NULL;
         while (result && completed < plain_size) {
-            ssize_t sent = xx_io_write(output, plain + completed,
-                                       plain_size - completed);
+            ssize_t sent = xx_io_write(output, plain + completed, plain_size - completed);
             if (sent <= 0 || (size_t)sent > plain_size - completed) {
                 result = false;
                 break;
@@ -903,8 +844,8 @@ bool xx_bwcf_unpack_current_archive_record(Abstractformat *self,
     return result;
 }
 
-void xx_bwcf_free_archive_records_reading(Abstractformat *self,
-                                            xx_archive_record_state *state) {
+void xx_bwcf_free_archive_records_reading(Abstractformat *self, xx_archive_record_state *state)
+{
     (void)self;
     xx_archive_record_state_free(state);
 }

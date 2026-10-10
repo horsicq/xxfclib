@@ -37,23 +37,19 @@ XXFC_API bool xx_cdrdao_toc_check_is_valid(Abstractformat *, xx_pd_struct *);
 XXFC_API bool xx_cdrdao_toc_handle_base_info(Abstractformat *, xx_pd_struct *);
 XXFC_API int64_t xx_cdrdao_toc_get_format_size(Abstractformat *, xx_pd_struct *);
 XXFC_API uint64_t xx_cdrdao_toc_get_number_of_archive_records(Abstractformat *, xx_pd_struct *);
-XXFC_API xx_archive_record_state *xx_cdrdao_toc_create_archive_records_reading(
-    Abstractformat *, const xx_list_s *, xx_pd_struct *);
-XXFC_API const xx_archive_record *xx_cdrdao_toc_get_current_archive_record(
-    Abstractformat *, xx_archive_record_state *);
-XXFC_API bool xx_cdrdao_toc_archive_record_move_to_next(
-    Abstractformat *, xx_archive_record_state *, xx_pd_struct *);
-XXFC_API bool xx_cdrdao_toc_unpack_current_archive_record(
-    Abstractformat *, xx_archive_record_state *, xx_pd_struct *);
-XXFC_API bool xx_cdrdao_toc_extract_record_to_device(
-    Abstractformat *, xx_archive_record_state *, xx_io_device *, xx_pd_struct *);
+XXFC_API xx_archive_record_state *xx_cdrdao_toc_create_archive_records_reading(Abstractformat *, const xx_list_s *, xx_pd_struct *);
+XXFC_API const xx_archive_record *xx_cdrdao_toc_get_current_archive_record(Abstractformat *, xx_archive_record_state *);
+XXFC_API bool xx_cdrdao_toc_archive_record_move_to_next(Abstractformat *, xx_archive_record_state *, xx_pd_struct *);
+XXFC_API bool xx_cdrdao_toc_unpack_current_archive_record(Abstractformat *, xx_archive_record_state *, xx_pd_struct *);
+XXFC_API bool xx_cdrdao_toc_extract_record_to_device(Abstractformat *, xx_archive_record_state *, xx_io_device *, xx_pd_struct *);
 XXFC_API void xx_cdrdao_toc_free_archive_records_reading(Abstractformat *, xx_archive_record_state *);
 XXFC_API bool xx_cdrdao_toc_set_data_device(xx_cdrdao_toc *, uint32_t, xx_io_device *);
 XXFC_API uint32_t xx_cdrdao_toc_open_data_files(xx_cdrdao_toc *, const char *toc_path);
 XXFC_API uint32_t xx_cdrdao_toc_get_number_of_tracks(xx_cdrdao_toc *);
 XXFC_API char *xx_cdrdao_toc_get_file_name(xx_cdrdao_toc *, uint32_t);
 XXFC_API bool xx_cdrdao_toc_test_magic(const uint8_t *, size_t);
-static inline Abstractformat *xx_cdrdao_toc_to_format(xx_cdrdao_toc *v) {
+static inline Abstractformat *xx_cdrdao_toc_to_format(xx_cdrdao_toc *v)
+{
     return v ? &v->format : NULL;
 }
 #ifdef __cplusplus

@@ -68,60 +68,40 @@ extern "C" {
 typedef struct xx_advanced_installer_bootstrapper {
     Abstractformat format;
     uint64_t number_of_records;
-    uint32_t mode;             /**< 0 payload inside, 1 external MSI. */
-    uint32_t info_offset;      /**< File table, from the executable start. */
-    uint32_t data_offset;      /**< First stored file. */
-    int64_t footer_offset;     /**< Absolute device offset of the footer. */
-    bool is_signed;            /**< Trailer sits before a certificate table. */
+    uint32_t mode;         /**< 0 payload inside, 1 external MSI. */
+    uint32_t info_offset;  /**< File table, from the executable start. */
+    uint32_t data_offset;  /**< First stored file. */
+    int64_t footer_offset; /**< Absolute device offset of the footer. */
+    bool is_signed;        /**< Trailer sits before a certificate table. */
     bool is_pe64;
-    char guid[33];             /**< The 32 hex digits, NUL terminated. */
-    char *external_name;       /**< Mode 1 only: UTF-8, owned. */
+    char guid[33];       /**< The 32 hex digits, NUL terminated. */
+    char *external_name; /**< Mode 1 only: UTF-8, owned. */
 } xx_advanced_installer_bootstrapper;
 
 typedef xx_advanced_installer_bootstrapper xx_advanced_installer_bootstrapper_t;
 
-XXFC_API void xx_advanced_installer_bootstrapper_init(
-    xx_advanced_installer_bootstrapper *archive, xx_io_device *device,
-    int64_t base_address);
-XXFC_API xx_advanced_installer_bootstrapper *
-xx_advanced_installer_bootstrapper_create(xx_io_device *device,
-                                          int64_t base_address);
-XXFC_API void xx_advanced_installer_bootstrapper_destroy(
-    xx_advanced_installer_bootstrapper *archive);
-XXFC_API void xx_advanced_installer_bootstrapper_free(
-    xx_advanced_installer_bootstrapper *archive);
+XXFC_API void xx_advanced_installer_bootstrapper_init(xx_advanced_installer_bootstrapper *archive, xx_io_device *device, int64_t base_address);
+XXFC_API xx_advanced_installer_bootstrapper *xx_advanced_installer_bootstrapper_create(xx_io_device *device, int64_t base_address);
+XXFC_API void xx_advanced_installer_bootstrapper_destroy(xx_advanced_installer_bootstrapper *archive);
+XXFC_API void xx_advanced_installer_bootstrapper_free(xx_advanced_installer_bootstrapper *archive);
 
-XXFC_API bool xx_advanced_installer_bootstrapper_check_is_valid(
-    Abstractformat *self, xx_pd_struct *pd);
-XXFC_API bool xx_advanced_installer_bootstrapper_handle_base_info(
-    Abstractformat *self, xx_pd_struct *pd);
-XXFC_API int64_t xx_advanced_installer_bootstrapper_get_format_size(
-    Abstractformat *self, xx_pd_struct *pd);
-XXFC_API uint64_t xx_advanced_installer_bootstrapper_get_number_of_archive_records(
-    Abstractformat *self, xx_pd_struct *pd);
+XXFC_API bool xx_advanced_installer_bootstrapper_check_is_valid(Abstractformat *self, xx_pd_struct *pd);
+XXFC_API bool xx_advanced_installer_bootstrapper_handle_base_info(Abstractformat *self, xx_pd_struct *pd);
+XXFC_API int64_t xx_advanced_installer_bootstrapper_get_format_size(Abstractformat *self, xx_pd_struct *pd);
+XXFC_API uint64_t xx_advanced_installer_bootstrapper_get_number_of_archive_records(Abstractformat *self, xx_pd_struct *pd);
 
-XXFC_API xx_archive_record_state *
-xx_advanced_installer_bootstrapper_create_archive_records_reading(
-    Abstractformat *self, const xx_list_s *options, xx_pd_struct *pd);
-XXFC_API const xx_archive_record *
-xx_advanced_installer_bootstrapper_get_current_archive_record(
-    Abstractformat *self, xx_archive_record_state *state);
-XXFC_API bool xx_advanced_installer_bootstrapper_unpack_current_archive_record(
-    Abstractformat *self, xx_archive_record_state *state, xx_pd_struct *pd);
-XXFC_API bool xx_advanced_installer_bootstrapper_archive_record_move_to_next(
-    Abstractformat *self, xx_archive_record_state *state, xx_pd_struct *pd);
-XXFC_API void xx_advanced_installer_bootstrapper_free_archive_records_reading(
-    Abstractformat *self, xx_archive_record_state *state);
+XXFC_API xx_archive_record_state *xx_advanced_installer_bootstrapper_create_archive_records_reading(Abstractformat *self, const xx_list_s *options, xx_pd_struct *pd);
+XXFC_API const xx_archive_record *xx_advanced_installer_bootstrapper_get_current_archive_record(Abstractformat *self, xx_archive_record_state *state);
+XXFC_API bool xx_advanced_installer_bootstrapper_unpack_current_archive_record(Abstractformat *self, xx_archive_record_state *state, xx_pd_struct *pd);
+XXFC_API bool xx_advanced_installer_bootstrapper_archive_record_move_to_next(Abstractformat *self, xx_archive_record_state *state, xx_pd_struct *pd);
+XXFC_API void xx_advanced_installer_bootstrapper_free_archive_records_reading(Abstractformat *self, xx_archive_record_state *state);
 
 /** 0 or 1 after handle_base_info. */
-XXFC_API uint32_t xx_advanced_installer_bootstrapper_get_mode(
-    const xx_advanced_installer_bootstrapper *archive);
+XXFC_API uint32_t xx_advanced_installer_bootstrapper_get_mode(const xx_advanced_installer_bootstrapper *archive);
 /** The footer's 32 hex digits, or NULL before handle_base_info. */
-XXFC_API const char *xx_advanced_installer_bootstrapper_get_guid(
-    const xx_advanced_installer_bootstrapper *archive);
+XXFC_API const char *xx_advanced_installer_bootstrapper_get_guid(const xx_advanced_installer_bootstrapper *archive);
 /** Mode 1: the external MSI name (UTF-8) the footer names, else NULL. */
-XXFC_API const char *xx_advanced_installer_bootstrapper_get_external_name(
-    const xx_advanced_installer_bootstrapper *archive);
+XXFC_API const char *xx_advanced_installer_bootstrapper_get_external_name(const xx_advanced_installer_bootstrapper *archive);
 
 #ifdef __cplusplus
 }

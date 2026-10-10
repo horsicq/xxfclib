@@ -9,9 +9,7 @@
 
 /* Decode one fT33 entropy block into LZ token bytes.  initial_position is
  * the current LZ history count before this block (0xfba at member start). */
-bool xx_ftcomp_entropy33_decode(const uint8_t *input, size_t input_size,
-                                uint8_t *tokens, size_t expected,
-                                size_t capacity, uint32_t initial_position,
-                                size_t *produced, size_t *consumed);
+bool xx_ftcomp_entropy33_decode(const uint8_t *input, size_t input_size, uint8_t *tokens, size_t expected, size_t capacity, uint32_t initial_position, size_t *produced,
+                                size_t *consumed);
 
 #endif

@@ -43,29 +43,21 @@ typedef struct xx_ap4 {
 typedef xx_ap4 xx_ap4_t;
 typedef xx_ap4 XAp4;
 
-XXFC_API void xx_ap4_init(xx_ap4 *archive, xx_io_device *device,
-                          int64_t base_address);
+XXFC_API void xx_ap4_init(xx_ap4 *archive, xx_io_device *device, int64_t base_address);
 XXFC_API xx_ap4 *xx_ap4_create(xx_io_device *device, int64_t base_address);
 XXFC_API void xx_ap4_destroy(xx_ap4 *archive);
 XXFC_API void xx_ap4_free(xx_ap4 *archive);
 
 XXFC_API bool xx_ap4_check_is_valid(Abstractformat *self, xx_pd_struct *pd);
 XXFC_API bool xx_ap4_handle_base_info(Abstractformat *self, xx_pd_struct *pd);
-XXFC_API int64_t xx_ap4_get_format_size(Abstractformat *self,
-                                        xx_pd_struct *pd);
-XXFC_API uint64_t xx_ap4_get_number_of_archive_records(Abstractformat *self,
-                                                        xx_pd_struct *pd);
+XXFC_API int64_t xx_ap4_get_format_size(Abstractformat *self, xx_pd_struct *pd);
+XXFC_API uint64_t xx_ap4_get_number_of_archive_records(Abstractformat *self, xx_pd_struct *pd);
 
-XXFC_API xx_archive_record_state *xx_ap4_create_archive_records_reading(
-    Abstractformat *self, const xx_list_s *options, xx_pd_struct *pd);
-XXFC_API const xx_archive_record *xx_ap4_get_current_archive_record(
-    Abstractformat *self, xx_archive_record_state *state);
-XXFC_API bool xx_ap4_unpack_current_archive_record(
-    Abstractformat *self, xx_archive_record_state *state, xx_pd_struct *pd);
-XXFC_API bool xx_ap4_archive_record_move_to_next(
-    Abstractformat *self, xx_archive_record_state *state, xx_pd_struct *pd);
-XXFC_API void xx_ap4_free_archive_records_reading(
-    Abstractformat *self, xx_archive_record_state *state);
+XXFC_API xx_archive_record_state *xx_ap4_create_archive_records_reading(Abstractformat *self, const xx_list_s *options, xx_pd_struct *pd);
+XXFC_API const xx_archive_record *xx_ap4_get_current_archive_record(Abstractformat *self, xx_archive_record_state *state);
+XXFC_API bool xx_ap4_unpack_current_archive_record(Abstractformat *self, xx_archive_record_state *state, xx_pd_struct *pd);
+XXFC_API bool xx_ap4_archive_record_move_to_next(Abstractformat *self, xx_archive_record_state *state, xx_pd_struct *pd);
+XXFC_API void xx_ap4_free_archive_records_reading(Abstractformat *self, xx_archive_record_state *state);
 
 /** @brief Offset of the first non-empty table of contents. */
 XXFC_API int64_t xx_ap4_get_prefix_size(const xx_ap4 *archive);

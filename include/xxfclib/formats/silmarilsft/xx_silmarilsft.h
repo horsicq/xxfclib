@@ -52,39 +52,28 @@ typedef struct xx_silmarilsft {
     Abstractformat format;
     uint64_t number_of_records;
     uint64_t unpacked_size;
-    uint32_t method;      /**< 0x81 byte-run, 0xa1 bit-stream. */
+    uint32_t method; /**< 0x81 byte-run, 0xa1 bit-stream. */
     bool big_endian;
     bool method_supported; /**< Both claimed methods decode; kept for API. */
 } xx_silmarilsft;
 
 typedef xx_silmarilsft xx_silmarilsft_t;
 
-XXFC_API void xx_silmarilsft_init(xx_silmarilsft *archive,
-                                  xx_io_device *device, int64_t base_address);
-XXFC_API xx_silmarilsft *xx_silmarilsft_create(xx_io_device *device,
-                                               int64_t base_address);
+XXFC_API void xx_silmarilsft_init(xx_silmarilsft *archive, xx_io_device *device, int64_t base_address);
+XXFC_API xx_silmarilsft *xx_silmarilsft_create(xx_io_device *device, int64_t base_address);
 XXFC_API void xx_silmarilsft_destroy(xx_silmarilsft *archive);
 XXFC_API void xx_silmarilsft_free(xx_silmarilsft *archive);
 
-XXFC_API bool xx_silmarilsft_check_is_valid(Abstractformat *self,
-                                            xx_pd_struct *pd);
-XXFC_API bool xx_silmarilsft_handle_base_info(Abstractformat *self,
-                                              xx_pd_struct *pd);
-XXFC_API int64_t xx_silmarilsft_get_format_size(Abstractformat *self,
-                                                xx_pd_struct *pd);
-XXFC_API uint64_t xx_silmarilsft_get_number_of_archive_records(
-    Abstractformat *self, xx_pd_struct *pd);
+XXFC_API bool xx_silmarilsft_check_is_valid(Abstractformat *self, xx_pd_struct *pd);
+XXFC_API bool xx_silmarilsft_handle_base_info(Abstractformat *self, xx_pd_struct *pd);
+XXFC_API int64_t xx_silmarilsft_get_format_size(Abstractformat *self, xx_pd_struct *pd);
+XXFC_API uint64_t xx_silmarilsft_get_number_of_archive_records(Abstractformat *self, xx_pd_struct *pd);
 
-XXFC_API xx_archive_record_state *xx_silmarilsft_create_archive_records_reading(
-    Abstractformat *self, const xx_list_s *options, xx_pd_struct *pd);
-XXFC_API const xx_archive_record *xx_silmarilsft_get_current_archive_record(
-    Abstractformat *self, xx_archive_record_state *state);
-XXFC_API bool xx_silmarilsft_unpack_current_archive_record(
-    Abstractformat *self, xx_archive_record_state *state, xx_pd_struct *pd);
-XXFC_API bool xx_silmarilsft_archive_record_move_to_next(
-    Abstractformat *self, xx_archive_record_state *state, xx_pd_struct *pd);
-XXFC_API void xx_silmarilsft_free_archive_records_reading(
-    Abstractformat *self, xx_archive_record_state *state);
+XXFC_API xx_archive_record_state *xx_silmarilsft_create_archive_records_reading(Abstractformat *self, const xx_list_s *options, xx_pd_struct *pd);
+XXFC_API const xx_archive_record *xx_silmarilsft_get_current_archive_record(Abstractformat *self, xx_archive_record_state *state);
+XXFC_API bool xx_silmarilsft_unpack_current_archive_record(Abstractformat *self, xx_archive_record_state *state, xx_pd_struct *pd);
+XXFC_API bool xx_silmarilsft_archive_record_move_to_next(Abstractformat *self, xx_archive_record_state *state, xx_pd_struct *pd);
+XXFC_API void xx_silmarilsft_free_archive_records_reading(Abstractformat *self, xx_archive_record_state *state);
 
 #ifdef __cplusplus
 }

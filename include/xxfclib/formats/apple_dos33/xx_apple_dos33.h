@@ -56,8 +56,7 @@ typedef struct xx_apple_dos33 {
 typedef xx_apple_dos33 xx_apple_dos33_t;
 typedef xx_apple_dos33 XAppleDOS33;
 XXFC_API void xx_apple_dos33_init(xx_apple_dos33 *volume, xx_io_device *device, int64_t base_address);
-XXFC_API void xx_apple_dos33_init_ex(xx_apple_dos33 *volume, xx_io_device *device,
-    int64_t base_address, xx_apple_dos33_order order, xx_apple_dos33_mode mode);
+XXFC_API void xx_apple_dos33_init_ex(xx_apple_dos33 *volume, xx_io_device *device, int64_t base_address, xx_apple_dos33_order order, xx_apple_dos33_mode mode);
 XXFC_API xx_apple_dos33 *xx_apple_dos33_create(xx_io_device *device, int64_t base_address);
 XXFC_API void xx_apple_dos33_destroy(xx_apple_dos33 *volume);
 XXFC_API void xx_apple_dos33_free(xx_apple_dos33 *volume);
@@ -65,19 +64,16 @@ XXFC_API bool xx_apple_dos33_check_is_valid(Abstractformat *self, xx_pd_struct *
 XXFC_API bool xx_apple_dos33_handle_base_info(Abstractformat *self, xx_pd_struct *pd);
 XXFC_API int64_t xx_apple_dos33_get_format_size(Abstractformat *self, xx_pd_struct *pd);
 XXFC_API uint64_t xx_apple_dos33_get_number_of_archive_records(Abstractformat *self, xx_pd_struct *pd);
-XXFC_API xx_archive_record_state *xx_apple_dos33_create_archive_records_reading(
-    Abstractformat *self, const xx_list_s *options, xx_pd_struct *pd);
-XXFC_API const xx_archive_record *xx_apple_dos33_get_current_archive_record(
-    Abstractformat *self, xx_archive_record_state *state);
-XXFC_API bool xx_apple_dos33_archive_record_move_to_next(
-    Abstractformat *self, xx_archive_record_state *state, xx_pd_struct *pd);
-XXFC_API bool xx_apple_dos33_unpack_current_archive_record(
-    Abstractformat *self, xx_archive_record_state *state, xx_pd_struct *pd);
-XXFC_API bool xx_apple_dos33_extract_record_to_device(Abstractformat *self,
-    xx_archive_record_state *state, xx_io_device *destination, xx_pd_struct *pd);
-XXFC_API void xx_apple_dos33_free_archive_records_reading(
-    Abstractformat *self, xx_archive_record_state *state);
-static inline Abstractformat *xx_apple_dos33_to_format(xx_apple_dos33 *volume) { return volume ? &volume->format : NULL; }
+XXFC_API xx_archive_record_state *xx_apple_dos33_create_archive_records_reading(Abstractformat *self, const xx_list_s *options, xx_pd_struct *pd);
+XXFC_API const xx_archive_record *xx_apple_dos33_get_current_archive_record(Abstractformat *self, xx_archive_record_state *state);
+XXFC_API bool xx_apple_dos33_archive_record_move_to_next(Abstractformat *self, xx_archive_record_state *state, xx_pd_struct *pd);
+XXFC_API bool xx_apple_dos33_unpack_current_archive_record(Abstractformat *self, xx_archive_record_state *state, xx_pd_struct *pd);
+XXFC_API bool xx_apple_dos33_extract_record_to_device(Abstractformat *self, xx_archive_record_state *state, xx_io_device *destination, xx_pd_struct *pd);
+XXFC_API void xx_apple_dos33_free_archive_records_reading(Abstractformat *self, xx_archive_record_state *state);
+static inline Abstractformat *xx_apple_dos33_to_format(xx_apple_dos33 *volume)
+{
+    return volume ? &volume->format : NULL;
+}
 #ifdef __cplusplus
 }
 #endif

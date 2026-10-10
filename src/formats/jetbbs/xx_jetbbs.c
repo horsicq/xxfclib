@@ -86,17 +86,15 @@ static void xx_jetbbs_vtable_destroy(Abstractformat *self);
 
 /* ------------------------------------------------------------- helpers -- */
 
-static bool xx_jetbbs_read_at(Abstractformat *self, int64_t offset,
-                              uint8_t *buffer, size_t size) {
+static bool xx_jetbbs_read_at(Abstractformat *self, int64_t offset, uint8_t *buffer, size_t size)
+{
     size_t completed = 0U;
 
-    if (!self || !self->device || offset < 0 ||
-        xx_io_seek64(self->device, offset, SEEK_SET) != 0) {
+    if (!self || !self->device || offset < 0 || xx_io_seek64(self->device, offset, SEEK_SET) != 0) {
         return false;
     }
     while (completed < size) {
-        ssize_t received =
-            xx_io_read(self->device, buffer + completed, size - completed);
+        ssize_t received = xx_io_read(self->device, buffer + completed, size - completed);
         if (received <= 0 || (size_t)received > size - completed) {
             return false;
         }
@@ -105,14 +103,14 @@ static bool xx_jetbbs_read_at(Abstractformat *self, int64_t offset,
     return true;
 }
 
-static bool xx_jetbbs_range_within(int64_t total, int64_t offset,
-                                   int64_t size) {
-    return offset >= 0 && size >= 0 && offset <= total &&
-           size <= total - offset;
+static bool xx_jetbbs_range_within(int64_t total, int64_t offset, int64_t size)
+{
+    return offset >= 0 && size >= 0 && offset <= total && size <= total - offset;
 }
 
 /* Refuse anything that would escape the extraction directory. */
-static bool xx_jetbbs_path_safe(const char *name) {
+static bool xx_jetbbs_path_safe(const char *name)
+{
     const char *cursor = name;
 
     if (!name || !name[0] || name[0] == '/') return false;
@@ -127,7 +125,8 @@ static bool xx_jetbbs_path_safe(const char *name) {
     return true;
 }
 
-static void xx_jetbbs_stream_free(void *pointer) {
+static void xx_jetbbs_stream_free(void *pointer)
+{
     xx_jetbbs_stream *stream = (xx_jetbbs_stream *)pointer;
     size_t index;
 
@@ -140,17 +139,15 @@ static void xx_jetbbs_stream_free(void *pointer) {
 }
 
 /* Append a member, taking ownership of @p name. */
-static bool xx_jetbbs_add(xx_jetbbs_stream *stream,
-                          const xx_jetbbs_member *member) {
-    xx_jetbbs_member *grown = (xx_jetbbs_member *)xx_mem_realloc(
-        stream->items, sizeof(*grown) * (stream->count + 1U));
+static bool xx_jetbbs_add(xx_jetbbs_stream *stream, const xx_jetbbs_member *member)
+{
+    xx_jetbbs_member *grown = (xx_jetbbs_member *)xx_mem_realloc(stream->items, sizeof(*grown) * (stream->count + 1U));
 
     if (!grown) return false;
     stream->items = grown;
     stream->items[stream->count++] = *member;
     return true;
 }
-
 
 #define XX_JETBBS_MAX_MEMBERS 100000
 #define XX_JETBBS_MIN_PREFIX 22
@@ -169,14 +166,14 @@ static bool xx_jetbbs_name_byte_ok(uint8_t byte);
 static xx_jetbbs_stream *xx_jetbbs_parse(Abstractformat *self, xx_pd_struct *pd);
 static bool xx_jetbbs_decode(Abstractformat *self, const xx_jetbbs_member *member, uint8_t **out, size_t *out_size, xx_pd_struct *pd);
 
-
 /* 22 bytes gets us through the name-length byte of a level 0/1 header. */
 /* Base header plus every extended header of one member. The reference caps
  * this at 1 MiB; 64 KiB is already far past anything a JetBBS writer emits
  * and keeps the per-parse scratch buffer small. */
 
 /* CRC-16/ARC, the polynomial LHA uses for its common extended header. */
-static uint16_t xx_jetbbs_crc16(const uint8_t *data, size_t size, size_t skip_offset) {
+static uint16_t xx_jetbbs_crc16(const uint8_t *data, size_t size, size_t skip_offset)
+{
     static const uint8_t zero[2] = {0U, 0U};
     uint16_t crc;
     size_t skipped;
@@ -191,7 +188,8 @@ static uint16_t xx_jetbbs_crc16(const uint8_t *data, size_t size, size_t skip_of
  * an 8-bit sum over the base header, stored in byte 1. Together with the
  * tag it is what stops arbitrary data from being read as JetBBS, so it must
  * never become advisory. */
-static bool xx_jetbbs_checksum_ok(const uint8_t *header, int32_t base_size) {
+static bool xx_jetbbs_checksum_ok(const uint8_t *header, int32_t base_size)
+{
     uint32_t sum = 0U;
     int32_t index;
 
@@ -203,12 +201,13 @@ static bool xx_jetbbs_checksum_ok(const uint8_t *header, int32_t base_size) {
 
 /* JetBBS names are MS-DOS/ASCII; nothing in the format carries a code page,
  * so a byte outside 0x20..0x7E means this is not a member header. */
-static bool xx_jetbbs_name_byte_ok(uint8_t byte) {
+static bool xx_jetbbs_name_byte_ok(uint8_t byte)
+{
     return (byte >= 0x20U) && (byte <= 0x7EU);
 }
 
-static xx_jetbbs_stream *xx_jetbbs_parse(Abstractformat *self,
-                                         xx_pd_struct *pd) {
+static xx_jetbbs_stream *xx_jetbbs_parse(Abstractformat *self, xx_pd_struct *pd)
+{
     xx_jetbbs_stream *stream = NULL;
     uint8_t *header = NULL;
     uint8_t prefix[XX_JETBBS_MIN_PREFIX];
@@ -257,8 +256,7 @@ static xx_jetbbs_stream *xx_jetbbs_parse(Abstractformat *self,
         /* Fewer bytes left than a header needs is the ordinary end of the
          * chain, not a malformed archive: writers pad. */
         if ((span - offset) < XX_JETBBS_MIN_PREFIX) break;
-        if (!xx_jetbbs_read_at(self, self->base_address + offset, prefix,
-                               (size_t)XX_JETBBS_MIN_PREFIX)) {
+        if (!xx_jetbbs_read_at(self, self->base_address + offset, prefix, (size_t)XX_JETBBS_MIN_PREFIX)) {
             goto fail;
         }
         /* A zero header-size byte is LHA's end-of-archive marker. */
@@ -266,8 +264,7 @@ static xx_jetbbs_stream *xx_jetbbs_parse(Abstractformat *self,
 
         /* The tag. Three fixed characters and a digit restricted to the
          * three methods that exist; anything else is not JetBBS. */
-        if (prefix[2] != '-' || prefix[3] != 'm' || prefix[4] != 'g' ||
-            prefix[6] != '-') {
+        if (prefix[2] != '-' || prefix[3] != 'm' || prefix[4] != 'g' || prefix[6] != '-') {
             goto fail;
         }
         if (prefix[5] != '0' && prefix[5] != '4' && prefix[5] != '5') {
@@ -286,8 +283,7 @@ static xx_jetbbs_stream *xx_jetbbs_parse(Abstractformat *self,
         base_size = (int32_t)prefix[0] + 2;
         if (base_size < min_base) goto fail;
         if ((int64_t)base_size > (span - offset)) goto fail;
-        if (!xx_jetbbs_read_at(self, self->base_address + offset, header,
-                               (size_t)base_size)) {
+        if (!xx_jetbbs_read_at(self, self->base_address + offset, header, (size_t)base_size)) {
             goto fail;
         }
         if (!xx_jetbbs_checksum_ok(header, base_size)) goto fail;
@@ -322,14 +318,10 @@ static xx_jetbbs_stream *xx_jetbbs_parse(Abstractformat *self,
                 if ((int64_t)next_size > (compressed_size - ext_total)) {
                     goto fail;
                 }
-                if ((int64_t)next_size >
-                    (span - offset - (int64_t)header_total)) {
+                if ((int64_t)next_size > (span - offset - (int64_t)header_total)) {
                     goto fail;
                 }
-                if (!xx_jetbbs_read_at(
-                        self,
-                        self->base_address + offset + (int64_t)header_total,
-                        header + header_total, (size_t)next_size)) {
+                if (!xx_jetbbs_read_at(self, self->base_address + offset + (int64_t)header_total, header + header_total, (size_t)next_size)) {
                     goto fail;
                 }
                 header_total += next_size;
@@ -375,20 +367,17 @@ static xx_jetbbs_stream *xx_jetbbs_parse(Abstractformat *self,
                     if (data_size < 16) goto fail;
                     if (xx_data_get_u32(header + data_pos + 4, 4, 0, false) != 0U) goto fail;
                     if (xx_data_get_u32(header + data_pos + 12, 4, 0, false) != 0U) goto fail;
-                    if ((int64_t)xx_data_get_u32(header + data_pos, 4, 0, false) !=
-                        compressed_size) {
+                    if ((int64_t)xx_data_get_u32(header + data_pos, 4, 0, false) != compressed_size) {
                         goto fail;
                     }
-                    if ((int64_t)xx_data_get_u32(header + data_pos + 8, 4, 0, false) !=
-                        uncompressed_size) {
+                    if ((int64_t)xx_data_get_u32(header + data_pos + 8, 4, 0, false) != uncompressed_size) {
                         goto fail;
                     }
                 }
                 index += ext_size;
             }
             if (crc_pos >= 0) {
-                if (xx_jetbbs_crc16(header, (size_t)header_total,
-                                    (size_t)crc_pos) != common_crc) {
+                if (xx_jetbbs_crc16(header, (size_t)header_total, (size_t)crc_pos) != common_crc) {
                     goto fail;
                 }
             }
@@ -398,8 +387,7 @@ static xx_jetbbs_stream *xx_jetbbs_parse(Abstractformat *self,
         /* A stored member states the same number twice; a disagreement
          * means the header is not describing what follows it. */
         if (method == 0U && compressed_size != uncompressed_size) goto fail;
-        if (!xx_jetbbs_range_within(span, offset + (int64_t)header_total,
-                                    compressed_size)) {
+        if (!xx_jetbbs_range_within(span, offset + (int64_t)header_total, compressed_size)) {
             goto fail;
         }
 
@@ -469,7 +457,6 @@ fail:
     return NULL;
 }
 
-
 /* The stated uncompressed size is attacker-controlled, so it is capped
  * before it becomes an allocation. */
 
@@ -478,9 +465,8 @@ fail:
  * -lh4-/-lh5- bitstreams and are passed straight through as xx_lzh5's
  * method argument; nothing else may reach a decoder. */
 
-static bool xx_jetbbs_decode(Abstractformat *self,
-                             const xx_jetbbs_member *member, uint8_t **out,
-                             size_t *out_size, xx_pd_struct *pd) {
+static bool xx_jetbbs_decode(Abstractformat *self, const xx_jetbbs_member *member, uint8_t **out, size_t *out_size, xx_pd_struct *pd)
+{
     uint8_t *packed = NULL;
     uint8_t *plain = NULL;
     size_t written = 0U;
@@ -499,20 +485,16 @@ static bool xx_jetbbs_decode(Abstractformat *self,
      * to fail here. Falling through to the stored path would hand back an
      * LZH bitstream dressed up as file data, which nothing downstream can
      * tell from the real thing. */
-    if (member->method != XX_JETBBS_METHOD_STORE &&
-        member->method != XX_JETBBS_METHOD_LZH4 &&
-        member->method != XX_JETBBS_METHOD_LZH5) {
+    if (member->method != XX_JETBBS_METHOD_STORE && member->method != XX_JETBBS_METHOD_LZH4 && member->method != XX_JETBBS_METHOD_LZH5) {
         return false;
     }
     /* An empty payload only makes sense stored: the LZH bitstreams always
      * emit at least one code, so a zero-length -mg4-/-mg5- member is
      * malformed rather than empty. */
-    if (member->uncompressed_size == 0 &&
-        member->method != XX_JETBBS_METHOD_STORE) {
+    if (member->uncompressed_size == 0 && member->method != XX_JETBBS_METHOD_STORE) {
         return false;
     }
-    if (member->method == XX_JETBBS_METHOD_STORE &&
-        member->compressed_size != member->uncompressed_size) {
+    if (member->method == XX_JETBBS_METHOD_STORE && member->compressed_size != member->uncompressed_size) {
         return false;
     }
 
@@ -520,8 +502,7 @@ static bool xx_jetbbs_decode(Abstractformat *self,
     if (member->compressed_size > 0) {
         packed = (uint8_t *)xx_mem_alloc((size_t)member->compressed_size);
         if (!packed) return false;
-        if (!xx_jetbbs_read_at(self, member->data_offset, packed,
-                               (size_t)member->compressed_size)) {
+        if (!xx_jetbbs_read_at(self, member->data_offset, packed, (size_t)member->compressed_size)) {
             xx_mem_free(packed);
             return false;
         }
@@ -546,9 +527,7 @@ static bool xx_jetbbs_decode(Abstractformat *self,
             plain[index] = packed[index];
         }
         written = plain_size;
-    } else if (!xx_lzh5_decode_memory(packed, (size_t)member->compressed_size,
-                                      plain, plain_size,
-                                      (int)member->method, &written)) {
+    } else if (!xx_lzh5_decode_memory(packed, (size_t)member->compressed_size, plain, plain_size, (int)member->method, &written)) {
         xx_mem_free(packed);
         xx_mem_free(plain);
         return false;
@@ -571,8 +550,8 @@ static bool xx_jetbbs_decode(Abstractformat *self,
 
 /* ---------------------------------------------------------- lifecycle --- */
 
-void xx_jetbbs_init(xx_jetbbs *archive, xx_io_device *device,
-                    int64_t base_address) {
+void xx_jetbbs_init(xx_jetbbs *archive, xx_io_device *device, int64_t base_address)
+{
     if (!archive) return;
     xx_mem_zero(archive, sizeof(*archive));
     xx_format_init(&archive->format, device, base_address);
@@ -585,22 +564,17 @@ void xx_jetbbs_init(xx_jetbbs *archive, xx_io_device *device,
     archive->format.check_is_valid = xx_jetbbs_check_is_valid;
     archive->format.handle_base_info = xx_jetbbs_handle_base_info;
     archive->format.get_format_size = xx_jetbbs_get_format_size;
-    archive->format.get_number_of_archive_records =
-        xx_jetbbs_get_number_of_archive_records;
-    archive->format.create_archive_records_reading =
-        xx_jetbbs_create_archive_records_reading;
-    archive->format.get_current_archive_record =
-        xx_jetbbs_get_current_archive_record;
-    archive->format.unpack_current_archive_record =
-        xx_jetbbs_unpack_current_archive_record;
-    archive->format.archive_record_move_to_next =
-        xx_jetbbs_archive_record_move_to_next;
-    archive->format.free_archive_records_reading =
-        xx_jetbbs_free_archive_records_reading;
+    archive->format.get_number_of_archive_records = xx_jetbbs_get_number_of_archive_records;
+    archive->format.create_archive_records_reading = xx_jetbbs_create_archive_records_reading;
+    archive->format.get_current_archive_record = xx_jetbbs_get_current_archive_record;
+    archive->format.unpack_current_archive_record = xx_jetbbs_unpack_current_archive_record;
+    archive->format.archive_record_move_to_next = xx_jetbbs_archive_record_move_to_next;
+    archive->format.free_archive_records_reading = xx_jetbbs_free_archive_records_reading;
     archive->format.destroy = xx_jetbbs_vtable_destroy;
 }
 
-xx_jetbbs *xx_jetbbs_create(xx_io_device *device, int64_t base_address) {
+xx_jetbbs *xx_jetbbs_create(xx_io_device *device, int64_t base_address)
+{
     xx_jetbbs *archive = (xx_jetbbs *)xx_mem_alloc(sizeof(*archive));
 
     if (!archive) return NULL;
@@ -608,7 +582,8 @@ xx_jetbbs *xx_jetbbs_create(xx_io_device *device, int64_t base_address) {
     return archive;
 }
 
-void xx_jetbbs_destroy(xx_jetbbs *archive) {
+void xx_jetbbs_destroy(xx_jetbbs *archive)
+{
     if (!archive) return;
     /* Not xx_format_destroy: it dispatches through format.destroy, which is
      * the wrapper below, and the two would recurse. */
@@ -617,19 +592,22 @@ void xx_jetbbs_destroy(xx_jetbbs *archive) {
     archive->number_of_records = 0U;
 }
 
-void xx_jetbbs_free(xx_jetbbs *archive) {
+void xx_jetbbs_free(xx_jetbbs *archive)
+{
     if (!archive) return;
     xx_jetbbs_destroy(archive);
     xx_mem_free(archive);
 }
 
-static void xx_jetbbs_vtable_destroy(Abstractformat *self) {
+static void xx_jetbbs_vtable_destroy(Abstractformat *self)
+{
     xx_jetbbs_destroy((xx_jetbbs *)self);
 }
 
 /* -------------------------------------------------------------- format -- */
 
-bool xx_jetbbs_check_is_valid(Abstractformat *self, xx_pd_struct *pd) {
+bool xx_jetbbs_check_is_valid(Abstractformat *self, xx_pd_struct *pd)
+{
     xx_jetbbs_stream *stream;
 
     if (!self || (pd && xx_pd_is_stopped(pd))) return false;
@@ -639,7 +617,8 @@ bool xx_jetbbs_check_is_valid(Abstractformat *self, xx_pd_struct *pd) {
     return true;
 }
 
-bool xx_jetbbs_handle_base_info(Abstractformat *self, xx_pd_struct *pd) {
+bool xx_jetbbs_handle_base_info(Abstractformat *self, xx_pd_struct *pd)
+{
     xx_jetbbs *archive = (xx_jetbbs *)self;
     xx_jetbbs_stream *stream;
 
@@ -660,18 +639,17 @@ bool xx_jetbbs_handle_base_info(Abstractformat *self, xx_pd_struct *pd) {
     return true;
 }
 
-int64_t xx_jetbbs_get_format_size(Abstractformat *self, xx_pd_struct *pd) {
-    if (!self ||
-        (!self->base_info_handled && !xx_format_handle_base_info(self, pd))) {
+int64_t xx_jetbbs_get_format_size(Abstractformat *self, xx_pd_struct *pd)
+{
+    if (!self || (!self->base_info_handled && !xx_format_handle_base_info(self, pd))) {
         return 0;
     }
     return self->is_valid ? self->format_size : 0;
 }
 
-uint64_t xx_jetbbs_get_number_of_archive_records(Abstractformat *self,
-                                                 xx_pd_struct *pd) {
-    if (!self ||
-        (!self->base_info_handled && !xx_format_handle_base_info(self, pd))) {
+uint64_t xx_jetbbs_get_number_of_archive_records(Abstractformat *self, xx_pd_struct *pd)
+{
+    if (!self || (!self->base_info_handled && !xx_format_handle_base_info(self, pd))) {
         return 0U;
     }
     return self->is_valid ? ((xx_jetbbs *)self)->number_of_records : 0U;
@@ -679,8 +657,8 @@ uint64_t xx_jetbbs_get_number_of_archive_records(Abstractformat *self,
 
 /* ------------------------------------------------------------- records -- */
 
-static bool xx_jetbbs_set_record(xx_archive_record *record,
-                                 const xx_jetbbs_member *member) {
+static bool xx_jetbbs_set_record(xx_archive_record *record, const xx_jetbbs_member *member)
+{
     xx_archive_record_cleanup(record);
     xx_archive_record_init(record);
     record->header_offset = member->header_offset;
@@ -688,34 +666,24 @@ static bool xx_jetbbs_set_record(xx_archive_record *record,
     record->data_offset = member->data_offset;
     record->compressed_size = member->compressed_size;
     return xx_archive_record_set_original_name(record, member->name) &&
-           xx_archive_record_set_meta_u64(record, XX_META_ID_COMPRESSED_SIZE,
-                                          (uint64_t)member->compressed_size) &&
-           xx_archive_record_set_meta_u64(
-               record, XX_META_ID_UNCOMPRESSED_SIZE,
-               (uint64_t)member->uncompressed_size) &&
-           xx_archive_record_set_meta_u64(record, XX_META_ID_COMPRESSION_METHOD,
-                                          member->method) &&
-           xx_archive_record_set_meta_u64(record, XX_META_ID_TIMESTAMP,
-                                          member->timestamp) &&
-           xx_archive_record_set_meta_bool(record, XX_META_ID_IS_FOLDER,
-                                           member->is_folder) &&
-           xx_archive_record_set_meta_bool(record, XX_META_ID_IS_ENCRYPTED,
-                                           false);
+           xx_archive_record_set_meta_u64(record, XX_META_ID_COMPRESSED_SIZE, (uint64_t)member->compressed_size) &&
+           xx_archive_record_set_meta_u64(record, XX_META_ID_UNCOMPRESSED_SIZE, (uint64_t)member->uncompressed_size) &&
+           xx_archive_record_set_meta_u64(record, XX_META_ID_COMPRESSION_METHOD, member->method) &&
+           xx_archive_record_set_meta_u64(record, XX_META_ID_TIMESTAMP, member->timestamp) &&
+           xx_archive_record_set_meta_bool(record, XX_META_ID_IS_FOLDER, member->is_folder) && xx_archive_record_set_meta_bool(record, XX_META_ID_IS_ENCRYPTED, false);
 }
 
-static bool xx_jetbbs_copy_options(xx_list_s *target,
-                                   const xx_list_s *options) {
+static bool xx_jetbbs_copy_options(xx_list_s *target, const xx_list_s *options)
+{
     size_t index;
 
     if (!target || !options) return options == NULL;
     for (index = 0U; index < options->count; ++index) {
-        const xx_meta *source =
-            (const xx_meta *)xx_list_at((const xx_list_t *)options, index);
+        const xx_meta *source = (const xx_meta *)xx_list_at((const xx_list_t *)options, index);
         xx_meta copied;
         if (!source) continue;
         xx_meta_init(&copied, source->meta_id);
-        if (!xx_var_copy(&copied.var, &source->var) ||
-            !xx_list_append(target, &copied)) {
+        if (!xx_var_copy(&copied.var, &source->var) || !xx_list_append(target, &copied)) {
             xx_meta_cleanup(&copied);
             return false;
         }
@@ -723,21 +691,20 @@ static bool xx_jetbbs_copy_options(xx_list_s *target,
     return true;
 }
 
-static const xx_var *xx_jetbbs_get_option(const xx_list_s *options,
-                                          uint32_t meta_id) {
+static const xx_var *xx_jetbbs_get_option(const xx_list_s *options, uint32_t meta_id)
+{
     size_t index;
 
     if (!options) return NULL;
     for (index = 0U; index < options->count; ++index) {
-        const xx_meta *meta =
-            (const xx_meta *)xx_list_at((const xx_list_t *)options, index);
+        const xx_meta *meta = (const xx_meta *)xx_list_at((const xx_list_t *)options, index);
         if (meta && meta->meta_id == meta_id) return &meta->var;
     }
     return NULL;
 }
 
-xx_archive_record_state *xx_jetbbs_create_archive_records_reading(
-    Abstractformat *self, const xx_list_s *options, xx_pd_struct *pd) {
+xx_archive_record_state *xx_jetbbs_create_archive_records_reading(Abstractformat *self, const xx_list_s *options, xx_pd_struct *pd)
+{
     xx_jetbbs_stream *stream;
     xx_archive_record_state *state;
 
@@ -753,9 +720,7 @@ xx_archive_record_state *xx_jetbbs_create_archive_records_reading(
     state->internal_state = stream;
     state->free_internal = xx_jetbbs_stream_free;
     state->total_records = (int64_t)stream->count;
-    if (!xx_jetbbs_copy_options(&state->options, options) ||
-        (stream->count != 0U &&
-         !xx_jetbbs_set_record(&state->current_record, &stream->items[0]))) {
+    if (!xx_jetbbs_copy_options(&state->options, options) || (stream->count != 0U && !xx_jetbbs_set_record(&state->current_record, &stream->items[0]))) {
         xx_archive_record_state_free(state);
         return NULL;
     }
@@ -764,20 +729,16 @@ xx_archive_record_state *xx_jetbbs_create_archive_records_reading(
     return state;
 }
 
-const xx_archive_record *xx_jetbbs_get_current_archive_record(
-    Abstractformat *self, xx_archive_record_state *state) {
-    return self && state && state->format == self && state->has_record
-               ? &state->current_record
-               : NULL;
+const xx_archive_record *xx_jetbbs_get_current_archive_record(Abstractformat *self, xx_archive_record_state *state)
+{
+    return self && state && state->format == self && state->has_record ? &state->current_record : NULL;
 }
 
-bool xx_jetbbs_archive_record_move_to_next(Abstractformat *self,
-                                           xx_archive_record_state *state,
-                                           xx_pd_struct *pd) {
+bool xx_jetbbs_archive_record_move_to_next(Abstractformat *self, xx_archive_record_state *state, xx_pd_struct *pd)
+{
     xx_jetbbs_stream *stream;
 
-    if (!self || !state || state->format != self || !state->has_record ||
-        (pd && xx_pd_is_stopped(pd))) {
+    if (!self || !state || state->format != self || !state->has_record || (pd && xx_pd_is_stopped(pd))) {
         return false;
     }
     stream = (xx_jetbbs_stream *)state->internal_state;
@@ -789,14 +750,12 @@ bool xx_jetbbs_archive_record_move_to_next(Abstractformat *self,
     }
     ++stream->index;
     ++state->current_index;
-    state->has_record = xx_jetbbs_set_record(&state->current_record,
-                                             &stream->items[stream->index]);
+    state->has_record = xx_jetbbs_set_record(&state->current_record, &stream->items[stream->index]);
     return state->has_record;
 }
 
-bool xx_jetbbs_unpack_current_archive_record(Abstractformat *self,
-                                             xx_archive_record_state *state,
-                                             xx_pd_struct *pd) {
+bool xx_jetbbs_unpack_current_archive_record(Abstractformat *self, xx_archive_record_state *state, xx_pd_struct *pd)
+{
     xx_jetbbs_stream *stream;
     const xx_jetbbs_member *member;
     const xx_var *path_option;
@@ -808,8 +767,7 @@ bool xx_jetbbs_unpack_current_archive_record(Abstractformat *self,
     bool result = false;
     bool created = false;
 
-    if (!self || !state || state->format != self || !state->has_record ||
-        (pd && xx_pd_is_stopped(pd))) {
+    if (!self || !state || state->format != self || !state->has_record || (pd && xx_pd_is_stopped(pd))) {
         return false;
     }
     stream = (xx_jetbbs_stream *)state->internal_state;
@@ -817,8 +775,7 @@ bool xx_jetbbs_unpack_current_archive_record(Abstractformat *self,
     member = &stream->items[stream->index];
     if (!xx_jetbbs_path_safe(member->name)) return false;
 
-    path_option = xx_jetbbs_get_option(&state->options,
-                                       XX_META_ID_OPT_UNPACK_PATH);
+    path_option = xx_jetbbs_get_option(&state->options, XX_META_ID_OPT_UNPACK_PATH);
     if (!path_option) {
         /* No destination: decode and discard, which verifies the member
          * without writing anything. */
@@ -827,11 +784,9 @@ bool xx_jetbbs_unpack_current_archive_record(Abstractformat *self,
         xx_mem_free(plain);
         return result;
     }
-    if (path_option->type == XX_VAR_TYPE_STRING ||
-        path_option->type == XX_VAR_TYPE_STRING_VIEW) {
+    if (path_option->type == XX_VAR_TYPE_STRING || path_option->type == XX_VAR_TYPE_STRING_VIEW) {
         base_path = xx_var_get_str(path_option);
-    } else if (path_option->type == XX_VAR_TYPE_WSTRING ||
-               path_option->type == XX_VAR_TYPE_WSTRING_VIEW) {
+    } else if (path_option->type == XX_VAR_TYPE_WSTRING || path_option->type == XX_VAR_TYPE_WSTRING_VIEW) {
         converted_path = xx_str_unicode_to_utf8(xx_var_get_wstr(path_option));
         base_path = converted_path;
     }
@@ -839,9 +794,7 @@ bool xx_jetbbs_unpack_current_archive_record(Abstractformat *self,
         xx_str_free(converted_path);
         return false;
     }
-    if (base_path[0] != '\0' &&
-        base_path[xx_str_len(base_path) - 1U] != '/' &&
-        base_path[xx_str_len(base_path) - 1U] != '\\') {
+    if (base_path[0] != '\0' && base_path[xx_str_len(base_path) - 1U] != '/' && base_path[xx_str_len(base_path) - 1U] != '\\') {
         target_path = xx_str_concat3(base_path, "/", member->name);
     } else {
         target_path = xx_str_concat(base_path, member->name);
@@ -854,8 +807,7 @@ bool xx_jetbbs_unpack_current_archive_record(Abstractformat *self,
         xx_str_free(target_path);
         return result;
     }
-    if (!xx_store_create_dirs_a(target_path, false) ||
-        !xx_jetbbs_decode(self, member, &plain, &plain_size, pd)) {
+    if (!xx_store_create_dirs_a(target_path, false) || !xx_jetbbs_decode(self, member, &plain, &plain_size, pd)) {
         xx_str_free(target_path);
         return false;
     }
@@ -866,8 +818,7 @@ bool xx_jetbbs_unpack_current_archive_record(Abstractformat *self,
 
         result = output != NULL;
         while (result && completed < plain_size) {
-            ssize_t sent = xx_io_write(output, plain + completed,
-                                       plain_size - completed);
+            ssize_t sent = xx_io_write(output, plain + completed, plain_size - completed);
             if (sent <= 0 || (size_t)sent > plain_size - completed) {
                 result = false;
                 break;
@@ -882,8 +833,8 @@ bool xx_jetbbs_unpack_current_archive_record(Abstractformat *self,
     return result;
 }
 
-void xx_jetbbs_free_archive_records_reading(Abstractformat *self,
-                                            xx_archive_record_state *state) {
+void xx_jetbbs_free_archive_records_reading(Abstractformat *self, xx_archive_record_state *state)
+{
     (void)self;
     xx_archive_record_state_free(state);
 }

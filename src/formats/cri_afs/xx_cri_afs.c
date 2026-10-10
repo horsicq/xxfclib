@@ -34,226 +34,259 @@ typedef struct xx_cri_afs_stream_s {
 } xx_cri_afs_stream;
 static void xx_cri_afs_vtable_destroy(Abstractformat *self);
 
-static bool xx_cri_afs_range_within(int64_t span, int64_t offset, int64_t size) {
-    return offset >= 0 && size >= 0 && offset <= span && size <= span-offset;
+static bool xx_cri_afs_range_within(int64_t span, int64_t offset, int64_t size)
+{
+    return offset >= 0 && size >= 0 && offset <= span && size <= span - offset;
 }
-static bool xx_cri_afs_read_from(xx_io_device *dev, int64_t offset,
-                              uint8_t *out, size_t size) {
+static bool xx_cri_afs_read_from(xx_io_device *dev, int64_t offset, uint8_t *out, size_t size)
+{
     size_t done = 0;
-    if (!dev || offset < 0 || xx_io_seek64(dev,offset,SEEK_SET) != 0) return false;
+    if (!dev || offset < 0 || xx_io_seek64(dev, offset, SEEK_SET) != 0) return false;
     while (done < size) {
-        ssize_t received = xx_io_read(dev,out+done,size-done);
-        if (received <= 0 || (size_t)received > size-done) return false;
+        ssize_t received = xx_io_read(dev, out + done, size - done);
+        if (received <= 0 || (size_t)received > size - done) return false;
         done += (size_t)received;
     }
     return true;
 }
-static bool xx_cri_afs_read_at(Abstractformat *self,int64_t offset,
-                             uint8_t *out,size_t size) {
-    return self && xx_cri_afs_read_from(self->device,offset,out,size);
+static bool xx_cri_afs_read_at(Abstractformat *self, int64_t offset, uint8_t *out, size_t size)
+{
+    return self && xx_cri_afs_read_from(self->device, offset, out, size);
 }
-static bool xx_cri_afs_read_rel(Abstractformat *self,int64_t span,int64_t offset,
-                              uint8_t *out,size_t size) {
-    return size <= (size_t)INT64_MAX &&
-           xx_cri_afs_range_within(span,offset,(int64_t)size) &&
-           xx_cri_afs_read_at(self,self->base_address+offset,out,size);
+static bool xx_cri_afs_read_rel(Abstractformat *self, int64_t span, int64_t offset, uint8_t *out, size_t size)
+{
+    return size <= (size_t)INT64_MAX && xx_cri_afs_range_within(span, offset, (int64_t)size) && xx_cri_afs_read_at(self, self->base_address + offset, out, size);
 }
-static bool xx_cri_afs_path_safe(const char *name) {
+static bool xx_cri_afs_path_safe(const char *name)
+{
     const char *at = name;
     if (!at || !*at || *at == '/' || *at == '\\') return false;
     while (*at) {
-        const char *end=at;
+        const char *end = at;
         size_t len;
-        char stem[5]={0}; size_t i;
+        char stem[5] = {0};
+        size_t i;
         while (*end && *end != '/' && *end != '\\') {
-            unsigned char c=(unsigned char)*end;
-            if (c < 32U || c == ':' || c == '*' || c == '?' || c == '"' ||
-                c == '<' || c == '>' || c == '|') return false;
+            unsigned char c = (unsigned char)*end;
+            if (c < 32U || c == ':' || c == '*' || c == '?' || c == '"' || c == '<' || c == '>' || c == '|') return false;
             ++end;
         }
-        len=(size_t)(end-at);
-        if (!len || (len == 1U && at[0] == '.') ||
-            (len == 2U && at[0] == '.' && at[1] == '.') ||
-            at[len-1U] == '.' || at[len-1U] == ' ') return false;
-        for (i=0;i<len && i<4U && at[i]!='.';++i) {
-            char c=at[i]; stem[i]=(c>='a' && c<='z')?(char)(c-'a'+'A'):c;
+        len = (size_t)(end - at);
+        if (!len || (len == 1U && at[0] == '.') || (len == 2U && at[0] == '.' && at[1] == '.') || at[len - 1U] == '.' || at[len - 1U] == ' ') return false;
+        for (i = 0; i < len && i < 4U && at[i] != '.'; ++i) {
+            char c = at[i];
+            stem[i] = (c >= 'a' && c <= 'z') ? (char)(c - 'a' + 'A') : c;
         }
-        if ((i==3U && (!xx_rt_strcmp(stem,"CON") || !xx_rt_strcmp(stem,"PRN") ||
-            !xx_rt_strcmp(stem,"AUX") || !xx_rt_strcmp(stem,"NUL"))) ||
-            (i==4U && (!xx_rt_strncmp(stem,"COM",3U) || !xx_rt_strncmp(stem,"LPT",3U)) &&
-            stem[3]>='1' && stem[3]<='9')) return false;
-        at=*end?end+1:end;
+        if ((i == 3U && (!xx_rt_strcmp(stem, "CON") || !xx_rt_strcmp(stem, "PRN") || !xx_rt_strcmp(stem, "AUX") || !xx_rt_strcmp(stem, "NUL"))) ||
+            (i == 4U && (!xx_rt_strncmp(stem, "COM", 3U) || !xx_rt_strncmp(stem, "LPT", 3U)) && stem[3] >= '1' && stem[3] <= '9'))
+            return false;
+        at = *end ? end + 1 : end;
     }
     return true;
 }
-static void xx_cri_afs_stream_free(void *pointer) {
-    xx_cri_afs_stream *s=(xx_cri_afs_stream *)pointer; size_t i;
+static void xx_cri_afs_stream_free(void *pointer)
+{
+    xx_cri_afs_stream *s = (xx_cri_afs_stream *)pointer;
+    size_t i;
     if (!s) return;
-    for(i=0;i<s->count;++i) xx_str_free(s->items[i].name);
-    xx_mem_free(s->items); xx_mem_free(s);
+    for (i = 0; i < s->count; ++i) xx_str_free(s->items[i].name);
+    xx_mem_free(s->items);
+    xx_mem_free(s);
 }
-static bool xx_cri_afs_names_equal(const char *a,const char *b) {
+static bool xx_cri_afs_names_equal(const char *a, const char *b)
+{
     while (*a && *b) {
-        unsigned char ca=(unsigned char)*a++, cb=(unsigned char)*b++;
-        if(ca>='A' && ca<='Z') ca=(unsigned char)(ca-'A'+'a');
-        if(cb>='A' && cb<='Z') cb=(unsigned char)(cb-'A'+'a');
-        if(ca!=cb) return false;
+        unsigned char ca = (unsigned char)*a++, cb = (unsigned char)*b++;
+        if (ca >= 'A' && ca <= 'Z') ca = (unsigned char)(ca - 'A' + 'a');
+        if (cb >= 'A' && cb <= 'Z') cb = (unsigned char)(cb - 'A' + 'a');
+        if (ca != cb) return false;
     }
-    return *a==*b;
+    return *a == *b;
 }
 /* Duplicate lump names are legal: preserve every record under a unique name. */
-static bool xx_cri_afs_add(xx_cri_afs_stream *s,xx_cri_afs_member *m) {
-    size_t i; char *original=m->name; unsigned suffix=1U;
-    if(s->count >= XX_cri_afs_MAX_MEMBERS || !original) return false;
+static bool xx_cri_afs_add(xx_cri_afs_stream *s, xx_cri_afs_member *m)
+{
+    size_t i;
+    char *original = m->name;
+    unsigned suffix = 1U;
+    if (s->count >= XX_cri_afs_MAX_MEMBERS || !original) return false;
     for (;;) {
-        bool found=false;
-        for(i=0;i<s->count;++i) if(xx_cri_afs_names_equal(s->items[i].name,m->name)) {
-            found=true; break;
-        }
-        if(!found) break;
+        bool found = false;
+        for (i = 0; i < s->count; ++i)
+            if (xx_cri_afs_names_equal(s->items[i].name, m->name)) {
+                found = true;
+                break;
+            }
+        if (!found) break;
         {
-            char tail[32]; char *replacement;
-            xx_rt_snprintf(tail,sizeof(tail),"__%u",++suffix);
-            replacement=xx_str_concat(original,tail);
-            if(!replacement) { if(m->name!=original) xx_str_free(m->name); m->name=original; return false; }
-            if(m->name!=original) xx_str_free(m->name);
-            m->name=replacement;
+            char tail[32];
+            char *replacement;
+            xx_rt_snprintf(tail, sizeof(tail), "__%u", ++suffix);
+            replacement = xx_str_concat(original, tail);
+            if (!replacement) {
+                if (m->name != original) xx_str_free(m->name);
+                m->name = original;
+                return false;
+            }
+            if (m->name != original) xx_str_free(m->name);
+            m->name = replacement;
         }
     }
-    if(s->count == s->capacity) {
-        size_t cap=s->capacity?s->capacity*2U:16U;
+    if (s->count == s->capacity) {
+        size_t cap = s->capacity ? s->capacity * 2U : 16U;
         xx_cri_afs_member *grown;
-        if(cap > XX_cri_afs_MAX_MEMBERS) cap=XX_cri_afs_MAX_MEMBERS;
-        grown=(xx_cri_afs_member *)xx_mem_realloc(s->items,cap*sizeof(*grown));
-        if(!grown) { if(m->name!=original) xx_str_free(m->name); m->name=original; return false; }
-        s->items=grown; s->capacity=cap;
+        if (cap > XX_cri_afs_MAX_MEMBERS) cap = XX_cri_afs_MAX_MEMBERS;
+        grown = (xx_cri_afs_member *)xx_mem_realloc(s->items, cap * sizeof(*grown));
+        if (!grown) {
+            if (m->name != original) xx_str_free(m->name);
+            m->name = original;
+            return false;
+        }
+        s->items = grown;
+        s->capacity = cap;
     }
-    if(m->name!=original) xx_str_free(original);
-    s->items[s->count++]=*m;
+    if (m->name != original) xx_str_free(original);
+    s->items[s->count++] = *m;
     return true;
 }
-static bool xx_cri_afs_add_member(Abstractformat *self,xx_cri_afs_stream *s,
-    const char *name,int64_t h,int64_t hs,int64_t off,int64_t size,bool folder) {
-    xx_cri_afs_member m; size_t i;
-    xx_mem_zero(&m,sizeof(m));
-    m.name=xx_str_dup(name);
-    if(!m.name) return false;
-    for(i=0;m.name[i];++i) if(m.name[i]=='\\') m.name[i]='/';
-    m.header_offset=self->base_address+h; m.header_size=hs;
-    m.data_offset=self->base_address+off;
-    m.compressed_size=size; m.uncompressed_size=size;
-    m.is_folder=folder;
-    if(!xx_cri_afs_add(s,&m)) { xx_str_free(m.name); return false; }
-    if(off+size > s->archive_size) s->archive_size=off+size;
+static bool xx_cri_afs_add_member(Abstractformat *self, xx_cri_afs_stream *s, const char *name, int64_t h, int64_t hs, int64_t off, int64_t size, bool folder)
+{
+    xx_cri_afs_member m;
+    size_t i;
+    xx_mem_zero(&m, sizeof(m));
+    m.name = xx_str_dup(name);
+    if (!m.name) return false;
+    for (i = 0; m.name[i]; ++i)
+        if (m.name[i] == '\\') m.name[i] = '/';
+    m.header_offset = self->base_address + h;
+    m.header_size = hs;
+    m.data_offset = self->base_address + off;
+    m.compressed_size = size;
+    m.uncompressed_size = size;
+    m.is_folder = folder;
+    if (!xx_cri_afs_add(s, &m)) {
+        xx_str_free(m.name);
+        return false;
+    }
+    if (off + size > s->archive_size) s->archive_size = off + size;
     return true;
 }
-static inline bool xx_cri_afs_fixed_name(const uint8_t *src,size_t size,char *out) {
-    size_t i=0;
-    while(i<size && src[i]) { if(src[i]<32U) return false; out[i]=(char)src[i]; ++i; }
-    out[i]=0; return i!=0;
+static inline bool xx_cri_afs_fixed_name(const uint8_t *src, size_t size, char *out)
+{
+    size_t i = 0;
+    while (i < size && src[i]) {
+        if (src[i] < 32U) return false;
+        out[i] = (char)src[i];
+        ++i;
+    }
+    out[i] = 0;
+    return i != 0;
 }
-static inline bool xx_cri_afs_string(Abstractformat *self,int64_t span,
-    int64_t *offset,int64_t end,char *out,size_t capacity) {
-    size_t i=0;
-    while(*offset < end && i+1U<capacity) {
+static inline bool xx_cri_afs_string(Abstractformat *self, int64_t span, int64_t *offset, int64_t end, char *out, size_t capacity)
+{
+    size_t i = 0;
+    while (*offset < end && i + 1U < capacity) {
         uint8_t c;
-        if(!xx_cri_afs_read_rel(self,span,(*offset)++,&c,1U)) return false;
-        out[i++]=(char)c;
-        if(!c) return true;
-        if(c<32U) return false;
+        if (!xx_cri_afs_read_rel(self, span, (*offset)++, &c, 1U)) return false;
+        out[i++] = (char)c;
+        if (!c) return true;
+        if (c < 32U) return false;
     }
     return false;
 }
-static inline bool xx_cri_afs_pool_name(Abstractformat *self,int64_t span,
-    int64_t pool,int64_t pool_size,uint32_t offset,char *out,size_t capacity) {
-    int64_t at=pool+(int64_t)offset;
-    return (int64_t)offset<pool_size &&
-           xx_cri_afs_string(self,span,&at,pool+pool_size,out,capacity) && out[0];
+static inline bool xx_cri_afs_pool_name(Abstractformat *self, int64_t span, int64_t pool, int64_t pool_size, uint32_t offset, char *out, size_t capacity)
+{
+    int64_t at = pool + (int64_t)offset;
+    return (int64_t)offset < pool_size && xx_cri_afs_string(self, span, &at, pool + pool_size, out, capacity) && out[0];
 }
 
-static bool xx_cri_afs_decode(Abstractformat *self,const xx_cri_afs_member *member,
-                           uint8_t **out,size_t *out_size,xx_pd_struct *pd) {
+static bool xx_cri_afs_decode(Abstractformat *self, const xx_cri_afs_member *member, uint8_t **out, size_t *out_size, xx_pd_struct *pd)
+{
     uint8_t *buffer;
     size_t size;
-    *out=NULL; *out_size=0;
-    if(member->unavailable || member->method != 0U ||
-       member->uncompressed_size<0 ||
-       (uint64_t)member->uncompressed_size>SIZE_MAX ||
-       (pd && xx_pd_is_stopped(pd))) return false;
-    size=(size_t)member->uncompressed_size;
-    buffer=(uint8_t *)xx_mem_alloc(size?size:1U);
-    if(!buffer) return false;
-    if((member->preload_size && !xx_cri_afs_read_at(self,member->preload_offset,
-            buffer,member->preload_size)) ||
-       (size>member->preload_size && !xx_cri_afs_read_from(
-            member->data_device?member->data_device:self->device,
-            member->data_offset,buffer+member->preload_size,
-            size-member->preload_size)) ||
-       (member->has_crc && xx_crc32(XX_CRC_TYPE_CRC32,buffer,size)!=member->crc32)) {
-        xx_mem_free(buffer); return false;
+    *out = NULL;
+    *out_size = 0;
+    if (member->unavailable || member->method != 0U || member->uncompressed_size < 0 || (uint64_t)member->uncompressed_size > SIZE_MAX || (pd && xx_pd_is_stopped(pd)))
+        return false;
+    size = (size_t)member->uncompressed_size;
+    buffer = (uint8_t *)xx_mem_alloc(size ? size : 1U);
+    if (!buffer) return false;
+    if ((member->preload_size && !xx_cri_afs_read_at(self, member->preload_offset, buffer, member->preload_size)) ||
+        (size > member->preload_size && !xx_cri_afs_read_from(member->data_device ? member->data_device : self->device, member->data_offset,
+                                                              buffer + member->preload_size, size - member->preload_size)) ||
+        (member->has_crc && xx_crc32(XX_CRC_TYPE_CRC32, buffer, size) != member->crc32)) {
+        xx_mem_free(buffer);
+        return false;
     }
-    *out=buffer; *out_size=size; return true;
+    *out = buffer;
+    *out_size = size;
+    return true;
 }
 
-static xx_cri_afs_stream *xx_cri_afs_parse(Abstractformat *self,xx_pd_struct *pd) {
-    int64_t total,span;
+static xx_cri_afs_stream *xx_cri_afs_parse(Abstractformat *self, xx_pd_struct *pd)
+{
+    int64_t total, span;
     xx_cri_afs_stream *s;
-    if(!self || !self->device || self->base_address<0 || (pd && xx_pd_is_stopped(pd))) return NULL;
-    total=xx_io_total_size(self->device);
-    if(total<self->base_address) return NULL;
-    span=total-self->base_address;
-    s=(xx_cri_afs_stream *)xx_mem_alloc(sizeof(*s));
-    if(!s) return NULL;
-    xx_mem_zero(s,sizeof(*s));
+    if (!self || !self->device || self->base_address < 0 || (pd && xx_pd_is_stopped(pd))) return NULL;
+    total = xx_io_total_size(self->device);
+    if (total < self->base_address) return NULL;
+    span = total - self->base_address;
+    s = (xx_cri_afs_stream *)xx_mem_alloc(sizeof(*s));
+    if (!s) return NULL;
+    xx_mem_zero(s, sizeof(*s));
     {
-
-    uint8_t h[8],entry[8],toc[8]; uint32_t count,i;
-    int64_t table_end,first=span,toc_off=0,toc_size=0;
-    if(!xx_cri_afs_read_rel(self,span,0,h,sizeof(h)) || xx_rt_memcmp(h,"AFS\0",4U)) goto fail;
-    count=xx_data_get_u32(h+4, 4, 0, false); table_end=8+(int64_t)count*8;
-    if(count>XX_cri_afs_MAX_MEMBERS || table_end>span) goto fail;
-    s->archive_size=table_end;
-    for(i=0;i<count;++i) {
-        if(!xx_cri_afs_read_rel(self,span,8+(int64_t)i*8,entry,sizeof(entry))) goto fail;
-        if(xx_data_get_u32(entry, 4, 0, false) && (int64_t)xx_data_get_u32(entry, 4, 0, false)<first) first=xx_data_get_u32(entry, 4, 0, false);
-    }
-    /* Filename TOC pointer may follow the index or sit just before first data. */
-    if(first>=table_end+8 && xx_cri_afs_read_rel(self,span,table_end,toc,sizeof(toc))) {
-        toc_off=xx_data_get_u32(toc, 4, 0, false); toc_size=xx_data_get_u32(toc+4, 4, 0, false);
-        if(!toc_off && first>=8 && xx_cri_afs_read_rel(self,span,first-8,toc,sizeof(toc))) {
-            toc_off=xx_data_get_u32(toc, 4, 0, false); toc_size=xx_data_get_u32(toc+4, 4, 0, false);
+        uint8_t h[8], entry[8], toc[8];
+        uint32_t count, i;
+        int64_t table_end, first = span, toc_off = 0, toc_size = 0;
+        if (!xx_cri_afs_read_rel(self, span, 0, h, sizeof(h)) || xx_rt_memcmp(h, "AFS\0", 4U)) goto fail;
+        count = xx_data_get_u32(h + 4, 4, 0, false);
+        table_end = 8 + (int64_t)count * 8;
+        if (count > XX_cri_afs_MAX_MEMBERS || table_end > span) goto fail;
+        s->archive_size = table_end;
+        for (i = 0; i < count; ++i) {
+            if (!xx_cri_afs_read_rel(self, span, 8 + (int64_t)i * 8, entry, sizeof(entry))) goto fail;
+            if (xx_data_get_u32(entry, 4, 0, false) && (int64_t)xx_data_get_u32(entry, 4, 0, false) < first) first = xx_data_get_u32(entry, 4, 0, false);
         }
-        if(toc_off || toc_size) {
-            if(toc_off<table_end || toc_size<(int64_t)count*48 ||
-               !xx_cri_afs_range_within(span,toc_off,toc_size)) goto fail;
-            s->archive_size=toc_off+toc_size;
+        /* Filename TOC pointer may follow the index or sit just before first data. */
+        if (first >= table_end + 8 && xx_cri_afs_read_rel(self, span, table_end, toc, sizeof(toc))) {
+            toc_off = xx_data_get_u32(toc, 4, 0, false);
+            toc_size = xx_data_get_u32(toc + 4, 4, 0, false);
+            if (!toc_off && first >= 8 && xx_cri_afs_read_rel(self, span, first - 8, toc, sizeof(toc))) {
+                toc_off = xx_data_get_u32(toc, 4, 0, false);
+                toc_size = xx_data_get_u32(toc + 4, 4, 0, false);
+            }
+            if (toc_off || toc_size) {
+                if (toc_off < table_end || toc_size < (int64_t)count * 48 || !xx_cri_afs_range_within(span, toc_off, toc_size)) goto fail;
+                s->archive_size = toc_off + toc_size;
+            }
         }
-    }
-    for(i=0;i<count;++i) {
-        char name[64]; int64_t off,size;
-        if((pd && xx_pd_is_stopped(pd)) || !xx_cri_afs_read_rel(self,span,8+(int64_t)i*8,entry,sizeof(entry))) goto fail;
-        off=xx_data_get_u32(entry, 4, 0, false); size=xx_data_get_u32(entry+4, 4, 0, false);
-        xx_rt_snprintf(name,sizeof(name),"%06u.bin",i);
-        if(toc_off) {
-            uint8_t filename[32];
-            if(!xx_cri_afs_read_rel(self,span,toc_off+(int64_t)i*48,filename,sizeof(filename))) goto fail;
-            if(filename[0] && !xx_cri_afs_fixed_name(filename,32U,name)) goto fail;
+        for (i = 0; i < count; ++i) {
+            char name[64];
+            int64_t off, size;
+            if ((pd && xx_pd_is_stopped(pd)) || !xx_cri_afs_read_rel(self, span, 8 + (int64_t)i * 8, entry, sizeof(entry))) goto fail;
+            off = xx_data_get_u32(entry, 4, 0, false);
+            size = xx_data_get_u32(entry + 4, 4, 0, false);
+            xx_rt_snprintf(name, sizeof(name), "%06u.bin", i);
+            if (toc_off) {
+                uint8_t filename[32];
+                if (!xx_cri_afs_read_rel(self, span, toc_off + (int64_t)i * 48, filename, sizeof(filename))) goto fail;
+                if (filename[0] && !xx_cri_afs_fixed_name(filename, 32U, name)) goto fail;
+            }
+            if (!size && !off) off = table_end;
+            if (off < table_end || !xx_cri_afs_range_within(span, off, size) || (toc_off && size && off < toc_off + toc_size && off + size > toc_off) ||
+                !xx_cri_afs_add_member(self, s, name, 8 + (int64_t)i * 8, 8, off, size, false))
+                goto fail;
         }
-        if(!size && !off) off=table_end;
-        if(off<table_end || !xx_cri_afs_range_within(span,off,size) ||
-           (toc_off && size && off<toc_off+toc_size && off+size>toc_off) ||
-           !xx_cri_afs_add_member(self,s,name,8+(int64_t)i*8,8,off,size,false)) goto fail;
-    }
-
     }
     return s;
 fail:
-    xx_cri_afs_stream_free(s); return NULL;
+    xx_cri_afs_stream_free(s);
+    return NULL;
 }
 /* ---------------------------------------------------------- lifecycle --- */
 
-void xx_cri_afs_init(xx_cri_afs *archive, xx_io_device *device,
-                    int64_t base_address) {
+void xx_cri_afs_init(xx_cri_afs *archive, xx_io_device *device, int64_t base_address)
+{
     if (!archive) return;
     xx_mem_zero(archive, sizeof(*archive));
     xx_format_init(&archive->format, device, base_address);
@@ -266,22 +299,17 @@ void xx_cri_afs_init(xx_cri_afs *archive, xx_io_device *device,
     archive->format.check_is_valid = xx_cri_afs_check_is_valid;
     archive->format.handle_base_info = xx_cri_afs_handle_base_info;
     archive->format.get_format_size = xx_cri_afs_get_format_size;
-    archive->format.get_number_of_archive_records =
-        xx_cri_afs_get_number_of_archive_records;
-    archive->format.create_archive_records_reading =
-        xx_cri_afs_create_archive_records_reading;
-    archive->format.get_current_archive_record =
-        xx_cri_afs_get_current_archive_record;
-    archive->format.unpack_current_archive_record =
-        xx_cri_afs_unpack_current_archive_record;
-    archive->format.archive_record_move_to_next =
-        xx_cri_afs_archive_record_move_to_next;
-    archive->format.free_archive_records_reading =
-        xx_cri_afs_free_archive_records_reading;
+    archive->format.get_number_of_archive_records = xx_cri_afs_get_number_of_archive_records;
+    archive->format.create_archive_records_reading = xx_cri_afs_create_archive_records_reading;
+    archive->format.get_current_archive_record = xx_cri_afs_get_current_archive_record;
+    archive->format.unpack_current_archive_record = xx_cri_afs_unpack_current_archive_record;
+    archive->format.archive_record_move_to_next = xx_cri_afs_archive_record_move_to_next;
+    archive->format.free_archive_records_reading = xx_cri_afs_free_archive_records_reading;
     archive->format.destroy = xx_cri_afs_vtable_destroy;
 }
 
-xx_cri_afs *xx_cri_afs_create(xx_io_device *device, int64_t base_address) {
+xx_cri_afs *xx_cri_afs_create(xx_io_device *device, int64_t base_address)
+{
     xx_cri_afs *archive = (xx_cri_afs *)xx_mem_alloc(sizeof(*archive));
 
     if (!archive) return NULL;
@@ -289,7 +317,8 @@ xx_cri_afs *xx_cri_afs_create(xx_io_device *device, int64_t base_address) {
     return archive;
 }
 
-void xx_cri_afs_destroy(xx_cri_afs *archive) {
+void xx_cri_afs_destroy(xx_cri_afs *archive)
+{
     if (!archive) return;
     /* Not xx_format_destroy: it dispatches through format.destroy, which is
      * the wrapper below, and the two would recurse. */
@@ -298,19 +327,22 @@ void xx_cri_afs_destroy(xx_cri_afs *archive) {
     archive->number_of_records = 0U;
 }
 
-void xx_cri_afs_free(xx_cri_afs *archive) {
+void xx_cri_afs_free(xx_cri_afs *archive)
+{
     if (!archive) return;
     xx_cri_afs_destroy(archive);
     xx_mem_free(archive);
 }
 
-static void xx_cri_afs_vtable_destroy(Abstractformat *self) {
+static void xx_cri_afs_vtable_destroy(Abstractformat *self)
+{
     xx_cri_afs_destroy((xx_cri_afs *)self);
 }
 
 /* -------------------------------------------------------------- format -- */
 
-bool xx_cri_afs_check_is_valid(Abstractformat *self, xx_pd_struct *pd) {
+bool xx_cri_afs_check_is_valid(Abstractformat *self, xx_pd_struct *pd)
+{
     xx_cri_afs_stream *stream;
 
     if (!self || (pd && xx_pd_is_stopped(pd))) return false;
@@ -320,7 +352,8 @@ bool xx_cri_afs_check_is_valid(Abstractformat *self, xx_pd_struct *pd) {
     return true;
 }
 
-bool xx_cri_afs_handle_base_info(Abstractformat *self, xx_pd_struct *pd) {
+bool xx_cri_afs_handle_base_info(Abstractformat *self, xx_pd_struct *pd)
+{
     xx_cri_afs *archive = (xx_cri_afs *)self;
     xx_cri_afs_stream *stream;
 
@@ -343,18 +376,17 @@ bool xx_cri_afs_handle_base_info(Abstractformat *self, xx_pd_struct *pd) {
     return true;
 }
 
-int64_t xx_cri_afs_get_format_size(Abstractformat *self, xx_pd_struct *pd) {
-    if (!self ||
-        (!self->base_info_handled && !xx_format_handle_base_info(self, pd))) {
+int64_t xx_cri_afs_get_format_size(Abstractformat *self, xx_pd_struct *pd)
+{
+    if (!self || (!self->base_info_handled && !xx_format_handle_base_info(self, pd))) {
         return 0;
     }
     return self->is_valid ? self->format_size : 0;
 }
 
-uint64_t xx_cri_afs_get_number_of_archive_records(Abstractformat *self,
-                                                 xx_pd_struct *pd) {
-    if (!self ||
-        (!self->base_info_handled && !xx_format_handle_base_info(self, pd))) {
+uint64_t xx_cri_afs_get_number_of_archive_records(Abstractformat *self, xx_pd_struct *pd)
+{
+    if (!self || (!self->base_info_handled && !xx_format_handle_base_info(self, pd))) {
         return 0U;
     }
     return self->is_valid ? ((xx_cri_afs *)self)->number_of_records : 0U;
@@ -362,8 +394,8 @@ uint64_t xx_cri_afs_get_number_of_archive_records(Abstractformat *self,
 
 /* ------------------------------------------------------------- records -- */
 
-static bool xx_cri_afs_set_record(xx_archive_record *record,
-                                 const xx_cri_afs_member *member) {
+static bool xx_cri_afs_set_record(xx_archive_record *record, const xx_cri_afs_member *member)
+{
     xx_archive_record_cleanup(record);
     xx_archive_record_init(record);
     record->header_offset = member->header_offset;
@@ -371,34 +403,24 @@ static bool xx_cri_afs_set_record(xx_archive_record *record,
     record->data_offset = member->data_offset;
     record->compressed_size = member->compressed_size;
     return xx_archive_record_set_original_name(record, member->name) &&
-           xx_archive_record_set_meta_u64(record, XX_META_ID_COMPRESSED_SIZE,
-                                          (uint64_t)member->compressed_size) &&
-           xx_archive_record_set_meta_u64(
-               record, XX_META_ID_UNCOMPRESSED_SIZE,
-               (uint64_t)member->uncompressed_size) &&
-           xx_archive_record_set_meta_u64(record, XX_META_ID_COMPRESSION_METHOD,
-                                          member->method) &&
-           xx_archive_record_set_meta_u64(record, XX_META_ID_TIMESTAMP,
-                                          member->timestamp) &&
-           xx_archive_record_set_meta_bool(record, XX_META_ID_IS_FOLDER,
-                                           member->is_folder) &&
-           xx_archive_record_set_meta_bool(record, XX_META_ID_IS_ENCRYPTED,
-                                           false);
+           xx_archive_record_set_meta_u64(record, XX_META_ID_COMPRESSED_SIZE, (uint64_t)member->compressed_size) &&
+           xx_archive_record_set_meta_u64(record, XX_META_ID_UNCOMPRESSED_SIZE, (uint64_t)member->uncompressed_size) &&
+           xx_archive_record_set_meta_u64(record, XX_META_ID_COMPRESSION_METHOD, member->method) &&
+           xx_archive_record_set_meta_u64(record, XX_META_ID_TIMESTAMP, member->timestamp) &&
+           xx_archive_record_set_meta_bool(record, XX_META_ID_IS_FOLDER, member->is_folder) && xx_archive_record_set_meta_bool(record, XX_META_ID_IS_ENCRYPTED, false);
 }
 
-static bool xx_cri_afs_copy_options(xx_list_s *target,
-                                   const xx_list_s *options) {
+static bool xx_cri_afs_copy_options(xx_list_s *target, const xx_list_s *options)
+{
     size_t index;
 
     if (!target || !options) return options == NULL;
     for (index = 0U; index < options->count; ++index) {
-        const xx_meta *source =
-            (const xx_meta *)xx_list_at((const xx_list_t *)options, index);
+        const xx_meta *source = (const xx_meta *)xx_list_at((const xx_list_t *)options, index);
         xx_meta copied;
         if (!source) continue;
         xx_meta_init(&copied, source->meta_id);
-        if (!xx_var_copy(&copied.var, &source->var) ||
-            !xx_list_append(target, &copied)) {
+        if (!xx_var_copy(&copied.var, &source->var) || !xx_list_append(target, &copied)) {
             xx_meta_cleanup(&copied);
             return false;
         }
@@ -406,21 +428,20 @@ static bool xx_cri_afs_copy_options(xx_list_s *target,
     return true;
 }
 
-static const xx_var *xx_cri_afs_get_option(const xx_list_s *options,
-                                          uint32_t meta_id) {
+static const xx_var *xx_cri_afs_get_option(const xx_list_s *options, uint32_t meta_id)
+{
     size_t index;
 
     if (!options) return NULL;
     for (index = 0U; index < options->count; ++index) {
-        const xx_meta *meta =
-            (const xx_meta *)xx_list_at((const xx_list_t *)options, index);
+        const xx_meta *meta = (const xx_meta *)xx_list_at((const xx_list_t *)options, index);
         if (meta && meta->meta_id == meta_id) return &meta->var;
     }
     return NULL;
 }
 
-xx_archive_record_state *xx_cri_afs_create_archive_records_reading(
-    Abstractformat *self, const xx_list_s *options, xx_pd_struct *pd) {
+xx_archive_record_state *xx_cri_afs_create_archive_records_reading(Abstractformat *self, const xx_list_s *options, xx_pd_struct *pd)
+{
     xx_cri_afs_stream *stream;
     xx_archive_record_state *state;
 
@@ -436,9 +457,7 @@ xx_archive_record_state *xx_cri_afs_create_archive_records_reading(
     state->internal_state = stream;
     state->free_internal = xx_cri_afs_stream_free;
     state->total_records = (int64_t)stream->count;
-    if (!xx_cri_afs_copy_options(&state->options, options) ||
-        (stream->count != 0U &&
-         !xx_cri_afs_set_record(&state->current_record, &stream->items[0]))) {
+    if (!xx_cri_afs_copy_options(&state->options, options) || (stream->count != 0U && !xx_cri_afs_set_record(&state->current_record, &stream->items[0]))) {
         xx_archive_record_state_free(state);
         return NULL;
     }
@@ -447,20 +466,16 @@ xx_archive_record_state *xx_cri_afs_create_archive_records_reading(
     return state;
 }
 
-const xx_archive_record *xx_cri_afs_get_current_archive_record(
-    Abstractformat *self, xx_archive_record_state *state) {
-    return self && state && state->format == self && state->has_record
-               ? &state->current_record
-               : NULL;
+const xx_archive_record *xx_cri_afs_get_current_archive_record(Abstractformat *self, xx_archive_record_state *state)
+{
+    return self && state && state->format == self && state->has_record ? &state->current_record : NULL;
 }
 
-bool xx_cri_afs_archive_record_move_to_next(Abstractformat *self,
-                                           xx_archive_record_state *state,
-                                           xx_pd_struct *pd) {
+bool xx_cri_afs_archive_record_move_to_next(Abstractformat *self, xx_archive_record_state *state, xx_pd_struct *pd)
+{
     xx_cri_afs_stream *stream;
 
-    if (!self || !state || state->format != self || !state->has_record ||
-        (pd && xx_pd_is_stopped(pd))) {
+    if (!self || !state || state->format != self || !state->has_record || (pd && xx_pd_is_stopped(pd))) {
         return false;
     }
     stream = (xx_cri_afs_stream *)state->internal_state;
@@ -472,14 +487,12 @@ bool xx_cri_afs_archive_record_move_to_next(Abstractformat *self,
     }
     ++stream->index;
     ++state->current_index;
-    state->has_record = xx_cri_afs_set_record(&state->current_record,
-                                             &stream->items[stream->index]);
+    state->has_record = xx_cri_afs_set_record(&state->current_record, &stream->items[stream->index]);
     return state->has_record;
 }
 
-bool xx_cri_afs_unpack_current_archive_record(Abstractformat *self,
-                                             xx_archive_record_state *state,
-                                             xx_pd_struct *pd) {
+bool xx_cri_afs_unpack_current_archive_record(Abstractformat *self, xx_archive_record_state *state, xx_pd_struct *pd)
+{
     xx_cri_afs_stream *stream;
     const xx_cri_afs_member *member;
     const xx_var *path_option;
@@ -491,8 +504,7 @@ bool xx_cri_afs_unpack_current_archive_record(Abstractformat *self,
     bool result = false;
     bool created = false;
 
-    if (!self || !state || state->format != self || !state->has_record ||
-        (pd && xx_pd_is_stopped(pd))) {
+    if (!self || !state || state->format != self || !state->has_record || (pd && xx_pd_is_stopped(pd))) {
         return false;
     }
     stream = (xx_cri_afs_stream *)state->internal_state;
@@ -500,8 +512,7 @@ bool xx_cri_afs_unpack_current_archive_record(Abstractformat *self,
     member = &stream->items[stream->index];
     if (!xx_cri_afs_path_safe(member->name)) return false;
 
-    path_option = xx_cri_afs_get_option(&state->options,
-                                       XX_META_ID_OPT_UNPACK_PATH);
+    path_option = xx_cri_afs_get_option(&state->options, XX_META_ID_OPT_UNPACK_PATH);
     if (!path_option) {
         /* No destination: decode and discard, which verifies the member
          * without writing anything. */
@@ -510,11 +521,9 @@ bool xx_cri_afs_unpack_current_archive_record(Abstractformat *self,
         xx_mem_free(plain);
         return result;
     }
-    if (path_option->type == XX_VAR_TYPE_STRING ||
-        path_option->type == XX_VAR_TYPE_STRING_VIEW) {
+    if (path_option->type == XX_VAR_TYPE_STRING || path_option->type == XX_VAR_TYPE_STRING_VIEW) {
         base_path = xx_var_get_str(path_option);
-    } else if (path_option->type == XX_VAR_TYPE_WSTRING ||
-               path_option->type == XX_VAR_TYPE_WSTRING_VIEW) {
+    } else if (path_option->type == XX_VAR_TYPE_WSTRING || path_option->type == XX_VAR_TYPE_WSTRING_VIEW) {
         converted_path = xx_str_unicode_to_utf8(xx_var_get_wstr(path_option));
         base_path = converted_path;
     }
@@ -522,9 +531,7 @@ bool xx_cri_afs_unpack_current_archive_record(Abstractformat *self,
         xx_str_free(converted_path);
         return false;
     }
-    if (base_path[0] != '\0' &&
-        base_path[xx_str_len(base_path) - 1U] != '/' &&
-        base_path[xx_str_len(base_path) - 1U] != '\\') {
+    if (base_path[0] != '\0' && base_path[xx_str_len(base_path) - 1U] != '/' && base_path[xx_str_len(base_path) - 1U] != '\\') {
         target_path = xx_str_concat3(base_path, "/", member->name);
     } else {
         target_path = xx_str_concat(base_path, member->name);
@@ -537,8 +544,7 @@ bool xx_cri_afs_unpack_current_archive_record(Abstractformat *self,
         xx_str_free(target_path);
         return result;
     }
-    if (!xx_store_create_dirs_a(target_path, false) ||
-        !xx_cri_afs_decode(self, member, &plain, &plain_size, pd)) {
+    if (!xx_store_create_dirs_a(target_path, false) || !xx_cri_afs_decode(self, member, &plain, &plain_size, pd)) {
         xx_str_free(target_path);
         return false;
     }
@@ -549,8 +555,7 @@ bool xx_cri_afs_unpack_current_archive_record(Abstractformat *self,
 
         result = output != NULL;
         while (result && completed < plain_size) {
-            ssize_t sent = xx_io_write(output, plain + completed,
-                                       plain_size - completed);
+            ssize_t sent = xx_io_write(output, plain + completed, plain_size - completed);
             if (sent <= 0 || (size_t)sent > plain_size - completed) {
                 result = false;
                 break;
@@ -565,8 +570,8 @@ bool xx_cri_afs_unpack_current_archive_record(Abstractformat *self,
     return result;
 }
 
-void xx_cri_afs_free_archive_records_reading(Abstractformat *self,
-                                            xx_archive_record_state *state) {
+void xx_cri_afs_free_archive_records_reading(Abstractformat *self, xx_archive_record_state *state)
+{
     (void)self;
     xx_archive_record_state_free(state);
 }

@@ -90,17 +90,15 @@ static void xx_borlandpack_vtable_destroy(Abstractformat *self);
 
 /* ------------------------------------------------------------- helpers -- */
 
-static bool xx_borlandpack_read_at(Abstractformat *self, int64_t offset,
-                              uint8_t *buffer, size_t size) {
+static bool xx_borlandpack_read_at(Abstractformat *self, int64_t offset, uint8_t *buffer, size_t size)
+{
     size_t completed = 0U;
 
-    if (!self || !self->device || offset < 0 ||
-        xx_io_seek64(self->device, offset, SEEK_SET) != 0) {
+    if (!self || !self->device || offset < 0 || xx_io_seek64(self->device, offset, SEEK_SET) != 0) {
         return false;
     }
     while (completed < size) {
-        ssize_t received =
-            xx_io_read(self->device, buffer + completed, size - completed);
+        ssize_t received = xx_io_read(self->device, buffer + completed, size - completed);
         if (received <= 0 || (size_t)received > size - completed) {
             return false;
         }
@@ -109,14 +107,14 @@ static bool xx_borlandpack_read_at(Abstractformat *self, int64_t offset,
     return true;
 }
 
-static bool xx_borlandpack_range_within(int64_t total, int64_t offset,
-                                   int64_t size) {
-    return offset >= 0 && size >= 0 && offset <= total &&
-           size <= total - offset;
+static bool xx_borlandpack_range_within(int64_t total, int64_t offset, int64_t size)
+{
+    return offset >= 0 && size >= 0 && offset <= total && size <= total - offset;
 }
 
 /* Refuse anything that would escape the extraction directory. */
-static bool xx_borlandpack_path_safe(const char *name) {
+static bool xx_borlandpack_path_safe(const char *name)
+{
     const char *cursor = name;
 
     if (!name || !name[0] || name[0] == '/') return false;
@@ -131,7 +129,8 @@ static bool xx_borlandpack_path_safe(const char *name) {
     return true;
 }
 
-static void xx_borlandpack_stream_free(void *pointer) {
+static void xx_borlandpack_stream_free(void *pointer)
+{
     xx_borlandpack_stream *stream = (xx_borlandpack_stream *)pointer;
     size_t index;
 
@@ -144,17 +143,15 @@ static void xx_borlandpack_stream_free(void *pointer) {
 }
 
 /* Append a member, taking ownership of @p name. */
-static bool xx_borlandpack_add(xx_borlandpack_stream *stream,
-                          const xx_borlandpack_member *member) {
-    xx_borlandpack_member *grown = (xx_borlandpack_member *)xx_mem_realloc(
-        stream->items, sizeof(*grown) * (stream->count + 1U));
+static bool xx_borlandpack_add(xx_borlandpack_stream *stream, const xx_borlandpack_member *member)
+{
+    xx_borlandpack_member *grown = (xx_borlandpack_member *)xx_mem_realloc(stream->items, sizeof(*grown) * (stream->count + 1U));
 
     if (!grown) return false;
     stream->items = grown;
     stream->items[stream->count++] = *member;
     return true;
 }
-
 
 #define XX_BORLANDPACK_PREAMBLE_SIZE 36
 #define XX_BORLANDPACK_MAGIC_SIZE 23
@@ -164,11 +161,8 @@ static bool xx_borlandpack_add(xx_borlandpack_stream *stream,
 #define XX_BORLANDPACK_HEX_FIELD 4
 #define XX_BORLANDPACK_SIZELINE_SIZE (XX_BORLANDPACK_PACKSIZE_FIELD + 2)
 #define XX_BORLANDPACK_MAX_NAME 255
-#define XX_BORLANDPACK_MIN_MEMBER \
-    (1 + 1 + XX_BORLANDPACK_TAIL_SIZE + 2 + XX_BORLANDPACK_SIZELINE_SIZE)
-#define XX_BORLANDPACK_HEADER_WINDOW                                      \
-    (1 + XX_BORLANDPACK_MAX_NAME + XX_BORLANDPACK_TAIL_SIZE + 2 +         \
-     XX_BORLANDPACK_SIZELINE_SIZE)
+#define XX_BORLANDPACK_MIN_MEMBER (1 + 1 + XX_BORLANDPACK_TAIL_SIZE + 2 + XX_BORLANDPACK_SIZELINE_SIZE)
+#define XX_BORLANDPACK_HEADER_WINDOW (1 + XX_BORLANDPACK_MAX_NAME + XX_BORLANDPACK_TAIL_SIZE + 2 + XX_BORLANDPACK_SIZELINE_SIZE)
 #define XX_BORLANDPACK_MAX_MEMBERS 100000
 #define XX_BORLANDPACK_MAX_UNCOMPRESSED INT64_C(0x7fffffff)
 #define XX_BORLANDPACK_METHOD_LZW 1U
@@ -183,22 +177,22 @@ static int64_t xx_borlandpack_find_crlf(const uint8_t *window, int64_t size, int
 static xx_borlandpack_stream *xx_borlandpack_parse(Abstractformat *self, xx_pd_struct *pd);
 static bool xx_borlandpack_decode(Abstractformat *self, const xx_borlandpack_member *member, uint8_t **out, size_t *out_size, xx_pd_struct *pd);
 
-
 /* Line 2 is a fixed width size field plus CRLF, always. */
 /* '!' + one name byte + tail + CRLF + line 2. The payload is deliberately
  * not counted: a zero length payload is not attested but is not structurally
  * forbidden either, and rejecting the archive for it would be a guess. */
 /* One bounded read per member covers both header lines at maximum width. */
 
-static bool xx_borlandpack_is_digit(uint8_t value) {
+static bool xx_borlandpack_is_digit(uint8_t value)
+{
     return value >= (uint8_t)'0' && value <= (uint8_t)'9';
 }
 
 /* Turbo Pascal write(x:width): right justified decimal, blank padded on the
  * left. Only the leading run may be blank; a blank inside the number, or a
  * wholly blank field, is not a number. */
-static bool xx_borlandpack_parse_size(const uint8_t *field, int64_t width,
-                                      int64_t maximum, int64_t *value) {
+static bool xx_borlandpack_parse_size(const uint8_t *field, int64_t width, int64_t maximum, int64_t *value)
+{
     int64_t index = 0;
     int64_t result = 0;
 
@@ -216,7 +210,8 @@ static bool xx_borlandpack_parse_size(const uint8_t *field, int64_t width,
 
 /* The three tail fields are uppercase hex only; lower case never occurs, and
  * accepting it would widen the detection gate for no gain. */
-static bool xx_borlandpack_parse_hex(const uint8_t *field, uint32_t *value) {
+static bool xx_borlandpack_parse_hex(const uint8_t *field, uint32_t *value)
+{
     uint32_t result = 0U;
     int64_t index;
 
@@ -237,23 +232,21 @@ static bool xx_borlandpack_parse_hex(const uint8_t *field, uint32_t *value) {
     return true;
 }
 
-static int64_t xx_borlandpack_find_crlf(const uint8_t *window, int64_t size,
-                                        int64_t from) {
+static int64_t xx_borlandpack_find_crlf(const uint8_t *window, int64_t size, int64_t from)
+{
     int64_t index;
     for (index = from; index + 1 < size; ++index) {
-        if (window[index] == (uint8_t)'\r' &&
-            window[index + 1] == (uint8_t)'\n') {
+        if (window[index] == (uint8_t)'\r' && window[index + 1] == (uint8_t)'\n') {
             return index;
         }
     }
     return -1;
 }
 
-static xx_borlandpack_stream *xx_borlandpack_parse(Abstractformat *self,
-                                                   xx_pd_struct *pd) {
-    static const uint8_t magic[XX_BORLANDPACK_MAGIC_SIZE] = {
-        'T', 'h', 'i', 's', ' ', 'i', 's', ' ', 'a', ' ', 'p', 'a',
-        'c', 'k', 'e', 'd', ' ', 'f', 'i', 'l', 'e', '.', 0x1A};
+static xx_borlandpack_stream *xx_borlandpack_parse(Abstractformat *self, xx_pd_struct *pd)
+{
+    static const uint8_t magic[XX_BORLANDPACK_MAGIC_SIZE] = {'T', 'h', 'i', 's', ' ', 'i', 's', ' ', 'a', ' ', 'p', 'a',
+                                                             'c', 'k', 'e', 'd', ' ', 'f', 'i', 'l', 'e', '.', 0x1A};
     xx_borlandpack_stream *stream = NULL;
     uint8_t preamble[XX_BORLANDPACK_PREAMBLE_SIZE];
     uint8_t window[XX_BORLANDPACK_HEADER_WINDOW];
@@ -269,8 +262,7 @@ static xx_borlandpack_stream *xx_borlandpack_parse(Abstractformat *self,
     if (span < XX_BORLANDPACK_PREAMBLE_SIZE + XX_BORLANDPACK_MIN_MEMBER) {
         return NULL;
     }
-    if (!xx_borlandpack_read_at(self, self->base_address, preamble,
-                                sizeof(preamble))) {
+    if (!xx_borlandpack_read_at(self, self->base_address, preamble, sizeof(preamble))) {
         return NULL;
     }
     /* The 0x1A at the end of the notice is part of the magic, not decoration:
@@ -280,22 +272,15 @@ static xx_borlandpack_stream *xx_borlandpack_parse(Abstractformat *self,
     /* ":CM nn vvv:" CRLF. Every one of these positions is fixed, and the
      * shape of the token is the second half of the detection gate - the
      * sentence alone is plain English and cheap to hit by accident. */
-    if (preamble[23] != (uint8_t)':' || preamble[24] != (uint8_t)'C' ||
-        preamble[25] != (uint8_t)'M' || preamble[26] != (uint8_t)' ' ||
-        !xx_borlandpack_is_digit(preamble[27]) ||
-        !xx_borlandpack_is_digit(preamble[28]) ||
-        preamble[29] != (uint8_t)' ' ||
-        !xx_borlandpack_is_digit(preamble[30]) ||
-        !xx_borlandpack_is_digit(preamble[31]) ||
-        !xx_borlandpack_is_digit(preamble[32]) ||
-        preamble[33] != (uint8_t)':' || preamble[34] != (uint8_t)'\r' ||
+    if (preamble[23] != (uint8_t)':' || preamble[24] != (uint8_t)'C' || preamble[25] != (uint8_t)'M' || preamble[26] != (uint8_t)' ' ||
+        !xx_borlandpack_is_digit(preamble[27]) || !xx_borlandpack_is_digit(preamble[28]) || preamble[29] != (uint8_t)' ' || !xx_borlandpack_is_digit(preamble[30]) ||
+        !xx_borlandpack_is_digit(preamble[31]) || !xx_borlandpack_is_digit(preamble[32]) || preamble[33] != (uint8_t)':' || preamble[34] != (uint8_t)'\r' ||
         preamble[35] != (uint8_t)'\n') {
         return NULL;
     }
     /* Archive-wide: the same method number goes on every member, because
      * that is the only place the container states one. */
-    method = (uint32_t)((preamble[27] - (uint8_t)'0') * 10 +
-                        (preamble[28] - (uint8_t)'0'));
+    method = (uint32_t)((preamble[27] - (uint8_t)'0') * 10 + (preamble[28] - (uint8_t)'0'));
 
     stream = (xx_borlandpack_stream *)xx_mem_alloc(sizeof(*stream));
     if (!stream) return NULL;
@@ -327,8 +312,7 @@ static xx_borlandpack_stream *xx_borlandpack_parse(Abstractformat *self,
             window_size = XX_BORLANDPACK_HEADER_WINDOW;
         }
         if (window_size < XX_BORLANDPACK_MIN_MEMBER) goto fail;
-        if (!xx_borlandpack_read_at(self, self->base_address + offset, window,
-                                    (size_t)window_size)) {
+        if (!xx_borlandpack_read_at(self, self->base_address + offset, window, (size_t)window_size)) {
             goto fail;
         }
         if (window[0] != (uint8_t)'!') goto fail;
@@ -336,23 +320,17 @@ static xx_borlandpack_stream *xx_borlandpack_parse(Abstractformat *self,
         line_end = xx_borlandpack_find_crlf(window, window_size, 1);
         /* '!' + at least one name byte + the fixed 26 byte tail, and line 2
          * must still fit inside the window that was read. */
-        if (line_end < 1 + 1 + XX_BORLANDPACK_TAIL_SIZE ||
-            line_end + 2 + XX_BORLANDPACK_SIZELINE_SIZE > window_size) {
+        if (line_end < 1 + 1 + XX_BORLANDPACK_TAIL_SIZE || line_end + 2 + XX_BORLANDPACK_SIZELINE_SIZE > window_size) {
             goto fail;
         }
 
         /* Located from the CRLF backwards: the name is the variable part. */
         tail = window + (line_end - XX_BORLANDPACK_TAIL_SIZE);
-        if (tail[11] != (uint8_t)' ' || tail[16] != (uint8_t)' ' ||
-            tail[21] != (uint8_t)' ') {
+        if (tail[11] != (uint8_t)' ' || tail[16] != (uint8_t)' ' || tail[21] != (uint8_t)' ') {
             goto fail;
         }
-        if (!xx_borlandpack_parse_size(tail, XX_BORLANDPACK_ORIGSIZE_FIELD,
-                                       XX_BORLANDPACK_MAX_UNCOMPRESSED,
-                                       &uncompressed_size) ||
-            !xx_borlandpack_parse_hex(tail + 12, &checksum) ||
-            !xx_borlandpack_parse_hex(tail + 17, &dos_date) ||
-            !xx_borlandpack_parse_hex(tail + 22, &dos_time)) {
+        if (!xx_borlandpack_parse_size(tail, XX_BORLANDPACK_ORIGSIZE_FIELD, XX_BORLANDPACK_MAX_UNCOMPRESSED, &uncompressed_size) ||
+            !xx_borlandpack_parse_hex(tail + 12, &checksum) || !xx_borlandpack_parse_hex(tail + 17, &dos_date) || !xx_borlandpack_parse_hex(tail + 22, &dos_time)) {
             goto fail;
         }
 
@@ -369,8 +347,7 @@ static xx_borlandpack_stream *xx_borlandpack_parse(Abstractformat *self,
             /* The container stores a bare DOS 8.3 name and has no directory
              * concept at all, so a separator here is a path smuggled through
              * a format that cannot express one. */
-            if (character == (uint8_t)'/' || character == (uint8_t)'\\' ||
-                character == (uint8_t)':') {
+            if (character == (uint8_t)'/' || character == (uint8_t)'\\' || character == (uint8_t)':') {
                 goto fail;
             }
         }
@@ -386,8 +363,7 @@ static xx_borlandpack_stream *xx_borlandpack_parse(Abstractformat *self,
         }
 
         size_line = window + line_end + 2;
-        if (size_line[XX_BORLANDPACK_PACKSIZE_FIELD] != (uint8_t)'\r' ||
-            size_line[XX_BORLANDPACK_PACKSIZE_FIELD + 1] != (uint8_t)'\n') {
+        if (size_line[XX_BORLANDPACK_PACKSIZE_FIELD] != (uint8_t)'\r' || size_line[XX_BORLANDPACK_PACKSIZE_FIELD + 1] != (uint8_t)'\n') {
             xx_str_free(name);
             goto fail;
         }
@@ -395,10 +371,7 @@ static xx_borlandpack_stream *xx_borlandpack_parse(Abstractformat *self,
         data_offset = offset + header_size;
         /* The packed size is what advances the walk, so a payload running
          * past EOF is a rejection rather than a short read later. */
-        if (!xx_borlandpack_parse_size(size_line,
-                                       XX_BORLANDPACK_PACKSIZE_FIELD,
-                                       span - data_offset,
-                                       &compressed_size) ||
+        if (!xx_borlandpack_parse_size(size_line, XX_BORLANDPACK_PACKSIZE_FIELD, span - data_offset, &compressed_size) ||
             !xx_borlandpack_range_within(span, data_offset, compressed_size)) {
             xx_str_free(name);
             goto fail;
@@ -435,7 +408,6 @@ fail:
     return NULL;
 }
 
-
 /* The two-digit ":CM nn" token. Only 01 is attested, and it is a Unix
  * compress LZW stream. Any other token is refused rather than guessed:
  * there is no per-member method field to fall back on, and treating an
@@ -444,10 +416,8 @@ fail:
  * can name a member far larger than any buffer. Refuse rather than attempt
  * the allocation the container merely claims to need. */
 
-static bool xx_borlandpack_decode(Abstractformat *self,
-                                  const xx_borlandpack_member *member,
-                                  uint8_t **out, size_t *out_size,
-                                  xx_pd_struct *pd) {
+static bool xx_borlandpack_decode(Abstractformat *self, const xx_borlandpack_member *member, uint8_t **out, size_t *out_size, xx_pd_struct *pd)
+{
     uint8_t *packed = NULL;
     uint8_t *plain = NULL;
     xx_io_device *source = NULL;
@@ -463,8 +433,7 @@ static bool xx_borlandpack_decode(Abstractformat *self,
     if (member->compressed_size < 1 || member->uncompressed_size < 0) {
         return false;
     }
-    if (member->uncompressed_size > (int64_t)XX_BORLANDPACK_MAX_DECODED ||
-        member->compressed_size > (int64_t)XX_BORLANDPACK_MAX_DECODED) {
+    if (member->uncompressed_size > (int64_t)XX_BORLANDPACK_MAX_DECODED || member->compressed_size > (int64_t)XX_BORLANDPACK_MAX_DECODED) {
         return false;
     }
     if ((uint64_t)member->compressed_size > (uint64_t)(SIZE_MAX - 2U)) {
@@ -481,15 +450,12 @@ static bool xx_borlandpack_decode(Abstractformat *self,
     if (!packed) return false;
     packed[0] = XX_COMPRESS_MAGIC0;
     packed[1] = XX_COMPRESS_MAGIC1;
-    if (!xx_borlandpack_read_at(self, member->data_offset, packed + 2,
-                                (size_t)member->compressed_size)) {
+    if (!xx_borlandpack_read_at(self, member->data_offset, packed + 2, (size_t)member->compressed_size)) {
         goto cleanup;
     }
     if (pd && xx_pd_is_stopped(pd)) goto cleanup;
 
-    plain = (uint8_t *)xx_mem_alloc(
-        member->uncompressed_size != 0 ? (size_t)member->uncompressed_size
-                                       : 1U);
+    plain = (uint8_t *)xx_mem_alloc(member->uncompressed_size != 0 ? (size_t)member->uncompressed_size : 1U);
     if (!plain) goto cleanup;
 
     source = xx_io_mem_open_ro(packed, packed_size);
@@ -499,8 +465,7 @@ static bool xx_borlandpack_decode(Abstractformat *self,
     destination = xx_io_mem_open(plain, (size_t)member->uncompressed_size);
     if (!source || !destination) goto cleanup;
 
-    if (!xx_compress_decode_device(source, 0, (int64_t)packed_size,
-                                   destination, &written, pd)) {
+    if (!xx_compress_decode_device(source, 0, (int64_t)packed_size, destination, &written, pd)) {
         goto cleanup;
     }
     /* Exactly the promised length or nothing: a partially decoded member
@@ -523,8 +488,8 @@ cleanup:
 
 /* ---------------------------------------------------------- lifecycle --- */
 
-void xx_borlandpack_init(xx_borlandpack *archive, xx_io_device *device,
-                    int64_t base_address) {
+void xx_borlandpack_init(xx_borlandpack *archive, xx_io_device *device, int64_t base_address)
+{
     if (!archive) return;
     xx_mem_zero(archive, sizeof(*archive));
     xx_format_init(&archive->format, device, base_address);
@@ -537,22 +502,17 @@ void xx_borlandpack_init(xx_borlandpack *archive, xx_io_device *device,
     archive->format.check_is_valid = xx_borlandpack_check_is_valid;
     archive->format.handle_base_info = xx_borlandpack_handle_base_info;
     archive->format.get_format_size = xx_borlandpack_get_format_size;
-    archive->format.get_number_of_archive_records =
-        xx_borlandpack_get_number_of_archive_records;
-    archive->format.create_archive_records_reading =
-        xx_borlandpack_create_archive_records_reading;
-    archive->format.get_current_archive_record =
-        xx_borlandpack_get_current_archive_record;
-    archive->format.unpack_current_archive_record =
-        xx_borlandpack_unpack_current_archive_record;
-    archive->format.archive_record_move_to_next =
-        xx_borlandpack_archive_record_move_to_next;
-    archive->format.free_archive_records_reading =
-        xx_borlandpack_free_archive_records_reading;
+    archive->format.get_number_of_archive_records = xx_borlandpack_get_number_of_archive_records;
+    archive->format.create_archive_records_reading = xx_borlandpack_create_archive_records_reading;
+    archive->format.get_current_archive_record = xx_borlandpack_get_current_archive_record;
+    archive->format.unpack_current_archive_record = xx_borlandpack_unpack_current_archive_record;
+    archive->format.archive_record_move_to_next = xx_borlandpack_archive_record_move_to_next;
+    archive->format.free_archive_records_reading = xx_borlandpack_free_archive_records_reading;
     archive->format.destroy = xx_borlandpack_vtable_destroy;
 }
 
-xx_borlandpack *xx_borlandpack_create(xx_io_device *device, int64_t base_address) {
+xx_borlandpack *xx_borlandpack_create(xx_io_device *device, int64_t base_address)
+{
     xx_borlandpack *archive = (xx_borlandpack *)xx_mem_alloc(sizeof(*archive));
 
     if (!archive) return NULL;
@@ -560,7 +520,8 @@ xx_borlandpack *xx_borlandpack_create(xx_io_device *device, int64_t base_address
     return archive;
 }
 
-void xx_borlandpack_destroy(xx_borlandpack *archive) {
+void xx_borlandpack_destroy(xx_borlandpack *archive)
+{
     if (!archive) return;
     /* Not xx_format_destroy: it dispatches through format.destroy, which is
      * the wrapper below, and the two would recurse. */
@@ -569,19 +530,22 @@ void xx_borlandpack_destroy(xx_borlandpack *archive) {
     archive->number_of_records = 0U;
 }
 
-void xx_borlandpack_free(xx_borlandpack *archive) {
+void xx_borlandpack_free(xx_borlandpack *archive)
+{
     if (!archive) return;
     xx_borlandpack_destroy(archive);
     xx_mem_free(archive);
 }
 
-static void xx_borlandpack_vtable_destroy(Abstractformat *self) {
+static void xx_borlandpack_vtable_destroy(Abstractformat *self)
+{
     xx_borlandpack_destroy((xx_borlandpack *)self);
 }
 
 /* -------------------------------------------------------------- format -- */
 
-bool xx_borlandpack_check_is_valid(Abstractformat *self, xx_pd_struct *pd) {
+bool xx_borlandpack_check_is_valid(Abstractformat *self, xx_pd_struct *pd)
+{
     xx_borlandpack_stream *stream;
 
     if (!self || (pd && xx_pd_is_stopped(pd))) return false;
@@ -591,7 +555,8 @@ bool xx_borlandpack_check_is_valid(Abstractformat *self, xx_pd_struct *pd) {
     return true;
 }
 
-bool xx_borlandpack_handle_base_info(Abstractformat *self, xx_pd_struct *pd) {
+bool xx_borlandpack_handle_base_info(Abstractformat *self, xx_pd_struct *pd)
+{
     xx_borlandpack *archive = (xx_borlandpack *)self;
     xx_borlandpack_stream *stream;
 
@@ -612,18 +577,17 @@ bool xx_borlandpack_handle_base_info(Abstractformat *self, xx_pd_struct *pd) {
     return true;
 }
 
-int64_t xx_borlandpack_get_format_size(Abstractformat *self, xx_pd_struct *pd) {
-    if (!self ||
-        (!self->base_info_handled && !xx_format_handle_base_info(self, pd))) {
+int64_t xx_borlandpack_get_format_size(Abstractformat *self, xx_pd_struct *pd)
+{
+    if (!self || (!self->base_info_handled && !xx_format_handle_base_info(self, pd))) {
         return 0;
     }
     return self->is_valid ? self->format_size : 0;
 }
 
-uint64_t xx_borlandpack_get_number_of_archive_records(Abstractformat *self,
-                                                 xx_pd_struct *pd) {
-    if (!self ||
-        (!self->base_info_handled && !xx_format_handle_base_info(self, pd))) {
+uint64_t xx_borlandpack_get_number_of_archive_records(Abstractformat *self, xx_pd_struct *pd)
+{
+    if (!self || (!self->base_info_handled && !xx_format_handle_base_info(self, pd))) {
         return 0U;
     }
     return self->is_valid ? ((xx_borlandpack *)self)->number_of_records : 0U;
@@ -631,8 +595,8 @@ uint64_t xx_borlandpack_get_number_of_archive_records(Abstractformat *self,
 
 /* ------------------------------------------------------------- records -- */
 
-static bool xx_borlandpack_set_record(xx_archive_record *record,
-                                 const xx_borlandpack_member *member) {
+static bool xx_borlandpack_set_record(xx_archive_record *record, const xx_borlandpack_member *member)
+{
     xx_archive_record_cleanup(record);
     xx_archive_record_init(record);
     record->header_offset = member->header_offset;
@@ -640,34 +604,24 @@ static bool xx_borlandpack_set_record(xx_archive_record *record,
     record->data_offset = member->data_offset;
     record->compressed_size = member->compressed_size;
     return xx_archive_record_set_original_name(record, member->name) &&
-           xx_archive_record_set_meta_u64(record, XX_META_ID_COMPRESSED_SIZE,
-                                          (uint64_t)member->compressed_size) &&
-           xx_archive_record_set_meta_u64(
-               record, XX_META_ID_UNCOMPRESSED_SIZE,
-               (uint64_t)member->uncompressed_size) &&
-           xx_archive_record_set_meta_u64(record, XX_META_ID_COMPRESSION_METHOD,
-                                          member->method) &&
-           xx_archive_record_set_meta_u64(record, XX_META_ID_TIMESTAMP,
-                                          member->timestamp) &&
-           xx_archive_record_set_meta_bool(record, XX_META_ID_IS_FOLDER,
-                                           member->is_folder) &&
-           xx_archive_record_set_meta_bool(record, XX_META_ID_IS_ENCRYPTED,
-                                           false);
+           xx_archive_record_set_meta_u64(record, XX_META_ID_COMPRESSED_SIZE, (uint64_t)member->compressed_size) &&
+           xx_archive_record_set_meta_u64(record, XX_META_ID_UNCOMPRESSED_SIZE, (uint64_t)member->uncompressed_size) &&
+           xx_archive_record_set_meta_u64(record, XX_META_ID_COMPRESSION_METHOD, member->method) &&
+           xx_archive_record_set_meta_u64(record, XX_META_ID_TIMESTAMP, member->timestamp) &&
+           xx_archive_record_set_meta_bool(record, XX_META_ID_IS_FOLDER, member->is_folder) && xx_archive_record_set_meta_bool(record, XX_META_ID_IS_ENCRYPTED, false);
 }
 
-static bool xx_borlandpack_copy_options(xx_list_s *target,
-                                   const xx_list_s *options) {
+static bool xx_borlandpack_copy_options(xx_list_s *target, const xx_list_s *options)
+{
     size_t index;
 
     if (!target || !options) return options == NULL;
     for (index = 0U; index < options->count; ++index) {
-        const xx_meta *source =
-            (const xx_meta *)xx_list_at((const xx_list_t *)options, index);
+        const xx_meta *source = (const xx_meta *)xx_list_at((const xx_list_t *)options, index);
         xx_meta copied;
         if (!source) continue;
         xx_meta_init(&copied, source->meta_id);
-        if (!xx_var_copy(&copied.var, &source->var) ||
-            !xx_list_append(target, &copied)) {
+        if (!xx_var_copy(&copied.var, &source->var) || !xx_list_append(target, &copied)) {
             xx_meta_cleanup(&copied);
             return false;
         }
@@ -675,21 +629,20 @@ static bool xx_borlandpack_copy_options(xx_list_s *target,
     return true;
 }
 
-static const xx_var *xx_borlandpack_get_option(const xx_list_s *options,
-                                          uint32_t meta_id) {
+static const xx_var *xx_borlandpack_get_option(const xx_list_s *options, uint32_t meta_id)
+{
     size_t index;
 
     if (!options) return NULL;
     for (index = 0U; index < options->count; ++index) {
-        const xx_meta *meta =
-            (const xx_meta *)xx_list_at((const xx_list_t *)options, index);
+        const xx_meta *meta = (const xx_meta *)xx_list_at((const xx_list_t *)options, index);
         if (meta && meta->meta_id == meta_id) return &meta->var;
     }
     return NULL;
 }
 
-xx_archive_record_state *xx_borlandpack_create_archive_records_reading(
-    Abstractformat *self, const xx_list_s *options, xx_pd_struct *pd) {
+xx_archive_record_state *xx_borlandpack_create_archive_records_reading(Abstractformat *self, const xx_list_s *options, xx_pd_struct *pd)
+{
     xx_borlandpack_stream *stream;
     xx_archive_record_state *state;
 
@@ -705,9 +658,7 @@ xx_archive_record_state *xx_borlandpack_create_archive_records_reading(
     state->internal_state = stream;
     state->free_internal = xx_borlandpack_stream_free;
     state->total_records = (int64_t)stream->count;
-    if (!xx_borlandpack_copy_options(&state->options, options) ||
-        (stream->count != 0U &&
-         !xx_borlandpack_set_record(&state->current_record, &stream->items[0]))) {
+    if (!xx_borlandpack_copy_options(&state->options, options) || (stream->count != 0U && !xx_borlandpack_set_record(&state->current_record, &stream->items[0]))) {
         xx_archive_record_state_free(state);
         return NULL;
     }
@@ -716,20 +667,16 @@ xx_archive_record_state *xx_borlandpack_create_archive_records_reading(
     return state;
 }
 
-const xx_archive_record *xx_borlandpack_get_current_archive_record(
-    Abstractformat *self, xx_archive_record_state *state) {
-    return self && state && state->format == self && state->has_record
-               ? &state->current_record
-               : NULL;
+const xx_archive_record *xx_borlandpack_get_current_archive_record(Abstractformat *self, xx_archive_record_state *state)
+{
+    return self && state && state->format == self && state->has_record ? &state->current_record : NULL;
 }
 
-bool xx_borlandpack_archive_record_move_to_next(Abstractformat *self,
-                                           xx_archive_record_state *state,
-                                           xx_pd_struct *pd) {
+bool xx_borlandpack_archive_record_move_to_next(Abstractformat *self, xx_archive_record_state *state, xx_pd_struct *pd)
+{
     xx_borlandpack_stream *stream;
 
-    if (!self || !state || state->format != self || !state->has_record ||
-        (pd && xx_pd_is_stopped(pd))) {
+    if (!self || !state || state->format != self || !state->has_record || (pd && xx_pd_is_stopped(pd))) {
         return false;
     }
     stream = (xx_borlandpack_stream *)state->internal_state;
@@ -741,14 +688,12 @@ bool xx_borlandpack_archive_record_move_to_next(Abstractformat *self,
     }
     ++stream->index;
     ++state->current_index;
-    state->has_record = xx_borlandpack_set_record(&state->current_record,
-                                             &stream->items[stream->index]);
+    state->has_record = xx_borlandpack_set_record(&state->current_record, &stream->items[stream->index]);
     return state->has_record;
 }
 
-bool xx_borlandpack_unpack_current_archive_record(Abstractformat *self,
-                                             xx_archive_record_state *state,
-                                             xx_pd_struct *pd) {
+bool xx_borlandpack_unpack_current_archive_record(Abstractformat *self, xx_archive_record_state *state, xx_pd_struct *pd)
+{
     xx_borlandpack_stream *stream;
     const xx_borlandpack_member *member;
     const xx_var *path_option;
@@ -760,8 +705,7 @@ bool xx_borlandpack_unpack_current_archive_record(Abstractformat *self,
     bool result = false;
     bool created = false;
 
-    if (!self || !state || state->format != self || !state->has_record ||
-        (pd && xx_pd_is_stopped(pd))) {
+    if (!self || !state || state->format != self || !state->has_record || (pd && xx_pd_is_stopped(pd))) {
         return false;
     }
     stream = (xx_borlandpack_stream *)state->internal_state;
@@ -769,8 +713,7 @@ bool xx_borlandpack_unpack_current_archive_record(Abstractformat *self,
     member = &stream->items[stream->index];
     if (!xx_borlandpack_path_safe(member->name)) return false;
 
-    path_option = xx_borlandpack_get_option(&state->options,
-                                       XX_META_ID_OPT_UNPACK_PATH);
+    path_option = xx_borlandpack_get_option(&state->options, XX_META_ID_OPT_UNPACK_PATH);
     if (!path_option) {
         /* No destination: decode and discard, which verifies the member
          * without writing anything. */
@@ -779,11 +722,9 @@ bool xx_borlandpack_unpack_current_archive_record(Abstractformat *self,
         xx_mem_free(plain);
         return result;
     }
-    if (path_option->type == XX_VAR_TYPE_STRING ||
-        path_option->type == XX_VAR_TYPE_STRING_VIEW) {
+    if (path_option->type == XX_VAR_TYPE_STRING || path_option->type == XX_VAR_TYPE_STRING_VIEW) {
         base_path = xx_var_get_str(path_option);
-    } else if (path_option->type == XX_VAR_TYPE_WSTRING ||
-               path_option->type == XX_VAR_TYPE_WSTRING_VIEW) {
+    } else if (path_option->type == XX_VAR_TYPE_WSTRING || path_option->type == XX_VAR_TYPE_WSTRING_VIEW) {
         converted_path = xx_str_unicode_to_utf8(xx_var_get_wstr(path_option));
         base_path = converted_path;
     }
@@ -791,9 +732,7 @@ bool xx_borlandpack_unpack_current_archive_record(Abstractformat *self,
         xx_str_free(converted_path);
         return false;
     }
-    if (base_path[0] != '\0' &&
-        base_path[xx_str_len(base_path) - 1U] != '/' &&
-        base_path[xx_str_len(base_path) - 1U] != '\\') {
+    if (base_path[0] != '\0' && base_path[xx_str_len(base_path) - 1U] != '/' && base_path[xx_str_len(base_path) - 1U] != '\\') {
         target_path = xx_str_concat3(base_path, "/", member->name);
     } else {
         target_path = xx_str_concat(base_path, member->name);
@@ -806,8 +745,7 @@ bool xx_borlandpack_unpack_current_archive_record(Abstractformat *self,
         xx_str_free(target_path);
         return result;
     }
-    if (!xx_store_create_dirs_a(target_path, false) ||
-        !xx_borlandpack_decode(self, member, &plain, &plain_size, pd)) {
+    if (!xx_store_create_dirs_a(target_path, false) || !xx_borlandpack_decode(self, member, &plain, &plain_size, pd)) {
         xx_str_free(target_path);
         return false;
     }
@@ -818,8 +756,7 @@ bool xx_borlandpack_unpack_current_archive_record(Abstractformat *self,
 
         result = output != NULL;
         while (result && completed < plain_size) {
-            ssize_t sent = xx_io_write(output, plain + completed,
-                                       plain_size - completed);
+            ssize_t sent = xx_io_write(output, plain + completed, plain_size - completed);
             if (sent <= 0 || (size_t)sent > plain_size - completed) {
                 result = false;
                 break;
@@ -834,8 +771,8 @@ bool xx_borlandpack_unpack_current_archive_record(Abstractformat *self,
     return result;
 }
 
-void xx_borlandpack_free_archive_records_reading(Abstractformat *self,
-                                            xx_archive_record_state *state) {
+void xx_borlandpack_free_archive_records_reading(Abstractformat *self, xx_archive_record_state *state)
+{
     (void)self;
     xx_archive_record_state_free(state);
 }

@@ -44,16 +44,12 @@ XXFC_API bool xx_sha1_init(xx_sha1_context *context);
 XXFC_API bool xx_sha256_init(xx_sha256_context *context);
 
 /** Feed bytes to an initialized context. A NULL pointer is valid for size 0. */
-XXFC_API void xx_sha1_update(xx_sha1_context *context, const void *data,
-                              size_t size);
-XXFC_API void xx_sha256_update(xx_sha256_context *context, const void *data,
-                                size_t size);
+XXFC_API void xx_sha1_update(xx_sha1_context *context, const void *data, size_t size);
+XXFC_API void xx_sha256_update(xx_sha256_context *context, const void *data, size_t size);
 
 /** Finish a digest. Invalid output leaves the unfinished context intact. */
-XXFC_API bool xx_sha1_final(xx_sha1_context *context, void *digest,
-                             size_t digest_size);
-XXFC_API bool xx_sha256_final(xx_sha256_context *context, void *digest,
-                               size_t digest_size);
+XXFC_API bool xx_sha1_final(xx_sha1_context *context, void *digest, size_t digest_size);
+XXFC_API bool xx_sha256_final(xx_sha256_context *context, void *digest, size_t digest_size);
 
 /** Digest a buffer into 20 or 32 bytes. NULL input with size 0 is valid. */
 XXFC_API bool xx_sha1_memory(const void *data, size_t size, void *digest);

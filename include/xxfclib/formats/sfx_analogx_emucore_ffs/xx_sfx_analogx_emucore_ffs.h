@@ -67,43 +67,29 @@ extern "C" {
 typedef struct xx_sfx_analogx_emucore_ffs {
     Abstractformat format;
     uint64_t number_of_records;
-    int64_t ffs_offset;      /**< "FFS!", relative to the base. */
-    int64_t offset_origin;   /**< Value of a table offset that means "FFS!". */
-    uint32_t flags;          /**< Header dword at +12. */
-    bool in_executable;      /**< Found through the trailer of an MZ image. */
+    int64_t ffs_offset;    /**< "FFS!", relative to the base. */
+    int64_t offset_origin; /**< Value of a table offset that means "FFS!". */
+    uint32_t flags;        /**< Header dword at +12. */
+    bool in_executable;    /**< Found through the trailer of an MZ image. */
 } xx_sfx_analogx_emucore_ffs;
 
 typedef xx_sfx_analogx_emucore_ffs xx_sfx_analogx_emucore_ffs_t;
 
-XXFC_API void xx_sfx_analogx_emucore_ffs_init(xx_sfx_analogx_emucore_ffs *archive,
-                                              xx_io_device *device,
-                                              int64_t base_address);
-XXFC_API xx_sfx_analogx_emucore_ffs *
-xx_sfx_analogx_emucore_ffs_create(xx_io_device *device, int64_t base_address);
+XXFC_API void xx_sfx_analogx_emucore_ffs_init(xx_sfx_analogx_emucore_ffs *archive, xx_io_device *device, int64_t base_address);
+XXFC_API xx_sfx_analogx_emucore_ffs *xx_sfx_analogx_emucore_ffs_create(xx_io_device *device, int64_t base_address);
 XXFC_API void xx_sfx_analogx_emucore_ffs_destroy(xx_sfx_analogx_emucore_ffs *archive);
 XXFC_API void xx_sfx_analogx_emucore_ffs_free(xx_sfx_analogx_emucore_ffs *archive);
 
-XXFC_API bool xx_sfx_analogx_emucore_ffs_check_is_valid(Abstractformat *self,
-                                                        xx_pd_struct *pd);
-XXFC_API bool xx_sfx_analogx_emucore_ffs_handle_base_info(Abstractformat *self,
-                                                          xx_pd_struct *pd);
-XXFC_API int64_t xx_sfx_analogx_emucore_ffs_get_format_size(Abstractformat *self,
-                                                            xx_pd_struct *pd);
-XXFC_API uint64_t xx_sfx_analogx_emucore_ffs_get_number_of_archive_records(
-    Abstractformat *self, xx_pd_struct *pd);
+XXFC_API bool xx_sfx_analogx_emucore_ffs_check_is_valid(Abstractformat *self, xx_pd_struct *pd);
+XXFC_API bool xx_sfx_analogx_emucore_ffs_handle_base_info(Abstractformat *self, xx_pd_struct *pd);
+XXFC_API int64_t xx_sfx_analogx_emucore_ffs_get_format_size(Abstractformat *self, xx_pd_struct *pd);
+XXFC_API uint64_t xx_sfx_analogx_emucore_ffs_get_number_of_archive_records(Abstractformat *self, xx_pd_struct *pd);
 
-XXFC_API xx_archive_record_state *
-xx_sfx_analogx_emucore_ffs_create_archive_records_reading(
-    Abstractformat *self, const xx_list_s *options, xx_pd_struct *pd);
-XXFC_API const xx_archive_record *
-xx_sfx_analogx_emucore_ffs_get_current_archive_record(
-    Abstractformat *self, xx_archive_record_state *state);
-XXFC_API bool xx_sfx_analogx_emucore_ffs_unpack_current_archive_record(
-    Abstractformat *self, xx_archive_record_state *state, xx_pd_struct *pd);
-XXFC_API bool xx_sfx_analogx_emucore_ffs_archive_record_move_to_next(
-    Abstractformat *self, xx_archive_record_state *state, xx_pd_struct *pd);
-XXFC_API void xx_sfx_analogx_emucore_ffs_free_archive_records_reading(
-    Abstractformat *self, xx_archive_record_state *state);
+XXFC_API xx_archive_record_state *xx_sfx_analogx_emucore_ffs_create_archive_records_reading(Abstractformat *self, const xx_list_s *options, xx_pd_struct *pd);
+XXFC_API const xx_archive_record *xx_sfx_analogx_emucore_ffs_get_current_archive_record(Abstractformat *self, xx_archive_record_state *state);
+XXFC_API bool xx_sfx_analogx_emucore_ffs_unpack_current_archive_record(Abstractformat *self, xx_archive_record_state *state, xx_pd_struct *pd);
+XXFC_API bool xx_sfx_analogx_emucore_ffs_archive_record_move_to_next(Abstractformat *self, xx_archive_record_state *state, xx_pd_struct *pd);
+XXFC_API void xx_sfx_analogx_emucore_ffs_free_archive_records_reading(Abstractformat *self, xx_archive_record_state *state);
 
 /**
  * @brief Decode one record payload held in memory ("FFC@", "FFC!" or
@@ -111,10 +97,7 @@ XXFC_API void xx_sfx_analogx_emucore_ffs_free_archive_records_reading(
  *
  * @return true when the payload decodes to exactly @p output_size bytes.
  */
-XXFC_API bool xx_sfx_analogx_emucore_ffs_decode_memory(const uint8_t *payload,
-                                                       size_t payload_size,
-                                                       uint8_t *output,
-                                                       size_t output_size);
+XXFC_API bool xx_sfx_analogx_emucore_ffs_decode_memory(const uint8_t *payload, size_t payload_size, uint8_t *output, size_t output_size);
 
 #ifdef __cplusplus
 }

@@ -10,15 +10,18 @@
 #define XX_XPK_LZ_NATIVE_H
 #include "xx_xpk_lin_native.h"
 
-static bool xpk_rdcn_native(const uint8_t *packed, size_t size,
-                            uint8_t *output, size_t wanted, xx_pd_struct *pd) {
+static bool xpk_rdcn_native(const uint8_t *packed, size_t size, uint8_t *output, size_t wanted, xx_pd_struct *pd)
+{
     xpk_lin_stream stream;
     size_t position = 0;
     uint32_t flags = 0;
     unsigned available = 0;
     if ((!packed && size) || (wanted && !output) || xx_pd_is_stopped(pd)) return false;
-    stream.data = packed; stream.front = 0; stream.back = size;
-    stream.cached = 0; stream.available = 0;
+    stream.data = packed;
+    stream.front = 0;
+    stream.back = size;
+    stream.cached = 0;
+    stream.available = 0;
     while (position < wanted) {
         uint32_t command, low, count, distance, byte;
         if (xx_pd_is_stopped(pd)) return false;
@@ -56,23 +59,23 @@ static bool xpk_rdcn_native(const uint8_t *packed, size_t size,
                 if (!xpk_lin_byte(&stream, &count)) return false;
                 count += 16U;
             }
-            if (count > wanted - position ||
-                !xpk_lin_copy(output, &position, wanted, distance, count, pd)) return false;
+            if (count > wanted - position || !xpk_lin_copy(output, &position, wanted, distance, count, pd)) return false;
         }
     }
     return !xx_pd_is_stopped(pd);
 }
 
-static bool xpk_ilzr_native(const uint8_t *packed, size_t size,
-                            uint8_t *output, size_t wanted, xx_pd_struct *pd) {
+static bool xpk_ilzr_native(const uint8_t *packed, size_t size, uint8_t *output, size_t wanted, xx_pd_struct *pd)
+{
     xpk_lin_stream stream;
     size_t position = 0;
     unsigned width = 8U;
-    if (!packed || !output || size < 2U || !wanted || wanted > 65535U ||
-        (((size_t)packed[0] << 8U) | packed[1]) != wanted ||
-        xx_pd_is_stopped(pd)) return false;
-    stream.data = packed; stream.front = 2U; stream.back = size;
-    stream.cached = 0; stream.available = 0;
+    if (!packed || !output || size < 2U || !wanted || wanted > 65535U || (((size_t)packed[0] << 8U) | packed[1]) != wanted || xx_pd_is_stopped(pd)) return false;
+    stream.data = packed;
+    stream.front = 2U;
+    stream.back = size;
+    stream.cached = 0;
+    stream.available = 0;
     while (position < wanted) {
         uint32_t bit, value, count;
         if (xx_pd_is_stopped(pd) || !xpk_lin_bits(&stream, 1U, &bit)) return false;
@@ -81,11 +84,9 @@ static bool xpk_ilzr_native(const uint8_t *packed, size_t size,
             output[position++] = (uint8_t)value;
         } else {
             while (position > ((size_t)1U << width)) ++width;
-            if (!xpk_lin_bits(&stream, width, &value) || value >= position ||
-                !xpk_lin_bits(&stream, 4U, &count)) return false;
+            if (!xpk_lin_bits(&stream, width, &value) || value >= position || !xpk_lin_bits(&stream, 4U, &count)) return false;
             count += 3U;
-            if (count > wanted - position ||
-                !xpk_lin_copy(output, &position, wanted, position - value, count, pd)) return false;
+            if (count > wanted - position || !xpk_lin_copy(output, &position, wanted, position - value, count, pd)) return false;
         }
     }
     return !xx_pd_is_stopped(pd);

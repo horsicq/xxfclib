@@ -13,60 +13,52 @@
 #include "../xx_format_extractor_engine.h"
 #include "xxfclib/formats/font_psf/xx_font_psf.h"
 
-static const xx_file_type_t k_types[] = { XX_FILE_TYPE_FONT_PSF };
+static const xx_file_type_t k_types[] = {XX_FILE_TYPE_FONT_PSF};
 
-static Abstractformat *xx_font_psf_search_open(xx_io_device *window) {
+static Abstractformat *xx_font_psf_search_open(xx_io_device *window)
+{
     xx_font_psf *reader = xx_font_psf_create(window, 0);
     return reader ? &reader->format : NULL;
 }
 
-static void xx_font_psf_search_close(Abstractformat *format) {
+static void xx_font_psf_search_close(Abstractformat *format)
+{
     /* The format is the first member, so this is the reader itself. */
     xx_font_psf_free((xx_font_psf *)format);
 }
 
-static const uint8_t anchor_0[] = {0x36,0x04};
-static const uint8_t anchor_1[] = {0x72,0xb5,0x4a,0x86};
-static const xx_format_search_anchor anchors[] = { { anchor_0,sizeof(anchor_0),0 },{ anchor_1,sizeof(anchor_1),0 } };
+static const uint8_t anchor_0[] = {0x36, 0x04};
+static const uint8_t anchor_1[] = {0x72, 0xb5, 0x4a, 0x86};
+static const xx_format_search_anchor anchors[] = {{anchor_0, sizeof(anchor_0), 0}, {anchor_1, sizeof(anchor_1), 0}};
 
-static const xx_format_search_desc k_desc = {
-    k_types, sizeof(k_types) / sizeof(k_types[0]),
-    anchors, 2U,
-    xx_font_psf_search_open, xx_font_psf_search_close, false
-};
+static const xx_format_search_desc k_desc = {k_types, sizeof(k_types) / sizeof(k_types[0]), anchors, 2U, xx_font_psf_search_open, xx_font_psf_search_close, false};
 
-static xx_format_search_state *xx_font_psf_create_format_search(
-    xx_format_extractor *self, xx_io_device *device, const xx_list_s *options,
-    xx_pd_struct *pd) {
+static xx_format_search_state *xx_font_psf_create_format_search(xx_format_extractor *self, xx_io_device *device, const xx_list_s *options, xx_pd_struct *pd)
+{
     (void)self;
     return xx_format_search_create(&k_desc, device, options, pd);
 }
 
-static const xx_format_search_info *xx_font_psf_get_current_format_info(
-    xx_format_extractor *self, xx_format_search_state *state) {
+static const xx_format_search_info *xx_font_psf_get_current_format_info(xx_format_extractor *self, xx_format_search_state *state)
+{
     (void)self;
     return xx_format_search_current(state);
 }
 
-static bool xx_font_psf_format_search_find_next(xx_format_extractor *self,
-                                          xx_format_search_state *state,
-                                          xx_pd_struct *pd) {
+static bool xx_font_psf_format_search_find_next(xx_format_extractor *self, xx_format_search_state *state, xx_pd_struct *pd)
+{
     (void)self;
     return xx_format_search_find_next(state, pd);
 }
 
-static void xx_font_psf_free_format_search(xx_format_extractor *self,
-                                     xx_format_search_state *state) {
+static void xx_font_psf_free_format_search(xx_format_extractor *self, xx_format_search_state *state)
+{
     (void)self;
     xx_format_search_free(state);
 }
 
-xx_format_extractor xx_font_psf_extractor = {
-    xx_font_psf_create_format_search,
-    xx_font_psf_get_current_format_info,
-    xx_font_psf_format_search_find_next,
-    xx_font_psf_free_format_search
-};
+xx_format_extractor xx_font_psf_extractor = {xx_font_psf_create_format_search, xx_font_psf_get_current_format_info, xx_font_psf_format_search_find_next,
+                                             xx_font_psf_free_format_search};
 
 /* BEGIN GENERATED ABSTRACT EXTRACTOR */
 #include "../xx_format_abstract_extractor_adapter.h"

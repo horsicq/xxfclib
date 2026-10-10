@@ -50,9 +50,7 @@ extern "C" {
  * @param produced    Receives the decoded size.  May be NULL.
  * @return true when the whole buffer decoded as a well-formed block chain.
  */
-XXFC_API bool xx_pcommos2_scan_memory(const uint8_t *input, size_t input_size,
-                                      size_t max_output, size_t *consumed,
-                                      size_t *produced);
+XXFC_API bool xx_pcommos2_scan_memory(const uint8_t *input, size_t input_size, size_t max_output, size_t *consumed, size_t *produced);
 
 /**
  * @brief Decode a PCOMM OS/2 stream.
@@ -60,9 +58,7 @@ XXFC_API bool xx_pcommos2_scan_memory(const uint8_t *input, size_t input_size,
  * @p output_size must be the value xx_pcommos2_scan_memory() reported; the
  * decode refuses to publish anything that does not reproduce it exactly.
  */
-XXFC_API bool xx_pcommos2_decode_memory(const uint8_t *input,
-                                        size_t input_size, uint8_t *output,
-                                        size_t output_size, size_t *written);
+XXFC_API bool xx_pcommos2_decode_memory(const uint8_t *input, size_t input_size, uint8_t *output, size_t output_size, size_t *written);
 
 #ifdef __cplusplus
 }

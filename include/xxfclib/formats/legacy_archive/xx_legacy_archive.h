@@ -17,10 +17,10 @@ typedef struct xx_legacy_archive_info {
 #else
 #define XX_LEGACY_ARCHIVE_API XXFC_API
 #endif
-#define XX_LEGACY_ARCHIVE_DECLARE(stem) \
-typedef xx_legacy_archive_info xx_##stem; \
-XX_LEGACY_ARCHIVE_API void xx_##stem##_init(xx_##stem *, xx_io_device *, int64_t); \
-XX_LEGACY_ARCHIVE_API xx_##stem *xx_##stem##_create(xx_io_device *, int64_t); \
-XX_LEGACY_ARCHIVE_API void xx_##stem##_destroy(xx_##stem *); \
-XX_LEGACY_ARCHIVE_API void xx_##stem##_free(xx_##stem *)
+#define XX_LEGACY_ARCHIVE_DECLARE(stem)                                                \
+    typedef xx_legacy_archive_info xx_##stem;                                          \
+    XX_LEGACY_ARCHIVE_API void xx_##stem##_init(xx_##stem *, xx_io_device *, int64_t); \
+    XX_LEGACY_ARCHIVE_API xx_##stem *xx_##stem##_create(xx_io_device *, int64_t);      \
+    XX_LEGACY_ARCHIVE_API void xx_##stem##_destroy(xx_##stem *);                       \
+    XX_LEGACY_ARCHIVE_API void xx_##stem##_free(xx_##stem *)
 #endif

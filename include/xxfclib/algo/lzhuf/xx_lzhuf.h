@@ -55,9 +55,7 @@ extern "C" {
  * @param written     Receives the number of bytes produced. May be NULL.
  * @return true only when exactly @p output_size bytes were produced.
  */
-XXFC_API bool xx_lzhuf_decode_memory(const uint8_t *input, size_t input_size,
-                                     uint8_t *output, size_t output_size,
-                                     size_t *written);
+XXFC_API bool xx_lzhuf_decode_memory(const uint8_t *input, size_t input_size, uint8_t *output, size_t output_size, size_t *written);
 
 /**
  * @brief Decode a ZTC (Zortech C / Symantec C++ distribution archive) member.
@@ -81,9 +79,7 @@ XXFC_API bool xx_lzhuf_decode_memory(const uint8_t *input, size_t input_size,
  * @param written     Receives the number of bytes produced. May be NULL.
  * @return true only when exactly @p output_size bytes were produced.
  */
-XXFC_API bool xx_lzhuf_ztc_decode_memory(const uint8_t *input,
-                                         size_t input_size, uint8_t *output,
-                                         size_t output_size, size_t *written);
+XXFC_API bool xx_lzhuf_ztc_decode_memory(const uint8_t *input, size_t input_size, uint8_t *output, size_t output_size, size_t *written);
 
 /*
  * The "LZ FF 00" single-file container (XLZHCXP) is named after this family but
@@ -118,10 +114,7 @@ XXFC_API bool xx_lzhuf_ztc_decode_memory(const uint8_t *input,
  * @param written     Receives the number of bytes produced. May be NULL.
  * @return true only when exactly @p output_size bytes were produced.
  */
-XXFC_API bool xx_lzhuf_lzhcxp_decode_memory(const uint8_t *input,
-                                            size_t input_size, uint8_t *output,
-                                            size_t output_size,
-                                            size_t *written);
+XXFC_API bool xx_lzhuf_lzhcxp_decode_memory(const uint8_t *input, size_t input_size, uint8_t *output, size_t output_size, size_t *written);
 
 /**
  * @brief Measure an XLZHCXP payload, which stores no uncompressed size.
@@ -144,9 +137,7 @@ XXFC_API bool xx_lzhuf_lzhcxp_decode_memory(const uint8_t *input,
  * @param produced    Receives the decoded size. May be NULL.
  * @return true when the stream decoded to a stop within the limit.
  */
-XXFC_API bool xx_lzhuf_lzhcxp_scan_memory(const uint8_t *input,
-                                          size_t input_size, size_t max_output,
-                                          size_t *consumed, size_t *produced);
+XXFC_API bool xx_lzhuf_lzhcxp_scan_memory(const uint8_t *input, size_t input_size, size_t max_output, size_t *consumed, size_t *produced);
 
 #ifdef __cplusplus
 }

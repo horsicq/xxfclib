@@ -43,9 +43,7 @@ extern "C" {
  * @param written     Receives the produced byte count (0 on failure).
  * @return true only on a complete decode of the whole image.
  */
-XXFC_API bool xx_lofi_decode_memory(const uint8_t *input, size_t input_size,
-                                    uint8_t *output, size_t output_size,
-                                    size_t *written);
+XXFC_API bool xx_lofi_decode_memory(const uint8_t *input, size_t input_size, uint8_t *output, size_t output_size, size_t *written);
 
 /**
  * @brief Report the image size and container extent without decoding.
@@ -58,9 +56,7 @@ XXFC_API bool xx_lofi_decode_memory(const uint8_t *input, size_t input_size,
  * of container bytes the index accounts for (index end + last index entry).
  * Fails if the image would exceed @p max_output.
  */
-XXFC_API bool xx_lofi_scan_memory(const uint8_t *input, size_t input_size,
-                                  size_t max_output, size_t *consumed,
-                                  size_t *produced);
+XXFC_API bool xx_lofi_scan_memory(const uint8_t *input, size_t input_size, size_t max_output, size_t *consumed, size_t *produced);
 
 #ifdef __cplusplus
 }

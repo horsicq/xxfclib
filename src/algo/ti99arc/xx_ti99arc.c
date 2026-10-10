@@ -35,8 +35,8 @@ typedef struct {
 
 typedef struct {
     const uint8_t *data;
-    uint64_t bits;     /* total bits available */
-    uint64_t bit_pos;  /* next bit to read */
+    uint64_t bits;    /* total bits available */
+    uint64_t bit_pos; /* next bit to read */
     int width;
     int max_code;
     int free_slot;
@@ -102,8 +102,7 @@ static bool xx_ti99_reader_next(xx_ti99_reader *r, int *code)
  * PREFIX of the stream on purpose and a stop at the cap is its success; the
  * strict entry point treats the same stop as a failure.
  */
-static bool xx_ti99_run(const uint8_t *input, size_t input_size, uint8_t *output, size_t cap, bool truncate_ok, size_t *written, bool *complete,
-                        size_t *consumed)
+static bool xx_ti99_run(const uint8_t *input, size_t input_size, uint8_t *output, size_t cap, bool truncate_ok, size_t *written, bool *complete, size_t *consumed)
 {
     xx_ti99_tables *tables = NULL;
     xx_ti99_reader reader;
@@ -297,8 +296,7 @@ bool xx_ti99arc_scan_memory(const uint8_t *input, size_t input_size, size_t max_
     return true;
 }
 
-bool xx_ti99arc_decode_member(const uint8_t *input, size_t input_size, const uint8_t *props, size_t props_size, uint8_t *output, size_t output_size,
-                              size_t *written)
+bool xx_ti99arc_decode_member(const uint8_t *input, size_t input_size, const uint8_t *props, size_t props_size, uint8_t *output, size_t output_size, size_t *written)
 {
     const size_t header = 0x10;
     uint32_t plain_size = 0;

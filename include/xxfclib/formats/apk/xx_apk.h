@@ -40,8 +40,7 @@ struct xx_apk {
     void *native_analysis;
 };
 
-XXFC_API void xx_apk_init(xx_apk *apk, xx_io_device *dev,
-                          int64_t base_address);
+XXFC_API void xx_apk_init(xx_apk *apk, xx_io_device *dev, int64_t base_address);
 XXFC_API xx_apk *xx_apk_create(xx_io_device *dev, int64_t base_address);
 XXFC_API void xx_apk_free(xx_apk *apk);
 XXFC_API void xx_apk_destroy(xx_apk *apk);
@@ -71,8 +70,7 @@ XXFC_API const char *xx_apk_get_dex_name(const xx_apk *apk, size_t index);
 /* Automatically prepares inventory, then verifies decoded size and ZIP CRC.
  * Output data is owned: release with xx_mem_free. Both packed and unpacked
  * sizes must fit limit. Outputs are NULL/0 on failure; no archive path opens. */
-XXFC_API bool xx_apk_read_dex(xx_apk *apk, size_t index, size_t limit,
-    uint8_t **data, size_t *size, xx_pd_struct *pd);
+XXFC_API bool xx_apk_read_dex(xx_apk *apk, size_t index, size_t limit, uint8_t **data, size_t *size, xx_pd_struct *pd);
 
 /* Inventory portable lib/<abi>/lib<name>.so members in ABI/name order.
  * ABI components contain ASCII letters/digits/_/- (up to 63 bytes); library
@@ -82,31 +80,32 @@ XXFC_API bool xx_apk_read_dex(xx_apk *apk, size_t index, size_t limit,
  * are borrowed until APK destruction, independently of ZIP cache cleanup. */
 XXFC_API bool xx_apk_analyze_native_libraries(xx_apk *apk, xx_pd_struct *pd);
 XXFC_API size_t xx_apk_get_native_library_count(const xx_apk *apk);
-XXFC_API const xx_apk_native_library_info *xx_apk_get_native_library(
-    const xx_apk *apk, size_t index);
+XXFC_API const xx_apk_native_library_info *xx_apk_get_native_library(const xx_apk *apk, size_t index);
 XXFC_API size_t xx_apk_get_native_abi_count(const xx_apk *apk);
 XXFC_API const char *xx_apk_get_native_abi(const xx_apk *apk, size_t index);
 /* Exact ABI and filename lookup; never opens an archive-supplied path.
  * Auto-analyzes inventory and verifies ZIP decoded size/CRC. Both packed and
  * unpacked sizes must fit limit. Outputs are NULL/0 on failure; owned data
  * is released with xx_mem_free. This extracts bytes, without loading ELF. */
-XXFC_API bool xx_apk_read_native_library(xx_apk *apk, const char *abi,
-    const char *name, size_t limit, uint8_t **data, size_t *size,
-    xx_pd_struct *pd);
+XXFC_API bool xx_apk_read_native_library(xx_apk *apk, const char *abi, const char *name, size_t limit, uint8_t **data, size_t *size, xx_pd_struct *pd);
 
-static inline Abstractformat *xx_apk_to_format(xx_apk *apk) {
+static inline Abstractformat *xx_apk_to_format(xx_apk *apk)
+{
     return apk ? &apk->zip.format : NULL;
 }
 
-static inline const Abstractformat *xx_apk_to_format_const(const xx_apk *apk) {
+static inline const Abstractformat *xx_apk_to_format_const(const xx_apk *apk)
+{
     return apk ? &apk->zip.format : NULL;
 }
 
-static inline xx_zip *xx_apk_to_zip(xx_apk *apk) {
+static inline xx_zip *xx_apk_to_zip(xx_apk *apk)
+{
     return apk ? &apk->zip : NULL;
 }
 
-static inline const xx_zip *xx_apk_to_zip_const(const xx_apk *apk) {
+static inline const xx_zip *xx_apk_to_zip_const(const xx_apk *apk)
+{
     return apk ? &apk->zip : NULL;
 }
 

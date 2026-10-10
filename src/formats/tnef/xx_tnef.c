@@ -96,7 +96,7 @@ static const char TNEF_LZFU_INIT[] =
 
 typedef struct tnef_member_s {
     char *name;
-    int64_t data_offset;  /* offset into the file buffer; -1 when inline */
+    int64_t data_offset; /* offset into the file buffer; -1 when inline */
     int64_t size;
     uint8_t *inline_data; /* owned; set for the synthetic body member */
 } tnef_member;
@@ -131,33 +131,32 @@ typedef struct tnef_sink_s {
     int64_t *body_size;
 } tnef_sink;
 
-static bool tnef_read_at(xx_io_device *device, int64_t offset, void *buffer,
-                         size_t size) {
+static bool tnef_read_at(xx_io_device *device, int64_t offset, void *buffer, size_t size)
+{
     size_t done = 0U;
-    if (!device || (!buffer && size != 0U) || offset < 0 ||
-        xx_io_seek64(device, offset, SEEK_SET) != 0)
-        return false;
+    if (!device || (!buffer && size != 0U) || offset < 0 || xx_io_seek64(device, offset, SEEK_SET) != 0) return false;
     while (done < size) {
-        ssize_t amount = xx_io_read(device, (uint8_t *)buffer + done,
-                                    size - done);
+        ssize_t amount = xx_io_read(device, (uint8_t *)buffer + done, size - done);
         if (amount <= 0 || (size_t)amount > size - done) return false;
         done += (size_t)amount;
     }
     return true;
 }
 
-static int64_t tnef_pad4(int64_t value) {
+static int64_t tnef_pad4(int64_t value)
+{
     if (value < 0 || value > INT64_MAX - 3) return -1;
     return (value + 3) & ~(int64_t)3;
 }
 
-static bool tnef_is_variable_type(uint16_t base_type) {
-    return base_type == TNEF_PT_STRING8 || base_type == TNEF_PT_UNICODE ||
-           base_type == TNEF_PT_BINARY || base_type == TNEF_PT_OBJECT;
+static bool tnef_is_variable_type(uint16_t base_type)
+{
+    return base_type == TNEF_PT_STRING8 || base_type == TNEF_PT_UNICODE || base_type == TNEF_PT_BINARY || base_type == TNEF_PT_OBJECT;
 }
 
 /* -1 for a type that has no fixed width. */
-static int32_t tnef_fixed_type_size(uint16_t base_type) {
+static int32_t tnef_fixed_type_size(uint16_t base_type)
+{
     switch (base_type) {
         case 0x0002U: return 2;  /* PT_I2 */
         case 0x0003U: return 4;  /* PT_LONG */
@@ -174,19 +173,22 @@ static int32_t tnef_fixed_type_size(uint16_t base_type) {
     }
 }
 
-static void tnef_buf_init(tnef_buf *buf) {
+static void tnef_buf_init(tnef_buf *buf)
+{
     buf->data = NULL;
     buf->size = 0U;
     buf->capacity = 0U;
     buf->failed = false;
 }
 
-static void tnef_buf_cleanup(tnef_buf *buf) {
+static void tnef_buf_cleanup(tnef_buf *buf)
+{
     if (buf->data) xx_mem_free(buf->data);
     tnef_buf_init(buf);
 }
 
-static bool tnef_buf_reserve(tnef_buf *buf, size_t extra) {
+static bool tnef_buf_reserve(tnef_buf *buf, size_t extra)
+{
     size_t needed, capacity;
     uint8_t *grown;
     if (buf->failed) return false;
@@ -214,18 +216,21 @@ static bool tnef_buf_reserve(tnef_buf *buf, size_t extra) {
     return true;
 }
 
-static void tnef_buf_byte(tnef_buf *buf, uint8_t value) {
+static void tnef_buf_byte(tnef_buf *buf, uint8_t value)
+{
     if (!tnef_buf_reserve(buf, 1U)) return;
     buf->data[buf->size++] = value;
 }
 
-static void tnef_buf_bytes(tnef_buf *buf, const uint8_t *values, size_t size) {
+static void tnef_buf_bytes(tnef_buf *buf, const uint8_t *values, size_t size)
+{
     if (size == 0U || !tnef_buf_reserve(buf, size)) return;
     xx_rt_memcpy(buf->data + buf->size, values, size);
     buf->size += size;
 }
 
-static void tnef_buf_utf8(tnef_buf *buf, uint32_t code_point) {
+static void tnef_buf_utf8(tnef_buf *buf, uint32_t code_point)
+{
     if (code_point < 0x80U) {
         tnef_buf_byte(buf, (uint8_t)code_point);
     } else if (code_point < 0x800U) {
@@ -243,7 +248,8 @@ static void tnef_buf_utf8(tnef_buf *buf, uint32_t code_point) {
     }
 }
 
-static bool tnef_word_eq(const uint8_t *word, size_t size, const char *name) {
+static bool tnef_word_eq(const uint8_t *word, size_t size, const char *name)
+{
     size_t length = xx_rt_strlen(name);
     return length == size && xx_rt_memcmp(word, name, size) == 0;
 }
@@ -261,8 +267,8 @@ static bool tnef_word_eq(const uint8_t *word, size_t size, const char *name) {
  * into a 4096-byte ring dictionary preloaded with the fixed RTF preamble and
  * written at its length.  A reference whose offset equals the write pointer
  * ends the stream. */
-static bool tnef_decompress_rtf(const uint8_t *stream, int64_t stream_size,
-                                tnef_buf *output) {
+static bool tnef_decompress_rtf(const uint8_t *stream, int64_t stream_size, tnef_buf *output)
+{
     uint8_t dictionary[TNEF_LZFU_DICTIONARY_SIZE];
     uint32_t compressed_size, raw_size, compression_type;
     int32_t init_size, write;
@@ -274,8 +280,7 @@ static bool tnef_decompress_rtf(const uint8_t *stream, int64_t stream_size,
     if ((int64_t)raw_size > TNEF_MAX_BODY_SIZE) return false;
     if (compression_type == TNEF_LZFU_UNCOMPRESSED) {
         int64_t available = stream_size - 16;
-        int64_t size = (int64_t)raw_size < available ? (int64_t)raw_size
-                                                     : available;
+        int64_t size = (int64_t)raw_size < available ? (int64_t)raw_size : available;
         if (size <= 0) return false;
         tnef_buf_bytes(output, stream + 16, (size_t)size);
         return !output->failed && output->size != 0U;
@@ -299,20 +304,17 @@ static bool tnef_decompress_rtf(const uint8_t *stream, int64_t stream_size,
             if ((control >> bit) & 1U) {
                 uint32_t first, second;
                 int32_t offset, length, index;
-                if (position + 2 > end) return !output->failed &&
-                                                output->size != 0U;
+                if (position + 2 > end) return !output->failed && output->size != 0U;
                 first = stream[position];
                 second = stream[position + 1];
                 position += 2;
                 offset = (int32_t)(((first << 4U) | (second >> 4U)) & 0xFFFU);
                 length = (int32_t)((second & 0x0FU) + 2U);
-                if (offset == write) return !output->failed &&
-                                            output->size != 0U;
+                if (offset == write) return !output->failed && output->size != 0U;
                 for (index = 0; index < length; ++index) {
                     uint8_t byte;
                     if ((int64_t)output->size >= (int64_t)raw_size) break;
-                    byte = dictionary[(offset + index) &
-                                      (TNEF_LZFU_DICTIONARY_SIZE - 1)];
+                    byte = dictionary[(offset + index) & (TNEF_LZFU_DICTIONARY_SIZE - 1)];
                     tnef_buf_byte(output, byte);
                     if (output->failed) return false;
                     dictionary[write] = byte;
@@ -333,23 +335,57 @@ static bool tnef_decompress_rtf(const uint8_t *stream, int64_t stream_size,
 }
 
 /* Destinations whose contents are markup bookkeeping rather than text. */
-static bool tnef_is_skipped_destination(const uint8_t *word, size_t size) {
-    static const char *const names[] = {
-        "fonttbl", "colortbl", "stylesheet", "info", "pict", "object",
-        "header", "footer", "headerl", "headerr", "footerl", "footerr",
-        "generator", "filetbl", "listtable", "listoverridetable", "revtbl",
-        "rsidtbl", "xmlnstbl", "panose", "falt", "fname", "author",
-        "operator", "company", "creatim", "revtim", "printim", "buptim",
-        "title", "subject", "keywords", "comment", "doccomm", "userprops",
-        "themedata", "colorschememapping", "datastore", "latentstyles",
-        "fldinst", "nonshppict"};
+static bool tnef_is_skipped_destination(const uint8_t *word, size_t size)
+{
+    static const char *const names[] = {"fonttbl",
+                                        "colortbl",
+                                        "stylesheet",
+                                        "info",
+                                        "pict",
+                                        "object",
+                                        "header",
+                                        "footer",
+                                        "headerl",
+                                        "headerr",
+                                        "footerl",
+                                        "footerr",
+                                        "generator",
+                                        "filetbl",
+                                        "listtable",
+                                        "listoverridetable",
+                                        "revtbl",
+                                        "rsidtbl",
+                                        "xmlnstbl",
+                                        "panose",
+                                        "falt",
+                                        "fname",
+                                        "author",
+                                        "operator",
+                                        "company",
+                                        "creatim",
+                                        "revtim",
+                                        "printim",
+                                        "buptim",
+                                        "title",
+                                        "subject",
+                                        "keywords",
+                                        "comment",
+                                        "doccomm",
+                                        "userprops",
+                                        "themedata",
+                                        "colorschememapping",
+                                        "datastore",
+                                        "latentstyles",
+                                        "fldinst",
+                                        "nonshppict"};
     size_t index;
     for (index = 0U; index < sizeof(names) / sizeof(names[0]); ++index)
         if (tnef_word_eq(word, size, names[index])) return true;
     return false;
 }
 
-static int tnef_hex_digit(uint8_t c) {
+static int tnef_hex_digit(uint8_t c)
+{
     if (c >= (uint8_t)'0' && c <= (uint8_t)'9') return c - (uint8_t)'0';
     if (c >= (uint8_t)'a' && c <= (uint8_t)'f') return c - (uint8_t)'a' + 10;
     if (c >= (uint8_t)'A' && c <= (uint8_t)'F') return c - (uint8_t)'A' + 10;
@@ -359,8 +395,8 @@ static int tnef_hex_digit(uint8_t c) {
 /* A deliberately small RTF-to-text pass: it keeps literal text and the few
  * control words that carry layout, and drops the rest along with the
  * bookkeeping destinations above.  It is a rendering, not a parser. */
-static void tnef_rtf_to_text(const uint8_t *rtf, int64_t size,
-                             tnef_buf *text) {
+static void tnef_rtf_to_text(const uint8_t *rtf, int64_t size, tnef_buf *text)
+{
     int64_t position = 0;
     int32_t depth = 0, skip_depth = -1;
     int32_t unicode_skip = 1, pending_skip = 0;
@@ -396,8 +432,7 @@ static void tnef_rtf_to_text(const uint8_t *rtf, int64_t size,
                 ++position;
                 continue;
             }
-            if (next == (uint8_t)'\\' || next == (uint8_t)'{' ||
-                next == (uint8_t)'}') {
+            if (next == (uint8_t)'\\' || next == (uint8_t)'{' || next == (uint8_t)'}') {
                 if (!skipping) {
                     if (pending_skip > 0) --pending_skip;
                     else tnef_buf_byte(text, next);
@@ -416,10 +451,7 @@ static void tnef_rtf_to_text(const uint8_t *rtf, int64_t size,
             }
             word_end = position;
             while (word_end < size &&
-                   ((rtf[word_end] >= (uint8_t)'a' &&
-                     rtf[word_end] <= (uint8_t)'z') ||
-                    (rtf[word_end] >= (uint8_t)'A' &&
-                     rtf[word_end] <= (uint8_t)'Z')))
+                   ((rtf[word_end] >= (uint8_t)'a' && rtf[word_end] <= (uint8_t)'z') || (rtf[word_end] >= (uint8_t)'A' && rtf[word_end] <= (uint8_t)'Z')))
                 ++word_end;
             if (word_end == position) {
                 /* an unknown one-character control symbol */
@@ -434,15 +466,12 @@ static void tnef_rtf_to_text(const uint8_t *rtf, int64_t size,
                 negative = true;
                 ++number_end;
             }
-            while (number_end < size && rtf[number_end] >= (uint8_t)'0' &&
-                   rtf[number_end] <= (uint8_t)'9') {
-                if (number < 0x7FFFFFFF)
-                    number = number * 10 + (rtf[number_end] - (uint8_t)'0');
+            while (number_end < size && rtf[number_end] >= (uint8_t)'0' && rtf[number_end] <= (uint8_t)'9') {
+                if (number < 0x7FFFFFFF) number = number * 10 + (rtf[number_end] - (uint8_t)'0');
                 has_number = true;
                 ++number_end;
             }
-            if (number_end < size && rtf[number_end] == (uint8_t)' ')
-                ++number_end;
+            if (number_end < size && rtf[number_end] == (uint8_t)' ') ++number_end;
             position = number_end;
             if (ignorable || tnef_is_skipped_destination(word, word_size)) {
                 if (!skipping) {
@@ -454,30 +483,23 @@ static void tnef_rtf_to_text(const uint8_t *rtf, int64_t size,
             }
             ignorable = false;
             if (skipping) continue;
-            if (tnef_word_eq(word, word_size, "par") ||
-                tnef_word_eq(word, word_size, "line") ||
-                tnef_word_eq(word, word_size, "sect")) {
+            if (tnef_word_eq(word, word_size, "par") || tnef_word_eq(word, word_size, "line") || tnef_word_eq(word, word_size, "sect")) {
                 tnef_buf_byte(text, (uint8_t)'\r');
             } else if (tnef_word_eq(word, word_size, "tab")) {
                 tnef_buf_byte(text, (uint8_t)'\t');
             } else if (tnef_word_eq(word, word_size, "uc")) {
-                if (has_number && !negative && number >= 0 && number <= 0xFF)
-                    unicode_skip = (int32_t)number;
+                if (has_number && !negative && number >= 0 && number <= 0xFF) unicode_skip = (int32_t)number;
             } else if (tnef_word_eq(word, word_size, "u")) {
                 if (has_number) {
                     int64_t code_point = negative ? (65536 - number) : number;
-                    if (code_point > 0 && code_point <= 0x10FFFF)
-                        tnef_buf_utf8(text, (uint32_t)code_point);
+                    if (code_point > 0 && code_point <= 0x10FFFF) tnef_buf_utf8(text, (uint32_t)code_point);
                     pending_skip = unicode_skip;
                 }
-            } else if (tnef_word_eq(word, word_size, "lquote") ||
-                       tnef_word_eq(word, word_size, "rquote")) {
+            } else if (tnef_word_eq(word, word_size, "lquote") || tnef_word_eq(word, word_size, "rquote")) {
                 tnef_buf_byte(text, (uint8_t)'\'');
-            } else if (tnef_word_eq(word, word_size, "ldblquote") ||
-                       tnef_word_eq(word, word_size, "rdblquote")) {
+            } else if (tnef_word_eq(word, word_size, "ldblquote") || tnef_word_eq(word, word_size, "rdblquote")) {
                 tnef_buf_byte(text, (uint8_t)'"');
-            } else if (tnef_word_eq(word, word_size, "emdash") ||
-                       tnef_word_eq(word, word_size, "endash")) {
+            } else if (tnef_word_eq(word, word_size, "emdash") || tnef_word_eq(word, word_size, "endash")) {
                 tnef_buf_byte(text, (uint8_t)'-');
             } else if (tnef_word_eq(word, word_size, "bullet")) {
                 tnef_buf_byte(text, (uint8_t)'*');
@@ -511,12 +533,13 @@ static void tnef_rtf_to_text(const uint8_t *rtf, int64_t size,
     }
 }
 
-static uint8_t tnef_lower(uint8_t c) {
+static uint8_t tnef_lower(uint8_t c)
+{
     return (c >= (uint8_t)'A' && c <= (uint8_t)'Z') ? (uint8_t)(c + 32U) : c;
 }
 
-static bool tnef_name_eq(const uint8_t *name, size_t size,
-                         const char *expected) {
+static bool tnef_name_eq(const uint8_t *name, size_t size, const char *expected)
+{
     size_t length = xx_rt_strlen(expected);
     size_t index;
     if (length != size) return false;
@@ -525,14 +548,13 @@ static bool tnef_name_eq(const uint8_t *name, size_t size,
     return true;
 }
 
-static void tnef_replace_entity(tnef_buf *buf, const char *entity,
-                                uint8_t replacement) {
+static void tnef_replace_entity(tnef_buf *buf, const char *entity, uint8_t replacement)
+{
     size_t length = xx_rt_strlen(entity);
     size_t read = 0U, write = 0U;
     if (length == 0U || buf->failed) return;
     while (read < buf->size) {
-        if (buf->size - read >= length &&
-            xx_rt_memcmp(buf->data + read, entity, length) == 0) {
+        if (buf->size - read >= length && xx_rt_memcmp(buf->data + read, entity, length) == 0) {
             buf->data[write++] = replacement;
             read += length;
         } else {
@@ -544,8 +566,8 @@ static void tnef_replace_entity(tnef_buf *buf, const char *entity,
 
 /* PR_BODY_HTML is real HTML rather than RTF-encapsulated HTML, so it gets
  * its own equally small rendering. */
-static void tnef_html_to_text(const uint8_t *html, int64_t size,
-                              tnef_buf *text) {
+static void tnef_html_to_text(const uint8_t *html, int64_t size, tnef_buf *text)
+{
     int64_t position = 0;
     bool in_script = false;
     while (position < size && !text->failed) {
@@ -564,23 +586,13 @@ static void tnef_html_to_text(const uint8_t *html, int64_t size,
                 --tag_size;
             }
             name_size = 0U;
-            while (name_size < tag_size && tag[name_size] != (uint8_t)' ')
-                ++name_size;
-            if (tnef_name_eq(tag, name_size, "script") ||
-                tnef_name_eq(tag, name_size, "style"))
-                in_script = !closing;
-            if (!in_script &&
-                (tnef_name_eq(tag, name_size, "br") ||
-                 tnef_name_eq(tag, name_size, "p") ||
-                 tnef_name_eq(tag, name_size, "div") ||
-                 tnef_name_eq(tag, name_size, "tr") ||
-                 tnef_name_eq(tag, name_size, "li"))) {
+            while (name_size < tag_size && tag[name_size] != (uint8_t)' ') ++name_size;
+            if (tnef_name_eq(tag, name_size, "script") || tnef_name_eq(tag, name_size, "style")) in_script = !closing;
+            if (!in_script && (tnef_name_eq(tag, name_size, "br") || tnef_name_eq(tag, name_size, "p") || tnef_name_eq(tag, name_size, "div") ||
+                               tnef_name_eq(tag, name_size, "tr") || tnef_name_eq(tag, name_size, "li"))) {
                 /* HTML collapses run-in whitespace, so a line does not keep
                  * the spaces that only separated it from the breaking tag. */
-                while (text->size != 0U &&
-                       (text->data[text->size - 1U] == (uint8_t)' ' ||
-                        text->data[text->size - 1U] == (uint8_t)'\t'))
-                    --text->size;
+                while (text->size != 0U && (text->data[text->size - 1U] == (uint8_t)' ' || text->data[text->size - 1U] == (uint8_t)'\t')) --text->size;
                 tnef_buf_byte(text, (uint8_t)'\r');
                 tnef_buf_byte(text, (uint8_t)'\n');
             }
@@ -605,7 +617,8 @@ static void tnef_html_to_text(const uint8_t *html, int64_t size,
 /* Attachment names travel in from the message, so the filesystem-facing form
  * folds the reserved set to '_' and refuses a name that would leave the
  * output directory. */
-static char *tnef_make_name(const uint8_t *bytes, size_t size) {
+static char *tnef_make_name(const uint8_t *bytes, size_t size)
+{
     char *name;
     size_t index, output = 0U;
     for (index = 0U; index < size; ++index)
@@ -616,21 +629,18 @@ static char *tnef_make_name(const uint8_t *bytes, size_t size) {
     if (!name) return NULL;
     for (index = 0U; index < size; ++index) {
         uint8_t c = bytes[index];
-        bool reserved = c < 0x20U || c == (uint8_t)'<' || c == (uint8_t)'>' ||
-                        c == (uint8_t)':' || c == (uint8_t)'"' ||
-                        c == (uint8_t)'/' || c == (uint8_t)'\\' ||
-                        c == (uint8_t)'|' || c == (uint8_t)'?' ||
-                        c == (uint8_t)'*';
+        bool reserved = c < 0x20U || c == (uint8_t)'<' || c == (uint8_t)'>' || c == (uint8_t)':' || c == (uint8_t)'"' || c == (uint8_t)'/' || c == (uint8_t)'\\' ||
+                        c == (uint8_t)'|' || c == (uint8_t)'?' || c == (uint8_t)'*';
         name[output++] = reserved ? '_' : (char)c;
     }
-    while (output != 0U &&
-           (name[output - 1U] == ' ' || name[output - 1U] == '.')) --output;
+    while (output != 0U && (name[output - 1U] == ' ' || name[output - 1U] == '.')) --output;
     if (output == 0U) name[output++] = '_';
     name[output] = 0;
     return name;
 }
 
-static char *tnef_default_name(size_t index) {
+static char *tnef_default_name(size_t index)
+{
     static const char prefix[] = "attachment";
     char digits[24];
     char *name;
@@ -644,49 +654,42 @@ static char *tnef_default_name(size_t index) {
     name = (char *)xx_mem_alloc(prefix_size + count + 1U);
     if (!name) return NULL;
     xx_rt_memcpy(name, prefix, prefix_size);
-    for (at = 0U; at < count; ++at)
-        name[prefix_size + at] = digits[count - 1U - at];
+    for (at = 0U; at < count; ++at) name[prefix_size + at] = digits[count - 1U - at];
     name[prefix_size + count] = 0;
     return name;
 }
 
-static bool tnef_safe_output_name(const char *name) {
+static bool tnef_safe_output_name(const char *name)
+{
     const char *at;
-    if (!name || !name[0] || name[0] == '/' || name[0] == '\\' ||
-        name[1] == ':') return false;
+    if (!name || !name[0] || name[0] == '/' || name[0] == '\\' || name[1] == ':') return false;
     for (at = name; *at; ++at) {
         unsigned char c = (unsigned char)*at;
-        if (c == ':' || c == '<' || c == '>' || c == '"' || c == '|' ||
-            c == '?' || c == '*' || c == '/' || c == '\\' || c < 0x20U)
-            return false;
+        if (c == ':' || c == '<' || c == '>' || c == '"' || c == '|' || c == '?' || c == '*' || c == '/' || c == '\\' || c < 0x20U) return false;
     }
-    if (name[0] == '.' && (!name[1] || (name[1] == '.' && !name[2])))
-        return false;
+    if (name[0] == '.' && (!name[1] || (name[1] == '.' && !name[2]))) return false;
     return true;
 }
 
-static void tnef_stream_free(void *opaque) {
+static void tnef_stream_free(void *opaque)
+{
     tnef_stream *stream = (tnef_stream *)opaque;
     size_t index;
     if (!stream) return;
     for (index = 0U; index < stream->count; ++index) {
         if (stream->items[index].name) xx_str_free(stream->items[index].name);
-        if (stream->items[index].inline_data)
-            xx_mem_free(stream->items[index].inline_data);
+        if (stream->items[index].inline_data) xx_mem_free(stream->items[index].inline_data);
     }
     if (stream->items) xx_mem_free(stream->items);
     if (stream->data) xx_mem_free(stream->data);
     xx_mem_free(stream);
 }
 
-static bool tnef_add_member(tnef_stream *stream, const tnef_member *member) {
+static bool tnef_add_member(tnef_stream *stream, const tnef_member *member)
+{
     tnef_member *grown;
-    if (!stream || !member || stream->count >= TNEF_MAX_MEMBERS ||
-        stream->count > SIZE_MAX / sizeof(*grown) - 1U)
-        return false;
-    grown = (tnef_member *)xx_mem_realloc(stream->items,
-                                          (stream->count + 1U) *
-                                              sizeof(*grown));
+    if (!stream || !member || stream->count >= TNEF_MAX_MEMBERS || stream->count > SIZE_MAX / sizeof(*grown) - 1U) return false;
+    grown = (tnef_member *)xx_mem_realloc(stream->items, (stream->count + 1U) * sizeof(*grown));
     if (!grown) return false;
     stream->items = grown;
     stream->items[stream->count++] = *member;
@@ -696,13 +699,12 @@ static bool tnef_add_member(tnef_stream *stream, const tnef_member *member) {
 /* A faithful walk of the MAPI property stream: the offsets only stay in step
  * with the file if every property is measured, including the ones nothing
  * here is interested in. */
-static bool tnef_scan_properties(const uint8_t *stream, int64_t stream_size,
-                                 const tnef_sink *sink) {
+static bool tnef_scan_properties(const uint8_t *stream, int64_t stream_size, const tnef_sink *sink)
+{
     int64_t property_count, position, property;
     if (stream_size < 4) return false;
     property_count = (int64_t)xx_data_get_u32(stream, 4, 0, false);
-    if (property_count < 0 || property_count > TNEF_MAX_VALUE_COUNT)
-        return false;
+    if (property_count < 0 || property_count > TNEF_MAX_VALUE_COUNT) return false;
     position = 4;
     for (property = 0; property < property_count; ++property) {
         uint16_t type, id, base_type;
@@ -764,37 +766,26 @@ static bool tnef_scan_properties(const uint8_t *stream, int64_t stream_size,
                     value_offset += 16;
                     value_size -= 16;
                 }
-                if (id == TNEF_PR_ATTACH_DATA_OBJ && sink->data_offset &&
-                    sink->data_size && *sink->data_offset < 0) {
+                if (id == TNEF_PR_ATTACH_DATA_OBJ && sink->data_offset && sink->data_size && *sink->data_offset < 0) {
                     *sink->data_offset = value_offset;
                     *sink->data_size = value_size;
-                } else if (id == TNEF_PR_ATTACH_LONG_FILENAME &&
-                           sink->file_name && !*sink->file_name &&
-                           value_size > 0) {
-                    *sink->file_name = tnef_make_name(stream + value_offset,
-                                                      (size_t)value_size);
-                } else if (id == TNEF_PR_RTF_COMPRESSED && sink->rtf &&
-                           !*sink->rtf && value_size > 0 &&
-                           value_size <= TNEF_MAX_BODY_SOURCE_SIZE) {
+                } else if (id == TNEF_PR_ATTACH_LONG_FILENAME && sink->file_name && !*sink->file_name && value_size > 0) {
+                    *sink->file_name = tnef_make_name(stream + value_offset, (size_t)value_size);
+                } else if (id == TNEF_PR_RTF_COMPRESSED && sink->rtf && !*sink->rtf && value_size > 0 && value_size <= TNEF_MAX_BODY_SOURCE_SIZE) {
                     *sink->rtf = stream + value_offset;
                     *sink->rtf_size = value_size;
-                } else if ((id == TNEF_PR_BODY_HTML ||
-                            id == TNEF_PR_BODY_HTML_A) && sink->html &&
-                           !*sink->html && value_size > 0 &&
+                } else if ((id == TNEF_PR_BODY_HTML || id == TNEF_PR_BODY_HTML_A) && sink->html && !*sink->html && value_size > 0 &&
                            value_size <= TNEF_MAX_BODY_SOURCE_SIZE) {
                     *sink->html = stream + value_offset;
                     *sink->html_size = value_size;
-                } else if (id == TNEF_PR_BODY && sink->body && !*sink->body &&
-                           value_size > 0 &&
-                           value_size <= TNEF_MAX_BODY_SOURCE_SIZE) {
+                } else if (id == TNEF_PR_BODY && sink->body && !*sink->body && value_size > 0 && value_size <= TNEF_MAX_BODY_SOURCE_SIZE) {
                     *sink->body = stream + value_offset;
                     *sink->body_size = value_size;
                 }
                 padded = tnef_pad4(length);
                 if (padded < 0) return true;
                 position += padded;
-            } else if (base_type == TNEF_PT_UNSPECIFIED ||
-                       base_type == TNEF_PT_NULL) {
+            } else if (base_type == TNEF_PT_UNSPECIFIED || base_type == TNEF_PT_NULL) {
                 /* no payload */
             } else {
                 /* An unknown fixed width makes the rest of the stream
@@ -806,7 +797,8 @@ static bool tnef_scan_properties(const uint8_t *stream, int64_t stream_size,
     return true;
 }
 
-static bool tnef_parse(Abstractformat *format, tnef_stream **result) {
+static bool tnef_parse(Abstractformat *format, tnef_stream **result)
+{
     tnef_stream *stream = NULL;
     uint8_t *data = NULL;
     int64_t total, size, offset;
@@ -819,17 +811,15 @@ static bool tnef_parse(Abstractformat *format, tnef_stream **result) {
     size_t index;
     tnef_buf body_text;
     unsigned valid_attributes = 0U;
-    if (!format || !format->device || !result || format->base_address < 0)
-        return false;
+    if (!format || !format->device || !result || format->base_address < 0) return false;
     total = xx_io_total_size(format->device);
     if (total < format->base_address) return false;
     size = total - format->base_address;
     if (size < TNEF_HEADER_SIZE || size > TNEF_MAX_INPUT) return false;
     data = (uint8_t *)xx_mem_alloc((size_t)size);
     if (!data) return false;
-    if (!tnef_read_at(format->device, format->base_address, data,
-                      (size_t)size) ||
-        xx_data_get_u32(data, 4, 0, false) != TNEF_SIGNATURE || xx_data_get_u16(data + 4U, 2, 0, false) == 0U) {
+    if (!tnef_read_at(format->device, format->base_address, data, (size_t)size) || xx_data_get_u32(data, 4, 0, false) != TNEF_SIGNATURE ||
+        xx_data_get_u16(data + 4U, 2, 0, false) == 0U) {
         xx_mem_free(data);
         return false;
     }
@@ -855,26 +845,22 @@ static bool tnef_parse(Abstractformat *format, tnef_stream **result) {
         if (raw_length > (uint32_t)INT32_MAX) break;
         length = (int64_t)raw_length;
         body_offset = offset + TNEF_ATTRIBUTE_HEADER_SIZE;
-        if ((level != 1U && level != 2U) ||
-            body_offset > size || length > size - body_offset) break;
+        if ((level != 1U && level != 2U) || body_offset > size || length > size - body_offset) break;
         /* The trailing checksum is the anchor: an attribute whose data does
          * not sum to it ends the walk rather than being trusted. */
         checksum_offset = body_offset + length;
         if (checksum_offset + TNEF_CHECKSUM_SIZE > size) break;
         for (at = 0; at < length; ++at) sum += data[body_offset + at];
-        if ((uint16_t)(sum & 0xFFFFU) != xx_data_get_u16(data + checksum_offset, 2, 0, false))
-            break;
+        if ((uint16_t)(sum & 0xFFFFU) != xx_data_get_u16(data + checksum_offset, 2, 0, false)) break;
         ++valid_attributes;
         offset = checksum_offset + TNEF_CHECKSUM_SIZE;
         if (level == 1U) {
             /* Message level: only the body sources are read here. */
             uint16_t att_name = (uint16_t)(att_id & 0xFFFFU);
-            if (att_name == TNEF_ATT_NAME_BODY && !plain_body && length > 0 &&
-                length <= TNEF_MAX_BODY_SOURCE_SIZE) {
+            if (att_name == TNEF_ATT_NAME_BODY && !plain_body && length > 0 && length <= TNEF_MAX_BODY_SOURCE_SIZE) {
                 plain_body = data + body_offset;
                 plain_body_size = length;
-            } else if (att_name == TNEF_ATT_NAME_MAPI_PROPS && length > 0 &&
-                       length <= TNEF_MAX_ATTRIBUTE_SIZE) {
+            } else if (att_name == TNEF_ATT_NAME_MAPI_PROPS && length > 0 && length <= TNEF_MAX_ATTRIBUTE_SIZE) {
                 const uint8_t *rtf = NULL, *html = NULL, *body = NULL;
                 int64_t rtf_length = 0, html_length = 0, body_length = 0;
                 tnef_sink sink;
@@ -914,8 +900,7 @@ static bool tnef_parse(Abstractformat *format, tnef_stream **result) {
         }
         if (att_id == TNEF_ATT_ATTACH_TITLE) {
             if (length > 0) {
-                char *title = tnef_make_name(data + body_offset,
-                                             (size_t)length);
+                char *title = tnef_make_name(data + body_offset, (size_t)length);
                 if (!title) goto fail;
                 if (current.name) xx_str_free(current.name);
                 current.name = title;
@@ -933,8 +918,7 @@ static bool tnef_parse(Abstractformat *format, tnef_stream **result) {
                 sink.data_size = &value_size;
                 sink.file_name = &long_name;
                 if (tnef_scan_properties(data + body_offset, length, &sink)) {
-                    if (current.data_offset < 0 && value_offset >= 0 &&
-                        value_size >= 0) {
+                    if (current.data_offset < 0 && value_offset >= 0 && value_size >= 0) {
                         current.data_offset = body_offset + value_offset;
                         current.size = value_size;
                     }
@@ -972,27 +956,20 @@ static bool tnef_parse(Abstractformat *format, tnef_stream **result) {
     if (rtf_source) {
         tnef_buf rtf;
         tnef_buf_init(&rtf);
-        if (tnef_decompress_rtf(rtf_source, rtf_size, &rtf))
-            tnef_rtf_to_text(rtf.data, (int64_t)rtf.size, &body_text);
+        if (tnef_decompress_rtf(rtf_source, rtf_size, &rtf)) tnef_rtf_to_text(rtf.data, (int64_t)rtf.size, &body_text);
         tnef_buf_cleanup(&rtf);
     }
-    if (body_text.size == 0U && html_source)
-        tnef_html_to_text(html_source, html_size, &body_text);
-    if (body_text.size == 0U && mapi_body)
-        tnef_buf_bytes(&body_text, mapi_body, (size_t)mapi_body_size);
-    if (body_text.size == 0U && plain_body)
-        tnef_buf_bytes(&body_text, plain_body, (size_t)plain_body_size);
+    if (body_text.size == 0U && html_source) tnef_html_to_text(html_source, html_size, &body_text);
+    if (body_text.size == 0U && mapi_body) tnef_buf_bytes(&body_text, mapi_body, (size_t)mapi_body_size);
+    if (body_text.size == 0U && plain_body) tnef_buf_bytes(&body_text, plain_body, (size_t)plain_body_size);
     if (body_text.failed) {
         tnef_buf_cleanup(&body_text);
         goto fail;
     }
     /* A rendering that ends in the RTF stream's terminating NUL is trimmed:
      * the NUL belongs to the container, not to the text. */
-    while (body_text.size != 0U && body_text.data[body_text.size - 1U] == 0U)
-        --body_text.size;
-    if (body_text.size != 0U &&
-        (int64_t)body_text.size <= TNEF_MAX_BODY_SIZE &&
-        stream->count < TNEF_MAX_MEMBERS) {
+    while (body_text.size != 0U && body_text.data[body_text.size - 1U] == 0U) --body_text.size;
+    if (body_text.size != 0U && (int64_t)body_text.size <= TNEF_MAX_BODY_SIZE && stream->count < TNEF_MAX_MEMBERS) {
         tnef_member body;
         static const char base_name[] = "Content.txt";
         char *name = (char *)xx_mem_alloc(sizeof(base_name));
@@ -1031,17 +1008,16 @@ fail:
     return false;
 }
 
-static bool tnef_copy_options(xx_list_s *destination, const xx_list_s *source) {
+static bool tnef_copy_options(xx_list_s *destination, const xx_list_s *source)
+{
     size_t index;
     if (!source) return true;
     for (index = 0U; index < source->count; ++index) {
-        const xx_meta *original =
-            (const xx_meta *)xx_list_at((const xx_list_t *)source, index);
+        const xx_meta *original = (const xx_meta *)xx_list_at((const xx_list_t *)source, index);
         xx_meta copy;
         if (!original) continue;
         xx_meta_init(&copy, original->meta_id);
-        if (!xx_var_copy(&copy.var, &original->var) ||
-            !xx_list_append(destination, &copy)) {
+        if (!xx_var_copy(&copy.var, &original->var) || !xx_list_append(destination, &copy)) {
             xx_meta_cleanup(&copy);
             return false;
         }
@@ -1049,40 +1025,32 @@ static bool tnef_copy_options(xx_list_s *destination, const xx_list_s *source) {
     return true;
 }
 
-static const xx_var *tnef_option(const xx_list_s *options, uint32_t id) {
+static const xx_var *tnef_option(const xx_list_s *options, uint32_t id)
+{
     size_t index;
     if (!options) return NULL;
     for (index = 0U; index < options->count; ++index) {
-        const xx_meta *meta =
-            (const xx_meta *)xx_list_at((const xx_list_t *)options, index);
+        const xx_meta *meta = (const xx_meta *)xx_list_at((const xx_list_t *)options, index);
         if (meta && meta->meta_id == id) return &meta->var;
     }
     return NULL;
 }
 
-static bool tnef_set_record(xx_archive_record *record,
-                            const tnef_member *member, int64_t base_address) {
+static bool tnef_set_record(xx_archive_record *record, const tnef_member *member, int64_t base_address)
+{
     xx_archive_record_cleanup(record);
     xx_archive_record_init(record);
-    record->header_offset = member->inline_data
-                                ? 0
-                                : base_address + member->data_offset;
+    record->header_offset = member->inline_data ? 0 : base_address + member->data_offset;
     record->header_size = 0;
     record->data_offset = record->header_offset;
     record->compressed_size = member->size;
-    return xx_archive_record_set_original_name(record, member->name) &&
-           xx_archive_record_set_meta_u64(record, XX_META_ID_COMPRESSED_SIZE,
-                                          (uint64_t)member->size) &&
-           xx_archive_record_set_meta_u64(record, XX_META_ID_UNCOMPRESSED_SIZE,
-                                          (uint64_t)member->size) &&
-           xx_archive_record_set_meta_u64(record, XX_META_ID_COMPRESSION_METHOD,
-                                          0U) &&
-           xx_archive_record_set_meta_bool(record, XX_META_ID_IS_FOLDER,
-                                           false);
+    return xx_archive_record_set_original_name(record, member->name) && xx_archive_record_set_meta_u64(record, XX_META_ID_COMPRESSED_SIZE, (uint64_t)member->size) &&
+           xx_archive_record_set_meta_u64(record, XX_META_ID_UNCOMPRESSED_SIZE, (uint64_t)member->size) &&
+           xx_archive_record_set_meta_u64(record, XX_META_ID_COMPRESSION_METHOD, 0U) && xx_archive_record_set_meta_bool(record, XX_META_ID_IS_FOLDER, false);
 }
 
-void xx_tnef_init(xx_tnef *archive, xx_io_device *device,
-                  int64_t base_address) {
+void xx_tnef_init(xx_tnef *archive, xx_io_device *device, int64_t base_address)
+{
     if (!archive) return;
     xx_mem_zero(archive, sizeof(*archive));
     xx_format_init(&archive->format, device, base_address);
@@ -1095,37 +1063,35 @@ void xx_tnef_init(xx_tnef *archive, xx_io_device *device,
     archive->format.check_is_valid = xx_tnef_check_is_valid;
     archive->format.handle_base_info = xx_tnef_handle_base_info;
     archive->format.get_format_size = xx_tnef_get_format_size;
-    archive->format.get_number_of_archive_records =
-        xx_tnef_get_number_of_archive_records;
-    archive->format.create_archive_records_reading =
-        xx_tnef_create_archive_records_reading;
-    archive->format.get_current_archive_record =
-        xx_tnef_get_current_archive_record;
-    archive->format.unpack_current_archive_record =
-        xx_tnef_unpack_current_archive_record;
-    archive->format.archive_record_move_to_next =
-        xx_tnef_archive_record_move_to_next;
-    archive->format.free_archive_records_reading =
-        xx_tnef_free_archive_records_reading;
+    archive->format.get_number_of_archive_records = xx_tnef_get_number_of_archive_records;
+    archive->format.create_archive_records_reading = xx_tnef_create_archive_records_reading;
+    archive->format.get_current_archive_record = xx_tnef_get_current_archive_record;
+    archive->format.unpack_current_archive_record = xx_tnef_unpack_current_archive_record;
+    archive->format.archive_record_move_to_next = xx_tnef_archive_record_move_to_next;
+    archive->format.free_archive_records_reading = xx_tnef_free_archive_records_reading;
 }
 
-xx_tnef *xx_tnef_create(xx_io_device *device, int64_t base_address) {
+xx_tnef *xx_tnef_create(xx_io_device *device, int64_t base_address)
+{
     xx_tnef *archive = (xx_tnef *)xx_mem_alloc(sizeof(*archive));
     if (archive) xx_tnef_init(archive, device, base_address);
     return archive;
 }
 
-void xx_tnef_destroy(xx_tnef *archive) {
+void xx_tnef_destroy(xx_tnef *archive)
+{
     if (archive) xx_format_cleanup_extra_parameters(&archive->format);
 }
 
-void xx_tnef_free(xx_tnef *archive) {
+void xx_tnef_free(xx_tnef *archive)
+{
     if (!archive) return;
     xx_tnef_destroy(archive);
     xx_mem_free(archive);
 }
 
-bool xx_tnef_check_is_valid(Abstractformat *format, xx_pd_struct *pd) {
+bool xx_tnef_check_is_valid(Abstractformat *format, xx_pd_struct *pd)
+{
     tnef_stream *stream;
     (void)pd;
     if (!tnef_parse(format, &stream)) return false;
@@ -1133,7 +1099,8 @@ bool xx_tnef_check_is_valid(Abstractformat *format, xx_pd_struct *pd) {
     return true;
 }
 
-bool xx_tnef_handle_base_info(Abstractformat *format, xx_pd_struct *pd) {
+bool xx_tnef_handle_base_info(Abstractformat *format, xx_pd_struct *pd)
+{
     tnef_stream *stream;
     xx_tnef *archive;
     (void)pd;
@@ -1148,21 +1115,18 @@ bool xx_tnef_handle_base_info(Abstractformat *format, xx_pd_struct *pd) {
     return true;
 }
 
-int64_t xx_tnef_get_format_size(Abstractformat *format, xx_pd_struct *pd) {
-    return format && (format->base_info_handled ||
-                      xx_tnef_handle_base_info(format, pd))
-               ? format->format_size : -1;
+int64_t xx_tnef_get_format_size(Abstractformat *format, xx_pd_struct *pd)
+{
+    return format && (format->base_info_handled || xx_tnef_handle_base_info(format, pd)) ? format->format_size : -1;
 }
 
-uint64_t xx_tnef_get_number_of_archive_records(Abstractformat *format,
-                                               xx_pd_struct *pd) {
-    return format && (format->base_info_handled ||
-                      xx_tnef_handle_base_info(format, pd))
-               ? ((xx_tnef *)format)->number_of_records : 0U;
+uint64_t xx_tnef_get_number_of_archive_records(Abstractformat *format, xx_pd_struct *pd)
+{
+    return format && (format->base_info_handled || xx_tnef_handle_base_info(format, pd)) ? ((xx_tnef *)format)->number_of_records : 0U;
 }
 
-xx_archive_record_state *xx_tnef_create_archive_records_reading(
-    Abstractformat *format, const xx_list_s *options, xx_pd_struct *pd) {
+xx_archive_record_state *xx_tnef_create_archive_records_reading(Abstractformat *format, const xx_list_s *options, xx_pd_struct *pd)
+{
     tnef_stream *stream;
     xx_archive_record_state *state;
     (void)pd;
@@ -1181,8 +1145,7 @@ xx_archive_record_state *xx_tnef_create_archive_records_reading(
         return NULL;
     }
     if (stream->count == 0U) return state;
-    if (!tnef_set_record(&state->current_record, &stream->items[0],
-                         format->base_address)) {
+    if (!tnef_set_record(&state->current_record, &stream->items[0], format->base_address)) {
         xx_archive_record_state_free(state);
         return NULL;
     }
@@ -1190,33 +1153,26 @@ xx_archive_record_state *xx_tnef_create_archive_records_reading(
     return state;
 }
 
-const xx_archive_record *xx_tnef_get_current_archive_record(
-    Abstractformat *format, xx_archive_record_state *state) {
-    return format && state && state->format == format && state->has_record
-               ? &state->current_record : NULL;
+const xx_archive_record *xx_tnef_get_current_archive_record(Abstractformat *format, xx_archive_record_state *state)
+{
+    return format && state && state->format == format && state->has_record ? &state->current_record : NULL;
 }
 
-bool xx_tnef_archive_record_move_to_next(Abstractformat *format,
-                                         xx_archive_record_state *state,
-                                         xx_pd_struct *pd) {
+bool xx_tnef_archive_record_move_to_next(Abstractformat *format, xx_archive_record_state *state, xx_pd_struct *pd)
+{
     tnef_stream *stream;
     (void)pd;
-    if (!format || !state || state->format != format ||
-        !(stream = (tnef_stream *)state->internal_state) ||
-        ++stream->index >= stream->count) {
+    if (!format || !state || state->format != format || !(stream = (tnef_stream *)state->internal_state) || ++stream->index >= stream->count) {
         if (state) state->has_record = false;
         return false;
     }
     ++state->current_index;
-    state->has_record = tnef_set_record(&state->current_record,
-                                        &stream->items[stream->index],
-                                        format->base_address);
+    state->has_record = tnef_set_record(&state->current_record, &stream->items[stream->index], format->base_address);
     return state->has_record;
 }
 
-bool xx_tnef_unpack_current_archive_record(Abstractformat *format,
-                                           xx_archive_record_state *state,
-                                           xx_pd_struct *pd) {
+bool xx_tnef_unpack_current_archive_record(Abstractformat *format, xx_archive_record_state *state, xx_pd_struct *pd)
+{
     tnef_stream *stream;
     tnef_member *member;
     const xx_var *path_option;
@@ -1227,36 +1183,28 @@ bool xx_tnef_unpack_current_archive_record(Abstractformat *format,
     size_t payload_size, written = 0U;
     bool result = false;
     bool created = false;
-    if (!format || !state || state->format != format || !state->has_record ||
-        !(stream = (tnef_stream *)state->internal_state) ||
-        stream->index >= stream->count || (pd && xx_pd_is_stopped(pd)))
+    if (!format || !state || state->format != format || !state->has_record || !(stream = (tnef_stream *)state->internal_state) || stream->index >= stream->count ||
+        (pd && xx_pd_is_stopped(pd)))
         return false;
     member = &stream->items[stream->index];
-    if (!tnef_safe_output_name(member->name) || member->size < 0 ||
-        (uint64_t)member->size > (uint64_t)SIZE_MAX) return false;
+    if (!tnef_safe_output_name(member->name) || member->size < 0 || (uint64_t)member->size > (uint64_t)SIZE_MAX) return false;
     payload_size = (size_t)member->size;
     if (member->inline_data) {
         payload = member->inline_data;
     } else {
-        if (member->data_offset < 0 || member->data_offset > stream->size ||
-            member->size > stream->size - member->data_offset) return false;
+        if (member->data_offset < 0 || member->data_offset > stream->size || member->size > stream->size - member->data_offset) return false;
         payload = stream->data + member->data_offset;
     }
     path_option = tnef_option(&state->options, XX_META_ID_OPT_UNPACK_PATH);
     if (!path_option) return true;
-    if (path_option->type == XX_VAR_TYPE_STRING ||
-        path_option->type == XX_VAR_TYPE_STRING_VIEW)
-        base = xx_var_get_str(path_option);
-    else if (path_option->type == XX_VAR_TYPE_WSTRING ||
-             path_option->type == XX_VAR_TYPE_WSTRING_VIEW) {
+    if (path_option->type == XX_VAR_TYPE_STRING || path_option->type == XX_VAR_TYPE_STRING_VIEW) base = xx_var_get_str(path_option);
+    else if (path_option->type == XX_VAR_TYPE_WSTRING || path_option->type == XX_VAR_TYPE_WSTRING_VIEW) {
         owned_base = xx_str_unicode_to_utf8(xx_var_get_wstr(path_option));
         base = owned_base;
     }
     if (!base) goto done;
-    path = (base[0] && base[xx_str_len(base) - 1U] != '/' &&
-            base[xx_str_len(base) - 1U] != '\\')
-               ? xx_str_concat3(base, "/", member->name)
-               : xx_str_concat(base, member->name);
+    path = (base[0] && base[xx_str_len(base) - 1U] != '/' && base[xx_str_len(base) - 1U] != '\\') ? xx_str_concat3(base, "/", member->name)
+                                                                                                  : xx_str_concat(base, member->name);
     if (!path || !xx_store_create_dirs_a(path, false)) goto done;
     {
         xx_io_device *destination = xx_io_file_open(path, "wb");
@@ -1264,8 +1212,7 @@ bool xx_tnef_unpack_current_archive_record(Abstractformat *format,
         if (!destination) goto done;
         result = true;
         while (written < payload_size) {
-            ssize_t amount = xx_io_write(destination, payload + written,
-                                         payload_size - written);
+            ssize_t amount = xx_io_write(destination, payload + written, payload_size - written);
             if (amount <= 0 || (size_t)amount > payload_size - written) {
                 result = false;
                 break;
@@ -1281,8 +1228,8 @@ done:
     return result;
 }
 
-void xx_tnef_free_archive_records_reading(Abstractformat *format,
-                                          xx_archive_record_state *state) {
+void xx_tnef_free_archive_records_reading(Abstractformat *format, xx_archive_record_state *state)
+{
     (void)format;
     xx_archive_record_state_free(state);
 }

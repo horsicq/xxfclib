@@ -36,8 +36,7 @@
  * this picks up the real file type as soon as the type is registered. */
 #ifdef INSTALLSHIELD_DEVELOPER
 
-#define XX_INSTALLSHIELD_DEVELOPER_FILE_TYPE \
-    XX_FILE_TYPE_INSTALLSHIELD_DEVELOPER
+#define XX_INSTALLSHIELD_DEVELOPER_FILE_TYPE XX_FILE_TYPE_INSTALLSHIELD_DEVELOPER
 #else
 #define XX_INSTALLSHIELD_DEVELOPER_FILE_TYPE XX_FILE_TYPE_UNKNOWN
 #endif
@@ -81,13 +80,13 @@ typedef struct isd_member_s {
     int64_t header_offset; /**< Absolute offset of the 0x138-byte record. */
     int64_t data_offset;   /**< Absolute offset of the stored bytes. */
     int64_t size;
-    size_t name_at;   /**< Offset of the raw name in the name pool. */
-    uint32_t record;  /**< Position of the record in the table. */
+    size_t name_at;  /**< Offset of the raw name in the name pool. */
+    uint32_t record; /**< Position of the record in the table. */
 } isd_member;
 
 typedef struct isd_layout_s {
-    int64_t overlay;     /**< Relative to base_address. */
-    int64_t chain_end;   /**< Relative; end of the last complete member. */
+    int64_t overlay;   /**< Relative to base_address. */
+    int64_t chain_end; /**< Relative; end of the last complete member. */
     int64_t format_size;
     int64_t certificate_offset; /**< Relative; 0 when there is none. */
     int64_t certificate_size;
@@ -109,19 +108,18 @@ typedef struct isd_stream_s {
 
 /* Windows-1252 0x80..0x9F.  0 marks a byte the code page leaves undefined;
  * those decode to '_'.  0xA0..0xFF are the Latin-1 code points. */
-static const uint16_t isd_cp1252_high[32] = {
-    0x20AC, 0,      0x201A, 0x0192, 0x201E, 0x2026, 0x2020, 0x2021,
-    0x02C6, 0x2030, 0x0160, 0x2039, 0x0152, 0,      0x017D, 0,
-    0,      0x2018, 0x2019, 0x201C, 0x201D, 0x2022, 0x2013, 0x2014,
-    0x02DC, 0x2122, 0x0161, 0x203A, 0x0153, 0,      0x017E, 0x0178};
+static const uint16_t isd_cp1252_high[32] = {0x20AC, 0,      0x201A, 0x0192, 0x201E, 0x2026, 0x2020, 0x2021, 0x02C6, 0x2030, 0x0160, 0x2039, 0x0152, 0, 0x017D, 0,
+                                             0,      0x2018, 0x2019, 0x201C, 0x201D, 0x2022, 0x2013, 0x2014, 0x02DC, 0x2122, 0x0161, 0x203A, 0x0153, 0, 0x017E, 0x0178};
 
 #include "xxfclib/global/xx_global.h"
-static size_t gb_installshield_developer_capacity(void) {
+static size_t gb_installshield_developer_capacity(void)
+{
     size_t n = xx_get_file_buffer_size();
     if (!n) n = XX_DEFAULT_FILE_BUFFER_SIZE;
     return n > (SIZE_MAX >> 1) ? SIZE_MAX >> 1 : n;
 }
-static ssize_t gb_installshield_developer_read(xx_io_device *device, void *buffer, size_t size, size_t capacity) {
+static ssize_t gb_installshield_developer_read(xx_io_device *device, void *buffer, size_t size, size_t capacity)
+{
     size_t done = 0;
     if (size > (SIZE_MAX >> 1)) return -1;
     while (done < size) {
@@ -135,7 +133,8 @@ static ssize_t gb_installshield_developer_read(xx_io_device *device, void *buffe
     }
     return (ssize_t)done;
 }
-static ssize_t gb_installshield_developer_write(xx_io_device *device, const void *buffer, size_t size, size_t capacity) {
+static ssize_t gb_installshield_developer_write(xx_io_device *device, const void *buffer, size_t size, size_t capacity)
+{
     size_t done = 0;
     if (size > (SIZE_MAX >> 1)) return -1;
     while (done < size) {
@@ -150,28 +149,26 @@ static ssize_t gb_installshield_developer_write(xx_io_device *device, const void
     return (ssize_t)done;
 }
 
-
-static uint32_t isd_le16(const uint8_t *bytes) {
+static uint32_t isd_le16(const uint8_t *bytes)
+{
     return (uint32_t)bytes[0] | ((uint32_t)bytes[1] << 8U);
 }
 
-static bool isd_read_at(xx_io_device *device, int64_t offset, void *buffer,
-                        size_t size) {
+static bool isd_read_at(xx_io_device *device, int64_t offset, void *buffer, size_t size)
+{
     const size_t file_io_capacity = gb_installshield_developer_capacity();
     size_t done = 0U;
-    if (!device || (!buffer && size != 0U) || offset < 0 ||
-        xx_io_seek64(device, offset, SEEK_SET) != 0)
-        return false;
+    if (!device || (!buffer && size != 0U) || offset < 0 || xx_io_seek64(device, offset, SEEK_SET) != 0) return false;
     while (done < size) {
-        ssize_t amount = gb_installshield_developer_read(device, (uint8_t *)buffer + done,
-                                    size - done, file_io_capacity);
+        ssize_t amount = gb_installshield_developer_read(device, (uint8_t *)buffer + done, size - done, file_io_capacity);
         if (amount <= 0 || (size_t)amount > size - done) return false;
         done += (size_t)amount;
     }
     return true;
 }
 
-static bool isd_all_zero(const uint8_t *bytes, size_t from, size_t to) {
+static bool isd_all_zero(const uint8_t *bytes, size_t from, size_t to)
+{
     size_t index;
     for (index = from; index < to; ++index)
         if (bytes[index] != 0U) return false;
@@ -181,21 +178,17 @@ static bool isd_all_zero(const uint8_t *bytes, size_t from, size_t to) {
 /* Find the PE overlay: the end of the furthest section's raw data.  Also
  * report the certificate table, which a signing tool appends behind the
  * payload.  Offsets are relative to `base`; `size` is what is present. */
-static bool isd_locate_overlay(xx_io_device *device, int64_t base,
-                               int64_t size, isd_layout *layout) {
+static bool isd_locate_overlay(xx_io_device *device, int64_t base, int64_t size, isd_layout *layout)
+{
     uint8_t dos[ISD_DOS_HEADER_SIZE];
     uint8_t file_header[ISD_FILE_HEADER_SIZE];
     uint8_t optional[ISD_OPTIONAL_READ];
     uint8_t table[ISD_MAX_SECTIONS * ISD_SECTION_SIZE];
     int64_t pe, table_offset, table_size, end = 0;
     uint32_t sections, optional_size, index;
-    if (size < (int64_t)ISD_DOS_HEADER_SIZE ||
-        !isd_read_at(device, base, dos, sizeof(dos)) || dos[0] != 'M' ||
-        dos[1] != 'Z')
-        return false;
+    if (size < (int64_t)ISD_DOS_HEADER_SIZE || !isd_read_at(device, base, dos, sizeof(dos)) || dos[0] != 'M' || dos[1] != 'Z') return false;
     pe = (int64_t)xx_data_get_u32(dos + ISD_LFANEW_OFFSET, 4, 0, false);
-    if (pe < 4 || pe > size - (int64_t)ISD_FILE_HEADER_SIZE ||
-        !isd_read_at(device, base + pe, file_header, sizeof(file_header)) ||
+    if (pe < 4 || pe > size - (int64_t)ISD_FILE_HEADER_SIZE || !isd_read_at(device, base + pe, file_header, sizeof(file_header)) ||
         xx_rt_memcmp(file_header, "PE\0\0", 4U) != 0)
         return false;
     sections = isd_le16(file_header + 6U);
@@ -203,9 +196,7 @@ static bool isd_locate_overlay(xx_io_device *device, int64_t base,
     if (sections == 0U || sections > ISD_MAX_SECTIONS) return false;
     table_offset = pe + (int64_t)ISD_FILE_HEADER_SIZE + (int64_t)optional_size;
     table_size = (int64_t)sections * (int64_t)ISD_SECTION_SIZE;
-    if (table_offset > size || table_size > size - table_offset ||
-        !isd_read_at(device, base + table_offset, table, (size_t)table_size))
-        return false;
+    if (table_offset > size || table_size > size - table_offset || !isd_read_at(device, base + table_offset, table, (size_t)table_size)) return false;
     for (index = 0U; index < sections; ++index) {
         const uint8_t *row = table + (size_t)index * ISD_SECTION_SIZE;
         int64_t raw_size = (int64_t)xx_data_get_u32(row + 16U, 4, 0, false);
@@ -223,12 +214,9 @@ static bool isd_locate_overlay(xx_io_device *device, int64_t base,
     layout->certificate_offset = 0;
     layout->certificate_size = 0;
     if (optional_size >= 2U) {
-        size_t amount = optional_size < ISD_OPTIONAL_READ
-                            ? (size_t)optional_size : ISD_OPTIONAL_READ;
+        size_t amount = optional_size < ISD_OPTIONAL_READ ? (size_t)optional_size : ISD_OPTIONAL_READ;
         size_t count_at = 0U, directories_at = 0U;
-        if (!isd_read_at(device, base + pe + (int64_t)ISD_FILE_HEADER_SIZE,
-                         optional, amount))
-            return false;
+        if (!isd_read_at(device, base + pe + (int64_t)ISD_FILE_HEADER_SIZE, optional, amount)) return false;
         if (isd_le16(optional) == ISD_PE32_MAGIC) {
             count_at = 92U;
             directories_at = 96U;
@@ -236,11 +224,9 @@ static bool isd_locate_overlay(xx_io_device *device, int64_t base,
             count_at = 108U;
             directories_at = 112U;
         }
-        if (directories_at != 0U &&
-            amount >= directories_at + (ISD_SECURITY_DIRECTORY + 1U) * 8U &&
+        if (directories_at != 0U && amount >= directories_at + (ISD_SECURITY_DIRECTORY + 1U) * 8U &&
             xx_data_get_u32(optional + count_at, 4, 0, false) > ISD_SECURITY_DIRECTORY) {
-            const uint8_t *entry =
-                optional + directories_at + ISD_SECURITY_DIRECTORY * 8U;
+            const uint8_t *entry = optional + directories_at + ISD_SECURITY_DIRECTORY * 8U;
             layout->certificate_offset = (int64_t)xx_data_get_u32(entry, 4, 0, false);
             layout->certificate_size = (int64_t)xx_data_get_u32(entry + 4U, 4, 0, false);
         }
@@ -250,16 +236,15 @@ static bool isd_locate_overlay(xx_io_device *device, int64_t base,
 
 /* One record header: a non-empty name without control bytes, terminated
  * inside the name field, zeros behind it and zeros behind the size. */
-static bool isd_check_record(const uint8_t *record, size_t *name_length) {
+static bool isd_check_record(const uint8_t *record, size_t *name_length)
+{
     size_t length = 0U;
     while (length < ISD_NAME_FIELD && record[length] != 0U) {
         uint8_t c = record[length];
         if (c < 0x20U || c == 0x7FU) return false;
         ++length;
     }
-    if (length == 0U || length >= ISD_NAME_FIELD ||
-        !isd_all_zero(record, length, ISD_NAME_FIELD) ||
-        !isd_all_zero(record, ISD_TAIL_OFFSET, ISD_RECORD_SIZE))
+    if (length == 0U || length >= ISD_NAME_FIELD || !isd_all_zero(record, length, ISD_NAME_FIELD) || !isd_all_zero(record, ISD_TAIL_OFFSET, ISD_RECORD_SIZE))
         return false;
     *name_length = length;
     return true;
@@ -269,25 +254,18 @@ static bool isd_check_record(const uint8_t *record, size_t *name_length) {
  * measures; otherwise it also fills `items` (room for layout->present
  * entries, from an earlier counting walk) and the name pool, where every
  * name gets ISD_SUFFIX_ROOM spare bytes for a later rename. */
-static bool isd_walk(xx_io_device *device, int64_t base, int64_t size,
-                     isd_layout *layout, isd_member *items, char *names,
-                     size_t names_size, xx_pd_struct *pd) {
+static bool isd_walk(xx_io_device *device, int64_t base, int64_t size, isd_layout *layout, isd_member *items, char *names, size_t names_size, xx_pd_struct *pd)
+{
     uint8_t header[ISD_HEADER_SIZE];
     uint8_t record[ISD_RECORD_SIZE];
     int64_t position;
     uint32_t count, index, present = 0U, capacity = layout->present;
     uint64_t name_bytes = 0U;
     size_t pool = 0U;
-    if (layout->overlay > size ||
-        (int64_t)ISD_HEADER_SIZE > size - layout->overlay ||
-        !isd_read_at(device, base + layout->overlay, header, sizeof(header)))
-        return false;
-    if (xx_rt_memcmp(header, "InstallShield\0", ISD_SIGNATURE_SIZE) != 0)
-        return false;
+    if (layout->overlay > size || (int64_t)ISD_HEADER_SIZE > size - layout->overlay || !isd_read_at(device, base + layout->overlay, header, sizeof(header))) return false;
+    if (xx_rt_memcmp(header, "InstallShield\0", ISD_SIGNATURE_SIZE) != 0) return false;
     count = xx_data_get_u32(header + ISD_COUNT_OFFSET, 4, 0, false);
-    if (count == 0U || count > ISD_MAX_FILES ||
-        !isd_all_zero(header, ISD_COUNT_OFFSET + 4U, ISD_HEADER_SIZE))
-        return false;
+    if (count == 0U || count > ISD_MAX_FILES || !isd_all_zero(header, ISD_COUNT_OFFSET + 4U, ISD_HEADER_SIZE)) return false;
     position = layout->overlay + (int64_t)ISD_HEADER_SIZE;
     for (index = 0U; index < count; ++index) {
         size_t name_length;
@@ -296,17 +274,14 @@ static bool isd_walk(xx_io_device *device, int64_t base, int64_t size,
         /* The chain stops at the first record that is cut off or is not a
          * record; what precedes it is kept. */
         if ((int64_t)ISD_RECORD_SIZE > size - position) break;
-        if (!isd_read_at(device, base + position, record, sizeof(record)))
-            return false;
+        if (!isd_read_at(device, base + position, record, sizeof(record))) return false;
         if (!isd_check_record(record, &name_length)) break;
         data = position + (int64_t)ISD_RECORD_SIZE;
         member_size = (int64_t)xx_data_get_u32(record + ISD_SIZE_OFFSET, 4, 0, false);
         if (member_size > size - data) break;
         if (items) {
             size_t index_char;
-            if (present >= capacity ||
-                name_length + ISD_SUFFIX_ROOM > names_size - pool)
-                return false;
+            if (present >= capacity || name_length + ISD_SUFFIX_ROOM > names_size - pool) return false;
             items[present].header_offset = base + position;
             items[present].data_offset = base + data;
             items[present].size = member_size;
@@ -337,34 +312,25 @@ static bool isd_walk(xx_io_device *device, int64_t base, int64_t size,
         layout->format_size = size;
     } else {
         layout->format_size = position;
-        if (layout->certificate_size >= 8 &&
-            layout->certificate_offset >= position &&
-            layout->certificate_offset - position < ISD_CERTIFICATE_ALIGN &&
-            layout->certificate_offset <= size &&
-            layout->certificate_size <= size - layout->certificate_offset) {
+        if (layout->certificate_size >= 8 && layout->certificate_offset >= position && layout->certificate_offset - position < ISD_CERTIFICATE_ALIGN &&
+            layout->certificate_offset <= size && layout->certificate_size <= size - layout->certificate_offset) {
             layout->has_certificate = true;
-            layout->format_size =
-                layout->certificate_offset + layout->certificate_size;
+            layout->format_size = layout->certificate_offset + layout->certificate_size;
         }
     }
     return true;
 }
 
-static bool isd_measure(Abstractformat *format, isd_layout *layout,
-                        int64_t *size_out, xx_pd_struct *pd) {
+static bool isd_measure(Abstractformat *format, isd_layout *layout, int64_t *size_out, xx_pd_struct *pd)
+{
     int64_t total, size;
-    if (!format || !format->device || !layout || format->base_address < 0)
-        return false;
+    if (!format || !format->device || !layout || format->base_address < 0) return false;
     xx_mem_zero(layout, sizeof(*layout));
     total = xx_io_total_size(format->device);
     if (total < format->base_address) return false;
     size = total - format->base_address;
-    if (size < (int64_t)(ISD_DOS_HEADER_SIZE + ISD_HEADER_SIZE +
-                         ISD_RECORD_SIZE) ||
-        !isd_locate_overlay(format->device, format->base_address, size,
-                            layout) ||
-        !isd_walk(format->device, format->base_address, size, layout, NULL,
-                  NULL, 0U, pd))
+    if (size < (int64_t)(ISD_DOS_HEADER_SIZE + ISD_HEADER_SIZE + ISD_RECORD_SIZE) || !isd_locate_overlay(format->device, format->base_address, size, layout) ||
+        !isd_walk(format->device, format->base_address, size, layout, NULL, NULL, 0U, pd))
         return false;
     if (size_out) *size_out = size;
     return true;
@@ -375,18 +341,19 @@ static bool isd_measure(Abstractformat *format, isd_layout *layout,
 /* Fold a raw name byte the way a case-insensitive Windows volume compares
  * it: ASCII and the Windows-1252 letter pairs, with the undefined bytes
  * folded onto the '_' they decode to. */
-static uint8_t isd_fold(uint8_t c) {
+static uint8_t isd_fold(uint8_t c)
+{
     if (c >= 'A' && c <= 'Z') return (uint8_t)(c + 0x20U);
     if (c == 0x8AU || c == 0x8CU || c == 0x8EU) return (uint8_t)(c + 0x10U);
     if (c == 0x9FU) return 0xFFU;
     if (c >= 0xC0U && c <= 0xDEU && c != 0xD7U) return (uint8_t)(c + 0x20U);
-    if (c == 0x81U || c == 0x8DU || c == 0x8FU || c == 0x90U || c == 0x9DU)
-        return (uint8_t)'_';
+    if (c == 0x81U || c == 0x8DU || c == 0x8FU || c == 0x90U || c == 0x9DU) return (uint8_t)'_';
     return c;
 }
 
 /* Three-way comparison of two names under isd_fold. */
-static int isd_compare_names(const char *left, const char *right) {
+static int isd_compare_names(const char *left, const char *right)
+{
     for (;;) {
         uint8_t a, b;
         if (*left == *right) {
@@ -408,9 +375,8 @@ static int isd_compare_names(const char *left, const char *right) {
 /* Stable bottom-up merge sort of member indices by folded name; `scratch`
  * holds `count` entries.  O(n log n) comparisons whatever the names are,
  * so crafted names cannot make the dedupe quadratic. */
-static void isd_sort_by_name(uint32_t *order, uint32_t *scratch,
-                             size_t count, const isd_member *items,
-                             const char *names) {
+static void isd_sort_by_name(uint32_t *order, uint32_t *scratch, size_t count, const isd_member *items, const char *names)
+{
     size_t width;
     uint32_t *from = order, *to = scratch;
     for (width = 1U; width < count; width *= 2U) {
@@ -420,11 +386,8 @@ static void isd_sort_by_name(uint32_t *order, uint32_t *scratch,
             size_t end = middle + width < count ? middle + width : count;
             size_t left = start, right = middle, out = start;
             while (left < middle && right < end) {
-                if (isd_compare_names(names + items[from[right]].name_at,
-                                      names + items[from[left]].name_at) < 0)
-                    to[out++] = from[right++];
-                else
-                    to[out++] = from[left++];
+                if (isd_compare_names(names + items[from[right]].name_at, names + items[from[left]].name_at) < 0) to[out++] = from[right++];
+                else to[out++] = from[left++];
             }
             while (left < middle) to[out++] = from[left++];
             while (right < end) to[out++] = from[right++];
@@ -442,24 +405,21 @@ static void isd_sort_by_name(uint32_t *order, uint32_t *scratch,
 }
 
 /* Whether `name` equals (folded) any original name; `order` is sorted. */
-static bool isd_sorted_contains(const uint32_t *order, size_t count,
-                                const isd_member *items, const char *names,
-                                const char *name) {
+static bool isd_sorted_contains(const uint32_t *order, size_t count, const isd_member *items, const char *names, const char *name)
+{
     size_t low = 0U, high = count;
     while (low < high) {
         size_t middle = low + (high - low) / 2U;
-        int order_cmp =
-            isd_compare_names(names + items[order[middle]].name_at, name);
+        int order_cmp = isd_compare_names(names + items[order[middle]].name_at, name);
         if (order_cmp == 0) return true;
-        if (order_cmp < 0)
-            low = middle + 1U;
-        else
-            high = middle;
+        if (order_cmp < 0) low = middle + 1U;
+        else high = middle;
     }
     return false;
 }
 
-static size_t isd_put_decimal(char *out, uint32_t value) {
+static size_t isd_put_decimal(char *out, uint32_t value)
+{
     char digits[10];
     size_t count = 0U, length = 0U;
     do {
@@ -471,7 +431,8 @@ static size_t isd_put_decimal(char *out, uint32_t value) {
 }
 
 /* Append " (<record>)" or, for attempt > 0, " (<record>_<attempt>)". */
-static size_t isd_put_suffix(char *out, uint32_t record, uint32_t attempt) {
+static size_t isd_put_suffix(char *out, uint32_t record, uint32_t attempt)
+{
     size_t at = 0U;
     out[at++] = ' ';
     out[at++] = '(';
@@ -494,8 +455,8 @@ static size_t isd_put_suffix(char *out, uint32_t record, uint32_t attempt) {
  * whole archive, so the retries stay below the member count.  Cost is a
  * merge sort plus one binary search per candidate: O(n log n) name
  * comparisons for any input. */
-static bool isd_make_names_unique(isd_member *items, size_t count,
-                                  char *names) {
+static bool isd_make_names_unique(isd_member *items, size_t count, char *names)
+{
     uint32_t *order, *scratch;
     char candidate[ISD_NAME_FIELD + ISD_SUFFIX_ROOM];
     size_t index, retries = 0U;
@@ -510,9 +471,7 @@ static bool isd_make_names_unique(isd_member *items, size_t count,
     xx_rt_memset(scratch, 0, count * sizeof(uint32_t));
     for (index = 1U; index < count; ++index) {
         /* Stable sort: within a run of equal names, record order holds. */
-        if (isd_compare_names(names + items[order[index - 1U]].name_at,
-                              names + items[order[index]].name_at) == 0)
-            scratch[order[index]] = 1U;
+        if (isd_compare_names(names + items[order[index - 1U]].name_at, names + items[order[index]].name_at) == 0) scratch[order[index]] = 1U;
     }
     for (index = 0U; index < count; ++index) {
         const char *name = names + items[index].name_at;
@@ -526,8 +485,7 @@ static bool isd_make_names_unique(isd_member *items, size_t count,
         xx_rt_memcpy(candidate, name, length);
         for (;;) {
             isd_put_suffix(candidate + length, items[index].record, attempt);
-            if (!isd_sorted_contains(order, count, items, names, candidate))
-                break;
+            if (!isd_sorted_contains(order, count, items, names, candidate)) break;
             if (++retries > count) {
                 xx_mem_free(order);
                 return false;
@@ -540,15 +498,15 @@ static bool isd_make_names_unique(isd_member *items, size_t count,
     for (index = 0U; index < count; ++index) {
         char *name = names + items[index].name_at;
         if (scratch[index] == 0U) continue;
-        isd_put_suffix(name + xx_str_len(name), items[index].record,
-                       scratch[index] - 1U);
+        isd_put_suffix(name + xx_str_len(name), items[index].record, scratch[index] - 1U);
     }
     xx_mem_free(order);
     return true;
 }
 
 /* Raw ANSI name (Windows-1252) to UTF-8. */
-static bool isd_name_to_utf8(const char *raw, char *out, size_t out_size) {
+static bool isd_name_to_utf8(const char *raw, char *out, size_t out_size)
+{
     size_t used = 0U;
     for (; *raw; ++raw) {
         uint32_t code = (uint8_t)*raw;
@@ -574,15 +532,16 @@ static bool isd_name_to_utf8(const char *raw, char *out, size_t out_size) {
     return true;
 }
 
-static char isd_upper(char c) {
+static char isd_upper(char c)
+{
     return (c >= 'a' && c <= 'z') ? (char)(c - 'a' + 'A') : c;
 }
 
-static bool isd_stem_is(const char *name, size_t stem, const char *word) {
+static bool isd_stem_is(const char *name, size_t stem, const char *word)
+{
     size_t index;
     for (index = 0U; index < stem; ++index)
-        if (!word[index] || isd_upper(name[index]) != word[index])
-            return false;
+        if (!word[index] || isd_upper(name[index]) != word[index]) return false;
     return word[stem] == 0;
 }
 
@@ -592,48 +551,38 @@ static bool isd_stem_is(const char *name, size_t stem, const char *word) {
  * Windows reserves (which includes the drive colon), and device names such
  * as CON, LPT1.TXT, COM¹ or CONIN$, with or without an extension and in any
  * case. */
-static bool isd_safe_component(const char *name, size_t length) {
-    static const char *const devices[] = {"CON",    "PRN",     "AUX",
-                                          "NUL",    "CONIN$",  "CONOUT$",
-                                          "CLOCK$"};
+static bool isd_safe_component(const char *name, size_t length)
+{
+    static const char *const devices[] = {"CON", "PRN", "AUX", "NUL", "CONIN$", "CONOUT$", "CLOCK$"};
     size_t index, stem = 0U;
-    if (length == 0U || name[length - 1U] == '.' || name[length - 1U] == ' ')
-        return false;
+    if (length == 0U || name[length - 1U] == '.' || name[length - 1U] == ' ') return false;
     for (index = 0U; index < length; ++index) {
         uint8_t c = (uint8_t)name[index];
-        if (c < 0x20U || c == 0x7FU || c == '\\' || c == ':' || c == '<' ||
-            c == '>' || c == '"' || c == '|' || c == '?' || c == '*')
-            return false;
+        if (c < 0x20U || c == 0x7FU || c == '\\' || c == ':' || c == '<' || c == '>' || c == '"' || c == '|' || c == '?' || c == '*') return false;
     }
     while (stem < length && name[stem] != '.') ++stem;
     while (stem > 0U && name[stem - 1U] == ' ') --stem;
     for (index = 0U; index < sizeof(devices) / sizeof(devices[0]); ++index)
         if (isd_stem_is(name, stem, devices[index])) return false;
-    if ((stem == 4U || stem == 5U) &&
-        ((isd_upper(name[0]) == 'C' && isd_upper(name[1]) == 'O' &&
-          isd_upper(name[2]) == 'M') ||
-         (isd_upper(name[0]) == 'L' && isd_upper(name[1]) == 'P' &&
-          isd_upper(name[2]) == 'T'))) {
+    if ((stem == 4U || stem == 5U) && ((isd_upper(name[0]) == 'C' && isd_upper(name[1]) == 'O' && isd_upper(name[2]) == 'M') ||
+                                       (isd_upper(name[0]) == 'L' && isd_upper(name[1]) == 'P' && isd_upper(name[2]) == 'T'))) {
         /* COM0..COM9 / LPT0..LPT9, and the superscript ¹ ² ³ forms
          * (UTF-8 C2 B9, C2 B2, C2 B3) Windows also maps to devices. */
         if (stem == 4U && name[3] >= '0' && name[3] <= '9') return false;
-        if (stem == 5U && (uint8_t)name[3] == 0xC2U &&
-            ((uint8_t)name[4] == 0xB9U || (uint8_t)name[4] == 0xB2U ||
-             (uint8_t)name[4] == 0xB3U))
-            return false;
+        if (stem == 5U && (uint8_t)name[3] == 0xC2U && ((uint8_t)name[4] == 0xB9U || (uint8_t)name[4] == 0xB2U || (uint8_t)name[4] == 0xB3U)) return false;
     }
     return true;
 }
 
 /* A decoded name is a relative path with '/' separators; every component
  * must be safe, which also rules out a leading '/' and empty components. */
-static bool isd_safe_output_name(const char *name) {
+static bool isd_safe_output_name(const char *name)
+{
     size_t start = 0U, index = 0U;
     if (!name || !name[0]) return false;
     for (;;) {
         if (name[index] == '/' || name[index] == 0) {
-            if (!isd_safe_component(name + start, index - start))
-                return false;
+            if (!isd_safe_component(name + start, index - start)) return false;
             if (name[index] == 0) return true;
             start = index + 1U;
         }
@@ -643,7 +592,8 @@ static bool isd_safe_output_name(const char *name) {
 
 /* ---- parsing into a member table --------------------------------------- */
 
-static void isd_stream_free(void *opaque) {
+static void isd_stream_free(void *opaque)
+{
     isd_stream *stream = (isd_stream *)opaque;
     if (!stream) return;
     if (stream->items) xx_mem_free(stream->items);
@@ -651,8 +601,8 @@ static void isd_stream_free(void *opaque) {
     xx_mem_free(stream);
 }
 
-static bool isd_parse(Abstractformat *format, isd_stream **result,
-                      xx_pd_struct *pd) {
+static bool isd_parse(Abstractformat *format, isd_stream **result, xx_pd_struct *pd)
+{
     isd_stream *stream;
     int64_t size;
     uint64_t pool;
@@ -662,20 +612,15 @@ static bool isd_parse(Abstractformat *format, isd_stream **result,
     if (!stream) return false;
     if (!isd_measure(format, &stream->layout, &size, pd)) goto fail;
     /* Sized by the first walk, which only counted what the file holds. */
-    pool = stream->layout.name_bytes +
-           (uint64_t)stream->layout.present * ISD_SUFFIX_ROOM;
+    pool = stream->layout.name_bytes + (uint64_t)stream->layout.present * ISD_SUFFIX_ROOM;
     if (pool > (uint64_t)((size_t)-1)) goto fail;
     stream->names_size = (size_t)pool;
-    stream->items = (isd_member *)xx_mem_calloc(stream->layout.present,
-                                                sizeof(isd_member));
+    stream->items = (isd_member *)xx_mem_calloc(stream->layout.present, sizeof(isd_member));
     stream->names = (char *)xx_mem_alloc(stream->names_size);
-    if (!stream->items || !stream->names ||
-        !isd_walk(format->device, format->base_address, size, &stream->layout,
-                  stream->items, stream->names, stream->names_size, pd))
+    if (!stream->items || !stream->names || !isd_walk(format->device, format->base_address, size, &stream->layout, stream->items, stream->names, stream->names_size, pd))
         goto fail;
     stream->count = stream->layout.present;
-    if (!isd_make_names_unique(stream->items, stream->count, stream->names))
-        goto fail;
+    if (!isd_make_names_unique(stream->items, stream->count, stream->names)) goto fail;
     *result = stream;
     return true;
 fail:
@@ -685,8 +630,8 @@ fail:
 
 /* Stream `size` bytes at `offset` into `destination` (or just read them
  * through when it is NULL) in fixed chunks. */
-static bool isd_copy_range(xx_io_device *source, int64_t offset, int64_t size,
-                           xx_io_device *destination, xx_pd_struct *pd) {
+static bool isd_copy_range(xx_io_device *source, int64_t offset, int64_t size, xx_io_device *destination, xx_pd_struct *pd)
+{
     const size_t file_io_capacity = gb_installshield_developer_capacity();
     uint8_t *buffer;
     int64_t remaining = size;
@@ -696,18 +641,14 @@ static bool isd_copy_range(xx_io_device *source, int64_t offset, int64_t size,
     buffer = (uint8_t *)xx_mem_alloc(file_io_capacity);
     if (!buffer) return false;
     while (remaining > 0) {
-        size_t chunk = remaining > (int64_t)file_io_capacity
-                           ? (size_t)file_io_capacity
-                           : (size_t)remaining;
+        size_t chunk = remaining > (int64_t)file_io_capacity ? (size_t)file_io_capacity : (size_t)remaining;
         size_t written = 0U;
-        if ((pd && xx_pd_is_stopped(pd)) ||
-            !isd_read_at(source, offset + (size - remaining), buffer, chunk)) {
+        if ((pd && xx_pd_is_stopped(pd)) || !isd_read_at(source, offset + (size - remaining), buffer, chunk)) {
             ok = false;
             break;
         }
         while (destination && written < chunk) {
-            ssize_t amount = gb_installshield_developer_write(destination, buffer + written,
-                                         chunk - written, file_io_capacity);
+            ssize_t amount = gb_installshield_developer_write(destination, buffer + written, chunk - written, file_io_capacity);
             if (amount <= 0 || (size_t)amount > chunk - written) {
                 ok = false;
                 break;
@@ -721,17 +662,16 @@ static bool isd_copy_range(xx_io_device *source, int64_t offset, int64_t size,
     return ok;
 }
 
-static bool isd_copy_options(xx_list_s *destination, const xx_list_s *source) {
+static bool isd_copy_options(xx_list_s *destination, const xx_list_s *source)
+{
     size_t index;
     if (!source) return true;
     for (index = 0U; index < source->count; ++index) {
-        const xx_meta *original =
-            (const xx_meta *)xx_list_at((const xx_list_t *)source, index);
+        const xx_meta *original = (const xx_meta *)xx_list_at((const xx_list_t *)source, index);
         xx_meta copy;
         if (!original) continue;
         xx_meta_init(&copy, original->meta_id);
-        if (!xx_var_copy(&copy.var, &original->var) ||
-            !xx_list_append(destination, &copy)) {
+        if (!xx_var_copy(&copy.var, &original->var) || !xx_list_append(destination, &copy)) {
             xx_meta_cleanup(&copy);
             return false;
         }
@@ -739,46 +679,37 @@ static bool isd_copy_options(xx_list_s *destination, const xx_list_s *source) {
     return true;
 }
 
-static const xx_var *isd_option(const xx_list_s *options, uint32_t id) {
+static const xx_var *isd_option(const xx_list_s *options, uint32_t id)
+{
     size_t index;
     if (!options) return NULL;
     for (index = 0U; index < options->count; ++index) {
-        const xx_meta *meta =
-            (const xx_meta *)xx_list_at((const xx_list_t *)options, index);
+        const xx_meta *meta = (const xx_meta *)xx_list_at((const xx_list_t *)options, index);
         if (meta && meta->meta_id == id) return &meta->var;
     }
     return NULL;
 }
 
-static bool isd_set_record(xx_archive_record *record, const isd_stream *stream,
-                           const isd_member *member) {
+static bool isd_set_record(xx_archive_record *record, const isd_stream *stream, const isd_member *member)
+{
     char name[ISD_UTF8_NAME_MAX];
     xx_archive_record_cleanup(record);
     xx_archive_record_init(record);
-    if (!isd_name_to_utf8(stream->names + member->name_at, name,
-                          sizeof(name)))
-        return false;
+    if (!isd_name_to_utf8(stream->names + member->name_at, name, sizeof(name))) return false;
     record->header_offset = member->header_offset;
     record->header_size = (int64_t)ISD_RECORD_SIZE;
     record->data_offset = member->data_offset;
     record->compressed_size = member->size;
-    return xx_archive_record_set_original_name(record, name) &&
-           xx_archive_record_set_meta_u64(record, XX_META_ID_COMPRESSED_SIZE,
-                                          (uint64_t)member->size) &&
-           xx_archive_record_set_meta_u64(record, XX_META_ID_UNCOMPRESSED_SIZE,
-                                          (uint64_t)member->size) &&
-           xx_archive_record_set_meta_u64(record, XX_META_ID_COMPRESSION_METHOD,
-                                          0U) &&
-           xx_archive_record_set_meta_bool(record, XX_META_ID_IS_ENCRYPTED,
-                                           false) &&
+    return xx_archive_record_set_original_name(record, name) && xx_archive_record_set_meta_u64(record, XX_META_ID_COMPRESSED_SIZE, (uint64_t)member->size) &&
+           xx_archive_record_set_meta_u64(record, XX_META_ID_UNCOMPRESSED_SIZE, (uint64_t)member->size) &&
+           xx_archive_record_set_meta_u64(record, XX_META_ID_COMPRESSION_METHOD, 0U) && xx_archive_record_set_meta_bool(record, XX_META_ID_IS_ENCRYPTED, false) &&
            xx_archive_record_set_meta_bool(record, XX_META_ID_IS_FOLDER, false);
 }
 
 /* ---- public API -------------------------------------------------------- */
 
-void xx_installshield_developer_init(xx_installshield_developer *archive,
-                                     xx_io_device *device,
-                                     int64_t base_address) {
+void xx_installshield_developer_init(xx_installshield_developer *archive, xx_io_device *device, int64_t base_address)
+{
     if (!archive) return;
     xx_mem_zero(archive, sizeof(*archive));
     xx_format_init(&archive->format, device, base_address);
@@ -789,52 +720,45 @@ void xx_installshield_developer_init(xx_installshield_developer *archive,
     xx_format_set_mime_type(&archive->format, "application/x-msdownload");
     xx_format_set_extension(&archive->format, "exe");
     archive->format.check_is_valid = xx_installshield_developer_check_is_valid;
-    archive->format.handle_base_info =
-        xx_installshield_developer_handle_base_info;
-    archive->format.get_format_size =
-        xx_installshield_developer_get_format_size;
-    archive->format.get_number_of_archive_records =
-        xx_installshield_developer_get_number_of_archive_records;
-    archive->format.create_archive_records_reading =
-        xx_installshield_developer_create_archive_records_reading;
-    archive->format.get_current_archive_record =
-        xx_installshield_developer_get_current_archive_record;
-    archive->format.unpack_current_archive_record =
-        xx_installshield_developer_unpack_current_archive_record;
-    archive->format.archive_record_move_to_next =
-        xx_installshield_developer_archive_record_move_to_next;
-    archive->format.free_archive_records_reading =
-        xx_installshield_developer_free_archive_records_reading;
+    archive->format.handle_base_info = xx_installshield_developer_handle_base_info;
+    archive->format.get_format_size = xx_installshield_developer_get_format_size;
+    archive->format.get_number_of_archive_records = xx_installshield_developer_get_number_of_archive_records;
+    archive->format.create_archive_records_reading = xx_installshield_developer_create_archive_records_reading;
+    archive->format.get_current_archive_record = xx_installshield_developer_get_current_archive_record;
+    archive->format.unpack_current_archive_record = xx_installshield_developer_unpack_current_archive_record;
+    archive->format.archive_record_move_to_next = xx_installshield_developer_archive_record_move_to_next;
+    archive->format.free_archive_records_reading = xx_installshield_developer_free_archive_records_reading;
     archive->payload_offset = -1;
     archive->payload_end = -1;
 }
 
-xx_installshield_developer *xx_installshield_developer_create(
-    xx_io_device *device, int64_t base_address) {
-    xx_installshield_developer *archive =
-        (xx_installshield_developer *)xx_mem_alloc(sizeof(*archive));
+xx_installshield_developer *xx_installshield_developer_create(xx_io_device *device, int64_t base_address)
+{
+    xx_installshield_developer *archive = (xx_installshield_developer *)xx_mem_alloc(sizeof(*archive));
     if (archive) xx_installshield_developer_init(archive, device, base_address);
     return archive;
 }
 
-void xx_installshield_developer_destroy(xx_installshield_developer *archive) {
+void xx_installshield_developer_destroy(xx_installshield_developer *archive)
+{
     if (archive) xx_format_cleanup_extra_parameters(&archive->format);
 }
 
-void xx_installshield_developer_free(xx_installshield_developer *archive) {
+void xx_installshield_developer_free(xx_installshield_developer *archive)
+{
     if (!archive) return;
     xx_installshield_developer_destroy(archive);
     xx_mem_free(archive);
 }
 
-bool xx_installshield_developer_check_is_valid(Abstractformat *format,
-                                               xx_pd_struct *pd) {
+bool xx_installshield_developer_check_is_valid(Abstractformat *format, xx_pd_struct *pd)
+{
     isd_layout layout;
     return isd_measure(format, &layout, NULL, pd);
 }
 
-bool xx_installshield_developer_handle_base_info(Abstractformat *format,
-                                                 xx_pd_struct *pd) {
+bool xx_installshield_developer_handle_base_info(Abstractformat *format, xx_pd_struct *pd)
+{
     isd_layout layout;
     xx_installshield_developer *archive;
     if (!format || !isd_measure(format, &layout, NULL, pd)) return false;
@@ -852,24 +776,19 @@ bool xx_installshield_developer_handle_base_info(Abstractformat *format,
     return true;
 }
 
-int64_t xx_installshield_developer_get_format_size(Abstractformat *format,
-                                                   xx_pd_struct *pd) {
-    return format && (format->base_info_handled ||
-                      xx_installshield_developer_handle_base_info(format, pd))
-               ? format->format_size : -1;
+int64_t xx_installshield_developer_get_format_size(Abstractformat *format, xx_pd_struct *pd)
+{
+    return format && (format->base_info_handled || xx_installshield_developer_handle_base_info(format, pd)) ? format->format_size : -1;
 }
 
-uint64_t xx_installshield_developer_get_number_of_archive_records(
-    Abstractformat *format, xx_pd_struct *pd) {
-    return format && (format->base_info_handled ||
-                      xx_installshield_developer_handle_base_info(format, pd))
-               ? ((xx_installshield_developer *)format)->number_of_records
-               : 0U;
+uint64_t xx_installshield_developer_get_number_of_archive_records(Abstractformat *format, xx_pd_struct *pd)
+{
+    return format && (format->base_info_handled || xx_installshield_developer_handle_base_info(format, pd)) ? ((xx_installshield_developer *)format)->number_of_records
+                                                                                                            : 0U;
 }
 
-xx_archive_record_state *
-xx_installshield_developer_create_archive_records_reading(
-    Abstractformat *format, const xx_list_s *options, xx_pd_struct *pd) {
+xx_archive_record_state *xx_installshield_developer_create_archive_records_reading(Abstractformat *format, const xx_list_s *options, xx_pd_struct *pd)
+{
     isd_stream *stream;
     xx_archive_record_state *state;
     if (!isd_parse(format, &stream, pd)) return NULL;
@@ -882,8 +801,7 @@ xx_installshield_developer_create_archive_records_reading(
     state->internal_state = stream;
     state->free_internal = isd_stream_free;
     state->total_records = stream->count;
-    if (!isd_copy_options(&state->options, options) ||
-        !isd_set_record(&state->current_record, stream, &stream->items[0])) {
+    if (!isd_copy_options(&state->options, options) || !isd_set_record(&state->current_record, stream, &stream->items[0])) {
         xx_archive_record_state_free(state);
         return NULL;
     }
@@ -891,30 +809,26 @@ xx_installshield_developer_create_archive_records_reading(
     return state;
 }
 
-const xx_archive_record *xx_installshield_developer_get_current_archive_record(
-    Abstractformat *format, xx_archive_record_state *state) {
-    return format && state && state->format == format && state->has_record
-               ? &state->current_record : NULL;
+const xx_archive_record *xx_installshield_developer_get_current_archive_record(Abstractformat *format, xx_archive_record_state *state)
+{
+    return format && state && state->format == format && state->has_record ? &state->current_record : NULL;
 }
 
-bool xx_installshield_developer_archive_record_move_to_next(
-    Abstractformat *format, xx_archive_record_state *state, xx_pd_struct *pd) {
+bool xx_installshield_developer_archive_record_move_to_next(Abstractformat *format, xx_archive_record_state *state, xx_pd_struct *pd)
+{
     isd_stream *stream;
     (void)pd;
-    if (!format || !state || state->format != format ||
-        !(stream = (isd_stream *)state->internal_state) ||
-        ++stream->index >= stream->count) {
+    if (!format || !state || state->format != format || !(stream = (isd_stream *)state->internal_state) || ++stream->index >= stream->count) {
         if (state) state->has_record = false;
         return false;
     }
     ++state->current_index;
-    state->has_record = isd_set_record(&state->current_record, stream,
-                                       &stream->items[stream->index]);
+    state->has_record = isd_set_record(&state->current_record, stream, &stream->items[stream->index]);
     return state->has_record;
 }
 
-bool xx_installshield_developer_unpack_current_archive_record(
-    Abstractformat *format, xx_archive_record_state *state, xx_pd_struct *pd) {
+bool xx_installshield_developer_unpack_current_archive_record(Abstractformat *format, xx_archive_record_state *state, xx_pd_struct *pd)
+{
     isd_stream *stream;
     const isd_member *member;
     const xx_var *path_option;
@@ -924,40 +838,28 @@ bool xx_installshield_developer_unpack_current_archive_record(
     char name[ISD_UTF8_NAME_MAX];
     bool result = false;
     bool created = false;
-    if (!format || !state || state->format != format || !state->has_record ||
-        !(stream = (isd_stream *)state->internal_state) ||
-        stream->index >= stream->count || (pd && xx_pd_is_stopped(pd)))
+    if (!format || !state || state->format != format || !state->has_record || !(stream = (isd_stream *)state->internal_state) || stream->index >= stream->count ||
+        (pd && xx_pd_is_stopped(pd)))
         return false;
     member = &stream->items[stream->index];
     path_option = isd_option(&state->options, XX_META_ID_OPT_UNPACK_PATH);
-    if (!path_option)
-        /* No destination: read the member through, which verifies it. */
-        return isd_copy_range(format->device, member->data_offset,
-                              member->size, NULL, pd);
-    if (!isd_name_to_utf8(stream->names + member->name_at, name,
-                          sizeof(name)) ||
-        !isd_safe_output_name(name))
-        return false;
-    if (path_option->type == XX_VAR_TYPE_STRING ||
-        path_option->type == XX_VAR_TYPE_STRING_VIEW) {
+    if (!path_option) /* No destination: read the member through, which verifies it. */
+        return isd_copy_range(format->device, member->data_offset, member->size, NULL, pd);
+    if (!isd_name_to_utf8(stream->names + member->name_at, name, sizeof(name)) || !isd_safe_output_name(name)) return false;
+    if (path_option->type == XX_VAR_TYPE_STRING || path_option->type == XX_VAR_TYPE_STRING_VIEW) {
         base = xx_var_get_str(path_option);
-    } else if (path_option->type == XX_VAR_TYPE_WSTRING ||
-               path_option->type == XX_VAR_TYPE_WSTRING_VIEW) {
+    } else if (path_option->type == XX_VAR_TYPE_WSTRING || path_option->type == XX_VAR_TYPE_WSTRING_VIEW) {
         owned_base = xx_str_unicode_to_utf8(xx_var_get_wstr(path_option));
         base = owned_base;
     }
     if (!base) goto done;
-    path = (base[0] && base[xx_str_len(base) - 1U] != '/' &&
-            base[xx_str_len(base) - 1U] != '\\')
-               ? xx_str_concat3(base, "/", name)
-               : xx_str_concat(base, name);
+    path = (base[0] && base[xx_str_len(base) - 1U] != '/' && base[xx_str_len(base) - 1U] != '\\') ? xx_str_concat3(base, "/", name) : xx_str_concat(base, name);
     if (!path || !xx_store_create_dirs_a(path, false)) goto done;
     {
         xx_io_device *destination = xx_io_file_open(path, "wb");
         created = destination != NULL;
         if (!destination) goto done;
-        result = isd_copy_range(format->device, member->data_offset,
-                                member->size, destination, pd);
+        result = isd_copy_range(format->device, member->data_offset, member->size, destination, pd);
         if (xx_io_close(destination) != 0) result = false;
     }
 done:
@@ -967,8 +869,8 @@ done:
     return result;
 }
 
-void xx_installshield_developer_free_archive_records_reading(
-    Abstractformat *format, xx_archive_record_state *state) {
+void xx_installshield_developer_free_archive_records_reading(Abstractformat *format, xx_archive_record_state *state)
+{
     (void)format;
     xx_archive_record_state_free(state);
 }

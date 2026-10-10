@@ -64,8 +64,8 @@
 #define LX_OPR_SPARSE 0x04000000U
 
 #define LX_MAX_SECTIONS (1U << 18)
-#define LX_MAX_STRING_IN (1U << 20)   /* packed case / device text */
-#define LX_MAX_STRING_OUT (1U << 20)  /* unpacked case / device text */
+#define LX_MAX_STRING_IN (1U << 20)  /* packed case / device text */
+#define LX_MAX_STRING_OUT (1U << 20) /* unpacked case / device text */
 #define LX_MAX_LTREE (128U << 20)
 #define LX_MAX_CHUNK (16U << 20)
 #define LX_MAX_TABLE_ENTRIES (1U << 24)
@@ -170,12 +170,10 @@ typedef struct lx_stream_s {
 /* ---------------------------------------------------------------------- */
 /* Small helpers                                                           */
 
-static bool lx_read_at(xx_io_device *device, int64_t offset, void *buffer,
-                       size_t size) {
+static bool lx_read_at(xx_io_device *device, int64_t offset, void *buffer, size_t size)
+{
     size_t done = 0U;
-    if (!device || (!buffer && size != 0U) || offset < 0 ||
-        xx_io_seek64(device, offset, SEEK_SET) != 0)
-        return false;
+    if (!device || (!buffer && size != 0U) || offset < 0 || xx_io_seek64(device, offset, SEEK_SET) != 0) return false;
     while (done < size) {
         size_t request = size - done;
         ssize_t amount;
@@ -187,15 +185,18 @@ static bool lx_read_at(xx_io_device *device, int64_t offset, void *buffer,
     return true;
 }
 
-static bool lx_stopped(xx_pd_struct *pd) { return pd && xx_pd_is_stopped(pd); }
+static bool lx_stopped(xx_pd_struct *pd)
+{
+    return pd && xx_pd_is_stopped(pd);
+}
 
 /* ---------------------------------------------------------------------- */
 /* Header and section chain                                                */
 
 static const uint8_t lx_signature[8] = {'L', 'E', 'F', '2', 0x0D, 0x0A, 0x81, 0x00};
 
-static bool lx_parse_header(Abstractformat *format, lx_layout *l,
-                            int64_t *size_out) {
+static bool lx_parse_header(Abstractformat *format, lx_layout *l, int64_t *size_out)
+{
     uint8_t header[LX_HEADER];
     int64_t total, size;
     uint16_t method;
@@ -203,11 +204,8 @@ static bool lx_parse_header(Abstractformat *format, lx_layout *l,
     total = xx_io_total_size(format->device);
     if (total < format->base_address) return false;
     size = total - format->base_address;
-    if (size < (int64_t)(LX_HEADER + LX_DESC) ||
-        !lx_read_at(format->device, format->base_address, header, LX_HEADER))
-        return false;
-    if (xx_rt_memcmp(header, lx_signature, 8U) != 0 || header[8] != 2U)
-        return false;
+    if (size < (int64_t)(LX_HEADER + LX_DESC) || !lx_read_at(format->device, format->base_address, header, LX_HEADER)) return false;
+    if (xx_rt_memcmp(header, lx_signature, 8U) != 0 || header[8] != 2U) return false;
     method = (uint16_t)(header[10] | ((uint16_t)header[11] << 8U));
     if (method > 2U) return false;
     l->base = format->base_address;
@@ -218,12 +216,12 @@ static bool lx_parse_header(Abstractformat *format, lx_layout *l,
 }
 
 /* A descriptor on its own: checksum, fixed size field, sane type. */
-static bool lx_desc_decode(const uint8_t *raw, lx_section *s, uint64_t *prev) {
+static bool lx_desc_decode(const uint8_t *raw, lx_section *s, uint64_t *prev)
+{
     uint32_t type;
     if (xx_adler32(raw, 60U) != xx_data_get_u32(raw + 60, 4, 0, false)) return false;
     type = xx_data_get_u32(raw, 4, 0, false);
-    if (type == 0U || type > 0xFFFFU || xx_data_get_u32(raw + 24, 4, 0, false) != LX_DESC)
-        return false;
+    if (type == 0U || type > 0xFFFFU || xx_data_get_u32(raw + 24, 4, 0, false) != LX_DESC) return false;
     s->type = type;
     s->flags = xx_data_get_u32(raw + 4, 4, 0, false);
     s->size = xx_data_get_u64(raw + 16, 8, 0, false);
@@ -234,14 +232,14 @@ static bool lx_desc_decode(const uint8_t *raw, lx_section *s, uint64_t *prev) {
     return true;
 }
 
-static bool lx_push_section(lx_layout *l, const lx_section *s) {
+static bool lx_push_section(lx_layout *l, const lx_section *s)
+{
     if (l->count >= LX_MAX_SECTIONS) return false;
     if (l->count == l->capacity) {
         uint32_t grown = l->capacity ? l->capacity * 2U : 16U;
         lx_section *next;
         if (grown > LX_MAX_SECTIONS) grown = LX_MAX_SECTIONS;
-        next = (lx_section *)xx_mem_realloc(l->sections,
-                                            (size_t)grown * sizeof(*next));
+        next = (lx_section *)xx_mem_realloc(l->sections, (size_t)grown * sizeof(*next));
         if (!next) return false;
         l->sections = next;
         l->capacity = grown;
@@ -250,24 +248,22 @@ static bool lx_push_section(lx_layout *l, const lx_section *s) {
     return true;
 }
 
-static void lx_layout_free(lx_layout *l) {
+static void lx_layout_free(lx_layout *l)
+{
     if (l->sections) xx_mem_free(l->sections);
     l->sections = NULL;
     l->count = l->capacity = 0U;
 }
 
-static bool lx_walk_backward(xx_io_device *device, lx_layout *l, int64_t size,
-                             xx_pd_struct *pd) {
+static bool lx_walk_backward(xx_io_device *device, lx_layout *l, int64_t size, xx_pd_struct *pd)
+{
     uint8_t raw[LX_DESC];
     uint64_t rel = (uint64_t)size - LX_DESC;
     bool first = true;
     for (;;) {
         lx_section s;
         uint64_t prev, start;
-        if (lx_stopped(pd) ||
-            !lx_read_at(device, l->base + (int64_t)rel, raw, LX_DESC) ||
-            !lx_desc_decode(raw, &s, &prev))
-            return false;
+        if (lx_stopped(pd) || !lx_read_at(device, l->base + (int64_t)rel, raw, LX_DESC) || !lx_desc_decode(raw, &s, &prev)) return false;
         if (first) {
             if (s.type != LX_TYPE_DONE && s.type != LX_TYPE_NEXT) return false;
             l->done = s.type == LX_TYPE_DONE;
@@ -277,8 +273,7 @@ static bool lx_walk_backward(xx_io_device *device, lx_layout *l, int64_t size,
         if (prev == 0U) {
             start = LX_HEADER;
         } else {
-            if (prev < LX_HEADER || prev > rel || rel - prev < LX_DESC)
-                return false;
+            if (prev < LX_HEADER || prev > rel || rel - prev < LX_DESC) return false;
             start = prev + LX_DESC;
         }
         if (start > rel || s.size > rel - start) return false;
@@ -299,28 +294,24 @@ static bool lx_walk_backward(xx_io_device *device, lx_layout *l, int64_t size,
     return true;
 }
 
-static bool lx_walk_forward(xx_io_device *device, lx_layout *l, int64_t size,
-                            xx_pd_struct *pd) {
+static bool lx_walk_forward(xx_io_device *device, lx_layout *l, int64_t size, xx_pd_struct *pd)
+{
     uint8_t *buffer = (uint8_t *)xx_mem_alloc(LX_SCAN_BLOCK + LX_DESC);
     uint64_t start = LX_HEADER, expect = 0U, pos = LX_HEADER;
     bool result = false;
     if (!buffer) return false;
     while (pos + LX_DESC <= (uint64_t)size) {
         uint64_t left = (uint64_t)size - pos;
-        size_t avail = left > (uint64_t)(LX_SCAN_BLOCK + LX_DESC)
-                           ? (size_t)(LX_SCAN_BLOCK + LX_DESC)
-                           : (size_t)left;
+        size_t avail = left > (uint64_t)(LX_SCAN_BLOCK + LX_DESC) ? (size_t)(LX_SCAN_BLOCK + LX_DESC) : (size_t)left;
         size_t i;
         bool found = false;
-        if (lx_stopped(pd) ||
-            !lx_read_at(device, l->base + (int64_t)pos, buffer, avail))
-            break;
+        if (lx_stopped(pd) || !lx_read_at(device, l->base + (int64_t)pos, buffer, avail)) break;
         for (i = 0U; i + LX_DESC <= avail; i += 16U) {
             const uint8_t *r = buffer + i;
             uint64_t p = pos + i, prev;
             lx_section s;
-            if (xx_data_get_u32(r + 24, 4, 0, false) != LX_DESC || xx_data_get_u64(r + 8, 8, 0, false) != expect ||
-                xx_data_get_u64(r + 16, 8, 0, false) > p - start || !lx_desc_decode(r, &s, &prev))
+            if (xx_data_get_u32(r + 24, 4, 0, false) != LX_DESC || xx_data_get_u64(r + 8, 8, 0, false) != expect || xx_data_get_u64(r + 16, 8, 0, false) > p - start ||
+                !lx_desc_decode(r, &s, &prev))
                 continue;
             s.data = l->base + (int64_t)start;
             if (!lx_push_section(l, &s)) goto done;
@@ -343,8 +334,8 @@ done:
     return result;
 }
 
-static bool lx_parse_layout(Abstractformat *format, lx_layout *l,
-                            xx_pd_struct *pd) {
+static bool lx_parse_layout(Abstractformat *format, lx_layout *l, xx_pd_struct *pd)
+{
     int64_t size;
     xx_mem_zero(l, sizeof(*l));
     if (!lx_parse_header(format, l, &size)) return false;
@@ -366,7 +357,8 @@ typedef struct lx_text_s {
 } lx_text;
 
 /* The next line as [*a, *b), without "\n" and a trailing "\r". */
-static bool lx_next_line(lx_text *r, uint32_t *a, uint32_t *b) {
+static bool lx_next_line(lx_text *r, uint32_t *a, uint32_t *b)
+{
     uint32_t e;
     if (r->pos >= r->n) return false;
     *a = r->pos;
@@ -378,8 +370,8 @@ static bool lx_next_line(lx_text *r, uint32_t *a, uint32_t *b) {
     return true;
 }
 
-static bool lx_range_is(const uint16_t *t, uint32_t a, uint32_t b,
-                        const char *word) {
+static bool lx_range_is(const uint16_t *t, uint32_t a, uint32_t b, const char *word)
+{
     uint32_t i = 0U;
     for (; a + i < b; ++i) {
         if (!word[i] || t[a + i] != (uint16_t)(uint8_t)word[i]) return false;
@@ -388,8 +380,8 @@ static bool lx_range_is(const uint16_t *t, uint32_t a, uint32_t b,
 }
 
 /* Column @p index of a tab separated range. */
-static bool lx_column(const uint16_t *t, uint32_t a, uint32_t b,
-                      uint32_t index, uint32_t *ca, uint32_t *cb) {
+static bool lx_column(const uint16_t *t, uint32_t a, uint32_t b, uint32_t index, uint32_t *ca, uint32_t *cb)
+{
     uint32_t col = 0U, s = a, i;
     for (i = a; i <= b; ++i) {
         if (i == b || t[i] == 0x0009U) {
@@ -405,13 +397,14 @@ static bool lx_column(const uint16_t *t, uint32_t a, uint32_t b,
     return false;
 }
 
-static void lx_trim(const uint16_t *t, uint32_t *a, uint32_t *b) {
+static void lx_trim(const uint16_t *t, uint32_t *a, uint32_t *b)
+{
     while (*a < *b && t[*a] == 0x0020U) ++*a;
     while (*b > *a && t[*b - 1U] == 0x0020U) --*b;
 }
 
-static bool lx_parse_u64(const uint16_t *t, uint32_t a, uint32_t b,
-                         uint64_t *out) {
+static bool lx_parse_u64(const uint16_t *t, uint32_t a, uint32_t b, uint64_t *out)
+{
     uint64_t v = 0U;
     lx_trim(t, &a, &b);
     if (a == b) return false;
@@ -425,8 +418,8 @@ static bool lx_parse_u64(const uint16_t *t, uint32_t a, uint32_t b,
     return true;
 }
 
-static bool lx_parse_i64(const uint16_t *t, uint32_t a, uint32_t b,
-                         int64_t *out) {
+static bool lx_parse_i64(const uint16_t *t, uint32_t a, uint32_t b, int64_t *out)
+{
     uint64_t v;
     bool negative = false;
     lx_trim(t, &a, &b);
@@ -439,8 +432,8 @@ static bool lx_parse_i64(const uint16_t *t, uint32_t a, uint32_t b,
     return true;
 }
 
-static bool lx_parse_hex(const uint16_t *t, uint32_t a, uint32_t b,
-                         uint64_t *out) {
+static bool lx_parse_hex(const uint16_t *t, uint32_t a, uint32_t b, uint64_t *out)
+{
     uint64_t v = 0U;
     if (a == b || b - a > 16U) return false;
     for (; a < b; ++a) {
@@ -460,19 +453,15 @@ static bool lx_parse_hex(const uint16_t *t, uint32_t a, uint32_t b,
 /* Case data / device information                                          */
 
 /* Unpack a small compressed UTF-16 object string into code units. */
-static uint16_t *lx_read_object_string(xx_io_device *device,
-                                       const lx_layout *l,
-                                       const lx_section *s,
-                                       uint32_t *units) {
+static uint16_t *lx_read_object_string(xx_io_device *device, const lx_layout *l, const lx_section *s, uint32_t *units)
+{
     uint8_t *packed = NULL, *plain = NULL;
     uint16_t *text = NULL;
     size_t length = 0U, payload, i, skip = 0U;
     bool big = false;
     *units = 0U;
     payload = (size_t)(s->size - s->padding);
-    if (payload == 0U || payload > LX_MAX_STRING_IN ||
-        (s->flags & LX_FLAG_ENCRYPTED) != 0U)
-        return NULL;
+    if (payload == 0U || payload > LX_MAX_STRING_IN || (s->flags & LX_FLAG_ENCRYPTED) != 0U) return NULL;
     packed = (uint8_t *)xx_mem_alloc(payload);
     if (!packed || !lx_read_at(device, s->data, packed, payload)) goto done;
     if (l->method == 0U) {
@@ -481,10 +470,7 @@ static uint16_t *lx_read_object_string(xx_io_device *device,
         length = payload;
     } else if (l->method == 1U) {
         plain = (uint8_t *)xx_mem_alloc(LX_MAX_STRING_OUT);
-        if (!plain ||
-            !xx_zlib_stream_decode_memory(packed, payload, plain,
-                                          LX_MAX_STRING_OUT, &length))
-            goto done;
+        if (!plain || !xx_zlib_stream_decode_memory(packed, payload, plain, LX_MAX_STRING_OUT, &length)) goto done;
     } else {
         goto done;
     }
@@ -500,8 +486,7 @@ static uint16_t *lx_read_object_string(xx_io_device *device,
     if (!text) goto done;
     for (i = 0U; i < length; ++i) {
         const uint8_t *p = plain + skip + i * 2U;
-        text[i] = big ? (uint16_t)((p[0] << 8U) | p[1])
-                      : (uint16_t)(p[0] | (p[1] << 8U));
+        text[i] = big ? (uint16_t)((p[0] << 8U) | p[1]) : (uint16_t)(p[0] | (p[1] << 8U));
     }
     *units = (uint32_t)length;
 done:
@@ -511,22 +496,19 @@ done:
 }
 
 /* Value of tag @p tag in a "1\nmain\n<tags>\n<values>" object string. */
-static bool lx_object_value(const uint16_t *t, uint32_t n, const char *tag,
-                            uint64_t *out) {
+static bool lx_object_value(const uint16_t *t, uint32_t n, const char *tag, uint64_t *out)
+{
     lx_text r;
     uint32_t a, b, ta, tb, va, vb, ca, cb, index;
     r.t = t;
     r.n = n;
     r.pos = 0U;
-    if (!lx_next_line(&r, &a, &b) || !lx_next_line(&r, &a, &b) ||
-        !lx_range_is(t, a, b, "main") || !lx_next_line(&r, &ta, &tb) ||
-        !lx_next_line(&r, &va, &vb))
+    if (!lx_next_line(&r, &a, &b) || !lx_next_line(&r, &a, &b) || !lx_range_is(t, a, b, "main") || !lx_next_line(&r, &ta, &tb) || !lx_next_line(&r, &va, &vb))
         return false;
     for (index = 0U; index < 256U; ++index) {
         if (!lx_column(t, ta, tb, index, &ca, &cb)) return false;
         if (lx_range_is(t, ca, cb, tag)) {
-            return lx_column(t, va, vb, index, &ca, &cb) &&
-                   lx_parse_u64(t, ca, cb, out);
+            return lx_column(t, va, vb, index, &ca, &cb) && lx_parse_u64(t, ca, cb, out);
         }
     }
     return false;
@@ -535,19 +517,15 @@ static bool lx_object_value(const uint16_t *t, uint32_t n, const char *tag,
 /* ---------------------------------------------------------------------- */
 /* Sector tables                                                           */
 
-static bool lx_add_table(xx_io_device *device, lx_info *info,
-                         const lx_section *s) {
+static bool lx_add_table(xx_io_device *device, lx_info *info, const lx_section *s)
+{
     uint8_t header[32];
     lx_table table;
     uint64_t need;
-    if (s->size < 32U || !lx_read_at(device, s->data, header, 32U) ||
-        xx_adler32(header, 16U) != xx_data_get_u32(header + 16, 4, 0, false))
-        return false;
+    if (s->size < 32U || !lx_read_at(device, s->data, header, 32U) || xx_adler32(header, 16U) != xx_data_get_u32(header + 16, 4, 0, false)) return false;
     table.first = xx_data_get_u64(header, 8, 0, false);
     table.count = xx_data_get_u32(header + 8, 4, 0, false);
-    if (table.count > LX_MAX_TABLE_ENTRIES ||
-        table.first > UINT64_MAX / 2U)
-        return false;
+    if (table.count > LX_MAX_TABLE_ENTRIES || table.first > UINT64_MAX / 2U) return false;
     need = 32U + (uint64_t)table.count * 16U;
     if (need > s->size) return false;
     table.entries_at = s->data + 32;
@@ -557,19 +535,18 @@ static bool lx_add_table(xx_io_device *device, lx_info *info,
     {
         lx_table *next;
         if (info->table_count >= LX_MAX_SECTIONS) return false;
-        next = (lx_table *)xx_mem_realloc(
-            info->tables, ((size_t)info->table_count + 1U) * sizeof(*next));
+        next = (lx_table *)xx_mem_realloc(info->tables, ((size_t)info->table_count + 1U) * sizeof(*next));
         if (!next) return false;
         info->tables = next;
         info->tables[info->table_count++] = table;
     }
-    if (table.first + table.count > info->chunk_end)
-        info->chunk_end = table.first + table.count;
+    if (table.first + table.count > info->chunk_end) info->chunk_end = table.first + table.count;
     info->chunk_total += table.count;
     return true;
 }
 
-static bool lx_verify_table(xx_io_device *device, lx_table *table) {
+static bool lx_verify_table(xx_io_device *device, lx_table *table)
+{
     uint8_t buffer[4096];
     uint64_t left = (uint64_t)table->count * 16U;
     int64_t at = table->entries_at;
@@ -588,22 +565,19 @@ static bool lx_verify_table(xx_io_device *device, lx_table *table) {
         at += (int64_t)take;
         left -= take;
     }
-    if (!lx_read_at(device, at, stored, 4U) || xx_data_get_u32(stored, 4, 0, false) != adler)
-        return false;
+    if (!lx_read_at(device, at, stored, 4U) || xx_data_get_u32(stored, 4, 0, false) != adler) return false;
     table->verified = 1U;
     return true;
 }
 
-static bool lx_find_chunk(lx_media *m, uint64_t ci, uint8_t entry[16]) {
+static bool lx_find_chunk(lx_media *m, uint64_t ci, uint8_t entry[16])
+{
     uint32_t i;
     for (i = 0U; i < m->info->table_count; ++i) {
         lx_table *table = &m->info->tables[i];
         if (ci >= table->first && ci - table->first < table->count) {
             if (!lx_verify_table(m->device, table)) return false;
-            return lx_read_at(m->device,
-                              table->entries_at +
-                                  (int64_t)((ci - table->first) * 16U),
-                              entry, 16U);
+            return lx_read_at(m->device, table->entries_at + (int64_t)((ci - table->first) * 16U), entry, 16U);
         }
     }
     return false;
@@ -612,14 +586,16 @@ static bool lx_find_chunk(lx_media *m, uint64_t ci, uint8_t entry[16]) {
 /* ---------------------------------------------------------------------- */
 /* Chunks and media                                                        */
 
-static void lx_media_free(lx_media *m) {
+static void lx_media_free(lx_media *m)
+{
     if (m->memory) xx_io_close(m->memory);
     if (m->chunk) xx_mem_free(m->chunk);
     if (m->packed) xx_mem_free(m->packed);
     xx_mem_zero(m, sizeof(*m));
 }
 
-static bool lx_media_open(lx_media *m, xx_io_device *device, lx_info *info) {
+static bool lx_media_open(lx_media *m, xx_io_device *device, lx_info *info)
+{
     size_t cs;
     xx_mem_zero(m, sizeof(*m));
     m->device = device;
@@ -642,9 +618,8 @@ static bool lx_media_open(lx_media *m, xx_io_device *device, lx_info *info) {
 }
 
 /* Decode chunk @p ci into m->chunk; *produced receives its length. */
-static bool lx_decode_entry(lx_media *m, const uint8_t entry[16],
-                            size_t capacity, size_t *produced,
-                            xx_pd_struct *pd) {
+static bool lx_decode_entry(lx_media *m, const uint8_t entry[16], size_t capacity, size_t *produced, xx_pd_struct *pd)
+{
     const lx_layout *l = &m->info->layout;
     uint64_t offset = xx_data_get_u64(entry, 8, 0, false);
     uint32_t size = xx_data_get_u32(entry + 8, 4, 0, false), flags = xx_data_get_u32(entry + 12, 4, 0, false);
@@ -656,30 +631,20 @@ static bool lx_decode_entry(lx_media *m, const uint8_t entry[16],
         *produced = capacity;
         return true;
     }
-    if (offset < LX_HEADER || offset > limit || size > limit - offset ||
-        size == 0U)
-        return false;
+    if (offset < LX_HEADER || offset > limit || size > limit - offset || size == 0U) return false;
     if (flags & LX_CHUNK_COMPRESSED) {
         size_t consumed = 0U, trailer;
         int64_t out;
-        if (l->method == 2U || size < 7U || size > m->packed_capacity ||
-            !lx_read_at(m->device, l->base + (int64_t)offset, m->packed, size) ||
-            !xx_zlib_stream_header_is_valid(m->packed, size) ||
-            xx_io_seek64(m->memory, 0, SEEK_SET) != 0)
+        if (l->method == 2U || size < 7U || size > m->packed_capacity || !lx_read_at(m->device, l->base + (int64_t)offset, m->packed, size) ||
+            !xx_zlib_stream_header_is_valid(m->packed, size) || xx_io_seek64(m->memory, 0, SEEK_SET) != 0)
             return false;
-        if (!xx_deflate_unpack_memory_to_device_ex(m->packed + 2, size - 2U,
-                                                   m->memory, &consumed, false,
-                                                   pd))
-            return false;
+        if (!xx_deflate_unpack_memory_to_device_ex(m->packed + 2, size - 2U, m->memory, &consumed, false, pd)) return false;
         out = xx_io_tell(m->memory);
         if (out <= 0 || (uint64_t)out > capacity) return false;
         trailer = 2U + consumed;
         if (trailer > size || size - trailer < 4U) return false;
-        if (((uint32_t)m->packed[trailer] << 24U |
-             (uint32_t)m->packed[trailer + 1U] << 16U |
-             (uint32_t)m->packed[trailer + 2U] << 8U |
-             (uint32_t)m->packed[trailer + 3U]) !=
-            xx_adler32(m->chunk, (size_t)out))
+        if (((uint32_t)m->packed[trailer] << 24U | (uint32_t)m->packed[trailer + 1U] << 16U | (uint32_t)m->packed[trailer + 2U] << 8U |
+             (uint32_t)m->packed[trailer + 3U]) != xx_adler32(m->chunk, (size_t)out))
             return false;
         *produced = (size_t)out;
         return true;
@@ -691,13 +656,9 @@ static bool lx_decode_entry(lx_media *m, const uint8_t entry[16],
             if (size < 5U) return false;
             data = size - 4U;
         }
-        if (data > capacity ||
-            !lx_read_at(m->device, l->base + (int64_t)offset, m->chunk, data))
-            return false;
+        if (data > capacity || !lx_read_at(m->device, l->base + (int64_t)offset, m->chunk, data)) return false;
         if (flags & LX_CHUNK_CHECKSUM) {
-            if (!lx_read_at(m->device, l->base + (int64_t)offset + (int64_t)data,
-                            stored, 4U) ||
-                xx_data_get_u32(stored, 4, 0, false) != xx_adler32(m->chunk, data))
+            if (!lx_read_at(m->device, l->base + (int64_t)offset + (int64_t)data, stored, 4U) || xx_data_get_u32(stored, 4, 0, false) != xx_adler32(m->chunk, data))
                 return false;
         }
         *produced = data;
@@ -705,25 +666,24 @@ static bool lx_decode_entry(lx_media *m, const uint8_t entry[16],
     }
 }
 
-static bool lx_load_chunk(lx_media *m, uint64_t ci, xx_pd_struct *pd) {
+static bool lx_load_chunk(lx_media *m, uint64_t ci, xx_pd_struct *pd)
+{
     uint8_t entry[16];
     size_t produced;
     size_t cs = m->info->chunk_size;
     if (m->chunk_valid && m->chunk_index == ci) return true;
     m->chunk_valid = false;
-    if (ci >= m->info->chunk_end || !lx_find_chunk(m, ci, entry) ||
-        !lx_decode_entry(m, entry, cs, &produced, pd))
-        return false;
+    if (ci >= m->info->chunk_end || !lx_find_chunk(m, ci, entry) || !lx_decode_entry(m, entry, cs, &produced, pd)) return false;
     /* Every chunk but the final one covers a whole chunk of media. */
-    if (produced == 0U || (ci + 1U < m->info->chunk_end && produced != cs))
-        return false;
+    if (produced == 0U || (ci + 1U < m->info->chunk_end && produced != cs)) return false;
     m->chunk_len = produced;
     m->chunk_index = ci;
     m->chunk_valid = true;
     return true;
 }
 
-static bool lx_sink_write(lx_sink *sink, const uint8_t *data, size_t size) {
+static bool lx_sink_write(lx_sink *sink, const uint8_t *data, size_t size)
+{
     size_t done = 0U;
     xx_hash_update(&sink->md5, data, size);
     sink->written += size;
@@ -736,15 +696,13 @@ static bool lx_sink_write(lx_sink *sink, const uint8_t *data, size_t size) {
     return true;
 }
 
-static bool lx_media_copy(lx_media *m, uint64_t offset, uint64_t length,
-                          lx_sink *sink, xx_pd_struct *pd) {
+static bool lx_media_copy(lx_media *m, uint64_t offset, uint64_t length, lx_sink *sink, xx_pd_struct *pd)
+{
     uint64_t cs = m->info->chunk_size;
     if (offset > UINT64_MAX - length) return false;
     while (length) {
         uint64_t ci = offset / cs, within = offset % cs, take;
-        if (lx_stopped(pd) || !lx_load_chunk(m, ci, pd) ||
-            within >= m->chunk_len)
-            return false;
+        if (lx_stopped(pd) || !lx_load_chunk(m, ci, pd) || within >= m->chunk_len) return false;
         take = m->chunk_len - within;
         if (take > length) take = length;
         if (!lx_sink_write(sink, m->chunk + within, (size_t)take)) return false;
@@ -756,7 +714,8 @@ static bool lx_media_copy(lx_media *m, uint64_t offset, uint64_t length,
 
 /* Chunk size when the case data does not give it: the decoded size of the
  * first chunk (the whole media if that is the only chunk). */
-static uint32_t lx_infer_chunk_size(xx_io_device *device, lx_info *info) {
+static uint32_t lx_infer_chunk_size(xx_io_device *device, lx_info *info)
+{
     lx_media m;
     uint8_t entry[16];
     size_t produced = 0U;
@@ -766,9 +725,7 @@ static uint32_t lx_infer_chunk_size(xx_io_device *device, lx_info *info) {
     if (info->chunk_end == 0U || !lx_media_open(&m, device, &probe)) return 0U;
     if (lx_find_chunk(&m, 0U, entry)) {
         uint32_t flags = xx_data_get_u32(entry + 12, 4, 0, false);
-        if (!((flags & LX_CHUNK_COMPRESSED) && (flags & LX_CHUNK_PATTERN)) &&
-            lx_decode_entry(&m, entry, LX_MAX_CHUNK, &produced, NULL))
-            result = (uint32_t)produced;
+        if (!((flags & LX_CHUNK_COMPRESSED) && (flags & LX_CHUNK_PATTERN)) && lx_decode_entry(&m, entry, LX_MAX_CHUNK, &produced, NULL)) result = (uint32_t)produced;
     }
     lx_media_free(&m);
     /* Copy back what verification learnt about the tables. */
@@ -785,22 +742,21 @@ typedef struct lx_columns_s {
 
 #define LX_NO_COLUMN 0xFFFFFFFFU
 
-static bool lx_header_line(lx_text *r, uint32_t *children) {
+static bool lx_header_line(lx_text *r, uint32_t *children)
+{
     uint32_t a, b, ca, cb;
     uint64_t v;
-    if (!lx_next_line(r, &a, &b) || !lx_column(r->t, a, b, 1U, &ca, &cb) ||
-        !lx_parse_u64(r->t, ca, cb, &v) || v > 0xFFFFFFFFU)
-        return false;
+    if (!lx_next_line(r, &a, &b) || !lx_column(r->t, a, b, 1U, &ca, &cb) || !lx_parse_u64(r->t, ca, cb, &v) || v > 0xFFFFFFFFU) return false;
     *children = (uint32_t)v;
     return true;
 }
 
 /* Walk a "<a>\t<children>" / values tree without keeping anything. */
-static bool lx_skip_tree(lx_text *r) {
+static bool lx_skip_tree(lx_text *r)
+{
     uint32_t stack[LX_MAX_DEPTH];
     uint32_t depth = 0U, children, a, b;
-    if (!lx_header_line(r, &children) || !lx_next_line(r, &a, &b))
-        return false;
+    if (!lx_header_line(r, &children) || !lx_next_line(r, &a, &b)) return false;
     stack[depth++] = children;
     while (depth) {
         if (stack[depth - 1U] == 0U) {
@@ -808,8 +764,7 @@ static bool lx_skip_tree(lx_text *r) {
             continue;
         }
         --stack[depth - 1U];
-        if (!lx_header_line(r, &children) || !lx_next_line(r, &a, &b))
-            return false;
+        if (!lx_header_line(r, &children) || !lx_next_line(r, &a, &b)) return false;
         if (children) {
             if (depth >= LX_MAX_DEPTH) return false;
             stack[depth++] = children;
@@ -818,15 +773,14 @@ static bool lx_skip_tree(lx_text *r) {
     return true;
 }
 
-static bool lx_push_entry(lx_info *info, uint32_t *capacity,
-                          const lx_entry *e) {
+static bool lx_push_entry(lx_info *info, uint32_t *capacity, const lx_entry *e)
+{
     if (info->entry_count >= LX_MAX_ENTRIES) return false;
     if (info->entry_count == *capacity) {
         uint32_t grown = *capacity ? *capacity * 2U : 64U;
         lx_entry *next;
         if (grown > LX_MAX_ENTRIES) grown = LX_MAX_ENTRIES;
-        next = (lx_entry *)xx_mem_realloc(info->entries,
-                                          (size_t)grown * sizeof(*next));
+        next = (lx_entry *)xx_mem_realloc(info->entries, (size_t)grown * sizeof(*next));
         if (!next) return false;
         info->entries = next;
         *capacity = grown;
@@ -835,19 +789,17 @@ static bool lx_push_entry(lx_info *info, uint32_t *capacity,
     return true;
 }
 
-static bool lx_entry_values(const lx_text *r, const lx_columns *c, uint32_t a,
-                            uint32_t b, lx_entry *e) {
+static bool lx_entry_values(const lx_text *r, const lx_columns *c, uint32_t a, uint32_t b, lx_entry *e)
+{
     const uint16_t *t = r->t;
     uint32_t ca, cb;
     uint64_t v;
-    e->is_dir = c->p != LX_NO_COLUMN && lx_column(t, a, b, c->p, &ca, &cb) &&
-                (lx_trim(t, &ca, &cb), lx_range_is(t, ca, cb, "1"));
+    e->is_dir = c->p != LX_NO_COLUMN && lx_column(t, a, b, c->p, &ca, &cb) && (lx_trim(t, &ca, &cb), lx_range_is(t, ca, cb, "1"));
     if (c->n != LX_NO_COLUMN && lx_column(t, a, b, c->n, &ca, &cb)) {
         e->name_at = ca;
         e->name_len = cb - ca;
     }
-    if (c->ls != LX_NO_COLUMN && lx_column(t, a, b, c->ls, &ca, &cb) &&
-        lx_parse_u64(t, ca, cb, &v)) {
+    if (c->ls != LX_NO_COLUMN && lx_column(t, a, b, c->ls, &ca, &cb) && lx_parse_u64(t, ca, cb, &v)) {
         e->size = v;
         e->has_size = true;
     }
@@ -859,9 +811,7 @@ static bool lx_entry_values(const lx_text *r, const lx_columns *c, uint32_t a,
         e->ha_at = ca;
         e->ha_len = cb - ca;
     }
-    if (c->opr != LX_NO_COLUMN && lx_column(t, a, b, c->opr, &ca, &cb) &&
-        lx_parse_u64(t, ca, cb, &v))
-        e->opr = (uint32_t)v;
+    if (c->opr != LX_NO_COLUMN && lx_column(t, a, b, c->opr, &ca, &cb) && lx_parse_u64(t, ca, cb, &v)) e->opr = (uint32_t)v;
     e->du = -1;
     if (c->du != LX_NO_COLUMN && lx_column(t, a, b, c->du, &ca, &cb)) {
         int64_t d;
@@ -870,7 +820,8 @@ static bool lx_entry_values(const lx_text *r, const lx_columns *c, uint32_t a,
     return true;
 }
 
-static bool lx_parse_entries(lx_text *r, lx_info *info) {
+static bool lx_parse_entries(lx_text *r, lx_info *info)
+{
     const uint16_t *t = r->t;
     uint32_t stack_left[LX_MAX_DEPTH], stack_node[LX_MAX_DEPTH];
     uint32_t depth = 0U, children, a, b, ta, tb, index, capacity = 0U;
@@ -909,8 +860,7 @@ static bool lx_parse_entries(lx_text *r, lx_info *info) {
         }
         --stack_left[depth - 1U];
         xx_mem_zero(&e, sizeof(e));
-        if (!lx_header_line(r, &children) || !lx_next_line(r, &a, &b))
-            return false;
+        if (!lx_header_line(r, &children) || !lx_next_line(r, &a, &b)) return false;
         e.parent = stack_node[depth - 1U];
         e.depth = depth;
         lx_entry_values(r, &c, a, b, &e);
@@ -925,12 +875,14 @@ static bool lx_parse_entries(lx_text *r, lx_info *info) {
     return true;
 }
 
-static void lx_skip_blank(lx_text *r) {
+static void lx_skip_blank(lx_text *r)
+{
     uint32_t save = r->pos, a, b;
     if (lx_next_line(r, &a, &b) && a != b) r->pos = save;
 }
 
-static bool lx_parse_ltree(lx_info *info) {
+static bool lx_parse_ltree(lx_info *info)
+{
     lx_text r;
     uint32_t a, b, i, category, categories;
     uint64_t v;
@@ -938,9 +890,7 @@ static bool lx_parse_ltree(lx_info *info) {
     r.n = info->text_units;
     r.pos = 0U;
     if (r.n && r.t[0] == 0xFEFFU) r.pos = 1U;
-    if (!lx_next_line(&r, &a, &b) || !lx_parse_u64(r.t, a, b, &v) || v == 0U ||
-        v > LX_MAX_CATEGORIES)
-        return false;
+    if (!lx_next_line(&r, &a, &b) || !lx_parse_u64(r.t, a, b, &v) || v == 0U || v > LX_MAX_CATEGORIES) return false;
     categories = (uint32_t)v;
     for (category = 0U; category < categories; ++category) {
         /* Blank lines between categories. */
@@ -953,24 +903,17 @@ static bool lx_parse_ltree(lx_info *info) {
             if (!lx_parse_entries(&r, info)) return false;
         } else if (lx_range_is(r.t, a, b, "rec")) {
             uint32_t ta, tb, va, vb, ca, cb;
-            if (!lx_next_line(&r, &ta, &tb) || !lx_next_line(&r, &va, &vb))
-                return false;
+            if (!lx_next_line(&r, &ta, &tb) || !lx_next_line(&r, &va, &vb)) return false;
             for (i = 0U; i < 64U; ++i) {
                 if (!lx_column(r.t, ta, tb, i, &ca, &cb)) break;
                 if (lx_range_is(r.t, ca, cb, "tb")) {
-                    if (lx_column(r.t, va, vb, i, &ca, &cb) &&
-                        lx_parse_u64(r.t, ca, cb, &v))
-                        info->media_size = v;
+                    if (lx_column(r.t, va, vb, i, &ca, &cb) && lx_parse_u64(r.t, ca, cb, &v)) info->media_size = v;
                     break;
                 }
             }
-        } else if (lx_range_is(r.t, a, b, "perm") ||
-                   lx_range_is(r.t, a, b, "srce") ||
-                   lx_range_is(r.t, a, b, "sub")) {
+        } else if (lx_range_is(r.t, a, b, "perm") || lx_range_is(r.t, a, b, "srce") || lx_range_is(r.t, a, b, "sub")) {
             uint32_t ta, tb;
-            if (!lx_next_line(&r, &a, &b) || !lx_next_line(&r, &ta, &tb) ||
-                !lx_skip_tree(&r))
-                return false;
+            if (!lx_next_line(&r, &a, &b) || !lx_next_line(&r, &ta, &tb) || !lx_skip_tree(&r)) return false;
         } else {
             /* Unknown category: skip to its closing blank line. */
             while (lx_next_line(&r, &a, &b) && a != b) {
@@ -986,8 +929,7 @@ end:
         uint32_t count = 0U, k;
         for (k = 1U; k < info->entry_count; ++k)
             if (!info->entries[k].is_dir) ++count;
-        info->files = (uint32_t *)xx_mem_alloc(
-            (size_t)(count ? count : 1U) * sizeof(uint32_t));
+        info->files = (uint32_t *)xx_mem_alloc((size_t)(count ? count : 1U) * sizeof(uint32_t));
         if (!info->files) return false;
         for (k = 1U; k < info->entry_count; ++k)
             if (!info->entries[k].is_dir) info->files[info->file_count++] = k;
@@ -998,7 +940,8 @@ end:
 /* ---------------------------------------------------------------------- */
 /* Whole-file parse                                                        */
 
-static void lx_info_free(lx_info *info) {
+static void lx_info_free(lx_info *info)
+{
     lx_layout_free(&info->layout);
     if (info->tables) xx_mem_free(info->tables);
     if (info->text) xx_mem_free(info->text);
@@ -1007,8 +950,8 @@ static void lx_info_free(lx_info *info) {
     xx_mem_zero(info, sizeof(*info));
 }
 
-static bool lx_load_text(xx_io_device *device, lx_info *info,
-                         const lx_section *s) {
+static bool lx_load_text(xx_io_device *device, lx_info *info, const lx_section *s)
+{
     uint64_t payload = s->size - s->padding;
     uint8_t *raw;
     uint32_t units, i;
@@ -1022,13 +965,13 @@ static bool lx_load_text(xx_io_device *device, lx_info *info,
     }
     /* Converted in place: a u16 array over the same bytes. */
     info->text = (uint16_t *)raw;
-    for (i = 0U; i < units; ++i)
-        info->text[i] = (uint16_t)(raw[i * 2U] | (raw[i * 2U + 1U] << 8U));
+    for (i = 0U; i < units; ++i) info->text[i] = (uint16_t)(raw[i * 2U] | (raw[i * 2U + 1U] << 8U));
     info->text_units = units;
     return true;
 }
 
-static bool lx_load(Abstractformat *format, lx_info *info, xx_pd_struct *pd) {
+static bool lx_load(Abstractformat *format, lx_info *info, xx_pd_struct *pd)
+{
     xx_io_device *device = format->device;
     const lx_section *single = NULL;
     uint64_t spc = 0U, bps = 0U;
@@ -1040,33 +983,26 @@ static bool lx_load(Abstractformat *format, lx_info *info, xx_pd_struct *pd) {
         const lx_section *s = &info->layout.sections[i];
         if (s->flags & LX_FLAG_ENCRYPTED) info->encrypted = true;
         switch (s->type) {
-        case LX_TYPE_CASE:
-        case LX_TYPE_DEVICE:
-            if ((s->type == LX_TYPE_CASE && !have_spc) ||
-                (s->type == LX_TYPE_DEVICE && !have_bps)) {
-                uint32_t units;
-                uint16_t *t = lx_read_object_string(device, &info->layout, s,
-                                                    &units);
-                if (t) {
-                    if (s->type == LX_TYPE_CASE)
-                        have_spc = lx_object_value(t, units, "sb", &spc);
-                    else
-                        have_bps = lx_object_value(t, units, "bp", &bps);
-                    xx_mem_free(t);
+            case LX_TYPE_CASE:
+            case LX_TYPE_DEVICE:
+                if ((s->type == LX_TYPE_CASE && !have_spc) || (s->type == LX_TYPE_DEVICE && !have_bps)) {
+                    uint32_t units;
+                    uint16_t *t = lx_read_object_string(device, &info->layout, s, &units);
+                    if (t) {
+                        if (s->type == LX_TYPE_CASE) have_spc = lx_object_value(t, units, "sb", &spc);
+                        else have_bps = lx_object_value(t, units, "bp", &bps);
+                        xx_mem_free(t);
+                    }
                 }
-            }
-            break;
-        case LX_TYPE_TABLE:
-            if (!lx_add_table(device, info, s)) goto fail;
-            break;
-        case LX_TYPE_KEYS:
-            info->encrypted = true;
-            break;
-        case LX_TYPE_SINGLE_FILES:
-            if (!single) single = s;
-            break;
-        default:
-            break;
+                break;
+            case LX_TYPE_TABLE:
+                if (!lx_add_table(device, info, s)) goto fail;
+                break;
+            case LX_TYPE_KEYS: info->encrypted = true; break;
+            case LX_TYPE_SINGLE_FILES:
+                if (!single) single = s;
+                break;
+            default: break;
         }
     }
     if (!have_bps || bps == 0U || bps > 65536U) bps = 512U;
@@ -1078,10 +1014,8 @@ static bool lx_load(Abstractformat *format, lx_info *info, xx_pd_struct *pd) {
         info->chunk_size = lx_infer_chunk_size(device, info);
         info->sectors_per_chunk = info->chunk_size / info->bytes_per_sector;
     }
-    if (single && !info->encrypted &&
-        (single->flags & LX_FLAG_ENCRYPTED) == 0U) {
-        if (!lx_load_text(device, info, single) || !lx_parse_ltree(info))
-            goto fail;
+    if (single && !info->encrypted && (single->flags & LX_FLAG_ENCRYPTED) == 0U) {
+        if (!lx_load_text(device, info, single) || !lx_parse_ltree(info)) goto fail;
         info->has_single_files = true;
     }
     return true;
@@ -1093,7 +1027,8 @@ fail:
 /* ---------------------------------------------------------------------- */
 /* Names                                                                   */
 
-static size_t lx_put_escape(char *out, uint32_t c) {
+static size_t lx_put_escape(char *out, uint32_t c)
+{
     static const char digits[] = "0123456789ABCDEF";
     out[0] = '%';
     out[1] = digits[(c >> 4U) & 0x0FU];
@@ -1103,25 +1038,21 @@ static size_t lx_put_escape(char *out, uint32_t c) {
 
 /* One entry name as UTF-8; characters a path cannot hold become %XX.
  * Returns false when it does not fit. */
-static bool lx_append_name(const lx_info *info, const lx_entry *e, char *out,
-                           size_t *at) {
+static bool lx_append_name(const lx_info *info, const lx_entry *e, char *out, size_t *at)
+{
     const uint16_t *t = info->text;
     uint32_t i = 0U;
     while (i < e->name_len) {
         uint32_t c = t[e->name_at + i++];
         char buffer[4];
         size_t length = 0U, k;
-        if (c >= 0xD800U && c <= 0xDBFFU && i < e->name_len &&
-            t[e->name_at + i] >= 0xDC00U && t[e->name_at + i] <= 0xDFFFU) {
-            c = 0x10000U + ((c - 0xD800U) << 10U) +
-                (uint32_t)(t[e->name_at + i] - 0xDC00U);
+        if (c >= 0xD800U && c <= 0xDBFFU && i < e->name_len && t[e->name_at + i] >= 0xDC00U && t[e->name_at + i] <= 0xDFFFU) {
+            c = 0x10000U + ((c - 0xD800U) << 10U) + (uint32_t)(t[e->name_at + i] - 0xDC00U);
             ++i;
         } else if (c >= 0xD800U && c <= 0xDFFFU) {
             c = 0xFFFDU;
         }
-        if (c < 0x20U || c == 0x7FU || c == '/' || c == '\\' || c == ':' ||
-            c == '*' || c == '?' || c == '"' || c == '<' || c == '>' ||
-            c == '|' || c == '%') {
+        if (c < 0x20U || c == 0x7FU || c == '/' || c == '\\' || c == ':' || c == '*' || c == '?' || c == '"' || c == '<' || c == '>' || c == '|' || c == '%') {
             if (*at + 3U >= LX_PATH_MAX) return false;
             *at += lx_put_escape(out + *at, c);
             continue;
@@ -1148,8 +1079,8 @@ static bool lx_append_name(const lx_info *info, const lx_entry *e, char *out,
 }
 
 /* '/' joined names from the first level below the root to @p index. */
-static bool lx_build_path(const lx_info *info, uint32_t index, char *out,
-                          size_t *length) {
+static bool lx_build_path(const lx_info *info, uint32_t index, char *out, size_t *length)
+{
     uint32_t chain[LX_MAX_DEPTH + 1U];
     uint32_t depth = 0U, node = index;
     size_t at = 0U;
@@ -1162,8 +1093,7 @@ static bool lx_build_path(const lx_info *info, uint32_t index, char *out,
     if (node != 0U) return false;
     while (depth) {
         --depth;
-        if (!lx_append_name(info, &info->entries[chain[depth]], out, &at))
-            return false;
+        if (!lx_append_name(info, &info->entries[chain[depth]], out, &at)) return false;
         if (depth) {
             if (at + 1U >= LX_PATH_MAX) return false;
             out[at++] = '/';
@@ -1174,13 +1104,13 @@ static bool lx_build_path(const lx_info *info, uint32_t index, char *out,
     return true;
 }
 
-static uint64_t lx_name_hash(const char *name, size_t length) {
+static uint64_t lx_name_hash(const char *name, size_t length)
+{
     uint64_t hash = UINT64_C(0xcbf29ce484222325);
     size_t index;
     for (index = 0U; index < length; ++index) {
         uint8_t c = (uint8_t)name[index];
-        if (c >= (uint8_t)'A' && c <= (uint8_t)'Z')
-            c = (uint8_t)(c - (uint8_t)'A' + (uint8_t)'a');
+        if (c >= (uint8_t)'A' && c <= (uint8_t)'Z') c = (uint8_t)(c - (uint8_t)'A' + (uint8_t)'a');
         hash ^= (uint64_t)c;
         hash *= UINT64_C(0x100000001b3);
     }
@@ -1189,7 +1119,8 @@ static uint64_t lx_name_hash(const char *name, size_t length) {
 
 /* "name%_N.ext" for the N-th record whose path repeats an earlier one;
  * '%' never appears unescaped in a converted name, so this cannot clash. */
-static void lx_insert_suffix(char *name, size_t length, uint32_t index) {
+static void lx_insert_suffix(char *name, size_t length, uint32_t index)
+{
     char suffix[2 + 10];
     char digits[10];
     size_t suffix_length = 0U, digit_count = 0U, component = 0U, at, tail;
@@ -1210,20 +1141,17 @@ static void lx_insert_suffix(char *name, size_t length, uint32_t index) {
     while (digit_count != 0U) suffix[suffix_length++] = digits[--digit_count];
     if (length + suffix_length >= LX_PATH_MAX) return;
     tail = length - dot;
-    for (at = tail + 1U; at > 0U; --at)
-        name[dot + suffix_length + at - 1U] = name[dot + at - 1U];
+    for (at = tail + 1U; at > 0U; --at) name[dot + suffix_length + at - 1U] = name[dot + at - 1U];
     xx_rt_memcpy(name + dot, suffix, suffix_length);
 }
 
-static bool lx_reserved_component(const char *segment, size_t length) {
-    static const char *const devices[] = {"CON",    "PRN",    "AUX",
-                                          "NUL",    "CLOCK$", "CONIN$",
-                                          "CONOUT$"};
+static bool lx_reserved_component(const char *segment, size_t length)
+{
+    static const char *const devices[] = {"CON", "PRN", "AUX", "NUL", "CLOCK$", "CONIN$", "CONOUT$"};
     char stem[8];
     size_t stem_length = 0U, index;
     while (stem_length < length && segment[stem_length] != '.') ++stem_length;
-    while (stem_length != 0U && segment[stem_length - 1U] == ' ')
-        --stem_length;
+    while (stem_length != 0U && segment[stem_length - 1U] == ' ') --stem_length;
     if (stem_length < 3U || stem_length > sizeof(stem) - 1U) return false;
     for (index = 0U; index < stem_length; ++index) {
         char c = segment[index];
@@ -1231,35 +1159,27 @@ static bool lx_reserved_component(const char *segment, size_t length) {
     }
     stem[stem_length] = 0;
     if (stem_length == 4U && stem[3] >= '0' && stem[3] <= '9' &&
-        ((stem[0] == 'C' && stem[1] == 'O' && stem[2] == 'M') ||
-         (stem[0] == 'L' && stem[1] == 'P' && stem[2] == 'T')))
+        ((stem[0] == 'C' && stem[1] == 'O' && stem[2] == 'M') || (stem[0] == 'L' && stem[1] == 'P' && stem[2] == 'T')))
         return true;
     for (index = 0U; index < sizeof(devices) / sizeof(devices[0]); ++index)
-        if (xx_str_len(devices[index]) == stem_length &&
-            xx_rt_memcmp(stem, devices[index], stem_length) == 0)
-            return true;
+        if (xx_str_len(devices[index]) == stem_length && xx_rt_memcmp(stem, devices[index], stem_length) == 0) return true;
     return false;
 }
 
 /* Relative, no empty / "." / ".." / trailing dot or space components, no
  * device names, no characters Windows refuses. */
-static bool lx_safe_name(const char *name) {
+static bool lx_safe_name(const char *name)
+{
     const char *segment;
     const char *at;
     if (!name || !name[0] || name[0] == '/') return false;
     segment = name;
     for (at = name;; ++at) {
         unsigned char c = (unsigned char)*at;
-        if (c == ':' || c == '<' || c == '>' || c == '"' || c == '|' ||
-            c == '?' || c == '*' || c == '\\' || c == 0x7fU ||
-            (c != 0U && c < 0x20U))
-            return false;
+        if (c == ':' || c == '<' || c == '>' || c == '"' || c == '|' || c == '?' || c == '*' || c == '\\' || c == 0x7fU || (c != 0U && c < 0x20U)) return false;
         if (c == '/' || c == 0U) {
             size_t length = (size_t)(at - segment);
-            if (length == 0U || segment[length - 1U] == '.' ||
-                segment[length - 1U] == ' ' ||
-                lx_reserved_component(segment, length))
-                return false;
+            if (length == 0U || segment[length - 1U] == '.' || segment[length - 1U] == ' ' || lx_reserved_component(segment, length)) return false;
             if (c == 0U) return true;
             segment = at + 1;
         }
@@ -1271,14 +1191,16 @@ typedef struct lx_key_s {
     uint32_t index;
 } lx_key;
 
-static int lx_compare_keys(const void *left, const void *right) {
+static int lx_compare_keys(const void *left, const void *right)
+{
     const lx_key *a = (const lx_key *)left;
     const lx_key *b = (const lx_key *)right;
     if (a->hash != b->hash) return a->hash < b->hash ? -1 : 1;
     return a->index < b->index ? -1 : (a->index > b->index ? 1 : 0);
 }
 
-static bool lx_mark_duplicates(lx_stream *s) {
+static bool lx_mark_duplicates(lx_stream *s)
+{
     lx_key *keys;
     uint32_t index;
     if (s->info.file_count < 2U) return true;
@@ -1286,15 +1208,13 @@ static bool lx_mark_duplicates(lx_stream *s) {
     if (!keys) return false;
     for (index = 0U; index < s->info.file_count; ++index) {
         size_t length = 0U;
-        if (!lx_build_path(&s->info, s->info.files[index], s->name, &length))
-            length = 0U;
+        if (!lx_build_path(&s->info, s->info.files[index], s->name, &length)) length = 0U;
         keys[index].hash = lx_name_hash(s->name, length);
         keys[index].index = index;
     }
     xx_rt_qsort(keys, s->info.file_count, sizeof(*keys), lx_compare_keys);
     for (index = 1U; index < s->info.file_count; ++index)
-        if (keys[index].hash == keys[index - 1U].hash)
-            s->renamed[keys[index].index] = 1U;
+        if (keys[index].hash == keys[index - 1U].hash) s->renamed[keys[index].index] = 1U;
     xx_mem_free(keys);
     return true;
 }
@@ -1307,7 +1227,8 @@ typedef struct lx_extents_s {
     uint32_t pos, end;
 } lx_extents;
 
-static bool lx_token(lx_extents *x, uint32_t *a, uint32_t *b) {
+static bool lx_token(lx_extents *x, uint32_t *a, uint32_t *b)
+{
     while (x->pos < x->end && x->t[x->pos] == ' ') ++x->pos;
     if (x->pos >= x->end) return false;
     *a = x->pos;
@@ -1317,10 +1238,9 @@ static bool lx_token(lx_extents *x, uint32_t *a, uint32_t *b) {
 }
 
 /* Walk the "be" value. With @p m, copy every extent to @p sink. */
-static bool lx_walk_extents(const lx_info *info, const lx_entry *e,
-                            uint64_t *count_out, uint64_t *sum_out,
-                            uint64_t *first_out, lx_media *m, lx_sink *sink,
-                            xx_pd_struct *pd) {
+static bool lx_walk_extents(const lx_info *info, const lx_entry *e, uint64_t *count_out, uint64_t *sum_out, uint64_t *first_out, lx_media *m, lx_sink *sink,
+                            xx_pd_struct *pd)
+{
     lx_extents x;
     uint32_t a, b;
     uint64_t count, k, sum = 0U;
@@ -1331,15 +1251,12 @@ static bool lx_walk_extents(const lx_info *info, const lx_entry *e,
     *sum_out = 0U;
     *first_out = 0U;
     if (!lx_token(&x, &a, &b)) return true; /* no extents at all */
-    if (!lx_parse_hex(x.t, a, b, &count) || count > LX_MAX_EXTENTS)
-        return false;
+    if (!lx_parse_hex(x.t, a, b, &count) || count > LX_MAX_EXTENTS) return false;
     for (k = 0U; k < count; ++k) {
         uint64_t offset, size;
         if (!lx_token(&x, &a, &b)) return false;
         if (b - a == 1U && x.t[a] == 'S' && !lx_token(&x, &a, &b)) return false;
-        if (!lx_parse_hex(x.t, a, b, &offset) || !lx_token(&x, &a, &b) ||
-            !lx_parse_hex(x.t, a, b, &size) || sum > UINT64_MAX - size)
-            return false;
+        if (!lx_parse_hex(x.t, a, b, &offset) || !lx_token(&x, &a, &b) || !lx_parse_hex(x.t, a, b, &size) || sum > UINT64_MAX - size) return false;
         if (k == 0U) *first_out = offset;
         sum += size;
         if (m && !lx_media_copy(m, offset, size, sink, pd)) return false;
@@ -1350,8 +1267,8 @@ static bool lx_walk_extents(const lx_info *info, const lx_entry *e,
     return true;
 }
 
-static bool lx_hex_digest(const uint16_t *t, uint32_t a, uint32_t length,
-                          uint8_t digest[16]) {
+static bool lx_hex_digest(const uint16_t *t, uint32_t a, uint32_t length, uint8_t digest[16])
+{
     uint32_t i;
     bool nonzero = false;
     if (length != 32U) return false;
@@ -1364,8 +1281,8 @@ static bool lx_hex_digest(const uint16_t *t, uint32_t a, uint32_t length,
     return nonzero;
 }
 
-static bool lx_fill(lx_sink *sink, uint8_t value, uint64_t size,
-                    xx_pd_struct *pd) {
+static bool lx_fill(lx_sink *sink, uint8_t value, uint64_t size, xx_pd_struct *pd)
+{
     uint8_t block[4096];
     xx_rt_memset(block, value, sizeof(block));
     while (size) {
@@ -1376,57 +1293,47 @@ static bool lx_fill(lx_sink *sink, uint8_t value, uint64_t size,
     return true;
 }
 
-static bool lx_unpack_member(lx_stream *s, uint32_t index,
-                             xx_io_device *destination, xx_pd_struct *pd) {
+static bool lx_unpack_member(lx_stream *s, uint32_t index, xx_io_device *destination, xx_pd_struct *pd)
+{
     const lx_info *info = &s->info;
     const lx_entry *e = &info->entries[index];
     uint64_t count, sum, first, size;
     uint8_t expected[16], actual[16];
     bool sparse = (e->opr & LX_OPR_SPARSE) != 0U;
     lx_sink sink;
-    if (info->encrypted || !lx_walk_extents(info, e, &count, &sum, &first, NULL,
-                                            NULL, pd))
-        return false;
+    if (info->encrypted || !lx_walk_extents(info, e, &count, &sum, &first, NULL, NULL, pd)) return false;
     size = e->has_size ? e->size : sum;
     xx_mem_zero(&sink, sizeof(sink));
     sink.device = destination;
     if (!xx_hash_init(&sink.md5, XX_HASH_MD5)) return false;
     if (size != 0U) {
         if (!sparse) {
-            if (sum != size ||
-                !lx_walk_extents(info, e, &count, &sum, &first, &s->media,
-                                 &sink, pd))
-                return false;
+            if (sum != size || !lx_walk_extents(info, e, &count, &sum, &first, &s->media, &sink, pd)) return false;
         } else {
             if (count == 0U || (sum != 1U && sum != size)) return false;
             if (e->du >= 0) {
-                if (!lx_media_copy(&s->media, (uint64_t)e->du, size, &sink, pd))
-                    return false;
+                if (!lx_media_copy(&s->media, (uint64_t)e->du, size, &sink, pd)) return false;
             } else {
                 lx_sink probe;
                 uint8_t value;
                 xx_mem_zero(&probe, sizeof(probe));
-                if (!xx_hash_init(&probe.md5, XX_HASH_MD5) ||
-                    !lx_media_copy(&s->media, first, 1U, &probe, pd) ||
-                    !lx_load_chunk(&s->media, first / info->chunk_size, pd))
+                if (!xx_hash_init(&probe.md5, XX_HASH_MD5) || !lx_media_copy(&s->media, first, 1U, &probe, pd) || !lx_load_chunk(&s->media, first / info->chunk_size, pd))
                     return false;
                 value = s->media.chunk[first % info->chunk_size];
                 if (!lx_fill(&sink, value, size, pd)) return false;
             }
         }
     }
-    if (sink.written != size || !xx_hash_final(&sink.md5, actual, 16U))
-        return false;
-    if (e->ha_len && lx_hex_digest(info->text, e->ha_at, e->ha_len, expected) &&
-        xx_rt_memcmp(expected, actual, 16U) != 0)
-        return false;
+    if (sink.written != size || !xx_hash_final(&sink.md5, actual, 16U)) return false;
+    if (e->ha_len && lx_hex_digest(info->text, e->ha_at, e->ha_len, expected) && xx_rt_memcmp(expected, actual, 16U) != 0) return false;
     return true;
 }
 
 /* ---------------------------------------------------------------------- */
 /* Records                                                                 */
 
-static void lx_stream_free(void *opaque) {
+static void lx_stream_free(void *opaque)
+{
     lx_stream *s = (lx_stream *)opaque;
     if (!s) return;
     lx_media_free(&s->media);
@@ -1436,17 +1343,16 @@ static void lx_stream_free(void *opaque) {
     xx_mem_free(s);
 }
 
-static bool lx_copy_options(xx_list_s *destination, const xx_list_s *source) {
+static bool lx_copy_options(xx_list_s *destination, const xx_list_s *source)
+{
     size_t index;
     if (!source) return true;
     for (index = 0U; index < source->count; ++index) {
-        const xx_meta *original =
-            (const xx_meta *)xx_list_at((const xx_list_t *)source, index);
+        const xx_meta *original = (const xx_meta *)xx_list_at((const xx_list_t *)source, index);
         xx_meta copy;
         if (!original) continue;
         xx_meta_init(&copy, original->meta_id);
-        if (!xx_var_copy(&copy.var, &original->var) ||
-            !xx_list_append(destination, &copy)) {
+        if (!xx_var_copy(&copy.var, &original->var) || !xx_list_append(destination, &copy)) {
             xx_meta_cleanup(&copy);
             return false;
         }
@@ -1454,19 +1360,19 @@ static bool lx_copy_options(xx_list_s *destination, const xx_list_s *source) {
     return true;
 }
 
-static const xx_var *lx_option(const xx_list_s *options, uint32_t id) {
+static const xx_var *lx_option(const xx_list_s *options, uint32_t id)
+{
     size_t index;
     if (!options) return NULL;
     for (index = 0U; index < options->count; ++index) {
-        const xx_meta *meta =
-            (const xx_meta *)xx_list_at((const xx_list_t *)options, index);
+        const xx_meta *meta = (const xx_meta *)xx_list_at((const xx_list_t *)options, index);
         if (meta && meta->meta_id == id) return &meta->var;
     }
     return NULL;
 }
 
-static bool lx_set_record(Abstractformat *format, xx_archive_record *record,
-                          lx_stream *s, size_t at) {
+static bool lx_set_record(Abstractformat *format, xx_archive_record *record, lx_stream *s, size_t at)
+{
     const lx_entry *e = &s->info.entries[s->info.files[at]];
     uint64_t count = 0U, sum = 0U, first = 0U, size;
     size_t length = 0U;
@@ -1475,8 +1381,7 @@ static bool lx_set_record(Abstractformat *format, xx_archive_record *record,
     s->name_ok = lx_build_path(&s->info, s->info.files[at], s->name, &length);
     if (!s->name_ok) {
         /* Too long or too deep: listed under a placeholder, never written. */
-        (void)xx_rt_snprintf(s->name, LX_PATH_MAX, "%%_entry%u",
-                             (unsigned)s->info.files[at]);
+        (void)xx_rt_snprintf(s->name, LX_PATH_MAX, "%%_entry%u", (unsigned)s->info.files[at]);
         length = xx_str_len(s->name);
     } else if (s->renamed[at]) {
         lx_insert_suffix(s->name, length, (uint32_t)at);
@@ -1487,23 +1392,17 @@ static bool lx_set_record(Abstractformat *format, xx_archive_record *record,
     record->header_size = LX_HEADER;
     record->data_offset = format->base_address;
     record->compressed_size = (int64_t)(sum > (uint64_t)INT64_MAX ? 0U : sum);
-    return xx_archive_record_set_original_name(record, s->name) &&
-           xx_archive_record_set_meta_u64(record, XX_META_ID_COMPRESSED_SIZE,
-                                          sum) &&
-           xx_archive_record_set_meta_u64(record, XX_META_ID_UNCOMPRESSED_SIZE,
-                                          size) &&
-           xx_archive_record_set_meta_u64(record, XX_META_ID_COMPRESSION_METHOD,
-                                          s->info.layout.method) &&
-           xx_archive_record_set_meta_bool(record, XX_META_ID_IS_ENCRYPTED,
-                                           s->info.encrypted) &&
-           xx_archive_record_set_meta_bool(record, XX_META_ID_IS_FOLDER, false);
+    return xx_archive_record_set_original_name(record, s->name) && xx_archive_record_set_meta_u64(record, XX_META_ID_COMPRESSED_SIZE, sum) &&
+           xx_archive_record_set_meta_u64(record, XX_META_ID_UNCOMPRESSED_SIZE, size) &&
+           xx_archive_record_set_meta_u64(record, XX_META_ID_COMPRESSION_METHOD, s->info.layout.method) &&
+           xx_archive_record_set_meta_bool(record, XX_META_ID_IS_ENCRYPTED, s->info.encrypted) && xx_archive_record_set_meta_bool(record, XX_META_ID_IS_FOLDER, false);
 }
 
 /* ---------------------------------------------------------------------- */
 /* Public API                                                              */
 
-void xx_ewf2_lx01_init(xx_ewf2_lx01 *archive, xx_io_device *device,
-                       int64_t base_address) {
+void xx_ewf2_lx01_init(xx_ewf2_lx01 *archive, xx_io_device *device, int64_t base_address)
+{
     if (!archive) return;
     xx_mem_zero(archive, sizeof(*archive));
     xx_format_init(&archive->format, device, base_address);
@@ -1516,44 +1415,43 @@ void xx_ewf2_lx01_init(xx_ewf2_lx01 *archive, xx_io_device *device,
     archive->format.check_is_valid = xx_ewf2_lx01_check_is_valid;
     archive->format.handle_base_info = xx_ewf2_lx01_handle_base_info;
     archive->format.get_format_size = xx_ewf2_lx01_get_format_size;
-    archive->format.get_number_of_archive_records =
-        xx_ewf2_lx01_get_number_of_archive_records;
-    archive->format.create_archive_records_reading =
-        xx_ewf2_lx01_create_archive_records_reading;
-    archive->format.get_current_archive_record =
-        xx_ewf2_lx01_get_current_archive_record;
-    archive->format.unpack_current_archive_record =
-        xx_ewf2_lx01_unpack_current_archive_record;
-    archive->format.archive_record_move_to_next =
-        xx_ewf2_lx01_archive_record_move_to_next;
-    archive->format.free_archive_records_reading =
-        xx_ewf2_lx01_free_archive_records_reading;
+    archive->format.get_number_of_archive_records = xx_ewf2_lx01_get_number_of_archive_records;
+    archive->format.create_archive_records_reading = xx_ewf2_lx01_create_archive_records_reading;
+    archive->format.get_current_archive_record = xx_ewf2_lx01_get_current_archive_record;
+    archive->format.unpack_current_archive_record = xx_ewf2_lx01_unpack_current_archive_record;
+    archive->format.archive_record_move_to_next = xx_ewf2_lx01_archive_record_move_to_next;
+    archive->format.free_archive_records_reading = xx_ewf2_lx01_free_archive_records_reading;
 }
 
-xx_ewf2_lx01 *xx_ewf2_lx01_create(xx_io_device *device, int64_t base_address) {
+xx_ewf2_lx01 *xx_ewf2_lx01_create(xx_io_device *device, int64_t base_address)
+{
     xx_ewf2_lx01 *archive = (xx_ewf2_lx01 *)xx_mem_alloc(sizeof(*archive));
     if (archive) xx_ewf2_lx01_init(archive, device, base_address);
     return archive;
 }
 
-void xx_ewf2_lx01_destroy(xx_ewf2_lx01 *archive) {
+void xx_ewf2_lx01_destroy(xx_ewf2_lx01 *archive)
+{
     if (archive) xx_format_cleanup_extra_parameters(&archive->format);
 }
 
-void xx_ewf2_lx01_free(xx_ewf2_lx01 *archive) {
+void xx_ewf2_lx01_free(xx_ewf2_lx01 *archive)
+{
     if (!archive) return;
     xx_ewf2_lx01_destroy(archive);
     xx_mem_free(archive);
 }
 
-bool xx_ewf2_lx01_check_is_valid(Abstractformat *format, xx_pd_struct *pd) {
+bool xx_ewf2_lx01_check_is_valid(Abstractformat *format, xx_pd_struct *pd)
+{
     lx_layout layout;
     bool result = lx_parse_layout(format, &layout, pd);
     lx_layout_free(&layout);
     return result;
 }
 
-bool xx_ewf2_lx01_handle_base_info(Abstractformat *format, xx_pd_struct *pd) {
+bool xx_ewf2_lx01_handle_base_info(Abstractformat *format, xx_pd_struct *pd)
+{
     lx_info info;
     xx_ewf2_lx01 *archive;
     if (!format || !lx_load(format, &info, pd)) return false;
@@ -1583,22 +1481,18 @@ bool xx_ewf2_lx01_handle_base_info(Abstractformat *format, xx_pd_struct *pd) {
     return true;
 }
 
-int64_t xx_ewf2_lx01_get_format_size(Abstractformat *format,
-                                     xx_pd_struct *pd) {
-    return format && (format->base_info_handled ||
-                      xx_ewf2_lx01_handle_base_info(format, pd))
-               ? format->format_size : -1;
+int64_t xx_ewf2_lx01_get_format_size(Abstractformat *format, xx_pd_struct *pd)
+{
+    return format && (format->base_info_handled || xx_ewf2_lx01_handle_base_info(format, pd)) ? format->format_size : -1;
 }
 
-uint64_t xx_ewf2_lx01_get_number_of_archive_records(Abstractformat *format,
-                                                    xx_pd_struct *pd) {
-    return format && (format->base_info_handled ||
-                      xx_ewf2_lx01_handle_base_info(format, pd))
-               ? ((xx_ewf2_lx01 *)format)->number_of_records : 0U;
+uint64_t xx_ewf2_lx01_get_number_of_archive_records(Abstractformat *format, xx_pd_struct *pd)
+{
+    return format && (format->base_info_handled || xx_ewf2_lx01_handle_base_info(format, pd)) ? ((xx_ewf2_lx01 *)format)->number_of_records : 0U;
 }
 
-xx_archive_record_state *xx_ewf2_lx01_create_archive_records_reading(
-    Abstractformat *format, const xx_list_s *options, xx_pd_struct *pd) {
+xx_archive_record_state *xx_ewf2_lx01_create_archive_records_reading(Abstractformat *format, const xx_list_s *options, xx_pd_struct *pd)
+{
     lx_stream *s;
     xx_archive_record_state *state;
     if (!format) return NULL;
@@ -1610,12 +1504,8 @@ xx_archive_record_state *xx_ewf2_lx01_create_archive_records_reading(
     }
     if (s->info.encrypted) s->info.file_count = 0U;
     s->name = (char *)xx_mem_alloc(LX_PATH_MAX + 16U);
-    s->renamed = (uint8_t *)xx_mem_calloc(
-        s->info.file_count ? s->info.file_count : 1U, 1U);
-    if (!s->name || !s->renamed ||
-        (s->info.file_count != 0U &&
-         (!lx_media_open(&s->media, format->device, &s->info) ||
-          !lx_mark_duplicates(s)))) {
+    s->renamed = (uint8_t *)xx_mem_calloc(s->info.file_count ? s->info.file_count : 1U, 1U);
+    if (!s->name || !s->renamed || (s->info.file_count != 0U && (!lx_media_open(&s->media, format->device, &s->info) || !lx_mark_duplicates(s)))) {
         lx_stream_free(s);
         return NULL;
     }
@@ -1628,9 +1518,7 @@ xx_archive_record_state *xx_ewf2_lx01_create_archive_records_reading(
     state->internal_state = s;
     state->free_internal = lx_stream_free;
     state->total_records = s->info.file_count;
-    if (!lx_copy_options(&state->options, options) ||
-        (s->info.file_count != 0U &&
-         !lx_set_record(format, &state->current_record, s, 0U))) {
+    if (!lx_copy_options(&state->options, options) || (s->info.file_count != 0U && !lx_set_record(format, &state->current_record, s, 0U))) {
         xx_archive_record_state_free(state);
         return NULL;
     }
@@ -1638,20 +1526,16 @@ xx_archive_record_state *xx_ewf2_lx01_create_archive_records_reading(
     return state;
 }
 
-const xx_archive_record *xx_ewf2_lx01_get_current_archive_record(
-    Abstractformat *format, xx_archive_record_state *state) {
-    return format && state && state->format == format && state->has_record
-               ? &state->current_record : NULL;
+const xx_archive_record *xx_ewf2_lx01_get_current_archive_record(Abstractformat *format, xx_archive_record_state *state)
+{
+    return format && state && state->format == format && state->has_record ? &state->current_record : NULL;
 }
 
-bool xx_ewf2_lx01_archive_record_move_to_next(Abstractformat *format,
-                                              xx_archive_record_state *state,
-                                              xx_pd_struct *pd) {
+bool xx_ewf2_lx01_archive_record_move_to_next(Abstractformat *format, xx_archive_record_state *state, xx_pd_struct *pd)
+{
     lx_stream *s;
     (void)pd;
-    if (!format || !state || state->format != format ||
-        !(s = (lx_stream *)state->internal_state) ||
-        ++s->at >= s->info.file_count) {
+    if (!format || !state || state->format != format || !(s = (lx_stream *)state->internal_state) || ++s->at >= s->info.file_count) {
         if (state) state->has_record = false;
         return false;
     }
@@ -1660,9 +1544,8 @@ bool xx_ewf2_lx01_archive_record_move_to_next(Abstractformat *format,
     return state->has_record;
 }
 
-bool xx_ewf2_lx01_unpack_current_archive_record(Abstractformat *format,
-                                                xx_archive_record_state *state,
-                                                xx_pd_struct *pd) {
+bool xx_ewf2_lx01_unpack_current_archive_record(Abstractformat *format, xx_archive_record_state *state, xx_pd_struct *pd)
+{
     lx_stream *s;
     const xx_var *path_option;
     const char *base = NULL;
@@ -1671,29 +1554,20 @@ bool xx_ewf2_lx01_unpack_current_archive_record(Abstractformat *format,
     bool result = false;
     bool created = false;
     uint32_t index;
-    if (!format || !state || state->format != format || !state->has_record ||
-        !(s = (lx_stream *)state->internal_state) ||
-        s->at >= s->info.file_count || lx_stopped(pd))
+    if (!format || !state || state->format != format || !state->has_record || !(s = (lx_stream *)state->internal_state) || s->at >= s->info.file_count || lx_stopped(pd))
         return false;
     index = s->info.files[s->at];
     path_option = lx_option(&state->options, XX_META_ID_OPT_UNPACK_PATH);
-    if (!path_option)
-        /* No destination: decode into nothing, which verifies the member. */
+    if (!path_option) /* No destination: decode into nothing, which verifies the member. */
         return lx_unpack_member(s, index, NULL, pd);
     if (!s->name_ok || !lx_safe_name(s->name)) return false;
-    if (path_option->type == XX_VAR_TYPE_STRING ||
-        path_option->type == XX_VAR_TYPE_STRING_VIEW)
-        base = xx_var_get_str(path_option);
-    else if (path_option->type == XX_VAR_TYPE_WSTRING ||
-             path_option->type == XX_VAR_TYPE_WSTRING_VIEW) {
+    if (path_option->type == XX_VAR_TYPE_STRING || path_option->type == XX_VAR_TYPE_STRING_VIEW) base = xx_var_get_str(path_option);
+    else if (path_option->type == XX_VAR_TYPE_WSTRING || path_option->type == XX_VAR_TYPE_WSTRING_VIEW) {
         owned_base = xx_str_unicode_to_utf8(xx_var_get_wstr(path_option));
         base = owned_base;
     }
     if (!base) goto done;
-    path = (base[0] && base[xx_str_len(base) - 1U] != '/' &&
-            base[xx_str_len(base) - 1U] != '\\')
-               ? xx_str_concat3(base, "/", s->name)
-               : xx_str_concat(base, s->name);
+    path = (base[0] && base[xx_str_len(base) - 1U] != '/' && base[xx_str_len(base) - 1U] != '\\') ? xx_str_concat3(base, "/", s->name) : xx_str_concat(base, s->name);
     if (!path || !xx_store_create_dirs_a(path, false)) goto done;
     {
         xx_io_device *destination = xx_io_file_open(path, "wb");
@@ -1709,8 +1583,8 @@ done:
     return result;
 }
 
-void xx_ewf2_lx01_free_archive_records_reading(Abstractformat *format,
-                                               xx_archive_record_state *state) {
+void xx_ewf2_lx01_free_archive_records_reading(Abstractformat *format, xx_archive_record_state *state)
+{
     (void)format;
     xx_archive_record_state_free(state);
 }

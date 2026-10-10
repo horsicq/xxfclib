@@ -11,7 +11,5 @@
  * DG_MEMORY, or DG_CANCELLED. No filesystem IO.
  * params: highest nibble is integer update shift; next nibble is log2(minmatch).
  */
-dg_status dg_lzp_expand(const dg_callbacks *, const unsigned char *, size_t,
-                  const unsigned char *, size_t, unsigned char *, size_t,
-                  uint32_t params);
+dg_status dg_lzp_expand(const dg_callbacks *, const unsigned char *, size_t, const unsigned char *, size_t, unsigned char *, size_t, uint32_t params);
 #endif

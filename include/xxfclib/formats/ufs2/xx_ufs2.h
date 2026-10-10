@@ -53,38 +53,30 @@ typedef struct xx_ufs2 XUfs2;
 struct xx_ufs2 {
     Abstractformat format;
     uint64_t number_of_records;
-    uint32_t block_size;         /**< fs_bsize; 0 before base info. */
-    uint32_t fragment_size;      /**< fs_fsize. */
-    uint32_t group_count;        /**< fs_ncg. */
-    uint64_t fragment_count;     /**< fs_size. */
-    int64_t superblock_offset;   /**< 65536 or 262144, from the base. */
+    uint32_t block_size;       /**< fs_bsize; 0 before base info. */
+    uint32_t fragment_size;    /**< fs_fsize. */
+    uint32_t group_count;      /**< fs_ncg. */
+    uint64_t fragment_count;   /**< fs_size. */
+    int64_t superblock_offset; /**< 65536 or 262144, from the base. */
     bool big_endian;
     void *internal;
 };
 
-XXFC_API void xx_ufs2_init(xx_ufs2 *ufs2, xx_io_device *dev,
-                           int64_t base_address);
+XXFC_API void xx_ufs2_init(xx_ufs2 *ufs2, xx_io_device *dev, int64_t base_address);
 XXFC_API xx_ufs2 *xx_ufs2_create(xx_io_device *dev, int64_t base_address);
 XXFC_API void xx_ufs2_destroy(xx_ufs2 *ufs2);
 XXFC_API void xx_ufs2_free(xx_ufs2 *ufs2);
 
 XXFC_API bool xx_ufs2_check_is_valid(Abstractformat *self, xx_pd_struct *pd);
 XXFC_API bool xx_ufs2_handle_base_info(Abstractformat *self, xx_pd_struct *pd);
-XXFC_API int64_t xx_ufs2_get_format_size(Abstractformat *self,
-                                         xx_pd_struct *pd);
-XXFC_API uint64_t xx_ufs2_get_number_of_archive_records(Abstractformat *self,
-                                                        xx_pd_struct *pd);
+XXFC_API int64_t xx_ufs2_get_format_size(Abstractformat *self, xx_pd_struct *pd);
+XXFC_API uint64_t xx_ufs2_get_number_of_archive_records(Abstractformat *self, xx_pd_struct *pd);
 
-XXFC_API xx_archive_record_state *xx_ufs2_create_archive_records_reading(
-    Abstractformat *self, const xx_list_s *options, xx_pd_struct *pd);
-XXFC_API const xx_archive_record *xx_ufs2_get_current_archive_record(
-    Abstractformat *self, xx_archive_record_state *state);
-XXFC_API bool xx_ufs2_unpack_current_archive_record(
-    Abstractformat *self, xx_archive_record_state *state, xx_pd_struct *pd);
-XXFC_API bool xx_ufs2_archive_record_move_to_next(
-    Abstractformat *self, xx_archive_record_state *state, xx_pd_struct *pd);
-XXFC_API void xx_ufs2_free_archive_records_reading(
-    Abstractformat *self, xx_archive_record_state *state);
+XXFC_API xx_archive_record_state *xx_ufs2_create_archive_records_reading(Abstractformat *self, const xx_list_s *options, xx_pd_struct *pd);
+XXFC_API const xx_archive_record *xx_ufs2_get_current_archive_record(Abstractformat *self, xx_archive_record_state *state);
+XXFC_API bool xx_ufs2_unpack_current_archive_record(Abstractformat *self, xx_archive_record_state *state, xx_pd_struct *pd);
+XXFC_API bool xx_ufs2_archive_record_move_to_next(Abstractformat *self, xx_archive_record_state *state, xx_pd_struct *pd);
+XXFC_API void xx_ufs2_free_archive_records_reading(Abstractformat *self, xx_archive_record_state *state);
 
 XXFC_API uint64_t xx_ufs2_get_number_of_records(const xx_ufs2 *ufs2);
 XXFC_API uint32_t xx_ufs2_get_block_size(const xx_ufs2 *ufs2);
@@ -92,18 +84,24 @@ XXFC_API uint32_t xx_ufs2_get_fragment_size(const xx_ufs2 *ufs2);
 XXFC_API int64_t xx_ufs2_get_superblock_offset(const xx_ufs2 *ufs2);
 XXFC_API bool xx_ufs2_is_big_endian(const xx_ufs2 *ufs2);
 
-static inline Abstractformat *xx_ufs2_to_format(xx_ufs2 *ufs2) {
+static inline Abstractformat *xx_ufs2_to_format(xx_ufs2 *ufs2)
+{
     return ufs2 ? &ufs2->format : NULL;
 }
-static inline void XUfs2_init(xx_ufs2 *ufs2, xx_io_device *dev,
-                              int64_t base_address) {
+static inline void XUfs2_init(xx_ufs2 *ufs2, xx_io_device *dev, int64_t base_address)
+{
     xx_ufs2_init(ufs2, dev, base_address);
 }
-static inline xx_ufs2 *XUfs2_create(xx_io_device *dev, int64_t base_address) {
+static inline xx_ufs2 *XUfs2_create(xx_io_device *dev, int64_t base_address)
+{
     return xx_ufs2_create(dev, base_address);
 }
-static inline void XUfs2_free(xx_ufs2 *ufs2) { xx_ufs2_free(ufs2); }
-static inline bool XUfs2_is_valid(xx_ufs2 *ufs2, xx_pd_struct *pd) {
+static inline void XUfs2_free(xx_ufs2 *ufs2)
+{
+    xx_ufs2_free(ufs2);
+}
+static inline bool XUfs2_is_valid(xx_ufs2 *ufs2, xx_pd_struct *pd)
+{
     return ufs2 ? xx_format_is_valid(&ufs2->format, pd) : false;
 }
 

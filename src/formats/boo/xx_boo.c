@@ -36,7 +36,7 @@
 
 typedef struct boo_stream_s {
     char name[XX_BOO_MAX_NAME_SIZE + 1];
-    uint8_t *source;    /**< Whole encoded file, owned. */
+    uint8_t *source; /**< Whole encoded file, owned. */
     size_t source_size;
     size_t body_offset; /**< First payload byte, relative to base_address. */
     int64_t unpacked_size;
@@ -45,36 +45,36 @@ typedef struct boo_stream_s {
 
 /* ------------------------------------------------------------- helpers -- */
 
-static bool boo_read_at(xx_io_device *device, int64_t offset, void *buffer,
-                        size_t size) {
+static bool boo_read_at(xx_io_device *device, int64_t offset, void *buffer, size_t size)
+{
     size_t done = 0U;
-    if (!device || (!buffer && size != 0U) || offset < 0 ||
-        xx_io_seek64(device, offset, SEEK_SET) != 0)
-        return false;
+    if (!device || (!buffer && size != 0U) || offset < 0 || xx_io_seek64(device, offset, SEEK_SET) != 0) return false;
     while (done < size) {
-        ssize_t amount =
-            xx_io_read(device, (uint8_t *)buffer + done, size - done);
+        ssize_t amount = xx_io_read(device, (uint8_t *)buffer + done, size - done);
         if (amount <= 0 || (size_t)amount > size - done) return false;
         done += (size_t)amount;
     }
     return true;
 }
 
-static void boo_stream_free(void *opaque) {
+static void boo_stream_free(void *opaque)
+{
     boo_stream *stream = (boo_stream *)opaque;
     if (!stream) return;
     if (stream->source) xx_mem_free(stream->source);
     xx_mem_free(stream);
 }
 
-static bool boo_is_payload_char(uint8_t value) {
+static bool boo_is_payload_char(uint8_t value)
+{
     return value >= XX_BOO_ALPHABET_FIRST && value <= XX_BOO_ALPHABET_LAST;
 }
 
 /* The name reaches the extractor as an output file name, so path traversal
  * has to die here.  '.' is not in the character set, which is what rules out
  * "..", "./" and every other traversal shape. */
-static bool boo_is_name_char(uint8_t value, bool stem) {
+static bool boo_is_name_char(uint8_t value, bool stem)
+{
     if (value >= 'A' && value <= 'Z') return true;
     if (value >= 'a' && value <= 'z') return true;
     if (value >= '0' && value <= '9') return true;
@@ -91,8 +91,7 @@ static bool boo_is_name_char(uint8_t value, bool stem) {
         case '@':
         case '^':
         case '{':
-        case '}':
-            return true;
+        case '}': return true;
         case '\'':
         case '`':
         case '~':
@@ -100,12 +99,12 @@ static bool boo_is_name_char(uint8_t value, bool stem) {
              * extension is what stops ordinary prose - an apostrophe, a
              * backquoted word - from passing as a name line. */
             return stem;
-        default:
-            return false;
+        default: return false;
     }
 }
 
-static bool boo_is_valid_name(const char *name, size_t size) {
+static bool boo_is_valid_name(const char *name, size_t size)
+{
     size_t dot = size;
     size_t index;
 
@@ -135,11 +134,9 @@ static bool boo_is_valid_name(const char *name, size_t size) {
 
 /* --------------------------------------------------------- name + gate -- */
 
-static bool boo_parse_name_line(const uint8_t *source, size_t size,
-                                char *name_out, size_t *body_offset) {
-    size_t limit = (size < (size_t)XX_BOO_MAX_NAME_LINE)
-                       ? size
-                       : (size_t)XX_BOO_MAX_NAME_LINE;
+static bool boo_parse_name_line(const uint8_t *source, size_t size, char *name_out, size_t *body_offset)
+{
+    size_t limit = (size < (size_t)XX_BOO_MAX_NAME_LINE) ? size : (size_t)XX_BOO_MAX_NAME_LINE;
     size_t line_end = limit;
     size_t index;
     size_t length;
@@ -156,8 +153,7 @@ static bool boo_parse_name_line(const uint8_t *source, size_t size,
     if (source[length - 1U] == BOO_CR) --length;
     /* The reference reader requires at least three characters in the name line. */
     if (length < 3U || length > (size_t)XX_BOO_MAX_NAME_SIZE) return false;
-    for (index = 0U; index < length; ++index)
-        name_out[index] = (char)source[index];
+    for (index = 0U; index < length; ++index) name_out[index] = (char)source[index];
     name_out[length] = 0;
     if (!boo_is_valid_name(name_out, length)) return false;
     *body_offset = line_end + 1U;
@@ -166,8 +162,8 @@ static bool boo_parse_name_line(const uint8_t *source, size_t size,
 
 /* Cheap bounded shape test.  It runs on every candidate the dispatcher
  * reaches, so its cost must not scale with the file. */
-static bool boo_probe_gate(const uint8_t *source, size_t size,
-                           size_t body_offset) {
+static bool boo_probe_gate(const uint8_t *source, size_t size, size_t body_offset)
+{
     size_t body_size, window, last_line_end, line_start, index;
     size_t complete_lines = 0U, total_characters = 0U, max_line_width = 0U;
     const uint8_t *body;
@@ -177,9 +173,7 @@ static bool boo_probe_gate(const uint8_t *source, size_t size,
     body_size = size - body_offset;
     if (body_size < (size_t)XX_BOO_MIN_BODY_SIZE) return false;
     body = source + body_offset;
-    window = (body_size < (size_t)XX_BOO_PROBE_WINDOW)
-                 ? body_size
-                 : (size_t)XX_BOO_PROBE_WINDOW;
+    window = (body_size < (size_t)XX_BOO_PROBE_WINDOW) ? body_size : (size_t)XX_BOO_PROBE_WINDOW;
 
     /* The window can cut a line in half; a truncated fragment is evidence of
      * nothing, so everything after the last line feed is dropped. */
@@ -212,9 +206,7 @@ static bool boo_probe_gate(const uint8_t *source, size_t size,
                 /* The count byte always sits on the same line. */
                 if (position + 1U >= line_size) return false;
                 count = body[start + position + 1U];
-                if (count < XX_BOO_ALPHABET_FIRST ||
-                    count > XX_BOO_ALPHABET_FIRST + XX_BOO_MAX_ESCAPE_COUNT)
-                    return false;
+                if (count < XX_BOO_ALPHABET_FIRST || count > XX_BOO_ALPHABET_FIRST + XX_BOO_MAX_ESCAPE_COUNT) return false;
                 position += 2U;
                 continue;
             }
@@ -228,9 +220,7 @@ static bool boo_probe_gate(const uint8_t *source, size_t size,
         total_characters += characters;
         if (line_size > max_line_width) max_line_width = line_size;
     }
-    return complete_lines >= (size_t)BOO_MIN_PROBE_LINES &&
-           total_characters >= (size_t)BOO_MIN_PROBE_CHARS &&
-           max_line_width >= (size_t)BOO_MIN_PROBE_LINE_WIDTH;
+    return complete_lines >= (size_t)BOO_MIN_PROBE_LINES && total_characters >= (size_t)BOO_MIN_PROBE_CHARS && max_line_width >= (size_t)BOO_MIN_PROBE_LINE_WIDTH;
 }
 
 /* -------------------------------------------------------------- decode -- */
@@ -238,8 +228,8 @@ static bool boo_probe_gate(const uint8_t *source, size_t size,
 /* One decoding pass.  @p output may be NULL, in which case only the length is
  * produced; @p capacity bounds the result in both modes so that the escape
  * expansion cannot drive an unbounded allocation. */
-static bool boo_decode(const uint8_t *body, size_t body_size, uint8_t *output,
-                       size_t capacity, size_t *written) {
+static bool boo_decode(const uint8_t *body, size_t body_size, uint8_t *output, size_t capacity, size_t *written)
+{
     uint8_t group[4];
     size_t group_count = 0U;
     size_t position = 0U;
@@ -262,15 +252,12 @@ static bool boo_decode(const uint8_t *body, size_t body_size, uint8_t *output,
         }
         if (escape_pending) {
             size_t count;
-            if (value < XX_BOO_ALPHABET_FIRST ||
-                value > XX_BOO_ALPHABET_FIRST + XX_BOO_MAX_ESCAPE_COUNT)
-                return false;
+            if (value < XX_BOO_ALPHABET_FIRST || value > XX_BOO_ALPHABET_FIRST + XX_BOO_MAX_ESCAPE_COUNT) return false;
             count = (size_t)(value - XX_BOO_ALPHABET_FIRST);
             if (count > capacity - position) return false;
             if (output) {
                 size_t fill;
-                for (fill = 0U; fill < count; ++fill)
-                    output[position + fill] = 0U;
+                for (fill = 0U; fill < count; ++fill) output[position + fill] = 0U;
             }
             if (count >= 2U) {
                 tail[0] = 0U;
@@ -331,42 +318,30 @@ static bool boo_decode(const uint8_t *body, size_t body_size, uint8_t *output,
 
 /* --------------------------------------------------------------- parse -- */
 
-static bool boo_parse(Abstractformat *format, boo_stream **result,
-                      xx_pd_struct *pd) {
+static bool boo_parse(Abstractformat *format, boo_stream **result, xx_pd_struct *pd)
+{
     boo_stream *stream = NULL;
     int64_t total, span;
     size_t measured = 0U;
 
-    if (!format || !format->device || !result || format->base_address < 0 ||
-        (pd && xx_pd_is_stopped(pd)))
-        return false;
+    if (!format || !format->device || !result || format->base_address < 0 || (pd && xx_pd_is_stopped(pd))) return false;
     total = xx_io_total_size(format->device);
     if (total < format->base_address) return false;
     span = total - format->base_address;
-    if (span < XX_BOO_MIN_FILE_SIZE || span > XX_BOO_MAX_ENCODED_SIZE)
-        return false;
+    if (span < XX_BOO_MIN_FILE_SIZE || span > XX_BOO_MAX_ENCODED_SIZE) return false;
 
     stream = (boo_stream *)xx_mem_calloc(1U, sizeof(*stream));
     if (!stream) return false;
     stream->source_size = (size_t)span;
     stream->source = (uint8_t *)xx_mem_alloc(stream->source_size);
     if (!stream->source) goto fail;
-    if (!boo_read_at(format->device, format->base_address, stream->source,
-                     stream->source_size))
-        goto fail;
+    if (!boo_read_at(format->device, format->base_address, stream->source, stream->source_size)) goto fail;
 
-    if (!boo_parse_name_line(stream->source, stream->source_size, stream->name,
-                             &stream->body_offset))
-        goto fail;
-    if (!boo_probe_gate(stream->source, stream->source_size,
-                        stream->body_offset))
-        goto fail;
+    if (!boo_parse_name_line(stream->source, stream->source_size, stream->name, &stream->body_offset)) goto fail;
+    if (!boo_probe_gate(stream->source, stream->source_size, stream->body_offset)) goto fail;
     /* Measuring pass: bounded, and it is what proves the whole stream is
      * well formed rather than just its first few lines. */
-    if (!boo_decode(stream->source + stream->body_offset,
-                    stream->source_size - stream->body_offset, NULL,
-                    (size_t)XX_BOO_MAX_DECODED_SIZE, &measured))
-        goto fail;
+    if (!boo_decode(stream->source + stream->body_offset, stream->source_size - stream->body_offset, NULL, (size_t)XX_BOO_MAX_DECODED_SIZE, &measured)) goto fail;
     stream->unpacked_size = (int64_t)measured;
     stream->consumed = false;
     *result = stream;
@@ -378,17 +353,16 @@ fail:
 
 /* -------------------------------------------------------------- record -- */
 
-static bool boo_copy_options(xx_list_s *destination, const xx_list_s *source) {
+static bool boo_copy_options(xx_list_s *destination, const xx_list_s *source)
+{
     size_t index;
     if (!source) return true;
     for (index = 0U; index < source->count; ++index) {
-        const xx_meta *item =
-            (const xx_meta *)xx_list_at((const xx_list_t *)source, index);
+        const xx_meta *item = (const xx_meta *)xx_list_at((const xx_list_t *)source, index);
         xx_meta copy;
         if (!item) continue;
         xx_meta_init(&copy, item->meta_id);
-        if (!xx_var_copy(&copy.var, &item->var) ||
-            !xx_list_append(destination, &copy)) {
+        if (!xx_var_copy(&copy.var, &item->var) || !xx_list_append(destination, &copy)) {
             xx_meta_cleanup(&copy);
             return false;
         }
@@ -396,43 +370,36 @@ static bool boo_copy_options(xx_list_s *destination, const xx_list_s *source) {
     return true;
 }
 
-static const xx_var *boo_option(const xx_list_s *options, uint32_t id) {
+static const xx_var *boo_option(const xx_list_s *options, uint32_t id)
+{
     size_t index;
     if (!options) return NULL;
     for (index = 0U; index < options->count; ++index) {
-        const xx_meta *item =
-            (const xx_meta *)xx_list_at((const xx_list_t *)options, index);
+        const xx_meta *item = (const xx_meta *)xx_list_at((const xx_list_t *)options, index);
         if (item && item->meta_id == id) return &item->var;
     }
     return NULL;
 }
 
-static bool boo_set_record(xx_archive_record *record,
-                           const Abstractformat *format,
-                           const boo_stream *stream) {
+static bool boo_set_record(xx_archive_record *record, const Abstractformat *format, const boo_stream *stream)
+{
     xx_archive_record_cleanup(record);
     xx_archive_record_init(record);
     record->header_offset = format->base_address;
     record->header_size = (int64_t)stream->body_offset;
     record->data_offset = format->base_address + (int64_t)stream->body_offset;
-    record->compressed_size =
-        (int64_t)(stream->source_size - stream->body_offset);
+    record->compressed_size = (int64_t)(stream->source_size - stream->body_offset);
     return xx_archive_record_set_original_name(record, stream->name) &&
-           xx_archive_record_set_meta_u64(
-               record, XX_META_ID_COMPRESSED_SIZE,
-               (uint64_t)(stream->source_size - stream->body_offset)) &&
-           xx_archive_record_set_meta_u64(record, XX_META_ID_UNCOMPRESSED_SIZE,
-                                          (uint64_t)stream->unpacked_size) &&
-           xx_archive_record_set_meta_u64(record, XX_META_ID_COMPRESSION_METHOD,
-                                          1U) &&
-           xx_archive_record_set_meta_bool(record, XX_META_ID_IS_ENCRYPTED,
-                                           false) &&
+           xx_archive_record_set_meta_u64(record, XX_META_ID_COMPRESSED_SIZE, (uint64_t)(stream->source_size - stream->body_offset)) &&
+           xx_archive_record_set_meta_u64(record, XX_META_ID_UNCOMPRESSED_SIZE, (uint64_t)stream->unpacked_size) &&
+           xx_archive_record_set_meta_u64(record, XX_META_ID_COMPRESSION_METHOD, 1U) && xx_archive_record_set_meta_bool(record, XX_META_ID_IS_ENCRYPTED, false) &&
            xx_archive_record_set_meta_bool(record, XX_META_ID_IS_FOLDER, false);
 }
 
 /* ----------------------------------------------------------- lifecycle -- */
 
-void xx_boo_init(xx_boo *archive, xx_io_device *device, int64_t base_address) {
+void xx_boo_init(xx_boo *archive, xx_io_device *device, int64_t base_address)
+{
     if (!archive) return;
     xx_mem_zero(archive, sizeof(*archive));
     xx_format_init(&archive->format, device, base_address);
@@ -446,33 +413,30 @@ void xx_boo_init(xx_boo *archive, xx_io_device *device, int64_t base_address) {
     archive->format.check_is_valid = xx_boo_check_is_valid;
     archive->format.handle_base_info = xx_boo_handle_base_info;
     archive->format.get_format_size = xx_boo_get_format_size;
-    archive->format.get_number_of_archive_records =
-        xx_boo_get_number_of_archive_records;
-    archive->format.create_archive_records_reading =
-        xx_boo_create_archive_records_reading;
-    archive->format.get_current_archive_record =
-        xx_boo_get_current_archive_record;
-    archive->format.unpack_current_archive_record =
-        xx_boo_unpack_current_archive_record;
-    archive->format.archive_record_move_to_next =
-        xx_boo_archive_record_move_to_next;
-    archive->format.free_archive_records_reading =
-        xx_boo_free_archive_records_reading;
+    archive->format.get_number_of_archive_records = xx_boo_get_number_of_archive_records;
+    archive->format.create_archive_records_reading = xx_boo_create_archive_records_reading;
+    archive->format.get_current_archive_record = xx_boo_get_current_archive_record;
+    archive->format.unpack_current_archive_record = xx_boo_unpack_current_archive_record;
+    archive->format.archive_record_move_to_next = xx_boo_archive_record_move_to_next;
+    archive->format.free_archive_records_reading = xx_boo_free_archive_records_reading;
     archive->body_offset = -1;
     archive->unpacked_size = -1;
 }
 
-xx_boo *xx_boo_create(xx_io_device *device, int64_t base_address) {
+xx_boo *xx_boo_create(xx_io_device *device, int64_t base_address)
+{
     xx_boo *archive = (xx_boo *)xx_mem_alloc(sizeof(*archive));
     if (archive) xx_boo_init(archive, device, base_address);
     return archive;
 }
 
-void xx_boo_destroy(xx_boo *archive) {
+void xx_boo_destroy(xx_boo *archive)
+{
     if (archive) xx_format_cleanup_extra_parameters(&archive->format);
 }
 
-void xx_boo_free(xx_boo *archive) {
+void xx_boo_free(xx_boo *archive)
+{
     if (!archive) return;
     xx_boo_destroy(archive);
     xx_mem_free(archive);
@@ -480,14 +444,16 @@ void xx_boo_free(xx_boo *archive) {
 
 /* -------------------------------------------------------------- format -- */
 
-bool xx_boo_check_is_valid(Abstractformat *format, xx_pd_struct *pd) {
+bool xx_boo_check_is_valid(Abstractformat *format, xx_pd_struct *pd)
+{
     boo_stream *stream;
     if (!boo_parse(format, &stream, pd)) return false;
     boo_stream_free(stream);
     return true;
 }
 
-bool xx_boo_handle_base_info(Abstractformat *format, xx_pd_struct *pd) {
+bool xx_boo_handle_base_info(Abstractformat *format, xx_pd_struct *pd)
+{
     boo_stream *stream;
     xx_boo *archive;
 
@@ -512,26 +478,20 @@ bool xx_boo_handle_base_info(Abstractformat *format, xx_pd_struct *pd) {
     return true;
 }
 
-int64_t xx_boo_get_format_size(Abstractformat *format, xx_pd_struct *pd) {
-    return format &&
-                   (format->base_info_handled ||
-                    xx_boo_handle_base_info(format, pd))
-               ? format->format_size
-               : -1;
+int64_t xx_boo_get_format_size(Abstractformat *format, xx_pd_struct *pd)
+{
+    return format && (format->base_info_handled || xx_boo_handle_base_info(format, pd)) ? format->format_size : -1;
 }
 
-uint64_t xx_boo_get_number_of_archive_records(Abstractformat *format,
-                                              xx_pd_struct *pd) {
-    return format && (format->base_info_handled ||
-                      xx_boo_handle_base_info(format, pd))
-               ? 1U
-               : 0U;
+uint64_t xx_boo_get_number_of_archive_records(Abstractformat *format, xx_pd_struct *pd)
+{
+    return format && (format->base_info_handled || xx_boo_handle_base_info(format, pd)) ? 1U : 0U;
 }
 
 /* ------------------------------------------------------ record reading -- */
 
-xx_archive_record_state *xx_boo_create_archive_records_reading(
-    Abstractformat *format, const xx_list_s *options, xx_pd_struct *pd) {
+xx_archive_record_state *xx_boo_create_archive_records_reading(Abstractformat *format, const xx_list_s *options, xx_pd_struct *pd)
+{
     boo_stream *stream;
     xx_archive_record_state *state;
 
@@ -545,8 +505,7 @@ xx_archive_record_state *xx_boo_create_archive_records_reading(
     state->internal_state = stream;
     state->free_internal = boo_stream_free;
     state->total_records = 1;
-    if (!boo_copy_options(&state->options, options) ||
-        !boo_set_record(&state->current_record, format, stream)) {
+    if (!boo_copy_options(&state->options, options) || !boo_set_record(&state->current_record, format, stream)) {
         xx_archive_record_state_free(state);
         return NULL;
     }
@@ -554,20 +513,16 @@ xx_archive_record_state *xx_boo_create_archive_records_reading(
     return state;
 }
 
-const xx_archive_record *xx_boo_get_current_archive_record(
-    Abstractformat *format, xx_archive_record_state *state) {
-    return format && state && state->format == format && state->has_record
-               ? &state->current_record
-               : NULL;
+const xx_archive_record *xx_boo_get_current_archive_record(Abstractformat *format, xx_archive_record_state *state)
+{
+    return format && state && state->format == format && state->has_record ? &state->current_record : NULL;
 }
 
-bool xx_boo_archive_record_move_to_next(Abstractformat *format,
-                                        xx_archive_record_state *state,
-                                        xx_pd_struct *pd) {
+bool xx_boo_archive_record_move_to_next(Abstractformat *format, xx_archive_record_state *state, xx_pd_struct *pd)
+{
     boo_stream *stream;
     (void)pd;
-    if (!format || !state || state->format != format ||
-        !(stream = (boo_stream *)state->internal_state)) {
+    if (!format || !state || state->format != format || !(stream = (boo_stream *)state->internal_state)) {
         if (state) state->has_record = false;
         return false;
     }
@@ -577,9 +532,8 @@ bool xx_boo_archive_record_move_to_next(Abstractformat *format,
     return false;
 }
 
-bool xx_boo_unpack_current_archive_record(Abstractformat *format,
-                                          xx_archive_record_state *state,
-                                          xx_pd_struct *pd) {
+bool xx_boo_unpack_current_archive_record(Abstractformat *format, xx_archive_record_state *state, xx_pd_struct *pd)
+{
     boo_stream *stream;
     const xx_var *path_option;
     const char *base = NULL;
@@ -591,25 +545,19 @@ bool xx_boo_unpack_current_archive_record(Abstractformat *format,
     bool result = false;
     bool created = false;
 
-    if (!format || !state || state->format != format || !state->has_record ||
-        !(stream = (boo_stream *)state->internal_state) || stream->consumed ||
+    if (!format || !state || state->format != format || !state->has_record || !(stream = (boo_stream *)state->internal_state) || stream->consumed ||
         (pd && xx_pd_is_stopped(pd)))
         return false;
-    if (stream->unpacked_size <= 0 ||
-        stream->unpacked_size > XX_BOO_MAX_DECODED_SIZE)
-        return false;
+    if (stream->unpacked_size <= 0 || stream->unpacked_size > XX_BOO_MAX_DECODED_SIZE) return false;
 
     /* The published length is the TRIMMED one, but the decoder writes the
      * final group in full before the padding is removed, so the buffer has
      * to be two bytes longer than the result.  Sizing it to the trimmed
      * length would make the last group fail to fit and the whole member
      * fail to unpack. */
-    plain = (uint8_t *)xx_mem_alloc((size_t)stream->unpacked_size +
-                                    BOO_MAX_TRAILING_PAD);
+    plain = (uint8_t *)xx_mem_alloc((size_t)stream->unpacked_size + BOO_MAX_TRAILING_PAD);
     if (!plain) goto done;
-    if (!boo_decode(stream->source + stream->body_offset,
-                    stream->source_size - stream->body_offset, plain,
-                    (size_t)stream->unpacked_size + BOO_MAX_TRAILING_PAD,
+    if (!boo_decode(stream->source + stream->body_offset, stream->source_size - stream->body_offset, plain, (size_t)stream->unpacked_size + BOO_MAX_TRAILING_PAD,
                     &written))
         goto done;
     /* Both passes run the identical token loop and the identical trim, so a
@@ -621,19 +569,15 @@ bool xx_boo_unpack_current_archive_record(Abstractformat *format,
         result = true;
         goto done;
     }
-    if (path_option->type == XX_VAR_TYPE_STRING ||
-        path_option->type == XX_VAR_TYPE_STRING_VIEW) {
+    if (path_option->type == XX_VAR_TYPE_STRING || path_option->type == XX_VAR_TYPE_STRING_VIEW) {
         base = xx_var_get_str(path_option);
-    } else if (path_option->type == XX_VAR_TYPE_WSTRING ||
-               path_option->type == XX_VAR_TYPE_WSTRING_VIEW) {
+    } else if (path_option->type == XX_VAR_TYPE_WSTRING || path_option->type == XX_VAR_TYPE_WSTRING_VIEW) {
         owned_base = xx_str_unicode_to_utf8(xx_var_get_wstr(path_option));
         base = owned_base;
     }
     if (!base) goto done;
-    path = (base[0] && base[xx_str_len(base) - 1U] != '/' &&
-            base[xx_str_len(base) - 1U] != '\\')
-               ? xx_str_concat3(base, "/", stream->name)
-               : xx_str_concat(base, stream->name);
+    path = (base[0] && base[xx_str_len(base) - 1U] != '/' && base[xx_str_len(base) - 1U] != '\\') ? xx_str_concat3(base, "/", stream->name)
+                                                                                                  : xx_str_concat(base, stream->name);
     if (!path || !xx_store_create_dirs_a(path, false)) goto done;
     {
         xx_io_device *destination = xx_io_file_open(path, "wb");
@@ -641,8 +585,7 @@ bool xx_boo_unpack_current_archive_record(Abstractformat *format,
         if (!destination) goto done;
         result = true;
         while (done < written) {
-            ssize_t amount =
-                xx_io_write(destination, plain + done, written - done);
+            ssize_t amount = xx_io_write(destination, plain + done, written - done);
             if (amount <= 0 || (size_t)amount > written - done) {
                 result = false;
                 break;
@@ -659,18 +602,20 @@ done:
     return result;
 }
 
-void xx_boo_free_archive_records_reading(Abstractformat *format,
-                                         xx_archive_record_state *state) {
+void xx_boo_free_archive_records_reading(Abstractformat *format, xx_archive_record_state *state)
+{
     (void)format;
     xx_archive_record_state_free(state);
 }
 
 /* ----------------------------------------------------------- accessors -- */
 
-int64_t xx_boo_get_body_offset(const xx_boo *archive) {
+int64_t xx_boo_get_body_offset(const xx_boo *archive)
+{
     return archive ? archive->body_offset : -1;
 }
 
-int64_t xx_boo_get_unpacked_size(const xx_boo *archive) {
+int64_t xx_boo_get_unpacked_size(const xx_boo *archive)
+{
     return archive ? archive->unpacked_size : -1;
 }

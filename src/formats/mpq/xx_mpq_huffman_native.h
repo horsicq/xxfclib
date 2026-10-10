@@ -37,7 +37,8 @@ typedef struct mpq_huff_bits_s {
     unsigned bits, count;
 } mpq_huff_bits;
 
-static bool mpq_huff_bit(mpq_huff_bits *b, unsigned *bit) {
+static bool mpq_huff_bit(mpq_huff_bits *b, unsigned *bit)
+{
     if (!b || !bit) return false;
     if (b->count == 0U) {
         if (b->at >= b->size) return false;
@@ -49,7 +50,8 @@ static bool mpq_huff_bit(mpq_huff_bits *b, unsigned *bit) {
     --b->count;
     return true;
 }
-static bool mpq_huff_byte(mpq_huff_bits *b, unsigned *value) {
+static bool mpq_huff_byte(mpq_huff_bits *b, unsigned *value)
+{
     unsigned n, bit;
     if (!value) return false;
     *value = 0U;
@@ -59,22 +61,23 @@ static bool mpq_huff_byte(mpq_huff_bits *b, unsigned *value) {
     }
     return true;
 }
-static void mpq_huff_unlink(mpq_huff_node *node) {
+static void mpq_huff_unlink(mpq_huff_node *node)
+{
     if (node->next) {
         node->prev->next = node->next;
         node->next->prev = node->prev;
         node->next = node->prev = NULL;
     }
 }
-static void mpq_huff_link_after(mpq_huff_node *point,
-                                mpq_huff_node *node) {
+static void mpq_huff_link_after(mpq_huff_node *point, mpq_huff_node *node)
+{
     node->next = point->next;
     node->prev = point;
     point->next->prev = node;
     point->next = node;
 }
-static mpq_huff_node *mpq_huff_new(mpq_huff_tree *tree, unsigned value,
-                                   unsigned weight, bool before_head) {
+static mpq_huff_node *mpq_huff_new(mpq_huff_tree *tree, unsigned value, unsigned weight, bool before_head)
+{
     mpq_huff_node *node;
     if (tree->used >= MPQ_HUFF_NODE_COUNT) return NULL;
     node = &tree->nodes[tree->used++];
@@ -84,8 +87,8 @@ static mpq_huff_node *mpq_huff_new(mpq_huff_tree *tree, unsigned value,
     node->weight = weight;
     return node;
 }
-static mpq_huff_node *mpq_huff_higher(mpq_huff_tree *tree,
-                                      mpq_huff_node *at, unsigned weight) {
+static mpq_huff_node *mpq_huff_higher(mpq_huff_tree *tree, mpq_huff_node *at, unsigned weight)
+{
     size_t steps = 0U;
     while (at != &tree->head && steps++ <= MPQ_HUFF_NODE_COUNT) {
         if (!at) return NULL;
@@ -94,11 +97,10 @@ static mpq_huff_node *mpq_huff_higher(mpq_huff_tree *tree,
     }
     return steps <= MPQ_HUFF_NODE_COUNT + 1U ? &tree->head : NULL;
 }
-static bool mpq_huff_fixup(mpq_huff_tree *tree, mpq_huff_node *node,
-                           unsigned *max_weight) {
+static bool mpq_huff_fixup(mpq_huff_tree *tree, mpq_huff_node *node, unsigned *max_weight)
+{
     if (node->weight < *max_weight) {
-        mpq_huff_node *higher = mpq_huff_higher(
-            tree, tree->head.prev, node->weight);
+        mpq_huff_node *higher = mpq_huff_higher(tree, tree->head.prev, node->weight);
         if (!higher) return false;
         mpq_huff_unlink(node);
         mpq_huff_link_after(higher, node);
@@ -107,7 +109,8 @@ static bool mpq_huff_fixup(mpq_huff_tree *tree, mpq_huff_node *node,
     }
     return true;
 }
-static bool mpq_huff_build(mpq_huff_tree *tree, unsigned type) {
+static bool mpq_huff_build(mpq_huff_tree *tree, unsigned type)
+{
     const uint8_t *dist;
     mpq_huff_node *lo, *hi, *parent;
     unsigned value, max_weight = 0U;
@@ -119,9 +122,7 @@ static bool mpq_huff_build(mpq_huff_tree *tree, unsigned type) {
     for (value = 0U; value < 256U; ++value) {
         if (dist[value] != 0U) {
             tree->by_value[value] = mpq_huff_new(tree, value, dist[value], false);
-            if (!tree->by_value[value] ||
-                !mpq_huff_fixup(tree, tree->by_value[value], &max_weight))
-                return false;
+            if (!tree->by_value[value] || !mpq_huff_fixup(tree, tree->by_value[value], &max_weight)) return false;
         }
     }
     tree->by_value[256U] = mpq_huff_new(tree, 256U, 1U, true);
@@ -141,7 +142,8 @@ static bool mpq_huff_build(mpq_huff_tree *tree, unsigned type) {
     }
     return steps <= MPQ_HUFF_NODE_COUNT;
 }
-static bool mpq_huff_increment(mpq_huff_tree *tree, mpq_huff_node *node) {
+static bool mpq_huff_increment(mpq_huff_tree *tree, mpq_huff_node *node)
+{
     size_t steps = 0U;
     while (node && ++steps <= MPQ_HUFF_NODE_COUNT) {
         mpq_huff_node *higher, *hi, *old_parent, *other_parent, *other_lo;
@@ -151,8 +153,7 @@ static bool mpq_huff_increment(mpq_huff_tree *tree, mpq_huff_node *node) {
         if (!higher) return false;
         hi = higher->next;
         if (hi != node) {
-            if (hi == &tree->head || !hi->parent || !node->parent ||
-                !hi->parent->lo) return false;
+            if (hi == &tree->head || !hi->parent || !node->parent || !hi->parent->lo) return false;
             other_parent = hi->parent;
             old_parent = node->parent;
             other_lo = other_parent->lo;
@@ -169,12 +170,10 @@ static bool mpq_huff_increment(mpq_huff_tree *tree, mpq_huff_node *node) {
     }
     return node == NULL;
 }
-static bool mpq_huff_insert(mpq_huff_tree *tree,
-                            unsigned old_value, unsigned new_value) {
+static bool mpq_huff_insert(mpq_huff_tree *tree, unsigned old_value, unsigned new_value)
+{
     mpq_huff_node *last, *hi, *lo;
-    if (old_value >= MPQ_HUFF_VALUE_COUNT || new_value >= 256U ||
-        tree->by_value[new_value] || tree->used > MPQ_HUFF_NODE_COUNT - 2U)
-        return false;
+    if (old_value >= MPQ_HUFF_VALUE_COUNT || new_value >= 256U || tree->by_value[new_value] || tree->used > MPQ_HUFF_NODE_COUNT - 2U) return false;
     last = tree->head.prev;
     if (last == &tree->head) return false;
     hi = mpq_huff_new(tree, old_value, last->weight, true);
@@ -186,8 +185,8 @@ static bool mpq_huff_insert(mpq_huff_tree *tree,
     tree->by_value[new_value] = lo;
     return mpq_huff_increment(tree, lo);
 }
-static bool mpq_huff_symbol(mpq_huff_tree *tree, mpq_huff_bits *bits,
-                            unsigned *value) {
+static bool mpq_huff_symbol(mpq_huff_tree *tree, mpq_huff_bits *bits, unsigned *value)
+{
     mpq_huff_node *node = tree->head.next;
     size_t depth = 0U;
     if (!value || node == &tree->head) return false;
@@ -195,50 +194,39 @@ static bool mpq_huff_symbol(mpq_huff_tree *tree, mpq_huff_bits *bits,
         unsigned bit;
         mpq_huff_node *lo = node->lo;
         mpq_huff_node *hi = lo->prev;
-        if (!mpq_huff_bit(bits, &bit) || !lo || !hi ||
-            lo->parent != node || hi == &tree->head || hi->parent != node)
-            return false;
+        if (!mpq_huff_bit(bits, &bit) || !lo || !hi || lo->parent != node || hi == &tree->head || hi->parent != node) return false;
         node = bit ? hi : lo;
     }
-    if (depth > MPQ_HUFF_NODE_COUNT || node->value >= MPQ_HUFF_VALUE_COUNT)
-        return false;
+    if (depth > MPQ_HUFF_NODE_COUNT || node->value >= MPQ_HUFF_VALUE_COUNT) return false;
     *value = node->value;
     return true;
 }
-static bool mpq_huff_decode(const uint8_t *input, size_t input_size,
-                            uint8_t *output, size_t output_capacity,
-                            size_t *output_size, xx_pd_struct *pd) {
+static bool mpq_huff_decode(const uint8_t *input, size_t input_size, uint8_t *output, size_t output_capacity, size_t *output_size, xx_pd_struct *pd)
+{
     mpq_huff_tree tree;
     mpq_huff_bits bits;
     unsigned type, symbol;
     size_t written = 0U;
     if (output_size) *output_size = 0U;
-    if (!input || !output || input_size < 2U || output_capacity == 0U ||
-        (pd && xx_pd_is_stopped(pd))) return false;
+    if (!input || !output || input_size < 2U || output_capacity == 0U || (pd && xx_pd_is_stopped(pd))) return false;
     memset(&bits, 0, sizeof(bits));
     bits.input = input;
     bits.size = input_size;
-    if (!mpq_huff_byte(&bits, &type) || !mpq_huff_build(&tree, type))
-        return false;
+    if (!mpq_huff_byte(&bits, &type) || !mpq_huff_build(&tree, type)) return false;
     for (;;) {
-        if ((written & 255U) == 0U && pd && xx_pd_is_stopped(pd))
-            return false;
+        if ((written & 255U) == 0U && pd && xx_pd_is_stopped(pd)) return false;
         if (!mpq_huff_symbol(&tree, &bits, &symbol)) return false;
         if (symbol == 256U) break;
         if (symbol == 257U) {
             unsigned old_value = tree.head.prev->value;
-            if (!mpq_huff_byte(&bits, &symbol) ||
-                !mpq_huff_insert(&tree, old_value, symbol)) return false;
-            if (type != 0U &&
-                !mpq_huff_increment(&tree, tree.by_value[symbol])) return false;
+            if (!mpq_huff_byte(&bits, &symbol) || !mpq_huff_insert(&tree, old_value, symbol)) return false;
+            if (type != 0U && !mpq_huff_increment(&tree, tree.by_value[symbol])) return false;
         }
         if (symbol >= 256U || written >= output_capacity) return false;
         output[written++] = (uint8_t)symbol;
-        if (type == 0U &&
-            !mpq_huff_increment(&tree, tree.by_value[symbol])) return false;
+        if (type == 0U && !mpq_huff_increment(&tree, tree.by_value[symbol])) return false;
     }
-    if (bits.at != input_size || bits.bits != 0U ||
-        (pd && xx_pd_is_stopped(pd))) return false;
+    if (bits.at != input_size || bits.bits != 0U || (pd && xx_pd_is_stopped(pd))) return false;
     if (output_size) *output_size = written;
     return true;
 }

@@ -34,7 +34,7 @@
 extern "C" {
 #endif
 
-#define XX_DEFAULT_BUFFER_SIZE      (64 * 1024) /* 64 KB default general memory buffer size */
+#define XX_DEFAULT_BUFFER_SIZE (64 * 1024)      /* 64 KB default general memory buffer size */
 #define XX_DEFAULT_FILE_BUFFER_SIZE (64 * 1024) /* 64 KB default file/device I/O buffer size */
 
 /* --- General Buffer Size Configuration --- */
@@ -43,7 +43,7 @@ extern "C" {
  * @brief Set global general buffer size.
  * @param size Buffer size in bytes. If 0, resets to XX_DEFAULT_BUFFER_SIZE.
  */
-XXFC_API void   xx_set_buffer_size(size_t size);
+XXFC_API void xx_set_buffer_size(size_t size);
 
 /**
  * @brief Get global general buffer size.
@@ -57,7 +57,7 @@ XXFC_API size_t xx_get_buffer_size(void);
  * @brief Set global file/device I/O buffer size.
  * @param size File buffer size in bytes. If 0, resets to XX_DEFAULT_FILE_BUFFER_SIZE.
  */
-XXFC_API void   xx_set_file_buffer_size(size_t size);
+XXFC_API void xx_set_file_buffer_size(size_t size);
 
 /**
  * @brief Get global file/device I/O buffer size.
@@ -66,9 +66,9 @@ XXFC_API void   xx_set_file_buffer_size(size_t size);
 XXFC_API size_t xx_get_file_buffer_size(void);
 
 /* Convenient aliases */
-XXFC_API void   xx_global_set_buffer_size(size_t size);
+XXFC_API void xx_global_set_buffer_size(size_t size);
 XXFC_API size_t xx_global_get_buffer_size(void);
-XXFC_API void   xx_global_set_file_buffer_size(size_t size);
+XXFC_API void xx_global_set_file_buffer_size(size_t size);
 XXFC_API size_t xx_global_get_file_buffer_size(void);
 
 #define xx_get_file_BufferSize xx_get_file_buffer_size
@@ -77,8 +77,7 @@ XXFC_API size_t xx_global_get_file_buffer_size(void);
 /* --- Whole-File Memory Limit --- */
 
 /* 256 MB for 64-bit builds, 64 MB for 32-bit ones */
-#define XX_DEFAULT_FILE_MEMORY_LIMIT \
-    (sizeof(void *) > 4 ? (uint64_t)256 * 1024 * 1024 : (uint64_t)64 * 1024 * 1024)
+#define XX_DEFAULT_FILE_MEMORY_LIMIT (sizeof(void *) > 4 ? (uint64_t)256 * 1024 * 1024 : (uint64_t)64 * 1024 * 1024)
 
 /**
  * @brief Set the largest file that may be read into memory whole.
@@ -89,7 +88,7 @@ XXFC_API size_t xx_global_get_file_buffer_size(void);
  * searches over it stop re-reading the device.
  * @param limit Size in bytes; 0 never loads a streamed file whole.
  */
-XXFC_API void     xx_set_file_memory_limit(uint64_t limit);
+XXFC_API void xx_set_file_memory_limit(uint64_t limit);
 
 /**
  * @brief Get the whole-file memory limit (default XX_DEFAULT_FILE_MEMORY_LIMIT).
@@ -99,9 +98,9 @@ XXFC_API uint64_t xx_get_file_memory_limit(void);
 /* --- Terminal Configuration --- */
 
 typedef enum xx_terminal_type_e {
-    XX_TERMINAL_TYPE_NONE = 0,    /**< Plain output, including redirected streams. */
-    XX_TERMINAL_TYPE_ANSI,        /**< ANSI escape sequences are supported. */
-    XX_TERMINAL_TYPE_WINDOWS      /**< Native Windows console attributes. */
+    XX_TERMINAL_TYPE_NONE = 0, /**< Plain output, including redirected streams. */
+    XX_TERMINAL_TYPE_ANSI,     /**< ANSI escape sequences are supported. */
+    XX_TERMINAL_TYPE_WINDOWS   /**< Native Windows console attributes. */
 } xx_terminal_type_t;
 
 /** @brief Enable or disable colored terminal output globally (default: true). */

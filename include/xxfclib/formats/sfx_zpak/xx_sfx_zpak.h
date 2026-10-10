@@ -9,13 +9,15 @@
 #ifdef __cplusplus
 extern "C" {
 #endif
-typedef struct xx_sfx_zpak { Abstractformat format; } xx_sfx_zpak;
-XXFC_API void xx_sfx_zpak_init(xx_sfx_zpak *,xx_io_device *,int64_t);
-XXFC_API xx_sfx_zpak *xx_sfx_zpak_create(xx_io_device *,int64_t);
+typedef struct xx_sfx_zpak {
+    Abstractformat format;
+} xx_sfx_zpak;
+XXFC_API void xx_sfx_zpak_init(xx_sfx_zpak *, xx_io_device *, int64_t);
+XXFC_API xx_sfx_zpak *xx_sfx_zpak_create(xx_io_device *, int64_t);
 XXFC_API void xx_sfx_zpak_destroy(xx_sfx_zpak *);
 XXFC_API void xx_sfx_zpak_free(xx_sfx_zpak *);
-XXFC_API bool xx_sfx_zpak_check_is_valid(Abstractformat *,xx_pd_struct *);
-XXFC_API bool xx_sfx_zpak_handle_base_info(Abstractformat *,xx_pd_struct *);
+XXFC_API bool xx_sfx_zpak_check_is_valid(Abstractformat *, xx_pd_struct *);
+XXFC_API bool xx_sfx_zpak_handle_base_info(Abstractformat *, xx_pd_struct *);
 #ifdef __cplusplus
 }
 #endif

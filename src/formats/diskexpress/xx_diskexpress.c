@@ -94,15 +94,12 @@ typedef struct dxp_stream_s {
     bool consumed;
 } dxp_stream;
 
-static bool dxp_read_at(xx_io_device *device, int64_t offset, void *buffer,
-                        size_t size) {
+static bool dxp_read_at(xx_io_device *device, int64_t offset, void *buffer, size_t size)
+{
     size_t done = 0U;
-    if (!device || (!buffer && size != 0U) || offset < 0 ||
-        xx_io_seek64(device, offset, SEEK_SET) != 0)
-        return false;
+    if (!device || (!buffer && size != 0U) || offset < 0 || xx_io_seek64(device, offset, SEEK_SET) != 0) return false;
     while (done < size) {
-        ssize_t amount = xx_io_read(device, (uint8_t *)buffer + done,
-                                    size - done);
+        ssize_t amount = xx_io_read(device, (uint8_t *)buffer + done, size - done);
         if (amount <= 0 || (size_t)amount > size - done) return false;
         done += (size_t)amount;
     }
@@ -111,11 +108,13 @@ static bool dxp_read_at(xx_io_device *device, int64_t offset, void *buffer,
 
 /* The writer's own CRC: the EDB88320 table, a non-standard seed and no final
  * inversion. */
-static uint32_t dxp_crc32(uint32_t seed, const uint8_t *data, size_t size) {
+static uint32_t dxp_crc32(uint32_t seed, const uint8_t *data, size_t size)
+{
     return xx_crc32_calc(seed ^ UINT32_MAX, data, size) ^ UINT32_MAX;
 }
 
-static void dxp_stream_free(void *opaque) {
+static void dxp_stream_free(void *opaque)
+{
     dxp_stream *stream = (dxp_stream *)opaque;
     if (!stream) return;
     if (stream->info.tracks) xx_mem_free(stream->info.tracks);
@@ -123,7 +122,8 @@ static void dxp_stream_free(void *opaque) {
     xx_mem_free(stream);
 }
 
-static bool dxp_geometry(uint8_t disk_type, int32_t *sectors_per_track) {
+static bool dxp_geometry(uint8_t disk_type, int32_t *sectors_per_track)
+{
     switch (disk_type) {
         case 3: *sectors_per_track = 9; return true;
         case 4: *sectors_per_track = 9; return true;
@@ -134,7 +134,8 @@ static bool dxp_geometry(uint8_t disk_type, int32_t *sectors_per_track) {
     }
 }
 
-static bool dxp_parse(Abstractformat *format, dxp_stream **result) {
+static bool dxp_parse(Abstractformat *format, dxp_stream **result)
+{
     uint8_t header[DXP_HEADER_SIZE];
     dxp_stream *stream = NULL;
     int64_t total, size;
@@ -142,22 +143,18 @@ static bool dxp_parse(Abstractformat *format, dxp_stream **result) {
     uint8_t release, last_cylinder, last_head;
     bool version_ok;
 
-    if (!format || !format->device || !result || format->base_address < 0)
-        return false;
+    if (!format || !format->device || !result || format->base_address < 0) return false;
     total = xx_io_total_size(format->device);
     if (total < format->base_address) return false;
     size = total - format->base_address;
     if (size < DXP_HEADER_SIZE + 2) return false;
-    if (!dxp_read_at(format->device, format->base_address, header,
-                     sizeof(header)))
-        return false;
+    if (!dxp_read_at(format->device, format->base_address, header, sizeof(header))) return false;
     if (header[0] != 'A' || header[1] != 'S') return false;
 
     release = header[4];
     last_cylinder = header[11];
     last_head = header[12];
-    version_ok = (header[2] == 1U && (header[3] == 1U || header[3] == 4U)) ||
-                 (header[2] == 2U && (header[3] == 0U || header[3] == 30U));
+    version_ok = (header[2] == 1U && (header[3] == 1U || header[3] == 4U)) || (header[2] == 2U && (header[3] == 0U || header[3] == 30U));
     if (!version_ok) return false;
     if (release != 0x20U && release != 'A' && release != 'a') return false;
     if (header[10] != 0U && header[10] != header[2]) return false;
@@ -173,15 +170,9 @@ static bool dxp_parse(Abstractformat *format, dxp_stream **result) {
     stream->info.method = header[10];
     stream->info.flags = header[14];
     stream->info.track_size = sectors_per_track * DXP_SECTOR_SIZE;
-    stream->info.track_count =
-        (int32_t)last_cylinder * 2 + (last_head > 1 ? 1 : (int32_t)last_head) +
-        1;
-    if (stream->info.track_count < 1 ||
-        stream->info.track_count > DXP_MAX_TRACKS ||
-        stream->info.track_size <= 0)
-        goto fail;
-    stream->info.image_size =
-        (int64_t)stream->info.track_count * stream->info.track_size;
+    stream->info.track_count = (int32_t)last_cylinder * 2 + (last_head > 1 ? 1 : (int32_t)last_head) + 1;
+    if (stream->info.track_count < 1 || stream->info.track_count > DXP_MAX_TRACKS || stream->info.track_size <= 0) goto fail;
+    stream->info.image_size = (int64_t)stream->info.track_count * stream->info.track_size;
     stream->info.data_offset = format->base_address + DXP_HEADER_SIZE;
 
     if (stream->info.method == 0U) {
@@ -192,16 +183,13 @@ static bool dxp_parse(Abstractformat *format, dxp_stream **result) {
         int64_t cursor = DXP_HEADER_SIZE;
         int64_t packed = 0;
         int32_t index;
-        stream->info.tracks = (dxp_track *)xx_mem_calloc(
-            (size_t)stream->info.track_count, sizeof(dxp_track));
+        stream->info.tracks = (dxp_track *)xx_mem_calloc((size_t)stream->info.track_count, sizeof(dxp_track));
         if (!stream->info.tracks) goto fail;
         for (index = 0; index < stream->info.track_count; ++index) {
             uint8_t length[2];
             int32_t chunk;
             if (cursor > size - 2) goto fail;
-            if (!dxp_read_at(format->device, format->base_address + cursor,
-                             length, sizeof(length)))
-                goto fail;
+            if (!dxp_read_at(format->device, format->base_address + cursor, length, sizeof(length))) goto fail;
             chunk = (int32_t)xx_data_get_u16(length, 2, 0, false);
             cursor += 2;
             /* Bound the chunk against what is actually left in the file. */
@@ -225,17 +213,16 @@ fail:
     return false;
 }
 
-static bool dxp_copy_options(xx_list_s *destination, const xx_list_s *source) {
+static bool dxp_copy_options(xx_list_s *destination, const xx_list_s *source)
+{
     size_t index;
     if (!source) return true;
     for (index = 0U; index < source->count; ++index) {
-        const xx_meta *original =
-            (const xx_meta *)xx_list_at((const xx_list_t *)source, index);
+        const xx_meta *original = (const xx_meta *)xx_list_at((const xx_list_t *)source, index);
         xx_meta copy;
         if (!original) continue;
         xx_meta_init(&copy, original->meta_id);
-        if (!xx_var_copy(&copy.var, &original->var) ||
-            !xx_list_append(destination, &copy)) {
+        if (!xx_var_copy(&copy.var, &original->var) || !xx_list_append(destination, &copy)) {
             xx_meta_cleanup(&copy);
             return false;
         }
@@ -243,19 +230,19 @@ static bool dxp_copy_options(xx_list_s *destination, const xx_list_s *source) {
     return true;
 }
 
-static const xx_var *dxp_option(const xx_list_s *options, uint32_t id) {
+static const xx_var *dxp_option(const xx_list_s *options, uint32_t id)
+{
     size_t index;
     if (!options) return NULL;
     for (index = 0U; index < options->count; ++index) {
-        const xx_meta *meta =
-            (const xx_meta *)xx_list_at((const xx_list_t *)options, index);
+        const xx_meta *meta = (const xx_meta *)xx_list_at((const xx_list_t *)options, index);
         if (meta && meta->meta_id == id) return &meta->var;
     }
     return NULL;
 }
 
-static bool dxp_set_record(xx_archive_record *record,
-                           const dxp_stream *stream) {
+static bool dxp_set_record(xx_archive_record *record, const dxp_stream *stream)
+{
     xx_archive_record_cleanup(record);
     xx_archive_record_init(record);
     record->header_offset = stream->info.data_offset - DXP_HEADER_SIZE;
@@ -263,37 +250,27 @@ static bool dxp_set_record(xx_archive_record *record,
     record->data_offset = stream->info.data_offset;
     record->compressed_size = stream->info.packed_size;
     return xx_archive_record_set_original_name(record, stream->name) &&
-           xx_archive_record_set_meta_u64(record, XX_META_ID_COMPRESSED_SIZE,
-                                          (uint64_t)stream->info.packed_size) &&
-           xx_archive_record_set_meta_u64(record, XX_META_ID_UNCOMPRESSED_SIZE,
-                                          (uint64_t)stream->info.image_size) &&
-           xx_archive_record_set_meta_u64(record, XX_META_ID_COMPRESSION_METHOD,
-                                          stream->info.method) &&
-           xx_archive_record_set_meta_u64(record, XX_META_ID_CRC32,
-                                          stream->info.data_crc) &&
-           xx_archive_record_set_meta_u64(record, XX_META_ID_FLAGS,
-                                          stream->info.flags) &&
-           xx_archive_record_set_meta_bool(record, XX_META_ID_IS_ENCRYPTED,
-                                           false) &&
+           xx_archive_record_set_meta_u64(record, XX_META_ID_COMPRESSED_SIZE, (uint64_t)stream->info.packed_size) &&
+           xx_archive_record_set_meta_u64(record, XX_META_ID_UNCOMPRESSED_SIZE, (uint64_t)stream->info.image_size) &&
+           xx_archive_record_set_meta_u64(record, XX_META_ID_COMPRESSION_METHOD, stream->info.method) &&
+           xx_archive_record_set_meta_u64(record, XX_META_ID_CRC32, stream->info.data_crc) &&
+           xx_archive_record_set_meta_u64(record, XX_META_ID_FLAGS, stream->info.flags) && xx_archive_record_set_meta_bool(record, XX_META_ID_IS_ENCRYPTED, false) &&
            xx_archive_record_set_meta_bool(record, XX_META_ID_IS_FOLDER, false);
 }
 
-static bool dxp_decode_image(Abstractformat *format, const dxp_info *info,
-                             uint8_t **plain, size_t *plain_size) {
+static bool dxp_decode_image(Abstractformat *format, const dxp_info *info, uint8_t **plain, size_t *plain_size)
+{
     uint8_t *output = NULL;
     uint8_t *packed = NULL;
     size_t image_size;
     if (!format || !info || !plain || !plain_size) return false;
-    if (info->image_size <= 0 || (uint64_t)info->image_size > SIZE_MAX)
-        return false;
+    if (info->image_size <= 0 || (uint64_t)info->image_size > SIZE_MAX) return false;
     image_size = (size_t)info->image_size;
     output = (uint8_t *)xx_mem_alloc(image_size);
     if (!output) return false;
 
     if (info->method == 0U) {
-        if (!dxp_read_at(format->device, info->data_offset, output,
-                         image_size))
-            goto fail;
+        if (!dxp_read_at(format->device, info->data_offset, output, image_size)) goto fail;
     } else {
         int32_t index;
         if (!info->tracks) goto fail;
@@ -304,24 +281,14 @@ static bool dxp_decode_image(Abstractformat *format, const dxp_info *info,
             uint8_t *target = output + (size_t)index * info->track_size;
             size_t written = 0U;
             if ((size_t)track->size > 0x10000U) goto fail;
-            if (!dxp_read_at(format->device, track->offset, packed,
-                             (size_t)track->size))
-                goto fail;
+            if (!dxp_read_at(format->device, track->offset, packed, (size_t)track->size)) goto fail;
             if (track->size == 1) {
                 xx_rt_memset(target, packed[0], (size_t)info->track_size);
             } else if (track->size == info->track_size) {
                 xx_rt_memcpy(target, packed, (size_t)info->track_size);
             } else {
-                bool decoded =
-                    (info->major_version == 1U)
-                        ? xx_lzh1_decode_memory(packed, (size_t)track->size,
-                                                target,
-                                                (size_t)info->track_size,
-                                                &written)
-                        : xx_lzh5_decode_memory(packed, (size_t)track->size,
-                                                target,
-                                                (size_t)info->track_size, 5,
-                                                &written);
+                bool decoded = (info->major_version == 1U) ? xx_lzh1_decode_memory(packed, (size_t)track->size, target, (size_t)info->track_size, &written)
+                                                           : xx_lzh5_decode_memory(packed, (size_t)track->size, target, (size_t)info->track_size, 5, &written);
                 if (!decoded || written != (size_t)info->track_size) goto fail;
             }
         }
@@ -348,8 +315,8 @@ fail:
     return false;
 }
 
-void xx_diskexpress_init(xx_diskexpress *archive, xx_io_device *device,
-                         int64_t base_address) {
+void xx_diskexpress_init(xx_diskexpress *archive, xx_io_device *device, int64_t base_address)
+{
     if (!archive) return;
     xx_mem_zero(archive, sizeof(*archive));
     xx_format_init(&archive->format, device, base_address);
@@ -362,40 +329,36 @@ void xx_diskexpress_init(xx_diskexpress *archive, xx_io_device *device,
     archive->format.check_is_valid = xx_diskexpress_check_is_valid;
     archive->format.handle_base_info = xx_diskexpress_handle_base_info;
     archive->format.get_format_size = xx_diskexpress_get_format_size;
-    archive->format.get_number_of_archive_records =
-        xx_diskexpress_get_number_of_archive_records;
-    archive->format.create_archive_records_reading =
-        xx_diskexpress_create_archive_records_reading;
-    archive->format.get_current_archive_record =
-        xx_diskexpress_get_current_archive_record;
-    archive->format.unpack_current_archive_record =
-        xx_diskexpress_unpack_current_archive_record;
-    archive->format.archive_record_move_to_next =
-        xx_diskexpress_archive_record_move_to_next;
-    archive->format.free_archive_records_reading =
-        xx_diskexpress_free_archive_records_reading;
+    archive->format.get_number_of_archive_records = xx_diskexpress_get_number_of_archive_records;
+    archive->format.create_archive_records_reading = xx_diskexpress_create_archive_records_reading;
+    archive->format.get_current_archive_record = xx_diskexpress_get_current_archive_record;
+    archive->format.unpack_current_archive_record = xx_diskexpress_unpack_current_archive_record;
+    archive->format.archive_record_move_to_next = xx_diskexpress_archive_record_move_to_next;
+    archive->format.free_archive_records_reading = xx_diskexpress_free_archive_records_reading;
     archive->archive_end = -1;
 }
 
-xx_diskexpress *xx_diskexpress_create(xx_io_device *device,
-                                      int64_t base_address) {
-    xx_diskexpress *archive =
-        (xx_diskexpress *)xx_mem_alloc(sizeof(*archive));
+xx_diskexpress *xx_diskexpress_create(xx_io_device *device, int64_t base_address)
+{
+    xx_diskexpress *archive = (xx_diskexpress *)xx_mem_alloc(sizeof(*archive));
     if (archive) xx_diskexpress_init(archive, device, base_address);
     return archive;
 }
 
-void xx_diskexpress_destroy(xx_diskexpress *archive) {
+void xx_diskexpress_destroy(xx_diskexpress *archive)
+{
     if (archive) xx_format_cleanup_extra_parameters(&archive->format);
 }
 
-void xx_diskexpress_free(xx_diskexpress *archive) {
+void xx_diskexpress_free(xx_diskexpress *archive)
+{
     if (!archive) return;
     xx_diskexpress_destroy(archive);
     xx_mem_free(archive);
 }
 
-bool xx_diskexpress_check_is_valid(Abstractformat *format, xx_pd_struct *pd) {
+bool xx_diskexpress_check_is_valid(Abstractformat *format, xx_pd_struct *pd)
+{
     dxp_stream *stream;
     (void)pd;
     if (!dxp_parse(format, &stream)) return false;
@@ -403,8 +366,8 @@ bool xx_diskexpress_check_is_valid(Abstractformat *format, xx_pd_struct *pd) {
     return true;
 }
 
-bool xx_diskexpress_handle_base_info(Abstractformat *format,
-                                     xx_pd_struct *pd) {
+bool xx_diskexpress_handle_base_info(Abstractformat *format, xx_pd_struct *pd)
+{
     dxp_stream *stream;
     xx_diskexpress *archive;
     (void)pd;
@@ -425,22 +388,18 @@ bool xx_diskexpress_handle_base_info(Abstractformat *format,
     return true;
 }
 
-int64_t xx_diskexpress_get_format_size(Abstractformat *format,
-                                       xx_pd_struct *pd) {
-    return format && (format->base_info_handled ||
-                      xx_diskexpress_handle_base_info(format, pd))
-               ? format->format_size : -1;
+int64_t xx_diskexpress_get_format_size(Abstractformat *format, xx_pd_struct *pd)
+{
+    return format && (format->base_info_handled || xx_diskexpress_handle_base_info(format, pd)) ? format->format_size : -1;
 }
 
-uint64_t xx_diskexpress_get_number_of_archive_records(Abstractformat *format,
-                                                      xx_pd_struct *pd) {
-    return format && (format->base_info_handled ||
-                      xx_diskexpress_handle_base_info(format, pd))
-               ? 1U : 0U;
+uint64_t xx_diskexpress_get_number_of_archive_records(Abstractformat *format, xx_pd_struct *pd)
+{
+    return format && (format->base_info_handled || xx_diskexpress_handle_base_info(format, pd)) ? 1U : 0U;
 }
 
-xx_archive_record_state *xx_diskexpress_create_archive_records_reading(
-    Abstractformat *format, const xx_list_s *options, xx_pd_struct *pd) {
+xx_archive_record_state *xx_diskexpress_create_archive_records_reading(Abstractformat *format, const xx_list_s *options, xx_pd_struct *pd)
+{
     dxp_stream *stream;
     xx_archive_record_state *state;
     (void)pd;
@@ -454,8 +413,7 @@ xx_archive_record_state *xx_diskexpress_create_archive_records_reading(
     state->internal_state = stream;
     state->free_internal = dxp_stream_free;
     state->total_records = 1;
-    if (!dxp_copy_options(&state->options, options) ||
-        !dxp_set_record(&state->current_record, stream)) {
+    if (!dxp_copy_options(&state->options, options) || !dxp_set_record(&state->current_record, stream)) {
         xx_archive_record_state_free(state);
         return NULL;
     }
@@ -463,24 +421,21 @@ xx_archive_record_state *xx_diskexpress_create_archive_records_reading(
     return state;
 }
 
-const xx_archive_record *xx_diskexpress_get_current_archive_record(
-    Abstractformat *format, xx_archive_record_state *state) {
-    return format && state && state->format == format && state->has_record
-               ? &state->current_record : NULL;
+const xx_archive_record *xx_diskexpress_get_current_archive_record(Abstractformat *format, xx_archive_record_state *state)
+{
+    return format && state && state->format == format && state->has_record ? &state->current_record : NULL;
 }
 
-bool xx_diskexpress_archive_record_move_to_next(
-    Abstractformat *format, xx_archive_record_state *state,
-    xx_pd_struct *pd) {
+bool xx_diskexpress_archive_record_move_to_next(Abstractformat *format, xx_archive_record_state *state, xx_pd_struct *pd)
+{
     (void)pd;
     (void)format;
     if (state) state->has_record = false;
     return false;
 }
 
-bool xx_diskexpress_unpack_current_archive_record(
-    Abstractformat *format, xx_archive_record_state *state,
-    xx_pd_struct *pd) {
+bool xx_diskexpress_unpack_current_archive_record(Abstractformat *format, xx_archive_record_state *state, xx_pd_struct *pd)
+{
     dxp_stream *stream;
     const xx_var *path_option;
     const char *base = NULL;
@@ -490,30 +445,22 @@ bool xx_diskexpress_unpack_current_archive_record(
     size_t plain_size = 0U, written = 0U;
     bool result = false;
     bool created = false;
-    if (!format || !state || state->format != format || !state->has_record ||
-        !(stream = (dxp_stream *)state->internal_state) ||
-        (pd && xx_pd_is_stopped(pd)))
+    if (!format || !state || state->format != format || !state->has_record || !(stream = (dxp_stream *)state->internal_state) || (pd && xx_pd_is_stopped(pd)))
         return false;
-    if (!dxp_decode_image(format, &stream->info, &plain, &plain_size))
-        goto done;
+    if (!dxp_decode_image(format, &stream->info, &plain, &plain_size)) goto done;
     path_option = dxp_option(&state->options, XX_META_ID_OPT_UNPACK_PATH);
     if (!path_option) {
         result = true;
         goto done;
     }
-    if (path_option->type == XX_VAR_TYPE_STRING ||
-        path_option->type == XX_VAR_TYPE_STRING_VIEW)
-        base = xx_var_get_str(path_option);
-    else if (path_option->type == XX_VAR_TYPE_WSTRING ||
-             path_option->type == XX_VAR_TYPE_WSTRING_VIEW) {
+    if (path_option->type == XX_VAR_TYPE_STRING || path_option->type == XX_VAR_TYPE_STRING_VIEW) base = xx_var_get_str(path_option);
+    else if (path_option->type == XX_VAR_TYPE_WSTRING || path_option->type == XX_VAR_TYPE_WSTRING_VIEW) {
         owned_base = xx_str_unicode_to_utf8(xx_var_get_wstr(path_option));
         base = owned_base;
     }
     if (!base) goto done;
-    path = (base[0] && base[xx_str_len(base) - 1U] != '/' &&
-            base[xx_str_len(base) - 1U] != '\\')
-               ? xx_str_concat3(base, "/", stream->name)
-               : xx_str_concat(base, stream->name);
+    path = (base[0] && base[xx_str_len(base) - 1U] != '/' && base[xx_str_len(base) - 1U] != '\\') ? xx_str_concat3(base, "/", stream->name)
+                                                                                                  : xx_str_concat(base, stream->name);
     if (!path) goto done;
     if (!xx_store_create_dirs_a(path, false)) goto done;
     {
@@ -522,8 +469,7 @@ bool xx_diskexpress_unpack_current_archive_record(
         if (!destination) goto done;
         result = true;
         while (written < plain_size) {
-            ssize_t amount = xx_io_write(destination, plain + written,
-                                         plain_size - written);
+            ssize_t amount = xx_io_write(destination, plain + written, plain_size - written);
             if (amount <= 0 || (size_t)amount > plain_size - written) {
                 result = false;
                 break;
@@ -540,8 +486,8 @@ done:
     return result;
 }
 
-void xx_diskexpress_free_archive_records_reading(
-    Abstractformat *format, xx_archive_record_state *state) {
+void xx_diskexpress_free_archive_records_reading(Abstractformat *format, xx_archive_record_state *state)
+{
     (void)format;
     xx_archive_record_state_free(state);
 }

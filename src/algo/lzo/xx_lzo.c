@@ -20,7 +20,8 @@ typedef struct xx_lzo_reader_s {
     size_t output_position;
 } xx_lzo_reader;
 
-static bool xx_lzo_take(xx_lzo_reader *stream, uint8_t *value) {
+static bool xx_lzo_take(xx_lzo_reader *stream, uint8_t *value)
+{
     if (!stream || !value || stream->input_position >= stream->input_size) {
         return false;
     }
@@ -28,31 +29,28 @@ static bool xx_lzo_take(xx_lzo_reader *stream, uint8_t *value) {
     return true;
 }
 
-static bool xx_lzo_copy_literals(xx_lzo_reader *stream, size_t length) {
-    if (!stream || length > stream->input_size - stream->input_position ||
-        length > stream->output_size - stream->output_position) {
+static bool xx_lzo_copy_literals(xx_lzo_reader *stream, size_t length)
+{
+    if (!stream || length > stream->input_size - stream->input_position || length > stream->output_size - stream->output_position) {
         return false;
     }
     if (length != 0U) {
-        xx_rt_memcpy(stream->output + stream->output_position,
-               stream->input + stream->input_position, length);
+        xx_rt_memcpy(stream->output + stream->output_position, stream->input + stream->input_position, length);
     }
     stream->input_position += length;
     stream->output_position += length;
     return true;
 }
 
-static bool xx_lzo_copy_match(xx_lzo_reader *stream, size_t distance,
-                              size_t length) {
+static bool xx_lzo_copy_match(xx_lzo_reader *stream, size_t distance, size_t length)
+{
     size_t index;
-    if (!stream || distance == 0U || distance > stream->output_position ||
-        length > stream->output_size - stream->output_position) {
+    if (!stream || distance == 0U || distance > stream->output_position || length > stream->output_size - stream->output_position) {
         return false;
     }
     /* Forward byte copies intentionally preserve LZ-style overlap. */
     for (index = 0U; index < length; ++index) {
-        stream->output[stream->output_position] =
-            stream->output[stream->output_position - distance];
+        stream->output[stream->output_position] = stream->output[stream->output_position - distance];
         ++stream->output_position;
     }
     return true;
@@ -66,8 +64,8 @@ static bool xx_lzo_copy_match(xx_lzo_reader *stream, size_t distance,
  * accumulator must NOT be used as the loop condition - once the first zero
  * byte has pushed it to 255 it is no longer zero, and stopping there both
  * truncates the length and leaves the terminating byte unconsumed. */
-static bool xx_lzo_extended_length(xx_lzo_reader *stream, uint64_t initial,
-                                   uint64_t base, uint64_t *length) {
+static bool xx_lzo_extended_length(xx_lzo_reader *stream, uint64_t initial, uint64_t base, uint64_t *length)
+{
     uint64_t value = initial;
     uint8_t byte;
     if (!stream || !length) return false;
@@ -88,23 +86,22 @@ static bool xx_lzo_extended_length(xx_lzo_reader *stream, uint64_t initial,
     }
 }
 
-static bool xx_lzo_to_size(uint64_t value, size_t *result) {
+static bool xx_lzo_to_size(uint64_t value, size_t *result)
+{
     if (!result || value > (uint64_t)SIZE_MAX) return false;
     *result = (size_t)value;
     return true;
 }
 
-bool xx_lzo1x_decompress(const uint8_t *input, size_t input_size,
-                          uint8_t *output, size_t output_size,
-                          size_t *written) {
+bool xx_lzo1x_decompress(const uint8_t *input, size_t input_size, uint8_t *output, size_t output_size, size_t *written)
+{
     xx_lzo_reader stream;
     uint8_t token;
     bool match_token = false;
     bool after_literal = false;
 
     if (written) *written = 0U;
-    if ((!input && input_size != 0U) || (!output && output_size != 0U) ||
-        input_size == 0U) {
+    if ((!input && input_size != 0U) || (!output && output_size != 0U) || input_size == 0U) {
         return false;
     }
     xx_rt_memset(&stream, 0, sizeof(stream));
@@ -118,8 +115,7 @@ bool xx_lzo1x_decompress(const uint8_t *input, size_t input_size,
      * the normal post-match token path defined by LZO1X. */
     if (token > 17U) {
         size_t literal_count = (size_t)(token - 17U);
-        if (!xx_lzo_copy_literals(&stream, literal_count) ||
-            !xx_lzo_take(&stream, &token)) {
+        if (!xx_lzo_copy_literals(&stream, literal_count) || !xx_lzo_take(&stream, &token)) {
             return false;
         }
         match_token = true;
@@ -138,12 +134,8 @@ bool xx_lzo1x_decompress(const uint8_t *input, size_t input_size,
                 after_literal = false;
                 continue;
             }
-            if (!xx_lzo_extended_length(&stream, token, 15U,
-                                        &literal_length) ||
-                literal_length > UINT64_MAX - 3U ||
-                !xx_lzo_to_size(literal_length + 3U, &length) ||
-                !xx_lzo_copy_literals(&stream, length) ||
-                !xx_lzo_take(&stream, &token)) {
+            if (!xx_lzo_extended_length(&stream, token, 15U, &literal_length) || literal_length > UINT64_MAX - 3U || !xx_lzo_to_size(literal_length + 3U, &length) ||
+                !xx_lzo_copy_literals(&stream, length) || !xx_lzo_take(&stream, &token)) {
                 return false;
             }
             match_token = true;
@@ -155,8 +147,7 @@ bool xx_lzo1x_decompress(const uint8_t *input, size_t input_size,
             uint8_t low;
             distance = (size_t)UINT16_C(0x801) + (size_t)(token >> 2U);
             if (!xx_lzo_take(&stream, &low)) return false;
-            if ((uint64_t)distance + ((uint64_t)low << 2U) >
-                (uint64_t)SIZE_MAX) {
+            if ((uint64_t)distance + ((uint64_t)low << 2U) > (uint64_t)SIZE_MAX) {
                 return false;
             }
             distance += (size_t)low << 2U;
@@ -165,20 +156,15 @@ bool xx_lzo1x_decompress(const uint8_t *input, size_t input_size,
         } else if (token >= 64U) {
             uint8_t low;
             if (!xx_lzo_take(&stream, &low)) return false;
-            distance = 1U + (size_t)((token >> 2U) & 7U) +
-                       ((size_t)low << 3U);
+            distance = 1U + (size_t)((token >> 2U) & 7U) + ((size_t)low << 3U);
             length = (size_t)(token >> 5U) + 1U;
             trailing_literals = token & 3U;
         } else if (token >= 32U) {
             uint64_t match_length;
             uint8_t high;
             uint8_t low;
-            if (!xx_lzo_extended_length(&stream, token & 31U, 31U,
-                                        &match_length) ||
-                match_length > UINT64_MAX - 2U ||
-                !xx_lzo_to_size(match_length + 2U, &length) ||
-                !xx_lzo_take(&stream, &high) ||
-                !xx_lzo_take(&stream, &low)) {
+            if (!xx_lzo_extended_length(&stream, token & 31U, 31U, &match_length) || match_length > UINT64_MAX - 2U || !xx_lzo_to_size(match_length + 2U, &length) ||
+                !xx_lzo_take(&stream, &high) || !xx_lzo_take(&stream, &low)) {
                 return false;
             }
             distance = 1U + (size_t)(high >> 2U) + ((size_t)low << 6U);
@@ -188,17 +174,11 @@ bool xx_lzo1x_decompress(const uint8_t *input, size_t input_size,
             uint8_t high;
             uint8_t low;
             uint64_t encoded_distance;
-            if (!xx_lzo_extended_length(&stream, token & 7U, 7U,
-                                        &match_length) ||
-                match_length > UINT64_MAX - 2U ||
-                !xx_lzo_to_size(match_length + 2U, &length) ||
-                !xx_lzo_take(&stream, &high) ||
-                !xx_lzo_take(&stream, &low)) {
+            if (!xx_lzo_extended_length(&stream, token & 7U, 7U, &match_length) || match_length > UINT64_MAX - 2U || !xx_lzo_to_size(match_length + 2U, &length) ||
+                !xx_lzo_take(&stream, &high) || !xx_lzo_take(&stream, &low)) {
                 return false;
             }
-            encoded_distance = ((uint64_t)(token & 8U) << 11U) |
-                               (uint64_t)(high >> 2U) |
-                               ((uint64_t)low << 6U);
+            encoded_distance = ((uint64_t)(token & 8U) << 11U) | (uint64_t)(high >> 2U) | ((uint64_t)low << 6U);
             if (encoded_distance == 0U) {
                 if (stream.input_position != stream.input_size) return false;
                 if (written) *written = stream.output_position;
@@ -224,8 +204,7 @@ bool xx_lzo1x_decompress(const uint8_t *input, size_t input_size,
             after_literal = false;
             continue;
         }
-        if (!xx_lzo_copy_literals(&stream, trailing_literals) ||
-            !xx_lzo_take(&stream, &token)) {
+        if (!xx_lzo_copy_literals(&stream, trailing_literals) || !xx_lzo_take(&stream, &token)) {
             return false;
         }
         match_token = true;

@@ -90,9 +90,9 @@ typedef struct xx_linuxboot_info_s {
     uint32_t syssize;
     uint32_t code32_start;
     uint32_t system_paragraphs;
-    int64_t setup_size;       /* bytes */
-    int64_t system_size;      /* bytes inside the format */
-    int64_t payload_offset;   /* relative to base, -1 if not located */
+    int64_t setup_size;     /* bytes */
+    int64_t system_size;    /* bytes inside the format */
+    int64_t payload_offset; /* relative to base, -1 if not located */
     int64_t payload_size;
     int64_t format_size;
     bool is_bzimage;
@@ -102,12 +102,11 @@ typedef struct xx_linuxboot_info_s {
 
 static void xx_linuxboot_vtable_destroy(Abstractformat *self);
 
-static bool xx_linuxboot_read_at(xx_io_device *device, int64_t offset,
-                                 void *data, size_t size) {
+static bool xx_linuxboot_read_at(xx_io_device *device, int64_t offset, void *data, size_t size)
+{
     uint8_t *out = (uint8_t *)data;
     size_t done = 0U;
-    if (!device || (!data && size != 0U) || offset < 0 ||
-        xx_io_seek64(device, offset, SEEK_SET) != 0) {
+    if (!device || (!data && size != 0U) || offset < 0 || xx_io_seek64(device, offset, SEEK_SET) != 0) {
         return false;
     }
     while (done < size) {
@@ -120,7 +119,8 @@ static bool xx_linuxboot_read_at(xx_io_device *device, int64_t offset,
 
 /* End of the setup header for each protocol minor; the jump at 0x200 must
  * land past it.  Later protocols have longer headers, 0x230 is a floor. */
-static uint32_t xx_linuxboot_header_end(uint16_t version) {
+static uint32_t xx_linuxboot_header_end(uint16_t version)
+{
     switch (version & 0xFFU) {
         case 0x00U: return 0x224U;
         case 0x01U: return 0x226U;
@@ -131,10 +131,8 @@ static uint32_t xx_linuxboot_header_end(uint16_t version) {
 
 /* The kernel_version string: NUL-terminated, human readable, inside setup.
  * boot.txt: "This value should be less than (0x200 * setup_sects)". */
-static bool xx_linuxboot_read_version(xx_io_device *device, int64_t base,
-                                      uint32_t string_offset,
-                                      uint32_t setup_end,
-                                      char *output, size_t output_size) {
+static bool xx_linuxboot_read_version(xx_io_device *device, int64_t base, uint32_t string_offset, uint32_t setup_end, char *output, size_t output_size)
+{
     uint8_t scan[XX_LINUXBOOT_VERSION_SCAN];
     size_t limit;
     size_t index;
@@ -143,8 +141,7 @@ static bool xx_linuxboot_read_version(xx_io_device *device, int64_t base,
     if (string_offset >= setup_end) return false;
     limit = setup_end - string_offset;
     if (limit > sizeof(scan)) limit = sizeof(scan);
-    if (!xx_linuxboot_read_at(device, base + (int64_t)string_offset, scan,
-                              limit)) {
+    if (!xx_linuxboot_read_at(device, base + (int64_t)string_offset, scan, limit)) {
         return false;
     }
     for (index = 0U; index < limit; ++index) {
@@ -157,8 +154,7 @@ static bool xx_linuxboot_read_version(xx_io_device *device, int64_t base,
         size_t copy = index < output_size - 1U ? index : output_size - 1U;
         size_t i;
         for (i = 0U; i < copy; ++i) {
-            output[i] = (scan[i] >= 0x20U && scan[i] < 0x7FU) ? (char)scan[i]
-                                                                : '?';
+            output[i] = (scan[i] >= 0x20U && scan[i] < 0x7FU) ? (char)scan[i] : '?';
         }
         output[copy] = '\0';
     }
@@ -184,8 +180,8 @@ static bool xx_linuxboot_read_version(xx_io_device *device, int64_t base,
  *     without a locatable piggy is unwrapped only when EOF lands in its last
  *     paragraph; with trailing data it reports the stored (wrapped) size.
  */
-static bool xx_linuxboot_parse(Abstractformat *self, xx_linuxboot_info *info,
-                               xx_pd_struct *pd) {
+static bool xx_linuxboot_parse(Abstractformat *self, xx_linuxboot_info *info, xx_pd_struct *pd)
+{
     uint8_t head[XX_LINUXBOOT_HEAD_READ];
     uint8_t *window = NULL;
     int64_t total_size;
@@ -207,71 +203,53 @@ static bool xx_linuxboot_parse(Abstractformat *self, xx_linuxboot_info *info,
         info->payload_offset = -1;
         info->format_size = -1;
     }
-    if (!self || !self->device || !info || self->base_address < 0 ||
-        (pd && xx_pd_is_stopped(pd))) {
+    if (!self || !self->device || !info || self->base_address < 0 || (pd && xx_pd_is_stopped(pd))) {
         return false;
     }
     total_size = xx_io_total_size(self->device);
     if (total_size < self->base_address) return false;
     available = total_size - self->base_address;
     /* Boot sector, at least one setup sector, at least one system byte. */
-    if (available <= (int64_t)XX_LINUXBOOT_HEAD_READ ||
-        !xx_linuxboot_read_at(self->device, self->base_address, head,
-                              sizeof(head))) {
+    if (available <= (int64_t)XX_LINUXBOOT_HEAD_READ || !xx_linuxboot_read_at(self->device, self->base_address, head, sizeof(head))) {
         return false;
     }
-    if (xx_rt_memcmp(head, XX_LINUXBOOT_MAGIC, XX_LINUXBOOT_MAGIC_SIZE) != 0 ||
-        head[XX_LINUXBOOT_BOOT_FLAG_OFFSET] != 0x55U ||
-        head[XX_LINUXBOOT_BOOT_FLAG_OFFSET + 1U] != 0xAAU ||
-        xx_rt_memcmp(head + XX_LINUXBOOT_HDRS_OFFSET, "HdrS", 4U) != 0) {
+    if (xx_rt_memcmp(head, XX_LINUXBOOT_MAGIC, XX_LINUXBOOT_MAGIC_SIZE) != 0 || head[XX_LINUXBOOT_BOOT_FLAG_OFFSET] != 0x55U ||
+        head[XX_LINUXBOOT_BOOT_FLAG_OFFSET + 1U] != 0xAAU || xx_rt_memcmp(head + XX_LINUXBOOT_HDRS_OFFSET, "HdrS", 4U) != 0) {
         return false;
     }
 
-    info->protocol_version = xx_data_get_u16(head, sizeof(head),
-                                             XX_LINUXBOOT_VERSION_OFFSET, false);
+    info->protocol_version = xx_data_get_u16(head, sizeof(head), XX_LINUXBOOT_VERSION_OFFSET, false);
     if ((info->protocol_version >> 8U) != 2U) return false;
     header_end = xx_linuxboot_header_end(info->protocol_version);
 
     /* 0x200 is "jmp trampoline" over the header: a forward short jump.  A
      * near jump (E9 rel16) would overlap "HdrS" at 0x202, so only EB fits. */
-    if (head[XX_LINUXBOOT_JUMP_OFFSET] != 0xEBU ||
-        head[XX_LINUXBOOT_JUMP_OFFSET + 1U] >= 0x80U) {
+    if (head[XX_LINUXBOOT_JUMP_OFFSET] != 0xEBU || head[XX_LINUXBOOT_JUMP_OFFSET + 1U] >= 0x80U) {
         return false;
     }
-    jump_target = XX_LINUXBOOT_JUMP_OFFSET + 2U +
-                  (uint32_t)head[XX_LINUXBOOT_JUMP_OFFSET + 1U];
+    jump_target = XX_LINUXBOOT_JUMP_OFFSET + 2U + (uint32_t)head[XX_LINUXBOOT_JUMP_OFFSET + 1U];
     if (jump_target < header_end) return false;
 
     info->setup_sects = head[XX_LINUXBOOT_SETUP_SECTS_OFFSET];
-    setup_sects = info->setup_sects ? info->setup_sects
-                                    : XX_LINUXBOOT_DEFAULT_SETUP_SECTS;
+    setup_sects = info->setup_sects ? info->setup_sects : XX_LINUXBOOT_DEFAULT_SETUP_SECTS;
     if (setup_sects > XX_LINUXBOOT_MAX_SETUP_SECTS) return false;
     setup_end = XX_LINUXBOOT_SECTOR_SIZE * (1U + setup_sects);
     info->setup_size = (int64_t)setup_sects * XX_LINUXBOOT_SECTOR_SIZE;
     if (available <= (int64_t)setup_end) return false;
 
-    info->root_flags = xx_data_get_u16(head, sizeof(head),
-                                       XX_LINUXBOOT_ROOT_FLAGS_OFFSET, false);
-    info->swap_dev = xx_data_get_u16(head, sizeof(head),
-                                     XX_LINUXBOOT_SWAP_DEV_OFFSET, false);
-    info->ram_size = xx_data_get_u16(head, sizeof(head),
-                                     XX_LINUXBOOT_RAM_SIZE_OFFSET, false);
-    info->vid_mode = xx_data_get_u16(head, sizeof(head),
-                                     XX_LINUXBOOT_VID_MODE_OFFSET, false);
-    info->root_dev = xx_data_get_u16(head, sizeof(head),
-                                     XX_LINUXBOOT_ROOT_DEV_OFFSET, false);
+    info->root_flags = xx_data_get_u16(head, sizeof(head), XX_LINUXBOOT_ROOT_FLAGS_OFFSET, false);
+    info->swap_dev = xx_data_get_u16(head, sizeof(head), XX_LINUXBOOT_SWAP_DEV_OFFSET, false);
+    info->ram_size = xx_data_get_u16(head, sizeof(head), XX_LINUXBOOT_RAM_SIZE_OFFSET, false);
+    info->vid_mode = xx_data_get_u16(head, sizeof(head), XX_LINUXBOOT_VID_MODE_OFFSET, false);
+    info->root_dev = xx_data_get_u16(head, sizeof(head), XX_LINUXBOOT_ROOT_DEV_OFFSET, false);
     info->loadflags = head[XX_LINUXBOOT_LOADFLAGS_OFFSET];
     info->is_bzimage = (info->loadflags & XX_LINUXBOOT_LOADED_HIGH) != 0U;
-    info->code32_start = xx_data_get_u32(head, sizeof(head),
-                                         XX_LINUXBOOT_CODE32_START_OFFSET,
-                                         false);
+    info->code32_start = xx_data_get_u32(head, sizeof(head), XX_LINUXBOOT_CODE32_START_OFFSET, false);
     if (info->protocol_version < 0x0204U) {
-        info->syssize = xx_data_get_u16(head, sizeof(head),
-                                        XX_LINUXBOOT_SYSSIZE_OFFSET, false);
+        info->syssize = xx_data_get_u16(head, sizeof(head), XX_LINUXBOOT_SYSSIZE_OFFSET, false);
         wraps = info->is_bzimage ? XX_LINUXBOOT_MAX_WRAPS : 0U;
     } else {
-        info->syssize = xx_data_get_u32(head, sizeof(head),
-                                        XX_LINUXBOOT_SYSSIZE_OFFSET, false);
+        info->syssize = xx_data_get_u32(head, sizeof(head), XX_LINUXBOOT_SYSSIZE_OFFSET, false);
         if (info->syssize > XX_LINUXBOOT_MAX_PARAS32) return false;
         wraps = 0U;
     }
@@ -279,28 +257,21 @@ static bool xx_linuxboot_parse(Abstractformat *self, xx_linuxboot_info *info,
         return false;
     }
 
-    info->kernel_version_offset = xx_data_get_u16(
-        head, sizeof(head), XX_LINUXBOOT_KERNEL_VERSION_OFFSET, false);
+    info->kernel_version_offset = xx_data_get_u16(head, sizeof(head), XX_LINUXBOOT_KERNEL_VERSION_OFFSET, false);
     if (info->kernel_version_offset != 0U &&
-        !xx_linuxboot_read_version(
-            self->device, self->base_address,
-            XX_LINUXBOOT_JUMP_OFFSET + (uint32_t)info->kernel_version_offset,
-            setup_end, info->kernel_version, sizeof(info->kernel_version))) {
+        !xx_linuxboot_read_version(self->device, self->base_address, XX_LINUXBOOT_JUMP_OFFSET + (uint32_t)info->kernel_version_offset, setup_end, info->kernel_version,
+                                   sizeof(info->kernel_version))) {
         return false;
     }
     if (pd && xx_pd_is_stopped(pd)) return false;
 
     /* Step 1: the piggy. */
     system_available = available - (int64_t)setup_end;
-    window_size = system_available > (int64_t)XX_LINUXBOOT_PIGGY_WINDOW
-                      ? (size_t)XX_LINUXBOOT_PIGGY_WINDOW
-                      : (size_t)system_available;
+    window_size = system_available > (int64_t)XX_LINUXBOOT_PIGGY_WINDOW ? (size_t)XX_LINUXBOOT_PIGGY_WINDOW : (size_t)system_available;
     if (window_size >= 8U) {
         window = (uint8_t *)xx_mem_alloc(window_size);
         if (!window) return false;
-        if (!xx_linuxboot_read_at(self->device,
-                                  self->base_address + (int64_t)setup_end,
-                                  window, window_size)) {
+        if (!xx_linuxboot_read_at(self->device, self->base_address + (int64_t)setup_end, window, window_size)) {
             goto done;
         }
         for (index = 4U; index + 4U <= window_size; ++index) {
@@ -308,9 +279,7 @@ static bool xx_linuxboot_parse(Abstractformat *self, xx_linuxboot_info *info,
             uint64_t system_bytes;
             uint64_t needed;
             uint32_t k;
-            if (window[index] != 0x1FU || window[index + 1U] != 0x8BU ||
-                window[index + 2U] != 0x08U ||
-                (window[index + 3U] & 0xE0U) != 0U) {
+            if (window[index] != 0x1FU || window[index + 1U] != 0x8BU || window[index + 2U] != 0x08U || (window[index + 3U] & 0xE0U) != 0U) {
                 continue;
             }
             length = xx_data_get_u32(window, window_size, index - 4U, false);
@@ -318,14 +287,12 @@ static bool xx_linuxboot_parse(Abstractformat *self, xx_linuxboot_info *info,
             system_bytes = (uint64_t)index + (uint64_t)length;
             needed = (system_bytes + 15U) / 16U;
             for (k = 0U; k <= wraps; ++k) {
-                uint64_t candidate = (uint64_t)info->syssize +
-                                     (uint64_t)k * XX_LINUXBOOT_WRAP_PARAS;
+                uint64_t candidate = (uint64_t)info->syssize + (uint64_t)k * XX_LINUXBOOT_WRAP_PARAS;
                 if (candidate != needed) continue;
                 if (system_bytes > (uint64_t)system_available) {
                     goto done; /* consistent piggy past EOF: truncated */
                 }
-                if (!info->is_bzimage &&
-                    candidate > XX_LINUXBOOT_ZIMAGE_MAX_PARAS) {
+                if (!info->is_bzimage && candidate > XX_LINUXBOOT_ZIMAGE_MAX_PARAS) {
                     goto done;
                 }
                 info->system_paragraphs = (uint32_t)candidate;
@@ -347,10 +314,8 @@ static bool xx_linuxboot_parse(Abstractformat *self, xx_linuxboot_info *info,
         paragraphs = info->syssize;
         if (paragraphs == 0U) goto done;
         for (k_wrap = 1U; k_wrap <= wraps; ++k_wrap) {
-            int64_t wrapped = ((int64_t)paragraphs +
-                               (int64_t)k_wrap * XX_LINUXBOOT_WRAP_PARAS) * 16;
-            if (system_available <= wrapped &&
-                system_available + 15 >= wrapped) {
+            int64_t wrapped = ((int64_t)paragraphs + (int64_t)k_wrap * XX_LINUXBOOT_WRAP_PARAS) * 16;
+            if (system_available <= wrapped && system_available + 15 >= wrapped) {
                 paragraphs += k_wrap * XX_LINUXBOOT_WRAP_PARAS;
                 break;
             }
@@ -381,8 +346,8 @@ done:
 /* Public interface                                                          */
 /* ------------------------------------------------------------------------ */
 
-void xx_linuxboot_init(xx_linuxboot *image, xx_io_device *dev,
-                       int64_t base_address) {
+void xx_linuxboot_init(xx_linuxboot *image, xx_io_device *dev, int64_t base_address)
+{
     if (!image) return;
     xx_mem_zero(image, sizeof(*image));
     xx_format_init(&image->format, dev, base_address);
@@ -405,35 +370,40 @@ void xx_linuxboot_init(xx_linuxboot *image, xx_io_device *dev,
     xx_components_install(&image->format);
 }
 
-xx_linuxboot *xx_linuxboot_create(xx_io_device *dev, int64_t base_address) {
+xx_linuxboot *xx_linuxboot_create(xx_io_device *dev, int64_t base_address)
+{
     xx_linuxboot *image = (xx_linuxboot *)xx_mem_alloc(sizeof(*image));
     if (image) xx_linuxboot_init(image, dev, base_address);
     return image;
 }
 
-void xx_linuxboot_destroy(xx_linuxboot *image) {
+void xx_linuxboot_destroy(xx_linuxboot *image)
+{
     if (!image) return;
     /* Nothing owned beyond the base parameters. */
     xx_format_cleanup_extra_parameters(&image->format);
 }
 
-static void xx_linuxboot_vtable_destroy(Abstractformat *self) {
+static void xx_linuxboot_vtable_destroy(Abstractformat *self)
+{
     xx_linuxboot_destroy((xx_linuxboot *)self);
 }
 
-void xx_linuxboot_free(xx_linuxboot *image) {
+void xx_linuxboot_free(xx_linuxboot *image)
+{
     if (!image) return;
     xx_linuxboot_destroy(image);
     xx_mem_free(image);
 }
 
-bool xx_linuxboot_check_is_valid(Abstractformat *self, xx_pd_struct *pd) {
+bool xx_linuxboot_check_is_valid(Abstractformat *self, xx_pd_struct *pd)
+{
     xx_linuxboot_info info;
     return xx_linuxboot_parse(self, &info, pd);
 }
 
-static void xx_linuxboot_set_strings(Abstractformat *self,
-                                     const xx_linuxboot_info *info) {
+static void xx_linuxboot_set_strings(Abstractformat *self, const xx_linuxboot_info *info)
+{
     char text[65]; /* a release (UTS_RELEASE) is at most 64 characters */
     size_t i = 0U;
     unsigned minor = (unsigned)(info->protocol_version & 0xFFU);
@@ -446,16 +416,15 @@ static void xx_linuxboot_set_strings(Abstractformat *self,
     text[i] = '\0';
     xx_format_set_version(self, text);
     /* The kernel release is the first word of the version string. */
-    for (i = 0U; i < sizeof(text) - 1U && info->kernel_version[i] &&
-                 info->kernel_version[i] != ' ';
-         ++i) {
+    for (i = 0U; i < sizeof(text) - 1U && info->kernel_version[i] && info->kernel_version[i] != ' '; ++i) {
         text[i] = info->kernel_version[i];
     }
     text[i] = '\0';
     xx_format_set_os_version(self, text);
 }
 
-bool xx_linuxboot_handle_base_info(Abstractformat *self, xx_pd_struct *pd) {
+bool xx_linuxboot_handle_base_info(Abstractformat *self, xx_pd_struct *pd)
+{
     xx_linuxboot *image = (xx_linuxboot *)self;
     xx_linuxboot_info info;
     int64_t total_size;
@@ -482,14 +451,11 @@ bool xx_linuxboot_handle_base_info(Abstractformat *self, xx_pd_struct *pd) {
     image->setup_size = info.setup_size;
     image->system_offset = image->setup_offset + info.setup_size;
     image->system_size = info.system_size;
-    image->payload_offset = info.payload_offset >= 0
-                                ? self->base_address + info.payload_offset
-                                : -1;
+    image->payload_offset = info.payload_offset >= 0 ? self->base_address + info.payload_offset : -1;
     image->payload_size = info.payload_size;
     image->is_bzimage = info.is_bzimage;
     image->size_exact = info.size_exact;
-    xx_rt_memcpy(image->kernel_version, info.kernel_version,
-                 sizeof(image->kernel_version));
+    xx_rt_memcpy(image->kernel_version, info.kernel_version, sizeof(image->kernel_version));
     xx_linuxboot_set_strings(self, &info);
 
     self->format_size = info.format_size;
@@ -509,49 +475,55 @@ bool xx_linuxboot_handle_base_info(Abstractformat *self, xx_pd_struct *pd) {
     return true;
 }
 
-int64_t xx_linuxboot_get_format_size(Abstractformat *self, xx_pd_struct *pd) {
-    if (!self ||
-        (!self->base_info_handled && !xx_format_handle_base_info(self, pd))) {
+int64_t xx_linuxboot_get_format_size(Abstractformat *self, xx_pd_struct *pd)
+{
+    if (!self || (!self->base_info_handled && !xx_format_handle_base_info(self, pd))) {
         return -1;
     }
     return self->format_size;
 }
 
 /* --- Getters --- */
-uint16_t xx_linuxboot_get_protocol_version(const xx_linuxboot *image) {
+uint16_t xx_linuxboot_get_protocol_version(const xx_linuxboot *image)
+{
     return image ? image->protocol_version : 0U;
 }
 
-const char *xx_linuxboot_get_kernel_version(const xx_linuxboot *image) {
+const char *xx_linuxboot_get_kernel_version(const xx_linuxboot *image)
+{
     return image ? image->kernel_version : "";
 }
 
-int64_t xx_linuxboot_get_setup_size(const xx_linuxboot *image) {
+int64_t xx_linuxboot_get_setup_size(const xx_linuxboot *image)
+{
     return image ? image->setup_size : 0;
 }
 
-int64_t xx_linuxboot_get_system_offset(const xx_linuxboot *image) {
+int64_t xx_linuxboot_get_system_offset(const xx_linuxboot *image)
+{
     return image ? image->system_offset : -1;
 }
 
-int64_t xx_linuxboot_get_system_size(const xx_linuxboot *image) {
+int64_t xx_linuxboot_get_system_size(const xx_linuxboot *image)
+{
     return image ? image->system_size : 0;
 }
 
-int64_t xx_linuxboot_get_payload_offset(const xx_linuxboot *image) {
+int64_t xx_linuxboot_get_payload_offset(const xx_linuxboot *image)
+{
     return image ? image->payload_offset : -1;
 }
 
-bool xx_linuxboot_is_bzimage(const xx_linuxboot *image) {
+bool xx_linuxboot_is_bzimage(const xx_linuxboot *image)
+{
     return image ? image->is_bzimage : false;
 }
 
 /* Encoded/structural component members; this does not decode media. */
-static bool xx_components_build(Abstractformat *f, xx_component_stream *s, xx_pd_struct *pd) {
-
-    xx_linuxboot *b=(xx_linuxboot *)f;
+static bool xx_components_build(Abstractformat *f, xx_component_stream *s, xx_pd_struct *pd)
+{
+    xx_linuxboot *b = (xx_linuxboot *)f;
     (void)pd;
-    return xx_component_add(f,s,0,512,"boot-sector") &&
-        xx_component_add(f,s,b->setup_offset-f->base_address,b->setup_size,"real-mode-setup") &&
-        xx_component_add(f,s,b->system_offset-f->base_address,b->system_size,"protected-mode-system");
+    return xx_component_add(f, s, 0, 512, "boot-sector") && xx_component_add(f, s, b->setup_offset - f->base_address, b->setup_size, "real-mode-setup") &&
+           xx_component_add(f, s, b->system_offset - f->base_address, b->system_size, "protected-mode-system");
 }

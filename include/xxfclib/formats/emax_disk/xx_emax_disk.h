@@ -13,7 +13,10 @@ XXFC_API void xx_emax_disk_init(xx_emax_disk *, xx_io_device *, int64_t);
 XXFC_API xx_emax_disk *xx_emax_disk_create(xx_io_device *, int64_t);
 XXFC_API void xx_emax_disk_destroy(xx_emax_disk *);
 XXFC_API void xx_emax_disk_free(xx_emax_disk *);
-static inline Abstractformat *xx_emax_disk_to_format(xx_emax_disk *r) { return r ? &r->format : NULL; }
+static inline Abstractformat *xx_emax_disk_to_format(xx_emax_disk *r)
+{
+    return r ? &r->format : NULL;
+}
 #ifdef __cplusplus
 }
 #endif

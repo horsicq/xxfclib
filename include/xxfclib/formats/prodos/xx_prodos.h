@@ -55,47 +55,36 @@ extern "C" {
 typedef struct xx_prodos {
     Abstractformat format;
     uint64_t number_of_records;
-    uint32_t total_blocks;  /**< Volume size from the header, in blocks. */
-    uint32_t file_count;    /**< The root directory's active-entry count. */
-    bool dos_order;         /**< 140 KiB image in DOS 3.3 sector order. */
-    bool truncated;         /**< The image holds fewer blocks than declared. */
-    bool damaged;           /**< A directory chain or entry was unusable. */
-    char volume_name[16];   /**< Volume name with GS/OS case applied. */
+    uint32_t total_blocks; /**< Volume size from the header, in blocks. */
+    uint32_t file_count;   /**< The root directory's active-entry count. */
+    bool dos_order;        /**< 140 KiB image in DOS 3.3 sector order. */
+    bool truncated;        /**< The image holds fewer blocks than declared. */
+    bool damaged;          /**< A directory chain or entry was unusable. */
+    char volume_name[16];  /**< Volume name with GS/OS case applied. */
 } xx_prodos;
 
 typedef xx_prodos xx_prodos_t;
 
-XXFC_API void xx_prodos_init(xx_prodos *volume, xx_io_device *device,
-                             int64_t base_address);
-XXFC_API xx_prodos *xx_prodos_create(xx_io_device *device,
-                                     int64_t base_address);
+XXFC_API void xx_prodos_init(xx_prodos *volume, xx_io_device *device, int64_t base_address);
+XXFC_API xx_prodos *xx_prodos_create(xx_io_device *device, int64_t base_address);
 XXFC_API void xx_prodos_destroy(xx_prodos *volume);
 XXFC_API void xx_prodos_free(xx_prodos *volume);
 
 /** Narrow structural volume probe; always restores the device cursor. */
 XXFC_API bool xx_prodos_detection_hint(xx_io_device *device);
 XXFC_API bool xx_prodos_check_is_valid(Abstractformat *self, xx_pd_struct *pd);
-XXFC_API bool xx_prodos_handle_base_info(Abstractformat *self,
-                                         xx_pd_struct *pd);
-XXFC_API int64_t xx_prodos_get_format_size(Abstractformat *self,
-                                           xx_pd_struct *pd);
-XXFC_API uint64_t xx_prodos_get_number_of_archive_records(Abstractformat *self,
-                                                          xx_pd_struct *pd);
+XXFC_API bool xx_prodos_handle_base_info(Abstractformat *self, xx_pd_struct *pd);
+XXFC_API int64_t xx_prodos_get_format_size(Abstractformat *self, xx_pd_struct *pd);
+XXFC_API uint64_t xx_prodos_get_number_of_archive_records(Abstractformat *self, xx_pd_struct *pd);
 
-XXFC_API xx_archive_record_state *xx_prodos_create_archive_records_reading(
-    Abstractformat *self, const xx_list_s *options, xx_pd_struct *pd);
-XXFC_API const xx_archive_record *xx_prodos_get_current_archive_record(
-    Abstractformat *self, xx_archive_record_state *state);
-XXFC_API bool xx_prodos_unpack_current_archive_record(
-    Abstractformat *self, xx_archive_record_state *state, xx_pd_struct *pd);
+XXFC_API xx_archive_record_state *xx_prodos_create_archive_records_reading(Abstractformat *self, const xx_list_s *options, xx_pd_struct *pd);
+XXFC_API const xx_archive_record *xx_prodos_get_current_archive_record(Abstractformat *self, xx_archive_record_state *state);
+XXFC_API bool xx_prodos_unpack_current_archive_record(Abstractformat *self, xx_archive_record_state *state, xx_pd_struct *pd);
 /** Stream a validated fork to a caller-owned device, or verify with NULL.
  * No filesystem path or temporary file is used. */
-XXFC_API bool xx_prodos_extract_record_to_device(Abstractformat *self,
-    xx_archive_record_state *state, xx_io_device *destination, xx_pd_struct *pd);
-XXFC_API bool xx_prodos_archive_record_move_to_next(
-    Abstractformat *self, xx_archive_record_state *state, xx_pd_struct *pd);
-XXFC_API void xx_prodos_free_archive_records_reading(
-    Abstractformat *self, xx_archive_record_state *state);
+XXFC_API bool xx_prodos_extract_record_to_device(Abstractformat *self, xx_archive_record_state *state, xx_io_device *destination, xx_pd_struct *pd);
+XXFC_API bool xx_prodos_archive_record_move_to_next(Abstractformat *self, xx_archive_record_state *state, xx_pd_struct *pd);
+XXFC_API void xx_prodos_free_archive_records_reading(Abstractformat *self, xx_archive_record_state *state);
 
 #ifdef __cplusplus
 }

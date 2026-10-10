@@ -141,12 +141,14 @@ typedef struct wpi_sink_s {
 } wpi_sink;
 
 #include "xxfclib/global/xx_global.h"
-static size_t gb_sfx_warpin_package_capacity(void) {
+static size_t gb_sfx_warpin_package_capacity(void)
+{
     size_t n = xx_get_file_buffer_size();
     if (!n) n = XX_DEFAULT_FILE_BUFFER_SIZE;
     return n > (SIZE_MAX >> 1) ? SIZE_MAX >> 1 : n;
 }
-static ssize_t gb_sfx_warpin_package_read(xx_io_device *device, void *buffer, size_t size, size_t capacity) {
+static ssize_t gb_sfx_warpin_package_read(xx_io_device *device, void *buffer, size_t size, size_t capacity)
+{
     size_t done = 0;
     if (size > (SIZE_MAX >> 1)) return -1;
     while (done < size) {
@@ -160,7 +162,8 @@ static ssize_t gb_sfx_warpin_package_read(xx_io_device *device, void *buffer, si
     }
     return (ssize_t)done;
 }
-static ssize_t gb_sfx_warpin_package_write(xx_io_device *device, const void *buffer, size_t size, size_t capacity) {
+static ssize_t gb_sfx_warpin_package_write(xx_io_device *device, const void *buffer, size_t size, size_t capacity)
+{
     size_t done = 0;
     if (size > (SIZE_MAX >> 1)) return -1;
     while (done < size) {
@@ -175,21 +178,18 @@ static ssize_t gb_sfx_warpin_package_write(xx_io_device *device, const void *buf
     return (ssize_t)done;
 }
 
-
-static uint32_t wpi_le16(const uint8_t *bytes) {
+static uint32_t wpi_le16(const uint8_t *bytes)
+{
     return (uint32_t)bytes[0] | ((uint32_t)bytes[1] << 8U);
 }
 
-static bool wpi_read_at(xx_io_device *device, int64_t offset, void *buffer,
-                        size_t size) {
+static bool wpi_read_at(xx_io_device *device, int64_t offset, void *buffer, size_t size)
+{
     const size_t file_io_capacity = gb_sfx_warpin_package_capacity();
     size_t done = 0U;
-    if (!device || (!buffer && size != 0U) || offset < 0 ||
-        xx_io_seek64(device, offset, SEEK_SET) != 0)
-        return false;
+    if (!device || (!buffer && size != 0U) || offset < 0 || xx_io_seek64(device, offset, SEEK_SET) != 0) return false;
     while (done < size) {
-        ssize_t amount = gb_sfx_warpin_package_read(device, (uint8_t *)buffer + done,
-                                    size - done, file_io_capacity);
+        ssize_t amount = gb_sfx_warpin_package_read(device, (uint8_t *)buffer + done, size - done, file_io_capacity);
         if (amount <= 0 || (size_t)amount > size - done) return false;
         done += (size_t)amount;
     }
@@ -198,16 +198,15 @@ static bool wpi_read_at(xx_io_device *device, int64_t offset, void *buffer,
 
 /* ---- output sink ------------------------------------------------------- */
 
-static ssize_t wpi_sink_write(xx_io_device *self, const void *buffer,
-                              size_t n) {
+static ssize_t wpi_sink_write(xx_io_device *self, const void *buffer, size_t n)
+{
     const size_t file_io_capacity = gb_sfx_warpin_package_capacity();
     wpi_sink *sink = self ? (wpi_sink *)self->priv : NULL;
     size_t done = 0U;
     if (!sink || (!buffer && n != 0U)) return -1;
     if ((uint64_t)n > sink->limit - sink->written) return -1;
     while (sink->target && done < n) {
-        ssize_t amount = gb_sfx_warpin_package_write(sink->target,
-                                     (const uint8_t *)buffer + done, n - done, file_io_capacity);
+        ssize_t amount = gb_sfx_warpin_package_write(sink->target, (const uint8_t *)buffer + done, n - done, file_io_capacity);
         if (amount <= 0 || (size_t)amount > n - done) return -1;
         done += (size_t)amount;
     }
@@ -215,8 +214,8 @@ static ssize_t wpi_sink_write(xx_io_device *self, const void *buffer,
     return (ssize_t)n;
 }
 
-static void wpi_sink_init(wpi_sink *sink, xx_io_device *target,
-                          uint64_t limit) {
+static void wpi_sink_init(wpi_sink *sink, xx_io_device *target, uint64_t limit)
+{
     xx_mem_zero(sink, sizeof(*sink));
     sink->device.write = wpi_sink_write;
     sink->device.priv = sink;
@@ -225,8 +224,8 @@ static void wpi_sink_init(wpi_sink *sink, xx_io_device *target,
 }
 
 /* Stream `size` stored bytes at `offset` into the sink in fixed chunks. */
-static bool wpi_copy_range(xx_io_device *source, int64_t offset, int64_t size,
-                           wpi_sink *sink, xx_pd_struct *pd) {
+static bool wpi_copy_range(xx_io_device *source, int64_t offset, int64_t size, wpi_sink *sink, xx_pd_struct *pd)
+{
     const size_t file_io_capacity = gb_sfx_warpin_package_capacity();
     uint8_t *buffer;
     int64_t done = 0;
@@ -236,12 +235,8 @@ static bool wpi_copy_range(xx_io_device *source, int64_t offset, int64_t size,
     buffer = (uint8_t *)xx_mem_alloc(file_io_capacity);
     if (!buffer) return false;
     while (ok && done < size) {
-        size_t chunk = size - done > (int64_t)file_io_capacity
-                           ? (size_t)file_io_capacity
-                           : (size_t)(size - done);
-        if ((pd && xx_pd_is_stopped(pd)) ||
-            !wpi_read_at(source, offset + done, buffer, chunk) ||
-            wpi_sink_write(&sink->device, buffer, chunk) != (ssize_t)chunk)
+        size_t chunk = size - done > (int64_t)file_io_capacity ? (size_t)file_io_capacity : (size_t)(size - done);
+        if ((pd && xx_pd_is_stopped(pd)) || !wpi_read_at(source, offset + done, buffer, chunk) || wpi_sink_write(&sink->device, buffer, chunk) != (ssize_t)chunk)
             ok = false;
         done += (int64_t)chunk;
     }
@@ -253,7 +248,8 @@ static bool wpi_copy_range(xx_io_device *source, int64_t offset, int64_t size,
 
 /* Raw name -> ASCII path (see the header).  `out` holds at least
  * 3 * length + 1 bytes; returns the converted length. */
-static size_t wpi_convert_name(const uint8_t *raw, size_t length, char *out) {
+static size_t wpi_convert_name(const uint8_t *raw, size_t length, char *out)
+{
     static const char digits[] = "0123456789ABCDEF";
     size_t at = 0U, index;
     for (index = 0U; index < length; ++index) {
@@ -275,13 +271,13 @@ static size_t wpi_convert_name(const uint8_t *raw, size_t length, char *out) {
 /* 64-bit FNV-1a with ASCII folded to lower case, so names that a
  * case-insensitive file system treats as one hash alike.  A collision
  * between different names only renames a member needlessly. */
-static uint64_t wpi_name_hash(const char *name, size_t length) {
+static uint64_t wpi_name_hash(const char *name, size_t length)
+{
     uint64_t hash = UINT64_C(0xcbf29ce484222325);
     size_t index;
     for (index = 0U; index < length; ++index) {
         uint8_t c = (uint8_t)name[index];
-        if (c >= (uint8_t)'A' && c <= (uint8_t)'Z')
-            c = (uint8_t)(c - (uint8_t)'A' + (uint8_t)'a');
+        if (c >= (uint8_t)'A' && c <= (uint8_t)'Z') c = (uint8_t)(c - (uint8_t)'A' + (uint8_t)'a');
         hash ^= (uint64_t)c;
         hash *= UINT64_C(0x100000001b3);
     }
@@ -290,7 +286,8 @@ static uint64_t wpi_name_hash(const char *name, size_t length) {
 
 /* Insert "%_<index>" before the extension of the last component (or append
  * it when there is none).  `name` has room for WPI_NAME_BUFFER bytes. */
-static void wpi_insert_suffix(char *name, size_t length, uint32_t index) {
+static void wpi_insert_suffix(char *name, size_t length, uint32_t index)
+{
     char suffix[2 + 10];
     char digits[10];
     size_t suffix_length = 0U, digit_count = 0U, component = 0U, at, tail;
@@ -311,23 +308,20 @@ static void wpi_insert_suffix(char *name, size_t length, uint32_t index) {
     while (digit_count != 0U) suffix[suffix_length++] = digits[--digit_count];
     if (length + suffix_length >= WPI_NAME_BUFFER) return;
     tail = length - dot;
-    for (at = tail + 1U; at > 0U; --at)
-        name[dot + suffix_length + at - 1U] = name[dot + at - 1U];
+    for (at = tail + 1U; at > 0U; --at) name[dot + suffix_length + at - 1U] = name[dot + at - 1U];
     xx_rt_memcpy(name + dot, suffix, suffix_length);
 }
 
 /* A Windows device name (CON, PRN, AUX, NUL, COM0-9, LPT0-9, CLOCK$, CONIN$,
  * CONOUT$) as the part of a component before its first '.', trailing spaces
  * ignored. */
-static bool wpi_reserved_component(const char *segment, size_t length) {
-    static const char *const devices[] = {"CON",    "PRN",    "AUX",
-                                          "NUL",    "CLOCK$", "CONIN$",
-                                          "CONOUT$"};
+static bool wpi_reserved_component(const char *segment, size_t length)
+{
+    static const char *const devices[] = {"CON", "PRN", "AUX", "NUL", "CLOCK$", "CONIN$", "CONOUT$"};
     char stem[8];
     size_t stem_length = 0U, index;
     while (stem_length < length && segment[stem_length] != '.') ++stem_length;
-    while (stem_length != 0U && segment[stem_length - 1U] == ' ')
-        --stem_length;
+    while (stem_length != 0U && segment[stem_length - 1U] == ' ') --stem_length;
     if (stem_length < 3U || stem_length > sizeof(stem) - 1U) return false;
     for (index = 0U; index < stem_length; ++index) {
         char c = segment[index];
@@ -335,13 +329,10 @@ static bool wpi_reserved_component(const char *segment, size_t length) {
     }
     stem[stem_length] = 0;
     if (stem_length == 4U && stem[3] >= '0' && stem[3] <= '9' &&
-        ((stem[0] == 'C' && stem[1] == 'O' && stem[2] == 'M') ||
-         (stem[0] == 'L' && stem[1] == 'P' && stem[2] == 'T')))
+        ((stem[0] == 'C' && stem[1] == 'O' && stem[2] == 'M') || (stem[0] == 'L' && stem[1] == 'P' && stem[2] == 'T')))
         return true;
     for (index = 0U; index < sizeof(devices) / sizeof(devices[0]); ++index)
-        if (xx_str_len(devices[index]) == stem_length &&
-            xx_rt_memcmp(stem, devices[index], stem_length) == 0)
-            return true;
+        if (xx_str_len(devices[index]) == stem_length && xx_rt_memcmp(stem, devices[index], stem_length) == 0) return true;
     return false;
 }
 
@@ -349,23 +340,18 @@ static bool wpi_reserved_component(const char *segment, size_t length) {
  * components, components ending in '.' or ' ' (this covers "." and ".."),
  * device names, control characters and the characters no Windows path may
  * carry. */
-static bool wpi_safe_name(const char *name) {
+static bool wpi_safe_name(const char *name)
+{
     const char *segment;
     const char *at;
     if (!name || !name[0] || name[0] == '/') return false;
     segment = name;
     for (at = name;; ++at) {
         unsigned char c = (unsigned char)*at;
-        if (c == ':' || c == '<' || c == '>' || c == '"' || c == '|' ||
-            c == '?' || c == '*' || c == '\\' || c == 0x7FU ||
-            (c != 0U && c < 0x20U))
-            return false;
+        if (c == ':' || c == '<' || c == '>' || c == '"' || c == '|' || c == '?' || c == '*' || c == '\\' || c == 0x7FU || (c != 0U && c < 0x20U)) return false;
         if (c == '/' || c == 0U) {
             size_t length = (size_t)(at - segment);
-            if (length == 0U || segment[length - 1U] == '.' ||
-                segment[length - 1U] == ' ' ||
-                wpi_reserved_component(segment, length))
-                return false;
+            if (length == 0U || segment[length - 1U] == '.' || segment[length - 1U] == ' ' || wpi_reserved_component(segment, length)) return false;
             if (c == 0U) return true;
             segment = at + 1;
         }
@@ -374,46 +360,36 @@ static bool wpi_safe_name(const char *name) {
 
 /* ---- structure walk ---------------------------------------------------- */
 
-static bool wpi_read_layout(Abstractformat *format, wpi_layout *out) {
+static bool wpi_read_layout(Abstractformat *format, wpi_layout *out)
+{
     uint8_t header[WPI_HEADER_SIZE];
     uint8_t probe[10];
     wpi_layout layout;
     int64_t total, blob, table_size, position;
-    if (!format || !format->device || !out || format->base_address < 0)
-        return false;
+    if (!format || !format->device || !out || format->base_address < 0) return false;
     total = xx_io_total_size(format->device);
     if (total < format->base_address) return false;
     xx_mem_zero(&layout, sizeof(layout));
     layout.size = total - format->base_address;
-    if (layout.size < (int64_t)(WPI_HEADER_SIZE + WPI_PACKAGE_ENTRY +
-                                WPI_MEMBER_HEADER) ||
-        !wpi_read_at(format->device, format->base_address, header,
-                     sizeof(header)))
+    if (layout.size < (int64_t)(WPI_HEADER_SIZE + WPI_PACKAGE_ENTRY + WPI_MEMBER_HEADER) || !wpi_read_at(format->device, format->base_address, header, sizeof(header)))
         return false;
-    if (header[0] != 0x77U || header[1] != 0x04U || header[2] != 0x02U ||
-        header[3] != 0xBEU)
-        return false;
+    if (header[0] != 0x77U || header[1] != 0x04U || header[2] != 0x02U || header[3] != 0xBEU) return false;
     layout.revision = wpi_le16(header + WPI_REVISION_OFFSET);
     layout.packages = wpi_le16(header + WPI_PACKAGES_OFFSET);
     layout.script_unpacked = wpi_le16(header + WPI_SCRIPT_UNPACKED_OFFSET);
     layout.script_packed = wpi_le16(header + WPI_SCRIPT_PACKED_OFFSET);
     blob = (int64_t)(int32_t)xx_data_get_u32(header + WPI_BLOB_OFFSET, 4, 0, false);
     layout.has_script = layout.script_packed != 0U;
-    if (layout.revision > WPI_MAX_REVISION || layout.packages == 0U ||
-        (layout.has_script && layout.script_packed < (uint32_t)WPI_MIN_BZIP2) ||
+    if (layout.revision > WPI_MAX_REVISION || layout.packages == 0U || (layout.has_script && layout.script_packed < (uint32_t)WPI_MIN_BZIP2) ||
         (!layout.has_script && layout.script_unpacked != 0U) || blob < 0)
         return false;
     position = WPI_HEADER_SIZE;
     if (layout.revision == WPI_MAX_REVISION) {
         uint8_t field[4];
         int64_t extension;
-        if (!wpi_read_at(format->device, format->base_address + position,
-                         field, sizeof(field)))
-            return false;
+        if (!wpi_read_at(format->device, format->base_address + position, field, sizeof(field))) return false;
         extension = (int64_t)(int32_t)xx_data_get_u32(field, 4, 0, false);
-        if (extension < WPI_EXTENSION_MIN || extension > WPI_EXTENSION_MAX ||
-            extension > layout.size - position)
-            return false;
+        if (extension < WPI_EXTENSION_MIN || extension > WPI_EXTENSION_MAX || extension > layout.size - position) return false;
         position += extension;
     }
     layout.script_offset = position;
@@ -421,15 +397,10 @@ static bool wpi_read_layout(Abstractformat *format, wpi_layout *out) {
     /* The script is one bzip2 stream: its header, then a block or the
      * end-of-stream magic.  This is what separates a package from a file
      * that merely opens with the magic dword. */
-    if (layout.has_script &&
-        (!wpi_read_at(format->device, format->base_address + position, probe,
-                      sizeof(probe)) ||
-         probe[0] != 'B' || probe[1] != 'Z' || probe[2] != 'h' ||
-         probe[3] < '1' || probe[3] > '9' ||
-         !((probe[4] == 0x31U && probe[5] == 0x41U && probe[6] == 0x59U &&
-            probe[7] == 0x26U && probe[8] == 0x53U && probe[9] == 0x59U) ||
-           (probe[4] == 0x17U && probe[5] == 0x72U && probe[6] == 0x45U &&
-            probe[7] == 0x38U && probe[8] == 0x50U && probe[9] == 0x90U))))
+    if (layout.has_script && (!wpi_read_at(format->device, format->base_address + position, probe, sizeof(probe)) || probe[0] != 'B' || probe[1] != 'Z' ||
+                              probe[2] != 'h' || probe[3] < '1' || probe[3] > '9' ||
+                              !((probe[4] == 0x31U && probe[5] == 0x41U && probe[6] == 0x59U && probe[7] == 0x26U && probe[8] == 0x53U && probe[9] == 0x59U) ||
+                                (probe[4] == 0x17U && probe[5] == 0x72U && probe[6] == 0x45U && probe[7] == 0x38U && probe[8] == 0x50U && probe[9] == 0x90U))))
         return false;
     position += (int64_t)layout.script_packed;
     if (blob > layout.size - position) return false;
@@ -446,19 +417,15 @@ static bool wpi_read_layout(Abstractformat *format, wpi_layout *out) {
 
 /* The fields of one member header that the walk and the records use.
  * Returns false when the header is not a member record. */
-static bool wpi_parse_member(const uint8_t *header, wpi_member *member,
-                             size_t *name_length) {
+static bool wpi_parse_member(const uint8_t *header, wpi_member *member, size_t *name_length)
+{
     int64_t packed, unpacked;
     size_t length = 0U;
-    if (wpi_le16(header) != WPI_MEMBER_MAGIC ||
-        header[WPI_MEMBER_EXTENSION] != 0U)
-        return false;
+    if (wpi_le16(header) != WPI_MEMBER_MAGIC || header[WPI_MEMBER_EXTENSION] != 0U) return false;
     unpacked = (int64_t)(int32_t)xx_data_get_u32(header + WPI_MEMBER_UNPACKED, 4, 0, false);
     packed = (int64_t)(int32_t)xx_data_get_u32(header + WPI_MEMBER_PACKED, 4, 0, false);
     if (unpacked < 0 || packed < 0) return false;
-    while (length < WPI_MEMBER_NAME_SIZE &&
-           header[WPI_MEMBER_NAME + length] != 0U)
-        ++length;
+    while (length < WPI_MEMBER_NAME_SIZE && header[WPI_MEMBER_NAME + length] != 0U) ++length;
     /* The writer terminates the name inside the field. */
     if (length == 0U || length >= WPI_MEMBER_NAME_SIZE) return false;
     member->packed = (uint32_t)packed;
@@ -471,7 +438,8 @@ static bool wpi_parse_member(const uint8_t *header, wpi_member *member,
     return true;
 }
 
-static int wpi_compare_spans(const void *left, const void *right) {
+static int wpi_compare_spans(const void *left, const void *right)
+{
     const wpi_span *a = (const wpi_span *)left;
     const wpi_span *b = (const wpi_span *)right;
     if (a->start != b->start) return a->start < b->start ? -1 : 1;
@@ -481,9 +449,8 @@ static int wpi_compare_spans(const void *left, const void *right) {
 /* Offsets in a plain WPI can address packages in any order.  A package
  * embedded in a self-installer may instead use offsets from the enclosing
  * file.  Accept only an origin whose first member header is valid. */
-static bool wpi_choose_origin(Abstractformat *format, const wpi_layout *layout,
-                              int64_t offset, uint32_t files,
-                              int64_t *result) {
+static bool wpi_choose_origin(Abstractformat *format, const wpi_layout *layout, int64_t offset, uint32_t files, int64_t *result)
+{
     int64_t origins[3], base, limit;
     size_t index;
     uint8_t header[WPI_MEMBER_HEADER];
@@ -497,18 +464,11 @@ static bool wpi_choose_origin(Abstractformat *format, const wpi_layout *layout,
     origins[2] = base + layout->members_offset - offset;
     for (index = 0U; index < 3U; ++index) {
         int64_t cursor;
-        if (index == 2U && offset - layout->members_offset < WPI_MIN_STUB)
-            continue;
-        if (origins[index] < -offset || origins[index] > limit - offset)
-            continue;
+        if (index == 2U && offset - layout->members_offset < WPI_MIN_STUB) continue;
+        if (origins[index] < -offset || origins[index] > limit - offset) continue;
         cursor = origins[index] + offset;
-        if (cursor < base + layout->members_offset ||
-            (int64_t)WPI_MEMBER_HEADER > limit - cursor)
-            continue;
-        if (files != 0U &&
-            (!wpi_read_at(format->device, cursor, header, sizeof(header)) ||
-             !wpi_parse_member(header, &member, &name_length)))
-            continue;
+        if (cursor < base + layout->members_offset || (int64_t)WPI_MEMBER_HEADER > limit - cursor) continue;
+        if (files != 0U && (!wpi_read_at(format->device, cursor, header, sizeof(header)) || !wpi_parse_member(header, &member, &name_length))) continue;
         *result = origins[index];
         return true;
     }
@@ -519,9 +479,8 @@ static bool wpi_choose_origin(Abstractformat *format, const wpi_layout *layout,
  * reject overlaps after sorting those spans.  The second pass walks every
  * member header, fills items[] and keys[] (at most `capacity` members;
  * keys[0] is reserved for the script), and verifies the table totals. */
-static bool wpi_walk(Abstractformat *format, wpi_layout *layout,
-                     wpi_member *items, wpi_key *keys, size_t capacity,
-                     char *name, xx_pd_struct *pd) {
+static bool wpi_walk(Abstractformat *format, wpi_layout *layout, wpi_member *items, wpi_key *keys, size_t capacity, char *name, xx_pd_struct *pd)
+{
     uint8_t table[WPI_PACKAGE_BATCH * WPI_PACKAGE_ENTRY];
     uint8_t header[WPI_MEMBER_HEADER];
     const int64_t base = format->base_address;
@@ -536,16 +495,11 @@ static bool wpi_walk(Abstractformat *format, wpi_layout *layout,
         const uint8_t *entry;
         int64_t offset, cursor, span, unpacked_total, packed_total;
         uint32_t files, file;
-        if ((package & WPI_POLL_MASK) == 0U && pd && xx_pd_is_stopped(pd))
-            goto fail;
+        if ((package & WPI_POLL_MASK) == 0U && pd && xx_pd_is_stopped(pd)) goto fail;
         if (package - first >= loaded) {
             uint32_t batch = layout->packages - package;
             if (batch > WPI_PACKAGE_BATCH) batch = WPI_PACKAGE_BATCH;
-            if (!wpi_read_at(format->device,
-                             base + layout->table_offset +
-                                 (int64_t)package * WPI_PACKAGE_ENTRY,
-                             table, (size_t)batch * WPI_PACKAGE_ENTRY))
-                goto fail;
+            if (!wpi_read_at(format->device, base + layout->table_offset + (int64_t)package * WPI_PACKAGE_ENTRY, table, (size_t)batch * WPI_PACKAGE_ENTRY)) goto fail;
             first = package;
             loaded = batch;
         }
@@ -554,27 +508,19 @@ static bool wpi_walk(Abstractformat *format, wpi_layout *layout,
         offset = (int64_t)(int32_t)xx_data_get_u32(entry + 4U, 4, 0, false);
         unpacked_total = (int64_t)(int32_t)xx_data_get_u32(entry + 8U, 4, 0, false);
         packed_total = (int64_t)(int32_t)xx_data_get_u32(entry + 12U, 4, 0, false);
-        if (offset < 0 || unpacked_total < 0 || packed_total < 0)
-            goto fail;
-        if (package == 0U &&
-            !wpi_choose_origin(format, layout, offset, files, &origin))
-            goto fail;
+        if (offset < 0 || unpacked_total < 0 || packed_total < 0) goto fail;
+        if (package == 0U && !wpi_choose_origin(format, layout, offset, files, &origin)) goto fail;
         cursor = origin + offset;
         /* No overflow: files <= 0xFFFF and totals are below 2^31. */
         span = (int64_t)files * WPI_MEMBER_HEADER + packed_total;
-        if (cursor < base + layout->members_offset || cursor > limit ||
-            span > limit - cursor ||
-            (uint64_t)count + files > WPI_MAX_MEMBERS)
-            goto fail;
+        if (cursor < base + layout->members_offset || cursor > limit || span > limit - cursor || (uint64_t)count + files > WPI_MAX_MEMBERS) goto fail;
         if (files == 0U) {
             if (packed_total != 0 || unpacked_total != 0) goto fail;
         } else if (!items) {
             wpi_member member;
             size_t name_length;
-            if (!wpi_read_at(format->device, cursor, header, sizeof(header)) ||
-                !wpi_parse_member(header, &member, &name_length) ||
-                (int64_t)member.packed > packed_total ||
-                (int64_t)member.unpacked > unpacked_total)
+            if (!wpi_read_at(format->device, cursor, header, sizeof(header)) || !wpi_parse_member(header, &member, &name_length) ||
+                (int64_t)member.packed > packed_total || (int64_t)member.unpacked > unpacked_total)
                 goto fail;
         } else {
             int64_t packed_sum = 0, unpacked_sum = 0;
@@ -583,13 +529,8 @@ static bool wpi_walk(Abstractformat *format, wpi_layout *layout,
                 wpi_member member;
                 size_t name_length, converted;
                 int64_t data;
-                if (((count + file) & WPI_POLL_MASK) == 0U && pd &&
-                    xx_pd_is_stopped(pd))
-                    goto fail;
-                if (count + file >= capacity ||
-                    (int64_t)WPI_MEMBER_HEADER > limit - walk ||
-                    !wpi_read_at(format->device, walk, header,
-                                 sizeof(header)) ||
+                if (((count + file) & WPI_POLL_MASK) == 0U && pd && xx_pd_is_stopped(pd)) goto fail;
+                if (count + file >= capacity || (int64_t)WPI_MEMBER_HEADER > limit - walk || !wpi_read_at(format->device, walk, header, sizeof(header)) ||
                     !wpi_parse_member(header, &member, &name_length))
                     goto fail;
                 data = walk + WPI_MEMBER_HEADER;
@@ -599,17 +540,14 @@ static bool wpi_walk(Abstractformat *format, wpi_layout *layout,
                 member.header = walk;
                 member.package = (uint16_t)package;
                 items[count + file] = member;
-                converted = wpi_convert_name(header + WPI_MEMBER_NAME,
-                                             name_length, name);
+                converted = wpi_convert_name(header + WPI_MEMBER_NAME, name_length, name);
                 keys[count + file + 1U].hash = wpi_name_hash(name, converted);
                 keys[count + file + 1U].index = count + file + 1U;
                 walk = data + (int64_t)member.packed;
             }
             /* The members must fill the package exactly as its table entry
              * says, which is what the probe relied on. */
-            if (packed_sum != packed_total || unpacked_sum != unpacked_total ||
-                walk != cursor + span)
-                goto fail;
+            if (packed_sum != packed_total || unpacked_sum != unpacked_total || walk != cursor + span) goto fail;
         }
         spans[package].start = cursor;
         spans[package].end = cursor + span;
@@ -619,8 +557,7 @@ static bool wpi_walk(Abstractformat *format, wpi_layout *layout,
     if (count == 0U) goto fail;
     xx_rt_qsort(spans, layout->packages, sizeof(*spans), wpi_compare_spans);
     for (package = 1U; package < layout->packages; ++package)
-        if (spans[package - 1U].end > spans[package].start)
-            goto fail;
+        if (spans[package - 1U].end > spans[package].start) goto fail;
     layout->members = count;
     layout->origin = origin;
     layout->end = last_end - base;
@@ -631,13 +568,13 @@ fail:
     return false;
 }
 
-static bool wpi_scan(Abstractformat *format, wpi_layout *layout,
-                     xx_pd_struct *pd) {
-    return wpi_read_layout(format, layout) &&
-           wpi_walk(format, layout, NULL, NULL, 0U, NULL, pd);
+static bool wpi_scan(Abstractformat *format, wpi_layout *layout, xx_pd_struct *pd)
+{
+    return wpi_read_layout(format, layout) && wpi_walk(format, layout, NULL, NULL, 0U, NULL, pd);
 }
 
-static int wpi_compare_keys(const void *left, const void *right) {
+static int wpi_compare_keys(const void *left, const void *right)
+{
     const wpi_key *a = (const wpi_key *)left;
     const wpi_key *b = (const wpi_key *)right;
     if (a->hash != b->hash) return a->hash < b->hash ? -1 : 1;
@@ -647,26 +584,25 @@ static int wpi_compare_keys(const void *left, const void *right) {
 /* Sorting puts every group of equal (case-folded) names together, lowest
  * record index first; that one keeps its name and the rest are renamed.
  * The script is record 0, so it always keeps its name. */
-static void wpi_mark_duplicates(wpi_member *items, wpi_key *keys,
-                                size_t records) {
+static void wpi_mark_duplicates(wpi_member *items, wpi_key *keys, size_t records)
+{
     size_t index;
     if (records < 2U) return;
     xx_rt_qsort(keys, records, sizeof(*keys), wpi_compare_keys);
     for (index = 1U; index < records; ++index)
-        if (keys[index].hash == keys[index - 1U].hash &&
-            keys[index].index >= 1U && keys[index].index < records)
-            items[keys[index].index - 1U].renamed = true;
+        if (keys[index].hash == keys[index - 1U].hash && keys[index].index >= 1U && keys[index].index < records) items[keys[index].index - 1U].renamed = true;
 }
 
-static void wpi_stream_free(void *opaque) {
+static void wpi_stream_free(void *opaque)
+{
     wpi_stream *stream = (wpi_stream *)opaque;
     if (!stream) return;
     if (stream->items) xx_mem_free(stream->items);
     xx_mem_free(stream);
 }
 
-static bool wpi_open_stream(Abstractformat *format, wpi_stream **result,
-                            xx_pd_struct *pd) {
+static bool wpi_open_stream(Abstractformat *format, wpi_stream **result, xx_pd_struct *pd)
+{
     wpi_layout layout;
     wpi_stream *stream = NULL;
     wpi_key *keys = NULL;
@@ -677,20 +613,15 @@ static bool wpi_open_stream(Abstractformat *format, wpi_stream **result,
     if (!stream) return false;
     /* At most WPI_MAX_MEMBERS members, each proven by a 0x11D-byte header
      * in the file: 40 bytes of bookkeeping per member, never more. */
-    stream->items = (wpi_member *)xx_mem_calloc(layout.members,
-                                                sizeof(*stream->items));
+    stream->items = (wpi_member *)xx_mem_calloc(layout.members, sizeof(*stream->items));
     keys = (wpi_key *)xx_mem_alloc(records * sizeof(*keys));
     if (!stream->items || !keys) goto fail;
-    keys[0].hash = wpi_name_hash(XX_SFX_WARPIN_PACKAGE_SCRIPT_NAME,
-                                 xx_str_len(XX_SFX_WARPIN_PACKAGE_SCRIPT_NAME));
+    keys[0].hash = wpi_name_hash(XX_SFX_WARPIN_PACKAGE_SCRIPT_NAME, xx_str_len(XX_SFX_WARPIN_PACKAGE_SCRIPT_NAME));
     keys[0].index = 0U;
     /* The second walk must see exactly what the first one counted. */
     {
         wpi_layout check = layout;
-        if (!wpi_walk(format, &check, stream->items, keys, layout.members,
-                      stream->name, pd) ||
-            check.members != layout.members || check.end != layout.end)
-            goto fail;
+        if (!wpi_walk(format, &check, stream->items, keys, layout.members, stream->name, pd) || check.members != layout.members || check.end != layout.end) goto fail;
     }
     wpi_mark_duplicates(stream->items, keys, records);
     xx_mem_free(keys);
@@ -707,41 +638,36 @@ fail:
 
 /* Leave record `index`'s (converted, and for a duplicate suffixed) name in
  * stream->name; for a member also re-read and re-check its header. */
-static bool wpi_load_name(Abstractformat *format, wpi_stream *stream,
-                          size_t index) {
+static bool wpi_load_name(Abstractformat *format, wpi_stream *stream, size_t index)
+{
     uint8_t header[WPI_MEMBER_HEADER];
     wpi_member check;
     const wpi_member *member;
     size_t name_length, length;
     if (index == 0U) {
-        xx_rt_memcpy(stream->name, XX_SFX_WARPIN_PACKAGE_SCRIPT_NAME,
-                     sizeof(XX_SFX_WARPIN_PACKAGE_SCRIPT_NAME));
+        xx_rt_memcpy(stream->name, XX_SFX_WARPIN_PACKAGE_SCRIPT_NAME, sizeof(XX_SFX_WARPIN_PACKAGE_SCRIPT_NAME));
         return true;
     }
     if (index > stream->count) return false;
     member = &stream->items[index - 1U];
-    if (!wpi_read_at(format->device, member->header, header, sizeof(header)) ||
-        !wpi_parse_member(header, &check, &name_length) ||
-        check.packed != member->packed || check.unpacked != member->unpacked)
+    if (!wpi_read_at(format->device, member->header, header, sizeof(header)) || !wpi_parse_member(header, &check, &name_length) || check.packed != member->packed ||
+        check.unpacked != member->unpacked)
         return false;
-    length = wpi_convert_name(header + WPI_MEMBER_NAME, name_length,
-                              stream->name);
-    if (member->renamed)
-        wpi_insert_suffix(stream->name, length, (uint32_t)index);
+    length = wpi_convert_name(header + WPI_MEMBER_NAME, name_length, stream->name);
+    if (member->renamed) wpi_insert_suffix(stream->name, length, (uint32_t)index);
     return true;
 }
 
-static bool wpi_copy_options(xx_list_s *destination, const xx_list_s *source) {
+static bool wpi_copy_options(xx_list_s *destination, const xx_list_s *source)
+{
     size_t index;
     if (!source) return true;
     for (index = 0U; index < source->count; ++index) {
-        const xx_meta *original =
-            (const xx_meta *)xx_list_at((const xx_list_t *)source, index);
+        const xx_meta *original = (const xx_meta *)xx_list_at((const xx_list_t *)source, index);
         xx_meta copy;
         if (!original) continue;
         xx_meta_init(&copy, original->meta_id);
-        if (!xx_var_copy(&copy.var, &original->var) ||
-            !xx_list_append(destination, &copy)) {
+        if (!xx_var_copy(&copy.var, &original->var) || !xx_list_append(destination, &copy)) {
             xx_meta_cleanup(&copy);
             return false;
         }
@@ -749,8 +675,8 @@ static bool wpi_copy_options(xx_list_s *destination, const xx_list_s *source) {
     return true;
 }
 
-static bool wpi_set_record(Abstractformat *format, xx_archive_record *record,
-                           wpi_stream *stream, size_t index) {
+static bool wpi_set_record(Abstractformat *format, xx_archive_record *record, wpi_stream *stream, size_t index)
+{
     uint64_t packed, unpacked, method;
     xx_archive_record_cleanup(record);
     xx_archive_record_init(record);
@@ -758,8 +684,7 @@ static bool wpi_set_record(Abstractformat *format, xx_archive_record *record,
     if (index == 0U) {
         record->header_offset = format->base_address;
         record->header_size = stream->layout.script_offset;
-        record->data_offset =
-            format->base_address + stream->layout.script_offset;
+        record->data_offset = format->base_address + stream->layout.script_offset;
         packed = stream->layout.script_packed;
         unpacked = stream->layout.script_unpacked;
         method = WPI_METHOD_BZIP2;
@@ -771,60 +696,40 @@ static bool wpi_set_record(Abstractformat *format, xx_archive_record *record,
         packed = member->packed;
         unpacked = member->unpacked;
         method = member->method;
-        if (!xx_archive_record_set_meta_u64(record, XX_META_ID_TIMESTAMP,
-                                            member->mtime))
-            return false;
+        if (!xx_archive_record_set_meta_u64(record, XX_META_ID_TIMESTAMP, member->mtime)) return false;
         /* The owning package's label ("Pck001", ...) as the comment; it is
          * display text only, so anything unprintable is dropped. */
         {
             uint8_t raw[WPI_LABEL_SIZE];
             char label[WPI_LABEL_SIZE + 1];
             size_t at, length = 0U;
-            if (wpi_read_at(format->device,
-                            format->base_address +
-                                stream->layout.table_offset +
-                                (int64_t)member->package * WPI_PACKAGE_ENTRY +
-                                WPI_LABEL_OFFSET,
-                            raw, sizeof(raw))) {
+            if (wpi_read_at(format->device, format->base_address + stream->layout.table_offset + (int64_t)member->package * WPI_PACKAGE_ENTRY + WPI_LABEL_OFFSET, raw,
+                            sizeof(raw))) {
                 for (at = 0U; at < sizeof(raw) && raw[at] != 0U; ++at)
-                    if (raw[at] >= 0x20U && raw[at] <= 0x7EU)
-                        label[length++] = (char)raw[at];
+                    if (raw[at] >= 0x20U && raw[at] <= 0x7EU) label[length++] = (char)raw[at];
                 label[length] = 0;
-                if (length != 0U &&
-                    !xx_archive_record_set_meta_str(record, XX_META_ID_COMMENT,
-                                                    label))
-                    return false;
+                if (length != 0U && !xx_archive_record_set_meta_str(record, XX_META_ID_COMMENT, label)) return false;
             }
         }
     }
     record->compressed_size = (int64_t)packed;
-    return xx_archive_record_set_original_name(record, stream->name) &&
-           xx_archive_record_set_meta_u64(record, XX_META_ID_COMPRESSED_SIZE,
-                                          packed) &&
-           xx_archive_record_set_meta_u64(record, XX_META_ID_UNCOMPRESSED_SIZE,
-                                          unpacked) &&
-           xx_archive_record_set_meta_u64(record, XX_META_ID_COMPRESSION_METHOD,
-                                          method) &&
-           xx_archive_record_set_meta_bool(record, XX_META_ID_IS_ENCRYPTED,
-                                           false) &&
+    return xx_archive_record_set_original_name(record, stream->name) && xx_archive_record_set_meta_u64(record, XX_META_ID_COMPRESSED_SIZE, packed) &&
+           xx_archive_record_set_meta_u64(record, XX_META_ID_UNCOMPRESSED_SIZE, unpacked) &&
+           xx_archive_record_set_meta_u64(record, XX_META_ID_COMPRESSION_METHOD, method) && xx_archive_record_set_meta_bool(record, XX_META_ID_IS_ENCRYPTED, false) &&
            xx_archive_record_set_meta_bool(record, XX_META_ID_IS_FOLDER, false);
 }
 
 /* Decode record `index` into `destination` (NULL only verifies).  The
  * script's real size is unknown (its field keeps only the low 16 bits), so
  * it is decoded up to `script_limit` bytes and no further. */
-static bool wpi_extract(Abstractformat *format, const wpi_stream *stream,
-                        size_t index, xx_io_device *destination,
-                        uint64_t script_limit, xx_pd_struct *pd) {
+static bool wpi_extract(Abstractformat *format, const wpi_stream *stream, size_t index, xx_io_device *destination, uint64_t script_limit, xx_pd_struct *pd)
+{
     wpi_sink sink;
     if (index == 0U) {
         const wpi_layout *layout = &stream->layout;
         wpi_sink_init(&sink, destination, script_limit);
         /* The size field holds the low 16 bits of the script's size. */
-        return xx_bzip2_unpack_device(
-                   format->device,
-                   format->base_address + layout->script_offset,
-                   (int64_t)layout->script_packed, &sink.device, pd) &&
+        return xx_bzip2_unpack_device(format->device, format->base_address + layout->script_offset, (int64_t)layout->script_packed, &sink.device, pd) &&
                (sink.written & 0xFFFFU) == (uint64_t)layout->script_unpacked;
     }
     {
@@ -834,23 +739,17 @@ static bool wpi_extract(Abstractformat *format, const wpi_stream *stream,
         /* A zero-byte file has no stream at all, whatever its method. */
         if (member->packed == 0U) return member->unpacked == 0U;
         if (member->method == WPI_METHOD_STORED)
-            return member->packed == member->unpacked &&
-                   wpi_copy_range(format->device, data,
-                                  (int64_t)member->packed, &sink, pd) &&
-                   sink.written == member->unpacked;
+            return member->packed == member->unpacked && wpi_copy_range(format->device, data, (int64_t)member->packed, &sink, pd) && sink.written == member->unpacked;
         if (member->method == WPI_METHOD_BZIP2)
-            return xx_bzip2_unpack_device(format->device, data,
-                                          (int64_t)member->packed,
-                                          &sink.device, pd) &&
-                   sink.written == member->unpacked;
+            return xx_bzip2_unpack_device(format->device, data, (int64_t)member->packed, &sink.device, pd) && sink.written == member->unpacked;
         return false;
     }
 }
 
 /* ---- public API -------------------------------------------------------- */
 
-void xx_sfx_warpin_package_init(xx_sfx_warpin_package *archive,
-                                xx_io_device *device, int64_t base_address) {
+void xx_sfx_warpin_package_init(xx_sfx_warpin_package *archive, xx_io_device *device, int64_t base_address)
+{
     if (!archive) return;
     xx_mem_zero(archive, sizeof(*archive));
     xx_format_init(&archive->format, device, base_address);
@@ -863,52 +762,46 @@ void xx_sfx_warpin_package_init(xx_sfx_warpin_package *archive,
     archive->format.check_is_valid = xx_sfx_warpin_package_check_is_valid;
     archive->format.handle_base_info = xx_sfx_warpin_package_handle_base_info;
     archive->format.get_format_size = xx_sfx_warpin_package_get_format_size;
-    archive->format.get_number_of_archive_records =
-        xx_sfx_warpin_package_get_number_of_archive_records;
-    archive->format.create_archive_records_reading =
-        xx_sfx_warpin_package_create_archive_records_reading;
-    archive->format.get_current_archive_record =
-        xx_sfx_warpin_package_get_current_archive_record;
-    archive->format.unpack_current_archive_record =
-        xx_sfx_warpin_package_unpack_current_archive_record;
-    archive->format.archive_record_move_to_next =
-        xx_sfx_warpin_package_archive_record_move_to_next;
-    archive->format.free_archive_records_reading =
-        xx_sfx_warpin_package_free_archive_records_reading;
+    archive->format.get_number_of_archive_records = xx_sfx_warpin_package_get_number_of_archive_records;
+    archive->format.create_archive_records_reading = xx_sfx_warpin_package_create_archive_records_reading;
+    archive->format.get_current_archive_record = xx_sfx_warpin_package_get_current_archive_record;
+    archive->format.unpack_current_archive_record = xx_sfx_warpin_package_unpack_current_archive_record;
+    archive->format.archive_record_move_to_next = xx_sfx_warpin_package_archive_record_move_to_next;
+    archive->format.free_archive_records_reading = xx_sfx_warpin_package_free_archive_records_reading;
 }
 
-xx_sfx_warpin_package *xx_sfx_warpin_package_create(xx_io_device *device,
-                                                    int64_t base_address) {
-    xx_sfx_warpin_package *archive =
-        (xx_sfx_warpin_package *)xx_mem_alloc(sizeof(*archive));
+xx_sfx_warpin_package *xx_sfx_warpin_package_create(xx_io_device *device, int64_t base_address)
+{
+    xx_sfx_warpin_package *archive = (xx_sfx_warpin_package *)xx_mem_alloc(sizeof(*archive));
     if (archive) xx_sfx_warpin_package_init(archive, device, base_address);
     return archive;
 }
 
-void xx_sfx_warpin_package_destroy(xx_sfx_warpin_package *archive) {
+void xx_sfx_warpin_package_destroy(xx_sfx_warpin_package *archive)
+{
     if (archive) xx_format_cleanup_extra_parameters(&archive->format);
 }
 
-void xx_sfx_warpin_package_free(xx_sfx_warpin_package *archive) {
+void xx_sfx_warpin_package_free(xx_sfx_warpin_package *archive)
+{
     if (!archive) return;
     xx_sfx_warpin_package_destroy(archive);
     xx_mem_free(archive);
 }
 
-bool xx_sfx_warpin_package_check_is_valid(Abstractformat *format,
-                                          xx_pd_struct *pd) {
+bool xx_sfx_warpin_package_check_is_valid(Abstractformat *format, xx_pd_struct *pd)
+{
     wpi_layout layout;
     return wpi_scan(format, &layout, pd);
 }
 
-bool xx_sfx_warpin_package_handle_base_info(Abstractformat *format,
-                                            xx_pd_struct *pd) {
+bool xx_sfx_warpin_package_handle_base_info(Abstractformat *format, xx_pd_struct *pd)
+{
     wpi_layout layout;
     xx_sfx_warpin_package *archive;
     if (!wpi_scan(format, &layout, pd)) return false;
     archive = (xx_sfx_warpin_package *)format;
-    archive->number_of_records = (uint64_t)layout.members +
-                                 (layout.has_script ? 1U : 0U);
+    archive->number_of_records = (uint64_t)layout.members + (layout.has_script ? 1U : 0U);
     archive->number_of_packages = layout.packages;
     archive->revision = layout.revision;
     format->number_of_archive_records = archive->number_of_records;
@@ -918,22 +811,18 @@ bool xx_sfx_warpin_package_handle_base_info(Abstractformat *format,
     return true;
 }
 
-int64_t xx_sfx_warpin_package_get_format_size(Abstractformat *format,
-                                              xx_pd_struct *pd) {
-    return format && (format->base_info_handled ||
-                      xx_sfx_warpin_package_handle_base_info(format, pd))
-               ? format->format_size : -1;
+int64_t xx_sfx_warpin_package_get_format_size(Abstractformat *format, xx_pd_struct *pd)
+{
+    return format && (format->base_info_handled || xx_sfx_warpin_package_handle_base_info(format, pd)) ? format->format_size : -1;
 }
 
-uint64_t xx_sfx_warpin_package_get_number_of_archive_records(
-    Abstractformat *format, xx_pd_struct *pd) {
-    return format && (format->base_info_handled ||
-                      xx_sfx_warpin_package_handle_base_info(format, pd))
-               ? ((xx_sfx_warpin_package *)format)->number_of_records : 0U;
+uint64_t xx_sfx_warpin_package_get_number_of_archive_records(Abstractformat *format, xx_pd_struct *pd)
+{
+    return format && (format->base_info_handled || xx_sfx_warpin_package_handle_base_info(format, pd)) ? ((xx_sfx_warpin_package *)format)->number_of_records : 0U;
 }
 
-xx_archive_record_state *xx_sfx_warpin_package_create_archive_records_reading(
-    Abstractformat *format, const xx_list_s *options, xx_pd_struct *pd) {
+xx_archive_record_state *xx_sfx_warpin_package_create_archive_records_reading(Abstractformat *format, const xx_list_s *options, xx_pd_struct *pd)
+{
     wpi_stream *stream;
     xx_archive_record_state *state;
     if (!wpi_open_stream(format, &stream, pd)) return NULL;
@@ -945,11 +834,8 @@ xx_archive_record_state *xx_sfx_warpin_package_create_archive_records_reading(
     xx_archive_record_state_init(state, format);
     state->internal_state = stream;
     state->free_internal = wpi_stream_free;
-    state->total_records = (uint64_t)stream->count +
-                           (stream->layout.has_script ? 1U : 0U);
-    if (!wpi_copy_options(&state->options, options) ||
-        !wpi_set_record(format, &state->current_record, stream,
-                        stream->index)) {
+    state->total_records = (uint64_t)stream->count + (stream->layout.has_script ? 1U : 0U);
+    if (!wpi_copy_options(&state->options, options) || !wpi_set_record(format, &state->current_record, stream, stream->index)) {
         xx_archive_record_state_free(state);
         return NULL;
     }
@@ -957,30 +843,26 @@ xx_archive_record_state *xx_sfx_warpin_package_create_archive_records_reading(
     return state;
 }
 
-const xx_archive_record *xx_sfx_warpin_package_get_current_archive_record(
-    Abstractformat *format, xx_archive_record_state *state) {
-    return format && state && state->format == format && state->has_record
-               ? &state->current_record : NULL;
+const xx_archive_record *xx_sfx_warpin_package_get_current_archive_record(Abstractformat *format, xx_archive_record_state *state)
+{
+    return format && state && state->format == format && state->has_record ? &state->current_record : NULL;
 }
 
-bool xx_sfx_warpin_package_archive_record_move_to_next(
-    Abstractformat *format, xx_archive_record_state *state, xx_pd_struct *pd) {
+bool xx_sfx_warpin_package_archive_record_move_to_next(Abstractformat *format, xx_archive_record_state *state, xx_pd_struct *pd)
+{
     wpi_stream *stream;
     (void)pd;
-    if (!format || !state || state->format != format ||
-        !(stream = (wpi_stream *)state->internal_state) ||
-        ++stream->index > stream->count) {
+    if (!format || !state || state->format != format || !(stream = (wpi_stream *)state->internal_state) || ++stream->index > stream->count) {
         if (state) state->has_record = false;
         return false;
     }
     ++state->current_index;
-    state->has_record =
-        wpi_set_record(format, &state->current_record, stream, stream->index);
+    state->has_record = wpi_set_record(format, &state->current_record, stream, stream->index);
     return state->has_record;
 }
 
-bool xx_sfx_warpin_package_unpack_current_archive_record(
-    Abstractformat *format, xx_archive_record_state *state, xx_pd_struct *pd) {
+bool xx_sfx_warpin_package_unpack_current_archive_record(Abstractformat *format, xx_archive_record_state *state, xx_pd_struct *pd)
+{
     wpi_stream *stream;
     const xx_var *option;
     const char *base = NULL;
@@ -989,15 +871,11 @@ bool xx_sfx_warpin_package_unpack_current_archive_record(
     uint64_t unpacked, script_limit = WPI_SCRIPT_MAX;
     bool result = false;
     bool created = false;
-    if (!format || !state || state->format != format || !state->has_record ||
-        !(stream = (wpi_stream *)state->internal_state) ||
-        stream->index > stream->count || (pd && xx_pd_is_stopped(pd)))
+    if (!format || !state || state->format != format || !state->has_record || !(stream = (wpi_stream *)state->internal_state) || stream->index > stream->count ||
+        (pd && xx_pd_is_stopped(pd)))
         return false;
-    unpacked = stream->index == 0U
-                   ? (uint64_t)stream->layout.script_unpacked
-                   : (uint64_t)stream->items[stream->index - 1U].unpacked;
-    option = xx_format_resolve_extra_parameter(format, &state->options,
-                                               XX_META_ID_OPT_MAX_MEMBER_SIZE);
+    unpacked = stream->index == 0U ? (uint64_t)stream->layout.script_unpacked : (uint64_t)stream->items[stream->index - 1U].unpacked;
+    option = xx_format_resolve_extra_parameter(format, &state->options, XX_META_ID_OPT_MAX_MEMBER_SIZE);
     if (option) {
         /* For the script `unpacked` is only the low 16 bits of its size, so
          * the option also caps how far the script is decoded. */
@@ -1005,36 +883,28 @@ bool xx_sfx_warpin_package_unpack_current_archive_record(
         if (unpacked > maximum) return false;
         if (maximum < script_limit) script_limit = maximum;
     }
-    option = xx_format_resolve_extra_parameter(format, &state->options,
-                                               XX_META_ID_OPT_UNPACK_PATH);
-    if (!option)
-        /* No destination: decode the record through, which verifies it. */
-        return wpi_extract(format, stream, stream->index, NULL, script_limit,
-                           pd);
+    option = xx_format_resolve_extra_parameter(format, &state->options, XX_META_ID_OPT_UNPACK_PATH);
+    if (!option) /* No destination: decode the record through, which verifies it. */
+        return wpi_extract(format, stream, stream->index, NULL, script_limit, pd);
     /* stream->name was built from the file by wpi_load_name: refuse it
      * before anything is created when it could escape the output folder or
      * name a device. */
     if (!wpi_safe_name(stream->name)) return false;
-    if (option->type == XX_VAR_TYPE_STRING ||
-        option->type == XX_VAR_TYPE_STRING_VIEW) {
+    if (option->type == XX_VAR_TYPE_STRING || option->type == XX_VAR_TYPE_STRING_VIEW) {
         base = xx_var_get_str(option);
-    } else if (option->type == XX_VAR_TYPE_WSTRING ||
-               option->type == XX_VAR_TYPE_WSTRING_VIEW) {
+    } else if (option->type == XX_VAR_TYPE_WSTRING || option->type == XX_VAR_TYPE_WSTRING_VIEW) {
         owned_base = xx_str_unicode_to_utf8(xx_var_get_wstr(option));
         base = owned_base;
     }
     if (!base) goto done;
-    path = (base[0] && base[xx_str_len(base) - 1U] != '/' &&
-            base[xx_str_len(base) - 1U] != '\\')
-               ? xx_str_concat3(base, "/", stream->name)
-               : xx_str_concat(base, stream->name);
+    path = (base[0] && base[xx_str_len(base) - 1U] != '/' && base[xx_str_len(base) - 1U] != '\\') ? xx_str_concat3(base, "/", stream->name)
+                                                                                                  : xx_str_concat(base, stream->name);
     if (!path || !xx_store_create_dirs_a(path, false)) goto done;
     {
         xx_io_device *destination = xx_io_file_open(path, "wb");
         created = destination != NULL;
         if (!destination) goto done;
-        result = wpi_extract(format, stream, stream->index, destination,
-                             script_limit, pd);
+        result = wpi_extract(format, stream, stream->index, destination, script_limit, pd);
         if (xx_io_close(destination) != 0) result = false;
     }
 done:
@@ -1044,8 +914,8 @@ done:
     return result;
 }
 
-void xx_sfx_warpin_package_free_archive_records_reading(
-    Abstractformat *format, xx_archive_record_state *state) {
+void xx_sfx_warpin_package_free_archive_records_reading(Abstractformat *format, xx_archive_record_state *state)
+{
     (void)format;
     xx_archive_record_state_free(state);
 }

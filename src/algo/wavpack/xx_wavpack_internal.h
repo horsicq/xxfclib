@@ -24,7 +24,7 @@ typedef unsigned __int8 uint8_t;
 typedef __int64 int64_t;
 typedef __int32 int32_t;
 typedef __int16 int16_t;
-typedef __int8  int8_t;
+typedef __int8 int8_t;
 #else
 #include <stdint.h>
 #endif
@@ -35,13 +35,13 @@ typedef __int8  int8_t;
 // concerned with any of these.
 
 typedef struct {
-    char ckID [4];
+    char ckID[4];
     uint32_t ckSize;
-    char formType [4];
+    char formType[4];
 } RiffChunkHeader;
 
 typedef struct {
-    char ckID [4];
+    char ckID[4];
     uint32_t ckSize;
 } ChunkHeader;
 
@@ -54,7 +54,7 @@ typedef struct {
     uint16_t cbSize, ValidBitsPerSample;
     int32_t ChannelMask;
     uint16_t SubFormat;
-    char GUID [14];
+    char GUID[14];
 } WaveHeader;
 
 #define WaveHeaderFormat "SSLLSSSSLS"
@@ -67,7 +67,7 @@ typedef struct {
 // would be used (with appropriate endian correction).
 
 typedef struct {
-    char ckID [4];
+    char ckID[4];
     uint32_t ckSize;
     int16_t version;
     unsigned char block_index_u8;
@@ -79,118 +79,117 @@ typedef struct {
 
 // Macros to access the 40-bit block_index field
 
-#define GET_BLOCK_INDEX(hdr) ( (int64_t) (hdr).block_index + ((int64_t) (hdr).block_index_u8 << 32) )
+#define GET_BLOCK_INDEX(hdr) ((int64_t)(hdr).block_index + ((int64_t)(hdr).block_index_u8 << 32))
 
-#define SET_BLOCK_INDEX(hdr,value) do { \
-    int64_t tmp = (value);              \
-    (hdr).block_index = (uint32_t) tmp; \
-    (hdr).block_index_u8 =              \
-        (unsigned char) (tmp >> 32);    \
-} while (0)
+#define SET_BLOCK_INDEX(hdr, value)                        \
+    do {                                                   \
+        int64_t tmp = (value);                             \
+        (hdr).block_index = (uint32_t)tmp;                 \
+        (hdr).block_index_u8 = (unsigned char)(tmp >> 32); \
+    } while (0)
 
 // Macros to access the 40-bit total_samples field, which is complicated by the fact that
 // all 1's in the lower 32 bits indicates "unknown" (regardless of upper 8 bits)
 
-#define GET_TOTAL_SAMPLES(hdr) ( ((hdr).total_samples == (uint32_t) -1) ? -1 : \
-    (int64_t) (hdr).total_samples + ((int64_t) (hdr).total_samples_u8 << 32) - (hdr).total_samples_u8 )
+#define GET_TOTAL_SAMPLES(hdr) \
+    (((hdr).total_samples == (uint32_t)-1) ? -1 : (int64_t)(hdr).total_samples + ((int64_t)(hdr).total_samples_u8 << 32) - (hdr).total_samples_u8)
 
-#define SET_TOTAL_SAMPLES(hdr,value) do {       \
-    int64_t tmp = (value);                      \
-    if (tmp < 0)                                \
-        (hdr).total_samples = (uint32_t) -1;    \
-    else {                                      \
-        tmp += (tmp / 0xffffffffLL);            \
-        (hdr).total_samples = (uint32_t) tmp;   \
-        (hdr).total_samples_u8 =                \
-            (unsigned char) (tmp >> 32);        \
-    }                                           \
-} while (0)
+#define SET_TOTAL_SAMPLES(hdr, value)                            \
+    do {                                                         \
+        int64_t tmp = (value);                                   \
+        if (tmp < 0) (hdr).total_samples = (uint32_t)-1;         \
+        else {                                                   \
+            tmp += (tmp / 0xffffffffLL);                         \
+            (hdr).total_samples = (uint32_t)tmp;                 \
+            (hdr).total_samples_u8 = (unsigned char)(tmp >> 32); \
+        }                                                        \
+    } while (0)
 
 // or-values for xx_wv_Header.flags
-#define BYTES_STORED    3       // 1-4 bytes/sample
-#define MONO_FLAG       4       // not stereo
-#define HYBRID_FLAG     8       // hybrid mode
-#define JOINT_STEREO    0x10    // joint stereo
-#define CROSS_DECORR    0x20    // no-delay cross decorrelation
-#define HYBRID_SHAPE    0x40    // noise shape (hybrid mode only)
-#define FLOAT_DATA      0x80    // ieee 32-bit floating point data
+#define BYTES_STORED 3     // 1-4 bytes/sample
+#define MONO_FLAG 4        // not stereo
+#define HYBRID_FLAG 8      // hybrid mode
+#define JOINT_STEREO 0x10  // joint stereo
+#define CROSS_DECORR 0x20  // no-delay cross decorrelation
+#define HYBRID_SHAPE 0x40  // noise shape (hybrid mode only)
+#define FLOAT_DATA 0x80    // ieee 32-bit floating point data
 
-#define INT32_DATA      0x100   // special extended int handling
-#define HYBRID_BITRATE  0x200   // bitrate noise (hybrid mode only)
-#define HYBRID_BALANCE  0x400   // balance noise (hybrid stereo mode only)
+#define INT32_DATA 0x100      // special extended int handling
+#define HYBRID_BITRATE 0x200  // bitrate noise (hybrid mode only)
+#define HYBRID_BALANCE 0x400  // balance noise (hybrid stereo mode only)
 
-#define INITIAL_BLOCK   0x800   // initial block of multichannel segment
-#define FINAL_BLOCK     0x1000  // final block of multichannel segment
+#define INITIAL_BLOCK 0x800  // initial block of multichannel segment
+#define FINAL_BLOCK 0x1000   // final block of multichannel segment
 
-#define SHIFT_LSB       13
-#define SHIFT_MASK      (0x1fL << SHIFT_LSB)
+#define SHIFT_LSB 13
+#define SHIFT_MASK (0x1fL << SHIFT_LSB)
 
-#define MAG_LSB         18
-#define MAG_MASK        (0x1fL << MAG_LSB)
+#define MAG_LSB 18
+#define MAG_MASK (0x1fL << MAG_LSB)
 
-#define SRATE_LSB       23
-#define SRATE_MASK      (0xfL << SRATE_LSB)
+#define SRATE_LSB 23
+#define SRATE_MASK (0xfL << SRATE_LSB)
 
-#define FALSE_STEREO    0x40000000      // block is stereo, but data is mono
-#define NEW_SHAPING     0x20000000      // use IIR filter for negative shaping
+#define FALSE_STEREO 0x40000000  // block is stereo, but data is mono
+#define NEW_SHAPING 0x20000000   // use IIR filter for negative shaping
 
 #define MONO_DATA (MONO_FLAG | FALSE_STEREO)
 
 // Introduced in WavPack 5.0:
-#define HAS_CHECKSUM    0x10000000      // block contains a trailing checksum
-#define DSD_FLAG        0x80000000      // block is encoded DSD (1-bit PCM)
+#define HAS_CHECKSUM 0x10000000  // block contains a trailing checksum
+#define DSD_FLAG 0x80000000      // block is encoded DSD (1-bit PCM)
 
-#define IGNORED_FLAGS   0x08000000      // reserved, but ignore if encountered
-#define UNKNOWN_FLAGS   0x00000000      // we no longer have any of these spares
+#define IGNORED_FLAGS 0x08000000  // reserved, but ignore if encountered
+#define UNKNOWN_FLAGS 0x00000000  // we no longer have any of these spares
 
-#define MIN_STREAM_VERS     0x402       // lowest stream version we'll decode
-#define MAX_STREAM_VERS     0x410       // highest stream version we'll decode or encode
+#define MIN_STREAM_VERS 0x402  // lowest stream version we'll decode
+#define MAX_STREAM_VERS 0x410  // highest stream version we'll decode or encode
 
-#define WAVPACK_MAX_CHANS       4096    // max channels handled by WavPack format & library
+#define WAVPACK_MAX_CHANS 4096  // max channels handled by WavPack format & library
 
 // This sets the maximum number of channels that the current WavPack CLI applications
 // accept. It's somewhat arbitrary because the actual WavPack format and library can
 // handle up to 4096 channels. However, anything beyond 256 channels is obviously
 // a niche case and is not well tested, so this lower limit is defined for now.
 
-#define WAVPACK_MAX_CLI_CHANS   256
+#define WAVPACK_MAX_CLI_CHANS 256
 
 // These are the mask bit definitions for the metadata chunk id byte (see format.txt)
 
-#define ID_UNIQUE               0x3f
-#define ID_OPTIONAL_DATA        0x20
-#define ID_ODD_SIZE             0x40
-#define ID_LARGE                0x80
+#define ID_UNIQUE 0x3f
+#define ID_OPTIONAL_DATA 0x20
+#define ID_ODD_SIZE 0x40
+#define ID_LARGE 0x80
 
-#define ID_DUMMY                0x0
-#define ID_ENCODER_INFO         0x1
-#define ID_DECORR_TERMS         0x2
-#define ID_DECORR_WEIGHTS       0x3
-#define ID_DECORR_SAMPLES       0x4
-#define ID_ENTROPY_VARS         0x5
-#define ID_HYBRID_PROFILE       0x6
-#define ID_SHAPING_WEIGHTS      0x7
-#define ID_FLOAT_INFO           0x8
-#define ID_INT32_INFO           0x9
-#define ID_WV_BITSTREAM         0xa
-#define ID_WVC_BITSTREAM        0xb
-#define ID_WVX_BITSTREAM        0xc
-#define ID_CHANNEL_INFO         0xd
-#define ID_DSD_BLOCK            0xe
+#define ID_DUMMY 0x0
+#define ID_ENCODER_INFO 0x1
+#define ID_DECORR_TERMS 0x2
+#define ID_DECORR_WEIGHTS 0x3
+#define ID_DECORR_SAMPLES 0x4
+#define ID_ENTROPY_VARS 0x5
+#define ID_HYBRID_PROFILE 0x6
+#define ID_SHAPING_WEIGHTS 0x7
+#define ID_FLOAT_INFO 0x8
+#define ID_INT32_INFO 0x9
+#define ID_WV_BITSTREAM 0xa
+#define ID_WVC_BITSTREAM 0xb
+#define ID_WVX_BITSTREAM 0xc
+#define ID_CHANNEL_INFO 0xd
+#define ID_DSD_BLOCK 0xe
 
-#define ID_RIFF_HEADER          (ID_OPTIONAL_DATA | 0x1)
-#define ID_RIFF_TRAILER         (ID_OPTIONAL_DATA | 0x2)
-#define ID_ALT_HEADER           (ID_OPTIONAL_DATA | 0x3)
-#define ID_ALT_TRAILER          (ID_OPTIONAL_DATA | 0x4)
-#define ID_CONFIG_BLOCK         (ID_OPTIONAL_DATA | 0x5)
-#define ID_MD5_CHECKSUM         (ID_OPTIONAL_DATA | 0x6)
-#define ID_SAMPLE_RATE          (ID_OPTIONAL_DATA | 0x7)
-#define ID_ALT_EXTENSION        (ID_OPTIONAL_DATA | 0x8)
-#define ID_ALT_MD5_CHECKSUM     (ID_OPTIONAL_DATA | 0x9)
-#define ID_NEW_CONFIG_BLOCK     (ID_OPTIONAL_DATA | 0xa)
-#define ID_CHANNEL_IDENTITIES   (ID_OPTIONAL_DATA | 0xb)
-#define ID_WVX_NEW_BITSTREAM    (ID_OPTIONAL_DATA | ID_WVX_BITSTREAM)
-#define ID_BLOCK_CHECKSUM       (ID_OPTIONAL_DATA | 0xf)
+#define ID_RIFF_HEADER (ID_OPTIONAL_DATA | 0x1)
+#define ID_RIFF_TRAILER (ID_OPTIONAL_DATA | 0x2)
+#define ID_ALT_HEADER (ID_OPTIONAL_DATA | 0x3)
+#define ID_ALT_TRAILER (ID_OPTIONAL_DATA | 0x4)
+#define ID_CONFIG_BLOCK (ID_OPTIONAL_DATA | 0x5)
+#define ID_MD5_CHECKSUM (ID_OPTIONAL_DATA | 0x6)
+#define ID_SAMPLE_RATE (ID_OPTIONAL_DATA | 0x7)
+#define ID_ALT_EXTENSION (ID_OPTIONAL_DATA | 0x8)
+#define ID_ALT_MD5_CHECKSUM (ID_OPTIONAL_DATA | 0x9)
+#define ID_NEW_CONFIG_BLOCK (ID_OPTIONAL_DATA | 0xa)
+#define ID_CHANNEL_IDENTITIES (ID_OPTIONAL_DATA | 0xb)
+#define ID_WVX_NEW_BITSTREAM (ID_OPTIONAL_DATA | ID_WVX_BITSTREAM)
+#define ID_BLOCK_CHECKSUM (ID_OPTIONAL_DATA | 0xf)
 
 ///////////////////////// WavPack Configuration ///////////////////////////////
 
@@ -203,34 +202,34 @@ typedef struct {
     int bits_per_sample, bytes_per_sample;
     int qmode, flags, xmode, num_channels, float_norm_exp;
     int32_t block_samples, worker_threads, sample_rate, channel_mask;
-    unsigned char md5_checksum [16], md5_read;
-    int num_tag_strings;                // this field is not used
-    char **tag_strings;                 // this field is not used
+    unsigned char md5_checksum[16], md5_read;
+    int num_tag_strings;  // this field is not used
+    char **tag_strings;   // this field is not used
 } xx_wv_Config;
 
-#define CONFIG_HYBRID_FLAG      8       // hybrid mode
-#define CONFIG_JOINT_STEREO     0x10    // joint stereo
-#define CONFIG_CROSS_DECORR     0x20    // no-delay cross decorrelation
-#define CONFIG_HYBRID_SHAPE     0x40    // noise shape (hybrid mode only)
-#define CONFIG_FAST_FLAG        0x200   // fast mode
-#define CONFIG_HIGH_FLAG        0x800   // high quality mode
-#define CONFIG_VERY_HIGH_FLAG   0x1000  // very high
-#define CONFIG_BITRATE_KBPS     0x2000  // bitrate is kbps, not bits / sample
-#define CONFIG_SHAPE_OVERRIDE   0x8000  // shaping mode specified
-#define CONFIG_JOINT_OVERRIDE   0x10000 // joint-stereo mode specified
-#define CONFIG_DYNAMIC_SHAPING  0x20000 // dynamic noise shaping
-#define CONFIG_CREATE_EXE       0x40000 // create executable
-#define CONFIG_CREATE_WVC       0x80000 // create correction file
-#define CONFIG_OPTIMIZE_WVC     0x100000 // maximize hybrid compression
-#define CONFIG_COMPATIBLE_WRITE 0x400000 // write files for decoders < 4.3
-#define CONFIG_CALC_NOISE       0x800000 // calc noise in hybrid mode
-#define CONFIG_EXTRA_MODE       0x2000000 // extra processing mode
-#define CONFIG_SKIP_WVX         0x4000000 // no wvx stream w/ floats & big ints
-#define CONFIG_MD5_CHECKSUM     0x8000000 // store MD5 signature
-#define CONFIG_MERGE_BLOCKS     0x10000000 // merge blocks of equal redundancy (for lossyWAV)
-#define CONFIG_PAIR_UNDEF_CHANS 0x20000000 // encode undefined channels in stereo pairs
-#define CONFIG_OPTIMIZE_32BIT   0x40000000 // new optimizations for 32-bit integer files
-#define CONFIG_OPTIMIZE_MONO    0x80000000 // optimize for mono streams posing as stereo
+#define CONFIG_HYBRID_FLAG 8                // hybrid mode
+#define CONFIG_JOINT_STEREO 0x10            // joint stereo
+#define CONFIG_CROSS_DECORR 0x20            // no-delay cross decorrelation
+#define CONFIG_HYBRID_SHAPE 0x40            // noise shape (hybrid mode only)
+#define CONFIG_FAST_FLAG 0x200              // fast mode
+#define CONFIG_HIGH_FLAG 0x800              // high quality mode
+#define CONFIG_VERY_HIGH_FLAG 0x1000        // very high
+#define CONFIG_BITRATE_KBPS 0x2000          // bitrate is kbps, not bits / sample
+#define CONFIG_SHAPE_OVERRIDE 0x8000        // shaping mode specified
+#define CONFIG_JOINT_OVERRIDE 0x10000       // joint-stereo mode specified
+#define CONFIG_DYNAMIC_SHAPING 0x20000      // dynamic noise shaping
+#define CONFIG_CREATE_EXE 0x40000           // create executable
+#define CONFIG_CREATE_WVC 0x80000           // create correction file
+#define CONFIG_OPTIMIZE_WVC 0x100000        // maximize hybrid compression
+#define CONFIG_COMPATIBLE_WRITE 0x400000    // write files for decoders < 4.3
+#define CONFIG_CALC_NOISE 0x800000          // calc noise in hybrid mode
+#define CONFIG_EXTRA_MODE 0x2000000         // extra processing mode
+#define CONFIG_SKIP_WVX 0x4000000           // no wvx stream w/ floats & big ints
+#define CONFIG_MD5_CHECKSUM 0x8000000       // store MD5 signature
+#define CONFIG_MERGE_BLOCKS 0x10000000      // merge blocks of equal redundancy (for lossyWAV)
+#define CONFIG_PAIR_UNDEF_CHANS 0x20000000  // encode undefined channels in stereo pairs
+#define CONFIG_OPTIMIZE_32BIT 0x40000000    // new optimizations for 32-bit integer files
+#define CONFIG_OPTIMIZE_MONO 0x80000000     // optimize for mono streams posing as stereo
 
 // The lower 8 bits of qmode indicate the use of new features in version 5 that (presently)
 // only apply to Core Audio Files (CAF) and DSD files, but could apply to other things too.
@@ -239,25 +238,25 @@ typedef struct {
 // set then the MD5 sum is written with a new ID so that old decoders will not see it
 // (because these features will cause the MD5 sum to be different and fail).
 
-#define QMODE_BIG_ENDIAN        0x1     // big-endian data format (opposite of WAV format)
-#define QMODE_SIGNED_BYTES      0x2     // 8-bit audio data is signed (opposite of WAV format)
-#define QMODE_UNSIGNED_WORDS    0x4     // audio data (other than 8-bit) is unsigned (opposite of WAV format)
-#define QMODE_REORDERED_CHANS   0x8     // source channels were not Microsoft order, so they were reordered
-#define QMODE_DSD_LSB_FIRST     0x10    // DSD bytes, LSB first (most Sony .dsf files)
-#define QMODE_DSD_MSB_FIRST     0x20    // DSD bytes, MSB first (Philips .dff files)
-#define QMODE_DSD_IN_BLOCKS     0x40    // DSD data is blocked by channels (Sony .dsf only)
-#define QMODE_DSD_AUDIO         (QMODE_DSD_LSB_FIRST | QMODE_DSD_MSB_FIRST)
+#define QMODE_BIG_ENDIAN 0x1       // big-endian data format (opposite of WAV format)
+#define QMODE_SIGNED_BYTES 0x2     // 8-bit audio data is signed (opposite of WAV format)
+#define QMODE_UNSIGNED_WORDS 0x4   // audio data (other than 8-bit) is unsigned (opposite of WAV format)
+#define QMODE_REORDERED_CHANS 0x8  // source channels were not Microsoft order, so they were reordered
+#define QMODE_DSD_LSB_FIRST 0x10   // DSD bytes, LSB first (most Sony .dsf files)
+#define QMODE_DSD_MSB_FIRST 0x20   // DSD bytes, MSB first (Philips .dff files)
+#define QMODE_DSD_IN_BLOCKS 0x40   // DSD data is blocked by channels (Sony .dsf only)
+#define QMODE_DSD_AUDIO (QMODE_DSD_LSB_FIRST | QMODE_DSD_MSB_FIRST)
 
 // The rest of the qmode word is reserved for the private use of the command-line programs
 // and are ignored by the library (and not stored either). They really should not be defined
 // here, but I thought it would be a good idea to have all the definitions together.
 
-#define QMODE_ADOBE_MODE        0x100   // user specified Adobe mode
-#define QMODE_NO_STORE_WRAPPER  0x200   // user specified to not store audio file wrapper (RIFF, CAFF, etc.)
-#define QMODE_CHANS_UNASSIGNED  0x400   // user specified "..." in --channel-order option
-#define QMODE_IGNORE_LENGTH     0x800   // user specified to ignore length in file header
-#define QMODE_RAW_PCM           0x1000  // user specified raw PCM format (no header present)
-#define QMODE_EVEN_BYTE_DEPTH   0x2000  // user specified to force even byte bit-depth
+#define QMODE_ADOBE_MODE 0x100        // user specified Adobe mode
+#define QMODE_NO_STORE_WRAPPER 0x200  // user specified to not store audio file wrapper (RIFF, CAFF, etc.)
+#define QMODE_CHANS_UNASSIGNED 0x400  // user specified "..." in --channel-order option
+#define QMODE_IGNORE_LENGTH 0x800     // user specified to ignore length in file header
+#define QMODE_RAW_PCM 0x1000          // user specified raw PCM format (no header present)
+#define QMODE_EVEN_BYTE_DEPTH 0x2000  // user specified to force even byte bit-depth
 
 ////////////// Callbacks used for reading & writing WavPack streams //////////
 
@@ -280,14 +279,14 @@ typedef struct {
 typedef struct {
     int32_t (*read_bytes)(void *id, void *data, int32_t bcount);
     int32_t (*write_bytes)(void *id, void *data, int32_t bcount);
-    int64_t (*get_pos)(void *id);                               // new signature for large files
-    int (*set_pos_abs)(void *id, int64_t pos);                  // new signature for large files
-    int (*set_pos_rel)(void *id, int64_t delta, int mode);      // new signature for large files
+    int64_t (*get_pos)(void *id);                           // new signature for large files
+    int (*set_pos_abs)(void *id, int64_t pos);              // new signature for large files
+    int (*set_pos_rel)(void *id, int64_t delta, int mode);  // new signature for large files
     int (*push_back_byte)(void *id, int c);
-    int64_t (*get_length)(void *id);                            // new signature for large files
+    int64_t (*get_length)(void *id);  // new signature for large files
     int (*can_seek)(void *id);
-    int (*truncate_here)(void *id);                             // new function to truncate file at current position
-    int (*close)(void *id);                                     // new function to close file
+    int (*truncate_here)(void *id);  // new function to truncate file at current position
+    int (*close)(void *id);          // new function to close file
 } xx_wv_StreamReader64;
 
 typedef int (*xx_wv_BlockOutput)(void *id, void *data, int32_t bcount);
@@ -302,136 +301,136 @@ extern "C" {
 
 #define MAX_WAVPACK_SAMPLES ((1LL << 40) - 257)
 
-xx_wv_Context *xx_wv_OpenRawDecoder (
-    void *main_data, int32_t main_size,
-    void *corr_data, int32_t corr_size,
-    int16_t version, char *error, int flags, int norm_offset);
+xx_wv_Context *xx_wv_OpenRawDecoder(void *main_data, int32_t main_size, void *corr_data, int32_t corr_size, int16_t version, char *error, int flags, int norm_offset);
 
-xx_wv_Context *xx_wv_OpenFileInputEx64 (xx_wv_StreamReader64 *reader, void *wv_id, void *wvc_id, char *error, int flags, int norm_offset);
-xx_wv_Context *xx_wv_OpenFileInputEx (xx_wv_StreamReader *reader, void *wv_id, void *wvc_id, char *error, int flags, int norm_offset);
-xx_wv_Context *xx_wv_OpenFileInput (const char *infilename, char *error, int flags, int norm_offset);
+xx_wv_Context *xx_wv_OpenFileInputEx64(xx_wv_StreamReader64 *reader, void *wv_id, void *wvc_id, char *error, int flags, int norm_offset);
+xx_wv_Context *xx_wv_OpenFileInputEx(xx_wv_StreamReader *reader, void *wv_id, void *wvc_id, char *error, int flags, int norm_offset);
+xx_wv_Context *xx_wv_OpenFileInput(const char *infilename, char *error, int flags, int norm_offset);
 
-#define OPEN_WVC        0x1     // open/read "correction" file
-#define OPEN_TAGS       0x2     // read ID3v1 / APEv2 tags (seekable file)
-#define OPEN_WRAPPER    0x4     // make audio wrapper available (i.e. RIFF)
-#define OPEN_2CH_MAX    0x8     // open multichannel as stereo (no downmix)
-#define OPEN_NORMALIZE  0x10    // normalize floating point data to +/- 1.0
-#define OPEN_STREAMING  0x20    // "streaming" mode blindly unpacks blocks
-                                // w/o regard to header file position info
-#define OPEN_EDIT_TAGS  0x40    // allow editing of tags
-#define OPEN_FILE_UTF8  0x80    // assume filenames are UTF-8 encoded, not ANSI (Windows only)
+#define OPEN_WVC 0x1         // open/read "correction" file
+#define OPEN_TAGS 0x2        // read ID3v1 / APEv2 tags (seekable file)
+#define OPEN_WRAPPER 0x4     // make audio wrapper available (i.e. RIFF)
+#define OPEN_2CH_MAX 0x8     // open multichannel as stereo (no downmix)
+#define OPEN_NORMALIZE 0x10  // normalize floating point data to +/- 1.0
+#define OPEN_STREAMING \
+    0x20                     // "streaming" mode blindly unpacks blocks
+                             // w/o regard to header file position info
+#define OPEN_EDIT_TAGS 0x40  // allow editing of tags
+#define OPEN_FILE_UTF8 0x80  // assume filenames are UTF-8 encoded, not ANSI (Windows only)
 
 // new for version 5
 
-#define OPEN_DSD_NATIVE 0x100   // open DSD files as bitstreams
-                                // (returned as 8-bit "samples" stored in 32-bit words)
-#define OPEN_DSD_AS_PCM 0x200   // open DSD files as 24-bit PCM (decimated 8x)
-#define OPEN_ALT_TYPES  0x400   // application is aware of alternate file types & qmode
+#define OPEN_DSD_NATIVE \
+    0x100                      // open DSD files as bitstreams
+                               // (returned as 8-bit "samples" stored in 32-bit words)
+#define OPEN_DSD_AS_PCM 0x200  // open DSD files as 24-bit PCM (decimated 8x)
+#define OPEN_ALT_TYPES \
+    0x400                       // application is aware of alternate file types & qmode
                                 // (just affects retrieving wrappers & MD5 checksums)
 #define OPEN_NO_CHECKSUM 0x800  // don't verify block checksums before decoding
 
 // new for multithreaded
 
-#define OPEN_THREADS_SHFT 12     // specify number of additional worker threads here for
-#define OPEN_THREADS_MASK 0xF000 // decode; 0 to disable, otherwise 1-15 added threads
+#define OPEN_THREADS_SHFT 12      // specify number of additional worker threads here for
+#define OPEN_THREADS_MASK 0xF000  // decode; 0 to disable, otherwise 1-15 added threads
 
-int xx_wv_GetMode (xx_wv_Context *wpc);
+int xx_wv_GetMode(xx_wv_Context *wpc);
 
-#define MODE_WVC        0x1
-#define MODE_LOSSLESS   0x2
-#define MODE_HYBRID     0x4
-#define MODE_FLOAT      0x8
-#define MODE_VALID_TAG  0x10
-#define MODE_HIGH       0x20
-#define MODE_FAST       0x40
-#define MODE_EXTRA      0x80    // extra mode used, see MODE_XMODE for possible level
-#define MODE_APETAG     0x100
-#define MODE_SFX        0x200
-#define MODE_VERY_HIGH  0x400
-#define MODE_MD5        0x800
-#define MODE_XMODE      0x7000  // mask for extra level (1-6, 0=unknown)
-#define MODE_DNS        0x8000
+#define MODE_WVC 0x1
+#define MODE_LOSSLESS 0x2
+#define MODE_HYBRID 0x4
+#define MODE_FLOAT 0x8
+#define MODE_VALID_TAG 0x10
+#define MODE_HIGH 0x20
+#define MODE_FAST 0x40
+#define MODE_EXTRA 0x80  // extra mode used, see MODE_XMODE for possible level
+#define MODE_APETAG 0x100
+#define MODE_SFX 0x200
+#define MODE_VERY_HIGH 0x400
+#define MODE_MD5 0x800
+#define MODE_XMODE 0x7000  // mask for extra level (1-6, 0=unknown)
+#define MODE_DNS 0x8000
 
-int xx_wv_VerifySingleBlock (unsigned char *buffer, int verify_checksum);
-int xx_wv_GetQualifyMode (xx_wv_Context *wpc);
-char *xx_wv_GetErrorMessage (xx_wv_Context *wpc);
-int xx_wv_GetVersion (xx_wv_Context *wpc);
-char *xx_wv_GetFileExtension (xx_wv_Context *wpc);
-unsigned char xx_wv_GetFileFormat (xx_wv_Context *wpc);
-uint32_t xx_wv_UnpackSamples (xx_wv_Context *wpc, int32_t *buffer, uint32_t samples);
-uint32_t xx_wv_GetNumSamples (xx_wv_Context *wpc);
-int64_t xx_wv_GetNumSamples64 (xx_wv_Context *wpc);
-uint32_t xx_wv_GetNumSamplesInFrame (xx_wv_Context *wpc);
-uint32_t xx_wv_GetSampleIndex (xx_wv_Context *wpc);
-int64_t xx_wv_GetSampleIndex64 (xx_wv_Context *wpc);
-int xx_wv_GetNumErrors (xx_wv_Context *wpc);
-int xx_wv_LossyBlocks (xx_wv_Context *wpc);
-int xx_wv_SeekSample (xx_wv_Context *wpc, uint32_t sample);
-int xx_wv_SeekSample64 (xx_wv_Context *wpc, int64_t sample);
-xx_wv_Context *xx_wv_CloseFile (xx_wv_Context *wpc);
-uint32_t xx_wv_GetSampleRate (xx_wv_Context *wpc);
-uint32_t xx_wv_GetNativeSampleRate (xx_wv_Context *wpc);
-int xx_wv_GetBitsPerSample (xx_wv_Context *wpc);
-int xx_wv_GetBytesPerSample (xx_wv_Context *wpc);
-int xx_wv_GetNumChannels (xx_wv_Context *wpc);
-int xx_wv_GetChannelMask (xx_wv_Context *wpc);
-int xx_wv_GetReducedChannels (xx_wv_Context *wpc);
-int xx_wv_GetFloatNormExp (xx_wv_Context *wpc);
-int xx_wv_GetMD5Sum (xx_wv_Context *wpc, unsigned char data [16]);
-void xx_wv_GetChannelIdentities (xx_wv_Context *wpc, unsigned char *identities);
-uint32_t xx_wv_GetChannelLayout (xx_wv_Context *wpc, unsigned char *reorder);
-uint32_t xx_wv_GetWrapperBytes (xx_wv_Context *wpc);
-unsigned char *xx_wv_GetWrapperData (xx_wv_Context *wpc);
-void xx_wv_FreeWrapper (xx_wv_Context *wpc);
-void xx_wv_SeekTrailingWrapper (xx_wv_Context *wpc);
-double xx_wv_GetProgress (xx_wv_Context *wpc);
-uint32_t xx_wv_GetFileSize (xx_wv_Context *wpc);
-int64_t xx_wv_GetFileSize64 (xx_wv_Context *wpc);
-double xx_wv_GetRatio (xx_wv_Context *wpc);
-double xx_wv_GetAverageBitrate (xx_wv_Context *wpc, int count_wvc);
-double xx_wv_GetInstantBitrate (xx_wv_Context *wpc);
-int xx_wv_GetNumTagItems (xx_wv_Context *wpc);
-int xx_wv_GetTagItem (xx_wv_Context *wpc, const char *item, char *value, int size);
-int xx_wv_GetTagItemIndexed (xx_wv_Context *wpc, int index, char *item, int size);
-int xx_wv_GetNumBinaryTagItems (xx_wv_Context *wpc);
-int xx_wv_GetBinaryTagItem (xx_wv_Context *wpc, const char *item, char *value, int size);
-int xx_wv_GetBinaryTagItemIndexed (xx_wv_Context *wpc, int index, char *item, int size);
-int xx_wv_AppendTagItem (xx_wv_Context *wpc, const char *item, const char *value, int vsize);
-int xx_wv_AppendBinaryTagItem (xx_wv_Context *wpc, const char *item, const char *value, int vsize);
-int xx_wv_DeleteTagItem (xx_wv_Context *wpc, const char *item);
-int xx_wv_WriteTag (xx_wv_Context *wpc);
+int xx_wv_VerifySingleBlock(unsigned char *buffer, int verify_checksum);
+int xx_wv_GetQualifyMode(xx_wv_Context *wpc);
+char *xx_wv_GetErrorMessage(xx_wv_Context *wpc);
+int xx_wv_GetVersion(xx_wv_Context *wpc);
+char *xx_wv_GetFileExtension(xx_wv_Context *wpc);
+unsigned char xx_wv_GetFileFormat(xx_wv_Context *wpc);
+uint32_t xx_wv_UnpackSamples(xx_wv_Context *wpc, int32_t *buffer, uint32_t samples);
+uint32_t xx_wv_GetNumSamples(xx_wv_Context *wpc);
+int64_t xx_wv_GetNumSamples64(xx_wv_Context *wpc);
+uint32_t xx_wv_GetNumSamplesInFrame(xx_wv_Context *wpc);
+uint32_t xx_wv_GetSampleIndex(xx_wv_Context *wpc);
+int64_t xx_wv_GetSampleIndex64(xx_wv_Context *wpc);
+int xx_wv_GetNumErrors(xx_wv_Context *wpc);
+int xx_wv_LossyBlocks(xx_wv_Context *wpc);
+int xx_wv_SeekSample(xx_wv_Context *wpc, uint32_t sample);
+int xx_wv_SeekSample64(xx_wv_Context *wpc, int64_t sample);
+xx_wv_Context *xx_wv_CloseFile(xx_wv_Context *wpc);
+uint32_t xx_wv_GetSampleRate(xx_wv_Context *wpc);
+uint32_t xx_wv_GetNativeSampleRate(xx_wv_Context *wpc);
+int xx_wv_GetBitsPerSample(xx_wv_Context *wpc);
+int xx_wv_GetBytesPerSample(xx_wv_Context *wpc);
+int xx_wv_GetNumChannels(xx_wv_Context *wpc);
+int xx_wv_GetChannelMask(xx_wv_Context *wpc);
+int xx_wv_GetReducedChannels(xx_wv_Context *wpc);
+int xx_wv_GetFloatNormExp(xx_wv_Context *wpc);
+int xx_wv_GetMD5Sum(xx_wv_Context *wpc, unsigned char data[16]);
+void xx_wv_GetChannelIdentities(xx_wv_Context *wpc, unsigned char *identities);
+uint32_t xx_wv_GetChannelLayout(xx_wv_Context *wpc, unsigned char *reorder);
+uint32_t xx_wv_GetWrapperBytes(xx_wv_Context *wpc);
+unsigned char *xx_wv_GetWrapperData(xx_wv_Context *wpc);
+void xx_wv_FreeWrapper(xx_wv_Context *wpc);
+void xx_wv_SeekTrailingWrapper(xx_wv_Context *wpc);
+double xx_wv_GetProgress(xx_wv_Context *wpc);
+uint32_t xx_wv_GetFileSize(xx_wv_Context *wpc);
+int64_t xx_wv_GetFileSize64(xx_wv_Context *wpc);
+double xx_wv_GetRatio(xx_wv_Context *wpc);
+double xx_wv_GetAverageBitrate(xx_wv_Context *wpc, int count_wvc);
+double xx_wv_GetInstantBitrate(xx_wv_Context *wpc);
+int xx_wv_GetNumTagItems(xx_wv_Context *wpc);
+int xx_wv_GetTagItem(xx_wv_Context *wpc, const char *item, char *value, int size);
+int xx_wv_GetTagItemIndexed(xx_wv_Context *wpc, int index, char *item, int size);
+int xx_wv_GetNumBinaryTagItems(xx_wv_Context *wpc);
+int xx_wv_GetBinaryTagItem(xx_wv_Context *wpc, const char *item, char *value, int size);
+int xx_wv_GetBinaryTagItemIndexed(xx_wv_Context *wpc, int index, char *item, int size);
+int xx_wv_AppendTagItem(xx_wv_Context *wpc, const char *item, const char *value, int vsize);
+int xx_wv_AppendBinaryTagItem(xx_wv_Context *wpc, const char *item, const char *value, int vsize);
+int xx_wv_DeleteTagItem(xx_wv_Context *wpc, const char *item);
+int xx_wv_WriteTag(xx_wv_Context *wpc);
 
-xx_wv_Context *xx_wv_OpenFileOutput (xx_wv_BlockOutput blockout, void *wv_id, void *wvc_id);
-void xx_wv_SetFileInformation (xx_wv_Context *wpc, char *file_extension, unsigned char file_format);
+xx_wv_Context *xx_wv_OpenFileOutput(xx_wv_BlockOutput blockout, void *wv_id, void *wvc_id);
+void xx_wv_SetFileInformation(xx_wv_Context *wpc, char *file_extension, unsigned char file_format);
 
-#define WP_FORMAT_WAV   0       // Microsoft RIFF, including BWF and RF64 variants
-#define WP_FORMAT_W64   1       // Sony Wave64
-#define WP_FORMAT_CAF   2       // Apple CoreAudio
-#define WP_FORMAT_DFF   3       // Philips DSDIFF
-#define WP_FORMAT_DSF   4       // Sony DSD Format
-#define WP_FORMAT_AIF   5       // Apple AIFF
+#define WP_FORMAT_WAV 0  // Microsoft RIFF, including BWF and RF64 variants
+#define WP_FORMAT_W64 1  // Sony Wave64
+#define WP_FORMAT_CAF 2  // Apple CoreAudio
+#define WP_FORMAT_DFF 3  // Philips DSDIFF
+#define WP_FORMAT_DSF 4  // Sony DSD Format
+#define WP_FORMAT_AIF 5  // Apple AIFF
 
-int xx_wv_SetConfiguration (xx_wv_Context *wpc, xx_wv_Config *config, uint32_t total_samples);
-int xx_wv_SetConfiguration64 (xx_wv_Context *wpc, xx_wv_Config *config, int64_t total_samples, const unsigned char *chan_ids);
-int xx_wv_SetChannelLayout (xx_wv_Context *wpc, uint32_t layout_tag, const unsigned char *reorder);
-int xx_wv_AddWrapper (xx_wv_Context *wpc, void *data, uint32_t bcount);
-int xx_wv_StoreMD5Sum (xx_wv_Context *wpc, unsigned char data [16]);
-int xx_wv_PackInit (xx_wv_Context *wpc);
-int xx_wv_PackSamples (xx_wv_Context *wpc, int32_t *sample_buffer, uint32_t sample_count);
-int xx_wv_FlushSamples (xx_wv_Context *wpc);
-void xx_wv_UpdateNumSamples (xx_wv_Context *wpc, void *first_block);
-void *xx_wv_GetWrapperLocation (void *first_block, uint32_t *size);
-double xx_wv_GetEncodedNoise (xx_wv_Context *wpc, double *peak);
+int xx_wv_SetConfiguration(xx_wv_Context *wpc, xx_wv_Config *config, uint32_t total_samples);
+int xx_wv_SetConfiguration64(xx_wv_Context *wpc, xx_wv_Config *config, int64_t total_samples, const unsigned char *chan_ids);
+int xx_wv_SetChannelLayout(xx_wv_Context *wpc, uint32_t layout_tag, const unsigned char *reorder);
+int xx_wv_AddWrapper(xx_wv_Context *wpc, void *data, uint32_t bcount);
+int xx_wv_StoreMD5Sum(xx_wv_Context *wpc, unsigned char data[16]);
+int xx_wv_PackInit(xx_wv_Context *wpc);
+int xx_wv_PackSamples(xx_wv_Context *wpc, int32_t *sample_buffer, uint32_t sample_count);
+int xx_wv_FlushSamples(xx_wv_Context *wpc);
+void xx_wv_UpdateNumSamples(xx_wv_Context *wpc, void *first_block);
+void *xx_wv_GetWrapperLocation(void *first_block, uint32_t *size);
+double xx_wv_GetEncodedNoise(xx_wv_Context *wpc, double *peak);
 
-void xx_wv_FloatNormalize (int32_t *values, int32_t num_values, int delta_exp);
+void xx_wv_FloatNormalize(int32_t *values, int32_t num_values, int delta_exp);
 
-void xx_wv_LittleEndianToNative (void *data, char *format);
-void xx_wv_NativeToLittleEndian (void *data, char *format);
-void xx_wv_BigEndianToNative (void *data, char *format);
-void xx_wv_NativeToBigEndian (void *data, char *format);
+void xx_wv_LittleEndianToNative(void *data, char *format);
+void xx_wv_NativeToLittleEndian(void *data, char *format);
+void xx_wv_BigEndianToNative(void *data, char *format);
+void xx_wv_NativeToBigEndian(void *data, char *format);
 
-uint32_t xx_wv_GetLibraryVersion (void);
-const char *xx_wv_GetLibraryVersionString (void);
+uint32_t xx_wv_GetLibraryVersion(void);
+const char *xx_wv_GetLibraryVersionString(void);
 
 #ifdef __cplusplus
 }

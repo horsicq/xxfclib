@@ -60,14 +60,14 @@ struct xx_chk {
     Abstractformat format;
     uint64_t number_of_records;
     uint64_t number_of_members;
-    uint32_t header_size;    /**< The header_len field. */
+    uint32_t header_size; /**< The header_len field. */
     uint32_t kernel_size;
     uint32_t rootfs_size;
     uint32_t kernel_checksum;
     uint32_t rootfs_checksum;
     uint32_t image_checksum;
     uint32_t header_checksum;
-    int64_t archive_end;     /**< End of the rootfs, or of the kernel. */
+    int64_t archive_end; /**< End of the rootfs, or of the kernel. */
     char board_id[XX_CHK_MAX_BOARD_ID + 1U];
     void *internal;
 };
@@ -80,20 +80,13 @@ XXFC_API void xx_chk_free(xx_chk *chk);
 XXFC_API bool xx_chk_check_is_valid(Abstractformat *self, xx_pd_struct *pd);
 XXFC_API bool xx_chk_handle_base_info(Abstractformat *self, xx_pd_struct *pd);
 XXFC_API int64_t xx_chk_get_format_size(Abstractformat *self, xx_pd_struct *pd);
-XXFC_API uint64_t xx_chk_get_number_of_archive_records(Abstractformat *self,
-                                                       xx_pd_struct *pd);
+XXFC_API uint64_t xx_chk_get_number_of_archive_records(Abstractformat *self, xx_pd_struct *pd);
 
-XXFC_API xx_archive_record_state *xx_chk_create_archive_records_reading(
-    Abstractformat *self, const xx_list_s *options, xx_pd_struct *pd);
-XXFC_API const xx_archive_record *xx_chk_get_current_archive_record(
-    Abstractformat *self, xx_archive_record_state *state);
-XXFC_API bool xx_chk_unpack_current_archive_record(
-    Abstractformat *self, xx_archive_record_state *state, xx_pd_struct *pd);
-XXFC_API bool xx_chk_archive_record_move_to_next(Abstractformat *self,
-                                                 xx_archive_record_state *state,
-                                                 xx_pd_struct *pd);
-XXFC_API void xx_chk_free_archive_records_reading(
-    Abstractformat *self, xx_archive_record_state *state);
+XXFC_API xx_archive_record_state *xx_chk_create_archive_records_reading(Abstractformat *self, const xx_list_s *options, xx_pd_struct *pd);
+XXFC_API const xx_archive_record *xx_chk_get_current_archive_record(Abstractformat *self, xx_archive_record_state *state);
+XXFC_API bool xx_chk_unpack_current_archive_record(Abstractformat *self, xx_archive_record_state *state, xx_pd_struct *pd);
+XXFC_API bool xx_chk_archive_record_move_to_next(Abstractformat *self, xx_archive_record_state *state, xx_pd_struct *pd);
+XXFC_API void xx_chk_free_archive_records_reading(Abstractformat *self, xx_archive_record_state *state);
 
 XXFC_API uint64_t xx_chk_get_number_of_records(const xx_chk *chk);
 XXFC_API uint64_t xx_chk_get_number_of_members(const xx_chk *chk);
@@ -102,18 +95,24 @@ XXFC_API uint32_t xx_chk_get_rootfs_size(const xx_chk *chk);
 XXFC_API const char *xx_chk_get_board_id(const xx_chk *chk);
 XXFC_API int64_t xx_chk_get_archive_end(const xx_chk *chk);
 
-static inline Abstractformat *xx_chk_to_format(xx_chk *chk) {
+static inline Abstractformat *xx_chk_to_format(xx_chk *chk)
+{
     return chk ? &chk->format : NULL;
 }
-static inline void XChk_init(xx_chk *chk, xx_io_device *dev,
-                             int64_t base_address) {
+static inline void XChk_init(xx_chk *chk, xx_io_device *dev, int64_t base_address)
+{
     xx_chk_init(chk, dev, base_address);
 }
-static inline xx_chk *XChk_create(xx_io_device *dev, int64_t base_address) {
+static inline xx_chk *XChk_create(xx_io_device *dev, int64_t base_address)
+{
     return xx_chk_create(dev, base_address);
 }
-static inline void XChk_free(xx_chk *chk) { xx_chk_free(chk); }
-static inline bool XChk_is_valid(xx_chk *chk, xx_pd_struct *pd) {
+static inline void XChk_free(xx_chk *chk)
+{
+    xx_chk_free(chk);
+}
+static inline bool XChk_is_valid(xx_chk *chk, xx_pd_struct *pd)
+{
     return chk ? xx_format_is_valid(&chk->format, pd) : false;
 }
 

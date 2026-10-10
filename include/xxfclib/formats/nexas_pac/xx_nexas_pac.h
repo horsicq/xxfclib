@@ -43,32 +43,23 @@ typedef struct xx_nexas_pac {
 typedef xx_nexas_pac xx_nexas_pac_t;
 typedef xx_nexas_pac XNexasPac;
 
-XXFC_API void xx_nexas_pac_init(xx_nexas_pac *archive, xx_io_device *device,
-                           int64_t base_address);
+XXFC_API void xx_nexas_pac_init(xx_nexas_pac *archive, xx_io_device *device, int64_t base_address);
 XXFC_API xx_nexas_pac *xx_nexas_pac_create(xx_io_device *device, int64_t base_address);
 XXFC_API void xx_nexas_pac_destroy(xx_nexas_pac *archive);
 XXFC_API void xx_nexas_pac_free(xx_nexas_pac *archive);
 XXFC_API bool xx_nexas_pac_check_is_valid(Abstractformat *self, xx_pd_struct *pd);
 XXFC_API bool xx_nexas_pac_handle_base_info(Abstractformat *self, xx_pd_struct *pd);
 XXFC_API int64_t xx_nexas_pac_get_format_size(Abstractformat *self, xx_pd_struct *pd);
-XXFC_API uint64_t xx_nexas_pac_get_number_of_archive_records(
-    Abstractformat *self, xx_pd_struct *pd);
-XXFC_API xx_archive_record_state *xx_nexas_pac_create_archive_records_reading(
-    Abstractformat *self, const xx_list_s *options, xx_pd_struct *pd);
-XXFC_API const xx_archive_record *xx_nexas_pac_get_current_archive_record(
-    Abstractformat *self, xx_archive_record_state *state);
-XXFC_API bool xx_nexas_pac_unpack_current_archive_record(
-    Abstractformat *self, xx_archive_record_state *state, xx_pd_struct *pd);
+XXFC_API uint64_t xx_nexas_pac_get_number_of_archive_records(Abstractformat *self, xx_pd_struct *pd);
+XXFC_API xx_archive_record_state *xx_nexas_pac_create_archive_records_reading(Abstractformat *self, const xx_list_s *options, xx_pd_struct *pd);
+XXFC_API const xx_archive_record *xx_nexas_pac_get_current_archive_record(Abstractformat *self, xx_archive_record_state *state);
+XXFC_API bool xx_nexas_pac_unpack_current_archive_record(Abstractformat *self, xx_archive_record_state *state, xx_pd_struct *pd);
 /** Copy the current member to a caller-owned device; NULL verifies it only.
  * Destination must differ from the input device. Options limiting member
  * size and extraction buffers are also honored by this direct C API. */
-XXFC_API bool xx_nexas_pac_unpack_current_archive_record_to_device(
-    Abstractformat *self, xx_archive_record_state *state,
-    xx_io_device *destination, xx_pd_struct *pd);
-XXFC_API bool xx_nexas_pac_archive_record_move_to_next(
-    Abstractformat *self, xx_archive_record_state *state, xx_pd_struct *pd);
-XXFC_API void xx_nexas_pac_free_archive_records_reading(
-    Abstractformat *self, xx_archive_record_state *state);
+XXFC_API bool xx_nexas_pac_unpack_current_archive_record_to_device(Abstractformat *self, xx_archive_record_state *state, xx_io_device *destination, xx_pd_struct *pd);
+XXFC_API bool xx_nexas_pac_archive_record_move_to_next(Abstractformat *self, xx_archive_record_state *state, xx_pd_struct *pd);
+XXFC_API void xx_nexas_pac_free_archive_records_reading(Abstractformat *self, xx_archive_record_state *state);
 
 #ifdef __cplusplus
 }

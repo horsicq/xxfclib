@@ -57,19 +57,18 @@ extern "C" {
  */
 typedef struct xx_sis {
     Abstractformat format;
-    uint32_t variant;          /**< XX_SIS_VARIANT_* */
+    uint32_t variant; /**< XX_SIS_VARIANT_* */
     uint64_t number_of_records;
 } xx_sis;
 
 typedef xx_sis xx_sis_t;
 
 #define XX_SIS_VARIANT_NONE 0U
-#define XX_SIS_VARIANT_EPOC 1U   /**< EPOC r3/4/5 */
-#define XX_SIS_VARIANT_EPOC6 2U  /**< EPOC r6 */
-#define XX_SIS_VARIANT_SISX 3U   /**< Symbian OS 9 */
+#define XX_SIS_VARIANT_EPOC 1U  /**< EPOC r3/4/5 */
+#define XX_SIS_VARIANT_EPOC6 2U /**< EPOC r6 */
+#define XX_SIS_VARIANT_SISX 3U  /**< Symbian OS 9 */
 
-XXFC_API void xx_sis_init(xx_sis *archive, xx_io_device *device,
-                          int64_t base_address);
+XXFC_API void xx_sis_init(xx_sis *archive, xx_io_device *device, int64_t base_address);
 XXFC_API xx_sis *xx_sis_create(xx_io_device *device, int64_t base_address);
 XXFC_API void xx_sis_destroy(xx_sis *archive);
 XXFC_API void xx_sis_free(xx_sis *archive);
@@ -77,19 +76,13 @@ XXFC_API void xx_sis_free(xx_sis *archive);
 XXFC_API bool xx_sis_check_is_valid(Abstractformat *self, xx_pd_struct *pd);
 XXFC_API bool xx_sis_handle_base_info(Abstractformat *self, xx_pd_struct *pd);
 XXFC_API int64_t xx_sis_get_format_size(Abstractformat *self, xx_pd_struct *pd);
-XXFC_API uint64_t xx_sis_get_number_of_archive_records(Abstractformat *self,
-                                                       xx_pd_struct *pd);
+XXFC_API uint64_t xx_sis_get_number_of_archive_records(Abstractformat *self, xx_pd_struct *pd);
 
-XXFC_API xx_archive_record_state *xx_sis_create_archive_records_reading(
-    Abstractformat *self, const xx_list_s *options, xx_pd_struct *pd);
-XXFC_API const xx_archive_record *xx_sis_get_current_archive_record(
-    Abstractformat *self, xx_archive_record_state *state);
-XXFC_API bool xx_sis_unpack_current_archive_record(
-    Abstractformat *self, xx_archive_record_state *state, xx_pd_struct *pd);
-XXFC_API bool xx_sis_archive_record_move_to_next(
-    Abstractformat *self, xx_archive_record_state *state, xx_pd_struct *pd);
-XXFC_API void xx_sis_free_archive_records_reading(
-    Abstractformat *self, xx_archive_record_state *state);
+XXFC_API xx_archive_record_state *xx_sis_create_archive_records_reading(Abstractformat *self, const xx_list_s *options, xx_pd_struct *pd);
+XXFC_API const xx_archive_record *xx_sis_get_current_archive_record(Abstractformat *self, xx_archive_record_state *state);
+XXFC_API bool xx_sis_unpack_current_archive_record(Abstractformat *self, xx_archive_record_state *state, xx_pd_struct *pd);
+XXFC_API bool xx_sis_archive_record_move_to_next(Abstractformat *self, xx_archive_record_state *state, xx_pd_struct *pd);
+XXFC_API void xx_sis_free_archive_records_reading(Abstractformat *self, xx_archive_record_state *state);
 
 #ifdef __cplusplus
 }

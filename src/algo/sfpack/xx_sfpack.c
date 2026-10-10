@@ -27,13 +27,14 @@
 /* The reference reads these container fields through (qint32) casts, so a word
  * with bit 31 set becomes a negative number that the range tests then reject.
  * Reproduced: an unsigned read here would accept files the reference refuses. */
-static int64_t sf_read32_signed(const uint8_t *data) {
+static int64_t sf_read32_signed(const uint8_t *data)
+{
     return (int64_t)(int32_t)xx_data_get_u32(data, 4, 0, false);
 }
 
-static bool sf_has_range(int64_t buffer_size, int64_t offset, int64_t size) {
-    return (offset >= 0) && (size >= 0) && (offset <= buffer_size) &&
-           (size <= (buffer_size - offset));
+static bool sf_has_range(int64_t buffer_size, int64_t offset, int64_t size)
+{
+    return (offset >= 0) && (size >= 0) && (offset <= buffer_size) && (size <= (buffer_size - offset));
 }
 
 /* --------------------------------------------------- codec 1: chunk LZW --- */
@@ -47,7 +48,8 @@ typedef struct sf_bits_byte_s {
     int32_t count;
 } sf_bits_byte;
 
-static int32_t sf_byte_get(sf_bits_byte *bits, int32_t width) {
+static int32_t sf_byte_get(sf_bits_byte *bits, int32_t width)
+{
     int32_t value = 0;
     int32_t i;
     for (i = 0; i < width; ++i) {
@@ -76,9 +78,8 @@ typedef struct sfpack_lzw_s {
  * width (one code EARLY compared with a textbook coder), and when free reaches
  * 0xfff the entire table is thrown away, the width drops back to 9 and the
  * next code is a fresh 9-bit literal -- a full reset, not a partial clear. */
-static bool sfpack_decode_chunk(const uint8_t *packed, int64_t packed_size,
-                                int64_t unpacked_size, uint8_t *out,
-                                sfpack_lzw *table) {
+static bool sfpack_decode_chunk(const uint8_t *packed, int64_t packed_size, int64_t unpacked_size, uint8_t *out, sfpack_lzw *table)
+{
     sf_bits_byte bits;
     int64_t left = unpacked_size;
     size_t produced = 0U;
@@ -140,8 +141,7 @@ static bool sfpack_decode_chunk(const uint8_t *packed, int64_t packed_size,
                     c = previous;
                 }
                 while (c > 0xff) {
-                    if ((c >= SFPACK_LZW_TABLE) ||
-                        (stack_size >= SFPACK_LZW_TABLE)) {
+                    if ((c >= SFPACK_LZW_TABLE) || (stack_size >= SFPACK_LZW_TABLE)) {
                         return false;
                     }
                     table->stack[stack_size++] = table->suffix[c];
@@ -186,7 +186,8 @@ typedef struct sf_bits_word_s {
 } sf_bits_word;
 
 /* -1 means the stream is exhausted */
-static int64_t sf_word_get(sf_bits_word *bits, int32_t width) {
+static int64_t sf_word_get(sf_bits_word *bits, int32_t width)
+{
     int64_t value = 0;
     int32_t i;
     if (width == 0) return 0;
@@ -209,7 +210,8 @@ static int64_t sf_word_get(sf_bits_word *bits, int32_t width) {
 /* gamma(k): q leading zero bits (the terminating 1 is consumed), then k raw
  * bits r; value = (q << k) | r.  Results are carried as int64 because a
  * legitimate value can use all 32 bits and -1 is the failure code. */
-static int64_t sf_gamma(sf_bits_word *bits, int32_t k) {
+static int64_t sf_gamma(sf_bits_word *bits, int32_t k)
+{
     int32_t q = 0;
     int64_t rest;
     int64_t value;
@@ -231,7 +233,8 @@ static int64_t sf_gamma(sf_bits_word *bits, int32_t k) {
 }
 
 /* sgamma(k): v = gamma(k + 1); zigzag - v even -> v >> 1, v odd -> ~(v >> 1) */
-static bool sf_sgamma(sf_bits_word *bits, int32_t k, int32_t *result) {
+static bool sf_sgamma(sf_bits_word *bits, int32_t k, int32_t *result)
+{
     const int64_t value = sf_gamma(bits, k + 1);
     uint32_t half;
     if (value < 0) return false;
@@ -242,7 +245,8 @@ static bool sf_sgamma(sf_bits_word *bits, int32_t k, int32_t *result) {
 }
 
 /* uval(): k = gamma(2); return gamma(k) */
-static int64_t sf_uval(sf_bits_word *bits) {
+static int64_t sf_uval(sf_bits_word *bits)
+{
     const int64_t k = sf_gamma(bits, 2);
     if ((k < 0) || (k > 32)) return -1;
     return sf_gamma(bits, (int32_t)k);
@@ -256,9 +260,8 @@ typedef struct sfpack_sample_s {
 /* A lossless predictive audio coder over 32-bit accumulators emitting 16-bit
  * little-endian PCM.  All the arithmetic is deliberately done on uint32 so the
  * wraparound the reference relies on is well defined here. */
-static bool sfpack_decode_sample(const uint8_t *file, int64_t file_size,
-                                 int64_t offset, uint8_t *out, size_t out_cap,
-                                 size_t *out_len) {
+static bool sfpack_decode_sample(const uint8_t *file, int64_t file_size, int64_t offset, uint8_t *out, size_t out_cap, size_t *out_len)
+{
     sf_bits_word bits;
     sfpack_sample scratch;
     int64_t block_size;
@@ -298,15 +301,11 @@ static bool sfpack_decode_sample(const uint8_t *file, int64_t file_size,
     acc2 = (uint32_t)dc - 33000U;
     count = max_count;
 
-    scratch.buffer = (int32_t *)xx_mem_alloc(
-        (size_t)(history + max_count) * sizeof(int32_t));
-    scratch.coefficients = (int32_t *)xx_mem_alloc(
-        (size_t)((order_max > 0) ? order_max : 1) * sizeof(int32_t));
+    scratch.buffer = (int32_t *)xx_mem_alloc((size_t)(history + max_count) * sizeof(int32_t));
+    scratch.coefficients = (int32_t *)xx_mem_alloc((size_t)((order_max > 0) ? order_max : 1) * sizeof(int32_t));
     if (!scratch.buffer || !scratch.coefficients) goto done;
-    xx_rt_memset(scratch.buffer, 0,
-                 (size_t)(history + max_count) * sizeof(int32_t));
-    xx_rt_memset(scratch.coefficients, 0,
-                 (size_t)((order_max > 0) ? order_max : 1) * sizeof(int32_t));
+    xx_rt_memset(scratch.buffer, 0, (size_t)(history + max_count) * sizeof(int32_t));
+    xx_rt_memset(scratch.coefficients, 0, (size_t)((order_max > 0) ? order_max : 1) * sizeof(int32_t));
 
     for (;;) {
         int32_t k = 0;
@@ -354,28 +353,21 @@ static bool sfpack_decode_sample(const uint8_t *file, int64_t file_size,
             for (i = 0; i < count; ++i) {
                 int32_t residual;
                 if (!sf_sgamma(&bits, k, &residual)) goto done;
-                scratch.buffer[history + i] = (int32_t)(
-                    (uint32_t)residual + (uint32_t)scratch.buffer[history + i - 1]);
+                scratch.buffer[history + i] = (int32_t)((uint32_t)residual + (uint32_t)scratch.buffer[history + i - 1]);
             }
         } else if (command == 2) {
             for (i = 0; i < count; ++i) {
                 int32_t residual;
                 if (!sf_sgamma(&bits, k, &residual)) goto done;
-                scratch.buffer[history + i] = (int32_t)(
-                    (uint32_t)residual +
-                    2U * (uint32_t)scratch.buffer[history + i - 1] -
-                    (uint32_t)scratch.buffer[history + i - 2]);
+                scratch.buffer[history + i] = (int32_t)((uint32_t)residual + 2U * (uint32_t)scratch.buffer[history + i - 1] - (uint32_t)scratch.buffer[history + i - 2]);
             }
         } else if (command == 3) {
             for (i = 0; i < count; ++i) {
                 int32_t residual;
                 uint32_t delta;
                 if (!sf_sgamma(&bits, k, &residual)) goto done;
-                delta = (uint32_t)scratch.buffer[history + i - 1] -
-                        (uint32_t)scratch.buffer[history + i - 2];
-                scratch.buffer[history + i] = (int32_t)(
-                    (uint32_t)residual +
-                    (uint32_t)scratch.buffer[history + i - 3] + 3U * delta);
+                delta = (uint32_t)scratch.buffer[history + i - 1] - (uint32_t)scratch.buffer[history + i - 2];
+                scratch.buffer[history + i] = (int32_t)((uint32_t)residual + (uint32_t)scratch.buffer[history + i - 3] + 3U * delta);
             }
         } else if (command == 4) {
             int32_t order;
@@ -392,13 +384,11 @@ static bool sfpack_decode_sample(const uint8_t *file, int64_t file_size,
                 uint32_t sum = 32U;
                 int32_t residual;
                 for (j = 0; j < order; ++j) {
-                    sum += (uint32_t)scratch.coefficients[j] *
-                           (uint32_t)scratch.buffer[history + i - 1 - j];
+                    sum += (uint32_t)scratch.coefficients[j] * (uint32_t)scratch.buffer[history + i - 1 - j];
                 }
                 if (!sf_sgamma(&bits, k, &residual)) goto done;
                 /* arithmetic shift, so it floors */
-                scratch.buffer[history + i] =
-                    (int32_t)((uint32_t)residual + (uint32_t)((int32_t)sum >> 5));
+                scratch.buffer[history + i] = (int32_t)((uint32_t)residual + (uint32_t)((int32_t)sum >> 5));
             }
         } else { /* command == 7: a block of n zeros */
             for (i = 0; i < count; ++i) scratch.buffer[history + i] = 0;
@@ -413,8 +403,7 @@ static bool sfpack_decode_sample(const uint8_t *file, int64_t file_size,
         }
         if (shift) {
             for (i = 0; i < count; ++i) {
-                scratch.buffer[history + i] = (int32_t)(
-                    (uint32_t)scratch.buffer[history + i] << shift);
+                scratch.buffer[history + i] = (int32_t)((uint32_t)scratch.buffer[history + i] << shift);
             }
         }
         if (int_mode == 0) {
@@ -466,8 +455,8 @@ typedef struct sfpack_header_s {
     uint16_t flags;
 } sfpack_header;
 
-static bool sfpack_parse_header(const uint8_t *buffer, int64_t size,
-                                sfpack_header *header) {
+static bool sfpack_parse_header(const uint8_t *buffer, int64_t size, sfpack_header *header)
+{
     static const char sf_magic[4] = {'S', 'F', 'P', 'K'};
     static const char sf_info[4] = {'I', 'N', 'F', 'O'};
     static const char sf_pdta[4] = {'p', 'd', 't', 'a'};
@@ -494,8 +483,7 @@ static bool sfpack_parse_header(const uint8_t *buffer, int64_t size,
         if (!sf_has_range(size, position, 12)) return false;
         a = sf_read32_signed(buffer + position);
         unpacked = sf_read32_signed(buffer + position + 8);
-        if (xx_rt_memcmp(buffer + position + 4,
-                         (chunk == 0) ? sf_info : sf_pdta, 4) != 0) {
+        if (xx_rt_memcmp(buffer + position + 4, (chunk == 0) ? sf_info : sf_pdta, 4) != 0) {
             return false;
         }
         if ((a <= 8) || (unpacked <= 0) || (unpacked > SFPACK_MAX_CHUNK)) {
@@ -535,8 +523,7 @@ static bool sfpack_parse_header(const uint8_t *buffer, int64_t size,
     header->structure_size = position + table_bytes;
 
     for (i = 0; i < header->sample_count; ++i) {
-        const int64_t sample_offset =
-            sf_read32_signed(buffer + header->table_offset + (int64_t)i * 4);
+        const int64_t sample_offset = sf_read32_signed(buffer + header->table_offset + (int64_t)i * 4);
         if ((sample_offset < 1) || (sample_offset >= size)) return false;
     }
 
@@ -544,8 +531,8 @@ static bool sfpack_parse_header(const uint8_t *buffer, int64_t size,
 }
 
 /* walk the decompressed pdta looking for the shdr sub-chunk */
-static int64_t sfpack_find_shdr(const uint8_t *pdta, int64_t pdta_size,
-                                int32_t count) {
+static int64_t sfpack_find_shdr(const uint8_t *pdta, int64_t pdta_size, int32_t count)
+{
     static const char sf_shdr[4] = {'s', 'h', 'd', 'r'};
     int64_t position = 0;
     while ((pdta_size - position) >= 8) {
@@ -564,8 +551,8 @@ static int64_t sfpack_find_shdr(const uint8_t *pdta, int64_t pdta_size,
  * is the 46 appended zero bytes.  A sample whose sfSampleType (shdr +0x2c) has
  * bit 15 set is ROM: it is skipped entirely and its shdr record is left
  * alone. */
-static bool sfpack_sample_words(const uint8_t *pdta, int64_t pdta_size,
-                                int64_t shdr, int32_t count, int64_t *words) {
+static bool sfpack_sample_words(const uint8_t *pdta, int64_t pdta_size, int64_t shdr, int32_t count, int64_t *words)
+{
     int64_t total = 0;
     int32_t i;
     for (i = 0; i < count; ++i) {
@@ -589,9 +576,8 @@ static bool sfpack_sample_words(const uint8_t *pdta, int64_t pdta_size,
 
 /* Header + pdta only: decompresses the pdta chunk into a scratch block the
  * caller owns and reports the exact rebuilt size. */
-static bool sfpack_prepare(const uint8_t *input, int64_t input_size,
-                           sfpack_header *header, uint8_t **pdta,
-                           int64_t *shdr, int64_t *words, int64_t *total) {
+static bool sfpack_prepare(const uint8_t *input, int64_t input_size, sfpack_header *header, uint8_t **pdta, int64_t *shdr, int64_t *words, int64_t *total)
+{
     sfpack_lzw *table;
     uint8_t *scratch;
     bool ok = false;
@@ -605,15 +591,13 @@ static bool sfpack_prepare(const uint8_t *input, int64_t input_size,
     scratch = (uint8_t *)xx_mem_alloc((size_t)header->pdta_size);
     table = (sfpack_lzw *)xx_mem_alloc(sizeof(sfpack_lzw));
     if (!scratch || !table) goto done;
-    if (!sfpack_decode_chunk(input + header->pdta_offset, header->pdta_packed,
-                             header->pdta_size, scratch, table)) {
+    if (!sfpack_decode_chunk(input + header->pdta_offset, header->pdta_packed, header->pdta_size, scratch, table)) {
         goto done;
     }
 
     *shdr = sfpack_find_shdr(scratch, header->pdta_size, header->sample_count);
     if (*shdr < 0) goto done;
-    if (!sfpack_sample_words(scratch, header->pdta_size, *shdr,
-                             header->sample_count, words)) {
+    if (!sfpack_sample_words(scratch, header->pdta_size, *shdr, header->sample_count, words)) {
         goto done;
     }
 
@@ -631,9 +615,8 @@ done:
     return ok;
 }
 
-bool xx_sfpack_scan_memory(const uint8_t *input, size_t input_size,
-                           size_t max_output, size_t *consumed,
-                           size_t *produced) {
+bool xx_sfpack_scan_memory(const uint8_t *input, size_t input_size, size_t max_output, size_t *consumed, size_t *produced)
+{
     sfpack_header header;
     uint8_t *pdta = NULL;
     int64_t shdr = 0;
@@ -645,8 +628,7 @@ bool xx_sfpack_scan_memory(const uint8_t *input, size_t input_size,
     if (!input || (input_size < 16U)) return false;
     if (input_size > (size_t)0x7fffffffU) return false;
 
-    if (!sfpack_prepare(input, (int64_t)input_size, &header, &pdta, &shdr,
-                        &words, &total)) {
+    if (!sfpack_prepare(input, (int64_t)input_size, &header, &pdta, &shdr, &words, &total)) {
         return false;
     }
     xx_mem_free(pdta);
@@ -661,9 +643,8 @@ bool xx_sfpack_scan_memory(const uint8_t *input, size_t input_size,
     return true;
 }
 
-bool xx_sfpack_decode_memory(const uint8_t *input, size_t input_size,
-                             uint8_t *output, size_t output_size,
-                             size_t *written) {
+bool xx_sfpack_decode_memory(const uint8_t *input, size_t input_size, uint8_t *output, size_t output_size, size_t *written)
+{
     static const char sf_riff[4] = {'R', 'I', 'F', 'F'};
     static const char sf_sfbk[4] = {'s', 'f', 'b', 'k'};
     static const char sf_list[4] = {'L', 'I', 'S', 'T'};
@@ -686,12 +667,10 @@ bool xx_sfpack_decode_memory(const uint8_t *input, size_t input_size,
     if (!input || !output || (input_size < 16U)) return false;
     if (input_size > (size_t)0x7fffffffU) return false;
 
-    if (!sfpack_prepare(input, (int64_t)input_size, &header, &pdta, &shdr,
-                        &words, &total)) {
+    if (!sfpack_prepare(input, (int64_t)input_size, &header, &pdta, &shdr, &words, &total)) {
         return false;
     }
-    if (!sf_has_range((int64_t)input_size, header.info_offset,
-                      header.info_packed)) {
+    if (!sf_has_range((int64_t)input_size, header.info_offset, header.info_packed)) {
         goto done;
     }
     if ((uint64_t)total > (uint64_t)output_size) goto done;
@@ -706,15 +685,13 @@ bool xx_sfpack_decode_memory(const uint8_t *input, size_t input_size,
     samples_start = 44 + header.info_size;
 
     xx_rt_memcpy(output, sf_riff, 4);
-    xx_data_set_u32(output + 4, 4, 0, (uint32_t)(header.info_size + 2 * words +
-                                      header.pdta_size + 0x30), false);
+    xx_data_set_u32(output + 4, 4, 0, (uint32_t)(header.info_size + 2 * words + header.pdta_size + 0x30), false);
     xx_rt_memcpy(output + 8, sf_sfbk, 4);
 
     xx_rt_memcpy(output + 12, sf_list, 4);
     xx_data_set_u32(output + 16, 4, 0, (uint32_t)(header.info_size + 4), false);
     xx_rt_memcpy(output + 20, sf_info, 4);
-    if (!sfpack_decode_chunk(input + header.info_offset, header.info_packed,
-                             header.info_size, output + 24, table)) {
+    if (!sfpack_decode_chunk(input + header.info_offset, header.info_packed, header.info_size, output + 24, table)) {
         goto done;
     }
 
@@ -736,21 +713,15 @@ bool xx_sfpack_decode_memory(const uint8_t *input, size_t input_size,
 
         if (type & 0x8000) continue; /* ROM sample: skipped entirely */
 
-        sample_offset =
-            sf_read32_signed(input + header.table_offset + (int64_t)i * 4);
-        if (!sfpack_decode_sample(input, (int64_t)input_size, sample_offset,
-                                  output + samples_start + sample_base,
-                                  (size_t)(2 * words - sample_base),
-                                  &sample_length)) {
+        sample_offset = sf_read32_signed(input + header.table_offset + (int64_t)i * 4);
+        if (!sfpack_decode_sample(input, (int64_t)input_size, sample_offset, output + samples_start + sample_base, (size_t)(2 * words - sample_base), &sample_length)) {
             goto done;
         }
-        if (((int64_t)sample_length + SFPACK_SHDR_RECORD_SIZE) >
-            (2 * words - sample_base)) {
+        if (((int64_t)sample_length + SFPACK_SHDR_RECORD_SIZE) > (2 * words - sample_base)) {
             goto done;
         }
         /* the 46 zero bytes SFPack appends after every sample */
-        xx_rt_memset(output + samples_start + sample_base + sample_length, 0,
-                     (size_t)SFPACK_SHDR_RECORD_SIZE);
+        xx_rt_memset(output + samples_start + sample_base + sample_length, 0, (size_t)SFPACK_SHDR_RECORD_SIZE);
 
         old_start = sf_read32_signed(pdta + record + 0x14);
         delta = (uint32_t)(int32_t)((sample_base / 2) - old_start);
@@ -764,11 +735,9 @@ bool xx_sfpack_decode_memory(const uint8_t *input, size_t input_size,
     if (sample_base != (2 * words)) goto done;
 
     xx_rt_memcpy(output + samples_start + sample_base, sf_list, 4);
-    xx_data_set_u32(output + samples_start + sample_base + 4, 4, 0,
-               (uint32_t)(header.pdta_size + 4), false);
+    xx_data_set_u32(output + samples_start + sample_base + 4, 4, 0, (uint32_t)(header.pdta_size + 4), false);
     xx_rt_memcpy(output + samples_start + sample_base + 8, sf_pdta, 4);
-    xx_rt_memcpy(output + samples_start + sample_base + 12, pdta,
-                 (size_t)header.pdta_size);
+    xx_rt_memcpy(output + samples_start + sample_base + 12, pdta, (size_t)header.pdta_size);
     ok = true;
 
 done:

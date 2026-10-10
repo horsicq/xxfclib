@@ -8,13 +8,15 @@
 #ifdef __cplusplus
 extern "C" {
 #endif
-typedef struct xx_wasm { Abstractformat format; } xx_wasm;
-XXFC_API void xx_wasm_init(xx_wasm *,xx_io_device *,int64_t);
-XXFC_API xx_wasm *xx_wasm_create(xx_io_device *,int64_t);
+typedef struct xx_wasm {
+    Abstractformat format;
+} xx_wasm;
+XXFC_API void xx_wasm_init(xx_wasm *, xx_io_device *, int64_t);
+XXFC_API xx_wasm *xx_wasm_create(xx_io_device *, int64_t);
 XXFC_API void xx_wasm_destroy(xx_wasm *);
 XXFC_API void xx_wasm_free(xx_wasm *);
-XXFC_API bool xx_wasm_check_is_valid(Abstractformat *,xx_pd_struct *);
-XXFC_API bool xx_wasm_handle_base_info(Abstractformat *,xx_pd_struct *);
+XXFC_API bool xx_wasm_check_is_valid(Abstractformat *, xx_pd_struct *);
+XXFC_API bool xx_wasm_handle_base_info(Abstractformat *, xx_pd_struct *);
 #ifdef __cplusplus
 }
 #endif

@@ -19,13 +19,13 @@
 /* Layout constants                                                         */
 /* ------------------------------------------------------------------------ */
 
-#define XX_YAFFS_HEADER_SIZE 512U   /**< Bytes of an object header we read. */
-#define XX_YAFFS_NAME_FIELD 10U     /**< Offset of the name inside a header. */
-#define XX_YAFFS_NAME_MAX 255U      /**< YAFFS_MAX_NAME_LENGTH. */
-#define XX_YAFFS_EQUIV_FIELD 296U   /**< Hardlink target object id. */
-#define XX_YAFFS_ALIAS_FIELD 300U   /**< Symlink target. */
-#define XX_YAFFS_ALIAS_MAX 159U     /**< YAFFS_MAX_ALIAS_LENGTH. */
-#define XX_YAFFS_TAGS_SIZE 16U      /**< YAFFS2 packed tags, ECC excluded. */
+#define XX_YAFFS_HEADER_SIZE 512U /**< Bytes of an object header we read. */
+#define XX_YAFFS_NAME_FIELD 10U   /**< Offset of the name inside a header. */
+#define XX_YAFFS_NAME_MAX 255U    /**< YAFFS_MAX_NAME_LENGTH. */
+#define XX_YAFFS_EQUIV_FIELD 296U /**< Hardlink target object id. */
+#define XX_YAFFS_ALIAS_FIELD 300U /**< Symlink target. */
+#define XX_YAFFS_ALIAS_MAX 159U   /**< YAFFS_MAX_ALIAS_LENGTH. */
+#define XX_YAFFS_TAGS_SIZE 16U    /**< YAFFS2 packed tags, ECC excluded. */
 
 /* YAFFS2 tag conventions (yaffs_packedtags2.c). A header chunk written by
  * the Linux driver carries "extra" information: its chunk id is the flag
@@ -59,7 +59,7 @@
  * partition, padding - is not part of it. One or two bad tags inside an
  * image are tolerated, as a raw NAND dump can carry bit errors. */
 #define XX_YAFFS_END_RUN 4U
-#define XX_YAFFS_MAX_COLLISIONS 1000U     /**< "name~N" attempts per name. */
+#define XX_YAFFS_MAX_COLLISIONS 1000U /**< "name~N" attempts per name. */
 /* "name~N" attempts for the whole image: ten thousand objects with one
  * name would otherwise cost fifty million attempts. */
 #define XX_YAFFS_CLAIM_BUDGET 2000000U
@@ -104,13 +104,13 @@ typedef enum {
 
 /** One chunk's tags, normalised across YAFFS1 and YAFFS2. */
 typedef struct xx_yaffs_tags_s {
-    uint32_t sequence;   /**< YAFFS2 block sequence, YAFFS1 2-bit serial. */
+    uint32_t sequence; /**< YAFFS2 block sequence, YAFFS1 2-bit serial. */
     uint32_t object_id;
-    uint32_t chunk_id;   /**< 0 for any header chunk. */
+    uint32_t chunk_id; /**< 0 for any header chunk. */
     uint32_t byte_count;
-    bool extra;          /**< YAFFS2 extra header info present. */
-    bool suspect;        /**< YAFFS1 SKIP whose status bytes are neither
-                              clean nor a marker the driver writes. */
+    bool extra;   /**< YAFFS2 extra header info present. */
+    bool suspect; /**< YAFFS1 SKIP whose status bytes are neither
+                       clean nor a marker the driver writes. */
     uint32_t extra_parent;
     uint32_t extra_type;
     xx_yaffs_chunk_class kind;
@@ -140,32 +140,32 @@ typedef struct xx_yaffs_header_s {
 #define XX_YAFFS_LOST_PARENT (SIZE_MAX - 1U) /**< In the lost+found stand-in. */
 
 typedef struct xx_yaffs_object_s {
-    char *leaf;          /**< Unique host-safe name in its directory, owned.
-                              NULL = not listed. */
-    size_t parent_slot;  /**< Index of the parent, or one of the above. */
-    size_t path_length;  /**< Length of the full path to this object. */
-    char *name;          /**< Raw leaf name as stored, owned. */
-    char *alias;         /**< Symlink target, owned, or NULL. */
+    char *leaf;         /**< Unique host-safe name in its directory, owned.
+                             NULL = not listed. */
+    size_t parent_slot; /**< Index of the parent, or one of the above. */
+    size_t path_length; /**< Length of the full path to this object. */
+    char *name;         /**< Raw leaf name as stored, owned. */
+    char *alias;        /**< Symlink target, owned, or NULL. */
     uint32_t object_id;
     uint32_t parent_id;
     uint32_t equiv_id;
     uint32_t type;
-    uint32_t sequence;   /**< Version of the header that was kept. */
+    uint32_t sequence; /**< Version of the header that was kept. */
     uint64_t file_size;
     int64_t header_offset;
-    size_t first_chunk;  /**< First entry of this object in chunks[]. */
+    size_t first_chunk; /**< First entry of this object in chunks[]. */
     size_t chunk_count;
-    uint8_t resolve;     /**< 0 unseen, 1 in progress, 2 resolved. */
-    bool orphan;         /**< Parent chain broken, looped or too deep. */
-    bool excluded;       /**< Deleted, unlinked or unrepresentable. */
+    uint8_t resolve; /**< 0 unseen, 1 in progress, 2 resolved. */
+    bool orphan;     /**< Parent chain broken, looped or too deep. */
+    bool excluded;   /**< Deleted, unlinked or unrepresentable. */
 } xx_yaffs_object;
 
 typedef struct xx_yaffs_data_chunk_s {
-    uint32_t object_id;   /**< Object id during the scan, index after. */
+    uint32_t object_id; /**< Object id during the scan, index after. */
     uint32_t chunk_id;
     uint32_t sequence;
     uint32_t byte_count;
-    int64_t offset;       /**< Offset of the page data, not of the chunk. */
+    int64_t offset; /**< Offset of the page data, not of the chunk. */
 } xx_yaffs_data_chunk;
 
 /** Open addressed object id -> object index map. Slot key 0 means empty, so
@@ -184,8 +184,8 @@ typedef struct xx_yaffs_map_s {
 
 /** One name handed out: a leaf inside one directory. */
 typedef struct xx_yaffs_name_entry_s {
-    const char *leaf;     /**< NULL = empty slot. Owned by an object. */
-    size_t parent;        /**< The directory, as an object parent_slot. */
+    const char *leaf; /**< NULL = empty slot. Owned by an object. */
+    size_t parent;    /**< The directory, as an object parent_slot. */
     uint32_t hash;
     uint32_t next_suffix; /**< Next "~N" to try when this leaf is wanted
                                again, so that N objects with one name cost
@@ -210,10 +210,10 @@ typedef struct xx_yaffs_private_s {
     size_t chunk_capacity;
     xx_yaffs_map map;
     xx_yaffs_names names;
-    size_t claim_budget;  /**< Unique-name attempts left. */
-    char *lost_leaf;      /**< Top-level name orphans are filed under. */
-    bool lost_tried;      /**< lost_leaf has been claimed, or tried. */
-    size_t *records;      /**< Object indexes that make up the listing. */
+    size_t claim_budget; /**< Unique-name attempts left. */
+    char *lost_leaf;     /**< Top-level name orphans are filed under. */
+    bool lost_tried;     /**< lost_leaf has been claimed, or tried. */
+    size_t *records;     /**< Object indexes that make up the listing. */
     size_t record_count;
     int64_t input_size;
     int64_t archive_end;
@@ -235,12 +235,11 @@ static void xx_yaffs_vtable_destroy(Abstractformat *self);
 
 /* Positioned read. xx_io_seek64() rather than xx_io_seek(), because long is
  * 32 bits on Win64 and a NAND image is routinely larger than 2 GiB. */
-static bool xx_yaffs_read_at_sized(xx_io_device *device, int64_t offset, void *data,
-                             size_t size, size_t io_capacity) {
+static bool xx_yaffs_read_at_sized(xx_io_device *device, int64_t offset, void *data, size_t size, size_t io_capacity)
+{
     uint8_t *out = (uint8_t *)data;
     size_t done = 0U;
-    if (!device || (!data && size != 0U) || offset < 0 ||
-        xx_io_seek64(device, offset, SEEK_SET) != 0) {
+    if (!device || (!data && size != 0U) || offset < 0 || xx_io_seek64(device, offset, SEEK_SET) != 0) {
         return false;
     }
     while (done < size) {
@@ -253,15 +252,14 @@ static bool xx_yaffs_read_at_sized(xx_io_device *device, int64_t offset, void *d
     return true;
 }
 
-static bool xx_yaffs_read_at(xx_io_device *device, int64_t offset, void *data,
-                             size_t size) {
+static bool xx_yaffs_read_at(xx_io_device *device, int64_t offset, void *data, size_t size)
+{
     return xx_yaffs_read_at_sized(device, offset, data, size, xx_get_file_buffer_size());
 }
 
-static bool xx_yaffs_range_within(int64_t total_size, int64_t offset,
-                                  int64_t size) {
-    return (total_size >= 0) && (offset >= 0) && (size >= 0) &&
-           (offset <= total_size) && (size <= total_size - offset);
+static bool xx_yaffs_range_within(int64_t total_size, int64_t offset, int64_t size)
+{
+    return (total_size >= 0) && (offset >= 0) && (size >= 0) && (offset <= total_size) && (size <= total_size - offset);
 }
 
 /* Reads bounded by the input size, optionally through a read-ahead window.
@@ -283,10 +281,10 @@ static bool xx_yaffs_range_within(int64_t total_size, int64_t offset,
  *     serves several of them, and never filled past that candidate's
  *     XX_YAFFS_PROBE_CHUNKS chunks (fill_limit).
  * Every other probe read goes straight to the device. */
-#define XX_YAFFS_SLICES 6U       /**< One per entry of xx_yaffs_page_sizes. */
+#define XX_YAFFS_SLICES 6U /**< One per entry of xx_yaffs_page_sizes. */
 #define XX_YAFFS_SLICE_SIZE 48U
 #define XX_YAFFS_PROBE_WINDOW 65536U
-#define XX_YAFFS_PROBE_WINDOW_CHUNKS 8U     /**< Chunks per fill, at least. */
+#define XX_YAFFS_PROBE_WINDOW_CHUNKS 8U /**< Chunks per fill, at least. */
 /* Window fills start this small and double up to the window's capacity, so
  * a small image - the format search may find thousands of them in one
  * crafted file - costs reads in proportion to its own size. */
@@ -303,17 +301,16 @@ typedef struct xx_yaffs_source_s {
     int64_t window_start; /**< Offset of window[0]; -1 when empty. */
     size_t window_length;
     size_t window_capacity;
-    bool probe;           /**< Detection probe source (see above). */
-    bool window_lazy;     /**< Probe: allocate the window on first use. */
-    bool window_enabled;  /**< Probe: the current candidate may use it. */
-    int64_t fill_limit;   /**< No window fill reaches past this offset. */
-    size_t fill_size;     /**< Size of the next window fill. */
-    size_t io_capacity;   /**< Largest single device read. */
+    bool probe;          /**< Detection probe source (see above). */
+    bool window_lazy;    /**< Probe: allocate the window on first use. */
+    bool window_enabled; /**< Probe: the current candidate may use it. */
+    int64_t fill_limit;  /**< No window fill reaches past this offset. */
+    size_t fill_size;    /**< Size of the next window fill. */
+    size_t io_capacity;  /**< Largest single device read. */
 } xx_yaffs_source;
 
-static void xx_yaffs_source_init(xx_yaffs_source *source,
-                                 xx_io_device *device, int64_t total_size,
-                                 bool buffered) {
+static void xx_yaffs_source_init(xx_yaffs_source *source, xx_io_device *device, int64_t total_size, bool buffered)
+{
     xx_mem_zero(source, sizeof(*source));
     source->device = device;
     source->total_size = total_size;
@@ -337,17 +334,14 @@ static void xx_yaffs_source_init(xx_yaffs_source *source,
 /* Probe: buffer the slice around the end of the first page, for a page of
  * @p page_size bytes at @p start. A slice that cannot be read is simply
  * not buffered. */
-static void xx_yaffs_source_add_slice(xx_yaffs_source *source, int64_t start,
-                                      uint32_t page_size) {
+static void xx_yaffs_source_add_slice(xx_yaffs_source *source, int64_t start, uint32_t page_size)
+{
     int64_t at = start + (int64_t)page_size - (int64_t)XX_YAFFS_TAGS_SIZE;
     int64_t left = source->total_size - at;
     size_t want;
     if (source->slice_count >= XX_YAFFS_SLICES || left <= 0) return;
-    want = left < (int64_t)XX_YAFFS_SLICE_SIZE ? (size_t)left
-                                               : XX_YAFFS_SLICE_SIZE;
-    if (!xx_yaffs_read_at_sized(source->device, at,
-                                source->slice[source->slice_count], want,
-                                source->io_capacity)) {
+    want = left < (int64_t)XX_YAFFS_SLICE_SIZE ? (size_t)left : XX_YAFFS_SLICE_SIZE;
+    if (!xx_yaffs_read_at_sized(source->device, at, source->slice[source->slice_count], want, source->io_capacity)) {
         return;
     }
     source->slice_start[source->slice_count] = at;
@@ -355,48 +349,39 @@ static void xx_yaffs_source_add_slice(xx_yaffs_source *source, int64_t start,
     ++source->slice_count;
 }
 
-static void xx_yaffs_source_cleanup(xx_yaffs_source *source) {
+static void xx_yaffs_source_cleanup(xx_yaffs_source *source)
+{
     if (source->window) xx_mem_free(source->window);
     source->window = NULL;
     source->window_start = -1;
     source->slice_count = 0U;
 }
 
-static bool xx_yaffs_source_read(xx_yaffs_source *source, int64_t offset,
-                                 void *data, size_t size) {
+static bool xx_yaffs_source_read(xx_yaffs_source *source, int64_t offset, void *data, size_t size)
+{
     if (!xx_yaffs_range_within(source->total_size, offset, (int64_t)size)) {
         return false;
     }
     {
         size_t index;
         for (index = 0U; index < source->slice_count; ++index) {
-            if (offset >= source->slice_start[index] &&
-                offset - source->slice_start[index] <=
-                    (int64_t)source->slice_length[index] - (int64_t)size) {
-                xx_mem_copy(data,
-                            source->slice[index] +
-                                (size_t)(offset - source->slice_start[index]),
-                            size);
+            if (offset >= source->slice_start[index] && offset - source->slice_start[index] <= (int64_t)source->slice_length[index] - (int64_t)size) {
+                xx_mem_copy(data, source->slice[index] + (size_t)(offset - source->slice_start[index]), size);
                 return true;
             }
         }
     }
     if (!source->window_enabled || size > source->window_capacity) {
-        return xx_yaffs_read_at_sized(source->device, offset, data, size,
-                                      source->io_capacity);
+        return xx_yaffs_read_at_sized(source->device, offset, data, size, source->io_capacity);
     }
-    if (source->window_start < 0 || offset < source->window_start ||
-        offset - source->window_start >
-            (int64_t)source->window_length - (int64_t)size) {
+    if (source->window_start < 0 || offset < source->window_start || offset - source->window_start > (int64_t)source->window_length - (int64_t)size) {
         int64_t left = source->total_size - offset;
         size_t want;
         if (source->fill_limit - offset < left) {
             left = source->fill_limit - offset;
         }
         if (left < (int64_t)size) left = (int64_t)size;
-        want = (uint64_t)left < (uint64_t)source->window_capacity
-                   ? (size_t)left
-                   : source->window_capacity;
+        want = (uint64_t)left < (uint64_t)source->window_capacity ? (size_t)left : source->window_capacity;
         if (want > source->fill_size && source->fill_size >= size) {
             want = source->fill_size;
         }
@@ -410,23 +395,21 @@ static bool xx_yaffs_source_read(xx_yaffs_source *source, int64_t offset,
             source->window_lazy = false;
         }
         if (!source->window) {
-            return xx_yaffs_read_at_sized(source->device, offset, data, size,
-                                          source->io_capacity);
+            return xx_yaffs_read_at_sized(source->device, offset, data, size, source->io_capacity);
         }
         source->window_start = -1;
-        if (!xx_yaffs_read_at_sized(source->device, offset, source->window,
-                                    want, source->io_capacity)) {
+        if (!xx_yaffs_read_at_sized(source->device, offset, source->window, want, source->io_capacity)) {
             return false;
         }
         source->window_start = offset;
         source->window_length = want;
     }
-    xx_mem_copy(data, source->window + (size_t)(offset - source->window_start),
-                size);
+    xx_mem_copy(data, source->window + (size_t)(offset - source->window_start), size);
     return true;
 }
 
-static unsigned xx_yaffs_popcount8(uint8_t value) {
+static unsigned xx_yaffs_popcount8(uint8_t value)
+{
     unsigned count = 0U;
     while (value != 0U) {
         count += value & 1U;
@@ -435,7 +418,8 @@ static unsigned xx_yaffs_popcount8(uint8_t value) {
     return count;
 }
 
-static bool xx_yaffs_all_ones(const uint8_t *data, size_t size) {
+static bool xx_yaffs_all_ones(const uint8_t *data, size_t size)
+{
     size_t index;
     for (index = 0U; index < size; ++index) {
         if (data[index] != 0xFFU) return false;
@@ -451,14 +435,12 @@ static bool xx_yaffs_all_ones(const uint8_t *data, size_t size) {
  * without the ECC layout carry two bad-block-marker bytes first, which is
  * what geometry.tag_offset absorbs; in-band tags sit at the end of the page.
  */
-static void xx_yaffs_decode_tags_v2(const uint8_t *raw, uint32_t data_size,
-                                    bool big_endian, xx_yaffs_tags *tags) {
+static void xx_yaffs_decode_tags_v2(const uint8_t *raw, uint32_t data_size, bool big_endian, xx_yaffs_tags *tags)
+{
     uint32_t sequence = xx_data_get_u32(raw, XX_YAFFS_TAGS_SIZE, 0U, big_endian);
-    uint32_t object_id =
-        xx_data_get_u32(raw, XX_YAFFS_TAGS_SIZE, 4U, big_endian);
+    uint32_t object_id = xx_data_get_u32(raw, XX_YAFFS_TAGS_SIZE, 4U, big_endian);
     uint32_t chunk_id = xx_data_get_u32(raw, XX_YAFFS_TAGS_SIZE, 8U, big_endian);
-    uint32_t byte_count =
-        xx_data_get_u32(raw, XX_YAFFS_TAGS_SIZE, 12U, big_endian);
+    uint32_t byte_count = xx_data_get_u32(raw, XX_YAFFS_TAGS_SIZE, 12U, big_endian);
     xx_mem_zero(tags, sizeof(*tags));
     tags->sequence = sequence;
     tags->object_id = object_id;
@@ -468,8 +450,7 @@ static void xx_yaffs_decode_tags_v2(const uint8_t *raw, uint32_t data_size,
         tags->kind = XX_YAFFS_CHUNK_ERASED;
         return;
     }
-    if (sequence == XX_YAFFS_SEQ_CHECKPOINT ||
-        sequence == XX_YAFFS_SEQ_BAD_BLOCK) {
+    if (sequence == XX_YAFFS_SEQ_CHECKPOINT || sequence == XX_YAFFS_SEQ_BAD_BLOCK) {
         tags->kind = XX_YAFFS_CHUNK_SKIP;
         return;
     }
@@ -484,8 +465,7 @@ static void xx_yaffs_decode_tags_v2(const uint8_t *raw, uint32_t data_size,
         tags->object_id = object_id & ~XX_YAFFS_EXTRA_FLAGS_MASK;
         tags->chunk_id = 0U;
         tags->byte_count = 0U;
-        tags->kind = tags->object_id != 0U ? XX_YAFFS_CHUNK_HEADER
-                                           : XX_YAFFS_CHUNK_INVALID;
+        tags->kind = tags->object_id != 0U ? XX_YAFFS_CHUNK_HEADER : XX_YAFFS_CHUNK_INVALID;
         return;
     }
     /* Outside a header the type nibble is never set. */
@@ -497,8 +477,7 @@ static void xx_yaffs_decode_tags_v2(const uint8_t *raw, uint32_t data_size,
         tags->kind = XX_YAFFS_CHUNK_HEADER;
         return;
     }
-    tags->kind = byte_count <= data_size ? XX_YAFFS_CHUNK_DATA
-                                         : XX_YAFFS_CHUNK_INVALID;
+    tags->kind = byte_count <= data_size ? XX_YAFFS_CHUNK_DATA : XX_YAFFS_CHUNK_INVALID;
 }
 
 /* YAFFS1: struct yaffs_spare is sixteen bytes
@@ -513,8 +492,8 @@ static void xx_yaffs_decode_tags_v2(const uint8_t *raw, uint32_t data_size,
  *
  * A little endian target fills each 32-bit unit from the least significant
  * bit up; a big endian one from the most significant bit down. */
-static void xx_yaffs_decode_tags_v1(const uint8_t *spare, uint32_t data_size,
-                                    bool big_endian, xx_yaffs_tags *tags) {
+static void xx_yaffs_decode_tags_v1(const uint8_t *spare, uint32_t data_size, bool big_endian, xx_yaffs_tags *tags)
+{
     uint8_t raw[8];
     uint32_t low;
     uint32_t high;
@@ -554,8 +533,7 @@ static void xx_yaffs_decode_tags_v1(const uint8_t *spare, uint32_t data_size,
         unsigned page_bits = xx_yaffs_popcount8(spare[4]);
         unsigned block_bits = xx_yaffs_popcount8(spare[5]);
         bool page_marker = page_bits >= 7U || page_bits <= 1U;
-        bool block_marker =
-            block_bits >= 7U || block_bits <= 1U || spare[5] == (uint8_t)'Y';
+        bool block_marker = block_bits >= 7U || block_bits <= 1U || spare[5] == (uint8_t)'Y';
         tags->suspect = !(page_marker && block_marker);
         tags->kind = XX_YAFFS_CHUNK_SKIP;
         return;
@@ -568,26 +546,22 @@ static void xx_yaffs_decode_tags_v1(const uint8_t *spare, uint32_t data_size,
         tags->kind = XX_YAFFS_CHUNK_HEADER;
         return;
     }
-    tags->kind = tags->byte_count <= data_size ? XX_YAFFS_CHUNK_DATA
-                                               : XX_YAFFS_CHUNK_INVALID;
+    tags->kind = tags->byte_count <= data_size ? XX_YAFFS_CHUNK_DATA : XX_YAFFS_CHUNK_INVALID;
 }
 
 /* Read and decode the tags of the chunk that starts at chunk_offset. Returns
  * false when the tag bytes are missing or unreadable. */
-static bool xx_yaffs_read_tags(xx_yaffs_source *source,
-                               const xx_yaffs_geometry *geometry,
-                               int64_t chunk_offset, xx_yaffs_tags *tags) {
+static bool xx_yaffs_read_tags(xx_yaffs_source *source, const xx_yaffs_geometry *geometry, int64_t chunk_offset, xx_yaffs_tags *tags)
+{
     uint8_t raw[XX_YAFFS_TAGS_SIZE];
     int64_t offset;
     if (!geometry || !tags || geometry->kind == XX_YAFFS_TAGS_NONE) return false;
     offset = chunk_offset + (int64_t)geometry->tag_pos;
     if (!xx_yaffs_source_read(source, offset, raw, sizeof(raw))) return false;
     if (geometry->kind == XX_YAFFS_TAGS_V1) {
-        xx_yaffs_decode_tags_v1(raw, geometry->data_size, geometry->big_endian,
-                                tags);
+        xx_yaffs_decode_tags_v1(raw, geometry->data_size, geometry->big_endian, tags);
     } else {
-        xx_yaffs_decode_tags_v2(raw, geometry->data_size, geometry->big_endian,
-                                tags);
+        xx_yaffs_decode_tags_v2(raw, geometry->data_size, geometry->big_endian, tags);
     }
     return true;
 }
@@ -601,8 +575,8 @@ static bool xx_yaffs_read_tags(xx_yaffs_source *source,
  * component - the form every image builder writes - which is what the
  * detection gate uses; the full scan only refuses what cannot be a name at
  * all and leaves the rest to the host-safe renaming. */
-static bool xx_yaffs_decode_header(const uint8_t *page, bool big_endian,
-                                   bool strict, xx_yaffs_header *header) {
+static bool xx_yaffs_decode_header(const uint8_t *page, bool big_endian, bool strict, xx_yaffs_header *header)
+{
     uint32_t checksum;
     uint32_t size_low;
     uint32_t size_high;
@@ -610,15 +584,13 @@ static bool xx_yaffs_decode_header(const uint8_t *page, bool big_endian,
     size_t index;
     xx_mem_zero(header, sizeof(*header));
     header->type = xx_data_get_u32(page, XX_YAFFS_HEADER_SIZE, 0U, big_endian);
-    header->parent_id =
-        xx_data_get_u32(page, XX_YAFFS_HEADER_SIZE, 4U, big_endian);
+    header->parent_id = xx_data_get_u32(page, XX_YAFFS_HEADER_SIZE, 4U, big_endian);
     checksum = xx_data_get_u16(page, XX_YAFFS_HEADER_SIZE, 8U, big_endian);
     /* sum_no_longer_used has been a fixed 0xFFFF since YAFFS dropped name
      * checksums; it is the single most useful structural constraint there
      * is, and binwalk and unblob lean on it for the same reason. */
     if (checksum != 0xFFFFU) return false;
-    if (header->type < XX_YAFFS_OBJECT_TYPE_FILE ||
-        header->type > XX_YAFFS_OBJECT_TYPE_SPECIAL) {
+    if (header->type < XX_YAFFS_OBJECT_TYPE_FILE || header->type > XX_YAFFS_OBJECT_TYPE_SPECIAL) {
         return false;
     }
     if (header->parent_id == 0U || header->parent_id == 0xFFFFFFFFU) {
@@ -628,8 +600,7 @@ static bool xx_yaffs_decode_header(const uint8_t *page, bool big_endian,
      * strncpy(name, oh->name, 255) reads it: a 255 byte name written with
      * strncpy() by older image builders has no NUL, and byte 255 of the
      * field is then left 0xFF by their memset. */
-    while (length < XX_YAFFS_NAME_MAX &&
-           page[XX_YAFFS_NAME_FIELD + length] != 0U) {
+    while (length < XX_YAFFS_NAME_MAX && page[XX_YAFFS_NAME_FIELD + length] != 0U) {
         ++length;
     }
     for (index = 0U; index < length; ++index) {
@@ -643,8 +614,7 @@ static bool xx_yaffs_decode_header(const uint8_t *page, bool big_endian,
     header->name[length] = '\0';
     header->name_length = length;
     header->mode = xx_data_get_u32(page, XX_YAFFS_HEADER_SIZE, 268U, big_endian);
-    header->equiv_id = xx_data_get_u32(page, XX_YAFFS_HEADER_SIZE,
-                                       XX_YAFFS_EQUIV_FIELD, big_endian);
+    header->equiv_id = xx_data_get_u32(page, XX_YAFFS_HEADER_SIZE, XX_YAFFS_EQUIV_FIELD, big_endian);
     size_low = xx_data_get_u32(page, XX_YAFFS_HEADER_SIZE, 292U, big_endian);
     size_high = xx_data_get_u32(page, XX_YAFFS_HEADER_SIZE, 496U, big_endian);
     /* An all-ones word means "field unused", not "four billion". */
@@ -658,8 +628,7 @@ static bool xx_yaffs_decode_header(const uint8_t *page, bool big_endian,
     if (header->type == XX_YAFFS_OBJECT_TYPE_SYMLINK) {
         const uint8_t *alias = page + XX_YAFFS_ALIAS_FIELD;
         size_t alias_length = 0U;
-        while (alias_length < XX_YAFFS_ALIAS_MAX && alias[alias_length] != 0U &&
-               alias[alias_length] != 0xFFU) {
+        while (alias_length < XX_YAFFS_ALIAS_MAX && alias[alias_length] != 0U && alias[alias_length] != 0xFFU) {
             ++alias_length;
         }
         if (alias_length != 0U) xx_mem_copy(header->alias, alias, alias_length);
@@ -668,9 +637,8 @@ static bool xx_yaffs_decode_header(const uint8_t *page, bool big_endian,
     return true;
 }
 
-static bool xx_yaffs_read_header(xx_yaffs_source *source,
-                                 int64_t chunk_offset, bool big_endian,
-                                 bool strict, xx_yaffs_header *header) {
+static bool xx_yaffs_read_header(xx_yaffs_source *source, int64_t chunk_offset, bool big_endian, bool strict, xx_yaffs_header *header)
+{
     uint8_t page[XX_YAFFS_HEADER_SIZE];
     if (!xx_yaffs_source_read(source, chunk_offset, page, sizeof(page))) {
         return false;
@@ -689,15 +657,13 @@ static bool xx_yaffs_read_header(xx_yaffs_source *source,
  *     FF FF                                              u16
  *     a printable name, NUL terminated (empty only for the root)
  */
-static bool xx_yaffs_first_header(const uint8_t *page, bool big_endian,
-                                  xx_yaffs_header *header) {
+static bool xx_yaffs_first_header(const uint8_t *page, bool big_endian, xx_yaffs_header *header)
+{
     if (!xx_yaffs_decode_header(page, big_endian, true, header)) return false;
-    if (header->parent_id != XX_YAFFS_OBJECTID_ROOT ||
-        header->type == XX_YAFFS_OBJECT_TYPE_HARDLINK) {
+    if (header->parent_id != XX_YAFFS_OBJECTID_ROOT || header->type == XX_YAFFS_OBJECT_TYPE_HARDLINK) {
         return false;
     }
-    if (header->name_length == 0U &&
-        header->type != XX_YAFFS_OBJECT_TYPE_DIRECTORY) {
+    if (header->name_length == 0U && header->type != XX_YAFFS_OBJECT_TYPE_DIRECTORY) {
         return false;
     }
     return true;
@@ -710,24 +676,20 @@ static bool xx_yaffs_first_header(const uint8_t *page, bool big_endian,
 /* The candidate space, in the order it is searched. Ties are broken by this
  * order - the first candidate to reach a given score keeps it - so the sizes
  * are listed with the common real-world value first. */
-static const uint32_t xx_yaffs_page_sizes[] = {2048U, 512U,  1024U,
-                                               4096U, 8192U, 16384U};
-static const uint32_t xx_yaffs_spare_sizes[] = {64U,  16U,  32U, 128U,
-                                                256U, 512U, 224U, 448U};
+static const uint32_t xx_yaffs_page_sizes[] = {2048U, 512U, 1024U, 4096U, 8192U, 16384U};
+static const uint32_t xx_yaffs_spare_sizes[] = {64U, 16U, 32U, 128U, 256U, 512U, 224U, 448U};
 
 /* Chunk 0 against one tagged candidate: its tags must describe an object
  * header, and when the driver stored the parent and type in the tags as
  * well they must agree with the page. */
-static bool xx_yaffs_first_tags_match(const xx_yaffs_tags *tags,
-                                      const xx_yaffs_header *header) {
+static bool xx_yaffs_first_tags_match(const xx_yaffs_tags *tags, const xx_yaffs_header *header)
+{
     if (tags->kind != XX_YAFFS_CHUNK_HEADER) return false;
-    if (tags->extra && (tags->extra_parent != header->parent_id ||
-                        tags->extra_type != header->type)) {
+    if (tags->extra && (tags->extra_parent != header->parent_id || tags->extra_type != header->type)) {
         return false;
     }
     /* Only the root directory is object 1, and it is nameless. */
-    if (tags->object_id == XX_YAFFS_OBJECTID_ROOT &&
-        header->type != XX_YAFFS_OBJECT_TYPE_DIRECTORY) {
+    if (tags->object_id == XX_YAFFS_OBJECTID_ROOT && header->type != XX_YAFFS_OBJECT_TYPE_DIRECTORY) {
         return false;
     }
     return true;
@@ -738,8 +700,8 @@ static bool xx_yaffs_first_tags_match(const xx_yaffs_tags *tags,
  * small. Tags read from the wrong spare offset still decode - two bytes
  * early, a YAFFS2 sequence of 0x1000 reads as 0x1000FFFF - but their numbers
  * are not small, and that is what separates the two candidates. */
-static bool xx_yaffs_plausible_tags(const xx_yaffs_geometry *geometry,
-                                    const xx_yaffs_tags *tags) {
+static bool xx_yaffs_plausible_tags(const xx_yaffs_geometry *geometry, const xx_yaffs_tags *tags)
+{
     if (geometry->kind != XX_YAFFS_TAGS_V2) return true;
     return tags->sequence <= 0x00FFFFFFU && tags->object_id <= 0x0003FFFFU;
 }
@@ -755,13 +717,10 @@ static bool xx_yaffs_plausible_tags(const xx_yaffs_geometry *geometry,
  * one. Two images built into a single block each and placed back to back
  * without padding cannot be told apart from one image this way, and stay
  * merged. */
-static bool xx_yaffs_restarts(const xx_yaffs_geometry *geometry,
-                              const xx_yaffs_tags *tags,
-                              const xx_yaffs_header *header, uint32_t first_seq,
-                              bool left_first, bool gap) {
+static bool xx_yaffs_restarts(const xx_yaffs_geometry *geometry, const xx_yaffs_tags *tags, const xx_yaffs_header *header, uint32_t first_seq, bool left_first, bool gap)
+{
     if (geometry->kind != XX_YAFFS_TAGS_V2) return false;
-    if (tags->sequence != first_seq ||
-        header->parent_id != XX_YAFFS_OBJECTID_ROOT) {
+    if (tags->sequence != first_seq || header->parent_id != XX_YAFFS_OBJECTID_ROOT) {
         return false;
     }
     return left_first || gap;
@@ -776,10 +735,8 @@ static bool xx_yaffs_restarts(const xx_yaffs_geometry *geometry,
  * needs at least one good chunk besides chunk 0. The loop also stops as
  * soon as the verdict can no longer change to an accept, so a candidate
  * that matched chunk 0 by chance costs a handful of chunks, not 64. */
-static int xx_yaffs_score_tagged(xx_yaffs_source *source,
-                                 const xx_yaffs_geometry *geometry,
-                                 int64_t base,
-                                 const xx_yaffs_header *first) {
+static int xx_yaffs_score_tagged(xx_yaffs_source *source, const xx_yaffs_geometry *geometry, int64_t base, const xx_yaffs_header *first)
+{
     xx_yaffs_header header;
     xx_yaffs_tags tags;
     uint32_t seen[XX_YAFFS_PROBE_CHUNKS];
@@ -797,8 +754,7 @@ static int xx_yaffs_score_tagged(xx_yaffs_source *source,
     bool gap = false;
     int score;
     if (chunks < 1) return -1;
-    if (!xx_yaffs_read_tags(source, geometry, base, &tags) ||
-        !xx_yaffs_first_tags_match(&tags, first)) {
+    if (!xx_yaffs_read_tags(source, geometry, base, &tags) || !xx_yaffs_first_tags_match(&tags, first)) {
         return -1;
     }
     score = 30;
@@ -811,9 +767,7 @@ static int xx_yaffs_score_tagged(xx_yaffs_source *source,
     /* Chunk 0 matched: the rest of this candidate's chunks may go through
      * the probe window, if one fill covers several of them. */
     if (source->probe) {
-        source->window_enabled =
-            (uint64_t)geometry->chunk_size * XX_YAFFS_PROBE_WINDOW_CHUNKS <=
-            (uint64_t)source->window_capacity;
+        source->window_enabled = (uint64_t)geometry->chunk_size * XX_YAFFS_PROBE_WINDOW_CHUNKS <= (uint64_t)source->window_capacity;
         source->fill_limit = base + chunks * chunk_size;
         source->fill_size = XX_YAFFS_FIRST_FILL;
     }
@@ -823,60 +777,55 @@ static int xx_yaffs_score_tagged(xx_yaffs_source *source,
         int invalid_before = invalid;
         bool restart = false;
         if (!xx_yaffs_read_tags(source, geometry, offset, &tags)) break;
-        if ((tags.kind == XX_YAFFS_CHUNK_HEADER ||
-             tags.kind == XX_YAFFS_CHUNK_DATA) &&
-            xx_yaffs_plausible_tags(geometry, &tags)) {
+        if ((tags.kind == XX_YAFFS_CHUNK_HEADER || tags.kind == XX_YAFFS_CHUNK_DATA) && xx_yaffs_plausible_tags(geometry, &tags)) {
             score += 2;
         }
         switch (tags.kind) {
-        case XX_YAFFS_CHUNK_HEADER:
-            /* Header tags over a page that is not a header are as bad as
-             * no tags at all. */
-            if (xx_yaffs_read_header(source, offset, geometry->big_endian,
-                                     false, &header) &&
-                (!tags.extra || (tags.extra_parent == header.parent_id &&
-                                 tags.extra_type == header.type))) {
-                size_t at;
-                if (xx_yaffs_restarts(geometry, &tags, &header, first_seq,
-                                      left_first, gap)) {
-                    restart = true;
-                    break;
-                }
-                score += 5;
-                ++valid;
-                /* A parent the tags already introduced: the tree holds
-                 * together under this reading of the tags. */
-                for (at = 0U; at < seen_count; ++at) {
-                    if (seen[at] == header.parent_id) {
-                        score += 3;
+            case XX_YAFFS_CHUNK_HEADER:
+                /* Header tags over a page that is not a header are as bad as
+                 * no tags at all. */
+                if (xx_yaffs_read_header(source, offset, geometry->big_endian, false, &header) &&
+                    (!tags.extra || (tags.extra_parent == header.parent_id && tags.extra_type == header.type))) {
+                    size_t at;
+                    if (xx_yaffs_restarts(geometry, &tags, &header, first_seq, left_first, gap)) {
+                        restart = true;
                         break;
                     }
+                    score += 5;
+                    ++valid;
+                    /* A parent the tags already introduced: the tree holds
+                     * together under this reading of the tags. */
+                    for (at = 0U; at < seen_count; ++at) {
+                        if (seen[at] == header.parent_id) {
+                            score += 3;
+                            break;
+                        }
+                    }
+                    if (seen_count < XX_YAFFS_PROBE_CHUNKS) {
+                        seen[seen_count++] = tags.object_id;
+                    }
+                } else {
+                    score -= 3;
+                    ++invalid;
                 }
-                if (seen_count < XX_YAFFS_PROBE_CHUNKS) {
-                    seen[seen_count++] = tags.object_id;
-                }
-            } else {
+                break;
+            case XX_YAFFS_CHUNK_DATA:
+                score += 2;
+                ++valid;
+                break;
+            case XX_YAFFS_CHUNK_INVALID:
                 score -= 3;
                 ++invalid;
-            }
-            break;
-        case XX_YAFFS_CHUNK_DATA:
-            score += 2;
-            ++valid;
-            break;
-        case XX_YAFFS_CHUNK_INVALID:
-            score -= 3;
-            ++invalid;
-            break;
-        default:
-            /* Erased, deleted, bad or checkpoint: no evidence either way,
-             * unless the YAFFS1 status bytes are plain noise. */
-            if (tags.kind == XX_YAFFS_CHUNK_ERASED) gap = true;
-            if (tags.suspect) {
-                score -= 3;
-                ++invalid;
-            }
-            break;
+                break;
+            default:
+                /* Erased, deleted, bad or checkpoint: no evidence either way,
+                 * unless the YAFFS1 status bytes are plain noise. */
+                if (tags.kind == XX_YAFFS_CHUNK_ERASED) gap = true;
+                if (tags.suspect) {
+                    score -= 3;
+                    ++invalid;
+                }
+                break;
         }
         /* The next image starts here: this one is complete. */
         if (restart) break;
@@ -916,10 +865,8 @@ static int xx_yaffs_score_tagged(xx_yaffs_source *source,
  * page must be a header exactly where the previous file's data ends - the
  * order mkyaffs2image writes. Any miss rejects the candidate, since this
  * layout is only a fallback for an image whose spare area was stripped. */
-static int xx_yaffs_score_positional(xx_yaffs_source *source,
-                                     const xx_yaffs_geometry *geometry,
-                                     int64_t base,
-                                     const xx_yaffs_header *first) {
+static int xx_yaffs_score_positional(xx_yaffs_source *source, const xx_yaffs_geometry *geometry, int64_t base, const xx_yaffs_header *first)
+{
     xx_yaffs_header header;
     int64_t chunk_size = (int64_t)geometry->chunk_size;
     int64_t chunks = (source->total_size - base) / chunk_size;
@@ -933,8 +880,7 @@ static int xx_yaffs_score_positional(xx_yaffs_source *source,
         int64_t offset;
         ++headers;
         if (header.type == XX_YAFFS_OBJECT_TYPE_FILE) {
-            uint64_t pages = (header.file_size + geometry->data_size - 1U) /
-                             geometry->data_size;
+            uint64_t pages = (header.file_size + geometry->data_size - 1U) / geometry->data_size;
             if (pages > (uint64_t)chunks) return -1;
             index += (int64_t)pages;
         }
@@ -947,8 +893,7 @@ static int xx_yaffs_score_positional(xx_yaffs_source *source,
         if (!xx_yaffs_source_read(source, offset, page, XX_YAFFS_TAGS_SIZE)) {
             return -1;
         }
-        if (!xx_yaffs_all_ones(page, XX_YAFFS_TAGS_SIZE) &&
-            (page[8] != 0xFFU || page[9] != 0xFFU)) {
+        if (!xx_yaffs_all_ones(page, XX_YAFFS_TAGS_SIZE) && (page[8] != 0xFFU || page[9] != 0xFFU)) {
             return -1;
         }
         if (!xx_yaffs_source_read(source, offset, page, sizeof(page))) {
@@ -956,17 +901,15 @@ static int xx_yaffs_score_positional(xx_yaffs_source *source,
         }
         /* An erased page ends the image. */
         if (xx_yaffs_all_ones(page, sizeof(page))) break;
-        if (!xx_yaffs_decode_header(page, geometry->big_endian, false,
-                                    &header) ||
-            header.name_length == 0U) {
+        if (!xx_yaffs_decode_header(page, geometry->big_endian, false, &header) || header.name_length == 0U) {
             return -1;
         }
     }
     return headers >= 2 ? 10 + headers : -1;
 }
 
-static void xx_yaffs_set_oob(xx_yaffs_geometry *geometry, uint32_t page,
-                             uint32_t spare, uint32_t tag_offset) {
+static void xx_yaffs_set_oob(xx_yaffs_geometry *geometry, uint32_t page, uint32_t spare, uint32_t tag_offset)
+{
     geometry->page_size = page;
     geometry->spare_size = spare;
     geometry->tag_offset = tag_offset;
@@ -980,9 +923,8 @@ static void xx_yaffs_set_oob(xx_yaffs_geometry *geometry, uint32_t page,
  * layout. Everything is keyed on chunk 0, which must be the first object
  * header (xx_yaffs_first_header); a file whose first 512 bytes are not that
  * costs one read and two decodes. */
-static bool xx_yaffs_detect(xx_io_device *device, int64_t base,
-                            int64_t total_size, xx_yaffs_geometry *out,
-                            xx_pd_struct *pd) {
+static bool xx_yaffs_detect(xx_io_device *device, int64_t base, int64_t total_size, xx_yaffs_geometry *out, xx_pd_struct *pd)
+{
     uint8_t page[XX_YAFFS_HEADER_SIZE];
     xx_yaffs_header first[2];
     bool first_ok[2];
@@ -995,8 +937,7 @@ static bool xx_yaffs_detect(xx_io_device *device, int64_t base,
     size_t spare_index;
     if (!device || !out) return false;
     xx_mem_zero(&best, sizeof(best));
-    if (!xx_yaffs_range_within(total_size, base, (int64_t)sizeof(page)) ||
-        !xx_yaffs_read_at(device, base, page, sizeof(page))) {
+    if (!xx_yaffs_range_within(total_size, base, (int64_t)sizeof(page)) || !xx_yaffs_read_at(device, base, page, sizeof(page))) {
         return false;
     }
     first_ok[0] = xx_yaffs_first_header(page, false, &first[0]);
@@ -1009,17 +950,12 @@ static bool xx_yaffs_detect(xx_io_device *device, int64_t base,
      * scales with xx_get_file_buffer_size(): the format search runs this
      * probe at every offset the gate bytes match (xx_yaffs_source). */
     xx_yaffs_source_init(&source, device, total_size, false);
-    for (page_index = 0U; page_index < sizeof(xx_yaffs_page_sizes) /
-                                           sizeof(xx_yaffs_page_sizes[0]);
-         ++page_index) {
-        xx_yaffs_source_add_slice(&source, base,
-                                  xx_yaffs_page_sizes[page_index]);
+    for (page_index = 0U; page_index < sizeof(xx_yaffs_page_sizes) / sizeof(xx_yaffs_page_sizes[0]); ++page_index) {
+        xx_yaffs_source_add_slice(&source, base, xx_yaffs_page_sizes[page_index]);
     }
     for (endian_index = 0U; endian_index < 2U && !stopped; ++endian_index) {
         if (!first_ok[endian_index]) continue;
-        for (page_index = 0U; page_index < sizeof(xx_yaffs_page_sizes) /
-                                               sizeof(xx_yaffs_page_sizes[0]);
-             ++page_index) {
+        for (page_index = 0U; page_index < sizeof(xx_yaffs_page_sizes) / sizeof(xx_yaffs_page_sizes[0]); ++page_index) {
             uint32_t page_size = xx_yaffs_page_sizes[page_index];
             xx_yaffs_geometry candidate;
             int score;
@@ -1030,21 +966,16 @@ static bool xx_yaffs_detect(xx_io_device *device, int64_t base,
                 break;
             }
             /* Out-of-band tags: YAFFS2 at spare offset 0 or 2, YAFFS1. */
-            for (spare_index = 0U;
-                 spare_index < sizeof(xx_yaffs_spare_sizes) /
-                                   sizeof(xx_yaffs_spare_sizes[0]);
-                 ++spare_index) {
+            for (spare_index = 0U; spare_index < sizeof(xx_yaffs_spare_sizes) / sizeof(xx_yaffs_spare_sizes[0]); ++spare_index) {
                 uint32_t spare = xx_yaffs_spare_sizes[spare_index];
                 uint32_t variant;
                 if ((uint64_t)spare * 8U > page_size) continue;
                 for (variant = 0U; variant < 3U; ++variant) {
                     uint32_t tag_offset = variant == 1U ? 2U : 0U;
-                    candidate.kind =
-                        variant == 2U ? XX_YAFFS_TAGS_V1 : XX_YAFFS_TAGS_V2;
+                    candidate.kind = variant == 2U ? XX_YAFFS_TAGS_V1 : XX_YAFFS_TAGS_V2;
                     if (spare < tag_offset + XX_YAFFS_TAGS_SIZE) continue;
                     xx_yaffs_set_oob(&candidate, page_size, spare, tag_offset);
-                    score = xx_yaffs_score_tagged(&source, &candidate, base,
-                                                  &first[endian_index]);
+                    score = xx_yaffs_score_tagged(&source, &candidate, base, &first[endian_index]);
                     if (score > best_score) {
                         best_score = score;
                         best = candidate;
@@ -1060,8 +991,7 @@ static bool xx_yaffs_detect(xx_io_device *device, int64_t base,
             candidate.chunk_size = page_size;
             candidate.tag_pos = page_size - XX_YAFFS_TAGS_SIZE;
             candidate.inband = true;
-            score = xx_yaffs_score_tagged(&source, &candidate, base,
-                                          &first[endian_index]);
+            score = xx_yaffs_score_tagged(&source, &candidate, base, &first[endian_index]);
             if (score > best_score) {
                 best_score = score;
                 best = candidate;
@@ -1073,10 +1003,7 @@ static bool xx_yaffs_detect(xx_io_device *device, int64_t base,
     if (best_score <= 0 && !stopped) {
         for (endian_index = 0U; endian_index < 2U && !stopped; ++endian_index) {
             if (!first_ok[endian_index]) continue;
-            for (page_index = 0U;
-                 page_index < sizeof(xx_yaffs_page_sizes) /
-                                  sizeof(xx_yaffs_page_sizes[0]);
-                 ++page_index) {
+            for (page_index = 0U; page_index < sizeof(xx_yaffs_page_sizes) / sizeof(xx_yaffs_page_sizes[0]); ++page_index) {
                 xx_yaffs_geometry candidate;
                 int score;
                 if (pd && xx_pd_is_stopped(pd)) {
@@ -1086,10 +1013,8 @@ static bool xx_yaffs_detect(xx_io_device *device, int64_t base,
                 xx_mem_zero(&candidate, sizeof(candidate));
                 candidate.kind = XX_YAFFS_TAGS_NONE;
                 candidate.big_endian = endian_index != 0U;
-                xx_yaffs_set_oob(&candidate, xx_yaffs_page_sizes[page_index],
-                                 0U, 0U);
-                score = xx_yaffs_score_positional(&source, &candidate, base,
-                                                  &first[endian_index]);
+                xx_yaffs_set_oob(&candidate, xx_yaffs_page_sizes[page_index], 0U, 0U);
+                score = xx_yaffs_score_positional(&source, &candidate, base, &first[endian_index]);
                 if (score > best_score) {
                     best_score = score;
                     best = candidate;
@@ -1107,23 +1032,25 @@ static bool xx_yaffs_detect(xx_io_device *device, int64_t base,
 /* Object id map                                                            */
 /* ------------------------------------------------------------------------ */
 
-static void xx_yaffs_map_cleanup(xx_yaffs_map *map) {
+static void xx_yaffs_map_cleanup(xx_yaffs_map *map)
+{
     if (!map) return;
     if (map->slots) xx_mem_free(map->slots);
     xx_mem_zero(map, sizeof(*map));
 }
 
-static size_t xx_yaffs_map_slot(const xx_yaffs_map *map, uint32_t object_id) {
+static size_t xx_yaffs_map_slot(const xx_yaffs_map *map, uint32_t object_id)
+{
     uint64_t key = (uint64_t)object_id;
     key = (key ^ (key >> 29U)) * UINT64_C(0xbf58476d1ce4e5b9);
     key ^= key >> 32U;
     return (size_t)key & (map->capacity - 1U);
 }
 
-static bool xx_yaffs_map_put(xx_yaffs_map *map, uint32_t object_id,
-                             uint32_t index);
+static bool xx_yaffs_map_put(xx_yaffs_map *map, uint32_t object_id, uint32_t index);
 
-static bool xx_yaffs_map_grow(xx_yaffs_map *map) {
+static bool xx_yaffs_map_grow(xx_yaffs_map *map)
+{
     xx_yaffs_map grown;
     size_t capacity = map->capacity ? map->capacity * 2U : 256U;
     size_t index;
@@ -1136,8 +1063,7 @@ static bool xx_yaffs_map_grow(xx_yaffs_map *map) {
     grown.count = 0U;
     for (index = 0U; index < map->capacity; ++index) {
         if (map->slots[index].key != 0U) {
-            if (!xx_yaffs_map_put(&grown, map->slots[index].key - 1U,
-                                  map->slots[index].index)) {
+            if (!xx_yaffs_map_put(&grown, map->slots[index].key - 1U, map->slots[index].index)) {
                 xx_mem_free(grown.slots);
                 return false;
             }
@@ -1150,8 +1076,8 @@ static bool xx_yaffs_map_grow(xx_yaffs_map *map) {
 
 /* Insert or overwrite. Object ids are attacker chosen, so the table is sized
  * by the number of objects actually kept, which the object cap bounds. */
-static bool xx_yaffs_map_put(xx_yaffs_map *map, uint32_t object_id,
-                             uint32_t index) {
+static bool xx_yaffs_map_put(xx_yaffs_map *map, uint32_t object_id, uint32_t index)
+{
     size_t slot;
     if (!map || object_id == 0xFFFFFFFFU) return false;
     if ((map->count + 1U) * 4U >= map->capacity * 3U) {
@@ -1171,8 +1097,8 @@ static bool xx_yaffs_map_put(xx_yaffs_map *map, uint32_t object_id,
     return true;
 }
 
-static bool xx_yaffs_map_get(const xx_yaffs_map *map, uint32_t object_id,
-                             size_t *out_index) {
+static bool xx_yaffs_map_get(const xx_yaffs_map *map, uint32_t object_id, size_t *out_index)
+{
     size_t slot;
     if (!map || !map->slots || object_id == 0xFFFFFFFFU) return false;
     slot = xx_yaffs_map_slot(map, object_id);
@@ -1190,16 +1116,17 @@ static bool xx_yaffs_map_get(const xx_yaffs_map *map, uint32_t object_id,
 /* Host-safe, unique names                                                  */
 /* ------------------------------------------------------------------------ */
 
-static char xx_yaffs_upper(char c) {
+static char xx_yaffs_upper(char c)
+{
     return (c >= 'a' && c <= 'z') ? (char)(c - 'a' + 'A') : c;
 }
 
 /* Windows device names, with or without an extension, in any case:
  * CON PRN AUX NUL CONIN$ CONOUT$ CLOCK$, and COM / LPT followed by a digit or
  * a superscript one, two or three. */
-static bool xx_yaffs_reserved_name(const char *name) {
-    static const char *const devices[] = {"CON",    "PRN",     "AUX",   "NUL",
-                                          "CONIN$", "CONOUT$", "CLOCK$"};
+static bool xx_yaffs_reserved_name(const char *name)
+{
+    static const char *const devices[] = {"CON", "PRN", "AUX", "NUL", "CONIN$", "CONOUT$", "CLOCK$"};
     size_t stem = 0U;
     size_t index;
     size_t word;
@@ -1214,16 +1141,11 @@ static bool xx_yaffs_reserved_name(const char *name) {
         }
         if (index == stem && device[stem] == 0) return true;
     }
-    if (stem >= 4U &&
-        ((xx_yaffs_upper(name[0]) == 'C' && xx_yaffs_upper(name[1]) == 'O' &&
-          xx_yaffs_upper(name[2]) == 'M') ||
-         (xx_yaffs_upper(name[0]) == 'L' && xx_yaffs_upper(name[1]) == 'P' &&
-          xx_yaffs_upper(name[2]) == 'T'))) {
+    if (stem >= 4U && ((xx_yaffs_upper(name[0]) == 'C' && xx_yaffs_upper(name[1]) == 'O' && xx_yaffs_upper(name[2]) == 'M') ||
+                       (xx_yaffs_upper(name[0]) == 'L' && xx_yaffs_upper(name[1]) == 'P' && xx_yaffs_upper(name[2]) == 'T'))) {
         if (stem == 4U && name[3] >= '0' && name[3] <= '9') return true;
         /* U+00B9, U+00B2, U+00B3 in UTF-8. */
-        if (stem == 5U && (uint8_t)name[3] == 0xC2U &&
-            ((uint8_t)name[4] == 0xB9U || (uint8_t)name[4] == 0xB2U ||
-             (uint8_t)name[4] == 0xB3U)) {
+        if (stem == 5U && (uint8_t)name[3] == 0xC2U && ((uint8_t)name[4] == 0xB9U || (uint8_t)name[4] == 0xB2U || (uint8_t)name[4] == 0xB3U)) {
             return true;
         }
     }
@@ -1231,7 +1153,8 @@ static bool xx_yaffs_reserved_name(const char *name) {
 }
 
 /* Length of the well-formed UTF-8 sequence at @p text, or 0. */
-static size_t xx_yaffs_utf8_length(const uint8_t *text, size_t available) {
+static size_t xx_yaffs_utf8_length(const uint8_t *text, size_t available)
+{
     uint8_t lead = text[0];
     size_t length;
     size_t index;
@@ -1254,9 +1177,7 @@ static size_t xx_yaffs_utf8_length(const uint8_t *text, size_t available) {
         if ((text[index] & 0xC0U) != 0x80U) return 0U;
         value = (value << 6U) | (text[index] & 0x3FU);
     }
-    if ((length == 3U && (value < 0x800U || (value >= 0xD800U &&
-                                              value <= 0xDFFFU))) ||
-        (length == 4U && (value < 0x10000U || value > 0x10FFFFU))) {
+    if ((length == 3U && (value < 0x800U || (value >= 0xD800U && value <= 0xDFFFU))) || (length == 4U && (value < 0x10000U || value > 0x10FFFFU))) {
         return 0U;
     }
     return length;
@@ -1268,7 +1189,8 @@ static size_t xx_yaffs_utf8_length(const uint8_t *text, size_t available) {
 #define XX_YAFFS_COMPONENT_UNITS 255U
 
 /* UTF-16 units of the well-formed UTF-8 text[0..size). */
-static size_t xx_yaffs_utf16_units(const char *text, size_t size) {
+static size_t xx_yaffs_utf16_units(const char *text, size_t size)
+{
     size_t units = 0U;
     size_t index;
     for (index = 0U; index < size; ++index) {
@@ -1280,7 +1202,8 @@ static size_t xx_yaffs_utf16_units(const char *text, size_t size) {
 
 /* The longest prefix of the well-formed UTF-8 text[0..size) that ends on a
  * character boundary and is at most @p units UTF-16 units long. */
-static size_t xx_yaffs_fit_units(const char *text, size_t size, size_t units) {
+static size_t xx_yaffs_fit_units(const char *text, size_t size, size_t units)
+{
     while (size != 0U && xx_yaffs_utf16_units(text, size) > units) {
         --size;
         while (size != 0U && ((uint8_t)text[size] & 0xC0U) == 0x80U) --size;
@@ -1293,7 +1216,8 @@ static size_t xx_yaffs_fit_units(const char *text, size_t size, size_t units) {
  * reserves become '_', trailing dots and spaces (which Windows drops, and
  * which make "." and "..") become '_', and a device name gets a '_' prefix.
  */
-static char *xx_yaffs_component(const char *raw) {
+static char *xx_yaffs_component(const char *raw)
+{
     size_t size = xx_str_len(raw);
     size_t at = 0U;
     size_t index = 0U;
@@ -1310,9 +1234,7 @@ static char *xx_yaffs_component(const char *raw) {
         }
         if (length == 1U) {
             char c = (char)cursor[0];
-            if ((uint8_t)c < 0x20U || (uint8_t)c == 0x7FU || c == '/' ||
-                c == '\\' || c == ':' || c == '*' || c == '?' || c == '"' ||
-                c == '<' || c == '>' || c == '|') {
+            if ((uint8_t)c < 0x20U || (uint8_t)c == 0x7FU || c == '/' || c == '\\' || c == ':' || c == '*' || c == '?' || c == '"' || c == '<' || c == '>' || c == '|') {
                 c = '_';
             }
             result[at++] = c;
@@ -1336,8 +1258,7 @@ static char *xx_yaffs_component(const char *raw) {
      * component still fits. Only the tail goes, and the stem that made it
      * a device name is far shorter, so the prefix is still needed. */
     {
-        size_t body = xx_yaffs_fit_units(result + 1U, at - 1U,
-                                         XX_YAFFS_COMPONENT_UNITS - 1U);
+        size_t body = xx_yaffs_fit_units(result + 1U, at - 1U, XX_YAFFS_COMPONENT_UNITS - 1U);
         at = body + 1U;
         for (index = at; index > 1U; --index) {
             if (result[index - 1U] != '.' && result[index - 1U] != ' ') break;
@@ -1351,7 +1272,8 @@ static char *xx_yaffs_component(const char *raw) {
 /* The code point at *cursor, advancing past it. Leaves are well-formed UTF-8
  * by the time they get here (xx_yaffs_component); a stray byte would be
  * taken as itself. */
-static uint32_t xx_yaffs_next_code_point(const char **cursor) {
+static uint32_t xx_yaffs_next_code_point(const char **cursor)
+{
     const uint8_t *text = (const uint8_t *)*cursor;
     size_t length = xx_yaffs_utf8_length(text, 4U);
     uint32_t value;
@@ -1377,7 +1299,8 @@ static uint32_t xx_yaffs_next_code_point(const char **cursor) {
  * Extended-C, -D, -E) cross-map among themselves, so all of them fold to one
  * class, and so does Greek Extended: that can only cost an extra "~N"
  * rename, never let a collision through. */
-static uint32_t xx_yaffs_fold(uint32_t c) {
+static uint32_t xx_yaffs_fold(uint32_t c)
+{
     if (c < 0x80U) return (c >= 'a' && c <= 'z') ? c - 0x20U : c;
     if (c < 0x100U) {
         if (c == 0xB5U) return 0x39CU; /* micro sign: Greek capital mu */
@@ -1393,9 +1316,7 @@ static uint32_t xx_yaffs_fold(uint32_t c) {
         }
         return c & ~1U;
     }
-    if (c < 0x2B0U || (c >= 0x1D00U && c <= 0x1DBFU) ||
-        (c >= 0x2C60U && c <= 0x2C7FU) || (c >= 0xA720U && c <= 0xA7FFU) ||
-        (c >= 0xAB30U && c <= 0xAB6FU)) {
+    if (c < 0x2B0U || (c >= 0x1D00U && c <= 0x1DBFU) || (c >= 0x2C60U && c <= 0x2C7FU) || (c >= 0xA720U && c <= 0xA7FFU) || (c >= 0xAB30U && c <= 0xAB6FU)) {
         return 0x180U;
     }
     if (c == 0x345U || c == 0x1FBEU) return 0x399U; /* iota subscript */
@@ -1405,25 +1326,27 @@ static uint32_t xx_yaffs_fold(uint32_t c) {
         if (c >= 0x3ADU && c <= 0x3AFU) return c - 0x25U;
         if (c == 0x3CCU) return 0x38CU;
         if (c == 0x3CDU || c == 0x3CEU) return c - 0x3FU;
-        if (c <= 0x373U || c == 0x376U || c == 0x377U ||
-            (c >= 0x3D8U && c <= 0x3EFU)) {
+        if (c <= 0x373U || c == 0x376U || c == 0x377U || (c >= 0x3D8U && c <= 0x3EFU)) {
             return c & ~1U;
         }
         switch (c) {
-        case 0x37BU: case 0x37CU: case 0x37DU: return c + 0x82U;
-        case 0x3F3U: return 0x37FU;
-        case 0x3D7U: return 0x3CFU;
-        case 0x3D0U: return 0x392U;
-        case 0x3D1U: case 0x3F4U: return 0x398U;
-        case 0x3D5U: return 0x3A6U;
-        case 0x3D6U: return 0x3A0U;
-        case 0x3F0U: return 0x39AU;
-        case 0x3F1U: return 0x3A1U;
-        case 0x3F5U: return 0x395U;
-        case 0x3F2U: return 0x3F9U;
-        case 0x3F8U: return 0x3F7U;
-        case 0x3FBU: return 0x3FAU;
-        default: return c;
+            case 0x37BU:
+            case 0x37CU:
+            case 0x37DU: return c + 0x82U;
+            case 0x3F3U: return 0x37FU;
+            case 0x3D7U: return 0x3CFU;
+            case 0x3D0U: return 0x392U;
+            case 0x3D1U:
+            case 0x3F4U: return 0x398U;
+            case 0x3D5U: return 0x3A6U;
+            case 0x3D6U: return 0x3A0U;
+            case 0x3F0U: return 0x39AU;
+            case 0x3F1U: return 0x3A1U;
+            case 0x3F5U: return 0x395U;
+            case 0x3F2U: return 0x3F9U;
+            case 0x3F8U: return 0x3F7U;
+            case 0x3FBU: return 0x3FAU;
+            default: return c;
         }
     }
     if (c >= 0x400U && c < 0x530U) {
@@ -1431,17 +1354,14 @@ static uint32_t xx_yaffs_fold(uint32_t c) {
         if (c >= 0x450U && c <= 0x45FU) return c - 0x50U;
         if (c == 0x4CFU) return 0x4C0U;
         if (c >= 0x4C1U && c <= 0x4CEU) return (c & 1U) ? c : c - 1U;
-        if ((c >= 0x460U && c <= 0x481U) || (c >= 0x48AU && c <= 0x4BFU) ||
-            c >= 0x4D0U) {
+        if ((c >= 0x460U && c <= 0x481U) || (c >= 0x48AU && c <= 0x4BFU) || c >= 0x4D0U) {
             return c & ~1U;
         }
         return c;
     }
     if (c >= 0x561U && c <= 0x586U) return c - 0x30U; /* Armenian */
     if (c >= 0x1C80U && c <= 0x1C88U) {
-        static const uint16_t old_cyrillic[9] = {0x412U, 0x414U, 0x41EU,
-                                                 0x421U, 0x422U, 0x422U,
-                                                 0x42AU, 0x462U, 0xA64AU};
+        static const uint16_t old_cyrillic[9] = {0x412U, 0x414U, 0x41EU, 0x421U, 0x422U, 0x422U, 0x42AU, 0x462U, 0xA64AU};
         return old_cyrillic[c - 0x1C80U];
     }
     if (c >= 0x2D00U && c <= 0x2D2DU) return c - 0x1C60U; /* Georgian */
@@ -1458,12 +1378,12 @@ static uint32_t xx_yaffs_fold(uint32_t c) {
     }
     if (c >= 0x1F00U && c <= 0x1FFFU) return 0x1F00U;
     switch (c) {
-    case 0x2126U: return 0x3A9U; /* ohm */
-    case 0x212AU: return 'K';    /* kelvin */
-    case 0x212BU: return 0xC5U;  /* angstrom */
-    case 0x214EU: return 0x2132U;
-    case 0x2184U: return 0x2183U;
-    default: break;
+        case 0x2126U: return 0x3A9U; /* ohm */
+        case 0x212AU: return 'K';    /* kelvin */
+        case 0x212BU: return 0xC5U;  /* angstrom */
+        case 0x214EU: return 0x2132U;
+        case 0x2184U: return 0x2183U;
+        default: break;
     }
     if (c >= 0x2170U && c <= 0x217FU) return c - 0x10U;
     if (c >= 0x24D0U && c <= 0x24E9U) return c - 0x1AU;
@@ -1486,53 +1406,51 @@ static uint32_t xx_yaffs_fold(uint32_t c) {
     return c;
 }
 
-static uint32_t xx_yaffs_leaf_hash(size_t parent, const char *leaf) {
+static uint32_t xx_yaffs_leaf_hash(size_t parent, const char *leaf)
+{
     uint64_t wide = (uint64_t)parent;
     uint32_t hash = 2166136261U;
     hash = (hash ^ (uint32_t)wide) * 16777619U;
     hash = (hash ^ (uint32_t)(wide >> 32U)) * 16777619U;
     while (*leaf) {
-        hash = (hash ^ xx_yaffs_fold(xx_yaffs_next_code_point(&leaf))) *
-               16777619U;
+        hash = (hash ^ xx_yaffs_fold(xx_yaffs_next_code_point(&leaf))) * 16777619U;
     }
     return hash;
 }
 
-static bool xx_yaffs_leaf_equal(const char *first, const char *second) {
+static bool xx_yaffs_leaf_equal(const char *first, const char *second)
+{
     while (*first && *second) {
-        if (xx_yaffs_fold(xx_yaffs_next_code_point(&first)) !=
-            xx_yaffs_fold(xx_yaffs_next_code_point(&second))) {
+        if (xx_yaffs_fold(xx_yaffs_next_code_point(&first)) != xx_yaffs_fold(xx_yaffs_next_code_point(&second))) {
             return false;
         }
     }
     return *first == 0 && *second == 0;
 }
 
-static void xx_yaffs_names_cleanup(xx_yaffs_names *names) {
+static void xx_yaffs_names_cleanup(xx_yaffs_names *names)
+{
     if (!names) return;
     if (names->slots) xx_mem_free(names->slots);
     xx_mem_zero(names, sizeof(*names));
 }
 
-static xx_yaffs_name_entry *xx_yaffs_names_find(const xx_yaffs_names *names,
-                                                size_t parent,
-                                                const char *leaf,
-                                                uint32_t hash) {
+static xx_yaffs_name_entry *xx_yaffs_names_find(const xx_yaffs_names *names, size_t parent, const char *leaf, uint32_t hash)
+{
     size_t mask;
     size_t at;
     if (names->capacity == 0U) return NULL;
     mask = names->capacity - 1U;
     for (at = hash & mask; names->slots[at].leaf; at = (at + 1U) & mask) {
-        if (names->slots[at].hash == hash && names->slots[at].parent == parent &&
-            xx_yaffs_leaf_equal(names->slots[at].leaf, leaf)) {
+        if (names->slots[at].hash == hash && names->slots[at].parent == parent && xx_yaffs_leaf_equal(names->slots[at].leaf, leaf)) {
             return &names->slots[at];
         }
     }
     return NULL;
 }
 
-static void xx_yaffs_names_place(xx_yaffs_name_entry *slots, size_t capacity,
-                                 const xx_yaffs_name_entry *entry) {
+static void xx_yaffs_names_place(xx_yaffs_name_entry *slots, size_t capacity, const xx_yaffs_name_entry *entry)
+{
     size_t mask = capacity - 1U;
     size_t at = entry->hash & mask;
     while (slots[at].leaf) at = (at + 1U) & mask;
@@ -1541,15 +1459,14 @@ static void xx_yaffs_names_place(xx_yaffs_name_entry *slots, size_t capacity,
 
 /* @p leaf must outlive the set: it is owned by an object. Any entry pointer
  * obtained earlier is invalid afterwards. */
-static bool xx_yaffs_names_add(xx_yaffs_names *names, size_t parent,
-                               const char *leaf, uint32_t hash) {
+static bool xx_yaffs_names_add(xx_yaffs_names *names, size_t parent, const char *leaf, uint32_t hash)
+{
     xx_yaffs_name_entry entry;
     if ((names->used + 1U) * 2U > names->capacity) {
         size_t capacity = names->capacity ? names->capacity * 2U : 256U;
         size_t index;
         xx_yaffs_name_entry *slots;
-        if (capacity < names->capacity ||
-            capacity > SIZE_MAX / sizeof(*slots)) {
+        if (capacity < names->capacity || capacity > SIZE_MAX / sizeof(*slots)) {
             return false;
         }
         slots = (xx_yaffs_name_entry *)xx_mem_calloc(capacity, sizeof(*slots));
@@ -1573,7 +1490,8 @@ static bool xx_yaffs_names_add(xx_yaffs_names *names, size_t parent,
 }
 
 /* leaf with "~suffix" before its extension: "name~2.txt". */
-static char *xx_yaffs_suffixed(const char *leaf, uint32_t suffix) {
+static char *xx_yaffs_suffixed(const char *leaf, uint32_t suffix)
+{
     char suffix_text[16];
     const char *dot = xx_rt_strrchr(leaf, '.');
     size_t leaf_size = xx_str_len(leaf);
@@ -1582,47 +1500,41 @@ static char *xx_yaffs_suffixed(const char *leaf, uint32_t suffix) {
     size_t kept;
     size_t tail_units;
     char *combined;
-    if (xx_rt_snprintf(suffix_text, sizeof(suffix_text), "~%u",
-                       (unsigned)suffix) < 0) {
+    if (xx_rt_snprintf(suffix_text, sizeof(suffix_text), "~%u", (unsigned)suffix) < 0) {
         return NULL;
     }
     suffix_size = xx_str_len(suffix_text);
-    before = (dot && dot != leaf && leaf_size - (size_t)(dot - leaf) <= 32U)
-                 ? (size_t)(dot - leaf)
-                 : leaf_size;
+    before = (dot && dot != leaf && leaf_size - (size_t)(dot - leaf) <= 32U) ? (size_t)(dot - leaf) : leaf_size;
     /* Shorten the stem so stem + "~N" + extension stays one component the
      * host can create. The extension is at most 32 bytes and the suffix at
      * most 11, so some stem is always left. */
-    tail_units = xx_yaffs_utf16_units(leaf + before, leaf_size - before) +
-                 suffix_size;
+    tail_units = xx_yaffs_utf16_units(leaf + before, leaf_size - before) + suffix_size;
     if (tail_units >= XX_YAFFS_COMPONENT_UNITS) return NULL;
-    kept = xx_yaffs_fit_units(leaf, before,
-                              XX_YAFFS_COMPONENT_UNITS - tail_units);
+    kept = xx_yaffs_fit_units(leaf, before, XX_YAFFS_COMPONENT_UNITS - tail_units);
     if (kept == 0U) return NULL;
     combined = (char *)xx_mem_alloc(leaf_size + suffix_size + 1U);
     if (!combined) return NULL;
     xx_mem_copy(combined, leaf, kept);
     xx_mem_copy(combined + kept, suffix_text, suffix_size);
-    xx_mem_copy(combined + kept + suffix_size, leaf + before,
-                leaf_size - before);
+    xx_mem_copy(combined + kept + suffix_size, leaf + before, leaf_size - before);
     combined[kept + suffix_size + (leaf_size - before)] = '\0';
     return combined;
 }
 
 /* Does a leaf fit under a directory whose path is prefix_length long? */
-static bool xx_yaffs_path_fits(size_t prefix_length, const char *leaf) {
+static bool xx_yaffs_path_fits(size_t prefix_length, const char *leaf)
+{
     size_t leaf_size = xx_str_len(leaf);
     size_t separator = prefix_length != 0U ? 1U : 0U;
-    return prefix_length <= XX_YAFFS_MAX_PATH &&
-           leaf_size <= XX_YAFFS_MAX_PATH - prefix_length - separator;
+    return prefix_length <= XX_YAFFS_MAX_PATH && leaf_size <= XX_YAFFS_MAX_PATH - prefix_length - separator;
 }
 
 /* A host-safe leaf for @p raw_name in directory @p parent that no earlier
  * object in that directory has: the name itself, else "name~N". Returns an
  * owned string, or NULL when the name cannot be placed - the full path
  * would outgrow XX_YAFFS_MAX_PATH, or the attempt budget is spent. */
-static char *xx_yaffs_claim(xx_yaffs_private *parsed, size_t parent,
-                            size_t prefix_length, const char *raw_name) {
+static char *xx_yaffs_claim(xx_yaffs_private *parsed, size_t parent, size_t prefix_length, const char *raw_name)
+{
     xx_yaffs_names *names = &parsed->names;
     xx_yaffs_name_entry *entry;
     char *base = xx_yaffs_component(raw_name);
@@ -1647,9 +1559,7 @@ static char *xx_yaffs_claim(xx_yaffs_private *parsed, size_t parent,
     /* Taken: continue the "~N" series where the last claim of this name
      * left it. */
     suffix = entry->next_suffix;
-    for (attempt = 0U; attempt < XX_YAFFS_MAX_COLLISIONS &&
-                       parsed->claim_budget != 0U && suffix < 0xFFFFFFFFU;
-         ++attempt, ++suffix) {
+    for (attempt = 0U; attempt < XX_YAFFS_MAX_COLLISIONS && parsed->claim_budget != 0U && suffix < 0xFFFFFFFFU; ++attempt, ++suffix) {
         char *candidate;
         uint32_t candidate_hash;
         --parsed->claim_budget;
@@ -1681,7 +1591,8 @@ static char *xx_yaffs_claim(xx_yaffs_private *parsed, size_t parent,
 /* Parsed state lifetime                                                    */
 /* ------------------------------------------------------------------------ */
 
-static void xx_yaffs_private_cleanup(xx_yaffs_private *parsed) {
+static void xx_yaffs_private_cleanup(xx_yaffs_private *parsed)
+{
     size_t index;
     if (!parsed) return;
     for (index = 0U; index < parsed->object_count; ++index) {
@@ -1702,34 +1613,32 @@ static void xx_yaffs_private_cleanup(xx_yaffs_private *parsed) {
     parsed->archive_end = -1;
 }
 
-static bool xx_yaffs_reserve_objects(xx_yaffs_private *parsed) {
+static bool xx_yaffs_reserve_objects(xx_yaffs_private *parsed)
+{
     xx_yaffs_object *grown;
     size_t capacity;
     if (parsed->object_count < parsed->object_capacity) return true;
     capacity = parsed->object_capacity ? parsed->object_capacity * 2U : 64U;
-    if (capacity < parsed->object_capacity ||
-        capacity > SIZE_MAX / sizeof(*parsed->objects)) {
+    if (capacity < parsed->object_capacity || capacity > SIZE_MAX / sizeof(*parsed->objects)) {
         return false;
     }
-    grown = (xx_yaffs_object *)xx_mem_realloc(
-        parsed->objects, capacity * sizeof(*parsed->objects));
+    grown = (xx_yaffs_object *)xx_mem_realloc(parsed->objects, capacity * sizeof(*parsed->objects));
     if (!grown) return false;
     parsed->objects = grown;
     parsed->object_capacity = capacity;
     return true;
 }
 
-static bool xx_yaffs_reserve_chunks(xx_yaffs_private *parsed) {
+static bool xx_yaffs_reserve_chunks(xx_yaffs_private *parsed)
+{
     xx_yaffs_data_chunk *grown;
     size_t capacity;
     if (parsed->chunk_count < parsed->chunk_capacity) return true;
     capacity = parsed->chunk_capacity ? parsed->chunk_capacity * 2U : 256U;
-    if (capacity < parsed->chunk_capacity ||
-        capacity > SIZE_MAX / sizeof(*parsed->chunks)) {
+    if (capacity < parsed->chunk_capacity || capacity > SIZE_MAX / sizeof(*parsed->chunks)) {
         return false;
     }
-    grown = (xx_yaffs_data_chunk *)xx_mem_realloc(
-        parsed->chunks, capacity * sizeof(*parsed->chunks));
+    grown = (xx_yaffs_data_chunk *)xx_mem_realloc(parsed->chunks, capacity * sizeof(*parsed->chunks));
     if (!grown) return false;
     parsed->chunks = grown;
     parsed->chunk_capacity = capacity;
@@ -1741,15 +1650,16 @@ static bool xx_yaffs_reserve_chunks(xx_yaffs_private *parsed) {
  * the scan visits in order. YAFFS1 has a two-bit serial that is bumped each
  * time a chunk is rewritten, so the newer copy is the one whose serial is
  * one more, modulo four, than the other's. */
-static bool xx_yaffs_newer(xx_yaffs_tag_kind kind, uint32_t current,
-                           uint32_t candidate) {
+static bool xx_yaffs_newer(xx_yaffs_tag_kind kind, uint32_t current, uint32_t candidate)
+{
     if (kind == XX_YAFFS_TAGS_V1) {
         return candidate == ((current + 1U) & 3U) || candidate == current;
     }
     return candidate >= current;
 }
 
-static char *xx_yaffs_copy_text(const char *text) {
+static char *xx_yaffs_copy_text(const char *text)
+{
     size_t length = xx_str_len(text);
     char *copy = (char *)xx_mem_alloc(length + 1U);
     if (!copy) return NULL;
@@ -1761,9 +1671,8 @@ static char *xx_yaffs_copy_text(const char *text) {
 /* Record an object header. A repeated object id is an update in the log, so
  * the newer version wins and the older record is overwritten in place -
  * which keeps the map and the object indexes stable. */
-static bool xx_yaffs_add_object(xx_yaffs_private *parsed, uint32_t object_id,
-                                uint32_t sequence, int64_t header_offset,
-                                const xx_yaffs_header *header) {
+static bool xx_yaffs_add_object(xx_yaffs_private *parsed, uint32_t object_id, uint32_t sequence, int64_t header_offset, const xx_yaffs_header *header)
+{
     size_t index;
     xx_yaffs_object *object;
     char *name;
@@ -1779,8 +1688,7 @@ static bool xx_yaffs_add_object(xx_yaffs_private *parsed, uint32_t object_id,
         if (!xx_yaffs_reserve_objects(parsed)) return false;
         object = &parsed->objects[parsed->object_count];
         xx_mem_zero(object, sizeof(*object));
-        if (!xx_yaffs_map_put(&parsed->map, object_id,
-                              (uint32_t)parsed->object_count)) {
+        if (!xx_yaffs_map_put(&parsed->map, object_id, (uint32_t)parsed->object_count)) {
             return false;
         }
         object->object_id = object_id;
@@ -1808,9 +1716,8 @@ static bool xx_yaffs_add_object(xx_yaffs_private *parsed, uint32_t object_id,
     return true;
 }
 
-static bool xx_yaffs_add_chunk(xx_yaffs_private *parsed, uint32_t object_id,
-                               uint32_t chunk_id, uint32_t sequence,
-                               uint32_t byte_count, int64_t offset) {
+static bool xx_yaffs_add_chunk(xx_yaffs_private *parsed, uint32_t object_id, uint32_t chunk_id, uint32_t sequence, uint32_t byte_count, int64_t offset)
+{
     xx_yaffs_data_chunk *chunk;
     if (parsed->chunk_count >= XX_YAFFS_MAX_DATA_CHUNKS) return true;
     if (!xx_yaffs_reserve_chunks(parsed)) return false;
@@ -1832,8 +1739,8 @@ static bool xx_yaffs_add_chunk(xx_yaffs_private *parsed, uint32_t object_id,
  * one contiguous run, with every copy of a repeated chunk together in the
  * order it was written. Heapsort: qsort() is CRT, and recursion depth is one
  * more thing that would have to be bounded against a hostile input. */
-static bool xx_yaffs_chunk_less(const xx_yaffs_data_chunk *left,
-                                const xx_yaffs_data_chunk *right) {
+static bool xx_yaffs_chunk_less(const xx_yaffs_data_chunk *left, const xx_yaffs_data_chunk *right)
+{
     if (left->object_id != right->object_id) {
         return left->object_id < right->object_id;
     }
@@ -1843,13 +1750,12 @@ static bool xx_yaffs_chunk_less(const xx_yaffs_data_chunk *left,
     return left->offset < right->offset;
 }
 
-static void xx_yaffs_sift_down(xx_yaffs_data_chunk *items, size_t root,
-                               size_t count) {
+static void xx_yaffs_sift_down(xx_yaffs_data_chunk *items, size_t root, size_t count)
+{
     while (root * 2U + 1U < count) {
         size_t child = root * 2U + 1U;
         xx_yaffs_data_chunk temporary;
-        if (child + 1U < count &&
-            xx_yaffs_chunk_less(&items[child], &items[child + 1U])) {
+        if (child + 1U < count && xx_yaffs_chunk_less(&items[child], &items[child + 1U])) {
             ++child;
         }
         if (!xx_yaffs_chunk_less(&items[root], &items[child])) return;
@@ -1860,7 +1766,8 @@ static void xx_yaffs_sift_down(xx_yaffs_data_chunk *items, size_t root,
     }
 }
 
-static void xx_yaffs_sort_chunks(xx_yaffs_data_chunk *items, size_t count) {
+static void xx_yaffs_sort_chunks(xx_yaffs_data_chunk *items, size_t count)
+{
     size_t index;
     if (count < 2U) return;
     for (index = count / 2U; index-- > 0U;) {
@@ -1880,11 +1787,11 @@ static void xx_yaffs_sort_chunks(xx_yaffs_data_chunk *items, size_t count) {
 
 /* The top-level name orphans are filed under, claimed on first use like any
  * other name, so that it cannot collide with a real entry of the root. */
-static bool xx_yaffs_lost_ready(xx_yaffs_private *parsed) {
+static bool xx_yaffs_lost_ready(xx_yaffs_private *parsed)
+{
     if (!parsed->lost_tried) {
         parsed->lost_tried = true;
-        parsed->lost_leaf = xx_yaffs_claim(parsed, XX_YAFFS_TOP_LEVEL, 0U,
-                                           XX_YAFFS_LOST_DIR);
+        parsed->lost_leaf = xx_yaffs_claim(parsed, XX_YAFFS_TOP_LEVEL, 0U, XX_YAFFS_LOST_DIR);
     }
     return parsed->lost_leaf != NULL;
 }
@@ -1905,8 +1812,8 @@ static bool xx_yaffs_lost_ready(xx_yaffs_private *parsed) {
  *
  * Objects already resolved short-circuit the walk, which makes the whole
  * pass linear in the number of objects no matter how deep the tree is. */
-static void xx_yaffs_resolve_path(xx_yaffs_private *parsed, size_t start,
-                                  size_t *stack) {
+static void xx_yaffs_resolve_path(xx_yaffs_private *parsed, size_t start, size_t *stack)
+{
     size_t depth = 0U;
     size_t current = start;
     size_t parent_slot = XX_YAFFS_TOP_LEVEL;
@@ -1924,13 +1831,10 @@ static void xx_yaffs_resolve_path(xx_yaffs_private *parsed, size_t start,
         }
         object->resolve = 1U;
         stack[depth++] = current;
-        if (object->object_id == XX_YAFFS_OBJECTID_ROOT ||
-            object->parent_id == XX_YAFFS_OBJECTID_ROOT) {
+        if (object->object_id == XX_YAFFS_OBJECTID_ROOT || object->parent_id == XX_YAFFS_OBJECTID_ROOT) {
             break;
         }
-        if (object->object_id == XX_YAFFS_OBJECTID_UNLINKED ||
-            object->object_id == XX_YAFFS_OBJECTID_DELETED ||
-            object->parent_id == XX_YAFFS_OBJECTID_UNLINKED ||
+        if (object->object_id == XX_YAFFS_OBJECTID_UNLINKED || object->object_id == XX_YAFFS_OBJECTID_DELETED || object->parent_id == XX_YAFFS_OBJECTID_UNLINKED ||
             object->parent_id == XX_YAFFS_OBJECTID_DELETED) {
             excluded = true;
             break;
@@ -1986,8 +1890,7 @@ static void xx_yaffs_resolve_path(xx_yaffs_private *parsed, size_t start,
              * name budget ran out or an allocation failed. Either way the
              * object is left out of the listing, and so is everything
              * below it. */
-            object->leaf = xx_yaffs_claim(parsed, parent_slot, prefix_length,
-                                          object->name);
+            object->leaf = xx_yaffs_claim(parsed, parent_slot, prefix_length, object->name);
         }
         if (!object->leaf) {
             excluded = true;
@@ -1995,14 +1898,14 @@ static void xx_yaffs_resolve_path(xx_yaffs_private *parsed, size_t start,
             continue;
         }
         object->parent_slot = parent_slot;
-        object->path_length = prefix_length + (prefix_length != 0U ? 1U : 0U) +
-                              xx_str_len(object->leaf);
+        object->path_length = prefix_length + (prefix_length != 0U ? 1U : 0U) + xx_str_len(object->leaf);
         parent_slot = index;
         prefix_length = object->path_length;
     }
 }
 
-static bool xx_yaffs_build_paths(xx_yaffs_private *parsed) {
+static bool xx_yaffs_build_paths(xx_yaffs_private *parsed)
+{
     size_t *stack;
     size_t index;
     if (parsed->object_count == 0U) return true;
@@ -2037,8 +1940,8 @@ static bool xx_yaffs_build_paths(xx_yaffs_private *parsed) {
  * one, and random bytes make such tags half the time - or where a second
  * image begins (xx_yaffs_restarts); neither is scanned further. The
  * detection score applies the same two rules. */
-static bool xx_yaffs_scan_tagged(Abstractformat *self, xx_yaffs_private *parsed,
-                                 xx_yaffs_source *source, xx_pd_struct *pd) {
+static bool xx_yaffs_scan_tagged(Abstractformat *self, xx_yaffs_private *parsed, xx_yaffs_source *source, xx_pd_struct *pd)
+{
     const xx_yaffs_geometry *geometry = &parsed->geometry;
     int64_t index;
     int64_t end_chunks = 0;
@@ -2049,8 +1952,7 @@ static bool xx_yaffs_scan_tagged(Abstractformat *self, xx_yaffs_private *parsed,
     bool left_first = false;
     bool gap = false;
     for (index = 0; index < parsed->total_chunks; ++index) {
-        int64_t offset =
-            self->base_address + index * (int64_t)geometry->chunk_size;
+        int64_t offset = self->base_address + index * (int64_t)geometry->chunk_size;
         xx_yaffs_tags tags;
         xx_yaffs_header header;
         bool good = false;
@@ -2059,68 +1961,58 @@ static bool xx_yaffs_scan_tagged(Abstractformat *self, xx_yaffs_private *parsed,
         if (pd && xx_pd_is_stopped(pd)) return false;
         if (!xx_yaffs_read_tags(source, geometry, offset, &tags)) break;
         switch (tags.kind) {
-        case XX_YAFFS_CHUNK_HEADER:
-            if (!xx_yaffs_read_header(source, offset, geometry->big_endian,
-                                      false, &header) ||
-                (tags.extra && (tags.extra_parent != header.parent_id ||
-                                tags.extra_type != header.type))) {
-                bad = true;
+            case XX_YAFFS_CHUNK_HEADER:
+                if (!xx_yaffs_read_header(source, offset, geometry->big_endian, false, &header) ||
+                    (tags.extra && (tags.extra_parent != header.parent_id || tags.extra_type != header.type))) {
+                    bad = true;
+                    break;
+                }
+                good = true;
+                if (index == 0) {
+                    first_seq = tags.sequence;
+                } else if (xx_yaffs_restarts(geometry, &tags, &header, first_seq, left_first, gap)) {
+                    good = false;
+                    restart = true;
+                    break;
+                }
+                /* Only the root may be nameless. */
+                if (header.name_length == 0U && tags.object_id != XX_YAFFS_OBJECTID_ROOT) {
+                    break;
+                }
+                if (!xx_yaffs_add_object(parsed, tags.object_id, tags.sequence, offset, &header)) {
+                    return false;
+                }
+                break;
+            case XX_YAFFS_CHUNK_DATA:
+                good = true;
+                if (!xx_yaffs_add_chunk(parsed, tags.object_id, tags.chunk_id, tags.sequence, tags.byte_count, offset)) {
+                    return false;
+                }
+                break;
+            case XX_YAFFS_CHUNK_SKIP:
+                if (tags.suspect) {
+                    bad = true;
+                } else if (tags.object_id != 0U || tags.chunk_id != 0U || tags.byte_count != 0U) {
+                    end_chunks = index + 1;
+                    erased_run = true;
+                }
+                /* Else YAFFS1 tags of all zeros: a factory bad block inside
+                 * the image, or zero padding after it. Neither extends it. */
+                break;
+            case XX_YAFFS_CHUNK_ERASED: {
+                /* Tags and data are programmed together: blank tags over a
+                 * page that is not blank are not YAFFS - typically the next
+                 * image, laid out on another page grid. */
+                uint8_t head[XX_YAFFS_TAGS_SIZE];
+                if (!xx_yaffs_source_read(source, offset, head, sizeof(head)) || !xx_yaffs_all_ones(head, sizeof(head))) {
+                    bad = true;
+                    break;
+                }
+                if (erased_run) end_chunks = index + 1;
+                gap = true;
                 break;
             }
-            good = true;
-            if (index == 0) {
-                first_seq = tags.sequence;
-            } else if (xx_yaffs_restarts(geometry, &tags, &header, first_seq,
-                                         left_first, gap)) {
-                good = false;
-                restart = true;
-                break;
-            }
-            /* Only the root may be nameless. */
-            if (header.name_length == 0U &&
-                tags.object_id != XX_YAFFS_OBJECTID_ROOT) {
-                break;
-            }
-            if (!xx_yaffs_add_object(parsed, tags.object_id, tags.sequence,
-                                     offset, &header)) {
-                return false;
-            }
-            break;
-        case XX_YAFFS_CHUNK_DATA:
-            good = true;
-            if (!xx_yaffs_add_chunk(parsed, tags.object_id, tags.chunk_id,
-                                    tags.sequence, tags.byte_count, offset)) {
-                return false;
-            }
-            break;
-        case XX_YAFFS_CHUNK_SKIP:
-            if (tags.suspect) {
-                bad = true;
-            } else if (tags.object_id != 0U || tags.chunk_id != 0U ||
-                       tags.byte_count != 0U) {
-                end_chunks = index + 1;
-                erased_run = true;
-            }
-            /* Else YAFFS1 tags of all zeros: a factory bad block inside
-             * the image, or zero padding after it. Neither extends it. */
-            break;
-        case XX_YAFFS_CHUNK_ERASED: {
-            /* Tags and data are programmed together: blank tags over a
-             * page that is not blank are not YAFFS - typically the next
-             * image, laid out on another page grid. */
-            uint8_t head[XX_YAFFS_TAGS_SIZE];
-            if (!xx_yaffs_source_read(source, offset, head, sizeof(head)) ||
-                !xx_yaffs_all_ones(head, sizeof(head))) {
-                bad = true;
-                break;
-            }
-            if (erased_run) end_chunks = index + 1;
-            gap = true;
-            break;
-        }
-        default:
-            bad = true;
-            break;
+            default: bad = true; break;
         }
         if (restart) break;
         if (good) {
@@ -2140,8 +2032,7 @@ static bool xx_yaffs_scan_tagged(Abstractformat *self, xx_yaffs_private *parsed,
             if (++bad_run >= XX_YAFFS_END_RUN) break;
         }
     }
-    parsed->archive_end = self->base_address +
-                          end_chunks * (int64_t)geometry->chunk_size;
+    parsed->archive_end = self->base_address + end_chunks * (int64_t)geometry->chunk_size;
     return true;
 }
 
@@ -2151,10 +2042,8 @@ static bool xx_yaffs_scan_tagged(Abstractformat *self, xx_yaffs_private *parsed,
  * order mkyaffs2image assigns them - 1 for the root if it was written, then
  * upward from 257. This is a heuristic, and it only ever runs when no tagged
  * geometry matched at all. */
-static bool xx_yaffs_scan_positional(Abstractformat *self,
-                                     xx_yaffs_private *parsed,
-                                     xx_yaffs_source *source,
-                                     xx_pd_struct *pd) {
+static bool xx_yaffs_scan_positional(Abstractformat *self, xx_yaffs_private *parsed, xx_yaffs_source *source, xx_pd_struct *pd)
+{
     const xx_yaffs_geometry *geometry = &parsed->geometry;
     int64_t index;
     uint32_t next_id = 257U;
@@ -2163,26 +2052,22 @@ static bool xx_yaffs_scan_positional(Abstractformat *self,
     int64_t pending_pages = 0;
     int64_t end_chunks = 0;
     for (index = 0; index < parsed->total_chunks; ++index) {
-        int64_t offset =
-            self->base_address + index * (int64_t)geometry->chunk_size;
+        int64_t offset = self->base_address + index * (int64_t)geometry->chunk_size;
         xx_yaffs_header header;
         uint32_t object_id;
         if (pd && xx_pd_is_stopped(pd)) return false;
         if (pending_pages > 0) {
-            if (!xx_yaffs_add_chunk(parsed, pending_object, ++pending_chunk,
-                                    0U, geometry->data_size, offset)) {
+            if (!xx_yaffs_add_chunk(parsed, pending_object, ++pending_chunk, 0U, geometry->data_size, offset)) {
                 return false;
             }
             end_chunks = index + 1;
             --pending_pages;
             continue;
         }
-        if (!xx_yaffs_read_header(source, offset, geometry->big_endian, false,
-                                  &header)) {
+        if (!xx_yaffs_read_header(source, offset, geometry->big_endian, false, &header)) {
             break;
         }
-        if (index == 0 && header.name_length == 0U &&
-            header.type == XX_YAFFS_OBJECT_TYPE_DIRECTORY) {
+        if (index == 0 && header.name_length == 0U && header.type == XX_YAFFS_OBJECT_TYPE_DIRECTORY) {
             object_id = XX_YAFFS_OBJECTID_ROOT;
         } else if (header.name_length == 0U) {
             break;
@@ -2195,8 +2080,7 @@ static bool xx_yaffs_scan_positional(Abstractformat *self,
         }
         end_chunks = index + 1;
         if (header.type == XX_YAFFS_OBJECT_TYPE_FILE && header.file_size != 0U) {
-            uint64_t pages = (header.file_size + geometry->data_size - 1U) /
-                             geometry->data_size;
+            uint64_t pages = (header.file_size + geometry->data_size - 1U) / geometry->data_size;
             if (pages > (uint64_t)(parsed->total_chunks - index - 1)) {
                 pages = (uint64_t)(parsed->total_chunks - index - 1);
             }
@@ -2205,23 +2089,22 @@ static bool xx_yaffs_scan_positional(Abstractformat *self,
             pending_pages = (int64_t)pages;
         }
     }
-    parsed->archive_end = self->base_address +
-                          end_chunks * (int64_t)geometry->chunk_size;
+    parsed->archive_end = self->base_address + end_chunks * (int64_t)geometry->chunk_size;
     return true;
 }
 
 /* Swap each chunk's object id for its object index, drop chunks that belong
  * to no known regular file, and turn the sorted array into one contiguous
  * run per object. */
-static void xx_yaffs_assign_chunk_runs(xx_yaffs_private *parsed) {
+static void xx_yaffs_assign_chunk_runs(xx_yaffs_private *parsed)
+{
     size_t read_index;
     size_t write_index = 0U;
     size_t index = 0U;
     for (read_index = 0U; read_index < parsed->chunk_count; ++read_index) {
         xx_yaffs_data_chunk chunk = parsed->chunks[read_index];
         size_t object_index;
-        if (!xx_yaffs_map_get(&parsed->map, chunk.object_id, &object_index) ||
-            parsed->objects[object_index].type != XX_YAFFS_OBJECT_TYPE_FILE) {
+        if (!xx_yaffs_map_get(&parsed->map, chunk.object_id, &object_index) || parsed->objects[object_index].type != XX_YAFFS_OBJECT_TYPE_FILE) {
             continue;
         }
         chunk.object_id = (uint32_t)object_index;
@@ -2232,8 +2115,7 @@ static void xx_yaffs_assign_chunk_runs(xx_yaffs_private *parsed) {
     while (index < parsed->chunk_count) {
         size_t object_index = parsed->chunks[index].object_id;
         size_t start = index;
-        while (index < parsed->chunk_count &&
-               parsed->chunks[index].object_id == object_index) {
+        while (index < parsed->chunk_count && parsed->chunks[index].object_id == object_index) {
             ++index;
         }
         if (object_index < parsed->object_count) {
@@ -2244,7 +2126,8 @@ static void xx_yaffs_assign_chunk_runs(xx_yaffs_private *parsed) {
 }
 
 /* The listing: every object that got a place in the tree, in object order. */
-static bool xx_yaffs_build_records(xx_yaffs_private *parsed) {
+static bool xx_yaffs_build_records(xx_yaffs_private *parsed)
+{
     size_t index;
     size_t count = 0U;
     for (index = 0U; index < parsed->object_count; ++index) {
@@ -2261,8 +2144,8 @@ static bool xx_yaffs_build_records(xx_yaffs_private *parsed) {
     return true;
 }
 
-static bool xx_yaffs_parse(Abstractformat *self, xx_yaffs_private *parsed,
-                           xx_pd_struct *pd) {
+static bool xx_yaffs_parse(Abstractformat *self, xx_yaffs_private *parsed, xx_pd_struct *pd)
+{
     int64_t total_size;
     int64_t available;
     xx_yaffs_source source;
@@ -2272,15 +2155,13 @@ static bool xx_yaffs_parse(Abstractformat *self, xx_yaffs_private *parsed,
         parsed->input_size = -1;
         parsed->archive_end = -1;
     }
-    if (!self || !self->device || !parsed || self->base_address < 0 ||
-        (pd && xx_pd_is_stopped(pd))) {
+    if (!self || !self->device || !parsed || self->base_address < 0 || (pd && xx_pd_is_stopped(pd))) {
         return false;
     }
     total_size = xx_io_total_size(self->device);
     if (total_size <= self->base_address) goto fail;
     parsed->input_size = total_size;
-    if (!xx_yaffs_detect(self->device, self->base_address, total_size,
-                         &parsed->geometry, pd)) {
+    if (!xx_yaffs_detect(self->device, self->base_address, total_size, &parsed->geometry, pd)) {
         goto fail;
     }
     available = total_size - self->base_address;
@@ -2289,9 +2170,7 @@ static bool xx_yaffs_parse(Abstractformat *self, xx_yaffs_private *parsed,
         parsed->total_chunks = (int64_t)XX_YAFFS_MAX_CHUNKS;
     }
     xx_yaffs_source_init(&source, self->device, total_size, true);
-    scanned = parsed->geometry.kind == XX_YAFFS_TAGS_NONE
-                  ? xx_yaffs_scan_positional(self, parsed, &source, pd)
-                  : xx_yaffs_scan_tagged(self, parsed, &source, pd);
+    scanned = parsed->geometry.kind == XX_YAFFS_TAGS_NONE ? xx_yaffs_scan_positional(self, parsed, &source, pd) : xx_yaffs_scan_tagged(self, parsed, &source, pd);
     xx_yaffs_source_cleanup(&source);
     if (!scanned) goto fail;
     if (parsed->archive_end <= self->base_address) goto fail;
@@ -2308,18 +2187,16 @@ fail:
 /* Archive record plumbing                                                  */
 /* ------------------------------------------------------------------------ */
 
-static bool xx_yaffs_copy_options(xx_list_s *destination,
-                                  const xx_list_s *source) {
+static bool xx_yaffs_copy_options(xx_list_s *destination, const xx_list_s *source)
+{
     size_t index;
     if (!destination || !source) return source == NULL;
     for (index = 0U; index < source->count; ++index) {
-        const xx_meta *item =
-            (const xx_meta *)xx_list_at((const xx_list_t *)source, index);
+        const xx_meta *item = (const xx_meta *)xx_list_at((const xx_list_t *)source, index);
         xx_meta copy;
         if (!item) continue;
         xx_meta_init(&copy, item->meta_id);
-        if (!xx_var_copy(&copy.var, &item->var) ||
-            !xx_list_append(destination, &copy)) {
+        if (!xx_var_copy(&copy.var, &item->var) || !xx_list_append(destination, &copy)) {
             xx_meta_cleanup(&copy);
             return false;
         }
@@ -2327,13 +2204,12 @@ static bool xx_yaffs_copy_options(xx_list_s *destination,
     return true;
 }
 
-static const xx_var *xx_yaffs_find_option(const xx_list_s *options,
-                                          uint32_t meta_id) {
+static const xx_var *xx_yaffs_find_option(const xx_list_s *options, uint32_t meta_id)
+{
     size_t index;
     if (!options) return NULL;
     for (index = 0U; index < options->count; ++index) {
-        const xx_meta *item =
-            (const xx_meta *)xx_list_at((const xx_list_t *)options, index);
+        const xx_meta *item = (const xx_meta *)xx_list_at((const xx_list_t *)options, index);
         if (item && item->meta_id == meta_id) return &item->var;
     }
     return NULL;
@@ -2341,12 +2217,11 @@ static const xx_var *xx_yaffs_find_option(const xx_list_s *options,
 
 /* The object whose data a record carries: the file itself, or for a hard
  * link the file it points at (one level; a link to a link carries none). */
-static const xx_yaffs_object *xx_yaffs_data_object(
-    const xx_yaffs_private *parsed, const xx_yaffs_object *object) {
+static const xx_yaffs_object *xx_yaffs_data_object(const xx_yaffs_private *parsed, const xx_yaffs_object *object)
+{
     size_t index;
     if (object->type == XX_YAFFS_OBJECT_TYPE_FILE) return object;
-    if (object->type != XX_YAFFS_OBJECT_TYPE_HARDLINK ||
-        !xx_yaffs_map_get(&parsed->map, object->equiv_id, &index) ||
+    if (object->type != XX_YAFFS_OBJECT_TYPE_HARDLINK || !xx_yaffs_map_get(&parsed->map, object->equiv_id, &index) ||
         parsed->objects[index].type != XX_YAFFS_OBJECT_TYPE_FILE) {
         return NULL;
     }
@@ -2357,8 +2232,8 @@ static const xx_yaffs_object *xx_yaffs_data_object(
  * path_length was checked against XX_YAFFS_MAX_PATH when the leaves were
  * claimed; every step here is checked again, so an inconsistency yields
  * NULL rather than a short or overrun buffer. */
-static char *xx_yaffs_build_path(const xx_yaffs_private *parsed,
-                                 size_t object_index) {
+static char *xx_yaffs_build_path(const xx_yaffs_private *parsed, size_t object_index)
+{
     const xx_yaffs_object *object = &parsed->objects[object_index];
     size_t length = object->path_length;
     size_t at = length;
@@ -2402,9 +2277,8 @@ static char *xx_yaffs_build_path(const xx_yaffs_private *parsed,
     return NULL;
 }
 
-static bool xx_yaffs_populate_record(xx_archive_record *record,
-                                     const xx_yaffs_private *parsed,
-                                     size_t object_index) {
+static bool xx_yaffs_populate_record(xx_archive_record *record, const xx_yaffs_private *parsed, size_t object_index)
+{
     const xx_yaffs_object *object;
     const xx_yaffs_object *data;
     char *path;
@@ -2423,34 +2297,25 @@ static bool xx_yaffs_populate_record(xx_archive_record *record,
     size = data ? (int64_t)(data->file_size & INT64_MAX) : 0;
     /* A file's pages are scattered, so data_offset can only point at the
      * first of them; unpacking walks the chunk run instead. */
-    data_offset = (data && data->chunk_count != 0U)
-                      ? parsed->chunks[data->first_chunk].offset
-                      : object->header_offset;
+    data_offset = (data && data->chunk_count != 0U) ? parsed->chunks[data->first_chunk].offset : object->header_offset;
     record->header_offset = object->header_offset;
     record->header_size = (int64_t)XX_YAFFS_HEADER_SIZE;
     record->data_offset = data_offset;
     record->compressed_size = size;
-    result = xx_archive_record_set_original_name(record, path) &&
-             xx_archive_record_set_meta_u64(record, XX_META_ID_UNCOMPRESSED_SIZE,
-                                            (uint64_t)size) &&
-             xx_archive_record_set_meta_u64(record, XX_META_ID_COMPRESSED_SIZE,
-                                            (uint64_t)size) &&
-             xx_archive_record_set_meta_u64(record,
-                                            XX_META_ID_COMPRESSION_METHOD, 0U) &&
-             xx_archive_record_set_meta_bool(record, XX_META_ID_IS_FOLDER,
-                                             is_folder);
+    result = xx_archive_record_set_original_name(record, path) && xx_archive_record_set_meta_u64(record, XX_META_ID_UNCOMPRESSED_SIZE, (uint64_t)size) &&
+             xx_archive_record_set_meta_u64(record, XX_META_ID_COMPRESSED_SIZE, (uint64_t)size) &&
+             xx_archive_record_set_meta_u64(record, XX_META_ID_COMPRESSION_METHOD, 0U) && xx_archive_record_set_meta_bool(record, XX_META_ID_IS_FOLDER, is_folder);
     xx_mem_free(path);
     if (!result) return false;
-    if (object->type == XX_YAFFS_OBJECT_TYPE_SYMLINK && object->alias &&
-        object->alias[0] != '\0' &&
-        !xx_archive_record_set_meta_str(record, XX_META_ID_LINK_TARGET,
-                                        object->alias)) {
+    if (object->type == XX_YAFFS_OBJECT_TYPE_SYMLINK && object->alias && object->alias[0] != '\0' &&
+        !xx_archive_record_set_meta_str(record, XX_META_ID_LINK_TARGET, object->alias)) {
         return false;
     }
     return true;
 }
 
-static void xx_yaffs_archive_stream_free(void *pointer) {
+static void xx_yaffs_archive_stream_free(void *pointer)
+{
     xx_yaffs_archive_stream *stream = (xx_yaffs_archive_stream *)pointer;
     if (!stream) return;
     xx_yaffs_private_cleanup(&stream->parsed);
@@ -2460,22 +2325,20 @@ static void xx_yaffs_archive_stream_free(void *pointer) {
 /* Extraction-time name check, a second line behind the renaming done when
  * the paths were built: relative, no empty, "." or ".." component, nothing
  * Windows reserves. */
-static bool xx_yaffs_safe_name(const char *name) {
+static bool xx_yaffs_safe_name(const char *name)
+{
     const char *component;
     const char *cursor;
     if (!name || !name[0] || name[0] == '/' || name[0] == '\\') return false;
     component = name;
     for (cursor = name;; ++cursor) {
         unsigned char ch = (unsigned char)*cursor;
-        if (ch == ':' || ch == '<' || ch == '>' || ch == '"' || ch == '|' ||
-            ch == '?' || ch == '*' || (ch != 0U && ch < 32U)) {
+        if (ch == ':' || ch == '<' || ch == '>' || ch == '"' || ch == '|' || ch == '?' || ch == '*' || (ch != 0U && ch < 32U)) {
             return false;
         }
         if (ch == '/' || ch == '\\' || ch == 0U) {
             size_t length = (size_t)(cursor - component);
-            if (length == 0U || (length == 1U && component[0] == '.') ||
-                (length == 2U && component[0] == '.' && component[1] == '.') ||
-                component[length - 1U] == ' ' ||
+            if (length == 0U || (length == 1U && component[0] == '.') || (length == 2U && component[0] == '.' && component[1] == '.') || component[length - 1U] == ' ' ||
                 component[length - 1U] == '.') {
                 return false;
             }
@@ -2486,14 +2349,12 @@ static bool xx_yaffs_safe_name(const char *name) {
 }
 
 /* Write @p size zero bytes to @p output (NULL: count only). */
-static bool xx_yaffs_write_zeros(xx_io_device *output, uint8_t *page,
-                                 uint32_t data_size, uint64_t size,
-                                 xx_pd_struct *pd) {
+static bool xx_yaffs_write_zeros(xx_io_device *output, uint8_t *page, uint32_t data_size, uint64_t size, xx_pd_struct *pd)
+{
     if (!output) return true;
     xx_mem_zero(page, data_size);
     while (size != 0U) {
-        size_t want = size < (uint64_t)data_size ? (size_t)size
-                                                 : (size_t)data_size;
+        size_t want = size < (uint64_t)data_size ? (size_t)size : (size_t)data_size;
         ssize_t written;
         if (pd && xx_pd_is_stopped(pd)) return false;
         written = xx_io_write(output, page, want);
@@ -2516,11 +2377,9 @@ static bool xx_yaffs_write_zeros(xx_io_device *output, uint8_t *page,
  * file needs goes to @p holes; the caller holds them to a budget before
  * anything is written, so a few bytes of header cannot claim an arbitrary
  * amount of output. */
-static bool xx_yaffs_emit_file(Abstractformat *self,
-                               const xx_yaffs_private *parsed,
-                               const xx_yaffs_object *object,
-                               xx_io_device *output, uint64_t *holes,
-                               xx_pd_struct *pd) {
+static bool xx_yaffs_emit_file(Abstractformat *self, const xx_yaffs_private *parsed, const xx_yaffs_object *object, xx_io_device *output, uint64_t *holes,
+                               xx_pd_struct *pd)
+{
     uint8_t *page = NULL;
     uint64_t remaining = object->file_size;
     uint64_t zeros = 0U;
@@ -2545,13 +2404,9 @@ static bool xx_yaffs_emit_file(Abstractformat *self,
             result = false;
             break;
         }
-        while (last + 1U < end &&
-               parsed->chunks[last + 1U].chunk_id ==
-                   parsed->chunks[index].chunk_id) {
+        while (last + 1U < end && parsed->chunks[last + 1U].chunk_id == parsed->chunks[index].chunk_id) {
             ++last;
-            if (xx_yaffs_newer(parsed->geometry.kind,
-                               parsed->chunks[best].sequence,
-                               parsed->chunks[last].sequence)) {
+            if (xx_yaffs_newer(parsed->geometry.kind, parsed->chunks[best].sequence, parsed->chunks[last].sequence)) {
                 best = last;
             }
         }
@@ -2562,8 +2417,7 @@ static bool xx_yaffs_emit_file(Abstractformat *self,
         }
         if (parsed->chunks[best].chunk_id != expected) {
             /* A hole up to this chunk, or to the end of the file. */
-            uint64_t gap = (uint64_t)(parsed->chunks[best].chunk_id - expected) *
-                           (uint64_t)data_size;
+            uint64_t gap = (uint64_t)(parsed->chunks[best].chunk_id - expected) * (uint64_t)data_size;
             if (gap > remaining) gap = remaining;
             if (!xx_yaffs_write_zeros(output, page, data_size, gap, pd)) {
                 result = false;
@@ -2574,18 +2428,14 @@ static bool xx_yaffs_emit_file(Abstractformat *self,
             expected = parsed->chunks[best].chunk_id;
             continue;
         }
-        want = remaining < (uint64_t)data_size ? (size_t)remaining
-                                               : (size_t)data_size;
-        if (!xx_yaffs_range_within(parsed->input_size,
-                                   parsed->chunks[best].offset,
-                                   (int64_t)want)) {
+        want = remaining < (uint64_t)data_size ? (size_t)remaining : (size_t)data_size;
+        if (!xx_yaffs_range_within(parsed->input_size, parsed->chunks[best].offset, (int64_t)want)) {
             result = false;
             break;
         }
         if (output) {
             ssize_t written;
-            if (!xx_yaffs_read_at(self->device, parsed->chunks[best].offset,
-                                  page, want)) {
+            if (!xx_yaffs_read_at(self->device, parsed->chunks[best].offset, page, want)) {
                 result = false;
                 break;
             }
@@ -2606,15 +2456,13 @@ static bool xx_yaffs_emit_file(Abstractformat *self,
         bool later = false;
         if (used != SIZE_MAX) {
             const xx_yaffs_data_chunk *chunk = &parsed->chunks[used];
-            if (parsed->geometry.kind == XX_YAFFS_TAGS_V2 &&
-                object->sequence != chunk->sequence) {
+            if (parsed->geometry.kind == XX_YAFFS_TAGS_V2 && object->sequence != chunk->sequence) {
                 later = object->sequence > chunk->sequence;
             } else {
                 later = object->header_offset > chunk->offset;
             }
         }
-        if (later &&
-            xx_yaffs_write_zeros(output, page, data_size, remaining, pd)) {
+        if (later && xx_yaffs_write_zeros(output, page, data_size, remaining, pd)) {
             zeros += remaining;
         } else {
             result = false;
@@ -2625,10 +2473,8 @@ static bool xx_yaffs_emit_file(Abstractformat *self,
     return result;
 }
 
-static bool xx_yaffs_write_file(Abstractformat *self,
-                                const xx_yaffs_private *parsed,
-                                const xx_yaffs_object *object,
-                                const char *destination, xx_pd_struct *pd) {
+static bool xx_yaffs_write_file(Abstractformat *self, const xx_yaffs_private *parsed, const xx_yaffs_object *object, const char *destination, xx_pd_struct *pd)
+{
     xx_io_device *output;
     bool result;
     bool created = false;
@@ -2647,7 +2493,8 @@ static bool xx_yaffs_write_file(Abstractformat *self,
 /* Construction and vtable                                                  */
 /* ------------------------------------------------------------------------ */
 
-void xx_yaffs_init(xx_yaffs *yaffs, xx_io_device *dev, int64_t base_address) {
+void xx_yaffs_init(xx_yaffs *yaffs, xx_io_device *dev, int64_t base_address)
+{
     if (!yaffs) return;
     xx_mem_zero(yaffs, sizeof(*yaffs));
     xx_format_init(&yaffs->format, dev, base_address);
@@ -2660,29 +2507,25 @@ void xx_yaffs_init(xx_yaffs *yaffs, xx_io_device *dev, int64_t base_address) {
     yaffs->format.check_is_valid = xx_yaffs_check_is_valid;
     yaffs->format.handle_base_info = xx_yaffs_handle_base_info;
     yaffs->format.get_format_size = xx_yaffs_get_format_size;
-    yaffs->format.get_number_of_archive_records =
-        xx_yaffs_get_number_of_archive_records;
-    yaffs->format.create_archive_records_reading =
-        xx_yaffs_create_archive_records_reading;
-    yaffs->format.get_current_archive_record =
-        xx_yaffs_get_current_archive_record;
-    yaffs->format.unpack_current_archive_record =
-        xx_yaffs_unpack_current_archive_record;
-    yaffs->format.archive_record_move_to_next =
-        xx_yaffs_archive_record_move_to_next;
-    yaffs->format.free_archive_records_reading =
-        xx_yaffs_free_archive_records_reading;
+    yaffs->format.get_number_of_archive_records = xx_yaffs_get_number_of_archive_records;
+    yaffs->format.create_archive_records_reading = xx_yaffs_create_archive_records_reading;
+    yaffs->format.get_current_archive_record = xx_yaffs_get_current_archive_record;
+    yaffs->format.unpack_current_archive_record = xx_yaffs_unpack_current_archive_record;
+    yaffs->format.archive_record_move_to_next = xx_yaffs_archive_record_move_to_next;
+    yaffs->format.free_archive_records_reading = xx_yaffs_free_archive_records_reading;
     yaffs->format.destroy = xx_yaffs_vtable_destroy;
     yaffs->archive_end = -1;
 }
 
-xx_yaffs *xx_yaffs_create(xx_io_device *dev, int64_t base_address) {
+xx_yaffs *xx_yaffs_create(xx_io_device *dev, int64_t base_address)
+{
     xx_yaffs *yaffs = (xx_yaffs *)xx_mem_alloc(sizeof(*yaffs));
     if (yaffs) xx_yaffs_init(yaffs, dev, base_address);
     return yaffs;
 }
 
-void xx_yaffs_destroy(xx_yaffs *yaffs) {
+void xx_yaffs_destroy(xx_yaffs *yaffs)
+{
     if (!yaffs) return;
     if (yaffs->internal) {
         xx_yaffs_private_cleanup((xx_yaffs_private *)yaffs->internal);
@@ -2692,11 +2535,13 @@ void xx_yaffs_destroy(xx_yaffs *yaffs) {
     xx_format_cleanup_extra_parameters(&yaffs->format);
 }
 
-static void xx_yaffs_vtable_destroy(Abstractformat *self) {
+static void xx_yaffs_vtable_destroy(Abstractformat *self)
+{
     xx_yaffs_destroy((xx_yaffs *)self);
 }
 
-void xx_yaffs_free(xx_yaffs *yaffs) {
+void xx_yaffs_free(xx_yaffs *yaffs)
+{
     if (!yaffs) return;
     xx_yaffs_destroy(yaffs);
     xx_mem_free(yaffs);
@@ -2710,20 +2555,20 @@ void xx_yaffs_free(xx_yaffs *yaffs) {
  * chunk 0 is not an object header costs one 512 byte read; a candidate
  * geometry then costs at most XX_YAFFS_PROBE_CHUNKS tag reads.
  * xx_yaffs_handle_base_info() does the real work. */
-bool xx_yaffs_check_is_valid(Abstractformat *self, xx_pd_struct *pd) {
+bool xx_yaffs_check_is_valid(Abstractformat *self, xx_pd_struct *pd)
+{
     xx_yaffs_geometry geometry;
     int64_t total_size;
-    if (!self || !self->device || self->base_address < 0 ||
-        (pd && xx_pd_is_stopped(pd))) {
+    if (!self || !self->device || self->base_address < 0 || (pd && xx_pd_is_stopped(pd))) {
         return false;
     }
     total_size = xx_io_total_size(self->device);
     if (total_size <= self->base_address) return false;
-    return xx_yaffs_detect(self->device, self->base_address, total_size,
-                           &geometry, pd);
+    return xx_yaffs_detect(self->device, self->base_address, total_size, &geometry, pd);
 }
 
-bool xx_yaffs_handle_base_info(Abstractformat *self, xx_pd_struct *pd) {
+bool xx_yaffs_handle_base_info(Abstractformat *self, xx_pd_struct *pd)
+{
     xx_yaffs_private *parsed;
     xx_yaffs *yaffs = (xx_yaffs *)self;
     int64_t total_size;
@@ -2747,11 +2592,9 @@ bool xx_yaffs_handle_base_info(Abstractformat *self, xx_pd_struct *pd) {
     yaffs->tag_offset = parsed->geometry.tag_offset;
     yaffs->version = parsed->geometry.kind == XX_YAFFS_TAGS_V1 ? 1U : 2U;
     yaffs->big_endian = parsed->geometry.big_endian;
-    yaffs->has_spare = parsed->geometry.kind != XX_YAFFS_TAGS_NONE &&
-                       !parsed->geometry.inband;
+    yaffs->has_spare = parsed->geometry.kind != XX_YAFFS_TAGS_NONE && !parsed->geometry.inband;
     yaffs->archive_end = parsed->archive_end;
-    self->endian = parsed->geometry.big_endian ? XX_ENDIAN_BIG
-                                               : XX_ENDIAN_LITTLE;
+    self->endian = parsed->geometry.big_endian ? XX_ENDIAN_BIG : XX_ENDIAN_LITTLE;
     self->format_size = parsed->archive_end - self->base_address;
     total_size = xx_io_total_size(self->device);
     if (total_size > parsed->archive_end) {
@@ -2767,29 +2610,27 @@ bool xx_yaffs_handle_base_info(Abstractformat *self, xx_pd_struct *pd) {
     return true;
 }
 
-int64_t xx_yaffs_get_format_size(Abstractformat *self, xx_pd_struct *pd) {
-    if (!self ||
-        (!self->base_info_handled && !xx_format_handle_base_info(self, pd))) {
+int64_t xx_yaffs_get_format_size(Abstractformat *self, xx_pd_struct *pd)
+{
+    if (!self || (!self->base_info_handled && !xx_format_handle_base_info(self, pd))) {
         return -1;
     }
     return self->format_size;
 }
 
-uint64_t xx_yaffs_get_number_of_archive_records(Abstractformat *self,
-                                                xx_pd_struct *pd) {
-    if (!self ||
-        (!self->base_info_handled && !xx_format_handle_base_info(self, pd))) {
+uint64_t xx_yaffs_get_number_of_archive_records(Abstractformat *self, xx_pd_struct *pd)
+{
+    if (!self || (!self->base_info_handled && !xx_format_handle_base_info(self, pd))) {
         return 0U;
     }
     return ((xx_yaffs *)self)->number_of_records;
 }
 
-xx_archive_record_state *xx_yaffs_create_archive_records_reading(
-    Abstractformat *self, const xx_list_s *options, xx_pd_struct *pd) {
+xx_archive_record_state *xx_yaffs_create_archive_records_reading(Abstractformat *self, const xx_list_s *options, xx_pd_struct *pd)
+{
     xx_archive_record_state *state;
     xx_yaffs_archive_stream *stream;
-    if (!self || !self->device ||
-        (!self->base_info_handled && !xx_format_handle_base_info(self, pd))) {
+    if (!self || !self->device || (!self->base_info_handled && !xx_format_handle_base_info(self, pd))) {
         return NULL;
     }
     state = (xx_archive_record_state *)xx_mem_alloc(sizeof(*state));
@@ -2825,28 +2666,22 @@ xx_archive_record_state *xx_yaffs_create_archive_records_reading(
     state->internal_state = stream;
     state->free_internal = xx_yaffs_archive_stream_free;
     state->total_records = (int64_t)stream->parsed.record_count;
-    if (stream->parsed.record_count != 0U &&
-        xx_yaffs_populate_record(&state->current_record, &stream->parsed,
-                                 stream->parsed.records[0])) {
+    if (stream->parsed.record_count != 0U && xx_yaffs_populate_record(&state->current_record, &stream->parsed, stream->parsed.records[0])) {
         state->has_record = true;
         state->current_index = 0;
     }
     return state;
 }
 
-const xx_archive_record *xx_yaffs_get_current_archive_record(
-    Abstractformat *self, xx_archive_record_state *state) {
-    return self && state && state->format == self && state->has_record
-               ? &state->current_record
-               : NULL;
+const xx_archive_record *xx_yaffs_get_current_archive_record(Abstractformat *self, xx_archive_record_state *state)
+{
+    return self && state && state->format == self && state->has_record ? &state->current_record : NULL;
 }
 
-bool xx_yaffs_archive_record_move_to_next(Abstractformat *self,
-                                          xx_archive_record_state *state,
-                                          xx_pd_struct *pd) {
+bool xx_yaffs_archive_record_move_to_next(Abstractformat *self, xx_archive_record_state *state, xx_pd_struct *pd)
+{
     xx_yaffs_archive_stream *stream;
-    if (!self || !state || state->format != self || !state->has_record ||
-        !state->internal_state || (pd && xx_pd_is_stopped(pd))) {
+    if (!self || !state || state->format != self || !state->has_record || !state->internal_state || (pd && xx_pd_is_stopped(pd))) {
         return false;
     }
     stream = (xx_yaffs_archive_stream *)state->internal_state;
@@ -2857,8 +2692,7 @@ bool xx_yaffs_archive_record_move_to_next(Abstractformat *self,
         state->has_record = false;
         return false;
     }
-    if (!xx_yaffs_populate_record(&state->current_record, &stream->parsed,
-                                  stream->parsed.records[stream->index])) {
+    if (!xx_yaffs_populate_record(&state->current_record, &stream->parsed, stream->parsed.records[stream->index])) {
         state->has_record = false;
         return false;
     }
@@ -2866,9 +2700,8 @@ bool xx_yaffs_archive_record_move_to_next(Abstractformat *self,
     return true;
 }
 
-bool xx_yaffs_unpack_current_archive_record(Abstractformat *self,
-                                            xx_archive_record_state *state,
-                                            xx_pd_struct *pd) {
+bool xx_yaffs_unpack_current_archive_record(Abstractformat *self, xx_archive_record_state *state, xx_pd_struct *pd)
+{
     const xx_archive_record *record;
     xx_yaffs_archive_stream *stream;
     const xx_yaffs_object *object;
@@ -2879,9 +2712,7 @@ bool xx_yaffs_unpack_current_archive_record(Abstractformat *self,
     char *owned_base = NULL;
     char *destination = NULL;
     bool result = false;
-    if (!self || !self->device || !state || state->format != self ||
-        !state->has_record || !state->internal_state ||
-        (pd && xx_pd_is_stopped(pd))) {
+    if (!self || !self->device || !state || state->format != self || !state->has_record || !state->internal_state || (pd && xx_pd_is_stopped(pd))) {
         return false;
     }
     stream = (xx_yaffs_archive_stream *)state->internal_state;
@@ -2896,9 +2727,7 @@ bool xx_yaffs_unpack_current_archive_record(Abstractformat *self,
         /* Check before creating anything, so a broken file leaves no
          * stub. Holes and hardlink copies each draw on a budget the size
          * of the image. */
-        if (!xx_yaffs_emit_file(self, &stream->parsed, data, NULL, &holes,
-                                pd) ||
-            holes > stream->hole_budget) {
+        if (!xx_yaffs_emit_file(self, &stream->parsed, data, NULL, &holes, pd) || holes > stream->hole_budget) {
             return false;
         }
         if (object->type == XX_YAFFS_OBJECT_TYPE_HARDLINK) {
@@ -2913,17 +2742,14 @@ bool xx_yaffs_unpack_current_archive_record(Abstractformat *self,
          * payload is inside the device. */
         return true;
     }
-    if (option->type == XX_VAR_TYPE_STRING ||
-        option->type == XX_VAR_TYPE_STRING_VIEW) {
+    if (option->type == XX_VAR_TYPE_STRING || option->type == XX_VAR_TYPE_STRING_VIEW) {
         base = xx_var_get_str(option);
-    } else if (option->type == XX_VAR_TYPE_WSTRING ||
-               option->type == XX_VAR_TYPE_WSTRING_VIEW) {
+    } else if (option->type == XX_VAR_TYPE_WSTRING || option->type == XX_VAR_TYPE_WSTRING_VIEW) {
         owned_base = xx_str_unicode_to_utf8(xx_var_get_wstr(option));
         base = owned_base;
     }
     if (!base) goto cleanup;
-    if (base[0] && base[xx_str_len(base) - 1U] != '/' &&
-        base[xx_str_len(base) - 1U] != '\\') {
+    if (base[0] && base[xx_str_len(base) - 1U] != '/' && base[xx_str_len(base) - 1U] != '\\') {
         destination = xx_str_concat(base, "/");
         if (!destination) goto cleanup;
         {
@@ -2939,8 +2765,7 @@ bool xx_yaffs_unpack_current_archive_record(Abstractformat *self,
         result = xx_store_create_dirs_a(destination, true);
     } else if (data) {
         if (xx_store_create_dirs_a(destination, false)) {
-            result = xx_yaffs_write_file(self, &stream->parsed, data,
-                                         destination, pd);
+            result = xx_yaffs_write_file(self, &stream->parsed, data, destination, pd);
         }
     } else {
         /* Symlinks (target in XX_META_ID_LINK_TARGET), device nodes and
@@ -2954,30 +2779,37 @@ cleanup:
     return result;
 }
 
-void xx_yaffs_free_archive_records_reading(Abstractformat *self,
-                                           xx_archive_record_state *state) {
+void xx_yaffs_free_archive_records_reading(Abstractformat *self, xx_archive_record_state *state)
+{
     (void)self;
     xx_archive_record_state_free(state);
 }
 
-uint64_t xx_yaffs_get_number_of_records(const xx_yaffs *yaffs) {
+uint64_t xx_yaffs_get_number_of_records(const xx_yaffs *yaffs)
+{
     return yaffs ? yaffs->number_of_records : 0U;
 }
-uint64_t xx_yaffs_get_number_of_members(const xx_yaffs *yaffs) {
+uint64_t xx_yaffs_get_number_of_members(const xx_yaffs *yaffs)
+{
     return yaffs ? yaffs->number_of_members : 0U;
 }
-uint32_t xx_yaffs_get_page_size(const xx_yaffs *yaffs) {
+uint32_t xx_yaffs_get_page_size(const xx_yaffs *yaffs)
+{
     return yaffs ? yaffs->page_size : 0U;
 }
-uint32_t xx_yaffs_get_spare_size(const xx_yaffs *yaffs) {
+uint32_t xx_yaffs_get_spare_size(const xx_yaffs *yaffs)
+{
     return yaffs ? yaffs->spare_size : 0U;
 }
-uint32_t xx_yaffs_get_version(const xx_yaffs *yaffs) {
+uint32_t xx_yaffs_get_version(const xx_yaffs *yaffs)
+{
     return yaffs ? yaffs->version : 0U;
 }
-bool xx_yaffs_get_big_endian(const xx_yaffs *yaffs) {
+bool xx_yaffs_get_big_endian(const xx_yaffs *yaffs)
+{
     return yaffs ? yaffs->big_endian : false;
 }
-int64_t xx_yaffs_get_archive_end(const xx_yaffs *yaffs) {
+int64_t xx_yaffs_get_archive_end(const xx_yaffs *yaffs)
+{
     return yaffs ? yaffs->archive_end : -1;
 }

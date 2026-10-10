@@ -48,8 +48,7 @@
 /* Registration placeholder: xxfc_defs.h is shared and not edited from here,
  * so the alias macro that sits next to the enumerator is tested instead. */
 #ifdef ARNI_INSTALLER_CONTAINER
-#define XX_ARNI_INSTALLER_CONTAINER_FILE_TYPE \
-    XX_FILE_TYPE_ARNI_INSTALLER_CONTAINER
+#define XX_ARNI_INSTALLER_CONTAINER_FILE_TYPE XX_FILE_TYPE_ARNI_INSTALLER_CONTAINER
 #else
 #define XX_ARNI_INSTALLER_CONTAINER_FILE_TYPE XX_FILE_TYPE_UNKNOWN
 #endif
@@ -109,22 +108,20 @@ static const uint8_t arni_tag[4] = {'A', 'R', 'N', 'I'};
 /* ---------------------------------------------------------------------- */
 /* Byte helpers                                                            */
 
-static uint32_t arni_le16(const uint8_t *bytes) {
+static uint32_t arni_le16(const uint8_t *bytes)
+{
     return (uint32_t)bytes[0] | ((uint32_t)bytes[1] << 8U);
 }
 
-static bool arni_read_at(xx_io_device *device, int64_t offset, void *buffer,
-                         size_t size) {
+static bool arni_read_at(xx_io_device *device, int64_t offset, void *buffer, size_t size)
+{
     size_t done = 0U;
     const size_t io_capacity = xx_get_file_buffer_size();
-    if (!device || (!buffer && size != 0U) || offset < 0 ||
-        xx_io_seek64(device, offset, SEEK_SET) != 0)
-        return false;
+    if (!device || (!buffer && size != 0U) || offset < 0 || xx_io_seek64(device, offset, SEEK_SET) != 0) return false;
     while (done < size) {
         size_t request = size - done;
         if (request > io_capacity) request = io_capacity;
-        ssize_t amount =
-            xx_io_read(device, (uint8_t *)buffer + done, request);
+        ssize_t amount = xx_io_read(device, (uint8_t *)buffer + done, request);
         if (amount <= 0 || (size_t)amount > request) return false;
         done += (size_t)amount;
     }
@@ -133,13 +130,11 @@ static bool arni_read_at(xx_io_device *device, int64_t offset, void *buffer,
 
 /* What the ten bytes at @p bytes are: a member header (its decoded size in
  * @p size), the end record, or neither. */
-static int arni_classify(const uint8_t *bytes, int64_t *size) {
+static int arni_classify(const uint8_t *bytes, int64_t *size)
+{
     int64_t value;
-    if (bytes[0] != 'A' || xx_rt_memcmp(bytes, arni_tag, 4U) != 0)
-        return ARNI_KIND_NONE;
-    if (xx_rt_memcmp(bytes + 4, arni_tag, 4U) == 0)
-        return (bytes[8] == 0x0DU && bytes[9] == 0x0AU) ? ARNI_KIND_END
-                                                        : ARNI_KIND_NONE;
+    if (bytes[0] != 'A' || xx_rt_memcmp(bytes, arni_tag, 4U) != 0) return ARNI_KIND_NONE;
+    if (xx_rt_memcmp(bytes + 4, arni_tag, 4U) == 0) return (bytes[8] == 0x0DU && bytes[9] == 0x0AU) ? ARNI_KIND_END : ARNI_KIND_NONE;
     /* Signed on purpose, as the references read it: a size with the top bit
      * set is corrupt, not a two-gigabyte member. */
     value = (int64_t)(int32_t)xx_data_get_u32(bytes + 4, 4, 0, false);
@@ -165,8 +160,8 @@ typedef struct arni_window_s {
     uint8_t frame[ARNI_PROBE]; /* One complete header, independent of staging. */
 } arni_window;
 
-static bool arni_window_open(arni_window *window, xx_io_device *device,
-                             int64_t base, int64_t end, int64_t *budget) {
+static bool arni_window_open(arni_window *window, xx_io_device *device, int64_t base, int64_t end, int64_t *budget)
+{
     xx_mem_zero(window, sizeof(*window));
     window->device = device;
     window->base = base;
@@ -178,35 +173,32 @@ static bool arni_window_open(arni_window *window, xx_io_device *device,
     return window->data != NULL;
 }
 
-static void arni_window_close(arni_window *window) {
+static void arni_window_close(arni_window *window)
+{
     if (window->data) xx_mem_free(window->data);
     window->data = NULL;
 }
 
 /* Make [offset, offset + need) resident; false past the end or the budget. */
-static bool arni_window_load(arni_window *window, int64_t offset,
-                             int64_t need) {
+static bool arni_window_load(arni_window *window, int64_t offset, int64_t need)
+{
     int64_t length;
     if (offset < 0 || need <= 0 || offset > window->end - need) return false;
-    if (window->start >= 0 && offset >= window->start &&
-        offset + need <= window->start + window->length)
-        return true;
+    if (window->start >= 0 && offset >= window->start && offset + need <= window->start + window->length) return true;
     length = window->end - offset;
-    if ((uint64_t)length > window->io_capacity)
-        length = (int64_t)window->io_capacity;
+    if ((uint64_t)length > window->io_capacity) length = (int64_t)window->io_capacity;
     if (*window->budget < length) return false;
     *window->budget -= length;
     window->start = -1;
-    if (!arni_read_at(window->device, window->base + offset, window->data,
-                      (size_t)length))
-        return false;
+    if (!arni_read_at(window->device, window->base + offset, window->data, (size_t)length)) return false;
     window->start = offset;
     window->length = length;
     return true;
 }
 
 /* Assemble the fixed header through the reusable captured-size cache. */
-static bool arni_window_probe(arni_window *window, int64_t offset) {
+static bool arni_window_probe(arni_window *window, int64_t offset)
+{
     size_t i;
     if (offset < 0 || offset > window->end - ARNI_PROBE) return false;
     for (i = 0U; i < ARNI_PROBE; ++i) {
@@ -219,15 +211,14 @@ static bool arni_window_probe(arni_window *window, int64_t offset) {
 
 /* The first offset at or after @p from that holds a member header or the end
  * record; -1 when there is none before the window's end. */
-static int64_t arni_find_header(arni_window *window, int64_t from,
-                                xx_pd_struct *pd) {
+static int64_t arni_find_header(arni_window *window, int64_t from, xx_pd_struct *pd)
+{
     int64_t position = from;
     if (!arni_window_probe(window, position)) return -1;
     while (position <= window->end - ARNI_PROBE) {
         int64_t next;
         if (pd && xx_pd_is_stopped(pd)) return -1;
-        if (window->frame[0] == 'A' &&
-            arni_classify(window->frame, NULL) != ARNI_KIND_NONE) return position;
+        if (window->frame[0] == 'A' && arni_classify(window->frame, NULL) != ARNI_KIND_NONE) return position;
         if (position == window->end - ARNI_PROBE) break;
         next = position + ARNI_PROBE;
         if (!arni_window_load(window, next, 1)) return -1;
@@ -262,25 +253,25 @@ typedef struct arni_table_s {
     bool names_recovered;
 } arni_table;
 
-static void arni_table_free(arni_table *table) {
+static void arni_table_free(arni_table *table)
+{
     if (!table) return;
     if (table->items) xx_mem_free(table->items);
     xx_mem_free(table);
 }
 
-static void arni_table_free_opaque(void *opaque) {
+static void arni_table_free_opaque(void *opaque)
+{
     arni_table_free((arni_table *)opaque);
 }
 
-static bool arni_table_append(arni_table *table, int64_t header,
-                              int64_t data, int64_t packed,
-                              int64_t unpacked) {
+static bool arni_table_append(arni_table *table, int64_t header, int64_t data, int64_t packed, int64_t unpacked)
+{
     arni_member *member;
     if (table->count >= ARNI_MAX_MEMBERS) return false;
     if (table->count == table->capacity) {
         size_t capacity = table->capacity ? table->capacity * 2U : 16U;
-        arni_member *grown = (arni_member *)xx_mem_realloc(
-            table->items, capacity * sizeof(*grown));
+        arni_member *grown = (arni_member *)xx_mem_realloc(table->items, capacity * sizeof(*grown));
         if (!grown) return false;
         table->items = grown;
         table->capacity = capacity;
@@ -301,25 +292,19 @@ static bool arni_table_append(arni_table *table, int64_t header,
 /* Walk the chain that starts at @p start and must close on its end record
  * before @p end.  A record stores no packed length, so each member runs to
  * the next header; landing on the end record is the only way to succeed. */
-static bool arni_walk(xx_io_device *device, int64_t base, int64_t start,
-                      int64_t end, int64_t *budget, arni_table *table,
-                      int64_t *chain_end, xx_pd_struct *pd) {
+static bool arni_walk(xx_io_device *device, int64_t base, int64_t start, int64_t end, int64_t *budget, arni_table *table, int64_t *chain_end, xx_pd_struct *pd)
+{
     arni_window window;
     int64_t offset = start;
     uint32_t count = 0U;
     bool result = false;
 
-    if (start < 0 || end < start || end - start < ARNI_MIN_CONTAINER ||
-        !arni_window_open(&window, device, base, end, budget))
-        return false;
+    if (start < 0 || end < start || end - start < ARNI_MIN_CONTAINER || !arni_window_open(&window, device, base, end, budget)) return false;
     for (;;) {
         int64_t unpacked = 0, data, next, packed;
         int kind;
-        if ((pd && xx_pd_is_stopped(pd)) || count >= ARNI_MAX_MEMBERS ||
-            !arni_window_probe(&window, offset))
-            break;
-        kind = arni_classify(window.frame,
-                             &unpacked);
+        if ((pd && xx_pd_is_stopped(pd)) || count >= ARNI_MAX_MEMBERS || !arni_window_probe(&window, offset)) break;
+        kind = arni_classify(window.frame, &unpacked);
         if (kind == ARNI_KIND_END) {
             if (count == 0U) break;
             if (chain_end) *chain_end = offset + ARNI_PROBE;
@@ -333,8 +318,7 @@ static bool arni_walk(xx_io_device *device, int64_t base, int64_t start,
         if (next <= data) break;
         packed = next - data;
         if (unpacked > packed * ARNI_MAX_RATIO + ARNI_RATIO_SLACK) break;
-        if (table && !arni_table_append(table, offset, data, packed, unpacked))
-            break;
+        if (table && !arni_table_append(table, offset, data, packed, unpacked)) break;
         ++count;
         offset = next;
     }
@@ -374,8 +358,8 @@ typedef struct arni_location_s {
 /* Map @p size bytes at @p rva to a base-relative file offset through the
  * section table; the whole range must be inside one section's raw data and
  * inside the file.  @p limit receives the end of that raw data. */
-static bool arni_rva_to_offset(const arni_pe *pe, uint32_t rva, uint32_t size,
-                               int64_t *offset, int64_t *limit) {
+static bool arni_rva_to_offset(const arni_pe *pe, uint32_t rva, uint32_t size, int64_t *offset, int64_t *limit)
+{
     uint32_t index;
     for (index = 0U; index < pe->section_count; ++index) {
         const uint8_t *section = pe->sections + index * ARNI_SECTION_SIZE;
@@ -399,8 +383,8 @@ static bool arni_rva_to_offset(const arni_pe *pe, uint32_t rva, uint32_t size,
 
 /* Read the DOS and PE headers and the section table, and find the resource
  * directory.  False for anything that is not a PE with resources. */
-static bool arni_read_pe(arni_pe *pe, xx_io_device *device, int64_t base,
-                         int64_t available) {
+static bool arni_read_pe(arni_pe *pe, xx_io_device *device, int64_t base, int64_t available)
+{
     uint8_t dos[ARNI_DOS_HEADER];
     uint8_t header[ARNI_PE_HEADER];
     uint8_t optional[ARNI_OPTIONAL_MAX];
@@ -413,29 +397,17 @@ static bool arni_read_pe(arni_pe *pe, xx_io_device *device, int64_t base,
     pe->device = device;
     pe->base = base;
     pe->available = available;
-    if (available < ARNI_DOS_HEADER + ARNI_PE_HEADER ||
-        !arni_read_at(device, base, dos, sizeof(dos)) || dos[0] != 'M' ||
-        dos[1] != 'Z')
-        return false;
+    if (available < ARNI_DOS_HEADER + ARNI_PE_HEADER || !arni_read_at(device, base, dos, sizeof(dos)) || dos[0] != 'M' || dos[1] != 'Z') return false;
     lfanew = xx_data_get_u32(dos + 0x3c, 4, 0, false);
-    if (lfanew < ARNI_DOS_HEADER || lfanew > ARNI_MAX_LFANEW ||
-        (int64_t)lfanew > available - ARNI_PE_HEADER ||
-        !arni_read_at(device, base + lfanew, header, sizeof(header)) ||
-        header[0] != 'P' || header[1] != 'E' || header[2] != 0U ||
-        header[3] != 0U)
+    if (lfanew < ARNI_DOS_HEADER || lfanew > ARNI_MAX_LFANEW || (int64_t)lfanew > available - ARNI_PE_HEADER ||
+        !arni_read_at(device, base + lfanew, header, sizeof(header)) || header[0] != 'P' || header[1] != 'E' || header[2] != 0U || header[3] != 0U)
         return false;
     pe->section_count = arni_le16(header + 6);
     optional_size = arni_le16(header + 20);
-    if (pe->section_count == 0U || pe->section_count > ARNI_MAX_SECTIONS ||
-        optional_size < 2U || optional_size > ARNI_OPTIONAL_MAX)
-        return false;
+    if (pe->section_count == 0U || pe->section_count > ARNI_MAX_SECTIONS || optional_size < 2U || optional_size > ARNI_OPTIONAL_MAX) return false;
     table = (int64_t)lfanew + ARNI_PE_HEADER + optional_size;
-    if (table > available -
-                    (int64_t)pe->section_count * ARNI_SECTION_SIZE ||
-        !arni_read_at(device, base + lfanew + ARNI_PE_HEADER, optional,
-                      optional_size) ||
-        !arni_read_at(device, base + table, pe->sections,
-                      (size_t)pe->section_count * ARNI_SECTION_SIZE))
+    if (table > available - (int64_t)pe->section_count * ARNI_SECTION_SIZE || !arni_read_at(device, base + lfanew + ARNI_PE_HEADER, optional, optional_size) ||
+        !arni_read_at(device, base + table, pe->sections, (size_t)pe->section_count * ARNI_SECTION_SIZE))
         return false;
     magic = arni_le16(optional);
     if (magic == 0x010bU) {
@@ -451,10 +423,7 @@ static bool arni_read_pe(arni_pe *pe, xx_io_device *device, int64_t base,
     if (directories < 3U) return false;
     pe->import_rva = xx_data_get_u32(optional + directory_offset + 8U, 4, 0, false);
     rsrc_rva = xx_data_get_u32(optional + directory_offset + 16U, 4, 0, false);
-    if (rsrc_rva == 0U ||
-        !arni_rva_to_offset(pe, rsrc_rva, ARNI_DIR_SIZE, &pe->rsrc_offset,
-                            &pe->rsrc_limit))
-        return false;
+    if (rsrc_rva == 0U || !arni_rva_to_offset(pe, rsrc_rva, ARNI_DIR_SIZE, &pe->rsrc_offset, &pe->rsrc_limit)) return false;
 
     /* What the carrier occupies: its headers and every section's raw data. */
     end = xx_data_get_u32(optional + 60, 4, 0, false);
@@ -462,8 +431,7 @@ static bool arni_read_pe(arni_pe *pe, xx_io_device *device, int64_t base,
         const uint8_t *section = pe->sections + index * ARNI_SECTION_SIZE;
         uint64_t raw_size = xx_data_get_u32(section + 16, 4, 0, false);
         uint64_t raw_pointer = xx_data_get_u32(section + 20, 4, 0, false);
-        if (raw_size != 0U && raw_pointer + raw_size > end)
-            end = raw_pointer + raw_size;
+        if (raw_size != 0U && raw_pointer + raw_size > end) end = raw_pointer + raw_size;
     }
     pe->image_end = end < (uint64_t)available ? (int64_t)end : available;
     return true;
@@ -471,62 +439,48 @@ static bool arni_read_pe(arni_pe *pe, xx_io_device *device, int64_t base,
 
 /* Read resource directory @p relative: its entry count and where the entries
  * start.  Every directory and entry must lie in the resource raw data. */
-static bool arni_read_directory(arni_pe *pe, uint32_t relative,
-                                uint32_t *count, int64_t *entries) {
+static bool arni_read_directory(arni_pe *pe, uint32_t relative, uint32_t *count, int64_t *entries)
+{
     uint8_t directory[ARNI_DIR_SIZE];
     int64_t offset = pe->rsrc_offset + (int64_t)relative;
     uint32_t total;
-    if (offset > pe->rsrc_limit - ARNI_DIR_SIZE ||
-        !arni_read_at(pe->device, pe->base + offset, directory,
-                      sizeof(directory)))
-        return false;
+    if (offset > pe->rsrc_limit - ARNI_DIR_SIZE || !arni_read_at(pe->device, pe->base + offset, directory, sizeof(directory))) return false;
     total = arni_le16(directory + 12) + arni_le16(directory + 14);
     *entries = offset + ARNI_DIR_SIZE;
     /* Entries past the raw data are not read at all. */
-    if ((int64_t)total * ARNI_ENTRY_SIZE > pe->rsrc_limit - *entries)
-        total = (uint32_t)((pe->rsrc_limit - *entries) / ARNI_ENTRY_SIZE);
+    if ((int64_t)total * ARNI_ENTRY_SIZE > pe->rsrc_limit - *entries) total = (uint32_t)((pe->rsrc_limit - *entries) / ARNI_ENTRY_SIZE);
     *count = total;
     return true;
 }
 
-static bool arni_read_entry(arni_pe *pe, int64_t entries, uint32_t index,
-                            uint32_t *name, uint32_t *target) {
+static bool arni_read_entry(arni_pe *pe, int64_t entries, uint32_t index, uint32_t *name, uint32_t *target)
+{
     uint8_t entry[ARNI_ENTRY_SIZE];
     if (pe->entry_reads >= ARNI_MAX_ENTRY_READS) return false;
     ++pe->entry_reads;
-    if (!arni_read_at(pe->device,
-                      pe->base + entries + (int64_t)index * ARNI_ENTRY_SIZE,
-                      entry, sizeof(entry)))
-        return false;
+    if (!arni_read_at(pe->device, pe->base + entries + (int64_t)index * ARNI_ENTRY_SIZE, entry, sizeof(entry))) return false;
     *name = xx_data_get_u32(entry, 4, 0, false);
     *target = xx_data_get_u32(entry + 4, 4, 0, false);
     return true;
 }
 
 /* Try one resource data entry as the container. */
-static bool arni_try_leaf(arni_pe *pe, uint32_t relative, uint32_t *walks,
-                          int64_t *budget, arni_location *location,
-                          xx_pd_struct *pd) {
+static bool arni_try_leaf(arni_pe *pe, uint32_t relative, uint32_t *walks, int64_t *budget, arni_location *location, xx_pd_struct *pd)
+{
     uint8_t entry[ARNI_DATA_ENTRY_SIZE];
     uint8_t head[ARNI_PROBE];
     int64_t offset = pe->rsrc_offset + (int64_t)relative, data, chain_end = 0;
     uint32_t rva, size;
 
-    if (offset > pe->rsrc_limit - ARNI_DATA_ENTRY_SIZE ||
-        !arni_read_at(pe->device, pe->base + offset, entry, sizeof(entry)))
-        return false;
+    if (offset > pe->rsrc_limit - ARNI_DATA_ENTRY_SIZE || !arni_read_at(pe->device, pe->base + offset, entry, sizeof(entry))) return false;
     rva = xx_data_get_u32(entry, 4, 0, false);
     size = xx_data_get_u32(entry + 4, 4, 0, false);
-    if (size < ARNI_MIN_CONTAINER || (int64_t)size > ARNI_MAX_CONTAINER ||
-        !arni_rva_to_offset(pe, rva, size, &data, NULL) ||
-        !arni_read_at(pe->device, pe->base + data, head, sizeof(head)) ||
-        arni_classify(head, NULL) != ARNI_KIND_MEMBER)
+    if (size < ARNI_MIN_CONTAINER || (int64_t)size > ARNI_MAX_CONTAINER || !arni_rva_to_offset(pe, rva, size, &data, NULL) ||
+        !arni_read_at(pe->device, pe->base + data, head, sizeof(head)) || arni_classify(head, NULL) != ARNI_KIND_MEMBER)
         return false;
     if (*walks >= ARNI_MAX_WALKS) return false;
     ++*walks;
-    if (!arni_walk(pe->device, pe->base, data, data + (int64_t)size, budget,
-                   NULL, &chain_end, pd))
-        return false;
+    if (!arni_walk(pe->device, pe->base, data, data + (int64_t)size, budget, NULL, &chain_end, pd)) return false;
     location->container_offset = data;
     location->container_size = size;
     location->chain_end = chain_end;
@@ -535,32 +489,26 @@ static bool arni_try_leaf(arni_pe *pe, uint32_t relative, uint32_t *walks,
 
 /* Record where the import descriptors' DLL names live.  Best effort: a
  * damaged import table only means fewer exclusions. */
-static void arni_collect_imports(arni_pe *pe, arni_location *location) {
+static void arni_collect_imports(arni_pe *pe, arni_location *location)
+{
     int64_t table, limit;
     uint32_t index;
     location->import_name_count = 0U;
-    if (pe->import_rva == 0U ||
-        !arni_rva_to_offset(pe, pe->import_rva, ARNI_IMPORT_DESCRIPTOR,
-                            &table, &limit))
-        return;
+    if (pe->import_rva == 0U || !arni_rva_to_offset(pe, pe->import_rva, ARNI_IMPORT_DESCRIPTOR, &table, &limit)) return;
     for (index = 0U; index < ARNI_MAX_IMPORTS; ++index) {
         uint8_t descriptor[ARNI_IMPORT_DESCRIPTOR];
         int64_t at = table + (int64_t)index * ARNI_IMPORT_DESCRIPTOR, name;
         static const uint8_t zero[ARNI_IMPORT_DESCRIPTOR] = {0};
-        if (at > limit - ARNI_IMPORT_DESCRIPTOR ||
-            !arni_read_at(pe->device, pe->base + at, descriptor,
-                          sizeof(descriptor)) ||
+        if (at > limit - ARNI_IMPORT_DESCRIPTOR || !arni_read_at(pe->device, pe->base + at, descriptor, sizeof(descriptor)) ||
             xx_rt_memcmp(descriptor, zero, sizeof(zero)) == 0)
             break;
-        if (arni_rva_to_offset(pe, xx_data_get_u32(descriptor + 12, 4, 0, false), 1U, &name,
-                               NULL))
-            location->import_names[location->import_name_count++] = name;
+        if (arni_rva_to_offset(pe, xx_data_get_u32(descriptor + 12, 4, 0, false), 1U, &name, NULL)) location->import_names[location->import_name_count++] = name;
     }
 }
 
 /* Find the RCDATA resource that holds a complete chain. */
-static bool arni_locate(Abstractformat *format, arni_location *location,
-                        xx_pd_struct *pd) {
+static bool arni_locate(Abstractformat *format, arni_location *location, xx_pd_struct *pd)
+{
     arni_pe *pe;
     int64_t total, available, root_entries, budget = ARNI_SCAN_BUDGET;
     uint32_t root_count, index, walks = 0U;
@@ -570,21 +518,17 @@ static bool arni_locate(Abstractformat *format, arni_location *location,
     total = xx_io_total_size(format->device);
     if (total < format->base_address) return false;
     available = total - format->base_address;
-    if (available < ARNI_DOS_HEADER + ARNI_PE_HEADER + ARNI_MIN_CONTAINER)
-        return false;
+    if (available < ARNI_DOS_HEADER + ARNI_PE_HEADER + ARNI_MIN_CONTAINER) return false;
     pe = (arni_pe *)xx_mem_alloc(sizeof(*pe));
     if (!pe) return false;
-    if (!arni_read_pe(pe, format->device, format->base_address, available) ||
-        !arni_read_directory(pe, 0U, &root_count, &root_entries))
-        goto done;
+    if (!arni_read_pe(pe, format->device, format->base_address, available) || !arni_read_directory(pe, 0U, &root_count, &root_entries)) goto done;
     for (index = 0U; !found && index < root_count; ++index) {
         uint32_t type, target, count, name_index;
         int64_t names;
         if (!arni_read_entry(pe, root_entries, index, &type, &target)) break;
         /* RT_RCDATA by number, pointing at a subdirectory. */
         if (type != ARNI_RT_RCDATA || !(target & 0x80000000U)) continue;
-        if (!arni_read_directory(pe, target & 0x7FFFFFFFU, &count, &names))
-            continue;
+        if (!arni_read_directory(pe, target & 0x7FFFFFFFU, &count, &names)) continue;
         for (name_index = 0U; !found && name_index < count; ++name_index) {
             uint32_t name, next, languages, language_index;
             int64_t language_entries;
@@ -594,15 +538,10 @@ static bool arni_locate(Abstractformat *format, arni_location *location,
                 found = arni_try_leaf(pe, next, &walks, &budget, location, pd);
                 continue;
             }
-            if (!arni_read_directory(pe, next & 0x7FFFFFFFU, &languages,
-                                     &language_entries))
-                continue;
-            for (language_index = 0U; !found && language_index < languages;
-                 ++language_index) {
+            if (!arni_read_directory(pe, next & 0x7FFFFFFFU, &languages, &language_entries)) continue;
+            for (language_index = 0U; !found && language_index < languages; ++language_index) {
                 uint32_t language, leaf;
-                if (!arni_read_entry(pe, language_entries, language_index,
-                                     &language, &leaf))
-                    break;
+                if (!arni_read_entry(pe, language_entries, language_index, &language, &leaf)) break;
                 if (leaf & 0x80000000U) continue;
                 found = arni_try_leaf(pe, leaf, &walks, &budget, location, pd);
             }
@@ -613,8 +552,7 @@ static bool arni_locate(Abstractformat *format, arni_location *location,
     if (found) {
         location->available = available;
         location->image_end = pe->image_end;
-        if (location->image_end < location->chain_end)
-            location->image_end = location->chain_end;
+        if (location->image_end < location->chain_end) location->image_end = location->chain_end;
         arni_collect_imports(pe, location);
     }
 done:
@@ -625,34 +563,31 @@ done:
 /* ---------------------------------------------------------------------- */
 /* Member names                                                            */
 
-static bool arni_is_alnum(uint8_t c) {
-    return (c >= 'A' && c <= 'Z') || (c >= 'a' && c <= 'z') ||
-           (c >= '0' && c <= '9');
+static bool arni_is_alnum(uint8_t c)
+{
+    return (c >= 'A' && c <= 'Z') || (c >= 'a' && c <= 'z') || (c >= '0' && c <= '9');
 }
 
-static uint8_t arni_upper(uint8_t c) {
+static uint8_t arni_upper(uint8_t c)
+{
     return (c >= 'a' && c <= 'z') ? (uint8_t)(c - 0x20U) : c;
 }
 
 /* A bare file name the stub could pass to sprintf("%s\\%s", ...): plain
  * ASCII, no space, no separator, no wildcard, an extension of one to four
  * alphanumerics.  Port of XArchive XArniSFX::isPlainFileName() (MIT). */
-static bool arni_is_plain_name(const uint8_t *token, size_t size) {
+static bool arni_is_plain_name(const uint8_t *token, size_t size)
+{
     size_t index, last_dot = (size_t)-1;
-    if (size < ARNI_NAME_MIN || size > ARNI_NAME_MAX || token[0] == '.')
-        return false;
+    if (size < ARNI_NAME_MIN || size > ARNI_NAME_MAX || token[0] == '.') return false;
     for (index = 0U; index < size; ++index) {
         uint8_t c = token[index];
-        if (!arni_is_alnum(c) && c != '_' && c != '.' && c != '~' &&
-            c != '!' && c != '@' && c != '#' && c != '$' && c != '&' &&
-            c != '(' && c != ')' && c != '-' && c != '{' && c != '}' &&
-            c != '\'' && c != '+' && c != ',' && c != ';' && c != '=')
+        if (!arni_is_alnum(c) && c != '_' && c != '.' && c != '~' && c != '!' && c != '@' && c != '#' && c != '$' && c != '&' && c != '(' && c != ')' && c != '-' &&
+            c != '{' && c != '}' && c != '\'' && c != '+' && c != ',' && c != ';' && c != '=')
             return false;
         if (c == '.') last_dot = index;
     }
-    if (last_dot == (size_t)-1 || last_dot == 0U || last_dot >= size - 1U ||
-        size - last_dot - 1U > 4U)
-        return false;
+    if (last_dot == (size_t)-1 || last_dot == 0U || last_dot >= size - 1U || size - last_dot - 1U > 4U) return false;
     for (index = last_dot + 1U; index < size; ++index)
         if (!arni_is_alnum(token[index])) return false;
     return true;
@@ -660,31 +595,27 @@ static bool arni_is_plain_name(const uint8_t *token, size_t size) {
 
 /* CON, PRN, AUX, NUL, COM0-9, LPT0-9, CONIN$, CONOUT$ and CLOCK$, with or
  * without an extension, in any case. */
-static bool arni_is_device(const char *text) {
-    static const char *const names[] = {"CON",    "PRN",     "AUX",
-                                        "NUL",    "CONIN$",  "CONOUT$",
-                                        "CLOCK$"};
+static bool arni_is_device(const char *text)
+{
+    static const char *const names[] = {"CON", "PRN", "AUX", "NUL", "CONIN$", "CONOUT$", "CLOCK$"};
     size_t stem = 0U, index, position;
     while (text[stem] && text[stem] != '.') ++stem;
     while (stem > 0U && text[stem - 1U] == ' ') --stem;
     for (index = 0U; index < sizeof(names) / sizeof(names[0]); ++index) {
         const char *name = names[index];
         for (position = 0U; position < stem && name[position]; ++position)
-            if (arni_upper((uint8_t)text[position]) != (uint8_t)name[position])
-                break;
+            if (arni_upper((uint8_t)text[position]) != (uint8_t)name[position]) break;
         if (position == stem && name[position] == 0) return true;
     }
     if (stem == 4U && text[3] >= '0' && text[3] <= '9') {
-        uint8_t a = arni_upper((uint8_t)text[0]), b = arni_upper((uint8_t)text[1]),
-                c = arni_upper((uint8_t)text[2]);
-        if ((a == 'C' && b == 'O' && c == 'M') ||
-            (a == 'L' && b == 'P' && c == 'T'))
-            return true;
+        uint8_t a = arni_upper((uint8_t)text[0]), b = arni_upper((uint8_t)text[1]), c = arni_upper((uint8_t)text[2]);
+        if ((a == 'C' && b == 'O' && c == 'M') || (a == 'L' && b == 'P' && c == 'T')) return true;
     }
     return false;
 }
 
-static bool arni_same_folded(const char *left, const char *right) {
+static bool arni_same_folded(const char *left, const char *right)
+{
     while (*left && arni_upper((uint8_t)*left) == arni_upper((uint8_t)*right)) {
         ++left;
         ++right;
@@ -700,16 +631,16 @@ static bool arni_same_folded(const char *left, const char *right) {
  * noise.  Port of XArchive XArniSFX::collectNameTable() (MIT), plus two
  * additions: a string an import descriptor names (a DLL the stub links
  * against) is not a pool entry, and a device name refuses the pool. */
-static bool arni_is_import_name(const arni_location *location, size_t at) {
+static bool arni_is_import_name(const arni_location *location, size_t at)
+{
     uint32_t index;
     for (index = 0U; index < location->import_name_count; ++index)
         if (location->import_names[index] == (int64_t)at) return true;
     return false;
 }
 
-static bool arni_collect_names(const uint8_t *stub, size_t size,
-                               const arni_location *location,
-                               arni_table *table) {
+static bool arni_collect_names(const uint8_t *stub, size_t size, const arni_location *location, arni_table *table)
+{
     size_t i = 0U, run_start = 0U, run_length = 0U, match_start = 0U;
     size_t matches = 0U, member, other;
 
@@ -731,8 +662,7 @@ static bool arni_collect_names(const uint8_t *stub, size_t size,
         end = i;
         while (end < size && stub[end] != 0U) ++end;
         if (end >= size) break; /* an unterminated tail is not a name */
-        if (arni_is_plain_name(stub + i, end - i) &&
-            !arni_is_import_name(location, i)) {
+        if (arni_is_plain_name(stub + i, end - i) && !arni_is_import_name(location, i)) {
             if (run_length == 0U) run_start = i;
             ++run_length;
         } else if (run_length != 0U) {
@@ -767,14 +697,13 @@ static bool arni_collect_names(const uint8_t *stub, size_t size,
     for (member = 0U; member < table->count; ++member) {
         if (arni_is_device(table->items[member].name)) return false;
         for (other = 0U; other < member; ++other)
-            if (arni_same_folded(table->items[member].name,
-                                 table->items[other].name))
-                return false;
+            if (arni_same_folded(table->items[member].name, table->items[other].name)) return false;
     }
     return true;
 }
 
-static void arni_decimal(char *out, size_t value) {
+static void arni_decimal(char *out, size_t value)
+{
     char digits[24];
     unsigned count = 0U;
     size_t position = 0U;
@@ -788,21 +717,14 @@ static void arni_decimal(char *out, size_t value) {
 
 /* Name every member: the stub's pool when it can be trusted, otherwise the
  * references' own "File_<n>.bin". */
-static void arni_apply_names(xx_io_device *device, int64_t base,
-                             const arni_location *location,
-                             arni_table *table) {
+static void arni_apply_names(xx_io_device *device, int64_t base, const arni_location *location, arni_table *table)
+{
     size_t index;
     bool named = false;
-    if (table->container_offset > 0 &&
-        table->container_offset <= ARNI_MAX_STUB_SCAN &&
-        table->count >= ARNI_MIN_NAMES) {
+    if (table->container_offset > 0 && table->container_offset <= ARNI_MAX_STUB_SCAN && table->count >= ARNI_MIN_NAMES) {
         uint8_t *stub = (uint8_t *)xx_mem_alloc((size_t)table->container_offset);
         if (stub) {
-            if (arni_read_at(device, base, stub,
-                             (size_t)table->container_offset))
-                named = arni_collect_names(stub,
-                                           (size_t)table->container_offset,
-                                           location, table);
+            if (arni_read_at(device, base, stub, (size_t)table->container_offset)) named = arni_collect_names(stub, (size_t)table->container_offset, location, table);
             xx_mem_free(stub);
         }
     }
@@ -816,8 +738,8 @@ static void arni_apply_names(xx_io_device *device, int64_t base,
     }
 }
 
-static bool arni_build_table(Abstractformat *format, arni_table **out,
-                             xx_pd_struct *pd) {
+static bool arni_build_table(Abstractformat *format, arni_table **out, xx_pd_struct *pd)
+{
     arni_location location;
     arni_table *table;
     int64_t budget = ARNI_SCAN_BUDGET, chain_end = 0;
@@ -831,10 +753,8 @@ static bool arni_build_table(Abstractformat *format, arni_table **out,
     table->container_offset = location.container_offset;
     table->container_size = location.container_size;
     table->image_end = location.image_end;
-    if (!arni_walk(format->device, format->base_address,
-                   location.container_offset,
-                   location.container_offset + location.container_size,
-                   &budget, table, &chain_end, pd) ||
+    if (!arni_walk(format->device, format->base_address, location.container_offset, location.container_offset + location.container_size, &budget, table, &chain_end,
+                   pd) ||
         table->count == 0U || chain_end != location.chain_end) {
         arni_table_free(table);
         return false;
@@ -849,18 +769,15 @@ static bool arni_build_table(Abstractformat *format, arni_table **out,
 /* Decoding                                                                */
 
 /* Decode one member into @p destination (NULL only verifies). */
-static bool arni_unpack_member(Abstractformat *format,
-                               const arni_member *member,
-                               xx_io_device *destination, xx_pd_struct *pd) {
+static bool arni_unpack_member(Abstractformat *format, const arni_member *member, xx_io_device *destination, xx_pd_struct *pd)
+{
     uint8_t *packed = NULL;
     uint8_t *plain = NULL;
     size_t written = 0U, done = 0U;
     int64_t input;
     bool result = false;
 
-    if (member->packed_size <= 0 || member->unpacked_size <= 0 ||
-        member->unpacked_size >= ARNI_MAX_SIZE)
-        return false;
+    if (member->packed_size <= 0 || member->unpacked_size <= 0 || member->unpacked_size >= ARNI_MAX_SIZE) return false;
     /* The decoder stops at the stored size and reads only the bits it needs;
      * no symbol costs more than a few bytes per output byte, so reading at
      * most eight per output byte keeps a member that runs to a far-away
@@ -871,19 +788,11 @@ static bool arni_unpack_member(Abstractformat *format,
     if (pd && xx_pd_is_stopped(pd)) return false;
     packed = (uint8_t *)xx_mem_alloc((size_t)input);
     plain = (uint8_t *)xx_mem_alloc((size_t)member->unpacked_size);
-    if (!packed || !plain ||
-        !arni_read_at(format->device,
-                      format->base_address + member->data_offset, packed,
-                      (size_t)input))
-        goto done;
-    if (!xx_lzhuf_decode_memory(packed, (size_t)input, plain,
-                                (size_t)member->unpacked_size, &written) ||
-        written != (size_t)member->unpacked_size)
-        goto done;
+    if (!packed || !plain || !arni_read_at(format->device, format->base_address + member->data_offset, packed, (size_t)input)) goto done;
+    if (!xx_lzhuf_decode_memory(packed, (size_t)input, plain, (size_t)member->unpacked_size, &written) || written != (size_t)member->unpacked_size) goto done;
     if (destination) {
         while (done < written) {
-            ssize_t sent =
-                xx_io_write(destination, plain + done, written - done);
+            ssize_t sent = xx_io_write(destination, plain + done, written - done);
             if (sent <= 0 || (size_t)sent > written - done) goto done;
             done += (size_t)sent;
         }
@@ -898,18 +807,16 @@ done:
 /* ---------------------------------------------------------------------- */
 /* Records API helpers                                                     */
 
-static bool arni_copy_options(xx_list_s *destination,
-                              const xx_list_s *source) {
+static bool arni_copy_options(xx_list_s *destination, const xx_list_s *source)
+{
     size_t index;
     if (!source) return true;
     for (index = 0U; index < source->count; ++index) {
-        const xx_meta *original =
-            (const xx_meta *)xx_list_at((const xx_list_t *)source, index);
+        const xx_meta *original = (const xx_meta *)xx_list_at((const xx_list_t *)source, index);
         xx_meta copy;
         if (!original) continue;
         xx_meta_init(&copy, original->meta_id);
-        if (!xx_var_copy(&copy.var, &original->var) ||
-            !xx_list_append(destination, &copy)) {
+        if (!xx_var_copy(&copy.var, &original->var) || !xx_list_append(destination, &copy)) {
             xx_meta_cleanup(&copy);
             return false;
         }
@@ -917,19 +824,19 @@ static bool arni_copy_options(xx_list_s *destination,
     return true;
 }
 
-static const xx_var *arni_option(const xx_list_s *options, uint32_t id) {
+static const xx_var *arni_option(const xx_list_s *options, uint32_t id)
+{
     size_t index;
     if (!options) return NULL;
     for (index = 0U; index < options->count; ++index) {
-        const xx_meta *meta =
-            (const xx_meta *)xx_list_at((const xx_list_t *)options, index);
+        const xx_meta *meta = (const xx_meta *)xx_list_at((const xx_list_t *)options, index);
         if (meta && meta->meta_id == id) return &meta->var;
     }
     return NULL;
 }
 
-static bool arni_set_record(Abstractformat *format, xx_archive_record *record,
-                            const arni_member *member) {
+static bool arni_set_record(Abstractformat *format, xx_archive_record *record, const arni_member *member)
+{
     xx_archive_record_cleanup(record);
     xx_archive_record_init(record);
     record->header_offset = format->base_address + member->header_offset;
@@ -937,54 +844,42 @@ static bool arni_set_record(Abstractformat *format, xx_archive_record *record,
     record->data_offset = format->base_address + member->data_offset;
     record->compressed_size = member->packed_size;
     return xx_archive_record_set_original_name(record, member->name) &&
-           xx_archive_record_set_meta_u64(record, XX_META_ID_COMPRESSED_SIZE,
-                                          (uint64_t)member->packed_size) &&
-           xx_archive_record_set_meta_u64(record,
-                                          XX_META_ID_UNCOMPRESSED_SIZE,
-                                          (uint64_t)member->unpacked_size) &&
-           xx_archive_record_set_meta_u64(
-               record, XX_META_ID_COMPRESSION_METHOD,
-               XX_ARNI_INSTALLER_CONTAINER_METHOD_LZHUF) &&
-           xx_archive_record_set_meta_bool(record, XX_META_ID_IS_ENCRYPTED,
-                                           false) &&
-           xx_archive_record_set_meta_bool(record, XX_META_ID_IS_FOLDER,
-                                           false);
+           xx_archive_record_set_meta_u64(record, XX_META_ID_COMPRESSED_SIZE, (uint64_t)member->packed_size) &&
+           xx_archive_record_set_meta_u64(record, XX_META_ID_UNCOMPRESSED_SIZE, (uint64_t)member->unpacked_size) &&
+           xx_archive_record_set_meta_u64(record, XX_META_ID_COMPRESSION_METHOD, XX_ARNI_INSTALLER_CONTAINER_METHOD_LZHUF) &&
+           xx_archive_record_set_meta_bool(record, XX_META_ID_IS_ENCRYPTED, false) && xx_archive_record_set_meta_bool(record, XX_META_ID_IS_FOLDER, false);
 }
 
 /* The last gate before a name reaches the file system.  Names are single
  * components here (the pool refuses separators), so anything else fails. */
-static bool arni_safe_output_name(const char *name) {
+static bool arni_safe_output_name(const char *name)
+{
     size_t index;
     bool meaningful = false;
     if (!name || !name[0]) return false;
     for (index = 0U; name[index]; ++index) {
         uint8_t c = (uint8_t)name[index];
-        if (c < 0x20U || c >= 0x7FU || c == '/' || c == '\\' || c == ':' ||
-            c == '<' || c == '>' || c == '"' || c == '|' || c == '?' ||
-            c == '*')
-            return false;
+        if (c < 0x20U || c >= 0x7FU || c == '/' || c == '\\' || c == ':' || c == '<' || c == '>' || c == '"' || c == '|' || c == '?' || c == '*') return false;
         if (c != '.' && c != ' ') meaningful = true;
     }
-    if (!meaningful || name[index - 1U] == '.' || name[index - 1U] == ' ')
-        return false;
+    if (!meaningful || name[index - 1U] == '.' || name[index - 1U] == ' ') return false;
     return !arni_is_device(name);
 }
 
 /* ---------------------------------------------------------------------- */
 /* Public API                                                              */
 
-static void arni_vtable_destroy(Abstractformat *format) {
-    xx_arni_installer_container *archive =
-        (xx_arni_installer_container *)format;
+static void arni_vtable_destroy(Abstractformat *format)
+{
+    xx_arni_installer_container *archive = (xx_arni_installer_container *)format;
     if (archive && archive->table) {
         arni_table_free((arni_table *)archive->table);
         archive->table = NULL;
     }
 }
 
-void xx_arni_installer_container_init(xx_arni_installer_container *archive,
-                                      xx_io_device *device,
-                                      int64_t base_address) {
+void xx_arni_installer_container_init(xx_arni_installer_container *archive, xx_io_device *device, int64_t base_address)
+{
     if (!archive) return;
     xx_mem_zero(archive, sizeof(*archive));
     xx_format_init(&archive->format, device, base_address);
@@ -994,38 +889,28 @@ void xx_arni_installer_container_init(xx_arni_installer_container *archive,
     archive->format.is_archive = true;
     xx_format_set_mime_type(&archive->format, "application/x-arni-sfx");
     xx_format_set_extension(&archive->format, "exe");
-    archive->format.check_is_valid =
-        xx_arni_installer_container_check_is_valid;
-    archive->format.handle_base_info =
-        xx_arni_installer_container_handle_base_info;
-    archive->format.get_format_size =
-        xx_arni_installer_container_get_format_size;
-    archive->format.get_number_of_archive_records =
-        xx_arni_installer_container_get_number_of_archive_records;
-    archive->format.create_archive_records_reading =
-        xx_arni_installer_container_create_archive_records_reading;
-    archive->format.get_current_archive_record =
-        xx_arni_installer_container_get_current_archive_record;
-    archive->format.unpack_current_archive_record =
-        xx_arni_installer_container_unpack_current_archive_record;
-    archive->format.archive_record_move_to_next =
-        xx_arni_installer_container_archive_record_move_to_next;
-    archive->format.free_archive_records_reading =
-        xx_arni_installer_container_free_archive_records_reading;
+    archive->format.check_is_valid = xx_arni_installer_container_check_is_valid;
+    archive->format.handle_base_info = xx_arni_installer_container_handle_base_info;
+    archive->format.get_format_size = xx_arni_installer_container_get_format_size;
+    archive->format.get_number_of_archive_records = xx_arni_installer_container_get_number_of_archive_records;
+    archive->format.create_archive_records_reading = xx_arni_installer_container_create_archive_records_reading;
+    archive->format.get_current_archive_record = xx_arni_installer_container_get_current_archive_record;
+    archive->format.unpack_current_archive_record = xx_arni_installer_container_unpack_current_archive_record;
+    archive->format.archive_record_move_to_next = xx_arni_installer_container_archive_record_move_to_next;
+    archive->format.free_archive_records_reading = xx_arni_installer_container_free_archive_records_reading;
     archive->format.destroy = arni_vtable_destroy;
     archive->container_offset = -1;
 }
 
-xx_arni_installer_container *xx_arni_installer_container_create(
-    xx_io_device *device, int64_t base_address) {
-    xx_arni_installer_container *archive =
-        (xx_arni_installer_container *)xx_mem_alloc(sizeof(*archive));
+xx_arni_installer_container *xx_arni_installer_container_create(xx_io_device *device, int64_t base_address)
+{
+    xx_arni_installer_container *archive = (xx_arni_installer_container *)xx_mem_alloc(sizeof(*archive));
     if (archive) xx_arni_installer_container_init(archive, device, base_address);
     return archive;
 }
 
-void xx_arni_installer_container_destroy(
-    xx_arni_installer_container *archive) {
+void xx_arni_installer_container_destroy(xx_arni_installer_container *archive)
+{
     if (!archive) return;
     /* Not xx_format_destroy: it dispatches through format.destroy, which is
      * the wrapper above. */
@@ -1034,22 +919,23 @@ void xx_arni_installer_container_destroy(
     archive->number_of_records = 0U;
 }
 
-void xx_arni_installer_container_free(xx_arni_installer_container *archive) {
+void xx_arni_installer_container_free(xx_arni_installer_container *archive)
+{
     if (!archive) return;
     xx_arni_installer_container_destroy(archive);
     xx_mem_free(archive);
 }
 
-bool xx_arni_installer_container_check_is_valid(Abstractformat *format,
-                                                xx_pd_struct *pd) {
+bool xx_arni_installer_container_check_is_valid(Abstractformat *format, xx_pd_struct *pd)
+{
     arni_location location;
     if (!format || (pd && xx_pd_is_stopped(pd))) return false;
     xx_mem_zero(&location, sizeof(location));
     return arni_locate(format, &location, pd);
 }
 
-bool xx_arni_installer_container_handle_base_info(Abstractformat *format,
-                                                  xx_pd_struct *pd) {
+bool xx_arni_installer_container_handle_base_info(Abstractformat *format, xx_pd_struct *pd)
+{
     xx_arni_installer_container *archive;
     arni_table *table = NULL;
     if (!format || (pd && xx_pd_is_stopped(pd))) return false;
@@ -1087,25 +973,19 @@ bool xx_arni_installer_container_handle_base_info(Abstractformat *format,
     return true;
 }
 
-int64_t xx_arni_installer_container_get_format_size(Abstractformat *format,
-                                                    xx_pd_struct *pd) {
-    return format && (format->base_info_handled ||
-                      xx_arni_installer_container_handle_base_info(format, pd))
-               ? format->format_size
-               : -1;
+int64_t xx_arni_installer_container_get_format_size(Abstractformat *format, xx_pd_struct *pd)
+{
+    return format && (format->base_info_handled || xx_arni_installer_container_handle_base_info(format, pd)) ? format->format_size : -1;
 }
 
-uint64_t xx_arni_installer_container_get_number_of_archive_records(
-    Abstractformat *format, xx_pd_struct *pd) {
-    return format && (format->base_info_handled ||
-                      xx_arni_installer_container_handle_base_info(format, pd))
-               ? ((xx_arni_installer_container *)format)->number_of_records
-               : 0U;
+uint64_t xx_arni_installer_container_get_number_of_archive_records(Abstractformat *format, xx_pd_struct *pd)
+{
+    return format && (format->base_info_handled || xx_arni_installer_container_handle_base_info(format, pd)) ? ((xx_arni_installer_container *)format)->number_of_records
+                                                                                                             : 0U;
 }
 
-xx_archive_record_state *
-xx_arni_installer_container_create_archive_records_reading(
-    Abstractformat *format, const xx_list_s *options, xx_pd_struct *pd) {
+xx_archive_record_state *xx_arni_installer_container_create_archive_records_reading(Abstractformat *format, const xx_list_s *options, xx_pd_struct *pd)
+{
     xx_arni_installer_container *archive;
     xx_archive_record_state *state;
     arni_table *table = NULL;
@@ -1129,8 +1009,7 @@ xx_arni_installer_container_create_archive_records_reading(
     state->internal_state = table;
     state->free_internal = arni_table_free_opaque;
     state->total_records = (int64_t)table->count;
-    if (!arni_copy_options(&state->options, options) ||
-        !arni_set_record(format, &state->current_record, &table->items[0])) {
+    if (!arni_copy_options(&state->options, options) || !arni_set_record(format, &state->current_record, &table->items[0])) {
         xx_archive_record_state_free(state);
         return NULL;
     }
@@ -1139,20 +1018,15 @@ xx_arni_installer_container_create_archive_records_reading(
     return state;
 }
 
-const xx_archive_record *
-xx_arni_installer_container_get_current_archive_record(
-    Abstractformat *format, xx_archive_record_state *state) {
-    return format && state && state->format == format && state->has_record
-               ? &state->current_record
-               : NULL;
+const xx_archive_record *xx_arni_installer_container_get_current_archive_record(Abstractformat *format, xx_archive_record_state *state)
+{
+    return format && state && state->format == format && state->has_record ? &state->current_record : NULL;
 }
 
-bool xx_arni_installer_container_archive_record_move_to_next(
-    Abstractformat *format, xx_archive_record_state *state, xx_pd_struct *pd) {
+bool xx_arni_installer_container_archive_record_move_to_next(Abstractformat *format, xx_archive_record_state *state, xx_pd_struct *pd)
+{
     arni_table *table;
-    if (!format || !state || state->format != format || !state->has_record ||
-        (pd && xx_pd_is_stopped(pd)))
-        return false;
+    if (!format || !state || state->format != format || !state->has_record || (pd && xx_pd_is_stopped(pd))) return false;
     table = (arni_table *)state->internal_state;
     if (!table || table->index + 1U >= table->count) {
         xx_archive_record_cleanup(&state->current_record);
@@ -1162,13 +1036,12 @@ bool xx_arni_installer_container_archive_record_move_to_next(
     }
     ++table->index;
     ++state->current_index;
-    state->has_record = arni_set_record(format, &state->current_record,
-                                        &table->items[table->index]);
+    state->has_record = arni_set_record(format, &state->current_record, &table->items[table->index]);
     return state->has_record;
 }
 
-bool xx_arni_installer_container_unpack_current_archive_record(
-    Abstractformat *format, xx_archive_record_state *state, xx_pd_struct *pd) {
+bool xx_arni_installer_container_unpack_current_archive_record(Abstractformat *format, xx_archive_record_state *state, xx_pd_struct *pd)
+{
     arni_table *table;
     const arni_member *member;
     const xx_var *path_option;
@@ -1178,28 +1051,23 @@ bool xx_arni_installer_container_unpack_current_archive_record(
     bool result = false;
     bool created = false;
 
-    if (!format || !state || state->format != format || !state->has_record ||
-        !(table = (arni_table *)state->internal_state) ||
-        table->index >= table->count || (pd && xx_pd_is_stopped(pd)))
+    if (!format || !state || state->format != format || !state->has_record || !(table = (arni_table *)state->internal_state) || table->index >= table->count ||
+        (pd && xx_pd_is_stopped(pd)))
         return false;
     member = &table->items[table->index];
     path_option = arni_option(&state->options, XX_META_ID_OPT_UNPACK_PATH);
     /* No destination: decode and discard, which verifies the member. */
     if (!path_option) return arni_unpack_member(format, member, NULL, pd);
     if (!arni_safe_output_name(member->name)) return false;
-    if (path_option->type == XX_VAR_TYPE_STRING ||
-        path_option->type == XX_VAR_TYPE_STRING_VIEW) {
+    if (path_option->type == XX_VAR_TYPE_STRING || path_option->type == XX_VAR_TYPE_STRING_VIEW) {
         base = xx_var_get_str(path_option);
-    } else if (path_option->type == XX_VAR_TYPE_WSTRING ||
-               path_option->type == XX_VAR_TYPE_WSTRING_VIEW) {
+    } else if (path_option->type == XX_VAR_TYPE_WSTRING || path_option->type == XX_VAR_TYPE_WSTRING_VIEW) {
         owned_base = xx_str_unicode_to_utf8(xx_var_get_wstr(path_option));
         base = owned_base;
     }
     if (!base) goto done;
-    path = (base[0] && base[xx_str_len(base) - 1U] != '/' &&
-            base[xx_str_len(base) - 1U] != '\\')
-               ? xx_str_concat3(base, "/", member->name)
-               : xx_str_concat(base, member->name);
+    path = (base[0] && base[xx_str_len(base) - 1U] != '/' && base[xx_str_len(base) - 1U] != '\\') ? xx_str_concat3(base, "/", member->name)
+                                                                                                  : xx_str_concat(base, member->name);
     if (!path || !xx_store_create_dirs_a(path, false)) goto done;
     {
         xx_io_device *destination = xx_io_file_open(path, "wb");
@@ -1215,8 +1083,8 @@ done:
     return result;
 }
 
-void xx_arni_installer_container_free_archive_records_reading(
-    Abstractformat *format, xx_archive_record_state *state) {
+void xx_arni_installer_container_free_archive_records_reading(Abstractformat *format, xx_archive_record_state *state)
+{
     (void)format;
     xx_archive_record_state_free(state);
 }

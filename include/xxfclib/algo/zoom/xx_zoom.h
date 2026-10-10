@@ -73,9 +73,7 @@ extern "C" {
  * @param written     Receives the byte count produced; set on every path.
  * @return true only when the whole image was produced.
  */
-XXFC_API bool xx_zoom_decode_memory(const uint8_t *input, size_t input_size,
-                                    uint8_t *output, size_t output_size,
-                                    size_t *written);
+XXFC_API bool xx_zoom_decode_memory(const uint8_t *input, size_t input_size, uint8_t *output, size_t output_size, size_t *written);
 
 /**
  * @brief Recover whole decoded chunk records from a damaged Zoom image.
@@ -90,10 +88,7 @@ XXFC_API bool xx_zoom_decode_memory(const uint8_t *input, size_t input_size,
  * @param complete    True only if the entire image decoded successfully.
  * @return true when a full image or a nonempty complete-record prefix exists.
  */
-XXFC_API bool xx_zoom_decode_prefix_memory(const uint8_t *input,
-                                           size_t input_size, uint8_t *output,
-                                           size_t output_size, size_t *written,
-                                           bool *complete);
+XXFC_API bool xx_zoom_decode_prefix_memory(const uint8_t *input, size_t input_size, uint8_t *output, size_t output_size, size_t *written, bool *complete);
 
 /**
  * @brief Measure a Zoom container.
@@ -111,9 +106,7 @@ XXFC_API bool xx_zoom_decode_prefix_memory(const uint8_t *input,
  * @param produced    Receives the image size. May be NULL.
  * @return true when the container decodes completely within the limit.
  */
-XXFC_API bool xx_zoom_scan_memory(const uint8_t *input, size_t input_size,
-                                  size_t max_output, size_t *consumed,
-                                  size_t *produced);
+XXFC_API bool xx_zoom_scan_memory(const uint8_t *input, size_t input_size, size_t max_output, size_t *consumed, size_t *produced);
 
 /**
  * @brief The RLE stage on its own.
@@ -134,9 +127,7 @@ XXFC_API bool xx_zoom_scan_memory(const uint8_t *input, size_t input_size,
  * @return true only when exactly @p output_size bytes were produced and the
  *         input was consumed to its end.
  */
-XXFC_API bool xx_zoom_rle_decode_memory(const uint8_t *input,
-                                        size_t input_size, uint8_t *output,
-                                        size_t output_size, size_t *written);
+XXFC_API bool xx_zoom_rle_decode_memory(const uint8_t *input, size_t input_size, uint8_t *output, size_t output_size, size_t *written);
 
 #ifdef __cplusplus
 }

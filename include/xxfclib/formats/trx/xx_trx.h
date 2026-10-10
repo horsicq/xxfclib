@@ -59,12 +59,12 @@ struct xx_trx {
     Abstractformat format;
     uint64_t number_of_records;
     uint64_t number_of_members;
-    uint32_t image_size;    /**< The header's len field. */
-    uint32_t crc32;         /**< The header's crc32 field, verified on parse. */
-    uint32_t flags;         /**< flag_version bits 0..15. */
-    uint32_t version;       /**< flag_version bits 16..31; 1 or 2. */
-    uint32_t header_size;   /**< 28 for v1, 32 for v2. */
-    int64_t archive_end;    /**< base_address + len, or -1. */
+    uint32_t image_size;  /**< The header's len field. */
+    uint32_t crc32;       /**< The header's crc32 field, verified on parse. */
+    uint32_t flags;       /**< flag_version bits 0..15. */
+    uint32_t version;     /**< flag_version bits 16..31; 1 or 2. */
+    uint32_t header_size; /**< 28 for v1, 32 for v2. */
+    int64_t archive_end;  /**< base_address + len, or -1. */
     void *internal;
 };
 
@@ -76,20 +76,13 @@ XXFC_API void xx_trx_free(xx_trx *trx);
 XXFC_API bool xx_trx_check_is_valid(Abstractformat *self, xx_pd_struct *pd);
 XXFC_API bool xx_trx_handle_base_info(Abstractformat *self, xx_pd_struct *pd);
 XXFC_API int64_t xx_trx_get_format_size(Abstractformat *self, xx_pd_struct *pd);
-XXFC_API uint64_t xx_trx_get_number_of_archive_records(Abstractformat *self,
-                                                       xx_pd_struct *pd);
+XXFC_API uint64_t xx_trx_get_number_of_archive_records(Abstractformat *self, xx_pd_struct *pd);
 
-XXFC_API xx_archive_record_state *xx_trx_create_archive_records_reading(
-    Abstractformat *self, const xx_list_s *options, xx_pd_struct *pd);
-XXFC_API const xx_archive_record *xx_trx_get_current_archive_record(
-    Abstractformat *self, xx_archive_record_state *state);
-XXFC_API bool xx_trx_unpack_current_archive_record(
-    Abstractformat *self, xx_archive_record_state *state, xx_pd_struct *pd);
-XXFC_API bool xx_trx_archive_record_move_to_next(Abstractformat *self,
-                                                 xx_archive_record_state *state,
-                                                 xx_pd_struct *pd);
-XXFC_API void xx_trx_free_archive_records_reading(
-    Abstractformat *self, xx_archive_record_state *state);
+XXFC_API xx_archive_record_state *xx_trx_create_archive_records_reading(Abstractformat *self, const xx_list_s *options, xx_pd_struct *pd);
+XXFC_API const xx_archive_record *xx_trx_get_current_archive_record(Abstractformat *self, xx_archive_record_state *state);
+XXFC_API bool xx_trx_unpack_current_archive_record(Abstractformat *self, xx_archive_record_state *state, xx_pd_struct *pd);
+XXFC_API bool xx_trx_archive_record_move_to_next(Abstractformat *self, xx_archive_record_state *state, xx_pd_struct *pd);
+XXFC_API void xx_trx_free_archive_records_reading(Abstractformat *self, xx_archive_record_state *state);
 
 XXFC_API uint64_t xx_trx_get_number_of_records(const xx_trx *trx);
 XXFC_API uint64_t xx_trx_get_number_of_members(const xx_trx *trx);
@@ -99,18 +92,24 @@ XXFC_API uint32_t xx_trx_get_version(const xx_trx *trx);
 XXFC_API uint32_t xx_trx_get_flags(const xx_trx *trx);
 XXFC_API int64_t xx_trx_get_archive_end(const xx_trx *trx);
 
-static inline Abstractformat *xx_trx_to_format(xx_trx *trx) {
+static inline Abstractformat *xx_trx_to_format(xx_trx *trx)
+{
     return trx ? &trx->format : NULL;
 }
-static inline void XTrx_init(xx_trx *trx, xx_io_device *dev,
-                             int64_t base_address) {
+static inline void XTrx_init(xx_trx *trx, xx_io_device *dev, int64_t base_address)
+{
     xx_trx_init(trx, dev, base_address);
 }
-static inline xx_trx *XTrx_create(xx_io_device *dev, int64_t base_address) {
+static inline xx_trx *XTrx_create(xx_io_device *dev, int64_t base_address)
+{
     return xx_trx_create(dev, base_address);
 }
-static inline void XTrx_free(xx_trx *trx) { xx_trx_free(trx); }
-static inline bool XTrx_is_valid(xx_trx *trx, xx_pd_struct *pd) {
+static inline void XTrx_free(xx_trx *trx)
+{
+    xx_trx_free(trx);
+}
+static inline bool XTrx_is_valid(xx_trx *trx, xx_pd_struct *pd)
+{
     return trx ? xx_format_is_valid(&trx->format, pd) : false;
 }
 

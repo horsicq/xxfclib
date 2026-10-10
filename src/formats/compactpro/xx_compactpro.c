@@ -112,10 +112,10 @@
 /* One catalogue record as the structural walk found it. File fields are
  * re-read from the catalogue when the listing is built. */
 typedef struct xx_compactpro_entry_s {
-    uint32_t record;      /* catalogue offset of the length byte */
-    uint16_t children;    /* directories only */
+    uint32_t record;   /* catalogue offset of the length byte */
+    uint16_t children; /* directories only */
     uint8_t name_length;
-    uint8_t depth;        /* 0 for records directly in the root */
+    uint8_t depth; /* 0 for records directly in the root */
     bool folder;
 } xx_compactpro_entry;
 
@@ -130,13 +130,13 @@ typedef struct xx_compactpro_member_s {
     uint32_t modified;
     uint32_t finder_flags;
     uint32_t mac_type;
-    uint32_t file_crc;    /* stored register over both forks */
-    uint32_t prefix;      /* data forks: running CRC-32 after the resource fork */
-    size_t pair;          /* the file's other listed fork, or NONE */
+    uint32_t file_crc; /* stored register over both forks */
+    uint32_t prefix;   /* data forks: running CRC-32 after the resource fork */
+    size_t pair;       /* the file's other listed fork, or NONE */
     bool prefix_known;
     bool resource;
     bool encrypted;
-    bool empty_file;      /* both forks empty: nothing to check */
+    bool empty_file; /* both forks empty: nothing to check */
     bool is_folder;
 } xx_compactpro_member;
 
@@ -150,12 +150,12 @@ typedef struct xx_compactpro_stream_s {
 typedef struct xx_compactpro_scan_s {
     Abstractformat *self;
     xx_pd_struct *pd;
-    int64_t span;          /* bytes from base_address to the end */
-    int64_t origin;        /* catalogue offset, relative to base_address */
-    uint8_t *catalog;      /* the part of the catalogue read so far */
+    int64_t span;     /* bytes from base_address to the end */
+    int64_t origin;   /* catalogue offset, relative to base_address */
+    uint8_t *catalog; /* the part of the catalogue read so far */
     size_t loaded;
-    size_t limit;          /* the most the catalogue can occupy */
-    size_t end;            /* catalogue length, once the walk is done */
+    size_t limit; /* the most the catalogue can occupy */
+    size_t end;   /* catalogue length, once the walk is done */
     xx_compactpro_entry *entries;
     size_t entry_count;
     size_t entry_capacity;
@@ -166,17 +166,15 @@ static void xx_compactpro_vtable_destroy(Abstractformat *self);
 
 /* ------------------------------------------------------------- helpers -- */
 
-static bool xx_compactpro_read_at(Abstractformat *self, int64_t offset,
-                                  uint8_t *buffer, size_t size) {
+static bool xx_compactpro_read_at(Abstractformat *self, int64_t offset, uint8_t *buffer, size_t size)
+{
     size_t completed = 0U;
 
-    if (!self || !self->device || offset < 0 ||
-        xx_io_seek64(self->device, offset, SEEK_SET) != 0) {
+    if (!self || !self->device || offset < 0 || xx_io_seek64(self->device, offset, SEEK_SET) != 0) {
         return false;
     }
     while (completed < size) {
-        ssize_t received =
-            xx_io_read(self->device, buffer + completed, size - completed);
+        ssize_t received = xx_io_read(self->device, buffer + completed, size - completed);
         if (received <= 0 || (size_t)received > size - completed) {
             return false;
         }
@@ -188,7 +186,8 @@ static bool xx_compactpro_read_at(Abstractformat *self, int64_t offset,
 /* Last line of defence at extraction time: nothing absolute, no drive
  * letter, no empty or dot component, no backslash or control byte. The
  * listing never builds such a name; this only proves it. */
-static bool xx_compactpro_path_safe(const char *name) {
+static bool xx_compactpro_path_safe(const char *name)
+{
     const char *cursor = name;
 
     if (!name || !name[0] || name[0] == '/') return false;
@@ -210,7 +209,8 @@ static bool xx_compactpro_path_safe(const char *name) {
     return true;
 }
 
-static void xx_compactpro_stream_free(void *pointer) {
+static void xx_compactpro_stream_free(void *pointer)
+{
     xx_compactpro_stream *stream = (xx_compactpro_stream *)pointer;
     size_t index;
 
@@ -222,7 +222,8 @@ static void xx_compactpro_stream_free(void *pointer) {
     xx_mem_free(stream);
 }
 
-static void xx_compactpro_scan_cleanup(xx_compactpro_scan *scan) {
+static void xx_compactpro_scan_cleanup(xx_compactpro_scan *scan)
+{
     if (scan->catalog) xx_mem_free(scan->catalog);
     if (scan->entries) xx_mem_free(scan->entries);
     scan->catalog = NULL;
@@ -234,29 +235,20 @@ static void xx_compactpro_scan_cleanup(xx_compactpro_scan *scan) {
 /* Mac OS Roman 0x80..0xFF as Unicode (Apple's ROMAN.TXT, with the euro sign
  * Mac OS 8.5 put at 0xDB). */
 static const uint16_t xx_compactpro_mac_roman[128] = {
-    0x00C4, 0x00C5, 0x00C7, 0x00C9, 0x00D1, 0x00D6, 0x00DC, 0x00E1,
-    0x00E0, 0x00E2, 0x00E4, 0x00E3, 0x00E5, 0x00E7, 0x00E9, 0x00E8,
-    0x00EA, 0x00EB, 0x00ED, 0x00EC, 0x00EE, 0x00EF, 0x00F1, 0x00F3,
-    0x00F2, 0x00F4, 0x00F6, 0x00F5, 0x00FA, 0x00F9, 0x00FB, 0x00FC,
-    0x2020, 0x00B0, 0x00A2, 0x00A3, 0x00A7, 0x2022, 0x00B6, 0x00DF,
-    0x00AE, 0x00A9, 0x2122, 0x00B4, 0x00A8, 0x2260, 0x00C6, 0x00D8,
-    0x221E, 0x00B1, 0x2264, 0x2265, 0x00A5, 0x00B5, 0x2202, 0x2211,
-    0x220F, 0x03C0, 0x222B, 0x00AA, 0x00BA, 0x03A9, 0x00E6, 0x00F8,
-    0x00BF, 0x00A1, 0x00AC, 0x221A, 0x0192, 0x2248, 0x2206, 0x00AB,
-    0x00BB, 0x2026, 0x00A0, 0x00C0, 0x00C3, 0x00D5, 0x0152, 0x0153,
-    0x2013, 0x2014, 0x201C, 0x201D, 0x2018, 0x2019, 0x00F7, 0x25CA,
-    0x00FF, 0x0178, 0x2044, 0x20AC, 0x2039, 0x203A, 0xFB01, 0xFB02,
-    0x2021, 0x00B7, 0x201A, 0x201E, 0x2030, 0x00C2, 0x00CA, 0x00C1,
-    0x00CB, 0x00C8, 0x00CD, 0x00CE, 0x00CF, 0x00CC, 0x00D3, 0x00D4,
-    0xF8FF, 0x00D2, 0x00DA, 0x00DB, 0x00D9, 0x0131, 0x02C6, 0x02DC,
-    0x00AF, 0x02D8, 0x02D9, 0x02DA, 0x00B8, 0x02DD, 0x02DB, 0x02C7
-};
+    0x00C4, 0x00C5, 0x00C7, 0x00C9, 0x00D1, 0x00D6, 0x00DC, 0x00E1, 0x00E0, 0x00E2, 0x00E4, 0x00E3, 0x00E5, 0x00E7, 0x00E9, 0x00E8, 0x00EA, 0x00EB, 0x00ED,
+    0x00EC, 0x00EE, 0x00EF, 0x00F1, 0x00F3, 0x00F2, 0x00F4, 0x00F6, 0x00F5, 0x00FA, 0x00F9, 0x00FB, 0x00FC, 0x2020, 0x00B0, 0x00A2, 0x00A3, 0x00A7, 0x2022,
+    0x00B6, 0x00DF, 0x00AE, 0x00A9, 0x2122, 0x00B4, 0x00A8, 0x2260, 0x00C6, 0x00D8, 0x221E, 0x00B1, 0x2264, 0x2265, 0x00A5, 0x00B5, 0x2202, 0x2211, 0x220F,
+    0x03C0, 0x222B, 0x00AA, 0x00BA, 0x03A9, 0x00E6, 0x00F8, 0x00BF, 0x00A1, 0x00AC, 0x221A, 0x0192, 0x2248, 0x2206, 0x00AB, 0x00BB, 0x2026, 0x00A0, 0x00C0,
+    0x00C3, 0x00D5, 0x0152, 0x0153, 0x2013, 0x2014, 0x201C, 0x201D, 0x2018, 0x2019, 0x00F7, 0x25CA, 0x00FF, 0x0178, 0x2044, 0x20AC, 0x2039, 0x203A, 0xFB01,
+    0xFB02, 0x2021, 0x00B7, 0x201A, 0x201E, 0x2030, 0x00C2, 0x00CA, 0x00C1, 0x00CB, 0x00C8, 0x00CD, 0x00CE, 0x00CF, 0x00CC, 0x00D3, 0x00D4, 0xF8FF, 0x00D2,
+    0x00DA, 0x00DB, 0x00D9, 0x0131, 0x02C6, 0x02DC, 0x00AF, 0x02D8, 0x02D9, 0x02DA, 0x00B8, 0x02DD, 0x02DB, 0x02C7};
 
 /* Room for one converted name component: a device-name prefix, 127
  * characters of at most three UTF-8 bytes, a "_<n>" suffix and a NUL. */
 #define XX_COMPACTPRO_COMPONENT_BUFFER (1U + 127U * 3U + 16U + 1U)
 
-static size_t xx_compactpro_put_utf8(char *out, uint32_t code) {
+static size_t xx_compactpro_put_utf8(char *out, uint32_t code)
+{
     if (code < 0x80U) {
         out[0] = (char)code;
         return 1U;
@@ -272,15 +264,16 @@ static size_t xx_compactpro_put_utf8(char *out, uint32_t code) {
     return 3U;
 }
 
-static char xx_compactpro_upper_ascii(char c) {
+static char xx_compactpro_upper_ascii(char c)
+{
     return (c >= 'a' && c <= 'z') ? (char)(c - 'a' + 'A') : c;
 }
 
 /* CON, PRN, AUX, NUL, COM0-9, LPT0-9, CONIN$, CONOUT$ and CLOCK$, with or
  * without an extension, in any case. */
-static bool xx_compactpro_is_device(const char *name, size_t length) {
-    static const char *const words[] = {"CON", "PRN", "AUX", "NUL",
-                                        "CONIN$", "CONOUT$", "CLOCK$"};
+static bool xx_compactpro_is_device(const char *name, size_t length)
+{
+    static const char *const words[] = {"CON", "PRN", "AUX", "NUL", "CONIN$", "CONOUT$", "CLOCK$"};
     size_t stem = 0U;
     size_t word;
     size_t index;
@@ -298,8 +291,7 @@ static bool xx_compactpro_is_device(const char *name, size_t length) {
         char a = xx_compactpro_upper_ascii(name[0]);
         char b = xx_compactpro_upper_ascii(name[1]);
         char c = xx_compactpro_upper_ascii(name[2]);
-        if ((a == 'C' && b == 'O' && c == 'M') ||
-            (a == 'L' && b == 'P' && c == 'T')) {
+        if ((a == 'C' && b == 'O' && c == 'M') || (a == 'L' && b == 'P' && c == 'T')) {
             return true;
         }
     }
@@ -312,7 +304,8 @@ static bool xx_compactpro_is_device(const char *name, size_t length) {
  * eight characters holding '~' and a digit, at most one dot, an extension of
  * at most three characters) can be such an alias; its '~' before a digit
  * becomes '_'. */
-static void xx_compactpro_defuse_short_alias(char *name, size_t length) {
+static void xx_compactpro_defuse_short_alias(char *name, size_t length)
+{
     size_t dot = length;
     size_t stem_chars = 0U;
     size_t extension_chars = 0U;
@@ -331,15 +324,13 @@ static void xx_compactpro_defuse_short_alias(char *name, size_t length) {
                 ++extension_chars;
             }
         }
-        if (dot == length && name[index] == '~' && index + 1U < length &&
-            name[index + 1U] >= '0' && name[index + 1U] <= '9') {
+        if (dot == length && name[index] == '~' && index + 1U < length && name[index + 1U] >= '0' && name[index + 1U] <= '9') {
             tilde = true;
         }
     }
     if (!tilde || stem_chars > 8U || extension_chars > 3U) return;
     for (index = 0U; index + 1U < dot; ++index) {
-        if (name[index] == '~' && name[index + 1U] >= '0' &&
-            name[index + 1U] <= '9') {
+        if (name[index] == '~' && name[index + 1U] >= '0' && name[index + 1U] <= '9') {
             name[index] = '_';
         }
     }
@@ -347,27 +338,23 @@ static void xx_compactpro_defuse_short_alias(char *name, size_t length) {
 
 /* One stored Mac OS Roman name made into one safe UTF-8 path component.
  * Returns its length; @p out must hold XX_COMPACTPRO_COMPONENT_BUFFER. */
-static size_t xx_compactpro_component(const uint8_t *bytes, size_t size,
-                                      char *out) {
+static size_t xx_compactpro_component(const uint8_t *bytes, size_t size, char *out)
+{
     size_t input;
     size_t output = 0U;
 
     for (input = 0U; input < size; ++input) {
         uint8_t c = bytes[input];
-        if (c < 0x20U || c == 0x7FU || c == '/' || c == '\\' || c == ':' ||
-            c == '*' || c == '?' || c == '"' || c == '<' || c == '>' ||
-            c == '|') {
+        if (c < 0x20U || c == 0x7FU || c == '/' || c == '\\' || c == ':' || c == '*' || c == '?' || c == '"' || c == '<' || c == '>' || c == '|') {
             out[output++] = '_';
         } else if (c < 0x80U) {
             out[output++] = (char)c;
         } else {
-            output += xx_compactpro_put_utf8(
-                out + output, xx_compactpro_mac_roman[c - 0x80U]);
+            output += xx_compactpro_put_utf8(out + output, xx_compactpro_mac_roman[c - 0x80U]);
         }
     }
     /* Windows drops these, which would let "." and ".." through. */
-    while (output != 0U &&
-           (out[output - 1U] == ' ' || out[output - 1U] == '.')) {
+    while (output != 0U && (out[output - 1U] == ' ' || out[output - 1U] == '.')) {
         --output;
     }
     if (output == 0U) out[output++] = '_';
@@ -399,10 +386,11 @@ typedef struct xx_compactpro_names_s {
     size_t mask;
     uint64_t key0;
     uint64_t key1;
-    uint64_t work;       /* charged against XX_COMPACTPRO_WORK_LIMIT */
+    uint64_t work; /* charged against XX_COMPACTPRO_WORK_LIMIT */
 } xx_compactpro_names;
 
-static bool xx_compactpro_charge(xx_compactpro_names *names, uint64_t units) {
+static bool xx_compactpro_charge(xx_compactpro_names *names, uint64_t units)
+{
     if (units > XX_COMPACTPRO_WORK_LIMIT - names->work) {
         names->work = XX_COMPACTPRO_WORK_LIMIT;
         return false;
@@ -411,7 +399,8 @@ static bool xx_compactpro_charge(xx_compactpro_names *names, uint64_t units) {
     return true;
 }
 
-static uint32_t xx_compactpro_fold_next(const char **cursor) {
+static uint32_t xx_compactpro_fold_next(const char **cursor)
+{
     const uint8_t *s = (const uint8_t *)*cursor;
     uint32_t code = s[0];
     size_t used = 1U;
@@ -421,8 +410,7 @@ static uint32_t xx_compactpro_fold_next(const char **cursor) {
         code = ((code & 0x1FU) << 6) | (s[1] & 0x3FU);
         used = 2U;
     } else if ((code & 0xF0U) == 0xE0U && s[1] != 0U && s[2] != 0U) {
-        code = ((code & 0x0FU) << 12) | ((uint32_t)(s[1] & 0x3FU) << 6) |
-               (s[2] & 0x3FU);
+        code = ((code & 0x0FU) << 12) | ((uint32_t)(s[1] & 0x3FU) << 6) | (s[2] & 0x3FU);
         used = 3U;
     }
     *cursor += used;
@@ -439,7 +427,8 @@ static uint32_t xx_compactpro_fold_next(const char **cursor) {
 
 #define XX_COMPACTPRO_ROTL(x, b) (((x) << (b)) | ((x) >> (64 - (b))))
 
-static void xx_compactpro_sip_round(uint64_t *v) {
+static void xx_compactpro_sip_round(uint64_t *v)
+{
     v[0] += v[1];
     v[1] = XX_COMPACTPRO_ROTL(v[1], 13);
     v[1] ^= v[0];
@@ -456,7 +445,8 @@ static void xx_compactpro_sip_round(uint64_t *v) {
     v[2] = XX_COMPACTPRO_ROTL(v[2], 32);
 }
 
-static void xx_compactpro_sip_word(uint64_t *v, uint64_t word) {
+static void xx_compactpro_sip_word(uint64_t *v, uint64_t word)
+{
     v[3] ^= word;
     xx_compactpro_sip_round(v);
     v[0] ^= word;
@@ -465,8 +455,8 @@ static void xx_compactpro_sip_word(uint64_t *v, uint64_t word) {
 /* SipHash-1-3 (Aumasson and Bernstein, public domain reference design) over
  * the folded name, two bytes per character (folded codes stay below
  * 0x10000). The whole name is charged to the listing's budget. */
-static uint32_t xx_compactpro_hash(xx_compactpro_names *names,
-                                   const char *name, bool *ok) {
+static uint32_t xx_compactpro_hash(xx_compactpro_names *names, const char *name, bool *ok)
+{
     uint64_t v[4];
     uint64_t word = 0U;
     uint64_t bytes = 0U;
@@ -495,8 +485,8 @@ static uint32_t xx_compactpro_hash(xx_compactpro_names *names,
 }
 
 /* Fold-compare, each character charged to the budget. */
-static bool xx_compactpro_same(xx_compactpro_names *names, const char *left,
-                               const char *right, bool *ok) {
+static bool xx_compactpro_same(xx_compactpro_names *names, const char *left, const char *right, bool *ok)
+{
     uint64_t steps = 1U;
     bool equal;
 
@@ -522,7 +512,8 @@ static bool xx_compactpro_same(xx_compactpro_names *names, const char *left,
  * only keeps honest archives far away from it. Heap and stack addresses
  * (randomised by the loader), the clock and the C runtime's generator are
  * mixed through SipHash rounds. */
-static void xx_compactpro_names_key(xx_compactpro_names *names) {
+static void xx_compactpro_names_key(xx_compactpro_names *names)
+{
     static uint64_t counter = 0U;
     uint64_t v[4];
     int local = 0;
@@ -530,8 +521,7 @@ static void xx_compactpro_names_key(xx_compactpro_names *names) {
     v[0] = (uint64_t)(uintptr_t)names->slots ^ 0x243f6a8885a308d3ULL;
     v[1] = (uint64_t)(uintptr_t)&local ^ 0x13198a2e03707344ULL;
     v[2] = (uint64_t)xx_rt_clock_ms() ^ 0xa4093822299f31d0ULL;
-    v[3] = (uint64_t)(uintptr_t)names->hints ^
-           ((uint64_t)(uint32_t)xx_rt_rand() << 32) ^ ++counter;
+    v[3] = (uint64_t)(uintptr_t)names->hints ^ ((uint64_t)(uint32_t)xx_rt_rand() << 32) ^ ++counter;
     xx_compactpro_sip_word(v, (uint64_t)(uintptr_t)&counter);
     xx_compactpro_sip_round(v);
     xx_compactpro_sip_round(v);
@@ -541,8 +531,8 @@ static void xx_compactpro_names_key(xx_compactpro_names *names) {
     names->key1 = v[2] ^ v[3];
 }
 
-static bool xx_compactpro_names_init(xx_compactpro_names *names,
-                                     size_t expected) {
+static bool xx_compactpro_names_init(xx_compactpro_names *names, size_t expected)
+{
     size_t size = 16U;
 
     xx_mem_zero(names, sizeof(*names));
@@ -555,7 +545,8 @@ static bool xx_compactpro_names_init(xx_compactpro_names *names,
     return true;
 }
 
-static void xx_compactpro_names_cleanup(xx_compactpro_names *names) {
+static void xx_compactpro_names_cleanup(xx_compactpro_names *names)
+{
     if (names->slots) xx_mem_free((void *)names->slots);
     if (names->hints) xx_mem_free(names->hints);
     xx_mem_zero(names, sizeof(*names));
@@ -564,8 +555,8 @@ static void xx_compactpro_names_cleanup(xx_compactpro_names *names) {
 /* The slot holding @p name, or the empty slot where it belongs; NONE once
  * the listing's work budget is spent. The table is sized to stay at most
  * half full, so the probe always ends. */
-static size_t xx_compactpro_names_find(xx_compactpro_names *names,
-                                       const char *name) {
+static size_t xx_compactpro_names_find(xx_compactpro_names *names, const char *name)
+{
     bool ok = true;
     size_t slot = (size_t)xx_compactpro_hash(names, name, &ok) & names->mask;
 
@@ -584,7 +575,8 @@ static size_t xx_compactpro_names_find(xx_compactpro_names *names,
 /* Make sure catalogue bytes [0, need) are in memory, reading more only as
  * the walk actually reaches them, so a file that merely starts with 1 costs
  * one small read before it is refused. */
-static bool xx_compactpro_ensure(xx_compactpro_scan *scan, size_t need) {
+static bool xx_compactpro_ensure(xx_compactpro_scan *scan, size_t need)
+{
     size_t grown;
     uint8_t *buffer;
 
@@ -597,23 +589,18 @@ static bool xx_compactpro_ensure(xx_compactpro_scan *scan, size_t need) {
     buffer = (uint8_t *)xx_mem_realloc(scan->catalog, grown);
     if (!buffer) return false;
     scan->catalog = buffer;
-    if (!xx_compactpro_read_at(
-            scan->self,
-            scan->self->base_address + scan->origin + (int64_t)scan->loaded,
-            buffer + scan->loaded, grown - scan->loaded)) {
+    if (!xx_compactpro_read_at(scan->self, scan->self->base_address + scan->origin + (int64_t)scan->loaded, buffer + scan->loaded, grown - scan->loaded)) {
         return false;
     }
     scan->loaded = grown;
     return true;
 }
 
-static bool xx_compactpro_push_entry(xx_compactpro_scan *scan,
-                                     const xx_compactpro_entry *entry) {
+static bool xx_compactpro_push_entry(xx_compactpro_scan *scan, const xx_compactpro_entry *entry)
+{
     if (scan->entry_count == scan->entry_capacity) {
-        size_t capacity = scan->entry_capacity ? scan->entry_capacity * 2U
-                                               : 64U;
-        xx_compactpro_entry *grown = (xx_compactpro_entry *)xx_mem_realloc(
-            scan->entries, capacity * sizeof(*grown));
+        size_t capacity = scan->entry_capacity ? scan->entry_capacity * 2U : 64U;
+        xx_compactpro_entry *grown = (xx_compactpro_entry *)xx_mem_realloc(scan->entries, capacity * sizeof(*grown));
         if (!grown) return false;
         scan->entries = grown;
         scan->entry_capacity = capacity;
@@ -627,7 +614,8 @@ typedef struct xx_compactpro_range_s {
     int64_t end;
 } xx_compactpro_range;
 
-static int xx_compactpro_range_compare(const void *left, const void *right) {
+static int xx_compactpro_range_compare(const void *left, const void *right)
+{
     const xx_compactpro_range *a = (const xx_compactpro_range *)left;
     const xx_compactpro_range *b = (const xx_compactpro_range *)right;
 
@@ -642,15 +630,15 @@ static int xx_compactpro_range_compare(const void *left, const void *right) {
  * referenced 65,535 times), so output would no longer be bounded by the
  * archive's own size. Every file's non-empty packed range must start after
  * the header and must not overlap any other file's. */
-static bool xx_compactpro_forks_disjoint(xx_compactpro_scan *scan) {
+static bool xx_compactpro_forks_disjoint(xx_compactpro_scan *scan)
+{
     xx_compactpro_range *ranges;
     size_t count = 0U;
     size_t index;
     bool result = true;
 
     if (scan->entry_count == 0U) return true;
-    ranges = (xx_compactpro_range *)xx_mem_calloc(scan->entry_count,
-                                                  sizeof(*ranges));
+    ranges = (xx_compactpro_range *)xx_mem_calloc(scan->entry_count, sizeof(*ranges));
     if (!ranges) return false;
     for (index = 0U; index < scan->entry_count; ++index) {
         const xx_compactpro_entry *entry = &scan->entries[index];
@@ -660,8 +648,7 @@ static bool xx_compactpro_forks_disjoint(xx_compactpro_scan *scan) {
         if (entry->folder) continue;
         meta = scan->catalog + entry->record + 1U + entry->name_length;
         offset = (int64_t)xx_data_get_u32(meta + 1, 4, 0, true);
-        packed = (int64_t)xx_data_get_u32(meta + 37, 4, 0, true) +
-                 (int64_t)xx_data_get_u32(meta + 41, 4, 0, true);
+        packed = (int64_t)xx_data_get_u32(meta + 37, 4, 0, true) + (int64_t)xx_data_get_u32(meta + 41, 4, 0, true);
         if (packed == 0) continue;
         if (offset < (int64_t)XX_COMPACTPRO_HEADER_SIZE) {
             result = false;
@@ -672,8 +659,7 @@ static bool xx_compactpro_forks_disjoint(xx_compactpro_scan *scan) {
         ++count;
     }
     if (result && count > 1U) {
-        xx_rt_qsort(ranges, count, sizeof(*ranges),
-                    xx_compactpro_range_compare);
+        xx_rt_qsort(ranges, count, sizeof(*ranges), xx_compactpro_range_compare);
         for (index = 1U; index < count; ++index) {
             if (ranges[index].start < ranges[index - 1U].end) {
                 result = false;
@@ -687,8 +673,8 @@ static bool xx_compactpro_forks_disjoint(xx_compactpro_scan *scan) {
 
 /* The structural pass: header, record walk and catalogue CRC. Everything a
  * listing needs is left in @p scan; nothing is named yet. */
-static bool xx_compactpro_scan_run(Abstractformat *self, xx_pd_struct *pd,
-                                   xx_compactpro_scan *scan) {
+static bool xx_compactpro_scan_run(Abstractformat *self, xx_pd_struct *pd, xx_compactpro_scan *scan)
+{
     uint8_t header[XX_COMPACTPRO_HEADER_SIZE];
     uint32_t remaining[XX_COMPACTPRO_MAX_DEPTH + 1];
     int64_t total;
@@ -708,8 +694,7 @@ static bool xx_compactpro_scan_run(Abstractformat *self, xx_pd_struct *pd,
     scan->span = total - self->base_address;
     if (scan->span < (int64_t)XX_COMPACTPRO_MIN_SIZE) return false;
     if (pd && xx_pd_is_stopped(pd)) return false;
-    if (!xx_compactpro_read_at(self, self->base_address, header,
-                               sizeof(header))) {
+    if (!xx_compactpro_read_at(self, self->base_address, header, sizeof(header))) {
         return false;
     }
     /* The whole fixed header is one byte with the value 1. That is far too
@@ -719,8 +704,7 @@ static bool xx_compactpro_scan_run(Abstractformat *self, xx_pd_struct *pd,
 
     /* The catalogue follows the 8-byte header and all member data. */
     scan->origin = (int64_t)xx_data_get_u32(header + 4, 4, 0, true);
-    if (scan->origin < (int64_t)XX_COMPACTPRO_HEADER_SIZE ||
-        scan->origin > scan->span - (int64_t)XX_COMPACTPRO_CATALOG_HEAD) {
+    if (scan->origin < (int64_t)XX_COMPACTPRO_HEADER_SIZE || scan->origin > scan->span - (int64_t)XX_COMPACTPRO_CATALOG_HEAD) {
         return false;
     }
     scan->limit = (size_t)XX_COMPACTPRO_CATALOG_HEAD;
@@ -734,8 +718,7 @@ static bool xx_compactpro_scan_run(Abstractformat *self, xx_pd_struct *pd,
 
     /* No catalogue can be longer than its record total allows, so that is
      * the most that will ever be read, whatever follows it in the file. */
-    bound = (int64_t)XX_COMPACTPRO_CATALOG_HEAD + (int64_t)comment_size +
-            (int64_t)root_records * (int64_t)XX_COMPACTPRO_MAX_RECORD;
+    bound = (int64_t)XX_COMPACTPRO_CATALOG_HEAD + (int64_t)comment_size + (int64_t)root_records * (int64_t)XX_COMPACTPRO_MAX_RECORD;
     if (bound > scan->span - scan->origin) bound = scan->span - scan->origin;
     scan->limit = (size_t)bound;
     position = (size_t)XX_COMPACTPRO_CATALOG_HEAD + comment_size;
@@ -767,13 +750,10 @@ static bool xx_compactpro_scan_run(Abstractformat *self, xx_pd_struct *pd,
 
         if (entry.folder) {
             uint32_t children;
-            if (!xx_compactpro_ensure(
-                    scan, position + 1U + name_size +
-                              (size_t)XX_COMPACTPRO_DIR_RECORD_SIZE)) {
+            if (!xx_compactpro_ensure(scan, position + 1U + name_size + (size_t)XX_COMPACTPRO_DIR_RECORD_SIZE)) {
                 return false;
             }
-            children = (uint32_t)xx_data_get_u16(scan->catalog + position +
-                                                    1U + name_size, 2, 0, true);
+            children = (uint32_t)xx_data_get_u16(scan->catalog + position + 1U + name_size, 2, 0, true);
             /* A directory's descendants come out of its parent's budget, so
              * a count that does not fit means the walk has lost sync. */
             if (children > remaining[depth]) return false;
@@ -793,9 +773,7 @@ static bool xx_compactpro_scan_run(Abstractformat *self, xx_pd_struct *pd,
             int64_t data_raw;
             int64_t resource_packed;
             int64_t data_packed;
-            if (!xx_compactpro_ensure(
-                    scan, position + 1U + name_size +
-                              (size_t)XX_COMPACTPRO_FILE_RECORD_SIZE)) {
+            if (!xx_compactpro_ensure(scan, position + 1U + name_size + (size_t)XX_COMPACTPRO_FILE_RECORD_SIZE)) {
                 return false;
             }
             meta = scan->catalog + position + 1U + name_size;
@@ -809,9 +787,7 @@ static bool xx_compactpro_scan_run(Abstractformat *self, xx_pd_struct *pd,
             if (offset + resource_packed + data_packed > scan->origin) {
                 return false;
             }
-            scan->member_count += (resource_raw != 0 ? 1U : 0U) +
-                                  ((data_raw != 0 || resource_raw == 0) ? 1U
-                                                                        : 0U);
+            scan->member_count += (resource_raw != 0 ? 1U : 0U) + ((data_raw != 0 || resource_raw == 0) ? 1U : 0U);
             position += 1U + name_size + (size_t)XX_COMPACTPRO_FILE_RECORD_SIZE;
         }
         if (!xx_compactpro_push_entry(scan, &entry)) return false;
@@ -825,8 +801,7 @@ static bool xx_compactpro_scan_run(Abstractformat *self, xx_pd_struct *pd,
      * range is not a stored length - it is wherever the walk stopped - so
      * this check also proves the walk stayed in step with the writer. Never
      * loosen it to "the walk did not fail". */
-    if ((xx_crc32_calc(0U, scan->catalog + 4, position - 4U) ^ 0xffffffffU) !=
-        stored_crc) {
+    if ((xx_crc32_calc(0U, scan->catalog + 4, position - 4U) ^ 0xffffffffU) != stored_crc) {
         return false;
     }
     if (!xx_compactpro_forks_disjoint(scan)) return false;
@@ -837,13 +812,13 @@ static bool xx_compactpro_scan_run(Abstractformat *self, xx_pd_struct *pd,
 
 typedef struct xx_compactpro_build_s {
     xx_compactpro_names names;
-    char **owned;        /* directory paths, kept for the name table */
+    char **owned; /* directory paths, kept for the name table */
     size_t owned_count;
     size_t name_bytes;
 } xx_compactpro_build;
 
-static char *xx_compactpro_budget_alloc(xx_compactpro_build *build,
-                                        size_t size) {
+static char *xx_compactpro_budget_alloc(xx_compactpro_build *build, size_t size)
+{
     if (size > XX_COMPACTPRO_MAX_NAME_BYTES - build->name_bytes) return NULL;
     build->name_bytes += size;
     return (char *)xx_mem_alloc(size);
@@ -851,10 +826,8 @@ static char *xx_compactpro_budget_alloc(xx_compactpro_build *build,
 
 /* "<parent>/<stem>[_<n>]<extension>[.rsrc]", or NULL when it would be too
  * long or memory runs out. */
-static char *xx_compactpro_candidate(xx_compactpro_build *build,
-                                     const char *parent, const char *component,
-                                     size_t component_length, uint32_t suffix,
-                                     bool resource) {
+static char *xx_compactpro_candidate(xx_compactpro_build *build, const char *parent, const char *component, size_t component_length, uint32_t suffix, bool resource)
+{
     char digits[16];
     size_t digit_count = 0U;
     size_t parent_length = parent ? xx_str_len(parent) : 0U;
@@ -865,8 +838,7 @@ static char *xx_compactpro_candidate(xx_compactpro_build *build,
     char *cursor;
 
     if (suffix != 0U) {
-        int written = xx_rt_snprintf(digits, sizeof(digits), "_%u",
-                                     (unsigned)suffix);
+        int written = xx_rt_snprintf(digits, sizeof(digits), "_%u", (unsigned)suffix);
         if (written <= 0 || (size_t)written >= sizeof(digits)) return NULL;
         digit_count = (size_t)written;
         /* The number goes before a final extension, never at the start. */
@@ -877,8 +849,7 @@ static char *xx_compactpro_candidate(xx_compactpro_build *build,
             }
         }
     }
-    total = parent_length + (parent_length ? 1U : 0U) + component_length +
-            digit_count + (resource ? 5U : 0U);
+    total = parent_length + (parent_length ? 1U : 0U) + component_length + digit_count + (resource ? 5U : 0U);
     if (total > (size_t)XX_COMPACTPRO_MAX_PATH) return NULL;
     if (!xx_compactpro_charge(&build->names, (uint64_t)total + 1U)) {
         return NULL;
@@ -907,7 +878,8 @@ static char *xx_compactpro_candidate(xx_compactpro_build *build,
     return result;
 }
 
-static void xx_compactpro_release(xx_compactpro_build *build, char *name) {
+static void xx_compactpro_release(xx_compactpro_build *build, char *name)
+{
     if (!name) return;
     build->name_bytes -= xx_str_len(name) + 1U;
     xx_mem_free(name);
@@ -924,10 +896,9 @@ static void xx_compactpro_release(xx_compactpro_build *build, char *name) {
  * next one there. Any hint is only a starting point (every candidate is
  * still looked up), so sharing one between names costs nothing but a higher
  * number. */
-static bool xx_compactpro_claim(xx_compactpro_build *build, const char *parent,
-                                const char *component, size_t length,
-                                bool want_rsrc, char **plain, char **rsrc,
-                                xx_pd_struct *pd) {
+static bool xx_compactpro_claim(xx_compactpro_build *build, const char *parent, const char *component, size_t length, bool want_rsrc, char **plain, char **rsrc,
+                                xx_pd_struct *pd)
+{
     size_t base_slot = XX_COMPACTPRO_NONE;
     uint32_t suffix = 0U;
     uint32_t attempts;
@@ -944,8 +915,7 @@ static bool xx_compactpro_claim(xx_compactpro_build *build, const char *parent,
         if ((attempts & 0xFFU) == 0xFFU && pd && xx_pd_is_stopped(pd)) {
             return false;
         }
-        candidate = xx_compactpro_candidate(build, parent, component, length,
-                                            suffix, false);
+        candidate = xx_compactpro_candidate(build, parent, component, length, suffix, false);
         if (!candidate) return false;
         slot = xx_compactpro_names_find(&build->names, candidate);
         if (slot == XX_COMPACTPRO_NONE) {
@@ -955,8 +925,7 @@ static bool xx_compactpro_claim(xx_compactpro_build *build, const char *parent,
         if (build->names.slots[slot]) {
             taken = slot;
         } else if (want_rsrc) {
-            resource = xx_compactpro_candidate(build, parent, component,
-                                               length, suffix, true);
+            resource = xx_compactpro_candidate(build, parent, component, length, suffix, true);
             if (!resource) {
                 xx_compactpro_release(build, candidate);
                 return false;
@@ -1007,20 +976,17 @@ static bool xx_compactpro_claim(xx_compactpro_build *build, const char *parent,
     return false;
 }
 
-static void xx_compactpro_set_member_common(xx_compactpro_member *member,
-                                            const xx_compactpro_scan *scan,
-                                            const xx_compactpro_entry *entry,
-                                            int64_t record_size) {
-    member->header_offset =
-        scan->self->base_address + scan->origin + (int64_t)entry->record;
+static void xx_compactpro_set_member_common(xx_compactpro_member *member, const xx_compactpro_scan *scan, const xx_compactpro_entry *entry, int64_t record_size)
+{
+    member->header_offset = scan->self->base_address + scan->origin + (int64_t)entry->record;
     member->header_size = record_size;
     member->pair = XX_COMPACTPRO_NONE;
 }
 
 /* Turn the walked records into the member list: two forks per file at most,
  * one record per empty directory, every name made safe and unique. */
-static xx_compactpro_stream *xx_compactpro_build_stream(
-    xx_compactpro_scan *scan, xx_pd_struct *pd) {
+static xx_compactpro_stream *xx_compactpro_build_stream(xx_compactpro_scan *scan, xx_pd_struct *pd)
+{
     xx_compactpro_build build;
     xx_compactpro_stream *stream = NULL;
     const char *parents[XX_COMPACTPRO_MAX_DEPTH + 1];
@@ -1034,8 +1000,7 @@ static xx_compactpro_stream *xx_compactpro_build_stream(
     if (!stream) return NULL;
     xx_mem_zero(stream, sizeof(*stream));
     if (scan->entry_count == 0U || scan->member_count == 0U) goto done;
-    stream->items = (xx_compactpro_member *)xx_mem_calloc(
-        scan->member_count, sizeof(*stream->items));
+    stream->items = (xx_compactpro_member *)xx_mem_calloc(scan->member_count, sizeof(*stream->items));
     if (!stream->items) goto done;
     /* Each record leaves at most one name that no member owns: a directory
      * path, or the stem of a file listed only by its resource fork. */
@@ -1055,12 +1020,10 @@ static xx_compactpro_stream *xx_compactpro_build_stream(
 
         if (entry->depth && !parent) goto done;
         if ((index & 0x3FU) == 0U && pd && xx_pd_is_stopped(pd)) goto done;
-        length = xx_compactpro_component(
-            scan->catalog + entry->record + 1U, entry->name_length, component);
+        length = xx_compactpro_component(scan->catalog + entry->record + 1U, entry->name_length, component);
 
         if (entry->folder) {
-            if (!xx_compactpro_claim(&build, parent, component, length, false,
-                                     &plain, &resource, pd)) {
+            if (!xx_compactpro_claim(&build, parent, component, length, false, &plain, &resource, pd)) {
                 goto done;
             }
             build.owned[build.owned_count++] = plain;
@@ -1069,23 +1032,18 @@ static xx_compactpro_stream *xx_compactpro_build_stream(
                 xx_compactpro_member *member;
                 char *copy;
                 if (stream->count >= scan->member_count) goto done;
-                copy = xx_compactpro_budget_alloc(&build,
-                                                  xx_str_len(plain) + 1U);
+                copy = xx_compactpro_budget_alloc(&build, xx_str_len(plain) + 1U);
                 if (!copy) goto done;
                 xx_rt_memcpy(copy, plain, xx_str_len(plain) + 1U);
                 member = &stream->items[stream->count++];
-                xx_compactpro_set_member_common(
-                    member, scan, entry,
-                    1 + (int64_t)entry->name_length +
-                        XX_COMPACTPRO_DIR_RECORD_SIZE);
+                xx_compactpro_set_member_common(member, scan, entry, 1 + (int64_t)entry->name_length + XX_COMPACTPRO_DIR_RECORD_SIZE);
                 member->name = copy;
                 member->data_offset = member->header_offset;
                 member->method = XX_COMPACTPRO_METHOD_STORED;
                 member->is_folder = true;
             }
         } else {
-            const uint8_t *meta =
-                scan->catalog + entry->record + 1U + entry->name_length;
+            const uint8_t *meta = scan->catalog + entry->record + 1U + entry->name_length;
             int64_t offset = (int64_t)xx_data_get_u32(meta + 1, 4, 0, true);
             uint32_t flags = (uint32_t)xx_data_get_u16(meta + 27, 2, 0, true);
             int64_t resource_raw = (int64_t)xx_data_get_u32(meta + 29, 4, 0, true);
@@ -1094,46 +1052,35 @@ static xx_compactpro_stream *xx_compactpro_build_stream(
             int64_t data_packed = (int64_t)xx_data_get_u32(meta + 41, 4, 0, true);
             bool want_rsrc = resource_raw != 0;
             bool want_data = data_raw != 0 || resource_raw == 0;
-            int64_t record_size =
-                1 + (int64_t)entry->name_length + XX_COMPACTPRO_FILE_RECORD_SIZE;
+            int64_t record_size = 1 + (int64_t)entry->name_length + XX_COMPACTPRO_FILE_RECORD_SIZE;
             size_t first = stream->count;
             size_t forks = (want_rsrc ? 1U : 0U) + (want_data ? 1U : 0U);
             size_t fork;
 
             if (stream->count + forks > scan->member_count) goto done;
-            if (!xx_compactpro_claim(&build, parent, component, length,
-                                     want_rsrc, &plain, &resource, pd)) {
+            if (!xx_compactpro_claim(&build, parent, component, length, want_rsrc, &plain, &resource, pd)) {
                 goto done;
             }
             for (fork = 0U; fork < forks; ++fork) {
                 xx_compactpro_member *member = &stream->items[stream->count++];
                 bool is_rsrc = want_rsrc && fork == 0U;
                 int64_t raw = is_rsrc ? resource_raw : data_raw;
-                bool lzh = (flags & (is_rsrc ? XX_COMPACTPRO_FLAG_RSRC_LZH
-                                             : XX_COMPACTPRO_FLAG_DATA_LZH)) !=
-                           0U;
-                xx_compactpro_set_member_common(member, scan, entry,
-                                                record_size);
+                bool lzh = (flags & (is_rsrc ? XX_COMPACTPRO_FLAG_RSRC_LZH : XX_COMPACTPRO_FLAG_DATA_LZH)) != 0U;
+                xx_compactpro_set_member_common(member, scan, entry, record_size);
                 /* The name table keeps pointing at these strings; the
                  * members own them from here on. */
                 member->name = is_rsrc ? resource : plain;
                 member->resource = is_rsrc;
-                member->data_offset =
-                    scan->self->base_address + offset +
-                    (is_rsrc ? 0 : resource_packed);
-                member->compressed_size = is_rsrc ? resource_packed
-                                                  : data_packed;
+                member->data_offset = scan->self->base_address + offset + (is_rsrc ? 0 : resource_packed);
+                member->compressed_size = is_rsrc ? resource_packed : data_packed;
                 member->uncompressed_size = raw;
                 /* An empty fork carries no codec at all. */
-                member->method = raw == 0 ? XX_COMPACTPRO_METHOD_STORED
-                                          : (lzh ? XX_COMPACTPRO_METHOD_LZH
-                                                 : XX_COMPACTPRO_METHOD_RLE);
+                member->method = raw == 0 ? XX_COMPACTPRO_METHOD_STORED : (lzh ? XX_COMPACTPRO_METHOD_LZH : XX_COMPACTPRO_METHOD_RLE);
                 member->mac_type = xx_data_get_u32(meta + 5, 4, 0, true);
                 member->modified = xx_data_get_u32(meta + 17, 4, 0, true);
                 member->finder_flags = (uint32_t)xx_data_get_u16(meta + 21, 2, 0, true);
                 member->file_crc = xx_data_get_u32(meta + 23, 4, 0, true);
-                member->encrypted =
-                    (flags & XX_COMPACTPRO_FLAG_ENCRYPTED) != 0U;
+                member->encrypted = (flags & XX_COMPACTPRO_FLAG_ENCRYPTED) != 0U;
                 member->empty_file = resource_raw == 0 && data_raw == 0;
             }
             /* A resource fork with no listed data fork: the stem was only
@@ -1165,10 +1112,8 @@ done:
 
 /* ------------------------------------------------------------- decode -- */
 
-static bool xx_compactpro_decode(Abstractformat *self,
-                                 const xx_compactpro_member *member,
-                                 uint8_t **out, size_t *out_size,
-                                 xx_pd_struct *pd) {
+static bool xx_compactpro_decode(Abstractformat *self, const xx_compactpro_member *member, uint8_t **out, size_t *out_size, xx_pd_struct *pd)
+{
     uint8_t *input;
     uint8_t *output;
     size_t written = 0U;
@@ -1181,13 +1126,10 @@ static bool xx_compactpro_decode(Abstractformat *self,
     /* Only these three exist. Anything else must fail rather than fall
      * through to a stored copy, which would emit compressed bytes as if they
      * were plaintext. */
-    if (member->method != XX_COMPACTPRO_METHOD_STORED &&
-        member->method != XX_COMPACTPRO_METHOD_RLE &&
-        member->method != XX_COMPACTPRO_METHOD_LZH) {
+    if (member->method != XX_COMPACTPRO_METHOD_STORED && member->method != XX_COMPACTPRO_METHOD_RLE && member->method != XX_COMPACTPRO_METHOD_LZH) {
         return false;
     }
-    if (member->uncompressed_size < 0 || member->compressed_size < 0 ||
-        member->compressed_size > XX_COMPACTPRO_MAX_DECODED ||
+    if (member->uncompressed_size < 0 || member->compressed_size < 0 || member->compressed_size > XX_COMPACTPRO_MAX_DECODED ||
         member->uncompressed_size > XX_COMPACTPRO_MAX_DECODED) {
         return false;
     }
@@ -1208,9 +1150,7 @@ static bool xx_compactpro_decode(Abstractformat *self,
 
     input = (uint8_t *)xx_mem_alloc((size_t)member->compressed_size);
     if (!input) return false;
-    if (!xx_compactpro_read_at(self, member->data_offset, input,
-                               (size_t)member->compressed_size) ||
-        (pd && xx_pd_is_stopped(pd))) {
+    if (!xx_compactpro_read_at(self, member->data_offset, input, (size_t)member->compressed_size) || (pd && xx_pd_is_stopped(pd))) {
         xx_mem_free(input);
         return false;
     }
@@ -1220,13 +1160,9 @@ static bool xx_compactpro_decode(Abstractformat *self,
         return false;
     }
     if (member->method == XX_COMPACTPRO_METHOD_LZH) {
-        ok = xx_compactpro_lzh_decode_memory(
-            input, (size_t)member->compressed_size, output,
-            (size_t)member->uncompressed_size, &written);
+        ok = xx_compactpro_lzh_decode_memory(input, (size_t)member->compressed_size, output, (size_t)member->uncompressed_size, &written);
     } else {
-        ok = xx_compactpro_rle_decode_memory(
-            input, (size_t)member->compressed_size, output,
-            (size_t)member->uncompressed_size, &written);
+        ok = xx_compactpro_rle_decode_memory(input, (size_t)member->compressed_size, output, (size_t)member->uncompressed_size, &written);
     }
     xx_mem_free(input);
     /* Both entry points succeed only on an exact-length decode; the length
@@ -1242,10 +1178,8 @@ static bool xx_compactpro_decode(Abstractformat *self,
 }
 
 /* Decode a fork only to run it through the file CRC. */
-static bool xx_compactpro_fork_crc(Abstractformat *self,
-                                   const xx_compactpro_member *member,
-                                   uint32_t seed, uint32_t *crc,
-                                   xx_pd_struct *pd) {
+static bool xx_compactpro_fork_crc(Abstractformat *self, const xx_compactpro_member *member, uint32_t seed, uint32_t *crc, xx_pd_struct *pd)
+{
     uint8_t *plain = NULL;
     size_t plain_size = 0U;
 
@@ -1257,8 +1191,8 @@ static bool xx_compactpro_fork_crc(Abstractformat *self,
     return true;
 }
 
-static bool xx_compactpro_write_file(const char *path, const uint8_t *data,
-                                     size_t size) {
+static bool xx_compactpro_write_file(const char *path, const uint8_t *data, size_t size)
+{
     xx_io_device *output = xx_io_file_open(path, "wb");
     size_t completed = 0U;
     bool result = true;
@@ -1282,13 +1216,9 @@ static bool xx_compactpro_write_file(const char *path, const uint8_t *data,
  * and prove it with the file CRC, which runs over the resource fork and then
  * the data fork. The other fork is decoded for that when its running CRC is
  * not already known, one fork in memory at a time. */
-static bool xx_compactpro_extract(Abstractformat *self,
-                                  xx_compactpro_stream *stream,
-                                  xx_compactpro_member *member,
-                                  const char *target_path, xx_pd_struct *pd) {
-    xx_compactpro_member *other =
-        member->pair != XX_COMPACTPRO_NONE ? &stream->items[member->pair]
-                                           : NULL;
+static bool xx_compactpro_extract(Abstractformat *self, xx_compactpro_stream *stream, xx_compactpro_member *member, const char *target_path, xx_pd_struct *pd)
+{
+    xx_compactpro_member *other = member->pair != XX_COMPACTPRO_NONE ? &stream->items[member->pair] : NULL;
     uint8_t *plain = NULL;
     size_t plain_size = 0U;
     uint32_t crc = 0U;
@@ -1335,8 +1265,8 @@ static bool xx_compactpro_extract(Abstractformat *self,
 
 /* ---------------------------------------------------------- lifecycle --- */
 
-void xx_compactpro_init(xx_compactpro *archive, xx_io_device *device,
-                        int64_t base_address) {
+void xx_compactpro_init(xx_compactpro *archive, xx_io_device *device, int64_t base_address)
+{
     if (!archive) return;
     xx_mem_zero(archive, sizeof(*archive));
     xx_format_init(&archive->format, device, base_address);
@@ -1349,23 +1279,17 @@ void xx_compactpro_init(xx_compactpro *archive, xx_io_device *device,
     archive->format.check_is_valid = xx_compactpro_check_is_valid;
     archive->format.handle_base_info = xx_compactpro_handle_base_info;
     archive->format.get_format_size = xx_compactpro_get_format_size;
-    archive->format.get_number_of_archive_records =
-        xx_compactpro_get_number_of_archive_records;
-    archive->format.create_archive_records_reading =
-        xx_compactpro_create_archive_records_reading;
-    archive->format.get_current_archive_record =
-        xx_compactpro_get_current_archive_record;
-    archive->format.unpack_current_archive_record =
-        xx_compactpro_unpack_current_archive_record;
-    archive->format.archive_record_move_to_next =
-        xx_compactpro_archive_record_move_to_next;
-    archive->format.free_archive_records_reading =
-        xx_compactpro_free_archive_records_reading;
+    archive->format.get_number_of_archive_records = xx_compactpro_get_number_of_archive_records;
+    archive->format.create_archive_records_reading = xx_compactpro_create_archive_records_reading;
+    archive->format.get_current_archive_record = xx_compactpro_get_current_archive_record;
+    archive->format.unpack_current_archive_record = xx_compactpro_unpack_current_archive_record;
+    archive->format.archive_record_move_to_next = xx_compactpro_archive_record_move_to_next;
+    archive->format.free_archive_records_reading = xx_compactpro_free_archive_records_reading;
     archive->format.destroy = xx_compactpro_vtable_destroy;
 }
 
-xx_compactpro *xx_compactpro_create(xx_io_device *device,
-                                    int64_t base_address) {
+xx_compactpro *xx_compactpro_create(xx_io_device *device, int64_t base_address)
+{
     xx_compactpro *archive = (xx_compactpro *)xx_mem_alloc(sizeof(*archive));
 
     if (!archive) return NULL;
@@ -1373,7 +1297,8 @@ xx_compactpro *xx_compactpro_create(xx_io_device *device,
     return archive;
 }
 
-void xx_compactpro_destroy(xx_compactpro *archive) {
+void xx_compactpro_destroy(xx_compactpro *archive)
+{
     if (!archive) return;
     /* Not xx_format_destroy: it dispatches through format.destroy, which is
      * the wrapper below, and the two would recurse. */
@@ -1382,19 +1307,22 @@ void xx_compactpro_destroy(xx_compactpro *archive) {
     archive->number_of_records = 0U;
 }
 
-void xx_compactpro_free(xx_compactpro *archive) {
+void xx_compactpro_free(xx_compactpro *archive)
+{
     if (!archive) return;
     xx_compactpro_destroy(archive);
     xx_mem_free(archive);
 }
 
-static void xx_compactpro_vtable_destroy(Abstractformat *self) {
+static void xx_compactpro_vtable_destroy(Abstractformat *self)
+{
     xx_compactpro_destroy((xx_compactpro *)self);
 }
 
 /* -------------------------------------------------------------- format -- */
 
-bool xx_compactpro_check_is_valid(Abstractformat *self, xx_pd_struct *pd) {
+bool xx_compactpro_check_is_valid(Abstractformat *self, xx_pd_struct *pd)
+{
     xx_compactpro_scan scan;
     bool result;
 
@@ -1404,7 +1332,8 @@ bool xx_compactpro_check_is_valid(Abstractformat *self, xx_pd_struct *pd) {
     return result;
 }
 
-bool xx_compactpro_handle_base_info(Abstractformat *self, xx_pd_struct *pd) {
+bool xx_compactpro_handle_base_info(Abstractformat *self, xx_pd_struct *pd)
+{
     xx_compactpro *archive = (xx_compactpro *)self;
     xx_compactpro_scan scan;
 
@@ -1427,19 +1356,17 @@ bool xx_compactpro_handle_base_info(Abstractformat *self, xx_pd_struct *pd) {
     return true;
 }
 
-int64_t xx_compactpro_get_format_size(Abstractformat *self,
-                                      xx_pd_struct *pd) {
-    if (!self ||
-        (!self->base_info_handled && !xx_format_handle_base_info(self, pd))) {
+int64_t xx_compactpro_get_format_size(Abstractformat *self, xx_pd_struct *pd)
+{
+    if (!self || (!self->base_info_handled && !xx_format_handle_base_info(self, pd))) {
         return 0;
     }
     return self->is_valid ? self->format_size : 0;
 }
 
-uint64_t xx_compactpro_get_number_of_archive_records(Abstractformat *self,
-                                                     xx_pd_struct *pd) {
-    if (!self ||
-        (!self->base_info_handled && !xx_format_handle_base_info(self, pd))) {
+uint64_t xx_compactpro_get_number_of_archive_records(Abstractformat *self, xx_pd_struct *pd)
+{
+    if (!self || (!self->base_info_handled && !xx_format_handle_base_info(self, pd))) {
         return 0U;
     }
     return self->is_valid ? ((xx_compactpro *)self)->number_of_records : 0U;
@@ -1447,8 +1374,8 @@ uint64_t xx_compactpro_get_number_of_archive_records(Abstractformat *self,
 
 /* ------------------------------------------------------------- records -- */
 
-static bool xx_compactpro_set_record(xx_archive_record *record,
-                                     const xx_compactpro_member *member) {
+static bool xx_compactpro_set_record(xx_archive_record *record, const xx_compactpro_member *member)
+{
     bool ok;
 
     xx_archive_record_cleanup(record);
@@ -1458,46 +1385,32 @@ static bool xx_compactpro_set_record(xx_archive_record *record,
     record->data_offset = member->data_offset;
     record->compressed_size = member->compressed_size;
     ok = xx_archive_record_set_original_name(record, member->name) &&
-         xx_archive_record_set_meta_u64(record, XX_META_ID_COMPRESSED_SIZE,
-                                        (uint64_t)member->compressed_size) &&
-         xx_archive_record_set_meta_u64(record, XX_META_ID_UNCOMPRESSED_SIZE,
-                                        (uint64_t)member->uncompressed_size) &&
-         xx_archive_record_set_meta_u64(record, XX_META_ID_COMPRESSION_METHOD,
-                                        member->method) &&
-         xx_archive_record_set_meta_u64(record, XX_META_ID_TIMESTAMP,
-                                        member->modified) &&
-         xx_archive_record_set_meta_u64(record, XX_META_ID_ATTRIBUTES,
-                                        member->finder_flags) &&
-         xx_archive_record_set_meta_u64(record, XX_META_ID_FLAGS,
-                                        member->mac_type) &&
-         xx_archive_record_set_meta_bool(record, XX_META_ID_IS_FOLDER,
-                                         member->is_folder) &&
-         xx_archive_record_set_meta_bool(record, XX_META_ID_IS_ENCRYPTED,
-                                         member->encrypted);
+         xx_archive_record_set_meta_u64(record, XX_META_ID_COMPRESSED_SIZE, (uint64_t)member->compressed_size) &&
+         xx_archive_record_set_meta_u64(record, XX_META_ID_UNCOMPRESSED_SIZE, (uint64_t)member->uncompressed_size) &&
+         xx_archive_record_set_meta_u64(record, XX_META_ID_COMPRESSION_METHOD, member->method) &&
+         xx_archive_record_set_meta_u64(record, XX_META_ID_TIMESTAMP, member->modified) &&
+         xx_archive_record_set_meta_u64(record, XX_META_ID_ATTRIBUTES, member->finder_flags) &&
+         xx_archive_record_set_meta_u64(record, XX_META_ID_FLAGS, member->mac_type) && xx_archive_record_set_meta_bool(record, XX_META_ID_IS_FOLDER, member->is_folder) &&
+         xx_archive_record_set_meta_bool(record, XX_META_ID_IS_ENCRYPTED, member->encrypted);
     /* The stored CRC covers both forks together, so it is the CRC of this
      * member's own bytes only when the file has no other listed fork. */
-    if (ok && !member->is_folder && member->pair == XX_COMPACTPRO_NONE &&
-        !member->empty_file) {
-        ok = xx_archive_record_set_meta_u64(
-            record, XX_META_ID_CRC32,
-            (uint64_t)(member->file_crc ^ 0xffffffffU));
+    if (ok && !member->is_folder && member->pair == XX_COMPACTPRO_NONE && !member->empty_file) {
+        ok = xx_archive_record_set_meta_u64(record, XX_META_ID_CRC32, (uint64_t)(member->file_crc ^ 0xffffffffU));
     }
     return ok;
 }
 
-static bool xx_compactpro_copy_options(xx_list_s *target,
-                                       const xx_list_s *options) {
+static bool xx_compactpro_copy_options(xx_list_s *target, const xx_list_s *options)
+{
     size_t index;
 
     if (!target || !options) return options == NULL;
     for (index = 0U; index < options->count; ++index) {
-        const xx_meta *source =
-            (const xx_meta *)xx_list_at((const xx_list_t *)options, index);
+        const xx_meta *source = (const xx_meta *)xx_list_at((const xx_list_t *)options, index);
         xx_meta copied;
         if (!source) continue;
         xx_meta_init(&copied, source->meta_id);
-        if (!xx_var_copy(&copied.var, &source->var) ||
-            !xx_list_append(target, &copied)) {
+        if (!xx_var_copy(&copied.var, &source->var) || !xx_list_append(target, &copied)) {
             xx_meta_cleanup(&copied);
             return false;
         }
@@ -1505,21 +1418,20 @@ static bool xx_compactpro_copy_options(xx_list_s *target,
     return true;
 }
 
-static const xx_var *xx_compactpro_get_option(const xx_list_s *options,
-                                              uint32_t meta_id) {
+static const xx_var *xx_compactpro_get_option(const xx_list_s *options, uint32_t meta_id)
+{
     size_t index;
 
     if (!options) return NULL;
     for (index = 0U; index < options->count; ++index) {
-        const xx_meta *meta =
-            (const xx_meta *)xx_list_at((const xx_list_t *)options, index);
+        const xx_meta *meta = (const xx_meta *)xx_list_at((const xx_list_t *)options, index);
         if (meta && meta->meta_id == meta_id) return &meta->var;
     }
     return NULL;
 }
 
-xx_archive_record_state *xx_compactpro_create_archive_records_reading(
-    Abstractformat *self, const xx_list_s *options, xx_pd_struct *pd) {
+xx_archive_record_state *xx_compactpro_create_archive_records_reading(Abstractformat *self, const xx_list_s *options, xx_pd_struct *pd)
+{
     xx_compactpro_scan scan;
     xx_compactpro_stream *stream;
     xx_archive_record_state *state;
@@ -1541,10 +1453,7 @@ xx_archive_record_state *xx_compactpro_create_archive_records_reading(
     state->internal_state = stream;
     state->free_internal = xx_compactpro_stream_free;
     state->total_records = (int64_t)stream->count;
-    if (!xx_compactpro_copy_options(&state->options, options) ||
-        (stream->count != 0U &&
-         !xx_compactpro_set_record(&state->current_record,
-                                   &stream->items[0]))) {
+    if (!xx_compactpro_copy_options(&state->options, options) || (stream->count != 0U && !xx_compactpro_set_record(&state->current_record, &stream->items[0]))) {
         xx_archive_record_state_free(state);
         return NULL;
     }
@@ -1553,20 +1462,16 @@ xx_archive_record_state *xx_compactpro_create_archive_records_reading(
     return state;
 }
 
-const xx_archive_record *xx_compactpro_get_current_archive_record(
-    Abstractformat *self, xx_archive_record_state *state) {
-    return self && state && state->format == self && state->has_record
-               ? &state->current_record
-               : NULL;
+const xx_archive_record *xx_compactpro_get_current_archive_record(Abstractformat *self, xx_archive_record_state *state)
+{
+    return self && state && state->format == self && state->has_record ? &state->current_record : NULL;
 }
 
-bool xx_compactpro_archive_record_move_to_next(Abstractformat *self,
-                                               xx_archive_record_state *state,
-                                               xx_pd_struct *pd) {
+bool xx_compactpro_archive_record_move_to_next(Abstractformat *self, xx_archive_record_state *state, xx_pd_struct *pd)
+{
     xx_compactpro_stream *stream;
 
-    if (!self || !state || state->format != self || !state->has_record ||
-        (pd && xx_pd_is_stopped(pd))) {
+    if (!self || !state || state->format != self || !state->has_record || (pd && xx_pd_is_stopped(pd))) {
         return false;
     }
     stream = (xx_compactpro_stream *)state->internal_state;
@@ -1578,14 +1483,12 @@ bool xx_compactpro_archive_record_move_to_next(Abstractformat *self,
     }
     ++stream->index;
     ++state->current_index;
-    state->has_record = xx_compactpro_set_record(&state->current_record,
-                                                 &stream->items[stream->index]);
+    state->has_record = xx_compactpro_set_record(&state->current_record, &stream->items[stream->index]);
     return state->has_record;
 }
 
-bool xx_compactpro_unpack_current_archive_record(Abstractformat *self,
-                                                 xx_archive_record_state *state,
-                                                 xx_pd_struct *pd) {
+bool xx_compactpro_unpack_current_archive_record(Abstractformat *self, xx_archive_record_state *state, xx_pd_struct *pd)
+{
     xx_compactpro_stream *stream;
     xx_compactpro_member *member;
     const xx_var *path_option;
@@ -1594,8 +1497,7 @@ bool xx_compactpro_unpack_current_archive_record(Abstractformat *self,
     char *target_path = NULL;
     bool result = false;
 
-    if (!self || !state || state->format != self || !state->has_record ||
-        (pd && xx_pd_is_stopped(pd))) {
+    if (!self || !state || state->format != self || !state->has_record || (pd && xx_pd_is_stopped(pd))) {
         return false;
     }
     stream = (xx_compactpro_stream *)state->internal_state;
@@ -1603,19 +1505,16 @@ bool xx_compactpro_unpack_current_archive_record(Abstractformat *self,
     member = &stream->items[stream->index];
     if (!xx_compactpro_path_safe(member->name)) return false;
 
-    path_option = xx_compactpro_get_option(&state->options,
-                                           XX_META_ID_OPT_UNPACK_PATH);
+    path_option = xx_compactpro_get_option(&state->options, XX_META_ID_OPT_UNPACK_PATH);
     if (!path_option) {
         /* No destination: decode and discard, which verifies the member
          * without writing anything. */
         if (member->is_folder) return true;
         return xx_compactpro_extract(self, stream, member, NULL, pd);
     }
-    if (path_option->type == XX_VAR_TYPE_STRING ||
-        path_option->type == XX_VAR_TYPE_STRING_VIEW) {
+    if (path_option->type == XX_VAR_TYPE_STRING || path_option->type == XX_VAR_TYPE_STRING_VIEW) {
         base_path = xx_var_get_str(path_option);
-    } else if (path_option->type == XX_VAR_TYPE_WSTRING ||
-               path_option->type == XX_VAR_TYPE_WSTRING_VIEW) {
+    } else if (path_option->type == XX_VAR_TYPE_WSTRING || path_option->type == XX_VAR_TYPE_WSTRING_VIEW) {
         converted_path = xx_str_unicode_to_utf8(xx_var_get_wstr(path_option));
         base_path = converted_path;
     }
@@ -1623,9 +1522,7 @@ bool xx_compactpro_unpack_current_archive_record(Abstractformat *self,
         xx_str_free(converted_path);
         return false;
     }
-    if (base_path[0] != '\0' &&
-        base_path[xx_str_len(base_path) - 1U] != '/' &&
-        base_path[xx_str_len(base_path) - 1U] != '\\') {
+    if (base_path[0] != '\0' && base_path[xx_str_len(base_path) - 1U] != '/' && base_path[xx_str_len(base_path) - 1U] != '\\') {
         target_path = xx_str_concat3(base_path, "/", member->name);
     } else {
         target_path = xx_str_concat(base_path, member->name);
@@ -1647,8 +1544,8 @@ bool xx_compactpro_unpack_current_archive_record(Abstractformat *self,
     return result;
 }
 
-void xx_compactpro_free_archive_records_reading(
-    Abstractformat *self, xx_archive_record_state *state) {
+void xx_compactpro_free_archive_records_reading(Abstractformat *self, xx_archive_record_state *state)
+{
     (void)self;
     xx_archive_record_state_free(state);
 }

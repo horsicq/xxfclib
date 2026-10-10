@@ -84,29 +84,21 @@ struct xx_dtb {
     void *internal;
 };
 
-XXFC_API void xx_dtb_init(xx_dtb *dtb, xx_io_device *dev,
-                          int64_t base_address);
+XXFC_API void xx_dtb_init(xx_dtb *dtb, xx_io_device *dev, int64_t base_address);
 XXFC_API xx_dtb *xx_dtb_create(xx_io_device *dev, int64_t base_address);
 XXFC_API void xx_dtb_destroy(xx_dtb *dtb);
 XXFC_API void xx_dtb_free(xx_dtb *dtb);
 
 XXFC_API bool xx_dtb_check_is_valid(Abstractformat *self, xx_pd_struct *pd);
 XXFC_API bool xx_dtb_handle_base_info(Abstractformat *self, xx_pd_struct *pd);
-XXFC_API int64_t xx_dtb_get_format_size(Abstractformat *self,
-                                        xx_pd_struct *pd);
-XXFC_API uint64_t xx_dtb_get_number_of_archive_records(Abstractformat *self,
-                                                       xx_pd_struct *pd);
+XXFC_API int64_t xx_dtb_get_format_size(Abstractformat *self, xx_pd_struct *pd);
+XXFC_API uint64_t xx_dtb_get_number_of_archive_records(Abstractformat *self, xx_pd_struct *pd);
 
-XXFC_API xx_archive_record_state *xx_dtb_create_archive_records_reading(
-    Abstractformat *self, const xx_list_s *options, xx_pd_struct *pd);
-XXFC_API const xx_archive_record *xx_dtb_get_current_archive_record(
-    Abstractformat *self, xx_archive_record_state *state);
-XXFC_API bool xx_dtb_unpack_current_archive_record(
-    Abstractformat *self, xx_archive_record_state *state, xx_pd_struct *pd);
-XXFC_API bool xx_dtb_archive_record_move_to_next(
-    Abstractformat *self, xx_archive_record_state *state, xx_pd_struct *pd);
-XXFC_API void xx_dtb_free_archive_records_reading(
-    Abstractformat *self, xx_archive_record_state *state);
+XXFC_API xx_archive_record_state *xx_dtb_create_archive_records_reading(Abstractformat *self, const xx_list_s *options, xx_pd_struct *pd);
+XXFC_API const xx_archive_record *xx_dtb_get_current_archive_record(Abstractformat *self, xx_archive_record_state *state);
+XXFC_API bool xx_dtb_unpack_current_archive_record(Abstractformat *self, xx_archive_record_state *state, xx_pd_struct *pd);
+XXFC_API bool xx_dtb_archive_record_move_to_next(Abstractformat *self, xx_archive_record_state *state, xx_pd_struct *pd);
+XXFC_API void xx_dtb_free_archive_records_reading(Abstractformat *self, xx_archive_record_state *state);
 
 XXFC_API uint64_t xx_dtb_get_number_of_records(const xx_dtb *dtb);
 XXFC_API uint64_t xx_dtb_get_number_of_members(const xx_dtb *dtb);
@@ -117,18 +109,24 @@ XXFC_API uint32_t xx_dtb_get_version(const xx_dtb *dtb);
 XXFC_API bool xx_dtb_get_is_fit(const xx_dtb *dtb);
 XXFC_API int64_t xx_dtb_get_archive_end(const xx_dtb *dtb);
 
-static inline Abstractformat *xx_dtb_to_format(xx_dtb *dtb) {
+static inline Abstractformat *xx_dtb_to_format(xx_dtb *dtb)
+{
     return dtb ? &dtb->format : NULL;
 }
-static inline void XDtb_init(xx_dtb *dtb, xx_io_device *dev,
-                             int64_t base_address) {
+static inline void XDtb_init(xx_dtb *dtb, xx_io_device *dev, int64_t base_address)
+{
     xx_dtb_init(dtb, dev, base_address);
 }
-static inline xx_dtb *XDtb_create(xx_io_device *dev, int64_t base_address) {
+static inline xx_dtb *XDtb_create(xx_io_device *dev, int64_t base_address)
+{
     return xx_dtb_create(dev, base_address);
 }
-static inline void XDtb_free(xx_dtb *dtb) { xx_dtb_free(dtb); }
-static inline bool XDtb_is_valid(xx_dtb *dtb, xx_pd_struct *pd) {
+static inline void XDtb_free(xx_dtb *dtb)
+{
+    xx_dtb_free(dtb);
+}
+static inline bool XDtb_is_valid(xx_dtb *dtb, xx_pd_struct *pd)
+{
     return dtb ? xx_format_is_valid(&dtb->format, pd) : false;
 }
 

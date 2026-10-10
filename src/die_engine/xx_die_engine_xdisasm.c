@@ -56,21 +56,16 @@ XDisasmResult xdisasm_at(DieFile *file, cd_i64 offset, int bits, cd_u64 address)
     if (bits != 16 && bits != 32 && bits != 64) return result;
 
     mode = bits == 16 ? CDISASM_MODE_16 : bits == 32 ? CDISASM_MODE_32 : CDISASM_MODE_64;
-    size = (size_t)(file->nSize - offset > CDISASM_MAX_INSTRUCTION_SIZE
-                        ? CDISASM_MAX_INSTRUCTION_SIZE : file->nSize - offset);
+    size = (size_t)(file->nSize - offset > CDISASM_MAX_INSTRUCTION_SIZE ? CDISASM_MAX_INSTRUCTION_SIZE : file->nSize - offset);
     if (!die_file_read_at(file, offset, bytes, size)) return result;
 
     /* The unrestricted x86 profile keeps the DIE script's architecture-wide
      * decoding. The mode-specific mask also works in a base-only build. */
-    if (cdisasm_x86_cpu_decode_flag_mask(CDISASM_CPU_X86, mode, &flags)
-        != CDISASM_STATUS_OK) return result;
-    decoded_size = cdisasm_x86_decode(CDISASM_CPU_X86, mode, bytes, size,
-                                      address, &flags, &instruction);
+    if (cdisasm_x86_cpu_decode_flag_mask(CDISASM_CPU_X86, mode, &flags) != CDISASM_STATUS_OK) return result;
+    decoded_size = cdisasm_x86_decode(CDISASM_CPU_X86, mode, bytes, size, address, &flags, &instruction);
     if (!decoded_size) return invalid_byte(bytes[0]);
 
-    formatted_size = cdisasm_x86_format_mode(&instruction, mode,
-                                               CDISASM_FORMAT_SYNTAX_INTEL,
-                                               formatted, sizeof(formatted));
+    formatted_size = cdisasm_x86_format_mode(&instruction, mode, CDISASM_FORMAT_SYNTAX_INTEL, formatted, sizeof(formatted));
     if (!formatted_size || formatted_size >= sizeof(formatted)) {
         /* A recognized form without text must still advance as an invalid
          * byte, just as the old bridge did when it could not disassemble. */
@@ -83,8 +78,7 @@ XDisasmResult xdisasm_at(DieFile *file, cd_i64 offset, int bits, cd_u64 address)
     if (instruction.opcode_groups & CDISASM_GROUP_RELATIVE_BRANCH) {
         for (i = 0; i < instruction.operand_count; ++i) {
             const cdisasm_x86_operand *operand = &instruction.opcode[i];
-            if (operand->type == CDISASM_OPERAND_IMMEDIATE
-                && (operand->flags & CDISASM_OPERAND_FLAG_PC_RELATIVE)) {
+            if (operand->type == CDISASM_OPERAND_IMMEDIATE && (operand->flags & CDISASM_OPERAND_FLAG_PC_RELATIVE)) {
                 size_t end;
                 cd_u64 target = address + (cd_u64)result.nSize + operand->address;
                 if (bits == 16) target &= 0xffff;
@@ -97,9 +91,7 @@ XDisasmResult xdisasm_at(DieFile *file, cd_i64 offset, int bits, cd_u64 address)
                 while (result.sInstruction[end]) ++end;
                 while (end && result.sInstruction[end - 1] != ' ') --end;
                 if (end) {
-                    x_snprintf(result.sInstruction + end,
-                               sizeof(result.sInstruction) - end, "0X%llX",
-                               (unsigned long long)target);
+                    x_snprintf(result.sInstruction + end, sizeof(result.sInstruction) - end, "0X%llX", (unsigned long long)target);
                 }
                 break;
             }

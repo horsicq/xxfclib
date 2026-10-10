@@ -16,77 +16,77 @@ extern "C" {
 #define XX_MACHO_MAGIC_64 UINT32_C(0xfeedfacf)
 #define XX_MACHO_CIGAM_64 UINT32_C(0xcffaedfe)
 
-#define XX_MACHO_FILE_OBJECT      UINT32_C(1)
-#define XX_MACHO_FILE_EXECUTE     UINT32_C(2)
-#define XX_MACHO_FILE_FVMLIB      UINT32_C(3)
-#define XX_MACHO_FILE_CORE        UINT32_C(4)
-#define XX_MACHO_FILE_PRELOAD     UINT32_C(5)
-#define XX_MACHO_FILE_DYLIB       UINT32_C(6)
-#define XX_MACHO_FILE_DYLINKER    UINT32_C(7)
-#define XX_MACHO_FILE_BUNDLE      UINT32_C(8)
-#define XX_MACHO_FILE_DYLIB_STUB  UINT32_C(9)
-#define XX_MACHO_FILE_DSYM        UINT32_C(10)
+#define XX_MACHO_FILE_OBJECT UINT32_C(1)
+#define XX_MACHO_FILE_EXECUTE UINT32_C(2)
+#define XX_MACHO_FILE_FVMLIB UINT32_C(3)
+#define XX_MACHO_FILE_CORE UINT32_C(4)
+#define XX_MACHO_FILE_PRELOAD UINT32_C(5)
+#define XX_MACHO_FILE_DYLIB UINT32_C(6)
+#define XX_MACHO_FILE_DYLINKER UINT32_C(7)
+#define XX_MACHO_FILE_BUNDLE UINT32_C(8)
+#define XX_MACHO_FILE_DYLIB_STUB UINT32_C(9)
+#define XX_MACHO_FILE_DSYM UINT32_C(10)
 #define XX_MACHO_FILE_KEXT_BUNDLE UINT32_C(11)
-#define XX_MACHO_FILE_FILESET     UINT32_C(12)
+#define XX_MACHO_FILE_FILESET UINT32_C(12)
 #define XX_MACHO_FILE_GPU_EXECUTE UINT32_C(13)
-#define XX_MACHO_FILE_GPU_DYLIB   UINT32_C(14)
+#define XX_MACHO_FILE_GPU_DYLIB UINT32_C(14)
 
-#define XX_MACHO_LOAD_SEGMENT                  UINT32_C(0x00000001)
-#define XX_MACHO_LOAD_SYMTAB                   UINT32_C(0x00000002)
-#define XX_MACHO_LOAD_SYMSEG                   UINT32_C(0x00000003)
-#define XX_MACHO_LOAD_THREAD                   UINT32_C(0x00000004)
-#define XX_MACHO_LOAD_UNIXTHREAD               UINT32_C(0x00000005)
-#define XX_MACHO_LOAD_FVMLIB                   UINT32_C(0x00000006)
-#define XX_MACHO_LOAD_ID_FVMLIB                UINT32_C(0x00000007)
-#define XX_MACHO_LOAD_IDENT                    UINT32_C(0x00000008)
-#define XX_MACHO_LOAD_FVMFILE                  UINT32_C(0x00000009)
-#define XX_MACHO_LOAD_PREPAGE                  UINT32_C(0x0000000a)
-#define XX_MACHO_LOAD_DYSYMTAB                 UINT32_C(0x0000000b)
-#define XX_MACHO_LOAD_DYLIB                    UINT32_C(0x0000000c)
-#define XX_MACHO_LOAD_ID_DYLIB                 UINT32_C(0x0000000d)
-#define XX_MACHO_LOAD_DYLINKER                 UINT32_C(0x0000000e)
-#define XX_MACHO_LOAD_ID_DYLINKER              UINT32_C(0x0000000f)
-#define XX_MACHO_LOAD_PREBOUND_DYLIB           UINT32_C(0x00000010)
-#define XX_MACHO_LOAD_ROUTINES                 UINT32_C(0x00000011)
-#define XX_MACHO_LOAD_SUB_FRAMEWORK            UINT32_C(0x00000012)
-#define XX_MACHO_LOAD_SUB_UMBRELLA             UINT32_C(0x00000013)
-#define XX_MACHO_LOAD_SUB_CLIENT               UINT32_C(0x00000014)
-#define XX_MACHO_LOAD_SUB_LIBRARY              UINT32_C(0x00000015)
-#define XX_MACHO_LOAD_TWOLEVEL_HINTS           UINT32_C(0x00000016)
-#define XX_MACHO_LOAD_PREBIND_CKSUM            UINT32_C(0x00000017)
-#define XX_MACHO_LOAD_WEAK_DYLIB               UINT32_C(0x80000018)
-#define XX_MACHO_LOAD_SEGMENT_64               UINT32_C(0x00000019)
-#define XX_MACHO_LOAD_ROUTINES_64              UINT32_C(0x0000001a)
-#define XX_MACHO_LOAD_UUID                     UINT32_C(0x0000001b)
-#define XX_MACHO_LOAD_RPATH                    UINT32_C(0x8000001c)
-#define XX_MACHO_LOAD_CODE_SIGNATURE           UINT32_C(0x0000001d)
-#define XX_MACHO_LOAD_SEGMENT_SPLIT_INFO       UINT32_C(0x0000001e)
-#define XX_MACHO_LOAD_REEXPORT_DYLIB           UINT32_C(0x8000001f)
-#define XX_MACHO_LOAD_LAZY_DYLIB               UINT32_C(0x00000020)
-#define XX_MACHO_LOAD_ENCRYPTION_INFO          UINT32_C(0x00000021)
-#define XX_MACHO_LOAD_DYLD_INFO                UINT32_C(0x00000022)
-#define XX_MACHO_LOAD_DYLD_INFO_ONLY           UINT32_C(0x80000022)
-#define XX_MACHO_LOAD_UPWARD_DYLIB             UINT32_C(0x80000023)
-#define XX_MACHO_LOAD_VERSION_MIN_MACOSX       UINT32_C(0x00000024)
-#define XX_MACHO_LOAD_VERSION_MIN_IPHONEOS     UINT32_C(0x00000025)
-#define XX_MACHO_LOAD_FUNCTION_STARTS          UINT32_C(0x00000026)
-#define XX_MACHO_LOAD_DYLD_ENVIRONMENT         UINT32_C(0x00000027)
-#define XX_MACHO_LOAD_MAIN                     UINT32_C(0x80000028)
-#define XX_MACHO_LOAD_DATA_IN_CODE             UINT32_C(0x00000029)
-#define XX_MACHO_LOAD_SOURCE_VERSION           UINT32_C(0x0000002a)
-#define XX_MACHO_LOAD_DYLIB_CODE_SIGN_DRS      UINT32_C(0x0000002b)
-#define XX_MACHO_LOAD_ENCRYPTION_INFO_64       UINT32_C(0x0000002c)
-#define XX_MACHO_LOAD_LINKER_OPTION            UINT32_C(0x0000002d)
+#define XX_MACHO_LOAD_SEGMENT UINT32_C(0x00000001)
+#define XX_MACHO_LOAD_SYMTAB UINT32_C(0x00000002)
+#define XX_MACHO_LOAD_SYMSEG UINT32_C(0x00000003)
+#define XX_MACHO_LOAD_THREAD UINT32_C(0x00000004)
+#define XX_MACHO_LOAD_UNIXTHREAD UINT32_C(0x00000005)
+#define XX_MACHO_LOAD_FVMLIB UINT32_C(0x00000006)
+#define XX_MACHO_LOAD_ID_FVMLIB UINT32_C(0x00000007)
+#define XX_MACHO_LOAD_IDENT UINT32_C(0x00000008)
+#define XX_MACHO_LOAD_FVMFILE UINT32_C(0x00000009)
+#define XX_MACHO_LOAD_PREPAGE UINT32_C(0x0000000a)
+#define XX_MACHO_LOAD_DYSYMTAB UINT32_C(0x0000000b)
+#define XX_MACHO_LOAD_DYLIB UINT32_C(0x0000000c)
+#define XX_MACHO_LOAD_ID_DYLIB UINT32_C(0x0000000d)
+#define XX_MACHO_LOAD_DYLINKER UINT32_C(0x0000000e)
+#define XX_MACHO_LOAD_ID_DYLINKER UINT32_C(0x0000000f)
+#define XX_MACHO_LOAD_PREBOUND_DYLIB UINT32_C(0x00000010)
+#define XX_MACHO_LOAD_ROUTINES UINT32_C(0x00000011)
+#define XX_MACHO_LOAD_SUB_FRAMEWORK UINT32_C(0x00000012)
+#define XX_MACHO_LOAD_SUB_UMBRELLA UINT32_C(0x00000013)
+#define XX_MACHO_LOAD_SUB_CLIENT UINT32_C(0x00000014)
+#define XX_MACHO_LOAD_SUB_LIBRARY UINT32_C(0x00000015)
+#define XX_MACHO_LOAD_TWOLEVEL_HINTS UINT32_C(0x00000016)
+#define XX_MACHO_LOAD_PREBIND_CKSUM UINT32_C(0x00000017)
+#define XX_MACHO_LOAD_WEAK_DYLIB UINT32_C(0x80000018)
+#define XX_MACHO_LOAD_SEGMENT_64 UINT32_C(0x00000019)
+#define XX_MACHO_LOAD_ROUTINES_64 UINT32_C(0x0000001a)
+#define XX_MACHO_LOAD_UUID UINT32_C(0x0000001b)
+#define XX_MACHO_LOAD_RPATH UINT32_C(0x8000001c)
+#define XX_MACHO_LOAD_CODE_SIGNATURE UINT32_C(0x0000001d)
+#define XX_MACHO_LOAD_SEGMENT_SPLIT_INFO UINT32_C(0x0000001e)
+#define XX_MACHO_LOAD_REEXPORT_DYLIB UINT32_C(0x8000001f)
+#define XX_MACHO_LOAD_LAZY_DYLIB UINT32_C(0x00000020)
+#define XX_MACHO_LOAD_ENCRYPTION_INFO UINT32_C(0x00000021)
+#define XX_MACHO_LOAD_DYLD_INFO UINT32_C(0x00000022)
+#define XX_MACHO_LOAD_DYLD_INFO_ONLY UINT32_C(0x80000022)
+#define XX_MACHO_LOAD_UPWARD_DYLIB UINT32_C(0x80000023)
+#define XX_MACHO_LOAD_VERSION_MIN_MACOSX UINT32_C(0x00000024)
+#define XX_MACHO_LOAD_VERSION_MIN_IPHONEOS UINT32_C(0x00000025)
+#define XX_MACHO_LOAD_FUNCTION_STARTS UINT32_C(0x00000026)
+#define XX_MACHO_LOAD_DYLD_ENVIRONMENT UINT32_C(0x00000027)
+#define XX_MACHO_LOAD_MAIN UINT32_C(0x80000028)
+#define XX_MACHO_LOAD_DATA_IN_CODE UINT32_C(0x00000029)
+#define XX_MACHO_LOAD_SOURCE_VERSION UINT32_C(0x0000002a)
+#define XX_MACHO_LOAD_DYLIB_CODE_SIGN_DRS UINT32_C(0x0000002b)
+#define XX_MACHO_LOAD_ENCRYPTION_INFO_64 UINT32_C(0x0000002c)
+#define XX_MACHO_LOAD_LINKER_OPTION UINT32_C(0x0000002d)
 #define XX_MACHO_LOAD_LINKER_OPTIMIZATION_HINT UINT32_C(0x0000002e)
-#define XX_MACHO_LOAD_VERSION_MIN_TVOS         UINT32_C(0x0000002f)
-#define XX_MACHO_LOAD_VERSION_MIN_WATCHOS      UINT32_C(0x00000030)
-#define XX_MACHO_LOAD_NOTE                     UINT32_C(0x00000031)
-#define XX_MACHO_LOAD_BUILD_VERSION            UINT32_C(0x00000032)
-#define XX_MACHO_LOAD_DYLD_EXPORTS_TRIE        UINT32_C(0x80000033)
-#define XX_MACHO_LOAD_DYLD_CHAINED_FIXUPS      UINT32_C(0x80000034)
-#define XX_MACHO_LOAD_FILESET_ENTRY            UINT32_C(0x80000035)
-#define XX_MACHO_LOAD_ATOM_INFO                UINT32_C(0x00000036)
-#define XX_MACHO_LOAD_TARGET_TRIPLE             UINT32_C(0x00000039)
+#define XX_MACHO_LOAD_VERSION_MIN_TVOS UINT32_C(0x0000002f)
+#define XX_MACHO_LOAD_VERSION_MIN_WATCHOS UINT32_C(0x00000030)
+#define XX_MACHO_LOAD_NOTE UINT32_C(0x00000031)
+#define XX_MACHO_LOAD_BUILD_VERSION UINT32_C(0x00000032)
+#define XX_MACHO_LOAD_DYLD_EXPORTS_TRIE UINT32_C(0x80000033)
+#define XX_MACHO_LOAD_DYLD_CHAINED_FIXUPS UINT32_C(0x80000034)
+#define XX_MACHO_LOAD_FILESET_ENTRY UINT32_C(0x80000035)
+#define XX_MACHO_LOAD_ATOM_INFO UINT32_C(0x00000036)
+#define XX_MACHO_LOAD_TARGET_TRIPLE UINT32_C(0x00000039)
 
 /** Mach-O structures exposed through Abstractformat's data-structure stream. */
 typedef enum xx_macho_data_struct_id_e {
@@ -194,8 +194,7 @@ typedef enum xx_macho_data_struct_id_e {
     XX_MACHO_DATA_STRUCT_CHAINED_PTR_ARM64E_AUTH_SEGMENTED_REBASE,
     XX_MACHO_DATA_STRUCT_X86_FLOAT_STATE64,
     XX_MACHO_DATA_STRUCT_X86_EXCEPTION_STATE64,
-    XX_MACHO_DATA_STRUCT_LAST =
-        XX_MACHO_DATA_STRUCT_X86_EXCEPTION_STATE64
+    XX_MACHO_DATA_STRUCT_LAST = XX_MACHO_DATA_STRUCT_X86_EXCEPTION_STATE64
 } xx_macho_data_struct_id_t;
 
 typedef struct xx_macho_segment {
@@ -230,37 +229,29 @@ typedef struct xx_macho {
 typedef xx_macho xx_macho_t;
 typedef xx_macho XMACHO;
 
-XXFC_API void xx_macho_init(xx_macho *macho, xx_io_device *device,
-                            int64_t base_address);
-XXFC_API xx_macho *xx_macho_create(xx_io_device *device,
-                                   int64_t base_address);
+XXFC_API void xx_macho_init(xx_macho *macho, xx_io_device *device, int64_t base_address);
+XXFC_API xx_macho *xx_macho_create(xx_io_device *device, int64_t base_address);
 XXFC_API void xx_macho_destroy(xx_macho *macho);
 XXFC_API void xx_macho_free(xx_macho *macho);
 
-XXFC_API bool xx_macho_check_is_valid(Abstractformat *format,
-                                      xx_pd_struct *pd);
-XXFC_API bool xx_macho_handle_base_info(Abstractformat *format,
-                                        xx_pd_struct *pd);
-XXFC_API int64_t xx_macho_get_format_size(Abstractformat *format,
-                                          xx_pd_struct *pd);
-XXFC_API bool xx_macho_get_memory_map(Abstractformat *format,
-                                      xx_memory_map_mode_t mode,
-                                      xx_memory_map *output,
-                                      xx_pd_struct *pd);
+XXFC_API bool xx_macho_check_is_valid(Abstractformat *format, xx_pd_struct *pd);
+XXFC_API bool xx_macho_handle_base_info(Abstractformat *format, xx_pd_struct *pd);
+XXFC_API int64_t xx_macho_get_format_size(Abstractformat *format, xx_pd_struct *pd);
+XXFC_API bool xx_macho_get_memory_map(Abstractformat *format, xx_memory_map_mode_t mode, xx_memory_map *output, xx_pd_struct *pd);
 
 XXFC_API bool xx_macho_is_64(const xx_macho *macho);
 XXFC_API uint32_t xx_macho_get_cpu_type(const xx_macho *macho);
 XXFC_API uint32_t xx_macho_get_file_type(const xx_macho *macho);
 XXFC_API uint32_t xx_macho_get_number_of_segments(const xx_macho *macho);
-XXFC_API const xx_macho_segment *xx_macho_get_segment(
-    const xx_macho *macho, uint32_t index);
+XXFC_API const xx_macho_segment *xx_macho_get_segment(const xx_macho *macho, uint32_t index);
 
-static inline Abstractformat *xx_macho_to_format(xx_macho *macho) {
+static inline Abstractformat *xx_macho_to_format(xx_macho *macho)
+{
     return macho ? &macho->format : NULL;
 }
 
-static inline const Abstractformat *xx_macho_to_format_const(
-    const xx_macho *macho) {
+static inline const Abstractformat *xx_macho_to_format_const(const xx_macho *macho)
+{
     return macho ? &macho->format : NULL;
 }
 

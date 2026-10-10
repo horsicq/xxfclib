@@ -30,9 +30,7 @@
 #define ASYM_METHOD_STORED 0U
 #define ASYM_METHOD_IMPLODE 1U
 
-bool xx_asymetrix_decode_memory(const uint8_t *input, size_t input_size,
-                                uint8_t *output, size_t output_size,
-                                size_t *written)
+bool xx_asymetrix_decode_memory(const uint8_t *input, size_t input_size, uint8_t *output, size_t output_size, size_t *written)
 {
     size_t offset = 0U;
     size_t produced = 0U;
@@ -50,21 +48,15 @@ bool xx_asymetrix_decode_memory(const uint8_t *input, size_t input_size,
         size_t payload;
         size_t wanted;
 
-        if ((input_size < ASYM_BLOCK_HEADER_SIZE) ||
-            (offset > input_size - ASYM_BLOCK_HEADER_SIZE)) {
+        if ((input_size < ASYM_BLOCK_HEADER_SIZE) || (offset > input_size - ASYM_BLOCK_HEADER_SIZE)) {
             return false;
         }
 
-        method = (unsigned)input[offset] |
-                 ((unsigned)input[offset + 1U] << 8);
-        block_size = (size_t)input[offset + 2U] |
-                     ((size_t)input[offset + 3U] << 8) |
-                     ((size_t)input[offset + 4U] << 16) |
-                     ((size_t)input[offset + 5U] << 24);
+        method = (unsigned)input[offset] | ((unsigned)input[offset + 1U] << 8);
+        block_size = (size_t)input[offset + 2U] | ((size_t)input[offset + 3U] << 8) | ((size_t)input[offset + 4U] << 16) | ((size_t)input[offset + 5U] << 24);
         payload = offset + ASYM_BLOCK_HEADER_SIZE;
 
-        if ((block_size > ASYM_MAX_BLOCK_SIZE) ||
-            (block_size > input_size - payload)) {
+        if ((block_size > ASYM_MAX_BLOCK_SIZE) || (block_size > input_size - payload)) {
             return false;
         }
 
@@ -82,10 +74,7 @@ bool xx_asymetrix_decode_memory(const uint8_t *input, size_t input_size,
             }
         } else if (method == ASYM_METHOD_IMPLODE) {
             size_t block_written = 0U;
-            if (!xx_dcl_decode_memory(input + payload, block_size,
-                                      output + produced, wanted,
-                                      &block_written) ||
-                (block_written != wanted)) {
+            if (!xx_dcl_decode_memory(input + payload, block_size, output + produced, wanted, &block_written) || (block_written != wanted)) {
                 return false;
             }
         } else {

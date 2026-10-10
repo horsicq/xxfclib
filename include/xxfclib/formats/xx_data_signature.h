@@ -88,14 +88,12 @@ typedef struct xx_data_signature_s {
  * @brief Translate a file offset to the address the byte is loaded at.
  * @return the address, or UINT64_MAX when the offset is not mapped.
  */
-typedef uint64_t (*xx_data_sig_offset_to_address_fn)(void *context,
-                                                     int64_t offset);
+typedef uint64_t (*xx_data_sig_offset_to_address_fn)(void *context, int64_t offset);
 /**
  * @brief Translate a loaded address back to a file offset.
  * @return the offset, or -1 when the address is not mapped.
  */
-typedef int64_t (*xx_data_sig_address_to_offset_fn)(void *context,
-                                                    uint64_t address);
+typedef int64_t (*xx_data_sig_address_to_offset_fn)(void *context, uint64_t address);
 
 /**
  * @brief How to read integers and follow pointers while matching.
@@ -145,8 +143,7 @@ typedef struct xx_data_sig_context_s {
  *
  * @return false when either argument is NULL.
  */
-XXFC_API bool xx_data_sig_context_from_memory_map(
-    xx_data_sig_context *context, const xx_memory_map *map);
+XXFC_API bool xx_data_sig_context_from_memory_map(xx_data_sig_context *context, const xx_memory_map *map);
 
 /**
  * @brief As above, choosing how the map resolves an overlap and whether a
@@ -158,9 +155,7 @@ XXFC_API bool xx_data_sig_context_from_memory_map(
  * DIE engine exactly, which is what a caller evaluating the DIE signature
  * databases wants.
  */
-XXFC_API bool xx_data_sig_context_from_memory_map_ex(
-    xx_data_sig_context *context, const xx_memory_map *map,
-    xx_memory_map_lookup_t lookup, bool read_past_end_as_zero);
+XXFC_API bool xx_data_sig_context_from_memory_map_ex(xx_data_sig_context *context, const xx_memory_map *map, xx_memory_map_lookup_t lookup, bool read_past_end_as_zero);
 
 /**
  * @brief Match `signature` against `data` starting at `offset`.
@@ -173,10 +168,7 @@ XXFC_API bool xx_data_sig_context_from_memory_map_ex(
  * truncation: matching fewer bytes than the signature asks for would report a
  * match the data does not support.
  */
-XXFC_API bool xx_data_signature_match(const void *data, size_t data_size,
-                                      int64_t offset,
-                                      const xx_data_signature *signature,
-                                      const xx_data_sig_context *context,
+XXFC_API bool xx_data_signature_match(const void *data, size_t data_size, int64_t offset, const xx_data_signature *signature, const xx_data_sig_context *context,
                                       int64_t *end_offset);
 
 /**
@@ -187,9 +179,7 @@ XXFC_API bool xx_data_signature_match(const void *data, size_t data_size,
  * class should not have to build a one-record signature.
  * An empty window is true; a window running past the end is false.
  */
-XXFC_API bool xx_data_class_check(const void *data, size_t data_size,
-                                  int64_t offset, int64_t window,
-                                  xx_data_sig_kind kind);
+XXFC_API bool xx_data_class_check(const void *data, size_t data_size, int64_t offset, int64_t window, xx_data_sig_kind kind);
 
 /* ========================================================================= */
 /* --- The signature notation                                            --- */
@@ -232,8 +222,7 @@ XXFC_API char *xx_data_sig_normalize(const char *text);
  * Release with xx_data_signature_free(). A signature assembled by hand,
  * pointing at records the caller owns, must NOT be passed to that.
  */
-XXFC_API bool xx_data_signature_parse(xx_data_signature *out,
-                                      const char *normalized);
+XXFC_API bool xx_data_signature_parse(xx_data_signature *out, const char *normalized);
 
 /** @brief Release a signature produced by xx_data_signature_parse(). */
 XXFC_API void xx_data_signature_free(xx_data_signature *signature);
@@ -242,9 +231,7 @@ XXFC_API void xx_data_signature_free(xx_data_signature *signature);
  * @brief Normalise, parse and match in one call.
  * @return true when every record matched at @p offset.
  */
-XXFC_API bool xx_data_signature_match_text(const void *data, size_t data_size,
-                                           int64_t offset, const char *text,
-                                           const xx_data_sig_context *context);
+XXFC_API bool xx_data_signature_match_text(const void *data, size_t data_size, int64_t offset, const char *text, const xx_data_sig_context *context);
 
 /**
  * @brief Normalise, parse, and search for the first offset that matches.
@@ -259,22 +246,16 @@ XXFC_API bool xx_data_signature_match_text(const void *data, size_t data_size,
  * bytes and matching the rest only at the hits, which is what makes scanning
  * a whole file with thousands of signatures affordable.
  */
-XXFC_API int64_t xx_data_signature_find_text(
-    const void *data, size_t data_size, int64_t offset, int64_t length,
-    const char *text, const xx_data_sig_context *context);
+XXFC_API int64_t xx_data_signature_find_text(const void *data, size_t data_size, int64_t offset, int64_t length, const char *text, const xx_data_sig_context *context);
 
 /** Match a device using bounded reads and the same record semantics.
  * Restore its position when tell is supported. Actual read errors fail the
  * match; out-of-range pointers still follow read_past_end_as_zero. */
-XXFC_API bool xx_io_signature_match(
-    xx_io_device *device, int64_t offset, const xx_data_signature *signature,
-    const xx_data_sig_context *context, int64_t *end_offset);
+XXFC_API bool xx_io_signature_match(xx_io_device *device, int64_t offset, const xx_data_signature *signature, const xx_data_sig_context *context, int64_t *end_offset);
 
 /** Parse and search a device without copying its complete contents or
  * allocating a needle-sized overlap buffer. Restores a supported position. */
-XXFC_API int64_t xx_io_signature_find_text(
-    xx_io_device *device, int64_t offset, int64_t length, const char *text,
-    const xx_data_sig_context *context);
+XXFC_API int64_t xx_io_signature_find_text(xx_io_device *device, int64_t offset, int64_t length, const char *text, const xx_data_sig_context *context);
 
 #ifdef __cplusplus
 }

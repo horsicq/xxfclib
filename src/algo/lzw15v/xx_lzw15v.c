@@ -31,7 +31,8 @@ typedef struct lzw15v_tables {
     uint8_t stack[XX_LZW15V_MAX_CODES];
 } lzw15v_tables;
 
-static bool lzw15v_read(lzw15v_bits *reader, int need, uint32_t *value) {
+static bool lzw15v_read(lzw15v_bits *reader, int need, uint32_t *value)
+{
     uint32_t result = 0U;
     int i;
 
@@ -57,9 +58,9 @@ static bool lzw15v_read(lzw15v_bits *reader, int need, uint32_t *value) {
  * no sliding window is needed for the measuring path to agree with the real
  * one.  `strict` adds the grammar checks detection needs and that the original
  * decoder deliberately does not perform. */
-static bool lzw15v_run(const uint8_t *input, size_t input_size, bool strict,
-                       uint8_t *output, size_t limit, lzw15v_tables *tables,
-                       size_t *produced_out, size_t *consumed_out) {
+static bool lzw15v_run(const uint8_t *input, size_t input_size, bool strict, uint8_t *output, size_t limit, lzw15v_tables *tables, size_t *produced_out,
+                       size_t *consumed_out)
+{
     lzw15v_bits reader;
     size_t produced = 0U;
     bool end_seen = false;
@@ -194,9 +195,8 @@ static bool lzw15v_run(const uint8_t *input, size_t input_size, bool strict,
     return true;
 }
 
-bool xx_lzw15v_decode_memory(const uint8_t *input, size_t input_size,
-                             uint8_t *output, size_t output_size,
-                             size_t *written) {
+bool xx_lzw15v_decode_memory(const uint8_t *input, size_t input_size, uint8_t *output, size_t output_size, size_t *written)
+{
     lzw15v_tables *tables;
     size_t produced = 0U;
     bool result;
@@ -207,8 +207,7 @@ bool xx_lzw15v_decode_memory(const uint8_t *input, size_t input_size,
     tables = (lzw15v_tables *)xx_mem_alloc(sizeof(lzw15v_tables));
     if (!tables) return false;
 
-    result = lzw15v_run(input, input_size, false, output, output_size, tables,
-                        &produced, NULL);
+    result = lzw15v_run(input, input_size, false, output, output_size, tables, &produced, NULL);
     xx_mem_free(tables);
 
     if (!result) return false;
@@ -220,9 +219,8 @@ bool xx_lzw15v_decode_memory(const uint8_t *input, size_t input_size,
     return true;
 }
 
-bool xx_lzw15v_scan_memory(const uint8_t *input, size_t input_size,
-                           size_t max_output, size_t *consumed,
-                           size_t *produced) {
+bool xx_lzw15v_scan_memory(const uint8_t *input, size_t input_size, size_t max_output, size_t *consumed, size_t *produced)
+{
     lzw15v_tables *tables;
     size_t produced_local = 0U;
     size_t consumed_local = 0U;
@@ -235,8 +233,7 @@ bool xx_lzw15v_scan_memory(const uint8_t *input, size_t input_size,
     tables = (lzw15v_tables *)xx_mem_alloc(sizeof(lzw15v_tables));
     if (!tables) return false;
 
-    result = lzw15v_run(input, input_size, true, NULL, max_output, tables,
-                        &produced_local, &consumed_local);
+    result = lzw15v_run(input, input_size, true, NULL, max_output, tables, &produced_local, &consumed_local);
     xx_mem_free(tables);
 
     if (!result) return false;

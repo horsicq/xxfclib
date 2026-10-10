@@ -67,29 +67,21 @@ typedef struct xx_cpk {
 
 typedef xx_cpk xx_cpk_t;
 
-XXFC_API void xx_cpk_init(xx_cpk *archive, xx_io_device *device,
-                          int64_t base_address);
+XXFC_API void xx_cpk_init(xx_cpk *archive, xx_io_device *device, int64_t base_address);
 XXFC_API xx_cpk *xx_cpk_create(xx_io_device *device, int64_t base_address);
 XXFC_API void xx_cpk_destroy(xx_cpk *archive);
 XXFC_API void xx_cpk_free(xx_cpk *archive);
 
 XXFC_API bool xx_cpk_check_is_valid(Abstractformat *self, xx_pd_struct *pd);
 XXFC_API bool xx_cpk_handle_base_info(Abstractformat *self, xx_pd_struct *pd);
-XXFC_API int64_t xx_cpk_get_format_size(Abstractformat *self,
-                                        xx_pd_struct *pd);
-XXFC_API uint64_t xx_cpk_get_number_of_archive_records(Abstractformat *self,
-                                                       xx_pd_struct *pd);
+XXFC_API int64_t xx_cpk_get_format_size(Abstractformat *self, xx_pd_struct *pd);
+XXFC_API uint64_t xx_cpk_get_number_of_archive_records(Abstractformat *self, xx_pd_struct *pd);
 
-XXFC_API xx_archive_record_state *xx_cpk_create_archive_records_reading(
-    Abstractformat *self, const xx_list_s *options, xx_pd_struct *pd);
-XXFC_API const xx_archive_record *xx_cpk_get_current_archive_record(
-    Abstractformat *self, xx_archive_record_state *state);
-XXFC_API bool xx_cpk_unpack_current_archive_record(
-    Abstractformat *self, xx_archive_record_state *state, xx_pd_struct *pd);
-XXFC_API bool xx_cpk_archive_record_move_to_next(
-    Abstractformat *self, xx_archive_record_state *state, xx_pd_struct *pd);
-XXFC_API void xx_cpk_free_archive_records_reading(
-    Abstractformat *self, xx_archive_record_state *state);
+XXFC_API xx_archive_record_state *xx_cpk_create_archive_records_reading(Abstractformat *self, const xx_list_s *options, xx_pd_struct *pd);
+XXFC_API const xx_archive_record *xx_cpk_get_current_archive_record(Abstractformat *self, xx_archive_record_state *state);
+XXFC_API bool xx_cpk_unpack_current_archive_record(Abstractformat *self, xx_archive_record_state *state, xx_pd_struct *pd);
+XXFC_API bool xx_cpk_archive_record_move_to_next(Abstractformat *self, xx_archive_record_state *state, xx_pd_struct *pd);
+XXFC_API void xx_cpk_free_archive_records_reading(Abstractformat *self, xx_archive_record_state *state);
 
 /**
  * @brief Decode one CRILAYLA stream held in memory.
@@ -100,8 +92,7 @@ XXFC_API void xx_cpk_free_archive_records_reading(
  * @param output_size must equal (input_size - 0x10 - packed) + unpacked
  * @return true when exactly @p output_size bytes were produced
  */
-XXFC_API bool xx_cpk_crilayla_decode(const uint8_t *input, size_t input_size,
-                                     uint8_t *output, size_t output_size);
+XXFC_API bool xx_cpk_crilayla_decode(const uint8_t *input, size_t input_size, uint8_t *output, size_t output_size);
 
 #ifdef __cplusplus
 }

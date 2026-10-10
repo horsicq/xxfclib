@@ -32,9 +32,7 @@ extern "C" {
  *
  * @p output_size IS the member's declared uncompressed size (the container's
  * directory stores it, and the trailer repeats it). */
-XXFC_API bool xx_genius_decode_memory(const uint8_t *input, size_t input_size,
-                                      uint8_t *output, size_t output_size,
-                                      size_t *written);
+XXFC_API bool xx_genius_decode_memory(const uint8_t *input, size_t input_size, uint8_t *output, size_t output_size, size_t *written);
 
 #ifdef __cplusplus
 }

@@ -36,10 +36,22 @@ XXFC_API bool xx_dotnet_check_is_valid(Abstractformat *, xx_pd_struct *);
 XXFC_API bool xx_dotnet_handle_base_info(Abstractformat *, xx_pd_struct *);
 XXFC_API int64_t xx_dotnet_get_format_size(Abstractformat *, xx_pd_struct *);
 
-static inline xx_pe *xx_dotnet_to_pe(xx_dotnet *reader) { return reader ? &reader->pe : NULL; }
-static inline const xx_pe *xx_dotnet_to_pe_const(const xx_dotnet *reader) { return reader ? &reader->pe : NULL; }
-static inline Abstractformat *xx_dotnet_to_format(xx_dotnet *reader) { return reader ? &reader->pe.format : NULL; }
-static inline const Abstractformat *xx_dotnet_to_format_const(const xx_dotnet *reader) { return reader ? &reader->pe.format : NULL; }
+static inline xx_pe *xx_dotnet_to_pe(xx_dotnet *reader)
+{
+    return reader ? &reader->pe : NULL;
+}
+static inline const xx_pe *xx_dotnet_to_pe_const(const xx_dotnet *reader)
+{
+    return reader ? &reader->pe : NULL;
+}
+static inline Abstractformat *xx_dotnet_to_format(xx_dotnet *reader)
+{
+    return reader ? &reader->pe.format : NULL;
+}
+static inline const Abstractformat *xx_dotnet_to_format_const(const xx_dotnet *reader)
+{
+    return reader ? &reader->pe.format : NULL;
+}
 
 #include "xxfclib/formats/dotnet/xx_dotnet_inspect.h"
 #ifdef __cplusplus

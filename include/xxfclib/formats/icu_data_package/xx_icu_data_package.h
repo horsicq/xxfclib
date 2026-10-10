@@ -9,13 +9,15 @@
 #ifdef __cplusplus
 extern "C" {
 #endif
-typedef struct xx_icu_data_package { Abstractformat format; } xx_icu_data_package;
-XXFC_API void xx_icu_data_package_init(xx_icu_data_package *,xx_io_device *,int64_t);
-XXFC_API xx_icu_data_package *xx_icu_data_package_create(xx_io_device *,int64_t);
+typedef struct xx_icu_data_package {
+    Abstractformat format;
+} xx_icu_data_package;
+XXFC_API void xx_icu_data_package_init(xx_icu_data_package *, xx_io_device *, int64_t);
+XXFC_API xx_icu_data_package *xx_icu_data_package_create(xx_io_device *, int64_t);
 XXFC_API void xx_icu_data_package_destroy(xx_icu_data_package *);
 XXFC_API void xx_icu_data_package_free(xx_icu_data_package *);
-XXFC_API bool xx_icu_data_package_check_is_valid(Abstractformat *,xx_pd_struct *);
-XXFC_API bool xx_icu_data_package_handle_base_info(Abstractformat *,xx_pd_struct *);
+XXFC_API bool xx_icu_data_package_check_is_valid(Abstractformat *, xx_pd_struct *);
+XXFC_API bool xx_icu_data_package_handle_base_info(Abstractformat *, xx_pd_struct *);
 #ifdef __cplusplus
 }
 #endif

@@ -7,8 +7,7 @@
 
 /* length is capped at BZ2_MAX_BLOCK_SIZE, so the four-array scratch size
  * computed below cannot overflow size_t. */
-_Static_assert((size_t)BZ2_MAX_BLOCK_SIZE <= SIZE_MAX / (4U * sizeof(uint32_t)),
-               "bzip2 BWT scratch size overflows size_t");
+_Static_assert((size_t)BZ2_MAX_BLOCK_SIZE <= SIZE_MAX / (4U * sizeof(uint32_t)), "bzip2 BWT scratch size overflows size_t");
 
 /* Sort circular suffixes by doubling the compared prefix. Each round is a
  * stable counting sort of integer classes, rather than repeatedly comparing
@@ -21,8 +20,7 @@ _Static_assert((size_t)BZ2_MAX_BLOCK_SIZE <= SIZE_MAX / (4U * sizeof(uint32_t)),
  * length. This permits early termination for periodic input, not just when
  * every rotation becomes unique.
  */
-bool xx_bzip2_bwt_transform(const uint8_t *src, int length,
-                             uint8_t *bwt, int *orig_ptr)
+bool xx_bzip2_bwt_transform(const uint8_t *src, int length, uint8_t *bwt, int *orig_ptr)
 {
     uint32_t histogram[256] = {0};
     uint32_t *workspace;
@@ -30,14 +28,14 @@ bool xx_bzip2_bwt_transform(const uint8_t *src, int length,
     uint32_t n, classes, span, i;
     size_t scratch_size;
 
-    if (!src || !bwt || !orig_ptr || length <= 0 ||
-        length > BZ2_MAX_BLOCK_SIZE) return false;
+    if (!src || !bwt || !orig_ptr || length <= 0 || length > BZ2_MAX_BLOCK_SIZE) return false;
     n = (uint32_t)length;
     scratch_size = (size_t)n * 4U * sizeof(uint32_t);
 
     for (i = 0; i < n; ++i) histogram[src[i]]++;
     classes = 0;
-    for (i = 0; i < 256U; ++i) if (histogram[i] != 0U) classes++;
+    for (i = 0; i < 256U; ++i)
+        if (histogram[i] != 0U) classes++;
     if (classes == 1U) {
         xx_rt_memset(bwt, src[0], (size_t)n);
         *orig_ptr = 0;
@@ -69,8 +67,7 @@ bool xx_bzip2_bwt_transform(const uint8_t *src, int length,
         /* The old order already sorts the second half of each new prefix.
          * Shift its indices to the first half, then stably sort that half. */
         for (i = 0; i < n; ++i) {
-            temporary[i] = order[i] >= span ? order[i] - span :
-                           order[i] + n - span;
+            temporary[i] = order[i] >= span ? order[i] - span : order[i] + n - span;
         }
         xx_rt_memset(counts, 0, (size_t)classes * sizeof(uint32_t));
         for (i = 0; i < n; ++i) counts[classes_at[temporary[i]]]++;
@@ -93,9 +90,7 @@ bool xx_bzip2_bwt_transform(const uint8_t *src, int length,
             uint32_t previous_second = previous + span;
             if (current_second >= n) current_second -= n;
             if (previous_second >= n) previous_second -= n;
-            if (classes_at[current] != classes_at[previous] ||
-                classes_at[current_second] != classes_at[previous_second])
-                new_classes++;
+            if (classes_at[current] != classes_at[previous] || classes_at[current_second] != classes_at[previous_second]) new_classes++;
             temporary[current] = new_classes - 1U;
         }
         swap = classes_at;

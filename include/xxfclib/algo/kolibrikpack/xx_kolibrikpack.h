@@ -29,9 +29,7 @@ extern "C" {
  * @param written     Receives the number of bytes produced (0 on failure).
  * @return true only when the full declared plaintext was produced.
  */
-XXFC_API bool xx_kolibrikpack_decode_memory(const uint8_t *input, size_t input_size,
-                                            uint8_t *output, size_t output_size,
-                                            size_t *written);
+XXFC_API bool xx_kolibrikpack_decode_memory(const uint8_t *input, size_t input_size, uint8_t *output, size_t output_size, size_t *written);
 
 /**
  * @brief Read the unpacked size out of a kpack header without decoding.
@@ -46,8 +44,7 @@ XXFC_API bool xx_kolibrikpack_decode_memory(const uint8_t *input, size_t input_s
  * @param produced    Receives the unpacked size. May be NULL.
  * @return true when the header is a valid kpack header.
  */
-XXFC_API bool xx_kolibrikpack_check_header(const uint8_t *input, size_t input_size,
-                                           size_t *produced);
+XXFC_API bool xx_kolibrikpack_check_header(const uint8_t *input, size_t input_size, size_t *produced);
 
 #ifdef __cplusplus
 }

@@ -24,43 +24,18 @@
  * coded in 3,4,5,6,7,8 bits; spelling them out avoids a run-time initialiser
  * and keeps the module free of mutable module-level state. */
 static const uint8_t xx_lzhuf_d_code[256] = {
-    0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
-    0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
-    0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
-    0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
-    0x01, 0x01, 0x01, 0x01, 0x01, 0x01, 0x01, 0x01,
-    0x01, 0x01, 0x01, 0x01, 0x01, 0x01, 0x01, 0x01,
-    0x02, 0x02, 0x02, 0x02, 0x02, 0x02, 0x02, 0x02,
-    0x02, 0x02, 0x02, 0x02, 0x02, 0x02, 0x02, 0x02,
-    0x03, 0x03, 0x03, 0x03, 0x03, 0x03, 0x03, 0x03,
-    0x03, 0x03, 0x03, 0x03, 0x03, 0x03, 0x03, 0x03,
-    0x04, 0x04, 0x04, 0x04, 0x04, 0x04, 0x04, 0x04,
-    0x05, 0x05, 0x05, 0x05, 0x05, 0x05, 0x05, 0x05,
-    0x06, 0x06, 0x06, 0x06, 0x06, 0x06, 0x06, 0x06,
-    0x07, 0x07, 0x07, 0x07, 0x07, 0x07, 0x07, 0x07,
-    0x08, 0x08, 0x08, 0x08, 0x08, 0x08, 0x08, 0x08,
-    0x09, 0x09, 0x09, 0x09, 0x09, 0x09, 0x09, 0x09,
-    0x0a, 0x0a, 0x0a, 0x0a, 0x0a, 0x0a, 0x0a, 0x0a,
-    0x0b, 0x0b, 0x0b, 0x0b, 0x0b, 0x0b, 0x0b, 0x0b,
-    0x0c, 0x0c, 0x0c, 0x0c, 0x0d, 0x0d, 0x0d, 0x0d,
-    0x0e, 0x0e, 0x0e, 0x0e, 0x0f, 0x0f, 0x0f, 0x0f,
-    0x10, 0x10, 0x10, 0x10, 0x11, 0x11, 0x11, 0x11,
-    0x12, 0x12, 0x12, 0x12, 0x13, 0x13, 0x13, 0x13,
-    0x14, 0x14, 0x14, 0x14, 0x15, 0x15, 0x15, 0x15,
-    0x16, 0x16, 0x16, 0x16, 0x17, 0x17, 0x17, 0x17,
-    0x18, 0x18, 0x19, 0x19, 0x1a, 0x1a, 0x1b, 0x1b,
-    0x1c, 0x1c, 0x1d, 0x1d, 0x1e, 0x1e, 0x1f, 0x1f,
-    0x20, 0x20, 0x21, 0x21, 0x22, 0x22, 0x23, 0x23,
-    0x24, 0x24, 0x25, 0x25, 0x26, 0x26, 0x27, 0x27,
-    0x28, 0x28, 0x29, 0x29, 0x2a, 0x2a, 0x2b, 0x2b,
-    0x2c, 0x2c, 0x2d, 0x2d, 0x2e, 0x2e, 0x2f, 0x2f,
-    0x30, 0x31, 0x32, 0x33, 0x34, 0x35, 0x36, 0x37,
-    0x38, 0x39, 0x3a, 0x3b, 0x3c, 0x3d, 0x3e, 0x3f
-};
+    0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+    0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x01, 0x01, 0x01, 0x01, 0x01, 0x01, 0x01, 0x01, 0x01, 0x01, 0x01, 0x01, 0x01, 0x01, 0x01, 0x01, 0x02, 0x02, 0x02, 0x02,
+    0x02, 0x02, 0x02, 0x02, 0x02, 0x02, 0x02, 0x02, 0x02, 0x02, 0x02, 0x02, 0x03, 0x03, 0x03, 0x03, 0x03, 0x03, 0x03, 0x03, 0x03, 0x03, 0x03, 0x03, 0x03, 0x03,
+    0x03, 0x03, 0x04, 0x04, 0x04, 0x04, 0x04, 0x04, 0x04, 0x04, 0x05, 0x05, 0x05, 0x05, 0x05, 0x05, 0x05, 0x05, 0x06, 0x06, 0x06, 0x06, 0x06, 0x06, 0x06, 0x06,
+    0x07, 0x07, 0x07, 0x07, 0x07, 0x07, 0x07, 0x07, 0x08, 0x08, 0x08, 0x08, 0x08, 0x08, 0x08, 0x08, 0x09, 0x09, 0x09, 0x09, 0x09, 0x09, 0x09, 0x09, 0x0a, 0x0a,
+    0x0a, 0x0a, 0x0a, 0x0a, 0x0a, 0x0a, 0x0b, 0x0b, 0x0b, 0x0b, 0x0b, 0x0b, 0x0b, 0x0b, 0x0c, 0x0c, 0x0c, 0x0c, 0x0d, 0x0d, 0x0d, 0x0d, 0x0e, 0x0e, 0x0e, 0x0e,
+    0x0f, 0x0f, 0x0f, 0x0f, 0x10, 0x10, 0x10, 0x10, 0x11, 0x11, 0x11, 0x11, 0x12, 0x12, 0x12, 0x12, 0x13, 0x13, 0x13, 0x13, 0x14, 0x14, 0x14, 0x14, 0x15, 0x15,
+    0x15, 0x15, 0x16, 0x16, 0x16, 0x16, 0x17, 0x17, 0x17, 0x17, 0x18, 0x18, 0x19, 0x19, 0x1a, 0x1a, 0x1b, 0x1b, 0x1c, 0x1c, 0x1d, 0x1d, 0x1e, 0x1e, 0x1f, 0x1f,
+    0x20, 0x20, 0x21, 0x21, 0x22, 0x22, 0x23, 0x23, 0x24, 0x24, 0x25, 0x25, 0x26, 0x26, 0x27, 0x27, 0x28, 0x28, 0x29, 0x29, 0x2a, 0x2a, 0x2b, 0x2b, 0x2c, 0x2c,
+    0x2d, 0x2d, 0x2e, 0x2e, 0x2f, 0x2f, 0x30, 0x31, 0x32, 0x33, 0x34, 0x35, 0x36, 0x37, 0x38, 0x39, 0x3a, 0x3b, 0x3c, 0x3d, 0x3e, 0x3f};
 
-static const uint8_t xx_lzhuf_d_len[16] = {
-    3, 3, 4, 4, 4, 5, 5, 5, 5, 6, 6, 6, 7, 7, 7, 8
-};
+static const uint8_t xx_lzhuf_d_len[16] = {3, 3, 4, 4, 4, 5, 5, 5, 5, 6, 6, 6, 7, 7, 7, 8};
 
 /* ------------------------------------------------------------------------- */
 /* Byte source: flat, or ZTC's paged payload                                  */
@@ -79,8 +54,8 @@ typedef struct xx_lzhuf_source {
     bool ended;
 } xx_lzhuf_source;
 
-static void xx_lzhuf_source_init(xx_lzhuf_source *source, const uint8_t *data,
-                                 size_t size, bool paged) {
+static void xx_lzhuf_source_init(xx_lzhuf_source *source, const uint8_t *data, size_t size, bool paged)
+{
     source->data = data;
     source->size = size;
     source->position = 0U;
@@ -96,13 +71,13 @@ static void xx_lzhuf_source_init(xx_lzhuf_source *source, const uint8_t *data,
  * and simply costs four bytes, so this loops rather than failing on one. The
  * sums are not re-checked here: xx_lzhuf_ztc_verify_pages() has already walked
  * the whole payload, exactly as the reference's depage step does. */
-static bool xx_lzhuf_source_next_page(xx_lzhuf_source *source) {
+static bool xx_lzhuf_source_next_page(xx_lzhuf_source *source)
+{
     for (;;) {
         size_t page;
         if (source->remaining < XX_ZTC_PAGE_CHECK_SIZE) return false;
         source->remaining -= XX_ZTC_PAGE_CHECK_SIZE;
-        page = (source->remaining >= XX_ZTC_PAGE_SIZE) ? XX_ZTC_PAGE_SIZE
-                                                       : source->remaining;
+        page = (source->remaining >= XX_ZTC_PAGE_SIZE) ? XX_ZTC_PAGE_SIZE : source->remaining;
         if (page > source->size - source->position) return false;
         if ((source->size - source->position) - page < XX_ZTC_PAGE_CHECK_SIZE) {
             return false;
@@ -116,7 +91,8 @@ static bool xx_lzhuf_source_next_page(xx_lzhuf_source *source) {
     }
 }
 
-static bool xx_lzhuf_source_byte(xx_lzhuf_source *source, uint8_t *value) {
+static bool xx_lzhuf_source_byte(xx_lzhuf_source *source, uint8_t *value)
+{
     if (source->ended) return false;
     if (source->position >= source->page_end) {
         if (!source->paged) {
@@ -141,7 +117,8 @@ static bool xx_lzhuf_source_byte(xx_lzhuf_source *source, uint8_t *value) {
  * the member when any sum disagrees - including pages past the point the codec
  * stops reading - so this pre-pass has to walk the whole payload too. Its break
  * conditions are not errors: a payload that runs out mid-page simply ends. */
-static bool xx_lzhuf_ztc_verify_pages(const uint8_t *input, size_t input_size) {
+static bool xx_lzhuf_ztc_verify_pages(const uint8_t *input, size_t input_size)
+{
     size_t remaining = input_size;
     size_t position = 0U;
 
@@ -158,9 +135,7 @@ static bool xx_lzhuf_ztc_verify_pages(const uint8_t *input, size_t input_size) {
 
         for (i = 0U; i < page; ++i) sum += (uint32_t)input[position + i];
 
-        stored = (uint32_t)input[position + page] |
-                 ((uint32_t)input[position + page + 1U] << 8U) |
-                 ((uint32_t)input[position + page + 2U] << 16U) |
+        stored = (uint32_t)input[position + page] | ((uint32_t)input[position + page + 1U] << 8U) | ((uint32_t)input[position + page + 2U] << 16U) |
                  ((uint32_t)input[position + page + 3U] << 24U);
         if (stored != sum) return false;
 
@@ -186,15 +161,15 @@ typedef struct xx_lzhuf_options {
      * 1 -> position = d_code[i]<<6 | (x & 0x3F), extra = d_len[i>>4]-2 (4 KiB)
      * 2 -> position = d_code[i]<<7 | (x & 0x7F), extra = d_len[i>>4]-1 (8 KiB) */
     int dist_variant;
-    int n_char;         /* alphabet size; T = 2*n_char-1, R = T-1 */
-    int ring_size;      /* power of two; positions are masked with ring_size-1 */
-    int ring_fill;      /* byte the ring starts filled with */
-    int max_freq;       /* 0x8000 or 0xD000 */
-    int eof_code;       /* symbol that ends the stream, -1 for none */
+    int n_char;    /* alphabet size; T = 2*n_char-1, R = T-1 */
+    int ring_size; /* power of two; positions are masked with ring_size-1 */
+    int ring_fill; /* byte the ring starts filled with */
+    int max_freq;  /* 0x8000 or 0xD000 */
+    int eof_code;  /* symbol that ends the stream, -1 for none */
     bool shift_above_eof;
-    int length_bias;    /* length = symbol - 0xFF + length_bias */
-    int match_bias;     /* source = (cursor - distance - match_bias) & mask */
-    bool reconstruct;   /* at max_freq: halve and rebuild, else stop updating */
+    int length_bias;  /* length = symbol - 0xFF + length_bias */
+    int match_bias;   /* source = (cursor - distance - match_bias) & mask */
+    bool reconstruct; /* at max_freq: halve and rebuild, else stop updating */
 } xx_lzhuf_options;
 
 typedef struct xx_lzhuf_state {
@@ -217,7 +192,8 @@ typedef struct xx_lzhuf_state {
 /* Byte pump feeding the 16-bit window that lives in bits 15..0 of a 32-bit
  * register. The shift below is the reference's own expression; count is only
  * ever 0..7 when this is called, so the & 0x1F never bites. */
-static void xx_lzhuf_fill(xx_lzhuf_state *state) {
+static void xx_lzhuf_fill(xx_lzhuf_state *state)
+{
     uint32_t byte = 0U;
     uint8_t value = 0U;
 
@@ -231,7 +207,8 @@ static void xx_lzhuf_fill(xx_lzhuf_state *state) {
     state->count += 8;
 }
 
-static int xx_lzhuf_get_bit(xx_lzhuf_state *state) {
+static int xx_lzhuf_get_bit(xx_lzhuf_state *state)
+{
     uint32_t value;
 
     while (state->count == 0) {
@@ -246,7 +223,8 @@ static int xx_lzhuf_get_bit(xx_lzhuf_state *state) {
     return (value & 0x8000U) ? 1 : 0;
 }
 
-static int xx_lzhuf_get_byte(xx_lzhuf_state *state) {
+static int xx_lzhuf_get_byte(xx_lzhuf_state *state)
+{
     uint32_t value;
 
     while (state->count < 8) {
@@ -261,7 +239,8 @@ static int xx_lzhuf_get_byte(xx_lzhuf_state *state) {
     return (int)((value >> 8U) & 0xFFU);
 }
 
-static void xx_lzhuf_start_tree(xx_lzhuf_state *state) {
+static void xx_lzhuf_start_tree(xx_lzhuf_state *state)
+{
     int i;
     int j;
 
@@ -287,7 +266,8 @@ static void xx_lzhuf_start_tree(xx_lzhuf_state *state) {
     state->prnt[state->r] = 0;
 }
 
-static void xx_lzhuf_reconstruct(xx_lzhuf_state *state) {
+static void xx_lzhuf_reconstruct(xx_lzhuf_state *state)
+{
     int i;
     int j;
     int n;
@@ -338,7 +318,8 @@ static void xx_lzhuf_reconstruct(xx_lzhuf_state *state) {
     }
 }
 
-static void xx_lzhuf_update(xx_lzhuf_state *state, int symbol) {
+static void xx_lzhuf_update(xx_lzhuf_state *state, int symbol)
+{
     int c;
 
     if ((int)state->freq[state->r] == state->max_freq) {
@@ -392,7 +373,8 @@ static void xx_lzhuf_update(xx_lzhuf_state *state, int symbol) {
 }
 
 /* -1 on a short stream or a corrupt tree. */
-static int xx_lzhuf_decode_char(xx_lzhuf_state *state) {
+static int xx_lzhuf_decode_char(xx_lzhuf_state *state)
+{
     int code = state->son[state->r];
 
     while (code < state->t) {
@@ -412,7 +394,8 @@ static int xx_lzhuf_decode_char(xx_lzhuf_state *state) {
 }
 
 /* -1 on a short stream. */
-static int xx_lzhuf_decode_position(xx_lzhuf_state *state) {
+static int xx_lzhuf_decode_position(xx_lzhuf_state *state)
+{
     int byte = xx_lzhuf_get_byte(state);
     int bits;
     int base;
@@ -451,9 +434,8 @@ static int xx_lzhuf_decode_position(xx_lzhuf_state *state) {
 /* The LZHUF pipeline                                                         */
 /* ------------------------------------------------------------------------- */
 
-static bool xx_lzhuf_run(const uint8_t *input, size_t input_size,
-                         const xx_lzhuf_options *options, bool paged,
-                         uint8_t *output, size_t output_size, size_t *written) {
+static bool xx_lzhuf_run(const uint8_t *input, size_t input_size, const xx_lzhuf_options *options, bool paged, uint8_t *output, size_t output_size, size_t *written)
+{
     xx_lzhuf_state *state;
     uint32_t mask;
     uint32_t cursor = 0U;
@@ -528,8 +510,7 @@ static bool xx_lzhuf_run(const uint8_t *input, size_t input_size,
          * inside the ring. A reference to a slot the stream has not written yet
          * reads the preset fill byte, which is LZSS's own rule and what the
          * encoder assumed - it is not an out-of-bounds read. */
-        source = (cursor - (uint32_t)distance - (uint32_t)options->match_bias) &
-                 mask;
+        source = (cursor - (uint32_t)distance - (uint32_t)options->match_bias) & mask;
 
         if ((code - 0xFF + options->length_bias) <= 0) goto done;
         length = (size_t)(code - 0xFF + options->length_bias);
@@ -566,7 +547,8 @@ done:
 }
 
 /* The parameter set BWCF, ZTC, SBX and ARNI all carry. */
-static void xx_lzhuf_plain_options(xx_lzhuf_options *options) {
+static void xx_lzhuf_plain_options(xx_lzhuf_options *options)
+{
     /* F = 0x3C, THRESHOLD = 2 -> N_CHAR = 0x100 - (2 - 60) = 314, T = 627,
      * R = 626. The 0x2000-byte ring is deliberately wider than the encoder's
      * 4 KiB window, which is harmless: distances never reach past 4 KiB, so the
@@ -583,21 +565,18 @@ static void xx_lzhuf_plain_options(xx_lzhuf_options *options) {
     options->reconstruct = true;
 }
 
-bool xx_lzhuf_decode_memory(const uint8_t *input, size_t input_size,
-                            uint8_t *output, size_t output_size,
-                            size_t *written) {
+bool xx_lzhuf_decode_memory(const uint8_t *input, size_t input_size, uint8_t *output, size_t output_size, size_t *written)
+{
     xx_lzhuf_options options;
 
     if (written) *written = 0U;
     xx_lzhuf_plain_options(&options);
 
-    return xx_lzhuf_run(input, input_size, &options, false, output, output_size,
-                        written);
+    return xx_lzhuf_run(input, input_size, &options, false, output, output_size, written);
 }
 
-bool xx_lzhuf_ztc_decode_memory(const uint8_t *input, size_t input_size,
-                                uint8_t *output, size_t output_size,
-                                size_t *written) {
+bool xx_lzhuf_ztc_decode_memory(const uint8_t *input, size_t input_size, uint8_t *output, size_t output_size, size_t *written)
+{
     xx_lzhuf_options options;
 
     if (written) *written = 0U;
@@ -605,8 +584,7 @@ bool xx_lzhuf_ztc_decode_memory(const uint8_t *input, size_t input_size,
     if (!xx_lzhuf_ztc_verify_pages(input, input_size)) return false;
     xx_lzhuf_plain_options(&options);
 
-    return xx_lzhuf_run(input, input_size, &options, true, output, output_size,
-                        written);
+    return xx_lzhuf_run(input, input_size, &options, true, output, output_size, written);
 }
 
 /* ------------------------------------------------------------------------- */
@@ -634,7 +612,8 @@ typedef struct xx_lzhcxp_state {
 
 /* [u8 length][length bytes] ... ; a zero-length block is the end marker, and
  * its length byte counts as consumed. */
-static bool xx_lzhcxp_read_byte(xx_lzhcxp_state *state, int *byte) {
+static bool xx_lzhcxp_read_byte(xx_lzhcxp_state *state, int *byte)
+{
     if (state->block_left == 0) {
         if (state->position >= state->size) return false;
         state->block_left = (int)state->data[state->position++];
@@ -646,7 +625,8 @@ static bool xx_lzhcxp_read_byte(xx_lzhcxp_state *state, int *byte) {
     return true;
 }
 
-static bool xx_lzhcxp_read_bits(xx_lzhcxp_state *state, int width, int *value) {
+static bool xx_lzhcxp_read_bits(xx_lzhcxp_state *state, int width, int *value)
+{
     while (state->bit_count < width) {
         int byte = 0;
         if (!xx_lzhcxp_read_byte(state, &byte)) return false;
@@ -664,9 +644,8 @@ static bool xx_lzhcxp_read_bits(xx_lzhcxp_state *state, int width, int *value) {
  * size can still be measured. LZW rebuilds every match out of the dictionary
  * rather than out of past output, so discarding needs no window and the two
  * paths cannot disagree. */
-static bool xx_lzhcxp_run(const uint8_t *input, size_t input_size,
-                          uint8_t *output, size_t limit, size_t *produced,
-                          size_t *consumed) {
+static bool xx_lzhcxp_run(const uint8_t *input, size_t input_size, uint8_t *output, size_t limit, size_t *produced, size_t *consumed)
+{
     xx_lzhcxp_state *state;
     size_t output_at = 0U;
     int width = XX_LZHCXP_MIN_WIDTH;
@@ -767,9 +746,8 @@ done:
     return ok;
 }
 
-bool xx_lzhuf_lzhcxp_decode_memory(const uint8_t *input, size_t input_size,
-                                   uint8_t *output, size_t output_size,
-                                   size_t *written) {
+bool xx_lzhuf_lzhcxp_decode_memory(const uint8_t *input, size_t input_size, uint8_t *output, size_t output_size, size_t *written)
+{
     size_t produced = 0U;
 
     if (written) *written = 0U;
@@ -783,9 +761,8 @@ bool xx_lzhuf_lzhcxp_decode_memory(const uint8_t *input, size_t input_size,
     return true;
 }
 
-bool xx_lzhuf_lzhcxp_scan_memory(const uint8_t *input, size_t input_size,
-                                 size_t max_output, size_t *consumed,
-                                 size_t *produced) {
+bool xx_lzhuf_lzhcxp_scan_memory(const uint8_t *input, size_t input_size, size_t max_output, size_t *consumed, size_t *produced)
+{
     if (consumed) *consumed = 0U;
     if (produced) *produced = 0U;
     if (max_output == 0U) return false;

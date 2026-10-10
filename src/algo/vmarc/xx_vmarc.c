@@ -82,8 +82,7 @@ static bool vmarc_bits_get(vmarc_bits *reader, int *code)
         if (reader->position >= reader->end) return false;
         byte = (uint32_t)reader->input[reader->position];
         reader->position++;
-        reader->bits = (uint32_t)(reader->bits +
-                                  (byte << (24 - reader->bit_count)));
+        reader->bits = (uint32_t)(reader->bits + (byte << (24 - reader->bit_count)));
         reader->bit_count += 8;
     }
     *code = (int)(reader->bits >> 20);
@@ -92,8 +91,7 @@ static bool vmarc_bits_get(vmarc_bits *reader, int *code)
     return true;
 }
 
-static bool vmarc_lzw(vmarc_bits *reader, vmarc_sink *sink,
-                      vmarc_tables *tables)
+static bool vmarc_lzw(vmarc_bits *reader, vmarc_sink *sink, vmarc_tables *tables)
 {
     int rover;
     int pending;
@@ -140,12 +138,10 @@ static bool vmarc_lzw(vmarc_bits *reader, vmarc_sink *sink,
          * the first character of the string that has just been decoded.  This
          * is what resolves the KwKwK case; do not hoist it or special-case it.
          */
-        tables->character[pending] =
-            tables->character[tables->chain[length - 1]];
+        tables->character[pending] = tables->character[tables->chain[length - 1]];
 
         for (i = length - 1; i >= 0; --i) {
-            int result = vmarc_sink_put(sink,
-                                        tables->character[tables->chain[i]]);
+            int result = vmarc_sink_put(sink, tables->character[tables->chain[i]]);
             if (result < 0) return false;
             if (result == 0) return true;
         }
@@ -172,8 +168,7 @@ static bool vmarc_lzw(vmarc_bits *reader, vmarc_sink *sink,
             pending = VMARC_SCRATCH;
         } else {
             int old_parent = tables->parent[slot];
-            if (old_parent != VMARC_PARENT_UNSET &&
-                old_parent != VMARC_PARENT_ROOT) {
+            if (old_parent != VMARC_PARENT_UNSET && old_parent != VMARC_PARENT_ROOT) {
                 tables->refs[old_parent]--;
             }
             tables->parent[slot] = code;
@@ -183,14 +178,12 @@ static bool vmarc_lzw(vmarc_bits *reader, vmarc_sink *sink,
     }
 }
 
-static bool vmarc_stored(const uint8_t *input, size_t input_size,
-                         vmarc_sink *sink, size_t *end_offset)
+static bool vmarc_stored(const uint8_t *input, size_t input_size, vmarc_sink *sink, size_t *end_offset)
 {
     size_t position = 0U;
 
     while ((position + 2U) <= input_size) {
-        size_t length = ((size_t)input[position] << 8) |
-                        (size_t)input[position + 1U];
+        size_t length = ((size_t)input[position] << 8) | (size_t)input[position + 1U];
         position += 2U;
         if (length == 0U) {
             *end_offset = position;
@@ -226,9 +219,7 @@ static bool vmarc_stored(const uint8_t *input, size_t input_size,
  * the container walk needs it to find the next 80-byte-aligned header; a member
  * that terminates cleanly produces byte-for-byte the same output either way.
  */
-static bool vmarc_core(const uint8_t *input, size_t input_size,
-                       const xx_vmarc_params *params, uint8_t *output,
-                       size_t limit, size_t *produced, size_t *consumed)
+static bool vmarc_core(const uint8_t *input, size_t input_size, const xx_vmarc_params *params, uint8_t *output, size_t limit, size_t *produced, size_t *consumed)
 {
     static const xx_vmarc_params defaults = {0U, false, XX_VMARC_MODE_LZW};
     vmarc_sink sink;
@@ -258,8 +249,7 @@ static bool vmarc_core(const uint8_t *input, size_t input_size,
 
     {
         vmarc_bits reader;
-        vmarc_tables *tables =
-            (vmarc_tables *)xx_mem_alloc(sizeof(*tables));
+        vmarc_tables *tables = (vmarc_tables *)xx_mem_alloc(sizeof(*tables));
         if (!tables) return false;
 
         xx_rt_memset(&reader, 0, sizeof(reader));
@@ -280,9 +270,7 @@ static bool vmarc_core(const uint8_t *input, size_t input_size,
     }
 }
 
-bool xx_vmarc_decode_memory_ex(const uint8_t *input, size_t input_size,
-                               const xx_vmarc_params *params, uint8_t *output,
-                               size_t output_size, size_t *written,
+bool xx_vmarc_decode_memory_ex(const uint8_t *input, size_t input_size, const xx_vmarc_params *params, uint8_t *output, size_t output_size, size_t *written,
                                size_t *consumed)
 {
     size_t produced = 0U;
@@ -290,8 +278,7 @@ bool xx_vmarc_decode_memory_ex(const uint8_t *input, size_t input_size,
     if (written) *written = 0U;
     if (consumed) *consumed = 0U;
     if (!output) return false;
-    if (!vmarc_core(input, input_size, params, output, output_size, &produced,
-                    consumed)) {
+    if (!vmarc_core(input, input_size, params, output, output_size, &produced, consumed)) {
         return false;
     }
     if (produced != output_size) return false;
@@ -299,9 +286,7 @@ bool xx_vmarc_decode_memory_ex(const uint8_t *input, size_t input_size,
     return true;
 }
 
-bool xx_vmarc_scan_memory_ex(const uint8_t *input, size_t input_size,
-                             const xx_vmarc_params *params, size_t max_output,
-                             size_t *consumed, size_t *produced)
+bool xx_vmarc_scan_memory_ex(const uint8_t *input, size_t input_size, const xx_vmarc_params *params, size_t max_output, size_t *consumed, size_t *produced)
 {
     if (consumed) *consumed = 0U;
     if (produced) *produced = 0U;
@@ -309,24 +294,17 @@ bool xx_vmarc_scan_memory_ex(const uint8_t *input, size_t input_size,
     if (max_output > XX_VMARC_MAX_UNCOMPRESSED_SIZE) {
         max_output = XX_VMARC_MAX_UNCOMPRESSED_SIZE;
     }
-    return vmarc_core(input, input_size, params, NULL, max_output, produced,
-                      consumed);
+    return vmarc_core(input, input_size, params, NULL, max_output, produced, consumed);
 }
 
-bool xx_vmarc_decode_memory(const uint8_t *input, size_t input_size,
-                            uint8_t *output, size_t output_size,
-                            size_t *written)
+bool xx_vmarc_decode_memory(const uint8_t *input, size_t input_size, uint8_t *output, size_t output_size, size_t *written)
 {
-    return xx_vmarc_decode_memory_ex(input, input_size, NULL, output,
-                                     output_size, written, NULL);
+    return xx_vmarc_decode_memory_ex(input, input_size, NULL, output, output_size, written, NULL);
 }
 
-bool xx_vmarc_scan_memory(const uint8_t *input, size_t input_size,
-                          size_t max_output, size_t *consumed,
-                          size_t *produced)
+bool xx_vmarc_scan_memory(const uint8_t *input, size_t input_size, size_t max_output, size_t *consumed, size_t *produced)
 {
-    bool ok = xx_vmarc_scan_memory_ex(input, input_size, NULL, max_output,
-                                      consumed, produced);
+    bool ok = xx_vmarc_scan_memory_ex(input, input_size, NULL, max_output, consumed, produced);
     if (!ok) {
         if (consumed) *consumed = 0U;
         if (produced) *produced = 0U;

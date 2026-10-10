@@ -74,8 +74,7 @@
 
 #define XX_EWF_MEMBER_NAME "disk.img"
 
-static const uint8_t xx_ewf_signature[8] = {0x45U, 0x56U, 0x46U, 0x09U,
-                                            0x0DU, 0x0AU, 0xFFU, 0x00U};
+static const uint8_t xx_ewf_signature[8] = {0x45U, 0x56U, 0x46U, 0x09U, 0x0DU, 0x0AU, 0xFFU, 0x00U};
 
 typedef enum xx_ewf_kind_e {
     XX_EWF_SECTION_OTHER = 0,
@@ -98,8 +97,8 @@ typedef enum xx_ewf_mode_e {
 typedef struct xx_ewf_private_s {
     int64_t input_size;
     int64_t base_address;
-    int64_t format_end;          /**< Absolute end of the last section read. */
-    int64_t first_data;          /**< First sectors or table section, or -1. */
+    int64_t format_end; /**< Absolute end of the last section read. */
+    int64_t first_data; /**< First sectors or table section, or -1. */
     uint64_t media_size;
     uint64_t number_of_sectors;
     uint64_t table_entries;
@@ -114,10 +113,10 @@ typedef struct xx_ewf_private_s {
     uint8_t compression_level;
     bool has_geometry;
     bool is_smart;
-    bool finished;               /**< The chain ended in a "done" section. */
+    bool finished; /**< The chain ended in a "done" section. */
     bool is_complete;
     bool has_md5;
-    bool md5_conflict;           /**< hash and digest disagree. */
+    bool md5_conflict; /**< hash and digest disagree. */
     bool has_sha1;
     bool consumed;
     uint8_t md5[16];
@@ -132,12 +131,12 @@ typedef struct xx_ewf_range_s {
 
 /* Everything DECODE needs besides the geometry. */
 typedef struct xx_ewf_decoder_s {
-    xx_io_device *output;        /**< NULL: decode and verify only. */
-    xx_io_device *chunk_device;  /**< Fixed memory device over chunk. */
-    uint8_t *chunk;              /**< chunk_size + 4 bytes. */
-    uint8_t *packed;             /**< packed_capacity bytes. */
+    xx_io_device *output;       /**< NULL: decode and verify only. */
+    xx_io_device *chunk_device; /**< Fixed memory device over chunk. */
+    uint8_t *chunk;             /**< chunk_size + 4 bytes. */
+    uint8_t *packed;            /**< packed_capacity bytes. */
     size_t packed_capacity;
-    uint64_t next_chunk;         /**< Index of the next chunk to produce. */
+    uint64_t next_chunk; /**< Index of the next chunk to produce. */
     xx_hash_context md5;
 } xx_ewf_decoder;
 
@@ -147,13 +146,12 @@ static void xx_ewf_vtable_destroy(Abstractformat *self);
 
 /* Every read goes through xx_io_seek64: images are routinely larger than
  * 2 GB and long is 32 bits on Win64. */
-static bool xx_ewf_read_at(xx_io_device *device, int64_t offset, void *data,
-                           size_t size) {
+static bool xx_ewf_read_at(xx_io_device *device, int64_t offset, void *data, size_t size)
+{
     uint8_t *out = (uint8_t *)data;
     size_t done = 0U;
 
-    if (!device || (!data && size != 0U) || offset < 0 ||
-        xx_io_seek64(device, offset, SEEK_SET) != 0) {
+    if (!device || (!data && size != 0U) || offset < 0 || xx_io_seek64(device, offset, SEEK_SET) != 0) {
         return false;
     }
     while (done < size) {
@@ -164,14 +162,13 @@ static bool xx_ewf_read_at(xx_io_device *device, int64_t offset, void *data,
     return true;
 }
 
-static bool xx_ewf_range_within(int64_t total_size, int64_t offset,
-                                int64_t size) {
-    return total_size >= 0 && offset >= 0 && size >= 0 &&
-           offset <= total_size && size <= total_size - offset;
+static bool xx_ewf_range_within(int64_t total_size, int64_t offset, int64_t size)
+{
+    return total_size >= 0 && offset >= 0 && size >= 0 && offset <= total_size && size <= total_size - offset;
 }
 
-static bool xx_ewf_write_all(xx_io_device *output, const uint8_t *data,
-                             size_t size) {
+static bool xx_ewf_write_all(xx_io_device *output, const uint8_t *data, size_t size)
+{
     size_t done = 0U;
 
     while (done < size) {
@@ -182,7 +179,8 @@ static bool xx_ewf_write_all(xx_io_device *output, const uint8_t *data,
     return true;
 }
 
-static bool xx_ewf_is_zero(const uint8_t *data, size_t size) {
+static bool xx_ewf_is_zero(const uint8_t *data, size_t size)
+{
     size_t index;
 
     for (index = 0U; index < size; ++index) {
@@ -194,23 +192,20 @@ static bool xx_ewf_is_zero(const uint8_t *data, size_t size) {
 /* The type field is a NUL-padded name. Only the names the walk acts on are
  * told apart; "header", "header2", "error2", "session" and anything newer
  * are stepped over. */
-static xx_ewf_kind xx_ewf_classify(const uint8_t *type) {
+static xx_ewf_kind xx_ewf_classify(const uint8_t *type)
+{
     static const struct {
         const char *name;
         xx_ewf_kind kind;
-    } names[] = {
-        {"volume", XX_EWF_SECTION_VOLUME}, {"disk", XX_EWF_SECTION_VOLUME},
-        {"data", XX_EWF_SECTION_VOLUME},   {"sectors", XX_EWF_SECTION_SECTORS},
-        {"table", XX_EWF_SECTION_TABLE},   {"table2", XX_EWF_SECTION_TABLE2},
-        {"hash", XX_EWF_SECTION_HASH},     {"digest", XX_EWF_SECTION_DIGEST},
-        {"next", XX_EWF_SECTION_NEXT},     {"done", XX_EWF_SECTION_DONE}};
+    } names[] = {{"volume", XX_EWF_SECTION_VOLUME}, {"disk", XX_EWF_SECTION_VOLUME},   {"data", XX_EWF_SECTION_VOLUME}, {"sectors", XX_EWF_SECTION_SECTORS},
+                 {"table", XX_EWF_SECTION_TABLE},   {"table2", XX_EWF_SECTION_TABLE2}, {"hash", XX_EWF_SECTION_HASH},   {"digest", XX_EWF_SECTION_DIGEST},
+                 {"next", XX_EWF_SECTION_NEXT},     {"done", XX_EWF_SECTION_DONE}};
     size_t index;
 
     for (index = 0U; index < sizeof(names) / sizeof(names[0]); ++index) {
         const char *name = names[index].name;
         size_t length = xx_str_len(name);
-        if (xx_rt_memcmp(type, name, length) == 0 &&
-            xx_ewf_is_zero(type + length, 16U - length)) {
+        if (xx_rt_memcmp(type, name, length) == 0 && xx_ewf_is_zero(type + length, 16U - length)) {
             return names[index].kind;
         }
     }
@@ -218,16 +213,14 @@ static xx_ewf_kind xx_ewf_classify(const uint8_t *type) {
 }
 
 /* Read the 13-byte file header at offset. */
-static bool xx_ewf_read_file_header(xx_io_device *device, int64_t input_size,
-                                    int64_t offset, uint16_t *segment) {
+static bool xx_ewf_read_file_header(xx_io_device *device, int64_t input_size, int64_t offset, uint16_t *segment)
+{
     uint8_t header[XX_EWF_FILE_HEADER_SIZE];
 
-    if (!xx_ewf_range_within(input_size, offset, XX_EWF_FILE_HEADER_SIZE) ||
-        !xx_ewf_read_at(device, offset, header, sizeof(header))) {
+    if (!xx_ewf_range_within(input_size, offset, XX_EWF_FILE_HEADER_SIZE) || !xx_ewf_read_at(device, offset, header, sizeof(header))) {
         return false;
     }
-    if (xx_rt_memcmp(header, xx_ewf_signature, sizeof(xx_ewf_signature)) != 0 ||
-        header[8] != 0x01U || header[11] != 0U || header[12] != 0U) {
+    if (xx_rt_memcmp(header, xx_ewf_signature, sizeof(xx_ewf_signature)) != 0 || header[8] != 0x01U || header[11] != 0U || header[12] != 0U) {
         return false;
     }
     *segment = xx_data_get_u16(header, sizeof(header), 9U, false);
@@ -236,16 +229,15 @@ static bool xx_ewf_read_file_header(xx_io_device *device, int64_t input_size,
 
 typedef struct xx_ewf_descriptor_s {
     xx_ewf_kind kind;
-    uint64_t next;               /**< From the segment start. */
+    uint64_t next; /**< From the segment start. */
     uint64_t size;
 } xx_ewf_descriptor;
 
-static bool xx_ewf_read_descriptor(xx_io_device *device, int64_t input_size,
-                                   int64_t offset, xx_ewf_descriptor *out) {
+static bool xx_ewf_read_descriptor(xx_io_device *device, int64_t input_size, int64_t offset, xx_ewf_descriptor *out)
+{
     uint8_t raw[XX_EWF_DESCRIPTOR_SIZE];
 
-    if (!xx_ewf_range_within(input_size, offset, XX_EWF_DESCRIPTOR_SIZE) ||
-        !xx_ewf_read_at(device, offset, raw, sizeof(raw))) {
+    if (!xx_ewf_range_within(input_size, offset, XX_EWF_DESCRIPTOR_SIZE) || !xx_ewf_read_at(device, offset, raw, sizeof(raw))) {
         return false;
     }
     if (xx_adler32(raw, 72U) != xx_data_get_u32(raw, sizeof(raw), 72U, false)) {
@@ -259,15 +251,15 @@ static bool xx_ewf_read_descriptor(xx_io_device *device, int64_t input_size,
 
 /* A stored checksum of zero is accepted besides the right one: some
  * acquisition tools leave the volume and hash checksums unset. */
-static bool xx_ewf_checksum_ok(const uint8_t *data, size_t covered,
-                               uint32_t stored) {
+static bool xx_ewf_checksum_ok(const uint8_t *data, size_t covered, uint32_t stored)
+{
     return stored == 0U || xx_adler32(data, covered) == stored;
 }
 
 /* ------------------------------------------------------------- sections -- */
 
-static bool xx_ewf_read_volume(xx_io_device *device, xx_ewf_private *parsed,
-                               int64_t data_at, uint64_t data_size) {
+static bool xx_ewf_read_volume(xx_io_device *device, xx_ewf_private *parsed, int64_t data_at, uint64_t data_size)
+{
     uint8_t volume[XX_EWF_VOLUME_E01_SIZE];
     uint64_t sectors;
     uint64_t chunks;
@@ -277,9 +269,7 @@ static bool xx_ewf_read_volume(xx_io_device *device, xx_ewf_private *parsed,
 
     if (data_size >= XX_EWF_VOLUME_E01_SIZE) {
         if (!xx_ewf_read_at(device, data_at, volume, XX_EWF_VOLUME_E01_SIZE) ||
-            !xx_ewf_checksum_ok(volume, 1048U,
-                                xx_data_get_u32(volume, sizeof(volume), 1048U,
-                                                false))) {
+            !xx_ewf_checksum_ok(volume, 1048U, xx_data_get_u32(volume, sizeof(volume), 1048U, false))) {
             return false;
         }
         sectors = xx_data_get_u64(volume, sizeof(volume), 16U, false);
@@ -288,10 +278,7 @@ static bool xx_ewf_read_volume(xx_io_device *device, xx_ewf_private *parsed,
         parsed->compression_level = volume[52];
         parsed->is_smart = false;
     } else if (data_size >= XX_EWF_VOLUME_S01_SIZE) {
-        if (!xx_ewf_read_at(device, data_at, volume, XX_EWF_VOLUME_S01_SIZE) ||
-            !xx_ewf_checksum_ok(volume, 90U,
-                                xx_data_get_u32(volume, sizeof(volume), 90U,
-                                                false))) {
+        if (!xx_ewf_read_at(device, data_at, volume, XX_EWF_VOLUME_S01_SIZE) || !xx_ewf_checksum_ok(volume, 90U, xx_data_get_u32(volume, sizeof(volume), 90U, false))) {
             return false;
         }
         sectors = xx_data_get_u32(volume, sizeof(volume), 16U, false);
@@ -305,8 +292,7 @@ static bool xx_ewf_read_volume(xx_io_device *device, xx_ewf_private *parsed,
     declared = xx_data_get_u32(volume, sizeof(volume), 4U, false);
     spc = xx_data_get_u32(volume, sizeof(volume), 8U, false);
     bps = xx_data_get_u32(volume, sizeof(volume), 12U, false);
-    if (spc == 0U || bps == 0U || bps > XX_EWF_MAX_BYTES_PER_SECTOR ||
-        spc > XX_EWF_MAX_CHUNK_SIZE / bps) {
+    if (spc == 0U || bps == 0U || bps > XX_EWF_MAX_BYTES_PER_SECTOR || spc > XX_EWF_MAX_CHUNK_SIZE / bps) {
         return false;
     }
     if (sectors > (uint64_t)INT64_MAX / bps) return false;
@@ -324,27 +310,20 @@ static bool xx_ewf_read_volume(xx_io_device *device, xx_ewf_private *parsed,
     return true;
 }
 
-static void xx_ewf_read_hashes(xx_io_device *device, xx_ewf_private *parsed,
-                               xx_ewf_kind kind, int64_t data_at,
-                               uint64_t data_size) {
+static void xx_ewf_read_hashes(xx_io_device *device, xx_ewf_private *parsed, xx_ewf_kind kind, int64_t data_at, uint64_t data_size)
+{
     uint8_t data[XX_EWF_DIGEST_SIZE];
 
     /* A damaged hash section is not a reason to refuse the image; the
      * hashes are simply not used. */
     if (kind == XX_EWF_SECTION_HASH) {
-        if (data_size < XX_EWF_HASH_SIZE ||
-            !xx_ewf_read_at(device, data_at, data, XX_EWF_HASH_SIZE) ||
-            !xx_ewf_checksum_ok(data, 32U,
-                                xx_data_get_u32(data, sizeof(data), 32U,
-                                                false))) {
+        if (data_size < XX_EWF_HASH_SIZE || !xx_ewf_read_at(device, data_at, data, XX_EWF_HASH_SIZE) ||
+            !xx_ewf_checksum_ok(data, 32U, xx_data_get_u32(data, sizeof(data), 32U, false))) {
             return;
         }
     } else {
-        if (data_size < XX_EWF_DIGEST_SIZE ||
-            !xx_ewf_read_at(device, data_at, data, XX_EWF_DIGEST_SIZE) ||
-            !xx_ewf_checksum_ok(data, 76U,
-                                xx_data_get_u32(data, sizeof(data), 76U,
-                                                false))) {
+        if (data_size < XX_EWF_DIGEST_SIZE || !xx_ewf_read_at(device, data_at, data, XX_EWF_DIGEST_SIZE) ||
+            !xx_ewf_checksum_ok(data, 76U, xx_data_get_u32(data, sizeof(data), 76U, false))) {
             return;
         }
         if (!xx_ewf_is_zero(data + 16, 20U)) {
@@ -366,48 +345,41 @@ static void xx_ewf_read_hashes(xx_io_device *device, xx_ewf_private *parsed,
 typedef struct xx_ewf_table_s {
     uint32_t entries;
     uint64_t base;
-    int64_t entries_at;          /**< Absolute offset of entry 0. */
-    int64_t trailing_start;      /**< After the entry array and its footer. */
+    int64_t entries_at;     /**< Absolute offset of entry 0. */
+    int64_t trailing_start; /**< After the entry array and its footer. */
     int64_t section_end;
     bool has_footer;
 } xx_ewf_table;
 
-static bool xx_ewf_read_table_header(xx_io_device *device, int64_t data_at,
-                                     uint64_t data_size, xx_ewf_table *table) {
+static bool xx_ewf_read_table_header(xx_io_device *device, int64_t data_at, uint64_t data_size, xx_ewf_table *table)
+{
     uint8_t header[XX_EWF_TABLE_HEADER_SIZE];
     uint64_t array_size;
 
-    if (data_size < XX_EWF_TABLE_HEADER_SIZE ||
-        !xx_ewf_read_at(device, data_at, header, sizeof(header)) ||
-        xx_adler32(header, 20U) !=
-            xx_data_get_u32(header, sizeof(header), 20U, false)) {
+    if (data_size < XX_EWF_TABLE_HEADER_SIZE || !xx_ewf_read_at(device, data_at, header, sizeof(header)) ||
+        xx_adler32(header, 20U) != xx_data_get_u32(header, sizeof(header), 20U, false)) {
         return false;
     }
     table->entries = xx_data_get_u32(header, sizeof(header), 0U, false);
     table->base = xx_data_get_u64(header, sizeof(header), 8U, false);
-    if (table->entries > XX_EWF_MAX_TABLE_ENTRIES ||
-        table->base > (uint64_t)INT64_MAX) {
+    if (table->entries > XX_EWF_MAX_TABLE_ENTRIES || table->base > (uint64_t)INT64_MAX) {
         return false;
     }
     array_size = (uint64_t)table->entries * 4U;
     if (array_size > data_size - XX_EWF_TABLE_HEADER_SIZE) return false;
     table->entries_at = data_at + (int64_t)XX_EWF_TABLE_HEADER_SIZE;
     table->section_end = data_at + (int64_t)data_size;
-    table->has_footer =
-        data_size - XX_EWF_TABLE_HEADER_SIZE - array_size >= 4U;
-    table->trailing_start = table->entries_at + (int64_t)array_size +
-                            (table->has_footer ? 4 : 0);
+    table->has_footer = data_size - XX_EWF_TABLE_HEADER_SIZE - array_size >= 4U;
+    table->trailing_start = table->entries_at + (int64_t)array_size + (table->has_footer ? 4 : 0);
     return true;
 }
 
 /* ------------------------------------------------------------- decoding -- */
 
 /* Produce one chunk of expected bytes from the packed extent [at, end). */
-static bool xx_ewf_decode_chunk(xx_io_device *device,
-                                const xx_ewf_private *parsed,
-                                xx_ewf_decoder *decoder, int64_t at,
-                                int64_t end, bool compressed,
-                                size_t expected, xx_pd_struct *pd) {
+static bool xx_ewf_decode_chunk(xx_io_device *device, const xx_ewf_private *parsed, xx_ewf_decoder *decoder, int64_t at, int64_t end, bool compressed, size_t expected,
+                                xx_pd_struct *pd)
+{
     int64_t length = end - at;
     size_t consumed = 0U;
     int64_t produced;
@@ -420,27 +392,20 @@ static bool xx_ewf_decode_chunk(xx_io_device *device,
         /* The plain bytes and their Adler-32. The final chunk carries only
          * what is left of the media; a writer that pads it to a whole chunk
          * is accepted as well. */
-        size_t stored = (size_t)length >= (size_t)parsed->chunk_size + 4U
-                            ? (size_t)parsed->chunk_size
-                            : expected;
+        size_t stored = (size_t)length >= (size_t)parsed->chunk_size + 4U ? (size_t)parsed->chunk_size : expected;
         if ((size_t)length < stored + 4U) return false;
         if (!xx_ewf_read_at(device, at, decoder->chunk, stored + 4U)) {
             return false;
         }
-        return xx_adler32(decoder->chunk, stored) ==
-               xx_data_get_u32(decoder->chunk, stored + 4U, stored, false);
+        return xx_adler32(decoder->chunk, stored) == xx_data_get_u32(decoder->chunk, stored + 4U, stored, false);
     }
-    if (length < 6 ||
-        !xx_ewf_read_at(device, at, decoder->packed, (size_t)length) ||
-        !xx_zlib_stream_header_is_valid(decoder->packed, (size_t)length) ||
+    if (length < 6 || !xx_ewf_read_at(device, at, decoder->packed, (size_t)length) || !xx_zlib_stream_header_is_valid(decoder->packed, (size_t)length) ||
         xx_io_seek64(decoder->chunk_device, 0, SEEK_SET) != 0) {
         return false;
     }
     /* The memory device is exactly one chunk long, so a stream that would
      * inflate past a chunk fails on the write instead of growing anything. */
-    if (!xx_deflate_unpack_memory_to_device_ex(
-            decoder->packed + 2, (size_t)length - 2U, decoder->chunk_device,
-            &consumed, false, pd)) {
+    if (!xx_deflate_unpack_memory_to_device_ex(decoder->packed + 2, (size_t)length - 2U, decoder->chunk_device, &consumed, false, pd)) {
         return false;
     }
     produced = xx_io_tell(decoder->chunk_device);
@@ -448,8 +413,7 @@ static bool xx_ewf_decode_chunk(xx_io_device *device,
     /* The zlib trailer is the only integrity check a compressed chunk has. */
     trailer = 2U + consumed;
     if (trailer > (size_t)length || (size_t)length - trailer < 4U) return false;
-    return xx_data_get_u32(decoder->packed, (size_t)length, trailer, true) ==
-           xx_adler32(decoder->chunk, (size_t)produced);
+    return xx_data_get_u32(decoder->packed, (size_t)length, trailer, true) == xx_adler32(decoder->chunk, (size_t)produced);
 }
 
 /* Where a table entry puts its chunk. EnCase 6.7.1 let a sectors section
@@ -457,14 +421,12 @@ static bool xx_ewf_decode_chunk(xx_io_device *device,
  * that would step backwards while the full value steps forward is that
  * case: from there on the whole value is the offset and the chunks are
  * stored, never compressed. */
-static int64_t xx_ewf_entry_offset(uint32_t value, int64_t origin,
-                                   int64_t previous, bool *overflow,
-                                   bool *compressed) {
+static int64_t xx_ewf_entry_offset(uint32_t value, int64_t origin, int64_t previous, bool *overflow, bool *compressed)
+{
     int64_t masked = origin + (int64_t)(value & 0x7FFFFFFFU);
     int64_t full = origin + (int64_t)value;
 
-    if (!*overflow && (value & 0x80000000U) != 0U && previous >= 0 &&
-        masked <= previous && full > previous) {
+    if (!*overflow && (value & 0x80000000U) != 0U && previous >= 0 && masked <= previous && full > previous) {
         *overflow = true;
     }
     *compressed = !*overflow && (value & 0x80000000U) != 0U;
@@ -474,13 +436,9 @@ static int64_t xx_ewf_entry_offset(uint32_t value, int64_t origin,
 /* Decode every chunk a table lists. Returns false on any damage; *entries_ok
  * is cleared when only the entry array's checksum failed, which lets the
  * caller fall back to table2 before anything has been written. */
-static bool xx_ewf_decode_table(xx_io_device *device,
-                                const xx_ewf_private *parsed,
-                                xx_ewf_decoder *decoder,
-                                const xx_ewf_table *table, int64_t segment_base,
-                                const xx_ewf_range *sectors,
-                                const xx_ewf_range *in_table, bool *entries_ok,
-                                xx_pd_struct *pd) {
+static bool xx_ewf_decode_table(xx_io_device *device, const xx_ewf_private *parsed, xx_ewf_decoder *decoder, const xx_ewf_table *table, int64_t segment_base,
+                                const xx_ewf_range *sectors, const xx_ewf_range *in_table, bool *entries_ok, xx_pd_struct *pd)
+{
     uint8_t *raw = NULL;
     size_t array_size = (size_t)table->entries * 4U;
     const xx_ewf_range *region = NULL;
@@ -493,28 +451,22 @@ static bool xx_ewf_decode_table(xx_io_device *device,
     *entries_ok = true;
     if (table->entries == 0U) return true;
     /* origin plus any u32 entry has to stay representable. */
-    if (table->base > (uint64_t)INT64_MAX - UINT64_C(0x100000000) ||
-        (uint64_t)segment_base >
-            (uint64_t)INT64_MAX - UINT64_C(0x100000000) - table->base) {
+    if (table->base > (uint64_t)INT64_MAX - UINT64_C(0x100000000) || (uint64_t)segment_base > (uint64_t)INT64_MAX - UINT64_C(0x100000000) - table->base) {
         return false;
     }
     origin = segment_base + (int64_t)table->base;
     raw = (uint8_t *)xx_mem_alloc(array_size + 4U);
     if (!raw) return false;
-    if (!xx_ewf_read_at(device, table->entries_at, raw,
-                        array_size + (table->has_footer ? 4U : 0U))) {
+    if (!xx_ewf_read_at(device, table->entries_at, raw, array_size + (table->has_footer ? 4U : 0U))) {
         goto done;
     }
-    if (table->has_footer &&
-        xx_adler32(raw, array_size) !=
-            xx_data_get_u32(raw, array_size + 4U, array_size, false)) {
+    if (table->has_footer && xx_adler32(raw, array_size) != xx_data_get_u32(raw, array_size + 4U, array_size, false)) {
         *entries_ok = false;
         goto done;
     }
 
     for (index = 0U; index < table->entries; ++index) {
-        uint32_t value = xx_data_get_u32(raw, array_size, (size_t)index * 4U,
-                                         false);
+        uint32_t value = xx_data_get_u32(raw, array_size, (size_t)index * 4U, false);
         bool compressed;
         int64_t at;
         int64_t end;
@@ -522,14 +474,12 @@ static bool xx_ewf_decode_table(xx_io_device *device,
         size_t expected;
 
         if (pd && xx_pd_is_stopped(pd)) goto done;
-        at = xx_ewf_entry_offset(value, origin, previous, &overflow,
-                                 &compressed);
+        at = xx_ewf_entry_offset(value, origin, previous, &overflow, &compressed);
         if (at <= previous) goto done;
         if (!region) {
             if (sectors && at >= sectors->start && at < sectors->end) {
                 region = sectors;
-            } else if (in_table && at >= in_table->start &&
-                       at < in_table->end) {
+            } else if (in_table && at >= in_table->start && at < in_table->end) {
                 region = in_table;
             } else {
                 goto done;
@@ -539,10 +489,7 @@ static bool xx_ewf_decode_table(xx_io_device *device,
         if (index + 1U < table->entries) {
             bool peek_overflow = overflow;
             bool peek_compressed;
-            end = xx_ewf_entry_offset(
-                xx_data_get_u32(raw, array_size, (size_t)(index + 1U) * 4U,
-                                false),
-                origin, at, &peek_overflow, &peek_compressed);
+            end = xx_ewf_entry_offset(xx_data_get_u32(raw, array_size, (size_t)(index + 1U) * 4U, false), origin, at, &peek_overflow, &peek_compressed);
             if (end > region->end) goto done;
         } else {
             end = region->end;
@@ -552,18 +499,13 @@ static bool xx_ewf_decode_table(xx_io_device *device,
         if (decoder->next_chunk >= (uint64_t)parsed->number_of_chunks) {
             goto done;
         }
-        left = parsed->media_size -
-               decoder->next_chunk * (uint64_t)parsed->chunk_size;
-        expected = left < (uint64_t)parsed->chunk_size
-                       ? (size_t)left
-                       : (size_t)parsed->chunk_size;
-        if (!xx_ewf_decode_chunk(device, parsed, decoder, at, end, compressed,
-                                 expected, pd)) {
+        left = parsed->media_size - decoder->next_chunk * (uint64_t)parsed->chunk_size;
+        expected = left < (uint64_t)parsed->chunk_size ? (size_t)left : (size_t)parsed->chunk_size;
+        if (!xx_ewf_decode_chunk(device, parsed, decoder, at, end, compressed, expected, pd)) {
             goto done;
         }
         xx_hash_update(&decoder->md5, decoder->chunk, expected);
-        if (decoder->output &&
-            !xx_ewf_write_all(decoder->output, decoder->chunk, expected)) {
+        if (decoder->output && !xx_ewf_write_all(decoder->output, decoder->chunk, expected)) {
             goto done;
         }
         ++decoder->next_chunk;
@@ -577,9 +519,8 @@ done:
 
 /* ----------------------------------------------------------------- walk -- */
 
-static bool xx_ewf_walk(Abstractformat *self, xx_ewf_private *parsed,
-                        xx_ewf_mode mode, xx_ewf_decoder *decoder,
-                        xx_pd_struct *pd) {
+static bool xx_ewf_walk(Abstractformat *self, xx_ewf_private *parsed, xx_ewf_mode mode, xx_ewf_decoder *decoder, xx_pd_struct *pd)
+{
     xx_io_device *device = self->device;
     int64_t segment_base = self->base_address;
     int64_t at;
@@ -588,10 +529,9 @@ static bool xx_ewf_walk(Abstractformat *self, xx_ewf_private *parsed,
     xx_ewf_range sectors = {-1, -1};
     xx_ewf_range failed_region = {-1, -1};
     bool have_sectors = false;
-    bool table_pending = false;  /* table failed; table2 must stand in */
+    bool table_pending = false; /* table failed; table2 must stand in */
 
-    if (!xx_ewf_read_file_header(device, parsed->input_size, segment_base,
-                                 &segment)) {
+    if (!xx_ewf_read_file_header(device, parsed->input_size, segment_base, &segment)) {
         return false;
     }
     parsed->first_segment = segment;
@@ -611,13 +551,11 @@ static bool xx_ewf_walk(Abstractformat *self, xx_ewf_private *parsed,
         if (mode == XX_EWF_MODE_PROBE && sections > XX_EWF_PROBE_SECTIONS) {
             return false;
         }
-        if (!xx_ewf_read_descriptor(device, parsed->input_size, at,
-                                    &descriptor)) {
+        if (!xx_ewf_read_descriptor(device, parsed->input_size, at, &descriptor)) {
             return false;
         }
 
-        if (descriptor.kind == XX_EWF_SECTION_NEXT ||
-            descriptor.kind == XX_EWF_SECTION_DONE) {
+        if (descriptor.kind == XX_EWF_SECTION_NEXT || descriptor.kind == XX_EWF_SECTION_DONE) {
             int64_t end = at + XX_EWF_DESCRIPTOR_SIZE;
             uint16_t following = 0U;
 
@@ -625,8 +563,7 @@ static bool xx_ewf_walk(Abstractformat *self, xx_ewf_private *parsed,
              * as an ordinary section would, is tolerated too. Their size
              * is 0 (EnCase) or 76 (FTK Imager before 2.9) and is not used:
              * nothing follows them inside the segment. */
-            if (descriptor.next != (uint64_t)relative &&
-                descriptor.next != (uint64_t)relative + XX_EWF_DESCRIPTOR_SIZE) {
+            if (descriptor.next != (uint64_t)relative && descriptor.next != (uint64_t)relative + XX_EWF_DESCRIPTOR_SIZE) {
                 return false;
             }
             if (mode == XX_EWF_MODE_PROBE) return false;
@@ -638,10 +575,7 @@ static bool xx_ewf_walk(Abstractformat *self, xx_ewf_private *parsed,
             }
             /* A set presented back to back continues with the next segment
              * right here; anything else ends the walk short of the media. */
-            if (segment == UINT16_MAX ||
-                !xx_ewf_read_file_header(device, parsed->input_size, end,
-                                         &following) ||
-                following != (uint16_t)(segment + 1U)) {
+            if (segment == UINT16_MAX || !xx_ewf_read_file_header(device, parsed->input_size, end, &following) || following != (uint16_t)(segment + 1U)) {
                 break;
             }
             segment = following;
@@ -661,10 +595,7 @@ static bool xx_ewf_walk(Abstractformat *self, xx_ewf_private *parsed,
         /* Some writers leave the size of a section zero; the chain still
          * says where it ends. */
         if (size == 0U) size = (uint64_t)(next > at ? next - at : 0);
-        if (size < XX_EWF_DESCRIPTOR_SIZE || next <= at ||
-            size > (uint64_t)(next - at) ||
-            !xx_ewf_range_within(parsed->input_size, next,
-                                 XX_EWF_DESCRIPTOR_SIZE)) {
+        if (size < XX_EWF_DESCRIPTOR_SIZE || next <= at || size > (uint64_t)(next - at) || !xx_ewf_range_within(parsed->input_size, next, XX_EWF_DESCRIPTOR_SIZE)) {
             return false;
         }
         data_size = size - XX_EWF_DESCRIPTOR_SIZE;
@@ -703,8 +634,7 @@ static bool xx_ewf_walk(Abstractformat *self, xx_ewf_private *parsed,
                 }
                 if (!parsed->has_geometry) return false;
                 if (parsed->first_data < 0) parsed->first_data = at;
-                header_ok = xx_ewf_read_table_header(device, data_at, data_size,
-                                                     &table);
+                header_ok = xx_ewf_read_table_header(device, data_at, data_size, &table);
                 if (descriptor.kind == XX_EWF_SECTION_TABLE2) {
                     /* table2 describes the chunks where table put them. */
                     table_pending = false;
@@ -723,15 +653,9 @@ static bool xx_ewf_walk(Abstractformat *self, xx_ewf_private *parsed,
                     parsed->table_entries += table.entries;
                     break;
                 }
-                if (!xx_ewf_decode_table(device, parsed, decoder, &table,
-                                         segment_base,
-                                         have_sectors ? &sectors : NULL,
-                                         in_table.start < in_table.end
-                                             ? &in_table
-                                             : NULL,
+                if (!xx_ewf_decode_table(device, parsed, decoder, &table, segment_base, have_sectors ? &sectors : NULL, in_table.start < in_table.end ? &in_table : NULL,
                                          &entries_ok, pd)) {
-                    if (entries_ok ||
-                        descriptor.kind == XX_EWF_SECTION_TABLE2) {
+                    if (entries_ok || descriptor.kind == XX_EWF_SECTION_TABLE2) {
                         return false;
                     }
                     table_pending = true;
@@ -743,50 +667,44 @@ static bool xx_ewf_walk(Abstractformat *self, xx_ewf_private *parsed,
             case XX_EWF_SECTION_HASH:
             case XX_EWF_SECTION_DIGEST:
                 if (mode != XX_EWF_MODE_PROBE) {
-                    xx_ewf_read_hashes(device, parsed, descriptor.kind, data_at,
-                                       data_size);
+                    xx_ewf_read_hashes(device, parsed, descriptor.kind, data_at, data_size);
                 }
                 break;
-            default:
-                break;
+            default: break;
         }
         at = next;
     }
     if (!parsed->has_geometry) return false;
-    parsed->is_complete = parsed->finished && parsed->first_segment == 1U &&
-                          parsed->table_entries ==
-                              (uint64_t)parsed->number_of_chunks;
+    parsed->is_complete = parsed->finished && parsed->first_segment == 1U && parsed->table_entries == (uint64_t)parsed->number_of_chunks;
     return true;
 }
 
 /* ---------------------------------------------------------------- parse -- */
 
-static void xx_ewf_private_reset(xx_ewf_private *parsed) {
+static void xx_ewf_private_reset(xx_ewf_private *parsed)
+{
     xx_mem_zero(parsed, sizeof(*parsed));
     parsed->input_size = -1;
     parsed->first_data = -1;
 }
 
-static bool xx_ewf_parse(Abstractformat *self, xx_ewf_private *parsed,
-                         xx_ewf_mode mode, xx_ewf_decoder *decoder,
-                         xx_pd_struct *pd) {
+static bool xx_ewf_parse(Abstractformat *self, xx_ewf_private *parsed, xx_ewf_mode mode, xx_ewf_decoder *decoder, xx_pd_struct *pd)
+{
     if (parsed) xx_ewf_private_reset(parsed);
-    if (!self || !self->device || !parsed || self->base_address < 0 ||
-        (pd && xx_pd_is_stopped(pd))) {
+    if (!self || !self->device || !parsed || self->base_address < 0 || (pd && xx_pd_is_stopped(pd))) {
         return false;
     }
     parsed->input_size = xx_io_total_size(self->device);
     parsed->base_address = self->base_address;
-    if (!xx_ewf_range_within(parsed->input_size, self->base_address,
-                             XX_EWF_FILE_HEADER_SIZE + XX_EWF_DESCRIPTOR_SIZE)) {
+    if (!xx_ewf_range_within(parsed->input_size, self->base_address, XX_EWF_FILE_HEADER_SIZE + XX_EWF_DESCRIPTOR_SIZE)) {
         return false;
     }
     return xx_ewf_walk(self, parsed, mode, decoder, pd);
 }
 
 /* Decode the media into output (NULL verifies only). */
-static bool xx_ewf_write_image(Abstractformat *self, xx_io_device *output,
-                               xx_pd_struct *pd) {
+static bool xx_ewf_write_image(Abstractformat *self, xx_io_device *output, xx_pd_struct *pd)
+{
     xx_ewf_private parsed;
     xx_ewf_private info;
     xx_ewf_decoder decoder;
@@ -795,8 +713,7 @@ static bool xx_ewf_write_image(Abstractformat *self, xx_io_device *output,
 
     /* The INFO walk first: it is cheap, and it refuses an incomplete set
      * before a single byte is written. */
-    if (!xx_ewf_parse(self, &info, XX_EWF_MODE_INFO, NULL, pd) ||
-        !info.is_complete) {
+    if (!xx_ewf_parse(self, &info, XX_EWF_MODE_INFO, NULL, pd) || !info.is_complete) {
         return false;
     }
     xx_mem_zero(&decoder, sizeof(decoder));
@@ -809,21 +726,16 @@ static bool xx_ewf_write_image(Abstractformat *self, xx_io_device *output,
     /* Four more than a chunk: a stored chunk is read with its checksum. */
     decoder.chunk = (uint8_t *)xx_mem_alloc((size_t)info.chunk_size + 4U);
     decoder.packed = (uint8_t *)xx_mem_alloc(decoder.packed_capacity);
-    if (!decoder.chunk || !decoder.packed ||
-        !xx_hash_init(&decoder.md5, XX_HASH_MD5)) {
+    if (!decoder.chunk || !decoder.packed || !xx_hash_init(&decoder.md5, XX_HASH_MD5)) {
         goto done;
     }
     decoder.chunk_device = xx_io_mem_open(decoder.chunk, info.chunk_size);
     if (!decoder.chunk_device) goto done;
-    if (!xx_ewf_parse(self, &parsed, XX_EWF_MODE_DECODE, &decoder, pd) ||
-        !parsed.is_complete ||
-        decoder.next_chunk != (uint64_t)parsed.number_of_chunks) {
+    if (!xx_ewf_parse(self, &parsed, XX_EWF_MODE_DECODE, &decoder, pd) || !parsed.is_complete || decoder.next_chunk != (uint64_t)parsed.number_of_chunks) {
         goto done;
     }
     if (!xx_hash_final(&decoder.md5, digest, sizeof(digest))) goto done;
-    result = !parsed.md5_conflict &&
-             (!parsed.has_md5 ||
-              xx_rt_memcmp(digest, parsed.md5, sizeof(digest)) == 0);
+    result = !parsed.md5_conflict && (!parsed.has_md5 || xx_rt_memcmp(digest, parsed.md5, sizeof(digest)) == 0);
 done:
     if (decoder.chunk_device) xx_io_close(decoder.chunk_device);
     if (decoder.chunk) xx_mem_free(decoder.chunk);
@@ -833,7 +745,8 @@ done:
 
 /* ------------------------------------------------------------ lifecycle -- */
 
-void xx_ewf_init(xx_ewf *ewf, xx_io_device *dev, int64_t base_address) {
+void xx_ewf_init(xx_ewf *ewf, xx_io_device *dev, int64_t base_address)
+{
     if (!ewf) return;
     xx_mem_zero(ewf, sizeof(*ewf));
     xx_format_init(&ewf->format, dev, base_address);
@@ -846,27 +759,25 @@ void xx_ewf_init(xx_ewf *ewf, xx_io_device *dev, int64_t base_address) {
     ewf->format.check_is_valid = xx_ewf_check_is_valid;
     ewf->format.handle_base_info = xx_ewf_handle_base_info;
     ewf->format.get_format_size = xx_ewf_get_format_size;
-    ewf->format.get_number_of_archive_records =
-        xx_ewf_get_number_of_archive_records;
-    ewf->format.create_archive_records_reading =
-        xx_ewf_create_archive_records_reading;
+    ewf->format.get_number_of_archive_records = xx_ewf_get_number_of_archive_records;
+    ewf->format.create_archive_records_reading = xx_ewf_create_archive_records_reading;
     ewf->format.get_current_archive_record = xx_ewf_get_current_archive_record;
-    ewf->format.unpack_current_archive_record =
-        xx_ewf_unpack_current_archive_record;
+    ewf->format.unpack_current_archive_record = xx_ewf_unpack_current_archive_record;
     ewf->format.archive_record_move_to_next = xx_ewf_archive_record_move_to_next;
-    ewf->format.free_archive_records_reading =
-        xx_ewf_free_archive_records_reading;
+    ewf->format.free_archive_records_reading = xx_ewf_free_archive_records_reading;
     ewf->format.destroy = xx_ewf_vtable_destroy;
 }
 
-xx_ewf *xx_ewf_create(xx_io_device *dev, int64_t base_address) {
+xx_ewf *xx_ewf_create(xx_io_device *dev, int64_t base_address)
+{
     xx_ewf *ewf = (xx_ewf *)xx_mem_alloc(sizeof(*ewf));
 
     if (ewf) xx_ewf_init(ewf, dev, base_address);
     return ewf;
 }
 
-void xx_ewf_destroy(xx_ewf *ewf) {
+void xx_ewf_destroy(xx_ewf *ewf)
+{
     if (!ewf) return;
     if (ewf->internal) {
         xx_mem_free(ewf->internal);
@@ -875,11 +786,13 @@ void xx_ewf_destroy(xx_ewf *ewf) {
     xx_format_cleanup_extra_parameters(&ewf->format);
 }
 
-static void xx_ewf_vtable_destroy(Abstractformat *self) {
+static void xx_ewf_vtable_destroy(Abstractformat *self)
+{
     xx_ewf_destroy((xx_ewf *)self);
 }
 
-void xx_ewf_free(xx_ewf *ewf) {
+void xx_ewf_free(xx_ewf *ewf)
+{
     if (!ewf) return;
     xx_ewf_destroy(ewf);
     xx_mem_free(ewf);
@@ -887,13 +800,15 @@ void xx_ewf_free(xx_ewf *ewf) {
 
 /* --------------------------------------------------------------- format -- */
 
-bool xx_ewf_check_is_valid(Abstractformat *self, xx_pd_struct *pd) {
+bool xx_ewf_check_is_valid(Abstractformat *self, xx_pd_struct *pd)
+{
     xx_ewf_private parsed;
 
     return xx_ewf_parse(self, &parsed, XX_EWF_MODE_PROBE, NULL, pd);
 }
 
-bool xx_ewf_handle_base_info(Abstractformat *self, xx_pd_struct *pd) {
+bool xx_ewf_handle_base_info(Abstractformat *self, xx_pd_struct *pd)
+{
     xx_ewf *ewf = (xx_ewf *)self;
     xx_ewf_private *parsed;
 
@@ -939,18 +854,17 @@ bool xx_ewf_handle_base_info(Abstractformat *self, xx_pd_struct *pd) {
     return true;
 }
 
-int64_t xx_ewf_get_format_size(Abstractformat *self, xx_pd_struct *pd) {
-    if (!self ||
-        (!self->base_info_handled && !xx_format_handle_base_info(self, pd))) {
+int64_t xx_ewf_get_format_size(Abstractformat *self, xx_pd_struct *pd)
+{
+    if (!self || (!self->base_info_handled && !xx_format_handle_base_info(self, pd))) {
         return -1;
     }
     return self->format_size;
 }
 
-uint64_t xx_ewf_get_number_of_archive_records(Abstractformat *self,
-                                              xx_pd_struct *pd) {
-    if (!self ||
-        (!self->base_info_handled && !xx_format_handle_base_info(self, pd))) {
+uint64_t xx_ewf_get_number_of_archive_records(Abstractformat *self, xx_pd_struct *pd)
+{
+    if (!self || (!self->base_info_handled && !xx_format_handle_base_info(self, pd))) {
         return 0U;
     }
     return ((xx_ewf *)self)->number_of_records;
@@ -958,19 +872,17 @@ uint64_t xx_ewf_get_number_of_archive_records(Abstractformat *self,
 
 /* -------------------------------------------------------------- records -- */
 
-static bool xx_ewf_copy_options(xx_list_s *destination,
-                                const xx_list_s *source) {
+static bool xx_ewf_copy_options(xx_list_s *destination, const xx_list_s *source)
+{
     size_t index;
 
     if (!destination || !source) return source == NULL;
     for (index = 0U; index < source->count; ++index) {
-        const xx_meta *item =
-            (const xx_meta *)xx_list_at((const xx_list_t *)source, index);
+        const xx_meta *item = (const xx_meta *)xx_list_at((const xx_list_t *)source, index);
         xx_meta copy;
         if (!item) continue;
         xx_meta_init(&copy, item->meta_id);
-        if (!xx_var_copy(&copy.var, &item->var) ||
-            !xx_list_append(destination, &copy)) {
+        if (!xx_var_copy(&copy.var, &item->var) || !xx_list_append(destination, &copy)) {
             xx_meta_cleanup(&copy);
             return false;
         }
@@ -978,21 +890,20 @@ static bool xx_ewf_copy_options(xx_list_s *destination,
     return true;
 }
 
-static const xx_var *xx_ewf_find_option(const xx_list_s *options,
-                                        uint32_t meta_id) {
+static const xx_var *xx_ewf_find_option(const xx_list_s *options, uint32_t meta_id)
+{
     size_t index;
 
     if (!options) return NULL;
     for (index = 0U; index < options->count; ++index) {
-        const xx_meta *item =
-            (const xx_meta *)xx_list_at((const xx_list_t *)options, index);
+        const xx_meta *item = (const xx_meta *)xx_list_at((const xx_list_t *)options, index);
         if (item && item->meta_id == meta_id) return &item->var;
     }
     return NULL;
 }
 
-static bool xx_ewf_populate_record(xx_archive_record *record,
-                                   const xx_ewf_private *parsed) {
+static bool xx_ewf_populate_record(xx_archive_record *record, const xx_ewf_private *parsed)
+{
     char comment[96];
     char hex[48];
     size_t used = 0U;
@@ -1006,42 +917,31 @@ static bool xx_ewf_populate_record(xx_archive_record *record,
      * record points at the first of them. */
     record->data_offset = parsed->first_data;
     record->compressed_size = parsed->format_end - parsed->base_address;
-    if (!xx_archive_record_set_original_name(record, XX_EWF_MEMBER_NAME) ||
-        !xx_archive_record_set_meta_u64(record, XX_META_ID_UNCOMPRESSED_SIZE,
-                                        parsed->media_size) ||
-        !xx_archive_record_set_meta_u64(
-            record, XX_META_ID_COMPRESSED_SIZE,
-            (uint64_t)(parsed->format_end - parsed->base_address)) ||
-        !xx_archive_record_set_meta_u64(record, XX_META_ID_COMPRESSION_LEVEL,
-                                        parsed->compression_level) ||
-        !xx_archive_record_set_meta_bool(record, XX_META_ID_IS_FOLDER, false) ||
-        !xx_archive_record_set_meta_bool(record, XX_META_ID_IS_ENCRYPTED,
-                                         false)) {
+    if (!xx_archive_record_set_original_name(record, XX_EWF_MEMBER_NAME) || !xx_archive_record_set_meta_u64(record, XX_META_ID_UNCOMPRESSED_SIZE, parsed->media_size) ||
+        !xx_archive_record_set_meta_u64(record, XX_META_ID_COMPRESSED_SIZE, (uint64_t)(parsed->format_end - parsed->base_address)) ||
+        !xx_archive_record_set_meta_u64(record, XX_META_ID_COMPRESSION_LEVEL, parsed->compression_level) ||
+        !xx_archive_record_set_meta_bool(record, XX_META_ID_IS_FOLDER, false) || !xx_archive_record_set_meta_bool(record, XX_META_ID_IS_ENCRYPTED, false)) {
         return false;
     }
     comment[0] = '\0';
     if (parsed->has_md5 && xx_hash_to_hex(parsed->md5, 16U, hex, sizeof(hex))) {
         used = (size_t)xx_rt_snprintf(comment, sizeof(comment), "MD5 %s", hex);
     }
-    if (parsed->has_sha1 && used < sizeof(comment) &&
-        xx_hash_to_hex(parsed->sha1, 20U, hex, sizeof(hex))) {
-        (void)xx_rt_snprintf(comment + used, sizeof(comment) - used, "%sSHA1 %s",
-                             used ? "; " : "", hex);
+    if (parsed->has_sha1 && used < sizeof(comment) && xx_hash_to_hex(parsed->sha1, 20U, hex, sizeof(hex))) {
+        (void)xx_rt_snprintf(comment + used, sizeof(comment) - used, "%sSHA1 %s", used ? "; " : "", hex);
     }
-    if (comment[0] != '\0' &&
-        !xx_archive_record_set_meta_str(record, XX_META_ID_COMMENT, comment)) {
+    if (comment[0] != '\0' && !xx_archive_record_set_meta_str(record, XX_META_ID_COMMENT, comment)) {
         return false;
     }
     return true;
 }
 
-xx_archive_record_state *xx_ewf_create_archive_records_reading(
-    Abstractformat *self, const xx_list_s *options, xx_pd_struct *pd) {
+xx_archive_record_state *xx_ewf_create_archive_records_reading(Abstractformat *self, const xx_list_s *options, xx_pd_struct *pd)
+{
     xx_archive_record_state *state;
     xx_ewf_private *parsed;
 
-    if (!self || !self->device ||
-        (!self->base_info_handled && !xx_format_handle_base_info(self, pd))) {
+    if (!self || !self->device || (!self->base_info_handled && !xx_format_handle_base_info(self, pd))) {
         return NULL;
     }
     state = (xx_archive_record_state *)xx_mem_alloc(sizeof(*state));
@@ -1054,8 +954,7 @@ xx_archive_record_state *xx_ewf_create_archive_records_reading(
     xx_archive_record_state_init(state, self);
     state->internal_state = parsed;
     state->free_internal = xx_mem_free;
-    if (!xx_ewf_copy_options(&state->options, options) ||
-        !xx_ewf_parse(self, parsed, XX_EWF_MODE_INFO, NULL, pd)) {
+    if (!xx_ewf_copy_options(&state->options, options) || !xx_ewf_parse(self, parsed, XX_EWF_MODE_INFO, NULL, pd)) {
         xx_archive_record_state_free(state);
         return NULL;
     }
@@ -1069,20 +968,16 @@ xx_archive_record_state *xx_ewf_create_archive_records_reading(
     return state;
 }
 
-const xx_archive_record *xx_ewf_get_current_archive_record(
-    Abstractformat *self, xx_archive_record_state *state) {
-    return self && state && state->format == self && state->has_record
-               ? &state->current_record
-               : NULL;
+const xx_archive_record *xx_ewf_get_current_archive_record(Abstractformat *self, xx_archive_record_state *state)
+{
+    return self && state && state->format == self && state->has_record ? &state->current_record : NULL;
 }
 
-bool xx_ewf_archive_record_move_to_next(Abstractformat *self,
-                                        xx_archive_record_state *state,
-                                        xx_pd_struct *pd) {
+bool xx_ewf_archive_record_move_to_next(Abstractformat *self, xx_archive_record_state *state, xx_pd_struct *pd)
+{
     xx_ewf_private *parsed;
 
-    if (!self || !state || state->format != self || !state->has_record ||
-        (pd && xx_pd_is_stopped(pd))) {
+    if (!self || !state || state->format != self || !state->has_record || (pd && xx_pd_is_stopped(pd))) {
         return false;
     }
     /* One member, so the first step is always the last. */
@@ -1094,9 +989,8 @@ bool xx_ewf_archive_record_move_to_next(Abstractformat *self,
     return false;
 }
 
-bool xx_ewf_unpack_current_archive_record(Abstractformat *self,
-                                          xx_archive_record_state *state,
-                                          xx_pd_struct *pd) {
+bool xx_ewf_unpack_current_archive_record(Abstractformat *self, xx_archive_record_state *state, xx_pd_struct *pd)
+{
     xx_ewf_private *parsed;
     const xx_var *option;
     const char *base = NULL;
@@ -1106,8 +1000,7 @@ bool xx_ewf_unpack_current_archive_record(Abstractformat *self,
     bool result;
     bool created = false;
 
-    if (!self || !self->device || !state || state->format != self ||
-        !state->has_record || (pd && xx_pd_is_stopped(pd))) {
+    if (!self || !self->device || !state || state->format != self || !state->has_record || (pd && xx_pd_is_stopped(pd))) {
         return false;
     }
     parsed = (xx_ewf_private *)state->internal_state;
@@ -1115,11 +1008,9 @@ bool xx_ewf_unpack_current_archive_record(Abstractformat *self,
 
     option = xx_ewf_find_option(&state->options, XX_META_ID_OPT_UNPACK_PATH);
     if (!option) return xx_ewf_write_image(self, NULL, pd);
-    if (option->type == XX_VAR_TYPE_STRING ||
-        option->type == XX_VAR_TYPE_STRING_VIEW) {
+    if (option->type == XX_VAR_TYPE_STRING || option->type == XX_VAR_TYPE_STRING_VIEW) {
         base = xx_var_get_str(option);
-    } else if (option->type == XX_VAR_TYPE_WSTRING ||
-               option->type == XX_VAR_TYPE_WSTRING_VIEW) {
+    } else if (option->type == XX_VAR_TYPE_WSTRING || option->type == XX_VAR_TYPE_WSTRING_VIEW) {
         owned_base = xx_str_unicode_to_utf8(xx_var_get_wstr(option));
         base = owned_base;
     }
@@ -1127,8 +1018,7 @@ bool xx_ewf_unpack_current_archive_record(Abstractformat *self,
         if (owned_base) xx_str_free(owned_base);
         return false;
     }
-    if (base[0] != '\0' && base[xx_str_len(base) - 1U] != '/' &&
-        base[xx_str_len(base) - 1U] != '\\') {
+    if (base[0] != '\0' && base[xx_str_len(base) - 1U] != '/' && base[xx_str_len(base) - 1U] != '\\') {
         destination = xx_str_concat3(base, "/", XX_EWF_MEMBER_NAME);
     } else {
         destination = xx_str_concat(base, XX_EWF_MEMBER_NAME);
@@ -1148,29 +1038,33 @@ bool xx_ewf_unpack_current_archive_record(Abstractformat *self,
     return result;
 }
 
-void xx_ewf_free_archive_records_reading(Abstractformat *self,
-                                         xx_archive_record_state *state) {
+void xx_ewf_free_archive_records_reading(Abstractformat *self, xx_archive_record_state *state)
+{
     (void)self;
     xx_archive_record_state_free(state);
 }
 
 /* ------------------------------------------------------------ accessors -- */
 
-bool xx_ewf_unpack_to_device(xx_ewf *ewf, xx_io_device *output,
-                             xx_pd_struct *pd) {
+bool xx_ewf_unpack_to_device(xx_ewf *ewf, xx_io_device *output, xx_pd_struct *pd)
+{
     if (!ewf || !ewf->format.device) return false;
     return xx_ewf_write_image(&ewf->format, output, pd);
 }
 
-uint64_t xx_ewf_get_media_size(const xx_ewf *ewf) {
+uint64_t xx_ewf_get_media_size(const xx_ewf *ewf)
+{
     return ewf ? ewf->media_size : 0U;
 }
-uint32_t xx_ewf_get_chunk_size(const xx_ewf *ewf) {
+uint32_t xx_ewf_get_chunk_size(const xx_ewf *ewf)
+{
     return ewf ? ewf->chunk_size : 0U;
 }
-uint32_t xx_ewf_get_bytes_per_sector(const xx_ewf *ewf) {
+uint32_t xx_ewf_get_bytes_per_sector(const xx_ewf *ewf)
+{
     return ewf ? ewf->bytes_per_sector : 0U;
 }
-bool xx_ewf_is_complete(const xx_ewf *ewf) {
+bool xx_ewf_is_complete(const xx_ewf *ewf)
+{
     return ewf ? ewf->is_complete : false;
 }

@@ -73,17 +73,16 @@ extern "C" {
 typedef struct xx_adam {
     Abstractformat format;
     uint64_t number_of_records;
-    int64_t image_size;          /**< Bytes of the image, 160K..1.44M. */
-    uint32_t volume_blocks;      /**< image_size / 1024. */
-    uint32_t declared_blocks;    /**< Volume size field of the descriptor. */
-    uint32_t directory_blocks;   /**< 1..127. */
+    int64_t image_size;        /**< Bytes of the image, 160K..1.44M. */
+    uint32_t volume_blocks;    /**< image_size / 1024. */
+    uint32_t declared_blocks;  /**< Volume size field of the descriptor. */
+    uint32_t directory_blocks; /**< 1..127. */
     char volume_name[XX_ADAM_VOLUME_NAME_FIELD + 1];
 } xx_adam;
 
 typedef xx_adam xx_adam_t;
 
-XXFC_API void xx_adam_init(xx_adam *archive, xx_io_device *device,
-                           int64_t base_address);
+XXFC_API void xx_adam_init(xx_adam *archive, xx_io_device *device, int64_t base_address);
 XXFC_API xx_adam *xx_adam_create(xx_io_device *device, int64_t base_address);
 XXFC_API void xx_adam_destroy(xx_adam *archive);
 XXFC_API void xx_adam_free(xx_adam *archive);
@@ -92,21 +91,14 @@ XXFC_API void xx_adam_free(xx_adam *archive);
 XXFC_API bool xx_adam_detection_hint(xx_io_device *device);
 XXFC_API bool xx_adam_check_is_valid(Abstractformat *self, xx_pd_struct *pd);
 XXFC_API bool xx_adam_handle_base_info(Abstractformat *self, xx_pd_struct *pd);
-XXFC_API int64_t xx_adam_get_format_size(Abstractformat *self,
-                                         xx_pd_struct *pd);
-XXFC_API uint64_t xx_adam_get_number_of_archive_records(Abstractformat *self,
-                                                        xx_pd_struct *pd);
+XXFC_API int64_t xx_adam_get_format_size(Abstractformat *self, xx_pd_struct *pd);
+XXFC_API uint64_t xx_adam_get_number_of_archive_records(Abstractformat *self, xx_pd_struct *pd);
 
-XXFC_API xx_archive_record_state *xx_adam_create_archive_records_reading(
-    Abstractformat *self, const xx_list_s *options, xx_pd_struct *pd);
-XXFC_API const xx_archive_record *xx_adam_get_current_archive_record(
-    Abstractformat *self, xx_archive_record_state *state);
-XXFC_API bool xx_adam_unpack_current_archive_record(
-    Abstractformat *self, xx_archive_record_state *state, xx_pd_struct *pd);
-XXFC_API bool xx_adam_archive_record_move_to_next(
-    Abstractformat *self, xx_archive_record_state *state, xx_pd_struct *pd);
-XXFC_API void xx_adam_free_archive_records_reading(
-    Abstractformat *self, xx_archive_record_state *state);
+XXFC_API xx_archive_record_state *xx_adam_create_archive_records_reading(Abstractformat *self, const xx_list_s *options, xx_pd_struct *pd);
+XXFC_API const xx_archive_record *xx_adam_get_current_archive_record(Abstractformat *self, xx_archive_record_state *state);
+XXFC_API bool xx_adam_unpack_current_archive_record(Abstractformat *self, xx_archive_record_state *state, xx_pd_struct *pd);
+XXFC_API bool xx_adam_archive_record_move_to_next(Abstractformat *self, xx_archive_record_state *state, xx_pd_struct *pd);
+XXFC_API void xx_adam_free_archive_records_reading(Abstractformat *self, xx_archive_record_state *state);
 
 #ifdef __cplusplus
 }

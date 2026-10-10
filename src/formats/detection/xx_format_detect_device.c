@@ -1391,7 +1391,8 @@
 #include <wchar.h>
 
 #ifndef XXFC_FORMAT_DETECTION_LZMA_XZ_ONLY
-static bool xx_format_tar_header_is_valid(const uint8_t header[512]) {
+static bool xx_format_tar_header_is_valid(const uint8_t header[512])
+{
     uint64_t stored = 0;
     uint64_t checksum = 0;
     int64_t signed_checksum = 0;
@@ -1428,8 +1429,7 @@ static bool xx_format_tar_header_is_valid(const uint8_t header[512]) {
             signed_checksum += (int8_t)header[i];
         }
     }
-    return checksum == stored ||
-           (signed_checksum >= 0 && (uint64_t)signed_checksum == stored);
+    return checksum == stored || (signed_checksum >= 0 && (uint64_t)signed_checksum == stored);
 }
 
 typedef struct xx_format_prefix_sink_s {
@@ -1437,10 +1437,9 @@ typedef struct xx_format_prefix_sink_s {
     size_t size;
 } xx_format_prefix_sink;
 
-static ssize_t xx_format_prefix_write(xx_io_device *device,
-                                      const void *data, size_t size) {
-    xx_format_prefix_sink *sink =
-        device ? (xx_format_prefix_sink *)device->priv : NULL;
+static ssize_t xx_format_prefix_write(xx_io_device *device, const void *data, size_t size)
+{
+    xx_format_prefix_sink *sink = device ? (xx_format_prefix_sink *)device->priv : NULL;
     size_t available;
     size_t amount;
     if (!sink || (!data && size != 0U)) return -1;
@@ -1465,7 +1464,8 @@ static ssize_t xx_format_prefix_write(xx_io_device *device,
 
 #include "xx_format_reader_probe.h"
 
-static bool xx_format_is_tar_gz_device(xx_io_device *device) {
+static bool xx_format_is_tar_gz_device(xx_io_device *device)
+{
     xx_format_prefix_sink prefix;
     xx_io_device sink;
     xx_gz gz;
@@ -1481,11 +1481,11 @@ static bool xx_format_is_tar_gz_device(xx_io_device *device) {
         (void)xx_gz_unpack_to_device(&gz, &sink, NULL);
     }
     xx_gz_destroy(&gz);
-    return prefix.size == sizeof(prefix.data) &&
-           xx_format_tar_header_is_valid(prefix.data);
+    return prefix.size == sizeof(prefix.data) && xx_format_tar_header_is_valid(prefix.data);
 }
 
-static bool xx_format_is_tar_bz2_device(xx_io_device *device) {
+static bool xx_format_is_tar_bz2_device(xx_io_device *device)
+{
     xx_format_prefix_sink prefix;
     xx_io_device sink;
     xx_bz2 bz2;
@@ -1501,11 +1501,11 @@ static bool xx_format_is_tar_bz2_device(xx_io_device *device) {
         (void)xx_bz2_unpack_to_device(&bz2, &sink, NULL);
     }
     xx_bz2_destroy(&bz2);
-    return prefix.size == sizeof(prefix.data) &&
-           xx_format_tar_header_is_valid(prefix.data);
+    return prefix.size == sizeof(prefix.data) && xx_format_tar_header_is_valid(prefix.data);
 }
 
-static bool xx_format_is_tar_xz_device(xx_io_device *device) {
+static bool xx_format_is_tar_xz_device(xx_io_device *device)
+{
     xx_format_prefix_sink prefix;
     xx_io_device sink;
     xx_xz xz;
@@ -1516,110 +1516,83 @@ static bool xx_format_is_tar_xz_device(xx_io_device *device) {
     sink.write = xx_format_prefix_write;
     sink.priv = &prefix;
     xx_xz_init(&xz, device, 0);
-    parsed = xx_xz_handle_base_info(&xz.format, NULL) &&
-             xx_xz_can_extract(&xz);
+    parsed = xx_xz_handle_base_info(&xz.format, NULL) && xx_xz_can_extract(&xz);
     if (parsed) {
         (void)xx_xz_unpack_to_device(&xz, &sink, NULL);
     }
     xx_xz_destroy(&xz);
-    return prefix.size == sizeof(prefix.data) &&
-           xx_format_tar_header_is_valid(prefix.data);
+    return prefix.size == sizeof(prefix.data) && xx_format_tar_header_is_valid(prefix.data);
 }
 
-XX_FORMAT_READER_ADAPTER(XX_FORMAT_INLINE_ALLOWED, xx_format_is_tar_lz4_device,
-    xx_tar_lz4, device, tar_lz4, result, XX_FORMAT_REQUIRE_DEVICE, handle_base_info)
+XX_FORMAT_READER_ADAPTER(XX_FORMAT_INLINE_ALLOWED, xx_format_is_tar_lz4_device, xx_tar_lz4, device, tar_lz4, result, XX_FORMAT_REQUIRE_DEVICE, handle_base_info)
 
-XX_FORMAT_READER_ADAPTER(XX_FORMAT_INLINE_ALLOWED, xx_format_is_lz4_device,
-    xx_lz4, device, lz4, result, XX_FORMAT_REQUIRE_DEVICE, handle_base_info)
+XX_FORMAT_READER_ADAPTER(XX_FORMAT_INLINE_ALLOWED, xx_format_is_lz4_device, xx_lz4, device, lz4, result, XX_FORMAT_REQUIRE_DEVICE, handle_base_info)
 
-XX_FORMAT_READER_ADAPTER(XX_FORMAT_INLINE_ALLOWED, xx_format_is_lz5_device,
-    xx_lz5, device, lz5, result, XX_FORMAT_REQUIRE_DEVICE, handle_base_info)
+XX_FORMAT_READER_ADAPTER(XX_FORMAT_INLINE_ALLOWED, xx_format_is_lz5_device, xx_lz5, device, lz5, result, XX_FORMAT_REQUIRE_DEVICE, handle_base_info)
 
-XX_FORMAT_READER_ADAPTER(XX_FORMAT_INLINE_ALLOWED, xx_format_is_lizard_device,
-    xx_lizard, device, lizard, result, XX_FORMAT_REQUIRE_DEVICE, handle_base_info)
+XX_FORMAT_READER_ADAPTER(XX_FORMAT_INLINE_ALLOWED, xx_format_is_lizard_device, xx_lizard, device, lizard, result, XX_FORMAT_REQUIRE_DEVICE, handle_base_info)
 
 /* Raw Brotli streams intentionally have no universal signature.  Only the
  * independent-frame wrapper emitted by the 7-Zip Brotli codec is safe to
  * recognise automatically; raw streams remain available through xx_brotli. */
-XX_FORMAT_READER_ADAPTER(XX_FORMAT_INLINE_ALLOWED, xx_format_is_brotli_device,
-    xx_brotli, device, brotli, result, XX_FORMAT_REQUIRE_DEVICE, handle_base_info)
+XX_FORMAT_READER_ADAPTER(XX_FORMAT_INLINE_ALLOWED, xx_format_is_brotli_device, xx_brotli, device, brotli, result, XX_FORMAT_REQUIRE_DEVICE, handle_base_info)
 
-XX_FORMAT_READER_ADAPTER(XX_FORMAT_INLINE_ALLOWED, xx_format_is_unixpack_device,
-    xx_unixpack, device, unixpack, result, XX_FORMAT_REQUIRE_DEVICE, handle_base_info)
+XX_FORMAT_READER_ADAPTER(XX_FORMAT_INLINE_ALLOWED, xx_format_is_unixpack_device, xx_unixpack, device, unixpack, result, XX_FORMAT_REQUIRE_DEVICE, handle_base_info)
 
-XX_FORMAT_READER_ADAPTER(XX_FORMAT_INLINE_ALLOWED, xx_format_is_zlib_device,
-    xx_zlib, device, zlib, result, XX_FORMAT_REQUIRE_DEVICE, handle_base_info)
+XX_FORMAT_READER_ADAPTER(XX_FORMAT_INLINE_ALLOWED, xx_format_is_zlib_device, xx_zlib, device, zlib, result, XX_FORMAT_REQUIRE_DEVICE, handle_base_info)
 
-XX_FORMAT_READER_ADAPTER(XX_FORMAT_INLINE_ALLOWED, xx_format_is_unixcompress_device,
-    xx_unixcompress, device, unixcompress, result, XX_FORMAT_REQUIRE_DEVICE, handle_base_info)
+XX_FORMAT_READER_ADAPTER(XX_FORMAT_INLINE_ALLOWED, xx_format_is_unixcompress_device, xx_unixcompress, device, unixcompress, result, XX_FORMAT_REQUIRE_DEVICE,
+                         handle_base_info)
 
-XX_FORMAT_READER_ADAPTER(XX_FORMAT_INLINE_ALLOWED, xx_format_is_gitobject_device,
-    xx_gitobject, device, gitobject, result, XX_FORMAT_REQUIRE_DEVICE, handle_base_info)
+XX_FORMAT_READER_ADAPTER(XX_FORMAT_INLINE_ALLOWED, xx_format_is_gitobject_device, xx_gitobject, device, gitobject, result, XX_FORMAT_REQUIRE_DEVICE, handle_base_info)
 
-XX_FORMAT_READER_ADAPTER(XX_FORMAT_INLINE_ALLOWED, xx_format_is_mscompress_device,
-    xx_mscompress, device, mscompress, result, XX_FORMAT_REQUIRE_DEVICE, handle_base_info)
+XX_FORMAT_READER_ADAPTER(XX_FORMAT_INLINE_ALLOWED, xx_format_is_mscompress_device, xx_mscompress, device, mscompress, result, XX_FORMAT_REQUIRE_DEVICE, handle_base_info)
 
-XX_FORMAT_READER_ADAPTER(XX_FORMAT_INLINE_ALLOWED, xx_format_is_ash0_device,
-    xx_ash0, device, ash0, result, XX_FORMAT_REQUIRE_DEVICE, handle_base_info)
+XX_FORMAT_READER_ADAPTER(XX_FORMAT_INLINE_ALLOWED, xx_format_is_ash0_device, xx_ash0, device, ash0, result, XX_FORMAT_REQUIRE_DEVICE, handle_base_info)
 
-XX_FORMAT_READER_ADAPTER(XX_FORMAT_INLINE_ALLOWED, xx_format_is_wiilz77_device,
-    xx_wiilz77, device, wiilz77, result, XX_FORMAT_REQUIRE_DEVICE, handle_base_info)
+XX_FORMAT_READER_ADAPTER(XX_FORMAT_INLINE_ALLOWED, xx_format_is_wiilz77_device, xx_wiilz77, device, wiilz77, result, XX_FORMAT_REQUIRE_DEVICE, handle_base_info)
 
-XX_FORMAT_READER_ADAPTER(XX_FORMAT_INLINE_ALLOWED, xx_format_is_lzv1_device,
-    xx_lzv1, device, lzv1, result, XX_FORMAT_REQUIRE_DEVICE, handle_base_info)
+XX_FORMAT_READER_ADAPTER(XX_FORMAT_INLINE_ALLOWED, xx_format_is_lzv1_device, xx_lzv1, device, lzv1, result, XX_FORMAT_REQUIRE_DEVICE, handle_base_info)
 
-XX_FORMAT_READER_ADAPTER(XX_FORMAT_INLINE_ALLOWED, xx_format_is_oraclesqueeze_device,
-    xx_oraclesqueeze, device, oraclesqueeze, result, XX_FORMAT_REQUIRE_DEVICE, handle_base_info)
+XX_FORMAT_READER_ADAPTER(XX_FORMAT_INLINE_ALLOWED, xx_format_is_oraclesqueeze_device, xx_oraclesqueeze, device, oraclesqueeze, result, XX_FORMAT_REQUIRE_DEVICE,
+                         handle_base_info)
 
-XX_FORMAT_READER_ADAPTER(XX_FORMAT_INLINE_ALLOWED, xx_format_is_softronics_device,
-    xx_softronics, device, softronics, result, XX_FORMAT_REQUIRE_DEVICE, handle_base_info)
+XX_FORMAT_READER_ADAPTER(XX_FORMAT_INLINE_ALLOWED, xx_format_is_softronics_device, xx_softronics, device, softronics, result, XX_FORMAT_REQUIRE_DEVICE, handle_base_info)
 
-static bool xx_format_is_logitechcompress_device(xx_io_device *device) {
+static bool xx_format_is_logitechcompress_device(xx_io_device *device)
+{
     xx_logitechcompress logitechcompress;
     bool result;
     if (!device) return false;
     xx_logitechcompress_init(&logitechcompress, device, 0);
-    result = xx_logitechcompress_handle_base_info(&logitechcompress.format,
-                                                   NULL);
+    result = xx_logitechcompress_handle_base_info(&logitechcompress.format, NULL);
     xx_logitechcompress_destroy(&logitechcompress);
     return result;
 }
 
-XX_FORMAT_READER_ADAPTER(XX_FORMAT_INLINE_ALLOWED, xx_format_is_dmapacked_device,
-    xx_dmapacked, device, dmapacked, result, XX_FORMAT_REQUIRE_DEVICE, handle_base_info)
+XX_FORMAT_READER_ADAPTER(XX_FORMAT_INLINE_ALLOWED, xx_format_is_dmapacked_device, xx_dmapacked, device, dmapacked, result, XX_FORMAT_REQUIRE_DEVICE, handle_base_info)
 
-XX_FORMAT_READER_ADAPTER(XX_FORMAT_INLINE_ALLOWED, xx_format_is_gashuff_device,
-    xx_gashuff, device, gashuff, result, XX_FORMAT_REQUIRE_DEVICE, handle_base_info)
+XX_FORMAT_READER_ADAPTER(XX_FORMAT_INLINE_ALLOWED, xx_format_is_gashuff_device, xx_gashuff, device, gashuff, result, XX_FORMAT_REQUIRE_DEVICE, handle_base_info)
 
-XX_FORMAT_READER_ADAPTER(XX_FORMAT_INLINE_ALLOWED, xx_format_is_huf_device,
-    xx_huf, device, huf, result, XX_FORMAT_REQUIRE_DEVICE, handle_base_info)
+XX_FORMAT_READER_ADAPTER(XX_FORMAT_INLINE_ALLOWED, xx_format_is_huf_device, xx_huf, device, huf, result, XX_FORMAT_REQUIRE_DEVICE, handle_base_info)
 
-XX_FORMAT_READER_ADAPTER(XX_FORMAT_INLINE_ALLOWED, xx_format_is_lzdiet_device,
-    xx_lzdiet, device, lzdiet, result, XX_FORMAT_REQUIRE_DEVICE, handle_base_info)
+XX_FORMAT_READER_ADAPTER(XX_FORMAT_INLINE_ALLOWED, xx_format_is_lzdiet_device, xx_lzdiet, device, lzdiet, result, XX_FORMAT_REQUIRE_DEVICE, handle_base_info)
 
-XX_FORMAT_READER_ADAPTER(XX_FORMAT_INLINE_ALLOWED, xx_format_is_bcm_device,
-    xx_bcm, device, bcm, result, XX_FORMAT_ALLOW_NULL, handle_base_info)
+XX_FORMAT_READER_ADAPTER(XX_FORMAT_INLINE_ALLOWED, xx_format_is_bcm_device, xx_bcm, device, bcm, result, XX_FORMAT_ALLOW_NULL, handle_base_info)
 
-XX_FORMAT_READER_ADAPTER(XX_FORMAT_INLINE_ALLOWED, xx_format_is_lpaq8_device,
-    xx_lpaq8, device, value, result, XX_FORMAT_ALLOW_NULL, handle_base_info)
+XX_FORMAT_READER_ADAPTER(XX_FORMAT_INLINE_ALLOWED, xx_format_is_lpaq8_device, xx_lpaq8, device, value, result, XX_FORMAT_ALLOW_NULL, handle_base_info)
 
-XX_FORMAT_READER_ADAPTER(XX_FORMAT_INLINE_ALLOWED, xx_format_is_pea_device,
-    xx_pea, device, value, result, XX_FORMAT_ALLOW_NULL, handle_base_info)
+XX_FORMAT_READER_ADAPTER(XX_FORMAT_INLINE_ALLOWED, xx_format_is_pea_device, xx_pea, device, value, result, XX_FORMAT_ALLOW_NULL, handle_base_info)
 
-XX_FORMAT_READER_ADAPTER(XX_FORMAT_INLINE_ALLOWED, xx_format_is_zpaq_device,
-    xx_zpaq, device, value, result, XX_FORMAT_ALLOW_NULL, handle_base_info)
+XX_FORMAT_READER_ADAPTER(XX_FORMAT_INLINE_ALLOWED, xx_format_is_zpaq_device, xx_zpaq, device, value, result, XX_FORMAT_ALLOW_NULL, handle_base_info)
 
-XX_FORMAT_READER_ADAPTER(XX_FORMAT_INLINE_ALLOWED, xx_format_is_freearc_device,
-    xx_freearc, device, value, result, XX_FORMAT_ALLOW_NULL, handle_base_info)
+XX_FORMAT_READER_ADAPTER(XX_FORMAT_INLINE_ALLOWED, xx_format_is_freearc_device, xx_freearc, device, value, result, XX_FORMAT_ALLOW_NULL, handle_base_info)
 
-XX_FORMAT_READER_ADAPTER(XX_FORMAT_INLINE_ALLOWED, xx_format_is_ap4_device,
-    xx_ap4, device, value, result, XX_FORMAT_ALLOW_NULL, check_is_valid)
+XX_FORMAT_READER_ADAPTER(XX_FORMAT_INLINE_ALLOWED, xx_format_is_ap4_device, xx_ap4, device, value, result, XX_FORMAT_ALLOW_NULL, check_is_valid)
 
-XX_FORMAT_READER_ADAPTER(XX_FORMAT_INLINE_ALLOWED, xx_format_is_arq_device,
-    xx_arq, device, value, result, XX_FORMAT_ALLOW_NULL, handle_base_info)
+XX_FORMAT_READER_ADAPTER(XX_FORMAT_INLINE_ALLOWED, xx_format_is_arq_device, xx_arq, device, value, result, XX_FORMAT_ALLOW_NULL, handle_base_info)
 
-XX_FORMAT_READER_ADAPTER(XX_FORMAT_INLINE_ALLOWED, xx_format_is_asar_device,
-    xx_asar, device, value, result, XX_FORMAT_ALLOW_NULL, handle_base_info)
+XX_FORMAT_READER_ADAPTER(XX_FORMAT_INLINE_ALLOWED, xx_format_is_asar_device, xx_asar, device, value, result, XX_FORMAT_ALLOW_NULL, handle_base_info)
 
 /*
  * Ascend has no magic: its first twelve bytes are a date. A full decode is
@@ -1627,8 +1600,8 @@ XX_FORMAT_READER_ADAPTER(XX_FORMAT_INLINE_ALLOWED, xx_format_is_asar_device,
  * the date fields plus the two DCL header bytes reject almost everything
  * before anything is read into memory.
  */
-static bool xx_format_ascend_prefilter(const uint8_t *magic,
-                                       size_t magic_size) {
+static bool xx_format_ascend_prefilter(const uint8_t *magic, size_t magic_size)
+{
     uint16_t year, month, day, hour, minute, second;
 
     if (magic_size < 14U) return false;
@@ -1638,493 +1611,334 @@ static bool xx_format_ascend_prefilter(const uint8_t *magic,
     hour = (uint16_t)(magic[6] | (magic[7] << 8));
     minute = (uint16_t)(magic[8] | (magic[9] << 8));
     second = (uint16_t)(magic[10] | (magic[11] << 8));
-    return year >= 1980U && year <= 2100U && month >= 1U && month <= 12U &&
-           day >= 1U && day <= 31U && hour <= 23U && minute <= 59U &&
-           second <= 59U &&
-           magic[12] <= 1U && magic[13] >= 4U && magic[13] <= 6U;
+    return year >= 1980U && year <= 2100U && month >= 1U && month <= 12U && day >= 1U && day <= 31U && hour <= 23U && minute <= 59U && second <= 59U && magic[12] <= 1U &&
+           magic[13] >= 4U && magic[13] <= 6U;
 }
 
-XX_FORMAT_READER_ADAPTER(XX_FORMAT_INLINE_ALLOWED, xx_format_is_ascend_device,
-    xx_ascend, device, value, result, XX_FORMAT_ALLOW_NULL, handle_base_info)
+XX_FORMAT_READER_ADAPTER(XX_FORMAT_INLINE_ALLOWED, xx_format_is_ascend_device, xx_ascend, device, value, result, XX_FORMAT_ALLOW_NULL, handle_base_info)
 
-XX_FORMAT_READER_ADAPTER(XX_FORMAT_INLINE_ALLOWED, xx_format_is_bigf_device,
-    xx_bigf, device, value, result, XX_FORMAT_ALLOW_NULL, handle_base_info)
+XX_FORMAT_READER_ADAPTER(XX_FORMAT_INLINE_ALLOWED, xx_format_is_bigf_device, xx_bigf, device, value, result, XX_FORMAT_ALLOW_NULL, handle_base_info)
 
-XX_FORMAT_READER_ADAPTER(XX_FORMAT_INLINE_ALLOWED, xx_format_is_marc_device,
-    xx_marc, device, value, result, XX_FORMAT_ALLOW_NULL, handle_base_info)
+XX_FORMAT_READER_ADAPTER(XX_FORMAT_INLINE_ALLOWED, xx_format_is_marc_device, xx_marc, device, value, result, XX_FORMAT_ALLOW_NULL, handle_base_info)
 
-XX_FORMAT_READER_ADAPTER(XX_FORMAT_INLINE_ALLOWED, xx_format_is_zfsf_device,
-    xx_zfsf, device, value, result, XX_FORMAT_ALLOW_NULL, handle_base_info)
+XX_FORMAT_READER_ADAPTER(XX_FORMAT_INLINE_ALLOWED, xx_format_is_zfsf_device, xx_zfsf, device, value, result, XX_FORMAT_ALLOW_NULL, handle_base_info)
 
-XX_FORMAT_READER_ADAPTER(XX_FORMAT_INLINE_ALLOWED, xx_format_is_packit_device,
-    xx_packit, device, value, result, XX_FORMAT_ALLOW_NULL, handle_base_info)
+XX_FORMAT_READER_ADAPTER(XX_FORMAT_INLINE_ALLOWED, xx_format_is_packit_device, xx_packit, device, value, result, XX_FORMAT_ALLOW_NULL, handle_base_info)
 
-XX_FORMAT_READER_ADAPTER(XX_FORMAT_INLINE_ALLOWED, xx_format_is_tws_device,
-    xx_tws, device, value, result, XX_FORMAT_ALLOW_NULL, handle_base_info)
+XX_FORMAT_READER_ADAPTER(XX_FORMAT_INLINE_ALLOWED, xx_format_is_tws_device, xx_tws, device, value, result, XX_FORMAT_ALLOW_NULL, handle_base_info)
 
-XX_FORMAT_READER_ADAPTER(XX_FORMAT_INLINE_ALLOWED, xx_format_is_bigaf_device,
-    xx_bigaf, device, value, result, XX_FORMAT_ALLOW_NULL, handle_base_info)
+XX_FORMAT_READER_ADAPTER(XX_FORMAT_INLINE_ALLOWED, xx_format_is_bigaf_device, xx_bigaf, device, value, result, XX_FORMAT_ALLOW_NULL, handle_base_info)
 
-XX_FORMAT_READER_ADAPTER(XX_FORMAT_INLINE_ALLOWED, xx_format_is_cru_device,
-    xx_cru, device, value, result, XX_FORMAT_ALLOW_NULL, handle_base_info)
+XX_FORMAT_READER_ADAPTER(XX_FORMAT_INLINE_ALLOWED, xx_format_is_cru_device, xx_cru, device, value, result, XX_FORMAT_ALLOW_NULL, handle_base_info)
 
-XX_FORMAT_READER_ADAPTER(XX_FORMAT_INLINE_ALLOWED, xx_format_is_frontpagetheme_device,
-    xx_frontpagetheme, device, value, result, XX_FORMAT_ALLOW_NULL, handle_base_info)
+XX_FORMAT_READER_ADAPTER(XX_FORMAT_INLINE_ALLOWED, xx_format_is_frontpagetheme_device, xx_frontpagetheme, device, value, result, XX_FORMAT_ALLOW_NULL, handle_base_info)
 
-XX_FORMAT_READER_ADAPTER(XX_FORMAT_INLINE_ALLOWED, xx_format_is_hlb_device,
-    xx_hlb, device, value, result, XX_FORMAT_ALLOW_NULL, handle_base_info)
+XX_FORMAT_READER_ADAPTER(XX_FORMAT_INLINE_ALLOWED, xx_format_is_hlb_device, xx_hlb, device, value, result, XX_FORMAT_ALLOW_NULL, handle_base_info)
 
-XX_FORMAT_READER_ADAPTER(XX_FORMAT_INLINE_ALLOWED, xx_format_is_irixsa_device,
-    xx_irixsa, device, value, result, XX_FORMAT_ALLOW_NULL, handle_base_info)
+XX_FORMAT_READER_ADAPTER(XX_FORMAT_INLINE_ALLOWED, xx_format_is_irixsa_device, xx_irixsa, device, value, result, XX_FORMAT_ALLOW_NULL, handle_base_info)
 
-XX_FORMAT_READER_ADAPTER(XX_FORMAT_INLINE_ALLOWED, xx_format_is_jam_device,
-    xx_jam, device, value, result, XX_FORMAT_ALLOW_NULL, handle_base_info)
+XX_FORMAT_READER_ADAPTER(XX_FORMAT_INLINE_ALLOWED, xx_format_is_jam_device, xx_jam, device, value, result, XX_FORMAT_ALLOW_NULL, handle_base_info)
 
-XX_FORMAT_READER_ADAPTER(XX_FORMAT_INLINE_ALLOWED, xx_format_is_krml_device,
-    xx_krml, device, value, result, XX_FORMAT_ALLOW_NULL, handle_base_info)
+XX_FORMAT_READER_ADAPTER(XX_FORMAT_INLINE_ALLOWED, xx_format_is_krml_device, xx_krml, device, value, result, XX_FORMAT_ALLOW_NULL, handle_base_info)
 
-XX_FORMAT_READER_ADAPTER(XX_FORMAT_INLINE_ALLOWED, xx_format_is_lbrcobol_device,
-    xx_lbrcobol, device, value, result, XX_FORMAT_ALLOW_NULL, handle_base_info)
+XX_FORMAT_READER_ADAPTER(XX_FORMAT_INLINE_ALLOWED, xx_format_is_lbrcobol_device, xx_lbrcobol, device, value, result, XX_FORMAT_ALLOW_NULL, handle_base_info)
 
-XX_FORMAT_READER_ADAPTER(XX_FORMAT_INLINE_ALLOWED, xx_format_is_minidump_device,
-    xx_minidump, device, value, result, XX_FORMAT_ALLOW_NULL, handle_base_info)
+XX_FORMAT_READER_ADAPTER(XX_FORMAT_INLINE_ALLOWED, xx_format_is_minidump_device, xx_minidump, device, value, result, XX_FORMAT_ALLOW_NULL, handle_base_info)
 
-XX_FORMAT_READER_ADAPTER(XX_FORMAT_INLINE_ALLOWED, xx_format_is_powerboardbbs_device,
-    xx_powerboardbbs, device, value, result, XX_FORMAT_ALLOW_NULL, handle_base_info)
+XX_FORMAT_READER_ADAPTER(XX_FORMAT_INLINE_ALLOWED, xx_format_is_powerboardbbs_device, xx_powerboardbbs, device, value, result, XX_FORMAT_ALLOW_NULL, handle_base_info)
 
-XX_FORMAT_READER_ADAPTER(XX_FORMAT_INLINE_ALLOWED, xx_format_is_sci_device,
-    xx_sci, device, value, result, XX_FORMAT_ALLOW_NULL, handle_base_info)
+XX_FORMAT_READER_ADAPTER(XX_FORMAT_INLINE_ALLOWED, xx_format_is_sci_device, xx_sci, device, value, result, XX_FORMAT_ALLOW_NULL, handle_base_info)
 
-XX_FORMAT_READER_ADAPTER(XX_FORMAT_INLINE_ALLOWED, xx_format_is_seadata_device,
-    xx_seadata, device, value, result, XX_FORMAT_ALLOW_NULL, handle_base_info)
+XX_FORMAT_READER_ADAPTER(XX_FORMAT_INLINE_ALLOWED, xx_format_is_seadata_device, xx_seadata, device, value, result, XX_FORMAT_ALLOW_NULL, handle_base_info)
 
-XX_FORMAT_READER_ADAPTER(XX_FORMAT_INLINE_ALLOWED, xx_format_is_secondnature_device,
-    xx_secondnature, device, value, result, XX_FORMAT_ALLOW_NULL, handle_base_info)
+XX_FORMAT_READER_ADAPTER(XX_FORMAT_INLINE_ALLOWED, xx_format_is_secondnature_device, xx_secondnature, device, value, result, XX_FORMAT_ALLOW_NULL, handle_base_info)
 
-XX_FORMAT_READER_ADAPTER(XX_FORMAT_INLINE_ALLOWED, xx_format_is_sos_device,
-    xx_sos, device, value, result, XX_FORMAT_ALLOW_NULL, handle_base_info)
+XX_FORMAT_READER_ADAPTER(XX_FORMAT_INLINE_ALLOWED, xx_format_is_sos_device, xx_sos, device, value, result, XX_FORMAT_ALLOW_NULL, handle_base_info)
 
-XX_FORMAT_READER_ADAPTER(XX_FORMAT_INLINE_ALLOWED, xx_format_is_sw_device,
-    xx_sw, device, value, result, XX_FORMAT_ALLOW_NULL, handle_base_info)
+XX_FORMAT_READER_ADAPTER(XX_FORMAT_INLINE_ALLOWED, xx_format_is_sw_device, xx_sw, device, value, result, XX_FORMAT_ALLOW_NULL, handle_base_info)
 
-XX_FORMAT_READER_ADAPTER(XX_FORMAT_INLINE_ALLOWED, xx_format_is_swagpacket_device,
-    xx_swagpacket, device, value, result, XX_FORMAT_ALLOW_NULL, handle_base_info)
+XX_FORMAT_READER_ADAPTER(XX_FORMAT_INLINE_ALLOWED, xx_format_is_swagpacket_device, xx_swagpacket, device, value, result, XX_FORMAT_ALLOW_NULL, handle_base_info)
 
-XX_FORMAT_READER_ADAPTER(XX_FORMAT_INLINE_ALLOWED, xx_format_is_trcpak_device,
-    xx_trcpak, device, value, result, XX_FORMAT_ALLOW_NULL, handle_base_info)
+XX_FORMAT_READER_ADAPTER(XX_FORMAT_INLINE_ALLOWED, xx_format_is_trcpak_device, xx_trcpak, device, value, result, XX_FORMAT_ALLOW_NULL, handle_base_info)
 
-XX_FORMAT_READER_ADAPTER(XX_FORMAT_INLINE_ALLOWED, xx_format_is_cfl_device,
-    xx_cfl, device, value, result, XX_FORMAT_ALLOW_NULL, handle_base_info)
+XX_FORMAT_READER_ADAPTER(XX_FORMAT_INLINE_ALLOWED, xx_format_is_cfl_device, xx_cfl, device, value, result, XX_FORMAT_ALLOW_NULL, handle_base_info)
 
-XX_FORMAT_READER_ADAPTER(XX_FORMAT_INLINE_ALLOWED, xx_format_is_dpk_device,
-    xx_dpk, device, value, result, XX_FORMAT_ALLOW_NULL, handle_base_info)
+XX_FORMAT_READER_ADAPTER(XX_FORMAT_INLINE_ALLOWED, xx_format_is_dpk_device, xx_dpk, device, value, result, XX_FORMAT_ALLOW_NULL, handle_base_info)
 
-XX_FORMAT_READER_ADAPTER(XX_FORMAT_INLINE_ALLOWED, xx_format_is_dsl2_device,
-    xx_dsl2, device, value, result, XX_FORMAT_ALLOW_NULL, handle_base_info)
+XX_FORMAT_READER_ADAPTER(XX_FORMAT_INLINE_ALLOWED, xx_format_is_dsl2_device, xx_dsl2, device, value, result, XX_FORMAT_ALLOW_NULL, handle_base_info)
 
-XX_FORMAT_READER_ADAPTER(XX_FORMAT_INLINE_ALLOWED, xx_format_is_dtpacked_device,
-    xx_dtpacked, device, value, result, XX_FORMAT_ALLOW_NULL, handle_base_info)
+XX_FORMAT_READER_ADAPTER(XX_FORMAT_INLINE_ALLOWED, xx_format_is_dtpacked_device, xx_dtpacked, device, value, result, XX_FORMAT_ALLOW_NULL, handle_base_info)
 
-XX_FORMAT_READER_ADAPTER(XX_FORMAT_INLINE_ALLOWED, xx_format_is_fiz_device,
-    xx_fiz, device, value, result, XX_FORMAT_ALLOW_NULL, handle_base_info)
+XX_FORMAT_READER_ADAPTER(XX_FORMAT_INLINE_ALLOWED, xx_format_is_fiz_device, xx_fiz, device, value, result, XX_FORMAT_ALLOW_NULL, handle_base_info)
 
-XX_FORMAT_READER_ADAPTER(XX_FORMAT_INLINE_ALLOWED, xx_format_is_fld_device,
-    xx_fld, device, value, result, XX_FORMAT_ALLOW_NULL, handle_base_info)
+XX_FORMAT_READER_ADAPTER(XX_FORMAT_INLINE_ALLOWED, xx_format_is_fld_device, xx_fld, device, value, result, XX_FORMAT_ALLOW_NULL, handle_base_info)
 
-XX_FORMAT_READER_ADAPTER(XX_FORMAT_INLINE_ALLOWED, xx_format_is_ibmzpak_device,
-    xx_ibmzpak, device, value, result, XX_FORMAT_ALLOW_NULL, handle_base_info)
+XX_FORMAT_READER_ADAPTER(XX_FORMAT_INLINE_ALLOWED, xx_format_is_ibmzpak_device, xx_ibmzpak, device, value, result, XX_FORMAT_ALLOW_NULL, handle_base_info)
 
-XX_FORMAT_READER_ADAPTER(XX_FORMAT_INLINE_ALLOWED, xx_format_is_igf1_device,
-    xx_igf1, device, value, result, XX_FORMAT_ALLOW_NULL, handle_base_info)
+XX_FORMAT_READER_ADAPTER(XX_FORMAT_INLINE_ALLOWED, xx_format_is_igf1_device, xx_igf1, device, value, result, XX_FORMAT_ALLOW_NULL, handle_base_info)
 
-XX_FORMAT_READER_ADAPTER(XX_FORMAT_INLINE_ALLOWED, xx_format_is_igf2_device,
-    xx_igf2, device, value, result, XX_FORMAT_ALLOW_NULL, handle_base_info)
+XX_FORMAT_READER_ADAPTER(XX_FORMAT_INLINE_ALLOWED, xx_format_is_igf2_device, xx_igf2, device, value, result, XX_FORMAT_ALLOW_NULL, handle_base_info)
 
-XX_FORMAT_READER_ADAPTER(XX_FORMAT_INLINE_ALLOWED, xx_format_is_inteduft_device,
-    xx_inteduft, device, value, result, XX_FORMAT_ALLOW_NULL, handle_base_info)
+XX_FORMAT_READER_ADAPTER(XX_FORMAT_INLINE_ALLOWED, xx_format_is_inteduft_device, xx_inteduft, device, value, result, XX_FORMAT_ALLOW_NULL, handle_base_info)
 
-XX_FORMAT_READER_ADAPTER(XX_FORMAT_INLINE_ALLOWED, xx_format_is_jm93_device,
-    xx_jm93, device, value, result, XX_FORMAT_ALLOW_NULL, handle_base_info)
+XX_FORMAT_READER_ADAPTER(XX_FORMAT_INLINE_ALLOWED, xx_format_is_jm93_device, xx_jm93, device, value, result, XX_FORMAT_ALLOW_NULL, handle_base_info)
 
-XX_FORMAT_READER_ADAPTER(XX_FORMAT_INLINE_ALLOWED, xx_format_is_lsz_device,
-    xx_lsz, device, value, result, XX_FORMAT_ALLOW_NULL, handle_base_info)
+XX_FORMAT_READER_ADAPTER(XX_FORMAT_INLINE_ALLOWED, xx_format_is_lsz_device, xx_lsz, device, value, result, XX_FORMAT_ALLOW_NULL, handle_base_info)
 
-XX_FORMAT_READER_ADAPTER(XX_FORMAT_INLINE_ALLOWED, xx_format_is_miz_device,
-    xx_miz, device, value, result, XX_FORMAT_ALLOW_NULL, handle_base_info)
+XX_FORMAT_READER_ADAPTER(XX_FORMAT_INLINE_ALLOWED, xx_format_is_miz_device, xx_miz, device, value, result, XX_FORMAT_ALLOW_NULL, handle_base_info)
 
-XX_FORMAT_READER_ADAPTER(XX_FORMAT_INLINE_ALLOWED, xx_format_is_mva_device,
-    xx_mva, device, value, result, XX_FORMAT_ALLOW_NULL, handle_base_info)
+XX_FORMAT_READER_ADAPTER(XX_FORMAT_INLINE_ALLOWED, xx_format_is_mva_device, xx_mva, device, value, result, XX_FORMAT_ALLOW_NULL, handle_base_info)
 
-XX_FORMAT_READER_ADAPTER(XX_FORMAT_INLINE_ALLOWED, xx_format_is_povlablzh_device,
-    xx_povlablzh, device, value, result, XX_FORMAT_ALLOW_NULL, handle_base_info)
+XX_FORMAT_READER_ADAPTER(XX_FORMAT_INLINE_ALLOWED, xx_format_is_povlablzh_device, xx_povlablzh, device, value, result, XX_FORMAT_ALLOW_NULL, handle_base_info)
 
-XX_FORMAT_READER_ADAPTER(XX_FORMAT_INLINE_ALLOWED, xx_format_is_powerarc_device,
-    xx_powerarc, device, value, result, XX_FORMAT_ALLOW_NULL, handle_base_info)
+XX_FORMAT_READER_ADAPTER(XX_FORMAT_INLINE_ALLOWED, xx_format_is_powerarc_device, xx_powerarc, device, value, result, XX_FORMAT_ALLOW_NULL, handle_base_info)
 
-XX_FORMAT_READER_ADAPTER(XX_FORMAT_INLINE_ALLOWED, xx_format_is_qip1_device,
-    xx_qip1, device, value, result, XX_FORMAT_ALLOW_NULL, handle_base_info)
+XX_FORMAT_READER_ADAPTER(XX_FORMAT_INLINE_ALLOWED, xx_format_is_qip1_device, xx_qip1, device, value, result, XX_FORMAT_ALLOW_NULL, handle_base_info)
 
-XX_FORMAT_READER_ADAPTER(XX_FORMAT_INLINE_ALLOWED, xx_format_is_quarterdeckqp_device,
-    xx_quarterdeckqp, device, value, result, XX_FORMAT_ALLOW_NULL, handle_base_info)
+XX_FORMAT_READER_ADAPTER(XX_FORMAT_INLINE_ALLOWED, xx_format_is_quarterdeckqp_device, xx_quarterdeckqp, device, value, result, XX_FORMAT_ALLOW_NULL, handle_base_info)
 
-XX_FORMAT_READER_ADAPTER(XX_FORMAT_INLINE_ALLOWED, xx_format_is_rcf_device,
-    xx_rcf, device, value, result, XX_FORMAT_ALLOW_NULL, handle_base_info)
+XX_FORMAT_READER_ADAPTER(XX_FORMAT_INLINE_ALLOWED, xx_format_is_rcf_device, xx_rcf, device, value, result, XX_FORMAT_ALLOW_NULL, handle_base_info)
 
-XX_FORMAT_READER_ADAPTER(XX_FORMAT_INLINE_ALLOWED, xx_format_is_riversoft_device,
-    xx_riversoft, device, value, result, XX_FORMAT_ALLOW_NULL, handle_base_info)
+XX_FORMAT_READER_ADAPTER(XX_FORMAT_INLINE_ALLOWED, xx_format_is_riversoft_device, xx_riversoft, device, value, result, XX_FORMAT_ALLOW_NULL, handle_base_info)
 
-XX_FORMAT_READER_ADAPTER(XX_FORMAT_INLINE_ALLOWED, xx_format_is_swag_device,
-    xx_swag, device, value, result, XX_FORMAT_ALLOW_NULL, handle_base_info)
+XX_FORMAT_READER_ADAPTER(XX_FORMAT_INLINE_ALLOWED, xx_format_is_swag_device, xx_swag, device, value, result, XX_FORMAT_ALLOW_NULL, handle_base_info)
 
-XX_FORMAT_READER_ADAPTER(XX_FORMAT_INLINE_ALLOWED, xx_format_is_tgcf_device,
-    xx_tgcf, device, value, result, XX_FORMAT_ALLOW_NULL, handle_base_info)
+XX_FORMAT_READER_ADAPTER(XX_FORMAT_INLINE_ALLOWED, xx_format_is_tgcf_device, xx_tgcf, device, value, result, XX_FORMAT_ALLOW_NULL, handle_base_info)
 
-XX_FORMAT_READER_ADAPTER(XX_FORMAT_INLINE_ALLOWED, xx_format_is_trc_device,
-    xx_trc, device, value, result, XX_FORMAT_ALLOW_NULL, handle_base_info)
+XX_FORMAT_READER_ADAPTER(XX_FORMAT_INLINE_ALLOWED, xx_format_is_trc_device, xx_trc, device, value, result, XX_FORMAT_ALLOW_NULL, handle_base_info)
 
-XX_FORMAT_READER_ADAPTER(XX_FORMAT_INLINE_ALLOWED, xx_format_is_zlwb_device,
-    xx_zlwb, device, value, result, XX_FORMAT_ALLOW_NULL, handle_base_info)
+XX_FORMAT_READER_ADAPTER(XX_FORMAT_INLINE_ALLOWED, xx_format_is_zlwb_device, xx_zlwb, device, value, result, XX_FORMAT_ALLOW_NULL, handle_base_info)
 
-XX_FORMAT_READER_ADAPTER(XX_FORMAT_INLINE_ALLOWED, xx_format_is_zz_device,
-    xx_zz, device, value, result, XX_FORMAT_ALLOW_NULL, handle_base_info)
+XX_FORMAT_READER_ADAPTER(XX_FORMAT_INLINE_ALLOWED, xx_format_is_zz_device, xx_zz, device, value, result, XX_FORMAT_ALLOW_NULL, handle_base_info)
 
-XX_FORMAT_READER_ADAPTER(XX_FORMAT_INLINE_ALLOWED, xx_format_is_zzz_device,
-    xx_zzz, device, value, result, XX_FORMAT_ALLOW_NULL, handle_base_info)
+XX_FORMAT_READER_ADAPTER(XX_FORMAT_INLINE_ALLOWED, xx_format_is_zzz_device, xx_zzz, device, value, result, XX_FORMAT_ALLOW_NULL, handle_base_info)
 
-XX_FORMAT_READER_ADAPTER(XX_FORMAT_INLINE_ALLOWED, xx_format_is_jgpak_device,
-    xx_jgpak, device, value, result, XX_FORMAT_ALLOW_NULL, handle_base_info)
+XX_FORMAT_READER_ADAPTER(XX_FORMAT_INLINE_ALLOWED, xx_format_is_jgpak_device, xx_jgpak, device, value, result, XX_FORMAT_ALLOW_NULL, handle_base_info)
 
-XX_FORMAT_READER_ADAPTER(XX_FORMAT_INLINE_ALLOWED, xx_format_is_borlandpack_device,
-    xx_borlandpack, device, value, result, XX_FORMAT_ALLOW_NULL, handle_base_info)
+XX_FORMAT_READER_ADAPTER(XX_FORMAT_INLINE_ALLOWED, xx_format_is_borlandpack_device, xx_borlandpack, device, value, result, XX_FORMAT_ALLOW_NULL, handle_base_info)
 
-XX_FORMAT_READER_ADAPTER(XX_FORMAT_INLINE_ALLOWED, xx_format_is_ecmpacked_device,
-    xx_ecmpacked, device, value, result, XX_FORMAT_ALLOW_NULL, handle_base_info)
+XX_FORMAT_READER_ADAPTER(XX_FORMAT_INLINE_ALLOWED, xx_format_is_ecmpacked_device, xx_ecmpacked, device, value, result, XX_FORMAT_ALLOW_NULL, handle_base_info)
 
-XX_FORMAT_READER_ADAPTER(XX_FORMAT_INLINE_ALLOWED, xx_format_is_jetbbs_device,
-    xx_jetbbs, device, value, result, XX_FORMAT_ALLOW_NULL, handle_base_info)
+XX_FORMAT_READER_ADAPTER(XX_FORMAT_INLINE_ALLOWED, xx_format_is_jetbbs_device, xx_jetbbs, device, value, result, XX_FORMAT_ALLOW_NULL, handle_base_info)
 
-XX_FORMAT_READER_ADAPTER(XX_FORMAT_INLINE_ALLOWED, xx_format_is_qualitas_device,
-    xx_qualitas, device, value, result, XX_FORMAT_ALLOW_NULL, handle_base_info)
+XX_FORMAT_READER_ADAPTER(XX_FORMAT_INLINE_ALLOWED, xx_format_is_qualitas_device, xx_qualitas, device, value, result, XX_FORMAT_ALLOW_NULL, handle_base_info)
 
-XX_FORMAT_READER_ADAPTER(XX_FORMAT_INLINE_ALLOWED, xx_format_is_bwf_device,
-    xx_bwf, device, value, result, XX_FORMAT_ALLOW_NULL, handle_base_info)
+XX_FORMAT_READER_ADAPTER(XX_FORMAT_INLINE_ALLOWED, xx_format_is_bwf_device, xx_bwf, device, value, result, XX_FORMAT_ALLOW_NULL, handle_base_info)
 
-XX_FORMAT_READER_ADAPTER(XX_FORMAT_INLINE_ALLOWED, xx_format_is_zap_device,
-    xx_zap, device, value, result, XX_FORMAT_ALLOW_NULL, handle_base_info)
+XX_FORMAT_READER_ADAPTER(XX_FORMAT_INLINE_ALLOWED, xx_format_is_zap_device, xx_zap, device, value, result, XX_FORMAT_ALLOW_NULL, handle_base_info)
 
-XX_FORMAT_READER_ADAPTER(XX_FORMAT_INLINE_ALLOWED, xx_format_is_stork_device,
-    xx_stork, device, value, result, XX_FORMAT_ALLOW_NULL, handle_base_info)
+XX_FORMAT_READER_ADAPTER(XX_FORMAT_INLINE_ALLOWED, xx_format_is_stork_device, xx_stork, device, value, result, XX_FORMAT_ALLOW_NULL, handle_base_info)
 
-XX_FORMAT_READER_ADAPTER(XX_FORMAT_INLINE_ALLOWED, xx_format_is_ascendbackup_device,
-    xx_ascendbackup, device, value, result, XX_FORMAT_ALLOW_NULL, handle_base_info)
+XX_FORMAT_READER_ADAPTER(XX_FORMAT_INLINE_ALLOWED, xx_format_is_ascendbackup_device, xx_ascendbackup, device, value, result, XX_FORMAT_ALLOW_NULL, handle_base_info)
 
-XX_FORMAT_READER_ADAPTER(XX_FORMAT_INLINE_ALLOWED, xx_format_is_pyz_device,
-    xx_pyz, device, value, result, XX_FORMAT_ALLOW_NULL, handle_base_info)
+XX_FORMAT_READER_ADAPTER(XX_FORMAT_INLINE_ALLOWED, xx_format_is_pyz_device, xx_pyz, device, value, result, XX_FORMAT_ALLOW_NULL, handle_base_info)
 
-XX_FORMAT_READER_ADAPTER(XX_FORMAT_INLINE_ALLOWED, xx_format_is_fmc1_device,
-    xx_fmc1, device, value, result, XX_FORMAT_ALLOW_NULL, handle_base_info)
+XX_FORMAT_READER_ADAPTER(XX_FORMAT_INLINE_ALLOWED, xx_format_is_fmc1_device, xx_fmc1, device, value, result, XX_FORMAT_ALLOW_NULL, handle_base_info)
 
-XX_FORMAT_READER_ADAPTER(XX_FORMAT_INLINE_ALLOWED, xx_format_is_xar_device,
-    xx_xar, device, value, result, XX_FORMAT_ALLOW_NULL, handle_base_info)
+XX_FORMAT_READER_ADAPTER(XX_FORMAT_INLINE_ALLOWED, xx_format_is_xar_device, xx_xar, device, value, result, XX_FORMAT_ALLOW_NULL, handle_base_info)
 
-XX_FORMAT_READER_ADAPTER(XX_FORMAT_INLINE_ALLOWED, xx_format_is_lha_device,
-    xx_lha, device, value, result, XX_FORMAT_ALLOW_NULL, handle_base_info)
+XX_FORMAT_READER_ADAPTER(XX_FORMAT_INLINE_ALLOWED, xx_format_is_lha_device, xx_lha, device, value, result, XX_FORMAT_ALLOW_NULL, handle_base_info)
 
-XX_FORMAT_READER_ADAPTER(XX_FORMAT_INLINE_ALLOWED, xx_format_is_spis_device,
-    xx_spis, device, value, result, XX_FORMAT_ALLOW_NULL, handle_base_info)
+XX_FORMAT_READER_ADAPTER(XX_FORMAT_INLINE_ALLOWED, xx_format_is_spis_device, xx_spis, device, value, result, XX_FORMAT_ALLOW_NULL, handle_base_info)
 
-XX_FORMAT_READER_ADAPTER(XX_FORMAT_INLINE_ALLOWED, xx_format_is_amigalzx_device,
-    xx_amigalzx, device, value, result, XX_FORMAT_ALLOW_NULL, handle_base_info)
+XX_FORMAT_READER_ADAPTER(XX_FORMAT_INLINE_ALLOWED, xx_format_is_amigalzx_device, xx_amigalzx, device, value, result, XX_FORMAT_ALLOW_NULL, handle_base_info)
 
-XX_FORMAT_READER_ADAPTER(XX_FORMAT_INLINE_ALLOWED, xx_format_is_seaarc_device,
-    xx_seaarc, device, value, result, XX_FORMAT_ALLOW_NULL, handle_base_info)
+XX_FORMAT_READER_ADAPTER(XX_FORMAT_INLINE_ALLOWED, xx_format_is_seaarc_device, xx_seaarc, device, value, result, XX_FORMAT_ALLOW_NULL, handle_base_info)
 
-XX_FORMAT_READER_ADAPTER(XX_FORMAT_INLINE_ALLOWED, xx_format_is_asymetrix_device,
-    xx_asymetrix, device, value, result, XX_FORMAT_ALLOW_NULL, handle_base_info)
+XX_FORMAT_READER_ADAPTER(XX_FORMAT_INLINE_ALLOWED, xx_format_is_asymetrix_device, xx_asymetrix, device, value, result, XX_FORMAT_ALLOW_NULL, handle_base_info)
 
-XX_FORMAT_READER_ADAPTER(XX_FORMAT_INLINE_ALLOWED, xx_format_is_bwcf_device,
-    xx_bwcf, device, value, result, XX_FORMAT_ALLOW_NULL, handle_base_info)
+XX_FORMAT_READER_ADAPTER(XX_FORMAT_INLINE_ALLOWED, xx_format_is_bwcf_device, xx_bwcf, device, value, result, XX_FORMAT_ALLOW_NULL, handle_base_info)
 
-XX_FORMAT_READER_ADAPTER(XX_FORMAT_INLINE_ALLOWED, xx_format_is_chieflz_device,
-    xx_chieflz, device, value, result, XX_FORMAT_ALLOW_NULL, handle_base_info)
+XX_FORMAT_READER_ADAPTER(XX_FORMAT_INLINE_ALLOWED, xx_format_is_chieflz_device, xx_chieflz, device, value, result, XX_FORMAT_ALLOW_NULL, handle_base_info)
 
-XX_FORMAT_READER_ADAPTER(XX_FORMAT_INLINE_ALLOWED, xx_format_is_chieflzmulti_device,
-    xx_chieflzmulti, device, value, result, XX_FORMAT_ALLOW_NULL, handle_base_info)
+XX_FORMAT_READER_ADAPTER(XX_FORMAT_INLINE_ALLOWED, xx_format_is_chieflzmulti_device, xx_chieflzmulti, device, value, result, XX_FORMAT_ALLOW_NULL, handle_base_info)
 
-XX_FORMAT_READER_ADAPTER(XX_FORMAT_INLINE_ALLOWED, xx_format_is_clp_device,
-    xx_clp, device, value, result, XX_FORMAT_ALLOW_NULL, handle_base_info)
+XX_FORMAT_READER_ADAPTER(XX_FORMAT_INLINE_ALLOWED, xx_format_is_clp_device, xx_clp, device, value, result, XX_FORMAT_ALLOW_NULL, handle_base_info)
 
-XX_FORMAT_READER_ADAPTER(XX_FORMAT_INLINE_ALLOWED, xx_format_is_cmp_device,
-    xx_cmp, device, value, result, XX_FORMAT_ALLOW_NULL, handle_base_info)
+XX_FORMAT_READER_ADAPTER(XX_FORMAT_INLINE_ALLOWED, xx_format_is_cmp_device, xx_cmp, device, value, result, XX_FORMAT_ALLOW_NULL, handle_base_info)
 
-XX_FORMAT_READER_ADAPTER(XX_FORMAT_INLINE_ALLOWED, xx_format_is_diskdoubler_device,
-    xx_diskdoubler, device, value, result, XX_FORMAT_ALLOW_NULL, handle_base_info)
+XX_FORMAT_READER_ADAPTER(XX_FORMAT_INLINE_ALLOWED, xx_format_is_diskdoubler_device, xx_diskdoubler, device, value, result, XX_FORMAT_ALLOW_NULL, handle_base_info)
 
-XX_FORMAT_READER_ADAPTER(XX_FORMAT_INLINE_ALLOWED, xx_format_is_ea_device,
-    xx_ea, device, value, result, XX_FORMAT_ALLOW_NULL, handle_base_info)
+XX_FORMAT_READER_ADAPTER(XX_FORMAT_INLINE_ALLOWED, xx_format_is_ea_device, xx_ea, device, value, result, XX_FORMAT_ALLOW_NULL, handle_base_info)
 
-XX_FORMAT_READER_ADAPTER(XX_FORMAT_INLINE_ALLOWED, xx_format_is_ealib_device,
-    xx_ealib, device, value, result, XX_FORMAT_ALLOW_NULL, handle_base_info)
+XX_FORMAT_READER_ADAPTER(XX_FORMAT_INLINE_ALLOWED, xx_format_is_ealib_device, xx_ealib, device, value, result, XX_FORMAT_ALLOW_NULL, handle_base_info)
 
-XX_FORMAT_READER_ADAPTER(XX_FORMAT_INLINE_ALLOWED, xx_format_is_earefpack_device,
-    xx_earefpack, device, value, result, XX_FORMAT_ALLOW_NULL, handle_base_info)
+XX_FORMAT_READER_ADAPTER(XX_FORMAT_INLINE_ALLOWED, xx_format_is_earefpack_device, xx_earefpack, device, value, result, XX_FORMAT_ALLOW_NULL, handle_base_info)
 
-XX_FORMAT_READER_ADAPTER(XX_FORMAT_INLINE_ALLOWED, xx_format_is_fls_device,
-    xx_fls, device, value, result, XX_FORMAT_ALLOW_NULL, handle_base_info)
+XX_FORMAT_READER_ADAPTER(XX_FORMAT_INLINE_ALLOWED, xx_format_is_fls_device, xx_fls, device, value, result, XX_FORMAT_ALLOW_NULL, handle_base_info)
 
-XX_FORMAT_READER_ADAPTER(XX_FORMAT_INLINE_ALLOWED, xx_format_is_genius_device,
-    xx_genius, device, value, result, XX_FORMAT_ALLOW_NULL, handle_base_info)
+XX_FORMAT_READER_ADAPTER(XX_FORMAT_INLINE_ALLOWED, xx_format_is_genius_device, xx_genius, device, value, result, XX_FORMAT_ALLOW_NULL, handle_base_info)
 
-XX_FORMAT_READER_ADAPTER(XX_FORMAT_INLINE_ALLOWED, xx_format_is_ha_device,
-    xx_ha, device, value, result, XX_FORMAT_ALLOW_NULL, handle_base_info)
+XX_FORMAT_READER_ADAPTER(XX_FORMAT_INLINE_ALLOWED, xx_format_is_ha_device, xx_ha, device, value, result, XX_FORMAT_ALLOW_NULL, handle_base_info)
 
-XX_FORMAT_READER_ADAPTER(XX_FORMAT_INLINE_ALLOWED, xx_format_is_hzl_device,
-    xx_hzl, device, value, result, XX_FORMAT_ALLOW_NULL, handle_base_info)
+XX_FORMAT_READER_ADAPTER(XX_FORMAT_INLINE_ALLOWED, xx_format_is_hzl_device, xx_hzl, device, value, result, XX_FORMAT_ALLOW_NULL, handle_base_info)
 
-XX_FORMAT_READER_ADAPTER(XX_FORMAT_INLINE_ALLOWED, xx_format_is_kboom_device,
-    xx_kboom, device, value, result, XX_FORMAT_ALLOW_NULL, handle_base_info)
+XX_FORMAT_READER_ADAPTER(XX_FORMAT_INLINE_ALLOWED, xx_format_is_kboom_device, xx_kboom, device, value, result, XX_FORMAT_ALLOW_NULL, handle_base_info)
 
-XX_FORMAT_READER_ADAPTER(XX_FORMAT_INLINE_ALLOWED, xx_format_is_lzhcxp_device,
-    xx_lzhcxp, device, value, result, XX_FORMAT_ALLOW_NULL, handle_base_info)
+XX_FORMAT_READER_ADAPTER(XX_FORMAT_INLINE_ALLOWED, xx_format_is_lzhcxp_device, xx_lzhcxp, device, value, result, XX_FORMAT_ALLOW_NULL, handle_base_info)
 
-XX_FORMAT_READER_ADAPTER(XX_FORMAT_INLINE_ALLOWED, xx_format_is_lzwd_device,
-    xx_lzwd, device, value, result, XX_FORMAT_ALLOW_NULL, handle_base_info)
+XX_FORMAT_READER_ADAPTER(XX_FORMAT_INLINE_ALLOWED, xx_format_is_lzwd_device, xx_lzwd, device, value, result, XX_FORMAT_ALLOW_NULL, handle_base_info)
 
-XX_FORMAT_READER_ADAPTER(XX_FORMAT_INLINE_ALLOWED, xx_format_is_mi10_device,
-    xx_mi10, device, value, result, XX_FORMAT_ALLOW_NULL, handle_base_info)
+XX_FORMAT_READER_ADAPTER(XX_FORMAT_INLINE_ALLOWED, xx_format_is_mi10_device, xx_mi10, device, value, result, XX_FORMAT_ALLOW_NULL, handle_base_info)
 
-XX_FORMAT_READER_ADAPTER(XX_FORMAT_INLINE_ALLOWED, xx_format_is_npack_device,
-    xx_npack, device, value, result, XX_FORMAT_ALLOW_NULL, handle_base_info)
+XX_FORMAT_READER_ADAPTER(XX_FORMAT_INLINE_ALLOWED, xx_format_is_npack_device, xx_npack, device, value, result, XX_FORMAT_ALLOW_NULL, handle_base_info)
 
-XX_FORMAT_READER_ADAPTER(XX_FORMAT_INLINE_ALLOWED, xx_format_is_pakleo_device,
-    xx_pakleo, device, value, result, XX_FORMAT_ALLOW_NULL, handle_base_info)
+XX_FORMAT_READER_ADAPTER(XX_FORMAT_INLINE_ALLOWED, xx_format_is_pakleo_device, xx_pakleo, device, value, result, XX_FORMAT_ALLOW_NULL, handle_base_info)
 
-XX_FORMAT_READER_ADAPTER(XX_FORMAT_INLINE_ALLOWED, xx_format_is_scl_device,
-    xx_scl, device, value, result, XX_FORMAT_ALLOW_NULL, handle_base_info)
+XX_FORMAT_READER_ADAPTER(XX_FORMAT_INLINE_ALLOWED, xx_format_is_scl_device, xx_scl, device, value, result, XX_FORMAT_ALLOW_NULL, handle_base_info)
 
-XX_FORMAT_READER_ADAPTER(XX_FORMAT_INLINE_ALLOWED, xx_format_is_zcmp_device,
-    xx_zcmp, device, value, result, XX_FORMAT_ALLOW_NULL, handle_base_info)
+XX_FORMAT_READER_ADAPTER(XX_FORMAT_INLINE_ALLOWED, xx_format_is_zcmp_device, xx_zcmp, device, value, result, XX_FORMAT_ALLOW_NULL, handle_base_info)
 
-XX_FORMAT_READER_ADAPTER(XX_FORMAT_INLINE_ALLOWED, xx_format_is_zpak_device,
-    xx_zpak, device, value, result, XX_FORMAT_ALLOW_NULL, handle_base_info)
+XX_FORMAT_READER_ADAPTER(XX_FORMAT_INLINE_ALLOWED, xx_format_is_zpak_device, xx_zpak, device, value, result, XX_FORMAT_ALLOW_NULL, handle_base_info)
 
-XX_FORMAT_READER_ADAPTER(XX_FORMAT_INLINE_ALLOWED, xx_format_is_netwarepacked_device,
-    xx_netwarepacked, device, value, result, XX_FORMAT_ALLOW_NULL, handle_base_info)
+XX_FORMAT_READER_ADAPTER(XX_FORMAT_INLINE_ALLOWED, xx_format_is_netwarepacked_device, xx_netwarepacked, device, value, result, XX_FORMAT_ALLOW_NULL, handle_base_info)
 
-XX_FORMAT_READER_ADAPTER(XX_FORMAT_INLINE_ALLOWED, xx_format_is_ztc_device,
-    xx_ztc, device, value, result, XX_FORMAT_ALLOW_NULL, handle_base_info)
+XX_FORMAT_READER_ADAPTER(XX_FORMAT_INLINE_ALLOWED, xx_format_is_ztc_device, xx_ztc, device, value, result, XX_FORMAT_ALLOW_NULL, handle_base_info)
 
-XX_FORMAT_READER_ADAPTER(XX_FORMAT_INLINE_ALLOWED, xx_format_is_glu_device,
-    xx_glu, device, value, result, XX_FORMAT_ALLOW_NULL, handle_base_info)
+XX_FORMAT_READER_ADAPTER(XX_FORMAT_INLINE_ALLOWED, xx_format_is_glu_device, xx_glu, device, value, result, XX_FORMAT_ALLOW_NULL, handle_base_info)
 
-XX_FORMAT_READER_ADAPTER(XX_FORMAT_INLINE_ALLOWED, xx_format_is_gtu_device,
-    xx_gtu, device, value, result, XX_FORMAT_ALLOW_NULL, handle_base_info)
+XX_FORMAT_READER_ADAPTER(XX_FORMAT_INLINE_ALLOWED, xx_format_is_gtu_device, xx_gtu, device, value, result, XX_FORMAT_ALLOW_NULL, handle_base_info)
 
-XX_FORMAT_READER_ADAPTER(XX_FORMAT_INLINE_ALLOWED, xx_format_is_ibmspack_device,
-    xx_ibmspack, device, value, result, XX_FORMAT_ALLOW_NULL, handle_base_info)
+XX_FORMAT_READER_ADAPTER(XX_FORMAT_INLINE_ALLOWED, xx_format_is_ibmspack_device, xx_ibmspack, device, value, result, XX_FORMAT_ALLOW_NULL, handle_base_info)
 
-XX_FORMAT_READER_ADAPTER(XX_FORMAT_INLINE_ALLOWED, xx_format_is_jbf_device,
-    xx_jbf, device, value, result, XX_FORMAT_ALLOW_NULL, handle_base_info)
+XX_FORMAT_READER_ADAPTER(XX_FORMAT_INLINE_ALLOWED, xx_format_is_jbf_device, xx_jbf, device, value, result, XX_FORMAT_ALLOW_NULL, handle_base_info)
 
-XX_FORMAT_READER_ADAPTER(XX_FORMAT_INLINE_ALLOWED, xx_format_is_pcommos2_device,
-    xx_pcommos2, device, value, result, XX_FORMAT_ALLOW_NULL, handle_base_info)
+XX_FORMAT_READER_ADAPTER(XX_FORMAT_INLINE_ALLOWED, xx_format_is_pcommos2_device, xx_pcommos2, device, value, result, XX_FORMAT_ALLOW_NULL, handle_base_info)
 
-XX_FORMAT_READER_ADAPTER(XX_FORMAT_INLINE_ALLOWED, xx_format_is_stk_device,
-    xx_stk, device, value, result, XX_FORMAT_ALLOW_NULL, handle_base_info)
+XX_FORMAT_READER_ADAPTER(XX_FORMAT_INLINE_ALLOWED, xx_format_is_stk_device, xx_stk, device, value, result, XX_FORMAT_ALLOW_NULL, handle_base_info)
 
-XX_FORMAT_READER_ADAPTER(XX_FORMAT_INLINE_ALLOWED, xx_format_is_terse_device,
-    xx_terse, device, value, result, XX_FORMAT_ALLOW_NULL, handle_base_info)
+XX_FORMAT_READER_ADAPTER(XX_FORMAT_INLINE_ALLOWED, xx_format_is_terse_device, xx_terse, device, value, result, XX_FORMAT_ALLOW_NULL, handle_base_info)
 
-XX_FORMAT_READER_ADAPTER(XX_FORMAT_INLINE_ALLOWED, xx_format_is_zoo_device,
-    xx_zoo, device, value, result, XX_FORMAT_ALLOW_NULL, handle_base_info)
+XX_FORMAT_READER_ADAPTER(XX_FORMAT_INLINE_ALLOWED, xx_format_is_zoo_device, xx_zoo, device, value, result, XX_FORMAT_ALLOW_NULL, handle_base_info)
 
-XX_FORMAT_READER_ADAPTER(XX_FORMAT_INLINE_ALLOWED, xx_format_is_sqx_device,
-    xx_sqx, device, value, result, XX_FORMAT_ALLOW_NULL, handle_base_info)
+XX_FORMAT_READER_ADAPTER(XX_FORMAT_INLINE_ALLOWED, xx_format_is_sqx_device, xx_sqx, device, value, result, XX_FORMAT_ALLOW_NULL, handle_base_info)
 
-XX_FORMAT_READER_ADAPTER(XX_FORMAT_INLINE_ALLOWED, xx_format_is_imp_device,
-    xx_imp, device, value, result, XX_FORMAT_ALLOW_NULL, handle_base_info)
+XX_FORMAT_READER_ADAPTER(XX_FORMAT_INLINE_ALLOWED, xx_format_is_imp_device, xx_imp, device, value, result, XX_FORMAT_ALLOW_NULL, handle_base_info)
 
-XX_FORMAT_READER_ADAPTER(XX_FORMAT_INLINE_ALLOWED, xx_format_is_compactpro_device,
-    xx_compactpro, device, value, result, XX_FORMAT_ALLOW_NULL, handle_base_info)
+XX_FORMAT_READER_ADAPTER(XX_FORMAT_INLINE_ALLOWED, xx_format_is_compactpro_device, xx_compactpro, device, value, result, XX_FORMAT_ALLOW_NULL, handle_base_info)
 
-XX_FORMAT_READER_ADAPTER(XX_FORMAT_INLINE_ALLOWED, xx_format_is_hap_device,
-    xx_hap, device, value, result, XX_FORMAT_ALLOW_NULL, handle_base_info)
+XX_FORMAT_READER_ADAPTER(XX_FORMAT_INLINE_ALLOWED, xx_format_is_hap_device, xx_hap, device, value, result, XX_FORMAT_ALLOW_NULL, handle_base_info)
 
-XX_FORMAT_READER_ADAPTER(XX_FORMAT_INLINE_ALLOWED, xx_format_is_irwinpac_device,
-    xx_irwinpac, device, value, result, XX_FORMAT_ALLOW_NULL, handle_base_info)
+XX_FORMAT_READER_ADAPTER(XX_FORMAT_INLINE_ALLOWED, xx_format_is_irwinpac_device, xx_irwinpac, device, value, result, XX_FORMAT_ALLOW_NULL, handle_base_info)
 
-XX_FORMAT_READER_ADAPTER(XX_FORMAT_INLINE_ALLOWED, xx_format_is_ivt_device,
-    xx_ivt, device, value, result, XX_FORMAT_ALLOW_NULL, handle_base_info)
+XX_FORMAT_READER_ADAPTER(XX_FORMAT_INLINE_ALLOWED, xx_format_is_ivt_device, xx_ivt, device, value, result, XX_FORMAT_ALLOW_NULL, handle_base_info)
 
-XX_FORMAT_READER_ADAPTER(XX_FORMAT_INLINE_ALLOWED, xx_format_is_kolibrikpack_device,
-    xx_kolibrikpack, device, value, result, XX_FORMAT_ALLOW_NULL, handle_base_info)
+XX_FORMAT_READER_ADAPTER(XX_FORMAT_INLINE_ALLOWED, xx_format_is_kolibrikpack_device, xx_kolibrikpack, device, value, result, XX_FORMAT_ALLOW_NULL, handle_base_info)
 
-XX_FORMAT_READER_ADAPTER(XX_FORMAT_INLINE_ALLOWED, xx_format_is_lim_device,
-    xx_lim, device, value, result, XX_FORMAT_ALLOW_NULL, handle_base_info)
+XX_FORMAT_READER_ADAPTER(XX_FORMAT_INLINE_ALLOWED, xx_format_is_lim_device, xx_lim, device, value, result, XX_FORMAT_ALLOW_NULL, handle_base_info)
 
-XX_FORMAT_READER_ADAPTER(XX_FORMAT_INLINE_ALLOWED, xx_format_is_lofi_device,
-    xx_lofi, device, value, result, XX_FORMAT_ALLOW_NULL, handle_base_info)
+XX_FORMAT_READER_ADAPTER(XX_FORMAT_INLINE_ALLOWED, xx_format_is_lofi_device, xx_lofi, device, value, result, XX_FORMAT_ALLOW_NULL, handle_base_info)
 
-XX_FORMAT_READER_ADAPTER(XX_FORMAT_INLINE_ALLOWED, xx_format_is_pkt_device,
-    xx_pkt, device, value, result, XX_FORMAT_ALLOW_NULL, handle_base_info)
+XX_FORMAT_READER_ADAPTER(XX_FORMAT_INLINE_ALLOWED, xx_format_is_pkt_device, xx_pkt, device, value, result, XX_FORMAT_ALLOW_NULL, handle_base_info)
 
-XX_FORMAT_READER_ADAPTER(XX_FORMAT_INLINE_ALLOWED, xx_format_is_qda_device,
-    xx_qda, device, value, result, XX_FORMAT_ALLOW_NULL, handle_base_info)
+XX_FORMAT_READER_ADAPTER(XX_FORMAT_INLINE_ALLOWED, xx_format_is_qda_device, xx_qda, device, value, result, XX_FORMAT_ALLOW_NULL, handle_base_info)
 
-XX_FORMAT_READER_ADAPTER(XX_FORMAT_INLINE_ALLOWED, xx_format_is_qnxbase_device,
-    xx_qnxbase, device, value, result, XX_FORMAT_ALLOW_NULL, handle_base_info)
+XX_FORMAT_READER_ADAPTER(XX_FORMAT_INLINE_ALLOWED, xx_format_is_qnxbase_device, xx_qnxbase, device, value, result, XX_FORMAT_ALLOW_NULL, handle_base_info)
 
-XX_FORMAT_READER_ADAPTER(XX_FORMAT_INLINE_ALLOWED, xx_format_is_rid_device,
-    xx_rid, device, value, result, XX_FORMAT_ALLOW_NULL, handle_base_info)
+XX_FORMAT_READER_ADAPTER(XX_FORMAT_INLINE_ALLOWED, xx_format_is_rid_device, xx_rid, device, value, result, XX_FORMAT_ALLOW_NULL, handle_base_info)
 
-XX_FORMAT_READER_ADAPTER(XX_FORMAT_INLINE_ALLOWED, xx_format_is_rompaq_device,
-    xx_rompaq, device, value, result, XX_FORMAT_ALLOW_NULL, handle_base_info)
+XX_FORMAT_READER_ADAPTER(XX_FORMAT_INLINE_ALLOWED, xx_format_is_rompaq_device, xx_rompaq, device, value, result, XX_FORMAT_ALLOW_NULL, handle_base_info)
 
-XX_FORMAT_READER_ADAPTER(XX_FORMAT_INLINE_ALLOWED, xx_format_is_rta_device,
-    xx_rta, device, value, result, XX_FORMAT_ALLOW_NULL, handle_base_info)
+XX_FORMAT_READER_ADAPTER(XX_FORMAT_INLINE_ALLOWED, xx_format_is_rta_device, xx_rta, device, value, result, XX_FORMAT_ALLOW_NULL, handle_base_info)
 
-XX_FORMAT_READER_ADAPTER(XX_FORMAT_INLINE_ALLOWED, xx_format_is_rtpatch_device,
-    xx_rtpatch, device, value, result, XX_FORMAT_ALLOW_NULL, handle_base_info)
+XX_FORMAT_READER_ADAPTER(XX_FORMAT_INLINE_ALLOWED, xx_format_is_rtpatch_device, xx_rtpatch, device, value, result, XX_FORMAT_ALLOW_NULL, handle_base_info)
 
-XX_FORMAT_READER_ADAPTER(XX_FORMAT_INLINE_ALLOWED, xx_format_is_stylus_device,
-    xx_stylus, device, value, result, XX_FORMAT_ALLOW_NULL, handle_base_info)
+XX_FORMAT_READER_ADAPTER(XX_FORMAT_INLINE_ALLOWED, xx_format_is_stylus_device, xx_stylus, device, value, result, XX_FORMAT_ALLOW_NULL, handle_base_info)
 
-XX_FORMAT_READER_ADAPTER(XX_FORMAT_INLINE_ALLOWED, xx_format_is_ti99arc_device,
-    xx_ti99arc, device, value, result, XX_FORMAT_ALLOW_NULL, handle_base_info)
+XX_FORMAT_READER_ADAPTER(XX_FORMAT_INLINE_ALLOWED, xx_format_is_ti99arc_device, xx_ti99arc, device, value, result, XX_FORMAT_ALLOW_NULL, handle_base_info)
 
-XX_FORMAT_READER_ADAPTER(XX_FORMAT_INLINE_ALLOWED, xx_format_is_tivoli_device,
-    xx_tivoli, device, value, result, XX_FORMAT_ALLOW_NULL, handle_base_info)
+XX_FORMAT_READER_ADAPTER(XX_FORMAT_INLINE_ALLOWED, xx_format_is_tivoli_device, xx_tivoli, device, value, result, XX_FORMAT_ALLOW_NULL, handle_base_info)
 
-XX_FORMAT_READER_ADAPTER(XX_FORMAT_INLINE_ALLOWED, xx_format_is_vmarc_device,
-    xx_vmarc, device, value, result, XX_FORMAT_ALLOW_NULL, handle_base_info)
+XX_FORMAT_READER_ADAPTER(XX_FORMAT_INLINE_ALLOWED, xx_format_is_vmarc_device, xx_vmarc, device, value, result, XX_FORMAT_ALLOW_NULL, handle_base_info)
 
-XX_FORMAT_READER_ADAPTER(XX_FORMAT_INLINE_ALLOWED, xx_format_is_wintersoft_device,
-    xx_wintersoft, device, value, result, XX_FORMAT_ALLOW_NULL, handle_base_info)
+XX_FORMAT_READER_ADAPTER(XX_FORMAT_INLINE_ALLOWED, xx_format_is_wintersoft_device, xx_wintersoft, device, value, result, XX_FORMAT_ALLOW_NULL, handle_base_info)
 
-XX_FORMAT_READER_ADAPTER(XX_FORMAT_INLINE_ALLOWED, xx_format_is_wpk_device,
-    xx_wpk, device, value, result, XX_FORMAT_ALLOW_NULL, handle_base_info)
+XX_FORMAT_READER_ADAPTER(XX_FORMAT_INLINE_ALLOWED, xx_format_is_wpk_device, xx_wpk, device, value, result, XX_FORMAT_ALLOW_NULL, handle_base_info)
 
-XX_FORMAT_READER_ADAPTER(XX_FORMAT_INLINE_ALLOWED, xx_format_is_xeditpack_device,
-    xx_xeditpack, device, value, result, XX_FORMAT_ALLOW_NULL, handle_base_info)
+XX_FORMAT_READER_ADAPTER(XX_FORMAT_INLINE_ALLOWED, xx_format_is_xeditpack_device, xx_xeditpack, device, value, result, XX_FORMAT_ALLOW_NULL, handle_base_info)
 
-XX_FORMAT_READER_ADAPTER(XX_FORMAT_INLINE_ALLOWED, xx_format_is_zie_device,
-    xx_zie, device, value, result, XX_FORMAT_ALLOW_NULL, handle_base_info)
+XX_FORMAT_READER_ADAPTER(XX_FORMAT_INLINE_ALLOWED, xx_format_is_zie_device, xx_zie, device, value, result, XX_FORMAT_ALLOW_NULL, handle_base_info)
 
-XX_FORMAT_READER_ADAPTER(XX_FORMAT_INLINE_ALLOWED, xx_format_is_lzpis2_device,
-    xx_lzpis2, device, lzpis2, result, XX_FORMAT_REQUIRE_DEVICE, handle_base_info)
+XX_FORMAT_READER_ADAPTER(XX_FORMAT_INLINE_ALLOWED, xx_format_is_lzpis2_device, xx_lzpis2, device, lzpis2, result, XX_FORMAT_REQUIRE_DEVICE, handle_base_info)
 
-XX_FORMAT_READER_ADAPTER(XX_FORMAT_INLINE_ALLOWED, xx_format_is_tar_zstd_device,
-    xx_tar_zstd, device, tar_zstd, result, XX_FORMAT_REQUIRE_DEVICE, handle_base_info)
+XX_FORMAT_READER_ADAPTER(XX_FORMAT_INLINE_ALLOWED, xx_format_is_tar_zstd_device, xx_tar_zstd, device, tar_zstd, result, XX_FORMAT_REQUIRE_DEVICE, handle_base_info)
 
-XX_FORMAT_READER_ADAPTER(XX_FORMAT_INLINE_ALLOWED, xx_format_is_zstd_device,
-    xx_zstd, device, zstd, result, XX_FORMAT_REQUIRE_DEVICE, handle_base_info)
+XX_FORMAT_READER_ADAPTER(XX_FORMAT_INLINE_ALLOWED, xx_format_is_zstd_device, xx_zstd, device, zstd, result, XX_FORMAT_REQUIRE_DEVICE, handle_base_info)
 
-XX_FORMAT_READER_ADAPTER(XX_FORMAT_INLINE_ALLOWED, xx_format_is_tar_nextstep_device,
-    xx_tar_nextstep, device, tar_nextstep, result, XX_FORMAT_REQUIRE_DEVICE, check_is_valid)
+XX_FORMAT_READER_ADAPTER(XX_FORMAT_INLINE_ALLOWED, xx_format_is_tar_nextstep_device, xx_tar_nextstep, device, tar_nextstep, result, XX_FORMAT_REQUIRE_DEVICE,
+                         check_is_valid)
 
-XX_FORMAT_READER_ADAPTER(XX_FORMAT_INLINE_ALLOWED, xx_format_is_tar_compress_device,
-    xx_tar_compress, device, tar_compress, result, XX_FORMAT_REQUIRE_DEVICE, handle_base_info)
+XX_FORMAT_READER_ADAPTER(XX_FORMAT_INLINE_ALLOWED, xx_format_is_tar_compress_device, xx_tar_compress, device, tar_compress, result, XX_FORMAT_REQUIRE_DEVICE,
+                         handle_base_info)
 
-XX_FORMAT_READER_ADAPTER(XX_FORMAT_INLINE_ALLOWED, xx_format_is_tar_lzip_device,
-    xx_tar_lzip, device, tar_lzip, result, XX_FORMAT_REQUIRE_DEVICE, handle_base_info)
+XX_FORMAT_READER_ADAPTER(XX_FORMAT_INLINE_ALLOWED, xx_format_is_tar_lzip_device, xx_tar_lzip, device, tar_lzip, result, XX_FORMAT_REQUIRE_DEVICE, handle_base_info)
 
-XX_FORMAT_READER_ADAPTER(XX_FORMAT_INLINE_ALLOWED, xx_format_is_lzip_device,
-    xx_lzip, device, lzip, result, XX_FORMAT_REQUIRE_DEVICE, handle_base_info)
+XX_FORMAT_READER_ADAPTER(XX_FORMAT_INLINE_ALLOWED, xx_format_is_lzip_device, xx_lzip, device, lzip, result, XX_FORMAT_REQUIRE_DEVICE, handle_base_info)
 
-XX_FORMAT_READER_ADAPTER(XX_FORMAT_INLINE_ALLOWED, xx_format_is_tar_lzma_device,
-    xx_tar_lzma, device, tar_lzma, result, XX_FORMAT_REQUIRE_DEVICE, handle_base_info)
+XX_FORMAT_READER_ADAPTER(XX_FORMAT_INLINE_ALLOWED, xx_format_is_tar_lzma_device, xx_tar_lzma, device, tar_lzma, result, XX_FORMAT_REQUIRE_DEVICE, handle_base_info)
 
-XX_FORMAT_READER_ADAPTER(XX_FORMAT_INLINE_ALLOWED, xx_format_is_lzma_device,
-    xx_lzma, device, lzma, result, XX_FORMAT_REQUIRE_DEVICE, handle_base_info)
+XX_FORMAT_READER_ADAPTER(XX_FORMAT_INLINE_ALLOWED, xx_format_is_lzma_device, xx_lzma, device, lzma, result, XX_FORMAT_REQUIRE_DEVICE, handle_base_info)
 
-XX_FORMAT_READER_ADAPTER(XX_FORMAT_INLINE_ALLOWED, xx_format_is_tar_lzop_device,
-    xx_tar_lzop, device, tar_lzop, result, XX_FORMAT_REQUIRE_DEVICE, handle_base_info)
+XX_FORMAT_READER_ADAPTER(XX_FORMAT_INLINE_ALLOWED, xx_format_is_tar_lzop_device, xx_tar_lzop, device, tar_lzop, result, XX_FORMAT_REQUIRE_DEVICE, handle_base_info)
 
-XX_FORMAT_READER_ADAPTER(XX_FORMAT_INLINE_ALLOWED, xx_format_is_tarx1_device,
-    xx_tarx1, device, tarx1, result, XX_FORMAT_REQUIRE_DEVICE, handle_base_info)
+XX_FORMAT_READER_ADAPTER(XX_FORMAT_INLINE_ALLOWED, xx_format_is_tarx1_device, xx_tarx1, device, tarx1, result, XX_FORMAT_REQUIRE_DEVICE, handle_base_info)
 
-XX_FORMAT_READER_ADAPTER(XX_FORMAT_INLINE_ALLOWED, xx_format_is_tarx2_device,
-    xx_tarx2, device, tarx2, result, XX_FORMAT_REQUIRE_DEVICE, handle_base_info)
+XX_FORMAT_READER_ADAPTER(XX_FORMAT_INLINE_ALLOWED, xx_format_is_tarx2_device, xx_tarx2, device, tarx2, result, XX_FORMAT_REQUIRE_DEVICE, handle_base_info)
 
-XX_FORMAT_READER_ADAPTER(XX_FORMAT_INLINE_ALLOWED, xx_format_is_squashfs_device,
-    xx_squashfs, device, value, result, XX_FORMAT_REQUIRE_DEVICE, handle_base_info)
+XX_FORMAT_READER_ADAPTER(XX_FORMAT_INLINE_ALLOWED, xx_format_is_squashfs_device, xx_squashfs, device, value, result, XX_FORMAT_REQUIRE_DEVICE, handle_base_info)
 
-XX_FORMAT_READER_ADAPTER(XX_FORMAT_INLINE_ALLOWED, xx_format_is_ntfs_device,
-    xx_ntfs, device, value, result, XX_FORMAT_REQUIRE_DEVICE, handle_base_info)
+XX_FORMAT_READER_ADAPTER(XX_FORMAT_INLINE_ALLOWED, xx_format_is_ntfs_device, xx_ntfs, device, value, result, XX_FORMAT_REQUIRE_DEVICE, handle_base_info)
 
-XX_FORMAT_READER_ADAPTER(XX_FORMAT_INLINE_ALLOWED, xx_format_is_udf_device,
-    xx_udf, device, value, result, XX_FORMAT_REQUIRE_DEVICE, handle_base_info)
+XX_FORMAT_READER_ADAPTER(XX_FORMAT_INLINE_ALLOWED, xx_format_is_udf_device, xx_udf, device, value, result, XX_FORMAT_REQUIRE_DEVICE, handle_base_info)
 
-XX_FORMAT_READER_ADAPTER(XX_FORMAT_INLINE_ALLOWED, xx_format_is_romfs_device,
-    xx_romfs, device, value, result, XX_FORMAT_REQUIRE_DEVICE, handle_base_info)
+XX_FORMAT_READER_ADAPTER(XX_FORMAT_INLINE_ALLOWED, xx_format_is_romfs_device, xx_romfs, device, value, result, XX_FORMAT_REQUIRE_DEVICE, handle_base_info)
 
-XX_FORMAT_READER_ADAPTER(XX_FORMAT_INLINE_ALLOWED, xx_format_is_sqz_device,
-    xx_sqz, device, value, result, XX_FORMAT_REQUIRE_DEVICE, handle_base_info)
+XX_FORMAT_READER_ADAPTER(XX_FORMAT_INLINE_ALLOWED, xx_format_is_sqz_device, xx_sqz, device, value, result, XX_FORMAT_REQUIRE_DEVICE, handle_base_info)
 
-XX_FORMAT_READER_ADAPTER(XX_FORMAT_INLINE_ALLOWED, xx_format_is_topspeed_device,
-    xx_topspeed, device, value, result, XX_FORMAT_REQUIRE_DEVICE, handle_base_info)
+XX_FORMAT_READER_ADAPTER(XX_FORMAT_INLINE_ALLOWED, xx_format_is_topspeed_device, xx_topspeed, device, value, result, XX_FORMAT_REQUIRE_DEVICE, handle_base_info)
 
-XX_FORMAT_READER_ADAPTER(XX_FORMAT_INLINE_ALLOWED, xx_format_is_tps_device,
-    xx_tps, device, value, result, XX_FORMAT_REQUIRE_DEVICE, handle_base_info)
+XX_FORMAT_READER_ADAPTER(XX_FORMAT_INLINE_ALLOWED, xx_format_is_tps_device, xx_tps, device, value, result, XX_FORMAT_REQUIRE_DEVICE, handle_base_info)
 
-XX_FORMAT_READER_ADAPTER(XX_FORMAT_INLINE_ALLOWED, xx_format_is_ulead_device,
-    xx_ulead, device, value, result, XX_FORMAT_REQUIRE_DEVICE, handle_base_info)
+XX_FORMAT_READER_ADAPTER(XX_FORMAT_INLINE_ALLOWED, xx_format_is_ulead_device, xx_ulead, device, value, result, XX_FORMAT_REQUIRE_DEVICE, handle_base_info)
 
-XX_FORMAT_READER_ADAPTER(XX_FORMAT_INLINE_ALLOWED, xx_format_is_quantum_device,
-    xx_quantum, device, value, result, XX_FORMAT_REQUIRE_DEVICE, handle_base_info)
+XX_FORMAT_READER_ADAPTER(XX_FORMAT_INLINE_ALLOWED, xx_format_is_quantum_device, xx_quantum, device, value, result, XX_FORMAT_REQUIRE_DEVICE, handle_base_info)
 
-XX_FORMAT_READER_ADAPTER(XX_FORMAT_INLINE_ALLOWED, xx_format_is_zxzip_device,
-    xx_zxzip, device, value, result, XX_FORMAT_REQUIRE_DEVICE, handle_base_info)
+XX_FORMAT_READER_ADAPTER(XX_FORMAT_INLINE_ALLOWED, xx_format_is_zxzip_device, xx_zxzip, device, value, result, XX_FORMAT_REQUIRE_DEVICE, handle_base_info)
 
-XX_FORMAT_READER_ADAPTER(XX_FORMAT_INLINE_ALLOWED, xx_format_is_zoom_device,
-    xx_zoom, device, value, result, XX_FORMAT_REQUIRE_DEVICE, handle_base_info)
+XX_FORMAT_READER_ADAPTER(XX_FORMAT_INLINE_ALLOWED, xx_format_is_zoom_device, xx_zoom, device, value, result, XX_FORMAT_REQUIRE_DEVICE, handle_base_info)
 
-XX_FORMAT_READER_ADAPTER(XX_FORMAT_INLINE_ALLOWED, xx_format_is_sfpack_device,
-    xx_sfpack, device, value, result, XX_FORMAT_REQUIRE_DEVICE, handle_base_info)
+XX_FORMAT_READER_ADAPTER(XX_FORMAT_INLINE_ALLOWED, xx_format_is_sfpack_device, xx_sfpack, device, value, result, XX_FORMAT_REQUIRE_DEVICE, handle_base_info)
 
-XX_FORMAT_READER_ADAPTER(XX_FORMAT_INLINE_ALLOWED, xx_format_is_claylz_device,
-    xx_claylz, device, value, result, XX_FORMAT_REQUIRE_DEVICE, handle_base_info)
+XX_FORMAT_READER_ADAPTER(XX_FORMAT_INLINE_ALLOWED, xx_format_is_claylz_device, xx_claylz, device, value, result, XX_FORMAT_REQUIRE_DEVICE, handle_base_info)
 
-XX_FORMAT_READER_ADAPTER(XX_FORMAT_INLINE_ALLOWED, xx_format_is_c64wraptor_device,
-    xx_c64wraptor, device, value, result, XX_FORMAT_REQUIRE_DEVICE, handle_base_info)
+XX_FORMAT_READER_ADAPTER(XX_FORMAT_INLINE_ALLOWED, xx_format_is_c64wraptor_device, xx_c64wraptor, device, value, result, XX_FORMAT_REQUIRE_DEVICE, handle_base_info)
 
-XX_FORMAT_READER_ADAPTER(XX_FORMAT_INLINE_ALLOWED, xx_format_is_corelltec_device,
-    xx_corelltec, device, value, result, XX_FORMAT_REQUIRE_DEVICE, handle_base_info)
+XX_FORMAT_READER_ADAPTER(XX_FORMAT_INLINE_ALLOWED, xx_format_is_corelltec_device, xx_corelltec, device, value, result, XX_FORMAT_REQUIRE_DEVICE, handle_base_info)
 
-XX_FORMAT_READER_ADAPTER(XX_FORMAT_INLINE_ALLOWED, xx_format_is_pcsecure_device,
-    xx_pcsecure, device, value, result, XX_FORMAT_REQUIRE_DEVICE, handle_base_info)
+XX_FORMAT_READER_ADAPTER(XX_FORMAT_INLINE_ALLOWED, xx_format_is_pcsecure_device, xx_pcsecure, device, value, result, XX_FORMAT_REQUIRE_DEVICE, handle_base_info)
 
-XX_FORMAT_READER_ADAPTER(XX_FORMAT_INLINE_ALLOWED, xx_format_is_rsvk_device,
-    xx_rsvk, device, value, result, XX_FORMAT_REQUIRE_DEVICE, handle_base_info)
+XX_FORMAT_READER_ADAPTER(XX_FORMAT_INLINE_ALLOWED, xx_format_is_rsvk_device, xx_rsvk, device, value, result, XX_FORMAT_REQUIRE_DEVICE, handle_base_info)
 
-XX_FORMAT_READER_ADAPTER(XX_FORMAT_INLINE_ALLOWED, xx_format_is_lzw15v_device,
-    xx_lzw15v, device, value, result, XX_FORMAT_REQUIRE_DEVICE, handle_base_info)
+XX_FORMAT_READER_ADAPTER(XX_FORMAT_INLINE_ALLOWED, xx_format_is_lzw15v_device, xx_lzw15v, device, value, result, XX_FORMAT_REQUIRE_DEVICE, handle_base_info)
 
-XX_FORMAT_READER_ADAPTER(XX_FORMAT_INLINE_ALLOWED, xx_format_is_saf_device,
-    xx_saf, device, value, result, XX_FORMAT_REQUIRE_DEVICE, handle_base_info)
+XX_FORMAT_READER_ADAPTER(XX_FORMAT_INLINE_ALLOWED, xx_format_is_saf_device, xx_saf, device, value, result, XX_FORMAT_REQUIRE_DEVICE, handle_base_info)
 
-XX_FORMAT_READER_ADAPTER(XX_FORMAT_INLINE_ALLOWED, xx_format_is_sls_device,
-    xx_sls, device, value, result, XX_FORMAT_REQUIRE_DEVICE, handle_base_info)
+XX_FORMAT_READER_ADAPTER(XX_FORMAT_INLINE_ALLOWED, xx_format_is_sls_device, xx_sls, device, value, result, XX_FORMAT_REQUIRE_DEVICE, handle_base_info)
 
-XX_FORMAT_READER_ADAPTER(XX_FORMAT_INLINE_ALLOWED, xx_format_is_nid_device,
-    xx_nid, device, value, result, XX_FORMAT_REQUIRE_DEVICE, handle_base_info)
+XX_FORMAT_READER_ADAPTER(XX_FORMAT_INLINE_ALLOWED, xx_format_is_nid_device, xx_nid, device, value, result, XX_FORMAT_REQUIRE_DEVICE, handle_base_info)
 
-XX_FORMAT_READER_ADAPTER(XX_FORMAT_INLINE_ALLOWED, xx_format_is_gamos_device,
-    xx_gamos, device, value, result, XX_FORMAT_REQUIRE_DEVICE, handle_base_info)
+XX_FORMAT_READER_ADAPTER(XX_FORMAT_INLINE_ALLOWED, xx_format_is_gamos_device, xx_gamos, device, value, result, XX_FORMAT_REQUIRE_DEVICE, handle_base_info)
 
-XX_FORMAT_READER_ADAPTER(XX_FORMAT_INLINE_ALLOWED, xx_format_is_panorama_device,
-    xx_panorama, device, value, result, XX_FORMAT_REQUIRE_DEVICE, handle_base_info)
+XX_FORMAT_READER_ADAPTER(XX_FORMAT_INLINE_ALLOWED, xx_format_is_panorama_device, xx_panorama, device, value, result, XX_FORMAT_REQUIRE_DEVICE, handle_base_info)
 
-XX_FORMAT_READER_ADAPTER(XX_FORMAT_INLINE_ALLOWED, xx_format_is_fpak_device,
-    xx_fpak, device, value, result, XX_FORMAT_REQUIRE_DEVICE, handle_base_info)
+XX_FORMAT_READER_ADAPTER(XX_FORMAT_INLINE_ALLOWED, xx_format_is_fpak_device, xx_fpak, device, value, result, XX_FORMAT_REQUIRE_DEVICE, handle_base_info)
 
-XX_FORMAT_READER_ADAPTER(XX_FORMAT_INLINE_ALLOWED, xx_format_is_cramfs_device,
-    xx_cramfs, device, value, result, XX_FORMAT_REQUIRE_DEVICE, handle_base_info)
+XX_FORMAT_READER_ADAPTER(XX_FORMAT_INLINE_ALLOWED, xx_format_is_cramfs_device, xx_cramfs, device, value, result, XX_FORMAT_REQUIRE_DEVICE, handle_base_info)
 
-XX_FORMAT_READER_ADAPTER(XX_FORMAT_INLINE_ALLOWED, xx_format_is_jffs2_device,
-    xx_jffs2, device, value, result, XX_FORMAT_REQUIRE_DEVICE, handle_base_info)
+XX_FORMAT_READER_ADAPTER(XX_FORMAT_INLINE_ALLOWED, xx_format_is_jffs2_device, xx_jffs2, device, value, result, XX_FORMAT_REQUIRE_DEVICE, handle_base_info)
 
-static XXFC_MAYBE_UNUSED bool xx_format_is_yaffs_device(xx_io_device *device) {
+static XXFC_MAYBE_UNUSED bool xx_format_is_yaffs_device(xx_io_device *device)
+{
     xx_yaffs value;
     bool result;
     if (!device) return false;
@@ -2134,19 +1948,16 @@ static XXFC_MAYBE_UNUSED bool xx_format_is_yaffs_device(xx_io_device *device) {
     return result;
 }
 
-XX_FORMAT_READER_ADAPTER(XX_FORMAT_INLINE_ALLOWED, xx_format_is_ubi_device,
-    xx_ubi, device, value, result, XX_FORMAT_REQUIRE_DEVICE, handle_base_info)
+XX_FORMAT_READER_ADAPTER(XX_FORMAT_INLINE_ALLOWED, xx_format_is_ubi_device, xx_ubi, device, value, result, XX_FORMAT_REQUIRE_DEVICE, handle_base_info)
 
-XX_FORMAT_READER_ADAPTER(XX_FORMAT_INLINE_ALLOWED, xx_format_is_ubifs_device,
-    xx_ubifs, device, value, result, XX_FORMAT_REQUIRE_DEVICE, handle_base_info)
+XX_FORMAT_READER_ADAPTER(XX_FORMAT_INLINE_ALLOWED, xx_format_is_ubifs_device, xx_ubifs, device, value, result, XX_FORMAT_REQUIRE_DEVICE, handle_base_info)
 
-XX_FORMAT_READER_ADAPTER(XX_FORMAT_INLINE_ALLOWED, xx_format_is_ext_device,
-    xx_ext, device, value, result, XX_FORMAT_REQUIRE_DEVICE, handle_base_info)
+XX_FORMAT_READER_ADAPTER(XX_FORMAT_INLINE_ALLOWED, xx_format_is_ext_device, xx_ext, device, value, result, XX_FORMAT_REQUIRE_DEVICE, handle_base_info)
 
-XX_FORMAT_READER_ADAPTER(XX_FORMAT_INLINE_ALLOWED, xx_format_is_fat_device,
-    xx_fat, device, value, result, XX_FORMAT_REQUIRE_DEVICE, handle_base_info)
+XX_FORMAT_READER_ADAPTER(XX_FORMAT_INLINE_ALLOWED, xx_format_is_fat_device, xx_fat, device, value, result, XX_FORMAT_REQUIRE_DEVICE, handle_base_info)
 
-static bool xx_format_is_mbr_device(xx_io_device *device) {
+static bool xx_format_is_mbr_device(xx_io_device *device)
+{
     xx_mbr value;
     bool result;
     if (!device) return false;
@@ -2160,46 +1971,34 @@ static bool xx_format_is_mbr_device(xx_io_device *device) {
     return result;
 }
 
-XX_FORMAT_READER_ADAPTER(XX_FORMAT_INLINE_ALLOWED, xx_format_is_gpt_device,
-    xx_gpt, device, value, result, XX_FORMAT_REQUIRE_DEVICE, handle_base_info)
+XX_FORMAT_READER_ADAPTER(XX_FORMAT_INLINE_ALLOWED, xx_format_is_gpt_device, xx_gpt, device, value, result, XX_FORMAT_REQUIRE_DEVICE, handle_base_info)
 
-XX_FORMAT_READER_ADAPTER(XX_FORMAT_INLINE_ALLOWED, xx_format_is_sparse_device,
-    xx_sparse, device, value, result, XX_FORMAT_REQUIRE_DEVICE, handle_base_info)
+XX_FORMAT_READER_ADAPTER(XX_FORMAT_INLINE_ALLOWED, xx_format_is_sparse_device, xx_sparse, device, value, result, XX_FORMAT_REQUIRE_DEVICE, handle_base_info)
 
-XX_FORMAT_READER_ADAPTER(XX_FORMAT_INLINE_ALLOWED, xx_format_is_uimage_device,
-    xx_uimage, device, value, result, XX_FORMAT_REQUIRE_DEVICE, handle_base_info)
+XX_FORMAT_READER_ADAPTER(XX_FORMAT_INLINE_ALLOWED, xx_format_is_uimage_device, xx_uimage, device, value, result, XX_FORMAT_REQUIRE_DEVICE, handle_base_info)
 
-XX_FORMAT_READER_ADAPTER(XX_FORMAT_INLINE_ALLOWED, xx_format_is_dtb_device,
-    xx_dtb, device, value, result, XX_FORMAT_REQUIRE_DEVICE, handle_base_info)
+XX_FORMAT_READER_ADAPTER(XX_FORMAT_INLINE_ALLOWED, xx_format_is_dtb_device, xx_dtb, device, value, result, XX_FORMAT_REQUIRE_DEVICE, handle_base_info)
 
-XX_FORMAT_READER_ADAPTER(XX_FORMAT_INLINE_ALLOWED, xx_format_is_trx_device,
-    xx_trx, device, value, result, XX_FORMAT_REQUIRE_DEVICE, handle_base_info)
+XX_FORMAT_READER_ADAPTER(XX_FORMAT_INLINE_ALLOWED, xx_format_is_trx_device, xx_trx, device, value, result, XX_FORMAT_REQUIRE_DEVICE, handle_base_info)
 
-XX_FORMAT_READER_ADAPTER(XX_FORMAT_INLINE_ALLOWED, xx_format_is_seama_device,
-    xx_seama, device, value, result, XX_FORMAT_REQUIRE_DEVICE, handle_base_info)
+XX_FORMAT_READER_ADAPTER(XX_FORMAT_INLINE_ALLOWED, xx_format_is_seama_device, xx_seama, device, value, result, XX_FORMAT_REQUIRE_DEVICE, handle_base_info)
 
-XX_FORMAT_READER_ADAPTER(XX_FORMAT_INLINE_ALLOWED, xx_format_is_chk_device,
-    xx_chk, device, value, result, XX_FORMAT_REQUIRE_DEVICE, handle_base_info)
+XX_FORMAT_READER_ADAPTER(XX_FORMAT_INLINE_ALLOWED, xx_format_is_chk_device, xx_chk, device, value, result, XX_FORMAT_REQUIRE_DEVICE, handle_base_info)
 
-XX_FORMAT_READER_ADAPTER(XX_FORMAT_INLINE_ALLOWED, xx_format_is_packimg_device,
-    xx_packimg, device, value, result, XX_FORMAT_REQUIRE_DEVICE, handle_base_info)
+XX_FORMAT_READER_ADAPTER(XX_FORMAT_INLINE_ALLOWED, xx_format_is_packimg_device, xx_packimg, device, value, result, XX_FORMAT_REQUIRE_DEVICE, handle_base_info)
 
-XX_FORMAT_READER_ADAPTER(XX_FORMAT_INLINE_ALLOWED, xx_format_is_dlob_device,
-    xx_dlob, device, value, result, XX_FORMAT_REQUIRE_DEVICE, handle_base_info)
+XX_FORMAT_READER_ADAPTER(XX_FORMAT_INLINE_ALLOWED, xx_format_is_dlob_device, xx_dlob, device, value, result, XX_FORMAT_REQUIRE_DEVICE, handle_base_info)
 
-XX_FORMAT_READER_ADAPTER(XX_FORMAT_INLINE_ALLOWED, xx_format_is_wince_device,
-    xx_wince, device, value, result, XX_FORMAT_REQUIRE_DEVICE, handle_base_info)
+XX_FORMAT_READER_ADAPTER(XX_FORMAT_INLINE_ALLOWED, xx_format_is_wince_device, xx_wince, device, value, result, XX_FORMAT_REQUIRE_DEVICE, handle_base_info)
 
-XX_FORMAT_READER_ADAPTER(XX_FORMAT_INLINE_ALLOWED, xx_format_is_binhdr_device,
-    xx_binhdr, device, value, result, XX_FORMAT_REQUIRE_DEVICE, handle_base_info)
+XX_FORMAT_READER_ADAPTER(XX_FORMAT_INLINE_ALLOWED, xx_format_is_binhdr_device, xx_binhdr, device, value, result, XX_FORMAT_REQUIRE_DEVICE, handle_base_info)
 
-XX_FORMAT_READER_ADAPTER(XX_FORMAT_INLINE_ALLOWED, xx_format_is_rtk_device,
-    xx_rtk, device, value, result, XX_FORMAT_REQUIRE_DEVICE, handle_base_info)
+XX_FORMAT_READER_ADAPTER(XX_FORMAT_INLINE_ALLOWED, xx_format_is_rtk_device, xx_rtk, device, value, result, XX_FORMAT_REQUIRE_DEVICE, handle_base_info)
 
-XX_FORMAT_READER_ADAPTER(XX_FORMAT_INLINE_ALLOWED, xx_format_is_csman_device,
-    xx_csman, device, value, result, XX_FORMAT_REQUIRE_DEVICE, handle_base_info)
+XX_FORMAT_READER_ADAPTER(XX_FORMAT_INLINE_ALLOWED, xx_format_is_csman_device, xx_csman, device, value, result, XX_FORMAT_REQUIRE_DEVICE, handle_base_info)
 
-static XXFC_MAYBE_UNUSED bool xx_format_is_vxworks_device(xx_io_device *device) {
+static XXFC_MAYBE_UNUSED bool xx_format_is_vxworks_device(xx_io_device *device)
+{
     xx_vxworks value;
     bool result;
     if (!device) return false;
@@ -2209,93 +2008,68 @@ static XXFC_MAYBE_UNUSED bool xx_format_is_vxworks_device(xx_io_device *device) 
     return result;
 }
 
-XX_FORMAT_READER_ADAPTER(XX_FORMAT_INLINE_ALLOWED, xx_format_is_uefi_fv_device,
-    xx_uefi_fv, device, value, result, XX_FORMAT_REQUIRE_DEVICE, handle_base_info)
+XX_FORMAT_READER_ADAPTER(XX_FORMAT_INLINE_ALLOWED, xx_format_is_uefi_fv_device, xx_uefi_fv, device, value, result, XX_FORMAT_REQUIRE_DEVICE, handle_base_info)
 
-XX_FORMAT_READER_ADAPTER(XX_FORMAT_INLINE_ALLOWED, xx_format_is_uefi_capsule_device,
-    xx_uefi_capsule, device, value, result, XX_FORMAT_REQUIRE_DEVICE, handle_base_info)
+XX_FORMAT_READER_ADAPTER(XX_FORMAT_INLINE_ALLOWED, xx_format_is_uefi_capsule_device, xx_uefi_capsule, device, value, result, XX_FORMAT_REQUIRE_DEVICE, handle_base_info)
 
-XX_FORMAT_READER_ADAPTER(XX_FORMAT_INLINE_ALLOWED, xx_format_is_qcow_device,
-    xx_qcow, device, value, result, XX_FORMAT_REQUIRE_DEVICE, handle_base_info)
+XX_FORMAT_READER_ADAPTER(XX_FORMAT_INLINE_ALLOWED, xx_format_is_qcow_device, xx_qcow, device, value, result, XX_FORMAT_REQUIRE_DEVICE, handle_base_info)
 
-XX_FORMAT_READER_ADAPTER(XX_FORMAT_INLINE_ALLOWED, xx_format_is_qnx6_device,
-    xx_qnx6, device, value, result, XX_FORMAT_REQUIRE_DEVICE, handle_base_info)
+XX_FORMAT_READER_ADAPTER(XX_FORMAT_INLINE_ALLOWED, xx_format_is_qnx6_device, xx_qnx6, device, value, result, XX_FORMAT_REQUIRE_DEVICE, handle_base_info)
 
-XX_FORMAT_READER_ADAPTER(XX_FORMAT_INLINE_ALLOWED, xx_format_is_luks_device,
-    xx_luks, device, value, result, XX_FORMAT_REQUIRE_DEVICE, handle_base_info)
+XX_FORMAT_READER_ADAPTER(XX_FORMAT_INLINE_ALLOWED, xx_format_is_luks_device, xx_luks, device, value, result, XX_FORMAT_REQUIRE_DEVICE, handle_base_info)
 
-XX_FORMAT_READER_ADAPTER(XX_FORMAT_INLINE_ALLOWED, xx_format_is_apfs_device,
-    xx_apfs, device, value, result, XX_FORMAT_REQUIRE_DEVICE, handle_base_info)
+XX_FORMAT_READER_ADAPTER(XX_FORMAT_INLINE_ALLOWED, xx_format_is_apfs_device, xx_apfs, device, value, result, XX_FORMAT_REQUIRE_DEVICE, handle_base_info)
 
-XX_FORMAT_READER_ADAPTER(XX_FORMAT_INLINE_ALLOWED, xx_format_is_btrfs_device,
-    xx_btrfs, device, value, result, XX_FORMAT_REQUIRE_DEVICE, handle_base_info)
+XX_FORMAT_READER_ADAPTER(XX_FORMAT_INLINE_ALLOWED, xx_format_is_btrfs_device, xx_btrfs, device, value, result, XX_FORMAT_REQUIRE_DEVICE, handle_base_info)
 
-XX_FORMAT_READER_ADAPTER(XX_FORMAT_INLINE_ALLOWED, xx_format_is_logfs_device,
-    xx_logfs, device, value, result, XX_FORMAT_REQUIRE_DEVICE, handle_base_info)
+XX_FORMAT_READER_ADAPTER(XX_FORMAT_INLINE_ALLOWED, xx_format_is_logfs_device, xx_logfs, device, value, result, XX_FORMAT_REQUIRE_DEVICE, handle_base_info)
 
 /* DMS carries a four-byte magic, so the probe is only reached when those
  * bytes already matched; it confirms the rest of the header parses. */
 /* A resource fork has no magic -- its header is four plausible offsets --
  * so nothing but the full structural walk can confirm one. Late dispatch,
  * and cheaper than the whole-stream decoders it runs before. */
-XX_FORMAT_READER_ADAPTER(XX_FORMAT_INLINE_ALLOWED, xx_format_is_resourcefork_device,
-    xx_resourcefork, device, value, result, XX_FORMAT_REQUIRE_DEVICE, check_is_valid)
+XX_FORMAT_READER_ADAPTER(XX_FORMAT_INLINE_ALLOWED, xx_format_is_resourcefork_device, xx_resourcefork, device, value, result, XX_FORMAT_REQUIRE_DEVICE, check_is_valid)
 
-XX_FORMAT_READER_ADAPTER(XX_FORMAT_INLINE_ALLOWED, xx_format_is_applesingle_device,
-    xx_applesingle, device, value, result, XX_FORMAT_REQUIRE_DEVICE, check_is_valid)
+XX_FORMAT_READER_ADAPTER(XX_FORMAT_INLINE_ALLOWED, xx_format_is_applesingle_device, xx_applesingle, device, value, result, XX_FORMAT_REQUIRE_DEVICE, check_is_valid)
 
-XX_FORMAT_READER_ADAPTER(XX_FORMAT_INLINE_ALLOWED, xx_format_is_macbinary_device,
-    xx_macbinary, device, value, result, XX_FORMAT_REQUIRE_DEVICE, check_is_valid)
+XX_FORMAT_READER_ADAPTER(XX_FORMAT_INLINE_ALLOWED, xx_format_is_macbinary_device, xx_macbinary, device, value, result, XX_FORMAT_REQUIRE_DEVICE, check_is_valid)
 
-XX_FORMAT_READER_ADAPTER(XX_FORMAT_INLINE_ALLOWED, xx_format_is_pp20_device,
-    xx_pp20, device, value, result, XX_FORMAT_REQUIRE_DEVICE, check_is_valid)
+XX_FORMAT_READER_ADAPTER(XX_FORMAT_INLINE_ALLOWED, xx_format_is_pp20_device, xx_pp20, device, value, result, XX_FORMAT_REQUIRE_DEVICE, check_is_valid)
 
-XX_FORMAT_READER_ADAPTER(XX_FORMAT_INLINE_ALLOWED, xx_format_is_beatthehouse_device,
-    xx_beatthehouse, device, value, result, XX_FORMAT_REQUIRE_DEVICE, check_is_valid)
+XX_FORMAT_READER_ADAPTER(XX_FORMAT_INLINE_ALLOWED, xx_format_is_beatthehouse_device, xx_beatthehouse, device, value, result, XX_FORMAT_REQUIRE_DEVICE, check_is_valid)
 
-XX_FORMAT_READER_ADAPTER(XX_FORMAT_INLINE_ALLOWED, xx_format_is_kpck_device,
-    xx_kpck, device, value, result, XX_FORMAT_REQUIRE_DEVICE, check_is_valid)
+XX_FORMAT_READER_ADAPTER(XX_FORMAT_INLINE_ALLOWED, xx_format_is_kpck_device, xx_kpck, device, value, result, XX_FORMAT_REQUIRE_DEVICE, check_is_valid)
 
-XX_FORMAT_READER_ADAPTER(XX_FORMAT_INLINE_ALLOWED, xx_format_is_battleisle_device,
-    xx_battleisle, device, value, result, XX_FORMAT_REQUIRE_DEVICE, check_is_valid)
+XX_FORMAT_READER_ADAPTER(XX_FORMAT_INLINE_ALLOWED, xx_format_is_battleisle_device, xx_battleisle, device, value, result, XX_FORMAT_REQUIRE_DEVICE, check_is_valid)
 
-XX_FORMAT_READER_ADAPTER(XX_FORMAT_INLINE_ALLOWED, xx_format_is_perform_device,
-    xx_perform, device, value, result, XX_FORMAT_REQUIRE_DEVICE, check_is_valid)
+XX_FORMAT_READER_ADAPTER(XX_FORMAT_INLINE_ALLOWED, xx_format_is_perform_device, xx_perform, device, value, result, XX_FORMAT_REQUIRE_DEVICE, check_is_valid)
 
-XX_FORMAT_READER_ADAPTER(XX_FORMAT_INLINE_ALLOWED, xx_format_is_mathcad_device,
-    xx_mathcad, device, value, result, XX_FORMAT_REQUIRE_DEVICE, check_is_valid)
+XX_FORMAT_READER_ADAPTER(XX_FORMAT_INLINE_ALLOWED, xx_format_is_mathcad_device, xx_mathcad, device, value, result, XX_FORMAT_REQUIRE_DEVICE, check_is_valid)
 
-XX_FORMAT_READER_ADAPTER(XX_FORMAT_INLINE_ALLOWED, xx_format_is_netware2_device,
-    xx_netware2, device, value, result, XX_FORMAT_REQUIRE_DEVICE, check_is_valid)
+XX_FORMAT_READER_ADAPTER(XX_FORMAT_INLINE_ALLOWED, xx_format_is_netware2_device, xx_netware2, device, value, result, XX_FORMAT_REQUIRE_DEVICE, check_is_valid)
 
-XX_FORMAT_READER_ADAPTER(XX_FORMAT_INLINE_ALLOWED, xx_format_is_shar_device,
-    xx_shar, device, value, result, XX_FORMAT_REQUIRE_DEVICE, check_is_valid)
+XX_FORMAT_READER_ADAPTER(XX_FORMAT_INLINE_ALLOWED, xx_format_is_shar_device, xx_shar, device, value, result, XX_FORMAT_REQUIRE_DEVICE, check_is_valid)
 
-XX_FORMAT_READER_ADAPTER(XX_FORMAT_INLINE_ALLOWED, xx_format_is_rnc_device,
-    xx_rnc, device, value, result, XX_FORMAT_REQUIRE_DEVICE, check_is_valid)
+XX_FORMAT_READER_ADAPTER(XX_FORMAT_INLINE_ALLOWED, xx_format_is_rnc_device, xx_rnc, device, value, result, XX_FORMAT_REQUIRE_DEVICE, check_is_valid)
 
-XX_FORMAT_READER_ADAPTER(XX_FORMAT_INLINE_ALLOWED, xx_format_is_ibmpack_device,
-    xx_ibmpack, device, value, result, XX_FORMAT_REQUIRE_DEVICE, check_is_valid)
+XX_FORMAT_READER_ADAPTER(XX_FORMAT_INLINE_ALLOWED, xx_format_is_ibmpack_device, xx_ibmpack, device, value, result, XX_FORMAT_REQUIRE_DEVICE, check_is_valid)
 
-XX_FORMAT_READER_ADAPTER(XX_FORMAT_INLINE_ALLOWED, xx_format_is_cazip_device,
-    xx_cazip, device, value, result, XX_FORMAT_REQUIRE_DEVICE, check_is_valid)
+XX_FORMAT_READER_ADAPTER(XX_FORMAT_INLINE_ALLOWED, xx_format_is_cazip_device, xx_cazip, device, value, result, XX_FORMAT_REQUIRE_DEVICE, check_is_valid)
 
-XX_FORMAT_READER_ADAPTER(XX_FORMAT_INLINE_ALLOWED, xx_format_is_tpwm_device,
-    xx_tpwm, device, value, result, XX_FORMAT_REQUIRE_DEVICE, check_is_valid)
+XX_FORMAT_READER_ADAPTER(XX_FORMAT_INLINE_ALLOWED, xx_format_is_tpwm_device, xx_tpwm, device, value, result, XX_FORMAT_REQUIRE_DEVICE, check_is_valid)
 
-XX_FORMAT_READER_ADAPTER(XX_FORMAT_INLINE_ALLOWED, xx_format_is_mrnz_device,
-    xx_mrnz, device, value, result, XX_FORMAT_REQUIRE_DEVICE, check_is_valid)
+XX_FORMAT_READER_ADAPTER(XX_FORMAT_INLINE_ALLOWED, xx_format_is_mrnz_device, xx_mrnz, device, value, result, XX_FORMAT_REQUIRE_DEVICE, check_is_valid)
 
-XX_FORMAT_READER_ADAPTER(XX_FORMAT_INLINE_ALLOWED, xx_format_is_edc_device,
-    xx_edc, device, value, result, XX_FORMAT_REQUIRE_DEVICE, check_is_valid)
+XX_FORMAT_READER_ADAPTER(XX_FORMAT_INLINE_ALLOWED, xx_format_is_edc_device, xx_edc, device, value, result, XX_FORMAT_REQUIRE_DEVICE, check_is_valid)
 
-XX_FORMAT_READER_ADAPTER(XX_FORMAT_INLINE_ALLOWED, xx_format_is_mxs_device,
-    xx_mxs, device, value, result, XX_FORMAT_REQUIRE_DEVICE, check_is_valid)
+XX_FORMAT_READER_ADAPTER(XX_FORMAT_INLINE_ALLOWED, xx_format_is_mxs_device, xx_mxs, device, value, result, XX_FORMAT_REQUIRE_DEVICE, check_is_valid)
 
 /* This reader wraps whichever container the mask was hiding, so its first
  * member is a union of the delegates rather than an Abstractformat of its
  * own -- the vtable lives one level in, at .container.format. */
-static bool xx_format_is_xorarchive_device(xx_io_device *device) {
+static bool xx_format_is_xorarchive_device(xx_io_device *device)
+{
     xx_xorarchive value;
     bool result;
     if (!device) return false;
@@ -2305,133 +2079,92 @@ static bool xx_format_is_xorarchive_device(xx_io_device *device) {
     return result;
 }
 
-XX_FORMAT_READER_ADAPTER(XX_FORMAT_INLINE_ALLOWED, xx_format_is_mwave_device,
-    xx_mwave, device, value, result, XX_FORMAT_REQUIRE_DEVICE, check_is_valid)
+XX_FORMAT_READER_ADAPTER(XX_FORMAT_INLINE_ALLOWED, xx_format_is_mwave_device, xx_mwave, device, value, result, XX_FORMAT_REQUIRE_DEVICE, check_is_valid)
 
-XX_FORMAT_READER_ADAPTER(XX_FORMAT_INLINE_ALLOWED, xx_format_is_finear_device,
-    xx_finear, device, value, result, XX_FORMAT_REQUIRE_DEVICE, check_is_valid)
+XX_FORMAT_READER_ADAPTER(XX_FORMAT_INLINE_ALLOWED, xx_format_is_finear_device, xx_finear, device, value, result, XX_FORMAT_REQUIRE_DEVICE, check_is_valid)
 
-XX_FORMAT_READER_ADAPTER(XX_FORMAT_INLINE_ALLOWED, xx_format_is_gst_device,
-    xx_gst, device, value, result, XX_FORMAT_REQUIRE_DEVICE, check_is_valid)
+XX_FORMAT_READER_ADAPTER(XX_FORMAT_INLINE_ALLOWED, xx_format_is_gst_device, xx_gst, device, value, result, XX_FORMAT_REQUIRE_DEVICE, check_is_valid)
 
-XX_FORMAT_READER_ADAPTER(XX_FORMAT_INLINE_ALLOWED, xx_format_is_winlink_device,
-    xx_winlink, device, value, result, XX_FORMAT_REQUIRE_DEVICE, check_is_valid)
+XX_FORMAT_READER_ADAPTER(XX_FORMAT_INLINE_ALLOWED, xx_format_is_winlink_device, xx_winlink, device, value, result, XX_FORMAT_REQUIRE_DEVICE, check_is_valid)
 
-XX_FORMAT_READER_ADAPTER(XX_FORMAT_INLINE_ALLOWED, xx_format_is_ftcomp_device,
-    xx_ftcomp, device, value, result, XX_FORMAT_REQUIRE_DEVICE, check_is_valid)
+XX_FORMAT_READER_ADAPTER(XX_FORMAT_INLINE_ALLOWED, xx_format_is_ftcomp_device, xx_ftcomp, device, value, result, XX_FORMAT_REQUIRE_DEVICE, check_is_valid)
 
-XX_FORMAT_READER_ADAPTER(XX_FORMAT_INLINE_ALLOWED, xx_format_is_gpfpack_device,
-    xx_gpfpack, device, value, result, XX_FORMAT_REQUIRE_DEVICE, check_is_valid)
+XX_FORMAT_READER_ADAPTER(XX_FORMAT_INLINE_ALLOWED, xx_format_is_gpfpack_device, xx_gpfpack, device, value, result, XX_FORMAT_REQUIRE_DEVICE, check_is_valid)
 
-XX_FORMAT_READER_ADAPTER(XX_FORMAT_INLINE_ALLOWED, xx_format_is_sco_device,
-    xx_sco, device, value, result, XX_FORMAT_REQUIRE_DEVICE, check_is_valid)
+XX_FORMAT_READER_ADAPTER(XX_FORMAT_INLINE_ALLOWED, xx_format_is_sco_device, xx_sco, device, value, result, XX_FORMAT_REQUIRE_DEVICE, check_is_valid)
 
-XX_FORMAT_READER_ADAPTER(XX_FORMAT_INLINE_ALLOWED, xx_format_is_unixcompact_device,
-    xx_unixcompact, device, value, result, XX_FORMAT_REQUIRE_DEVICE, check_is_valid)
+XX_FORMAT_READER_ADAPTER(XX_FORMAT_INLINE_ALLOWED, xx_format_is_unixcompact_device, xx_unixcompact, device, value, result, XX_FORMAT_REQUIRE_DEVICE, check_is_valid)
 
-XX_FORMAT_READER_ADAPTER(XX_FORMAT_INLINE_ALLOWED, xx_format_is_psdc_device,
-    xx_psdc, device, value, result, XX_FORMAT_REQUIRE_DEVICE, check_is_valid)
+XX_FORMAT_READER_ADAPTER(XX_FORMAT_INLINE_ALLOWED, xx_format_is_psdc_device, xx_psdc, device, value, result, XX_FORMAT_REQUIRE_DEVICE, check_is_valid)
 
-XX_FORMAT_READER_ADAPTER(XX_FORMAT_INLINE_ALLOWED, xx_format_is_is3_device,
-    xx_is3, device, value, result, XX_FORMAT_REQUIRE_DEVICE, check_is_valid)
+XX_FORMAT_READER_ADAPTER(XX_FORMAT_INLINE_ALLOWED, xx_format_is_is3_device, xx_is3, device, value, result, XX_FORMAT_REQUIRE_DEVICE, check_is_valid)
 
-XX_FORMAT_READER_ADAPTER(XX_FORMAT_INLINE_ALLOWED, xx_format_is_is5_device,
-    xx_is5, device, value, result, XX_FORMAT_REQUIRE_DEVICE, check_is_valid)
+XX_FORMAT_READER_ADAPTER(XX_FORMAT_INLINE_ALLOWED, xx_format_is_is5_device, xx_is5, device, value, result, XX_FORMAT_REQUIRE_DEVICE, check_is_valid)
 
-XX_FORMAT_READER_ADAPTER(XX_FORMAT_INLINE_ALLOWED, xx_format_is_is7inx_device,
-    xx_is7inx, device, value, result, XX_FORMAT_REQUIRE_DEVICE, check_is_valid)
+XX_FORMAT_READER_ADAPTER(XX_FORMAT_INLINE_ALLOWED, xx_format_is_is7inx_device, xx_is7inx, device, value, result, XX_FORMAT_REQUIRE_DEVICE, check_is_valid)
 
-XX_FORMAT_READER_ADAPTER(XX_FORMAT_INLINE_ALLOWED, xx_format_is_edilzss_device,
-    xx_edilzss, device, value, result, XX_FORMAT_REQUIRE_DEVICE, check_is_valid)
+XX_FORMAT_READER_ADAPTER(XX_FORMAT_INLINE_ALLOWED, xx_format_is_edilzss_device, xx_edilzss, device, value, result, XX_FORMAT_REQUIRE_DEVICE, check_is_valid)
 
-XX_FORMAT_READER_ADAPTER(XX_FORMAT_INLINE_ALLOWED, xx_format_is_savedskf_device,
-    xx_savedskf, device, value, result, XX_FORMAT_REQUIRE_DEVICE, check_is_valid)
+XX_FORMAT_READER_ADAPTER(XX_FORMAT_INLINE_ALLOWED, xx_format_is_savedskf_device, xx_savedskf, device, value, result, XX_FORMAT_REQUIRE_DEVICE, check_is_valid)
 
-XX_FORMAT_READER_ADAPTER(XX_FORMAT_INLINE_ALLOWED, xx_format_is_gob_device,
-    xx_gob, device, value, result, XX_FORMAT_REQUIRE_DEVICE, check_is_valid)
+XX_FORMAT_READER_ADAPTER(XX_FORMAT_INLINE_ALLOWED, xx_format_is_gob_device, xx_gob, device, value, result, XX_FORMAT_REQUIRE_DEVICE, check_is_valid)
 
-XX_FORMAT_READER_ADAPTER(XX_FORMAT_INLINE_ALLOWED, xx_format_is_debugscr_device,
-    xx_debugscr, device, value, result, XX_FORMAT_REQUIRE_DEVICE, check_is_valid)
+XX_FORMAT_READER_ADAPTER(XX_FORMAT_INLINE_ALLOWED, xx_format_is_debugscr_device, xx_debugscr, device, value, result, XX_FORMAT_REQUIRE_DEVICE, check_is_valid)
 
-XX_FORMAT_READER_ADAPTER(XX_FORMAT_INLINE_ALLOWED, xx_format_is_dclft_device,
-    xx_dclft, device, value, result, XX_FORMAT_REQUIRE_DEVICE, check_is_valid)
+XX_FORMAT_READER_ADAPTER(XX_FORMAT_INLINE_ALLOWED, xx_format_is_dclft_device, xx_dclft, device, value, result, XX_FORMAT_REQUIRE_DEVICE, check_is_valid)
 
-XX_FORMAT_READER_ADAPTER(XX_FORMAT_INLINE_ALLOWED, xx_format_is_stuffit_device,
-    xx_stuffit, device, value, result, XX_FORMAT_REQUIRE_DEVICE, check_is_valid)
+XX_FORMAT_READER_ADAPTER(XX_FORMAT_INLINE_ALLOWED, xx_format_is_stuffit_device, xx_stuffit, device, value, result, XX_FORMAT_REQUIRE_DEVICE, check_is_valid)
 
-XX_FORMAT_READER_ADAPTER(XX_FORMAT_INLINE_ALLOWED, xx_format_is_binaryii_device,
-    xx_binaryii, device, value, result, XX_FORMAT_REQUIRE_DEVICE, check_is_valid)
+XX_FORMAT_READER_ADAPTER(XX_FORMAT_INLINE_ALLOWED, xx_format_is_binaryii_device, xx_binaryii, device, value, result, XX_FORMAT_REQUIRE_DEVICE, check_is_valid)
 
-XX_FORMAT_READER_ADAPTER(XX_FORMAT_INLINE_ALLOWED, xx_format_is_binhex_device,
-    xx_binhex, device, value, result, XX_FORMAT_REQUIRE_DEVICE, check_is_valid)
+XX_FORMAT_READER_ADAPTER(XX_FORMAT_INLINE_ALLOWED, xx_format_is_binhex_device, xx_binhex, device, value, result, XX_FORMAT_REQUIRE_DEVICE, check_is_valid)
 
-XX_FORMAT_READER_ADAPTER(XX_FORMAT_INLINE_ALLOWED, xx_format_is_pma_device,
-    xx_pma, device, value, result, XX_FORMAT_REQUIRE_DEVICE, check_is_valid)
+XX_FORMAT_READER_ADAPTER(XX_FORMAT_INLINE_ALLOWED, xx_format_is_pma_device, xx_pma, device, value, result, XX_FORMAT_REQUIRE_DEVICE, check_is_valid)
 
-XX_FORMAT_READER_ADAPTER(XX_FORMAT_INLINE_ALLOWED, xx_format_is_lzk00_device,
-    xx_lzk00, device, value, result, XX_FORMAT_REQUIRE_DEVICE, check_is_valid)
+XX_FORMAT_READER_ADAPTER(XX_FORMAT_INLINE_ALLOWED, xx_format_is_lzk00_device, xx_lzk00, device, value, result, XX_FORMAT_REQUIRE_DEVICE, check_is_valid)
 
-XX_FORMAT_READER_ADAPTER(XX_FORMAT_INLINE_ALLOWED, xx_format_is_compaqlzh_device,
-    xx_compaqlzh, device, value, result, XX_FORMAT_REQUIRE_DEVICE, check_is_valid)
+XX_FORMAT_READER_ADAPTER(XX_FORMAT_INLINE_ALLOWED, xx_format_is_compaqlzh_device, xx_compaqlzh, device, value, result, XX_FORMAT_REQUIRE_DEVICE, check_is_valid)
 
-XX_FORMAT_READER_ADAPTER(XX_FORMAT_INLINE_ALLOWED, xx_format_is_arcv_device,
-    xx_arcv, device, value, result, XX_FORMAT_REQUIRE_DEVICE, check_is_valid)
+XX_FORMAT_READER_ADAPTER(XX_FORMAT_INLINE_ALLOWED, xx_format_is_arcv_device, xx_arcv, device, value, result, XX_FORMAT_REQUIRE_DEVICE, check_is_valid)
 
-XX_FORMAT_READER_ADAPTER(XX_FORMAT_INLINE_ALLOWED, xx_format_is_lifkd_device,
-    xx_lifkd, device, value, result, XX_FORMAT_REQUIRE_DEVICE, check_is_valid)
+XX_FORMAT_READER_ADAPTER(XX_FORMAT_INLINE_ALLOWED, xx_format_is_lifkd_device, xx_lifkd, device, value, result, XX_FORMAT_REQUIRE_DEVICE, check_is_valid)
 
-XX_FORMAT_READER_ADAPTER(XX_FORMAT_INLINE_ALLOWED, xx_format_is_trdos_device,
-    xx_trdos, device, value, result, XX_FORMAT_REQUIRE_DEVICE, check_is_valid)
+XX_FORMAT_READER_ADAPTER(XX_FORMAT_INLINE_ALLOWED, xx_format_is_trdos_device, xx_trdos, device, value, result, XX_FORMAT_REQUIRE_DEVICE, check_is_valid)
 
-XX_FORMAT_READER_ADAPTER(XX_FORMAT_INLINE_ALLOWED, xx_format_is_squeeze1_device,
-    xx_squeeze1, device, value, result, XX_FORMAT_REQUIRE_DEVICE, check_is_valid)
+XX_FORMAT_READER_ADAPTER(XX_FORMAT_INLINE_ALLOWED, xx_format_is_squeeze1_device, xx_squeeze1, device, value, result, XX_FORMAT_REQUIRE_DEVICE, check_is_valid)
 
-XX_FORMAT_READER_ADAPTER(XX_FORMAT_INLINE_ALLOWED, xx_format_is_izpack_device,
-    xx_izpack, device, value, result, XX_FORMAT_REQUIRE_DEVICE, check_is_valid)
+XX_FORMAT_READER_ADAPTER(XX_FORMAT_INLINE_ALLOWED, xx_format_is_izpack_device, xx_izpack, device, value, result, XX_FORMAT_REQUIRE_DEVICE, check_is_valid)
 
-XX_FORMAT_READER_ADAPTER(XX_FORMAT_INLINE_ALLOWED, xx_format_is_is11_device,
-    xx_is11, device, value, result, XX_FORMAT_REQUIRE_DEVICE, check_is_valid)
+XX_FORMAT_READER_ADAPTER(XX_FORMAT_INLINE_ALLOWED, xx_format_is_is11_device, xx_is11, device, value, result, XX_FORMAT_REQUIRE_DEVICE, check_is_valid)
 
-XX_FORMAT_READER_ADAPTER(XX_FORMAT_INLINE_ALLOWED, xx_format_is_gksetup_device,
-    xx_gksetup, device, value, result, XX_FORMAT_REQUIRE_DEVICE, check_is_valid)
+XX_FORMAT_READER_ADAPTER(XX_FORMAT_INLINE_ALLOWED, xx_format_is_gksetup_device, xx_gksetup, device, value, result, XX_FORMAT_REQUIRE_DEVICE, check_is_valid)
 
-XX_FORMAT_READER_ADAPTER(XX_FORMAT_INLINE_ALLOWED, xx_format_is_pcinstall_device,
-    xx_pcinstall, device, value, result, XX_FORMAT_REQUIRE_DEVICE, check_is_valid)
+XX_FORMAT_READER_ADAPTER(XX_FORMAT_INLINE_ALLOWED, xx_format_is_pcinstall_device, xx_pcinstall, device, value, result, XX_FORMAT_REQUIRE_DEVICE, check_is_valid)
 
-XX_FORMAT_READER_ADAPTER(XX_FORMAT_INLINE_ALLOWED, xx_format_is_copyqm_device,
-    xx_copyqm, device, value, result, XX_FORMAT_REQUIRE_DEVICE, check_is_valid)
+XX_FORMAT_READER_ADAPTER(XX_FORMAT_INLINE_ALLOWED, xx_format_is_copyqm_device, xx_copyqm, device, value, result, XX_FORMAT_REQUIRE_DEVICE, check_is_valid)
 
-XX_FORMAT_READER_ADAPTER(XX_FORMAT_INLINE_ALLOWED, xx_format_is_teledisk_device,
-    xx_teledisk, device, value, result, XX_FORMAT_REQUIRE_DEVICE, check_is_valid)
+XX_FORMAT_READER_ADAPTER(XX_FORMAT_INLINE_ALLOWED, xx_format_is_teledisk_device, xx_teledisk, device, value, result, XX_FORMAT_REQUIRE_DEVICE, check_is_valid)
 
-XX_FORMAT_READER_ADAPTER(XX_FORMAT_INLINE_ALLOWED, xx_format_is_hfe_device,
-    xx_hfe, device, value, result, XX_FORMAT_REQUIRE_DEVICE, check_is_valid)
+XX_FORMAT_READER_ADAPTER(XX_FORMAT_INLINE_ALLOWED, xx_format_is_hfe_device, xx_hfe, device, value, result, XX_FORMAT_REQUIRE_DEVICE, check_is_valid)
 
-XX_FORMAT_READER_ADAPTER(XX_FORMAT_INLINE_ALLOWED, xx_format_is_fdi_device,
-    xx_fdi, device, value, result, XX_FORMAT_REQUIRE_DEVICE, check_is_valid)
+XX_FORMAT_READER_ADAPTER(XX_FORMAT_INLINE_ALLOWED, xx_format_is_fdi_device, xx_fdi, device, value, result, XX_FORMAT_REQUIRE_DEVICE, check_is_valid)
 
-XX_FORMAT_READER_ADAPTER(XX_FORMAT_INLINE_ALLOWED, xx_format_is_twoimg_device,
-    xx_twoimg, device, value, result, XX_FORMAT_REQUIRE_DEVICE, check_is_valid)
+XX_FORMAT_READER_ADAPTER(XX_FORMAT_INLINE_ALLOWED, xx_format_is_twoimg_device, xx_twoimg, device, value, result, XX_FORMAT_REQUIRE_DEVICE, check_is_valid)
 
-XX_FORMAT_READER_ADAPTER(XX_FORMAT_INLINE_ALLOWED, xx_format_is_imd_device,
-    xx_imd, device, value, result, XX_FORMAT_REQUIRE_DEVICE, check_is_valid)
+XX_FORMAT_READER_ADAPTER(XX_FORMAT_INLINE_ALLOWED, xx_format_is_imd_device, xx_imd, device, value, result, XX_FORMAT_REQUIRE_DEVICE, check_is_valid)
 
-XX_FORMAT_READER_ADAPTER(XX_FORMAT_INLINE_ALLOWED, xx_format_is_diskdupe_device,
-    xx_diskdupe, device, value, result, XX_FORMAT_REQUIRE_DEVICE, check_is_valid)
+XX_FORMAT_READER_ADAPTER(XX_FORMAT_INLINE_ALLOWED, xx_format_is_diskdupe_device, xx_diskdupe, device, value, result, XX_FORMAT_REQUIRE_DEVICE, check_is_valid)
 
-XX_FORMAT_READER_ADAPTER(XX_FORMAT_INLINE_ALLOWED, xx_format_is_pmdiskcopy_device,
-    xx_pmdiskcopy, device, value, result, XX_FORMAT_REQUIRE_DEVICE, check_is_valid)
+XX_FORMAT_READER_ADAPTER(XX_FORMAT_INLINE_ALLOWED, xx_format_is_pmdiskcopy_device, xx_pmdiskcopy, device, value, result, XX_FORMAT_REQUIRE_DEVICE, check_is_valid)
 
-XX_FORMAT_READER_ADAPTER(XX_FORMAT_INLINE_ALLOWED, xx_format_is_diskjuggler_device,
-    xx_diskjuggler, device, value, result, XX_FORMAT_REQUIRE_DEVICE, check_is_valid)
+XX_FORMAT_READER_ADAPTER(XX_FORMAT_INLINE_ALLOWED, xx_format_is_diskjuggler_device, xx_diskjuggler, device, value, result, XX_FORMAT_REQUIRE_DEVICE, check_is_valid)
 
-XX_FORMAT_READER_ADAPTER(XX_FORMAT_INLINE_ALLOWED, xx_format_is_copyqmexe_device,
-    xx_copyqmexe, device, value, result, XX_FORMAT_REQUIRE_DEVICE, check_is_valid)
+XX_FORMAT_READER_ADAPTER(XX_FORMAT_INLINE_ALLOWED, xx_format_is_copyqmexe_device, xx_copyqmexe, device, value, result, XX_FORMAT_REQUIRE_DEVICE, check_is_valid)
 
-XX_FORMAT_READER_ADAPTER(XX_FORMAT_INLINE_ALLOWED, xx_format_is_pax_device,
-    xx_pax, device, value, result, XX_FORMAT_REQUIRE_DEVICE, check_is_valid)
+XX_FORMAT_READER_ADAPTER(XX_FORMAT_INLINE_ALLOWED, xx_format_is_pax_device, xx_pax, device, value, result, XX_FORMAT_REQUIRE_DEVICE, check_is_valid)
 
-static bool xx_format_is_solarispkg_device(xx_io_device *device) {
+static bool xx_format_is_solarispkg_device(xx_io_device *device)
+{
     xx_solarispkg value;
     bool result;
     if (!device) return false;
@@ -2439,16 +2172,15 @@ static bool xx_format_is_solarispkg_device(xx_io_device *device) {
     /* The package reader intentionally accepts a recoverable prefix.  For
      * this early detector priority, require that the parsed stream reaches
      * EOF so a broken package cannot mask a ZIP in its remaining bytes. */
-    result = xx_solarispkg_handle_base_info(&value.format, NULL) &&
-             value.format.format_size == xx_io_total_size(device);
+    result = xx_solarispkg_handle_base_info(&value.format, NULL) && value.format.format_size == xx_io_total_size(device);
     xx_solarispkg_destroy(&value);
     return result;
 }
 
-XX_FORMAT_READER_ADAPTER(XX_FORMAT_INLINE_ALLOWED, xx_format_is_cpoint_device,
-    xx_cpoint, device, value, result, XX_FORMAT_REQUIRE_DEVICE, check_is_valid)
+XX_FORMAT_READER_ADAPTER(XX_FORMAT_INLINE_ALLOWED, xx_format_is_cpoint_device, xx_cpoint, device, value, result, XX_FORMAT_REQUIRE_DEVICE, check_is_valid)
 
-static bool xx_format_is_elm_device(xx_io_device *device) {
+static bool xx_format_is_elm_device(xx_io_device *device)
+{
     xx_elm value;
     bool result;
 
@@ -2458,371 +2190,256 @@ static bool xx_format_is_elm_device(xx_io_device *device) {
     return result;
 }
 
-XX_FORMAT_READER_ADAPTER(XX_FORMAT_INLINE_ALLOWED, xx_format_is_beospkg_device,
-    xx_beospkg, device, value, result, XX_FORMAT_REQUIRE_DEVICE, check_is_valid)
+XX_FORMAT_READER_ADAPTER(XX_FORMAT_INLINE_ALLOWED, xx_format_is_beospkg_device, xx_beospkg, device, value, result, XX_FORMAT_REQUIRE_DEVICE, check_is_valid)
 
-XX_FORMAT_READER_ADAPTER(XX_FORMAT_INLINE_ALLOWED, xx_format_is_vmspcsi_device,
-    xx_vmspcsi, device, value, result, XX_FORMAT_REQUIRE_DEVICE, check_is_valid)
+XX_FORMAT_READER_ADAPTER(XX_FORMAT_INLINE_ALLOWED, xx_format_is_vmspcsi_device, xx_vmspcsi, device, value, result, XX_FORMAT_REQUIRE_DEVICE, check_is_valid)
 
-XX_FORMAT_READER_ADAPTER(XX_FORMAT_INLINE_ALLOWED, xx_format_is_vmsdb_device,
-    xx_vmsdb, device, value, result, XX_FORMAT_REQUIRE_DEVICE, check_is_valid)
+XX_FORMAT_READER_ADAPTER(XX_FORMAT_INLINE_ALLOWED, xx_format_is_vmsdb_device, xx_vmsdb, device, value, result, XX_FORMAT_REQUIRE_DEVICE, check_is_valid)
 
-XX_FORMAT_READER_ADAPTER(XX_FORMAT_INLINE_ALLOWED, xx_format_is_pcxlib_device,
-    xx_pcxlib, device, value, result, XX_FORMAT_REQUIRE_DEVICE, check_is_valid)
+XX_FORMAT_READER_ADAPTER(XX_FORMAT_INLINE_ALLOWED, xx_format_is_pcxlib_device, xx_pcxlib, device, value, result, XX_FORMAT_REQUIRE_DEVICE, check_is_valid)
 
-XX_FORMAT_READER_ADAPTER(XX_FORMAT_INLINE_ALLOWED, xx_format_is_hog2_device,
-    xx_hog2, device, value, result, XX_FORMAT_REQUIRE_DEVICE, check_is_valid)
+XX_FORMAT_READER_ADAPTER(XX_FORMAT_INLINE_ALLOWED, xx_format_is_hog2_device, xx_hog2, device, value, result, XX_FORMAT_REQUIRE_DEVICE, check_is_valid)
 
-XX_FORMAT_READER_ADAPTER(XX_FORMAT_INLINE_ALLOWED, xx_format_is_sinner_device,
-    xx_sinner, device, value, result, XX_FORMAT_REQUIRE_DEVICE, check_is_valid)
+XX_FORMAT_READER_ADAPTER(XX_FORMAT_INLINE_ALLOWED, xx_format_is_sinner_device, xx_sinner, device, value, result, XX_FORMAT_REQUIRE_DEVICE, check_is_valid)
 
-XX_FORMAT_READER_ADAPTER(XX_FORMAT_INLINE_ALLOWED, xx_format_is_psn_device,
-    xx_psn, device, value, result, XX_FORMAT_REQUIRE_DEVICE, check_is_valid)
+XX_FORMAT_READER_ADAPTER(XX_FORMAT_INLINE_ALLOWED, xx_format_is_psn_device, xx_psn, device, value, result, XX_FORMAT_REQUIRE_DEVICE, check_is_valid)
 
-XX_FORMAT_READER_ADAPTER(XX_FORMAT_INLINE_ALLOWED, xx_format_is_grasp_device,
-    xx_grasp, device, value, result, XX_FORMAT_REQUIRE_DEVICE, check_is_valid)
+XX_FORMAT_READER_ADAPTER(XX_FORMAT_INLINE_ALLOWED, xx_format_is_grasp_device, xx_grasp, device, value, result, XX_FORMAT_REQUIRE_DEVICE, check_is_valid)
 
-XX_FORMAT_READER_ADAPTER(XX_FORMAT_INLINE_ALLOWED, xx_format_is_megatechvol_device,
-    xx_megatechvol, device, value, result, XX_FORMAT_REQUIRE_DEVICE, check_is_valid)
+XX_FORMAT_READER_ADAPTER(XX_FORMAT_INLINE_ALLOWED, xx_format_is_megatechvol_device, xx_megatechvol, device, value, result, XX_FORMAT_REQUIRE_DEVICE, check_is_valid)
 
-XX_FORMAT_READER_ADAPTER(XX_FORMAT_INLINE_ALLOWED, xx_format_is_stunts_device,
-    xx_stunts, device, value, result, XX_FORMAT_REQUIRE_DEVICE, check_is_valid)
+XX_FORMAT_READER_ADAPTER(XX_FORMAT_INLINE_ALLOWED, xx_format_is_stunts_device, xx_stunts, device, value, result, XX_FORMAT_REQUIRE_DEVICE, check_is_valid)
 
-XX_FORMAT_READER_ADAPTER(XX_FORMAT_INLINE_ALLOWED, xx_format_is_notetab_device,
-    xx_notetab, device, value, result, XX_FORMAT_REQUIRE_DEVICE, check_is_valid)
+XX_FORMAT_READER_ADAPTER(XX_FORMAT_INLINE_ALLOWED, xx_format_is_notetab_device, xx_notetab, device, value, result, XX_FORMAT_REQUIRE_DEVICE, check_is_valid)
 
-XX_FORMAT_READER_ADAPTER(XX_FORMAT_INLINE_ALLOWED, xx_format_is_mcc_device,
-    xx_mcc, device, value, result, XX_FORMAT_REQUIRE_DEVICE, check_is_valid)
+XX_FORMAT_READER_ADAPTER(XX_FORMAT_INLINE_ALLOWED, xx_format_is_mcc_device, xx_mcc, device, value, result, XX_FORMAT_REQUIRE_DEVICE, check_is_valid)
 
-XX_FORMAT_READER_ADAPTER(XX_FORMAT_INLINE_ALLOWED, xx_format_is_tnef_device,
-    xx_tnef, device, value, result, XX_FORMAT_REQUIRE_DEVICE, check_is_valid)
+XX_FORMAT_READER_ADAPTER(XX_FORMAT_INLINE_ALLOWED, xx_format_is_tnef_device, xx_tnef, device, value, result, XX_FORMAT_REQUIRE_DEVICE, check_is_valid)
 
-XX_FORMAT_READER_ADAPTER(XX_FORMAT_INLINE_ALLOWED, xx_format_is_opc_device,
-    xx_opc, device, value, result, XX_FORMAT_REQUIRE_DEVICE, check_is_valid)
+XX_FORMAT_READER_ADAPTER(XX_FORMAT_INLINE_ALLOWED, xx_format_is_opc_device, xx_opc, device, value, result, XX_FORMAT_REQUIRE_DEVICE, check_is_valid)
 
-XX_FORMAT_READER_ADAPTER(XX_FORMAT_INLINE_ALLOWED, xx_format_is_qrst_device,
-    xx_qrst, device, value, result, XX_FORMAT_REQUIRE_DEVICE, check_is_valid)
+XX_FORMAT_READER_ADAPTER(XX_FORMAT_INLINE_ALLOWED, xx_format_is_qrst_device, xx_qrst, device, value, result, XX_FORMAT_REQUIRE_DEVICE, check_is_valid)
 
-XX_FORMAT_READER_ADAPTER(XX_FORMAT_INLINE_ALLOWED, xx_format_is_pain_device,
-    xx_pain, device, value, result, XX_FORMAT_REQUIRE_DEVICE, check_is_valid)
+XX_FORMAT_READER_ADAPTER(XX_FORMAT_INLINE_ALLOWED, xx_format_is_pain_device, xx_pain, device, value, result, XX_FORMAT_REQUIRE_DEVICE, check_is_valid)
 
-XX_FORMAT_READER_ADAPTER(XX_FORMAT_INLINE_ALLOWED, xx_format_is_xlas_device,
-    xx_xlas, device, value, result, XX_FORMAT_REQUIRE_DEVICE, check_is_valid)
+XX_FORMAT_READER_ADAPTER(XX_FORMAT_INLINE_ALLOWED, xx_format_is_xlas_device, xx_xlas, device, value, result, XX_FORMAT_REQUIRE_DEVICE, check_is_valid)
 
-XX_FORMAT_READER_ADAPTER(XX_FORMAT_INLINE_ALLOWED, xx_format_is_mdcd_device,
-    xx_mdcd, device, value, result, XX_FORMAT_REQUIRE_DEVICE, check_is_valid)
+XX_FORMAT_READER_ADAPTER(XX_FORMAT_INLINE_ALLOWED, xx_format_is_mdcd_device, xx_mdcd, device, value, result, XX_FORMAT_REQUIRE_DEVICE, check_is_valid)
 
-XX_FORMAT_READER_ADAPTER(XX_FORMAT_INLINE_ALLOWED, xx_format_is_ssm_device,
-    xx_ssm, device, value, result, XX_FORMAT_REQUIRE_DEVICE, check_is_valid)
+XX_FORMAT_READER_ADAPTER(XX_FORMAT_INLINE_ALLOWED, xx_format_is_ssm_device, xx_ssm, device, value, result, XX_FORMAT_REQUIRE_DEVICE, check_is_valid)
 
-XX_FORMAT_READER_ADAPTER(XX_FORMAT_INLINE_ALLOWED, xx_format_is_bvrp_device,
-    xx_bvrp, device, value, result, XX_FORMAT_REQUIRE_DEVICE, check_is_valid)
+XX_FORMAT_READER_ADAPTER(XX_FORMAT_INLINE_ALLOWED, xx_format_is_bvrp_device, xx_bvrp, device, value, result, XX_FORMAT_REQUIRE_DEVICE, check_is_valid)
 
-XX_FORMAT_READER_ADAPTER(XX_FORMAT_INLINE_ALLOWED, xx_format_is_bcw_device,
-    xx_bcw, device, value, result, XX_FORMAT_REQUIRE_DEVICE, check_is_valid)
+XX_FORMAT_READER_ADAPTER(XX_FORMAT_INLINE_ALLOWED, xx_format_is_bcw_device, xx_bcw, device, value, result, XX_FORMAT_REQUIRE_DEVICE, check_is_valid)
 
-XX_FORMAT_READER_ADAPTER(XX_FORMAT_INLINE_ALLOWED, xx_format_is_scf_device,
-    xx_scf, device, value, result, XX_FORMAT_REQUIRE_DEVICE, check_is_valid)
+XX_FORMAT_READER_ADAPTER(XX_FORMAT_INLINE_ALLOWED, xx_format_is_scf_device, xx_scf, device, value, result, XX_FORMAT_REQUIRE_DEVICE, check_is_valid)
 
-XX_FORMAT_READER_ADAPTER(XX_FORMAT_INLINE_ALLOWED, xx_format_is_recognita_device,
-    xx_recognita, device, value, result, XX_FORMAT_REQUIRE_DEVICE, check_is_valid)
+XX_FORMAT_READER_ADAPTER(XX_FORMAT_INLINE_ALLOWED, xx_format_is_recognita_device, xx_recognita, device, value, result, XX_FORMAT_REQUIRE_DEVICE, check_is_valid)
 
-XX_FORMAT_READER_ADAPTER(XX_FORMAT_INLINE_ALLOWED, xx_format_is_jasc_device,
-    xx_jasc, device, value, result, XX_FORMAT_REQUIRE_DEVICE, check_is_valid)
+XX_FORMAT_READER_ADAPTER(XX_FORMAT_INLINE_ALLOWED, xx_format_is_jasc_device, xx_jasc, device, value, result, XX_FORMAT_REQUIRE_DEVICE, check_is_valid)
 
-XX_FORMAT_READER_ADAPTER(XX_FORMAT_INLINE_ALLOWED, xx_format_is_binder_device,
-    xx_binder, device, value, result, XX_FORMAT_REQUIRE_DEVICE, check_is_valid)
+XX_FORMAT_READER_ADAPTER(XX_FORMAT_INLINE_ALLOWED, xx_format_is_binder_device, xx_binder, device, value, result, XX_FORMAT_REQUIRE_DEVICE, check_is_valid)
 
-XX_FORMAT_READER_ADAPTER(XX_FORMAT_INLINE_ALLOWED, xx_format_is_csidos_device,
-    xx_csidos, device, value, result, XX_FORMAT_REQUIRE_DEVICE, check_is_valid)
+XX_FORMAT_READER_ADAPTER(XX_FORMAT_INLINE_ALLOWED, xx_format_is_csidos_device, xx_csidos, device, value, result, XX_FORMAT_REQUIRE_DEVICE, check_is_valid)
 
-XX_FORMAT_READER_ADAPTER(XX_FORMAT_INLINE_ALLOWED, xx_format_is_cat_device,
-    xx_cat, device, value, result, XX_FORMAT_REQUIRE_DEVICE, check_is_valid)
+XX_FORMAT_READER_ADAPTER(XX_FORMAT_INLINE_ALLOWED, xx_format_is_cat_device, xx_cat, device, value, result, XX_FORMAT_REQUIRE_DEVICE, check_is_valid)
 
-XX_FORMAT_READER_ADAPTER(XX_FORMAT_INLINE_ALLOWED, xx_format_is_bnd_device,
-    xx_bnd, device, value, result, XX_FORMAT_REQUIRE_DEVICE, check_is_valid)
+XX_FORMAT_READER_ADAPTER(XX_FORMAT_INLINE_ALLOWED, xx_format_is_bnd_device, xx_bnd, device, value, result, XX_FORMAT_REQUIRE_DEVICE, check_is_valid)
 
-XX_FORMAT_READER_ADAPTER(XX_FORMAT_INLINE_ALLOWED, xx_format_is_smsipak_device,
-    xx_smsipak, device, value, result, XX_FORMAT_REQUIRE_DEVICE, check_is_valid)
+XX_FORMAT_READER_ADAPTER(XX_FORMAT_INLINE_ALLOWED, xx_format_is_smsipak_device, xx_smsipak, device, value, result, XX_FORMAT_REQUIRE_DEVICE, check_is_valid)
 
-XX_FORMAT_READER_ADAPTER(XX_FORMAT_INLINE_ALLOWED, xx_format_is_cpx_device,
-    xx_cpx, device, value, result, XX_FORMAT_REQUIRE_DEVICE, check_is_valid)
+XX_FORMAT_READER_ADAPTER(XX_FORMAT_INLINE_ALLOWED, xx_format_is_cpx_device, xx_cpx, device, value, result, XX_FORMAT_REQUIRE_DEVICE, check_is_valid)
 
-XX_FORMAT_READER_ADAPTER(XX_FORMAT_INLINE_ALLOWED, xx_format_is_diskexpress_device,
-    xx_diskexpress, device, value, result, XX_FORMAT_REQUIRE_DEVICE, check_is_valid)
+XX_FORMAT_READER_ADAPTER(XX_FORMAT_INLINE_ALLOWED, xx_format_is_diskexpress_device, xx_diskexpress, device, value, result, XX_FORMAT_REQUIRE_DEVICE, check_is_valid)
 
-XX_FORMAT_READER_ADAPTER(XX_FORMAT_INLINE_ALLOWED, xx_format_is_red_device,
-    xx_red, device, value, result, XX_FORMAT_REQUIRE_DEVICE, check_is_valid)
+XX_FORMAT_READER_ADAPTER(XX_FORMAT_INLINE_ALLOWED, xx_format_is_red_device, xx_red, device, value, result, XX_FORMAT_REQUIRE_DEVICE, check_is_valid)
 
-XX_FORMAT_READER_ADAPTER(XX_FORMAT_INLINE_ALLOWED, xx_format_is_shrinkwrap_device,
-    xx_shrinkwrap, device, value, result, XX_FORMAT_REQUIRE_DEVICE, check_is_valid)
+XX_FORMAT_READER_ADAPTER(XX_FORMAT_INLINE_ALLOWED, xx_format_is_shrinkwrap_device, xx_shrinkwrap, device, value, result, XX_FORMAT_REQUIRE_DEVICE, check_is_valid)
 
-XX_FORMAT_READER_ADAPTER(XX_FORMAT_INLINE_ALLOWED, xx_format_is_gxl_device,
-    xx_gxl, device, value, result, XX_FORMAT_REQUIRE_DEVICE, check_is_valid)
+XX_FORMAT_READER_ADAPTER(XX_FORMAT_INLINE_ALLOWED, xx_format_is_gxl_device, xx_gxl, device, value, result, XX_FORMAT_REQUIRE_DEVICE, check_is_valid)
 
-XX_FORMAT_READER_ADAPTER(XX_FORMAT_INLINE_ALLOWED, xx_format_is_aiaff_device,
-    xx_aiaff, device, value, result, XX_FORMAT_REQUIRE_DEVICE, check_is_valid)
+XX_FORMAT_READER_ADAPTER(XX_FORMAT_INLINE_ALLOWED, xx_format_is_aiaff_device, xx_aiaff, device, value, result, XX_FORMAT_REQUIRE_DEVICE, check_is_valid)
 
-XX_FORMAT_READER_ADAPTER(XX_FORMAT_INLINE_ALLOWED, xx_format_is_softpaq2_device,
-    xx_softpaq2, device, value, result, XX_FORMAT_REQUIRE_DEVICE, check_is_valid)
+XX_FORMAT_READER_ADAPTER(XX_FORMAT_INLINE_ALLOWED, xx_format_is_softpaq2_device, xx_softpaq2, device, value, result, XX_FORMAT_REQUIRE_DEVICE, check_is_valid)
 
-XX_FORMAT_READER_ADAPTER(XX_FORMAT_INLINE_ALLOWED, xx_format_is_wim_device,
-    xx_wim, device, value, result, XX_FORMAT_REQUIRE_DEVICE, check_is_valid)
+XX_FORMAT_READER_ADAPTER(XX_FORMAT_INLINE_ALLOWED, xx_format_is_wim_device, xx_wim, device, value, result, XX_FORMAT_REQUIRE_DEVICE, check_is_valid)
 
-XX_FORMAT_READER_ADAPTER(XX_FORMAT_INLINE_ALLOWED, xx_format_is_vhddynamic_device,
-    xx_vhddynamic, device, value, result, XX_FORMAT_REQUIRE_DEVICE, check_is_valid)
+XX_FORMAT_READER_ADAPTER(XX_FORMAT_INLINE_ALLOWED, xx_format_is_vhddynamic_device, xx_vhddynamic, device, value, result, XX_FORMAT_REQUIRE_DEVICE, check_is_valid)
 
-XX_FORMAT_READER_ADAPTER(XX_FORMAT_INLINE_ALLOWED, xx_format_is_vmdk_device,
-    xx_vmdk, device, value, result, XX_FORMAT_REQUIRE_DEVICE, check_is_valid)
+XX_FORMAT_READER_ADAPTER(XX_FORMAT_INLINE_ALLOWED, xx_format_is_vmdk_device, xx_vmdk, device, value, result, XX_FORMAT_REQUIRE_DEVICE, check_is_valid)
 
-XX_FORMAT_READER_ADAPTER(XX_FORMAT_INLINE_ALLOWED, xx_format_is_ciso_device,
-    xx_ciso, device, value, result, XX_FORMAT_REQUIRE_DEVICE, check_is_valid)
+XX_FORMAT_READER_ADAPTER(XX_FORMAT_INLINE_ALLOWED, xx_format_is_ciso_device, xx_ciso, device, value, result, XX_FORMAT_REQUIRE_DEVICE, check_is_valid)
 
-XX_FORMAT_READER_ADAPTER(XX_FORMAT_INLINE_ALLOWED, xx_format_is_copydisk_device,
-    xx_copydisk, device, value, result, XX_FORMAT_REQUIRE_DEVICE, check_is_valid)
+XX_FORMAT_READER_ADAPTER(XX_FORMAT_INLINE_ALLOWED, xx_format_is_copydisk_device, xx_copydisk, device, value, result, XX_FORMAT_REQUIRE_DEVICE, check_is_valid)
 
-XX_FORMAT_READER_ADAPTER(XX_FORMAT_INLINE_ALLOWED, xx_format_is_hdcopy_device,
-    xx_hdcopy, device, value, result, XX_FORMAT_REQUIRE_DEVICE, check_is_valid)
+XX_FORMAT_READER_ADAPTER(XX_FORMAT_INLINE_ALLOWED, xx_format_is_hdcopy_device, xx_hdcopy, device, value, result, XX_FORMAT_REQUIRE_DEVICE, check_is_valid)
 
-XX_FORMAT_READER_ADAPTER(XX_FORMAT_INLINE_ALLOWED, xx_format_is_apricot_device,
-    xx_apricot, device, value, result, XX_FORMAT_REQUIRE_DEVICE, check_is_valid)
+XX_FORMAT_READER_ADAPTER(XX_FORMAT_INLINE_ALLOWED, xx_format_is_apricot_device, xx_apricot, device, value, result, XX_FORMAT_REQUIRE_DEVICE, check_is_valid)
 
-XX_FORMAT_READER_ADAPTER(XX_FORMAT_INLINE_ALLOWED, xx_format_is_sabdu_device,
-    xx_sabdu, device, value, result, XX_FORMAT_REQUIRE_DEVICE, check_is_valid)
+XX_FORMAT_READER_ADAPTER(XX_FORMAT_INLINE_ALLOWED, xx_format_is_sabdu_device, xx_sabdu, device, value, result, XX_FORMAT_REQUIRE_DEVICE, check_is_valid)
 
-XX_FORMAT_READER_ADAPTER(XX_FORMAT_INLINE_ALLOWED, xx_format_is_mpq_device,
-    xx_mpq, device, value, result, XX_FORMAT_REQUIRE_DEVICE, check_is_valid)
+XX_FORMAT_READER_ADAPTER(XX_FORMAT_INLINE_ALLOWED, xx_format_is_mpq_device, xx_mpq, device, value, result, XX_FORMAT_REQUIRE_DEVICE, check_is_valid)
 
-XX_FORMAT_READER_ADAPTER(XX_FORMAT_INLINE_ALLOWED, xx_format_is_phar_device,
-    xx_phar, device, value, result, XX_FORMAT_REQUIRE_DEVICE, check_is_valid)
+XX_FORMAT_READER_ADAPTER(XX_FORMAT_INLINE_ALLOWED, xx_format_is_phar_device, xx_phar, device, value, result, XX_FORMAT_REQUIRE_DEVICE, check_is_valid)
 
-XX_FORMAT_READER_ADAPTER(XX_FORMAT_INLINE_ALLOWED, xx_format_is_sq_device,
-    xx_sq, device, value, result, XX_FORMAT_REQUIRE_DEVICE, check_is_valid)
+XX_FORMAT_READER_ADAPTER(XX_FORMAT_INLINE_ALLOWED, xx_format_is_sq_device, xx_sq, device, value, result, XX_FORMAT_REQUIRE_DEVICE, check_is_valid)
 
-XX_FORMAT_READER_ADAPTER(XX_FORMAT_INLINE_ALLOWED, xx_format_is_squeeze2_device,
-    xx_squeeze2, device, value, result, XX_FORMAT_REQUIRE_DEVICE, check_is_valid)
+XX_FORMAT_READER_ADAPTER(XX_FORMAT_INLINE_ALLOWED, xx_format_is_squeeze2_device, xx_squeeze2, device, value, result, XX_FORMAT_REQUIRE_DEVICE, check_is_valid)
 
-XX_FORMAT_READER_ADAPTER(XX_FORMAT_INLINE_ALLOWED, xx_format_is_dbz_device,
-    xx_dbz, device, value, result, XX_FORMAT_REQUIRE_DEVICE, check_is_valid)
+XX_FORMAT_READER_ADAPTER(XX_FORMAT_INLINE_ALLOWED, xx_format_is_dbz_device, xx_dbz, device, value, result, XX_FORMAT_REQUIRE_DEVICE, check_is_valid)
 
-XX_FORMAT_READER_ADAPTER(XX_FORMAT_INLINE_ALLOWED, xx_format_is_stac_device,
-    xx_stac, device, value, result, XX_FORMAT_REQUIRE_DEVICE, check_is_valid)
+XX_FORMAT_READER_ADAPTER(XX_FORMAT_INLINE_ALLOWED, xx_format_is_stac_device, xx_stac, device, value, result, XX_FORMAT_REQUIRE_DEVICE, check_is_valid)
 
-XX_FORMAT_READER_ADAPTER(XX_FORMAT_INLINE_ALLOWED, xx_format_is_spk_device,
-    xx_spk, device, value, result, XX_FORMAT_REQUIRE_DEVICE, check_is_valid)
+XX_FORMAT_READER_ADAPTER(XX_FORMAT_INLINE_ALLOWED, xx_format_is_spk_device, xx_spk, device, value, result, XX_FORMAT_REQUIRE_DEVICE, check_is_valid)
 
-XX_FORMAT_READER_ADAPTER(XX_FORMAT_INLINE_ALLOWED, xx_format_is_wrzl_device,
-    xx_wrzl, device, value, result, XX_FORMAT_REQUIRE_DEVICE, check_is_valid)
+XX_FORMAT_READER_ADAPTER(XX_FORMAT_INLINE_ALLOWED, xx_format_is_wrzl_device, xx_wrzl, device, value, result, XX_FORMAT_REQUIRE_DEVICE, check_is_valid)
 
-XX_FORMAT_READER_ADAPTER(XX_FORMAT_INLINE_ALLOWED, xx_format_is_bagf_device,
-    xx_bagf, device, value, result, XX_FORMAT_REQUIRE_DEVICE, check_is_valid)
+XX_FORMAT_READER_ADAPTER(XX_FORMAT_INLINE_ALLOWED, xx_format_is_bagf_device, xx_bagf, device, value, result, XX_FORMAT_REQUIRE_DEVICE, check_is_valid)
 
-XX_FORMAT_READER_ADAPTER(XX_FORMAT_INLINE_ALLOWED, xx_format_is_emt_device,
-    xx_emt, device, value, result, XX_FORMAT_REQUIRE_DEVICE, check_is_valid)
+XX_FORMAT_READER_ADAPTER(XX_FORMAT_INLINE_ALLOWED, xx_format_is_emt_device, xx_emt, device, value, result, XX_FORMAT_REQUIRE_DEVICE, check_is_valid)
 
-XX_FORMAT_READER_ADAPTER(XX_FORMAT_INLINE_ALLOWED, xx_format_is_qip2_device,
-    xx_qip2, device, value, result, XX_FORMAT_REQUIRE_DEVICE, check_is_valid)
+XX_FORMAT_READER_ADAPTER(XX_FORMAT_INLINE_ALLOWED, xx_format_is_qip2_device, xx_qip2, device, value, result, XX_FORMAT_REQUIRE_DEVICE, check_is_valid)
 
-XX_FORMAT_READER_ADAPTER(XX_FORMAT_INLINE_ALLOWED, xx_format_is_lif_device,
-    xx_lif, device, value, result, XX_FORMAT_REQUIRE_DEVICE, check_is_valid)
+XX_FORMAT_READER_ADAPTER(XX_FORMAT_INLINE_ALLOWED, xx_format_is_lif_device, xx_lif, device, value, result, XX_FORMAT_REQUIRE_DEVICE, check_is_valid)
 
-XX_FORMAT_READER_ADAPTER(XX_FORMAT_INLINE_ALLOWED, xx_format_is_ixa_device,
-    xx_ixa, device, value, result, XX_FORMAT_REQUIRE_DEVICE, check_is_valid)
+XX_FORMAT_READER_ADAPTER(XX_FORMAT_INLINE_ALLOWED, xx_format_is_ixa_device, xx_ixa, device, value, result, XX_FORMAT_REQUIRE_DEVICE, check_is_valid)
 
-XX_FORMAT_READER_ADAPTER(XX_FORMAT_INLINE_ALLOWED, xx_format_is_lspack10_device,
-    xx_lspack10, device, value, result, XX_FORMAT_REQUIRE_DEVICE, check_is_valid)
+XX_FORMAT_READER_ADAPTER(XX_FORMAT_INLINE_ALLOWED, xx_format_is_lspack10_device, xx_lspack10, device, value, result, XX_FORMAT_REQUIRE_DEVICE, check_is_valid)
 
-XX_FORMAT_READER_ADAPTER(XX_FORMAT_INLINE_ALLOWED, xx_format_is_starkit_device,
-    xx_starkit, device, value, result, XX_FORMAT_REQUIRE_DEVICE, check_is_valid)
+XX_FORMAT_READER_ADAPTER(XX_FORMAT_INLINE_ALLOWED, xx_format_is_starkit_device, xx_starkit, device, value, result, XX_FORMAT_REQUIRE_DEVICE, check_is_valid)
 
-XX_FORMAT_READER_ADAPTER(XX_FORMAT_INLINE_ALLOWED, xx_format_is_paperport_device,
-    xx_paperport, device, value, result, XX_FORMAT_REQUIRE_DEVICE, check_is_valid)
+XX_FORMAT_READER_ADAPTER(XX_FORMAT_INLINE_ALLOWED, xx_format_is_paperport_device, xx_paperport, device, value, result, XX_FORMAT_REQUIRE_DEVICE, check_is_valid)
 
-XX_FORMAT_READER_ADAPTER(XX_FORMAT_INLINE_ALLOWED, xx_format_is_rnca_device,
-    xx_rnca, device, value, result, XX_FORMAT_REQUIRE_DEVICE, check_is_valid)
+XX_FORMAT_READER_ADAPTER(XX_FORMAT_INLINE_ALLOWED, xx_format_is_rnca_device, xx_rnca, device, value, result, XX_FORMAT_REQUIRE_DEVICE, check_is_valid)
 
-XX_FORMAT_READER_ADAPTER(XX_FORMAT_INLINE_ALLOWED, xx_format_is_hog_device,
-    xx_hog, device, value, result, XX_FORMAT_REQUIRE_DEVICE, check_is_valid)
+XX_FORMAT_READER_ADAPTER(XX_FORMAT_INLINE_ALLOWED, xx_format_is_hog_device, xx_hog, device, value, result, XX_FORMAT_REQUIRE_DEVICE, check_is_valid)
 
-XX_FORMAT_READER_ADAPTER(XX_FORMAT_INLINE_ALLOWED, xx_format_is_agis_device,
-    xx_agis, device, value, result, XX_FORMAT_REQUIRE_DEVICE, check_is_valid)
+XX_FORMAT_READER_ADAPTER(XX_FORMAT_INLINE_ALLOWED, xx_format_is_agis_device, xx_agis, device, value, result, XX_FORMAT_REQUIRE_DEVICE, check_is_valid)
 
-XX_FORMAT_READER_ADAPTER(XX_FORMAT_INLINE_ALLOWED, xx_format_is_volitionvpft_device,
-    xx_volitionvpft, device, value, result, XX_FORMAT_REQUIRE_DEVICE, check_is_valid)
+XX_FORMAT_READER_ADAPTER(XX_FORMAT_INLINE_ALLOWED, xx_format_is_volitionvpft_device, xx_volitionvpft, device, value, result, XX_FORMAT_REQUIRE_DEVICE, check_is_valid)
 
-XX_FORMAT_READER_ADAPTER(XX_FORMAT_INLINE_ALLOWED, xx_format_is_wintermutedcp_device,
-    xx_wintermutedcp, device, value, result, XX_FORMAT_REQUIRE_DEVICE, check_is_valid)
+XX_FORMAT_READER_ADAPTER(XX_FORMAT_INLINE_ALLOWED, xx_format_is_wintermutedcp_device, xx_wintermutedcp, device, value, result, XX_FORMAT_REQUIRE_DEVICE, check_is_valid)
 
-XX_FORMAT_READER_ADAPTER(XX_FORMAT_INLINE_ALLOWED, xx_format_is_bsn_device,
-    xx_bsn, device, value, result, XX_FORMAT_REQUIRE_DEVICE, check_is_valid)
+XX_FORMAT_READER_ADAPTER(XX_FORMAT_INLINE_ALLOWED, xx_format_is_bsn_device, xx_bsn, device, value, result, XX_FORMAT_REQUIRE_DEVICE, check_is_valid)
 
-XX_FORMAT_READER_ADAPTER(XX_FORMAT_INLINE_ALLOWED, xx_format_is_res_device,
-    xx_res, device, value, result, XX_FORMAT_REQUIRE_DEVICE, check_is_valid)
+XX_FORMAT_READER_ADAPTER(XX_FORMAT_INLINE_ALLOWED, xx_format_is_res_device, xx_res, device, value, result, XX_FORMAT_REQUIRE_DEVICE, check_is_valid)
 
-XX_FORMAT_READER_ADAPTER(XX_FORMAT_INLINE_ALLOWED, xx_format_is_rsc_device,
-    xx_rsc, device, value, result, XX_FORMAT_REQUIRE_DEVICE, check_is_valid)
+XX_FORMAT_READER_ADAPTER(XX_FORMAT_INLINE_ALLOWED, xx_format_is_rsc_device, xx_rsc, device, value, result, XX_FORMAT_REQUIRE_DEVICE, check_is_valid)
 
-XX_FORMAT_READER_ADAPTER(XX_FORMAT_INLINE_ALLOWED, xx_format_is_teacy_device,
-    xx_teacy, device, value, result, XX_FORMAT_REQUIRE_DEVICE, check_is_valid)
+XX_FORMAT_READER_ADAPTER(XX_FORMAT_INLINE_ALLOWED, xx_format_is_teacy_device, xx_teacy, device, value, result, XX_FORMAT_REQUIRE_DEVICE, check_is_valid)
 
-XX_FORMAT_READER_ADAPTER(XX_FORMAT_INLINE_ALLOWED, xx_format_is_settlersft_device,
-    xx_settlersft, device, value, result, XX_FORMAT_REQUIRE_DEVICE, check_is_valid)
+XX_FORMAT_READER_ADAPTER(XX_FORMAT_INLINE_ALLOWED, xx_format_is_settlersft_device, xx_settlersft, device, value, result, XX_FORMAT_REQUIRE_DEVICE, check_is_valid)
 
-XX_FORMAT_READER_ADAPTER(XX_FORMAT_INLINE_ALLOWED, xx_format_is_wolfft_device,
-    xx_wolfft, device, value, result, XX_FORMAT_REQUIRE_DEVICE, check_is_valid)
+XX_FORMAT_READER_ADAPTER(XX_FORMAT_INLINE_ALLOWED, xx_format_is_wolfft_device, xx_wolfft, device, value, result, XX_FORMAT_REQUIRE_DEVICE, check_is_valid)
 
-XX_FORMAT_READER_ADAPTER(XX_FORMAT_INLINE_ALLOWED, xx_format_is_boo_device,
-    xx_boo, device, value, result, XX_FORMAT_REQUIRE_DEVICE, check_is_valid)
+XX_FORMAT_READER_ADAPTER(XX_FORMAT_INLINE_ALLOWED, xx_format_is_boo_device, xx_boo, device, value, result, XX_FORMAT_REQUIRE_DEVICE, check_is_valid)
 
-XX_FORMAT_READER_ADAPTER(XX_FORMAT_INLINE_ALLOWED, xx_format_is_vmssaveset_device,
-    xx_vmssaveset, device, value, result, XX_FORMAT_REQUIRE_DEVICE, check_is_valid)
+XX_FORMAT_READER_ADAPTER(XX_FORMAT_INLINE_ALLOWED, xx_format_is_vmssaveset_device, xx_vmssaveset, device, value, result, XX_FORMAT_REQUIRE_DEVICE, check_is_valid)
 
-XX_FORMAT_READER_ADAPTER(XX_FORMAT_INLINE_ALLOWED, xx_format_is_rawstac_device,
-    xx_rawstac, device, value, result, XX_FORMAT_REQUIRE_DEVICE, check_is_valid)
+XX_FORMAT_READER_ADAPTER(XX_FORMAT_INLINE_ALLOWED, xx_format_is_rawstac_device, xx_rawstac, device, value, result, XX_FORMAT_REQUIRE_DEVICE, check_is_valid)
 
-XX_FORMAT_READER_ADAPTER(XX_FORMAT_INLINE_ALLOWED, xx_format_is_androidboot_device,
-    xx_androidboot, device, value, result, XX_FORMAT_REQUIRE_DEVICE, check_is_valid)
+XX_FORMAT_READER_ADAPTER(XX_FORMAT_INLINE_ALLOWED, xx_format_is_androidboot_device, xx_androidboot, device, value, result, XX_FORMAT_REQUIRE_DEVICE, check_is_valid)
 
-XX_FORMAT_READER_ADAPTER(XX_FORMAT_INLINE_ALLOWED, xx_format_is_arcadyan_device,
-    xx_arcadyan, device, value, result, XX_FORMAT_REQUIRE_DEVICE, check_is_valid)
+XX_FORMAT_READER_ADAPTER(XX_FORMAT_INLINE_ALLOWED, xx_format_is_arcadyan_device, xx_arcadyan, device, value, result, XX_FORMAT_REQUIRE_DEVICE, check_is_valid)
 
-XX_FORMAT_READER_ADAPTER(XX_FORMAT_INLINE_ALLOWED, xx_format_is_autel_device,
-    xx_autel, device, value, result, XX_FORMAT_REQUIRE_DEVICE, check_is_valid)
+XX_FORMAT_READER_ADAPTER(XX_FORMAT_INLINE_ALLOWED, xx_format_is_autel_device, xx_autel, device, value, result, XX_FORMAT_REQUIRE_DEVICE, check_is_valid)
 
-XX_FORMAT_READER_ADAPTER(XX_FORMAT_INLINE_ALLOWED, xx_format_is_dkbs_device,
-    xx_dkbs, device, value, result, XX_FORMAT_REQUIRE_DEVICE, check_is_valid)
+XX_FORMAT_READER_ADAPTER(XX_FORMAT_INLINE_ALLOWED, xx_format_is_dkbs_device, xx_dkbs, device, value, result, XX_FORMAT_REQUIRE_DEVICE, check_is_valid)
 
-XX_FORMAT_READER_ADAPTER(XX_FORMAT_INLINE_ALLOWED, xx_format_is_dlink_tlv_device,
-    xx_dlink_tlv, device, value, result, XX_FORMAT_REQUIRE_DEVICE, check_is_valid)
+XX_FORMAT_READER_ADAPTER(XX_FORMAT_INLINE_ALLOWED, xx_format_is_dlink_tlv_device, xx_dlink_tlv, device, value, result, XX_FORMAT_REQUIRE_DEVICE, check_is_valid)
 
-XX_FORMAT_READER_ADAPTER(XX_FORMAT_INLINE_ALLOWED, xx_format_is_dlke_device,
-    xx_dlke, device, value, result, XX_FORMAT_REQUIRE_DEVICE, check_is_valid)
+XX_FORMAT_READER_ADAPTER(XX_FORMAT_INLINE_ALLOWED, xx_format_is_dlke_device, xx_dlke, device, value, result, XX_FORMAT_REQUIRE_DEVICE, check_is_valid)
 
-XX_FORMAT_READER_ADAPTER(XX_FORMAT_INLINE_ALLOWED, xx_format_is_ecos_device,
-    xx_ecos, device, value, result, XX_FORMAT_REQUIRE_DEVICE, check_is_valid)
+XX_FORMAT_READER_ADAPTER(XX_FORMAT_INLINE_ALLOWED, xx_format_is_ecos_device, xx_ecos, device, value, result, XX_FORMAT_REQUIRE_DEVICE, check_is_valid)
 
-XX_FORMAT_READER_ADAPTER(XX_FORMAT_INLINE_ALLOWED, xx_format_is_encfw_device,
-    xx_encfw, device, value, result, XX_FORMAT_REQUIRE_DEVICE, check_is_valid)
+XX_FORMAT_READER_ADAPTER(XX_FORMAT_INLINE_ALLOWED, xx_format_is_encfw_device, xx_encfw, device, value, result, XX_FORMAT_REQUIRE_DEVICE, check_is_valid)
 
-XX_FORMAT_READER_ADAPTER(XX_FORMAT_INLINE_ALLOWED, xx_format_is_encrpted_img_device,
-    xx_encrpted_img, device, value, result, XX_FORMAT_REQUIRE_DEVICE, check_is_valid)
+XX_FORMAT_READER_ADAPTER(XX_FORMAT_INLINE_ALLOWED, xx_format_is_encrpted_img_device, xx_encrpted_img, device, value, result, XX_FORMAT_REQUIRE_DEVICE, check_is_valid)
 
-XX_FORMAT_READER_ADAPTER(XX_FORMAT_INLINE_ALLOWED, xx_format_is_jboot_device,
-    xx_jboot, device, value, result, XX_FORMAT_REQUIRE_DEVICE, check_is_valid)
+XX_FORMAT_READER_ADAPTER(XX_FORMAT_INLINE_ALLOWED, xx_format_is_jboot_device, xx_jboot, device, value, result, XX_FORMAT_REQUIRE_DEVICE, check_is_valid)
 
-XX_FORMAT_READER_ADAPTER(XX_FORMAT_INLINE_ALLOWED, xx_format_is_lingvoarc_device,
-    xx_lingvoarc, device, value, result, XX_FORMAT_REQUIRE_DEVICE, check_is_valid)
+XX_FORMAT_READER_ADAPTER(XX_FORMAT_INLINE_ALLOWED, xx_format_is_lingvoarc_device, xx_lingvoarc, device, value, result, XX_FORMAT_REQUIRE_DEVICE, check_is_valid)
 
-XX_FORMAT_READER_ADAPTER(XX_FORMAT_INLINE_ALLOWED, xx_format_is_lz4demo_device,
-    xx_lz4demo, device, value, result, XX_FORMAT_REQUIRE_DEVICE, check_is_valid)
+XX_FORMAT_READER_ADAPTER(XX_FORMAT_INLINE_ALLOWED, xx_format_is_lz4demo_device, xx_lz4demo, device, value, result, XX_FORMAT_REQUIRE_DEVICE, check_is_valid)
 
-XX_FORMAT_READER_ADAPTER(XX_FORMAT_INLINE_ALLOWED, xx_format_is_matter_ota_device,
-    xx_matter_ota, device, value, result, XX_FORMAT_REQUIRE_DEVICE, check_is_valid)
+XX_FORMAT_READER_ADAPTER(XX_FORMAT_INLINE_ALLOWED, xx_format_is_matter_ota_device, xx_matter_ota, device, value, result, XX_FORMAT_REQUIRE_DEVICE, check_is_valid)
 
-XX_FORMAT_READER_ADAPTER(XX_FORMAT_INLINE_ALLOWED, xx_format_is_mh01_device,
-    xx_mh01, device, value, result, XX_FORMAT_REQUIRE_DEVICE, check_is_valid)
+XX_FORMAT_READER_ADAPTER(XX_FORMAT_INLINE_ALLOWED, xx_format_is_mh01_device, xx_mh01, device, value, result, XX_FORMAT_REQUIRE_DEVICE, check_is_valid)
 
-XX_FORMAT_READER_ADAPTER(XX_FORMAT_INLINE_ALLOWED, xx_format_is_shrs_device,
-    xx_shrs, device, value, result, XX_FORMAT_REQUIRE_DEVICE, check_is_valid)
+XX_FORMAT_READER_ADAPTER(XX_FORMAT_INLINE_ALLOWED, xx_format_is_shrs_device, xx_shrs, device, value, result, XX_FORMAT_REQUIRE_DEVICE, check_is_valid)
 
-XX_FORMAT_READER_ADAPTER(XX_FORMAT_INLINE_ALLOWED, xx_format_is_silmarilsft_device,
-    xx_silmarilsft, device, value, result, XX_FORMAT_REQUIRE_DEVICE, check_is_valid)
+XX_FORMAT_READER_ADAPTER(XX_FORMAT_INLINE_ALLOWED, xx_format_is_silmarilsft_device, xx_silmarilsft, device, value, result, XX_FORMAT_REQUIRE_DEVICE, check_is_valid)
 
-XX_FORMAT_READER_ADAPTER(XX_FORMAT_INLINE_ALLOWED, xx_format_is_tplink_device,
-    xx_tplink, device, value, result, XX_FORMAT_REQUIRE_DEVICE, check_is_valid)
+XX_FORMAT_READER_ADAPTER(XX_FORMAT_INLINE_ALLOWED, xx_format_is_tplink_device, xx_tplink, device, value, result, XX_FORMAT_REQUIRE_DEVICE, check_is_valid)
 
-XX_FORMAT_READER_ADAPTER(XX_FORMAT_INLINE_ALLOWED, xx_format_is_twrx_device,
-    xx_twrx, device, value, result, XX_FORMAT_REQUIRE_DEVICE, check_is_valid)
+XX_FORMAT_READER_ADAPTER(XX_FORMAT_INLINE_ALLOWED, xx_format_is_twrx_device, xx_twrx, device, value, result, XX_FORMAT_REQUIRE_DEVICE, check_is_valid)
 
-XX_FORMAT_READER_ADAPTER(XX_FORMAT_INLINE_ALLOWED, xx_format_is_uboot_device,
-    xx_uboot, device, value, result, XX_FORMAT_REQUIRE_DEVICE, check_is_valid)
+XX_FORMAT_READER_ADAPTER(XX_FORMAT_INLINE_ALLOWED, xx_format_is_uboot_device, xx_uboot, device, value, result, XX_FORMAT_REQUIRE_DEVICE, check_is_valid)
 
-XX_FORMAT_READER_ADAPTER(XX_FORMAT_INLINE_ALLOWED, xx_format_is_infogramesft_device,
-    xx_infogramesft, device, value, result, XX_FORMAT_REQUIRE_DEVICE, check_is_valid)
+XX_FORMAT_READER_ADAPTER(XX_FORMAT_INLINE_ALLOWED, xx_format_is_infogramesft_device, xx_infogramesft, device, value, result, XX_FORMAT_REQUIRE_DEVICE, check_is_valid)
 
-XX_FORMAT_READER_ADAPTER(XX_FORMAT_INLINE_ALLOWED, xx_format_is_pdb_device,
-    xx_pdb, device, value, result, XX_FORMAT_REQUIRE_DEVICE, check_is_valid)
+XX_FORMAT_READER_ADAPTER(XX_FORMAT_INLINE_ALLOWED, xx_format_is_pdb_device, xx_pdb, device, value, result, XX_FORMAT_REQUIRE_DEVICE, check_is_valid)
 
-XX_FORMAT_READER_ADAPTER(XX_FORMAT_INLINE_ALLOWED, xx_format_is_xpak_device,
-    xx_xpak, device, value, result, XX_FORMAT_REQUIRE_DEVICE, check_is_valid)
+XX_FORMAT_READER_ADAPTER(XX_FORMAT_INLINE_ALLOWED, xx_format_is_xpak_device, xx_xpak, device, value, result, XX_FORMAT_REQUIRE_DEVICE, check_is_valid)
 
-XX_FORMAT_READER_ADAPTER(XX_FORMAT_INLINE_ALLOWED, xx_format_is_dclraw_device,
-    xx_dclraw, device, value, result, XX_FORMAT_REQUIRE_DEVICE, check_is_valid)
+XX_FORMAT_READER_ADAPTER(XX_FORMAT_INLINE_ALLOWED, xx_format_is_dclraw_device, xx_dclraw, device, value, result, XX_FORMAT_REQUIRE_DEVICE, check_is_valid)
 
-XX_FORMAT_READER_ADAPTER(XX_FORMAT_INLINE_ALLOWED, xx_format_is_srec_device,
-    xx_srec, device, value, result, XX_FORMAT_REQUIRE_DEVICE, check_is_valid)
+XX_FORMAT_READER_ADAPTER(XX_FORMAT_INLINE_ALLOWED, xx_format_is_srec_device, xx_srec, device, value, result, XX_FORMAT_REQUIRE_DEVICE, check_is_valid)
 
-XX_FORMAT_READER_ADAPTER(XX_FORMAT_INLINE_ALLOWED, xx_format_is_lzop_device,
-    xx_lzop, device, value, result, XX_FORMAT_REQUIRE_DEVICE, check_is_valid)
+XX_FORMAT_READER_ADAPTER(XX_FORMAT_INLINE_ALLOWED, xx_format_is_lzop_device, xx_lzop, device, value, result, XX_FORMAT_REQUIRE_DEVICE, check_is_valid)
 
-XX_FORMAT_READER_ADAPTER(XX_FORMAT_INLINE_ALLOWED, xx_format_is_raw_deflate_compressed_data_device,
-    xx_raw_deflate_compressed_data, device, value, result, XX_FORMAT_REQUIRE_DEVICE, check_is_valid)
+XX_FORMAT_READER_ADAPTER(XX_FORMAT_INLINE_ALLOWED, xx_format_is_raw_deflate_compressed_data_device, xx_raw_deflate_compressed_data, device, value, result,
+                         XX_FORMAT_REQUIRE_DEVICE, check_is_valid)
 
-XX_FORMAT_READER_ADAPTER(XX_FORMAT_NOINLINE, xx_format_is_apple_disk_copy_6_ndif_image_device,
-    xx_apple_disk_copy_6_ndif_image, device, value, result, XX_FORMAT_REQUIRE_DEVICE, check_is_valid)
+XX_FORMAT_READER_ADAPTER(XX_FORMAT_NOINLINE, xx_format_is_apple_disk_copy_6_ndif_image_device, xx_apple_disk_copy_6_ndif_image, device, value, result,
+                         XX_FORMAT_REQUIRE_DEVICE, check_is_valid)
 
-XX_FORMAT_READER_ADAPTER(XX_FORMAT_NOINLINE, xx_format_is_apple_sparse_bundle_device,
-    xx_apple_sparse_bundle, device, value, result, XX_FORMAT_REQUIRE_DEVICE, check_is_valid)
+XX_FORMAT_READER_ADAPTER(XX_FORMAT_NOINLINE, xx_format_is_apple_sparse_bundle_device, xx_apple_sparse_bundle, device, value, result, XX_FORMAT_REQUIRE_DEVICE,
+                         check_is_valid)
 
-XX_FORMAT_READER_ADAPTER(XX_FORMAT_NOINLINE, xx_format_is_encrypted_apple_disk_image_device,
-    xx_encrypted_apple_disk_image, device, value, result, XX_FORMAT_REQUIRE_DEVICE, check_is_valid)
+XX_FORMAT_READER_ADAPTER(XX_FORMAT_NOINLINE, xx_format_is_encrypted_apple_disk_image_device, xx_encrypted_apple_disk_image, device, value, result,
+                         XX_FORMAT_REQUIRE_DEVICE, check_is_valid)
 
-XX_FORMAT_READER_ADAPTER(XX_FORMAT_NOINLINE, xx_format_is_hxc_stream_hfe_device,
-    xx_hxc_stream_hfe, device, value, result, XX_FORMAT_REQUIRE_DEVICE, check_is_valid)
+XX_FORMAT_READER_ADAPTER(XX_FORMAT_NOINLINE, xx_format_is_hxc_stream_hfe_device, xx_hxc_stream_hfe, device, value, result, XX_FORMAT_REQUIRE_DEVICE, check_is_valid)
 
-XX_FORMAT_READER_ADAPTER(XX_FORMAT_NOINLINE, xx_format_is_ms_dos_backup_device,
-    xx_ms_dos_backup, device, value, result, XX_FORMAT_REQUIRE_DEVICE, check_is_valid)
+XX_FORMAT_READER_ADAPTER(XX_FORMAT_NOINLINE, xx_format_is_ms_dos_backup_device, xx_ms_dos_backup, device, value, result, XX_FORMAT_REQUIRE_DEVICE, check_is_valid)
 
-XX_FORMAT_READER_ADAPTER(XX_FORMAT_NOINLINE, xx_format_is_nec_pc_98_fdi_device,
-    xx_nec_pc_98_fdi, device, value, result, XX_FORMAT_REQUIRE_DEVICE, check_is_valid)
+XX_FORMAT_READER_ADAPTER(XX_FORMAT_NOINLINE, xx_format_is_nec_pc_98_fdi_device, xx_nec_pc_98_fdi, device, value, result, XX_FORMAT_REQUIRE_DEVICE, check_is_valid)
 
-XX_FORMAT_READER_ADAPTER(XX_FORMAT_NOINLINE, xx_format_is_ns2_device,
-    xx_ns2, device, value, result, XX_FORMAT_REQUIRE_DEVICE, check_is_valid)
+XX_FORMAT_READER_ADAPTER(XX_FORMAT_NOINLINE, xx_format_is_ns2_device, xx_ns2, device, value, result, XX_FORMAT_REQUIRE_DEVICE, check_is_valid)
 
-XX_FORMAT_READER_ADAPTER(XX_FORMAT_NOINLINE, xx_format_is_nsa_device,
-    xx_nsa, device, value, result, XX_FORMAT_REQUIRE_DEVICE, check_is_valid)
+XX_FORMAT_READER_ADAPTER(XX_FORMAT_NOINLINE, xx_format_is_nsa_device, xx_nsa, device, value, result, XX_FORMAT_REQUIRE_DEVICE, check_is_valid)
 
-XX_FORMAT_READER_ADAPTER(XX_FORMAT_NOINLINE, xx_format_is_qcow1_device,
-    xx_qcow1, device, value, result, XX_FORMAT_REQUIRE_DEVICE, check_is_valid)
+XX_FORMAT_READER_ADAPTER(XX_FORMAT_NOINLINE, xx_format_is_qcow1_device, xx_qcow1, device, value, result, XX_FORMAT_REQUIRE_DEVICE, check_is_valid)
 
-XX_FORMAT_READER_ADAPTER(XX_FORMAT_NOINLINE, xx_format_is_qnap_nas_firmware_device,
-    xx_qnap_nas_firmware, device, value, result, XX_FORMAT_REQUIRE_DEVICE, check_is_valid)
+XX_FORMAT_READER_ADAPTER(XX_FORMAT_NOINLINE, xx_format_is_qnap_nas_firmware_device, xx_qnap_nas_firmware, device, value, result, XX_FORMAT_REQUIRE_DEVICE, check_is_valid)
 
-XX_FORMAT_READER_ADAPTER(XX_FORMAT_NOINLINE, xx_format_is_rdb_device,
-    xx_rdb, device, value, result, XX_FORMAT_REQUIRE_DEVICE, check_is_valid)
+XX_FORMAT_READER_ADAPTER(XX_FORMAT_NOINLINE, xx_format_is_rdb_device, xx_rdb, device, value, result, XX_FORMAT_REQUIRE_DEVICE, check_is_valid)
 
-XX_FORMAT_READER_ADAPTER(XX_FORMAT_NOINLINE, xx_format_is_stuffit_split_file_device,
-    xx_stuffit_split_file, device, value, result, XX_FORMAT_REQUIRE_DEVICE, check_is_valid)
+XX_FORMAT_READER_ADAPTER(XX_FORMAT_NOINLINE, xx_format_is_stuffit_split_file_device, xx_stuffit_split_file, device, value, result, XX_FORMAT_REQUIRE_DEVICE,
+                         check_is_valid)
 
-XX_FORMAT_READER_ADAPTER(XX_FORMAT_NOINLINE, xx_format_is_t98_next_nfd_device,
-    xx_t98_next_nfd, device, value, result, XX_FORMAT_REQUIRE_DEVICE, check_is_valid)
+XX_FORMAT_READER_ADAPTER(XX_FORMAT_NOINLINE, xx_format_is_t98_next_nfd_device, xx_t98_next_nfd, device, value, result, XX_FORMAT_REQUIRE_DEVICE, check_is_valid)
 
-XX_FORMAT_READER_ADAPTER(XX_FORMAT_NOINLINE, xx_format_is_trs_80_jv1_device,
-    xx_trs_80_jv1, device, value, result, XX_FORMAT_REQUIRE_DEVICE, check_is_valid)
+XX_FORMAT_READER_ADAPTER(XX_FORMAT_NOINLINE, xx_format_is_trs_80_jv1_device, xx_trs_80_jv1, device, value, result, XX_FORMAT_REQUIRE_DEVICE, check_is_valid)
 
-XX_FORMAT_READER_ADAPTER(XX_FORMAT_NOINLINE, xx_format_is_trs_80_jv3_device,
-    xx_trs_80_jv3, device, value, result, XX_FORMAT_REQUIRE_DEVICE, check_is_valid)
+XX_FORMAT_READER_ADAPTER(XX_FORMAT_NOINLINE, xx_format_is_trs_80_jv3_device, xx_trs_80_jv3, device, value, result, XX_FORMAT_REQUIRE_DEVICE, check_is_valid)
 
-XX_FORMAT_READER_ADAPTER(XX_FORMAT_NOINLINE, xx_format_is_uharc_device,
-    xx_uharc, device, value, result, XX_FORMAT_REQUIRE_DEVICE, handle_base_info)
+XX_FORMAT_READER_ADAPTER(XX_FORMAT_NOINLINE, xx_format_is_uharc_device, xx_uharc, device, value, result, XX_FORMAT_REQUIRE_DEVICE, handle_base_info)
 
-XX_FORMAT_READER_ADAPTER(XX_FORMAT_NOINLINE, xx_format_is_visionaire_studio_vis_device,
-    xx_visionaire_studio_vis, device, value, result, XX_FORMAT_REQUIRE_DEVICE, check_is_valid)
+XX_FORMAT_READER_ADAPTER(XX_FORMAT_NOINLINE, xx_format_is_visionaire_studio_vis_device, xx_visionaire_studio_vis, device, value, result, XX_FORMAT_REQUIRE_DEVICE,
+                         check_is_valid)
 
-XX_FORMAT_READER_ADAPTER(XX_FORMAT_NOINLINE, xx_format_is_x68000_dim_device,
-    xx_x68000_dim, device, value, result, XX_FORMAT_REQUIRE_DEVICE, check_is_valid)
+XX_FORMAT_READER_ADAPTER(XX_FORMAT_NOINLINE, xx_format_is_x68000_dim_device, xx_x68000_dim, device, value, result, XX_FORMAT_REQUIRE_DEVICE, check_is_valid)
 
-XX_FORMAT_READER_ADAPTER(XX_FORMAT_NOINLINE, xx_format_is_xamarin_compressed_assembly_device,
-    xx_xamarin_compressed_assembly, device, value, result, XX_FORMAT_REQUIRE_DEVICE, check_is_valid)
+XX_FORMAT_READER_ADAPTER(XX_FORMAT_NOINLINE, xx_format_is_xamarin_compressed_assembly_device, xx_xamarin_compressed_assembly, device, value, result,
+                         XX_FORMAT_REQUIRE_DEVICE, check_is_valid)
 
-XX_FORMAT_READER_ADAPTER(XX_FORMAT_INLINE_ALLOWED, xx_format_is_dms_device,
-    xx_dms, device, value, result, XX_FORMAT_REQUIRE_DEVICE, check_is_valid)
+XX_FORMAT_READER_ADAPTER(XX_FORMAT_INLINE_ALLOWED, xx_format_is_dms_device, xx_dms, device, value, result, XX_FORMAT_REQUIRE_DEVICE, check_is_valid)
 
-XX_FORMAT_READER_ADAPTER(XX_FORMAT_INLINE_ALLOWED, xx_format_is_dmg_device,
-    xx_dmg, device, value, result, XX_FORMAT_REQUIRE_DEVICE, handle_base_info)
+XX_FORMAT_READER_ADAPTER(XX_FORMAT_INLINE_ALLOWED, xx_format_is_dmg_device, xx_dmg, device, value, result, XX_FORMAT_REQUIRE_DEVICE, handle_base_info)
 
-XX_FORMAT_READER_ADAPTER(XX_FORMAT_INLINE_ALLOWED, xx_format_is_iso9660_device,
-    xx_iso9660, device, iso, result, XX_FORMAT_REQUIRE_DEVICE, handle_base_info)
+XX_FORMAT_READER_ADAPTER(XX_FORMAT_INLINE_ALLOWED, xx_format_is_iso9660_device, xx_iso9660, device, iso, result, XX_FORMAT_REQUIRE_DEVICE, handle_base_info)
 
 #endif /* full format-detection helpers */
 
@@ -2832,124 +2449,101 @@ XX_FORMAT_READER_ADAPTER(XX_FORMAT_INLINE_ALLOWED, xx_format_is_iso9660_device,
  * must not hold dozens of them on one stack frame while a nested
  * probe (tar.zst, for example) decodes with a big stack buffer. */
 
-XX_FORMAT_READER_ADAPTER(XX_FORMAT_NOINLINE, xx_format_probe_installer_vise_windows,
-    xx_installer_vise_windows, dev, reader, valid, XX_FORMAT_ALLOW_NULL, check_is_valid)
+XX_FORMAT_READER_ADAPTER(XX_FORMAT_NOINLINE, xx_format_probe_installer_vise_windows, xx_installer_vise_windows, dev, reader, valid, XX_FORMAT_ALLOW_NULL, check_is_valid)
 
-XX_FORMAT_READER_ADAPTER(XX_FORMAT_NOINLINE, xx_format_probe_installshield_multiplatform,
-    xx_installshield_multiplatform, dev, reader, valid, XX_FORMAT_ALLOW_NULL, check_is_valid)
+XX_FORMAT_READER_ADAPTER(XX_FORMAT_NOINLINE, xx_format_probe_installshield_multiplatform, xx_installshield_multiplatform, dev, reader, valid, XX_FORMAT_ALLOW_NULL,
+                         check_is_valid)
 
-XX_FORMAT_READER_ADAPTER(XX_FORMAT_NOINLINE, xx_format_probe_advanced_installer_bootstrapper,
-    xx_advanced_installer_bootstrapper, dev, reader, valid, XX_FORMAT_ALLOW_NULL, check_is_valid)
+XX_FORMAT_READER_ADAPTER(XX_FORMAT_NOINLINE, xx_format_probe_advanced_installer_bootstrapper, xx_advanced_installer_bootstrapper, dev, reader, valid,
+                         XX_FORMAT_ALLOW_NULL, check_is_valid)
 
-XX_FORMAT_READER_ADAPTER(XX_FORMAT_NOINLINE, xx_format_probe_ifah_installer,
-    xx_ifah_installer, dev, reader, valid, XX_FORMAT_ALLOW_NULL, check_is_valid)
+XX_FORMAT_READER_ADAPTER(XX_FORMAT_NOINLINE, xx_format_probe_ifah_installer, xx_ifah_installer, dev, reader, valid, XX_FORMAT_ALLOW_NULL, check_is_valid)
 
-XX_FORMAT_READER_ADAPTER(XX_FORMAT_NOINLINE, xx_format_probe_installshield_7_setup,
-    xx_installshield_7_setup, dev, reader, valid, XX_FORMAT_ALLOW_NULL, check_is_valid)
+XX_FORMAT_READER_ADAPTER(XX_FORMAT_NOINLINE, xx_format_probe_installshield_7_setup, xx_installshield_7_setup, dev, reader, valid, XX_FORMAT_ALLOW_NULL, check_is_valid)
 
-XX_FORMAT_READER_ADAPTER(XX_FORMAT_NOINLINE, xx_format_probe_sfx_nullsoft_pimp,
-    xx_sfx_nullsoft_pimp, dev, reader, valid, XX_FORMAT_ALLOW_NULL, check_is_valid)
+XX_FORMAT_READER_ADAPTER(XX_FORMAT_NOINLINE, xx_format_probe_sfx_nullsoft_pimp, xx_sfx_nullsoft_pimp, dev, reader, valid, XX_FORMAT_ALLOW_NULL, check_is_valid)
 
-XX_FORMAT_READER_ADAPTER(XX_FORMAT_NOINLINE, xx_format_probe_sfx_sydex_diskette_image,
-    xx_sfx_sydex_diskette_image, dev, reader, valid, XX_FORMAT_ALLOW_NULL, check_is_valid)
+XX_FORMAT_READER_ADAPTER(XX_FORMAT_NOINLINE, xx_format_probe_sfx_sydex_diskette_image, xx_sfx_sydex_diskette_image, dev, reader, valid, XX_FORMAT_ALLOW_NULL,
+                         check_is_valid)
 
-XX_FORMAT_READER_ADAPTER(XX_FORMAT_NOINLINE, xx_format_probe_sfx_compaq_softpaq,
-    xx_sfx_compaq_softpaq, dev, reader, valid, XX_FORMAT_ALLOW_NULL, check_is_valid)
+XX_FORMAT_READER_ADAPTER(XX_FORMAT_NOINLINE, xx_format_probe_sfx_compaq_softpaq, xx_sfx_compaq_softpaq, dev, reader, valid, XX_FORMAT_ALLOW_NULL, check_is_valid)
 
-XX_FORMAT_READER_ADAPTER(XX_FORMAT_NOINLINE, xx_format_probe_sfx_wasp_windows_auto,
-    xx_sfx_wasp_windows_auto, dev, reader, valid, XX_FORMAT_ALLOW_NULL, check_is_valid)
+XX_FORMAT_READER_ADAPTER(XX_FORMAT_NOINLINE, xx_format_probe_sfx_wasp_windows_auto, xx_sfx_wasp_windows_auto, dev, reader, valid, XX_FORMAT_ALLOW_NULL, check_is_valid)
 
-XX_FORMAT_READER_ADAPTER(XX_FORMAT_NOINLINE, xx_format_probe_wise_installation_system,
-    xx_wise_installation_system, dev, reader, valid, XX_FORMAT_ALLOW_NULL, check_is_valid)
+XX_FORMAT_READER_ADAPTER(XX_FORMAT_NOINLINE, xx_format_probe_wise_installation_system, xx_wise_installation_system, dev, reader, valid, XX_FORMAT_ALLOW_NULL,
+                         check_is_valid)
 
-XX_FORMAT_READER_ADAPTER(XX_FORMAT_NOINLINE, xx_format_probe_eschalon_setup_epsf,
-    xx_eschalon_setup_epsf, dev, reader, valid, XX_FORMAT_ALLOW_NULL, check_is_valid)
+XX_FORMAT_READER_ADAPTER(XX_FORMAT_NOINLINE, xx_format_probe_eschalon_setup_epsf, xx_eschalon_setup_epsf, dev, reader, valid, XX_FORMAT_ALLOW_NULL, check_is_valid)
 
-XX_FORMAT_READER_ADAPTER(XX_FORMAT_NOINLINE, xx_format_probe_gentee_installer,
-    xx_gentee_installer, dev, reader, valid, XX_FORMAT_ALLOW_NULL, check_is_valid)
+XX_FORMAT_READER_ADAPTER(XX_FORMAT_NOINLINE, xx_format_probe_gentee_installer, xx_gentee_installer, dev, reader, valid, XX_FORMAT_ALLOW_NULL, check_is_valid)
 
-XX_FORMAT_READER_ADAPTER(XX_FORMAT_NOINLINE, xx_format_probe_clickteam_install_creator,
-    xx_clickteam_install_creator, dev, reader, valid, XX_FORMAT_ALLOW_NULL, check_is_valid)
+XX_FORMAT_READER_ADAPTER(XX_FORMAT_NOINLINE, xx_format_probe_clickteam_install_creator, xx_clickteam_install_creator, dev, reader, valid, XX_FORMAT_ALLOW_NULL,
+                         check_is_valid)
 
-XX_FORMAT_READER_ADAPTER(XX_FORMAT_NOINLINE, xx_format_probe_createinstall_instcrin_extractor,
-    xx_createinstall_instcrin_extractor, dev, reader, valid, XX_FORMAT_ALLOW_NULL, check_is_valid)
+XX_FORMAT_READER_ADAPTER(XX_FORMAT_NOINLINE, xx_format_probe_createinstall_instcrin_extractor, xx_createinstall_instcrin_extractor, dev, reader, valid,
+                         XX_FORMAT_ALLOW_NULL, check_is_valid)
 
-XX_FORMAT_READER_ADAPTER(XX_FORMAT_NOINLINE, xx_format_probe_sfxstart,
-    xx_sfxstart, dev, reader, valid, XX_FORMAT_ALLOW_NULL, check_is_valid)
+XX_FORMAT_READER_ADAPTER(XX_FORMAT_NOINLINE, xx_format_probe_sfxstart, xx_sfxstart, dev, reader, valid, XX_FORMAT_ALLOW_NULL, check_is_valid)
 
-XX_FORMAT_READER_ADAPTER(XX_FORMAT_NOINLINE, xx_format_probe_sfx_analogx_emucore_ffs,
-    xx_sfx_analogx_emucore_ffs, dev, reader, valid, XX_FORMAT_ALLOW_NULL, check_is_valid)
+XX_FORMAT_READER_ADAPTER(XX_FORMAT_NOINLINE, xx_format_probe_sfx_analogx_emucore_ffs, xx_sfx_analogx_emucore_ffs, dev, reader, valid, XX_FORMAT_ALLOW_NULL,
+                         check_is_valid)
 
-XX_FORMAT_READER_ADAPTER(XX_FORMAT_NOINLINE, xx_format_probe_sfx_krzip,
-    xx_sfx_krzip, dev, reader, valid, XX_FORMAT_ALLOW_NULL, check_is_valid)
+XX_FORMAT_READER_ADAPTER(XX_FORMAT_NOINLINE, xx_format_probe_sfx_krzip, xx_sfx_krzip, dev, reader, valid, XX_FORMAT_ALLOW_NULL, check_is_valid)
 
-XX_FORMAT_READER_ADAPTER(XX_FORMAT_NOINLINE, xx_format_probe_sfx_warpin_package,
-    xx_sfx_warpin_package, dev, reader, valid, XX_FORMAT_ALLOW_NULL, check_is_valid)
+XX_FORMAT_READER_ADAPTER(XX_FORMAT_NOINLINE, xx_format_probe_sfx_warpin_package, xx_sfx_warpin_package, dev, reader, valid, XX_FORMAT_ALLOW_NULL, check_is_valid)
 
-XX_FORMAT_READER_ADAPTER(XX_FORMAT_NOINLINE, xx_format_probe_sfx_hci_instalit,
-    xx_sfx_hci_instalit, dev, reader, valid, XX_FORMAT_ALLOW_NULL, check_is_valid)
+XX_FORMAT_READER_ADAPTER(XX_FORMAT_NOINLINE, xx_format_probe_sfx_hci_instalit, xx_sfx_hci_instalit, dev, reader, valid, XX_FORMAT_ALLOW_NULL, check_is_valid)
 
-XX_FORMAT_READER_ADAPTER(XX_FORMAT_NOINLINE, xx_format_probe_sfx_clickteam_multimedia_fusion,
-    xx_sfx_clickteam_multimedia_fusion, dev, reader, valid, XX_FORMAT_ALLOW_NULL, check_is_valid)
+XX_FORMAT_READER_ADAPTER(XX_FORMAT_NOINLINE, xx_format_probe_sfx_clickteam_multimedia_fusion, xx_sfx_clickteam_multimedia_fusion, dev, reader, valid,
+                         XX_FORMAT_ALLOW_NULL, check_is_valid)
 
-XX_FORMAT_READER_ADAPTER(XX_FORMAT_NOINLINE, xx_format_probe_sfx_abbyy_fine_objects,
-    xx_sfx_abbyy_fine_objects, dev, reader, valid, XX_FORMAT_ALLOW_NULL, check_is_valid)
+XX_FORMAT_READER_ADAPTER(XX_FORMAT_NOINLINE, xx_format_probe_sfx_abbyy_fine_objects, xx_sfx_abbyy_fine_objects, dev, reader, valid, XX_FORMAT_ALLOW_NULL, check_is_valid)
 
-XX_FORMAT_READER_ADAPTER(XX_FORMAT_NOINLINE, xx_format_probe_sfx_flashjester_jugglor,
-    xx_sfx_flashjester_jugglor, dev, reader, valid, XX_FORMAT_ALLOW_NULL, check_is_valid)
+XX_FORMAT_READER_ADAPTER(XX_FORMAT_NOINLINE, xx_format_probe_sfx_flashjester_jugglor, xx_sfx_flashjester_jugglor, dev, reader, valid, XX_FORMAT_ALLOW_NULL,
+                         check_is_valid)
 
-XX_FORMAT_READER_ADAPTER(XX_FORMAT_NOINLINE, xx_format_probe_sfx_jgsoft_deploymaster_package,
-    xx_sfx_jgsoft_deploymaster_package, dev, reader, valid, XX_FORMAT_ALLOW_NULL, check_is_valid)
+XX_FORMAT_READER_ADAPTER(XX_FORMAT_NOINLINE, xx_format_probe_sfx_jgsoft_deploymaster_package, xx_sfx_jgsoft_deploymaster_package, dev, reader, valid,
+                         XX_FORMAT_ALLOW_NULL, check_is_valid)
 
-XX_FORMAT_READER_ADAPTER(XX_FORMAT_NOINLINE, xx_format_probe_sfx_ardi_diskette_image,
-    xx_sfx_ardi_diskette_image, dev, reader, valid, XX_FORMAT_ALLOW_NULL, check_is_valid)
+XX_FORMAT_READER_ADAPTER(XX_FORMAT_NOINLINE, xx_format_probe_sfx_ardi_diskette_image, xx_sfx_ardi_diskette_image, dev, reader, valid, XX_FORMAT_ALLOW_NULL,
+                         check_is_valid)
 
-XX_FORMAT_READER_ADAPTER(XX_FORMAT_NOINLINE, xx_format_probe_arni_installer_container,
-    xx_arni_installer_container, dev, reader, valid, XX_FORMAT_ALLOW_NULL, check_is_valid)
+XX_FORMAT_READER_ADAPTER(XX_FORMAT_NOINLINE, xx_format_probe_arni_installer_container, xx_arni_installer_container, dev, reader, valid, XX_FORMAT_ALLOW_NULL,
+                         check_is_valid)
 
-XX_FORMAT_READER_ADAPTER(XX_FORMAT_NOINLINE, xx_format_probe_ej_technologies_install,
-    xx_ej_technologies_install, dev, reader, valid, XX_FORMAT_ALLOW_NULL, check_is_valid)
+XX_FORMAT_READER_ADAPTER(XX_FORMAT_NOINLINE, xx_format_probe_ej_technologies_install, xx_ej_technologies_install, dev, reader, valid, XX_FORMAT_ALLOW_NULL,
+                         check_is_valid)
 
-XX_FORMAT_READER_ADAPTER(XX_FORMAT_NOINLINE, xx_format_probe_installshield_3,
-    xx_installshield_3, dev, reader, valid, XX_FORMAT_ALLOW_NULL, check_is_valid)
+XX_FORMAT_READER_ADAPTER(XX_FORMAT_NOINLINE, xx_format_probe_installshield_3, xx_installshield_3, dev, reader, valid, XX_FORMAT_ALLOW_NULL, check_is_valid)
 
-XX_FORMAT_READER_ADAPTER(XX_FORMAT_NOINLINE, xx_format_probe_installshield_developer,
-    xx_installshield_developer, dev, reader, valid, XX_FORMAT_ALLOW_NULL, check_is_valid)
+XX_FORMAT_READER_ADAPTER(XX_FORMAT_NOINLINE, xx_format_probe_installshield_developer, xx_installshield_developer, dev, reader, valid, XX_FORMAT_ALLOW_NULL,
+                         check_is_valid)
 
-XX_FORMAT_READER_ADAPTER(XX_FORMAT_NOINLINE, xx_format_probe_ardi_installer,
-    xx_ardi_installer, dev, reader, valid, XX_FORMAT_ALLOW_NULL, check_is_valid)
+XX_FORMAT_READER_ADAPTER(XX_FORMAT_NOINLINE, xx_format_probe_ardi_installer, xx_ardi_installer, dev, reader, valid, XX_FORMAT_ALLOW_NULL, check_is_valid)
 
-XX_FORMAT_READER_ADAPTER(XX_FORMAT_NOINLINE, xx_format_probe_installshield_12_setup,
-    xx_installshield_12_setup, dev, reader, valid, XX_FORMAT_ALLOW_NULL, check_is_valid)
+XX_FORMAT_READER_ADAPTER(XX_FORMAT_NOINLINE, xx_format_probe_installshield_12_setup, xx_installshield_12_setup, dev, reader, valid, XX_FORMAT_ALLOW_NULL, check_is_valid)
 
-XX_FORMAT_READER_ADAPTER(XX_FORMAT_NOINLINE, xx_format_probe_qsetup_installation_suite,
-    xx_qsetup_installation_suite, dev, reader, valid, XX_FORMAT_ALLOW_NULL, check_is_valid)
+XX_FORMAT_READER_ADAPTER(XX_FORMAT_NOINLINE, xx_format_probe_qsetup_installation_suite, xx_qsetup_installation_suite, dev, reader, valid, XX_FORMAT_ALLOW_NULL,
+                         check_is_valid)
 
-XX_FORMAT_READER_ADAPTER(XX_FORMAT_NOINLINE, xx_format_probe_setup_factory,
-    xx_setup_factory, dev, reader, valid, XX_FORMAT_ALLOW_NULL, check_is_valid)
+XX_FORMAT_READER_ADAPTER(XX_FORMAT_NOINLINE, xx_format_probe_setup_factory, xx_setup_factory, dev, reader, valid, XX_FORMAT_ALLOW_NULL, check_is_valid)
 
-XX_FORMAT_READER_ADAPTER(XX_FORMAT_NOINLINE, xx_format_probe_tarma_installer,
-    xx_tarma_installer, dev, reader, valid, XX_FORMAT_ALLOW_NULL, check_is_valid)
+XX_FORMAT_READER_ADAPTER(XX_FORMAT_NOINLINE, xx_format_probe_tarma_installer, xx_tarma_installer, dev, reader, valid, XX_FORMAT_ALLOW_NULL, check_is_valid)
 
-XX_FORMAT_READER_ADAPTER(XX_FORMAT_NOINLINE, xx_format_probe_kwaj,
-    xx_kwaj, dev, reader, valid, XX_FORMAT_ALLOW_NULL, check_is_valid)
+XX_FORMAT_READER_ADAPTER(XX_FORMAT_NOINLINE, xx_format_probe_kwaj, xx_kwaj, dev, reader, valid, XX_FORMAT_ALLOW_NULL, check_is_valid)
 
-XX_FORMAT_READER_ADAPTER(XX_FORMAT_NOINLINE, xx_format_probe_rpm,
-    xx_rpm, dev, reader, valid, XX_FORMAT_ALLOW_NULL, check_is_valid)
+XX_FORMAT_READER_ADAPTER(XX_FORMAT_NOINLINE, xx_format_probe_rpm, xx_rpm, dev, reader, valid, XX_FORMAT_ALLOW_NULL, check_is_valid)
 
-XX_FORMAT_READER_ADAPTER(XX_FORMAT_NOINLINE, xx_format_probe_t64,
-    xx_t64, dev, reader, valid, XX_FORMAT_ALLOW_NULL, check_is_valid)
+XX_FORMAT_READER_ADAPTER(XX_FORMAT_NOINLINE, xx_format_probe_t64, xx_t64, dev, reader, valid, XX_FORMAT_ALLOW_NULL, check_is_valid)
 
-XX_FORMAT_READER_ADAPTER(XX_FORMAT_NOINLINE, xx_format_probe_pc_magazine_flp,
-    xx_pc_magazine_flp, dev, reader, valid, XX_FORMAT_ALLOW_NULL, check_is_valid)
+XX_FORMAT_READER_ADAPTER(XX_FORMAT_NOINLINE, xx_format_probe_pc_magazine_flp, xx_pc_magazine_flp, dev, reader, valid, XX_FORMAT_ALLOW_NULL, check_is_valid)
 
-XX_FORMAT_READER_ADAPTER(XX_FORMAT_NOINLINE, xx_format_probe_vdi,
-    xx_vdi, dev, reader, valid, XX_FORMAT_ALLOW_NULL, check_is_valid)
+XX_FORMAT_READER_ADAPTER(XX_FORMAT_NOINLINE, xx_format_probe_vdi, xx_vdi, dev, reader, valid, XX_FORMAT_ALLOW_NULL, check_is_valid)
 
-XX_FORMAT_READER_ADAPTER(XX_FORMAT_NOINLINE, xx_format_probe_cue,
-    xx_cue, dev, reader, valid, XX_FORMAT_ALLOW_NULL, check_is_valid)
+XX_FORMAT_READER_ADAPTER(XX_FORMAT_NOINLINE, xx_format_probe_cue, xx_cue, dev, reader, valid, XX_FORMAT_ALLOW_NULL, check_is_valid)
 
-static XX_FORMAT_NOINLINE bool xx_format_probe_macbinary_verified(xx_io_device *dev) {
+static XX_FORMAT_NOINLINE bool xx_format_probe_macbinary_verified(xx_io_device *dev)
+{
     xx_macbinary reader;
     bool valid;
     xx_macbinary_init(&reader, dev, 0);
@@ -2960,7 +2554,8 @@ static XX_FORMAT_NOINLINE bool xx_format_probe_macbinary_verified(xx_io_device *
 
 #endif /* full local format-detection probes */
 
-static bool xx_format_read_probe_exact(xx_io_device *device, uint8_t *buffer, size_t size) {
+static bool xx_format_read_probe_exact(xx_io_device *device, uint8_t *buffer, size_t size)
+{
     size_t done = 0U;
     while (done < size) {
         ssize_t got = xx_io_read(device, buffer + done, size - done);
@@ -2971,55 +2566,44 @@ static bool xx_format_read_probe_exact(xx_io_device *device, uint8_t *buffer, si
 }
 
 #ifndef XXFC_FORMAT_DETECTION_LZMA_XZ_ONLY
-XX_FORMAT_READER_ADAPTER(XX_FORMAT_NOINLINE, xx_format_probe_sfx_softpaq4,
-    xx_sfx_softpaq4, dev, reader, valid, XX_FORMAT_ALLOW_NULL, check_is_valid)
+XX_FORMAT_READER_ADAPTER(XX_FORMAT_NOINLINE, xx_format_probe_sfx_softpaq4, xx_sfx_softpaq4, dev, reader, valid, XX_FORMAT_ALLOW_NULL, check_is_valid)
 
-XX_FORMAT_READER_ADAPTER(XX_FORMAT_NOINLINE, xx_format_probe_sfx_inftool,
-    xx_sfx_inftool, dev, reader, valid, XX_FORMAT_ALLOW_NULL, check_is_valid)
+XX_FORMAT_READER_ADAPTER(XX_FORMAT_NOINLINE, xx_format_probe_sfx_inftool, xx_sfx_inftool, dev, reader, valid, XX_FORMAT_ALLOW_NULL, check_is_valid)
 
-XX_FORMAT_READER_ADAPTER(XX_FORMAT_INLINE_ALLOWED, xx_format_is_mlb_ft_device,
-    xx_mlb_ft, device, value, result, XX_FORMAT_REQUIRE_DEVICE, check_is_valid)
+XX_FORMAT_READER_ADAPTER(XX_FORMAT_INLINE_ALLOWED, xx_format_is_mlb_ft_device, xx_mlb_ft, device, value, result, XX_FORMAT_REQUIRE_DEVICE, check_is_valid)
 
-XX_FORMAT_READER_ADAPTER(XX_FORMAT_INLINE_ALLOWED, xx_format_is_fss_device,
-    xx_fss, device, value, result, XX_FORMAT_REQUIRE_DEVICE, check_is_valid)
+XX_FORMAT_READER_ADAPTER(XX_FORMAT_INLINE_ALLOWED, xx_format_is_fss_device, xx_fss, device, value, result, XX_FORMAT_REQUIRE_DEVICE, check_is_valid)
 
-XX_FORMAT_READER_ADAPTER(XX_FORMAT_INLINE_ALLOWED, xx_format_is_epf_device,
-    xx_epf, device, value, result, XX_FORMAT_REQUIRE_DEVICE, check_is_valid)
+XX_FORMAT_READER_ADAPTER(XX_FORMAT_INLINE_ALLOWED, xx_format_is_epf_device, xx_epf, device, value, result, XX_FORMAT_REQUIRE_DEVICE, check_is_valid)
 
-XX_FORMAT_READER_ADAPTER(XX_FORMAT_INLINE_ALLOWED, xx_format_is_dfc_device,
-    xx_dfc, device, value, result, XX_FORMAT_REQUIRE_DEVICE, check_is_valid)
+XX_FORMAT_READER_ADAPTER(XX_FORMAT_INLINE_ALLOWED, xx_format_is_dfc_device, xx_dfc, device, value, result, XX_FORMAT_REQUIRE_DEVICE, check_is_valid)
 
-XX_FORMAT_READER_ADAPTER(XX_FORMAT_INLINE_ALLOWED, xx_format_is_ppd_device,
-    xx_ppd, device, value, result, XX_FORMAT_REQUIRE_DEVICE, check_is_valid)
+XX_FORMAT_READER_ADAPTER(XX_FORMAT_INLINE_ALLOWED, xx_format_is_ppd_device, xx_ppd, device, value, result, XX_FORMAT_REQUIRE_DEVICE, check_is_valid)
 
-XX_FORMAT_READER_ADAPTER(XX_FORMAT_INLINE_ALLOWED, xx_format_is_ka_device,
-    xx_ka, device, value, result, XX_FORMAT_REQUIRE_DEVICE, check_is_valid)
+XX_FORMAT_READER_ADAPTER(XX_FORMAT_INLINE_ALLOWED, xx_format_is_ka_device, xx_ka, device, value, result, XX_FORMAT_REQUIRE_DEVICE, check_is_valid)
 
-XX_FORMAT_READER_ADAPTER(XX_FORMAT_INLINE_ALLOWED, xx_format_is_dn_device,
-    xx_dn, device, value, result, XX_FORMAT_REQUIRE_DEVICE, check_is_valid)
+XX_FORMAT_READER_ADAPTER(XX_FORMAT_INLINE_ALLOWED, xx_format_is_dn_device, xx_dn, device, value, result, XX_FORMAT_REQUIRE_DEVICE, check_is_valid)
 
-XX_FORMAT_READER_ADAPTER(XX_FORMAT_INLINE_ALLOWED, xx_format_is_insa_device,
-    xx_insa, device, value, result, XX_FORMAT_REQUIRE_DEVICE, check_is_valid)
+XX_FORMAT_READER_ADAPTER(XX_FORMAT_INLINE_ALLOWED, xx_format_is_insa_device, xx_insa, device, value, result, XX_FORMAT_REQUIRE_DEVICE, check_is_valid)
 
-XX_FORMAT_READER_ADAPTER(XX_FORMAT_INLINE_ALLOWED, xx_format_is_thebat_msb_device,
-    xx_thebat_msb, device, value, result, XX_FORMAT_REQUIRE_DEVICE, check_is_valid)
+XX_FORMAT_READER_ADAPTER(XX_FORMAT_INLINE_ALLOWED, xx_format_is_thebat_msb_device, xx_thebat_msb, device, value, result, XX_FORMAT_REQUIRE_DEVICE, check_is_valid)
 
-XX_FORMAT_READER_ADAPTER(XX_FORMAT_INLINE_ALLOWED, xx_format_is_sfx_localzip_device,
-    xx_sfx_localzip, device, value, result, XX_FORMAT_REQUIRE_DEVICE, check_is_valid)
+XX_FORMAT_READER_ADAPTER(XX_FORMAT_INLINE_ALLOWED, xx_format_is_sfx_localzip_device, xx_sfx_localzip, device, value, result, XX_FORMAT_REQUIRE_DEVICE, check_is_valid)
 
-XX_FORMAT_READER_ADAPTER(XX_FORMAT_INLINE_ALLOWED, xx_format_is_sun_java_binsh_device,
-    xx_sun_java_binsh, device, value, result, XX_FORMAT_REQUIRE_DEVICE, check_is_valid)
+XX_FORMAT_READER_ADAPTER(XX_FORMAT_INLINE_ALLOWED, xx_format_is_sun_java_binsh_device, xx_sun_java_binsh, device, value, result, XX_FORMAT_REQUIRE_DEVICE, check_is_valid)
 
-XX_FORMAT_READER_ADAPTER(XX_FORMAT_INLINE_ALLOWED, xx_format_is_installanywhere_unix_device,
-    xx_installanywhere_unix, device, value, result, XX_FORMAT_REQUIRE_DEVICE, check_is_valid)
+XX_FORMAT_READER_ADAPTER(XX_FORMAT_INLINE_ALLOWED, xx_format_is_installanywhere_unix_device, xx_installanywhere_unix, device, value, result, XX_FORMAT_REQUIRE_DEVICE,
+                         check_is_valid)
 
 xx_file_type_t xx_format_gap_detect(xx_io_device *device);
 
 #include "xx_format_probe_registry.h"
 
-static XX_FORMAT_NOINLINE xx_file_type_t xx_format_get_unpacked_file_type_device(xx_io_device *dev) {
+static XX_FORMAT_NOINLINE xx_file_type_t xx_format_get_unpacked_file_type_device(xx_io_device *dev)
+{
 #else
-xx_file_type_t xx_format_get_file_type_device(xx_io_device *dev) {
+xx_file_type_t xx_format_get_file_type_device(xx_io_device *dev)
+{
 #endif
 #ifdef XXFC_FORMAT_DETECTION_LZMA_XZ_ONLY
     /* A codec-only build must not pull in every format reader through the
@@ -3036,18 +2620,14 @@ xx_file_type_t xx_format_get_file_type_device(xx_io_device *dev) {
     if (total_size <= 0) return XX_FILE_TYPE_UNKNOWN;
     original_position = xx_io_tell(dev);
     if (original_position < 0) original_position = 0;
-    header_size = total_size < (int64_t)sizeof(header)
-                      ? (size_t)total_size : sizeof(header);
-    if (xx_io_seek64(dev, 0, SEEK_SET) == 0 &&
-        xx_format_read_probe_exact(dev, header, header_size)) {
-        if (header_size >= sizeof(xz_magic) &&
-            xx_rt_memcmp(header, xz_magic, sizeof(xz_magic)) == 0) {
+    header_size = total_size < (int64_t)sizeof(header) ? (size_t)total_size : sizeof(header);
+    if (xx_io_seek64(dev, 0, SEEK_SET) == 0 && xx_format_read_probe_exact(dev, header, header_size)) {
+        if (header_size >= sizeof(xz_magic) && xx_rt_memcmp(header, xz_magic, sizeof(xz_magic)) == 0) {
             type = XX_FILE_TYPE_XZ;
         } else if (xx_lzma_alone_has_header(header, header_size)) {
             xx_lzma lzma;
             xx_lzma_init(&lzma, dev, 0);
-            if (xx_lzma_handle_base_info(&lzma.format, NULL))
-                type = XX_FILE_TYPE_LZMA;
+            if (xx_lzma_handle_base_info(&lzma.format, NULL)) type = XX_FILE_TYPE_LZMA;
             xx_lzma_destroy(&lzma);
         }
     }
@@ -3076,9 +2656,7 @@ xx_file_type_t xx_format_get_file_type_device(xx_io_device *dev) {
     /* Some transport headers are substantially longer than the traditional
      * eight-byte signature window (for example Softronics v2.00's banner). */
     uint8_t magic[64] = {0};
-    size_t magic_size = total_size < (int64_t)sizeof(magic)
-                            ? (size_t)total_size
-                            : sizeof(magic);
+    size_t magic_size = total_size < (int64_t)sizeof(magic) ? (size_t)total_size : sizeof(magic);
     if (xx_io_seek64(dev, 0, SEEK_SET) != 0) {
         (void)xx_io_seek64(dev, orig_pos, SEEK_SET);
         return XX_FILE_TYPE_BINARY;
@@ -3090,77 +2668,80 @@ xx_file_type_t xx_format_get_file_type_device(xx_io_device *dev) {
 
     {
         xx_file_type_t signature_type = xx_format_detect_signature_readers(dev, NULL);
-        if(signature_type != XX_FILE_TYPE_UNKNOWN) {(void)xx_io_seek64(dev,orig_pos,SEEK_SET);return signature_type;}
-        xx_file_type_t document=xx_ue2_documents_detect_device(dev);
-        (void)xx_io_seek64(dev,orig_pos,SEEK_SET);
-        if(document!=XX_FILE_TYPE_UNKNOWN) return document;
-        document=xx_ue2_games_detect_device(dev,NULL);
-        (void)xx_io_seek64(dev,orig_pos,SEEK_SET);
-        if(document!=XX_FILE_TYPE_UNKNOWN) return document;
-        if(magic_size>=4 && (xx_rt_memcmp(magic,"CMMM",4)==0 ||
-           (magic[0]>=4 && magic[0]<=5 && !magic[1] && !magic[2] && !magic[3]))) {
-            Abstractformat *candidate=magic[0]=='C'?(Abstractformat *)xx_windows_thumbnail_cache_create(dev,0):(Abstractformat *)xx_chromium_pak_create(dev,0);
-            bool valid=candidate && candidate->check_is_valid(candidate,NULL);
-            document=candidate?candidate->file_type:XX_FILE_TYPE_UNKNOWN;
-            if(magic[0]=='C')xx_windows_thumbnail_cache_free((xx_windows_thumbnail_cache *)candidate);else xx_chromium_pak_free((xx_chromium_pak *)candidate);
-            (void)xx_io_seek64(dev,orig_pos,SEEK_SET);
-            if(valid)return document;
+        if (signature_type != XX_FILE_TYPE_UNKNOWN) {
+            (void)xx_io_seek64(dev, orig_pos, SEEK_SET);
+            return signature_type;
         }
-        if(magic_size>=16 && !xx_rt_memcmp(magic,"\x30\x26\xb2\x75\x8e\x66\xcf\x11\xa6\xd9\x00\xaa\x00\x62\xce\x6c",16))return XX_FILE_TYPE_ASF;
-        if(magic_size>=8 && !xx_rt_memcmp(magic+4,"\x57\x90\x75\x36",4))return XX_FILE_TYPE_AUDIBLE_AA;
-        if(magic_size>=12 && !xx_rt_memcmp(magic,"ITOLITLS",8) && magic[8]==1 && !magic[9] && !magic[10] && !magic[11])return XX_FILE_TYPE_MICROSOFT_LIT;
-        if(xx_pyc_check_magic(magic, magic_size))return XX_FILE_TYPE_PYC;
-        if(magic_size>=8 && !xx_rt_memcmp(magic,"%PDF-",5) &&
-           magic[5]>='0' && magic[5]<='9' && magic[6]=='.' &&
-           magic[7]>='0' && magic[7]<='9')return XX_FILE_TYPE_PDF;
-        if(magic_size>=4&&!xx_rt_memcmp(magic,"DGCA",4)&&xx_io_total_size(dev)>=32)return XX_FILE_TYPE_DGCA;
+        xx_file_type_t document = xx_ue2_documents_detect_device(dev);
+        (void)xx_io_seek64(dev, orig_pos, SEEK_SET);
+        if (document != XX_FILE_TYPE_UNKNOWN) return document;
+        document = xx_ue2_games_detect_device(dev, NULL);
+        (void)xx_io_seek64(dev, orig_pos, SEEK_SET);
+        if (document != XX_FILE_TYPE_UNKNOWN) return document;
+        if (magic_size >= 4 && (xx_rt_memcmp(magic, "CMMM", 4) == 0 || (magic[0] >= 4 && magic[0] <= 5 && !magic[1] && !magic[2] && !magic[3]))) {
+            Abstractformat *candidate = magic[0] == 'C' ? (Abstractformat *)xx_windows_thumbnail_cache_create(dev, 0) : (Abstractformat *)xx_chromium_pak_create(dev, 0);
+            bool valid = candidate && candidate->check_is_valid(candidate, NULL);
+            document = candidate ? candidate->file_type : XX_FILE_TYPE_UNKNOWN;
+            if (magic[0] == 'C') xx_windows_thumbnail_cache_free((xx_windows_thumbnail_cache *)candidate);
+            else xx_chromium_pak_free((xx_chromium_pak *)candidate);
+            (void)xx_io_seek64(dev, orig_pos, SEEK_SET);
+            if (valid) return document;
+        }
+        if (magic_size >= 16 && !xx_rt_memcmp(magic, "\x30\x26\xb2\x75\x8e\x66\xcf\x11\xa6\xd9\x00\xaa\x00\x62\xce\x6c", 16)) return XX_FILE_TYPE_ASF;
+        if (magic_size >= 8 && !xx_rt_memcmp(magic + 4, "\x57\x90\x75\x36", 4)) return XX_FILE_TYPE_AUDIBLE_AA;
+        if (magic_size >= 12 && !xx_rt_memcmp(magic, "ITOLITLS", 8) && magic[8] == 1 && !magic[9] && !magic[10] && !magic[11]) return XX_FILE_TYPE_MICROSOFT_LIT;
+        if (xx_pyc_check_magic(magic, magic_size)) return XX_FILE_TYPE_PYC;
+        if (magic_size >= 8 && !xx_rt_memcmp(magic, "%PDF-", 5) && magic[5] >= '0' && magic[5] <= '9' && magic[6] == '.' && magic[7] >= '0' && magic[7] <= '9')
+            return XX_FILE_TYPE_PDF;
+        if (magic_size >= 4 && !xx_rt_memcmp(magic, "DGCA", 4) && xx_io_total_size(dev) >= 32) return XX_FILE_TYPE_DGCA;
         {
-            xx_file_type_t installer=xx_excelsior_detect_device(dev,NULL);
-            (void)xx_io_seek64(dev,orig_pos,SEEK_SET);
-            if(installer!=XX_FILE_TYPE_UNKNOWN)return installer;
+            xx_file_type_t installer = xx_excelsior_detect_device(dev, NULL);
+            (void)xx_io_seek64(dev, orig_pos, SEEK_SET);
+            if (installer != XX_FILE_TYPE_UNKNOWN) return installer;
         }
         {
-            xx_file_type_t installer=xx_fead_detect_device(dev,NULL);
-            (void)xx_io_seek64(dev,orig_pos,SEEK_SET);
-            if(installer!=XX_FILE_TYPE_UNKNOWN)return installer;
+            xx_file_type_t installer = xx_fead_detect_device(dev, NULL);
+            (void)xx_io_seek64(dev, orig_pos, SEEK_SET);
+            if (installer != XX_FILE_TYPE_UNKNOWN) return installer;
         }
-        if(xx_bitrock_has_candidate_device(dev,0)) {
-            xx_bitrock *r=xx_bitrock_create(dev,0);
-            bool valid=r && r->format.check_is_valid(&r->format,NULL);
+        if (xx_bitrock_has_candidate_device(dev, 0)) {
+            xx_bitrock *r = xx_bitrock_create(dev, 0);
+            bool valid = r && r->format.check_is_valid(&r->format, NULL);
             xx_bitrock_free(r);
-            (void)xx_io_seek64(dev,orig_pos,SEEK_SET);
-            if(valid)return XX_FILE_TYPE_BITROCK;
+            (void)xx_io_seek64(dev, orig_pos, SEEK_SET);
+            if (valid) return XX_FILE_TYPE_BITROCK;
         }
-        if(xx_smart_install_maker_has_candidate_device(dev,0)) {
-            xx_smart_install_maker *r=xx_smart_install_maker_create(dev,0);
-            bool valid=r && ((Abstractformat *)r)->check_is_valid((Abstractformat *)r,NULL);
+        if (xx_smart_install_maker_has_candidate_device(dev, 0)) {
+            xx_smart_install_maker *r = xx_smart_install_maker_create(dev, 0);
+            bool valid = r && ((Abstractformat *)r)->check_is_valid((Abstractformat *)r, NULL);
             xx_smart_install_maker_free(r);
-            (void)xx_io_seek64(dev,orig_pos,SEEK_SET);
-            if(valid)return XX_FILE_TYPE_SMART_INSTALL_MAKER;
+            (void)xx_io_seek64(dev, orig_pos, SEEK_SET);
+            if (valid) return XX_FILE_TYPE_SMART_INSTALL_MAKER;
         }
-        if(xx_superdat_has_candidate_device(dev,0)) {
-            xx_superdat *r=xx_superdat_create(dev,0);
-            bool valid=r && r->format.check_is_valid(&r->format,NULL);
+        if (xx_superdat_has_candidate_device(dev, 0)) {
+            xx_superdat *r = xx_superdat_create(dev, 0);
+            bool valid = r && r->format.check_is_valid(&r->format, NULL);
             xx_superdat_free(r);
-            (void)xx_io_seek64(dev,orig_pos,SEEK_SET);
-            if(valid)return XX_FILE_TYPE_SUPERDAT;
+            (void)xx_io_seek64(dev, orig_pos, SEEK_SET);
+            if (valid) return XX_FILE_TYPE_SUPERDAT;
         }
-        if(xx_molebox_has_candidate_device(dev,0)) {
-            xx_molebox *r=xx_molebox_create(dev,0);
-            bool valid=r && r->format.check_is_valid(&r->format,NULL);
+        if (xx_molebox_has_candidate_device(dev, 0)) {
+            xx_molebox *r = xx_molebox_create(dev, 0);
+            bool valid = r && r->format.check_is_valid(&r->format, NULL);
             xx_molebox_free(r);
-            (void)xx_io_seek64(dev,orig_pos,SEEK_SET);
-            if(valid)return XX_FILE_TYPE_MOLEBOX;
+            (void)xx_io_seek64(dev, orig_pos, SEEK_SET);
+            if (valid) return XX_FILE_TYPE_MOLEBOX;
         }
-        if((magic_size>=2 && magic[0]=='M' && magic[1]=='Z') ||
-           (magic_size>=4 && !xx_rt_memcmp(magic,"EVB\0",4))) {
-            xx_enigma_virtual_box *r=xx_enigma_virtual_box_create(dev,0);
-            bool valid=r && r->format.check_is_valid(&r->format,NULL);xx_enigma_virtual_box_free(r);
-            (void)xx_io_seek64(dev,orig_pos,SEEK_SET);if(valid)return XX_FILE_TYPE_ENIGMA_VIRTUAL_BOX;
+        if ((magic_size >= 2 && magic[0] == 'M' && magic[1] == 'Z') || (magic_size >= 4 && !xx_rt_memcmp(magic, "EVB\0", 4))) {
+            xx_enigma_virtual_box *r = xx_enigma_virtual_box_create(dev, 0);
+            bool valid = r && r->format.check_is_valid(&r->format, NULL);
+            xx_enigma_virtual_box_free(r);
+            (void)xx_io_seek64(dev, orig_pos, SEEK_SET);
+            if (valid) return XX_FILE_TYPE_ENIGMA_VIRTUAL_BOX;
         }
-        xx_file_type_t added=xx_format_gap_detect(dev);
-        (void)xx_io_seek64(dev,orig_pos,SEEK_SET);
-        if(added!=XX_FILE_TYPE_UNKNOWN) return added;
+        xx_file_type_t added = xx_format_gap_detect(dev);
+        (void)xx_io_seek64(dev, orig_pos, SEEK_SET);
+        if (added != XX_FILE_TYPE_UNKNOWN) return added;
     }
 
     if (magic_size >= 4U && xx_rt_memcmp(magic, "RVZ\x01", 4U) == 0) {
@@ -3195,8 +2776,7 @@ xx_file_type_t xx_format_get_file_type_device(xx_io_device *dev) {
 
     /* BIGF/ZBL is a Ptero-Engine container, unrelated to EA BIGF/BIG4.
      * Validate its full index before the generic BIGF probe below. */
-    if (magic_size >= 64U && xx_rt_memcmp(magic, "BIGF", 4U) == 0 &&
-        xx_rt_memcmp(magic + 5, "ZBL", 3U) == 0) {
+    if (magic_size >= 64U && xx_rt_memcmp(magic, "BIGF", 4U) == 0 && xx_rt_memcmp(magic + 5, "ZBL", 3U) == 0) {
         xx_ptero_bigf reader;
         bool valid;
         xx_ptero_bigf_init(&reader, dev, 0);
@@ -3215,8 +2795,7 @@ xx_file_type_t xx_format_get_file_type_device(xx_io_device *dev) {
         (void)xx_io_seek64(dev, orig_pos, SEEK_SET);
         if (valid) return XX_FILE_TYPE_PARSEC_RIB;
     }
-    if (magic_size >= 16U &&
-        xx_rt_memcmp(magic, "MTCVTS PSM 2.00", 16U) == 0) {
+    if (magic_size >= 16U && xx_rt_memcmp(magic, "MTCVTS PSM 2.00", 16U) == 0) {
         xx_parsec_pmm reader;
         bool valid;
         xx_parsec_pmm_init(&reader, dev, 0);
@@ -3229,21 +2808,15 @@ xx_file_type_t xx_format_get_file_type_device(xx_io_device *dev) {
     /* A BACKUP save set can contain PK bytes in a member payload.  Its
      * complete block chain is stronger evidence than the embedded ZIP
      * signature, so validate the tightly prefixed save-set header first. */
-    if (magic_size >= 36U && magic[0] == 0U && magic[1] == 1U &&
-        magic[2] == 0U &&
-        (magic[3] == 4U || magic[3] == 8U || magic[3] == 16U) &&
-        magic[4] == 1U && magic[5] == 0U &&
-        magic[6] >= 1U && magic[6] <= 2U && magic[7] == 0U &&
-        magic[32] == 1U && magic[33] == 1U &&
-        magic[34] == 1U && magic[35] == 0U) {
+    if (magic_size >= 36U && magic[0] == 0U && magic[1] == 1U && magic[2] == 0U && (magic[3] == 4U || magic[3] == 8U || magic[3] == 16U) && magic[4] == 1U &&
+        magic[5] == 0U && magic[6] >= 1U && magic[6] <= 2U && magic[7] == 0U && magic[32] == 1U && magic[33] == 1U && magic[34] == 1U && magic[35] == 0U) {
         bool valid = xx_format_is_vmssaveset_device(dev);
         (void)xx_io_seek64(dev, orig_pos, SEEK_SET);
         if (valid) return XX_FILE_TYPE_VMSSAVESET;
     }
     /* A Solaris package may contain ZIP members.  Its exact outer banner
      * and validated package stream take precedence over an embedded ZIP. */
-    if (magic_size >= 21U &&
-        xx_rt_memcmp(magic, "# PaCkAgE DaTaStReAm\n", 21U) == 0) {
+    if (magic_size >= 21U && xx_rt_memcmp(magic, "# PaCkAgE DaTaStReAm\n", 21U) == 0) {
         bool valid = xx_format_is_solarispkg_device(dev);
         (void)xx_io_seek64(dev, orig_pos, SEEK_SET);
         if (valid) return XX_FILE_TYPE_SOLARISPKG;
@@ -3280,8 +2853,7 @@ xx_file_type_t xx_format_get_file_type_device(xx_io_device *dev) {
         (void)xx_io_seek64(dev, orig_pos, SEEK_SET);
         if (valid) return XX_FILE_TYPE_FATX;
     }
-    if (magic_size >= 12U && xx_rt_memcmp(magic, "RIFF", 4U) == 0 &&
-        xx_rt_memcmp(magic + 8U, "sfbk", 4U) == 0) {
+    if (magic_size >= 12U && xx_rt_memcmp(magic, "RIFF", 4U) == 0 && xx_rt_memcmp(magic + 8U, "sfbk", 4U) == 0) {
         xx_soundfont2 reader;
         bool valid;
         xx_soundfont2_init(&reader, dev, 0);
@@ -3299,8 +2871,7 @@ xx_file_type_t xx_format_get_file_type_device(xx_io_device *dev) {
         (void)xx_io_seek64(dev, orig_pos, SEEK_SET);
         if (valid) return XX_FILE_TYPE_IVF;
     }
-    if (magic_size >= 12U && xx_rt_memcmp(magic, "RIFF", 4U) == 0 &&
-        xx_rt_memcmp(magic + 8U, "ACON", 4U) == 0) {
+    if (magic_size >= 12U && xx_rt_memcmp(magic, "RIFF", 4U) == 0 && xx_rt_memcmp(magic + 8U, "ACON", 4U) == 0) {
         xx_windows_ani reader;
         bool valid;
         xx_windows_ani_init(&reader, dev, 0);
@@ -3312,102 +2883,81 @@ xx_file_type_t xx_format_get_file_type_device(xx_io_device *dev) {
 
     /* Distinct HxC image containers require framing validation. Headerless
      * sector profiles are explicitly selected; size is not an identity. */
-#define XX_PROBE_HXC(stem, id) do { \
-        xx_##stem reader; bool valid; \
-        xx_##stem##_init(&reader, dev, 0); \
-        valid=xx_format_is_valid(&reader.format, NULL); \
-        xx_##stem##_destroy(&reader); \
-        (void)xx_io_seek64(dev, orig_pos, SEEK_SET); \
-        if(valid) return XX_FILE_TYPE_##id; \
-    } while(0)
-    if(magic_size>=8U && !xx_rt_memcmp(magic,"UAE-1ADF",8U)) XX_PROBE_HXC(amiga_ext_adf,AMIGA_EXT_ADF);
-    if(magic_size>=8U && !xx_rt_memcmp(magic,"UAE--ADF",8U)) XX_PROBE_HXC(amiga_old_ext_adf,AMIGA_OLD_EXT_ADF);
-    if(magic_size>=8U && (!xx_rt_memcmp(magic,"A2R2",4U) || !xx_rt_memcmp(magic,"A2R3",4U))) XX_PROBE_HXC(apple_a2r,APPLE_A2R);
-    if(magic_size>=2U && !xx_rt_memcmp(magic,"BB",2U)) XX_PROBE_HXC(atari_dim,ATARI_DIM);
-    if(magic_size>=4U && !xx_rt_memcmp(magic,"STEM",4U)) XX_PROBE_HXC(atari_stt,ATARI_STT);
-    if(magic_size>=4U && !xx_rt_memcmp(magic,"STW\0",4U)) XX_PROBE_HXC(atari_stw,ATARI_STW);
-    if(magic_size>=4U && (!xx_rt_memcmp(magic,"DFER",4U) || !xx_rt_memcmp(magic,"DFE2",4U))) XX_PROBE_HXC(discferret_dfi,DISCFERRET_DFI);
-    if(magic_size>=14U && !xx_rt_memcmp(magic,"AFI_FLOPPY_IMG",14U)) XX_PROBE_HXC(hxc_afi,HXC_AFI);
-    if(magic_size>=8U && !xx_rt_memcmp(magic,"HXCQDDRV",8U)) XX_PROBE_HXC(hxc_qd,HXC_QD);
-    if(magic_size>=4U && !xx_rt_memcmp(magic,"CHKH",4U)) XX_PROBE_HXC(hxc_stream,HXC_STREAM);
-    if(magic_size>=4U && (!xx_rt_memcmp(magic,"1.2\n",4U) || !xx_rt_memcmp(magic,"1.5\n",4U) ||
-        !xx_rt_memcmp(magic,"2.0\n",4U) || !xx_rt_memcmp(magic,"1.2\r",4U) ||
-        !xx_rt_memcmp(magic,"1.5\r",4U) || !xx_rt_memcmp(magic,"2.0\r",4U))) XX_PROBE_HXC(svd,SVD);
-    if(magic_size>=20U && !xx_rt_memcmp(magic,"SAB Diskette Utility",20U)) XX_PROBE_HXC(sdu,SDU);
-    if(magic_size>=8U && (!xx_rt_memcmp(magic,"MFM_DISK",8U) || !xx_rt_memcmp(magic,"ORICDISK",8U))) XX_PROBE_HXC(oric_dsk,ORIC_DSK);
-    if(magic_size>=6U && !xx_rt_memcmp(magic,"TDDFI\1",6U)) XX_PROBE_HXC(ensoniq_gkh,ENSONIQ_GKH);
-    if(magic_size>=2U && magic[0]==13U && magic[1]==10U) XX_PROBE_HXC(ensoniq_ede,ENSONIQ_EDE);
-    if(magic_size>=18U && !xx_rt_memcmp(magic,"Aley's disk backup",18U)) XX_PROBE_HXC(samcoupe_sad,SAMCOUPE_SAD);
-    if(magic_size>=13U && !xx_rt_memcmp(magic,"emaxutil v1.1",13U)) XX_PROBE_HXC(emax_disk,EMAX_DISK);
-    if(magic_size>=7U && !xx_rt_memcmp(magic,"VTrucco",7U)) XX_PROBE_HXC(vtr_disk,VTR_DISK);
-    if(magic_size>=5U && !xx_rt_memcmp(magic,"TRKY2",5U)) XX_PROBE_HXC(speccydos_sdd,SPECCYDOS_SDD);
-    if((total_size==35*6656 || total_size==40*6656) && (magic[0]&0x80U)) XX_PROBE_HXC(apple_nib,APPLE_NIB);
-    if(total_size==40*3253 || total_size==80*3253 || total_size==40*6872 || total_size==80*6872) XX_PROBE_HXC(ti99_pc99,TI99_PC99);
-    if(total_size>=25000 && total_size<=8500000 && total_size%25000==0) XX_PROBE_HXC(fei,FEI);
+#define XX_PROBE_HXC(stem, id)                            \
+    do {                                                  \
+        xx_##stem reader;                                 \
+        bool valid;                                       \
+        xx_##stem##_init(&reader, dev, 0);                \
+        valid = xx_format_is_valid(&reader.format, NULL); \
+        xx_##stem##_destroy(&reader);                     \
+        (void)xx_io_seek64(dev, orig_pos, SEEK_SET);      \
+        if (valid) return XX_FILE_TYPE_##id;              \
+    } while (0)
+    if (magic_size >= 8U && !xx_rt_memcmp(magic, "UAE-1ADF", 8U)) XX_PROBE_HXC(amiga_ext_adf, AMIGA_EXT_ADF);
+    if (magic_size >= 8U && !xx_rt_memcmp(magic, "UAE--ADF", 8U)) XX_PROBE_HXC(amiga_old_ext_adf, AMIGA_OLD_EXT_ADF);
+    if (magic_size >= 8U && (!xx_rt_memcmp(magic, "A2R2", 4U) || !xx_rt_memcmp(magic, "A2R3", 4U))) XX_PROBE_HXC(apple_a2r, APPLE_A2R);
+    if (magic_size >= 2U && !xx_rt_memcmp(magic, "BB", 2U)) XX_PROBE_HXC(atari_dim, ATARI_DIM);
+    if (magic_size >= 4U && !xx_rt_memcmp(magic, "STEM", 4U)) XX_PROBE_HXC(atari_stt, ATARI_STT);
+    if (magic_size >= 4U && !xx_rt_memcmp(magic, "STW\0", 4U)) XX_PROBE_HXC(atari_stw, ATARI_STW);
+    if (magic_size >= 4U && (!xx_rt_memcmp(magic, "DFER", 4U) || !xx_rt_memcmp(magic, "DFE2", 4U))) XX_PROBE_HXC(discferret_dfi, DISCFERRET_DFI);
+    if (magic_size >= 14U && !xx_rt_memcmp(magic, "AFI_FLOPPY_IMG", 14U)) XX_PROBE_HXC(hxc_afi, HXC_AFI);
+    if (magic_size >= 8U && !xx_rt_memcmp(magic, "HXCQDDRV", 8U)) XX_PROBE_HXC(hxc_qd, HXC_QD);
+    if (magic_size >= 4U && !xx_rt_memcmp(magic, "CHKH", 4U)) XX_PROBE_HXC(hxc_stream, HXC_STREAM);
+    if (magic_size >= 4U && (!xx_rt_memcmp(magic, "1.2\n", 4U) || !xx_rt_memcmp(magic, "1.5\n", 4U) || !xx_rt_memcmp(magic, "2.0\n", 4U) ||
+                             !xx_rt_memcmp(magic, "1.2\r", 4U) || !xx_rt_memcmp(magic, "1.5\r", 4U) || !xx_rt_memcmp(magic, "2.0\r", 4U)))
+        XX_PROBE_HXC(svd, SVD);
+    if (magic_size >= 20U && !xx_rt_memcmp(magic, "SAB Diskette Utility", 20U)) XX_PROBE_HXC(sdu, SDU);
+    if (magic_size >= 8U && (!xx_rt_memcmp(magic, "MFM_DISK", 8U) || !xx_rt_memcmp(magic, "ORICDISK", 8U))) XX_PROBE_HXC(oric_dsk, ORIC_DSK);
+    if (magic_size >= 6U && !xx_rt_memcmp(magic, "TDDFI\1", 6U)) XX_PROBE_HXC(ensoniq_gkh, ENSONIQ_GKH);
+    if (magic_size >= 2U && magic[0] == 13U && magic[1] == 10U) XX_PROBE_HXC(ensoniq_ede, ENSONIQ_EDE);
+    if (magic_size >= 18U && !xx_rt_memcmp(magic, "Aley's disk backup", 18U)) XX_PROBE_HXC(samcoupe_sad, SAMCOUPE_SAD);
+    if (magic_size >= 13U && !xx_rt_memcmp(magic, "emaxutil v1.1", 13U)) XX_PROBE_HXC(emax_disk, EMAX_DISK);
+    if (magic_size >= 7U && !xx_rt_memcmp(magic, "VTrucco", 7U)) XX_PROBE_HXC(vtr_disk, VTR_DISK);
+    if (magic_size >= 5U && !xx_rt_memcmp(magic, "TRKY2", 5U)) XX_PROBE_HXC(speccydos_sdd, SPECCYDOS_SDD);
+    if ((total_size == 35 * 6656 || total_size == 40 * 6656) && (magic[0] & 0x80U)) XX_PROBE_HXC(apple_nib, APPLE_NIB);
+    if (total_size == 40 * 3253 || total_size == 80 * 3253 || total_size == 40 * 6872 || total_size == 80 * 6872) XX_PROBE_HXC(ti99_pc99, TI99_PC99);
+    if (total_size >= 25000 && total_size <= 8500000 && total_size % 25000 == 0) XX_PROBE_HXC(fei, FEI);
     {
-        size_t i=0;
-        if(magic_size>=3U && magic[0]==0xefU && magic[1]==0xbbU && magic[2]==0xbfU) i=3;
-        while(i<magic_size && (magic[i]==' ' || magic[i]=='\t' || magic[i]=='\r' || magic[i]=='\n')) ++i;
-        if(i<magic_size && magic[i]=='<') XX_PROBE_HXC(hxc_xml_disk_layout,HXC_XML_DISK_LAYOUT);
+        size_t i = 0;
+        if (magic_size >= 3U && magic[0] == 0xefU && magic[1] == 0xbbU && magic[2] == 0xbfU) i = 3;
+        while (i < magic_size && (magic[i] == ' ' || magic[i] == '\t' || magic[i] == '\r' || magic[i] == '\n')) ++i;
+        if (i < magic_size && magic[i] == '<') XX_PROBE_HXC(hxc_xml_disk_layout, HXC_XML_DISK_LAYOUT);
     }
 #undef XX_PROBE_HXC
 
     /* Validate each distinct DIE audio container before the broad detector.
      * Prefixes keep these bounded native probes off unrelated files. */
-#define XX_PROBE_DIE_AUDIO(stem, id) do { \
-        xx_##stem reader; \
-        bool valid; \
-        xx_##stem##_init(&reader, dev, 0); \
+#define XX_PROBE_DIE_AUDIO(stem, id)                              \
+    do {                                                          \
+        xx_##stem reader;                                         \
+        bool valid;                                               \
+        xx_##stem##_init(&reader, dev, 0);                        \
         valid = xx_##stem##_check_is_valid(&reader.format, NULL); \
-        xx_##stem##_destroy(&reader); \
-        (void)xx_io_seek64(dev, orig_pos, SEEK_SET); \
-        if (valid) return XX_FILE_TYPE_##id; \
+        xx_##stem##_destroy(&reader);                             \
+        (void)xx_io_seek64(dev, orig_pos, SEEK_SET);              \
+        if (valid) return XX_FILE_TYPE_##id;                      \
     } while (0)
-    if (magic_size >= 4U && magic[0] == 0x97U && magic[1] == 0x28U &&
-        magic[2] == 0x03U && magic[3] == 0x01U)
-        XX_PROBE_DIE_AUDIO(interplay_acm, INTERPLAY_ACM);
-    if (magic_size >= 24U && magic[0] == 0x80U && magic[1] == 0x00U)
-        XX_PROBE_DIE_AUDIO(cri_ahx, CRI_AHX);
-    if (magic_size >= 12U &&
-        (!xx_rt_memcmp(magic, "RIFX", 4U) || !xx_rt_memcmp(magic, "XFIR", 4U)))
-        XX_PROBE_DIE_AUDIO(adobe_director_cxt, ADOBE_DIRECTOR_CXT);
+    if (magic_size >= 4U && magic[0] == 0x97U && magic[1] == 0x28U && magic[2] == 0x03U && magic[3] == 0x01U) XX_PROBE_DIE_AUDIO(interplay_acm, INTERPLAY_ACM);
+    if (magic_size >= 24U && magic[0] == 0x80U && magic[1] == 0x00U) XX_PROBE_DIE_AUDIO(cri_ahx, CRI_AHX);
+    if (magic_size >= 12U && (!xx_rt_memcmp(magic, "RIFX", 4U) || !xx_rt_memcmp(magic, "XFIR", 4U))) XX_PROBE_DIE_AUDIO(adobe_director_cxt, ADOBE_DIRECTOR_CXT);
     if (magic_size >= 4U && (magic[0] == 2U || magic[0] == 3U) &&
-        (!xx_rt_memcmp(magic + 1U, "dss", 3U) ||
-         !xx_rt_memcmp(magic + 1U, "ds2", 3U) ||
-         !xx_rt_memcmp(magic + 1U, "enc", 3U)))
+        (!xx_rt_memcmp(magic + 1U, "dss", 3U) || !xx_rt_memcmp(magic + 1U, "ds2", 3U) || !xx_rt_memcmp(magic + 1U, "enc", 3U)))
         XX_PROBE_DIE_AUDIO(olympus_dss, OLYMPUS_DSS);
-    if (magic_size >= 4U && !xx_rt_memcmp(magic, "SCHl", 4U))
-        XX_PROBE_DIE_AUDIO(ea_exa, EA_EXA);
-    if (magic_size >= 8U && !xx_rt_memcmp(magic, "STRM", 4U) &&
-        magic[4] == 0xe8U && magic[5] == 0x03U &&
-        magic[6] == 0U && magic[7] == 0U)
+    if (magic_size >= 4U && !xx_rt_memcmp(magic, "SCHl", 4U)) XX_PROBE_DIE_AUDIO(ea_exa, EA_EXA);
+    if (magic_size >= 8U && !xx_rt_memcmp(magic, "STRM", 4U) && magic[4] == 0xe8U && magic[5] == 0x03U && magic[6] == 0U && magic[7] == 0U)
         XX_PROBE_DIE_AUDIO(abylight_strm, ABYLIGHT_STRM);
-    if (magic_size >= 4U && !xx_rt_memcmp(magic, "STRM", 4U))
-        XX_PROBE_DIE_AUDIO(audio_nitro_strm, AUDIO_NITRO_STRM);
-    if (magic_size >= 12U && !xx_rt_memcmp(magic, "RIFF", 4U) &&
-        !xx_rt_memcmp(magic + 8U, "IMA ", 4U))
-        XX_PROBE_DIE_AUDIO(audio_riff_ima, AUDIO_RIFF_IMA);
-    if (magic_size >= 12U &&
-        (!xx_rt_memcmp(magic, "RIFF", 4U) || !xx_rt_memcmp(magic, "RIFX", 4U)) &&
+    if (magic_size >= 4U && !xx_rt_memcmp(magic, "STRM", 4U)) XX_PROBE_DIE_AUDIO(audio_nitro_strm, AUDIO_NITRO_STRM);
+    if (magic_size >= 12U && !xx_rt_memcmp(magic, "RIFF", 4U) && !xx_rt_memcmp(magic + 8U, "IMA ", 4U)) XX_PROBE_DIE_AUDIO(audio_riff_ima, AUDIO_RIFF_IMA);
+    if (magic_size >= 12U && (!xx_rt_memcmp(magic, "RIFF", 4U) || !xx_rt_memcmp(magic, "RIFX", 4U)) &&
         (!xx_rt_memcmp(magic + 8U, "WAVE", 4U) || !xx_rt_memcmp(magic + 8U, "XWMA", 4U)))
         XX_PROBE_DIE_AUDIO(audio_wwise_wem, AUDIO_WWISE_WEM);
-    if (magic_size >= 12U && !xx_rt_memcmp(magic, "RIFX", 4U) &&
-        !xx_rt_memcmp(magic + 8U, "WAVE", 4U))
-        XX_PROBE_DIE_AUDIO(audio_rifx_wave, AUDIO_RIFX_WAVE);
-    if (magic_size >= 4U && !xx_rt_memcmp(magic, "SOU ", 4U))
-        XX_PROBE_DIE_AUDIO(audio_scumm_sou, AUDIO_SCUMM_SOU);
-    if (magic_size >= 18U && !xx_rt_memcmp(magic, "HMI-MIDISONG061595", 18U))
-        XX_PROBE_DIE_AUDIO(hmi_midi, HMI_MIDI);
-    if (magic_size >= 4U &&
-        (!xx_rt_memcmp(magic, " paf", 4U) || !xx_rt_memcmp(magic, "fap ", 4U)))
-        XX_PROBE_DIE_AUDIO(ensoniq_paf, ENSONIQ_PAF);
-    if (magic_size >= 4U && !xx_rt_memcmp(magic, "ALP ", 4U))
-        XX_PROBE_DIE_AUDIO(lego_alp, LEGO_ALP);
-    if (magic_size >= 4U && !xx_rt_memcmp(magic, "PVF", 3U))
-        XX_PROBE_DIE_AUDIO(audio_pvf, AUDIO_PVF);
-    if (magic_size >= 8U && magic[0] == 0U && magic[1] == 0U &&
-        magic[2] >= 1U && magic[4] == 0U && magic[5] == 0U &&
-        magic[6] == 0U && magic[7] == 3U)
+    if (magic_size >= 12U && !xx_rt_memcmp(magic, "RIFX", 4U) && !xx_rt_memcmp(magic + 8U, "WAVE", 4U)) XX_PROBE_DIE_AUDIO(audio_rifx_wave, AUDIO_RIFX_WAVE);
+    if (magic_size >= 4U && !xx_rt_memcmp(magic, "SOU ", 4U)) XX_PROBE_DIE_AUDIO(audio_scumm_sou, AUDIO_SCUMM_SOU);
+    if (magic_size >= 18U && !xx_rt_memcmp(magic, "HMI-MIDISONG061595", 18U)) XX_PROBE_DIE_AUDIO(hmi_midi, HMI_MIDI);
+    if (magic_size >= 4U && (!xx_rt_memcmp(magic, " paf", 4U) || !xx_rt_memcmp(magic, "fap ", 4U))) XX_PROBE_DIE_AUDIO(ensoniq_paf, ENSONIQ_PAF);
+    if (magic_size >= 4U && !xx_rt_memcmp(magic, "ALP ", 4U)) XX_PROBE_DIE_AUDIO(lego_alp, LEGO_ALP);
+    if (magic_size >= 4U && !xx_rt_memcmp(magic, "PVF", 3U)) XX_PROBE_DIE_AUDIO(audio_pvf, AUDIO_PVF);
+    if (magic_size >= 8U && magic[0] == 0U && magic[1] == 0U && magic[2] >= 1U && magic[4] == 0U && magic[5] == 0U && magic[6] == 0U && magic[7] == 3U)
         XX_PROBE_DIE_AUDIO(audio_shockwave_swa, AUDIO_SHOCKWAVE_SWA);
 #undef XX_PROBE_DIE_AUDIO
 
@@ -3421,186 +2971,96 @@ xx_file_type_t xx_format_get_file_type_device(xx_io_device *dev) {
 
     bool is_zip = false;
     bool is_zip64 = false;
-    bool is_7zip = magic_size >= 6 &&
-                   magic[0] == 0x37 && magic[1] == 0x7A &&
-                   magic[2] == 0xBC && magic[3] == 0xAF &&
-                   magic[4] == 0x27 && magic[5] == 0x1C;
-    bool is_rar = magic_size >= 7 &&
-                  magic[0] == 0x52 && magic[1] == 0x61 &&
-                  magic[2] == 0x72 && magic[3] == 0x21 &&
-                  magic[4] == 0x1A && magic[5] == 0x07 &&
-                  (magic[6] == 0x00 ||
-                   (magic_size >= 8 && magic[6] == 0x01 && magic[7] == 0x00));
-    bool is_ar = magic_size >= 8 &&
-                 (xx_rt_memcmp(magic, "!<arch>\n", 8) == 0 ||
-                  xx_rt_memcmp(magic, "!<thin>\n", 8) == 0);
-    bool is_bz2 = magic_size >= 4 &&
-                  magic[0] == 'B' && magic[1] == 'Z' && magic[2] == 'h' &&
-                  magic[3] >= '1' && magic[3] <= '9';
-    bool is_gz = magic_size >= 3 &&
-                 magic[0] == 0x1F && magic[1] == 0x8B && magic[2] == 0x08;
-    bool is_xz = magic_size >= 6 &&
-                  magic[0] == 0xFD && magic[1] == 0x37 && magic[2] == 0x7A &&
-                  magic[3] == 0x58 && magic[4] == 0x5A && magic[5] == 0x00;
-    bool is_lz4 = magic_size >= 4 &&
-                  ((magic[0] == 0x04 && magic[1] == 0x22 &&
-                    magic[2] == 0x4D && magic[3] == 0x18) ||
-                   (magic[0] >= 0x50 && magic[0] <= 0x5F &&
-                    magic[1] == 0x2A && magic[2] == 0x4D &&
-                    magic[3] == 0x18));
-    bool is_lz5 = magic_size >= 4 &&
-                  ((magic[0] == 0x05 && magic[1] == 0x22 &&
-                    magic[2] == 0x4D && magic[3] == 0x18) ||
-                   (magic[0] >= 0x50 && magic[0] <= 0x5F &&
-                    magic[1] == 0x2A && magic[2] == 0x4D &&
-                    magic[3] == 0x18));
-    bool is_lizard = magic_size >= 4 &&
-                     ((magic[0] == 0x06 && magic[1] == 0x22 &&
-                       magic[2] == 0x4D && magic[3] == 0x18) ||
-                      (magic[0] >= 0x50 && magic[0] <= 0x5F &&
-                       magic[1] == 0x2A && magic[2] == 0x4D &&
-                       magic[3] == 0x18));
-    bool is_brotli_mt = magic_size >= 16 &&
-                        magic[0] == 0x50 && magic[1] == 0x2A &&
-                        magic[2] == 0x4D && magic[3] == 0x18 &&
-                        magic[4] == 0x08 && magic[5] == 0x00 &&
-                        magic[6] == 0x00 && magic[7] == 0x00 &&
-                        magic[12] == 'B' && magic[13] == 'R';
-    bool is_zstd = magic_size >= 4 &&
-                   ((magic[0] == 0x28 && magic[1] == 0xB5 &&
-                     magic[2] == 0x2F && magic[3] == 0xFD) ||
-                    (magic[0] >= 0x50 && magic[0] <= 0x5F &&
-                     magic[1] == 0x2A && magic[2] == 0x4D &&
-                     magic[3] == 0x18));
+    bool is_7zip = magic_size >= 6 && magic[0] == 0x37 && magic[1] == 0x7A && magic[2] == 0xBC && magic[3] == 0xAF && magic[4] == 0x27 && magic[5] == 0x1C;
+    bool is_rar = magic_size >= 7 && magic[0] == 0x52 && magic[1] == 0x61 && magic[2] == 0x72 && magic[3] == 0x21 && magic[4] == 0x1A && magic[5] == 0x07 &&
+                  (magic[6] == 0x00 || (magic_size >= 8 && magic[6] == 0x01 && magic[7] == 0x00));
+    bool is_ar = magic_size >= 8 && (xx_rt_memcmp(magic, "!<arch>\n", 8) == 0 || xx_rt_memcmp(magic, "!<thin>\n", 8) == 0);
+    bool is_bz2 = magic_size >= 4 && magic[0] == 'B' && magic[1] == 'Z' && magic[2] == 'h' && magic[3] >= '1' && magic[3] <= '9';
+    bool is_gz = magic_size >= 3 && magic[0] == 0x1F && magic[1] == 0x8B && magic[2] == 0x08;
+    bool is_xz = magic_size >= 6 && magic[0] == 0xFD && magic[1] == 0x37 && magic[2] == 0x7A && magic[3] == 0x58 && magic[4] == 0x5A && magic[5] == 0x00;
+    bool is_lz4 = magic_size >= 4 && ((magic[0] == 0x04 && magic[1] == 0x22 && magic[2] == 0x4D && magic[3] == 0x18) ||
+                                      (magic[0] >= 0x50 && magic[0] <= 0x5F && magic[1] == 0x2A && magic[2] == 0x4D && magic[3] == 0x18));
+    bool is_lz5 = magic_size >= 4 && ((magic[0] == 0x05 && magic[1] == 0x22 && magic[2] == 0x4D && magic[3] == 0x18) ||
+                                      (magic[0] >= 0x50 && magic[0] <= 0x5F && magic[1] == 0x2A && magic[2] == 0x4D && magic[3] == 0x18));
+    bool is_lizard = magic_size >= 4 && ((magic[0] == 0x06 && magic[1] == 0x22 && magic[2] == 0x4D && magic[3] == 0x18) ||
+                                         (magic[0] >= 0x50 && magic[0] <= 0x5F && magic[1] == 0x2A && magic[2] == 0x4D && magic[3] == 0x18));
+    bool is_brotli_mt = magic_size >= 16 && magic[0] == 0x50 && magic[1] == 0x2A && magic[2] == 0x4D && magic[3] == 0x18 && magic[4] == 0x08 && magic[5] == 0x00 &&
+                        magic[6] == 0x00 && magic[7] == 0x00 && magic[12] == 'B' && magic[13] == 'R';
+    bool is_zstd = magic_size >= 4 && ((magic[0] == 0x28 && magic[1] == 0xB5 && magic[2] == 0x2F && magic[3] == 0xFD) ||
+                                       (magic[0] >= 0x50 && magic[0] <= 0x5F && magic[1] == 0x2A && magic[2] == 0x4D && magic[3] == 0x18));
     bool is_mz = magic_size >= 2 && magic[0] == 'M' && magic[1] == 'Z';
-    bool is_elf = magic_size >= 5 && magic[0] == 0x7fU &&
-                  magic[1] == 'E' && magic[2] == 'L' && magic[3] == 'F' &&
-                  (magic[4] == XX_ELF_CLASS_32 ||
-                   magic[4] == XX_ELF_CLASS_64);
-    bool is_macho = magic_size >= 4 &&
-                    ((magic[0] == 0xceU && magic[1] == 0xfaU &&
-                      magic[2] == 0xedU && magic[3] == 0xfeU) ||
-                     (magic[0] == 0xcfU && magic[1] == 0xfaU &&
-                      magic[2] == 0xedU && magic[3] == 0xfeU) ||
-                     (magic[0] == 0xfeU && magic[1] == 0xedU &&
-                      magic[2] == 0xfaU && magic[3] == 0xceU) ||
-                     (magic[0] == 0xfeU && magic[1] == 0xedU &&
-                      magic[2] == 0xfaU && magic[3] == 0xcfU));
-    bool is_dex = magic_size >= XX_DEX_MAGIC_SIZE &&
-                  xx_rt_memcmp(magic, "dex\n", 4U) == 0 && magic[7] == 0U;
+    bool is_elf =
+        magic_size >= 5 && magic[0] == 0x7fU && magic[1] == 'E' && magic[2] == 'L' && magic[3] == 'F' && (magic[4] == XX_ELF_CLASS_32 || magic[4] == XX_ELF_CLASS_64);
+    bool is_macho = magic_size >= 4 && ((magic[0] == 0xceU && magic[1] == 0xfaU && magic[2] == 0xedU && magic[3] == 0xfeU) ||
+                                        (magic[0] == 0xcfU && magic[1] == 0xfaU && magic[2] == 0xedU && magic[3] == 0xfeU) ||
+                                        (magic[0] == 0xfeU && magic[1] == 0xedU && magic[2] == 0xfaU && magic[3] == 0xceU) ||
+                                        (magic[0] == 0xfeU && magic[1] == 0xedU && magic[2] == 0xfaU && magic[3] == 0xcfU));
+    bool is_dex = magic_size >= XX_DEX_MAGIC_SIZE && xx_rt_memcmp(magic, "dex\n", 4U) == 0 && magic[7] == 0U;
     bool is_iso9660 = false;
     bool is_ace = false;
     bool is_ain = magic_size >= 1 && magic[0] == '!';
-    bool is_aldus = magic_size >= 8 &&
-                    (xx_rt_memcmp(magic, "ALDUS LZ", 8U) == 0 ||
-                     xx_rt_memcmp(magic, "ALDUS PK", 8U) == 0 ||
-                     xx_rt_memcmp(magic, "ADOBE LZ", 8U) == 0);
+    bool is_aldus = magic_size >= 8 && (xx_rt_memcmp(magic, "ALDUS LZ", 8U) == 0 || xx_rt_memcmp(magic, "ALDUS PK", 8U) == 0 || xx_rt_memcmp(magic, "ADOBE LZ", 8U) == 0);
     bool is_alz = magic_size >= 4 && xx_rt_memcmp(magic, "ALZ\1", 4U) == 0;
     bool is_ampk = magic_size >= 4 && xx_rt_memcmp(magic, "AMPK", 4U) == 0;
-    bool is_aodos = magic_size >= 4U &&
-                    ((magic[0] == 0xa0U && magic[1] == 0U &&
-                      (magic[2] == 0x16U || magic[2] == 0x20U ||
-                       magic[2] == 0x22U) && magic[3] == 1U) ||
-                     (magic[0] == 0U && magic[1] == 0U &&
-                      magic[2] == 0U && magic[3] == 0U));
+    bool is_aodos = magic_size >= 4U && ((magic[0] == 0xa0U && magic[1] == 0U && (magic[2] == 0x16U || magic[2] == 0x20U || magic[2] == 0x22U) && magic[3] == 1U) ||
+                                         (magic[0] == 0U && magic[1] == 0U && magic[2] == 0U && magic[3] == 0U));
     bool is_arcfs = magic_size >= 8 && xx_rt_memcmp(magic, "Archive\0", 8U) == 0;
     bool is_pdp11ar = magic_size >= 2 && magic[0] == 0x65U && magic[1] == 0xffU;
     bool is_artipack = magic_size >= 8 && xx_rt_memcmp(magic, "ARTIPACK", 8U) == 0;
-    bool is_arcv2 = magic_size >= 8 && xx_rt_memcmp(magic, "ARCV", 4U) == 0 &&
-                    magic[4] == 0U && magic[5] == 2U &&
-                    magic[6] == 14U && magic[7] == 0U;
-    bool is_arcv4 = magic_size >= 6 && xx_rt_memcmp(magic, "ARCV", 4U) == 0 &&
-                    magic[4] == 0U && magic[5] == 4U;
+    bool is_arcv2 = magic_size >= 8 && xx_rt_memcmp(magic, "ARCV", 4U) == 0 && magic[4] == 0U && magic[5] == 2U && magic[6] == 14U && magic[7] == 0U;
+    bool is_arcv4 = magic_size >= 6 && xx_rt_memcmp(magic, "ARCV", 4U) == 0 && magic[4] == 0U && magic[5] == 4U;
     /* 0x60 0xea alone is a weak signature, so also require the little-endian
      * basic-header size that follows it to be in the range xx_arj_parse()
      * accepts. The header body is CRC32-verified afterwards. */
-    bool is_arj = magic_size >= 4 && magic[0] == 0x60U && magic[1] == 0xeaU &&
-                  (uint16_t)(magic[2] | ((uint16_t)magic[3] << 8U)) >= 30U &&
+    bool is_arj = magic_size >= 4 && magic[0] == 0x60U && magic[1] == 0xeaU && (uint16_t)(magic[2] | ((uint16_t)magic[3] << 8U)) >= 30U &&
                   (uint16_t)(magic[2] | ((uint16_t)magic[3] << 8U)) <= 2600U;
     bool is_cab = magic_size >= 4 && xx_rt_memcmp(magic, "MSCF", 4U) == 0;
     /* XX_BFF_VOLUME_MAGIC is 0xea6b0009 read little-endian, so the bytes on
      * disk are 09 00 6b ea. */
-    bool is_aixbff = magic_size >= 4 && magic[0] == 0x09U && magic[1] == 0x00U &&
-                     magic[2] == 0x6bU && magic[3] == 0xeaU;
+    bool is_aixbff = magic_size >= 4 && magic[0] == 0x09U && magic[1] == 0x00U && magic[2] == 0x6bU && magic[3] == 0xeaU;
     /* ARX has no signature at offset 0: byte 0 is the first header's size - 2
      * and byte 1 its checksum. What is fixed is the LHA-style method stamp at
      * bytes 2..6 and the zero at byte 7, both of which xx_arx_parse() requires. */
-    bool is_arx = magic_size >= 8 && magic[0] >= 22U && magic[2] == '-' &&
-                  magic[3] == 'l' && (magic[4] == 'h' || magic[4] == 'z') &&
-                  magic[5] >= '0' && magic[5] <= '9' && magic[6] == '-' &&
-                  magic[7] == 0U;
-    bool is_warc = magic_size >= 7 && xx_rt_memcmp(magic, "WARC/", 5U) == 0 &&
-                   (magic[5] == '1' || magic[5] == '0') && magic[6] == '.';
-    bool is_cpio = (magic_size >= 6 &&
-                    (xx_rt_memcmp(magic, "070701", 6U) == 0 ||
-                     xx_rt_memcmp(magic, "070702", 6U) == 0 ||
-                     xx_rt_memcmp(magic, "070707", 6U) == 0 ||
-                     xx_rt_memcmp(magic, "070727", 6U) == 0)) ||
-                   (magic_size >= 2 &&
-                    ((magic[0] == 0xc7U && magic[1] == 0x71U) ||
-                     (magic[0] == 0x71U && magic[1] == 0xc7U))) ||
+    bool is_arx = magic_size >= 8 && magic[0] >= 22U && magic[2] == '-' && magic[3] == 'l' && (magic[4] == 'h' || magic[4] == 'z') && magic[5] >= '0' &&
+                  magic[5] <= '9' && magic[6] == '-' && magic[7] == 0U;
+    bool is_warc = magic_size >= 7 && xx_rt_memcmp(magic, "WARC/", 5U) == 0 && (magic[5] == '1' || magic[5] == '0') && magic[6] == '.';
+    bool is_cpio = (magic_size >= 6 && (xx_rt_memcmp(magic, "070701", 6U) == 0 || xx_rt_memcmp(magic, "070702", 6U) == 0 || xx_rt_memcmp(magic, "070707", 6U) == 0 ||
+                                        xx_rt_memcmp(magic, "070727", 6U) == 0)) ||
+                   (magic_size >= 2 && ((magic[0] == 0xc7U && magic[1] == 0x71U) || (magic[0] == 0x71U && magic[1] == 0xc7U))) ||
                    /* Solaris ships its cpio archives inside a block-compressed
                     * wrapper whose own header is 0x19 0x9E 'T' 'L'; the cpio
                     * stream only appears after inflating it. The reader knows
                     * that container, so the prefilter has to let it through. */
-                   (magic_size >= 4 &&
-                    magic[0] == 0x19U && magic[1] == 0x9eU &&
-                    magic[2] == 'T' && magic[3] == 'L');
+                   (magic_size >= 4 && magic[0] == 0x19U && magic[1] == 0x9eU && magic[2] == 'T' && magic[3] == 'L');
     bool is_mtree = magic_size >= 6 && xx_rt_memcmp(magic, "#mtree", 6U) == 0;
-    bool is_compress = magic_size >= 3 &&
-                       magic[0] == XX_COMPRESS_MAGIC0 &&
-                       magic[1] == XX_COMPRESS_MAGIC1 &&
-                       (magic[2] & UINT8_C(0x60)) == 0U &&
-                       (magic[2] & UINT8_C(0x1f)) >= 9U &&
-                       (magic[2] & UINT8_C(0x1f)) <= 16U;
-    bool is_unixpack = magic_size >= 6 && magic[0] == UINT8_C(0x1f) &&
-                       (magic[1] == UINT8_C(0x1e) ||
-                        magic[1] == UINT8_C(0x1f));
-    bool is_zlib = magic_size >= 6 && (magic[0] & UINT8_C(0x0f)) == 8U &&
-                   (magic[0] >> 4U) <= 7U &&
-                   ((((uint16_t)magic[0] << 8U) | magic[1]) % 31U) == 0U &&
+    bool is_compress = magic_size >= 3 && magic[0] == XX_COMPRESS_MAGIC0 && magic[1] == XX_COMPRESS_MAGIC1 && (magic[2] & UINT8_C(0x60)) == 0U &&
+                       (magic[2] & UINT8_C(0x1f)) >= 9U && (magic[2] & UINT8_C(0x1f)) <= 16U;
+    bool is_unixpack = magic_size >= 6 && magic[0] == UINT8_C(0x1f) && (magic[1] == UINT8_C(0x1e) || magic[1] == UINT8_C(0x1f));
+    bool is_zlib = magic_size >= 6 && (magic[0] & UINT8_C(0x0f)) == 8U && (magic[0] >> 4U) <= 7U && ((((uint16_t)magic[0] << 8U) | magic[1]) % 31U) == 0U &&
                    (magic[1] & UINT8_C(0x20)) == 0U;
     bool is_mscompress =
-        (magic_size >= 8 && xx_rt_memcmp(magic, "SZDD\x88\xf0\x27\x33", 8U) == 0) ||
-        (magic_size >= 7 && xx_rt_memcmp(magic, "SZ \x88\xf0\x27\x33", 7U) == 0);
+        (magic_size >= 8 && xx_rt_memcmp(magic, "SZDD\x88\xf0\x27\x33", 8U) == 0) || (magic_size >= 7 && xx_rt_memcmp(magic, "SZ \x88\xf0\x27\x33", 7U) == 0);
     bool is_ash0 = magic_size >= 4 && xx_rt_memcmp(magic, "ASH0", 4U) == 0;
-    bool is_wiilz77 =
-        (magic_size >= 5 && xx_rt_memcmp(magic, "LZ77", 4U) == 0 &&
-         (magic[4] == 0x10U || magic[4] == 0x11U)) ||
-        (magic_size >= 1 && (magic[0] == 0x10U || magic[0] == 0x11U)) ||
-        (magic_size >= 4 && xx_rt_memcmp(magic, "IMD5", 4U) == 0);
-    bool is_lzv1 = magic_size >= 10 && xx_rt_memcmp(magic, "LZV1", 4U) == 0 &&
-                   magic[4] == 0x5dU && magic[5] == 0x19U &&
-                   magic[6] == 0x01U && magic[7] == 0xadU &&
+    bool is_wiilz77 = (magic_size >= 5 && xx_rt_memcmp(magic, "LZ77", 4U) == 0 && (magic[4] == 0x10U || magic[4] == 0x11U)) ||
+                      (magic_size >= 1 && (magic[0] == 0x10U || magic[0] == 0x11U)) || (magic_size >= 4 && xx_rt_memcmp(magic, "IMD5", 4U) == 0);
+    bool is_lzv1 = magic_size >= 10 && xx_rt_memcmp(magic, "LZV1", 4U) == 0 && magic[4] == 0x5dU && magic[5] == 0x19U && magic[6] == 0x01U && magic[7] == 0xadU &&
                    magic[8] == 0x00U && magic[9] == 0x00U;
-    bool is_oraclesqueeze = magic_size >= 2 && magic[0] == 0x76U &&
-                            magic[1] == 0xffU;
-    bool is_softronics =
-        magic_size >= 42 && magic[1] == 0U &&
-        xx_rt_memcmp(magic + 2U, "Softronics Compressed File\0Version 2.00\0",
-               40U) == 0;
-    bool is_logitechcompress = magic_size >= 10 && magic[0] == 0xdaU &&
-                               magic[1] == 0xfaU && magic[8] <= 1U &&
-                               magic[9] >= 4U && magic[9] <= 6U;
-    bool is_dmapacked = magic_size >= 34 && magic[0] == 'd' &&
-                        magic[1] == 'm' && magic[2] == 0x10U &&
-                        magic[3] == 0x11U &&
-                        xx_rt_memcmp(magic + 0x1aU, "PAKPAK", 6U) == 0 &&
-                        magic[0x20U] == 0U && magic[0x21U] == 0x2aU;
+    bool is_oraclesqueeze = magic_size >= 2 && magic[0] == 0x76U && magic[1] == 0xffU;
+    bool is_softronics = magic_size >= 42 && magic[1] == 0U && xx_rt_memcmp(magic + 2U, "Softronics Compressed File\0Version 2.00\0", 40U) == 0;
+    bool is_logitechcompress = magic_size >= 10 && magic[0] == 0xdaU && magic[1] == 0xfaU && magic[8] <= 1U && magic[9] >= 4U && magic[9] <= 6U;
+    bool is_dmapacked = magic_size >= 34 && magic[0] == 'd' && magic[1] == 'm' && magic[2] == 0x10U && magic[3] == 0x11U &&
+                        xx_rt_memcmp(magic + 0x1aU, "PAKPAK", 6U) == 0 && magic[0x20U] == 0U && magic[0x21U] == 0x2aU;
     bool is_huf = magic_size >= 2 && magic[0] == 0xbdU && magic[1] == 0x01U;
     bool is_lzdiet = magic_size >= 6 && xx_rt_memcmp(magic, "lZdIeT", 6U) == 0;
     bool is_lzpis2 = magic_size >= 6 && xx_rt_memcmp(magic, "LZPIS2", 6U) == 0;
     bool is_zie = total_size >= 0x118 && magic_size >= 4U && xx_rt_memcmp(magic, "PIT2", 4U) == 0;
-    bool is_xeditpack = magic_size >= 16 && magic[0x0] == 0x00U && magic[0x1] == 0x01U && magic[0x2] == 0x40U &&
-                        (magic[3] == 0xc6U || magic[3] == 0xe5U);
-    bool is_wpk = magic_size >= 0x0c &&
-                  ((magic[0x0] == 0x03U && magic[0x1] == 0x24U && magic[0x2] == 0x01U && magic[0x3] == 0x01U) ||
-                   (magic[0x0] == 0x03U && magic[0x1] == 0x24U && magic[0x2] == 0x33U && magic[0x3] == 0x01U));
-    bool is_wintersoft = magic_size >= 16 && xx_rt_memcmp(magic, "**++", 4U) == 0 &&
-                         (xx_rt_memcmp(magic + 0x4U, "LZW ", 4U) == 0 ||
-                          xx_rt_memcmp(magic + 0x4U, "HUFF", 4U) == 0);
-    bool is_vmarc = magic_size >= 16 &&
-                    magic[0x0] == 0x7aU && magic[0x1] == 0xc3U && magic[0x2] == 0xc6U && magic[0x3] == 0xc6U && magic[0x4] == 0x40U && magic[0x5] == 0x40U && magic[0x6] == 0x40U && magic[0x7] == 0x40U && magic[0x8] == 0x01U;
+    bool is_xeditpack = magic_size >= 16 && magic[0x0] == 0x00U && magic[0x1] == 0x01U && magic[0x2] == 0x40U && (magic[3] == 0xc6U || magic[3] == 0xe5U);
+    bool is_wpk = magic_size >= 0x0c && ((magic[0x0] == 0x03U && magic[0x1] == 0x24U && magic[0x2] == 0x01U && magic[0x3] == 0x01U) ||
+                                         (magic[0x0] == 0x03U && magic[0x1] == 0x24U && magic[0x2] == 0x33U && magic[0x3] == 0x01U));
+    bool is_wintersoft =
+        magic_size >= 16 && xx_rt_memcmp(magic, "**++", 4U) == 0 && (xx_rt_memcmp(magic + 0x4U, "LZW ", 4U) == 0 || xx_rt_memcmp(magic + 0x4U, "HUFF", 4U) == 0);
+    bool is_vmarc = magic_size >= 16 && magic[0x0] == 0x7aU && magic[0x1] == 0xc3U && magic[0x2] == 0xc6U && magic[0x3] == 0xc6U && magic[0x4] == 0x40U &&
+                    magic[0x5] == 0x40U && magic[0x6] == 0x40U && magic[0x7] == 0x40U && magic[0x8] == 0x01U;
     /* 12, not 0x50: the prefilter window is 64 bytes, so a 0x50 test could
      * never be true and Tivoli was unreachable. The banner it matches is
      * fully inside the first twelve bytes. */
@@ -3609,60 +3069,52 @@ xx_file_type_t xx_format_get_file_type_device(xx_io_device *dev) {
      * bytes, so asking for 0x80 of it could never be true and TI99ARC
      * was unreachable. Same correction applies to the four below. */
     bool is_ti99arc = total_size >= 0x80;
-    bool is_stylus = magic_size >= 0x10 && xx_rt_memcmp(magic, "DP", 2U) == 0 &&
-                     magic[0x2] == 0x1aU && magic[0x3] == 0x07U;
+    bool is_stylus = magic_size >= 0x10 && xx_rt_memcmp(magic, "DP", 2U) == 0 && magic[0x2] == 0x1aU && magic[0x3] == 0x07U;
     bool is_rtpatch = magic_size >= 0x1a && xx_rt_memcmp(magic, "K*", 2U) == 0;
     bool is_rta = magic_size >= 8 && xx_rt_memcmp(magic, "KJd", 3U) == 0 && magic[3] == 0U;
     bool is_rompaq = total_size >= 0x4a && magic_size >= 0x14 && magic[0x13] == 0U;
-    bool is_rid = magic_size >= 0x2b && magic[0x2] == 0x00U && magic[0x3] == 0x00U && magic[0x4] == 0x00U && magic[0x5] == 0x00U && magic[0x6] == 0x00U && magic[0x7] == 0x00U && magic[0x8] == 0x00U && magic[0x9] == 0x00U;
-    bool is_qnxbase = magic_size >= 16 && magic[0x0] == 0xebU && magic[0x1] == 0x4cU && magic[0x2] == 0x44U && magic[0x3] == 0x44U && magic[0x4] == 0x44U && magic[0x5] == 0x44U;
+    bool is_rid = magic_size >= 0x2b && magic[0x2] == 0x00U && magic[0x3] == 0x00U && magic[0x4] == 0x00U && magic[0x5] == 0x00U && magic[0x6] == 0x00U &&
+                  magic[0x7] == 0x00U && magic[0x8] == 0x00U && magic[0x9] == 0x00U;
+    bool is_qnxbase =
+        magic_size >= 16 && magic[0x0] == 0xebU && magic[0x1] == 0x4cU && magic[0x2] == 0x44U && magic[0x3] == 0x44U && magic[0x4] == 0x44U && magic[0x5] == 0x44U;
     bool is_qda = magic_size >= 0x10 && xx_rt_memcmp(magic + 0x4U, "QDA0", 4U) == 0 && magic[1] == 0U;
     bool is_pkt = magic_size >= 0x3a && magic[0x12] == 0x02U && magic[0x13] == 0x00U;
-    bool is_lofi = magic_size >= 0x24 &&
-        ((xx_rt_memcmp(magic, "lzma\0", 5U) == 0) ||
-         (xx_rt_memcmp(magic, "gzip\0", 5U) == 0) ||
-         (xx_rt_memcmp(magic, "gzip-6\0", 7U) == 0) ||
-         (xx_rt_memcmp(magic, "gzip-9\0", 7U) == 0));
-    bool is_lim = magic_size >= 8 && xx_rt_memcmp(magic, "LM", 2U) == 0 &&
-                  magic[0x2] == 0x1aU && magic[0x3] == 0x08U && magic[4] == 0U;
+    bool is_lofi = magic_size >= 0x24 && ((xx_rt_memcmp(magic, "lzma\0", 5U) == 0) || (xx_rt_memcmp(magic, "gzip\0", 5U) == 0) ||
+                                          (xx_rt_memcmp(magic, "gzip-6\0", 7U) == 0) || (xx_rt_memcmp(magic, "gzip-9\0", 7U) == 0));
+    bool is_lim = magic_size >= 8 && xx_rt_memcmp(magic, "LM", 2U) == 0 && magic[0x2] == 0x1aU && magic[0x3] == 0x08U && magic[4] == 0U;
     bool is_kolibrikpack = magic_size >= 12 && xx_rt_memcmp(magic, "KPCK", 4U) == 0;
     bool is_ivt = magic_size >= 8 && magic[0x0] == 0x3fU && magic[0x1] == 0x5fU && magic[0x2] == 0x04U && magic[0x3] == 0x01U;
-    bool is_irwinpac = magic_size >= 20 && xx_rt_memcmp(magic, "IrwinPac", 8U) == 0 &&
-                       magic[8] == 20U && magic[9] == 0U;
-    bool is_hap = magic_size >= 15 && magic[0x0] == 0x91U && magic[0x1] == 0x33U && magic[0x2] == 0x48U && magic[0x3] == 0x46U &&
-                  magic[0x4] == 0x00U && magic[0x5] == 0x00U && magic[0x6] == 0x00U && magic[0x7] == 0x00U;
+    bool is_irwinpac = magic_size >= 20 && xx_rt_memcmp(magic, "IrwinPac", 8U) == 0 && magic[8] == 20U && magic[9] == 0U;
+    bool is_hap = magic_size >= 15 && magic[0x0] == 0x91U && magic[0x1] == 0x33U && magic[0x2] == 0x48U && magic[0x3] == 0x46U && magic[0x4] == 0x00U &&
+                  magic[0x5] == 0x00U && magic[0x6] == 0x00U && magic[0x7] == 0x00U;
     bool is_compactpro = magic_size >= 8 && magic[0] == 1U;
     bool is_imp = magic_size >= 42 && xx_rt_memcmp(magic, "IMP\n", 4U) == 0;
     bool is_sqx = magic_size >= 25 && magic[2] == 'R' && xx_rt_memcmp(magic + 0x7U, "-sqx-", 5U) == 0;
     bool is_zoo = magic_size >= 0x20 && magic[0x14] == 0xdcU && magic[0x15] == 0xa7U && magic[0x16] == 0xc4U && magic[0x17] == 0xfdU;
-    bool is_trx = magic_size >= 4U && magic[0]==0x48U && magic[1]==0x44U && magic[2]==0x52U && magic[3]==0x30U;
-    bool is_seama = magic_size >= 4U && magic[0]==0x5EU && magic[1]==0xA3U && magic[2]==0xA4U && magic[3]==0x17U;
+    bool is_trx = magic_size >= 4U && magic[0] == 0x48U && magic[1] == 0x44U && magic[2] == 0x52U && magic[3] == 0x30U;
+    bool is_seama = magic_size >= 4U && magic[0] == 0x5EU && magic[1] == 0xA3U && magic[2] == 0xA4U && magic[3] == 0x17U;
     /* DLOB is not a distinct container: it is a SEAMA chain whose first
      * entity has size 0 (metadata only, carrying the board signature).
      * Same magic, so the zero size at +8 is the only discriminator, and
      * DLOB must be tried before SEAMA -- SEAMA accepts both shapes. */
-    bool is_dlob = magic_size >= 12U && magic[0]==0x5EU && magic[1]==0xA3U &&
-                   magic[2]==0xA4U && magic[3]==0x17U &&
-                   magic[8]==0U && magic[9]==0U && magic[10]==0U && magic[11]==0U;
-    bool is_chk = magic_size >= 4U && magic[0]==0x2AU && magic[1]==0x23U && magic[2]==0x24U && magic[3]==0x5EU;
+    bool is_dlob = magic_size >= 12U && magic[0] == 0x5EU && magic[1] == 0xA3U && magic[2] == 0xA4U && magic[3] == 0x17U && magic[8] == 0U && magic[9] == 0U &&
+                   magic[10] == 0U && magic[11] == 0U;
+    bool is_chk = magic_size >= 4U && magic[0] == 0x2AU && magic[1] == 0x23U && magic[2] == 0x24U && magic[3] == 0x5EU;
     bool is_packimg = magic_size >= 12U && xx_rt_memcmp(magic, "--PaCkImGs--", 12U) == 0;
     /* "B000FF
 " -- spelled as bytes because the trailing newline has no
      * business being an escape inside a source string. */
-    bool is_wince = magic_size >= 7U && magic[0]==0x42U && magic[1]==0x30U &&
-                    magic[2]==0x30U && magic[3]==0x30U && magic[4]==0x46U &&
-                    magic[5]==0x46U && magic[6]==0x0AU;
+    bool is_wince = magic_size >= 7U && magic[0] == 0x42U && magic[1] == 0x30U && magic[2] == 0x30U && magic[3] == 0x30U && magic[4] == 0x46U && magic[5] == 0x46U &&
+                    magic[6] == 0x0AU;
     bool is_rtk = magic_size >= 4U && xx_rt_memcmp(magic, "RTK0", 4U) == 0;
     bool is_binhdr = magic_size >= 18U && xx_rt_memcmp(magic + 14U, "U2ND", 4U) == 0;
-    bool is_qcow = magic_size >= 8U && magic[0]==0x51U && magic[1]==0x46U && magic[2]==0x49U &&
-        magic[3]==0xFBU && magic[4]==0U && magic[5]==0U && magic[6]==0U &&
-        (magic[7]==2U || magic[7]==3U);
-    bool is_luks = magic_size >= 8U && magic[0]==0x4CU && magic[1]==0x55U && magic[2]==0x4BU &&
-        magic[3]==0x53U && magic[4]==0xBAU && magic[5]==0xBEU &&
-        magic[6]==0U && (magic[7]==1U || magic[7]==2U);
-    bool is_apfs = magic_size >= 36U && magic[32]==0x4EU && magic[33]==0x58U && magic[34]==0x53U && magic[35]==0x42U;
-    bool is_logfs = magic_size >= 32U && magic[24]==0x7AU && magic[25]==0x3AU && magic[26]==0x8EU && magic[27]==0x5CU;
-    bool is_uefi_fv = magic_size >= 44U && magic[40]==0x5FU && magic[41]==0x46U && magic[42]==0x56U && magic[43]==0x48U;
+    bool is_qcow = magic_size >= 8U && magic[0] == 0x51U && magic[1] == 0x46U && magic[2] == 0x49U && magic[3] == 0xFBU && magic[4] == 0U && magic[5] == 0U &&
+                   magic[6] == 0U && (magic[7] == 2U || magic[7] == 3U);
+    bool is_luks = magic_size >= 8U && magic[0] == 0x4CU && magic[1] == 0x55U && magic[2] == 0x4BU && magic[3] == 0x53U && magic[4] == 0xBAU && magic[5] == 0xBEU &&
+                   magic[6] == 0U && (magic[7] == 1U || magic[7] == 2U);
+    bool is_apfs = magic_size >= 36U && magic[32] == 0x4EU && magic[33] == 0x58U && magic[34] == 0x53U && magic[35] == 0x42U;
+    bool is_logfs = magic_size >= 32U && magic[24] == 0x7AU && magic[25] == 0x3AU && magic[26] == 0x8EU && magic[27] == 0x5CU;
+    bool is_uefi_fv = magic_size >= 44U && magic[40] == 0x5FU && magic[41] == 0x46U && magic[42] == 0x56U && magic[43] == 0x48U;
     /* Past the 64-byte window or magicless: qnx6's superblock is at
      * 0x2000, btrfs's at 0x10000, dmg's koly trailer in the LAST 512
      * bytes, csman/dlob/vxworks/uefi_capsule need structural probes. */
@@ -3670,58 +3122,73 @@ xx_file_type_t xx_format_get_file_type_device(xx_io_device *dev) {
     bool is_btrfs = total_size > 0x11000;
     bool is_dmg = total_size >= 512;
     bool is_applesingle = (magic_size >= 4U && magic[0] == 0x00U && magic[1] == 0x05U && magic[2] == 0x16U && (magic[3] == 0x00U || magic[3] == 0x07U));
-    bool is_pp20 = (magic_size >= 8U && (xx_rt_memcmp(magic, "PP20", 4U) == 0 || xx_rt_memcmp(magic, "PP11", 4U) == 0 || xx_rt_memcmp(magic, "PPLS", 4U) == 0 || xx_rt_memcmp(magic, "PX20", 4U) == 0 || xx_rt_memcmp(magic, "PPBK", 4U) == 0));
+    bool is_pp20 = (magic_size >= 8U && (xx_rt_memcmp(magic, "PP20", 4U) == 0 || xx_rt_memcmp(magic, "PP11", 4U) == 0 || xx_rt_memcmp(magic, "PPLS", 4U) == 0 ||
+                                         xx_rt_memcmp(magic, "PX20", 4U) == 0 || xx_rt_memcmp(magic, "PPBK", 4U) == 0));
     bool is_beatthehouse = (magic_size >= 8U && magic[0] == 'P' && magic[1] == 'A' && magic[2] == 'K' && magic[3] >= 'A' && magic[3] <= 'Z');
     bool is_kpck = (magic_size >= 12U && xx_rt_memcmp(magic, "KPCK", 4U) == 0);
     bool is_perform = (magic_size >= 34U && xx_rt_memcmp(magic, "PerFORM compressed database 1.00 ", 34U) == 0);
     bool is_mathcad = (magic_size >= 15U && xx_rt_memcmp(magic, ".MCDCOMPRESSION", 15U) == 0);
-    bool is_netware2 = (magic_size >= 20U && magic[0] == 0x23U && magic[1] == 0U && magic[2] == 0U && magic[3] == 0U && magic[4] == 0x10U && xx_rt_memcmp(magic + 5, "NetWareFileInfo", 15U) == 0);
-    bool is_shar = ((magic_size >= 9U && xx_rt_memcmp(magic, "#!/bin/sh", 9U) == 0) || (magic_size >= 10U && xx_rt_memcmp(magic, "#! /bin/sh", 10U) == 0) || (magic_size >= 25U && xx_rt_memcmp(magic, "# This is a shell archive", 25U) == 0));
-    bool is_shell_wrapper = (magic_size >= 9U &&
-                             xx_rt_memcmp(magic, "#!/bin/sh", 9U) == 0) ||
-                            (magic_size >= 11U &&
-                             xx_rt_memcmp(magic, "#!/bin/bash", 11U) == 0);
+    bool is_netware2 = (magic_size >= 20U && magic[0] == 0x23U && magic[1] == 0U && magic[2] == 0U && magic[3] == 0U && magic[4] == 0x10U &&
+                        xx_rt_memcmp(magic + 5, "NetWareFileInfo", 15U) == 0);
+    bool is_shar = ((magic_size >= 9U && xx_rt_memcmp(magic, "#!/bin/sh", 9U) == 0) || (magic_size >= 10U && xx_rt_memcmp(magic, "#! /bin/sh", 10U) == 0) ||
+                    (magic_size >= 25U && xx_rt_memcmp(magic, "# This is a shell archive", 25U) == 0));
+    bool is_shell_wrapper = (magic_size >= 9U && xx_rt_memcmp(magic, "#!/bin/sh", 9U) == 0) || (magic_size >= 11U && xx_rt_memcmp(magic, "#!/bin/bash", 11U) == 0);
     bool is_rnc = (magic_size >= 18U && magic[0] == 'R' && magic[1] == 'N' && magic[2] == 'C' && (magic[3] == 1U || magic[3] == 2U));
-    bool is_ibmpack = (magic_size >= 4U && magic[0] == 0xa5U && magic[1] == 0x96U && ((magic[2] == 0xfeU && magic[3] == 0xffU) || (magic[2] == 0xffU && magic[3] == 0xffU) || (magic[2] == 0x14U && magic[3] == 0x0aU) || (magic[2] == 0x00U && magic[3] == 0x14U)));
-    bool is_cazip = ((magic_size >= 10U && magic[0] == 0x0dU && magic[1] == 0x0aU && magic[2] == 0x1aU && xx_rt_memcmp(magic + 3, "CAZIP", 5U) == 0) || (magic_size >= 6U && xx_rt_memcmp(magic, "CAZIP", 5U) == 0 && magic[5] == 0x04U));
+    bool is_ibmpack = (magic_size >= 4U && magic[0] == 0xa5U && magic[1] == 0x96U &&
+                       ((magic[2] == 0xfeU && magic[3] == 0xffU) || (magic[2] == 0xffU && magic[3] == 0xffU) || (magic[2] == 0x14U && magic[3] == 0x0aU) ||
+                        (magic[2] == 0x00U && magic[3] == 0x14U)));
+    bool is_cazip = ((magic_size >= 10U && magic[0] == 0x0dU && magic[1] == 0x0aU && magic[2] == 0x1aU && xx_rt_memcmp(magic + 3, "CAZIP", 5U) == 0) ||
+                     (magic_size >= 6U && xx_rt_memcmp(magic, "CAZIP", 5U) == 0 && magic[5] == 0x04U));
     bool is_tpwm = (magic_size >= 8U && magic[0] == 'T' && magic[1] == 'P' && magic[2] == 'W' && magic[3] == 'M');
-    bool is_mrnz = (magic_size >= 12U && magic[0] == 'M' && magic[1] == 'R' && magic[2] == 'N' && magic[3] == 'Z' && magic[4] == 0x88U && magic[5] == 0xf0U && magic[6] == 0x27U && magic[7] == 0x33U);
+    bool is_mrnz = (magic_size >= 12U && magic[0] == 'M' && magic[1] == 'R' && magic[2] == 'N' && magic[3] == 'Z' && magic[4] == 0x88U && magic[5] == 0xf0U &&
+                    magic[6] == 0x27U && magic[7] == 0x33U);
     bool is_edc = (magic_size >= 12U && xx_rt_memcmp(magic, " EDC Packed ", 12U) == 0);
     bool is_xorarchive = xx_xorarchive_test_magic(magic, magic_size);
-    bool is_mwave = (magic_size >= 24U && magic[0] == 0x1fU && magic[1] == 0x9dU && magic[6] == 0x20U && magic[7] == 0x00U && magic[20] == 0U && magic[21] == 0U && magic[22] == 0U && (magic[23] & 0x60U) == 0U && (magic[23] & 0x1fU) >= 9U && (magic[23] & 0x1fU) <= 16U);
+    bool is_mwave = (magic_size >= 24U && magic[0] == 0x1fU && magic[1] == 0x9dU && magic[6] == 0x20U && magic[7] == 0x00U && magic[20] == 0U && magic[21] == 0U &&
+                     magic[22] == 0U && (magic[23] & 0x60U) == 0U && (magic[23] & 0x1fU) >= 9U && (magic[23] & 0x1fU) <= 16U);
     bool is_finear = (magic_size >= 17U && xx_rt_memcmp(magic, "FINEAR", 6U) == 0 && magic[6] == 0xddU && magic[7] == 0x88U && magic[8] == 0xddU);
-    bool is_gst = (magic_size >= 32U &&
-                   ((magic[0] == 0xe9U && magic[1] == 0xc8U) ||
-                    (magic[0] == 0xeaU && magic[1] == 0xc9U)) &&
-                   (magic[7] == 0x00U || magic[7] == 0x01U));
-    bool is_winlink = (magic_size >= 24U && magic[0] == 0x02U && magic[1] == 0x00U && magic[2] == 0x00U && magic[20] == 0xFFU && magic[21] == 0xFFU && magic[22] == 0xFFU && magic[23] == 0xFFU);
-    bool is_ftcomp = (magic_size >= 31U && magic[0] == 0xA5U && magic[1] == 0x96U && magic[2] == 0xFDU && magic[3] == 0xFFU && xx_rt_memcmp(magic + 24, "FTCOMP", 6U) == 0);
-    bool is_gpfpack = (magic_size >= 14U && magic[0] == 0xC0U && magic[1] == 0U && magic[2] == 0U && magic[3] == 0U && xx_rt_memcmp(magic + 4, "GPFPACK", 7U) == 0 && magic[12] == 0x01U && magic[13] == 0x00U);
+    bool is_gst =
+        (magic_size >= 32U && ((magic[0] == 0xe9U && magic[1] == 0xc8U) || (magic[0] == 0xeaU && magic[1] == 0xc9U)) && (magic[7] == 0x00U || magic[7] == 0x01U));
+    bool is_winlink = (magic_size >= 24U && magic[0] == 0x02U && magic[1] == 0x00U && magic[2] == 0x00U && magic[20] == 0xFFU && magic[21] == 0xFFU &&
+                       magic[22] == 0xFFU && magic[23] == 0xFFU);
+    bool is_ftcomp =
+        (magic_size >= 31U && magic[0] == 0xA5U && magic[1] == 0x96U && magic[2] == 0xFDU && magic[3] == 0xFFU && xx_rt_memcmp(magic + 24, "FTCOMP", 6U) == 0);
+    bool is_gpfpack = (magic_size >= 14U && magic[0] == 0xC0U && magic[1] == 0U && magic[2] == 0U && magic[3] == 0U && xx_rt_memcmp(magic + 4, "GPFPACK", 7U) == 0 &&
+                       magic[12] == 0x01U && magic[13] == 0x00U);
     bool is_sco = (magic_size >= 4U && magic[0] == 0x1fU && magic[1] == 0xa0U);
     bool is_unixcompact = (magic_size >= 2U && magic[0] == 0xffU && magic[1] == 0x1fU);
-    bool is_is3 = (magic_size >= 8U && ((magic[0] == 0x13U && magic[1] == 0x5DU && magic[2] == 0x65U && magic[3] == 0x8CU) || (magic[0] == 0x2AU && magic[1] == 0xABU && magic[2] == 0x79U && magic[3] == 0xD8U && magic[4] == 0x00U && magic[5] == 0x01U && magic[6] == 0x00U && magic[7] == 0x00U)));
+    bool is_is3 = (magic_size >= 8U && ((magic[0] == 0x13U && magic[1] == 0x5DU && magic[2] == 0x65U && magic[3] == 0x8CU) ||
+                                        (magic[0] == 0x2AU && magic[1] == 0xABU && magic[2] == 0x79U && magic[3] == 0xD8U && magic[4] == 0x00U && magic[5] == 0x01U &&
+                                         magic[6] == 0x00U && magic[7] == 0x00U)));
     bool is_is5 = (magic_size >= 4U && xx_rt_memcmp(magic, "ISc(", 4U) == 0);
     bool is_is7inx = (magic_size >= 4U && magic[0] == 0x74U && magic[1] == 0xC4U && magic[2] == 0x2CU && magic[3] == 0x84U);
     bool is_edilzss = (magic_size >= 8U && xx_rt_memcmp(magic, "EDILZSS", 7U) == 0 && (magic[7] == '1' || magic[7] == '2'));
     bool is_savedskf = (magic_size >= 2U && magic[0] == 0xAAU && (magic[1] == 0x58U || magic[1] == 0x59U || magic[1] == 0x5AU));
     bool is_gob = (magic_size >= 4U && xx_rt_memcmp(magic, "GOB", 3U) == 0 && (magic[3] == 0x0AU || magic[3] == ' '));
-    bool is_debugscr = (magic_size >= 3U && ((magic[0] == 'N' || magic[0] == 'n') || ((magic[0] == ' ' || magic[0] == 0x09U) && (magic[1] == 'N' || magic[1] == 'n' || magic[2] == 'N' || magic[2] == 'n'))));
-    bool is_stuffit = (magic_size >= 14U && xx_rt_memcmp(magic + 10, "rLau", 4U) == 0 && (xx_rt_memcmp(magic, "SIT!", 4U) == 0 || xx_rt_memcmp(magic, "ST46", 4U) == 0 || xx_rt_memcmp(magic, "ST50", 4U) == 0 || xx_rt_memcmp(magic, "ST60", 4U) == 0 || xx_rt_memcmp(magic, "ST65", 4U) == 0 || xx_rt_memcmp(magic, "STin", 4U) == 0 || xx_rt_memcmp(magic, "STi2", 4U) == 0 || xx_rt_memcmp(magic, "STi3", 4U) == 0 || xx_rt_memcmp(magic, "STi4", 4U) == 0));
+    bool is_debugscr = (magic_size >= 3U && ((magic[0] == 'N' || magic[0] == 'n') ||
+                                             ((magic[0] == ' ' || magic[0] == 0x09U) && (magic[1] == 'N' || magic[1] == 'n' || magic[2] == 'N' || magic[2] == 'n'))));
+    bool is_stuffit = (magic_size >= 14U && xx_rt_memcmp(magic + 10, "rLau", 4U) == 0 &&
+                       (xx_rt_memcmp(magic, "SIT!", 4U) == 0 || xx_rt_memcmp(magic, "ST46", 4U) == 0 || xx_rt_memcmp(magic, "ST50", 4U) == 0 ||
+                        xx_rt_memcmp(magic, "ST60", 4U) == 0 || xx_rt_memcmp(magic, "ST65", 4U) == 0 || xx_rt_memcmp(magic, "STin", 4U) == 0 ||
+                        xx_rt_memcmp(magic, "STi2", 4U) == 0 || xx_rt_memcmp(magic, "STi3", 4U) == 0 || xx_rt_memcmp(magic, "STi4", 4U) == 0));
     bool is_binaryii = (magic_size >= 0x13U && magic[0] == 0x0AU && magic[1] == 0x47U && magic[2] == 0x4CU && magic[0x12] == 0x02U);
     bool is_binhex = (magic_size >= 40U && xx_rt_memcmp(magic, "(This file must be converted with BinHex", 40U) == 0);
-    bool is_pma = (magic_size >= 22U && magic[2] == '-' && magic[3] == 'p' && magic[4] == 'm' && magic[5] >= '0' && magic[5] <= '2' && magic[6] == '-' && magic[20] == 0U);
+    bool is_pma =
+        (magic_size >= 22U && magic[2] == '-' && magic[3] == 'p' && magic[4] == 'm' && magic[5] >= '0' && magic[5] <= '2' && magic[6] == '-' && magic[20] == 0U);
     bool is_lzk00 = (magic_size >= 9U && xx_rt_memcmp(magic, "LZK00", 5U) == 0 && magic[5] == 0U && magic[6] == 0U && magic[7] == 0U && magic[8] == 0U);
     bool is_compaqlzh = (magic_size >= 29U && xx_rt_memcmp(magic, "CPQ_LZH", 7U) == 0);
-    bool is_arcv = (magic_size >= 6U && magic[0] == 'A' && magic[1] == 'R' && magic[2] == 'C' && magic[3] == 'V' &&
-                    (magic[4] == 0x00U || magic[4] == 0x10U) && magic[5] == 0x01U);
-    bool is_cpoint = magic_size >= 13U && magic[0] == 0x7cU &&
-                     magic[1] == 0U && magic[2] == 0U && magic[3] == 0U &&
-                     magic[4] == 0U;
-    bool is_izpack = (magic_size >= 41U && magic[0] == 0xACU && magic[1] == 0xEDU && magic[2] == 0x00U && magic[3] == 0x05U && magic[4] == 0x77U && magic[5] == 0x04U && magic[10] == 0x73U && magic[11] == 0x72U && magic[12] == 0x00U && magic[13] == 0x1BU && xx_rt_memcmp(magic + 14, "com.izforge.izpack.PackFile", 27U) == 0);
-    bool is_is11 = (magic_size >= 8U && magic[0] == 0x65U && magic[1] == 0x5DU && magic[2] == 0x13U && magic[3] == 0x8CU && magic[4] == 0x08U && magic[5] == 0x01U && (magic[6] == 0x01U || magic[6] == 0x03U) && magic[7] == 0x00U);
+    bool is_arcv =
+        (magic_size >= 6U && magic[0] == 'A' && magic[1] == 'R' && magic[2] == 'C' && magic[3] == 'V' && (magic[4] == 0x00U || magic[4] == 0x10U) && magic[5] == 0x01U);
+    bool is_cpoint = magic_size >= 13U && magic[0] == 0x7cU && magic[1] == 0U && magic[2] == 0U && magic[3] == 0U && magic[4] == 0U;
+    bool is_izpack =
+        (magic_size >= 41U && magic[0] == 0xACU && magic[1] == 0xEDU && magic[2] == 0x00U && magic[3] == 0x05U && magic[4] == 0x77U && magic[5] == 0x04U &&
+         magic[10] == 0x73U && magic[11] == 0x72U && magic[12] == 0x00U && magic[13] == 0x1BU && xx_rt_memcmp(magic + 14, "com.izforge.izpack.PackFile", 27U) == 0);
+    bool is_is11 = (magic_size >= 8U && magic[0] == 0x65U && magic[1] == 0x5DU && magic[2] == 0x13U && magic[3] == 0x8CU && magic[4] == 0x08U && magic[5] == 0x01U &&
+                    (magic[6] == 0x01U || magic[6] == 0x03U) && magic[7] == 0x00U);
     bool is_gksetup = (magic_size >= 39U && xx_rt_memcmp(magic, "This is a binary data file. Keep out !\x1A", 39U) == 0);
     bool is_copyqm = (magic_size >= 3U && magic[0] == 'C' && magic[1] == 'Q' && magic[2] == 0x14U);
-    bool is_teledisk = (magic_size >= 5U && ((magic[0] == 'T' && magic[1] == 'D') || (magic[0] == 't' && magic[1] == 'd')) && magic[2] == 0U && magic[4] >= 10U && magic[4] <= 21U);
+    bool is_teledisk =
+        (magic_size >= 5U && ((magic[0] == 'T' && magic[1] == 'D') || (magic[0] == 't' && magic[1] == 'd')) && magic[2] == 0U && magic[4] >= 10U && magic[4] <= 21U);
     bool is_hfe = (magic_size >= 9U && xx_rt_memcmp(magic, "HXCPICFE", 8U) == 0 && magic[8] == 0U);
     bool is_fdi = (magic_size >= 4U && xx_rt_memcmp(magic, "FDI", 3U) == 0 && magic[3] == 0U);
     bool is_twoimg = (magic_size >= 4U && xx_rt_memcmp(magic, "2IMG", 4U) == 0);
@@ -3729,9 +3196,11 @@ xx_file_type_t xx_format_get_file_type_device(xx_io_device *dev) {
     bool is_diskdupe = (magic_size >= 21U && xx_rt_memcmp(magic, "MSD Image Version 1 \x1A", 21U) == 0);
     bool is_pmdiskcopy = (magic_size >= 11U && xx_rt_memcmp(magic, "PM Diskcopy", 11U) == 0);
     bool is_pax = (magic_size >= 38U && xx_rt_memcmp(magic, "LZF0", 4U) == 0);
-    bool is_beospkg = (magic_size >= 8U && magic[0] == 0x41U && magic[1] == 0x6CU && magic[2] == 0x42U && magic[3] == 0x1AU && magic[4] == 0xFFU && magic[5] == 0x0AU && magic[6] == 0x0DU && magic[7] == 0x00U);
+    bool is_beospkg = (magic_size >= 8U && magic[0] == 0x41U && magic[1] == 0x6CU && magic[2] == 0x42U && magic[3] == 0x1AU && magic[4] == 0xFFU && magic[5] == 0x0AU &&
+                       magic[6] == 0x0DU && magic[7] == 0x00U);
     bool is_vmspcsi = (magic_size >= 32U && xx_rt_memcmp(magic, "OpenVMS DCX PCSI Compressed File", 32U) == 0);
-    bool is_vmsdb = (magic_size >= 12U && magic[0] == 0xffU && magic[1] == 0xffU && magic[2] == 0x74U && magic[3] == 0x80U && magic[4] == 0xa0U && magic[5] == 0x80U && magic[6] == 0x80U && magic[7] == 0x01U && magic[8] == 0x01U && magic[9] == 0x81U && magic[10] == 0x01U && magic[11] == 0x00U);
+    bool is_vmsdb = (magic_size >= 12U && magic[0] == 0xffU && magic[1] == 0xffU && magic[2] == 0x74U && magic[3] == 0x80U && magic[4] == 0xa0U && magic[5] == 0x80U &&
+                     magic[6] == 0x80U && magic[7] == 0x01U && magic[8] == 0x01U && magic[9] == 0x81U && magic[10] == 0x01U && magic[11] == 0x00U);
     bool is_pcxlib = (magic_size >= 7U && xx_rt_memcmp(magic, "pcxLib", 6U) == 0 && magic[6] == 0U);
     bool is_hog2 = (magic_size >= 4U && xx_rt_memcmp(magic, "HOG2", 4U) == 0);
     bool is_sinner = (magic_size >= 10U && xx_rt_memcmp(magic, "|CCTfs2.0|", 10U) == 0);
@@ -3745,17 +3214,18 @@ xx_file_type_t xx_format_get_file_type_device(xx_io_device *dev) {
     bool is_xlas = (magic_size >= 4U && xx_rt_memcmp(magic, "XLAS", 4U) == 0);
     bool is_mdcd = (magic_size >= 6U && xx_rt_memcmp(magic, "MDmd", 4U) == 0 && magic[5] == 1U);
     bool is_ssm = (magic_size >= 4U && xx_rt_memcmp(magic, "SSM", 3U) == 0 && magic[3] == 0U);
-    bool is_bvrp = (magic_size >= 23U && xx_rt_memcmp(magic, "PAC - ", 6U) == 0 &&
-                    (xx_rt_memcmp(magic + 10, "BVRP Software", 13U) == 0 ||
-                     (magic[6] == 0xa9U && magic[7] == ' ' &&
-                      xx_rt_memcmp(magic + 8, "BVRP Software", 13U) == 0)));
+    bool is_bvrp =
+        (magic_size >= 23U && xx_rt_memcmp(magic, "PAC - ", 6U) == 0 &&
+         (xx_rt_memcmp(magic + 10, "BVRP Software", 13U) == 0 || (magic[6] == 0xa9U && magic[7] == ' ' && xx_rt_memcmp(magic + 8, "BVRP Software", 13U) == 0)));
     bool is_bcw = (magic_size >= 5U && magic[0] == 0x0aU && magic[1] == 0x14U && magic[2] == 0x1eU && magic[3] == 0x28U && (magic[4] == 1U || magic[4] == 2U));
     bool is_scf = (magic_size >= 4U && magic[0] == 4U && magic[1] == 0U && magic[2] == 0U && magic[3] == 0U);
     bool is_recognita = (magic_size >= 27U && magic[25] == 0x00U && magic[26] == 0x06U);
     bool is_jasc = (magic_size >= 17U && magic[16] != 0U && magic[0] == (uint8_t)(magic[16] + 15U));
     bool is_smsipak = (magic_size >= 10U && xx_rt_memcmp(magic, "SMSIPAK ", 8U) == 0 && magic[8] == 0x07U && magic[9] == 0x1aU);
     bool is_cpx = (magic_size >= 6U && magic[1] == 0x16U && magic[2] == 0x27U && magic[3] == 0x93U && (magic[0] == 0x28U || magic[0] == 0x2aU || magic[0] == 0x2cU));
-    bool is_diskexpress = (magic_size >= 15U && magic[0] == 'A' && magic[1] == 'S' && ((magic[2] == 1U && (magic[3] == 1U || magic[3] == 4U)) || (magic[2] == 2U && (magic[3] == 0U || magic[3] == 30U))) && (magic[4] == 0x20U || magic[4] == 'A' || magic[4] == 'a') && magic[5] >= 3U && magic[5] <= 7U);
+    bool is_diskexpress = (magic_size >= 15U && magic[0] == 'A' && magic[1] == 'S' &&
+                           ((magic[2] == 1U && (magic[3] == 1U || magic[3] == 4U)) || (magic[2] == 2U && (magic[3] == 0U || magic[3] == 30U))) &&
+                           (magic[4] == 0x20U || magic[4] == 'A' || magic[4] == 'a') && magic[5] >= 3U && magic[5] <= 7U);
     bool is_red = (magic_size >= 4U && magic[0] == 'R' && magic[1] == 'R' && magic[2] == 1U && magic[3] >= 39U);
     bool is_gxl = (magic_size >= 54U && magic[0] == 0x01U && magic[1] == 0xCAU && xx_rt_memcmp(magic + 2, "Copyri", 6U) == 0 && magic[52] == 100U && magic[53] == 0U);
     bool is_aiaff = (magic_size >= 8U && xx_rt_memcmp(magic, "<aiaff>", 7U) == 0 && magic[7] == 0x0AU);
@@ -3763,10 +3233,7 @@ xx_file_type_t xx_format_get_file_type_device(xx_io_device *dev) {
     bool is_wim = (magic_size >= 8U && xx_rt_memcmp(magic, "MSWIM", 5U) == 0);
     bool is_vhddynamic = total_size >= 1023 && (total_size % 512 == 0 || total_size % 512 == 511);
     bool is_vmdk = (magic_size >= 4U && xx_rt_memcmp(magic, "KDMV", 4U) == 0);
-    bool is_ciso = (magic_size >= 4U &&
-                    (xx_rt_memcmp(magic, "CISO", 4U) == 0 ||
-                     xx_rt_memcmp(magic, "ZISO", 4U) == 0 ||
-                     xx_rt_memcmp(magic, "DAX\0", 4U) == 0));
+    bool is_ciso = (magic_size >= 4U && (xx_rt_memcmp(magic, "CISO", 4U) == 0 || xx_rt_memcmp(magic, "ZISO", 4U) == 0 || xx_rt_memcmp(magic, "DAX\0", 4U) == 0));
     bool is_copydisk = (magic_size >= 10U && xx_rt_memcmp(magic, "COPYDISK", 8U) == 0);
     bool is_hdcopy = (magic_size >= 16U && magic[0] == 0xffU && magic[1] == 0x18U);
     bool is_apricot = (magic_size >= 22U && xx_rt_memcmp(magic, "ACT Apricot disk image", 22U) == 0);
@@ -3782,50 +3249,27 @@ xx_file_type_t xx_format_get_file_type_device(xx_io_device *dev) {
     bool is_bagf = (magic_size >= 12U && xx_rt_memcmp(magic, "BAGF", 4U) == 0 && magic[4] == 2U && magic[5] == 0U);
     bool is_emt = (magic_size >= 6U && magic[0] == 0x5cU && magic[2] == 0x7aU && magic[3] == 0xc5U && magic[4] == 0xd4U && magic[5] == 0xe3U);
     bool is_qip2 = (magic_size >= 4U && magic[0] == 'Q' && magic[1] == 'P');
-    bool is_lif = (magic_size >= XX_LIF_HEADER_SIZE && magic[0] == 0x44U &&
-                   (magic[1] == 0x43U || magic[1] == 0x4cU) &&
-                   magic[2] == XX_LIF_VERSION && magic[3] == 0U &&
-                   (magic[4] != 0U || magic[5] != 0U) &&
-                   xx_data_get_u32(magic + 0x15, 4, 0, false) == (uint64_t)total_size &&
+    bool is_lif = (magic_size >= XX_LIF_HEADER_SIZE && magic[0] == 0x44U && (magic[1] == 0x43U || magic[1] == 0x4cU) && magic[2] == XX_LIF_VERSION && magic[3] == 0U &&
+                   (magic[4] != 0U || magic[5] != 0U) && xx_data_get_u32(magic + 0x15, 4, 0, false) == (uint64_t)total_size &&
                    xx_data_get_u32(magic + 0x19, 4, 0, false) == XX_LIF_METHOD &&
-                   xx_data_get_u32(magic + 0x1d, 4, 0, false) ==
-                       (uint64_t)(total_size - XX_LIF_HEADER_SIZE) &&
-                   xx_data_get_u32(magic + 0x21, 4, 0, false) == 0U);
+                   xx_data_get_u32(magic + 0x1d, 4, 0, false) == (uint64_t)(total_size - XX_LIF_HEADER_SIZE) && xx_data_get_u32(magic + 0x21, 4, 0, false) == 0U);
     bool is_ixa = (magic_size >= 48U && xx_rt_memcmp(magic, "IXALANCE", 8U) == 0);
     bool is_mlb_ft = (magic_size >= 4U && magic[2] == 6U && magic[3] == 0U);
     bool is_fss = (magic_size >= 5U && xx_rt_memcmp(magic, "SSBOB", 5U) == 0);
     bool is_epf = (magic_size >= 11U && xx_rt_memcmp(magic, "EPFS", 4U) == 0);
-    bool is_ka = (magic_size >= 11U &&
-                  xx_rt_memcmp(magic, "KA Archive\0", 11U) == 0);
-    bool is_dn = (magic_size >= 4U && magic[0] == 0x84U &&
-                  magic[1] == 0x8dU && magic[2] == 0x01U && magic[3] == 0x02U);
-    bool is_insa = (magic_size >= 6U && total_size >= 7 &&
-                    total_size <= 16 * 1024 * 1024 &&
-                    magic[0] == 1U && magic[1] == 0U &&
-                    (magic[2] | magic[3] | magic[4] | magic[5]) != 0U &&
-                    magic[5] <= 4U);
+    bool is_ka = (magic_size >= 11U && xx_rt_memcmp(magic, "KA Archive\0", 11U) == 0);
+    bool is_dn = (magic_size >= 4U && magic[0] == 0x84U && magic[1] == 0x8dU && magic[2] == 0x01U && magic[3] == 0x02U);
+    bool is_insa = (magic_size >= 6U && total_size >= 7 && total_size <= 16 * 1024 * 1024 && magic[0] == 1U && magic[1] == 0U &&
+                    (magic[2] | magic[3] | magic[4] | magic[5]) != 0U && magic[5] <= 4U);
     bool is_dfc = (magic_size >= 35U && magic[4] >= 1U && magic[4] <= 12U &&
-                   ((uint32_t)magic[17] | ((uint32_t)magic[18] << 8U) |
-                    ((uint32_t)magic[19] << 16U) | ((uint32_t)magic[20] << 24U)) ==
-                   (((uint32_t)magic[0] | ((uint32_t)magic[1] << 8U)) * 35U + 4U));
-    bool is_ppd = (magic_size >= 9U && total_size >= 22 &&
-                   total_size <= 512 * 1024 * 1024 &&
-                   ((uint32_t)magic[0] | ((uint32_t)magic[1] << 8U) |
-                    ((uint32_t)magic[2] << 16U) |
-                    ((uint32_t)magic[3] << 24U)) >= 1U &&
-                   ((uint32_t)magic[0] | ((uint32_t)magic[1] << 8U) |
-                    ((uint32_t)magic[2] << 16U) |
-                    ((uint32_t)magic[3] << 24U)) <= 4096U &&
-                   magic[5] == 0U && magic[6] == 0U && magic[7] == 0U &&
-                   magic[4] >= 2U && magic[4] <= 95U &&
-                   magic[8] >= 0x20U && magic[8] <= 0x7eU);
-    bool is_thebat_msb = (magic_size >= 12U &&
-                         magic[0] == 0x40U && magic[1] == 0U &&
-                         magic[2] == 0U && magic[3] == 0U &&
-                         magic[4] == 0x40U && magic[5] == 0U &&
-                         magic[6] == 0U && magic[7] == 0U &&
-                         magic[8] == 0xffU && magic[9] == 0xffU &&
-                         magic[10] == 0xffU && magic[11] == 0xffU);
+                   ((uint32_t)magic[17] | ((uint32_t)magic[18] << 8U) | ((uint32_t)magic[19] << 16U) | ((uint32_t)magic[20] << 24U)) ==
+                       (((uint32_t)magic[0] | ((uint32_t)magic[1] << 8U)) * 35U + 4U));
+    bool is_ppd = (magic_size >= 9U && total_size >= 22 && total_size <= 512 * 1024 * 1024 &&
+                   ((uint32_t)magic[0] | ((uint32_t)magic[1] << 8U) | ((uint32_t)magic[2] << 16U) | ((uint32_t)magic[3] << 24U)) >= 1U &&
+                   ((uint32_t)magic[0] | ((uint32_t)magic[1] << 8U) | ((uint32_t)magic[2] << 16U) | ((uint32_t)magic[3] << 24U)) <= 4096U && magic[5] == 0U &&
+                   magic[6] == 0U && magic[7] == 0U && magic[4] >= 2U && magic[4] <= 95U && magic[8] >= 0x20U && magic[8] <= 0x7eU);
+    bool is_thebat_msb = (magic_size >= 12U && magic[0] == 0x40U && magic[1] == 0U && magic[2] == 0U && magic[3] == 0U && magic[4] == 0x40U && magic[5] == 0U &&
+                          magic[6] == 0U && magic[7] == 0U && magic[8] == 0xffU && magic[9] == 0xffU && magic[10] == 0xffU && magic[11] == 0xffU);
     bool is_lspack10 = (magic_size >= 40U && magic[0] == 'F' && magic[1] == 'L' && magic[2] == 0x03U);
     bool is_starkit = (magic_size >= 8U && magic[0] == 'J' && magic[1] == 'L' && magic[2] == 0x1aU && magic[3] == 0x00U);
     bool is_paperport = (magic_size >= 6U && magic[0] == 'V' && magic[1] == 'i' && magic[2] == 'G');
@@ -3836,261 +3280,240 @@ xx_file_type_t xx_format_get_file_type_device(xx_io_device *dev) {
     bool is_wintermutedcp = (magic_size >= 12U && magic[0] == 0xdeU && magic[1] == 0xadU && magic[2] == 0xc0U && magic[3] == 0xdeU);
     bool is_bsn = (magic_size >= 6U && magic[0] == 0xffU && magic[1] == 'B' && magic[2] == 'S');
     bool is_androidboot = magic_size >= 8U && xx_rt_memcmp(magic, "ANDROID!", 8U) == 0;
-    bool is_autel = magic_size >= 32 && xx_rt_memcmp(magic, "ECC0101\0", 8U) == 0 && magic[12] == 0x20U && magic[13] == 0U && magic[14] == 0U && magic[15] == 0U && xx_rt_memcmp(magic + 16U, "Copyright Autel\0", 16U) == 0;
+    bool is_autel = magic_size >= 32 && xx_rt_memcmp(magic, "ECC0101\0", 8U) == 0 && magic[12] == 0x20U && magic[13] == 0U && magic[14] == 0U && magic[15] == 0U &&
+                    xx_rt_memcmp(magic + 16U, "Copyright Autel\0", 16U) == 0;
     bool is_dkbs = magic_size >= 13U && total_size > 0xA0 && xx_rt_memcmp(magic + 7U, "_dkbs_", 6U) == 0;
-    bool is_dlink_tlv = magic_size >= 0x25U && total_size > 0x74 && magic[0]==0x64U && magic[1]==0x80U && magic[2]==0x19U && magic[3]==0x40U && magic[4] >= 0x20U && magic[4] <= 0x7EU && magic[0x24] >= 0x20U && magic[0x24] <= 0x7EU;
+    bool is_dlink_tlv = magic_size >= 0x25U && total_size > 0x74 && magic[0] == 0x64U && magic[1] == 0x80U && magic[2] == 0x19U && magic[3] == 0x40U &&
+                        magic[4] >= 0x20U && magic[4] <= 0x7EU && magic[0x24] >= 0x20U && magic[0x24] <= 0x7EU;
     bool is_dlke = magic_size >= 64U && (xx_rt_memcmp(magic, "DLK6E8202001", 12U) == 0 || xx_rt_memcmp(magic, "DLK6E6110002", 12U) == 0);
-    bool is_ecos = magic_size >= 8 && ((magic[0] == 0x40U && magic[1] == 0x1AU && magic[2] == 0x68U && magic[3] == 0x00U) || (magic[0] == 0x00U && magic[1] == 0x68U && magic[2] == 0x1AU && magic[3] == 0x40U));
+    bool is_ecos = magic_size >= 8 && ((magic[0] == 0x40U && magic[1] == 0x1AU && magic[2] == 0x68U && magic[3] == 0x00U) ||
+                                       (magic[0] == 0x00U && magic[1] == 0x68U && magic[2] == 0x1AU && magic[3] == 0x40U));
     bool is_encrpted_img = magic_size >= 17U && xx_rt_memcmp(magic, "encrpted_img", 12U) == 0;
-    bool is_jboot = ((magic_size >= 40 && magic[0] == 0x24U && magic[1] == 0x21U && magic[2] <= 3U && magic[3] == 2U && magic[36] == 40U && magic[37] == 0U) || (magic_size >= 16 && magic[1] == 4U && magic[2] == 0x24U && magic[3] == 0x2BU && (magic[0] == 4U || magic[0] == 0xFFU)) || (magic_size >= 64 && total_size >= 80 && (magic[20] | magic[21] | magic[22] | magic[23] | magic[24] | magic[25] | magic[27]) == 0U && magic[26] == 1U && (magic[48] | magic[49] | magic[50] | magic[51] | magic[52] | magic[53] | magic[54] | magic[55] | magic[56] | magic[57] | magic[58] | magic[59] | magic[60] | magic[61] | magic[62] | magic[63]) == 0U));
-    bool is_lingvoarc = ((magic_size >= 18 && xx_rt_memcmp(magic, "lingvoArc", 9) == 0 && (magic[9] == '1' || magic[9] == '2') && magic[10] == 0x00 && magic[11] == 0xFD && magic[12] == 0x00 && magic[13] == 0xDF && magic[14] == 0x00 && magic[15] == 0xFF && (magic[16] != 0 || magic[17] != 0)) || (magic_size >= 26 && xx_rt_memcmp(magic, "LingvoArch", 10) == 0 && magic[10] == 0x01 && magic[11] == 0x00 && magic[12] == 0xF0 && magic[13] == 0x1F && magic[14] == 0x00 && magic[15] == 0x01 && magic[16] == 0x40 && magic[17] == 0x00 && magic[18] == 0x47 && magic[19] == 0x01 && magic[20] == 0x47 && magic[21] == 0x01 && magic[22] == 0x1F && magic[23] == 0x83 && magic[24] == 0x41 && magic[25] == 0x01));
+    bool is_jboot =
+        ((magic_size >= 40 && magic[0] == 0x24U && magic[1] == 0x21U && magic[2] <= 3U && magic[3] == 2U && magic[36] == 40U && magic[37] == 0U) ||
+         (magic_size >= 16 && magic[1] == 4U && magic[2] == 0x24U && magic[3] == 0x2BU && (magic[0] == 4U || magic[0] == 0xFFU)) ||
+         (magic_size >= 64 && total_size >= 80 && (magic[20] | magic[21] | magic[22] | magic[23] | magic[24] | magic[25] | magic[27]) == 0U && magic[26] == 1U &&
+          (magic[48] | magic[49] | magic[50] | magic[51] | magic[52] | magic[53] | magic[54] | magic[55] | magic[56] | magic[57] | magic[58] | magic[59] | magic[60] |
+           magic[61] | magic[62] | magic[63]) == 0U));
+    bool is_lingvoarc =
+        ((magic_size >= 18 && xx_rt_memcmp(magic, "lingvoArc", 9) == 0 && (magic[9] == '1' || magic[9] == '2') && magic[10] == 0x00 && magic[11] == 0xFD &&
+          magic[12] == 0x00 && magic[13] == 0xDF && magic[14] == 0x00 && magic[15] == 0xFF && (magic[16] != 0 || magic[17] != 0)) ||
+         (magic_size >= 26 && xx_rt_memcmp(magic, "LingvoArch", 10) == 0 && magic[10] == 0x01 && magic[11] == 0x00 && magic[12] == 0xF0 && magic[13] == 0x1F &&
+          magic[14] == 0x00 && magic[15] == 0x01 && magic[16] == 0x40 && magic[17] == 0x00 && magic[18] == 0x47 && magic[19] == 0x01 && magic[20] == 0x47 &&
+          magic[21] == 0x01 && magic[22] == 0x1F && magic[23] == 0x83 && magic[24] == 0x41 && magic[25] == 0x01));
     bool is_lz4demo = magic_size >= 4 && magic[0] == 0x02 && magic[1] == 0x21 && magic[2] == 0x4C && magic[3] == 0x18;
     bool is_matter_ota = magic_size >= 17U && magic[0] == 0x1EU && magic[1] == 0xF1U && magic[2] == 0xEEU && magic[3] == 0x1BU && magic[16] == 0x15U;
     bool is_mh01 = magic_size >= 32U && xx_rt_memcmp(magic, "MH01", 4U) == 0 && xx_rt_memcmp(magic + 16U, "MH01", 4U) == 0;
     bool is_shrs = magic_size >= 12U && xx_rt_memcmp(magic, "SHRS", 4U) == 0;
-    bool is_silmarilsft = magic_size >= 15U && ((magic[4] == 0x01U && magic[5] == 0x00U && (magic[0] & 0x07U) == 0x06U && (magic[3] == 0x81U || (magic[3] == 0xa1U && magic[6] == 0x0bU && magic[7] == 0x09U))) || (magic[4] == 0x00U && magic[5] == 0x01U && (magic[3] & 0x07U) == 0x06U && (magic[0] == 0x81U || (magic[0] == 0xa1U && magic[6] == 0x0bU && magic[7] == 0x09U))));
-    bool is_tplink = magic_size >= 24U && (xx_rt_memcmp(magic + 4U, "TP-LINK Technologies", 20U) == 0 || (magic[0] == 0x00U && magic[1] == 0x14U && magic[2] == 0x2FU && magic[3] == 0xC0U && xx_rt_memcmp(magic + 20U, "IMG0", 4U) == 0));
-    bool is_twrx = magic_size >= 30U && xx_rt_memcmp(magic, "TWRX", 4U) == 0 && magic[4] == 0U && magic[5] == 1U && magic[6] == 0U && magic[7] == 0U && magic[0x1aU] != 0U && magic[0x1bU] == 0U && magic[0x1cU] == 0U && magic[0x1dU] == 0U;
+    bool is_silmarilsft =
+        magic_size >= 15U &&
+        ((magic[4] == 0x01U && magic[5] == 0x00U && (magic[0] & 0x07U) == 0x06U &&
+          (magic[3] == 0x81U || (magic[3] == 0xa1U && magic[6] == 0x0bU && magic[7] == 0x09U))) ||
+         (magic[4] == 0x00U && magic[5] == 0x01U && (magic[3] & 0x07U) == 0x06U && (magic[0] == 0x81U || (magic[0] == 0xa1U && magic[6] == 0x0bU && magic[7] == 0x09U))));
+    bool is_tplink =
+        magic_size >= 24U && (xx_rt_memcmp(magic + 4U, "TP-LINK Technologies", 20U) == 0 ||
+                              (magic[0] == 0x00U && magic[1] == 0x14U && magic[2] == 0x2FU && magic[3] == 0xC0U && xx_rt_memcmp(magic + 20U, "IMG0", 4U) == 0));
+    bool is_twrx = magic_size >= 30U && xx_rt_memcmp(magic, "TWRX", 4U) == 0 && magic[4] == 0U && magic[5] == 1U && magic[6] == 0U && magic[7] == 0U &&
+                   magic[0x1aU] != 0U && magic[0x1bU] == 0U && magic[0x1cU] == 0U && magic[0x1dU] == 0U;
     bool is_infogramesft = xx_infogramesft_test_magic(magic, magic_size, total_size);
     bool is_xpak = magic_size >= 36 && xx_rt_memcmp(magic, "XPAK", 4U) == 0 && magic[0x1A] == 0xFFU && magic[0x1B] == 0xFEU;
     bool is_srec = magic_size >= 10U && magic[0] == 0x53U && xx_srec_check_magic(magic, magic_size);
     bool is_apple_disk_copy_6_ndif_image = magic_size >= 3 && total_size >= 174 && magic[0] == 0x00U && magic[1] >= 1U && magic[1] <= 63U && magic[2] >= 0x20U;
-    bool is_apple_sparse_bundle = (total_size >= 64 && total_size <= 65536 && magic_size >= 16 && (xx_rt_memcmp(magic, "<?xml", 5) == 0 || xx_rt_memcmp(magic, "\xEF\xBB\xBF<?xml", 8) == 0 || xx_rt_memcmp(magic, "<!DOCTYPE plist", 15) == 0 || xx_rt_memcmp(magic, "<plist", 6) == 0));
-    bool is_encrypted_apple_disk_image = magic_size >= 12U && xx_rt_memcmp(magic, "encrcdsa", 8U) == 0 && magic[8] == 0U && magic[9] == 0U && magic[10] == 0U && magic[11] == 2U;
+    bool is_apple_sparse_bundle = (total_size >= 64 && total_size <= 65536 && magic_size >= 16 &&
+                                   (xx_rt_memcmp(magic, "<?xml", 5) == 0 || xx_rt_memcmp(magic, "\xEF\xBB\xBF<?xml", 8) == 0 ||
+                                    xx_rt_memcmp(magic, "<!DOCTYPE plist", 15) == 0 || xx_rt_memcmp(magic, "<plist", 6) == 0));
+    bool is_encrypted_apple_disk_image =
+        magic_size >= 12U && xx_rt_memcmp(magic, "encrcdsa", 8U) == 0 && magic[8] == 0U && magic[9] == 0U && magic[10] == 0U && magic[11] == 2U;
     bool is_hxc_stream_hfe = (magic_size >= 16U && xx_rt_memcmp(magic, "HxC_Stream_Image", 16U) == 0);
-    bool is_ms_dos_backup = magic_size >= 7 && total_size >= 128 && (magic[0] == 0x00 || magic[0] == 0xFF) && magic[1] != 0 && magic[2] == 0 && magic[3] == 0 && magic[4] == 0 && (magic[5] == 0x5C || magic[5] == 0x2F) && magic[6] >= 0x20;
-    bool is_nec_pc_98_fdi = (magic_size >= 32U && magic[0] == 0U && magic[1] == 0U && magic[2] == 0U && magic[3] == 0U && (magic[8] | magic[9] | magic[10]) != 0U && magic[10] <= 1U && magic[11] == 0U && magic[15] == 0U && magic[18] == 0U && magic[19] == 0U && ((magic[16] == 0x80U && magic[17] == 0U) || (magic[16] == 0U && (magic[17] == 1U || magic[17] == 2U || magic[17] == 4U || magic[17] == 8U || magic[17] == 16U || magic[17] == 32U || magic[17] == 64U))) && magic[20] != 0U && magic[21] == 0U && magic[22] == 0U && magic[23] == 0U && (magic[24] == 1U || magic[24] == 2U) && magic[25] == 0U && magic[26] == 0U && magic[27] == 0U && magic[28] != 0U && magic[29] == 0U && magic[30] == 0U && magic[31] == 0U);
-    bool is_qcow1 = magic_size >= 48U && magic[0]==0x51U && magic[1]==0x46U && magic[2]==0x49U && magic[3]==0xFBU && magic[4]==0U && magic[5]==0U && magic[6]==0U && magic[7]==1U;
+    bool is_ms_dos_backup = magic_size >= 7 && total_size >= 128 && (magic[0] == 0x00 || magic[0] == 0xFF) && magic[1] != 0 && magic[2] == 0 && magic[3] == 0 &&
+                            magic[4] == 0 && (magic[5] == 0x5C || magic[5] == 0x2F) && magic[6] >= 0x20;
+    bool is_nec_pc_98_fdi =
+        (magic_size >= 32U && magic[0] == 0U && magic[1] == 0U && magic[2] == 0U && magic[3] == 0U && (magic[8] | magic[9] | magic[10]) != 0U && magic[10] <= 1U &&
+         magic[11] == 0U && magic[15] == 0U && magic[18] == 0U && magic[19] == 0U &&
+         ((magic[16] == 0x80U && magic[17] == 0U) ||
+          (magic[16] == 0U && (magic[17] == 1U || magic[17] == 2U || magic[17] == 4U || magic[17] == 8U || magic[17] == 16U || magic[17] == 32U || magic[17] == 64U))) &&
+         magic[20] != 0U && magic[21] == 0U && magic[22] == 0U && magic[23] == 0U && (magic[24] == 1U || magic[24] == 2U) && magic[25] == 0U && magic[26] == 0U &&
+         magic[27] == 0U && magic[28] != 0U && magic[29] == 0U && magic[30] == 0U && magic[31] == 0U);
+    bool is_qcow1 = magic_size >= 48U && magic[0] == 0x51U && magic[1] == 0x46U && magic[2] == 0x49U && magic[3] == 0xFBU && magic[4] == 0U && magic[5] == 0U &&
+                    magic[6] == 0U && magic[7] == 1U;
     bool is_qnap_nas_firmware = magic_size >= 4U && magic[0] == 0xF5U && magic[1] == 0x7BU && magic[2] == 0x47U && magic[3] == 0x03U;
-    bool is_stuffit_split_file = (magic_size >= 5 && magic[0] == 0xB0 && magic[1] == 0x56 && magic[2] == 0x00 && magic[3] != 0 && magic[4] >= 1 && magic[4] <= 63 && total_size >= 100);
-    bool is_t98_next_nfd = (magic_size >= 15U && magic[0] == 0x54U && magic[1] == 0x39U && magic[2] == 0x38U && magic[3] == 0x46U && magic[4] == 0x44U && magic[5] == 0x44U && magic[6] == 0x49U && magic[7] == 0x4DU && magic[8] == 0x41U && magic[9] == 0x47U && magic[10] == 0x45U && magic[11] == 0x2EU && magic[12] == 0x52U && (magic[13] == 0x30U || magic[13] == 0x31U) && magic[14] == 0U);
+    bool is_stuffit_split_file =
+        (magic_size >= 5 && magic[0] == 0xB0 && magic[1] == 0x56 && magic[2] == 0x00 && magic[3] != 0 && magic[4] >= 1 && magic[4] <= 63 && total_size >= 100);
+    bool is_t98_next_nfd = (magic_size >= 15U && magic[0] == 0x54U && magic[1] == 0x39U && magic[2] == 0x38U && magic[3] == 0x46U && magic[4] == 0x44U &&
+                            magic[5] == 0x44U && magic[6] == 0x49U && magic[7] == 0x4DU && magic[8] == 0x41U && magic[9] == 0x47U && magic[10] == 0x45U &&
+                            magic[11] == 0x2EU && magic[12] == 0x52U && (magic[13] == 0x30U || magic[13] == 0x31U) && magic[14] == 0U);
     bool is_uharc = magic_size >= 16 && magic[0] == 0x55 && magic[1] == 0x48 && magic[2] == 0x41 && magic[3] >= 0x01 && magic[3] <= 0x06;
     bool is_visionaire_studio_vis = magic_size >= 8 && magic[0] == 0x56 && magic[1] == 0x49 && magic[2] == 0x53 && magic[3] == 0x33;
-    bool is_xamarin_compressed_assembly = magic_size >= 13 && magic[0] == 0x58 && magic[1] == 0x41 && magic[2] == 0x4C && magic[3] == 0x5A && (magic[8] | magic[9] | magic[10] | magic[11]) != 0 && magic[11] < 0x10 && total_size >= 13;
-    bool is_dms = magic_size >= 4U && magic[0]==0x44U && magic[1]==0x4DU &&
-        magic[2]==0x53U && magic[3]==0x21U;   /* "DMS!" */
-    bool is_csman = magic_size >= 2U &&
-        ((magic[0]==0x43U && magic[1]==0x53U) || (magic[0]==0x53U && magic[1]==0x43U));
+    bool is_xamarin_compressed_assembly = magic_size >= 13 && magic[0] == 0x58 && magic[1] == 0x41 && magic[2] == 0x4C && magic[3] == 0x5A &&
+                                          (magic[8] | magic[9] | magic[10] | magic[11]) != 0 && magic[11] < 0x10 && total_size >= 13;
+    bool is_dms = magic_size >= 4U && magic[0] == 0x44U && magic[1] == 0x4DU && magic[2] == 0x53U && magic[3] == 0x21U; /* "DMS!" */
+    bool is_csman = magic_size >= 2U && ((magic[0] == 0x43U && magic[1] == 0x53U) || (magic[0] == 0x53U && magic[1] == 0x43U));
     bool is_uefi_capsule = total_size >= 32;
-    bool is_cramfs = magic_size >= 4U &&
-        ((magic[0]==0x45U&&magic[1]==0x3DU&&magic[2]==0xCDU&&magic[3]==0x28U) ||
-         (magic[0]==0x28U&&magic[1]==0xCDU&&magic[2]==0x3DU&&magic[3]==0x45U));
-    bool is_ubi = magic_size >= 4U && magic[0]==0x55U && magic[1]==0x42U && magic[2]==0x49U && magic[3]==0x23U;
-    bool is_ubifs = magic_size >= 21U && magic[0]==0x31U && magic[1]==0x18U &&
-        magic[2]==0x10U && magic[3]==0x06U && magic[20]==0x06U;
-    bool is_sparse = magic_size >= 4U && magic[0]==0x3AU && magic[1]==0xFFU && magic[2]==0x26U && magic[3]==0xEDU;
-    bool is_uimage = magic_size >= 4U && magic[0]==0x27U && magic[1]==0x05U && magic[2]==0x19U && magic[3]==0x56U;
-    bool is_dtb = magic_size >= 4U && magic[0]==0xD0U && magic[1]==0x0DU && magic[2]==0xFEU && magic[3]==0xEDU;
-    bool is_jffs2 = magic_size >= 4U &&
-        ((magic[0]==0x85U && magic[1]==0x19U) || (magic[0]==0x19U && magic[1]==0x85U));
-    bool is_fat = magic_size >= 22U &&
-        ((magic[0]==0xEBU && magic[2]==0x90U) || magic[0]==0xE9U) &&
-        ((uint16_t)(magic[14] | (magic[15] << 8)) != 0U) &&
-        (magic[16]==1U || magic[16]==2U) &&
-        (magic[21]==0xF0U || magic[21]>=0xF8U);
+    bool is_cramfs = magic_size >= 4U && ((magic[0] == 0x45U && magic[1] == 0x3DU && magic[2] == 0xCDU && magic[3] == 0x28U) ||
+                                          (magic[0] == 0x28U && magic[1] == 0xCDU && magic[2] == 0x3DU && magic[3] == 0x45U));
+    bool is_ubi = magic_size >= 4U && magic[0] == 0x55U && magic[1] == 0x42U && magic[2] == 0x49U && magic[3] == 0x23U;
+    bool is_ubifs = magic_size >= 21U && magic[0] == 0x31U && magic[1] == 0x18U && magic[2] == 0x10U && magic[3] == 0x06U && magic[20] == 0x06U;
+    bool is_sparse = magic_size >= 4U && magic[0] == 0x3AU && magic[1] == 0xFFU && magic[2] == 0x26U && magic[3] == 0xEDU;
+    bool is_uimage = magic_size >= 4U && magic[0] == 0x27U && magic[1] == 0x05U && magic[2] == 0x19U && magic[3] == 0x56U;
+    bool is_dtb = magic_size >= 4U && magic[0] == 0xD0U && magic[1] == 0x0DU && magic[2] == 0xFEU && magic[3] == 0xEDU;
+    bool is_jffs2 = magic_size >= 4U && ((magic[0] == 0x85U && magic[1] == 0x19U) || (magic[0] == 0x19U && magic[1] == 0x85U));
+    bool is_fat = magic_size >= 22U && ((magic[0] == 0xEBU && magic[2] == 0x90U) || magic[0] == 0xE9U) && ((uint16_t)(magic[14] | (magic[15] << 8)) != 0U) &&
+                  (magic[16] == 1U || magic[16] == 2U) && (magic[21] == 0xF0U || magic[21] >= 0xF8U);
     /* Magic past the 64-byte window: ext's superblock is at 1024, GPT's
      * header at 512, MBR's signature at 510. All three are device probes. */
     bool is_ext = total_size > 2048;
     bool is_gpt = total_size > 1024;
     bool is_mbr = total_size >= 512;
-    bool is_squashfs = magic_size >= 32U &&
-        ((magic[0]==0x68U&&magic[1]==0x73U&&magic[2]==0x71U&&magic[3]==0x73U) ||
-         (magic[0]==0x73U&&magic[1]==0x71U&&magic[2]==0x73U&&magic[3]==0x68U) ||
-         (magic[0]==0x68U&&magic[1]==0x73U&&magic[2]==0x71U&&magic[3]==0x74U) ||
-         (magic[0]==0x73U&&magic[1]==0x68U&&magic[2]==0x73U&&magic[3]==0x71U));
+    bool is_squashfs = magic_size >= 32U && ((magic[0] == 0x68U && magic[1] == 0x73U && magic[2] == 0x71U && magic[3] == 0x73U) ||
+                                             (magic[0] == 0x73U && magic[1] == 0x71U && magic[2] == 0x73U && magic[3] == 0x68U) ||
+                                             (magic[0] == 0x68U && magic[1] == 0x73U && magic[2] == 0x71U && magic[3] == 0x74U) ||
+                                             (magic[0] == 0x73U && magic[1] == 0x68U && magic[2] == 0x73U && magic[3] == 0x71U));
     bool is_ntfs = magic_size >= 11U && xx_rt_memcmp(magic + 3U, "NTFS    ", 8U) == 0;
     bool is_romfs = magic_size >= 8U && xx_rt_memcmp(magic, "-rom1fs-", 8U) == 0;
     bool is_sqz = magic_size >= 5U && xx_rt_memcmp(magic, "HLSQZ", 5U) == 0;
-    bool is_tps = magic_size >= 5U && magic[0]==0x54U && magic[1]==0x50U &&
-                  magic[2]==0x53U && magic[3]==0x1AU && magic[4]==0x02U;
+    bool is_tps = magic_size >= 5U && magic[0] == 0x54U && magic[1] == 0x50U && magic[2] == 0x53U && magic[3] == 0x1AU && magic[4] == 0x02U;
     bool is_ulead = magic_size >= 12U && xx_rt_memcmp(magic, "U_LEAD CORP.", 12U) == 0;
-    bool is_quantum = magic_size >= 3U && magic[0]==0x44U && magic[1]==0x53U && magic[2]==0x00U;
-    bool is_zxzip = magic_size >= 11U && magic[8]==0x5AU && magic[9]==0x49U && magic[10]==0x50U;
-    bool is_zoom = magic_size >= 7U && xx_rt_memcmp(magic, "ZOM5", 4U) == 0 && magic[6]==0x05U;
-    bool is_sfpack = magic_size >= 6U && xx_rt_memcmp(magic, "SFPK", 4U) == 0 && magic[4]==0x00U && magic[5]==0x01U;
+    bool is_quantum = magic_size >= 3U && magic[0] == 0x44U && magic[1] == 0x53U && magic[2] == 0x00U;
+    bool is_zxzip = magic_size >= 11U && magic[8] == 0x5AU && magic[9] == 0x49U && magic[10] == 0x50U;
+    bool is_zoom = magic_size >= 7U && xx_rt_memcmp(magic, "ZOM5", 4U) == 0 && magic[6] == 0x05U;
+    bool is_sfpack = magic_size >= 6U && xx_rt_memcmp(magic, "SFPK", 4U) == 0 && magic[4] == 0x00U && magic[5] == 0x01U;
     bool is_claylz = magic_size >= 4U && xx_rt_memcmp(magic, "Clay", 4U) == 0;
-    bool is_c64wraptor = magic_size >= 4U && magic[0]==0xFFU && magic[1]==0x42U && magic[2]==0x4CU && magic[3]==0xFFU;
-    bool is_corelltec = magic_size >= 9U && xx_rt_memcmp(magic, "LTEC", 4U) == 0 && magic[8]==0x00U;
-    bool is_pcsecure = magic_size >= 4U &&
-        (xx_rt_memcmp(magic, "PCT5", 4U) == 0 || xx_rt_memcmp(magic, "PCT6", 4U) == 0 ||
-         xx_rt_memcmp(magic, "PCT7", 4U) == 0 || xx_rt_memcmp(magic, "AfoS", 4U) == 0);
-    bool is_rsvk = magic_size >= 8U &&
-        (xx_rt_memcmp(magic, "RSVKDATA", 8U) == 0 || xx_rt_memcmp(magic, "DLIBDATA", 8U) == 0);
+    bool is_c64wraptor = magic_size >= 4U && magic[0] == 0xFFU && magic[1] == 0x42U && magic[2] == 0x4CU && magic[3] == 0xFFU;
+    bool is_corelltec = magic_size >= 9U && xx_rt_memcmp(magic, "LTEC", 4U) == 0 && magic[8] == 0x00U;
+    bool is_pcsecure = magic_size >= 4U && (xx_rt_memcmp(magic, "PCT5", 4U) == 0 || xx_rt_memcmp(magic, "PCT6", 4U) == 0 || xx_rt_memcmp(magic, "PCT7", 4U) == 0 ||
+                                            xx_rt_memcmp(magic, "AfoS", 4U) == 0);
+    bool is_rsvk = magic_size >= 8U && (xx_rt_memcmp(magic, "RSVKDATA", 8U) == 0 || xx_rt_memcmp(magic, "DLIBDATA", 8U) == 0);
     bool is_saf = magic_size >= 8U && xx_rt_memcmp(magic, "SAF, (c)", 8U) == 0;
-    bool is_sls = magic_size >= 9U && magic[0]==0x1FU && magic[1]==0x53U &&
-                  magic[2]==0x2FU && magic[3]==0x4CU && magic[4]==0x3FU &&
-                  magic[5]==0x53U && magic[6]==0x4FU && magic[7]==0x41U &&
-                  magic[8]==0x5FU;
-    bool is_nid = magic_size >= 4U && magic[0]==0x4EU && magic[1]==0x49U && magic[2]==0x15U && magic[3]==0x01U;
-    bool is_gamos = magic_size >= 18U && magic[0]==0x1AU && xx_rt_memcmp(magic + 1U, "GAMOS PACKED FILE", 17U) == 0;
-    bool is_fpak = magic_size >= 4U &&
-        (xx_rt_memcmp(magic, "FPAK", 4U) == 0 || xx_rt_memcmp(magic, "FPAC", 4U) == 0);
+    bool is_sls = magic_size >= 9U && magic[0] == 0x1FU && magic[1] == 0x53U && magic[2] == 0x2FU && magic[3] == 0x4CU && magic[4] == 0x3FU && magic[5] == 0x53U &&
+                  magic[6] == 0x4FU && magic[7] == 0x41U && magic[8] == 0x5FU;
+    bool is_nid = magic_size >= 4U && magic[0] == 0x4EU && magic[1] == 0x49U && magic[2] == 0x15U && magic[3] == 0x01U;
+    bool is_gamos = magic_size >= 18U && magic[0] == 0x1AU && xx_rt_memcmp(magic + 1U, "GAMOS PACKED FILE", 17U) == 0;
+    bool is_fpak = magic_size >= 4U && (xx_rt_memcmp(magic, "FPAK", 4U) == 0 || xx_rt_memcmp(magic, "FPAC", 4U) == 0);
     /* UDF's recognition sequence lives at offset 32768, far past the
      * 64-byte magic window, so it is probed on the device like ISO9660. */
     bool is_udf = xx_udf_device_has_recognition_sequence(dev, 0);
     bool is_terse = magic_size >= 16;
     bool is_stk = magic_size >= 16;
     bool is_pcommos2 = magic_size >= 16;
-    bool is_jbf = magic_size >= 16 && magic[0x0] == 0xe4U && magic[0x1] == 0x63U && magic[0x2] == 0x31U && magic[0x3] == 0x30U && magic[0x4] == 0xb3U && magic[0x5] == 0x70U && magic[0x6] == 0xb4U && magic[0x7] == 0x5cU;
+    bool is_jbf = magic_size >= 16 && magic[0x0] == 0xe4U && magic[0x1] == 0x63U && magic[0x2] == 0x31U && magic[0x3] == 0x30U && magic[0x4] == 0xb3U &&
+                  magic[0x5] == 0x70U && magic[0x6] == 0xb4U && magic[0x7] == 0x5cU;
     bool is_ibmspack = magic_size >= 8 && magic[0] == 0x53U;
     bool is_gtu = magic_size >= 16;
     bool is_glu = magic_size >= 16;
     bool is_ztc = magic_size >= 0x16 && magic[0x0] == 0xd6U && magic[0x1] == 0xbbU && magic[0x2] == 0xabU && magic[0x3] == 0x01U;
     bool is_netwarepacked = magic_size >= 0x20 && xx_rt_memcmp(magic, "Packed File ", 12U) == 0 && magic[24] == 0x1aU;
-    bool is_zpak = magic_size >= 6 && (xx_rt_memcmp(magic, "zpak", 4U) == 0 ||
-                        xx_rt_memcmp(magic, "zpk2", 4U) == 0);
-    bool is_zcmp = magic_size >= 0x28 && magic[0x0] == 0x00U && magic[0x1] == 0x00U && magic[0x2] == 0x00U && magic[0x3] == 0x00U &&
-                   xx_rt_memcmp(magic + 0x4U, "Zcmp", 4U) == 0;
+    bool is_zpak = magic_size >= 6 && (xx_rt_memcmp(magic, "zpak", 4U) == 0 || xx_rt_memcmp(magic, "zpk2", 4U) == 0);
+    bool is_zcmp =
+        magic_size >= 0x28 && magic[0x0] == 0x00U && magic[0x1] == 0x00U && magic[0x2] == 0x00U && magic[0x3] == 0x00U && xx_rt_memcmp(magic + 0x4U, "Zcmp", 4U) == 0;
     bool is_scl = magic_size >= 0x17 && xx_rt_memcmp(magic, "SINCLAIR", 8U) == 0 && magic[8] != 0U;
-    bool is_pakleo = magic_size >= 0x3f &&
-                     xx_rt_memcmp(magic, "LEOLZW - (c) Leonardus Leonardi 1993", 36U) == 0;
+    bool is_pakleo = magic_size >= 0x3f && xx_rt_memcmp(magic, "LEOLZW - (c) Leonardus Leonardi 1993", 36U) == 0;
     bool is_npack = magic_size >= 8 && xx_rt_memcmp(magic, "MSTSM", 5U) == 0;
     bool is_mi10 = magic_size >= 16 && xx_rt_memcmp(magic, "MI10", 4U) == 0;
     bool is_lzwd = magic_size >= 11 && magic[0x4] == 0xfcU && magic[0x5] == 0x4cU && magic[0x6] == 0x5aU && magic[0x7] == 0x57U;
-    bool is_lzhcxp = magic_size >= 8 && xx_rt_memcmp(magic, "LZ", 2U) == 0 && magic[2] != 0U &&
-                     magic[3] == 0U;
+    bool is_lzhcxp = magic_size >= 8 && xx_rt_memcmp(magic, "LZ", 2U) == 0 && magic[2] != 0U && magic[3] == 0U;
     bool is_kboom = magic_size >= 8 && magic[0x0] == 0xa8U && magic[0x1] == 0x4dU && magic[0x2] == 0x50U && magic[0x3] == 0xa8U;
     bool is_hzl = magic_size >= 12 && xx_rt_memcmp(magic, "!HZL", 4U) == 0 && magic[8] == '.';
     bool is_ha = magic_size >= 0x15 && xx_rt_memcmp(magic, "HA", 2U) == 0;
-    bool is_genius = magic_size >= 0x20 && xx_rt_memcmp(magic, "GENIUS LIBRARY", 14U) == 0 &&
-                     magic[0x0e] == 0U;
+    bool is_genius = magic_size >= 0x20 && xx_rt_memcmp(magic, "GENIUS LIBRARY", 14U) == 0 && magic[0x0e] == 0U;
     bool is_fls = magic_size >= 0x2e && magic[0x2] == 0xfeU && magic[0x3] == 0x00U;
-    bool is_earefpack = magic_size >= 6 && (magic[0] & 0x7eU) == 0x10U &&
-                        magic[1] == 0xfbU;
+    bool is_earefpack = magic_size >= 6 && (magic[0] & 0x7eU) == 0x10U && magic[1] == 0xfbU;
     bool is_ealib = magic_size >= 0x14 && xx_rt_memcmp(magic, "EALIB", 5U) == 0;
-    bool is_elm = magic_size >= 12 && magic[0] >= '0' && magic[0] <= '9' &&
-                  magic[1] == '.' && magic[2] >= '0' && magic[2] <= '9' &&
-                  magic[3] == '.';
+    bool is_elm = magic_size >= 12 && magic[0] >= '0' && magic[0] <= '9' && magic[1] == '.' && magic[2] >= '0' && magic[2] <= '9' && magic[3] == '.';
     bool is_ea = magic_size >= 0x30 && magic[0] == 0x1aU && xx_rt_memcmp(magic + 0x1U, "EA", 2U) == 0;
-    bool is_diskdoubler = magic_size >= 4U && ((total_size >= 0x54 && magic[0x0] == 0xabU && magic[0x1] == 0xcdU && magic[0x2] == 0x00U && magic[0x3] == 0x54U) || (total_size >= 0x44 && magic_size >= 6U && magic[0x0] == 0x44U && magic[0x1] == 0x44U && magic[0x2] == 0x41U && magic[0x3] == 0x32U && magic[0x4] == 0x00U && magic[0x5] == 0x3eU) || (total_size >= 0x4e && magic[0x0] == 0x44U && magic[0x1] == 0x44U && magic[0x2] == 0x41U && magic[0x3] == 0x52U));
+    bool is_diskdoubler = magic_size >= 4U && ((total_size >= 0x54 && magic[0x0] == 0xabU && magic[0x1] == 0xcdU && magic[0x2] == 0x00U && magic[0x3] == 0x54U) ||
+                                               (total_size >= 0x44 && magic_size >= 6U && magic[0x0] == 0x44U && magic[0x1] == 0x44U && magic[0x2] == 0x41U &&
+                                                magic[0x3] == 0x32U && magic[0x4] == 0x00U && magic[0x5] == 0x3eU) ||
+                                               (total_size >= 0x4e && magic[0x0] == 0x44U && magic[0x1] == 0x44U && magic[0x2] == 0x41U && magic[0x3] == 0x52U));
     bool is_cmp = magic_size >= 0x3d && magic[0x0] == 0x7fU && magic[0x1] == 0x00U;
-    bool is_clp = total_size >= 0x5d && magic_size >= 2U && magic[1] == 0xc3U &&
-                  (magic[0] == 0x50U || magic[0] == 0x51U);
-    bool is_chieflzmulti = magic_size >= 0x2b && magic[0] == 0x0cU &&
-                           magic[0x1] == 0x04U && magic[0x2] == 0x0dU &&
-                           xx_rt_memcmp(magic + 0x3U, "ChfLZ_2", 7U) == 0 &&
+    bool is_clp = total_size >= 0x5d && magic_size >= 2U && magic[1] == 0xc3U && (magic[0] == 0x50U || magic[0] == 0x51U);
+    bool is_chieflzmulti = magic_size >= 0x2b && magic[0] == 0x0cU && magic[0x1] == 0x04U && magic[0x2] == 0x0dU && xx_rt_memcmp(magic + 0x3U, "ChfLZ_2", 7U) == 0 &&
                            magic[0xa] == 0x05U && magic[0xb] == 0x06U && magic[0xc] == 0x04U;
     bool is_chieflz = magic_size >= 0x20 && magic[0] == 8U && xx_rt_memcmp(magic + 0x1U, "aChiefM#", 8U) == 0;
-    bool is_bwcf = total_size >= 0x56 && magic_size >= 5U && xx_rt_memcmp(magic, "BWCF", 4U) == 0 &&
-                   (magic[4] == 1U || magic[4] == 2U);
+    bool is_bwcf = total_size >= 0x56 && magic_size >= 5U && xx_rt_memcmp(magic, "BWCF", 4U) == 0 && (magic[4] == 1U || magic[4] == 2U);
     bool is_asymetrix = magic_size >= 0x2c && magic[0x0] == 0x60U && magic[0x1] == 0x22U && magic[0x2] == 0x13U && magic[0x3] == 0x63U;
-    bool is_seaarc = magic_size >= 29 && magic[0] == 0x1aU &&
-                     ((magic[1] >= 1U && magic[1] <= 11U) ||
-                      magic[1] == 0x7fU);
+    bool is_seaarc = magic_size >= 29 && magic[0] == 0x1aU && ((magic[1] >= 1U && magic[1] <= 11U) || magic[1] == 0x7fU);
     bool is_amigalzx = magic_size >= 41 && xx_rt_memcmp(magic, "LZX", 3U) == 0;
     bool is_spis = magic_size >= 16 && xx_rt_memcmp(magic, "SPIS\x1a", 5U) == 0;
-    bool is_lha = magic_size >= 22 && magic[2] == '-' && magic[6] == '-' &&
-                  ((magic[3] == 'l' &&
-                    (magic[4] == 'h' || magic[4] == 'z')) ||
-                   (magic[3] == 'p' && magic[4] == 'm'));
+    bool is_lha =
+        magic_size >= 22 && magic[2] == '-' && magic[6] == '-' && ((magic[3] == 'l' && (magic[4] == 'h' || magic[4] == 'z')) || (magic[3] == 'p' && magic[4] == 'm'));
     bool is_xar = magic_size >= 28 && xx_rt_memcmp(magic, "xar!", 4U) == 0;
     bool is_fmc1 = magic_size >= 24 && xx_rt_memcmp(magic, "FMC1", 4U) == 0;
     bool is_pyz = magic_size >= 12 && xx_rt_memcmp(magic, "PYZ", 3U) == 0 && magic[3] == 0U;
-    bool is_ascendbackup = magic_size >= 0x12 && magic[1] == 0U && magic[0] >= 1U &&
-                           magic[0] <= 12U;
-    bool is_stork = magic_size >= 0x12 && magic[0] >= 1U && magic[0] <= 12U &&
-                    magic[0x11] == '$';
+    bool is_ascendbackup = magic_size >= 0x12 && magic[1] == 0U && magic[0] >= 1U && magic[0] <= 12U;
+    bool is_stork = magic_size >= 0x12 && magic[0] >= 1U && magic[0] <= 12U && magic[0x11] == '$';
     bool is_zap = magic_size >= 0x15 && magic[0] >= 1U && magic[0] <= 12U;
     bool is_bwf = magic_size >= 22 && magic[0] == 0x01U;
     bool is_qualitas = magic_size >= 14 && magic[4] == 0x0eU && magic[5] == 0x00U;
-    bool is_jetbbs = magic_size >= 22 && xx_rt_memcmp(magic + 0x2U, "-mg", 3U) == 0 &&
-                     (magic[5] == '0' || magic[5] == '4' || magic[5] == '5') &&
-                     magic[6] == '-';
+    bool is_jetbbs = magic_size >= 22 && xx_rt_memcmp(magic + 0x2U, "-mg", 3U) == 0 && (magic[5] == '0' || magic[5] == '4' || magic[5] == '5') && magic[6] == '-';
     bool is_ecmpacked = magic_size >= 38 && xx_rt_memcmp(magic, "ECM", 3U) == 0 && magic[3] == 0U;
-    bool is_borlandpack = magic_size >= 36 && xx_rt_memcmp(magic, "This is a packed file.", 22U) == 0 &&
-                          magic[0x16] == 0x1aU;
-    bool is_jgpak = magic_size >= 16 && xx_rt_memcmp(magic, "JGPAK", 5U) == 0 && magic[5] == 0U &&
-                    magic[6] == 1U;
+    bool is_borlandpack = magic_size >= 36 && xx_rt_memcmp(magic, "This is a packed file.", 22U) == 0 && magic[0x16] == 0x1aU;
+    bool is_jgpak = magic_size >= 16 && xx_rt_memcmp(magic, "JGPAK", 5U) == 0 && magic[5] == 0U && magic[6] == 1U;
     bool is_zzz = magic_size >= 0x18 && xx_rt_memcmp(magic, "ZZZ", 3U) == 0;
     bool is_zz = magic_size >= 0x12 && magic[0x0] == 0x5aU && magic[0x1] == 0x5aU && magic[0x2] == 0x02U && magic[0x3] == 0x00U;
     bool is_zlwb = magic_size >= 0x1e && xx_rt_memcmp(magic, "ZLWB", 4U) == 0 && magic[4] == 0x1aU;
-    bool is_trc = magic_size >= 12 && magic[0x0] == 0xb0U && magic[0x1] == 0xb1U && magic[0x2] == 0xb2U &&
-                  xx_rt_memcmp(magic + 0x3U, "TRCZip", 6U) == 0 &&
+    bool is_trc = magic_size >= 12 && magic[0x0] == 0xb0U && magic[0x1] == 0xb1U && magic[0x2] == 0xb2U && xx_rt_memcmp(magic + 0x3U, "TRCZip", 6U) == 0 &&
                   magic[0x9] == 0xb2U && magic[0xa] == 0xb1U && magic[0xb] == 0xb0U;
     bool is_tgcf = magic_size >= 0x1c && xx_rt_memcmp(magic, "TGCF", 4U) == 0;
     bool is_swag = magic_size >= 22 && xx_rt_memcmp(magic + 0x2U, "-sw1-", 5U) == 0;
     bool is_riversoft = magic_size >= 32 && xx_rt_memcmp(magic, "RiverSoft Data Library\x1a", 23U) == 0;
     bool is_rcf = magic_size >= 12 && magic[0x0] == 0x03U && magic[0x1] == 0xf7U && magic[0x2] == 0xe8U && magic[0x3] == 0xebU && magic[0x4] == 0x03U &&
-                  xx_rt_memcmp(magic + 0x5U, "1.0", 3U) == 0 && magic[8] == 0U &&
-                  magic[9] == 0U;
+                  xx_rt_memcmp(magic + 0x5U, "1.0", 3U) == 0 && magic[8] == 0U && magic[9] == 0U;
     bool is_quarterdeckqp = magic_size >= 8 && xx_rt_memcmp(magic, "QP", 2U) == 0;
-    bool is_qip1 = magic_size >= 0x20 && xx_rt_memcmp(magic, "QD", 2U) == 0 && magic[2] == 0U &&
-                   magic[3] == 0U;
-    bool is_powerarc = magic_size >= 22 && xx_rt_memcmp(magic, "BZIP0001", 8U) == 0 &&
-                       xx_rt_memcmp(magic + 0x8U, "BZh", 3U) == 0;
-    bool is_povlablzh = magic_size >= 22 && (xx_rt_memcmp(magic + 0x2U, "-ARS-", 5U) == 0 ||
-                         xx_rt_memcmp(magic + 0x2U, "-ARA-", 5U) == 0);
-    bool is_mva = magic_size >= 8 && xx_rt_memcmp(magic, "mflh", 4U) == 0 &&
-                  magic[0x4] == 0x01U && magic[0x5] == 0x00U && magic[0x6] == 0x00U && magic[0x7] == 0x00U;
+    bool is_qip1 = magic_size >= 0x20 && xx_rt_memcmp(magic, "QD", 2U) == 0 && magic[2] == 0U && magic[3] == 0U;
+    bool is_powerarc = magic_size >= 22 && xx_rt_memcmp(magic, "BZIP0001", 8U) == 0 && xx_rt_memcmp(magic + 0x8U, "BZh", 3U) == 0;
+    bool is_povlablzh = magic_size >= 22 && (xx_rt_memcmp(magic + 0x2U, "-ARS-", 5U) == 0 || xx_rt_memcmp(magic + 0x2U, "-ARA-", 5U) == 0);
+    bool is_mva = magic_size >= 8 && xx_rt_memcmp(magic, "mflh", 4U) == 0 && magic[0x4] == 0x01U && magic[0x5] == 0x00U && magic[0x6] == 0x00U && magic[0x7] == 0x00U;
     bool is_miz = magic_size >= 14 && xx_rt_memcmp(magic, "DKCL", 4U) == 0;
-    bool is_lsz = magic_size >= 6 && magic[0x0] == 0x37U && magic[0x1] == 0xf0U && magic[0x2] == 0xffU && magic[0x3] == 0xffU && magic[0x4] == 0x00U && magic[0x5] == 0x03U;
+    bool is_lsz =
+        magic_size >= 6 && magic[0x0] == 0x37U && magic[0x1] == 0xf0U && magic[0x2] == 0xffU && magic[0x3] == 0xffU && magic[0x4] == 0x00U && magic[0x5] == 0x03U;
     bool is_jm93 = magic_size >= 5 && xx_rt_memcmp(magic, "JM93", 4U) == 0 && magic[4] == 0U;
     bool is_inteduft = magic_size >= 6 && magic[0x0] == 0x7cU && magic[0x1] == 0x2eU && magic[0x2] == 0x07U && magic[0x3] == 0x04U;
     bool is_igf2 = magic_size >= 0x28 && magic[0x0] == 0x24U && magic[0x1] == 0x13U;
     bool is_igf1 = magic_size >= 0x38 && magic[0x0] == 0xdbU && magic[0x1] == 0xecU;
-    bool is_ibmzpak = magic_size >= 8 && xx_rt_memcmp(magic, "-ZPAK", 5U) == 0 &&
-                      magic[0x5] == 0x00U && magic[0x6] == 0x01U && magic[0x7] == 0x00U;
+    bool is_ibmzpak = magic_size >= 8 && xx_rt_memcmp(magic, "-ZPAK", 5U) == 0 && magic[0x5] == 0x00U && magic[0x6] == 0x01U && magic[0x7] == 0x00U;
     bool is_fld = magic_size >= 27 && magic[0] == 0x0cU && magic[0x1a] == '$';
     bool is_fiz = magic_size >= 20 && xx_rt_memcmp(magic, "FIZ\x1a", 4U) == 0;
-    bool is_dtpacked = magic_size >= 41 && xx_rt_memcmp(magic, "DT", 2U) == 0 &&
-                       magic[0x2] == 0x02U && magic[0x3] == 0x00U && magic[0x4] == 0x01U && magic[0x5] == 0x00U;
+    bool is_dtpacked = magic_size >= 41 && xx_rt_memcmp(magic, "DT", 2U) == 0 && magic[0x2] == 0x02U && magic[0x3] == 0x00U && magic[0x4] == 0x01U && magic[0x5] == 0x00U;
     bool is_dsl2 = magic_size >= 20 && xx_rt_memcmp(magic, "DS'L install 2.0", 16U) == 0;
     bool is_dpk = magic_size >= 16 && xx_rt_memcmp(magic, "DPK4", 4U) == 0;
     bool is_cfl = magic_size >= 20 && xx_rt_memcmp(magic, "CFL3", 4U) == 0;
     bool is_trcpak = magic_size >= 28 && xx_rt_memcmp(magic, "TRCPAK", 7U) == 0;
     bool is_swagpacket = magic_size >= 48 && xx_rt_memcmp(magic, "SWAGOLX.EXE (c) 1993 GDSOFT  ALL RIGHTS RESERVED", 48U) == 0;
     bool is_sw = magic_size >= 15 && xx_rt_memcmp(magic, "im001V", 6U) == 0;
-    bool is_sos = magic_size >= 20 && xx_rt_memcmp(magic, "DOS", 3U) == 0 &&
-                  xx_rt_memcmp(magic + 0x10U, "SOS1", 4U) == 0;
-    bool is_secondnature = magic_size >= 32 &&
-                           ((magic[0] == 'S' && magic[1] == 'e') ||
-                            ((uint8_t)~magic[0] == 'S' &&
-                             (uint8_t)~magic[1] == 'e'));
-    bool is_seadata = magic_size >= 8 && magic[0] == 0x43U && magic[1] == 0x34U &&
-                      magic[2] == 0x21U && magic[3] == 0x12U;
-    bool is_sci = magic_size >= 46 && xx_rt_memcmp(magic, "SCI", 3U) == 0 &&
-                  (magic[3] == '1' || magic[3] == '2');
+    bool is_sos = magic_size >= 20 && xx_rt_memcmp(magic, "DOS", 3U) == 0 && xx_rt_memcmp(magic + 0x10U, "SOS1", 4U) == 0;
+    bool is_secondnature = magic_size >= 32 && ((magic[0] == 'S' && magic[1] == 'e') || ((uint8_t)~magic[0] == 'S' && (uint8_t)~magic[1] == 'e'));
+    bool is_seadata = magic_size >= 8 && magic[0] == 0x43U && magic[1] == 0x34U && magic[2] == 0x21U && magic[3] == 0x12U;
+    bool is_sci = magic_size >= 46 && xx_rt_memcmp(magic, "SCI", 3U) == 0 && (magic[3] == '1' || magic[3] == '2');
     /* Headerless: the only fixed-offset gate is the record lead byte,
      * and the smallest valid archive is a single 7-byte record. */
-    bool is_powerboardbbs = magic_size >= 7 &&
-                            ((magic[0] >= 1U && magic[0] <= 8U) ||
-                             (magic[0] >= 11U && magic[0] <= 18U));
+    bool is_powerboardbbs = magic_size >= 7 && ((magic[0] >= 1U && magic[0] <= 8U) || (magic[0] >= 11U && magic[0] <= 18U));
     bool is_minidump = magic_size >= 32 && xx_rt_memcmp(magic, "MDMP", 4U) == 0;
     bool is_lbrcobol = magic_size >= 34 && xx_rt_memcmp(magic, "Micro Focus COBOL Library File", 30U) == 0;
     bool is_krml = magic_size >= 6 && xx_rt_memcmp(magic, "KRML", 4U) == 0;
     bool is_jam = magic_size >= 7 && xx_rt_memcmp(magic, "JAM", 3U) == 0;
-    bool is_irixsa = magic_size >= 8 && magic[0] == 0xacU && magic[1] == 0xedU &&
-                     magic[2] == 0x12U && magic[3] == 0x34U;
+    bool is_irixsa = magic_size >= 8 && magic[0] == 0xacU && magic[1] == 0xedU && magic[2] == 0x12U && magic[3] == 0x34U;
     bool is_hlb = magic_size >= 8 && magic[0] == 0xd2U && magic[1] == 0x04U;
-    bool is_frontpagetheme = magic_size >= 4 && magic[0] >= '0' && magic[0] <= '9' &&
-                             (magic[1] == '.' ||
-                              (magic[1] >= '0' && magic[1] <= '9'));
+    bool is_frontpagetheme = magic_size >= 4 && magic[0] >= '0' && magic[0] <= '9' && (magic[1] == '.' || (magic[1] >= '0' && magic[1] <= '9'));
     bool is_cru = magic_size >= 13 && xx_rt_memcmp(magic, "CRUSH v1", 8U) == 0 && magic[8] == '.';
     bool is_bigaf = magic_size >= 8 && xx_rt_memcmp(magic, "<bigaf>\n", 8U) == 0;
     /* TWS has no signature at all. The cheap gate is the header record's
      * three fixed fields; everything past that is the device probe's job. */
-    bool is_tws = magic_size >= 17 && magic[0] >= 1U && magic[0] <= 12U &&
-                  magic[13] == 1U && magic[14] == 0U && magic[15] == 0U &&
-                  magic[16] == 0U;
-    bool is_packit = magic_size >= 16 &&
-                     xx_rt_memcmp(magic, "PACKIT by MJP\r\n\x1a",
-                                  16U) == 0;
+    bool is_tws = magic_size >= 17 && magic[0] >= 1U && magic[0] <= 12U && magic[13] == 1U && magic[14] == 0U && magic[15] == 0U && magic[16] == 0U;
+    bool is_packit = magic_size >= 16 && xx_rt_memcmp(magic, "PACKIT by MJP\r\n\x1a", 16U) == 0;
     bool is_zfsf = magic_size >= 4 && magic[0] == 'Z' && magic[1] == 'F' && magic[2] == 'S' && magic[3] == 'F';
     bool is_marc = magic_size >= 8 && magic[0] == 'M' && magic[1] == 'A' && magic[2] == 'R' && magic[3] == 'C';
     bool is_bigf = magic_size >= 4 && magic[0] == 'B' && magic[1] == 'I' && magic[2] == 'G' && (magic[3] == 'F' || magic[3] == '4');
     bool is_ascend = xx_format_ascend_prefilter(magic, magic_size);
     bool is_asar = magic_size >= 16 && magic[0] == 0x04U && magic[1] == 0x00U && magic[2] == 0x00U && magic[3] == 0x00U;
     /* 67 57 04 01 (member) or 67 57 04 02 (wrapping prelude), LE. */
-    bool is_arq = magic_size >= 4 && magic[0] == 0x67U &&
-                  magic[1] == 0x57U && magic[2] == 0x04U &&
-                  (magic[3] == 0x01U || magic[3] == 0x02U);
-    bool is_freearc = magic_size >= 12 && magic[0] == 'A' && magic[1] == 'r' && magic[2] == 'C' && magic[3] == 0x01U && magic[8] == 'A' && magic[9] == 'r' && magic[10] == 'C' && magic[11] == 0x01U;
-    bool is_zpaq = magic_size >= 3 && ((magic[0] == 'z' && magic[1] == 'P' && magic[2] == 'Q') || (magic_size >= 16 && magic[0] == 0x37U && magic[1] == 0x6BU && magic[13] == 'z' && magic[14] == 'P' && magic[15] == 'Q'));
+    bool is_arq = magic_size >= 4 && magic[0] == 0x67U && magic[1] == 0x57U && magic[2] == 0x04U && (magic[3] == 0x01U || magic[3] == 0x02U);
+    bool is_freearc = magic_size >= 12 && magic[0] == 'A' && magic[1] == 'r' && magic[2] == 'C' && magic[3] == 0x01U && magic[8] == 'A' && magic[9] == 'r' &&
+                      magic[10] == 'C' && magic[11] == 0x01U;
+    bool is_zpaq = magic_size >= 3 && ((magic[0] == 'z' && magic[1] == 'P' && magic[2] == 'Q') ||
+                                       (magic_size >= 16 && magic[0] == 0x37U && magic[1] == 0x6BU && magic[13] == 'z' && magic[14] == 'P' && magic[15] == 'Q'));
     bool is_pea = magic_size >= 4 && magic[0] == 0xEAU && magic[1] == 0x01U && magic[2] <= 6U;
-    bool is_lpaq8 = magic_size >= 4 && magic[0] == 'p' && magic[1] == 'Q' &&
-                    magic[2] == 0x08U && magic[3] >= '0' && magic[3] <= '9';
-    bool is_bcm = magic_size >= 4 && xx_rt_memcmp(magic, "BCM", 3U) == 0 &&
-                  (magic[3] == '!' || magic[3] == '1');
+    bool is_lpaq8 = magic_size >= 4 && magic[0] == 'p' && magic[1] == 'Q' && magic[2] == 0x08U && magic[3] >= '0' && magic[3] <= '9';
+    bool is_bcm = magic_size >= 4 && xx_rt_memcmp(magic, "BCM", 3U) == 0 && (magic[3] == '!' || magic[3] == '1');
     bool is_lzip = xx_lzip_has_header(magic, magic_size);
     bool is_lzma_alone = xx_lzma_alone_has_header(magic, magic_size);
     bool is_lzop = xx_lzop_has_header(magic, magic_size);
@@ -4100,34 +3523,25 @@ xx_file_type_t xx_format_get_file_type_device(xx_io_device *dev) {
 
     if (total_size >= 512 && xx_io_seek64(dev, 0, SEEK_SET) == 0) {
         uint8_t tar_header[512];
-        if (xx_io_read(dev, tar_header, sizeof(tar_header)) ==
-                (ssize_t)sizeof(tar_header)) {
+        if (xx_io_read(dev, tar_header, sizeof(tar_header)) == (ssize_t)sizeof(tar_header)) {
             is_tar = xx_format_tar_header_is_valid(tar_header);
         }
     }
-    if (total_size >= (int64_t)17 * 2048 &&
-        xx_io_seek64(dev, (int64_t)16 * 2048, SEEK_SET) == 0) {
+    if (total_size >= (int64_t)17 * 2048 && xx_io_seek64(dev, (int64_t)16 * 2048, SEEK_SET) == 0) {
         uint8_t volume_descriptor[7];
-        if (xx_io_read(dev, volume_descriptor, sizeof(volume_descriptor)) ==
-                (ssize_t)sizeof(volume_descriptor) &&
-            (volume_descriptor[0] == 0U || volume_descriptor[0] == 1U ||
-             volume_descriptor[0] == 2U) &&
-            xx_rt_memcmp(volume_descriptor + 1U, "CD001", 5U) == 0 &&
+        if (xx_io_read(dev, volume_descriptor, sizeof(volume_descriptor)) == (ssize_t)sizeof(volume_descriptor) &&
+            (volume_descriptor[0] == 0U || volume_descriptor[0] == 1U || volume_descriptor[0] == 2U) && xx_rt_memcmp(volume_descriptor + 1U, "CD001", 5U) == 0 &&
             volume_descriptor[6] == 1U) {
             is_iso9660 = true;
         }
     }
     if (total_size >= 14 && xx_io_seek64(dev, 7, SEEK_SET) == 0) {
         uint8_t ace_magic[7];
-        is_ace = xx_io_read(dev, ace_magic, sizeof(ace_magic)) ==
-                     (ssize_t)sizeof(ace_magic) &&
-                 xx_rt_memcmp(ace_magic, "**ACE**", sizeof(ace_magic)) == 0;
+        is_ace = xx_io_read(dev, ace_magic, sizeof(ace_magic)) == (ssize_t)sizeof(ace_magic) && xx_rt_memcmp(ace_magic, "**ACE**", sizeof(ace_magic)) == 0;
     }
 
     if (magic[0] == 'P' && magic[1] == 'K') {
-        if ((magic[2] == 0x03 && magic[3] == 0x04) ||
-            (magic[2] == 0x05 && magic[3] == 0x06) ||
-            (magic[2] == 0x07 && magic[3] == 0x08)) {
+        if ((magic[2] == 0x03 && magic[3] == 0x04) || (magic[2] == 0x05 && magic[3] == 0x06) || (magic[2] == 0x07 && magic[3] == 0x08)) {
             is_zip = true;
         }
     }
@@ -4140,7 +3554,7 @@ xx_file_type_t xx_format_get_file_type_device(xx_io_device *dev) {
     }
 
     /* Allocate buffer for scanning */
-    uint8_t *scan_buf = (uint8_t*)xx_mem_alloc(scan_size);
+    uint8_t *scan_buf = (uint8_t *)xx_mem_alloc(scan_size);
     if (scan_buf) {
         if (xx_io_seek64(dev, scan_offset, SEEK_SET) == 0) {
             ssize_t bytes_read = xx_io_read(dev, scan_buf, scan_size);
@@ -4156,11 +3570,10 @@ xx_file_type_t xx_format_get_file_type_device(xx_io_device *dev) {
                             /* If standard EOCD has 0xFFFF/0xFFFFFFFF fields, check for ZIP64 */
                             if (i + 20 <= bytes_read) {
                                 uint16_t disk_num = (uint16_t)(scan_buf[i + 4] | (scan_buf[i + 5] << 8));
-                                uint16_t cd_disk  = (uint16_t)(scan_buf[i + 6] | (scan_buf[i + 7] << 8));
-                                uint16_t cd_rec   = (uint16_t)(scan_buf[i + 8] | (scan_buf[i + 9] << 8));
+                                uint16_t cd_disk = (uint16_t)(scan_buf[i + 6] | (scan_buf[i + 7] << 8));
+                                uint16_t cd_rec = (uint16_t)(scan_buf[i + 8] | (scan_buf[i + 9] << 8));
                                 uint16_t cd_total = (uint16_t)(scan_buf[i + 10] | (scan_buf[i + 11] << 8));
-                                if (disk_num == 0xFFFF || cd_disk == 0xFFFF ||
-                                    cd_rec == 0xFFFF || cd_total == 0xFFFF) {
+                                if (disk_num == 0xFFFF || cd_disk == 0xFFFF || cd_rec == 0xFFFF || cd_total == 0xFFFF) {
                                     is_zip64 = true;
                                 }
                             }
@@ -4199,9 +3612,7 @@ xx_file_type_t xx_format_get_file_type_device(xx_io_device *dev) {
         if (valid) return XX_FILE_TYPE_INSTALLER_VISE_WINDOWS;
     }
 
-    const xx_format_probe_context registered_probes = {
-        dev, total_size, orig_pos, is_mz, magic, magic_size
-    };
+    const xx_format_probe_context registered_probes = {dev, total_size, orig_pos, is_mz, magic, magic_size};
     {
         xx_file_type_t registered = xx_format_probe_registered_primary(&registered_probes);
         if (registered != XX_FILE_TYPE_UNKNOWN) return registered;
@@ -4215,7 +3626,11 @@ xx_file_type_t xx_format_get_file_type_device(xx_io_device *dev) {
         (void)xx_io_seek64(dev, orig_pos, SEEK_SET);
     }
     /* InstallShield MultiPlatform (installshield_multiplatform). */
-    if (((magic_size >= 2 && magic[0] == 0x4DU && magic[1] == 0x5AU) || (magic_size >= 4 && magic[0] == 0x7FU && magic[1] == 0x45U && magic[2] == 0x4CU && magic[3] == 0x46U) || (magic_size >= 2 && magic[0] == 0x01U && (magic[1] == 0xDFU || magic[1] == 0xF7U)) || (magic_size >= 4 && magic[0] == 0x02U && (magic[1] == 0x0BU || magic[1] == 0x10U || magic[1] == 0x14U) && magic[2] == 0x01U && (magic[3] == 0x07U || magic[3] == 0x08U || magic[3] == 0x0BU)))) {
+    if (((magic_size >= 2 && magic[0] == 0x4DU && magic[1] == 0x5AU) ||
+         (magic_size >= 4 && magic[0] == 0x7FU && magic[1] == 0x45U && magic[2] == 0x4CU && magic[3] == 0x46U) ||
+         (magic_size >= 2 && magic[0] == 0x01U && (magic[1] == 0xDFU || magic[1] == 0xF7U)) ||
+         (magic_size >= 4 && magic[0] == 0x02U && (magic[1] == 0x0BU || magic[1] == 0x10U || magic[1] == 0x14U) && magic[2] == 0x01U &&
+          (magic[3] == 0x07U || magic[3] == 0x08U || magic[3] == 0x0BU)))) {
         bool valid = xx_format_probe_installshield_multiplatform(dev);
         (void)xx_io_seek64(dev, orig_pos, SEEK_SET);
         if (valid) return XX_FILE_TYPE_INSTALLSHIELD_MULTIPLATFORM;
@@ -4225,24 +3640,20 @@ xx_file_type_t xx_format_get_file_type_device(xx_io_device *dev) {
         xx_elf elf;
         xx_file_type_t type = XX_FILE_TYPE_UNKNOWN;
         xx_elf_init(&elf, dev, 0);
-        if (xx_elf_handle_base_info(&elf.format, NULL))
-            type = elf.format.file_type;
+        if (xx_elf_handle_base_info(&elf.format, NULL)) type = elf.format.file_type;
         xx_elf_destroy(&elf);
         (void)xx_io_seek64(dev, orig_pos, SEEK_SET);
-        if (type == XX_FILE_TYPE_ELF32 || type == XX_FILE_TYPE_ELF64)
-            return type;
+        if (type == XX_FILE_TYPE_ELF32 || type == XX_FILE_TYPE_ELF64) return type;
     }
 
     if (is_macho) {
         xx_macho macho;
         xx_file_type_t type = XX_FILE_TYPE_UNKNOWN;
         xx_macho_init(&macho, dev, 0);
-        if (xx_macho_handle_base_info(&macho.format, NULL))
-            type = macho.format.file_type;
+        if (xx_macho_handle_base_info(&macho.format, NULL)) type = macho.format.file_type;
         xx_macho_destroy(&macho);
         (void)xx_io_seek64(dev, orig_pos, SEEK_SET);
-        if (type == XX_FILE_TYPE_MACHO32 || type == XX_FILE_TYPE_MACHO64)
-            return type;
+        if (type == XX_FILE_TYPE_MACHO32 || type == XX_FILE_TYPE_MACHO64) return type;
     }
 
     if (is_dex) {
@@ -4281,7 +3692,8 @@ xx_file_type_t xx_format_get_file_type_device(xx_io_device *dev) {
     }
 
     /* IFAH installer: MZ carrier or a bare "IFAH"...+17 "IFFH" package. */
-    if (is_mz || (magic_size >= 21 && magic[0] == 'I' && magic[1] == 'F' && magic[2] == 'A' && magic[3] == 'H' && magic[17] == 'I' && magic[18] == 'F' && magic[19] == 'F' && magic[20] == 'H')) {
+    if (is_mz || (magic_size >= 21 && magic[0] == 'I' && magic[1] == 'F' && magic[2] == 'A' && magic[3] == 'H' && magic[17] == 'I' && magic[18] == 'F' &&
+                  magic[19] == 'F' && magic[20] == 'H')) {
         bool valid = xx_format_probe_ifah_installer(dev);
         (void)xx_io_seek64(dev, orig_pos, SEEK_SET);
         if (valid) return XX_FILE_TYPE_IFAH_INSTALLER;
@@ -4579,8 +3991,7 @@ xx_file_type_t xx_format_get_file_type_device(xx_io_device *dev) {
         xx_pe_init(&pe, dev, 0);
         if (xx_pe_check_is_valid(&pe.format, NULL)) {
             uint32_t nt_offset = xx_io_get_u32(dev, 0x3c, false);
-            uint16_t optional_magic = xx_io_get_u16(
-                dev, (int64_t)nt_offset + 24, false);
+            uint16_t optional_magic = xx_io_get_u16(dev, (int64_t)nt_offset + 24, false);
             if (optional_magic == XX_PE_MAGIC_32) pe_type = XX_FILE_TYPE_PE32;
             else if (optional_magic == XX_PE_MAGIC_64) pe_type = XX_FILE_TYPE_PE64;
         }
@@ -5795,7 +5206,8 @@ xx_file_type_t xx_format_get_file_type_device(xx_io_device *dev) {
         if (valid_warc) return XX_FILE_TYPE_WARC;
     }
     /* RPM (rpm). */
-    if (magic_size >= 8 && magic[0] == 0xEDU && magic[1] == 0xABU && magic[2] == 0xEEU && magic[3] == 0xDBU && (magic[4] == 3U || magic[4] == 4U) && magic[6] == 0U && magic[7] <= 1U && total_size >= 112) {
+    if (magic_size >= 8 && magic[0] == 0xEDU && magic[1] == 0xABU && magic[2] == 0xEEU && magic[3] == 0xDBU && (magic[4] == 3U || magic[4] == 4U) && magic[6] == 0U &&
+        magic[7] <= 1U && total_size >= 112) {
         bool valid = xx_format_probe_rpm(dev);
         (void)xx_io_seek64(dev, orig_pos, SEEK_SET);
         if (valid) return XX_FILE_TYPE_RPM;
@@ -5960,8 +5372,7 @@ xx_file_type_t xx_format_get_file_type_device(xx_io_device *dev) {
     /* MacBinary II/III whose header CRC-16 verifies. Ahead of the ZIP
      * verdict, whose tail scan would otherwise claim a MacBinary-wrapped
      * ZIP; MacBinary I and stale-CRC headers stay in the late chain. */
-    if (total_size >= 128 && magic[0] == 0x00U && magic[1] >= 1U &&
-        magic[1] <= 63U && magic[2] >= 0x20U) {
+    if (total_size >= 128 && magic[0] == 0x00U && magic[1] >= 1U && magic[1] <= 63U && magic[2] >= 0x20U) {
         bool is_macbinary = xx_format_probe_macbinary_verified(dev);
         (void)xx_io_seek64(dev, orig_pos, SEEK_SET);
         if (is_macbinary) return XX_FILE_TYPE_MACBINARY;
@@ -6234,7 +5645,12 @@ xx_file_type_t xx_format_get_file_type_device(xx_io_device *dev) {
         (void)xx_io_seek64(dev, orig_pos, SEEK_SET);
     }
     /* T64 (t64). */
-    if ((magic_size >= 64U && magic[0] == 0x43U && magic[1] == 0x36U && magic[2] == 0x34U && ((magic[3] == 0x20U && (magic[4] | 0x20U) == 0x74U && (magic[5] | 0x20U) == 0x61U && (magic[6] | 0x20U) == 0x70U && (magic[7] | 0x20U) == 0x65U && magic[8] == 0x20U) || (magic[3] == 0x53U && magic[4] == 0x20U && (magic[5] | 0x20U) == 0x74U && (magic[6] | 0x20U) == 0x61U && (magic[7] | 0x20U) == 0x70U && (magic[8] | 0x20U) == 0x65U && magic[9] == 0x20U)) && (magic[0x22] != 0U || magic[0x23] != 0U))) {
+    if ((magic_size >= 64U && magic[0] == 0x43U && magic[1] == 0x36U && magic[2] == 0x34U &&
+         ((magic[3] == 0x20U && (magic[4] | 0x20U) == 0x74U && (magic[5] | 0x20U) == 0x61U && (magic[6] | 0x20U) == 0x70U && (magic[7] | 0x20U) == 0x65U &&
+           magic[8] == 0x20U) ||
+          (magic[3] == 0x53U && magic[4] == 0x20U && (magic[5] | 0x20U) == 0x74U && (magic[6] | 0x20U) == 0x61U && (magic[7] | 0x20U) == 0x70U &&
+           (magic[8] | 0x20U) == 0x65U && magic[9] == 0x20U)) &&
+         (magic[0x22] != 0U || magic[0x23] != 0U))) {
         bool valid = xx_format_probe_t64(dev);
         (void)xx_io_seek64(dev, orig_pos, SEEK_SET);
         if (valid) return XX_FILE_TYPE_T64;
@@ -6914,7 +6330,8 @@ xx_file_type_t xx_format_get_file_type_device(xx_io_device *dev) {
         (void)xx_io_seek64(dev, orig_pos, SEEK_SET);
     }
     /* PC Magazine FLP (pc_magazine_flp). */
-    if ((magic_size >= 13U && magic[0] == 'P' && magic[1] == 'C' && magic[2] == 'M' && (magic[5] == 1U || magic[5] == 2U) && magic[6] == 0U && magic[7] != 0U && magic[8] == 0U && magic[9] != 0U && magic[10] == 0U)) {
+    if ((magic_size >= 13U && magic[0] == 'P' && magic[1] == 'C' && magic[2] == 'M' && (magic[5] == 1U || magic[5] == 2U) && magic[6] == 0U && magic[7] != 0U &&
+         magic[8] == 0U && magic[9] != 0U && magic[10] == 0U)) {
         bool valid = xx_format_probe_pc_magazine_flp(dev);
         (void)xx_io_seek64(dev, orig_pos, SEEK_SET);
         if (valid) return XX_FILE_TYPE_PC_MAGAZINE_FLP;
@@ -7168,10 +6585,10 @@ xx_file_type_t xx_format_get_file_type_device(xx_io_device *dev) {
     if (is_ciso) {
         if (xx_format_is_ciso_device(dev)) {
             (void)xx_io_seek64(dev, orig_pos, SEEK_SET);
-            return xx_rt_memcmp(magic, "DAX\0", 4U) == 0 ? XX_FILE_TYPE_DAX :
-                   xx_rt_memcmp(magic, "ZISO", 4U) == 0 ? XX_FILE_TYPE_ZISO :
-                   magic_size >= 21U && magic[20] == 2U ? XX_FILE_TYPE_CISO2 :
-                   XX_FILE_TYPE_CISO;
+            return xx_rt_memcmp(magic, "DAX\0", 4U) == 0  ? XX_FILE_TYPE_DAX
+                   : xx_rt_memcmp(magic, "ZISO", 4U) == 0 ? XX_FILE_TYPE_ZISO
+                   : magic_size >= 21U && magic[20] == 2U ? XX_FILE_TYPE_CISO2
+                                                          : XX_FILE_TYPE_CISO;
         }
         (void)xx_io_seek64(dev, orig_pos, SEEK_SET);
     }
@@ -7765,19 +7182,15 @@ xx_file_type_t xx_format_get_file_type_device(xx_io_device *dev) {
      * sentinel, contiguous RIB/SM8 members, and inner RIB size bounds
      * must all validate before it is identified. */
     if (magic_size >= 4U) {
-        uint32_t table_size = (uint32_t)magic[0] |
-            ((uint32_t)magic[1] << 8U) |
-            ((uint32_t)magic[2] << 16U) |
-            ((uint32_t)magic[3] << 24U);
-        if (table_size >= 12U && (table_size - 4U) % 8U == 0U &&
-            (uint64_t)table_size <= (uint64_t)total_size) {
-        xx_parsec_archive reader;
-        bool valid;
-        xx_parsec_archive_init(&reader, dev, 0);
-        valid = reader.format.check_is_valid(&reader.format, NULL);
-        xx_parsec_archive_destroy(&reader);
-        (void)xx_io_seek64(dev, orig_pos, SEEK_SET);
-        if (valid) return XX_FILE_TYPE_PARSEC_ARCHIVE;
+        uint32_t table_size = (uint32_t)magic[0] | ((uint32_t)magic[1] << 8U) | ((uint32_t)magic[2] << 16U) | ((uint32_t)magic[3] << 24U);
+        if (table_size >= 12U && (table_size - 4U) % 8U == 0U && (uint64_t)table_size <= (uint64_t)total_size) {
+            xx_parsec_archive reader;
+            bool valid;
+            xx_parsec_archive_init(&reader, dev, 0);
+            valid = reader.format.check_is_valid(&reader.format, NULL);
+            xx_parsec_archive_destroy(&reader);
+            (void)xx_io_seek64(dev, orig_pos, SEEK_SET);
+            if (valid) return XX_FILE_TYPE_PARSEC_ARCHIVE;
         }
     }
     /* Westwood PAK has no magic: its exact directory boundary and entry
@@ -7804,7 +7217,8 @@ xx_file_type_t xx_format_get_file_type_device(xx_io_device *dev) {
 }
 
 #ifndef XXFC_FORMAT_DETECTION_LZMA_XZ_ONLY
-XX_FORMAT_NOINLINE xx_file_type_t xx_format_get_file_type_device(xx_io_device *dev) {
+XX_FORMAT_NOINLINE xx_file_type_t xx_format_get_file_type_device(xx_io_device *dev)
+{
     int64_t size;
     xx_file_type_t packed;
     if (!dev) return XX_FILE_TYPE_UNKNOWN;

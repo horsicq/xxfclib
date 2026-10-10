@@ -90,17 +90,15 @@ static void xx_imp_vtable_destroy(Abstractformat *self);
 
 /* ------------------------------------------------------------- helpers -- */
 
-static bool xx_imp_read_at(Abstractformat *self, int64_t offset,
-                              uint8_t *buffer, size_t size) {
+static bool xx_imp_read_at(Abstractformat *self, int64_t offset, uint8_t *buffer, size_t size)
+{
     size_t completed = 0U;
 
-    if (!self || !self->device || offset < 0 ||
-        xx_io_seek64(self->device, offset, SEEK_SET) != 0) {
+    if (!self || !self->device || offset < 0 || xx_io_seek64(self->device, offset, SEEK_SET) != 0) {
         return false;
     }
     while (completed < size) {
-        ssize_t received =
-            xx_io_read(self->device, buffer + completed, size - completed);
+        ssize_t received = xx_io_read(self->device, buffer + completed, size - completed);
         if (received <= 0 || (size_t)received > size - completed) {
             return false;
         }
@@ -109,14 +107,14 @@ static bool xx_imp_read_at(Abstractformat *self, int64_t offset,
     return true;
 }
 
-static bool xx_imp_range_within(int64_t total, int64_t offset,
-                                   int64_t size) {
-    return offset >= 0 && size >= 0 && offset <= total &&
-           size <= total - offset;
+static bool xx_imp_range_within(int64_t total, int64_t offset, int64_t size)
+{
+    return offset >= 0 && size >= 0 && offset <= total && size <= total - offset;
 }
 
 /* Refuse anything that would escape the extraction directory. */
-static bool xx_imp_path_safe(const char *name) {
+static bool xx_imp_path_safe(const char *name)
+{
     const char *cursor = name;
 
     if (!name || !name[0] || name[0] == '/') return false;
@@ -131,7 +129,8 @@ static bool xx_imp_path_safe(const char *name) {
     return true;
 }
 
-static void xx_imp_stream_free(void *pointer) {
+static void xx_imp_stream_free(void *pointer)
+{
     xx_imp_stream *stream = (xx_imp_stream *)pointer;
     size_t index;
 
@@ -144,17 +143,15 @@ static void xx_imp_stream_free(void *pointer) {
 }
 
 /* Append a member, taking ownership of @p name. */
-static bool xx_imp_add(xx_imp_stream *stream,
-                          const xx_imp_member *member) {
-    xx_imp_member *grown = (xx_imp_member *)xx_mem_realloc(
-        stream->items, sizeof(*grown) * (stream->count + 1U));
+static bool xx_imp_add(xx_imp_stream *stream, const xx_imp_member *member)
+{
+    xx_imp_member *grown = (xx_imp_member *)xx_mem_realloc(stream->items, sizeof(*grown) * (stream->count + 1U));
 
     if (!grown) return false;
     stream->items = grown;
     stream->items[stream->count++] = *member;
     return true;
 }
-
 
 #define XX_IMP_HEADER_SIZE 0x2a
 #define XX_IMP_RECORD_SIZE XX_IMP_DIRECTORY_RECORD_SIZE /* 0x26, from xx_imp.h */
@@ -184,8 +181,6 @@ static xx_imp_stream *xx_imp_parse(Abstractformat *self, xx_pd_struct *pd);
 static bool xx_imp_same_member(const xx_imp_member *left, const xx_imp_member *right);
 static bool xx_imp_decode(Abstractformat *self, const xx_imp_member *member, uint8_t **out, size_t *out_size, xx_pd_struct *pd);
 
-
-
 /* The per-member facts the directory carries that the generator's member
  * struct has nowhere to put: a member's position inside the DECODED solid
  * stream, and the attribute byte that selects the branch converter. Built in
@@ -195,7 +190,8 @@ static bool xx_imp_decode(Abstractformat *self, const xx_imp_member *member, uin
  * both the archive header and every record store their own checksum. Computed
  * in three runs rather than by editing the buffer, so the check has no side
  * effect on the decoded directory. */
-static uint16_t xx_imp_check16(const uint8_t *data, size_t size, size_t hole) {
+static uint16_t xx_imp_check16(const uint8_t *data, size_t size, size_t hole)
+{
     static const uint8_t zeros[2] = {0U, 0U};
     uint32_t crc;
 
@@ -209,14 +205,14 @@ static uint16_t xx_imp_check16(const uint8_t *data, size_t size, size_t hole) {
 /* IMP names come from DOS and early Windows and are raw bytes in the
  * writer's code page, so high bytes are passed through; a control byte is
  * not a name. */
-static bool xx_imp_name_byte_ok(uint8_t byte) {
+static bool xx_imp_name_byte_ok(uint8_t byte)
+{
     return byte >= 0x20U && byte != 0x7FU;
 }
 
-static bool xx_imp_record_add(xx_imp_record **records, size_t *count,
-                              const xx_imp_record *entry) {
-    xx_imp_record *grown = (xx_imp_record *)xx_mem_realloc(
-        *records, sizeof(*grown) * (*count + 1U));
+static bool xx_imp_record_add(xx_imp_record **records, size_t *count, const xx_imp_record *entry)
+{
+    xx_imp_record *grown = (xx_imp_record *)xx_mem_realloc(*records, sizeof(*grown) * (*count + 1U));
 
     if (!grown) return false;
     *records = grown;
@@ -228,9 +224,8 @@ static bool xx_imp_record_add(xx_imp_record **records, size_t *count,
  * directory has to be decoded before anything can be listed, and the decode
  * needs facts the member struct cannot carry, so both callers run this and
  * the two views are built side by side in the same pass. */
-static bool xx_imp_walk(Abstractformat *self, xx_pd_struct *pd,
-                        xx_imp_stream *stream, xx_imp_record **records,
-                        size_t *record_count) {
+static bool xx_imp_walk(Abstractformat *self, xx_pd_struct *pd, xx_imp_stream *stream, xx_imp_record **records, size_t *record_count)
+{
     uint8_t header[XX_IMP_HEADER_SIZE];
     uint8_t tag[6];
     uint8_t *packed = NULL;
@@ -265,15 +260,13 @@ static bool xx_imp_walk(Abstractformat *self, xx_pd_struct *pd,
     if (!xx_imp_read_at(self, self->base_address, header, sizeof(header))) {
         return false;
     }
-    if (header[0] != (uint8_t)'I' || header[1] != (uint8_t)'M' ||
-        header[2] != (uint8_t)'P' || header[3] != (uint8_t)'\n') {
+    if (header[0] != (uint8_t)'I' || header[1] != (uint8_t)'M' || header[2] != (uint8_t)'P' || header[3] != (uint8_t)'\n') {
         return false;
     }
     /* Four magic bytes are not enough on their own -- "IMP\n" occurs in text.
      * The header's own CRC-16 is what makes this format identifiable, and it
      * is the check a later reader must not turn advisory. */
-    if (xx_imp_check16(header, sizeof(header), 0x28U) !=
-        xx_data_get_u16(header + 0x28, 2, 0, false)) {
+    if (xx_imp_check16(header, sizeof(header), 0x28U) != xx_data_get_u16(header + 0x28, 2, 0, false)) {
         return false;
     }
 
@@ -292,13 +285,10 @@ static bool xx_imp_walk(Abstractformat *self, xx_pd_struct *pd,
     }
 
     if (!xx_imp_range_within(span, directory_offset, 6)) return false;
-    if (!xx_imp_read_at(self, self->base_address + directory_offset, tag,
-                        sizeof(tag))) {
+    if (!xx_imp_read_at(self, self->base_address + directory_offset, tag, sizeof(tag))) {
         return false;
     }
-    if (tag[0] != (uint8_t)'I' || tag[1] != (uint8_t)'M' ||
-        tag[2] != (uint8_t)'P' || tag[3] != (uint8_t)'D' ||
-        tag[4] != (uint8_t)'E' || tag[5] != 0U) {
+    if (tag[0] != (uint8_t)'I' || tag[1] != (uint8_t)'M' || tag[2] != (uint8_t)'P' || tag[3] != (uint8_t)'D' || tag[4] != (uint8_t)'E' || tag[5] != 0U) {
         return false;
     }
 
@@ -307,8 +297,7 @@ static bool xx_imp_walk(Abstractformat *self, xx_pd_struct *pd,
     /* The chunk walk stops once the decoded total reaches records * 0x26, and
      * one more chunk can overshoot by its own ceiling, so this bound is exact
      * rather than a guess. */
-    plain_capacity =
-        (int64_t)records_declared * XX_IMP_RECORD_SIZE + XX_IMP_CHUNK_SLACK;
+    plain_capacity = (int64_t)records_declared * XX_IMP_RECORD_SIZE + XX_IMP_CHUNK_SLACK;
     /* Every chunk consumes at least its six-byte tag plus a packed count. */
     chunk_capacity = (size_t)(packed_size / 7) + 2U;
     if (chunk_capacity > (size_t)XX_IMP_MAX_CHUNKS) {
@@ -320,14 +309,11 @@ static bool xx_imp_walk(Abstractformat *self, xx_pd_struct *pd,
     chunk_sizes = (uint32_t *)xx_mem_alloc(sizeof(uint32_t) * chunk_capacity);
     name = (char *)xx_mem_alloc((size_t)XX_IMP_MAX_NAME + 1U);
     if (!packed || !plain || !chunk_sizes || !name) goto done;
-    if (!xx_imp_read_at(self, self->base_address + directory_offset, packed,
-                        (size_t)packed_size)) {
+    if (!xx_imp_read_at(self, self->base_address + directory_offset, packed, (size_t)packed_size)) {
         goto done;
     }
     if (pd && xx_pd_is_stopped(pd)) goto done;
-    if (!xx_imp_decode_directory(packed, (size_t)packed_size, records_declared,
-                                 plain, (size_t)plain_capacity, chunk_sizes,
-                                 chunk_capacity, &chunk_count, &written)) {
+    if (!xx_imp_decode_directory(packed, (size_t)packed_size, records_declared, plain, (size_t)plain_capacity, chunk_sizes, chunk_capacity, &chunk_count, &written)) {
         goto done;
     }
     if (chunk_count == 0U) goto done;
@@ -356,15 +342,12 @@ static bool xx_imp_walk(Abstractformat *self, xx_pd_struct *pd,
         /* The version field is the format's own compatibility gate. */
         if ((xx_data_get_u16(record, 2, 0, false) & 0x0FFFU) >= 0x010BU) goto done;
         name_length = (int32_t)xx_data_get_u16(record + 0x1A, 2, 0, false);
-        record_total = (int64_t)XX_IMP_RECORD_SIZE + (int64_t)name_length +
-                       (int64_t)record[0x0A] +
-                       (int64_t)xx_data_get_u16(record + 0x18, 2, 0, false);
+        record_total = (int64_t)XX_IMP_RECORD_SIZE + (int64_t)name_length + (int64_t)record[0x0A] + (int64_t)xx_data_get_u16(record + 0x18, 2, 0, false);
         if ((int64_t)(chunk_sizes[chunk] - position) < record_total) goto done;
         /* Each record carries its own CRC-16 as well. With the directory
          * itself decoded from a compressed chunk, this is what tells a
          * correct decode from one that produced plausible bytes. */
-        if (xx_imp_check16(record, (size_t)record_total, 0x24U) !=
-            xx_data_get_u16(record + 0x24, 2, 0, false)) {
+        if (xx_imp_check16(record, (size_t)record_total, 0x24U) != xx_data_get_u16(record + 0x24, 2, 0, false)) {
             goto done;
         }
 
@@ -380,8 +363,7 @@ static bool xx_imp_walk(Abstractformat *self, xx_pd_struct *pd,
         if (!xx_imp_read_at(self, self->base_address + stream_base, tag, 6)) {
             goto done;
         }
-        if (tag[0] != (uint8_t)'I' || tag[1] != (uint8_t)'M' ||
-            tag[2] != (uint8_t)'P') {
+        if (tag[0] != (uint8_t)'I' || tag[1] != (uint8_t)'M' || tag[2] != (uint8_t)'P') {
             goto done;
         }
         if (decoded_size > XX_IMP_MAX_DECODED) goto done;
@@ -415,9 +397,7 @@ static bool xx_imp_walk(Abstractformat *self, xx_pd_struct *pd,
          * coder selector the container has (bits 1..2 pick the x86 branch
          * converter), so it is what is published raw here. */
         member.method = (uint32_t)record[0x0B];
-        member.timestamp =
-            (uint64_t)xx_data_get_u16(record + 0x20, 2, 0, false) |
-            ((uint64_t)xx_data_get_u16(record + 0x22, 2, 0, false) << 16);
+        member.timestamp = (uint64_t)xx_data_get_u16(record + 0x20, 2, 0, false) | ((uint64_t)xx_data_get_u16(record + 0x22, 2, 0, false) << 16);
         member.is_folder = false;
         if (!xx_imp_add(stream, &member)) {
             xx_str_free(member.name);
@@ -447,7 +427,8 @@ done:
     return result;
 }
 
-static xx_imp_stream *xx_imp_parse(Abstractformat *self, xx_pd_struct *pd) {
+static xx_imp_stream *xx_imp_parse(Abstractformat *self, xx_pd_struct *pd)
+{
     xx_imp_stream *stream = (xx_imp_stream *)xx_mem_alloc(sizeof(*stream));
 
     if (!stream) return NULL;
@@ -460,15 +441,14 @@ fail:
     return NULL;
 }
 
-
 /* Compare a published member against one the walk just rebuilt. The two come
  * from the same pass over the same bytes, so equality across every published
  * field is equality of the record -- and where it is not (two records alike
  * in all of them but pointing at different places in the solid stream) the
  * decode refuses rather than guessing, because picking the wrong one would
  * hand back a plausible slice of some other file. */
-static bool xx_imp_same_member(const xx_imp_member *left,
-                               const xx_imp_member *right) {
+static bool xx_imp_same_member(const xx_imp_member *left, const xx_imp_member *right)
+{
     size_t length;
 
     if (left->data_offset != right->data_offset) return false;
@@ -483,8 +463,8 @@ static bool xx_imp_same_member(const xx_imp_member *left,
     return xx_rt_memcmp(left->name, right->name, length) == 0;
 }
 
-static bool xx_imp_decode(Abstractformat *self, const xx_imp_member *member,
-                          uint8_t **out, size_t *out_size, xx_pd_struct *pd) {
+static bool xx_imp_decode(Abstractformat *self, const xx_imp_member *member, uint8_t **out, size_t *out_size, xx_pd_struct *pd)
+{
     xx_imp_stream *rebuilt = NULL;
     xx_imp_record *records = NULL;
     size_t record_count = 0U;
@@ -552,9 +532,7 @@ static bool xx_imp_decode(Abstractformat *self, const xx_imp_member *member,
     if (stream_size > XX_IMP_MAX_STREAM) goto fail;
     packed = (uint8_t *)xx_mem_alloc((size_t)stream_size);
     if (!packed) goto fail;
-    if (!xx_imp_read_at(self,
-                        self->base_address + records[target].stream_base,
-                        packed, (size_t)stream_size)) {
+    if (!xx_imp_read_at(self, self->base_address + records[target].stream_base, packed, (size_t)stream_size)) {
         goto fail;
     }
     if (pd && xx_pd_is_stopped(pd)) goto fail;
@@ -565,10 +543,7 @@ static bool xx_imp_decode(Abstractformat *self, const xx_imp_member *member,
      * to the wanted offset; there is no per-member entry point, and no
      * method switch here, because IMP chooses its method per block. A block
      * whose method this codec does not implement fails inside it. */
-    if (!xx_imp_decode_memory(packed, (size_t)stream_size,
-                              (uint64_t)records[target].stream_offset,
-                              records[target].attributes, plain, plain_size,
-                              &written)) {
+    if (!xx_imp_decode_memory(packed, (size_t)stream_size, (uint64_t)records[target].stream_offset, records[target].attributes, plain, plain_size, &written)) {
         goto fail;
     }
     /* Never true with fewer bytes than the record promised: a solid slice
@@ -592,8 +567,8 @@ fail:
 
 /* ---------------------------------------------------------- lifecycle --- */
 
-void xx_imp_init(xx_imp *archive, xx_io_device *device,
-                    int64_t base_address) {
+void xx_imp_init(xx_imp *archive, xx_io_device *device, int64_t base_address)
+{
     if (!archive) return;
     xx_mem_zero(archive, sizeof(*archive));
     xx_format_init(&archive->format, device, base_address);
@@ -606,22 +581,17 @@ void xx_imp_init(xx_imp *archive, xx_io_device *device,
     archive->format.check_is_valid = xx_imp_check_is_valid;
     archive->format.handle_base_info = xx_imp_handle_base_info;
     archive->format.get_format_size = xx_imp_get_format_size;
-    archive->format.get_number_of_archive_records =
-        xx_imp_get_number_of_archive_records;
-    archive->format.create_archive_records_reading =
-        xx_imp_create_archive_records_reading;
-    archive->format.get_current_archive_record =
-        xx_imp_get_current_archive_record;
-    archive->format.unpack_current_archive_record =
-        xx_imp_unpack_current_archive_record;
-    archive->format.archive_record_move_to_next =
-        xx_imp_archive_record_move_to_next;
-    archive->format.free_archive_records_reading =
-        xx_imp_free_archive_records_reading;
+    archive->format.get_number_of_archive_records = xx_imp_get_number_of_archive_records;
+    archive->format.create_archive_records_reading = xx_imp_create_archive_records_reading;
+    archive->format.get_current_archive_record = xx_imp_get_current_archive_record;
+    archive->format.unpack_current_archive_record = xx_imp_unpack_current_archive_record;
+    archive->format.archive_record_move_to_next = xx_imp_archive_record_move_to_next;
+    archive->format.free_archive_records_reading = xx_imp_free_archive_records_reading;
     archive->format.destroy = xx_imp_vtable_destroy;
 }
 
-xx_imp *xx_imp_create(xx_io_device *device, int64_t base_address) {
+xx_imp *xx_imp_create(xx_io_device *device, int64_t base_address)
+{
     xx_imp *archive = (xx_imp *)xx_mem_alloc(sizeof(*archive));
 
     if (!archive) return NULL;
@@ -629,7 +599,8 @@ xx_imp *xx_imp_create(xx_io_device *device, int64_t base_address) {
     return archive;
 }
 
-void xx_imp_destroy(xx_imp *archive) {
+void xx_imp_destroy(xx_imp *archive)
+{
     if (!archive) return;
     /* Not xx_format_destroy: it dispatches through format.destroy, which is
      * the wrapper below, and the two would recurse. */
@@ -638,19 +609,22 @@ void xx_imp_destroy(xx_imp *archive) {
     archive->number_of_records = 0U;
 }
 
-void xx_imp_free(xx_imp *archive) {
+void xx_imp_free(xx_imp *archive)
+{
     if (!archive) return;
     xx_imp_destroy(archive);
     xx_mem_free(archive);
 }
 
-static void xx_imp_vtable_destroy(Abstractformat *self) {
+static void xx_imp_vtable_destroy(Abstractformat *self)
+{
     xx_imp_destroy((xx_imp *)self);
 }
 
 /* -------------------------------------------------------------- format -- */
 
-bool xx_imp_check_is_valid(Abstractformat *self, xx_pd_struct *pd) {
+bool xx_imp_check_is_valid(Abstractformat *self, xx_pd_struct *pd)
+{
     xx_imp_stream *stream;
 
     if (!self || (pd && xx_pd_is_stopped(pd))) return false;
@@ -660,7 +634,8 @@ bool xx_imp_check_is_valid(Abstractformat *self, xx_pd_struct *pd) {
     return true;
 }
 
-bool xx_imp_handle_base_info(Abstractformat *self, xx_pd_struct *pd) {
+bool xx_imp_handle_base_info(Abstractformat *self, xx_pd_struct *pd)
+{
     xx_imp *archive = (xx_imp *)self;
     xx_imp_stream *stream;
 
@@ -681,18 +656,17 @@ bool xx_imp_handle_base_info(Abstractformat *self, xx_pd_struct *pd) {
     return true;
 }
 
-int64_t xx_imp_get_format_size(Abstractformat *self, xx_pd_struct *pd) {
-    if (!self ||
-        (!self->base_info_handled && !xx_format_handle_base_info(self, pd))) {
+int64_t xx_imp_get_format_size(Abstractformat *self, xx_pd_struct *pd)
+{
+    if (!self || (!self->base_info_handled && !xx_format_handle_base_info(self, pd))) {
         return 0;
     }
     return self->is_valid ? self->format_size : 0;
 }
 
-uint64_t xx_imp_get_number_of_archive_records(Abstractformat *self,
-                                                 xx_pd_struct *pd) {
-    if (!self ||
-        (!self->base_info_handled && !xx_format_handle_base_info(self, pd))) {
+uint64_t xx_imp_get_number_of_archive_records(Abstractformat *self, xx_pd_struct *pd)
+{
+    if (!self || (!self->base_info_handled && !xx_format_handle_base_info(self, pd))) {
         return 0U;
     }
     return self->is_valid ? ((xx_imp *)self)->number_of_records : 0U;
@@ -700,8 +674,8 @@ uint64_t xx_imp_get_number_of_archive_records(Abstractformat *self,
 
 /* ------------------------------------------------------------- records -- */
 
-static bool xx_imp_set_record(xx_archive_record *record,
-                                 const xx_imp_member *member) {
+static bool xx_imp_set_record(xx_archive_record *record, const xx_imp_member *member)
+{
     xx_archive_record_cleanup(record);
     xx_archive_record_init(record);
     record->header_offset = member->header_offset;
@@ -709,34 +683,24 @@ static bool xx_imp_set_record(xx_archive_record *record,
     record->data_offset = member->data_offset;
     record->compressed_size = member->compressed_size;
     return xx_archive_record_set_original_name(record, member->name) &&
-           xx_archive_record_set_meta_u64(record, XX_META_ID_COMPRESSED_SIZE,
-                                          (uint64_t)member->compressed_size) &&
-           xx_archive_record_set_meta_u64(
-               record, XX_META_ID_UNCOMPRESSED_SIZE,
-               (uint64_t)member->uncompressed_size) &&
-           xx_archive_record_set_meta_u64(record, XX_META_ID_COMPRESSION_METHOD,
-                                          member->method) &&
-           xx_archive_record_set_meta_u64(record, XX_META_ID_TIMESTAMP,
-                                          member->timestamp) &&
-           xx_archive_record_set_meta_bool(record, XX_META_ID_IS_FOLDER,
-                                           member->is_folder) &&
-           xx_archive_record_set_meta_bool(record, XX_META_ID_IS_ENCRYPTED,
-                                           false);
+           xx_archive_record_set_meta_u64(record, XX_META_ID_COMPRESSED_SIZE, (uint64_t)member->compressed_size) &&
+           xx_archive_record_set_meta_u64(record, XX_META_ID_UNCOMPRESSED_SIZE, (uint64_t)member->uncompressed_size) &&
+           xx_archive_record_set_meta_u64(record, XX_META_ID_COMPRESSION_METHOD, member->method) &&
+           xx_archive_record_set_meta_u64(record, XX_META_ID_TIMESTAMP, member->timestamp) &&
+           xx_archive_record_set_meta_bool(record, XX_META_ID_IS_FOLDER, member->is_folder) && xx_archive_record_set_meta_bool(record, XX_META_ID_IS_ENCRYPTED, false);
 }
 
-static bool xx_imp_copy_options(xx_list_s *target,
-                                   const xx_list_s *options) {
+static bool xx_imp_copy_options(xx_list_s *target, const xx_list_s *options)
+{
     size_t index;
 
     if (!target || !options) return options == NULL;
     for (index = 0U; index < options->count; ++index) {
-        const xx_meta *source =
-            (const xx_meta *)xx_list_at((const xx_list_t *)options, index);
+        const xx_meta *source = (const xx_meta *)xx_list_at((const xx_list_t *)options, index);
         xx_meta copied;
         if (!source) continue;
         xx_meta_init(&copied, source->meta_id);
-        if (!xx_var_copy(&copied.var, &source->var) ||
-            !xx_list_append(target, &copied)) {
+        if (!xx_var_copy(&copied.var, &source->var) || !xx_list_append(target, &copied)) {
             xx_meta_cleanup(&copied);
             return false;
         }
@@ -744,21 +708,20 @@ static bool xx_imp_copy_options(xx_list_s *target,
     return true;
 }
 
-static const xx_var *xx_imp_get_option(const xx_list_s *options,
-                                          uint32_t meta_id) {
+static const xx_var *xx_imp_get_option(const xx_list_s *options, uint32_t meta_id)
+{
     size_t index;
 
     if (!options) return NULL;
     for (index = 0U; index < options->count; ++index) {
-        const xx_meta *meta =
-            (const xx_meta *)xx_list_at((const xx_list_t *)options, index);
+        const xx_meta *meta = (const xx_meta *)xx_list_at((const xx_list_t *)options, index);
         if (meta && meta->meta_id == meta_id) return &meta->var;
     }
     return NULL;
 }
 
-xx_archive_record_state *xx_imp_create_archive_records_reading(
-    Abstractformat *self, const xx_list_s *options, xx_pd_struct *pd) {
+xx_archive_record_state *xx_imp_create_archive_records_reading(Abstractformat *self, const xx_list_s *options, xx_pd_struct *pd)
+{
     xx_imp_stream *stream;
     xx_archive_record_state *state;
 
@@ -774,9 +737,7 @@ xx_archive_record_state *xx_imp_create_archive_records_reading(
     state->internal_state = stream;
     state->free_internal = xx_imp_stream_free;
     state->total_records = (int64_t)stream->count;
-    if (!xx_imp_copy_options(&state->options, options) ||
-        (stream->count != 0U &&
-         !xx_imp_set_record(&state->current_record, &stream->items[0]))) {
+    if (!xx_imp_copy_options(&state->options, options) || (stream->count != 0U && !xx_imp_set_record(&state->current_record, &stream->items[0]))) {
         xx_archive_record_state_free(state);
         return NULL;
     }
@@ -785,20 +746,16 @@ xx_archive_record_state *xx_imp_create_archive_records_reading(
     return state;
 }
 
-const xx_archive_record *xx_imp_get_current_archive_record(
-    Abstractformat *self, xx_archive_record_state *state) {
-    return self && state && state->format == self && state->has_record
-               ? &state->current_record
-               : NULL;
+const xx_archive_record *xx_imp_get_current_archive_record(Abstractformat *self, xx_archive_record_state *state)
+{
+    return self && state && state->format == self && state->has_record ? &state->current_record : NULL;
 }
 
-bool xx_imp_archive_record_move_to_next(Abstractformat *self,
-                                           xx_archive_record_state *state,
-                                           xx_pd_struct *pd) {
+bool xx_imp_archive_record_move_to_next(Abstractformat *self, xx_archive_record_state *state, xx_pd_struct *pd)
+{
     xx_imp_stream *stream;
 
-    if (!self || !state || state->format != self || !state->has_record ||
-        (pd && xx_pd_is_stopped(pd))) {
+    if (!self || !state || state->format != self || !state->has_record || (pd && xx_pd_is_stopped(pd))) {
         return false;
     }
     stream = (xx_imp_stream *)state->internal_state;
@@ -810,14 +767,12 @@ bool xx_imp_archive_record_move_to_next(Abstractformat *self,
     }
     ++stream->index;
     ++state->current_index;
-    state->has_record = xx_imp_set_record(&state->current_record,
-                                             &stream->items[stream->index]);
+    state->has_record = xx_imp_set_record(&state->current_record, &stream->items[stream->index]);
     return state->has_record;
 }
 
-bool xx_imp_unpack_current_archive_record(Abstractformat *self,
-                                             xx_archive_record_state *state,
-                                             xx_pd_struct *pd) {
+bool xx_imp_unpack_current_archive_record(Abstractformat *self, xx_archive_record_state *state, xx_pd_struct *pd)
+{
     xx_imp_stream *stream;
     const xx_imp_member *member;
     const xx_var *path_option;
@@ -829,8 +784,7 @@ bool xx_imp_unpack_current_archive_record(Abstractformat *self,
     bool result = false;
     bool created = false;
 
-    if (!self || !state || state->format != self || !state->has_record ||
-        (pd && xx_pd_is_stopped(pd))) {
+    if (!self || !state || state->format != self || !state->has_record || (pd && xx_pd_is_stopped(pd))) {
         return false;
     }
     stream = (xx_imp_stream *)state->internal_state;
@@ -838,8 +792,7 @@ bool xx_imp_unpack_current_archive_record(Abstractformat *self,
     member = &stream->items[stream->index];
     if (!xx_imp_path_safe(member->name)) return false;
 
-    path_option = xx_imp_get_option(&state->options,
-                                       XX_META_ID_OPT_UNPACK_PATH);
+    path_option = xx_imp_get_option(&state->options, XX_META_ID_OPT_UNPACK_PATH);
     if (!path_option) {
         /* No destination: decode and discard, which verifies the member
          * without writing anything. */
@@ -848,11 +801,9 @@ bool xx_imp_unpack_current_archive_record(Abstractformat *self,
         xx_mem_free(plain);
         return result;
     }
-    if (path_option->type == XX_VAR_TYPE_STRING ||
-        path_option->type == XX_VAR_TYPE_STRING_VIEW) {
+    if (path_option->type == XX_VAR_TYPE_STRING || path_option->type == XX_VAR_TYPE_STRING_VIEW) {
         base_path = xx_var_get_str(path_option);
-    } else if (path_option->type == XX_VAR_TYPE_WSTRING ||
-               path_option->type == XX_VAR_TYPE_WSTRING_VIEW) {
+    } else if (path_option->type == XX_VAR_TYPE_WSTRING || path_option->type == XX_VAR_TYPE_WSTRING_VIEW) {
         converted_path = xx_str_unicode_to_utf8(xx_var_get_wstr(path_option));
         base_path = converted_path;
     }
@@ -860,9 +811,7 @@ bool xx_imp_unpack_current_archive_record(Abstractformat *self,
         xx_str_free(converted_path);
         return false;
     }
-    if (base_path[0] != '\0' &&
-        base_path[xx_str_len(base_path) - 1U] != '/' &&
-        base_path[xx_str_len(base_path) - 1U] != '\\') {
+    if (base_path[0] != '\0' && base_path[xx_str_len(base_path) - 1U] != '/' && base_path[xx_str_len(base_path) - 1U] != '\\') {
         target_path = xx_str_concat3(base_path, "/", member->name);
     } else {
         target_path = xx_str_concat(base_path, member->name);
@@ -875,8 +824,7 @@ bool xx_imp_unpack_current_archive_record(Abstractformat *self,
         xx_str_free(target_path);
         return result;
     }
-    if (!xx_store_create_dirs_a(target_path, false) ||
-        !xx_imp_decode(self, member, &plain, &plain_size, pd)) {
+    if (!xx_store_create_dirs_a(target_path, false) || !xx_imp_decode(self, member, &plain, &plain_size, pd)) {
         xx_str_free(target_path);
         return false;
     }
@@ -887,8 +835,7 @@ bool xx_imp_unpack_current_archive_record(Abstractformat *self,
 
         result = output != NULL;
         while (result && completed < plain_size) {
-            ssize_t sent = xx_io_write(output, plain + completed,
-                                       plain_size - completed);
+            ssize_t sent = xx_io_write(output, plain + completed, plain_size - completed);
             if (sent <= 0 || (size_t)sent > plain_size - completed) {
                 result = false;
                 break;
@@ -903,8 +850,8 @@ bool xx_imp_unpack_current_archive_record(Abstractformat *self,
     return result;
 }
 
-void xx_imp_free_archive_records_reading(Abstractformat *self,
-                                            xx_archive_record_state *state) {
+void xx_imp_free_archive_records_reading(Abstractformat *self, xx_archive_record_state *state)
+{
     (void)self;
     xx_archive_record_state_free(state);
 }

@@ -87,48 +87,38 @@ typedef struct xx_lzop XLzop;
 
 struct xx_lzop {
     Abstractformat format;
-    uint64_t number_of_streams;    /**< Concatenated lzop streams found. */
-    uint64_t number_of_blocks;     /**< Compressed blocks across all streams. */
-    uint64_t uncompressed_size;    /**< Sum of every block's expanded length. */
-    int64_t stream_end;            /**< base_address + format_size, or -1. */
-    uint16_t version;              /**< Writer version from the first stream. */
-    uint16_t library_version;      /**< LZO library version. */
-    uint32_t flags;                /**< Header flags of the first stream. */
-    uint8_t method;                /**< 1, 2 or 3. */
-    uint8_t level;                 /**< 0 when the header predates 0x0940. */
+    uint64_t number_of_streams; /**< Concatenated lzop streams found. */
+    uint64_t number_of_blocks;  /**< Compressed blocks across all streams. */
+    uint64_t uncompressed_size; /**< Sum of every block's expanded length. */
+    int64_t stream_end;         /**< base_address + format_size, or -1. */
+    uint16_t version;           /**< Writer version from the first stream. */
+    uint16_t library_version;   /**< LZO library version. */
+    uint32_t flags;             /**< Header flags of the first stream. */
+    uint8_t method;             /**< 1, 2 or 3. */
+    uint8_t level;              /**< 0 when the header predates 0x0940. */
     void *internal;
 };
 
-XXFC_API void xx_lzop_init(xx_lzop *archive, xx_io_device *dev,
-                           int64_t base_address);
+XXFC_API void xx_lzop_init(xx_lzop *archive, xx_io_device *dev, int64_t base_address);
 XXFC_API xx_lzop *xx_lzop_create(xx_io_device *dev, int64_t base_address);
 XXFC_API void xx_lzop_destroy(xx_lzop *archive);
 XXFC_API void xx_lzop_free(xx_lzop *archive);
 
 XXFC_API bool xx_lzop_check_is_valid(Abstractformat *self, xx_pd_struct *pd);
 XXFC_API bool xx_lzop_handle_base_info(Abstractformat *self, xx_pd_struct *pd);
-XXFC_API int64_t xx_lzop_get_format_size(Abstractformat *self,
-                                         xx_pd_struct *pd);
-XXFC_API uint64_t xx_lzop_get_number_of_archive_records(Abstractformat *self,
-                                                        xx_pd_struct *pd);
+XXFC_API int64_t xx_lzop_get_format_size(Abstractformat *self, xx_pd_struct *pd);
+XXFC_API uint64_t xx_lzop_get_number_of_archive_records(Abstractformat *self, xx_pd_struct *pd);
 
-XXFC_API xx_archive_record_state *xx_lzop_create_archive_records_reading(
-    Abstractformat *self, const xx_list_s *options, xx_pd_struct *pd);
-XXFC_API const xx_archive_record *xx_lzop_get_current_archive_record(
-    Abstractformat *self, xx_archive_record_state *state);
-XXFC_API bool xx_lzop_unpack_current_archive_record(
-    Abstractformat *self, xx_archive_record_state *state, xx_pd_struct *pd);
-XXFC_API bool xx_lzop_archive_record_move_to_next(
-    Abstractformat *self, xx_archive_record_state *state, xx_pd_struct *pd);
-XXFC_API void xx_lzop_free_archive_records_reading(
-    Abstractformat *self, xx_archive_record_state *state);
+XXFC_API xx_archive_record_state *xx_lzop_create_archive_records_reading(Abstractformat *self, const xx_list_s *options, xx_pd_struct *pd);
+XXFC_API const xx_archive_record *xx_lzop_get_current_archive_record(Abstractformat *self, xx_archive_record_state *state);
+XXFC_API bool xx_lzop_unpack_current_archive_record(Abstractformat *self, xx_archive_record_state *state, xx_pd_struct *pd);
+XXFC_API bool xx_lzop_archive_record_move_to_next(Abstractformat *self, xx_archive_record_state *state, xx_pd_struct *pd);
+XXFC_API void xx_lzop_free_archive_records_reading(Abstractformat *self, xx_archive_record_state *state);
 
 /** Decode the whole container (every stream, concatenated) into destination.
  *  Returns false unless every block of every stream decodes and its checksums
  *  verify. */
-XXFC_API bool xx_lzop_unpack_to_device(xx_lzop *archive,
-                                       xx_io_device *destination,
-                                       xx_pd_struct *pd);
+XXFC_API bool xx_lzop_unpack_to_device(xx_lzop *archive, xx_io_device *destination, xx_pd_struct *pd);
 
 XXFC_API uint64_t xx_lzop_get_number_of_streams(const xx_lzop *archive);
 XXFC_API uint64_t xx_lzop_get_number_of_blocks(const xx_lzop *archive);
@@ -142,27 +132,29 @@ XXFC_API uint8_t xx_lzop_get_level(const xx_lzop *archive);
 XXFC_API const char *xx_lzop_get_stored_name(const xx_lzop *archive);
 /** Record name of stream index: a relative path with '/' separators, always
  *  set after handle_base_info. */
-XXFC_API const char *xx_lzop_get_stream_name(const xx_lzop *archive,
-                                             uint64_t index);
-XXFC_API uint64_t xx_lzop_get_stream_uncompressed_size(const xx_lzop *archive,
-                                                       uint64_t index);
+XXFC_API const char *xx_lzop_get_stream_name(const xx_lzop *archive, uint64_t index);
+XXFC_API uint64_t xx_lzop_get_stream_uncompressed_size(const xx_lzop *archive, uint64_t index);
 /** Decode one stream (one archive record) into destination. */
-XXFC_API bool xx_lzop_unpack_stream_to_device(xx_lzop *archive, uint64_t index,
-                                              xx_io_device *destination,
-                                              xx_pd_struct *pd);
+XXFC_API bool xx_lzop_unpack_stream_to_device(xx_lzop *archive, uint64_t index, xx_io_device *destination, xx_pd_struct *pd);
 
-static inline Abstractformat *xx_lzop_to_format(xx_lzop *archive) {
+static inline Abstractformat *xx_lzop_to_format(xx_lzop *archive)
+{
     return archive ? &archive->format : NULL;
 }
-static inline void XLzop_init(xx_lzop *archive, xx_io_device *dev,
-                              int64_t base_address) {
+static inline void XLzop_init(xx_lzop *archive, xx_io_device *dev, int64_t base_address)
+{
     xx_lzop_init(archive, dev, base_address);
 }
-static inline xx_lzop *XLzop_create(xx_io_device *dev, int64_t base_address) {
+static inline xx_lzop *XLzop_create(xx_io_device *dev, int64_t base_address)
+{
     return xx_lzop_create(dev, base_address);
 }
-static inline void XLzop_free(xx_lzop *archive) { xx_lzop_free(archive); }
-static inline bool XLzop_is_valid(xx_lzop *archive, xx_pd_struct *pd) {
+static inline void XLzop_free(xx_lzop *archive)
+{
+    xx_lzop_free(archive);
+}
+static inline bool XLzop_is_valid(xx_lzop *archive, xx_pd_struct *pd)
+{
     return archive ? xx_format_is_valid(&archive->format, pd) : false;
 }
 

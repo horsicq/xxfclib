@@ -66,29 +66,21 @@ struct xx_autel {
     void *internal;
 };
 
-XXFC_API void xx_autel_init(xx_autel *autel, xx_io_device *dev,
-                            int64_t base_address);
+XXFC_API void xx_autel_init(xx_autel *autel, xx_io_device *dev, int64_t base_address);
 XXFC_API xx_autel *xx_autel_create(xx_io_device *dev, int64_t base_address);
 XXFC_API void xx_autel_destroy(xx_autel *autel);
 XXFC_API void xx_autel_free(xx_autel *autel);
 
 XXFC_API bool xx_autel_check_is_valid(Abstractformat *self, xx_pd_struct *pd);
 XXFC_API bool xx_autel_handle_base_info(Abstractformat *self, xx_pd_struct *pd);
-XXFC_API int64_t xx_autel_get_format_size(Abstractformat *self,
-                                          xx_pd_struct *pd);
-XXFC_API uint64_t xx_autel_get_number_of_archive_records(Abstractformat *self,
-                                                         xx_pd_struct *pd);
+XXFC_API int64_t xx_autel_get_format_size(Abstractformat *self, xx_pd_struct *pd);
+XXFC_API uint64_t xx_autel_get_number_of_archive_records(Abstractformat *self, xx_pd_struct *pd);
 
-XXFC_API xx_archive_record_state *xx_autel_create_archive_records_reading(
-    Abstractformat *self, const xx_list_s *options, xx_pd_struct *pd);
-XXFC_API const xx_archive_record *xx_autel_get_current_archive_record(
-    Abstractformat *self, xx_archive_record_state *state);
-XXFC_API bool xx_autel_unpack_current_archive_record(
-    Abstractformat *self, xx_archive_record_state *state, xx_pd_struct *pd);
-XXFC_API bool xx_autel_archive_record_move_to_next(
-    Abstractformat *self, xx_archive_record_state *state, xx_pd_struct *pd);
-XXFC_API void xx_autel_free_archive_records_reading(
-    Abstractformat *self, xx_archive_record_state *state);
+XXFC_API xx_archive_record_state *xx_autel_create_archive_records_reading(Abstractformat *self, const xx_list_s *options, xx_pd_struct *pd);
+XXFC_API const xx_archive_record *xx_autel_get_current_archive_record(Abstractformat *self, xx_archive_record_state *state);
+XXFC_API bool xx_autel_unpack_current_archive_record(Abstractformat *self, xx_archive_record_state *state, xx_pd_struct *pd);
+XXFC_API bool xx_autel_archive_record_move_to_next(Abstractformat *self, xx_archive_record_state *state, xx_pd_struct *pd);
+XXFC_API void xx_autel_free_archive_records_reading(Abstractformat *self, xx_archive_record_state *state);
 
 XXFC_API uint64_t xx_autel_get_number_of_records(const xx_autel *autel);
 XXFC_API uint64_t xx_autel_get_number_of_members(const xx_autel *autel);
@@ -106,22 +98,26 @@ XXFC_API int64_t xx_autel_get_archive_end(const xx_autel *autel);
  * Exposed so a caller can decode a span it has already read without going
  * through the unpack path.
  */
-XXFC_API void xx_autel_deobfuscate(void *data, size_t size,
-                                   uint64_t block_offset);
+XXFC_API void xx_autel_deobfuscate(void *data, size_t size, uint64_t block_offset);
 
-static inline Abstractformat *xx_autel_to_format(xx_autel *autel) {
+static inline Abstractformat *xx_autel_to_format(xx_autel *autel)
+{
     return autel ? &autel->format : NULL;
 }
-static inline void XAutel_init(xx_autel *autel, xx_io_device *dev,
-                               int64_t base_address) {
+static inline void XAutel_init(xx_autel *autel, xx_io_device *dev, int64_t base_address)
+{
     xx_autel_init(autel, dev, base_address);
 }
-static inline xx_autel *XAutel_create(xx_io_device *dev,
-                                      int64_t base_address) {
+static inline xx_autel *XAutel_create(xx_io_device *dev, int64_t base_address)
+{
     return xx_autel_create(dev, base_address);
 }
-static inline void XAutel_free(xx_autel *autel) { xx_autel_free(autel); }
-static inline bool XAutel_is_valid(xx_autel *autel, xx_pd_struct *pd) {
+static inline void XAutel_free(xx_autel *autel)
+{
+    xx_autel_free(autel);
+}
+static inline bool XAutel_is_valid(xx_autel *autel, xx_pd_struct *pd)
+{
     return autel ? xx_format_is_valid(&autel->format, pd) : false;
 }
 

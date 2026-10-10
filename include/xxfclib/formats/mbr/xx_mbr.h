@@ -91,12 +91,12 @@ struct xx_mbr {
     Abstractformat format;
     uint64_t number_of_records;
     uint64_t number_of_members;
-    uint64_t number_of_primary;   /**< Published primary partitions. */
-    uint64_t number_of_logical;   /**< Published logical partitions. */
-    uint64_t number_of_extended;  /**< Extended container entries walked. */
-    uint32_t disk_signature;      /**< The u32 at offset 440. */
-    bool is_protective;           /**< A GPT disk's protective MBR. */
-    int64_t archive_end;          /**< End of the farthest partition, or -1. */
+    uint64_t number_of_primary;  /**< Published primary partitions. */
+    uint64_t number_of_logical;  /**< Published logical partitions. */
+    uint64_t number_of_extended; /**< Extended container entries walked. */
+    uint32_t disk_signature;     /**< The u32 at offset 440. */
+    bool is_protective;          /**< A GPT disk's protective MBR. */
+    int64_t archive_end;         /**< End of the farthest partition, or -1. */
     void *internal;
 };
 
@@ -108,19 +108,13 @@ XXFC_API void xx_mbr_free(xx_mbr *mbr);
 XXFC_API bool xx_mbr_check_is_valid(Abstractformat *self, xx_pd_struct *pd);
 XXFC_API bool xx_mbr_handle_base_info(Abstractformat *self, xx_pd_struct *pd);
 XXFC_API int64_t xx_mbr_get_format_size(Abstractformat *self, xx_pd_struct *pd);
-XXFC_API uint64_t xx_mbr_get_number_of_archive_records(Abstractformat *self,
-                                                       xx_pd_struct *pd);
+XXFC_API uint64_t xx_mbr_get_number_of_archive_records(Abstractformat *self, xx_pd_struct *pd);
 
-XXFC_API xx_archive_record_state *xx_mbr_create_archive_records_reading(
-    Abstractformat *self, const xx_list_s *options, xx_pd_struct *pd);
-XXFC_API const xx_archive_record *xx_mbr_get_current_archive_record(
-    Abstractformat *self, xx_archive_record_state *state);
-XXFC_API bool xx_mbr_unpack_current_archive_record(
-    Abstractformat *self, xx_archive_record_state *state, xx_pd_struct *pd);
-XXFC_API bool xx_mbr_archive_record_move_to_next(
-    Abstractformat *self, xx_archive_record_state *state, xx_pd_struct *pd);
-XXFC_API void xx_mbr_free_archive_records_reading(
-    Abstractformat *self, xx_archive_record_state *state);
+XXFC_API xx_archive_record_state *xx_mbr_create_archive_records_reading(Abstractformat *self, const xx_list_s *options, xx_pd_struct *pd);
+XXFC_API const xx_archive_record *xx_mbr_get_current_archive_record(Abstractformat *self, xx_archive_record_state *state);
+XXFC_API bool xx_mbr_unpack_current_archive_record(Abstractformat *self, xx_archive_record_state *state, xx_pd_struct *pd);
+XXFC_API bool xx_mbr_archive_record_move_to_next(Abstractformat *self, xx_archive_record_state *state, xx_pd_struct *pd);
+XXFC_API void xx_mbr_free_archive_records_reading(Abstractformat *self, xx_archive_record_state *state);
 
 XXFC_API uint64_t xx_mbr_get_number_of_records(const xx_mbr *mbr);
 XXFC_API uint64_t xx_mbr_get_number_of_members(const xx_mbr *mbr);
@@ -133,21 +127,26 @@ XXFC_API const char *xx_mbr_type_name(uint8_t type);
 
 /** Fill info for the index-th published partition. Requires that base info
  * has already been handled. Returns false for an out-of-range index. */
-XXFC_API bool xx_mbr_get_partition_info(const xx_mbr *mbr, uint64_t index,
-                                        xx_mbr_partition_info *info);
+XXFC_API bool xx_mbr_get_partition_info(const xx_mbr *mbr, uint64_t index, xx_mbr_partition_info *info);
 
-static inline Abstractformat *xx_mbr_to_format(xx_mbr *mbr) {
+static inline Abstractformat *xx_mbr_to_format(xx_mbr *mbr)
+{
     return mbr ? &mbr->format : NULL;
 }
-static inline void XMbr_init(xx_mbr *mbr, xx_io_device *dev,
-                             int64_t base_address) {
+static inline void XMbr_init(xx_mbr *mbr, xx_io_device *dev, int64_t base_address)
+{
     xx_mbr_init(mbr, dev, base_address);
 }
-static inline xx_mbr *XMbr_create(xx_io_device *dev, int64_t base_address) {
+static inline xx_mbr *XMbr_create(xx_io_device *dev, int64_t base_address)
+{
     return xx_mbr_create(dev, base_address);
 }
-static inline void XMbr_free(xx_mbr *mbr) { xx_mbr_free(mbr); }
-static inline bool XMbr_is_valid(xx_mbr *mbr, xx_pd_struct *pd) {
+static inline void XMbr_free(xx_mbr *mbr)
+{
+    xx_mbr_free(mbr);
+}
+static inline bool XMbr_is_valid(xx_mbr *mbr, xx_pd_struct *pd)
+{
     return mbr ? xx_format_is_valid(&mbr->format, pd) : false;
 }
 

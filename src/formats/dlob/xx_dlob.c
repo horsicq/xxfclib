@@ -27,8 +27,8 @@
 
 typedef struct xx_dlob_private_s {
     int64_t input_size;
-    int64_t header_offset;  /**< The outer entity, i.e. base_address. */
-    int64_t inner_offset;   /**< The payload-bearing entity's header. */
+    int64_t header_offset; /**< The outer entity, i.e. base_address. */
+    int64_t inner_offset;  /**< The payload-bearing entity's header. */
     int64_t data_offset;
     int64_t archive_end;
     uint32_t outer_meta_size;
@@ -64,40 +64,28 @@ typedef struct xx_dlob_md5_s {
 } xx_dlob_md5;
 
 static const uint32_t xx_dlob_md5_k[64] = {
-    UINT32_C(0xd76aa478), UINT32_C(0xe8c7b756), UINT32_C(0x242070db),
-    UINT32_C(0xc1bdceee), UINT32_C(0xf57c0faf), UINT32_C(0x4787c62a),
-    UINT32_C(0xa8304613), UINT32_C(0xfd469501), UINT32_C(0x698098d8),
-    UINT32_C(0x8b44f7af), UINT32_C(0xffff5bb1), UINT32_C(0x895cd7be),
-    UINT32_C(0x6b901122), UINT32_C(0xfd987193), UINT32_C(0xa679438e),
-    UINT32_C(0x49b40821), UINT32_C(0xf61e2562), UINT32_C(0xc040b340),
-    UINT32_C(0x265e5a51), UINT32_C(0xe9b6c7aa), UINT32_C(0xd62f105d),
-    UINT32_C(0x02441453), UINT32_C(0xd8a1e681), UINT32_C(0xe7d3fbc8),
-    UINT32_C(0x21e1cde6), UINT32_C(0xc33707d6), UINT32_C(0xf4d50d87),
-    UINT32_C(0x455a14ed), UINT32_C(0xa9e3e905), UINT32_C(0xfcefa3f8),
-    UINT32_C(0x676f02d9), UINT32_C(0x8d2a4c8a), UINT32_C(0xfffa3942),
-    UINT32_C(0x8771f681), UINT32_C(0x6d9d6122), UINT32_C(0xfde5380c),
-    UINT32_C(0xa4beea44), UINT32_C(0x4bdecfa9), UINT32_C(0xf6bb4b60),
-    UINT32_C(0xbebfbc70), UINT32_C(0x289b7ec6), UINT32_C(0xeaa127fa),
-    UINT32_C(0xd4ef3085), UINT32_C(0x04881d05), UINT32_C(0xd9d4d039),
-    UINT32_C(0xe6db99e5), UINT32_C(0x1fa27cf8), UINT32_C(0xc4ac5665),
-    UINT32_C(0xf4292244), UINT32_C(0x432aff97), UINT32_C(0xab9423a7),
-    UINT32_C(0xfc93a039), UINT32_C(0x655b59c3), UINT32_C(0x8f0ccc92),
-    UINT32_C(0xffeff47d), UINT32_C(0x85845dd1), UINT32_C(0x6fa87e4f),
-    UINT32_C(0xfe2ce6e0), UINT32_C(0xa3014314), UINT32_C(0x4e0811a1),
-    UINT32_C(0xf7537e82), UINT32_C(0xbd3af235), UINT32_C(0x2ad7d2bb),
+    UINT32_C(0xd76aa478), UINT32_C(0xe8c7b756), UINT32_C(0x242070db), UINT32_C(0xc1bdceee), UINT32_C(0xf57c0faf), UINT32_C(0x4787c62a), UINT32_C(0xa8304613),
+    UINT32_C(0xfd469501), UINT32_C(0x698098d8), UINT32_C(0x8b44f7af), UINT32_C(0xffff5bb1), UINT32_C(0x895cd7be), UINT32_C(0x6b901122), UINT32_C(0xfd987193),
+    UINT32_C(0xa679438e), UINT32_C(0x49b40821), UINT32_C(0xf61e2562), UINT32_C(0xc040b340), UINT32_C(0x265e5a51), UINT32_C(0xe9b6c7aa), UINT32_C(0xd62f105d),
+    UINT32_C(0x02441453), UINT32_C(0xd8a1e681), UINT32_C(0xe7d3fbc8), UINT32_C(0x21e1cde6), UINT32_C(0xc33707d6), UINT32_C(0xf4d50d87), UINT32_C(0x455a14ed),
+    UINT32_C(0xa9e3e905), UINT32_C(0xfcefa3f8), UINT32_C(0x676f02d9), UINT32_C(0x8d2a4c8a), UINT32_C(0xfffa3942), UINT32_C(0x8771f681), UINT32_C(0x6d9d6122),
+    UINT32_C(0xfde5380c), UINT32_C(0xa4beea44), UINT32_C(0x4bdecfa9), UINT32_C(0xf6bb4b60), UINT32_C(0xbebfbc70), UINT32_C(0x289b7ec6), UINT32_C(0xeaa127fa),
+    UINT32_C(0xd4ef3085), UINT32_C(0x04881d05), UINT32_C(0xd9d4d039), UINT32_C(0xe6db99e5), UINT32_C(0x1fa27cf8), UINT32_C(0xc4ac5665), UINT32_C(0xf4292244),
+    UINT32_C(0x432aff97), UINT32_C(0xab9423a7), UINT32_C(0xfc93a039), UINT32_C(0x655b59c3), UINT32_C(0x8f0ccc92), UINT32_C(0xffeff47d), UINT32_C(0x85845dd1),
+    UINT32_C(0x6fa87e4f), UINT32_C(0xfe2ce6e0), UINT32_C(0xa3014314), UINT32_C(0x4e0811a1), UINT32_C(0xf7537e82), UINT32_C(0xbd3af235), UINT32_C(0x2ad7d2bb),
     UINT32_C(0xeb86d391)};
 
-static const unsigned xx_dlob_md5_shift[64] = {
-    7U, 12U, 17U, 22U, 7U, 12U, 17U, 22U, 7U, 12U, 17U, 22U, 7U, 12U, 17U, 22U,
-    5U, 9U,  14U, 20U, 5U, 9U,  14U, 20U, 5U, 9U,  14U, 20U, 5U, 9U,  14U, 20U,
-    4U, 11U, 16U, 23U, 4U, 11U, 16U, 23U, 4U, 11U, 16U, 23U, 4U, 11U, 16U, 23U,
-    6U, 10U, 15U, 21U, 6U, 10U, 15U, 21U, 6U, 10U, 15U, 21U, 6U, 10U, 15U, 21U};
+static const unsigned xx_dlob_md5_shift[64] = {7U,  12U, 17U, 22U, 7U,  12U, 17U, 22U, 7U,  12U, 17U, 22U, 7U,  12U, 17U, 22U, 5U,  9U,  14U, 20U, 5U,  9U,
+                                               14U, 20U, 5U,  9U,  14U, 20U, 5U,  9U,  14U, 20U, 4U,  11U, 16U, 23U, 4U,  11U, 16U, 23U, 4U,  11U, 16U, 23U,
+                                               4U,  11U, 16U, 23U, 6U,  10U, 15U, 21U, 6U,  10U, 15U, 21U, 6U,  10U, 15U, 21U, 6U,  10U, 15U, 21U};
 
-static uint32_t xx_dlob_md5_rotate(uint32_t value, unsigned bits) {
+static uint32_t xx_dlob_md5_rotate(uint32_t value, unsigned bits)
+{
     return (uint32_t)((value << bits) | (value >> (32U - bits)));
 }
 
-static void xx_dlob_md5_compress(uint32_t state[4], const uint8_t block[64]) {
+static void xx_dlob_md5_compress(uint32_t state[4], const uint8_t block[64])
+{
     uint32_t words[16];
     uint32_t a = state[0];
     uint32_t b = state[1];
@@ -105,9 +93,7 @@ static void xx_dlob_md5_compress(uint32_t state[4], const uint8_t block[64]) {
     uint32_t d = state[3];
     unsigned index;
     for (index = 0U; index < 16U; ++index) {
-        words[index] = (uint32_t)block[index * 4U] |
-                       ((uint32_t)block[index * 4U + 1U] << 8U) |
-                       ((uint32_t)block[index * 4U + 2U] << 16U) |
+        words[index] = (uint32_t)block[index * 4U] | ((uint32_t)block[index * 4U + 1U] << 8U) | ((uint32_t)block[index * 4U + 2U] << 16U) |
                        ((uint32_t)block[index * 4U + 3U] << 24U);
     }
     for (index = 0U; index < 64U; ++index) {
@@ -138,7 +124,8 @@ static void xx_dlob_md5_compress(uint32_t state[4], const uint8_t block[64]) {
     state[3] += d;
 }
 
-static void xx_dlob_md5_init(xx_dlob_md5 *context) {
+static void xx_dlob_md5_init(xx_dlob_md5 *context)
+{
     xx_mem_zero(context, sizeof(*context));
     context->state[0] = UINT32_C(0x67452301);
     context->state[1] = UINT32_C(0xefcdab89);
@@ -146,8 +133,8 @@ static void xx_dlob_md5_init(xx_dlob_md5 *context) {
     context->state[3] = UINT32_C(0x10325476);
 }
 
-static void xx_dlob_md5_update(xx_dlob_md5 *context, const uint8_t *data,
-                               size_t size) {
+static void xx_dlob_md5_update(xx_dlob_md5 *context, const uint8_t *data, size_t size)
+{
     context->length += (uint64_t)size;
     while (size != 0U) {
         size_t room = sizeof(context->block) - context->used;
@@ -163,7 +150,8 @@ static void xx_dlob_md5_update(xx_dlob_md5 *context, const uint8_t *data,
     }
 }
 
-static void xx_dlob_md5_final(xx_dlob_md5 *context, uint8_t digest[16]) {
+static void xx_dlob_md5_final(xx_dlob_md5 *context, uint8_t digest[16])
+{
     uint64_t bits = context->length * 8U;
     uint8_t pad = 0x80U;
     uint8_t tail[8];
@@ -179,12 +167,9 @@ static void xx_dlob_md5_final(xx_dlob_md5 *context, uint8_t digest[16]) {
     xx_dlob_md5_update(context, tail, sizeof(tail));
     for (index = 0U; index < 4U; ++index) {
         digest[index * 4U] = (uint8_t)(context->state[index] & 0xFFU);
-        digest[index * 4U + 1U] =
-            (uint8_t)((context->state[index] >> 8U) & 0xFFU);
-        digest[index * 4U + 2U] =
-            (uint8_t)((context->state[index] >> 16U) & 0xFFU);
-        digest[index * 4U + 3U] =
-            (uint8_t)((context->state[index] >> 24U) & 0xFFU);
+        digest[index * 4U + 1U] = (uint8_t)((context->state[index] >> 8U) & 0xFFU);
+        digest[index * 4U + 2U] = (uint8_t)((context->state[index] >> 16U) & 0xFFU);
+        digest[index * 4U + 3U] = (uint8_t)((context->state[index] >> 24U) & 0xFFU);
     }
 }
 
@@ -193,12 +178,11 @@ static void xx_dlob_md5_final(xx_dlob_md5 *context, uint8_t digest[16]) {
 /* ------------------------------------------------------------------------ */
 
 /* All positioning goes through seek64: long is 32-bit on Win64. */
-static bool xx_dlob_read_at(xx_io_device *device, int64_t offset, void *data,
-                            size_t size) {
+static bool xx_dlob_read_at(xx_io_device *device, int64_t offset, void *data, size_t size)
+{
     uint8_t *out = (uint8_t *)data;
     size_t done = 0U;
-    if (!device || (!data && size != 0U) || offset < 0 ||
-        xx_io_seek64(device, offset, SEEK_SET) != 0) {
+    if (!device || (!data && size != 0U) || offset < 0 || xx_io_seek64(device, offset, SEEK_SET) != 0) {
         return false;
     }
     while (done < size) {
@@ -209,7 +193,8 @@ static bool xx_dlob_read_at(xx_io_device *device, int64_t offset, void *data,
     return true;
 }
 
-static bool xx_dlob_add(int64_t left, uint64_t right, int64_t *result) {
+static bool xx_dlob_add(int64_t left, uint64_t right, int64_t *result)
+{
     if (!result || left < 0 || right > (uint64_t)(INT64_MAX - left)) {
         return false;
     }
@@ -218,13 +203,13 @@ static bool xx_dlob_add(int64_t left, uint64_t right, int64_t *result) {
 }
 
 /* True when [offset, offset + size) lies inside [0, total_size). */
-static bool xx_dlob_range_within(int64_t total_size, int64_t offset,
-                                 int64_t size) {
-    return (total_size >= 0) && (offset >= 0) && (size >= 0) &&
-           (offset <= total_size) && (size <= total_size - offset);
+static bool xx_dlob_range_within(int64_t total_size, int64_t offset, int64_t size)
+{
+    return (total_size >= 0) && (offset >= 0) && (size >= 0) && (offset <= total_size) && (size <= total_size - offset);
 }
 
-static void xx_dlob_private_cleanup(xx_dlob_private *parsed) {
+static void xx_dlob_private_cleanup(xx_dlob_private *parsed)
+{
     if (!parsed) return;
     /* Nothing here owns heap memory; the cleanup exists for symmetry with the
      * other readers and to leave a failed parse in a defined state. */
@@ -237,17 +222,15 @@ static void xx_dlob_private_cleanup(xx_dlob_private *parsed) {
 }
 
 /* MD5 over a device range, streamed so a large payload is never resident. */
-static bool xx_dlob_digest_range(xx_io_device *device, int64_t offset,
-                                 int64_t size, uint8_t digest[16],
-                                 xx_pd_struct *pd) {
+static bool xx_dlob_digest_range(xx_io_device *device, int64_t offset, int64_t size, uint8_t digest[16], xx_pd_struct *pd)
+{
     uint8_t staging[XX_DLOB_STAGING_SIZE];
     xx_dlob_md5 context;
     if (!device || offset < 0 || size < 0) return false;
     xx_dlob_md5_init(&context);
     if (size != 0 && xx_io_seek64(device, offset, SEEK_SET) != 0) return false;
     while (size > 0) {
-        size_t step =
-            (size < (int64_t)sizeof(staging)) ? (size_t)size : sizeof(staging);
+        size_t step = (size < (int64_t)sizeof(staging)) ? (size_t)size : sizeof(staging);
         size_t done = 0U;
         if (pd && xx_pd_is_stopped(pd)) return false;
         while (done < step) {
@@ -262,7 +245,8 @@ static bool xx_dlob_digest_range(xx_io_device *device, int64_t offset,
     return true;
 }
 
-static bool xx_dlob_digest_is_zero(const uint8_t digest[16]) {
+static bool xx_dlob_digest_is_zero(const uint8_t digest[16])
+{
     unsigned index;
     for (index = 0U; index < 16U; ++index) {
         if (digest[index] != 0U) return false;
@@ -270,8 +254,8 @@ static bool xx_dlob_digest_is_zero(const uint8_t digest[16]) {
     return true;
 }
 
-static bool xx_dlob_parse(Abstractformat *self, xx_dlob_private *parsed,
-                          xx_pd_struct *pd) {
+static bool xx_dlob_parse(Abstractformat *self, xx_dlob_private *parsed, xx_pd_struct *pd)
+{
     uint8_t outer[XX_DLOB_HEADER_SIZE];
     uint8_t inner[XX_DLOB_HEADER_SIZE + XX_DLOB_DIGEST_SIZE];
     uint32_t outer_size;
@@ -286,8 +270,7 @@ static bool xx_dlob_parse(Abstractformat *self, xx_dlob_private *parsed,
         parsed->data_offset = -1;
         parsed->archive_end = -1;
     }
-    if (!self || !self->device || !parsed || self->base_address < 0 ||
-        (pd && xx_pd_is_stopped(pd))) {
+    if (!self || !self->device || !parsed || self->base_address < 0 || (pd && xx_pd_is_stopped(pd))) {
         return false;
     }
     parsed->input_size = xx_io_total_size(self->device);
@@ -296,31 +279,22 @@ static bool xx_dlob_parse(Abstractformat *self, xx_dlob_private *parsed,
     /* Outer entity: magic, zero reserved, a metadata block, and NO payload.
      * The zero size is the whole point - it is what distinguishes this shape
      * from a plain SEAMA image, and it is why no digest follows. */
-    if (!xx_dlob_range_within(parsed->input_size, self->base_address,
-                              XX_DLOB_HEADER_SIZE) ||
-        !xx_dlob_read_at(self->device, self->base_address, outer,
-                         sizeof(outer)) ||
-        xx_data_get_u32(outer, sizeof(outer), 0U, true) != XX_DLOB_MAGIC ||
-        xx_data_get_u16(outer, sizeof(outer), 4U, true) != 0U) {
+    if (!xx_dlob_range_within(parsed->input_size, self->base_address, XX_DLOB_HEADER_SIZE) || !xx_dlob_read_at(self->device, self->base_address, outer, sizeof(outer)) ||
+        xx_data_get_u32(outer, sizeof(outer), 0U, true) != XX_DLOB_MAGIC || xx_data_get_u16(outer, sizeof(outer), 4U, true) != 0U) {
         goto fail;
     }
     parsed->outer_meta_size = xx_data_get_u16(outer, sizeof(outer), 6U, true);
     outer_size = xx_data_get_u32(outer, sizeof(outer), 8U, true);
     if (outer_size != 0U || parsed->outer_meta_size == 0U) goto fail;
-    if (!xx_dlob_add(self->base_address, XX_DLOB_HEADER_SIZE, &outer_meta) ||
-        !xx_dlob_add(outer_meta, parsed->outer_meta_size,
-                     &parsed->inner_offset) ||
+    if (!xx_dlob_add(self->base_address, XX_DLOB_HEADER_SIZE, &outer_meta) || !xx_dlob_add(outer_meta, parsed->outer_meta_size, &parsed->inner_offset) ||
         parsed->inner_offset > parsed->input_size) {
         goto fail;
     }
 
     /* Inner entity: same layout, but it carries the firmware and therefore
      * also the sixteen digest bytes. */
-    if (!xx_dlob_range_within(parsed->input_size, parsed->inner_offset,
-                              XX_DLOB_HEADER_SIZE + XX_DLOB_DIGEST_SIZE) ||
-        !xx_dlob_read_at(self->device, parsed->inner_offset, inner,
-                         sizeof(inner)) ||
-        xx_data_get_u32(inner, sizeof(inner), 0U, true) != XX_DLOB_MAGIC ||
+    if (!xx_dlob_range_within(parsed->input_size, parsed->inner_offset, XX_DLOB_HEADER_SIZE + XX_DLOB_DIGEST_SIZE) ||
+        !xx_dlob_read_at(self->device, parsed->inner_offset, inner, sizeof(inner)) || xx_data_get_u32(inner, sizeof(inner), 0U, true) != XX_DLOB_MAGIC ||
         xx_data_get_u16(inner, sizeof(inner), 4U, true) != 0U) {
         goto fail;
     }
@@ -328,12 +302,8 @@ static bool xx_dlob_parse(Abstractformat *self, xx_dlob_private *parsed,
     inner_size = xx_data_get_u32(inner, sizeof(inner), 8U, true);
     if (inner_size == 0U) goto fail;
     parsed->image_size = inner_size;
-    if (!xx_dlob_add(parsed->inner_offset,
-                     XX_DLOB_HEADER_SIZE + XX_DLOB_DIGEST_SIZE, &inner_meta) ||
-        !xx_dlob_add(inner_meta, parsed->inner_meta_size,
-                     &parsed->data_offset) ||
-        !xx_dlob_range_within(parsed->input_size, parsed->data_offset,
-                              (int64_t)inner_size) ||
+    if (!xx_dlob_add(parsed->inner_offset, XX_DLOB_HEADER_SIZE + XX_DLOB_DIGEST_SIZE, &inner_meta) ||
+        !xx_dlob_add(inner_meta, parsed->inner_meta_size, &parsed->data_offset) || !xx_dlob_range_within(parsed->input_size, parsed->data_offset, (int64_t)inner_size) ||
         !xx_dlob_add(parsed->data_offset, inner_size, &parsed->archive_end)) {
         goto fail;
     }
@@ -342,8 +312,7 @@ static bool xx_dlob_parse(Abstractformat *self, xx_dlob_private *parsed,
      * is binding, because the bootloader treats it that way. */
     if (!xx_dlob_digest_is_zero(inner + XX_DLOB_HEADER_SIZE)) {
         uint8_t computed[16];
-        if (!xx_dlob_digest_range(self->device, parsed->data_offset,
-                                  (int64_t)inner_size, computed, pd) ||
+        if (!xx_dlob_digest_range(self->device, parsed->data_offset, (int64_t)inner_size, computed, pd) ||
             xx_rt_memcmp(computed, inner + XX_DLOB_HEADER_SIZE, 16U) != 0) {
             goto fail;
         }
@@ -359,18 +328,16 @@ fail:
 /* Record plumbing                                                           */
 /* ------------------------------------------------------------------------ */
 
-static bool xx_dlob_copy_options(xx_list_s *destination,
-                                 const xx_list_s *source) {
+static bool xx_dlob_copy_options(xx_list_s *destination, const xx_list_s *source)
+{
     size_t index;
     if (!destination || !source) return source == NULL;
     for (index = 0U; index < source->count; ++index) {
-        const xx_meta *item =
-            (const xx_meta *)xx_list_at((const xx_list_t *)source, index);
+        const xx_meta *item = (const xx_meta *)xx_list_at((const xx_list_t *)source, index);
         xx_meta copy;
         if (!item) continue;
         xx_meta_init(&copy, item->meta_id);
-        if (!xx_var_copy(&copy.var, &item->var) ||
-            !xx_list_append(destination, &copy)) {
+        if (!xx_var_copy(&copy.var, &item->var) || !xx_list_append(destination, &copy)) {
             xx_meta_cleanup(&copy);
             return false;
         }
@@ -378,20 +345,19 @@ static bool xx_dlob_copy_options(xx_list_s *destination,
     return true;
 }
 
-static const xx_var *xx_dlob_find_option(const xx_list_s *options,
-                                         uint32_t meta_id) {
+static const xx_var *xx_dlob_find_option(const xx_list_s *options, uint32_t meta_id)
+{
     size_t index;
     if (!options) return NULL;
     for (index = 0U; index < options->count; ++index) {
-        const xx_meta *item =
-            (const xx_meta *)xx_list_at((const xx_list_t *)options, index);
+        const xx_meta *item = (const xx_meta *)xx_list_at((const xx_list_t *)options, index);
         if (item && item->meta_id == meta_id) return &item->var;
     }
     return NULL;
 }
 
-static bool xx_dlob_populate_record(xx_archive_record *record,
-                                    const xx_dlob_private *parsed) {
+static bool xx_dlob_populate_record(xx_archive_record *record, const xx_dlob_private *parsed)
+{
     if (!record || !parsed) return false;
     xx_archive_record_cleanup(record);
     xx_archive_record_init(record);
@@ -404,17 +370,13 @@ static bool xx_dlob_populate_record(xx_archive_record *record,
     record->compressed_size = (int64_t)parsed->image_size;
     /* The name is a literal chosen here, never taken from the file, so it
      * needs no sanitising before use as a destination path component. */
-    return xx_archive_record_set_original_name(record, XX_DLOB_MEMBER_NAME) &&
-           xx_archive_record_set_meta_u64(record, XX_META_ID_COMPRESSED_SIZE,
-                                          parsed->image_size) &&
-           xx_archive_record_set_meta_u64(record, XX_META_ID_UNCOMPRESSED_SIZE,
-                                          parsed->image_size) &&
-           xx_archive_record_set_meta_u64(record, XX_META_ID_COMPRESSION_METHOD,
-                                          0U) &&
-           xx_archive_record_set_meta_bool(record, XX_META_ID_IS_FOLDER, false);
+    return xx_archive_record_set_original_name(record, XX_DLOB_MEMBER_NAME) && xx_archive_record_set_meta_u64(record, XX_META_ID_COMPRESSED_SIZE, parsed->image_size) &&
+           xx_archive_record_set_meta_u64(record, XX_META_ID_UNCOMPRESSED_SIZE, parsed->image_size) &&
+           xx_archive_record_set_meta_u64(record, XX_META_ID_COMPRESSION_METHOD, 0U) && xx_archive_record_set_meta_bool(record, XX_META_ID_IS_FOLDER, false);
 }
 
-static void xx_dlob_archive_stream_free(void *pointer) {
+static void xx_dlob_archive_stream_free(void *pointer)
+{
     xx_dlob_archive_stream *stream = (xx_dlob_archive_stream *)pointer;
     if (!stream) return;
     xx_dlob_private_cleanup(&stream->parsed);
@@ -425,7 +387,8 @@ static void xx_dlob_archive_stream_free(void *pointer) {
 /* Public interface                                                          */
 /* ------------------------------------------------------------------------ */
 
-void xx_dlob_init(xx_dlob *dlob, xx_io_device *dev, int64_t base_address) {
+void xx_dlob_init(xx_dlob *dlob, xx_io_device *dev, int64_t base_address)
+{
     if (!dlob) return;
     xx_mem_zero(dlob, sizeof(*dlob));
     xx_format_init(&dlob->format, dev, base_address);
@@ -438,29 +401,26 @@ void xx_dlob_init(xx_dlob *dlob, xx_io_device *dev, int64_t base_address) {
     dlob->format.check_is_valid = xx_dlob_check_is_valid;
     dlob->format.handle_base_info = xx_dlob_handle_base_info;
     dlob->format.get_format_size = xx_dlob_get_format_size;
-    dlob->format.get_number_of_archive_records =
-        xx_dlob_get_number_of_archive_records;
-    dlob->format.create_archive_records_reading =
-        xx_dlob_create_archive_records_reading;
+    dlob->format.get_number_of_archive_records = xx_dlob_get_number_of_archive_records;
+    dlob->format.create_archive_records_reading = xx_dlob_create_archive_records_reading;
     dlob->format.get_current_archive_record = xx_dlob_get_current_archive_record;
-    dlob->format.unpack_current_archive_record =
-        xx_dlob_unpack_current_archive_record;
-    dlob->format.archive_record_move_to_next =
-        xx_dlob_archive_record_move_to_next;
-    dlob->format.free_archive_records_reading =
-        xx_dlob_free_archive_records_reading;
+    dlob->format.unpack_current_archive_record = xx_dlob_unpack_current_archive_record;
+    dlob->format.archive_record_move_to_next = xx_dlob_archive_record_move_to_next;
+    dlob->format.free_archive_records_reading = xx_dlob_free_archive_records_reading;
     dlob->format.destroy = xx_dlob_vtable_destroy;
     dlob->data_offset = -1;
     dlob->archive_end = -1;
 }
 
-xx_dlob *xx_dlob_create(xx_io_device *dev, int64_t base_address) {
+xx_dlob *xx_dlob_create(xx_io_device *dev, int64_t base_address)
+{
     xx_dlob *dlob = (xx_dlob *)xx_mem_alloc(sizeof(*dlob));
     if (dlob) xx_dlob_init(dlob, dev, base_address);
     return dlob;
 }
 
-void xx_dlob_destroy(xx_dlob *dlob) {
+void xx_dlob_destroy(xx_dlob *dlob)
+{
     if (!dlob) return;
     if (dlob->internal) {
         xx_dlob_private_cleanup((xx_dlob_private *)dlob->internal);
@@ -470,24 +430,28 @@ void xx_dlob_destroy(xx_dlob *dlob) {
     xx_format_cleanup_extra_parameters(&dlob->format);
 }
 
-static void xx_dlob_vtable_destroy(Abstractformat *self) {
+static void xx_dlob_vtable_destroy(Abstractformat *self)
+{
     xx_dlob_destroy((xx_dlob *)self);
 }
 
-void xx_dlob_free(xx_dlob *dlob) {
+void xx_dlob_free(xx_dlob *dlob)
+{
     if (!dlob) return;
     xx_dlob_destroy(dlob);
     xx_mem_free(dlob);
 }
 
-bool xx_dlob_check_is_valid(Abstractformat *self, xx_pd_struct *pd) {
+bool xx_dlob_check_is_valid(Abstractformat *self, xx_pd_struct *pd)
+{
     xx_dlob_private parsed;
     bool result = xx_dlob_parse(self, &parsed, pd);
     xx_dlob_private_cleanup(&parsed);
     return result;
 }
 
-bool xx_dlob_handle_base_info(Abstractformat *self, xx_pd_struct *pd) {
+bool xx_dlob_handle_base_info(Abstractformat *self, xx_pd_struct *pd)
+{
     xx_dlob_private *parsed;
     xx_dlob *dlob = (xx_dlob *)self;
     int64_t total_size;
@@ -526,29 +490,27 @@ bool xx_dlob_handle_base_info(Abstractformat *self, xx_pd_struct *pd) {
     return true;
 }
 
-int64_t xx_dlob_get_format_size(Abstractformat *self, xx_pd_struct *pd) {
-    if (!self ||
-        (!self->base_info_handled && !xx_format_handle_base_info(self, pd))) {
+int64_t xx_dlob_get_format_size(Abstractformat *self, xx_pd_struct *pd)
+{
+    if (!self || (!self->base_info_handled && !xx_format_handle_base_info(self, pd))) {
         return -1;
     }
     return self->format_size;
 }
 
-uint64_t xx_dlob_get_number_of_archive_records(Abstractformat *self,
-                                               xx_pd_struct *pd) {
-    if (!self ||
-        (!self->base_info_handled && !xx_format_handle_base_info(self, pd))) {
+uint64_t xx_dlob_get_number_of_archive_records(Abstractformat *self, xx_pd_struct *pd)
+{
+    if (!self || (!self->base_info_handled && !xx_format_handle_base_info(self, pd))) {
         return 0U;
     }
     return ((xx_dlob *)self)->number_of_records;
 }
 
-xx_archive_record_state *xx_dlob_create_archive_records_reading(
-    Abstractformat *self, const xx_list_s *options, xx_pd_struct *pd) {
+xx_archive_record_state *xx_dlob_create_archive_records_reading(Abstractformat *self, const xx_list_s *options, xx_pd_struct *pd)
+{
     xx_archive_record_state *state;
     xx_dlob_archive_stream *stream;
-    if (!self || !self->device ||
-        (!self->base_info_handled && !xx_format_handle_base_info(self, pd))) {
+    if (!self || !self->device || (!self->base_info_handled && !xx_format_handle_base_info(self, pd))) {
         return NULL;
     }
     state = (xx_archive_record_state *)xx_mem_alloc(sizeof(*state));
@@ -559,8 +521,7 @@ xx_archive_record_state *xx_dlob_create_archive_records_reading(
         return NULL;
     }
     xx_archive_record_state_init(state, self);
-    if (!xx_dlob_copy_options(&state->options, options) ||
-        !xx_dlob_parse(self, &stream->parsed, pd)) {
+    if (!xx_dlob_copy_options(&state->options, options) || !xx_dlob_parse(self, &stream->parsed, pd)) {
         xx_dlob_archive_stream_free(stream);
         xx_archive_record_state_free(state);
         return NULL;
@@ -569,27 +530,22 @@ xx_archive_record_state *xx_dlob_create_archive_records_reading(
     state->internal_state = stream;
     state->free_internal = xx_dlob_archive_stream_free;
     state->total_records = (int64_t)stream->parsed.count;
-    if (stream->parsed.count != 0U &&
-        xx_dlob_populate_record(&state->current_record, &stream->parsed)) {
+    if (stream->parsed.count != 0U && xx_dlob_populate_record(&state->current_record, &stream->parsed)) {
         state->has_record = true;
         state->current_index = 0;
     }
     return state;
 }
 
-const xx_archive_record *xx_dlob_get_current_archive_record(
-    Abstractformat *self, xx_archive_record_state *state) {
-    return self && state && state->format == self && state->has_record
-               ? &state->current_record
-               : NULL;
+const xx_archive_record *xx_dlob_get_current_archive_record(Abstractformat *self, xx_archive_record_state *state)
+{
+    return self && state && state->format == self && state->has_record ? &state->current_record : NULL;
 }
 
-bool xx_dlob_archive_record_move_to_next(Abstractformat *self,
-                                         xx_archive_record_state *state,
-                                         xx_pd_struct *pd) {
+bool xx_dlob_archive_record_move_to_next(Abstractformat *self, xx_archive_record_state *state, xx_pd_struct *pd)
+{
     xx_dlob_archive_stream *stream;
-    if (!self || !state || state->format != self || !state->has_record ||
-        !state->internal_state || (pd && xx_pd_is_stopped(pd))) {
+    if (!self || !state || state->format != self || !state->has_record || !state->internal_state || (pd && xx_pd_is_stopped(pd))) {
         return false;
     }
     stream = (xx_dlob_archive_stream *)state->internal_state;
@@ -601,9 +557,8 @@ bool xx_dlob_archive_record_move_to_next(Abstractformat *self,
     return false;
 }
 
-bool xx_dlob_unpack_current_archive_record(Abstractformat *self,
-                                           xx_archive_record_state *state,
-                                           xx_pd_struct *pd) {
+bool xx_dlob_unpack_current_archive_record(Abstractformat *self, xx_archive_record_state *state, xx_pd_struct *pd)
+{
     const xx_archive_record *record;
     const xx_var *option;
     const char *name;
@@ -611,8 +566,7 @@ bool xx_dlob_unpack_current_archive_record(Abstractformat *self,
     char *owned_base = NULL;
     char *destination = NULL;
     bool result = false;
-    if (!self || !self->device || !state || state->format != self ||
-        !state->has_record || (pd && xx_pd_is_stopped(pd))) {
+    if (!self || !self->device || !state || state->format != self || !state->has_record || (pd && xx_pd_is_stopped(pd))) {
         return false;
     }
     record = &state->current_record;
@@ -621,51 +575,48 @@ bool xx_dlob_unpack_current_archive_record(Abstractformat *self,
     option = xx_dlob_find_option(&state->options, XX_META_ID_OPT_UNPACK_PATH);
     if (!option) {
         int64_t total = xx_io_total_size(self->device);
-        return record->data_offset >= 0 && record->compressed_size >= 0 &&
-               record->data_offset <= total &&
-               record->compressed_size <= total - record->data_offset;
+        return record->data_offset >= 0 && record->compressed_size >= 0 && record->data_offset <= total && record->compressed_size <= total - record->data_offset;
     }
-    if (option->type == XX_VAR_TYPE_STRING ||
-        option->type == XX_VAR_TYPE_STRING_VIEW) {
+    if (option->type == XX_VAR_TYPE_STRING || option->type == XX_VAR_TYPE_STRING_VIEW) {
         base = xx_var_get_str(option);
-    } else if (option->type == XX_VAR_TYPE_WSTRING ||
-               option->type == XX_VAR_TYPE_WSTRING_VIEW) {
+    } else if (option->type == XX_VAR_TYPE_WSTRING || option->type == XX_VAR_TYPE_WSTRING_VIEW) {
         owned_base = xx_str_unicode_to_utf8(xx_var_get_wstr(option));
         base = owned_base;
     }
     if (!base) goto cleanup;
-    if (base[0] && base[xx_str_len(base) - 1U] != '/' &&
-        base[xx_str_len(base) - 1U] != '\\') {
+    if (base[0] && base[xx_str_len(base) - 1U] != '/' && base[xx_str_len(base) - 1U] != '\\') {
         destination = xx_str_concat3(base, "/", name);
     } else {
         destination = xx_str_concat(base, name);
     }
     if (!destination) goto cleanup;
     if (!xx_store_create_dirs_a(destination, false)) goto cleanup;
-    result = xx_store_unpack_device_to_file(self->device, record->data_offset,
-                                            record->compressed_size,
-                                            destination, pd);
+    result = xx_store_unpack_device_to_file(self->device, record->data_offset, record->compressed_size, destination, pd);
 cleanup:
     if (owned_base) xx_str_free(owned_base);
     if (destination) xx_str_free(destination);
     return result;
 }
 
-void xx_dlob_free_archive_records_reading(Abstractformat *self,
-                                          xx_archive_record_state *state) {
+void xx_dlob_free_archive_records_reading(Abstractformat *self, xx_archive_record_state *state)
+{
     (void)self;
     xx_archive_record_state_free(state);
 }
 
-uint64_t xx_dlob_get_number_of_records(const xx_dlob *dlob) {
+uint64_t xx_dlob_get_number_of_records(const xx_dlob *dlob)
+{
     return dlob ? dlob->number_of_records : 0U;
 }
-uint64_t xx_dlob_get_number_of_members(const xx_dlob *dlob) {
+uint64_t xx_dlob_get_number_of_members(const xx_dlob *dlob)
+{
     return dlob ? dlob->number_of_members : 0U;
 }
-uint32_t xx_dlob_get_image_size(const xx_dlob *dlob) {
+uint32_t xx_dlob_get_image_size(const xx_dlob *dlob)
+{
     return dlob ? dlob->image_size : 0U;
 }
-int64_t xx_dlob_get_archive_end(const xx_dlob *dlob) {
+int64_t xx_dlob_get_archive_end(const xx_dlob *dlob)
+{
     return dlob ? dlob->archive_end : -1;
 }

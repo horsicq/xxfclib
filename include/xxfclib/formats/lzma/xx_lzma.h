@@ -31,27 +31,19 @@ typedef struct xx_lzma {
 typedef xx_lzma xx_lzma_t;
 typedef xx_lzma XLzma;
 
-XXFC_API void xx_lzma_init(xx_lzma *archive, xx_io_device *device,
-                           int64_t base_address);
-XXFC_API xx_lzma *xx_lzma_create(xx_io_device *device,
-                                 int64_t base_address);
+XXFC_API void xx_lzma_init(xx_lzma *archive, xx_io_device *device, int64_t base_address);
+XXFC_API xx_lzma *xx_lzma_create(xx_io_device *device, int64_t base_address);
 XXFC_API void xx_lzma_destroy(xx_lzma *archive);
 XXFC_API void xx_lzma_free(xx_lzma *archive);
 
-XXFC_API bool xx_lzma_check_is_valid(Abstractformat *self,
-                                      xx_pd_struct *pd);
-XXFC_API bool xx_lzma_handle_base_info(Abstractformat *self,
-                                        xx_pd_struct *pd);
-XXFC_API int64_t xx_lzma_get_format_size(Abstractformat *self,
-                                          xx_pd_struct *pd);
-XXFC_API uint64_t xx_lzma_get_number_of_archive_records(
-    Abstractformat *self, xx_pd_struct *pd);
+XXFC_API bool xx_lzma_check_is_valid(Abstractformat *self, xx_pd_struct *pd);
+XXFC_API bool xx_lzma_handle_base_info(Abstractformat *self, xx_pd_struct *pd);
+XXFC_API int64_t xx_lzma_get_format_size(Abstractformat *self, xx_pd_struct *pd);
+XXFC_API uint64_t xx_lzma_get_number_of_archive_records(Abstractformat *self, xx_pd_struct *pd);
 
 /** Decode the payload (every stream measured by handle_base_info, in
  *  order) to a caller-provided device. */
-XXFC_API bool xx_lzma_unpack_to_device(xx_lzma *archive,
-                                       xx_io_device *destination,
-                                       xx_pd_struct *pd);
+XXFC_API bool xx_lzma_unpack_to_device(xx_lzma *archive, xx_io_device *destination, xx_pd_struct *pd);
 
 /** Write one standard .lzma stream (13-byte header, raw LZMA, end marker).
  *  The header marks the uncompressed size as unknown; the end marker signals
@@ -61,29 +53,21 @@ XXFC_API bool xx_lzma_unpack_to_device(xx_lzma *archive,
  *  are clamped to 1..9. The encoder buffers the source extent,
  *  which is limited to UINT32_MAX - 1 bytes. Device failures leave partial
  *  output; the caller owns both devices and must check destination close. */
-XXFC_API bool xx_lzma_pack_to_device(xx_io_device *source,
-                                     int64_t source_offset,
-                                     int64_t uncompressed_size,
-                                     xx_io_device *destination, int level,
-                                     xx_pd_struct *pd);
+XXFC_API bool xx_lzma_pack_to_device(xx_io_device *source, int64_t source_offset, int64_t uncompressed_size, xx_io_device *destination, int level, xx_pd_struct *pd);
 
-XXFC_API xx_archive_record_state *xx_lzma_create_archive_records_reading(
-    Abstractformat *self, const xx_list_s *options, xx_pd_struct *pd);
-XXFC_API const xx_archive_record *xx_lzma_get_current_archive_record(
-    Abstractformat *self, xx_archive_record_state *state);
-XXFC_API bool xx_lzma_unpack_current_archive_record(
-    Abstractformat *self, xx_archive_record_state *state, xx_pd_struct *pd);
-XXFC_API bool xx_lzma_archive_record_move_to_next(
-    Abstractformat *self, xx_archive_record_state *state, xx_pd_struct *pd);
-XXFC_API void xx_lzma_free_archive_records_reading(
-    Abstractformat *self, xx_archive_record_state *state);
+XXFC_API xx_archive_record_state *xx_lzma_create_archive_records_reading(Abstractformat *self, const xx_list_s *options, xx_pd_struct *pd);
+XXFC_API const xx_archive_record *xx_lzma_get_current_archive_record(Abstractformat *self, xx_archive_record_state *state);
+XXFC_API bool xx_lzma_unpack_current_archive_record(Abstractformat *self, xx_archive_record_state *state, xx_pd_struct *pd);
+XXFC_API bool xx_lzma_archive_record_move_to_next(Abstractformat *self, xx_archive_record_state *state, xx_pd_struct *pd);
+XXFC_API void xx_lzma_free_archive_records_reading(Abstractformat *self, xx_archive_record_state *state);
 
 /** Payload size (all streams), valid after handle_base_info. */
 XXFC_API uint64_t xx_lzma_get_uncompressed_size(const xx_lzma *archive);
 /** Device offset just past the last stream, or -1. */
 XXFC_API int64_t xx_lzma_get_stream_end(const xx_lzma *archive);
 
-static inline Abstractformat *xx_lzma_to_format(xx_lzma *archive) {
+static inline Abstractformat *xx_lzma_to_format(xx_lzma *archive)
+{
     return archive ? &archive->format : NULL;
 }
 

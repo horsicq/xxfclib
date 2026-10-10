@@ -89,17 +89,15 @@ static void xx_pkt_vtable_destroy(Abstractformat *self);
 
 /* ------------------------------------------------------------- helpers -- */
 
-static bool xx_pkt_read_at(Abstractformat *self, int64_t offset,
-                              uint8_t *buffer, size_t size) {
+static bool xx_pkt_read_at(Abstractformat *self, int64_t offset, uint8_t *buffer, size_t size)
+{
     size_t completed = 0U;
 
-    if (!self || !self->device || offset < 0 ||
-        xx_io_seek64(self->device, offset, SEEK_SET) != 0) {
+    if (!self || !self->device || offset < 0 || xx_io_seek64(self->device, offset, SEEK_SET) != 0) {
         return false;
     }
     while (completed < size) {
-        ssize_t received =
-            xx_io_read(self->device, buffer + completed, size - completed);
+        ssize_t received = xx_io_read(self->device, buffer + completed, size - completed);
         if (received <= 0 || (size_t)received > size - completed) {
             return false;
         }
@@ -108,14 +106,14 @@ static bool xx_pkt_read_at(Abstractformat *self, int64_t offset,
     return true;
 }
 
-static bool xx_pkt_range_within(int64_t total, int64_t offset,
-                                   int64_t size) {
-    return offset >= 0 && size >= 0 && offset <= total &&
-           size <= total - offset;
+static bool xx_pkt_range_within(int64_t total, int64_t offset, int64_t size)
+{
+    return offset >= 0 && size >= 0 && offset <= total && size <= total - offset;
 }
 
 /* Refuse anything that would escape the extraction directory. */
-static bool xx_pkt_path_safe(const char *name) {
+static bool xx_pkt_path_safe(const char *name)
+{
     const char *cursor = name;
 
     if (!name || !name[0] || name[0] == '/') return false;
@@ -130,7 +128,8 @@ static bool xx_pkt_path_safe(const char *name) {
     return true;
 }
 
-static void xx_pkt_stream_free(void *pointer) {
+static void xx_pkt_stream_free(void *pointer)
+{
     xx_pkt_stream *stream = (xx_pkt_stream *)pointer;
     size_t index;
 
@@ -143,17 +142,15 @@ static void xx_pkt_stream_free(void *pointer) {
 }
 
 /* Append a member, taking ownership of @p name. */
-static bool xx_pkt_add(xx_pkt_stream *stream,
-                          const xx_pkt_member *member) {
-    xx_pkt_member *grown = (xx_pkt_member *)xx_mem_realloc(
-        stream->items, sizeof(*grown) * (stream->count + 1U));
+static bool xx_pkt_add(xx_pkt_stream *stream, const xx_pkt_member *member)
+{
+    xx_pkt_member *grown = (xx_pkt_member *)xx_mem_realloc(stream->items, sizeof(*grown) * (stream->count + 1U));
 
     if (!grown) return false;
     stream->items = grown;
     stream->items[stream->count++] = *member;
     return true;
 }
-
 
 #define XX_PKT_HEADER_SIZE 0x3a
 #define XX_PKT_MESSAGE_HEADER_SIZE 14
@@ -167,7 +164,6 @@ static bool xx_pkt_add(xx_pkt_stream *stream,
 static xx_pkt_stream *xx_pkt_parse(Abstractformat *self, xx_pd_struct *pd);
 static bool xx_pkt_decode(Abstractformat *self, const xx_pkt_member *member, uint8_t **out, size_t *out_size, xx_pd_struct *pd);
 
-
 /* Both the packet and every message carry this in their type word. */
 /* A packed message is bounded by the FidoNet transport in practice; this cap
  * only keeps a corrupt packet from being walked to EOF looking for the fifth
@@ -175,7 +171,8 @@ static bool xx_pkt_decode(Abstractformat *self, const xx_pkt_member *member, uin
 /* The rendering is a little longer than the record, never wildly so; the
  * ceiling is what the scan is told to refuse. */
 
-static xx_pkt_stream *xx_pkt_parse(Abstractformat *self, xx_pd_struct *pd) {
+static xx_pkt_stream *xx_pkt_parse(Abstractformat *self, xx_pd_struct *pd)
+{
     xx_pkt_stream *stream = NULL;
     uint8_t *window = NULL;
     /* The packet header and the fixed part of the first message record are
@@ -269,8 +266,7 @@ static xx_pkt_stream *xx_pkt_parse(Abstractformat *self, xx_pd_struct *pd) {
         if (remaining < 3) break;
         if (count >= XX_PKT_MAX_MEMBERS) goto fail;
 
-        if (!xx_pkt_read_at(self, self->base_address + offset, type_word,
-                            sizeof(type_word))) {
+        if (!xx_pkt_read_at(self, self->base_address + offset, type_word, sizeof(type_word))) {
             goto fail;
         }
         /* The explicit end of the packet. */
@@ -284,15 +280,13 @@ static xx_pkt_stream *xx_pkt_parse(Abstractformat *self, xx_pd_struct *pd) {
         }
 
         chunk = (size_t)(remaining < window_size ? remaining : window_size);
-        if (!xx_pkt_read_at(self, self->base_address + offset, window,
-                            chunk)) {
+        if (!xx_pkt_read_at(self, self->base_address + offset, window, chunk)) {
             goto fail;
         }
         /* The record's extent and its rendered length in one call. The scan
          * fails unless all five strings terminate inside the window, which
          * is also what proves the record is complete. */
-        if (!xx_pkt_scan_memory(window, chunk, (size_t)XX_PKT_MAX_DECODED,
-                                &consumed, &produced)) {
+        if (!xx_pkt_scan_memory(window, chunk, (size_t)XX_PKT_MAX_DECODED, &consumed, &produced)) {
             goto fail;
         }
         if (consumed < (size_t)XX_PKT_MESSAGE_HEADER_SIZE) goto fail;
@@ -303,8 +297,7 @@ static xx_pkt_stream *xx_pkt_parse(Abstractformat *self, xx_pd_struct *pd) {
         xx_mem_zero(&member, sizeof(member));
         /* Nothing in a packed message names a file; the reference numbers
          * the records in packet order, and so does this. */
-        if (xx_rt_snprintf(name_buffer, sizeof(name_buffer), "%03lld.txt",
-                           (long long)(count + 1)) <= 0) {
+        if (xx_rt_snprintf(name_buffer, sizeof(name_buffer), "%03lld.txt", (long long)(count + 1)) <= 0) {
             goto fail;
         }
         member.name = xx_str_dup(name_buffer);
@@ -344,13 +337,11 @@ fail:
     return NULL;
 }
 
-
 /* Render one packed message record. The record's own bytes, binary header
  * included, are the codec's input: the renderer needs the five strings that
  * follow that header, so data_offset is the record's start, not its body. */
-static bool xx_pkt_decode(Abstractformat *self, const xx_pkt_member *member,
-                          uint8_t **out, size_t *out_size,
-                          xx_pd_struct *pd) {
+static bool xx_pkt_decode(Abstractformat *self, const xx_pkt_member *member, uint8_t **out, size_t *out_size, xx_pd_struct *pd)
+{
     uint8_t *input;
     uint8_t *output;
     size_t written = 0U;
@@ -371,8 +362,7 @@ static bool xx_pkt_decode(Abstractformat *self, const xx_pkt_member *member,
 
     input = (uint8_t *)xx_mem_alloc((size_t)member->compressed_size);
     if (!input) return false;
-    if (!xx_pkt_read_at(self, member->data_offset, input,
-                        (size_t)member->compressed_size)) {
+    if (!xx_pkt_read_at(self, member->data_offset, input, (size_t)member->compressed_size)) {
         xx_mem_free(input);
         return false;
     }
@@ -390,8 +380,7 @@ static bool xx_pkt_decode(Abstractformat *self, const xx_pkt_member *member,
      * core with the renderer, so a mismatch here means the record changed
      * underfoot or the member was hand-edited. Either way it is a failure,
      * never a short buffer. */
-    if (!xx_pkt_decode_memory(input, (size_t)member->compressed_size, output,
-                              (size_t)member->uncompressed_size, &written) ||
+    if (!xx_pkt_decode_memory(input, (size_t)member->compressed_size, output, (size_t)member->uncompressed_size, &written) ||
         written != (size_t)member->uncompressed_size) {
         xx_mem_free(output);
         xx_mem_free(input);
@@ -405,8 +394,8 @@ static bool xx_pkt_decode(Abstractformat *self, const xx_pkt_member *member,
 
 /* ---------------------------------------------------------- lifecycle --- */
 
-void xx_pkt_init(xx_pkt *archive, xx_io_device *device,
-                    int64_t base_address) {
+void xx_pkt_init(xx_pkt *archive, xx_io_device *device, int64_t base_address)
+{
     if (!archive) return;
     xx_mem_zero(archive, sizeof(*archive));
     xx_format_init(&archive->format, device, base_address);
@@ -419,22 +408,17 @@ void xx_pkt_init(xx_pkt *archive, xx_io_device *device,
     archive->format.check_is_valid = xx_pkt_check_is_valid;
     archive->format.handle_base_info = xx_pkt_handle_base_info;
     archive->format.get_format_size = xx_pkt_get_format_size;
-    archive->format.get_number_of_archive_records =
-        xx_pkt_get_number_of_archive_records;
-    archive->format.create_archive_records_reading =
-        xx_pkt_create_archive_records_reading;
-    archive->format.get_current_archive_record =
-        xx_pkt_get_current_archive_record;
-    archive->format.unpack_current_archive_record =
-        xx_pkt_unpack_current_archive_record;
-    archive->format.archive_record_move_to_next =
-        xx_pkt_archive_record_move_to_next;
-    archive->format.free_archive_records_reading =
-        xx_pkt_free_archive_records_reading;
+    archive->format.get_number_of_archive_records = xx_pkt_get_number_of_archive_records;
+    archive->format.create_archive_records_reading = xx_pkt_create_archive_records_reading;
+    archive->format.get_current_archive_record = xx_pkt_get_current_archive_record;
+    archive->format.unpack_current_archive_record = xx_pkt_unpack_current_archive_record;
+    archive->format.archive_record_move_to_next = xx_pkt_archive_record_move_to_next;
+    archive->format.free_archive_records_reading = xx_pkt_free_archive_records_reading;
     archive->format.destroy = xx_pkt_vtable_destroy;
 }
 
-xx_pkt *xx_pkt_create(xx_io_device *device, int64_t base_address) {
+xx_pkt *xx_pkt_create(xx_io_device *device, int64_t base_address)
+{
     xx_pkt *archive = (xx_pkt *)xx_mem_alloc(sizeof(*archive));
 
     if (!archive) return NULL;
@@ -442,7 +426,8 @@ xx_pkt *xx_pkt_create(xx_io_device *device, int64_t base_address) {
     return archive;
 }
 
-void xx_pkt_destroy(xx_pkt *archive) {
+void xx_pkt_destroy(xx_pkt *archive)
+{
     if (!archive) return;
     /* Not xx_format_destroy: it dispatches through format.destroy, which is
      * the wrapper below, and the two would recurse. */
@@ -451,19 +436,22 @@ void xx_pkt_destroy(xx_pkt *archive) {
     archive->number_of_records = 0U;
 }
 
-void xx_pkt_free(xx_pkt *archive) {
+void xx_pkt_free(xx_pkt *archive)
+{
     if (!archive) return;
     xx_pkt_destroy(archive);
     xx_mem_free(archive);
 }
 
-static void xx_pkt_vtable_destroy(Abstractformat *self) {
+static void xx_pkt_vtable_destroy(Abstractformat *self)
+{
     xx_pkt_destroy((xx_pkt *)self);
 }
 
 /* -------------------------------------------------------------- format -- */
 
-bool xx_pkt_check_is_valid(Abstractformat *self, xx_pd_struct *pd) {
+bool xx_pkt_check_is_valid(Abstractformat *self, xx_pd_struct *pd)
+{
     xx_pkt_stream *stream;
 
     if (!self || (pd && xx_pd_is_stopped(pd))) return false;
@@ -473,7 +461,8 @@ bool xx_pkt_check_is_valid(Abstractformat *self, xx_pd_struct *pd) {
     return true;
 }
 
-bool xx_pkt_handle_base_info(Abstractformat *self, xx_pd_struct *pd) {
+bool xx_pkt_handle_base_info(Abstractformat *self, xx_pd_struct *pd)
+{
     xx_pkt *archive = (xx_pkt *)self;
     xx_pkt_stream *stream;
 
@@ -494,18 +483,17 @@ bool xx_pkt_handle_base_info(Abstractformat *self, xx_pd_struct *pd) {
     return true;
 }
 
-int64_t xx_pkt_get_format_size(Abstractformat *self, xx_pd_struct *pd) {
-    if (!self ||
-        (!self->base_info_handled && !xx_format_handle_base_info(self, pd))) {
+int64_t xx_pkt_get_format_size(Abstractformat *self, xx_pd_struct *pd)
+{
+    if (!self || (!self->base_info_handled && !xx_format_handle_base_info(self, pd))) {
         return 0;
     }
     return self->is_valid ? self->format_size : 0;
 }
 
-uint64_t xx_pkt_get_number_of_archive_records(Abstractformat *self,
-                                                 xx_pd_struct *pd) {
-    if (!self ||
-        (!self->base_info_handled && !xx_format_handle_base_info(self, pd))) {
+uint64_t xx_pkt_get_number_of_archive_records(Abstractformat *self, xx_pd_struct *pd)
+{
+    if (!self || (!self->base_info_handled && !xx_format_handle_base_info(self, pd))) {
         return 0U;
     }
     return self->is_valid ? ((xx_pkt *)self)->number_of_records : 0U;
@@ -513,8 +501,8 @@ uint64_t xx_pkt_get_number_of_archive_records(Abstractformat *self,
 
 /* ------------------------------------------------------------- records -- */
 
-static bool xx_pkt_set_record(xx_archive_record *record,
-                                 const xx_pkt_member *member) {
+static bool xx_pkt_set_record(xx_archive_record *record, const xx_pkt_member *member)
+{
     xx_archive_record_cleanup(record);
     xx_archive_record_init(record);
     record->header_offset = member->header_offset;
@@ -522,34 +510,24 @@ static bool xx_pkt_set_record(xx_archive_record *record,
     record->data_offset = member->data_offset;
     record->compressed_size = member->compressed_size;
     return xx_archive_record_set_original_name(record, member->name) &&
-           xx_archive_record_set_meta_u64(record, XX_META_ID_COMPRESSED_SIZE,
-                                          (uint64_t)member->compressed_size) &&
-           xx_archive_record_set_meta_u64(
-               record, XX_META_ID_UNCOMPRESSED_SIZE,
-               (uint64_t)member->uncompressed_size) &&
-           xx_archive_record_set_meta_u64(record, XX_META_ID_COMPRESSION_METHOD,
-                                          member->method) &&
-           xx_archive_record_set_meta_u64(record, XX_META_ID_TIMESTAMP,
-                                          member->timestamp) &&
-           xx_archive_record_set_meta_bool(record, XX_META_ID_IS_FOLDER,
-                                           member->is_folder) &&
-           xx_archive_record_set_meta_bool(record, XX_META_ID_IS_ENCRYPTED,
-                                           false);
+           xx_archive_record_set_meta_u64(record, XX_META_ID_COMPRESSED_SIZE, (uint64_t)member->compressed_size) &&
+           xx_archive_record_set_meta_u64(record, XX_META_ID_UNCOMPRESSED_SIZE, (uint64_t)member->uncompressed_size) &&
+           xx_archive_record_set_meta_u64(record, XX_META_ID_COMPRESSION_METHOD, member->method) &&
+           xx_archive_record_set_meta_u64(record, XX_META_ID_TIMESTAMP, member->timestamp) &&
+           xx_archive_record_set_meta_bool(record, XX_META_ID_IS_FOLDER, member->is_folder) && xx_archive_record_set_meta_bool(record, XX_META_ID_IS_ENCRYPTED, false);
 }
 
-static bool xx_pkt_copy_options(xx_list_s *target,
-                                   const xx_list_s *options) {
+static bool xx_pkt_copy_options(xx_list_s *target, const xx_list_s *options)
+{
     size_t index;
 
     if (!target || !options) return options == NULL;
     for (index = 0U; index < options->count; ++index) {
-        const xx_meta *source =
-            (const xx_meta *)xx_list_at((const xx_list_t *)options, index);
+        const xx_meta *source = (const xx_meta *)xx_list_at((const xx_list_t *)options, index);
         xx_meta copied;
         if (!source) continue;
         xx_meta_init(&copied, source->meta_id);
-        if (!xx_var_copy(&copied.var, &source->var) ||
-            !xx_list_append(target, &copied)) {
+        if (!xx_var_copy(&copied.var, &source->var) || !xx_list_append(target, &copied)) {
             xx_meta_cleanup(&copied);
             return false;
         }
@@ -557,21 +535,20 @@ static bool xx_pkt_copy_options(xx_list_s *target,
     return true;
 }
 
-static const xx_var *xx_pkt_get_option(const xx_list_s *options,
-                                          uint32_t meta_id) {
+static const xx_var *xx_pkt_get_option(const xx_list_s *options, uint32_t meta_id)
+{
     size_t index;
 
     if (!options) return NULL;
     for (index = 0U; index < options->count; ++index) {
-        const xx_meta *meta =
-            (const xx_meta *)xx_list_at((const xx_list_t *)options, index);
+        const xx_meta *meta = (const xx_meta *)xx_list_at((const xx_list_t *)options, index);
         if (meta && meta->meta_id == meta_id) return &meta->var;
     }
     return NULL;
 }
 
-xx_archive_record_state *xx_pkt_create_archive_records_reading(
-    Abstractformat *self, const xx_list_s *options, xx_pd_struct *pd) {
+xx_archive_record_state *xx_pkt_create_archive_records_reading(Abstractformat *self, const xx_list_s *options, xx_pd_struct *pd)
+{
     xx_pkt_stream *stream;
     xx_archive_record_state *state;
 
@@ -587,9 +564,7 @@ xx_archive_record_state *xx_pkt_create_archive_records_reading(
     state->internal_state = stream;
     state->free_internal = xx_pkt_stream_free;
     state->total_records = (int64_t)stream->count;
-    if (!xx_pkt_copy_options(&state->options, options) ||
-        (stream->count != 0U &&
-         !xx_pkt_set_record(&state->current_record, &stream->items[0]))) {
+    if (!xx_pkt_copy_options(&state->options, options) || (stream->count != 0U && !xx_pkt_set_record(&state->current_record, &stream->items[0]))) {
         xx_archive_record_state_free(state);
         return NULL;
     }
@@ -598,20 +573,16 @@ xx_archive_record_state *xx_pkt_create_archive_records_reading(
     return state;
 }
 
-const xx_archive_record *xx_pkt_get_current_archive_record(
-    Abstractformat *self, xx_archive_record_state *state) {
-    return self && state && state->format == self && state->has_record
-               ? &state->current_record
-               : NULL;
+const xx_archive_record *xx_pkt_get_current_archive_record(Abstractformat *self, xx_archive_record_state *state)
+{
+    return self && state && state->format == self && state->has_record ? &state->current_record : NULL;
 }
 
-bool xx_pkt_archive_record_move_to_next(Abstractformat *self,
-                                           xx_archive_record_state *state,
-                                           xx_pd_struct *pd) {
+bool xx_pkt_archive_record_move_to_next(Abstractformat *self, xx_archive_record_state *state, xx_pd_struct *pd)
+{
     xx_pkt_stream *stream;
 
-    if (!self || !state || state->format != self || !state->has_record ||
-        (pd && xx_pd_is_stopped(pd))) {
+    if (!self || !state || state->format != self || !state->has_record || (pd && xx_pd_is_stopped(pd))) {
         return false;
     }
     stream = (xx_pkt_stream *)state->internal_state;
@@ -623,14 +594,12 @@ bool xx_pkt_archive_record_move_to_next(Abstractformat *self,
     }
     ++stream->index;
     ++state->current_index;
-    state->has_record = xx_pkt_set_record(&state->current_record,
-                                             &stream->items[stream->index]);
+    state->has_record = xx_pkt_set_record(&state->current_record, &stream->items[stream->index]);
     return state->has_record;
 }
 
-bool xx_pkt_unpack_current_archive_record(Abstractformat *self,
-                                             xx_archive_record_state *state,
-                                             xx_pd_struct *pd) {
+bool xx_pkt_unpack_current_archive_record(Abstractformat *self, xx_archive_record_state *state, xx_pd_struct *pd)
+{
     xx_pkt_stream *stream;
     const xx_pkt_member *member;
     const xx_var *path_option;
@@ -642,8 +611,7 @@ bool xx_pkt_unpack_current_archive_record(Abstractformat *self,
     bool result = false;
     bool created = false;
 
-    if (!self || !state || state->format != self || !state->has_record ||
-        (pd && xx_pd_is_stopped(pd))) {
+    if (!self || !state || state->format != self || !state->has_record || (pd && xx_pd_is_stopped(pd))) {
         return false;
     }
     stream = (xx_pkt_stream *)state->internal_state;
@@ -651,8 +619,7 @@ bool xx_pkt_unpack_current_archive_record(Abstractformat *self,
     member = &stream->items[stream->index];
     if (!xx_pkt_path_safe(member->name)) return false;
 
-    path_option = xx_pkt_get_option(&state->options,
-                                       XX_META_ID_OPT_UNPACK_PATH);
+    path_option = xx_pkt_get_option(&state->options, XX_META_ID_OPT_UNPACK_PATH);
     if (!path_option) {
         /* No destination: decode and discard, which verifies the member
          * without writing anything. */
@@ -661,11 +628,9 @@ bool xx_pkt_unpack_current_archive_record(Abstractformat *self,
         xx_mem_free(plain);
         return result;
     }
-    if (path_option->type == XX_VAR_TYPE_STRING ||
-        path_option->type == XX_VAR_TYPE_STRING_VIEW) {
+    if (path_option->type == XX_VAR_TYPE_STRING || path_option->type == XX_VAR_TYPE_STRING_VIEW) {
         base_path = xx_var_get_str(path_option);
-    } else if (path_option->type == XX_VAR_TYPE_WSTRING ||
-               path_option->type == XX_VAR_TYPE_WSTRING_VIEW) {
+    } else if (path_option->type == XX_VAR_TYPE_WSTRING || path_option->type == XX_VAR_TYPE_WSTRING_VIEW) {
         converted_path = xx_str_unicode_to_utf8(xx_var_get_wstr(path_option));
         base_path = converted_path;
     }
@@ -673,9 +638,7 @@ bool xx_pkt_unpack_current_archive_record(Abstractformat *self,
         xx_str_free(converted_path);
         return false;
     }
-    if (base_path[0] != '\0' &&
-        base_path[xx_str_len(base_path) - 1U] != '/' &&
-        base_path[xx_str_len(base_path) - 1U] != '\\') {
+    if (base_path[0] != '\0' && base_path[xx_str_len(base_path) - 1U] != '/' && base_path[xx_str_len(base_path) - 1U] != '\\') {
         target_path = xx_str_concat3(base_path, "/", member->name);
     } else {
         target_path = xx_str_concat(base_path, member->name);
@@ -688,8 +651,7 @@ bool xx_pkt_unpack_current_archive_record(Abstractformat *self,
         xx_str_free(target_path);
         return result;
     }
-    if (!xx_store_create_dirs_a(target_path, false) ||
-        !xx_pkt_decode(self, member, &plain, &plain_size, pd)) {
+    if (!xx_store_create_dirs_a(target_path, false) || !xx_pkt_decode(self, member, &plain, &plain_size, pd)) {
         xx_str_free(target_path);
         return false;
     }
@@ -700,8 +662,7 @@ bool xx_pkt_unpack_current_archive_record(Abstractformat *self,
 
         result = output != NULL;
         while (result && completed < plain_size) {
-            ssize_t sent = xx_io_write(output, plain + completed,
-                                       plain_size - completed);
+            ssize_t sent = xx_io_write(output, plain + completed, plain_size - completed);
             if (sent <= 0 || (size_t)sent > plain_size - completed) {
                 result = false;
                 break;
@@ -716,8 +677,8 @@ bool xx_pkt_unpack_current_archive_record(Abstractformat *self,
     return result;
 }
 
-void xx_pkt_free_archive_records_reading(Abstractformat *self,
-                                            xx_archive_record_state *state) {
+void xx_pkt_free_archive_records_reading(Abstractformat *self, xx_archive_record_state *state)
+{
     (void)self;
     xx_archive_record_state_free(state);
 }

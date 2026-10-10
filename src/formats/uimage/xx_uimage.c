@@ -44,7 +44,7 @@ typedef struct xx_uimage_member_s {
     char *name;
     int64_t data_offset;
     int64_t data_size;
-    uint8_t compression;  /**< Effective compressor for THIS member. */
+    uint8_t compression; /**< Effective compressor for THIS member. */
 } xx_uimage_member;
 
 typedef struct xx_uimage_private_s {
@@ -76,12 +76,11 @@ static void xx_uimage_vtable_destroy(Abstractformat *self);
 
 /* All positioning goes through seek64: a uImage payload can exceed 2 GiB in
  * principle and long is 32-bit on Win64. */
-static bool xx_uimage_read_at(xx_io_device *device, int64_t offset, void *data,
-                              size_t size) {
+static bool xx_uimage_read_at(xx_io_device *device, int64_t offset, void *data, size_t size)
+{
     uint8_t *out = (uint8_t *)data;
     size_t done = 0U;
-    if (!device || (!data && size != 0U) || offset < 0 ||
-        xx_io_seek64(device, offset, SEEK_SET) != 0) {
+    if (!device || (!data && size != 0U) || offset < 0 || xx_io_seek64(device, offset, SEEK_SET) != 0) {
         return false;
     }
     while (done < size) {
@@ -92,7 +91,8 @@ static bool xx_uimage_read_at(xx_io_device *device, int64_t offset, void *data,
     return true;
 }
 
-static bool xx_uimage_add(int64_t left, uint64_t right, int64_t *result) {
+static bool xx_uimage_add(int64_t left, uint64_t right, int64_t *result)
+{
     if (!result || left < 0 || right > (uint64_t)(INT64_MAX - left)) {
         return false;
     }
@@ -101,13 +101,13 @@ static bool xx_uimage_add(int64_t left, uint64_t right, int64_t *result) {
 }
 
 /* True when [offset, offset + size) lies inside [0, total_size). */
-static bool xx_uimage_range_within(int64_t total_size, int64_t offset,
-                                   int64_t size) {
-    return (total_size >= 0) && (offset >= 0) && (size >= 0) &&
-           (offset <= total_size) && (size <= total_size - offset);
+static bool xx_uimage_range_within(int64_t total_size, int64_t offset, int64_t size)
+{
+    return (total_size >= 0) && (offset >= 0) && (size >= 0) && (offset <= total_size) && (size <= total_size - offset);
 }
 
-static void xx_uimage_private_cleanup(xx_uimage_private *parsed) {
+static void xx_uimage_private_cleanup(xx_uimage_private *parsed)
+{
     size_t index;
     if (!parsed) return;
     for (index = 0U; index < parsed->count; ++index) {
@@ -122,22 +122,19 @@ static void xx_uimage_private_cleanup(xx_uimage_private *parsed) {
     parsed->archive_end = -1;
 }
 
-static bool xx_uimage_append_member(xx_uimage_private *parsed,
-                                    xx_uimage_member *member) {
+static bool xx_uimage_append_member(xx_uimage_private *parsed, xx_uimage_member *member)
+{
     xx_uimage_member *grown;
     size_t capacity;
-    if (!parsed || !member || !member->name ||
-        parsed->count >= XX_UIMAGE_MAX_MEMBERS) {
+    if (!parsed || !member || !member->name || parsed->count >= XX_UIMAGE_MAX_MEMBERS) {
         return false;
     }
     if (parsed->count == parsed->capacity) {
         capacity = parsed->capacity ? parsed->capacity * 2U : 8U;
-        if (capacity < parsed->count ||
-            capacity > SIZE_MAX / sizeof(*parsed->members)) {
+        if (capacity < parsed->count || capacity > SIZE_MAX / sizeof(*parsed->members)) {
             return false;
         }
-        grown = (xx_uimage_member *)xx_mem_realloc(
-            parsed->members, capacity * sizeof(*parsed->members));
+        grown = (xx_uimage_member *)xx_mem_realloc(parsed->members, capacity * sizeof(*parsed->members));
         if (!grown) return false;
         parsed->members = grown;
         parsed->capacity = capacity;
@@ -150,23 +147,20 @@ static bool xx_uimage_append_member(xx_uimage_private *parsed,
 /* Extraction-time check: the name must stay inside the destination tree on
  * every host this library builds for, so the reserved Windows punctuation is
  * rejected here even though ih_name may legally carry it. */
-static bool xx_uimage_safe_name(const char *name) {
+static bool xx_uimage_safe_name(const char *name)
+{
     const char *component;
     const char *cursor;
     if (!name || !name[0] || name[0] == '/' || name[0] == '\\') return false;
     component = name;
     for (cursor = name;; ++cursor) {
         unsigned char ch = (unsigned char)*cursor;
-        if (ch == ':' || ch == '<' || ch == '>' || ch == '"' || ch == '|' ||
-            ch == '?' || ch == '*' || (ch != 0U && ch < 32U)) {
+        if (ch == ':' || ch == '<' || ch == '>' || ch == '"' || ch == '|' || ch == '?' || ch == '*' || (ch != 0U && ch < 32U)) {
             return false;
         }
         if (ch == '/' || ch == '\\' || ch == 0U) {
             size_t length = (size_t)(cursor - component);
-            if (length == 0U || (length == 1U && component[0] == '.') ||
-                (length == 2U && component[0] == '.' &&
-                 component[1] == '.') ||
-                component[length - 1U] == ' ' ||
+            if (length == 0U || (length == 1U && component[0] == '.') || (length == 2U && component[0] == '.' && component[1] == '.') || component[length - 1U] == ' ' ||
                 component[length - 1U] == '.') {
                 return false;
             }
@@ -177,7 +171,8 @@ static bool xx_uimage_safe_name(const char *name) {
 }
 
 /* Build a "<prefix><index>" member name without pulling in snprintf. */
-static char *xx_uimage_indexed_name(const char *prefix, size_t index) {
+static char *xx_uimage_indexed_name(const char *prefix, size_t index)
+{
     char digits[24];
     size_t used = 0U;
     size_t prefix_size = prefix ? xx_str_len(prefix) : 0U;
@@ -207,8 +202,8 @@ static char *xx_uimage_indexed_name(const char *prefix, size_t index) {
 /* Copy ih_name out of the header, trimming the NUL padding, and reduce it to
  * a single safe path component.  An empty or unusable ih_name falls back to
  * the supplied default. */
-static char *xx_uimage_member_name(const char *image_name,
-                                   const char *fallback) {
+static char *xx_uimage_member_name(const char *image_name, const char *fallback)
+{
     char buffer[XX_UIMAGE_NAME_SIZE + 1U];
     size_t used = 0U;
     size_t index;
@@ -218,16 +213,14 @@ static char *xx_uimage_member_name(const char *image_name,
         /* A separator or a control byte would turn one member name into a
          * path; both are folded to an underscore rather than rejected, so a
          * descriptive ih_name is not lost over one stray character. */
-        if (ch < 32U || ch == '/' || ch == '\\' || ch == ':' || ch == '<' ||
-            ch == '>' || ch == '"' || ch == '|' || ch == '?' || ch == '*') {
+        if (ch < 32U || ch == '/' || ch == '\\' || ch == ':' || ch == '<' || ch == '>' || ch == '"' || ch == '|' || ch == '?' || ch == '*') {
             ch = (unsigned char)'_';
         }
         buffer[used++] = (char)ch;
     }
     /* A trailing dot or space is legal here but names an unopenable file on
      * Windows, so it is trimmed away. */
-    while (used != 0U && (buffer[used - 1U] == ' ' ||
-                          buffer[used - 1U] == '.')) {
+    while (used != 0U && (buffer[used - 1U] == ' ' || buffer[used - 1U] == '.')) {
         --used;
     }
     buffer[used] = '\0';
@@ -236,16 +229,14 @@ static char *xx_uimage_member_name(const char *image_name,
 }
 
 /* CRC32 over a device range, streamed so a large payload is never resident. */
-static bool xx_uimage_crc_range(xx_io_device *device, int64_t offset,
-                                int64_t size, uint32_t *out_crc,
-                                xx_pd_struct *pd) {
+static bool xx_uimage_crc_range(xx_io_device *device, int64_t offset, int64_t size, uint32_t *out_crc, xx_pd_struct *pd)
+{
     uint8_t staging[XX_UIMAGE_STAGING_SIZE];
     uint32_t crc = 0U;
     if (!device || !out_crc || offset < 0 || size < 0) return false;
     if (size != 0 && xx_io_seek64(device, offset, SEEK_SET) != 0) return false;
     while (size > 0) {
-        size_t step = (size < (int64_t)sizeof(staging)) ? (size_t)size
-                                                        : sizeof(staging);
+        size_t step = (size < (int64_t)sizeof(staging)) ? (size_t)size : sizeof(staging);
         size_t done = 0U;
         if (pd && xx_pd_is_stopped(pd)) return false;
         while (done < step) {
@@ -264,8 +255,8 @@ static bool xx_uimage_crc_range(xx_io_device *device, int64_t offset,
  * endian u32 values closed by a zero word; the components follow it, each
  * padded up to a 4-byte boundary.  Padding on the LAST component is optional
  * in practice, so the tail is allowed to fall short of its aligned length. */
-static bool xx_uimage_parse_multi_members(Abstractformat *self,
-                                          xx_uimage_private *parsed) {
+static bool xx_uimage_parse_multi_members(Abstractformat *self, xx_uimage_private *parsed)
+{
     uint32_t sizes[XX_UIMAGE_MAX_MEMBERS];
     size_t count = 0U;
     int64_t cursor = parsed->data_offset;
@@ -273,8 +264,7 @@ static bool xx_uimage_parse_multi_members(Abstractformat *self,
     int64_t component;
     uint64_t needed = 0U;
     size_t index;
-    if (!xx_uimage_add(parsed->data_offset, parsed->data_size,
-                       &payload_end)) {
+    if (!xx_uimage_add(parsed->data_offset, parsed->data_size, &payload_end)) {
         return false;
     }
     for (;;) {
@@ -286,7 +276,7 @@ static bool xx_uimage_parse_multi_members(Abstractformat *self,
         }
         cursor += 4;
         value = xx_data_get_u32(word, sizeof(word), 0U, true);
-        if (value == 0U) break;  /* terminator */
+        if (value == 0U) break; /* terminator */
         if (count >= XX_UIMAGE_MAX_MEMBERS) return false;
         sizes[count++] = value;
         /* Each component is padded up to a 4-byte boundary; account for that
@@ -300,8 +290,7 @@ static bool xx_uimage_parse_multi_members(Abstractformat *self,
     /* The last component's padding may be absent, so the shortfall allowance
      * is the padding of that final component and nothing more. */
     {
-        uint64_t slack = ((uint64_t)sizes[count - 1U] + 3U) &
-                         ~(uint64_t)3U;
+        uint64_t slack = ((uint64_t)sizes[count - 1U] + 3U) & ~(uint64_t)3U;
         slack -= sizes[count - 1U];
         if ((uint64_t)(payload_end - cursor) + slack < needed) return false;
     }
@@ -309,8 +298,7 @@ static bool xx_uimage_parse_multi_members(Abstractformat *self,
     for (index = 0U; index < count; ++index) {
         xx_uimage_member member;
         xx_mem_zero(&member, sizeof(member));
-        if (!xx_uimage_range_within(payload_end, component,
-                                    (int64_t)sizes[index])) {
+        if (!xx_uimage_range_within(payload_end, component, (int64_t)sizes[index])) {
             return false;
         }
         member.name = xx_uimage_indexed_name("image", index);
@@ -323,14 +311,13 @@ static bool xx_uimage_parse_multi_members(Abstractformat *self,
             if (member.name) xx_str_free(member.name);
             return false;
         }
-        component += (int64_t)((((uint64_t)sizes[index]) + 3U) &
-                               ~(uint64_t)3U);
+        component += (int64_t)((((uint64_t)sizes[index]) + 3U) & ~(uint64_t)3U);
     }
     return true;
 }
 
-static bool xx_uimage_parse(Abstractformat *self, xx_uimage_private *parsed,
-                            xx_pd_struct *pd) {
+static bool xx_uimage_parse(Abstractformat *self, xx_uimage_private *parsed, xx_pd_struct *pd)
+{
     uint8_t header[XX_UIMAGE_HEADER_SIZE];
     uint8_t zeroed[XX_UIMAGE_HEADER_SIZE];
     uint32_t computed;
@@ -343,16 +330,12 @@ static bool xx_uimage_parse(Abstractformat *self, xx_uimage_private *parsed,
         parsed->data_offset = -1;
         parsed->archive_end = -1;
     }
-    if (!self || !self->device || !parsed || self->base_address < 0 ||
-        (pd && xx_pd_is_stopped(pd))) {
+    if (!self || !self->device || !parsed || self->base_address < 0 || (pd && xx_pd_is_stopped(pd))) {
         return false;
     }
     parsed->input_size = xx_io_total_size(self->device);
-    if (!xx_uimage_range_within(parsed->input_size, self->base_address,
-                                XX_UIMAGE_HEADER_SIZE) ||
-        !xx_uimage_read_at(self->device, self->base_address, header,
-                           sizeof(header)) ||
-        xx_data_get_u32(header, sizeof(header), 0U, true) != XX_UIMAGE_MAGIC) {
+    if (!xx_uimage_range_within(parsed->input_size, self->base_address, XX_UIMAGE_HEADER_SIZE) ||
+        !xx_uimage_read_at(self->device, self->base_address, header, sizeof(header)) || xx_data_get_u32(header, sizeof(header), 0U, true) != XX_UIMAGE_MAGIC) {
         goto fail;
     }
     parsed->header_crc = xx_data_get_u32(header, sizeof(header), 4U, true);
@@ -376,24 +359,18 @@ static bool xx_uimage_parse(Abstractformat *self, xx_uimage_private *parsed,
     computed = xx_crc32_calc(0U, zeroed, sizeof(zeroed));
     if (computed != parsed->header_crc) goto fail;
 
-    if (!xx_uimage_add(self->base_address, XX_UIMAGE_HEADER_SIZE,
-                       &parsed->data_offset) ||
-        !xx_uimage_range_within(parsed->input_size, parsed->data_offset,
-                                (int64_t)parsed->data_size) ||
-        !xx_uimage_add(parsed->data_offset, parsed->data_size,
-                       &parsed->archive_end)) {
+    if (!xx_uimage_add(self->base_address, XX_UIMAGE_HEADER_SIZE, &parsed->data_offset) ||
+        !xx_uimage_range_within(parsed->input_size, parsed->data_offset, (int64_t)parsed->data_size) ||
+        !xx_uimage_add(parsed->data_offset, parsed->data_size, &parsed->archive_end)) {
         goto fail;
     }
     /* ih_dcrc is not advisory: U-Boot refuses to boot an image whose payload
      * checksum does not match, so a mismatch is a parse failure here too. */
-    if (!xx_uimage_crc_range(self->device, parsed->data_offset,
-                             (int64_t)parsed->data_size, &payload_crc, pd) ||
-        payload_crc != parsed->data_crc) {
+    if (!xx_uimage_crc_range(self->device, parsed->data_offset, (int64_t)parsed->data_size, &payload_crc, pd) || payload_crc != parsed->data_crc) {
         goto fail;
     }
 
-    if (parsed->image_type == XX_UIMAGE_TYPE_MULTI &&
-        parsed->compression == XX_UIMAGE_COMP_NONE) {
+    if (parsed->image_type == XX_UIMAGE_TYPE_MULTI && parsed->compression == XX_UIMAGE_COMP_NONE) {
         if (!xx_uimage_parse_multi_members(self, parsed)) goto fail;
     } else {
         xx_uimage_member member;
@@ -417,7 +394,8 @@ fail:
 /* Decompression                                                             */
 /* ------------------------------------------------------------------------ */
 
-const char *xx_uimage_compression_to_string(uint8_t compression) {
+const char *xx_uimage_compression_to_string(uint8_t compression)
+{
     switch (compression) {
         case XX_UIMAGE_COMP_NONE: return "none";
         case XX_UIMAGE_COMP_GZIP: return "gzip";
@@ -437,10 +415,8 @@ const char *xx_uimage_compression_to_string(uint8_t compression) {
  * not provide one.  The LZ4 helper stages a complete bounded decode before
  * writing destination bytes.
  */
-static bool xx_uimage_emit_member(Abstractformat *self,
-                                  const xx_uimage_member *member,
-                                  xx_io_device *destination,
-                                  xx_pd_struct *pd) {
+static bool xx_uimage_emit_member(Abstractformat *self, const xx_uimage_member *member, xx_io_device *destination, xx_pd_struct *pd)
+{
     if (!self || !self->device || !member || !destination) return false;
     switch (member->compression) {
         case XX_UIMAGE_COMP_GZIP: {
@@ -454,37 +430,24 @@ static bool xx_uimage_emit_member(Abstractformat *self,
             xx_gz_destroy(&gz);
             return result;
         }
-        case XX_UIMAGE_COMP_BZIP2:
-            return xx_bzip2_unpack_device(self->device, member->data_offset,
-                                          member->data_size, destination, pd);
+        case XX_UIMAGE_COMP_BZIP2: return xx_bzip2_unpack_device(self->device, member->data_offset, member->data_size, destination, pd);
         case XX_UIMAGE_COMP_LZMA:
             /* mkimage -C lzma emits an LZMA-Alone stream: 13-byte header,
              * then the range coded data with an end marker. */
-            return xx_lzma_alone_decode_device(self->device,
-                                               member->data_offset,
-                                               member->data_size, destination,
-                                               NULL, pd);
+            return xx_lzma_alone_decode_device(self->device, member->data_offset, member->data_size, destination, NULL, pd);
         case XX_UIMAGE_COMP_LZO:
             /* U-Boot's IH_COMP_LZO payload is a whole lzop file, header and
              * all, not a bare LZO1X block. */
-            return xx_lzop_decode_device(self->device, member->data_offset,
-                                         member->data_size, destination, NULL,
-                                         NULL, pd);
+            return xx_lzop_decode_device(self->device, member->data_offset, member->data_size, destination, NULL, NULL, pd);
         case XX_UIMAGE_COMP_ZSTD:
             /* Zero means "size not declared"; a uImage header carries no
              * decompressed length to pass along. */
-            return xx_zstd_unpack_device_to_device(
-                self->device, member->data_offset, member->data_size,
-                destination, 0U, pd);
-        case XX_UIMAGE_COMP_LZ4:
-            return xx_uimage_lz4_decode_device(
-                self->device, member->data_offset, member->data_size,
-                destination, 256U * 1024U * 1024U, pd);
+            return xx_zstd_unpack_device_to_device(self->device, member->data_offset, member->data_size, destination, 0U, pd);
+        case XX_UIMAGE_COMP_LZ4: return xx_uimage_lz4_decode_device(self->device, member->data_offset, member->data_size, destination, 256U * 1024U * 1024U, pd);
         case XX_UIMAGE_COMP_NONE:
         default:
             /* Stored and unknown compression ids are emitted untouched. */
-            return xx_store_unpack_device(self->device, member->data_offset,
-                                          member->data_size, destination, pd);
+            return xx_store_unpack_device(self->device, member->data_offset, member->data_size, destination, pd);
     }
 }
 
@@ -492,18 +455,16 @@ static bool xx_uimage_emit_member(Abstractformat *self,
 /* Record plumbing                                                           */
 /* ------------------------------------------------------------------------ */
 
-static bool xx_uimage_copy_options(xx_list_s *destination,
-                                   const xx_list_s *source) {
+static bool xx_uimage_copy_options(xx_list_s *destination, const xx_list_s *source)
+{
     size_t index;
     if (!destination || !source) return source == NULL;
     for (index = 0U; index < source->count; ++index) {
-        const xx_meta *item =
-            (const xx_meta *)xx_list_at((const xx_list_t *)source, index);
+        const xx_meta *item = (const xx_meta *)xx_list_at((const xx_list_t *)source, index);
         xx_meta copy;
         if (!item) continue;
         xx_meta_init(&copy, item->meta_id);
-        if (!xx_var_copy(&copy.var, &item->var) ||
-            !xx_list_append(destination, &copy)) {
+        if (!xx_var_copy(&copy.var, &item->var) || !xx_list_append(destination, &copy)) {
             xx_meta_cleanup(&copy);
             return false;
         }
@@ -511,21 +472,19 @@ static bool xx_uimage_copy_options(xx_list_s *destination,
     return true;
 }
 
-static const xx_var *xx_uimage_find_option(const xx_list_s *options,
-                                           uint32_t meta_id) {
+static const xx_var *xx_uimage_find_option(const xx_list_s *options, uint32_t meta_id)
+{
     size_t index;
     if (!options) return NULL;
     for (index = 0U; index < options->count; ++index) {
-        const xx_meta *item =
-            (const xx_meta *)xx_list_at((const xx_list_t *)options, index);
+        const xx_meta *item = (const xx_meta *)xx_list_at((const xx_list_t *)options, index);
         if (item && item->meta_id == meta_id) return &item->var;
     }
     return NULL;
 }
 
-static bool xx_uimage_populate_record(xx_archive_record *record,
-                                      const xx_uimage_private *parsed,
-                                      const xx_uimage_member *member) {
+static bool xx_uimage_populate_record(xx_archive_record *record, const xx_uimage_private *parsed, const xx_uimage_member *member)
+{
     if (!record || !parsed || !member || !member->name) return false;
     xx_archive_record_cleanup(record);
     xx_archive_record_init(record);
@@ -533,27 +492,17 @@ static bool xx_uimage_populate_record(xx_archive_record *record,
     record->header_size = XX_UIMAGE_HEADER_SIZE;
     record->data_offset = member->data_offset;
     record->compressed_size = member->data_size;
-    return xx_archive_record_set_original_name(record, member->name) &&
-           xx_archive_record_set_meta_u64(record, XX_META_ID_COMPRESSED_SIZE,
-                                          (uint64_t)member->data_size) &&
+    return xx_archive_record_set_original_name(record, member->name) && xx_archive_record_set_meta_u64(record, XX_META_ID_COMPRESSED_SIZE, (uint64_t)member->data_size) &&
            /* A compressed payload publishes no decompressed length, so the
             * uncompressed size is only meaningful when the member is
             * stored; it is reported as zero otherwise. */
-           xx_archive_record_set_meta_u64(
-               record, XX_META_ID_UNCOMPRESSED_SIZE,
-               member->compression == XX_UIMAGE_COMP_NONE
-                   ? (uint64_t)member->data_size
-                   : 0U) &&
-           xx_archive_record_set_meta_u64(record,
-                                          XX_META_ID_COMPRESSION_METHOD,
-                                          member->compression) &&
-           xx_archive_record_set_meta_u64(record, XX_META_ID_TIMESTAMP,
-                                          parsed->timestamp) &&
-           xx_archive_record_set_meta_bool(record, XX_META_ID_IS_FOLDER,
-                                           false);
+           xx_archive_record_set_meta_u64(record, XX_META_ID_UNCOMPRESSED_SIZE, member->compression == XX_UIMAGE_COMP_NONE ? (uint64_t)member->data_size : 0U) &&
+           xx_archive_record_set_meta_u64(record, XX_META_ID_COMPRESSION_METHOD, member->compression) &&
+           xx_archive_record_set_meta_u64(record, XX_META_ID_TIMESTAMP, parsed->timestamp) && xx_archive_record_set_meta_bool(record, XX_META_ID_IS_FOLDER, false);
 }
 
-static void xx_uimage_archive_stream_free(void *pointer) {
+static void xx_uimage_archive_stream_free(void *pointer)
+{
     xx_uimage_archive_stream *stream = (xx_uimage_archive_stream *)pointer;
     if (!stream) return;
     xx_uimage_private_cleanup(&stream->parsed);
@@ -564,8 +513,8 @@ static void xx_uimage_archive_stream_free(void *pointer) {
 /* Public interface                                                          */
 /* ------------------------------------------------------------------------ */
 
-void xx_uimage_init(xx_uimage *uimage, xx_io_device *dev,
-                    int64_t base_address) {
+void xx_uimage_init(xx_uimage *uimage, xx_io_device *dev, int64_t base_address)
+{
     if (!uimage) return;
     xx_mem_zero(uimage, sizeof(*uimage));
     xx_format_init(&uimage->format, dev, base_address);
@@ -578,29 +527,25 @@ void xx_uimage_init(xx_uimage *uimage, xx_io_device *dev,
     uimage->format.check_is_valid = xx_uimage_check_is_valid;
     uimage->format.handle_base_info = xx_uimage_handle_base_info;
     uimage->format.get_format_size = xx_uimage_get_format_size;
-    uimage->format.get_number_of_archive_records =
-        xx_uimage_get_number_of_archive_records;
-    uimage->format.create_archive_records_reading =
-        xx_uimage_create_archive_records_reading;
-    uimage->format.get_current_archive_record =
-        xx_uimage_get_current_archive_record;
-    uimage->format.unpack_current_archive_record =
-        xx_uimage_unpack_current_archive_record;
-    uimage->format.archive_record_move_to_next =
-        xx_uimage_archive_record_move_to_next;
-    uimage->format.free_archive_records_reading =
-        xx_uimage_free_archive_records_reading;
+    uimage->format.get_number_of_archive_records = xx_uimage_get_number_of_archive_records;
+    uimage->format.create_archive_records_reading = xx_uimage_create_archive_records_reading;
+    uimage->format.get_current_archive_record = xx_uimage_get_current_archive_record;
+    uimage->format.unpack_current_archive_record = xx_uimage_unpack_current_archive_record;
+    uimage->format.archive_record_move_to_next = xx_uimage_archive_record_move_to_next;
+    uimage->format.free_archive_records_reading = xx_uimage_free_archive_records_reading;
     uimage->format.destroy = xx_uimage_vtable_destroy;
     uimage->archive_end = -1;
 }
 
-xx_uimage *xx_uimage_create(xx_io_device *dev, int64_t base_address) {
+xx_uimage *xx_uimage_create(xx_io_device *dev, int64_t base_address)
+{
     xx_uimage *uimage = (xx_uimage *)xx_mem_alloc(sizeof(*uimage));
     if (uimage) xx_uimage_init(uimage, dev, base_address);
     return uimage;
 }
 
-void xx_uimage_destroy(xx_uimage *uimage) {
+void xx_uimage_destroy(xx_uimage *uimage)
+{
     if (!uimage) return;
     if (uimage->internal) {
         xx_uimage_private_cleanup((xx_uimage_private *)uimage->internal);
@@ -610,24 +555,28 @@ void xx_uimage_destroy(xx_uimage *uimage) {
     xx_format_cleanup_extra_parameters(&uimage->format);
 }
 
-static void xx_uimage_vtable_destroy(Abstractformat *self) {
+static void xx_uimage_vtable_destroy(Abstractformat *self)
+{
     xx_uimage_destroy((xx_uimage *)self);
 }
 
-void xx_uimage_free(xx_uimage *uimage) {
+void xx_uimage_free(xx_uimage *uimage)
+{
     if (!uimage) return;
     xx_uimage_destroy(uimage);
     xx_mem_free(uimage);
 }
 
-bool xx_uimage_check_is_valid(Abstractformat *self, xx_pd_struct *pd) {
+bool xx_uimage_check_is_valid(Abstractformat *self, xx_pd_struct *pd)
+{
     xx_uimage_private parsed;
     bool result = xx_uimage_parse(self, &parsed, pd);
     xx_uimage_private_cleanup(&parsed);
     return result;
 }
 
-bool xx_uimage_handle_base_info(Abstractformat *self, xx_pd_struct *pd) {
+bool xx_uimage_handle_base_info(Abstractformat *self, xx_pd_struct *pd)
+{
     xx_uimage_private *parsed;
     xx_uimage *uimage = (xx_uimage *)self;
     int64_t total_size;
@@ -673,29 +622,27 @@ bool xx_uimage_handle_base_info(Abstractformat *self, xx_pd_struct *pd) {
     return true;
 }
 
-int64_t xx_uimage_get_format_size(Abstractformat *self, xx_pd_struct *pd) {
-    if (!self ||
-        (!self->base_info_handled && !xx_format_handle_base_info(self, pd))) {
+int64_t xx_uimage_get_format_size(Abstractformat *self, xx_pd_struct *pd)
+{
+    if (!self || (!self->base_info_handled && !xx_format_handle_base_info(self, pd))) {
         return -1;
     }
     return self->format_size;
 }
 
-uint64_t xx_uimage_get_number_of_archive_records(Abstractformat *self,
-                                                 xx_pd_struct *pd) {
-    if (!self ||
-        (!self->base_info_handled && !xx_format_handle_base_info(self, pd))) {
+uint64_t xx_uimage_get_number_of_archive_records(Abstractformat *self, xx_pd_struct *pd)
+{
+    if (!self || (!self->base_info_handled && !xx_format_handle_base_info(self, pd))) {
         return 0U;
     }
     return ((xx_uimage *)self)->number_of_records;
 }
 
-xx_archive_record_state *xx_uimage_create_archive_records_reading(
-    Abstractformat *self, const xx_list_s *options, xx_pd_struct *pd) {
+xx_archive_record_state *xx_uimage_create_archive_records_reading(Abstractformat *self, const xx_list_s *options, xx_pd_struct *pd)
+{
     xx_archive_record_state *state;
     xx_uimage_archive_stream *stream;
-    if (!self || !self->device ||
-        (!self->base_info_handled && !xx_format_handle_base_info(self, pd))) {
+    if (!self || !self->device || (!self->base_info_handled && !xx_format_handle_base_info(self, pd))) {
         return NULL;
     }
     state = (xx_archive_record_state *)xx_mem_alloc(sizeof(*state));
@@ -706,8 +653,7 @@ xx_archive_record_state *xx_uimage_create_archive_records_reading(
         return NULL;
     }
     xx_archive_record_state_init(state, self);
-    if (!xx_uimage_copy_options(&state->options, options) ||
-        !xx_uimage_parse(self, &stream->parsed, pd)) {
+    if (!xx_uimage_copy_options(&state->options, options) || !xx_uimage_parse(self, &stream->parsed, pd)) {
         xx_uimage_archive_stream_free(stream);
         xx_archive_record_state_free(state);
         return NULL;
@@ -716,28 +662,22 @@ xx_archive_record_state *xx_uimage_create_archive_records_reading(
     state->internal_state = stream;
     state->free_internal = xx_uimage_archive_stream_free;
     state->total_records = (int64_t)stream->parsed.count;
-    if (stream->parsed.count != 0U &&
-        xx_uimage_populate_record(&state->current_record, &stream->parsed,
-                                  &stream->parsed.members[0])) {
+    if (stream->parsed.count != 0U && xx_uimage_populate_record(&state->current_record, &stream->parsed, &stream->parsed.members[0])) {
         state->has_record = true;
         state->current_index = 0;
     }
     return state;
 }
 
-const xx_archive_record *xx_uimage_get_current_archive_record(
-    Abstractformat *self, xx_archive_record_state *state) {
-    return self && state && state->format == self && state->has_record
-               ? &state->current_record
-               : NULL;
+const xx_archive_record *xx_uimage_get_current_archive_record(Abstractformat *self, xx_archive_record_state *state)
+{
+    return self && state && state->format == self && state->has_record ? &state->current_record : NULL;
 }
 
-bool xx_uimage_archive_record_move_to_next(Abstractformat *self,
-                                           xx_archive_record_state *state,
-                                           xx_pd_struct *pd) {
+bool xx_uimage_archive_record_move_to_next(Abstractformat *self, xx_archive_record_state *state, xx_pd_struct *pd)
+{
     xx_uimage_archive_stream *stream;
-    if (!self || !state || state->format != self || !state->has_record ||
-        !state->internal_state || (pd && xx_pd_is_stopped(pd))) {
+    if (!self || !state || state->format != self || !state->has_record || !state->internal_state || (pd && xx_pd_is_stopped(pd))) {
         return false;
     }
     stream = (xx_uimage_archive_stream *)state->internal_state;
@@ -748,8 +688,7 @@ bool xx_uimage_archive_record_move_to_next(Abstractformat *self,
         state->has_record = false;
         return false;
     }
-    if (!xx_uimage_populate_record(&state->current_record, &stream->parsed,
-                                   &stream->parsed.members[stream->index])) {
+    if (!xx_uimage_populate_record(&state->current_record, &stream->parsed, &stream->parsed.members[stream->index])) {
         state->has_record = false;
         return false;
     }
@@ -757,8 +696,8 @@ bool xx_uimage_archive_record_move_to_next(Abstractformat *self,
     return true;
 }
 
-static xx_io_device *xx_uimage_open_stage_file(const char *destination,
-                                               char **stage_path) {
+static xx_io_device *xx_uimage_open_stage_file(const char *destination, char **stage_path)
+{
     unsigned int attempt;
     if (!destination || !stage_path) return NULL;
     *stage_path = NULL;
@@ -766,8 +705,7 @@ static xx_io_device *xx_uimage_open_stage_file(const char *destination,
         char suffix[48];
         char *candidate;
         xx_io_device *device;
-        int length = xx_rt_snprintf(suffix, sizeof(suffix),
-                                    ".xxfclib.tmp.%u", attempt);
+        int length = xx_rt_snprintf(suffix, sizeof(suffix), ".xxfclib.tmp.%u", attempt);
         if (length <= 0 || (size_t)length >= sizeof(suffix)) return NULL;
         candidate = xx_str_concat(destination, suffix);
         if (!candidate) return NULL;
@@ -781,9 +719,8 @@ static xx_io_device *xx_uimage_open_stage_file(const char *destination,
     return NULL;
 }
 
-bool xx_uimage_unpack_current_archive_record(Abstractformat *self,
-                                             xx_archive_record_state *state,
-                                             xx_pd_struct *pd) {
+bool xx_uimage_unpack_current_archive_record(Abstractformat *self, xx_archive_record_state *state, xx_pd_struct *pd)
+{
     xx_uimage_archive_stream *stream;
     const xx_uimage_member *member;
     const xx_var *option;
@@ -793,9 +730,7 @@ bool xx_uimage_unpack_current_archive_record(Abstractformat *self,
     xx_io_device *destination = NULL;
     bool result = false;
     bool created = false;
-    if (!self || !self->device || !state || state->format != self ||
-        !state->has_record || !state->internal_state ||
-        (pd && xx_pd_is_stopped(pd))) {
+    if (!self || !self->device || !state || state->format != self || !state->has_record || !state->internal_state || (pd && xx_pd_is_stopped(pd))) {
         return false;
     }
     stream = (xx_uimage_archive_stream *)state->internal_state;
@@ -806,22 +741,17 @@ bool xx_uimage_unpack_current_archive_record(Abstractformat *self,
     option = xx_uimage_find_option(&state->options, XX_META_ID_OPT_UNPACK_PATH);
     if (!option) {
         /* No destination: report whether the member's span is addressable. */
-        return member->data_offset >= 0 && member->data_size >= 0 &&
-               member->data_offset <= stream->parsed.input_size &&
-               member->data_size <=
-                   stream->parsed.input_size - member->data_offset;
+        return member->data_offset >= 0 && member->data_size >= 0 && member->data_offset <= stream->parsed.input_size &&
+               member->data_size <= stream->parsed.input_size - member->data_offset;
     }
-    if (option->type == XX_VAR_TYPE_STRING ||
-        option->type == XX_VAR_TYPE_STRING_VIEW) {
+    if (option->type == XX_VAR_TYPE_STRING || option->type == XX_VAR_TYPE_STRING_VIEW) {
         base = xx_var_get_str(option);
-    } else if (option->type == XX_VAR_TYPE_WSTRING ||
-               option->type == XX_VAR_TYPE_WSTRING_VIEW) {
+    } else if (option->type == XX_VAR_TYPE_WSTRING || option->type == XX_VAR_TYPE_WSTRING_VIEW) {
         owned_base = xx_str_unicode_to_utf8(xx_var_get_wstr(option));
         base = owned_base;
     }
     if (!base) goto cleanup;
-    if (base[0] && base[xx_str_len(base) - 1U] != '/' &&
-        base[xx_str_len(base) - 1U] != '\\') {
+    if (base[0] && base[xx_str_len(base) - 1U] != '/' && base[xx_str_len(base) - 1U] != '\\') {
         destination_path = xx_str_concat3(base, "/", member->name);
     } else {
         destination_path = xx_str_concat(base, member->name);
@@ -829,25 +759,19 @@ bool xx_uimage_unpack_current_archive_record(Abstractformat *self,
     if (!destination_path) goto cleanup;
     if (!xx_store_create_dirs_a(destination_path, false)) goto cleanup;
     if (member->compression == XX_UIMAGE_COMP_LZ4) {
-        const xx_var *overwrite_option = xx_format_resolve_extra_parameter(
-            self, &state->options, XX_META_ID_OPT_OVERWRITE);
+        const xx_var *overwrite_option = xx_format_resolve_extra_parameter(self, &state->options, XX_META_ID_OPT_OVERWRITE);
         bool overwrite = overwrite_option && xx_var_get_bool(overwrite_option);
         char *stage_path = NULL;
-        if (overwrite || !xx_io_file_exists_a(destination_path))
-            destination = xx_uimage_open_stage_file(destination_path,
-                                                    &stage_path);
+        if (overwrite || !xx_io_file_exists_a(destination_path)) destination = xx_uimage_open_stage_file(destination_path, &stage_path);
         if (destination) {
             result = xx_uimage_emit_member(self, member, destination, pd);
             if (xx_io_close(destination) != 0) result = false;
             destination = NULL;
             if (pd && xx_pd_is_stopped(pd)) result = false;
-            if (result)
-                result = xx_io_file_replace_a(stage_path, destination_path,
-                                              overwrite);
+            if (result) result = xx_io_file_replace_a(stage_path, destination_path, overwrite);
         }
         if (stage_path) {
-            if (xx_io_file_exists_a(stage_path))
-                (void)xx_io_file_remove_a(stage_path);
+            if (xx_io_file_exists_a(stage_path)) (void)xx_io_file_remove_a(stage_path);
             xx_str_free(stage_path);
         }
         goto cleanup;
@@ -867,36 +791,45 @@ cleanup:
     return result;
 }
 
-void xx_uimage_free_archive_records_reading(Abstractformat *self,
-                                            xx_archive_record_state *state) {
+void xx_uimage_free_archive_records_reading(Abstractformat *self, xx_archive_record_state *state)
+{
     (void)self;
     xx_archive_record_state_free(state);
 }
 
-uint64_t xx_uimage_get_number_of_records(const xx_uimage *uimage) {
+uint64_t xx_uimage_get_number_of_records(const xx_uimage *uimage)
+{
     return uimage ? uimage->number_of_records : 0U;
 }
-uint64_t xx_uimage_get_number_of_members(const xx_uimage *uimage) {
+uint64_t xx_uimage_get_number_of_members(const xx_uimage *uimage)
+{
     return uimage ? uimage->number_of_members : 0U;
 }
-uint32_t xx_uimage_get_data_size(const xx_uimage *uimage) {
+uint32_t xx_uimage_get_data_size(const xx_uimage *uimage)
+{
     return uimage ? uimage->data_size : 0U;
 }
-uint32_t xx_uimage_get_data_crc(const xx_uimage *uimage) {
+uint32_t xx_uimage_get_data_crc(const xx_uimage *uimage)
+{
     return uimage ? uimage->data_crc : 0U;
 }
-uint32_t xx_uimage_get_header_crc(const xx_uimage *uimage) {
+uint32_t xx_uimage_get_header_crc(const xx_uimage *uimage)
+{
     return uimage ? uimage->header_crc : 0U;
 }
-uint8_t xx_uimage_get_compression(const xx_uimage *uimage) {
+uint8_t xx_uimage_get_compression(const xx_uimage *uimage)
+{
     return uimage ? uimage->compression : 0U;
 }
-uint8_t xx_uimage_get_image_type(const xx_uimage *uimage) {
+uint8_t xx_uimage_get_image_type(const xx_uimage *uimage)
+{
     return uimage ? uimage->image_type : 0U;
 }
-const char *xx_uimage_get_name(const xx_uimage *uimage) {
+const char *xx_uimage_get_name(const xx_uimage *uimage)
+{
     return uimage ? uimage->name : "";
 }
-int64_t xx_uimage_get_archive_end(const xx_uimage *uimage) {
+int64_t xx_uimage_get_archive_end(const xx_uimage *uimage)
+{
     return uimage ? uimage->archive_end : -1;
 }

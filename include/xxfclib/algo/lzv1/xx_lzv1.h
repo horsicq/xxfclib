@@ -18,16 +18,12 @@ typedef struct xx_lzv1_header_s {
 } xx_lzv1_header;
 
 /** Parse the fixed 12-byte LZV1 container header. */
-XXFC_API bool xx_lzv1_parse_header(const uint8_t *input, size_t input_size,
-                                   xx_lzv1_header *header);
+XXFC_API bool xx_lzv1_parse_header(const uint8_t *input, size_t input_size, xx_lzv1_header *header);
 
 /** Decode a complete LZV1 container.  On success, @p output receives a buffer
  * allocated with xx_mem_alloc/xx_mem_realloc and must be released with
  * xx_mem_free; @p output_size is its exact decoded length. */
-XXFC_API bool xx_lzv1_decompress_memory(const uint8_t *input,
-                                        size_t input_size,
-                                        uint8_t **output,
-                                        size_t *output_size);
+XXFC_API bool xx_lzv1_decompress_memory(const uint8_t *input, size_t input_size, uint8_t **output, size_t *output_size);
 
 #ifdef __cplusplus
 }

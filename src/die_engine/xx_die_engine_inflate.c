@@ -34,9 +34,9 @@
 typedef struct {
     const unsigned char *pData;
     size_t nSize;
-    size_t nByte;   /* next byte to read           */
-    int nBitBuf;    /* bits already pulled in       */
-    int nBitCount;  /* how many bits are in nBitBuf  */
+    size_t nByte;  /* next byte to read           */
+    int nBitBuf;   /* bits already pulled in       */
+    int nBitCount; /* how many bits are in nBitBuf  */
     int bError;
     size_t nMaxSize; /* hard output ceiling, 0 = none */
     int bLimit;      /* set once that ceiling is hit  */
@@ -162,12 +162,10 @@ static int infl_construct(Huffman *pHuffman, const short *pnLengths, int nSymbol
 }
 
 /* The length and distance base/extra tables from the RFC. */
-static const short g_nLenBase[29] = {3,   4,   5,   6,   7,   8,   9,   10,  11,  13,  15,  17,  19,  23, 27,
-                                     31,  35,  43,  51,  59,  67,  83,  99,  115, 131, 163, 195, 227, 258};
+static const short g_nLenBase[29] = {3, 4, 5, 6, 7, 8, 9, 10, 11, 13, 15, 17, 19, 23, 27, 31, 35, 43, 51, 59, 67, 83, 99, 115, 131, 163, 195, 227, 258};
 static const short g_nLenExtra[29] = {0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 1, 1, 2, 2, 2, 2, 3, 3, 3, 3, 4, 4, 4, 4, 5, 5, 5, 5, 0};
-static const short g_nDistBase[30] = {1,    2,    3,    4,    5,    7,     9,     13,    17,   25,
-                                      33,   49,   65,   97,   129,  193,   257,   385,   513,  769,
-                                      1025, 1537, 2049, 3073, 4097, 6145,  8193,  12289, 16385, 24577};
+static const short g_nDistBase[30] = {1,   2,   3,   4,   5,   7,    9,    13,   17,   25,   33,   49,   65,    97,    129,
+                                      193, 257, 385, 513, 769, 1025, 1537, 2049, 3073, 4097, 6145, 8193, 12289, 16385, 24577};
 static const short g_nDistExtra[30] = {0, 0, 0, 0, 1, 1, 2, 2, 3, 3, 4, 4, 5, 5, 6, 6, 7, 7, 8, 8, 9, 9, 10, 10, 11, 11, 12, 12, 13, 13};
 
 static int infl_codes(BitState *pState, const Huffman *pLen, const Huffman *pDist, size_t nExpectedSize, CDBuf *pOut)

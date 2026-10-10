@@ -68,10 +68,8 @@
  * directory records could otherwise grow it without bound. */
 #define GK_MAX_PATH 4096U
 
-static const char g_gk_banner[GK_BANNER_SIZE] = {
-    'T', 'h', 'i', 's', ' ', 'i', 's', ' ', 'a', ' ', 'b', 'i', 'n',
-    'a', 'r', 'y', ' ', 'd', 'a', 't', 'a', ' ', 'f', 'i', 'l', 'e',
-    '.', ' ', 'K', 'e', 'e', 'p', ' ', 'o', 'u', 't', ' ', '!', '\x1a'};
+static const char g_gk_banner[GK_BANNER_SIZE] = {'T', 'h', 'i', 's', ' ', 'i', 's', ' ', 'a', ' ', 'b', 'i', 'n', 'a', 'r', 'y', ' ', 'd', 'a',   't',
+                                                 'a', ' ', 'f', 'i', 'l', 'e', '.', ' ', 'K', 'e', 'e', 'p', ' ', 'o', 'u', 't', ' ', '!', '\x1a'};
 
 typedef struct gk_member_s {
     char *name;
@@ -91,15 +89,12 @@ typedef struct gk_stream_s {
     bool has_padding;
 } gk_stream;
 
-static bool gk_read_at(xx_io_device *device, int64_t offset, void *buffer,
-                       size_t size) {
+static bool gk_read_at(xx_io_device *device, int64_t offset, void *buffer, size_t size)
+{
     size_t done = 0U;
-    if (!device || (!buffer && size != 0U) || offset < 0 ||
-        xx_io_seek64(device, offset, SEEK_SET) != 0)
-        return false;
+    if (!device || (!buffer && size != 0U) || offset < 0 || xx_io_seek64(device, offset, SEEK_SET) != 0) return false;
     while (done < size) {
-        ssize_t amount = xx_io_read(device, (uint8_t *)buffer + done,
-                                    size - done);
+        ssize_t amount = xx_io_read(device, (uint8_t *)buffer + done, size - done);
         if (amount <= 0 || (size_t)amount > size - done) return false;
         done += (size_t)amount;
     }
@@ -108,16 +103,16 @@ static bool gk_read_at(xx_io_device *device, int64_t offset, void *buffer,
 
 /* Every offset/size pair that comes out of the file goes through this before
  * it is used to read, allocate, or advance the walk. */
-static bool gk_range_within(int64_t total, int64_t offset, int64_t size) {
-    return total >= 0 && offset >= 0 && size >= 0 && offset <= total &&
-           size <= total - offset;
+static bool gk_range_within(int64_t total, int64_t offset, int64_t size)
+{
+    return total >= 0 && offset >= 0 && size >= 0 && offset <= total && size <= total - offset;
 }
 
 /* Append one path component, mapping '\' to '/' and replacing anything the
  * host filesystem cannot carry.  Returns a freshly allocated string; the
  * caller owns it and the old prefix is left untouched. */
-static char *gk_join(const char *prefix, const uint8_t *name, size_t length,
-                     bool trailing_slash) {
+static char *gk_join(const char *prefix, const uint8_t *name, size_t length, bool trailing_slash)
+{
     size_t prefix_length = prefix ? xx_rt_strlen(prefix) : 0U;
     size_t total;
     char *result;
@@ -134,23 +129,19 @@ static char *gk_join(const char *prefix, const uint8_t *name, size_t length,
     }
     for (index = 0U; index < length; ++index) {
         uint8_t c = name[index];
-        if (c == '\\' || c == '/')
-            result[at++] = '/';
-        else if (c < 0x20U || c == ':' || c == '*' || c == '?' || c == '"' ||
-                 c == '<' || c == '>' || c == '|')
-            result[at++] = '_';
-        else
-            result[at++] = (char)c;
+        if (c == '\\' || c == '/') result[at++] = '/';
+        else if (c < 0x20U || c == ':' || c == '*' || c == '?' || c == '"' || c == '<' || c == '>' || c == '|') result[at++] = '_';
+        else result[at++] = (char)c;
     }
-    if (trailing_slash && at != 0U && result[at - 1U] != '/')
-        result[at++] = '/';
+    if (trailing_slash && at != 0U && result[at - 1U] != '/') result[at++] = '/';
     result[at] = 0;
     return result;
 }
 
 /* A name that leaves the extraction root, or that carries a drive letter or a
  * ".." component, is refused rather than rewritten. */
-static bool gk_safe_output_name(const char *name) {
+static bool gk_safe_output_name(const char *name)
+{
     const char *segment;
     const char *at;
     if (!name || !name[0] || name[0] == '/' || name[1] == ':') return false;
@@ -159,16 +150,15 @@ static bool gk_safe_output_name(const char *name) {
         unsigned char c = (unsigned char)*at;
         if (c == '/' || c == 0U) {
             size_t length = (size_t)(at - segment);
-            if (length == 0U || (length == 1U && segment[0] == '.') ||
-                (length == 2U && segment[0] == '.' && segment[1] == '.'))
-                return false;
+            if (length == 0U || (length == 1U && segment[0] == '.') || (length == 2U && segment[0] == '.' && segment[1] == '.')) return false;
             if (c == 0U) return true;
             segment = at + 1;
         }
     }
 }
 
-static void gk_stream_free(void *opaque) {
+static void gk_stream_free(void *opaque)
+{
     gk_stream *stream = (gk_stream *)opaque;
     size_t index;
     if (!stream) return;
@@ -178,13 +168,11 @@ static void gk_stream_free(void *opaque) {
     xx_mem_free(stream);
 }
 
-static bool gk_add_member(gk_stream *stream, const gk_member *member) {
+static bool gk_add_member(gk_stream *stream, const gk_member *member)
+{
     gk_member *grown;
-    if (!stream || !member || stream->count >= GK_MAX_RECORDS ||
-        stream->count > SIZE_MAX / sizeof(*grown) - 1U)
-        return false;
-    grown = (gk_member *)xx_mem_realloc(stream->items,
-                                        (stream->count + 1U) * sizeof(*grown));
+    if (!stream || !member || stream->count >= GK_MAX_RECORDS || stream->count > SIZE_MAX / sizeof(*grown) - 1U) return false;
+    grown = (gk_member *)xx_mem_realloc(stream->items, (stream->count + 1U) * sizeof(*grown));
     if (!grown) return false;
     stream->items = grown;
     stream->items[stream->count++] = *member;
@@ -194,9 +182,8 @@ static bool gk_add_member(gk_stream *stream, const gk_member *member) {
 /* Reads one descriptor.  The name is rejected outright when it holds a
  * control byte: that is the cheapest structural rule that keeps payload bytes
  * from parsing as a record and so terminates the chain at the right place. */
-static bool gk_read_record(xx_io_device *device, int64_t offset,
-                           uint8_t *record, size_t *name_length,
-                           uint32_t *attributes, int64_t *size) {
+static bool gk_read_record(xx_io_device *device, int64_t offset, uint8_t *record, size_t *name_length, uint32_t *attributes, int64_t *size)
+{
     size_t length = 0U;
     size_t index;
     int32_t declared;
@@ -214,8 +201,8 @@ static bool gk_read_record(xx_io_device *device, int64_t offset,
 
 /* Decide whether the extra all-zero uint32 is present by walking the first
  * two records under the padded reading, exactly as the reference does. */
-static bool gk_probe_padding(xx_io_device *device, int64_t base,
-                             int64_t data_offset, int64_t available) {
+static bool gk_probe_padding(xx_io_device *device, int64_t base, int64_t data_offset, int64_t available)
+{
     uint8_t record[GK_RECORD_SIZE];
     uint8_t padding[4];
     int64_t cursor = data_offset;
@@ -225,14 +212,9 @@ static bool gk_probe_padding(xx_io_device *device, int64_t base,
         uint32_t attributes;
         int64_t size;
         int64_t after;
-        if (!gk_range_within(available, cursor, GK_RECORD_SIZE) ||
-            !gk_read_record(device, base + cursor, record, &name_length,
-                            &attributes, &size))
-            return false;
+        if (!gk_range_within(available, cursor, GK_RECORD_SIZE) || !gk_read_record(device, base + cursor, record, &name_length, &attributes, &size)) return false;
         after = cursor + GK_RECORD_SIZE;
-        if (!gk_range_within(available, after, size) ||
-            !gk_range_within(available, after, 4) ||
-            !gk_read_at(device, base + after, padding, sizeof(padding)) ||
+        if (!gk_range_within(available, after, size) || !gk_range_within(available, after, 4) || !gk_read_at(device, base + after, padding, sizeof(padding)) ||
             xx_data_get_u32(padding, 4, 0, false) != 0U)
             return false;
         cursor = after + 4 + size;
@@ -240,7 +222,8 @@ static bool gk_probe_padding(xx_io_device *device, int64_t base,
     return true;
 }
 
-static bool gk_parse(Abstractformat *format, gk_stream **result) {
+static bool gk_parse(Abstractformat *format, gk_stream **result)
+{
     uint8_t header[GK_HEADER_SIZE];
     uint8_t record[GK_RECORD_SIZE];
     uint8_t padding[4];
@@ -248,31 +231,23 @@ static bool gk_parse(Abstractformat *format, gk_stream **result) {
     char *path = NULL;
     int64_t total, available, cursor, base;
     int64_t padding_size;
-    if (!format || !format->device || !result || format->base_address < 0)
-        return false;
+    if (!format || !format->device || !result || format->base_address < 0) return false;
     base = format->base_address;
     total = xx_io_total_size(format->device);
     if (total < base) return false;
     available = total - base;
-    if (available < (int64_t)GK_HEADER_SIZE + (int64_t)GK_RECORD_SIZE)
-        return false;
-    if (!gk_read_at(format->device, base, header, sizeof(header)) ||
-        xx_rt_memcmp(header, g_gk_banner, GK_BANNER_SIZE) != 0 ||
-        header[GK_SIGNATURE_OFFSET] != 'G' ||
+    if (available < (int64_t)GK_HEADER_SIZE + (int64_t)GK_RECORD_SIZE) return false;
+    if (!gk_read_at(format->device, base, header, sizeof(header)) || xx_rt_memcmp(header, g_gk_banner, GK_BANNER_SIZE) != 0 || header[GK_SIGNATURE_OFFSET] != 'G' ||
         header[GK_SIGNATURE_OFFSET + 1] != 'K')
         return false;
 
     stream = (gk_stream *)xx_mem_calloc(1U, sizeof(*stream));
     if (!stream) return false;
     stream->data_offset = (int64_t)xx_data_get_u32(header + GK_DATAOFFSET_OFFSET, 4, 0, false);
-    if (stream->data_offset != GK_DATAOFFSET_A &&
-        stream->data_offset != GK_DATAOFFSET_B)
-        goto fail;
-    if (!gk_range_within(available, stream->data_offset, GK_RECORD_SIZE))
-        goto fail;
+    if (stream->data_offset != GK_DATAOFFSET_A && stream->data_offset != GK_DATAOFFSET_B) goto fail;
+    if (!gk_range_within(available, stream->data_offset, GK_RECORD_SIZE)) goto fail;
 
-    stream->has_padding = gk_probe_padding(format->device, base,
-                                           stream->data_offset, available);
+    stream->has_padding = gk_probe_padding(format->device, base, stream->data_offset, available);
     padding_size = stream->has_padding ? 4 : 0;
 
     cursor = stream->data_offset;
@@ -282,14 +257,10 @@ static bool gk_parse(Abstractformat *format, gk_stream **result) {
         int64_t size;
         int64_t payload;
         gk_member member;
-        if (!gk_read_record(format->device, base + cursor, record,
-                            &name_length, &attributes, &size))
-            break;
+        if (!gk_read_record(format->device, base + cursor, record, &name_length, &attributes, &size)) break;
         payload = cursor + GK_RECORD_SIZE;
         if (padding_size) {
-            if (!gk_range_within(available, payload, 4) ||
-                !gk_read_at(format->device, base + payload, padding,
-                            sizeof(padding)) ||
+            if (!gk_range_within(available, payload, 4) || !gk_read_at(format->device, base + payload, padding, sizeof(padding)) ||
                 xx_data_get_u32(padding, 4, 0, false) != 0U)
                 break;
             payload += 4;
@@ -334,8 +305,7 @@ static bool gk_parse(Abstractformat *format, gk_stream **result) {
     }
 
     if (stream->count == 0U) goto fail;
-    if (stream->archive_size <= 0 || stream->archive_size > available)
-        stream->archive_size = available;
+    if (stream->archive_size <= 0 || stream->archive_size > available) stream->archive_size = available;
     if (path) xx_mem_free(path);
     *result = stream;
     return true;
@@ -345,17 +315,16 @@ fail:
     return false;
 }
 
-static bool gk_copy_options(xx_list_s *destination, const xx_list_s *source) {
+static bool gk_copy_options(xx_list_s *destination, const xx_list_s *source)
+{
     size_t index;
     if (!source) return true;
     for (index = 0U; index < source->count; ++index) {
-        const xx_meta *original =
-            (const xx_meta *)xx_list_at((const xx_list_t *)source, index);
+        const xx_meta *original = (const xx_meta *)xx_list_at((const xx_list_t *)source, index);
         xx_meta copy;
         if (!original) continue;
         xx_meta_init(&copy, original->meta_id);
-        if (!xx_var_copy(&copy.var, &original->var) ||
-            !xx_list_append(destination, &copy)) {
+        if (!xx_var_copy(&copy.var, &original->var) || !xx_list_append(destination, &copy)) {
             xx_meta_cleanup(&copy);
             return false;
         }
@@ -363,40 +332,34 @@ static bool gk_copy_options(xx_list_s *destination, const xx_list_s *source) {
     return true;
 }
 
-static const xx_var *gk_option(const xx_list_s *options, uint32_t id) {
+static const xx_var *gk_option(const xx_list_s *options, uint32_t id)
+{
     size_t index;
     if (!options) return NULL;
     for (index = 0U; index < options->count; ++index) {
-        const xx_meta *meta =
-            (const xx_meta *)xx_list_at((const xx_list_t *)options, index);
+        const xx_meta *meta = (const xx_meta *)xx_list_at((const xx_list_t *)options, index);
         if (meta && meta->meta_id == id) return &meta->var;
     }
     return NULL;
 }
 
-static bool gk_set_record(xx_archive_record *record, const gk_member *member) {
+static bool gk_set_record(xx_archive_record *record, const gk_member *member)
+{
     xx_archive_record_cleanup(record);
     xx_archive_record_init(record);
     record->header_offset = member->header_offset;
     record->header_size = member->header_size;
     record->data_offset = member->data_offset;
     record->compressed_size = member->size;
-    return xx_archive_record_set_original_name(record, member->name) &&
-           xx_archive_record_set_meta_u64(record, XX_META_ID_COMPRESSED_SIZE,
-                                          (uint64_t)member->size) &&
-           xx_archive_record_set_meta_u64(record, XX_META_ID_UNCOMPRESSED_SIZE,
-                                          (uint64_t)member->size) &&
-           xx_archive_record_set_meta_u64(record, XX_META_ID_COMPRESSION_METHOD,
-                                          0U) &&
-           xx_archive_record_set_meta_u64(record, XX_META_ID_ATTRIBUTES,
-                                          member->attributes) &&
-           xx_archive_record_set_meta_bool(record, XX_META_ID_IS_ENCRYPTED,
-                                           false) &&
+    return xx_archive_record_set_original_name(record, member->name) && xx_archive_record_set_meta_u64(record, XX_META_ID_COMPRESSED_SIZE, (uint64_t)member->size) &&
+           xx_archive_record_set_meta_u64(record, XX_META_ID_UNCOMPRESSED_SIZE, (uint64_t)member->size) &&
+           xx_archive_record_set_meta_u64(record, XX_META_ID_COMPRESSION_METHOD, 0U) &&
+           xx_archive_record_set_meta_u64(record, XX_META_ID_ATTRIBUTES, member->attributes) && xx_archive_record_set_meta_bool(record, XX_META_ID_IS_ENCRYPTED, false) &&
            xx_archive_record_set_meta_bool(record, XX_META_ID_IS_FOLDER, false);
 }
 
-void xx_gksetup_init(xx_gksetup *archive, xx_io_device *device,
-                     int64_t base_address) {
+void xx_gksetup_init(xx_gksetup *archive, xx_io_device *device, int64_t base_address)
+{
     if (!archive) return;
     xx_mem_zero(archive, sizeof(*archive));
     xx_format_init(&archive->format, device, base_address);
@@ -409,39 +372,37 @@ void xx_gksetup_init(xx_gksetup *archive, xx_io_device *device,
     archive->format.check_is_valid = xx_gksetup_check_is_valid;
     archive->format.handle_base_info = xx_gksetup_handle_base_info;
     archive->format.get_format_size = xx_gksetup_get_format_size;
-    archive->format.get_number_of_archive_records =
-        xx_gksetup_get_number_of_archive_records;
-    archive->format.create_archive_records_reading =
-        xx_gksetup_create_archive_records_reading;
-    archive->format.get_current_archive_record =
-        xx_gksetup_get_current_archive_record;
-    archive->format.unpack_current_archive_record =
-        xx_gksetup_unpack_current_archive_record;
-    archive->format.archive_record_move_to_next =
-        xx_gksetup_archive_record_move_to_next;
-    archive->format.free_archive_records_reading =
-        xx_gksetup_free_archive_records_reading;
+    archive->format.get_number_of_archive_records = xx_gksetup_get_number_of_archive_records;
+    archive->format.create_archive_records_reading = xx_gksetup_create_archive_records_reading;
+    archive->format.get_current_archive_record = xx_gksetup_get_current_archive_record;
+    archive->format.unpack_current_archive_record = xx_gksetup_unpack_current_archive_record;
+    archive->format.archive_record_move_to_next = xx_gksetup_archive_record_move_to_next;
+    archive->format.free_archive_records_reading = xx_gksetup_free_archive_records_reading;
     archive->data_offset = -1;
     archive->archive_end = -1;
 }
 
-xx_gksetup *xx_gksetup_create(xx_io_device *device, int64_t base_address) {
+xx_gksetup *xx_gksetup_create(xx_io_device *device, int64_t base_address)
+{
     xx_gksetup *archive = (xx_gksetup *)xx_mem_alloc(sizeof(*archive));
     if (archive) xx_gksetup_init(archive, device, base_address);
     return archive;
 }
 
-void xx_gksetup_destroy(xx_gksetup *archive) {
+void xx_gksetup_destroy(xx_gksetup *archive)
+{
     if (archive) xx_format_cleanup_extra_parameters(&archive->format);
 }
 
-void xx_gksetup_free(xx_gksetup *archive) {
+void xx_gksetup_free(xx_gksetup *archive)
+{
     if (!archive) return;
     xx_gksetup_destroy(archive);
     xx_mem_free(archive);
 }
 
-bool xx_gksetup_check_is_valid(Abstractformat *format, xx_pd_struct *pd) {
+bool xx_gksetup_check_is_valid(Abstractformat *format, xx_pd_struct *pd)
+{
     gk_stream *stream;
     (void)pd;
     if (!gk_parse(format, &stream)) return false;
@@ -449,7 +410,8 @@ bool xx_gksetup_check_is_valid(Abstractformat *format, xx_pd_struct *pd) {
     return true;
 }
 
-bool xx_gksetup_handle_base_info(Abstractformat *format, xx_pd_struct *pd) {
+bool xx_gksetup_handle_base_info(Abstractformat *format, xx_pd_struct *pd)
+{
     gk_stream *stream;
     xx_gksetup *archive;
     (void)pd;
@@ -479,23 +441,18 @@ bool xx_gksetup_handle_base_info(Abstractformat *format, xx_pd_struct *pd) {
     return true;
 }
 
-int64_t xx_gksetup_get_format_size(Abstractformat *format, xx_pd_struct *pd) {
-    return format && (format->base_info_handled ||
-                      xx_gksetup_handle_base_info(format, pd))
-               ? format->format_size
-               : -1;
+int64_t xx_gksetup_get_format_size(Abstractformat *format, xx_pd_struct *pd)
+{
+    return format && (format->base_info_handled || xx_gksetup_handle_base_info(format, pd)) ? format->format_size : -1;
 }
 
-uint64_t xx_gksetup_get_number_of_archive_records(Abstractformat *format,
-                                                  xx_pd_struct *pd) {
-    return format && (format->base_info_handled ||
-                      xx_gksetup_handle_base_info(format, pd))
-               ? ((xx_gksetup *)format)->number_of_records
-               : 0U;
+uint64_t xx_gksetup_get_number_of_archive_records(Abstractformat *format, xx_pd_struct *pd)
+{
+    return format && (format->base_info_handled || xx_gksetup_handle_base_info(format, pd)) ? ((xx_gksetup *)format)->number_of_records : 0U;
 }
 
-xx_archive_record_state *xx_gksetup_create_archive_records_reading(
-    Abstractformat *format, const xx_list_s *options, xx_pd_struct *pd) {
+xx_archive_record_state *xx_gksetup_create_archive_records_reading(Abstractformat *format, const xx_list_s *options, xx_pd_struct *pd)
+{
     gk_stream *stream;
     xx_archive_record_state *state;
     (void)pd;
@@ -509,8 +466,7 @@ xx_archive_record_state *xx_gksetup_create_archive_records_reading(
     state->internal_state = stream;
     state->free_internal = gk_stream_free;
     state->total_records = (int64_t)stream->count;
-    if (!gk_copy_options(&state->options, options) ||
-        !gk_set_record(&state->current_record, &stream->items[0])) {
+    if (!gk_copy_options(&state->options, options) || !gk_set_record(&state->current_record, &stream->items[0])) {
         xx_archive_record_state_free(state);
         return NULL;
     }
@@ -518,33 +474,26 @@ xx_archive_record_state *xx_gksetup_create_archive_records_reading(
     return state;
 }
 
-const xx_archive_record *xx_gksetup_get_current_archive_record(
-    Abstractformat *format, xx_archive_record_state *state) {
-    return format && state && state->format == format && state->has_record
-               ? &state->current_record
-               : NULL;
+const xx_archive_record *xx_gksetup_get_current_archive_record(Abstractformat *format, xx_archive_record_state *state)
+{
+    return format && state && state->format == format && state->has_record ? &state->current_record : NULL;
 }
 
-bool xx_gksetup_archive_record_move_to_next(Abstractformat *format,
-                                            xx_archive_record_state *state,
-                                            xx_pd_struct *pd) {
+bool xx_gksetup_archive_record_move_to_next(Abstractformat *format, xx_archive_record_state *state, xx_pd_struct *pd)
+{
     gk_stream *stream;
     (void)pd;
-    if (!format || !state || state->format != format ||
-        !(stream = (gk_stream *)state->internal_state) ||
-        ++stream->index >= stream->count) {
+    if (!format || !state || state->format != format || !(stream = (gk_stream *)state->internal_state) || ++stream->index >= stream->count) {
         if (state) state->has_record = false;
         return false;
     }
     ++state->current_index;
-    state->has_record = gk_set_record(&state->current_record,
-                                      &stream->items[stream->index]);
+    state->has_record = gk_set_record(&state->current_record, &stream->items[stream->index]);
     return state->has_record;
 }
 
-bool xx_gksetup_unpack_current_archive_record(Abstractformat *format,
-                                              xx_archive_record_state *state,
-                                              xx_pd_struct *pd) {
+bool xx_gksetup_unpack_current_archive_record(Abstractformat *format, xx_archive_record_state *state, xx_pd_struct *pd)
+{
     gk_stream *stream;
     gk_member *member;
     const xx_var *path_option;
@@ -552,39 +501,31 @@ bool xx_gksetup_unpack_current_archive_record(Abstractformat *format,
     char *owned_base = NULL;
     char *path = NULL;
     bool result = false;
-    if (!format || !state || state->format != format || !state->has_record ||
-        !(stream = (gk_stream *)state->internal_state) ||
-        stream->index >= stream->count || (pd && xx_pd_is_stopped(pd)))
+    if (!format || !state || state->format != format || !state->has_record || !(stream = (gk_stream *)state->internal_state) || stream->index >= stream->count ||
+        (pd && xx_pd_is_stopped(pd)))
         return false;
     member = &stream->items[stream->index];
     if (!gk_safe_output_name(member->name)) return false;
     path_option = gk_option(&state->options, XX_META_ID_OPT_UNPACK_PATH);
     if (!path_option) return true; /* A dry run: the member is readable. */
-    if (path_option->type == XX_VAR_TYPE_STRING ||
-        path_option->type == XX_VAR_TYPE_STRING_VIEW)
-        base = xx_var_get_str(path_option);
-    else if (path_option->type == XX_VAR_TYPE_WSTRING ||
-             path_option->type == XX_VAR_TYPE_WSTRING_VIEW) {
+    if (path_option->type == XX_VAR_TYPE_STRING || path_option->type == XX_VAR_TYPE_STRING_VIEW) base = xx_var_get_str(path_option);
+    else if (path_option->type == XX_VAR_TYPE_WSTRING || path_option->type == XX_VAR_TYPE_WSTRING_VIEW) {
         owned_base = xx_str_unicode_to_utf8(xx_var_get_wstr(path_option));
         base = owned_base;
     }
     if (!base) goto done;
-    path = (base[0] && base[xx_str_len(base) - 1U] != '/' &&
-            base[xx_str_len(base) - 1U] != '\\')
-               ? xx_str_concat3(base, "/", member->name)
-               : xx_str_concat(base, member->name);
+    path = (base[0] && base[xx_str_len(base) - 1U] != '/' && base[xx_str_len(base) - 1U] != '\\') ? xx_str_concat3(base, "/", member->name)
+                                                                                                  : xx_str_concat(base, member->name);
     if (!path || !xx_store_create_dirs_a(path, false)) goto done;
-    result = xx_store_unpack_device_to_file(format->device,
-                                            member->data_offset, member->size,
-                                            path, pd);
+    result = xx_store_unpack_device_to_file(format->device, member->data_offset, member->size, path, pd);
 done:
     if (path) xx_str_free(path);
     if (owned_base) xx_str_free(owned_base);
     return result;
 }
 
-void xx_gksetup_free_archive_records_reading(Abstractformat *format,
-                                             xx_archive_record_state *state) {
+void xx_gksetup_free_archive_records_reading(Abstractformat *format, xx_archive_record_state *state)
+{
     (void)format;
     xx_archive_record_state_free(state);
 }

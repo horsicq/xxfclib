@@ -80,10 +80,10 @@ typedef struct xx_gif XGif;
 
 struct xx_gif {
     Abstractformat format;
-    uint16_t version;          /**< 87 or 89, from the signature. */
-    uint16_t width;            /**< Logical screen width. */
-    uint16_t height;           /**< Logical screen height. */
-    uint8_t flags;             /**< Logical screen descriptor flags. */
+    uint16_t version; /**< 87 or 89, from the signature. */
+    uint16_t width;   /**< Logical screen width. */
+    uint16_t height;  /**< Logical screen height. */
+    uint8_t flags;    /**< Logical screen descriptor flags. */
     uint8_t bg_color_index;
     uint8_t aspect_ratio;
     uint32_t global_color_table_size; /**< Bytes; 0 when absent. */
@@ -109,18 +109,24 @@ XXFC_API uint64_t xx_gif_get_number_of_images(const xx_gif *gif);
 XXFC_API uint64_t xx_gif_get_number_of_extensions(const xx_gif *gif);
 XXFC_API int64_t xx_gif_get_trailer_offset(const xx_gif *gif);
 
-static inline Abstractformat *xx_gif_to_format(xx_gif *gif) {
+static inline Abstractformat *xx_gif_to_format(xx_gif *gif)
+{
     return gif ? &gif->format : NULL;
 }
-static inline void XGif_init(xx_gif *gif, xx_io_device *dev,
-                             int64_t base_address) {
+static inline void XGif_init(xx_gif *gif, xx_io_device *dev, int64_t base_address)
+{
     xx_gif_init(gif, dev, base_address);
 }
-static inline xx_gif *XGif_create(xx_io_device *dev, int64_t base_address) {
+static inline xx_gif *XGif_create(xx_io_device *dev, int64_t base_address)
+{
     return xx_gif_create(dev, base_address);
 }
-static inline void XGif_free(xx_gif *gif) { xx_gif_free(gif); }
-static inline bool XGif_is_valid(xx_gif *gif, xx_pd_struct *pd) {
+static inline void XGif_free(xx_gif *gif)
+{
+    xx_gif_free(gif);
+}
+static inline bool XGif_is_valid(xx_gif *gif, xx_pd_struct *pd)
+{
     return gif ? xx_format_is_valid(&gif->format, pd) : false;
 }
 

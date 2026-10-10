@@ -61,17 +61,20 @@ typedef struct xx_lizard_streams {
     const uint8_t *literals_end;
 } xx_lizard_streams;
 
-static uint32_t xx_lizard_rotl(uint32_t value, unsigned bits) {
+static uint32_t xx_lizard_rotl(uint32_t value, unsigned bits)
+{
     return (value << bits) | (value >> (32U - bits));
 }
 
-static uint32_t xx_lizard_xxh_round(uint32_t state, uint32_t word) {
+static uint32_t xx_lizard_xxh_round(uint32_t state, uint32_t word)
+{
     state += word * XX_LIZARD_XXH_P2;
     state = xx_lizard_rotl(state, 13);
     return state * XX_LIZARD_XXH_P1;
 }
 
-static uint32_t xx_lizard_xxh32(const uint8_t *data, size_t size) {
+static uint32_t xx_lizard_xxh32(const uint8_t *data, size_t size)
+{
     const uint8_t *cursor = data;
     const uint8_t *end = data + size;
     uint32_t hash;
@@ -89,8 +92,7 @@ static uint32_t xx_lizard_xxh32(const uint8_t *data, size_t size) {
             d = xx_lizard_xxh_round(d, xx_data_get_u32(cursor + 12, 4, 0, false));
             cursor += 16;
         } while (cursor <= limit);
-        hash = xx_lizard_rotl(a, 1) + xx_lizard_rotl(b, 7) +
-               xx_lizard_rotl(c, 12) + xx_lizard_rotl(d, 18);
+        hash = xx_lizard_rotl(a, 1) + xx_lizard_rotl(b, 7) + xx_lizard_rotl(c, 12) + xx_lizard_rotl(d, 18);
     } else {
         hash = XX_LIZARD_XXH_P5;
     }
@@ -111,9 +113,8 @@ static uint32_t xx_lizard_xxh32(const uint8_t *data, size_t size) {
     return hash ^ (hash >> 16);
 }
 
-static bool xx_lizard_read_length(const uint8_t **cursor,
-                                  const uint8_t *end, size_t base,
-                                  size_t *result) {
+static bool xx_lizard_read_length(const uint8_t **cursor, const uint8_t *end, size_t base, size_t *result)
+{
     uint32_t extra;
     uint8_t tag;
     if (*cursor == end) return false;
@@ -134,14 +135,11 @@ static bool xx_lizard_read_length(const uint8_t **cursor,
     return true;
 }
 
-static bool xx_lizard_copy_match(uint8_t *destination,
-                                 size_t destination_capacity,
-                                 size_t *output_position, size_t distance,
-                                 size_t length) {
+static bool xx_lizard_copy_match(uint8_t *destination, size_t destination_capacity, size_t *output_position, size_t distance, size_t length)
+{
     size_t output = *output_position;
     size_t match;
-    if (distance == 0U || distance > output ||
-        length > destination_capacity - output) {
+    if (distance == 0U || distance > output || length > destination_capacity - output) {
         return false;
     }
     match = output - distance;
@@ -152,13 +150,10 @@ static bool xx_lizard_copy_match(uint8_t *destination,
     return true;
 }
 
-static bool xx_lizard_copy_literals(xx_lizard_streams *streams,
-                                    uint8_t *destination,
-                                    size_t destination_capacity,
-                                    size_t *output_position, size_t length) {
+static bool xx_lizard_copy_literals(xx_lizard_streams *streams, uint8_t *destination, size_t destination_capacity, size_t *output_position, size_t length)
+{
     size_t output = *output_position;
-    if (length > (size_t)(streams->literals_end - streams->literals) ||
-        length > destination_capacity - output) {
+    if (length > (size_t)(streams->literals_end - streams->literals) || length > destination_capacity - output) {
         return false;
     }
     for (size_t index = 0; index < length; ++index) {
@@ -169,56 +164,37 @@ static bool xx_lizard_copy_literals(xx_lizard_streams *streams,
     return true;
 }
 
-static bool xx_lizard_decode_lz4_streams(xx_lizard_streams *streams,
-                                         uint8_t *destination,
-                                         size_t destination_capacity,
-                                         size_t *output_position) {
+static bool xx_lizard_decode_lz4_streams(xx_lizard_streams *streams, uint8_t *destination, size_t destination_capacity, size_t *output_position)
+{
     while (streams->flags < streams->flags_end) {
         uint8_t token = *streams->flags++;
         size_t literal_length = (size_t)(token & 15U);
         size_t match_length = (size_t)(token >> 4);
         size_t distance;
 
-        if (literal_length == 15U &&
-            !xx_lizard_read_length(&streams->literals,
-                                   streams->literals_end, 15U,
-                                   &literal_length)) {
+        if (literal_length == 15U && !xx_lizard_read_length(&streams->literals, streams->literals_end, 15U, &literal_length)) {
             return false;
         }
-        if (!xx_lizard_copy_literals(streams, destination,
-                                     destination_capacity, output_position,
-                                     literal_length) ||
+        if (!xx_lizard_copy_literals(streams, destination, destination_capacity, output_position, literal_length) ||
             (size_t)(streams->literals_end - streams->literals) < 2U) {
             return false;
         }
-        distance = (size_t)streams->literals[0] |
-                   ((size_t)streams->literals[1] << 8);
+        distance = (size_t)streams->literals[0] | ((size_t)streams->literals[1] << 8);
         streams->literals += 2;
 
-        if (match_length == 15U &&
-            !xx_lizard_read_length(&streams->literals,
-                                   streams->literals_end, 15U,
-                                   &match_length)) {
+        if (match_length == 15U && !xx_lizard_read_length(&streams->literals, streams->literals_end, 15U, &match_length)) {
             return false;
         }
-        if (match_length > SIZE_MAX - 4U ||
-            !xx_lizard_copy_match(destination, destination_capacity,
-                                  output_position, distance,
-                                  match_length + 4U)) {
+        if (match_length > SIZE_MAX - 4U || !xx_lizard_copy_match(destination, destination_capacity, output_position, distance, match_length + 4U)) {
             return false;
         }
     }
-    return xx_lizard_copy_literals(
-               streams, destination, destination_capacity, output_position,
-               (size_t)(streams->literals_end - streams->literals)) &&
-           streams->offset16 == streams->offset16_end &&
-           streams->offset24 == streams->offset24_end;
+    return xx_lizard_copy_literals(streams, destination, destination_capacity, output_position, (size_t)(streams->literals_end - streams->literals)) &&
+           streams->offset16 == streams->offset16_end && streams->offset24 == streams->offset24_end;
 }
 
-static bool xx_lizard_decode_v1_streams(xx_lizard_streams *streams,
-                                        uint8_t *destination,
-                                        size_t destination_capacity,
-                                        size_t *output_position) {
+static bool xx_lizard_decode_v1_streams(xx_lizard_streams *streams, uint8_t *destination, size_t destination_capacity, size_t *output_position)
+{
     /* LIZv1 defines an implicit initial repeat distance of one byte for
        every independently encoded internal block. */
     size_t last_distance = 1U;
@@ -230,15 +206,10 @@ static bool xx_lizard_decode_v1_streams(xx_lizard_streams *streams,
 
         if (token >= 32U) {
             size_t literal_length = (size_t)(token & 7U);
-            if (literal_length == 7U &&
-                !xx_lizard_read_length(&streams->literals,
-                                       streams->literals_end, 7U,
-                                       &literal_length)) {
+            if (literal_length == 7U && !xx_lizard_read_length(&streams->literals, streams->literals_end, 7U, &literal_length)) {
                 return false;
             }
-            if (!xx_lizard_copy_literals(streams, destination,
-                                         destination_capacity,
-                                         output_position, literal_length)) {
+            if (!xx_lizard_copy_literals(streams, destination, destination_capacity, output_position, literal_length)) {
                 return false;
             }
 
@@ -246,16 +217,12 @@ static bool xx_lizard_decode_v1_streams(xx_lizard_streams *streams,
                 if ((size_t)(streams->offset16_end - streams->offset16) < 2U) {
                     return false;
                 }
-                last_distance = (size_t)streams->offset16[0] |
-                                ((size_t)streams->offset16[1] << 8);
+                last_distance = (size_t)streams->offset16[0] | ((size_t)streams->offset16[1] << 8);
                 streams->offset16 += 2;
             }
             distance = last_distance;
             match_length = (size_t)((token >> 3) & 15U);
-            if (match_length == 15U &&
-                !xx_lizard_read_length(&streams->literals,
-                                       streams->literals_end, 15U,
-                                       &match_length)) {
+            if (match_length == 15U && !xx_lizard_read_length(&streams->literals, streams->literals_end, 15U, &match_length)) {
                 return false;
             }
         } else {
@@ -267,30 +234,22 @@ static bool xx_lizard_decode_v1_streams(xx_lizard_streams *streams,
             last_distance = distance;
             if (token < 31U) {
                 match_length = (size_t)token + 16U;
-            } else if (!xx_lizard_read_length(
-                           &streams->literals, streams->literals_end, 47U,
-                           &match_length)) {
+            } else if (!xx_lizard_read_length(&streams->literals, streams->literals_end, 47U, &match_length)) {
                 return false;
             }
         }
 
-        if (!xx_lizard_copy_match(destination, destination_capacity,
-                                  output_position, distance, match_length)) {
+        if (!xx_lizard_copy_match(destination, destination_capacity, output_position, distance, match_length)) {
             return false;
         }
     }
 
-    return xx_lizard_copy_literals(
-               streams, destination, destination_capacity, output_position,
-               (size_t)(streams->literals_end - streams->literals)) &&
-           streams->offset16 == streams->offset16_end &&
-           streams->offset24 == streams->offset24_end;
+    return xx_lizard_copy_literals(streams, destination, destination_capacity, output_position, (size_t)(streams->literals_end - streams->literals)) &&
+           streams->offset16 == streams->offset16_end && streams->offset24 == streams->offset24_end;
 }
 
-static bool xx_lizard_plain_stream(const uint8_t **input,
-                                   const uint8_t *input_end,
-                                   const uint8_t **stream,
-                                   const uint8_t **stream_end) {
+static bool xx_lizard_plain_stream(const uint8_t **input, const uint8_t *input_end, const uint8_t **stream, const uint8_t **stream_end)
+{
     size_t length;
     if ((size_t)(input_end - *input) < 3U) return false;
     length = (size_t)xx_data_get_u24(*input, 3, 0, false);
@@ -302,11 +261,9 @@ static bool xx_lizard_plain_stream(const uint8_t **input,
     return true;
 }
 
-static bool xx_lizard_read_stream(const uint8_t **input,
-                                  const uint8_t *input_end, bool compressed,
-                                  uint8_t *scratch, size_t scratch_capacity,
-                                  const uint8_t **stream,
-                                  const uint8_t **stream_end) {
+static bool xx_lizard_read_stream(const uint8_t **input, const uint8_t *input_end, bool compressed, uint8_t *scratch, size_t scratch_capacity, const uint8_t **stream,
+                                  const uint8_t **stream_end)
+{
     if (!compressed) {
         return xx_lizard_plain_stream(input, input_end, stream, stream_end);
     }
@@ -315,9 +272,7 @@ static bool xx_lizard_read_stream(const uint8_t **input,
         size_t decoded_size = (size_t)xx_data_get_u24(*input, 3, 0, false);
         size_t encoded_size = (size_t)xx_data_get_u24(*input + 3, 3, 0, false);
         *input += 6;
-        if (!scratch || decoded_size == 0U ||
-            decoded_size > scratch_capacity ||
-            encoded_size > (size_t)(input_end - *input) ||
+        if (!scratch || decoded_size == 0U || decoded_size > scratch_capacity || encoded_size > (size_t)(input_end - *input) ||
             !xx_huf_decompress(*input, encoded_size, scratch, decoded_size)) {
             return false;
         }
@@ -328,11 +283,8 @@ static bool xx_lizard_read_stream(const uint8_t **input,
     }
 }
 
-static bool xx_lizard_decode_block(const uint8_t *source, size_t source_size,
-                                   uint8_t *destination,
-                                   size_t destination_capacity,
-                                   size_t history_size,
-                                   size_t *out_written) {
+static bool xx_lizard_decode_block(const uint8_t *source, size_t source_size, uint8_t *destination, size_t destination_capacity, size_t history_size, size_t *out_written)
+{
     const uint8_t *input = source;
     const uint8_t *end = source + source_size;
     size_t output = history_size;
@@ -357,8 +309,7 @@ static bool xx_lizard_decode_block(const uint8_t *source, size_t source_size,
             if ((size_t)(end - input) < 3U) return false;
             length = (size_t)xx_data_get_u24(input, 3, 0, false);
             input += 3;
-            if (length > (size_t)(end - input) ||
-                length > destination_capacity - output) {
+            if (length > (size_t)(end - input) || length > destination_capacity - output) {
                 return false;
             }
             for (size_t index = 0; index < length; ++index) {
@@ -368,8 +319,7 @@ static bool xx_lizard_decode_block(const uint8_t *source, size_t source_size,
             output += length;
             continue;
         }
-        if ((control & UINT8_C(0xE0)) != 0U ||
-            (control & XX_LIZARD_STREAM_LENGTHS) != 0U) {
+        if ((control & UINT8_C(0xE0)) != 0U || (control & XX_LIZARD_STREAM_LENGTHS) != 0U) {
             return false;
         }
 
@@ -379,44 +329,21 @@ static bool xx_lizard_decode_block(const uint8_t *source, size_t source_size,
         (void)lengths;
         (void)lengths_end;
 
-        if ((control & (XX_LIZARD_STREAM_OFFSET16 |
-                        XX_LIZARD_STREAM_OFFSET24 |
-                        XX_LIZARD_STREAM_FLAGS |
-                        XX_LIZARD_STREAM_LITERALS)) != 0U) {
-            scratch = (uint8_t *)xx_mem_alloc(
-                4U * XX_LIZARD_HUF_STREAM_LIMIT);
+        if ((control & (XX_LIZARD_STREAM_OFFSET16 | XX_LIZARD_STREAM_OFFSET24 | XX_LIZARD_STREAM_FLAGS | XX_LIZARD_STREAM_LITERALS)) != 0U) {
+            scratch = (uint8_t *)xx_mem_alloc(4U * XX_LIZARD_HUF_STREAM_LIMIT);
             if (!scratch) return false;
         }
-        parsed = xx_lizard_read_stream(
-                     &input, end,
-                     (control & XX_LIZARD_STREAM_OFFSET16) != 0U,
-                     scratch, XX_LIZARD_HUF_STREAM_LIMIT,
-                     &streams.offset16, &streams.offset16_end) &&
-                 xx_lizard_read_stream(
-                     &input, end,
-                     (control & XX_LIZARD_STREAM_OFFSET24) != 0U,
-                     scratch ? scratch + XX_LIZARD_HUF_STREAM_LIMIT : NULL,
-                     XX_LIZARD_HUF_STREAM_LIMIT,
-                     &streams.offset24, &streams.offset24_end) &&
-                 xx_lizard_read_stream(
-                     &input, end,
-                     (control & XX_LIZARD_STREAM_FLAGS) != 0U,
-                     scratch ? scratch + 2U * XX_LIZARD_HUF_STREAM_LIMIT : NULL,
-                     XX_LIZARD_HUF_STREAM_LIMIT,
-                     &streams.flags, &streams.flags_end) &&
-                 xx_lizard_read_stream(
-                     &input, end,
-                     (control & XX_LIZARD_STREAM_LITERALS) != 0U,
-                     scratch ? scratch + 3U * XX_LIZARD_HUF_STREAM_LIMIT : NULL,
-                     XX_LIZARD_HUF_STREAM_LIMIT,
-                     &streams.literals, &streams.literals_end);
-        decoded = parsed &&
-            (((level >= 10U && level <= 19U) ||
-              (level >= 30U && level <= 39U))
-                 ? xx_lizard_decode_lz4_streams(
-                       &streams, destination, destination_capacity, &output)
-                 : xx_lizard_decode_v1_streams(
-                       &streams, destination, destination_capacity, &output));
+        parsed = xx_lizard_read_stream(&input, end, (control & XX_LIZARD_STREAM_OFFSET16) != 0U, scratch, XX_LIZARD_HUF_STREAM_LIMIT, &streams.offset16,
+                                       &streams.offset16_end) &&
+                 xx_lizard_read_stream(&input, end, (control & XX_LIZARD_STREAM_OFFSET24) != 0U, scratch ? scratch + XX_LIZARD_HUF_STREAM_LIMIT : NULL,
+                                       XX_LIZARD_HUF_STREAM_LIMIT, &streams.offset24, &streams.offset24_end) &&
+                 xx_lizard_read_stream(&input, end, (control & XX_LIZARD_STREAM_FLAGS) != 0U, scratch ? scratch + 2U * XX_LIZARD_HUF_STREAM_LIMIT : NULL,
+                                       XX_LIZARD_HUF_STREAM_LIMIT, &streams.flags, &streams.flags_end) &&
+                 xx_lizard_read_stream(&input, end, (control & XX_LIZARD_STREAM_LITERALS) != 0U, scratch ? scratch + 3U * XX_LIZARD_HUF_STREAM_LIMIT : NULL,
+                                       XX_LIZARD_HUF_STREAM_LIMIT, &streams.literals, &streams.literals_end);
+        decoded = parsed && (((level >= 10U && level <= 19U) || (level >= 30U && level <= 39U))
+                                 ? xx_lizard_decode_lz4_streams(&streams, destination, destination_capacity, &output)
+                                 : xx_lizard_decode_v1_streams(&streams, destination, destination_capacity, &output));
         if (scratch) xx_mem_free(scratch);
         if (!decoded) return false;
     }
@@ -425,21 +352,17 @@ static bool xx_lizard_decode_block(const uint8_t *source, size_t source_size,
     return true;
 }
 
-static bool xx_lizard_block_limit(uint8_t descriptor, size_t *limit) {
-    static const size_t limits[7] = {
-        128U * 1024U, 256U * 1024U, 1024U * 1024U,
-        4U * 1024U * 1024U, 16U * 1024U * 1024U,
-        64U * 1024U * 1024U, 256U * 1024U * 1024U
-    };
+static bool xx_lizard_block_limit(uint8_t descriptor, size_t *limit)
+{
+    static const size_t limits[7] = {128U * 1024U, 256U * 1024U, 1024U * 1024U, 4U * 1024U * 1024U, 16U * 1024U * 1024U, 64U * 1024U * 1024U, 256U * 1024U * 1024U};
     unsigned id = (descriptor >> 4) & 7U;
     if (id == 0U || limits[id - 1U] > SIZE_MAX) return false;
     *limit = limits[id - 1U];
     return true;
 }
 
-bool xx_lizard_decompress_memory(const void *source, size_t source_size,
-                                 void *destination, size_t destination_size,
-                                 size_t *out_written) {
+bool xx_lizard_decompress_memory(const void *source, size_t source_size, void *destination, size_t destination_size, size_t *out_written)
+{
     const uint8_t *input = (const uint8_t *)source;
     const uint8_t *end;
     uint8_t *output = (uint8_t *)destination;
@@ -484,9 +407,7 @@ bool xx_lizard_decompress_memory(const void *source, size_t source_size,
         descriptor_start = input;
         flags = *input++;
         descriptor = *input++;
-        if ((flags >> 6) != 1U || (flags & 3U) != 0U ||
-            (descriptor & UINT8_C(0x8F)) != 0U ||
-            !xx_lizard_block_limit(descriptor, &block_limit)) {
+        if ((flags >> 6) != 1U || (flags & 3U) != 0U || (descriptor & UINT8_C(0x8F)) != 0U || !xx_lizard_block_limit(descriptor, &block_limit)) {
             return false;
         }
         independent = (flags & UINT8_C(0x20)) != 0U;
@@ -498,9 +419,7 @@ bool xx_lizard_decompress_memory(const void *source, size_t source_size,
             content_size = xx_data_get_u64(input, 8, 0, false);
             input += 8;
         }
-        if (input == end ||
-            *input != (uint8_t)(xx_lizard_xxh32(
-                descriptor_start, (size_t)(input - descriptor_start)) >> 8)) {
+        if (input == end || *input != (uint8_t)(xx_lizard_xxh32(descriptor_start, (size_t)(input - descriptor_start)) >> 8)) {
             return false;
         }
         ++input;
@@ -519,16 +438,13 @@ bool xx_lizard_decompress_memory(const void *source, size_t source_size,
             if (stored_size == 0U) break;
             uncompressed = (stored_size & UINT32_C(0x80000000)) != 0U;
             block_size = (size_t)(stored_size & UINT32_C(0x7FFFFFFF));
-            if (block_size == 0U || block_size > block_limit ||
-                (size_t)(end - input) < block_size) {
+            if (block_size == 0U || block_size > block_limit || (size_t)(end - input) < block_size) {
                 return false;
             }
             block_data = input;
             input += block_size;
             if (block_checksum) {
-                if ((size_t)(end - input) < 4U ||
-                    xx_data_get_u32(input, 4, 0, false) !=
-                        xx_lizard_xxh32(block_data, block_size)) {
+                if ((size_t)(end - input) < 4U || xx_data_get_u32(input, 4, 0, false) != xx_lizard_xxh32(block_data, block_size)) {
                     return false;
                 }
                 input += 4;
@@ -541,18 +457,14 @@ bool xx_lizard_decompress_memory(const void *source, size_t source_size,
                 }
                 block_output = block_size;
             } else if (independent) {
-                if (!xx_lizard_decode_block(
-                        block_data, block_size, output + output_position,
-                        destination_size - output_position, 0,
-                        &block_output) || block_output > block_limit) {
+                if (!xx_lizard_decode_block(block_data, block_size, output + output_position, destination_size - output_position, 0, &block_output) ||
+                    block_output > block_limit) {
                     return false;
                 }
             } else {
                 size_t history = output_position - frame_output_start;
-                if (!xx_lizard_decode_block(
-                        block_data, block_size, output + frame_output_start,
-                        destination_size - frame_output_start, history,
-                        &block_output) || block_output > block_limit) {
+                if (!xx_lizard_decode_block(block_data, block_size, output + frame_output_start, destination_size - frame_output_start, history, &block_output) ||
+                    block_output > block_limit) {
                     return false;
                 }
             }
@@ -560,17 +472,12 @@ bool xx_lizard_decompress_memory(const void *source, size_t source_size,
         }
 
         if (content_checksum) {
-            if ((size_t)(end - input) < 4U ||
-                xx_data_get_u32(input, 4, 0, false) != xx_lizard_xxh32(
-                    output + frame_output_start,
-                    output_position - frame_output_start)) {
+            if ((size_t)(end - input) < 4U || xx_data_get_u32(input, 4, 0, false) != xx_lizard_xxh32(output + frame_output_start, output_position - frame_output_start)) {
                 return false;
             }
             input += 4;
         }
-        if (has_content_size &&
-            (content_size > SIZE_MAX ||
-             (size_t)content_size != output_position - frame_output_start)) {
+        if (has_content_size && (content_size > SIZE_MAX || (size_t)content_size != output_position - frame_output_start)) {
             return false;
         }
         saw_frame = true;

@@ -7,11 +7,14 @@
 extern "C" {
 #endif
 typedef xx_volume xx_amiga_sfs;
-XXFC_API void xx_amiga_sfs_init(xx_amiga_sfs *,xx_io_device *,int64_t);
-XXFC_API xx_amiga_sfs *xx_amiga_sfs_create(xx_io_device *,int64_t);
+XXFC_API void xx_amiga_sfs_init(xx_amiga_sfs *, xx_io_device *, int64_t);
+XXFC_API xx_amiga_sfs *xx_amiga_sfs_create(xx_io_device *, int64_t);
 XXFC_API void xx_amiga_sfs_destroy(xx_amiga_sfs *);
 XXFC_API void xx_amiga_sfs_free(xx_amiga_sfs *);
-static inline Abstractformat *xx_amiga_sfs_to_format(xx_amiga_sfs *r) { return r?&r->format:NULL; }
+static inline Abstractformat *xx_amiga_sfs_to_format(xx_amiga_sfs *r)
+{
+    return r ? &r->format : NULL;
+}
 #ifdef __cplusplus
 }
 #endif

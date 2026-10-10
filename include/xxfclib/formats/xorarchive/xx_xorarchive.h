@@ -58,25 +58,21 @@ struct xx_xorarchive {
         xx_arj arj;
     } container;
 
-    xx_io_device view;      /**< Unmasking 1:1 view over @c source. */
-    xx_io_device *source;   /**< Borrowed masked device; never closed here. */
-    uint8_t table[256];     /**< Precomputed stored-byte -> original-byte map. */
-    uint8_t key;            /**< Recovered XOR key. */
-    uint8_t rotation;       /**< Recovered left-rotation applied before the XOR. */
-    uint8_t family;         /**< xx_xorarchive_family_t value. */
+    xx_io_device view;    /**< Unmasking 1:1 view over @c source. */
+    xx_io_device *source; /**< Borrowed masked device; never closed here. */
+    uint8_t table[256];   /**< Precomputed stored-byte -> original-byte map. */
+    uint8_t key;          /**< Recovered XOR key. */
+    uint8_t rotation;     /**< Recovered left-rotation applied before the XOR. */
+    uint8_t family;       /**< xx_xorarchive_family_t value. */
 };
 
-XXFC_API void xx_xorarchive_init(xx_xorarchive *archive, xx_io_device *device,
-                                 int64_t base_address);
-XXFC_API xx_xorarchive *xx_xorarchive_create(xx_io_device *device,
-                                             int64_t base_address);
+XXFC_API void xx_xorarchive_init(xx_xorarchive *archive, xx_io_device *device, int64_t base_address);
+XXFC_API xx_xorarchive *xx_xorarchive_create(xx_io_device *device, int64_t base_address);
 XXFC_API void xx_xorarchive_destroy(xx_xorarchive *archive);
 XXFC_API void xx_xorarchive_free(xx_xorarchive *archive);
 
-XXFC_API bool xx_xorarchive_check_is_valid(Abstractformat *self,
-                                           xx_pd_struct *pd);
-XXFC_API bool xx_xorarchive_handle_base_info(Abstractformat *self,
-                                             xx_pd_struct *pd);
+XXFC_API bool xx_xorarchive_check_is_valid(Abstractformat *self, xx_pd_struct *pd);
+XXFC_API bool xx_xorarchive_handle_base_info(Abstractformat *self, xx_pd_struct *pd);
 
 /**
  * @brief Cheap prefilter over the dispatcher's 64-byte magic window.
@@ -91,43 +87,42 @@ XXFC_API bool xx_xorarchive_test_magic(const uint8_t *magic, size_t magic_size);
 /** Recovered mask, valid only after a successful validity check. */
 XXFC_API uint8_t xx_xorarchive_get_key(const xx_xorarchive *archive);
 XXFC_API uint8_t xx_xorarchive_get_rotation(const xx_xorarchive *archive);
-XXFC_API xx_xorarchive_family_t xx_xorarchive_get_family(
-    const xx_xorarchive *archive);
+XXFC_API xx_xorarchive_family_t xx_xorarchive_get_family(const xx_xorarchive *archive);
 
 /* Cast helpers */
-static inline Abstractformat *xx_xorarchive_to_format(xx_xorarchive *archive) {
+static inline Abstractformat *xx_xorarchive_to_format(xx_xorarchive *archive)
+{
     return archive ? &archive->container.format : NULL;
 }
 
-static inline const Abstractformat *xx_xorarchive_to_format_const(
-    const xx_xorarchive *archive) {
+static inline const Abstractformat *xx_xorarchive_to_format_const(const xx_xorarchive *archive)
+{
     return archive ? &archive->container.format : NULL;
 }
 
-static inline void XXorArchive_init(xx_xorarchive *archive,
-                                    xx_io_device *device,
-                                    int64_t base_address) {
+static inline void XXorArchive_init(xx_xorarchive *archive, xx_io_device *device, int64_t base_address)
+{
     xx_xorarchive_init(archive, device, base_address);
 }
 
-static inline xx_xorarchive *XXorArchive_create(xx_io_device *device,
-                                                int64_t base_address) {
+static inline xx_xorarchive *XXorArchive_create(xx_io_device *device, int64_t base_address)
+{
     return xx_xorarchive_create(device, base_address);
 }
 
-static inline void XXorArchive_free(xx_xorarchive *archive) {
+static inline void XXorArchive_free(xx_xorarchive *archive)
+{
     xx_xorarchive_free(archive);
 }
 
-static inline bool XXorArchive_is_valid(xx_xorarchive *archive,
-                                        xx_pd_struct *pd) {
+static inline bool XXorArchive_is_valid(xx_xorarchive *archive, xx_pd_struct *pd)
+{
     return archive ? xx_format_is_valid(&archive->container.format, pd) : false;
 }
 
-static inline bool XXorArchive_handle_base_info(xx_xorarchive *archive,
-                                                xx_pd_struct *pd) {
-    return archive ? xx_format_handle_base_info(&archive->container.format, pd)
-                   : false;
+static inline bool XXorArchive_handle_base_info(xx_xorarchive *archive, xx_pd_struct *pd)
+{
+    return archive ? xx_format_handle_base_info(&archive->container.format, pd) : false;
 }
 
 #ifdef __cplusplus

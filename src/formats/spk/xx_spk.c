@@ -67,35 +67,33 @@ typedef struct spk_stream_s {
     int64_t archive_size;
 } spk_stream;
 
-static bool spk_read_at(xx_io_device *device, int64_t offset, void *buffer,
-                        size_t size) {
+static bool spk_read_at(xx_io_device *device, int64_t offset, void *buffer, size_t size)
+{
     size_t done = 0U;
-    if (!device || (!buffer && size != 0U) || offset < 0 ||
-        xx_io_seek64(device, offset, SEEK_SET) != 0)
-        return false;
+    if (!device || (!buffer && size != 0U) || offset < 0 || xx_io_seek64(device, offset, SEEK_SET) != 0) return false;
     while (done < size) {
-        ssize_t amount =
-            xx_io_read(device, (uint8_t *)buffer + done, size - done);
+        ssize_t amount = xx_io_read(device, (uint8_t *)buffer + done, size - done);
         if (amount <= 0 || (size_t)amount > size - done) return false;
         done += (size_t)amount;
     }
     return true;
 }
 
-static bool spk_known_method(uint8_t method) {
-    return (method >= SPK_METHOD_STORED_OLD && method <= SPK_METHOD_SQUASHED) ||
-           method == SPK_METHOD_COMPRESSED;
+static bool spk_known_method(uint8_t method)
+{
+    return (method >= SPK_METHOD_STORED_OLD && method <= SPK_METHOD_SQUASHED) || method == SPK_METHOD_COMPRESSED;
 }
 
-static bool spk_has_decoder(uint8_t method) {
-    return method == SPK_METHOD_STORED_OLD || method == SPK_METHOD_STORED ||
-           method == SPK_METHOD_PACKED || method == SPK_METHOD_CRUNCHED ||
+static bool spk_has_decoder(uint8_t method)
+{
+    return method == SPK_METHOD_STORED_OLD || method == SPK_METHOD_STORED || method == SPK_METHOD_PACKED || method == SPK_METHOD_CRUNCHED ||
            method == SPK_METHOD_SQUASHED || method == SPK_METHOD_COMPRESSED;
 }
 
 /* Names come from untrusted content and become output file names, so every
  * separator and both dot-only shapes have to die here. */
-static char *spk_component(const uint8_t *raw, size_t size, bool strict) {
+static char *spk_component(const uint8_t *raw, size_t size, bool strict)
+{
     char *result;
     size_t index, length = 0U;
     while (length < size && raw[length] != 0U) ++length;
@@ -112,31 +110,27 @@ static char *spk_component(const uint8_t *raw, size_t size, bool strict) {
     if (!result) return NULL;
     for (index = 0U; index < length; ++index) {
         uint8_t value = raw[index];
-        result[index] = (value >= 0x7fU || value == '/' || value == '\\' ||
-                         value == ':' || value == '<' || value == '>' ||
-                         value == '"' || value == '|' || value == '?' ||
-                         value == '*')
+        result[index] = (value >= 0x7fU || value == '/' || value == '\\' || value == ':' || value == '<' || value == '>' || value == '"' || value == '|' ||
+                         value == '?' || value == '*')
                             ? '_'
                             : (char)value;
     }
-    while (length != 0U &&
-           (result[length - 1U] == ' ' || result[length - 1U] == '.'))
-        --length;
-    if ((length == 1U && result[0] == '.') ||
-        (length == 2U && result[0] == '.' && result[1] == '.'))
-        length = 0U;
+    while (length != 0U && (result[length - 1U] == ' ' || result[length - 1U] == '.')) --length;
+    if ((length == 1U && result[0] == '.') || (length == 2U && result[0] == '.' && result[1] == '.')) length = 0U;
     if (length == 0U) result[length++] = '_';
     result[length] = 0;
     return result;
 }
 
-static char *spk_join(const char *prefix, const char *component) {
+static char *spk_join(const char *prefix, const char *component)
+{
     if (!component) return NULL;
     if (!prefix || !prefix[0]) return xx_str_concat(component, "");
     return xx_str_concat3(prefix, "/", component);
 }
 
-static void spk_stream_free(void *opaque) {
+static void spk_stream_free(void *opaque)
+{
     spk_stream *stream = (spk_stream *)opaque;
     size_t index;
     if (!stream) return;
@@ -149,7 +143,8 @@ static void spk_stream_free(void *opaque) {
     xx_mem_free(stream);
 }
 
-static spk_member *spk_stream_push(spk_stream *stream) {
+static spk_member *spk_stream_push(spk_stream *stream)
+{
     if (stream->count == stream->capacity) {
         size_t capacity = stream->capacity ? stream->capacity * 2U : 32U;
         spk_member *items;
@@ -158,8 +153,7 @@ static spk_member *spk_stream_push(spk_stream *stream) {
         items = (spk_member *)xx_mem_calloc(capacity, sizeof(*items));
         if (!items) return NULL;
         if (stream->items) {
-            xx_rt_memcpy(items, stream->items,
-                         stream->count * sizeof(*items));
+            xx_rt_memcpy(items, stream->items, stream->count * sizeof(*items));
             xx_mem_free(stream->items);
         }
         stream->items = items;
@@ -173,10 +167,8 @@ static spk_member *spk_stream_push(spk_stream *stream) {
 /* Walk one member chain.  @p start and @p limit are relative to
  * format->base_address; a directory's chain is walked inside its own data
  * extent, which is what keeps the recursion bounded by the file. */
-static bool spk_walk(Abstractformat *format, spk_stream *stream,
-                     int64_t start, int64_t limit, unsigned depth,
-                     const char *prefix, int64_t *chain_end,
-                     xx_pd_struct *pd) {
+static bool spk_walk(Abstractformat *format, spk_stream *stream, int64_t start, int64_t limit, unsigned depth, const char *prefix, int64_t *chain_end, xx_pd_struct *pd)
+{
     int64_t offset = start;
 
     if (depth > XX_SPK_MAX_DEPTH) return false;
@@ -192,9 +184,7 @@ static bool spk_walk(Abstractformat *format, spk_stream *stream,
 
         if (pd && xx_pd_is_stopped(pd)) return false;
         if (stream->count >= XX_SPK_MAX_MEMBERS) return false;
-        if (!spk_read_at(format->device, format->base_address + offset, header,
-                         sizeof(header)))
-            return false;
+        if (!spk_read_at(format->device, format->base_address + offset, header, sizeof(header))) return false;
         if (header[0] != XX_SPK_MARKER) return false;
         method = header[1];
         if (method == SPK_METHOD_END_A || method == SPK_METHOD_END_B) {
@@ -209,22 +199,17 @@ static bool spk_walk(Abstractformat *format, spk_stream *stream,
         load_address = xx_data_get_u32(header + 0x1d, 4, 0, false);
         /* The declared extent must fit in what is left of this chain before
          * it is used to seek, recurse or allocate. */
-        if ((int64_t)packed_size >
-            limit - offset - (int64_t)XX_SPK_HEADER_SIZE)
-            return false;
+        if ((int64_t)packed_size > limit - offset - (int64_t)XX_SPK_HEADER_SIZE) return false;
         if ((int64_t)original_size > SPK_MAX_ORIGINAL_SIZE) return false;
         /* The reference reader's own rule for the stored method: the two sizes must agree. */
-        if (method == SPK_METHOD_STORED && packed_size != original_size)
-            return false;
+        if (method == SPK_METHOD_STORED && packed_size != original_size) return false;
         /* The reference reader rejects a member whose every field is zero; such a "member" is
          * indistinguishable from padding. */
-        if (packed_size == 0U && original_size == 0U &&
-            xx_data_get_u16(header + 0x13, 2, 0, false) == 0U && xx_data_get_u16(header + 0x15, 2, 0, false) == 0U &&
+        if (packed_size == 0U && original_size == 0U && xx_data_get_u16(header + 0x13, 2, 0, false) == 0U && xx_data_get_u16(header + 0x15, 2, 0, false) == 0U &&
             xx_data_get_u16(header + 0x17, 2, 0, false) == 0U)
             return false;
 
-        component = spk_component(header + 2, XX_SPK_NAME_SIZE,
-                                  stream->count == 0U);
+        component = spk_component(header + 2, XX_SPK_NAME_SIZE, stream->count == 0U);
         if (!component) return false;
         path = spk_join(prefix, component);
         xx_mem_free(component);
@@ -233,9 +218,7 @@ static bool spk_walk(Abstractformat *format, spk_stream *stream,
         data_offset = offset + (int64_t)XX_SPK_HEADER_SIZE;
         /* A directory is a stored member whose RISC OS file type is 0xddc;
          * its data is a nested chain, not content. */
-        folder = (method == SPK_METHOD_STORED &&
-                  (load_address & 0xfff00000U) == 0xfff00000U &&
-                  ((load_address >> 8U) & 0xfffU) == XX_SPK_TYPE_DIRECTORY);
+        folder = (method == SPK_METHOD_STORED && (load_address & 0xfff00000U) == 0xfff00000U && ((load_address >> 8U) & 0xfffU) == XX_SPK_TYPE_DIRECTORY);
 
         member = spk_stream_push(stream);
         if (!member) {
@@ -259,10 +242,7 @@ static bool spk_walk(Abstractformat *format, spk_stream *stream,
 
         if (folder) {
             int64_t nested_end = 0;
-            if (!spk_walk(format, stream, data_offset,
-                          data_offset + (int64_t)packed_size, depth + 1U, path,
-                          &nested_end, pd))
-                return false;
+            if (!spk_walk(format, stream, data_offset, data_offset + (int64_t)packed_size, depth + 1U, path, &nested_end, pd)) return false;
         }
         offset = data_offset + (int64_t)packed_size;
     }
@@ -272,14 +252,12 @@ static bool spk_walk(Abstractformat *format, spk_stream *stream,
 
 /* --------------------------------------------------------------- parse -- */
 
-static bool spk_parse(Abstractformat *format, spk_stream **result,
-                      xx_pd_struct *pd) {
+static bool spk_parse(Abstractformat *format, spk_stream **result, xx_pd_struct *pd)
+{
     spk_stream *stream;
     int64_t total, span, end = 0;
 
-    if (!format || !format->device || !result || format->base_address < 0 ||
-        (pd && xx_pd_is_stopped(pd)))
-        return false;
+    if (!format || !format->device || !result || format->base_address < 0 || (pd && xx_pd_is_stopped(pd))) return false;
     total = xx_io_total_size(format->device);
     if (total < format->base_address) return false;
     span = total - format->base_address;
@@ -304,54 +282,37 @@ static bool spk_parse(Abstractformat *format, spk_stream **result,
 
 /* ------------------------------------------------------------- decode -- */
 
-static bool spk_decode_member(Abstractformat *format, const spk_member *member,
-                              uint8_t **plain, size_t *plain_size) {
+static bool spk_decode_member(Abstractformat *format, const spk_member *member, uint8_t **plain, size_t *plain_size)
+{
     uint8_t *packed = NULL;
     uint8_t *output = NULL;
     size_t written = 0U;
     bool decoded = false;
 
-    if (!format || !member || !plain || !plain_size || member->folder)
-        return false;
+    if (!format || !member || !plain || !plain_size || member->folder) return false;
     if (!spk_has_decoder(member->method)) return false;
-    packed = (uint8_t *)xx_mem_alloc(member->packed_size != 0U
-                                         ? member->packed_size
-                                         : 1U);
-    output = (uint8_t *)xx_mem_alloc(member->original_size != 0U
-                                         ? member->original_size
-                                         : 1U);
+    packed = (uint8_t *)xx_mem_alloc(member->packed_size != 0U ? member->packed_size : 1U);
+    output = (uint8_t *)xx_mem_alloc(member->original_size != 0U ? member->original_size : 1U);
     if (!packed || !output) goto done;
-    if (member->packed_size != 0U &&
-        !spk_read_at(format->device, member->data_offset, packed,
-                     member->packed_size))
-        goto done;
+    if (member->packed_size != 0U && !spk_read_at(format->device, member->data_offset, packed, member->packed_size)) goto done;
 
-    if (member->method == SPK_METHOD_STORED ||
-        member->method == SPK_METHOD_STORED_OLD) {
+    if (member->method == SPK_METHOD_STORED || member->method == SPK_METHOD_STORED_OLD) {
         if (member->packed_size != member->original_size) goto done;
-        if (member->original_size != 0U)
-            xx_rt_memcpy(output, packed, member->original_size);
+        if (member->original_size != 0U) xx_rt_memcpy(output, packed, member->original_size);
         written = member->original_size;
         decoded = true;
     } else if (member->method == SPK_METHOD_PACKED) {
-        decoded = xx_arcfs_rle90_decode_memory(packed, member->packed_size,
-                                               output, member->original_size,
-                                               &written);
+        decoded = xx_arcfs_rle90_decode_memory(packed, member->packed_size, output, member->original_size, &written);
     } else if (member->method == SPK_METHOD_SQUASHED) {
         /* Squashed has no header byte: the code width is fixed at 13. */
-        decoded = xx_arcfs_lzw_decode_memory(packed, member->packed_size,
-                                             output, member->original_size,
-                                             SPK_SQUASHED_MAX_BITS, false,
-                                             &written);
+        decoded = xx_arcfs_lzw_decode_memory(packed, member->packed_size, output, member->original_size, SPK_SQUASHED_MAX_BITS, false, &written);
     } else {
         /* Crunched and compressed both carry the Unix-compress one-byte
          * header; its low five bits are the maximum code width.  Crunched
          * additionally runs RLE90 over the LZW output. */
         if (member->packed_size < 1U) goto done;
-        decoded = xx_arcfs_lzw_decode_memory(
-            packed + 1, member->packed_size - 1U, output,
-            member->original_size, (uint8_t)(packed[0] & 0x1fU),
-            member->method == SPK_METHOD_CRUNCHED, &written);
+        decoded = xx_arcfs_lzw_decode_memory(packed + 1, member->packed_size - 1U, output, member->original_size, (uint8_t)(packed[0] & 0x1fU),
+                                             member->method == SPK_METHOD_CRUNCHED, &written);
     }
     if (!decoded || written != member->original_size) goto done;
     xx_mem_free(packed);
@@ -366,17 +327,16 @@ done:
 
 /* -------------------------------------------------------------- record -- */
 
-static bool spk_copy_options(xx_list_s *destination, const xx_list_s *source) {
+static bool spk_copy_options(xx_list_s *destination, const xx_list_s *source)
+{
     size_t index;
     if (!source) return true;
     for (index = 0U; index < source->count; ++index) {
-        const xx_meta *item =
-            (const xx_meta *)xx_list_at((const xx_list_t *)source, index);
+        const xx_meta *item = (const xx_meta *)xx_list_at((const xx_list_t *)source, index);
         xx_meta copy;
         if (!item) continue;
         xx_meta_init(&copy, item->meta_id);
-        if (!xx_var_copy(&copy.var, &item->var) ||
-            !xx_list_append(destination, &copy)) {
+        if (!xx_var_copy(&copy.var, &item->var) || !xx_list_append(destination, &copy)) {
             xx_meta_cleanup(&copy);
             return false;
         }
@@ -384,19 +344,19 @@ static bool spk_copy_options(xx_list_s *destination, const xx_list_s *source) {
     return true;
 }
 
-static const xx_var *spk_option(const xx_list_s *options, uint32_t id) {
+static const xx_var *spk_option(const xx_list_s *options, uint32_t id)
+{
     size_t index;
     if (!options) return NULL;
     for (index = 0U; index < options->count; ++index) {
-        const xx_meta *item =
-            (const xx_meta *)xx_list_at((const xx_list_t *)options, index);
+        const xx_meta *item = (const xx_meta *)xx_list_at((const xx_list_t *)options, index);
         if (item && item->meta_id == id) return &item->var;
     }
     return NULL;
 }
 
-static bool spk_set_record(xx_archive_record *record,
-                           const spk_member *member) {
+static bool spk_set_record(xx_archive_record *record, const spk_member *member)
+{
     xx_archive_record_cleanup(record);
     xx_archive_record_init(record);
     record->header_offset = member->header_offset;
@@ -404,30 +364,19 @@ static bool spk_set_record(xx_archive_record *record,
     record->data_offset = member->data_offset;
     record->compressed_size = member->folder ? 0 : (int64_t)member->packed_size;
     return xx_archive_record_set_original_name(record, member->path) &&
-           xx_archive_record_set_meta_u64(
-               record, XX_META_ID_COMPRESSED_SIZE,
-               member->folder ? 0U : member->packed_size) &&
-           xx_archive_record_set_meta_u64(record, XX_META_ID_UNCOMPRESSED_SIZE,
-                                          member->original_size) &&
-           xx_archive_record_set_meta_u64(record, XX_META_ID_COMPRESSION_METHOD,
-                                          member->method) &&
-           xx_archive_record_set_meta_u64(record, XX_META_ID_CRC32,
-                                          member->crc) &&
-           xx_archive_record_set_meta_u64(record, XX_META_ID_LAST_MOD_DATE,
-                                          member->dos_date) &&
-           xx_archive_record_set_meta_u64(record, XX_META_ID_LAST_MOD_TIME,
-                                          member->dos_time) &&
-           xx_archive_record_set_meta_u64(record, XX_META_ID_ATTRIBUTES,
-                                          member->attributes) &&
-           xx_archive_record_set_meta_bool(record, XX_META_ID_IS_ENCRYPTED,
-                                           false) &&
-           xx_archive_record_set_meta_bool(record, XX_META_ID_IS_FOLDER,
-                                           member->folder);
+           xx_archive_record_set_meta_u64(record, XX_META_ID_COMPRESSED_SIZE, member->folder ? 0U : member->packed_size) &&
+           xx_archive_record_set_meta_u64(record, XX_META_ID_UNCOMPRESSED_SIZE, member->original_size) &&
+           xx_archive_record_set_meta_u64(record, XX_META_ID_COMPRESSION_METHOD, member->method) &&
+           xx_archive_record_set_meta_u64(record, XX_META_ID_CRC32, member->crc) && xx_archive_record_set_meta_u64(record, XX_META_ID_LAST_MOD_DATE, member->dos_date) &&
+           xx_archive_record_set_meta_u64(record, XX_META_ID_LAST_MOD_TIME, member->dos_time) &&
+           xx_archive_record_set_meta_u64(record, XX_META_ID_ATTRIBUTES, member->attributes) && xx_archive_record_set_meta_bool(record, XX_META_ID_IS_ENCRYPTED, false) &&
+           xx_archive_record_set_meta_bool(record, XX_META_ID_IS_FOLDER, member->folder);
 }
 
 /* ----------------------------------------------------------- lifecycle -- */
 
-void xx_spk_init(xx_spk *archive, xx_io_device *device, int64_t base_address) {
+void xx_spk_init(xx_spk *archive, xx_io_device *device, int64_t base_address)
+{
     if (!archive) return;
     xx_mem_zero(archive, sizeof(*archive));
     xx_format_init(&archive->format, device, base_address);
@@ -441,31 +390,28 @@ void xx_spk_init(xx_spk *archive, xx_io_device *device, int64_t base_address) {
     archive->format.check_is_valid = xx_spk_check_is_valid;
     archive->format.handle_base_info = xx_spk_handle_base_info;
     archive->format.get_format_size = xx_spk_get_format_size;
-    archive->format.get_number_of_archive_records =
-        xx_spk_get_number_of_archive_records;
-    archive->format.create_archive_records_reading =
-        xx_spk_create_archive_records_reading;
-    archive->format.get_current_archive_record =
-        xx_spk_get_current_archive_record;
-    archive->format.unpack_current_archive_record =
-        xx_spk_unpack_current_archive_record;
-    archive->format.archive_record_move_to_next =
-        xx_spk_archive_record_move_to_next;
-    archive->format.free_archive_records_reading =
-        xx_spk_free_archive_records_reading;
+    archive->format.get_number_of_archive_records = xx_spk_get_number_of_archive_records;
+    archive->format.create_archive_records_reading = xx_spk_create_archive_records_reading;
+    archive->format.get_current_archive_record = xx_spk_get_current_archive_record;
+    archive->format.unpack_current_archive_record = xx_spk_unpack_current_archive_record;
+    archive->format.archive_record_move_to_next = xx_spk_archive_record_move_to_next;
+    archive->format.free_archive_records_reading = xx_spk_free_archive_records_reading;
 }
 
-xx_spk *xx_spk_create(xx_io_device *device, int64_t base_address) {
+xx_spk *xx_spk_create(xx_io_device *device, int64_t base_address)
+{
     xx_spk *archive = (xx_spk *)xx_mem_alloc(sizeof(*archive));
     if (archive) xx_spk_init(archive, device, base_address);
     return archive;
 }
 
-void xx_spk_destroy(xx_spk *archive) {
+void xx_spk_destroy(xx_spk *archive)
+{
     if (archive) xx_format_cleanup_extra_parameters(&archive->format);
 }
 
-void xx_spk_free(xx_spk *archive) {
+void xx_spk_free(xx_spk *archive)
+{
     if (!archive) return;
     xx_spk_destroy(archive);
     xx_mem_free(archive);
@@ -473,14 +419,16 @@ void xx_spk_free(xx_spk *archive) {
 
 /* -------------------------------------------------------------- format -- */
 
-bool xx_spk_check_is_valid(Abstractformat *format, xx_pd_struct *pd) {
+bool xx_spk_check_is_valid(Abstractformat *format, xx_pd_struct *pd)
+{
     spk_stream *stream;
     if (!spk_parse(format, &stream, pd)) return false;
     spk_stream_free(stream);
     return true;
 }
 
-bool xx_spk_handle_base_info(Abstractformat *format, xx_pd_struct *pd) {
+bool xx_spk_handle_base_info(Abstractformat *format, xx_pd_struct *pd)
+{
     spk_stream *stream;
     xx_spk *archive;
     int64_t total;
@@ -511,26 +459,20 @@ bool xx_spk_handle_base_info(Abstractformat *format, xx_pd_struct *pd) {
     return true;
 }
 
-int64_t xx_spk_get_format_size(Abstractformat *format, xx_pd_struct *pd) {
-    return format &&
-                   (format->base_info_handled ||
-                    xx_spk_handle_base_info(format, pd))
-               ? format->format_size
-               : -1;
+int64_t xx_spk_get_format_size(Abstractformat *format, xx_pd_struct *pd)
+{
+    return format && (format->base_info_handled || xx_spk_handle_base_info(format, pd)) ? format->format_size : -1;
 }
 
-uint64_t xx_spk_get_number_of_archive_records(Abstractformat *format,
-                                              xx_pd_struct *pd) {
-    return format && (format->base_info_handled ||
-                      xx_spk_handle_base_info(format, pd))
-               ? ((xx_spk *)format)->number_of_records
-               : 0U;
+uint64_t xx_spk_get_number_of_archive_records(Abstractformat *format, xx_pd_struct *pd)
+{
+    return format && (format->base_info_handled || xx_spk_handle_base_info(format, pd)) ? ((xx_spk *)format)->number_of_records : 0U;
 }
 
 /* ------------------------------------------------------ record reading -- */
 
-xx_archive_record_state *xx_spk_create_archive_records_reading(
-    Abstractformat *format, const xx_list_s *options, xx_pd_struct *pd) {
+xx_archive_record_state *xx_spk_create_archive_records_reading(Abstractformat *format, const xx_list_s *options, xx_pd_struct *pd)
+{
     spk_stream *stream;
     xx_archive_record_state *state;
 
@@ -544,8 +486,7 @@ xx_archive_record_state *xx_spk_create_archive_records_reading(
     state->internal_state = stream;
     state->free_internal = spk_stream_free;
     state->total_records = (int64_t)stream->count;
-    if (!spk_copy_options(&state->options, options) ||
-        !spk_set_record(&state->current_record, &stream->items[0])) {
+    if (!spk_copy_options(&state->options, options) || !spk_set_record(&state->current_record, &stream->items[0])) {
         xx_archive_record_state_free(state);
         return NULL;
     }
@@ -553,33 +494,26 @@ xx_archive_record_state *xx_spk_create_archive_records_reading(
     return state;
 }
 
-const xx_archive_record *xx_spk_get_current_archive_record(
-    Abstractformat *format, xx_archive_record_state *state) {
-    return format && state && state->format == format && state->has_record
-               ? &state->current_record
-               : NULL;
+const xx_archive_record *xx_spk_get_current_archive_record(Abstractformat *format, xx_archive_record_state *state)
+{
+    return format && state && state->format == format && state->has_record ? &state->current_record : NULL;
 }
 
-bool xx_spk_archive_record_move_to_next(Abstractformat *format,
-                                        xx_archive_record_state *state,
-                                        xx_pd_struct *pd) {
+bool xx_spk_archive_record_move_to_next(Abstractformat *format, xx_archive_record_state *state, xx_pd_struct *pd)
+{
     spk_stream *stream;
     (void)pd;
-    if (!format || !state || state->format != format ||
-        !(stream = (spk_stream *)state->internal_state) ||
-        ++stream->index >= stream->count) {
+    if (!format || !state || state->format != format || !(stream = (spk_stream *)state->internal_state) || ++stream->index >= stream->count) {
         if (state) state->has_record = false;
         return false;
     }
     ++state->current_index;
-    state->has_record =
-        spk_set_record(&state->current_record, &stream->items[stream->index]);
+    state->has_record = spk_set_record(&state->current_record, &stream->items[stream->index]);
     return state->has_record;
 }
 
-bool xx_spk_unpack_current_archive_record(Abstractformat *format,
-                                          xx_archive_record_state *state,
-                                          xx_pd_struct *pd) {
+bool xx_spk_unpack_current_archive_record(Abstractformat *format, xx_archive_record_state *state, xx_pd_struct *pd)
+{
     spk_stream *stream;
     const spk_member *member;
     const xx_var *path_option;
@@ -592,9 +526,8 @@ bool xx_spk_unpack_current_archive_record(Abstractformat *format,
     bool result = false;
     bool created = false;
 
-    if (!format || !state || state->format != format || !state->has_record ||
-        !(stream = (spk_stream *)state->internal_state) ||
-        stream->index >= stream->count || (pd && xx_pd_is_stopped(pd)))
+    if (!format || !state || state->format != format || !state->has_record || !(stream = (spk_stream *)state->internal_state) || stream->index >= stream->count ||
+        (pd && xx_pd_is_stopped(pd)))
         return false;
     member = &stream->items[stream->index];
 
@@ -613,19 +546,15 @@ bool xx_spk_unpack_current_archive_record(Abstractformat *format,
         result = true;
         goto done;
     }
-    if (path_option->type == XX_VAR_TYPE_STRING ||
-        path_option->type == XX_VAR_TYPE_STRING_VIEW) {
+    if (path_option->type == XX_VAR_TYPE_STRING || path_option->type == XX_VAR_TYPE_STRING_VIEW) {
         base = xx_var_get_str(path_option);
-    } else if (path_option->type == XX_VAR_TYPE_WSTRING ||
-               path_option->type == XX_VAR_TYPE_WSTRING_VIEW) {
+    } else if (path_option->type == XX_VAR_TYPE_WSTRING || path_option->type == XX_VAR_TYPE_WSTRING_VIEW) {
         owned_base = xx_str_unicode_to_utf8(xx_var_get_wstr(path_option));
         base = owned_base;
     }
     if (!base) goto done;
-    path = (base[0] && base[xx_str_len(base) - 1U] != '/' &&
-            base[xx_str_len(base) - 1U] != '\\')
-               ? xx_str_concat3(base, "/", member->path)
-               : xx_str_concat(base, member->path);
+    path = (base[0] && base[xx_str_len(base) - 1U] != '/' && base[xx_str_len(base) - 1U] != '\\') ? xx_str_concat3(base, "/", member->path)
+                                                                                                  : xx_str_concat(base, member->path);
     if (!path) goto done;
     if (member->folder) {
         /* Create the directory itself by asking for a child path's parents. */
@@ -641,8 +570,7 @@ bool xx_spk_unpack_current_archive_record(Abstractformat *format,
         if (!destination) goto done;
         result = true;
         while (written < plain_size) {
-            ssize_t amount =
-                xx_io_write(destination, plain + written, plain_size - written);
+            ssize_t amount = xx_io_write(destination, plain + written, plain_size - written);
             if (amount <= 0 || (size_t)amount > plain_size - written) {
                 result = false;
                 break;
@@ -659,8 +587,8 @@ done:
     return result;
 }
 
-void xx_spk_free_archive_records_reading(Abstractformat *format,
-                                         xx_archive_record_state *state) {
+void xx_spk_free_archive_records_reading(Abstractformat *format, xx_archive_record_state *state)
+{
     (void)format;
     xx_archive_record_state_free(state);
 }

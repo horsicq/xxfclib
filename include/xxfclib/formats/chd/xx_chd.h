@@ -48,9 +48,9 @@ typedef struct xx_chd {
     uint32_t unit_bytes;
     uint32_t hunk_count;
     uint64_t logical_bytes;
-    uint32_t codecs[4];     /**< v5 codec tags; v1-v4 map to 'zlib'. */
-    uint32_t kind;          /**< XX_CHD_KIND_* */
-    uint32_t track_count;   /**< CD / GD-ROM tracks. */
+    uint32_t codecs[4];   /**< v5 codec tags; v1-v4 map to 'zlib'. */
+    uint32_t kind;        /**< XX_CHD_KIND_* */
+    uint32_t track_count; /**< CD / GD-ROM tracks. */
     uint64_t number_of_records;
     bool has_parent;
 } xx_chd;
@@ -64,29 +64,21 @@ typedef xx_chd xx_chd_t;
 #define XX_CHD_KIND_DVD 4U
 #define XX_CHD_KIND_AV 5U
 
-XXFC_API void xx_chd_init(xx_chd *archive, xx_io_device *device,
-                          int64_t base_address);
+XXFC_API void xx_chd_init(xx_chd *archive, xx_io_device *device, int64_t base_address);
 XXFC_API xx_chd *xx_chd_create(xx_io_device *device, int64_t base_address);
 XXFC_API void xx_chd_destroy(xx_chd *archive);
 XXFC_API void xx_chd_free(xx_chd *archive);
 
 XXFC_API bool xx_chd_check_is_valid(Abstractformat *self, xx_pd_struct *pd);
 XXFC_API bool xx_chd_handle_base_info(Abstractformat *self, xx_pd_struct *pd);
-XXFC_API int64_t xx_chd_get_format_size(Abstractformat *self,
-                                        xx_pd_struct *pd);
-XXFC_API uint64_t xx_chd_get_number_of_archive_records(Abstractformat *self,
-                                                       xx_pd_struct *pd);
+XXFC_API int64_t xx_chd_get_format_size(Abstractformat *self, xx_pd_struct *pd);
+XXFC_API uint64_t xx_chd_get_number_of_archive_records(Abstractformat *self, xx_pd_struct *pd);
 
-XXFC_API xx_archive_record_state *xx_chd_create_archive_records_reading(
-    Abstractformat *self, const xx_list_s *options, xx_pd_struct *pd);
-XXFC_API const xx_archive_record *xx_chd_get_current_archive_record(
-    Abstractformat *self, xx_archive_record_state *state);
-XXFC_API bool xx_chd_unpack_current_archive_record(
-    Abstractformat *self, xx_archive_record_state *state, xx_pd_struct *pd);
-XXFC_API bool xx_chd_archive_record_move_to_next(
-    Abstractformat *self, xx_archive_record_state *state, xx_pd_struct *pd);
-XXFC_API void xx_chd_free_archive_records_reading(
-    Abstractformat *self, xx_archive_record_state *state);
+XXFC_API xx_archive_record_state *xx_chd_create_archive_records_reading(Abstractformat *self, const xx_list_s *options, xx_pd_struct *pd);
+XXFC_API const xx_archive_record *xx_chd_get_current_archive_record(Abstractformat *self, xx_archive_record_state *state);
+XXFC_API bool xx_chd_unpack_current_archive_record(Abstractformat *self, xx_archive_record_state *state, xx_pd_struct *pd);
+XXFC_API bool xx_chd_archive_record_move_to_next(Abstractformat *self, xx_archive_record_state *state, xx_pd_struct *pd);
+XXFC_API void xx_chd_free_archive_records_reading(Abstractformat *self, xx_archive_record_state *state);
 
 #ifdef __cplusplus
 }

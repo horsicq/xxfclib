@@ -128,40 +128,32 @@ struct xx_yaffs {
     Abstractformat format;
     uint64_t number_of_records;
     uint64_t number_of_members;
-    uint32_t page_size;   /**< Detected NAND page size in bytes. */
-    uint32_t spare_size;  /**< Detected spare/OOB size, 0 when not present. */
-    uint32_t tag_offset;  /**< Byte offset of the tags inside the spare. */
-    uint32_t version;     /**< 1 for YAFFS1 tags, 2 for YAFFS2 tags. */
-    bool big_endian;      /**< True when the image was built big endian. */
-    bool has_spare;       /**< False for in-band tags and the tag-less
-                               layout (an image whose spare was stripped). */
-    int64_t archive_end;  /**< base_address + whole chunks, or -1. */
+    uint32_t page_size;  /**< Detected NAND page size in bytes. */
+    uint32_t spare_size; /**< Detected spare/OOB size, 0 when not present. */
+    uint32_t tag_offset; /**< Byte offset of the tags inside the spare. */
+    uint32_t version;    /**< 1 for YAFFS1 tags, 2 for YAFFS2 tags. */
+    bool big_endian;     /**< True when the image was built big endian. */
+    bool has_spare;      /**< False for in-band tags and the tag-less
+                              layout (an image whose spare was stripped). */
+    int64_t archive_end; /**< base_address + whole chunks, or -1. */
     void *internal;
 };
 
-XXFC_API void xx_yaffs_init(xx_yaffs *yaffs, xx_io_device *dev,
-                            int64_t base_address);
+XXFC_API void xx_yaffs_init(xx_yaffs *yaffs, xx_io_device *dev, int64_t base_address);
 XXFC_API xx_yaffs *xx_yaffs_create(xx_io_device *dev, int64_t base_address);
 XXFC_API void xx_yaffs_destroy(xx_yaffs *yaffs);
 XXFC_API void xx_yaffs_free(xx_yaffs *yaffs);
 
 XXFC_API bool xx_yaffs_check_is_valid(Abstractformat *self, xx_pd_struct *pd);
 XXFC_API bool xx_yaffs_handle_base_info(Abstractformat *self, xx_pd_struct *pd);
-XXFC_API int64_t xx_yaffs_get_format_size(Abstractformat *self,
-                                          xx_pd_struct *pd);
-XXFC_API uint64_t xx_yaffs_get_number_of_archive_records(Abstractformat *self,
-                                                         xx_pd_struct *pd);
+XXFC_API int64_t xx_yaffs_get_format_size(Abstractformat *self, xx_pd_struct *pd);
+XXFC_API uint64_t xx_yaffs_get_number_of_archive_records(Abstractformat *self, xx_pd_struct *pd);
 
-XXFC_API xx_archive_record_state *xx_yaffs_create_archive_records_reading(
-    Abstractformat *self, const xx_list_s *options, xx_pd_struct *pd);
-XXFC_API const xx_archive_record *xx_yaffs_get_current_archive_record(
-    Abstractformat *self, xx_archive_record_state *state);
-XXFC_API bool xx_yaffs_unpack_current_archive_record(
-    Abstractformat *self, xx_archive_record_state *state, xx_pd_struct *pd);
-XXFC_API bool xx_yaffs_archive_record_move_to_next(
-    Abstractformat *self, xx_archive_record_state *state, xx_pd_struct *pd);
-XXFC_API void xx_yaffs_free_archive_records_reading(
-    Abstractformat *self, xx_archive_record_state *state);
+XXFC_API xx_archive_record_state *xx_yaffs_create_archive_records_reading(Abstractformat *self, const xx_list_s *options, xx_pd_struct *pd);
+XXFC_API const xx_archive_record *xx_yaffs_get_current_archive_record(Abstractformat *self, xx_archive_record_state *state);
+XXFC_API bool xx_yaffs_unpack_current_archive_record(Abstractformat *self, xx_archive_record_state *state, xx_pd_struct *pd);
+XXFC_API bool xx_yaffs_archive_record_move_to_next(Abstractformat *self, xx_archive_record_state *state, xx_pd_struct *pd);
+XXFC_API void xx_yaffs_free_archive_records_reading(Abstractformat *self, xx_archive_record_state *state);
 
 XXFC_API uint64_t xx_yaffs_get_number_of_records(const xx_yaffs *yaffs);
 XXFC_API uint64_t xx_yaffs_get_number_of_members(const xx_yaffs *yaffs);
@@ -171,19 +163,24 @@ XXFC_API uint32_t xx_yaffs_get_version(const xx_yaffs *yaffs);
 XXFC_API bool xx_yaffs_get_big_endian(const xx_yaffs *yaffs);
 XXFC_API int64_t xx_yaffs_get_archive_end(const xx_yaffs *yaffs);
 
-static inline Abstractformat *xx_yaffs_to_format(xx_yaffs *yaffs) {
+static inline Abstractformat *xx_yaffs_to_format(xx_yaffs *yaffs)
+{
     return yaffs ? &yaffs->format : NULL;
 }
-static inline void XYaffs_init(xx_yaffs *yaffs, xx_io_device *dev,
-                               int64_t base_address) {
+static inline void XYaffs_init(xx_yaffs *yaffs, xx_io_device *dev, int64_t base_address)
+{
     xx_yaffs_init(yaffs, dev, base_address);
 }
-static inline xx_yaffs *XYaffs_create(xx_io_device *dev,
-                                      int64_t base_address) {
+static inline xx_yaffs *XYaffs_create(xx_io_device *dev, int64_t base_address)
+{
     return xx_yaffs_create(dev, base_address);
 }
-static inline void XYaffs_free(xx_yaffs *yaffs) { xx_yaffs_free(yaffs); }
-static inline bool XYaffs_is_valid(xx_yaffs *yaffs, xx_pd_struct *pd) {
+static inline void XYaffs_free(xx_yaffs *yaffs)
+{
+    xx_yaffs_free(yaffs);
+}
+static inline bool XYaffs_is_valid(xx_yaffs *yaffs, xx_pd_struct *pd)
+{
     return yaffs ? xx_format_is_valid(&yaffs->format, pd) : false;
 }
 

@@ -4,22 +4,28 @@
 #include "xx_settings_internal.h"
 #include "platforms/xx_settings_platform.h"
 
-static bool space(char c) { return c == ' ' || c == '\t' || c == '\r'; }
-static char *trim(char *text) {
+static bool space(char c)
+{
+    return c == ' ' || c == '\t' || c == '\r';
+}
+static char *trim(char *text)
+{
     size_t length;
     while (space(*text)) ++text;
     length = xx_rt_strlen(text);
     while (length && space(text[length - 1])) text[--length] = 0;
     return text;
 }
-static int hex(char c) {
+static int hex(char c)
+{
     if (c >= '0' && c <= '9') return c - '0';
     if (c >= 'a' && c <= 'f') return c - 'a' + 10;
     if (c >= 'A' && c <= 'F') return c - 'A' + 10;
     return -1;
 }
 
-static char *decode_key(const char *text) {
+static char *decode_key(const char *text)
+{
     char *key = xx_settings_duplicate(text, xx_rt_strlen(text));
     size_t out = 0;
     if (!key) return NULL;
@@ -28,7 +34,10 @@ static char *decode_key(const char *text) {
         if (c == '%' && text[i + 1] && text[i + 2] && hex(text[i + 1]) >= 0 && hex(text[i + 2]) >= 0) {
             c = (char)((hex(text[i + 1]) << 4) | hex(text[i + 2]));
             i += 2;
-            if (!c) { xx_rt_free(key); return NULL; }
+            if (!c) {
+                xx_rt_free(key);
+                return NULL;
+            }
         }
         key[out++] = c == '\\' ? '/' : c;
     }
@@ -36,12 +45,16 @@ static char *decode_key(const char *text) {
     return key;
 }
 
-static xxfc_status_t decode_text(const char *text, xx_settings_buffer *buffer) {
+static xxfc_status_t decode_text(const char *text, xx_settings_buffer *buffer)
+{
     size_t size = xx_rt_strlen(text);
     bool quoted = false;
     for (size_t i = 0; i < size; ++i) {
         char c = text[i];
-        if (c == '"') { quoted = !quoted; continue; }
+        if (c == '"') {
+            quoted = !quoted;
+            continue;
+        }
         if (c == '\\') {
             if (++i == size) return XXFC_ERR_INVALID_ARG;
             c = text[i];
@@ -54,13 +67,17 @@ static xxfc_status_t decode_text(const char *text, xx_settings_buffer *buffer) {
                 case 'b': c = '\b'; break;
                 case 'f': c = '\f'; break;
                 case 'v': c = '\v'; break;
-                case '\\': case '"': break;
+                case '\\':
+                case '"': break;
                 case 'x': {
                     int digit;
                     if (i + 1 >= size || (digit = hex(text[i + 1])) < 0) return XXFC_ERR_INVALID_ARG;
                     c = (char)digit;
                     ++i;
-                    if (i + 1 < size && (digit = hex(text[i + 1])) >= 0) { c = (char)(((unsigned char)c << 4) | digit); ++i; }
+                    if (i + 1 < size && (digit = hex(text[i + 1])) >= 0) {
+                        c = (char)(((unsigned char)c << 4) | digit);
+                        ++i;
+                    }
                     break;
                 }
                 default:
@@ -74,13 +91,17 @@ static xxfc_status_t decode_text(const char *text, xx_settings_buffer *buffer) {
     return xx_settings_buffer_append(buffer, "", 0) ? XXFC_OK : XXFC_ERR_OUT_OF_MEMORY;
 }
 
-xxfc_status_t xx_settings_read_ini(xx_settings *settings) {
+xxfc_status_t xx_settings_read_ini(xx_settings *settings)
+{
     char *file = NULL, *section = NULL, *line;
     size_t size = 0;
     xxfc_status_t status = xx_settings_platform_read_file(settings->location, &file, &size);
     if (status != XXFC_OK) return status;
     if (!file) return XXFC_OK; /* Missing file. */
-    if (xx_rt_memchr(file, 0, size)) { xx_rt_free(file); return XXFC_ERR_INVALID_ARG; }
+    if (xx_rt_memchr(file, 0, size)) {
+        xx_rt_free(file);
+        return XXFC_ERR_INVALID_ARG;
+    }
     line = file;
     if (size >= 3 && (unsigned char)file[0] == 0xef && (unsigned char)file[1] == 0xbb && (unsigned char)file[2] == 0xbf) line += 3;
     while (*line && status == XXFC_OK) {
@@ -91,7 +112,10 @@ xxfc_status_t xx_settings_read_ini(xx_settings *settings) {
         if (text[0] && text[0] != ';' && text[0] != '#') {
             if (text[0] == '[') {
                 size_t length = xx_rt_strlen(text);
-                if (length < 2 || text[length - 1] != ']') { status = XXFC_ERR_INVALID_ARG; break; }
+                if (length < 2 || text[length - 1] != ']') {
+                    status = XXFC_ERR_INVALID_ARG;
+                    break;
+                }
                 text[length - 1] = 0;
                 xx_rt_free(section);
                 if (xx_rt_strcmp(text + 1, "General") == 0) section = xx_settings_duplicate("", 0);
@@ -99,14 +123,18 @@ xxfc_status_t xx_settings_read_ini(xx_settings *settings) {
                 if (!section) status = XXFC_ERR_INVALID_ARG;
             } else {
                 char *equal = xx_rt_strchr(text, '=');
-                if (!equal) { status = XXFC_ERR_INVALID_ARG; break; }
+                if (!equal) {
+                    status = XXFC_ERR_INVALID_ARG;
+                    break;
+                }
                 *equal++ = 0;
                 char *name = decode_key(trim(text));
                 xx_settings_buffer key = {0}, decoded = {0};
                 xx_settings_value value = {0};
                 if (!name) status = XXFC_ERR_INVALID_ARG;
                 else if ((section && section[0] && (!xx_settings_buffer_text(&key, section) || !xx_settings_buffer_text(&key, "/"))) ||
-                         !xx_settings_buffer_text(&key, name)) status = XXFC_ERR_OUT_OF_MEMORY;
+                         !xx_settings_buffer_text(&key, name))
+                    status = XXFC_ERR_OUT_OF_MEMORY;
                 if (status == XXFC_OK) status = decode_text(trim(equal), &decoded);
                 if (status == XXFC_OK) status = xx_settings_decode_value(decoded.data, decoded.size, &value);
                 if (status == XXFC_OK) status = xx_settings_set(settings, key.data, &value);
@@ -124,7 +152,8 @@ xxfc_status_t xx_settings_read_ini(xx_settings *settings) {
     return status;
 }
 
-static bool encode_key(xx_settings_buffer *buffer, const char *key, size_t size, bool nested) {
+static bool encode_key(xx_settings_buffer *buffer, const char *key, size_t size, bool nested)
+{
     static const char digits[] = "0123456789ABCDEF";
     for (size_t i = 0; i < size; ++i) {
         unsigned char c = (unsigned char)key[i];
@@ -140,7 +169,8 @@ static bool encode_key(xx_settings_buffer *buffer, const char *key, size_t size,
     return true;
 }
 
-static bool encode_text(xx_settings_buffer *buffer, const char *text) {
+static bool encode_text(xx_settings_buffer *buffer, const char *text)
+{
     static const char digits[] = "0123456789abcdef";
     if (!xx_settings_buffer_text(buffer, "\"")) return false;
     for (const unsigned char *p = (const unsigned char *)text; *p; ++p) {
@@ -153,8 +183,9 @@ static bool encode_text(xx_settings_buffer *buffer, const char *text) {
             case '\\': escape = "\\\\"; break;
             default: break;
         }
-        if (escape) { if (!xx_settings_buffer_text(buffer, escape)) return false; }
-        else if (*p < 32) {
+        if (escape) {
+            if (!xx_settings_buffer_text(buffer, escape)) return false;
+        } else if (*p < 32) {
             char escaped[4] = {'\\', 'x', digits[*p >> 4], digits[*p & 15]};
             if (!xx_settings_buffer_append(buffer, escaped, 4)) return false;
         } else if (!xx_settings_buffer_append(buffer, p, 1)) return false;
@@ -162,7 +193,8 @@ static bool encode_text(xx_settings_buffer *buffer, const char *text) {
     return xx_settings_buffer_text(buffer, "\"\n");
 }
 
-xxfc_status_t xx_settings_write_ini(const xx_settings *settings) {
+xxfc_status_t xx_settings_write_ini(const xx_settings *settings)
+{
     xx_settings_buffer buffer = {0};
     bool success = xx_settings_buffer_text(&buffer, "; xxfclib settings v1\n");
     for (xx_settings_entry *entry = settings->entries; entry && success; entry = entry->next) {
@@ -175,7 +207,9 @@ xxfc_status_t xx_settings_write_ini(const xx_settings *settings) {
             if (slash - entry->key == 7 && xx_rt_strncmp(entry->key, "General", 7) == 0) success = xx_settings_buffer_text(&buffer, "%General");
             else success = encode_key(&buffer, entry->key, (size_t)(slash - entry->key), false);
         } else if (success) success = xx_settings_buffer_text(&buffer, "General");
-        if (success) success = xx_settings_buffer_text(&buffer, "]\n") && encode_key(&buffer, slash ? slash + 1 : entry->key, xx_rt_strlen(slash ? slash + 1 : entry->key), true) && xx_settings_buffer_text(&buffer, "=");
+        if (success)
+            success = xx_settings_buffer_text(&buffer, "]\n") &&
+                      encode_key(&buffer, slash ? slash + 1 : entry->key, xx_rt_strlen(slash ? slash + 1 : entry->key), true) && xx_settings_buffer_text(&buffer, "=");
         value = xx_settings_encode_value(&entry->value);
         if (!value) success = false;
         if (success) success = encode_text(&buffer, value);
@@ -186,7 +220,8 @@ xxfc_status_t xx_settings_write_ini(const xx_settings *settings) {
     return status;
 }
 
-xxfc_status_t xx_settings_save_native_file(const xx_settings *settings) {
+xxfc_status_t xx_settings_save_native_file(const xx_settings *settings)
+{
     xx_settings *merged = xx_settings_create_ini(settings->location);
     xxfc_status_t status;
     if (!merged) return XXFC_ERR_OUT_OF_MEMORY;

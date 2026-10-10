@@ -29,13 +29,9 @@
 /* Same bound as the reference: entries * 64 sweeps of the replacement ring. */
 #define FLS_REPLACEMENT_SCAN_LIMIT (FLS_ENTRY_COUNT * 64)
 
-static const uint16_t FLS_CLASS_BASE[FLS_CLASS_COUNT] = {
-    0x000, 0x080, 0x0c0, 0x140, 0x240, 0x640
-};
-static const uint16_t FLS_CLASS_END[FLS_CLASS_COUNT] = {
-    0x080, 0x0c0, 0x140, 0x240, 0x640, 0x1640
-};
-static const uint8_t FLS_CLASS_BITS[FLS_CLASS_COUNT] = { 7, 6, 7, 8, 10, 12 };
+static const uint16_t FLS_CLASS_BASE[FLS_CLASS_COUNT] = {0x000, 0x080, 0x0c0, 0x140, 0x240, 0x640};
+static const uint16_t FLS_CLASS_END[FLS_CLASS_COUNT] = {0x080, 0x0c0, 0x140, 0x240, 0x640, 0x1640};
+static const uint8_t FLS_CLASS_BITS[FLS_CLASS_COUNT] = {7, 6, 7, 8, 10, 12};
 
 typedef struct flslz_state {
     const uint8_t *input;
@@ -43,9 +39,9 @@ typedef struct flslz_state {
     size_t input_pos;
 
     uint8_t *output;
-    size_t output_limit;   /* hard ceiling on the decoded size */
+    size_t output_limit; /* hard ceiling on the decoded size */
     size_t produced;
-    bool store_output;     /* false in measure mode */
+    bool store_output; /* false in measure mode */
 
     uint32_t current_byte;
     int bits_left;
@@ -69,7 +65,8 @@ typedef struct flslz_state {
     uint8_t class_order[FLS_CLASS_COUNT];
 } flslz_state;
 
-static void flslz_initialize(flslz_state *s) {
+static void flslz_initialize(flslz_state *s)
+{
     int i;
     int cls;
     int code;
@@ -85,8 +82,7 @@ static void flslz_initialize(flslz_state *s) {
     }
 
     for (cls = 0; cls < FLS_CLASS_COUNT; ++cls) {
-        for (code = (int)FLS_CLASS_BASE[cls]; code < (int)FLS_CLASS_END[cls];
-             ++code) {
+        for (code = (int)FLS_CLASS_BASE[cls]; code < (int)FLS_CLASS_END[cls]; ++code) {
             s->code_classes[code] = (uint8_t)cls;
         }
     }
@@ -106,13 +102,15 @@ static void flslz_initialize(flslz_state *s) {
     s->token_counter = 0x1f3;
 }
 
-static bool flslz_read_byte(flslz_state *s, uint8_t *value) {
+static bool flslz_read_byte(flslz_state *s, uint8_t *value)
+{
     if (s->input_pos >= s->input_size) return false;
     *value = s->input[s->input_pos++];
     return true;
 }
 
-static bool flslz_read_bits(flslz_state *s, int count, uint32_t *value) {
+static bool flslz_read_bits(flslz_state *s, int count, uint32_t *value)
+{
     uint32_t result = 0;
     int take;
     int shift;
@@ -140,15 +138,14 @@ static bool flslz_read_bits(flslz_state *s, int count, uint32_t *value) {
     return true;
 }
 
-static bool flslz_read_class_order(flslz_state *s) {
+static bool flslz_read_class_order(flslz_state *s)
+{
     uint32_t first = 0;
     uint32_t second = 0;
     int output;
     int i;
 
-    if (!flslz_read_bits(s, 3, &first) || !flslz_read_bits(s, 3, &second) ||
-        first >= FLS_CLASS_COUNT || second >= FLS_CLASS_COUNT ||
-        first == second) {
+    if (!flslz_read_bits(s, 3, &first) || !flslz_read_bits(s, 3, &second) || first >= FLS_CLASS_COUNT || second >= FLS_CLASS_COUNT || first == second) {
         return false;
     }
 
@@ -163,7 +160,8 @@ static bool flslz_read_class_order(flslz_state *s) {
     return output == FLS_CLASS_COUNT;
 }
 
-static bool flslz_read_code(flslz_state *s, uint16_t *code) {
+static bool flslz_read_code(flslz_state *s, uint16_t *code)
+{
     uint32_t selector = 0;
     uint32_t extra = 0;
     uint32_t value = 0;
@@ -188,14 +186,16 @@ static bool flslz_read_code(flslz_state *s, uint16_t *code) {
 /* Advances the replacement cursor for group `group`, which scans the code range
  * of class `group - 1`.  The off-by-one between cursor index and class index is
  * deliberate and matches the reference; do not "fix" it. */
-static uint16_t flslz_advance_scan(flslz_state *s, int group) {
+static uint16_t flslz_advance_scan(flslz_state *s, int group)
+{
     uint16_t value = (uint16_t)(s->scan_cursors[group] + 1);
     if (value == FLS_CLASS_END[group - 1]) value = FLS_CLASS_BASE[group - 1];
     s->scan_cursors[group] = value;
     return value;
 }
 
-static bool flslz_swap_codes(flslz_state *s, uint16_t left, uint16_t right) {
+static bool flslz_swap_codes(flslz_state *s, uint16_t left, uint16_t right)
+{
     uint16_t left_entry;
     uint16_t right_entry;
 
@@ -212,8 +212,8 @@ static bool flslz_swap_codes(flslz_state *s, uint16_t left, uint16_t right) {
     return true;
 }
 
-static bool flslz_insert_phrase(flslz_state *s, uint16_t current_entry,
-                                const uint8_t *current, int current_length) {
+static bool flslz_insert_phrase(flslz_state *s, uint16_t current_entry, const uint8_t *current, int current_length)
+{
     uint16_t candidate;
     uint16_t old_parent;
     uint16_t current_code;
@@ -223,12 +223,8 @@ static bool flslz_insert_phrase(flslz_state *s, uint16_t current_entry,
     int new_length;
     int remaining;
 
-    if (current_entry >= FLS_ENTRY_COUNT || current_length <= 0 ||
-        current_length > FLS_MAX_PHRASE_LENGTH ||
-        s->previous_entry >= FLS_ENTRY_COUNT ||
-        s->previous_length >= FLS_MAX_PHRASE_LENGTH ||
-        s->phrase_lengths[s->previous_entry] != s->previous_length ||
-        s->reference_counts[s->previous_entry] == 0xffff) {
+    if (current_entry >= FLS_ENTRY_COUNT || current_length <= 0 || current_length > FLS_MAX_PHRASE_LENGTH || s->previous_entry >= FLS_ENTRY_COUNT ||
+        s->previous_length >= FLS_MAX_PHRASE_LENGTH || s->phrase_lengths[s->previous_entry] != s->previous_length || s->reference_counts[s->previous_entry] == 0xffff) {
         return false;
     }
     ++s->reference_counts[s->previous_entry];
@@ -245,8 +241,7 @@ static bool flslz_insert_phrase(flslz_state *s, uint16_t current_entry,
 
         if (s->ages[candidate] != 0) {
             --s->ages[candidate];
-        } else if (s->reference_counts[candidate] == 0 &&
-                   candidate != current_entry) {
+        } else if (s->reference_counts[candidate] == 0 && candidate != current_entry) {
             break;
         }
 
@@ -255,28 +250,22 @@ static bool flslz_insert_phrase(flslz_state *s, uint16_t current_entry,
 
     old_parent = s->parents[candidate];
     if (old_parent != 0xffff) {
-        if (old_parent >= FLS_ENTRY_COUNT ||
-            s->reference_counts[old_parent] == 0) {
+        if (old_parent >= FLS_ENTRY_COUNT || s->reference_counts[old_parent] == 0) {
             return false;
         }
         --s->reference_counts[old_parent];
     }
 
-    extension_length = (current_length < FLS_MAX_EXTENSION_LENGTH)
-                           ? current_length
-                           : FLS_MAX_EXTENSION_LENGTH;
+    extension_length = (current_length < FLS_MAX_EXTENSION_LENGTH) ? current_length : FLS_MAX_EXTENSION_LENGTH;
     remaining = FLS_MAX_PHRASE_LENGTH - (int)s->previous_length;
     if (remaining < extension_length) extension_length = remaining;
     new_length = (int)s->previous_length + extension_length;
-    if (extension_length <= 0 || new_length <= 0 ||
-        new_length > FLS_MAX_PHRASE_LENGTH) {
+    if (extension_length <= 0 || new_length <= 0 || new_length > FLS_MAX_PHRASE_LENGTH) {
         return false;
     }
 
-    xx_rt_memcpy(s->phrases[candidate], s->phrases[s->previous_entry],
-                 (size_t)s->previous_length);
-    xx_rt_memcpy(s->phrases[candidate] + s->previous_length, current,
-                 (size_t)extension_length);
+    xx_rt_memcpy(s->phrases[candidate], s->phrases[s->previous_entry], (size_t)s->previous_length);
+    xx_rt_memcpy(s->phrases[candidate] + s->previous_length, current, (size_t)extension_length);
     s->parents[candidate] = s->previous_entry;
     s->phrase_lengths[candidate] = (uint8_t)new_length;
     s->last_slot = candidate;
@@ -289,8 +278,8 @@ static bool flslz_insert_phrase(flslz_state *s, uint16_t current_entry,
     return true;
 }
 
-static bool flslz_adapt_code(flslz_state *s, uint16_t entry,
-                             int phrase_length) {
+static bool flslz_adapt_code(flslz_state *s, uint16_t entry, int phrase_length)
+{
     uint16_t current_code;
     uint16_t replacement_code;
     int cls;
@@ -298,8 +287,7 @@ static bool flslz_adapt_code(flslz_state *s, uint16_t entry,
     int score;
     int iterations = 0;
 
-    if (entry >= FLS_ENTRY_COUNT || phrase_length <= 0 ||
-        phrase_length > FLS_MAX_PHRASE_LENGTH) {
+    if (entry >= FLS_ENTRY_COUNT || phrase_length <= 0 || phrase_length > FLS_MAX_PHRASE_LENGTH) {
         return false;
     }
     current_code = s->entry_to_code[entry];
@@ -333,7 +321,8 @@ static bool flslz_adapt_code(flslz_state *s, uint16_t entry,
     return flslz_swap_codes(s, replacement_code, current_code);
 }
 
-static bool flslz_emit(flslz_state *s, const uint8_t *data, int size) {
+static bool flslz_emit(flslz_state *s, const uint8_t *data, int size)
+{
     if (size <= 0 || (size_t)size > (s->output_limit - s->produced)) {
         return false;
     }
@@ -347,10 +336,9 @@ static bool flslz_emit(flslz_state *s, const uint8_t *data, int size) {
 /* The one core routine.  `require_exact_input` mirrors the reference decoder's
  * container-level check that the member's packed extent is fully consumed; the
  * measuring entry point turns it off and reports the extent instead. */
-static bool flslz_run(const uint8_t *input, size_t input_size, uint8_t *output,
-                      size_t output_limit, bool store_output,
-                      bool require_exact_input, size_t *consumed,
-                      size_t *produced) {
+static bool flslz_run(const uint8_t *input, size_t input_size, uint8_t *output, size_t output_limit, bool store_output, bool require_exact_input, size_t *consumed,
+                      size_t *produced)
+{
     flslz_state *s;
     uint8_t tag = 0;
     uint16_t code;
@@ -410,16 +398,13 @@ static bool flslz_run(const uint8_t *input, size_t input_size, uint8_t *output,
             break;
         }
         length = (int)s->phrase_lengths[entry];
-        if (length <= 0 || length > FLS_MAX_PHRASE_LENGTH ||
-            (size_t)length > (s->output_limit - s->produced) ||
-            !flslz_emit(s, s->phrases[entry], length)) {
+        if (length <= 0 || length > FLS_MAX_PHRASE_LENGTH || (size_t)length > (s->output_limit - s->produced) || !flslz_emit(s, s->phrases[entry], length)) {
             ok = false;
             break;
         }
 
         if (s->ages[entry] < 0x32) s->ages[entry] = (uint8_t)(s->ages[entry] + 5);
-        if (s->have_previous && s->previous_length < FLS_MAX_PHRASE_LENGTH &&
-            !flslz_insert_phrase(s, entry, s->phrases[entry], length)) {
+        if (s->have_previous && s->previous_length < FLS_MAX_PHRASE_LENGTH && !flslz_insert_phrase(s, entry, s->phrases[entry], length)) {
             ok = false;
             break;
         }
@@ -449,29 +434,25 @@ static bool flslz_run(const uint8_t *input, size_t input_size, uint8_t *output,
     return ok;
 }
 
-XXFC_API bool xx_flslz_decode_memory(const uint8_t *input, size_t input_size,
-                                     uint8_t *output, size_t output_size,
-                                     size_t *written) {
+XXFC_API bool xx_flslz_decode_memory(const uint8_t *input, size_t input_size, uint8_t *output, size_t output_size, size_t *written)
+{
     size_t produced = 0;
     bool ok;
 
     if (written) *written = 0;
-    ok = flslz_run(input, input_size, output, output_size, true, true, NULL,
-                   &produced);
+    ok = flslz_run(input, input_size, output, output_size, true, true, NULL, &produced);
     if (!ok) return false;
     if (written) *written = produced;
     return true;
 }
 
-XXFC_API bool xx_flslz_scan_memory(const uint8_t *input, size_t input_size,
-                                   size_t max_output, size_t *consumed,
-                                   size_t *produced) {
+XXFC_API bool xx_flslz_scan_memory(const uint8_t *input, size_t input_size, size_t max_output, size_t *consumed, size_t *produced)
+{
     bool ok;
 
     if (consumed) *consumed = 0;
     if (produced) *produced = 0;
-    ok = flslz_run(input, input_size, NULL, max_output, false, false, consumed,
-                   produced);
+    ok = flslz_run(input, input_size, NULL, max_output, false, false, consumed, produced);
     if (!ok) {
         if (consumed) *consumed = 0;
         if (produced) *produced = 0;

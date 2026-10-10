@@ -61,7 +61,6 @@
 
 #include <stdio.h>
 
-
 #define XX_SCL_COPY_CHUNK (64 * 1024)
 
 typedef struct xx_scl_member_s {
@@ -88,12 +87,14 @@ static void xx_scl_vtable_destroy(Abstractformat *self);
 /* ------------------------------------------------------------- helpers -- */
 
 #include "xxfclib/global/xx_global.h"
-static size_t gb_scl_capacity(void) {
+static size_t gb_scl_capacity(void)
+{
     size_t n = xx_get_file_buffer_size();
     if (!n) n = XX_DEFAULT_FILE_BUFFER_SIZE;
     return n > (SIZE_MAX >> 1) ? SIZE_MAX >> 1 : n;
 }
-static ssize_t gb_scl_read(xx_io_device *device, void *buffer, size_t size, size_t capacity) {
+static ssize_t gb_scl_read(xx_io_device *device, void *buffer, size_t size, size_t capacity)
+{
     size_t done = 0;
     if (size > (SIZE_MAX >> 1)) return -1;
     while (done < size) {
@@ -107,7 +108,8 @@ static ssize_t gb_scl_read(xx_io_device *device, void *buffer, size_t size, size
     }
     return (ssize_t)done;
 }
-static ssize_t gb_scl_write(xx_io_device *device, const void *buffer, size_t size, size_t capacity) {
+static ssize_t gb_scl_write(xx_io_device *device, const void *buffer, size_t size, size_t capacity)
+{
     size_t done = 0;
     if (size > (SIZE_MAX >> 1)) return -1;
     while (done < size) {
@@ -122,19 +124,16 @@ static ssize_t gb_scl_write(xx_io_device *device, const void *buffer, size_t siz
     return (ssize_t)done;
 }
 
-
-static bool xx_scl_read_at(Abstractformat *self, int64_t offset,
-                              uint8_t *buffer, size_t size) {
+static bool xx_scl_read_at(Abstractformat *self, int64_t offset, uint8_t *buffer, size_t size)
+{
     const size_t file_io_capacity = gb_scl_capacity();
     size_t completed = 0U;
 
-    if (!self || !self->device || offset < 0 ||
-        xx_io_seek64(self->device, offset, SEEK_SET) != 0) {
+    if (!self || !self->device || offset < 0 || xx_io_seek64(self->device, offset, SEEK_SET) != 0) {
         return false;
     }
     while (completed < size) {
-        ssize_t received =
-            gb_scl_read(self->device, buffer + completed, size - completed, file_io_capacity);
+        ssize_t received = gb_scl_read(self->device, buffer + completed, size - completed, file_io_capacity);
         if (received <= 0 || (size_t)received > size - completed) {
             return false;
         }
@@ -143,19 +142,20 @@ static bool xx_scl_read_at(Abstractformat *self, int64_t offset,
     return true;
 }
 
-static bool xx_scl_range_within(int64_t total, int64_t offset,
-                                   int64_t size) {
-    return offset >= 0 && size >= 0 && offset <= total &&
-           size <= total - offset;
+static bool xx_scl_range_within(int64_t total, int64_t offset, int64_t size)
+{
+    return offset >= 0 && size >= 0 && offset <= total && size <= total - offset;
 }
 
-static char xx_scl_upper(char c) {
+static char xx_scl_upper(char c)
+{
     return (c >= 'a' && c <= 'z') ? (char)(c - 'a' + 'A') : c;
 }
 
 /* ASCII compare without case: the names are ASCII by construction, and
  * Windows treats "BOOT.B" and "boot.B" as one file. */
-static bool xx_scl_same_name(const char *a, const char *b) {
+static bool xx_scl_same_name(const char *a, const char *b)
+{
     size_t index;
 
     for (index = 0U;; ++index) {
@@ -165,7 +165,8 @@ static bool xx_scl_same_name(const char *a, const char *b) {
 }
 
 /* True when the @p stem bytes of @p name spell @p word, ignoring case. */
-static bool xx_scl_stem_is(const char *name, size_t stem, const char *word) {
+static bool xx_scl_stem_is(const char *name, size_t stem, const char *word)
+{
     size_t index;
 
     for (index = 0U; index < stem; ++index) {
@@ -178,10 +179,9 @@ static bool xx_scl_stem_is(const char *name, size_t stem, const char *word) {
 
 /* Windows resolves these stems to devices whatever extension follows, so a
  * member named "CON.B" would be written to the console. */
-static bool xx_scl_is_device_stem(const char *name) {
-    static const char *const devices[] = {"CON",    "PRN",     "AUX",
-                                          "NUL",    "CONIN$",  "CONOUT$",
-                                          "CLOCK$"};
+static bool xx_scl_is_device_stem(const char *name)
+{
+    static const char *const devices[] = {"CON", "PRN", "AUX", "NUL", "CONIN$", "CONOUT$", "CLOCK$"};
     size_t stem = 0U;
     size_t index;
 
@@ -193,10 +193,8 @@ static bool xx_scl_is_device_stem(const char *name) {
         if (xx_scl_stem_is(name, stem, devices[index])) return true;
     }
     if (stem == 4U && name[3] >= '0' && name[3] <= '9' &&
-        ((xx_scl_upper(name[0]) == 'C' && xx_scl_upper(name[1]) == 'O' &&
-          xx_scl_upper(name[2]) == 'M') ||
-         (xx_scl_upper(name[0]) == 'L' && xx_scl_upper(name[1]) == 'P' &&
-          xx_scl_upper(name[2]) == 'T'))) {
+        ((xx_scl_upper(name[0]) == 'C' && xx_scl_upper(name[1]) == 'O' && xx_scl_upper(name[2]) == 'M') ||
+         (xx_scl_upper(name[0]) == 'L' && xx_scl_upper(name[1]) == 'P' && xx_scl_upper(name[2]) == 'T'))) {
         return true;
     }
     return false;
@@ -206,21 +204,28 @@ static bool xx_scl_is_device_stem(const char *name) {
  * gives a long name such as "ABCDEFGH_1.B" the 8.3 alias "ABCDEF~1.B", and
  * a later member of that name would open the earlier file through the alias.
  * With no '~' in any published name, no name can equal a generated alias. */
-static bool xx_scl_host_char(uint8_t character) {
+static bool xx_scl_host_char(uint8_t character)
+{
     if (character < 0x20U || character > 0x7DU) return false;
     switch (character) {
-    case '/': case '\\': case ':': case '*': case '?':
-    case '"': case '<':  case '>': case '|':
-        return false;
-    default:
-        return true;
+        case '/':
+        case '\\':
+        case ':':
+        case '*':
+        case '?':
+        case '"':
+        case '<':
+        case '>':
+        case '|': return false;
+        default: return true;
     }
 }
 
 /* The final check before a name reaches the file system. The parser only
  * ever produces names that pass; this is the guard that keeps it that way
  * if the parser changes. */
-static bool xx_scl_name_safe(const char *name) {
+static bool xx_scl_name_safe(const char *name)
+{
     size_t length;
     size_t index;
     bool meaningful = false;
@@ -239,7 +244,8 @@ static bool xx_scl_name_safe(const char *name) {
     return !xx_scl_is_device_stem(name);
 }
 
-static void xx_scl_stream_free(void *pointer) {
+static void xx_scl_stream_free(void *pointer)
+{
     xx_scl_stream *stream = (xx_scl_stream *)pointer;
     size_t index;
 
@@ -252,17 +258,15 @@ static void xx_scl_stream_free(void *pointer) {
 }
 
 /* Append a member, taking ownership of @p name. */
-static bool xx_scl_add(xx_scl_stream *stream,
-                          const xx_scl_member *member) {
-    xx_scl_member *grown = (xx_scl_member *)xx_mem_realloc(
-        stream->items, sizeof(*grown) * (stream->count + 1U));
+static bool xx_scl_add(xx_scl_stream *stream, const xx_scl_member *member)
+{
+    xx_scl_member *grown = (xx_scl_member *)xx_mem_realloc(stream->items, sizeof(*grown) * (stream->count + 1U));
 
     if (!grown) return false;
     stream->items = grown;
     stream->items[stream->count++] = *member;
     return true;
 }
-
 
 #define XX_SCL_HEADER_SIZE 9
 #define XX_SCL_ENTRY_SIZE 14
@@ -284,15 +288,13 @@ static bool xx_scl_add(xx_scl_stream *stream,
 /* Forward declarations: the parse and the decode
  * call into each other's helpers. */
 static bool xx_scl_signature(const uint8_t *header);
-static bool xx_scl_entry_name(const xx_scl_stream *stream,
-                              const uint8_t *entry, char **out_name);
-static xx_scl_stream *xx_scl_parse(Abstractformat *self, bool measure,
-                                   xx_pd_struct *pd);
+static bool xx_scl_entry_name(const xx_scl_stream *stream, const uint8_t *entry, char **out_name);
+static xx_scl_stream *xx_scl_parse(Abstractformat *self, bool measure, xx_pd_struct *pd);
 static void xx_scl_hobeta_prefix(const uint8_t *entry, uint8_t sectors, uint8_t *prefix);
 static bool xx_scl_decode(Abstractformat *self, const xx_scl_member *member, uint8_t **out, size_t *out_size, xx_pd_struct *pd);
 
-
-static bool xx_scl_signature(const uint8_t *header) {
+static bool xx_scl_signature(const uint8_t *header)
+{
     static const char magic[8] = {'S', 'I', 'N', 'C', 'L', 'A', 'I', 'R'};
 
     /* Eight fixed bytes are the entire false-positive defence. The catalogue
@@ -305,8 +307,8 @@ static bool xx_scl_signature(const uint8_t *header) {
     return xx_rt_memcmp(header, magic, sizeof(magic)) == 0;
 }
 
-static bool xx_scl_name_taken(const xx_scl_stream *stream,
-                              const char *candidate) {
+static bool xx_scl_name_taken(const xx_scl_stream *stream, const char *candidate)
+{
     size_t index;
 
     for (index = 0U; index < stream->count; ++index) {
@@ -328,8 +330,8 @@ static bool xx_scl_name_taken(const xx_scl_stream *stream,
  * distinguishes "song.B" from "song.C"; a type of '.' or ' ' would vanish
  * from a Windows name, so it becomes '_' too. A clash with an earlier member
  * gets "_1", "_2", ... in front of the extension. */
-static bool xx_scl_entry_name(const xx_scl_stream *stream,
-                              const uint8_t *entry, char **out_name) {
+static bool xx_scl_entry_name(const xx_scl_stream *stream, const uint8_t *entry, char **out_name)
+{
     char base[XX_SCL_NAME_BUFFER];
     char candidate[XX_SCL_NAME_BUFFER];
     size_t begin = 0U;
@@ -344,15 +346,12 @@ static bool xx_scl_entry_name(const xx_scl_stream *stream,
     while (end > 0U && entry[end - 1U] == ' ') --end;
     while (begin < end && entry[begin] == ' ') ++begin;
     for (index = begin; index < end; ++index) {
-        base[length++] =
-            xx_scl_host_char(entry[index]) ? (char)entry[index] : '_';
+        base[length++] = xx_scl_host_char(entry[index]) ? (char)entry[index] : '_';
     }
     /* A blank name still owns sectors; it is published as "_". */
     if (length == 0U) base[length++] = '_';
     base[length] = '\0';
-    type = xx_scl_host_char(entry[8]) && entry[8] != '.' && entry[8] != ' '
-               ? (char)entry[8]
-               : '_';
+    type = xx_scl_host_char(entry[8]) && entry[8] != '.' && entry[8] != ' ' ? (char)entry[8] : '_';
     /* "CON.B" would open the console, "LPT1.C" the printer port. */
     if (xx_scl_is_device_stem(base)) {
         for (index = length + 1U; index > 0U; --index) {
@@ -397,8 +396,8 @@ static bool xx_scl_entry_name(const xx_scl_stream *stream,
  * window and @p data_end the offset of the first byte behind the data, both
  * relative to the base address. The data is streamed in chunks; its extent
  * is at most 9 + 255 * 14 + 255 * 255 * 256 bytes, about 16 MiB. */
-static int64_t xx_scl_trailer_size(Abstractformat *self, int64_t span,
-                                   int64_t data_end, xx_pd_struct *pd) {
+static int64_t xx_scl_trailer_size(Abstractformat *self, int64_t span, int64_t data_end, xx_pd_struct *pd)
+{
     size_t file_io_capacity = gb_scl_capacity();
     uint8_t trailer[XX_SCL_TRAILER_SIZE];
     uint8_t *buffer;
@@ -417,12 +416,9 @@ static int64_t xx_scl_trailer_size(Abstractformat *self, int64_t span,
     buffer = (uint8_t *)xx_mem_alloc(file_io_capacity);
     if (!buffer) return 0;
     while (done < data_end) {
-        size_t chunk = (uint64_t)(data_end - done) > (uint64_t)file_io_capacity
-                           ? (size_t)file_io_capacity
-                           : (size_t)(data_end - done);
+        size_t chunk = (uint64_t)(data_end - done) > (uint64_t)file_io_capacity ? (size_t)file_io_capacity : (size_t)(data_end - done);
         size_t index;
-        if ((pd && xx_pd_is_stopped(pd)) ||
-            !xx_scl_read_at(self, self->base_address + done, buffer, chunk)) {
+        if ((pd && xx_pd_is_stopped(pd)) || !xx_scl_read_at(self, self->base_address + done, buffer, chunk)) {
             xx_mem_free(buffer);
             return 0;
         }
@@ -434,13 +430,10 @@ static int64_t xx_scl_trailer_size(Abstractformat *self, int64_t span,
     at = data_end;
     for (slot = 0; slot < XX_SCL_MAX_TRAILERS; ++slot) {
         uint32_t stored;
-        if (!xx_scl_range_within(span, at, XX_SCL_TRAILER_SIZE) ||
-            !xx_scl_read_at(self, self->base_address + at, trailer,
-                            sizeof(trailer))) {
+        if (!xx_scl_range_within(span, at, XX_SCL_TRAILER_SIZE) || !xx_scl_read_at(self, self->base_address + at, trailer, sizeof(trailer))) {
             break;
         }
-        stored = (uint32_t)trailer[0] | ((uint32_t)trailer[1] << 8) |
-                 ((uint32_t)trailer[2] << 16) | ((uint32_t)trailer[3] << 24);
+        stored = (uint32_t)trailer[0] | ((uint32_t)trailer[1] << 8) | ((uint32_t)trailer[2] << 16) | ((uint32_t)trailer[3] << 24);
         at += XX_SCL_TRAILER_SIZE;
         if (stored == sum) return at - data_end;
         /* A stale sum is covered by the one behind it. */
@@ -451,8 +444,8 @@ static int64_t xx_scl_trailer_size(Abstractformat *self, int64_t span,
 
 /* @p measure asks for the trailer check, which only the format size needs;
  * validity and the member list do not depend on it. */
-static xx_scl_stream *xx_scl_parse(Abstractformat *self, bool measure,
-                                   xx_pd_struct *pd) {
+static xx_scl_stream *xx_scl_parse(Abstractformat *self, bool measure, xx_pd_struct *pd)
+{
     xx_scl_stream *stream;
     uint8_t header[XX_SCL_HEADER_SIZE];
     uint8_t entry[XX_SCL_ENTRY_SIZE];
@@ -496,8 +489,7 @@ static xx_scl_stream *xx_scl_parse(Abstractformat *self, bool measure,
         char *name;
 
         if (pd && xx_pd_is_stopped(pd)) goto fail;
-        if (!xx_scl_read_at(self, self->base_address + entry_offset, entry,
-                            sizeof(entry))) {
+        if (!xx_scl_read_at(self, self->base_address + entry_offset, entry, sizeof(entry))) {
             goto fail;
         }
         data_size = (int64_t)entry[13] * XX_SCL_SECTOR_SIZE;
@@ -542,8 +534,7 @@ static xx_scl_stream *xx_scl_parse(Abstractformat *self, bool measure,
      * only a verified byte sum is counted as part of the image. */
     stream->archive_size = data_offset < span ? data_offset : span;
     if (measure && !truncated) {
-        stream->archive_size =
-            data_offset + xx_scl_trailer_size(self, span, data_offset, pd);
+        stream->archive_size = data_offset + xx_scl_trailer_size(self, span, data_offset, pd);
     }
     return stream;
 
@@ -552,7 +543,6 @@ fail:
     return NULL;
 }
 
-
 /* Build the Hobeta header the image does not store.
  *
  * 13 entry bytes, a zero byte, the sector count, and the checksum word.
@@ -560,8 +550,8 @@ fail:
  * 0x101 and biased by 0x69, truncated to 16 bits. The multiply is what makes
  * it a checksum rather than a parity byte, and getting it wrong produces a
  * file every Spectrum emulator loads and every Hobeta tool rejects. */
-static void xx_scl_hobeta_prefix(const uint8_t *entry, uint8_t sectors,
-                                 uint8_t *prefix) {
+static void xx_scl_hobeta_prefix(const uint8_t *entry, uint8_t sectors, uint8_t *prefix)
+{
     uint16_t checksum = 0U;
     size_t index;
 
@@ -580,8 +570,8 @@ static void xx_scl_hobeta_prefix(const uint8_t *entry, uint8_t sectors,
  * header synthesised from the catalogue entry. The entry is re-read rather
  * than carried on the member because the member record has no room for a
  * properties blob, and re-reading it keeps the decode free of side effects. */
-static bool xx_scl_decode(Abstractformat *self, const xx_scl_member *member,
-                          uint8_t **out, size_t *out_size, xx_pd_struct *pd) {
+static bool xx_scl_decode(Abstractformat *self, const xx_scl_member *member, uint8_t **out, size_t *out_size, xx_pd_struct *pd)
+{
     uint8_t entry[XX_SCL_ENTRY_SIZE];
     uint8_t prefix[XX_SCL_PREFIX_SIZE];
     uint8_t *input;
@@ -598,14 +588,12 @@ static bool xx_scl_decode(Abstractformat *self, const xx_scl_member *member,
     if (member->compressed_size < 0 || member->uncompressed_size < 0) {
         return false;
     }
-    if (member->compressed_size > XX_SCL_MAX_DECODED ||
-        member->uncompressed_size > XX_SCL_MAX_DECODED) {
+    if (member->compressed_size > XX_SCL_MAX_DECODED || member->uncompressed_size > XX_SCL_MAX_DECODED) {
         return false;
     }
     /* The published length is the prefix plus the (possibly clamped) sector
      * extent; anything else means the two halves disagree. */
-    if (member->uncompressed_size !=
-        member->compressed_size + XX_SCL_PREFIX_SIZE) {
+    if (member->uncompressed_size != member->compressed_size + XX_SCL_PREFIX_SIZE) {
         return false;
     }
 
@@ -614,12 +602,9 @@ static bool xx_scl_decode(Abstractformat *self, const xx_scl_member *member,
     }
     xx_scl_hobeta_prefix(entry, entry[13], prefix);
 
-    input = (uint8_t *)xx_mem_alloc(
-        member->compressed_size != 0 ? (size_t)member->compressed_size : 1U);
+    input = (uint8_t *)xx_mem_alloc(member->compressed_size != 0 ? (size_t)member->compressed_size : 1U);
     if (!input) return false;
-    if (member->compressed_size != 0 &&
-        !xx_scl_read_at(self, member->data_offset, input,
-                        (size_t)member->compressed_size)) {
+    if (member->compressed_size != 0 && !xx_scl_read_at(self, member->data_offset, input, (size_t)member->compressed_size)) {
         xx_mem_free(input);
         return false;
     }
@@ -633,11 +618,7 @@ static bool xx_scl_decode(Abstractformat *self, const xx_scl_member *member,
         xx_mem_free(input);
         return false;
     }
-    if (!xx_sclsectors_decode_memory_ex(prefix, (size_t)XX_SCL_PREFIX_SIZE,
-                                        input,
-                                        (size_t)member->compressed_size,
-                                        output,
-                                        (size_t)member->uncompressed_size,
+    if (!xx_sclsectors_decode_memory_ex(prefix, (size_t)XX_SCL_PREFIX_SIZE, input, (size_t)member->compressed_size, output, (size_t)member->uncompressed_size,
                                         &written) ||
         written != (size_t)member->uncompressed_size) {
         /* Short output reported as success is the one failure the caller
@@ -654,8 +635,8 @@ static bool xx_scl_decode(Abstractformat *self, const xx_scl_member *member,
 
 /* ---------------------------------------------------------- lifecycle --- */
 
-void xx_scl_init(xx_scl *archive, xx_io_device *device,
-                    int64_t base_address) {
+void xx_scl_init(xx_scl *archive, xx_io_device *device, int64_t base_address)
+{
     if (!archive) return;
     xx_mem_zero(archive, sizeof(*archive));
     xx_format_init(&archive->format, device, base_address);
@@ -668,22 +649,17 @@ void xx_scl_init(xx_scl *archive, xx_io_device *device,
     archive->format.check_is_valid = xx_scl_check_is_valid;
     archive->format.handle_base_info = xx_scl_handle_base_info;
     archive->format.get_format_size = xx_scl_get_format_size;
-    archive->format.get_number_of_archive_records =
-        xx_scl_get_number_of_archive_records;
-    archive->format.create_archive_records_reading =
-        xx_scl_create_archive_records_reading;
-    archive->format.get_current_archive_record =
-        xx_scl_get_current_archive_record;
-    archive->format.unpack_current_archive_record =
-        xx_scl_unpack_current_archive_record;
-    archive->format.archive_record_move_to_next =
-        xx_scl_archive_record_move_to_next;
-    archive->format.free_archive_records_reading =
-        xx_scl_free_archive_records_reading;
+    archive->format.get_number_of_archive_records = xx_scl_get_number_of_archive_records;
+    archive->format.create_archive_records_reading = xx_scl_create_archive_records_reading;
+    archive->format.get_current_archive_record = xx_scl_get_current_archive_record;
+    archive->format.unpack_current_archive_record = xx_scl_unpack_current_archive_record;
+    archive->format.archive_record_move_to_next = xx_scl_archive_record_move_to_next;
+    archive->format.free_archive_records_reading = xx_scl_free_archive_records_reading;
     archive->format.destroy = xx_scl_vtable_destroy;
 }
 
-xx_scl *xx_scl_create(xx_io_device *device, int64_t base_address) {
+xx_scl *xx_scl_create(xx_io_device *device, int64_t base_address)
+{
     xx_scl *archive = (xx_scl *)xx_mem_alloc(sizeof(*archive));
 
     if (!archive) return NULL;
@@ -691,7 +667,8 @@ xx_scl *xx_scl_create(xx_io_device *device, int64_t base_address) {
     return archive;
 }
 
-void xx_scl_destroy(xx_scl *archive) {
+void xx_scl_destroy(xx_scl *archive)
+{
     if (!archive) return;
     /* Not xx_format_destroy: it dispatches through format.destroy, which is
      * the wrapper below, and the two would recurse. */
@@ -700,19 +677,22 @@ void xx_scl_destroy(xx_scl *archive) {
     archive->number_of_records = 0U;
 }
 
-void xx_scl_free(xx_scl *archive) {
+void xx_scl_free(xx_scl *archive)
+{
     if (!archive) return;
     xx_scl_destroy(archive);
     xx_mem_free(archive);
 }
 
-static void xx_scl_vtable_destroy(Abstractformat *self) {
+static void xx_scl_vtable_destroy(Abstractformat *self)
+{
     xx_scl_destroy((xx_scl *)self);
 }
 
 /* -------------------------------------------------------------- format -- */
 
-bool xx_scl_check_is_valid(Abstractformat *self, xx_pd_struct *pd) {
+bool xx_scl_check_is_valid(Abstractformat *self, xx_pd_struct *pd)
+{
     xx_scl_stream *stream;
 
     if (!self || (pd && xx_pd_is_stopped(pd))) return false;
@@ -722,7 +702,8 @@ bool xx_scl_check_is_valid(Abstractformat *self, xx_pd_struct *pd) {
     return true;
 }
 
-bool xx_scl_handle_base_info(Abstractformat *self, xx_pd_struct *pd) {
+bool xx_scl_handle_base_info(Abstractformat *self, xx_pd_struct *pd)
+{
     xx_scl *archive = (xx_scl *)self;
     xx_scl_stream *stream;
 
@@ -743,18 +724,17 @@ bool xx_scl_handle_base_info(Abstractformat *self, xx_pd_struct *pd) {
     return true;
 }
 
-int64_t xx_scl_get_format_size(Abstractformat *self, xx_pd_struct *pd) {
-    if (!self ||
-        (!self->base_info_handled && !xx_format_handle_base_info(self, pd))) {
+int64_t xx_scl_get_format_size(Abstractformat *self, xx_pd_struct *pd)
+{
+    if (!self || (!self->base_info_handled && !xx_format_handle_base_info(self, pd))) {
         return 0;
     }
     return self->is_valid ? self->format_size : 0;
 }
 
-uint64_t xx_scl_get_number_of_archive_records(Abstractformat *self,
-                                                 xx_pd_struct *pd) {
-    if (!self ||
-        (!self->base_info_handled && !xx_format_handle_base_info(self, pd))) {
+uint64_t xx_scl_get_number_of_archive_records(Abstractformat *self, xx_pd_struct *pd)
+{
+    if (!self || (!self->base_info_handled && !xx_format_handle_base_info(self, pd))) {
         return 0U;
     }
     return self->is_valid ? ((xx_scl *)self)->number_of_records : 0U;
@@ -762,8 +742,8 @@ uint64_t xx_scl_get_number_of_archive_records(Abstractformat *self,
 
 /* ------------------------------------------------------------- records -- */
 
-static bool xx_scl_set_record(xx_archive_record *record,
-                                 const xx_scl_member *member) {
+static bool xx_scl_set_record(xx_archive_record *record, const xx_scl_member *member)
+{
     xx_archive_record_cleanup(record);
     xx_archive_record_init(record);
     record->header_offset = member->header_offset;
@@ -771,34 +751,24 @@ static bool xx_scl_set_record(xx_archive_record *record,
     record->data_offset = member->data_offset;
     record->compressed_size = member->compressed_size;
     return xx_archive_record_set_original_name(record, member->name) &&
-           xx_archive_record_set_meta_u64(record, XX_META_ID_COMPRESSED_SIZE,
-                                          (uint64_t)member->compressed_size) &&
-           xx_archive_record_set_meta_u64(
-               record, XX_META_ID_UNCOMPRESSED_SIZE,
-               (uint64_t)member->uncompressed_size) &&
-           xx_archive_record_set_meta_u64(record, XX_META_ID_COMPRESSION_METHOD,
-                                          member->method) &&
-           xx_archive_record_set_meta_u64(record, XX_META_ID_TIMESTAMP,
-                                          member->timestamp) &&
-           xx_archive_record_set_meta_bool(record, XX_META_ID_IS_FOLDER,
-                                           member->is_folder) &&
-           xx_archive_record_set_meta_bool(record, XX_META_ID_IS_ENCRYPTED,
-                                           false);
+           xx_archive_record_set_meta_u64(record, XX_META_ID_COMPRESSED_SIZE, (uint64_t)member->compressed_size) &&
+           xx_archive_record_set_meta_u64(record, XX_META_ID_UNCOMPRESSED_SIZE, (uint64_t)member->uncompressed_size) &&
+           xx_archive_record_set_meta_u64(record, XX_META_ID_COMPRESSION_METHOD, member->method) &&
+           xx_archive_record_set_meta_u64(record, XX_META_ID_TIMESTAMP, member->timestamp) &&
+           xx_archive_record_set_meta_bool(record, XX_META_ID_IS_FOLDER, member->is_folder) && xx_archive_record_set_meta_bool(record, XX_META_ID_IS_ENCRYPTED, false);
 }
 
-static bool xx_scl_copy_options(xx_list_s *target,
-                                   const xx_list_s *options) {
+static bool xx_scl_copy_options(xx_list_s *target, const xx_list_s *options)
+{
     size_t index;
 
     if (!target || !options) return options == NULL;
     for (index = 0U; index < options->count; ++index) {
-        const xx_meta *source =
-            (const xx_meta *)xx_list_at((const xx_list_t *)options, index);
+        const xx_meta *source = (const xx_meta *)xx_list_at((const xx_list_t *)options, index);
         xx_meta copied;
         if (!source) continue;
         xx_meta_init(&copied, source->meta_id);
-        if (!xx_var_copy(&copied.var, &source->var) ||
-            !xx_list_append(target, &copied)) {
+        if (!xx_var_copy(&copied.var, &source->var) || !xx_list_append(target, &copied)) {
             xx_meta_cleanup(&copied);
             return false;
         }
@@ -806,21 +776,20 @@ static bool xx_scl_copy_options(xx_list_s *target,
     return true;
 }
 
-static const xx_var *xx_scl_get_option(const xx_list_s *options,
-                                          uint32_t meta_id) {
+static const xx_var *xx_scl_get_option(const xx_list_s *options, uint32_t meta_id)
+{
     size_t index;
 
     if (!options) return NULL;
     for (index = 0U; index < options->count; ++index) {
-        const xx_meta *meta =
-            (const xx_meta *)xx_list_at((const xx_list_t *)options, index);
+        const xx_meta *meta = (const xx_meta *)xx_list_at((const xx_list_t *)options, index);
         if (meta && meta->meta_id == meta_id) return &meta->var;
     }
     return NULL;
 }
 
-xx_archive_record_state *xx_scl_create_archive_records_reading(
-    Abstractformat *self, const xx_list_s *options, xx_pd_struct *pd) {
+xx_archive_record_state *xx_scl_create_archive_records_reading(Abstractformat *self, const xx_list_s *options, xx_pd_struct *pd)
+{
     xx_scl_stream *stream;
     xx_archive_record_state *state;
 
@@ -836,9 +805,7 @@ xx_archive_record_state *xx_scl_create_archive_records_reading(
     state->internal_state = stream;
     state->free_internal = xx_scl_stream_free;
     state->total_records = (int64_t)stream->count;
-    if (!xx_scl_copy_options(&state->options, options) ||
-        (stream->count != 0U &&
-         !xx_scl_set_record(&state->current_record, &stream->items[0]))) {
+    if (!xx_scl_copy_options(&state->options, options) || (stream->count != 0U && !xx_scl_set_record(&state->current_record, &stream->items[0]))) {
         xx_archive_record_state_free(state);
         return NULL;
     }
@@ -847,20 +814,16 @@ xx_archive_record_state *xx_scl_create_archive_records_reading(
     return state;
 }
 
-const xx_archive_record *xx_scl_get_current_archive_record(
-    Abstractformat *self, xx_archive_record_state *state) {
-    return self && state && state->format == self && state->has_record
-               ? &state->current_record
-               : NULL;
+const xx_archive_record *xx_scl_get_current_archive_record(Abstractformat *self, xx_archive_record_state *state)
+{
+    return self && state && state->format == self && state->has_record ? &state->current_record : NULL;
 }
 
-bool xx_scl_archive_record_move_to_next(Abstractformat *self,
-                                           xx_archive_record_state *state,
-                                           xx_pd_struct *pd) {
+bool xx_scl_archive_record_move_to_next(Abstractformat *self, xx_archive_record_state *state, xx_pd_struct *pd)
+{
     xx_scl_stream *stream;
 
-    if (!self || !state || state->format != self || !state->has_record ||
-        (pd && xx_pd_is_stopped(pd))) {
+    if (!self || !state || state->format != self || !state->has_record || (pd && xx_pd_is_stopped(pd))) {
         return false;
     }
     stream = (xx_scl_stream *)state->internal_state;
@@ -872,14 +835,12 @@ bool xx_scl_archive_record_move_to_next(Abstractformat *self,
     }
     ++stream->index;
     ++state->current_index;
-    state->has_record = xx_scl_set_record(&state->current_record,
-                                             &stream->items[stream->index]);
+    state->has_record = xx_scl_set_record(&state->current_record, &stream->items[stream->index]);
     return state->has_record;
 }
 
-bool xx_scl_unpack_current_archive_record(Abstractformat *self,
-                                             xx_archive_record_state *state,
-                                             xx_pd_struct *pd) {
+bool xx_scl_unpack_current_archive_record(Abstractformat *self, xx_archive_record_state *state, xx_pd_struct *pd)
+{
     const size_t file_io_capacity = gb_scl_capacity();
     xx_scl_stream *stream;
     const xx_scl_member *member;
@@ -892,8 +853,7 @@ bool xx_scl_unpack_current_archive_record(Abstractformat *self,
     bool result = false;
     bool created = false;
 
-    if (!self || !state || state->format != self || !state->has_record ||
-        (pd && xx_pd_is_stopped(pd))) {
+    if (!self || !state || state->format != self || !state->has_record || (pd && xx_pd_is_stopped(pd))) {
         return false;
     }
     stream = (xx_scl_stream *)state->internal_state;
@@ -901,8 +861,7 @@ bool xx_scl_unpack_current_archive_record(Abstractformat *self,
     member = &stream->items[stream->index];
     if (!xx_scl_name_safe(member->name)) return false;
 
-    path_option = xx_scl_get_option(&state->options,
-                                       XX_META_ID_OPT_UNPACK_PATH);
+    path_option = xx_scl_get_option(&state->options, XX_META_ID_OPT_UNPACK_PATH);
     if (!path_option) {
         /* No destination: decode and discard, which verifies the member
          * without writing anything. */
@@ -911,11 +870,9 @@ bool xx_scl_unpack_current_archive_record(Abstractformat *self,
         xx_mem_free(plain);
         return result;
     }
-    if (path_option->type == XX_VAR_TYPE_STRING ||
-        path_option->type == XX_VAR_TYPE_STRING_VIEW) {
+    if (path_option->type == XX_VAR_TYPE_STRING || path_option->type == XX_VAR_TYPE_STRING_VIEW) {
         base_path = xx_var_get_str(path_option);
-    } else if (path_option->type == XX_VAR_TYPE_WSTRING ||
-               path_option->type == XX_VAR_TYPE_WSTRING_VIEW) {
+    } else if (path_option->type == XX_VAR_TYPE_WSTRING || path_option->type == XX_VAR_TYPE_WSTRING_VIEW) {
         converted_path = xx_str_unicode_to_utf8(xx_var_get_wstr(path_option));
         base_path = converted_path;
     }
@@ -923,9 +880,7 @@ bool xx_scl_unpack_current_archive_record(Abstractformat *self,
         xx_str_free(converted_path);
         return false;
     }
-    if (base_path[0] != '\0' &&
-        base_path[xx_str_len(base_path) - 1U] != '/' &&
-        base_path[xx_str_len(base_path) - 1U] != '\\') {
+    if (base_path[0] != '\0' && base_path[xx_str_len(base_path) - 1U] != '/' && base_path[xx_str_len(base_path) - 1U] != '\\') {
         target_path = xx_str_concat3(base_path, "/", member->name);
     } else {
         target_path = xx_str_concat(base_path, member->name);
@@ -938,8 +893,7 @@ bool xx_scl_unpack_current_archive_record(Abstractformat *self,
         xx_str_free(target_path);
         return result;
     }
-    if (!xx_store_create_dirs_a(target_path, false) ||
-        !xx_scl_decode(self, member, &plain, &plain_size, pd)) {
+    if (!xx_store_create_dirs_a(target_path, false) || !xx_scl_decode(self, member, &plain, &plain_size, pd)) {
         xx_str_free(target_path);
         return false;
     }
@@ -950,8 +904,7 @@ bool xx_scl_unpack_current_archive_record(Abstractformat *self,
 
         result = output != NULL;
         while (result && completed < plain_size) {
-            ssize_t sent = gb_scl_write(output, plain + completed,
-                                       plain_size - completed, file_io_capacity);
+            ssize_t sent = gb_scl_write(output, plain + completed, plain_size - completed, file_io_capacity);
             if (sent <= 0 || (size_t)sent > plain_size - completed) {
                 result = false;
                 break;
@@ -966,8 +919,8 @@ bool xx_scl_unpack_current_archive_record(Abstractformat *self,
     return result;
 }
 
-void xx_scl_free_archive_records_reading(Abstractformat *self,
-                                            xx_archive_record_state *state) {
+void xx_scl_free_archive_records_reading(Abstractformat *self, xx_archive_record_state *state)
+{
     (void)self;
     xx_archive_record_state_free(state);
 }

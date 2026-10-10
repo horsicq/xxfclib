@@ -93,16 +93,13 @@ typedef struct xx_psdc_stream_s {
 
 /* ------------------------------------------------------------ helpers --- */
 
-static bool xx_psdc_read_at(Abstractformat *self, int64_t offset,
-                            void *buffer, size_t size) {
+static bool xx_psdc_read_at(Abstractformat *self, int64_t offset, void *buffer, size_t size)
+{
     size_t done = 0U;
 
-    if (!self || !self->device || (!buffer && size != 0U) || offset < 0 ||
-        xx_io_seek64(self->device, offset, SEEK_SET) != 0)
-        return false;
+    if (!self || !self->device || (!buffer && size != 0U) || offset < 0 || xx_io_seek64(self->device, offset, SEEK_SET) != 0) return false;
     while (done < size) {
-        ssize_t amount =
-            xx_io_read(self->device, (uint8_t *)buffer + done, size - done);
+        ssize_t amount = xx_io_read(self->device, (uint8_t *)buffer + done, size - done);
         if (amount <= 0 || (size_t)amount > size - done) return false;
         done += (size_t)amount;
     }
@@ -114,8 +111,8 @@ static bool xx_psdc_read_at(Abstractformat *self, int64_t offset,
  * name characters, a mandatory '.', up to three extension characters and
  * then the terminating NUL, all inside @p size bytes.  @p length receives
  * the name's length in bytes. */
-static bool xx_psdc_name_field_sane(const uint8_t *field, size_t size,
-                                    size_t *length) {
+static bool xx_psdc_name_field_sane(const uint8_t *field, size_t size, size_t *length)
+{
     size_t index = 0U;
     size_t run;
 
@@ -139,7 +136,8 @@ static bool xx_psdc_name_field_sane(const uint8_t *field, size_t size,
     return true;
 }
 
-static char *xx_psdc_normalize_name(const uint8_t *bytes, size_t size) {
+static char *xx_psdc_normalize_name(const uint8_t *bytes, size_t size)
+{
     char *name;
     size_t input;
     size_t output = 0U;
@@ -149,20 +147,17 @@ static char *xx_psdc_normalize_name(const uint8_t *bytes, size_t size) {
     if (!name) return NULL;
     for (input = 0U; input < size; ++input) {
         uint8_t c = bytes[input];
-        if (c < 0x20U || c == '/' || c == '\\' || c == ':' || c == '"' ||
-            c == '*' || c == '<' || c == '>' || c == '?' || c == '|')
-            name[output++] = '_';
-        else
-            name[output++] = (char)c;
+        if (c < 0x20U || c == '/' || c == '\\' || c == ':' || c == '"' || c == '*' || c == '<' || c == '>' || c == '?' || c == '|') name[output++] = '_';
+        else name[output++] = (char)c;
     }
-    while (output > 0U && (name[output - 1U] == ' ' || name[output - 1U] == '.'))
-        --output;
+    while (output > 0U && (name[output - 1U] == ' ' || name[output - 1U] == '.')) --output;
     if (output == 0U) name[output++] = '_';
     name[output] = 0;
     return name;
 }
 
-static void xx_psdc_stream_free(void *pointer) {
+static void xx_psdc_stream_free(void *pointer)
+{
     xx_psdc_stream *stream = (xx_psdc_stream *)pointer;
 
     if (!stream) return;
@@ -170,7 +165,8 @@ static void xx_psdc_stream_free(void *pointer) {
     xx_mem_free(stream);
 }
 
-static xx_psdc_stream *xx_psdc_parse(Abstractformat *self, xx_pd_struct *pd) {
+static xx_psdc_stream *xx_psdc_parse(Abstractformat *self, xx_pd_struct *pd)
+{
     uint8_t header[XX_PSDC_HEADER_SIZE + 2];
     xx_psdc_stream *stream;
     int64_t total;
@@ -186,25 +182,19 @@ static xx_psdc_stream *xx_psdc_parse(Abstractformat *self, xx_pd_struct *pd) {
     span = total - self->base_address;
     /* Header plus the two-byte DCL prelude plus at least one payload byte. */
     if (span <= (int64_t)XX_PSDC_HEADER_SIZE + 2) return NULL;
-    if (!xx_psdc_read_at(self, self->base_address, header, sizeof(header)))
-        return NULL;
-    if (!xx_psdc_name_field_sane(header, XX_PSDC_NAME_FIELD, &name_length))
-        return NULL;
+    if (!xx_psdc_read_at(self, self->base_address, header, sizeof(header))) return NULL;
+    if (!xx_psdc_name_field_sane(header, XX_PSDC_NAME_FIELD, &name_length)) return NULL;
     /* The rest of the 76-byte name buffer is zero in every sample, and the reference reader
      * requires it; it is most of what separates this header from noise. */
     for (index = XX_PSDC_ZERO_START; index < XX_PSDC_ZERO_END; ++index)
         if (header[index] != 0U) return NULL;
     /* The DCL prelude: literal mode 0 or 1, dictionary selector 4, 5 or 6. */
-    if (header[XX_PSDC_HEADER_SIZE] > 1U ||
-        header[XX_PSDC_HEADER_SIZE + 1] < 4U ||
-        header[XX_PSDC_HEADER_SIZE + 1] > 6U)
-        return NULL;
+    if (header[XX_PSDC_HEADER_SIZE] > 1U || header[XX_PSDC_HEADER_SIZE + 1] < 4U || header[XX_PSDC_HEADER_SIZE + 1] > 6U) return NULL;
     declared = xx_data_get_u32(header + XX_PSDC_SIZE_OFFSET, 4, 0, false);
     /* The declared length is the container's own length and the reference reader requires it
      * to match the file exactly.  Bounding it against the real extent this
      * way means no later size can be derived from an unchecked field. */
-    if (declared <= (uint32_t)XX_PSDC_HEADER_SIZE || (int64_t)declared != span)
-        return NULL;
+    if (declared <= (uint32_t)XX_PSDC_HEADER_SIZE || (int64_t)declared != span) return NULL;
 
     stream = (xx_psdc_stream *)xx_mem_calloc(1U, sizeof(*stream));
     if (!stream) return NULL;
@@ -217,8 +207,7 @@ static xx_psdc_stream *xx_psdc_parse(Abstractformat *self, xx_pd_struct *pd) {
     stream->member.header_offset = self->base_address;
     stream->member.header_size = XX_PSDC_HEADER_SIZE;
     stream->member.data_offset = self->base_address + XX_PSDC_HEADER_SIZE;
-    stream->member.compressed_size =
-        (int64_t)declared - (int64_t)XX_PSDC_HEADER_SIZE;
+    stream->member.compressed_size = (int64_t)declared - (int64_t)XX_PSDC_HEADER_SIZE;
     stream->member.unpacked_size = 0U;
     stream->count = 1U;
     stream->archive_size = (int64_t)declared;
@@ -230,19 +219,15 @@ static xx_psdc_stream *xx_psdc_parse(Abstractformat *self, xx_pd_struct *pd) {
 /* Read the packed extent into memory.  The extent comes from the parse,
  * which has already bounded it against the file, and is bounded again here
  * against XX_PSDC_MAX_PACKED before a single byte is allocated. */
-static uint8_t *xx_psdc_read_packed(Abstractformat *self,
-                                    const xx_psdc_member *member,
-                                    size_t *size) {
+static uint8_t *xx_psdc_read_packed(Abstractformat *self, const xx_psdc_member *member, size_t *size)
+{
     uint8_t *packed;
 
     if (!self || !member || !size) return NULL;
-    if (member->compressed_size < 2 ||
-        member->compressed_size > XX_PSDC_MAX_PACKED)
-        return NULL;
+    if (member->compressed_size < 2 || member->compressed_size > XX_PSDC_MAX_PACKED) return NULL;
     packed = (uint8_t *)xx_mem_alloc((size_t)member->compressed_size);
     if (!packed) return NULL;
-    if (!xx_psdc_read_at(self, member->data_offset, packed,
-                         (size_t)member->compressed_size)) {
+    if (!xx_psdc_read_at(self, member->data_offset, packed, (size_t)member->compressed_size)) {
         xx_mem_free(packed);
         return NULL;
     }
@@ -253,7 +238,8 @@ static uint8_t *xx_psdc_read_packed(Abstractformat *self,
 /* Measure the member: the container stores no plaintext length, so the only
  * way to learn one is to run the DCL stream.  Requiring it to consume the
  * packed extent EXACTLY is also the reader's strongest validity test. */
-static bool xx_psdc_measure(Abstractformat *self, xx_psdc_member *member) {
+static bool xx_psdc_measure(Abstractformat *self, xx_psdc_member *member)
+{
     uint8_t *packed = NULL;
     size_t packed_size = 0U;
     size_t consumed = 0U;
@@ -264,17 +250,15 @@ static bool xx_psdc_measure(Abstractformat *self, xx_psdc_member *member) {
     if (member->unpacked_size != 0U) return true;
     packed = xx_psdc_read_packed(self, member, &packed_size);
     if (!packed) return false;
-    result = xx_dcl_scan_memory(packed, packed_size, XX_PSDC_MAX_OUTPUT,
-                                &consumed, &produced) &&
-             consumed == packed_size && produced != 0U;
+    result = xx_dcl_scan_memory(packed, packed_size, XX_PSDC_MAX_OUTPUT, &consumed, &produced) && consumed == packed_size && produced != 0U;
     xx_mem_free(packed);
     if (!result) return false;
     member->unpacked_size = (uint64_t)produced;
     return true;
 }
 
-static bool xx_psdc_decode(Abstractformat *self, const xx_psdc_member *member,
-                           uint8_t **plain, size_t *plain_size) {
+static bool xx_psdc_decode(Abstractformat *self, const xx_psdc_member *member, uint8_t **plain, size_t *plain_size)
+{
     uint8_t *packed = NULL;
     uint8_t *output = NULL;
     size_t packed_size = 0U;
@@ -282,15 +266,12 @@ static bool xx_psdc_decode(Abstractformat *self, const xx_psdc_member *member,
     size_t output_size;
 
     if (!self || !member || !plain || !plain_size) return false;
-    if (member->unpacked_size == 0U || member->unpacked_size > SIZE_MAX)
-        return false;
+    if (member->unpacked_size == 0U || member->unpacked_size > SIZE_MAX) return false;
     output_size = (size_t)member->unpacked_size;
     packed = xx_psdc_read_packed(self, member, &packed_size);
     if (!packed) return false;
     output = (uint8_t *)xx_mem_alloc(output_size);
-    if (!output || !xx_dcl_decode_memory(packed, packed_size, output,
-                                         output_size, &written) ||
-        written != output_size) {
+    if (!output || !xx_dcl_decode_memory(packed, packed_size, output, output_size, &written) || written != output_size) {
         xx_mem_free(packed);
         if (output) xx_mem_free(output);
         return false;
@@ -305,8 +286,8 @@ static bool xx_psdc_decode(Abstractformat *self, const xx_psdc_member *member,
 
 static void xx_psdc_vtable_destroy(Abstractformat *self);
 
-void xx_psdc_init(xx_psdc *archive, xx_io_device *device,
-                  int64_t base_address) {
+void xx_psdc_init(xx_psdc *archive, xx_io_device *device, int64_t base_address)
+{
     if (!archive) return;
     xx_mem_zero(archive, sizeof(*archive));
     xx_format_init(&archive->format, device, base_address);
@@ -319,22 +300,17 @@ void xx_psdc_init(xx_psdc *archive, xx_io_device *device,
     archive->format.check_is_valid = xx_psdc_check_is_valid;
     archive->format.handle_base_info = xx_psdc_handle_base_info;
     archive->format.get_format_size = xx_psdc_get_format_size;
-    archive->format.get_number_of_archive_records =
-        xx_psdc_get_number_of_archive_records;
-    archive->format.create_archive_records_reading =
-        xx_psdc_create_archive_records_reading;
-    archive->format.get_current_archive_record =
-        xx_psdc_get_current_archive_record;
-    archive->format.unpack_current_archive_record =
-        xx_psdc_unpack_current_archive_record;
-    archive->format.archive_record_move_to_next =
-        xx_psdc_archive_record_move_to_next;
-    archive->format.free_archive_records_reading =
-        xx_psdc_free_archive_records_reading;
+    archive->format.get_number_of_archive_records = xx_psdc_get_number_of_archive_records;
+    archive->format.create_archive_records_reading = xx_psdc_create_archive_records_reading;
+    archive->format.get_current_archive_record = xx_psdc_get_current_archive_record;
+    archive->format.unpack_current_archive_record = xx_psdc_unpack_current_archive_record;
+    archive->format.archive_record_move_to_next = xx_psdc_archive_record_move_to_next;
+    archive->format.free_archive_records_reading = xx_psdc_free_archive_records_reading;
     archive->format.destroy = xx_psdc_vtable_destroy;
 }
 
-xx_psdc *xx_psdc_create(xx_io_device *device, int64_t base_address) {
+xx_psdc *xx_psdc_create(xx_io_device *device, int64_t base_address)
+{
     xx_psdc *archive = (xx_psdc *)xx_mem_alloc(sizeof(*archive));
 
     if (!archive) return NULL;
@@ -342,26 +318,30 @@ xx_psdc *xx_psdc_create(xx_io_device *device, int64_t base_address) {
     return archive;
 }
 
-void xx_psdc_destroy(xx_psdc *archive) {
+void xx_psdc_destroy(xx_psdc *archive)
+{
     if (!archive) return;
     if (archive->format.close) archive->format.close(&archive->format);
     xx_format_cleanup_extra_parameters(&archive->format);
     archive->number_of_records = 0U;
 }
 
-void xx_psdc_free(xx_psdc *archive) {
+void xx_psdc_free(xx_psdc *archive)
+{
     if (!archive) return;
     xx_psdc_destroy(archive);
     xx_mem_free(archive);
 }
 
-static void xx_psdc_vtable_destroy(Abstractformat *self) {
+static void xx_psdc_vtable_destroy(Abstractformat *self)
+{
     xx_psdc_destroy((xx_psdc *)self);
 }
 
 /* ------------------------------------------------------------ format --- */
 
-bool xx_psdc_check_is_valid(Abstractformat *self, xx_pd_struct *pd) {
+bool xx_psdc_check_is_valid(Abstractformat *self, xx_pd_struct *pd)
+{
     xx_psdc_stream *stream;
 
     if (!self || (pd && xx_pd_is_stopped(pd))) return false;
@@ -371,7 +351,8 @@ bool xx_psdc_check_is_valid(Abstractformat *self, xx_pd_struct *pd) {
     return true;
 }
 
-bool xx_psdc_handle_base_info(Abstractformat *self, xx_pd_struct *pd) {
+bool xx_psdc_handle_base_info(Abstractformat *self, xx_pd_struct *pd)
+{
     xx_psdc *archive = (xx_psdc *)self;
     xx_psdc_stream *stream;
 
@@ -392,25 +373,22 @@ bool xx_psdc_handle_base_info(Abstractformat *self, xx_pd_struct *pd) {
     return true;
 }
 
-int64_t xx_psdc_get_format_size(Abstractformat *self, xx_pd_struct *pd) {
-    if (!self ||
-        (!self->base_info_handled && !xx_format_handle_base_info(self, pd)))
-        return 0;
+int64_t xx_psdc_get_format_size(Abstractformat *self, xx_pd_struct *pd)
+{
+    if (!self || (!self->base_info_handled && !xx_format_handle_base_info(self, pd))) return 0;
     return self->is_valid ? self->format_size : 0;
 }
 
-uint64_t xx_psdc_get_number_of_archive_records(Abstractformat *self,
-                                               xx_pd_struct *pd) {
-    if (!self ||
-        (!self->base_info_handled && !xx_format_handle_base_info(self, pd)))
-        return 0U;
+uint64_t xx_psdc_get_number_of_archive_records(Abstractformat *self, xx_pd_struct *pd)
+{
+    if (!self || (!self->base_info_handled && !xx_format_handle_base_info(self, pd))) return 0U;
     return self->is_valid ? ((xx_psdc *)self)->number_of_records : 0U;
 }
 
 /* ----------------------------------------------------------- records --- */
 
-static bool xx_psdc_set_record(xx_archive_record *record,
-                               const xx_psdc_member *member) {
+static bool xx_psdc_set_record(xx_archive_record *record, const xx_psdc_member *member)
+{
     xx_archive_record_cleanup(record);
     xx_archive_record_init(record);
     record->header_offset = member->header_offset;
@@ -418,30 +396,24 @@ static bool xx_psdc_set_record(xx_archive_record *record,
     record->data_offset = member->data_offset;
     record->compressed_size = member->compressed_size;
     return xx_archive_record_set_original_name(record, member->name) &&
-           xx_archive_record_set_meta_u64(record, XX_META_ID_COMPRESSED_SIZE,
-                                          (uint64_t)member->compressed_size) &&
+           xx_archive_record_set_meta_u64(record, XX_META_ID_COMPRESSED_SIZE, (uint64_t)member->compressed_size) &&
            /* Measured by the DCL scan; 0 when the stream did not measure. */
-           xx_archive_record_set_meta_u64(record, XX_META_ID_UNCOMPRESSED_SIZE,
-                                          member->unpacked_size) &&
-           xx_archive_record_set_meta_bool(record, XX_META_ID_IS_FOLDER,
-                                           false) &&
-           xx_archive_record_set_meta_bool(record, XX_META_ID_IS_ENCRYPTED,
-                                           false);
+           xx_archive_record_set_meta_u64(record, XX_META_ID_UNCOMPRESSED_SIZE, member->unpacked_size) &&
+           xx_archive_record_set_meta_bool(record, XX_META_ID_IS_FOLDER, false) && xx_archive_record_set_meta_bool(record, XX_META_ID_IS_ENCRYPTED, false);
 }
 
-static bool xx_psdc_copy_options(xx_list_s *target, const xx_list_s *options) {
+static bool xx_psdc_copy_options(xx_list_s *target, const xx_list_s *options)
+{
     size_t index;
 
     if (!options) return true;
     if (!target) return false;
     for (index = 0U; index < options->count; ++index) {
-        const xx_meta *source =
-            (const xx_meta *)xx_list_at((const xx_list_t *)options, index);
+        const xx_meta *source = (const xx_meta *)xx_list_at((const xx_list_t *)options, index);
         xx_meta copied;
         if (!source) continue;
         xx_meta_init(&copied, source->meta_id);
-        if (!xx_var_copy(&copied.var, &source->var) ||
-            !xx_list_append(target, &copied)) {
+        if (!xx_var_copy(&copied.var, &source->var) || !xx_list_append(target, &copied)) {
             xx_meta_cleanup(&copied);
             return false;
         }
@@ -449,21 +421,20 @@ static bool xx_psdc_copy_options(xx_list_s *target, const xx_list_s *options) {
     return true;
 }
 
-static const xx_var *xx_psdc_option(const xx_list_s *options,
-                                    uint32_t meta_id) {
+static const xx_var *xx_psdc_option(const xx_list_s *options, uint32_t meta_id)
+{
     size_t index;
 
     if (!options) return NULL;
     for (index = 0U; index < options->count; ++index) {
-        const xx_meta *meta =
-            (const xx_meta *)xx_list_at((const xx_list_t *)options, index);
+        const xx_meta *meta = (const xx_meta *)xx_list_at((const xx_list_t *)options, index);
         if (meta && meta->meta_id == meta_id) return &meta->var;
     }
     return NULL;
 }
 
-xx_archive_record_state *xx_psdc_create_archive_records_reading(
-    Abstractformat *self, const xx_list_s *options, xx_pd_struct *pd) {
+xx_archive_record_state *xx_psdc_create_archive_records_reading(Abstractformat *self, const xx_list_s *options, xx_pd_struct *pd)
+{
     xx_psdc_stream *stream;
     xx_archive_record_state *state;
 
@@ -483,8 +454,7 @@ xx_archive_record_state *xx_psdc_create_archive_records_reading(
     state->internal_state = stream;
     state->free_internal = xx_psdc_stream_free;
     state->total_records = (int64_t)stream->count;
-    if (!xx_psdc_copy_options(&state->options, options) ||
-        !xx_psdc_set_record(&state->current_record, &stream->member)) {
+    if (!xx_psdc_copy_options(&state->options, options) || !xx_psdc_set_record(&state->current_record, &stream->member)) {
         xx_archive_record_state_free(state);
         return NULL;
     }
@@ -493,16 +463,13 @@ xx_archive_record_state *xx_psdc_create_archive_records_reading(
     return state;
 }
 
-const xx_archive_record *xx_psdc_get_current_archive_record(
-    Abstractformat *self, xx_archive_record_state *state) {
-    return self && state && state->format == self && state->has_record
-               ? &state->current_record
-               : NULL;
+const xx_archive_record *xx_psdc_get_current_archive_record(Abstractformat *self, xx_archive_record_state *state)
+{
+    return self && state && state->format == self && state->has_record ? &state->current_record : NULL;
 }
 
-bool xx_psdc_archive_record_move_to_next(Abstractformat *self,
-                                         xx_archive_record_state *state,
-                                         xx_pd_struct *pd) {
+bool xx_psdc_archive_record_move_to_next(Abstractformat *self, xx_archive_record_state *state, xx_pd_struct *pd)
+{
     (void)pd;
     if (!self || !state || state->format != self) return false;
     /* A PSDC container holds exactly one member. */
@@ -512,9 +479,8 @@ bool xx_psdc_archive_record_move_to_next(Abstractformat *self,
     return false;
 }
 
-bool xx_psdc_unpack_current_archive_record(Abstractformat *self,
-                                           xx_archive_record_state *state,
-                                           xx_pd_struct *pd) {
+bool xx_psdc_unpack_current_archive_record(Abstractformat *self, xx_archive_record_state *state, xx_pd_struct *pd)
+{
     xx_psdc_stream *stream;
     const xx_var *path_option;
     const char *base = NULL;
@@ -525,14 +491,11 @@ bool xx_psdc_unpack_current_archive_record(Abstractformat *self,
     size_t written = 0U;
     bool result = false;
 
-    if (!self || !state || state->format != self || !state->has_record ||
-        (pd && xx_pd_is_stopped(pd)))
-        return false;
+    if (!self || !state || state->format != self || !state->has_record || (pd && xx_pd_is_stopped(pd))) return false;
     stream = (xx_psdc_stream *)state->internal_state;
     if (!stream) return false;
     if (!xx_psdc_measure(self, &stream->member)) return false;
-    if (!xx_psdc_decode(self, &stream->member, &plain, &plain_size))
-        return false;
+    if (!xx_psdc_decode(self, &stream->member, &plain, &plain_size)) return false;
     /* With no unpack path the caller only wanted to know the member decodes;
      * it does, so this is a success with nothing written. */
     path_option = xx_psdc_option(&state->options, XX_META_ID_OPT_UNPACK_PATH);
@@ -540,27 +503,22 @@ bool xx_psdc_unpack_current_archive_record(Abstractformat *self,
         result = true;
         goto done;
     }
-    if (path_option->type == XX_VAR_TYPE_STRING ||
-        path_option->type == XX_VAR_TYPE_STRING_VIEW) {
+    if (path_option->type == XX_VAR_TYPE_STRING || path_option->type == XX_VAR_TYPE_STRING_VIEW) {
         base = xx_var_get_str(path_option);
-    } else if (path_option->type == XX_VAR_TYPE_WSTRING ||
-               path_option->type == XX_VAR_TYPE_WSTRING_VIEW) {
+    } else if (path_option->type == XX_VAR_TYPE_WSTRING || path_option->type == XX_VAR_TYPE_WSTRING_VIEW) {
         owned_base = xx_str_unicode_to_utf8(xx_var_get_wstr(path_option));
         base = owned_base;
     }
     if (!base) goto done;
-    path = (base[0] && base[xx_str_len(base) - 1U] != '/' &&
-            base[xx_str_len(base) - 1U] != '\\')
-               ? xx_str_concat3(base, "/", stream->member.name)
-               : xx_str_concat(base, stream->member.name);
+    path = (base[0] && base[xx_str_len(base) - 1U] != '/' && base[xx_str_len(base) - 1U] != '\\') ? xx_str_concat3(base, "/", stream->member.name)
+                                                                                                  : xx_str_concat(base, stream->member.name);
     if (!path || !xx_store_create_dirs_a(path, false)) goto done;
     {
         xx_io_device *destination = xx_io_file_open(path, "wb");
         if (!destination) goto done;
         result = true;
         while (written < plain_size) {
-            ssize_t amount =
-                xx_io_write(destination, plain + written, plain_size - written);
+            ssize_t amount = xx_io_write(destination, plain + written, plain_size - written);
             if (amount <= 0 || (size_t)amount > plain_size - written) {
                 result = false;
                 break;
@@ -576,8 +534,8 @@ done:
     return result;
 }
 
-void xx_psdc_free_archive_records_reading(Abstractformat *self,
-                                          xx_archive_record_state *state) {
+void xx_psdc_free_archive_records_reading(Abstractformat *self, xx_archive_record_state *state)
+{
     (void)self;
     xx_archive_record_state_free(state);
 }

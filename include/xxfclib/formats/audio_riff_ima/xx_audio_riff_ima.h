@@ -5,7 +5,9 @@
 #ifdef __cplusplus
 extern "C" {
 #endif
-typedef struct xx_audio_riff_ima { Abstractformat format; } xx_audio_riff_ima;
+typedef struct xx_audio_riff_ima {
+    Abstractformat format;
+} xx_audio_riff_ima;
 XXFC_API void xx_audio_riff_ima_init(xx_audio_riff_ima *, xx_io_device *, int64_t);
 XXFC_API xx_audio_riff_ima *xx_audio_riff_ima_create(xx_io_device *, int64_t);
 XXFC_API void xx_audio_riff_ima_destroy(xx_audio_riff_ima *);

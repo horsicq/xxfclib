@@ -28,8 +28,8 @@ typedef struct xx_ws_bits_s {
     int32_t count;
 } xx_ws_bits;
 
-static void xx_ws_bits_init(xx_ws_bits *bits, const uint8_t *data,
-                            size_t size) {
+static void xx_ws_bits_init(xx_ws_bits *bits, const uint8_t *data, size_t size)
+{
     bits->data = data;
     bits->size = size;
     bits->position = 0;
@@ -37,7 +37,8 @@ static void xx_ws_bits_init(xx_ws_bits *bits, const uint8_t *data,
     bits->count = 0;
 }
 
-static bool xx_ws_bits_bit(xx_ws_bits *bits, int32_t *value) {
+static bool xx_ws_bits_bit(xx_ws_bits *bits, int32_t *value)
+{
     if (bits->count == 0) {
         if (bits->position >= bits->size) {
             return false;
@@ -66,7 +67,8 @@ typedef struct xx_ws_tree_s {
     int32_t next_free;
 } xx_ws_tree;
 
-static void xx_ws_tree_init(xx_ws_tree *tree) {
+static void xx_ws_tree_init(xx_ws_tree *tree)
+{
     int32_t i;
 
     for (i = 0; i < XX_WS_SYMBOLS; i++) {
@@ -101,14 +103,15 @@ static void xx_ws_tree_init(xx_ws_tree *tree) {
 
 /* The source is always a leaf in practice, but a corrupt stream must not be
  * able to turn a node index into a write outside leaf[]. */
-static void xx_ws_set_leaf_slot(xx_ws_tree *tree, int32_t symbol,
-                                int32_t node) {
+static void xx_ws_set_leaf_slot(xx_ws_tree *tree, int32_t symbol, int32_t node)
+{
     if ((symbol >= 0) && (symbol < XX_WS_SYMBOLS)) {
         tree->leaf[symbol] = node;
     }
 }
 
-static void xx_ws_relink(xx_ws_tree *tree, int32_t node, int32_t target) {
+static void xx_ws_relink(xx_ws_tree *tree, int32_t node, int32_t target)
+{
     if (tree->is_leaf[node]) {
         xx_ws_set_leaf_slot(tree, tree->child[node], target);
     } else {
@@ -120,7 +123,8 @@ static void xx_ws_relink(xx_ws_tree *tree, int32_t node, int32_t target) {
     }
 }
 
-static void xx_ws_swap_nodes(xx_ws_tree *tree, int32_t first, int32_t second) {
+static void xx_ws_swap_nodes(xx_ws_tree *tree, int32_t first, int32_t second)
+{
     int32_t weight;
     int32_t child;
     uint8_t is_leaf;
@@ -144,7 +148,8 @@ static void xx_ws_swap_nodes(xx_ws_tree *tree, int32_t first, int32_t second) {
 
 /* Split the lightest node - always the ESCAPE leaf - to make room for a symbol
  * seen for the first time. */
-static bool xx_ws_tree_add(xx_ws_tree *tree, int32_t symbol) {
+static bool xx_ws_tree_add(xx_ws_tree *tree, int32_t symbol)
+{
     int32_t light;
     int32_t fresh;
     int32_t zero;
@@ -182,7 +187,8 @@ static bool xx_ws_tree_add(xx_ws_tree *tree, int32_t symbol) {
 /* Nelson RebuildTree: pack the leaves to the end with halved weights, then
  * rebuild the internal nodes back down to the root.  Fires only once the root
  * weight reaches 0x8000, so it is the least travelled path here. */
-static void xx_ws_tree_rebuild(xx_ws_tree *tree) {
+static void xx_ws_tree_rebuild(xx_ws_tree *tree)
+{
     int32_t destination = tree->next_free - 1;
     int32_t source;
     int32_t i;
@@ -237,7 +243,8 @@ static void xx_ws_tree_rebuild(xx_ws_tree *tree) {
     }
 }
 
-static void xx_ws_tree_update(xx_ws_tree *tree, int32_t symbol) {
+static void xx_ws_tree_update(xx_ws_tree *tree, int32_t symbol)
+{
     int32_t current;
 
     if (tree->weight[XX_WS_ROOT] == XX_WS_MAX_WEIGHT) {
@@ -271,9 +278,8 @@ static void xx_ws_tree_update(xx_ws_tree *tree, int32_t symbol) {
     }
 }
 
-bool xx_wintersoft_ahuff_decode_memory(const uint8_t *input, size_t input_size,
-                                       uint8_t *output, size_t output_size,
-                                       size_t *written) {
+bool xx_wintersoft_ahuff_decode_memory(const uint8_t *input, size_t input_size, uint8_t *output, size_t output_size, size_t *written)
+{
     xx_ws_bits bits;
     xx_ws_tree tree;
     size_t produced = 0;
@@ -370,9 +376,7 @@ bool xx_wintersoft_ahuff_decode_memory(const uint8_t *input, size_t input_size,
     return false;
 }
 
-bool xx_wintersoft_decode_memory(const uint8_t *input, size_t input_size,
-                                 uint8_t *output, size_t output_size,
-                                 size_t *written) {
-    return xx_wintersoft_ahuff_decode_memory(input, input_size, output,
-                                             output_size, written);
+bool xx_wintersoft_decode_memory(const uint8_t *input, size_t input_size, uint8_t *output, size_t output_size, size_t *written)
+{
+    return xx_wintersoft_ahuff_decode_memory(input, input_size, output, output_size, written);
 }

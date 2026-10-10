@@ -90,10 +90,10 @@ typedef struct noa_key_s {
 typedef struct noa_walk_s {
     xx_io_device *device;
     xx_pd_struct *pd;
-    int64_t base;   /**< format->base_address. */
-    int64_t end;    /**< Absolute end of the device. */
-    bool collect;   /**< Fill items[] and the name pool. */
-    bool measure;   /**< Track the furthest record end (reads file headers). */
+    int64_t base; /**< format->base_address. */
+    int64_t end;  /**< Absolute end of the device. */
+    bool collect; /**< Fill items[] and the name pool. */
+    bool measure; /**< Track the furthest record end (reads file headers). */
     noa_member *items;
     size_t count;
     size_t capacity;
@@ -118,18 +118,18 @@ typedef struct noa_stream_s {
     char *name; /**< NOA_MAX_PATH + 16 bytes: the current (renamed) path. */
 } noa_stream;
 
-static size_t noa_capacity(void) {
+static size_t noa_capacity(void)
+{
     size_t n = xx_get_file_buffer_size();
     if (!n) n = XX_DEFAULT_FILE_BUFFER_SIZE;
     if (n < 4096U) n = 4096U;
     return n > ((size_t)1 << 24) ? ((size_t)1 << 24) : n;
 }
 
-static bool noa_read_at(xx_io_device *device, int64_t offset, void *buffer,
-                        size_t size) {
+static bool noa_read_at(xx_io_device *device, int64_t offset, void *buffer, size_t size)
+{
     size_t done = 0U;
-    if (!device || offset < 0 || xx_io_seek64(device, offset, SEEK_SET) != 0)
-        return false;
+    if (!device || offset < 0 || xx_io_seek64(device, offset, SEEK_SET) != 0) return false;
     while (done < size) {
         ssize_t n = xx_io_read(device, (uint8_t *)buffer + done, size - done);
         if (n <= 0 || (size_t)n > size - done) return false;
@@ -138,8 +138,8 @@ static bool noa_read_at(xx_io_device *device, int64_t offset, void *buffer,
     return true;
 }
 
-static bool noa_write_all(xx_io_device *device, const uint8_t *buffer,
-                          size_t size) {
+static bool noa_write_all(xx_io_device *device, const uint8_t *buffer, size_t size)
+{
     size_t done = 0U;
     while (done < size) {
         ssize_t n = xx_io_write(device, buffer + done, size - done);
@@ -151,15 +151,18 @@ static bool noa_write_all(xx_io_device *device, const uint8_t *buffer,
 
 /* ---- member names ------------------------------------------------------ */
 
-static bool noa_is_sjis_lead(uint8_t c) {
+static bool noa_is_sjis_lead(uint8_t c)
+{
     return (c >= 0x81U && c <= 0x9fU) || (c >= 0xe0U && c <= 0xfcU);
 }
 
-static bool noa_is_sjis_trail(uint8_t c) {
+static bool noa_is_sjis_trail(uint8_t c)
+{
     return (c >= 0x40U && c <= 0x7eU) || (c >= 0x80U && c <= 0xfcU);
 }
 
-static size_t noa_put_escape(char *out, uint8_t c) {
+static size_t noa_put_escape(char *out, uint8_t c)
+{
     static const char digits[] = "0123456789ABCDEF";
     out[0] = '%';
     out[1] = digits[(c >> 4U) & 0x0fU];
@@ -170,38 +173,34 @@ static size_t noa_put_escape(char *out, uint8_t c) {
 /* Append the converted raw name (up to its first NUL) to out[at..], which
  * has room for `room` bytes.  Returns the new length or SIZE_MAX if it does
  * not fit. */
-static size_t noa_convert_name(const uint8_t *raw, size_t length, char *out,
-                               size_t at, size_t room) {
+static size_t noa_convert_name(const uint8_t *raw, size_t length, char *out, size_t at, size_t room)
+{
     size_t index = 0U;
     while (index < length && raw[index] != 0U) {
         uint8_t c = raw[index];
         if (room - at < 7U) return SIZE_MAX;
-        if (noa_is_sjis_lead(c) && index + 1U < length &&
-            noa_is_sjis_trail(raw[index + 1U])) {
+        if (noa_is_sjis_lead(c) && index + 1U < length && noa_is_sjis_trail(raw[index + 1U])) {
             at += noa_put_escape(out + at, c);
             at += noa_put_escape(out + at, raw[index + 1U]);
             index += 2U;
             continue;
         }
-        if (c >= 0x80U || c == (uint8_t)'%')
-            at += noa_put_escape(out + at, c);
-        else if (c == (uint8_t)'\\')
-            out[at++] = '/';
-        else
-            out[at++] = (char)c;
+        if (c >= 0x80U || c == (uint8_t)'%') at += noa_put_escape(out + at, c);
+        else if (c == (uint8_t)'\\') out[at++] = '/';
+        else out[at++] = (char)c;
         ++index;
     }
     out[at] = 0;
     return at;
 }
 
-static uint64_t noa_name_hash(const char *name, size_t length) {
+static uint64_t noa_name_hash(const char *name, size_t length)
+{
     uint64_t hash = UINT64_C(0xcbf29ce484222325);
     size_t index;
     for (index = 0U; index < length; ++index) {
         uint8_t c = (uint8_t)name[index];
-        if (c >= (uint8_t)'A' && c <= (uint8_t)'Z')
-            c = (uint8_t)(c - (uint8_t)'A' + (uint8_t)'a');
+        if (c >= (uint8_t)'A' && c <= (uint8_t)'Z') c = (uint8_t)(c - (uint8_t)'A' + (uint8_t)'a');
         hash ^= (uint64_t)c;
         hash *= UINT64_C(0x100000001b3);
     }
@@ -210,7 +209,8 @@ static uint64_t noa_name_hash(const char *name, size_t length) {
 
 /* Insert "%_<index>" before the extension of the last component.  `name`
  * has room for NOA_MAX_PATH + 16 bytes and holds at most NOA_MAX_PATH. */
-static void noa_insert_suffix(char *name, size_t length, uint32_t index) {
+static void noa_insert_suffix(char *name, size_t length, uint32_t index)
+{
     char suffix[2 + 10];
     char digits[10];
     size_t suffix_length = 0U, digit_count = 0U, component = 0U, at, tail;
@@ -230,20 +230,17 @@ static void noa_insert_suffix(char *name, size_t length, uint32_t index) {
     suffix[suffix_length++] = '_';
     while (digit_count != 0U) suffix[suffix_length++] = digits[--digit_count];
     tail = length - dot;
-    for (at = tail + 1U; at > 0U; --at)
-        name[dot + suffix_length + at - 1U] = name[dot + at - 1U];
+    for (at = tail + 1U; at > 0U; --at) name[dot + suffix_length + at - 1U] = name[dot + at - 1U];
     xx_rt_memcpy(name + dot, suffix, suffix_length);
 }
 
-static bool noa_reserved_component(const char *segment, size_t length) {
-    static const char *const devices[] = {"CON",    "PRN",    "AUX",
-                                          "NUL",    "CLOCK$", "CONIN$",
-                                          "CONOUT$"};
+static bool noa_reserved_component(const char *segment, size_t length)
+{
+    static const char *const devices[] = {"CON", "PRN", "AUX", "NUL", "CLOCK$", "CONIN$", "CONOUT$"};
     char stem[8];
     size_t stem_length = 0U, index;
     while (stem_length < length && segment[stem_length] != '.') ++stem_length;
-    while (stem_length != 0U && segment[stem_length - 1U] == ' ')
-        --stem_length;
+    while (stem_length != 0U && segment[stem_length - 1U] == ' ') --stem_length;
     if (stem_length < 3U || stem_length > sizeof(stem) - 1U) return false;
     for (index = 0U; index < stem_length; ++index) {
         char c = segment[index];
@@ -251,33 +248,25 @@ static bool noa_reserved_component(const char *segment, size_t length) {
     }
     stem[stem_length] = 0;
     if (stem_length == 4U && stem[3] >= '0' && stem[3] <= '9' &&
-        ((stem[0] == 'C' && stem[1] == 'O' && stem[2] == 'M') ||
-         (stem[0] == 'L' && stem[1] == 'P' && stem[2] == 'T')))
+        ((stem[0] == 'C' && stem[1] == 'O' && stem[2] == 'M') || (stem[0] == 'L' && stem[1] == 'P' && stem[2] == 'T')))
         return true;
     for (index = 0U; index < sizeof(devices) / sizeof(devices[0]); ++index)
-        if (xx_str_len(devices[index]) == stem_length &&
-            xx_rt_memcmp(stem, devices[index], stem_length) == 0)
-            return true;
+        if (xx_str_len(devices[index]) == stem_length && xx_rt_memcmp(stem, devices[index], stem_length) == 0) return true;
     return false;
 }
 
-static bool noa_safe_name(const char *name) {
+static bool noa_safe_name(const char *name)
+{
     const char *segment;
     const char *at;
     if (!name || !name[0] || name[0] == '/') return false;
     segment = name;
     for (at = name;; ++at) {
         unsigned char c = (unsigned char)*at;
-        if (c == ':' || c == '<' || c == '>' || c == '"' || c == '|' ||
-            c == '?' || c == '*' || c == '\\' || c == 0x7fU ||
-            (c != 0U && c < 0x20U))
-            return false;
+        if (c == ':' || c == '<' || c == '>' || c == '"' || c == '|' || c == '?' || c == '*' || c == '\\' || c == 0x7fU || (c != 0U && c < 0x20U)) return false;
         if (c == '/' || c == 0U) {
             size_t length = (size_t)(at - segment);
-            if (length == 0U || segment[length - 1U] == '.' ||
-                segment[length - 1U] == ' ' ||
-                noa_reserved_component(segment, length))
-                return false;
+            if (length == 0U || segment[length - 1U] == '.' || segment[length - 1U] == ' ' || noa_reserved_component(segment, length)) return false;
             if (c == 0U) return true;
             segment = at + 1;
         }
@@ -286,29 +275,24 @@ static bool noa_safe_name(const char *name) {
 
 /* ---- directory walk ---------------------------------------------------- */
 
-static bool noa_read_header(Abstractformat *format, int64_t *end) {
+static bool noa_read_header(Abstractformat *format, int64_t *end)
+{
     uint8_t header[NOA_HEADER_SIZE + NOA_RECORD_HEADER];
     int64_t total;
     if (!format || !format->device || format->base_address < 0) return false;
     total = xx_io_total_size(format->device);
-    if (total < format->base_address ||
-        total - format->base_address <
-            (int64_t)NOA_HEADER_SIZE + NOA_RECORD_HEADER + 4 ||
-        !noa_read_at(format->device, format->base_address, header,
-                     sizeof(header)))
+    if (total < format->base_address || total - format->base_address < (int64_t)NOA_HEADER_SIZE + NOA_RECORD_HEADER + 4 ||
+        !noa_read_at(format->device, format->base_address, header, sizeof(header)))
         return false;
-    if (xx_rt_memcmp(header, "Entis\x1a", 6) != 0 &&
-        xx_rt_memcmp(header, "VIST\x1a", 5) != 0)
-        return false;
-    if (xx_data_get_u32(header + 8, 4, 0, false) != NOA_FILE_ID ||
-        xx_rt_memcmp(header + NOA_HEADER_SIZE, "DirEntry", 8) != 0)
-        return false;
+    if (xx_rt_memcmp(header, "Entis\x1a", 6) != 0 && xx_rt_memcmp(header, "VIST\x1a", 5) != 0) return false;
+    if (xx_data_get_u32(header + 8, 4, 0, false) != NOA_FILE_ID || xx_rt_memcmp(header + NOA_HEADER_SIZE, "DirEntry", 8) != 0) return false;
     *end = total;
     return true;
 }
 
 /* Insert `offset` into the visited set; false if it is already there. */
-static bool noa_visit(noa_walk *walk, int64_t offset) {
+static bool noa_visit(noa_walk *walk, int64_t offset)
+{
     uint64_t h = (uint64_t)offset * UINT64_C(0x9e3779b97f4a7c15);
     size_t slot = (size_t)(h >> 47U) & (NOA_VISITED_SLOTS - 1U);
     size_t probes;
@@ -318,11 +302,9 @@ static bool noa_visit(noa_walk *walk, int64_t offset) {
     }
     if (!walk->visited) {
         size_t index;
-        walk->visited =
-            (int64_t *)xx_mem_alloc(NOA_VISITED_SLOTS * sizeof(int64_t));
+        walk->visited = (int64_t *)xx_mem_alloc(NOA_VISITED_SLOTS * sizeof(int64_t));
         if (!walk->visited) return false;
-        for (index = 0U; index < NOA_VISITED_SLOTS; ++index)
-            walk->visited[index] = -1;
+        for (index = 0U; index < NOA_VISITED_SLOTS; ++index) walk->visited[index] = -1;
         if (!noa_visit(walk, walk->root)) return false;
     }
     for (probes = 0U; probes < NOA_VISITED_SLOTS; ++probes) {
@@ -336,9 +318,8 @@ static bool noa_visit(noa_walk *walk, int64_t offset) {
     return false;
 }
 
-static bool noa_add_member(noa_walk *walk, int64_t record, uint64_t size,
-                           uint32_t attribute, uint32_t encoding,
-                           size_t path_length) {
+static bool noa_add_member(noa_walk *walk, int64_t record, uint64_t size, uint32_t attribute, uint32_t encoding, size_t path_length)
+{
     noa_member *member;
     if (walk->count >= NOA_MAX_MEMBERS) return false;
     if (!walk->collect) {
@@ -387,14 +368,15 @@ static bool noa_add_member(noa_walk *walk, int64_t record, uint64_t size,
     return true;
 }
 
-static void noa_extend(noa_walk *walk, int64_t end) {
+static void noa_extend(noa_walk *walk, int64_t end)
+{
     if (end > walk->extent) walk->extent = end;
 }
 
 /* Parse the DirEntry record at absolute `record`; `prefix` bytes of
  * walk->path are the parent path. */
-static bool noa_walk_dir(noa_walk *walk, int64_t record, size_t prefix,
-                         unsigned depth) {
+static bool noa_walk_dir(noa_walk *walk, int64_t record, size_t prefix, unsigned depth)
+{
     uint8_t head[NOA_RECORD_HEADER];
     uint8_t *body = NULL;
     uint64_t length;
@@ -403,24 +385,15 @@ static bool noa_walk_dir(noa_walk *walk, int64_t record, size_t prefix,
     int32_t index;
     bool ok = false;
 
-    if (depth > NOA_MAX_DEPTH || walk->directories >= NOA_MAX_DIRS ||
-        record < walk->base || record > walk->end - NOA_RECORD_HEADER)
-        return false;
+    if (depth > NOA_MAX_DEPTH || walk->directories >= NOA_MAX_DIRS || record < walk->base || record > walk->end - NOA_RECORD_HEADER) return false;
     if (walk->pd && xx_pd_is_stopped(walk->pd)) return false;
-    if (!noa_read_at(walk->device, record, head, sizeof(head)) ||
-        xx_rt_memcmp(head, "DirEntry", 8) != 0)
-        return false;
+    if (!noa_read_at(walk->device, record, head, sizeof(head)) || xx_rt_memcmp(head, "DirEntry", 8) != 0) return false;
     length = xx_data_get_u64(head + 8, 8, 0, false);
     /* GARbro: 0 < size <= INT_MAX and record + 8 + size inside the file. */
-    if (length == 0U || length > (uint64_t)0x7fffffff ||
-        (int64_t)length > walk->end - record - 8)
-        return false;
+    if (length == 0U || length > (uint64_t)0x7fffffff || (int64_t)length > walk->end - record - 8) return false;
     available = walk->end - record - NOA_RECORD_HEADER;
     if ((int64_t)length < available) available = (int64_t)length;
-    if (available < 4 || available > NOA_MAX_DIR_BODY ||
-        walk->live + available > NOA_MAX_LIVE ||
-        walk->body_total + available > walk->end - walk->base)
-        return false;
+    if (available < 4 || available > NOA_MAX_DIR_BODY || walk->live + available > NOA_MAX_LIVE || walk->body_total + available > walk->end - walk->base) return false;
     if (!noa_visit(walk, record)) return false;
     ++walk->directories;
     if (walk->measure) noa_extend(walk, record + NOA_RECORD_HEADER + available);
@@ -429,22 +402,16 @@ static bool noa_walk_dir(noa_walk *walk, int64_t record, size_t prefix,
     if (!body) return false;
     walk->live += available;
     walk->body_total += available;
-    if (!noa_read_at(walk->device, record + NOA_RECORD_HEADER, body,
-                     (size_t)available))
-        goto done;
+    if (!noa_read_at(walk->device, record + NOA_RECORD_HEADER, body, (size_t)available)) goto done;
     count = (int32_t)xx_data_get_u32(body, 4, 0, false);
-    if (count > 0 &&
-        (int64_t)count > (available - 4) / (int64_t)NOA_ENTRY_FIXED)
-        goto done;
+    if (count > 0 && (int64_t)count > (available - 4) / (int64_t)NOA_ENTRY_FIXED) goto done;
     pos = 4;
     for (index = 0; index < count; ++index) {
         uint64_t size, relative;
         uint32_t attribute, encoding, extra, name_length;
         int64_t target;
         size_t path_length;
-        if ((walk->count & NOA_POLL_MASK) == 0U && walk->pd &&
-            xx_pd_is_stopped(walk->pd))
-            goto done;
+        if ((walk->count & NOA_POLL_MASK) == 0U && walk->pd && xx_pd_is_stopped(walk->pd)) goto done;
         if (available - pos < NOA_ENTRY_FIXED) goto done;
         size = xx_data_get_u64(body + pos, 8, 0, false);
         attribute = xx_data_get_u32(body + pos + 8, 4, 0, false);
@@ -456,45 +423,29 @@ static bool noa_walk_dir(noa_walk *walk, int64_t record, size_t prefix,
         pos += (int64_t)extra;
         name_length = xx_data_get_u32(body + pos, 4, 0, false);
         pos += 4;
-        if (name_length > NOA_MAX_NAME ||
-            (int64_t)name_length > available - pos)
-            goto done;
+        if (name_length > NOA_MAX_NAME || (int64_t)name_length > available - pos) goto done;
         /* The record offset is signed and relative to this DirEntry. */
-        if ((int64_t)relative < -(record - walk->base) ||
-            (int64_t)relative > walk->end - record)
-            target = -1;
-        else
-            target = record + (int64_t)relative;
+        if ((int64_t)relative < -(record - walk->base) || (int64_t)relative > walk->end - record) target = -1;
+        else target = record + (int64_t)relative;
         if (attribute == NOA_ATTR_END_A || attribute == NOA_ATTR_END_B) break;
         path_length = prefix;
         if (prefix != 0U) {
             if (prefix + 1U > NOA_MAX_PATH) goto done;
             walk->path[path_length++] = '/';
         }
-        path_length = noa_convert_name(body + pos, name_length, walk->path,
-                                       path_length, NOA_MAX_PATH);
+        path_length = noa_convert_name(body + pos, name_length, walk->path, path_length, NOA_MAX_PATH);
         if (path_length == SIZE_MAX) goto done;
         pos += (int64_t)name_length;
         if (attribute == NOA_ATTR_DIRECTORY) {
-            if (target < 0 ||
-                !noa_walk_dir(walk, target + NOA_RECORD_HEADER, path_length,
-                              depth + 1U))
-                goto done;
+            if (target < 0 || !noa_walk_dir(walk, target + NOA_RECORD_HEADER, path_length, depth + 1U)) goto done;
         } else {
-            if (!noa_add_member(walk, target, size, attribute, encoding,
-                                path_length))
-                goto done;
-            if (walk->measure && target >= walk->base &&
-                target <= walk->end - NOA_RECORD_HEADER) {
+            if (!noa_add_member(walk, target, size, attribute, encoding, path_length)) goto done;
+            if (walk->measure && target >= walk->base && target <= walk->end - NOA_RECORD_HEADER) {
                 uint8_t file_head[NOA_RECORD_HEADER];
                 uint64_t file_length;
-                if (noa_read_at(walk->device, target, file_head,
-                                sizeof(file_head))) {
+                if (noa_read_at(walk->device, target, file_head, sizeof(file_head))) {
                     file_length = xx_data_get_u64(file_head + 8, 8, 0, false);
-                    if (file_length <= (uint64_t)(walk->end - target -
-                                                  NOA_RECORD_HEADER))
-                        noa_extend(walk, target + NOA_RECORD_HEADER +
-                                             (int64_t)file_length);
+                    if (file_length <= (uint64_t)(walk->end - target - NOA_RECORD_HEADER)) noa_extend(walk, target + NOA_RECORD_HEADER + (int64_t)file_length);
                 }
             }
         }
@@ -507,7 +458,8 @@ done:
     return ok;
 }
 
-static void noa_walk_free(noa_walk *walk) {
+static void noa_walk_free(noa_walk *walk)
+{
     if (walk->items) xx_mem_free(walk->items);
     if (walk->pool) xx_mem_free(walk->pool);
     if (walk->visited) xx_mem_free(walk->visited);
@@ -517,8 +469,8 @@ static void noa_walk_free(noa_walk *walk) {
 }
 
 /* Run the whole walk; on success walk->count > 0.  The caller frees. */
-static bool noa_run(Abstractformat *format, noa_walk *walk, bool collect,
-                    bool measure, xx_pd_struct *pd) {
+static bool noa_run(Abstractformat *format, noa_walk *walk, bool collect, bool measure, xx_pd_struct *pd)
+{
     int64_t end;
     xx_mem_zero(walk, sizeof(*walk));
     if (!noa_read_header(format, &end)) return false;
@@ -529,33 +481,31 @@ static bool noa_run(Abstractformat *format, noa_walk *walk, bool collect,
     walk->collect = collect;
     walk->measure = measure;
     walk->extent = format->base_address + NOA_HEADER_SIZE;
-    return noa_walk_dir(walk, format->base_address + NOA_HEADER_SIZE, 0U, 0U) &&
-           walk->count != 0U;
+    return noa_walk_dir(walk, format->base_address + NOA_HEADER_SIZE, 0U, 0U) && walk->count != 0U;
 }
 
-static int noa_compare_keys(const void *left, const void *right) {
+static int noa_compare_keys(const void *left, const void *right)
+{
     const noa_key *a = (const noa_key *)left;
     const noa_key *b = (const noa_key *)right;
     if (a->hash != b->hash) return a->hash < b->hash ? -1 : 1;
     return a->index < b->index ? -1 : (a->index > b->index ? 1 : 0);
 }
 
-static bool noa_mark_duplicates(noa_member *items, const char *pool,
-                                size_t count) {
+static bool noa_mark_duplicates(noa_member *items, const char *pool, size_t count)
+{
     noa_key *keys;
     size_t index;
     if (count < 2U) return true;
     keys = (noa_key *)xx_mem_alloc(count * sizeof(*keys));
     if (!keys) return false;
     for (index = 0U; index < count; ++index) {
-        keys[index].hash = noa_name_hash(pool + items[index].name_at,
-                                         items[index].name_length);
+        keys[index].hash = noa_name_hash(pool + items[index].name_at, items[index].name_length);
         keys[index].index = (uint32_t)index;
     }
     xx_rt_qsort(keys, count, sizeof(*keys), noa_compare_keys);
     for (index = 1U; index < count; ++index)
-        if (keys[index].hash == keys[index - 1U].hash)
-            items[keys[index].index].renamed = true;
+        if (keys[index].hash == keys[index - 1U].hash) items[keys[index].index].renamed = true;
     xx_mem_free(keys);
     return true;
 }
@@ -626,7 +576,8 @@ typedef struct nemesis_s {
 static const int nemesis_shift[4] = {1, 3, 4, 5};
 static const int nemesis_new_limit[4] = {0x01, 0x08, 0x10, 0x20};
 
-static void erisa_model_init(erisa_model *model) {
+static void erisa_model_init(erisa_model *model)
+{
     int i;
     model->total = ERISA_SYMBOL_SORTS;
     model->sorts = ERISA_SYMBOL_SORTS;
@@ -642,18 +593,19 @@ static void erisa_model_init(erisa_model *model) {
     }
 }
 
-static void erisa_model_half(erisa_model *model) {
+static void erisa_model_half(erisa_model *model)
+{
     int i;
     model->total = 0;
     for (i = 0; i < model->sorts; ++i) {
-        model->table[i].occured =
-            (uint16_t)((model->table[i].occured + 1U) >> 1U);
+        model->table[i].occured = (uint16_t)((model->table[i].occured + 1U) >> 1U);
         model->total += model->table[i].occured;
     }
     for (i = 0; i < ERISA_SUB_SORTS; ++i) model->sub[i].occured >>= 1U;
 }
 
-static int erisa_model_increase(erisa_model *model, int index) {
+static int erisa_model_increase(erisa_model *model, int index)
+{
     uint16_t occured = ++model->table[index].occured;
     int16_t symbol = model->table[index].symbol;
     while (--index >= 0) {
@@ -667,7 +619,8 @@ static int erisa_model_increase(erisa_model *model, int index) {
     return index;
 }
 
-static bool erisa_model_add(erisa_model *model, int16_t symbol) {
+static bool erisa_model_add(erisa_model *model, int16_t symbol)
+{
     int index = model->sorts;
     if (index < 0 || index >= ERISA_SYMBOL_SORTS) return false;
     model->sorts++;
@@ -677,7 +630,8 @@ static bool erisa_model_add(erisa_model *model, int16_t symbol) {
     return true;
 }
 
-static bool nemesis_prefetch(nemesis *n) {
+static bool nemesis_prefetch(nemesis *n)
+{
     if (n->int_count == 0) {
         if (n->buffer_count == 0U) {
             uint32_t want = NEMESIS_READ_CHUNK;
@@ -695,9 +649,7 @@ static bool nemesis_prefetch(nemesis *n) {
             while (n->buffer_count & 3U) n->buffer[n->buffer_count++] = 0;
         }
         n->int_count = 32;
-        n->int_buffer = ((uint32_t)n->buffer[n->next] << 24U) |
-                        ((uint32_t)n->buffer[n->next + 1U] << 16U) |
-                        ((uint32_t)n->buffer[n->next + 2U] << 8U) |
+        n->int_buffer = ((uint32_t)n->buffer[n->next] << 24U) | ((uint32_t)n->buffer[n->next + 1U] << 16U) | ((uint32_t)n->buffer[n->next + 2U] << 8U) |
                         (uint32_t)n->buffer[n->next + 3U];
         n->next += 4U;
         n->buffer_count -= 4U;
@@ -706,7 +658,8 @@ static bool nemesis_prefetch(nemesis *n) {
 }
 
 /* 1 at end of input, otherwise 0 or -1 (the sign of the next bit). */
-static int nemesis_bit(nemesis *n) {
+static int nemesis_bit(nemesis *n)
+{
     int value;
     if (!nemesis_prefetch(n)) return 1;
     value = (n->int_buffer & 0x80000000U) ? -1 : 0;
@@ -715,7 +668,8 @@ static int nemesis_bit(nemesis *n) {
     return value;
 }
 
-static uint32_t nemesis_bits(nemesis *n, int count) {
+static uint32_t nemesis_bits(nemesis *n, int count)
+{
     uint32_t code = 0U;
     while (count != 0) {
         int copy;
@@ -736,13 +690,12 @@ static uint32_t nemesis_bits(nemesis *n, int count) {
 
 /* Index of the next symbol in `model`, -1 at the end of the code, -2 on a
  * corrupt stream. */
-static int nemesis_index(nemesis *n, const erisa_model *model) {
+static int nemesis_index(nemesis *n, const erisa_model *model)
+{
     uint32_t acc, fs = 0U, occured = 0U;
     uint16_t w;
     int sym = 0;
-    if (model->total == 0U || n->augend == 0U || model->sorts <= 0 ||
-        model->sorts > ERISA_SYMBOL_SORTS)
-        return -2;
+    if (model->total == 0U || n->augend == 0U || model->sorts <= 0 || model->sorts > ERISA_SYMBOL_SORTS) return -2;
     acc = n->code * model->total / n->augend;
     if (acc >= ERISA_TOTAL_LIMIT) return -1;
     w = (uint16_t)acc;
@@ -771,7 +724,8 @@ static int nemesis_index(nemesis *n, const erisa_model *model) {
 
 /* Decode one symbol value from `model`: >= 0 a symbol, ERISA_ESC for the
  * escape or the end of the code, -2 on a corrupt stream. */
-static int nemesis_code(nemesis *n, erisa_model *model) {
+static int nemesis_code(nemesis *n, erisa_model *model)
+{
     int sym = nemesis_index(n, model);
     int value;
     if (sym == -2) return -2;
@@ -781,8 +735,8 @@ static int nemesis_code(nemesis *n, erisa_model *model) {
     return value;
 }
 
-static void nemesis_prepare(nemesis *n, xx_io_device *device, int64_t offset,
-                            int64_t size) {
+static void nemesis_prepare(nemesis *n, xx_io_device *device, int64_t offset, int64_t size)
+{
     int i;
     n->device = device;
     n->position = offset;
@@ -810,7 +764,8 @@ static void nemesis_prepare(nemesis *n, xx_io_device *device, int64_t offset,
     n->eof = false;
 }
 
-static void nemesis_emit(nemesis *n, uint8_t symbol) {
+static void nemesis_emit(nemesis *n, uint8_t symbol)
+{
     nemesis_phrase *phrase = &n->lookup[symbol];
     n->last_bytes[n->last_symbol++] = symbol;
     n->last_symbol &= 3;
@@ -822,7 +777,8 @@ static void nemesis_emit(nemesis *n, uint8_t symbol) {
 
 /* Decode up to `count` bytes; returns the number decoded (fewer means the
  * stream ended) or -1 on a corrupt stream. */
-static int64_t nemesis_decode(nemesis *n, uint8_t *out, uint32_t count) {
+static int64_t nemesis_decode(nemesis *n, uint8_t *out, uint32_t count)
+{
     uint32_t decoded = 0U;
     /* Every pass of the loop either emits bytes or decodes at least one
      * symbol from a model with more than one symbol, which shrinks the
@@ -855,8 +811,7 @@ static int64_t nemesis_decode(nemesis *n, uint8_t *out, uint32_t count) {
         }
         model = &n->base;
         for (deg = 0; deg < 4; ++deg) {
-            int last = n->last_bytes[(n->last_symbol + 3 - deg) & 3] >>
-                       nemesis_shift[deg];
+            int last = n->last_bytes[(n->last_symbol + 3 - deg) & 3] >> nemesis_shift[deg];
             int slot = model->sub[last].symbol;
             if (slot < 0) break;
             if ((uint32_t)slot >= n->work_used) return -1;
@@ -893,8 +848,7 @@ static int64_t nemesis_decode(nemesis *n, uint8_t *out, uint32_t count) {
                 n->eof = true;
                 return (int64_t)decoded;
             }
-            length = nemesis_code(n, index == 0 ? &n->run_length
-                                                : &n->phrase_length);
+            length = nemesis_code(n, index == 0 ? &n->run_length : &n->phrase_length);
             if (length == -2) return -1;
             if (length == ERISA_ESC) return (int64_t)decoded;
             last = n->window[(n->window_index - 1U) & NEMESIS_BUF_MASK];
@@ -903,8 +857,7 @@ static int64_t nemesis_decode(nemesis *n, uint8_t *out, uint32_t count) {
             if (index == 0) {
                 n->next_index = -1;
             } else {
-                uint32_t at = phrase->index[(phrase->first - (uint32_t)index) &
-                                            NEMESIS_INDEX_MASK];
+                uint32_t at = phrase->index[(phrase->first - (uint32_t)index) & NEMESIS_INDEX_MASK];
                 if (at >= NEMESIS_BUF_SIZE || n->window[at] != last) return -1;
                 n->next_index = (int32_t)((at + 1U) & NEMESIS_BUF_MASK);
             }
@@ -918,15 +871,13 @@ static int64_t nemesis_decode(nemesis *n, uint8_t *out, uint32_t count) {
         if (n->work_used < ERISA_SLOT_MAX && deg < 4) {
             int value_symbol = byte >> nemesis_shift[deg];
             if (value_symbol >= ERISA_SUB_SORTS) return -1;
-            if (++model->sub[value_symbol].occured >=
-                (uint16_t)nemesis_new_limit[deg]) {
+            if (++model->sub[value_symbol].occured >= (uint16_t)nemesis_new_limit[deg]) {
                 int i;
                 erisa_model *parent = model;
                 model = &n->base;
                 for (i = 0; i <= deg; ++i) {
                     int slot;
-                    value_symbol = n->last_bytes[(n->last_symbol + 3 - i) & 3] >>
-                                   nemesis_shift[i];
+                    value_symbol = n->last_bytes[(n->last_symbol + 3 - i) & 3] >> nemesis_shift[i];
                     slot = model->sub[value_symbol].symbol;
                     if (slot < 0) break;
                     if ((uint32_t)slot >= n->work_used) return -1;
@@ -938,10 +889,8 @@ static int64_t nemesis_decode(nemesis *n, uint8_t *out, uint32_t count) {
                     model->sub[value_symbol].symbol = (int16_t)(n->work_used++);
                     created->total = 0U;
                     for (i = 0; i < parent->sorts; ++i) {
-                        uint16_t occured =
-                            (uint16_t)(parent->table[i].occured >> 4U);
-                        if (occured > 0U &&
-                            parent->table[i].symbol != ERISA_ESC) {
+                        uint16_t occured = (uint16_t)(parent->table[i].occured >> 4U);
+                        if (occured > 0U && parent->table[i].symbol != ERISA_ESC) {
                             if (j >= ERISA_SYMBOL_SORTS - 1) return -1;
                             created->total += occured;
                             created->table[j].occured = occured;
@@ -967,9 +916,8 @@ static int64_t nemesis_decode(nemesis *n, uint8_t *out, uint32_t count) {
 /* Decode the coded stream of `size` bytes at `offset` into `destination`
  * (or only validate it when NULL).  `target` is the declared size, 0 for
  * "until the stream ends". */
-static bool noa_unpack_nemesis(xx_io_device *source, int64_t offset,
-                               int64_t size, uint64_t target,
-                               xx_io_device *destination, xx_pd_struct *pd) {
+static bool noa_unpack_nemesis(xx_io_device *source, int64_t offset, int64_t size, uint64_t target, xx_io_device *destination, xx_pd_struct *pd)
+{
     nemesis *n;
     uint8_t *out;
     int64_t limit = target ? (int64_t)target : NOA_MAX_UNSIZED;
@@ -986,9 +934,7 @@ static bool noa_unpack_nemesis(xx_io_device *source, int64_t offset,
         if (limit - produced < (int64_t)want) want = (uint32_t)(limit - produced);
         got = nemesis_decode(n, out, want);
         if (got < 0 || n->io_error) goto done;
-        if (got > 0 && destination &&
-            !noa_write_all(destination, out, (size_t)got))
-            goto done;
+        if (got > 0 && destination && !noa_write_all(destination, out, (size_t)got)) goto done;
         produced += got;
         if ((uint32_t)got < want) break;
     }
@@ -1000,8 +946,8 @@ done:
     return ok;
 }
 
-static bool noa_copy(xx_io_device *source, int64_t offset, int64_t size,
-                     xx_io_device *destination, xx_pd_struct *pd) {
+static bool noa_copy(xx_io_device *source, int64_t offset, int64_t size, xx_io_device *destination, xx_pd_struct *pd)
+{
     const size_t capacity = noa_capacity();
     uint8_t *buffer;
     int64_t done = 0;
@@ -1010,11 +956,8 @@ static bool noa_copy(xx_io_device *source, int64_t offset, int64_t size,
     buffer = (uint8_t *)xx_mem_alloc(capacity);
     if (!buffer) return false;
     while (done < size) {
-        size_t chunk = size - done > (int64_t)capacity ? capacity
-                                                       : (size_t)(size - done);
-        if ((pd && xx_pd_is_stopped(pd)) ||
-            !noa_read_at(source, offset + done, buffer, chunk) ||
-            (destination && !noa_write_all(destination, buffer, chunk))) {
+        size_t chunk = size - done > (int64_t)capacity ? capacity : (size_t)(size - done);
+        if ((pd && xx_pd_is_stopped(pd)) || !noa_read_at(source, offset + done, buffer, chunk) || (destination && !noa_write_all(destination, buffer, chunk))) {
             ok = false;
             break;
         }
@@ -1025,41 +968,35 @@ static bool noa_copy(xx_io_device *source, int64_t offset, int64_t size,
 }
 
 /* Where a member's data lives: body offset and length, from its record. */
-static bool noa_member_body(Abstractformat *format, const noa_member *member,
-                            int64_t *offset, int64_t *length) {
+static bool noa_member_body(Abstractformat *format, const noa_member *member, int64_t *offset, int64_t *length)
+{
     uint8_t head[NOA_RECORD_HEADER];
     int64_t end = xx_io_total_size(format->device);
     uint64_t size;
-    if (member->record < format->base_address ||
-        member->record > end - NOA_RECORD_HEADER ||
-        !noa_read_at(format->device, member->record, head, sizeof(head)))
+    if (member->record < format->base_address || member->record > end - NOA_RECORD_HEADER || !noa_read_at(format->device, member->record, head, sizeof(head)))
         return false;
     size = xx_data_get_u64(head + 8, 8, 0, false);
-    if (size > (uint64_t)0x7fffffff ||
-        (int64_t)size > end - member->record - NOA_RECORD_HEADER)
-        return false;
+    if (size > (uint64_t)0x7fffffff || (int64_t)size > end - member->record - NOA_RECORD_HEADER) return false;
     *offset = member->record + NOA_RECORD_HEADER;
     *length = (int64_t)size;
     return true;
 }
 
-static bool noa_extract(Abstractformat *format, const noa_member *member,
-                        xx_io_device *destination, xx_pd_struct *pd) {
+static bool noa_extract(Abstractformat *format, const noa_member *member, xx_io_device *destination, xx_pd_struct *pd)
+{
     int64_t offset, length;
-    if (member->encoding != NOA_ENC_RAW && member->encoding != NOA_ENC_NEMESIS)
-        return false;
+    if (member->encoding != NOA_ENC_RAW && member->encoding != NOA_ENC_NEMESIS) return false;
     if (!noa_member_body(format, member, &offset, &length)) return false;
-    if (member->encoding == NOA_ENC_RAW)
-        return noa_copy(format->device, offset, length, destination, pd);
+    if (member->encoding == NOA_ENC_RAW) return noa_copy(format->device, offset, length, destination, pd);
     if (length <= 4) return true;
     if (member->original_size > (uint64_t)NOA_MAX_DECLARED) return false;
-    return noa_unpack_nemesis(format->device, offset, length - 4,
-                              member->original_size, destination, pd);
+    return noa_unpack_nemesis(format->device, offset, length - 4, member->original_size, destination, pd);
 }
 
 /* ---- records ----------------------------------------------------------- */
 
-static void noa_stream_free(void *opaque) {
+static void noa_stream_free(void *opaque)
+{
     noa_stream *stream = (noa_stream *)opaque;
     if (!stream) return;
     if (stream->items) xx_mem_free(stream->items);
@@ -1068,17 +1005,16 @@ static void noa_stream_free(void *opaque) {
     xx_mem_free(stream);
 }
 
-static bool noa_copy_options(xx_list_s *destination, const xx_list_s *source) {
+static bool noa_copy_options(xx_list_s *destination, const xx_list_s *source)
+{
     size_t index;
     if (!source) return true;
     for (index = 0U; index < source->count; ++index) {
-        const xx_meta *original =
-            (const xx_meta *)xx_list_at((const xx_list_t *)source, index);
+        const xx_meta *original = (const xx_meta *)xx_list_at((const xx_list_t *)source, index);
         xx_meta copy;
         if (!original) continue;
         xx_meta_init(&copy, original->meta_id);
-        if (!xx_var_copy(&copy.var, &original->var) ||
-            !xx_list_append(destination, &copy)) {
+        if (!xx_var_copy(&copy.var, &original->var) || !xx_list_append(destination, &copy)) {
             xx_meta_cleanup(&copy);
             return false;
         }
@@ -1086,29 +1022,26 @@ static bool noa_copy_options(xx_list_s *destination, const xx_list_s *source) {
     return true;
 }
 
-static const xx_var *noa_option(const xx_list_s *options, uint32_t id) {
+static const xx_var *noa_option(const xx_list_s *options, uint32_t id)
+{
     size_t index;
     if (!options) return NULL;
     for (index = 0U; index < options->count; ++index) {
-        const xx_meta *meta =
-            (const xx_meta *)xx_list_at((const xx_list_t *)options, index);
+        const xx_meta *meta = (const xx_meta *)xx_list_at((const xx_list_t *)options, index);
         if (meta && meta->meta_id == id) return &meta->var;
     }
     return NULL;
 }
 
-static bool noa_set_record(Abstractformat *format, xx_archive_record *record,
-                           noa_stream *stream, size_t index) {
+static bool noa_set_record(Abstractformat *format, xx_archive_record *record, noa_stream *stream, size_t index)
+{
     const noa_member *member = &stream->items[index];
     int64_t offset = -1, length = 0;
-    bool encrypted = member->encoding != NOA_ENC_RAW &&
-                     member->encoding != NOA_ENC_NEMESIS;
+    bool encrypted = member->encoding != NOA_ENC_RAW && member->encoding != NOA_ENC_NEMESIS;
     xx_archive_record_cleanup(record);
     xx_archive_record_init(record);
-    xx_rt_memcpy(stream->name, stream->pool + member->name_at,
-                 (size_t)member->name_length + 1U);
-    if (member->renamed)
-        noa_insert_suffix(stream->name, member->name_length, (uint32_t)index);
+    xx_rt_memcpy(stream->name, stream->pool + member->name_at, (size_t)member->name_length + 1U);
+    if (member->renamed) noa_insert_suffix(stream->name, member->name_length, (uint32_t)index);
     if (!noa_member_body(format, member, &offset, &length)) {
         offset = -1;
         length = 0;
@@ -1117,23 +1050,16 @@ static bool noa_set_record(Abstractformat *format, xx_archive_record *record,
     record->header_size = NOA_RECORD_HEADER;
     record->data_offset = offset;
     record->compressed_size = length;
-    return xx_archive_record_set_original_name(record, stream->name) &&
-           xx_archive_record_set_meta_u64(record, XX_META_ID_COMPRESSED_SIZE,
-                                          (uint64_t)length) &&
-           xx_archive_record_set_meta_u64(
-               record, XX_META_ID_UNCOMPRESSED_SIZE,
-               member->encoding == NOA_ENC_RAW ? (uint64_t)length
-                                               : member->original_size) &&
-           xx_archive_record_set_meta_u64(record, XX_META_ID_COMPRESSION_METHOD,
-                                          member->encoding) &&
-           xx_archive_record_set_meta_bool(record, XX_META_ID_IS_ENCRYPTED,
-                                           encrypted) &&
-           xx_archive_record_set_meta_bool(record, XX_META_ID_IS_FOLDER, false);
+    return xx_archive_record_set_original_name(record, stream->name) && xx_archive_record_set_meta_u64(record, XX_META_ID_COMPRESSED_SIZE, (uint64_t)length) &&
+           xx_archive_record_set_meta_u64(record, XX_META_ID_UNCOMPRESSED_SIZE, member->encoding == NOA_ENC_RAW ? (uint64_t)length : member->original_size) &&
+           xx_archive_record_set_meta_u64(record, XX_META_ID_COMPRESSION_METHOD, member->encoding) &&
+           xx_archive_record_set_meta_bool(record, XX_META_ID_IS_ENCRYPTED, encrypted) && xx_archive_record_set_meta_bool(record, XX_META_ID_IS_FOLDER, false);
 }
 
 /* ---- public API -------------------------------------------------------- */
 
-void xx_noa_init(xx_noa *archive, xx_io_device *device, int64_t base_address) {
+void xx_noa_init(xx_noa *archive, xx_io_device *device, int64_t base_address)
+{
     if (!archive) return;
     xx_mem_zero(archive, sizeof(*archive));
     xx_format_init(&archive->format, device, base_address);
@@ -1146,37 +1072,35 @@ void xx_noa_init(xx_noa *archive, xx_io_device *device, int64_t base_address) {
     archive->format.check_is_valid = xx_noa_check_is_valid;
     archive->format.handle_base_info = xx_noa_handle_base_info;
     archive->format.get_format_size = xx_noa_get_format_size;
-    archive->format.get_number_of_archive_records =
-        xx_noa_get_number_of_archive_records;
-    archive->format.create_archive_records_reading =
-        xx_noa_create_archive_records_reading;
-    archive->format.get_current_archive_record =
-        xx_noa_get_current_archive_record;
-    archive->format.unpack_current_archive_record =
-        xx_noa_unpack_current_archive_record;
-    archive->format.archive_record_move_to_next =
-        xx_noa_archive_record_move_to_next;
-    archive->format.free_archive_records_reading =
-        xx_noa_free_archive_records_reading;
+    archive->format.get_number_of_archive_records = xx_noa_get_number_of_archive_records;
+    archive->format.create_archive_records_reading = xx_noa_create_archive_records_reading;
+    archive->format.get_current_archive_record = xx_noa_get_current_archive_record;
+    archive->format.unpack_current_archive_record = xx_noa_unpack_current_archive_record;
+    archive->format.archive_record_move_to_next = xx_noa_archive_record_move_to_next;
+    archive->format.free_archive_records_reading = xx_noa_free_archive_records_reading;
 }
 
-xx_noa *xx_noa_create(xx_io_device *device, int64_t base_address) {
+xx_noa *xx_noa_create(xx_io_device *device, int64_t base_address)
+{
     xx_noa *archive = (xx_noa *)xx_mem_alloc(sizeof(*archive));
     if (archive) xx_noa_init(archive, device, base_address);
     return archive;
 }
 
-void xx_noa_destroy(xx_noa *archive) {
+void xx_noa_destroy(xx_noa *archive)
+{
     if (archive) xx_format_cleanup_extra_parameters(&archive->format);
 }
 
-void xx_noa_free(xx_noa *archive) {
+void xx_noa_free(xx_noa *archive)
+{
     if (!archive) return;
     xx_noa_destroy(archive);
     xx_mem_free(archive);
 }
 
-bool xx_noa_check_is_valid(Abstractformat *format, xx_pd_struct *pd) {
+bool xx_noa_check_is_valid(Abstractformat *format, xx_pd_struct *pd)
+{
     noa_walk *walk = (noa_walk *)xx_mem_alloc(sizeof(noa_walk));
     bool ok;
     if (!walk) return false;
@@ -1186,7 +1110,8 @@ bool xx_noa_check_is_valid(Abstractformat *format, xx_pd_struct *pd) {
     return ok;
 }
 
-bool xx_noa_handle_base_info(Abstractformat *format, xx_pd_struct *pd) {
+bool xx_noa_handle_base_info(Abstractformat *format, xx_pd_struct *pd)
+{
     noa_walk *walk = (noa_walk *)xx_mem_alloc(sizeof(noa_walk));
     bool ok;
     if (!walk) return false;
@@ -1204,30 +1129,25 @@ bool xx_noa_handle_base_info(Abstractformat *format, xx_pd_struct *pd) {
     return ok;
 }
 
-int64_t xx_noa_get_format_size(Abstractformat *format, xx_pd_struct *pd) {
-    return format && (format->base_info_handled ||
-                      xx_noa_handle_base_info(format, pd))
-               ? format->format_size : -1;
+int64_t xx_noa_get_format_size(Abstractformat *format, xx_pd_struct *pd)
+{
+    return format && (format->base_info_handled || xx_noa_handle_base_info(format, pd)) ? format->format_size : -1;
 }
 
-uint64_t xx_noa_get_number_of_archive_records(Abstractformat *format,
-                                              xx_pd_struct *pd) {
-    return format && (format->base_info_handled ||
-                      xx_noa_handle_base_info(format, pd))
-               ? ((xx_noa *)format)->number_of_records : 0U;
+uint64_t xx_noa_get_number_of_archive_records(Abstractformat *format, xx_pd_struct *pd)
+{
+    return format && (format->base_info_handled || xx_noa_handle_base_info(format, pd)) ? ((xx_noa *)format)->number_of_records : 0U;
 }
 
-xx_archive_record_state *xx_noa_create_archive_records_reading(
-    Abstractformat *format, const xx_list_s *options, xx_pd_struct *pd) {
+xx_archive_record_state *xx_noa_create_archive_records_reading(Abstractformat *format, const xx_list_s *options, xx_pd_struct *pd)
+{
     noa_walk *walk;
     noa_stream *stream = NULL;
     xx_archive_record_state *state;
     walk = (noa_walk *)xx_mem_alloc(sizeof(noa_walk));
     if (!walk) return NULL;
-    if (!noa_run(format, walk, true, false, pd) ||
-        !noa_mark_duplicates(walk->items, walk->pool, walk->count) ||
-        !(stream = (noa_stream *)xx_mem_calloc(1U, sizeof(*stream))) ||
-        !(stream->name = (char *)xx_mem_alloc(NOA_MAX_PATH + 16U))) {
+    if (!noa_run(format, walk, true, false, pd) || !noa_mark_duplicates(walk->items, walk->pool, walk->count) ||
+        !(stream = (noa_stream *)xx_mem_calloc(1U, sizeof(*stream))) || !(stream->name = (char *)xx_mem_alloc(NOA_MAX_PATH + 16U))) {
         if (stream) xx_mem_free(stream);
         noa_walk_free(walk);
         xx_mem_free(walk);
@@ -1249,8 +1169,7 @@ xx_archive_record_state *xx_noa_create_archive_records_reading(
     state->internal_state = stream;
     state->free_internal = noa_stream_free;
     state->total_records = stream->count;
-    if (!noa_copy_options(&state->options, options) ||
-        !noa_set_record(format, &state->current_record, stream, 0U)) {
+    if (!noa_copy_options(&state->options, options) || !noa_set_record(format, &state->current_record, stream, 0U)) {
         xx_archive_record_state_free(state);
         return NULL;
     }
@@ -1258,32 +1177,26 @@ xx_archive_record_state *xx_noa_create_archive_records_reading(
     return state;
 }
 
-const xx_archive_record *xx_noa_get_current_archive_record(
-    Abstractformat *format, xx_archive_record_state *state) {
-    return format && state && state->format == format && state->has_record
-               ? &state->current_record : NULL;
+const xx_archive_record *xx_noa_get_current_archive_record(Abstractformat *format, xx_archive_record_state *state)
+{
+    return format && state && state->format == format && state->has_record ? &state->current_record : NULL;
 }
 
-bool xx_noa_archive_record_move_to_next(Abstractformat *format,
-                                        xx_archive_record_state *state,
-                                        xx_pd_struct *pd) {
+bool xx_noa_archive_record_move_to_next(Abstractformat *format, xx_archive_record_state *state, xx_pd_struct *pd)
+{
     noa_stream *stream;
     (void)pd;
-    if (!format || !state || state->format != format ||
-        !(stream = (noa_stream *)state->internal_state) ||
-        ++stream->index >= stream->count) {
+    if (!format || !state || state->format != format || !(stream = (noa_stream *)state->internal_state) || ++stream->index >= stream->count) {
         if (state) state->has_record = false;
         return false;
     }
     ++state->current_index;
-    state->has_record = noa_set_record(format, &state->current_record, stream,
-                                       stream->index);
+    state->has_record = noa_set_record(format, &state->current_record, stream, stream->index);
     return state->has_record;
 }
 
-bool xx_noa_unpack_current_archive_record(Abstractformat *format,
-                                          xx_archive_record_state *state,
-                                          xx_pd_struct *pd) {
+bool xx_noa_unpack_current_archive_record(Abstractformat *format, xx_archive_record_state *state, xx_pd_struct *pd)
+{
     noa_stream *stream;
     const noa_member *member;
     const xx_var *path_option;
@@ -1292,29 +1205,22 @@ bool xx_noa_unpack_current_archive_record(Abstractformat *format,
     char *path = NULL;
     bool result = false;
     bool created = false;
-    if (!format || !state || state->format != format || !state->has_record ||
-        !(stream = (noa_stream *)state->internal_state) ||
-        stream->index >= stream->count || (pd && xx_pd_is_stopped(pd)))
+    if (!format || !state || state->format != format || !state->has_record || !(stream = (noa_stream *)state->internal_state) || stream->index >= stream->count ||
+        (pd && xx_pd_is_stopped(pd)))
         return false;
     member = &stream->items[stream->index];
     path_option = noa_option(&state->options, XX_META_ID_OPT_UNPACK_PATH);
     if (!path_option) return noa_extract(format, member, NULL, pd);
     if (!noa_safe_name(stream->name)) return false;
-    if (member->encoding != NOA_ENC_RAW && member->encoding != NOA_ENC_NEMESIS)
-        return false;
-    if (path_option->type == XX_VAR_TYPE_STRING ||
-        path_option->type == XX_VAR_TYPE_STRING_VIEW)
-        base = xx_var_get_str(path_option);
-    else if (path_option->type == XX_VAR_TYPE_WSTRING ||
-             path_option->type == XX_VAR_TYPE_WSTRING_VIEW) {
+    if (member->encoding != NOA_ENC_RAW && member->encoding != NOA_ENC_NEMESIS) return false;
+    if (path_option->type == XX_VAR_TYPE_STRING || path_option->type == XX_VAR_TYPE_STRING_VIEW) base = xx_var_get_str(path_option);
+    else if (path_option->type == XX_VAR_TYPE_WSTRING || path_option->type == XX_VAR_TYPE_WSTRING_VIEW) {
         owned_base = xx_str_unicode_to_utf8(xx_var_get_wstr(path_option));
         base = owned_base;
     }
     if (!base) goto done;
-    path = (base[0] && base[xx_str_len(base) - 1U] != '/' &&
-            base[xx_str_len(base) - 1U] != '\\')
-               ? xx_str_concat3(base, "/", stream->name)
-               : xx_str_concat(base, stream->name);
+    path = (base[0] && base[xx_str_len(base) - 1U] != '/' && base[xx_str_len(base) - 1U] != '\\') ? xx_str_concat3(base, "/", stream->name)
+                                                                                                  : xx_str_concat(base, stream->name);
     if (!path || !xx_store_create_dirs_a(path, false)) goto done;
     {
         xx_io_device *destination = xx_io_file_open(path, "wb");
@@ -1330,8 +1236,8 @@ done:
     return result;
 }
 
-void xx_noa_free_archive_records_reading(Abstractformat *format,
-                                         xx_archive_record_state *state) {
+void xx_noa_free_archive_records_reading(Abstractformat *format, xx_archive_record_state *state)
+{
     (void)format;
     xx_archive_record_state_free(state);
 }

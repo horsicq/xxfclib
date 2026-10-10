@@ -118,7 +118,7 @@ struct DieEngine {
 
     int bStop;
     char *pCurrentScript;
-    char *pCurrentFormatId; /* bundled audio.1.sg //fmt[...] tag, if any */
+    char *pCurrentFormatId;   /* bundled audio.1.sg //fmt[...] tag, if any */
     char *pCurrentFormatName; /* name assigned by that exact marked branch */
     /* Latest progress error. The reference overwrites this during a pass,
      * then adds one "Last error" record after the detection scripts. */
@@ -142,18 +142,13 @@ XXFC_API void die_engine_install_api(DieEngine *pEngine);
 /* Signature validation with the reference's progress-error handling.
  * Compare kind: 0 = no progress error (entry point/.NET), 1 = header,
  * 2 = overlay. Header/overlay cached comparisons do not report parse errors. */
-XXFC_API int die_engine_signature_compare(DieEngine *pEngine, cd_i64 nOffset,
-                                         const char *pText, int nKind,
-                                         cd_i64 nCacheBase);
-XXFC_API cd_i64 die_engine_signature_find(DieEngine *pEngine, cd_i64 nOffset,
-                                         cd_i64 nSize, const char *pText);
+XXFC_API int die_engine_signature_compare(DieEngine *pEngine, cd_i64 nOffset, const char *pText, int nKind, cd_i64 nCacheBase);
+XXFC_API cd_i64 die_engine_signature_find(DieEngine *pEngine, cd_i64 nOffset, cd_i64 nSize, const char *pText);
 
 /* Literal searches can reuse a bounded prefix index within an immutable scan.
  * The public DieFile search helpers remain stateless. No explicit init is
  * needed: a newly allocated engine has a NULL cache. */
-XXFC_API cd_i64 die_engine_literal_find(DieEngine *pEngine, cd_i64 nOffset,
-                                      cd_i64 nSize, const unsigned char *pNeedle,
-                                      cd_i64 nNeedleSize);
+XXFC_API cd_i64 die_engine_literal_find(DieEngine *pEngine, cd_i64 nOffset, cd_i64 nSize, const unsigned char *pNeedle, cd_i64 nNeedleSize);
 XXFC_API void die_engine_literal_cache_free(DieEngine *pEngine);
 
 /* The reference emits its profiling trace through warningMessage, which the

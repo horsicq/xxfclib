@@ -13,7 +13,10 @@ XXFC_API void xx_casio_fzf_init(xx_casio_fzf *, xx_io_device *, int64_t);
 XXFC_API xx_casio_fzf *xx_casio_fzf_create(xx_io_device *, int64_t);
 XXFC_API void xx_casio_fzf_destroy(xx_casio_fzf *);
 XXFC_API void xx_casio_fzf_free(xx_casio_fzf *);
-static inline Abstractformat *xx_casio_fzf_to_format(xx_casio_fzf *r) { return r ? &r->format : NULL; }
+static inline Abstractformat *xx_casio_fzf_to_format(xx_casio_fzf *r)
+{
+    return r ? &r->format : NULL;
+}
 #ifdef __cplusplus
 }
 #endif

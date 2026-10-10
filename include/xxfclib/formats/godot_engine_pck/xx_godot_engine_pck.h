@@ -98,27 +98,24 @@ typedef enum xx_godot_engine_pck_placement_e {
 
 typedef struct xx_godot_engine_pck {
     Abstractformat format;
-    uint64_t number_of_records;  /**< Listed members (removal entries are not). */
+    uint64_t number_of_records; /**< Listed members (removal entries are not). */
     uint32_t pack_version;
     uint32_t engine_major;
     uint32_t engine_minor;
     uint32_t engine_patch;
-    uint32_t pack_flags;         /**< Zero for versions 0 and 1. */
-    uint32_t file_count;         /**< Directory entries as declared. */
-    int64_t pack_offset;         /**< Absolute device offset of "GDPC". */
-    int64_t file_base;           /**< Absolute origin member offsets add to. */
-    int64_t directory_offset;    /**< Absolute offset of the file count. */
+    uint32_t pack_flags;      /**< Zero for versions 0 and 1. */
+    uint32_t file_count;      /**< Directory entries as declared. */
+    int64_t pack_offset;      /**< Absolute device offset of "GDPC". */
+    int64_t file_base;        /**< Absolute origin member offsets add to. */
+    int64_t directory_offset; /**< Absolute offset of the file count. */
     xx_godot_engine_pck_placement_t placement;
     bool directory_encrypted;
 } xx_godot_engine_pck;
 
 typedef xx_godot_engine_pck xx_godot_engine_pck_t;
 
-XXFC_API void xx_godot_engine_pck_init(xx_godot_engine_pck *archive,
-                                       xx_io_device *device,
-                                       int64_t base_address);
-XXFC_API xx_godot_engine_pck *xx_godot_engine_pck_create(
-    xx_io_device *device, int64_t base_address);
+XXFC_API void xx_godot_engine_pck_init(xx_godot_engine_pck *archive, xx_io_device *device, int64_t base_address);
+XXFC_API xx_godot_engine_pck *xx_godot_engine_pck_create(xx_io_device *device, int64_t base_address);
 XXFC_API void xx_godot_engine_pck_destroy(xx_godot_engine_pck *archive);
 XXFC_API void xx_godot_engine_pck_free(xx_godot_engine_pck *archive);
 
@@ -128,28 +125,16 @@ XXFC_API void xx_godot_engine_pck_free(xx_godot_engine_pck *archive);
  *  executable structure. The full reader still validates the pack. */
 XXFC_API bool xx_godot_engine_pck_probe_device(xx_io_device *device);
 
-XXFC_API bool xx_godot_engine_pck_check_is_valid(Abstractformat *self,
-                                                 xx_pd_struct *pd);
-XXFC_API bool xx_godot_engine_pck_handle_base_info(Abstractformat *self,
-                                                   xx_pd_struct *pd);
-XXFC_API int64_t xx_godot_engine_pck_get_format_size(Abstractformat *self,
-                                                     xx_pd_struct *pd);
-XXFC_API uint64_t xx_godot_engine_pck_get_number_of_archive_records(
-    Abstractformat *self, xx_pd_struct *pd);
+XXFC_API bool xx_godot_engine_pck_check_is_valid(Abstractformat *self, xx_pd_struct *pd);
+XXFC_API bool xx_godot_engine_pck_handle_base_info(Abstractformat *self, xx_pd_struct *pd);
+XXFC_API int64_t xx_godot_engine_pck_get_format_size(Abstractformat *self, xx_pd_struct *pd);
+XXFC_API uint64_t xx_godot_engine_pck_get_number_of_archive_records(Abstractformat *self, xx_pd_struct *pd);
 
-XXFC_API xx_archive_record_state *
-xx_godot_engine_pck_create_archive_records_reading(Abstractformat *self,
-                                                   const xx_list_s *options,
-                                                   xx_pd_struct *pd);
-XXFC_API const xx_archive_record *
-xx_godot_engine_pck_get_current_archive_record(Abstractformat *self,
-                                               xx_archive_record_state *state);
-XXFC_API bool xx_godot_engine_pck_unpack_current_archive_record(
-    Abstractformat *self, xx_archive_record_state *state, xx_pd_struct *pd);
-XXFC_API bool xx_godot_engine_pck_archive_record_move_to_next(
-    Abstractformat *self, xx_archive_record_state *state, xx_pd_struct *pd);
-XXFC_API void xx_godot_engine_pck_free_archive_records_reading(
-    Abstractformat *self, xx_archive_record_state *state);
+XXFC_API xx_archive_record_state *xx_godot_engine_pck_create_archive_records_reading(Abstractformat *self, const xx_list_s *options, xx_pd_struct *pd);
+XXFC_API const xx_archive_record *xx_godot_engine_pck_get_current_archive_record(Abstractformat *self, xx_archive_record_state *state);
+XXFC_API bool xx_godot_engine_pck_unpack_current_archive_record(Abstractformat *self, xx_archive_record_state *state, xx_pd_struct *pd);
+XXFC_API bool xx_godot_engine_pck_archive_record_move_to_next(Abstractformat *self, xx_archive_record_state *state, xx_pd_struct *pd);
+XXFC_API void xx_godot_engine_pck_free_archive_records_reading(Abstractformat *self, xx_archive_record_state *state);
 
 #ifdef __cplusplus
 }

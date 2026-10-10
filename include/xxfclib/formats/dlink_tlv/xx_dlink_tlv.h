@@ -76,41 +76,30 @@ struct xx_dlink_tlv {
     Abstractformat format;
     uint64_t number_of_records;
     uint64_t number_of_members;
-    uint32_t data_size;    /**< TLV length, the payload size. */
-    uint32_t data_type;    /**< TLV type; always 1 on an accepted header. */
-    uint32_t header_size;  /**< Always XX_DLINK_TLV_HEADER_SIZE. */
-    bool checksum_present; /**< False when the MD5 field was all zeros. */
-    bool checksum_verified;/**< True when a present MD5 matched. */
-    int64_t archive_end;   /**< base_address + header + payload, or -1. */
+    uint32_t data_size;     /**< TLV length, the payload size. */
+    uint32_t data_type;     /**< TLV type; always 1 on an accepted header. */
+    uint32_t header_size;   /**< Always XX_DLINK_TLV_HEADER_SIZE. */
+    bool checksum_present;  /**< False when the MD5 field was all zeros. */
+    bool checksum_verified; /**< True when a present MD5 matched. */
+    int64_t archive_end;    /**< base_address + header + payload, or -1. */
     void *internal;
 };
 
-XXFC_API void xx_dlink_tlv_init(xx_dlink_tlv *tlv, xx_io_device *dev,
-                                int64_t base_address);
-XXFC_API xx_dlink_tlv *xx_dlink_tlv_create(xx_io_device *dev,
-                                           int64_t base_address);
+XXFC_API void xx_dlink_tlv_init(xx_dlink_tlv *tlv, xx_io_device *dev, int64_t base_address);
+XXFC_API xx_dlink_tlv *xx_dlink_tlv_create(xx_io_device *dev, int64_t base_address);
 XXFC_API void xx_dlink_tlv_destroy(xx_dlink_tlv *tlv);
 XXFC_API void xx_dlink_tlv_free(xx_dlink_tlv *tlv);
 
-XXFC_API bool xx_dlink_tlv_check_is_valid(Abstractformat *self,
-                                          xx_pd_struct *pd);
-XXFC_API bool xx_dlink_tlv_handle_base_info(Abstractformat *self,
-                                            xx_pd_struct *pd);
-XXFC_API int64_t xx_dlink_tlv_get_format_size(Abstractformat *self,
-                                              xx_pd_struct *pd);
-XXFC_API uint64_t xx_dlink_tlv_get_number_of_archive_records(
-    Abstractformat *self, xx_pd_struct *pd);
+XXFC_API bool xx_dlink_tlv_check_is_valid(Abstractformat *self, xx_pd_struct *pd);
+XXFC_API bool xx_dlink_tlv_handle_base_info(Abstractformat *self, xx_pd_struct *pd);
+XXFC_API int64_t xx_dlink_tlv_get_format_size(Abstractformat *self, xx_pd_struct *pd);
+XXFC_API uint64_t xx_dlink_tlv_get_number_of_archive_records(Abstractformat *self, xx_pd_struct *pd);
 
-XXFC_API xx_archive_record_state *xx_dlink_tlv_create_archive_records_reading(
-    Abstractformat *self, const xx_list_s *options, xx_pd_struct *pd);
-XXFC_API const xx_archive_record *xx_dlink_tlv_get_current_archive_record(
-    Abstractformat *self, xx_archive_record_state *state);
-XXFC_API bool xx_dlink_tlv_unpack_current_archive_record(
-    Abstractformat *self, xx_archive_record_state *state, xx_pd_struct *pd);
-XXFC_API bool xx_dlink_tlv_archive_record_move_to_next(
-    Abstractformat *self, xx_archive_record_state *state, xx_pd_struct *pd);
-XXFC_API void xx_dlink_tlv_free_archive_records_reading(
-    Abstractformat *self, xx_archive_record_state *state);
+XXFC_API xx_archive_record_state *xx_dlink_tlv_create_archive_records_reading(Abstractformat *self, const xx_list_s *options, xx_pd_struct *pd);
+XXFC_API const xx_archive_record *xx_dlink_tlv_get_current_archive_record(Abstractformat *self, xx_archive_record_state *state);
+XXFC_API bool xx_dlink_tlv_unpack_current_archive_record(Abstractformat *self, xx_archive_record_state *state, xx_pd_struct *pd);
+XXFC_API bool xx_dlink_tlv_archive_record_move_to_next(Abstractformat *self, xx_archive_record_state *state, xx_pd_struct *pd);
+XXFC_API void xx_dlink_tlv_free_archive_records_reading(Abstractformat *self, xx_archive_record_state *state);
 
 XXFC_API uint64_t xx_dlink_tlv_get_number_of_records(const xx_dlink_tlv *tlv);
 XXFC_API uint64_t xx_dlink_tlv_get_number_of_members(const xx_dlink_tlv *tlv);
@@ -123,19 +112,24 @@ XXFC_API const char *xx_dlink_tlv_get_board_id(const xx_dlink_tlv *tlv);
 /** @brief ASCII MD5 from the header, or an empty string when absent. */
 XXFC_API const char *xx_dlink_tlv_get_checksum(const xx_dlink_tlv *tlv);
 
-static inline Abstractformat *xx_dlink_tlv_to_format(xx_dlink_tlv *tlv) {
+static inline Abstractformat *xx_dlink_tlv_to_format(xx_dlink_tlv *tlv)
+{
     return tlv ? &tlv->format : NULL;
 }
-static inline void XDlinkTlv_init(xx_dlink_tlv *tlv, xx_io_device *dev,
-                                  int64_t base_address) {
+static inline void XDlinkTlv_init(xx_dlink_tlv *tlv, xx_io_device *dev, int64_t base_address)
+{
     xx_dlink_tlv_init(tlv, dev, base_address);
 }
-static inline xx_dlink_tlv *XDlinkTlv_create(xx_io_device *dev,
-                                             int64_t base_address) {
+static inline xx_dlink_tlv *XDlinkTlv_create(xx_io_device *dev, int64_t base_address)
+{
     return xx_dlink_tlv_create(dev, base_address);
 }
-static inline void XDlinkTlv_free(xx_dlink_tlv *tlv) { xx_dlink_tlv_free(tlv); }
-static inline bool XDlinkTlv_is_valid(xx_dlink_tlv *tlv, xx_pd_struct *pd) {
+static inline void XDlinkTlv_free(xx_dlink_tlv *tlv)
+{
+    xx_dlink_tlv_free(tlv);
+}
+static inline bool XDlinkTlv_is_valid(xx_dlink_tlv *tlv, xx_pd_struct *pd)
+{
     return tlv ? xx_format_is_valid(&tlv->format, pd) : false;
 }
 

@@ -38,8 +38,8 @@
 #define BSC_LINE_MAX 128U
 #define BSC_BUFFER 0x10000U
 #define BSC_UNITS_PER_LINE 16U
-#define BSC_DATA_CHARS (BSC_UNITS_PER_LINE * 4U)   /* 64 */
-#define BSC_DATA_BYTES (BSC_UNITS_PER_LINE * 3U)   /* 48 */
+#define BSC_DATA_CHARS (BSC_UNITS_PER_LINE * 4U) /* 64 */
+#define BSC_DATA_BYTES (BSC_UNITS_PER_LINE * 3U) /* 48 */
 #define BSC_HEADER_CHARS 52U
 #define BSC_NAME_FIELD 15U
 #define BSC_MAX_RECORDS 4096U
@@ -54,8 +54,8 @@
 
 typedef struct bsc_lines_s {
     xx_io_device *device;
-    int64_t pos;        /**< Absolute offset of the next unread byte. */
-    int64_t end;        /**< Absolute end of the device. */
+    int64_t pos; /**< Absolute offset of the next unread byte. */
+    int64_t end; /**< Absolute end of the device. */
     int64_t buf_start;
     size_t buf_len;
     uint8_t *buf;
@@ -65,8 +65,8 @@ typedef struct bsc_lines_s {
     int64_t line_start; /**< Offset of the line's first byte. */
 } bsc_lines;
 
-static bool bsc_lines_open(bsc_lines *r, xx_io_device *device, int64_t start,
-                           int64_t end) {
+static bool bsc_lines_open(bsc_lines *r, xx_io_device *device, int64_t start, int64_t end)
+{
     xx_mem_zero(r, sizeof(*r));
     r->device = device;
     r->pos = start;
@@ -75,13 +75,15 @@ static bool bsc_lines_open(bsc_lines *r, xx_io_device *device, int64_t start,
     return r->buf != NULL;
 }
 
-static void bsc_lines_close(bsc_lines *r) {
+static void bsc_lines_close(bsc_lines *r)
+{
     if (r->buf) xx_mem_free(r->buf);
     r->buf = NULL;
 }
 
 /* Byte at @p at, or -1 at end of data / on a read error. */
-static int bsc_byte(bsc_lines *r, int64_t at) {
+static int bsc_byte(bsc_lines *r, int64_t at)
+{
     if (at < 0 || at >= r->end || r->error) return -1;
     if (at < r->buf_start || at >= r->buf_start + (int64_t)r->buf_len) {
         size_t want = BSC_BUFFER, done = 0U;
@@ -107,7 +109,8 @@ static int bsc_byte(bsc_lines *r, int64_t at) {
 
 /* Next line: content up to CR, LF or CR LF, leading bytes <= 0x20 dropped,
  * at most BSC_LINE_MAX bytes kept.  False at end of data. */
-static bool bsc_next_line(bsc_lines *r) {
+static bool bsc_next_line(bsc_lines *r)
+{
     int c;
     bool leading = true;
     if (r->pos >= r->end || r->error) return false;
@@ -129,18 +132,17 @@ static bool bsc_next_line(bsc_lines *r) {
     return !r->error;
 }
 
-static bool bsc_is_signature(const bsc_lines *r) {
-    return r->line_len >= XX_BINSCII_SIGNATURE_SIZE &&
-           xx_rt_memcmp(r->line, XX_BINSCII_SIGNATURE,
-                        XX_BINSCII_SIGNATURE_SIZE) == 0;
+static bool bsc_is_signature(const bsc_lines *r)
+{
+    return r->line_len >= XX_BINSCII_SIGNATURE_SIZE && xx_rt_memcmp(r->line, XX_BINSCII_SIGNATURE, XX_BINSCII_SIGNATURE_SIZE) == 0;
 }
 
 /* Advance to the next signature line. */
-static bool bsc_find_signature(bsc_lines *r, xx_pd_struct *pd) {
+static bool bsc_find_signature(bsc_lines *r, xx_pd_struct *pd)
+{
     uint32_t count = 0U;
     for (;;) {
-        if ((++count & 0x3FFU) == 0U && pd && xx_pd_is_stopped(pd))
-            return false;
+        if ((++count & 0x3FFU) == 0U && pd && xx_pd_is_stopped(pd)) return false;
         if (!bsc_next_line(r)) return false;
         if (bsc_is_signature(r)) return true;
     }
@@ -149,28 +151,28 @@ static bool bsc_find_signature(bsc_lines *r, xx_pd_struct *pd) {
 /* ---------------------------------------------------------------------- */
 /* Segments                                                                */
 
-static uint16_t bsc_crc16(uint16_t crc, const uint8_t *data, size_t size) {
+static uint16_t bsc_crc16(uint16_t crc, const uint8_t *data, size_t size)
+{
     return xx_crc16_xmodem_calc(crc, data, size);
 }
 
 typedef struct bsc_segment_s {
-    uint8_t map[256];      /**< Character value, 0xFF when not in the alphabet. */
+    uint8_t map[256]; /**< Character value, 0xFF when not in the alphabet. */
     char name[BSC_NAME_FIELD + 1U];
     uint32_t file_len;
     uint32_t offset;
     uint32_t seg_len;
-    int64_t start;         /**< Offset of the signature line. */
-    int64_t end;           /**< Offset just past the CRC line. */
+    int64_t start; /**< Offset of the signature line. */
+    int64_t end;   /**< Offset just past the CRC line. */
 } bsc_segment;
 
 /* Decode @p units 4-character units; false on a character outside the
  * alphabet. */
-static bool bsc_decode(const bsc_segment *s, const uint8_t *src, size_t units,
-                       uint8_t *dst) {
+static bool bsc_decode(const bsc_segment *s, const uint8_t *src, size_t units, uint8_t *dst)
+{
     size_t i;
     for (i = 0U; i < units; ++i) {
-        uint8_t v0 = s->map[src[i * 4U]], v1 = s->map[src[i * 4U + 1U]],
-                v2 = s->map[src[i * 4U + 2U]], v3 = s->map[src[i * 4U + 3U]];
+        uint8_t v0 = s->map[src[i * 4U]], v1 = s->map[src[i * 4U + 1U]], v2 = s->map[src[i * 4U + 2U]], v3 = s->map[src[i * 4U + 3U]];
         if ((v0 | v1 | v2 | v3) & 0xC0U) return false;
         dst[i * 3U] = (uint8_t)((v3 << 2U) | (v2 >> 4U));
         dst[i * 3U + 1U] = (uint8_t)(((v2 & 0x0FU) << 4U) | (v1 >> 2U));
@@ -181,7 +183,8 @@ static bool bsc_decode(const bsc_segment *s, const uint8_t *src, size_t units,
 
 /* The signature line has just been read: parse the alphabet and header
  * lines.  On success the reader stands at the first data line. */
-static bool bsc_read_header(bsc_lines *r, bsc_segment *s) {
+static bool bsc_read_header(bsc_lines *r, bsc_segment *s)
+{
     uint8_t hdr[27];
     size_t i, name_len;
     xx_mem_zero(s, sizeof(*s));
@@ -205,14 +208,11 @@ static bool bsc_read_header(bsc_lines *r, bsc_segment *s) {
     }
     s->name[name_len] = 0;
     if (!bsc_decode(s, r->line + 16U, 9U, hdr)) return false;
-    if (bsc_crc16(0U, hdr, 24U) !=
-        (uint16_t)((uint16_t)hdr[24] | ((uint16_t)hdr[25] << 8U)))
-        return false;
+    if (bsc_crc16(0U, hdr, 24U) != (uint16_t)((uint16_t)hdr[24] | ((uint16_t)hdr[25] << 8U))) return false;
     s->file_len = xx_data_get_u24(hdr, 3, 0, false);
     s->offset = xx_data_get_u24(hdr + 3U, 3, 0, false);
     s->seg_len = xx_data_get_u24(hdr + 21U, 3, 0, false);
-    if (s->offset > s->file_len || s->seg_len > s->file_len - s->offset)
-        return false;
+    if (s->offset > s->file_len || s->seg_len > s->file_len - s->offset) return false;
     return true;
 }
 
@@ -223,7 +223,8 @@ typedef struct bsc_sink_s {
     uint64_t written;
 } bsc_sink;
 
-static bool bsc_sink_flush(bsc_sink *k) {
+static bool bsc_sink_flush(bsc_sink *k)
+{
     size_t done = 0U;
     if (k->device) {
         while (done < k->used) {
@@ -236,7 +237,8 @@ static bool bsc_sink_flush(bsc_sink *k) {
     return true;
 }
 
-static bool bsc_sink_put(bsc_sink *k, const uint8_t *data, size_t size) {
+static bool bsc_sink_put(bsc_sink *k, const uint8_t *data, size_t size)
+{
     if (size > BSC_OUT_BUFFER - k->used && !bsc_sink_flush(k)) return false;
     xx_rt_memcpy(k->buf + k->used, data, size);
     k->used += size;
@@ -246,8 +248,8 @@ static bool bsc_sink_put(bsc_sink *k, const uint8_t *data, size_t size) {
 
 /* Data lines and CRC line of a parsed header; the segment's payload goes to
  * @p sink (may be NULL).  On success s->end is set. */
-static bool bsc_read_data(bsc_lines *r, bsc_segment *s, bsc_sink *sink,
-                          xx_pd_struct *pd) {
+static bool bsc_read_data(bsc_lines *r, bsc_segment *s, bsc_sink *sink, xx_pd_struct *pd)
+{
     uint8_t out[BSC_DATA_BYTES];
     uint16_t crc = 0U;
     uint32_t left = s->seg_len, lines;
@@ -267,9 +269,7 @@ static bool bsc_read_data(bsc_lines *r, bsc_segment *s, bsc_sink *sink,
     for (n = 0U; n < lines; ++n) {
         size_t take;
         if ((n & 0xFFU) == 0xFFU && pd && xx_pd_is_stopped(pd)) return false;
-        if (!bsc_next_line(r) || r->line_len < BSC_DATA_CHARS ||
-            !bsc_decode(s, r->line, BSC_UNITS_PER_LINE, out))
-            return false;
+        if (!bsc_next_line(r) || r->line_len < BSC_DATA_CHARS || !bsc_decode(s, r->line, BSC_UNITS_PER_LINE, out)) return false;
         crc = bsc_crc16(crc, out, BSC_DATA_BYTES);
         take = left < BSC_DATA_BYTES ? left : BSC_DATA_BYTES;
         if (sink && !bsc_sink_put(sink, out, take)) return false;
@@ -278,11 +278,8 @@ static bool bsc_read_data(bsc_lines *r, bsc_segment *s, bsc_sink *sink,
     /* CRC line: one unit, shorter than a data line. */
     if (!bsc_next_line(r)) return false;
 crc_line:
-    if (r->line_len < 4U ||
-        r->line_len >= BSC_DATA_CHARS || !bsc_decode(s, r->line, 1U, out))
-        return false;
-    if (crc != (uint16_t)((uint16_t)out[0] | ((uint16_t)out[1] << 8U)))
-        return false;
+    if (r->line_len < 4U || r->line_len >= BSC_DATA_CHARS || !bsc_decode(s, r->line, 1U, out)) return false;
+    if (crc != (uint16_t)((uint16_t)out[0] | ((uint16_t)out[1] << 8U))) return false;
     s->end = r->pos;
     return true;
 }
@@ -293,8 +290,8 @@ crc_line:
 typedef struct bsc_member_s {
     char name[BSC_NAME_MAX];
     char base[BSC_NAME_FIELD + 1U];
-    int64_t start;         /**< Signature line of the first segment. */
-    int64_t end;           /**< Past the last good segment. */
+    int64_t start; /**< Signature line of the first segment. */
+    int64_t end;   /**< Past the last good segment. */
     uint32_t file_len;
     uint32_t segments;
     bool good;
@@ -304,8 +301,8 @@ typedef struct bsc_member_s {
  * the member to @p out (NULL only verifies), following its continuation
  * segments.  m->end is the end of the last good segment, or the line after
  * the first header when even the first segment is bad. */
-static bool bsc_assemble(bsc_lines *r, bsc_segment *first, bsc_member *m,
-                         xx_io_device *out, xx_pd_struct *pd) {
+static bool bsc_assemble(bsc_lines *r, bsc_segment *first, bsc_member *m, xx_io_device *out, xx_pd_struct *pd)
+{
     bsc_sink *sink;
     bsc_segment *s = first;
     bsc_segment *next = NULL;
@@ -348,11 +345,13 @@ typedef struct bsc_table_s {
     int64_t end;
 } bsc_table;
 
-static char bsc_upper(char c) {
+static char bsc_upper(char c)
+{
     return (c >= 'a' && c <= 'z') ? (char)(c - 'a' + 'A') : c;
 }
 
-static bool bsc_same_name(const char *a, const char *b) {
+static bool bsc_same_name(const char *a, const char *b)
+{
     while (*a && *b) {
         if (bsc_upper(*a) != bsc_upper(*b)) return false;
         ++a;
@@ -361,7 +360,8 @@ static bool bsc_same_name(const char *a, const char *b) {
     return *a == *b;
 }
 
-static bool bsc_name_taken(const bsc_table *t, const char *name) {
+static bool bsc_name_taken(const bsc_table *t, const char *name)
+{
     uint32_t i;
     for (i = 0U; i < t->count; ++i)
         if (bsc_same_name(t->items[i].name, name)) return true;
@@ -370,16 +370,14 @@ static bool bsc_name_taken(const bsc_table *t, const char *name) {
 
 /* Keep duplicate names apart: "NAME", "NAME_2", "NAME_3", ...  A member
  * that still finds no free name is not extracted rather than overwrite. */
-static void bsc_unique_name(bsc_table *t, bsc_member *m) {
+static void bsc_unique_name(bsc_table *t, bsc_member *m)
+{
     uint32_t same = 0U, i, attempt;
     for (i = 0U; i < t->count; ++i)
         if (bsc_same_name(t->items[i].base, m->base)) ++same;
     for (attempt = 0U; attempt < 64U; ++attempt) {
-        if (same + attempt == 0U)
-            xx_rt_snprintf(m->name, sizeof(m->name), "%s", m->base);
-        else
-            xx_rt_snprintf(m->name, sizeof(m->name), "%s_%u", m->base,
-                           (unsigned)(same + attempt + 1U));
+        if (same + attempt == 0U) xx_rt_snprintf(m->name, sizeof(m->name), "%s", m->base);
+        else xx_rt_snprintf(m->name, sizeof(m->name), "%s_%u", m->base, (unsigned)(same + attempt + 1U));
         if (!bsc_name_taken(t, m->name)) return;
     }
     m->good = false;
@@ -387,8 +385,8 @@ static void bsc_unique_name(bsc_table *t, bsc_member *m) {
 
 /* Walk the whole input: one table entry per member whose first segment is
  * present.  Stray continuation segments and broken segments are skipped. */
-static bool bsc_scan(Abstractformat *format, bsc_table *t, bool first_only,
-                     xx_pd_struct *pd) {
+static bool bsc_scan(Abstractformat *format, bsc_table *t, bool first_only, xx_pd_struct *pd)
+{
     bsc_lines r;
     bsc_segment *s = NULL;
     int64_t total;
@@ -398,10 +396,8 @@ static bool bsc_scan(Abstractformat *format, bsc_table *t, bool first_only,
     total = xx_io_total_size(format->device);
     if (total <= format->base_address) return false;
     /* The quick check never looks (or scans a line) past its window. */
-    if (first_only && total - format->base_address > BSC_CHECK_WINDOW)
-        total = format->base_address + BSC_CHECK_WINDOW;
-    if (!bsc_lines_open(&r, format->device, format->base_address, total))
-        return false;
+    if (first_only && total - format->base_address > BSC_CHECK_WINDOW) total = format->base_address + BSC_CHECK_WINDOW;
+    if (!bsc_lines_open(&r, format->device, format->base_address, total)) return false;
     s = (bsc_segment *)xx_mem_alloc(sizeof(*s));
     if (!s) goto done;
     if (!first_only) {
@@ -436,11 +432,9 @@ static bool bsc_scan(Abstractformat *format, bsc_table *t, bool first_only,
             }
             if (t->count >= BSC_MAX_RECORDS) break;
             if (t->count == capacity) {
-                bsc_member *grown = (bsc_member *)xx_mem_calloc(
-                    (size_t)capacity * 2U, sizeof(bsc_member));
+                bsc_member *grown = (bsc_member *)xx_mem_calloc((size_t)capacity * 2U, sizeof(bsc_member));
                 if (!grown) goto done;
-                xx_rt_memcpy(grown, t->items,
-                             (size_t)capacity * sizeof(bsc_member));
+                xx_rt_memcpy(grown, t->items, (size_t)capacity * sizeof(bsc_member));
                 xx_mem_free(t->items);
                 t->items = grown;
                 capacity *= 2U;
@@ -472,26 +466,25 @@ done:
 /* ---------------------------------------------------------------------- */
 /* Names                                                                   */
 
-static bool bsc_stem_is(const char *name, size_t stem, const char *word) {
+static bool bsc_stem_is(const char *name, size_t stem, const char *word)
+{
     size_t i;
     for (i = 0U; i < stem; ++i)
         if (!word[i] || bsc_upper(name[i]) != word[i]) return false;
     return word[stem] == 0;
 }
 
-static bool bsc_safe_output_name(const char *name) {
-    static const char *const devices[] = {"CON",    "PRN",     "AUX",
-                                          "NUL",    "CONIN$",  "CONOUT$",
-                                          "CLOCK$"};
+static bool bsc_safe_output_name(const char *name)
+{
+    static const char *const devices[] = {"CON", "PRN", "AUX", "NUL", "CONIN$", "CONOUT$", "CLOCK$"};
     size_t length, stem = 0U, i;
     bool meaningful = false;
     if (!name || !name[0]) return false;
     length = xx_str_len(name);
     for (i = 0U; i < length; ++i) {
         char c = name[i];
-        if ((unsigned char)c < 0x20U || (unsigned char)c > 0x7EU ||
-            c == '/' || c == '\\' || c == ':' || c == '<' || c == '>' ||
-            c == '"' || c == '|' || c == '?' || c == '*')
+        if ((unsigned char)c < 0x20U || (unsigned char)c > 0x7EU || c == '/' || c == '\\' || c == ':' || c == '<' || c == '>' || c == '"' || c == '|' || c == '?' ||
+            c == '*')
             return false;
         if (c != '.' && c != ' ') meaningful = true;
     }
@@ -501,10 +494,8 @@ static bool bsc_safe_output_name(const char *name) {
     for (i = 0U; i < sizeof(devices) / sizeof(devices[0]); ++i)
         if (bsc_stem_is(name, stem, devices[i])) return false;
     if (stem == 4U && name[3] >= '0' && name[3] <= '9' &&
-        ((bsc_upper(name[0]) == 'C' && bsc_upper(name[1]) == 'O' &&
-          bsc_upper(name[2]) == 'M') ||
-         (bsc_upper(name[0]) == 'L' && bsc_upper(name[1]) == 'P' &&
-          bsc_upper(name[2]) == 'T')))
+        ((bsc_upper(name[0]) == 'C' && bsc_upper(name[1]) == 'O' && bsc_upper(name[2]) == 'M') ||
+         (bsc_upper(name[0]) == 'L' && bsc_upper(name[1]) == 'P' && bsc_upper(name[2]) == 'T')))
         return false;
     return true;
 }
@@ -517,15 +508,16 @@ typedef struct bsc_stream_s {
     uint32_t index;
 } bsc_stream;
 
-static void bsc_stream_free(void *opaque) {
+static void bsc_stream_free(void *opaque)
+{
     bsc_stream *stream = (bsc_stream *)opaque;
     if (!stream) return;
     if (stream->table.items) xx_mem_free(stream->table.items);
     xx_mem_free(stream);
 }
 
-void xx_binscii_init(xx_binscii *archive, xx_io_device *device,
-                     int64_t base_address) {
+void xx_binscii_init(xx_binscii *archive, xx_io_device *device, int64_t base_address)
+{
     if (!archive) return;
     xx_mem_zero(archive, sizeof(*archive));
     xx_format_init(&archive->format, device, base_address);
@@ -538,31 +530,28 @@ void xx_binscii_init(xx_binscii *archive, xx_io_device *device,
     archive->format.check_is_valid = xx_binscii_check_is_valid;
     archive->format.handle_base_info = xx_binscii_handle_base_info;
     archive->format.get_format_size = xx_binscii_get_format_size;
-    archive->format.get_number_of_archive_records =
-        xx_binscii_get_number_of_archive_records;
-    archive->format.create_archive_records_reading =
-        xx_binscii_create_archive_records_reading;
-    archive->format.get_current_archive_record =
-        xx_binscii_get_current_archive_record;
-    archive->format.unpack_current_archive_record =
-        xx_binscii_unpack_current_archive_record;
-    archive->format.archive_record_move_to_next =
-        xx_binscii_archive_record_move_to_next;
-    archive->format.free_archive_records_reading =
-        xx_binscii_free_archive_records_reading;
+    archive->format.get_number_of_archive_records = xx_binscii_get_number_of_archive_records;
+    archive->format.create_archive_records_reading = xx_binscii_create_archive_records_reading;
+    archive->format.get_current_archive_record = xx_binscii_get_current_archive_record;
+    archive->format.unpack_current_archive_record = xx_binscii_unpack_current_archive_record;
+    archive->format.archive_record_move_to_next = xx_binscii_archive_record_move_to_next;
+    archive->format.free_archive_records_reading = xx_binscii_free_archive_records_reading;
 }
 
-xx_binscii *xx_binscii_create(xx_io_device *device, int64_t base_address) {
+xx_binscii *xx_binscii_create(xx_io_device *device, int64_t base_address)
+{
     xx_binscii *archive = (xx_binscii *)xx_mem_alloc(sizeof(*archive));
     if (archive) xx_binscii_init(archive, device, base_address);
     return archive;
 }
 
-void xx_binscii_destroy(xx_binscii *archive) {
+void xx_binscii_destroy(xx_binscii *archive)
+{
     if (archive) xx_format_cleanup_extra_parameters(&archive->format);
 }
 
-void xx_binscii_free(xx_binscii *archive) {
+void xx_binscii_free(xx_binscii *archive)
+{
     if (!archive) return;
     xx_binscii_destroy(archive);
     xx_mem_free(archive);
@@ -570,13 +559,15 @@ void xx_binscii_free(xx_binscii *archive) {
 
 /* A signature line, a valid alphabet and a first-segment header whose CRC
  * checks, within the first BSC_CHECK_WINDOW bytes. */
-bool xx_binscii_check_is_valid(Abstractformat *format, xx_pd_struct *pd) {
+bool xx_binscii_check_is_valid(Abstractformat *format, xx_pd_struct *pd)
+{
     bsc_table t;
     if (!format || format->base_address < 0) return false;
     return bsc_scan(format, &t, true, pd);
 }
 
-bool xx_binscii_handle_base_info(Abstractformat *format, xx_pd_struct *pd) {
+bool xx_binscii_handle_base_info(Abstractformat *format, xx_pd_struct *pd)
+{
     bsc_table t;
     xx_binscii *archive;
     if (!format || !bsc_scan(format, &t, false, pd)) return false;
@@ -584,38 +575,33 @@ bool xx_binscii_handle_base_info(Abstractformat *format, xx_pd_struct *pd) {
     archive->number_of_records = t.count;
     archive->number_of_segments = t.segments;
     format->number_of_archive_records = t.count;
-    format->format_size = t.end > format->base_address
-                              ? t.end - format->base_address : 0;
+    format->format_size = t.end > format->base_address ? t.end - format->base_address : 0;
     format->is_valid = true;
     format->base_info_handled = true;
     xx_mem_free(t.items);
     return true;
 }
 
-int64_t xx_binscii_get_format_size(Abstractformat *format, xx_pd_struct *pd) {
-    return format && (format->base_info_handled ||
-                      xx_binscii_handle_base_info(format, pd))
-               ? format->format_size : -1;
+int64_t xx_binscii_get_format_size(Abstractformat *format, xx_pd_struct *pd)
+{
+    return format && (format->base_info_handled || xx_binscii_handle_base_info(format, pd)) ? format->format_size : -1;
 }
 
-uint64_t xx_binscii_get_number_of_archive_records(Abstractformat *format,
-                                                  xx_pd_struct *pd) {
-    return format && (format->base_info_handled ||
-                      xx_binscii_handle_base_info(format, pd))
-               ? ((xx_binscii *)format)->number_of_records : 0U;
+uint64_t xx_binscii_get_number_of_archive_records(Abstractformat *format, xx_pd_struct *pd)
+{
+    return format && (format->base_info_handled || xx_binscii_handle_base_info(format, pd)) ? ((xx_binscii *)format)->number_of_records : 0U;
 }
 
-static bool bsc_copy_options(xx_list_s *destination, const xx_list_s *source) {
+static bool bsc_copy_options(xx_list_s *destination, const xx_list_s *source)
+{
     size_t i;
     if (!source) return true;
     for (i = 0U; i < source->count; ++i) {
-        const xx_meta *original =
-            (const xx_meta *)xx_list_at((const xx_list_t *)source, i);
+        const xx_meta *original = (const xx_meta *)xx_list_at((const xx_list_t *)source, i);
         xx_meta copy;
         if (!original) continue;
         xx_meta_init(&copy, original->meta_id);
-        if (!xx_var_copy(&copy.var, &original->var) ||
-            !xx_list_append(destination, &copy)) {
+        if (!xx_var_copy(&copy.var, &original->var) || !xx_list_append(destination, &copy)) {
             xx_meta_cleanup(&copy);
             return false;
         }
@@ -623,18 +609,19 @@ static bool bsc_copy_options(xx_list_s *destination, const xx_list_s *source) {
     return true;
 }
 
-static const xx_var *bsc_option(const xx_list_s *options, uint32_t id) {
+static const xx_var *bsc_option(const xx_list_s *options, uint32_t id)
+{
     size_t i;
     if (!options) return NULL;
     for (i = 0U; i < options->count; ++i) {
-        const xx_meta *meta =
-            (const xx_meta *)xx_list_at((const xx_list_t *)options, i);
+        const xx_meta *meta = (const xx_meta *)xx_list_at((const xx_list_t *)options, i);
         if (meta && meta->meta_id == id) return &meta->var;
     }
     return NULL;
 }
 
-static bool bsc_set_record(xx_archive_record *record, const bsc_member *m) {
+static bool bsc_set_record(xx_archive_record *record, const bsc_member *m)
+{
     xx_archive_record_cleanup(record);
     xx_archive_record_init(record);
     record->header_offset = m->start;
@@ -642,17 +629,13 @@ static bool bsc_set_record(xx_archive_record *record, const bsc_member *m) {
     record->data_offset = m->start;
     record->compressed_size = m->end > m->start ? m->end - m->start : 0;
     return xx_archive_record_set_original_name(record, m->name) &&
-           xx_archive_record_set_meta_u64(record, XX_META_ID_COMPRESSED_SIZE,
-                                          (uint64_t)record->compressed_size) &&
-           xx_archive_record_set_meta_u64(record, XX_META_ID_UNCOMPRESSED_SIZE,
-                                          (uint64_t)m->file_len) &&
-           xx_archive_record_set_meta_bool(record, XX_META_ID_IS_ENCRYPTED,
-                                           false) &&
-           xx_archive_record_set_meta_bool(record, XX_META_ID_IS_FOLDER, false);
+           xx_archive_record_set_meta_u64(record, XX_META_ID_COMPRESSED_SIZE, (uint64_t)record->compressed_size) &&
+           xx_archive_record_set_meta_u64(record, XX_META_ID_UNCOMPRESSED_SIZE, (uint64_t)m->file_len) &&
+           xx_archive_record_set_meta_bool(record, XX_META_ID_IS_ENCRYPTED, false) && xx_archive_record_set_meta_bool(record, XX_META_ID_IS_FOLDER, false);
 }
 
-xx_archive_record_state *xx_binscii_create_archive_records_reading(
-    Abstractformat *format, const xx_list_s *options, xx_pd_struct *pd) {
+xx_archive_record_state *xx_binscii_create_archive_records_reading(Abstractformat *format, const xx_list_s *options, xx_pd_struct *pd)
+{
     bsc_stream *stream;
     xx_archive_record_state *state;
     stream = (bsc_stream *)xx_mem_calloc(1U, sizeof(*stream));
@@ -670,8 +653,7 @@ xx_archive_record_state *xx_binscii_create_archive_records_reading(
     state->internal_state = stream;
     state->free_internal = bsc_stream_free;
     state->total_records = stream->table.count;
-    if (!bsc_copy_options(&state->options, options) ||
-        !bsc_set_record(&state->current_record, &stream->table.items[0])) {
+    if (!bsc_copy_options(&state->options, options) || !bsc_set_record(&state->current_record, &stream->table.items[0])) {
         xx_archive_record_state_free(state);
         return NULL;
     }
@@ -679,26 +661,21 @@ xx_archive_record_state *xx_binscii_create_archive_records_reading(
     return state;
 }
 
-const xx_archive_record *xx_binscii_get_current_archive_record(
-    Abstractformat *format, xx_archive_record_state *state) {
-    return format && state && state->format == format && state->has_record
-               ? &state->current_record : NULL;
+const xx_archive_record *xx_binscii_get_current_archive_record(Abstractformat *format, xx_archive_record_state *state)
+{
+    return format && state && state->format == format && state->has_record ? &state->current_record : NULL;
 }
 
-bool xx_binscii_archive_record_move_to_next(Abstractformat *format,
-                                            xx_archive_record_state *state,
-                                            xx_pd_struct *pd) {
+bool xx_binscii_archive_record_move_to_next(Abstractformat *format, xx_archive_record_state *state, xx_pd_struct *pd)
+{
     bsc_stream *stream;
     (void)pd;
-    if (!format || !state || state->format != format ||
-        !(stream = (bsc_stream *)state->internal_state) ||
-        stream->index + 1U >= stream->table.count) {
+    if (!format || !state || state->format != format || !(stream = (bsc_stream *)state->internal_state) || stream->index + 1U >= stream->table.count) {
         if (state) state->has_record = false;
         return false;
     }
     ++stream->index;
-    if (!bsc_set_record(&state->current_record,
-                        &stream->table.items[stream->index])) {
+    if (!bsc_set_record(&state->current_record, &stream->table.items[stream->index])) {
         state->has_record = false;
         return false;
     }
@@ -706,8 +683,8 @@ bool xx_binscii_archive_record_move_to_next(Abstractformat *format,
 }
 
 /* Re-decode one member from its first segment. */
-static bool bsc_unpack_member(Abstractformat *format, const bsc_member *m,
-                              xx_io_device *out, xx_pd_struct *pd) {
+static bool bsc_unpack_member(Abstractformat *format, const bsc_member *m, xx_io_device *out, xx_pd_struct *pd)
+{
     bsc_lines r;
     bsc_segment *s;
     bsc_member check;
@@ -718,21 +695,17 @@ static bool bsc_unpack_member(Abstractformat *format, const bsc_member *m,
     if (m->start < 0 || m->start >= total) return false;
     if (!bsc_lines_open(&r, format->device, m->start, total)) return false;
     s = (bsc_segment *)xx_mem_alloc(sizeof(*s));
-    if (s && bsc_next_line(&r) && bsc_is_signature(&r) &&
-        bsc_read_header(&r, s) && s->offset == 0U &&
-        s->file_len == m->file_len) {
+    if (s && bsc_next_line(&r) && bsc_is_signature(&r) && bsc_read_header(&r, s) && s->offset == 0U && s->file_len == m->file_len) {
         xx_mem_zero(&check, sizeof(check));
-        result = bsc_assemble(&r, s, &check, out, pd) &&
-                 check.end == m->end;
+        result = bsc_assemble(&r, s, &check, out, pd) && check.end == m->end;
     }
     if (s) xx_mem_free(s);
     bsc_lines_close(&r);
     return result;
 }
 
-bool xx_binscii_unpack_current_archive_record(Abstractformat *format,
-                                              xx_archive_record_state *state,
-                                              xx_pd_struct *pd) {
+bool xx_binscii_unpack_current_archive_record(Abstractformat *format, xx_archive_record_state *state, xx_pd_struct *pd)
+{
     bsc_stream *stream;
     const bsc_member *m;
     const xx_var *path_option;
@@ -741,27 +714,21 @@ bool xx_binscii_unpack_current_archive_record(Abstractformat *format,
     char *path = NULL;
     bool result = false;
     bool created = false;
-    if (!format || !state || state->format != format || !state->has_record ||
-        !(stream = (bsc_stream *)state->internal_state) ||
-        stream->index >= stream->table.count || (pd && xx_pd_is_stopped(pd)))
+    if (!format || !state || state->format != format || !state->has_record || !(stream = (bsc_stream *)state->internal_state) || stream->index >= stream->table.count ||
+        (pd && xx_pd_is_stopped(pd)))
         return false;
     m = &stream->table.items[stream->index];
     path_option = bsc_option(&state->options, XX_META_ID_OPT_UNPACK_PATH);
     if (!path_option) return bsc_unpack_member(format, m, NULL, pd);
     if (!m->good || !bsc_safe_output_name(m->name)) return false;
-    if (path_option->type == XX_VAR_TYPE_STRING ||
-        path_option->type == XX_VAR_TYPE_STRING_VIEW) {
+    if (path_option->type == XX_VAR_TYPE_STRING || path_option->type == XX_VAR_TYPE_STRING_VIEW) {
         base = xx_var_get_str(path_option);
-    } else if (path_option->type == XX_VAR_TYPE_WSTRING ||
-               path_option->type == XX_VAR_TYPE_WSTRING_VIEW) {
+    } else if (path_option->type == XX_VAR_TYPE_WSTRING || path_option->type == XX_VAR_TYPE_WSTRING_VIEW) {
         owned_base = xx_str_unicode_to_utf8(xx_var_get_wstr(path_option));
         base = owned_base;
     }
     if (!base) goto done;
-    path = (base[0] && base[xx_str_len(base) - 1U] != '/' &&
-            base[xx_str_len(base) - 1U] != '\\')
-               ? xx_str_concat3(base, "/", m->name)
-               : xx_str_concat(base, m->name);
+    path = (base[0] && base[xx_str_len(base) - 1U] != '/' && base[xx_str_len(base) - 1U] != '\\') ? xx_str_concat3(base, "/", m->name) : xx_str_concat(base, m->name);
     if (!path || !xx_store_create_dirs_a(path, false)) goto done;
     {
         xx_io_device *destination = xx_io_file_open(path, "wb");
@@ -777,8 +744,8 @@ done:
     return result;
 }
 
-void xx_binscii_free_archive_records_reading(Abstractformat *format,
-                                             xx_archive_record_state *state) {
+void xx_binscii_free_archive_records_reading(Abstractformat *format, xx_archive_record_state *state)
+{
     (void)format;
     xx_archive_record_state_free(state);
 }

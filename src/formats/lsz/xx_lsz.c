@@ -69,17 +69,15 @@ static void xx_lsz_vtable_destroy(Abstractformat *self);
 
 /* ------------------------------------------------------------- helpers -- */
 
-static bool xx_lsz_read_at(Abstractformat *self, int64_t offset,
-                              uint8_t *buffer, size_t size) {
+static bool xx_lsz_read_at(Abstractformat *self, int64_t offset, uint8_t *buffer, size_t size)
+{
     size_t completed = 0U;
 
-    if (!self || !self->device || offset < 0 ||
-        xx_io_seek64(self->device, offset, SEEK_SET) != 0) {
+    if (!self || !self->device || offset < 0 || xx_io_seek64(self->device, offset, SEEK_SET) != 0) {
         return false;
     }
     while (completed < size) {
-        ssize_t received =
-            xx_io_read(self->device, buffer + completed, size - completed);
+        ssize_t received = xx_io_read(self->device, buffer + completed, size - completed);
         if (received <= 0 || (size_t)received > size - completed) {
             return false;
         }
@@ -88,14 +86,14 @@ static bool xx_lsz_read_at(Abstractformat *self, int64_t offset,
     return true;
 }
 
-static bool xx_lsz_range_within(int64_t total, int64_t offset,
-                                   int64_t size) {
-    return offset >= 0 && size >= 0 && offset <= total &&
-           size <= total - offset;
+static bool xx_lsz_range_within(int64_t total, int64_t offset, int64_t size)
+{
+    return offset >= 0 && size >= 0 && offset <= total && size <= total - offset;
 }
 
 /* Refuse anything that would escape the extraction directory. */
-static bool xx_lsz_path_safe(const char *name) {
+static bool xx_lsz_path_safe(const char *name)
+{
     const char *cursor = name;
 
     if (!name || !name[0] || name[0] == '/') return false;
@@ -110,7 +108,8 @@ static bool xx_lsz_path_safe(const char *name) {
     return true;
 }
 
-static void xx_lsz_stream_free(void *pointer) {
+static void xx_lsz_stream_free(void *pointer)
+{
     xx_lsz_stream *stream = (xx_lsz_stream *)pointer;
     size_t index;
 
@@ -123,17 +122,15 @@ static void xx_lsz_stream_free(void *pointer) {
 }
 
 /* Append a member, taking ownership of @p name. */
-static bool xx_lsz_add(xx_lsz_stream *stream,
-                          const xx_lsz_member *member) {
-    xx_lsz_member *grown = (xx_lsz_member *)xx_mem_realloc(
-        stream->items, sizeof(*grown) * (stream->count + 1U));
+static bool xx_lsz_add(xx_lsz_stream *stream, const xx_lsz_member *member)
+{
+    xx_lsz_member *grown = (xx_lsz_member *)xx_mem_realloc(stream->items, sizeof(*grown) * (stream->count + 1U));
 
     if (!grown) return false;
     stream->items = grown;
     stream->items[stream->count++] = *member;
     return true;
 }
-
 
 #define XX_LSZ_MIN_DCL_SIZE 3
 #define XX_LSZ_DCL_MAX_LITERAL_MODE 1U
@@ -160,7 +157,6 @@ static bool xx_lsz_dcl_prelude(const uint8_t *prelude);
 static xx_lsz_stream *xx_lsz_parse(Abstractformat *self, xx_pd_struct *pd);
 static bool xx_lsz_decode(Abstractformat *self, const xx_lsz_member *member, uint8_t **out, size_t *out_size, xx_pd_struct *pd);
 
-
 /* A DCL stream cannot be shorter than its two prelude bytes plus one byte
  * holding the start of the end-of-stream code. */
 /* No member count is stored, so this is a runaway guard, not a format limit.
@@ -169,7 +165,8 @@ static bool xx_lsz_decode(Abstractformat *self, const xx_lsz_member *member, uin
 /* The 13-byte field is a fixed, NUL-padded 8.3 buffer. Read the FULL field
  * and stop at the first NUL; a stale byte behind the terminator would mean
  * this is not the buffer the parser assumes, so reject rather than guess. */
-static bool xx_lsz_name_field(const uint8_t *field, char **out_name) {
+static bool xx_lsz_name_field(const uint8_t *field, char **out_name)
+{
     char buffer[XX_LSZ_NAME_SIZE + 1];
     size_t terminator = 0U;
     size_t start;
@@ -195,9 +192,8 @@ static bool xx_lsz_name_field(const uint8_t *field, char **out_name) {
         character = field[index];
         /* 8.3 names are plain ASCII here; the format grants no exemption. */
         if (character < 0x20U || character > 0x7EU) return false;
-        if (character == '/' || character == '\\' || character == ':' ||
-            character == '*' || character == '?' || character == '"' ||
-            character == '<' || character == '>' || character == '|') {
+        if (character == '/' || character == '\\' || character == ':' || character == '*' || character == '?' || character == '"' || character == '<' ||
+            character == '>' || character == '|') {
             return false;
         }
     }
@@ -225,13 +221,13 @@ static bool xx_lsz_name_field(const uint8_t *field, char **out_name) {
 
 /* The two bytes a DCL stream opens with. Cheap, and the only content check
  * available for a method 2 payload at parse time. */
-static bool xx_lsz_dcl_prelude(const uint8_t *prelude) {
-    return prelude[0] <= XX_LSZ_DCL_MAX_LITERAL_MODE &&
-           prelude[1] >= XX_LSZ_DCL_MIN_DICT_BITS &&
-           prelude[1] <= XX_LSZ_DCL_MAX_DICT_BITS;
+static bool xx_lsz_dcl_prelude(const uint8_t *prelude)
+{
+    return prelude[0] <= XX_LSZ_DCL_MAX_LITERAL_MODE && prelude[1] >= XX_LSZ_DCL_MIN_DICT_BITS && prelude[1] <= XX_LSZ_DCL_MAX_DICT_BITS;
 }
 
-static xx_lsz_stream *xx_lsz_parse(Abstractformat *self, xx_pd_struct *pd) {
+static xx_lsz_stream *xx_lsz_parse(Abstractformat *self, xx_pd_struct *pd)
+{
     xx_lsz_stream *stream;
     uint8_t header[XX_LSZ_HEADER_SIZE];
     uint8_t record[XX_LSZ_RECORD_SIZE];
@@ -252,8 +248,7 @@ static xx_lsz_stream *xx_lsz_parse(Abstractformat *self, xx_pd_struct *pd) {
     }
     /* Six bytes of magic and version are weak on their own; what actually
      * keeps a stray 37 F0 FF FF 00 03 out is the record chain below. */
-    if (xx_data_get_u32(header, 4, 0, false) != XX_LSZ_MAGIC ||
-        xx_data_get_u16(header + 4, 2, 0, false) != XX_LSZ_VERSION) {
+    if (xx_data_get_u32(header, 4, 0, false) != XX_LSZ_MAGIC || xx_data_get_u16(header + 4, 2, 0, false) != XX_LSZ_VERSION) {
         return NULL;
     }
 
@@ -275,8 +270,7 @@ static xx_lsz_stream *xx_lsz_parse(Abstractformat *self, xx_pd_struct *pd) {
         if (pd && xx_pd_is_stopped(pd)) goto fail;
         if (count >= XX_LSZ_MAX_MEMBERS) goto fail;
         if (XX_LSZ_RECORD_SIZE > span - offset) goto fail;
-        if (!xx_lsz_read_at(self, self->base_address + offset, record,
-                            sizeof(record))) {
+        if (!xx_lsz_read_at(self, self->base_address + offset, record, sizeof(record))) {
             goto fail;
         }
 
@@ -303,9 +297,7 @@ static xx_lsz_stream *xx_lsz_parse(Abstractformat *self, xx_pd_struct *pd) {
             /* Stored means the two sizes are the same number twice. */
             if (compressed_size != uncompressed_size) goto fail;
         } else if (method == (uint16_t)XX_LSZ_METHOD_IMPLODE) {
-            if (compressed_size < XX_LSZ_MIN_DCL_SIZE ||
-                uncompressed_size < 1 ||
-                uncompressed_size > XX_LSZ_MAX_UNCOMPRESSED) {
+            if (compressed_size < XX_LSZ_MIN_DCL_SIZE || uncompressed_size < 1 || uncompressed_size > XX_LSZ_MAX_UNCOMPRESSED) {
                 goto fail;
             }
         } else if (method == (uint16_t)XX_LSZ_METHOD_EMPTY) {
@@ -323,8 +315,7 @@ static xx_lsz_stream *xx_lsz_parse(Abstractformat *self, xx_pd_struct *pd) {
         }
 
         if (method == (uint16_t)XX_LSZ_METHOD_IMPLODE) {
-            if (!xx_lsz_read_at(self, self->base_address + data_offset,
-                                prelude, sizeof(prelude))) {
+            if (!xx_lsz_read_at(self, self->base_address + data_offset, prelude, sizeof(prelude))) {
                 goto fail;
             }
             if (!xx_lsz_dcl_prelude(prelude)) goto fail;
@@ -350,8 +341,7 @@ static xx_lsz_stream *xx_lsz_parse(Abstractformat *self, xx_pd_struct *pd) {
          * time word first and the date word second, the reverse of the
          * obvious order; swapping them yields plausible nonsense rather than
          * an error. */
-        member.timestamp = ((uint64_t)xx_data_get_u16(record + 0x21, 2, 0, false) << 16) |
-                           (uint64_t)xx_data_get_u16(record + 0x1f, 2, 0, false);
+        member.timestamp = ((uint64_t)xx_data_get_u16(record + 0x21, 2, 0, false) << 16) | (uint64_t)xx_data_get_u16(record + 0x1f, 2, 0, false);
         /* The format has no directory entries: method 6 is an empty file. */
         member.is_folder = false;
         /* The checksum word at 0x1b is zero for most members and the
@@ -381,9 +371,7 @@ fail:
     return NULL;
 }
 
-
 /* Two writers, two spellings of the same per-record tag. */
-
 
 /* The plaintext length of a DCL member is driven by the bitstream, so both
  * the container's claim and this reader's allocation must stay bounded. The
@@ -392,8 +380,8 @@ fail:
 
 /* Method 1 and method 6 are byte copies; method 2 is a complete DCL stream,
  * prelude bytes included, whose plaintext length the record supplies. */
-static bool xx_lsz_decode(Abstractformat *self, const xx_lsz_member *member,
-                          uint8_t **out, size_t *out_size, xx_pd_struct *pd) {
+static bool xx_lsz_decode(Abstractformat *self, const xx_lsz_member *member, uint8_t **out, size_t *out_size, xx_pd_struct *pd)
+{
     uint8_t *input;
     uint8_t *output;
     size_t written = 0U;
@@ -407,8 +395,7 @@ static bool xx_lsz_decode(Abstractformat *self, const xx_lsz_member *member,
     }
     /* Both sizes are attacker-controlled; refuse rather than attempt the
      * allocation. */
-    if (member->compressed_size > XX_LSZ_MAX_DECODED ||
-        member->uncompressed_size > XX_LSZ_MAX_DECODED) {
+    if (member->compressed_size > XX_LSZ_MAX_DECODED || member->uncompressed_size > XX_LSZ_MAX_DECODED) {
         return false;
     }
 
@@ -426,17 +413,13 @@ static bool xx_lsz_decode(Abstractformat *self, const xx_lsz_member *member,
     /* Anything the format defines but this reader does not implement must
      * fail here: treating an unknown method as stored yields garbage that is
      * indistinguishable from data. */
-    if (member->method != XX_LSZ_METHOD_STORED &&
-        member->method != XX_LSZ_METHOD_IMPLODE) {
+    if (member->method != XX_LSZ_METHOD_STORED && member->method != XX_LSZ_METHOD_IMPLODE) {
         return false;
     }
 
-    input = (uint8_t *)xx_mem_alloc(
-        member->compressed_size != 0 ? (size_t)member->compressed_size : 1U);
+    input = (uint8_t *)xx_mem_alloc(member->compressed_size != 0 ? (size_t)member->compressed_size : 1U);
     if (!input) return false;
-    if (member->compressed_size != 0 &&
-        !xx_lsz_read_at(self, member->data_offset, input,
-                        (size_t)member->compressed_size)) {
+    if (member->compressed_size != 0 && !xx_lsz_read_at(self, member->data_offset, input, (size_t)member->compressed_size)) {
         xx_mem_free(input);
         return false;
     }
@@ -466,8 +449,7 @@ static bool xx_lsz_decode(Abstractformat *self, const xx_lsz_member *member,
     }
     /* Exactly the stored plaintext length, or nothing: a short decode
      * reported as success is the one failure the caller cannot detect. */
-    if (!xx_dcl_decode_memory(input, (size_t)member->compressed_size, output,
-                              (size_t)member->uncompressed_size, &written) ||
+    if (!xx_dcl_decode_memory(input, (size_t)member->compressed_size, output, (size_t)member->uncompressed_size, &written) ||
         written != (size_t)member->uncompressed_size) {
         xx_mem_free(output);
         xx_mem_free(input);
@@ -481,8 +463,8 @@ static bool xx_lsz_decode(Abstractformat *self, const xx_lsz_member *member,
 
 /* ---------------------------------------------------------- lifecycle --- */
 
-void xx_lsz_init(xx_lsz *archive, xx_io_device *device,
-                    int64_t base_address) {
+void xx_lsz_init(xx_lsz *archive, xx_io_device *device, int64_t base_address)
+{
     if (!archive) return;
     xx_mem_zero(archive, sizeof(*archive));
     xx_format_init(&archive->format, device, base_address);
@@ -495,22 +477,17 @@ void xx_lsz_init(xx_lsz *archive, xx_io_device *device,
     archive->format.check_is_valid = xx_lsz_check_is_valid;
     archive->format.handle_base_info = xx_lsz_handle_base_info;
     archive->format.get_format_size = xx_lsz_get_format_size;
-    archive->format.get_number_of_archive_records =
-        xx_lsz_get_number_of_archive_records;
-    archive->format.create_archive_records_reading =
-        xx_lsz_create_archive_records_reading;
-    archive->format.get_current_archive_record =
-        xx_lsz_get_current_archive_record;
-    archive->format.unpack_current_archive_record =
-        xx_lsz_unpack_current_archive_record;
-    archive->format.archive_record_move_to_next =
-        xx_lsz_archive_record_move_to_next;
-    archive->format.free_archive_records_reading =
-        xx_lsz_free_archive_records_reading;
+    archive->format.get_number_of_archive_records = xx_lsz_get_number_of_archive_records;
+    archive->format.create_archive_records_reading = xx_lsz_create_archive_records_reading;
+    archive->format.get_current_archive_record = xx_lsz_get_current_archive_record;
+    archive->format.unpack_current_archive_record = xx_lsz_unpack_current_archive_record;
+    archive->format.archive_record_move_to_next = xx_lsz_archive_record_move_to_next;
+    archive->format.free_archive_records_reading = xx_lsz_free_archive_records_reading;
     archive->format.destroy = xx_lsz_vtable_destroy;
 }
 
-xx_lsz *xx_lsz_create(xx_io_device *device, int64_t base_address) {
+xx_lsz *xx_lsz_create(xx_io_device *device, int64_t base_address)
+{
     xx_lsz *archive = (xx_lsz *)xx_mem_alloc(sizeof(*archive));
 
     if (!archive) return NULL;
@@ -518,7 +495,8 @@ xx_lsz *xx_lsz_create(xx_io_device *device, int64_t base_address) {
     return archive;
 }
 
-void xx_lsz_destroy(xx_lsz *archive) {
+void xx_lsz_destroy(xx_lsz *archive)
+{
     if (!archive) return;
     /* Not xx_format_destroy: it dispatches through format.destroy, which is
      * the wrapper below, and the two would recurse. */
@@ -527,19 +505,22 @@ void xx_lsz_destroy(xx_lsz *archive) {
     archive->number_of_records = 0U;
 }
 
-void xx_lsz_free(xx_lsz *archive) {
+void xx_lsz_free(xx_lsz *archive)
+{
     if (!archive) return;
     xx_lsz_destroy(archive);
     xx_mem_free(archive);
 }
 
-static void xx_lsz_vtable_destroy(Abstractformat *self) {
+static void xx_lsz_vtable_destroy(Abstractformat *self)
+{
     xx_lsz_destroy((xx_lsz *)self);
 }
 
 /* -------------------------------------------------------------- format -- */
 
-bool xx_lsz_check_is_valid(Abstractformat *self, xx_pd_struct *pd) {
+bool xx_lsz_check_is_valid(Abstractformat *self, xx_pd_struct *pd)
+{
     xx_lsz_stream *stream;
 
     if (!self || (pd && xx_pd_is_stopped(pd))) return false;
@@ -549,7 +530,8 @@ bool xx_lsz_check_is_valid(Abstractformat *self, xx_pd_struct *pd) {
     return true;
 }
 
-bool xx_lsz_handle_base_info(Abstractformat *self, xx_pd_struct *pd) {
+bool xx_lsz_handle_base_info(Abstractformat *self, xx_pd_struct *pd)
+{
     xx_lsz *archive = (xx_lsz *)self;
     xx_lsz_stream *stream;
 
@@ -570,18 +552,17 @@ bool xx_lsz_handle_base_info(Abstractformat *self, xx_pd_struct *pd) {
     return true;
 }
 
-int64_t xx_lsz_get_format_size(Abstractformat *self, xx_pd_struct *pd) {
-    if (!self ||
-        (!self->base_info_handled && !xx_format_handle_base_info(self, pd))) {
+int64_t xx_lsz_get_format_size(Abstractformat *self, xx_pd_struct *pd)
+{
+    if (!self || (!self->base_info_handled && !xx_format_handle_base_info(self, pd))) {
         return 0;
     }
     return self->is_valid ? self->format_size : 0;
 }
 
-uint64_t xx_lsz_get_number_of_archive_records(Abstractformat *self,
-                                                 xx_pd_struct *pd) {
-    if (!self ||
-        (!self->base_info_handled && !xx_format_handle_base_info(self, pd))) {
+uint64_t xx_lsz_get_number_of_archive_records(Abstractformat *self, xx_pd_struct *pd)
+{
+    if (!self || (!self->base_info_handled && !xx_format_handle_base_info(self, pd))) {
         return 0U;
     }
     return self->is_valid ? ((xx_lsz *)self)->number_of_records : 0U;
@@ -589,8 +570,8 @@ uint64_t xx_lsz_get_number_of_archive_records(Abstractformat *self,
 
 /* ------------------------------------------------------------- records -- */
 
-static bool xx_lsz_set_record(xx_archive_record *record,
-                                 const xx_lsz_member *member) {
+static bool xx_lsz_set_record(xx_archive_record *record, const xx_lsz_member *member)
+{
     xx_archive_record_cleanup(record);
     xx_archive_record_init(record);
     record->header_offset = member->header_offset;
@@ -598,34 +579,24 @@ static bool xx_lsz_set_record(xx_archive_record *record,
     record->data_offset = member->data_offset;
     record->compressed_size = member->compressed_size;
     return xx_archive_record_set_original_name(record, member->name) &&
-           xx_archive_record_set_meta_u64(record, XX_META_ID_COMPRESSED_SIZE,
-                                          (uint64_t)member->compressed_size) &&
-           xx_archive_record_set_meta_u64(
-               record, XX_META_ID_UNCOMPRESSED_SIZE,
-               (uint64_t)member->uncompressed_size) &&
-           xx_archive_record_set_meta_u64(record, XX_META_ID_COMPRESSION_METHOD,
-                                          member->method) &&
-           xx_archive_record_set_meta_u64(record, XX_META_ID_TIMESTAMP,
-                                          member->timestamp) &&
-           xx_archive_record_set_meta_bool(record, XX_META_ID_IS_FOLDER,
-                                           member->is_folder) &&
-           xx_archive_record_set_meta_bool(record, XX_META_ID_IS_ENCRYPTED,
-                                           false);
+           xx_archive_record_set_meta_u64(record, XX_META_ID_COMPRESSED_SIZE, (uint64_t)member->compressed_size) &&
+           xx_archive_record_set_meta_u64(record, XX_META_ID_UNCOMPRESSED_SIZE, (uint64_t)member->uncompressed_size) &&
+           xx_archive_record_set_meta_u64(record, XX_META_ID_COMPRESSION_METHOD, member->method) &&
+           xx_archive_record_set_meta_u64(record, XX_META_ID_TIMESTAMP, member->timestamp) &&
+           xx_archive_record_set_meta_bool(record, XX_META_ID_IS_FOLDER, member->is_folder) && xx_archive_record_set_meta_bool(record, XX_META_ID_IS_ENCRYPTED, false);
 }
 
-static bool xx_lsz_copy_options(xx_list_s *target,
-                                   const xx_list_s *options) {
+static bool xx_lsz_copy_options(xx_list_s *target, const xx_list_s *options)
+{
     size_t index;
 
     if (!target || !options) return options == NULL;
     for (index = 0U; index < options->count; ++index) {
-        const xx_meta *source =
-            (const xx_meta *)xx_list_at((const xx_list_t *)options, index);
+        const xx_meta *source = (const xx_meta *)xx_list_at((const xx_list_t *)options, index);
         xx_meta copied;
         if (!source) continue;
         xx_meta_init(&copied, source->meta_id);
-        if (!xx_var_copy(&copied.var, &source->var) ||
-            !xx_list_append(target, &copied)) {
+        if (!xx_var_copy(&copied.var, &source->var) || !xx_list_append(target, &copied)) {
             xx_meta_cleanup(&copied);
             return false;
         }
@@ -633,21 +604,20 @@ static bool xx_lsz_copy_options(xx_list_s *target,
     return true;
 }
 
-static const xx_var *xx_lsz_get_option(const xx_list_s *options,
-                                          uint32_t meta_id) {
+static const xx_var *xx_lsz_get_option(const xx_list_s *options, uint32_t meta_id)
+{
     size_t index;
 
     if (!options) return NULL;
     for (index = 0U; index < options->count; ++index) {
-        const xx_meta *meta =
-            (const xx_meta *)xx_list_at((const xx_list_t *)options, index);
+        const xx_meta *meta = (const xx_meta *)xx_list_at((const xx_list_t *)options, index);
         if (meta && meta->meta_id == meta_id) return &meta->var;
     }
     return NULL;
 }
 
-xx_archive_record_state *xx_lsz_create_archive_records_reading(
-    Abstractformat *self, const xx_list_s *options, xx_pd_struct *pd) {
+xx_archive_record_state *xx_lsz_create_archive_records_reading(Abstractformat *self, const xx_list_s *options, xx_pd_struct *pd)
+{
     xx_lsz_stream *stream;
     xx_archive_record_state *state;
 
@@ -663,9 +633,7 @@ xx_archive_record_state *xx_lsz_create_archive_records_reading(
     state->internal_state = stream;
     state->free_internal = xx_lsz_stream_free;
     state->total_records = (int64_t)stream->count;
-    if (!xx_lsz_copy_options(&state->options, options) ||
-        (stream->count != 0U &&
-         !xx_lsz_set_record(&state->current_record, &stream->items[0]))) {
+    if (!xx_lsz_copy_options(&state->options, options) || (stream->count != 0U && !xx_lsz_set_record(&state->current_record, &stream->items[0]))) {
         xx_archive_record_state_free(state);
         return NULL;
     }
@@ -674,20 +642,16 @@ xx_archive_record_state *xx_lsz_create_archive_records_reading(
     return state;
 }
 
-const xx_archive_record *xx_lsz_get_current_archive_record(
-    Abstractformat *self, xx_archive_record_state *state) {
-    return self && state && state->format == self && state->has_record
-               ? &state->current_record
-               : NULL;
+const xx_archive_record *xx_lsz_get_current_archive_record(Abstractformat *self, xx_archive_record_state *state)
+{
+    return self && state && state->format == self && state->has_record ? &state->current_record : NULL;
 }
 
-bool xx_lsz_archive_record_move_to_next(Abstractformat *self,
-                                           xx_archive_record_state *state,
-                                           xx_pd_struct *pd) {
+bool xx_lsz_archive_record_move_to_next(Abstractformat *self, xx_archive_record_state *state, xx_pd_struct *pd)
+{
     xx_lsz_stream *stream;
 
-    if (!self || !state || state->format != self || !state->has_record ||
-        (pd && xx_pd_is_stopped(pd))) {
+    if (!self || !state || state->format != self || !state->has_record || (pd && xx_pd_is_stopped(pd))) {
         return false;
     }
     stream = (xx_lsz_stream *)state->internal_state;
@@ -699,14 +663,12 @@ bool xx_lsz_archive_record_move_to_next(Abstractformat *self,
     }
     ++stream->index;
     ++state->current_index;
-    state->has_record = xx_lsz_set_record(&state->current_record,
-                                             &stream->items[stream->index]);
+    state->has_record = xx_lsz_set_record(&state->current_record, &stream->items[stream->index]);
     return state->has_record;
 }
 
-bool xx_lsz_unpack_current_archive_record(Abstractformat *self,
-                                             xx_archive_record_state *state,
-                                             xx_pd_struct *pd) {
+bool xx_lsz_unpack_current_archive_record(Abstractformat *self, xx_archive_record_state *state, xx_pd_struct *pd)
+{
     xx_lsz_stream *stream;
     const xx_lsz_member *member;
     const xx_var *path_option;
@@ -718,8 +680,7 @@ bool xx_lsz_unpack_current_archive_record(Abstractformat *self,
     bool result = false;
     bool created = false;
 
-    if (!self || !state || state->format != self || !state->has_record ||
-        (pd && xx_pd_is_stopped(pd))) {
+    if (!self || !state || state->format != self || !state->has_record || (pd && xx_pd_is_stopped(pd))) {
         return false;
     }
     stream = (xx_lsz_stream *)state->internal_state;
@@ -727,8 +688,7 @@ bool xx_lsz_unpack_current_archive_record(Abstractformat *self,
     member = &stream->items[stream->index];
     if (!xx_lsz_path_safe(member->name)) return false;
 
-    path_option = xx_lsz_get_option(&state->options,
-                                       XX_META_ID_OPT_UNPACK_PATH);
+    path_option = xx_lsz_get_option(&state->options, XX_META_ID_OPT_UNPACK_PATH);
     if (!path_option) {
         /* No destination: decode and discard, which verifies the member
          * without writing anything. */
@@ -737,11 +697,9 @@ bool xx_lsz_unpack_current_archive_record(Abstractformat *self,
         xx_mem_free(plain);
         return result;
     }
-    if (path_option->type == XX_VAR_TYPE_STRING ||
-        path_option->type == XX_VAR_TYPE_STRING_VIEW) {
+    if (path_option->type == XX_VAR_TYPE_STRING || path_option->type == XX_VAR_TYPE_STRING_VIEW) {
         base_path = xx_var_get_str(path_option);
-    } else if (path_option->type == XX_VAR_TYPE_WSTRING ||
-               path_option->type == XX_VAR_TYPE_WSTRING_VIEW) {
+    } else if (path_option->type == XX_VAR_TYPE_WSTRING || path_option->type == XX_VAR_TYPE_WSTRING_VIEW) {
         converted_path = xx_str_unicode_to_utf8(xx_var_get_wstr(path_option));
         base_path = converted_path;
     }
@@ -749,9 +707,7 @@ bool xx_lsz_unpack_current_archive_record(Abstractformat *self,
         xx_str_free(converted_path);
         return false;
     }
-    if (base_path[0] != '\0' &&
-        base_path[xx_str_len(base_path) - 1U] != '/' &&
-        base_path[xx_str_len(base_path) - 1U] != '\\') {
+    if (base_path[0] != '\0' && base_path[xx_str_len(base_path) - 1U] != '/' && base_path[xx_str_len(base_path) - 1U] != '\\') {
         target_path = xx_str_concat3(base_path, "/", member->name);
     } else {
         target_path = xx_str_concat(base_path, member->name);
@@ -764,8 +720,7 @@ bool xx_lsz_unpack_current_archive_record(Abstractformat *self,
         xx_str_free(target_path);
         return result;
     }
-    if (!xx_store_create_dirs_a(target_path, false) ||
-        !xx_lsz_decode(self, member, &plain, &plain_size, pd)) {
+    if (!xx_store_create_dirs_a(target_path, false) || !xx_lsz_decode(self, member, &plain, &plain_size, pd)) {
         xx_str_free(target_path);
         return false;
     }
@@ -776,8 +731,7 @@ bool xx_lsz_unpack_current_archive_record(Abstractformat *self,
 
         result = output != NULL;
         while (result && completed < plain_size) {
-            ssize_t sent = xx_io_write(output, plain + completed,
-                                       plain_size - completed);
+            ssize_t sent = xx_io_write(output, plain + completed, plain_size - completed);
             if (sent <= 0 || (size_t)sent > plain_size - completed) {
                 result = false;
                 break;
@@ -792,8 +746,8 @@ bool xx_lsz_unpack_current_archive_record(Abstractformat *self,
     return result;
 }
 
-void xx_lsz_free_archive_records_reading(Abstractformat *self,
-                                            xx_archive_record_state *state) {
+void xx_lsz_free_archive_records_reading(Abstractformat *self, xx_archive_record_state *state)
+{
     (void)self;
     xx_archive_record_state_free(state);
 }

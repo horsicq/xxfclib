@@ -73,11 +73,8 @@ typedef struct xx_vmarc_params {
  * @return true only when the member terminated cleanly having produced exactly
  *         @p output_size bytes.
  */
-XXFC_API bool xx_vmarc_decode_memory_ex(const uint8_t *input,
-                                        size_t input_size,
-                                        const xx_vmarc_params *params,
-                                        uint8_t *output, size_t output_size,
-                                        size_t *written, size_t *consumed);
+XXFC_API bool xx_vmarc_decode_memory_ex(const uint8_t *input, size_t input_size, const xx_vmarc_params *params, uint8_t *output, size_t output_size, size_t *written,
+                                        size_t *consumed);
 
 /**
  * @brief Measure one VMARC member, which stores no decoded length.
@@ -94,23 +91,16 @@ XXFC_API bool xx_vmarc_decode_memory_ex(const uint8_t *input,
  * @param produced    Receives the decoded size, 0 on failure. May be NULL.
  * @return true when the member terminated cleanly within the limit.
  */
-XXFC_API bool xx_vmarc_scan_memory_ex(const uint8_t *input, size_t input_size,
-                                      const xx_vmarc_params *params,
-                                      size_t max_output, size_t *consumed,
-                                      size_t *produced);
+XXFC_API bool xx_vmarc_scan_memory_ex(const uint8_t *input, size_t input_size, const xx_vmarc_params *params, size_t max_output, size_t *consumed, size_t *produced);
 
 /** Library-standard form of xx_vmarc_decode_memory_ex(): LZW, variable format
  *  ('V'), which is what an unqualified "VMARC stream" means.  A STORED or 'F'
  *  member MUST go through the _ex form - the terminator rule differs. */
-XXFC_API bool xx_vmarc_decode_memory(const uint8_t *input, size_t input_size,
-                                     uint8_t *output, size_t output_size,
-                                     size_t *written);
+XXFC_API bool xx_vmarc_decode_memory(const uint8_t *input, size_t input_size, uint8_t *output, size_t output_size, size_t *written);
 
 /** Library-standard form of xx_vmarc_scan_memory_ex(): LZW, variable format.
  *  Zeroes both outputs on failure. */
-XXFC_API bool xx_vmarc_scan_memory(const uint8_t *input, size_t input_size,
-                                   size_t max_output, size_t *consumed,
-                                   size_t *produced);
+XXFC_API bool xx_vmarc_scan_memory(const uint8_t *input, size_t input_size, size_t max_output, size_t *consumed, size_t *produced);
 
 #ifdef __cplusplus
 }

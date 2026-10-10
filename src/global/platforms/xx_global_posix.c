@@ -11,7 +11,8 @@
 #include <string.h>
 #include <unistd.h>
 
-xx_terminal_type_t xx_global_platform_detect_terminal_type(bool standard_error) {
+xx_terminal_type_t xx_global_platform_detect_terminal_type(bool standard_error)
+{
     const char *term;
 
     if (!isatty(standard_error ? STDERR_FILENO : STDOUT_FILENO)) {
@@ -38,7 +39,8 @@ xx_terminal_type_t xx_global_platform_detect_terminal_type(bool standard_error) 
 static _Thread_local void *xx_tls_values[XX_TLS_MAX_KEYS];
 static long xx_tls_next_slot;
 
-static long xx_tls_slot(xx_tls_key *key) {
+static long xx_tls_slot(xx_tls_key *key)
+{
     long slot = __atomic_load_n(&key->slot, __ATOMIC_ACQUIRE);
     long expected = 0;
 
@@ -71,13 +73,15 @@ static long xx_tls_slot(xx_tls_key *key) {
     return (slot > 0) ? slot : 0;
 }
 
-void *xx_tls_get(xx_tls_key *key) {
+void *xx_tls_get(xx_tls_key *key)
+{
     long slot = xx_tls_slot(key);
 
     return slot ? xx_tls_values[slot - 1] : NULL;
 }
 
-bool xx_tls_set(xx_tls_key *key, void *value) {
+bool xx_tls_set(xx_tls_key *key, void *value)
+{
     long slot = xx_tls_slot(key);
 
     if (!slot) {
@@ -89,12 +93,14 @@ bool xx_tls_set(xx_tls_key *key, void *value) {
     return true;
 }
 
-uintptr_t xx_tls_thread_id(void) {
+uintptr_t xx_tls_thread_id(void)
+{
     /* The table is per thread, so its address names the thread. */
     return (uintptr_t)&xx_tls_values[0];
 }
 
-void xx_global_release_thread_slots(void) {
+void xx_global_release_thread_slots(void)
+{
     /* The table is module thread storage, which the loader reclaims. */
 }
 

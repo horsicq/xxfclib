@@ -64,9 +64,7 @@ extern "C" {
 #define XX_DXBC_CHECKSUM_MAX_SIZE UINT32_C(0x04000000)
 
 /** FourCCs as the little endian u32 of their four ASCII bytes. */
-#define XX_DXBC_FOURCC(a, b, c, d)                                         \
-    ((uint32_t)(uint8_t)(a) | ((uint32_t)(uint8_t)(b) << 8U) |             \
-     ((uint32_t)(uint8_t)(c) << 16U) | ((uint32_t)(uint8_t)(d) << 24U))
+#define XX_DXBC_FOURCC(a, b, c, d) ((uint32_t)(uint8_t)(a) | ((uint32_t)(uint8_t)(b) << 8U) | ((uint32_t)(uint8_t)(c) << 16U) | ((uint32_t)(uint8_t)(d) << 24U))
 #define XX_DXBC_CHUNK_SHDR XX_DXBC_FOURCC('S', 'H', 'D', 'R')
 #define XX_DXBC_CHUNK_SHEX XX_DXBC_FOURCC('S', 'H', 'E', 'X')
 #define XX_DXBC_CHUNK_DXIL XX_DXBC_FOURCC('D', 'X', 'I', 'L')
@@ -96,8 +94,8 @@ typedef struct xx_dxbc XDxbc;
 
 struct xx_dxbc {
     Abstractformat format;
-    uint32_t total_size;   /**< header field at 0x18; the format size */
-    uint32_t chunk_count;  /**< header field at 0x1C, 1..32 */
+    uint32_t total_size;                        /**< header field at 0x18; the format size */
+    uint32_t chunk_count;                       /**< header field at 0x1C, 1..32 */
     uint32_t chunk_ids[XX_DXBC_MAX_CHUNKS];     /**< FourCC, little endian */
     uint32_t chunk_offsets[XX_DXBC_MAX_CHUNKS]; /**< from the container start */
     uint32_t chunk_sizes[XX_DXBC_MAX_CHUNKS];   /**< data size, header excluded */
@@ -107,52 +105,50 @@ struct xx_dxbc {
     uint32_t program_version;  /**< raw version token, 0 if none */
 };
 
-XXFC_API void xx_dxbc_init(xx_dxbc *dxbc, xx_io_device *dev,
-                           int64_t base_address);
+XXFC_API void xx_dxbc_init(xx_dxbc *dxbc, xx_io_device *dev, int64_t base_address);
 XXFC_API xx_dxbc *xx_dxbc_create(xx_io_device *dev, int64_t base_address);
 XXFC_API void xx_dxbc_destroy(xx_dxbc *dxbc);
 XXFC_API void xx_dxbc_free(xx_dxbc *dxbc);
 
 XXFC_API bool xx_dxbc_check_is_valid(Abstractformat *self, xx_pd_struct *pd);
-XXFC_API bool xx_dxbc_handle_base_info(Abstractformat *self,
-                                       xx_pd_struct *pd);
-XXFC_API int64_t xx_dxbc_get_format_size(Abstractformat *self,
-                                         xx_pd_struct *pd);
+XXFC_API bool xx_dxbc_handle_base_info(Abstractformat *self, xx_pd_struct *pd);
+XXFC_API int64_t xx_dxbc_get_format_size(Abstractformat *self, xx_pd_struct *pd);
 
 XXFC_API uint32_t xx_dxbc_get_total_size(const xx_dxbc *dxbc);
 XXFC_API uint32_t xx_dxbc_get_chunk_count(const xx_dxbc *dxbc);
 /** FourCC of chunk @p index as a little endian u32, 0 when out of range. */
 XXFC_API uint32_t xx_dxbc_get_chunk_id(const xx_dxbc *dxbc, uint32_t index);
-XXFC_API uint32_t xx_dxbc_get_chunk_offset(const xx_dxbc *dxbc,
-                                           uint32_t index);
+XXFC_API uint32_t xx_dxbc_get_chunk_offset(const xx_dxbc *dxbc, uint32_t index);
 XXFC_API uint32_t xx_dxbc_get_chunk_size(const xx_dxbc *dxbc, uint32_t index);
 /** True when a chunk with FourCC @p chunk_id is present. */
 XXFC_API bool xx_dxbc_has_chunk(const xx_dxbc *dxbc, uint32_t chunk_id);
-XXFC_API xx_dxbc_checksum_state_t xx_dxbc_get_checksum_state(
-    const xx_dxbc *dxbc);
+XXFC_API xx_dxbc_checksum_state_t xx_dxbc_get_checksum_state(const xx_dxbc *dxbc);
 /** Copies the 16 stored checksum bytes; false when @p out is too small. */
-XXFC_API bool xx_dxbc_get_checksum(const xx_dxbc *dxbc, void *out,
-                                   size_t out_size);
+XXFC_API bool xx_dxbc_get_checksum(const xx_dxbc *dxbc, void *out, size_t out_size);
 /** SHDR (shader model 4), SHEX (shader model 5) or DXIL (6+), else 0. */
 XXFC_API uint32_t xx_dxbc_get_program_chunk_id(const xx_dxbc *dxbc);
 XXFC_API xx_dxbc_program_type_t xx_dxbc_get_program_type(const xx_dxbc *dxbc);
 XXFC_API uint32_t xx_dxbc_get_shader_model_major(const xx_dxbc *dxbc);
 XXFC_API uint32_t xx_dxbc_get_shader_model_minor(const xx_dxbc *dxbc);
 
-static inline Abstractformat *xx_dxbc_to_format(xx_dxbc *dxbc) {
+static inline Abstractformat *xx_dxbc_to_format(xx_dxbc *dxbc)
+{
     return dxbc ? &dxbc->format : NULL;
 }
-static inline void XDxbc_init(xx_dxbc *dxbc, xx_io_device *dev,
-                              int64_t base_address) {
+static inline void XDxbc_init(xx_dxbc *dxbc, xx_io_device *dev, int64_t base_address)
+{
     xx_dxbc_init(dxbc, dev, base_address);
 }
-static inline xx_dxbc *XDxbc_create(xx_io_device *dev, int64_t base_address) {
+static inline xx_dxbc *XDxbc_create(xx_io_device *dev, int64_t base_address)
+{
     return xx_dxbc_create(dev, base_address);
 }
-static inline void XDxbc_free(xx_dxbc *dxbc) {
+static inline void XDxbc_free(xx_dxbc *dxbc)
+{
     xx_dxbc_free(dxbc);
 }
-static inline bool XDxbc_is_valid(xx_dxbc *dxbc, xx_pd_struct *pd) {
+static inline bool XDxbc_is_valid(xx_dxbc *dxbc, xx_pd_struct *pd)
+{
     return dxbc ? xx_format_is_valid(&dxbc->format, pd) : false;
 }
 

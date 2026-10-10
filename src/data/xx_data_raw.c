@@ -33,24 +33,17 @@
 #if !defined(XXFC_FORMATS_ONLY)
 #include "xx_data_search_internal.h"
 
-bool xx_data_can_fuse_literal_prefix(const uint8_t *pat, size_t pattern_size) {
-    return pat && pattern_size >= 2 && xx_is_avx2_enabled() &&
-           xx_data_can_fuse_literal_prefix_avx2(pat, pattern_size);
+bool xx_data_can_fuse_literal_prefix(const uint8_t *pat, size_t pattern_size)
+{
+    return pat && pattern_size >= 2 && xx_is_avx2_enabled() && xx_data_can_fuse_literal_prefix_avx2(pat, pattern_size);
 }
 
-size_t xx_data_collect_prefixes_buffer(const uint8_t *data, size_t size,
-                                      size_t start, const uint8_t prefix[2],
-                                      size_t *positions, size_t capacity,
-                                      size_t *next) {
+size_t xx_data_collect_prefixes_buffer(const uint8_t *data, size_t size, size_t start, const uint8_t prefix[2], size_t *positions, size_t capacity, size_t *next)
+{
     if (next) *next = size;
-    if (!data || !prefix || !positions || !next || !capacity ||
-        size < 2 || start > size - 2) return 0;
-    if (xx_is_avx2_enabled())
-        return xx_data_collect_prefixes_avx2(data, size, start, prefix,
-                                            positions, capacity, next);
-    if (xx_is_sse2_enabled())
-        return xx_data_collect_prefixes_sse2(data, size, start, prefix,
-                                            positions, capacity, next);
+    if (!data || !prefix || !positions || !next || !capacity || size < 2 || start > size - 2) return 0;
+    if (xx_is_avx2_enabled()) return xx_data_collect_prefixes_avx2(data, size, start, prefix, positions, capacity, next);
+    if (xx_is_sse2_enabled()) return xx_data_collect_prefixes_sse2(data, size, start, prefix, positions, capacity, next);
 
     while (start < size - 1) {
         size_t remaining = size - 1 - start;
@@ -76,17 +69,14 @@ size_t xx_data_collect_prefixes_buffer(const uint8_t *data, size_t size,
     return 0;
 }
 
-bool xx_data_collect_literal_dual_buffer(const uint8_t *data, size_t size,
-                                         size_t start, const uint8_t prefix[2],
-                                         XXDataLiteralDualBatch *batch) {
+bool xx_data_collect_literal_dual_buffer(const uint8_t *data, size_t size, size_t start, const uint8_t prefix[2], XXDataLiteralDualBatch *batch)
+{
     if (!batch) return false;
     batch->adjacent_count = batch->skip_count = 0;
     batch->next = size;
     if (!data || !prefix || size < 2 || start > size - 2) return false;
-    if (xx_is_avx2_enabled())
-        return xx_data_collect_literal_dual_avx2(data, size, start, prefix, batch);
-    if (xx_is_sse2_enabled())
-        return xx_data_collect_literal_dual_sse2(data, size, start, prefix, batch);
+    if (xx_is_avx2_enabled()) return xx_data_collect_literal_dual_avx2(data, size, start, prefix, batch);
+    if (xx_is_sse2_enabled()) return xx_data_collect_literal_dual_sse2(data, size, start, prefix, batch);
 
     while (start < size - 1) {
         size_t remaining = size - 1 - start;
@@ -94,10 +84,8 @@ bool xx_data_collect_literal_dual_buffer(const uint8_t *data, size_t size,
         for (size_t i = 0; i < width; ++i) {
             size_t offset = start + i;
             if (data[offset] == prefix[0]) {
-                if (data[offset + 1] == prefix[1])
-                    batch->adjacent[batch->adjacent_count++] = offset;
-                if (size - offset >= 3 && data[offset + 2] == prefix[1])
-                    batch->skip[batch->skip_count++] = offset;
+                if (data[offset + 1] == prefix[1]) batch->adjacent[batch->adjacent_count++] = offset;
+                if (size - offset >= 3 && data[offset + 2] == prefix[1]) batch->skip[batch->skip_count++] = offset;
             }
         }
         start += width;
@@ -115,44 +103,50 @@ bool xx_data_collect_literal_dual_buffer(const uint8_t *data, size_t size,
 /* --- Reading from Raw Memory Buffer                                    --- */
 /* ========================================================================= */
 
-uint8_t xx_data_get_u8(const void *data, size_t data_size, size_t offset) {
+uint8_t xx_data_get_u8(const void *data, size_t data_size, size_t offset)
+{
     if (!data || offset >= data_size) {
         return 0;
     }
-    return ((const uint8_t*)data)[offset];
+    return ((const uint8_t *)data)[offset];
 }
 
-int8_t xx_data_get_i8(const void *data, size_t data_size, size_t offset) {
+int8_t xx_data_get_i8(const void *data, size_t data_size, size_t offset)
+{
     return (int8_t)xx_data_get_u8(data, data_size, offset);
 }
 
-uint16_t xx_data_get_u16(const void *data, size_t data_size, size_t offset, bool big_endian) {
+uint16_t xx_data_get_u16(const void *data, size_t data_size, size_t offset, bool big_endian)
+{
     if (!data || offset + 2 > data_size || offset + 2 < offset) {
         return 0;
     }
-    const uint8_t *b = (const uint8_t*)data + offset;
+    const uint8_t *b = (const uint8_t *)data + offset;
     if (big_endian) {
         return (uint16_t)(((uint16_t)b[0] << 8) | (uint16_t)b[1]);
     }
     return (uint16_t)((uint16_t)b[0] | ((uint16_t)b[1] << 8));
 }
 
-int16_t xx_data_get_i16(const void *data, size_t data_size, size_t offset, bool big_endian) {
+int16_t xx_data_get_i16(const void *data, size_t data_size, size_t offset, bool big_endian)
+{
     return (int16_t)xx_data_get_u16(data, data_size, offset, big_endian);
 }
 
-uint32_t xx_data_get_u24(const void *data, size_t data_size, size_t offset, bool big_endian) {
+uint32_t xx_data_get_u24(const void *data, size_t data_size, size_t offset, bool big_endian)
+{
     if (!data || offset + 3 > data_size || offset + 3 < offset) {
         return 0;
     }
-    const uint8_t *b = (const uint8_t*)data + offset;
+    const uint8_t *b = (const uint8_t *)data + offset;
     if (big_endian) {
         return ((uint32_t)b[0] << 16) | ((uint32_t)b[1] << 8) | (uint32_t)b[2];
     }
     return (uint32_t)b[0] | ((uint32_t)b[1] << 8) | ((uint32_t)b[2] << 16);
 }
 
-int32_t xx_data_get_i24(const void *data, size_t data_size, size_t offset, bool big_endian) {
+int32_t xx_data_get_i24(const void *data, size_t data_size, size_t offset, bool big_endian)
+{
     uint32_t val = xx_data_get_u24(data, data_size, offset, big_endian);
     if (val & 0x00800000) {
         val |= 0xFF000000;
@@ -160,59 +154,60 @@ int32_t xx_data_get_i24(const void *data, size_t data_size, size_t offset, bool 
     return (int32_t)val;
 }
 
-uint32_t xx_data_get_u32(const void *data, size_t data_size, size_t offset, bool big_endian) {
+uint32_t xx_data_get_u32(const void *data, size_t data_size, size_t offset, bool big_endian)
+{
     if (!data || offset + 4 > data_size || offset + 4 < offset) {
         return 0;
     }
-    const uint8_t *b = (const uint8_t*)data + offset;
+    const uint8_t *b = (const uint8_t *)data + offset;
     if (big_endian) {
-        return ((uint32_t)b[0] << 24) | ((uint32_t)b[1] << 16) |
-               ((uint32_t)b[2] << 8)  | (uint32_t)b[3];
+        return ((uint32_t)b[0] << 24) | ((uint32_t)b[1] << 16) | ((uint32_t)b[2] << 8) | (uint32_t)b[3];
     }
-    return (uint32_t)b[0] | ((uint32_t)b[1] << 8) |
-           ((uint32_t)b[2] << 16) | ((uint32_t)b[3] << 24);
+    return (uint32_t)b[0] | ((uint32_t)b[1] << 8) | ((uint32_t)b[2] << 16) | ((uint32_t)b[3] << 24);
 }
 
-int32_t xx_data_get_i32(const void *data, size_t data_size, size_t offset, bool big_endian) {
+int32_t xx_data_get_i32(const void *data, size_t data_size, size_t offset, bool big_endian)
+{
     return (int32_t)xx_data_get_u32(data, data_size, offset, big_endian);
 }
 
-uint64_t xx_data_get_u64(const void *data, size_t data_size, size_t offset, bool big_endian) {
+uint64_t xx_data_get_u64(const void *data, size_t data_size, size_t offset, bool big_endian)
+{
     if (!data || offset + 8 > data_size || offset + 8 < offset) {
         return 0;
     }
-    const uint8_t *b = (const uint8_t*)data + offset;
+    const uint8_t *b = (const uint8_t *)data + offset;
     if (big_endian) {
-        return ((uint64_t)b[0] << 56) | ((uint64_t)b[1] << 48) |
-               ((uint64_t)b[2] << 40) | ((uint64_t)b[3] << 32) |
-               ((uint64_t)b[4] << 24) | ((uint64_t)b[5] << 16) |
-               ((uint64_t)b[6] << 8)  | (uint64_t)b[7];
+        return ((uint64_t)b[0] << 56) | ((uint64_t)b[1] << 48) | ((uint64_t)b[2] << 40) | ((uint64_t)b[3] << 32) | ((uint64_t)b[4] << 24) | ((uint64_t)b[5] << 16) |
+               ((uint64_t)b[6] << 8) | (uint64_t)b[7];
     }
-    return (uint64_t)b[0] | ((uint64_t)b[1] << 8)  |
-           ((uint64_t)b[2] << 16) | ((uint64_t)b[3] << 24) |
-           ((uint64_t)b[4] << 32) | ((uint64_t)b[5] << 40) |
+    return (uint64_t)b[0] | ((uint64_t)b[1] << 8) | ((uint64_t)b[2] << 16) | ((uint64_t)b[3] << 24) | ((uint64_t)b[4] << 32) | ((uint64_t)b[5] << 40) |
            ((uint64_t)b[6] << 48) | ((uint64_t)b[7] << 56);
 }
 
-int64_t xx_data_get_i64(const void *data, size_t data_size, size_t offset, bool big_endian) {
+int64_t xx_data_get_i64(const void *data, size_t data_size, size_t offset, bool big_endian)
+{
     return (int64_t)xx_data_get_u64(data, data_size, offset, big_endian);
 }
 
-float xx_data_get_f32(const void *data, size_t data_size, size_t offset, bool big_endian) {
+float xx_data_get_f32(const void *data, size_t data_size, size_t offset, bool big_endian)
+{
     uint32_t u = xx_data_get_u32(data, data_size, offset, big_endian);
     float f = 0.0f;
     xx_mem_copy(&f, &u, sizeof(float));
     return f;
 }
 
-double xx_data_get_f64(const void *data, size_t data_size, size_t offset, bool big_endian) {
+double xx_data_get_f64(const void *data, size_t data_size, size_t offset, bool big_endian)
+{
     uint64_t u = xx_data_get_u64(data, data_size, offset, big_endian);
     double d = 0.0;
     xx_mem_copy(&d, &u, sizeof(double));
     return d;
 }
 
-float xx_data_get_f16(const void *data, size_t data_size, size_t offset, bool big_endian) {
+float xx_data_get_f16(const void *data, size_t data_size, size_t offset, bool big_endian)
+{
     /* Expand an IEEE-754 half (1 sign, 5 exponent, 10 fraction) into a
      * single. There is no host type to read it into, so the bit pattern is
      * assembled by hand and reinterpreted, exactly as f32/f64 above do. */
@@ -250,19 +245,20 @@ float xx_data_get_f16(const void *data, size_t data_size, size_t offset, bool bi
     return f;
 }
 
-char* xx_data_get_ansi_string(const void *data, size_t data_size, size_t offset, size_t max_len) {
+char *xx_data_get_ansi_string(const void *data, size_t data_size, size_t offset, size_t max_len)
+{
     if (!data || offset >= data_size) {
         return NULL;
     }
     size_t available = data_size - offset;
     size_t scan_limit = (max_len > 0 && max_len < available) ? max_len : available;
-    const char *src = (const char*)data + offset;
+    const char *src = (const char *)data + offset;
     size_t len = 0;
     while (len < scan_limit && src[len] != '\0') {
         len++;
     }
 
-    char *res = (char*)xx_mem_alloc(len + 1);
+    char *res = (char *)xx_mem_alloc(len + 1);
     if (!res) {
         return NULL;
     }
@@ -273,7 +269,8 @@ char* xx_data_get_ansi_string(const void *data, size_t data_size, size_t offset,
     return res;
 }
 
-wchar_t* xx_data_get_unicode_string(const void *data, size_t data_size, size_t offset, size_t max_len, bool big_endian) {
+wchar_t *xx_data_get_unicode_string(const void *data, size_t data_size, size_t offset, size_t max_len, bool big_endian)
+{
     if (!data || offset + 2 > data_size) {
         return NULL;
     }
@@ -290,7 +287,7 @@ wchar_t* xx_data_get_unicode_string(const void *data, size_t data_size, size_t o
         units++;
     }
 
-    wchar_t *res = (wchar_t*)xx_mem_alloc((units + 1) * sizeof(wchar_t));
+    wchar_t *res = (wchar_t *)xx_mem_alloc((units + 1) * sizeof(wchar_t));
     if (!res) {
         return NULL;
     }
@@ -305,23 +302,26 @@ wchar_t* xx_data_get_unicode_string(const void *data, size_t data_size, size_t o
 /* --- Writing to Raw Memory Buffer                                      --- */
 /* ========================================================================= */
 
-bool xx_data_set_u8(void *data, size_t data_size, size_t offset, uint8_t val) {
+bool xx_data_set_u8(void *data, size_t data_size, size_t offset, uint8_t val)
+{
     if (!data || offset >= data_size) {
         return false;
     }
-    ((uint8_t*)data)[offset] = val;
+    ((uint8_t *)data)[offset] = val;
     return true;
 }
 
-bool xx_data_set_i8(void *data, size_t data_size, size_t offset, int8_t val) {
+bool xx_data_set_i8(void *data, size_t data_size, size_t offset, int8_t val)
+{
     return xx_data_set_u8(data, data_size, offset, (uint8_t)val);
 }
 
-bool xx_data_set_u16(void *data, size_t data_size, size_t offset, uint16_t val, bool big_endian) {
+bool xx_data_set_u16(void *data, size_t data_size, size_t offset, uint16_t val, bool big_endian)
+{
     if (!data || offset + 2 > data_size || offset + 2 < offset) {
         return false;
     }
-    uint8_t *b = (uint8_t*)data + offset;
+    uint8_t *b = (uint8_t *)data + offset;
     if (big_endian) {
         b[0] = (uint8_t)((val >> 8) & 0xFF);
         b[1] = (uint8_t)(val & 0xFF);
@@ -332,15 +332,17 @@ bool xx_data_set_u16(void *data, size_t data_size, size_t offset, uint16_t val, 
     return true;
 }
 
-bool xx_data_set_i16(void *data, size_t data_size, size_t offset, int16_t val, bool big_endian) {
+bool xx_data_set_i16(void *data, size_t data_size, size_t offset, int16_t val, bool big_endian)
+{
     return xx_data_set_u16(data, data_size, offset, (uint16_t)val, big_endian);
 }
 
-bool xx_data_set_u24(void *data, size_t data_size, size_t offset, uint32_t val, bool big_endian) {
+bool xx_data_set_u24(void *data, size_t data_size, size_t offset, uint32_t val, bool big_endian)
+{
     if (!data || offset + 3 > data_size || offset + 3 < offset) {
         return false;
     }
-    uint8_t *b = (uint8_t*)data + offset;
+    uint8_t *b = (uint8_t *)data + offset;
     if (big_endian) {
         b[0] = (uint8_t)((val >> 16) & 0xFF);
         b[1] = (uint8_t)((val >> 8) & 0xFF);
@@ -353,15 +355,17 @@ bool xx_data_set_u24(void *data, size_t data_size, size_t offset, uint32_t val, 
     return true;
 }
 
-bool xx_data_set_i24(void *data, size_t data_size, size_t offset, int32_t val, bool big_endian) {
+bool xx_data_set_i24(void *data, size_t data_size, size_t offset, int32_t val, bool big_endian)
+{
     return xx_data_set_u24(data, data_size, offset, (uint32_t)val, big_endian);
 }
 
-bool xx_data_set_u32(void *data, size_t data_size, size_t offset, uint32_t val, bool big_endian) {
+bool xx_data_set_u32(void *data, size_t data_size, size_t offset, uint32_t val, bool big_endian)
+{
     if (!data || offset + 4 > data_size || offset + 4 < offset) {
         return false;
     }
-    uint8_t *b = (uint8_t*)data + offset;
+    uint8_t *b = (uint8_t *)data + offset;
     if (big_endian) {
         b[0] = (uint8_t)((val >> 24) & 0xFF);
         b[1] = (uint8_t)((val >> 16) & 0xFF);
@@ -376,15 +380,17 @@ bool xx_data_set_u32(void *data, size_t data_size, size_t offset, uint32_t val, 
     return true;
 }
 
-bool xx_data_set_i32(void *data, size_t data_size, size_t offset, int32_t val, bool big_endian) {
+bool xx_data_set_i32(void *data, size_t data_size, size_t offset, int32_t val, bool big_endian)
+{
     return xx_data_set_u32(data, data_size, offset, (uint32_t)val, big_endian);
 }
 
-bool xx_data_set_u64(void *data, size_t data_size, size_t offset, uint64_t val, bool big_endian) {
+bool xx_data_set_u64(void *data, size_t data_size, size_t offset, uint64_t val, bool big_endian)
+{
     if (!data || offset + 8 > data_size || offset + 8 < offset) {
         return false;
     }
-    uint8_t *b = (uint8_t*)data + offset;
+    uint8_t *b = (uint8_t *)data + offset;
     if (big_endian) {
         b[0] = (uint8_t)((val >> 56) & 0xFF);
         b[1] = (uint8_t)((val >> 48) & 0xFF);
@@ -407,33 +413,38 @@ bool xx_data_set_u64(void *data, size_t data_size, size_t offset, uint64_t val, 
     return true;
 }
 
-bool xx_data_set_i64(void *data, size_t data_size, size_t offset, int64_t val, bool big_endian) {
+bool xx_data_set_i64(void *data, size_t data_size, size_t offset, int64_t val, bool big_endian)
+{
     return xx_data_set_u64(data, data_size, offset, (uint64_t)val, big_endian);
 }
 
-bool xx_data_set_f32(void *data, size_t data_size, size_t offset, float val, bool big_endian) {
+bool xx_data_set_f32(void *data, size_t data_size, size_t offset, float val, bool big_endian)
+{
     uint32_t u = 0;
     xx_mem_copy(&u, &val, sizeof(float));
     return xx_data_set_u32(data, data_size, offset, u, big_endian);
 }
 
-bool xx_data_set_f64(void *data, size_t data_size, size_t offset, double val, bool big_endian) {
+bool xx_data_set_f64(void *data, size_t data_size, size_t offset, double val, bool big_endian)
+{
     uint64_t u = 0;
     xx_mem_copy(&u, &val, sizeof(double));
     return xx_data_set_u64(data, data_size, offset, u, big_endian);
 }
 
-bool xx_data_set_bytes(void *data, size_t data_size, size_t offset, const void *src, size_t src_size) {
+bool xx_data_set_bytes(void *data, size_t data_size, size_t offset, const void *src, size_t src_size)
+{
     if (!data || !src || offset + src_size > data_size || offset + src_size < offset) {
         return false;
     }
     if (src_size > 0) {
-        xx_mem_copy((uint8_t*)data + offset, src, src_size);
+        xx_mem_copy((uint8_t *)data + offset, src, src_size);
     }
     return true;
 }
 
-bool xx_data_set_ansi_string(void *data, size_t data_size, size_t offset, const char *str) {
+bool xx_data_set_ansi_string(void *data, size_t data_size, size_t offset, const char *str)
+{
     if (!str) {
         return false;
     }
@@ -441,7 +452,8 @@ bool xx_data_set_ansi_string(void *data, size_t data_size, size_t offset, const 
     return xx_data_set_bytes(data, data_size, offset, str, len + 1);
 }
 
-bool xx_data_set_unicode_string(void *data, size_t data_size, size_t offset, const wchar_t *wstr, bool big_endian) {
+bool xx_data_set_unicode_string(void *data, size_t data_size, size_t offset, const wchar_t *wstr, bool big_endian)
+{
     if (!wstr) {
         return false;
     }
@@ -460,7 +472,8 @@ bool xx_data_set_unicode_string(void *data, size_t data_size, size_t offset, con
 /* --- Finding Types in Raw Memory Buffer                                --- */
 /* ========================================================================= */
 
-int64_t xx_data_find_bytes(const void *data, size_t data_size, size_t start_offset, const void *pattern, size_t pattern_size, xx_pd_struct *pd) {
+int64_t xx_data_find_bytes(const void *data, size_t data_size, size_t start_offset, const void *pattern, size_t pattern_size, xx_pd_struct *pd)
+{
     if (!data || !pattern || pattern_size == 0 || start_offset + pattern_size > data_size || start_offset + pattern_size < start_offset) {
         return -1;
     }
@@ -470,8 +483,8 @@ int64_t xx_data_find_bytes(const void *data, size_t data_size, size_t start_offs
 
     int level = xx_pd_enter_level(pd, (uint64_t)data_size, "Find Bytes");
 
-    const uint8_t *pdata = (const uint8_t*)data;
-    const uint8_t *pat = (const uint8_t*)pattern;
+    const uint8_t *pdata = (const uint8_t *)data;
+    const uint8_t *pat = (const uint8_t *)pattern;
     uint8_t first = pat[0];
     size_t limit = data_size - pattern_size;
     int64_t found_offset = -1;
@@ -502,47 +515,55 @@ int64_t xx_data_find_bytes(const void *data, size_t data_size, size_t start_offs
     return found_offset;
 }
 
-int64_t xx_data_find_u8(const void *data, size_t data_size, size_t start_offset, uint8_t val, xx_pd_struct *pd) {
+int64_t xx_data_find_u8(const void *data, size_t data_size, size_t start_offset, uint8_t val, xx_pd_struct *pd)
+{
     return xx_data_find_bytes(data, data_size, start_offset, &val, 1, pd);
 }
 
-int64_t xx_data_find_u16(const void *data, size_t data_size, size_t start_offset, uint16_t val, bool big_endian, xx_pd_struct *pd) {
+int64_t xx_data_find_u16(const void *data, size_t data_size, size_t start_offset, uint16_t val, bool big_endian, xx_pd_struct *pd)
+{
     uint8_t buf[2];
     xx_data_set_u16(buf, sizeof(buf), 0, val, big_endian);
     return xx_data_find_bytes(data, data_size, start_offset, buf, 2, pd);
 }
 
-int64_t xx_data_find_u24(const void *data, size_t data_size, size_t start_offset, uint32_t val, bool big_endian, xx_pd_struct *pd) {
+int64_t xx_data_find_u24(const void *data, size_t data_size, size_t start_offset, uint32_t val, bool big_endian, xx_pd_struct *pd)
+{
     uint8_t buf[3];
     xx_data_set_u24(buf, sizeof(buf), 0, val, big_endian);
     return xx_data_find_bytes(data, data_size, start_offset, buf, 3, pd);
 }
 
-int64_t xx_data_find_u32(const void *data, size_t data_size, size_t start_offset, uint32_t val, bool big_endian, xx_pd_struct *pd) {
+int64_t xx_data_find_u32(const void *data, size_t data_size, size_t start_offset, uint32_t val, bool big_endian, xx_pd_struct *pd)
+{
     uint8_t buf[4];
     xx_data_set_u32(buf, sizeof(buf), 0, val, big_endian);
     return xx_data_find_bytes(data, data_size, start_offset, buf, 4, pd);
 }
 
-int64_t xx_data_find_u64(const void *data, size_t data_size, size_t start_offset, uint64_t val, bool big_endian, xx_pd_struct *pd) {
+int64_t xx_data_find_u64(const void *data, size_t data_size, size_t start_offset, uint64_t val, bool big_endian, xx_pd_struct *pd)
+{
     uint8_t buf[8];
     xx_data_set_u64(buf, sizeof(buf), 0, val, big_endian);
     return xx_data_find_bytes(data, data_size, start_offset, buf, 8, pd);
 }
 
-int64_t xx_data_find_f32(const void *data, size_t data_size, size_t start_offset, float val, bool big_endian, xx_pd_struct *pd) {
+int64_t xx_data_find_f32(const void *data, size_t data_size, size_t start_offset, float val, bool big_endian, xx_pd_struct *pd)
+{
     uint8_t buf[4];
     xx_data_set_f32(buf, sizeof(buf), 0, val, big_endian);
     return xx_data_find_bytes(data, data_size, start_offset, buf, 4, pd);
 }
 
-int64_t xx_data_find_f64(const void *data, size_t data_size, size_t start_offset, double val, bool big_endian, xx_pd_struct *pd) {
+int64_t xx_data_find_f64(const void *data, size_t data_size, size_t start_offset, double val, bool big_endian, xx_pd_struct *pd)
+{
     uint8_t buf[8];
     xx_data_set_f64(buf, sizeof(buf), 0, val, big_endian);
     return xx_data_find_bytes(data, data_size, start_offset, buf, 8, pd);
 }
 
-int64_t xx_data_find_ansi_string(const void *data, size_t data_size, size_t start_offset, const char *str, xx_pd_struct *pd) {
+int64_t xx_data_find_ansi_string(const void *data, size_t data_size, size_t start_offset, const char *str, xx_pd_struct *pd)
+{
     if (!str) {
         return -1;
     }
@@ -553,7 +574,8 @@ int64_t xx_data_find_ansi_string(const void *data, size_t data_size, size_t star
     return xx_data_find_bytes(data, data_size, start_offset, str, len, pd);
 }
 
-int64_t xx_data_find_unicode_string(const void *data, size_t data_size, size_t start_offset, const wchar_t *wstr, bool big_endian, xx_pd_struct *pd) {
+int64_t xx_data_find_unicode_string(const void *data, size_t data_size, size_t start_offset, const wchar_t *wstr, bool big_endian, xx_pd_struct *pd)
+{
     if (!wstr) {
         return -1;
     }
@@ -561,7 +583,7 @@ int64_t xx_data_find_unicode_string(const void *data, size_t data_size, size_t s
     if (len == 0) {
         return (int64_t)start_offset;
     }
-    uint8_t *pat = (uint8_t*)xx_mem_alloc(len * 2);
+    uint8_t *pat = (uint8_t *)xx_mem_alloc(len * 2);
     if (!pat) {
         return -1;
     }
@@ -578,9 +600,8 @@ int64_t xx_data_find_unicode_string(const void *data, size_t data_size, size_t s
 /* --- Masked pattern search (signatures with wildcard bytes)              --- */
 /* ========================================================================= */
 
-static int64_t xx_data_find_masked_scalar(const uint8_t *data, size_t size,
-                                          const uint8_t *value, const uint8_t *mask,
-                                          size_t pattern_size, size_t idx1, size_t idx2) {
+static int64_t xx_data_find_masked_scalar(const uint8_t *data, size_t size, const uint8_t *value, const uint8_t *mask, size_t pattern_size, size_t idx1, size_t idx2)
+{
     /* scan[p] is the rarest byte of the start p. */
     const uint8_t *scan = data + idx1;
     const uint64_t ones = 0x0101010101010101ULL;
@@ -614,11 +635,9 @@ static int64_t xx_data_find_masked_scalar(const uint8_t *data, size_t size,
     return -1;
 }
 
-int64_t xx_data_find_masked(const uint8_t *data, size_t size,
-                            const uint8_t *value, const uint8_t *mask,
-                            size_t pattern_size, size_t idx1, size_t idx2) {
-    if (!data || !value || !mask || pattern_size == 0 || pattern_size > size ||
-        idx1 >= pattern_size || idx2 >= pattern_size) {
+int64_t xx_data_find_masked(const uint8_t *data, size_t size, const uint8_t *value, const uint8_t *mask, size_t pattern_size, size_t idx1, size_t idx2)
+{
+    if (!data || !value || !mask || pattern_size == 0 || pattern_size > size || idx1 >= pattern_size || idx2 >= pattern_size) {
         return -1;
     }
     if (xx_is_avx2_enabled() && size - pattern_size >= 31) {
@@ -634,7 +653,8 @@ int64_t xx_data_find_masked(const uint8_t *data, size_t size,
 /* --- Optimized Finding Types in Raw Memory Buffer (Sunday / Fast Word) --- */
 /* ========================================================================= */
 
-int64_t xx_data_find_bytes_buffer_optimize(const void *data, size_t data_size, size_t start_offset, const void *pattern, size_t pattern_size, xx_pd_struct *pd) {
+int64_t xx_data_find_bytes_buffer_optimize(const void *data, size_t data_size, size_t start_offset, const void *pattern, size_t pattern_size, xx_pd_struct *pd)
+{
     if (!data || !pattern || pattern_size == 0 || start_offset + pattern_size > data_size || start_offset + pattern_size < start_offset) {
         return -1;
     }
@@ -644,8 +664,8 @@ int64_t xx_data_find_bytes_buffer_optimize(const void *data, size_t data_size, s
 
     int level = xx_pd_enter_level(pd, (uint64_t)data_size, "Find Bytes Optimized");
 
-    const uint8_t *pdata = (const uint8_t*)data;
-    const uint8_t *pat = (const uint8_t*)pattern;
+    const uint8_t *pdata = (const uint8_t *)data;
+    const uint8_t *pat = (const uint8_t *)pattern;
     size_t limit = data_size - pattern_size;
     int64_t found_offset = -1;
 
@@ -784,47 +804,55 @@ int64_t xx_data_find_bytes_buffer_optimize(const void *data, size_t data_size, s
     return found_offset;
 }
 
-int64_t xx_data_find_u8_buffer_optimize(const void *data, size_t data_size, size_t start_offset, uint8_t val, xx_pd_struct *pd) {
+int64_t xx_data_find_u8_buffer_optimize(const void *data, size_t data_size, size_t start_offset, uint8_t val, xx_pd_struct *pd)
+{
     return xx_data_find_bytes_buffer_optimize(data, data_size, start_offset, &val, 1, pd);
 }
 
-int64_t xx_data_find_u16_buffer_optimize(const void *data, size_t data_size, size_t start_offset, uint16_t val, bool big_endian, xx_pd_struct *pd) {
+int64_t xx_data_find_u16_buffer_optimize(const void *data, size_t data_size, size_t start_offset, uint16_t val, bool big_endian, xx_pd_struct *pd)
+{
     uint8_t buf[2];
     xx_data_set_u16(buf, sizeof(buf), 0, val, big_endian);
     return xx_data_find_bytes_buffer_optimize(data, data_size, start_offset, buf, 2, pd);
 }
 
-int64_t xx_data_find_u24_buffer_optimize(const void *data, size_t data_size, size_t start_offset, uint32_t val, bool big_endian, xx_pd_struct *pd) {
+int64_t xx_data_find_u24_buffer_optimize(const void *data, size_t data_size, size_t start_offset, uint32_t val, bool big_endian, xx_pd_struct *pd)
+{
     uint8_t buf[3];
     xx_data_set_u24(buf, sizeof(buf), 0, val, big_endian);
     return xx_data_find_bytes_buffer_optimize(data, data_size, start_offset, buf, 3, pd);
 }
 
-int64_t xx_data_find_u32_buffer_optimize(const void *data, size_t data_size, size_t start_offset, uint32_t val, bool big_endian, xx_pd_struct *pd) {
+int64_t xx_data_find_u32_buffer_optimize(const void *data, size_t data_size, size_t start_offset, uint32_t val, bool big_endian, xx_pd_struct *pd)
+{
     uint8_t buf[4];
     xx_data_set_u32(buf, sizeof(buf), 0, val, big_endian);
     return xx_data_find_bytes_buffer_optimize(data, data_size, start_offset, buf, 4, pd);
 }
 
-int64_t xx_data_find_u64_buffer_optimize(const void *data, size_t data_size, size_t start_offset, uint64_t val, bool big_endian, xx_pd_struct *pd) {
+int64_t xx_data_find_u64_buffer_optimize(const void *data, size_t data_size, size_t start_offset, uint64_t val, bool big_endian, xx_pd_struct *pd)
+{
     uint8_t buf[8];
     xx_data_set_u64(buf, sizeof(buf), 0, val, big_endian);
     return xx_data_find_bytes_buffer_optimize(data, data_size, start_offset, buf, 8, pd);
 }
 
-int64_t xx_data_find_f32_buffer_optimize(const void *data, size_t data_size, size_t start_offset, float val, bool big_endian, xx_pd_struct *pd) {
+int64_t xx_data_find_f32_buffer_optimize(const void *data, size_t data_size, size_t start_offset, float val, bool big_endian, xx_pd_struct *pd)
+{
     uint8_t buf[4];
     xx_data_set_f32(buf, sizeof(buf), 0, val, big_endian);
     return xx_data_find_bytes_buffer_optimize(data, data_size, start_offset, buf, 4, pd);
 }
 
-int64_t xx_data_find_f64_buffer_optimize(const void *data, size_t data_size, size_t start_offset, double val, bool big_endian, xx_pd_struct *pd) {
+int64_t xx_data_find_f64_buffer_optimize(const void *data, size_t data_size, size_t start_offset, double val, bool big_endian, xx_pd_struct *pd)
+{
     uint8_t buf[8];
     xx_data_set_f64(buf, sizeof(buf), 0, val, big_endian);
     return xx_data_find_bytes_buffer_optimize(data, data_size, start_offset, buf, 8, pd);
 }
 
-int64_t xx_data_find_ansi_string_buffer_optimize(const void *data, size_t data_size, size_t start_offset, const char *str, xx_pd_struct *pd) {
+int64_t xx_data_find_ansi_string_buffer_optimize(const void *data, size_t data_size, size_t start_offset, const char *str, xx_pd_struct *pd)
+{
     if (!str) {
         return -1;
     }
@@ -835,7 +863,8 @@ int64_t xx_data_find_ansi_string_buffer_optimize(const void *data, size_t data_s
     return xx_data_find_bytes_buffer_optimize(data, data_size, start_offset, str, len, pd);
 }
 
-int64_t xx_data_find_unicode_string_buffer_optimize(const void *data, size_t data_size, size_t start_offset, const wchar_t *wstr, bool big_endian, xx_pd_struct *pd) {
+int64_t xx_data_find_unicode_string_buffer_optimize(const void *data, size_t data_size, size_t start_offset, const wchar_t *wstr, bool big_endian, xx_pd_struct *pd)
+{
     if (!wstr) {
         return -1;
     }
@@ -843,7 +872,7 @@ int64_t xx_data_find_unicode_string_buffer_optimize(const void *data, size_t dat
     if (len == 0) {
         return (int64_t)start_offset;
     }
-    uint8_t *pat = (uint8_t*)xx_mem_alloc(len * 2);
+    uint8_t *pat = (uint8_t *)xx_mem_alloc(len * 2);
     if (!pat) {
         return -1;
     }

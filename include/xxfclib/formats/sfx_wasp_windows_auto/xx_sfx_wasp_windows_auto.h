@@ -48,45 +48,30 @@ extern "C" {
 typedef struct xx_sfx_wasp_windows_auto {
     Abstractformat format;
     uint64_t number_of_records;
-    uint64_t total_unpacked;   /**< Sum of the declared member sizes. */
-    uint32_t ne_offset;        /**< e_lfanew, relative to the base address. */
-    uint32_t alignment_shift;  /**< Resource table alignment shift. */
-    uint32_t file_resources;   /**< Resources of type "FILE". */
-    int32_t run_index;         /**< Record marked '*', or -1. */
+    uint64_t total_unpacked;  /**< Sum of the declared member sizes. */
+    uint32_t ne_offset;       /**< e_lfanew, relative to the base address. */
+    uint32_t alignment_shift; /**< Resource table alignment shift. */
+    uint32_t file_resources;  /**< Resources of type "FILE". */
+    int32_t run_index;        /**< Record marked '*', or -1. */
 } xx_sfx_wasp_windows_auto;
 
 typedef xx_sfx_wasp_windows_auto xx_sfx_wasp_windows_auto_t;
 
-XXFC_API void xx_sfx_wasp_windows_auto_init(xx_sfx_wasp_windows_auto *archive,
-                                            xx_io_device *device,
-                                            int64_t base_address);
-XXFC_API xx_sfx_wasp_windows_auto *xx_sfx_wasp_windows_auto_create(
-    xx_io_device *device, int64_t base_address);
-XXFC_API void xx_sfx_wasp_windows_auto_destroy(
-    xx_sfx_wasp_windows_auto *archive);
+XXFC_API void xx_sfx_wasp_windows_auto_init(xx_sfx_wasp_windows_auto *archive, xx_io_device *device, int64_t base_address);
+XXFC_API xx_sfx_wasp_windows_auto *xx_sfx_wasp_windows_auto_create(xx_io_device *device, int64_t base_address);
+XXFC_API void xx_sfx_wasp_windows_auto_destroy(xx_sfx_wasp_windows_auto *archive);
 XXFC_API void xx_sfx_wasp_windows_auto_free(xx_sfx_wasp_windows_auto *archive);
 
-XXFC_API bool xx_sfx_wasp_windows_auto_check_is_valid(Abstractformat *self,
-                                                      xx_pd_struct *pd);
-XXFC_API bool xx_sfx_wasp_windows_auto_handle_base_info(Abstractformat *self,
-                                                        xx_pd_struct *pd);
-XXFC_API int64_t xx_sfx_wasp_windows_auto_get_format_size(Abstractformat *self,
-                                                          xx_pd_struct *pd);
-XXFC_API uint64_t xx_sfx_wasp_windows_auto_get_number_of_archive_records(
-    Abstractformat *self, xx_pd_struct *pd);
+XXFC_API bool xx_sfx_wasp_windows_auto_check_is_valid(Abstractformat *self, xx_pd_struct *pd);
+XXFC_API bool xx_sfx_wasp_windows_auto_handle_base_info(Abstractformat *self, xx_pd_struct *pd);
+XXFC_API int64_t xx_sfx_wasp_windows_auto_get_format_size(Abstractformat *self, xx_pd_struct *pd);
+XXFC_API uint64_t xx_sfx_wasp_windows_auto_get_number_of_archive_records(Abstractformat *self, xx_pd_struct *pd);
 
-XXFC_API xx_archive_record_state *
-xx_sfx_wasp_windows_auto_create_archive_records_reading(
-    Abstractformat *self, const xx_list_s *options, xx_pd_struct *pd);
-XXFC_API const xx_archive_record *
-xx_sfx_wasp_windows_auto_get_current_archive_record(
-    Abstractformat *self, xx_archive_record_state *state);
-XXFC_API bool xx_sfx_wasp_windows_auto_unpack_current_archive_record(
-    Abstractformat *self, xx_archive_record_state *state, xx_pd_struct *pd);
-XXFC_API bool xx_sfx_wasp_windows_auto_archive_record_move_to_next(
-    Abstractformat *self, xx_archive_record_state *state, xx_pd_struct *pd);
-XXFC_API void xx_sfx_wasp_windows_auto_free_archive_records_reading(
-    Abstractformat *self, xx_archive_record_state *state);
+XXFC_API xx_archive_record_state *xx_sfx_wasp_windows_auto_create_archive_records_reading(Abstractformat *self, const xx_list_s *options, xx_pd_struct *pd);
+XXFC_API const xx_archive_record *xx_sfx_wasp_windows_auto_get_current_archive_record(Abstractformat *self, xx_archive_record_state *state);
+XXFC_API bool xx_sfx_wasp_windows_auto_unpack_current_archive_record(Abstractformat *self, xx_archive_record_state *state, xx_pd_struct *pd);
+XXFC_API bool xx_sfx_wasp_windows_auto_archive_record_move_to_next(Abstractformat *self, xx_archive_record_state *state, xx_pd_struct *pd);
+XXFC_API void xx_sfx_wasp_windows_auto_free_archive_records_reading(Abstractformat *self, xx_archive_record_state *state);
 
 #ifdef __cplusplus
 }

@@ -49,53 +49,36 @@ XXFC_API size_t xx_zstd_compress_bound(size_t source_size);
  * blocks, so output is interoperable but currently prioritizes independence
  * and bounded behavior over compression ratio.
  */
-XXFC_API bool xx_zstd_compress_memory(const void *source, size_t source_size,
-                                      void *destination, size_t destination_capacity,
-                                      size_t *out_written, int level);
+XXFC_API bool xx_zstd_compress_memory(const void *source, size_t source_size, void *destination, size_t destination_capacity, size_t *out_written, int level);
 
 /** Decompresses complete standard Zstandard frames into an exact-size buffer. */
-XXFC_API bool xx_zstd_decompress_memory(const void *source, size_t source_size,
-                                        void *destination, size_t destination_size,
-                                        size_t *out_written);
+XXFC_API bool xx_zstd_decompress_memory(const void *source, size_t source_size, void *destination, size_t destination_size, size_t *out_written);
 
 /** Decompresses complete frames into at most destination_capacity bytes. */
-XXFC_API bool xx_zstd_decompress_memory_bounded(const void *source, size_t source_size,
-                                                void *destination, size_t destination_capacity,
-                                                size_t *out_written);
+XXFC_API bool xx_zstd_decompress_memory_bounded(const void *source, size_t source_size, void *destination, size_t destination_capacity, size_t *out_written);
 
 /** Like the bounded decoder, but reports when decoding first stops for lack
  * of output capacity. Bytes after that point may still be malformed. */
-XXFC_API bool xx_zstd_decompress_memory_bounded_ex(const void *source,
-                                                   size_t source_size,
-                                                   void *destination,
-                                                   size_t destination_capacity,
-                                                   size_t *out_written,
+XXFC_API bool xx_zstd_decompress_memory_bounded_ex(const void *source, size_t source_size, void *destination, size_t destination_capacity, size_t *out_written,
                                                    bool *needs_more_output);
 
 /** Compresses a fixed-size device range into one standard Zstandard frame. */
-XXFC_API bool xx_zstd_pack_device(xx_io_device *source, int64_t source_offset,
-                                  int64_t uncompressed_size, xx_io_device *destination,
-                                  int level, xx_pd_struct *progress);
+XXFC_API bool xx_zstd_pack_device(xx_io_device *source, int64_t source_offset, int64_t uncompressed_size, xx_io_device *destination, int level, xx_pd_struct *progress);
 
 /**
  * Compresses a source device or file and reports its uncompressed size,
  * compressed size, and CRC-32. A supplied device takes precedence over the
  * source path.
  */
-XXFC_API bool xx_zstd_pack_source(xx_io_device *source, const char *source_path,
-                                  int64_t *out_uncompressed_size,
-                                  int64_t *out_compressed_size,
-                                  uint32_t *out_crc32, xx_io_device *destination,
-                                  int level, xx_pd_struct *progress);
+XXFC_API bool xx_zstd_pack_source(xx_io_device *source, const char *source_path, int64_t *out_uncompressed_size, int64_t *out_compressed_size, uint32_t *out_crc32,
+                                  xx_io_device *destination, int level, xx_pd_struct *progress);
 
 /** Decompresses one standard Zstandard frame into an output device. */
-XXFC_API bool xx_zstd_unpack_device_to_device(xx_io_device *source, int64_t source_offset,
-                                              int64_t compressed_size, xx_io_device *destination,
-                                              uint64_t uncompressed_size, xx_pd_struct *progress);
+XXFC_API bool xx_zstd_unpack_device_to_device(xx_io_device *source, int64_t source_offset, int64_t compressed_size, xx_io_device *destination, uint64_t uncompressed_size,
+                                              xx_pd_struct *progress);
 
 /** Decompresses one standard Zstandard frame into a file. */
-XXFC_API bool xx_zstd_unpack_device_to_file(xx_io_device *source, int64_t source_offset,
-                                            int64_t compressed_size, const char *destination_path,
+XXFC_API bool xx_zstd_unpack_device_to_file(xx_io_device *source, int64_t source_offset, int64_t compressed_size, const char *destination_path,
                                             uint64_t uncompressed_size, xx_pd_struct *progress);
 
 #ifdef __cplusplus

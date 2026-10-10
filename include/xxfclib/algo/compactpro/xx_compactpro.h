@@ -28,11 +28,7 @@ extern "C" {
  * @param written     Receives the number of bytes produced. May be NULL.
  * @return true only when exactly @p output_size bytes were produced.
  */
-XXFC_API bool xx_compactpro_rle_decode_memory(const uint8_t *input,
-                                              size_t input_size,
-                                              uint8_t *output,
-                                              size_t output_size,
-                                              size_t *written);
+XXFC_API bool xx_compactpro_rle_decode_memory(const uint8_t *input, size_t input_size, uint8_t *output, size_t output_size, size_t *written);
 
 /**
  * @brief Decode a Compact Pro "LZH" member.
@@ -47,11 +43,7 @@ XXFC_API bool xx_compactpro_rle_decode_memory(const uint8_t *input,
  * @param written     Receives the number of bytes produced. May be NULL.
  * @return true only when exactly @p output_size bytes were produced.
  */
-XXFC_API bool xx_compactpro_lzh_decode_memory(const uint8_t *input,
-                                              size_t input_size,
-                                              uint8_t *output,
-                                              size_t output_size,
-                                              size_t *written);
+XXFC_API bool xx_compactpro_lzh_decode_memory(const uint8_t *input, size_t input_size, uint8_t *output, size_t output_size, size_t *written);
 
 /**
  * @brief Decode either Compact Pro form with an explicit block size.
@@ -68,11 +60,7 @@ XXFC_API bool xx_compactpro_lzh_decode_memory(const uint8_t *input,
  * @param written     Receives the number of bytes produced. May be NULL.
  * @return true only when exactly @p output_size bytes were produced.
  */
-XXFC_API bool xx_compactpro_decode_memory(const uint8_t *input,
-                                          size_t input_size, bool lzh,
-                                          uint32_t block_size,
-                                          uint8_t *output, size_t output_size,
-                                          size_t *written);
+XXFC_API bool xx_compactpro_decode_memory(const uint8_t *input, size_t input_size, bool lzh, uint32_t block_size, uint8_t *output, size_t output_size, size_t *written);
 
 #ifdef __cplusplus
 }

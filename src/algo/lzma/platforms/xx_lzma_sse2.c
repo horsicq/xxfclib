@@ -18,12 +18,12 @@
 #endif
 
 XX_TARGET_SSE2
-void xx_lzma_fill_probs_sse2(uint16_t *probabilities, size_t count) {
+void xx_lzma_fill_probs_sse2(uint16_t *probabilities, size_t count)
+{
 #ifdef XX_LZMA_X86
     const __m128i value = _mm_set1_epi16(1024);
     size_t at = 0;
-    for (; count - at >= 8; at += 8)
-        _mm_storeu_si128((__m128i *)(void *)(probabilities + at), value);
+    for (; count - at >= 8; at += 8) _mm_storeu_si128((__m128i *)(void *)(probabilities + at), value);
     for (; at < count; ++at) probabilities[at] = 1024;
 #else
     xx_lzma_fill_probs_scalar(probabilities, count);
@@ -31,8 +31,8 @@ void xx_lzma_fill_probs_sse2(uint16_t *probabilities, size_t count) {
 }
 
 XX_TARGET_SSE2
-size_t xx_lzma_match_length_sse2(const uint8_t *first, const uint8_t *second,
-                                size_t maximum) {
+size_t xx_lzma_match_length_sse2(const uint8_t *first, const uint8_t *second, size_t maximum)
+{
 #ifdef XX_LZMA_X86
     size_t at = 0;
     for (; maximum - at >= 16; at += 16) {

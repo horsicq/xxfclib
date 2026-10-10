@@ -85,8 +85,8 @@ typedef struct xx_ms_dos_backup2 {
     bool control_owned[XX_MS_DOS_BACKUP2_MAX_VOLUMES];
     bool data_owned[XX_MS_DOS_BACKUP2_MAX_VOLUMES];
     uint64_t number_of_records;
-    uint32_t sequence;   /**< Volume number of the first CONTROL file. */
-    bool last_volume;    /**< The last attached volume closes the set. */
+    uint32_t sequence; /**< Volume number of the first CONTROL file. */
+    bool last_volume;  /**< The last attached volume closes the set. */
     /** Volumes before the first one, nearest first: prior_control[0] is
      *  volume sequence - 1.  Only used to complete the member the first
      *  CONTROL file continues. */
@@ -100,49 +100,34 @@ typedef struct xx_ms_dos_backup2 {
 
 typedef xx_ms_dos_backup2 xx_ms_dos_backup2_t;
 
-XXFC_API void xx_ms_dos_backup2_init(xx_ms_dos_backup2 *archive,
-                                     xx_io_device *device,
-                                     int64_t base_address);
-XXFC_API xx_ms_dos_backup2 *xx_ms_dos_backup2_create(xx_io_device *device,
-                                                     int64_t base_address);
+XXFC_API void xx_ms_dos_backup2_init(xx_ms_dos_backup2 *archive, xx_io_device *device, int64_t base_address);
+XXFC_API xx_ms_dos_backup2 *xx_ms_dos_backup2_create(xx_io_device *device, int64_t base_address);
 XXFC_API void xx_ms_dos_backup2_destroy(xx_ms_dos_backup2 *archive);
 XXFC_API void xx_ms_dos_backup2_free(xx_ms_dos_backup2 *archive);
 
-XXFC_API bool xx_ms_dos_backup2_check_is_valid(Abstractformat *self,
-                                               xx_pd_struct *pd);
-XXFC_API bool xx_ms_dos_backup2_handle_base_info(Abstractformat *self,
-                                                 xx_pd_struct *pd);
-XXFC_API int64_t xx_ms_dos_backup2_get_format_size(Abstractformat *self,
-                                                   xx_pd_struct *pd);
-XXFC_API uint64_t xx_ms_dos_backup2_get_number_of_archive_records(
-    Abstractformat *self, xx_pd_struct *pd);
+XXFC_API bool xx_ms_dos_backup2_check_is_valid(Abstractformat *self, xx_pd_struct *pd);
+XXFC_API bool xx_ms_dos_backup2_handle_base_info(Abstractformat *self, xx_pd_struct *pd);
+XXFC_API int64_t xx_ms_dos_backup2_get_format_size(Abstractformat *self, xx_pd_struct *pd);
+XXFC_API uint64_t xx_ms_dos_backup2_get_number_of_archive_records(Abstractformat *self, xx_pd_struct *pd);
 
-XXFC_API xx_archive_record_state *xx_ms_dos_backup2_create_archive_records_reading(
-    Abstractformat *self, const xx_list_s *options, xx_pd_struct *pd);
-XXFC_API const xx_archive_record *xx_ms_dos_backup2_get_current_archive_record(
-    Abstractformat *self, xx_archive_record_state *state);
-XXFC_API bool xx_ms_dos_backup2_unpack_current_archive_record(
-    Abstractformat *self, xx_archive_record_state *state, xx_pd_struct *pd);
-XXFC_API bool xx_ms_dos_backup2_archive_record_move_to_next(
-    Abstractformat *self, xx_archive_record_state *state, xx_pd_struct *pd);
-XXFC_API void xx_ms_dos_backup2_free_archive_records_reading(
-    Abstractformat *self, xx_archive_record_state *state);
+XXFC_API xx_archive_record_state *xx_ms_dos_backup2_create_archive_records_reading(Abstractformat *self, const xx_list_s *options, xx_pd_struct *pd);
+XXFC_API const xx_archive_record *xx_ms_dos_backup2_get_current_archive_record(Abstractformat *self, xx_archive_record_state *state);
+XXFC_API bool xx_ms_dos_backup2_unpack_current_archive_record(Abstractformat *self, xx_archive_record_state *state, xx_pd_struct *pd);
+XXFC_API bool xx_ms_dos_backup2_archive_record_move_to_next(Abstractformat *self, xx_archive_record_state *state, xx_pd_struct *pd);
+XXFC_API void xx_ms_dos_backup2_free_archive_records_reading(Abstractformat *self, xx_archive_record_state *state);
 
 /**
  * @brief Attach BACKUP.nnn of the first volume (the one format.device is
  * the CONTROL file of).  The device is borrowed and must outlive the reader.
  */
-XXFC_API bool xx_ms_dos_backup2_set_data_device(xx_ms_dos_backup2 *archive,
-                                                xx_io_device *data);
+XXFC_API bool xx_ms_dos_backup2_set_data_device(xx_ms_dos_backup2 *archive, xx_io_device *data);
 
 /**
  * @brief Attach the next volume: its CONTROL and BACKUP devices, borrowed.
  * Its sequence number must follow the previous volume's, and the previous
  * volume must not be marked last.
  */
-XXFC_API bool xx_ms_dos_backup2_add_volume(xx_ms_dos_backup2 *archive,
-                                           xx_io_device *control,
-                                           xx_io_device *data);
+XXFC_API bool xx_ms_dos_backup2_add_volume(xx_ms_dos_backup2 *archive, xx_io_device *control, xx_io_device *data);
 
 /**
  * @brief Attach the volume before the earliest one attached so far (first
@@ -150,9 +135,7 @@ XXFC_API bool xx_ms_dos_backup2_add_volume(xx_ms_dos_backup2 *archive,
  * borrowed.  @p data may be NULL.  Used only to complete the member the
  * first CONTROL file continues from that volume.
  */
-XXFC_API bool xx_ms_dos_backup2_add_prior_volume(xx_ms_dos_backup2 *archive,
-                                                 xx_io_device *control,
-                                                 xx_io_device *data);
+XXFC_API bool xx_ms_dos_backup2_add_prior_volume(xx_ms_dos_backup2 *archive, xx_io_device *control, xx_io_device *data);
 
 /**
  * @brief Open the BACKUP file beside @p control_path (CONTROL.nnn ->
@@ -163,8 +146,7 @@ XXFC_API bool xx_ms_dos_backup2_add_prior_volume(xx_ms_dos_backup2 *archive,
  * Opened devices are owned by the reader.
  * @return the number of volumes that now have their data attached.
  */
-XXFC_API uint32_t xx_ms_dos_backup2_open_volume_files(xx_ms_dos_backup2 *archive,
-                                                      const char *control_path);
+XXFC_API uint32_t xx_ms_dos_backup2_open_volume_files(xx_ms_dos_backup2 *archive, const char *control_path);
 
 #ifdef __cplusplus
 }

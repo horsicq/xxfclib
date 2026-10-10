@@ -69,7 +69,7 @@ extern "C" {
 #define XX_PCAPNG_MAJOR_VERSION 1U
 
 #define XX_PCAPNG_BLOCK_IDB UINT32_C(0x00000001) /**< Interface Description */
-#define XX_PCAPNG_BLOCK_PB  UINT32_C(0x00000002) /**< Packet (obsolete) */
+#define XX_PCAPNG_BLOCK_PB UINT32_C(0x00000002)  /**< Packet (obsolete) */
 #define XX_PCAPNG_BLOCK_SPB UINT32_C(0x00000003) /**< Simple Packet */
 #define XX_PCAPNG_BLOCK_NRB UINT32_C(0x00000004) /**< Name Resolution */
 #define XX_PCAPNG_BLOCK_ISB UINT32_C(0x00000005) /**< Interface Statistics */
@@ -83,30 +83,28 @@ typedef struct xx_pcapng xx_pcapng_t;
 typedef struct xx_pcapng XPcapng;
 
 struct xx_pcapng {
-    Abstractformat format;        /**< Base format structure (first member) */
-    bool big_endian;              /**< Byte order of the first section */
-    uint16_t major_version;       /**< First SHB, +0x0C */
-    uint16_t minor_version;       /**< First SHB, +0x0E */
-    uint64_t section_length;      /**< First SHB, +0x10 (all ones = unknown) */
-    uint32_t shb_size;            /**< First SHB's block total length */
-    uint64_t number_of_blocks;    /**< Blocks inside the measured size, SHB included */
-    uint64_t number_of_sections;  /**< SHBs inside the measured size */
-    uint64_t number_of_interfaces;/**< IDBs inside the measured size */
-    uint64_t number_of_packets;   /**< EPB + SPB + PB inside the measured size */
-    uint32_t link_type;           /**< First IDB's link type, or XX_PCAPNG_LINK_TYPE_NONE */
-    int64_t capture_end;          /**< Absolute end of the last block, or -1 */
+    Abstractformat format;         /**< Base format structure (first member) */
+    bool big_endian;               /**< Byte order of the first section */
+    uint16_t major_version;        /**< First SHB, +0x0C */
+    uint16_t minor_version;        /**< First SHB, +0x0E */
+    uint64_t section_length;       /**< First SHB, +0x10 (all ones = unknown) */
+    uint32_t shb_size;             /**< First SHB's block total length */
+    uint64_t number_of_blocks;     /**< Blocks inside the measured size, SHB included */
+    uint64_t number_of_sections;   /**< SHBs inside the measured size */
+    uint64_t number_of_interfaces; /**< IDBs inside the measured size */
+    uint64_t number_of_packets;    /**< EPB + SPB + PB inside the measured size */
+    uint32_t link_type;            /**< First IDB's link type, or XX_PCAPNG_LINK_TYPE_NONE */
+    int64_t capture_end;           /**< Absolute end of the last block, or -1 */
 };
 
-XXFC_API void xx_pcapng_init(xx_pcapng *pcapng, xx_io_device *dev,
-                             int64_t base_address);
+XXFC_API void xx_pcapng_init(xx_pcapng *pcapng, xx_io_device *dev, int64_t base_address);
 XXFC_API xx_pcapng *xx_pcapng_create(xx_io_device *dev, int64_t base_address);
 XXFC_API void xx_pcapng_destroy(xx_pcapng *pcapng);
 XXFC_API void xx_pcapng_free(xx_pcapng *pcapng);
 
 XXFC_API bool xx_pcapng_check_is_valid(Abstractformat *self, xx_pd_struct *pd);
 XXFC_API bool xx_pcapng_handle_base_info(Abstractformat *self, xx_pd_struct *pd);
-XXFC_API int64_t xx_pcapng_get_format_size(Abstractformat *self,
-                                           xx_pd_struct *pd);
+XXFC_API int64_t xx_pcapng_get_format_size(Abstractformat *self, xx_pd_struct *pd);
 
 XXFC_API bool xx_pcapng_is_big_endian(const xx_pcapng *pcapng);
 XXFC_API uint16_t xx_pcapng_get_major_version(const xx_pcapng *pcapng);
@@ -118,21 +116,24 @@ XXFC_API uint64_t xx_pcapng_get_number_of_packets(const xx_pcapng *pcapng);
 XXFC_API uint32_t xx_pcapng_get_link_type(const xx_pcapng *pcapng);
 XXFC_API int64_t xx_pcapng_get_capture_end(const xx_pcapng *pcapng);
 
-static inline Abstractformat *xx_pcapng_to_format(xx_pcapng *pcapng) {
+static inline Abstractformat *xx_pcapng_to_format(xx_pcapng *pcapng)
+{
     return pcapng ? &pcapng->format : NULL;
 }
-static inline void XPcapng_init(xx_pcapng *pcapng, xx_io_device *dev,
-                                int64_t base_address) {
+static inline void XPcapng_init(xx_pcapng *pcapng, xx_io_device *dev, int64_t base_address)
+{
     xx_pcapng_init(pcapng, dev, base_address);
 }
-static inline xx_pcapng *XPcapng_create(xx_io_device *dev,
-                                        int64_t base_address) {
+static inline xx_pcapng *XPcapng_create(xx_io_device *dev, int64_t base_address)
+{
     return xx_pcapng_create(dev, base_address);
 }
-static inline void XPcapng_free(xx_pcapng *pcapng) {
+static inline void XPcapng_free(xx_pcapng *pcapng)
+{
     xx_pcapng_free(pcapng);
 }
-static inline bool XPcapng_is_valid(xx_pcapng *pcapng, xx_pd_struct *pd) {
+static inline bool XPcapng_is_valid(xx_pcapng *pcapng, xx_pd_struct *pd)
+{
     return pcapng ? xx_format_is_valid(&pcapng->format, pd) : false;
 }
 

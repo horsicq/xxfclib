@@ -73,37 +73,29 @@ extern "C" {
 typedef struct xx_jvc {
     Abstractformat format;
     uint64_t number_of_records;
-    int64_t image_size;      /**< Bytes from base_address to the end. */
-    uint32_t header_size;    /**< JVC header bytes, 0..5. */
-    uint32_t filesystem;     /**< 1 Dragon DOS, 2 OS-9 RBF. */
-    uint32_t total_sectors;  /**< Volume size in sectors, from the FS. */
+    int64_t image_size;     /**< Bytes from base_address to the end. */
+    uint32_t header_size;   /**< JVC header bytes, 0..5. */
+    uint32_t filesystem;    /**< 1 Dragon DOS, 2 OS-9 RBF. */
+    uint32_t total_sectors; /**< Volume size in sectors, from the FS. */
 } xx_jvc;
 
 typedef xx_jvc xx_jvc_t;
 
-XXFC_API void xx_jvc_init(xx_jvc *archive, xx_io_device *device,
-                          int64_t base_address);
+XXFC_API void xx_jvc_init(xx_jvc *archive, xx_io_device *device, int64_t base_address);
 XXFC_API xx_jvc *xx_jvc_create(xx_io_device *device, int64_t base_address);
 XXFC_API void xx_jvc_destroy(xx_jvc *archive);
 XXFC_API void xx_jvc_free(xx_jvc *archive);
 
 XXFC_API bool xx_jvc_check_is_valid(Abstractformat *self, xx_pd_struct *pd);
 XXFC_API bool xx_jvc_handle_base_info(Abstractformat *self, xx_pd_struct *pd);
-XXFC_API int64_t xx_jvc_get_format_size(Abstractformat *self,
-                                        xx_pd_struct *pd);
-XXFC_API uint64_t xx_jvc_get_number_of_archive_records(Abstractformat *self,
-                                                       xx_pd_struct *pd);
+XXFC_API int64_t xx_jvc_get_format_size(Abstractformat *self, xx_pd_struct *pd);
+XXFC_API uint64_t xx_jvc_get_number_of_archive_records(Abstractformat *self, xx_pd_struct *pd);
 
-XXFC_API xx_archive_record_state *xx_jvc_create_archive_records_reading(
-    Abstractformat *self, const xx_list_s *options, xx_pd_struct *pd);
-XXFC_API const xx_archive_record *xx_jvc_get_current_archive_record(
-    Abstractformat *self, xx_archive_record_state *state);
-XXFC_API bool xx_jvc_unpack_current_archive_record(
-    Abstractformat *self, xx_archive_record_state *state, xx_pd_struct *pd);
-XXFC_API bool xx_jvc_archive_record_move_to_next(
-    Abstractformat *self, xx_archive_record_state *state, xx_pd_struct *pd);
-XXFC_API void xx_jvc_free_archive_records_reading(
-    Abstractformat *self, xx_archive_record_state *state);
+XXFC_API xx_archive_record_state *xx_jvc_create_archive_records_reading(Abstractformat *self, const xx_list_s *options, xx_pd_struct *pd);
+XXFC_API const xx_archive_record *xx_jvc_get_current_archive_record(Abstractformat *self, xx_archive_record_state *state);
+XXFC_API bool xx_jvc_unpack_current_archive_record(Abstractformat *self, xx_archive_record_state *state, xx_pd_struct *pd);
+XXFC_API bool xx_jvc_archive_record_move_to_next(Abstractformat *self, xx_archive_record_state *state, xx_pd_struct *pd);
+XXFC_API void xx_jvc_free_archive_records_reading(Abstractformat *self, xx_archive_record_state *state);
 
 #ifdef __cplusplus
 }

@@ -30,39 +30,32 @@ typedef struct xx_zoom {
     int64_t uncompressed_size;  /**< Size of the .adf the codec would emit. */
     uint8_t first_cylinder;
     uint8_t last_cylinder;
-    bool is_protected;          /**< Password flag at +0x24. */
+    bool is_protected; /**< Password flag at +0x24. */
 } xx_zoom;
 
 typedef xx_zoom xx_zoom_t;
 
-XXFC_API void xx_zoom_init(xx_zoom *archive, xx_io_device *device,
-                           int64_t base_address);
+XXFC_API void xx_zoom_init(xx_zoom *archive, xx_io_device *device, int64_t base_address);
 XXFC_API xx_zoom *xx_zoom_create(xx_io_device *device, int64_t base_address);
 XXFC_API void xx_zoom_destroy(xx_zoom *archive);
 XXFC_API void xx_zoom_free(xx_zoom *archive);
 
 XXFC_API bool xx_zoom_check_is_valid(Abstractformat *self, xx_pd_struct *pd);
 XXFC_API bool xx_zoom_handle_base_info(Abstractformat *self, xx_pd_struct *pd);
-XXFC_API int64_t xx_zoom_get_format_size(Abstractformat *self,
-                                         xx_pd_struct *pd);
-XXFC_API uint64_t xx_zoom_get_number_of_archive_records(Abstractformat *self,
-                                                        xx_pd_struct *pd);
+XXFC_API int64_t xx_zoom_get_format_size(Abstractformat *self, xx_pd_struct *pd);
+XXFC_API uint64_t xx_zoom_get_number_of_archive_records(Abstractformat *self, xx_pd_struct *pd);
 
-XXFC_API xx_archive_record_state *xx_zoom_create_archive_records_reading(
-    Abstractformat *self, const xx_list_s *options, xx_pd_struct *pd);
-XXFC_API const xx_archive_record *xx_zoom_get_current_archive_record(
-    Abstractformat *self, xx_archive_record_state *state);
-XXFC_API bool xx_zoom_unpack_current_archive_record(
-    Abstractformat *self, xx_archive_record_state *state, xx_pd_struct *pd);
-XXFC_API bool xx_zoom_archive_record_move_to_next(
-    Abstractformat *self, xx_archive_record_state *state, xx_pd_struct *pd);
-XXFC_API void xx_zoom_free_archive_records_reading(
-    Abstractformat *self, xx_archive_record_state *state);
+XXFC_API xx_archive_record_state *xx_zoom_create_archive_records_reading(Abstractformat *self, const xx_list_s *options, xx_pd_struct *pd);
+XXFC_API const xx_archive_record *xx_zoom_get_current_archive_record(Abstractformat *self, xx_archive_record_state *state);
+XXFC_API bool xx_zoom_unpack_current_archive_record(Abstractformat *self, xx_archive_record_state *state, xx_pd_struct *pd);
+XXFC_API bool xx_zoom_archive_record_move_to_next(Abstractformat *self, xx_archive_record_state *state, xx_pd_struct *pd);
+XXFC_API void xx_zoom_free_archive_records_reading(Abstractformat *self, xx_archive_record_state *state);
 
 XXFC_API int64_t xx_zoom_get_uncompressed_size(const xx_zoom *archive);
 XXFC_API bool xx_zoom_get_is_protected(const xx_zoom *archive);
 
-static inline Abstractformat *xx_zoom_to_format(xx_zoom *archive) {
+static inline Abstractformat *xx_zoom_to_format(xx_zoom *archive)
+{
     return archive ? &archive->format : NULL;
 }
 

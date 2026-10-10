@@ -72,41 +72,32 @@ struct xx_cramfs {
     Abstractformat format;
     uint64_t number_of_records;
     uint64_t number_of_members;
-    uint32_t image_size;   /**< The superblock's "size" field. */
-    uint32_t flags;        /**< The superblock's flag word. */
-    uint32_t crc;          /**< The fsid CRC, stored but not verified. */
-    uint32_t edition;      /**< The fsid edition number. */
-    uint32_t block_count;  /**< The fsid block count, informational. */
-    uint32_t file_count;   /**< The fsid file count, informational. */
-    int64_t archive_end;   /**< base_address + image_size, or -1. */
-    bool big_endian;       /**< True when the image is big endian. */
+    uint32_t image_size;  /**< The superblock's "size" field. */
+    uint32_t flags;       /**< The superblock's flag word. */
+    uint32_t crc;         /**< The fsid CRC, stored but not verified. */
+    uint32_t edition;     /**< The fsid edition number. */
+    uint32_t block_count; /**< The fsid block count, informational. */
+    uint32_t file_count;  /**< The fsid file count, informational. */
+    int64_t archive_end;  /**< base_address + image_size, or -1. */
+    bool big_endian;      /**< True when the image is big endian. */
     void *internal;
 };
 
-XXFC_API void xx_cramfs_init(xx_cramfs *cramfs, xx_io_device *dev,
-                             int64_t base_address);
+XXFC_API void xx_cramfs_init(xx_cramfs *cramfs, xx_io_device *dev, int64_t base_address);
 XXFC_API xx_cramfs *xx_cramfs_create(xx_io_device *dev, int64_t base_address);
 XXFC_API void xx_cramfs_destroy(xx_cramfs *cramfs);
 XXFC_API void xx_cramfs_free(xx_cramfs *cramfs);
 
 XXFC_API bool xx_cramfs_check_is_valid(Abstractformat *self, xx_pd_struct *pd);
-XXFC_API bool xx_cramfs_handle_base_info(Abstractformat *self,
-                                         xx_pd_struct *pd);
-XXFC_API int64_t xx_cramfs_get_format_size(Abstractformat *self,
-                                           xx_pd_struct *pd);
-XXFC_API uint64_t xx_cramfs_get_number_of_archive_records(Abstractformat *self,
-                                                          xx_pd_struct *pd);
+XXFC_API bool xx_cramfs_handle_base_info(Abstractformat *self, xx_pd_struct *pd);
+XXFC_API int64_t xx_cramfs_get_format_size(Abstractformat *self, xx_pd_struct *pd);
+XXFC_API uint64_t xx_cramfs_get_number_of_archive_records(Abstractformat *self, xx_pd_struct *pd);
 
-XXFC_API xx_archive_record_state *xx_cramfs_create_archive_records_reading(
-    Abstractformat *self, const xx_list_s *options, xx_pd_struct *pd);
-XXFC_API const xx_archive_record *xx_cramfs_get_current_archive_record(
-    Abstractformat *self, xx_archive_record_state *state);
-XXFC_API bool xx_cramfs_unpack_current_archive_record(
-    Abstractformat *self, xx_archive_record_state *state, xx_pd_struct *pd);
-XXFC_API bool xx_cramfs_archive_record_move_to_next(
-    Abstractformat *self, xx_archive_record_state *state, xx_pd_struct *pd);
-XXFC_API void xx_cramfs_free_archive_records_reading(
-    Abstractformat *self, xx_archive_record_state *state);
+XXFC_API xx_archive_record_state *xx_cramfs_create_archive_records_reading(Abstractformat *self, const xx_list_s *options, xx_pd_struct *pd);
+XXFC_API const xx_archive_record *xx_cramfs_get_current_archive_record(Abstractformat *self, xx_archive_record_state *state);
+XXFC_API bool xx_cramfs_unpack_current_archive_record(Abstractformat *self, xx_archive_record_state *state, xx_pd_struct *pd);
+XXFC_API bool xx_cramfs_archive_record_move_to_next(Abstractformat *self, xx_archive_record_state *state, xx_pd_struct *pd);
+XXFC_API void xx_cramfs_free_archive_records_reading(Abstractformat *self, xx_archive_record_state *state);
 
 XXFC_API uint64_t xx_cramfs_get_number_of_records(const xx_cramfs *cramfs);
 XXFC_API uint64_t xx_cramfs_get_number_of_members(const xx_cramfs *cramfs);
@@ -119,19 +110,24 @@ XXFC_API uint32_t xx_cramfs_get_file_count(const xx_cramfs *cramfs);
 XXFC_API int64_t xx_cramfs_get_archive_end(const xx_cramfs *cramfs);
 XXFC_API bool xx_cramfs_is_big_endian(const xx_cramfs *cramfs);
 
-static inline Abstractformat *xx_cramfs_to_format(xx_cramfs *cramfs) {
+static inline Abstractformat *xx_cramfs_to_format(xx_cramfs *cramfs)
+{
     return cramfs ? &cramfs->format : NULL;
 }
-static inline void XCramfs_init(xx_cramfs *cramfs, xx_io_device *dev,
-                                int64_t base_address) {
+static inline void XCramfs_init(xx_cramfs *cramfs, xx_io_device *dev, int64_t base_address)
+{
     xx_cramfs_init(cramfs, dev, base_address);
 }
-static inline xx_cramfs *XCramfs_create(xx_io_device *dev,
-                                        int64_t base_address) {
+static inline xx_cramfs *XCramfs_create(xx_io_device *dev, int64_t base_address)
+{
     return xx_cramfs_create(dev, base_address);
 }
-static inline void XCramfs_free(xx_cramfs *cramfs) { xx_cramfs_free(cramfs); }
-static inline bool XCramfs_is_valid(xx_cramfs *cramfs, xx_pd_struct *pd) {
+static inline void XCramfs_free(xx_cramfs *cramfs)
+{
+    xx_cramfs_free(cramfs);
+}
+static inline bool XCramfs_is_valid(xx_cramfs *cramfs, xx_pd_struct *pd)
+{
     return cramfs ? xx_format_is_valid(&cramfs->format, pd) : false;
 }
 

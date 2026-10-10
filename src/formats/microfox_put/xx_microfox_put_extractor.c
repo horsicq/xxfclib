@@ -16,67 +16,59 @@
 #include "../xx_format_extractor_engine.h"
 #include "xxfclib/formats/microfox_put/xx_microfox_put.h"
 
-static const uint8_t k_anchor0[] = { 0x2D, 0x6C, 0x5A, 0x30, 0x2D };
-static const uint8_t k_anchor1[] = { 0x2D, 0x6C, 0x5A, 0x31, 0x2D };
-static const uint8_t k_anchor2[] = { 0x2D, 0x6C, 0x5A, 0x35, 0x2D };
+static const uint8_t k_anchor0[] = {0x2D, 0x6C, 0x5A, 0x30, 0x2D};
+static const uint8_t k_anchor1[] = {0x2D, 0x6C, 0x5A, 0x31, 0x2D};
+static const uint8_t k_anchor2[] = {0x2D, 0x6C, 0x5A, 0x35, 0x2D};
 
 static const xx_format_search_anchor k_anchors[] = {
-    { k_anchor0, sizeof(k_anchor0), 2U },
-    { k_anchor1, sizeof(k_anchor1), 2U },
-    { k_anchor2, sizeof(k_anchor2), 2U },
+    {k_anchor0, sizeof(k_anchor0), 2U},
+    {k_anchor1, sizeof(k_anchor1), 2U},
+    {k_anchor2, sizeof(k_anchor2), 2U},
 };
 
-static const xx_file_type_t k_types[] = { XX_FILE_TYPE_MICROFOX_PUT };
+static const xx_file_type_t k_types[] = {XX_FILE_TYPE_MICROFOX_PUT};
 
-static Abstractformat *xx_microfox_put_search_open(xx_io_device *window) {
+static Abstractformat *xx_microfox_put_search_open(xx_io_device *window)
+{
     xx_microfox_put *reader = xx_microfox_put_create(window, 0);
     return reader ? &reader->format : NULL;
 }
 
-static void xx_microfox_put_search_close(Abstractformat *format) {
+static void xx_microfox_put_search_close(Abstractformat *format)
+{
     /* The format is the first member, so this is the reader itself. */
     xx_microfox_put_free((xx_microfox_put *)format);
 }
 
 static const xx_format_search_desc k_desc = {
-    k_types, sizeof(k_types) / sizeof(k_types[0]),
-    k_anchors, sizeof(k_anchors) / sizeof(k_anchors[0]),
-    xx_microfox_put_search_open, xx_microfox_put_search_close, false
-};
+    k_types, sizeof(k_types) / sizeof(k_types[0]), k_anchors, sizeof(k_anchors) / sizeof(k_anchors[0]), xx_microfox_put_search_open, xx_microfox_put_search_close, false};
 
-static xx_format_search_state *xx_microfox_put_create_format_search(
-    xx_format_extractor *self, xx_io_device *device, const xx_list_s *options,
-    xx_pd_struct *pd) {
+static xx_format_search_state *xx_microfox_put_create_format_search(xx_format_extractor *self, xx_io_device *device, const xx_list_s *options, xx_pd_struct *pd)
+{
     (void)self;
     return xx_format_search_create(&k_desc, device, options, pd);
 }
 
-static const xx_format_search_info *xx_microfox_put_get_current_format_info(
-    xx_format_extractor *self, xx_format_search_state *state) {
+static const xx_format_search_info *xx_microfox_put_get_current_format_info(xx_format_extractor *self, xx_format_search_state *state)
+{
     (void)self;
     return xx_format_search_current(state);
 }
 
-static bool xx_microfox_put_format_search_find_next(xx_format_extractor *self,
-                                          xx_format_search_state *state,
-                                          xx_pd_struct *pd) {
+static bool xx_microfox_put_format_search_find_next(xx_format_extractor *self, xx_format_search_state *state, xx_pd_struct *pd)
+{
     (void)self;
     return xx_format_search_find_next(state, pd);
 }
 
-static void xx_microfox_put_free_format_search(xx_format_extractor *self,
-                                     xx_format_search_state *state) {
+static void xx_microfox_put_free_format_search(xx_format_extractor *self, xx_format_search_state *state)
+{
     (void)self;
     xx_format_search_free(state);
 }
 
-xx_format_extractor xx_microfox_put_extractor = {
-    xx_microfox_put_create_format_search,
-    xx_microfox_put_get_current_format_info,
-    xx_microfox_put_format_search_find_next,
-    xx_microfox_put_free_format_search
-};
-
+xx_format_extractor xx_microfox_put_extractor = {xx_microfox_put_create_format_search, xx_microfox_put_get_current_format_info, xx_microfox_put_format_search_find_next,
+                                                 xx_microfox_put_free_format_search};
 
 /* BEGIN GENERATED ABSTRACT EXTRACTOR */
 #include "../xx_format_abstract_extractor_adapter.h"

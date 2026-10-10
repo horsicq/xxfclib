@@ -61,36 +61,29 @@ typedef struct xx_ne {
 typedef xx_ne xx_ne_t;
 typedef xx_ne XNE;
 
-XXFC_API void xx_ne_init(xx_ne *ne, xx_io_device *device,
-                         int64_t base_address);
+XXFC_API void xx_ne_init(xx_ne *ne, xx_io_device *device, int64_t base_address);
 XXFC_API xx_ne *xx_ne_create(xx_io_device *device, int64_t base_address);
 XXFC_API void xx_ne_destroy(xx_ne *ne);
 XXFC_API void xx_ne_free(xx_ne *ne);
 
 XXFC_API bool xx_ne_check_is_valid(Abstractformat *self, xx_pd_struct *pd);
 XXFC_API bool xx_ne_handle_base_info(Abstractformat *self, xx_pd_struct *pd);
-XXFC_API int64_t xx_ne_get_format_size(Abstractformat *self,
-                                       xx_pd_struct *pd);
-XXFC_API uint64_t xx_ne_get_number_of_imports(Abstractformat *self,
-                                              xx_pd_struct *pd);
-XXFC_API uint64_t xx_ne_get_number_of_exports(Abstractformat *self,
-                                              xx_pd_struct *pd);
-XXFC_API uint64_t xx_ne_get_number_of_resources(Abstractformat *self,
-                                                xx_pd_struct *pd);
-XXFC_API bool xx_ne_get_memory_map(Abstractformat *self,
-                                   xx_memory_map_mode_t mode,
-                                   xx_memory_map *output,
-                                   xx_pd_struct *pd);
+XXFC_API int64_t xx_ne_get_format_size(Abstractformat *self, xx_pd_struct *pd);
+XXFC_API uint64_t xx_ne_get_number_of_imports(Abstractformat *self, xx_pd_struct *pd);
+XXFC_API uint64_t xx_ne_get_number_of_exports(Abstractformat *self, xx_pd_struct *pd);
+XXFC_API uint64_t xx_ne_get_number_of_resources(Abstractformat *self, xx_pd_struct *pd);
+XXFC_API bool xx_ne_get_memory_map(Abstractformat *self, xx_memory_map_mode_t mode, xx_memory_map *output, xx_pd_struct *pd);
 
 XXFC_API uint16_t xx_ne_get_number_of_segments(const xx_ne *ne);
-XXFC_API const xx_ne_segment *xx_ne_get_segment(const xx_ne *ne,
-                                                uint16_t index);
+XXFC_API const xx_ne_segment *xx_ne_get_segment(const xx_ne *ne, uint16_t index);
 
-static inline Abstractformat *xx_ne_to_format(xx_ne *ne) {
+static inline Abstractformat *xx_ne_to_format(xx_ne *ne)
+{
     return ne ? &ne->format : NULL;
 }
 
-static inline const Abstractformat *xx_ne_to_format_const(const xx_ne *ne) {
+static inline const Abstractformat *xx_ne_to_format_const(const xx_ne *ne)
+{
     return ne ? &ne->format : NULL;
 }
 

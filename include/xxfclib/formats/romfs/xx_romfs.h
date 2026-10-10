@@ -53,35 +53,27 @@ struct xx_romfs {
     Abstractformat format;
     uint64_t number_of_records;
     uint64_t number_of_members;
-    uint32_t volume_size;  /**< The superblock's "full size" field. */
-    uint32_t checksum;     /**< The superblock's checksum field, unverified. */
-    int64_t archive_end;   /**< base_address + volume_size, or -1. */
+    uint32_t volume_size; /**< The superblock's "full size" field. */
+    uint32_t checksum;    /**< The superblock's checksum field, unverified. */
+    int64_t archive_end;  /**< base_address + volume_size, or -1. */
     void *internal;
 };
 
-XXFC_API void xx_romfs_init(xx_romfs *romfs, xx_io_device *dev,
-                            int64_t base_address);
+XXFC_API void xx_romfs_init(xx_romfs *romfs, xx_io_device *dev, int64_t base_address);
 XXFC_API xx_romfs *xx_romfs_create(xx_io_device *dev, int64_t base_address);
 XXFC_API void xx_romfs_destroy(xx_romfs *romfs);
 XXFC_API void xx_romfs_free(xx_romfs *romfs);
 
 XXFC_API bool xx_romfs_check_is_valid(Abstractformat *self, xx_pd_struct *pd);
 XXFC_API bool xx_romfs_handle_base_info(Abstractformat *self, xx_pd_struct *pd);
-XXFC_API int64_t xx_romfs_get_format_size(Abstractformat *self,
-                                          xx_pd_struct *pd);
-XXFC_API uint64_t xx_romfs_get_number_of_archive_records(Abstractformat *self,
-                                                         xx_pd_struct *pd);
+XXFC_API int64_t xx_romfs_get_format_size(Abstractformat *self, xx_pd_struct *pd);
+XXFC_API uint64_t xx_romfs_get_number_of_archive_records(Abstractformat *self, xx_pd_struct *pd);
 
-XXFC_API xx_archive_record_state *xx_romfs_create_archive_records_reading(
-    Abstractformat *self, const xx_list_s *options, xx_pd_struct *pd);
-XXFC_API const xx_archive_record *xx_romfs_get_current_archive_record(
-    Abstractformat *self, xx_archive_record_state *state);
-XXFC_API bool xx_romfs_unpack_current_archive_record(
-    Abstractformat *self, xx_archive_record_state *state, xx_pd_struct *pd);
-XXFC_API bool xx_romfs_archive_record_move_to_next(
-    Abstractformat *self, xx_archive_record_state *state, xx_pd_struct *pd);
-XXFC_API void xx_romfs_free_archive_records_reading(
-    Abstractformat *self, xx_archive_record_state *state);
+XXFC_API xx_archive_record_state *xx_romfs_create_archive_records_reading(Abstractformat *self, const xx_list_s *options, xx_pd_struct *pd);
+XXFC_API const xx_archive_record *xx_romfs_get_current_archive_record(Abstractformat *self, xx_archive_record_state *state);
+XXFC_API bool xx_romfs_unpack_current_archive_record(Abstractformat *self, xx_archive_record_state *state, xx_pd_struct *pd);
+XXFC_API bool xx_romfs_archive_record_move_to_next(Abstractformat *self, xx_archive_record_state *state, xx_pd_struct *pd);
+XXFC_API void xx_romfs_free_archive_records_reading(Abstractformat *self, xx_archive_record_state *state);
 
 XXFC_API uint64_t xx_romfs_get_number_of_records(const xx_romfs *romfs);
 XXFC_API uint64_t xx_romfs_get_number_of_members(const xx_romfs *romfs);
@@ -89,19 +81,24 @@ XXFC_API uint32_t xx_romfs_get_volume_size(const xx_romfs *romfs);
 XXFC_API uint32_t xx_romfs_get_checksum(const xx_romfs *romfs);
 XXFC_API int64_t xx_romfs_get_archive_end(const xx_romfs *romfs);
 
-static inline Abstractformat *xx_romfs_to_format(xx_romfs *romfs) {
+static inline Abstractformat *xx_romfs_to_format(xx_romfs *romfs)
+{
     return romfs ? &romfs->format : NULL;
 }
-static inline void XRomfs_init(xx_romfs *romfs, xx_io_device *dev,
-                               int64_t base_address) {
+static inline void XRomfs_init(xx_romfs *romfs, xx_io_device *dev, int64_t base_address)
+{
     xx_romfs_init(romfs, dev, base_address);
 }
-static inline xx_romfs *XRomfs_create(xx_io_device *dev,
-                                      int64_t base_address) {
+static inline xx_romfs *XRomfs_create(xx_io_device *dev, int64_t base_address)
+{
     return xx_romfs_create(dev, base_address);
 }
-static inline void XRomfs_free(xx_romfs *romfs) { xx_romfs_free(romfs); }
-static inline bool XRomfs_is_valid(xx_romfs *romfs, xx_pd_struct *pd) {
+static inline void XRomfs_free(xx_romfs *romfs)
+{
+    xx_romfs_free(romfs);
+}
+static inline bool XRomfs_is_valid(xx_romfs *romfs, xx_pd_struct *pd)
+{
     return romfs ? xx_format_is_valid(&romfs->format, pd) : false;
 }
 

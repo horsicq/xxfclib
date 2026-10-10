@@ -49,8 +49,7 @@ extern "C" {
  * @param pd Optional progress and cancellation monitor.
  * @return True on success, false on error or user cancellation.
  */
-XXFC_API bool xx_store_unpack_device(xx_io_device *src_dev, int64_t src_offset, int64_t size,
-                                    xx_io_device *dst_dev, xx_pd_struct *pd);
+XXFC_API bool xx_store_unpack_device(xx_io_device *src_dev, int64_t src_offset, int64_t size, xx_io_device *dst_dev, xx_pd_struct *pd);
 
 /**
  * @brief Unpack a STORE stream from a source I/O device directly into a destination file on disk.
@@ -67,14 +66,12 @@ XXFC_API bool xx_store_unpack_device(xx_io_device *src_dev, int64_t src_offset, 
  * doing so would delete a pre-existing file the call never wrote to.
  * The same contract applies to the other *_unpack_device_to_file helpers.
  */
-XXFC_API bool xx_store_unpack_device_to_file(xx_io_device *src_dev, int64_t src_offset, int64_t size,
-                                            const char *dst_file_path, xx_pd_struct *pd);
+XXFC_API bool xx_store_unpack_device_to_file(xx_io_device *src_dev, int64_t src_offset, int64_t size, const char *dst_file_path, xx_pd_struct *pd);
 
 /**
  * @brief Unpack a STORE stream from a source I/O device directly into a destination file on disk (wchar_t path).
  */
-XXFC_API bool xx_store_unpack_device_to_file_w(xx_io_device *src_dev, int64_t src_offset, int64_t size,
-                                              const wchar_t *dst_file_path_w, xx_pd_struct *pd);
+XXFC_API bool xx_store_unpack_device_to_file_w(xx_io_device *src_dev, int64_t src_offset, int64_t size, const wchar_t *dst_file_path_w, xx_pd_struct *pd);
 
 /**
  * @brief Unpack a STORE stream from memory buffer to a destination I/O device.
@@ -84,8 +81,7 @@ XXFC_API bool xx_store_unpack_device_to_file_w(xx_io_device *src_dev, int64_t sr
  * @param pd Optional progress and cancellation monitor.
  * @return True on success, false on error.
  */
-XXFC_API bool xx_store_unpack_memory_to_device(const void *src_buf, size_t size,
-                                              xx_io_device *dst_dev, xx_pd_struct *pd);
+XXFC_API bool xx_store_unpack_memory_to_device(const void *src_buf, size_t size, xx_io_device *dst_dev, xx_pd_struct *pd);
 
 /**
  * @brief Unpack a STORE stream from a source I/O device into a destination memory buffer.
@@ -98,10 +94,8 @@ XXFC_API bool xx_store_unpack_memory_to_device(const void *src_buf, size_t size,
  * @param pd Optional progress and cancellation monitor.
  * @return True on success, false on error or buffer overflow.
  */
-XXFC_API bool xx_store_unpack_device_to_memory(xx_io_device *src_dev, int64_t src_offset, size_t size,
-                                              void *dst_buf, size_t dst_buf_size,
-                                              size_t *out_written, xx_pd_struct *pd);
-
+XXFC_API bool xx_store_unpack_device_to_memory(xx_io_device *src_dev, int64_t src_offset, size_t size, void *dst_buf, size_t dst_buf_size, size_t *out_written,
+                                               xx_pd_struct *pd);
 
 /* ========================================================================= */
 /* --- Directory Creation for Extraction                                 --- */
@@ -151,8 +145,7 @@ XXFC_API bool xx_store_apply_dos_time_and_attrs_a(const char *path, uint16_t dos
  * @param pd Optional progress and cancellation monitor.
  * @return True on success, false on error.
  */
-XXFC_API bool xx_store_prepare_source(xx_io_device *src_dev, const char *src_file_path,
-                                     int64_t *out_size, uint32_t *out_crc32, xx_pd_struct *pd);
+XXFC_API bool xx_store_prepare_source(xx_io_device *src_dev, const char *src_file_path, int64_t *out_size, uint32_t *out_crc32, xx_pd_struct *pd);
 
 /**
  * @brief Pack STORE stream: transfers `size` bytes from `src_dev` (or `src_file_path` if src_dev is NULL)
@@ -164,20 +157,19 @@ XXFC_API bool xx_store_prepare_source(xx_io_device *src_dev, const char *src_fil
  * @param pd Optional progress and cancellation monitor.
  * @return True on success, false on error.
  */
-XXFC_API bool xx_store_pack_source(xx_io_device *src_dev, const char *src_file_path,
-                                  int64_t size, xx_io_device *dst_dev, xx_pd_struct *pd);
+XXFC_API bool xx_store_pack_source(xx_io_device *src_dev, const char *src_file_path, int64_t size, xx_io_device *dst_dev, xx_pd_struct *pd);
 
 /* ========================================================================= */
 /* --- Convenience Aliases                                               --- */
 /* ========================================================================= */
 
-static inline bool XStore_unpack_device(xx_io_device *src, int64_t offset, int64_t size,
-                                        xx_io_device *dst, xx_pd_struct *pd) {
+static inline bool XStore_unpack_device(xx_io_device *src, int64_t offset, int64_t size, xx_io_device *dst, xx_pd_struct *pd)
+{
     return xx_store_unpack_device(src, offset, size, dst, pd);
 }
 
-static inline bool XStore_unpack_device_to_file(xx_io_device *src, int64_t offset, int64_t size,
-                                               const char *path, xx_pd_struct *pd) {
+static inline bool XStore_unpack_device_to_file(xx_io_device *src, int64_t offset, int64_t size, const char *path, xx_pd_struct *pd)
+{
     return xx_store_unpack_device_to_file(src, offset, size, path, pd);
 }
 

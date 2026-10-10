@@ -52,12 +52,12 @@ extern "C" {
 
 /** One coded member of an SQX archive, in archive order. */
 typedef struct xx_sqx_member {
-    uint64_t data_offset;    /**< offset of the packed bytes inside `input` */
-    uint64_t packed_size;    /**< packed byte count */
-    uint64_t unpacked_size;  /**< decoded byte count (from the member header) */
-    uint16_t flags;          /**< member flags; bit 2 = solid, bits 8..11 = dict */
-    uint8_t filter;          /**< "b0" preprocessor selector; only 0 is supported */
-    uint8_t method;          /**< method byte; only 1..4 are supported */
+    uint64_t data_offset;   /**< offset of the packed bytes inside `input` */
+    uint64_t packed_size;   /**< packed byte count */
+    uint64_t unpacked_size; /**< decoded byte count (from the member header) */
+    uint16_t flags;         /**< member flags; bit 2 = solid, bits 8..11 = dict */
+    uint8_t filter;         /**< "b0" preprocessor selector; only 0 is supported */
+    uint8_t method;         /**< method byte; only 1..4 are supported */
 } xx_sqx_member;
 
 /**
@@ -80,11 +80,8 @@ typedef struct xx_sqx_member {
  * @param written       Receives the byte count produced; set on every path.
  * @return true only when the target member decoded completely.
  */
-XXFC_API bool xx_sqx_decode_memory(const uint8_t *input, size_t input_size,
-                                   const xx_sqx_member *members,
-                                   size_t member_count, size_t target_index,
-                                   uint8_t *output, size_t output_size,
-                                   size_t *written);
+XXFC_API bool xx_sqx_decode_memory(const uint8_t *input, size_t input_size, const xx_sqx_member *members, size_t member_count, size_t target_index, uint8_t *output,
+                                   size_t output_size, size_t *written);
 
 #ifdef __cplusplus
 }

@@ -43,23 +43,13 @@ extern "C" {
  * @param written     Receives the byte count produced; 0 on every failure.
  * @return true only on a complete, exact decode.
  */
-XXFC_API bool xx_sqz_decode_memory(const uint8_t *input, size_t input_size,
-                                   uint32_t method, uint8_t *output,
-                                   size_t output_size, size_t *written);
+XXFC_API bool xx_sqz_decode_memory(const uint8_t *input, size_t input_size, uint32_t method, uint8_t *output, size_t output_size, size_t *written);
 
 /* Per-method convenience wrappers with the library's standard shape. */
-XXFC_API bool xx_sqz1_decode_memory(const uint8_t *input, size_t input_size,
-                                    uint8_t *output, size_t output_size,
-                                    size_t *written);
-XXFC_API bool xx_sqz2_decode_memory(const uint8_t *input, size_t input_size,
-                                    uint8_t *output, size_t output_size,
-                                    size_t *written);
-XXFC_API bool xx_sqz3_decode_memory(const uint8_t *input, size_t input_size,
-                                    uint8_t *output, size_t output_size,
-                                    size_t *written);
-XXFC_API bool xx_sqz4_decode_memory(const uint8_t *input, size_t input_size,
-                                    uint8_t *output, size_t output_size,
-                                    size_t *written);
+XXFC_API bool xx_sqz1_decode_memory(const uint8_t *input, size_t input_size, uint8_t *output, size_t output_size, size_t *written);
+XXFC_API bool xx_sqz2_decode_memory(const uint8_t *input, size_t input_size, uint8_t *output, size_t output_size, size_t *written);
+XXFC_API bool xx_sqz3_decode_memory(const uint8_t *input, size_t input_size, uint8_t *output, size_t output_size, size_t *written);
+XXFC_API bool xx_sqz4_decode_memory(const uint8_t *input, size_t input_size, uint8_t *output, size_t output_size, size_t *written);
 
 #ifdef __cplusplus
 }

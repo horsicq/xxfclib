@@ -87,7 +87,7 @@ typedef struct xx_stunts_member_s {
     int64_t header_offset;
     int64_t header_size;
     int64_t data_offset;
-    int64_t size;             /* packed bytes behind the 4-byte header */
+    int64_t size; /* packed bytes behind the 4-byte header */
     int64_t uncompressed_size;
 } xx_stunts_member;
 
@@ -102,17 +102,15 @@ static void xx_stunts_vtable_destroy(Abstractformat *self);
 
 /* ------------------------------------------------------------- helpers -- */
 
-static bool xx_stunts_read_at(Abstractformat *self, int64_t offset,
-                             uint8_t *buffer, size_t size) {
+static bool xx_stunts_read_at(Abstractformat *self, int64_t offset, uint8_t *buffer, size_t size)
+{
     size_t completed = 0U;
 
-    if (!self || !self->device || offset < 0 ||
-        xx_io_seek64(self->device, offset, SEEK_SET) != 0) {
+    if (!self || !self->device || offset < 0 || xx_io_seek64(self->device, offset, SEEK_SET) != 0) {
         return false;
     }
     while (completed < size) {
-        ssize_t received =
-            xx_io_read(self->device, buffer + completed, size - completed);
+        ssize_t received = xx_io_read(self->device, buffer + completed, size - completed);
         if (received <= 0 || (size_t)received > size - completed) return false;
         completed += (size_t)received;
     }
@@ -120,7 +118,8 @@ static bool xx_stunts_read_at(Abstractformat *self, int64_t offset,
 }
 
 /* Refuse anything that would escape the extraction directory. */
-static bool xx_stunts_path_safe(const char *name) {
+static bool xx_stunts_path_safe(const char *name)
+{
     const char *cursor = name;
 
     if (!name || !name[0] || name[0] == '/') return false;
@@ -139,11 +138,13 @@ static bool xx_stunts_path_safe(const char *name) {
 /* The container carries no name; the single record always gets the same
  * placeholder.  It is kept as a function so the record-building code below
  * looks like every other reader's. */
-static char *xx_stunts_make_name(void) {
+static char *xx_stunts_make_name(void)
+{
     return xx_str_dup(XX_STUNTS_PLACEHOLDER_NAME);
 }
 
-static void xx_stunts_stream_free(void *pointer) {
+static void xx_stunts_stream_free(void *pointer)
+{
     xx_stunts_stream *stream = (xx_stunts_stream *)pointer;
     size_t index;
 
@@ -160,11 +161,10 @@ static void xx_stunts_stream_free(void *pointer) {
 /* --------------------------------------------------------------- codec -- */
 
 /* The 24-bit little-endian length that prefixes every pass and the file. */
-static bool xx_stunts_read_u24(const uint8_t *data, size_t size, size_t *pos,
-                               int64_t *value) {
+static bool xx_stunts_read_u24(const uint8_t *data, size_t size, size_t *pos, int64_t *value)
+{
     if (*pos + 3U > size) return false;
-    *value = (int64_t)data[*pos] | ((int64_t)data[*pos + 1U] << 8) |
-             ((int64_t)data[*pos + 2U] << 16);
+    *value = (int64_t)data[*pos] | ((int64_t)data[*pos + 1U] << 8) | ((int64_t)data[*pos + 2U] << 16);
     *pos += 3U;
     return true;
 }
@@ -181,7 +181,8 @@ typedef struct xx_stunts_bits_s {
  * last code already completed the requested output.  At most two such bytes
  * are treated as zero padding - never as an unbounded source for a truncated
  * stream. */
-static bool xx_stunts_next_byte(xx_stunts_bits *bits, uint8_t *value) {
+static bool xx_stunts_next_byte(xx_stunts_bits *bits, uint8_t *value)
+{
     uint8_t byte = 0U;
 
     if (bits->position < bits->size) {
@@ -204,9 +205,8 @@ static bool xx_stunts_next_byte(xx_stunts_bits *bits, uint8_t *value) {
  * caller sized to @p output_size from a length the stream itself declared.
  * The decoder never writes past it: the loop is bounded by output_size and
  * every table index is range-checked before use. */
-static bool xx_stunts_vle(const uint8_t *source, size_t size, size_t offset,
-                          int64_t output_size, uint8_t *output,
-                          bool reverse_bits, xx_pd_struct *pd) {
+static bool xx_stunts_vle(const uint8_t *source, size_t size, size_t offset, int64_t output_size, uint8_t *output, bool reverse_bits, xx_pd_struct *pd)
+{
     uint8_t distribution[15];
     uint16_t escape_base[16];
     uint16_t escape_limit[16];
@@ -270,8 +270,7 @@ static bool xx_stunts_vle(const uint8_t *source, size_t size, size_t offset,
         for (group = 0; group < groups; ++group) {
             int32_t j;
 
-            if (alphabet_index >= alphabet_size ||
-                table_index > 256 - repetitions) {
+            if (alphabet_index >= alphabet_size || table_index > 256 - repetitions) {
                 return false;
             }
             for (j = 0; j < repetitions; ++j) {
@@ -290,8 +289,7 @@ static bool xx_stunts_vle(const uint8_t *source, size_t size, size_t offset,
 
     current_width = 8U;
     next_width = 0U;
-    if (!xx_stunts_next_byte(&bits, &first_byte) ||
-        !xx_stunts_next_byte(&bits, &second_byte)) {
+    if (!xx_stunts_next_byte(&bits, &first_byte) || !xx_stunts_next_byte(&bits, &second_byte)) {
         return false;
     }
     current_word = (uint16_t)(((uint16_t)first_byte << 8) | second_byte);
@@ -318,8 +316,7 @@ static bool xx_stunts_vle(const uint8_t *source, size_t size, size_t offset,
                     if (!xx_stunts_next_byte(&bits, &code)) return false;
                     current_width = 8U;
                 }
-                current_word = (uint16_t)((uint32_t)(current_word << 1) |
-                                          ((code & 0x80U) ? 1U : 0U));
+                current_word = (uint16_t)((uint32_t)(current_word << 1) | ((code & 0x80U) ? 1U : 0U));
                 code = (uint8_t)(code << 1);
                 --current_width;
                 ++index;
@@ -327,8 +324,7 @@ static bool xx_stunts_vle(const uint8_t *source, size_t size, size_t offset,
                     return false;
                 }
                 if (current_word < escape_limit[index]) {
-                    current_word =
-                        (uint16_t)(current_word + escape_base[index]);
+                    current_word = (uint16_t)(current_word + escape_base[index]);
                     if ((int32_t)current_word >= alphabet_size) return false;
                     value = alphabet[current_word];
                     if (delta_symbols) {
@@ -340,8 +336,7 @@ static bool xx_stunts_vle(const uint8_t *source, size_t size, size_t offset,
                 }
             }
             if (!xx_stunts_next_byte(&bits, &following)) return false;
-            current_word =
-                (uint16_t)(((uint16_t)code << current_width) | following);
+            current_word = (uint16_t)(((uint16_t)code << current_width) | following);
             next_width = (uint8_t)(8U - current_width);
             current_width = 8U;
         } else {
@@ -370,9 +365,8 @@ static bool xx_stunts_vle(const uint8_t *source, size_t size, size_t offset,
  * @p output_size.  Both layers - the optional byte-sequence repeat wrapper and
  * the run layer itself - refuse to emit a byte once output_size is reached, so
  * neither buffer can be overrun by a hostile count. */
-static bool xx_stunts_rle(const uint8_t *source, size_t size, size_t offset,
-                          int64_t output_size, uint8_t *output,
-                          xx_pd_struct *pd) {
+static bool xx_stunts_rle(const uint8_t *source, size_t size, size_t offset, int64_t output_size, uint8_t *output, xx_pd_struct *pd)
+{
     uint8_t lookup[256];
     const uint8_t *escapes;
     const uint8_t *final_source;
@@ -438,14 +432,11 @@ static bool xx_stunts_rle(const uint8_t *source, size_t size, size_t offset,
             ++position;
             if (position >= size) goto done;
             repeat = (int32_t)source[position++] - 1;
-            if (sequence_length < 1U ||
-                (int64_t)repeat * (int64_t)sequence_length >
-                    output_size - (int64_t)produced) {
+            if (sequence_length < 1U || (int64_t)repeat * (int64_t)sequence_length > output_size - (int64_t)produced) {
                 goto done;
             }
             while (repeat-- > 0) {
-                xx_rt_memcpy(expanded + produced, source + sequence_start,
-                             sequence_length);
+                xx_rt_memcpy(expanded + produced, source + sequence_start, sequence_length);
                 produced += sequence_length;
             }
         }
@@ -477,8 +468,7 @@ static bool xx_stunts_rle(const uint8_t *source, size_t size, size_t offset,
             value = final_source[final_position++];
         } else if (escape_index == 3) {
             if (final_position + 3U > final_size) goto done;
-            repeat = (int64_t)final_source[final_position] |
-                     ((int64_t)final_source[final_position + 1U] << 8);
+            repeat = (int64_t)final_source[final_position] | ((int64_t)final_source[final_position + 1U] << 8);
             final_position += 2U;
             value = final_source[final_position++];
         } else {
@@ -502,9 +492,8 @@ done:
 /* Run the whole chain.  @p packed is the complete file; the plaintext comes
  * back in @p out / @p out_size and is always exactly the length the file
  * header declared, which is the format's only integrity statement. */
-static bool xx_stunts_dsi(const uint8_t *packed, size_t packed_size,
-                          uint8_t **out, int64_t *out_size,
-                          xx_pd_struct *pd) {
+static bool xx_stunts_dsi(const uint8_t *packed, size_t packed_size, uint8_t **out, int64_t *out_size, xx_pd_struct *pd)
+{
     const uint8_t *current = packed;
     uint8_t *owned = NULL;
     size_t current_size = packed_size;
@@ -516,11 +505,7 @@ static bool xx_stunts_dsi(const uint8_t *packed, size_t packed_size,
     *out = NULL;
     *out_size = 0;
     if (packed_size < XX_STUNTS_HEADER_SIZE) return false;
-    passes = (packed[0] == 1U || packed[0] == 2U)
-                 ? 1
-                 : ((packed[0] & 0x80U) != 0U)
-                       ? (int32_t)(packed[0] & 0x7fU)
-                       : 0;
+    passes = (packed[0] == 1U || packed[0] == 2U) ? 1 : ((packed[0] & 0x80U) != 0U) ? (int32_t)(packed[0] & 0x7fU) : 0;
     if (passes < 1 || passes > XX_STUNTS_MAX_PASSES) return false;
     position = 1U;
     if (!xx_stunts_read_u24(packed, packed_size, &position, &expected)) {
@@ -549,26 +534,18 @@ static bool xx_stunts_dsi(const uint8_t *packed, size_t packed_size,
         decoded = (uint8_t *)xx_mem_alloc((size_t)pass_size);
         if (!decoded) goto fail;
         if (type == 1U) {
-            ok = xx_stunts_rle(current, current_size, position, pass_size,
-                               decoded, pd);
+            ok = xx_stunts_rle(current, current_size, position, pass_size, decoded, pd);
         } else {
-            ok = xx_stunts_vle(current, current_size, position, pass_size,
-                               decoded, false, pd);
+            ok = xx_stunts_vle(current, current_size, position, pass_size, decoded, false, pd);
             /* Stunts 1.0 and earlier store each coded byte bit-reversed.
              * Prefer the later order, but retry when the decode failed or
              * could not produce the pass header the next pass needs.  An
              * apparent pass header with the wrong final length is equally
              * suspect: early Stunts files can decode to a plausible codec
              * byte in the wrong bit order. */
-            if (!ok || (pass + 1 < passes &&
-                        (pass_size < 4 ||
-                         (decoded[0] != 1U && decoded[0] != 2U) ||
-                         (pass + 2 == passes &&
-                          ((int64_t)decoded[1] |
-                           ((int64_t)decoded[2] << 8) |
-                           ((int64_t)decoded[3] << 16)) != expected)))) {
-                ok = xx_stunts_vle(current, current_size, position, pass_size,
-                                   decoded, true, pd);
+            if (!ok || (pass + 1 < passes && (pass_size < 4 || (decoded[0] != 1U && decoded[0] != 2U) ||
+                                              (pass + 2 == passes && ((int64_t)decoded[1] | ((int64_t)decoded[2] << 8) | ((int64_t)decoded[3] << 16)) != expected)))) {
+                ok = xx_stunts_vle(current, current_size, position, pass_size, decoded, true, pd);
             }
         }
         if (!ok) {
@@ -593,7 +570,8 @@ fail:
 
 /* Read the whole container.  The single read is bounded by the packed-size
  * ceiling above, so a large unrelated file is refused before it is read. */
-static uint8_t *xx_stunts_load(Abstractformat *self, int64_t span) {
+static uint8_t *xx_stunts_load(Abstractformat *self, int64_t span)
+{
     uint8_t *packed;
 
     if (span < XX_STUNTS_MIN_SIZE || span > XX_STUNTS_MAX_PACKED) return NULL;
@@ -606,8 +584,8 @@ static uint8_t *xx_stunts_load(Abstractformat *self, int64_t span) {
     return packed;
 }
 
-static xx_stunts_stream *xx_stunts_parse(Abstractformat *self,
-                                         xx_pd_struct *pd) {
+static xx_stunts_stream *xx_stunts_parse(Abstractformat *self, xx_pd_struct *pd)
+{
     xx_stunts_stream *stream = NULL;
     uint8_t *packed = NULL;
     uint8_t *plain = NULL;
@@ -626,10 +604,7 @@ static xx_stunts_stream *xx_stunts_parse(Abstractformat *self,
     /* Bare one-pass resources have the codec at byte zero.  Wrapped
      * resources declare a pass count and place the first codec at byte four. */
     if (!((packed[0] == 1U || packed[0] == 2U) ||
-          ((packed[0] & 0x80U) != 0U &&
-           (packed[0] & 0x7fU) >= 1U &&
-           (packed[0] & 0x7fU) <= XX_STUNTS_MAX_PASSES &&
-           (packed[4] == 1U || packed[4] == 2U)))) {
+          ((packed[0] & 0x80U) != 0U && (packed[0] & 0x7fU) >= 1U && (packed[0] & 0x7fU) <= XX_STUNTS_MAX_PASSES && (packed[4] == 1U || packed[4] == 2U)))) {
         goto fail;
     }
 
@@ -673,9 +648,8 @@ fail:
 
 /* Decoding re-reads the container and runs the same chain parse verified, so
  * the plaintext length is guaranteed to match what the record published. */
-static bool xx_stunts_decode(Abstractformat *self,
-                             const xx_stunts_member *member, uint8_t **out,
-                             size_t *out_size, xx_pd_struct *pd) {
+static bool xx_stunts_decode(Abstractformat *self, const xx_stunts_member *member, uint8_t **out, size_t *out_size, xx_pd_struct *pd)
+{
     uint8_t *packed;
     uint8_t *plain = NULL;
     int64_t plain_size = 0;
@@ -704,8 +678,8 @@ static bool xx_stunts_decode(Abstractformat *self,
 
 /* ---------------------------------------------------------- lifecycle --- */
 
-void xx_stunts_init(xx_stunts *archive, xx_io_device *device,
-                        int64_t base_address) {
+void xx_stunts_init(xx_stunts *archive, xx_io_device *device, int64_t base_address)
+{
     if (!archive) return;
     xx_mem_zero(archive, sizeof(*archive));
     xx_format_init(&archive->format, device, base_address);
@@ -718,23 +692,17 @@ void xx_stunts_init(xx_stunts *archive, xx_io_device *device,
     archive->format.check_is_valid = xx_stunts_check_is_valid;
     archive->format.handle_base_info = xx_stunts_handle_base_info;
     archive->format.get_format_size = xx_stunts_get_format_size;
-    archive->format.get_number_of_archive_records =
-        xx_stunts_get_number_of_archive_records;
-    archive->format.create_archive_records_reading =
-        xx_stunts_create_archive_records_reading;
-    archive->format.get_current_archive_record =
-        xx_stunts_get_current_archive_record;
-    archive->format.unpack_current_archive_record =
-        xx_stunts_unpack_current_archive_record;
-    archive->format.archive_record_move_to_next =
-        xx_stunts_archive_record_move_to_next;
-    archive->format.free_archive_records_reading =
-        xx_stunts_free_archive_records_reading;
+    archive->format.get_number_of_archive_records = xx_stunts_get_number_of_archive_records;
+    archive->format.create_archive_records_reading = xx_stunts_create_archive_records_reading;
+    archive->format.get_current_archive_record = xx_stunts_get_current_archive_record;
+    archive->format.unpack_current_archive_record = xx_stunts_unpack_current_archive_record;
+    archive->format.archive_record_move_to_next = xx_stunts_archive_record_move_to_next;
+    archive->format.free_archive_records_reading = xx_stunts_free_archive_records_reading;
     archive->format.destroy = xx_stunts_vtable_destroy;
 }
 
-xx_stunts *xx_stunts_create(xx_io_device *device,
-                                    int64_t base_address) {
+xx_stunts *xx_stunts_create(xx_io_device *device, int64_t base_address)
+{
     xx_stunts *archive = (xx_stunts *)xx_mem_alloc(sizeof(*archive));
 
     if (!archive) return NULL;
@@ -742,7 +710,8 @@ xx_stunts *xx_stunts_create(xx_io_device *device,
     return archive;
 }
 
-void xx_stunts_destroy(xx_stunts *archive) {
+void xx_stunts_destroy(xx_stunts *archive)
+{
     if (!archive) return;
     /* Not xx_format_destroy: it dispatches through format.destroy, which is
      * the wrapper below, and the two would recurse. */
@@ -751,19 +720,22 @@ void xx_stunts_destroy(xx_stunts *archive) {
     archive->number_of_records = 0U;
 }
 
-void xx_stunts_free(xx_stunts *archive) {
+void xx_stunts_free(xx_stunts *archive)
+{
     if (!archive) return;
     xx_stunts_destroy(archive);
     xx_mem_free(archive);
 }
 
-static void xx_stunts_vtable_destroy(Abstractformat *self) {
+static void xx_stunts_vtable_destroy(Abstractformat *self)
+{
     xx_stunts_destroy((xx_stunts *)self);
 }
 
 /* -------------------------------------------------------------- format -- */
 
-bool xx_stunts_check_is_valid(Abstractformat *self, xx_pd_struct *pd) {
+bool xx_stunts_check_is_valid(Abstractformat *self, xx_pd_struct *pd)
+{
     xx_stunts_stream *stream;
 
     if (!self || (pd && xx_pd_is_stopped(pd))) return false;
@@ -773,7 +745,8 @@ bool xx_stunts_check_is_valid(Abstractformat *self, xx_pd_struct *pd) {
     return true;
 }
 
-bool xx_stunts_handle_base_info(Abstractformat *self, xx_pd_struct *pd) {
+bool xx_stunts_handle_base_info(Abstractformat *self, xx_pd_struct *pd)
+{
     xx_stunts *archive = (xx_stunts *)self;
     xx_stunts_stream *stream;
 
@@ -794,62 +767,49 @@ bool xx_stunts_handle_base_info(Abstractformat *self, xx_pd_struct *pd) {
     return true;
 }
 
-int64_t xx_stunts_get_format_size(Abstractformat *self,
-                                      xx_pd_struct *pd) {
-    if (!self ||
-        (!self->base_info_handled && !xx_format_handle_base_info(self, pd))) {
+int64_t xx_stunts_get_format_size(Abstractformat *self, xx_pd_struct *pd)
+{
+    if (!self || (!self->base_info_handled && !xx_format_handle_base_info(self, pd))) {
         return 0;
     }
     return self->is_valid ? self->format_size : 0;
 }
 
-uint64_t xx_stunts_get_number_of_archive_records(Abstractformat *self,
-                                                     xx_pd_struct *pd) {
-    if (!self ||
-        (!self->base_info_handled && !xx_format_handle_base_info(self, pd))) {
+uint64_t xx_stunts_get_number_of_archive_records(Abstractformat *self, xx_pd_struct *pd)
+{
+    if (!self || (!self->base_info_handled && !xx_format_handle_base_info(self, pd))) {
         return 0U;
     }
     return self->is_valid ? ((xx_stunts *)self)->number_of_records : 0U;
 }
 
-
 /* ------------------------------------------------------------- records -- */
 
-static bool xx_stunts_set_record(xx_archive_record *record,
-                                     const xx_stunts_member *member) {
+static bool xx_stunts_set_record(xx_archive_record *record, const xx_stunts_member *member)
+{
     xx_archive_record_cleanup(record);
     xx_archive_record_init(record);
     record->header_offset = member->header_offset;
     record->header_size = member->header_size;
     record->data_offset = member->data_offset;
     record->compressed_size = member->size;
-    return xx_archive_record_set_original_name(record, member->name) &&
-           xx_archive_record_set_meta_u64(record, XX_META_ID_COMPRESSED_SIZE,
-                                          (uint64_t)member->size) &&
-           xx_archive_record_set_meta_u64(
-               record, XX_META_ID_UNCOMPRESSED_SIZE,
-               (uint64_t)member->uncompressed_size) &&
-           xx_archive_record_set_meta_u64(record, XX_META_ID_COMPRESSION_METHOD,
-                                          XX_STUNTS_METHOD_DSI) &&
-           xx_archive_record_set_meta_bool(record, XX_META_ID_IS_FOLDER,
-                                           false) &&
-           xx_archive_record_set_meta_bool(record, XX_META_ID_IS_ENCRYPTED,
-                                           false);
+    return xx_archive_record_set_original_name(record, member->name) && xx_archive_record_set_meta_u64(record, XX_META_ID_COMPRESSED_SIZE, (uint64_t)member->size) &&
+           xx_archive_record_set_meta_u64(record, XX_META_ID_UNCOMPRESSED_SIZE, (uint64_t)member->uncompressed_size) &&
+           xx_archive_record_set_meta_u64(record, XX_META_ID_COMPRESSION_METHOD, XX_STUNTS_METHOD_DSI) &&
+           xx_archive_record_set_meta_bool(record, XX_META_ID_IS_FOLDER, false) && xx_archive_record_set_meta_bool(record, XX_META_ID_IS_ENCRYPTED, false);
 }
 
-static bool xx_stunts_copy_options(xx_list_s *target,
-                                       const xx_list_s *options) {
+static bool xx_stunts_copy_options(xx_list_s *target, const xx_list_s *options)
+{
     size_t index;
 
     if (!target || !options) return options == NULL;
     for (index = 0U; index < options->count; ++index) {
-        const xx_meta *source =
-            (const xx_meta *)xx_list_at((const xx_list_t *)options, index);
+        const xx_meta *source = (const xx_meta *)xx_list_at((const xx_list_t *)options, index);
         xx_meta copied;
         if (!source) continue;
         xx_meta_init(&copied, source->meta_id);
-        if (!xx_var_copy(&copied.var, &source->var) ||
-            !xx_list_append(target, &copied)) {
+        if (!xx_var_copy(&copied.var, &source->var) || !xx_list_append(target, &copied)) {
             xx_meta_cleanup(&copied);
             return false;
         }
@@ -857,21 +817,20 @@ static bool xx_stunts_copy_options(xx_list_s *target,
     return true;
 }
 
-static const xx_var *xx_stunts_get_option(const xx_list_s *options,
-                                              uint32_t meta_id) {
+static const xx_var *xx_stunts_get_option(const xx_list_s *options, uint32_t meta_id)
+{
     size_t index;
 
     if (!options) return NULL;
     for (index = 0U; index < options->count; ++index) {
-        const xx_meta *meta =
-            (const xx_meta *)xx_list_at((const xx_list_t *)options, index);
+        const xx_meta *meta = (const xx_meta *)xx_list_at((const xx_list_t *)options, index);
         if (meta && meta->meta_id == meta_id) return &meta->var;
     }
     return NULL;
 }
 
-xx_archive_record_state *xx_stunts_create_archive_records_reading(
-    Abstractformat *self, const xx_list_s *options, xx_pd_struct *pd) {
+xx_archive_record_state *xx_stunts_create_archive_records_reading(Abstractformat *self, const xx_list_s *options, xx_pd_struct *pd)
+{
     xx_stunts_stream *stream;
     xx_archive_record_state *state;
 
@@ -887,10 +846,7 @@ xx_archive_record_state *xx_stunts_create_archive_records_reading(
     state->internal_state = stream;
     state->free_internal = xx_stunts_stream_free;
     state->total_records = (int64_t)stream->count;
-    if (!xx_stunts_copy_options(&state->options, options) ||
-        (stream->count != 0U &&
-         !xx_stunts_set_record(&state->current_record,
-                                   &stream->items[0]))) {
+    if (!xx_stunts_copy_options(&state->options, options) || (stream->count != 0U && !xx_stunts_set_record(&state->current_record, &stream->items[0]))) {
         xx_archive_record_state_free(state);
         return NULL;
     }
@@ -899,20 +855,16 @@ xx_archive_record_state *xx_stunts_create_archive_records_reading(
     return state;
 }
 
-const xx_archive_record *xx_stunts_get_current_archive_record(
-    Abstractformat *self, xx_archive_record_state *state) {
-    return self && state && state->format == self && state->has_record
-               ? &state->current_record
-               : NULL;
+const xx_archive_record *xx_stunts_get_current_archive_record(Abstractformat *self, xx_archive_record_state *state)
+{
+    return self && state && state->format == self && state->has_record ? &state->current_record : NULL;
 }
 
-bool xx_stunts_archive_record_move_to_next(Abstractformat *self,
-                                               xx_archive_record_state *state,
-                                               xx_pd_struct *pd) {
+bool xx_stunts_archive_record_move_to_next(Abstractformat *self, xx_archive_record_state *state, xx_pd_struct *pd)
+{
     xx_stunts_stream *stream;
 
-    if (!self || !state || state->format != self || !state->has_record ||
-        (pd && xx_pd_is_stopped(pd))) {
+    if (!self || !state || state->format != self || !state->has_record || (pd && xx_pd_is_stopped(pd))) {
         return false;
     }
     stream = (xx_stunts_stream *)state->internal_state;
@@ -924,13 +876,12 @@ bool xx_stunts_archive_record_move_to_next(Abstractformat *self,
     }
     ++stream->index;
     ++state->current_index;
-    state->has_record = xx_stunts_set_record(&state->current_record,
-                                                 &stream->items[stream->index]);
+    state->has_record = xx_stunts_set_record(&state->current_record, &stream->items[stream->index]);
     return state->has_record;
 }
 
-bool xx_stunts_unpack_current_archive_record(
-    Abstractformat *self, xx_archive_record_state *state, xx_pd_struct *pd) {
+bool xx_stunts_unpack_current_archive_record(Abstractformat *self, xx_archive_record_state *state, xx_pd_struct *pd)
+{
     xx_stunts_stream *stream;
     const xx_stunts_member *member;
     const xx_var *path_option;
@@ -942,8 +893,7 @@ bool xx_stunts_unpack_current_archive_record(
     bool result = false;
     bool created = false;
 
-    if (!self || !state || state->format != self || !state->has_record ||
-        (pd && xx_pd_is_stopped(pd))) {
+    if (!self || !state || state->format != self || !state->has_record || (pd && xx_pd_is_stopped(pd))) {
         return false;
     }
     stream = (xx_stunts_stream *)state->internal_state;
@@ -951,8 +901,7 @@ bool xx_stunts_unpack_current_archive_record(
     member = &stream->items[stream->index];
     if (!xx_stunts_path_safe(member->name)) return false;
 
-    path_option = xx_stunts_get_option(&state->options,
-                                           XX_META_ID_OPT_UNPACK_PATH);
+    path_option = xx_stunts_get_option(&state->options, XX_META_ID_OPT_UNPACK_PATH);
     if (!path_option) {
         /* No destination: read and discard, which verifies the member
          * without writing anything. */
@@ -960,11 +909,9 @@ bool xx_stunts_unpack_current_archive_record(
         xx_mem_free(plain);
         return result;
     }
-    if (path_option->type == XX_VAR_TYPE_STRING ||
-        path_option->type == XX_VAR_TYPE_STRING_VIEW) {
+    if (path_option->type == XX_VAR_TYPE_STRING || path_option->type == XX_VAR_TYPE_STRING_VIEW) {
         base_path = xx_var_get_str(path_option);
-    } else if (path_option->type == XX_VAR_TYPE_WSTRING ||
-               path_option->type == XX_VAR_TYPE_WSTRING_VIEW) {
+    } else if (path_option->type == XX_VAR_TYPE_WSTRING || path_option->type == XX_VAR_TYPE_WSTRING_VIEW) {
         converted_path = xx_str_unicode_to_utf8(xx_var_get_wstr(path_option));
         base_path = converted_path;
     }
@@ -972,9 +919,7 @@ bool xx_stunts_unpack_current_archive_record(
         xx_str_free(converted_path);
         return false;
     }
-    if (base_path[0] != '\0' &&
-        base_path[xx_str_len(base_path) - 1U] != '/' &&
-        base_path[xx_str_len(base_path) - 1U] != '\\') {
+    if (base_path[0] != '\0' && base_path[xx_str_len(base_path) - 1U] != '/' && base_path[xx_str_len(base_path) - 1U] != '\\') {
         target_path = xx_str_concat3(base_path, "/", member->name);
     } else {
         target_path = xx_str_concat(base_path, member->name);
@@ -982,8 +927,7 @@ bool xx_stunts_unpack_current_archive_record(
     xx_str_free(converted_path);
     if (!target_path) return false;
 
-    if (!xx_store_create_dirs_a(target_path, false) ||
-        !xx_stunts_decode(self, member, &plain, &plain_size, pd)) {
+    if (!xx_store_create_dirs_a(target_path, false) || !xx_stunts_decode(self, member, &plain, &plain_size, pd)) {
         xx_str_free(target_path);
         return false;
     }
@@ -994,8 +938,7 @@ bool xx_stunts_unpack_current_archive_record(
 
         result = output != NULL;
         while (result && completed < plain_size) {
-            ssize_t sent = xx_io_write(output, plain + completed,
-                                       plain_size - completed);
+            ssize_t sent = xx_io_write(output, plain + completed, plain_size - completed);
             if (sent <= 0 || (size_t)sent > plain_size - completed) {
                 result = false;
                 break;
@@ -1010,8 +953,8 @@ bool xx_stunts_unpack_current_archive_record(
     return result;
 }
 
-void xx_stunts_free_archive_records_reading(
-    Abstractformat *self, xx_archive_record_state *state) {
+void xx_stunts_free_archive_records_reading(Abstractformat *self, xx_archive_record_state *state)
+{
     (void)self;
     xx_archive_record_state_free(state);
 }

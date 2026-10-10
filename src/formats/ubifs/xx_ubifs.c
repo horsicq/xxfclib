@@ -127,12 +127,12 @@ typedef struct xx_ubifs_leaf_s {
 } xx_ubifs_leaf;
 
 typedef struct xx_ubifs_entry_s {
-    char *name;           /**< Full path from the root, '/' separated. */
-    char *link_target;    /**< Symlink target, or NULL. */
+    char *name;        /**< Full path from the root, '/' separated. */
+    char *link_target; /**< Symlink target, or NULL. */
     uint32_t inum;
     uint64_t size;
     uint32_t mode;
-    uint16_t compr_type;  /**< The inode's default compressor. */
+    uint16_t compr_type; /**< The inode's default compressor. */
     bool is_folder;
     bool is_regular;
     int64_t header_offset; /**< Device offset of the directory entry node. */
@@ -187,12 +187,11 @@ static void xx_ubifs_vtable_destroy(Abstractformat *self);
  * large UBI image is addressed from its own base, but that base can still sit
  * past 2 GiB in the enclosing device, and xx_io_seek() takes a 32-bit long on
  * Win64. */
-static bool xx_ubifs_read_at(xx_io_device *device, int64_t offset, void *data,
-                             size_t size) {
+static bool xx_ubifs_read_at(xx_io_device *device, int64_t offset, void *data, size_t size)
+{
     uint8_t *out = (uint8_t *)data;
     size_t done = 0U;
-    if (!device || (!data && size != 0U) || offset < 0 ||
-        xx_io_seek64(device, offset, SEEK_SET) != 0) {
+    if (!device || (!data && size != 0U) || offset < 0 || xx_io_seek64(device, offset, SEEK_SET) != 0) {
         return false;
     }
     while (done < size) {
@@ -203,26 +202,24 @@ static bool xx_ubifs_read_at(xx_io_device *device, int64_t offset, void *data,
     return true;
 }
 
-static bool xx_ubifs_range_within(int64_t total_size, int64_t offset,
-                                  int64_t size) {
-    return (total_size >= 0) && (offset >= 0) && (size >= 0) &&
-           (offset <= total_size) && (size <= total_size - offset);
+static bool xx_ubifs_range_within(int64_t total_size, int64_t offset, int64_t size)
+{
+    return (total_size >= 0) && (offset >= 0) && (size >= 0) && (offset <= total_size) && (size <= total_size - offset);
 }
 
 /* UBIFS seeds CRC-32 with 0xFFFFFFFF and does not complement the result. */
-static uint32_t xx_ubifs_crc(const void *data, size_t size) {
+static uint32_t xx_ubifs_crc(const void *data, size_t size)
+{
     return xx_crc32_calc(0U, data, size) ^ UINT32_C(0xFFFFFFFF);
 }
 
 /* Absolute device offset of a position inside the volume image, where
  * logical erase block N begins at N * leb_size. Returns -1 when the position
  * is outside the geometry the superblock declared. */
-static int64_t xx_ubifs_position(Abstractformat *self,
-                                 const xx_ubifs_private *parsed, uint32_t lnum,
-                                 uint32_t offs, uint32_t length) {
+static int64_t xx_ubifs_position(Abstractformat *self, const xx_ubifs_private *parsed, uint32_t lnum, uint32_t offs, uint32_t length)
+{
     int64_t offset;
-    if (lnum >= parsed->leb_cnt || offs >= parsed->leb_size ||
-        length > parsed->leb_size - offs) {
+    if (lnum >= parsed->leb_cnt || offs >= parsed->leb_size || length > parsed->leb_size - offs) {
         return -1;
     }
     offset = self->base_address + (int64_t)lnum * parsed->leb_size + offs;
@@ -234,38 +231,31 @@ static int64_t xx_ubifs_position(Abstractformat *self,
 
 /* Read one node, validate its common header and its CRC, and report the
  * declared length. @p expected_type is checked unless it is 0xFF. */
-static bool xx_ubifs_read_node(Abstractformat *self,
-                               const xx_ubifs_private *parsed, uint32_t lnum,
-                               uint32_t offs, uint8_t expected_type,
-                               uint8_t *buffer, size_t buffer_size,
-                               uint32_t *out_len) {
+static bool xx_ubifs_read_node(Abstractformat *self, const xx_ubifs_private *parsed, uint32_t lnum, uint32_t offs, uint8_t expected_type, uint8_t *buffer,
+                               size_t buffer_size, uint32_t *out_len)
+{
     uint32_t length;
     int64_t offset;
     if (buffer_size < XX_UBIFS_CH_SZ) return false;
     offset = xx_ubifs_position(self, parsed, lnum, offs, XX_UBIFS_CH_SZ);
-    if (offset < 0 ||
-        !xx_ubifs_read_at(self->device, offset, buffer, XX_UBIFS_CH_SZ)) {
+    if (offset < 0 || !xx_ubifs_read_at(self->device, offset, buffer, XX_UBIFS_CH_SZ)) {
         return false;
     }
-    if (xx_data_get_u32(buffer, XX_UBIFS_CH_SZ, 0U, false) !=
-        XX_UBIFS_NODE_MAGIC) {
+    if (xx_data_get_u32(buffer, XX_UBIFS_CH_SZ, 0U, false) != XX_UBIFS_NODE_MAGIC) {
         return false;
     }
     length = xx_data_get_u32(buffer, XX_UBIFS_CH_SZ, 16U, false);
     if (length < XX_UBIFS_CH_SZ || length > buffer_size) return false;
-    if (expected_type != 0xFFU &&
-        xx_data_get_u8(buffer, XX_UBIFS_CH_SZ, 20U) != expected_type) {
+    if (expected_type != 0xFFU && xx_data_get_u8(buffer, XX_UBIFS_CH_SZ, 20U) != expected_type) {
         return false;
     }
     offset = xx_ubifs_position(self, parsed, lnum, offs, length);
-    if (offset < 0 ||
-        !xx_ubifs_read_at(self->device, offset, buffer, length)) {
+    if (offset < 0 || !xx_ubifs_read_at(self->device, offset, buffer, length)) {
         return false;
     }
     /* The header CRC covers the node from the sequence number to its end,
      * skipping the magic and the CRC field itself. */
-    if (xx_data_get_u32(buffer, length, 4U, false) !=
-        xx_ubifs_crc(buffer + 8, length - 8U)) {
+    if (xx_data_get_u32(buffer, length, 4U, false) != xx_ubifs_crc(buffer + 8, length - 8U)) {
         return false;
     }
     if (out_len) *out_len = length;
@@ -274,20 +264,22 @@ static bool xx_ubifs_read_node(Abstractformat *self,
 
 /* ------------------------------------------------------------ visited ----- */
 
-static void xx_ubifs_visited_cleanup(xx_ubifs_visited *visited) {
+static void xx_ubifs_visited_cleanup(xx_ubifs_visited *visited)
+{
     if (!visited) return;
     if (visited->slots) xx_mem_free(visited->slots);
     xx_mem_zero(visited, sizeof(*visited));
 }
 
-static size_t xx_ubifs_visited_slot(const xx_ubifs_visited *visited,
-                                    uint64_t key) {
+static size_t xx_ubifs_visited_slot(const xx_ubifs_visited *visited, uint64_t key)
+{
     key = (key ^ (key >> 29U)) * UINT64_C(0xbf58476d1ce4e5b9);
     key ^= key >> 32U;
     return (size_t)key & (visited->capacity - 1U);
 }
 
-static bool xx_ubifs_visited_grow(xx_ubifs_visited *visited) {
+static bool xx_ubifs_visited_grow(xx_ubifs_visited *visited)
+{
     uint64_t *slots;
     size_t capacity = visited->capacity ? visited->capacity * 2U : 256U;
     size_t index;
@@ -316,7 +308,8 @@ static bool xx_ubifs_visited_grow(xx_ubifs_visited *visited) {
 /* Record @p key and report whether it had already been seen. Allocation
  * failure reports "seen", so the walk stops rather than continuing with a set
  * that can no longer remember anything. */
-static bool xx_ubifs_visited_mark(xx_ubifs_visited *visited, uint64_t key) {
+static bool xx_ubifs_visited_mark(xx_ubifs_visited *visited, uint64_t key)
+{
     size_t slot;
     if (!visited) return true;
     if ((visited->count + 1U) * 4U >= visited->capacity * 3U) {
@@ -334,7 +327,8 @@ static bool xx_ubifs_visited_mark(xx_ubifs_visited *visited, uint64_t key) {
 
 /* ------------------------------------------------------------- cleanup --- */
 
-static void xx_ubifs_private_cleanup(xx_ubifs_private *parsed) {
+static void xx_ubifs_private_cleanup(xx_ubifs_private *parsed)
+{
     size_t index;
     if (!parsed) return;
     for (index = 0U; index < parsed->entry_count; ++index) {
@@ -355,8 +349,8 @@ static void xx_ubifs_private_cleanup(xx_ubifs_private *parsed) {
 
 /* -------------------------------------------------------- superblock ----- */
 
-static bool xx_ubifs_parse_superblock(Abstractformat *self,
-                                      xx_ubifs_private *parsed) {
+static bool xx_ubifs_parse_superblock(Abstractformat *self, xx_ubifs_private *parsed)
+{
     uint8_t node[XX_UBIFS_SB_NODE_SZ];
     uint32_t length = 0U;
     uint32_t leb_size;
@@ -366,20 +360,15 @@ static bool xx_ubifs_parse_superblock(Abstractformat *self,
     /* The superblock is the one node whose position is fixed and whose
      * geometry is not yet known, so it is read directly rather than through
      * xx_ubifs_read_node(). */
-    if (!xx_ubifs_range_within(parsed->input_size, self->base_address,
-                               XX_UBIFS_SB_NODE_SZ) ||
-        !xx_ubifs_read_at(self->device, self->base_address, node,
-                          sizeof(node))) {
+    if (!xx_ubifs_range_within(parsed->input_size, self->base_address, XX_UBIFS_SB_NODE_SZ) || !xx_ubifs_read_at(self->device, self->base_address, node, sizeof(node))) {
         return false;
     }
-    if (xx_data_get_u32(node, sizeof(node), 0U, false) != XX_UBIFS_NODE_MAGIC ||
-        xx_data_get_u8(node, sizeof(node), 20U) != XX_UBIFS_SB_NODE) {
+    if (xx_data_get_u32(node, sizeof(node), 0U, false) != XX_UBIFS_NODE_MAGIC || xx_data_get_u8(node, sizeof(node), 20U) != XX_UBIFS_SB_NODE) {
         return false;
     }
     length = xx_data_get_u32(node, sizeof(node), 16U, false);
     if (length != XX_UBIFS_SB_NODE_SZ) return false;
-    if (xx_data_get_u32(node, sizeof(node), 4U, false) !=
-        xx_ubifs_crc(node + 8, length - 8U)) {
+    if (xx_data_get_u32(node, sizeof(node), 4U, false) != xx_ubifs_crc(node + 8, length - 8U)) {
         return false;
     }
     /* Only the simple key format exists; anything else would change the key
@@ -398,12 +387,10 @@ static bool xx_ubifs_parse_superblock(Abstractformat *self,
      * the stride this reader assumes would be wrong; an encrypted one has
      * names and contents this reader cannot make sense of. Both are refused
      * rather than misreported. */
-    if ((parsed->sb_flags &
-         (XX_UBIFS_FLG_ENCRYPTION | XX_UBIFS_FLG_AUTHENTICATION)) != 0U) {
+    if ((parsed->sb_flags & (XX_UBIFS_FLG_ENCRYPTION | XX_UBIFS_FLG_AUTHENTICATION)) != 0U) {
         return false;
     }
-    if (leb_size < XX_UBIFS_MIN_LEB_SIZE || leb_size > XX_UBIFS_MAX_LEB_SIZE ||
-        (leb_size & 7U) != 0U) {
+    if (leb_size < XX_UBIFS_MIN_LEB_SIZE || leb_size > XX_UBIFS_MAX_LEB_SIZE || (leb_size & 7U) != 0U) {
         return false;
     }
     /* The superblock, both master blocks and the log occupy the first few
@@ -437,8 +424,8 @@ static bool xx_ubifs_parse_superblock(Abstractformat *self,
  * aligned offsets inside LEB 1, and mirrored into LEB 2. The live copy is the
  * one with the highest commit number, so both blocks are scanned and the best
  * candidate kept. */
-static bool xx_ubifs_parse_master(Abstractformat *self,
-                                  xx_ubifs_private *parsed) {
+static bool xx_ubifs_parse_master(Abstractformat *self, xx_ubifs_private *parsed)
+{
     uint8_t node[XX_UBIFS_MST_NODE_SZ];
     uint64_t best_cmt = 0U;
     bool found = false;
@@ -450,26 +437,20 @@ static bool xx_ubifs_parse_master(Abstractformat *self,
         uint32_t offs;
         uint32_t steps = 0U;
         if (lnum >= parsed->leb_cnt) break;
-        for (offs = 0U;
-             offs + XX_UBIFS_MST_NODE_SZ <= parsed->leb_size && steps < 65536U;
-             offs += step, ++steps) {
+        for (offs = 0U; offs + XX_UBIFS_MST_NODE_SZ <= parsed->leb_size && steps < 65536U; offs += step, ++steps) {
             uint32_t length = 0U;
             uint64_t cmt_no;
             uint32_t root_lnum;
             uint32_t root_offs;
             uint32_t root_len;
-            if (!xx_ubifs_read_node(self, parsed, lnum, offs, XX_UBIFS_MST_NODE,
-                                    node, sizeof(node), &length) ||
-                length != XX_UBIFS_MST_NODE_SZ) {
+            if (!xx_ubifs_read_node(self, parsed, lnum, offs, XX_UBIFS_MST_NODE, node, sizeof(node), &length) || length != XX_UBIFS_MST_NODE_SZ) {
                 continue;
             }
             cmt_no = xx_data_get_u64(node, sizeof(node), 32U, false);
             root_lnum = xx_data_get_u32(node, sizeof(node), 48U, false);
             root_offs = xx_data_get_u32(node, sizeof(node), 52U, false);
             root_len = xx_data_get_u32(node, sizeof(node), 56U, false);
-            if (root_lnum >= parsed->leb_cnt || root_offs >= parsed->leb_size ||
-                root_len < XX_UBIFS_IDX_NODE_SZ ||
-                root_len > parsed->leb_size - root_offs) {
+            if (root_lnum >= parsed->leb_cnt || root_offs >= parsed->leb_size || root_len < XX_UBIFS_IDX_NODE_SZ || root_len > parsed->leb_size - root_offs) {
                 continue;
             }
             if (found && cmt_no < best_cmt) continue;
@@ -478,8 +459,7 @@ static bool xx_ubifs_parse_master(Abstractformat *self,
             parsed->root_lnum = root_lnum;
             parsed->root_offs = root_offs;
             parsed->root_len = root_len;
-            parsed->highest_inum =
-                xx_data_get_u64(node, sizeof(node), 24U, false);
+            parsed->highest_inum = xx_data_get_u64(node, sizeof(node), 24U, false);
         }
     }
     return found;
@@ -487,16 +467,15 @@ static bool xx_ubifs_parse_master(Abstractformat *self,
 
 /* --------------------------------------------------------- index walk ---- */
 
-static bool xx_ubifs_append_leaf(xx_ubifs_private *parsed,
-                                 const xx_ubifs_leaf *leaf) {
+static bool xx_ubifs_append_leaf(xx_ubifs_private *parsed, const xx_ubifs_leaf *leaf)
+{
     xx_ubifs_leaf *grown;
     size_t capacity;
     if (parsed->leaf_count >= XX_UBIFS_MAX_LEAVES) return false;
     if (parsed->leaf_count == parsed->leaf_capacity) {
         capacity = parsed->leaf_capacity ? parsed->leaf_capacity * 2U : 64U;
         if (capacity > SIZE_MAX / sizeof(*parsed->leaves)) return false;
-        grown = (xx_ubifs_leaf *)xx_mem_realloc(
-            parsed->leaves, capacity * sizeof(*parsed->leaves));
+        grown = (xx_ubifs_leaf *)xx_mem_realloc(parsed->leaves, capacity * sizeof(*parsed->leaves));
         if (!grown) return false;
         parsed->leaves = grown;
         parsed->leaf_capacity = capacity;
@@ -510,9 +489,8 @@ static bool xx_ubifs_append_leaf(xx_ubifs_private *parsed,
  * the depth cap bounds the recursion independently of that, and the node
  * budget bounds the total work. A malformed subtree ends the walk for that
  * subtree only, leaving whatever was already collected usable. */
-static bool xx_ubifs_walk_index(Abstractformat *self, xx_ubifs_private *parsed,
-                                uint32_t lnum, uint32_t offs, uint32_t length,
-                                unsigned depth, xx_pd_struct *pd) {
+static bool xx_ubifs_walk_index(Abstractformat *self, xx_ubifs_private *parsed, uint32_t lnum, uint32_t offs, uint32_t length, unsigned depth, xx_pd_struct *pd)
+{
     uint8_t *node;
     uint32_t actual = 0U;
     uint32_t child_cnt;
@@ -523,8 +501,7 @@ static bool xx_ubifs_walk_index(Abstractformat *self, xx_ubifs_private *parsed,
     if (depth > XX_UBIFS_MAX_TREE_DEPTH) return true;
     if (parsed->index_nodes >= XX_UBIFS_MAX_INDEX_NODES) return true;
     if (pd && xx_pd_is_stopped(pd)) return false;
-    if (xx_ubifs_visited_mark(&parsed->visited,
-                              ((uint64_t)lnum << 32U) | offs)) {
+    if (xx_ubifs_visited_mark(&parsed->visited, ((uint64_t)lnum << 32U) | offs)) {
         return true;
     }
     ++parsed->index_nodes;
@@ -536,9 +513,7 @@ static bool xx_ubifs_walk_index(Abstractformat *self, xx_ubifs_private *parsed,
     }
     node = (uint8_t *)xx_mem_alloc(length);
     if (!node) return false;
-    if (!xx_ubifs_read_node(self, parsed, lnum, offs, XX_UBIFS_IDX_NODE, node,
-                            length, &actual) ||
-        actual != length) {
+    if (!xx_ubifs_read_node(self, parsed, lnum, offs, XX_UBIFS_IDX_NODE, node, length, &actual) || actual != length) {
         xx_mem_free(node);
         return true;
     }
@@ -547,25 +522,20 @@ static bool xx_ubifs_walk_index(Abstractformat *self, xx_ubifs_private *parsed,
     /* The child count has to agree exactly with the node length: a branch is
      * 12 bytes plus the 8-byte on-flash key, never the 16-byte padded key
      * that standalone nodes carry. */
-    if (child_cnt == 0U || child_cnt > XX_UBIFS_MAX_CHILD_CNT ||
-        level > XX_UBIFS_MAX_TREE_DEPTH ||
-        (uint64_t)XX_UBIFS_IDX_NODE_SZ +
-                (uint64_t)child_cnt * XX_UBIFS_BRANCH_STRIDE >
-            (uint64_t)length) {
+    if (child_cnt == 0U || child_cnt > XX_UBIFS_MAX_CHILD_CNT || level > XX_UBIFS_MAX_TREE_DEPTH ||
+        (uint64_t)XX_UBIFS_IDX_NODE_SZ + (uint64_t)child_cnt * XX_UBIFS_BRANCH_STRIDE > (uint64_t)length) {
         xx_mem_free(node);
         return true;
     }
     for (child = 0U; child < child_cnt; ++child) {
-        size_t base = (size_t)XX_UBIFS_IDX_NODE_SZ +
-                      (size_t)child * XX_UBIFS_BRANCH_STRIDE;
+        size_t base = (size_t)XX_UBIFS_IDX_NODE_SZ + (size_t)child * XX_UBIFS_BRANCH_STRIDE;
         uint32_t child_lnum = xx_data_get_u32(node, length, base, false);
         uint32_t child_offs = xx_data_get_u32(node, length, base + 4U, false);
         uint32_t child_len = xx_data_get_u32(node, length, base + 8U, false);
         uint32_t key0 = xx_data_get_u32(node, length, base + 12U, false);
         uint32_t key1 = xx_data_get_u32(node, length, base + 16U, false);
         if (level > 0U) {
-            if (!xx_ubifs_walk_index(self, parsed, child_lnum, child_offs,
-                                     child_len, depth + 1U, pd)) {
+            if (!xx_ubifs_walk_index(self, parsed, child_lnum, child_offs, child_len, depth + 1U, pd)) {
                 result = false;
                 break;
             }
@@ -579,10 +549,7 @@ static bool xx_ubifs_walk_index(Abstractformat *self, xx_ubifs_private *parsed,
             leaf.len = child_len;
             /* A branch that cannot address a node is dropped here rather than
              * carried into the lookup tables. */
-            if (child_len < XX_UBIFS_CH_SZ ||
-                child_len > XX_UBIFS_MAX_NODE_SZ ||
-                xx_ubifs_position(self, parsed, child_lnum, child_offs,
-                                  child_len) < 0) {
+            if (child_len < XX_UBIFS_CH_SZ || child_len > XX_UBIFS_MAX_NODE_SZ || xx_ubifs_position(self, parsed, child_lnum, child_offs, child_len) < 0) {
                 continue;
             }
             if (!xx_ubifs_append_leaf(parsed, &leaf)) break;
@@ -594,21 +561,20 @@ static bool xx_ubifs_walk_index(Abstractformat *self, xx_ubifs_private *parsed,
 
 /* ------------------------------------------------------- leaf lookup ----- */
 
-static bool xx_ubifs_leaf_less(const xx_ubifs_leaf *left,
-                               const xx_ubifs_leaf *right) {
+static bool xx_ubifs_leaf_less(const xx_ubifs_leaf *left, const xx_ubifs_leaf *right)
+{
     if (left->inum != right->inum) return left->inum < right->inum;
     if (left->type != right->type) return left->type < right->type;
     return left->value < right->value;
 }
 
-static void xx_ubifs_sift_down(xx_ubifs_leaf *items, size_t start,
-                               size_t count) {
+static void xx_ubifs_sift_down(xx_ubifs_leaf *items, size_t start, size_t count)
+{
     size_t root = start;
     while (root * 2U + 1U < count) {
         size_t child = root * 2U + 1U;
         xx_ubifs_leaf swap;
-        if (child + 1U < count &&
-            xx_ubifs_leaf_less(&items[child], &items[child + 1U])) {
+        if (child + 1U < count && xx_ubifs_leaf_less(&items[child], &items[child + 1U])) {
             ++child;
         }
         if (!xx_ubifs_leaf_less(&items[root], &items[child])) return;
@@ -620,7 +586,8 @@ static void xx_ubifs_sift_down(xx_ubifs_leaf *items, size_t start,
 }
 
 /* Heapsort again: attacker-sized input, no recursion, no scratch buffer. */
-static void xx_ubifs_sort_leaves(xx_ubifs_leaf *items, size_t count) {
+static void xx_ubifs_sort_leaves(xx_ubifs_leaf *items, size_t count)
+{
     size_t index;
     if (count < 2U) return;
     for (index = count / 2U; index-- > 0U;) {
@@ -636,9 +603,8 @@ static void xx_ubifs_sort_leaves(xx_ubifs_leaf *items, size_t count) {
 
 /* First leaf at or after the given key, by binary search over the sorted
  * array. */
-static size_t xx_ubifs_lower_bound(const xx_ubifs_private *parsed,
-                                   uint32_t inum, uint32_t type,
-                                   uint32_t value) {
+static size_t xx_ubifs_lower_bound(const xx_ubifs_private *parsed, uint32_t inum, uint32_t type, uint32_t value)
+{
     size_t low = 0U;
     size_t high = parsed->leaf_count;
     xx_ubifs_leaf probe;
@@ -659,14 +625,11 @@ static size_t xx_ubifs_lower_bound(const xx_ubifs_private *parsed,
     return low;
 }
 
-static const xx_ubifs_leaf *xx_ubifs_find_leaf(const xx_ubifs_private *parsed,
-                                               uint32_t inum, uint32_t type,
-                                               uint32_t value) {
+static const xx_ubifs_leaf *xx_ubifs_find_leaf(const xx_ubifs_private *parsed, uint32_t inum, uint32_t type, uint32_t value)
+{
     size_t index = xx_ubifs_lower_bound(parsed, inum, type, value);
     if (index >= parsed->leaf_count) return NULL;
-    if (parsed->leaves[index].inum != inum ||
-        parsed->leaves[index].type != type ||
-        parsed->leaves[index].value != value) {
+    if (parsed->leaves[index].inum != inum || parsed->leaves[index].type != type || parsed->leaves[index].value != value) {
         return NULL;
     }
     return &parsed->leaves[index];
@@ -674,8 +637,8 @@ static const xx_ubifs_leaf *xx_ubifs_find_leaf(const xx_ubifs_private *parsed,
 
 /* ------------------------------------------------------------- entries --- */
 
-static bool xx_ubifs_append_entry(xx_ubifs_private *parsed,
-                                  xx_ubifs_entry *entry) {
+static bool xx_ubifs_append_entry(xx_ubifs_private *parsed, xx_ubifs_entry *entry)
+{
     xx_ubifs_entry *grown;
     size_t capacity;
     if (!entry || !entry->name || parsed->entry_count >= XX_UBIFS_MAX_ENTRIES) {
@@ -684,8 +647,7 @@ static bool xx_ubifs_append_entry(xx_ubifs_private *parsed,
     if (parsed->entry_count == parsed->entry_capacity) {
         capacity = parsed->entry_capacity ? parsed->entry_capacity * 2U : 32U;
         if (capacity > SIZE_MAX / sizeof(*parsed->entries)) return false;
-        grown = (xx_ubifs_entry *)xx_mem_realloc(
-            parsed->entries, capacity * sizeof(*parsed->entries));
+        grown = (xx_ubifs_entry *)xx_mem_realloc(parsed->entries, capacity * sizeof(*parsed->entries));
         if (!grown) return false;
         parsed->entries = grown;
         parsed->entry_capacity = capacity;
@@ -695,17 +657,15 @@ static bool xx_ubifs_append_entry(xx_ubifs_private *parsed,
     return true;
 }
 
-static char *xx_ubifs_join_name(const char *prefix, const char *name) {
+static char *xx_ubifs_join_name(const char *prefix, const char *name)
+{
     size_t prefix_size = prefix ? xx_str_len(prefix) : 0U;
     size_t name_size = name ? xx_str_len(name) : 0U;
     char *combined;
-    if (!name || name_size == 0U || prefix_size >= XX_UBIFS_MAX_PATH ||
-        name_size > XX_UBIFS_MAX_PATH - prefix_size -
-                        (prefix_size != 0U ? 1U : 0U)) {
+    if (!name || name_size == 0U || prefix_size >= XX_UBIFS_MAX_PATH || name_size > XX_UBIFS_MAX_PATH - prefix_size - (prefix_size != 0U ? 1U : 0U)) {
         return NULL;
     }
-    combined = (char *)xx_mem_alloc(prefix_size + name_size +
-                                    (prefix_size != 0U ? 2U : 1U));
+    combined = (char *)xx_mem_alloc(prefix_size + name_size + (prefix_size != 0U ? 2U : 1U));
     if (!combined) return NULL;
     if (prefix_size != 0U) {
         xx_rt_memcpy(combined, prefix, prefix_size);
@@ -720,11 +680,11 @@ static char *xx_ubifs_join_name(const char *prefix, const char *name) {
 }
 
 /* A single path component out of a directory entry node. */
-static bool xx_ubifs_plausible_component(const char *name, size_t length) {
+static bool xx_ubifs_plausible_component(const char *name, size_t length)
+{
     size_t index;
     if (!name || length == 0U || length > XX_UBIFS_MAX_NLEN) return false;
-    if (name[0] == '.' &&
-        (length == 1U || (length == 2U && name[1] == '.'))) {
+    if (name[0] == '.' && (length == 1U || (length == 2U && name[1] == '.'))) {
         return false;
     }
     for (index = 0U; index < length; ++index) {
@@ -738,18 +698,14 @@ static bool xx_ubifs_plausible_component(const char *name, size_t length) {
  * from it. Missing or malformed inodes leave the entry with zeroed metadata
  * rather than failing the directory: an index that lost an inode leaf still
  * has a usable name for it. */
-static void xx_ubifs_apply_inode(Abstractformat *self,
-                                 const xx_ubifs_private *parsed,
-                                 xx_ubifs_entry *entry) {
+static void xx_ubifs_apply_inode(Abstractformat *self, const xx_ubifs_private *parsed, xx_ubifs_entry *entry)
+{
     uint8_t node[XX_UBIFS_MAX_NODE_SZ];
-    const xx_ubifs_leaf *leaf =
-        xx_ubifs_find_leaf(parsed, entry->inum, XX_UBIFS_INO_KEY, 0U);
+    const xx_ubifs_leaf *leaf = xx_ubifs_find_leaf(parsed, entry->inum, XX_UBIFS_INO_KEY, 0U);
     uint32_t length = 0U;
     uint32_t data_len;
     if (!leaf) return;
-    if (!xx_ubifs_read_node(self, parsed, leaf->lnum, leaf->offs,
-                            XX_UBIFS_INO_NODE, node, sizeof(node), &length) ||
-        length < XX_UBIFS_INO_NODE_SZ) {
+    if (!xx_ubifs_read_node(self, parsed, leaf->lnum, leaf->offs, XX_UBIFS_INO_NODE, node, sizeof(node), &length) || length < XX_UBIFS_INO_NODE_SZ) {
         return;
     }
     entry->size = xx_data_get_u64(node, length, 48U, false);
@@ -760,9 +716,7 @@ static void xx_ubifs_apply_inode(Abstractformat *self,
         entry->size = (uint64_t)XX_UBIFS_MAX_FILE_SIZE;
     }
     /* A symlink keeps its target inline in the inode, uncompressed. */
-    if (!entry->is_folder && !entry->is_regular && data_len != 0U &&
-        data_len <= length - XX_UBIFS_INO_NODE_SZ &&
-        data_len < XX_UBIFS_MAX_PATH) {
+    if (!entry->is_folder && !entry->is_regular && data_len != 0U && data_len <= length - XX_UBIFS_INO_NODE_SZ && data_len < XX_UBIFS_MAX_PATH) {
         char *target = (char *)xx_mem_alloc(data_len + 1U);
         if (target) {
             xx_rt_memcpy(target, node + XX_UBIFS_INO_NODE_SZ, data_len);
@@ -778,16 +732,13 @@ static void xx_ubifs_apply_inode(Abstractformat *self,
  * bounded by the depth cap, and the visited set keeps a directory that names
  * itself - directly or through a loop of hard-linked directories - from
  * recurring. */
-static bool xx_ubifs_walk_directory(Abstractformat *self,
-                                    xx_ubifs_private *parsed, uint32_t inum,
-                                    const char *prefix, unsigned depth,
-                                    xx_pd_struct *pd) {
+static bool xx_ubifs_walk_directory(Abstractformat *self, xx_ubifs_private *parsed, uint32_t inum, const char *prefix, unsigned depth, xx_pd_struct *pd)
+{
     size_t index = xx_ubifs_lower_bound(parsed, inum, XX_UBIFS_DENT_KEY, 0U);
     if (depth > XX_UBIFS_MAX_DEPTH) return true;
     /* The inode-number space is separate from the index-position space used
      * for the tree walk, so it is tagged to keep the two from colliding. */
-    if (xx_ubifs_visited_mark(&parsed->visited,
-                              UINT64_C(0x8000000000000000) | inum)) {
+    if (xx_ubifs_visited_mark(&parsed->visited, UINT64_C(0x8000000000000000) | inum)) {
         return true;
     }
     for (; index < parsed->leaf_count; ++index) {
@@ -804,10 +755,7 @@ static bool xx_ubifs_walk_directory(Abstractformat *self,
         if (leaf->inum != inum || leaf->type != XX_UBIFS_DENT_KEY) break;
         if (pd && xx_pd_is_stopped(pd)) return false;
         if (parsed->entry_count >= XX_UBIFS_MAX_ENTRIES) return true;
-        if (!xx_ubifs_read_node(self, parsed, leaf->lnum, leaf->offs,
-                                XX_UBIFS_DENT_NODE, node, sizeof(node),
-                                &length) ||
-            length < XX_UBIFS_DENT_NODE_SZ) {
+        if (!xx_ubifs_read_node(self, parsed, leaf->lnum, leaf->offs, XX_UBIFS_DENT_NODE, node, sizeof(node), &length) || length < XX_UBIFS_DENT_NODE_SZ) {
             continue;
         }
         target = xx_data_get_u64(node, length, 40U, false);
@@ -815,8 +763,7 @@ static bool xx_ubifs_walk_directory(Abstractformat *self,
         name_len = xx_data_get_u16(node, length, 50U, false);
         /* The name is NUL terminated on disk, so the node must hold one more
          * byte than the declared length. */
-        if (name_len == 0U || name_len > XX_UBIFS_MAX_NLEN ||
-            (uint64_t)XX_UBIFS_DENT_NODE_SZ + name_len + 1U > (uint64_t)length) {
+        if (name_len == 0U || name_len > XX_UBIFS_MAX_NLEN || (uint64_t)XX_UBIFS_DENT_NODE_SZ + name_len + 1U > (uint64_t)length) {
             continue;
         }
         if (target == 0U || target > UINT32_MAX) continue;
@@ -831,8 +778,7 @@ static bool xx_ubifs_walk_directory(Abstractformat *self,
         entry.inum = (uint32_t)target;
         entry.is_folder = (type == XX_UBIFS_ITYPE_DIR);
         entry.is_regular = (type == XX_UBIFS_ITYPE_REG);
-        entry.header_offset =
-            xx_ubifs_position(self, parsed, leaf->lnum, leaf->offs, length);
+        entry.header_offset = xx_ubifs_position(self, parsed, leaf->lnum, leaf->offs, length);
         entry.header_size = XX_UBIFS_DENT_NODE_SZ + name_len + 1;
         xx_ubifs_apply_inode(self, parsed, &entry);
         if (!entry.is_regular) entry.size = entry.is_folder ? 0U : entry.size;
@@ -843,10 +789,8 @@ static bool xx_ubifs_walk_directory(Abstractformat *self,
         }
         if (type == XX_UBIFS_ITYPE_DIR) {
             /* The entry now owns the name; the recursion only borrows it. */
-            const char *child_prefix =
-                parsed->entries[parsed->entry_count - 1U].name;
-            if (!xx_ubifs_walk_directory(self, parsed, (uint32_t)target,
-                                         child_prefix, depth + 1U, pd)) {
+            const char *child_prefix = parsed->entries[parsed->entry_count - 1U].name;
+            if (!xx_ubifs_walk_directory(self, parsed, (uint32_t)target, child_prefix, depth + 1U, pd)) {
                 return false;
             }
         }
@@ -856,24 +800,21 @@ static bool xx_ubifs_walk_directory(Abstractformat *self,
 
 /* --------------------------------------------------------------- parse --- */
 
-static bool xx_ubifs_parse(Abstractformat *self, xx_ubifs_private *parsed,
-                           xx_pd_struct *pd) {
+static bool xx_ubifs_parse(Abstractformat *self, xx_ubifs_private *parsed, xx_pd_struct *pd)
+{
     if (parsed) {
         xx_mem_zero(parsed, sizeof(*parsed));
         parsed->input_size = -1;
         parsed->archive_end = -1;
     }
-    if (!self || !self->device || !parsed || self->base_address < 0 ||
-        (pd && xx_pd_is_stopped(pd))) {
+    if (!self || !self->device || !parsed || self->base_address < 0 || (pd && xx_pd_is_stopped(pd))) {
         return false;
     }
     parsed->input_size = xx_io_total_size(self->device);
-    if (!xx_ubifs_parse_superblock(self, parsed) ||
-        !xx_ubifs_parse_master(self, parsed)) {
+    if (!xx_ubifs_parse_superblock(self, parsed) || !xx_ubifs_parse_master(self, parsed)) {
         goto fail;
     }
-    if (!xx_ubifs_walk_index(self, parsed, parsed->root_lnum,
-                             parsed->root_offs, parsed->root_len, 0U, pd)) {
+    if (!xx_ubifs_walk_index(self, parsed, parsed->root_lnum, parsed->root_offs, parsed->root_len, 0U, pd)) {
         goto fail;
     }
     xx_ubifs_sort_leaves(parsed->leaves, parsed->leaf_count);
@@ -894,9 +835,8 @@ fail:
 /* UBIFS stores a compressed block as the bare output of the compressor, with
  * no container of its own; the uncompressed length is the data node's size
  * field, so every decoder here is asked for an exact number of bytes. */
-static bool xx_ubifs_decompress(uint16_t compr_type, const uint8_t *input,
-                                size_t input_size, uint8_t *output,
-                                size_t output_size, size_t *written) {
+static bool xx_ubifs_decompress(uint16_t compr_type, const uint8_t *input, size_t input_size, uint8_t *output, size_t output_size, size_t *written)
+{
     size_t produced = 0U;
     if (!input || !output || !written) return false;
     *written = 0U;
@@ -907,8 +847,7 @@ static bool xx_ubifs_decompress(uint16_t compr_type, const uint8_t *input,
             *written = output_size;
             return true;
         case XX_UBIFS_COMPR_LZO:
-            if (!xx_lzo1x_decompress(input, input_size, output, output_size,
-                                     &produced)) {
+            if (!xx_lzo1x_decompress(input, input_size, output, output_size, &produced)) {
                 return false;
             }
             break;
@@ -918,24 +857,19 @@ static bool xx_ubifs_decompress(uint16_t compr_type, const uint8_t *input,
              * so there is no zlib header to consume. The wrapped form is
              * tried as a fallback only because it costs nothing and a
              * third-party image builder could plausibly emit it. */
-            if (!xx_deflate_decompress_memory(input, input_size, output,
-                                              output_size, &produced, false)) {
+            if (!xx_deflate_decompress_memory(input, input_size, output, output_size, &produced, false)) {
                 produced = 0U;
-                if (!xx_zlib_stream_header_is_valid(input, input_size) ||
-                    !xx_zlib_stream_decode_memory(input, input_size, output,
-                                                  output_size, &produced)) {
+                if (!xx_zlib_stream_header_is_valid(input, input_size) || !xx_zlib_stream_decode_memory(input, input_size, output, output_size, &produced)) {
                     return false;
                 }
             }
             break;
         case XX_UBIFS_COMPR_ZSTD:
-            if (!xx_zstd_decompress_memory(input, input_size, output,
-                                           output_size, &produced)) {
+            if (!xx_zstd_decompress_memory(input, input_size, output, output_size, &produced)) {
                 return false;
             }
             break;
-        default:
-            return false;
+        default: return false;
     }
     if (produced != output_size) return false;
     *written = produced;
@@ -948,8 +882,8 @@ static bool xx_ubifs_decompress(uint16_t compr_type, const uint8_t *input,
  * filesystem that holds it is refused rather than turned into an unbounded
  * run of zeros. This does mean a legitimately sparse file bigger than its own
  * volume is not fully extracted. */
-static uint64_t xx_ubifs_extract_limit(Abstractformat *self,
-                                       const xx_ubifs_private *parsed) {
+static uint64_t xx_ubifs_extract_limit(Abstractformat *self, const xx_ubifs_private *parsed)
+{
     if (parsed->archive_end <= self->base_address) return 0U;
     return (uint64_t)(parsed->archive_end - self->base_address);
 }
@@ -957,11 +891,8 @@ static uint64_t xx_ubifs_extract_limit(Abstractformat *self,
 /* Write one regular file out block by block. A block the index does not
  * mention is a hole and expands to zeros, which is what reading the file on a
  * mounted filesystem would return. */
-static bool xx_ubifs_extract_entry(Abstractformat *self,
-                                   const xx_ubifs_private *parsed,
-                                   const xx_ubifs_entry *entry,
-                                   xx_io_device *destination,
-                                   xx_pd_struct *pd) {
+static bool xx_ubifs_extract_entry(Abstractformat *self, const xx_ubifs_private *parsed, const xx_ubifs_entry *entry, xx_io_device *destination, xx_pd_struct *pd)
+{
     uint8_t node[XX_UBIFS_MAX_NODE_SZ];
     uint8_t plain[XX_UBIFS_BLOCK_SIZE];
     uint64_t remaining;
@@ -975,13 +906,10 @@ static bool xx_ubifs_extract_entry(Abstractformat *self,
         uint32_t plain_size;
         uint16_t compr_type;
         size_t produced = 0U;
-        size_t emit = remaining < XX_UBIFS_BLOCK_SIZE
-                          ? (size_t)remaining
-                          : (size_t)XX_UBIFS_BLOCK_SIZE;
+        size_t emit = remaining < XX_UBIFS_BLOCK_SIZE ? (size_t)remaining : (size_t)XX_UBIFS_BLOCK_SIZE;
         if (pd && xx_pd_is_stopped(pd)) return false;
         if (block > XX_UBIFS_KEY_VALUE_MASK) return false;
-        leaf = xx_ubifs_find_leaf(parsed, entry->inum, XX_UBIFS_DATA_KEY,
-                                  block);
+        leaf = xx_ubifs_find_leaf(parsed, entry->inum, XX_UBIFS_DATA_KEY, block);
         if (!leaf) {
             /* Sparse block. */
             xx_rt_memset(plain, 0, sizeof(plain));
@@ -992,18 +920,13 @@ static bool xx_ubifs_extract_entry(Abstractformat *self,
             ++block;
             continue;
         }
-        if (!xx_ubifs_read_node(self, parsed, leaf->lnum, leaf->offs,
-                                XX_UBIFS_DATA_NODE, node, sizeof(node),
-                                &length) ||
-            length < XX_UBIFS_DATA_NODE_SZ) {
+        if (!xx_ubifs_read_node(self, parsed, leaf->lnum, leaf->offs, XX_UBIFS_DATA_NODE, node, sizeof(node), &length) || length < XX_UBIFS_DATA_NODE_SZ) {
             return false;
         }
         plain_size = xx_data_get_u32(node, length, 40U, false);
         compr_type = xx_data_get_u16(node, length, 44U, false);
         if (plain_size == 0U || plain_size > XX_UBIFS_BLOCK_SIZE) return false;
-        if (!xx_ubifs_decompress(compr_type, node + XX_UBIFS_DATA_NODE_SZ,
-                                 length - XX_UBIFS_DATA_NODE_SZ, plain,
-                                 plain_size, &produced)) {
+        if (!xx_ubifs_decompress(compr_type, node + XX_UBIFS_DATA_NODE_SZ, length - XX_UBIFS_DATA_NODE_SZ, plain, plain_size, &produced)) {
             return false;
         }
         /* The inode's size decides how much of the last block is real; a
@@ -1023,18 +946,16 @@ static bool xx_ubifs_extract_entry(Abstractformat *self,
 
 /* --------------------------------------------------------------- records - */
 
-static bool xx_ubifs_copy_options(xx_list_s *destination,
-                                  const xx_list_s *source) {
+static bool xx_ubifs_copy_options(xx_list_s *destination, const xx_list_s *source)
+{
     size_t index;
     if (!destination || !source) return source == NULL;
     for (index = 0U; index < source->count; ++index) {
-        const xx_meta *item =
-            (const xx_meta *)xx_list_at((const xx_list_t *)source, index);
+        const xx_meta *item = (const xx_meta *)xx_list_at((const xx_list_t *)source, index);
         xx_meta copy;
         if (!item) continue;
         xx_meta_init(&copy, item->meta_id);
-        if (!xx_var_copy(&copy.var, &item->var) ||
-            !xx_list_append(destination, &copy)) {
+        if (!xx_var_copy(&copy.var, &item->var) || !xx_list_append(destination, &copy)) {
             xx_meta_cleanup(&copy);
             return false;
         }
@@ -1042,20 +963,19 @@ static bool xx_ubifs_copy_options(xx_list_s *destination,
     return true;
 }
 
-static const xx_var *xx_ubifs_find_option(const xx_list_s *options,
-                                          uint32_t meta_id) {
+static const xx_var *xx_ubifs_find_option(const xx_list_s *options, uint32_t meta_id)
+{
     size_t index;
     if (!options) return NULL;
     for (index = 0U; index < options->count; ++index) {
-        const xx_meta *item =
-            (const xx_meta *)xx_list_at((const xx_list_t *)options, index);
+        const xx_meta *item = (const xx_meta *)xx_list_at((const xx_list_t *)options, index);
         if (item && item->meta_id == meta_id) return &item->var;
     }
     return NULL;
 }
 
-static bool xx_ubifs_populate_record(xx_archive_record *record,
-                                     const xx_ubifs_entry *entry) {
+static bool xx_ubifs_populate_record(xx_archive_record *record, const xx_ubifs_entry *entry)
+{
     if (!record || !entry || !entry->name) return false;
     xx_archive_record_cleanup(record);
     xx_archive_record_init(record);
@@ -1065,22 +985,13 @@ static bool xx_ubifs_populate_record(xx_archive_record *record,
      * payload range to point at. */
     record->data_offset = -1;
     record->compressed_size = (int64_t)entry->size;
-    if (!xx_archive_record_set_original_name(record, entry->name) ||
-        !xx_archive_record_set_meta_u64(record, XX_META_ID_UNCOMPRESSED_SIZE,
-                                        entry->size) ||
-        !xx_archive_record_set_meta_u64(record, XX_META_ID_COMPRESSED_SIZE,
-                                        entry->size) ||
-        !xx_archive_record_set_meta_u64(record, XX_META_ID_COMPRESSION_METHOD,
-                                        entry->compr_type) ||
-        !xx_archive_record_set_meta_u64(record, XX_META_ID_ATTRIBUTES,
-                                        entry->mode) ||
-        !xx_archive_record_set_meta_bool(record, XX_META_ID_IS_FOLDER,
-                                         entry->is_folder)) {
+    if (!xx_archive_record_set_original_name(record, entry->name) || !xx_archive_record_set_meta_u64(record, XX_META_ID_UNCOMPRESSED_SIZE, entry->size) ||
+        !xx_archive_record_set_meta_u64(record, XX_META_ID_COMPRESSED_SIZE, entry->size) ||
+        !xx_archive_record_set_meta_u64(record, XX_META_ID_COMPRESSION_METHOD, entry->compr_type) ||
+        !xx_archive_record_set_meta_u64(record, XX_META_ID_ATTRIBUTES, entry->mode) || !xx_archive_record_set_meta_bool(record, XX_META_ID_IS_FOLDER, entry->is_folder)) {
         return false;
     }
-    if (entry->link_target &&
-        !xx_archive_record_set_meta_str(record, XX_META_ID_LINK_TARGET,
-                                        entry->link_target)) {
+    if (entry->link_target && !xx_archive_record_set_meta_str(record, XX_META_ID_LINK_TARGET, entry->link_target)) {
         return false;
     }
     return true;
@@ -1089,22 +1000,20 @@ static bool xx_ubifs_populate_record(xx_archive_record *record,
 /* Extraction-time check: the name must stay inside the destination tree on
  * every host this library builds for, so the reserved Windows punctuation is
  * rejected here even though UBIFS may legally carry it. */
-static bool xx_ubifs_safe_name(const char *name) {
+static bool xx_ubifs_safe_name(const char *name)
+{
     const char *component;
     const char *cursor;
     if (!name || !name[0] || name[0] == '/' || name[0] == '\\') return false;
     component = name;
     for (cursor = name;; ++cursor) {
         unsigned char ch = (unsigned char)*cursor;
-        if (ch == ':' || ch == '<' || ch == '>' || ch == '"' || ch == '|' ||
-            ch == '?' || ch == '*' || (ch != 0U && ch < 32U)) {
+        if (ch == ':' || ch == '<' || ch == '>' || ch == '"' || ch == '|' || ch == '?' || ch == '*' || (ch != 0U && ch < 32U)) {
             return false;
         }
         if (ch == '/' || ch == '\\' || ch == 0U) {
             size_t length = (size_t)(cursor - component);
-            if (length == 0U || (length == 1U && component[0] == '.') ||
-                (length == 2U && component[0] == '.' && component[1] == '.') ||
-                component[length - 1U] == ' ' ||
+            if (length == 0U || (length == 1U && component[0] == '.') || (length == 2U && component[0] == '.' && component[1] == '.') || component[length - 1U] == ' ' ||
                 component[length - 1U] == '.') {
                 return false;
             }
@@ -1114,7 +1023,8 @@ static bool xx_ubifs_safe_name(const char *name) {
     }
 }
 
-static void xx_ubifs_archive_stream_free(void *pointer) {
+static void xx_ubifs_archive_stream_free(void *pointer)
+{
     xx_ubifs_archive_stream *stream = (xx_ubifs_archive_stream *)pointer;
     if (!stream) return;
     xx_ubifs_private_cleanup(&stream->parsed);
@@ -1123,7 +1033,8 @@ static void xx_ubifs_archive_stream_free(void *pointer) {
 
 /* ----------------------------------------------------------- lifecycle --- */
 
-void xx_ubifs_init(xx_ubifs *ubifs, xx_io_device *dev, int64_t base_address) {
+void xx_ubifs_init(xx_ubifs *ubifs, xx_io_device *dev, int64_t base_address)
+{
     if (!ubifs) return;
     xx_mem_zero(ubifs, sizeof(*ubifs));
     xx_format_init(&ubifs->format, dev, base_address);
@@ -1136,29 +1047,25 @@ void xx_ubifs_init(xx_ubifs *ubifs, xx_io_device *dev, int64_t base_address) {
     ubifs->format.check_is_valid = xx_ubifs_check_is_valid;
     ubifs->format.handle_base_info = xx_ubifs_handle_base_info;
     ubifs->format.get_format_size = xx_ubifs_get_format_size;
-    ubifs->format.get_number_of_archive_records =
-        xx_ubifs_get_number_of_archive_records;
-    ubifs->format.create_archive_records_reading =
-        xx_ubifs_create_archive_records_reading;
-    ubifs->format.get_current_archive_record =
-        xx_ubifs_get_current_archive_record;
-    ubifs->format.unpack_current_archive_record =
-        xx_ubifs_unpack_current_archive_record;
-    ubifs->format.archive_record_move_to_next =
-        xx_ubifs_archive_record_move_to_next;
-    ubifs->format.free_archive_records_reading =
-        xx_ubifs_free_archive_records_reading;
+    ubifs->format.get_number_of_archive_records = xx_ubifs_get_number_of_archive_records;
+    ubifs->format.create_archive_records_reading = xx_ubifs_create_archive_records_reading;
+    ubifs->format.get_current_archive_record = xx_ubifs_get_current_archive_record;
+    ubifs->format.unpack_current_archive_record = xx_ubifs_unpack_current_archive_record;
+    ubifs->format.archive_record_move_to_next = xx_ubifs_archive_record_move_to_next;
+    ubifs->format.free_archive_records_reading = xx_ubifs_free_archive_records_reading;
     ubifs->format.destroy = xx_ubifs_vtable_destroy;
     ubifs->archive_end = -1;
 }
 
-xx_ubifs *xx_ubifs_create(xx_io_device *dev, int64_t base_address) {
+xx_ubifs *xx_ubifs_create(xx_io_device *dev, int64_t base_address)
+{
     xx_ubifs *ubifs = (xx_ubifs *)xx_mem_alloc(sizeof(*ubifs));
     if (ubifs) xx_ubifs_init(ubifs, dev, base_address);
     return ubifs;
 }
 
-void xx_ubifs_destroy(xx_ubifs *ubifs) {
+void xx_ubifs_destroy(xx_ubifs *ubifs)
+{
     if (!ubifs) return;
     if (ubifs->internal) {
         xx_ubifs_private_cleanup((xx_ubifs_private *)ubifs->internal);
@@ -1168,24 +1075,28 @@ void xx_ubifs_destroy(xx_ubifs *ubifs) {
     xx_format_cleanup_extra_parameters(&ubifs->format);
 }
 
-static void xx_ubifs_vtable_destroy(Abstractformat *self) {
+static void xx_ubifs_vtable_destroy(Abstractformat *self)
+{
     xx_ubifs_destroy((xx_ubifs *)self);
 }
 
-void xx_ubifs_free(xx_ubifs *ubifs) {
+void xx_ubifs_free(xx_ubifs *ubifs)
+{
     if (!ubifs) return;
     xx_ubifs_destroy(ubifs);
     xx_mem_free(ubifs);
 }
 
-bool xx_ubifs_check_is_valid(Abstractformat *self, xx_pd_struct *pd) {
+bool xx_ubifs_check_is_valid(Abstractformat *self, xx_pd_struct *pd)
+{
     xx_ubifs_private parsed;
     bool result = xx_ubifs_parse(self, &parsed, pd);
     xx_ubifs_private_cleanup(&parsed);
     return result;
 }
 
-bool xx_ubifs_handle_base_info(Abstractformat *self, xx_pd_struct *pd) {
+bool xx_ubifs_handle_base_info(Abstractformat *self, xx_pd_struct *pd)
+{
     xx_ubifs_private *parsed;
     xx_ubifs *ubifs = (xx_ubifs *)self;
     int64_t total_size;
@@ -1229,29 +1140,27 @@ bool xx_ubifs_handle_base_info(Abstractformat *self, xx_pd_struct *pd) {
     return true;
 }
 
-int64_t xx_ubifs_get_format_size(Abstractformat *self, xx_pd_struct *pd) {
-    if (!self ||
-        (!self->base_info_handled && !xx_format_handle_base_info(self, pd))) {
+int64_t xx_ubifs_get_format_size(Abstractformat *self, xx_pd_struct *pd)
+{
+    if (!self || (!self->base_info_handled && !xx_format_handle_base_info(self, pd))) {
         return -1;
     }
     return self->format_size;
 }
 
-uint64_t xx_ubifs_get_number_of_archive_records(Abstractformat *self,
-                                                xx_pd_struct *pd) {
-    if (!self ||
-        (!self->base_info_handled && !xx_format_handle_base_info(self, pd))) {
+uint64_t xx_ubifs_get_number_of_archive_records(Abstractformat *self, xx_pd_struct *pd)
+{
+    if (!self || (!self->base_info_handled && !xx_format_handle_base_info(self, pd))) {
         return 0U;
     }
     return ((xx_ubifs *)self)->number_of_records;
 }
 
-xx_archive_record_state *xx_ubifs_create_archive_records_reading(
-    Abstractformat *self, const xx_list_s *options, xx_pd_struct *pd) {
+xx_archive_record_state *xx_ubifs_create_archive_records_reading(Abstractformat *self, const xx_list_s *options, xx_pd_struct *pd)
+{
     xx_archive_record_state *state;
     xx_ubifs_archive_stream *stream;
-    if (!self || !self->device ||
-        (!self->base_info_handled && !xx_format_handle_base_info(self, pd))) {
+    if (!self || !self->device || (!self->base_info_handled && !xx_format_handle_base_info(self, pd))) {
         return NULL;
     }
     state = (xx_archive_record_state *)xx_mem_alloc(sizeof(*state));
@@ -1262,8 +1171,7 @@ xx_archive_record_state *xx_ubifs_create_archive_records_reading(
         return NULL;
     }
     xx_archive_record_state_init(state, self);
-    if (!xx_ubifs_copy_options(&state->options, options) ||
-        !xx_ubifs_parse(self, &stream->parsed, pd)) {
+    if (!xx_ubifs_copy_options(&state->options, options) || !xx_ubifs_parse(self, &stream->parsed, pd)) {
         xx_ubifs_archive_stream_free(stream);
         xx_archive_record_state_free(state);
         return NULL;
@@ -1272,28 +1180,22 @@ xx_archive_record_state *xx_ubifs_create_archive_records_reading(
     state->internal_state = stream;
     state->free_internal = xx_ubifs_archive_stream_free;
     state->total_records = (int64_t)stream->parsed.entry_count;
-    if (stream->parsed.entry_count != 0U &&
-        xx_ubifs_populate_record(&state->current_record,
-                                 &stream->parsed.entries[0])) {
+    if (stream->parsed.entry_count != 0U && xx_ubifs_populate_record(&state->current_record, &stream->parsed.entries[0])) {
         state->has_record = true;
         state->current_index = 0;
     }
     return state;
 }
 
-const xx_archive_record *xx_ubifs_get_current_archive_record(
-    Abstractformat *self, xx_archive_record_state *state) {
-    return self && state && state->format == self && state->has_record
-               ? &state->current_record
-               : NULL;
+const xx_archive_record *xx_ubifs_get_current_archive_record(Abstractformat *self, xx_archive_record_state *state)
+{
+    return self && state && state->format == self && state->has_record ? &state->current_record : NULL;
 }
 
-bool xx_ubifs_archive_record_move_to_next(Abstractformat *self,
-                                          xx_archive_record_state *state,
-                                          xx_pd_struct *pd) {
+bool xx_ubifs_archive_record_move_to_next(Abstractformat *self, xx_archive_record_state *state, xx_pd_struct *pd)
+{
     xx_ubifs_archive_stream *stream;
-    if (!self || !state || state->format != self || !state->has_record ||
-        !state->internal_state || (pd && xx_pd_is_stopped(pd))) {
+    if (!self || !state || state->format != self || !state->has_record || !state->internal_state || (pd && xx_pd_is_stopped(pd))) {
         return false;
     }
     stream = (xx_ubifs_archive_stream *)state->internal_state;
@@ -1304,8 +1206,7 @@ bool xx_ubifs_archive_record_move_to_next(Abstractformat *self,
         state->has_record = false;
         return false;
     }
-    if (!xx_ubifs_populate_record(&state->current_record,
-                                  &stream->parsed.entries[stream->index])) {
+    if (!xx_ubifs_populate_record(&state->current_record, &stream->parsed.entries[stream->index])) {
         state->has_record = false;
         return false;
     }
@@ -1313,9 +1214,8 @@ bool xx_ubifs_archive_record_move_to_next(Abstractformat *self,
     return true;
 }
 
-bool xx_ubifs_unpack_current_archive_record(Abstractformat *self,
-                                            xx_archive_record_state *state,
-                                            xx_pd_struct *pd) {
+bool xx_ubifs_unpack_current_archive_record(Abstractformat *self, xx_archive_record_state *state, xx_pd_struct *pd)
+{
     xx_ubifs_archive_stream *stream;
     const xx_ubifs_entry *entry;
     const xx_var *option;
@@ -1327,9 +1227,7 @@ bool xx_ubifs_unpack_current_archive_record(Abstractformat *self,
     bool result = false;
     bool created = false;
 
-    if (!self || !self->device || !state || state->format != self ||
-        !state->has_record || !state->internal_state ||
-        (pd && xx_pd_is_stopped(pd))) {
+    if (!self || !self->device || !state || state->format != self || !state->has_record || !state->internal_state || (pd && xx_pd_is_stopped(pd))) {
         return false;
     }
     stream = (xx_ubifs_archive_stream *)state->internal_state;
@@ -1349,30 +1247,23 @@ bool xx_ubifs_unpack_current_archive_record(Abstractformat *self,
             return false;
         }
         while (remaining != 0U && block <= XX_UBIFS_KEY_VALUE_MASK) {
-            const xx_ubifs_leaf *leaf = xx_ubifs_find_leaf(
-                &stream->parsed, entry->inum, XX_UBIFS_DATA_KEY, block);
-            if (leaf && xx_ubifs_position(self, &stream->parsed, leaf->lnum,
-                                          leaf->offs, leaf->len) < 0) {
+            const xx_ubifs_leaf *leaf = xx_ubifs_find_leaf(&stream->parsed, entry->inum, XX_UBIFS_DATA_KEY, block);
+            if (leaf && xx_ubifs_position(self, &stream->parsed, leaf->lnum, leaf->offs, leaf->len) < 0) {
                 return false;
             }
-            remaining -= remaining < XX_UBIFS_BLOCK_SIZE
-                             ? remaining
-                             : XX_UBIFS_BLOCK_SIZE;
+            remaining -= remaining < XX_UBIFS_BLOCK_SIZE ? remaining : XX_UBIFS_BLOCK_SIZE;
             ++block;
         }
         return true;
     }
-    if (option->type == XX_VAR_TYPE_STRING ||
-        option->type == XX_VAR_TYPE_STRING_VIEW) {
+    if (option->type == XX_VAR_TYPE_STRING || option->type == XX_VAR_TYPE_STRING_VIEW) {
         base = xx_var_get_str(option);
-    } else if (option->type == XX_VAR_TYPE_WSTRING ||
-               option->type == XX_VAR_TYPE_WSTRING_VIEW) {
+    } else if (option->type == XX_VAR_TYPE_WSTRING || option->type == XX_VAR_TYPE_WSTRING_VIEW) {
         owned_base = xx_str_unicode_to_utf8(xx_var_get_wstr(option));
         base = owned_base;
     }
     if (!base) goto cleanup;
-    if (base[0] && base[xx_str_len(base) - 1U] != '/' &&
-        base[xx_str_len(base) - 1U] != '\\') {
+    if (base[0] && base[xx_str_len(base) - 1U] != '/' && base[xx_str_len(base) - 1U] != '\\') {
         destination_path = xx_str_concat3(base, "/", name);
     } else {
         destination_path = xx_str_concat(base, name);
@@ -1392,8 +1283,7 @@ bool xx_ubifs_unpack_current_archive_record(Abstractformat *self,
     destination = xx_io_file_open(destination_path, "wb");
     created = destination != NULL;
     if (!destination) goto cleanup;
-    result =
-        xx_ubifs_extract_entry(self, &stream->parsed, entry, destination, pd);
+    result = xx_ubifs_extract_entry(self, &stream->parsed, entry, destination, pd);
     xx_io_close(destination);
     destination = NULL;
     if (!result && created) xx_rt_remove(destination_path);
@@ -1405,37 +1295,45 @@ cleanup:
     return result;
 }
 
-void xx_ubifs_free_archive_records_reading(Abstractformat *self,
-                                           xx_archive_record_state *state) {
+void xx_ubifs_free_archive_records_reading(Abstractformat *self, xx_archive_record_state *state)
+{
     (void)self;
     xx_archive_record_state_free(state);
 }
 
 /* --------------------------------------------------------- accessors --- */
 
-uint64_t xx_ubifs_get_number_of_records(const xx_ubifs *ubifs) {
+uint64_t xx_ubifs_get_number_of_records(const xx_ubifs *ubifs)
+{
     return ubifs ? ubifs->number_of_records : 0U;
 }
-uint64_t xx_ubifs_get_number_of_members(const xx_ubifs *ubifs) {
+uint64_t xx_ubifs_get_number_of_members(const xx_ubifs *ubifs)
+{
     return ubifs ? ubifs->number_of_members : 0U;
 }
-uint32_t xx_ubifs_get_leb_size(const xx_ubifs *ubifs) {
+uint32_t xx_ubifs_get_leb_size(const xx_ubifs *ubifs)
+{
     return ubifs ? ubifs->leb_size : 0U;
 }
-uint32_t xx_ubifs_get_leb_count(const xx_ubifs *ubifs) {
+uint32_t xx_ubifs_get_leb_count(const xx_ubifs *ubifs)
+{
     return ubifs ? ubifs->leb_cnt : 0U;
 }
-uint32_t xx_ubifs_get_format_version(const xx_ubifs *ubifs) {
+uint32_t xx_ubifs_get_format_version(const xx_ubifs *ubifs)
+{
     return ubifs ? ubifs->fmt_version : 0U;
 }
-uint16_t xx_ubifs_get_default_compression(const xx_ubifs *ubifs) {
+uint16_t xx_ubifs_get_default_compression(const xx_ubifs *ubifs)
+{
     return ubifs ? ubifs->default_compr : 0U;
 }
-int64_t xx_ubifs_get_archive_end(const xx_ubifs *ubifs) {
+int64_t xx_ubifs_get_archive_end(const xx_ubifs *ubifs)
+{
     return ubifs ? ubifs->archive_end : -1;
 }
 
-const char *xx_ubifs_compression_to_string(uint32_t compr_type) {
+const char *xx_ubifs_compression_to_string(uint32_t compr_type)
+{
     switch (compr_type) {
         case XX_UBIFS_COMPR_NONE: return "None";
         case XX_UBIFS_COMPR_LZO: return "LZO";

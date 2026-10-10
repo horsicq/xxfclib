@@ -83,27 +83,24 @@ enum {
 
 /* --- little-endian helpers and device access ----------------------------- */
 
-static bool vise_read_at(xx_io_device *device, int64_t offset, void *buffer,
-                         size_t size) {
+static bool vise_read_at(xx_io_device *device, int64_t offset, void *buffer, size_t size)
+{
     size_t done = 0U;
     const size_t io_capacity = xx_get_file_buffer_size();
-    if (!device || (!buffer && size != 0U) || offset < 0 ||
-        xx_io_seek64(device, offset, SEEK_SET) != 0)
-        return false;
+    if (!device || (!buffer && size != 0U) || offset < 0 || xx_io_seek64(device, offset, SEEK_SET) != 0) return false;
     while (done < size) {
         size_t request = size - done;
         if (request > io_capacity) request = io_capacity;
-        ssize_t amount = xx_io_read(device, (uint8_t *)buffer + done,
-                                    request);
+        ssize_t amount = xx_io_read(device, (uint8_t *)buffer + done, request);
         if (amount <= 0 || (size_t)amount > request) return false;
         done += (size_t)amount;
     }
     return true;
 }
 
-static bool vise_range(int64_t limit, int64_t offset, int64_t size) {
-    return limit >= 0 && offset >= 0 && size >= 0 && offset <= limit &&
-           size <= limit - offset;
+static bool vise_range(int64_t limit, int64_t offset, int64_t size)
+{
+    return limit >= 0 && offset >= 0 && size >= 0 && offset <= limit && size <= limit - offset;
 }
 
 /* ======================================================================== */
@@ -118,12 +115,12 @@ typedef struct vise_huff_s {
 } vise_huff;
 
 typedef struct vise_inflate_s {
-    xx_io_device *device;       /* stream source, or */
-    const uint8_t *memory;      /* an in-memory stream */
-    int64_t next_offset;        /* device offset of the next chunk */
-    uint64_t packed;            /* stream length */
-    uint64_t unfetched;         /* stream bytes not yet buffered */
-    size_t chunk_size;          /* next bounded raw input read */
+    xx_io_device *device;  /* stream source, or */
+    const uint8_t *memory; /* an in-memory stream */
+    int64_t next_offset;   /* device offset of the next chunk */
+    uint64_t packed;       /* stream length */
+    uint64_t unfetched;    /* stream bytes not yet buffered */
+    size_t chunk_size;     /* next bounded raw input read */
     size_t io_capacity;
     /* Encoded 16-bit word state; spans arbitrary I/O chunk boundaries. */
     uint8_t word[2];
@@ -132,16 +129,16 @@ typedef struct vise_inflate_s {
     size_t buf_len;
     uint64_t bitbuf;
     unsigned bitcnt;
-    uint64_t consumed;          /* stream bits consumed */
+    uint64_t consumed; /* stream bits consumed */
 
-    xx_io_device *sink;         /* optional device sink */
-    uint8_t *out_memory;        /* optional memory sink */
+    xx_io_device *sink;  /* optional device sink */
+    uint8_t *out_memory; /* optional memory sink */
     uint64_t out_capacity;
     uint64_t produced;
-    uint64_t limit;             /* never produce more than this */
+    uint64_t limit; /* never produce more than this */
     size_t wpos;
     bool sink_failed;
-    bool track_crc;             /* keep a CRC-32 of the output */
+    bool track_crc; /* keep a CRC-32 of the output */
     uint32_t crc;
     xx_pd_struct *pd;
 
@@ -152,32 +149,22 @@ typedef struct vise_inflate_s {
     uint8_t *buffer;
 } vise_inflate;
 
-static const uint16_t vise_len_base[29] = {
-    3, 4, 5, 6, 7, 8, 9, 10, 11, 13, 15, 17, 19, 23, 27, 31,
-    35, 43, 51, 59, 67, 83, 99, 115, 131, 163, 195, 227, 258};
-static const uint8_t vise_len_extra[29] = {
-    0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 1, 1, 2, 2, 2, 2,
-    3, 3, 3, 3, 4, 4, 4, 4, 5, 5, 5, 5, 0};
-static const uint16_t vise_dist_base[30] = {
-    1, 2, 3, 4, 5, 7, 9, 13, 17, 25, 33, 49, 65, 97, 129, 193,
-    257, 385, 513, 769, 1025, 1537, 2049, 3073, 4097, 6145,
-    8193, 12289, 16385, 24577};
-static const uint8_t vise_dist_extra[30] = {
-    0, 0, 0, 0, 1, 1, 2, 2, 3, 3, 4, 4, 5, 5, 6, 6,
-    7, 7, 8, 8, 9, 9, 10, 10, 11, 11, 12, 12, 13, 13};
-static const uint8_t vise_clen_order[19] = {
-    16, 17, 18, 0, 8, 7, 9, 6, 10, 5, 11, 4, 12, 3, 13, 2, 14, 1, 15};
+static const uint16_t vise_len_base[29] = {3, 4, 5, 6, 7, 8, 9, 10, 11, 13, 15, 17, 19, 23, 27, 31, 35, 43, 51, 59, 67, 83, 99, 115, 131, 163, 195, 227, 258};
+static const uint8_t vise_len_extra[29] = {0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 1, 1, 2, 2, 2, 2, 3, 3, 3, 3, 4, 4, 4, 4, 5, 5, 5, 5, 0};
+static const uint16_t vise_dist_base[30] = {1,   2,   3,   4,   5,   7,    9,    13,   17,   25,   33,   49,   65,    97,    129,
+                                            193, 257, 385, 513, 769, 1025, 1537, 2049, 3073, 4097, 6145, 8193, 12289, 16385, 24577};
+static const uint8_t vise_dist_extra[30] = {0, 0, 0, 0, 1, 1, 2, 2, 3, 3, 4, 4, 5, 5, 6, 6, 7, 7, 8, 8, 9, 9, 10, 10, 11, 11, 12, 12, 13, 13};
+static const uint8_t vise_clen_order[19] = {16, 17, 18, 0, 8, 7, 9, 6, 10, 5, 11, 4, 12, 3, 13, 2, 14, 1, 15};
 
 /* The writer emits 16-bit words high byte first; swapping each pair turns
  * the stream back into an ordinary LSB-first Deflate bit stream. */
-static bool vise_fetch(vise_inflate *z) {
+static bool vise_fetch(vise_inflate *z)
+{
     size_t chunk;
     if (z->unfetched == 0U) return false;
-    chunk = z->unfetched > z->chunk_size ? z->chunk_size
-                                         : (size_t)z->unfetched;
+    chunk = z->unfetched > z->chunk_size ? z->chunk_size : (size_t)z->unfetched;
     if (z->memory) {
-        xx_mem_copy(z->buffer, z->memory + (size_t)(z->packed - z->unfetched),
-                    chunk);
+        xx_mem_copy(z->buffer, z->memory + (size_t)(z->packed - z->unfetched), chunk);
     } else if (!vise_read_at(z->device, z->next_offset, z->buffer, chunk)) {
         z->unfetched = 0U;
         return false;
@@ -194,7 +181,8 @@ static bool vise_fetch(vise_inflate *z) {
 }
 
 /* The window and the input buffer need no clearing. */
-static vise_inflate *vise_inflate_new(uint64_t packed) {
+static vise_inflate *vise_inflate_new(uint64_t packed)
+{
     size_t capacity = xx_get_file_buffer_size();
     vise_inflate *z;
     if (packed != 0U && packed < capacity) capacity = (size_t)packed;
@@ -210,12 +198,14 @@ static vise_inflate *vise_inflate_new(uint64_t packed) {
     return z;
 }
 
-static int vise_raw_byte(vise_inflate *z) {
+static int vise_raw_byte(vise_inflate *z)
+{
     if (z->buf_pos >= z->buf_len && !vise_fetch(z)) return -1;
     return z->buffer[z->buf_pos++];
 }
 
-static int vise_word_byte(vise_inflate *z) {
+static int vise_word_byte(vise_inflate *z)
+{
     if (z->word_pos >= z->word_len) {
         int first = vise_raw_byte(z), second;
         if (first < 0) return -1;
@@ -228,7 +218,8 @@ static int vise_word_byte(vise_inflate *z) {
     return z->word[z->word_pos++];
 }
 
-static void vise_refill(vise_inflate *z) {
+static void vise_refill(vise_inflate *z)
+{
     while (z->bitcnt <= 56U) {
         int byte = vise_word_byte(z);
         if (byte < 0) break;
@@ -237,14 +228,14 @@ static void vise_refill(vise_inflate *z) {
     }
 }
 
-static bool vise_bits(vise_inflate *z, unsigned count, uint32_t *value) {
+static bool vise_bits(vise_inflate *z, unsigned count, uint32_t *value)
+{
     if (count > 32U) return false;
     if (z->bitcnt < count) {
         vise_refill(z);
         if (z->bitcnt < count) return false;
     }
-    *value = count ? (uint32_t)(z->bitbuf & ((UINT64_C(1) << count) - 1U))
-                   : 0U;
+    *value = count ? (uint32_t)(z->bitbuf & ((UINT64_C(1) << count) - 1U)) : 0U;
     z->bitbuf >>= count;
     z->bitcnt -= count;
     z->consumed += count;
@@ -252,29 +243,29 @@ static bool vise_bits(vise_inflate *z, unsigned count, uint32_t *value) {
 }
 
 /* Byte alignment in the word writer is alignment to the next word. */
-static bool vise_align_word(vise_inflate *z) {
+static bool vise_align_word(vise_inflate *z)
+{
     uint32_t ignored;
     unsigned drop = (unsigned)((16U - (unsigned)(z->consumed & 15U)) & 15U);
     return vise_bits(z, drop, &ignored);
 }
 
-static bool vise_flush(vise_inflate *z, size_t size) {
+static bool vise_flush(vise_inflate *z, size_t size)
+{
     if (size == 0U) return true;
     if (z->track_crc) z->crc = xx_crc32_calc(z->crc, z->window, size);
     if (z->out_memory) {
         uint64_t start = z->produced - size;
-        if (start > z->out_capacity || size > z->out_capacity - start)
-            return false;
+        if (start > z->out_capacity || size > z->out_capacity - start) return false;
         xx_mem_copy(z->out_memory + (size_t)start, z->window, size);
     }
     if (z->sink) {
         size_t done = 0U;
-    const size_t io_capacity = xx_get_file_buffer_size();
+        const size_t io_capacity = xx_get_file_buffer_size();
         while (done < size) {
-        size_t request = size - done;
-        if (request > io_capacity) request = io_capacity;
-            ssize_t amount = xx_io_write(z->sink, z->window + done,
-                                         request);
+            size_t request = size - done;
+            if (request > io_capacity) request = io_capacity;
+            ssize_t amount = xx_io_write(z->sink, z->window + done, request);
             if (amount <= 0 || (size_t)amount > request) {
                 z->sink_failed = true;
                 return false;
@@ -285,7 +276,8 @@ static bool vise_flush(vise_inflate *z, size_t size) {
     return true;
 }
 
-static bool vise_put(vise_inflate *z, uint8_t value) {
+static bool vise_put(vise_inflate *z, uint8_t value)
+{
     if (z->produced >= z->limit) return false;
     z->window[z->wpos++] = value;
     ++z->produced;
@@ -296,7 +288,8 @@ static bool vise_put(vise_inflate *z, uint8_t value) {
     return true;
 }
 
-static uint32_t vise_reverse(uint32_t code, unsigned length) {
+static uint32_t vise_reverse(uint32_t code, unsigned length)
+{
     uint32_t result = 0U;
     unsigned index;
     for (index = 0U; index < length; ++index) {
@@ -309,7 +302,8 @@ static uint32_t vise_reverse(uint32_t code, unsigned length) {
 /* Builds canonical decoding tables.  Returns a negative value for an
  * over-subscribed set, zero for a complete one and the number of unused
  * code slots for an incomplete one. */
-static int vise_build(vise_huff *h, const uint8_t *lengths, unsigned n) {
+static int vise_build(vise_huff *h, const uint8_t *lengths, unsigned n)
+{
     uint16_t offsets[VISE_MAX_BITS + 2U];
     unsigned symbol, length, index;
     uint32_t code;
@@ -328,11 +322,9 @@ static int vise_build(vise_huff *h, const uint8_t *lengths, unsigned n) {
         if (left < 0) return -1;
     }
     offsets[1] = 0U;
-    for (length = 1U; length < VISE_MAX_BITS; ++length)
-        offsets[length + 1U] = (uint16_t)(offsets[length] + h->count[length]);
+    for (length = 1U; length < VISE_MAX_BITS; ++length) offsets[length + 1U] = (uint16_t)(offsets[length] + h->count[length]);
     for (symbol = 0U; symbol < n; ++symbol)
-        if (lengths[symbol] != 0U)
-            h->symbol[offsets[lengths[symbol]]++] = (uint16_t)symbol;
+        if (lengths[symbol] != 0U) h->symbol[offsets[lengths[symbol]]++] = (uint16_t)symbol;
     code = 0U;
     index = 0U;
     for (length = 1U; length <= VISE_MAX_BITS; ++length) {
@@ -340,9 +332,7 @@ static int vise_build(vise_huff *h, const uint8_t *lengths, unsigned n) {
         for (k = 0U; k < h->count[length]; ++k, ++index, ++code) {
             if (length <= VISE_FAST_BITS) {
                 uint32_t slot = vise_reverse(code, length);
-                for (; slot < (1U << VISE_FAST_BITS); slot += 1U << length)
-                    h->fast[slot] =
-                        (uint16_t)((length << 12U) | h->symbol[index]);
+                for (; slot < (1U << VISE_FAST_BITS); slot += 1U << length) h->fast[slot] = (uint16_t)((length << 12U) | h->symbol[index]);
             }
         }
         code <<= 1U;
@@ -350,8 +340,8 @@ static int vise_build(vise_huff *h, const uint8_t *lengths, unsigned n) {
     return left;
 }
 
-static bool vise_decode_symbol(vise_inflate *z, const vise_huff *h,
-                               unsigned *symbol) {
+static bool vise_decode_symbol(vise_inflate *z, const vise_huff *h, unsigned *symbol)
+{
     uint16_t entry;
     uint32_t code = 0U, first = 0U, index = 0U;
     unsigned length;
@@ -385,7 +375,8 @@ static bool vise_decode_symbol(vise_inflate *z, const vise_huff *h,
     return false;
 }
 
-static bool vise_codes(vise_inflate *z) {
+static bool vise_codes(vise_inflate *z)
+{
     for (;;) {
         unsigned symbol;
         if (!vise_decode_symbol(z, &z->lit, &symbol)) return false;
@@ -399,34 +390,31 @@ static bool vise_codes(vise_inflate *z) {
             if (symbol >= 29U) return false;
             if (!vise_bits(z, vise_len_extra[symbol], &extra)) return false;
             length = vise_len_base[symbol] + extra;
-            if (!vise_decode_symbol(z, &z->dist, &symbol) || symbol >= 30U)
-                return false;
+            if (!vise_decode_symbol(z, &z->dist, &symbol) || symbol >= 30U) return false;
             if (!vise_bits(z, vise_dist_extra[symbol], &extra)) return false;
             distance = vise_dist_base[symbol] + extra;
             if ((uint64_t)distance > z->produced) return false;
             while (length-- != 0U) {
-                uint8_t value = z->window[(z->wpos - distance) &
-                                          VISE_WINDOW_MASK];
+                uint8_t value = z->window[(z->wpos - distance) & VISE_WINDOW_MASK];
                 if (!vise_put(z, value)) return false;
             }
         }
     }
 }
 
-static bool vise_stored(vise_inflate *z) {
+static bool vise_stored(vise_inflate *z)
+{
     uint32_t length, inverse, value;
-    if (!vise_align_word(z) || !vise_bits(z, 16U, &length) ||
-        !vise_bits(z, 16U, &inverse) || (length ^ inverse) != 0xffffU)
-        return false;
+    if (!vise_align_word(z) || !vise_bits(z, 16U, &length) || !vise_bits(z, 16U, &inverse) || (length ^ inverse) != 0xffffU) return false;
     while (length-- != 0U) {
-        if (!vise_bits(z, 8U, &value) || !vise_put(z, (uint8_t)value))
-            return false;
+        if (!vise_bits(z, 8U, &value) || !vise_put(z, (uint8_t)value)) return false;
     }
     /* The writer resumes on a word boundary after the stored bytes. */
     return vise_align_word(z);
 }
 
-static bool vise_fixed(vise_inflate *z) {
+static bool vise_fixed(vise_inflate *z)
+{
     unsigned symbol;
     for (symbol = 0U; symbol < 144U; ++symbol) z->lengths[symbol] = 8U;
     for (; symbol < 256U; ++symbol) z->lengths[symbol] = 9U;
@@ -437,13 +425,12 @@ static bool vise_fixed(vise_inflate *z) {
     return vise_build(&z->dist, z->lengths, 32U) == 0;
 }
 
-static bool vise_dynamic(vise_inflate *z) {
+static bool vise_dynamic(vise_inflate *z)
+{
     uint32_t hlit, hdist, hclen, value;
     unsigned index = 0U, symbol;
     int result;
-    if (!vise_bits(z, 5U, &hlit) || !vise_bits(z, 5U, &hdist) ||
-        !vise_bits(z, 4U, &hclen))
-        return false;
+    if (!vise_bits(z, 5U, &hlit) || !vise_bits(z, 5U, &hdist) || !vise_bits(z, 4U, &hclen)) return false;
     hlit += 257U;
     hdist += 1U;
     hclen += 4U;
@@ -479,28 +466,23 @@ static bool vise_dynamic(vise_inflate *z) {
     }
     if (z->lengths[256] == 0U) return false;
     result = vise_build(&z->lit, z->lengths, hlit);
-    if (result < 0 ||
-        (result > 0 && hlit - z->lit.count[0] != 1U))
-        return false;
+    if (result < 0 || (result > 0 && hlit - z->lit.count[0] != 1U)) return false;
     result = vise_build(&z->dist, z->lengths + hlit, hdist);
-    if (result < 0 ||
-        (result > 0 && hdist - z->dist.count[0] != 1U))
-        return false;
+    if (result < 0 || (result > 0 && hdist - z->dist.count[0] != 1U)) return false;
     return true;
 }
 
 /* Runs one stream to its final block and checks the framing: the stream is
  * padded to a word boundary and, after a final stored block, carries one
  * more zero word. */
-static bool vise_inflate_run(vise_inflate *z) {
+static bool vise_inflate_run(vise_inflate *z)
+{
     uint32_t final_block = 0U, type = 0U, value;
     uint64_t remaining;
     unsigned blocks = 0U;
     while (!final_block) {
-        if (z->pd && (++blocks & 63U) == 0U && xx_pd_is_stopped(z->pd))
-            return false;
-        if (!vise_bits(z, 1U, &final_block) || !vise_bits(z, 2U, &type))
-            return false;
+        if (z->pd && (++blocks & 63U) == 0U && xx_pd_is_stopped(z->pd)) return false;
+        if (!vise_bits(z, 1U, &final_block) || !vise_bits(z, 2U, &type)) return false;
         if (type == 0U) {
             if (!vise_stored(z)) return false;
         } else if (type == 1U) {
@@ -526,16 +508,12 @@ static bool vise_inflate_run(vise_inflate *z) {
 /* Decodes the stream at [offset, offset + packed) of @p device.  With
  * @p expected >= 0 the stream must produce exactly that many bytes;
  * otherwise it may produce up to @p cap bytes and @p produced reports them. */
-static bool vise_decode_device(xx_io_device *device, int64_t offset,
-                               uint64_t packed, int64_t expected, uint64_t cap,
-                               xx_io_device *sink, uint64_t *produced,
-                               uint64_t *fetched, uint32_t *crc,
-                               xx_pd_struct *pd) {
+static bool vise_decode_device(xx_io_device *device, int64_t offset, uint64_t packed, int64_t expected, uint64_t cap, xx_io_device *sink, uint64_t *produced,
+                               uint64_t *fetched, uint32_t *crc, xx_pd_struct *pd)
+{
     vise_inflate *z;
     bool ok;
-    if (!device || offset < 0 || packed < 2U || (packed & 1U) != 0U ||
-        packed > (uint64_t)INT64_MAX / 8U)
-        return false;
+    if (!device || offset < 0 || packed < 2U || (packed & 1U) != 0U || packed > (uint64_t)INT64_MAX / 8U) return false;
     z = vise_inflate_new(packed);
     if (!z) return false;
     z->device = device;
@@ -553,17 +531,12 @@ static bool vise_decode_device(xx_io_device *device, int64_t offset,
     return ok;
 }
 
-bool xx_installer_vise_windows_decode_memory(const uint8_t *packed,
-                                             size_t packed_size,
-                                             uint8_t *output,
-                                             size_t output_size,
-                                             size_t *written) {
+bool xx_installer_vise_windows_decode_memory(const uint8_t *packed, size_t packed_size, uint8_t *output, size_t output_size, size_t *written)
+{
     vise_inflate *z;
     bool ok;
     if (written) *written = 0U;
-    if (!packed || packed_size < 2U || (packed_size & 1U) != 0U ||
-        (uint64_t)packed_size > (uint64_t)INT64_MAX / 8U)
-        return false;
+    if (!packed || packed_size < 2U || (packed_size & 1U) != 0U || (uint64_t)packed_size > (uint64_t)INT64_MAX / 8U) return false;
     z = vise_inflate_new(packed_size);
     if (!z) return false;
     z->memory = packed;
@@ -581,14 +554,14 @@ bool xx_installer_vise_windows_decode_memory(const uint8_t *packed,
 /* ======================================================================== */
 
 typedef struct vise_layout_s {
-    int64_t total;          /* bytes in the view */
-    int64_t header;         /* "ESIV" header */
-    int64_t wrapper;        /* "SIVM" wrapper, or -1 */
+    int64_t total;   /* bytes in the view */
+    int64_t header;  /* "ESIV" header */
+    int64_t wrapper; /* "SIVM" wrapper, or -1 */
     int64_t wrapper_size;
-    int64_t footer;         /* "ESIV" footer, or -1 */
-    int64_t end;            /* end of the container data */
-    int64_t image_end;      /* end of the section raw data, clamped */
-    int64_t cert_offset;    /* Authenticode block, or -1 */
+    int64_t footer;      /* "ESIV" footer, or -1 */
+    int64_t end;         /* end of the container data */
+    int64_t image_end;   /* end of the section raw data, clamped */
+    int64_t cert_offset; /* Authenticode block, or -1 */
     int64_t cert_size;
 } vise_layout;
 
@@ -602,9 +575,9 @@ typedef struct vise_member_s {
     uint16_t dos_date;
     uint16_t dos_time;
     uint8_t kind;
-    bool has_crc;           /* crc is the stored CRC-32 of the output */
+    bool has_crc; /* crc is the stored CRC-32 of the output */
     uint32_t crc;
-    uint32_t decoded_crc;   /* CRC-32 seen while validating */
+    uint32_t decoded_crc; /* CRC-32 seen while validating */
 } vise_member;
 
 typedef struct vise_parsed_s {
@@ -614,34 +587,28 @@ typedef struct vise_parsed_s {
     size_t index;
     vise_layout layout;
     int64_t format_size;
-    uint64_t budget;        /* validation output still allowed */
+    uint64_t budget; /* validation output still allowed */
 } vise_parsed;
 
 /* --- executable stub and container location ------------------------------ */
 
-static bool vise_is_tag(const uint8_t *bytes, const char *tag) {
-    return bytes[0] == (uint8_t)tag[0] && bytes[1] == (uint8_t)tag[1] &&
-           bytes[2] == (uint8_t)tag[2] && bytes[3] == (uint8_t)tag[3];
+static bool vise_is_tag(const uint8_t *bytes, const char *tag)
+{
+    return bytes[0] == (uint8_t)tag[0] && bytes[1] == (uint8_t)tag[1] && bytes[2] == (uint8_t)tag[2] && bytes[3] == (uint8_t)tag[3];
 }
 
 /* The pointer in a footer names the header, or the SIVM wrapper in front of
  * it.  Returns the header offset or -1. */
-static int64_t vise_follow_pointer(xx_io_device *device, int64_t base,
-                                   int64_t total, int64_t pointer,
-                                   int64_t footer, int64_t *wrapper,
-                                   int64_t *wrapper_size) {
+static int64_t vise_follow_pointer(xx_io_device *device, int64_t base, int64_t total, int64_t pointer, int64_t footer, int64_t *wrapper, int64_t *wrapper_size)
+{
     uint8_t head[12];
-    if (pointer < 0x40 || !vise_range(total, pointer, 12) ||
-        pointer + VISE_HEADER_SIZE > footer ||
-        !vise_read_at(device, base + pointer, head, sizeof(head)))
-        return -1;
+    if (pointer < 0x40 || !vise_range(total, pointer, 12) || pointer + VISE_HEADER_SIZE > footer || !vise_read_at(device, base + pointer, head, sizeof(head))) return -1;
     if (vise_is_tag(head, "ESIV")) {
         *wrapper = -1;
         *wrapper_size = 0;
         return pointer;
     }
-    if (vise_is_tag(head, "SIVM") && vise_is_tag(head + 8, "ESIV") &&
-        pointer + VISE_WRAPPER_SIZE + VISE_HEADER_SIZE <= footer) {
+    if (vise_is_tag(head, "SIVM") && vise_is_tag(head + 8, "ESIV") && pointer + VISE_WRAPPER_SIZE + VISE_HEADER_SIZE <= footer) {
         *wrapper = pointer;
         *wrapper_size = (int64_t)xx_data_get_u32(head + 4, 4, 0, false);
         return pointer + VISE_WRAPPER_SIZE;
@@ -649,7 +616,8 @@ static int64_t vise_follow_pointer(xx_io_device *device, int64_t base,
     return -1;
 }
 
-static bool vise_locate(Abstractformat *format, vise_layout *layout) {
+static bool vise_locate(Abstractformat *format, vise_layout *layout)
+{
     uint8_t dos[0x40];
     uint8_t nt[24];
     uint8_t optional[256];
@@ -659,8 +627,7 @@ static bool vise_locate(Abstractformat *format, vise_layout *layout) {
     int64_t base, total, lfanew, table, overlay = 0;
     uint32_t count, optional_size, index;
     size_t optional_read;
-    if (!format || !format->device || format->base_address < 0 || !layout)
-        return false;
+    if (!format || !format->device || format->base_address < 0 || !layout) return false;
     device = format->device;
     base = format->base_address;
     total = xx_io_total_size(device);
@@ -674,56 +641,38 @@ static bool vise_locate(Abstractformat *format, vise_layout *layout) {
     layout->footer = -1;
     layout->cert_offset = -1;
 
-    if (!vise_read_at(device, base, dos, sizeof(dos)) || dos[0] != 'M' ||
-        dos[1] != 'Z')
-        return false;
+    if (!vise_read_at(device, base, dos, sizeof(dos)) || dos[0] != 'M' || dos[1] != 'Z') return false;
     lfanew = (int64_t)xx_data_get_u32(dos + 0x3c, 4, 0, false);
-    if (lfanew < 4 || lfanew > VISE_MAX_LFANEW ||
-        !vise_range(total, lfanew, (int64_t)sizeof(nt)) ||
-        !vise_read_at(device, base + lfanew, nt, sizeof(nt)))
-        return false;
+    if (lfanew < 4 || lfanew > VISE_MAX_LFANEW || !vise_range(total, lfanew, (int64_t)sizeof(nt)) || !vise_read_at(device, base + lfanew, nt, sizeof(nt))) return false;
     /* Older 16-bit NE launchers have no PE section table. Their terminal
      * ESIV footer points directly at the package header, which is enough to
      * locate and validate the same VISE payload without interpreting NE code. */
     if (nt[0] == 'N' && nt[1] == 'E') {
         uint8_t footer[VISE_FOOTER_SIZE];
         int64_t at = total - VISE_FOOTER_SIZE;
-        if (!vise_range(total, at, VISE_FOOTER_SIZE) ||
-            !vise_read_at(device, base + at, footer, sizeof(footer)) ||
-            !vise_is_tag(footer, "ESIV"))
-            return false;
-        layout->header = vise_follow_pointer(device, base, total,
-            (int64_t)xx_data_get_u32(footer + 4U, 4, 0, false), at,
-            &layout->wrapper, &layout->wrapper_size);
-        if (layout->header < 0 ||
-            !vise_read_at(device, base + layout->header, head, sizeof(head)) ||
-            !vise_is_tag(head, "ESIV") || xx_data_get_u32(head + 8U, 4, 0, false) != 1U)
+        if (!vise_range(total, at, VISE_FOOTER_SIZE) || !vise_read_at(device, base + at, footer, sizeof(footer)) || !vise_is_tag(footer, "ESIV")) return false;
+        layout->header = vise_follow_pointer(device, base, total, (int64_t)xx_data_get_u32(footer + 4U, 4, 0, false), at, &layout->wrapper, &layout->wrapper_size);
+        if (layout->header < 0 || !vise_read_at(device, base + layout->header, head, sizeof(head)) || !vise_is_tag(head, "ESIV") ||
+            xx_data_get_u32(head + 8U, 4, 0, false) != 1U)
             return false;
         layout->image_end = layout->header;
         layout->footer = at;
         layout->end = at;
         return true;
     }
-    if (nt[0] != 'P' || nt[1] != 'E' || nt[2] != 0U || nt[3] != 0U)
-        return false;
+    if (nt[0] != 'P' || nt[1] != 'E' || nt[2] != 0U || nt[3] != 0U) return false;
     count = xx_data_get_u16(nt + 6, 2, 0, false);
     optional_size = xx_data_get_u16(nt + 20, 2, 0, false);
-    if (count == 0U || count > VISE_MAX_SECTIONS ||
-        optional_size > VISE_MAX_OPTIONAL)
-        return false;
+    if (count == 0U || count > VISE_MAX_SECTIONS || optional_size > VISE_MAX_OPTIONAL) return false;
     table = lfanew + 24 + (int64_t)optional_size;
     if (!vise_range(total, table, (int64_t)count * 40)) return false;
 
     /* The security directory is a file offset, not an RVA. */
-    optional_read = optional_size < sizeof(optional) ? optional_size
-                                                     : sizeof(optional);
-    if (optional_read >= 2U &&
-        vise_read_at(device, base + lfanew + 24, optional, optional_read)) {
+    optional_read = optional_size < sizeof(optional) ? optional_size : sizeof(optional);
+    if (optional_read >= 2U && vise_read_at(device, base + lfanew + 24, optional, optional_read)) {
         uint16_t magic = xx_data_get_u16(optional, 2, 0, false);
-        size_t directories = magic == 0x10bU ? 96U
-                             : magic == 0x20bU ? 112U : 0U;
-        if (directories != 0U && optional_read >= directories + 40U &&
-            xx_data_get_u32(optional + directories - 4U, 4, 0, false) >= 5U) {
+        size_t directories = magic == 0x10bU ? 96U : magic == 0x20bU ? 112U : 0U;
+        if (directories != 0U && optional_read >= directories + 40U && xx_data_get_u32(optional + directories - 4U, 4, 0, false) >= 5U) {
             int64_t offset = (int64_t)xx_data_get_u32(optional + directories + 32U, 4, 0, false);
             int64_t size = (int64_t)xx_data_get_u32(optional + directories + 36U, 4, 0, false);
             if (size >= 8 && offset >= 0x40 && vise_range(total, offset, size)) {
@@ -735,8 +684,7 @@ static bool vise_locate(Abstractformat *format, vise_layout *layout) {
 
     sections = (uint8_t *)xx_mem_alloc((size_t)count * 40U);
     if (!sections) return false;
-    if (!vise_read_at(device, base + table, sections, (size_t)count * 40U))
-        goto fail;
+    if (!vise_read_at(device, base + table, sections, (size_t)count * 40U)) goto fail;
     for (index = 0U; index < count; ++index) {
         const uint8_t *row = sections + (size_t)index * 40U;
         int64_t raw_size = (int64_t)xx_data_get_u32(row + 16, 4, 0, false);
@@ -749,9 +697,7 @@ static bool vise_locate(Abstractformat *format, vise_layout *layout) {
     /* 1. The container at the overlay. */
     if (overlay >= 0x40 && vise_range(total, overlay, VISE_HEADER_SIZE)) {
         uint8_t tag[4];
-        if (vise_read_at(device, base + overlay, tag, sizeof(tag)) &&
-            vise_is_tag(tag, "ESIV"))
-            layout->header = overlay;
+        if (vise_read_at(device, base + overlay, tag, sizeof(tag)) && vise_is_tag(tag, "ESIV")) layout->header = overlay;
     }
     /* 2. The container in a section, behind its SIVM wrapper. */
     for (index = 0U; layout->header < 0 && index < count; ++index) {
@@ -760,16 +706,11 @@ static bool vise_locate(Abstractformat *format, vise_layout *layout) {
         int64_t raw_offset = (int64_t)xx_data_get_u32(row + 20, 4, 0, false);
         uint8_t wrap[12];
         int64_t size;
-        if (raw_size < VISE_WRAPPER_SIZE + VISE_HEADER_SIZE +
-                           VISE_FOOTER_SIZE ||
-            raw_offset < 0x40 || !vise_range(total, raw_offset, 12) ||
-            !vise_read_at(device, base + raw_offset, wrap, sizeof(wrap)) ||
-            !vise_is_tag(wrap, "SIVM") || !vise_is_tag(wrap + 8, "ESIV"))
+        if (raw_size < VISE_WRAPPER_SIZE + VISE_HEADER_SIZE + VISE_FOOTER_SIZE || raw_offset < 0x40 || !vise_range(total, raw_offset, 12) ||
+            !vise_read_at(device, base + raw_offset, wrap, sizeof(wrap)) || !vise_is_tag(wrap, "SIVM") || !vise_is_tag(wrap + 8, "ESIV"))
             continue;
         size = (int64_t)xx_data_get_u32(wrap + 4, 4, 0, false);
-        if (size < VISE_WRAPPER_SIZE + VISE_HEADER_SIZE ||
-            !vise_range(total, raw_offset, size + VISE_FOOTER_SIZE))
-            continue;
+        if (size < VISE_WRAPPER_SIZE + VISE_HEADER_SIZE || !vise_range(total, raw_offset, size + VISE_FOOTER_SIZE)) continue;
         layout->header = raw_offset + VISE_WRAPPER_SIZE;
         layout->wrapper = raw_offset;
         layout->wrapper_size = size;
@@ -778,11 +719,8 @@ static bool vise_locate(Abstractformat *format, vise_layout *layout) {
     if (layout->header < 0) {
         uint8_t *tail;
         uint8_t footer[VISE_FOOTER_SIZE]; /* complete protocol frame */
-        int64_t tail_end = layout->cert_offset >= 0 &&
-                                   layout->cert_offset >= overlay
-                               ? layout->cert_offset : total;
-        int64_t tail_start = tail_end > VISE_TAIL_PROBE
-                                 ? tail_end - VISE_TAIL_PROBE : 0;
+        int64_t tail_end = layout->cert_offset >= 0 && layout->cert_offset >= overlay ? layout->cert_offset : total;
+        int64_t tail_start = tail_end > VISE_TAIL_PROBE ? tail_end - VISE_TAIL_PROBE : 0;
         size_t size = (size_t)(tail_end - tail_start);
         size_t capacity = xx_get_file_buffer_size(), checked = 0U;
         bool readable = true;
@@ -794,8 +732,10 @@ static bool vise_locate(Abstractformat *format, vise_layout *layout) {
             while (checked < size) {
                 size_t chunk = size - checked;
                 if (chunk > capacity) chunk = capacity;
-                if (!vise_read_at(device, base + tail_start + (int64_t)checked,
-                                  tail, chunk)) { readable = false; break; }
+                if (!vise_read_at(device, base + tail_start + (int64_t)checked, tail, chunk)) {
+                    readable = false;
+                    break;
+                }
                 checked += chunk;
             }
             if (readable) {
@@ -803,17 +743,17 @@ static bool vise_locate(Abstractformat *format, vise_layout *layout) {
                 while (starts != 0U && layout->header < 0) {
                     size_t chunk = starts < capacity ? starts : capacity;
                     size_t first = starts - chunk, at = chunk;
-                    if (!vise_read_at(device, base + tail_start + (int64_t)first,
-                                      tail, chunk)) break;
+                    if (!vise_read_at(device, base + tail_start + (int64_t)first, tail, chunk)) break;
                     while (at-- != 0U) {
                         int64_t header, position = tail_start + (int64_t)(first + at);
                         if (tail[at] != 'E') continue;
-                        if (!vise_read_at(device, base + position, footer,
-                                          sizeof(footer))) { readable = false; break; }
+                        if (!vise_read_at(device, base + position, footer, sizeof(footer))) {
+                            readable = false;
+                            break;
+                        }
                         if (!vise_is_tag(footer, "ESIV")) continue;
-                        header = vise_follow_pointer(
-                            device, base, total, (int64_t)xx_data_get_u32(footer + 4U, 4, 0, false),
-                            position, &layout->wrapper, &layout->wrapper_size);
+                        header = vise_follow_pointer(device, base, total, (int64_t)xx_data_get_u32(footer + 4U, 4, 0, false), position, &layout->wrapper,
+                                                     &layout->wrapper_size);
                         if (header >= 0) {
                             layout->header = header;
                             layout->footer = position;
@@ -829,9 +769,7 @@ static bool vise_locate(Abstractformat *format, vise_layout *layout) {
     }
     xx_mem_free(sections);
     sections = NULL;
-    if (layout->header < 0 ||
-        !vise_range(total, layout->header, VISE_HEADER_SIZE + 3) ||
-        !vise_read_at(device, base + layout->header, head, sizeof(head)) ||
+    if (layout->header < 0 || !vise_range(total, layout->header, VISE_HEADER_SIZE + 3) || !vise_read_at(device, base + layout->header, head, sizeof(head)) ||
         !vise_is_tag(head, "ESIV") || xx_data_get_u32(head + 8, 4, 0, false) != 1U)
         return false;
     layout->end = total;
@@ -845,19 +783,18 @@ fail:
     return false;
 }
 
-static bool vise_footer_at(xx_io_device *device, int64_t base, int64_t total,
-                           int64_t at, uint32_t pointer) {
+static bool vise_footer_at(xx_io_device *device, int64_t base, int64_t total, int64_t at, uint32_t pointer)
+{
     uint8_t footer[VISE_FOOTER_SIZE];
-    return vise_range(total, at, VISE_FOOTER_SIZE) &&
-           vise_read_at(device, base + at, footer, sizeof(footer)) &&
-           vise_is_tag(footer, "ESIV") && xx_data_get_u32(footer + 4, 4, 0, false) == pointer;
+    return vise_range(total, at, VISE_FOOTER_SIZE) && vise_read_at(device, base + at, footer, sizeof(footer)) && vise_is_tag(footer, "ESIV") &&
+           xx_data_get_u32(footer + 4, 4, 0, false) == pointer;
 }
 
 /* Finds the footer that closes the container.  It normally sits at the end
  * of the SIVM wrapper, at the end of the file or right before the signature;
  * a package embedded in larger data is found by a forward search. */
-static void vise_find_footer(Abstractformat *format, vise_layout *layout,
-                             xx_pd_struct *pd) {
+static void vise_find_footer(Abstractformat *format, vise_layout *layout, xx_pd_struct *pd)
+{
     xx_io_device *device = format->device;
     int64_t base = format->base_address;
     int64_t total = layout->total;
@@ -886,11 +823,9 @@ static void vise_find_footer(Abstractformat *format, vise_layout *layout,
         ends[1] = layout->cert_offset >= 0 ? layout->cert_offset : -1;
         for (k = 0U; k < 2U; ++k) {
             int64_t at, low;
-            if (ends[k] < layout->header + VISE_HEADER_SIZE + VISE_FOOTER_SIZE)
-                continue;
+            if (ends[k] < layout->header + VISE_HEADER_SIZE + VISE_FOOTER_SIZE) continue;
             low = ends[k] - VISE_TAIL_PROBE;
-            for (at = ends[k] - VISE_FOOTER_SIZE;
-                 at >= low && at >= layout->header + VISE_HEADER_SIZE; --at) {
+            for (at = ends[k] - VISE_FOOTER_SIZE; at >= low && at >= layout->header + VISE_HEADER_SIZE; --at) {
                 if (vise_footer_at(device, base, total, at, pointer)) {
                     layout->footer = at;
                     layout->end = at;
@@ -912,15 +847,13 @@ static void vise_find_footer(Abstractformat *format, vise_layout *layout,
     if (stop - cursor > VISE_FOOTER_SEARCH) stop = cursor + VISE_FOOTER_SEARCH;
     while (cursor <= stop && VISE_FOOTER_SIZE <= stop - cursor) {
         int64_t remaining = stop - cursor;
-        size_t chunk = (uint64_t)remaining > io_capacity
-                           ? io_capacity : (size_t)remaining;
+        size_t chunk = (uint64_t)remaining > io_capacity ? io_capacity : (size_t)remaining;
         size_t i, last;
         if (pd && xx_pd_is_stopped(pd)) break;
         if (!vise_read_at(device, base + cursor, buffer, chunk)) break;
         last = chunk - VISE_FOOTER_SIZE;
         for (i = 0U; i <= last; ++i) {
-            if (buffer[i] == 'E' && vise_is_tag(buffer + i, "ESIV") &&
-                xx_data_get_u32(buffer + i + 4U, 4, 0, false) == pointer) {
+            if (buffer[i] == 'E' && vise_is_tag(buffer + i, "ESIV") && xx_data_get_u32(buffer + i + 4U, 4, 0, false) == pointer) {
                 layout->footer = cursor + (int64_t)i;
                 layout->end = layout->footer;
                 xx_mem_free(buffer);
@@ -942,9 +875,9 @@ typedef struct vise_cursor_s {
     bool ok;
 } vise_cursor;
 
-static bool vise_take(vise_cursor *c, void *out, size_t size) {
-    if (!c->ok || !vise_range(c->end, c->pos, (int64_t)size) ||
-        !vise_read_at(c->device, c->base + c->pos, out, size)) {
+static bool vise_take(vise_cursor *c, void *out, size_t size)
+{
+    if (!c->ok || !vise_range(c->end, c->pos, (int64_t)size) || !vise_read_at(c->device, c->base + c->pos, out, size)) {
         c->ok = false;
         return false;
     }
@@ -952,7 +885,8 @@ static bool vise_take(vise_cursor *c, void *out, size_t size) {
     return true;
 }
 
-static bool vise_skip(vise_cursor *c, int64_t size) {
+static bool vise_skip(vise_cursor *c, int64_t size)
+{
     if (!c->ok || !vise_range(c->end, c->pos, size)) {
         c->ok = false;
         return false;
@@ -961,25 +895,29 @@ static bool vise_skip(vise_cursor *c, int64_t size) {
     return true;
 }
 
-static uint32_t vise_u8(vise_cursor *c) {
+static uint32_t vise_u8(vise_cursor *c)
+{
     uint8_t value = 0U;
     (void)vise_take(c, &value, 1U);
     return value;
 }
 
-static uint32_t vise_u16(vise_cursor *c) {
+static uint32_t vise_u16(vise_cursor *c)
+{
     uint8_t value[2] = {0U, 0U};
     (void)vise_take(c, value, 2U);
     return xx_data_get_u16(value, 2, 0, false);
 }
 
-static uint32_t vise_u32(vise_cursor *c) {
+static uint32_t vise_u32(vise_cursor *c)
+{
     uint8_t value[4] = {0U, 0U, 0U, 0U};
     (void)vise_take(c, value, 4U);
     return xx_data_get_u32(value, 4, 0, false);
 }
 
-static bool vise_skip_str16(vise_cursor *c) {
+static bool vise_skip_str16(vise_cursor *c)
+{
     uint32_t length = vise_u16(c);
     if (length > VISE_MAX_STRING16) c->ok = false;
     return vise_skip(c, (int64_t)length);
@@ -988,11 +926,13 @@ static bool vise_skip_str16(vise_cursor *c) {
 /* --- member names --------------------------------------------------------- */
 
 /* A stored name byte that could be a file name character. */
-static bool vise_name_byte(uint8_t c) {
+static bool vise_name_byte(uint8_t c)
+{
     return c >= 0x20U && c != 0x7fU;
 }
 
-static bool vise_name_ok(const uint8_t *name, size_t length) {
+static bool vise_name_ok(const uint8_t *name, size_t length)
+{
     size_t index;
     if (length == 0U || name[0] == ' ') return false;
     for (index = 0U; index < length; ++index)
@@ -1000,13 +940,14 @@ static bool vise_name_ok(const uint8_t *name, size_t length) {
     return true;
 }
 
-static char vise_upper(char c) {
+static char vise_upper(char c)
+{
     return (c >= 'a' && c <= 'z') ? (char)(c - 'a' + 'A') : c;
 }
 
-static bool vise_is_device_stem(const char *name, size_t stem) {
-    static const char *const devices[] = {"CON", "PRN", "AUX", "NUL",
-                                          "CONIN$", "CONOUT$", "CLOCK$"};
+static bool vise_is_device_stem(const char *name, size_t stem)
+{
+    static const char *const devices[] = {"CON", "PRN", "AUX", "NUL", "CONIN$", "CONOUT$", "CLOCK$"};
     size_t k, i;
     /* Windows drops trailing spaces from the part before the extension when
      * it resolves DOS devices, so "CON .txt" still opens the console. */
@@ -1019,10 +960,8 @@ static bool vise_is_device_stem(const char *name, size_t stem) {
     }
     /* COM0-COM9 and LPT0-LPT9, as the naming rules list them. */
     if (stem == 4U && name[3] >= '0' && name[3] <= '9' &&
-        ((vise_upper(name[0]) == 'C' && vise_upper(name[1]) == 'O' &&
-          vise_upper(name[2]) == 'M') ||
-         (vise_upper(name[0]) == 'L' && vise_upper(name[1]) == 'P' &&
-          vise_upper(name[2]) == 'T')))
+        ((vise_upper(name[0]) == 'C' && vise_upper(name[1]) == 'O' && vise_upper(name[2]) == 'M') ||
+         (vise_upper(name[0]) == 'L' && vise_upper(name[1]) == 'P' && vise_upper(name[2]) == 'T')))
         return true;
     return false;
 }
@@ -1030,7 +969,8 @@ static bool vise_is_device_stem(const char *name, size_t stem) {
 /* One path component from stored bytes.  Characters a file system could
  * misread are escaped as %XX, so two different stored names never map to
  * one output file and none can leave the output directory. */
-static char *vise_component(const uint8_t *bytes, size_t length) {
+static char *vise_component(const uint8_t *bytes, size_t length)
+{
     static const char digits[] = "0123456789ABCDEF";
     char *out;
     size_t index, used = 0U, stem;
@@ -1041,9 +981,7 @@ static char *vise_component(const uint8_t *bytes, size_t length) {
     for (index = 0U; index < length; ++index) {
         uint8_t c = bytes[index];
         bool edge = (index == length - 1U) && (c == '.' || c == ' ');
-        bool safe = c > 0x20U && c < 0x7fU && c != '%' && c != '/' &&
-                    c != '\\' && c != ':' && c != '*' && c != '?' &&
-                    c != '"' && c != '<' && c != '>' && c != '|';
+        bool safe = c > 0x20U && c < 0x7fU && c != '%' && c != '/' && c != '\\' && c != ':' && c != '*' && c != '?' && c != '"' && c != '<' && c != '>' && c != '|';
         if (c == ' ' && index != 0U && index != length - 1U) safe = true;
         if (safe && !edge) {
             out[used++] = (char)c;
@@ -1082,7 +1020,8 @@ static char *vise_component(const uint8_t *bytes, size_t length) {
     return out;
 }
 
-static char *vise_join(const char *prefix, const char *leaf) {
+static char *vise_join(const char *prefix, const char *leaf)
+{
     size_t a = prefix ? xx_str_len(prefix) : 0U;
     size_t b = xx_str_len(leaf);
     char *out = (char *)xx_mem_alloc(a + b + 1U);
@@ -1092,7 +1031,8 @@ static char *vise_join(const char *prefix, const char *leaf) {
     return out;
 }
 
-static char *vise_make_name(uint8_t kind, const uint8_t *bytes, size_t length) {
+static char *vise_make_name(uint8_t kind, const uint8_t *bytes, size_t length)
+{
     char *leaf, *name;
     if (kind == VISE_KIND_SETTINGS) return vise_join("Setup/", "miscdata.xyz");
     leaf = vise_component(bytes, length);
@@ -1104,7 +1044,8 @@ static char *vise_make_name(uint8_t kind, const uint8_t *bytes, size_t length) {
 
 /* Final check before a name is used as an output path: '/'-separated
  * components, none empty, "." or "..", none with a forbidden character. */
-static bool vise_safe_output_name(const char *name) {
+static bool vise_safe_output_name(const char *name)
+{
     size_t start = 0U, index = 0U;
     if (!name || !name[0]) return false;
     for (;;) {
@@ -1113,17 +1054,13 @@ static bool vise_safe_output_name(const char *name) {
             size_t length = index - start, stem = 0U;
             if (length == 0U) return false;
             if (length == 1U && name[start] == '.') return false;
-            if (length == 2U && name[start] == '.' && name[start + 1U] == '.')
-                return false;
-            if (name[index - 1U] == '.' || name[index - 1U] == ' ')
-                return false;
+            if (length == 2U && name[start] == '.' && name[start + 1U] == '.') return false;
+            if (name[index - 1U] == '.' || name[index - 1U] == ' ') return false;
             while (stem < length && name[start + stem] != '.') ++stem;
             if (vise_is_device_stem(name + start, stem)) return false;
             if (c == 0) break;
             start = index + 1U;
-        } else if ((unsigned char)c < 0x20U || c == '\\' || c == ':' ||
-                   c == '*' || c == '?' || c == '"' || c == '<' || c == '>' ||
-                   c == '|') {
+        } else if ((unsigned char)c < 0x20U || c == '\\' || c == ':' || c == '*' || c == '?' || c == '"' || c == '<' || c == '>' || c == '|') {
             return false;
         }
         ++index;
@@ -1134,7 +1071,8 @@ static bool vise_safe_output_name(const char *name) {
 /* Keeps duplicate names (VISE installs the same file name into several
  * folders) from overwriting each other: later ones get "_2", "_3", ...
  * in front of their extension.  Comparison ignores ASCII case. */
-static uint32_t vise_name_hash(const char *name) {
+static uint32_t vise_name_hash(const char *name)
+{
     uint32_t hash = 2166136261U;
     for (; *name; ++name) {
         hash ^= (uint8_t)vise_upper(*name);
@@ -1143,13 +1081,15 @@ static uint32_t vise_name_hash(const char *name) {
     return hash;
 }
 
-static bool vise_same_name(const char *a, const char *b) {
+static bool vise_same_name(const char *a, const char *b)
+{
     for (; *a && *b; ++a, ++b)
         if (vise_upper(*a) != vise_upper(*b)) return false;
     return *a == *b;
 }
 
-static char *vise_with_suffix(const char *name, size_t number) {
+static char *vise_with_suffix(const char *name, size_t number)
+{
     char digits[24];
     size_t count = 0U, length = xx_str_len(name), dot = length, index, used;
     char *out;
@@ -1177,8 +1117,8 @@ static char *vise_with_suffix(const char *name, size_t number) {
 
 /* Returns the table slot holding @p name, or the free slot where it would
  * go (*found tells which). */
-static size_t vise_name_slot(const vise_parsed *parsed, const size_t *table,
-                             size_t slots, const char *name, bool *found) {
+static size_t vise_name_slot(const vise_parsed *parsed, const size_t *table, size_t slots, const char *name, bool *found)
+{
     size_t slot = vise_name_hash(name) & (slots - 1U);
     *found = false;
     while (table[slot] != SIZE_MAX) {
@@ -1197,7 +1137,8 @@ static size_t vise_name_slot(const vise_parsed *parsed, const size_t *table,
  * by a name that is itself exactly that string, and such a name blocks one
  * (base, n) pair only, so the retries over the whole list stay below the
  * member count: the total work is linear. */
-static bool vise_unique_names(vise_parsed *parsed) {
+static bool vise_unique_names(vise_parsed *parsed)
+{
     size_t slots = 16U, index;
     size_t *table, *next;
     if (parsed->count == 0U) return true;
@@ -1212,8 +1153,7 @@ static bool vise_unique_names(vise_parsed *parsed) {
     for (index = 0U; index < slots; ++index) table[index] = SIZE_MAX;
     for (index = 0U; index < parsed->count; ++index) {
         bool found;
-        size_t slot = vise_name_slot(parsed, table, slots,
-                                     parsed->items[index].name, &found);
+        size_t slot = vise_name_slot(parsed, table, slots, parsed->items[index].name, &found);
         next[index] = 2U;
         if (found) {
             /* The table holds at most count names, so one of count + 1
@@ -1221,8 +1161,7 @@ static bool vise_unique_names(vise_parsed *parsed) {
             size_t owner = table[slot];
             size_t number;
             char *renamed = NULL;
-            for (number = next[owner]; number <= parsed->count + 1U;
-                 ++number) {
+            for (number = next[owner]; number <= parsed->count + 1U; ++number) {
                 renamed = vise_with_suffix(parsed->items[index].name, number);
                 if (!renamed) break;
                 slot = vise_name_slot(parsed, table, slots, renamed, &found);
@@ -1248,7 +1187,8 @@ static bool vise_unique_names(vise_parsed *parsed) {
 
 /* --- member table ---------------------------------------------------------- */
 
-static void vise_parsed_free(void *opaque) {
+static void vise_parsed_free(void *opaque)
+{
     vise_parsed *parsed = (vise_parsed *)opaque;
     size_t index;
     if (!parsed) return;
@@ -1258,12 +1198,12 @@ static void vise_parsed_free(void *opaque) {
     xx_mem_free(parsed);
 }
 
-static bool vise_add(vise_parsed *parsed, const vise_member *member) {
+static bool vise_add(vise_parsed *parsed, const vise_member *member)
+{
     if (parsed->count >= VISE_MAX_MEMBERS) return false;
     if (parsed->count == parsed->capacity) {
         size_t grown = parsed->capacity ? parsed->capacity * 2U : 32U;
-        vise_member *items = (vise_member *)xx_mem_realloc(
-            parsed->items, grown * sizeof(*items));
+        vise_member *items = (vise_member *)xx_mem_realloc(parsed->items, grown * sizeof(*items));
         if (!items) return false;
         parsed->items = items;
         parsed->capacity = grown;
@@ -1272,8 +1212,8 @@ static bool vise_add(vise_parsed *parsed, const vise_member *member) {
     return true;
 }
 
-static bool vise_add_named(vise_parsed *parsed, vise_member *member,
-                           const uint8_t *name, size_t name_length) {
+static bool vise_add_named(vise_parsed *parsed, vise_member *member, const uint8_t *name, size_t name_length)
+{
     member->name = vise_make_name(member->kind, name, name_length);
     if (!member->name) return false;
     if (!vise_add(parsed, member)) {
@@ -1287,18 +1227,14 @@ static bool vise_add_named(vise_parsed *parsed, vise_member *member,
 /* Decodes a candidate stream without keeping its output and charges the
  * work (bytes read plus bytes produced) to the listing budget, so failed
  * candidates cannot make the listing unbounded. */
-static bool vise_validate(Abstractformat *format, vise_parsed *parsed,
-                          int64_t offset, int64_t packed, int64_t expected,
-                          uint64_t *raw, uint32_t *crc, xx_pd_struct *pd) {
+static bool vise_validate(Abstractformat *format, vise_parsed *parsed, int64_t offset, int64_t packed, int64_t expected, uint64_t *raw, uint32_t *crc, xx_pd_struct *pd)
+{
     uint64_t produced = 0U, fetched = 0U, cap, cost;
     bool ok;
     if (parsed->budget == 0U) return false;
     if (expected >= 0 && (uint64_t)expected > parsed->budget) return false;
-    cap = parsed->budget < VISE_SETUP_MAX_RAW ? parsed->budget
-                                              : VISE_SETUP_MAX_RAW;
-    ok = vise_decode_device(format->device, format->base_address + offset,
-                            (uint64_t)packed, expected, cap, NULL, &produced,
-                            &fetched, crc, pd);
+    cap = parsed->budget < VISE_SETUP_MAX_RAW ? parsed->budget : VISE_SETUP_MAX_RAW;
+    ok = vise_decode_device(format->device, format->base_address + offset, (uint64_t)packed, expected, cap, NULL, &produced, &fetched, crc, pd);
     cost = produced + fetched;
     parsed->budget -= cost < parsed->budget ? cost : parsed->budget;
     if (ok && raw) *raw = produced;
@@ -1307,9 +1243,8 @@ static bool vise_validate(Abstractformat *format, vise_parsed *parsed,
 
 /* The first setup table.  With @p parsed NULL only the structure is
  * checked (the detector's probe); otherwise every stream is decoded. */
-static bool vise_setup_table(Abstractformat *format, const vise_layout *layout,
-                             vise_parsed *parsed, int64_t *table_end,
-                             xx_pd_struct *pd) {
+static bool vise_setup_table(Abstractformat *format, const vise_layout *layout, vise_parsed *parsed, int64_t *table_end, xx_pd_struct *pd)
+{
     vise_cursor c;
     uint32_t count, index, skip;
     c.device = format->device;
@@ -1330,13 +1265,10 @@ static bool vise_setup_table(Abstractformat *format, const vise_layout *layout,
         int64_t row = c.pos, data, packed;
         if (pd && xx_pd_is_stopped(pd)) return false;
         length = vise_u8(&c);
-        if (!c.ok || length == 0U || !vise_take(&c, name, length) ||
-            !vise_name_ok(name, length) || !vise_take(&c, fields, 16U))
-            return false;
+        if (!c.ok || length == 0U || !vise_take(&c, name, length) || !vise_name_ok(name, length) || !vise_take(&c, fields, 16U)) return false;
         packed = (int64_t)xx_data_get_u32(fields + 12, 4, 0, false);
         data = c.pos;
-        if (packed < 2 || (packed & 1) != 0 || !vise_skip(&c, packed))
-            return false;
+        if (packed < 2 || (packed & 1) != 0 || !vise_skip(&c, packed)) return false;
         if (parsed) {
             vise_member member;
             uint64_t raw = 0U;
@@ -1367,9 +1299,8 @@ static bool vise_setup_table(Abstractformat *format, const vise_layout *layout,
  * ending in the packed settings stream.  Returns where the object scan
  * should start: after the settings stream, or @p start when the block has
  * another shape. */
-static int64_t vise_settings(Abstractformat *format, const vise_layout *layout,
-                             vise_parsed *parsed, int64_t start,
-                             xx_pd_struct *pd) {
+static int64_t vise_settings(Abstractformat *format, const vise_layout *layout, vise_parsed *parsed, int64_t start, xx_pd_struct *pd)
+{
     vise_cursor c;
     uint32_t count, index;
     int64_t packed, data;
@@ -1401,11 +1332,8 @@ static int64_t vise_settings(Abstractformat *format, const vise_layout *layout,
     }
     packed = (int64_t)vise_u32(&c);
     data = c.pos;
-    if (!c.ok || packed < 2 || (packed & 1) != 0 ||
-        !vise_range(layout->end, data, packed))
-        return start;
-    if (!vise_validate(format, parsed, data, packed, -1, &raw, NULL, pd))
-        return start;
+    if (!c.ok || packed < 2 || (packed & 1) != 0 || !vise_range(layout->end, data, packed)) return start;
+    if (!vise_validate(format, parsed, data, packed, -1, &raw, NULL, pd)) return start;
     xx_mem_zero(&member, sizeof(member));
     member.kind = VISE_KIND_SETTINGS;
     member.header_offset = data - 4;
@@ -1422,23 +1350,22 @@ static int64_t vise_settings(Abstractformat *format, const vise_layout *layout,
  * (and the next dot), so the whole scan stays linear in the window size;
  * the positions asked about only ever increase. */
 typedef struct vise_run_s {
-    size_t from;   /* position the answer was computed for */
-    size_t stop;   /* first matching byte at or after it, or the size */
+    size_t from; /* position the answer was computed for */
+    size_t stop; /* first matching byte at or after it, or the size */
 } vise_run;
 
-static size_t vise_next_bad(const uint8_t *window, size_t size, size_t from,
-                            vise_run *run) {
+static size_t vise_next_bad(const uint8_t *window, size_t size, size_t from, vise_run *run)
+{
     if (run->stop < from || run->from > from) {
         run->stop = from;
-        while (run->stop < size && vise_name_byte(window[run->stop]))
-            ++run->stop;
+        while (run->stop < size && vise_name_byte(window[run->stop])) ++run->stop;
     }
     run->from = from;
     return run->stop;
 }
 
-static size_t vise_next_dot(const uint8_t *window, size_t size, size_t from,
-                            vise_run *run) {
+static size_t vise_next_dot(const uint8_t *window, size_t size, size_t from, vise_run *run)
+{
     if (run->stop < from || run->from > from) {
         run->stop = from;
         while (run->stop < size && window[run->stop] != '.') ++run->stop;
@@ -1448,35 +1375,32 @@ static size_t vise_next_dot(const uint8_t *window, size_t size, size_t from,
 }
 
 /* An install-object name: @p length name bytes at @p at. */
-static bool vise_object_name(const uint8_t *window, size_t size, size_t at,
-                             size_t length, vise_run *bad) {
-    return length != 0U && window[at] != ' ' &&
-           vise_next_bad(window, size, at, bad) >= at + length;
+static bool vise_object_name(const uint8_t *window, size_t size, size_t at, size_t length, vise_run *bad)
+{
+    return length != 0U && window[at] != ' ' && vise_next_bad(window, size, at, bad) >= at + length;
 }
 
 /* A second-table record needs a real file name: an extension that is not
  * at either end. */
-static bool vise_support_name(const uint8_t *window, size_t size, size_t at,
-                              size_t length, vise_run *bad, vise_run *dot) {
+static bool vise_support_name(const uint8_t *window, size_t size, size_t at, size_t length, vise_run *bad, vise_run *dot)
+{
     uint8_t last;
     if (length < 3U || window[at] == ' ') return false;
     last = window[at + length - 1U];
     if (last == ' ' || last == '.') return false;
-    return vise_next_bad(window, size, at, bad) >= at + length &&
-           vise_next_dot(window, size, at + 1U, dot) < at + length - 1U;
+    return vise_next_bad(window, size, at, bad) >= at + length && vise_next_dot(window, size, at + 1U, dot) < at + length - 1U;
 }
 
 /* The install-file object goes on after its DOS date and time with 5
  * bytes, the u16-counted target folder (e.g. "%TargetDir%\Sub") and 14
  * more bytes, then the CRC-32 of the installed file.  @p at is the offset
  * right after the date and time. */
-static bool vise_object_crc(const uint8_t *window, size_t size, size_t at,
-                            uint32_t *crc) {
+static bool vise_object_crc(const uint8_t *window, size_t size, size_t at, uint32_t *crc)
+{
     size_t length, index;
     if (at > size || size - at < 7U) return false;
     length = xx_data_get_u16(window + at + 5U, 2, 0, false);
-    if (length > VISE_MAX_STRING16 || size - at - 7U < length + 18U)
-        return false;
+    if (length > VISE_MAX_STRING16 || size - at - 7U < length + 18U) return false;
     for (index = 0U; index < length; ++index)
         if (!vise_name_byte(window[at + 7U + index])) return false;
     *crc = xx_data_get_u32(window + at + 7U + length + 14U, 4, 0, false);
@@ -1486,23 +1410,21 @@ static bool vise_object_crc(const uint8_t *window, size_t size, size_t at,
 /* Walks the installer script from @p start for second-table setup files and
  * install-file objects.  The data area follows the script, so the first
  * accepted object's data offset ends the walk. */
-static bool vise_scan(Abstractformat *format, const vise_layout *layout,
-                      vise_parsed *parsed, int64_t start, xx_pd_struct *pd) {
+static bool vise_scan(Abstractformat *format, const vise_layout *layout, vise_parsed *parsed, int64_t start, xx_pd_struct *pd)
+{
     uint8_t *window;
     size_t size, capacity, q = 0U;
     int64_t limit = layout->end;
     unsigned tick = 0U;
     vise_run object_bad = {0U, 0U}, support_bad = {0U, 0U}, support_dot = {0U, 0U};
     if (start < 0 || start >= layout->end) return true;
-    size = (layout->end - start) > (int64_t)VISE_SCAN_WINDOW
-               ? VISE_SCAN_WINDOW : (size_t)(layout->end - start);
+    size = (layout->end - start) > (int64_t)VISE_SCAN_WINDOW ? VISE_SCAN_WINDOW : (size_t)(layout->end - start);
     /* Materialized script grammar, retaining variable-length record/name
      * validation semantics. Physical reads are capped by vise_read_at. */
     capacity = size;
     window = (uint8_t *)xx_mem_alloc(size);
     if (!window) return false;
-    if (!vise_read_at(format->device, format->base_address + start, window,
-                      size)) {
+    if (!vise_read_at(format->device, format->base_address + start, window, size)) {
         xx_mem_free(window);
         return false;
     }
@@ -1515,9 +1437,7 @@ static bool vise_scan(Abstractformat *format, const vise_layout *layout,
          * bytes, unpacked, packed, flags 1, data offset. */
         if (q + 2U <= size) {
             uint32_t length = xx_data_get_u16(window + q, 2, 0, false);
-            if (length != 0U && length <= VISE_MAX_NAME16 &&
-                q + 2U + length + 4U + 16U <= size &&
-                vise_object_name(window, size, q + 2U, length, &object_bad)) {
+            if (length != 0U && length <= VISE_MAX_NAME16 && q + 2U + length + 4U + 16U <= size && vise_object_name(window, size, q + 2U, length, &object_bad)) {
                 size_t reserved;
                 for (reserved = 4U; reserved <= 6U && !matched; reserved += 2U) {
                     size_t fields = q + 2U + length + reserved;
@@ -1531,17 +1451,10 @@ static bool vise_scan(Abstractformat *format, const vise_layout *layout,
                     packed = xx_data_get_u32(window + fields + 4U, 4, 0, false);
                     flags = xx_data_get_u32(window + fields + 8U, 4, 0, false);
                     relative = xx_data_get_u32(window + fields + 12U, 4, 0, false);
-                    if (flags != 1U || raw == 0U || packed < 2U ||
-                        (packed & 1U) != 0U)
-                        continue;
+                    if (flags != 1U || raw == 0U || packed < 2U || (packed & 1U) != 0U) continue;
                     data = layout->header + (int64_t)relative;
-                    if (data < start + (int64_t)(fields + 16U) ||
-                        !vise_range(layout->end, data, (int64_t)packed))
-                        continue;
-                    if (!vise_validate(format, parsed, data, (int64_t)packed,
-                                       (int64_t)raw, &produced, &decoded,
-                                       pd))
-                        continue;
+                    if (data < start + (int64_t)(fields + 16U) || !vise_range(layout->end, data, (int64_t)packed)) continue;
+                    if (!vise_validate(format, parsed, data, (int64_t)packed, (int64_t)raw, &produced, &decoded, pd)) continue;
                     xx_mem_zero(&member, sizeof(member));
                     member.kind = VISE_KIND_FILE;
                     member.header_offset = here;
@@ -1555,11 +1468,8 @@ static bool vise_scan(Abstractformat *format, const vise_layout *layout,
                         member.dos_time = xx_data_get_u16(window + fields + 46U, 2, 0, false);
                     }
                     member.decoded_crc = decoded;
-                    member.has_crc = vise_object_crc(window, size,
-                                                     fields + 16U + 32U,
-                                                     &member.crc);
-                    if (!vise_add_named(parsed, &member, window + q + 2U,
-                                        length)) {
+                    member.has_crc = vise_object_crc(window, size, fields + 16U + 32U, &member.crc);
+                    if (!vise_add_named(parsed, &member, window + q + 2U, length)) {
                         xx_mem_free(window);
                         return false;
                     }
@@ -1575,17 +1485,13 @@ static bool vise_scan(Abstractformat *format, const vise_layout *layout,
          * time, 8 bytes, u32 packed, packed bytes. */
         {
             uint32_t length = window[q];
-            if (length != 0U && length <= VISE_MAX_NAME8 &&
-                q + 1U + length + 16U <= size &&
-                vise_support_name(window, size, q + 1U, length, &support_bad,
-                                  &support_dot)) {
+            if (length != 0U && length <= VISE_MAX_NAME8 && q + 1U + length + 16U <= size &&
+                vise_support_name(window, size, q + 1U, length, &support_bad, &support_dot)) {
                 size_t fields = q + 1U + length;
                 int64_t packed = (int64_t)xx_data_get_u32(window + fields + 12U, 4, 0, false);
                 int64_t data = start + (int64_t)(fields + 16U);
                 uint64_t raw = 0U;
-                if (packed >= 2 && (packed & 1) == 0 &&
-                    vise_range(limit, data, packed) &&
-                    vise_validate(format, parsed, data, packed, -1, &raw, NULL, pd)) {
+                if (packed >= 2 && (packed & 1) == 0 && vise_range(limit, data, packed) && vise_validate(format, parsed, data, packed, -1, &raw, NULL, pd)) {
                     vise_member member;
                     xx_mem_zero(&member, sizeof(member));
                     member.kind = VISE_KIND_SUPPORT;
@@ -1596,8 +1502,7 @@ static bool vise_scan(Abstractformat *format, const vise_layout *layout,
                     member.unpacked_size = raw;
                     member.dos_date = xx_data_get_u16(window + fields, 2, 0, false);
                     member.dos_time = xx_data_get_u16(window + fields + 2U, 2, 0, false);
-                    if (!vise_add_named(parsed, &member, window + q + 1U,
-                                        length)) {
+                    if (!vise_add_named(parsed, &member, window + q + 1U, length)) {
                         xx_mem_free(window);
                         return false;
                     }
@@ -1609,12 +1514,8 @@ static bool vise_scan(Abstractformat *format, const vise_layout *layout,
                         int64_t next = data + packed;
                         size_t grown;
                         if (next >= limit) break;
-                        grown = (limit - next) > (int64_t)capacity
-                                    ? capacity : (size_t)(limit - next);
-                        if (!vise_read_at(format->device,
-                                          format->base_address + next, window,
-                                          grown))
-                            break;
+                        grown = (limit - next) > (int64_t)capacity ? capacity : (size_t)(limit - next);
+                        if (!vise_read_at(format->device, format->base_address + next, window, grown)) break;
                         start = next;
                         size = grown;
                         q = 0U;
@@ -1634,13 +1535,11 @@ static bool vise_scan(Abstractformat *format, const vise_layout *layout,
     return true;
 }
 
-static int64_t vise_format_size(const vise_layout *layout) {
-    int64_t size = layout->footer >= 0 ? layout->footer + VISE_FOOTER_SIZE
-                                       : layout->end;
+static int64_t vise_format_size(const vise_layout *layout)
+{
+    int64_t size = layout->footer >= 0 ? layout->footer + VISE_FOOTER_SIZE : layout->end;
     if (layout->image_end > size) size = layout->image_end;
-    if (layout->cert_offset >= 0 &&
-        layout->cert_offset + layout->cert_size > size)
-        size = layout->cert_offset + layout->cert_size;
+    if (layout->cert_offset >= 0 && layout->cert_offset + layout->cert_size > size) size = layout->cert_offset + layout->cert_size;
     return size;
 }
 
@@ -1648,21 +1547,20 @@ static int64_t vise_format_size(const vise_layout *layout) {
  * when the package confirms the layout: at least one install file whose
  * stored CRC equals the CRC of its decoded data.  Otherwise no CRC is used
  * (another script version could keep other bytes there). */
-static void vise_confirm_crcs(vise_parsed *parsed) {
+static void vise_confirm_crcs(vise_parsed *parsed)
+{
     size_t index;
     bool confirmed = false;
     for (index = 0U; index < parsed->count && !confirmed; ++index) {
         const vise_member *member = &parsed->items[index];
-        if (member->has_crc && member->crc == member->decoded_crc)
-            confirmed = true;
+        if (member->has_crc && member->crc == member->decoded_crc) confirmed = true;
     }
     if (confirmed) return;
-    for (index = 0U; index < parsed->count; ++index)
-        parsed->items[index].has_crc = false;
+    for (index = 0U; index < parsed->count; ++index) parsed->items[index].has_crc = false;
 }
 
-static bool vise_parse(Abstractformat *format, vise_parsed **result,
-                       xx_pd_struct *pd) {
+static bool vise_parse(Abstractformat *format, vise_parsed **result, xx_pd_struct *pd)
+{
     vise_parsed *parsed;
     int64_t table_end = 0, scan_start;
     if (!result) return false;
@@ -1670,10 +1568,8 @@ static bool vise_parse(Abstractformat *format, vise_parsed **result,
     if (!parsed) return false;
     if (!vise_locate(format, &parsed->layout)) goto fail;
     vise_find_footer(format, &parsed->layout, pd);
-    parsed->budget = VISE_BUDGET_BASE +
-                     (uint64_t)parsed->layout.end * VISE_BUDGET_FACTOR;
-    if (!vise_setup_table(format, &parsed->layout, parsed, &table_end, pd))
-        goto fail;
+    parsed->budget = VISE_BUDGET_BASE + (uint64_t)parsed->layout.end * VISE_BUDGET_FACTOR;
+    if (!vise_setup_table(format, &parsed->layout, parsed, &table_end, pd)) goto fail;
     scan_start = vise_settings(format, &parsed->layout, parsed, table_end, pd);
     if (scan_start < 0) goto fail;
     if (!vise_scan(format, &parsed->layout, parsed, scan_start, pd)) goto fail;
@@ -1688,7 +1584,8 @@ fail:
     return false;
 }
 
-static vise_parsed *vise_clone(const vise_parsed *source) {
+static vise_parsed *vise_clone(const vise_parsed *source)
+{
     vise_parsed *copy;
     size_t index;
     copy = (vise_parsed *)xx_mem_calloc(1U, sizeof(*copy));
@@ -1699,8 +1596,7 @@ static vise_parsed *vise_clone(const vise_parsed *source) {
     copy->capacity = 0U;
     copy->index = 0U;
     if (source->count) {
-        copy->items = (vise_member *)xx_mem_calloc(source->count,
-                                                   sizeof(*copy->items));
+        copy->items = (vise_member *)xx_mem_calloc(source->count, sizeof(*copy->items));
         if (!copy->items) {
             xx_mem_free(copy);
             return NULL;
@@ -1722,17 +1618,16 @@ static vise_parsed *vise_clone(const vise_parsed *source) {
 
 /* --- record plumbing ------------------------------------------------------ */
 
-static bool vise_copy_options(xx_list_s *destination, const xx_list_s *source) {
+static bool vise_copy_options(xx_list_s *destination, const xx_list_s *source)
+{
     size_t index;
     if (!source) return true;
     for (index = 0U; index < source->count; ++index) {
-        const xx_meta *original =
-            (const xx_meta *)xx_list_at((const xx_list_t *)source, index);
+        const xx_meta *original = (const xx_meta *)xx_list_at((const xx_list_t *)source, index);
         xx_meta copy;
         if (!original) continue;
         xx_meta_init(&copy, original->meta_id);
-        if (!xx_var_copy(&copy.var, &original->var) ||
-            !xx_list_append(destination, &copy)) {
+        if (!xx_var_copy(&copy.var, &original->var) || !xx_list_append(destination, &copy)) {
             xx_meta_cleanup(&copy);
             return false;
         }
@@ -1740,19 +1635,19 @@ static bool vise_copy_options(xx_list_s *destination, const xx_list_s *source) {
     return true;
 }
 
-static const xx_var *vise_option(const xx_list_s *options, uint32_t id) {
+static const xx_var *vise_option(const xx_list_s *options, uint32_t id)
+{
     size_t index;
     if (!options) return NULL;
     for (index = 0U; index < options->count; ++index) {
-        const xx_meta *meta =
-            (const xx_meta *)xx_list_at((const xx_list_t *)options, index);
+        const xx_meta *meta = (const xx_meta *)xx_list_at((const xx_list_t *)options, index);
         if (meta && meta->meta_id == id) return &meta->var;
     }
     return NULL;
 }
 
-static bool vise_set_record(Abstractformat *format, xx_archive_record *record,
-                            const vise_member *member) {
+static bool vise_set_record(Abstractformat *format, xx_archive_record *record, const vise_member *member)
+{
     xx_archive_record_cleanup(record);
     xx_archive_record_init(record);
     record->header_offset = format->base_address + member->header_offset;
@@ -1760,30 +1655,18 @@ static bool vise_set_record(Abstractformat *format, xx_archive_record *record,
     record->data_offset = format->base_address + member->data_offset;
     record->compressed_size = member->packed_size;
     return xx_archive_record_set_original_name(record, member->name) &&
-           xx_archive_record_set_meta_u64(record, XX_META_ID_COMPRESSED_SIZE,
-                                          (uint64_t)member->packed_size) &&
-           xx_archive_record_set_meta_u64(record, XX_META_ID_UNCOMPRESSED_SIZE,
-                                          member->unpacked_size) &&
-           xx_archive_record_set_meta_u64(record, XX_META_ID_COMPRESSION_METHOD,
-                                          VISE_METHOD_DEFLATE) &&
-           xx_archive_record_set_meta_u64(
-               record, XX_META_ID_TIMESTAMP,
-               ((uint64_t)member->dos_date << 16U) |
-                   (uint64_t)member->dos_time) &&
-           xx_archive_record_set_meta_bool(record, XX_META_ID_IS_ENCRYPTED,
-                                           false) &&
-           xx_archive_record_set_meta_bool(record, XX_META_ID_IS_FOLDER,
-                                           false) &&
-           (!member->has_crc ||
-            xx_archive_record_set_meta_u64(record, XX_META_ID_CRC32,
-                                           member->crc));
+           xx_archive_record_set_meta_u64(record, XX_META_ID_COMPRESSED_SIZE, (uint64_t)member->packed_size) &&
+           xx_archive_record_set_meta_u64(record, XX_META_ID_UNCOMPRESSED_SIZE, member->unpacked_size) &&
+           xx_archive_record_set_meta_u64(record, XX_META_ID_COMPRESSION_METHOD, VISE_METHOD_DEFLATE) &&
+           xx_archive_record_set_meta_u64(record, XX_META_ID_TIMESTAMP, ((uint64_t)member->dos_date << 16U) | (uint64_t)member->dos_time) &&
+           xx_archive_record_set_meta_bool(record, XX_META_ID_IS_ENCRYPTED, false) && xx_archive_record_set_meta_bool(record, XX_META_ID_IS_FOLDER, false) &&
+           (!member->has_crc || xx_archive_record_set_meta_u64(record, XX_META_ID_CRC32, member->crc));
 }
 
 /* --- lifecycle ------------------------------------------------------------ */
 
-void xx_installer_vise_windows_init(xx_installer_vise_windows *archive,
-                                    xx_io_device *device,
-                                    int64_t base_address) {
+void xx_installer_vise_windows_init(xx_installer_vise_windows *archive, xx_io_device *device, int64_t base_address)
+{
     if (!archive) return;
     xx_mem_zero(archive, sizeof(*archive));
     xx_format_init(&archive->format, device, base_address);
@@ -1791,48 +1674,40 @@ void xx_installer_vise_windows_init(xx_installer_vise_windows *archive,
     archive->format.file_type = XX_INSTALLER_VISE_WINDOWS_FILE_TYPE;
     archive->format.format_type = XX_TYPE_ARCHIVE;
     archive->format.is_archive = true;
-    xx_format_set_mime_type(&archive->format,
-                            "application/x-vise-installer");
+    xx_format_set_mime_type(&archive->format, "application/x-vise-installer");
     xx_format_set_extension(&archive->format, "exe");
     archive->format.check_is_valid = xx_installer_vise_windows_check_is_valid;
-    archive->format.handle_base_info =
-        xx_installer_vise_windows_handle_base_info;
-    archive->format.get_format_size =
-        xx_installer_vise_windows_get_format_size;
-    archive->format.get_number_of_archive_records =
-        xx_installer_vise_windows_get_number_of_archive_records;
-    archive->format.create_archive_records_reading =
-        xx_installer_vise_windows_create_archive_records_reading;
-    archive->format.get_current_archive_record =
-        xx_installer_vise_windows_get_current_archive_record;
-    archive->format.unpack_current_archive_record =
-        xx_installer_vise_windows_unpack_current_archive_record;
-    archive->format.archive_record_move_to_next =
-        xx_installer_vise_windows_archive_record_move_to_next;
-    archive->format.free_archive_records_reading =
-        xx_installer_vise_windows_free_archive_records_reading;
+    archive->format.handle_base_info = xx_installer_vise_windows_handle_base_info;
+    archive->format.get_format_size = xx_installer_vise_windows_get_format_size;
+    archive->format.get_number_of_archive_records = xx_installer_vise_windows_get_number_of_archive_records;
+    archive->format.create_archive_records_reading = xx_installer_vise_windows_create_archive_records_reading;
+    archive->format.get_current_archive_record = xx_installer_vise_windows_get_current_archive_record;
+    archive->format.unpack_current_archive_record = xx_installer_vise_windows_unpack_current_archive_record;
+    archive->format.archive_record_move_to_next = xx_installer_vise_windows_archive_record_move_to_next;
+    archive->format.free_archive_records_reading = xx_installer_vise_windows_free_archive_records_reading;
     archive->header_offset = -1;
     archive->wrapper_offset = -1;
     archive->footer_offset = -1;
     archive->container_end = -1;
 }
 
-xx_installer_vise_windows *xx_installer_vise_windows_create(
-    xx_io_device *device, int64_t base_address) {
-    xx_installer_vise_windows *archive =
-        (xx_installer_vise_windows *)xx_mem_alloc(sizeof(*archive));
+xx_installer_vise_windows *xx_installer_vise_windows_create(xx_io_device *device, int64_t base_address)
+{
+    xx_installer_vise_windows *archive = (xx_installer_vise_windows *)xx_mem_alloc(sizeof(*archive));
     if (archive) xx_installer_vise_windows_init(archive, device, base_address);
     return archive;
 }
 
-void xx_installer_vise_windows_destroy(xx_installer_vise_windows *archive) {
+void xx_installer_vise_windows_destroy(xx_installer_vise_windows *archive)
+{
     if (!archive) return;
     vise_parsed_free(archive->parsed);
     archive->parsed = NULL;
     xx_format_cleanup_extra_parameters(&archive->format);
 }
 
-void xx_installer_vise_windows_free(xx_installer_vise_windows *archive) {
+void xx_installer_vise_windows_free(xx_installer_vise_windows *archive)
+{
     if (!archive) return;
     xx_installer_vise_windows_destroy(archive);
     xx_mem_free(archive);
@@ -1840,16 +1715,16 @@ void xx_installer_vise_windows_free(xx_installer_vise_windows *archive) {
 
 /* The detector's probe: the stub, the container header and the structure
  * of the first setup table.  Nothing is decoded here. */
-bool xx_installer_vise_windows_check_is_valid(Abstractformat *format,
-                                              xx_pd_struct *pd) {
+bool xx_installer_vise_windows_check_is_valid(Abstractformat *format, xx_pd_struct *pd)
+{
     vise_layout layout;
     int64_t table_end = 0;
     if (!vise_locate(format, &layout)) return false;
     return vise_setup_table(format, &layout, NULL, &table_end, pd);
 }
 
-bool xx_installer_vise_windows_handle_base_info(Abstractformat *format,
-                                                xx_pd_struct *pd) {
+bool xx_installer_vise_windows_handle_base_info(Abstractformat *format, xx_pd_struct *pd)
+{
     xx_installer_vise_windows *archive;
     vise_parsed *parsed = NULL;
     if (!format || !vise_parse(format, &parsed, pd)) return false;
@@ -1868,23 +1743,19 @@ bool xx_installer_vise_windows_handle_base_info(Abstractformat *format,
     return true;
 }
 
-int64_t xx_installer_vise_windows_get_format_size(Abstractformat *format,
-                                                  xx_pd_struct *pd) {
-    return format && (format->base_info_handled ||
-                      xx_installer_vise_windows_handle_base_info(format, pd))
-               ? format->format_size : -1;
+int64_t xx_installer_vise_windows_get_format_size(Abstractformat *format, xx_pd_struct *pd)
+{
+    return format && (format->base_info_handled || xx_installer_vise_windows_handle_base_info(format, pd)) ? format->format_size : -1;
 }
 
-uint64_t xx_installer_vise_windows_get_number_of_archive_records(
-    Abstractformat *format, xx_pd_struct *pd) {
-    return format && (format->base_info_handled ||
-                      xx_installer_vise_windows_handle_base_info(format, pd))
-               ? ((xx_installer_vise_windows *)format)->number_of_records
-               : 0U;
+uint64_t xx_installer_vise_windows_get_number_of_archive_records(Abstractformat *format, xx_pd_struct *pd)
+{
+    return format && (format->base_info_handled || xx_installer_vise_windows_handle_base_info(format, pd)) ? ((xx_installer_vise_windows *)format)->number_of_records
+                                                                                                           : 0U;
 }
 
-xx_archive_record_state *xx_installer_vise_windows_create_archive_records_reading(
-    Abstractformat *format, const xx_list_s *options, xx_pd_struct *pd) {
+xx_archive_record_state *xx_installer_vise_windows_create_archive_records_reading(Abstractformat *format, const xx_list_s *options, xx_pd_struct *pd)
+{
     xx_installer_vise_windows *archive = (xx_installer_vise_windows *)format;
     vise_parsed *parsed = NULL;
     xx_archive_record_state *state;
@@ -1905,8 +1776,7 @@ xx_archive_record_state *xx_installer_vise_windows_create_archive_records_readin
     state->internal_state = parsed;
     state->free_internal = vise_parsed_free;
     state->total_records = parsed->count;
-    if (!vise_copy_options(&state->options, options) ||
-        !vise_set_record(format, &state->current_record, &parsed->items[0])) {
+    if (!vise_copy_options(&state->options, options) || !vise_set_record(format, &state->current_record, &parsed->items[0])) {
         xx_archive_record_state_free(state);
         return NULL;
     }
@@ -1914,30 +1784,26 @@ xx_archive_record_state *xx_installer_vise_windows_create_archive_records_readin
     return state;
 }
 
-const xx_archive_record *xx_installer_vise_windows_get_current_archive_record(
-    Abstractformat *format, xx_archive_record_state *state) {
-    return format && state && state->format == format && state->has_record
-               ? &state->current_record : NULL;
+const xx_archive_record *xx_installer_vise_windows_get_current_archive_record(Abstractformat *format, xx_archive_record_state *state)
+{
+    return format && state && state->format == format && state->has_record ? &state->current_record : NULL;
 }
 
-bool xx_installer_vise_windows_archive_record_move_to_next(
-    Abstractformat *format, xx_archive_record_state *state, xx_pd_struct *pd) {
+bool xx_installer_vise_windows_archive_record_move_to_next(Abstractformat *format, xx_archive_record_state *state, xx_pd_struct *pd)
+{
     vise_parsed *parsed;
     (void)pd;
-    if (!format || !state || state->format != format ||
-        !(parsed = (vise_parsed *)state->internal_state) ||
-        ++parsed->index >= parsed->count) {
+    if (!format || !state || state->format != format || !(parsed = (vise_parsed *)state->internal_state) || ++parsed->index >= parsed->count) {
         if (state) state->has_record = false;
         return false;
     }
     ++state->current_index;
-    state->has_record = vise_set_record(format, &state->current_record,
-                                        &parsed->items[parsed->index]);
+    state->has_record = vise_set_record(format, &state->current_record, &parsed->items[parsed->index]);
     return state->has_record;
 }
 
-bool xx_installer_vise_windows_unpack_current_archive_record(
-    Abstractformat *format, xx_archive_record_state *state, xx_pd_struct *pd) {
+bool xx_installer_vise_windows_unpack_current_archive_record(Abstractformat *format, xx_archive_record_state *state, xx_pd_struct *pd)
+{
     vise_parsed *parsed;
     const vise_member *member;
     const xx_var *path_option;
@@ -1947,43 +1813,32 @@ bool xx_installer_vise_windows_unpack_current_archive_record(
     bool result = false;
     bool created = false;
     uint32_t crc = 0U;
-    if (!format || !state || state->format != format || !state->has_record ||
-        !(parsed = (vise_parsed *)state->internal_state) ||
-        parsed->index >= parsed->count || (pd && xx_pd_is_stopped(pd)))
+    if (!format || !state || state->format != format || !state->has_record || !(parsed = (vise_parsed *)state->internal_state) || parsed->index >= parsed->count ||
+        (pd && xx_pd_is_stopped(pd)))
         return false;
     member = &parsed->items[parsed->index];
     if (member->unpacked_size > (uint64_t)INT64_MAX) return false;
     path_option = vise_option(&state->options, XX_META_ID_OPT_UNPACK_PATH);
     if (!path_option)
-        return vise_decode_device(format->device,
-                                  format->base_address + member->data_offset,
-                                  (uint64_t)member->packed_size,
-                                  (int64_t)member->unpacked_size, 0U, NULL,
+        return vise_decode_device(format->device, format->base_address + member->data_offset, (uint64_t)member->packed_size, (int64_t)member->unpacked_size, 0U, NULL,
                                   NULL, NULL, &crc, pd) &&
                (!member->has_crc || crc == member->crc);
     if (!vise_safe_output_name(member->name)) return false;
-    if (path_option->type == XX_VAR_TYPE_STRING ||
-        path_option->type == XX_VAR_TYPE_STRING_VIEW) {
+    if (path_option->type == XX_VAR_TYPE_STRING || path_option->type == XX_VAR_TYPE_STRING_VIEW) {
         base = xx_var_get_str(path_option);
-    } else if (path_option->type == XX_VAR_TYPE_WSTRING ||
-               path_option->type == XX_VAR_TYPE_WSTRING_VIEW) {
+    } else if (path_option->type == XX_VAR_TYPE_WSTRING || path_option->type == XX_VAR_TYPE_WSTRING_VIEW) {
         owned_base = xx_str_unicode_to_utf8(xx_var_get_wstr(path_option));
         base = owned_base;
     }
     if (!base) goto done;
-    path = (base[0] && base[xx_str_len(base) - 1U] != '/' &&
-            base[xx_str_len(base) - 1U] != '\\')
-               ? xx_str_concat3(base, "/", member->name)
-               : xx_str_concat(base, member->name);
+    path = (base[0] && base[xx_str_len(base) - 1U] != '/' && base[xx_str_len(base) - 1U] != '\\') ? xx_str_concat3(base, "/", member->name)
+                                                                                                  : xx_str_concat(base, member->name);
     if (!path || !xx_store_create_dirs_a(path, false)) goto done;
     {
         xx_io_device *destination = xx_io_file_open(path, "wb");
         created = destination != NULL;
         if (!destination) goto done;
-        result = vise_decode_device(format->device,
-                                    format->base_address + member->data_offset,
-                                    (uint64_t)member->packed_size,
-                                    (int64_t)member->unpacked_size, 0U,
+        result = vise_decode_device(format->device, format->base_address + member->data_offset, (uint64_t)member->packed_size, (int64_t)member->unpacked_size, 0U,
                                     destination, NULL, NULL, &crc, pd);
         if (xx_io_close(destination) != 0) result = false;
         /* A stream that decodes to the right size can still carry damaged
@@ -1997,8 +1852,8 @@ done:
     return result;
 }
 
-void xx_installer_vise_windows_free_archive_records_reading(
-    Abstractformat *format, xx_archive_record_state *state) {
+void xx_installer_vise_windows_free_archive_records_reading(Abstractformat *format, xx_archive_record_state *state)
+{
     (void)format;
     xx_archive_record_state_free(state);
 }

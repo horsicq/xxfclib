@@ -27,66 +27,32 @@
 
 /* Static Huffman code-length tables, recovered from the reference at
  * VAs 0x8200ac..0x820154.  Read-only, so sharing them across threads is safe. */
-static const uint8_t zx_a_len[64] = {
-    1,  3,  3,  4,  5,  5,  5,  6,  6,  7,  7,  7,  7,  8,  8,  8,
-    9,  9,  9,  9,  10, 10, 10, 10, 11, 11, 11, 11, 11, 11, 11, 12,
-    12, 12, 12, 12, 12, 12, 12, 13, 13, 13, 13, 13, 14, 14, 14, 14,
-    14, 14, 14, 14, 14, 14, 15, 15, 15, 15, 15, 15, 15, 16, 16, 10
-};
+static const uint8_t zx_a_len[64] = {1,  3,  3,  4,  5,  5,  5,  6,  6,  7,  7,  7,  7,  8,  8,  8,  9,  9,  9,  9,  10, 10, 10, 10, 11, 11, 11, 11, 11, 11, 11, 12,
+                                     12, 12, 12, 12, 12, 12, 12, 13, 13, 13, 13, 13, 14, 14, 14, 14, 14, 14, 14, 14, 14, 14, 15, 15, 15, 15, 15, 15, 15, 16, 16, 10};
 
-static const uint8_t zx_a_off[64] = {
-    2, 4, 4, 5, 5, 5, 5, 6, 6, 6, 6, 6, 6, 6, 6, 6,
-    6, 6, 6, 6, 6, 6, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7,
-    7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7,
-    8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8
-};
+static const uint8_t zx_a_off[64] = {2, 4, 4, 5, 5, 5, 5, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7,
+                                     7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8};
 
-static const uint8_t zx_b_len[64] = {
-    3,  2,  3,  3,  4,  4,  4,  5,  5,  6,  6,  7,  7,  7,  7,  8,
-    8,  8,  8,  9,  9,  9,  9,  9,  9,  9,  10, 10, 10, 10, 10, 10,
-    10, 10, 10, 11, 11, 11, 11, 11, 11, 11, 11, 11, 11, 12, 12, 12,
-    12, 12, 12, 12, 12, 12, 12, 12, 12, 12, 12, 13, 13, 13, 13, 6
-};
+static const uint8_t zx_b_len[64] = {3,  2,  3,  3,  4,  4,  4,  5,  5,  6,  6,  7,  7,  7,  7,  8,  8,  8,  8,  9,  9,  9,  9,  9,  9,  9,  10, 10, 10, 10, 10, 10,
+                                     10, 10, 10, 11, 11, 11, 11, 11, 11, 11, 11, 11, 11, 12, 12, 12, 12, 12, 12, 12, 12, 12, 12, 12, 12, 12, 12, 13, 13, 13, 13, 6};
 
-static const uint8_t zx_b_off[64] = {
-    3, 3, 4, 4, 5, 5, 5, 5, 5, 6, 6, 6, 6, 6, 6, 6,
-    6, 6, 6, 6, 6, 6, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7,
-    7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7,
-    8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8
-};
+static const uint8_t zx_b_off[64] = {3, 3, 4, 4, 5, 5, 5, 5, 5, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7,
+                                     7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8};
 
-static const uint8_t zx_c_lit[256] = {
-    11, 12, 12, 12, 12, 12, 12, 12, 12, 8,  7,  12, 12, 7,  12, 12,
-    12, 12, 12, 12, 12, 12, 12, 12, 12, 12, 13, 12, 12, 12, 12, 12,
-    4,  10, 8,  12, 10, 12, 10, 8,  7,  7,  8,  9,  7,  6,  7,  8,
-    7,  6,  7,  7,  7,  7,  8,  7,  7,  8,  8,  12, 11, 7,  9,  11,
-    12, 6,  7,  6,  6,  5,  7,  8,  8,  6,  11, 9,  6,  7,  6,  6,
-    7,  11, 6,  6,  6,  7,  9,  8,  9,  9,  11, 8,  11, 9,  12, 8,
-    12, 5,  6,  6,  6,  5,  6,  6,  6,  5,  11, 7,  5,  6,  5,  5,
-    6,  10, 5,  5,  5,  5,  8,  7,  8,  8,  10, 11, 11, 12, 12, 12,
-    13, 13, 13, 13, 13, 13, 13, 13, 13, 13, 13, 13, 13, 13, 13, 13,
-    13, 13, 13, 13, 13, 13, 13, 13, 13, 13, 13, 13, 13, 13, 13, 13,
-    13, 13, 13, 13, 13, 13, 13, 13, 13, 13, 13, 13, 13, 13, 13, 13,
-    12, 12, 12, 12, 12, 12, 12, 12, 12, 12, 12, 12, 12, 12, 12, 12,
-    12, 12, 12, 12, 12, 12, 12, 12, 12, 12, 12, 12, 12, 12, 12, 12,
-    12, 12, 12, 12, 12, 12, 12, 12, 12, 12, 12, 12, 12, 12, 12, 12,
-    13, 12, 13, 13, 13, 12, 13, 13, 13, 12, 13, 13, 13, 13, 12, 13,
-    13, 13, 12, 12, 12, 13, 13, 13, 13, 13, 13, 13, 13, 13, 13, 13
-};
+static const uint8_t zx_c_lit[256] = {11, 12, 12, 12, 12, 12, 12, 12, 12, 8,  7,  12, 12, 7,  12, 12, 12, 12, 12, 12, 12, 12, 12, 12, 12, 12, 13, 12, 12, 12, 12, 12,
+                                      4,  10, 8,  12, 10, 12, 10, 8,  7,  7,  8,  9,  7,  6,  7,  8,  7,  6,  7,  7,  7,  7,  8,  7,  7,  8,  8,  12, 11, 7,  9,  11,
+                                      12, 6,  7,  6,  6,  5,  7,  8,  8,  6,  11, 9,  6,  7,  6,  6,  7,  11, 6,  6,  6,  7,  9,  8,  9,  9,  11, 8,  11, 9,  12, 8,
+                                      12, 5,  6,  6,  6,  5,  6,  6,  6,  5,  11, 7,  5,  6,  5,  5,  6,  10, 5,  5,  5,  5,  8,  7,  8,  8,  10, 11, 11, 12, 12, 12,
+                                      13, 13, 13, 13, 13, 13, 13, 13, 13, 13, 13, 13, 13, 13, 13, 13, 13, 13, 13, 13, 13, 13, 13, 13, 13, 13, 13, 13, 13, 13, 13, 13,
+                                      13, 13, 13, 13, 13, 13, 13, 13, 13, 13, 13, 13, 13, 13, 13, 13, 12, 12, 12, 12, 12, 12, 12, 12, 12, 12, 12, 12, 12, 12, 12, 12,
+                                      12, 12, 12, 12, 12, 12, 12, 12, 12, 12, 12, 12, 12, 12, 12, 12, 12, 12, 12, 12, 12, 12, 12, 12, 12, 12, 12, 12, 12, 12, 12, 12,
+                                      13, 12, 13, 13, 13, 12, 13, 13, 13, 12, 13, 13, 13, 13, 12, 13, 13, 13, 12, 12, 12, 13, 13, 13, 13, 13, 13, 13, 13, 13, 13, 13};
 
-static const uint8_t zx_c_len[64] = {
-    2,  3,  3,  3,  4,  4,  4,  5,  5,  6,  6,  7,  7,  7,  7,  8,
-    8,  8,  8,  9,  9,  9,  9,  9,  9,  9,  10, 10, 10, 10, 10, 10,
-    10, 10, 10, 11, 11, 11, 11, 11, 11, 11, 11, 11, 11, 12, 12, 12,
-    12, 12, 12, 12, 12, 12, 12, 12, 12, 12, 12, 13, 13, 13, 13, 6
-};
+static const uint8_t zx_c_len[64] = {2,  3,  3,  3,  4,  4,  4,  5,  5,  6,  6,  7,  7,  7,  7,  8,  8,  8,  8,  9,  9,  9,  9,  9,  9,  9,  10, 10, 10, 10, 10, 10,
+                                     10, 10, 10, 11, 11, 11, 11, 11, 11, 11, 11, 11, 11, 12, 12, 12, 12, 12, 12, 12, 12, 12, 12, 12, 12, 12, 12, 13, 13, 13, 13, 6};
 
-static const uint8_t zx_c_off[64] = {
-    3, 3, 4, 4, 4, 5, 5, 6, 6, 6, 6, 6, 6, 6, 6, 6,
-    6, 6, 6, 6, 6, 6, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7,
-    7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7,
-    8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8
-};
+static const uint8_t zx_c_off[64] = {3, 3, 4, 4, 4, 5, 5, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7,
+                                     7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8};
 
 /* ---------------------------------------------------- LSB-first bits ----- */
 
@@ -137,8 +103,7 @@ typedef struct zx_tree {
     bool valid;
 } zx_tree;
 
-static bool zx_tree_insert(zx_tree *t, uint32_t code, int32_t length,
-                           int32_t symbol)
+static bool zx_tree_insert(zx_tree *t, uint32_t code, int32_t length, int32_t symbol)
 {
     int32_t current = 0;
     int32_t position;
@@ -235,10 +200,8 @@ typedef struct zx_lzh_ctx {
     uint8_t ring[ZX_RING_SIZE];
 } zx_lzh_ctx;
 
-static bool zx_lzh_decode(zx_lzh_ctx *ctx, const uint8_t *input,
-                          size_t input_size, size_t output_size,
-                          uint8_t sub_method, uint8_t *output,
-                          size_t output_capacity, size_t *produced_out)
+static bool zx_lzh_decode(zx_lzh_ctx *ctx, const uint8_t *input, size_t input_size, size_t output_size, uint8_t sub_method, uint8_t *output, size_t output_capacity,
+                          size_t *produced_out)
 {
     const uint8_t *length_table;
     const uint8_t *offset_table;
@@ -348,9 +311,7 @@ typedef struct zx_shrink_ctx {
     uint8_t stack[ZX_SHRINK_CODES];
 } zx_shrink_ctx;
 
-static bool zx_shrink_decode(zx_shrink_ctx *ctx, const uint8_t *input,
-                             size_t input_size, uint8_t *output,
-                             size_t output_size)
+static bool zx_shrink_decode(zx_shrink_ctx *ctx, const uint8_t *input, size_t input_size, uint8_t *output, size_t output_size)
 {
     zx_bits bits;
     int32_t width = 9;
@@ -405,8 +366,7 @@ static bool zx_shrink_decode(zx_shrink_ctx *ctx, const uint8_t *input,
                     if (!ctx->used[i]) ctx->free_code[i] = 1;
                 }
                 next_free = ZX_SHRINK_FIRST;
-                while ((next_free < ZX_SHRINK_CODES) &&
-                       (ctx->free_code[next_free] == 0)) {
+                while ((next_free < ZX_SHRINK_CODES) && (ctx->free_code[next_free] == 0)) {
                     ++next_free;
                 }
                 if (next_free < ZX_SHRINK_CODES) {
@@ -443,8 +403,7 @@ static bool zx_shrink_decode(zx_shrink_ctx *ctx, const uint8_t *input,
             --left;
         }
 
-        while ((next_free < ZX_SHRINK_CODES) &&
-               (ctx->free_code[next_free] == 0)) {
+        while ((next_free < ZX_SHRINK_CODES) && (ctx->free_code[next_free] == 0)) {
             ++next_free;
         }
         have_previous = (next_free < ZX_SHRINK_CODES);
@@ -461,8 +420,7 @@ static bool zx_shrink_decode(zx_shrink_ctx *ctx, const uint8_t *input,
 
 /* ------------------------------------------------------- the wrapper ----- */
 
-bool xx_zxzip_member_size(const uint8_t *entry, size_t entry_size,
-                          size_t *data_size, size_t *padded_size)
+bool xx_zxzip_member_size(const uint8_t *entry, size_t entry_size, size_t *data_size, size_t *padded_size)
 {
     uint8_t type;
     uint64_t start;
@@ -494,8 +452,7 @@ bool xx_zxzip_member_size(const uint8_t *entry, size_t entry_size,
     return true;
 }
 
-bool xx_zxzip_hobeta_header(const uint8_t *entry, size_t entry_size,
-                            uint8_t *header)
+bool xx_zxzip_hobeta_header(const uint8_t *entry, size_t entry_size, uint8_t *header)
 {
     uint32_t sum = 0;
     uint32_t check;
@@ -515,10 +472,7 @@ bool xx_zxzip_hobeta_header(const uint8_t *entry, size_t entry_size,
     return true;
 }
 
-bool xx_zxzip_decode_memory(const uint8_t *input, size_t input_size,
-                            const uint8_t *entry, size_t entry_size,
-                            uint8_t *output, size_t output_size,
-                            size_t *written)
+bool xx_zxzip_decode_memory(const uint8_t *input, size_t input_size, const uint8_t *entry, size_t entry_size, uint8_t *output, size_t output_size, size_t *written)
 {
     size_t data_size = 0;
     size_t padded_size = 0;
@@ -563,8 +517,7 @@ bool xx_zxzip_decode_memory(const uint8_t *input, size_t input_size,
     } else if (method == ZX_METHOD_LZH) {
         zx_lzh_ctx *ctx = (zx_lzh_ctx *)xx_mem_alloc(sizeof(zx_lzh_ctx));
         if (!ctx) return false;
-        ok = zx_lzh_decode(ctx, input, input_size, data_size, sub_method,
-                           data, padded_size, &produced);
+        ok = zx_lzh_decode(ctx, input, input_size, data_size, sub_method, data, padded_size, &produced);
         xx_mem_free(ctx);
         if (!ok) return false;
     } else {

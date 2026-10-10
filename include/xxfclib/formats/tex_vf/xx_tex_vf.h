@@ -1,7 +1,8 @@
 /* SPDX-License-Identifier: MIT
  * Primary reference: https://tug.ctan.org/info/knuth-pdf/etc/vftovp.pdf
- * TeX VF202: complete preamble/font definitions/short and long character packets/postamble, unique font and glyph IDs, finite positive design size, bounded valid DVI packet commands with balanced stack and resolved font selections. Original encoded font/character programs exported; no DVI replay or font loading.
- * Bounded32MiB input,4096 components and bounded work.
+ * TeX VF202: complete preamble/font definitions/short and long character packets/postamble, unique font and glyph IDs, finite positive design size, bounded valid DVI
+ * packet commands with balanced stack and resolved font selections. Original encoded font/character programs exported; no DVI replay or font loading. Bounded32MiB
+ * input,4096 components and bounded work.
  */
 #ifndef XX_TEX_VF_H
 #define XX_TEX_VF_H
@@ -9,13 +10,15 @@
 #ifdef __cplusplus
 extern "C" {
 #endif
-typedef struct xx_tex_vf {Abstractformat format;} xx_tex_vf;
-XXFC_API void xx_tex_vf_init(xx_tex_vf *,xx_io_device *,int64_t);
-XXFC_API xx_tex_vf *xx_tex_vf_create(xx_io_device *,int64_t);
+typedef struct xx_tex_vf {
+    Abstractformat format;
+} xx_tex_vf;
+XXFC_API void xx_tex_vf_init(xx_tex_vf *, xx_io_device *, int64_t);
+XXFC_API xx_tex_vf *xx_tex_vf_create(xx_io_device *, int64_t);
 XXFC_API void xx_tex_vf_destroy(xx_tex_vf *);
 XXFC_API void xx_tex_vf_free(xx_tex_vf *);
-XXFC_API bool xx_tex_vf_check_is_valid(Abstractformat *,xx_pd_struct *);
-XXFC_API bool xx_tex_vf_handle_base_info(Abstractformat *,xx_pd_struct *);
+XXFC_API bool xx_tex_vf_check_is_valid(Abstractformat *, xx_pd_struct *);
+XXFC_API bool xx_tex_vf_handle_base_info(Abstractformat *, xx_pd_struct *);
 #ifdef __cplusplus
 }
 #endif

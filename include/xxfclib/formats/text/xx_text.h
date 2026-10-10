@@ -21,7 +21,10 @@ typedef struct xx_text_info {
     bool has_bom;
     uint64_t character_count; /* Unicode scalar count, excluding an initial BOM. */
 } xx_text_info;
-typedef struct xx_text { Abstractformat format; xx_text_info info; } xx_text;
+typedef struct xx_text {
+    Abstractformat format;
+    xx_text_info info;
+} xx_text;
 XXFC_API void xx_text_init(xx_text *, xx_io_device *, int64_t);
 XXFC_API xx_text *xx_text_create(xx_io_device *, int64_t);
 XXFC_API void xx_text_destroy(xx_text *);

@@ -43,9 +43,7 @@
 #define XX_CHD_FILE_TYPE XX_FILE_TYPE_UNKNOWN
 #endif
 
-#define CHD_TAG(a, b, c, d)                                              \
-    (((uint32_t)(a) << 24) | ((uint32_t)(b) << 16) | ((uint32_t)(c) << 8) | \
-     (uint32_t)(d))
+#define CHD_TAG(a, b, c, d) (((uint32_t)(a) << 24) | ((uint32_t)(b) << 16) | ((uint32_t)(c) << 8) | (uint32_t)(d))
 
 #define CHD_CODEC_ZLIB CHD_TAG('z', 'l', 'i', 'b')
 #define CHD_CODEC_ZSTD CHD_TAG('z', 's', 't', 'd')
@@ -124,18 +122,26 @@ enum {
     TRK_AUDIO,
     TRK_COUNT
 };
-enum { SUB_RW = 0, SUB_RW_RAW, SUB_NONE, SUB_COUNT };
+enum {
+    SUB_RW = 0,
+    SUB_RW_RAW,
+    SUB_NONE,
+    SUB_COUNT
+};
 
-static const char *const chd_track_names[TRK_COUNT] = {
-    "MODE1", "MODE1_RAW", "MODE2", "MODE2_FORM1", "MODE2_FORM2",
-    "MODE2_FORM_MIX", "MODE2_RAW", "AUDIO"};
-static const uint32_t chd_track_sizes[TRK_COUNT] = {2048U, 2352U, 2336U, 2048U,
-                                                    2324U, 2336U, 2352U, 2352U};
+static const char *const chd_track_names[TRK_COUNT] = {"MODE1", "MODE1_RAW", "MODE2", "MODE2_FORM1", "MODE2_FORM2", "MODE2_FORM_MIX", "MODE2_RAW", "AUDIO"};
+static const uint32_t chd_track_sizes[TRK_COUNT] = {2048U, 2352U, 2336U, 2048U, 2324U, 2336U, 2352U, 2352U};
 static const char *const chd_sub_names[SUB_COUNT] = {"RW", "RW_RAW", "NONE"};
 static const uint32_t chd_sub_sizes[SUB_COUNT] = {96U, 96U, 0U};
 
 /* Members. */
-enum { CHD_M_DATA = 0, CHD_M_CUE, CHD_M_BIN, CHD_M_GDI, CHD_M_TRACK };
+enum {
+    CHD_M_DATA = 0,
+    CHD_M_CUE,
+    CHD_M_BIN,
+    CHD_M_GDI,
+    CHD_M_TRACK
+};
 
 typedef struct chd_track_s {
     uint32_t type;
@@ -162,7 +168,7 @@ typedef struct chd_member_s {
 
 typedef struct chd_info_s {
     int64_t base;
-    int64_t size;          /**< Bytes from base to the end of the device. */
+    int64_t size; /**< Bytes from base to the end of the device. */
     uint32_t version;
     uint32_t header_len;
     uint32_t flags;
@@ -176,43 +182,42 @@ typedef struct chd_info_s {
     uint32_t map_entry_size; /**< 8 (v1/v2), 16 (v3/v4), 4 (v5 raw), 0. */
     bool v5_compressed_map;
     bool has_parent;
-    uint8_t digest[20];      /**< Raw data SHA-1 (v3-v5) or MD5 (v1/v2). */
+    uint8_t digest[20]; /**< Raw data SHA-1 (v3-v5) or MD5 (v1/v2). */
     uint32_t digest_size;
     uint32_t kind;
     uint32_t track_count;
     chd_track tracks[CHD_MAX_TRACKS];
     uint32_t member_count;
     chd_member members[CHD_MAX_TRACKS + 1U];
-    uint64_t total_frames;   /**< CD: frames the CHD holds, padding included. */
-    bool gd_old_tag;         /**< GD-ROM tracks came from 'CHGT' entries. */
+    uint64_t total_frames; /**< CD: frames the CHD holds, padding included. */
+    bool gd_old_tag;       /**< GD-ROM tracks came from 'CHGT' entries. */
 } chd_info;
 
 /* ---------------------------------------------------------------------- */
 /* Small helpers                                                           */
 
-static uint32_t chd_be16(const uint8_t *p) {
+static uint32_t chd_be16(const uint8_t *p)
+{
     return ((uint32_t)p[0] << 8) | (uint32_t)p[1];
 }
 
-static uint64_t chd_be48(const uint8_t *p) {
+static uint64_t chd_be48(const uint8_t *p)
+{
     return ((uint64_t)chd_be16(p) << 32) | (uint64_t)xx_data_get_u32(p + 2, 4, 0, true);
 }
 
-static void chd_put_be48(uint8_t *p, uint64_t v) {
+static void chd_put_be48(uint8_t *p, uint64_t v)
+{
     uint32_t index;
-    for (index = 0U; index < 6U; ++index)
-        p[index] = (uint8_t)(v >> (8U * (5U - index)));
+    for (index = 0U; index < 6U; ++index) p[index] = (uint8_t)(v >> (8U * (5U - index)));
 }
 
-static bool chd_read_at(xx_io_device *device, int64_t offset, void *buffer,
-                        size_t size) {
+static bool chd_read_at(xx_io_device *device, int64_t offset, void *buffer, size_t size)
+{
     size_t done = 0U;
-    if (!device || (!buffer && size != 0U) || offset < 0 ||
-        xx_io_seek64(device, offset, SEEK_SET) != 0)
-        return false;
+    if (!device || (!buffer && size != 0U) || offset < 0 || xx_io_seek64(device, offset, SEEK_SET) != 0) return false;
     while (done < size) {
-        ssize_t amount = xx_io_read(device, (uint8_t *)buffer + done,
-                                    size - done);
+        ssize_t amount = xx_io_read(device, (uint8_t *)buffer + done, size - done);
         if (amount <= 0 || (size_t)amount > size - done) return false;
         done += (size_t)amount;
     }
@@ -220,27 +225,24 @@ static bool chd_read_at(xx_io_device *device, int64_t offset, void *buffer,
 }
 
 /* Read @p size bytes at CHD offset @p offset, which must lie in the file. */
-static bool chd_read(const chd_info *info, xx_io_device *device,
-                     uint64_t offset, void *buffer, size_t size) {
-    if (offset > (uint64_t)info->size ||
-        (uint64_t)size > (uint64_t)info->size - offset)
-        return false;
+static bool chd_read(const chd_info *info, xx_io_device *device, uint64_t offset, void *buffer, size_t size)
+{
+    if (offset > (uint64_t)info->size || (uint64_t)size > (uint64_t)info->size - offset) return false;
     return chd_read_at(device, info->base + (int64_t)offset, buffer, size);
 }
 
-static bool chd_all_zero(const uint8_t *p, size_t size) {
+static bool chd_all_zero(const uint8_t *p, size_t size)
+{
     size_t index;
     for (index = 0U; index < size; ++index)
         if (p[index] != 0U) return false;
     return true;
 }
 
-static bool chd_known_codec(uint32_t codec) {
-    return codec == 0U || codec == CHD_CODEC_ZLIB || codec == CHD_CODEC_ZSTD ||
-           codec == CHD_CODEC_LZMA || codec == CHD_CODEC_HUFF ||
-           codec == CHD_CODEC_FLAC || codec == CHD_CODEC_CDZL ||
-           codec == CHD_CODEC_CDLZ || codec == CHD_CODEC_CDFL ||
-           codec == CHD_CODEC_CDZS || codec == CHD_CODEC_AVHU;
+static bool chd_known_codec(uint32_t codec)
+{
+    return codec == 0U || codec == CHD_CODEC_ZLIB || codec == CHD_CODEC_ZSTD || codec == CHD_CODEC_LZMA || codec == CHD_CODEC_HUFF || codec == CHD_CODEC_FLAC ||
+           codec == CHD_CODEC_CDZL || codec == CHD_CODEC_CDLZ || codec == CHD_CODEC_CDFL || codec == CHD_CODEC_CDZS || codec == CHD_CODEC_AVHU;
 }
 
 /* ---------------------------------------------------------------------- */
@@ -266,19 +268,20 @@ static bool chd_known_codec(uint32_t codec) {
  * bit 0 marks a parent.
  */
 
-static uint32_t chd_header_length(uint32_t version) {
+static uint32_t chd_header_length(uint32_t version)
+{
     switch (version) {
-    case 1: return 76U;
-    case 2: return 80U;
-    case 3: return 120U;
-    case 4: return 108U;
-    case 5: return 124U;
-    default: return 0U;
+        case 1: return 76U;
+        case 2: return 80U;
+        case 3: return 120U;
+        case 4: return 108U;
+        case 5: return 124U;
+        default: return 0U;
     }
 }
 
-static bool chd_parse_header(xx_io_device *device, int64_t base,
-                             chd_info *info) {
+static bool chd_parse_header(xx_io_device *device, int64_t base, chd_info *info)
+{
     uint8_t h[CHD_MAX_HEADER];
     int64_t total;
     uint32_t length, version, index;
@@ -289,15 +292,10 @@ static bool chd_parse_header(xx_io_device *device, int64_t base,
     if (total < base || total - base < 76) return false;
     info->base = base;
     info->size = total - base;
-    if (!chd_read_at(device, base, h, 16U) ||
-        xx_rt_memcmp(h, CHD_MAGIC, 8U) != 0)
-        return false;
+    if (!chd_read_at(device, base, h, 16U) || xx_rt_memcmp(h, CHD_MAGIC, 8U) != 0) return false;
     length = xx_data_get_u32(h + 8, 4, 0, true);
     version = xx_data_get_u32(h + 12, 4, 0, true);
-    if (chd_header_length(version) == 0U || length != chd_header_length(version) ||
-        (int64_t)length > info->size ||
-        !chd_read_at(device, base, h, length))
-        return false;
+    if (chd_header_length(version) == 0U || length != chd_header_length(version) || (int64_t)length > info->size || !chd_read_at(device, base, h, length)) return false;
     info->version = version;
     info->header_len = length;
     if (version <= 2U) {
@@ -309,9 +307,7 @@ static bool chd_parse_header(xx_io_device *device, int64_t base,
         uint64_t chs;
         info->flags = xx_data_get_u32(h + 16, 4, 0, true);
         if (xx_data_get_u32(h + 20, 4, 0, true) > 2U) return false;
-        if (hunk_sectors == 0U || sector_bytes == 0U ||
-            (uint64_t)hunk_sectors * sector_bytes > CHD_MAX_HUNK)
-            return false;
+        if (hunk_sectors == 0U || sector_bytes == 0U || (uint64_t)hunk_sectors * sector_bytes > CHD_MAX_HUNK) return false;
         info->hunk_bytes = hunk_sectors * sector_bytes;
         info->hunk_count = xx_data_get_u32(h + 28, 4, 0, true);
         chs = (uint64_t)cylinders * heads;
@@ -352,13 +348,9 @@ static bool chd_parse_header(xx_io_device *device, int64_t base,
         info->meta_offset = xx_data_get_u64(h + 48, 8, 0, true);
         info->hunk_bytes = xx_data_get_u32(h + 56, 4, 0, true);
         info->unit_bytes = xx_data_get_u32(h + 60, 4, 0, true);
-        if (info->unit_bytes == 0U || info->hunk_bytes == 0U ||
-            info->unit_bytes > info->hunk_bytes ||
-            info->hunk_bytes % info->unit_bytes != 0U)
-            return false;
+        if (info->unit_bytes == 0U || info->hunk_bytes == 0U || info->unit_bytes > info->hunk_bytes || info->hunk_bytes % info->unit_bytes != 0U) return false;
         if (info->hunk_bytes <= CHD_MAX_HUNK) {
-            hunks = (info->logical_bytes + info->hunk_bytes - 1U) /
-                    info->hunk_bytes;
+            hunks = (info->logical_bytes + info->hunk_bytes - 1U) / info->hunk_bytes;
             if (hunks > 0xFFFFFFFFULL) return false;
             info->hunk_count = (uint32_t)hunks;
         }
@@ -368,25 +360,19 @@ static bool chd_parse_header(xx_io_device *device, int64_t base,
         xx_rt_memcpy(info->digest, h + 64, 20U);
         info->digest_size = 20U;
     }
-    if (info->hunk_bytes == 0U || info->hunk_bytes > CHD_MAX_HUNK ||
-        info->logical_bytes == 0U || info->hunk_count == 0U)
-        return false;
+    if (info->hunk_bytes == 0U || info->hunk_bytes > CHD_MAX_HUNK || info->logical_bytes == 0U || info->hunk_count == 0U) return false;
     /* The hunks must cover the logical data. */
-    if ((uint64_t)info->hunk_count * info->hunk_bytes < info->logical_bytes)
-        return false;
+    if ((uint64_t)info->hunk_count * info->hunk_bytes < info->logical_bytes) return false;
     if (chd_all_zero(info->digest, info->digest_size)) info->digest_size = 0U;
     /* Map placement. */
-    if (info->map_offset < length || info->map_offset > (uint64_t)info->size)
-        return false;
+    if (info->map_offset < length || info->map_offset > (uint64_t)info->size) return false;
     if (info->map_entry_size != 0U) {
         uint64_t map_bytes = (uint64_t)info->hunk_count * info->map_entry_size;
         if (map_bytes > (uint64_t)info->size - info->map_offset) return false;
     } else if ((uint64_t)info->size - info->map_offset < 16U) {
         return false;
     }
-    if (info->meta_offset != 0U &&
-        (info->meta_offset < length || info->meta_offset > (uint64_t)info->size ||
-         (uint64_t)info->size - info->meta_offset < 16U))
+    if (info->meta_offset != 0U && (info->meta_offset < length || info->meta_offset > (uint64_t)info->size || (uint64_t)info->size - info->meta_offset < 16U))
         return false;
     return true;
 }
@@ -394,15 +380,16 @@ static bool chd_parse_header(xx_io_device *device, int64_t base,
 /* ---------------------------------------------------------------------- */
 /* Metadata                                                                */
 
-static int32_t chd_find_name(const char *const *names, uint32_t count,
-                             const char *value) {
+static int32_t chd_find_name(const char *const *names, uint32_t count, const char *value)
+{
     uint32_t index;
     for (index = 0U; index < count; ++index)
         if (xx_str_cmp(names[index], value) == 0) return (int32_t)index;
     return -1;
 }
 
-static bool chd_parse_u32(const char *text, uint32_t *out) {
+static bool chd_parse_u32(const char *text, uint32_t *out)
+{
     uint64_t value = 0U;
     if (!text || !*text) return false;
     while (*text) {
@@ -416,8 +403,8 @@ static bool chd_parse_u32(const char *text, uint32_t *out) {
 }
 
 /* "KEY:VALUE KEY:VALUE ..." -> the value of @p key, copied to @p out. */
-static bool chd_meta_value(const char *text, const char *key, char *out,
-                           size_t out_size) {
+static bool chd_meta_value(const char *text, const char *key, char *out, size_t out_size)
+{
     size_t key_length = xx_str_len(key);
     const char *p = text;
     while (*p) {
@@ -426,8 +413,7 @@ static bool chd_meta_value(const char *text, const char *key, char *out,
         while (*p == ' ') ++p;
         token = p;
         while (p[length] && p[length] != ' ') ++length;
-        if (length > key_length && token[key_length] == ':' &&
-            xx_rt_memcmp(token, key, key_length) == 0) {
+        if (length > key_length && token[key_length] == ':' && xx_rt_memcmp(token, key, key_length) == 0) {
             size_t value_length = length - key_length - 1U;
             if (value_length + 1U > out_size) return false;
             xx_rt_memcpy(out, token + key_length + 1U, value_length);
@@ -439,45 +425,34 @@ static bool chd_meta_value(const char *text, const char *key, char *out,
     return false;
 }
 
-static bool chd_meta_number(const char *text, const char *key,
-                            uint32_t *out) {
+static bool chd_meta_number(const char *text, const char *key, uint32_t *out)
+{
     char value[16];
-    return chd_meta_value(text, key, value, sizeof(value)) &&
-           chd_parse_u32(value, out);
+    return chd_meta_value(text, key, value, sizeof(value)) && chd_parse_u32(value, out);
 }
 
 /* One CHTR / CHT2 / CHGD text entry. */
-static bool chd_parse_track_text(chd_info *info, const char *text,
-                                 uint32_t tag) {
+static bool chd_parse_track_text(chd_info *info, const char *text, uint32_t tag)
+{
     char value[32];
     uint32_t number, frames;
     int32_t type, subtype;
     chd_track *track;
-    if (!chd_meta_number(text, "TRACK", &number) || number == 0U ||
-        number > CHD_MAX_TRACKS)
-        return false;
+    if (!chd_meta_number(text, "TRACK", &number) || number == 0U || number > CHD_MAX_TRACKS) return false;
     track = &info->tracks[number - 1U];
     if (track->defined) return false;
-    if (!chd_meta_value(text, "TYPE", value, sizeof(value)) ||
-        (type = chd_find_name(chd_track_names, TRK_COUNT, value)) < 0)
-        return false;
-    if (!chd_meta_value(text, "SUBTYPE", value, sizeof(value)) ||
-        (subtype = chd_find_name(chd_sub_names, SUB_COUNT, value)) < 0)
-        return false;
-    if (!chd_meta_number(text, "FRAMES", &frames) || frames == 0U ||
-        frames > 0x10000000U)
-        return false;
+    if (!chd_meta_value(text, "TYPE", value, sizeof(value)) || (type = chd_find_name(chd_track_names, TRK_COUNT, value)) < 0) return false;
+    if (!chd_meta_value(text, "SUBTYPE", value, sizeof(value)) || (subtype = chd_find_name(chd_sub_names, SUB_COUNT, value)) < 0) return false;
+    if (!chd_meta_number(text, "FRAMES", &frames) || frames == 0U || frames > 0x10000000U) return false;
     xx_mem_zero(track, sizeof(*track));
     track->type = (uint32_t)type;
     track->subtype = (uint32_t)subtype;
     track->datasize = chd_track_sizes[type];
     track->subsize = chd_sub_sizes[subtype];
     track->frames = frames;
-    track->extraframes =
-        ((frames + CHD_TRACK_PAD - 1U) / CHD_TRACK_PAD) * CHD_TRACK_PAD - frames;
+    track->extraframes = ((frames + CHD_TRACK_PAD - 1U) / CHD_TRACK_PAD) * CHD_TRACK_PAD - frames;
     if (tag != CHD_META_CHTR) {
-        if (!chd_meta_number(text, "PREGAP", &track->pregap) ||
-            !chd_meta_number(text, "POSTGAP", &track->postgap) ||
+        if (!chd_meta_number(text, "PREGAP", &track->pregap) || !chd_meta_number(text, "POSTGAP", &track->postgap) ||
             !chd_meta_value(text, "PGTYPE", value, sizeof(value)))
             return false;
         /* A 'V' prefix means the pregap frames are stored in the image. */
@@ -485,13 +460,10 @@ static bool chd_parse_track_text(chd_info *info, const char *text,
             int32_t pgtype = chd_find_name(chd_track_names, TRK_COUNT, value + 1);
             track->pgdatasize = pgtype >= 0 ? chd_track_sizes[pgtype] : 0U;
         }
-        if (track->pregap > 0x10000000U || track->postgap > 0x10000000U)
-            return false;
+        if (track->pregap > 0x10000000U || track->postgap > 0x10000000U) return false;
     }
     if (tag == CHD_META_CHGD || tag == CHD_META_CHGT) {
-        if (!chd_meta_number(text, "PAD", &track->padframes) ||
-            track->padframes > frames)
-            return false;
+        if (!chd_meta_number(text, "PAD", &track->padframes) || track->padframes > frames) return false;
     }
     track->defined = true;
     return true;
@@ -500,8 +472,8 @@ static bool chd_parse_track_text(chd_info *info, const char *text,
 /* The old binary TOC: u32 track count, then 99 x {type, subtype, data
  * size, subcode size, frames, extra frames}, in the byte order of the
  * machine that wrote it (a track count over 99 means the other one). */
-static bool chd_parse_chcd(chd_info *info, const uint8_t *data,
-                           uint32_t size) {
+static bool chd_parse_chcd(chd_info *info, const uint8_t *data, uint32_t size)
+{
     uint32_t count, index;
     bool big;
     if (size < 4U + CHD_MAX_TRACKS * 24U) return false;
@@ -513,11 +485,8 @@ static bool chd_parse_chcd(chd_info *info, const uint8_t *data,
         const uint8_t *p = data + 4U + index * 24U;
         chd_track *track = &info->tracks[index];
         uint32_t f[6], field;
-        for (field = 0U; field < 6U; ++field)
-            f[field] = big ? xx_data_get_u32(p + 4U * field, 4, 0, true) : xx_data_get_u32(p + 4U * field, 4, 0, false);
-        if (f[0] >= TRK_COUNT || f[1] >= SUB_COUNT || f[2] == 0U ||
-            f[2] > CHD_SECTOR || f[3] > CHD_SUBCODE || f[4] == 0U ||
-            f[4] > 0x10000000U || f[5] > 0x10000000U)
+        for (field = 0U; field < 6U; ++field) f[field] = big ? xx_data_get_u32(p + 4U * field, 4, 0, true) : xx_data_get_u32(p + 4U * field, 4, 0, false);
+        if (f[0] >= TRK_COUNT || f[1] >= SUB_COUNT || f[2] == 0U || f[2] > CHD_SECTOR || f[3] > CHD_SUBCODE || f[4] == 0U || f[4] > 0x10000000U || f[5] > 0x10000000U)
             return false;
         xx_mem_zero(track, sizeof(*track));
         track->type = f[0];
@@ -540,21 +509,18 @@ typedef struct chd_meta_scan_s {
 /* Walk the metadata list and collect what classifies the image.  Track
  * text entries are parsed for one tag family only: the first of CHTR,
  * CHT2 and CHGD that is present, as MAME looks them up. */
-static bool chd_scan_metadata(xx_io_device *device, chd_info *info,
-                              chd_meta_scan *scan, uint32_t want_tag) {
+static bool chd_scan_metadata(xx_io_device *device, chd_info *info, chd_meta_scan *scan, uint32_t want_tag)
+{
     uint64_t offset = info->meta_offset;
     uint32_t count = 0U;
     xx_mem_zero(scan, sizeof(*scan));
     while (offset != 0U) {
         uint8_t head[16];
         uint32_t tag, length;
-        if (++count > CHD_MAX_META_ENTRIES || offset < info->header_len ||
-            !chd_read(info, device, offset, head, sizeof(head)))
-            return false;
+        if (++count > CHD_MAX_META_ENTRIES || offset < info->header_len || !chd_read(info, device, offset, head, sizeof(head))) return false;
         tag = xx_data_get_u32(head, 4, 0, true);
         length = xx_data_get_u32(head + 4, 4, 0, true) & 0x00FFFFFFU;
-        if ((uint64_t)length > (uint64_t)info->size - offset - 16U)
-            return false;
+        if ((uint64_t)length > (uint64_t)info->size - offset - 16U) return false;
         if (tag == CHD_META_CHTR) ++scan->text_tracks[0];
         else if (tag == CHD_META_CHT2) ++scan->text_tracks[1];
         else if (tag == CHD_META_CHGD || tag == CHD_META_CHGT) ++scan->text_tracks[2];
@@ -562,28 +528,22 @@ static bool chd_scan_metadata(xx_io_device *device, chd_info *info,
         else if (tag == CHD_META_DVD) scan->has_dvd = true;
         else if (tag == CHD_META_GDDD) scan->has_gddd = true;
         else if (tag == CHD_META_AVAV) scan->has_av = true;
-        if (want_tag != 0U &&
-            (tag == want_tag ||
-             (want_tag == CHD_META_CHGD && tag == CHD_META_CHGT))) {
+        if (want_tag != 0U && (tag == want_tag || (want_tag == CHD_META_CHGD && tag == CHD_META_CHGT))) {
             if (tag == CHD_META_CHCD) {
                 uint8_t *table;
                 bool ok;
-                if (length < 4U + CHD_MAX_TRACKS * 24U || length > 65536U)
-                    return false;
+                if (length < 4U + CHD_MAX_TRACKS * 24U || length > 65536U) return false;
                 table = (uint8_t *)xx_mem_alloc(length);
                 if (!table) return false;
-                ok = chd_read(info, device, offset + 16U, table, length) &&
-                     chd_parse_chcd(info, table, length);
+                ok = chd_read(info, device, offset + 16U, table, length) && chd_parse_chcd(info, table, length);
                 xx_mem_free(table);
                 if (!ok) return false;
                 want_tag = 0U;
             } else {
                 char text[CHD_MAX_META_TEXT + 1U];
-                uint32_t used = length > CHD_MAX_META_TEXT ? CHD_MAX_META_TEXT
-                                                           : length;
+                uint32_t used = length > CHD_MAX_META_TEXT ? CHD_MAX_META_TEXT : length;
                 uint32_t index;
-                if (!chd_read(info, device, offset + 16U, text, used))
-                    return false;
+                if (!chd_read(info, device, offset + 16U, text, used)) return false;
                 text[used] = 0;
                 for (index = 0U; index < used; ++index)
                     if (text[index] == 0) break;
@@ -601,15 +561,13 @@ static bool chd_scan_metadata(xx_io_device *device, chd_info *info,
 /* ---------------------------------------------------------------------- */
 /* Classification and members                                              */
 
-static void chd_msf(char *out, size_t size, uint64_t frames) {
-    (void)xx_rt_snprintf(out, size, "%02u:%02u:%02u",
-                         (unsigned)(frames / (75U * 60U)),
-                         (unsigned)((frames / 75U) % 60U),
-                         (unsigned)(frames % 75U));
+static void chd_msf(char *out, size_t size, uint64_t frames)
+{
+    (void)xx_rt_snprintf(out, size, "%02u:%02u:%02u", (unsigned)(frames / (75U * 60U)), (unsigned)((frames / 75U) % 60U), (unsigned)(frames % 75U));
 }
 
-static void chd_add_member(chd_info *info, const char *name, uint8_t kind,
-                           uint8_t track, uint64_t size) {
+static void chd_add_member(chd_info *info, const char *name, uint8_t kind, uint8_t track, uint64_t size)
+{
     chd_member *member = &info->members[info->member_count++];
     size_t length = xx_str_len(name);
     if (length >= sizeof(member->name)) length = sizeof(member->name) - 1U;
@@ -622,28 +580,25 @@ static void chd_add_member(chd_info *info, const char *name, uint8_t kind,
 
 /* The cue sheet or GDI list chdman writes for this image (CRLF lines, as
  * the Windows build emits them). */
-static size_t chd_build_sheet(const chd_info *info, char *out, size_t size) {
+static size_t chd_build_sheet(const chd_info *info, char *out, size_t size)
+{
     size_t used = 0U;
     uint64_t frameofs = 0U;
     uint32_t index;
     char line[160];
-#define CHD_EMIT(...)                                                        \
-    do {                                                                     \
-        int n_ = xx_rt_snprintf(line, sizeof(line), __VA_ARGS__);            \
-        if (n_ < 0 || (size_t)n_ >= sizeof(line) || used + (size_t)n_ > size) \
-            return 0U;                                                       \
-        if (out) xx_rt_memcpy(out + used, line, (size_t)n_);                  \
-        used += (size_t)n_;                                                  \
+#define CHD_EMIT(...)                                                                    \
+    do {                                                                                 \
+        int n_ = xx_rt_snprintf(line, sizeof(line), __VA_ARGS__);                        \
+        if (n_ < 0 || (size_t)n_ >= sizeof(line) || used + (size_t)n_ > size) return 0U; \
+        if (out) xx_rt_memcpy(out + used, line, (size_t)n_);                             \
+        used += (size_t)n_;                                                              \
     } while (0)
     if (info->kind == XX_CHD_KIND_GD) {
         CHD_EMIT("%u\r\n", (unsigned)info->track_count);
         for (index = 0U; index < info->track_count; ++index) {
             const chd_track *track = &info->tracks[index];
-            CHD_EMIT("%u %u %u %u disc%02u.%s 0\r\n", (unsigned)(index + 1U),
-                     (unsigned)frameofs,
-                     track->type == TRK_AUDIO ? 0U : 4U,
-                     (unsigned)track->datasize, (unsigned)(index + 1U),
-                     track->type == TRK_AUDIO ? "raw" : "bin");
+            CHD_EMIT("%u %u %u %u disc%02u.%s 0\r\n", (unsigned)(index + 1U), (unsigned)frameofs, track->type == TRK_AUDIO ? 0U : 4U, (unsigned)track->datasize,
+                     (unsigned)(index + 1U), track->type == TRK_AUDIO ? "raw" : "bin");
             frameofs += track->frames;
         }
         return used;
@@ -652,12 +607,9 @@ static size_t chd_build_sheet(const chd_info *info, char *out, size_t size) {
         const chd_track *track = &info->tracks[index];
         char msf[16], msf2[16];
         if (index == 0U) CHD_EMIT("FILE \"disc.bin\" BINARY\r\n");
-        if (track->type == TRK_AUDIO)
-            CHD_EMIT("  TRACK %02u AUDIO\r\n", (unsigned)(index + 1U));
+        if (track->type == TRK_AUDIO) CHD_EMIT("  TRACK %02u AUDIO\r\n", (unsigned)(index + 1U));
         else
-            CHD_EMIT("  TRACK %02u %s/%04u\r\n", (unsigned)(index + 1U),
-                     (track->type == TRK_MODE1 || track->type == TRK_MODE1_RAW)
-                         ? "MODE1" : "MODE2",
+            CHD_EMIT("  TRACK %02u %s/%04u\r\n", (unsigned)(index + 1U), (track->type == TRK_MODE1 || track->type == TRK_MODE1_RAW) ? "MODE1" : "MODE2",
                      (unsigned)track->datasize);
         chd_msf(msf, sizeof(msf), frameofs);
         if (track->pregap > 0U && track->pgdatasize == 0U) {
@@ -681,16 +633,14 @@ static size_t chd_build_sheet(const chd_info *info, char *out, size_t size) {
     return used;
 }
 
-static bool chd_layout_tracks(chd_info *info) {
+static bool chd_layout_tracks(chd_info *info)
+{
     uint64_t chd = 0U, phys = 0U, hunk_frames;
     uint32_t index;
-    if (info->track_count == 0U || info->hunk_bytes % CHD_FRAME != 0U)
-        return false;
+    if (info->track_count == 0U || info->hunk_bytes % CHD_FRAME != 0U) return false;
     for (index = 0U; index < info->track_count; ++index) {
         chd_track *track = &info->tracks[index];
-        if (!track->defined || track->datasize == 0U ||
-            track->datasize > CHD_SECTOR || track->padframes > track->frames)
-            return false;
+        if (!track->defined || track->datasize == 0U || track->datasize > CHD_SECTOR || track->padframes > track->frames) return false;
         track->chdframeofs = chd;
         track->physframeofs = phys;
         chd += (uint64_t)track->frames + track->extraframes;
@@ -703,7 +653,8 @@ static bool chd_layout_tracks(chd_info *info) {
 }
 
 /* Header + metadata -> kind, tracks and members. */
-static bool chd_parse(xx_io_device *device, int64_t base, chd_info *info) {
+static bool chd_parse(xx_io_device *device, int64_t base, chd_info *info)
+{
     chd_meta_scan scan;
     uint32_t want = 0U, index;
     if (!chd_parse_header(device, base, info)) return false;
@@ -720,13 +671,9 @@ static bool chd_parse(xx_io_device *device, int64_t base, chd_info *info) {
     if (want != 0U) {
         chd_meta_scan again;
         info->track_count = 0U;
-        for (index = 0U; index < CHD_MAX_TRACKS; ++index)
-            info->tracks[index].defined = false;
-        if (chd_scan_metadata(device, info, &again, want) &&
-            chd_layout_tracks(info))
-            info->kind = want == CHD_META_CHGD ? XX_CHD_KIND_GD : XX_CHD_KIND_CD;
-        else
-            info->track_count = 0U;
+        for (index = 0U; index < CHD_MAX_TRACKS; ++index) info->tracks[index].defined = false;
+        if (chd_scan_metadata(device, info, &again, want) && chd_layout_tracks(info)) info->kind = want == CHD_META_CHGD ? XX_CHD_KIND_GD : XX_CHD_KIND_CD;
+        else info->track_count = 0U;
     }
     if (info->kind == XX_CHD_KIND_RAW) {
         bool av = scan.has_av || info->codecs[0] == CHD_CODEC_V34AV;
@@ -738,44 +685,28 @@ static bool chd_parse(xx_io_device *device, int64_t base, chd_info *info) {
     }
     info->member_count = 0U;
     switch (info->kind) {
-    case XX_CHD_KIND_HD:
-        chd_add_member(info, "disk.img", CHD_M_DATA, 0U, info->logical_bytes);
-        break;
-    case XX_CHD_KIND_DVD:
-        chd_add_member(info, "disc.iso", CHD_M_DATA, 0U, info->logical_bytes);
-        break;
-    case XX_CHD_KIND_CD: {
-        uint64_t bin = 0U;
-        for (index = 0U; index < info->track_count; ++index)
-            bin += (uint64_t)(info->tracks[index].frames -
-                              info->tracks[index].padframes) *
-                   info->tracks[index].datasize;
-        chd_add_member(info, "disc.cue", CHD_M_CUE, 0U,
-                       chd_build_sheet(info, NULL, CHD_SHEET_MAX));
-        chd_add_member(info, "disc.bin", CHD_M_BIN, 0U, bin);
-        break;
-    }
-    case XX_CHD_KIND_GD:
-        chd_add_member(info, "disc.gdi", CHD_M_GDI, 0U,
-                       chd_build_sheet(info, NULL, CHD_SHEET_MAX));
-        for (index = 0U; index < info->track_count; ++index) {
-            char name[16];
-            const chd_track *track = &info->tracks[index];
-            (void)xx_rt_snprintf(name, sizeof(name), "disc%02u.%s",
-                                 (unsigned)(index + 1U),
-                                 track->type == TRK_AUDIO ? "raw" : "bin");
-            chd_add_member(info, name, CHD_M_TRACK, (uint8_t)index,
-                           (uint64_t)(track->frames - track->padframes) *
-                               track->datasize);
+        case XX_CHD_KIND_HD: chd_add_member(info, "disk.img", CHD_M_DATA, 0U, info->logical_bytes); break;
+        case XX_CHD_KIND_DVD: chd_add_member(info, "disc.iso", CHD_M_DATA, 0U, info->logical_bytes); break;
+        case XX_CHD_KIND_CD: {
+            uint64_t bin = 0U;
+            for (index = 0U; index < info->track_count; ++index)
+                bin += (uint64_t)(info->tracks[index].frames - info->tracks[index].padframes) * info->tracks[index].datasize;
+            chd_add_member(info, "disc.cue", CHD_M_CUE, 0U, chd_build_sheet(info, NULL, CHD_SHEET_MAX));
+            chd_add_member(info, "disc.bin", CHD_M_BIN, 0U, bin);
+            break;
         }
-        break;
-    default:
-        chd_add_member(info, "data.bin", CHD_M_DATA, 0U, info->logical_bytes);
-        break;
+        case XX_CHD_KIND_GD:
+            chd_add_member(info, "disc.gdi", CHD_M_GDI, 0U, chd_build_sheet(info, NULL, CHD_SHEET_MAX));
+            for (index = 0U; index < info->track_count; ++index) {
+                char name[16];
+                const chd_track *track = &info->tracks[index];
+                (void)xx_rt_snprintf(name, sizeof(name), "disc%02u.%s", (unsigned)(index + 1U), track->type == TRK_AUDIO ? "raw" : "bin");
+                chd_add_member(info, name, CHD_M_TRACK, (uint8_t)index, (uint64_t)(track->frames - track->padframes) * track->datasize);
+            }
+            break;
+        default: chd_add_member(info, "data.bin", CHD_M_DATA, 0U, info->logical_bytes); break;
     }
-    if ((info->kind == XX_CHD_KIND_CD || info->kind == XX_CHD_KIND_GD) &&
-        info->members[0].size == 0U)
-        return false;
+    if ((info->kind == XX_CHD_KIND_CD || info->kind == XX_CHD_KIND_GD) && info->members[0].size == 0U) return false;
     return true;
 }
 
@@ -790,7 +721,8 @@ typedef struct chd_bits_s {
     uint32_t count;
 } chd_bits;
 
-static void chd_bits_init(chd_bits *b, const uint8_t *data, size_t size) {
+static void chd_bits_init(chd_bits *b, const uint8_t *data, size_t size)
+{
     b->data = data;
     b->size = size;
     b->next = 0U;
@@ -798,7 +730,8 @@ static void chd_bits_init(chd_bits *b, const uint8_t *data, size_t size) {
     b->count = 0U;
 }
 
-static void chd_bits_fill(chd_bits *b) {
+static void chd_bits_fill(chd_bits *b)
+{
     while (b->count <= 56U) {
         uint64_t byte = b->next < b->size ? b->data[b->next] : 0U;
         ++b->next;
@@ -808,39 +741,46 @@ static void chd_bits_fill(chd_bits *b) {
 }
 
 /* Bits consumed so far. */
-static uint64_t chd_bits_used(const chd_bits *b) {
+static uint64_t chd_bits_used(const chd_bits *b)
+{
     return (uint64_t)b->next * 8U - b->count;
 }
 
-static bool chd_bits_overflow(const chd_bits *b) {
+static bool chd_bits_overflow(const chd_bits *b)
+{
     return chd_bits_used(b) > (uint64_t)b->size * 8U;
 }
 
-static uint32_t chd_bits_peek(chd_bits *b, uint32_t n) {
+static uint32_t chd_bits_peek(chd_bits *b, uint32_t n)
+{
     if (n == 0U) return 0U;
     if (b->count < n) chd_bits_fill(b);
     return (uint32_t)(b->cache >> (64U - n));
 }
 
-static void chd_bits_skip(chd_bits *b, uint32_t n) {
+static void chd_bits_skip(chd_bits *b, uint32_t n)
+{
     if (n == 0U) return;
     if (b->count < n) chd_bits_fill(b);
     b->cache = n >= 64U ? 0U : b->cache << n;
     b->count -= n;
 }
 
-static uint32_t chd_bits_read(chd_bits *b, uint32_t n) {
+static uint32_t chd_bits_read(chd_bits *b, uint32_t n)
+{
     uint32_t value = chd_bits_peek(b, n);
     chd_bits_skip(b, n);
     return value;
 }
 
-static uint64_t chd_bits_read_wide(chd_bits *b, uint32_t n) {
+static uint64_t chd_bits_read_wide(chd_bits *b, uint32_t n)
+{
     if (n <= 32U) return chd_bits_read(b, n);
     return ((uint64_t)chd_bits_read(b, n - 32U) << 32) | chd_bits_read(b, 32U);
 }
 
-static int32_t chd_bits_signed(chd_bits *b, uint32_t n) {
+static int32_t chd_bits_signed(chd_bits *b, uint32_t n)
+{
     uint32_t value;
     if (n == 0U) return 0;
     value = chd_bits_read(b, n);
@@ -849,7 +789,8 @@ static int32_t chd_bits_signed(chd_bits *b, uint32_t n) {
 }
 
 /* Count zero bits up to the next 1 (consumed too).  Fails past the end. */
-static bool chd_bits_unary(chd_bits *b, uint32_t limit, uint32_t *out) {
+static bool chd_bits_unary(chd_bits *b, uint32_t limit, uint32_t *out)
+{
     uint32_t zeros = 0U;
     for (;;) {
         if (b->count == 0U || b->cache == 0U) {
@@ -903,7 +844,8 @@ typedef struct chd_huff_s {
     uint16_t *table; /**< 1 << max_bits entries. */
 } chd_huff;
 
-static bool chd_huff_build(chd_huff *h) {
+static bool chd_huff_build(chd_huff *h)
+{
     uint32_t histogram[33], index, start = 0U, length;
     uint32_t assigned[256];
     for (index = 0U; index < 33U; ++index) histogram[index] = 0U;
@@ -928,13 +870,13 @@ static bool chd_huff_build(chd_huff *h) {
         if (assigned[index] >= (1U << bits)) return false;
         first = assigned[index] << shift;
         last = ((assigned[index] + 1U) << shift);
-        for (slot = first; slot < last; ++slot)
-            h->table[slot] = (uint16_t)((index << 5) | bits);
+        for (slot = first; slot < last; ++slot) h->table[slot] = (uint16_t)((index << 5) | bits);
     }
     return true;
 }
 
-static bool chd_huff_decode(chd_huff *h, chd_bits *b, uint32_t *symbol) {
+static bool chd_huff_decode(chd_huff *h, chd_bits *b, uint32_t *symbol)
+{
     uint16_t entry = h->table[chd_bits_peek(b, h->max_bits)];
     if (entry == 0U) return false;
     chd_bits_skip(b, entry & 0x1FU);
@@ -944,7 +886,8 @@ static bool chd_huff_decode(chd_huff *h, chd_bits *b, uint32_t *symbol) {
 
 /* Lengths as runs: a value other than 1 is a length; 1 escapes, and is
  * followed by 1 (a literal 1) or by a length and a repeat count - 3. */
-static bool chd_huff_import_rle(chd_huff *h, chd_bits *b) {
+static bool chd_huff_import_rle(chd_huff *h, chd_bits *b)
+{
     uint32_t width = h->max_bits >= 16U ? 5U : (h->max_bits >= 8U ? 4U : 3U);
     uint32_t node = 0U;
     while (node < h->codes) {
@@ -966,11 +909,11 @@ static bool chd_huff_import_rle(chd_huff *h, chd_bits *b) {
 }
 
 /* Lengths coded with a small 24-symbol Huffman tree of their own. */
-static bool chd_huff_import_huffman(chd_huff *h, chd_bits *b) {
+static bool chd_huff_import_huffman(chd_huff *h, chd_bits *b)
+{
     chd_huff small;
     uint16_t small_table[1U << 6];
-    uint32_t start, count = 0U, index, rle_bits = 0U, temp, last = 0U,
-                    node = 0U;
+    uint32_t start, count = 0U, index, rle_bits = 0U, temp, last = 0U, node = 0U;
     small.codes = 24U;
     small.max_bits = 6U;
     small.table = small_table;
@@ -1012,12 +955,12 @@ static bool chd_huff_import_huffman(chd_huff *h, chd_bits *b) {
 typedef struct chd_ctx_s {
     const chd_info *info;
     xx_io_device *device;
-    uint8_t *map;          /**< Decoded v5 map, 12 bytes per hunk. */
-    uint8_t *packed;       /**< One stored hunk (<= hunk_bytes). */
-    uint8_t *work;         /**< CD codecs: sector data then subcode. */
-    uint16_t *huff_table;  /**< 1 << 16 entries for the huff codec. */
-    int32_t *flac[2];      /**< One FLAC block per channel. */
-    uint8_t *mapbuf;       /**< v1-v4 / v5 raw map window. */
+    uint8_t *map;         /**< Decoded v5 map, 12 bytes per hunk. */
+    uint8_t *packed;      /**< One stored hunk (<= hunk_bytes). */
+    uint8_t *work;        /**< CD codecs: sector data then subcode. */
+    uint16_t *huff_table; /**< 1 << 16 entries for the huff codec. */
+    int32_t *flac[2];     /**< One FLAC block per channel. */
+    uint8_t *mapbuf;      /**< v1-v4 / v5 raw map window. */
     uint32_t mapbuf_first;
     uint32_t mapbuf_count;
     uint8_t gf_exp[512];
@@ -1028,7 +971,8 @@ typedef struct chd_ctx_s {
 #define CHD_FLAC_MAX_BLOCK 65536U
 #define CHD_MAPBUF_ENTRIES 4096U
 
-static void chd_ctx_free(chd_ctx *c) {
+static void chd_ctx_free(chd_ctx *c)
+{
     if (!c) return;
     if (c->map) xx_mem_free(c->map);
     if (c->packed) xx_mem_free(c->packed);
@@ -1040,7 +984,8 @@ static void chd_ctx_free(chd_ctx *c) {
     xx_mem_free(c);
 }
 
-static chd_ctx *chd_ctx_create(const chd_info *info, xx_io_device *device) {
+static chd_ctx *chd_ctx_create(const chd_info *info, xx_io_device *device)
+{
     chd_ctx *c = (chd_ctx *)xx_mem_calloc(1U, sizeof(*c));
     uint32_t index, x = 1U;
     if (!c) return NULL;
@@ -1060,8 +1005,7 @@ static chd_ctx *chd_ctx_create(const chd_info *info, xx_io_device *device) {
         x <<= 1;
         if (x & 0x100U) x ^= 0x11DU;
     }
-    for (index = 255U; index < 512U; ++index)
-        c->gf_exp[index] = c->gf_exp[index - 255U];
+    for (index = 255U; index < 512U; ++index) c->gf_exp[index] = c->gf_exp[index - 255U];
     return c;
 }
 
@@ -1076,43 +1020,36 @@ static chd_ctx *chd_ctx_create(const chd_info *info, xx_io_device *device) {
  * its code needs.  Each decoded entry is {code, u24 length, u48 offset,
  * u16 CRC}; the CRC-16/CCITT of all of them must match the header's.
  */
-static bool chd_v5_decode_map(chd_ctx *c) {
+static bool chd_v5_decode_map(chd_ctx *c)
+{
     const chd_info *info = c->info;
     uint8_t head[16];
     uint8_t *packed = NULL;
     uint16_t table[256];
     chd_huff huff;
     chd_bits bits;
-    uint32_t packed_size, length_bits, self_bits, parent_bits, hunk,
-        repeat = 0U, last_code = 0U;
+    uint32_t packed_size, length_bits, self_bits, parent_bits, hunk, repeat = 0U, last_code = 0U;
     uint64_t current, last_self = 0U, last_parent = 0U;
     bool ok = false;
     if (c->map) return true;
     if (c->map_failed || info->hunk_count > CHD_MAX_MAP_HUNKS) return false;
     c->map_failed = true;
-    if (!chd_read(info, c->device, info->map_offset, head, sizeof(head)))
-        return false;
+    if (!chd_read(info, c->device, info->map_offset, head, sizeof(head))) return false;
     packed_size = xx_data_get_u32(head, 4, 0, true);
     current = chd_be48(head + 4);
     length_bits = head[12];
     self_bits = head[13];
     parent_bits = head[14];
-    if (packed_size == 0U || length_bits > 24U || self_bits > 32U ||
-        parent_bits > 48U ||
-        (uint64_t)packed_size > (uint64_t)info->size - info->map_offset - 16U)
+    if (packed_size == 0U || length_bits > 24U || self_bits > 32U || parent_bits > 48U || (uint64_t)packed_size > (uint64_t)info->size - info->map_offset - 16U)
         return false;
     /* Every map code takes at least one bit and the longest run (three
      * codes) covers 274 hunks, so no map describes more than ~92 hunks
      * per bit: refuse a hunk count the packed map cannot hold before
      * allocating the decoded map. */
-    if ((uint64_t)info->hunk_count > (uint64_t)packed_size * 8U * 92U)
-        return false;
+    if ((uint64_t)info->hunk_count > (uint64_t)packed_size * 8U * 92U) return false;
     packed = (uint8_t *)xx_mem_alloc(packed_size);
-    c->map = (uint8_t *)xx_mem_alloc((size_t)info->hunk_count *
-                                     CHD_V5_MAP_ENTRY);
-    if (!packed || !c->map ||
-        !chd_read(info, c->device, info->map_offset + 16U, packed, packed_size))
-        goto done;
+    c->map = (uint8_t *)xx_mem_alloc((size_t)info->hunk_count * CHD_V5_MAP_ENTRY);
+    if (!packed || !c->map || !chd_read(info, c->device, info->map_offset + 16U, packed, packed_size)) goto done;
     chd_bits_init(&bits, packed, packed_size);
     huff.codes = 16U;
     huff.max_bits = 8U;
@@ -1132,9 +1069,7 @@ static bool chd_v5_decode_map(chd_ctx *c) {
                 repeat = 2U + extra;
             } else if (code == V5_RLE_LARGE) {
                 uint32_t low;
-                if (!chd_huff_decode(&huff, &bits, &extra) ||
-                    !chd_huff_decode(&huff, &bits, &low))
-                    goto done;
+                if (!chd_huff_decode(&huff, &bits, &extra) || !chd_huff_decode(&huff, &bits, &low)) goto done;
                 entry[0] = (uint8_t)last_code;
                 repeat = 2U + 16U + (extra << 4) + low;
             } else {
@@ -1151,45 +1086,47 @@ static bool chd_v5_decode_map(chd_ctx *c) {
         uint64_t offset = current;
         uint32_t length = 0U, crc = 0U;
         switch (entry[0]) {
-        case 0: case 1: case 2: case 3:
-            length = chd_bits_read(&bits, length_bits);
-            current += length;
-            crc = chd_bits_read(&bits, 16U);
-            break;
-        case V5_NONE:
-            length = info->hunk_bytes;
-            current += length;
-            crc = chd_bits_read(&bits, 16U);
-            break;
-        case V5_SELF:
-            offset = chd_bits_read_wide(&bits, self_bits);
-            last_self = offset;
-            break;
-        case V5_PARENT:
-            offset = chd_bits_read_wide(&bits, parent_bits);
-            last_parent = offset;
-            break;
-        case V5_SELF_1:
-            ++last_self;
-            /* fall through */
-        case V5_SELF_0:
-            entry[0] = V5_SELF;
-            offset = last_self;
-            break;
-        case V5_PARENT_SELF:
-            entry[0] = V5_PARENT;
-            offset = ((uint64_t)hunk * info->hunk_bytes) / info->unit_bytes;
-            last_parent = offset;
-            break;
-        case V5_PARENT_1:
-            last_parent += info->hunk_bytes / info->unit_bytes;
-            /* fall through */
-        case V5_PARENT_0:
-            entry[0] = V5_PARENT;
-            offset = last_parent;
-            break;
-        default:
-            goto done;
+            case 0:
+            case 1:
+            case 2:
+            case 3:
+                length = chd_bits_read(&bits, length_bits);
+                current += length;
+                crc = chd_bits_read(&bits, 16U);
+                break;
+            case V5_NONE:
+                length = info->hunk_bytes;
+                current += length;
+                crc = chd_bits_read(&bits, 16U);
+                break;
+            case V5_SELF:
+                offset = chd_bits_read_wide(&bits, self_bits);
+                last_self = offset;
+                break;
+            case V5_PARENT:
+                offset = chd_bits_read_wide(&bits, parent_bits);
+                last_parent = offset;
+                break;
+            case V5_SELF_1:
+                ++last_self;
+                /* fall through */
+            case V5_SELF_0:
+                entry[0] = V5_SELF;
+                offset = last_self;
+                break;
+            case V5_PARENT_SELF:
+                entry[0] = V5_PARENT;
+                offset = ((uint64_t)hunk * info->hunk_bytes) / info->unit_bytes;
+                last_parent = offset;
+                break;
+            case V5_PARENT_1:
+                last_parent += info->hunk_bytes / info->unit_bytes;
+                /* fall through */
+            case V5_PARENT_0:
+                entry[0] = V5_PARENT;
+                offset = last_parent;
+                break;
+            default: goto done;
         }
         xx_data_set_u24(entry + 1, 3, 0, length, true);
         chd_put_be48(entry + 4, offset);
@@ -1197,10 +1134,7 @@ static bool chd_v5_decode_map(chd_ctx *c) {
         if ((hunk & 0xFFFFU) == 0U && chd_bits_overflow(&bits)) goto done;
     }
     if (chd_bits_overflow(&bits)) goto done;
-    if (xx_crc16_ccitt_calc(0xFFFFU, c->map,
-                            (size_t)info->hunk_count * CHD_V5_MAP_ENTRY) !=
-        chd_be16(head + 10))
-        goto done;
+    if (xx_crc16_ccitt_calc(0xFFFFU, c->map, (size_t)info->hunk_count * CHD_V5_MAP_ENTRY) != chd_be16(head + 10)) goto done;
     ok = true;
     c->map_failed = false;
 done:
@@ -1214,15 +1148,16 @@ done:
 
 typedef struct chd_entry_s {
     uint32_t kind;
-    uint32_t slot;     /**< Codec slot of a compressed hunk. */
+    uint32_t slot; /**< Codec slot of a compressed hunk. */
     uint32_t length;
-    uint64_t offset;   /**< File offset, hunk number or mini pattern. */
+    uint64_t offset; /**< File offset, hunk number or mini pattern. */
     uint32_t crc;
     uint32_t crc_kind; /**< 0 none, 16, 32. */
 } chd_entry;
 
 /* Raw map entries of v1-v4 and uncompressed v5 maps, read in windows. */
-static bool chd_map_raw(chd_ctx *c, uint32_t hunk, const uint8_t **out) {
+static bool chd_map_raw(chd_ctx *c, uint32_t hunk, const uint8_t **out)
+{
     const chd_info *info = c->info;
     uint32_t size = info->map_entry_size;
     if (!c->mapbuf) {
@@ -1234,10 +1169,7 @@ static bool chd_map_raw(chd_ctx *c, uint32_t hunk, const uint8_t **out) {
         uint32_t count = info->hunk_count - hunk;
         if (count > CHD_MAPBUF_ENTRIES) count = CHD_MAPBUF_ENTRIES;
         c->mapbuf_count = 0U;
-        if (!chd_read(info, c->device,
-                      info->map_offset + (uint64_t)hunk * size, c->mapbuf,
-                      (size_t)count * size))
-            return false;
+        if (!chd_read(info, c->device, info->map_offset + (uint64_t)hunk * size, c->mapbuf, (size_t)count * size)) return false;
         c->mapbuf_first = hunk;
         c->mapbuf_count = count;
     }
@@ -1245,7 +1177,8 @@ static bool chd_map_raw(chd_ctx *c, uint32_t hunk, const uint8_t **out) {
     return true;
 }
 
-static bool chd_get_entry(chd_ctx *c, uint32_t hunk, chd_entry *e) {
+static bool chd_get_entry(chd_ctx *c, uint32_t hunk, chd_entry *e)
+{
     const chd_info *info = c->info;
     const uint8_t *raw;
     xx_mem_zero(e, sizeof(*e));
@@ -1268,12 +1201,12 @@ static bool chd_get_entry(chd_ctx *c, uint32_t hunk, chd_entry *e) {
         flags = raw[15];
         e->crc_kind = (flags & 0x10U) ? 0U : 32U;
         switch (flags & 0x0FU) {
-        case 1: e->kind = CHD_E_COMPRESSED; break;
-        case 2: e->kind = CHD_E_STORED; break;
-        case 3: e->kind = CHD_E_MINI; break;
-        case 4: e->kind = CHD_E_SELF; break;
-        case 5: e->kind = CHD_E_PARENT; break;
-        default: return false; /* invalid, or the A/V second codec */
+            case 1: e->kind = CHD_E_COMPRESSED; break;
+            case 2: e->kind = CHD_E_STORED; break;
+            case 3: e->kind = CHD_E_MINI; break;
+            case 4: e->kind = CHD_E_SELF; break;
+            case 5: e->kind = CHD_E_PARENT; break;
+            default: return false; /* invalid, or the A/V second codec */
         }
         return true;
     }
@@ -1310,18 +1243,19 @@ static bool chd_get_entry(chd_ctx *c, uint32_t hunk, chd_entry *e) {
 /* ---------------------------------------------------------------------- */
 /* FLAC (RFC 9639): the frames of a two-channel stream, no stream header    */
 
-static uint32_t chd_crc8(const uint8_t *p, size_t size) {
+static uint32_t chd_crc8(const uint8_t *p, size_t size)
+{
     return xx_crc8_calc(0U, p, size);
 }
 
-static uint32_t chd_crc16_flac(const uint8_t *p, size_t size) {
+static uint32_t chd_crc16_flac(const uint8_t *p, size_t size)
+{
     return xx_crc16(XX_CRC_TYPE_CRC16_BUYPASS, p, size);
 }
 
-static bool chd_flac_residual(chd_bits *b, int32_t *out, uint32_t block,
-                              uint32_t order) {
-    uint32_t method = chd_bits_read(b, 2U), param_bits, escape, partition_order,
-             partitions, size, part, index = order;
+static bool chd_flac_residual(chd_bits *b, int32_t *out, uint32_t block, uint32_t order)
+{
+    uint32_t method = chd_bits_read(b, 2U), param_bits, escape, partition_order, partitions, size, part, index = order;
     if (method > 1U) return false;
     param_bits = method == 0U ? 4U : 5U;
     escape = method == 0U ? 15U : 31U;
@@ -1334,13 +1268,11 @@ static bool chd_flac_residual(chd_bits *b, int32_t *out, uint32_t block,
         uint32_t k = chd_bits_read(b, param_bits), n;
         if (k == escape) {
             uint32_t width = chd_bits_read(b, 5U);
-            for (n = 0U; n < count; ++n)
-                out[index++] = width ? chd_bits_signed(b, width) : 0;
+            for (n = 0U; n < count; ++n) out[index++] = width ? chd_bits_signed(b, width) : 0;
         } else {
             for (n = 0U; n < count; ++n) {
                 uint32_t quotient, value;
-                if (!chd_bits_unary(b, (k >= 32U) ? 0U : (0xFFFFFFFFU >> k), &quotient))
-                    return false;
+                if (!chd_bits_unary(b, (k >= 32U) ? 0U : (0xFFFFFFFFU >> k), &quotient)) return false;
                 value = (quotient << k) | chd_bits_read(b, k);
                 out[index++] = (int32_t)((value >> 1) ^ (0U - (value & 1U)));
             }
@@ -1350,8 +1282,8 @@ static bool chd_flac_residual(chd_bits *b, int32_t *out, uint32_t block,
     return true;
 }
 
-static bool chd_flac_subframe(chd_bits *b, int32_t *out, uint32_t block,
-                              uint32_t bps) {
+static bool chd_flac_subframe(chd_bits *b, int32_t *out, uint32_t block, uint32_t bps)
+{
     uint32_t type, wasted = 0U, index;
     if (chd_bits_read(b, 1U) != 0U) return false;
     type = chd_bits_read(b, 6U);
@@ -1375,17 +1307,11 @@ static bool chd_flac_subframe(chd_bits *b, int32_t *out, uint32_t block,
         for (index = order; index < block; ++index) {
             int64_t r = out[index], p = 0;
             switch (order) {
-            case 1: p = out[index - 1]; break;
-            case 2: p = 2 * (int64_t)out[index - 1] - out[index - 2]; break;
-            case 3:
-                p = 3 * (int64_t)out[index - 1] - 3 * (int64_t)out[index - 2] +
-                    out[index - 3];
-                break;
-            case 4:
-                p = 4 * (int64_t)out[index - 1] - 6 * (int64_t)out[index - 2] +
-                    4 * (int64_t)out[index - 3] - out[index - 4];
-                break;
-            default: break;
+                case 1: p = out[index - 1]; break;
+                case 2: p = 2 * (int64_t)out[index - 1] - out[index - 2]; break;
+                case 3: p = 3 * (int64_t)out[index - 1] - 3 * (int64_t)out[index - 2] + out[index - 3]; break;
+                case 4: p = 4 * (int64_t)out[index - 1] - 6 * (int64_t)out[index - 2] + 4 * (int64_t)out[index - 3] - out[index - 4]; break;
+                default: break;
             }
             out[index] = (int32_t)(r + p);
         }
@@ -1402,22 +1328,21 @@ static bool chd_flac_subframe(chd_bits *b, int32_t *out, uint32_t block,
         if (!chd_flac_residual(b, out, block, order)) return false;
         for (index = order; index < block; ++index) {
             int64_t sum = 0;
-            for (j = 0U; j < order; ++j)
-                sum += (int64_t)coefs[j] * out[index - 1U - j];
+            for (j = 0U; j < order; ++j) sum += (int64_t)coefs[j] * out[index - 1U - j];
             out[index] = (int32_t)(out[index] + (sum >> shift));
         }
     } else {
         return false;
     }
     if (wasted)
-        for (index = 0U; index < block; ++index)
-            out[index] = (int32_t)((uint32_t)out[index] << wasted);
+        for (index = 0U; index < block; ++index) out[index] = (int32_t)((uint32_t)out[index] << wasted);
     return !chd_bits_overflow(b);
 }
 
 /* One frame at the (byte aligned) bit position of @p b.  Two channels are
  * left in c->flac[0..1]; the block size goes to *block. */
-static bool chd_flac_frame(chd_ctx *c, chd_bits *b, uint32_t *block) {
+static bool chd_flac_frame(chd_ctx *c, chd_bits *b, uint32_t *block)
+{
     uint64_t start_bits = chd_bits_used(b);
     size_t start, here;
     uint32_t bs_code, sr_code, channels, ss_code, bps, blocksize, byte, index;
@@ -1426,7 +1351,7 @@ static bool chd_flac_frame(chd_ctx *c, chd_bits *b, uint32_t *block) {
     start = (size_t)(start_bits >> 3);
     if (start + 6U > b->size) return false;
     if (chd_bits_read(b, 15U) != 0x7FFCU) return false; /* sync + reserved 0 */
-    (void)chd_bits_read(b, 1U);                          /* blocking strategy */
+    (void)chd_bits_read(b, 1U);                         /* blocking strategy */
     bs_code = chd_bits_read(b, 4U);
     sr_code = chd_bits_read(b, 4U);
     channels = chd_bits_read(b, 4U);
@@ -1451,37 +1376,27 @@ static bool chd_flac_frame(chd_ctx *c, chd_bits *b, uint32_t *block) {
     else if (sr_code == 13U || sr_code == 14U) (void)chd_bits_read(b, 16U);
     else if (sr_code == 15U) return false;
     here = (size_t)(chd_bits_used(b) >> 3);
-    if (here + 1U > b->size || chd_bits_read(b, 8U) != chd_crc8(b->data + start, here - start))
-        return false;
+    if (here + 1U > b->size || chd_bits_read(b, 8U) != chd_crc8(b->data + start, here - start)) return false;
     switch (ss_code) {
-    case 0: case 4: bps = 16U; break;
-    case 1: bps = 8U; break;
-    case 2: bps = 12U; break;
-    case 5: bps = 20U; break;
-    case 6: bps = 24U; break;
-    default: return false;
+        case 0:
+        case 4: bps = 16U; break;
+        case 1: bps = 8U; break;
+        case 2: bps = 12U; break;
+        case 5: bps = 20U; break;
+        case 6: bps = 24U; break;
+        default: return false;
     }
     if (blocksize > CHD_FLAC_MAX_BLOCK) return false;
     if (channels == 1U) {
-        if (!chd_flac_subframe(b, l, blocksize, bps) ||
-            !chd_flac_subframe(b, r, blocksize, bps))
-            return false;
+        if (!chd_flac_subframe(b, l, blocksize, bps) || !chd_flac_subframe(b, r, blocksize, bps)) return false;
     } else if (channels == 8U) {
-        if (!chd_flac_subframe(b, l, blocksize, bps) ||
-            !chd_flac_subframe(b, r, blocksize, bps + 1U))
-            return false;
-        for (index = 0U; index < blocksize; ++index)
-            r[index] = (int32_t)((int64_t)l[index] - r[index]);
+        if (!chd_flac_subframe(b, l, blocksize, bps) || !chd_flac_subframe(b, r, blocksize, bps + 1U)) return false;
+        for (index = 0U; index < blocksize; ++index) r[index] = (int32_t)((int64_t)l[index] - r[index]);
     } else if (channels == 9U) {
-        if (!chd_flac_subframe(b, l, blocksize, bps + 1U) ||
-            !chd_flac_subframe(b, r, blocksize, bps))
-            return false;
-        for (index = 0U; index < blocksize; ++index)
-            l[index] = (int32_t)((int64_t)l[index] + r[index]);
+        if (!chd_flac_subframe(b, l, blocksize, bps + 1U) || !chd_flac_subframe(b, r, blocksize, bps)) return false;
+        for (index = 0U; index < blocksize; ++index) l[index] = (int32_t)((int64_t)l[index] + r[index]);
     } else if (channels == 10U) {
-        if (!chd_flac_subframe(b, l, blocksize, bps) ||
-            !chd_flac_subframe(b, r, blocksize, bps + 1U))
-            return false;
+        if (!chd_flac_subframe(b, l, blocksize, bps) || !chd_flac_subframe(b, r, blocksize, bps + 1U)) return false;
         for (index = 0U; index < blocksize; ++index) {
             int64_t side = r[index];
             int64_t mid = ((int64_t)l[index] * 2) | (side & 1);
@@ -1497,18 +1412,15 @@ static bool chd_flac_frame(chd_ctx *c, chd_bits *b, uint32_t *block) {
         if (used & 7U) chd_bits_skip(b, (uint32_t)(8U - (used & 7U)));
     }
     here = (size_t)(chd_bits_used(b) >> 3);
-    if (here + 2U > b->size ||
-        chd_bits_read(b, 16U) != chd_crc16_flac(b->data + start, here - start))
-        return false;
+    if (here + 2U > b->size || chd_bits_read(b, 16U) != chd_crc16_flac(b->data + start, here - start)) return false;
     *block = blocksize;
     return true;
 }
 
 /* Decode @p samples stereo samples of 16 bits into @p out, big-endian when
  * @p big.  *consumed gets the end of the last frame used. */
-static bool chd_flac_decode(chd_ctx *c, const uint8_t *src, size_t size,
-                            uint8_t *out, uint32_t samples, bool big,
-                            size_t *consumed) {
+static bool chd_flac_decode(chd_ctx *c, const uint8_t *src, size_t size, uint8_t *out, uint32_t samples, bool big, size_t *consumed)
+{
     chd_bits bits;
     uint32_t done = 0U;
     if (!c->flac[0]) {
@@ -1526,11 +1438,15 @@ static bool chd_flac_decode(chd_ctx *c, const uint8_t *src, size_t size,
             uint32_t left = (uint32_t)c->flac[0][index] & 0xFFFFU;
             uint32_t right = (uint32_t)c->flac[1][index] & 0xFFFFU;
             if (big) {
-                p[0] = (uint8_t)(left >> 8); p[1] = (uint8_t)left;
-                p[2] = (uint8_t)(right >> 8); p[3] = (uint8_t)right;
+                p[0] = (uint8_t)(left >> 8);
+                p[1] = (uint8_t)left;
+                p[2] = (uint8_t)(right >> 8);
+                p[3] = (uint8_t)right;
             } else {
-                p[0] = (uint8_t)left; p[1] = (uint8_t)(left >> 8);
-                p[2] = (uint8_t)right; p[3] = (uint8_t)(right >> 8);
+                p[0] = (uint8_t)left;
+                p[1] = (uint8_t)(left >> 8);
+                p[2] = (uint8_t)right;
+                p[3] = (uint8_t)(right >> 8);
             }
         }
         done += take;
@@ -1547,8 +1463,8 @@ static bool chd_flac_decode(chd_ctx *c, const uint8_t *src, size_t size,
  * bytes 12..2247 and goes to 0x8C8.  Both are RS codes whose two check
  * symbols p0, p1 satisfy sum(v) = 0 and sum(v_i * a^(n-1-i)) = 0.
  */
-static void chd_rs_pair(const chd_ctx *c, uint32_t a, uint32_t b,
-                        uint8_t *p0, uint8_t *p1) {
+static void chd_rs_pair(const chd_ctx *c, uint32_t a, uint32_t b, uint8_t *p0, uint8_t *p1)
+{
     uint32_t s = a ^ b, v;
     /* v = s / (a + 1) with a = alpha, so divide by 3. */
     v = s ? c->gf_exp[(c->gf_log[s] + 255U - c->gf_log[3]) % 255U] : 0U;
@@ -1556,7 +1472,8 @@ static void chd_rs_pair(const chd_ctx *c, uint32_t a, uint32_t b,
     *p1 = (uint8_t)(a ^ v);
 }
 
-static void chd_ecc_generate(const chd_ctx *c, uint8_t *sector) {
+static void chd_ecc_generate(const chd_ctx *c, uint8_t *sector)
+{
     uint32_t major, minor;
     uint8_t header[4];
     /* Mode 2 Form 1 computes its parity with the 4 header bytes taken as
@@ -1588,22 +1505,19 @@ static void chd_ecc_generate(const chd_ctx *c, uint8_t *sector) {
     if (mode2) xx_rt_memcpy(sector + 12, header, sizeof(header));
 }
 
-static const uint8_t chd_sync[12] = {0x00, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF,
-                                     0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0x00};
+static const uint8_t chd_sync[12] = {0x00, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0x00};
 
 /* ---------------------------------------------------------------------- */
 /* Hunk codecs                                                             */
 
-static bool chd_inflate(const uint8_t *src, size_t size, uint8_t *dst,
-                        size_t out) {
+static bool chd_inflate(const uint8_t *src, size_t size, uint8_t *dst, size_t out)
+{
     size_t written = 0U;
-    return size != 0U &&
-           xx_deflate_decompress_memory(src, size, dst, out, &written, false) &&
-           written == out;
+    return size != 0U && xx_deflate_decompress_memory(src, size, dst, out, &written, false) && written == out;
 }
 
-static bool chd_unlzma(const uint8_t *src, size_t size, uint8_t *dst,
-                       size_t out) {
+static bool chd_unlzma(const uint8_t *src, size_t size, uint8_t *dst, size_t out)
+{
     uint8_t props[5];
     uint32_t dict = 4096U;
     size_t written = 0U;
@@ -1615,22 +1529,17 @@ static bool chd_unlzma(const uint8_t *src, size_t size, uint8_t *dst,
     props[2] = (uint8_t)(dict >> 8);
     props[3] = (uint8_t)(dict >> 16);
     props[4] = (uint8_t)(dict >> 24);
-    return size != 0U &&
-           xx_lzma_decompress_memory(src, size, props, sizeof(props),
-                                     (int64_t)out, dst, out, &written) &&
-           written == out;
+    return size != 0U && xx_lzma_decompress_memory(src, size, props, sizeof(props), (int64_t)out, dst, out, &written) && written == out;
 }
 
-static bool chd_unzstd(const uint8_t *src, size_t size, uint8_t *dst,
-                       size_t out) {
+static bool chd_unzstd(const uint8_t *src, size_t size, uint8_t *dst, size_t out)
+{
     size_t written = 0U;
-    return size != 0U &&
-           xx_zstd_decompress_memory(src, size, dst, out, &written) &&
-           written == out;
+    return size != 0U && xx_zstd_decompress_memory(src, size, dst, out, &written) && written == out;
 }
 
-static bool chd_unhuff(chd_ctx *c, const uint8_t *src, size_t size,
-                       uint8_t *dst, size_t out) {
+static bool chd_unhuff(chd_ctx *c, const uint8_t *src, size_t size, uint8_t *dst, size_t out)
+{
     chd_huff huff;
     chd_bits bits;
     size_t index;
@@ -1657,8 +1566,8 @@ static bool chd_unhuff(chd_ctx *c, const uint8_t *src, size_t size,
  * through Deflate (Zstandard for cdzs).  cdfl instead starts directly with
  * FLAC frames of the sector data, as big-endian 16-bit stereo, and follows
  * them with the Deflate subcode. */
-static bool chd_uncd(chd_ctx *c, uint32_t codec, const uint8_t *src,
-                     size_t size, uint8_t *dst) {
+static bool chd_uncd(chd_ctx *c, uint32_t codec, const uint8_t *src, size_t size, uint8_t *dst)
+{
     uint32_t hunk = c->info->hunk_bytes, frames, frame;
     size_t data_bytes, sub_bytes, sub_offset;
     const uint8_t *bitmap = NULL;
@@ -1669,10 +1578,8 @@ static bool chd_uncd(chd_ctx *c, uint32_t codec, const uint8_t *src,
     sub_bytes = (size_t)frames * CHD_SUBCODE;
     if (codec == CHD_CODEC_CDFL) {
         size_t used = 0U;
-        if (!chd_flac_decode(c, src, size, data, (uint32_t)(data_bytes / 4U), true,
-                             &used) ||
-            used > size || !chd_inflate(src + used, size - used, data + data_bytes,
-                                        sub_bytes))
+        if (!chd_flac_decode(c, src, size, data, (uint32_t)(data_bytes / 4U), true, &used) || used > size ||
+            !chd_inflate(src + used, size - used, data + data_bytes, sub_bytes))
             return false;
     } else {
         uint32_t ecc_bytes = (frames + 7U) / 8U;
@@ -1689,17 +1596,14 @@ static bool chd_uncd(chd_ctx *c, uint32_t codec, const uint8_t *src,
         else ok = chd_inflate(src + header, base, data, data_bytes);
         if (!ok) return false;
         sub_offset = header + base;
-        if (codec == CHD_CODEC_CDZS)
-            ok = chd_unzstd(src + sub_offset, size - sub_offset, data + data_bytes, sub_bytes);
-        else
-            ok = chd_inflate(src + sub_offset, size - sub_offset, data + data_bytes, sub_bytes);
+        if (codec == CHD_CODEC_CDZS) ok = chd_unzstd(src + sub_offset, size - sub_offset, data + data_bytes, sub_bytes);
+        else ok = chd_inflate(src + sub_offset, size - sub_offset, data + data_bytes, sub_bytes);
         if (!ok) return false;
     }
     for (frame = 0U; frame < frames; ++frame) {
         uint8_t *sector = dst + (size_t)frame * CHD_FRAME;
         xx_rt_memcpy(sector, data + (size_t)frame * CHD_SECTOR, CHD_SECTOR);
-        xx_rt_memcpy(sector + CHD_SECTOR, data + data_bytes + (size_t)frame * CHD_SUBCODE,
-                     CHD_SUBCODE);
+        xx_rt_memcpy(sector + CHD_SECTOR, data + data_bytes + (size_t)frame * CHD_SUBCODE, CHD_SUBCODE);
         if (bitmap && (bitmap[frame / 8U] & (1U << (frame % 8U))) != 0U) {
             xx_rt_memcpy(sector, chd_sync, sizeof(chd_sync));
             chd_ecc_generate(c, sector);
@@ -1708,66 +1612,58 @@ static bool chd_uncd(chd_ctx *c, uint32_t codec, const uint8_t *src,
     return true;
 }
 
-static bool chd_decompress(chd_ctx *c, uint32_t codec, const uint8_t *src,
-                           size_t size, uint8_t *dst) {
+static bool chd_decompress(chd_ctx *c, uint32_t codec, const uint8_t *src, size_t size, uint8_t *dst)
+{
     uint32_t out = c->info->hunk_bytes;
     switch (codec) {
-    case CHD_CODEC_ZLIB: return chd_inflate(src, size, dst, out);
-    case CHD_CODEC_LZMA: return chd_unlzma(src, size, dst, out);
-    case CHD_CODEC_ZSTD: return chd_unzstd(src, size, dst, out);
-    case CHD_CODEC_HUFF: return chd_unhuff(c, src, size, dst, out);
-    case CHD_CODEC_FLAC:
-        /* 'L' or 'B': byte order of the 16-bit samples. */
-        if (size < 2U || (out % 4U) != 0U || (src[0] != 'L' && src[0] != 'B'))
-            return false;
-        return chd_flac_decode(c, src + 1, size - 1U, dst, out / 4U,
-                               src[0] == 'B', NULL);
-    case CHD_CODEC_CDZL:
-    case CHD_CODEC_CDLZ:
-    case CHD_CODEC_CDZS:
-    case CHD_CODEC_CDFL:
-        return chd_uncd(c, codec, src, size, dst);
-    default:
-        return false;
+        case CHD_CODEC_ZLIB: return chd_inflate(src, size, dst, out);
+        case CHD_CODEC_LZMA: return chd_unlzma(src, size, dst, out);
+        case CHD_CODEC_ZSTD: return chd_unzstd(src, size, dst, out);
+        case CHD_CODEC_HUFF: return chd_unhuff(c, src, size, dst, out);
+        case CHD_CODEC_FLAC:
+            /* 'L' or 'B': byte order of the 16-bit samples. */
+            if (size < 2U || (out % 4U) != 0U || (src[0] != 'L' && src[0] != 'B')) return false;
+            return chd_flac_decode(c, src + 1, size - 1U, dst, out / 4U, src[0] == 'B', NULL);
+        case CHD_CODEC_CDZL:
+        case CHD_CODEC_CDLZ:
+        case CHD_CODEC_CDZS:
+        case CHD_CODEC_CDFL: return chd_uncd(c, codec, src, size, dst);
+        default: return false;
     }
 }
 
 /* Decode hunk @p hunk into @p dst (hunk_bytes). */
-static bool chd_read_hunk(chd_ctx *c, uint32_t hunk, uint8_t *dst,
-                          uint32_t depth) {
+static bool chd_read_hunk(chd_ctx *c, uint32_t hunk, uint8_t *dst, uint32_t depth)
+{
     const chd_info *info = c->info;
     chd_entry e;
     uint32_t bytes = info->hunk_bytes;
     if (depth > CHD_MAX_SELF_DEPTH || !chd_get_entry(c, hunk, &e)) return false;
     switch (e.kind) {
-    case CHD_E_COMPRESSED: {
-        uint32_t codec = info->codecs[e.slot];
-        if (e.length == 0U || e.length > bytes || codec == 0U ||
-            !chd_read(info, c->device, e.offset, c->packed, e.length) ||
-            !chd_decompress(c, codec, c->packed, e.length, dst))
-            return false;
-        break;
-    }
-    case CHD_E_STORED:
-        if (!chd_read(info, c->device, e.offset, dst, bytes)) return false;
-        break;
-    case CHD_E_MINI: {
-        uint32_t index;
-        for (index = 0U; index < bytes; ++index)
-            dst[index] = index < 8U ? (uint8_t)(e.offset >> (56U - 8U * index))
-                                    : dst[index - 8U];
-        break;
-    }
-    case CHD_E_ZERO:
-        /* An unallocated hunk of a child image lives in its parent. */
-        if (info->has_parent) return false;
-        xx_mem_zero(dst, bytes);
-        break;
-    case CHD_E_SELF:
-        if (e.offset >= info->hunk_count || e.offset == hunk) return false;
-        return chd_read_hunk(c, (uint32_t)e.offset, dst, depth + 1U);
-    default:
-        return false; /* parent hunks need the parent CHD */
+        case CHD_E_COMPRESSED: {
+            uint32_t codec = info->codecs[e.slot];
+            if (e.length == 0U || e.length > bytes || codec == 0U || !chd_read(info, c->device, e.offset, c->packed, e.length) ||
+                !chd_decompress(c, codec, c->packed, e.length, dst))
+                return false;
+            break;
+        }
+        case CHD_E_STORED:
+            if (!chd_read(info, c->device, e.offset, dst, bytes)) return false;
+            break;
+        case CHD_E_MINI: {
+            uint32_t index;
+            for (index = 0U; index < bytes; ++index) dst[index] = index < 8U ? (uint8_t)(e.offset >> (56U - 8U * index)) : dst[index - 8U];
+            break;
+        }
+        case CHD_E_ZERO:
+            /* An unallocated hunk of a child image lives in its parent. */
+            if (info->has_parent) return false;
+            xx_mem_zero(dst, bytes);
+            break;
+        case CHD_E_SELF:
+            if (e.offset >= info->hunk_count || e.offset == hunk) return false;
+            return chd_read_hunk(c, (uint32_t)e.offset, dst, depth + 1U);
+        default: return false; /* parent hunks need the parent CHD */
     }
     if (e.crc_kind == 16U) {
         if (xx_crc16_ccitt_calc(0xFFFFU, dst, bytes) != e.crc) return false;
@@ -1785,7 +1681,8 @@ typedef struct chd_sink_s {
     uint64_t written;
 } chd_sink;
 
-static bool chd_sink_write(chd_sink *sink, const uint8_t *data, size_t size) {
+static bool chd_sink_write(chd_sink *sink, const uint8_t *data, size_t size)
+{
     size_t done = 0U;
     if (sink->device) {
         while (done < size) {
@@ -1798,32 +1695,31 @@ static bool chd_sink_write(chd_sink *sink, const uint8_t *data, size_t size) {
     return true;
 }
 
-static bool chd_stopped(xx_pd_struct *pd, uint32_t hunk) {
+static bool chd_stopped(xx_pd_struct *pd, uint32_t hunk)
+{
     return (hunk & 0x3FU) == 0U && pd && xx_pd_is_stopped(pd);
 }
 
 /* Check the whole-image digest after a full pass. */
-static bool chd_digest_matches(const chd_info *info, xx_hash_context *hash) {
+static bool chd_digest_matches(const chd_info *info, xx_hash_context *hash)
+{
     uint8_t digest[XX_HASH_MAX_DIGEST_SIZE];
     if (!xx_hash_final(hash, digest, sizeof(digest))) return false;
-    return info->digest_size == 0U ||
-           xx_rt_memcmp(digest, info->digest, info->digest_size) == 0;
+    return info->digest_size == 0U || xx_rt_memcmp(digest, info->digest, info->digest_size) == 0;
 }
 
 /* The logical data: hard disk, DVD, raw. */
-static bool chd_extract_data(chd_ctx *c, uint8_t *hunkbuf, chd_sink *sink,
-                             xx_pd_struct *pd) {
+static bool chd_extract_data(chd_ctx *c, uint8_t *hunkbuf, chd_sink *sink, xx_pd_struct *pd)
+{
     const chd_info *info = c->info;
     xx_hash_context hash, padded;
     uint64_t left = info->logical_bytes;
     uint32_t hunk;
     bool have_padded = false;
-    if (!xx_hash_init(&hash, info->digest_size == 16U ? XX_HASH_MD5 : XX_HASH_SHA1))
-        return false;
+    if (!xx_hash_init(&hash, info->digest_size == 16U ? XX_HASH_MD5 : XX_HASH_SHA1)) return false;
     for (hunk = 0U; hunk < info->hunk_count && left != 0U; ++hunk) {
         size_t take = left < info->hunk_bytes ? (size_t)left : info->hunk_bytes;
-        if (chd_stopped(pd, hunk) || !chd_read_hunk(c, hunk, hunkbuf, 0U))
-            return false;
+        if (chd_stopped(pd, hunk) || !chd_read_hunk(c, hunk, hunkbuf, 0U)) return false;
         xx_hash_update(&hash, hunkbuf, take);
         if (take < info->hunk_bytes && info->version <= 2U) {
             /* No v1/v2 writer is at hand to show whether their MD5 stops
@@ -1837,14 +1733,13 @@ static bool chd_extract_data(chd_ctx *c, uint8_t *hunkbuf, chd_sink *sink,
         left -= take;
     }
     if (left != 0U) return false;
-    return chd_digest_matches(info, &hash) ||
-           (have_padded && chd_digest_matches(info, &padded));
+    return chd_digest_matches(info, &hash) || (have_padded && chd_digest_matches(info, &padded));
 }
 
 /* Write the part of one frame that belongs in the output (swapping 16-bit
  * audio samples back to little-endian where chdman does). */
-static bool chd_emit_frame(const chd_track *track, bool swap, uint8_t *frame,
-                           chd_sink *sink) {
+static bool chd_emit_frame(const chd_track *track, bool swap, uint8_t *frame, chd_sink *sink)
+{
     if (swap && track->type == TRK_AUDIO) {
         uint32_t index;
         for (index = 0U; index + 1U < track->datasize; index += 2U) {
@@ -1858,33 +1753,25 @@ static bool chd_emit_frame(const chd_track *track, bool swap, uint8_t *frame,
 
 /* The single cue/bin image: every track's frames in order, all hunks read
  * so the raw-data digest can be checked. */
-static bool chd_extract_bin(chd_ctx *c, uint8_t *hunkbuf, chd_sink *sink,
-                            xx_pd_struct *pd) {
+static bool chd_extract_bin(chd_ctx *c, uint8_t *hunkbuf, chd_sink *sink, xx_pd_struct *pd)
+{
     const chd_info *info = c->info;
     xx_hash_context hash;
     uint32_t per_hunk = info->hunk_bytes / CHD_FRAME, hunk, track = 0U;
     uint64_t frame = 0U, left = info->logical_bytes;
-    if (!xx_hash_init(&hash, info->digest_size == 16U ? XX_HASH_MD5 : XX_HASH_SHA1))
-        return false;
+    if (!xx_hash_init(&hash, info->digest_size == 16U ? XX_HASH_MD5 : XX_HASH_SHA1)) return false;
     for (hunk = 0U; hunk < info->hunk_count; ++hunk) {
         uint32_t index;
         size_t take = left < info->hunk_bytes ? (size_t)left : info->hunk_bytes;
-        if (chd_stopped(pd, hunk) || !chd_read_hunk(c, hunk, hunkbuf, 0U))
-            return false;
+        if (chd_stopped(pd, hunk) || !chd_read_hunk(c, hunk, hunkbuf, 0U)) return false;
         xx_hash_update(&hash, hunkbuf, take);
         left -= take;
         for (index = 0U; index < per_hunk; ++index, ++frame) {
             const chd_track *t;
-            while (track < info->track_count &&
-                   frame >= info->tracks[track].chdframeofs +
-                                info->tracks[track].frames +
-                                info->tracks[track].extraframes)
-                ++track;
+            while (track < info->track_count && frame >= info->tracks[track].chdframeofs + info->tracks[track].frames + info->tracks[track].extraframes) ++track;
             if (track >= info->track_count) break;
             t = &info->tracks[track];
-            if (frame >= t->chdframeofs &&
-                frame < t->chdframeofs + t->frames - t->padframes &&
-                !chd_emit_frame(t, true, hunkbuf + (size_t)index * CHD_FRAME, sink))
+            if (frame >= t->chdframeofs && frame < t->chdframeofs + t->frames - t->padframes && !chd_emit_frame(t, true, hunkbuf + (size_t)index * CHD_FRAME, sink))
                 return false;
         }
     }
@@ -1892,13 +1779,12 @@ static bool chd_extract_bin(chd_ctx *c, uint8_t *hunkbuf, chd_sink *sink,
 }
 
 /* One GD-ROM track file. */
-static bool chd_extract_track(chd_ctx *c, uint8_t *hunkbuf, uint32_t number,
-                              chd_sink *sink, xx_pd_struct *pd) {
+static bool chd_extract_track(chd_ctx *c, uint8_t *hunkbuf, uint32_t number, chd_sink *sink, xx_pd_struct *pd)
+{
     const chd_info *info = c->info;
     const chd_track *t = &info->tracks[number];
     uint32_t per_hunk = info->hunk_bytes / CHD_FRAME;
-    uint64_t first = t->chdframeofs, end = first + t->frames - t->padframes,
-             frame = first;
+    uint64_t first = t->chdframeofs, end = first + t->frames - t->padframes, frame = first;
     uint32_t loaded = 0xFFFFFFFFU;
     /* chdman writes GD-ROM audio byte-swapped for 'CHGD' tracks of v5
      * images and for 'CHGT' tracks of v3/v4 images, and as stored in the
@@ -1908,12 +1794,10 @@ static bool chd_extract_track(chd_ctx *c, uint8_t *hunkbuf, uint32_t number,
         uint32_t hunk = (uint32_t)(frame / per_hunk);
         uint32_t index = (uint32_t)(frame % per_hunk);
         if (hunk != loaded) {
-            if (chd_stopped(pd, hunk) || !chd_read_hunk(c, hunk, hunkbuf, 0U))
-                return false;
+            if (chd_stopped(pd, hunk) || !chd_read_hunk(c, hunk, hunkbuf, 0U)) return false;
             loaded = hunk;
         }
-        if (!chd_emit_frame(t, swap, hunkbuf + (size_t)index * CHD_FRAME, sink))
-            return false;
+        if (!chd_emit_frame(t, swap, hunkbuf + (size_t)index * CHD_FRAME, sink)) return false;
         ++frame;
     }
     return true;
@@ -1929,7 +1813,8 @@ typedef struct chd_stream_s {
     uint8_t *hunkbuf;
 } chd_stream;
 
-static void chd_stream_free(void *opaque) {
+static void chd_stream_free(void *opaque)
+{
     chd_stream *stream = (chd_stream *)opaque;
     if (!stream) return;
     chd_ctx_free(stream->ctx);
@@ -1937,17 +1822,16 @@ static void chd_stream_free(void *opaque) {
     xx_mem_free(stream);
 }
 
-static bool chd_copy_options(xx_list_s *destination, const xx_list_s *source) {
+static bool chd_copy_options(xx_list_s *destination, const xx_list_s *source)
+{
     size_t index;
     if (!source) return true;
     for (index = 0U; index < source->count; ++index) {
-        const xx_meta *original =
-            (const xx_meta *)xx_list_at((const xx_list_t *)source, index);
+        const xx_meta *original = (const xx_meta *)xx_list_at((const xx_list_t *)source, index);
         xx_meta copy;
         if (!original) continue;
         xx_meta_init(&copy, original->meta_id);
-        if (!xx_var_copy(&copy.var, &original->var) ||
-            !xx_list_append(destination, &copy)) {
+        if (!xx_var_copy(&copy.var, &original->var) || !xx_list_append(destination, &copy)) {
             xx_meta_cleanup(&copy);
             return false;
         }
@@ -1955,44 +1839,37 @@ static bool chd_copy_options(xx_list_s *destination, const xx_list_s *source) {
     return true;
 }
 
-static const xx_var *chd_option(const xx_list_s *options, uint32_t id) {
+static const xx_var *chd_option(const xx_list_s *options, uint32_t id)
+{
     size_t index;
     if (!options) return NULL;
     for (index = 0U; index < options->count; ++index) {
-        const xx_meta *meta =
-            (const xx_meta *)xx_list_at((const xx_list_t *)options, index);
+        const xx_meta *meta = (const xx_meta *)xx_list_at((const xx_list_t *)options, index);
         if (meta && meta->meta_id == id) return &meta->var;
     }
     return NULL;
 }
 
-static bool chd_set_record(xx_archive_record *record, const chd_info *info,
-                           size_t index) {
+static bool chd_set_record(xx_archive_record *record, const chd_info *info, size_t index)
+{
     const chd_member *member = &info->members[index];
     xx_archive_record_cleanup(record);
     xx_archive_record_init(record);
     record->header_offset = 0;
     record->header_size = info->header_len;
     record->data_offset = -1;
-    record->compressed_size =
-        (member->kind == CHD_M_CUE || member->kind == CHD_M_GDI)
-            ? (int64_t)member->size : info->size;
+    record->compressed_size = (member->kind == CHD_M_CUE || member->kind == CHD_M_GDI) ? (int64_t)member->size : info->size;
     return xx_archive_record_set_original_name(record, member->name) &&
-           xx_archive_record_set_meta_u64(record, XX_META_ID_COMPRESSED_SIZE,
-                                          (uint64_t)record->compressed_size) &&
-           xx_archive_record_set_meta_u64(record, XX_META_ID_UNCOMPRESSED_SIZE,
-                                          member->size) &&
-           xx_archive_record_set_meta_u64(record, XX_META_ID_COMPRESSION_METHOD,
-                                          info->codecs[0]) &&
-           xx_archive_record_set_meta_bool(record, XX_META_ID_IS_ENCRYPTED,
-                                           false) &&
-           xx_archive_record_set_meta_bool(record, XX_META_ID_IS_FOLDER, false);
+           xx_archive_record_set_meta_u64(record, XX_META_ID_COMPRESSED_SIZE, (uint64_t)record->compressed_size) &&
+           xx_archive_record_set_meta_u64(record, XX_META_ID_UNCOMPRESSED_SIZE, member->size) &&
+           xx_archive_record_set_meta_u64(record, XX_META_ID_COMPRESSION_METHOD, info->codecs[0]) &&
+           xx_archive_record_set_meta_bool(record, XX_META_ID_IS_ENCRYPTED, false) && xx_archive_record_set_meta_bool(record, XX_META_ID_IS_FOLDER, false);
 }
 
 /* Produce member @p stream->index into @p destination (NULL: decode and
  * verify only). */
-static bool chd_unpack_member(Abstractformat *format, chd_stream *stream,
-                              xx_io_device *destination, xx_pd_struct *pd) {
+static bool chd_unpack_member(Abstractformat *format, chd_stream *stream, xx_io_device *destination, xx_pd_struct *pd)
+{
     const chd_info *info = &stream->info;
     const chd_member *member = &info->members[stream->index];
     chd_sink sink;
@@ -2004,8 +1881,7 @@ static bool chd_unpack_member(Abstractformat *format, chd_stream *stream,
         size_t used;
         if (!sheet) return false;
         used = chd_build_sheet(info, sheet, CHD_SHEET_MAX);
-        ok = used == member->size &&
-             chd_sink_write(&sink, (const uint8_t *)sheet, used);
+        ok = used == member->size && chd_sink_write(&sink, (const uint8_t *)sheet, used);
         xx_mem_free(sheet);
         return ok;
     }
@@ -2015,19 +1891,17 @@ static bool chd_unpack_member(Abstractformat *format, chd_stream *stream,
         if (!stream->ctx || !stream->hunkbuf) return false;
     }
     stream->ctx->device = format->device;
-    if (member->kind == CHD_M_BIN)
-        ok = chd_extract_bin(stream->ctx, stream->hunkbuf, &sink, pd);
-    else if (member->kind == CHD_M_TRACK)
-        ok = chd_extract_track(stream->ctx, stream->hunkbuf, member->track, &sink, pd);
-    else
-        ok = chd_extract_data(stream->ctx, stream->hunkbuf, &sink, pd);
+    if (member->kind == CHD_M_BIN) ok = chd_extract_bin(stream->ctx, stream->hunkbuf, &sink, pd);
+    else if (member->kind == CHD_M_TRACK) ok = chd_extract_track(stream->ctx, stream->hunkbuf, member->track, &sink, pd);
+    else ok = chd_extract_data(stream->ctx, stream->hunkbuf, &sink, pd);
     return ok && sink.written == member->size;
 }
 
 /* ---------------------------------------------------------------------- */
 /* Public API                                                              */
 
-void xx_chd_init(xx_chd *archive, xx_io_device *device, int64_t base_address) {
+void xx_chd_init(xx_chd *archive, xx_io_device *device, int64_t base_address)
+{
     if (!archive) return;
     xx_mem_zero(archive, sizeof(*archive));
     xx_format_init(&archive->format, device, base_address);
@@ -2040,37 +1914,35 @@ void xx_chd_init(xx_chd *archive, xx_io_device *device, int64_t base_address) {
     archive->format.check_is_valid = xx_chd_check_is_valid;
     archive->format.handle_base_info = xx_chd_handle_base_info;
     archive->format.get_format_size = xx_chd_get_format_size;
-    archive->format.get_number_of_archive_records =
-        xx_chd_get_number_of_archive_records;
-    archive->format.create_archive_records_reading =
-        xx_chd_create_archive_records_reading;
-    archive->format.get_current_archive_record =
-        xx_chd_get_current_archive_record;
-    archive->format.unpack_current_archive_record =
-        xx_chd_unpack_current_archive_record;
-    archive->format.archive_record_move_to_next =
-        xx_chd_archive_record_move_to_next;
-    archive->format.free_archive_records_reading =
-        xx_chd_free_archive_records_reading;
+    archive->format.get_number_of_archive_records = xx_chd_get_number_of_archive_records;
+    archive->format.create_archive_records_reading = xx_chd_create_archive_records_reading;
+    archive->format.get_current_archive_record = xx_chd_get_current_archive_record;
+    archive->format.unpack_current_archive_record = xx_chd_unpack_current_archive_record;
+    archive->format.archive_record_move_to_next = xx_chd_archive_record_move_to_next;
+    archive->format.free_archive_records_reading = xx_chd_free_archive_records_reading;
 }
 
-xx_chd *xx_chd_create(xx_io_device *device, int64_t base_address) {
+xx_chd *xx_chd_create(xx_io_device *device, int64_t base_address)
+{
     xx_chd *archive = (xx_chd *)xx_mem_alloc(sizeof(*archive));
     if (archive) xx_chd_init(archive, device, base_address);
     return archive;
 }
 
-void xx_chd_destroy(xx_chd *archive) {
+void xx_chd_destroy(xx_chd *archive)
+{
     if (archive) xx_format_cleanup_extra_parameters(&archive->format);
 }
 
-void xx_chd_free(xx_chd *archive) {
+void xx_chd_free(xx_chd *archive)
+{
     if (!archive) return;
     xx_chd_destroy(archive);
     xx_mem_free(archive);
 }
 
-bool xx_chd_check_is_valid(Abstractformat *format, xx_pd_struct *pd) {
+bool xx_chd_check_is_valid(Abstractformat *format, xx_pd_struct *pd)
+{
     chd_info *info;
     bool ok;
     (void)pd;
@@ -2082,7 +1954,8 @@ bool xx_chd_check_is_valid(Abstractformat *format, xx_pd_struct *pd) {
     return ok;
 }
 
-bool xx_chd_handle_base_info(Abstractformat *format, xx_pd_struct *pd) {
+bool xx_chd_handle_base_info(Abstractformat *format, xx_pd_struct *pd)
+{
     chd_info *info;
     xx_chd *archive;
     char version[8];
@@ -2115,29 +1988,25 @@ bool xx_chd_handle_base_info(Abstractformat *format, xx_pd_struct *pd) {
     return true;
 }
 
-int64_t xx_chd_get_format_size(Abstractformat *format, xx_pd_struct *pd) {
-    return format && (format->base_info_handled ||
-                      xx_chd_handle_base_info(format, pd))
-               ? format->format_size : -1;
+int64_t xx_chd_get_format_size(Abstractformat *format, xx_pd_struct *pd)
+{
+    return format && (format->base_info_handled || xx_chd_handle_base_info(format, pd)) ? format->format_size : -1;
 }
 
-uint64_t xx_chd_get_number_of_archive_records(Abstractformat *format,
-                                              xx_pd_struct *pd) {
-    return format && (format->base_info_handled ||
-                      xx_chd_handle_base_info(format, pd))
-               ? ((xx_chd *)format)->number_of_records : 0U;
+uint64_t xx_chd_get_number_of_archive_records(Abstractformat *format, xx_pd_struct *pd)
+{
+    return format && (format->base_info_handled || xx_chd_handle_base_info(format, pd)) ? ((xx_chd *)format)->number_of_records : 0U;
 }
 
-xx_archive_record_state *xx_chd_create_archive_records_reading(
-    Abstractformat *format, const xx_list_s *options, xx_pd_struct *pd) {
+xx_archive_record_state *xx_chd_create_archive_records_reading(Abstractformat *format, const xx_list_s *options, xx_pd_struct *pd)
+{
     chd_stream *stream;
     xx_archive_record_state *state;
     (void)pd;
     if (!format) return NULL;
     stream = (chd_stream *)xx_mem_calloc(1U, sizeof(*stream));
     if (!stream) return NULL;
-    if (!chd_parse(format->device, format->base_address, &stream->info) ||
-        stream->info.member_count == 0U) {
+    if (!chd_parse(format->device, format->base_address, &stream->info) || stream->info.member_count == 0U) {
         xx_mem_free(stream);
         return NULL;
     }
@@ -2150,8 +2019,7 @@ xx_archive_record_state *xx_chd_create_archive_records_reading(
     state->internal_state = stream;
     state->free_internal = chd_stream_free;
     state->total_records = (int64_t)stream->info.member_count;
-    if (!chd_copy_options(&state->options, options) ||
-        !chd_set_record(&state->current_record, &stream->info, 0U)) {
+    if (!chd_copy_options(&state->options, options) || !chd_set_record(&state->current_record, &stream->info, 0U)) {
         xx_archive_record_state_free(state);
         return NULL;
     }
@@ -2159,20 +2027,16 @@ xx_archive_record_state *xx_chd_create_archive_records_reading(
     return state;
 }
 
-const xx_archive_record *xx_chd_get_current_archive_record(
-    Abstractformat *format, xx_archive_record_state *state) {
-    return format && state && state->format == format && state->has_record
-               ? &state->current_record : NULL;
+const xx_archive_record *xx_chd_get_current_archive_record(Abstractformat *format, xx_archive_record_state *state)
+{
+    return format && state && state->format == format && state->has_record ? &state->current_record : NULL;
 }
 
-bool xx_chd_archive_record_move_to_next(Abstractformat *format,
-                                        xx_archive_record_state *state,
-                                        xx_pd_struct *pd) {
+bool xx_chd_archive_record_move_to_next(Abstractformat *format, xx_archive_record_state *state, xx_pd_struct *pd)
+{
     chd_stream *stream;
     (void)pd;
-    if (!format || !state || state->format != format ||
-        !(stream = (chd_stream *)state->internal_state) ||
-        stream->index + 1U >= stream->info.member_count) {
+    if (!format || !state || state->format != format || !(stream = (chd_stream *)state->internal_state) || stream->index + 1U >= stream->info.member_count) {
         if (state) state->has_record = false;
         return false;
     }
@@ -2185,37 +2049,29 @@ bool xx_chd_archive_record_move_to_next(Abstractformat *format,
     return true;
 }
 
-bool xx_chd_unpack_current_archive_record(Abstractformat *format,
-                                          xx_archive_record_state *state,
-                                          xx_pd_struct *pd) {
+bool xx_chd_unpack_current_archive_record(Abstractformat *format, xx_archive_record_state *state, xx_pd_struct *pd)
+{
     chd_stream *stream;
     const xx_var *path_option;
     const char *base = NULL, *name;
     char *owned_base = NULL, *path = NULL;
     bool result = false, created = false;
-    if (!format || !state || state->format != format || !state->has_record ||
-        !(stream = (chd_stream *)state->internal_state) ||
-        stream->index >= stream->info.member_count ||
-        (pd && xx_pd_is_stopped(pd)))
+    if (!format || !state || state->format != format || !state->has_record || !(stream = (chd_stream *)state->internal_state) ||
+        stream->index >= stream->info.member_count || (pd && xx_pd_is_stopped(pd)))
         return false;
     path_option = chd_option(&state->options, XX_META_ID_OPT_UNPACK_PATH);
     if (!path_option) return chd_unpack_member(format, stream, NULL, pd);
     /* Member names are the reader's own constants (disk.img, disc.cue,
      * disc07.bin, ...), never taken from the file. */
     name = stream->info.members[stream->index].name;
-    if (path_option->type == XX_VAR_TYPE_STRING ||
-        path_option->type == XX_VAR_TYPE_STRING_VIEW) {
+    if (path_option->type == XX_VAR_TYPE_STRING || path_option->type == XX_VAR_TYPE_STRING_VIEW) {
         base = xx_var_get_str(path_option);
-    } else if (path_option->type == XX_VAR_TYPE_WSTRING ||
-               path_option->type == XX_VAR_TYPE_WSTRING_VIEW) {
+    } else if (path_option->type == XX_VAR_TYPE_WSTRING || path_option->type == XX_VAR_TYPE_WSTRING_VIEW) {
         owned_base = xx_str_unicode_to_utf8(xx_var_get_wstr(path_option));
         base = owned_base;
     }
     if (!base) goto done;
-    path = (base[0] && base[xx_str_len(base) - 1U] != '/' &&
-            base[xx_str_len(base) - 1U] != '\\')
-               ? xx_str_concat3(base, "/", name)
-               : xx_str_concat(base, name);
+    path = (base[0] && base[xx_str_len(base) - 1U] != '/' && base[xx_str_len(base) - 1U] != '\\') ? xx_str_concat3(base, "/", name) : xx_str_concat(base, name);
     if (!path || !xx_store_create_dirs_a(path, false)) goto done;
     {
         xx_io_device *destination = xx_io_file_open(path, "wb");
@@ -2231,8 +2087,8 @@ done:
     return result;
 }
 
-void xx_chd_free_archive_records_reading(Abstractformat *format,
-                                         xx_archive_record_state *state) {
+void xx_chd_free_archive_records_reading(Abstractformat *format, xx_archive_record_state *state)
+{
     (void)format;
     xx_archive_record_state_free(state);
 }

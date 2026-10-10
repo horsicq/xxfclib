@@ -9,7 +9,8 @@ struct xx_shortcuts_s {
     size_t count;
 };
 
-void xx_shortcuts_destroy(xx_shortcuts *shortcuts) {
+void xx_shortcuts_destroy(xx_shortcuts *shortcuts)
+{
     if (!shortcuts) return;
     for (size_t i = 0; i < shortcuts->count; ++i) {
         xx_rt_free((void *)shortcuts->items[i].action);
@@ -19,12 +20,17 @@ void xx_shortcuts_destroy(xx_shortcuts *shortcuts) {
     xx_rt_free(shortcuts);
 }
 
-size_t xx_shortcuts_count(const xx_shortcuts *shortcuts) { return shortcuts ? shortcuts->count : 0; }
-const xx_shortcut *xx_shortcuts_at(const xx_shortcuts *shortcuts, size_t index) {
+size_t xx_shortcuts_count(const xx_shortcuts *shortcuts)
+{
+    return shortcuts ? shortcuts->count : 0;
+}
+const xx_shortcut *xx_shortcuts_at(const xx_shortcuts *shortcuts, size_t index)
+{
     return shortcuts && index < shortcuts->count ? &shortcuts->items[index] : NULL;
 }
 
-static xxfc_status_t put(xx_shortcuts *shortcuts, const char *action, const char *sequence) {
+static xxfc_status_t put(xx_shortcuts *shortcuts, const char *action, const char *sequence)
+{
     size_t index;
     char *copy;
     if (!action || !action[0] || !sequence || xx_rt_strchr(action, '/')) return XXFC_ERR_INVALID_ARG;
@@ -34,7 +40,10 @@ static xxfc_status_t put(xx_shortcuts *shortcuts, const char *action, const char
     if (!copy) return XXFC_ERR_OUT_OF_MEMORY;
     if (index == shortcuts->count) {
         char *name = xx_settings_duplicate(action, xx_rt_strlen(action));
-        if (!name) { xx_rt_free(copy); return XXFC_ERR_OUT_OF_MEMORY; }
+        if (!name) {
+            xx_rt_free(copy);
+            return XXFC_ERR_OUT_OF_MEMORY;
+        }
         shortcuts->items[index].action = name;
         shortcuts->items[index].sequence = NULL;
         ++shortcuts->count;
@@ -44,8 +53,8 @@ static xxfc_status_t put(xx_shortcuts *shortcuts, const char *action, const char
     return XXFC_OK;
 }
 
-xxfc_status_t xx_shortcuts_load(const char *path, const xx_shortcut *defaults,
-    size_t count, xx_shortcuts **out) {
+xxfc_status_t xx_shortcuts_load(const char *path, const xx_shortcut *defaults, size_t count, xx_shortcuts **out)
+{
     xx_shortcuts *result = NULL;
     xx_settings *settings;
     xxfc_status_t status;
@@ -57,8 +66,7 @@ xxfc_status_t xx_shortcuts_load(const char *path, const xx_shortcut *defaults,
     if (!settings) return XXFC_ERR_OUT_OF_MEMORY;
     status = xx_settings_load(settings);
     capacity = xx_settings_count(settings);
-    if (capacity > SIZE_MAX - count || capacity + count > SIZE_MAX / sizeof(xx_shortcut))
-        status = XXFC_ERR_OUT_OF_MEMORY;
+    if (capacity > SIZE_MAX - count || capacity + count > SIZE_MAX / sizeof(xx_shortcut)) status = XXFC_ERR_OUT_OF_MEMORY;
     if (status == XXFC_OK) {
         result = (xx_shortcuts *)xx_rt_calloc(1, sizeof(*result));
         if (!result) status = XXFC_ERR_OUT_OF_MEMORY;
@@ -69,8 +77,7 @@ xxfc_status_t xx_shortcuts_load(const char *path, const xx_shortcut *defaults,
     }
     for (size_t i = 0; status == XXFC_OK && i < count; ++i) {
         for (size_t j = 0; j < i; ++j)
-            if (defaults[i].action && defaults[j].action && !xx_rt_strcmp(defaults[i].action, defaults[j].action))
-                status = XXFC_ERR_INVALID_ARG;
+            if (defaults[i].action && defaults[j].action && !xx_rt_strcmp(defaults[i].action, defaults[j].action)) status = XXFC_ERR_INVALID_ARG;
         if (status == XXFC_OK) status = put(result, defaults[i].action, defaults[i].sequence);
     }
     for (size_t i = 0; status == XXFC_OK && i < xx_settings_count(settings); ++i) {
@@ -78,9 +85,9 @@ xxfc_status_t xx_shortcuts_load(const char *path, const xx_shortcut *defaults,
         const xx_settings_value *value;
         if (xx_rt_strncmp(key, "shortcuts/", 10)) continue;
         value = xx_settings_get(settings, key);
-        if (!value || value->type != XX_SETTINGS_VALUE_STRING ||
-            xx_rt_strlen(value->data.buffer.data) != value->data.buffer.size) {
-            status = XXFC_ERR_INVALID_ARG; break;
+        if (!value || value->type != XX_SETTINGS_VALUE_STRING || xx_rt_strlen(value->data.buffer.data) != value->data.buffer.size) {
+            status = XXFC_ERR_INVALID_ARG;
+            break;
         }
         status = put(result, key + 10, value->data.buffer.data);
     }

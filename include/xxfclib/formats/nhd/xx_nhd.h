@@ -23,7 +23,9 @@ extern "C" {
 
 typedef struct xx_nhd xx_nhd;
 typedef struct xx_nhd xx_nhd_t;
-struct xx_nhd { Abstractformat format; };
+struct xx_nhd {
+    Abstractformat format;
+};
 
 XXFC_API void xx_nhd_init(xx_nhd *reader, xx_io_device *device, int64_t base_address);
 XXFC_API xx_nhd *xx_nhd_create(xx_io_device *device, int64_t base_address);
@@ -35,9 +37,9 @@ XXFC_API bool xx_nhd_handle_base_info(Abstractformat *format, xx_pd_struct *pd);
  * its current cursor. Failure may leave partial output; input cursor is restored.
  * Output must differ from input. This function does not close either device.
  */
-XXFC_API bool xx_nhd_unpack_to_device(xx_nhd *reader, uint64_t record_index,
-    xx_io_device *output, xx_pd_struct *pd);
-static inline Abstractformat *xx_nhd_to_format(xx_nhd *reader) {
+XXFC_API bool xx_nhd_unpack_to_device(xx_nhd *reader, uint64_t record_index, xx_io_device *output, xx_pd_struct *pd);
+static inline Abstractformat *xx_nhd_to_format(xx_nhd *reader)
+{
     return reader ? &reader->format : NULL;
 }
 #ifdef __cplusplus

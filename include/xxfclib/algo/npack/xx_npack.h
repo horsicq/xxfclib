@@ -38,9 +38,7 @@ extern "C" {
  * @return true only when the block reached its stop code and produced exactly
  *         @p output_size bytes.
  */
-XXFC_API bool xx_npack_decode_memory(const uint8_t *input, size_t input_size,
-                                     uint8_t *output, size_t output_size,
-                                     size_t *written);
+XXFC_API bool xx_npack_decode_memory(const uint8_t *input, size_t input_size, uint8_t *output, size_t output_size, size_t *written);
 
 /**
  * @brief Measure an NPack block without knowing its decoded size.
@@ -56,9 +54,7 @@ XXFC_API bool xx_npack_decode_memory(const uint8_t *input, size_t input_size,
  * @param produced    Receives the decoded size. May be NULL.
  * @return true when the block reached its stop code within the limit.
  */
-XXFC_API bool xx_npack_scan_memory(const uint8_t *input, size_t input_size,
-                                   size_t max_output, size_t *consumed,
-                                   size_t *produced);
+XXFC_API bool xx_npack_scan_memory(const uint8_t *input, size_t input_size, size_t max_output, size_t *consumed, size_t *produced);
 
 #ifdef __cplusplus
 }

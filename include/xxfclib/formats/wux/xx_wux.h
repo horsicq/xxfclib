@@ -25,7 +25,9 @@ extern "C" {
 
 typedef struct xx_wux xx_wux;
 typedef struct xx_wux xx_wux_t;
-struct xx_wux { Abstractformat format; };
+struct xx_wux {
+    Abstractformat format;
+};
 
 XXFC_API void xx_wux_init(xx_wux *reader, xx_io_device *device, int64_t base_address);
 XXFC_API xx_wux *xx_wux_create(xx_io_device *device, int64_t base_address);
@@ -37,9 +39,9 @@ XXFC_API bool xx_wux_handle_base_info(Abstractformat *format, xx_pd_struct *pd);
  * its current cursor. Failure may leave partial output; input cursor is restored.
  * Output must differ from input. This function does not close either device.
  */
-XXFC_API bool xx_wux_unpack_to_device(xx_wux *reader, uint64_t record_index,
-    xx_io_device *output, xx_pd_struct *pd);
-static inline Abstractformat *xx_wux_to_format(xx_wux *reader) {
+XXFC_API bool xx_wux_unpack_to_device(xx_wux *reader, uint64_t record_index, xx_io_device *output, xx_pd_struct *pd);
+static inline Abstractformat *xx_wux_to_format(xx_wux *reader)
+{
     return reader ? &reader->format : NULL;
 }
 #ifdef __cplusplus

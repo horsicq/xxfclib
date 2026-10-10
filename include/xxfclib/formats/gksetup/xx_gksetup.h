@@ -26,34 +26,24 @@ typedef struct xx_gksetup {
 typedef xx_gksetup xx_gksetup_t;
 typedef xx_gksetup XGkSetup;
 
-XXFC_API void xx_gksetup_init(xx_gksetup *archive, xx_io_device *device,
-                              int64_t base_address);
-XXFC_API xx_gksetup *xx_gksetup_create(xx_io_device *device,
-                                       int64_t base_address);
+XXFC_API void xx_gksetup_init(xx_gksetup *archive, xx_io_device *device, int64_t base_address);
+XXFC_API xx_gksetup *xx_gksetup_create(xx_io_device *device, int64_t base_address);
 XXFC_API void xx_gksetup_destroy(xx_gksetup *archive);
 XXFC_API void xx_gksetup_free(xx_gksetup *archive);
 
-XXFC_API bool xx_gksetup_check_is_valid(Abstractformat *self,
-                                        xx_pd_struct *pd);
-XXFC_API bool xx_gksetup_handle_base_info(Abstractformat *self,
-                                          xx_pd_struct *pd);
-XXFC_API int64_t xx_gksetup_get_format_size(Abstractformat *self,
-                                            xx_pd_struct *pd);
-XXFC_API uint64_t xx_gksetup_get_number_of_archive_records(
-    Abstractformat *self, xx_pd_struct *pd);
+XXFC_API bool xx_gksetup_check_is_valid(Abstractformat *self, xx_pd_struct *pd);
+XXFC_API bool xx_gksetup_handle_base_info(Abstractformat *self, xx_pd_struct *pd);
+XXFC_API int64_t xx_gksetup_get_format_size(Abstractformat *self, xx_pd_struct *pd);
+XXFC_API uint64_t xx_gksetup_get_number_of_archive_records(Abstractformat *self, xx_pd_struct *pd);
 
-XXFC_API xx_archive_record_state *xx_gksetup_create_archive_records_reading(
-    Abstractformat *self, const xx_list_s *options, xx_pd_struct *pd);
-XXFC_API const xx_archive_record *xx_gksetup_get_current_archive_record(
-    Abstractformat *self, xx_archive_record_state *state);
-XXFC_API bool xx_gksetup_unpack_current_archive_record(
-    Abstractformat *self, xx_archive_record_state *state, xx_pd_struct *pd);
-XXFC_API bool xx_gksetup_archive_record_move_to_next(
-    Abstractformat *self, xx_archive_record_state *state, xx_pd_struct *pd);
-XXFC_API void xx_gksetup_free_archive_records_reading(
-    Abstractformat *self, xx_archive_record_state *state);
+XXFC_API xx_archive_record_state *xx_gksetup_create_archive_records_reading(Abstractformat *self, const xx_list_s *options, xx_pd_struct *pd);
+XXFC_API const xx_archive_record *xx_gksetup_get_current_archive_record(Abstractformat *self, xx_archive_record_state *state);
+XXFC_API bool xx_gksetup_unpack_current_archive_record(Abstractformat *self, xx_archive_record_state *state, xx_pd_struct *pd);
+XXFC_API bool xx_gksetup_archive_record_move_to_next(Abstractformat *self, xx_archive_record_state *state, xx_pd_struct *pd);
+XXFC_API void xx_gksetup_free_archive_records_reading(Abstractformat *self, xx_archive_record_state *state);
 
-static inline Abstractformat *xx_gksetup_to_format(xx_gksetup *archive) {
+static inline Abstractformat *xx_gksetup_to_format(xx_gksetup *archive)
+{
     return archive ? &archive->format : NULL;
 }
 

@@ -5,7 +5,9 @@
 #ifdef __cplusplus
 extern "C" {
 #endif
-typedef struct xx_audio_shockwave_swa { Abstractformat format; } xx_audio_shockwave_swa;
+typedef struct xx_audio_shockwave_swa {
+    Abstractformat format;
+} xx_audio_shockwave_swa;
 XXFC_API void xx_audio_shockwave_swa_init(xx_audio_shockwave_swa *, xx_io_device *, int64_t);
 XXFC_API xx_audio_shockwave_swa *xx_audio_shockwave_swa_create(xx_io_device *, int64_t);
 XXFC_API void xx_audio_shockwave_swa_destroy(xx_audio_shockwave_swa *);

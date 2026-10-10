@@ -62,52 +62,42 @@ struct xx_encrpted_img {
     void *internal;
 };
 
-XXFC_API void xx_encrpted_img_init(xx_encrpted_img *image, xx_io_device *dev,
-                                   int64_t base_address);
-XXFC_API xx_encrpted_img *xx_encrpted_img_create(xx_io_device *dev,
-                                                 int64_t base_address);
+XXFC_API void xx_encrpted_img_init(xx_encrpted_img *image, xx_io_device *dev, int64_t base_address);
+XXFC_API xx_encrpted_img *xx_encrpted_img_create(xx_io_device *dev, int64_t base_address);
 XXFC_API void xx_encrpted_img_destroy(xx_encrpted_img *image);
 XXFC_API void xx_encrpted_img_free(xx_encrpted_img *image);
 
-XXFC_API bool xx_encrpted_img_check_is_valid(Abstractformat *self,
-                                             xx_pd_struct *pd);
-XXFC_API bool xx_encrpted_img_handle_base_info(Abstractformat *self,
-                                               xx_pd_struct *pd);
-XXFC_API int64_t xx_encrpted_img_get_format_size(Abstractformat *self,
-                                                 xx_pd_struct *pd);
-XXFC_API uint64_t xx_encrpted_img_get_number_of_archive_records(
-    Abstractformat *self, xx_pd_struct *pd);
+XXFC_API bool xx_encrpted_img_check_is_valid(Abstractformat *self, xx_pd_struct *pd);
+XXFC_API bool xx_encrpted_img_handle_base_info(Abstractformat *self, xx_pd_struct *pd);
+XXFC_API int64_t xx_encrpted_img_get_format_size(Abstractformat *self, xx_pd_struct *pd);
+XXFC_API uint64_t xx_encrpted_img_get_number_of_archive_records(Abstractformat *self, xx_pd_struct *pd);
 
-XXFC_API xx_archive_record_state *xx_encrpted_img_create_archive_records_reading(
-    Abstractformat *self, const xx_list_s *options, xx_pd_struct *pd);
-XXFC_API const xx_archive_record *xx_encrpted_img_get_current_archive_record(
-    Abstractformat *self, xx_archive_record_state *state);
-XXFC_API bool xx_encrpted_img_unpack_current_archive_record(
-    Abstractformat *self, xx_archive_record_state *state, xx_pd_struct *pd);
-XXFC_API bool xx_encrpted_img_archive_record_move_to_next(
-    Abstractformat *self, xx_archive_record_state *state, xx_pd_struct *pd);
-XXFC_API void xx_encrpted_img_free_archive_records_reading(
-    Abstractformat *self, xx_archive_record_state *state);
+XXFC_API xx_archive_record_state *xx_encrpted_img_create_archive_records_reading(Abstractformat *self, const xx_list_s *options, xx_pd_struct *pd);
+XXFC_API const xx_archive_record *xx_encrpted_img_get_current_archive_record(Abstractformat *self, xx_archive_record_state *state);
+XXFC_API bool xx_encrpted_img_unpack_current_archive_record(Abstractformat *self, xx_archive_record_state *state, xx_pd_struct *pd);
+XXFC_API bool xx_encrpted_img_archive_record_move_to_next(Abstractformat *self, xx_archive_record_state *state, xx_pd_struct *pd);
+XXFC_API void xx_encrpted_img_free_archive_records_reading(Abstractformat *self, xx_archive_record_state *state);
 
 XXFC_API int64_t xx_encrpted_img_get_payload_size(const xx_encrpted_img *image);
 
-static inline Abstractformat *xx_encrpted_img_to_format(
-    xx_encrpted_img *image) {
+static inline Abstractformat *xx_encrpted_img_to_format(xx_encrpted_img *image)
+{
     return image ? &image->format : NULL;
 }
-static inline void XEncrptedImg_init(xx_encrpted_img *image, xx_io_device *dev,
-                                     int64_t base_address) {
+static inline void XEncrptedImg_init(xx_encrpted_img *image, xx_io_device *dev, int64_t base_address)
+{
     xx_encrpted_img_init(image, dev, base_address);
 }
-static inline xx_encrpted_img *XEncrptedImg_create(xx_io_device *dev,
-                                                   int64_t base_address) {
+static inline xx_encrpted_img *XEncrptedImg_create(xx_io_device *dev, int64_t base_address)
+{
     return xx_encrpted_img_create(dev, base_address);
 }
-static inline void XEncrptedImg_free(xx_encrpted_img *image) {
+static inline void XEncrptedImg_free(xx_encrpted_img *image)
+{
     xx_encrpted_img_free(image);
 }
-static inline bool XEncrptedImg_is_valid(xx_encrpted_img *image,
-                                         xx_pd_struct *pd) {
+static inline bool XEncrptedImg_is_valid(xx_encrpted_img *image, xx_pd_struct *pd)
+{
     return image ? xx_format_is_valid(&image->format, pd) : false;
 }
 

@@ -46,8 +46,7 @@ static bool ea_lzw_read(ea_bits *reader, unsigned width, uint32_t *value)
 {
     while (reader->count < width) {
         if (reader->offset >= reader->input_size) return false;
-        reader->buffer |= (uint32_t)reader->input[reader->offset++]
-                          << reader->count;
+        reader->buffer |= (uint32_t)reader->input[reader->offset++] << reader->count;
         reader->count += 8U;
     }
     *value = reader->buffer & ((1U << width) - 1U);
@@ -56,8 +55,7 @@ static bool ea_lzw_read(ea_bits *reader, unsigned width, uint32_t *value)
     return true;
 }
 
-bool xx_ea_decode_memory(const uint8_t *input, size_t input_size,
-                         uint8_t *output, size_t output_size, size_t *written)
+bool xx_ea_decode_memory(const uint8_t *input, size_t input_size, uint8_t *output, size_t output_size, size_t *written)
 {
     ea_lzw_tables *tables;
     ea_bits reader;
@@ -99,8 +97,7 @@ bool xx_ea_decode_memory(const uint8_t *input, size_t input_size,
          * "no early change" behaviour the EA packer produces. */
         if (max_code < next_free) {
             ++width;
-            max_code = (width == EA_LZW_MAX_BITS) ? EA_LZW_MAX_CODES
-                                                  : ((1U << width) - 1U);
+            max_code = (width == EA_LZW_MAX_BITS) ? EA_LZW_MAX_CODES : ((1U << width) - 1U);
         }
 
         if (!ea_lzw_read(&reader, width, &raw)) {
@@ -167,8 +164,7 @@ bool xx_ea_decode_memory(const uint8_t *input, size_t input_size,
                 current = previous;
             }
             while (current > 0xffU) {
-                if ((current >= EA_LZW_MAX_CODES) ||
-                    (stack_size >= EA_LZW_MAX_CODES)) {
+                if ((current >= EA_LZW_MAX_CODES) || (stack_size >= EA_LZW_MAX_CODES)) {
                     failed = true;
                     break;
                 }
@@ -215,9 +211,7 @@ bool xx_ea_decode_memory(const uint8_t *input, size_t input_size,
 #define EALIB_RING_MASK (EALIB_RING_SIZE - 1U)
 #define EALIB_LZSS_F 18U
 
-bool xx_ea_lib_decode_memory(const uint8_t *input, size_t input_size,
-                             uint8_t *output, size_t output_size,
-                             size_t *written)
+bool xx_ea_lib_decode_memory(const uint8_t *input, size_t input_size, uint8_t *output, size_t output_size, size_t *written)
 {
     /* The producer clears the WHOLE ring, so a reference into the pre-history
      * yields 0x00 bytes -- not 0x20 as the classic Okumura code would give.
@@ -306,8 +300,7 @@ typedef struct refpack_command {
     bool terminator;
 } refpack_command;
 
-static bool refpack_read_header(const uint8_t *input, size_t input_size,
-                                refpack_header *header)
+static bool refpack_read_header(const uint8_t *input, size_t input_size, refpack_header *header)
 {
     size_t at = 2U;
     size_t field = 3U;
@@ -347,8 +340,7 @@ static bool refpack_read_header(const uint8_t *input, size_t input_size,
 /* Decodes the command at input[at].  Fails when the command runs past the end
  * of the buffer: RefPack always ends on an explicit 0xFC..0xFF terminator, so
  * running out mid-command is a broken stream, never a normal end. */
-static bool refpack_read_command(const uint8_t *input, size_t input_size,
-                                 size_t at, refpack_command *command)
+static bool refpack_read_command(const uint8_t *input, size_t input_size, size_t at, refpack_command *command)
 {
     uint8_t b0;
 
@@ -368,8 +360,7 @@ static bool refpack_read_command(const uint8_t *input, size_t input_size,
         command->command_size = 2U;
         command->literals = (unsigned)(b0 & 0x03U);
         command->copy = (unsigned)((b0 & 0x1cU) >> 2) + 3U;
-        command->distance = (size_t)(((uint32_t)(b0 & 0x60U) << 3) +
-                                     (uint32_t)b1) + 1U;
+        command->distance = (size_t)(((uint32_t)(b0 & 0x60U) << 3) + (uint32_t)b1) + 1U;
     } else if (b0 < 0xc0U) {
         uint8_t b1, b2;
         if ((input_size - at) < 3U) return false;
@@ -378,8 +369,7 @@ static bool refpack_read_command(const uint8_t *input, size_t input_size,
         command->command_size = 3U;
         command->literals = (unsigned)((b1 >> 6) & 0x03U);
         command->copy = (unsigned)(b0 & 0x3fU) + 4U;
-        command->distance = (size_t)(((uint32_t)(b1 & 0x3fU) << 8) +
-                                     (uint32_t)b2) + 1U;
+        command->distance = (size_t)(((uint32_t)(b1 & 0x3fU) << 8) + (uint32_t)b2) + 1U;
     } else if (b0 < 0xe0U) {
         uint8_t b1, b2, b3;
         if ((input_size - at) < 4U) return false;
@@ -388,10 +378,8 @@ static bool refpack_read_command(const uint8_t *input, size_t input_size,
         b3 = input[at + 3U];
         command->command_size = 4U;
         command->literals = (unsigned)(b0 & 0x03U);
-        command->copy = (unsigned)(((uint32_t)(b0 & 0x0cU) << 6) +
-                                   (uint32_t)b3) + 5U;
-        command->distance = (size_t)(((uint32_t)(b0 & 0x10U) << 12) +
-                                     ((uint32_t)b1 << 8) + (uint32_t)b2) + 1U;
+        command->copy = (unsigned)(((uint32_t)(b0 & 0x0cU) << 6) + (uint32_t)b3) + 5U;
+        command->distance = (size_t)(((uint32_t)(b0 & 0x10U) << 12) + ((uint32_t)b1 << 8) + (uint32_t)b2) + 1U;
     } else if (b0 < 0xfcU) {
         command->command_size = 1U;
         /* The literal-run count is always a multiple of four, so this command
@@ -420,9 +408,7 @@ static bool refpack_read_command(const uint8_t *input, size_t input_size,
  * is a length comparison.  RefPack has no pre-filled window, which is exactly
  * what makes the grammar a usable probe.
  */
-static bool refpack_run(const uint8_t *input, size_t input_size,
-                        uint8_t *output, size_t limit, size_t *produced,
-                        size_t *consumed)
+static bool refpack_run(const uint8_t *input, size_t input_size, uint8_t *output, size_t limit, size_t *produced, size_t *consumed)
 {
     refpack_header header;
     refpack_command command;
@@ -447,8 +433,7 @@ static bool refpack_run(const uint8_t *input, size_t input_size,
         at += command.command_size;
 
         if ((input_size - at) < (size_t)command.literals) return false;
-        if (((size_t)command.literals + (size_t)command.copy) >
-            (header.unpacked_size - out_at)) {
+        if (((size_t)command.literals + (size_t)command.copy) > (header.unpacked_size - out_at)) {
             return false;
         }
 
@@ -495,9 +480,7 @@ static bool refpack_run(const uint8_t *input, size_t input_size,
     return true;
 }
 
-bool xx_ea_refpack_decode_memory(const uint8_t *input, size_t input_size,
-                                 uint8_t *output, size_t output_size,
-                                 size_t *written)
+bool xx_ea_refpack_decode_memory(const uint8_t *input, size_t input_size, uint8_t *output, size_t output_size, size_t *written)
 {
     size_t produced = 0U;
 
@@ -511,13 +494,10 @@ bool xx_ea_refpack_decode_memory(const uint8_t *input, size_t input_size,
     return true;
 }
 
-bool xx_ea_refpack_scan_memory(const uint8_t *input, size_t input_size,
-                               size_t max_output, size_t *consumed,
-                               size_t *produced)
+bool xx_ea_refpack_scan_memory(const uint8_t *input, size_t input_size, size_t max_output, size_t *consumed, size_t *produced)
 {
     if (consumed) *consumed = 0U;
     if (produced) *produced = 0U;
 
-    return refpack_run(input, input_size, NULL, max_output, produced,
-                       consumed);
+    return refpack_run(input, input_size, NULL, max_output, produced, consumed);
 }

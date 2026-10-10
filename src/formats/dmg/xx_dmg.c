@@ -74,7 +74,7 @@
 typedef struct xx_dmg_run_s {
     uint32_t type;
     uint64_t sector_count;
-    uint64_t data_offset;  /**< Relative to the partition's data. */
+    uint64_t data_offset; /**< Relative to the partition's data. */
     uint64_t data_length;
 } xx_dmg_run;
 
@@ -82,8 +82,8 @@ typedef struct xx_dmg_partition_s {
     char *name;            /**< Sanitised member name, never NULL. */
     uint64_t start_sector; /**< The mish header's first sector. */
     uint64_t sector_count;
-    uint64_t data_offset;  /**< Relative to the data fork. */
-    size_t run_first;      /**< Index of the first run in parsed->runs. */
+    uint64_t data_offset; /**< Relative to the data fork. */
+    size_t run_first;     /**< Index of the first run in parsed->runs. */
     size_t run_count;
     int64_t expanded_size;
 } xx_dmg_partition;
@@ -114,11 +114,8 @@ typedef struct xx_dmg_archive_stream_s {
 } xx_dmg_archive_stream;
 
 static void xx_dmg_vtable_destroy(Abstractformat *self);
-static uint64_t xx_dmg_max_expanded(const Abstractformat *self,
-                                    const xx_list_s *options);
-static bool xx_dmg_memory_ok(const Abstractformat *self,
-                             const xx_list_s *options,
-                             const xx_dmg_private *parsed, size_t index);
+static uint64_t xx_dmg_max_expanded(const Abstractformat *self, const xx_list_s *options);
+static bool xx_dmg_memory_ok(const Abstractformat *self, const xx_list_s *options, const xx_dmg_private *parsed, size_t index);
 
 /* ------------------------------------------------------------------------ */
 /* Bounded I/O and arithmetic                                                */
@@ -126,40 +123,36 @@ static bool xx_dmg_memory_ok(const Abstractformat *self,
 
 /* All positioning goes through seek64: a DMG routinely exceeds 2 GiB and
  * long is 32-bit on Win64. */
-static bool xx_dmg_read_at(xx_io_device *device, int64_t offset, void *data,
-                           size_t size, xx_pd_struct *pd) {
+static bool xx_dmg_read_at(xx_io_device *device, int64_t offset, void *data, size_t size, xx_pd_struct *pd)
+{
     uint8_t *out = (uint8_t *)data;
     size_t done = 0U;
-    if (!device || (!data && size != 0U) || offset < 0 ||
-        (pd && xx_pd_is_stopped(pd)) ||
-        xx_io_seek64(device, offset, SEEK_SET) != 0) {
+    if (!device || (!data && size != 0U) || offset < 0 || (pd && xx_pd_is_stopped(pd)) || xx_io_seek64(device, offset, SEEK_SET) != 0) {
         return false;
     }
     while (done < size) {
         ssize_t got = xx_io_read(device, out + done, size - done);
-        if (got <= 0 || (size_t)got > size - done ||
-            (pd && xx_pd_is_stopped(pd))) return false;
+        if (got <= 0 || (size_t)got > size - done || (pd && xx_pd_is_stopped(pd))) return false;
         done += (size_t)got;
     }
     return !(pd && xx_pd_is_stopped(pd));
 }
 
-static bool xx_dmg_write_all(xx_io_device *device, const void *data,
-                             size_t size, xx_pd_struct *pd) {
+static bool xx_dmg_write_all(xx_io_device *device, const void *data, size_t size, xx_pd_struct *pd)
+{
     const uint8_t *in = (const uint8_t *)data;
     size_t done = 0U;
-    if (!device || (!data && size != 0U) ||
-        (pd && xx_pd_is_stopped(pd))) return false;
+    if (!device || (!data && size != 0U) || (pd && xx_pd_is_stopped(pd))) return false;
     while (done < size) {
         ssize_t put = xx_io_write(device, in + done, size - done);
-        if (put <= 0 || (size_t)put > size - done ||
-            (pd && xx_pd_is_stopped(pd))) return false;
+        if (put <= 0 || (size_t)put > size - done || (pd && xx_pd_is_stopped(pd))) return false;
         done += (size_t)put;
     }
     return !(pd && xx_pd_is_stopped(pd));
 }
 
-static bool xx_dmg_add(int64_t left, uint64_t right, int64_t *result) {
+static bool xx_dmg_add(int64_t left, uint64_t right, int64_t *result)
+{
     if (!result || left < 0 || right > (uint64_t)(INT64_MAX - left)) {
         return false;
     }
@@ -168,21 +161,21 @@ static bool xx_dmg_add(int64_t left, uint64_t right, int64_t *result) {
 }
 
 /* True when [offset, offset + size) lies inside [0, total_size). */
-static bool xx_dmg_range_within(int64_t total_size, int64_t offset,
-                                int64_t size) {
-    return (total_size >= 0) && (offset >= 0) && (size >= 0) &&
-           (offset <= total_size) && (size <= total_size - offset);
+static bool xx_dmg_range_within(int64_t total_size, int64_t offset, int64_t size)
+{
+    return (total_size >= 0) && (offset >= 0) && (size >= 0) && (offset <= total_size) && (size <= total_size - offset);
 }
 
 /* True when [offset, offset + length) lies inside [0, available), in the
  * unsigned arithmetic the UDIF fields are expressed in. */
-static bool xx_dmg_urange_within(uint64_t offset, uint64_t length,
-                                 uint64_t available) {
+static bool xx_dmg_urange_within(uint64_t offset, uint64_t length, uint64_t available)
+{
     return offset <= available && length <= available - offset;
 }
 
 /* Sectors to bytes, refusing anything that will not fit an int64_t. */
-static bool xx_dmg_sectors_to_bytes(uint64_t sectors, int64_t *result) {
+static bool xx_dmg_sectors_to_bytes(uint64_t sectors, int64_t *result)
+{
     if (!result || sectors > (uint64_t)INT64_MAX / XX_DMG_SECTOR_SIZE) {
         return false;
     }
@@ -194,7 +187,8 @@ static bool xx_dmg_sectors_to_bytes(uint64_t sectors, int64_t *result) {
 /* Base64                                                                    */
 /* ------------------------------------------------------------------------ */
 
-static int xx_dmg_base64_value(char ch) {
+static int xx_dmg_base64_value(char ch)
+{
     if (ch >= 'A' && ch <= 'Z') return ch - 'A';
     if (ch >= 'a' && ch <= 'z') return ch - 'a' + 26;
     if (ch >= '0' && ch <= '9') return ch - '0' + 52;
@@ -206,8 +200,8 @@ static int xx_dmg_base64_value(char ch) {
 /* Decode a plist <data> body. Whitespace is stripped, the alphabet is
  * checked strictly, and padding is only allowed at the very end, so a hostile
  * plist cannot spell one block table two different ways. */
-static bool xx_dmg_base64_decode(const char *text, uint64_t limit,
-                                 uint8_t **out_data, size_t *out_size) {
+static bool xx_dmg_base64_decode(const char *text, uint64_t limit, uint8_t **out_data, size_t *out_size)
+{
     size_t length;
     size_t index;
     size_t symbols = 0U;
@@ -280,7 +274,8 @@ static bool xx_dmg_base64_decode(const char *text, uint64_t limit,
 /* Bookkeeping                                                               */
 /* ------------------------------------------------------------------------ */
 
-static void xx_dmg_private_cleanup(xx_dmg_private *parsed) {
+static void xx_dmg_private_cleanup(xx_dmg_private *parsed)
+{
     size_t index;
     if (!parsed) return;
     for (index = 0U; index < parsed->count; ++index) {
@@ -296,18 +291,17 @@ static void xx_dmg_private_cleanup(xx_dmg_private *parsed) {
     parsed->archive_end = -1;
 }
 
-static bool xx_dmg_append_run(xx_dmg_private *parsed, const xx_dmg_run *run) {
+static bool xx_dmg_append_run(xx_dmg_private *parsed, const xx_dmg_run *run)
+{
     xx_dmg_run *grown;
     size_t capacity;
     if (!parsed || !run || parsed->run_count >= XX_DMG_MAX_RUNS) return false;
     if (parsed->run_count == parsed->run_capacity) {
         capacity = parsed->run_capacity ? parsed->run_capacity * 2U : 64U;
-        if (capacity < parsed->run_count ||
-            capacity > SIZE_MAX / sizeof(*parsed->runs)) {
+        if (capacity < parsed->run_count || capacity > SIZE_MAX / sizeof(*parsed->runs)) {
             return false;
         }
-        grown = (xx_dmg_run *)xx_mem_realloc(parsed->runs,
-                                             capacity * sizeof(*parsed->runs));
+        grown = (xx_dmg_run *)xx_mem_realloc(parsed->runs, capacity * sizeof(*parsed->runs));
         if (!grown) return false;
         parsed->runs = grown;
         parsed->run_capacity = capacity;
@@ -317,22 +311,19 @@ static bool xx_dmg_append_run(xx_dmg_private *parsed, const xx_dmg_run *run) {
 }
 
 /* Takes ownership of partition->name on success. */
-static bool xx_dmg_append_partition(xx_dmg_private *parsed,
-                                    xx_dmg_partition *partition) {
+static bool xx_dmg_append_partition(xx_dmg_private *parsed, xx_dmg_partition *partition)
+{
     xx_dmg_partition *grown;
     size_t capacity;
-    if (!parsed || !partition || !partition->name ||
-        parsed->count >= XX_DMG_MAX_PARTITIONS) {
+    if (!parsed || !partition || !partition->name || parsed->count >= XX_DMG_MAX_PARTITIONS) {
         return false;
     }
     if (parsed->count == parsed->capacity) {
         capacity = parsed->capacity ? parsed->capacity * 2U : 16U;
-        if (capacity < parsed->count ||
-            capacity > SIZE_MAX / sizeof(*parsed->partitions)) {
+        if (capacity < parsed->count || capacity > SIZE_MAX / sizeof(*parsed->partitions)) {
             return false;
         }
-        grown = (xx_dmg_partition *)xx_mem_realloc(
-            parsed->partitions, capacity * sizeof(*parsed->partitions));
+        grown = (xx_dmg_partition *)xx_mem_realloc(parsed->partitions, capacity * sizeof(*parsed->partitions));
         if (!grown) return false;
         parsed->partitions = grown;
         parsed->capacity = capacity;
@@ -351,7 +342,8 @@ static bool xx_dmg_append_partition(xx_dmg_private *parsed,
  * outside the portable set becomes an underscore, which keeps the name
  * recognisable without letting a separator, a drive letter or a control byte
  * through. */
-static char *xx_dmg_make_member_name(const char *display, size_t index) {
+static char *xx_dmg_make_member_name(const char *display, size_t index)
+{
     char buffer[XX_DMG_MAX_NAME_SIZE];
     size_t used = 0U;
     size_t position;
@@ -360,12 +352,9 @@ static char *xx_dmg_make_member_name(const char *display, size_t index) {
     if (display) {
         size_t length = xx_str_len(display);
         size_t cursor;
-        for (cursor = 0U; cursor < length && used + 8U < sizeof(buffer);
-             ++cursor) {
+        for (cursor = 0U; cursor < length && used + 8U < sizeof(buffer); ++cursor) {
             unsigned char ch = (unsigned char)display[cursor];
-            bool keep = (ch >= '0' && ch <= '9') || (ch >= 'A' && ch <= 'Z') ||
-                        (ch >= 'a' && ch <= 'z') || ch == '.' || ch == '-' ||
-                        ch == '_';
+            bool keep = (ch >= '0' && ch <= '9') || (ch >= 'A' && ch <= 'Z') || (ch >= 'a' && ch <= 'z') || ch == '.' || ch == '-' || ch == '_';
             if (keep) {
                 has_alnum = has_alnum || !(ch == '.' || ch == '-' || ch == '_');
                 buffer[used++] = (char)ch;
@@ -373,8 +362,7 @@ static char *xx_dmg_make_member_name(const char *display, size_t index) {
                 buffer[used++] = '_';
             }
         }
-        while (used != 0U && (buffer[used - 1U] == '_' ||
-                              buffer[used - 1U] == '.')) {
+        while (used != 0U && (buffer[used - 1U] == '_' || buffer[used - 1U] == '.')) {
             --used;
         }
     }
@@ -421,9 +409,8 @@ static char *xx_dmg_make_member_name(const char *display, size_t index) {
  * the previous one stopped, the control descriptors carry no sectors and no
  * bytes, the terminator is last, and the runs together must cover exactly the
  * sector count the header declares. */
-static bool xx_dmg_parse_mish(Abstractformat *self, xx_dmg_private *parsed,
-                              const uint8_t *data, size_t size,
-                              const char *display_name) {
+static bool xx_dmg_parse_mish(Abstractformat *self, xx_dmg_private *parsed, const uint8_t *data, size_t size, const char *display_name)
+{
     xx_dmg_partition partition;
     uint32_t magic;
     uint32_t version;
@@ -444,26 +431,21 @@ static bool xx_dmg_parse_mish(Abstractformat *self, xx_dmg_private *parsed,
     if ((uint64_t)run_count > (XX_DMG_MAX_RUNS - parsed->run_count)) {
         return false;
     }
-    if ((uint64_t)size != (uint64_t)XX_DMG_MISH_HEADER_SIZE +
-                              (uint64_t)run_count * XX_DMG_RUN_SIZE) {
+    if ((uint64_t)size != (uint64_t)XX_DMG_MISH_HEADER_SIZE + (uint64_t)run_count * XX_DMG_RUN_SIZE) {
         return false;
     }
     xx_mem_zero(&partition, sizeof(partition));
     partition.start_sector = xx_data_get_u64(data, size, 8U, true);
     partition.sector_count = xx_data_get_u64(data, size, 16U, true);
     partition.data_offset = xx_data_get_u64(data, size, 24U, true);
-    if (partition.sector_count >
-            (uint64_t)INT64_MAX / XX_DMG_SECTOR_SIZE ||
-        partition.start_sector > parsed->sector_count ||
-        partition.sector_count > parsed->sector_count - partition.start_sector ||
-        partition.data_offset > (uint64_t)parsed->data_fork_length) {
+    if (partition.sector_count > (uint64_t)INT64_MAX / XX_DMG_SECTOR_SIZE || partition.start_sector > parsed->sector_count ||
+        partition.sector_count > parsed->sector_count - partition.start_sector || partition.data_offset > (uint64_t)parsed->data_fork_length) {
         return false;
     }
     remaining_fork = (uint64_t)parsed->data_fork_length - partition.data_offset;
 
     for (index = 0U; index < run_count; ++index) {
-        size_t offset = (size_t)XX_DMG_MISH_HEADER_SIZE +
-                        (size_t)index * XX_DMG_RUN_SIZE;
+        size_t offset = (size_t)XX_DMG_MISH_HEADER_SIZE + (size_t)index * XX_DMG_RUN_SIZE;
         xx_dmg_run run;
         uint64_t first_sector;
         uint64_t expected_output;
@@ -479,8 +461,7 @@ static bool xx_dmg_parse_mish(Abstractformat *self, xx_dmg_private *parsed,
             /* hdiutil parks the running data-fork cursor in these two, so
              * only the sector and length fields have to be empty; the cursor
              * is still required to point inside the fork. */
-            if (run.sector_count != 0U || run.data_length != 0U ||
-                run.data_offset > remaining_fork) {
+            if (run.sector_count != 0U || run.data_length != 0U || run.data_offset > remaining_fork) {
                 return false;
             }
             if (run.type == XX_DMG_RUN_TERMINATOR) {
@@ -488,11 +469,8 @@ static bool xx_dmg_parse_mish(Abstractformat *self, xx_dmg_private *parsed,
                 terminator_seen = true;
             }
         } else {
-            bool zero_fill = (run.type == XX_DMG_RUN_ZEROFILL) ||
-                             (run.type == XX_DMG_RUN_IGNORE);
-            if ((run.sector_count == 0U && !zero_fill) ||
-                run.sector_count > (uint64_t)INT64_MAX / XX_DMG_SECTOR_SIZE ||
-                covered > partition.sector_count ||
+            bool zero_fill = (run.type == XX_DMG_RUN_ZEROFILL) || (run.type == XX_DMG_RUN_IGNORE);
+            if ((run.sector_count == 0U && !zero_fill) || run.sector_count > (uint64_t)INT64_MAX / XX_DMG_SECTOR_SIZE || covered > partition.sector_count ||
                 run.sector_count > partition.sector_count - covered) {
                 return false;
             }
@@ -514,9 +492,7 @@ static bool xx_dmg_parse_mish(Abstractformat *self, xx_dmg_private *parsed,
                     break;
                 default: return false;
             }
-            if (!zero_fill &&
-                !xx_dmg_urange_within(run.data_offset, run.data_length,
-                                      remaining_fork)) {
+            if (!zero_fill && !xx_dmg_urange_within(run.data_offset, run.data_length, remaining_fork)) {
                 return false;
             }
             covered += run.sector_count;
@@ -576,7 +552,8 @@ typedef enum xx_dmg_pending_e {
 #define XX_DMG_FIELD_CFNAME 2
 #define XX_DMG_FIELD_DATA 3
 
-static int xx_dmg_field_for_key(const char *key) {
+static int xx_dmg_field_for_key(const char *key)
+{
     if (!key) return XX_DMG_FIELD_NONE;
     if (xx_str_cmp(key, "Name") == 0) return XX_DMG_FIELD_NAME;
     if (xx_str_cmp(key, "CFName") == 0) return XX_DMG_FIELD_CFNAME;
@@ -588,9 +565,8 @@ static int xx_dmg_field_for_key(const char *key) {
  *
  * The cursor reports a self-closing element without pushing it, so nesting is
  * tracked here rather than read back from the cursor. */
-static bool xx_dmg_parse_plist(Abstractformat *self, xx_dmg_private *parsed,
-                               const char *xml, size_t xml_size,
-                               xx_pd_struct *pd) {
+static bool xx_dmg_parse_plist(Abstractformat *self, xx_dmg_private *parsed, const char *xml, size_t xml_size, xx_pd_struct *pd)
+{
     xx_xml cursor;
     xx_dmg_plist_state state = XX_DMG_PLIST_FIND_BLKX;
     xx_dmg_pending pending = XX_DMG_PENDING_NONE;
@@ -659,8 +635,7 @@ static bool xx_dmg_parse_plist(Abstractformat *self, xx_dmg_private *parsed,
                 /* The partition dict closed: a table is required, a display
                  * name is not. */
                 if (!mish) goto cleanup;
-                if (!xx_dmg_parse_mish(self, parsed, mish, mish_size,
-                                       name ? name : cfname)) {
+                if (!xx_dmg_parse_mish(self, parsed, mish, mish_size, name ? name : cfname)) {
                     goto cleanup;
                 }
                 if (name) xx_str_free(name);
@@ -691,8 +666,7 @@ static bool xx_dmg_parse_plist(Abstractformat *self, xx_dmg_private *parsed,
             } else if (state == XX_DMG_PLIST_IN_PARTITION) {
                 field = xx_dmg_field_for_key(text);
             }
-        } else if (pending == XX_DMG_PENDING_STRING &&
-                   state == XX_DMG_PLIST_IN_PARTITION) {
+        } else if (pending == XX_DMG_PENDING_STRING && state == XX_DMG_PLIST_IN_PARTITION) {
             const char *text = xx_xml_text(&cursor);
             if (field == XX_DMG_FIELD_NAME && !name && text) {
                 name = xx_str_dup(text);
@@ -701,12 +675,8 @@ static bool xx_dmg_parse_plist(Abstractformat *self, xx_dmg_private *parsed,
                 cfname = xx_str_dup(text);
                 if (!cfname) goto cleanup;
             }
-        } else if (pending == XX_DMG_PENDING_DATA &&
-                   state == XX_DMG_PLIST_IN_PARTITION &&
-                   field == XX_DMG_FIELD_DATA && !mish) {
-            if (!xx_dmg_base64_decode(xx_xml_text(&cursor),
-                                      XX_DMG_MAX_MISH_SIZE, &mish,
-                                      &mish_size)) {
+        } else if (pending == XX_DMG_PENDING_DATA && state == XX_DMG_PLIST_IN_PARTITION && field == XX_DMG_FIELD_DATA && !mish) {
+            if (!xx_dmg_base64_decode(xx_xml_text(&cursor), XX_DMG_MAX_MISH_SIZE, &mish, &mish_size)) {
                 goto cleanup;
             }
         }
@@ -714,8 +684,7 @@ static bool xx_dmg_parse_plist(Abstractformat *self, xx_dmg_private *parsed,
     }
     /* A malformed document is refused outright; so is one that never
      * produced a blkx array. */
-    result = !xx_xml_failed(&cursor) && state == XX_DMG_PLIST_DONE &&
-             parsed->count != 0U;
+    result = !xx_xml_failed(&cursor) && state == XX_DMG_PLIST_DONE && parsed->count != 0U;
 cleanup:
     if (name) xx_str_free(name);
     if (cfname) xx_str_free(cfname);
@@ -730,8 +699,8 @@ cleanup:
 
 /* Read and validate the koly trailer. The offsets the trailer carries are
  * relative to the archive base, not to the device. */
-static bool xx_dmg_parse_koly(Abstractformat *self, xx_dmg_private *parsed,
-                              xx_pd_struct *pd) {
+static bool xx_dmg_parse_koly(Abstractformat *self, xx_dmg_private *parsed, xx_pd_struct *pd)
+{
     uint8_t trailer[XX_DMG_KOLY_SIZE];
     uint64_t data_fork_offset;
     uint64_t data_fork_length;
@@ -741,15 +710,11 @@ static bool xx_dmg_parse_koly(Abstractformat *self, xx_dmg_private *parsed,
     if (parsed->input_size < XX_DMG_KOLY_SIZE) return false;
     parsed->koly_offset = parsed->input_size - XX_DMG_KOLY_SIZE;
     if (parsed->koly_offset < self->base_address) return false;
-    if (!xx_dmg_read_at(self->device, parsed->koly_offset, trailer,
-                        sizeof(trailer), pd)) {
+    if (!xx_dmg_read_at(self->device, parsed->koly_offset, trailer, sizeof(trailer), pd)) {
         return false;
     }
-    if (xx_data_get_u32(trailer, sizeof(trailer), 0U, true) !=
-            XX_DMG_KOLY_MAGIC ||
-        xx_data_get_u32(trailer, sizeof(trailer), 4U, true) != 4U ||
-        xx_data_get_u32(trailer, sizeof(trailer), 8U, true) !=
-            XX_DMG_KOLY_SIZE) {
+    if (xx_data_get_u32(trailer, sizeof(trailer), 0U, true) != XX_DMG_KOLY_MAGIC || xx_data_get_u32(trailer, sizeof(trailer), 4U, true) != 4U ||
+        xx_data_get_u32(trailer, sizeof(trailer), 8U, true) != XX_DMG_KOLY_SIZE) {
         return false;
     }
     parsed->version = xx_data_get_u32(trailer, sizeof(trailer), 4U, true);
@@ -764,9 +729,7 @@ static bool xx_dmg_parse_koly(Abstractformat *self, xx_dmg_private *parsed,
     /* Everything the trailer points at must sit between the archive base and
      * the trailer itself. */
     payload_limit = (uint64_t)(parsed->koly_offset - self->base_address);
-    if (!xx_dmg_urange_within(data_fork_offset, data_fork_length,
-                              payload_limit) ||
-        !xx_dmg_urange_within(xml_offset, xml_length, payload_limit)) {
+    if (!xx_dmg_urange_within(data_fork_offset, data_fork_length, payload_limit) || !xx_dmg_urange_within(xml_offset, xml_length, payload_limit)) {
         return false;
     }
     if (xml_length == 0U || xml_length > XX_DMG_MAX_XML_SIZE) {
@@ -787,8 +750,8 @@ static bool xx_dmg_parse_koly(Abstractformat *self, xx_dmg_private *parsed,
     return true;
 }
 
-static bool xx_dmg_parse(Abstractformat *self, xx_dmg_private *parsed,
-                         xx_pd_struct *pd) {
+static bool xx_dmg_parse(Abstractformat *self, xx_dmg_private *parsed, xx_pd_struct *pd)
+{
     char *xml = NULL;
     int64_t xml_start;
     bool result = false;
@@ -800,28 +763,22 @@ static bool xx_dmg_parse(Abstractformat *self, xx_dmg_private *parsed,
         parsed->koly_offset = -1;
         parsed->archive_end = -1;
     }
-    if (!self || !self->device || !parsed || self->base_address < 0 ||
-        (pd && xx_pd_is_stopped(pd))) {
+    if (!self || !self->device || !parsed || self->base_address < 0 || (pd && xx_pd_is_stopped(pd))) {
         return false;
     }
     parsed->input_size = xx_io_total_size(self->device);
     if (!xx_dmg_parse_koly(self, parsed, pd)) goto fail;
-    if (!xx_dmg_add(self->base_address, (uint64_t)parsed->xml_offset,
-                    &xml_start) ||
-        !xx_dmg_range_within(parsed->input_size, xml_start,
-                             parsed->xml_length)) {
+    if (!xx_dmg_add(self->base_address, (uint64_t)parsed->xml_offset, &xml_start) || !xx_dmg_range_within(parsed->input_size, xml_start, parsed->xml_length)) {
         goto fail;
     }
     /* The property list is read whole, which the 64 MiB ceiling above bounds;
      * one extra byte terminates it so the cursor can be handed text. */
     xml = (char *)xx_mem_alloc((size_t)parsed->xml_length + 1U);
-    if (!xml || !xx_dmg_read_at(self->device, xml_start, xml,
-                                (size_t)parsed->xml_length, pd)) {
+    if (!xml || !xx_dmg_read_at(self->device, xml_start, xml, (size_t)parsed->xml_length, pd)) {
         goto fail;
     }
     xml[parsed->xml_length] = '\0';
-    result = xx_dmg_parse_plist(self, parsed, xml, (size_t)parsed->xml_length,
-                                pd);
+    result = xx_dmg_parse_plist(self, parsed, xml, (size_t)parsed->xml_length, pd);
 fail:
     if (xml) xx_mem_free(xml);
     if (!result) xx_dmg_private_cleanup(parsed);
@@ -832,16 +789,14 @@ fail:
 /* Expansion                                                                 */
 /* ------------------------------------------------------------------------ */
 
-static bool xx_dmg_emit_zeros(xx_io_device *destination, int64_t size,
-                              xx_pd_struct *pd) {
+static bool xx_dmg_emit_zeros(xx_io_device *destination, int64_t size, xx_pd_struct *pd)
+{
     uint8_t staging[XX_DMG_STAGING_SIZE];
     if (size < 0) return false;
     xx_rt_memset(staging, 0, sizeof(staging));
     while (size > 0) {
-        size_t step = (size < (int64_t)sizeof(staging)) ? (size_t)size
-                                                        : sizeof(staging);
-        if ((pd && xx_pd_is_stopped(pd)) ||
-            !xx_dmg_write_all(destination, staging, step, pd)) {
+        size_t step = (size < (int64_t)sizeof(staging)) ? (size_t)size : sizeof(staging);
+        if ((pd && xx_pd_is_stopped(pd)) || !xx_dmg_write_all(destination, staging, step, pd)) {
             return false;
         }
         size -= (int64_t)step;
@@ -849,21 +804,18 @@ static bool xx_dmg_emit_zeros(xx_io_device *destination, int64_t size,
     return true;
 }
 
-static bool xx_dmg_emit_raw(xx_io_device *source, int64_t offset,
-                            xx_io_device *destination, int64_t size,
-                            xx_pd_struct *pd) {
+static bool xx_dmg_emit_raw(xx_io_device *source, int64_t offset, xx_io_device *destination, int64_t size, xx_pd_struct *pd)
+{
     uint8_t staging[XX_DMG_STAGING_SIZE];
     if (size < 0 || offset < 0) return false;
     if (size != 0 && xx_io_seek64(source, offset, SEEK_SET) != 0) return false;
     while (size > 0) {
-        size_t step = (size < (int64_t)sizeof(staging)) ? (size_t)size
-                                                        : sizeof(staging);
+        size_t step = (size < (int64_t)sizeof(staging)) ? (size_t)size : sizeof(staging);
         size_t done = 0U;
         if (pd && xx_pd_is_stopped(pd)) return false;
         while (done < step) {
             ssize_t got = xx_io_read(source, staging + done, step - done);
-            if (got <= 0 || (size_t)got > step - done ||
-                (pd && xx_pd_is_stopped(pd))) return false;
+            if (got <= 0 || (size_t)got > step - done || (pd && xx_pd_is_stopped(pd))) return false;
             done += (size_t)got;
         }
         if (!xx_dmg_write_all(destination, staging, step, pd)) return false;
@@ -877,26 +829,21 @@ static bool xx_dmg_emit_raw(xx_io_device *source, int64_t offset,
  * Both sides are bounded before anything is allocated: the run's own declared
  * lengths are already inside the data fork, and the two ceilings here keep a
  * single run from standing in for the whole image. */
-static bool xx_dmg_emit_compressed(xx_io_device *source, int64_t offset,
-                                   int64_t input_size,
-                                   xx_io_device *destination,
-                                   int64_t output_size, uint32_t type,
-                                   xx_pd_struct *pd) {
+static bool xx_dmg_emit_compressed(xx_io_device *source, int64_t offset, int64_t input_size, xx_io_device *destination, int64_t output_size, uint32_t type,
+                                   xx_pd_struct *pd)
+{
     uint8_t *input = NULL;
     uint8_t *output = NULL;
     size_t written = 0U;
     size_t consumed = 0U;
     bool decoded = false;
-    if (input_size <= 0 || output_size < 0 ||
-        (uint64_t)input_size > XX_DMG_MAX_RUN_INPUT ||
-        (uint64_t)output_size > XX_DMG_MAX_RUN_OUTPUT) {
+    if (input_size <= 0 || output_size < 0 || (uint64_t)input_size > XX_DMG_MAX_RUN_INPUT || (uint64_t)output_size > XX_DMG_MAX_RUN_OUTPUT) {
         return false;
     }
     if (pd && xx_pd_is_stopped(pd)) return false;
     input = (uint8_t *)xx_mem_alloc((size_t)input_size);
     output = (uint8_t *)xx_mem_alloc(output_size ? (size_t)output_size : 1U);
-    if (!input || !output ||
-        !xx_dmg_read_at(source, offset, input, (size_t)input_size, pd)) {
+    if (!input || !output || !xx_dmg_read_at(source, offset, input, (size_t)input_size, pd)) {
         goto cleanup;
     }
     switch (type) {
@@ -904,26 +851,13 @@ static bool xx_dmg_emit_compressed(xx_io_device *source, int64_t offset,
             /* hdiutil writes a complete RFC 1950 stream per run, header and
              * all, not the raw Deflate a negative-window caller would
              * produce, so the zlib wrapper is what is fed here. */
-            decoded = xx_zlib_stream_decode_memory(input, (size_t)input_size,
-                                                   output, (size_t)output_size,
-                                                   &written);
+            decoded = xx_zlib_stream_decode_memory(input, (size_t)input_size, output, (size_t)output_size, &written);
             break;
-        case XX_DMG_RUN_BZIP2:
-            decoded = xx_bzip2_decompress_memory(input, (size_t)input_size,
-                                                 output, (size_t)output_size,
-                                                 &written);
-            break;
-        case XX_DMG_RUN_LZFSE:
-            decoded = xx_lzfse_decompress_memory(input, (size_t)input_size,
-                                                 output, (size_t)output_size,
-                                                 &written);
-            break;
+        case XX_DMG_RUN_BZIP2: decoded = xx_bzip2_decompress_memory(input, (size_t)input_size, output, (size_t)output_size, &written); break;
+        case XX_DMG_RUN_LZFSE: decoded = xx_lzfse_decompress_memory(input, (size_t)input_size, output, (size_t)output_size, &written); break;
         case XX_DMG_RUN_ADC:
-            decoded = xx_apple_disk_copy_6_ndif_image_adc_decode_memory(
-                input, (size_t)input_size, output, (size_t)output_size,
-                &consumed);
-            if (decoded && consumed == (size_t)input_size)
-                written = (size_t)output_size;
+            decoded = xx_apple_disk_copy_6_ndif_image_adc_decode_memory(input, (size_t)input_size, output, (size_t)output_size, &consumed);
+            if (decoded && consumed == (size_t)input_size) written = (size_t)output_size;
             else decoded = false;
             break;
         case XX_DMG_RUN_LZMA: {
@@ -932,9 +866,7 @@ static bool xx_dmg_emit_compressed(xx_io_device *source, int64_t offset,
             if (compressed && expanded) {
                 xx_xz xz;
                 xx_xz_init(&xz, compressed, 0);
-                decoded = xx_xz_unpack_to_device(&xz, expanded, pd) &&
-                          xz.format.format_size == input_size &&
-                          xx_io_tell(expanded) == output_size;
+                decoded = xx_xz_unpack_to_device(&xz, expanded, pd) && xz.format.format_size == input_size && xx_io_tell(expanded) == output_size;
                 xx_xz_destroy(&xz);
                 if (decoded) written = (size_t)output_size;
             }
@@ -942,9 +874,7 @@ static bool xx_dmg_emit_compressed(xx_io_device *source, int64_t offset,
             if (compressed) xx_io_close(compressed);
             break;
         }
-        default:
-            decoded = false;
-            break;
+        default: decoded = false; break;
     }
     if (!decoded || written != (size_t)output_size) {
         decoded = false;
@@ -957,27 +887,20 @@ cleanup:
     return decoded;
 }
 
-static bool xx_dmg_expand(Abstractformat *self, const xx_dmg_private *parsed,
-                          size_t index, const xx_list_s *options,
-                          xx_io_device *destination,
-                          xx_pd_struct *pd) {
+static bool xx_dmg_expand(Abstractformat *self, const xx_dmg_private *parsed, size_t index, const xx_list_s *options, xx_io_device *destination, xx_pd_struct *pd)
+{
     const xx_dmg_partition *partition;
     int64_t partition_base;
     size_t cursor;
-    if (!self || !self->device || !parsed || !destination ||
-        index >= parsed->count) {
+    if (!self || !self->device || !parsed || !destination || index >= parsed->count) {
         return false;
     }
     partition = &parsed->partitions[index];
-    if (partition->expanded_size < 0 ||
-        (uint64_t)partition->expanded_size >
-            xx_dmg_max_expanded(self, options) ||
-        !xx_dmg_memory_ok(self, options, parsed, index)) return false;
+    if (partition->expanded_size < 0 || (uint64_t)partition->expanded_size > xx_dmg_max_expanded(self, options) || !xx_dmg_memory_ok(self, options, parsed, index))
+        return false;
     /* Every run's data offset is relative to the partition's slice of the
      * data fork, which is itself relative to the archive base. */
-    if (!xx_dmg_add(self->base_address, (uint64_t)parsed->data_fork_offset,
-                    &partition_base) ||
-        !xx_dmg_add(partition_base, partition->data_offset, &partition_base)) {
+    if (!xx_dmg_add(self->base_address, (uint64_t)parsed->data_fork_offset, &partition_base) || !xx_dmg_add(partition_base, partition->data_offset, &partition_base)) {
         return false;
     }
     for (cursor = 0U; cursor < partition->run_count; ++cursor) {
@@ -985,8 +908,7 @@ static bool xx_dmg_expand(Abstractformat *self, const xx_dmg_private *parsed,
         int64_t output_size;
         int64_t input_offset;
         if (pd && xx_pd_is_stopped(pd)) return false;
-        if (run->type == XX_DMG_RUN_COMMENT ||
-            run->type == XX_DMG_RUN_TERMINATOR) {
+        if (run->type == XX_DMG_RUN_COMMENT || run->type == XX_DMG_RUN_TERMINATOR) {
             continue;
         }
         if (!xx_dmg_sectors_to_bytes(run->sector_count, &output_size)) {
@@ -999,21 +921,16 @@ static bool xx_dmg_expand(Abstractformat *self, const xx_dmg_private *parsed,
             if (!xx_dmg_emit_zeros(destination, output_size, pd)) return false;
             continue;
         }
-        if (!xx_dmg_add(partition_base, run->data_offset, &input_offset) ||
-            !xx_dmg_range_within(parsed->input_size, input_offset,
-                                 (int64_t)run->data_length)) {
+        if (!xx_dmg_add(partition_base, run->data_offset, &input_offset) || !xx_dmg_range_within(parsed->input_size, input_offset, (int64_t)run->data_length)) {
             return false;
         }
         if (run->type == XX_DMG_RUN_RAW) {
-            if (!xx_dmg_emit_raw(self->device, input_offset, destination,
-                                 output_size, pd)) {
+            if (!xx_dmg_emit_raw(self->device, input_offset, destination, output_size, pd)) {
                 return false;
             }
             continue;
         }
-        if (!xx_dmg_emit_compressed(self->device, input_offset,
-                                    (int64_t)run->data_length, destination,
-                                    output_size, run->type, pd)) {
+        if (!xx_dmg_emit_compressed(self->device, input_offset, (int64_t)run->data_length, destination, output_size, run->type, pd)) {
             return false;
         }
     }
@@ -1024,18 +941,16 @@ static bool xx_dmg_expand(Abstractformat *self, const xx_dmg_private *parsed,
 /* Record plumbing                                                           */
 /* ------------------------------------------------------------------------ */
 
-static bool xx_dmg_copy_options(xx_list_s *destination,
-                                const xx_list_s *source) {
+static bool xx_dmg_copy_options(xx_list_s *destination, const xx_list_s *source)
+{
     size_t index;
     if (!destination || !source) return source == NULL;
     for (index = 0U; index < source->count; ++index) {
-        const xx_meta *item =
-            (const xx_meta *)xx_list_at((const xx_list_t *)source, index);
+        const xx_meta *item = (const xx_meta *)xx_list_at((const xx_list_t *)source, index);
         xx_meta copy;
         if (!item) continue;
         xx_meta_init(&copy, item->meta_id);
-        if (!xx_var_copy(&copy.var, &item->var) ||
-            !xx_list_append(destination, &copy)) {
+        if (!xx_var_copy(&copy.var, &item->var) || !xx_list_append(destination, &copy)) {
             xx_meta_cleanup(&copy);
             return false;
         }
@@ -1043,13 +958,12 @@ static bool xx_dmg_copy_options(xx_list_s *destination,
     return true;
 }
 
-static XXFC_MAYBE_UNUSED const xx_var *xx_dmg_find_option(const xx_list_s *options,
-                                        uint32_t meta_id) {
+static XXFC_MAYBE_UNUSED const xx_var *xx_dmg_find_option(const xx_list_s *options, uint32_t meta_id)
+{
     size_t index;
     if (!options) return NULL;
     for (index = 0U; index < options->count; ++index) {
-        const xx_meta *item =
-            (const xx_meta *)xx_list_at((const xx_list_t *)options, index);
+        const xx_meta *item = (const xx_meta *)xx_list_at((const xx_list_t *)options, index);
         if (item && item->meta_id == meta_id) return &item->var;
     }
     return NULL;
@@ -1057,12 +971,9 @@ static XXFC_MAYBE_UNUSED const xx_var *xx_dmg_find_option(const xx_list_s *optio
 
 /* Resolve the expansion ceiling. An operation-specific value wins over a
  * format-wide one, and the built-in default applies when neither is set. */
-static uint64_t xx_dmg_max_expanded(const Abstractformat *self,
-                                    const xx_list_s *options) {
-    const xx_var *limit =
-        self ? xx_format_resolve_extra_parameter(self, options,
-                                                 XX_META_ID_OPT_MAX_MEMBER_SIZE)
-             : NULL;
+static uint64_t xx_dmg_max_expanded(const Abstractformat *self, const xx_list_s *options)
+{
+    const xx_var *limit = self ? xx_format_resolve_extra_parameter(self, options, XX_META_ID_OPT_MAX_MEMBER_SIZE) : NULL;
     if (!limit) return XX_DMG_DEFAULT_MAX_EXPANDED;
     switch (limit->type) {
         case XX_VAR_TYPE_UINT8:
@@ -1084,55 +995,44 @@ static uint64_t xx_dmg_max_expanded(const Abstractformat *self,
  * codec workspace. XZ's native decoder permits a 512 MiB dictionary, so
  * an explicit budget must cover that worst case for ULMO runs. Initial
  * plist parsing is separately bounded by XX_DMG_MAX_XML_SIZE. */
-static bool xx_dmg_memory_ok(const Abstractformat *self,
-                             const xx_list_s *options,
-                             const xx_dmg_private *parsed, size_t index) {
-    const xx_var *limit=xx_format_resolve_extra_parameter(
-        self, options, XX_META_ID_OPT_MEMORY_LIMIT);
+static bool xx_dmg_memory_ok(const Abstractformat *self, const xx_list_s *options, const xx_dmg_private *parsed, size_t index)
+{
+    const xx_var *limit = xx_format_resolve_extra_parameter(self, options, XX_META_ID_OPT_MEMORY_LIMIT);
     const xx_dmg_partition *part;
-    uint64_t needed,peak=XX_DMG_STAGING_SIZE;
+    uint64_t needed, peak = XX_DMG_STAGING_SIZE;
     size_t i;
     if (!limit) return true;
-    if (!parsed || index>=parsed->count) return false;
-    part=&parsed->partitions[index];
-    needed=sizeof(*parsed)+(uint64_t)parsed->capacity*sizeof(*parsed->partitions)+
-           (uint64_t)parsed->run_capacity*sizeof(*parsed->runs);
-    for (i=0U;i<parsed->count;++i) if (parsed->partitions[i].name)
-        needed+=(uint64_t)xx_str_len(parsed->partitions[i].name)+1U;
-    for (i=0U;i<part->run_count;++i) {
-        const xx_dmg_run *run=&parsed->runs[part->run_first+i];
-        uint64_t work,extra=0U;
-        if (run->type==XX_DMG_RUN_ZEROFILL ||
-            run->type==XX_DMG_RUN_IGNORE ||
-            run->type==XX_DMG_RUN_COMMENT ||
-            run->type==XX_DMG_RUN_TERMINATOR ||
-            run->type==XX_DMG_RUN_RAW) continue;
-        if (run->sector_count>XX_DMG_MAX_RUN_OUTPUT/XX_DMG_SECTOR_SIZE ||
-            run->data_length>XX_DMG_MAX_RUN_INPUT) return false;
-        if (run->type==XX_DMG_RUN_LZMA)
-            extra=(UINT64_C(512)<<20)+(UINT64_C(16)<<20);
-        else if (run->type==XX_DMG_RUN_BZIP2 ||
-                 run->type==XX_DMG_RUN_LZFSE)
-            extra=UINT64_C(16)<<20;
-        else if (run->type==XX_DMG_RUN_ADC)
-            extra=UINT64_C(1)<<20;
-        else extra=UINT64_C(2)<<20;
-        work=run->data_length+run->sector_count*XX_DMG_SECTOR_SIZE+extra;
-        if (work>peak) peak=work;
+    if (!parsed || index >= parsed->count) return false;
+    part = &parsed->partitions[index];
+    needed = sizeof(*parsed) + (uint64_t)parsed->capacity * sizeof(*parsed->partitions) + (uint64_t)parsed->run_capacity * sizeof(*parsed->runs);
+    for (i = 0U; i < parsed->count; ++i)
+        if (parsed->partitions[i].name) needed += (uint64_t)xx_str_len(parsed->partitions[i].name) + 1U;
+    for (i = 0U; i < part->run_count; ++i) {
+        const xx_dmg_run *run = &parsed->runs[part->run_first + i];
+        uint64_t work, extra = 0U;
+        if (run->type == XX_DMG_RUN_ZEROFILL || run->type == XX_DMG_RUN_IGNORE || run->type == XX_DMG_RUN_COMMENT || run->type == XX_DMG_RUN_TERMINATOR ||
+            run->type == XX_DMG_RUN_RAW)
+            continue;
+        if (run->sector_count > XX_DMG_MAX_RUN_OUTPUT / XX_DMG_SECTOR_SIZE || run->data_length > XX_DMG_MAX_RUN_INPUT) return false;
+        if (run->type == XX_DMG_RUN_LZMA) extra = (UINT64_C(512) << 20) + (UINT64_C(16) << 20);
+        else if (run->type == XX_DMG_RUN_BZIP2 || run->type == XX_DMG_RUN_LZFSE) extra = UINT64_C(16) << 20;
+        else if (run->type == XX_DMG_RUN_ADC) extra = UINT64_C(1) << 20;
+        else extra = UINT64_C(2) << 20;
+        work = run->data_length + run->sector_count * XX_DMG_SECTOR_SIZE + extra;
+        if (work > peak) peak = work;
     }
-    return needed<=UINT64_MAX-peak && needed+peak<=xx_var_get_u64(limit);
+    return needed <= UINT64_MAX - peak && needed + peak <= xx_var_get_u64(limit);
 }
 
 /* The compressed size a partition reports is the sum of its runs' payloads,
  * which is what the member actually occupies in the data fork. */
-static uint64_t xx_dmg_packed_size(const xx_dmg_private *parsed,
-                                   const xx_dmg_partition *partition) {
+static uint64_t xx_dmg_packed_size(const xx_dmg_private *parsed, const xx_dmg_partition *partition)
+{
     uint64_t total = 0U;
     size_t cursor;
     for (cursor = 0U; cursor < partition->run_count; ++cursor) {
         const xx_dmg_run *run = &parsed->runs[partition->run_first + cursor];
-        if (run->type == XX_DMG_RUN_COMMENT ||
-            run->type == XX_DMG_RUN_TERMINATOR) {
+        if (run->type == XX_DMG_RUN_COMMENT || run->type == XX_DMG_RUN_TERMINATOR) {
             continue;
         }
         if (run->data_length > UINT64_MAX - total) return total;
@@ -1144,23 +1044,20 @@ static uint64_t xx_dmg_packed_size(const xx_dmg_private *parsed,
 /* The method reported for the member as a whole: a partition may mix run
  * types, so the first compressed run it carries names it, and a partition
  * with none is reported as stored. */
-static uint64_t xx_dmg_partition_method(const xx_dmg_private *parsed,
-                                        const xx_dmg_partition *partition) {
+static uint64_t xx_dmg_partition_method(const xx_dmg_private *parsed, const xx_dmg_partition *partition)
+{
     size_t cursor;
     for (cursor = 0U; cursor < partition->run_count; ++cursor) {
         uint32_t type = parsed->runs[partition->run_first + cursor].type;
-        if (type != XX_DMG_RUN_ZEROFILL && type != XX_DMG_RUN_RAW &&
-            type != XX_DMG_RUN_IGNORE && type != XX_DMG_RUN_COMMENT &&
-            type != XX_DMG_RUN_TERMINATOR) {
+        if (type != XX_DMG_RUN_ZEROFILL && type != XX_DMG_RUN_RAW && type != XX_DMG_RUN_IGNORE && type != XX_DMG_RUN_COMMENT && type != XX_DMG_RUN_TERMINATOR) {
             return type;
         }
     }
     return XX_DMG_RUN_RAW;
 }
 
-static bool xx_dmg_populate_record(xx_archive_record *record,
-                                   const xx_dmg_private *parsed, size_t index,
-                                   int64_t base_address) {
+static bool xx_dmg_populate_record(xx_archive_record *record, const xx_dmg_private *parsed, size_t index, int64_t base_address)
+{
     const xx_dmg_partition *partition;
     int64_t data_offset;
     if (!record || !parsed || index >= parsed->count) return false;
@@ -1172,26 +1069,20 @@ static bool xx_dmg_populate_record(xx_archive_record *record,
     /* The member has no single contiguous payload - it is a set of runs
      * scattered through the data fork - so the record points at where the
      * partition's slice of that fork begins. */
-    if (!xx_dmg_add(base_address, (uint64_t)parsed->data_fork_offset,
-                    &data_offset) ||
-        !xx_dmg_add(data_offset, partition->data_offset, &data_offset)) {
+    if (!xx_dmg_add(base_address, (uint64_t)parsed->data_fork_offset, &data_offset) || !xx_dmg_add(data_offset, partition->data_offset, &data_offset)) {
         return false;
     }
     record->data_offset = data_offset;
     record->compressed_size = (int64_t)xx_dmg_packed_size(parsed, partition);
     return xx_archive_record_set_original_name(record, partition->name) &&
-           xx_archive_record_set_meta_u64(record, XX_META_ID_UNCOMPRESSED_SIZE,
-                                          (uint64_t)partition->expanded_size) &&
-           xx_archive_record_set_meta_u64(
-               record, XX_META_ID_COMPRESSED_SIZE,
-               (uint64_t)record->compressed_size) &&
-           xx_archive_record_set_meta_u64(
-               record, XX_META_ID_COMPRESSION_METHOD,
-               xx_dmg_partition_method(parsed, partition)) &&
+           xx_archive_record_set_meta_u64(record, XX_META_ID_UNCOMPRESSED_SIZE, (uint64_t)partition->expanded_size) &&
+           xx_archive_record_set_meta_u64(record, XX_META_ID_COMPRESSED_SIZE, (uint64_t)record->compressed_size) &&
+           xx_archive_record_set_meta_u64(record, XX_META_ID_COMPRESSION_METHOD, xx_dmg_partition_method(parsed, partition)) &&
            xx_archive_record_set_meta_bool(record, XX_META_ID_IS_FOLDER, false);
 }
 
-static void xx_dmg_archive_stream_free(void *pointer) {
+static void xx_dmg_archive_stream_free(void *pointer)
+{
     xx_dmg_archive_stream *stream = (xx_dmg_archive_stream *)pointer;
     if (!stream) return;
     xx_dmg_private_cleanup(&stream->parsed);
@@ -1202,7 +1093,8 @@ static void xx_dmg_archive_stream_free(void *pointer) {
 /* Public interface                                                          */
 /* ------------------------------------------------------------------------ */
 
-void xx_dmg_init(xx_dmg *dmg, xx_io_device *dev, int64_t base_address) {
+void xx_dmg_init(xx_dmg *dmg, xx_io_device *dev, int64_t base_address)
+{
     if (!dmg) return;
     xx_mem_zero(dmg, sizeof(*dmg));
     xx_format_init(&dmg->format, dev, base_address);
@@ -1215,28 +1107,26 @@ void xx_dmg_init(xx_dmg *dmg, xx_io_device *dev, int64_t base_address) {
     dmg->format.check_is_valid = xx_dmg_check_is_valid;
     dmg->format.handle_base_info = xx_dmg_handle_base_info;
     dmg->format.get_format_size = xx_dmg_get_format_size;
-    dmg->format.get_number_of_archive_records =
-        xx_dmg_get_number_of_archive_records;
-    dmg->format.create_archive_records_reading =
-        xx_dmg_create_archive_records_reading;
+    dmg->format.get_number_of_archive_records = xx_dmg_get_number_of_archive_records;
+    dmg->format.create_archive_records_reading = xx_dmg_create_archive_records_reading;
     dmg->format.get_current_archive_record = xx_dmg_get_current_archive_record;
-    dmg->format.unpack_current_archive_record =
-        xx_dmg_unpack_current_archive_record;
+    dmg->format.unpack_current_archive_record = xx_dmg_unpack_current_archive_record;
     dmg->format.archive_record_move_to_next = xx_dmg_archive_record_move_to_next;
-    dmg->format.free_archive_records_reading =
-        xx_dmg_free_archive_records_reading;
+    dmg->format.free_archive_records_reading = xx_dmg_free_archive_records_reading;
     dmg->format.destroy = xx_dmg_vtable_destroy;
     dmg->koly_offset = -1;
     dmg->archive_end = -1;
 }
 
-xx_dmg *xx_dmg_create(xx_io_device *dev, int64_t base_address) {
+xx_dmg *xx_dmg_create(xx_io_device *dev, int64_t base_address)
+{
     xx_dmg *dmg = (xx_dmg *)xx_mem_alloc(sizeof(*dmg));
     if (dmg) xx_dmg_init(dmg, dev, base_address);
     return dmg;
 }
 
-void xx_dmg_destroy(xx_dmg *dmg) {
+void xx_dmg_destroy(xx_dmg *dmg)
+{
     if (!dmg) return;
     if (dmg->internal) {
         xx_dmg_private_cleanup((xx_dmg_private *)dmg->internal);
@@ -1246,17 +1136,20 @@ void xx_dmg_destroy(xx_dmg *dmg) {
     xx_format_cleanup_extra_parameters(&dmg->format);
 }
 
-static void xx_dmg_vtable_destroy(Abstractformat *self) {
+static void xx_dmg_vtable_destroy(Abstractformat *self)
+{
     xx_dmg_destroy((xx_dmg *)self);
 }
 
-void xx_dmg_free(xx_dmg *dmg) {
+void xx_dmg_free(xx_dmg *dmg)
+{
     if (!dmg) return;
     xx_dmg_destroy(dmg);
     xx_mem_free(dmg);
 }
 
-bool xx_dmg_probe_device(xx_io_device *dev, int64_t base_address) {
+bool xx_dmg_probe_device(xx_io_device *dev, int64_t base_address)
+{
     uint8_t trailer[16];
     int64_t total_size;
     int64_t offset;
@@ -1269,25 +1162,20 @@ bool xx_dmg_probe_device(xx_io_device *dev, int64_t base_address) {
     if (total_size < XX_DMG_KOLY_SIZE) return false;
     offset = total_size - XX_DMG_KOLY_SIZE;
     if (offset < base_address) return false;
-    found = xx_dmg_read_at(dev, offset, trailer, sizeof(trailer), NULL) &&
-        xx_data_get_u32(trailer, sizeof(trailer), 0U, true) ==
-               XX_DMG_KOLY_MAGIC &&
-           xx_data_get_u32(trailer, sizeof(trailer), 4U, true) == 4U &&
-           xx_data_get_u32(trailer, sizeof(trailer), 8U, true) ==
-               XX_DMG_KOLY_SIZE;
+    found = xx_dmg_read_at(dev, offset, trailer, sizeof(trailer), NULL) && xx_data_get_u32(trailer, sizeof(trailer), 0U, true) == XX_DMG_KOLY_MAGIC &&
+            xx_data_get_u32(trailer, sizeof(trailer), 4U, true) == 4U && xx_data_get_u32(trailer, sizeof(trailer), 8U, true) == XX_DMG_KOLY_SIZE;
     if (xx_io_seek64(dev, saved, SEEK_SET) != 0) return false;
     return found;
 }
 
-bool xx_dmg_check_is_valid(Abstractformat *self, xx_pd_struct *pd) {
+bool xx_dmg_check_is_valid(Abstractformat *self, xx_pd_struct *pd)
+{
     xx_dmg_private parsed;
     bool result;
     int64_t saved;
     /* The cheap probe first: the trailer's magic is at the end of the file,
      * so nothing a prefilter has already read can stand in for it. */
-    if (!self || !self->device ||
-        (saved = xx_io_tell(self->device)) < 0 ||
-        !xx_dmg_probe_device(self->device, self->base_address)) {
+    if (!self || !self->device || (saved = xx_io_tell(self->device)) < 0 || !xx_dmg_probe_device(self->device, self->base_address)) {
         return false;
     }
     result = xx_dmg_parse(self, &parsed, pd);
@@ -1296,18 +1184,21 @@ bool xx_dmg_check_is_valid(Abstractformat *self, xx_pd_struct *pd) {
     return result;
 }
 
-bool xx_dmg_handle_base_info(Abstractformat *self, xx_pd_struct *pd) {
+bool xx_dmg_handle_base_info(Abstractformat *self, xx_pd_struct *pd)
+{
     xx_dmg_private *parsed;
     xx_dmg *dmg = (xx_dmg *)self;
-    int64_t total_size,saved;
+    int64_t total_size, saved;
     bool parsed_ok;
-    if (!self || !dmg || !self->device ||
-        (saved = xx_io_tell(self->device)) < 0) return false;
+    if (!self || !dmg || !self->device || (saved = xx_io_tell(self->device)) < 0) return false;
     parsed = (xx_dmg_private *)xx_mem_alloc(sizeof(*parsed));
     parsed_ok = parsed && xx_dmg_parse(self, parsed, pd);
     if (xx_io_seek64(self->device, saved, SEEK_SET) != 0) parsed_ok = false;
     if (!parsed_ok) {
-        if (parsed) { xx_dmg_private_cleanup(parsed); xx_mem_free(parsed); }
+        if (parsed) {
+            xx_dmg_private_cleanup(parsed);
+            xx_mem_free(parsed);
+        }
         self->is_valid = false;
         self->base_info_handled = false;
         return false;
@@ -1344,47 +1235,40 @@ bool xx_dmg_handle_base_info(Abstractformat *self, xx_pd_struct *pd) {
     return true;
 }
 
-int64_t xx_dmg_get_format_size(Abstractformat *self, xx_pd_struct *pd) {
-    if (!self ||
-        (!self->base_info_handled && !xx_format_handle_base_info(self, pd))) {
+int64_t xx_dmg_get_format_size(Abstractformat *self, xx_pd_struct *pd)
+{
+    if (!self || (!self->base_info_handled && !xx_format_handle_base_info(self, pd))) {
         return -1;
     }
     return self->format_size;
 }
 
-uint64_t xx_dmg_get_number_of_archive_records(Abstractformat *self,
-                                              xx_pd_struct *pd) {
-    if (!self ||
-        (!self->base_info_handled && !xx_format_handle_base_info(self, pd))) {
+uint64_t xx_dmg_get_number_of_archive_records(Abstractformat *self, xx_pd_struct *pd)
+{
+    if (!self || (!self->base_info_handled && !xx_format_handle_base_info(self, pd))) {
         return 0U;
     }
     return ((xx_dmg *)self)->number_of_records;
 }
 
-bool xx_dmg_unpack_partition_to_device(xx_dmg *dmg, size_t index,
-                                       xx_io_device *destination,
-                                       xx_pd_struct *pd) {
+bool xx_dmg_unpack_partition_to_device(xx_dmg *dmg, size_t index, xx_io_device *destination, xx_pd_struct *pd)
+{
     xx_dmg_private parsed;
     bool result;
     int64_t saved;
-    if (!dmg || !dmg->format.device || !destination ||
-        destination == dmg->format.device ||
-        (saved = xx_io_tell(dmg->format.device)) < 0) return false;
-    result = xx_dmg_parse(&dmg->format, &parsed, pd) &&
-             xx_dmg_expand(&dmg->format, &parsed, index, NULL,
-                           destination, pd);
+    if (!dmg || !dmg->format.device || !destination || destination == dmg->format.device || (saved = xx_io_tell(dmg->format.device)) < 0) return false;
+    result = xx_dmg_parse(&dmg->format, &parsed, pd) && xx_dmg_expand(&dmg->format, &parsed, index, NULL, destination, pd);
     xx_dmg_private_cleanup(&parsed);
     if (xx_io_seek64(dmg->format.device, saved, SEEK_SET) != 0) result = false;
     return result;
 }
 
-xx_archive_record_state *xx_dmg_create_archive_records_reading(
-    Abstractformat *self, const xx_list_s *options, xx_pd_struct *pd) {
+xx_archive_record_state *xx_dmg_create_archive_records_reading(Abstractformat *self, const xx_list_s *options, xx_pd_struct *pd)
+{
     xx_archive_record_state *state;
     xx_dmg_archive_stream *stream;
     int64_t saved;
-    if (!self || !self->device ||
-        (!self->base_info_handled && !xx_format_handle_base_info(self, pd))) {
+    if (!self || !self->device || (!self->base_info_handled && !xx_format_handle_base_info(self, pd))) {
         return NULL;
     }
     saved = xx_io_tell(self->device);
@@ -1397,9 +1281,7 @@ xx_archive_record_state *xx_dmg_create_archive_records_reading(
         return NULL;
     }
     xx_archive_record_state_init(state, self);
-    if (!xx_dmg_copy_options(&state->options, options) ||
-        !xx_dmg_parse(self, &stream->parsed, pd) ||
-        xx_io_seek64(self->device, saved, SEEK_SET) != 0) {
+    if (!xx_dmg_copy_options(&state->options, options) || !xx_dmg_parse(self, &stream->parsed, pd) || xx_io_seek64(self->device, saved, SEEK_SET) != 0) {
         (void)xx_io_seek64(self->device, saved, SEEK_SET);
         xx_dmg_archive_stream_free(stream);
         xx_archive_record_state_free(state);
@@ -1409,28 +1291,22 @@ xx_archive_record_state *xx_dmg_create_archive_records_reading(
     state->internal_state = stream;
     state->free_internal = xx_dmg_archive_stream_free;
     state->total_records = (int64_t)stream->parsed.count;
-    if (stream->parsed.count != 0U &&
-        xx_dmg_populate_record(&state->current_record, &stream->parsed, 0U,
-                               self->base_address)) {
+    if (stream->parsed.count != 0U && xx_dmg_populate_record(&state->current_record, &stream->parsed, 0U, self->base_address)) {
         state->has_record = true;
         state->current_index = 0;
     }
     return state;
 }
 
-const xx_archive_record *xx_dmg_get_current_archive_record(
-    Abstractformat *self, xx_archive_record_state *state) {
-    return self && state && state->format == self && state->has_record
-               ? &state->current_record
-               : NULL;
+const xx_archive_record *xx_dmg_get_current_archive_record(Abstractformat *self, xx_archive_record_state *state)
+{
+    return self && state && state->format == self && state->has_record ? &state->current_record : NULL;
 }
 
-bool xx_dmg_archive_record_move_to_next(Abstractformat *self,
-                                        xx_archive_record_state *state,
-                                        xx_pd_struct *pd) {
+bool xx_dmg_archive_record_move_to_next(Abstractformat *self, xx_archive_record_state *state, xx_pd_struct *pd)
+{
     xx_dmg_archive_stream *stream;
-    if (!self || !state || state->format != self || !state->has_record ||
-        !state->internal_state || (pd && xx_pd_is_stopped(pd))) {
+    if (!self || !state || state->format != self || !state->has_record || !state->internal_state || (pd && xx_pd_is_stopped(pd))) {
         return false;
     }
     stream = (xx_dmg_archive_stream *)state->internal_state;
@@ -1441,8 +1317,7 @@ bool xx_dmg_archive_record_move_to_next(Abstractformat *self,
         state->has_record = false;
         return false;
     }
-    if (!xx_dmg_populate_record(&state->current_record, &stream->parsed,
-                                stream->index, self->base_address)) {
+    if (!xx_dmg_populate_record(&state->current_record, &stream->parsed, stream->index, self->base_address)) {
         state->has_record = false;
         return false;
     }
@@ -1450,57 +1325,74 @@ bool xx_dmg_archive_record_move_to_next(Abstractformat *self,
     return true;
 }
 
-static ssize_t xx_dmg_discard(xx_io_device *device,const void *data,size_t size) {
-    (void)device; (void)data; return (ssize_t)size;
+static ssize_t xx_dmg_discard(xx_io_device *device, const void *data, size_t size)
+{
+    (void)device;
+    (void)data;
+    return (ssize_t)size;
 }
-static bool xx_dmg_same_path(const char *a,const char *b) {
+static bool xx_dmg_same_path(const char *a, const char *b)
+{
     while (*a && *b) {
-        char x=*a++,y=*b++;
-        if (x=='\\') { x='/'; } if (y=='\\') y='/';
-        if (x>='A' && x<='Z') x=(char)(x+32);
-        if (y>='A' && y<='Z') y=(char)(y+32);
-        if (x!=y) return false;
-    }
-    return *a==*b;
-}
-static xx_io_device *xx_dmg_stage(const char *destination,char **stage) {
-    size_t i,parent=0U; unsigned attempt; char *directory;
-    *stage=NULL; directory=xx_str_dup(destination); if (!directory) return NULL;
-    for (i=0U;directory[i];++i)
-        if (directory[i]=='/' || directory[i]=='\\') parent=i+1U;
-    directory[parent]=0;
-    for (attempt=0U;attempt<128U;++attempt) {
-        char suffix[40],*candidate; xx_io_device *device;
-        (void)xx_rt_snprintf(suffix,sizeof(suffix),".xx_dmg.tmp.%u",attempt);
-        candidate=xx_str_concat(directory,suffix); if (!candidate) break;
-        if (xx_dmg_same_path(candidate,destination)) {
-            xx_str_free(candidate); continue;
+        char x = *a++, y = *b++;
+        if (x == '\\') {
+            x = '/';
         }
-        device=xx_io_file_open(candidate,"wbx");
-        if (device) { *stage=candidate; xx_str_free(directory); return device; }
+        if (y == '\\') y = '/';
+        if (x >= 'A' && x <= 'Z') x = (char)(x + 32);
+        if (y >= 'A' && y <= 'Z') y = (char)(y + 32);
+        if (x != y) return false;
+    }
+    return *a == *b;
+}
+static xx_io_device *xx_dmg_stage(const char *destination, char **stage)
+{
+    size_t i, parent = 0U;
+    unsigned attempt;
+    char *directory;
+    *stage = NULL;
+    directory = xx_str_dup(destination);
+    if (!directory) return NULL;
+    for (i = 0U; directory[i]; ++i)
+        if (directory[i] == '/' || directory[i] == '\\') parent = i + 1U;
+    directory[parent] = 0;
+    for (attempt = 0U; attempt < 128U; ++attempt) {
+        char suffix[40], *candidate;
+        xx_io_device *device;
+        (void)xx_rt_snprintf(suffix, sizeof(suffix), ".xx_dmg.tmp.%u", attempt);
+        candidate = xx_str_concat(directory, suffix);
+        if (!candidate) break;
+        if (xx_dmg_same_path(candidate, destination)) {
+            xx_str_free(candidate);
+            continue;
+        }
+        device = xx_io_file_open(candidate, "wbx");
+        if (device) {
+            *stage = candidate;
+            xx_str_free(directory);
+            return device;
+        }
         xx_str_free(candidate);
     }
-    xx_str_free(directory); return NULL;
+    xx_str_free(directory);
+    return NULL;
 }
 
 /* A DMG member is reassembled from its runs, then published atomically. */
-bool xx_dmg_unpack_current_archive_record(Abstractformat *self,
-                                          xx_archive_record_state *state,
-                                          xx_pd_struct *pd) {
+bool xx_dmg_unpack_current_archive_record(Abstractformat *self, xx_archive_record_state *state, xx_pd_struct *pd)
+{
     xx_dmg_archive_stream *stream;
     const xx_dmg_partition *partition;
     const xx_var *option;
     const char *base = NULL;
     char *owned_base = NULL;
-    char *destination_path = NULL,*stage_path = NULL;
+    char *destination_path = NULL, *stage_path = NULL;
     xx_io_device *destination = NULL;
     xx_io_device discard;
     const xx_var *overwrite_option;
     int64_t saved;
-    bool result = false,overwrite,restored=false;
-    if (!self || !self->device || !state || state->format != self ||
-        !state->has_record || !state->internal_state ||
-        (pd && xx_pd_is_stopped(pd))) {
+    bool result = false, overwrite, restored = false;
+    if (!self || !self->device || !state || state->format != self || !state->has_record || !state->internal_state || (pd && xx_pd_is_stopped(pd))) {
         return false;
     }
     stream = (xx_dmg_archive_stream *)state->internal_state;
@@ -1508,63 +1400,53 @@ bool xx_dmg_unpack_current_archive_record(Abstractformat *self,
     partition = &stream->parsed.partitions[stream->index];
     /* A ceiling supplied with this read session is honoured here; the parse
      * itself allocates nothing proportional to the expansion. */
-    if (partition->expanded_size < 0 ||
-        (uint64_t)partition->expanded_size >
-            xx_dmg_max_expanded(self, &state->options) ||
-        !xx_dmg_memory_ok(self,&state->options,&stream->parsed,
-                          stream->index)) {
+    if (partition->expanded_size < 0 || (uint64_t)partition->expanded_size > xx_dmg_max_expanded(self, &state->options) ||
+        !xx_dmg_memory_ok(self, &state->options, &stream->parsed, stream->index)) {
         return false;
     }
-    saved=xx_io_tell(self->device);
-    if (saved<0) return false;
+    saved = xx_io_tell(self->device);
+    if (saved < 0) return false;
 
-    option=xx_format_resolve_extra_parameter(self,&state->options,
-                                             XX_META_ID_OPT_UNPACK_PATH);
-    overwrite_option=xx_format_resolve_extra_parameter(
-        self,&state->options,XX_META_ID_OPT_OVERWRITE);
-    overwrite=overwrite_option && xx_var_get_bool(overwrite_option);
+    option = xx_format_resolve_extra_parameter(self, &state->options, XX_META_ID_OPT_UNPACK_PATH);
+    overwrite_option = xx_format_resolve_extra_parameter(self, &state->options, XX_META_ID_OPT_OVERWRITE);
+    overwrite = overwrite_option && xx_var_get_bool(overwrite_option);
     if (!option) {
-        xx_mem_zero(&discard,sizeof(discard)); discard.write=xx_dmg_discard;
-        result=xx_dmg_expand(self,&stream->parsed,stream->index,
-                             &state->options,&discard,pd);
-        if (xx_io_seek64(self->device,saved,SEEK_SET)!=0) result=false;
+        xx_mem_zero(&discard, sizeof(discard));
+        discard.write = xx_dmg_discard;
+        result = xx_dmg_expand(self, &stream->parsed, stream->index, &state->options, &discard, pd);
+        if (xx_io_seek64(self->device, saved, SEEK_SET) != 0) result = false;
         return result;
     }
-    if (option->type == XX_VAR_TYPE_STRING ||
-        option->type == XX_VAR_TYPE_STRING_VIEW) {
+    if (option->type == XX_VAR_TYPE_STRING || option->type == XX_VAR_TYPE_STRING_VIEW) {
         base = xx_var_get_str(option);
-    } else if (option->type == XX_VAR_TYPE_WSTRING ||
-               option->type == XX_VAR_TYPE_WSTRING_VIEW) {
+    } else if (option->type == XX_VAR_TYPE_WSTRING || option->type == XX_VAR_TYPE_WSTRING_VIEW) {
         owned_base = xx_str_unicode_to_utf8(xx_var_get_wstr(option));
         base = owned_base;
     }
     if (!base) goto cleanup;
-    if (base[0] && base[xx_str_len(base) - 1U] != '/' &&
-        base[xx_str_len(base) - 1U] != '\\') {
+    if (base[0] && base[xx_str_len(base) - 1U] != '/' && base[xx_str_len(base) - 1U] != '\\') {
         destination_path = xx_str_concat3(base, "/", partition->name);
     } else {
         destination_path = xx_str_concat(base, partition->name);
     }
     if (!destination_path) goto cleanup;
-    if ((!overwrite && xx_io_file_exists_a(destination_path)) ||
-        !xx_store_create_dirs_a(destination_path,false) ||
-        (pd && xx_pd_is_stopped(pd))) goto cleanup;
-    destination=xx_dmg_stage(destination_path,&stage_path);
+    if ((!overwrite && xx_io_file_exists_a(destination_path)) || !xx_store_create_dirs_a(destination_path, false) || (pd && xx_pd_is_stopped(pd))) goto cleanup;
+    destination = xx_dmg_stage(destination_path, &stage_path);
     if (!destination) goto cleanup;
-    result=xx_dmg_expand(self,&stream->parsed,stream->index,&state->options,
-                         destination,pd);
-    if (xx_io_close(destination)!=0) result=false;
-    destination=NULL;
-    if (xx_io_seek64(self->device,saved,SEEK_SET)!=0) result=false;
-    restored=true;
-    if (result && !(pd && xx_pd_is_stopped(pd)))
-        result=xx_io_file_replace_a(stage_path,destination_path,overwrite);
-    else result=false;
+    result = xx_dmg_expand(self, &stream->parsed, stream->index, &state->options, destination, pd);
+    if (xx_io_close(destination) != 0) result = false;
+    destination = NULL;
+    if (xx_io_seek64(self->device, saved, SEEK_SET) != 0) result = false;
+    restored = true;
+    if (result && !(pd && xx_pd_is_stopped(pd))) result = xx_io_file_replace_a(stage_path, destination_path, overwrite);
+    else result = false;
 
 cleanup:
-    if (destination) { (void)xx_io_close(destination); result=false; }
-    if (!restored && xx_io_seek64(self->device,saved,SEEK_SET)!=0)
-        result=false;
+    if (destination) {
+        (void)xx_io_close(destination);
+        result = false;
+    }
+    if (!restored && xx_io_seek64(self->device, saved, SEEK_SET) != 0) result = false;
     if (stage_path) {
         if (!result) (void)xx_io_file_remove_a(stage_path);
         xx_str_free(stage_path);
@@ -1574,27 +1456,33 @@ cleanup:
     return result;
 }
 
-void xx_dmg_free_archive_records_reading(Abstractformat *self,
-                                         xx_archive_record_state *state) {
+void xx_dmg_free_archive_records_reading(Abstractformat *self, xx_archive_record_state *state)
+{
     (void)self;
     xx_archive_record_state_free(state);
 }
 
-uint64_t xx_dmg_get_number_of_records(const xx_dmg *dmg) {
+uint64_t xx_dmg_get_number_of_records(const xx_dmg *dmg)
+{
     return dmg ? dmg->number_of_records : 0U;
 }
-uint64_t xx_dmg_get_number_of_members(const xx_dmg *dmg) {
+uint64_t xx_dmg_get_number_of_members(const xx_dmg *dmg)
+{
     return dmg ? dmg->number_of_members : 0U;
 }
-uint64_t xx_dmg_get_sector_count(const xx_dmg *dmg) {
+uint64_t xx_dmg_get_sector_count(const xx_dmg *dmg)
+{
     return dmg ? dmg->sector_count : 0U;
 }
-int64_t xx_dmg_get_data_fork_length(const xx_dmg *dmg) {
+int64_t xx_dmg_get_data_fork_length(const xx_dmg *dmg)
+{
     return dmg ? dmg->data_fork_length : -1;
 }
-int64_t xx_dmg_get_xml_length(const xx_dmg *dmg) {
+int64_t xx_dmg_get_xml_length(const xx_dmg *dmg)
+{
     return dmg ? dmg->xml_length : -1;
 }
-int64_t xx_dmg_get_archive_end(const xx_dmg *dmg) {
+int64_t xx_dmg_get_archive_end(const xx_dmg *dmg)
+{
     return dmg ? dmg->archive_end : -1;
 }

@@ -92,17 +92,15 @@ static void xx_clp_vtable_destroy(Abstractformat *self);
 
 /* ------------------------------------------------------------- helpers -- */
 
-static bool xx_clp_read_at(Abstractformat *self, int64_t offset,
-                              uint8_t *buffer, size_t size) {
+static bool xx_clp_read_at(Abstractformat *self, int64_t offset, uint8_t *buffer, size_t size)
+{
     size_t completed = 0U;
 
-    if (!self || !self->device || offset < 0 ||
-        xx_io_seek64(self->device, offset, SEEK_SET) != 0) {
+    if (!self || !self->device || offset < 0 || xx_io_seek64(self->device, offset, SEEK_SET) != 0) {
         return false;
     }
     while (completed < size) {
-        ssize_t received =
-            xx_io_read(self->device, buffer + completed, size - completed);
+        ssize_t received = xx_io_read(self->device, buffer + completed, size - completed);
         if (received <= 0 || (size_t)received > size - completed) {
             return false;
         }
@@ -111,14 +109,14 @@ static bool xx_clp_read_at(Abstractformat *self, int64_t offset,
     return true;
 }
 
-static bool xx_clp_range_within(int64_t total, int64_t offset,
-                                   int64_t size) {
-    return offset >= 0 && size >= 0 && offset <= total &&
-           size <= total - offset;
+static bool xx_clp_range_within(int64_t total, int64_t offset, int64_t size)
+{
+    return offset >= 0 && size >= 0 && offset <= total && size <= total - offset;
 }
 
 /* Refuse anything that would escape the extraction directory. */
-static bool xx_clp_path_safe(const char *name) {
+static bool xx_clp_path_safe(const char *name)
+{
     const char *cursor = name;
 
     if (!name || !name[0] || name[0] == '/') return false;
@@ -133,7 +131,8 @@ static bool xx_clp_path_safe(const char *name) {
     return true;
 }
 
-static void xx_clp_stream_free(void *pointer) {
+static void xx_clp_stream_free(void *pointer)
+{
     xx_clp_stream *stream = (xx_clp_stream *)pointer;
     size_t index;
 
@@ -146,17 +145,15 @@ static void xx_clp_stream_free(void *pointer) {
 }
 
 /* Append a member, taking ownership of @p name. */
-static bool xx_clp_add(xx_clp_stream *stream,
-                          const xx_clp_member *member) {
-    xx_clp_member *grown = (xx_clp_member *)xx_mem_realloc(
-        stream->items, sizeof(*grown) * (stream->count + 1U));
+static bool xx_clp_add(xx_clp_stream *stream, const xx_clp_member *member)
+{
+    xx_clp_member *grown = (xx_clp_member *)xx_mem_realloc(stream->items, sizeof(*grown) * (stream->count + 1U));
 
     if (!grown) return false;
     stream->items = grown;
     stream->items[stream->count++] = *member;
     return true;
 }
-
 
 #define XX_CLP_SCAN_CHUNK 4096
 #define XX_CLP_HEADER_SIZE 4
@@ -197,7 +194,6 @@ static void xx_clp_bmp_prefix(const uint8_t *info, int64_t data_size, uint8_t *p
 static bool xx_clp_metafile_extent(Abstractformat *self, int64_t offset, int64_t size, int64_t *out_size);
 static bool xx_clp_decode(Abstractformat *self, const xx_clp_member *member, uint8_t **out, size_t *out_size, xx_pd_struct *pd);
 
-
 /* Text members use a captured global-sized window; a UTF-16 code unit
  * is retained across refills when the capacity is odd or one byte. */
 
@@ -205,25 +201,45 @@ static bool xx_clp_decode(Abstractformat *self, const xx_clp_member *member, uin
  * single-byte ids, up to the first aligned NUL pair for CF_UNICODETEXT. The
  * block is padded with whatever the producing application had in its buffer,
  * so publishing the whole extent would append that slack to every .txt. */
-static bool xx_clp_text_length(Abstractformat *self,int64_t offset,int64_t size,bool wide,xx_pd_struct *pd,int64_t *out_length) {
-    size_t capacity=xx_get_file_buffer_size(); uint8_t *chunk,first=0;
-    int64_t position=0; bool have_first=false,result=true;
-    *out_length=size; if(size<=0) return true;
-    if((uint64_t)capacity>(uint64_t)size) capacity=(size_t)size;
-    chunk=(uint8_t *)xx_mem_alloc(capacity);if(!chunk) return false;
-    while(position<size) {
-        size_t portion=(uint64_t)(size-position)>capacity ? capacity:(size_t)(size-position),index;
-        if((pd && xx_pd_is_stopped(pd)) || !xx_clp_read_at(self,offset+position,chunk,portion)) { result=false;break; }
-        for(index=0;index<portion;++index) {
-            if(wide) {
-                if(!have_first) { first=chunk[index];have_first=true; }
-                else { have_first=false;if(!first && !chunk[index]) { *out_length=position+(int64_t)index-1;goto done; } }
-            } else if(!chunk[index]) { *out_length=position+(int64_t)index;goto done; }
+static bool xx_clp_text_length(Abstractformat *self, int64_t offset, int64_t size, bool wide, xx_pd_struct *pd, int64_t *out_length)
+{
+    size_t capacity = xx_get_file_buffer_size();
+    uint8_t *chunk, first = 0;
+    int64_t position = 0;
+    bool have_first = false, result = true;
+    *out_length = size;
+    if (size <= 0) return true;
+    if ((uint64_t)capacity > (uint64_t)size) capacity = (size_t)size;
+    chunk = (uint8_t *)xx_mem_alloc(capacity);
+    if (!chunk) return false;
+    while (position < size) {
+        size_t portion = (uint64_t)(size - position) > capacity ? capacity : (size_t)(size - position), index;
+        if ((pd && xx_pd_is_stopped(pd)) || !xx_clp_read_at(self, offset + position, chunk, portion)) {
+            result = false;
+            break;
         }
-        position+=(int64_t)portion;
+        for (index = 0; index < portion; ++index) {
+            if (wide) {
+                if (!have_first) {
+                    first = chunk[index];
+                    have_first = true;
+                } else {
+                    have_first = false;
+                    if (!first && !chunk[index]) {
+                        *out_length = position + (int64_t)index - 1;
+                        goto done;
+                    }
+                }
+            } else if (!chunk[index]) {
+                *out_length = position + (int64_t)index;
+                goto done;
+            }
+        }
+        position += (int64_t)portion;
     }
 done:
-    xx_mem_free(chunk);return result;
+    xx_mem_free(chunk);
+    return result;
 }
 
 /* A CF_METAFILEPICT block is a Win16 METAFILEPICT followed by the metafile
@@ -232,8 +248,8 @@ done:
  * has said so, and only for the length that header declares, because the
  * block is padded to the clipboard allocation and the slack is not part of
  * the metafile.  A block that does not check out stays opaque. */
-static bool xx_clp_metafile_extent(Abstractformat *self, int64_t offset,
-                                   int64_t size, int64_t *out_size) {
+static bool xx_clp_metafile_extent(Abstractformat *self, int64_t offset, int64_t size, int64_t *out_size)
+{
     uint8_t header[XX_CLP_WMF_HEADER_SIZE];
     uint16_t type, header_words, version;
     uint32_t words;
@@ -241,8 +257,7 @@ static bool xx_clp_metafile_extent(Abstractformat *self, int64_t offset,
     if (!out_size) return false;
     *out_size = 0;
     if (size < XX_CLP_MFP_PREFIX_SIZE + XX_CLP_WMF_HEADER_SIZE) return false;
-    if (!xx_clp_read_at(self, offset + XX_CLP_MFP_PREFIX_SIZE, header,
-                        sizeof(header))) {
+    if (!xx_clp_read_at(self, offset + XX_CLP_MFP_PREFIX_SIZE, header, sizeof(header))) {
         return false;
     }
     type = xx_data_get_u16(header, 2, 0, false);
@@ -251,19 +266,18 @@ static bool xx_clp_metafile_extent(Abstractformat *self, int64_t offset,
     words = xx_data_get_u32(header + 6, 4, 0, false);
     /* mtType 1 is a memory metafile, 2 a disk one; mtHeaderSize is fixed at
      * nine words and mtVersion is 0x0100 or 0x0300. */
-    if ((type != 1U && type != 2U) || header_words != 9U ||
-        (version != 0x0100U && version != 0x0300U)) {
+    if ((type != 1U && type != 2U) || header_words != 9U || (version != 0x0100U && version != 0x0300U)) {
         return false;
     }
-    if ((int64_t)words < XX_CLP_WMF_HEADER_SIZE / 2 ||
-        (int64_t)words > (size - XX_CLP_MFP_PREFIX_SIZE) / 2) {
+    if ((int64_t)words < XX_CLP_WMF_HEADER_SIZE / 2 || (int64_t)words > (size - XX_CLP_MFP_PREFIX_SIZE) / 2) {
         return false;
     }
     *out_size = (int64_t)words * 2;
     return true;
 }
 
-static xx_clp_stream *xx_clp_parse(Abstractformat *self, xx_pd_struct *pd) {
+static xx_clp_stream *xx_clp_parse(Abstractformat *self, xx_pd_struct *pd)
+{
     xx_clp_stream *stream;
     uint8_t header[XX_CLP_HEADER_SIZE];
     uint8_t record[XX_CLP_RECORD_SIZE];
@@ -288,15 +302,13 @@ static xx_clp_stream *xx_clp_parse(Abstractformat *self, xx_pd_struct *pd) {
      * in-range 32-bit pairs, which is common enough that it shadowed two
      * dozen archives of other formats that have working readers of their
      * own. This is the check a later reader will be tempted to loosen. */
-    if (xx_data_get_u16(header, 2, 0, false) != (uint16_t)XX_CLP_ID_WIN3 &&
-        xx_data_get_u16(header, 2, 0, false) != (uint16_t)XX_CLP_ID_WINNT) {
+    if (xx_data_get_u16(header, 2, 0, false) != (uint16_t)XX_CLP_ID_WIN3 && xx_data_get_u16(header, 2, 0, false) != (uint16_t)XX_CLP_ID_WINNT) {
         return NULL;
     }
     count = (int64_t)xx_data_get_u16(header + 2, 2, 0, false);
     if (count <= 0 || count > XX_CLP_MAX_MEMBERS) return NULL;
     /* The whole table has to be inside the file before any of it is read. */
-    if (!xx_clp_range_within(span, XX_CLP_HEADER_SIZE,
-                             count * XX_CLP_RECORD_SIZE)) {
+    if (!xx_clp_range_within(span, XX_CLP_HEADER_SIZE, count * XX_CLP_RECORD_SIZE)) {
         return NULL;
     }
 
@@ -316,8 +328,7 @@ static xx_clp_stream *xx_clp_parse(Abstractformat *self, xx_pd_struct *pd) {
         bool is_dib;
 
         if (pd && xx_pd_is_stopped(pd)) goto fail;
-        if (!xx_clp_read_at(self, self->base_address + record_offset, record,
-                            sizeof(record))) {
+        if (!xx_clp_read_at(self, self->base_address + record_offset, record, sizeof(record))) {
             goto fail;
         }
 
@@ -333,8 +344,7 @@ static xx_clp_stream *xx_clp_parse(Abstractformat *self, xx_pd_struct *pd) {
          * with the identifier this is the whole false-positive defence: the
          * blocks are scattered, so there is no chain and no EOF relation to
          * fall back on. */
-        if (format == 0U || (format > (uint16_t)XX_CLP_CF_MAX_STANDARD &&
-                             format < (uint16_t)XX_CLP_CF_REGISTERED_FIRST)) {
+        if (format == 0U || (format > (uint16_t)XX_CLP_CF_MAX_STANDARD && format < (uint16_t)XX_CLP_CF_REGISTERED_FIRST)) {
             goto fail;
         }
         /* Data blocks are addressed absolutely and may sit anywhere, so each
@@ -342,16 +352,11 @@ static xx_clp_stream *xx_clp_parse(Abstractformat *self, xx_pd_struct *pd) {
          * cursor. A block running past EOF is a rejection. */
         if (!xx_clp_range_within(span, data_offset, data_size)) goto fail;
 
-        is_text = format == (uint16_t)XX_CLP_CF_TEXT ||
-                  format == (uint16_t)XX_CLP_CF_OEMTEXT ||
-                  format == (uint16_t)XX_CLP_CF_UNICODETEXT;
-        is_dib = format == (uint16_t)XX_CLP_CF_DIB ||
-                 format == (uint16_t)XX_CLP_CF_DIBV5;
+        is_text = format == (uint16_t)XX_CLP_CF_TEXT || format == (uint16_t)XX_CLP_CF_OEMTEXT || format == (uint16_t)XX_CLP_CF_UNICODETEXT;
+        is_dib = format == (uint16_t)XX_CLP_CF_DIB || format == (uint16_t)XX_CLP_CF_DIBV5;
 
         if (is_dib) {
-            info_size = (format == (uint16_t)XX_CLP_CF_DIBV5)
-                            ? XX_CLP_DIB_V5_INFO_SIZE
-                            : XX_CLP_DIB_INFO_SIZE;
+            info_size = (format == (uint16_t)XX_CLP_CF_DIBV5) ? XX_CLP_DIB_V5_INFO_SIZE : XX_CLP_DIB_INFO_SIZE;
             /* A DIB too short for its own info header is skipped, not
              * rejected: the record is well formed, it simply carries no
              * bitmap, and the reference drops it from the listing. */
@@ -372,52 +377,43 @@ static xx_clp_stream *xx_clp_parse(Abstractformat *self, xx_pd_struct *pd) {
         member.is_folder = false;
 
         if (is_text) {
-            if (!xx_clp_text_length(
-                    self, self->base_address + data_offset, data_size,
-                    format == (uint16_t)XX_CLP_CF_UNICODETEXT, pd, &length)) {
+            if (!xx_clp_text_length(self, self->base_address + data_offset, data_size, format == (uint16_t)XX_CLP_CF_UNICODETEXT, pd, &length)) {
                 goto fail;
             }
             ++accepted;
             member.kind = XX_CLP_KIND_TEXT;
             member.compressed_size = length;
             member.uncompressed_size = length;
-            xx_rt_snprintf(buffer, sizeof(buffer), "%lld.txt",
-                           (long long)accepted);
+            xx_rt_snprintf(buffer, sizeof(buffer), "%lld.txt", (long long)accepted);
         } else if (is_dib) {
             ++accepted;
             member.kind = XX_CLP_KIND_DIB;
             /* The synthesised BITMAPFILEHEADER is not in the file, so the
              * member is longer than its stored extent by exactly 14 bytes. */
             member.uncompressed_size = data_size + XX_CLP_BMP_PREFIX_SIZE;
-            xx_rt_snprintf(buffer, sizeof(buffer), "%lld.bmp",
-                           (long long)accepted);
+            xx_rt_snprintf(buffer, sizeof(buffer), "%lld.bmp", (long long)accepted);
         } else {
             int64_t metafile_size = 0;
             /* The .txt and .bmp numbering above is the reference's, so the
              * records it drops keep their own naming and never shift it. */
             member.kind = XX_CLP_KIND_RAW;
-            if (format == (uint16_t)XX_CLP_CF_METAFILEPICT &&
-                xx_clp_metafile_extent(self, self->base_address + data_offset,
-                                       data_size, &metafile_size)) {
+            if (format == (uint16_t)XX_CLP_CF_METAFILEPICT && xx_clp_metafile_extent(self, self->base_address + data_offset, data_size, &metafile_size)) {
                 member.kind = XX_CLP_KIND_WMF;
                 member.data_offset += XX_CLP_MFP_PREFIX_SIZE;
                 member.compressed_size = metafile_size;
                 member.uncompressed_size = metafile_size;
-                xx_rt_snprintf(buffer, sizeof(buffer), "record%lld.fmt%u.wmf",
-                               (long long)(index + 1), (unsigned)format);
+                xx_rt_snprintf(buffer, sizeof(buffer), "record%lld.fmt%u.wmf", (long long)(index + 1), (unsigned)format);
             } else {
                 /* Nothing here interprets the block, so it is published
                  * exactly as stored, named after its position and id so two
                  * records of the same id cannot collide. */
-                xx_rt_snprintf(buffer, sizeof(buffer), "record%lld.fmt%u.bin",
-                               (long long)(index + 1), (unsigned)format);
+                xx_rt_snprintf(buffer, sizeof(buffer), "record%lld.fmt%u.bin", (long long)(index + 1), (unsigned)format);
             }
         }
 
         member.name = xx_str_dup(buffer);
         if (!member.name) goto fail;
-        if (!xx_clp_path_safe(member.name) ||
-            !xx_clp_add(stream, &member)) {
+        if (!xx_clp_path_safe(member.name) || !xx_clp_add(stream, &member)) {
             xx_str_free(member.name);
             goto fail;
         }
@@ -434,15 +430,12 @@ fail:
     return NULL;
 }
 
-
 /* The reference caps the record count here; the table itself is bounded by
  * the file, so this is a runaway guard rather than a format limit. */
-
 
 /* Standard clipboard formats stop at CF_DIBV5; anything a program registers
  * by name lands at or above CF_PRIVATEFIRST. Real .CLP files use both, but
  * nothing legitimate falls in the gap between them. */
-
 
 /* BITMAPINFOHEADER and BITMAPV5HEADER, the two sizes a DIB block can open
  * with, and the BITMAPFILEHEADER the decode puts in front of it. */
@@ -457,27 +450,26 @@ fail:
  * A DIB with a palette or with V5 colour-profile data placed after the pixels
  * cannot be located any other way, because the block states neither the
  * palette entry count nor where the pixels begin. */
-static void xx_clp_bmp_prefix(const uint8_t *info, int64_t data_size,
-                              uint8_t *prefix) {
+static void xx_clp_bmp_prefix(const uint8_t *info, int64_t data_size, uint8_t *prefix)
+{
     int32_t width = (int32_t)xx_data_get_u32(info + 4, 4, 0, false);
     int32_t height = (int32_t)xx_data_get_u32(info + 8, 4, 0, false);
     uint16_t bit_count = xx_data_get_u16(info + 14, 2, 0, false);
     int32_t file_size = (int32_t)(uint32_t)(data_size + XX_CLP_BMP_PREFIX_SIZE);
-    int32_t pixel_bytes =
-        (int32_t)(uint32_t)(((int64_t)width * height * bit_count) / 8);
+    int32_t pixel_bytes = (int32_t)(uint32_t)(((int64_t)width * height * bit_count) / 8);
 
-    xx_data_set_u16(prefix, 2, 0, 0x4D42U, false);               /* 'BM' */
+    xx_data_set_u16(prefix, 2, 0, 0x4D42U, false); /* 'BM' */
     xx_data_set_u32(prefix + 2, 4, 0, (uint32_t)file_size, false);
-    xx_data_set_u16(prefix + 6, 2, 0, 0U, false);                /* bfReserved1 */
-    xx_data_set_u16(prefix + 8, 2, 0, 0U, false);                /* bfReserved2 */
+    xx_data_set_u16(prefix + 6, 2, 0, 0U, false); /* bfReserved1 */
+    xx_data_set_u16(prefix + 8, 2, 0, 0U, false); /* bfReserved2 */
     xx_data_set_u32(prefix + 10, 4, 0, (uint32_t)(file_size - pixel_bytes), false);
 }
 
 /* Nothing in this container is compressed. The text ids are a verbatim copy
  * of an already-trimmed extent, and the DIB ids are prefix-then-copy, which
  * is exactly what the SCL-sectors pseudo codec does. */
-static bool xx_clp_decode(Abstractformat *self, const xx_clp_member *member,
-                          uint8_t **out, size_t *out_size, xx_pd_struct *pd) {
+static bool xx_clp_decode(Abstractformat *self, const xx_clp_member *member, uint8_t **out, size_t *out_size, xx_pd_struct *pd)
+{
     uint8_t prefix[XX_CLP_BMP_PREFIX_SIZE];
     uint8_t *input;
     uint8_t *output;
@@ -491,17 +483,13 @@ static bool xx_clp_decode(Abstractformat *self, const xx_clp_member *member,
     if (member->compressed_size < 0 || member->uncompressed_size < 0) {
         return false;
     }
-    if (member->compressed_size > XX_CLP_MAX_DECODED ||
-        member->uncompressed_size > XX_CLP_MAX_DECODED) {
+    if (member->compressed_size > XX_CLP_MAX_DECODED || member->uncompressed_size > XX_CLP_MAX_DECODED) {
         return false;
     }
 
-    input = (uint8_t *)xx_mem_alloc(
-        member->compressed_size != 0 ? (size_t)member->compressed_size : 1U);
+    input = (uint8_t *)xx_mem_alloc(member->compressed_size != 0 ? (size_t)member->compressed_size : 1U);
     if (!input) return false;
-    if (member->compressed_size != 0 &&
-        !xx_clp_read_at(self, member->data_offset, input,
-                        (size_t)member->compressed_size)) {
+    if (member->compressed_size != 0 && !xx_clp_read_at(self, member->data_offset, input, (size_t)member->compressed_size)) {
         xx_mem_free(input);
         return false;
     }
@@ -510,18 +498,14 @@ static bool xx_clp_decode(Abstractformat *self, const xx_clp_member *member,
         return false;
     }
 
-    output = (uint8_t *)xx_mem_alloc(
-        member->uncompressed_size != 0 ? (size_t)member->uncompressed_size
-                                       : 1U);
+    output = (uint8_t *)xx_mem_alloc(member->uncompressed_size != 0 ? (size_t)member->uncompressed_size : 1U);
     if (!output) {
         xx_mem_free(input);
         return false;
     }
 
     if (member->kind == XX_CLP_KIND_DIB) {
-        info_size = (member->method == XX_CLP_CF_DIBV5)
-                        ? XX_CLP_DIB_V5_INFO_SIZE
-                        : XX_CLP_DIB_INFO_SIZE;
+        info_size = (member->method == XX_CLP_CF_DIBV5) ? XX_CLP_DIB_V5_INFO_SIZE : XX_CLP_DIB_INFO_SIZE;
         /* parse refuses a DIB record too short for its info header, so this
          * only fires if the two halves ever disagree. */
         if (member->compressed_size < info_size) {
@@ -530,17 +514,13 @@ static bool xx_clp_decode(Abstractformat *self, const xx_clp_member *member,
             return false;
         }
         xx_clp_bmp_prefix(input, member->compressed_size, prefix);
-        if (!xx_sclsectors_decode_memory_ex(
-                prefix, (size_t)XX_CLP_BMP_PREFIX_SIZE, input,
-                (size_t)member->compressed_size, output,
-                (size_t)member->uncompressed_size, &written)) {
+        if (!xx_sclsectors_decode_memory_ex(prefix, (size_t)XX_CLP_BMP_PREFIX_SIZE, input, (size_t)member->compressed_size, output, (size_t)member->uncompressed_size,
+                                            &written)) {
             xx_mem_free(output);
             xx_mem_free(input);
             return false;
         }
-    } else if (!xx_sclsectors_decode_memory(
-                   input, (size_t)member->compressed_size, output,
-                   (size_t)member->uncompressed_size, &written)) {
+    } else if (!xx_sclsectors_decode_memory(input, (size_t)member->compressed_size, output, (size_t)member->uncompressed_size, &written)) {
         xx_mem_free(output);
         xx_mem_free(input);
         return false;
@@ -560,8 +540,8 @@ static bool xx_clp_decode(Abstractformat *self, const xx_clp_member *member,
 
 /* ---------------------------------------------------------- lifecycle --- */
 
-void xx_clp_init(xx_clp *archive, xx_io_device *device,
-                    int64_t base_address) {
+void xx_clp_init(xx_clp *archive, xx_io_device *device, int64_t base_address)
+{
     if (!archive) return;
     xx_mem_zero(archive, sizeof(*archive));
     xx_format_init(&archive->format, device, base_address);
@@ -574,22 +554,17 @@ void xx_clp_init(xx_clp *archive, xx_io_device *device,
     archive->format.check_is_valid = xx_clp_check_is_valid;
     archive->format.handle_base_info = xx_clp_handle_base_info;
     archive->format.get_format_size = xx_clp_get_format_size;
-    archive->format.get_number_of_archive_records =
-        xx_clp_get_number_of_archive_records;
-    archive->format.create_archive_records_reading =
-        xx_clp_create_archive_records_reading;
-    archive->format.get_current_archive_record =
-        xx_clp_get_current_archive_record;
-    archive->format.unpack_current_archive_record =
-        xx_clp_unpack_current_archive_record;
-    archive->format.archive_record_move_to_next =
-        xx_clp_archive_record_move_to_next;
-    archive->format.free_archive_records_reading =
-        xx_clp_free_archive_records_reading;
+    archive->format.get_number_of_archive_records = xx_clp_get_number_of_archive_records;
+    archive->format.create_archive_records_reading = xx_clp_create_archive_records_reading;
+    archive->format.get_current_archive_record = xx_clp_get_current_archive_record;
+    archive->format.unpack_current_archive_record = xx_clp_unpack_current_archive_record;
+    archive->format.archive_record_move_to_next = xx_clp_archive_record_move_to_next;
+    archive->format.free_archive_records_reading = xx_clp_free_archive_records_reading;
     archive->format.destroy = xx_clp_vtable_destroy;
 }
 
-xx_clp *xx_clp_create(xx_io_device *device, int64_t base_address) {
+xx_clp *xx_clp_create(xx_io_device *device, int64_t base_address)
+{
     xx_clp *archive = (xx_clp *)xx_mem_alloc(sizeof(*archive));
 
     if (!archive) return NULL;
@@ -597,7 +572,8 @@ xx_clp *xx_clp_create(xx_io_device *device, int64_t base_address) {
     return archive;
 }
 
-void xx_clp_destroy(xx_clp *archive) {
+void xx_clp_destroy(xx_clp *archive)
+{
     if (!archive) return;
     /* Not xx_format_destroy: it dispatches through format.destroy, which is
      * the wrapper below, and the two would recurse. */
@@ -606,19 +582,22 @@ void xx_clp_destroy(xx_clp *archive) {
     archive->number_of_records = 0U;
 }
 
-void xx_clp_free(xx_clp *archive) {
+void xx_clp_free(xx_clp *archive)
+{
     if (!archive) return;
     xx_clp_destroy(archive);
     xx_mem_free(archive);
 }
 
-static void xx_clp_vtable_destroy(Abstractformat *self) {
+static void xx_clp_vtable_destroy(Abstractformat *self)
+{
     xx_clp_destroy((xx_clp *)self);
 }
 
 /* -------------------------------------------------------------- format -- */
 
-bool xx_clp_check_is_valid(Abstractformat *self, xx_pd_struct *pd) {
+bool xx_clp_check_is_valid(Abstractformat *self, xx_pd_struct *pd)
+{
     xx_clp_stream *stream;
 
     if (!self || (pd && xx_pd_is_stopped(pd))) return false;
@@ -628,7 +607,8 @@ bool xx_clp_check_is_valid(Abstractformat *self, xx_pd_struct *pd) {
     return true;
 }
 
-bool xx_clp_handle_base_info(Abstractformat *self, xx_pd_struct *pd) {
+bool xx_clp_handle_base_info(Abstractformat *self, xx_pd_struct *pd)
+{
     xx_clp *archive = (xx_clp *)self;
     xx_clp_stream *stream;
 
@@ -649,18 +629,17 @@ bool xx_clp_handle_base_info(Abstractformat *self, xx_pd_struct *pd) {
     return true;
 }
 
-int64_t xx_clp_get_format_size(Abstractformat *self, xx_pd_struct *pd) {
-    if (!self ||
-        (!self->base_info_handled && !xx_format_handle_base_info(self, pd))) {
+int64_t xx_clp_get_format_size(Abstractformat *self, xx_pd_struct *pd)
+{
+    if (!self || (!self->base_info_handled && !xx_format_handle_base_info(self, pd))) {
         return 0;
     }
     return self->is_valid ? self->format_size : 0;
 }
 
-uint64_t xx_clp_get_number_of_archive_records(Abstractformat *self,
-                                                 xx_pd_struct *pd) {
-    if (!self ||
-        (!self->base_info_handled && !xx_format_handle_base_info(self, pd))) {
+uint64_t xx_clp_get_number_of_archive_records(Abstractformat *self, xx_pd_struct *pd)
+{
+    if (!self || (!self->base_info_handled && !xx_format_handle_base_info(self, pd))) {
         return 0U;
     }
     return self->is_valid ? ((xx_clp *)self)->number_of_records : 0U;
@@ -668,8 +647,8 @@ uint64_t xx_clp_get_number_of_archive_records(Abstractformat *self,
 
 /* ------------------------------------------------------------- records -- */
 
-static bool xx_clp_set_record(xx_archive_record *record,
-                                 const xx_clp_member *member) {
+static bool xx_clp_set_record(xx_archive_record *record, const xx_clp_member *member)
+{
     xx_archive_record_cleanup(record);
     xx_archive_record_init(record);
     record->header_offset = member->header_offset;
@@ -677,34 +656,24 @@ static bool xx_clp_set_record(xx_archive_record *record,
     record->data_offset = member->data_offset;
     record->compressed_size = member->compressed_size;
     return xx_archive_record_set_original_name(record, member->name) &&
-           xx_archive_record_set_meta_u64(record, XX_META_ID_COMPRESSED_SIZE,
-                                          (uint64_t)member->compressed_size) &&
-           xx_archive_record_set_meta_u64(
-               record, XX_META_ID_UNCOMPRESSED_SIZE,
-               (uint64_t)member->uncompressed_size) &&
-           xx_archive_record_set_meta_u64(record, XX_META_ID_COMPRESSION_METHOD,
-                                          member->method) &&
-           xx_archive_record_set_meta_u64(record, XX_META_ID_TIMESTAMP,
-                                          member->timestamp) &&
-           xx_archive_record_set_meta_bool(record, XX_META_ID_IS_FOLDER,
-                                           member->is_folder) &&
-           xx_archive_record_set_meta_bool(record, XX_META_ID_IS_ENCRYPTED,
-                                           false);
+           xx_archive_record_set_meta_u64(record, XX_META_ID_COMPRESSED_SIZE, (uint64_t)member->compressed_size) &&
+           xx_archive_record_set_meta_u64(record, XX_META_ID_UNCOMPRESSED_SIZE, (uint64_t)member->uncompressed_size) &&
+           xx_archive_record_set_meta_u64(record, XX_META_ID_COMPRESSION_METHOD, member->method) &&
+           xx_archive_record_set_meta_u64(record, XX_META_ID_TIMESTAMP, member->timestamp) &&
+           xx_archive_record_set_meta_bool(record, XX_META_ID_IS_FOLDER, member->is_folder) && xx_archive_record_set_meta_bool(record, XX_META_ID_IS_ENCRYPTED, false);
 }
 
-static bool xx_clp_copy_options(xx_list_s *target,
-                                   const xx_list_s *options) {
+static bool xx_clp_copy_options(xx_list_s *target, const xx_list_s *options)
+{
     size_t index;
 
     if (!target || !options) return options == NULL;
     for (index = 0U; index < options->count; ++index) {
-        const xx_meta *source =
-            (const xx_meta *)xx_list_at((const xx_list_t *)options, index);
+        const xx_meta *source = (const xx_meta *)xx_list_at((const xx_list_t *)options, index);
         xx_meta copied;
         if (!source) continue;
         xx_meta_init(&copied, source->meta_id);
-        if (!xx_var_copy(&copied.var, &source->var) ||
-            !xx_list_append(target, &copied)) {
+        if (!xx_var_copy(&copied.var, &source->var) || !xx_list_append(target, &copied)) {
             xx_meta_cleanup(&copied);
             return false;
         }
@@ -712,21 +681,20 @@ static bool xx_clp_copy_options(xx_list_s *target,
     return true;
 }
 
-static const xx_var *xx_clp_get_option(const xx_list_s *options,
-                                          uint32_t meta_id) {
+static const xx_var *xx_clp_get_option(const xx_list_s *options, uint32_t meta_id)
+{
     size_t index;
 
     if (!options) return NULL;
     for (index = 0U; index < options->count; ++index) {
-        const xx_meta *meta =
-            (const xx_meta *)xx_list_at((const xx_list_t *)options, index);
+        const xx_meta *meta = (const xx_meta *)xx_list_at((const xx_list_t *)options, index);
         if (meta && meta->meta_id == meta_id) return &meta->var;
     }
     return NULL;
 }
 
-xx_archive_record_state *xx_clp_create_archive_records_reading(
-    Abstractformat *self, const xx_list_s *options, xx_pd_struct *pd) {
+xx_archive_record_state *xx_clp_create_archive_records_reading(Abstractformat *self, const xx_list_s *options, xx_pd_struct *pd)
+{
     xx_clp_stream *stream;
     xx_archive_record_state *state;
 
@@ -742,9 +710,7 @@ xx_archive_record_state *xx_clp_create_archive_records_reading(
     state->internal_state = stream;
     state->free_internal = xx_clp_stream_free;
     state->total_records = (int64_t)stream->count;
-    if (!xx_clp_copy_options(&state->options, options) ||
-        (stream->count != 0U &&
-         !xx_clp_set_record(&state->current_record, &stream->items[0]))) {
+    if (!xx_clp_copy_options(&state->options, options) || (stream->count != 0U && !xx_clp_set_record(&state->current_record, &stream->items[0]))) {
         xx_archive_record_state_free(state);
         return NULL;
     }
@@ -753,20 +719,16 @@ xx_archive_record_state *xx_clp_create_archive_records_reading(
     return state;
 }
 
-const xx_archive_record *xx_clp_get_current_archive_record(
-    Abstractformat *self, xx_archive_record_state *state) {
-    return self && state && state->format == self && state->has_record
-               ? &state->current_record
-               : NULL;
+const xx_archive_record *xx_clp_get_current_archive_record(Abstractformat *self, xx_archive_record_state *state)
+{
+    return self && state && state->format == self && state->has_record ? &state->current_record : NULL;
 }
 
-bool xx_clp_archive_record_move_to_next(Abstractformat *self,
-                                           xx_archive_record_state *state,
-                                           xx_pd_struct *pd) {
+bool xx_clp_archive_record_move_to_next(Abstractformat *self, xx_archive_record_state *state, xx_pd_struct *pd)
+{
     xx_clp_stream *stream;
 
-    if (!self || !state || state->format != self || !state->has_record ||
-        (pd && xx_pd_is_stopped(pd))) {
+    if (!self || !state || state->format != self || !state->has_record || (pd && xx_pd_is_stopped(pd))) {
         return false;
     }
     stream = (xx_clp_stream *)state->internal_state;
@@ -778,14 +740,12 @@ bool xx_clp_archive_record_move_to_next(Abstractformat *self,
     }
     ++stream->index;
     ++state->current_index;
-    state->has_record = xx_clp_set_record(&state->current_record,
-                                             &stream->items[stream->index]);
+    state->has_record = xx_clp_set_record(&state->current_record, &stream->items[stream->index]);
     return state->has_record;
 }
 
-bool xx_clp_unpack_current_archive_record(Abstractformat *self,
-                                             xx_archive_record_state *state,
-                                             xx_pd_struct *pd) {
+bool xx_clp_unpack_current_archive_record(Abstractformat *self, xx_archive_record_state *state, xx_pd_struct *pd)
+{
     xx_clp_stream *stream;
     const xx_clp_member *member;
     const xx_var *path_option;
@@ -797,8 +757,7 @@ bool xx_clp_unpack_current_archive_record(Abstractformat *self,
     bool result = false;
     bool created = false;
 
-    if (!self || !state || state->format != self || !state->has_record ||
-        (pd && xx_pd_is_stopped(pd))) {
+    if (!self || !state || state->format != self || !state->has_record || (pd && xx_pd_is_stopped(pd))) {
         return false;
     }
     stream = (xx_clp_stream *)state->internal_state;
@@ -806,8 +765,7 @@ bool xx_clp_unpack_current_archive_record(Abstractformat *self,
     member = &stream->items[stream->index];
     if (!xx_clp_path_safe(member->name)) return false;
 
-    path_option = xx_clp_get_option(&state->options,
-                                       XX_META_ID_OPT_UNPACK_PATH);
+    path_option = xx_clp_get_option(&state->options, XX_META_ID_OPT_UNPACK_PATH);
     if (!path_option) {
         /* No destination: decode and discard, which verifies the member
          * without writing anything. */
@@ -816,11 +774,9 @@ bool xx_clp_unpack_current_archive_record(Abstractformat *self,
         xx_mem_free(plain);
         return result;
     }
-    if (path_option->type == XX_VAR_TYPE_STRING ||
-        path_option->type == XX_VAR_TYPE_STRING_VIEW) {
+    if (path_option->type == XX_VAR_TYPE_STRING || path_option->type == XX_VAR_TYPE_STRING_VIEW) {
         base_path = xx_var_get_str(path_option);
-    } else if (path_option->type == XX_VAR_TYPE_WSTRING ||
-               path_option->type == XX_VAR_TYPE_WSTRING_VIEW) {
+    } else if (path_option->type == XX_VAR_TYPE_WSTRING || path_option->type == XX_VAR_TYPE_WSTRING_VIEW) {
         converted_path = xx_str_unicode_to_utf8(xx_var_get_wstr(path_option));
         base_path = converted_path;
     }
@@ -828,9 +784,7 @@ bool xx_clp_unpack_current_archive_record(Abstractformat *self,
         xx_str_free(converted_path);
         return false;
     }
-    if (base_path[0] != '\0' &&
-        base_path[xx_str_len(base_path) - 1U] != '/' &&
-        base_path[xx_str_len(base_path) - 1U] != '\\') {
+    if (base_path[0] != '\0' && base_path[xx_str_len(base_path) - 1U] != '/' && base_path[xx_str_len(base_path) - 1U] != '\\') {
         target_path = xx_str_concat3(base_path, "/", member->name);
     } else {
         target_path = xx_str_concat(base_path, member->name);
@@ -843,8 +797,7 @@ bool xx_clp_unpack_current_archive_record(Abstractformat *self,
         xx_str_free(target_path);
         return result;
     }
-    if (!xx_store_create_dirs_a(target_path, false) ||
-        !xx_clp_decode(self, member, &plain, &plain_size, pd)) {
+    if (!xx_store_create_dirs_a(target_path, false) || !xx_clp_decode(self, member, &plain, &plain_size, pd)) {
         xx_str_free(target_path);
         return false;
     }
@@ -855,8 +808,7 @@ bool xx_clp_unpack_current_archive_record(Abstractformat *self,
 
         result = output != NULL;
         while (result && completed < plain_size) {
-            ssize_t sent = xx_io_write(output, plain + completed,
-                                       plain_size - completed);
+            ssize_t sent = xx_io_write(output, plain + completed, plain_size - completed);
             if (sent <= 0 || (size_t)sent > plain_size - completed) {
                 result = false;
                 break;
@@ -871,8 +823,8 @@ bool xx_clp_unpack_current_archive_record(Abstractformat *self,
     return result;
 }
 
-void xx_clp_free_archive_records_reading(Abstractformat *self,
-                                            xx_archive_record_state *state) {
+void xx_clp_free_archive_records_reading(Abstractformat *self, xx_archive_record_state *state)
+{
     (void)self;
     xx_archive_record_state_free(state);
 }

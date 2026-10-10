@@ -80,7 +80,7 @@ typedef struct tt_member {
     char *name;
     int64_t offset; /* inner offset of the data */
     int64_t size;
-    bool bad;       /* out of bounds */
+    bool bad; /* out of bounds */
 } tt_member;
 
 typedef struct tt_stream {
@@ -90,13 +90,11 @@ typedef struct tt_stream {
     uint32_t index;
 } tt_stream;
 
-static bool tt_read_at(xx_io_device *device, int64_t offset, void *buffer,
-                       size_t size) {
+static bool tt_read_at(xx_io_device *device, int64_t offset, void *buffer, size_t size)
+{
     size_t done = 0U;
     const size_t io_capacity = xx_get_file_buffer_size();
-    if (!device || (!buffer && size != 0U) || offset < 0 ||
-        xx_io_seek64(device, offset, SEEK_SET) != 0)
-        return false;
+    if (!device || (!buffer && size != 0U) || offset < 0 || xx_io_seek64(device, offset, SEEK_SET) != 0) return false;
     while (done < size) {
         size_t request = size - done;
         ssize_t amount;
@@ -108,7 +106,8 @@ static bool tt_read_at(xx_io_device *device, int64_t offset, void *buffer,
     return true;
 }
 
-static void tt_ctx_release(tt_ctx *ctx) {
+static void tt_ctx_release(tt_ctx *ctx)
+{
     if (!ctx) return;
     if (ctx->cbuf) xx_mem_free(ctx->cbuf);
     if (ctx->obuf) xx_mem_free(ctx->obuf);
@@ -117,30 +116,26 @@ static void tt_ctx_release(tt_ctx *ctx) {
     ctx->cached = -1;
 }
 
-static bool tt_chunked(const tt_ctx *ctx) {
-    return ctx->wrapper == XX_TELLTALE_TTARCH_WRAP_ZCTT ||
-           ctx->wrapper == XX_TELLTALE_TTARCH_WRAP_ECTT;
+static bool tt_chunked(const tt_ctx *ctx)
+{
+    return ctx->wrapper == XX_TELLTALE_TTARCH_WRAP_ZCTT || ctx->wrapper == XX_TELLTALE_TTARCH_WRAP_ECTT;
 }
 
 /* Largest compressed chunk accepted: Deflate adds 5 bytes per stored 64K
  * block, so this leaves generous room for any real encoder. */
-static uint64_t tt_max_packed(uint32_t chunk_size) {
+static uint64_t tt_max_packed(uint32_t chunk_size)
+{
     return (uint64_t)chunk_size + (chunk_size >> 3) + 1024U;
 }
 
-static bool tt_chunk_span(tt_ctx *ctx, uint32_t index, int64_t *pos,
-                          size_t *size) {
+static bool tt_chunk_span(tt_ctx *ctx, uint32_t index, int64_t *pos, size_t *size)
+{
     uint8_t pair[16];
     uint64_t a, b;
-    if (index >= ctx->chunk_count ||
-        !tt_read_at(ctx->device, ctx->table_abs + (int64_t)index * 8, pair,
-                    sizeof(pair)))
-        return false;
+    if (index >= ctx->chunk_count || !tt_read_at(ctx->device, ctx->table_abs + (int64_t)index * 8, pair, sizeof(pair))) return false;
     a = xx_data_get_u64(pair, 8, 0, false);
     b = xx_data_get_u64(pair + 8, 8, 0, false);
-    if (a < ctx->off0 || b <= a || b - a > tt_max_packed(ctx->chunk_size) ||
-        a - ctx->off0 > (uint64_t)(ctx->avail))
-        return false;
+    if (a < ctx->off0 || b <= a || b - a > tt_max_packed(ctx->chunk_size) || a - ctx->off0 > (uint64_t)(ctx->avail)) return false;
     *pos = ctx->data_abs + (int64_t)(a - ctx->off0);
     *size = (size_t)(b - a);
     return *pos + (int64_t)*size <= ctx->base + ctx->archive_size;
@@ -148,7 +143,8 @@ static bool tt_chunk_span(tt_ctx *ctx, uint32_t index, int64_t *pos,
 
 /* Inflate chunk @p index into obuf.  Raw Deflate first, then a zlib-wrapped
  * stream; a non-final chunk must fill the whole chunk size. */
-static bool tt_load_chunk(tt_ctx *ctx, uint32_t index) {
+static bool tt_load_chunk(tt_ctx *ctx, uint32_t index)
+{
     int64_t pos;
     size_t size, written = 0U;
     bool ok;
@@ -165,19 +161,13 @@ static bool tt_load_chunk(tt_ctx *ctx, uint32_t index) {
             return false;
         }
     }
-    if (!tt_chunk_span(ctx, index, &pos, &size) || size > ctx->cbuf_size ||
-        !tt_read_at(ctx->device, pos, ctx->cbuf, size))
-        return false;
-    ok = xx_deflate_decompress_memory(ctx->cbuf, size, ctx->obuf,
-                                      ctx->chunk_size, &written, false);
-    if (ok) ok = last ? (written > 0U && written <= ctx->chunk_size)
-                      : written == ctx->chunk_size;
+    if (!tt_chunk_span(ctx, index, &pos, &size) || size > ctx->cbuf_size || !tt_read_at(ctx->device, pos, ctx->cbuf, size)) return false;
+    ok = xx_deflate_decompress_memory(ctx->cbuf, size, ctx->obuf, ctx->chunk_size, &written, false);
+    if (ok) ok = last ? (written > 0U && written <= ctx->chunk_size) : written == ctx->chunk_size;
     if (!ok && xx_zlib_stream_header_is_valid(ctx->cbuf, size)) {
         written = 0U;
-        ok = xx_zlib_stream_decode_memory(ctx->cbuf, size, ctx->obuf,
-                                          ctx->chunk_size, &written);
-        if (ok) ok = last ? (written > 0U && written <= ctx->chunk_size)
-                          : written == ctx->chunk_size;
+        ok = xx_zlib_stream_decode_memory(ctx->cbuf, size, ctx->obuf, ctx->chunk_size, &written);
+        if (ok) ok = last ? (written > 0U && written <= ctx->chunk_size) : written == ctx->chunk_size;
     }
     if (!ok) return false;
     ctx->cached = (int64_t)index;
@@ -185,20 +175,16 @@ static bool tt_load_chunk(tt_ctx *ctx, uint32_t index) {
     return true;
 }
 
-static bool tt_inner_read(tt_ctx *ctx, int64_t offset, void *buffer,
-                          size_t size) {
+static bool tt_inner_read(tt_ctx *ctx, int64_t offset, void *buffer, size_t size)
+{
     uint8_t *out = (uint8_t *)buffer;
-    if (offset < 0 || ctx->inner_size < 0 || offset > ctx->inner_size ||
-        (uint64_t)size > (uint64_t)(ctx->inner_size - offset))
-        return false;
-    if (!tt_chunked(ctx))
-        return tt_read_at(ctx->device, ctx->inner_abs + offset, buffer, size);
+    if (offset < 0 || ctx->inner_size < 0 || offset > ctx->inner_size || (uint64_t)size > (uint64_t)(ctx->inner_size - offset)) return false;
+    if (!tt_chunked(ctx)) return tt_read_at(ctx->device, ctx->inner_abs + offset, buffer, size);
     while (size) {
         uint32_t index = (uint32_t)(offset / ctx->chunk_size);
         size_t within = (size_t)(offset % ctx->chunk_size);
         size_t take;
-        if (!tt_load_chunk(ctx, index) || within >= ctx->cached_len)
-            return false;
+        if (!tt_load_chunk(ctx, index) || within >= ctx->cached_len) return false;
         take = ctx->cached_len - within;
         if (take > size) take = size;
         xx_rt_memcpy(out, ctx->obuf + within, take);
@@ -211,15 +197,14 @@ static bool tt_inner_read(tt_ctx *ctx, int64_t offset, void *buffer,
 
 /* ZCTT/ECTT: header, then the whole offset table must be ordered, every
  * chunk plausibly sized, and the chunks must fit in the file. */
-static bool tt_parse_chunked(tt_ctx *ctx, const uint8_t *head) {
+static bool tt_parse_chunked(tt_ctx *ctx, const uint8_t *head)
+{
     uint8_t block[TT_TABLE_BLOCK * 8U];
     uint32_t n = xx_data_get_u32(head + 8, 4, 0, false), done = 0U;
     uint32_t cs = xx_data_get_u32(head + 4, 4, 0, false);
     uint64_t prev = 0U, table_bytes;
     int64_t room;
-    if (cs < TT_MIN_CHUNK || cs > TT_MAX_CHUNK || (cs & (cs - 1U)) != 0U ||
-        n == 0U || n > TT_MAX_CHUNKS)
-        return false;
+    if (cs < TT_MIN_CHUNK || cs > TT_MAX_CHUNK || (cs & (cs - 1U)) != 0U || n == 0U || n > TT_MAX_CHUNKS) return false;
     table_bytes = ((uint64_t)n + 1U) * 8U;
     if ((uint64_t)ctx->avail < 12U + table_bytes) return false;
     ctx->chunk_size = cs;
@@ -230,9 +215,7 @@ static bool tt_parse_chunked(tt_ctx *ctx, const uint8_t *head) {
     while (done <= n) {
         uint32_t take = n + 1U - done, i;
         if (take > TT_TABLE_BLOCK) take = TT_TABLE_BLOCK;
-        if (!tt_read_at(ctx->device, ctx->table_abs + (int64_t)done * 8, block,
-                        (size_t)take * 8U))
-            return false;
+        if (!tt_read_at(ctx->device, ctx->table_abs + (int64_t)done * 8, block, (size_t)take * 8U)) return false;
         for (i = 0U; i < take; ++i) {
             uint64_t v = xx_data_get_u64(block + (size_t)i * 8U, 8, 0, false);
             if (done + i == 0U) {
@@ -250,14 +233,12 @@ static bool tt_parse_chunked(tt_ctx *ctx, const uint8_t *head) {
 }
 
 /* Inner directory header.  Everything it names must fit the inner stream. */
-static bool tt_parse_inner(tt_ctx *ctx) {
+static bool tt_parse_inner(tt_ctx *ctx)
+{
     uint8_t h[16];
     uint32_t hdr;
     uint64_t end;
-    if (ctx->inner_size < 12 ||
-        !tt_inner_read(ctx, 0, h,
-                       ctx->inner_size >= 16 ? 16U : 12U))
-        return false;
+    if (ctx->inner_size < 12 || !tt_inner_read(ctx, 0, h, ctx->inner_size >= 16 ? 16U : 12U)) return false;
     if (xx_rt_memcmp(h, "4ATT", 4U) == 0) {
         ctx->version = 4U;
         hdr = 12U;
@@ -272,9 +253,7 @@ static bool tt_parse_inner(tt_ctx *ctx) {
     } else {
         return false;
     }
-    if (ctx->count > TT_MAX_FILES || ctx->names_size > TT_MAX_NAMES_SIZE ||
-        (ctx->count && ctx->names_size < 2U))
-        return false;
+    if (ctx->count > TT_MAX_FILES || ctx->names_size > TT_MAX_NAMES_SIZE || (ctx->count && ctx->names_size < 2U)) return false;
     ctx->entries_at = hdr;
     ctx->names_at = (int64_t)hdr + (int64_t)ctx->count * TT_ENTRY_SIZE;
     end = (uint64_t)ctx->names_at + ctx->names_size;
@@ -285,8 +264,8 @@ static bool tt_parse_inner(tt_ctx *ctx) {
 
 /* Decode one entry.  @p names is the name table when it is held in memory;
  * otherwise the name is read from the stream.  @p name gets TT_MAX_NAME. */
-static bool tt_entry(tt_ctx *ctx, const uint8_t *e, const uint8_t *names,
-                     char *name, int64_t *offset, int64_t *size, bool *bad) {
+static bool tt_entry(tt_ctx *ctx, const uint8_t *e, const uint8_t *names, char *name, int64_t *offset, int64_t *size, bool *bad)
+{
     uint64_t off = xx_data_get_u64(e + 8, 8, 0, false);
     uint32_t sz = xx_data_get_u32(e + 16, 4, 0, false);
     uint32_t at = (uint32_t)xx_data_get_u16(e + 24, 2, 0, false) * TT_NAME_PAGE + xx_data_get_u16(e + 26, 2, 0, false);
@@ -300,7 +279,8 @@ static bool tt_entry(tt_ctx *ctx, const uint8_t *e, const uint8_t *names,
     } else if (!tt_inner_read(ctx, ctx->names_at + at, name, avail)) {
         return false;
     }
-    for (i = 0U; i < avail && name[i]; ++i) {}
+    for (i = 0U; i < avail && name[i]; ++i) {
+    }
     if (i == 0U || i == avail) return false;
     *offset = ctx->data_at + (int64_t)(off & 0x7FFFFFFFFFFFFFFFULL);
     *size = (int64_t)sz;
@@ -310,7 +290,8 @@ static bool tt_entry(tt_ctx *ctx, const uint8_t *e, const uint8_t *names,
 
 /* Open the archive at the format's base.  @p deep also measures a bare
  * archive's extent by walking every entry. */
-static bool tt_open(Abstractformat *format, tt_ctx *ctx, bool deep) {
+static bool tt_open(Abstractformat *format, tt_ctx *ctx, bool deep)
+{
     uint8_t head[16];
     int64_t total;
     xx_mem_zero(ctx, sizeof(*ctx));
@@ -322,10 +303,7 @@ static bool tt_open(Abstractformat *format, tt_ctx *ctx, bool deep) {
     ctx->device = format->device;
     ctx->base = format->base_address;
     ctx->avail = total - format->base_address;
-    if (ctx->avail < 12 ||
-        !tt_read_at(ctx->device, ctx->base, head,
-                    ctx->avail >= 16 ? 16U : 12U))
-        return false;
+    if (ctx->avail < 12 || !tt_read_at(ctx->device, ctx->base, head, ctx->avail >= 16 ? 16U : 12U)) return false;
     if (!xx_rt_memcmp(head, "4ATT", 4U) || !xx_rt_memcmp(head, "3ATT", 4U)) {
         ctx->wrapper = XX_TELLTALE_TTARCH_WRAP_NONE;
         ctx->inner_abs = ctx->base;
@@ -340,10 +318,8 @@ static bool tt_open(Abstractformat *format, tt_ctx *ctx, bool deep) {
         ctx->inner_abs = ctx->base + 12;
         ctx->inner_size = (int64_t)size;
         ctx->archive_size = 12 + (int64_t)size;
-    } else if (!xx_rt_memcmp(head, "ZCTT", 4U) ||
-               !xx_rt_memcmp(head, "ECTT", 4U)) {
-        ctx->wrapper = head[0] == 'Z' ? XX_TELLTALE_TTARCH_WRAP_ZCTT
-                                      : XX_TELLTALE_TTARCH_WRAP_ECTT;
+    } else if (!xx_rt_memcmp(head, "ZCTT", 4U) || !xx_rt_memcmp(head, "ECTT", 4U)) {
+        ctx->wrapper = head[0] == 'Z' ? XX_TELLTALE_TTARCH_WRAP_ZCTT : XX_TELLTALE_TTARCH_WRAP_ECTT;
         if (!tt_parse_chunked(ctx, head)) return false;
         if (ctx->wrapper == XX_TELLTALE_TTARCH_WRAP_ECTT) return true;
         /* The last chunk fixes the inner size.  Chunks that do not inflate
@@ -352,8 +328,7 @@ static bool tt_open(Abstractformat *format, tt_ctx *ctx, bool deep) {
             if (!ctx->cbuf) return false; /* allocation failure */
             return true;
         }
-        ctx->inner_size = (int64_t)(ctx->chunk_count - 1U) * ctx->chunk_size +
-                          (int64_t)ctx->cached_len;
+        ctx->inner_size = (int64_t)(ctx->chunk_count - 1U) * ctx->chunk_size + (int64_t)ctx->cached_len;
         if (!tt_load_chunk(ctx, 0U)) {
             ctx->inner_size = -1;
             return true;
@@ -371,9 +346,7 @@ static bool tt_open(Abstractformat *format, tt_ctx *ctx, bool deep) {
         char name[TT_MAX_NAME];
         int64_t off, size;
         bool bad;
-        if (!tt_inner_read(ctx, ctx->entries_at, e, sizeof(e)) ||
-            !tt_entry(ctx, e, NULL, name, &off, &size, &bad))
-            return false;
+        if (!tt_inner_read(ctx, ctx->entries_at, e, sizeof(e)) || !tt_entry(ctx, e, NULL, name, &off, &size, &bad)) return false;
     }
     if (deep && ctx->wrapper == XX_TELLTALE_TTARCH_WRAP_NONE) {
         uint8_t block[TT_TABLE_BLOCK * TT_ENTRY_SIZE];
@@ -382,18 +355,13 @@ static bool tt_open(Abstractformat *format, tt_ctx *ctx, bool deep) {
         while (done < ctx->count) {
             uint32_t take = ctx->count - done, i;
             if (take > TT_TABLE_BLOCK) take = TT_TABLE_BLOCK;
-            if (!tt_inner_read(ctx, ctx->entries_at +
-                                        (int64_t)done * TT_ENTRY_SIZE,
-                               block, (size_t)take * TT_ENTRY_SIZE))
-                return false;
+            if (!tt_inner_read(ctx, ctx->entries_at + (int64_t)done * TT_ENTRY_SIZE, block, (size_t)take * TT_ENTRY_SIZE)) return false;
             for (i = 0U; i < take; ++i) {
                 const uint8_t *e = block + (size_t)i * TT_ENTRY_SIZE;
                 uint64_t off = xx_data_get_u64(e + 8, 8, 0, false);
                 uint64_t space = (uint64_t)(ctx->inner_size - ctx->data_at);
                 uint32_t sz = xx_data_get_u32(e + 16, 4, 0, false);
-                if (off <= space && sz <= space - off &&
-                    ctx->data_at + (int64_t)(off + sz) > end)
-                    end = ctx->data_at + (int64_t)(off + sz);
+                if (off <= space && sz <= space - off && ctx->data_at + (int64_t)(off + sz) > end) end = ctx->data_at + (int64_t)(off + sz);
             }
             done += take;
         }
@@ -402,11 +370,13 @@ static bool tt_open(Abstractformat *format, tt_ctx *ctx, bool deep) {
     return true;
 }
 
-static char tt_upper(char c) {
+static char tt_upper(char c)
+{
     return (c >= 'a' && c <= 'z') ? (char)(c - 'a' + 'A') : c;
 }
 
-static bool tt_stem_is(const char *s, size_t stem, const char *word) {
+static bool tt_stem_is(const char *s, size_t stem, const char *word)
+{
     size_t i;
     for (i = 0U; i < stem; ++i)
         if (!word[i] || tt_upper(s[i]) != word[i]) return false;
@@ -415,18 +385,15 @@ static bool tt_stem_is(const char *s, size_t stem, const char *word) {
 
 /* One path component: printable ASCII without Windows-reserved punctuation,
  * not only dots and spaces, not a device name. */
-static bool tt_safe_component(const char *s, size_t length) {
-    static const char *const devices[] = {"CON",    "PRN",     "AUX",
-                                          "NUL",    "CONIN$",  "CONOUT$",
-                                          "CLOCK$"};
+static bool tt_safe_component(const char *s, size_t length)
+{
+    static const char *const devices[] = {"CON", "PRN", "AUX", "NUL", "CONIN$", "CONOUT$", "CLOCK$"};
     size_t i, stem = 0U;
     bool meaningful = false;
     if (length == 0U) return false;
     for (i = 0U; i < length; ++i) {
         char c = s[i];
-        if ((unsigned char)c < 0x20U || (unsigned char)c > 0x7EU || c == ':' ||
-            c == '<' || c == '>' || c == '"' || c == '|' || c == '?' ||
-            c == '*' || c == '\\')
+        if ((unsigned char)c < 0x20U || (unsigned char)c > 0x7EU || c == ':' || c == '<' || c == '>' || c == '"' || c == '|' || c == '?' || c == '*' || c == '\\')
             return false;
         if (c != '.' && c != ' ') meaningful = true;
     }
@@ -436,16 +403,14 @@ static bool tt_safe_component(const char *s, size_t length) {
     for (i = 0U; i < sizeof(devices) / sizeof(devices[0]); ++i)
         if (tt_stem_is(s, stem, devices[i])) return false;
     if (stem == 4U && s[3] >= '0' && s[3] <= '9' &&
-        ((tt_upper(s[0]) == 'C' && tt_upper(s[1]) == 'O' &&
-          tt_upper(s[2]) == 'M') ||
-         (tt_upper(s[0]) == 'L' && tt_upper(s[1]) == 'P' &&
-          tt_upper(s[2]) == 'T')))
+        ((tt_upper(s[0]) == 'C' && tt_upper(s[1]) == 'O' && tt_upper(s[2]) == 'M') || (tt_upper(s[0]) == 'L' && tt_upper(s[1]) == 'P' && tt_upper(s[2]) == 'T')))
         return false;
     return true;
 }
 
 /* A relative path of safe components separated by single '/'. */
-static bool tt_safe_path(const char *name) {
+static bool tt_safe_path(const char *name)
+{
     size_t start = 0U, i = 0U;
     if (!name || !name[0]) return false;
     for (;;) {
@@ -458,7 +423,8 @@ static bool tt_safe_path(const char *name) {
     }
 }
 
-static uint32_t tt_name_hash(const char *s) {
+static uint32_t tt_name_hash(const char *s)
+{
     uint32_t h = 2166136261U;
     while (*s) {
         h ^= (uint8_t)tt_upper(*s++);
@@ -467,13 +433,15 @@ static uint32_t tt_name_hash(const char *s) {
     return h;
 }
 
-static bool tt_names_equal(const char *a, const char *b) {
+static bool tt_names_equal(const char *a, const char *b)
+{
     while (*a && *b)
         if (tt_upper(*a++) != tt_upper(*b++)) return false;
     return *a == *b;
 }
 
-static void tt_stream_free(void *opaque) {
+static void tt_stream_free(void *opaque)
+{
     tt_stream *s = (tt_stream *)opaque;
     uint32_t i;
     if (!s) return;
@@ -486,7 +454,8 @@ static void tt_stream_free(void *opaque) {
 
 /* Give every member a name no other member has (case-insensitively), by
  * appending "__2", "__3", ... to later duplicates. */
-static bool tt_dedupe(tt_stream *s) {
+static bool tt_dedupe(tt_stream *s)
+{
     uint32_t cap = 16U, i;
     uint32_t *slots;
     while (cap < s->count * 2U) cap <<= 1;
@@ -523,8 +492,7 @@ static bool tt_dedupe(tt_stream *s) {
                     xx_mem_free(slots);
                     return false;
                 }
-                if (s->items[i].name != original)
-                    xx_str_free(s->items[i].name);
+                if (s->items[i].name != original) xx_str_free(s->items[i].name);
                 s->items[i].name = replacement;
             }
         }
@@ -535,7 +503,8 @@ static bool tt_dedupe(tt_stream *s) {
 }
 
 /* Read the whole directory and build the member list. */
-static bool tt_load_members(tt_stream *s) {
+static bool tt_load_members(tt_stream *s)
+{
     tt_ctx *ctx = &s->ctx;
     uint8_t *entries = NULL, *names = NULL;
     char *name = NULL;
@@ -547,16 +516,12 @@ static bool tt_load_members(tt_stream *s) {
     names = (uint8_t *)xx_mem_alloc(ctx->names_size);
     name = (char *)xx_mem_alloc(TT_MAX_NAME);
     s->items = (tt_member *)xx_mem_calloc(ctx->count, sizeof(tt_member));
-    if (!entries || !names || !name || !s->items ||
-        !tt_inner_read(ctx, ctx->entries_at, entries, esize) ||
-        !tt_inner_read(ctx, ctx->names_at, names, ctx->names_size))
+    if (!entries || !names || !name || !s->items || !tt_inner_read(ctx, ctx->entries_at, entries, esize) || !tt_inner_read(ctx, ctx->names_at, names, ctx->names_size))
         goto done;
     for (i = 0U; i < ctx->count; ++i) {
         tt_member *m = &s->items[i];
         size_t k;
-        if (!tt_entry(ctx, entries + (size_t)i * TT_ENTRY_SIZE, names, name,
-                      &m->offset, &m->size, &m->bad))
-            goto done;
+        if (!tt_entry(ctx, entries + (size_t)i * TT_ENTRY_SIZE, names, name, &m->offset, &m->size, &m->bad)) goto done;
         m->name = xx_str_dup(name);
         if (!m->name) goto done;
         s->count = i + 1U;
@@ -571,17 +536,16 @@ done:
     return ok;
 }
 
-static bool tt_copy_options(xx_list_s *destination, const xx_list_s *source) {
+static bool tt_copy_options(xx_list_s *destination, const xx_list_s *source)
+{
     size_t index;
     if (!source) return true;
     for (index = 0U; index < source->count; ++index) {
-        const xx_meta *original =
-            (const xx_meta *)xx_list_at((const xx_list_t *)source, index);
+        const xx_meta *original = (const xx_meta *)xx_list_at((const xx_list_t *)source, index);
         xx_meta copy;
         if (!original) continue;
         xx_meta_init(&copy, original->meta_id);
-        if (!xx_var_copy(&copy.var, &original->var) ||
-            !xx_list_append(destination, &copy)) {
+        if (!xx_var_copy(&copy.var, &original->var) || !xx_list_append(destination, &copy)) {
             xx_meta_cleanup(&copy);
             return false;
         }
@@ -589,43 +553,35 @@ static bool tt_copy_options(xx_list_s *destination, const xx_list_s *source) {
     return true;
 }
 
-static const xx_var *tt_option(const xx_list_s *options, uint32_t id) {
+static const xx_var *tt_option(const xx_list_s *options, uint32_t id)
+{
     size_t index;
     if (!options) return NULL;
     for (index = 0U; index < options->count; ++index) {
-        const xx_meta *meta =
-            (const xx_meta *)xx_list_at((const xx_list_t *)options, index);
+        const xx_meta *meta = (const xx_meta *)xx_list_at((const xx_list_t *)options, index);
         if (meta && meta->meta_id == id) return &meta->var;
     }
     return NULL;
 }
 
-static bool tt_set_record(xx_archive_record *record, const tt_stream *s) {
+static bool tt_set_record(xx_archive_record *record, const tt_stream *s)
+{
     const tt_member *m = &s->items[s->index];
     bool packed = s->ctx.wrapper == XX_TELLTALE_TTARCH_WRAP_ZCTT;
     xx_archive_record_cleanup(record);
     xx_archive_record_init(record);
-    record->header_offset =
-        packed ? -1
-               : s->ctx.inner_abs + s->ctx.entries_at +
-                     (int64_t)s->index * TT_ENTRY_SIZE;
+    record->header_offset = packed ? -1 : s->ctx.inner_abs + s->ctx.entries_at + (int64_t)s->index * TT_ENTRY_SIZE;
     record->header_size = packed ? 0 : TT_ENTRY_SIZE;
     record->data_offset = packed ? -1 : s->ctx.inner_abs + m->offset;
     record->compressed_size = m->size;
-    return xx_archive_record_set_original_name(record, m->name) &&
-           xx_archive_record_set_meta_u64(record, XX_META_ID_COMPRESSED_SIZE,
-                                          (uint64_t)m->size) &&
-           xx_archive_record_set_meta_u64(record, XX_META_ID_UNCOMPRESSED_SIZE,
-                                          (uint64_t)m->size) &&
-           xx_archive_record_set_meta_u64(record, XX_META_ID_COMPRESSION_METHOD,
-                                          packed ? 8U : 0U) &&
-           xx_archive_record_set_meta_bool(record, XX_META_ID_IS_ENCRYPTED,
-                                           false) &&
-           xx_archive_record_set_meta_bool(record, XX_META_ID_IS_FOLDER, false);
+    return xx_archive_record_set_original_name(record, m->name) && xx_archive_record_set_meta_u64(record, XX_META_ID_COMPRESSED_SIZE, (uint64_t)m->size) &&
+           xx_archive_record_set_meta_u64(record, XX_META_ID_UNCOMPRESSED_SIZE, (uint64_t)m->size) &&
+           xx_archive_record_set_meta_u64(record, XX_META_ID_COMPRESSION_METHOD, packed ? 8U : 0U) &&
+           xx_archive_record_set_meta_bool(record, XX_META_ID_IS_ENCRYPTED, false) && xx_archive_record_set_meta_bool(record, XX_META_ID_IS_FOLDER, false);
 }
 
-static bool tt_copy_member(tt_ctx *ctx, const tt_member *m,
-                           xx_io_device *destination, xx_pd_struct *pd) {
+static bool tt_copy_member(tt_ctx *ctx, const tt_member *m, xx_io_device *destination, xx_pd_struct *pd)
+{
     uint8_t *buffer;
     int64_t done = 0;
     bool ok = true;
@@ -633,13 +589,9 @@ static bool tt_copy_member(tt_ctx *ctx, const tt_member *m,
     buffer = (uint8_t *)xx_mem_alloc(TT_COPY_BLOCK);
     if (!buffer) return false;
     while (ok && done < m->size) {
-        size_t take = (size_t)((m->size - done) > (int64_t)TT_COPY_BLOCK
-                                   ? TT_COPY_BLOCK
-                                   : (m->size - done));
-        if ((pd && xx_pd_is_stopped(pd)) ||
-            !tt_inner_read(ctx, m->offset + done, buffer, take) ||
-            (destination &&
-             xx_io_write(destination, buffer, take) != (ssize_t)take))
+        size_t take = (size_t)((m->size - done) > (int64_t)TT_COPY_BLOCK ? TT_COPY_BLOCK : (m->size - done));
+        if ((pd && xx_pd_is_stopped(pd)) || !tt_inner_read(ctx, m->offset + done, buffer, take) ||
+            (destination && xx_io_write(destination, buffer, take) != (ssize_t)take))
             ok = false;
         done += (int64_t)take;
     }
@@ -647,8 +599,8 @@ static bool tt_copy_member(tt_ctx *ctx, const tt_member *m,
     return ok;
 }
 
-void xx_telltale_ttarch_init(xx_telltale_ttarch *archive, xx_io_device *device,
-                             int64_t base_address) {
+void xx_telltale_ttarch_init(xx_telltale_ttarch *archive, xx_io_device *device, int64_t base_address)
+{
     if (!archive) return;
     xx_mem_zero(archive, sizeof(*archive));
     xx_format_init(&archive->format, device, base_address);
@@ -661,41 +613,36 @@ void xx_telltale_ttarch_init(xx_telltale_ttarch *archive, xx_io_device *device,
     archive->format.check_is_valid = xx_telltale_ttarch_check_is_valid;
     archive->format.handle_base_info = xx_telltale_ttarch_handle_base_info;
     archive->format.get_format_size = xx_telltale_ttarch_get_format_size;
-    archive->format.get_number_of_archive_records =
-        xx_telltale_ttarch_get_number_of_archive_records;
-    archive->format.create_archive_records_reading =
-        xx_telltale_ttarch_create_archive_records_reading;
-    archive->format.get_current_archive_record =
-        xx_telltale_ttarch_get_current_archive_record;
-    archive->format.unpack_current_archive_record =
-        xx_telltale_ttarch_unpack_current_archive_record;
-    archive->format.archive_record_move_to_next =
-        xx_telltale_ttarch_archive_record_move_to_next;
-    archive->format.free_archive_records_reading =
-        xx_telltale_ttarch_free_archive_records_reading;
+    archive->format.get_number_of_archive_records = xx_telltale_ttarch_get_number_of_archive_records;
+    archive->format.create_archive_records_reading = xx_telltale_ttarch_create_archive_records_reading;
+    archive->format.get_current_archive_record = xx_telltale_ttarch_get_current_archive_record;
+    archive->format.unpack_current_archive_record = xx_telltale_ttarch_unpack_current_archive_record;
+    archive->format.archive_record_move_to_next = xx_telltale_ttarch_archive_record_move_to_next;
+    archive->format.free_archive_records_reading = xx_telltale_ttarch_free_archive_records_reading;
     archive->inner_size = -1;
 }
 
-xx_telltale_ttarch *xx_telltale_ttarch_create(xx_io_device *device,
-                                              int64_t base_address) {
-    xx_telltale_ttarch *archive =
-        (xx_telltale_ttarch *)xx_mem_alloc(sizeof(*archive));
+xx_telltale_ttarch *xx_telltale_ttarch_create(xx_io_device *device, int64_t base_address)
+{
+    xx_telltale_ttarch *archive = (xx_telltale_ttarch *)xx_mem_alloc(sizeof(*archive));
     if (archive) xx_telltale_ttarch_init(archive, device, base_address);
     return archive;
 }
 
-void xx_telltale_ttarch_destroy(xx_telltale_ttarch *archive) {
+void xx_telltale_ttarch_destroy(xx_telltale_ttarch *archive)
+{
     if (archive) xx_format_cleanup_extra_parameters(&archive->format);
 }
 
-void xx_telltale_ttarch_free(xx_telltale_ttarch *archive) {
+void xx_telltale_ttarch_free(xx_telltale_ttarch *archive)
+{
     if (!archive) return;
     xx_telltale_ttarch_destroy(archive);
     xx_mem_free(archive);
 }
 
-bool xx_telltale_ttarch_check_is_valid(Abstractformat *format,
-                                       xx_pd_struct *pd) {
+bool xx_telltale_ttarch_check_is_valid(Abstractformat *format, xx_pd_struct *pd)
+{
     tt_ctx ctx;
     bool ok;
     (void)pd;
@@ -704,8 +651,8 @@ bool xx_telltale_ttarch_check_is_valid(Abstractformat *format,
     return ok;
 }
 
-bool xx_telltale_ttarch_handle_base_info(Abstractformat *format,
-                                         xx_pd_struct *pd) {
+bool xx_telltale_ttarch_handle_base_info(Abstractformat *format, xx_pd_struct *pd)
+{
     tt_ctx ctx;
     xx_telltale_ttarch *archive;
     (void)pd;
@@ -729,29 +676,24 @@ bool xx_telltale_ttarch_handle_base_info(Abstractformat *format,
     return true;
 }
 
-int64_t xx_telltale_ttarch_get_format_size(Abstractformat *format,
-                                           xx_pd_struct *pd) {
-    return format && (format->base_info_handled ||
-                      xx_telltale_ttarch_handle_base_info(format, pd))
-               ? format->format_size : -1;
+int64_t xx_telltale_ttarch_get_format_size(Abstractformat *format, xx_pd_struct *pd)
+{
+    return format && (format->base_info_handled || xx_telltale_ttarch_handle_base_info(format, pd)) ? format->format_size : -1;
 }
 
-uint64_t xx_telltale_ttarch_get_number_of_archive_records(
-    Abstractformat *format, xx_pd_struct *pd) {
-    return format && (format->base_info_handled ||
-                      xx_telltale_ttarch_handle_base_info(format, pd))
-               ? ((xx_telltale_ttarch *)format)->number_of_records : 0U;
+uint64_t xx_telltale_ttarch_get_number_of_archive_records(Abstractformat *format, xx_pd_struct *pd)
+{
+    return format && (format->base_info_handled || xx_telltale_ttarch_handle_base_info(format, pd)) ? ((xx_telltale_ttarch *)format)->number_of_records : 0U;
 }
 
-xx_archive_record_state *xx_telltale_ttarch_create_archive_records_reading(
-    Abstractformat *format, const xx_list_s *options, xx_pd_struct *pd) {
+xx_archive_record_state *xx_telltale_ttarch_create_archive_records_reading(Abstractformat *format, const xx_list_s *options, xx_pd_struct *pd)
+{
     tt_stream *stream;
     xx_archive_record_state *state;
     (void)pd;
     stream = (tt_stream *)xx_mem_calloc(1U, sizeof(*stream));
     if (!stream) return NULL;
-    if (!tt_open(format, &stream->ctx, false) || !stream->ctx.decodable ||
-        !tt_load_members(stream)) {
+    if (!tt_open(format, &stream->ctx, false) || !stream->ctx.decodable || !tt_load_members(stream)) {
         tt_stream_free(stream);
         return NULL;
     }
@@ -778,19 +720,16 @@ xx_archive_record_state *xx_telltale_ttarch_create_archive_records_reading(
     return state;
 }
 
-const xx_archive_record *xx_telltale_ttarch_get_current_archive_record(
-    Abstractformat *format, xx_archive_record_state *state) {
-    return format && state && state->format == format && state->has_record
-               ? &state->current_record : NULL;
+const xx_archive_record *xx_telltale_ttarch_get_current_archive_record(Abstractformat *format, xx_archive_record_state *state)
+{
+    return format && state && state->format == format && state->has_record ? &state->current_record : NULL;
 }
 
-bool xx_telltale_ttarch_archive_record_move_to_next(
-    Abstractformat *format, xx_archive_record_state *state, xx_pd_struct *pd) {
+bool xx_telltale_ttarch_archive_record_move_to_next(Abstractformat *format, xx_archive_record_state *state, xx_pd_struct *pd)
+{
     tt_stream *stream;
     (void)pd;
-    if (!format || !state || state->format != format ||
-        !(stream = (tt_stream *)state->internal_state) || !state->has_record ||
-        stream->index + 1U >= stream->count) {
+    if (!format || !state || state->format != format || !(stream = (tt_stream *)state->internal_state) || !state->has_record || stream->index + 1U >= stream->count) {
         if (state) state->has_record = false;
         return false;
     }
@@ -803,8 +742,8 @@ bool xx_telltale_ttarch_archive_record_move_to_next(
     return true;
 }
 
-bool xx_telltale_ttarch_unpack_current_archive_record(
-    Abstractformat *format, xx_archive_record_state *state, xx_pd_struct *pd) {
+bool xx_telltale_ttarch_unpack_current_archive_record(Abstractformat *format, xx_archive_record_state *state, xx_pd_struct *pd)
+{
     tt_stream *stream;
     const tt_member *member;
     const xx_var *path_option;
@@ -813,27 +752,22 @@ bool xx_telltale_ttarch_unpack_current_archive_record(
     char *path = NULL;
     bool result = false;
     bool created = false;
-    if (!format || !state || state->format != format || !state->has_record ||
-        !(stream = (tt_stream *)state->internal_state) ||
-        stream->index >= stream->count || (pd && xx_pd_is_stopped(pd)))
+    if (!format || !state || state->format != format || !state->has_record || !(stream = (tt_stream *)state->internal_state) || stream->index >= stream->count ||
+        (pd && xx_pd_is_stopped(pd)))
         return false;
     member = &stream->items[stream->index];
     path_option = tt_option(&state->options, XX_META_ID_OPT_UNPACK_PATH);
     if (!path_option) return tt_copy_member(&stream->ctx, member, NULL, pd);
     if (member->bad || !tt_safe_path(member->name)) return false;
-    if (path_option->type == XX_VAR_TYPE_STRING ||
-        path_option->type == XX_VAR_TYPE_STRING_VIEW) {
+    if (path_option->type == XX_VAR_TYPE_STRING || path_option->type == XX_VAR_TYPE_STRING_VIEW) {
         base = xx_var_get_str(path_option);
-    } else if (path_option->type == XX_VAR_TYPE_WSTRING ||
-               path_option->type == XX_VAR_TYPE_WSTRING_VIEW) {
+    } else if (path_option->type == XX_VAR_TYPE_WSTRING || path_option->type == XX_VAR_TYPE_WSTRING_VIEW) {
         owned_base = xx_str_unicode_to_utf8(xx_var_get_wstr(path_option));
         base = owned_base;
     }
     if (!base) goto done;
-    path = (base[0] && base[xx_str_len(base) - 1U] != '/' &&
-            base[xx_str_len(base) - 1U] != '\\')
-               ? xx_str_concat3(base, "/", member->name)
-               : xx_str_concat(base, member->name);
+    path = (base[0] && base[xx_str_len(base) - 1U] != '/' && base[xx_str_len(base) - 1U] != '\\') ? xx_str_concat3(base, "/", member->name)
+                                                                                                  : xx_str_concat(base, member->name);
     if (!path || !xx_store_create_dirs_a(path, false)) goto done;
     {
         xx_io_device *destination = xx_io_file_open(path, "wb");
@@ -849,8 +783,8 @@ done:
     return result;
 }
 
-void xx_telltale_ttarch_free_archive_records_reading(
-    Abstractformat *format, xx_archive_record_state *state) {
+void xx_telltale_ttarch_free_archive_records_reading(Abstractformat *format, xx_archive_record_state *state)
+{
     (void)format;
     xx_archive_record_state_free(state);
 }

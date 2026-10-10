@@ -9,13 +9,15 @@
 #ifdef __cplusplus
 extern "C" {
 #endif
-typedef struct xx_sfx_swag { Abstractformat format; } xx_sfx_swag;
-XXFC_API void xx_sfx_swag_init(xx_sfx_swag *,xx_io_device *,int64_t);
-XXFC_API xx_sfx_swag *xx_sfx_swag_create(xx_io_device *,int64_t);
+typedef struct xx_sfx_swag {
+    Abstractformat format;
+} xx_sfx_swag;
+XXFC_API void xx_sfx_swag_init(xx_sfx_swag *, xx_io_device *, int64_t);
+XXFC_API xx_sfx_swag *xx_sfx_swag_create(xx_io_device *, int64_t);
 XXFC_API void xx_sfx_swag_destroy(xx_sfx_swag *);
 XXFC_API void xx_sfx_swag_free(xx_sfx_swag *);
-XXFC_API bool xx_sfx_swag_check_is_valid(Abstractformat *,xx_pd_struct *);
-XXFC_API bool xx_sfx_swag_handle_base_info(Abstractformat *,xx_pd_struct *);
+XXFC_API bool xx_sfx_swag_check_is_valid(Abstractformat *, xx_pd_struct *);
+XXFC_API bool xx_sfx_swag_handle_base_info(Abstractformat *, xx_pd_struct *);
 #ifdef __cplusplus
 }
 #endif

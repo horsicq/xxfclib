@@ -126,15 +126,15 @@ struct xx_ext {
     Abstractformat format;
     uint64_t number_of_records;
     uint64_t number_of_members;
-    uint32_t block_size;       /**< 1024 << s_log_block_size. */
-    uint64_t block_count;      /**< s_blocks_count, 64-bit when 64BIT is set. */
-    uint32_t inode_count;      /**< s_inodes_count. */
-    uint32_t inode_size;       /**< 128 on revision 0. */
-    uint32_t group_count;      /**< Derived from block and group counts. */
+    uint32_t block_size;  /**< 1024 << s_log_block_size. */
+    uint64_t block_count; /**< s_blocks_count, 64-bit when 64BIT is set. */
+    uint32_t inode_count; /**< s_inodes_count. */
+    uint32_t inode_size;  /**< 128 on revision 0. */
+    uint32_t group_count; /**< Derived from block and group counts. */
     uint32_t feature_compat;
     uint32_t feature_incompat;
     uint32_t feature_ro_compat;
-    int64_t archive_end;       /**< base_address + block_count * block_size. */
+    int64_t archive_end; /**< base_address + block_count * block_size. */
     void *internal;
 };
 
@@ -146,19 +146,13 @@ XXFC_API void xx_ext_free(xx_ext *ext);
 XXFC_API bool xx_ext_check_is_valid(Abstractformat *self, xx_pd_struct *pd);
 XXFC_API bool xx_ext_handle_base_info(Abstractformat *self, xx_pd_struct *pd);
 XXFC_API int64_t xx_ext_get_format_size(Abstractformat *self, xx_pd_struct *pd);
-XXFC_API uint64_t xx_ext_get_number_of_archive_records(Abstractformat *self,
-                                                       xx_pd_struct *pd);
+XXFC_API uint64_t xx_ext_get_number_of_archive_records(Abstractformat *self, xx_pd_struct *pd);
 
-XXFC_API xx_archive_record_state *xx_ext_create_archive_records_reading(
-    Abstractformat *self, const xx_list_s *options, xx_pd_struct *pd);
-XXFC_API const xx_archive_record *xx_ext_get_current_archive_record(
-    Abstractformat *self, xx_archive_record_state *state);
-XXFC_API bool xx_ext_unpack_current_archive_record(
-    Abstractformat *self, xx_archive_record_state *state, xx_pd_struct *pd);
-XXFC_API bool xx_ext_archive_record_move_to_next(
-    Abstractformat *self, xx_archive_record_state *state, xx_pd_struct *pd);
-XXFC_API void xx_ext_free_archive_records_reading(
-    Abstractformat *self, xx_archive_record_state *state);
+XXFC_API xx_archive_record_state *xx_ext_create_archive_records_reading(Abstractformat *self, const xx_list_s *options, xx_pd_struct *pd);
+XXFC_API const xx_archive_record *xx_ext_get_current_archive_record(Abstractformat *self, xx_archive_record_state *state);
+XXFC_API bool xx_ext_unpack_current_archive_record(Abstractformat *self, xx_archive_record_state *state, xx_pd_struct *pd);
+XXFC_API bool xx_ext_archive_record_move_to_next(Abstractformat *self, xx_archive_record_state *state, xx_pd_struct *pd);
+XXFC_API void xx_ext_free_archive_records_reading(Abstractformat *self, xx_archive_record_state *state);
 
 XXFC_API uint64_t xx_ext_get_number_of_records(const xx_ext *ext);
 XXFC_API uint64_t xx_ext_get_number_of_members(const xx_ext *ext);
@@ -170,18 +164,24 @@ XXFC_API int64_t xx_ext_get_archive_end(const xx_ext *ext);
 /** "ext4", "ext3" or "ext2", decided from the feature words alone. */
 XXFC_API const char *xx_ext_get_generation(const xx_ext *ext);
 
-static inline Abstractformat *xx_ext_to_format(xx_ext *ext) {
+static inline Abstractformat *xx_ext_to_format(xx_ext *ext)
+{
     return ext ? &ext->format : NULL;
 }
-static inline void XExt_init(xx_ext *ext, xx_io_device *dev,
-                             int64_t base_address) {
+static inline void XExt_init(xx_ext *ext, xx_io_device *dev, int64_t base_address)
+{
     xx_ext_init(ext, dev, base_address);
 }
-static inline xx_ext *XExt_create(xx_io_device *dev, int64_t base_address) {
+static inline xx_ext *XExt_create(xx_io_device *dev, int64_t base_address)
+{
     return xx_ext_create(dev, base_address);
 }
-static inline void XExt_free(xx_ext *ext) { xx_ext_free(ext); }
-static inline bool XExt_is_valid(xx_ext *ext, xx_pd_struct *pd) {
+static inline void XExt_free(xx_ext *ext)
+{
+    xx_ext_free(ext);
+}
+static inline bool XExt_is_valid(xx_ext *ext, xx_pd_struct *pd)
+{
     return ext ? xx_format_is_valid(&ext->format, pd) : false;
 }
 

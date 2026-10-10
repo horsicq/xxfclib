@@ -73,9 +73,7 @@ extern "C" {
  * @param written       Receives the byte count produced; set on every path.
  * @return true only when the whole member decoded.
  */
-XXFC_API bool xx_imp_decode_memory(const uint8_t *input, size_t input_size,
-                                   uint64_t stream_offset, uint8_t attributes,
-                                   uint8_t *output, size_t output_size,
+XXFC_API bool xx_imp_decode_memory(const uint8_t *input, size_t input_size, uint64_t stream_offset, uint8_t attributes, uint8_t *output, size_t output_size,
                                    size_t *written);
 
 /**
@@ -98,12 +96,8 @@ XXFC_API bool xx_imp_decode_memory(const uint8_t *input, size_t input_size,
  * @param written         Receives the total bytes written to @p output.
  * @return true when at least one chunk decoded and everything fit.
  */
-XXFC_API bool xx_imp_decode_directory(const uint8_t *directory,
-                                      size_t directory_size, uint32_t records,
-                                      uint8_t *output, size_t output_size,
-                                      uint32_t *chunk_sizes,
-                                      size_t chunk_capacity,
-                                      size_t *chunk_count, size_t *written);
+XXFC_API bool xx_imp_decode_directory(const uint8_t *directory, size_t directory_size, uint32_t records, uint8_t *output, size_t output_size, uint32_t *chunk_sizes,
+                                      size_t chunk_capacity, size_t *chunk_count, size_t *written);
 
 #ifdef __cplusplus
 }

@@ -21,7 +21,10 @@ static xx_tree_node_t *new_node(xx_tree_t *tree, const void *element)
     node = (xx_tree_node_t *)xx_mem_calloc(1, sizeof(*node));
     if (!node) return NULL;
     node->data = xx_mem_alloc(tree->elem_size);
-    if (!node->data) { xx_mem_free(node); return NULL; }
+    if (!node->data) {
+        xx_mem_free(node);
+        return NULL;
+    }
     xx_mem_copy(node->data, element, tree->elem_size);
     node->tree = tree;
     ++tree->count;
@@ -55,7 +58,10 @@ xx_tree_t *xx_tree_create(size_t elem_size, xx_elem_free_fn elem_free)
 {
     xx_tree_t *tree = (xx_tree_t *)xx_mem_alloc(sizeof(*tree));
     if (!tree) return NULL;
-    if (!xx_tree_init(tree, elem_size, elem_free)) { xx_mem_free(tree); return NULL; }
+    if (!xx_tree_init(tree, elem_size, elem_free)) {
+        xx_mem_free(tree);
+        return NULL;
+    }
     return tree;
 }
 
@@ -69,10 +75,22 @@ bool xx_tree_init(xx_tree_t *tree, size_t elem_size, xx_elem_free_fn elem_free)
     return true;
 }
 
-size_t xx_tree_count(const xx_tree_t *tree) { return tree ? tree->count : 0; }
-bool xx_tree_is_empty(const xx_tree_t *tree) { return !tree || !tree->count; }
-size_t xx_tree_elem_size(const xx_tree_t *tree) { return tree ? tree->elem_size : 0; }
-xx_tree_node_t *xx_tree_root(const xx_tree_t *tree) { return tree ? tree->root : NULL; }
+size_t xx_tree_count(const xx_tree_t *tree)
+{
+    return tree ? tree->count : 0;
+}
+bool xx_tree_is_empty(const xx_tree_t *tree)
+{
+    return !tree || !tree->count;
+}
+size_t xx_tree_elem_size(const xx_tree_t *tree)
+{
+    return tree ? tree->elem_size : 0;
+}
+xx_tree_node_t *xx_tree_root(const xx_tree_t *tree)
+{
+    return tree ? tree->root : NULL;
+}
 
 xx_tree_node_t *xx_tree_set_root(xx_tree_t *tree, const void *element)
 {
@@ -107,14 +125,38 @@ xx_tree_node_t *xx_tree_prepend_child(xx_tree_t *tree, xx_tree_node_t *parent, c
     return node;
 }
 
-void *xx_tree_node_data(xx_tree_node_t *node) { return node ? node->data : NULL; }
-const void *xx_tree_node_const_data(const xx_tree_node_t *node) { return node ? node->data : NULL; }
-xx_tree_node_t *xx_tree_node_parent(const xx_tree_node_t *node) { return node ? node->parent : NULL; }
-xx_tree_node_t *xx_tree_node_first_child(const xx_tree_node_t *node) { return node ? node->first_child : NULL; }
-xx_tree_node_t *xx_tree_node_last_child(const xx_tree_node_t *node) { return node ? node->last_child : NULL; }
-xx_tree_node_t *xx_tree_node_next_sibling(const xx_tree_node_t *node) { return node ? node->next_sibling : NULL; }
-xx_tree_node_t *xx_tree_node_prev_sibling(const xx_tree_node_t *node) { return node ? node->prev_sibling : NULL; }
-size_t xx_tree_node_child_count(const xx_tree_node_t *node) { return node ? node->child_count : 0; }
+void *xx_tree_node_data(xx_tree_node_t *node)
+{
+    return node ? node->data : NULL;
+}
+const void *xx_tree_node_const_data(const xx_tree_node_t *node)
+{
+    return node ? node->data : NULL;
+}
+xx_tree_node_t *xx_tree_node_parent(const xx_tree_node_t *node)
+{
+    return node ? node->parent : NULL;
+}
+xx_tree_node_t *xx_tree_node_first_child(const xx_tree_node_t *node)
+{
+    return node ? node->first_child : NULL;
+}
+xx_tree_node_t *xx_tree_node_last_child(const xx_tree_node_t *node)
+{
+    return node ? node->last_child : NULL;
+}
+xx_tree_node_t *xx_tree_node_next_sibling(const xx_tree_node_t *node)
+{
+    return node ? node->next_sibling : NULL;
+}
+xx_tree_node_t *xx_tree_node_prev_sibling(const xx_tree_node_t *node)
+{
+    return node ? node->prev_sibling : NULL;
+}
+size_t xx_tree_node_child_count(const xx_tree_node_t *node)
+{
+    return node ? node->child_count : 0;
+}
 
 xx_tree_node_t *xx_tree_node_child_at(const xx_tree_node_t *node, size_t index)
 {
@@ -128,15 +170,17 @@ xx_tree_node_t *xx_tree_node_child_at(const xx_tree_node_t *node, size_t index)
 size_t xx_tree_node_depth(const xx_tree_node_t *node)
 {
     size_t depth = 0;
-    while (node && node->parent) { ++depth; node = node->parent; }
+    while (node && node->parent) {
+        ++depth;
+        node = node->parent;
+    }
     return depth;
 }
 
 bool xx_tree_move(xx_tree_t *tree, xx_tree_node_t *node, xx_tree_node_t *new_parent)
 {
     xx_tree_node_t *ancestor;
-    if (!tree || !node || !new_parent || node->tree != tree || new_parent->tree != tree ||
-        node == tree->root || new_parent->child_count == SIZE_MAX) return false;
+    if (!tree || !node || !new_parent || node->tree != tree || new_parent->tree != tree || node == tree->root || new_parent->child_count == SIZE_MAX) return false;
     for (ancestor = new_parent; ancestor; ancestor = ancestor->parent)
         if (ancestor == node) return false;
     unlink_node(node);
@@ -152,7 +196,10 @@ bool xx_tree_remove(xx_tree_t *tree, xx_tree_node_t *node)
     else unlink_node(node);
     current = node;
     while (current) {
-        if (current->first_child) { current = current->first_child; continue; }
+        if (current->first_child) {
+            current = current->first_child;
+            continue;
+        }
         next = current->next_sibling ? current->next_sibling : current->parent;
         if (current->parent) {
             current->parent->first_child = current->next_sibling;
@@ -173,7 +220,10 @@ void xx_tree_clear(xx_tree_t *tree)
     if (tree && tree->root) xx_tree_remove(tree, tree->root);
 }
 
-void xx_tree_cleanup(xx_tree_t *tree) { xx_tree_clear(tree); }
+void xx_tree_cleanup(xx_tree_t *tree)
+{
+    xx_tree_clear(tree);
+}
 
 void xx_tree_destroy(xx_tree_t *tree)
 {
@@ -189,7 +239,10 @@ bool xx_tree_foreach(xx_tree_t *tree, xx_tree_visit_fn visit, void *user)
     node = tree->root;
     while (node) {
         if (!visit(node, user)) return false;
-        if (node->first_child) { node = node->first_child; continue; }
+        if (node->first_child) {
+            node = node->first_child;
+            continue;
+        }
         while (node && !node->next_sibling) node = node->parent;
         node = node ? node->next_sibling : NULL;
     }

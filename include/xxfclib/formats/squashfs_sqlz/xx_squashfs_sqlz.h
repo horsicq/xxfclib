@@ -61,44 +61,28 @@ typedef struct xx_squashfs_sqlz {
 
 typedef xx_squashfs_sqlz xx_squashfs_sqlz_t;
 
-XXFC_API void xx_squashfs_sqlz_init(xx_squashfs_sqlz *archive,
-                                    xx_io_device *device,
-                                    int64_t base_address);
-XXFC_API xx_squashfs_sqlz *xx_squashfs_sqlz_create(xx_io_device *device,
-                                                   int64_t base_address);
+XXFC_API void xx_squashfs_sqlz_init(xx_squashfs_sqlz *archive, xx_io_device *device, int64_t base_address);
+XXFC_API xx_squashfs_sqlz *xx_squashfs_sqlz_create(xx_io_device *device, int64_t base_address);
 XXFC_API void xx_squashfs_sqlz_destroy(xx_squashfs_sqlz *archive);
 XXFC_API void xx_squashfs_sqlz_free(xx_squashfs_sqlz *archive);
 
-XXFC_API bool xx_squashfs_sqlz_check_is_valid(Abstractformat *self,
-                                              xx_pd_struct *pd);
-XXFC_API bool xx_squashfs_sqlz_handle_base_info(Abstractformat *self,
-                                                xx_pd_struct *pd);
-XXFC_API int64_t xx_squashfs_sqlz_get_format_size(Abstractformat *self,
-                                                  xx_pd_struct *pd);
-XXFC_API uint64_t xx_squashfs_sqlz_get_number_of_archive_records(
-    Abstractformat *self, xx_pd_struct *pd);
+XXFC_API bool xx_squashfs_sqlz_check_is_valid(Abstractformat *self, xx_pd_struct *pd);
+XXFC_API bool xx_squashfs_sqlz_handle_base_info(Abstractformat *self, xx_pd_struct *pd);
+XXFC_API int64_t xx_squashfs_sqlz_get_format_size(Abstractformat *self, xx_pd_struct *pd);
+XXFC_API uint64_t xx_squashfs_sqlz_get_number_of_archive_records(Abstractformat *self, xx_pd_struct *pd);
 
-XXFC_API xx_archive_record_state *xx_squashfs_sqlz_create_archive_records_reading(
-    Abstractformat *self, const xx_list_s *options, xx_pd_struct *pd);
-XXFC_API const xx_archive_record *xx_squashfs_sqlz_get_current_archive_record(
-    Abstractformat *self, xx_archive_record_state *state);
-XXFC_API bool xx_squashfs_sqlz_unpack_current_archive_record(
-    Abstractformat *self, xx_archive_record_state *state, xx_pd_struct *pd);
-XXFC_API bool xx_squashfs_sqlz_archive_record_move_to_next(
-    Abstractformat *self, xx_archive_record_state *state, xx_pd_struct *pd);
-XXFC_API void xx_squashfs_sqlz_free_archive_records_reading(
-    Abstractformat *self, xx_archive_record_state *state);
+XXFC_API xx_archive_record_state *xx_squashfs_sqlz_create_archive_records_reading(Abstractformat *self, const xx_list_s *options, xx_pd_struct *pd);
+XXFC_API const xx_archive_record *xx_squashfs_sqlz_get_current_archive_record(Abstractformat *self, xx_archive_record_state *state);
+XXFC_API bool xx_squashfs_sqlz_unpack_current_archive_record(Abstractformat *self, xx_archive_record_state *state, xx_pd_struct *pd);
+XXFC_API bool xx_squashfs_sqlz_archive_record_move_to_next(Abstractformat *self, xx_archive_record_state *state, xx_pd_struct *pd);
+XXFC_API void xx_squashfs_sqlz_free_archive_records_reading(Abstractformat *self, xx_archive_record_state *state);
 
 /**
  * Decode one LZMA1 stream (no header) into `output`.  `exact` true: produce
  * exactly `output_size` bytes.  `exact` false: stop at an end marker, at the
  * clean end of the input, or when `output_size` bytes are produced.
  */
-XXFC_API bool xx_squashfs_sqlz_lzma_decode(const uint8_t *input,
-                                           size_t input_size,
-                                           uint8_t props_byte,
-                                           uint8_t *output, size_t output_size,
-                                           bool exact, size_t *written);
+XXFC_API bool xx_squashfs_sqlz_lzma_decode(const uint8_t *input, size_t input_size, uint8_t props_byte, uint8_t *output, size_t output_size, bool exact, size_t *written);
 
 #ifdef __cplusplus
 }

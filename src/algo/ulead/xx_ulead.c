@@ -35,16 +35,15 @@
  * the bug hides.  DELIBERATE - do not change to 0. */
 #define ULEAD_LZW_WIDTH_BIAS 1U
 
-static const uint8_t ULEAD_MAGIC[ULEAD_MAGIC_SIZE] = {
-    'U', '_', 'L', 'E', 'A', 'D', ' ', 'C', 'O', 'R', 'P', '.'
-};
+static const uint8_t ULEAD_MAGIC[ULEAD_MAGIC_SIZE] = {'U', '_', 'L', 'E', 'A', 'D', ' ', 'C', 'O', 'R', 'P', '.'};
 
-static uint32_t ulead_read16(const uint8_t *data, size_t offset) {
+static uint32_t ulead_read16(const uint8_t *data, size_t offset)
+{
     return (uint32_t)data[offset] | ((uint32_t)data[offset + 1U] << 8U);
 }
 
-bool xx_ulead_parse_header(const uint8_t *input, size_t input_size,
-                           uint64_t file_size, xx_ulead_header *header) {
+bool xx_ulead_parse_header(const uint8_t *input, size_t input_size, uint64_t file_size, xx_ulead_header *header)
+{
     uint32_t count1;
     uint32_t last1;
     uint32_t count2;
@@ -55,8 +54,7 @@ bool xx_ulead_parse_header(const uint8_t *input, size_t input_size,
     uint32_t i;
 
     if (!header || !input) return false;
-    if ((input_size < (size_t)ULEAD_HEADER2_SIZE) ||
-        (file_size < (uint64_t)ULEAD_HEADER2_SIZE)) {
+    if ((input_size < (size_t)ULEAD_HEADER2_SIZE) || (file_size < (uint64_t)ULEAD_HEADER2_SIZE)) {
         return false;
     }
     if (xx_rt_memcmp(input, ULEAD_MAGIC, ULEAD_MAGIC_SIZE) != 0) return false;
@@ -74,12 +72,8 @@ bool xx_ulead_parse_header(const uint8_t *input, size_t input_size,
     count2 = ulead_read16(input, 0x28U);
     last2 = ulead_read16(input, 0x2aU);
 
-    layout1 = (count1 != 0U) && (last1 <= (uint32_t)XX_ULEAD_BLOCK_SIZE) &&
-              (file_size > ((uint64_t)count1 * 2U +
-                            (uint64_t)ULEAD_HEADER1_SIZE));
-    layout2 = (count2 != 0U) && (last2 <= (uint32_t)XX_ULEAD_BLOCK_SIZE) &&
-              (file_size > ((uint64_t)count2 * 2U +
-                            (uint64_t)ULEAD_HEADER2_SIZE));
+    layout1 = (count1 != 0U) && (last1 <= (uint32_t)XX_ULEAD_BLOCK_SIZE) && (file_size > ((uint64_t)count1 * 2U + (uint64_t)ULEAD_HEADER1_SIZE));
+    layout2 = (count2 != 0U) && (last2 <= (uint32_t)XX_ULEAD_BLOCK_SIZE) && (file_size > ((uint64_t)count2 * 2U + (uint64_t)ULEAD_HEADER2_SIZE));
 
     layout = 0U;
     if (layout1 && !layout2) {
@@ -110,12 +104,9 @@ bool xx_ulead_parse_header(const uint8_t *input, size_t input_size,
         }
         header->file_name[i] = '\0';
     }
-    header->data_offset =
-        header->table_offset + ((uint64_t)header->block_count * 2U);
+    header->data_offset = header->table_offset + ((uint64_t)header->block_count * 2U);
     if (header->data_offset > file_size) return false;
-    header->uncompressed_size =
-        ((uint64_t)header->block_count - 1U) * (uint64_t)XX_ULEAD_BLOCK_SIZE +
-        (uint64_t)header->last_block_size;
+    header->uncompressed_size = ((uint64_t)header->block_count - 1U) * (uint64_t)XX_ULEAD_BLOCK_SIZE + (uint64_t)header->last_block_size;
     if (header->uncompressed_size == 0U) return false;
 
     return true;
@@ -140,13 +131,15 @@ typedef struct ulead_lzw_reader_s {
     uint32_t free_slot;
 } ulead_lzw_reader;
 
-static void ulead_lzw_reader_reset(ulead_lzw_reader *reader) {
+static void ulead_lzw_reader_reset(ulead_lzw_reader *reader)
+{
     reader->width = 9U;
     reader->max_code = 0x1ffU;
     reader->free_slot = ULEAD_LZW_FIRST_FREE;
 }
 
-static bool ulead_lzw_next(ulead_lzw_reader *reader, uint32_t *code) {
+static bool ulead_lzw_next(ulead_lzw_reader *reader, uint32_t *code)
+{
     uint32_t value = 0U;
     uint32_t index;
 
@@ -159,9 +152,7 @@ static bool ulead_lzw_next(ulead_lzw_reader *reader, uint32_t *code) {
      * reaches it; do not "fix" it to clamp at twelve. */
     if (reader->max_code < (reader->free_slot + ULEAD_LZW_WIDTH_BIAS)) {
         ++reader->width;
-        reader->max_code = (reader->width == ULEAD_LZW_MAX_BITS)
-                               ? ULEAD_LZW_CAPACITY
-                               : ((1U << reader->width) - 1U);
+        reader->max_code = (reader->width == ULEAD_LZW_MAX_BITS) ? ULEAD_LZW_CAPACITY : ((1U << reader->width) - 1U);
     }
 
     /* A code that runs past the final byte is still readable - the encoder
@@ -172,9 +163,7 @@ static bool ulead_lzw_next(ulead_lzw_reader *reader, uint32_t *code) {
         uint64_t bit = reader->bit_pos + index;
         uint32_t set = 0U;
         if (bit < reader->bits) {
-            set = (uint32_t)((reader->data[(size_t)(bit >> 3)] >>
-                              (7U - (unsigned)(bit & 7U))) &
-                             1U);
+            set = (uint32_t)((reader->data[(size_t)(bit >> 3)] >> (7U - (unsigned)(bit & 7U))) & 1U);
         }
         value = (value << 1U) | set;
     }
@@ -195,9 +184,8 @@ static bool ulead_lzw_next(ulead_lzw_reader *reader, uint32_t *code) {
  * (end code, exhausted bits) is a normal break whose short output the caller
  * then rejects.
  */
-static bool ulead_lzw_decode_block(ulead_lzw_ctx *ctx, const uint8_t *input,
-                                   size_t input_size, uint8_t *output,
-                                   size_t room, size_t *produced) {
+static bool ulead_lzw_decode_block(ulead_lzw_ctx *ctx, const uint8_t *input, size_t input_size, uint8_t *output, size_t room, size_t *produced)
+{
     ulead_lzw_reader reader;
     size_t out_pos = 0U;
     size_t stack_size;
@@ -267,8 +255,7 @@ static bool ulead_lzw_decode_block(ulead_lzw_ctx *ctx, const uint8_t *input,
         }
         guard = 0U;
         while (current > 0xffU) {
-            if ((current >= ULEAD_LZW_CAPACITY) ||
-                (++guard > ULEAD_LZW_CAPACITY)) {
+            if ((current >= ULEAD_LZW_CAPACITY) || (++guard > ULEAD_LZW_CAPACITY)) {
                 return false; /* hard failure */
             }
             ctx->stack[stack_size++] = ctx->suffix[current];
@@ -294,9 +281,8 @@ static bool ulead_lzw_decode_block(ulead_lzw_ctx *ctx, const uint8_t *input,
     return true;
 }
 
-bool xx_ulead_decode_memory(const uint8_t *input, size_t input_size,
-                            uint8_t *output, size_t output_size,
-                            size_t *written) {
+bool xx_ulead_decode_memory(const uint8_t *input, size_t input_size, uint8_t *output, size_t output_size, size_t *written)
+{
     xx_ulead_header header;
     ulead_lzw_ctx ctx;
     size_t position;
@@ -308,18 +294,15 @@ bool xx_ulead_decode_memory(const uint8_t *input, size_t input_size,
     if (!input || (input_size == 0U)) return false;
     if (!output && (output_size != 0U)) return false;
 
-    if (!xx_ulead_parse_header(input, input_size, (uint64_t)input_size,
-                               &header)) {
+    if (!xx_ulead_parse_header(input, input_size, (uint64_t)input_size, &header)) {
         return false;
     }
     if (header.uncompressed_size > (uint64_t)output_size) return false;
-    if ((header.table_offset + (uint64_t)header.block_count * 2U) >
-        (uint64_t)input_size) {
+    if ((header.table_offset + (uint64_t)header.block_count * 2U) > (uint64_t)input_size) {
         return false;
     }
 
-    ctx.prefix =
-        (uint32_t *)xx_mem_alloc(ULEAD_LZW_CAPACITY * sizeof(uint32_t));
+    ctx.prefix = (uint32_t *)xx_mem_alloc(ULEAD_LZW_CAPACITY * sizeof(uint32_t));
     ctx.suffix = (uint8_t *)xx_mem_alloc(ULEAD_LZW_CAPACITY);
     ctx.stack = (uint8_t *)xx_mem_alloc(ULEAD_LZW_STACK_SIZE);
     if (!ctx.prefix || !ctx.suffix || !ctx.stack) {
@@ -331,14 +314,10 @@ bool xx_ulead_decode_memory(const uint8_t *input, size_t input_size,
 
     position = (size_t)header.data_offset;
     for (i = 0U; ok && (i < header.block_count); ++i) {
-        size_t packed_size = (size_t)ulead_read16(
-            input, (size_t)header.table_offset + (size_t)i * 2U);
-        size_t plain_size = (i == (header.block_count - 1U))
-                                ? (size_t)header.last_block_size
-                                : (size_t)XX_ULEAD_BLOCK_SIZE;
+        size_t packed_size = (size_t)ulead_read16(input, (size_t)header.table_offset + (size_t)i * 2U);
+        size_t plain_size = (i == (header.block_count - 1U)) ? (size_t)header.last_block_size : (size_t)XX_ULEAD_BLOCK_SIZE;
 
-        if ((packed_size == 0U) || (position > input_size) ||
-            (packed_size > (input_size - position))) {
+        if ((packed_size == 0U) || (position > input_size) || (packed_size > (input_size - position))) {
             /* The block table sums to the file size in an intact member, so a
              * payload that runs off the end means the input is short. */
             ok = false;
@@ -352,10 +331,7 @@ bool xx_ulead_decode_memory(const uint8_t *input, size_t input_size,
             out_pos += plain_size;
         } else {
             size_t produced = 0U;
-            if (!ulead_lzw_decode_block(&ctx, input + position, packed_size,
-                                        output + out_pos, plain_size,
-                                        &produced) ||
-                (produced != plain_size)) {
+            if (!ulead_lzw_decode_block(&ctx, input + position, packed_size, output + out_pos, plain_size, &produced) || (produced != plain_size)) {
                 ok = false;
                 break;
             }

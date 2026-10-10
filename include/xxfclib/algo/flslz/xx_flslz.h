@@ -30,9 +30,7 @@ extern "C" {
  * @param written     Receives the decoded size.  Set on every path.
  * @return true only on a complete decode that reached the end code.
  */
-XXFC_API bool xx_flslz_decode_memory(const uint8_t *input, size_t input_size,
-                                     uint8_t *output, size_t output_size,
-                                     size_t *written);
+XXFC_API bool xx_flslz_decode_memory(const uint8_t *input, size_t input_size, uint8_t *output, size_t output_size, size_t *written);
 
 /**
  * @brief Measure an FLS stream whose decoded size is not stored anywhere.
@@ -51,9 +49,7 @@ XXFC_API bool xx_flslz_decode_memory(const uint8_t *input, size_t input_size,
  * @param produced    Receives the decoded size. May be NULL.
  * @return true when the stream reached its end code within the limit.
  */
-XXFC_API bool xx_flslz_scan_memory(const uint8_t *input, size_t input_size,
-                                   size_t max_output, size_t *consumed,
-                                   size_t *produced);
+XXFC_API bool xx_flslz_scan_memory(const uint8_t *input, size_t input_size, size_t max_output, size_t *consumed, size_t *produced);
 
 #ifdef __cplusplus
 }

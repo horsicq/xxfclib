@@ -44,32 +44,21 @@ typedef struct xx_livemaker {
 
 typedef xx_livemaker xx_livemaker_t;
 
-XXFC_API void xx_livemaker_init(xx_livemaker *archive, xx_io_device *device,
-                                int64_t base_address);
-XXFC_API xx_livemaker *xx_livemaker_create(xx_io_device *device,
-                                           int64_t base_address);
+XXFC_API void xx_livemaker_init(xx_livemaker *archive, xx_io_device *device, int64_t base_address);
+XXFC_API xx_livemaker *xx_livemaker_create(xx_io_device *device, int64_t base_address);
 XXFC_API void xx_livemaker_destroy(xx_livemaker *archive);
 XXFC_API void xx_livemaker_free(xx_livemaker *archive);
 
-XXFC_API bool xx_livemaker_check_is_valid(Abstractformat *self,
-                                          xx_pd_struct *pd);
-XXFC_API bool xx_livemaker_handle_base_info(Abstractformat *self,
-                                            xx_pd_struct *pd);
-XXFC_API int64_t xx_livemaker_get_format_size(Abstractformat *self,
-                                              xx_pd_struct *pd);
-XXFC_API uint64_t xx_livemaker_get_number_of_archive_records(
-    Abstractformat *self, xx_pd_struct *pd);
+XXFC_API bool xx_livemaker_check_is_valid(Abstractformat *self, xx_pd_struct *pd);
+XXFC_API bool xx_livemaker_handle_base_info(Abstractformat *self, xx_pd_struct *pd);
+XXFC_API int64_t xx_livemaker_get_format_size(Abstractformat *self, xx_pd_struct *pd);
+XXFC_API uint64_t xx_livemaker_get_number_of_archive_records(Abstractformat *self, xx_pd_struct *pd);
 
-XXFC_API xx_archive_record_state *xx_livemaker_create_archive_records_reading(
-    Abstractformat *self, const xx_list_s *options, xx_pd_struct *pd);
-XXFC_API const xx_archive_record *xx_livemaker_get_current_archive_record(
-    Abstractformat *self, xx_archive_record_state *state);
-XXFC_API bool xx_livemaker_unpack_current_archive_record(
-    Abstractformat *self, xx_archive_record_state *state, xx_pd_struct *pd);
-XXFC_API bool xx_livemaker_archive_record_move_to_next(
-    Abstractformat *self, xx_archive_record_state *state, xx_pd_struct *pd);
-XXFC_API void xx_livemaker_free_archive_records_reading(
-    Abstractformat *self, xx_archive_record_state *state);
+XXFC_API xx_archive_record_state *xx_livemaker_create_archive_records_reading(Abstractformat *self, const xx_list_s *options, xx_pd_struct *pd);
+XXFC_API const xx_archive_record *xx_livemaker_get_current_archive_record(Abstractformat *self, xx_archive_record_state *state);
+XXFC_API bool xx_livemaker_unpack_current_archive_record(Abstractformat *self, xx_archive_record_state *state, xx_pd_struct *pd);
+XXFC_API bool xx_livemaker_archive_record_move_to_next(Abstractformat *self, xx_archive_record_state *state, xx_pd_struct *pd);
+XXFC_API void xx_livemaker_free_archive_records_reading(Abstractformat *self, xx_archive_record_state *state);
 
 #ifdef __cplusplus
 }

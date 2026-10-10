@@ -18,12 +18,12 @@
 #endif
 
 XX_TARGET_AVX2
-void xx_lzma_fill_probs_avx2(uint16_t *probabilities, size_t count) {
+void xx_lzma_fill_probs_avx2(uint16_t *probabilities, size_t count)
+{
 #ifdef XX_LZMA_X86
     const __m256i value = _mm256_set1_epi16(1024);
     size_t at = 0;
-    for (; count - at >= 16; at += 16)
-        _mm256_storeu_si256((__m256i *)(void *)(probabilities + at), value);
+    for (; count - at >= 16; at += 16) _mm256_storeu_si256((__m256i *)(void *)(probabilities + at), value);
     if (count - at >= 8) {
         _mm_storeu_si128((__m128i *)(void *)(probabilities + at), _mm_set1_epi16(1024));
         at += 8;
@@ -36,8 +36,8 @@ void xx_lzma_fill_probs_avx2(uint16_t *probabilities, size_t count) {
 }
 
 XX_TARGET_AVX2
-size_t xx_lzma_match_length_avx2(const uint8_t *first, const uint8_t *second,
-                                size_t maximum) {
+size_t xx_lzma_match_length_avx2(const uint8_t *first, const uint8_t *second, size_t maximum)
+{
 #ifdef XX_LZMA_X86
     size_t at = 0;
     for (; maximum - at >= 32; at += 32) {

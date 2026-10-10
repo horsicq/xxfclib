@@ -160,7 +160,7 @@ typedef struct xx_cazip_member_s {
     uint32_t method;
     uint32_t mode;
     uint64_t timestamp;
-    uint32_t crc32;    /* meaningful only when has_crc32 is set */
+    uint32_t crc32; /* meaningful only when has_crc32 is set */
     bool has_crc32;
     bool is_folder;
 } xx_cazip_member;
@@ -177,13 +177,11 @@ static void xx_cazip_vtable_destroy(Abstractformat *self);
 
 /* ------------------------------------------------------------ helpers --- */
 
-static bool xx_cazip_read_at(Abstractformat *self, int64_t offset,
-                             uint8_t *buffer, size_t size) {
+static bool xx_cazip_read_at(Abstractformat *self, int64_t offset, uint8_t *buffer, size_t size)
+{
     size_t done = 0U;
 
-    if (!self || !self->device || offset < 0 || (!buffer && size != 0U) ||
-        xx_io_seek64(self->device, offset, SEEK_SET) != 0)
-        return false;
+    if (!self || !self->device || offset < 0 || (!buffer && size != 0U) || xx_io_seek64(self->device, offset, SEEK_SET) != 0) return false;
     while (done < size) {
         ssize_t got = xx_io_read(self->device, buffer + done, size - done);
         if (got <= 0 || (size_t)got > size - done) return false;
@@ -194,8 +192,8 @@ static bool xx_cazip_read_at(Abstractformat *self, int64_t offset,
 
 /* Scan forward for @p terminator, at most @p limit bytes past @p offset.
  * The found position is returned through @p found. */
-static bool xx_cazip_scan(Abstractformat *self, int64_t span, int64_t offset,
-                          uint8_t terminator, int64_t limit, int64_t *found) {
+static bool xx_cazip_scan(Abstractformat *self, int64_t span, int64_t offset, uint8_t terminator, int64_t limit, int64_t *found)
+{
     uint8_t window[64];
     int64_t cursor = offset;
     int64_t stop;
@@ -207,9 +205,7 @@ static bool xx_cazip_scan(Abstractformat *self, int64_t span, int64_t offset,
         int64_t want = stop - cursor;
         int64_t index;
         if (want > (int64_t)sizeof(window)) want = (int64_t)sizeof(window);
-        if (!xx_cazip_read_at(self, self->base_address + cursor, window,
-                              (size_t)want))
-            return false;
+        if (!xx_cazip_read_at(self, self->base_address + cursor, window, (size_t)want)) return false;
         for (index = 0; index < want; ++index) {
             if (window[index] == terminator) {
                 *found = cursor + index;
@@ -223,8 +219,8 @@ static bool xx_cazip_scan(Abstractformat *self, int64_t span, int64_t offset,
 
 /* Parse @p count space-separated non-negative decimal fields out of @p text.
  * Anything else - a sign, a letter, a missing or extra field - fails. */
-static bool xx_cazip_parse_fields(const uint8_t *text, size_t size,
-                                  uint64_t *values, size_t count) {
+static bool xx_cazip_parse_fields(const uint8_t *text, size_t size, uint64_t *values, size_t count)
+{
     size_t position = 0U;
     size_t index;
 
@@ -232,8 +228,7 @@ static bool xx_cazip_parse_fields(const uint8_t *text, size_t size,
         uint64_t value = 0U;
         size_t digits = 0U;
         while (position < size && text[position] == ' ') ++position;
-        while (position < size && text[position] >= '0' &&
-               text[position] <= '9') {
+        while (position < size && text[position] >= '0' && text[position] <= '9') {
             if (value > (UINT64_MAX - 9U) / 10U) return false;
             value = value * 10U + (uint64_t)(text[position] - '0');
             ++position;
@@ -246,7 +241,8 @@ static bool xx_cazip_parse_fields(const uint8_t *text, size_t size,
     return position == size;
 }
 
-static char *xx_cazip_normalize_name(const uint8_t *bytes, size_t size) {
+static char *xx_cazip_normalize_name(const uint8_t *bytes, size_t size)
+{
     char *name;
     size_t input = 0U;
     size_t output = 0U;
@@ -259,16 +255,12 @@ static char *xx_cazip_normalize_name(const uint8_t *bytes, size_t size) {
         size_t end;
         size_t component;
 
-        while (input < size && (bytes[input] == '/' || bytes[input] == '\\'))
-            ++input;
+        while (input < size && (bytes[input] == '/' || bytes[input] == '\\')) ++input;
         start = input;
-        while (input < size && bytes[input] != '/' && bytes[input] != '\\')
-            ++input;
+        while (input < size && bytes[input] != '/' && bytes[input] != '\\') ++input;
         end = input;
-        if (end == start || (end - start == 1U && bytes[start] == '.'))
-            continue;
-        if (end - start == 2U && bytes[start] == '.' &&
-            bytes[start + 1U] == '.') {
+        if (end == start || (end - start == 1U && bytes[start] == '.')) continue;
+        if (end - start == 2U && bytes[start] == '.' && bytes[start + 1U] == '.') {
             if (output != 0U) {
                 while (output != 0U && name[output - 1U] != '/') --output;
                 if (output != 0U) --output;
@@ -279,15 +271,10 @@ static char *xx_cazip_normalize_name(const uint8_t *bytes, size_t size) {
         component = output;
         while (start < end) {
             uint8_t c = bytes[start++];
-            if (c < 0x20U || c == '"' || c == '*' || c == ':' || c == '<' ||
-                c == '>' || c == '?' || c == '|')
-                name[output++] = '_';
-            else
-                name[output++] = (char)c;
+            if (c < 0x20U || c == '"' || c == '*' || c == ':' || c == '<' || c == '>' || c == '?' || c == '|') name[output++] = '_';
+            else name[output++] = (char)c;
         }
-        while (output > component &&
-               (name[output - 1U] == ' ' || name[output - 1U] == '.'))
-            --output;
+        while (output > component && (name[output - 1U] == ' ' || name[output - 1U] == '.')) --output;
         if (output == component) name[output++] = '_';
     }
     if (output == 0U) name[output++] = '_';
@@ -295,26 +282,24 @@ static char *xx_cazip_normalize_name(const uint8_t *bytes, size_t size) {
     return name;
 }
 
-static bool xx_cazip_path_safe(const char *name) {
+static bool xx_cazip_path_safe(const char *name)
+{
     const char *cursor = name;
 
-    if (!name || !name[0] || name[0] == '/' || name[0] == '\\' ||
-        name[1] == ':')
-        return false;
+    if (!name || !name[0] || name[0] == '/' || name[0] == '\\' || name[1] == ':') return false;
     while (*cursor) {
         const char *end = cursor;
         size_t length;
         while (*end && *end != '/') ++end;
         length = (size_t)(end - cursor);
-        if (length == 0U || (length == 1U && cursor[0] == '.') ||
-            (length == 2U && cursor[0] == '.' && cursor[1] == '.'))
-            return false;
+        if (length == 0U || (length == 1U && cursor[0] == '.') || (length == 2U && cursor[0] == '.' && cursor[1] == '.')) return false;
         cursor = *end ? end + 1 : end;
     }
     return true;
 }
 
-static void xx_cazip_stream_free(void *pointer) {
+static void xx_cazip_stream_free(void *pointer)
+{
     xx_cazip_stream *stream = (xx_cazip_stream *)pointer;
     size_t index;
 
@@ -327,15 +312,12 @@ static void xx_cazip_stream_free(void *pointer) {
     xx_mem_free(stream);
 }
 
-static bool xx_cazip_add(xx_cazip_stream *stream,
-                         const xx_cazip_member *member) {
+static bool xx_cazip_add(xx_cazip_stream *stream, const xx_cazip_member *member)
+{
     xx_cazip_member *grown;
 
-    if (stream->count >= XX_CAZIP_XP_MAX_MEMBERS ||
-        stream->count > SIZE_MAX / sizeof(*grown) - 1U)
-        return false;
-    grown = (xx_cazip_member *)xx_mem_realloc(
-        stream->items, sizeof(*grown) * (stream->count + 1U));
+    if (stream->count >= XX_CAZIP_XP_MAX_MEMBERS || stream->count > SIZE_MAX / sizeof(*grown) - 1U) return false;
+    grown = (xx_cazip_member *)xx_mem_realloc(stream->items, sizeof(*grown) * (stream->count + 1U));
     if (!grown) return false;
     stream->items = grown;
     stream->items[stream->count++] = *member;
@@ -347,26 +329,24 @@ static bool xx_cazip_add(xx_cazip_stream *stream,
 /* Read the classic payload whole.  It is needed twice - once to measure the
  * plaintext, once to produce it - and the DCL entry points are memory based,
  * so there is no streaming alternative. */
-static uint8_t *xx_cazip_classic_payload(Abstractformat *self,
-                                         const xx_cazip_member *member) {
+static uint8_t *xx_cazip_classic_payload(Abstractformat *self, const xx_cazip_member *member)
+{
     uint8_t *input;
 
-    if (member->compressed_size < XX_CAZIP_DCL_PREAMBLE ||
-        (uint64_t)member->compressed_size > XX_CAZIP_CLASSIC_MAX_PLAIN) {
+    if (member->compressed_size < XX_CAZIP_DCL_PREAMBLE || (uint64_t)member->compressed_size > XX_CAZIP_CLASSIC_MAX_PLAIN) {
         return NULL;
     }
     input = (uint8_t *)xx_mem_alloc((size_t)member->compressed_size);
     if (!input) return NULL;
-    if (!xx_cazip_read_at(self, member->data_offset, input,
-                          (size_t)member->compressed_size)) {
+    if (!xx_cazip_read_at(self, member->data_offset, input, (size_t)member->compressed_size)) {
         xx_mem_free(input);
         return NULL;
     }
     return input;
 }
 
-static xx_cazip_stream *xx_cazip_parse_classic(Abstractformat *self,
-                                               int64_t span) {
+static xx_cazip_stream *xx_cazip_parse_classic(Abstractformat *self, int64_t span)
+{
     uint8_t header[XX_CAZIP_CLASSIC_HEADER + XX_CAZIP_DCL_PREAMBLE];
     xx_cazip_stream *stream;
     xx_cazip_member member;
@@ -374,14 +354,9 @@ static xx_cazip_stream *xx_cazip_parse_classic(Abstractformat *self,
     uint16_t flavour;
 
     if (span <= (int64_t)sizeof(header)) return NULL;
-    if (!xx_cazip_read_at(self, self->base_address, header, sizeof(header)))
-        return NULL;
-    if (header[0] != 0x0dU || header[1] != 0x0aU || header[2] != 0x1aU ||
-        xx_rt_memcmp(header + 3, "CAZIP", 5U) != 0)
-        return NULL;
-    if (header[8] < '0' || header[8] > '9' || header[9] < '0' ||
-        header[9] > '9')
-        return NULL;
+    if (!xx_cazip_read_at(self, self->base_address, header, sizeof(header))) return NULL;
+    if (header[0] != 0x0dU || header[1] != 0x0aU || header[2] != 0x1aU || xx_rt_memcmp(header + 3, "CAZIP", 5U) != 0) return NULL;
+    if (header[8] < '0' || header[8] > '9' || header[9] < '0' || header[9] > '9') return NULL;
     if (xx_data_get_u16(header + 10, 2, 0, false) != 1U) return NULL;
     flavour = xx_data_get_u16(header + 12, 2, 0, false);
     if (flavour != 1U && flavour != 2U) return NULL;
@@ -389,12 +364,9 @@ static xx_cazip_stream *xx_cazip_parse_classic(Abstractformat *self,
     /* The next two bytes are the DCL preamble, so they are validated as one:
      * a literal mode outside 0/1 or a dictionary exponent outside 4..6 is not
      * a stream this reader can speak for. */
-    if (header[XX_CAZIP_CLASSIC_HEADER + XX_CAZIP_DCL_LITERAL_OFFSET] > 1U)
-        return NULL;
-    if (header[XX_CAZIP_CLASSIC_HEADER + XX_CAZIP_DCL_DICT_OFFSET] <
-            XX_CAZIP_DCL_DICT_MIN ||
-        header[XX_CAZIP_CLASSIC_HEADER + XX_CAZIP_DCL_DICT_OFFSET] >
-            XX_CAZIP_DCL_DICT_MAX)
+    if (header[XX_CAZIP_CLASSIC_HEADER + XX_CAZIP_DCL_LITERAL_OFFSET] > 1U) return NULL;
+    if (header[XX_CAZIP_CLASSIC_HEADER + XX_CAZIP_DCL_DICT_OFFSET] < XX_CAZIP_DCL_DICT_MIN ||
+        header[XX_CAZIP_CLASSIC_HEADER + XX_CAZIP_DCL_DICT_OFFSET] > XX_CAZIP_DCL_DICT_MAX)
         return NULL;
 
     stream = (xx_cazip_stream *)xx_mem_calloc(1U, sizeof(*stream));
@@ -411,8 +383,7 @@ static xx_cazip_stream *xx_cazip_parse_classic(Abstractformat *self,
     member.data_offset = self->base_address + XX_CAZIP_CLASSIC_HEADER;
     member.compressed_size = span - XX_CAZIP_CLASSIC_HEADER;
     member.uncompressed_size = -1;
-    member.method = XX_CAZIP_METHOD_CLASSIC_BASE +
-                    header[XX_CAZIP_CLASSIC_HEADER + XX_CAZIP_DCL_DICT_OFFSET];
+    member.method = XX_CAZIP_METHOD_CLASSIC_BASE + header[XX_CAZIP_CLASSIC_HEADER + XX_CAZIP_DCL_DICT_OFFSET];
     member.crc32 = xx_data_get_u32(header + 14, 4, 0, false);
     member.has_crc32 = true;
     member.mode = 0U;
@@ -431,10 +402,7 @@ static xx_cazip_stream *xx_cazip_parse_classic(Abstractformat *self,
         size_t consumed = 0U;
         size_t produced = 0U;
 
-        if (xx_dcl_scan_memory(payload, (size_t)member.compressed_size,
-                               XX_CAZIP_CLASSIC_MAX_PLAIN, &consumed,
-                               &produced) &&
-            consumed == (size_t)member.compressed_size &&
+        if (xx_dcl_scan_memory(payload, (size_t)member.compressed_size, XX_CAZIP_CLASSIC_MAX_PLAIN, &consumed, &produced) && consumed == (size_t)member.compressed_size &&
             produced <= XX_CAZIP_CLASSIC_MAX_PLAIN) {
             member.uncompressed_size = (int64_t)produced;
         }
@@ -456,14 +424,12 @@ static xx_cazip_stream *xx_cazip_parse_classic(Abstractformat *self,
  * is never sized from a declared value: each entry costs at least ten bytes
  * of real file (the chunk record that introduces it), so the count is bounded
  * by the file itself. */
-static bool xx_cazip_xp_add_chunk(xx_cazip_member *member, int64_t offset,
-                                  int64_t size) {
+static bool xx_cazip_xp_add_chunk(xx_cazip_member *member, int64_t offset, int64_t size)
+{
     xx_cazip_chunk *grown;
 
-    if (member->chunk_count > SIZE_MAX / sizeof(xx_cazip_chunk) - 1U)
-        return false;
-    grown = (xx_cazip_chunk *)xx_mem_realloc(
-        member->chunks, sizeof(xx_cazip_chunk) * (member->chunk_count + 1U));
+    if (member->chunk_count > SIZE_MAX / sizeof(xx_cazip_chunk) - 1U) return false;
+    grown = (xx_cazip_chunk *)xx_mem_realloc(member->chunks, sizeof(xx_cazip_chunk) * (member->chunk_count + 1U));
     if (!grown) return false;
     member->chunks = grown;
     member->chunks[member->chunk_count].offset = offset;
@@ -484,16 +450,12 @@ static bool xx_cazip_xp_add_chunk(xx_cazip_member *member, int64_t offset,
  * split threshold, which is 16383 rather than the round 16384 one would
  * expect and is nowhere stated in the file.
  */
-static bool xx_cazip_xp_read_chunks(Abstractformat *self, int64_t span,
-                                    int64_t *cursor,
-                                    xx_cazip_member *member,
-                                    int64_t first_size) {
+static bool xx_cazip_xp_read_chunks(Abstractformat *self, int64_t span, int64_t *cursor, xx_cazip_member *member, int64_t first_size)
+{
     int64_t position = *cursor;
 
     if (first_size < 0 || first_size > span - position) return false;
-    if (!xx_cazip_xp_add_chunk(member, self->base_address + position,
-                               first_size))
-        return false;
+    if (!xx_cazip_xp_add_chunk(member, self->base_address + position, first_size)) return false;
     position += first_size;
     for (;;) {
         uint8_t record[XX_CAZIP_XP_CHUNK_RECORD];
@@ -504,9 +466,7 @@ static bool xx_cazip_xp_read_chunks(Abstractformat *self, int64_t span,
         int64_t size;
 
         if (span - position < (int64_t)sizeof(record)) break;
-        if (!xx_cazip_read_at(self, self->base_address + position, record,
-                              sizeof(record)))
-            return false;
+        if (!xx_cazip_read_at(self, self->base_address + position, record, sizeof(record))) return false;
         while (length < sizeof(record) && record[length] != 0U) ++length;
         /* Unterminated inside ten bytes: not a chunk record. */
         if (length == 0U || length == sizeof(record)) break;
@@ -521,9 +481,7 @@ static bool xx_cazip_xp_read_chunks(Abstractformat *self, int64_t span,
         position += (int64_t)sizeof(record);
         if (values[0] > (uint64_t)(span - position)) return false;
         size = (int64_t)values[0];
-        if (!xx_cazip_xp_add_chunk(member, self->base_address + position,
-                                   size))
-            return false;
+        if (!xx_cazip_xp_add_chunk(member, self->base_address + position, size)) return false;
         position += size;
         if (values[1] == 0U) break;
     }
@@ -531,7 +489,8 @@ static bool xx_cazip_xp_read_chunks(Abstractformat *self, int64_t span,
     return true;
 }
 
-static xx_cazip_stream *xx_cazip_parse_xp(Abstractformat *self, int64_t span) {
+static xx_cazip_stream *xx_cazip_parse_xp(Abstractformat *self, int64_t span)
+{
     xx_cazip_stream *stream;
     uint8_t signature[6];
     uint8_t namebuf[XX_CAZIP_XP_MAX_NAME + 1U];
@@ -540,20 +499,13 @@ static xx_cazip_stream *xx_cazip_parse_xp(Abstractformat *self, int64_t span) {
     int64_t found;
 
     if (span < 16) return NULL;
-    if (!xx_cazip_read_at(self, self->base_address, signature,
-                          sizeof(signature)))
-        return NULL;
-    if (xx_rt_memcmp(signature, "CAZIP", 5U) != 0 || signature[5] != 0x04U)
-        return NULL;
+    if (!xx_cazip_read_at(self, self->base_address, signature, sizeof(signature))) return NULL;
+    if (xx_rt_memcmp(signature, "CAZIP", 5U) != 0 || signature[5] != 0x04U) return NULL;
     cursor = 6;
     /* Archive field line, then the archive's own trailing number. */
-    if (!xx_cazip_scan(self, span, cursor, 0U,
-                       (int64_t)XX_CAZIP_XP_MAX_FIELDS, &found))
-        return NULL;
+    if (!xx_cazip_scan(self, span, cursor, 0U, (int64_t)XX_CAZIP_XP_MAX_FIELDS, &found)) return NULL;
     cursor = found + 1;
-    if (!xx_cazip_scan(self, span, cursor, 0U,
-                       (int64_t)XX_CAZIP_XP_MAX_TRAILER, &found))
-        return NULL;
+    if (!xx_cazip_scan(self, span, cursor, 0U, (int64_t)XX_CAZIP_XP_MAX_TRAILER, &found)) return NULL;
     cursor = found + 1;
 
     stream = (xx_cazip_stream *)xx_mem_calloc(1U, sizeof(*stream));
@@ -573,27 +525,18 @@ static xx_cazip_stream *xx_cazip_parse_xp(Abstractformat *self, int64_t span) {
         ++cursor;
         if (cursor >= span) goto fail;
         name_start = cursor;
-        if (!xx_cazip_scan(self, span, cursor, 0x04U,
-                           (int64_t)XX_CAZIP_XP_MAX_NAME, &found))
-            goto fail;
+        if (!xx_cazip_scan(self, span, cursor, 0x04U, (int64_t)XX_CAZIP_XP_MAX_NAME, &found)) goto fail;
         name_length = (size_t)(found - name_start);
         if (name_length == 0U) goto fail;
-        if (!xx_cazip_read_at(self, self->base_address + name_start, namebuf,
-                              name_length))
-            goto fail;
+        if (!xx_cazip_read_at(self, self->base_address + name_start, namebuf, name_length)) goto fail;
         cursor = found + 1;
 
         field_start = cursor;
-        if (!xx_cazip_scan(self, span, cursor, 0U,
-                           (int64_t)XX_CAZIP_XP_MAX_FIELDS, &found))
-            goto fail;
+        if (!xx_cazip_scan(self, span, cursor, 0U, (int64_t)XX_CAZIP_XP_MAX_FIELDS, &found)) goto fail;
         field_length = (size_t)(found - field_start);
         if (field_length == 0U) goto fail;
-        if (!xx_cazip_read_at(self, self->base_address + field_start,
-                              fieldbuf, field_length))
-            goto fail;
-        if (!xx_cazip_parse_fields(fieldbuf, field_length, values, 8U))
-            goto fail;
+        if (!xx_cazip_read_at(self, self->base_address + field_start, fieldbuf, field_length)) goto fail;
+        if (!xx_cazip_parse_fields(fieldbuf, field_length, values, 8U)) goto fail;
         cursor = found + 1;
 
         /* Both declared sizes are bounded against the real file before the
@@ -603,8 +546,7 @@ static xx_cazip_stream *xx_cazip_parse_xp(Abstractformat *self, int64_t span) {
 
         xx_mem_zero(&member, sizeof(member));
         data_start = cursor;
-        if (!xx_cazip_xp_read_chunks(self, span, &cursor, &member,
-                                     (int64_t)values[6])) {
+        if (!xx_cazip_xp_read_chunks(self, span, &cursor, &member, (int64_t)values[6])) {
             xx_mem_free(member.chunks);
             goto fail;
         }
@@ -614,8 +556,7 @@ static xx_cazip_stream *xx_cazip_parse_xp(Abstractformat *self, int64_t span) {
             goto fail;
         }
         member.mode = (uint32_t)values[0];
-        member.is_folder =
-            ((uint32_t)values[0] & XX_CAZIP_XP_IFMT) == XX_CAZIP_XP_IFDIR;
+        member.is_folder = ((uint32_t)values[0] & XX_CAZIP_XP_IFMT) == XX_CAZIP_XP_IFDIR;
         member.uncompressed_size = (int64_t)values[2];
         member.timestamp = values[4];
         member.header_offset = self->base_address + header_start;
@@ -625,16 +566,12 @@ static xx_cazip_stream *xx_cazip_parse_xp(Abstractformat *self, int64_t span) {
         member.method = XX_CAZIP_METHOD_COMPRESS;
         if (member.chunk_count == 1U && member.chunks[0].size != 0) {
             uint8_t probe[3];
-            if (!xx_cazip_read_at(self, member.chunks[0].offset, probe,
-                                  member.chunks[0].size >= 3
-                                      ? 3U
-                                      : (size_t)member.chunks[0].size)) {
+            if (!xx_cazip_read_at(self, member.chunks[0].offset, probe, member.chunks[0].size >= 3 ? 3U : (size_t)member.chunks[0].size)) {
                 xx_str_free(member.name);
                 xx_mem_free(member.chunks);
                 goto fail;
             }
-            if (member.chunks[0].size < 3 ||
-                !xx_compress_has_header(probe, 3U)) {
+            if (member.chunks[0].size < 3 || !xx_compress_has_header(probe, 3U)) {
                 /* Stored: only credible when the two sizes agree. */
                 if (member.chunks[0].size != member.uncompressed_size) {
                     xx_str_free(member.name);
@@ -653,9 +590,7 @@ static xx_cazip_stream *xx_cazip_parse_xp(Abstractformat *self, int64_t span) {
         }
         /* The final member ends at EOF with no trailing checksum. */
         if (cursor == span) break;
-        if (!xx_cazip_scan(self, span, cursor, 0U,
-                           (int64_t)XX_CAZIP_XP_MAX_TRAILER, &found))
-            goto fail;
+        if (!xx_cazip_scan(self, span, cursor, 0U, (int64_t)XX_CAZIP_XP_MAX_TRAILER, &found)) goto fail;
         cursor = found + 1;
     }
     if (stream->count == 0U || cursor != span) goto fail;
@@ -666,8 +601,8 @@ fail:
     return NULL;
 }
 
-static xx_cazip_stream *xx_cazip_parse(Abstractformat *self,
-                                       xx_pd_struct *pd) {
+static xx_cazip_stream *xx_cazip_parse(Abstractformat *self, xx_pd_struct *pd)
+{
     int64_t total;
     int64_t span;
     xx_cazip_stream *stream;
@@ -689,17 +624,14 @@ static xx_cazip_stream *xx_cazip_parse(Abstractformat *self,
  * The plaintext length was measured by the parser, so a decode that does not
  * land on it exactly, or whose CRC does not match, is a failure rather than
  * something to hand back with a caveat. */
-static bool xx_cazip_decode_classic(Abstractformat *self,
-                                    const xx_cazip_member *member,
-                                    uint8_t **plain, size_t *plain_size,
-                                    xx_pd_struct *pd) {
+static bool xx_cazip_decode_classic(Abstractformat *self, const xx_cazip_member *member, uint8_t **plain, size_t *plain_size, xx_pd_struct *pd)
+{
     uint8_t *input;
     uint8_t *output;
     size_t written = 0U;
 
     if (member->uncompressed_size <= 0) return false;
-    if ((uint64_t)member->uncompressed_size > XX_CAZIP_CLASSIC_MAX_PLAIN)
-        return false;
+    if ((uint64_t)member->uncompressed_size > XX_CAZIP_CLASSIC_MAX_PLAIN) return false;
     if (pd && xx_pd_is_stopped(pd)) return false;
 
     input = xx_cazip_classic_payload(self, member);
@@ -709,8 +641,7 @@ static bool xx_cazip_decode_classic(Abstractformat *self,
         xx_mem_free(input);
         return false;
     }
-    if (!xx_dcl_decode_memory(input, (size_t)member->compressed_size, output,
-                              (size_t)member->uncompressed_size, &written) ||
+    if (!xx_dcl_decode_memory(input, (size_t)member->compressed_size, output, (size_t)member->uncompressed_size, &written) ||
         written != (size_t)member->uncompressed_size) {
         xx_mem_free(output);
         xx_mem_free(input);
@@ -719,8 +650,7 @@ static bool xx_cazip_decode_classic(Abstractformat *self,
     xx_mem_free(input);
     /* The header's CRC-32 is the format's own statement about the plaintext,
      * so it is verified, not merely published. */
-    if (member->has_crc32 &&
-        xx_crc32_calc(0U, output, written) != member->crc32) {
+    if (member->has_crc32 && xx_crc32_calc(0U, output, written) != member->crc32) {
         xx_mem_free(output);
         return false;
     }
@@ -729,9 +659,8 @@ static bool xx_cazip_decode_classic(Abstractformat *self,
     return true;
 }
 
-static bool xx_cazip_decode(Abstractformat *self, const xx_cazip_member *member,
-                            uint8_t **plain, size_t *plain_size,
-                            xx_pd_struct *pd) {
+static bool xx_cazip_decode(Abstractformat *self, const xx_cazip_member *member, uint8_t **plain, size_t *plain_size, xx_pd_struct *pd)
+{
     uint8_t *output;
     size_t written = 0U;
     size_t index;
@@ -763,9 +692,7 @@ static bool xx_cazip_decode(Abstractformat *self, const xx_cazip_member *member,
         if (chunk->size < 0 || (uint64_t)chunk->size > SIZE_MAX) goto fail;
         if (member->method == XX_CAZIP_METHOD_STORE) {
             if ((uint64_t)chunk->size > (uint64_t)room) goto fail;
-            if (!xx_cazip_read_at(self, chunk->offset, output + written,
-                                  (size_t)chunk->size))
-                goto fail;
+            if (!xx_cazip_read_at(self, chunk->offset, output + written, (size_t)chunk->size)) goto fail;
             written += (size_t)chunk->size;
         } else {
             xx_io_device *sink;
@@ -775,11 +702,9 @@ static bool xx_cazip_decode(Abstractformat *self, const xx_cazip_member *member,
             if (room == 0U) goto fail;
             sink = xx_io_mem_open(output + written, room);
             if (!sink) goto fail;
-            ok = xx_compress_decode_device(self->device, chunk->offset,
-                                           chunk->size, sink, &produced, pd);
+            ok = xx_compress_decode_device(self->device, chunk->offset, chunk->size, sink, &produced, pd);
             xx_io_close(sink);
-            if (!ok || produced < 0 || (uint64_t)produced > (uint64_t)room)
-                goto fail;
+            if (!ok || produced < 0 || (uint64_t)produced > (uint64_t)room) goto fail;
             written += (size_t)produced;
         }
     }
@@ -794,8 +719,8 @@ fail:
 
 /* ---------------------------------------------------------- lifecycle --- */
 
-void xx_cazip_init(xx_cazip *archive, xx_io_device *device,
-                   int64_t base_address) {
+void xx_cazip_init(xx_cazip *archive, xx_io_device *device, int64_t base_address)
+{
     if (!archive) return;
     xx_mem_zero(archive, sizeof(*archive));
     xx_format_init(&archive->format, device, base_address);
@@ -808,22 +733,17 @@ void xx_cazip_init(xx_cazip *archive, xx_io_device *device,
     archive->format.check_is_valid = xx_cazip_check_is_valid;
     archive->format.handle_base_info = xx_cazip_handle_base_info;
     archive->format.get_format_size = xx_cazip_get_format_size;
-    archive->format.get_number_of_archive_records =
-        xx_cazip_get_number_of_archive_records;
-    archive->format.create_archive_records_reading =
-        xx_cazip_create_archive_records_reading;
-    archive->format.get_current_archive_record =
-        xx_cazip_get_current_archive_record;
-    archive->format.unpack_current_archive_record =
-        xx_cazip_unpack_current_archive_record;
-    archive->format.archive_record_move_to_next =
-        xx_cazip_archive_record_move_to_next;
-    archive->format.free_archive_records_reading =
-        xx_cazip_free_archive_records_reading;
+    archive->format.get_number_of_archive_records = xx_cazip_get_number_of_archive_records;
+    archive->format.create_archive_records_reading = xx_cazip_create_archive_records_reading;
+    archive->format.get_current_archive_record = xx_cazip_get_current_archive_record;
+    archive->format.unpack_current_archive_record = xx_cazip_unpack_current_archive_record;
+    archive->format.archive_record_move_to_next = xx_cazip_archive_record_move_to_next;
+    archive->format.free_archive_records_reading = xx_cazip_free_archive_records_reading;
     archive->format.destroy = xx_cazip_vtable_destroy;
 }
 
-xx_cazip *xx_cazip_create(xx_io_device *device, int64_t base_address) {
+xx_cazip *xx_cazip_create(xx_io_device *device, int64_t base_address)
+{
     xx_cazip *archive = (xx_cazip *)xx_mem_alloc(sizeof(*archive));
 
     if (!archive) return NULL;
@@ -831,26 +751,30 @@ xx_cazip *xx_cazip_create(xx_io_device *device, int64_t base_address) {
     return archive;
 }
 
-void xx_cazip_destroy(xx_cazip *archive) {
+void xx_cazip_destroy(xx_cazip *archive)
+{
     if (!archive) return;
     if (archive->format.close) archive->format.close(&archive->format);
     xx_format_cleanup_extra_parameters(&archive->format);
     archive->number_of_records = 0U;
 }
 
-void xx_cazip_free(xx_cazip *archive) {
+void xx_cazip_free(xx_cazip *archive)
+{
     if (!archive) return;
     xx_cazip_destroy(archive);
     xx_mem_free(archive);
 }
 
-static void xx_cazip_vtable_destroy(Abstractformat *self) {
+static void xx_cazip_vtable_destroy(Abstractformat *self)
+{
     xx_cazip_destroy((xx_cazip *)self);
 }
 
 /* ------------------------------------------------------------- format --- */
 
-bool xx_cazip_check_is_valid(Abstractformat *self, xx_pd_struct *pd) {
+bool xx_cazip_check_is_valid(Abstractformat *self, xx_pd_struct *pd)
+{
     xx_cazip_stream *stream;
 
     if (!self || (pd && xx_pd_is_stopped(pd))) return false;
@@ -860,7 +784,8 @@ bool xx_cazip_check_is_valid(Abstractformat *self, xx_pd_struct *pd) {
     return true;
 }
 
-bool xx_cazip_handle_base_info(Abstractformat *self, xx_pd_struct *pd) {
+bool xx_cazip_handle_base_info(Abstractformat *self, xx_pd_struct *pd)
+{
     xx_cazip *archive = (xx_cazip *)self;
     xx_cazip_stream *stream;
 
@@ -881,25 +806,22 @@ bool xx_cazip_handle_base_info(Abstractformat *self, xx_pd_struct *pd) {
     return true;
 }
 
-int64_t xx_cazip_get_format_size(Abstractformat *self, xx_pd_struct *pd) {
-    if (!self ||
-        (!self->base_info_handled && !xx_format_handle_base_info(self, pd)))
-        return 0;
+int64_t xx_cazip_get_format_size(Abstractformat *self, xx_pd_struct *pd)
+{
+    if (!self || (!self->base_info_handled && !xx_format_handle_base_info(self, pd))) return 0;
     return self->is_valid ? self->format_size : 0;
 }
 
-uint64_t xx_cazip_get_number_of_archive_records(Abstractformat *self,
-                                                xx_pd_struct *pd) {
-    if (!self ||
-        (!self->base_info_handled && !xx_format_handle_base_info(self, pd)))
-        return 0U;
+uint64_t xx_cazip_get_number_of_archive_records(Abstractformat *self, xx_pd_struct *pd)
+{
+    if (!self || (!self->base_info_handled && !xx_format_handle_base_info(self, pd))) return 0U;
     return self->is_valid ? ((xx_cazip *)self)->number_of_records : 0U;
 }
 
 /* ------------------------------------------------------------ records --- */
 
-static bool xx_cazip_set_record(xx_archive_record *record,
-                                const xx_cazip_member *member) {
+static bool xx_cazip_set_record(xx_archive_record *record, const xx_cazip_member *member)
+{
     xx_archive_record_cleanup(record);
     xx_archive_record_init(record);
     record->header_offset = member->header_offset;
@@ -907,43 +829,27 @@ static bool xx_cazip_set_record(xx_archive_record *record,
     record->data_offset = member->data_offset;
     record->compressed_size = member->compressed_size;
     return xx_archive_record_set_original_name(record, member->name) &&
-           xx_archive_record_set_meta_u64(record, XX_META_ID_COMPRESSED_SIZE,
-                                          (uint64_t)member->compressed_size) &&
-           xx_archive_record_set_meta_u64(
-               record, XX_META_ID_UNCOMPRESSED_SIZE,
-               member->uncompressed_size >= 0
-                   ? (uint64_t)member->uncompressed_size
-                   : 0U) &&
-           xx_archive_record_set_meta_u64(record,
-                                          XX_META_ID_COMPRESSION_METHOD,
-                                          member->method) &&
-           xx_archive_record_set_meta_u64(record, XX_META_ID_ATTRIBUTES,
-                                          member->mode) &&
-           xx_archive_record_set_meta_u64(record, XX_META_ID_TIMESTAMP,
-                                          member->timestamp) &&
-           (!member->has_crc32 ||
-            xx_archive_record_set_meta_u64(record, XX_META_ID_CRC32,
-                                           member->crc32)) &&
-           xx_archive_record_set_meta_bool(record, XX_META_ID_IS_FOLDER,
-                                           member->is_folder) &&
-           xx_archive_record_set_meta_bool(record, XX_META_ID_IS_ENCRYPTED,
-                                           false);
+           xx_archive_record_set_meta_u64(record, XX_META_ID_COMPRESSED_SIZE, (uint64_t)member->compressed_size) &&
+           xx_archive_record_set_meta_u64(record, XX_META_ID_UNCOMPRESSED_SIZE, member->uncompressed_size >= 0 ? (uint64_t)member->uncompressed_size : 0U) &&
+           xx_archive_record_set_meta_u64(record, XX_META_ID_COMPRESSION_METHOD, member->method) &&
+           xx_archive_record_set_meta_u64(record, XX_META_ID_ATTRIBUTES, member->mode) &&
+           xx_archive_record_set_meta_u64(record, XX_META_ID_TIMESTAMP, member->timestamp) &&
+           (!member->has_crc32 || xx_archive_record_set_meta_u64(record, XX_META_ID_CRC32, member->crc32)) &&
+           xx_archive_record_set_meta_bool(record, XX_META_ID_IS_FOLDER, member->is_folder) && xx_archive_record_set_meta_bool(record, XX_META_ID_IS_ENCRYPTED, false);
 }
 
-static bool xx_cazip_copy_options(xx_list_s *target,
-                                  const xx_list_s *options) {
+static bool xx_cazip_copy_options(xx_list_s *target, const xx_list_s *options)
+{
     size_t index;
 
     if (!options) return true;
     if (!target) return false;
     for (index = 0U; index < options->count; ++index) {
-        const xx_meta *source =
-            (const xx_meta *)xx_list_at((const xx_list_t *)options, index);
+        const xx_meta *source = (const xx_meta *)xx_list_at((const xx_list_t *)options, index);
         xx_meta copied;
         if (!source) continue;
         xx_meta_init(&copied, source->meta_id);
-        if (!xx_var_copy(&copied.var, &source->var) ||
-            !xx_list_append(target, &copied)) {
+        if (!xx_var_copy(&copied.var, &source->var) || !xx_list_append(target, &copied)) {
             xx_meta_cleanup(&copied);
             return false;
         }
@@ -951,21 +857,20 @@ static bool xx_cazip_copy_options(xx_list_s *target,
     return true;
 }
 
-static const xx_var *xx_cazip_get_option(const xx_list_s *options,
-                                         uint32_t meta_id) {
+static const xx_var *xx_cazip_get_option(const xx_list_s *options, uint32_t meta_id)
+{
     size_t index;
 
     if (!options) return NULL;
     for (index = 0U; index < options->count; ++index) {
-        const xx_meta *meta =
-            (const xx_meta *)xx_list_at((const xx_list_t *)options, index);
+        const xx_meta *meta = (const xx_meta *)xx_list_at((const xx_list_t *)options, index);
         if (meta && meta->meta_id == meta_id) return &meta->var;
     }
     return NULL;
 }
 
-xx_archive_record_state *xx_cazip_create_archive_records_reading(
-    Abstractformat *self, const xx_list_s *options, xx_pd_struct *pd) {
+xx_archive_record_state *xx_cazip_create_archive_records_reading(Abstractformat *self, const xx_list_s *options, xx_pd_struct *pd)
+{
     xx_cazip_stream *stream;
     xx_archive_record_state *state;
 
@@ -981,9 +886,7 @@ xx_archive_record_state *xx_cazip_create_archive_records_reading(
     state->internal_state = stream;
     state->free_internal = xx_cazip_stream_free;
     state->total_records = (int64_t)stream->count;
-    if (!xx_cazip_copy_options(&state->options, options) ||
-        (stream->count != 0U &&
-         !xx_cazip_set_record(&state->current_record, &stream->items[0]))) {
+    if (!xx_cazip_copy_options(&state->options, options) || (stream->count != 0U && !xx_cazip_set_record(&state->current_record, &stream->items[0]))) {
         xx_archive_record_state_free(state);
         return NULL;
     }
@@ -992,21 +895,16 @@ xx_archive_record_state *xx_cazip_create_archive_records_reading(
     return state;
 }
 
-const xx_archive_record *xx_cazip_get_current_archive_record(
-    Abstractformat *self, xx_archive_record_state *state) {
-    return self && state && state->format == self && state->has_record
-               ? &state->current_record
-               : NULL;
+const xx_archive_record *xx_cazip_get_current_archive_record(Abstractformat *self, xx_archive_record_state *state)
+{
+    return self && state && state->format == self && state->has_record ? &state->current_record : NULL;
 }
 
-bool xx_cazip_archive_record_move_to_next(Abstractformat *self,
-                                          xx_archive_record_state *state,
-                                          xx_pd_struct *pd) {
+bool xx_cazip_archive_record_move_to_next(Abstractformat *self, xx_archive_record_state *state, xx_pd_struct *pd)
+{
     xx_cazip_stream *stream;
 
-    if (!self || !state || state->format != self || !state->has_record ||
-        (pd && xx_pd_is_stopped(pd)))
-        return false;
+    if (!self || !state || state->format != self || !state->has_record || (pd && xx_pd_is_stopped(pd))) return false;
     stream = (xx_cazip_stream *)state->internal_state;
     if (!stream || stream->index + 1U >= stream->count) {
         xx_archive_record_cleanup(&state->current_record);
@@ -1016,15 +914,12 @@ bool xx_cazip_archive_record_move_to_next(Abstractformat *self,
     }
     ++stream->index;
     ++state->current_index;
-    state->has_record =
-        xx_cazip_set_record(&state->current_record,
-                            &stream->items[stream->index]);
+    state->has_record = xx_cazip_set_record(&state->current_record, &stream->items[stream->index]);
     return state->has_record;
 }
 
-bool xx_cazip_unpack_current_archive_record(Abstractformat *self,
-                                            xx_archive_record_state *state,
-                                            xx_pd_struct *pd) {
+bool xx_cazip_unpack_current_archive_record(Abstractformat *self, xx_archive_record_state *state, xx_pd_struct *pd)
+{
     xx_cazip_stream *stream;
     const xx_cazip_member *member;
     const xx_var *path_option;
@@ -1036,27 +931,22 @@ bool xx_cazip_unpack_current_archive_record(Abstractformat *self,
     bool result = false;
     bool created = false;
 
-    if (!self || !state || state->format != self || !state->has_record ||
-        (pd && xx_pd_is_stopped(pd)))
-        return false;
+    if (!self || !state || state->format != self || !state->has_record || (pd && xx_pd_is_stopped(pd))) return false;
     stream = (xx_cazip_stream *)state->internal_state;
     if (!stream || stream->index >= stream->count) return false;
     member = &stream->items[stream->index];
     if (!xx_cazip_path_safe(member->name)) return false;
 
-    path_option =
-        xx_cazip_get_option(&state->options, XX_META_ID_OPT_UNPACK_PATH);
+    path_option = xx_cazip_get_option(&state->options, XX_META_ID_OPT_UNPACK_PATH);
     if (!path_option) {
         if (member->is_folder) return true;
         result = xx_cazip_decode(self, member, &plain, &plain_size, pd);
         xx_mem_free(plain);
         return result;
     }
-    if (path_option->type == XX_VAR_TYPE_STRING ||
-        path_option->type == XX_VAR_TYPE_STRING_VIEW) {
+    if (path_option->type == XX_VAR_TYPE_STRING || path_option->type == XX_VAR_TYPE_STRING_VIEW) {
         base_path = xx_var_get_str(path_option);
-    } else if (path_option->type == XX_VAR_TYPE_WSTRING ||
-               path_option->type == XX_VAR_TYPE_WSTRING_VIEW) {
+    } else if (path_option->type == XX_VAR_TYPE_WSTRING || path_option->type == XX_VAR_TYPE_WSTRING_VIEW) {
         converted = xx_str_unicode_to_utf8(xx_var_get_wstr(path_option));
         base_path = converted;
     }
@@ -1064,9 +954,7 @@ bool xx_cazip_unpack_current_archive_record(Abstractformat *self,
         xx_str_free(converted);
         return false;
     }
-    target = (base_path[0] != '\0' &&
-              base_path[xx_str_len(base_path) - 1U] != '/' &&
-              base_path[xx_str_len(base_path) - 1U] != '\\')
+    target = (base_path[0] != '\0' && base_path[xx_str_len(base_path) - 1U] != '/' && base_path[xx_str_len(base_path) - 1U] != '\\')
                  ? xx_str_concat3(base_path, "/", member->name)
                  : xx_str_concat(base_path, member->name);
     xx_str_free(converted);
@@ -1076,8 +964,7 @@ bool xx_cazip_unpack_current_archive_record(Abstractformat *self,
         xx_str_free(target);
         return result;
     }
-    if (!xx_store_create_dirs_a(target, false) ||
-        !xx_cazip_decode(self, member, &plain, &plain_size, pd)) {
+    if (!xx_store_create_dirs_a(target, false) || !xx_cazip_decode(self, member, &plain, &plain_size, pd)) {
         xx_str_free(target);
         return false;
     }
@@ -1103,8 +990,8 @@ bool xx_cazip_unpack_current_archive_record(Abstractformat *self,
     return result;
 }
 
-void xx_cazip_free_archive_records_reading(Abstractformat *self,
-                                           xx_archive_record_state *state) {
+void xx_cazip_free_archive_records_reading(Abstractformat *self, xx_archive_record_state *state)
+{
     (void)self;
     xx_archive_record_state_free(state);
 }

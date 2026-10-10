@@ -75,9 +75,7 @@ XXFC_API bool xx_zie_is_valid_header(const uint8_t *header, size_t header_size);
  * @param length      Receives the name length without the terminator. May be
  *                    NULL.
  */
-XXFC_API bool xx_zie_file_name(const uint8_t *header, size_t header_size,
-                               char *output, size_t output_size,
-                               size_t *length);
+XXFC_API bool xx_zie_file_name(const uint8_t *header, size_t header_size, char *output, size_t output_size, size_t *length);
 
 /**
  * @brief Derive the key and resolve the XOR phase.
@@ -88,10 +86,7 @@ XXFC_API bool xx_zie_file_name(const uint8_t *header, size_t header_size,
  * @return true when the header is a ZIE header and one of the two candidate
  *         phases yields the "PK" 03 04 local file header signature.
  */
-XXFC_API bool xx_zie_resolve_method(const uint8_t *header, size_t header_size,
-                                    const uint8_t *probe, size_t probe_size,
-                                    uint64_t payload_size,
-                                    xx_zie_method *method);
+XXFC_API bool xx_zie_resolve_method(const uint8_t *header, size_t header_size, const uint8_t *probe, size_t probe_size, uint64_t payload_size, xx_zie_method *method);
 
 /**
  * @brief Decrypt a payload with an already resolved method.
@@ -100,10 +95,7 @@ XXFC_API bool xx_zie_resolve_method(const uint8_t *header, size_t header_size,
  * result has exactly the same length. @p output may be the same address as
  * @p input for in-place work; partial overlap is not supported.
  */
-XXFC_API bool xx_zie_decode_method(const uint8_t *input, size_t input_size,
-                                   const xx_zie_method *method,
-                                   uint8_t *output, size_t output_size,
-                                   size_t *written);
+XXFC_API bool xx_zie_decode_method(const uint8_t *input, size_t input_size, const xx_zie_method *method, uint8_t *output, size_t output_size, size_t *written);
 
 /**
  * @brief Decrypt a complete ZIE file.
@@ -112,9 +104,7 @@ XXFC_API bool xx_zie_decode_method(const uint8_t *input, size_t input_size,
  * method resolved from it and from the first payload bytes, and the decrypted
  * ZIP is written to @p output. @p written receives input_size - 0x118.
  */
-XXFC_API bool xx_zie_decode_memory(const uint8_t *input, size_t input_size,
-                                   uint8_t *output, size_t output_size,
-                                   size_t *written);
+XXFC_API bool xx_zie_decode_memory(const uint8_t *input, size_t input_size, uint8_t *output, size_t output_size, size_t *written);
 
 #ifdef __cplusplus
 }

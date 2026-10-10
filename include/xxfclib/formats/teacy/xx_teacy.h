@@ -22,31 +22,21 @@ typedef struct xx_teacy {
 
 typedef xx_teacy xx_teacy_t;
 
-XXFC_API void xx_teacy_init(xx_teacy *archive, xx_io_device *device,
-                             int64_t base_address);
-XXFC_API xx_teacy *xx_teacy_create(xx_io_device *device,
-                                     int64_t base_address);
+XXFC_API void xx_teacy_init(xx_teacy *archive, xx_io_device *device, int64_t base_address);
+XXFC_API xx_teacy *xx_teacy_create(xx_io_device *device, int64_t base_address);
 XXFC_API void xx_teacy_destroy(xx_teacy *archive);
 XXFC_API void xx_teacy_free(xx_teacy *archive);
 
 XXFC_API bool xx_teacy_check_is_valid(Abstractformat *self, xx_pd_struct *pd);
-XXFC_API bool xx_teacy_handle_base_info(Abstractformat *self,
-                                         xx_pd_struct *pd);
-XXFC_API int64_t xx_teacy_get_format_size(Abstractformat *self,
-                                           xx_pd_struct *pd);
-XXFC_API uint64_t xx_teacy_get_number_of_archive_records(Abstractformat *self,
-                                                          xx_pd_struct *pd);
+XXFC_API bool xx_teacy_handle_base_info(Abstractformat *self, xx_pd_struct *pd);
+XXFC_API int64_t xx_teacy_get_format_size(Abstractformat *self, xx_pd_struct *pd);
+XXFC_API uint64_t xx_teacy_get_number_of_archive_records(Abstractformat *self, xx_pd_struct *pd);
 
-XXFC_API xx_archive_record_state *xx_teacy_create_archive_records_reading(
-    Abstractformat *self, const xx_list_s *options, xx_pd_struct *pd);
-XXFC_API const xx_archive_record *xx_teacy_get_current_archive_record(
-    Abstractformat *self, xx_archive_record_state *state);
-XXFC_API bool xx_teacy_unpack_current_archive_record(
-    Abstractformat *self, xx_archive_record_state *state, xx_pd_struct *pd);
-XXFC_API bool xx_teacy_archive_record_move_to_next(
-    Abstractformat *self, xx_archive_record_state *state, xx_pd_struct *pd);
-XXFC_API void xx_teacy_free_archive_records_reading(
-    Abstractformat *self, xx_archive_record_state *state);
+XXFC_API xx_archive_record_state *xx_teacy_create_archive_records_reading(Abstractformat *self, const xx_list_s *options, xx_pd_struct *pd);
+XXFC_API const xx_archive_record *xx_teacy_get_current_archive_record(Abstractformat *self, xx_archive_record_state *state);
+XXFC_API bool xx_teacy_unpack_current_archive_record(Abstractformat *self, xx_archive_record_state *state, xx_pd_struct *pd);
+XXFC_API bool xx_teacy_archive_record_move_to_next(Abstractformat *self, xx_archive_record_state *state, xx_pd_struct *pd);
+XXFC_API void xx_teacy_free_archive_records_reading(Abstractformat *self, xx_archive_record_state *state);
 
 #ifdef __cplusplus
 }

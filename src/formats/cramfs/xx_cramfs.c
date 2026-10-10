@@ -43,8 +43,7 @@
  * CRAMFS_FLAG_EXT_BLOCK_POINTERS. */
 #define XX_CRAMFS_BLK_FLAG_UNCOMPRESSED UINT32_C(0x80000000)
 #define XX_CRAMFS_BLK_FLAG_DIRECT_PTR UINT32_C(0x40000000)
-#define XX_CRAMFS_BLK_FLAGS \
-    (XX_CRAMFS_BLK_FLAG_UNCOMPRESSED | XX_CRAMFS_BLK_FLAG_DIRECT_PTR)
+#define XX_CRAMFS_BLK_FLAGS (XX_CRAMFS_BLK_FLAG_UNCOMPRESSED | XX_CRAMFS_BLK_FLAG_DIRECT_PTR)
 
 /* The bits of a mode word that name the file type, and the two types that
  * carry something this reader can list or extract. */
@@ -102,9 +101,9 @@ typedef struct xx_cramfs_private_s {
     size_t count;
     size_t capacity;
     xx_cramfs_visited visited;
-    int64_t input_size;  /**< Total device size. */
-    int64_t image_end;   /**< base_address + superblock size field. */
-    int64_t base;        /**< The format's base address. */
+    int64_t input_size; /**< Total device size. */
+    int64_t image_end;  /**< base_address + superblock size field. */
+    int64_t base;       /**< The format's base address. */
     uint32_t image_size;
     uint32_t flags;
     uint32_t crc;
@@ -123,12 +122,11 @@ static void xx_cramfs_vtable_destroy(Abstractformat *self);
 
 /* ------------------------------------------------------------ plumbing --- */
 
-static bool xx_cramfs_read_at(xx_io_device *device, int64_t offset, void *data,
-                              size_t size) {
+static bool xx_cramfs_read_at(xx_io_device *device, int64_t offset, void *data, size_t size)
+{
     uint8_t *out = (uint8_t *)data;
     size_t done = 0U;
-    if (!device || (!data && size != 0U) || offset < 0 ||
-        xx_io_seek64(device, offset, SEEK_SET) != 0) {
+    if (!device || (!data && size != 0U) || offset < 0 || xx_io_seek64(device, offset, SEEK_SET) != 0) {
         return false;
     }
     while (done < size) {
@@ -139,7 +137,8 @@ static bool xx_cramfs_read_at(xx_io_device *device, int64_t offset, void *data,
     return true;
 }
 
-static bool xx_cramfs_add(int64_t left, uint64_t right, int64_t *result) {
+static bool xx_cramfs_add(int64_t left, uint64_t right, int64_t *result)
+{
     if (!result || left < 0 || right > (uint64_t)(INT64_MAX - left)) {
         return false;
     }
@@ -148,18 +147,16 @@ static bool xx_cramfs_add(int64_t left, uint64_t right, int64_t *result) {
 }
 
 /* True when [offset, offset + size) lies inside [0, total_size). */
-static bool xx_cramfs_range_within(int64_t total_size, int64_t offset,
-                                   int64_t size) {
-    return (total_size >= 0) && (offset >= 0) && (size >= 0) &&
-           (offset <= total_size) && (size <= total_size - offset);
+static bool xx_cramfs_range_within(int64_t total_size, int64_t offset, int64_t size)
+{
+    return (total_size >= 0) && (offset >= 0) && (size >= 0) && (offset <= total_size) && (size <= total_size - offset);
 }
 
 /* Turn a stored 26-bit offset, which counts 4-byte units relative to the start
  * of the image, into an absolute device offset. Zero is the image's own
  * "no payload" marker and is reported as such through out_present. */
-static bool xx_cramfs_resolve_offset(const xx_cramfs_private *parsed,
-                                     uint32_t stored, int64_t *out_offset,
-                                     bool *out_present) {
+static bool xx_cramfs_resolve_offset(const xx_cramfs_private *parsed, uint32_t stored, int64_t *out_offset, bool *out_present)
+{
     int64_t absolute;
     if (!parsed || !out_offset || !out_present) return false;
     *out_offset = -1;
@@ -179,14 +176,15 @@ static bool xx_cramfs_resolve_offset(const xx_cramfs_private *parsed,
 
 /* -------------------------------------------------------- visited set --- */
 
-static void xx_cramfs_visited_cleanup(xx_cramfs_visited *visited) {
+static void xx_cramfs_visited_cleanup(xx_cramfs_visited *visited)
+{
     if (!visited) return;
     if (visited->slots) xx_mem_free(visited->slots);
     xx_mem_zero(visited, sizeof(*visited));
 }
 
-static size_t xx_cramfs_visited_slot(const xx_cramfs_visited *visited,
-                                     int64_t offset) {
+static size_t xx_cramfs_visited_slot(const xx_cramfs_visited *visited, int64_t offset)
+{
     /* Payload offsets are 4-byte aligned, so the low two bits carry no
      * entropy; fold the rest of the value down with a 64-bit odd multiplier. */
     uint64_t key = (uint64_t)offset >> 2U;
@@ -195,13 +193,13 @@ static size_t xx_cramfs_visited_slot(const xx_cramfs_visited *visited,
     return (size_t)key & (visited->capacity - 1U);
 }
 
-static bool xx_cramfs_visited_grow(xx_cramfs_visited *visited) {
+static bool xx_cramfs_visited_grow(xx_cramfs_visited *visited)
+{
     int64_t *slots;
     size_t capacity = visited->capacity ? visited->capacity * 2U : 256U;
     size_t index;
     xx_cramfs_visited grown;
-    if (capacity < visited->capacity ||
-        capacity > SIZE_MAX / sizeof(*slots)) {
+    if (capacity < visited->capacity || capacity > SIZE_MAX / sizeof(*slots)) {
         return false;
     }
     slots = (int64_t *)xx_mem_calloc(capacity, sizeof(*slots));
@@ -225,7 +223,8 @@ static bool xx_cramfs_visited_grow(xx_cramfs_visited *visited) {
 /* Record offset and report whether it had already been seen. Allocation
  * failure is reported as "seen" so the traversal stops rather than looping
  * with a set that can no longer remember anything. */
-static bool xx_cramfs_visited_mark(xx_cramfs_visited *visited, int64_t offset) {
+static bool xx_cramfs_visited_mark(xx_cramfs_visited *visited, int64_t offset)
+{
     size_t slot;
     if (!visited || offset < 0) return true;
     if ((visited->count + 1U) * 4U >= visited->capacity * 3U) {
@@ -243,7 +242,8 @@ static bool xx_cramfs_visited_mark(xx_cramfs_visited *visited, int64_t offset) {
 
 /* ------------------------------------------------------------- entries --- */
 
-static void xx_cramfs_private_cleanup(xx_cramfs_private *parsed) {
+static void xx_cramfs_private_cleanup(xx_cramfs_private *parsed)
+{
     size_t index;
     if (!parsed) return;
     for (index = 0U; index < parsed->count; ++index) {
@@ -258,22 +258,19 @@ static void xx_cramfs_private_cleanup(xx_cramfs_private *parsed) {
     parsed->image_end = -1;
 }
 
-static bool xx_cramfs_append_entry(xx_cramfs_private *parsed,
-                                   xx_cramfs_entry *entry) {
+static bool xx_cramfs_append_entry(xx_cramfs_private *parsed, xx_cramfs_entry *entry)
+{
     xx_cramfs_entry *grown;
     size_t capacity;
-    if (!parsed || !entry || !entry->name ||
-        parsed->count >= XX_CRAMFS_MAX_ENTRIES) {
+    if (!parsed || !entry || !entry->name || parsed->count >= XX_CRAMFS_MAX_ENTRIES) {
         return false;
     }
     if (parsed->count == parsed->capacity) {
         capacity = parsed->capacity ? parsed->capacity * 2U : 32U;
-        if (capacity < parsed->count ||
-            capacity > SIZE_MAX / sizeof(*parsed->entries)) {
+        if (capacity < parsed->count || capacity > SIZE_MAX / sizeof(*parsed->entries)) {
             return false;
         }
-        grown = (xx_cramfs_entry *)xx_mem_realloc(
-            parsed->entries, capacity * sizeof(*parsed->entries));
+        grown = (xx_cramfs_entry *)xx_mem_realloc(parsed->entries, capacity * sizeof(*parsed->entries));
         if (!grown) return false;
         parsed->entries = grown;
         parsed->capacity = capacity;
@@ -286,22 +283,20 @@ static bool xx_cramfs_append_entry(xx_cramfs_private *parsed,
 /* Extraction-time check: the name must stay inside the destination tree on
  * every host this library builds for, so the reserved Windows punctuation is
  * rejected here even though a cramfs image may legally carry it. */
-static bool xx_cramfs_safe_name(const char *name) {
+static bool xx_cramfs_safe_name(const char *name)
+{
     const char *component;
     const char *cursor;
     if (!name || !name[0] || name[0] == '/' || name[0] == '\\') return false;
     component = name;
     for (cursor = name;; ++cursor) {
         unsigned char ch = (unsigned char)*cursor;
-        if (ch == ':' || ch == '<' || ch == '>' || ch == '"' || ch == '|' ||
-            ch == '?' || ch == '*' || (ch != 0U && ch < 32U)) {
+        if (ch == ':' || ch == '<' || ch == '>' || ch == '"' || ch == '|' || ch == '?' || ch == '*' || (ch != 0U && ch < 32U)) {
             return false;
         }
         if (ch == '/' || ch == '\\' || ch == 0U) {
             size_t length = (size_t)(cursor - component);
-            if (length == 0U || (length == 1U && component[0] == '.') ||
-                (length == 2U && component[0] == '.' && component[1] == '.') ||
-                component[length - 1U] == ' ' ||
+            if (length == 0U || (length == 1U && component[0] == '.') || (length == 2U && component[0] == '.' && component[1] == '.') || component[length - 1U] == ' ' ||
                 component[length - 1U] == '.') {
                 return false;
             }
@@ -315,31 +310,29 @@ static bool xx_cramfs_safe_name(const char *name) {
  * entry's name is a single path component, so only control bytes, an embedded
  * separator and the two dot names make it implausible. mkcramfs does not emit
  * "." or ".." entries at all, so seeing one means the image is lying. */
-static bool xx_cramfs_plausible_name(const char *name, size_t length) {
+static bool xx_cramfs_plausible_name(const char *name, size_t length)
+{
     size_t index;
     if (!name || length == 0U || length > XX_CRAMFS_MAX_NAME) return false;
     for (index = 0U; index < length; ++index) {
         unsigned char ch = (unsigned char)name[index];
         if (ch < 32U || ch == '/' || ch == '\\') return false;
     }
-    if (name[0] == '.' &&
-        (length == 1U || (length == 2U && name[1] == '.'))) {
+    if (name[0] == '.' && (length == 1U || (length == 2U && name[1] == '.'))) {
         return false;
     }
     return true;
 }
 
-static char *xx_cramfs_join_name(const char *prefix, const char *name) {
+static char *xx_cramfs_join_name(const char *prefix, const char *name)
+{
     size_t prefix_size = prefix ? xx_str_len(prefix) : 0U;
     size_t name_size = name ? xx_str_len(name) : 0U;
     char *combined;
-    if (!name || name_size == 0U || prefix_size >= XX_CRAMFS_MAX_PATH ||
-        name_size > XX_CRAMFS_MAX_PATH - prefix_size -
-                        (prefix_size != 0U ? 1U : 0U)) {
+    if (!name || name_size == 0U || prefix_size >= XX_CRAMFS_MAX_PATH || name_size > XX_CRAMFS_MAX_PATH - prefix_size - (prefix_size != 0U ? 1U : 0U)) {
         return NULL;
     }
-    combined = (char *)xx_mem_alloc(prefix_size + name_size +
-                                    (prefix_size != 0U ? 2U : 1U));
+    combined = (char *)xx_mem_alloc(prefix_size + name_size + (prefix_size != 0U ? 2U : 1U));
     if (!combined) return NULL;
     if (prefix_size != 0U) {
         xx_mem_copy(combined, prefix, prefix_size);
@@ -359,9 +352,8 @@ static char *xx_cramfs_join_name(const char *prefix, const char *name) {
  * swap the words: a big-endian compiler allocates bitfields from the most
  * significant end, so every field also moves to the other side of its word.
  * Both halves of the difference are undone here, in one place. */
-static void xx_cramfs_decode_inode(const uint8_t *data, size_t data_size,
-                                   size_t at, bool big_endian,
-                                   xx_cramfs_inode *out) {
+static void xx_cramfs_decode_inode(const uint8_t *data, size_t data_size, size_t at, bool big_endian, xx_cramfs_inode *out)
+{
     uint32_t w0 = xx_data_get_u32(data, data_size, at, big_endian);
     uint32_t w1 = xx_data_get_u32(data, data_size, at + 4U, big_endian);
     uint32_t w2 = xx_data_get_u32(data, data_size, at + 8U, big_endian);
@@ -385,9 +377,7 @@ static void xx_cramfs_decode_inode(const uint8_t *data, size_t data_size,
 
 /* ---------------------------------------------------------------- walk --- */
 
-static bool xx_cramfs_walk(Abstractformat *self, xx_cramfs_private *parsed,
-                           int64_t directory_offset, uint32_t directory_size,
-                           const char *prefix, unsigned depth,
+static bool xx_cramfs_walk(Abstractformat *self, xx_cramfs_private *parsed, int64_t directory_offset, uint32_t directory_size, const char *prefix, unsigned depth,
                            xx_pd_struct *pd);
 
 /* Read one directory's payload and append an entry for every member, then
@@ -396,10 +386,9 @@ static bool xx_cramfs_walk(Abstractformat *self, xx_cramfs_private *parsed,
  * A malformed record ends the whole parse. A cycle, an exhausted depth budget
  * or an exhausted entry budget only ends this branch, so that the records
  * gathered before the anomaly stay usable. */
-static bool xx_cramfs_walk(Abstractformat *self, xx_cramfs_private *parsed,
-                           int64_t directory_offset, uint32_t directory_size,
-                           const char *prefix, unsigned depth,
-                           xx_pd_struct *pd) {
+static bool xx_cramfs_walk(Abstractformat *self, xx_cramfs_private *parsed, int64_t directory_offset, uint32_t directory_size, const char *prefix, unsigned depth,
+                           xx_pd_struct *pd)
+{
     uint8_t *payload = NULL;
     size_t cursor = 0U;
     bool result = false;
@@ -412,16 +401,14 @@ static bool xx_cramfs_walk(Abstractformat *self, xx_cramfs_private *parsed,
     /* An empty-looking directory that is too small to hold even one inode is
      * not an error the way a cycle is, but nothing can be read out of it. */
     if (directory_size < (uint32_t)XX_CRAMFS_INODE_SIZE) return true;
-    if (!xx_cramfs_range_within(parsed->image_end, directory_offset,
-                                (int64_t)directory_size)) {
+    if (!xx_cramfs_range_within(parsed->image_end, directory_offset, (int64_t)directory_size)) {
         return false;
     }
     if (xx_cramfs_visited_mark(&parsed->visited, directory_offset)) return true;
 
     payload = (uint8_t *)xx_mem_alloc(directory_size);
     if (!payload) return false;
-    if (!xx_cramfs_read_at(self->device, directory_offset, payload,
-                           directory_size)) {
+    if (!xx_cramfs_read_at(self->device, directory_offset, payload, directory_size)) {
         xx_mem_free(payload);
         return false;
     }
@@ -442,12 +429,10 @@ static bool xx_cramfs_walk(Abstractformat *self, xx_cramfs_private *parsed,
             result = true;
             goto done;
         }
-        xx_cramfs_decode_inode(payload, directory_size, cursor,
-                               parsed->big_endian, &inode);
+        xx_cramfs_decode_inode(payload, directory_size, cursor, parsed->big_endian, &inode);
         /* namelen is the only field that bounds the record, so a zero here
          * would make the cursor stand still and spin this loop forever. */
-        if (inode.namelen == 0U ||
-            inode.namelen > XX_CRAMFS_MAX_NAMELEN_UNITS) {
+        if (inode.namelen == 0U || inode.namelen > XX_CRAMFS_MAX_NAMELEN_UNITS) {
             goto done;
         }
         name_bytes = (size_t)inode.namelen * 4U;
@@ -456,21 +441,17 @@ static bool xx_cramfs_walk(Abstractformat *self, xx_cramfs_private *parsed,
         /* The name is NUL padded up to its 4-byte unit, never NUL terminated
          * when it fills the unit exactly. */
         for (name_length = 0U; name_length < name_bytes; ++name_length) {
-            if (payload[cursor + (size_t)XX_CRAMFS_INODE_SIZE + name_length] ==
-                0U) {
+            if (payload[cursor + (size_t)XX_CRAMFS_INODE_SIZE + name_length] == 0U) {
                 break;
             }
         }
         if (name_length > XX_CRAMFS_MAX_NAME) goto done;
         if (name_length != 0U) {
-            xx_mem_copy(name,
-                        payload + cursor + (size_t)XX_CRAMFS_INODE_SIZE,
-                        name_length);
+            xx_mem_copy(name, payload + cursor + (size_t)XX_CRAMFS_INODE_SIZE, name_length);
         }
         name[name_length] = '\0';
         if (!xx_cramfs_plausible_name(name, name_length)) goto done;
-        if (!xx_cramfs_resolve_offset(parsed, inode.offset, &child_offset,
-                                      &child_present)) {
+        if (!xx_cramfs_resolve_offset(parsed, inode.offset, &child_offset, &child_present)) {
             goto done;
         }
 
@@ -493,9 +474,7 @@ static bool xx_cramfs_walk(Abstractformat *self, xx_cramfs_private *parsed,
             }
             /* The entry list owns full_name from here on; it is only borrowed
              * for the recursion and is released by the cleanup path. */
-            if (child_present &&
-                !xx_cramfs_walk(self, parsed, child_offset, inode.size,
-                                full_name, depth + 1U, pd)) {
+            if (child_present && !xx_cramfs_walk(self, parsed, child_offset, inode.size, full_name, depth + 1U, pd)) {
                 goto done;
             }
         } else if ((inode.mode & XX_CRAMFS_S_IFMT) == XX_CRAMFS_S_IFREG) {
@@ -531,8 +510,8 @@ done:
 
 /* Read the superblock and, when full is true, walk the whole tree.
  * check_is_valid only needs the superblock, so detection stays cheap. */
-static bool xx_cramfs_parse(Abstractformat *self, xx_cramfs_private *parsed,
-                            bool full, xx_pd_struct *pd) {
+static bool xx_cramfs_parse(Abstractformat *self, xx_cramfs_private *parsed, bool full, xx_pd_struct *pd)
+{
     uint8_t superblock[XX_CRAMFS_SUPERBLOCK_SIZE];
     xx_cramfs_inode root;
     int64_t total_size;
@@ -551,15 +530,12 @@ static bool xx_cramfs_parse(Abstractformat *self, xx_cramfs_private *parsed,
         parsed->input_size = -1;
         parsed->image_end = -1;
     }
-    if (!self || !self->device || !parsed || self->base_address < 0 ||
-        (pd && xx_pd_is_stopped(pd))) {
+    if (!self || !self->device || !parsed || self->base_address < 0 || (pd && xx_pd_is_stopped(pd))) {
         return false;
     }
     total_size = xx_io_total_size(self->device);
-    if (!xx_cramfs_range_within(total_size, self->base_address,
-                                XX_CRAMFS_SUPERBLOCK_SIZE) ||
-        !xx_cramfs_read_at(self->device, self->base_address, superblock,
-                           sizeof(superblock))) {
+    if (!xx_cramfs_range_within(total_size, self->base_address, XX_CRAMFS_SUPERBLOCK_SIZE) ||
+        !xx_cramfs_read_at(self->device, self->base_address, superblock, sizeof(superblock))) {
         goto fail;
     }
     /* The magic is the only thing that says which byte order the rest of the
@@ -568,8 +544,7 @@ static bool xx_cramfs_parse(Abstractformat *self, xx_cramfs_private *parsed,
     magic = xx_data_get_u32(superblock, sizeof(superblock), 0U, false);
     if (magic == XX_CRAMFS_MAGIC) {
         big_endian = false;
-    } else if (xx_data_get_u32(superblock, sizeof(superblock), 0U, true) ==
-               XX_CRAMFS_MAGIC) {
+    } else if (xx_data_get_u32(superblock, sizeof(superblock), 0U, true) == XX_CRAMFS_MAGIC) {
         big_endian = true;
     } else {
         goto fail;
@@ -577,55 +552,40 @@ static bool xx_cramfs_parse(Abstractformat *self, xx_cramfs_private *parsed,
     parsed->big_endian = big_endian;
     parsed->base = self->base_address;
     parsed->input_size = total_size;
-    parsed->flags = xx_data_get_u32(superblock, sizeof(superblock), 8U,
-                                    big_endian);
-    parsed->crc = xx_data_get_u32(superblock, sizeof(superblock), 32U,
-                                  big_endian);
-    parsed->edition = xx_data_get_u32(superblock, sizeof(superblock), 36U,
-                                      big_endian);
-    parsed->block_count = xx_data_get_u32(superblock, sizeof(superblock), 40U,
-                                          big_endian);
-    parsed->file_count = xx_data_get_u32(superblock, sizeof(superblock), 44U,
-                                         big_endian);
+    parsed->flags = xx_data_get_u32(superblock, sizeof(superblock), 8U, big_endian);
+    parsed->crc = xx_data_get_u32(superblock, sizeof(superblock), 32U, big_endian);
+    parsed->edition = xx_data_get_u32(superblock, sizeof(superblock), 36U, big_endian);
+    parsed->block_count = xx_data_get_u32(superblock, sizeof(superblock), 40U, big_endian);
+    parsed->file_count = xx_data_get_u32(superblock, sizeof(superblock), 44U, big_endian);
     /* The signature is what separates a real superblock from four bytes that
      * happen to match. An image built by a tool that got it wrong says so in
      * the flags, and is accepted without it. */
-    if (!(parsed->flags & XX_CRAMFS_FLAG_WRONG_SIGNATURE) &&
-        xx_rt_memcmp(superblock + XX_CRAMFS_SIGNATURE_OFFSET,
-                     XX_CRAMFS_SIGNATURE, XX_CRAMFS_SIGNATURE_SIZE) != 0) {
+    if (!(parsed->flags & XX_CRAMFS_FLAG_WRONG_SIGNATURE) && xx_rt_memcmp(superblock + XX_CRAMFS_SIGNATURE_OFFSET, XX_CRAMFS_SIGNATURE, XX_CRAMFS_SIGNATURE_SIZE) != 0) {
         goto fail;
     }
-    image_size = xx_data_get_u32(superblock, sizeof(superblock), 4U,
-                                 big_endian);
+    image_size = xx_data_get_u32(superblock, sizeof(superblock), 4U, big_endian);
     parsed->image_size = image_size;
-    if (image_size < (uint32_t)XX_CRAMFS_SUPERBLOCK_SIZE ||
-        (int64_t)image_size > XX_CRAMFS_MAX_IMAGE_SIZE ||
-        !xx_cramfs_add(self->base_address, image_size, &parsed->image_end) ||
-        parsed->image_end > total_size) {
+    if (image_size < (uint32_t)XX_CRAMFS_SUPERBLOCK_SIZE || (int64_t)image_size > XX_CRAMFS_MAX_IMAGE_SIZE ||
+        !xx_cramfs_add(self->base_address, image_size, &parsed->image_end) || parsed->image_end > total_size) {
         goto fail;
     }
 
-    xx_cramfs_decode_inode(superblock, sizeof(superblock), 64U, big_endian,
-                           &root);
+    xx_cramfs_decode_inode(superblock, sizeof(superblock), 64U, big_endian, &root);
     if ((root.mode & XX_CRAMFS_S_IFMT) != XX_CRAMFS_S_IFDIR) goto fail;
-    if (!xx_cramfs_resolve_offset(parsed, root.offset, &root_offset,
-                                  &root_present)) {
+    if (!xx_cramfs_resolve_offset(parsed, root.offset, &root_offset, &root_present)) {
         goto fail;
     }
     /* The root directory normally begins immediately after the superblock, or
      * after a 512-byte pad in the images that carry a boot sector. Anything
      * else is only allowed when the image says its root offset is shifted. */
-    if (root_present &&
-        !(parsed->flags & XX_CRAMFS_FLAG_SHIFTED_ROOT_OFFSET) &&
-        root_offset != self->base_address + XX_CRAMFS_SUPERBLOCK_SIZE &&
+    if (root_present && !(parsed->flags & XX_CRAMFS_FLAG_SHIFTED_ROOT_OFFSET) && root_offset != self->base_address + XX_CRAMFS_SUPERBLOCK_SIZE &&
         root_offset != self->base_address + 512 + XX_CRAMFS_SUPERBLOCK_SIZE) {
         goto fail;
     }
     if (!full) return true;
     /* An image with no root payload is an empty but legal filesystem; the
      * walk does nothing and the entry list stays empty. */
-    if (root_present &&
-        !xx_cramfs_walk(self, parsed, root_offset, root.size, "", 0U, pd)) {
+    if (root_present && !xx_cramfs_walk(self, parsed, root_offset, root.size, "", 0U, pd)) {
         goto fail;
     }
     return true;
@@ -640,13 +600,11 @@ fail:
 /* Decode one block into output. The kernel refuses anything that expands past
  * a page, so the caller always passes a buffer of exactly the expected size
  * and a short result is an error, not a partial success. */
-static bool xx_cramfs_decode_block(const uint8_t *input, size_t input_size,
-                                   uint8_t *output, size_t expected) {
+static bool xx_cramfs_decode_block(const uint8_t *input, size_t input_size, uint8_t *output, size_t expected)
+{
     size_t produced = 0U;
     if (!input || input_size == 0U || !output || expected == 0U) return false;
-    if (xx_zlib_stream_decode_memory(input, input_size, output, expected,
-                                     &produced) &&
-        produced == expected) {
+    if (xx_zlib_stream_decode_memory(input, input_size, output, expected, &produced) && produced == expected) {
         return true;
     }
     /* A widely deployed vendor patch stores cramfs blocks as LZMA instead of
@@ -655,10 +613,7 @@ static bool xx_cramfs_decode_block(const uint8_t *input, size_t input_size,
      * been ruled out, so a normal image never reaches this path. */
     if (input_size > 13U) {
         produced = 0U;
-        if (xx_lzma_decompress_memory(input + 13U, input_size - 13U, input, 5U,
-                                      (int64_t)expected, output, expected,
-                                      &produced) &&
-            produced == expected) {
+        if (xx_lzma_decompress_memory(input + 13U, input_size - 13U, input, 5U, (int64_t)expected, output, expected, &produced) && produced == expected) {
             return true;
         }
     }
@@ -666,11 +621,8 @@ static bool xx_cramfs_decode_block(const uint8_t *input, size_t input_size,
 }
 
 /* Write one regular file's decoded contents to destination. */
-static bool xx_cramfs_extract_entry(Abstractformat *self,
-                                    const xx_cramfs_private *parsed,
-                                    const xx_cramfs_entry *entry,
-                                    xx_io_device *destination,
-                                    xx_pd_struct *pd) {
+static bool xx_cramfs_extract_entry(Abstractformat *self, const xx_cramfs_private *parsed, const xx_cramfs_entry *entry, xx_io_device *destination, xx_pd_struct *pd)
+{
     uint8_t *pointers = NULL;
     uint8_t *input = NULL;
     uint8_t *output = NULL;
@@ -688,19 +640,16 @@ static bool xx_cramfs_extract_entry(Abstractformat *self,
     if (entry->size == 0U) return true;
     if (entry->data_offset < 0) return false;
 
-    block_count = ((size_t)entry->size + (size_t)XX_CRAMFS_BLOCK_SIZE - 1U) /
-                  (size_t)XX_CRAMFS_BLOCK_SIZE;
+    block_count = ((size_t)entry->size + (size_t)XX_CRAMFS_BLOCK_SIZE - 1U) / (size_t)XX_CRAMFS_BLOCK_SIZE;
     pointer_bytes = block_count * 4U;
-    if (!xx_cramfs_range_within(parsed->image_end, entry->data_offset,
-                                (int64_t)pointer_bytes)) {
+    if (!xx_cramfs_range_within(parsed->image_end, entry->data_offset, (int64_t)pointer_bytes)) {
         return false;
     }
     pointers = (uint8_t *)xx_mem_alloc(pointer_bytes);
     input = (uint8_t *)xx_mem_alloc((size_t)XX_CRAMFS_BLOCK_SIZE * 2U);
     output = (uint8_t *)xx_mem_alloc((size_t)XX_CRAMFS_BLOCK_SIZE);
     if (!pointers || !input || !output) goto done;
-    if (!xx_cramfs_read_at(self->device, entry->data_offset, pointers,
-                           pointer_bytes)) {
+    if (!xx_cramfs_read_at(self->device, entry->data_offset, pointers, pointer_bytes)) {
         goto done;
     }
 
@@ -712,29 +661,22 @@ static bool xx_cramfs_extract_entry(Abstractformat *self,
     remaining = entry->size;
 
     for (index = 0U; index < block_count; ++index) {
-        uint32_t raw = xx_data_get_u32(pointers, pointer_bytes, index * 4U,
-                                       parsed->big_endian);
+        uint32_t raw = xx_data_get_u32(pointers, pointer_bytes, index * 4U, parsed->big_endian);
         uint32_t flags = masks_flags ? (raw & XX_CRAMFS_BLK_FLAGS) : 0U;
         uint32_t stored = masks_flags ? (raw & ~XX_CRAMFS_BLK_FLAGS) : raw;
-        size_t expected = remaining < XX_CRAMFS_BLOCK_SIZE
-                              ? (size_t)remaining
-                              : (size_t)XX_CRAMFS_BLOCK_SIZE;
+        size_t expected = remaining < XX_CRAMFS_BLOCK_SIZE ? (size_t)remaining : (size_t)XX_CRAMFS_BLOCK_SIZE;
         int64_t block_end;
         int64_t block_length;
 
         if (pd && xx_pd_is_stopped(pd)) goto done;
         if (flags & XX_CRAMFS_BLK_FLAG_DIRECT_PTR) {
             int64_t direct_start;
-            if (!xx_cramfs_direct_native_span(raw, parsed->base,
-                                              parsed->image_end, expected,
-                                              &direct_start, &block_end) ||
-                !xx_cramfs_read_at(self->device, direct_start, output,
-                                   expected)) {
+            if (!xx_cramfs_direct_native_span(raw, parsed->base, parsed->image_end, expected, &direct_start, &block_end) ||
+                !xx_cramfs_read_at(self->device, direct_start, output, expected)) {
                 goto done;
             }
         } else {
-            if (!xx_cramfs_add(parsed->base, stored, &block_end) ||
-                block_end > parsed->image_end || block_end < previous_end) {
+            if (!xx_cramfs_add(parsed->base, stored, &block_end) || block_end > parsed->image_end || block_end < previous_end) {
                 goto done;
             }
             block_length = block_end - previous_end;
@@ -747,17 +689,14 @@ static bool xx_cramfs_extract_entry(Abstractformat *self,
                 xx_mem_zero(output, expected);
             } else if (flags & XX_CRAMFS_BLK_FLAG_UNCOMPRESSED) {
                 if ((size_t)block_length != expected) goto done;
-                if (!xx_cramfs_read_at(self->device, previous_end, output,
-                                       expected)) {
+                if (!xx_cramfs_read_at(self->device, previous_end, output, expected)) {
                     goto done;
                 }
             } else {
-                if (!xx_cramfs_read_at(self->device, previous_end, input,
-                                       (size_t)block_length)) {
+                if (!xx_cramfs_read_at(self->device, previous_end, input, (size_t)block_length)) {
                     goto done;
                 }
-                if (!xx_cramfs_decode_block(input, (size_t)block_length,
-                                            output, expected)) {
+                if (!xx_cramfs_decode_block(input, (size_t)block_length, output, expected)) {
                     goto done;
                 }
             }
@@ -779,18 +718,16 @@ done:
 
 /* --------------------------------------------------------------- state --- */
 
-static bool xx_cramfs_copy_options(xx_list_s *destination,
-                                   const xx_list_s *source) {
+static bool xx_cramfs_copy_options(xx_list_s *destination, const xx_list_s *source)
+{
     size_t index;
     if (!destination || !source) return source == NULL;
     for (index = 0U; index < source->count; ++index) {
-        const xx_meta *item =
-            (const xx_meta *)xx_list_at((const xx_list_t *)source, index);
+        const xx_meta *item = (const xx_meta *)xx_list_at((const xx_list_t *)source, index);
         xx_meta copy;
         if (!item) continue;
         xx_meta_init(&copy, item->meta_id);
-        if (!xx_var_copy(&copy.var, &item->var) ||
-            !xx_list_append(destination, &copy)) {
+        if (!xx_var_copy(&copy.var, &item->var) || !xx_list_append(destination, &copy)) {
             xx_meta_cleanup(&copy);
             return false;
         }
@@ -798,20 +735,19 @@ static bool xx_cramfs_copy_options(xx_list_s *destination,
     return true;
 }
 
-static const xx_var *xx_cramfs_find_option(const xx_list_s *options,
-                                           uint32_t meta_id) {
+static const xx_var *xx_cramfs_find_option(const xx_list_s *options, uint32_t meta_id)
+{
     size_t index;
     if (!options) return NULL;
     for (index = 0U; index < options->count; ++index) {
-        const xx_meta *item =
-            (const xx_meta *)xx_list_at((const xx_list_t *)options, index);
+        const xx_meta *item = (const xx_meta *)xx_list_at((const xx_list_t *)options, index);
         if (item && item->meta_id == meta_id) return &item->var;
     }
     return NULL;
 }
 
-static bool xx_cramfs_populate_record(xx_archive_record *record,
-                                      const xx_cramfs_entry *entry) {
+static bool xx_cramfs_populate_record(xx_archive_record *record, const xx_cramfs_entry *entry)
+{
     if (!record || !entry || !entry->name) return false;
     xx_archive_record_cleanup(record);
     xx_archive_record_init(record);
@@ -822,17 +758,13 @@ static bool xx_cramfs_populate_record(xx_archive_record *record,
      * the caller could copy out, so only the decoded length is reported as a
      * size; compressed_size stays zero rather than claiming a raw extent. */
     record->compressed_size = 0;
-    return xx_archive_record_set_original_name(record, entry->name) &&
-           xx_archive_record_set_meta_u64(record,
-                                          XX_META_ID_UNCOMPRESSED_SIZE,
-                                          entry->size) &&
-           xx_archive_record_set_meta_u64(record, XX_META_ID_COMPRESSION_METHOD,
-                                          entry->is_folder ? 0U : 8U) &&
-           xx_archive_record_set_meta_bool(record, XX_META_ID_IS_FOLDER,
-                                           entry->is_folder);
+    return xx_archive_record_set_original_name(record, entry->name) && xx_archive_record_set_meta_u64(record, XX_META_ID_UNCOMPRESSED_SIZE, entry->size) &&
+           xx_archive_record_set_meta_u64(record, XX_META_ID_COMPRESSION_METHOD, entry->is_folder ? 0U : 8U) &&
+           xx_archive_record_set_meta_bool(record, XX_META_ID_IS_FOLDER, entry->is_folder);
 }
 
-static void xx_cramfs_archive_stream_free(void *pointer) {
+static void xx_cramfs_archive_stream_free(void *pointer)
+{
     xx_cramfs_archive_stream *stream = (xx_cramfs_archive_stream *)pointer;
     if (!stream) return;
     xx_cramfs_private_cleanup(&stream->parsed);
@@ -841,8 +773,8 @@ static void xx_cramfs_archive_stream_free(void *pointer) {
 
 /* ------------------------------------------------------------ lifetime --- */
 
-void xx_cramfs_init(xx_cramfs *cramfs, xx_io_device *dev,
-                    int64_t base_address) {
+void xx_cramfs_init(xx_cramfs *cramfs, xx_io_device *dev, int64_t base_address)
+{
     if (!cramfs) return;
     xx_mem_zero(cramfs, sizeof(*cramfs));
     xx_format_init(&cramfs->format, dev, base_address);
@@ -855,29 +787,25 @@ void xx_cramfs_init(xx_cramfs *cramfs, xx_io_device *dev,
     cramfs->format.check_is_valid = xx_cramfs_check_is_valid;
     cramfs->format.handle_base_info = xx_cramfs_handle_base_info;
     cramfs->format.get_format_size = xx_cramfs_get_format_size;
-    cramfs->format.get_number_of_archive_records =
-        xx_cramfs_get_number_of_archive_records;
-    cramfs->format.create_archive_records_reading =
-        xx_cramfs_create_archive_records_reading;
-    cramfs->format.get_current_archive_record =
-        xx_cramfs_get_current_archive_record;
-    cramfs->format.unpack_current_archive_record =
-        xx_cramfs_unpack_current_archive_record;
-    cramfs->format.archive_record_move_to_next =
-        xx_cramfs_archive_record_move_to_next;
-    cramfs->format.free_archive_records_reading =
-        xx_cramfs_free_archive_records_reading;
+    cramfs->format.get_number_of_archive_records = xx_cramfs_get_number_of_archive_records;
+    cramfs->format.create_archive_records_reading = xx_cramfs_create_archive_records_reading;
+    cramfs->format.get_current_archive_record = xx_cramfs_get_current_archive_record;
+    cramfs->format.unpack_current_archive_record = xx_cramfs_unpack_current_archive_record;
+    cramfs->format.archive_record_move_to_next = xx_cramfs_archive_record_move_to_next;
+    cramfs->format.free_archive_records_reading = xx_cramfs_free_archive_records_reading;
     cramfs->format.destroy = xx_cramfs_vtable_destroy;
     cramfs->archive_end = -1;
 }
 
-xx_cramfs *xx_cramfs_create(xx_io_device *dev, int64_t base_address) {
+xx_cramfs *xx_cramfs_create(xx_io_device *dev, int64_t base_address)
+{
     xx_cramfs *cramfs = (xx_cramfs *)xx_mem_alloc(sizeof(*cramfs));
     if (cramfs) xx_cramfs_init(cramfs, dev, base_address);
     return cramfs;
 }
 
-void xx_cramfs_destroy(xx_cramfs *cramfs) {
+void xx_cramfs_destroy(xx_cramfs *cramfs)
+{
     if (!cramfs) return;
     if (cramfs->internal) {
         xx_cramfs_private_cleanup((xx_cramfs_private *)cramfs->internal);
@@ -887,11 +815,13 @@ void xx_cramfs_destroy(xx_cramfs *cramfs) {
     xx_format_cleanup_extra_parameters(&cramfs->format);
 }
 
-static void xx_cramfs_vtable_destroy(Abstractformat *self) {
+static void xx_cramfs_vtable_destroy(Abstractformat *self)
+{
     xx_cramfs_destroy((xx_cramfs *)self);
 }
 
-void xx_cramfs_free(xx_cramfs *cramfs) {
+void xx_cramfs_free(xx_cramfs *cramfs)
+{
     if (!cramfs) return;
     xx_cramfs_destroy(cramfs);
     xx_mem_free(cramfs);
@@ -899,7 +829,8 @@ void xx_cramfs_free(xx_cramfs *cramfs) {
 
 /* -------------------------------------------------------------- vtable --- */
 
-bool xx_cramfs_check_is_valid(Abstractformat *self, xx_pd_struct *pd) {
+bool xx_cramfs_check_is_valid(Abstractformat *self, xx_pd_struct *pd)
+{
     xx_cramfs_private parsed;
     /* Detection stops at the superblock: the tree walk only happens on the
      * full parse, so validity stays cheap. */
@@ -908,7 +839,8 @@ bool xx_cramfs_check_is_valid(Abstractformat *self, xx_pd_struct *pd) {
     return result;
 }
 
-bool xx_cramfs_handle_base_info(Abstractformat *self, xx_pd_struct *pd) {
+bool xx_cramfs_handle_base_info(Abstractformat *self, xx_pd_struct *pd)
+{
     xx_cramfs_private *parsed;
     xx_cramfs *cramfs = (xx_cramfs *)self;
     int64_t total_size;
@@ -951,29 +883,27 @@ bool xx_cramfs_handle_base_info(Abstractformat *self, xx_pd_struct *pd) {
     return true;
 }
 
-int64_t xx_cramfs_get_format_size(Abstractformat *self, xx_pd_struct *pd) {
-    if (!self || (!self->base_info_handled &&
-                  !xx_format_handle_base_info(self, pd))) {
+int64_t xx_cramfs_get_format_size(Abstractformat *self, xx_pd_struct *pd)
+{
+    if (!self || (!self->base_info_handled && !xx_format_handle_base_info(self, pd))) {
         return -1;
     }
     return self->format_size;
 }
 
-uint64_t xx_cramfs_get_number_of_archive_records(Abstractformat *self,
-                                                 xx_pd_struct *pd) {
-    if (!self || (!self->base_info_handled &&
-                  !xx_format_handle_base_info(self, pd))) {
+uint64_t xx_cramfs_get_number_of_archive_records(Abstractformat *self, xx_pd_struct *pd)
+{
+    if (!self || (!self->base_info_handled && !xx_format_handle_base_info(self, pd))) {
         return 0U;
     }
     return ((xx_cramfs *)self)->number_of_records;
 }
 
-xx_archive_record_state *xx_cramfs_create_archive_records_reading(
-    Abstractformat *self, const xx_list_s *options, xx_pd_struct *pd) {
+xx_archive_record_state *xx_cramfs_create_archive_records_reading(Abstractformat *self, const xx_list_s *options, xx_pd_struct *pd)
+{
     xx_archive_record_state *state;
     xx_cramfs_archive_stream *stream;
-    if (!self || !self->device ||
-        (!self->base_info_handled && !xx_format_handle_base_info(self, pd))) {
+    if (!self || !self->device || (!self->base_info_handled && !xx_format_handle_base_info(self, pd))) {
         return NULL;
     }
     state = (xx_archive_record_state *)xx_mem_alloc(sizeof(*state));
@@ -984,8 +914,7 @@ xx_archive_record_state *xx_cramfs_create_archive_records_reading(
         return NULL;
     }
     xx_archive_record_state_init(state, self);
-    if (!xx_cramfs_copy_options(&state->options, options) ||
-        !xx_cramfs_parse(self, &stream->parsed, true, pd)) {
+    if (!xx_cramfs_copy_options(&state->options, options) || !xx_cramfs_parse(self, &stream->parsed, true, pd)) {
         xx_cramfs_archive_stream_free(stream);
         xx_archive_record_state_free(state);
         return NULL;
@@ -994,28 +923,22 @@ xx_archive_record_state *xx_cramfs_create_archive_records_reading(
     state->internal_state = stream;
     state->free_internal = xx_cramfs_archive_stream_free;
     state->total_records = (int64_t)stream->parsed.count;
-    if (stream->parsed.count != 0U &&
-        xx_cramfs_populate_record(&state->current_record,
-                                  &stream->parsed.entries[0])) {
+    if (stream->parsed.count != 0U && xx_cramfs_populate_record(&state->current_record, &stream->parsed.entries[0])) {
         state->has_record = true;
         state->current_index = 0;
     }
     return state;
 }
 
-const xx_archive_record *xx_cramfs_get_current_archive_record(
-    Abstractformat *self, xx_archive_record_state *state) {
-    return self && state && state->format == self && state->has_record
-               ? &state->current_record
-               : NULL;
+const xx_archive_record *xx_cramfs_get_current_archive_record(Abstractformat *self, xx_archive_record_state *state)
+{
+    return self && state && state->format == self && state->has_record ? &state->current_record : NULL;
 }
 
-bool xx_cramfs_archive_record_move_to_next(Abstractformat *self,
-                                           xx_archive_record_state *state,
-                                           xx_pd_struct *pd) {
+bool xx_cramfs_archive_record_move_to_next(Abstractformat *self, xx_archive_record_state *state, xx_pd_struct *pd)
+{
     xx_cramfs_archive_stream *stream;
-    if (!self || !state || state->format != self || !state->has_record ||
-        !state->internal_state || (pd && xx_pd_is_stopped(pd))) {
+    if (!self || !state || state->format != self || !state->has_record || !state->internal_state || (pd && xx_pd_is_stopped(pd))) {
         return false;
     }
     stream = (xx_cramfs_archive_stream *)state->internal_state;
@@ -1026,8 +949,7 @@ bool xx_cramfs_archive_record_move_to_next(Abstractformat *self,
         state->has_record = false;
         return false;
     }
-    if (!xx_cramfs_populate_record(&state->current_record,
-                                   &stream->parsed.entries[stream->index])) {
+    if (!xx_cramfs_populate_record(&state->current_record, &stream->parsed.entries[stream->index])) {
         state->has_record = false;
         return false;
     }
@@ -1035,9 +957,8 @@ bool xx_cramfs_archive_record_move_to_next(Abstractformat *self,
     return true;
 }
 
-bool xx_cramfs_unpack_current_archive_record(Abstractformat *self,
-                                             xx_archive_record_state *state,
-                                             xx_pd_struct *pd) {
+bool xx_cramfs_unpack_current_archive_record(Abstractformat *self, xx_archive_record_state *state, xx_pd_struct *pd)
+{
     xx_cramfs_archive_stream *stream;
     const xx_cramfs_entry *entry;
     const xx_var *option;
@@ -1048,9 +969,7 @@ bool xx_cramfs_unpack_current_archive_record(Abstractformat *self,
     bool result = false;
     bool created = false;
 
-    if (!self || !self->device || !state || state->format != self ||
-        !state->has_record || !state->internal_state ||
-        (pd && xx_pd_is_stopped(pd))) {
+    if (!self || !self->device || !state || state->format != self || !state->has_record || !state->internal_state || (pd && xx_pd_is_stopped(pd))) {
         return false;
     }
     stream = (xx_cramfs_archive_stream *)state->internal_state;
@@ -1063,20 +982,16 @@ bool xx_cramfs_unpack_current_archive_record(Abstractformat *self,
         /* No destination: report whether the member's payload is addressable
          * at all, without writing anything. */
         if (entry->is_folder || entry->size == 0U) return true;
-        return entry->data_offset >= 0 &&
-               entry->data_offset <= stream->parsed.image_end;
+        return entry->data_offset >= 0 && entry->data_offset <= stream->parsed.image_end;
     }
-    if (option->type == XX_VAR_TYPE_STRING ||
-        option->type == XX_VAR_TYPE_STRING_VIEW) {
+    if (option->type == XX_VAR_TYPE_STRING || option->type == XX_VAR_TYPE_STRING_VIEW) {
         base = xx_var_get_str(option);
-    } else if (option->type == XX_VAR_TYPE_WSTRING ||
-               option->type == XX_VAR_TYPE_WSTRING_VIEW) {
+    } else if (option->type == XX_VAR_TYPE_WSTRING || option->type == XX_VAR_TYPE_WSTRING_VIEW) {
         owned_base = xx_str_unicode_to_utf8(xx_var_get_wstr(option));
         base = owned_base;
     }
     if (!base) goto cleanup;
-    if (base[0] && base[xx_str_len(base) - 1U] != '/' &&
-        base[xx_str_len(base) - 1U] != '\\') {
+    if (base[0] && base[xx_str_len(base) - 1U] != '/' && base[xx_str_len(base) - 1U] != '\\') {
         destination_path = xx_str_concat3(base, "/", entry->name);
     } else {
         destination_path = xx_str_concat(base, entry->name);
@@ -1090,8 +1005,7 @@ bool xx_cramfs_unpack_current_archive_record(Abstractformat *self,
     destination = xx_io_file_open(destination_path, "wb");
     created = destination != NULL;
     if (!destination) goto cleanup;
-    result = xx_cramfs_extract_entry(self, &stream->parsed, entry, destination,
-                                     pd);
+    result = xx_cramfs_extract_entry(self, &stream->parsed, entry, destination, pd);
     xx_io_close(destination);
     destination = NULL;
     if (!result && created) xx_rt_remove(destination_path);
@@ -1103,41 +1017,51 @@ cleanup:
     return result;
 }
 
-void xx_cramfs_free_archive_records_reading(Abstractformat *self,
-                                            xx_archive_record_state *state) {
+void xx_cramfs_free_archive_records_reading(Abstractformat *self, xx_archive_record_state *state)
+{
     (void)self;
     xx_archive_record_state_free(state);
 }
 
 /* ----------------------------------------------------------- accessors --- */
 
-uint64_t xx_cramfs_get_number_of_records(const xx_cramfs *cramfs) {
+uint64_t xx_cramfs_get_number_of_records(const xx_cramfs *cramfs)
+{
     return cramfs ? cramfs->number_of_records : 0U;
 }
-uint64_t xx_cramfs_get_number_of_members(const xx_cramfs *cramfs) {
+uint64_t xx_cramfs_get_number_of_members(const xx_cramfs *cramfs)
+{
     return cramfs ? cramfs->number_of_members : 0U;
 }
-uint32_t xx_cramfs_get_image_size(const xx_cramfs *cramfs) {
+uint32_t xx_cramfs_get_image_size(const xx_cramfs *cramfs)
+{
     return cramfs ? cramfs->image_size : 0U;
 }
-uint32_t xx_cramfs_get_flags(const xx_cramfs *cramfs) {
+uint32_t xx_cramfs_get_flags(const xx_cramfs *cramfs)
+{
     return cramfs ? cramfs->flags : 0U;
 }
-uint32_t xx_cramfs_get_crc(const xx_cramfs *cramfs) {
+uint32_t xx_cramfs_get_crc(const xx_cramfs *cramfs)
+{
     return cramfs ? cramfs->crc : 0U;
 }
-uint32_t xx_cramfs_get_edition(const xx_cramfs *cramfs) {
+uint32_t xx_cramfs_get_edition(const xx_cramfs *cramfs)
+{
     return cramfs ? cramfs->edition : 0U;
 }
-uint32_t xx_cramfs_get_block_count(const xx_cramfs *cramfs) {
+uint32_t xx_cramfs_get_block_count(const xx_cramfs *cramfs)
+{
     return cramfs ? cramfs->block_count : 0U;
 }
-uint32_t xx_cramfs_get_file_count(const xx_cramfs *cramfs) {
+uint32_t xx_cramfs_get_file_count(const xx_cramfs *cramfs)
+{
     return cramfs ? cramfs->file_count : 0U;
 }
-int64_t xx_cramfs_get_archive_end(const xx_cramfs *cramfs) {
+int64_t xx_cramfs_get_archive_end(const xx_cramfs *cramfs)
+{
     return cramfs ? cramfs->archive_end : -1;
 }
-bool xx_cramfs_is_big_endian(const xx_cramfs *cramfs) {
+bool xx_cramfs_is_big_endian(const xx_cramfs *cramfs)
+{
     return cramfs ? cramfs->big_endian : false;
 }

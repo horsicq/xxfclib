@@ -57,15 +57,15 @@ typedef struct xx_atarist XAtariST;
  * Inherits from Abstractformat by placing it as the first member.
  */
 struct xx_atarist {
-    Abstractformat format;       /**< Base format structure (first member) */
-    uint16_t       magic;        /**< GEMDOS magic (0x601A) */
-    uint32_t       text_size;    /**< Size of the TEXT segment */
-    uint32_t       data_size;    /**< Size of the DATA segment */
-    uint32_t       bss_size;     /**< Size of the BSS segment (not in file) */
-    uint32_t       symbol_size;  /**< Size of the symbol table */
-    uint32_t       reserved;     /**< Reserved, zero on well-formed files */
-    uint32_t       flags;        /**< PRGFLAGS */
-    uint16_t       relocation;   /**< ABSFLAG: non-zero => no relocation table */
+    Abstractformat format; /**< Base format structure (first member) */
+    uint16_t magic;        /**< GEMDOS magic (0x601A) */
+    uint32_t text_size;    /**< Size of the TEXT segment */
+    uint32_t data_size;    /**< Size of the DATA segment */
+    uint32_t bss_size;     /**< Size of the BSS segment (not in file) */
+    uint32_t symbol_size;  /**< Size of the symbol table */
+    uint32_t reserved;     /**< Reserved, zero on well-formed files */
+    uint32_t flags;        /**< PRGFLAGS */
+    uint16_t relocation;   /**< ABSFLAG: non-zero => no relocation table */
 };
 
 /* --- Constructors & Lifecycle --- */
@@ -78,10 +78,7 @@ XXFC_API void xx_atarist_destroy(xx_atarist *atarist);
 XXFC_API bool xx_atarist_check_is_valid(Abstractformat *self, xx_pd_struct *pd);
 XXFC_API bool xx_atarist_handle_base_info(Abstractformat *self, xx_pd_struct *pd);
 XXFC_API int64_t xx_atarist_get_format_size(Abstractformat *self, xx_pd_struct *pd);
-XXFC_API bool xx_atarist_get_memory_map(Abstractformat *self,
-                                        xx_memory_map_mode_t mode,
-                                        xx_memory_map *output,
-                                        xx_pd_struct *pd);
+XXFC_API bool xx_atarist_get_memory_map(Abstractformat *self, xx_memory_map_mode_t mode, xx_memory_map *output, xx_pd_struct *pd);
 
 /* --- Atari ST Getters & Properties --- */
 XXFC_API uint16_t xx_atarist_get_magic(const xx_atarist *atarist);
@@ -113,32 +110,39 @@ XXFC_API void xx_atarist_set_flags(xx_atarist *atarist, uint32_t val);
 XXFC_API void xx_atarist_set_relocation(xx_atarist *atarist, uint16_t val);
 
 /* Cast helpers */
-static inline Abstractformat *xx_atarist_to_format(xx_atarist *atarist) {
+static inline Abstractformat *xx_atarist_to_format(xx_atarist *atarist)
+{
     return atarist ? &atarist->format : NULL;
 }
 
-static inline const Abstractformat *xx_atarist_to_format_const(const xx_atarist *atarist) {
+static inline const Abstractformat *xx_atarist_to_format_const(const xx_atarist *atarist)
+{
     return atarist ? &atarist->format : NULL;
 }
 
 /* User-facing aliases without xx_ prefix */
-static inline void XAtariST_init(xx_atarist *atarist, xx_io_device *dev, int64_t base_address) {
+static inline void XAtariST_init(xx_atarist *atarist, xx_io_device *dev, int64_t base_address)
+{
     xx_atarist_init(atarist, dev, base_address);
 }
 
-static inline xx_atarist *XAtariST_create(xx_io_device *dev, int64_t base_address) {
+static inline xx_atarist *XAtariST_create(xx_io_device *dev, int64_t base_address)
+{
     return xx_atarist_create(dev, base_address);
 }
 
-static inline void XAtariST_free(xx_atarist *atarist) {
+static inline void XAtariST_free(xx_atarist *atarist)
+{
     xx_atarist_free(atarist);
 }
 
-static inline bool XAtariST_check_is_valid(xx_atarist *atarist, xx_pd_struct *pd) {
+static inline bool XAtariST_check_is_valid(xx_atarist *atarist, xx_pd_struct *pd)
+{
     return atarist ? xx_atarist_check_is_valid(&atarist->format, pd) : false;
 }
 
-static inline bool XAtariST_handle_base_info(xx_atarist *atarist, xx_pd_struct *pd) {
+static inline bool XAtariST_handle_base_info(xx_atarist *atarist, xx_pd_struct *pd)
+{
     return atarist ? xx_atarist_handle_base_info(&atarist->format, pd) : false;
 }
 

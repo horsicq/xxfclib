@@ -63,38 +63,38 @@ typedef struct xx_format_search_info xx_format_search_info_t;
  * @brief A format the search has found.
  */
 struct xx_format_search_info {
-  xx_file_type_t file_type; /**< What was found */
-  int64_t offset;           /**< Where it starts in the searched device */
-  int64_t size;             /**< Its size in bytes, or -1 if not known */
+    xx_file_type_t file_type; /**< What was found */
+    int64_t offset;           /**< Where it starts in the searched device */
+    int64_t size;             /**< Its size in bytes, or -1 if not known */
 };
 
 /**
  * @brief Streaming format search callbacks.
  */
 struct xx_format_extractor {
-  /**
-   * Start a search over @p device, positioned on the first find.
-   * The device stays the caller's and must outlive the search.
-   * @return NULL on failure.
-   */
-  xx_format_search_state *(*create_format_search)(xx_format_extractor *self, xx_io_device *device, const xx_list_s *options, xx_pd_struct *pd);
+    /**
+     * Start a search over @p device, positioned on the first find.
+     * The device stays the caller's and must outlive the search.
+     * @return NULL on failure.
+     */
+    xx_format_search_state *(*create_format_search)(xx_format_extractor *self, xx_io_device *device, const xx_list_s *options, xx_pd_struct *pd);
 
-  /**
-   * The find the search is positioned on.
-   * @return NULL when the search found nothing, or has moved past the last
-   *         find. The info is owned by @p state and stays valid until the
-   *         next find_next or free call.
-   */
-  const xx_format_search_info *(*get_current_format_info)(xx_format_extractor *self, xx_format_search_state *state);
+    /**
+     * The find the search is positioned on.
+     * @return NULL when the search found nothing, or has moved past the last
+     *         find. The info is owned by @p state and stays valid until the
+     *         next find_next or free call.
+     */
+    const xx_format_search_info *(*get_current_format_info)(xx_format_extractor *self, xx_format_search_state *state);
 
-  /**
-   * Move to the next find.
-   * @return false when there are no more finds, or @p pd stopped the search.
-   */
-  bool (*format_search_find_next)(xx_format_extractor *self, xx_format_search_state *state, xx_pd_struct *pd);
+    /**
+     * Move to the next find.
+     * @return false when there are no more finds, or @p pd stopped the search.
+     */
+    bool (*format_search_find_next)(xx_format_extractor *self, xx_format_search_state *state, xx_pd_struct *pd);
 
-  /** Close the search and free its state. A NULL @p state is ignored. */
-  void (*free_format_search)(xx_format_extractor *self, xx_format_search_state *state);
+    /** Close the search and free its state. A NULL @p state is ignored. */
+    void (*free_format_search)(xx_format_extractor *self, xx_format_search_state *state);
 };
 
 /* --- One extractor per format --- */

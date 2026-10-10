@@ -9,13 +9,15 @@
 #ifdef __cplusplus
 extern "C" {
 #endif
-typedef struct xx_xbox_xbe { Abstractformat format; } xx_xbox_xbe;
-XXFC_API void xx_xbox_xbe_init(xx_xbox_xbe *,xx_io_device *,int64_t);
-XXFC_API xx_xbox_xbe *xx_xbox_xbe_create(xx_io_device *,int64_t);
+typedef struct xx_xbox_xbe {
+    Abstractformat format;
+} xx_xbox_xbe;
+XXFC_API void xx_xbox_xbe_init(xx_xbox_xbe *, xx_io_device *, int64_t);
+XXFC_API xx_xbox_xbe *xx_xbox_xbe_create(xx_io_device *, int64_t);
 XXFC_API void xx_xbox_xbe_destroy(xx_xbox_xbe *);
 XXFC_API void xx_xbox_xbe_free(xx_xbox_xbe *);
-XXFC_API bool xx_xbox_xbe_check_is_valid(Abstractformat *,xx_pd_struct *);
-XXFC_API bool xx_xbox_xbe_handle_base_info(Abstractformat *,xx_pd_struct *);
+XXFC_API bool xx_xbox_xbe_check_is_valid(Abstractformat *, xx_pd_struct *);
+XXFC_API bool xx_xbox_xbe_handle_base_info(Abstractformat *, xx_pd_struct *);
 #ifdef __cplusplus
 }
 #endif

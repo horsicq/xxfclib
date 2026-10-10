@@ -15,14 +15,12 @@
  * uses MASH; pass this checked view to the existing native XPK-MASH decoder.
  * Other child methods remain explicitly unsupported until verified.
  */
-static bool xpk_cyb2_mash_view(const uint8_t *packed,size_t size,
-                               const uint8_t **child,size_t *child_size,
-                               xx_pd_struct *pd) {
-    if(!packed || !child || !child_size || size<=10U ||
-       packed[0]!='M' || packed[1]!='A' || packed[2]!='S' || packed[3]!='H' ||
-       xx_pd_is_stopped(pd))return false;
-    *child=packed+10U;
-    *child_size=size-10U;
+static bool xpk_cyb2_mash_view(const uint8_t *packed, size_t size, const uint8_t **child, size_t *child_size, xx_pd_struct *pd)
+{
+    if (!packed || !child || !child_size || size <= 10U || packed[0] != 'M' || packed[1] != 'A' || packed[2] != 'S' || packed[3] != 'H' || xx_pd_is_stopped(pd))
+        return false;
+    *child = packed + 10U;
+    *child_size = size - 10U;
     return true;
 }
 #endif

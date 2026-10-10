@@ -97,12 +97,14 @@ typedef struct os_sink_s {
 } os_sink;
 
 #include "xxfclib/global/xx_global.h"
-static size_t gb_o_setup_capacity(void) {
+static size_t gb_o_setup_capacity(void)
+{
     size_t n = xx_get_file_buffer_size();
     if (!n) n = XX_DEFAULT_FILE_BUFFER_SIZE;
     return n > (SIZE_MAX >> 1) ? SIZE_MAX >> 1 : n;
 }
-static ssize_t gb_o_setup_read(xx_io_device *device, void *buffer, size_t size, size_t capacity) {
+static ssize_t gb_o_setup_read(xx_io_device *device, void *buffer, size_t size, size_t capacity)
+{
     size_t done = 0;
     if (size > (SIZE_MAX >> 1)) return -1;
     while (done < size) {
@@ -116,7 +118,8 @@ static ssize_t gb_o_setup_read(xx_io_device *device, void *buffer, size_t size, 
     }
     return (ssize_t)done;
 }
-static ssize_t gb_o_setup_write(xx_io_device *device, const void *buffer, size_t size, size_t capacity) {
+static ssize_t gb_o_setup_write(xx_io_device *device, const void *buffer, size_t size, size_t capacity)
+{
     size_t done = 0;
     if (size > (SIZE_MAX >> 1)) return -1;
     while (done < size) {
@@ -131,21 +134,18 @@ static ssize_t gb_o_setup_write(xx_io_device *device, const void *buffer, size_t
     return (ssize_t)done;
 }
 
-
-static uint32_t os_le16(const uint8_t *bytes) {
+static uint32_t os_le16(const uint8_t *bytes)
+{
     return (uint32_t)bytes[0] | ((uint32_t)bytes[1] << 8U);
 }
 
-static bool os_read_at(xx_io_device *device, int64_t offset, void *buffer,
-                       size_t size) {
+static bool os_read_at(xx_io_device *device, int64_t offset, void *buffer, size_t size)
+{
     const size_t file_io_capacity = gb_o_setup_capacity();
     size_t done = 0U;
-    if (!device || (!buffer && size != 0U) || offset < 0 ||
-        xx_io_seek64(device, offset, SEEK_SET) != 0)
-        return false;
+    if (!device || (!buffer && size != 0U) || offset < 0 || xx_io_seek64(device, offset, SEEK_SET) != 0) return false;
     while (done < size) {
-        ssize_t amount = gb_o_setup_read(device, (uint8_t *)buffer + done,
-                                    size - done, file_io_capacity);
+        ssize_t amount = gb_o_setup_read(device, (uint8_t *)buffer + done, size - done, file_io_capacity);
         if (amount <= 0 || (size_t)amount > size - done) return false;
         done += (size_t)amount;
     }
@@ -154,16 +154,15 @@ static bool os_read_at(xx_io_device *device, int64_t offset, void *buffer,
 
 /* ---- output sink ------------------------------------------------------- */
 
-static ssize_t os_sink_write(xx_io_device *self, const void *buffer,
-                             size_t n) {
+static ssize_t os_sink_write(xx_io_device *self, const void *buffer, size_t n)
+{
     const size_t file_io_capacity = gb_o_setup_capacity();
     os_sink *sink = self ? (os_sink *)self->priv : NULL;
     size_t done = 0U;
     if (!sink || (!buffer && n != 0U)) return -1;
     if ((uint64_t)n > sink->limit - sink->written) return -1;
     while (sink->target && done < n) {
-        ssize_t amount = gb_o_setup_write(sink->target,
-                                     (const uint8_t *)buffer + done, n - done, file_io_capacity);
+        ssize_t amount = gb_o_setup_write(sink->target, (const uint8_t *)buffer + done, n - done, file_io_capacity);
         if (amount <= 0 || (size_t)amount > n - done) return -1;
         done += (size_t)amount;
     }
@@ -171,8 +170,8 @@ static ssize_t os_sink_write(xx_io_device *self, const void *buffer,
     return (ssize_t)n;
 }
 
-static void os_sink_init(os_sink *sink, xx_io_device *target,
-                         uint64_t limit) {
+static void os_sink_init(os_sink *sink, xx_io_device *target, uint64_t limit)
+{
     xx_mem_zero(sink, sizeof(*sink));
     sink->device.write = os_sink_write;
     sink->device.priv = sink;
@@ -181,8 +180,8 @@ static void os_sink_init(os_sink *sink, xx_io_device *target,
 }
 
 /* Stream `size` stored bytes at `offset` into the sink in fixed chunks. */
-static bool os_copy_range(xx_io_device *source, int64_t offset, int64_t size,
-                          os_sink *sink, xx_pd_struct *pd) {
+static bool os_copy_range(xx_io_device *source, int64_t offset, int64_t size, os_sink *sink, xx_pd_struct *pd)
+{
     const size_t file_io_capacity = gb_o_setup_capacity();
     uint8_t *buffer;
     int64_t done = 0;
@@ -192,12 +191,8 @@ static bool os_copy_range(xx_io_device *source, int64_t offset, int64_t size,
     buffer = (uint8_t *)xx_mem_alloc(file_io_capacity);
     if (!buffer) return false;
     while (ok && done < size) {
-        size_t chunk = size - done > (int64_t)file_io_capacity
-                           ? (size_t)file_io_capacity
-                           : (size_t)(size - done);
-        if ((pd && xx_pd_is_stopped(pd)) ||
-            !os_read_at(source, offset + done, buffer, chunk) ||
-            os_sink_write(&sink->device, buffer, chunk) != (ssize_t)chunk)
+        size_t chunk = size - done > (int64_t)file_io_capacity ? (size_t)file_io_capacity : (size_t)(size - done);
+        if ((pd && xx_pd_is_stopped(pd)) || !os_read_at(source, offset + done, buffer, chunk) || os_sink_write(&sink->device, buffer, chunk) != (ssize_t)chunk)
             ok = false;
         done += (int64_t)chunk;
     }
@@ -207,16 +202,16 @@ static bool os_copy_range(xx_io_device *source, int64_t offset, int64_t size,
 
 /* ---- member names ------------------------------------------------------ */
 
-static bool os_escaped(uint8_t c) {
-    return c < 0x21U || c > 0x7EU || c == (uint8_t)'%' || c == (uint8_t)'/' ||
-           c == (uint8_t)'\\' || c == (uint8_t)':' || c == (uint8_t)'*' ||
-           c == (uint8_t)'?' || c == (uint8_t)'"' || c == (uint8_t)'<' ||
-           c == (uint8_t)'>' || c == (uint8_t)'|';
+static bool os_escaped(uint8_t c)
+{
+    return c < 0x21U || c > 0x7EU || c == (uint8_t)'%' || c == (uint8_t)'/' || c == (uint8_t)'\\' || c == (uint8_t)':' || c == (uint8_t)'*' || c == (uint8_t)'?' ||
+           c == (uint8_t)'"' || c == (uint8_t)'<' || c == (uint8_t)'>' || c == (uint8_t)'|';
 }
 
 /* Raw name -> one ASCII path component (see the header).  `out` holds
  * OS_NAME_BUFFER bytes; returns the converted length. */
-static size_t os_convert_name(const uint8_t *raw, size_t length, char *out) {
+static size_t os_convert_name(const uint8_t *raw, size_t length, char *out)
+{
     static const char digits[] = "0123456789ABCDEF";
     size_t at = 0U, index;
     for (index = 0U; index < length; ++index) {
@@ -233,19 +228,19 @@ static size_t os_convert_name(const uint8_t *raw, size_t length, char *out) {
     return at;
 }
 
-static int os_compare_folded(const char *left, const char *right) {
+static int os_compare_folded(const char *left, const char *right)
+{
     for (;; ++left, ++right) {
         uint8_t a = (uint8_t)*left, b = (uint8_t)*right;
-        if (a >= (uint8_t)'A' && a <= (uint8_t)'Z')
-            a = (uint8_t)(a - (uint8_t)'A' + (uint8_t)'a');
-        if (b >= (uint8_t)'A' && b <= (uint8_t)'Z')
-            b = (uint8_t)(b - (uint8_t)'A' + (uint8_t)'a');
+        if (a >= (uint8_t)'A' && a <= (uint8_t)'Z') a = (uint8_t)(a - (uint8_t)'A' + (uint8_t)'a');
+        if (b >= (uint8_t)'A' && b <= (uint8_t)'Z') b = (uint8_t)(b - (uint8_t)'A' + (uint8_t)'a');
         if (a != b) return a < b ? -1 : 1;
         if (a == 0U) return 0;
     }
 }
 
-static int os_compare_items(const void *left, const void *right) {
+static int os_compare_items(const void *left, const void *right)
+{
     const os_item *a = *(const os_item *const *)left;
     const os_item *b = *(const os_item *const *)right;
     int order = os_compare_folded(a->name, b->name);
@@ -255,7 +250,8 @@ static int os_compare_items(const void *left, const void *right) {
 
 /* Insert "%_<index>" before the extension (or append it when there is
  * none).  `name` has room for OS_NAME_BUFFER bytes. */
-static void os_insert_suffix(char *name, uint32_t index) {
+static void os_insert_suffix(char *name, uint32_t index)
+{
     char suffix[2 + 10];
     char digits[10];
     size_t length = xx_str_len(name);
@@ -275,15 +271,15 @@ static void os_insert_suffix(char *name, uint32_t index) {
     while (digit_count != 0U) suffix[suffix_length++] = digits[--digit_count];
     if (length + suffix_length >= OS_NAME_BUFFER) return;
     tail = length - dot;
-    for (at = tail + 1U; at > 0U; --at)
-        name[dot + suffix_length + at - 1U] = name[dot + at - 1U];
+    for (at = tail + 1U; at > 0U; --at) name[dot + suffix_length + at - 1U] = name[dot + at - 1U];
     xx_rt_memcpy(name + dot, suffix, suffix_length);
 }
 
 /* The first of a group of equal names (ASCII case folded) keeps it; every
  * later one is suffixed with its record index, which is unique and cannot
  * meet another name because "%_" never occurs in a converted one. */
-static bool os_mark_duplicates(os_item *items, size_t count) {
+static bool os_mark_duplicates(os_item *items, size_t count)
+{
     os_item **order;
     size_t index;
     if (count < 2U) return true;
@@ -293,21 +289,18 @@ static bool os_mark_duplicates(os_item *items, size_t count) {
     xx_rt_qsort(order, count, sizeof(*order), os_compare_items);
     /* Mark first, rename afterwards: renaming changes the sort keys. */
     for (index = count - 1U; index > 0U; --index)
-        if (os_compare_folded(order[index]->name, order[index - 1U]->name) == 0)
-            order[index]->duplicate = true;
+        if (os_compare_folded(order[index]->name, order[index - 1U]->name) == 0) order[index]->duplicate = true;
     for (index = 0U; index < count; ++index)
-        if (items[index].duplicate)
-            os_insert_suffix(items[index].name, items[index].index);
+        if (items[index].duplicate) os_insert_suffix(items[index].name, items[index].index);
     xx_mem_free(order);
     return true;
 }
 
 /* A Windows device name (CON, PRN, AUX, NUL, COM0-9, LPT0-9, CLOCK$, CONIN$,
  * CONOUT$) as the part of the name before its first '.'. */
-static bool os_reserved_name(const char *name) {
-    static const char *const devices[] = {"CON",    "PRN",    "AUX",
-                                          "NUL",    "CLOCK$", "CONIN$",
-                                          "CONOUT$"};
+static bool os_reserved_name(const char *name)
+{
+    static const char *const devices[] = {"CON", "PRN", "AUX", "NUL", "CLOCK$", "CONIN$", "CONOUT$"};
     char stem[8];
     size_t stem_length = 0U, index;
     while (name[stem_length] != 0 && name[stem_length] != '.') ++stem_length;
@@ -318,20 +311,18 @@ static bool os_reserved_name(const char *name) {
     }
     stem[stem_length] = 0;
     if (stem_length == 4U && stem[3] >= '0' && stem[3] <= '9' &&
-        ((stem[0] == 'C' && stem[1] == 'O' && stem[2] == 'M') ||
-         (stem[0] == 'L' && stem[1] == 'P' && stem[2] == 'T')))
+        ((stem[0] == 'C' && stem[1] == 'O' && stem[2] == 'M') || (stem[0] == 'L' && stem[1] == 'P' && stem[2] == 'T')))
         return true;
     for (index = 0U; index < sizeof(devices) / sizeof(devices[0]); ++index)
-        if (xx_str_len(devices[index]) == stem_length &&
-            xx_rt_memcmp(stem, devices[index], stem_length) == 0)
-            return true;
+        if (xx_str_len(devices[index]) == stem_length && xx_rt_memcmp(stem, devices[index], stem_length) == 0) return true;
     return false;
 }
 
 /* A converted name is one component with no separator, control or
  * forbidden character left in it; what remains to refuse is the empty name,
  * a name ending in '.' (this covers "." and "..") and device names. */
-static bool os_safe_name(const char *name) {
+static bool os_safe_name(const char *name)
+{
     size_t length;
     if (!name || !name[0]) return false;
     length = xx_str_len(name);
@@ -341,28 +332,23 @@ static bool os_safe_name(const char *name) {
 
 /* ---- structure walk ---------------------------------------------------- */
 
-static bool os_read_trailer(Abstractformat *format, os_layout *out) {
+static bool os_read_trailer(Abstractformat *format, os_layout *out)
+{
     uint8_t tail[OS_TRAILER_LONG];
     uint8_t mz[2];
     os_layout layout;
     int64_t base, first, room;
     uint32_t size;
-    if (!format || !format->device || !out || format->base_address < 0)
-        return false;
+    if (!format || !format->device || !out || format->base_address < 0) return false;
     base = format->base_address;
     xx_mem_zero(&layout, sizeof(layout));
     layout.total = xx_io_total_size(format->device);
-    if (layout.total < base ||
-        layout.total - base < (int64_t)(OS_MIN_FIRST_RECORD +
-                                        OS_RECORD_HEADER + OS_TRAILER_SHORT) ||
-        !os_read_at(format->device, layout.total - OS_TRAILER_LONG, tail,
-                    sizeof(tail)))
+    if (layout.total < base || layout.total - base < (int64_t)(OS_MIN_FIRST_RECORD + OS_RECORD_HEADER + OS_TRAILER_SHORT) ||
+        !os_read_at(format->device, layout.total - OS_TRAILER_LONG, tail, sizeof(tail)))
         return false;
-    if (xx_rt_memcmp(tail, "OSETUP", 6U) == 0 &&
-        (tail[6] == (uint8_t)'S' || tail[6] == (uint8_t)'A') && tail[7] == 0U) {
+    if (xx_rt_memcmp(tail, "OSETUP", 6U) == 0 && (tail[6] == (uint8_t)'S' || tail[6] == (uint8_t)'A') && tail[7] == 0U) {
         size = OS_TRAILER_LONG;
-        layout.variant = tail[6] == (uint8_t)'S' ? XX_O_SETUP_VARIANT_SETUP
-                                                 : XX_O_SETUP_VARIANT_ALL;
+        layout.variant = tail[6] == (uint8_t)'S' ? XX_O_SETUP_VARIANT_SETUP : XX_O_SETUP_VARIANT_ALL;
     } else if (xx_rt_memcmp(tail + 2, "OSETUP", 6U) == 0) {
         size = OS_TRAILER_SHORT;
         layout.variant = XX_O_SETUP_VARIANT_OLD;
@@ -372,29 +358,22 @@ static bool os_read_trailer(Abstractformat *format, os_layout *out) {
     layout.count = os_le16(tail + 12);
     first = (int64_t)xx_data_get_u32(tail + 8, 4, 0, false);
     layout.trailer = layout.total - (int64_t)size;
-    if (layout.count == 0U || first < OS_MIN_FIRST_RECORD ||
-        first > layout.trailer - base)
-        return false;
+    if (layout.count == 0U || first < OS_MIN_FIRST_RECORD || first > layout.trailer - base) return false;
     layout.first = base + first;
     room = layout.trailer - layout.first;
     if ((int64_t)layout.count > room / OS_RECORD_HEADER) return false;
     /* The package is appended to an executable. */
-    if (!os_read_at(format->device, base, mz, sizeof(mz)) ||
-        mz[0] != (uint8_t)'M' || mz[1] != (uint8_t)'Z')
-        return false;
+    if (!os_read_at(format->device, base, mz, sizeof(mz)) || mz[0] != (uint8_t)'M' || mz[1] != (uint8_t)'Z') return false;
     *out = layout;
     return true;
 }
 
 /* The fields of one record header.  False when it is not a record. */
-static bool os_parse_record(const uint8_t *header, uint32_t *size,
-                            uint32_t *mtime, size_t *name_length) {
+static bool os_parse_record(const uint8_t *header, uint32_t *size, uint32_t *mtime, size_t *name_length)
+{
     size_t length = 0U;
-    if (header[0] != (uint8_t)'F' || header[1] != (uint8_t)'I' ||
-        header[2] != (uint8_t)'L' || header[3] != (uint8_t)'E')
-        return false;
-    while (length < OS_NAME_FIELD && header[OS_NAME_OFFSET + length] != 0U)
-        ++length;
+    if (header[0] != (uint8_t)'F' || header[1] != (uint8_t)'I' || header[2] != (uint8_t)'L' || header[3] != (uint8_t)'E') return false;
+    while (length < OS_NAME_FIELD && header[OS_NAME_OFFSET + length] != 0U) ++length;
     /* The writer terminates the name inside the field. */
     if (length == 0U || length >= OS_NAME_FIELD) return false;
     *size = xx_data_get_u32(header + OS_SIZE_OFFSET, 4, 0, false);
@@ -404,18 +383,15 @@ static bool os_parse_record(const uint8_t *header, uint32_t *size,
 }
 
 /* Read the head of a member's data and tell SZDD from stored. */
-static bool os_classify(xx_io_device *device, os_item *item) {
+static bool os_classify(xx_io_device *device, os_item *item)
+{
     uint8_t head[OS_SZDD_HEADER];
-    static const uint8_t magic[8] = {'S', 'Z', 'D', 'D',
-                                     0x88U, 0xF0U, 0x27U, 0x33U};
+    static const uint8_t magic[8] = {'S', 'Z', 'D', 'D', 0x88U, 0xF0U, 0x27U, 0x33U};
     item->method = XX_O_SETUP_METHOD_STORED;
     item->unpacked = item->size;
     if (item->size < OS_SZDD_HEADER) return true;
-    if (!os_read_at(device, item->header + OS_RECORD_HEADER, head,
-                    sizeof(head)))
-        return false;
-    if (xx_rt_memcmp(head, magic, sizeof(magic)) == 0 &&
-        head[8] == (uint8_t)'A') {
+    if (!os_read_at(device, item->header + OS_RECORD_HEADER, head, sizeof(head))) return false;
+    if (xx_rt_memcmp(head, magic, sizeof(magic)) == 0 && head[8] == (uint8_t)'A') {
         item->method = XX_O_SETUP_METHOD_SZDD;
         item->unpacked = xx_data_get_u32(head + 10, 4, 0, false);
     }
@@ -424,8 +400,8 @@ static bool os_classify(xx_io_device *device, os_item *item) {
 
 /* Walk every record from the first one; the chain must end exactly at the
  * trailer.  With `items` NULL this is the probe and keeps nothing. */
-static bool os_walk(Abstractformat *format, const os_layout *layout,
-                    os_item *items, xx_pd_struct *pd) {
+static bool os_walk(Abstractformat *format, const os_layout *layout, os_item *items, xx_pd_struct *pd)
+{
     uint8_t header[OS_RECORD_HEADER];
     int64_t cursor = layout->first;
     uint32_t index;
@@ -433,10 +409,8 @@ static bool os_walk(Abstractformat *format, const os_layout *layout,
         uint32_t size, mtime;
         size_t name_length;
         int64_t data;
-        if ((index & OS_POLL_MASK) == 0U && pd && xx_pd_is_stopped(pd))
-            return false;
-        if ((int64_t)OS_RECORD_HEADER > layout->trailer - cursor ||
-            !os_read_at(format->device, cursor, header, sizeof(header)) ||
+        if ((index & OS_POLL_MASK) == 0U && pd && xx_pd_is_stopped(pd)) return false;
+        if ((int64_t)OS_RECORD_HEADER > layout->trailer - cursor || !os_read_at(format->device, cursor, header, sizeof(header)) ||
             !os_parse_record(header, &size, &mtime, &name_length))
             return false;
         data = cursor + OS_RECORD_HEADER;
@@ -447,8 +421,7 @@ static bool os_walk(Abstractformat *format, const os_layout *layout,
             item->size = size;
             item->mtime = mtime;
             item->index = index;
-            (void)os_convert_name(header + OS_NAME_OFFSET, name_length,
-                                  item->name);
+            (void)os_convert_name(header + OS_NAME_OFFSET, name_length, item->name);
             if (!os_classify(format->device, item)) return false;
         }
         cursor = data + (int64_t)size;
@@ -456,21 +429,21 @@ static bool os_walk(Abstractformat *format, const os_layout *layout,
     return cursor == layout->trailer;
 }
 
-static bool os_scan(Abstractformat *format, os_layout *layout,
-                    xx_pd_struct *pd) {
-    return os_read_trailer(format, layout) &&
-           os_walk(format, layout, NULL, pd);
+static bool os_scan(Abstractformat *format, os_layout *layout, xx_pd_struct *pd)
+{
+    return os_read_trailer(format, layout) && os_walk(format, layout, NULL, pd);
 }
 
-static void os_stream_free(void *opaque) {
+static void os_stream_free(void *opaque)
+{
     os_stream *stream = (os_stream *)opaque;
     if (!stream) return;
     if (stream->items) xx_mem_free(stream->items);
     xx_mem_free(stream);
 }
 
-static bool os_open_stream(Abstractformat *format, os_stream **result,
-                           xx_pd_struct *pd) {
+static bool os_open_stream(Abstractformat *format, os_stream **result, xx_pd_struct *pd)
+{
     os_layout layout;
     os_stream *stream;
     if (!result || !os_scan(format, &layout, pd)) return false;
@@ -478,10 +451,8 @@ static bool os_open_stream(Abstractformat *format, os_stream **result,
     if (!stream) return false;
     /* At most 65535 records, each proven by a 44-byte header in the file:
      * the bookkeeping never outgrows the package. */
-    stream->items = (os_item *)xx_mem_calloc(layout.count,
-                                             sizeof(*stream->items));
-    if (!stream->items || !os_walk(format, &layout, stream->items, pd) ||
-        !os_mark_duplicates(stream->items, layout.count)) {
+    stream->items = (os_item *)xx_mem_calloc(layout.count, sizeof(*stream->items));
+    if (!stream->items || !os_walk(format, &layout, stream->items, pd) || !os_mark_duplicates(stream->items, layout.count)) {
         os_stream_free(stream);
         return false;
     }
@@ -491,17 +462,16 @@ static bool os_open_stream(Abstractformat *format, os_stream **result,
     return true;
 }
 
-static bool os_copy_options(xx_list_s *destination, const xx_list_s *source) {
+static bool os_copy_options(xx_list_s *destination, const xx_list_s *source)
+{
     size_t index;
     if (!source) return true;
     for (index = 0U; index < source->count; ++index) {
-        const xx_meta *original =
-            (const xx_meta *)xx_list_at((const xx_list_t *)source, index);
+        const xx_meta *original = (const xx_meta *)xx_list_at((const xx_list_t *)source, index);
         xx_meta copy;
         if (!original) continue;
         xx_meta_init(&copy, original->meta_id);
-        if (!xx_var_copy(&copy.var, &original->var) ||
-            !xx_list_append(destination, &copy)) {
+        if (!xx_var_copy(&copy.var, &original->var) || !xx_list_append(destination, &copy)) {
             xx_meta_cleanup(&copy);
             return false;
         }
@@ -509,24 +479,18 @@ static bool os_copy_options(xx_list_s *destination, const xx_list_s *source) {
     return true;
 }
 
-static bool os_set_record(xx_archive_record *record, const os_item *item) {
+static bool os_set_record(xx_archive_record *record, const os_item *item)
+{
     xx_archive_record_cleanup(record);
     xx_archive_record_init(record);
     record->header_offset = item->header;
     record->header_size = OS_RECORD_HEADER;
     record->data_offset = item->header + OS_RECORD_HEADER;
     record->compressed_size = (int64_t)item->size;
-    return xx_archive_record_set_original_name(record, item->name) &&
-           xx_archive_record_set_meta_u64(record, XX_META_ID_COMPRESSED_SIZE,
-                                          item->size) &&
-           xx_archive_record_set_meta_u64(record, XX_META_ID_UNCOMPRESSED_SIZE,
-                                          item->unpacked) &&
-           xx_archive_record_set_meta_u64(record, XX_META_ID_COMPRESSION_METHOD,
-                                          item->method) &&
-           xx_archive_record_set_meta_u64(record, XX_META_ID_TIMESTAMP,
-                                          item->mtime) &&
-           xx_archive_record_set_meta_bool(record, XX_META_ID_IS_ENCRYPTED,
-                                           false) &&
+    return xx_archive_record_set_original_name(record, item->name) && xx_archive_record_set_meta_u64(record, XX_META_ID_COMPRESSED_SIZE, item->size) &&
+           xx_archive_record_set_meta_u64(record, XX_META_ID_UNCOMPRESSED_SIZE, item->unpacked) &&
+           xx_archive_record_set_meta_u64(record, XX_META_ID_COMPRESSION_METHOD, item->method) &&
+           xx_archive_record_set_meta_u64(record, XX_META_ID_TIMESTAMP, item->mtime) && xx_archive_record_set_meta_bool(record, XX_META_ID_IS_ENCRYPTED, false) &&
            xx_archive_record_set_meta_bool(record, XX_META_ID_IS_FOLDER, false);
 }
 
@@ -541,12 +505,12 @@ typedef struct os_input_s {
     size_t length;
 } os_input;
 
-static bool os_input_byte(os_input *in, uint8_t *value) {
+static bool os_input_byte(os_input *in, uint8_t *value)
+{
     if (in->at == in->length) {
         size_t take;
         if (in->left == 0U) return false;
-        take = in->left > (uint64_t)in->capacity ? in->capacity
-                                                 : (size_t)in->left;
+        take = in->left > (uint64_t)in->capacity ? in->capacity : (size_t)in->left;
         if (!os_read_at(in->device, in->offset, in->buffer, take)) return false;
         in->offset += (int64_t)take;
         in->left -= (uint64_t)take;
@@ -566,8 +530,8 @@ static bool os_input_byte(os_input *in, uint8_t *value) {
  * reachable from the stored bytes, the stream must produce exactly that many
  * bytes, and no input may be left over. */
 #define OS_WINDOW 4096U
-static bool os_extract_szdd(xx_io_device *device, const os_item *item,
-                            os_sink *sink, xx_pd_struct *pd) {
+static bool os_extract_szdd(xx_io_device *device, const os_item *item, os_sink *sink, xx_pd_struct *pd)
+{
     uint8_t window[OS_WINDOW];
     os_input in;
     uint64_t input_size = (uint64_t)item->size - OS_SZDD_HEADER;
@@ -577,10 +541,7 @@ static bool os_extract_szdd(xx_io_device *device, const os_item *item,
     unsigned flag_bit = 0U;
     uint8_t flags = 0U;
     bool ok = false;
-    if (item->size < OS_SZDD_HEADER ||
-        output_size > input_size * OS_SZDD_RATIO + OS_SZDD_SLACK ||
-        (pd && xx_pd_is_stopped(pd)))
-        return false;
+    if (item->size < OS_SZDD_HEADER || output_size > input_size * OS_SZDD_RATIO + OS_SZDD_SLACK || (pd && xx_pd_is_stopped(pd))) return false;
     xx_mem_zero(&in, sizeof(in));
     in.device = device;
     in.offset = item->header + OS_RECORD_HEADER + (int64_t)OS_SZDD_HEADER;
@@ -599,21 +560,15 @@ static bool os_extract_szdd(xx_io_device *device, const os_item *item,
             if (!os_input_byte(&in, &window[position])) goto done;
         } else {
             uint8_t low, high;
-            if (!os_input_byte(&in, &low) || !os_input_byte(&in, &high))
-                goto done;
-            match = ((size_t)low | ((size_t)(high & 0xF0U) << 4U)) +
-                    OS_SZDD_BIAS;
+            if (!os_input_byte(&in, &low) || !os_input_byte(&in, &high)) goto done;
+            match = ((size_t)low | ((size_t)(high & 0xF0U) << 4U)) + OS_SZDD_BIAS;
             length = (size_t)(high & 0x0FU) + 3U;
             if ((uint64_t)length > output_size - produced) goto done;
         }
         for (index = 0U; index < length; ++index) {
-            if (!literal)
-                window[position] = window[(match + index) & (OS_WINDOW - 1U)];
+            if (!literal) window[position] = window[(match + index) & (OS_WINDOW - 1U)];
             if (++position == OS_WINDOW) {
-                if ((pd && xx_pd_is_stopped(pd)) ||
-                    os_sink_write(&sink->device, window, OS_WINDOW) !=
-                        (ssize_t)OS_WINDOW)
-                    goto done;
+                if ((pd && xx_pd_is_stopped(pd)) || os_sink_write(&sink->device, window, OS_WINDOW) != (ssize_t)OS_WINDOW) goto done;
                 position = 0U;
             }
         }
@@ -622,9 +577,7 @@ static bool os_extract_szdd(xx_io_device *device, const os_item *item,
     /* Everything stored must have been used: a header that claims fewer
      * bytes than the stream holds is not accepted. */
     if (in.at != in.length || in.left != 0U) goto done;
-    if (position != 0U &&
-        os_sink_write(&sink->device, window, position) != (ssize_t)position)
-        goto done;
+    if (position != 0U && os_sink_write(&sink->device, window, position) != (ssize_t)position) goto done;
     ok = true;
 done:
     xx_mem_free(in.buffer);
@@ -632,22 +585,18 @@ done:
 }
 
 /* Decode one member into `destination` (NULL only verifies). */
-static bool os_extract(Abstractformat *format, const os_item *item,
-                       xx_io_device *destination, xx_pd_struct *pd) {
+static bool os_extract(Abstractformat *format, const os_item *item, xx_io_device *destination, xx_pd_struct *pd)
+{
     os_sink sink;
     os_sink_init(&sink, destination, item->unpacked);
-    if (item->method == XX_O_SETUP_METHOD_SZDD)
-        return os_extract_szdd(format->device, item, &sink, pd) &&
-               sink.written == item->unpacked;
-    return os_copy_range(format->device, item->header + OS_RECORD_HEADER,
-                         (int64_t)item->size, &sink, pd) &&
-           sink.written == item->size;
+    if (item->method == XX_O_SETUP_METHOD_SZDD) return os_extract_szdd(format->device, item, &sink, pd) && sink.written == item->unpacked;
+    return os_copy_range(format->device, item->header + OS_RECORD_HEADER, (int64_t)item->size, &sink, pd) && sink.written == item->size;
 }
 
 /* ---- public API -------------------------------------------------------- */
 
-void xx_o_setup_init(xx_o_setup *archive, xx_io_device *device,
-                     int64_t base_address) {
+void xx_o_setup_init(xx_o_setup *archive, xx_io_device *device, int64_t base_address)
+{
     if (!archive) return;
     xx_mem_zero(archive, sizeof(*archive));
     xx_format_init(&archive->format, device, base_address);
@@ -660,42 +609,41 @@ void xx_o_setup_init(xx_o_setup *archive, xx_io_device *device,
     archive->format.check_is_valid = xx_o_setup_check_is_valid;
     archive->format.handle_base_info = xx_o_setup_handle_base_info;
     archive->format.get_format_size = xx_o_setup_get_format_size;
-    archive->format.get_number_of_archive_records =
-        xx_o_setup_get_number_of_archive_records;
-    archive->format.create_archive_records_reading =
-        xx_o_setup_create_archive_records_reading;
-    archive->format.get_current_archive_record =
-        xx_o_setup_get_current_archive_record;
-    archive->format.unpack_current_archive_record =
-        xx_o_setup_unpack_current_archive_record;
-    archive->format.archive_record_move_to_next =
-        xx_o_setup_archive_record_move_to_next;
-    archive->format.free_archive_records_reading =
-        xx_o_setup_free_archive_records_reading;
+    archive->format.get_number_of_archive_records = xx_o_setup_get_number_of_archive_records;
+    archive->format.create_archive_records_reading = xx_o_setup_create_archive_records_reading;
+    archive->format.get_current_archive_record = xx_o_setup_get_current_archive_record;
+    archive->format.unpack_current_archive_record = xx_o_setup_unpack_current_archive_record;
+    archive->format.archive_record_move_to_next = xx_o_setup_archive_record_move_to_next;
+    archive->format.free_archive_records_reading = xx_o_setup_free_archive_records_reading;
 }
 
-xx_o_setup *xx_o_setup_create(xx_io_device *device, int64_t base_address) {
+xx_o_setup *xx_o_setup_create(xx_io_device *device, int64_t base_address)
+{
     xx_o_setup *archive = (xx_o_setup *)xx_mem_alloc(sizeof(*archive));
     if (archive) xx_o_setup_init(archive, device, base_address);
     return archive;
 }
 
-void xx_o_setup_destroy(xx_o_setup *archive) {
+void xx_o_setup_destroy(xx_o_setup *archive)
+{
     if (archive) xx_format_cleanup_extra_parameters(&archive->format);
 }
 
-void xx_o_setup_free(xx_o_setup *archive) {
+void xx_o_setup_free(xx_o_setup *archive)
+{
     if (!archive) return;
     xx_o_setup_destroy(archive);
     xx_mem_free(archive);
 }
 
-bool xx_o_setup_check_is_valid(Abstractformat *format, xx_pd_struct *pd) {
+bool xx_o_setup_check_is_valid(Abstractformat *format, xx_pd_struct *pd)
+{
     os_layout layout;
     return os_scan(format, &layout, pd);
 }
 
-bool xx_o_setup_handle_base_info(Abstractformat *format, xx_pd_struct *pd) {
+bool xx_o_setup_handle_base_info(Abstractformat *format, xx_pd_struct *pd)
+{
     os_layout layout;
     xx_o_setup *archive;
     if (!os_scan(format, &layout, pd)) return false;
@@ -712,21 +660,18 @@ bool xx_o_setup_handle_base_info(Abstractformat *format, xx_pd_struct *pd) {
     return true;
 }
 
-int64_t xx_o_setup_get_format_size(Abstractformat *format, xx_pd_struct *pd) {
-    return format && (format->base_info_handled ||
-                      xx_o_setup_handle_base_info(format, pd))
-               ? format->format_size : -1;
+int64_t xx_o_setup_get_format_size(Abstractformat *format, xx_pd_struct *pd)
+{
+    return format && (format->base_info_handled || xx_o_setup_handle_base_info(format, pd)) ? format->format_size : -1;
 }
 
-uint64_t xx_o_setup_get_number_of_archive_records(Abstractformat *format,
-                                                  xx_pd_struct *pd) {
-    return format && (format->base_info_handled ||
-                      xx_o_setup_handle_base_info(format, pd))
-               ? ((xx_o_setup *)format)->number_of_records : 0U;
+uint64_t xx_o_setup_get_number_of_archive_records(Abstractformat *format, xx_pd_struct *pd)
+{
+    return format && (format->base_info_handled || xx_o_setup_handle_base_info(format, pd)) ? ((xx_o_setup *)format)->number_of_records : 0U;
 }
 
-xx_archive_record_state *xx_o_setup_create_archive_records_reading(
-    Abstractformat *format, const xx_list_s *options, xx_pd_struct *pd) {
+xx_archive_record_state *xx_o_setup_create_archive_records_reading(Abstractformat *format, const xx_list_s *options, xx_pd_struct *pd)
+{
     os_stream *stream;
     xx_archive_record_state *state;
     if (!os_open_stream(format, &stream, pd)) return NULL;
@@ -739,8 +684,7 @@ xx_archive_record_state *xx_o_setup_create_archive_records_reading(
     state->internal_state = stream;
     state->free_internal = os_stream_free;
     state->total_records = (uint64_t)stream->count;
-    if (!os_copy_options(&state->options, options) ||
-        !os_set_record(&state->current_record, &stream->items[0])) {
+    if (!os_copy_options(&state->options, options) || !os_set_record(&state->current_record, &stream->items[0])) {
         xx_archive_record_state_free(state);
         return NULL;
     }
@@ -748,33 +692,27 @@ xx_archive_record_state *xx_o_setup_create_archive_records_reading(
     return state;
 }
 
-const xx_archive_record *xx_o_setup_get_current_archive_record(
-    Abstractformat *format, xx_archive_record_state *state) {
-    return format && state && state->format == format && state->has_record
-               ? &state->current_record : NULL;
+const xx_archive_record *xx_o_setup_get_current_archive_record(Abstractformat *format, xx_archive_record_state *state)
+{
+    return format && state && state->format == format && state->has_record ? &state->current_record : NULL;
 }
 
-bool xx_o_setup_archive_record_move_to_next(Abstractformat *format,
-                                            xx_archive_record_state *state,
-                                            xx_pd_struct *pd) {
+bool xx_o_setup_archive_record_move_to_next(Abstractformat *format, xx_archive_record_state *state, xx_pd_struct *pd)
+{
     os_stream *stream;
     (void)pd;
-    if (!format || !state || state->format != format ||
-        !(stream = (os_stream *)state->internal_state) ||
-        stream->index + 1U >= stream->count) {
+    if (!format || !state || state->format != format || !(stream = (os_stream *)state->internal_state) || stream->index + 1U >= stream->count) {
         if (state) state->has_record = false;
         return false;
     }
     ++stream->index;
     ++state->current_index;
-    state->has_record =
-        os_set_record(&state->current_record, &stream->items[stream->index]);
+    state->has_record = os_set_record(&state->current_record, &stream->items[stream->index]);
     return state->has_record;
 }
 
-bool xx_o_setup_unpack_current_archive_record(Abstractformat *format,
-                                              xx_archive_record_state *state,
-                                              xx_pd_struct *pd) {
+bool xx_o_setup_unpack_current_archive_record(Abstractformat *format, xx_archive_record_state *state, xx_pd_struct *pd)
+{
     os_stream *stream;
     const os_item *item;
     const xx_var *option;
@@ -783,36 +721,27 @@ bool xx_o_setup_unpack_current_archive_record(Abstractformat *format,
     char *path = NULL;
     bool result = false;
     bool created = false;
-    if (!format || !state || state->format != format || !state->has_record ||
-        !(stream = (os_stream *)state->internal_state) ||
-        stream->index >= stream->count || (pd && xx_pd_is_stopped(pd)))
+    if (!format || !state || state->format != format || !state->has_record || !(stream = (os_stream *)state->internal_state) || stream->index >= stream->count ||
+        (pd && xx_pd_is_stopped(pd)))
         return false;
     item = &stream->items[stream->index];
-    option = xx_format_resolve_extra_parameter(format, &state->options,
-                                               XX_META_ID_OPT_MAX_MEMBER_SIZE);
-    if (option && (uint64_t)item->unpacked > xx_var_get_u64(option))
-        return false;
-    option = xx_format_resolve_extra_parameter(format, &state->options,
-                                               XX_META_ID_OPT_UNPACK_PATH);
-    if (!option)
-        /* No destination: decode the member through, which verifies it. */
+    option = xx_format_resolve_extra_parameter(format, &state->options, XX_META_ID_OPT_MAX_MEMBER_SIZE);
+    if (option && (uint64_t)item->unpacked > xx_var_get_u64(option)) return false;
+    option = xx_format_resolve_extra_parameter(format, &state->options, XX_META_ID_OPT_UNPACK_PATH);
+    if (!option) /* No destination: decode the member through, which verifies it. */
         return os_extract(format, item, NULL, pd);
     /* item->name came from the file: refuse it before anything is created
      * when it names a device or is not a usable file name. */
     if (!os_safe_name(item->name)) return false;
-    if (option->type == XX_VAR_TYPE_STRING ||
-        option->type == XX_VAR_TYPE_STRING_VIEW) {
+    if (option->type == XX_VAR_TYPE_STRING || option->type == XX_VAR_TYPE_STRING_VIEW) {
         base = xx_var_get_str(option);
-    } else if (option->type == XX_VAR_TYPE_WSTRING ||
-               option->type == XX_VAR_TYPE_WSTRING_VIEW) {
+    } else if (option->type == XX_VAR_TYPE_WSTRING || option->type == XX_VAR_TYPE_WSTRING_VIEW) {
         owned_base = xx_str_unicode_to_utf8(xx_var_get_wstr(option));
         base = owned_base;
     }
     if (!base) goto done;
-    path = (base[0] && base[xx_str_len(base) - 1U] != '/' &&
-            base[xx_str_len(base) - 1U] != '\\')
-               ? xx_str_concat3(base, "/", item->name)
-               : xx_str_concat(base, item->name);
+    path =
+        (base[0] && base[xx_str_len(base) - 1U] != '/' && base[xx_str_len(base) - 1U] != '\\') ? xx_str_concat3(base, "/", item->name) : xx_str_concat(base, item->name);
     if (!path || !xx_store_create_dirs_a(path, false)) goto done;
     {
         xx_io_device *destination = xx_io_file_open(path, "wb");
@@ -828,8 +757,8 @@ done:
     return result;
 }
 
-void xx_o_setup_free_archive_records_reading(Abstractformat *format,
-                                             xx_archive_record_state *state) {
+void xx_o_setup_free_archive_records_reading(Abstractformat *format, xx_archive_record_state *state)
+{
     (void)format;
     xx_archive_record_state_free(state);
 }

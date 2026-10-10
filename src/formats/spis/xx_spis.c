@@ -75,17 +75,15 @@ static void xx_spis_vtable_destroy(Abstractformat *self);
 
 /* ------------------------------------------------------------- helpers -- */
 
-static bool xx_spis_read_at(Abstractformat *self, int64_t offset,
-                              uint8_t *buffer, size_t size) {
+static bool xx_spis_read_at(Abstractformat *self, int64_t offset, uint8_t *buffer, size_t size)
+{
     size_t completed = 0U;
 
-    if (!self || !self->device || offset < 0 ||
-        xx_io_seek64(self->device, offset, SEEK_SET) != 0) {
+    if (!self || !self->device || offset < 0 || xx_io_seek64(self->device, offset, SEEK_SET) != 0) {
         return false;
     }
     while (completed < size) {
-        ssize_t received =
-            xx_io_read(self->device, buffer + completed, size - completed);
+        ssize_t received = xx_io_read(self->device, buffer + completed, size - completed);
         if (received <= 0 || (size_t)received > size - completed) {
             return false;
         }
@@ -94,14 +92,14 @@ static bool xx_spis_read_at(Abstractformat *self, int64_t offset,
     return true;
 }
 
-static bool xx_spis_range_within(int64_t total, int64_t offset,
-                                   int64_t size) {
-    return offset >= 0 && size >= 0 && offset <= total &&
-           size <= total - offset;
+static bool xx_spis_range_within(int64_t total, int64_t offset, int64_t size)
+{
+    return offset >= 0 && size >= 0 && offset <= total && size <= total - offset;
 }
 
 /* Refuse anything that would escape the extraction directory. */
-static bool xx_spis_path_safe(const char *name) {
+static bool xx_spis_path_safe(const char *name)
+{
     const char *cursor = name;
 
     if (!name || !name[0] || name[0] == '/') return false;
@@ -116,7 +114,8 @@ static bool xx_spis_path_safe(const char *name) {
     return true;
 }
 
-static void xx_spis_stream_free(void *pointer) {
+static void xx_spis_stream_free(void *pointer)
+{
     xx_spis_stream *stream = (xx_spis_stream *)pointer;
     size_t index;
 
@@ -129,17 +128,15 @@ static void xx_spis_stream_free(void *pointer) {
 }
 
 /* Append a member, taking ownership of @p name. */
-static bool xx_spis_add(xx_spis_stream *stream,
-                          const xx_spis_member *member) {
-    xx_spis_member *grown = (xx_spis_member *)xx_mem_realloc(
-        stream->items, sizeof(*grown) * (stream->count + 1U));
+static bool xx_spis_add(xx_spis_stream *stream, const xx_spis_member *member)
+{
+    xx_spis_member *grown = (xx_spis_member *)xx_mem_realloc(stream->items, sizeof(*grown) * (stream->count + 1U));
 
     if (!grown) return false;
     stream->items = grown;
     stream->items[stream->count++] = *member;
     return true;
 }
-
 
 #define XX_SPIS_MAX_MEMBERS 100000
 #define XX_SPIS_SNIFF_PACKED 512
@@ -174,7 +171,6 @@ static bool xx_spis_member_guard(Abstractformat *self, const xx_spis_member *mem
 static bool xx_spis_prepare_key(Abstractformat *self, xx_spis_stream *stream, xx_pd_struct *pd);
 static bool xx_spis_decode(Abstractformat *self, const xx_spis_member *member, uint32_t key, uint8_t **out, size_t *out_size, xx_pd_struct *pd);
 
-
 /* No member count is stored, so this is a runaway guard rather than a format
  * limit; it matches the reference implementation's bound. */
 /* How many payload bytes the type-0 extension sniff may look at, and how many
@@ -182,7 +178,8 @@ static bool xx_spis_decode(Abstractformat *self, const xx_spis_member *member, u
 
 /* Maps the 3-byte header tag to the same method numbers the record headers
  * use, so a listing shows one vocabulary. */
-static uint32_t xx_spis_tag_method(const uint8_t *tag) {
+static uint32_t xx_spis_tag_method(const uint8_t *tag)
+{
     if (xx_rt_memcmp(tag, "NON", 3) == 0) return XX_SPIS_METHOD_NON;
     if (xx_rt_memcmp(tag, "RLE", 3) == 0) return XX_SPIS_METHOD_RLE;
     if (xx_rt_memcmp(tag, "LZH", 3) == 0) return XX_SPIS_METHOD_LZH;
@@ -202,7 +199,8 @@ static uint32_t xx_spis_tag_method(const uint8_t *tag) {
  * member, and that is exactly the false positive this format has least other
  * defence against. Printable ASCII only.
  */
-static char *xx_spis_make_name(const uint8_t *raw, size_t size) {
+static char *xx_spis_make_name(const uint8_t *raw, size_t size)
+{
     char *name;
     size_t index;
     size_t start = 0U;
@@ -244,8 +242,7 @@ static char *xx_spis_make_name(const uint8_t *raw, size_t size) {
                 xx_str_free(name);
                 return NULL;
             }
-            if (component == 2U && name[part] == '.' &&
-                name[part + 1] == '.') {
+            if (component == 2U && name[part] == '.' && name[part + 1] == '.') {
                 xx_str_free(name);
                 return NULL;
             }
@@ -262,20 +259,18 @@ static char *xx_spis_make_name(const uint8_t *raw, size_t size) {
 /* A type-0 archive carries no member name at all, so the extension is sniffed
  * from the first decoded bytes the way the reference does. Nothing depends on
  * getting this right: an unrecognised payload is simply ".bin". */
-static const char *xx_spis_payload_ext(const uint8_t *prefix, size_t size) {
+static const char *xx_spis_payload_ext(const uint8_t *prefix, size_t size)
+{
     if (size >= 2U && prefix[0] == 'B' && prefix[1] == 'M') return "bmp";
     if (size >= 2U && prefix[0] == 'M' && prefix[1] == 'Z') return "exe";
     if (size >= 4U && xx_rt_memcmp(prefix, "PK\x03\x04", 4) == 0) return "zip";
-    if (size >= 6U && (xx_rt_memcmp(prefix, "GIF87a", 6) == 0 ||
-                       xx_rt_memcmp(prefix, "GIF89a", 6) == 0)) {
+    if (size >= 6U && (xx_rt_memcmp(prefix, "GIF87a", 6) == 0 || xx_rt_memcmp(prefix, "GIF89a", 6) == 0)) {
         return "gif";
     }
-    if (size >= 8U &&
-        xx_rt_memcmp(prefix, "\x89PNG\x0d\x0a\x1a\x0a", 8) == 0) {
+    if (size >= 8U && xx_rt_memcmp(prefix, "\x89PNG\x0d\x0a\x1a\x0a", 8) == 0) {
         return "png";
     }
-    if (size >= 12U && xx_rt_memcmp(prefix, "RIFF", 4) == 0 &&
-        xx_rt_memcmp(prefix + 8, "WAVE", 4) == 0) {
+    if (size >= 12U && xx_rt_memcmp(prefix, "RIFF", 4) == 0 && xx_rt_memcmp(prefix + 8, "WAVE", 4) == 0) {
         return "wav";
     }
     return "bin";
@@ -283,9 +278,8 @@ static const char *xx_spis_payload_ext(const uint8_t *prefix, size_t size) {
 
 /* The single-payload layout: the whole file behind the 21-byte header is one
  * member whose method and size come from that header. */
-static bool xx_spis_parse_single(Abstractformat *self, int64_t span,
-                                 uint32_t method, uint32_t total_raw,
-                                 uint32_t checksum, xx_spis_stream *stream) {
+static bool xx_spis_parse_single(Abstractformat *self, int64_t span, uint32_t method, uint32_t total_raw, uint32_t checksum, xx_spis_stream *stream)
+{
     uint8_t packed[XX_SPIS_SNIFF_PACKED];
     uint8_t prefix[XX_SPIS_SNIFF_SIZE];
     uint8_t name_buffer[32];
@@ -306,30 +300,21 @@ static bool xx_spis_parse_single(Abstractformat *self, int64_t span,
         return false;
     }
     /* The one place a type-0 header states both sizes for the same bytes. */
-    if (method == XX_SPIS_METHOD_NON &&
-        packed_size != (int64_t)total_raw) {
+    if (method == XX_SPIS_METHOD_NON && packed_size != (int64_t)total_raw) {
         return false;
     }
 
-    sniff_packed = (size_t)((packed_size < (int64_t)XX_SPIS_SNIFF_PACKED)
-                                ? packed_size
-                                : (int64_t)XX_SPIS_SNIFF_PACKED);
-    if (!xx_spis_read_at(self, self->base_address + XX_SPIS_HEADER_SIZE,
-                         packed, sniff_packed)) {
+    sniff_packed = (size_t)((packed_size < (int64_t)XX_SPIS_SNIFF_PACKED) ? packed_size : (int64_t)XX_SPIS_SNIFF_PACKED);
+    if (!xx_spis_read_at(self, self->base_address + XX_SPIS_HEADER_SIZE, packed, sniff_packed)) {
         return false;
     }
     if (method == XX_SPIS_METHOD_NON) {
-        prefix_size = (sniff_packed < (size_t)XX_SPIS_SNIFF_SIZE)
-                          ? sniff_packed
-                          : (size_t)XX_SPIS_SNIFF_SIZE;
-        for (index = 0U; index < prefix_size; ++index) prefix[index] =
-            packed[index];
+        prefix_size = (sniff_packed < (size_t)XX_SPIS_SNIFF_SIZE) ? sniff_packed : (size_t)XX_SPIS_SNIFF_SIZE;
+        for (index = 0U; index < prefix_size; ++index) prefix[index] = packed[index];
     } else if (method == XX_SPIS_METHOD_RLE) {
         /* Partial expansion: the sniff window almost never ends on a token
          * boundary, so a truncated tail here is expected, not an error. */
-        if (!xx_spis_rle_decode(packed, sniff_packed, prefix,
-                                (size_t)XX_SPIS_SNIFF_SIZE, &prefix_size,
-                                true)) {
+        if (!xx_spis_rle_decode(packed, sniff_packed, prefix, (size_t)XX_SPIS_SNIFF_SIZE, &prefix_size, true)) {
             prefix_size = 0U;
         }
     }
@@ -365,7 +350,8 @@ static bool xx_spis_parse_single(Abstractformat *self, int64_t span,
     return true;
 }
 
-static xx_spis_stream *xx_spis_parse(Abstractformat *self, xx_pd_struct *pd) {
+static xx_spis_stream *xx_spis_parse(Abstractformat *self, xx_pd_struct *pd)
+{
     xx_spis_stream *stream = NULL;
     uint8_t header[XX_SPIS_RECORD_HEADER_SIZE];
     uint8_t *name_bytes = NULL;
@@ -386,8 +372,7 @@ static xx_spis_stream *xx_spis_parse(Abstractformat *self, xx_pd_struct *pd) {
     if (total < self->base_address) return NULL;
     span = total - self->base_address;
     if (span < XX_SPIS_HEADER_SIZE) return NULL;
-    if (!xx_spis_read_at(self, self->base_address, header,
-                         (size_t)XX_SPIS_HEADER_SIZE)) {
+    if (!xx_spis_read_at(self, self->base_address, header, (size_t)XX_SPIS_HEADER_SIZE)) {
         return NULL;
     }
     /* The five-byte magic plus a known method tag plus a type of 0 or 1 plus
@@ -401,9 +386,7 @@ static xx_spis_stream *xx_spis_parse(Abstractformat *self, xx_pd_struct *pd) {
     checksum = xx_data_get_u32(header + 13, 4, 0, false);
     flags = xx_data_get_u32(header + 17, 4, 0, false);
     /* The word at +17 is a FLAGS field, not a reserved zero. */
-    if (method == XX_SPIS_METHOD_INVALID || archive_type > 1U ||
-        flags > XX_SPIS_FLAG_MAX || total_raw == 0U ||
-        (int64_t)total_raw > XX_SPIS_MAX_MEMBER_SIZE) {
+    if (method == XX_SPIS_METHOD_INVALID || archive_type > 1U || flags > XX_SPIS_FLAG_MAX || total_raw == 0U || (int64_t)total_raw > XX_SPIS_MAX_MEMBER_SIZE) {
         return NULL;
     }
 
@@ -413,8 +396,7 @@ static xx_spis_stream *xx_spis_parse(Abstractformat *self, xx_pd_struct *pd) {
     stream->key = XX_SPIS_FLAG_KEY;
 
     if (archive_type == 0U) {
-        if (!xx_spis_parse_single(self, span, method, total_raw, checksum,
-                                  stream)) {
+        if (!xx_spis_parse_single(self, span, method, total_raw, checksum, stream)) {
             goto fail;
         }
         stream->archive_size = span;
@@ -436,8 +418,7 @@ static xx_spis_stream *xx_spis_parse(Abstractformat *self, xx_pd_struct *pd) {
         if (stream->count >= (size_t)XX_SPIS_MAX_MEMBERS) goto fail;
 
         if (span - offset >= XX_SPIS_HEADER_SIZE) {
-            if (!xx_spis_read_at(self, self->base_address + offset, header,
-                                 (size_t)XX_SPIS_HEADER_SIZE)) {
+            if (!xx_spis_read_at(self, self->base_address + offset, header, (size_t)XX_SPIS_HEADER_SIZE)) {
                 goto fail;
             }
             if (xx_rt_memcmp(header, "SPIS\x1a", 5) == 0) {
@@ -449,9 +430,7 @@ static xx_spis_stream *xx_spis_parse(Abstractformat *self, xx_pd_struct *pd) {
                 /* A segment holding only empty members declares a total of
                  * zero, so zero is legal here even though the outermost
                  * header's total may not be zero. */
-                if (inner_method == XX_SPIS_METHOD_INVALID ||
-                    header[12] != 1U || inner_flags > XX_SPIS_FLAG_MAX ||
-                    (int64_t)inner_total > XX_SPIS_MAX_MEMBER_SIZE) {
+                if (inner_method == XX_SPIS_METHOD_INVALID || header[12] != 1U || inner_flags > XX_SPIS_FLAG_MAX || (int64_t)inner_total > XX_SPIS_MAX_MEMBER_SIZE) {
                     goto fail;
                 }
                 /* The segment that just ended must account for exactly the
@@ -468,8 +447,7 @@ static xx_spis_stream *xx_spis_parse(Abstractformat *self, xx_pd_struct *pd) {
         }
 
         if (span - offset < XX_SPIS_RECORD_HEADER_SIZE) goto fail;
-        if (!xx_spis_read_at(self, self->base_address + offset, header,
-                             (size_t)XX_SPIS_RECORD_HEADER_SIZE)) {
+        if (!xx_spis_read_at(self, self->base_address + offset, header, (size_t)XX_SPIS_RECORD_HEADER_SIZE)) {
             goto fail;
         }
         name_size = xx_data_get_u16(header, 2, 0, false);
@@ -481,26 +459,21 @@ static xx_spis_stream *xx_spis_parse(Abstractformat *self, xx_pd_struct *pd) {
         /* A zero-length member is real: GP-Install setups ship placeholder
          * data files with no bytes at all. Both sizes are then zero - either
          * one alone is a malformed record and is still refused. */
-        if (name_size == 0U || (int64_t)name_size > XX_SPIS_MAX_NAME ||
-            record_method >= XX_SPIS_METHOD_INVALID ||
-            record_flags > XX_SPIS_FLAG_MAX ||
+        if (name_size == 0U || (int64_t)name_size > XX_SPIS_MAX_NAME || record_method >= XX_SPIS_METHOD_INVALID || record_flags > XX_SPIS_FLAG_MAX ||
             (int64_t)raw_size > XX_SPIS_MAX_MEMBER_SIZE) {
             goto fail;
         }
-        if (!((raw_size == 0U && packed_size == 0U) ||
-              (raw_size != 0U && packed_size != 0U))) {
+        if (!((raw_size == 0U && packed_size == 0U) || (raw_size != 0U && packed_size != 0U))) {
             goto fail;
         }
         /* The one place a record states both sizes for the same bytes. */
         if (record_method == XX_SPIS_METHOD_NON && packed_size != raw_size) {
             goto fail;
         }
-        if (!xx_spis_range_within(span, offset + XX_SPIS_RECORD_HEADER_SIZE,
-                                  (int64_t)name_size)) {
+        if (!xx_spis_range_within(span, offset + XX_SPIS_RECORD_HEADER_SIZE, (int64_t)name_size)) {
             goto fail;
         }
-        available = span - offset - XX_SPIS_RECORD_HEADER_SIZE -
-                    (int64_t)name_size;
+        available = span - offset - XX_SPIS_RECORD_HEADER_SIZE - (int64_t)name_size;
         /* The reference salvages a final member cut short by EOF, but every
          * member is authenticated by a sum over its DECOMPRESSED bytes, so
          * there is nothing to check a prefix against: an extent past EOF is a
@@ -509,10 +482,7 @@ static xx_spis_stream *xx_spis_parse(Abstractformat *self, xx_pd_struct *pd) {
 
         name_bytes = (uint8_t *)xx_mem_alloc((size_t)name_size);
         if (!name_bytes) goto fail;
-        if (!xx_spis_read_at(self,
-                             self->base_address + offset +
-                                 XX_SPIS_RECORD_HEADER_SIZE,
-                             name_bytes, (size_t)name_size)) {
+        if (!xx_spis_read_at(self, self->base_address + offset + XX_SPIS_RECORD_HEADER_SIZE, name_bytes, (size_t)name_size)) {
             goto fail;
         }
 
@@ -540,14 +510,12 @@ static xx_spis_stream *xx_spis_parse(Abstractformat *self, xx_pd_struct *pd) {
 
         segment_sum += (uint64_t)raw_size;
         if (segment_sum > segment_total) goto fail;
-        offset = (member.data_offset - self->base_address) +
-                 member.compressed_size;
+        offset = (member.data_offset - self->base_address) + member.compressed_size;
     }
 
     /* The chain has to end exactly at EOF, hold at least one member, and
      * close the last segment's declared total. */
-    if (offset != span || stream->count == 0U ||
-        segment_sum != segment_total) {
+    if (offset != span || stream->count == 0U || segment_sum != segment_total) {
         goto fail;
     }
     stream->archive_size = span;
@@ -558,7 +526,6 @@ fail:
     xx_spis_stream_free(stream);
     return NULL;
 }
-
 
 /* The grammar's own ceiling on any single member, taken from the reference. */
 /* Separate from the grammar bound above: this one guards the two allocations
@@ -593,9 +560,8 @@ fail:
  * truncated tail is not an error; that mode only ever feeds the type-0
  * extension sniff, never an extraction.
  */
-static bool xx_spis_rle_decode(const uint8_t *input, size_t input_size,
-                               uint8_t *output, size_t output_size,
-                               size_t *written, bool partial) {
+static bool xx_spis_rle_decode(const uint8_t *input, size_t input_size, uint8_t *output, size_t output_size, size_t *written, bool partial)
+{
     size_t index;
     size_t produced = 0U;
     bool escape = false;
@@ -659,9 +625,8 @@ static bool xx_spis_rle_decode(const uint8_t *input, size_t input_size,
  * whose stored value is zero is not verified at all, and the two obfuscation
  * flags bias the sum by the key.
  */
-static bool xx_spis_checksum_matches(uint32_t method, uint32_t flags,
-                                     uint32_t stored, uint32_t sum,
-                                     uint32_t key) {
+static bool xx_spis_checksum_matches(uint32_t method, uint32_t flags, uint32_t stored, uint32_t sum, uint32_t key)
+{
     if (method == XX_SPIS_METHOD_NON && stored == 0U) return true;
     if (sum == stored) return true;
     if (flags == 0U) return false;
@@ -676,15 +641,13 @@ static bool xx_spis_checksum_matches(uint32_t method, uint32_t flags,
  * header (checksum at +13, flags at +17), anything else is a record header
  * (checksum at +17, flags at +21).
  */
-static bool xx_spis_member_guard(Abstractformat *self,
-                                 const xx_spis_member *member,
-                                 uint32_t *flags, uint32_t *checksum) {
+static bool xx_spis_member_guard(Abstractformat *self, const xx_spis_member *member, uint32_t *flags, uint32_t *checksum)
+{
     uint8_t header[XX_SPIS_RECORD_HEADER_SIZE];
 
     if (!self || !member || !flags || !checksum) return false;
     if (member->header_size < XX_SPIS_HEADER_SIZE) return false;
-    if (!xx_spis_read_at(self, member->header_offset, header,
-                         (size_t)XX_SPIS_HEADER_SIZE)) {
+    if (!xx_spis_read_at(self, member->header_offset, header, (size_t)XX_SPIS_HEADER_SIZE)) {
         return false;
     }
     if (xx_rt_memcmp(header, "SPIS\x1a", 5) == 0) {
@@ -693,8 +656,7 @@ static bool xx_spis_member_guard(Abstractformat *self,
         return true;
     }
     if (member->header_size < XX_SPIS_RECORD_HEADER_SIZE) return false;
-    if (!xx_spis_read_at(self, member->header_offset, header,
-                         (size_t)XX_SPIS_RECORD_HEADER_SIZE)) {
+    if (!xx_spis_read_at(self, member->header_offset, header, (size_t)XX_SPIS_RECORD_HEADER_SIZE)) {
         return false;
     }
     *checksum = xx_data_get_u32(header + 17, 4, 0, false);
@@ -711,7 +673,8 @@ typedef struct xx_spis_key_probe_s {
     uint32_t checksum;
 } xx_spis_key_probe;
 
-static void xx_spis_key_probe_free(xx_spis_key_probe *probe) {
+static void xx_spis_key_probe_free(xx_spis_key_probe *probe)
+{
     if (!probe) return;
     xx_mem_free(probe->packed);
     xx_mem_free(probe->unmasked);
@@ -719,39 +682,28 @@ static void xx_spis_key_probe_free(xx_spis_key_probe *probe) {
     xx_mem_zero(probe, sizeof(*probe));
 }
 
-static bool xx_spis_key_probe_load(Abstractformat *self,
-                                   const xx_spis_member *member,
-                                   xx_spis_key_probe *probe) {
+static bool xx_spis_key_probe_load(Abstractformat *self, const xx_spis_member *member, xx_spis_key_probe *probe)
+{
     uint32_t flags;
-    if (!self || !member || !probe ||
-        !xx_spis_member_guard(self, member, &flags, &probe->checksum) ||
-        flags != XX_SPIS_FLAG_OBFUSCATED)
-        return false;
+    if (!self || !member || !probe || !xx_spis_member_guard(self, member, &flags, &probe->checksum) || flags != XX_SPIS_FLAG_OBFUSCATED) return false;
     probe->packed_size = (size_t)member->compressed_size;
     probe->plain_size = (size_t)member->uncompressed_size;
     probe->packed = (uint8_t *)xx_mem_alloc(probe->packed_size);
     probe->unmasked = (uint8_t *)xx_mem_alloc(probe->packed_size);
     probe->plain = (uint8_t *)xx_mem_alloc(probe->plain_size);
-    return probe->packed && probe->unmasked && probe->plain &&
-           xx_spis_read_at(self, member->data_offset, probe->packed,
-                            probe->packed_size);
+    return probe->packed && probe->unmasked && probe->plain && xx_spis_read_at(self, member->data_offset, probe->packed, probe->packed_size);
 }
 
-static bool xx_spis_key_probe_matches(xx_spis_key_probe *probe,
-                                       uint32_t key) {
+static bool xx_spis_key_probe_matches(xx_spis_key_probe *probe, uint32_t key)
+{
     size_t index;
     size_t written = 0U;
     uint32_t sum = 0U;
-    if (!probe || !probe->packed || !probe->unmasked || !probe->plain)
-        return false;
+    if (!probe || !probe->packed || !probe->unmasked || !probe->plain) return false;
     for (index = 0U; index < probe->packed_size; ++index) {
-        probe->unmasked[index] = (uint8_t)(probe->packed[index] ^
-            (uint8_t)((key >> (8U * (index & 3U))) & 0xffU));
+        probe->unmasked[index] = (uint8_t)(probe->packed[index] ^ (uint8_t)((key >> (8U * (index & 3U))) & 0xffU));
     }
-    if (!xx_lzh1_decode_memory(probe->unmasked, probe->packed_size,
-                                probe->plain, probe->plain_size, &written) ||
-        written != probe->plain_size)
-        return false;
+    if (!xx_lzh1_decode_memory(probe->unmasked, probe->packed_size, probe->plain, probe->plain_size, &written) || written != probe->plain_size) return false;
     for (index = 0U; index < written; ++index) sum += probe->plain[index];
     return (uint32_t)(sum + key) == probe->checksum;
 }
@@ -761,8 +713,8 @@ static bool xx_spis_key_probe_matches(xx_spis_key_probe *probe,
  * search to at most 255 times its raw size.  Two independent LZH members must
  * both decode and satisfy their checksums before selecting a recovered key.
  * The conservative size caps bound work on untrusted archives. */
-static bool xx_spis_prepare_key(Abstractformat *self, xx_spis_stream *stream,
-                                 xx_pd_struct *pd) {
+static bool xx_spis_prepare_key(Abstractformat *self, xx_spis_stream *stream, xx_pd_struct *pd)
+{
     xx_spis_key_probe probes[2];
     size_t selected[2] = {SIZE_MAX, SIZE_MAX};
     size_t index;
@@ -775,21 +727,15 @@ static bool xx_spis_prepare_key(Abstractformat *self, xx_spis_stream *stream,
         const xx_spis_member *member = &stream->items[index];
         uint32_t flags;
         uint32_t checksum;
-        if (member->method != XX_SPIS_METHOD_LZH ||
-            member->uncompressed_size <= 0 ||
-            member->uncompressed_size > XX_SPIS_KEY_PROBE_MAX_RAW ||
-            member->compressed_size <= 0 ||
-            member->compressed_size > XX_SPIS_KEY_PROBE_MAX_PACKED)
+        if (member->method != XX_SPIS_METHOD_LZH || member->uncompressed_size <= 0 || member->uncompressed_size > XX_SPIS_KEY_PROBE_MAX_RAW ||
+            member->compressed_size <= 0 || member->compressed_size > XX_SPIS_KEY_PROBE_MAX_PACKED)
             continue;
         if (!xx_spis_member_guard(self, member, &flags, &checksum)) return false;
         if (flags != XX_SPIS_FLAG_OBFUSCATED) continue;
-        if (selected[0] == SIZE_MAX ||
-            member->uncompressed_size < stream->items[selected[0]].uncompressed_size) {
+        if (selected[0] == SIZE_MAX || member->uncompressed_size < stream->items[selected[0]].uncompressed_size) {
             selected[1] = selected[0];
             selected[0] = index;
-        } else if (selected[1] == SIZE_MAX ||
-                   member->uncompressed_size <
-                       stream->items[selected[1]].uncompressed_size) {
+        } else if (selected[1] == SIZE_MAX || member->uncompressed_size < stream->items[selected[1]].uncompressed_size) {
             selected[1] = index;
         }
     }
@@ -798,11 +744,8 @@ static bool xx_spis_prepare_key(Abstractformat *self, xx_spis_stream *stream,
         return true;
     }
     xx_mem_zero(probes, sizeof(probes));
-    if (!xx_spis_key_probe_load(self, &stream->items[selected[0]], &probes[0]) ||
-        !xx_spis_key_probe_load(self, &stream->items[selected[1]], &probes[1]))
-        goto done;
-    if (xx_spis_key_probe_matches(&probes[0], stream->key) &&
-        xx_spis_key_probe_matches(&probes[1], stream->key)) {
+    if (!xx_spis_key_probe_load(self, &stream->items[selected[0]], &probes[0]) || !xx_spis_key_probe_load(self, &stream->items[selected[1]], &probes[1])) goto done;
+    if (xx_spis_key_probe_matches(&probes[0], stream->key) && xx_spis_key_probe_matches(&probes[1], stream->key)) {
         result = true;
         goto done;
     }
@@ -811,8 +754,7 @@ static bool xx_spis_prepare_key(Abstractformat *self, xx_spis_stream *stream,
         uint32_t candidate = probes[0].checksum - delta;
         if ((delta & 255U) == 0U && pd && xx_pd_is_stopped(pd)) goto done;
         if (candidate == stream->key) continue;
-        if (xx_spis_key_probe_matches(&probes[0], candidate) &&
-            xx_spis_key_probe_matches(&probes[1], candidate)) {
+        if (xx_spis_key_probe_matches(&probes[0], candidate) && xx_spis_key_probe_matches(&probes[1], candidate)) {
             stream->key = candidate;
             result = true;
             break;
@@ -828,9 +770,8 @@ done:
     return result;
 }
 
-static bool xx_spis_decode(Abstractformat *self, const xx_spis_member *member,
-                           uint32_t key, uint8_t **out, size_t *out_size,
-                           xx_pd_struct *pd) {
+static bool xx_spis_decode(Abstractformat *self, const xx_spis_member *member, uint32_t key, uint8_t **out, size_t *out_size, xx_pd_struct *pd)
+{
     uint8_t *input = NULL;
     uint8_t *output = NULL;
     size_t written = 0U;
@@ -846,16 +787,12 @@ static bool xx_spis_decode(Abstractformat *self, const xx_spis_member *member,
     if (member->compressed_size < 0 || member->uncompressed_size < 0) {
         return false;
     }
-    if (member->compressed_size > XX_SPIS_MAX_DECODED ||
-        member->uncompressed_size > XX_SPIS_MAX_DECODED) {
+    if (member->compressed_size > XX_SPIS_MAX_DECODED || member->uncompressed_size > XX_SPIS_MAX_DECODED) {
         return false;
     }
     /* "CUS" is defined by the format but has no bitstream this reader can
      * read; treating it as stored would publish garbage that looks like data. */
-    if (member->method != XX_SPIS_METHOD_NON &&
-        member->method != XX_SPIS_METHOD_RLE &&
-        member->method != XX_SPIS_METHOD_LZH &&
-        member->method != XX_SPIS_METHOD_LH5) {
+    if (member->method != XX_SPIS_METHOD_NON && member->method != XX_SPIS_METHOD_RLE && member->method != XX_SPIS_METHOD_LZH && member->method != XX_SPIS_METHOD_LH5) {
         return false;
     }
 
@@ -877,8 +814,7 @@ static bool xx_spis_decode(Abstractformat *self, const xx_spis_member *member,
 
     input = (uint8_t *)xx_mem_alloc((size_t)member->compressed_size);
     if (!input) return false;
-    if (!xx_spis_read_at(self, member->data_offset, input,
-                         (size_t)member->compressed_size)) {
+    if (!xx_spis_read_at(self, member->data_offset, input, (size_t)member->compressed_size)) {
         goto fail;
     }
     if (pd && xx_pd_is_stopped(pd)) goto fail;
@@ -886,11 +822,9 @@ static bool xx_spis_decode(Abstractformat *self, const xx_spis_member *member,
     /* Under flag 2 the payload is XOR masked and the codec must never see it
      * that way. The mask cycles from the member's data offset, so index 0 here
      * is the first payload byte. Stored members are not masked. */
-    if (flags == XX_SPIS_FLAG_OBFUSCATED &&
-        member->method != XX_SPIS_METHOD_NON) {
+    if (flags == XX_SPIS_FLAG_OBFUSCATED && member->method != XX_SPIS_METHOD_NON) {
         for (index = 0U; index < (size_t)member->compressed_size; ++index) {
-            input[index] = (uint8_t)(input[index] ^
-                (uint8_t)((key >> (8U * (index & 3U))) & 0xFFU));
+            input[index] = (uint8_t)(input[index] ^ (uint8_t)((key >> (8U * (index & 3U))) & 0xFFU));
         }
     }
 
@@ -904,26 +838,18 @@ static bool xx_spis_decode(Abstractformat *self, const xx_spis_member *member,
         }
         written = (size_t)member->uncompressed_size;
     } else if (member->method == XX_SPIS_METHOD_RLE) {
-        if (!xx_spis_rle_decode(input, (size_t)member->compressed_size, output,
-                                (size_t)member->uncompressed_size, &written,
-                                false)) {
+        if (!xx_spis_rle_decode(input, (size_t)member->compressed_size, output, (size_t)member->uncompressed_size, &written, false)) {
             goto fail;
         }
     } else if (member->method == XX_SPIS_METHOD_LZH) {
-        if (!xx_lzh1_decode_memory(input, (size_t)member->compressed_size,
-                                   output,
-                                   (size_t)member->uncompressed_size,
-                                   &written)) {
+        if (!xx_lzh1_decode_memory(input, (size_t)member->compressed_size, output, (size_t)member->uncompressed_size, &written)) {
             goto fail;
         }
     } else {
         /* The 5 is the LHA method digit "LH5" names: it selects the 13-bit
          * window. 4, 6 or 7 would decode the same bytes into plausible
          * garbage instead of failing. */
-        if (!xx_lzh5_decode_memory(input, (size_t)member->compressed_size,
-                                   output,
-                                   (size_t)member->uncompressed_size, 5,
-                                   &written)) {
+        if (!xx_lzh5_decode_memory(input, (size_t)member->compressed_size, output, (size_t)member->uncompressed_size, 5, &written)) {
             goto fail;
         }
     }
@@ -955,8 +881,8 @@ fail:
 
 /* ---------------------------------------------------------- lifecycle --- */
 
-void xx_spis_init(xx_spis *archive, xx_io_device *device,
-                    int64_t base_address) {
+void xx_spis_init(xx_spis *archive, xx_io_device *device, int64_t base_address)
+{
     if (!archive) return;
     xx_mem_zero(archive, sizeof(*archive));
     xx_format_init(&archive->format, device, base_address);
@@ -969,22 +895,17 @@ void xx_spis_init(xx_spis *archive, xx_io_device *device,
     archive->format.check_is_valid = xx_spis_check_is_valid;
     archive->format.handle_base_info = xx_spis_handle_base_info;
     archive->format.get_format_size = xx_spis_get_format_size;
-    archive->format.get_number_of_archive_records =
-        xx_spis_get_number_of_archive_records;
-    archive->format.create_archive_records_reading =
-        xx_spis_create_archive_records_reading;
-    archive->format.get_current_archive_record =
-        xx_spis_get_current_archive_record;
-    archive->format.unpack_current_archive_record =
-        xx_spis_unpack_current_archive_record;
-    archive->format.archive_record_move_to_next =
-        xx_spis_archive_record_move_to_next;
-    archive->format.free_archive_records_reading =
-        xx_spis_free_archive_records_reading;
+    archive->format.get_number_of_archive_records = xx_spis_get_number_of_archive_records;
+    archive->format.create_archive_records_reading = xx_spis_create_archive_records_reading;
+    archive->format.get_current_archive_record = xx_spis_get_current_archive_record;
+    archive->format.unpack_current_archive_record = xx_spis_unpack_current_archive_record;
+    archive->format.archive_record_move_to_next = xx_spis_archive_record_move_to_next;
+    archive->format.free_archive_records_reading = xx_spis_free_archive_records_reading;
     archive->format.destroy = xx_spis_vtable_destroy;
 }
 
-xx_spis *xx_spis_create(xx_io_device *device, int64_t base_address) {
+xx_spis *xx_spis_create(xx_io_device *device, int64_t base_address)
+{
     xx_spis *archive = (xx_spis *)xx_mem_alloc(sizeof(*archive));
 
     if (!archive) return NULL;
@@ -992,7 +913,8 @@ xx_spis *xx_spis_create(xx_io_device *device, int64_t base_address) {
     return archive;
 }
 
-void xx_spis_destroy(xx_spis *archive) {
+void xx_spis_destroy(xx_spis *archive)
+{
     if (!archive) return;
     /* Not xx_format_destroy: it dispatches through format.destroy, which is
      * the wrapper below, and the two would recurse. */
@@ -1001,19 +923,22 @@ void xx_spis_destroy(xx_spis *archive) {
     archive->number_of_records = 0U;
 }
 
-void xx_spis_free(xx_spis *archive) {
+void xx_spis_free(xx_spis *archive)
+{
     if (!archive) return;
     xx_spis_destroy(archive);
     xx_mem_free(archive);
 }
 
-static void xx_spis_vtable_destroy(Abstractformat *self) {
+static void xx_spis_vtable_destroy(Abstractformat *self)
+{
     xx_spis_destroy((xx_spis *)self);
 }
 
 /* -------------------------------------------------------------- format -- */
 
-bool xx_spis_check_is_valid(Abstractformat *self, xx_pd_struct *pd) {
+bool xx_spis_check_is_valid(Abstractformat *self, xx_pd_struct *pd)
+{
     xx_spis_stream *stream;
 
     if (!self || (pd && xx_pd_is_stopped(pd))) return false;
@@ -1023,7 +948,8 @@ bool xx_spis_check_is_valid(Abstractformat *self, xx_pd_struct *pd) {
     return true;
 }
 
-bool xx_spis_handle_base_info(Abstractformat *self, xx_pd_struct *pd) {
+bool xx_spis_handle_base_info(Abstractformat *self, xx_pd_struct *pd)
+{
     xx_spis *archive = (xx_spis *)self;
     xx_spis_stream *stream;
 
@@ -1044,18 +970,17 @@ bool xx_spis_handle_base_info(Abstractformat *self, xx_pd_struct *pd) {
     return true;
 }
 
-int64_t xx_spis_get_format_size(Abstractformat *self, xx_pd_struct *pd) {
-    if (!self ||
-        (!self->base_info_handled && !xx_format_handle_base_info(self, pd))) {
+int64_t xx_spis_get_format_size(Abstractformat *self, xx_pd_struct *pd)
+{
+    if (!self || (!self->base_info_handled && !xx_format_handle_base_info(self, pd))) {
         return 0;
     }
     return self->is_valid ? self->format_size : 0;
 }
 
-uint64_t xx_spis_get_number_of_archive_records(Abstractformat *self,
-                                                 xx_pd_struct *pd) {
-    if (!self ||
-        (!self->base_info_handled && !xx_format_handle_base_info(self, pd))) {
+uint64_t xx_spis_get_number_of_archive_records(Abstractformat *self, xx_pd_struct *pd)
+{
+    if (!self || (!self->base_info_handled && !xx_format_handle_base_info(self, pd))) {
         return 0U;
     }
     return self->is_valid ? ((xx_spis *)self)->number_of_records : 0U;
@@ -1063,8 +988,8 @@ uint64_t xx_spis_get_number_of_archive_records(Abstractformat *self,
 
 /* ------------------------------------------------------------- records -- */
 
-static bool xx_spis_set_record(xx_archive_record *record,
-                                 const xx_spis_member *member) {
+static bool xx_spis_set_record(xx_archive_record *record, const xx_spis_member *member)
+{
     xx_archive_record_cleanup(record);
     xx_archive_record_init(record);
     record->header_offset = member->header_offset;
@@ -1072,34 +997,24 @@ static bool xx_spis_set_record(xx_archive_record *record,
     record->data_offset = member->data_offset;
     record->compressed_size = member->compressed_size;
     return xx_archive_record_set_original_name(record, member->name) &&
-           xx_archive_record_set_meta_u64(record, XX_META_ID_COMPRESSED_SIZE,
-                                          (uint64_t)member->compressed_size) &&
-           xx_archive_record_set_meta_u64(
-               record, XX_META_ID_UNCOMPRESSED_SIZE,
-               (uint64_t)member->uncompressed_size) &&
-           xx_archive_record_set_meta_u64(record, XX_META_ID_COMPRESSION_METHOD,
-                                          member->method) &&
-           xx_archive_record_set_meta_u64(record, XX_META_ID_TIMESTAMP,
-                                          member->timestamp) &&
-           xx_archive_record_set_meta_bool(record, XX_META_ID_IS_FOLDER,
-                                           member->is_folder) &&
-           xx_archive_record_set_meta_bool(record, XX_META_ID_IS_ENCRYPTED,
-                                           false);
+           xx_archive_record_set_meta_u64(record, XX_META_ID_COMPRESSED_SIZE, (uint64_t)member->compressed_size) &&
+           xx_archive_record_set_meta_u64(record, XX_META_ID_UNCOMPRESSED_SIZE, (uint64_t)member->uncompressed_size) &&
+           xx_archive_record_set_meta_u64(record, XX_META_ID_COMPRESSION_METHOD, member->method) &&
+           xx_archive_record_set_meta_u64(record, XX_META_ID_TIMESTAMP, member->timestamp) &&
+           xx_archive_record_set_meta_bool(record, XX_META_ID_IS_FOLDER, member->is_folder) && xx_archive_record_set_meta_bool(record, XX_META_ID_IS_ENCRYPTED, false);
 }
 
-static bool xx_spis_copy_options(xx_list_s *target,
-                                   const xx_list_s *options) {
+static bool xx_spis_copy_options(xx_list_s *target, const xx_list_s *options)
+{
     size_t index;
 
     if (!target || !options) return options == NULL;
     for (index = 0U; index < options->count; ++index) {
-        const xx_meta *source =
-            (const xx_meta *)xx_list_at((const xx_list_t *)options, index);
+        const xx_meta *source = (const xx_meta *)xx_list_at((const xx_list_t *)options, index);
         xx_meta copied;
         if (!source) continue;
         xx_meta_init(&copied, source->meta_id);
-        if (!xx_var_copy(&copied.var, &source->var) ||
-            !xx_list_append(target, &copied)) {
+        if (!xx_var_copy(&copied.var, &source->var) || !xx_list_append(target, &copied)) {
             xx_meta_cleanup(&copied);
             return false;
         }
@@ -1107,21 +1022,20 @@ static bool xx_spis_copy_options(xx_list_s *target,
     return true;
 }
 
-static const xx_var *xx_spis_get_option(const xx_list_s *options,
-                                          uint32_t meta_id) {
+static const xx_var *xx_spis_get_option(const xx_list_s *options, uint32_t meta_id)
+{
     size_t index;
 
     if (!options) return NULL;
     for (index = 0U; index < options->count; ++index) {
-        const xx_meta *meta =
-            (const xx_meta *)xx_list_at((const xx_list_t *)options, index);
+        const xx_meta *meta = (const xx_meta *)xx_list_at((const xx_list_t *)options, index);
         if (meta && meta->meta_id == meta_id) return &meta->var;
     }
     return NULL;
 }
 
-xx_archive_record_state *xx_spis_create_archive_records_reading(
-    Abstractformat *self, const xx_list_s *options, xx_pd_struct *pd) {
+xx_archive_record_state *xx_spis_create_archive_records_reading(Abstractformat *self, const xx_list_s *options, xx_pd_struct *pd)
+{
     xx_spis_stream *stream;
     xx_archive_record_state *state;
 
@@ -1137,9 +1051,7 @@ xx_archive_record_state *xx_spis_create_archive_records_reading(
     state->internal_state = stream;
     state->free_internal = xx_spis_stream_free;
     state->total_records = (int64_t)stream->count;
-    if (!xx_spis_copy_options(&state->options, options) ||
-        (stream->count != 0U &&
-         !xx_spis_set_record(&state->current_record, &stream->items[0]))) {
+    if (!xx_spis_copy_options(&state->options, options) || (stream->count != 0U && !xx_spis_set_record(&state->current_record, &stream->items[0]))) {
         xx_archive_record_state_free(state);
         return NULL;
     }
@@ -1148,20 +1060,16 @@ xx_archive_record_state *xx_spis_create_archive_records_reading(
     return state;
 }
 
-const xx_archive_record *xx_spis_get_current_archive_record(
-    Abstractformat *self, xx_archive_record_state *state) {
-    return self && state && state->format == self && state->has_record
-               ? &state->current_record
-               : NULL;
+const xx_archive_record *xx_spis_get_current_archive_record(Abstractformat *self, xx_archive_record_state *state)
+{
+    return self && state && state->format == self && state->has_record ? &state->current_record : NULL;
 }
 
-bool xx_spis_archive_record_move_to_next(Abstractformat *self,
-                                           xx_archive_record_state *state,
-                                           xx_pd_struct *pd) {
+bool xx_spis_archive_record_move_to_next(Abstractformat *self, xx_archive_record_state *state, xx_pd_struct *pd)
+{
     xx_spis_stream *stream;
 
-    if (!self || !state || state->format != self || !state->has_record ||
-        (pd && xx_pd_is_stopped(pd))) {
+    if (!self || !state || state->format != self || !state->has_record || (pd && xx_pd_is_stopped(pd))) {
         return false;
     }
     stream = (xx_spis_stream *)state->internal_state;
@@ -1173,14 +1081,12 @@ bool xx_spis_archive_record_move_to_next(Abstractformat *self,
     }
     ++stream->index;
     ++state->current_index;
-    state->has_record = xx_spis_set_record(&state->current_record,
-                                             &stream->items[stream->index]);
+    state->has_record = xx_spis_set_record(&state->current_record, &stream->items[stream->index]);
     return state->has_record;
 }
 
-bool xx_spis_unpack_current_archive_record(Abstractformat *self,
-                                             xx_archive_record_state *state,
-                                             xx_pd_struct *pd) {
+bool xx_spis_unpack_current_archive_record(Abstractformat *self, xx_archive_record_state *state, xx_pd_struct *pd)
+{
     xx_spis_stream *stream;
     const xx_spis_member *member;
     const xx_var *path_option;
@@ -1192,8 +1098,7 @@ bool xx_spis_unpack_current_archive_record(Abstractformat *self,
     bool result = false;
     bool created = false;
 
-    if (!self || !state || state->format != self || !state->has_record ||
-        (pd && xx_pd_is_stopped(pd))) {
+    if (!self || !state || state->format != self || !state->has_record || (pd && xx_pd_is_stopped(pd))) {
         return false;
     }
     stream = (xx_spis_stream *)state->internal_state;
@@ -1202,22 +1107,18 @@ bool xx_spis_unpack_current_archive_record(Abstractformat *self,
     if (!xx_spis_path_safe(member->name)) return false;
     if (!xx_spis_prepare_key(self, stream, pd)) return false;
 
-    path_option = xx_spis_get_option(&state->options,
-                                       XX_META_ID_OPT_UNPACK_PATH);
+    path_option = xx_spis_get_option(&state->options, XX_META_ID_OPT_UNPACK_PATH);
     if (!path_option) {
         /* No destination: decode and discard, which verifies the member
          * without writing anything. */
         if (member->is_folder) return true;
-        result = xx_spis_decode(self, member, stream->key, &plain,
-                                 &plain_size, pd);
+        result = xx_spis_decode(self, member, stream->key, &plain, &plain_size, pd);
         xx_mem_free(plain);
         return result;
     }
-    if (path_option->type == XX_VAR_TYPE_STRING ||
-        path_option->type == XX_VAR_TYPE_STRING_VIEW) {
+    if (path_option->type == XX_VAR_TYPE_STRING || path_option->type == XX_VAR_TYPE_STRING_VIEW) {
         base_path = xx_var_get_str(path_option);
-    } else if (path_option->type == XX_VAR_TYPE_WSTRING ||
-               path_option->type == XX_VAR_TYPE_WSTRING_VIEW) {
+    } else if (path_option->type == XX_VAR_TYPE_WSTRING || path_option->type == XX_VAR_TYPE_WSTRING_VIEW) {
         converted_path = xx_str_unicode_to_utf8(xx_var_get_wstr(path_option));
         base_path = converted_path;
     }
@@ -1225,9 +1126,7 @@ bool xx_spis_unpack_current_archive_record(Abstractformat *self,
         xx_str_free(converted_path);
         return false;
     }
-    if (base_path[0] != '\0' &&
-        base_path[xx_str_len(base_path) - 1U] != '/' &&
-        base_path[xx_str_len(base_path) - 1U] != '\\') {
+    if (base_path[0] != '\0' && base_path[xx_str_len(base_path) - 1U] != '/' && base_path[xx_str_len(base_path) - 1U] != '\\') {
         target_path = xx_str_concat3(base_path, "/", member->name);
     } else {
         target_path = xx_str_concat(base_path, member->name);
@@ -1240,9 +1139,7 @@ bool xx_spis_unpack_current_archive_record(Abstractformat *self,
         xx_str_free(target_path);
         return result;
     }
-    if (!xx_store_create_dirs_a(target_path, false) ||
-        !xx_spis_decode(self, member, stream->key, &plain,
-                         &plain_size, pd)) {
+    if (!xx_store_create_dirs_a(target_path, false) || !xx_spis_decode(self, member, stream->key, &plain, &plain_size, pd)) {
         xx_str_free(target_path);
         return false;
     }
@@ -1253,8 +1150,7 @@ bool xx_spis_unpack_current_archive_record(Abstractformat *self,
 
         result = output != NULL;
         while (result && completed < plain_size) {
-            ssize_t sent = xx_io_write(output, plain + completed,
-                                       plain_size - completed);
+            ssize_t sent = xx_io_write(output, plain + completed, plain_size - completed);
             if (sent <= 0 || (size_t)sent > plain_size - completed) {
                 result = false;
                 break;
@@ -1269,8 +1165,8 @@ bool xx_spis_unpack_current_archive_record(Abstractformat *self,
     return result;
 }
 
-void xx_spis_free_archive_records_reading(Abstractformat *self,
-                                            xx_archive_record_state *state) {
+void xx_spis_free_archive_records_reading(Abstractformat *self, xx_archive_record_state *state)
+{
     (void)self;
     xx_archive_record_state_free(state);
 }

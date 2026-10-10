@@ -110,8 +110,8 @@ extern "C" {
 #define XX_APFS_ROOT_DIR_INO 2U
 
 typedef struct xx_apfs_volume_info_s {
-    uint64_t oid;             /**< Virtual oid from nx_fs_oid. */
-    int64_t block;            /**< Block address it resolved to, or -1. */
+    uint64_t oid;  /**< Virtual oid from nx_fs_oid. */
+    int64_t block; /**< Block address it resolved to, or -1. */
     char name[XX_APFS_VOLNAME_SIZE + 1U];
     uint8_t uuid[XX_APFS_UUID_SIZE];
     uint64_t incompatible_features;
@@ -120,9 +120,9 @@ typedef struct xx_apfs_volume_info_s {
     uint64_t num_directories;
     uint64_t root_tree_oid;
     uint64_t omap_oid;
-    uint64_t records;         /**< Entries listed for this volume. */
-    bool superblock_valid;    /**< APSB magic and Fletcher-64 both held. */
-    bool tree_reached;        /**< The FS tree root was found and walked. */
+    uint64_t records;      /**< Entries listed for this volume. */
+    bool superblock_valid; /**< APSB magic and Fletcher-64 both held. */
+    bool tree_reached;     /**< The FS tree root was found and walked. */
 } xx_apfs_volume_info;
 
 typedef struct xx_apfs xx_apfs;
@@ -138,14 +138,14 @@ struct xx_apfs {
     /* Container superblock. */
     uint32_t block_size;
     uint64_t block_count;
-    uint64_t xid;             /**< Transaction id of the checkpoint used. */
+    uint64_t xid; /**< Transaction id of the checkpoint used. */
     uint8_t uuid[XX_APFS_UUID_SIZE];
     uint64_t features;
     uint64_t readonly_compatible_features;
     uint64_t incompatible_features;
     uint64_t omap_oid;
     uint32_t max_file_systems;
-    uint32_t next_version;    /**< nx_newest_mounted_version, informational. */
+    uint32_t next_version; /**< nx_newest_mounted_version, informational. */
 
     /** Device offset of the nx_superblock_t that was accepted. */
     int64_t super_offset;
@@ -163,8 +163,7 @@ struct xx_apfs {
     void *internal;
 };
 
-XXFC_API void xx_apfs_init(xx_apfs *apfs, xx_io_device *dev,
-                           int64_t base_address);
+XXFC_API void xx_apfs_init(xx_apfs *apfs, xx_io_device *dev, int64_t base_address);
 XXFC_API xx_apfs *xx_apfs_create(xx_io_device *dev, int64_t base_address);
 XXFC_API void xx_apfs_destroy(xx_apfs *apfs);
 XXFC_API void xx_apfs_free(xx_apfs *apfs);
@@ -172,40 +171,39 @@ XXFC_API void xx_apfs_free(xx_apfs *apfs);
 XXFC_API bool xx_apfs_check_is_valid(Abstractformat *self, xx_pd_struct *pd);
 XXFC_API bool xx_apfs_handle_base_info(Abstractformat *self, xx_pd_struct *pd);
 XXFC_API int64_t xx_apfs_get_format_size(Abstractformat *self, xx_pd_struct *pd);
-XXFC_API uint64_t xx_apfs_get_number_of_archive_records(Abstractformat *self,
-                                                        xx_pd_struct *pd);
+XXFC_API uint64_t xx_apfs_get_number_of_archive_records(Abstractformat *self, xx_pd_struct *pd);
 
-XXFC_API xx_archive_record_state *xx_apfs_create_archive_records_reading(
-    Abstractformat *self, const xx_list_s *options, xx_pd_struct *pd);
-XXFC_API const xx_archive_record *xx_apfs_get_current_archive_record(
-    Abstractformat *self, xx_archive_record_state *state);
-XXFC_API bool xx_apfs_unpack_current_archive_record(
-    Abstractformat *self, xx_archive_record_state *state, xx_pd_struct *pd);
-XXFC_API bool xx_apfs_archive_record_move_to_next(
-    Abstractformat *self, xx_archive_record_state *state, xx_pd_struct *pd);
-XXFC_API void xx_apfs_free_archive_records_reading(
-    Abstractformat *self, xx_archive_record_state *state);
+XXFC_API xx_archive_record_state *xx_apfs_create_archive_records_reading(Abstractformat *self, const xx_list_s *options, xx_pd_struct *pd);
+XXFC_API const xx_archive_record *xx_apfs_get_current_archive_record(Abstractformat *self, xx_archive_record_state *state);
+XXFC_API bool xx_apfs_unpack_current_archive_record(Abstractformat *self, xx_archive_record_state *state, xx_pd_struct *pd);
+XXFC_API bool xx_apfs_archive_record_move_to_next(Abstractformat *self, xx_archive_record_state *state, xx_pd_struct *pd);
+XXFC_API void xx_apfs_free_archive_records_reading(Abstractformat *self, xx_archive_record_state *state);
 
 XXFC_API uint32_t xx_apfs_get_block_size(const xx_apfs *apfs);
 XXFC_API uint32_t xx_apfs_get_volume_count(const xx_apfs *apfs);
-XXFC_API const xx_apfs_volume_info *xx_apfs_get_volume(const xx_apfs *apfs,
-                                                       uint32_t index);
+XXFC_API const xx_apfs_volume_info *xx_apfs_get_volume(const xx_apfs *apfs, uint32_t index);
 
 /** APFS's Fletcher-64 over size bytes starting after the 8-byte checksum. */
 XXFC_API uint64_t xx_apfs_fletcher64(const void *data, size_t size);
 
-static inline Abstractformat *xx_apfs_to_format(xx_apfs *apfs) {
+static inline Abstractformat *xx_apfs_to_format(xx_apfs *apfs)
+{
     return apfs ? &apfs->format : NULL;
 }
-static inline void XApfs_init(xx_apfs *apfs, xx_io_device *dev,
-                              int64_t base_address) {
+static inline void XApfs_init(xx_apfs *apfs, xx_io_device *dev, int64_t base_address)
+{
     xx_apfs_init(apfs, dev, base_address);
 }
-static inline xx_apfs *XApfs_create(xx_io_device *dev, int64_t base_address) {
+static inline xx_apfs *XApfs_create(xx_io_device *dev, int64_t base_address)
+{
     return xx_apfs_create(dev, base_address);
 }
-static inline void XApfs_free(xx_apfs *apfs) { xx_apfs_free(apfs); }
-static inline bool XApfs_is_valid(xx_apfs *apfs, xx_pd_struct *pd) {
+static inline void XApfs_free(xx_apfs *apfs)
+{
+    xx_apfs_free(apfs);
+}
+static inline bool XApfs_is_valid(xx_apfs *apfs, xx_pd_struct *pd)
+{
     return apfs ? xx_format_is_valid(&apfs->format, pd) : false;
 }
 

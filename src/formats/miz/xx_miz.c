@@ -75,17 +75,15 @@ static void xx_miz_vtable_destroy(Abstractformat *self);
 
 /* ------------------------------------------------------------- helpers -- */
 
-static bool xx_miz_read_at(Abstractformat *self, int64_t offset,
-                              uint8_t *buffer, size_t size) {
+static bool xx_miz_read_at(Abstractformat *self, int64_t offset, uint8_t *buffer, size_t size)
+{
     size_t completed = 0U;
 
-    if (!self || !self->device || offset < 0 ||
-        xx_io_seek64(self->device, offset, SEEK_SET) != 0) {
+    if (!self || !self->device || offset < 0 || xx_io_seek64(self->device, offset, SEEK_SET) != 0) {
         return false;
     }
     while (completed < size) {
-        ssize_t received =
-            xx_io_read(self->device, buffer + completed, size - completed);
+        ssize_t received = xx_io_read(self->device, buffer + completed, size - completed);
         if (received <= 0 || (size_t)received > size - completed) {
             return false;
         }
@@ -94,14 +92,14 @@ static bool xx_miz_read_at(Abstractformat *self, int64_t offset,
     return true;
 }
 
-static bool xx_miz_range_within(int64_t total, int64_t offset,
-                                   int64_t size) {
-    return offset >= 0 && size >= 0 && offset <= total &&
-           size <= total - offset;
+static bool xx_miz_range_within(int64_t total, int64_t offset, int64_t size)
+{
+    return offset >= 0 && size >= 0 && offset <= total && size <= total - offset;
 }
 
 /* Refuse anything that would escape the extraction directory. */
-static bool xx_miz_path_safe(const char *name) {
+static bool xx_miz_path_safe(const char *name)
+{
     const char *cursor = name;
 
     if (!name || !name[0] || name[0] == '/') return false;
@@ -116,7 +114,8 @@ static bool xx_miz_path_safe(const char *name) {
     return true;
 }
 
-static void xx_miz_stream_free(void *pointer) {
+static void xx_miz_stream_free(void *pointer)
+{
     xx_miz_stream *stream = (xx_miz_stream *)pointer;
     size_t index;
 
@@ -129,17 +128,15 @@ static void xx_miz_stream_free(void *pointer) {
 }
 
 /* Append a member, taking ownership of @p name. */
-static bool xx_miz_add(xx_miz_stream *stream,
-                          const xx_miz_member *member) {
-    xx_miz_member *grown = (xx_miz_member *)xx_mem_realloc(
-        stream->items, sizeof(*grown) * (stream->count + 1U));
+static bool xx_miz_add(xx_miz_stream *stream, const xx_miz_member *member)
+{
+    xx_miz_member *grown = (xx_miz_member *)xx_mem_realloc(stream->items, sizeof(*grown) * (stream->count + 1U));
 
     if (!grown) return false;
     stream->items = grown;
     stream->items[stream->count++] = *member;
     return true;
 }
-
 
 #define XX_MIZ_MAGIC_SIZE 12
 #define XX_MIZ_RECORD_SIZE 12
@@ -157,7 +154,6 @@ static uint64_t xx_miz_dos_to_unix(uint16_t dos_date, uint16_t dos_time);
 static xx_miz_stream *xx_miz_parse(Abstractformat *self, xx_pd_struct *pd);
 static bool xx_miz_decode(Abstractformat *self, const xx_miz_member *member, uint8_t **out, size_t *out_size, xx_pd_struct *pd);
 
-
 /* The writer only ever emits 8.3 names, so "12345678.123" plus its NUL is
  * the real width. A generous ceiling is kept, but the field must still hold
  * a terminator - this is a FIELD length, not a string length. */
@@ -169,9 +165,9 @@ static bool xx_miz_decode(Abstractformat *self, const xx_miz_member *member, uin
 /* DOS date/time -> Unix seconds. Written out rather than taken from a helper
  * because there is no CRT here; an out-of-range field yields 0 (unknown)
  * instead of a bogus instant. */
-static uint64_t xx_miz_dos_to_unix(uint16_t dos_date, uint16_t dos_time) {
-    static const int32_t days_before_month[12] = {
-        0, 31, 59, 90, 120, 151, 181, 212, 243, 273, 304, 334};
+static uint64_t xx_miz_dos_to_unix(uint16_t dos_date, uint16_t dos_time)
+{
+    static const int32_t days_before_month[12] = {0, 31, 59, 90, 120, 151, 181, 212, 243, 273, 304, 334};
     int32_t year;
     int32_t month;
     int32_t day;
@@ -194,13 +190,11 @@ static uint64_t xx_miz_dos_to_unix(uint16_t dos_date, uint16_t dos_time) {
 
     days = 0;
     for (cursor = 1970; cursor < year; ++cursor) {
-        bool leap = ((cursor % 4) == 0 && (cursor % 100) != 0) ||
-                    ((cursor % 400) == 0);
+        bool leap = ((cursor % 4) == 0 && (cursor % 100) != 0) || ((cursor % 400) == 0);
         days += leap ? 366 : 365;
     }
     days += days_before_month[month - 1];
-    if (month > 2 && (((year % 4) == 0 && (year % 100) != 0) ||
-                      ((year % 400) == 0))) {
+    if (month > 2 && (((year % 4) == 0 && (year % 100) != 0) || ((year % 400) == 0))) {
         days += 1;
     }
     days += day - 1;
@@ -208,7 +202,8 @@ static uint64_t xx_miz_dos_to_unix(uint16_t dos_date, uint16_t dos_time) {
     return (uint64_t)(days * 86400 + hour * 3600 + minute * 60 + second);
 }
 
-static xx_miz_stream *xx_miz_parse(Abstractformat *self, xx_pd_struct *pd) {
+static xx_miz_stream *xx_miz_parse(Abstractformat *self, xx_pd_struct *pd)
+{
     static const uint8_t magic_head[4] = {'D', 'K', 'C', 'L'};
     static const uint8_t magic_tail[4] = {'S', 'B', 'R', 'W'};
     static const uint8_t magic_foot[4] = {'M', 'J', 'D', 'K'};
@@ -263,8 +258,7 @@ static xx_miz_stream *xx_miz_parse(Abstractformat *self, xx_pd_struct *pd) {
     if (!xx_miz_range_within(span, XX_MIZ_MAGIC_SIZE, name_field_size)) {
         return NULL;
     }
-    if (!xx_miz_read_at(self, self->base_address + XX_MIZ_MAGIC_SIZE,
-                        name_field, (size_t)name_field_size)) {
+    if (!xx_miz_read_at(self, self->base_address + XX_MIZ_MAGIC_SIZE, name_field, (size_t)name_field_size)) {
         return NULL;
     }
 
@@ -294,8 +288,7 @@ static xx_miz_stream *xx_miz_parse(Abstractformat *self, xx_pd_struct *pd) {
     if (!xx_miz_range_within(span, record_offset, XX_MIZ_RECORD_SIZE)) {
         return NULL;
     }
-    if (!xx_miz_read_at(self, self->base_address + record_offset, record,
-                        sizeof(record))) {
+    if (!xx_miz_read_at(self, self->base_address + record_offset, record, sizeof(record))) {
         return NULL;
     }
 
@@ -306,8 +299,7 @@ static xx_miz_stream *xx_miz_parse(Abstractformat *self, xx_pd_struct *pd) {
     uncompressed_size = (int64_t)(int32_t)xx_data_get_u32(record + 4, 4, 0, false);
     compressed_size = (int64_t)(int32_t)xx_data_get_u32(record + 8, 4, 0, false);
     if (uncompressed_size < 0 || compressed_size < 0) return NULL;
-    if (uncompressed_size > XX_MIZ_MAX_SIZE ||
-        compressed_size > XX_MIZ_MAX_SIZE) {
+    if (uncompressed_size > XX_MIZ_MAX_SIZE || compressed_size > XX_MIZ_MAX_SIZE) {
         return NULL;
     }
 
@@ -319,8 +311,7 @@ static xx_miz_stream *xx_miz_parse(Abstractformat *self, xx_pd_struct *pd) {
     if (!xx_miz_range_within(span, footer_offset, XX_MIZ_FOOTER_SIZE)) {
         return NULL;
     }
-    if (!xx_miz_read_at(self, self->base_address + footer_offset, footer,
-                        sizeof(footer))) {
+    if (!xx_miz_read_at(self, self->base_address + footer_offset, footer, sizeof(footer))) {
         return NULL;
     }
     /* "MJDK" closes every container, and it has to land exactly where the
@@ -330,8 +321,7 @@ static xx_miz_stream *xx_miz_parse(Abstractformat *self, xx_pd_struct *pd) {
     if (xx_rt_memcmp(footer, magic_foot, sizeof(magic_foot)) != 0) return NULL;
 
     if (compressed_size >= 2) {
-        if (!xx_miz_read_at(self, self->base_address + data_offset, preamble,
-                            sizeof(preamble))) {
+        if (!xx_miz_read_at(self, self->base_address + data_offset, preamble, sizeof(preamble))) {
             return NULL;
         }
         /* The payload is a raw DCL stream whose first two bytes are plain
@@ -388,15 +378,14 @@ fail:
     return NULL;
 }
 
-
 /* MIZ stores no method number: the payload is always a raw PKWARE DCL
  * implode stream. Recorded as 10, the ZIP numbering for that codec, so a
  * listing shows the method the switch below actually dispatches on. */
 /* The stored uncompressed size is attacker-controlled; refuse rather than
  * attempt an allocation the container merely claims to need. */
 
-static bool xx_miz_decode(Abstractformat *self, const xx_miz_member *member,
-                          uint8_t **out, size_t *out_size, xx_pd_struct *pd) {
+static bool xx_miz_decode(Abstractformat *self, const xx_miz_member *member, uint8_t **out, size_t *out_size, xx_pd_struct *pd)
+{
     uint8_t *packed = NULL;
     uint8_t *plain = NULL;
     size_t written = 0U;
@@ -411,12 +400,10 @@ static bool xx_miz_decode(Abstractformat *self, const xx_miz_member *member,
     if (member->compressed_size < 0 || member->uncompressed_size < 0) {
         return false;
     }
-    if (member->uncompressed_size > (int64_t)XX_MIZ_MAX_DECODED ||
-        member->compressed_size > (int64_t)XX_MIZ_MAX_DECODED) {
+    if (member->uncompressed_size > (int64_t)XX_MIZ_MAX_DECODED || member->compressed_size > (int64_t)XX_MIZ_MAX_DECODED) {
         return false;
     }
-    if ((uint64_t)member->uncompressed_size > (uint64_t)SIZE_MAX ||
-        (uint64_t)member->compressed_size > (uint64_t)SIZE_MAX) {
+    if ((uint64_t)member->uncompressed_size > (uint64_t)SIZE_MAX || (uint64_t)member->compressed_size > (uint64_t)SIZE_MAX) {
         return false;
     }
     if (pd && xx_pd_is_stopped(pd)) return false;
@@ -436,8 +423,7 @@ static bool xx_miz_decode(Abstractformat *self, const xx_miz_member *member,
     if (member->compressed_size < 3) return false;
     packed = (uint8_t *)xx_mem_alloc((size_t)member->compressed_size);
     if (!packed) return false;
-    if (!xx_miz_read_at(self, member->data_offset, packed,
-                        (size_t)member->compressed_size)) {
+    if (!xx_miz_read_at(self, member->data_offset, packed, (size_t)member->compressed_size)) {
         xx_mem_free(packed);
         return false;
     }
@@ -451,8 +437,7 @@ static bool xx_miz_decode(Abstractformat *self, const xx_miz_member *member,
         xx_mem_free(packed);
         return false;
     }
-    if (!xx_dcl_decode_memory(packed, (size_t)member->compressed_size, plain,
-                              (size_t)member->uncompressed_size, &written)) {
+    if (!xx_dcl_decode_memory(packed, (size_t)member->compressed_size, plain, (size_t)member->uncompressed_size, &written)) {
         xx_mem_free(plain);
         xx_mem_free(packed);
         return false;
@@ -471,8 +456,8 @@ static bool xx_miz_decode(Abstractformat *self, const xx_miz_member *member,
 
 /* ---------------------------------------------------------- lifecycle --- */
 
-void xx_miz_init(xx_miz *archive, xx_io_device *device,
-                    int64_t base_address) {
+void xx_miz_init(xx_miz *archive, xx_io_device *device, int64_t base_address)
+{
     if (!archive) return;
     xx_mem_zero(archive, sizeof(*archive));
     xx_format_init(&archive->format, device, base_address);
@@ -485,22 +470,17 @@ void xx_miz_init(xx_miz *archive, xx_io_device *device,
     archive->format.check_is_valid = xx_miz_check_is_valid;
     archive->format.handle_base_info = xx_miz_handle_base_info;
     archive->format.get_format_size = xx_miz_get_format_size;
-    archive->format.get_number_of_archive_records =
-        xx_miz_get_number_of_archive_records;
-    archive->format.create_archive_records_reading =
-        xx_miz_create_archive_records_reading;
-    archive->format.get_current_archive_record =
-        xx_miz_get_current_archive_record;
-    archive->format.unpack_current_archive_record =
-        xx_miz_unpack_current_archive_record;
-    archive->format.archive_record_move_to_next =
-        xx_miz_archive_record_move_to_next;
-    archive->format.free_archive_records_reading =
-        xx_miz_free_archive_records_reading;
+    archive->format.get_number_of_archive_records = xx_miz_get_number_of_archive_records;
+    archive->format.create_archive_records_reading = xx_miz_create_archive_records_reading;
+    archive->format.get_current_archive_record = xx_miz_get_current_archive_record;
+    archive->format.unpack_current_archive_record = xx_miz_unpack_current_archive_record;
+    archive->format.archive_record_move_to_next = xx_miz_archive_record_move_to_next;
+    archive->format.free_archive_records_reading = xx_miz_free_archive_records_reading;
     archive->format.destroy = xx_miz_vtable_destroy;
 }
 
-xx_miz *xx_miz_create(xx_io_device *device, int64_t base_address) {
+xx_miz *xx_miz_create(xx_io_device *device, int64_t base_address)
+{
     xx_miz *archive = (xx_miz *)xx_mem_alloc(sizeof(*archive));
 
     if (!archive) return NULL;
@@ -508,7 +488,8 @@ xx_miz *xx_miz_create(xx_io_device *device, int64_t base_address) {
     return archive;
 }
 
-void xx_miz_destroy(xx_miz *archive) {
+void xx_miz_destroy(xx_miz *archive)
+{
     if (!archive) return;
     /* Not xx_format_destroy: it dispatches through format.destroy, which is
      * the wrapper below, and the two would recurse. */
@@ -517,19 +498,22 @@ void xx_miz_destroy(xx_miz *archive) {
     archive->number_of_records = 0U;
 }
 
-void xx_miz_free(xx_miz *archive) {
+void xx_miz_free(xx_miz *archive)
+{
     if (!archive) return;
     xx_miz_destroy(archive);
     xx_mem_free(archive);
 }
 
-static void xx_miz_vtable_destroy(Abstractformat *self) {
+static void xx_miz_vtable_destroy(Abstractformat *self)
+{
     xx_miz_destroy((xx_miz *)self);
 }
 
 /* -------------------------------------------------------------- format -- */
 
-bool xx_miz_check_is_valid(Abstractformat *self, xx_pd_struct *pd) {
+bool xx_miz_check_is_valid(Abstractformat *self, xx_pd_struct *pd)
+{
     xx_miz_stream *stream;
 
     if (!self || (pd && xx_pd_is_stopped(pd))) return false;
@@ -539,7 +523,8 @@ bool xx_miz_check_is_valid(Abstractformat *self, xx_pd_struct *pd) {
     return true;
 }
 
-bool xx_miz_handle_base_info(Abstractformat *self, xx_pd_struct *pd) {
+bool xx_miz_handle_base_info(Abstractformat *self, xx_pd_struct *pd)
+{
     xx_miz *archive = (xx_miz *)self;
     xx_miz_stream *stream;
 
@@ -560,18 +545,17 @@ bool xx_miz_handle_base_info(Abstractformat *self, xx_pd_struct *pd) {
     return true;
 }
 
-int64_t xx_miz_get_format_size(Abstractformat *self, xx_pd_struct *pd) {
-    if (!self ||
-        (!self->base_info_handled && !xx_format_handle_base_info(self, pd))) {
+int64_t xx_miz_get_format_size(Abstractformat *self, xx_pd_struct *pd)
+{
+    if (!self || (!self->base_info_handled && !xx_format_handle_base_info(self, pd))) {
         return 0;
     }
     return self->is_valid ? self->format_size : 0;
 }
 
-uint64_t xx_miz_get_number_of_archive_records(Abstractformat *self,
-                                                 xx_pd_struct *pd) {
-    if (!self ||
-        (!self->base_info_handled && !xx_format_handle_base_info(self, pd))) {
+uint64_t xx_miz_get_number_of_archive_records(Abstractformat *self, xx_pd_struct *pd)
+{
+    if (!self || (!self->base_info_handled && !xx_format_handle_base_info(self, pd))) {
         return 0U;
     }
     return self->is_valid ? ((xx_miz *)self)->number_of_records : 0U;
@@ -579,8 +563,8 @@ uint64_t xx_miz_get_number_of_archive_records(Abstractformat *self,
 
 /* ------------------------------------------------------------- records -- */
 
-static bool xx_miz_set_record(xx_archive_record *record,
-                                 const xx_miz_member *member) {
+static bool xx_miz_set_record(xx_archive_record *record, const xx_miz_member *member)
+{
     xx_archive_record_cleanup(record);
     xx_archive_record_init(record);
     record->header_offset = member->header_offset;
@@ -588,34 +572,24 @@ static bool xx_miz_set_record(xx_archive_record *record,
     record->data_offset = member->data_offset;
     record->compressed_size = member->compressed_size;
     return xx_archive_record_set_original_name(record, member->name) &&
-           xx_archive_record_set_meta_u64(record, XX_META_ID_COMPRESSED_SIZE,
-                                          (uint64_t)member->compressed_size) &&
-           xx_archive_record_set_meta_u64(
-               record, XX_META_ID_UNCOMPRESSED_SIZE,
-               (uint64_t)member->uncompressed_size) &&
-           xx_archive_record_set_meta_u64(record, XX_META_ID_COMPRESSION_METHOD,
-                                          member->method) &&
-           xx_archive_record_set_meta_u64(record, XX_META_ID_TIMESTAMP,
-                                          member->timestamp) &&
-           xx_archive_record_set_meta_bool(record, XX_META_ID_IS_FOLDER,
-                                           member->is_folder) &&
-           xx_archive_record_set_meta_bool(record, XX_META_ID_IS_ENCRYPTED,
-                                           false);
+           xx_archive_record_set_meta_u64(record, XX_META_ID_COMPRESSED_SIZE, (uint64_t)member->compressed_size) &&
+           xx_archive_record_set_meta_u64(record, XX_META_ID_UNCOMPRESSED_SIZE, (uint64_t)member->uncompressed_size) &&
+           xx_archive_record_set_meta_u64(record, XX_META_ID_COMPRESSION_METHOD, member->method) &&
+           xx_archive_record_set_meta_u64(record, XX_META_ID_TIMESTAMP, member->timestamp) &&
+           xx_archive_record_set_meta_bool(record, XX_META_ID_IS_FOLDER, member->is_folder) && xx_archive_record_set_meta_bool(record, XX_META_ID_IS_ENCRYPTED, false);
 }
 
-static bool xx_miz_copy_options(xx_list_s *target,
-                                   const xx_list_s *options) {
+static bool xx_miz_copy_options(xx_list_s *target, const xx_list_s *options)
+{
     size_t index;
 
     if (!target || !options) return options == NULL;
     for (index = 0U; index < options->count; ++index) {
-        const xx_meta *source =
-            (const xx_meta *)xx_list_at((const xx_list_t *)options, index);
+        const xx_meta *source = (const xx_meta *)xx_list_at((const xx_list_t *)options, index);
         xx_meta copied;
         if (!source) continue;
         xx_meta_init(&copied, source->meta_id);
-        if (!xx_var_copy(&copied.var, &source->var) ||
-            !xx_list_append(target, &copied)) {
+        if (!xx_var_copy(&copied.var, &source->var) || !xx_list_append(target, &copied)) {
             xx_meta_cleanup(&copied);
             return false;
         }
@@ -623,21 +597,20 @@ static bool xx_miz_copy_options(xx_list_s *target,
     return true;
 }
 
-static const xx_var *xx_miz_get_option(const xx_list_s *options,
-                                          uint32_t meta_id) {
+static const xx_var *xx_miz_get_option(const xx_list_s *options, uint32_t meta_id)
+{
     size_t index;
 
     if (!options) return NULL;
     for (index = 0U; index < options->count; ++index) {
-        const xx_meta *meta =
-            (const xx_meta *)xx_list_at((const xx_list_t *)options, index);
+        const xx_meta *meta = (const xx_meta *)xx_list_at((const xx_list_t *)options, index);
         if (meta && meta->meta_id == meta_id) return &meta->var;
     }
     return NULL;
 }
 
-xx_archive_record_state *xx_miz_create_archive_records_reading(
-    Abstractformat *self, const xx_list_s *options, xx_pd_struct *pd) {
+xx_archive_record_state *xx_miz_create_archive_records_reading(Abstractformat *self, const xx_list_s *options, xx_pd_struct *pd)
+{
     xx_miz_stream *stream;
     xx_archive_record_state *state;
 
@@ -653,9 +626,7 @@ xx_archive_record_state *xx_miz_create_archive_records_reading(
     state->internal_state = stream;
     state->free_internal = xx_miz_stream_free;
     state->total_records = (int64_t)stream->count;
-    if (!xx_miz_copy_options(&state->options, options) ||
-        (stream->count != 0U &&
-         !xx_miz_set_record(&state->current_record, &stream->items[0]))) {
+    if (!xx_miz_copy_options(&state->options, options) || (stream->count != 0U && !xx_miz_set_record(&state->current_record, &stream->items[0]))) {
         xx_archive_record_state_free(state);
         return NULL;
     }
@@ -664,20 +635,16 @@ xx_archive_record_state *xx_miz_create_archive_records_reading(
     return state;
 }
 
-const xx_archive_record *xx_miz_get_current_archive_record(
-    Abstractformat *self, xx_archive_record_state *state) {
-    return self && state && state->format == self && state->has_record
-               ? &state->current_record
-               : NULL;
+const xx_archive_record *xx_miz_get_current_archive_record(Abstractformat *self, xx_archive_record_state *state)
+{
+    return self && state && state->format == self && state->has_record ? &state->current_record : NULL;
 }
 
-bool xx_miz_archive_record_move_to_next(Abstractformat *self,
-                                           xx_archive_record_state *state,
-                                           xx_pd_struct *pd) {
+bool xx_miz_archive_record_move_to_next(Abstractformat *self, xx_archive_record_state *state, xx_pd_struct *pd)
+{
     xx_miz_stream *stream;
 
-    if (!self || !state || state->format != self || !state->has_record ||
-        (pd && xx_pd_is_stopped(pd))) {
+    if (!self || !state || state->format != self || !state->has_record || (pd && xx_pd_is_stopped(pd))) {
         return false;
     }
     stream = (xx_miz_stream *)state->internal_state;
@@ -689,14 +656,12 @@ bool xx_miz_archive_record_move_to_next(Abstractformat *self,
     }
     ++stream->index;
     ++state->current_index;
-    state->has_record = xx_miz_set_record(&state->current_record,
-                                             &stream->items[stream->index]);
+    state->has_record = xx_miz_set_record(&state->current_record, &stream->items[stream->index]);
     return state->has_record;
 }
 
-bool xx_miz_unpack_current_archive_record(Abstractformat *self,
-                                             xx_archive_record_state *state,
-                                             xx_pd_struct *pd) {
+bool xx_miz_unpack_current_archive_record(Abstractformat *self, xx_archive_record_state *state, xx_pd_struct *pd)
+{
     xx_miz_stream *stream;
     const xx_miz_member *member;
     const xx_var *path_option;
@@ -708,8 +673,7 @@ bool xx_miz_unpack_current_archive_record(Abstractformat *self,
     bool result = false;
     bool created = false;
 
-    if (!self || !state || state->format != self || !state->has_record ||
-        (pd && xx_pd_is_stopped(pd))) {
+    if (!self || !state || state->format != self || !state->has_record || (pd && xx_pd_is_stopped(pd))) {
         return false;
     }
     stream = (xx_miz_stream *)state->internal_state;
@@ -717,8 +681,7 @@ bool xx_miz_unpack_current_archive_record(Abstractformat *self,
     member = &stream->items[stream->index];
     if (!xx_miz_path_safe(member->name)) return false;
 
-    path_option = xx_miz_get_option(&state->options,
-                                       XX_META_ID_OPT_UNPACK_PATH);
+    path_option = xx_miz_get_option(&state->options, XX_META_ID_OPT_UNPACK_PATH);
     if (!path_option) {
         /* No destination: decode and discard, which verifies the member
          * without writing anything. */
@@ -727,11 +690,9 @@ bool xx_miz_unpack_current_archive_record(Abstractformat *self,
         xx_mem_free(plain);
         return result;
     }
-    if (path_option->type == XX_VAR_TYPE_STRING ||
-        path_option->type == XX_VAR_TYPE_STRING_VIEW) {
+    if (path_option->type == XX_VAR_TYPE_STRING || path_option->type == XX_VAR_TYPE_STRING_VIEW) {
         base_path = xx_var_get_str(path_option);
-    } else if (path_option->type == XX_VAR_TYPE_WSTRING ||
-               path_option->type == XX_VAR_TYPE_WSTRING_VIEW) {
+    } else if (path_option->type == XX_VAR_TYPE_WSTRING || path_option->type == XX_VAR_TYPE_WSTRING_VIEW) {
         converted_path = xx_str_unicode_to_utf8(xx_var_get_wstr(path_option));
         base_path = converted_path;
     }
@@ -739,9 +700,7 @@ bool xx_miz_unpack_current_archive_record(Abstractformat *self,
         xx_str_free(converted_path);
         return false;
     }
-    if (base_path[0] != '\0' &&
-        base_path[xx_str_len(base_path) - 1U] != '/' &&
-        base_path[xx_str_len(base_path) - 1U] != '\\') {
+    if (base_path[0] != '\0' && base_path[xx_str_len(base_path) - 1U] != '/' && base_path[xx_str_len(base_path) - 1U] != '\\') {
         target_path = xx_str_concat3(base_path, "/", member->name);
     } else {
         target_path = xx_str_concat(base_path, member->name);
@@ -754,8 +713,7 @@ bool xx_miz_unpack_current_archive_record(Abstractformat *self,
         xx_str_free(target_path);
         return result;
     }
-    if (!xx_store_create_dirs_a(target_path, false) ||
-        !xx_miz_decode(self, member, &plain, &plain_size, pd)) {
+    if (!xx_store_create_dirs_a(target_path, false) || !xx_miz_decode(self, member, &plain, &plain_size, pd)) {
         xx_str_free(target_path);
         return false;
     }
@@ -766,8 +724,7 @@ bool xx_miz_unpack_current_archive_record(Abstractformat *self,
 
         result = output != NULL;
         while (result && completed < plain_size) {
-            ssize_t sent = xx_io_write(output, plain + completed,
-                                       plain_size - completed);
+            ssize_t sent = xx_io_write(output, plain + completed, plain_size - completed);
             if (sent <= 0 || (size_t)sent > plain_size - completed) {
                 result = false;
                 break;
@@ -782,8 +739,8 @@ bool xx_miz_unpack_current_archive_record(Abstractformat *self,
     return result;
 }
 
-void xx_miz_free_archive_records_reading(Abstractformat *self,
-                                            xx_archive_record_state *state) {
+void xx_miz_free_archive_records_reading(Abstractformat *self, xx_archive_record_state *state)
+{
     (void)self;
     xx_archive_record_state_free(state);
 }

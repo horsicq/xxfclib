@@ -140,12 +140,14 @@ typedef struct lifkd_window_s {
 } lifkd_window;
 
 #include "xxfclib/global/xx_global.h"
-static size_t gb_lifkd_capacity(void) {
+static size_t gb_lifkd_capacity(void)
+{
     size_t n = xx_get_file_buffer_size();
     if (!n) n = XX_DEFAULT_FILE_BUFFER_SIZE;
     return n > (SIZE_MAX >> 1) ? SIZE_MAX >> 1 : n;
 }
-static ssize_t gb_lifkd_read(xx_io_device *device, void *buffer, size_t size, size_t capacity) {
+static ssize_t gb_lifkd_read(xx_io_device *device, void *buffer, size_t size, size_t capacity)
+{
     size_t done = 0;
     if (size > (SIZE_MAX >> 1)) return -1;
     while (done < size) {
@@ -159,7 +161,8 @@ static ssize_t gb_lifkd_read(xx_io_device *device, void *buffer, size_t size, si
     }
     return (ssize_t)done;
 }
-static ssize_t gb_lifkd_write(xx_io_device *device, const void *buffer, size_t size, size_t capacity) {
+static ssize_t gb_lifkd_write(xx_io_device *device, const void *buffer, size_t size, size_t capacity)
+{
     size_t done = 0;
     if (size > (SIZE_MAX >> 1)) return -1;
     while (done < size) {
@@ -174,17 +177,13 @@ static ssize_t gb_lifkd_write(xx_io_device *device, const void *buffer, size_t s
     return (ssize_t)done;
 }
 
-
-static bool lifkd_read_at(xx_io_device *device, int64_t offset, void *buffer,
-                          size_t size) {
+static bool lifkd_read_at(xx_io_device *device, int64_t offset, void *buffer, size_t size)
+{
     const size_t file_io_capacity = gb_lifkd_capacity();
     size_t done = 0U;
-    if (!device || (!buffer && size != 0U) || offset < 0 ||
-        xx_io_seek64(device, offset, SEEK_SET) != 0)
-        return false;
+    if (!device || (!buffer && size != 0U) || offset < 0 || xx_io_seek64(device, offset, SEEK_SET) != 0) return false;
     while (done < size) {
-        ssize_t amount = gb_lifkd_read(device, (uint8_t *)buffer + done,
-                                    size - done, file_io_capacity);
+        ssize_t amount = gb_lifkd_read(device, (uint8_t *)buffer + done, size - done, file_io_capacity);
         if (amount <= 0 || (size_t)amount > size - done) return false;
         done += (size_t)amount;
     }
@@ -195,13 +194,10 @@ static bool lifkd_read_at(xx_io_device *device, int64_t offset, void *buffer,
  * the caller has already checked lie before @p end.  When the header is not
  * wholly inside the window, the window is refilled from @p offset, never past
  * @p end: a full window when @p fill is true, otherwise just the header. */
-static const uint8_t *lifkd_window_header(xx_io_device *device,
-                                          lifkd_window *window, int64_t offset,
-                                          int64_t end, bool fill) {
+static const uint8_t *lifkd_window_header(xx_io_device *device, lifkd_window *window, int64_t offset, int64_t end, bool fill)
+{
     size_t amount = fill ? (size_t)LIFKD_WINDOW_SIZE : (size_t)LIFKD_HEADER_SIZE;
-    if (window->size != 0U && offset >= window->start &&
-        offset - window->start <=
-            (int64_t)window->size - (int64_t)LIFKD_HEADER_SIZE)
+    if (window->size != 0U && offset >= window->start && offset - window->start <= (int64_t)window->size - (int64_t)LIFKD_HEADER_SIZE)
         return window->bytes + (size_t)(offset - window->start);
     if (end - offset < (int64_t)amount) amount = (size_t)(end - offset);
     window->size = 0U;
@@ -215,7 +211,8 @@ static const uint8_t *lifkd_window_header(xx_io_device *device,
 
 /* All samples write lowercase, but nothing in the format forbids uppercase,
  * so both are accepted.  Anything else makes the header invalid. */
-static bool lifkd_hex_digit(uint8_t c, uint32_t *value) {
+static bool lifkd_hex_digit(uint8_t c, uint32_t *value)
+{
     if (c >= '0' && c <= '9') {
         *value = (uint32_t)(c - '0');
         return true;
@@ -231,8 +228,8 @@ static bool lifkd_hex_digit(uint8_t c, uint32_t *value) {
     return false;
 }
 
-static bool lifkd_hex_field(const uint8_t *bytes, unsigned count,
-                            uint32_t *result) {
+static bool lifkd_hex_field(const uint8_t *bytes, unsigned count, uint32_t *result)
+{
     uint32_t value = 0U;
     unsigned index;
     for (index = 0U; index < count; ++index) {
@@ -250,26 +247,21 @@ static bool lifkd_hex_field(const uint8_t *bytes, unsigned count,
  * can never disagree.  The method is checked first because it is the cheapest
  * rejection for arbitrary data.
  */
-static bool lifkd_decode_header(const uint8_t *bytes, lifkd_header *out) {
+static bool lifkd_decode_header(const uint8_t *bytes, lifkd_header *out)
+{
     uint32_t method, crc_packed, crc_plain;
     size_t length = 0U, index;
-    if (!bytes || !out || !lifkd_hex_field(bytes + 32U, 2U, &method) ||
-        (method != LIFKD_METHOD_STORED && method != LIFKD_METHOD_LZD) ||
-        !lifkd_hex_field(bytes, 8U, &out->dos_time) ||
-        !lifkd_hex_field(bytes + 8U, 8U, &out->packed) ||
-        !lifkd_hex_field(bytes + 16U, 8U, &out->unpacked) ||
-        !lifkd_hex_field(bytes + 24U, 4U, &crc_packed) ||
-        !lifkd_hex_field(bytes + 28U, 4U, &crc_plain))
+    if (!bytes || !out || !lifkd_hex_field(bytes + 32U, 2U, &method) || (method != LIFKD_METHOD_STORED && method != LIFKD_METHOD_LZD) ||
+        !lifkd_hex_field(bytes, 8U, &out->dos_time) || !lifkd_hex_field(bytes + 8U, 8U, &out->packed) || !lifkd_hex_field(bytes + 16U, 8U, &out->unpacked) ||
+        !lifkd_hex_field(bytes + 24U, 4U, &crc_packed) || !lifkd_hex_field(bytes + 28U, 4U, &crc_plain))
         return false;
     /* A stored member cannot shrink or grow; anything else here means the
      * header is not really a LIF header. */
-    if (method == LIFKD_METHOD_STORED && out->packed != out->unpacked)
-        return false;
+    if (method == LIFKD_METHOD_STORED && out->packed != out->unpacked) return false;
     /* The name is at least one printable ASCII byte, terminated inside the
      * 20-byte field, and everything behind the terminator is zero.  Every
      * member in the corpus (1836 of 1836) has this shape. */
-    while (length < LIFKD_NAME_SIZE &&
-           bytes[LIFKD_NAME_OFFSET + length] != 0U) {
+    while (length < LIFKD_NAME_SIZE && bytes[LIFKD_NAME_OFFSET + length] != 0U) {
         uint8_t c = bytes[LIFKD_NAME_OFFSET + length];
         if (c < 0x20U || c > 0x7eU) return false;
         ++length;
@@ -284,10 +276,10 @@ static bool lifkd_decode_header(const uint8_t *bytes, lifkd_header *out) {
     return true;
 }
 
-bool xx_lifkd_is_member_header(const uint8_t *bytes, size_t size) {
+bool xx_lifkd_is_member_header(const uint8_t *bytes, size_t size)
+{
     lifkd_header header;
-    return bytes && size >= (size_t)LIFKD_HEADER_SIZE &&
-           lifkd_decode_header(bytes, &header);
+    return bytes && size >= (size_t)LIFKD_HEADER_SIZE && lifkd_decode_header(bytes, &header);
 }
 
 /* The record name is the stored name with DOS backslashes turned into '/'
@@ -302,7 +294,8 @@ bool xx_lifkd_is_member_header(const uint8_t *bytes, size_t size) {
  * No corpus member name contains '~'.  Nothing else is rewritten:
  * whether a name is safe to create is decided at extraction time, which
  * refuses rather than repairs. */
-static char *lifkd_make_name(const uint8_t *bytes, size_t length) {
+static char *lifkd_make_name(const uint8_t *bytes, size_t length)
+{
     char *name;
     size_t input = 0U, output = 0U;
     if (!bytes || length == 0U || length >= LIFKD_NAME_SIZE) return NULL;
@@ -310,13 +303,10 @@ static char *lifkd_make_name(const uint8_t *bytes, size_t length) {
     if (!name) return NULL;
     for (;;) {
         size_t start = input, end, trimmed;
-        while (input < length && bytes[input] != '/' && bytes[input] != '\\')
-            ++input;
+        while (input < length && bytes[input] != '/' && bytes[input] != '\\') ++input;
         end = input;
         trimmed = end;
-        while (trimmed > start &&
-               (bytes[trimmed - 1U] == '.' || bytes[trimmed - 1U] == ' '))
-            --trimmed;
+        while (trimmed > start && (bytes[trimmed - 1U] == '.' || bytes[trimmed - 1U] == ' ')) --trimmed;
         if (trimmed == start) trimmed = end;
         while (start < trimmed) {
             char c = (char)bytes[start++];
@@ -330,16 +320,17 @@ static char *lifkd_make_name(const uint8_t *bytes, size_t length) {
     return name;
 }
 
-static char lifkd_upper(char c) {
+static char lifkd_upper(char c)
+{
     return (c >= 'a' && c <= 'z') ? (char)(c - 'a' + 'A') : c;
 }
 
 /* True when the @p stem bytes at @p text spell the upper-case @p word. */
-static bool lifkd_stem_is(const char *text, size_t stem, const char *word) {
+static bool lifkd_stem_is(const char *text, size_t stem, const char *word)
+{
     size_t index;
     for (index = 0U; index < stem; ++index)
-        if (!word[index] || lifkd_upper(text[index]) != word[index])
-            return false;
+        if (!word[index] || lifkd_upper(text[index]) != word[index]) return false;
     return word[stem] == 0;
 }
 
@@ -347,26 +338,22 @@ static bool lifkd_stem_is(const char *text, size_t stem, const char *word) {
  * ".."), not ending in a dot or space (Windows would silently drop those and
  * could merge two members), and not a device name such as CON, LPT1.TXT or
  * CONIN$, in any case, with or without an extension. */
-static bool lifkd_safe_component(const char *text, size_t length) {
-    static const char *const devices[] = {"CON",    "PRN",     "AUX",
-                                          "NUL",    "CONIN$",  "CONOUT$",
-                                          "CLOCK$"};
+static bool lifkd_safe_component(const char *text, size_t length)
+{
+    static const char *const devices[] = {"CON", "PRN", "AUX", "NUL", "CONIN$", "CONOUT$", "CLOCK$"};
     size_t index, stem = 0U;
     bool meaningful = false;
     if (length == 0U) return false;
     for (index = 0U; index < length; ++index)
         if (text[index] != '.' && text[index] != ' ') meaningful = true;
-    if (!meaningful || text[length - 1U] == '.' || text[length - 1U] == ' ')
-        return false;
+    if (!meaningful || text[length - 1U] == '.' || text[length - 1U] == ' ') return false;
     while (stem < length && text[stem] != '.') ++stem;
     while (stem > 0U && text[stem - 1U] == ' ') --stem;
     for (index = 0U; index < sizeof(devices) / sizeof(devices[0]); ++index)
         if (lifkd_stem_is(text, stem, devices[index])) return false;
     if (stem == 4U && text[3] >= '0' && text[3] <= '9' &&
-        ((lifkd_upper(text[0]) == 'C' && lifkd_upper(text[1]) == 'O' &&
-          lifkd_upper(text[2]) == 'M') ||
-         (lifkd_upper(text[0]) == 'L' && lifkd_upper(text[1]) == 'P' &&
-          lifkd_upper(text[2]) == 'T')))
+        ((lifkd_upper(text[0]) == 'C' && lifkd_upper(text[1]) == 'O' && lifkd_upper(text[2]) == 'M') ||
+         (lifkd_upper(text[0]) == 'L' && lifkd_upper(text[1]) == 'P' && lifkd_upper(text[2]) == 'T')))
         return false;
     return true;
 }
@@ -375,25 +362,24 @@ static bool lifkd_safe_component(const char *text, size_t length) {
  * colon (drive letters, alternate streams), control bytes and the other
  * reserved punctuation, empty components, and every component
  * lifkd_safe_component() refuses. */
-static bool lifkd_safe_output_name(const char *name) {
+static bool lifkd_safe_output_name(const char *name)
+{
     size_t start = 0U, index = 0U;
     if (!name || !name[0] || name[0] == '/' || name[0] == '\\') return false;
     for (;; ++index) {
         unsigned char c = (unsigned char)name[index];
         if (c == 0U || c == '/' || c == '\\') {
-            if (!lifkd_safe_component(name + start, index - start))
-                return false;
+            if (!lifkd_safe_component(name + start, index - start)) return false;
             if (c == 0U) return true;
             start = index + 1U;
             continue;
         }
-        if (c < 0x20U || c > 0x7eU || c == ':' || c == '<' || c == '>' ||
-            c == '"' || c == '|' || c == '?' || c == '*')
-            return false;
+        if (c < 0x20U || c > 0x7eU || c == ':' || c == '<' || c == '>' || c == '"' || c == '|' || c == '?' || c == '*') return false;
     }
 }
 
-static void lifkd_stream_free(void *opaque) {
+static void lifkd_stream_free(void *opaque)
+{
     lifkd_stream *stream = (lifkd_stream *)opaque;
     size_t index;
     if (!stream) return;
@@ -405,17 +391,15 @@ static void lifkd_stream_free(void *opaque) {
 
 /* Geometric growth, so a crafted file with the maximum number of members
  * costs a logarithmic number of reallocations rather than one per member. */
-static bool lifkd_add_member(lifkd_stream *stream, const lifkd_member *member) {
+static bool lifkd_add_member(lifkd_stream *stream, const lifkd_member *member)
+{
     if (!stream || !member || stream->count >= LIFKD_MAX_MEMBERS) return false;
     if (stream->count == stream->capacity) {
-        size_t grown_capacity =
-            stream->capacity ? stream->capacity * 2U : 16U;
+        size_t grown_capacity = stream->capacity ? stream->capacity * 2U : 16U;
         lifkd_member *grown;
-        if (grown_capacity > LIFKD_MAX_MEMBERS)
-            grown_capacity = LIFKD_MAX_MEMBERS;
+        if (grown_capacity > LIFKD_MAX_MEMBERS) grown_capacity = LIFKD_MAX_MEMBERS;
         if (grown_capacity > SIZE_MAX / sizeof(*grown)) return false;
-        grown = (lifkd_member *)xx_mem_realloc(stream->items,
-                                               grown_capacity * sizeof(*grown));
+        grown = (lifkd_member *)xx_mem_realloc(stream->items, grown_capacity * sizeof(*grown));
         if (!grown) return false;
         stream->items = grown;
         stream->capacity = grown_capacity;
@@ -431,8 +415,8 @@ static bool lifkd_add_member(lifkd_stream *stream, const lifkd_member *member) {
  * on the end and finding at least one member.  With @p stream NULL this only
  * validates and counts, and allocates nothing.
  */
-static bool lifkd_walk(Abstractformat *format, lifkd_stream *stream,
-                       uint64_t *count_out, int64_t *size_out) {
+static bool lifkd_walk(Abstractformat *format, lifkd_stream *stream, uint64_t *count_out, int64_t *size_out)
+{
     int64_t total, size, cursor = 0;
     uint64_t count = 0U;
     bool fill = true;
@@ -449,10 +433,7 @@ static bool lifkd_walk(Abstractformat *format, lifkd_stream *stream,
         const uint8_t *bytes;
         lifkd_header header;
         if (count >= LIFKD_MAX_MEMBERS || size - cursor < LIFKD_HEADER_SIZE ||
-            !(bytes = lifkd_window_header(format->device, &window,
-                                          format->base_address + cursor,
-                                          total, fill)) ||
-            !lifkd_decode_header(bytes, &header) ||
+            !(bytes = lifkd_window_header(format->device, &window, format->base_address + cursor, total, fill)) || !lifkd_decode_header(bytes, &header) ||
             (int64_t)header.packed > size - cursor - LIFKD_HEADER_SIZE)
             goto cleanup;
         if (stream) {
@@ -467,8 +448,7 @@ static bool lifkd_walk(Abstractformat *format, lifkd_stream *stream,
             member.crc_plain = header.crc_plain;
             member.method = header.method;
             member.extractable = true;
-            member.name = lifkd_make_name(bytes + LIFKD_NAME_OFFSET,
-                                          header.name_length);
+            member.name = lifkd_make_name(bytes + LIFKD_NAME_OFFSET, header.name_length);
             if (!member.name) goto cleanup;
             if (!lifkd_add_member(stream, &member)) {
                 xx_mem_free(member.name);
@@ -494,7 +474,8 @@ cleanup:
  * bit reaches the low bits the table mask keeps.  This alone does not stop a
  * crafted archive from brute forcing names into one cluster; LIFKD_MAX_PROBE
  * is what bounds the cost. */
-static uint64_t lifkd_name_hash(const char *name) {
+static uint64_t lifkd_name_hash(const char *name)
+{
     uint64_t hash = 14695981039346656037ULL;
     while (*name) {
         hash ^= (uint8_t)lifkd_upper(*name++);
@@ -508,7 +489,8 @@ static uint64_t lifkd_name_hash(const char *name) {
     return hash;
 }
 
-static bool lifkd_name_equal(const char *left, const char *right) {
+static bool lifkd_name_equal(const char *left, const char *right)
+{
     while (*left && *right && lifkd_upper(*left) == lifkd_upper(*right)) {
         ++left;
         ++right;
@@ -516,20 +498,21 @@ static bool lifkd_name_equal(const char *left, const char *right) {
     return *left == 0 && *right == 0;
 }
 
-static size_t lifkd_put_decimal(char *out, uint64_t value) {
+static size_t lifkd_put_decimal(char *out, uint64_t value)
+{
     char digits[24];
     size_t count = 0U, index;
     do {
         digits[count++] = (char)('0' + (int)(value % 10U));
         value /= 10U;
     } while (value != 0U && count < sizeof(digits));
-    for (index = 0U; index < count; ++index)
-        out[index] = digits[count - 1U - index];
+    for (index = 0U; index < count; ++index) out[index] = digits[count - 1U - index];
     return count;
 }
 
 /* "<stem>_<record>[_<try>]<extension>" in the last path component. */
-static char *lifkd_renamed(const char *name, uint64_t record, unsigned attempt) {
+static char *lifkd_renamed(const char *name, uint64_t record, unsigned attempt)
+{
     size_t length = xx_str_len(name), component = 0U, insert, index, at;
     size_t suffix_length = 0U;
     char suffix[56];
@@ -572,7 +555,8 @@ static char *lifkd_renamed(const char *name, uint64_t record, unsigned attempt) 
  * slots are never emptied, so a later equal name probes the same, only
  * longer, run and is refused the same way instead of being missed.
  */
-static bool lifkd_dedupe(lifkd_stream *stream) {
+static bool lifkd_dedupe(lifkd_stream *stream)
+{
     uint32_t *slots;
     size_t slot_count = 16U, mask, index;
     if (!stream || stream->count < 2U) return true;
@@ -589,8 +573,7 @@ static bool lifkd_dedupe(lifkd_stream *stream) {
             size_t probes = 0U;
             bool taken = false;
             while (slots[slot] != 0U) {
-                if (lifkd_name_equal(stream->items[slots[slot] - 1U].name,
-                                     candidate)) {
+                if (lifkd_name_equal(stream->items[slots[slot] - 1U].name, candidate)) {
                     taken = true;
                     break;
                 }
@@ -615,8 +598,7 @@ static bool lifkd_dedupe(lifkd_stream *stream) {
                 member->extractable = false;
                 break;
             }
-            candidate = lifkd_renamed(member->name, (uint64_t)index + 1U,
-                                      attempt);
+            candidate = lifkd_renamed(member->name, (uint64_t)index + 1U, attempt);
             if (!candidate) {
                 xx_mem_free(slots);
                 return false;
@@ -627,7 +609,8 @@ static bool lifkd_dedupe(lifkd_stream *stream) {
     return true;
 }
 
-static bool lifkd_parse(Abstractformat *format, lifkd_stream **result) {
+static bool lifkd_parse(Abstractformat *format, lifkd_stream **result)
+{
     lifkd_stream *stream;
     int64_t size = 0;
     if (!result) return false;
@@ -642,18 +625,16 @@ static bool lifkd_parse(Abstractformat *format, lifkd_stream **result) {
     return true;
 }
 
-static bool lifkd_copy_options(xx_list_s *destination,
-                               const xx_list_s *source) {
+static bool lifkd_copy_options(xx_list_s *destination, const xx_list_s *source)
+{
     size_t index;
     if (!source) return true;
     for (index = 0U; index < source->count; ++index) {
-        const xx_meta *original =
-            (const xx_meta *)xx_list_at((const xx_list_t *)source, index);
+        const xx_meta *original = (const xx_meta *)xx_list_at((const xx_list_t *)source, index);
         xx_meta copy;
         if (!original) continue;
         xx_meta_init(&copy, original->meta_id);
-        if (!xx_var_copy(&copy.var, &original->var) ||
-            !xx_list_append(destination, &copy)) {
+        if (!xx_var_copy(&copy.var, &original->var) || !xx_list_append(destination, &copy)) {
             xx_meta_cleanup(&copy);
             return false;
         }
@@ -661,19 +642,19 @@ static bool lifkd_copy_options(xx_list_s *destination,
     return true;
 }
 
-static const xx_var *lifkd_option(const xx_list_s *options, uint32_t id) {
+static const xx_var *lifkd_option(const xx_list_s *options, uint32_t id)
+{
     size_t index;
     if (!options) return NULL;
     for (index = 0U; index < options->count; ++index) {
-        const xx_meta *meta =
-            (const xx_meta *)xx_list_at((const xx_list_t *)options, index);
+        const xx_meta *meta = (const xx_meta *)xx_list_at((const xx_list_t *)options, index);
         if (meta && meta->meta_id == id) return &meta->var;
     }
     return NULL;
 }
 
-static bool lifkd_set_record(xx_archive_record *record,
-                             const lifkd_member *member) {
+static bool lifkd_set_record(xx_archive_record *record, const lifkd_member *member)
+{
     xx_archive_record_cleanup(record);
     xx_archive_record_init(record);
     record->header_offset = member->header_offset;
@@ -681,37 +662,27 @@ static bool lifkd_set_record(xx_archive_record *record,
     record->data_offset = member->data_offset;
     record->compressed_size = member->packed_size;
     return xx_archive_record_set_original_name(record, member->name) &&
-           xx_archive_record_set_meta_u64(record, XX_META_ID_COMPRESSED_SIZE,
-                                          (uint64_t)member->packed_size) &&
-           xx_archive_record_set_meta_u64(record, XX_META_ID_UNCOMPRESSED_SIZE,
-                                          member->unpacked_size) &&
-           xx_archive_record_set_meta_u64(record, XX_META_ID_COMPRESSION_METHOD,
-                                          member->method) &&
+           xx_archive_record_set_meta_u64(record, XX_META_ID_COMPRESSED_SIZE, (uint64_t)member->packed_size) &&
+           xx_archive_record_set_meta_u64(record, XX_META_ID_UNCOMPRESSED_SIZE, member->unpacked_size) &&
+           xx_archive_record_set_meta_u64(record, XX_META_ID_COMPRESSION_METHOD, member->method) &&
            /* There is no 16-bit CRC metadata id, so the plaintext CRC-16
             * travels in the CRC32 slot zero extended, the way the other
             * CRC-16 readers in this library report theirs. */
-           xx_archive_record_set_meta_u64(record, XX_META_ID_CRC32,
-                                          member->crc_plain) &&
-           xx_archive_record_set_meta_u64(record, XX_META_ID_TIMESTAMP,
-                                          member->dos_time) &&
-           xx_archive_record_set_meta_u64(record, XX_META_ID_LAST_MOD_DATE,
-                                          (member->dos_time >> 16U) & 0xffffU) &&
-           xx_archive_record_set_meta_u64(record, XX_META_ID_LAST_MOD_TIME,
-                                          member->dos_time & 0xffffU) &&
-           xx_archive_record_set_meta_bool(record, XX_META_ID_IS_ENCRYPTED,
-                                           false) &&
-           xx_archive_record_set_meta_bool(record, XX_META_ID_IS_FOLDER, false);
+           xx_archive_record_set_meta_u64(record, XX_META_ID_CRC32, member->crc_plain) &&
+           xx_archive_record_set_meta_u64(record, XX_META_ID_TIMESTAMP, member->dos_time) &&
+           xx_archive_record_set_meta_u64(record, XX_META_ID_LAST_MOD_DATE, (member->dos_time >> 16U) & 0xffffU) &&
+           xx_archive_record_set_meta_u64(record, XX_META_ID_LAST_MOD_TIME, member->dos_time & 0xffffU) &&
+           xx_archive_record_set_meta_bool(record, XX_META_ID_IS_ENCRYPTED, false) && xx_archive_record_set_meta_bool(record, XX_META_ID_IS_FOLDER, false);
 }
 
 /* A NULL destination verifies without writing anything. */
-static bool lifkd_write_all(xx_io_device *destination, const uint8_t *data,
-                            size_t size) {
+static bool lifkd_write_all(xx_io_device *destination, const uint8_t *data, size_t size)
+{
     const size_t file_io_capacity = gb_lifkd_capacity();
     size_t written = 0U;
     if (!destination) return true;
     while (written < size) {
-        ssize_t amount = gb_lifkd_write(destination, data + written,
-                                     size - written, file_io_capacity);
+        ssize_t amount = gb_lifkd_write(destination, data + written, size - written, file_io_capacity);
         if (amount <= 0 || (size_t)amount > size - written) return false;
         written += (size_t)amount;
     }
@@ -723,9 +694,8 @@ static bool lifkd_write_all(xx_io_device *destination, const uint8_t *data,
  * CRC-16 fields checked over the bytes as they pass.  The caller removes the
  * output if this fails.
  */
-static bool lifkd_unpack_stored(Abstractformat *format,
-                                const lifkd_member *member,
-                                xx_io_device *destination, xx_pd_struct *pd) {
+static bool lifkd_unpack_stored(Abstractformat *format, const lifkd_member *member, xx_io_device *destination, xx_pd_struct *pd)
+{
     const size_t file_io_capacity = LIFKD_COPY_CHUNK;
     uint8_t *chunk;
     int64_t done = 0;
@@ -736,12 +706,8 @@ static bool lifkd_unpack_stored(Abstractformat *format,
     if (!chunk) return false;
     while (ok && done < member->packed_size) {
         size_t amount = file_io_capacity;
-        if ((int64_t)amount > member->packed_size - done)
-            amount = (size_t)(member->packed_size - done);
-        if ((pd && xx_pd_is_stopped(pd)) ||
-            !lifkd_read_at(format->device, member->data_offset + done, chunk,
-                           amount) ||
-            !lifkd_write_all(destination, chunk, amount)) {
+        if ((int64_t)amount > member->packed_size - done) amount = (size_t)(member->packed_size - done);
+        if ((pd && xx_pd_is_stopped(pd)) || !lifkd_read_at(format->device, member->data_offset + done, chunk, amount) || !lifkd_write_all(destination, chunk, amount)) {
             ok = false;
             break;
         }
@@ -766,8 +732,8 @@ static bool lifkd_unpack_stored(Abstractformat *format,
  * CRC-16 below is what actually decides whether the decode was right.  In the
  * corpus this affects 250 of 1622 compressed members.
  */
-static bool lifkd_unpack_lzd(Abstractformat *format, const lifkd_member *member,
-                             xx_io_device *destination) {
+static bool lifkd_unpack_lzd(Abstractformat *format, const lifkd_member *member, xx_io_device *destination)
+{
     uint8_t *packed = NULL, *output = NULL;
     size_t input_size, output_size, written = 0U;
     bool ok = false;
@@ -776,34 +742,22 @@ static bool lifkd_unpack_lzd(Abstractformat *format, const lifkd_member *member,
      * here as 2 bytes per 4096 plain bytes), plus the end code, byte padding
      * and the trailing zero quirk.  So packed <= plain * 13 / 8 + plain / 2048
      * + 16; no corpus member exceeds plain * 13 / 8. */
-    if (member->packed_size <= 0 || member->unpacked_size > LIFKD_MAX_PLAIN ||
-        member->unpacked_size >
-            ((uint64_t)member->packed_size + 1U) * LIFKD_LZD_MAX_RUN ||
-        (uint64_t)member->packed_size >
-            (member->unpacked_size * 13U + 7U) / 8U +
-                member->unpacked_size / 2048U + 16U)
+    if (member->packed_size <= 0 || member->unpacked_size > LIFKD_MAX_PLAIN || member->unpacked_size > ((uint64_t)member->packed_size + 1U) * LIFKD_LZD_MAX_RUN ||
+        (uint64_t)member->packed_size > (member->unpacked_size * 13U + 7U) / 8U + member->unpacked_size / 2048U + 16U)
         return false;
     input_size = (size_t)member->packed_size;
     output_size = (size_t)member->unpacked_size;
     /* The packed CRC is checked before the plaintext buffer exists, so a
      * damaged member never gets that allocation. */
     packed = (uint8_t *)xx_mem_alloc(input_size);
-    if (!packed ||
-        !lifkd_read_at(format->device, member->data_offset, packed,
-                       input_size) ||
-        xx_crc16_ccitt_calc(0xffffU, packed, input_size) != member->crc_packed)
+    if (!packed || !lifkd_read_at(format->device, member->data_offset, packed, input_size) || xx_crc16_ccitt_calc(0xffffU, packed, input_size) != member->crc_packed)
         goto done;
     output = (uint8_t *)xx_mem_alloc(output_size != 0U ? output_size : 1U);
     if (!output) goto done;
-    if (!xx_zoo_lzd_decode_memory(packed, input_size, output, output_size,
-                                  &written) &&
-        !(packed[input_size - 1U] == 0U &&
-          xx_zoo_lzd_decode_memory(packed, input_size - 1U, output,
-                                   output_size, &written)))
+    if (!xx_zoo_lzd_decode_memory(packed, input_size, output, output_size, &written) &&
+        !(packed[input_size - 1U] == 0U && xx_zoo_lzd_decode_memory(packed, input_size - 1U, output, output_size, &written)))
         goto done;
-    if (written != output_size ||
-        xx_crc16_ccitt_calc(0xffffU, output, written) != member->crc_plain)
-        goto done;
+    if (written != output_size || xx_crc16_ccitt_calc(0xffffU, output, written) != member->crc_plain) goto done;
     ok = lifkd_write_all(destination, output, written);
 done:
     if (packed) xx_mem_free(packed);
@@ -811,8 +765,8 @@ done:
     return ok;
 }
 
-void xx_lifkd_init(xx_lifkd *archive, xx_io_device *device,
-                   int64_t base_address) {
+void xx_lifkd_init(xx_lifkd *archive, xx_io_device *device, int64_t base_address)
+{
     if (!archive) return;
     xx_mem_zero(archive, sizeof(*archive));
     xx_format_init(&archive->format, device, base_address);
@@ -827,43 +781,42 @@ void xx_lifkd_init(xx_lifkd *archive, xx_io_device *device,
     archive->format.check_is_valid = xx_lifkd_check_is_valid;
     archive->format.handle_base_info = xx_lifkd_handle_base_info;
     archive->format.get_format_size = xx_lifkd_get_format_size;
-    archive->format.get_number_of_archive_records =
-        xx_lifkd_get_number_of_archive_records;
-    archive->format.create_archive_records_reading =
-        xx_lifkd_create_archive_records_reading;
-    archive->format.get_current_archive_record =
-        xx_lifkd_get_current_archive_record;
-    archive->format.unpack_current_archive_record =
-        xx_lifkd_unpack_current_archive_record;
-    archive->format.archive_record_move_to_next =
-        xx_lifkd_archive_record_move_to_next;
-    archive->format.free_archive_records_reading =
-        xx_lifkd_free_archive_records_reading;
+    archive->format.get_number_of_archive_records = xx_lifkd_get_number_of_archive_records;
+    archive->format.create_archive_records_reading = xx_lifkd_create_archive_records_reading;
+    archive->format.get_current_archive_record = xx_lifkd_get_current_archive_record;
+    archive->format.unpack_current_archive_record = xx_lifkd_unpack_current_archive_record;
+    archive->format.archive_record_move_to_next = xx_lifkd_archive_record_move_to_next;
+    archive->format.free_archive_records_reading = xx_lifkd_free_archive_records_reading;
     archive->archive_end = -1;
 }
 
-xx_lifkd *xx_lifkd_create(xx_io_device *device, int64_t base_address) {
+xx_lifkd *xx_lifkd_create(xx_io_device *device, int64_t base_address)
+{
     xx_lifkd *archive = (xx_lifkd *)xx_mem_alloc(sizeof(*archive));
     if (archive) xx_lifkd_init(archive, device, base_address);
     return archive;
 }
 
-void xx_lifkd_destroy(xx_lifkd *archive) {
+void xx_lifkd_destroy(xx_lifkd *archive)
+{
     if (archive) xx_format_cleanup_extra_parameters(&archive->format);
 }
 
-void xx_lifkd_free(xx_lifkd *archive) {
+void xx_lifkd_free(xx_lifkd *archive)
+{
     if (!archive) return;
     xx_lifkd_destroy(archive);
     xx_mem_free(archive);
 }
 
-bool xx_lifkd_check_is_valid(Abstractformat *format, xx_pd_struct *pd) {
+bool xx_lifkd_check_is_valid(Abstractformat *format, xx_pd_struct *pd)
+{
     (void)pd;
     return lifkd_walk(format, NULL, NULL, NULL);
 }
 
-bool xx_lifkd_handle_base_info(Abstractformat *format, xx_pd_struct *pd) {
+bool xx_lifkd_handle_base_info(Abstractformat *format, xx_pd_struct *pd)
+{
     uint64_t count = 0U;
     int64_t size = 0;
     xx_lifkd *archive;
@@ -879,21 +832,18 @@ bool xx_lifkd_handle_base_info(Abstractformat *format, xx_pd_struct *pd) {
     return true;
 }
 
-int64_t xx_lifkd_get_format_size(Abstractformat *format, xx_pd_struct *pd) {
-    return format && (format->base_info_handled ||
-                      xx_lifkd_handle_base_info(format, pd))
-               ? format->format_size : -1;
+int64_t xx_lifkd_get_format_size(Abstractformat *format, xx_pd_struct *pd)
+{
+    return format && (format->base_info_handled || xx_lifkd_handle_base_info(format, pd)) ? format->format_size : -1;
 }
 
-uint64_t xx_lifkd_get_number_of_archive_records(Abstractformat *format,
-                                                xx_pd_struct *pd) {
-    return format && (format->base_info_handled ||
-                      xx_lifkd_handle_base_info(format, pd))
-               ? ((xx_lifkd *)format)->number_of_records : 0U;
+uint64_t xx_lifkd_get_number_of_archive_records(Abstractformat *format, xx_pd_struct *pd)
+{
+    return format && (format->base_info_handled || xx_lifkd_handle_base_info(format, pd)) ? ((xx_lifkd *)format)->number_of_records : 0U;
 }
 
-xx_archive_record_state *xx_lifkd_create_archive_records_reading(
-    Abstractformat *format, const xx_list_s *options, xx_pd_struct *pd) {
+xx_archive_record_state *xx_lifkd_create_archive_records_reading(Abstractformat *format, const xx_list_s *options, xx_pd_struct *pd)
+{
     lifkd_stream *stream;
     xx_archive_record_state *state;
     (void)pd;
@@ -907,8 +857,7 @@ xx_archive_record_state *xx_lifkd_create_archive_records_reading(
     state->internal_state = stream;
     state->free_internal = lifkd_stream_free;
     state->total_records = stream->count;
-    if (!lifkd_copy_options(&state->options, options) ||
-        !lifkd_set_record(&state->current_record, &stream->items[0])) {
+    if (!lifkd_copy_options(&state->options, options) || !lifkd_set_record(&state->current_record, &stream->items[0])) {
         xx_archive_record_state_free(state);
         return NULL;
     }
@@ -916,32 +865,26 @@ xx_archive_record_state *xx_lifkd_create_archive_records_reading(
     return state;
 }
 
-const xx_archive_record *xx_lifkd_get_current_archive_record(
-    Abstractformat *format, xx_archive_record_state *state) {
-    return format && state && state->format == format && state->has_record
-               ? &state->current_record : NULL;
+const xx_archive_record *xx_lifkd_get_current_archive_record(Abstractformat *format, xx_archive_record_state *state)
+{
+    return format && state && state->format == format && state->has_record ? &state->current_record : NULL;
 }
 
-bool xx_lifkd_archive_record_move_to_next(Abstractformat *format,
-                                          xx_archive_record_state *state,
-                                          xx_pd_struct *pd) {
+bool xx_lifkd_archive_record_move_to_next(Abstractformat *format, xx_archive_record_state *state, xx_pd_struct *pd)
+{
     lifkd_stream *stream;
     (void)pd;
-    if (!format || !state || state->format != format ||
-        !(stream = (lifkd_stream *)state->internal_state) ||
-        ++stream->index >= stream->count) {
+    if (!format || !state || state->format != format || !(stream = (lifkd_stream *)state->internal_state) || ++stream->index >= stream->count) {
         if (state) state->has_record = false;
         return false;
     }
     ++state->current_index;
-    state->has_record = lifkd_set_record(&state->current_record,
-                                         &stream->items[stream->index]);
+    state->has_record = lifkd_set_record(&state->current_record, &stream->items[stream->index]);
     return state->has_record;
 }
 
-bool xx_lifkd_unpack_current_archive_record(Abstractformat *format,
-                                            xx_archive_record_state *state,
-                                            xx_pd_struct *pd) {
+bool xx_lifkd_unpack_current_archive_record(Abstractformat *format, xx_archive_record_state *state, xx_pd_struct *pd)
+{
     lifkd_stream *stream;
     lifkd_member *member;
     const xx_var *path_option;
@@ -951,41 +894,30 @@ bool xx_lifkd_unpack_current_archive_record(Abstractformat *format,
     xx_io_device *destination = NULL;
     bool result = false;
     bool created = false;
-    if (!format || !state || state->format != format || !state->has_record ||
-        !(stream = (lifkd_stream *)state->internal_state) ||
-        stream->index >= stream->count || (pd && xx_pd_is_stopped(pd)))
+    if (!format || !state || state->format != format || !state->has_record || !(stream = (lifkd_stream *)state->internal_state) || stream->index >= stream->count ||
+        (pd && xx_pd_is_stopped(pd)))
         return false;
     member = &stream->items[stream->index];
-    if (!member->extractable || !lifkd_safe_output_name(member->name))
-        return false;
+    if (!member->extractable || !lifkd_safe_output_name(member->name)) return false;
     path_option = lifkd_option(&state->options, XX_META_ID_OPT_UNPACK_PATH);
     if (!path_option) {
         /* No destination: the member is still decoded and verified end to
          * end, just not written anywhere. */
-        return member->method == LIFKD_METHOD_STORED
-                   ? lifkd_unpack_stored(format, member, NULL, pd)
-                   : lifkd_unpack_lzd(format, member, NULL);
+        return member->method == LIFKD_METHOD_STORED ? lifkd_unpack_stored(format, member, NULL, pd) : lifkd_unpack_lzd(format, member, NULL);
     }
-    if (path_option->type == XX_VAR_TYPE_STRING ||
-        path_option->type == XX_VAR_TYPE_STRING_VIEW)
-        base = xx_var_get_str(path_option);
-    else if (path_option->type == XX_VAR_TYPE_WSTRING ||
-             path_option->type == XX_VAR_TYPE_WSTRING_VIEW) {
+    if (path_option->type == XX_VAR_TYPE_STRING || path_option->type == XX_VAR_TYPE_STRING_VIEW) base = xx_var_get_str(path_option);
+    else if (path_option->type == XX_VAR_TYPE_WSTRING || path_option->type == XX_VAR_TYPE_WSTRING_VIEW) {
         owned_base = xx_str_unicode_to_utf8(xx_var_get_wstr(path_option));
         base = owned_base;
     }
     if (!base) goto done;
-    path = (base[0] && base[xx_str_len(base) - 1U] != '/' &&
-            base[xx_str_len(base) - 1U] != '\\')
-               ? xx_str_concat3(base, "/", member->name)
-               : xx_str_concat(base, member->name);
+    path = (base[0] && base[xx_str_len(base) - 1U] != '/' && base[xx_str_len(base) - 1U] != '\\') ? xx_str_concat3(base, "/", member->name)
+                                                                                                  : xx_str_concat(base, member->name);
     if (!path || !xx_store_create_dirs_a(path, false)) goto done;
     destination = xx_io_file_open(path, "wb");
     created = destination != NULL;
     if (!destination) goto done;
-    result = member->method == LIFKD_METHOD_STORED
-                 ? lifkd_unpack_stored(format, member, destination, pd)
-                 : lifkd_unpack_lzd(format, member, destination);
+    result = member->method == LIFKD_METHOD_STORED ? lifkd_unpack_stored(format, member, destination, pd) : lifkd_unpack_lzd(format, member, destination);
     if (xx_io_close(destination) != 0) result = false;
     if (!result && created) xx_rt_remove(path);
 done:
@@ -994,8 +926,8 @@ done:
     return result;
 }
 
-void xx_lifkd_free_archive_records_reading(Abstractformat *format,
-                                           xx_archive_record_state *state) {
+void xx_lifkd_free_archive_records_reading(Abstractformat *format, xx_archive_record_state *state)
+{
     (void)format;
     xx_archive_record_state_free(state);
 }

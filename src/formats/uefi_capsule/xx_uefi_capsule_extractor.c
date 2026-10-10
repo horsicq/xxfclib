@@ -20,68 +20,61 @@
 #include "../xx_format_extractor_engine.h"
 #include "xxfclib/formats/uefi_capsule/xx_uefi_capsule.h"
 
-static const uint8_t k_anchor0[] = { 0xED, 0xD5, 0xCB, 0x6D, 0x2D, 0xE8, 0x44, 0x4C, 0xBD, 0xA1, 0x71, 0x94, 0x19, 0x9A, 0xD9, 0x2A };
-static const uint8_t k_anchor1[] = { 0x62, 0x81, 0x8C, 0x3B, 0x8C, 0x18, 0xA4, 0x46, 0xAE, 0xC9, 0xBE, 0x43, 0xF1, 0xD6, 0x56, 0x97 };
-static const uint8_t k_anchor2[] = { 0x46, 0x8C, 0xB6, 0x39, 0xFB, 0xF7, 0x1B, 0x44, 0xB6, 0xEC, 0x16, 0xB0, 0xF6, 0x98, 0x21, 0xF3 };
-static const uint8_t k_anchor3[] = { 0x9D, 0xD2, 0xAF, 0x4A, 0xDF, 0x68, 0xEE, 0x49, 0x8A, 0xA9, 0x34, 0x7D, 0x37, 0x56, 0x65, 0xA7 };
+static const uint8_t k_anchor0[] = {0xED, 0xD5, 0xCB, 0x6D, 0x2D, 0xE8, 0x44, 0x4C, 0xBD, 0xA1, 0x71, 0x94, 0x19, 0x9A, 0xD9, 0x2A};
+static const uint8_t k_anchor1[] = {0x62, 0x81, 0x8C, 0x3B, 0x8C, 0x18, 0xA4, 0x46, 0xAE, 0xC9, 0xBE, 0x43, 0xF1, 0xD6, 0x56, 0x97};
+static const uint8_t k_anchor2[] = {0x46, 0x8C, 0xB6, 0x39, 0xFB, 0xF7, 0x1B, 0x44, 0xB6, 0xEC, 0x16, 0xB0, 0xF6, 0x98, 0x21, 0xF3};
+static const uint8_t k_anchor3[] = {0x9D, 0xD2, 0xAF, 0x4A, 0xDF, 0x68, 0xEE, 0x49, 0x8A, 0xA9, 0x34, 0x7D, 0x37, 0x56, 0x65, 0xA7};
 
 static const xx_format_search_anchor k_anchors[] = {
-    { k_anchor0, sizeof(k_anchor0), 0U },
-    { k_anchor1, sizeof(k_anchor1), 0U },
-    { k_anchor2, sizeof(k_anchor2), 0U },
-    { k_anchor3, sizeof(k_anchor3), 0U },
+    {k_anchor0, sizeof(k_anchor0), 0U},
+    {k_anchor1, sizeof(k_anchor1), 0U},
+    {k_anchor2, sizeof(k_anchor2), 0U},
+    {k_anchor3, sizeof(k_anchor3), 0U},
 };
 
-static const xx_file_type_t k_types[] = { XX_FILE_TYPE_UEFI_CAPSULE };
+static const xx_file_type_t k_types[] = {XX_FILE_TYPE_UEFI_CAPSULE};
 
-static Abstractformat *xx_uefi_capsule_search_open(xx_io_device *window) {
+static Abstractformat *xx_uefi_capsule_search_open(xx_io_device *window)
+{
     xx_uefi_capsule *reader = xx_uefi_capsule_create(window, 0);
     return reader ? &reader->format : NULL;
 }
 
-static void xx_uefi_capsule_search_close(Abstractformat *format) {
+static void xx_uefi_capsule_search_close(Abstractformat *format)
+{
     /* The format is the first member, so this is the reader itself. */
     xx_uefi_capsule_free((xx_uefi_capsule *)format);
 }
 
 static const xx_format_search_desc k_desc = {
-    k_types, sizeof(k_types) / sizeof(k_types[0]),
-    k_anchors, sizeof(k_anchors) / sizeof(k_anchors[0]),
-    xx_uefi_capsule_search_open, xx_uefi_capsule_search_close, false
-};
+    k_types, sizeof(k_types) / sizeof(k_types[0]), k_anchors, sizeof(k_anchors) / sizeof(k_anchors[0]), xx_uefi_capsule_search_open, xx_uefi_capsule_search_close, false};
 
-static xx_format_search_state *xx_uefi_capsule_create_format_search(
-    xx_format_extractor *self, xx_io_device *device, const xx_list_s *options,
-    xx_pd_struct *pd) {
+static xx_format_search_state *xx_uefi_capsule_create_format_search(xx_format_extractor *self, xx_io_device *device, const xx_list_s *options, xx_pd_struct *pd)
+{
     (void)self;
     return xx_format_search_create(&k_desc, device, options, pd);
 }
 
-static const xx_format_search_info *xx_uefi_capsule_get_current_format_info(
-    xx_format_extractor *self, xx_format_search_state *state) {
+static const xx_format_search_info *xx_uefi_capsule_get_current_format_info(xx_format_extractor *self, xx_format_search_state *state)
+{
     (void)self;
     return xx_format_search_current(state);
 }
 
-static bool xx_uefi_capsule_format_search_find_next(xx_format_extractor *self,
-                                          xx_format_search_state *state,
-                                          xx_pd_struct *pd) {
+static bool xx_uefi_capsule_format_search_find_next(xx_format_extractor *self, xx_format_search_state *state, xx_pd_struct *pd)
+{
     (void)self;
     return xx_format_search_find_next(state, pd);
 }
 
-static void xx_uefi_capsule_free_format_search(xx_format_extractor *self,
-                                     xx_format_search_state *state) {
+static void xx_uefi_capsule_free_format_search(xx_format_extractor *self, xx_format_search_state *state)
+{
     (void)self;
     xx_format_search_free(state);
 }
 
-xx_format_extractor xx_uefi_capsule_extractor = {
-    xx_uefi_capsule_create_format_search,
-    xx_uefi_capsule_get_current_format_info,
-    xx_uefi_capsule_format_search_find_next,
-    xx_uefi_capsule_free_format_search
-};
+xx_format_extractor xx_uefi_capsule_extractor = {xx_uefi_capsule_create_format_search, xx_uefi_capsule_get_current_format_info, xx_uefi_capsule_format_search_find_next,
+                                                 xx_uefi_capsule_free_format_search};
 
 /* BEGIN GENERATED ABSTRACT EXTRACTOR */
 #include "../xx_format_abstract_extractor_adapter.h"

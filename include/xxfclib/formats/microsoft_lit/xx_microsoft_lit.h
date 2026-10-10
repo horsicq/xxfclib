@@ -19,8 +19,8 @@ typedef struct xx_microsoft_lit {
     uint64_t decode_memory_limit;
     uint32_t drm_level;
 } xx_microsoft_lit;
-XXFC_API void xx_microsoft_lit_init(xx_microsoft_lit *,xx_io_device *,int64_t);
-XXFC_API xx_microsoft_lit *xx_microsoft_lit_create(xx_io_device *,int64_t);
+XXFC_API void xx_microsoft_lit_init(xx_microsoft_lit *, xx_io_device *, int64_t);
+XXFC_API xx_microsoft_lit *xx_microsoft_lit_create(xx_io_device *, int64_t);
 XXFC_API void xx_microsoft_lit_destroy(xx_microsoft_lit *);
 XXFC_API void xx_microsoft_lit_free(xx_microsoft_lit *);
 #ifdef __cplusplus

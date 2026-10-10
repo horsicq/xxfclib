@@ -63,18 +63,18 @@ extern "C" {
 /** BITMAPFILEHEADER size. */
 #define XX_BMP_FILE_HEADER_SIZE 14U
 /** DIB header sizes (the only ones accepted). */
-#define XX_BMP_CORE_HEADER_SIZE 12U  /* BITMAPCOREHEADER (OS/2 1.x) */
-#define XX_BMP_INFO_HEADER_SIZE 40U  /* BITMAPINFOHEADER */
-#define XX_BMP_V4_HEADER_SIZE   108U /* BITMAPV4HEADER */
-#define XX_BMP_V5_HEADER_SIZE   124U /* BITMAPV5HEADER */
+#define XX_BMP_CORE_HEADER_SIZE 12U /* BITMAPCOREHEADER (OS/2 1.x) */
+#define XX_BMP_INFO_HEADER_SIZE 40U /* BITMAPINFOHEADER */
+#define XX_BMP_V4_HEADER_SIZE 108U  /* BITMAPV4HEADER */
+#define XX_BMP_V5_HEADER_SIZE 124U  /* BITMAPV5HEADER */
 
 /** biCompression values that may appear in a BMP file. */
-#define XX_BMP_BI_RGB            0U
-#define XX_BMP_BI_RLE8           1U
-#define XX_BMP_BI_RLE4           2U
-#define XX_BMP_BI_BITFIELDS      3U
-#define XX_BMP_BI_JPEG           4U
-#define XX_BMP_BI_PNG            5U
+#define XX_BMP_BI_RGB 0U
+#define XX_BMP_BI_RLE8 1U
+#define XX_BMP_BI_RLE4 2U
+#define XX_BMP_BI_BITFIELDS 3U
+#define XX_BMP_BI_JPEG 4U
+#define XX_BMP_BI_PNG 5U
 #define XX_BMP_BI_ALPHABITFIELDS 6U
 
 /** Largest width or |height| accepted.  Keeps every size computation far
@@ -86,29 +86,27 @@ typedef struct xx_bmp xx_bmp_t;
 typedef struct xx_bmp XBmp;
 
 struct xx_bmp {
-    Abstractformat format;     /**< Base format structure (first member) */
-    uint32_t file_size;        /**< bfSize: the format size */
-    uint32_t data_offset;      /**< bfOffBits, relative to the base address */
-    uint32_t dib_header_size;  /**< 12, 40, 108 or 124 */
-    uint32_t width;            /**< pixels */
-    uint32_t height;           /**< pixels, absolute value */
-    bool top_down;             /**< stored height was negative */
-    uint16_t bits_per_pixel;   /**< 0 for BI_JPEG / BI_PNG */
-    uint32_t compression;      /**< XX_BMP_BI_*; BI_RGB for a core header */
-    uint32_t image_size;       /**< biSizeImage as stored (informational) */
-    uint32_t colors_used;      /**< biClrUsed as stored (0 for a core header) */
+    Abstractformat format;    /**< Base format structure (first member) */
+    uint32_t file_size;       /**< bfSize: the format size */
+    uint32_t data_offset;     /**< bfOffBits, relative to the base address */
+    uint32_t dib_header_size; /**< 12, 40, 108 or 124 */
+    uint32_t width;           /**< pixels */
+    uint32_t height;          /**< pixels, absolute value */
+    bool top_down;            /**< stored height was negative */
+    uint16_t bits_per_pixel;  /**< 0 for BI_JPEG / BI_PNG */
+    uint32_t compression;     /**< XX_BMP_BI_*; BI_RGB for a core header */
+    uint32_t image_size;      /**< biSizeImage as stored (informational) */
+    uint32_t colors_used;     /**< biClrUsed as stored (0 for a core header) */
 };
 
-XXFC_API void xx_bmp_init(xx_bmp *bmp, xx_io_device *dev,
-                          int64_t base_address);
+XXFC_API void xx_bmp_init(xx_bmp *bmp, xx_io_device *dev, int64_t base_address);
 XXFC_API xx_bmp *xx_bmp_create(xx_io_device *dev, int64_t base_address);
 XXFC_API void xx_bmp_destroy(xx_bmp *bmp);
 XXFC_API void xx_bmp_free(xx_bmp *bmp);
 
 XXFC_API bool xx_bmp_check_is_valid(Abstractformat *self, xx_pd_struct *pd);
 XXFC_API bool xx_bmp_handle_base_info(Abstractformat *self, xx_pd_struct *pd);
-XXFC_API int64_t xx_bmp_get_format_size(Abstractformat *self,
-                                        xx_pd_struct *pd);
+XXFC_API int64_t xx_bmp_get_format_size(Abstractformat *self, xx_pd_struct *pd);
 
 XXFC_API uint32_t xx_bmp_get_width(const xx_bmp *bmp);
 XXFC_API uint32_t xx_bmp_get_height(const xx_bmp *bmp);
@@ -118,18 +116,24 @@ XXFC_API uint32_t xx_bmp_get_compression(const xx_bmp *bmp);
 XXFC_API uint32_t xx_bmp_get_dib_header_size(const xx_bmp *bmp);
 XXFC_API uint32_t xx_bmp_get_data_offset(const xx_bmp *bmp);
 
-static inline Abstractformat *xx_bmp_to_format(xx_bmp *bmp) {
+static inline Abstractformat *xx_bmp_to_format(xx_bmp *bmp)
+{
     return bmp ? &bmp->format : NULL;
 }
-static inline void XBmp_init(xx_bmp *bmp, xx_io_device *dev,
-                             int64_t base_address) {
+static inline void XBmp_init(xx_bmp *bmp, xx_io_device *dev, int64_t base_address)
+{
     xx_bmp_init(bmp, dev, base_address);
 }
-static inline xx_bmp *XBmp_create(xx_io_device *dev, int64_t base_address) {
+static inline xx_bmp *XBmp_create(xx_io_device *dev, int64_t base_address)
+{
     return xx_bmp_create(dev, base_address);
 }
-static inline void XBmp_free(xx_bmp *bmp) { xx_bmp_free(bmp); }
-static inline bool XBmp_is_valid(xx_bmp *bmp, xx_pd_struct *pd) {
+static inline void XBmp_free(xx_bmp *bmp)
+{
+    xx_bmp_free(bmp);
+}
+static inline bool XBmp_is_valid(xx_bmp *bmp, xx_pd_struct *pd)
+{
     return bmp ? xx_format_is_valid(&bmp->format, pd) : false;
 }
 

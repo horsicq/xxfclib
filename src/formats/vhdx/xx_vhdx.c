@@ -117,30 +117,14 @@
 #define VHDX_STATE_PARTIALLY_PRESENT 7U
 #define VHDX_STATE_SB_PRESENT 6U
 
-static const uint8_t vhdx_guid_bat[16] = {
-    0x66, 0x77, 0xC2, 0x2D, 0x23, 0xF6, 0x00, 0x42,
-    0x9D, 0x64, 0x11, 0x5E, 0x9B, 0xFD, 0x4A, 0x08};
-static const uint8_t vhdx_guid_metadata[16] = {
-    0x06, 0xA2, 0x7C, 0x8B, 0x90, 0x47, 0x9A, 0x4B,
-    0xB8, 0xFE, 0x57, 0x5F, 0x05, 0x0F, 0x88, 0x6E};
-static const uint8_t vhdx_guid_file_parameters[16] = {
-    0x37, 0x67, 0xA1, 0xCA, 0x36, 0xFA, 0x43, 0x4D,
-    0xB3, 0xB6, 0x33, 0xF0, 0xAA, 0x44, 0xE7, 0x6B};
-static const uint8_t vhdx_guid_disk_size[16] = {
-    0x24, 0x42, 0xA5, 0x2F, 0x1B, 0xCD, 0x76, 0x48,
-    0xB2, 0x11, 0x5D, 0xBE, 0xD8, 0x3B, 0xF4, 0xB8};
-static const uint8_t vhdx_guid_disk_id[16] = {
-    0xAB, 0x12, 0xCA, 0xBE, 0xE6, 0xB2, 0x23, 0x45,
-    0x93, 0xEF, 0xC3, 0x09, 0xE0, 0x00, 0xC7, 0x46};
-static const uint8_t vhdx_guid_logical_sector[16] = {
-    0x1D, 0xBF, 0x41, 0x81, 0x6F, 0xA9, 0x09, 0x47,
-    0xBA, 0x47, 0xF2, 0x33, 0xA8, 0xFA, 0xAB, 0x5F};
-static const uint8_t vhdx_guid_physical_sector[16] = {
-    0xC7, 0x48, 0xA3, 0xCD, 0x5D, 0x44, 0x71, 0x44,
-    0x9C, 0xC9, 0xE9, 0x88, 0x52, 0x51, 0xC5, 0x56};
-static const uint8_t vhdx_guid_parent_locator[16] = {
-    0x2D, 0x5F, 0xD3, 0xA8, 0x0B, 0xB3, 0x4D, 0x45,
-    0xAB, 0xF7, 0xD3, 0xD8, 0x48, 0x34, 0xAB, 0x0C};
+static const uint8_t vhdx_guid_bat[16] = {0x66, 0x77, 0xC2, 0x2D, 0x23, 0xF6, 0x00, 0x42, 0x9D, 0x64, 0x11, 0x5E, 0x9B, 0xFD, 0x4A, 0x08};
+static const uint8_t vhdx_guid_metadata[16] = {0x06, 0xA2, 0x7C, 0x8B, 0x90, 0x47, 0x9A, 0x4B, 0xB8, 0xFE, 0x57, 0x5F, 0x05, 0x0F, 0x88, 0x6E};
+static const uint8_t vhdx_guid_file_parameters[16] = {0x37, 0x67, 0xA1, 0xCA, 0x36, 0xFA, 0x43, 0x4D, 0xB3, 0xB6, 0x33, 0xF0, 0xAA, 0x44, 0xE7, 0x6B};
+static const uint8_t vhdx_guid_disk_size[16] = {0x24, 0x42, 0xA5, 0x2F, 0x1B, 0xCD, 0x76, 0x48, 0xB2, 0x11, 0x5D, 0xBE, 0xD8, 0x3B, 0xF4, 0xB8};
+static const uint8_t vhdx_guid_disk_id[16] = {0xAB, 0x12, 0xCA, 0xBE, 0xE6, 0xB2, 0x23, 0x45, 0x93, 0xEF, 0xC3, 0x09, 0xE0, 0x00, 0xC7, 0x46};
+static const uint8_t vhdx_guid_logical_sector[16] = {0x1D, 0xBF, 0x41, 0x81, 0x6F, 0xA9, 0x09, 0x47, 0xBA, 0x47, 0xF2, 0x33, 0xA8, 0xFA, 0xAB, 0x5F};
+static const uint8_t vhdx_guid_physical_sector[16] = {0xC7, 0x48, 0xA3, 0xCD, 0x5D, 0x44, 0x71, 0x44, 0x9C, 0xC9, 0xE9, 0x88, 0x52, 0x51, 0xC5, 0x56};
+static const uint8_t vhdx_guid_parent_locator[16] = {0x2D, 0x5F, 0xD3, 0xA8, 0x0B, 0xB3, 0x4D, 0x45, 0xAB, 0xF7, 0xD3, 0xD8, 0x48, 0x34, 0xAB, 0x0C};
 
 /* One replayed write: [start, end) of the file, from a 4 KiB sector of the
  * log buffer or (data == NULL) zeros. */
@@ -164,9 +148,9 @@ typedef struct vhdx_overlay_s {
 
 typedef struct vhdx_info_s {
     int64_t base;
-    uint64_t size;           /* bytes from base to the end of the device */
-    uint64_t vsize;          /* size once a replayed log has extended it */
-    vhdx_overlay *overlay;   /* NULL when no log was replayed */
+    uint64_t size;         /* bytes from base to the end of the device */
+    uint64_t vsize;        /* size once a replayed log has extended it */
+    vhdx_overlay *overlay; /* NULL when no log was replayed */
     uint32_t log_entries;
     uint32_t log_length;
     uint64_t log_offset;
@@ -174,7 +158,7 @@ typedef struct vhdx_info_s {
     uint64_t bat_length;
     uint64_t meta_offset;
     uint64_t meta_length;
-    uint64_t struct_end;     /* end of the header section, log and regions */
+    uint64_t struct_end; /* end of the header section, log and regions */
     uint64_t disk_size;
     uint32_t block_size;
     uint32_t logical;
@@ -184,7 +168,7 @@ typedef struct vhdx_info_s {
     uint64_t chunk_ratio;
     uint64_t blocks;
     uint64_t bat_entries;
-    char parent[40];         /* "{...}" from parent_linkage, or empty */
+    char parent[40]; /* "{...}" from parent_linkage, or empty */
     /* filled by the BAT walk */
     uint64_t present;
     uint64_t first_data;
@@ -200,39 +184,37 @@ typedef struct vhdx_log_slot_s {
     uint64_t seq;
     uint32_t length;
     uint32_t tail;
-    uint32_t link;           /* slot of the next entry in sequence, or ~0 */
+    uint32_t link; /* slot of the next entry in sequence, or ~0 */
     uint8_t valid;
 } vhdx_log_slot;
 
 #define VHDX_NO_SLOT UINT32_C(0xFFFFFFFF)
 
-static bool vhdx_is_zero(const uint8_t *b, size_t size) {
+static bool vhdx_is_zero(const uint8_t *b, size_t size)
+{
     size_t index;
     for (index = 0U; index < size; ++index)
         if (b[index] != 0U) return false;
     return true;
 }
 
-static bool vhdx_dev_read(xx_io_device *device, int64_t offset, void *buffer,
-                          size_t size) {
+static bool vhdx_dev_read(xx_io_device *device, int64_t offset, void *buffer, size_t size)
+{
     size_t done = 0U;
     const size_t io_capacity = xx_get_file_buffer_size();
-    if (!device || (!buffer && size != 0U) || offset < 0 ||
-        xx_io_seek64(device, offset, SEEK_SET) != 0)
-        return false;
+    if (!device || (!buffer && size != 0U) || offset < 0 || xx_io_seek64(device, offset, SEEK_SET) != 0) return false;
     while (done < size) {
         size_t request = size - done;
         if (request > io_capacity) request = io_capacity;
-        ssize_t amount = xx_io_read(device, (uint8_t *)buffer + done,
-                                    request);
+        ssize_t amount = xx_io_read(device, (uint8_t *)buffer + done, request);
         if (amount <= 0 || (size_t)amount > request) return false;
         done += (size_t)amount;
     }
     return true;
 }
 
-static bool vhdx_write_all(xx_io_device *device, const uint8_t *data,
-                           size_t size, xx_pd_struct *pd) {
+static bool vhdx_write_all(xx_io_device *device, const uint8_t *data, size_t size, xx_pd_struct *pd)
+{
     size_t done = 0U;
     const size_t io_capacity = xx_get_file_buffer_size();
     if (!device) return true; /* verify-only pass */
@@ -249,7 +231,8 @@ static bool vhdx_write_all(xx_io_device *device, const uint8_t *data,
 }
 
 /* CRC-32C of a structure whose own checksum sits at +4, taken as zero. */
-static bool vhdx_checksum_ok(const uint8_t *data, size_t size) {
+static bool vhdx_checksum_ok(const uint8_t *data, size_t size)
+{
     static const uint8_t zero4[4] = {0U, 0U, 0U, 0U};
     uint32_t crc;
     if (size < 8U) return false;
@@ -261,7 +244,8 @@ static bool vhdx_checksum_ok(const uint8_t *data, size_t size) {
 
 /* ---- log overlay ------------------------------------------------------ */
 
-static void vhdx_overlay_free(vhdx_overlay *overlay) {
+static void vhdx_overlay_free(vhdx_overlay *overlay)
+{
     if (!overlay) return;
     if (overlay->log) xx_mem_free(overlay->log);
     if (overlay->ops) xx_mem_free(overlay->ops);
@@ -271,13 +255,15 @@ static void vhdx_overlay_free(vhdx_overlay *overlay) {
     xx_mem_free(overlay);
 }
 
-static void vhdx_info_cleanup(vhdx_info *info) {
+static void vhdx_info_cleanup(vhdx_info *info)
+{
     if (!info) return;
     vhdx_overlay_free(info->overlay);
     info->overlay = NULL;
 }
 
-static void vhdx_sift(uint64_t *values, size_t root, size_t count) {
+static void vhdx_sift(uint64_t *values, size_t root, size_t count)
+{
     for (;;) {
         size_t child = root * 2U + 1U;
         uint64_t swap;
@@ -291,7 +277,8 @@ static void vhdx_sift(uint64_t *values, size_t root, size_t count) {
     }
 }
 
-static void vhdx_sort(uint64_t *values, size_t count) {
+static void vhdx_sort(uint64_t *values, size_t count)
+{
     size_t index, end;
     if (count < 2U) return;
     for (index = count / 2U; index-- > 0U;) vhdx_sift(values, index, count);
@@ -303,7 +290,8 @@ static void vhdx_sort(uint64_t *values, size_t count) {
     }
 }
 
-static uint32_t vhdx_find(uint32_t *next, uint32_t index) {
+static uint32_t vhdx_find(uint32_t *next, uint32_t index)
+{
     uint32_t root = index;
     while (next[root] != root) root = next[root];
     while (next[index] != root) {
@@ -319,7 +307,8 @@ static uint32_t vhdx_find(uint32_t *next, uint32_t index) {
  * ops are painted newest first, and a "next unpainted segment" forest skips
  * what a newer op already owns, so the work is near linear in the op
  * count. */
-static bool vhdx_overlay_build(vhdx_overlay *overlay) {
+static bool vhdx_overlay_build(vhdx_overlay *overlay)
+{
     size_t count = overlay->op_count, points = 0U, index, painted = 0U;
     uint64_t *point = NULL;
     uint32_t *next = NULL;
@@ -369,8 +358,7 @@ static bool vhdx_overlay_build(vhdx_overlay *overlay) {
         overlay->seg_start = (uint64_t *)xx_mem_alloc(painted * sizeof(uint64_t));
         overlay->seg_end = (uint64_t *)xx_mem_alloc(painted * sizeof(uint64_t));
         overlay->seg_op = (uint32_t *)xx_mem_alloc(painted * sizeof(uint32_t));
-        if (!overlay->seg_start || !overlay->seg_end || !overlay->seg_op)
-            goto done;
+        if (!overlay->seg_start || !overlay->seg_end || !overlay->seg_op) goto done;
         for (index = 0U; index + 1U < points; ++index) {
             if (owner[index] == VHDX_NO_SLOT) continue;
             overlay->seg_start[segment] = point[index];
@@ -388,8 +376,8 @@ done:
     return result;
 }
 
-static void vhdx_overlay_apply(const vhdx_overlay *overlay, uint64_t offset,
-                               uint8_t *buffer, size_t size) {
+static void vhdx_overlay_apply(const vhdx_overlay *overlay, uint64_t offset, uint8_t *buffer, size_t size)
+{
     size_t low = 0U, high = overlay->seg_count;
     uint64_t end = offset + size;
     while (low < high) {
@@ -399,33 +387,24 @@ static void vhdx_overlay_apply(const vhdx_overlay *overlay, uint64_t offset,
     }
     for (; low < overlay->seg_count && overlay->seg_start[low] < end; ++low) {
         const vhdx_op *op = &overlay->ops[overlay->seg_op[low]];
-        uint64_t from = overlay->seg_start[low] > offset ? overlay->seg_start[low]
-                                                         : offset;
+        uint64_t from = overlay->seg_start[low] > offset ? overlay->seg_start[low] : offset;
         uint64_t to = overlay->seg_end[low] < end ? overlay->seg_end[low] : end;
-        if (op->data)
-            xx_rt_memcpy(buffer + (size_t)(from - offset),
-                         op->data + (size_t)(from - op->start),
-                         (size_t)(to - from));
-        else
-            xx_rt_memset(buffer + (size_t)(from - offset), 0,
-                         (size_t)(to - from));
+        if (op->data) xx_rt_memcpy(buffer + (size_t)(from - offset), op->data + (size_t)(from - op->start), (size_t)(to - from));
+        else xx_rt_memset(buffer + (size_t)(from - offset), 0, (size_t)(to - from));
     }
 }
 
 /* Read [offset, offset + size) of the image (offsets relative to its
  * start) as it is after log replay. */
-static bool vhdx_read(Abstractformat *format, const vhdx_info *info,
-                      uint64_t offset, uint8_t *buffer, size_t size) {
+static bool vhdx_read(Abstractformat *format, const vhdx_info *info, uint64_t offset, uint8_t *buffer, size_t size)
+{
     uint64_t real = 0U;
     if (size == 0U) return true;
-    if (offset > info->vsize || (uint64_t)size > info->vsize - offset)
-        return false;
+    if (offset > info->vsize || (uint64_t)size > info->vsize - offset) return false;
     if (offset < info->size) {
         uint64_t left = info->size - offset;
         real = left < size ? left : (uint64_t)size;
-        if (!vhdx_dev_read(format->device, info->base + (int64_t)offset,
-                           buffer, (size_t)real))
-            return false;
+        if (!vhdx_dev_read(format->device, info->base + (int64_t)offset, buffer, (size_t)real)) return false;
     }
     if (real < size) xx_rt_memset(buffer + real, 0, size - (size_t)real);
     if (info->overlay) vhdx_overlay_apply(info->overlay, offset, buffer, size);
@@ -436,9 +415,8 @@ static bool vhdx_read(Abstractformat *format, const vhdx_info *info,
  * for a valid entry, 0 for none, -1 when the checksum budget is spent (a
  * log crafted so that entries overlap would otherwise cost quadratic
  * time). */
-static int vhdx_log_entry(const uint8_t *log, uint32_t length, uint32_t pos,
-                          const uint8_t *guid, uint64_t *budget,
-                          vhdx_log_slot *slot) {
+static int vhdx_log_entry(const uint8_t *log, uint32_t length, uint32_t pos, const uint8_t *guid, uint64_t *budget, vhdx_log_slot *slot)
+{
     static const uint8_t zero4[4] = {0U, 0U, 0U, 0U};
     const uint8_t *h = log + pos;
     uint32_t entry_length, tail, count, index, first, crc;
@@ -449,13 +427,11 @@ static int vhdx_log_entry(const uint8_t *log, uint32_t length, uint32_t pos,
     tail = xx_data_get_u32(h + 12U, 4, 0, false);
     seq = xx_data_get_u64(h + 16U, 8, 0, false);
     count = xx_data_get_u32(h + 24U, 4, 0, false);
-    if (entry_length < VHDX_LOG_SECTOR || (entry_length % VHDX_LOG_SECTOR) != 0U ||
-        entry_length > length || (tail % VHDX_LOG_SECTOR) != 0U ||
-        tail >= length || seq == 0U || xx_rt_memcmp(h + 32U, guid, 16U) != 0)
+    if (entry_length < VHDX_LOG_SECTOR || (entry_length % VHDX_LOG_SECTOR) != 0U || entry_length > length || (tail % VHDX_LOG_SECTOR) != 0U || tail >= length ||
+        seq == 0U || xx_rt_memcmp(h + 32U, guid, 16U) != 0)
         return 0;
     descriptor_bytes = 64U + (uint64_t)count * 32U;
-    descriptor_area = (descriptor_bytes + VHDX_LOG_SECTOR - 1U) /
-                      VHDX_LOG_SECTOR * VHDX_LOG_SECTOR;
+    descriptor_area = (descriptor_bytes + VHDX_LOG_SECTOR - 1U) / VHDX_LOG_SECTOR * VHDX_LOG_SECTOR;
     if (descriptor_area > entry_length) return 0;
     if (entry_length > *budget) return -1;
     *budget -= entry_length;
@@ -465,31 +441,23 @@ static int vhdx_log_entry(const uint8_t *log, uint32_t length, uint32_t pos,
     crc = xx_crc32c_calc(0U, h, 4U);
     crc = xx_crc32c_calc(crc, zero4, 4U);
     crc = xx_crc32c_calc(crc, h + 8U, first - 8U);
-    if (entry_length > first)
-        crc = xx_crc32c_calc(crc, log, entry_length - first);
+    if (entry_length > first) crc = xx_crc32c_calc(crc, log, entry_length - first);
     if (crc != xx_data_get_u32(h + 4U, 4, 0, false)) return 0;
     for (index = 0U; index < count; ++index) {
         /* 32-byte descriptors never straddle the wrap point. */
-        const uint8_t *d = log + (size_t)(((uint64_t)pos + 64U +
-                                           (uint64_t)index * 32U) % length);
+        const uint8_t *d = log + (size_t)(((uint64_t)pos + 64U + (uint64_t)index * 32U) % length);
         uint32_t signature = xx_data_get_u32(d, 4, 0, false);
         uint64_t file_offset = xx_data_get_u64(d + 16U, 8, 0, false);
-        if (xx_data_get_u64(d + 24U, 8, 0, false) != seq ||
-            (file_offset % VHDX_LOG_SECTOR) != 0U ||
-            file_offset > VHDX_MAX_FILE)
-            return 0;
+        if (xx_data_get_u64(d + 24U, 8, 0, false) != seq || (file_offset % VHDX_LOG_SECTOR) != 0U || file_offset > VHDX_MAX_FILE) return 0;
         if (signature == VHDX_SIG_ZERO) {
             uint64_t zero_length = xx_data_get_u64(d + 8U, 8, 0, false);
-            if ((zero_length % VHDX_LOG_SECTOR) != 0U ||
-                zero_length > VHDX_MAX_FILE)
-                return 0;
+            if ((zero_length % VHDX_LOG_SECTOR) != 0U || zero_length > VHDX_MAX_FILE) return 0;
         } else if (signature == VHDX_SIG_DESC) {
             uint64_t sector = descriptor_area + data * VHDX_LOG_SECTOR;
             const uint8_t *s;
             if (sector + VHDX_LOG_SECTOR > entry_length) return 0;
             s = log + (size_t)(((uint64_t)pos + sector) % length);
-            if (xx_data_get_u32(s, 4, 0, false) != VHDX_SIG_DATA ||
-                xx_data_get_u32(s + 4U, 4, 0, false) != (uint32_t)(seq >> 32U) ||
+            if (xx_data_get_u32(s, 4, 0, false) != VHDX_SIG_DATA || xx_data_get_u32(s + 4U, 4, 0, false) != (uint32_t)(seq >> 32U) ||
                 xx_data_get_u32(s + 4092U, 4, 0, false) != (uint32_t)seq)
                 return 0;
             ++data;
@@ -505,8 +473,8 @@ static int vhdx_log_entry(const uint8_t *log, uint32_t length, uint32_t pos,
 
 /* Walk from the tail slot of `head` along the links; true when it reaches
  * `head` inside one pass over the log. */
-static bool vhdx_log_sequence_ok(const vhdx_log_slot *slot, uint32_t slots,
-                                 uint32_t length, uint32_t head) {
+static bool vhdx_log_sequence_ok(const vhdx_log_slot *slot, uint32_t slots, uint32_t length, uint32_t head)
+{
     uint32_t at = slot[head].tail / VHDX_LOG_SECTOR, steps;
     uint64_t total = 0U;
     for (steps = 0U; steps < slots; ++steps) {
@@ -522,8 +490,8 @@ static bool vhdx_log_sequence_ok(const vhdx_log_slot *slot, uint32_t slots,
 
 /* Find the active log sequence and build the in-memory overlay.  False
  * means the file must be refused. */
-static bool vhdx_log_replay(Abstractformat *format, vhdx_info *info,
-                            const uint8_t *guid, uint16_t log_version) {
+static bool vhdx_log_replay(Abstractformat *format, vhdx_info *info, const uint8_t *guid, uint16_t log_version)
+{
     uint32_t length = info->log_length, slots, index, head = VHDX_NO_SLOT;
     uint32_t at, entries = 0U;
     uint64_t budget, ops = 0U, flushed, last;
@@ -532,20 +500,14 @@ static bool vhdx_log_replay(Abstractformat *format, vhdx_info *info,
     vhdx_overlay *overlay = NULL;
     bool result = false;
 
-    if (log_version != 0U || length == 0U || length > VHDX_LOG_MAX ||
-        info->log_offset > info->size || length > info->size - info->log_offset)
-        return false;
+    if (log_version != 0U || length == 0U || length > VHDX_LOG_MAX || info->log_offset > info->size || length > info->size - info->log_offset) return false;
     log = (uint8_t *)xx_mem_alloc(length);
     slots = length / VHDX_LOG_SECTOR;
     slot = (vhdx_log_slot *)xx_mem_calloc(slots, sizeof(*slot));
-    if (!log || !slot ||
-        !vhdx_dev_read(format->device, info->base + (int64_t)info->log_offset,
-                       log, length))
-        goto done;
+    if (!log || !slot || !vhdx_dev_read(format->device, info->base + (int64_t)info->log_offset, log, length)) goto done;
     budget = (uint64_t)length * 4U;
     for (index = 0U; index < slots; ++index) {
-        int valid = vhdx_log_entry(log, length, index * VHDX_LOG_SECTOR, guid,
-                                   &budget, &slot[index]);
+        int valid = vhdx_log_entry(log, length, index * VHDX_LOG_SECTOR, guid, &budget, &slot[index]);
         if (valid < 0) goto done;
         slot[index].valid = valid > 0 ? 1U : 0U;
         slot[index].link = VHDX_NO_SLOT;
@@ -553,10 +515,8 @@ static bool vhdx_log_replay(Abstractformat *format, vhdx_info *info,
     for (index = 0U; index < slots; ++index) {
         uint32_t follow;
         if (!slot[index].valid || slot[index].seq == UINT64_MAX) continue;
-        follow = (uint32_t)(((uint64_t)index * VHDX_LOG_SECTOR +
-                             slot[index].length) % length / VHDX_LOG_SECTOR);
-        if (slot[follow].valid && slot[follow].seq == slot[index].seq + 1U)
-            slot[index].link = follow;
+        follow = (uint32_t)(((uint64_t)index * VHDX_LOG_SECTOR + slot[index].length) % length / VHDX_LOG_SECTOR);
+        if (slot[follow].valid && slot[follow].seq == slot[index].seq + 1U) slot[index].link = follow;
     }
     /* A head ends its chain; the valid one with the largest sequence
      * number is the active sequence. */
@@ -595,17 +555,14 @@ static bool vhdx_log_replay(Abstractformat *format, vhdx_info *info,
         uint32_t pos = at * VHDX_LOG_SECTOR;
         const uint8_t *h = log + pos;
         uint32_t count = xx_data_get_u32(h + 24U, 4, 0, false), k;
-        uint64_t area = (64U + (uint64_t)count * 32U + VHDX_LOG_SECTOR - 1U) /
-                        VHDX_LOG_SECTOR * VHDX_LOG_SECTOR;
+        uint64_t area = (64U + (uint64_t)count * 32U + VHDX_LOG_SECTOR - 1U) / VHDX_LOG_SECTOR * VHDX_LOG_SECTOR;
         uint64_t data = 0U;
         for (k = 0U; k < count; ++k) {
-            const uint8_t *d = log + (size_t)(((uint64_t)pos + 64U +
-                                               (uint64_t)k * 32U) % length);
+            const uint8_t *d = log + (size_t)(((uint64_t)pos + 64U + (uint64_t)k * 32U) % length);
             vhdx_op *op = &overlay->ops[overlay->op_count];
             op->start = xx_data_get_u64(d + 16U, 8, 0, false);
             if (xx_data_get_u32(d, 4, 0, false) == VHDX_SIG_DESC) {
-                uint8_t *s = log + (size_t)(((uint64_t)pos + area +
-                                             data * VHDX_LOG_SECTOR) % length);
+                uint8_t *s = log + (size_t)(((uint64_t)pos + area + data * VHDX_LOG_SECTOR) % length);
                 /* The sector as written: the descriptor's 8 leading bytes,
                  * 4084 bytes of the data sector, the 4 trailing bytes. */
                 xx_rt_memcpy(s, d + 8U, 8U);
@@ -639,22 +596,20 @@ done:
 
 /* ---- header, regions, metadata --------------------------------------- */
 
-static bool vhdx_header_ok(const uint8_t *h) {
-    return xx_data_get_u32(h, 4, 0, false) == VHDX_SIG_HEAD &&
-           vhdx_checksum_ok(h, VHDX_HEADER_SIZE) &&
-           xx_data_get_u16(h + 66U, 2, 0, false) == 1U &&
-           (xx_data_get_u32(h + 68U, 4, 0, false) & VHDX_MIB_MASK) == 0U &&
-           (xx_data_get_u64(h + 72U, 8, 0, false) & VHDX_MIB_MASK) == 0U;
+static bool vhdx_header_ok(const uint8_t *h)
+{
+    return xx_data_get_u32(h, 4, 0, false) == VHDX_SIG_HEAD && vhdx_checksum_ok(h, VHDX_HEADER_SIZE) && xx_data_get_u16(h + 66U, 2, 0, false) == 1U &&
+           (xx_data_get_u32(h + 68U, 4, 0, false) & VHDX_MIB_MASK) == 0U && (xx_data_get_u64(h + 72U, 8, 0, false) & VHDX_MIB_MASK) == 0U;
 }
 
-static bool vhdx_regions(const uint8_t *t, vhdx_info *info) {
+static bool vhdx_regions(const uint8_t *t, vhdx_info *info)
+{
     uint32_t count, index;
     bool have_bat = false, have_meta = false;
     uint64_t end = 0U;
     info->bat_offset = info->bat_length = 0U;
     info->meta_offset = info->meta_length = 0U;
-    if (xx_data_get_u32(t, 4, 0, false) != VHDX_SIG_REGI || !vhdx_checksum_ok(t, VHDX_TABLE_SIZE))
-        return false;
+    if (xx_data_get_u32(t, 4, 0, false) != VHDX_SIG_REGI || !vhdx_checksum_ok(t, VHDX_TABLE_SIZE)) return false;
     count = xx_data_get_u32(t + 8U, 4, 0, false);
     if (count > VHDX_MAX_ENTRIES || xx_data_get_u32(t + 12U, 4, 0, false) != 0U) return false;
     for (index = 0U; index < count; ++index) {
@@ -662,9 +617,7 @@ static bool vhdx_regions(const uint8_t *t, vhdx_info *info) {
         uint64_t offset = xx_data_get_u64(e + 16U, 8, 0, false);
         uint64_t length = xx_data_get_u32(e + 24U, 4, 0, false);
         uint32_t required = xx_data_get_u32(e + 28U, 4, 0, false);
-        if ((offset & VHDX_MIB_MASK) != 0U || (length & VHDX_MIB_MASK) != 0U ||
-            offset < VHDX_MIB || offset > VHDX_MAX_FILE)
-            return false;
+        if ((offset & VHDX_MIB_MASK) != 0U || (length & VHDX_MIB_MASK) != 0U || offset < VHDX_MIB || offset > VHDX_MAX_FILE) return false;
         if (xx_rt_memcmp(e, vhdx_guid_bat, 16U) == 0) {
             if (have_bat || length == 0U) return false;
             have_bat = true;
@@ -687,8 +640,8 @@ static bool vhdx_regions(const uint8_t *t, vhdx_info *info) {
 
 /* The "parent_linkage" value of a VHDX parent locator, when it is a short
  * ASCII GUID string; anything else leaves `out` empty. */
-static void vhdx_parent_linkage(const uint8_t *p, uint32_t length, char *out,
-                                size_t out_size) {
+static void vhdx_parent_linkage(const uint8_t *p, uint32_t length, char *out, size_t out_size)
+{
     static const char key[] = "parent_linkage";
     uint32_t count, k;
     out[0] = 0;
@@ -700,24 +653,17 @@ static void vhdx_parent_linkage(const uint8_t *p, uint32_t length, char *out,
         uint32_t key_offset = xx_data_get_u32(e, 4, 0, false), value_offset = xx_data_get_u32(e + 4U, 4, 0, false);
         uint32_t key_length = xx_data_get_u16(e + 8U, 2, 0, false), value_length = xx_data_get_u16(e + 10U, 2, 0, false);
         uint32_t c;
-        if (key_offset > length || key_length > length - key_offset ||
-            value_offset > length || value_length > length - value_offset ||
+        if (key_offset > length || key_length > length - key_offset || value_offset > length || value_length > length - value_offset ||
             key_length != (sizeof(key) - 1U) * 2U)
             continue;
         for (c = 0U; c < sizeof(key) - 1U; ++c)
-            if (p[key_offset + 2U * c] != (uint8_t)key[c] ||
-                p[key_offset + 2U * c + 1U] != 0U)
-                break;
+            if (p[key_offset + 2U * c] != (uint8_t)key[c] || p[key_offset + 2U * c + 1U] != 0U) break;
         if (c != sizeof(key) - 1U) continue;
-        if (value_length == 0U || (value_length & 1U) != 0U ||
-            value_length / 2U + 1U > out_size)
-            return;
+        if (value_length == 0U || (value_length & 1U) != 0U || value_length / 2U + 1U > out_size) return;
         for (c = 0U; c < value_length / 2U; ++c) {
             uint8_t ch = p[value_offset + 2U * c];
-            bool hex = (ch >= '0' && ch <= '9') || (ch >= 'a' && ch <= 'f') ||
-                       (ch >= 'A' && ch <= 'F');
-            if (p[value_offset + 2U * c + 1U] != 0U ||
-                !(hex || ch == '{' || ch == '}' || ch == '-')) {
+            bool hex = (ch >= '0' && ch <= '9') || (ch >= 'a' && ch <= 'f') || (ch >= 'A' && ch <= 'F');
+            if (p[value_offset + 2U * c + 1U] != 0U || !(hex || ch == '{' || ch == '}' || ch == '-')) {
                 out[0] = 0;
                 return;
             }
@@ -728,8 +674,8 @@ static void vhdx_parent_linkage(const uint8_t *p, uint32_t length, char *out,
     }
 }
 
-static bool vhdx_metadata(Abstractformat *format, vhdx_info *info,
-                          const uint8_t *t) {
+static bool vhdx_metadata(Abstractformat *format, vhdx_info *info, const uint8_t *t)
+{
     uint32_t count, index;
     bool have_parameters = false, have_size = false, have_logical = false;
     bool have_physical = false, have_locator = false;
@@ -746,9 +692,7 @@ static bool vhdx_metadata(Abstractformat *format, vhdx_info *info,
         if ((flags & ~7U) != 0U) return false;
         if (length == 0U) {
             if (offset != 0U) return false;
-        } else if (offset < VHDX_TABLE_SIZE || length > VHDX_MAX_ITEM ||
-                   offset > info->meta_length ||
-                   length > info->meta_length - offset) {
+        } else if (offset < VHDX_TABLE_SIZE || length > VHDX_MAX_ITEM || offset > info->meta_length || length > info->meta_length - offset) {
             return false;
         }
         if ((flags & 1U) != 0U) {
@@ -757,28 +701,20 @@ static bool vhdx_metadata(Abstractformat *format, vhdx_info *info,
             continue;
         }
         if (xx_rt_memcmp(e, vhdx_guid_file_parameters, 16U) == 0) {
-            if (have_parameters || length != 8U ||
-                !vhdx_read(format, info, at, value, 8U))
-                return false;
+            if (have_parameters || length != 8U || !vhdx_read(format, info, at, value, 8U)) return false;
             info->block_size = xx_data_get_u32(value, 4, 0, false);
             info->file_flags = xx_data_get_u32(value + 4U, 4, 0, false);
             have_parameters = true;
         } else if (xx_rt_memcmp(e, vhdx_guid_disk_size, 16U) == 0) {
-            if (have_size || length != 8U ||
-                !vhdx_read(format, info, at, value, 8U))
-                return false;
+            if (have_size || length != 8U || !vhdx_read(format, info, at, value, 8U)) return false;
             info->disk_size = xx_data_get_u64(value, 8, 0, false);
             have_size = true;
         } else if (xx_rt_memcmp(e, vhdx_guid_logical_sector, 16U) == 0) {
-            if (have_logical || length != 4U ||
-                !vhdx_read(format, info, at, value, 4U))
-                return false;
+            if (have_logical || length != 4U || !vhdx_read(format, info, at, value, 4U)) return false;
             info->logical = xx_data_get_u32(value, 4, 0, false);
             have_logical = true;
         } else if (xx_rt_memcmp(e, vhdx_guid_physical_sector, 16U) == 0) {
-            if (have_physical || length != 4U ||
-                !vhdx_read(format, info, at, value, 4U))
-                return false;
+            if (have_physical || length != 4U || !vhdx_read(format, info, at, value, 4U)) return false;
             info->physical = xx_data_get_u32(value, 4, 0, false);
             have_physical = true;
         } else if (xx_rt_memcmp(e, vhdx_guid_disk_id, 16U) == 0) {
@@ -789,9 +725,7 @@ static bool vhdx_metadata(Abstractformat *format, vhdx_info *info,
             if (length <= VHDX_TABLE_SIZE) {
                 uint8_t *locator = (uint8_t *)xx_mem_alloc(length);
                 if (!locator) return false;
-                if (vhdx_read(format, info, at, locator, length))
-                    vhdx_parent_linkage(locator, length, info->parent,
-                                        sizeof(info->parent));
+                if (vhdx_read(format, info, at, locator, length)) vhdx_parent_linkage(locator, length, info->parent, sizeof(info->parent));
                 xx_mem_free(locator);
             }
         } else if ((flags & 4U) != 0U) {
@@ -799,30 +733,25 @@ static bool vhdx_metadata(Abstractformat *format, vhdx_info *info,
         }
     }
     if (!have_parameters || !have_size || !have_logical) return false;
-    if (info->block_size < VHDX_MIN_BLOCK || info->block_size > VHDX_MAX_BLOCK ||
-        (info->block_size & (info->block_size - 1U)) != 0U ||
-        (info->file_flags & ~3U) != 0U)
+    if (info->block_size < VHDX_MIN_BLOCK || info->block_size > VHDX_MAX_BLOCK || (info->block_size & (info->block_size - 1U)) != 0U || (info->file_flags & ~3U) != 0U)
         return false;
     if (info->logical != 512U && info->logical != 4096U) return false;
-    if (have_physical && info->physical != 512U && info->physical != 4096U)
-        return false;
-    if (info->disk_size == 0U || info->disk_size > VHDX_MAX_DISK ||
-        (info->disk_size % info->logical) != 0U)
-        return false;
+    if (have_physical && info->physical != 512U && info->physical != 4096U) return false;
+    if (info->disk_size == 0U || info->disk_size > VHDX_MAX_DISK || (info->disk_size % info->logical) != 0U) return false;
     return true;
 }
 
 /* Header section, log replay, region table and metadata.  No BAT entry is
  * read.  On success the caller owns info->overlay (vhdx_info_cleanup). */
-static bool vhdx_parse(Abstractformat *format, vhdx_info *info) {
+static bool vhdx_parse(Abstractformat *format, vhdx_info *info)
+{
     uint8_t *buffer = NULL;
     uint8_t *table;
     const uint8_t *head = NULL;
     int64_t total;
     bool first_ok, second_ok, result = false;
 
-    if (!format || !format->device || !info || format->base_address < 0)
-        return false;
+    if (!format || !format->device || !info || format->base_address < 0) return false;
     xx_rt_memset(info, 0, sizeof(*info));
     total = xx_io_total_size(format->device);
     if (total < 0 || total < format->base_address) return false;
@@ -835,13 +764,9 @@ static bool vhdx_parse(Abstractformat *format, vhdx_info *info) {
     buffer = (uint8_t *)xx_mem_alloc(2U * VHDX_HEADER_SIZE + VHDX_TABLE_SIZE);
     if (!buffer) return false;
     table = buffer + 2U * VHDX_HEADER_SIZE;
-    if (!vhdx_dev_read(format->device, info->base, buffer, 8U) ||
-        xx_rt_memcmp(buffer, "vhdxfile", 8U) != 0)
-        goto done;
-    if (!vhdx_dev_read(format->device, info->base + VHDX_HEADER1, buffer,
-                       VHDX_HEADER_SIZE) ||
-        !vhdx_dev_read(format->device, info->base + VHDX_HEADER2,
-                       buffer + VHDX_HEADER_SIZE, VHDX_HEADER_SIZE))
+    if (!vhdx_dev_read(format->device, info->base, buffer, 8U) || xx_rt_memcmp(buffer, "vhdxfile", 8U) != 0) goto done;
+    if (!vhdx_dev_read(format->device, info->base + VHDX_HEADER1, buffer, VHDX_HEADER_SIZE) ||
+        !vhdx_dev_read(format->device, info->base + VHDX_HEADER2, buffer + VHDX_HEADER_SIZE, VHDX_HEADER_SIZE))
         goto done;
     first_ok = vhdx_header_ok(buffer);
     second_ok = vhdx_header_ok(buffer + VHDX_HEADER_SIZE);
@@ -850,11 +775,8 @@ static bool vhdx_parse(Abstractformat *format, vhdx_info *info) {
         uint64_t second_seq = xx_data_get_u64(buffer + VHDX_HEADER_SIZE + 8U, 8, 0, false);
         if (first_seq > second_seq) head = buffer;
         else if (second_seq > first_seq) head = buffer + VHDX_HEADER_SIZE;
-        else if (xx_rt_memcmp(buffer + 8U, buffer + VHDX_HEADER_SIZE + 8U,
-                              72U) == 0)
-            head = buffer; /* identical copies (Disk2vhd) */
-        else
-            goto done;
+        else if (xx_rt_memcmp(buffer + 8U, buffer + VHDX_HEADER_SIZE + 8U, 72U) == 0) head = buffer; /* identical copies (Disk2vhd) */
+        else goto done;
     } else if (first_ok) {
         head = buffer;
     } else if (second_ok) {
@@ -866,38 +788,25 @@ static bool vhdx_parse(Abstractformat *format, vhdx_info *info) {
     info->log_length = xx_data_get_u32(head + 68U, 4, 0, false);
     info->log_offset = xx_data_get_u64(head + 72U, 8, 0, false);
     if (info->log_length != 0U) {
-        if (info->log_offset < VHDX_MIB || info->log_offset > VHDX_MAX_FILE)
-            goto done;
-        if (info->log_offset + info->log_length > info->struct_end)
-            info->struct_end = info->log_offset + info->log_length;
+        if (info->log_offset < VHDX_MIB || info->log_offset > VHDX_MAX_FILE) goto done;
+        if (info->log_offset + info->log_length > info->struct_end) info->struct_end = info->log_offset + info->log_length;
     }
-    if (!vhdx_is_zero(head + 48U, 16U) &&
-        !vhdx_log_replay(format, info, head + 48U, xx_data_get_u16(head + 64U, 2, 0, false)))
-        goto done;
+    if (!vhdx_is_zero(head + 48U, 16U) && !vhdx_log_replay(format, info, head + 48U, xx_data_get_u16(head + 64U, 2, 0, false))) goto done;
 
-    if (!(vhdx_read(format, info, VHDX_REGION1, table, VHDX_TABLE_SIZE) &&
-          vhdx_regions(table, info)) &&
-        !(vhdx_read(format, info, VHDX_REGION2, table, VHDX_TABLE_SIZE) &&
-          vhdx_regions(table, info)))
+    if (!(vhdx_read(format, info, VHDX_REGION1, table, VHDX_TABLE_SIZE) && vhdx_regions(table, info)) &&
+        !(vhdx_read(format, info, VHDX_REGION2, table, VHDX_TABLE_SIZE) && vhdx_regions(table, info)))
         goto done;
-    if (info->bat_offset > info->vsize ||
-        info->bat_length > info->vsize - info->bat_offset ||
-        info->meta_offset > info->vsize ||
+    if (info->bat_offset > info->vsize || info->bat_length > info->vsize - info->bat_offset || info->meta_offset > info->vsize ||
         info->meta_length > info->vsize - info->meta_offset)
         goto done;
 
-    if (!vhdx_read(format, info, info->meta_offset, table, VHDX_TABLE_SIZE) ||
-        !vhdx_metadata(format, info, table))
-        goto done;
+    if (!vhdx_read(format, info, info->meta_offset, table, VHDX_TABLE_SIZE) || !vhdx_metadata(format, info, table)) goto done;
     info->differencing = (info->file_flags & 2U) != 0U;
     /* logical <= 4096 and block >= 1 MiB, so the ratio is 16..32768 */
     info->chunk_ratio = ((uint64_t)info->logical << 23U) / info->block_size;
     info->blocks = (info->disk_size - 1U) / info->block_size + 1U;
-    if (info->differencing)
-        info->bat_entries = (info->blocks + info->chunk_ratio - 1U) /
-                            info->chunk_ratio * (info->chunk_ratio + 1U);
-    else
-        info->bat_entries = info->blocks + (info->blocks - 1U) / info->chunk_ratio;
+    if (info->differencing) info->bat_entries = (info->blocks + info->chunk_ratio - 1U) / info->chunk_ratio * (info->chunk_ratio + 1U);
+    else info->bat_entries = info->blocks + (info->blocks - 1U) / info->chunk_ratio;
     if (info->bat_entries > info->bat_length / 8U) goto done;
     result = true;
 done:
@@ -908,8 +817,8 @@ done:
 
 /* ---- BAT walk ---------------------------------------------------------- */
 
-static bool vhdx_write_zeros(xx_io_device *destination, const uint8_t *zeros,
-                             uint64_t size, size_t io_capacity, xx_pd_struct *pd) {
+static bool vhdx_write_zeros(xx_io_device *destination, const uint8_t *zeros, uint64_t size, size_t io_capacity, xx_pd_struct *pd)
+{
     while (size != 0U) {
         size_t step = size < io_capacity ? (size_t)size : io_capacity;
         if (!vhdx_write_all(destination, zeros, step, pd)) return false;
@@ -918,14 +827,12 @@ static bool vhdx_write_zeros(xx_io_device *destination, const uint8_t *zeros,
     return true;
 }
 
-static bool vhdx_copy(Abstractformat *format, const vhdx_info *info,
-                      uint64_t offset, uint64_t size, uint8_t *data,
-                      xx_io_device *destination, size_t io_capacity, xx_pd_struct *pd) {
+static bool vhdx_copy(Abstractformat *format, const vhdx_info *info, uint64_t offset, uint64_t size, uint8_t *data, xx_io_device *destination, size_t io_capacity,
+                      xx_pd_struct *pd)
+{
     while (size != 0U) {
         size_t step = size < io_capacity ? (size_t)size : io_capacity;
-        if (!vhdx_read(format, info, offset, data, step) ||
-            !vhdx_write_all(destination, data, step, pd))
-            return false;
+        if (!vhdx_read(format, info, offset, data, step) || !vhdx_write_all(destination, data, step, pd)) return false;
         offset += step;
         size -= step;
     }
@@ -935,25 +842,17 @@ static bool vhdx_copy(Abstractformat *format, const vhdx_info *info,
 /* A partially present block: sectors whose bit is set in the chunk's
  * sector bitmap come from the block, the others (held by the parent) are
  * zeros. */
-static bool vhdx_emit_partial(Abstractformat *format, const vhdx_info *info,
-                              uint64_t offset, uint64_t output,
-                              const uint8_t *bitmap, uint8_t *data,
-                              const uint8_t *zeros, xx_io_device *destination,
-                              size_t io_capacity, xx_pd_struct *pd) {
+static bool vhdx_emit_partial(Abstractformat *format, const vhdx_info *info, uint64_t offset, uint64_t output, const uint8_t *bitmap, uint8_t *data, const uint8_t *zeros,
+                              xx_io_device *destination, size_t io_capacity, xx_pd_struct *pd)
+{
     uint64_t sectors = output / info->logical, sector = 0U;
     while (sector < sectors) {
         uint64_t run = sector + 1U;
         bool present = ((bitmap[sector >> 3U] >> (sector & 7U)) & 1U) != 0U;
-        while (run < sectors &&
-               (((bitmap[run >> 3U] >> (run & 7U)) & 1U) != 0U) == present)
-            ++run;
+        while (run < sectors && (((bitmap[run >> 3U] >> (run & 7U)) & 1U) != 0U) == present) ++run;
         if (present) {
-            if (!vhdx_copy(format, info, offset + sector * info->logical,
-                           (run - sector) * info->logical, data, destination,
-                           io_capacity, pd))
-                return false;
-        } else if (!vhdx_write_zeros(destination, zeros,
-                                     (run - sector) * info->logical, io_capacity, pd)) {
+            if (!vhdx_copy(format, info, offset + sector * info->logical, (run - sector) * info->logical, data, destination, io_capacity, pd)) return false;
+        } else if (!vhdx_write_zeros(destination, zeros, (run - sector) * info->logical, io_capacity, pd)) {
             return false;
         }
         sector = run;
@@ -965,8 +864,8 @@ static bool vhdx_emit_partial(Abstractformat *format, const vhdx_info *info,
  * destination also write the guest disk.  Without one no payload byte is
  * read: this is the validation used by handle_base_info and before a record
  * is published.  Fills present / first_data / format_size. */
-static bool vhdx_walk(Abstractformat *format, vhdx_info *info,
-                      xx_io_device *destination, xx_pd_struct *pd) {
+static bool vhdx_walk(Abstractformat *format, vhdx_info *info, xx_io_device *destination, xx_pd_struct *pd)
+{
     uint64_t ratio = info->chunk_ratio;
     uint64_t chunks = (info->blocks + ratio - 1U) / ratio;
     uint64_t chunk, produced = 0U, end = info->struct_end;
@@ -977,10 +876,8 @@ static bool vhdx_walk(Abstractformat *format, vhdx_info *info,
     bool result = false;
 
     if (io_capacity > info->block_size) io_capacity = info->block_size;
-    if (info->bat_offset + info->bat_length > end)
-        end = info->bat_offset + info->bat_length;
-    if (info->meta_offset + info->meta_length > end)
-        end = info->meta_offset + info->meta_length;
+    if (info->bat_offset + info->bat_length > end) end = info->bat_offset + info->bat_length;
+    if (info->meta_offset + info->meta_length > end) end = info->meta_offset + info->meta_length;
     bat = (uint8_t *)xx_mem_alloc((size_t)(ratio + 1U) * 8U);
     if (!bat) goto done;
     if (destination) {
@@ -996,9 +893,7 @@ static bool vhdx_walk(Abstractformat *format, vhdx_info *info,
         uint32_t bitmap_state = 0U;
         if (pd && xx_pd_is_stopped(pd)) goto done;
         if (count > ratio + 1U) count = ratio + 1U;
-        if (!vhdx_read(format, info, info->bat_offset + first * 8U, bat,
-                       (size_t)count * 8U))
-            goto done;
+        if (!vhdx_read(format, info, info->bat_offset + first * 8U, bat, (size_t)count * 8U)) goto done;
         payload = count > ratio ? ratio : count;
         if (count > ratio) {
             uint64_t entry = xx_data_get_u64(bat + (size_t)ratio * 8U, 8, 0, false);
@@ -1006,11 +901,8 @@ static bool vhdx_walk(Abstractformat *format, vhdx_info *info,
             bitmap_state = (uint32_t)(entry & 7U);
             bitmap_offset = entry & ~VHDX_MIB_MASK;
             if (bitmap_state == VHDX_STATE_SB_PRESENT && info->differencing) {
-                if (bitmap_offset == 0U || bitmap_offset > info->vsize ||
-                    VHDX_BITMAP_SIZE > info->vsize - bitmap_offset)
-                    goto done;
-                if (bitmap_offset + VHDX_BITMAP_SIZE > end)
-                    end = bitmap_offset + VHDX_BITMAP_SIZE;
+                if (bitmap_offset == 0U || bitmap_offset > info->vsize || VHDX_BITMAP_SIZE > info->vsize - bitmap_offset) goto done;
+                if (bitmap_offset + VHDX_BITMAP_SIZE > end) end = bitmap_offset + VHDX_BITMAP_SIZE;
             } else if (bitmap_state != 0U) {
                 goto done;
             }
@@ -1028,44 +920,32 @@ static bool vhdx_walk(Abstractformat *format, vhdx_info *info,
                 if (output > info->block_size) output = info->block_size;
             }
             switch (state) {
-                case 0U: case 1U: case 2U: case 3U:
-                    break; /* not present / undefined / zero / unmapped */
+                case 0U:
+                case 1U:
+                case 2U:
+                case 3U: break; /* not present / undefined / zero / unmapped */
                 case VHDX_STATE_PARTIALLY_PRESENT:
-                    if (!info->differencing ||
-                        bitmap_state != VHDX_STATE_SB_PRESENT)
-                        goto done;
+                    if (!info->differencing || bitmap_state != VHDX_STATE_SB_PRESENT) goto done;
                     /* fall through */
                 case VHDX_STATE_FULLY_PRESENT:
                     if (block >= info->blocks) break; /* past the disk */
-                    if (offset == 0U || offset > info->vsize ||
-                        output > info->vsize - offset)
-                        goto done;
-                    if (offset + info->block_size > end)
-                        end = offset + info->block_size;
-                    if (first_data == 0U || offset < first_data)
-                        first_data = offset;
+                    if (offset == 0U || offset > info->vsize || output > info->vsize - offset) goto done;
+                    if (offset + info->block_size > end) end = offset + info->block_size;
+                    if (first_data == 0U || offset < first_data) first_data = offset;
                     ++present;
                     stored = true;
                     break;
-                default:
-                    goto done; /* reserved states 4 and 5 */
+                default: goto done; /* reserved states 4 and 5 */
             }
             if (block >= info->blocks) continue;
             if (destination) {
                 if (!stored) {
-                    if (!vhdx_write_zeros(destination, zeros, output, io_capacity, pd))
-                        goto done;
+                    if (!vhdx_write_zeros(destination, zeros, output, io_capacity, pd)) goto done;
                 } else if (state == VHDX_STATE_FULLY_PRESENT) {
-                    if (!vhdx_copy(format, info, offset, output, data,
-                                   destination, io_capacity, pd))
-                        goto done;
+                    if (!vhdx_copy(format, info, offset, output, data, destination, io_capacity, pd)) goto done;
                 } else {
-                    if (!vhdx_read(format, info,
-                                   bitmap_offset + k * bitmap_bytes, bitmap,
-                                   bitmap_bytes) ||
-                        !vhdx_emit_partial(format, info, offset, output,
-                                           bitmap, data, zeros, destination,
-                                           io_capacity, pd))
+                    if (!vhdx_read(format, info, bitmap_offset + k * bitmap_bytes, bitmap, bitmap_bytes) ||
+                        !vhdx_emit_partial(format, info, offset, output, bitmap, data, zeros, destination, io_capacity, pd))
                         goto done;
                 }
             }
@@ -1087,24 +967,24 @@ done:
 
 /* ---- records ----------------------------------------------------------- */
 
-static void vhdx_stream_free(void *opaque) {
+static void vhdx_stream_free(void *opaque)
+{
     vhdx_stream *stream = (vhdx_stream *)opaque;
     if (!stream) return;
     vhdx_info_cleanup(&stream->info);
     xx_mem_free(stream);
 }
 
-static bool vhdx_copy_options(xx_list_s *destination, const xx_list_s *source) {
+static bool vhdx_copy_options(xx_list_s *destination, const xx_list_s *source)
+{
     size_t index;
     if (!source) return true;
     for (index = 0U; index < source->count; ++index) {
-        const xx_meta *original =
-            (const xx_meta *)xx_list_at((const xx_list_t *)source, index);
+        const xx_meta *original = (const xx_meta *)xx_list_at((const xx_list_t *)source, index);
         xx_meta copy;
         if (!original) continue;
         xx_meta_init(&copy, original->meta_id);
-        if (!xx_var_copy(&copy.var, &original->var) ||
-            !xx_list_append(destination, &copy)) {
+        if (!xx_var_copy(&copy.var, &original->var) || !xx_list_append(destination, &copy)) {
             xx_meta_cleanup(&copy);
             return false;
         }
@@ -1112,12 +992,12 @@ static bool vhdx_copy_options(xx_list_s *destination, const xx_list_s *source) {
     return true;
 }
 
-static const xx_var *vhdx_option(const xx_list_s *options, uint32_t id) {
+static const xx_var *vhdx_option(const xx_list_s *options, uint32_t id)
+{
     size_t index;
     if (!options) return NULL;
     for (index = 0U; index < options->count; ++index) {
-        const xx_meta *meta =
-            (const xx_meta *)xx_list_at((const xx_list_t *)options, index);
+        const xx_meta *meta = (const xx_meta *)xx_list_at((const xx_list_t *)options, index);
         if (meta && meta->meta_id == id) return &meta->var;
     }
     return NULL;
@@ -1125,10 +1005,9 @@ static const xx_var *vhdx_option(const xx_list_s *options, uint32_t id) {
 
 /* XX_META_ID_OPT_MAX_MEMBER_SIZE, when given, caps the guest disk size an
  * unpack will write.  Absent means unlimited (parse() caps at 64 TiB). */
-static bool vhdx_size_allowed(Abstractformat *format, const xx_list_s *options,
-                              uint64_t size) {
-    const xx_var *limit = xx_format_resolve_extra_parameter(
-        format, options, XX_META_ID_OPT_MAX_MEMBER_SIZE);
+static bool vhdx_size_allowed(Abstractformat *format, const xx_list_s *options, uint64_t size)
+{
+    const xx_var *limit = xx_format_resolve_extra_parameter(format, options, XX_META_ID_OPT_MAX_MEMBER_SIZE);
     if (!limit) return true;
     switch (limit->type) {
         case XX_VAR_TYPE_UINT8:
@@ -1146,14 +1025,14 @@ static bool vhdx_size_allowed(Abstractformat *format, const xx_list_s *options,
     }
 }
 
-static void vhdx_append(char *out, size_t size, size_t *used,
-                        const char *text) {
+static void vhdx_append(char *out, size_t size, size_t *used, const char *text)
+{
     while (*text && *used + 1U < size) out[(*used)++] = *text++;
     out[*used] = 0;
 }
 
-static void vhdx_append_u32(char *out, size_t size, size_t *used,
-                            uint32_t value) {
+static void vhdx_append_u32(char *out, size_t size, size_t *used, uint32_t value)
+{
     char digits[12];
     size_t count = 0U;
     do {
@@ -1164,12 +1043,14 @@ static void vhdx_append_u32(char *out, size_t size, size_t *used,
     out[*used] = 0;
 }
 
-static uint32_t vhdx_disk_type(const vhdx_info *info) {
+static uint32_t vhdx_disk_type(const vhdx_info *info)
+{
     if (info->differencing) return 4U;
     return (info->file_flags & 1U) != 0U ? 2U : 3U;
 }
 
-static bool vhdx_set_record(xx_archive_record *record, const vhdx_info *info) {
+static bool vhdx_set_record(xx_archive_record *record, const vhdx_info *info)
+{
     char comment[160];
     size_t used = 0U;
     uint64_t stored = info->present * info->block_size;
@@ -1179,44 +1060,32 @@ static bool vhdx_set_record(xx_archive_record *record, const vhdx_info *info) {
     xx_archive_record_init(record);
     record->header_offset = info->base;
     record->header_size = (int64_t)VHDX_MIB;
-    record->data_offset =
-        info->base + (int64_t)(info->first_data ? info->first_data : VHDX_MIB);
+    record->data_offset = info->base + (int64_t)(info->first_data ? info->first_data : VHDX_MIB);
     record->compressed_size = (int64_t)stored;
-    if (!xx_archive_record_set_original_name(record, VHDX_MEMBER_NAME) ||
-        !xx_archive_record_set_meta_u64(record, XX_META_ID_COMPRESSED_SIZE,
-                                        stored) ||
-        !xx_archive_record_set_meta_u64(record, XX_META_ID_UNCOMPRESSED_SIZE,
-                                        info->disk_size) ||
+    if (!xx_archive_record_set_original_name(record, VHDX_MEMBER_NAME) || !xx_archive_record_set_meta_u64(record, XX_META_ID_COMPRESSED_SIZE, stored) ||
+        !xx_archive_record_set_meta_u64(record, XX_META_ID_UNCOMPRESSED_SIZE, info->disk_size) ||
         /* The method slot carries the disk type: 2 fixed, 3 dynamic,
          * 4 differencing (the VHD numbering). */
-        !xx_archive_record_set_meta_u64(record, XX_META_ID_COMPRESSION_METHOD,
-                                        vhdx_disk_type(info)) ||
-        !xx_archive_record_set_meta_bool(record, XX_META_ID_IS_ENCRYPTED,
-                                         false) ||
-        !xx_archive_record_set_meta_bool(record, XX_META_ID_IS_FOLDER, false))
+        !xx_archive_record_set_meta_u64(record, XX_META_ID_COMPRESSION_METHOD, vhdx_disk_type(info)) ||
+        !xx_archive_record_set_meta_bool(record, XX_META_ID_IS_ENCRYPTED, false) || !xx_archive_record_set_meta_bool(record, XX_META_ID_IS_FOLDER, false))
         return false;
     if (info->differencing) {
         vhdx_append(comment, sizeof(comment), &used, "differencing image; parent ");
-        vhdx_append(comment, sizeof(comment), &used,
-                    info->parent[0] ? info->parent : "not recorded");
-        vhdx_append(comment, sizeof(comment), &used,
-                    "; sectors held by the parent read as zeros");
+        vhdx_append(comment, sizeof(comment), &used, info->parent[0] ? info->parent : "not recorded");
+        vhdx_append(comment, sizeof(comment), &used, "; sectors held by the parent read as zeros");
     }
     if (info->log_entries != 0U) {
         if (used) vhdx_append(comment, sizeof(comment), &used, "; ");
         vhdx_append(comment, sizeof(comment), &used, "log replayed: ");
         vhdx_append_u32(comment, sizeof(comment), &used, info->log_entries);
-        vhdx_append(comment, sizeof(comment), &used,
-                    info->log_entries == 1U ? " entry" : " entries");
+        vhdx_append(comment, sizeof(comment), &used, info->log_entries == 1U ? " entry" : " entries");
     }
-    if (used &&
-        !xx_archive_record_set_meta_str(record, XX_META_ID_COMMENT, comment))
-        return false;
+    if (used && !xx_archive_record_set_meta_str(record, XX_META_ID_COMMENT, comment)) return false;
     return true;
 }
 
-void xx_vhdx_init(xx_vhdx *archive, xx_io_device *device,
-                  int64_t base_address) {
+void xx_vhdx_init(xx_vhdx *archive, xx_io_device *device, int64_t base_address)
+{
     if (!archive) return;
     xx_rt_memset(archive, 0, sizeof(*archive));
     xx_format_init(&archive->format, device, base_address);
@@ -1229,38 +1098,36 @@ void xx_vhdx_init(xx_vhdx *archive, xx_io_device *device,
     archive->format.check_is_valid = xx_vhdx_check_is_valid;
     archive->format.handle_base_info = xx_vhdx_handle_base_info;
     archive->format.get_format_size = xx_vhdx_get_format_size;
-    archive->format.get_number_of_archive_records =
-        xx_vhdx_get_number_of_archive_records;
-    archive->format.create_archive_records_reading =
-        xx_vhdx_create_archive_records_reading;
-    archive->format.get_current_archive_record =
-        xx_vhdx_get_current_archive_record;
-    archive->format.unpack_current_archive_record =
-        xx_vhdx_unpack_current_archive_record;
-    archive->format.archive_record_move_to_next =
-        xx_vhdx_archive_record_move_to_next;
-    archive->format.free_archive_records_reading =
-        xx_vhdx_free_archive_records_reading;
+    archive->format.get_number_of_archive_records = xx_vhdx_get_number_of_archive_records;
+    archive->format.create_archive_records_reading = xx_vhdx_create_archive_records_reading;
+    archive->format.get_current_archive_record = xx_vhdx_get_current_archive_record;
+    archive->format.unpack_current_archive_record = xx_vhdx_unpack_current_archive_record;
+    archive->format.archive_record_move_to_next = xx_vhdx_archive_record_move_to_next;
+    archive->format.free_archive_records_reading = xx_vhdx_free_archive_records_reading;
     archive->archive_end = -1;
 }
 
-xx_vhdx *xx_vhdx_create(xx_io_device *device, int64_t base_address) {
+xx_vhdx *xx_vhdx_create(xx_io_device *device, int64_t base_address)
+{
     xx_vhdx *archive = (xx_vhdx *)xx_mem_alloc(sizeof(*archive));
     if (archive) xx_vhdx_init(archive, device, base_address);
     return archive;
 }
 
-void xx_vhdx_destroy(xx_vhdx *archive) {
+void xx_vhdx_destroy(xx_vhdx *archive)
+{
     if (archive) xx_format_cleanup_extra_parameters(&archive->format);
 }
 
-void xx_vhdx_free(xx_vhdx *archive) {
+void xx_vhdx_free(xx_vhdx *archive)
+{
     if (!archive) return;
     xx_vhdx_destroy(archive);
     xx_mem_free(archive);
 }
 
-bool xx_vhdx_check_is_valid(Abstractformat *format, xx_pd_struct *pd) {
+bool xx_vhdx_check_is_valid(Abstractformat *format, xx_pd_struct *pd)
+{
     vhdx_info info;
     (void)pd;
     if (!vhdx_parse(format, &info)) return false;
@@ -1268,7 +1135,8 @@ bool xx_vhdx_check_is_valid(Abstractformat *format, xx_pd_struct *pd) {
     return true;
 }
 
-bool xx_vhdx_handle_base_info(Abstractformat *format, xx_pd_struct *pd) {
+bool xx_vhdx_handle_base_info(Abstractformat *format, xx_pd_struct *pd)
+{
     vhdx_info info;
     xx_vhdx *archive;
     bool ok;
@@ -1308,23 +1176,18 @@ bool xx_vhdx_handle_base_info(Abstractformat *format, xx_pd_struct *pd) {
     return true;
 }
 
-int64_t xx_vhdx_get_format_size(Abstractformat *format, xx_pd_struct *pd) {
-    return format && (format->base_info_handled ||
-                      xx_vhdx_handle_base_info(format, pd))
-               ? format->format_size
-               : -1;
+int64_t xx_vhdx_get_format_size(Abstractformat *format, xx_pd_struct *pd)
+{
+    return format && (format->base_info_handled || xx_vhdx_handle_base_info(format, pd)) ? format->format_size : -1;
 }
 
-uint64_t xx_vhdx_get_number_of_archive_records(Abstractformat *format,
-                                               xx_pd_struct *pd) {
-    return format && (format->base_info_handled ||
-                      xx_vhdx_handle_base_info(format, pd))
-               ? ((xx_vhdx *)format)->number_of_records
-               : 0U;
+uint64_t xx_vhdx_get_number_of_archive_records(Abstractformat *format, xx_pd_struct *pd)
+{
+    return format && (format->base_info_handled || xx_vhdx_handle_base_info(format, pd)) ? ((xx_vhdx *)format)->number_of_records : 0U;
 }
 
-xx_archive_record_state *xx_vhdx_create_archive_records_reading(
-    Abstractformat *format, const xx_list_s *options, xx_pd_struct *pd) {
+xx_archive_record_state *xx_vhdx_create_archive_records_reading(Abstractformat *format, const xx_list_s *options, xx_pd_struct *pd)
+{
     vhdx_stream *stream;
     xx_archive_record_state *state;
     stream = (vhdx_stream *)xx_mem_calloc(1U, sizeof(*stream));
@@ -1347,8 +1210,7 @@ xx_archive_record_state *xx_vhdx_create_archive_records_reading(
     state->internal_state = stream;
     state->free_internal = vhdx_stream_free;
     state->total_records = 1U;
-    if (!vhdx_copy_options(&state->options, options) ||
-        !vhdx_set_record(&state->current_record, &stream->info)) {
+    if (!vhdx_copy_options(&state->options, options) || !vhdx_set_record(&state->current_record, &stream->info)) {
         xx_archive_record_state_free(state);
         return NULL;
     }
@@ -1356,21 +1218,16 @@ xx_archive_record_state *xx_vhdx_create_archive_records_reading(
     return state;
 }
 
-const xx_archive_record *xx_vhdx_get_current_archive_record(
-    Abstractformat *format, xx_archive_record_state *state) {
-    return format && state && state->format == format && state->has_record
-               ? &state->current_record
-               : NULL;
+const xx_archive_record *xx_vhdx_get_current_archive_record(Abstractformat *format, xx_archive_record_state *state)
+{
+    return format && state && state->format == format && state->has_record ? &state->current_record : NULL;
 }
 
-bool xx_vhdx_archive_record_move_to_next(Abstractformat *format,
-                                         xx_archive_record_state *state,
-                                         xx_pd_struct *pd) {
+bool xx_vhdx_archive_record_move_to_next(Abstractformat *format, xx_archive_record_state *state, xx_pd_struct *pd)
+{
     vhdx_stream *stream;
     (void)pd;
-    if (!format || !state || state->format != format ||
-        !(stream = (vhdx_stream *)state->internal_state))
-        return false;
+    if (!format || !state || state->format != format || !(stream = (vhdx_stream *)state->internal_state)) return false;
     /* There is exactly one member, so the first step is always the last. */
     stream->index = 1U;
     xx_archive_record_cleanup(&state->current_record);
@@ -1379,9 +1236,8 @@ bool xx_vhdx_archive_record_move_to_next(Abstractformat *format,
     return false;
 }
 
-bool xx_vhdx_unpack_current_archive_record(Abstractformat *format,
-                                           xx_archive_record_state *state,
-                                           xx_pd_struct *pd) {
+bool xx_vhdx_unpack_current_archive_record(Abstractformat *format, xx_archive_record_state *state, xx_pd_struct *pd)
+{
     vhdx_stream *stream;
     const xx_var *path_option;
     const char *base = NULL;
@@ -1390,27 +1246,20 @@ bool xx_vhdx_unpack_current_archive_record(Abstractformat *format,
     xx_io_device *destination = NULL;
     bool result = false;
     bool created = false;
-    if (!format || !state || state->format != format || !state->has_record ||
-        !(stream = (vhdx_stream *)state->internal_state) ||
-        stream->index != 0U || (pd && xx_pd_is_stopped(pd)))
+    if (!format || !state || state->format != format || !state->has_record || !(stream = (vhdx_stream *)state->internal_state) || stream->index != 0U ||
+        (pd && xx_pd_is_stopped(pd)))
         return false;
-    if (!vhdx_size_allowed(format, &state->options, stream->info.disk_size))
-        return false;
+    if (!vhdx_size_allowed(format, &state->options, stream->info.disk_size)) return false;
     path_option = vhdx_option(&state->options, XX_META_ID_OPT_UNPACK_PATH);
     if (!path_option) return vhdx_walk(format, &stream->info, NULL, pd);
-    if (path_option->type == XX_VAR_TYPE_STRING ||
-        path_option->type == XX_VAR_TYPE_STRING_VIEW)
-        base = xx_var_get_str(path_option);
-    else if (path_option->type == XX_VAR_TYPE_WSTRING ||
-             path_option->type == XX_VAR_TYPE_WSTRING_VIEW) {
+    if (path_option->type == XX_VAR_TYPE_STRING || path_option->type == XX_VAR_TYPE_STRING_VIEW) base = xx_var_get_str(path_option);
+    else if (path_option->type == XX_VAR_TYPE_WSTRING || path_option->type == XX_VAR_TYPE_WSTRING_VIEW) {
         owned_base = xx_str_unicode_to_utf8(xx_var_get_wstr(path_option));
         base = owned_base;
     }
     if (!base) goto done;
-    path = (base[0] && base[xx_str_len(base) - 1U] != '/' &&
-            base[xx_str_len(base) - 1U] != '\\')
-               ? xx_str_concat3(base, "/", VHDX_MEMBER_NAME)
-               : xx_str_concat(base, VHDX_MEMBER_NAME);
+    path = (base[0] && base[xx_str_len(base) - 1U] != '/' && base[xx_str_len(base) - 1U] != '\\') ? xx_str_concat3(base, "/", VHDX_MEMBER_NAME)
+                                                                                                  : xx_str_concat(base, VHDX_MEMBER_NAME);
     if (!path) goto done;
     if (!xx_store_create_dirs_a(path, false)) goto done;
     destination = xx_io_file_open(path, "wb");
@@ -1426,8 +1275,8 @@ done:
     return result;
 }
 
-void xx_vhdx_free_archive_records_reading(Abstractformat *format,
-                                          xx_archive_record_state *state) {
+void xx_vhdx_free_archive_records_reading(Abstractformat *format, xx_archive_record_state *state)
+{
     (void)format;
     xx_archive_record_state_free(state);
 }

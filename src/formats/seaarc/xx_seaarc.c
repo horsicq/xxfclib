@@ -131,17 +131,15 @@ static void xx_seaarc_vtable_destroy(Abstractformat *self);
 
 /* ------------------------------------------------------------- helpers -- */
 
-static bool xx_seaarc_read_at(Abstractformat *self, int64_t offset,
-                              uint8_t *buffer, size_t size) {
+static bool xx_seaarc_read_at(Abstractformat *self, int64_t offset, uint8_t *buffer, size_t size)
+{
     size_t completed = 0U;
 
-    if (!self || !self->device || offset < 0 ||
-        xx_io_seek64(self->device, offset, SEEK_SET) != 0) {
+    if (!self || !self->device || offset < 0 || xx_io_seek64(self->device, offset, SEEK_SET) != 0) {
         return false;
     }
     while (completed < size) {
-        ssize_t received =
-            xx_io_read(self->device, buffer + completed, size - completed);
+        ssize_t received = xx_io_read(self->device, buffer + completed, size - completed);
         if (received <= 0 || (size_t)received > size - completed) {
             return false;
         }
@@ -150,20 +148,20 @@ static bool xx_seaarc_read_at(Abstractformat *self, int64_t offset,
     return true;
 }
 
-static bool xx_seaarc_range_within(int64_t total, int64_t offset,
-                                   int64_t size) {
-    return offset >= 0 && size >= 0 && offset <= total &&
-           size <= total - offset;
+static bool xx_seaarc_range_within(int64_t total, int64_t offset, int64_t size)
+{
+    return offset >= 0 && size >= 0 && offset <= total && size <= total - offset;
 }
 
-static char xx_seaarc_upper(char c) {
+static char xx_seaarc_upper(char c)
+{
     return (c >= 'a' && c <= 'z') ? (char)(c - 'a' + 'A') : c;
 }
 
 /* True when the first @p stem bytes of @p name spell the upper-case
  * @p word exactly, ignoring case. */
-static bool xx_seaarc_stem_is(const char *name, size_t stem,
-                              const char *word) {
+static bool xx_seaarc_stem_is(const char *name, size_t stem, const char *word)
+{
     size_t index;
 
     for (index = 0U; index < stem; ++index) {
@@ -179,10 +177,9 @@ static bool xx_seaarc_stem_is(const char *name, size_t stem,
  * resolve to "." or ".." (only dots and spaces), the other reserved
  * punctuation, and device names such as CON, LPT1.EXT or CONIN$, with or
  * without an extension and in any case. */
-static bool xx_seaarc_output_name_safe(const char *name) {
-    static const char *const devices[] = {"CON",    "PRN",     "AUX",
-                                          "NUL",    "CONIN$",  "CONOUT$",
-                                          "CLOCK$"};
+static bool xx_seaarc_output_name_safe(const char *name)
+{
+    static const char *const devices[] = {"CON", "PRN", "AUX", "NUL", "CONIN$", "CONOUT$", "CLOCK$"};
     size_t length, stem = 0U, index;
     bool meaningful = false;
 
@@ -190,9 +187,8 @@ static bool xx_seaarc_output_name_safe(const char *name) {
     length = xx_str_len(name);
     for (index = 0U; index < length; ++index) {
         char c = name[index];
-        if ((unsigned char)c < 0x20U || (unsigned char)c > 0x7EU ||
-            c == '/' || c == '\\' || c == ':' || c == '<' || c == '>' ||
-            c == '"' || c == '|' || c == '?' || c == '*') {
+        if ((unsigned char)c < 0x20U || (unsigned char)c > 0x7EU || c == '/' || c == '\\' || c == ':' || c == '<' || c == '>' || c == '"' || c == '|' || c == '?' ||
+            c == '*') {
             return false;
         }
         if (c != '.' && c != ' ') meaningful = true;
@@ -204,16 +200,15 @@ static bool xx_seaarc_output_name_safe(const char *name) {
         if (xx_seaarc_stem_is(name, stem, devices[index])) return false;
     }
     if (stem == 4U && name[3] >= '0' && name[3] <= '9' &&
-        ((xx_seaarc_upper(name[0]) == 'C' && xx_seaarc_upper(name[1]) == 'O' &&
-          xx_seaarc_upper(name[2]) == 'M') ||
-         (xx_seaarc_upper(name[0]) == 'L' && xx_seaarc_upper(name[1]) == 'P' &&
-          xx_seaarc_upper(name[2]) == 'T'))) {
+        ((xx_seaarc_upper(name[0]) == 'C' && xx_seaarc_upper(name[1]) == 'O' && xx_seaarc_upper(name[2]) == 'M') ||
+         (xx_seaarc_upper(name[0]) == 'L' && xx_seaarc_upper(name[1]) == 'P' && xx_seaarc_upper(name[2]) == 'T'))) {
         return false;
     }
     return true;
 }
 
-static void xx_seaarc_stream_free(void *pointer) {
+static void xx_seaarc_stream_free(void *pointer)
+{
     xx_seaarc_stream *stream = (xx_seaarc_stream *)pointer;
     size_t index;
 
@@ -227,18 +222,16 @@ static void xx_seaarc_stream_free(void *pointer) {
 
 /* Append a member, taking ownership of its name. Geometric growth keeps a
  * 65536-member chain from costing 65536 reallocations. */
-static bool xx_seaarc_add(xx_seaarc_stream *stream,
-                          const xx_seaarc_member *member) {
+static bool xx_seaarc_add(xx_seaarc_stream *stream, const xx_seaarc_member *member)
+{
     if (stream->count == stream->capacity) {
-        size_t grown_capacity =
-            stream->capacity ? stream->capacity * 2U : (size_t)16U;
+        size_t grown_capacity = stream->capacity ? stream->capacity * 2U : (size_t)16U;
         xx_seaarc_member *grown;
         if (grown_capacity > (size_t)XX_SEAARC_MAX_MEMBERS) {
             grown_capacity = (size_t)XX_SEAARC_MAX_MEMBERS;
         }
         if (grown_capacity <= stream->count) return false;
-        grown = (xx_seaarc_member *)xx_mem_realloc(
-            stream->items, sizeof(*grown) * grown_capacity);
+        grown = (xx_seaarc_member *)xx_mem_realloc(stream->items, sizeof(*grown) * grown_capacity);
         if (!grown) return false;
         stream->items = grown;
         stream->capacity = grown_capacity;
@@ -248,21 +241,21 @@ static bool xx_seaarc_add(xx_seaarc_stream *stream,
 }
 
 /* Method 0 is the end record only; it is deliberately not "valid" here. */
-static bool xx_seaarc_method_valid(uint8_t method) {
-    return (method >= XX_SEAARC_METHOD_STORE_OLD &&
-            method <= XX_SEAARC_METHOD_DISTILLED) ||
-           method == XX_SEAARC_METHOD_COMPRESSED;
+static bool xx_seaarc_method_valid(uint8_t method)
+{
+    return (method >= XX_SEAARC_METHOD_STORE_OLD && method <= XX_SEAARC_METHOD_DISTILLED) || method == XX_SEAARC_METHOD_COMPRESSED;
 }
 
-static int64_t xx_seaarc_header_size(uint8_t method) {
-    return method == XX_SEAARC_METHOD_STORE_OLD ? XX_SEAARC_HEADER_SIZE_OLD
-                                                : XX_SEAARC_HEADER_SIZE;
+static int64_t xx_seaarc_header_size(uint8_t method)
+{
+    return method == XX_SEAARC_METHOD_STORE_OLD ? XX_SEAARC_HEADER_SIZE_OLD : XX_SEAARC_HEADER_SIZE;
 }
 
 /* The 13 byte field holds a bare DOS 8.3 name -- the container has no notion
  * of directories, so a separator in it means this is not an ARC header.
  * Returns the name's length, or -1 when the field is not a name. */
-static int xx_seaarc_name_length(const uint8_t *field) {
+static int xx_seaarc_name_length(const uint8_t *field)
+{
     size_t length = 0U;
     size_t index;
 
@@ -278,8 +271,7 @@ static int xx_seaarc_name_length(const uint8_t *field) {
         /* ARC is a DOS-only format and stores no high-bit or control bytes
          * in this field. */
         if (field[index] < 0x20U || field[index] > 0x7EU) return -1;
-        if (field[index] == (uint8_t)'/' || field[index] == (uint8_t)'\\' ||
-            field[index] == (uint8_t)':') {
+        if (field[index] == (uint8_t)'/' || field[index] == (uint8_t)'\\' || field[index] == (uint8_t)':') {
             return -1;
         }
     }
@@ -290,7 +282,8 @@ static int xx_seaarc_name_length(const uint8_t *field) {
 
 /* Copies a field that xx_seaarc_name_length() accepted; NULL only when the
  * allocation fails. */
-static char *xx_seaarc_make_name(const uint8_t *field, size_t length) {
+static char *xx_seaarc_make_name(const uint8_t *field, size_t length)
+{
     char *name = (char *)xx_mem_alloc(length + 1U);
     size_t index;
 
@@ -309,11 +302,11 @@ typedef struct xx_seaarc_name_key_s {
 
 /* Length of the part of @p name that names the file on Windows, which drops
  * trailing dots and spaces: "FOO", "FOO." and "FOO " are one file there. */
-static size_t xx_seaarc_key_length(const char *name) {
+static size_t xx_seaarc_key_length(const char *name)
+{
     size_t length = xx_str_len(name);
 
-    while (length > 0U &&
-           (name[length - 1U] == '.' || name[length - 1U] == ' ')) {
+    while (length > 0U && (name[length - 1U] == '.' || name[length - 1U] == ' ')) {
         --length;
     }
     return length;
@@ -321,7 +314,8 @@ static size_t xx_seaarc_key_length(const char *name) {
 
 /* Orders names as the file system that receives them would tell them apart:
  * ignoring case and trailing dots and spaces. */
-static int xx_seaarc_compare_names(const char *x, const char *y) {
+static int xx_seaarc_compare_names(const char *x, const char *y)
+{
     size_t x_length = xx_seaarc_key_length(x);
     size_t y_length = xx_seaarc_key_length(y);
     size_t index;
@@ -335,7 +329,8 @@ static int xx_seaarc_compare_names(const char *x, const char *y) {
     return 0;
 }
 
-static int xx_seaarc_compare_keys(const void *left, const void *right) {
+static int xx_seaarc_compare_keys(const void *left, const void *right)
+{
     const xx_seaarc_name_key *a = (const xx_seaarc_name_key *)left;
     const xx_seaarc_name_key *b = (const xx_seaarc_name_key *)right;
     int order = xx_seaarc_compare_names(a->name, b->name);
@@ -345,14 +340,16 @@ static int xx_seaarc_compare_keys(const void *left, const void *right) {
     return a->item < b->item ? -1 : (a->item > b->item ? 1 : 0);
 }
 
-static bool xx_seaarc_names_equal(const char *x, const char *y) {
+static bool xx_seaarc_names_equal(const char *x, const char *y)
+{
     return xx_seaarc_compare_names(x, y) == 0;
 }
 
 /* "NAME.EXT" -> "NAME_<n>.EXT" (the suffix goes before the last dot). The
  * trailing dots and spaces Windows would drop are dropped first, so "FOO."
  * becomes "FOO_1", not "FOO_1." or "FOO._1". */
-static char *xx_seaarc_suffixed_name(const char *name, uint32_t number) {
+static char *xx_seaarc_suffixed_name(const char *name, uint32_t number)
+{
     char digits[12];
     size_t digit_count = 0U;
     size_t length = xx_seaarc_key_length(name);
@@ -393,7 +390,8 @@ typedef struct xx_seaarc_name_set_s {
     uint64_t seed;
 } xx_seaarc_name_set;
 
-static uint64_t xx_seaarc_mix64(uint64_t value) {
+static uint64_t xx_seaarc_mix64(uint64_t value)
+{
     value ^= value >> 33;
     value *= 0xFF51AFD7ED558CCDULL;
     value ^= value >> 33;
@@ -402,8 +400,8 @@ static uint64_t xx_seaarc_mix64(uint64_t value) {
     return value;
 }
 
-static size_t xx_seaarc_name_hash(const xx_seaarc_name_set *set,
-                                  const char *name) {
+static size_t xx_seaarc_name_hash(const xx_seaarc_name_set *set, const char *name)
+{
     size_t length = xx_seaarc_key_length(name);
     size_t index;
     uint64_t hash = set->seed ^ 0xCBF29CE484222325ULL;
@@ -416,7 +414,8 @@ static size_t xx_seaarc_name_hash(const xx_seaarc_name_set *set,
     return (size_t)(hash ^ (hash >> 32));
 }
 
-static bool xx_seaarc_name_set_init(xx_seaarc_name_set *set, size_t items) {
+static bool xx_seaarc_name_set_init(xx_seaarc_name_set *set, size_t items)
+{
     size_t capacity = 16U;
     uint64_t local = 0U;
 
@@ -427,16 +426,14 @@ static bool xx_seaarc_name_set_init(xx_seaarc_name_set *set, size_t items) {
     if (!set->slots) return false;
     xx_mem_zero((void *)set->slots, capacity * sizeof(*set->slots));
     set->mask = capacity - 1U;
-    set->seed = xx_seaarc_mix64((uint64_t)(uintptr_t)set->slots ^
-                                xx_seaarc_mix64((uint64_t)(uintptr_t)&local) ^
-                                (uint64_t)items);
+    set->seed = xx_seaarc_mix64((uint64_t)(uintptr_t)set->slots ^ xx_seaarc_mix64((uint64_t)(uintptr_t)&local) ^ (uint64_t)items);
     return true;
 }
 
 /* Returns true when an equal name is already present; otherwise inserts
  * @p name when @p insert is set. */
-static bool xx_seaarc_name_set_probe(xx_seaarc_name_set *set,
-                                     const char *name, bool insert) {
+static bool xx_seaarc_name_set_probe(xx_seaarc_name_set *set, const char *name, bool insert)
+{
     size_t slot = xx_seaarc_name_hash(set, name) & set->mask;
 
     while (set->slots[slot]) {
@@ -449,7 +446,8 @@ static bool xx_seaarc_name_set_probe(xx_seaarc_name_set *set,
 
 /* Windows gives a name that is not a plain 8.3 name a second, 8.3 alias
  * such as ABCDEF~1.TXT, and opening that alias opens the long-named file. */
-static bool xx_seaarc_is_short_name(const char *name) {
+static bool xx_seaarc_is_short_name(const char *name)
+{
     size_t base = 0U, extension = 0U;
     bool dot = false;
 
@@ -460,8 +458,7 @@ static bool xx_seaarc_is_short_name(const char *name) {
             dot = true;
             continue;
         }
-        if (c == ' ' || c == '+' || c == ',' || c == ';' || c == '=' ||
-            c == '[' || c == ']') {
+        if (c == ' ' || c == '+' || c == ',' || c == ';' || c == '=' || c == '[' || c == ']') {
             return false;
         }
         if (dot ? ++extension > 3U : ++base > 8U) return false;
@@ -475,8 +472,8 @@ static bool xx_seaarc_is_short_name(const char *name) {
  * A rejected candidate always equals one of those at most 2 * count names,
  * and each of them can reject only one (group, n) pair, so the search is
  * linear overall; the bound below only guards that argument. */
-static bool xx_seaarc_rename_duplicates(xx_seaarc_stream *stream,
-                                        xx_pd_struct *pd) {
+static bool xx_seaarc_rename_duplicates(xx_seaarc_stream *stream, xx_pd_struct *pd)
+{
     xx_seaarc_name_key *keys;
     xx_seaarc_name_set set;
     size_t index;
@@ -542,8 +539,8 @@ done:
  * long (non-8.3) one, a '~' elsewhere could spell its Windows alias, so every
  * '~' becomes '_' and the renaming runs once more; its new names have no '~'
  * and the archive already has a long name, so nothing further can arise. */
-static bool xx_seaarc_make_names_unique(xx_seaarc_stream *stream,
-                                        xx_pd_struct *pd) {
+static bool xx_seaarc_make_names_unique(xx_seaarc_stream *stream, xx_pd_struct *pd)
+{
     bool has_long = false;
     bool has_tilde = false;
     size_t index;
@@ -570,15 +567,14 @@ static bool xx_seaarc_make_names_unique(xx_seaarc_stream *stream,
 
 /* One record of the chain, checked exactly as the parser checks it. */
 typedef enum xx_seaarc_step_e {
-    XX_SEAARC_STEP_MEMBER, /* a valid member record; *next is the record after */
-    XX_SEAARC_STEP_END,    /* the 1A 00 end record; *next is the offset after */
+    XX_SEAARC_STEP_MEMBER,  /* a valid member record; *next is the record after */
+    XX_SEAARC_STEP_END,     /* the 1A 00 end record; *next is the offset after */
     XX_SEAARC_STEP_REFUSED, /* not a record: a property of the bytes alone */
-    XX_SEAARC_STEP_ERROR   /* the device failed to deliver bytes it holds */
+    XX_SEAARC_STEP_ERROR    /* the device failed to deliver bytes it holds */
 } xx_seaarc_step;
 
-static xx_seaarc_step xx_seaarc_read_record(Abstractformat *self, int64_t span,
-                                            int64_t offset, uint8_t *header,
-                                            int64_t *next) {
+static xx_seaarc_step xx_seaarc_read_record(Abstractformat *self, int64_t span, int64_t offset, uint8_t *header, int64_t *next)
+{
     uint8_t method;
     int64_t header_size;
     int64_t data_offset;
@@ -588,8 +584,7 @@ static xx_seaarc_step xx_seaarc_read_record(Abstractformat *self, int64_t span,
     if (!xx_seaarc_range_within(span, offset, XX_SEAARC_END_SIZE)) {
         return XX_SEAARC_STEP_REFUSED;
     }
-    if (!xx_seaarc_read_at(self, self->base_address + offset, header,
-                           (size_t)XX_SEAARC_END_SIZE)) {
+    if (!xx_seaarc_read_at(self, self->base_address + offset, header, (size_t)XX_SEAARC_END_SIZE)) {
         return XX_SEAARC_STEP_ERROR;
     }
     /* Every record, the end record included, starts with the marker. A
@@ -607,8 +602,7 @@ static xx_seaarc_step xx_seaarc_read_record(Abstractformat *self, int64_t span,
     if (!xx_seaarc_range_within(span, offset, header_size)) {
         return XX_SEAARC_STEP_REFUSED;
     }
-    if (!xx_seaarc_read_at(self, self->base_address + offset, header,
-                           (size_t)header_size)) {
+    if (!xx_seaarc_read_at(self, self->base_address + offset, header, (size_t)header_size)) {
         return XX_SEAARC_STEP_ERROR;
     }
 
@@ -631,9 +625,7 @@ static xx_seaarc_step xx_seaarc_read_record(Abstractformat *self, int64_t span,
     /* The stored methods are the only ones whose two lengths must agree,
      * and making them agree here means decode can copy without having to
      * decide which length to trust. */
-    if ((method == XX_SEAARC_METHOD_STORE_OLD ||
-         method == XX_SEAARC_METHOD_STORE) &&
-        compressed_size != uncompressed_size) {
+    if ((method == XX_SEAARC_METHOD_STORE_OLD || method == XX_SEAARC_METHOD_STORE) && compressed_size != uncompressed_size) {
         return XX_SEAARC_STEP_REFUSED;
     }
     if (xx_seaarc_name_length(header + XX_SEAARC_NAME_OFFSET) < 0) {
@@ -674,7 +666,6 @@ static xx_seaarc_step xx_seaarc_read_record(Abstractformat *self, int64_t span,
  * new device happens to reuse an old one's address. Short walks are not
  * recorded (they are cheap to repeat), and its size is capped. */
 
-
 /* Offsets per bitmap page, and its size in bytes. */
 #define XX_SEAARC_MEMO_PAGE_SHIFT 16
 #define XX_SEAARC_MEMO_PAGE_BYTES ((size_t)1U << (XX_SEAARC_MEMO_PAGE_SHIFT - 3))
@@ -700,8 +691,8 @@ typedef struct xx_seaarc_memo_view_s {
     int64_t origin;       /* device offset of chain offset 0 */
 } xx_seaarc_memo_view;
 
-
-static void xx_seaarc_memo_clear(xx_seaarc_memo *memo) {
+static void xx_seaarc_memo_clear(xx_seaarc_memo *memo)
+{
     size_t index;
 
     if (memo->pages) {
@@ -717,7 +708,8 @@ static void xx_seaarc_memo_clear(xx_seaarc_memo *memo) {
  * thread-local variable (see xx_tls.h) and allocated on first use. */
 static xx_tls_key xx_seaarc_memo_key;
 
-static xx_seaarc_memo *xx_seaarc_thread_memo(void) {
+static xx_seaarc_memo *xx_seaarc_thread_memo(void)
+{
     xx_seaarc_memo *memo = (xx_seaarc_memo *)xx_tls_get(&xx_seaarc_memo_key);
 
     if (!memo) {
@@ -730,8 +722,8 @@ static xx_seaarc_memo *xx_seaarc_thread_memo(void) {
     return memo;
 }
 
-static void xx_seaarc_memo_attach(Abstractformat *self,
-                                  xx_seaarc_memo_view *view) {
+static void xx_seaarc_memo_attach(Abstractformat *self, xx_seaarc_memo_view *view)
+{
     xx_seaarc_memo *memo;
     xx_io_volume volume;
     int64_t logical = -1;
@@ -740,11 +732,8 @@ static void xx_seaarc_memo_attach(Abstractformat *self,
 
     view->memo = NULL;
     view->origin = 0;
-    if (xx_io_multivolume_count(self->device) != 1U ||
-        !xx_io_multivolume_get_volume(self->device, 0U, &volume, &logical) ||
-        logical != 0 || !volume.device || volume.offset < 0 ||
-        volume.size < 0 || volume.offset > INT64_MAX - volume.size ||
-        self->base_address > INT64_MAX - volume.offset) {
+    if (xx_io_multivolume_count(self->device) != 1U || !xx_io_multivolume_get_volume(self->device, 0U, &volume, &logical) || logical != 0 || !volume.device ||
+        volume.offset < 0 || volume.size < 0 || volume.offset > INT64_MAX - volume.size || self->base_address > INT64_MAX - volume.offset) {
         /* Not a search view. Whatever an earlier search left, the block
          * included, is released here rather than kept for the life of the
          * thread; a plain parse never allocates one. */
@@ -760,8 +749,7 @@ static void xx_seaarc_memo_attach(Abstractformat *self,
     if (!memo) return; /* no memo: every search walks in full */
     start = volume.offset + self->base_address;
     end = volume.offset + volume.size;
-    if (memo->device != volume.device || memo->end != end || start == 0 ||
-        start < memo->last) {
+    if (memo->device != volume.device || memo->end != end || start == 0 || start < memo->last) {
         xx_seaarc_memo_clear(memo);
         memo->device = volume.device;
         memo->end = end;
@@ -771,20 +759,18 @@ static void xx_seaarc_memo_attach(Abstractformat *self,
     view->origin = start;
 }
 
-static bool xx_seaarc_memo_is_dead(const xx_seaarc_memo_view *view,
-                                   int64_t offset) {
+static bool xx_seaarc_memo_is_dead(const xx_seaarc_memo_view *view, int64_t offset)
+{
     const xx_seaarc_memo *memo = view->memo;
     uint64_t at;
     size_t page;
 
-    if (!memo || !memo->pages || offset < 0 ||
-        offset > INT64_MAX - view->origin) {
+    if (!memo || !memo->pages || offset < 0 || offset > INT64_MAX - view->origin) {
         return false;
     }
     at = (uint64_t)(view->origin + offset);
     page = (size_t)(at >> XX_SEAARC_MEMO_PAGE_SHIFT);
-    if (at >> XX_SEAARC_MEMO_PAGE_SHIFT >= (uint64_t)memo->directory ||
-        !memo->pages[page]) {
+    if (at >> XX_SEAARC_MEMO_PAGE_SHIFT >= (uint64_t)memo->directory || !memo->pages[page]) {
         return false;
     }
     at &= ((uint64_t)1U << XX_SEAARC_MEMO_PAGE_SHIFT) - 1U;
@@ -792,8 +778,8 @@ static bool xx_seaarc_memo_is_dead(const xx_seaarc_memo_view *view,
 }
 
 /* Best effort: a mark that does not fit is simply not kept. */
-static void xx_seaarc_memo_mark(const xx_seaarc_memo_view *view,
-                                int64_t offset) {
+static void xx_seaarc_memo_mark(const xx_seaarc_memo_view *view, int64_t offset)
+{
     xx_seaarc_memo *memo = view->memo;
     uint64_t at;
     size_t page;
@@ -802,9 +788,7 @@ static void xx_seaarc_memo_mark(const xx_seaarc_memo_view *view,
     at = (uint64_t)(view->origin + offset);
     if (!memo->pages) {
         uint64_t wanted = ((uint64_t)memo->end >> XX_SEAARC_MEMO_PAGE_SHIFT) + 1U;
-        size_t directory = wanted > (uint64_t)XX_SEAARC_MEMO_MAX_DIRECTORY
-                               ? XX_SEAARC_MEMO_MAX_DIRECTORY
-                               : (size_t)wanted;
+        size_t directory = wanted > (uint64_t)XX_SEAARC_MEMO_MAX_DIRECTORY ? XX_SEAARC_MEMO_MAX_DIRECTORY : (size_t)wanted;
         memo->pages = (uint8_t **)xx_mem_alloc(directory * sizeof(*memo->pages));
         if (!memo->pages) return;
         xx_mem_zero(memo->pages, directory * sizeof(*memo->pages));
@@ -825,10 +809,8 @@ static void xx_seaarc_memo_mark(const xx_seaarc_memo_view *view,
 
 /* Marks the first @p count member offsets of the chain at @p offset (all of
  * them when @p count is 0), walking it again. */
-static void xx_seaarc_memo_mark_chain(Abstractformat *self,
-                                      const xx_seaarc_memo_view *view,
-                                      int64_t span, int64_t offset,
-                                      uint64_t count, xx_pd_struct *pd) {
+static void xx_seaarc_memo_mark_chain(Abstractformat *self, const xx_seaarc_memo_view *view, int64_t span, int64_t offset, uint64_t count, xx_pd_struct *pd)
+{
     uint8_t header[XX_SEAARC_HEADER_SIZE];
     uint64_t marked = 0U;
     int64_t next = 0;
@@ -836,8 +818,7 @@ static void xx_seaarc_memo_mark_chain(Abstractformat *self,
     while (count == 0U || marked < count) {
         if ((marked & 0xFFFU) == 0U && pd && xx_pd_is_stopped(pd)) return;
         if (xx_seaarc_memo_is_dead(view, offset)) return;
-        if (xx_seaarc_read_record(self, span, offset, header, &next) !=
-            XX_SEAARC_STEP_MEMBER) {
+        if (xx_seaarc_read_record(self, span, offset, header, &next) != XX_SEAARC_STEP_MEMBER) {
             return;
         }
         xx_seaarc_memo_mark(view, offset);
@@ -850,10 +831,8 @@ static void xx_seaarc_memo_mark_chain(Abstractformat *self,
  * stopped at @p offset. Follow the rest (members are only counted, every
  * step moves forward by at least a header, so this ends within the view)
  * and mark what the cap refuses for good. */
-static void xx_seaarc_memo_after_cap(Abstractformat *self,
-                                     const xx_seaarc_memo_view *view,
-                                     int64_t span, int64_t offset,
-                                     xx_pd_struct *pd) {
+static void xx_seaarc_memo_after_cap(Abstractformat *self, const xx_seaarc_memo_view *view, int64_t span, int64_t offset, xx_pd_struct *pd)
+{
     uint8_t header[XX_SEAARC_HEADER_SIZE];
     uint64_t extra = 0U;
     int64_t next = 0;
@@ -883,9 +862,8 @@ static void xx_seaarc_memo_after_cap(Abstractformat *self,
     }
 }
 
-static xx_seaarc_stream *xx_seaarc_parse(Abstractformat *self,
-                                         xx_pd_struct *pd,
-                                         bool unique_names) {
+static xx_seaarc_stream *xx_seaarc_parse(Abstractformat *self, xx_pd_struct *pd, bool unique_names)
+{
     xx_seaarc_stream *stream;
     xx_seaarc_memo_view view;
     uint8_t header[XX_SEAARC_HEADER_SIZE];
@@ -941,8 +919,7 @@ static xx_seaarc_stream *xx_seaarc_parse(Abstractformat *self,
         }
 
         name_length = xx_seaarc_name_length(header + XX_SEAARC_NAME_OFFSET);
-        name = xx_seaarc_make_name(header + XX_SEAARC_NAME_OFFSET,
-                                   (size_t)name_length);
+        name = xx_seaarc_make_name(header + XX_SEAARC_NAME_OFFSET, (size_t)name_length);
         if (!name) goto fail;
 
         xx_mem_zero(&member, sizeof(member));
@@ -951,15 +928,11 @@ static xx_seaarc_stream *xx_seaarc_parse(Abstractformat *self,
         member.header_size = xx_seaarc_header_size(header[1]);
         member.data_offset = member.header_offset + member.header_size;
         member.compressed_size = (int64_t)xx_data_get_u32(header + 15, 4, 0, false);
-        member.uncompressed_size =
-            header[1] == XX_SEAARC_METHOD_STORE_OLD
-                ? member.compressed_size
-                : (int64_t)xx_data_get_u32(header + 25, 4, 0, false);
+        member.uncompressed_size = header[1] == XX_SEAARC_METHOD_STORE_OLD ? member.compressed_size : (int64_t)xx_data_get_u32(header + 25, 4, 0, false);
         member.method = (uint32_t)header[1];
         member.crc = xx_data_get_u16(header + 23, 2, 0, false);
         /* Date at +0x13, time at +0x15, published as the usual packed dword. */
-        member.timestamp = ((uint64_t)xx_data_get_u16(header + 19, 2, 0, false) << 16) |
-                           (uint64_t)xx_data_get_u16(header + 21, 2, 0, false);
+        member.timestamp = ((uint64_t)xx_data_get_u16(header + 19, 2, 0, false) << 16) | (uint64_t)xx_data_get_u16(header + 21, 2, 0, false);
         member.is_folder = false;
         if (!xx_seaarc_add(stream, &member)) {
             xx_str_free(name);
@@ -985,8 +958,7 @@ fail:
         if (refused && stream->count >= XX_SEAARC_MEMO_MIN_WALK) {
             size_t index;
             for (index = 0U; index < stream->count; ++index) {
-                xx_seaarc_memo_mark(&view, stream->items[index].header_offset -
-                                               self->base_address);
+                xx_seaarc_memo_mark(&view, stream->items[index].header_offset - self->base_address);
             }
         } else if (capped) {
             xx_seaarc_memo_after_cap(self, &view, span, offset, pd);
@@ -1016,8 +988,8 @@ typedef struct xx_seaarc_sink_s {
 #define XX_SEAARC_DLE 0x90U
 #define XX_SEAARC_SINK_MIN (64U * 1024U)
 
-static bool xx_seaarc_sink_init(xx_seaarc_sink *sink, size_t limit,
-                                size_t hint, bool run_length) {
+static bool xx_seaarc_sink_init(xx_seaarc_sink *sink, size_t limit, size_t hint, bool run_length)
+{
     size_t capacity = hint < XX_SEAARC_SINK_MIN ? XX_SEAARC_SINK_MIN : hint;
 
     xx_mem_zero(sink, sizeof(*sink));
@@ -1031,19 +1003,20 @@ static bool xx_seaarc_sink_init(xx_seaarc_sink *sink, size_t limit,
     return true;
 }
 
-static bool xx_seaarc_sink_complete(const xx_seaarc_sink *sink) {
+static bool xx_seaarc_sink_complete(const xx_seaarc_sink *sink)
+{
     return !sink->failed && sink->size == sink->limit;
 }
 
-static bool xx_seaarc_sink_emit(xx_seaarc_sink *sink, uint8_t value) {
+static bool xx_seaarc_sink_emit(xx_seaarc_sink *sink, uint8_t value)
+{
     if (sink->failed) return false;
     if (sink->size >= sink->limit) {
         sink->failed = true;
         return false;
     }
     if (sink->size == sink->capacity) {
-        size_t grown = sink->capacity > sink->limit / 2U ? sink->limit
-                                                         : sink->capacity * 2U;
+        size_t grown = sink->capacity > sink->limit / 2U ? sink->limit : sink->capacity * 2U;
         uint8_t *data = (uint8_t *)xx_mem_realloc(sink->data, grown);
         if (!data) {
             sink->failed = true;
@@ -1060,7 +1033,8 @@ static bool xx_seaarc_sink_emit(xx_seaarc_sink *sink, uint8_t value) {
  * ARC 5.21's own decoder does, measured with arc.exe -- does not become the
  * byte a following run repeats; "90 nn" repeats the previous literal so it
  * appears nn times in all. */
-static bool xx_seaarc_sink_put(xx_seaarc_sink *sink, uint8_t value) {
+static bool xx_seaarc_sink_put(xx_seaarc_sink *sink, uint8_t value)
+{
     if (!sink->run_length) return xx_seaarc_sink_emit(sink, value);
     if (sink->in_repeat) {
         uint32_t count;
@@ -1094,21 +1068,22 @@ typedef struct xx_seaarc_source_s {
     uint32_t bit_count;
 } xx_seaarc_source;
 
-static void xx_seaarc_source_init(xx_seaarc_source *source,
-                                  const uint8_t *data, size_t size) {
+static void xx_seaarc_source_init(xx_seaarc_source *source, const uint8_t *data, size_t size)
+{
     xx_mem_zero(source, sizeof(*source));
     source->data = data;
     source->size = size;
 }
 
-static bool xx_seaarc_source_byte(xx_seaarc_source *source, uint8_t *value) {
+static bool xx_seaarc_source_byte(xx_seaarc_source *source, uint8_t *value)
+{
     if (source->position >= source->size) return false;
     *value = source->data[source->position++];
     return true;
 }
 
-static bool xx_seaarc_source_bits(xx_seaarc_source *source, uint32_t count,
-                                  uint32_t *value) {
+static bool xx_seaarc_source_bits(xx_seaarc_source *source, uint32_t count, uint32_t *value)
+{
     if (count > 24U) return false;
     if (count == 0U) {
         *value = 0U;
@@ -1126,15 +1101,16 @@ static bool xx_seaarc_source_bits(xx_seaarc_source *source, uint32_t count,
     return true;
 }
 
-static bool xx_seaarc_stopped(xx_pd_struct *pd, uint32_t *tick) {
+static bool xx_seaarc_stopped(xx_pd_struct *pd, uint32_t *tick)
+{
     if (((++*tick) & 0xFFFU) != 0U) return false;
     return pd && xx_pd_is_stopped(pd);
 }
 
 /* ------------------------------------------------ method 3: packed -- */
 
-static bool xx_seaarc_decode_packed(xx_seaarc_source *source,
-                                    xx_seaarc_sink *sink, xx_pd_struct *pd) {
+static bool xx_seaarc_decode_packed(xx_seaarc_source *source, xx_seaarc_sink *sink, xx_pd_struct *pd)
+{
     uint32_t tick = 0U;
 
     while (!xx_seaarc_sink_complete(sink)) {
@@ -1156,24 +1132,22 @@ static bool xx_seaarc_decode_packed(xx_seaarc_source *source,
 #define XX_SEAARC_SQUEEZE_VALUES 257
 #define XX_SEAARC_SQUEEZE_EOF 256
 
-static bool xx_seaarc_decode_squeezed(xx_seaarc_source *source,
-                                      xx_seaarc_sink *sink, xx_pd_struct *pd) {
+static bool xx_seaarc_decode_squeezed(xx_seaarc_source *source, xx_seaarc_sink *sink, xx_pd_struct *pd)
+{
     int16_t children[XX_SEAARC_SQUEEZE_VALUES * 2];
     uint8_t low, high;
     uint32_t node_count;
     uint32_t index;
     uint32_t tick = 0U;
 
-    if (!xx_seaarc_source_byte(source, &low) ||
-        !xx_seaarc_source_byte(source, &high)) {
+    if (!xx_seaarc_source_byte(source, &low) || !xx_seaarc_source_byte(source, &high)) {
         return false;
     }
     node_count = (uint32_t)low | ((uint32_t)high << 8);
     if (node_count > (uint32_t)XX_SEAARC_SQUEEZE_VALUES) return false;
     for (index = 0U; index < node_count * 2U; ++index) {
         int32_t child;
-        if (!xx_seaarc_source_byte(source, &low) ||
-            !xx_seaarc_source_byte(source, &high)) {
+        if (!xx_seaarc_source_byte(source, &low) || !xx_seaarc_source_byte(source, &high)) {
             return false;
         }
         child = (int32_t)(int16_t)((uint16_t)low | ((uint16_t)high << 8));
@@ -1228,9 +1202,8 @@ typedef struct xx_seaarc_hash_entry_s {
     uint8_t occupied;
 } xx_seaarc_hash_entry;
 
-static int32_t xx_seaarc_hash_insert(xx_seaarc_hash_entry *table,
-                                     uint32_t method, int16_t prefix,
-                                     uint8_t suffix) {
+static int32_t xx_seaarc_hash_insert(xx_seaarc_hash_entry *table, uint32_t method, int16_t prefix, uint8_t suffix)
+{
     uint32_t sum = (uint32_t)((int32_t)prefix + (int32_t)suffix);
     uint32_t slot;
 
@@ -1265,8 +1238,8 @@ static int32_t xx_seaarc_hash_insert(xx_seaarc_hash_entry *table,
 }
 
 /* -1: clean end of input; -2: a lone trailing byte (half a code pair). */
-static int32_t xx_seaarc_nybble_code(xx_seaarc_source *source,
-                                     int32_t *pending) {
+static int32_t xx_seaarc_nybble_code(xx_seaarc_source *source, int32_t *pending)
+{
     uint8_t first, second;
 
     if (!xx_seaarc_source_byte(source, &first)) return -1;
@@ -1280,9 +1253,8 @@ static int32_t xx_seaarc_nybble_code(xx_seaarc_source *source,
     return ((int32_t)first << 4) | (int32_t)(second >> 4);
 }
 
-static bool xx_seaarc_decode_hashed(xx_seaarc_source *source,
-                                    xx_seaarc_sink *sink, uint32_t method,
-                                    xx_pd_struct *pd) {
+static bool xx_seaarc_decode_hashed(xx_seaarc_source *source, xx_seaarc_sink *sink, uint32_t method, xx_pd_struct *pd)
+{
     xx_seaarc_hash_entry *table;
     uint8_t *stack;
     int32_t pending = -1;
@@ -1293,14 +1265,12 @@ static bool xx_seaarc_decode_hashed(xx_seaarc_source *source,
     uint8_t first;
     bool result = false;
 
-    table = (xx_seaarc_hash_entry *)xx_mem_alloc(XX_SEAARC_HASH_SIZE *
-                                                 sizeof(*table));
+    table = (xx_seaarc_hash_entry *)xx_mem_alloc(XX_SEAARC_HASH_SIZE * sizeof(*table));
     stack = (uint8_t *)xx_mem_alloc(XX_SEAARC_HASH_SIZE);
     if (!table || !stack) goto done;
     xx_mem_zero(table, XX_SEAARC_HASH_SIZE * sizeof(*table));
     for (value = 0; value < 256; ++value) {
-        if (xx_seaarc_hash_insert(table, method, XX_SEAARC_HASH_NONE,
-                                  (uint8_t)value) < 0) {
+        if (xx_seaarc_hash_insert(table, method, XX_SEAARC_HASH_NONE, (uint8_t)value) < 0) {
             goto done;
         }
     }
@@ -1309,8 +1279,7 @@ static bool xx_seaarc_decode_hashed(xx_seaarc_source *source,
         result = true;
         goto done;
     }
-    if (previous < 0 || !table[previous].occupied ||
-        table[previous].prefix != XX_SEAARC_HASH_NONE) {
+    if (previous < 0 || !table[previous].occupied || table[previous].prefix != XX_SEAARC_HASH_NONE) {
         goto done;
     }
     first = table[previous].suffix;
@@ -1347,8 +1316,7 @@ static bool xx_seaarc_decode_hashed(xx_seaarc_source *source,
         first = table[cursor].suffix;
         stack[length++] = first;
         if (remaining != 0U) {
-            int32_t assigned = xx_seaarc_hash_insert(
-                table, method, (int16_t)previous, first);
+            int32_t assigned = xx_seaarc_hash_insert(table, method, (int16_t)previous, first);
             if (assigned < 0 || (undefined && assigned != code)) goto done;
             --remaining;
         }
@@ -1395,19 +1363,17 @@ typedef struct xx_seaarc_code_reader_s {
     uint8_t group[XX_SEAARC_LZW_MAX_BITS];
 } xx_seaarc_code_reader;
 
-static uint32_t xx_seaarc_max_code_for(const xx_seaarc_code_reader *reader,
-                                       uint32_t bits) {
-    return bits == reader->max_bits ? reader->max_max_code
-                                    : ((UINT32_C(1) << bits) - 1U);
+static uint32_t xx_seaarc_max_code_for(const xx_seaarc_code_reader *reader, uint32_t bits)
+{
+    return bits == reader->max_bits ? reader->max_max_code : ((UINT32_C(1) << bits) - 1U);
 }
 
-static bool xx_seaarc_code_read(xx_seaarc_code_reader *reader,
-                                uint32_t *code) {
+static bool xx_seaarc_code_read(xx_seaarc_code_reader *reader, uint32_t *code)
+{
     uint32_t value = 0U;
     uint32_t index;
 
-    if (reader->clear_pending || reader->offset >= reader->size ||
-        reader->free_entry > reader->max_code) {
+    if (reader->clear_pending || reader->offset >= reader->size || reader->free_entry > reader->max_code) {
         uint32_t got = 0U;
         if (reader->free_entry > reader->max_code) {
             ++reader->bits;
@@ -1436,17 +1402,15 @@ static bool xx_seaarc_code_read(xx_seaarc_code_reader *reader,
     if (reader->offset >= reader->size) return false;
     for (index = 0U; index < reader->bits; ++index) {
         uint32_t bit = reader->offset + index;
-        value |= (uint32_t)((reader->group[bit >> 3] >> (bit & 7U)) & 1U)
-                 << index;
+        value |= (uint32_t)((reader->group[bit >> 3] >> (bit & 7U)) & 1U) << index;
     }
     reader->offset += reader->bits;
     *code = value;
     return true;
 }
 
-static bool xx_seaarc_decode_lzw(xx_seaarc_source *source,
-                                 xx_seaarc_sink *sink, uint32_t method,
-                                 xx_pd_struct *pd) {
+static bool xx_seaarc_decode_lzw(xx_seaarc_source *source, xx_seaarc_sink *sink, uint32_t method, xx_pd_struct *pd)
+{
     xx_seaarc_code_reader reader;
     uint16_t *prefix = NULL;
     uint8_t *suffix = NULL;
@@ -1474,14 +1438,12 @@ static bool xx_seaarc_decode_lzw(xx_seaarc_source *source,
                 return false;
             }
             max_bits = declared & XX_SEAARC_COMPRESS_BITS_MASK;
-            if (max_bits < XX_SEAARC_LZW_MIN_BITS ||
-                max_bits > XX_SEAARC_LZW_MAX_BITS) {
+            if (max_bits < XX_SEAARC_LZW_MIN_BITS || max_bits > XX_SEAARC_LZW_MAX_BITS) {
                 return false;
             }
         } else {
             max_bits = declared;
-            if (max_bits < XX_SEAARC_LZW_MIN_BITS ||
-                max_bits > XX_SEAARC_LZW_CRUNCH_MAX_BITS) {
+            if (max_bits < XX_SEAARC_LZW_MIN_BITS || max_bits > XX_SEAARC_LZW_CRUNCH_MAX_BITS) {
                 return false;
             }
         }
@@ -1513,8 +1475,7 @@ static bool xx_seaarc_decode_lzw(xx_seaarc_source *source,
     if (code >= 256U) goto done;
     old_code = code;
     final_char = (uint8_t)code;
-    if (!xx_seaarc_sink_complete(sink) &&
-        !xx_seaarc_sink_put(sink, final_char)) {
+    if (!xx_seaarc_sink_complete(sink) && !xx_seaarc_sink_put(sink, final_char)) {
         goto done;
     }
 
@@ -1548,8 +1509,7 @@ static bool xx_seaarc_decode_lzw(xx_seaarc_source *source,
             work = old_code;
         }
         while (work >= 256U) {
-            if (work >= table_size || stack_size >= table_size ||
-                ++depth > table_size) {
+            if (work >= table_size || stack_size >= table_size || ++depth > table_size) {
                 goto done;
             }
             stack[stack_size++] = suffix[work];
@@ -1613,9 +1573,8 @@ typedef struct xx_seaarc_crush_s {
     bool has_previous;
 } xx_seaarc_crush;
 
-static bool xx_seaarc_crush_symbol(const xx_seaarc_crush *state,
-                                   xx_seaarc_source *source,
-                                   uint32_t *symbol) {
+static bool xx_seaarc_crush_symbol(const xx_seaarc_crush *state, xx_seaarc_source *source, uint32_t *symbol)
+{
     uint32_t code;
 
     if (state->literal_mode) {
@@ -1639,8 +1598,8 @@ static bool xx_seaarc_crush_symbol(const xx_seaarc_crush *state,
     return true;
 }
 
-static bool xx_seaarc_crush_mark_used(xx_seaarc_crush *state,
-                                      uint32_t symbol) {
+static bool xx_seaarc_crush_mark_used(xx_seaarc_crush *state, uint32_t symbol)
+{
     uint32_t depth = 0U;
 
     while (symbol < XX_SEAARC_CRUSH_TABLE) {
@@ -1655,8 +1614,8 @@ static bool xx_seaarc_crush_mark_used(xx_seaarc_crush *state,
     return false;
 }
 
-static void xx_seaarc_crush_update_mode(xx_seaarc_crush *state,
-                                        bool is_string) {
+static void xx_seaarc_crush_update_mode(xx_seaarc_crush *state, bool is_string)
+{
     bool literal_mode;
 
     if (state->ring[state->ring_position] && state->string_count != 0U) {
@@ -1675,8 +1634,8 @@ static void xx_seaarc_crush_update_mode(xx_seaarc_crush *state,
 
 /* Writes the string for @p symbol into state->stack in REVERSE order and
  * returns its length, or 0 on a malformed chain. */
-static uint32_t xx_seaarc_crush_reversed(xx_seaarc_crush *state,
-                                         uint32_t symbol) {
+static uint32_t xx_seaarc_crush_reversed(xx_seaarc_crush *state, uint32_t symbol)
+{
     uint32_t length = 0U;
 
     while (symbol < state->table_size) {
@@ -1691,8 +1650,8 @@ static uint32_t xx_seaarc_crush_reversed(xx_seaarc_crush *state,
     return 0U;
 }
 
-static bool xx_seaarc_crush_first_byte(const xx_seaarc_crush *state,
-                                       uint32_t symbol, uint8_t *value) {
+static bool xx_seaarc_crush_first_byte(const xx_seaarc_crush *state, uint32_t symbol, uint8_t *value)
+{
     uint32_t depth = 0U;
 
     while (symbol < state->table_size) {
@@ -1709,7 +1668,8 @@ static bool xx_seaarc_crush_first_byte(const xx_seaarc_crush *state,
     return false;
 }
 
-static bool xx_seaarc_crush_add(xx_seaarc_crush *state, uint32_t symbol) {
+static bool xx_seaarc_crush_add(xx_seaarc_crush *state, uint32_t symbol)
+{
     uint8_t first;
     uint32_t slot;
 
@@ -1718,9 +1678,7 @@ static bool xx_seaarc_crush_add(xx_seaarc_crush *state, uint32_t symbol) {
         state->has_previous = true;
         return true;
     }
-    if (!xx_seaarc_crush_first_byte(
-            state, symbol == state->table_size ? state->previous : symbol,
-            &first)) {
+    if (!xx_seaarc_crush_first_byte(state, symbol == state->table_size ? state->previous : symbol, &first)) {
         return false;
     }
     if (state->table_size < XX_SEAARC_CRUSH_TABLE) {
@@ -1749,19 +1707,19 @@ static bool xx_seaarc_crush_add(xx_seaarc_crush *state, uint32_t symbol) {
     return true;
 }
 
-static void xx_seaarc_crush_check_width(xx_seaarc_crush *state) {
+static void xx_seaarc_crush_check_width(xx_seaarc_crush *state)
+{
     uint32_t added = state->table_size - XX_SEAARC_CRUSH_RESERVED;
 
-    if (added >= state->next_bump &&
-        state->code_bits < XX_SEAARC_CRUSH_MAX_BITS) {
+    if (added >= state->next_bump && state->code_bits < XX_SEAARC_CRUSH_MAX_BITS) {
         ++state->code_bits;
         state->next_bump = UINT32_C(1) << state->code_bits;
         if (!state->literal_mode) state->next_bump -= 0x100U;
     }
 }
 
-static bool xx_seaarc_decode_crushed(xx_seaarc_source *source,
-                                     xx_seaarc_sink *sink, xx_pd_struct *pd) {
+static bool xx_seaarc_decode_crushed(xx_seaarc_source *source, xx_seaarc_sink *sink, xx_pd_struct *pd)
+{
     xx_seaarc_crush *state;
     uint32_t index;
     uint32_t tick = 0U;
@@ -1795,8 +1753,7 @@ static bool xx_seaarc_decode_crushed(xx_seaarc_source *source,
         }
         if (symbol < state->table_size) {
             if (!xx_seaarc_crush_mark_used(state, symbol)) goto done;
-        } else if (!state->has_previous ||
-                   !xx_seaarc_crush_mark_used(state, state->previous)) {
+        } else if (!state->has_previous || !xx_seaarc_crush_mark_used(state, state->previous)) {
             goto done;
         }
         xx_seaarc_crush_update_mode(state, symbol >= 256U);
@@ -1804,8 +1761,7 @@ static bool xx_seaarc_decode_crushed(xx_seaarc_source *source,
         if (symbol == state->table_size) {
             /* The string being defined: previous + its own first byte. */
             uint8_t head;
-            if (!state->has_previous ||
-                state->table_size >= XX_SEAARC_CRUSH_TABLE) {
+            if (!state->has_previous || state->table_size >= XX_SEAARC_CRUSH_TABLE) {
                 goto done;
             }
             length = xx_seaarc_crush_reversed(state, state->previous);
@@ -1850,7 +1806,8 @@ done:
 #define XX_SEAARC_DISTILL_WINDOW 8192U
 #define XX_SEAARC_DISTILL_EOF 256U
 
-static uint32_t xx_seaarc_distill_offset_length(uint32_t symbol) {
+static uint32_t xx_seaarc_distill_offset_length(uint32_t symbol)
+{
     if (symbol == 0U) return 3U;
     if (symbol < 4U) return 4U;
     if (symbol < 12U) return 5U;
@@ -1859,15 +1816,11 @@ static uint32_t xx_seaarc_distill_offset_length(uint32_t symbol) {
     return 8U;
 }
 
-static bool xx_seaarc_distill_offset_symbol(xx_seaarc_source *source,
-                                            uint32_t *symbol) {
-    static const uint8_t codes[64] = {
-        0x00, 0x02, 0x04, 0x0c, 0x01, 0x06, 0x0a, 0x0e, 0x11, 0x16, 0x1a,
-        0x1e, 0x05, 0x09, 0x0d, 0x15, 0x19, 0x1d, 0x25, 0x29, 0x2d, 0x35,
-        0x39, 0x3d, 0x03, 0x07, 0x0b, 0x13, 0x17, 0x1b, 0x23, 0x27, 0x2b,
-        0x33, 0x37, 0x3b, 0x43, 0x47, 0x4b, 0x53, 0x57, 0x5b, 0x63, 0x67,
-        0x6b, 0x73, 0x77, 0x7b, 0x0f, 0x1f, 0x2f, 0x3f, 0x4f, 0x5f, 0x6f,
-        0x7f, 0x8f, 0x9f, 0xaf, 0xbf, 0xcf, 0xdf, 0xef, 0xff};
+static bool xx_seaarc_distill_offset_symbol(xx_seaarc_source *source, uint32_t *symbol)
+{
+    static const uint8_t codes[64] = {0x00, 0x02, 0x04, 0x0c, 0x01, 0x06, 0x0a, 0x0e, 0x11, 0x16, 0x1a, 0x1e, 0x05, 0x09, 0x0d, 0x15, 0x19, 0x1d, 0x25, 0x29, 0x2d, 0x35,
+                                      0x39, 0x3d, 0x03, 0x07, 0x0b, 0x13, 0x17, 0x1b, 0x23, 0x27, 0x2b, 0x33, 0x37, 0x3b, 0x43, 0x47, 0x4b, 0x53, 0x57, 0x5b, 0x63, 0x67,
+                                      0x6b, 0x73, 0x77, 0x7b, 0x0f, 0x1f, 0x2f, 0x3f, 0x4f, 0x5f, 0x6f, 0x7f, 0x8f, 0x9f, 0xaf, 0xbf, 0xcf, 0xdf, 0xef, 0xff};
     uint32_t code = 0U;
     uint32_t length;
 
@@ -1877,8 +1830,7 @@ static bool xx_seaarc_distill_offset_symbol(xx_seaarc_source *source,
         if (!xx_seaarc_source_bits(source, 1U, &bit)) return false;
         if (bit) code |= UINT32_C(1) << (length - 1U);
         for (candidate = 0U; candidate < 64U; ++candidate) {
-            if (xx_seaarc_distill_offset_length(candidate) == length &&
-                codes[candidate] == code) {
+            if (xx_seaarc_distill_offset_length(candidate) == length && codes[candidate] == code) {
                 *symbol = candidate;
                 return true;
             }
@@ -1887,7 +1839,8 @@ static bool xx_seaarc_distill_offset_symbol(xx_seaarc_source *source,
     return false;
 }
 
-static uint32_t xx_seaarc_distill_extra_bits(size_t position) {
+static uint32_t xx_seaarc_distill_extra_bits(size_t position)
+{
     if (position >= 0x0fc4U) return 7U;
     if (position >= 0x07c4U) return 6U;
     if (position >= 0x03c4U) return 5U;
@@ -1901,8 +1854,8 @@ static uint32_t xx_seaarc_distill_extra_bits(size_t position) {
 /* Every pair reachable from the root must be a valid pair index, and no pair
  * may recur on its own path (a shared pair is fine). Iterative DFS with
  * three colours, so a hostile tree cannot recurse or loop. */
-static bool xx_seaarc_distill_tree_valid(const uint16_t *nodes,
-                                         uint32_t count) {
+static bool xx_seaarc_distill_tree_valid(const uint16_t *nodes, uint32_t count)
+{
     uint8_t colors[XX_SEAARC_DISTILL_MAX_NODES];
     uint16_t stack_node[XX_SEAARC_DISTILL_MAX_NODES];
     uint8_t stack_branch[XX_SEAARC_DISTILL_MAX_NODES];
@@ -1941,9 +1894,8 @@ static bool xx_seaarc_distill_tree_valid(const uint16_t *nodes,
     return true;
 }
 
-static bool xx_seaarc_distill_symbol(xx_seaarc_source *source,
-                                     const uint16_t *nodes, uint32_t count,
-                                     uint32_t *symbol) {
+static bool xx_seaarc_distill_symbol(xx_seaarc_source *source, const uint16_t *nodes, uint32_t count, uint32_t *symbol)
+{
     uint32_t node = count - 2U;
     uint32_t depth;
 
@@ -1963,9 +1915,8 @@ static bool xx_seaarc_distill_symbol(xx_seaarc_source *source,
     return false;
 }
 
-static bool xx_seaarc_decode_distilled(xx_seaarc_source *source,
-                                       xx_seaarc_sink *sink,
-                                       xx_pd_struct *pd) {
+static bool xx_seaarc_decode_distilled(xx_seaarc_source *source, xx_seaarc_sink *sink, xx_pd_struct *pd)
+{
     uint16_t nodes[XX_SEAARC_DISTILL_MAX_NODES];
     uint8_t *window;
     uint32_t count;
@@ -1975,9 +1926,8 @@ static bool xx_seaarc_decode_distilled(xx_seaarc_source *source,
     uint32_t tick = 0U;
     bool result = false;
 
-    if (!xx_seaarc_source_bits(source, 16U, &count) ||
-        !xx_seaarc_source_bits(source, 8U, &width) || count < 2U ||
-        count > XX_SEAARC_DISTILL_MAX_NODES || width < 1U || width > 12U) {
+    if (!xx_seaarc_source_bits(source, 16U, &count) || !xx_seaarc_source_bits(source, 8U, &width) || count < 2U || count > XX_SEAARC_DISTILL_MAX_NODES || width < 1U ||
+        width > 12U) {
         return false;
     }
     for (index = 0U; index < count; ++index) {
@@ -1999,8 +1949,7 @@ static bool xx_seaarc_decode_distilled(xx_seaarc_source *source,
         if (symbol < 256U) {
             if (!xx_seaarc_sink_put(sink, (uint8_t)symbol)) goto done;
             window[window_position] = (uint8_t)symbol;
-            window_position =
-                (window_position + 1U) & (XX_SEAARC_DISTILL_WINDOW - 1U);
+            window_position = (window_position + 1U) & (XX_SEAARC_DISTILL_WINDOW - 1U);
         } else if (symbol == XX_SEAARC_DISTILL_EOF) {
             break;
         } else {
@@ -2019,15 +1968,13 @@ static bool xx_seaarc_decode_distilled(xx_seaarc_source *source,
             if (!xx_seaarc_source_bits(source, extra_bits, &extra)) goto done;
             distance = (offset_symbol << extra_bits) | extra;
             if (distance >= XX_SEAARC_DISTILL_WINDOW) goto done;
-            from = (window_position - 1U - distance) &
-                   (XX_SEAARC_DISTILL_WINDOW - 1U);
+            from = (window_position - 1U - distance) & (XX_SEAARC_DISTILL_WINDOW - 1U);
             for (copied = 0U; copied < length; ++copied) {
                 uint8_t value = window[from];
                 from = (from + 1U) & (XX_SEAARC_DISTILL_WINDOW - 1U);
                 if (!xx_seaarc_sink_put(sink, value)) goto done;
                 window[window_position] = value;
-                window_position =
-                    (window_position + 1U) & (XX_SEAARC_DISTILL_WINDOW - 1U);
+                window_position = (window_position + 1U) & (XX_SEAARC_DISTILL_WINDOW - 1U);
             }
         }
     }
@@ -2040,29 +1987,28 @@ done:
 
 /* ----------------------------------------------------------- dispatch -- */
 
-static uint16_t xx_seaarc_crc16(const uint8_t *data, size_t size) {
+static uint16_t xx_seaarc_crc16(const uint8_t *data, size_t size)
+{
     return xx_crc16_arc_calc(0U, data, size);
 }
 
 /* Read a member's payload into a fresh buffer. */
-static uint8_t *xx_seaarc_load(Abstractformat *self, int64_t data_offset,
-                               int64_t size) {
+static uint8_t *xx_seaarc_load(Abstractformat *self, int64_t data_offset, int64_t size)
+{
     uint8_t *packed;
 
     if (size < 0 || (uint64_t)size > (uint64_t)SIZE_MAX) return NULL;
     packed = (uint8_t *)xx_mem_alloc(size != 0 ? (size_t)size : 1U);
     if (!packed) return NULL;
-    if (size != 0 &&
-        !xx_seaarc_read_at(self, data_offset, packed, (size_t)size)) {
+    if (size != 0 && !xx_seaarc_read_at(self, data_offset, packed, (size_t)size)) {
         xx_mem_free(packed);
         return NULL;
     }
     return packed;
 }
 
-static bool xx_seaarc_decode(Abstractformat *self,
-                             const xx_seaarc_member *member, uint8_t **out,
-                             size_t *out_size, xx_pd_struct *pd) {
+static bool xx_seaarc_decode(Abstractformat *self, const xx_seaarc_member *member, uint8_t **out, size_t *out_size, xx_pd_struct *pd)
+{
     xx_seaarc_source source;
     xx_seaarc_sink sink;
     uint8_t *packed;
@@ -2074,29 +2020,21 @@ static bool xx_seaarc_decode(Abstractformat *self,
     *out_size = 0U;
     if (!self || !member) return false;
     if (pd && xx_pd_is_stopped(pd)) return false;
-    if (member->compressed_size < 0 || member->uncompressed_size < 0 ||
-        member->compressed_size > XX_SEAARC_MAX_DECODED ||
+    if (member->compressed_size < 0 || member->uncompressed_size < 0 || member->compressed_size > XX_SEAARC_MAX_DECODED ||
         member->uncompressed_size > XX_SEAARC_MAX_DECODED) {
         return false;
     }
-    if (!xx_seaarc_method_valid((uint8_t)member->method) ||
-        member->method > 0xFFU) {
+    if (!xx_seaarc_method_valid((uint8_t)member->method) || member->method > 0xFFU) {
         return false;
     }
 
-    packed = xx_seaarc_load(self, member->data_offset,
-                            member->compressed_size);
+    packed = xx_seaarc_load(self, member->data_offset, member->compressed_size);
     if (!packed) return false;
     packed_size = (size_t)member->compressed_size;
 
-    run_length = member->method == XX_SEAARC_METHOD_PACKED ||
-                 member->method == XX_SEAARC_METHOD_SQUEEZED ||
-                 member->method == XX_SEAARC_METHOD_CRUNCHED2 ||
-                 member->method == XX_SEAARC_METHOD_CRUNCHED3 ||
-                 member->method == XX_SEAARC_METHOD_CRUNCHED4 ||
-                 member->method == XX_SEAARC_METHOD_CRUSHED;
-    if (!xx_seaarc_sink_init(&sink, (size_t)member->uncompressed_size,
-                             packed_size, run_length)) {
+    run_length = member->method == XX_SEAARC_METHOD_PACKED || member->method == XX_SEAARC_METHOD_SQUEEZED || member->method == XX_SEAARC_METHOD_CRUNCHED2 ||
+                 member->method == XX_SEAARC_METHOD_CRUNCHED3 || member->method == XX_SEAARC_METHOD_CRUNCHED4 || member->method == XX_SEAARC_METHOD_CRUSHED;
+    if (!xx_seaarc_sink_init(&sink, (size_t)member->uncompressed_size, packed_size, run_length)) {
         xx_mem_free(packed);
         return false;
     }
@@ -2113,32 +2051,17 @@ static bool xx_seaarc_decode(Abstractformat *self,
             }
             break;
         }
-        case XX_SEAARC_METHOD_PACKED:
-            decoded = xx_seaarc_decode_packed(&source, &sink, pd);
-            break;
-        case XX_SEAARC_METHOD_SQUEEZED:
-            decoded = xx_seaarc_decode_squeezed(&source, &sink, pd);
-            break;
+        case XX_SEAARC_METHOD_PACKED: decoded = xx_seaarc_decode_packed(&source, &sink, pd); break;
+        case XX_SEAARC_METHOD_SQUEEZED: decoded = xx_seaarc_decode_squeezed(&source, &sink, pd); break;
         case XX_SEAARC_METHOD_CRUNCHED1:
         case XX_SEAARC_METHOD_CRUNCHED2:
-        case XX_SEAARC_METHOD_CRUNCHED3:
-            decoded = xx_seaarc_decode_hashed(&source, &sink, member->method,
-                                              pd);
-            break;
+        case XX_SEAARC_METHOD_CRUNCHED3: decoded = xx_seaarc_decode_hashed(&source, &sink, member->method, pd); break;
         case XX_SEAARC_METHOD_CRUNCHED4:
         case XX_SEAARC_METHOD_SQUASHED:
-        case XX_SEAARC_METHOD_COMPRESSED:
-            decoded = xx_seaarc_decode_lzw(&source, &sink, member->method, pd);
-            break;
-        case XX_SEAARC_METHOD_CRUSHED:
-            decoded = xx_seaarc_decode_crushed(&source, &sink, pd);
-            break;
-        case XX_SEAARC_METHOD_DISTILLED:
-            decoded = xx_seaarc_decode_distilled(&source, &sink, pd);
-            break;
-        default:
-            decoded = false;
-            break;
+        case XX_SEAARC_METHOD_COMPRESSED: decoded = xx_seaarc_decode_lzw(&source, &sink, member->method, pd); break;
+        case XX_SEAARC_METHOD_CRUSHED: decoded = xx_seaarc_decode_crushed(&source, &sink, pd); break;
+        case XX_SEAARC_METHOD_DISTILLED: decoded = xx_seaarc_decode_distilled(&source, &sink, pd); break;
+        default: decoded = false; break;
     }
     xx_mem_free(packed);
 
@@ -2146,10 +2069,7 @@ static bool xx_seaarc_decode(Abstractformat *self,
      * buffer is handed over, so it is a failure here, never a partial
      * success -- and so is a CRC mismatch (a wrong decoder, a trimmed ARC 7
      * member under method 10, or an ARC-encrypted member). */
-    if (!decoded || sink.failed || sink.in_repeat ||
-        sink.size != sink.limit ||
-        xx_seaarc_crc16(sink.data, sink.size) != member->crc ||
-        (pd && xx_pd_is_stopped(pd))) {
+    if (!decoded || sink.failed || sink.in_repeat || sink.size != sink.limit || xx_seaarc_crc16(sink.data, sink.size) != member->crc || (pd && xx_pd_is_stopped(pd))) {
         xx_mem_free(sink.data);
         return false;
     }
@@ -2160,8 +2080,8 @@ static bool xx_seaarc_decode(Abstractformat *self,
 
 /* ---------------------------------------------------------- lifecycle --- */
 
-void xx_seaarc_init(xx_seaarc *archive, xx_io_device *device,
-                    int64_t base_address) {
+void xx_seaarc_init(xx_seaarc *archive, xx_io_device *device, int64_t base_address)
+{
     if (!archive) return;
     xx_mem_zero(archive, sizeof(*archive));
     xx_format_init(&archive->format, device, base_address);
@@ -2174,22 +2094,17 @@ void xx_seaarc_init(xx_seaarc *archive, xx_io_device *device,
     archive->format.check_is_valid = xx_seaarc_check_is_valid;
     archive->format.handle_base_info = xx_seaarc_handle_base_info;
     archive->format.get_format_size = xx_seaarc_get_format_size;
-    archive->format.get_number_of_archive_records =
-        xx_seaarc_get_number_of_archive_records;
-    archive->format.create_archive_records_reading =
-        xx_seaarc_create_archive_records_reading;
-    archive->format.get_current_archive_record =
-        xx_seaarc_get_current_archive_record;
-    archive->format.unpack_current_archive_record =
-        xx_seaarc_unpack_current_archive_record;
-    archive->format.archive_record_move_to_next =
-        xx_seaarc_archive_record_move_to_next;
-    archive->format.free_archive_records_reading =
-        xx_seaarc_free_archive_records_reading;
+    archive->format.get_number_of_archive_records = xx_seaarc_get_number_of_archive_records;
+    archive->format.create_archive_records_reading = xx_seaarc_create_archive_records_reading;
+    archive->format.get_current_archive_record = xx_seaarc_get_current_archive_record;
+    archive->format.unpack_current_archive_record = xx_seaarc_unpack_current_archive_record;
+    archive->format.archive_record_move_to_next = xx_seaarc_archive_record_move_to_next;
+    archive->format.free_archive_records_reading = xx_seaarc_free_archive_records_reading;
     archive->format.destroy = xx_seaarc_vtable_destroy;
 }
 
-xx_seaarc *xx_seaarc_create(xx_io_device *device, int64_t base_address) {
+xx_seaarc *xx_seaarc_create(xx_io_device *device, int64_t base_address)
+{
     xx_seaarc *archive = (xx_seaarc *)xx_mem_alloc(sizeof(*archive));
 
     if (!archive) return NULL;
@@ -2197,7 +2112,8 @@ xx_seaarc *xx_seaarc_create(xx_io_device *device, int64_t base_address) {
     return archive;
 }
 
-void xx_seaarc_destroy(xx_seaarc *archive) {
+void xx_seaarc_destroy(xx_seaarc *archive)
+{
     if (!archive) return;
     /* Not xx_format_destroy: it dispatches through format.destroy, which is
      * the wrapper below, and the two would recurse. */
@@ -2206,19 +2122,22 @@ void xx_seaarc_destroy(xx_seaarc *archive) {
     archive->number_of_records = 0U;
 }
 
-void xx_seaarc_free(xx_seaarc *archive) {
+void xx_seaarc_free(xx_seaarc *archive)
+{
     if (!archive) return;
     xx_seaarc_destroy(archive);
     xx_mem_free(archive);
 }
 
-static void xx_seaarc_vtable_destroy(Abstractformat *self) {
+static void xx_seaarc_vtable_destroy(Abstractformat *self)
+{
     xx_seaarc_destroy((xx_seaarc *)self);
 }
 
 /* -------------------------------------------------------------- format -- */
 
-bool xx_seaarc_check_is_valid(Abstractformat *self, xx_pd_struct *pd) {
+bool xx_seaarc_check_is_valid(Abstractformat *self, xx_pd_struct *pd)
+{
     xx_seaarc_stream *stream;
 
     if (!self || (pd && xx_pd_is_stopped(pd))) return false;
@@ -2228,7 +2147,8 @@ bool xx_seaarc_check_is_valid(Abstractformat *self, xx_pd_struct *pd) {
     return true;
 }
 
-bool xx_seaarc_handle_base_info(Abstractformat *self, xx_pd_struct *pd) {
+bool xx_seaarc_handle_base_info(Abstractformat *self, xx_pd_struct *pd)
+{
     xx_seaarc *archive = (xx_seaarc *)self;
     xx_seaarc_stream *stream;
 
@@ -2249,18 +2169,17 @@ bool xx_seaarc_handle_base_info(Abstractformat *self, xx_pd_struct *pd) {
     return true;
 }
 
-int64_t xx_seaarc_get_format_size(Abstractformat *self, xx_pd_struct *pd) {
-    if (!self ||
-        (!self->base_info_handled && !xx_format_handle_base_info(self, pd))) {
+int64_t xx_seaarc_get_format_size(Abstractformat *self, xx_pd_struct *pd)
+{
+    if (!self || (!self->base_info_handled && !xx_format_handle_base_info(self, pd))) {
         return 0;
     }
     return self->is_valid ? self->format_size : 0;
 }
 
-uint64_t xx_seaarc_get_number_of_archive_records(Abstractformat *self,
-                                                 xx_pd_struct *pd) {
-    if (!self ||
-        (!self->base_info_handled && !xx_format_handle_base_info(self, pd))) {
+uint64_t xx_seaarc_get_number_of_archive_records(Abstractformat *self, xx_pd_struct *pd)
+{
+    if (!self || (!self->base_info_handled && !xx_format_handle_base_info(self, pd))) {
         return 0U;
     }
     return self->is_valid ? ((xx_seaarc *)self)->number_of_records : 0U;
@@ -2268,8 +2187,8 @@ uint64_t xx_seaarc_get_number_of_archive_records(Abstractformat *self,
 
 /* ------------------------------------------------------------- records -- */
 
-static bool xx_seaarc_set_record(xx_archive_record *record,
-                                 const xx_seaarc_member *member) {
+static bool xx_seaarc_set_record(xx_archive_record *record, const xx_seaarc_member *member)
+{
     xx_archive_record_cleanup(record);
     xx_archive_record_init(record);
     record->header_offset = member->header_offset;
@@ -2277,34 +2196,24 @@ static bool xx_seaarc_set_record(xx_archive_record *record,
     record->data_offset = member->data_offset;
     record->compressed_size = member->compressed_size;
     return xx_archive_record_set_original_name(record, member->name) &&
-           xx_archive_record_set_meta_u64(record, XX_META_ID_COMPRESSED_SIZE,
-                                          (uint64_t)member->compressed_size) &&
-           xx_archive_record_set_meta_u64(
-               record, XX_META_ID_UNCOMPRESSED_SIZE,
-               (uint64_t)member->uncompressed_size) &&
-           xx_archive_record_set_meta_u64(record, XX_META_ID_COMPRESSION_METHOD,
-                                          member->method) &&
-           xx_archive_record_set_meta_u64(record, XX_META_ID_TIMESTAMP,
-                                          member->timestamp) &&
-           xx_archive_record_set_meta_bool(record, XX_META_ID_IS_FOLDER,
-                                           member->is_folder) &&
-           xx_archive_record_set_meta_bool(record, XX_META_ID_IS_ENCRYPTED,
-                                           false);
+           xx_archive_record_set_meta_u64(record, XX_META_ID_COMPRESSED_SIZE, (uint64_t)member->compressed_size) &&
+           xx_archive_record_set_meta_u64(record, XX_META_ID_UNCOMPRESSED_SIZE, (uint64_t)member->uncompressed_size) &&
+           xx_archive_record_set_meta_u64(record, XX_META_ID_COMPRESSION_METHOD, member->method) &&
+           xx_archive_record_set_meta_u64(record, XX_META_ID_TIMESTAMP, member->timestamp) &&
+           xx_archive_record_set_meta_bool(record, XX_META_ID_IS_FOLDER, member->is_folder) && xx_archive_record_set_meta_bool(record, XX_META_ID_IS_ENCRYPTED, false);
 }
 
-static bool xx_seaarc_copy_options(xx_list_s *target,
-                                   const xx_list_s *options) {
+static bool xx_seaarc_copy_options(xx_list_s *target, const xx_list_s *options)
+{
     size_t index;
 
     if (!target || !options) return options == NULL;
     for (index = 0U; index < options->count; ++index) {
-        const xx_meta *source =
-            (const xx_meta *)xx_list_at((const xx_list_t *)options, index);
+        const xx_meta *source = (const xx_meta *)xx_list_at((const xx_list_t *)options, index);
         xx_meta copied;
         if (!source) continue;
         xx_meta_init(&copied, source->meta_id);
-        if (!xx_var_copy(&copied.var, &source->var) ||
-            !xx_list_append(target, &copied)) {
+        if (!xx_var_copy(&copied.var, &source->var) || !xx_list_append(target, &copied)) {
             xx_meta_cleanup(&copied);
             return false;
         }
@@ -2312,21 +2221,20 @@ static bool xx_seaarc_copy_options(xx_list_s *target,
     return true;
 }
 
-static const xx_var *xx_seaarc_get_option(const xx_list_s *options,
-                                          uint32_t meta_id) {
+static const xx_var *xx_seaarc_get_option(const xx_list_s *options, uint32_t meta_id)
+{
     size_t index;
 
     if (!options) return NULL;
     for (index = 0U; index < options->count; ++index) {
-        const xx_meta *meta =
-            (const xx_meta *)xx_list_at((const xx_list_t *)options, index);
+        const xx_meta *meta = (const xx_meta *)xx_list_at((const xx_list_t *)options, index);
         if (meta && meta->meta_id == meta_id) return &meta->var;
     }
     return NULL;
 }
 
-xx_archive_record_state *xx_seaarc_create_archive_records_reading(
-    Abstractformat *self, const xx_list_s *options, xx_pd_struct *pd) {
+xx_archive_record_state *xx_seaarc_create_archive_records_reading(Abstractformat *self, const xx_list_s *options, xx_pd_struct *pd)
+{
     xx_seaarc_stream *stream;
     xx_archive_record_state *state;
 
@@ -2342,9 +2250,7 @@ xx_archive_record_state *xx_seaarc_create_archive_records_reading(
     state->internal_state = stream;
     state->free_internal = xx_seaarc_stream_free;
     state->total_records = (int64_t)stream->count;
-    if (!xx_seaarc_copy_options(&state->options, options) ||
-        (stream->count != 0U &&
-         !xx_seaarc_set_record(&state->current_record, &stream->items[0]))) {
+    if (!xx_seaarc_copy_options(&state->options, options) || (stream->count != 0U && !xx_seaarc_set_record(&state->current_record, &stream->items[0]))) {
         xx_archive_record_state_free(state);
         return NULL;
     }
@@ -2353,20 +2259,16 @@ xx_archive_record_state *xx_seaarc_create_archive_records_reading(
     return state;
 }
 
-const xx_archive_record *xx_seaarc_get_current_archive_record(
-    Abstractformat *self, xx_archive_record_state *state) {
-    return self && state && state->format == self && state->has_record
-               ? &state->current_record
-               : NULL;
+const xx_archive_record *xx_seaarc_get_current_archive_record(Abstractformat *self, xx_archive_record_state *state)
+{
+    return self && state && state->format == self && state->has_record ? &state->current_record : NULL;
 }
 
-bool xx_seaarc_archive_record_move_to_next(Abstractformat *self,
-                                           xx_archive_record_state *state,
-                                           xx_pd_struct *pd) {
+bool xx_seaarc_archive_record_move_to_next(Abstractformat *self, xx_archive_record_state *state, xx_pd_struct *pd)
+{
     xx_seaarc_stream *stream;
 
-    if (!self || !state || state->format != self || !state->has_record ||
-        (pd && xx_pd_is_stopped(pd))) {
+    if (!self || !state || state->format != self || !state->has_record || (pd && xx_pd_is_stopped(pd))) {
         return false;
     }
     stream = (xx_seaarc_stream *)state->internal_state;
@@ -2378,14 +2280,12 @@ bool xx_seaarc_archive_record_move_to_next(Abstractformat *self,
     }
     ++stream->index;
     ++state->current_index;
-    state->has_record = xx_seaarc_set_record(&state->current_record,
-                                             &stream->items[stream->index]);
+    state->has_record = xx_seaarc_set_record(&state->current_record, &stream->items[stream->index]);
     return state->has_record;
 }
 
-bool xx_seaarc_unpack_current_archive_record(Abstractformat *self,
-                                             xx_archive_record_state *state,
-                                             xx_pd_struct *pd) {
+bool xx_seaarc_unpack_current_archive_record(Abstractformat *self, xx_archive_record_state *state, xx_pd_struct *pd)
+{
     xx_seaarc_stream *stream;
     const xx_seaarc_member *member;
     const xx_var *path_option;
@@ -2397,8 +2297,7 @@ bool xx_seaarc_unpack_current_archive_record(Abstractformat *self,
     bool result = false;
     bool created = false;
 
-    if (!self || !state || state->format != self || !state->has_record ||
-        (pd && xx_pd_is_stopped(pd))) {
+    if (!self || !state || state->format != self || !state->has_record || (pd && xx_pd_is_stopped(pd))) {
         return false;
     }
     stream = (xx_seaarc_stream *)state->internal_state;
@@ -2406,8 +2305,7 @@ bool xx_seaarc_unpack_current_archive_record(Abstractformat *self,
     member = &stream->items[stream->index];
     if (!xx_seaarc_output_name_safe(member->name)) return false;
 
-    path_option = xx_seaarc_get_option(&state->options,
-                                       XX_META_ID_OPT_UNPACK_PATH);
+    path_option = xx_seaarc_get_option(&state->options, XX_META_ID_OPT_UNPACK_PATH);
     if (!path_option) {
         /* No destination: decode and discard, which verifies the member
          * without writing anything. */
@@ -2416,11 +2314,9 @@ bool xx_seaarc_unpack_current_archive_record(Abstractformat *self,
         xx_mem_free(plain);
         return result;
     }
-    if (path_option->type == XX_VAR_TYPE_STRING ||
-        path_option->type == XX_VAR_TYPE_STRING_VIEW) {
+    if (path_option->type == XX_VAR_TYPE_STRING || path_option->type == XX_VAR_TYPE_STRING_VIEW) {
         base_path = xx_var_get_str(path_option);
-    } else if (path_option->type == XX_VAR_TYPE_WSTRING ||
-               path_option->type == XX_VAR_TYPE_WSTRING_VIEW) {
+    } else if (path_option->type == XX_VAR_TYPE_WSTRING || path_option->type == XX_VAR_TYPE_WSTRING_VIEW) {
         converted_path = xx_str_unicode_to_utf8(xx_var_get_wstr(path_option));
         base_path = converted_path;
     }
@@ -2428,9 +2324,7 @@ bool xx_seaarc_unpack_current_archive_record(Abstractformat *self,
         xx_str_free(converted_path);
         return false;
     }
-    if (base_path[0] != '\0' &&
-        base_path[xx_str_len(base_path) - 1U] != '/' &&
-        base_path[xx_str_len(base_path) - 1U] != '\\') {
+    if (base_path[0] != '\0' && base_path[xx_str_len(base_path) - 1U] != '/' && base_path[xx_str_len(base_path) - 1U] != '\\') {
         target_path = xx_str_concat3(base_path, "/", member->name);
     } else {
         target_path = xx_str_concat(base_path, member->name);
@@ -2445,8 +2339,7 @@ bool xx_seaarc_unpack_current_archive_record(Abstractformat *self,
     }
     /* Decode before creating anything, so a member that fails its CRC
      * leaves no empty file behind. */
-    if (!xx_seaarc_decode(self, member, &plain, &plain_size, pd) ||
-        !xx_store_create_dirs_a(target_path, false)) {
+    if (!xx_seaarc_decode(self, member, &plain, &plain_size, pd) || !xx_store_create_dirs_a(target_path, false)) {
         xx_mem_free(plain);
         xx_str_free(target_path);
         return false;
@@ -2458,8 +2351,7 @@ bool xx_seaarc_unpack_current_archive_record(Abstractformat *self,
         created = output != NULL;
         result = output != NULL;
         while (result && completed < plain_size) {
-            ssize_t sent = xx_io_write(output, plain + completed,
-                                       plain_size - completed);
+            ssize_t sent = xx_io_write(output, plain + completed, plain_size - completed);
             if (sent <= 0 || (size_t)sent > plain_size - completed) {
                 result = false;
                 break;
@@ -2474,8 +2366,8 @@ bool xx_seaarc_unpack_current_archive_record(Abstractformat *self,
     return result;
 }
 
-void xx_seaarc_free_archive_records_reading(Abstractformat *self,
-                                            xx_archive_record_state *state) {
+void xx_seaarc_free_archive_records_reading(Abstractformat *self, xx_archive_record_state *state)
+{
     (void)self;
     xx_archive_record_state_free(state);
 }

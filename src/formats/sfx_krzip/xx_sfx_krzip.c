@@ -73,29 +73,28 @@
 
 /* --- small helpers --------------------------------------------------------- */
 
-static bool krz_read_at(xx_io_device *device, int64_t offset, void *buffer,
-                        size_t size) {
+static bool krz_read_at(xx_io_device *device, int64_t offset, void *buffer, size_t size)
+{
     size_t done = 0U;
-    if (!device || (!buffer && size != 0U) || offset < 0 ||
-        xx_io_seek64(device, offset, SEEK_SET) != 0)
-        return false;
+    if (!device || (!buffer && size != 0U) || offset < 0 || xx_io_seek64(device, offset, SEEK_SET) != 0) return false;
     while (done < size) {
-        ssize_t amount = xx_io_read(device, (uint8_t *)buffer + done,
-                                    size - done);
+        ssize_t amount = xx_io_read(device, (uint8_t *)buffer + done, size - done);
         if (amount <= 0 || (size_t)amount > size - done) return false;
         done += (size_t)amount;
     }
     return true;
 }
 
-static bool krz_stopped(xx_pd_struct *pd) {
+static bool krz_stopped(xx_pd_struct *pd)
+{
     return pd && xx_pd_is_stopped(pd);
 }
 
 /* --- keystream ------------------------------------------------------------- */
 
 /* One step per byte: state = state * 0x08088405 + 1, key = state >> 24. */
-static void krz_unmask(uint8_t *bytes, size_t size, uint32_t *state) {
+static void krz_unmask(uint8_t *bytes, size_t size, uint32_t *state)
+{
     uint32_t value = *state;
     size_t index;
     for (index = 0U; index < size; ++index) {
@@ -108,7 +107,8 @@ static void krz_unmask(uint8_t *bytes, size_t size, uint32_t *state) {
 /* The state after @p steps more bytes.  The step is x -> m*x + c; applying
  * it 2^k times is again affine, so squaring the map walks the bits of the
  * count (all arithmetic modulo 2^32). */
-static uint32_t krz_advance(uint32_t state, uint64_t steps) {
+static uint32_t krz_advance(uint32_t state, uint64_t steps)
+{
     uint32_t mul = KRZ_LCG_MUL, add = KRZ_LCG_ADD;
     while (steps != 0U) {
         if (steps & 1U) state = state * mul + add;
@@ -123,13 +123,12 @@ static uint32_t krz_advance(uint32_t state, uint64_t steps) {
 
 /* Windows-1252 0x80..0x9F.  The five undefined bytes keep their C1 code
  * point, which the name check refuses. */
-static const uint16_t krz_cp1252_high[32] = {
-    0x20ACU, 0x0081U, 0x201AU, 0x0192U, 0x201EU, 0x2026U, 0x2020U, 0x2021U,
-    0x02C6U, 0x2030U, 0x0160U, 0x2039U, 0x0152U, 0x008DU, 0x017DU, 0x008FU,
-    0x0090U, 0x2018U, 0x2019U, 0x201CU, 0x201DU, 0x2022U, 0x2013U, 0x2014U,
-    0x02DCU, 0x2122U, 0x0161U, 0x203AU, 0x0153U, 0x009DU, 0x017EU, 0x0178U};
+static const uint16_t krz_cp1252_high[32] = {0x20ACU, 0x0081U, 0x201AU, 0x0192U, 0x201EU, 0x2026U, 0x2020U, 0x2021U, 0x02C6U, 0x2030U, 0x0160U,
+                                             0x2039U, 0x0152U, 0x008DU, 0x017DU, 0x008FU, 0x0090U, 0x2018U, 0x2019U, 0x201CU, 0x201DU, 0x2022U,
+                                             0x2013U, 0x2014U, 0x02DCU, 0x2122U, 0x0161U, 0x203AU, 0x0153U, 0x009DU, 0x017EU, 0x0178U};
 
-static size_t krz_put_utf8(char *out, uint32_t code) {
+static size_t krz_put_utf8(char *out, uint32_t code)
+{
     if (code < 0x80U) {
         out[0] = (char)code;
         return 1U;
@@ -147,19 +146,15 @@ static size_t krz_put_utf8(char *out, uint32_t code) {
 
 /* A stored name to UTF-8 with '/' separators.  The walk has checked that it
  * holds no byte below 0x20. */
-static char *krz_name(const uint8_t *bytes, size_t length) {
+static char *krz_name(const uint8_t *bytes, size_t length)
+{
     char *out = (char *)xx_mem_alloc(length * 3U + 1U);
     size_t index, used = 0U;
     if (!out) return NULL;
     for (index = 0U; index < length; ++index) {
         uint8_t c = bytes[index];
-        if (c == '\\' || c == '/')
-            out[used++] = '/';
-        else
-            used += krz_put_utf8(out + used,
-                                 (c >= 0x80U && c < 0xA0U)
-                                     ? krz_cp1252_high[c - 0x80U]
-                                     : (uint32_t)c);
+        if (c == '\\' || c == '/') out[used++] = '/';
+        else used += krz_put_utf8(out + used, (c >= 0x80U && c < 0xA0U) ? krz_cp1252_high[c - 0x80U] : (uint32_t)c);
     }
     out[used] = 0;
     return out;
@@ -167,14 +162,14 @@ static char *krz_name(const uint8_t *bytes, size_t length) {
 
 /* --- output names ---------------------------------------------------------- */
 
-static char krz_upper(char c) {
+static char krz_upper(char c)
+{
     return (c >= 'a' && c <= 'z') ? (char)(c - 'a' + 'A') : c;
 }
 
-static bool krz_is_device_stem(const char *name, size_t stem) {
-    static const char *const devices[] = {"CON",    "PRN",     "AUX",
-                                          "NUL",    "CONIN$",  "CONOUT$",
-                                          "CLOCK$"};
+static bool krz_is_device_stem(const char *name, size_t stem)
+{
+    static const char *const devices[] = {"CON", "PRN", "AUX", "NUL", "CONIN$", "CONOUT$", "CLOCK$"};
     size_t k, i;
     for (k = 0U; k < sizeof(devices) / sizeof(devices[0]); ++k) {
         const char *word = devices[k];
@@ -183,10 +178,8 @@ static bool krz_is_device_stem(const char *name, size_t stem) {
         if (i == stem && word[i] == 0) return true;
     }
     if (stem == 4U && name[3] >= '0' && name[3] <= '9' &&
-        ((krz_upper(name[0]) == 'C' && krz_upper(name[1]) == 'O' &&
-          krz_upper(name[2]) == 'M') ||
-         (krz_upper(name[0]) == 'L' && krz_upper(name[1]) == 'P' &&
-          krz_upper(name[2]) == 'T')))
+        ((krz_upper(name[0]) == 'C' && krz_upper(name[1]) == 'O' && krz_upper(name[2]) == 'M') ||
+         (krz_upper(name[0]) == 'L' && krz_upper(name[1]) == 'P' && krz_upper(name[2]) == 'T')))
         return true;
     return false;
 }
@@ -196,7 +189,8 @@ static bool krz_is_device_stem(const char *name, size_t stem) {
  * nothing that climbs out), no drive colon or other character Windows
  * refuses, no C0/C1 control, no component that Windows would silently trim
  * (trailing dot or space), and no device name in any component. */
-static bool krz_safe_output_name(const char *name) {
+static bool krz_safe_output_name(const char *name)
+{
     size_t start = 0U, index = 0U;
     if (!name || !name[0]) return false;
     for (;;) {
@@ -204,19 +198,15 @@ static bool krz_safe_output_name(const char *name) {
         if (c == '/' || c == 0U) {
             size_t length = index - start, stem = 0U;
             if (length == 0U) return false;
-            if (name[index - 1U] == '.' || name[index - 1U] == ' ')
-                return false;
+            if (name[index - 1U] == '.' || name[index - 1U] == ' ') return false;
             while (stem < length && name[start + stem] != '.') ++stem;
             while (stem > 0U && name[start + stem - 1U] == ' ') --stem;
             if (krz_is_device_stem(name + start, stem)) return false;
             if (c == 0U) break;
             start = index + 1U;
-        } else if (c < 0x20U || c == 0x7fU || c == '\\' || c == ':' ||
-                   c == '*' || c == '?' || c == '"' || c == '<' || c == '>' ||
-                   c == '|') {
+        } else if (c < 0x20U || c == 0x7fU || c == '\\' || c == ':' || c == '*' || c == '?' || c == '"' || c == '<' || c == '>' || c == '|') {
             return false;
-        } else if (c == 0xC2U && (unsigned char)name[index + 1U] >= 0x80U &&
-                   (unsigned char)name[index + 1U] <= 0x9FU) {
+        } else if (c == 0xC2U && (unsigned char)name[index + 1U] >= 0x80U && (unsigned char)name[index + 1U] <= 0x9FU) {
             return false; /* U+0080..U+009F */
         }
         ++index;
@@ -227,7 +217,8 @@ static bool krz_safe_output_name(const char *name) {
 /* Case folding as NTFS does it for the characters a Windows-1252 name can
  * produce: ASCII, Latin-1 and the Windows-1252 letter pairs.  Every mapping
  * keeps the UTF-8 length, so names fold in place. */
-static void krz_fold(const char *name, char *out) {
+static void krz_fold(const char *name, char *out)
+{
     const unsigned char *in = (const unsigned char *)name;
     unsigned char *folded = (unsigned char *)out;
     size_t index = 0U;
@@ -246,19 +237,18 @@ static void krz_fold(const char *name, char *out) {
             index += 2U;
         } else if (c == 0xC5U && d != 0U) {
             folded[index] = c;
-            folded[index + 1U] = (d == 0xA1U || d == 0x93U || d == 0xBEU)
-                                     ? (unsigned char)(d - 1U) : d;
+            folded[index + 1U] = (d == 0xA1U || d == 0x93U || d == 0xBEU) ? (unsigned char)(d - 1U) : d;
             index += 2U;
         } else {
-            folded[index] = (c >= 'a' && c <= 'z') ? (unsigned char)(c - 0x20U)
-                                                   : c;
+            folded[index] = (c >= 'a' && c <= 'z') ? (unsigned char)(c - 0x20U) : c;
             ++index;
         }
     }
     folded[index] = 0U;
 }
 
-static uint32_t krz_hash(const char *folded) {
+static uint32_t krz_hash(const char *folded)
+{
     uint32_t hash = 2166136261U;
     for (; *folded; ++folded) {
         hash ^= (uint8_t)*folded;
@@ -269,7 +259,8 @@ static uint32_t krz_hash(const char *folded) {
 
 /* "<name>_<number>", the number going in front of the last component's
  * extension. */
-static char *krz_with_suffix(const char *name, size_t number) {
+static char *krz_with_suffix(const char *name, size_t number)
+{
     char digits[24];
     size_t count = 0U, length = xx_str_len(name), dot = length, index, used;
     char *out;
@@ -301,7 +292,7 @@ typedef struct krz_member_s {
     int64_t header_offset; /**< Relative to the base. */
     int64_t data_offset;   /**< Relative to the base. */
     uint32_t header_size;
-    uint32_t data_state;   /**< Keystream state before the first data byte. */
+    uint32_t data_state; /**< Keystream state before the first data byte. */
     uint32_t packed_size;
     uint32_t raw_size;
     uint32_t attributes;
@@ -309,9 +300,9 @@ typedef struct krz_member_s {
     uint16_t dos_time;
     uint16_t dos_date;
     uint32_t method;
-    bool safe;             /**< The name may be used as an output path. */
-    char *name;            /**< UTF-8, '/' separators, unique if safe. */
-    char *folded;          /**< Case-folded name, only while deduplicating. */
+    bool safe;    /**< The name may be used as an output path. */
+    char *name;   /**< UTF-8, '/' separators, unique if safe. */
+    char *folded; /**< Case-folded name, only while deduplicating. */
 } krz_member;
 
 typedef struct krz_info_s {
@@ -328,7 +319,8 @@ typedef struct krz_stream_s {
     size_t index;
 } krz_stream;
 
-static void krz_members_free(krz_member *items, size_t count) {
+static void krz_members_free(krz_member *items, size_t count)
+{
     size_t index;
     if (!items) return;
     for (index = 0U; index < count; ++index) {
@@ -338,7 +330,8 @@ static void krz_members_free(krz_member *items, size_t count) {
     xx_mem_free(items);
 }
 
-static void krz_stream_free(void *opaque) {
+static void krz_stream_free(void *opaque)
+{
     krz_stream *stream = (krz_stream *)opaque;
     if (!stream) return;
     krz_members_free(stream->items, stream->count);
@@ -350,9 +343,8 @@ static void krz_stream_free(void *opaque) {
  * the walk must end exactly where the final check begins.  With @p items
  * (room for @p capacity members) the members are also recorded, their
  * names converted but not yet deduplicated. */
-static bool krz_walk(xx_io_device *device, int64_t base, const krz_info *info,
-                     krz_member *items, uint32_t capacity, uint32_t *count,
-                     xx_pd_struct *pd) {
+static bool krz_walk(xx_io_device *device, int64_t base, const krz_info *info, krz_member *items, uint32_t capacity, uint32_t *count, xx_pd_struct *pd)
+{
     uint8_t record[2U + KRZ_MAX_NAME + KRZ_FIELDS_SIZE];
     const int64_t size = info->stream_size;
     int64_t position = 0;
@@ -362,37 +354,27 @@ static bool krz_walk(xx_io_device *device, int64_t base, const krz_info *info,
         uint32_t name_size, need, byte, packed, raw;
         const uint8_t *fields;
         int64_t data;
-        if (index >= KRZ_MAX_RECORDS || (items && index >= capacity))
-            return false;
+        if (index >= KRZ_MAX_RECORDS || (items && index >= capacity)) return false;
         if ((index & 0xFFU) == 0U && krz_stopped(pd)) return false;
-        if (size - position < (int64_t)(2U + 1U + KRZ_FIELDS_SIZE) ||
-            !krz_read_at(device, base + info->stream_at + position, record,
-                         2U))
-            return false;
+        if (size - position < (int64_t)(2U + 1U + KRZ_FIELDS_SIZE) || !krz_read_at(device, base + info->stream_at + position, record, 2U)) return false;
         krz_unmask(record, 2U, &state);
         name_size = xx_data_get_u16(record, 2, 0, false);
         if (name_size == 0U || name_size > KRZ_MAX_NAME) return false;
         name_total += name_size;
         if (name_total > KRZ_MAX_NAME_TOTAL) return false;
         need = name_size + KRZ_FIELDS_SIZE;
-        if ((int64_t)need > size - position - 2 ||
-            !krz_read_at(device, base + info->stream_at + position + 2,
-                         record + 2U, need))
-            return false;
+        if ((int64_t)need > size - position - 2 || !krz_read_at(device, base + info->stream_at + position + 2, record + 2U, need)) return false;
         krz_unmask(record + 2U, need, &state);
         for (byte = 0U; byte < name_size; ++byte)
-            if (record[2U + byte] < 0x20U || record[2U + byte] == 0x7fU)
-                return false;
+            if (record[2U + byte] < 0x20U || record[2U + byte] == 0x7fU) return false;
         fields = record + 2U + name_size;
         raw = xx_data_get_u32(fields + 4U, 4, 0, false);
         packed = xx_data_get_u32(fields + 12U, 4, 0, false);
         /* The stub reads both sizes as signed. */
-        if (raw > (uint32_t)INT32_MAX || packed > (uint32_t)INT32_MAX)
-            return false;
+        if (raw > (uint32_t)INT32_MAX || packed > (uint32_t)INT32_MAX) return false;
         data = position + 2 + (int64_t)need;
         if ((int64_t)packed > size - data) return false;
-        if ((uint64_t)raw > (uint64_t)packed * KRZ_RATIO + KRZ_RATIO_SLACK)
-            return false;
+        if ((uint64_t)raw > (uint64_t)packed * KRZ_RATIO + KRZ_RATIO_SLACK) return false;
         if (items) {
             krz_member *member = &items[index];
             member->header_offset = info->stream_at + position;
@@ -420,25 +402,20 @@ static bool krz_walk(xx_io_device *device, int64_t base, const krz_info *info,
 
 /* The overlay: where the last section's raw data ends.  A section that
  * claims bytes beyond the file cannot belong to a complete package. */
-static bool krz_overlay(xx_io_device *device, int64_t base, int64_t size,
-                        int64_t *overlay) {
+static bool krz_overlay(xx_io_device *device, int64_t base, int64_t size, int64_t *overlay)
+{
     uint8_t dos[0x40], nt[24], table[KRZ_MAX_SECTIONS * 40U];
     uint32_t sections, optional, index;
     int64_t lfanew, table_at, end = 0;
-    if (size < KRZ_MIN_FILE || !krz_read_at(device, base, dos, sizeof(dos)) ||
-        dos[0] != 'M' || dos[1] != 'Z')
-        return false;
+    if (size < KRZ_MIN_FILE || !krz_read_at(device, base, dos, sizeof(dos)) || dos[0] != 'M' || dos[1] != 'Z') return false;
     lfanew = (int64_t)xx_data_get_u32(dos + 0x3c, 4, 0, false);
-    if (lfanew < 4 || lfanew > KRZ_MAX_LFANEW || lfanew > size - 24 ||
-        !krz_read_at(device, base + lfanew, nt, sizeof(nt)) || nt[0] != 'P' ||
-        nt[1] != 'E' || nt[2] != 0U || nt[3] != 0U)
+    if (lfanew < 4 || lfanew > KRZ_MAX_LFANEW || lfanew > size - 24 || !krz_read_at(device, base + lfanew, nt, sizeof(nt)) || nt[0] != 'P' || nt[1] != 'E' ||
+        nt[2] != 0U || nt[3] != 0U)
         return false;
     sections = xx_data_get_u16(nt + 6, 2, 0, false);
     optional = xx_data_get_u16(nt + 20, 2, 0, false);
     table_at = lfanew + 24 + (int64_t)optional;
-    if (sections == 0U || sections > KRZ_MAX_SECTIONS ||
-        table_at > size - (int64_t)sections * 40 ||
-        !krz_read_at(device, base + table_at, table, (size_t)sections * 40U))
+    if (sections == 0U || sections > KRZ_MAX_SECTIONS || table_at > size - (int64_t)sections * 40 || !krz_read_at(device, base + table_at, table, (size_t)sections * 40U))
         return false;
     for (index = 0U; index < sections; ++index) {
         const uint8_t *row = table + index * 40U;
@@ -454,36 +431,26 @@ static bool krz_overlay(xx_io_device *device, int64_t base, int64_t size,
 }
 
 /* Finds the marker at the overlay and checks the whole record chain. */
-static bool krz_scan(Abstractformat *format, krz_info *info,
-                     xx_pd_struct *pd) {
+static bool krz_scan(Abstractformat *format, krz_info *info, xx_pd_struct *pd)
+{
     uint8_t marker[KRZ_MARKER_SIZE], check[KRZ_CHECK_SIZE];
     int64_t total, size, rest;
-    if (!format || !format->device || !info || format->base_address < 0)
-        return false;
+    if (!format || !format->device || !info || format->base_address < 0) return false;
     total = xx_io_total_size(format->device);
     if (total < format->base_address) return false;
     size = total - format->base_address;
     xx_mem_zero(info, sizeof(*info));
-    if (!krz_overlay(format->device, format->base_address, size,
-                     &info->overlay))
-        return false;
+    if (!krz_overlay(format->device, format->base_address, size, &info->overlay)) return false;
     rest = size - info->overlay;
     /* Marker, the smallest record (a one-byte name and its fields) and the
      * final check. */
-    if (rest < (int64_t)(KRZ_MARKER_SIZE + 2U + 1U + KRZ_FIELDS_SIZE +
-                         KRZ_CHECK_SIZE) ||
-        !krz_read_at(format->device, format->base_address + info->overlay,
-                     marker, sizeof(marker)) ||
-        xx_rt_memcmp(marker, KRZ_MARKER, KRZ_MARKER_SIZE) != 0)
+    if (rest < (int64_t)(KRZ_MARKER_SIZE + 2U + 1U + KRZ_FIELDS_SIZE + KRZ_CHECK_SIZE) ||
+        !krz_read_at(format->device, format->base_address + info->overlay, marker, sizeof(marker)) || xx_rt_memcmp(marker, KRZ_MARKER, KRZ_MARKER_SIZE) != 0)
         return false;
     info->stream_at = info->overlay + (int64_t)KRZ_MARKER_SIZE;
     info->stream_size = rest - (int64_t)KRZ_MARKER_SIZE - (int64_t)KRZ_CHECK_SIZE;
-    if (!krz_walk(format->device, format->base_address, info, NULL, 0U,
-                  &info->count, pd) ||
-        !krz_read_at(format->device,
-                     format->base_address + info->stream_at +
-                         info->stream_size,
-                     check, sizeof(check)))
+    if (!krz_walk(format->device, format->base_address, info, NULL, 0U, &info->count, pd) ||
+        !krz_read_at(format->device, format->base_address + info->stream_at + info->stream_size, check, sizeof(check)))
         return false;
     info->check = xx_data_get_u32(check, 4, 0, false);
     return true;
@@ -491,9 +458,8 @@ static bool krz_scan(Abstractformat *format, krz_info *info,
 
 /* Folds @p member's current name and looks it up; *slot receives the slot
  * holding the same name, or the free slot where it would go. */
-static bool krz_name_taken(krz_member *items, const size_t *table,
-                           size_t slots, krz_member *member, size_t *slot,
-                           bool *taken) {
+static bool krz_name_taken(krz_member *items, const size_t *table, size_t slots, krz_member *member, size_t *slot, bool *taken)
+{
     member->folded = (char *)xx_mem_alloc(xx_str_len(member->name) + 1U);
     if (!member->folded) return false;
     krz_fold(member->name, member->folded);
@@ -512,7 +478,8 @@ static bool krz_name_taken(krz_member *items, const size_t *table,
 /* Later duplicates (compared as Windows compares names) get "_2", "_3", ...
  * in front of their extension, so no member overwrites another.  Only
  * names that can be extracted take part. */
-static bool krz_unique_names(krz_member *items, size_t count) {
+static bool krz_unique_names(krz_member *items, size_t count)
+{
     size_t slots = 16U, index;
     size_t *table;
     bool result = false;
@@ -527,8 +494,7 @@ static bool krz_unique_names(krz_member *items, size_t count) {
         bool taken = false;
         if (!member->safe) continue;
         for (;;) {
-            if (!krz_name_taken(items, table, slots, member, &slot, &taken))
-                break;
+            if (!krz_name_taken(items, table, slots, member, &slot, &taken)) break;
             if (!taken) break;
             xx_mem_free(member->folded);
             member->folded = NULL;
@@ -570,26 +536,23 @@ done:
  * literal-mode byte of 0 or 1, so the tag byte, the 'x' of the zlib header
  * and a stream size that exactly fills the member together keep a DCL
  * stream from being taken for one. */
-static uint32_t krz_method(const uint8_t *head, size_t available,
-                           uint32_t packed) {
-    if (available >= KRZ_ZLIB_HEAD + 2U && head[0] == KRZ_ZLIB_TAG &&
-        head[KRZ_ZLIB_HEAD] == 0x78U &&
+static uint32_t krz_method(const uint8_t *head, size_t available, uint32_t packed)
+{
+    if (available >= KRZ_ZLIB_HEAD + 2U && head[0] == KRZ_ZLIB_TAG && head[KRZ_ZLIB_HEAD] == 0x78U &&
         (uint64_t)xx_data_get_u32(head + 5U, 4, 0, false) + KRZ_ZLIB_HEAD == (uint64_t)packed)
         return XX_SFX_KRZIP_METHOD_ZLIB;
     return XX_SFX_KRZIP_METHOD_DCL;
 }
 
 /* Reads the first data bytes of @p member to learn its encoding. */
-static bool krz_probe_method(xx_io_device *device, int64_t base,
-                             krz_member *member) {
+static bool krz_probe_method(xx_io_device *device, int64_t base, krz_member *member)
+{
     uint8_t head[KRZ_ZLIB_HEAD + 2U];
-    size_t available = member->packed_size < sizeof(head)
-                           ? (size_t)member->packed_size : sizeof(head);
+    size_t available = member->packed_size < sizeof(head) ? (size_t)member->packed_size : sizeof(head);
     uint32_t state = member->data_state;
     member->method = XX_SFX_KRZIP_METHOD_DCL;
     if (available == 0U) return true;
-    if (!krz_read_at(device, base + member->data_offset, head, available))
-        return false;
+    if (!krz_read_at(device, base + member->data_offset, head, available)) return false;
     krz_unmask(head, available, &state);
     member->method = krz_method(head, available, member->packed_size);
     return true;
@@ -597,32 +560,22 @@ static bool krz_probe_method(xx_io_device *device, int64_t base,
 
 /* zlib encoding: inflate to the declared size, then strip the length
  * prefix and the trailer.  *plain points into @p *output. */
-static bool krz_decode_zlib(const uint8_t *packed, uint32_t packed_size,
-                            uint32_t raw_size, uint64_t budget,
-                            uint8_t **output, const uint8_t **plain) {
+static bool krz_decode_zlib(const uint8_t *packed, uint32_t packed_size, uint32_t raw_size, uint64_t budget, uint8_t **output, const uint8_t **plain)
+{
     uint32_t inflated = xx_data_get_u32(packed + 1U, 4, 0, false);
     uint32_t stream = xx_data_get_u32(packed + 5U, 4, 0, false);
     uint32_t stream_check = xx_data_get_u32(packed + 9U, 4, 0, false);
     uint32_t prefix, length = 0U, index;
     size_t written = 0U;
     uint8_t *buffer;
-    if (packed_size < KRZ_ZLIB_HEAD + 2U ||
-        (uint64_t)stream + KRZ_ZLIB_HEAD != (uint64_t)packed_size ||
-        inflated > KRZ_MAX_RAW ||
-        (uint64_t)inflated < (uint64_t)raw_size + 2U ||
-        (uint64_t)inflated > (uint64_t)raw_size + KRZ_PREFIX_MAX +
-                                 KRZ_ZLIB_TRAILER ||
-        (uint64_t)inflated > budget)
+    if (packed_size < KRZ_ZLIB_HEAD + 2U || (uint64_t)stream + KRZ_ZLIB_HEAD != (uint64_t)packed_size || inflated > KRZ_MAX_RAW ||
+        (uint64_t)inflated < (uint64_t)raw_size + 2U || (uint64_t)inflated > (uint64_t)raw_size + KRZ_PREFIX_MAX + KRZ_ZLIB_TRAILER || (uint64_t)inflated > budget)
         return false;
     /* The encoder's own check of the stream it wrote. */
-    if ((xx_crc32(XX_CRC_TYPE_CRC32, packed + KRZ_ZLIB_HEAD, stream) ^
-         UINT32_C(0xFFFFFFFF)) != stream_check)
-        return false;
+    if ((xx_crc32(XX_CRC_TYPE_CRC32, packed + KRZ_ZLIB_HEAD, stream) ^ UINT32_C(0xFFFFFFFF)) != stream_check) return false;
     buffer = (uint8_t *)xx_mem_alloc(inflated);
     if (!buffer) return false;
-    if (!xx_zlib_stream_decode_memory(packed + KRZ_ZLIB_HEAD, stream, buffer,
-                                      inflated, &written) ||
-        written != (size_t)inflated || buffer[0] < 0x20U ||
+    if (!xx_zlib_stream_decode_memory(packed + KRZ_ZLIB_HEAD, stream, buffer, inflated, &written) || written != (size_t)inflated || buffer[0] < 0x20U ||
         buffer[0] > 0x23U) {
         xx_mem_free(buffer);
         return false;
@@ -632,8 +585,7 @@ static bool krz_decode_zlib(const uint8_t *packed, uint32_t packed_size,
         xx_mem_free(buffer);
         return false;
     }
-    for (index = prefix; index > 0U; --index)
-        length = (length << 8U) | buffer[index];
+    for (index = prefix; index > 0U; --index) length = (length << 8U) | buffer[index];
     if (length != raw_size || (uint64_t)1U + prefix + length > inflated) {
         xx_mem_free(buffer);
         return false;
@@ -644,19 +596,15 @@ static bool krz_decode_zlib(const uint8_t *packed, uint32_t packed_size,
 }
 
 /* DCL encoding: the stream decodes to exactly the unpacked size. */
-static bool krz_decode_dcl(const uint8_t *packed, uint32_t packed_size,
-                           uint32_t raw_size, uint8_t **output,
-                           const uint8_t **plain) {
+static bool krz_decode_dcl(const uint8_t *packed, uint32_t packed_size, uint32_t raw_size, uint8_t **output, const uint8_t **plain)
+{
     uint8_t *buffer;
     size_t written = 0U;
     if (raw_size == 0U) {
         size_t consumed = 0U, produced = 0U;
         /* An empty member is a stream that holds only the end code; the
          * decoder refuses a zero-sized output, the scan does not. */
-        if (!xx_dcl_scan_memory(packed, packed_size, 1U, &consumed,
-                                &produced) ||
-            produced != 0U)
-            return false;
+        if (!xx_dcl_scan_memory(packed, packed_size, 1U, &consumed, &produced) || produced != 0U) return false;
         buffer = (uint8_t *)xx_mem_alloc(1U);
         if (!buffer) return false;
         *output = buffer;
@@ -665,9 +613,7 @@ static bool krz_decode_dcl(const uint8_t *packed, uint32_t packed_size,
     }
     buffer = (uint8_t *)xx_mem_alloc(raw_size);
     if (!buffer) return false;
-    if (!xx_dcl_decode_memory(packed, packed_size, buffer, raw_size,
-                              &written) ||
-        written != (size_t)raw_size) {
+    if (!xx_dcl_decode_memory(packed, packed_size, buffer, raw_size, &written) || written != (size_t)raw_size) {
         xx_mem_free(buffer);
         return false;
     }
@@ -678,43 +624,32 @@ static bool krz_decode_dcl(const uint8_t *packed, uint32_t packed_size,
 
 /* Decodes @p member into memory and checks it.  On success *output is the
  * allocation to free and *plain the member's raw_size bytes inside it. */
-static bool krz_decode(Abstractformat *format, const krz_member *member,
-                       uint64_t max_member, uint64_t memory_limit,
-                       uint8_t **output, const uint8_t **plain,
-                       xx_pd_struct *pd) {
+static bool krz_decode(Abstractformat *format, const krz_member *member, uint64_t max_member, uint64_t memory_limit, uint8_t **output, const uint8_t **plain,
+                       xx_pd_struct *pd)
+{
     uint8_t *packed;
     uint32_t state = member->data_state;
     uint64_t budget;
     bool decoded;
     *output = NULL;
     *plain = NULL;
-    if ((uint64_t)member->raw_size > max_member ||
-        member->packed_size > KRZ_MAX_PACKED || member->raw_size > KRZ_MAX_RAW ||
+    if ((uint64_t)member->raw_size > max_member || member->packed_size > KRZ_MAX_PACKED || member->raw_size > KRZ_MAX_RAW ||
         (uint64_t)member->packed_size > memory_limit || krz_stopped(pd))
         return false;
     budget = memory_limit - member->packed_size;
     if ((uint64_t)member->raw_size > budget) return false;
-    packed = (uint8_t *)xx_mem_alloc(member->packed_size != 0U
-                                         ? member->packed_size : 1U);
+    packed = (uint8_t *)xx_mem_alloc(member->packed_size != 0U ? member->packed_size : 1U);
     if (!packed) return false;
-    if (!krz_read_at(format->device,
-                     format->base_address + member->data_offset, packed,
-                     member->packed_size)) {
+    if (!krz_read_at(format->device, format->base_address + member->data_offset, packed, member->packed_size)) {
         xx_mem_free(packed);
         return false;
     }
     krz_unmask(packed, member->packed_size, &state);
-    if (member->method == XX_SFX_KRZIP_METHOD_ZLIB)
-        decoded = krz_decode_zlib(packed, member->packed_size,
-                                  member->raw_size, budget, output, plain);
-    else
-        decoded = member->packed_size >= 3U &&
-                  krz_decode_dcl(packed, member->packed_size,
-                                 member->raw_size, output, plain);
+    if (member->method == XX_SFX_KRZIP_METHOD_ZLIB) decoded = krz_decode_zlib(packed, member->packed_size, member->raw_size, budget, output, plain);
+    else decoded = member->packed_size >= 3U && krz_decode_dcl(packed, member->packed_size, member->raw_size, output, plain);
     xx_mem_free(packed);
     if (!decoded) return false;
-    if ((xx_crc32(XX_CRC_TYPE_CRC32, *plain, member->raw_size) ^
-         UINT32_C(0xFFFFFFFF)) != member->stored_check) {
+    if ((xx_crc32(XX_CRC_TYPE_CRC32, *plain, member->raw_size) ^ UINT32_C(0xFFFFFFFF)) != member->stored_check) {
         xx_mem_free(*output);
         *output = NULL;
         *plain = NULL;
@@ -723,8 +658,8 @@ static bool krz_decode(Abstractformat *format, const krz_member *member,
     return true;
 }
 
-static bool krz_write_all(xx_io_device *destination, const uint8_t *bytes,
-                          size_t size) {
+static bool krz_write_all(xx_io_device *destination, const uint8_t *bytes, size_t size)
+{
     size_t done = 0U;
     while (done < size) {
         ssize_t amount = xx_io_write(destination, bytes + done, size - done);
@@ -736,17 +671,16 @@ static bool krz_write_all(xx_io_device *destination, const uint8_t *bytes,
 
 /* --- records --------------------------------------------------------------- */
 
-static bool krz_copy_options(xx_list_s *destination, const xx_list_s *source) {
+static bool krz_copy_options(xx_list_s *destination, const xx_list_s *source)
+{
     size_t index;
     if (!source) return true;
     for (index = 0U; index < source->count; ++index) {
-        const xx_meta *original =
-            (const xx_meta *)xx_list_at((const xx_list_t *)source, index);
+        const xx_meta *original = (const xx_meta *)xx_list_at((const xx_list_t *)source, index);
         xx_meta copy;
         if (!original) continue;
         xx_meta_init(&copy, original->meta_id);
-        if (!xx_var_copy(&copy.var, &original->var) ||
-            !xx_list_append(destination, &copy)) {
+        if (!xx_var_copy(&copy.var, &original->var) || !xx_list_append(destination, &copy)) {
             xx_meta_cleanup(&copy);
             return false;
         }
@@ -754,39 +688,28 @@ static bool krz_copy_options(xx_list_s *destination, const xx_list_s *source) {
     return true;
 }
 
-static bool krz_set_record(Abstractformat *format, xx_archive_record *record,
-                           const krz_member *member) {
+static bool krz_set_record(Abstractformat *format, xx_archive_record *record, const krz_member *member)
+{
     xx_archive_record_cleanup(record);
     xx_archive_record_init(record);
     record->header_offset = format->base_address + member->header_offset;
     record->header_size = member->header_size;
     record->data_offset = format->base_address + member->data_offset;
     record->compressed_size = member->packed_size;
-    return xx_archive_record_set_original_name(record, member->name) &&
-           xx_archive_record_set_meta_u64(record, XX_META_ID_UNCOMPRESSED_SIZE,
-                                          member->raw_size) &&
-           xx_archive_record_set_meta_u64(record, XX_META_ID_COMPRESSED_SIZE,
-                                          member->packed_size) &&
-           xx_archive_record_set_meta_u64(record, XX_META_ID_COMPRESSION_METHOD,
-                                          member->method) &&
-           xx_archive_record_set_meta_u64(
-               record, XX_META_ID_CRC32,
-               member->stored_check ^ UINT32_C(0xFFFFFFFF)) &&
-           xx_archive_record_set_meta_u64(record, XX_META_ID_ATTRIBUTES,
-                                          member->attributes) &&
-           xx_archive_record_set_meta_u64(record, XX_META_ID_LAST_MOD_DATE,
-                                          member->dos_date) &&
-           xx_archive_record_set_meta_u64(record, XX_META_ID_LAST_MOD_TIME,
-                                          member->dos_time) &&
-           xx_archive_record_set_meta_bool(record, XX_META_ID_IS_ENCRYPTED,
-                                           false) &&
-           xx_archive_record_set_meta_bool(record, XX_META_ID_IS_FOLDER, false);
+    return xx_archive_record_set_original_name(record, member->name) && xx_archive_record_set_meta_u64(record, XX_META_ID_UNCOMPRESSED_SIZE, member->raw_size) &&
+           xx_archive_record_set_meta_u64(record, XX_META_ID_COMPRESSED_SIZE, member->packed_size) &&
+           xx_archive_record_set_meta_u64(record, XX_META_ID_COMPRESSION_METHOD, member->method) &&
+           xx_archive_record_set_meta_u64(record, XX_META_ID_CRC32, member->stored_check ^ UINT32_C(0xFFFFFFFF)) &&
+           xx_archive_record_set_meta_u64(record, XX_META_ID_ATTRIBUTES, member->attributes) &&
+           xx_archive_record_set_meta_u64(record, XX_META_ID_LAST_MOD_DATE, member->dos_date) &&
+           xx_archive_record_set_meta_u64(record, XX_META_ID_LAST_MOD_TIME, member->dos_time) &&
+           xx_archive_record_set_meta_bool(record, XX_META_ID_IS_ENCRYPTED, false) && xx_archive_record_set_meta_bool(record, XX_META_ID_IS_FOLDER, false);
 }
 
 /* --- lifecycle ------------------------------------------------------------- */
 
-void xx_sfx_krzip_init(xx_sfx_krzip *archive, xx_io_device *device,
-                       int64_t base_address) {
+void xx_sfx_krzip_init(xx_sfx_krzip *archive, xx_io_device *device, int64_t base_address)
+{
     if (!archive) return;
     xx_mem_zero(archive, sizeof(*archive));
     xx_format_init(&archive->format, device, base_address);
@@ -799,45 +722,44 @@ void xx_sfx_krzip_init(xx_sfx_krzip *archive, xx_io_device *device,
     archive->format.check_is_valid = xx_sfx_krzip_check_is_valid;
     archive->format.handle_base_info = xx_sfx_krzip_handle_base_info;
     archive->format.get_format_size = xx_sfx_krzip_get_format_size;
-    archive->format.get_number_of_archive_records =
-        xx_sfx_krzip_get_number_of_archive_records;
-    archive->format.create_archive_records_reading =
-        xx_sfx_krzip_create_archive_records_reading;
-    archive->format.get_current_archive_record =
-        xx_sfx_krzip_get_current_archive_record;
-    archive->format.unpack_current_archive_record =
-        xx_sfx_krzip_unpack_current_archive_record;
-    archive->format.archive_record_move_to_next =
-        xx_sfx_krzip_archive_record_move_to_next;
-    archive->format.free_archive_records_reading =
-        xx_sfx_krzip_free_archive_records_reading;
+    archive->format.get_number_of_archive_records = xx_sfx_krzip_get_number_of_archive_records;
+    archive->format.create_archive_records_reading = xx_sfx_krzip_create_archive_records_reading;
+    archive->format.get_current_archive_record = xx_sfx_krzip_get_current_archive_record;
+    archive->format.unpack_current_archive_record = xx_sfx_krzip_unpack_current_archive_record;
+    archive->format.archive_record_move_to_next = xx_sfx_krzip_archive_record_move_to_next;
+    archive->format.free_archive_records_reading = xx_sfx_krzip_free_archive_records_reading;
     archive->overlay_offset = -1;
     archive->stream_offset = -1;
     archive->stream_size = -1;
 }
 
-xx_sfx_krzip *xx_sfx_krzip_create(xx_io_device *device, int64_t base_address) {
+xx_sfx_krzip *xx_sfx_krzip_create(xx_io_device *device, int64_t base_address)
+{
     xx_sfx_krzip *archive = (xx_sfx_krzip *)xx_mem_alloc(sizeof(*archive));
     if (archive) xx_sfx_krzip_init(archive, device, base_address);
     return archive;
 }
 
-void xx_sfx_krzip_destroy(xx_sfx_krzip *archive) {
+void xx_sfx_krzip_destroy(xx_sfx_krzip *archive)
+{
     if (archive) xx_format_cleanup_extra_parameters(&archive->format);
 }
 
-void xx_sfx_krzip_free(xx_sfx_krzip *archive) {
+void xx_sfx_krzip_free(xx_sfx_krzip *archive)
+{
     if (!archive) return;
     xx_sfx_krzip_destroy(archive);
     xx_mem_free(archive);
 }
 
-bool xx_sfx_krzip_check_is_valid(Abstractformat *format, xx_pd_struct *pd) {
+bool xx_sfx_krzip_check_is_valid(Abstractformat *format, xx_pd_struct *pd)
+{
     krz_info info;
     return krz_scan(format, &info, pd);
 }
 
-bool xx_sfx_krzip_handle_base_info(Abstractformat *format, xx_pd_struct *pd) {
+bool xx_sfx_krzip_handle_base_info(Abstractformat *format, xx_pd_struct *pd)
+{
     krz_info info;
     xx_sfx_krzip *archive;
     if (!format || !krz_scan(format, &info, pd)) return false;
@@ -848,29 +770,24 @@ bool xx_sfx_krzip_handle_base_info(Abstractformat *format, xx_pd_struct *pd) {
     archive->stream_size = info.stream_size;
     archive->stream_check = info.check;
     format->number_of_archive_records = info.count;
-    format->format_size =
-        info.stream_at + info.stream_size + (int64_t)KRZ_CHECK_SIZE;
+    format->format_size = info.stream_at + info.stream_size + (int64_t)KRZ_CHECK_SIZE;
     format->is_valid = true;
     format->base_info_handled = true;
     return true;
 }
 
-int64_t xx_sfx_krzip_get_format_size(Abstractformat *format,
-                                     xx_pd_struct *pd) {
-    return format && (format->base_info_handled ||
-                      xx_sfx_krzip_handle_base_info(format, pd))
-               ? format->format_size : -1;
+int64_t xx_sfx_krzip_get_format_size(Abstractformat *format, xx_pd_struct *pd)
+{
+    return format && (format->base_info_handled || xx_sfx_krzip_handle_base_info(format, pd)) ? format->format_size : -1;
 }
 
-uint64_t xx_sfx_krzip_get_number_of_archive_records(Abstractformat *format,
-                                                    xx_pd_struct *pd) {
-    return format && (format->base_info_handled ||
-                      xx_sfx_krzip_handle_base_info(format, pd))
-               ? ((xx_sfx_krzip *)format)->number_of_records : 0U;
+uint64_t xx_sfx_krzip_get_number_of_archive_records(Abstractformat *format, xx_pd_struct *pd)
+{
+    return format && (format->base_info_handled || xx_sfx_krzip_handle_base_info(format, pd)) ? ((xx_sfx_krzip *)format)->number_of_records : 0U;
 }
 
-xx_archive_record_state *xx_sfx_krzip_create_archive_records_reading(
-    Abstractformat *format, const xx_list_s *options, xx_pd_struct *pd) {
+xx_archive_record_state *xx_sfx_krzip_create_archive_records_reading(Abstractformat *format, const xx_list_s *options, xx_pd_struct *pd)
+{
     krz_info info;
     krz_stream *stream;
     xx_archive_record_state *state;
@@ -879,20 +796,15 @@ xx_archive_record_state *xx_sfx_krzip_create_archive_records_reading(
     if (!krz_scan(format, &info, pd)) return NULL;
     stream = (krz_stream *)xx_mem_calloc(1U, sizeof(*stream));
     if (!stream) return NULL;
-    stream->items = (krz_member *)xx_mem_calloc(info.count,
-                                                sizeof(*stream->items));
+    stream->items = (krz_member *)xx_mem_calloc(info.count, sizeof(*stream->items));
     stream->count = info.count;
-    if (!stream->items ||
-        !krz_walk(format->device, format->base_address, &info, stream->items,
-                  info.count, &count, pd) ||
-        count != info.count ||
+    if (!stream->items || !krz_walk(format->device, format->base_address, &info, stream->items, info.count, &count, pd) || count != info.count ||
         !krz_unique_names(stream->items, stream->count)) {
         krz_stream_free(stream);
         return NULL;
     }
     for (index = 0U; index < stream->count; ++index) {
-        if (!krz_probe_method(format->device, format->base_address,
-                              &stream->items[index])) {
+        if (!krz_probe_method(format->device, format->base_address, &stream->items[index])) {
             krz_stream_free(stream);
             return NULL;
         }
@@ -906,8 +818,7 @@ xx_archive_record_state *xx_sfx_krzip_create_archive_records_reading(
     state->internal_state = stream;
     state->free_internal = krz_stream_free;
     state->total_records = stream->count;
-    if (!krz_copy_options(&state->options, options) ||
-        !krz_set_record(format, &state->current_record, &stream->items[0])) {
+    if (!krz_copy_options(&state->options, options) || !krz_set_record(format, &state->current_record, &stream->items[0])) {
         xx_archive_record_state_free(state);
         return NULL;
     }
@@ -915,27 +826,22 @@ xx_archive_record_state *xx_sfx_krzip_create_archive_records_reading(
     return state;
 }
 
-const xx_archive_record *xx_sfx_krzip_get_current_archive_record(
-    Abstractformat *format, xx_archive_record_state *state) {
-    return format && state && state->format == format && state->has_record
-               ? &state->current_record : NULL;
+const xx_archive_record *xx_sfx_krzip_get_current_archive_record(Abstractformat *format, xx_archive_record_state *state)
+{
+    return format && state && state->format == format && state->has_record ? &state->current_record : NULL;
 }
 
-bool xx_sfx_krzip_archive_record_move_to_next(Abstractformat *format,
-                                              xx_archive_record_state *state,
-                                              xx_pd_struct *pd) {
+bool xx_sfx_krzip_archive_record_move_to_next(Abstractformat *format, xx_archive_record_state *state, xx_pd_struct *pd)
+{
     krz_stream *stream;
     (void)pd;
-    if (!format || !state || state->format != format ||
-        !(stream = (krz_stream *)state->internal_state) ||
-        stream->index + 1U >= stream->count) {
+    if (!format || !state || state->format != format || !(stream = (krz_stream *)state->internal_state) || stream->index + 1U >= stream->count) {
         if (state) state->has_record = false;
         return false;
     }
     ++stream->index;
     ++state->current_index;
-    if (!krz_set_record(format, &state->current_record,
-                        &stream->items[stream->index])) {
+    if (!krz_set_record(format, &state->current_record, &stream->items[stream->index])) {
         state->has_record = false;
         return false;
     }
@@ -943,9 +849,8 @@ bool xx_sfx_krzip_archive_record_move_to_next(Abstractformat *format,
     return true;
 }
 
-bool xx_sfx_krzip_unpack_current_archive_record(Abstractformat *format,
-                                                xx_archive_record_state *state,
-                                                xx_pd_struct *pd) {
+bool xx_sfx_krzip_unpack_current_archive_record(Abstractformat *format, xx_archive_record_state *state, xx_pd_struct *pd)
+{
     krz_stream *stream;
     const krz_member *member;
     const xx_var *option;
@@ -958,50 +863,39 @@ bool xx_sfx_krzip_unpack_current_archive_record(Abstractformat *format,
     size_t base_length;
     xx_io_device *destination;
     bool overwrite, created = false, result = false;
-    if (!format || !state || state->format != format || !state->has_record ||
-        !(stream = (krz_stream *)state->internal_state) ||
-        stream->index >= stream->count || krz_stopped(pd))
+    if (!format || !state || state->format != format || !state->has_record || !(stream = (krz_stream *)state->internal_state) || stream->index >= stream->count ||
+        krz_stopped(pd))
         return false;
     member = &stream->items[stream->index];
 
-    option = xx_format_resolve_extra_parameter(format, &state->options,
-                                               XX_META_ID_OPT_MAX_MEMBER_SIZE);
+    option = xx_format_resolve_extra_parameter(format, &state->options, XX_META_ID_OPT_MAX_MEMBER_SIZE);
     if (option) max_member = xx_var_get_u64(option);
-    option = xx_format_resolve_extra_parameter(format, &state->options,
-                                               XX_META_ID_OPT_MEMORY_LIMIT);
+    option = xx_format_resolve_extra_parameter(format, &state->options, XX_META_ID_OPT_MEMORY_LIMIT);
     if (option) memory_limit = xx_var_get_u64(option);
 
     /* The member is decoded and checked before any file is created, so a
      * stream that fails leaves nothing behind. */
-    if (!krz_decode(format, member, max_member, memory_limit, &output, &plain,
-                    pd))
-        return false;
+    if (!krz_decode(format, member, max_member, memory_limit, &output, &plain, pd)) return false;
 
-    option = xx_format_resolve_extra_parameter(format, &state->options,
-                                               XX_META_ID_OPT_UNPACK_PATH);
+    option = xx_format_resolve_extra_parameter(format, &state->options, XX_META_ID_OPT_UNPACK_PATH);
     if (!option) {
         /* No destination: the member was verified, nothing is written. */
         result = true;
         goto done;
     }
     if (!member->safe || !krz_safe_output_name(member->name)) goto done;
-    if (option->type == XX_VAR_TYPE_STRING ||
-        option->type == XX_VAR_TYPE_STRING_VIEW) {
+    if (option->type == XX_VAR_TYPE_STRING || option->type == XX_VAR_TYPE_STRING_VIEW) {
         base = xx_var_get_str(option);
-    } else if (option->type == XX_VAR_TYPE_WSTRING ||
-               option->type == XX_VAR_TYPE_WSTRING_VIEW) {
+    } else if (option->type == XX_VAR_TYPE_WSTRING || option->type == XX_VAR_TYPE_WSTRING_VIEW) {
         owned_base = xx_str_unicode_to_utf8(xx_var_get_wstr(option));
         base = owned_base;
     }
     if (!base) goto done;
     base_length = xx_str_len(base);
-    path = (base_length != 0U && base[base_length - 1U] != '/' &&
-            base[base_length - 1U] != '\\')
-               ? xx_str_concat3(base, "/", member->name)
-               : xx_str_concat(base, member->name);
+    path = (base_length != 0U && base[base_length - 1U] != '/' && base[base_length - 1U] != '\\') ? xx_str_concat3(base, "/", member->name)
+                                                                                                  : xx_str_concat(base, member->name);
     if (!path || !xx_store_create_dirs_a(path, false)) goto done;
-    option = xx_format_resolve_extra_parameter(format, &state->options,
-                                               XX_META_ID_OPT_OVERWRITE);
+    option = xx_format_resolve_extra_parameter(format, &state->options, XX_META_ID_OPT_OVERWRITE);
     overwrite = option && xx_var_get_bool(option);
     destination = xx_io_file_open(path, overwrite ? "wb" : "wbx");
     if (!destination) goto done;
@@ -1017,8 +911,8 @@ done:
     return result;
 }
 
-void xx_sfx_krzip_free_archive_records_reading(Abstractformat *format,
-                                               xx_archive_record_state *state) {
+void xx_sfx_krzip_free_archive_records_reading(Abstractformat *format, xx_archive_record_state *state)
+{
     (void)format;
     xx_archive_record_state_free(state);
 }

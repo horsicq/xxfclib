@@ -6,11 +6,79 @@
 #include "xxfclib/data/xx_data.h"
 #include "../common/xx_network_fields.h"
 
-static bool pm_parse(Abstractformat *f,pm_stream *s,xx_pd_struct *pd){memory_blob b;bool ok=false;if(!blob_load(f,&b,pd))return false;BLOB_NEED(b.n>=32&&b.n<=4096&&protocol_eq(&b,0,7,"NTLMSSP")&&!b.p[7]&&xx_data_get_u32(b.p+8, 4, 0, false)==1);uint32_t flags=xx_data_get_u32(b.p+12, 4, 0, false);BLOB_NEED((flags&0x200)&&flags&3U&&!(flags&0x1d244508U));uint64_t header=(flags&0x02000000)?40:32;BLOB_NEED(blob_span(&b,0,header));if(header==40)BLOB_NEED(blob_zero(&b,36,3)&&b.p[39]==15);uint64_t offsets[2],lengths[2];for(unsigned i=0;i<2;++i){uint64_t p=16+(uint64_t)i*8,n=xx_data_get_u16(b.p+(size_t)p, 2, 0, false),max=xx_data_get_u16(b.p+(size_t)p+2, 2, 0, false),off=xx_data_get_u32(b.p+(size_t)p+4, 4, 0, false);BLOB_NEED(n==max&&n<=255);if(n)BLOB_NEED((flags&(i?0x2000U:0x1000U))&&off>=header&&blob_span(&b,off,n)&&packet_ascii(&b,off,n,false));else BLOB_NEED(!(flags&(i?0x2000U:0x1000U))&&off<=b.n);offsets[i]=off;lengths[i]=n;}uint64_t order[2]={0,1};if(lengths[1]&&(!lengths[0]||offsets[1]<offsets[0])){order[0]=1;order[1]=0;}uint64_t at=header;for(unsigned k=0;k<2;++k){unsigned i=(unsigned)order[k];if(lengths[i]){BLOB_NEED(offsets[i]==at);at+=lengths[i];}}BLOB_NEED(at==b.n&&blob_add(f,s,&b,"ntlm-negotiate-fields",0,header));for(unsigned i=0;i<2;++i)if(lengths[i])BLOB_NEED(blob_add(f,s,&b,i?"workstation-oem":"domain-oem",offsets[i],lengths[i]));s->size=(int64_t)b.n;ok=true;done:xx_mem_free(b.p);return ok;}
+static bool pm_parse(Abstractformat *f, pm_stream *s, xx_pd_struct *pd)
+{
+    memory_blob b;
+    bool ok = false;
+    if (!blob_load(f, &b, pd)) return false;
+    BLOB_NEED(b.n >= 32 && b.n <= 4096 && protocol_eq(&b, 0, 7, "NTLMSSP") && !b.p[7] && xx_data_get_u32(b.p + 8, 4, 0, false) == 1);
+    uint32_t flags = xx_data_get_u32(b.p + 12, 4, 0, false);
+    BLOB_NEED((flags & 0x200) && flags & 3U && !(flags & 0x1d244508U));
+    uint64_t header = (flags & 0x02000000) ? 40 : 32;
+    BLOB_NEED(blob_span(&b, 0, header));
+    if (header == 40) BLOB_NEED(blob_zero(&b, 36, 3) && b.p[39] == 15);
+    uint64_t offsets[2], lengths[2];
+    for (unsigned i = 0; i < 2; ++i) {
+        uint64_t p = 16 + (uint64_t)i * 8, n = xx_data_get_u16(b.p + (size_t)p, 2, 0, false), max = xx_data_get_u16(b.p + (size_t)p + 2, 2, 0, false),
+                 off = xx_data_get_u32(b.p + (size_t)p + 4, 4, 0, false);
+        BLOB_NEED(n == max && n <= 255);
+        if (n) BLOB_NEED((flags & (i ? 0x2000U : 0x1000U)) && off >= header && blob_span(&b, off, n) && packet_ascii(&b, off, n, false));
+        else BLOB_NEED(!(flags & (i ? 0x2000U : 0x1000U)) && off <= b.n);
+        offsets[i] = off;
+        lengths[i] = n;
+    }
+    uint64_t order[2] = {0, 1};
+    if (lengths[1] && (!lengths[0] || offsets[1] < offsets[0])) {
+        order[0] = 1;
+        order[1] = 0;
+    }
+    uint64_t at = header;
+    for (unsigned k = 0; k < 2; ++k) {
+        unsigned i = (unsigned)order[k];
+        if (lengths[i]) {
+            BLOB_NEED(offsets[i] == at);
+            at += lengths[i];
+        }
+    }
+    BLOB_NEED(at == b.n && blob_add(f, s, &b, "ntlm-negotiate-fields", 0, header));
+    for (unsigned i = 0; i < 2; ++i)
+        if (lengths[i]) BLOB_NEED(blob_add(f, s, &b, i ? "workstation-oem" : "domain-oem", offsets[i], lengths[i]));
+    s->size = (int64_t)b.n;
+    ok = true;
+done:
+    xx_mem_free(b.p);
+    return ok;
+}
 
-void xx_ntlm_message_init(xx_ntlm_message *r,xx_io_device *d,int64_t b){if(r){xx_mem_zero(r,sizeof(*r));pm_init(&r->format,d,b,XX_FILE_TYPE_NTLM_MESSAGE,"bin");}}
-xx_ntlm_message *xx_ntlm_message_create(xx_io_device *d,int64_t b){xx_ntlm_message *r=(xx_ntlm_message *)xx_mem_alloc(sizeof(*r));if(r)xx_ntlm_message_init(r,d,b);return r;}
-void xx_ntlm_message_destroy(xx_ntlm_message *r){if(r)xx_format_cleanup_extra_parameters(&r->format);}
-void xx_ntlm_message_free(xx_ntlm_message *r){if(r){xx_ntlm_message_destroy(r);xx_mem_free(r);}}
-bool xx_ntlm_message_check_is_valid(Abstractformat *f,xx_pd_struct *pd){return pm_valid(f,pd);}
-bool xx_ntlm_message_handle_base_info(Abstractformat *f,xx_pd_struct *pd){return pm_handle(f,pd);}
+void xx_ntlm_message_init(xx_ntlm_message *r, xx_io_device *d, int64_t b)
+{
+    if (r) {
+        xx_mem_zero(r, sizeof(*r));
+        pm_init(&r->format, d, b, XX_FILE_TYPE_NTLM_MESSAGE, "bin");
+    }
+}
+xx_ntlm_message *xx_ntlm_message_create(xx_io_device *d, int64_t b)
+{
+    xx_ntlm_message *r = (xx_ntlm_message *)xx_mem_alloc(sizeof(*r));
+    if (r) xx_ntlm_message_init(r, d, b);
+    return r;
+}
+void xx_ntlm_message_destroy(xx_ntlm_message *r)
+{
+    if (r) xx_format_cleanup_extra_parameters(&r->format);
+}
+void xx_ntlm_message_free(xx_ntlm_message *r)
+{
+    if (r) {
+        xx_ntlm_message_destroy(r);
+        xx_mem_free(r);
+    }
+}
+bool xx_ntlm_message_check_is_valid(Abstractformat *f, xx_pd_struct *pd)
+{
+    return pm_valid(f, pd);
+}
+bool xx_ntlm_message_handle_base_info(Abstractformat *f, xx_pd_struct *pd)
+{
+    return pm_handle(f, pd);
+}

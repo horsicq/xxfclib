@@ -38,15 +38,15 @@ enum {
 
 /** Everything the encrypted header yields once a key opens it. */
 typedef struct xx_pcsecure_info {
-    uint8_t key[8];           /**< File key, MSB-first as the schedule sees it */
-    uint32_t signature;       /**< "PCT5" / "PCT6" / "PCT7" / "AfoS", LE u32   */
-    uint32_t flags;           /**< bit 0 set: the payload is LZW-compressed    */
-    int32_t rounds;           /**< DES rounds for the PAYLOAD, 0..16           */
+    uint8_t key[8];     /**< File key, MSB-first as the schedule sees it */
+    uint32_t signature; /**< "PCT5" / "PCT6" / "PCT7" / "AfoS", LE u32   */
+    uint32_t flags;     /**< bit 0 set: the payload is LZW-compressed    */
+    int32_t rounds;     /**< DES rounds for the PAYLOAD, 0..16           */
     uint64_t uncompressed_size;
     uint64_t compressed_size;
-    uint32_t dos_time;        /**< meaningful for PCT7 only                    */
-    uint8_t name_extension[4];/**< stored file extension, with its dot         */
-    bool user_password;       /**< the verifier at +60 was non-zero            */
+    uint32_t dos_time;         /**< meaningful for PCT7 only                    */
+    uint8_t name_extension[4]; /**< stored file extension, with its dot         */
+    bool user_password;        /**< the verifier at +60 was non-zero            */
 } xx_pcsecure_info;
 
 /**
@@ -56,8 +56,7 @@ typedef struct xx_pcsecure_info {
  * Returns false when the signature is unknown, no candidate key produces the
  * "SeaHawks" verifier, or the header's declared sizes are impossible.
  */
-XXFC_API bool xx_pcsecure_parse_header(const uint8_t *input, size_t input_size,
-                                       xx_pcsecure_info *info);
+XXFC_API bool xx_pcsecure_parse_header(const uint8_t *input, size_t input_size, xx_pcsecure_info *info);
 
 /**
  * @brief Decrypt (and inflate) a whole PCSECURE file.
@@ -65,9 +64,7 @@ XXFC_API bool xx_pcsecure_parse_header(const uint8_t *input, size_t input_size,
  * @p input is the WHOLE FILE from offset 0; the result is the single member's
  * plaintext, exactly @c info.uncompressed_size bytes.
  */
-XXFC_API bool xx_pcsecure_decode_memory(const uint8_t *input,
-                                        size_t input_size, uint8_t *output,
-                                        size_t output_size, size_t *written);
+XXFC_API bool xx_pcsecure_decode_memory(const uint8_t *input, size_t input_size, uint8_t *output, size_t output_size, size_t *written);
 
 /**
  * @brief Report the member's decoded size without producing it.
@@ -79,9 +76,7 @@ XXFC_API bool xx_pcsecure_decode_memory(const uint8_t *input,
  * measure that the header does not already state.  @p consumed is the whole
  * file, which is what the member occupies.
  */
-XXFC_API bool xx_pcsecure_scan_memory(const uint8_t *input, size_t input_size,
-                                      size_t max_output, size_t *consumed,
-                                      size_t *produced);
+XXFC_API bool xx_pcsecure_scan_memory(const uint8_t *input, size_t input_size, size_t max_output, size_t *consumed, size_t *produced);
 
 /**
  * @brief The payload-only entry point, mirroring XPCSecureDecoder::decode.
@@ -93,14 +88,8 @@ XXFC_API bool xx_pcsecure_scan_memory(const uint8_t *input, size_t input_size,
  * reader has already parsed the header; use xx_pcsecure_decode_memory when it
  * has not.
  */
-XXFC_API bool xx_pcsecure_decode_payload(const uint8_t *payload,
-                                         size_t payload_size,
-                                         const uint8_t key[8], int32_t rounds,
-                                         uint8_t flags,
-                                         uint64_t compressed_size,
-                                         uint64_t uncompressed_size,
-                                         uint8_t *output, size_t output_size,
-                                         size_t *written);
+XXFC_API bool xx_pcsecure_decode_payload(const uint8_t *payload, size_t payload_size, const uint8_t key[8], int32_t rounds, uint8_t flags, uint64_t compressed_size,
+                                         uint64_t uncompressed_size, uint8_t *output, size_t output_size, size_t *written);
 
 #ifdef __cplusplus
 }

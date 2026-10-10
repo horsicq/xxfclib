@@ -87,15 +87,12 @@ typedef struct mcc_stream_s {
     int64_t archive_size;
 } mcc_stream;
 
-static bool mcc_read_at(xx_io_device *device, int64_t offset, void *buffer,
-                        size_t size) {
+static bool mcc_read_at(xx_io_device *device, int64_t offset, void *buffer, size_t size)
+{
     size_t done = 0U;
-    if (!device || (!buffer && size != 0U) || offset < 0 ||
-        xx_io_seek64(device, offset, SEEK_SET) != 0)
-        return false;
+    if (!device || (!buffer && size != 0U) || offset < 0 || xx_io_seek64(device, offset, SEEK_SET) != 0) return false;
     while (done < size) {
-        ssize_t amount = xx_io_read(device, (uint8_t *)buffer + done,
-                                    size - done);
+        ssize_t amount = xx_io_read(device, (uint8_t *)buffer + done, size - done);
         if (amount <= 0 || (size_t)amount > size - done) return false;
         done += (size_t)amount;
     }
@@ -105,20 +102,18 @@ static bool mcc_read_at(xx_io_device *device, int64_t offset, void *buffer,
 /* Names are 8.3 DOS names; anything outside the printable ASCII range or
  * carrying a path separator makes the header - and so the archive - invalid
  * rather than being repaired. */
-static char *mcc_copy_name(const uint8_t *field, size_t length) {
+static char *mcc_copy_name(const uint8_t *field, size_t length)
+{
     char *name;
     size_t index;
     if (length == 0U || length > MCC_NAME_FIELD) return NULL;
     for (index = 0U; index < length; ++index) {
         uint8_t c = field[index];
-        if (c < 0x20U || c > 0x7EU || c == (uint8_t)'/' ||
-            c == (uint8_t)'\\' || c == (uint8_t)':' || c == (uint8_t)'*' ||
-            c == (uint8_t)'?' || c == (uint8_t)'"' || c == (uint8_t)'<' ||
-            c == (uint8_t)'>' || c == (uint8_t)'|') return NULL;
+        if (c < 0x20U || c > 0x7EU || c == (uint8_t)'/' || c == (uint8_t)'\\' || c == (uint8_t)':' || c == (uint8_t)'*' || c == (uint8_t)'?' || c == (uint8_t)'"' ||
+            c == (uint8_t)'<' || c == (uint8_t)'>' || c == (uint8_t)'|')
+            return NULL;
     }
-    if (field[0] == (uint8_t)'.' &&
-        (length == 1U || (length == 2U && field[1] == (uint8_t)'.')))
-        return NULL;
+    if (field[0] == (uint8_t)'.' && (length == 1U || (length == 2U && field[1] == (uint8_t)'.'))) return NULL;
     /* The trailing filler is spaces; the declared length already excludes it,
      * but a short name with embedded trailing blanks is still refused. */
     if (field[length - 1U] == (uint8_t)' ') return NULL;
@@ -132,7 +127,8 @@ static char *mcc_copy_name(const uint8_t *field, size_t length) {
 /* CRC-16/BUYPASS: poly 0x8005, init 0, no reflection, no final xor.  This is
  * the checksum the reference reader computes over the plaintext of every member, and it is the
  * only thing that distinguishes a correct decode from a plausible one. */
-static uint16_t mcc_crc16(const uint8_t *data, size_t size) {
+static uint16_t mcc_crc16(const uint8_t *data, size_t size)
+{
     return xx_crc16(XX_CRC_TYPE_CRC16_BUYPASS, data, size);
 }
 
@@ -164,7 +160,8 @@ typedef struct mcc_lzw_s {
 
 /* LSB-first, and the payload is deciphered on the way in so the XOR filter
  * never needs a second buffer. */
-static bool mcc_lzw_read_code(mcc_lzw *lzw, uint32_t width, uint32_t *code) {
+static bool mcc_lzw_read_code(mcc_lzw *lzw, uint32_t width, uint32_t *code)
+{
     while (lzw->bits_held < width) {
         uint8_t byte;
         if (lzw->input_at >= lzw->input_size) return false;
@@ -178,7 +175,8 @@ static bool mcc_lzw_read_code(mcc_lzw *lzw, uint32_t width, uint32_t *code) {
     return true;
 }
 
-static bool mcc_lzw_emit(mcc_lzw *lzw, uint8_t value) {
+static bool mcc_lzw_emit(mcc_lzw *lzw, uint8_t value)
+{
     if (lzw->produced >= lzw->output_limit) return false;
     lzw->output[lzw->produced++] = value;
     return true;
@@ -186,7 +184,8 @@ static bool mcc_lzw_emit(mcc_lzw *lzw, uint8_t value) {
 
 /* Returns true only on the explicit end code; a stream that simply runs out
  * of input is a decode failure, not a short member. */
-static bool mcc_lzw_decode(mcc_lzw *lzw) {
+static bool mcc_lzw_decode(mcc_lzw *lzw)
+{
     uint32_t width = 9U, limit = 0x1ffU, free_code = MCC_LZW_FIRST;
     uint32_t previous = 0U, first = 0U;
     bool have_previous = false;
@@ -201,8 +200,7 @@ static bool mcc_lzw_decode(mcc_lzw *lzw) {
         if (limit < free_code) {
             ++width;
             if (width > MCC_LZW_MAX_BITS) return false;
-            limit = (width == MCC_LZW_MAX_BITS) ? MCC_LZW_MAX_CODES
-                                                : ((1U << width) - 1U);
+            limit = (width == MCC_LZW_MAX_BITS) ? MCC_LZW_MAX_CODES : ((1U << width) - 1U);
         }
         if (!mcc_lzw_read_code(lzw, width, &code)) return false;
         if (code == MCC_LZW_END) return true;
@@ -229,8 +227,7 @@ static bool mcc_lzw_decode(mcc_lzw *lzw) {
             walk = code;
         }
         while (walk > 0xffU) {
-            if (walk >= MCC_LZW_MAX_CODES || depth >= MCC_LZW_MAX_CODES)
-                return false;
+            if (walk >= MCC_LZW_MAX_CODES || depth >= MCC_LZW_MAX_CODES) return false;
             lzw->stack[depth++] = lzw->suffix[walk];
             walk = lzw->prefix[walk];
         }
@@ -249,7 +246,8 @@ static bool mcc_lzw_decode(mcc_lzw *lzw) {
     }
 }
 
-static void mcc_stream_free(void *opaque) {
+static void mcc_stream_free(void *opaque)
+{
     mcc_stream *stream = (mcc_stream *)opaque;
     size_t index;
     if (!stream) return;
@@ -259,25 +257,22 @@ static void mcc_stream_free(void *opaque) {
     xx_mem_free(stream);
 }
 
-static bool mcc_add_member(mcc_stream *stream, const mcc_member *member) {
+static bool mcc_add_member(mcc_stream *stream, const mcc_member *member)
+{
     mcc_member *grown;
-    if (!stream || !member || stream->count >= MCC_MAX_MEMBERS ||
-        stream->count > SIZE_MAX / sizeof(*grown) - 1U)
-        return false;
-    grown = (mcc_member *)xx_mem_realloc(stream->items,
-                                         (stream->count + 1U) *
-                                             sizeof(*grown));
+    if (!stream || !member || stream->count >= MCC_MAX_MEMBERS || stream->count > SIZE_MAX / sizeof(*grown) - 1U) return false;
+    grown = (mcc_member *)xx_mem_realloc(stream->items, (stream->count + 1U) * sizeof(*grown));
     if (!grown) return false;
     stream->items = grown;
     stream->items[stream->count++] = *member;
     return true;
 }
 
-static bool mcc_parse(Abstractformat *format, mcc_stream **result) {
+static bool mcc_parse(Abstractformat *format, mcc_stream **result)
+{
     mcc_stream *stream = NULL;
     int64_t total, size, cursor;
-    if (!format || !format->device || !result || format->base_address < 0)
-        return false;
+    if (!format || !format->device || !result || format->base_address < 0) return false;
     total = xx_io_total_size(format->device);
     if (total < format->base_address) return false;
     size = total - format->base_address;
@@ -290,21 +285,18 @@ static bool mcc_parse(Abstractformat *format, mcc_stream **result) {
         mcc_member member;
         uint32_t unpacked, packed;
         uint8_t method, name_length;
-        if (size - cursor < MCC_HEADER_SIZE ||
-            !mcc_read_at(format->device, format->base_address + cursor,
-                         header, sizeof(header)) ||
-            xx_rt_memcmp(header, "MCC", 3U) != 0) goto fail;
+        if (size - cursor < MCC_HEADER_SIZE || !mcc_read_at(format->device, format->base_address + cursor, header, sizeof(header)) ||
+            xx_rt_memcmp(header, "MCC", 3U) != 0)
+            goto fail;
         method = header[3];
         unpacked = xx_data_get_u32(header + 4U, 4, 0, false);
         packed = xx_data_get_u32(header + 8U, 4, 0, false);
         name_length = header[21];
-        if (method != MCC_METHOD_STORE && method != MCC_METHOD_PACKED)
-            goto fail;
+        if (method != MCC_METHOD_STORE && method != MCC_METHOD_PACKED) goto fail;
         if (method == MCC_METHOD_STORE && packed != unpacked) goto fail;
         /* Bound the declared payload against what the file actually holds
          * before it is used for anything. */
-        if ((uint64_t)packed >
-            (uint64_t)(size - cursor - MCC_HEADER_SIZE)) goto fail;
+        if ((uint64_t)packed > (uint64_t)(size - cursor - MCC_HEADER_SIZE)) goto fail;
         xx_mem_zero(&member, sizeof(member));
         member.name = mcc_copy_name(header + 22U, name_length);
         if (!member.name) goto fail;
@@ -334,17 +326,16 @@ fail:
     return false;
 }
 
-static bool mcc_copy_options(xx_list_s *destination, const xx_list_s *source) {
+static bool mcc_copy_options(xx_list_s *destination, const xx_list_s *source)
+{
     size_t index;
     if (!source) return true;
     for (index = 0U; index < source->count; ++index) {
-        const xx_meta *original =
-            (const xx_meta *)xx_list_at((const xx_list_t *)source, index);
+        const xx_meta *original = (const xx_meta *)xx_list_at((const xx_list_t *)source, index);
         xx_meta copy;
         if (!original) continue;
         xx_meta_init(&copy, original->meta_id);
-        if (!xx_var_copy(&copy.var, &original->var) ||
-            !xx_list_append(destination, &copy)) {
+        if (!xx_var_copy(&copy.var, &original->var) || !xx_list_append(destination, &copy)) {
             xx_meta_cleanup(&copy);
             return false;
         }
@@ -352,19 +343,19 @@ static bool mcc_copy_options(xx_list_s *destination, const xx_list_s *source) {
     return true;
 }
 
-static const xx_var *mcc_option(const xx_list_s *options, uint32_t id) {
+static const xx_var *mcc_option(const xx_list_s *options, uint32_t id)
+{
     size_t index;
     if (!options) return NULL;
     for (index = 0U; index < options->count; ++index) {
-        const xx_meta *meta =
-            (const xx_meta *)xx_list_at((const xx_list_t *)options, index);
+        const xx_meta *meta = (const xx_meta *)xx_list_at((const xx_list_t *)options, index);
         if (meta && meta->meta_id == id) return &meta->var;
     }
     return NULL;
 }
 
-static bool mcc_set_record(xx_archive_record *record,
-                           const mcc_member *member) {
+static bool mcc_set_record(xx_archive_record *record, const mcc_member *member)
+{
     xx_archive_record_cleanup(record);
     xx_archive_record_init(record);
     record->header_offset = member->header_offset;
@@ -372,43 +363,31 @@ static bool mcc_set_record(xx_archive_record *record,
     record->data_offset = member->data_offset;
     record->compressed_size = member->packed_size;
     return xx_archive_record_set_original_name(record, member->name) &&
-           xx_archive_record_set_meta_u64(record, XX_META_ID_COMPRESSED_SIZE,
-                                          (uint64_t)member->packed_size) &&
-           xx_archive_record_set_meta_u64(record, XX_META_ID_UNCOMPRESSED_SIZE,
-                                          member->unpacked_size) &&
-           xx_archive_record_set_meta_u64(record, XX_META_ID_COMPRESSION_METHOD,
-                                          member->method) &&
-           xx_archive_record_set_meta_u64(record, XX_META_ID_TIMESTAMP,
-                                          member->dos_time) &&
-           xx_archive_record_set_meta_u64(record, XX_META_ID_ATTRIBUTES,
-                                          member->attributes) &&
-           xx_archive_record_set_meta_bool(record, XX_META_ID_IS_FOLDER,
-                                           false);
+           xx_archive_record_set_meta_u64(record, XX_META_ID_COMPRESSED_SIZE, (uint64_t)member->packed_size) &&
+           xx_archive_record_set_meta_u64(record, XX_META_ID_UNCOMPRESSED_SIZE, member->unpacked_size) &&
+           xx_archive_record_set_meta_u64(record, XX_META_ID_COMPRESSION_METHOD, member->method) &&
+           xx_archive_record_set_meta_u64(record, XX_META_ID_TIMESTAMP, member->dos_time) &&
+           xx_archive_record_set_meta_u64(record, XX_META_ID_ATTRIBUTES, member->attributes) && xx_archive_record_set_meta_bool(record, XX_META_ID_IS_FOLDER, false);
 }
 
 /* Produces a member's plaintext, whatever its method, and refuses unless the
  * result is both the declared length and the declared CRC.  Callers get a
  * correct member or nothing. */
-static bool mcc_decode_member(Abstractformat *format, const mcc_member *member,
-                              uint8_t **plain, size_t *plain_size) {
+static bool mcc_decode_member(Abstractformat *format, const mcc_member *member, uint8_t **plain, size_t *plain_size)
+{
     uint8_t *out = NULL, *packed = NULL;
     size_t out_size;
     if (!format || !member || !plain || !plain_size) return false;
     *plain = NULL;
     *plain_size = 0U;
-    if (member->unpacked_size > (uint64_t)MCC_MAX_OUTPUT ||
-        member->packed_size < 0 ||
-        (uint64_t)member->packed_size > (uint64_t)MCC_MAX_OUTPUT)
-        return false;
+    if (member->unpacked_size > (uint64_t)MCC_MAX_OUTPUT || member->packed_size < 0 || (uint64_t)member->packed_size > (uint64_t)MCC_MAX_OUTPUT) return false;
     out_size = (size_t)member->unpacked_size;
     if (member->method == MCC_METHOD_STORE) {
-        if ((uint64_t)member->packed_size != member->unpacked_size)
-            return false;
+        if ((uint64_t)member->packed_size != member->unpacked_size) return false;
         if (out_size != 0U) {
             out = (uint8_t *)xx_mem_alloc(out_size);
             if (!out) return false;
-            if (!mcc_read_at(format->device, member->data_offset, out,
-                             out_size)) {
+            if (!mcc_read_at(format->device, member->data_offset, out, out_size)) {
                 xx_mem_free(out);
                 return false;
             }
@@ -420,9 +399,7 @@ static bool mcc_decode_member(Abstractformat *format, const mcc_member *member,
         lzw = (mcc_lzw *)xx_mem_calloc(1U, sizeof(*lzw));
         packed = (uint8_t *)xx_mem_alloc((size_t)member->packed_size);
         out = (uint8_t *)xx_mem_alloc(out_size);
-        if (!lzw || !packed || !out ||
-            !mcc_read_at(format->device, member->data_offset, packed,
-                         (size_t)member->packed_size)) {
+        if (!lzw || !packed || !out || !mcc_read_at(format->device, member->data_offset, packed, (size_t)member->packed_size)) {
             if (lzw) xx_mem_free(lzw);
             if (packed) xx_mem_free(packed);
             if (out) xx_mem_free(out);
@@ -452,7 +429,8 @@ static bool mcc_decode_member(Abstractformat *format, const mcc_member *member,
     return true;
 }
 
-void xx_mcc_init(xx_mcc *archive, xx_io_device *device, int64_t base_address) {
+void xx_mcc_init(xx_mcc *archive, xx_io_device *device, int64_t base_address)
+{
     if (!archive) return;
     xx_mem_zero(archive, sizeof(*archive));
     xx_format_init(&archive->format, device, base_address);
@@ -465,37 +443,35 @@ void xx_mcc_init(xx_mcc *archive, xx_io_device *device, int64_t base_address) {
     archive->format.check_is_valid = xx_mcc_check_is_valid;
     archive->format.handle_base_info = xx_mcc_handle_base_info;
     archive->format.get_format_size = xx_mcc_get_format_size;
-    archive->format.get_number_of_archive_records =
-        xx_mcc_get_number_of_archive_records;
-    archive->format.create_archive_records_reading =
-        xx_mcc_create_archive_records_reading;
-    archive->format.get_current_archive_record =
-        xx_mcc_get_current_archive_record;
-    archive->format.unpack_current_archive_record =
-        xx_mcc_unpack_current_archive_record;
-    archive->format.archive_record_move_to_next =
-        xx_mcc_archive_record_move_to_next;
-    archive->format.free_archive_records_reading =
-        xx_mcc_free_archive_records_reading;
+    archive->format.get_number_of_archive_records = xx_mcc_get_number_of_archive_records;
+    archive->format.create_archive_records_reading = xx_mcc_create_archive_records_reading;
+    archive->format.get_current_archive_record = xx_mcc_get_current_archive_record;
+    archive->format.unpack_current_archive_record = xx_mcc_unpack_current_archive_record;
+    archive->format.archive_record_move_to_next = xx_mcc_archive_record_move_to_next;
+    archive->format.free_archive_records_reading = xx_mcc_free_archive_records_reading;
 }
 
-xx_mcc *xx_mcc_create(xx_io_device *device, int64_t base_address) {
+xx_mcc *xx_mcc_create(xx_io_device *device, int64_t base_address)
+{
     xx_mcc *archive = (xx_mcc *)xx_mem_alloc(sizeof(*archive));
     if (archive) xx_mcc_init(archive, device, base_address);
     return archive;
 }
 
-void xx_mcc_destroy(xx_mcc *archive) {
+void xx_mcc_destroy(xx_mcc *archive)
+{
     if (archive) xx_format_cleanup_extra_parameters(&archive->format);
 }
 
-void xx_mcc_free(xx_mcc *archive) {
+void xx_mcc_free(xx_mcc *archive)
+{
     if (!archive) return;
     xx_mcc_destroy(archive);
     xx_mem_free(archive);
 }
 
-bool xx_mcc_check_is_valid(Abstractformat *format, xx_pd_struct *pd) {
+bool xx_mcc_check_is_valid(Abstractformat *format, xx_pd_struct *pd)
+{
     mcc_stream *stream;
     (void)pd;
     if (!mcc_parse(format, &stream)) return false;
@@ -503,7 +479,8 @@ bool xx_mcc_check_is_valid(Abstractformat *format, xx_pd_struct *pd) {
     return true;
 }
 
-bool xx_mcc_handle_base_info(Abstractformat *format, xx_pd_struct *pd) {
+bool xx_mcc_handle_base_info(Abstractformat *format, xx_pd_struct *pd)
+{
     mcc_stream *stream;
     xx_mcc *archive;
     (void)pd;
@@ -518,21 +495,18 @@ bool xx_mcc_handle_base_info(Abstractformat *format, xx_pd_struct *pd) {
     return true;
 }
 
-int64_t xx_mcc_get_format_size(Abstractformat *format, xx_pd_struct *pd) {
-    return format && (format->base_info_handled ||
-                      xx_mcc_handle_base_info(format, pd))
-               ? format->format_size : -1;
+int64_t xx_mcc_get_format_size(Abstractformat *format, xx_pd_struct *pd)
+{
+    return format && (format->base_info_handled || xx_mcc_handle_base_info(format, pd)) ? format->format_size : -1;
 }
 
-uint64_t xx_mcc_get_number_of_archive_records(Abstractformat *format,
-                                              xx_pd_struct *pd) {
-    return format && (format->base_info_handled ||
-                      xx_mcc_handle_base_info(format, pd))
-               ? ((xx_mcc *)format)->number_of_records : 0U;
+uint64_t xx_mcc_get_number_of_archive_records(Abstractformat *format, xx_pd_struct *pd)
+{
+    return format && (format->base_info_handled || xx_mcc_handle_base_info(format, pd)) ? ((xx_mcc *)format)->number_of_records : 0U;
 }
 
-xx_archive_record_state *xx_mcc_create_archive_records_reading(
-    Abstractformat *format, const xx_list_s *options, xx_pd_struct *pd) {
+xx_archive_record_state *xx_mcc_create_archive_records_reading(Abstractformat *format, const xx_list_s *options, xx_pd_struct *pd)
+{
     mcc_stream *stream;
     xx_archive_record_state *state;
     (void)pd;
@@ -546,8 +520,7 @@ xx_archive_record_state *xx_mcc_create_archive_records_reading(
     state->internal_state = stream;
     state->free_internal = mcc_stream_free;
     state->total_records = stream->count;
-    if (!mcc_copy_options(&state->options, options) ||
-        !mcc_set_record(&state->current_record, &stream->items[0])) {
+    if (!mcc_copy_options(&state->options, options) || !mcc_set_record(&state->current_record, &stream->items[0])) {
         xx_archive_record_state_free(state);
         return NULL;
     }
@@ -555,32 +528,26 @@ xx_archive_record_state *xx_mcc_create_archive_records_reading(
     return state;
 }
 
-const xx_archive_record *xx_mcc_get_current_archive_record(
-    Abstractformat *format, xx_archive_record_state *state) {
-    return format && state && state->format == format && state->has_record
-               ? &state->current_record : NULL;
+const xx_archive_record *xx_mcc_get_current_archive_record(Abstractformat *format, xx_archive_record_state *state)
+{
+    return format && state && state->format == format && state->has_record ? &state->current_record : NULL;
 }
 
-bool xx_mcc_archive_record_move_to_next(Abstractformat *format,
-                                        xx_archive_record_state *state,
-                                        xx_pd_struct *pd) {
+bool xx_mcc_archive_record_move_to_next(Abstractformat *format, xx_archive_record_state *state, xx_pd_struct *pd)
+{
     mcc_stream *stream;
     (void)pd;
-    if (!format || !state || state->format != format ||
-        !(stream = (mcc_stream *)state->internal_state) ||
-        ++stream->index >= stream->count) {
+    if (!format || !state || state->format != format || !(stream = (mcc_stream *)state->internal_state) || ++stream->index >= stream->count) {
         if (state) state->has_record = false;
         return false;
     }
     ++state->current_index;
-    state->has_record = mcc_set_record(&state->current_record,
-                                       &stream->items[stream->index]);
+    state->has_record = mcc_set_record(&state->current_record, &stream->items[stream->index]);
     return state->has_record;
 }
 
-bool xx_mcc_unpack_current_archive_record(Abstractformat *format,
-                                          xx_archive_record_state *state,
-                                          xx_pd_struct *pd) {
+bool xx_mcc_unpack_current_archive_record(Abstractformat *format, xx_archive_record_state *state, xx_pd_struct *pd)
+{
     mcc_stream *stream;
     mcc_member *member;
     const xx_var *path_option;
@@ -591,9 +558,8 @@ bool xx_mcc_unpack_current_archive_record(Abstractformat *format,
     size_t plain_size = 0U, written = 0U;
     bool result = false;
     bool created = false;
-    if (!format || !state || state->format != format || !state->has_record ||
-        !(stream = (mcc_stream *)state->internal_state) ||
-        stream->index >= stream->count || (pd && xx_pd_is_stopped(pd)))
+    if (!format || !state || state->format != format || !state->has_record || !(stream = (mcc_stream *)state->internal_state) || stream->index >= stream->count ||
+        (pd && xx_pd_is_stopped(pd)))
         return false;
     member = &stream->items[stream->index];
     if (!mcc_decode_member(format, member, &plain, &plain_size)) goto done;
@@ -602,19 +568,14 @@ bool xx_mcc_unpack_current_archive_record(Abstractformat *format,
         result = true;
         goto done;
     }
-    if (path_option->type == XX_VAR_TYPE_STRING ||
-        path_option->type == XX_VAR_TYPE_STRING_VIEW)
-        base = xx_var_get_str(path_option);
-    else if (path_option->type == XX_VAR_TYPE_WSTRING ||
-             path_option->type == XX_VAR_TYPE_WSTRING_VIEW) {
+    if (path_option->type == XX_VAR_TYPE_STRING || path_option->type == XX_VAR_TYPE_STRING_VIEW) base = xx_var_get_str(path_option);
+    else if (path_option->type == XX_VAR_TYPE_WSTRING || path_option->type == XX_VAR_TYPE_WSTRING_VIEW) {
         owned_base = xx_str_unicode_to_utf8(xx_var_get_wstr(path_option));
         base = owned_base;
     }
     if (!base) goto done;
-    path = (base[0] && base[xx_str_len(base) - 1U] != '/' &&
-            base[xx_str_len(base) - 1U] != '\\')
-               ? xx_str_concat3(base, "/", member->name)
-               : xx_str_concat(base, member->name);
+    path = (base[0] && base[xx_str_len(base) - 1U] != '/' && base[xx_str_len(base) - 1U] != '\\') ? xx_str_concat3(base, "/", member->name)
+                                                                                                  : xx_str_concat(base, member->name);
     if (!path || !xx_store_create_dirs_a(path, false)) goto done;
     {
         xx_io_device *destination = xx_io_file_open(path, "wb");
@@ -622,8 +583,7 @@ bool xx_mcc_unpack_current_archive_record(Abstractformat *format,
         if (!destination) goto done;
         result = true;
         while (written < plain_size) {
-            ssize_t amount = xx_io_write(destination, plain + written,
-                                         plain_size - written);
+            ssize_t amount = xx_io_write(destination, plain + written, plain_size - written);
             if (amount <= 0 || (size_t)amount > plain_size - written) {
                 result = false;
                 break;
@@ -640,8 +600,8 @@ done:
     return result;
 }
 
-void xx_mcc_free_archive_records_reading(Abstractformat *format,
-                                         xx_archive_record_state *state) {
+void xx_mcc_free_archive_records_reading(Abstractformat *format, xx_archive_record_state *state)
+{
     (void)format;
     xx_archive_record_state_free(state);
 }

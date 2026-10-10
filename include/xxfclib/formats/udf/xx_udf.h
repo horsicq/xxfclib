@@ -49,19 +49,13 @@ XXFC_API void xx_udf_free(xx_udf *udf);
 XXFC_API bool xx_udf_check_is_valid(Abstractformat *self, xx_pd_struct *pd);
 XXFC_API bool xx_udf_handle_base_info(Abstractformat *self, xx_pd_struct *pd);
 XXFC_API int64_t xx_udf_get_format_size(Abstractformat *self, xx_pd_struct *pd);
-XXFC_API uint64_t xx_udf_get_number_of_archive_records(Abstractformat *self,
-                                                       xx_pd_struct *pd);
+XXFC_API uint64_t xx_udf_get_number_of_archive_records(Abstractformat *self, xx_pd_struct *pd);
 
-XXFC_API xx_archive_record_state *xx_udf_create_archive_records_reading(
-    Abstractformat *self, const xx_list_s *options, xx_pd_struct *pd);
-XXFC_API const xx_archive_record *xx_udf_get_current_archive_record(
-    Abstractformat *self, xx_archive_record_state *state);
-XXFC_API bool xx_udf_unpack_current_archive_record(
-    Abstractformat *self, xx_archive_record_state *state, xx_pd_struct *pd);
-XXFC_API bool xx_udf_archive_record_move_to_next(
-    Abstractformat *self, xx_archive_record_state *state, xx_pd_struct *pd);
-XXFC_API void xx_udf_free_archive_records_reading(
-    Abstractformat *self, xx_archive_record_state *state);
+XXFC_API xx_archive_record_state *xx_udf_create_archive_records_reading(Abstractformat *self, const xx_list_s *options, xx_pd_struct *pd);
+XXFC_API const xx_archive_record *xx_udf_get_current_archive_record(Abstractformat *self, xx_archive_record_state *state);
+XXFC_API bool xx_udf_unpack_current_archive_record(Abstractformat *self, xx_archive_record_state *state, xx_pd_struct *pd);
+XXFC_API bool xx_udf_archive_record_move_to_next(Abstractformat *self, xx_archive_record_state *state, xx_pd_struct *pd);
+XXFC_API void xx_udf_free_archive_records_reading(Abstractformat *self, xx_archive_record_state *state);
 
 XXFC_API uint64_t xx_udf_get_number_of_records(const xx_udf *udf);
 XXFC_API uint64_t xx_udf_get_number_of_members(const xx_udf *udf);
@@ -76,21 +70,26 @@ XXFC_API const char *xx_udf_get_volume_set_identifier(const xx_udf *udf);
  * Cheap enough to be used as a detector prefilter; it does not parse the
  * volume, so a true result still has to be confirmed by
  * xx_udf_handle_base_info(). */
-XXFC_API bool xx_udf_device_has_recognition_sequence(xx_io_device *dev,
-                                                     int64_t base_address);
+XXFC_API bool xx_udf_device_has_recognition_sequence(xx_io_device *dev, int64_t base_address);
 
-static inline Abstractformat *xx_udf_to_format(xx_udf *udf) {
+static inline Abstractformat *xx_udf_to_format(xx_udf *udf)
+{
     return udf ? &udf->format : NULL;
 }
-static inline void XUdf_init(xx_udf *udf, xx_io_device *dev,
-                             int64_t base_address) {
+static inline void XUdf_init(xx_udf *udf, xx_io_device *dev, int64_t base_address)
+{
     xx_udf_init(udf, dev, base_address);
 }
-static inline xx_udf *XUdf_create(xx_io_device *dev, int64_t base_address) {
+static inline xx_udf *XUdf_create(xx_io_device *dev, int64_t base_address)
+{
     return xx_udf_create(dev, base_address);
 }
-static inline void XUdf_free(xx_udf *udf) { xx_udf_free(udf); }
-static inline bool XUdf_is_valid(xx_udf *udf, xx_pd_struct *pd) {
+static inline void XUdf_free(xx_udf *udf)
+{
+    xx_udf_free(udf);
+}
+static inline bool XUdf_is_valid(xx_udf *udf, xx_pd_struct *pd)
+{
     return udf ? xx_format_is_valid(&udf->format, pd) : false;
 }
 

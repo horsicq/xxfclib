@@ -70,47 +70,45 @@ struct xx_dlke {
     void *internal;
 };
 
-XXFC_API void xx_dlke_init(xx_dlke *dlke, xx_io_device *dev,
-                           int64_t base_address);
+XXFC_API void xx_dlke_init(xx_dlke *dlke, xx_io_device *dev, int64_t base_address);
 XXFC_API xx_dlke *xx_dlke_create(xx_io_device *dev, int64_t base_address);
 XXFC_API void xx_dlke_destroy(xx_dlke *dlke);
 XXFC_API void xx_dlke_free(xx_dlke *dlke);
 
 XXFC_API bool xx_dlke_check_is_valid(Abstractformat *self, xx_pd_struct *pd);
 XXFC_API bool xx_dlke_handle_base_info(Abstractformat *self, xx_pd_struct *pd);
-XXFC_API int64_t xx_dlke_get_format_size(Abstractformat *self,
-                                         xx_pd_struct *pd);
-XXFC_API uint64_t xx_dlke_get_number_of_archive_records(Abstractformat *self,
-                                                        xx_pd_struct *pd);
+XXFC_API int64_t xx_dlke_get_format_size(Abstractformat *self, xx_pd_struct *pd);
+XXFC_API uint64_t xx_dlke_get_number_of_archive_records(Abstractformat *self, xx_pd_struct *pd);
 
-XXFC_API xx_archive_record_state *xx_dlke_create_archive_records_reading(
-    Abstractformat *self, const xx_list_s *options, xx_pd_struct *pd);
-XXFC_API const xx_archive_record *xx_dlke_get_current_archive_record(
-    Abstractformat *self, xx_archive_record_state *state);
-XXFC_API bool xx_dlke_unpack_current_archive_record(
-    Abstractformat *self, xx_archive_record_state *state, xx_pd_struct *pd);
-XXFC_API bool xx_dlke_archive_record_move_to_next(
-    Abstractformat *self, xx_archive_record_state *state, xx_pd_struct *pd);
-XXFC_API void xx_dlke_free_archive_records_reading(
-    Abstractformat *self, xx_archive_record_state *state);
+XXFC_API xx_archive_record_state *xx_dlke_create_archive_records_reading(Abstractformat *self, const xx_list_s *options, xx_pd_struct *pd);
+XXFC_API const xx_archive_record *xx_dlke_get_current_archive_record(Abstractformat *self, xx_archive_record_state *state);
+XXFC_API bool xx_dlke_unpack_current_archive_record(Abstractformat *self, xx_archive_record_state *state, xx_pd_struct *pd);
+XXFC_API bool xx_dlke_archive_record_move_to_next(Abstractformat *self, xx_archive_record_state *state, xx_pd_struct *pd);
+XXFC_API void xx_dlke_free_archive_records_reading(Abstractformat *self, xx_archive_record_state *state);
 
 XXFC_API const char *xx_dlke_get_rom_id(const xx_dlke *dlke);
 XXFC_API uint32_t xx_dlke_get_signature_size(const xx_dlke *dlke);
 XXFC_API uint32_t xx_dlke_get_payload_size(const xx_dlke *dlke);
 XXFC_API int64_t xx_dlke_get_archive_end(const xx_dlke *dlke);
 
-static inline Abstractformat *xx_dlke_to_format(xx_dlke *dlke) {
+static inline Abstractformat *xx_dlke_to_format(xx_dlke *dlke)
+{
     return dlke ? &dlke->format : NULL;
 }
-static inline void XDlke_init(xx_dlke *dlke, xx_io_device *dev,
-                              int64_t base_address) {
+static inline void XDlke_init(xx_dlke *dlke, xx_io_device *dev, int64_t base_address)
+{
     xx_dlke_init(dlke, dev, base_address);
 }
-static inline xx_dlke *XDlke_create(xx_io_device *dev, int64_t base_address) {
+static inline xx_dlke *XDlke_create(xx_io_device *dev, int64_t base_address)
+{
     return xx_dlke_create(dev, base_address);
 }
-static inline void XDlke_free(xx_dlke *dlke) { xx_dlke_free(dlke); }
-static inline bool XDlke_is_valid(xx_dlke *dlke, xx_pd_struct *pd) {
+static inline void XDlke_free(xx_dlke *dlke)
+{
+    xx_dlke_free(dlke);
+}
+static inline bool XDlke_is_valid(xx_dlke *dlke, xx_pd_struct *pd)
+{
     return dlke ? xx_format_is_valid(&dlke->format, pd) : false;
 }
 

@@ -35,9 +35,7 @@ extern "C" {
  * @param written     Receives the byte count produced; 0 on every failure.
  * @return true only when exactly @p output_size bytes were decoded.
  */
-XXFC_API bool xx_rtpatch_decode_memory(const uint8_t *input, size_t input_size,
-                                       uint8_t *output, size_t output_size,
-                                       size_t *written);
+XXFC_API bool xx_rtpatch_decode_memory(const uint8_t *input, size_t input_size, uint8_t *output, size_t output_size, size_t *written);
 
 /**
  * @brief Expand an RTPatch banner/comment block.
@@ -55,11 +53,7 @@ XXFC_API bool xx_rtpatch_decode_memory(const uint8_t *input, size_t input_size,
  * @param written     Receives the byte count produced; 0 on every failure.
  * @return true only when the block was consumed whole.
  */
-XXFC_API bool xx_rtpatch_text_decode_memory(const uint8_t *input,
-                                            size_t input_size,
-                                            uint8_t *output,
-                                            size_t output_size,
-                                            size_t *written);
+XXFC_API bool xx_rtpatch_text_decode_memory(const uint8_t *input, size_t input_size, uint8_t *output, size_t output_size, size_t *written);
 
 #ifdef __cplusplus
 }

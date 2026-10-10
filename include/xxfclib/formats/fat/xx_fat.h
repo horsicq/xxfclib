@@ -129,13 +129,13 @@ struct xx_fat {
     Abstractformat format;
     uint64_t number_of_records;
     uint64_t number_of_members;
-    uint32_t fat_kind;          /**< One of the xx_fat_kind values. */
+    uint32_t fat_kind; /**< One of the xx_fat_kind values. */
     uint32_t bytes_per_sector;
     uint32_t bytes_per_cluster;
-    uint32_t cluster_count;     /**< Count of data clusters, the FAT type key. */
-    uint32_t root_cluster;      /**< FAT32 root start cluster; 0 on FAT12/16. */
-    uint64_t volume_size;       /**< total_sectors * bytes_per_sector. */
-    int64_t volume_end;         /**< base_address + volume_size, or -1. */
+    uint32_t cluster_count; /**< Count of data clusters, the FAT type key. */
+    uint32_t root_cluster;  /**< FAT32 root start cluster; 0 on FAT12/16. */
+    uint64_t volume_size;   /**< total_sectors * bytes_per_sector. */
+    int64_t volume_end;     /**< base_address + volume_size, or -1. */
     void *internal;
 };
 
@@ -147,19 +147,13 @@ XXFC_API void xx_fat_free(xx_fat *fat);
 XXFC_API bool xx_fat_check_is_valid(Abstractformat *self, xx_pd_struct *pd);
 XXFC_API bool xx_fat_handle_base_info(Abstractformat *self, xx_pd_struct *pd);
 XXFC_API int64_t xx_fat_get_format_size(Abstractformat *self, xx_pd_struct *pd);
-XXFC_API uint64_t xx_fat_get_number_of_archive_records(Abstractformat *self,
-                                                       xx_pd_struct *pd);
+XXFC_API uint64_t xx_fat_get_number_of_archive_records(Abstractformat *self, xx_pd_struct *pd);
 
-XXFC_API xx_archive_record_state *xx_fat_create_archive_records_reading(
-    Abstractformat *self, const xx_list_s *options, xx_pd_struct *pd);
-XXFC_API const xx_archive_record *xx_fat_get_current_archive_record(
-    Abstractformat *self, xx_archive_record_state *state);
-XXFC_API bool xx_fat_unpack_current_archive_record(
-    Abstractformat *self, xx_archive_record_state *state, xx_pd_struct *pd);
-XXFC_API bool xx_fat_archive_record_move_to_next(
-    Abstractformat *self, xx_archive_record_state *state, xx_pd_struct *pd);
-XXFC_API void xx_fat_free_archive_records_reading(
-    Abstractformat *self, xx_archive_record_state *state);
+XXFC_API xx_archive_record_state *xx_fat_create_archive_records_reading(Abstractformat *self, const xx_list_s *options, xx_pd_struct *pd);
+XXFC_API const xx_archive_record *xx_fat_get_current_archive_record(Abstractformat *self, xx_archive_record_state *state);
+XXFC_API bool xx_fat_unpack_current_archive_record(Abstractformat *self, xx_archive_record_state *state, xx_pd_struct *pd);
+XXFC_API bool xx_fat_archive_record_move_to_next(Abstractformat *self, xx_archive_record_state *state, xx_pd_struct *pd);
+XXFC_API void xx_fat_free_archive_records_reading(Abstractformat *self, xx_archive_record_state *state);
 
 XXFC_API uint64_t xx_fat_get_number_of_records(const xx_fat *fat);
 XXFC_API uint64_t xx_fat_get_number_of_members(const xx_fat *fat);
@@ -177,18 +171,24 @@ XXFC_API bool xx_fat_is_truncated(const xx_fat *fat);
 /** Volume label, or NULL. Owned by the reader; valid until it is destroyed. */
 XXFC_API const char *xx_fat_get_volume_label(const xx_fat *fat);
 
-static inline Abstractformat *xx_fat_to_format(xx_fat *fat) {
+static inline Abstractformat *xx_fat_to_format(xx_fat *fat)
+{
     return fat ? &fat->format : NULL;
 }
-static inline void XFat_init(xx_fat *fat, xx_io_device *dev,
-                             int64_t base_address) {
+static inline void XFat_init(xx_fat *fat, xx_io_device *dev, int64_t base_address)
+{
     xx_fat_init(fat, dev, base_address);
 }
-static inline xx_fat *XFat_create(xx_io_device *dev, int64_t base_address) {
+static inline xx_fat *XFat_create(xx_io_device *dev, int64_t base_address)
+{
     return xx_fat_create(dev, base_address);
 }
-static inline void XFat_free(xx_fat *fat) { xx_fat_free(fat); }
-static inline bool XFat_is_valid(xx_fat *fat, xx_pd_struct *pd) {
+static inline void XFat_free(xx_fat *fat)
+{
+    xx_fat_free(fat);
+}
+static inline bool XFat_is_valid(xx_fat *fat, xx_pd_struct *pd)
+{
     return fat ? xx_format_is_valid(&fat->format, pd) : false;
 }
 

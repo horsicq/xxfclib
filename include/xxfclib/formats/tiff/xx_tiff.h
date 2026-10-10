@@ -9,13 +9,15 @@
 #ifdef __cplusplus
 extern "C" {
 #endif
-typedef struct xx_tiff { Abstractformat format; } xx_tiff;
-XXFC_API void xx_tiff_init(xx_tiff *,xx_io_device *,int64_t);
-XXFC_API xx_tiff *xx_tiff_create(xx_io_device *,int64_t);
+typedef struct xx_tiff {
+    Abstractformat format;
+} xx_tiff;
+XXFC_API void xx_tiff_init(xx_tiff *, xx_io_device *, int64_t);
+XXFC_API xx_tiff *xx_tiff_create(xx_io_device *, int64_t);
 XXFC_API void xx_tiff_destroy(xx_tiff *);
 XXFC_API void xx_tiff_free(xx_tiff *);
-XXFC_API bool xx_tiff_check_is_valid(Abstractformat *,xx_pd_struct *);
-XXFC_API bool xx_tiff_handle_base_info(Abstractformat *,xx_pd_struct *);
+XXFC_API bool xx_tiff_check_is_valid(Abstractformat *, xx_pd_struct *);
+XXFC_API bool xx_tiff_handle_base_info(Abstractformat *, xx_pd_struct *);
 #ifdef __cplusplus
 }
 #endif

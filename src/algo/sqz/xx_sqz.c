@@ -23,21 +23,15 @@
 #define SQZ_MAX_PADDING_BYTES 2
 
 /* Methods 3/4 map C symbols 0x100..0x11f through these tables. */
-static const uint8_t sqz_length_extra[32] = {
-    0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 1, 1, 2, 2, 2, 2,
-    3, 3, 3, 3, 4, 4, 4, 4, 5, 5, 5, 5, 6, 6, 6, 6};
-static const uint16_t sqz_length_base[32] = {
-    0,   1,   2,   3,   4,   5,   6,   7,   8,   10,  12,  14,  16,  20,  24,  28,
-    32,  40,  48,  56,  64,  80,  96,  112, 128, 160, 192, 224, 256, 320, 384, 448};
+static const uint8_t sqz_length_extra[32] = {0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 1, 1, 2, 2, 2, 2, 3, 3, 3, 3, 4, 4, 4, 4, 5, 5, 5, 5, 6, 6, 6, 6};
+static const uint16_t sqz_length_base[32] = {0,  1,  2,  3,  4,  5,  6,  7,   8,   10,  12,  14,  16,  20,  24,  28,
+                                             32, 40, 48, 56, 64, 80, 96, 112, 128, 160, 192, 224, 256, 320, 384, 448};
 
 /* Methods 2/4 use the distance tables embedded in SQZ.EXE.  Index 31 is not
  * part of the 31-symbol P alphabet and is intentionally omitted. */
-static const uint8_t sqz_distance_extra[31] = {
-    0, 0, 0, 0, 0, 1, 1, 2, 2, 3, 3, 4, 4, 5, 5, 6,
-    6, 7, 7, 8, 8, 9, 9, 10, 10, 11, 11, 12, 12, 13, 13};
-static const uint16_t sqz_distance_base[31] = {
-    0,   1,   2,   3,   4,    5,    7,    9,    13,   17,   25,   33,   49,   65,   97,   129,
-    193, 257, 385, 513, 769,  1025, 1537, 2049, 3073, 4097, 6145, 8193, 12289, 16385, 24577};
+static const uint8_t sqz_distance_extra[31] = {0, 0, 0, 0, 0, 1, 1, 2, 2, 3, 3, 4, 4, 5, 5, 6, 6, 7, 7, 8, 8, 9, 9, 10, 10, 11, 11, 12, 12, 13, 13};
+static const uint16_t sqz_distance_base[31] = {0,   1,   2,   3,   4,   5,    7,    9,    13,   17,   25,   33,   49,    65,    97,   129,
+                                               193, 257, 385, 513, 769, 1025, 1537, 2049, 3073, 4097, 6145, 8193, 12289, 16385, 24577};
 
 typedef struct sqz_huffman {
     bool constant;
@@ -54,7 +48,7 @@ typedef struct sqz_state {
     size_t input_size;
     size_t input_pos;
     uint8_t *output;
-    size_t raw_size;   /* the member's declared uncompressed size */
+    size_t raw_size; /* the member's declared uncompressed size */
     size_t produced;
 
     uint32_t method;
@@ -76,11 +70,9 @@ typedef struct sqz_state {
 
 static bool sqz_read_bits(sqz_state *s, int32_t bits, uint32_t *value);
 
-static bool sqz_huff_set_constant(sqz_huffman *t, uint32_t symbol,
-                                  int32_t count)
+static bool sqz_huff_set_constant(sqz_huffman *t, uint32_t symbol, int32_t count)
 {
-    if (!t || (count <= 0) || (count > SQZ_NC) ||
-        (symbol >= (uint32_t)count)) {
+    if (!t || (count <= 0) || (count > SQZ_NC) || (symbol >= (uint32_t)count)) {
         return false;
     }
     t->constant = true;
@@ -89,8 +81,7 @@ static bool sqz_huff_set_constant(sqz_huffman *t, uint32_t symbol,
     return true;
 }
 
-static bool sqz_huff_build(sqz_huffman *t, const uint8_t *lengths,
-                           int32_t count)
+static bool sqz_huff_build(sqz_huffman *t, const uint8_t *lengths, int32_t count)
 {
     int32_t i;
     int32_t length;
@@ -143,8 +134,7 @@ static bool sqz_huff_build(sqz_huffman *t, const uint8_t *lengths,
     return (symbol_index > 0) && (symbol_index <= (uint32_t)count);
 }
 
-static bool sqz_huff_decode(const sqz_huffman *t, sqz_state *s,
-                            uint32_t *symbol)
+static bool sqz_huff_decode(const sqz_huffman *t, sqz_state *s, uint32_t *symbol)
 {
     int32_t length;
     uint32_t code;
@@ -169,8 +159,7 @@ static bool sqz_huff_decode(const sqz_huffman *t, sqz_state *s,
         count = t->counts[length];
         if ((count != 0) && (code >= first) && ((code - first) < count)) {
             index = (uint32_t)t->first_symbol[length] + (code - first);
-            if ((index >= (uint32_t)SQZ_NC) ||
-                ((int32_t)t->symbols[index] >= t->symbol_count)) {
+            if ((index >= (uint32_t)SQZ_NC) || ((int32_t)t->symbols[index] >= t->symbol_count)) {
                 return false;
             }
             *symbol = t->symbols[index];
@@ -224,8 +213,7 @@ static bool sqz_peek_bits(sqz_state *s, int32_t bits, uint32_t *value)
         *value = 0;
         return true;
     }
-    *value = (s->bit_buffer >> (s->bit_count - bits)) &
-             ((1U << bits) - 1U);
+    *value = (s->bit_buffer >> (s->bit_count - bits)) & ((1U << bits) - 1U);
     return true;
 }
 
@@ -245,9 +233,7 @@ static bool sqz_read_bits(sqz_state *s, int32_t bits, uint32_t *value)
 
 /* Reads the 3-bit-with-unary-extension length list used for the pre-tree
  * (19 symbols) and the distance tree (31 symbols). */
-static bool sqz_read_pt_lengths(sqz_state *s, int32_t symbols,
-                                int32_t bit_width, int32_t special,
-                                sqz_huffman *tree)
+static bool sqz_read_pt_lengths(sqz_state *s, int32_t symbols, int32_t bit_width, int32_t special, sqz_huffman *tree)
 {
     uint32_t encoded;
     uint32_t constant;
@@ -267,8 +253,7 @@ static bool sqz_read_pt_lengths(sqz_state *s, int32_t symbols,
     if (!sqz_read_bits(s, bit_width, &encoded)) return false;
     if (encoded == 0) {
         constant = 0;
-        return sqz_read_bits(s, bit_width, &constant) &&
-               sqz_huff_set_constant(tree, constant, symbols);
+        return sqz_read_bits(s, bit_width, &constant) && sqz_huff_set_constant(tree, constant, symbols);
     }
     if (encoded > (uint32_t)symbols) return false;
 
@@ -293,8 +278,7 @@ static bool sqz_read_pt_lengths(sqz_state *s, int32_t symbols,
 
         if (i == special) {
             zeros = 0;
-            if (!sqz_read_bits(s, 2, &zeros) ||
-                (zeros > (encoded - (uint32_t)i))) {
+            if (!sqz_read_bits(s, 2, &zeros) || (zeros > (encoded - (uint32_t)i))) {
                 return false;
             }
             for (j = 0; j < zeros; ++j) s->code_lengths[i++] = 0;
@@ -305,8 +289,7 @@ static bool sqz_read_pt_lengths(sqz_state *s, int32_t symbols,
 }
 
 /* Reads the 511-symbol literal/length tree through the pre-tree. */
-static bool sqz_read_c_lengths(sqz_state *s, const sqz_huffman *pt_tree,
-                               sqz_huffman *tree)
+static bool sqz_read_c_lengths(sqz_state *s, const sqz_huffman *pt_tree, sqz_huffman *tree)
 {
     uint32_t encoded;
     uint32_t constant;
@@ -323,16 +306,14 @@ static bool sqz_read_c_lengths(sqz_state *s, const sqz_huffman *pt_tree,
     if (!sqz_read_bits(s, 9, &encoded)) return false;
     if (encoded == 0) {
         constant = 0;
-        return sqz_read_bits(s, 9, &constant) &&
-               sqz_huff_set_constant(tree, constant, SQZ_NC);
+        return sqz_read_bits(s, 9, &constant) && sqz_huff_set_constant(tree, constant, SQZ_NC);
     }
     if (encoded > (uint32_t)SQZ_NC) return false;
 
     i = 0;
     while (i < (int32_t)encoded) {
         symbol = 0;
-        if (!sqz_huff_decode(pt_tree, s, &symbol) ||
-            (symbol >= (uint32_t)SQZ_NT)) {
+        if (!sqz_huff_decode(pt_tree, s, &symbol) || (symbol >= (uint32_t)SQZ_NT)) {
             return false;
         }
 
@@ -391,8 +372,7 @@ static bool sqz_decode_c(sqz_state *s, uint32_t *value)
     if ((s->block_remaining == 0) && !sqz_read_block(s)) return false;
 
     symbol = 0;
-    if (!sqz_huff_decode(&s->c_tree, s, &symbol) ||
-        (symbol >= (uint32_t)SQZ_NC)) {
+    if (!sqz_huff_decode(&s->c_tree, s, &symbol) || (symbol >= (uint32_t)SQZ_NC)) {
         return false;
     }
     --s->block_remaining;
@@ -438,8 +418,7 @@ static bool sqz_decode_distance(sqz_state *s, uint32_t *distance)
 
     if (!s || !distance) return false;
     symbol = 0;
-    if (!sqz_huff_decode(&s->p_tree, s, &symbol) ||
-        (symbol >= (uint32_t)SQZ_NP)) {
+    if (!sqz_huff_decode(&s->p_tree, s, &symbol) || (symbol >= (uint32_t)SQZ_NP)) {
         return false;
     }
 
@@ -488,9 +467,7 @@ static bool sqz_finalize_input(sqz_state *s)
 
 /* ------------------------------------------------------------- entry --- */
 
-bool xx_sqz_decode_memory(const uint8_t *input, size_t input_size,
-                          uint32_t method, uint8_t *output,
-                          size_t output_size, size_t *written)
+bool xx_sqz_decode_memory(const uint8_t *input, size_t input_size, uint32_t method, uint8_t *output, size_t output_size, size_t *written)
 {
     sqz_state *s;
     uint32_t code;
@@ -554,8 +531,7 @@ bool xx_sqz_decode_memory(const uint8_t *input, size_t input_size,
             s->error = true;
             break;
         }
-        source = (s->window_position - (int32_t)distance - 1) &
-                 SQZ_WINDOW_MASK;
+        source = (s->window_position - (int32_t)distance - 1) & SQZ_WINDOW_MASK;
 
         /* SQZ members are terminated by their declared raw size.  The final
          * match is allowed to cross that boundary; the original extractor
@@ -586,34 +562,22 @@ bool xx_sqz_decode_memory(const uint8_t *input, size_t input_size,
     return ok;
 }
 
-bool xx_sqz1_decode_memory(const uint8_t *input, size_t input_size,
-                           uint8_t *output, size_t output_size,
-                           size_t *written)
+bool xx_sqz1_decode_memory(const uint8_t *input, size_t input_size, uint8_t *output, size_t output_size, size_t *written)
 {
-    return xx_sqz_decode_memory(input, input_size, 1, output, output_size,
-                                written);
+    return xx_sqz_decode_memory(input, input_size, 1, output, output_size, written);
 }
 
-bool xx_sqz2_decode_memory(const uint8_t *input, size_t input_size,
-                           uint8_t *output, size_t output_size,
-                           size_t *written)
+bool xx_sqz2_decode_memory(const uint8_t *input, size_t input_size, uint8_t *output, size_t output_size, size_t *written)
 {
-    return xx_sqz_decode_memory(input, input_size, 2, output, output_size,
-                                written);
+    return xx_sqz_decode_memory(input, input_size, 2, output, output_size, written);
 }
 
-bool xx_sqz3_decode_memory(const uint8_t *input, size_t input_size,
-                           uint8_t *output, size_t output_size,
-                           size_t *written)
+bool xx_sqz3_decode_memory(const uint8_t *input, size_t input_size, uint8_t *output, size_t output_size, size_t *written)
 {
-    return xx_sqz_decode_memory(input, input_size, 3, output, output_size,
-                                written);
+    return xx_sqz_decode_memory(input, input_size, 3, output, output_size, written);
 }
 
-bool xx_sqz4_decode_memory(const uint8_t *input, size_t input_size,
-                           uint8_t *output, size_t output_size,
-                           size_t *written)
+bool xx_sqz4_decode_memory(const uint8_t *input, size_t input_size, uint8_t *output, size_t output_size, size_t *written)
 {
-    return xx_sqz_decode_memory(input, input_size, 4, output, output_size,
-                                written);
+    return xx_sqz_decode_memory(input, input_size, 4, output, output_size, written);
 }

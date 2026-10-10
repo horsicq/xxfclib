@@ -19,10 +19,8 @@ typedef struct xx_cmd_fd_s {
     unsigned density;
 } xx_cmd_fd;
 
-XXFC_API void xx_cmd_fd_init(xx_cmd_fd *, xx_io_device *, int64_t,
-                             unsigned density);
-XXFC_API xx_cmd_fd *xx_cmd_fd_create(xx_io_device *, int64_t,
-                                     unsigned density);
+XXFC_API void xx_cmd_fd_init(xx_cmd_fd *, xx_io_device *, int64_t, unsigned density);
+XXFC_API xx_cmd_fd *xx_cmd_fd_create(xx_io_device *, int64_t, unsigned density);
 XXFC_API void xx_cmd_fd_destroy(xx_cmd_fd *);
 XXFC_API void xx_cmd_fd_free(xx_cmd_fd *);
 

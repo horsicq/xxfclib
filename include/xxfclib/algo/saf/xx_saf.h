@@ -43,9 +43,7 @@ extern "C" {
  * @param written     Receives the byte count produced (0 on failure).
  * @return true only on a complete decode of exactly @p output_size bytes.
  */
-XXFC_API bool xx_saf_decode_memory(const uint8_t *input, size_t input_size,
-                                   uint8_t *output, size_t output_size,
-                                   size_t *written);
+XXFC_API bool xx_saf_decode_memory(const uint8_t *input, size_t input_size, uint8_t *output, size_t output_size, size_t *written);
 
 /**
  * @brief As xx_saf_decode_memory(), for a member whose method byte is known.
@@ -55,10 +53,7 @@ XXFC_API bool xx_saf_decode_memory(const uint8_t *input, size_t input_size,
  * means it is a chain of [uint32 little-endian length][stream] chunks, each of
  * which restarts the bit reader and the 2 KiB window.
  */
-XXFC_API bool xx_saf_decode_memory_method(const uint8_t *input,
-                                          size_t input_size, uint32_t method,
-                                          uint8_t *output, size_t output_size,
-                                          size_t *written);
+XXFC_API bool xx_saf_decode_memory_method(const uint8_t *input, size_t input_size, uint32_t method, uint8_t *output, size_t output_size, size_t *written);
 
 #ifdef __cplusplus
 }

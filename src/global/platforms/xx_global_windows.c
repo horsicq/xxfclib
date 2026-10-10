@@ -12,7 +12,8 @@
 #define ENABLE_VIRTUAL_TERMINAL_PROCESSING 0x0004
 #endif
 
-xx_terminal_type_t xx_global_platform_detect_terminal_type(bool standard_error) {
+xx_terminal_type_t xx_global_platform_detect_terminal_type(bool standard_error)
+{
     HANDLE handle = GetStdHandle(standard_error ? STD_ERROR_HANDLE : STD_OUTPUT_HANDLE);
     DWORD mode = 0;
 
@@ -41,7 +42,8 @@ xx_terminal_type_t xx_global_platform_detect_terminal_type(bool standard_error) 
 static xx_tls_key *volatile xx_tls_published[XX_TLS_MAX_PUBLISHED];
 static volatile LONG xx_tls_published_count;
 
-static DWORD xx_tls_slot(xx_tls_key *key) {
+static DWORD xx_tls_slot(xx_tls_key *key)
+{
     LONG slot = key->slot;
 
     if (slot == 0) {
@@ -72,7 +74,8 @@ static DWORD xx_tls_slot(xx_tls_key *key) {
     return (DWORD)(slot - 1);
 }
 
-void xx_global_release_thread_slots(void) {
+void xx_global_release_thread_slots(void)
+{
     LONG count = xx_tls_published_count;
     LONG i;
 
@@ -94,7 +97,8 @@ void xx_global_release_thread_slots(void) {
     xx_tls_published_count = 0;
 }
 
-void *xx_tls_get(xx_tls_key *key) {
+void *xx_tls_get(xx_tls_key *key)
+{
     DWORD index = xx_tls_slot(key);
     DWORD last_error;
     void *value;
@@ -112,13 +116,15 @@ void *xx_tls_get(xx_tls_key *key) {
     return value;
 }
 
-bool xx_tls_set(xx_tls_key *key, void *value) {
+bool xx_tls_set(xx_tls_key *key, void *value)
+{
     DWORD index = xx_tls_slot(key);
 
     return (index != TLS_OUT_OF_INDEXES) && TlsSetValue(index, value);
 }
 
-uintptr_t xx_tls_thread_id(void) {
+uintptr_t xx_tls_thread_id(void)
+{
     return (uintptr_t)GetCurrentThreadId();
 }
 

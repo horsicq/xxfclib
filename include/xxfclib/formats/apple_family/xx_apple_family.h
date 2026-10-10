@@ -13,6 +13,6 @@ typedef struct xx_apple_family_info {
     uint32_t profile, detected_profile;
     bool incomplete;
     const char *note;
-    uint32_t cylinders,heads,sectors_per_track,sector_size;
+    uint32_t cylinders, heads, sectors_per_track, sector_size;
 } xx_apple_family_info;
 #endif

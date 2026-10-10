@@ -35,7 +35,7 @@ typedef struct teledisk_member_s {
     int64_t data_offset;
     int64_t packed_size;
     uint64_t unpacked_size;
-    uint32_t method;      /* 0 = stored, non-zero = format codec */
+    uint32_t method; /* 0 = stored, non-zero = format codec */
     bool decode;
 } teledisk_member;
 
@@ -46,15 +46,12 @@ typedef struct teledisk_stream_s {
     int64_t archive_size;
 } teledisk_stream;
 
-static bool teledisk_read_at(xx_io_device *device, int64_t offset, void *buffer,
-                        size_t size) {
+static bool teledisk_read_at(xx_io_device *device, int64_t offset, void *buffer, size_t size)
+{
     size_t done = 0U;
-    if (!device || (!buffer && size != 0U) || offset < 0 ||
-        xx_io_seek64(device, offset, SEEK_SET) != 0)
-        return false;
+    if (!device || (!buffer && size != 0U) || offset < 0 || xx_io_seek64(device, offset, SEEK_SET) != 0) return false;
     while (done < size) {
-        ssize_t amount = xx_io_read(device, (uint8_t *)buffer + done,
-                                    size - done);
+        ssize_t amount = xx_io_read(device, (uint8_t *)buffer + done, size - done);
         if (amount <= 0 || (size_t)amount > size - done) return false;
         done += (size_t)amount;
     }
@@ -63,8 +60,8 @@ static bool teledisk_read_at(xx_io_device *device, int64_t offset, void *buffer,
 
 /* Reader-owned names are built here, never taken from the container, so they
  * are safe by construction.  The helper only has to be CRT free. */
-static char *teledisk_make_name(const char *prefix, int a, int b,
-                           const char *suffix) {
+static char *teledisk_make_name(const char *prefix, int a, int b, const char *suffix)
+{
     char buffer[64];
     size_t used = 0U;
     size_t index;
@@ -103,7 +100,8 @@ static char *teledisk_make_name(const char *prefix, int a, int b,
     return result;
 }
 
-static void teledisk_stream_free(void *opaque) {
+static void teledisk_stream_free(void *opaque)
+{
     teledisk_stream *stream = (teledisk_stream *)opaque;
     size_t index;
     if (!stream) return;
@@ -113,13 +111,11 @@ static void teledisk_stream_free(void *opaque) {
     xx_mem_free(stream);
 }
 
-static bool teledisk_add_member(teledisk_stream *stream, const teledisk_member *member) {
+static bool teledisk_add_member(teledisk_stream *stream, const teledisk_member *member)
+{
     teledisk_member *grown;
-    if (!stream || !member || stream->count >= TELEDISK_MAX_MEMBERS ||
-        stream->count > SIZE_MAX / sizeof(*grown) - 1U)
-        return false;
-    grown = (teledisk_member *)xx_mem_realloc(stream->items,
-                                         (stream->count + 1U) * sizeof(*grown));
+    if (!stream || !member || stream->count >= TELEDISK_MAX_MEMBERS || stream->count > SIZE_MAX / sizeof(*grown) - 1U) return false;
+    grown = (teledisk_member *)xx_mem_realloc(stream->items, (stream->count + 1U) * sizeof(*grown));
     if (!grown) return false;
     stream->items = grown;
     stream->items[stream->count++] = *member;
@@ -134,10 +130,9 @@ static bool teledisk_add_member(teledisk_stream *stream, const teledisk_member *
  * and no final xor.  It authenticates the file header, every track header and
  * every sector's payload, which is what lets the reader tell a real image from
  * a file that merely starts with the right two letters. */
-static uint16_t teledisk_crc16(const uint8_t *data, size_t size,
-                               uint16_t seed) {
-    xx_crc_model model = {16U, UINT64_C(0xa097), seed,
-                          false, false, 0U, "TeleDisk"};
+static uint16_t teledisk_crc16(const uint8_t *data, size_t size, uint16_t seed)
+{
+    xx_crc_model model = {16U, UINT64_C(0xa097), seed, false, false, 0U, "TeleDisk"};
     return (uint16_t)xx_crc_calculate(&model, data, size);
 }
 
@@ -147,7 +142,8 @@ typedef struct teledisk_buffer_s {
     size_t capacity;
 } teledisk_buffer;
 
-static bool teledisk_push(teledisk_buffer *buffer, uint8_t value) {
+static bool teledisk_push(teledisk_buffer *buffer, uint8_t value)
+{
     if (buffer->size == buffer->capacity) {
         size_t wanted = buffer->capacity ? buffer->capacity * 2U : 0x10000U;
         uint8_t *grown;
@@ -163,8 +159,8 @@ static bool teledisk_push(teledisk_buffer *buffer, uint8_t value) {
 }
 
 /* Signature "td", versions 10..19: blocked 12-bit LSB-first LZW. */
-static bool teledisk_expand_lzw(const uint8_t *input, size_t input_size,
-                                teledisk_buffer *output) {
+static bool teledisk_expand_lzw(const uint8_t *input, size_t input_size, teledisk_buffer *output)
+{
     uint16_t *prefix = (uint16_t *)xx_mem_alloc(4096U * sizeof(uint16_t));
     uint8_t *suffix = (uint8_t *)xx_mem_alloc(4096U);
     uint8_t *stack = (uint8_t *)xx_mem_alloc(4096U);
@@ -179,8 +175,7 @@ static bool teledisk_expand_lzw(const uint8_t *input, size_t input_size,
         int32_t walk;
         if (left < 1) {
             if (input_size - position < 2U) break;
-            left = (int32_t)input[position] |
-                   ((int32_t)input[position + 1U] << 8);
+            left = (int32_t)input[position] | ((int32_t)input[position + 1U] << 8);
             position += 2U;
             if (left > 0x3000) {
                 ok = false;
@@ -289,8 +284,8 @@ typedef struct teledisk_lzhuf_s {
     int32_t ring;
 } teledisk_lzhuf;
 
-static void teledisk_lzhuf_init(teledisk_lzhuf *state, const uint8_t *input,
-                                size_t input_size) {
+static void teledisk_lzhuf_init(teledisk_lzhuf *state, const uint8_t *input, size_t input_size)
+{
     static const int32_t counts[6] = {1, 3, 8, 12, 24, 16};
     int32_t index = 0, symbol = 0, length, i, j, k;
     xx_mem_zero(state, sizeof(*state));
@@ -329,7 +324,8 @@ static void teledisk_lzhuf_init(teledisk_lzhuf *state, const uint8_t *input,
     xx_rt_memset(state->text, 0x20, sizeof(state->text));
 }
 
-static void teledisk_lzhuf_reconst(teledisk_lzhuf *state) {
+static void teledisk_lzhuf_reconst(teledisk_lzhuf *state)
+{
     int32_t i, j = 0, k, l, m;
     for (i = 0; i < TD_T; ++i) {
         if (state->son[i] >= TD_T) {
@@ -360,7 +356,8 @@ static void teledisk_lzhuf_reconst(teledisk_lzhuf *state) {
     }
 }
 
-static void teledisk_lzhuf_update(teledisk_lzhuf *state, int32_t c) {
+static void teledisk_lzhuf_update(teledisk_lzhuf *state, int32_t c)
+{
     if (state->freq[TD_R] == TD_MAX_FREQ) teledisk_lzhuf_reconst(state);
     c = state->parent[c + TD_T];
     do {
@@ -386,7 +383,8 @@ static void teledisk_lzhuf_update(teledisk_lzhuf *state, int32_t c) {
     } while (c != 0);
 }
 
-static int32_t teledisk_lzhuf_bit(teledisk_lzhuf *state) {
+static int32_t teledisk_lzhuf_bit(teledisk_lzhuf *state)
+{
     if (state->bit_count == 0) {
         if (state->position >= state->input_size) {
             state->eof = true;
@@ -399,10 +397,9 @@ static int32_t teledisk_lzhuf_bit(teledisk_lzhuf *state) {
     return (state->bit_buffer >> state->bit_count) & 1;
 }
 
-static bool teledisk_expand_lzhuf(const uint8_t *input, size_t input_size,
-                                  teledisk_buffer *output) {
-    teledisk_lzhuf *state =
-        (teledisk_lzhuf *)xx_mem_alloc(sizeof(teledisk_lzhuf));
+static bool teledisk_expand_lzhuf(const uint8_t *input, size_t input_size, teledisk_buffer *output)
+{
+    teledisk_lzhuf *state = (teledisk_lzhuf *)xx_mem_alloc(sizeof(teledisk_lzhuf));
     bool ok = true;
     if (!state) return false;
     teledisk_lzhuf_init(state, input, input_size);
@@ -458,9 +455,8 @@ done:
 }
 
 /* Sector payload codings 0..2; a run must land exactly on the sector size. */
-static bool teledisk_unpack_sector(const uint8_t *source, size_t source_size,
-                                   uint8_t method, size_t sector_size,
-                                   uint8_t *output) {
+static bool teledisk_unpack_sector(const uint8_t *source, size_t source_size, uint8_t method, size_t sector_size, uint8_t *output)
+{
     size_t left = sector_size;
     size_t index = 0U;
     if (method == 0U) {
@@ -471,8 +467,7 @@ static bool teledisk_unpack_sector(const uint8_t *source, size_t source_size,
     if (method == 1U) {
         if (source_size & 3U) return false;
         while (index < source_size) {
-            size_t repeat = (size_t)source[index] |
-                            ((size_t)source[index + 1U] << 8U);
+            size_t repeat = (size_t)source[index] | ((size_t)source[index + 1U] << 8U);
             uint8_t a = source[index + 2U];
             uint8_t b = source[index + 3U];
             size_t step;
@@ -495,9 +490,7 @@ static bool teledisk_unpack_sector(const uint8_t *source, size_t source_size,
             repeat = source[index + 1U];
             if (code == 0U) {
                 if (remaining - 2U < repeat || left < repeat) return false;
-                if (repeat != 0U)
-                    xx_mem_copy(output + (sector_size - left),
-                                source + index + 2U, repeat);
+                if (repeat != 0U) xx_mem_copy(output + (sector_size - left), source + index + 2U, repeat);
                 left -= repeat;
                 index += 2U + repeat;
                 remaining -= 2U + repeat;
@@ -506,8 +499,7 @@ static bool teledisk_unpack_sector(const uint8_t *source, size_t source_size,
                 if (remaining - 2U < block) return false;
                 if (block != 0U && repeat > left / block) return false;
                 for (step = 0U; step < repeat; ++step) {
-                    xx_mem_copy(output + (sector_size - left),
-                                source + index + 2U, block);
+                    xx_mem_copy(output + (sector_size - left), source + index + 2U, block);
                     left -= block;
                 }
                 index += 2U + block;
@@ -523,9 +515,8 @@ static bool teledisk_unpack_sector(const uint8_t *source, size_t source_size,
  * header per physical track and one descriptor plus payload per sector.  A
  * sector count of 0xFF terminates.  Sectors go out in file order, padded to at
  * least 512 bytes, which is what the reference extractor produces. */
-static bool teledisk_build(const uint8_t *plain, size_t plain_size,
-                           bool has_comment, uint8_t *output,
-                           size_t output_size, size_t *produced) {
+static bool teledisk_build(const uint8_t *plain, size_t plain_size, bool has_comment, uint8_t *output, size_t output_size, size_t *produced)
+{
     size_t position = 0U;
     size_t total = 0U;
     uint32_t tracks = 0U;
@@ -539,8 +530,7 @@ static bool teledisk_build(const uint8_t *plain, size_t plain_size,
         running = teledisk_crc16(plain + position + 2U, 8U, 0U);
         position += 10U;
         if (plain_size - position < comment_length) return false;
-        if (teledisk_crc16(plain + position, comment_length, running) != stored)
-            return false;
+        if (teledisk_crc16(plain + position, comment_length, running) != stored) return false;
         position += comment_length;
     }
     while (tracks < TELEDISK_MAX_TRACKS) {
@@ -550,9 +540,7 @@ static bool teledisk_build(const uint8_t *plain, size_t plain_size,
         if (plain_size - position < 4U) break;
         sectors = plain[position];
         if (sectors == 0xffU) break;
-        if ((uint8_t)(teledisk_crc16(plain + position, 3U, 0U) & 0xffU) !=
-            plain[position + 3U])
-            break;
+        if ((uint8_t)(teledisk_crc16(plain + position, 3U, 0U) & 0xffU) != plain[position + 3U]) break;
         position += 4U;
         if (sectors == 0U) continue;
         for (index = 0U; index < sectors; ++index) {
@@ -564,8 +552,7 @@ static bool teledisk_build(const uint8_t *plain, size_t plain_size,
             size_code = plain[position + 3U];
             flags = plain[position + 4U];
             if (size_code > 7U) return false;
-            calculated = (uint8_t)(teledisk_crc16(plain + position, 5U, 0U) &
-                                   0xffU);
+            calculated = (uint8_t)(teledisk_crc16(plain + position, 5U, 0U) & 0xffU);
             sector_size = (size_t)0x80U << size_code;
             xx_mem_zero(scratch, sizeof(scratch));
             position += 6U;
@@ -579,16 +566,12 @@ static bool teledisk_build(const uint8_t *plain, size_t plain_size,
                 method = plain[position + 2U];
                 position += 3U;
                 if (plain_size - position < block_length) return false;
-                if (!teledisk_unpack_sector(plain + position, block_length,
-                                            method, sector_size, scratch))
-                    return false;
+                if (!teledisk_unpack_sector(plain + position, block_length, method, sector_size, scratch)) return false;
                 position += block_length;
-                calculated = (uint8_t)(teledisk_crc16(scratch, sector_size,
-                                                      0U) & 0xffU);
+                calculated = (uint8_t)(teledisk_crc16(scratch, sector_size, 0U) & 0xffU);
             }
             write_size = sector_size >= 0x200U ? sector_size : 0x200U;
-            if (!(sectors == 0x13U && sector_number == 0x76U &&
-                  (flags & 0x40U) != 0U)) {
+            if (!(sectors == 0x13U && sector_number == 0x76U && (flags & 0x40U) != 0U)) {
                 if (write_size > TELEDISK_MAX_OUTPUT - total) return false;
                 if (output) {
                     if (total + write_size > output_size) return false;
@@ -603,68 +586,58 @@ static bool teledisk_build(const uint8_t *plain, size_t plain_size,
     return total != 0U;
 }
 
-static bool teledisk_expand(Abstractformat *format, int64_t base, int64_t size,
-                            teledisk_buffer *plain, bool *has_comment) {
+static bool teledisk_expand(Abstractformat *format, int64_t base, int64_t size, teledisk_buffer *plain, bool *has_comment)
+{
     uint8_t *raw = NULL;
     bool compressed, advanced, ok = false;
     uint8_t version;
-    if (size < (int64_t)TELEDISK_HEADER_SIZE ||
-        (uint64_t)size > TELEDISK_MAX_OUTPUT)
-        return false;
+    if (size < (int64_t)TELEDISK_HEADER_SIZE || (uint64_t)size > TELEDISK_MAX_OUTPUT) return false;
     raw = (uint8_t *)xx_mem_alloc((size_t)size);
     if (!raw) return false;
     if (!teledisk_read_at(format->device, base, raw, (size_t)size)) goto done;
     compressed = raw[0] == 't' && raw[1] == 'd';
     if (!compressed && !(raw[0] == 'T' && raw[1] == 'D')) goto done;
     version = raw[4];
-    if (version < 10U || version > 21U || (raw[5] & 0x7fU) > 2U ||
-        raw[6] > 6U || (raw[9] != 1U && raw[9] != 2U) ||
+    if (version < 10U || version > 21U || (raw[5] & 0x7fU) > 2U || raw[6] > 6U || (raw[9] != 1U && raw[9] != 2U) ||
         xx_data_get_u16(raw + 10U, 2, 0, false) != teledisk_crc16(raw, 10U, 0U))
         goto done;
     *has_comment = (raw[7] & 0x80U) != 0U;
     advanced = compressed && version >= 20U;
     if (!compressed) {
-        plain->data = (uint8_t *)xx_mem_alloc((size_t)size -
-                                              TELEDISK_HEADER_SIZE + 1U);
+        plain->data = (uint8_t *)xx_mem_alloc((size_t)size - TELEDISK_HEADER_SIZE + 1U);
         if (!plain->data) goto done;
         plain->size = (size_t)size - TELEDISK_HEADER_SIZE;
         plain->capacity = plain->size + 1U;
-        if (plain->size != 0U)
-            xx_mem_copy(plain->data, raw + TELEDISK_HEADER_SIZE, plain->size);
+        if (plain->size != 0U) xx_mem_copy(plain->data, raw + TELEDISK_HEADER_SIZE, plain->size);
         ok = plain->size != 0U;
     } else if (advanced) {
-        ok = teledisk_expand_lzhuf(raw + TELEDISK_HEADER_SIZE,
-                                   (size_t)size - TELEDISK_HEADER_SIZE, plain);
+        ok = teledisk_expand_lzhuf(raw + TELEDISK_HEADER_SIZE, (size_t)size - TELEDISK_HEADER_SIZE, plain);
     } else {
-        ok = teledisk_expand_lzw(raw + TELEDISK_HEADER_SIZE,
-                                 (size_t)size - TELEDISK_HEADER_SIZE, plain);
+        ok = teledisk_expand_lzw(raw + TELEDISK_HEADER_SIZE, (size_t)size - TELEDISK_HEADER_SIZE, plain);
     }
 done:
     xx_mem_free(raw);
     return ok;
 }
 
-static bool teledisk_parse(Abstractformat *format, teledisk_stream **result) {
+static bool teledisk_parse(Abstractformat *format, teledisk_stream **result)
+{
     teledisk_buffer plain;
     teledisk_stream *stream;
     teledisk_member member;
     int64_t total, size;
     size_t measured = 0U;
     bool has_comment = false;
-    if (!format || !format->device || !result || format->base_address < 0)
-        return false;
+    if (!format || !format->device || !result || format->base_address < 0) return false;
     total = xx_io_total_size(format->device);
     if (total < format->base_address) return false;
     size = total - format->base_address;
     xx_mem_zero(&plain, sizeof(plain));
-    if (!teledisk_expand(format, format->base_address, size, &plain,
-                         &has_comment)) {
+    if (!teledisk_expand(format, format->base_address, size, &plain, &has_comment)) {
         if (plain.data) xx_mem_free(plain.data);
         return false;
     }
-    if (!teledisk_build(plain.data, plain.size, has_comment, NULL, 0U,
-                        &measured) ||
-        measured == 0U || measured > TELEDISK_MAX_OUTPUT) {
+    if (!teledisk_build(plain.data, plain.size, has_comment, NULL, 0U, &measured) || measured == 0U || measured > TELEDISK_MAX_OUTPUT) {
         xx_mem_free(plain.data);
         return false;
     }
@@ -690,28 +663,20 @@ static bool teledisk_parse(Abstractformat *format, teledisk_stream **result) {
     return true;
 }
 
-static bool teledisk_decode(Abstractformat *format,
-                            const teledisk_member *member, uint8_t **plain_out,
-                            size_t *plain_size) {
+static bool teledisk_decode(Abstractformat *format, const teledisk_member *member, uint8_t **plain_out, size_t *plain_size)
+{
     teledisk_buffer plain;
     uint8_t *output;
     size_t produced = 0U;
     bool has_comment = false;
-    if (member->unpacked_size == 0U ||
-        member->unpacked_size > TELEDISK_MAX_OUTPUT)
-        return false;
+    if (member->unpacked_size == 0U || member->unpacked_size > TELEDISK_MAX_OUTPUT) return false;
     xx_mem_zero(&plain, sizeof(plain));
-    if (!teledisk_expand(format, member->header_offset,
-                         member->packed_size + TELEDISK_HEADER_SIZE, &plain,
-                         &has_comment)) {
+    if (!teledisk_expand(format, member->header_offset, member->packed_size + TELEDISK_HEADER_SIZE, &plain, &has_comment)) {
         if (plain.data) xx_mem_free(plain.data);
         return false;
     }
     output = (uint8_t *)xx_mem_alloc((size_t)member->unpacked_size);
-    if (!output ||
-        !teledisk_build(plain.data, plain.size, has_comment, output,
-                        (size_t)member->unpacked_size, &produced) ||
-        produced != (size_t)member->unpacked_size) {
+    if (!output || !teledisk_build(plain.data, plain.size, has_comment, output, (size_t)member->unpacked_size, &produced) || produced != (size_t)member->unpacked_size) {
         if (output) xx_mem_free(output);
         xx_mem_free(plain.data);
         return false;
@@ -722,17 +687,16 @@ static bool teledisk_decode(Abstractformat *format,
     return true;
 }
 
-static bool teledisk_copy_options(xx_list_s *destination, const xx_list_s *source) {
+static bool teledisk_copy_options(xx_list_s *destination, const xx_list_s *source)
+{
     size_t index;
     if (!source) return true;
     for (index = 0U; index < source->count; ++index) {
-        const xx_meta *original =
-            (const xx_meta *)xx_list_at((const xx_list_t *)source, index);
+        const xx_meta *original = (const xx_meta *)xx_list_at((const xx_list_t *)source, index);
         xx_meta copy;
         if (!original) continue;
         xx_meta_init(&copy, original->meta_id);
-        if (!xx_var_copy(&copy.var, &original->var) ||
-            !xx_list_append(destination, &copy)) {
+        if (!xx_var_copy(&copy.var, &original->var) || !xx_list_append(destination, &copy)) {
             xx_meta_cleanup(&copy);
             return false;
         }
@@ -740,19 +704,19 @@ static bool teledisk_copy_options(xx_list_s *destination, const xx_list_s *sourc
     return true;
 }
 
-static const xx_var *teledisk_option(const xx_list_s *options, uint32_t id) {
+static const xx_var *teledisk_option(const xx_list_s *options, uint32_t id)
+{
     size_t index;
     if (!options) return NULL;
     for (index = 0U; index < options->count; ++index) {
-        const xx_meta *meta =
-            (const xx_meta *)xx_list_at((const xx_list_t *)options, index);
+        const xx_meta *meta = (const xx_meta *)xx_list_at((const xx_list_t *)options, index);
         if (meta && meta->meta_id == id) return &meta->var;
     }
     return NULL;
 }
 
-static bool teledisk_set_record(xx_archive_record *record,
-                           const teledisk_member *member) {
+static bool teledisk_set_record(xx_archive_record *record, const teledisk_member *member)
+{
     xx_archive_record_cleanup(record);
     xx_archive_record_init(record);
     record->header_offset = member->header_offset;
@@ -760,32 +724,23 @@ static bool teledisk_set_record(xx_archive_record *record,
     record->data_offset = member->data_offset;
     record->compressed_size = member->packed_size;
     return xx_archive_record_set_original_name(record, member->name) &&
-           xx_archive_record_set_meta_u64(record, XX_META_ID_COMPRESSED_SIZE,
-                                          (uint64_t)member->packed_size) &&
-           xx_archive_record_set_meta_u64(record, XX_META_ID_UNCOMPRESSED_SIZE,
-                                          member->unpacked_size) &&
-           xx_archive_record_set_meta_u64(record, XX_META_ID_COMPRESSION_METHOD,
-                                          member->method) &&
-           xx_archive_record_set_meta_bool(record, XX_META_ID_IS_ENCRYPTED,
-                                           false) &&
-           xx_archive_record_set_meta_bool(record, XX_META_ID_IS_FOLDER, false);
+           xx_archive_record_set_meta_u64(record, XX_META_ID_COMPRESSED_SIZE, (uint64_t)member->packed_size) &&
+           xx_archive_record_set_meta_u64(record, XX_META_ID_UNCOMPRESSED_SIZE, member->unpacked_size) &&
+           xx_archive_record_set_meta_u64(record, XX_META_ID_COMPRESSION_METHOD, member->method) &&
+           xx_archive_record_set_meta_bool(record, XX_META_ID_IS_ENCRYPTED, false) && xx_archive_record_set_meta_bool(record, XX_META_ID_IS_FOLDER, false);
 }
 
 /* Stored members are copied verbatim; everything else goes to the format
  * codec above, which is the only place a size can grow. */
-static bool teledisk_extract(Abstractformat *format, const teledisk_member *member,
-                        uint8_t **plain, size_t *plain_size) {
+static bool teledisk_extract(Abstractformat *format, const teledisk_member *member, uint8_t **plain, size_t *plain_size)
+{
     uint8_t *output;
     if (!format || !member || !plain || !plain_size) return false;
     if (member->decode) return teledisk_decode(format, member, plain, plain_size);
-    if (member->packed_size < 0 ||
-        (uint64_t)member->packed_size > TELEDISK_MAX_OUTPUT) return false;
-    output = (uint8_t *)xx_mem_alloc(member->packed_size != 0
-                                         ? (size_t)member->packed_size : 1U);
+    if (member->packed_size < 0 || (uint64_t)member->packed_size > TELEDISK_MAX_OUTPUT) return false;
+    output = (uint8_t *)xx_mem_alloc(member->packed_size != 0 ? (size_t)member->packed_size : 1U);
     if (!output) return false;
-    if (member->packed_size != 0 &&
-        !teledisk_read_at(format->device, member->data_offset, output,
-                     (size_t)member->packed_size)) {
+    if (member->packed_size != 0 && !teledisk_read_at(format->device, member->data_offset, output, (size_t)member->packed_size)) {
         xx_mem_free(output);
         return false;
     }
@@ -794,7 +749,8 @@ static bool teledisk_extract(Abstractformat *format, const teledisk_member *memb
     return true;
 }
 
-void xx_teledisk_init(xx_teledisk *archive, xx_io_device *device, int64_t base_address) {
+void xx_teledisk_init(xx_teledisk *archive, xx_io_device *device, int64_t base_address)
+{
     if (!archive) return;
     xx_mem_zero(archive, sizeof(*archive));
     xx_format_init(&archive->format, device, base_address);
@@ -807,38 +763,36 @@ void xx_teledisk_init(xx_teledisk *archive, xx_io_device *device, int64_t base_a
     archive->format.check_is_valid = xx_teledisk_check_is_valid;
     archive->format.handle_base_info = xx_teledisk_handle_base_info;
     archive->format.get_format_size = xx_teledisk_get_format_size;
-    archive->format.get_number_of_archive_records =
-        xx_teledisk_get_number_of_archive_records;
-    archive->format.create_archive_records_reading =
-        xx_teledisk_create_archive_records_reading;
-    archive->format.get_current_archive_record =
-        xx_teledisk_get_current_archive_record;
-    archive->format.unpack_current_archive_record =
-        xx_teledisk_unpack_current_archive_record;
-    archive->format.archive_record_move_to_next =
-        xx_teledisk_archive_record_move_to_next;
-    archive->format.free_archive_records_reading =
-        xx_teledisk_free_archive_records_reading;
+    archive->format.get_number_of_archive_records = xx_teledisk_get_number_of_archive_records;
+    archive->format.create_archive_records_reading = xx_teledisk_create_archive_records_reading;
+    archive->format.get_current_archive_record = xx_teledisk_get_current_archive_record;
+    archive->format.unpack_current_archive_record = xx_teledisk_unpack_current_archive_record;
+    archive->format.archive_record_move_to_next = xx_teledisk_archive_record_move_to_next;
+    archive->format.free_archive_records_reading = xx_teledisk_free_archive_records_reading;
     archive->archive_end = -1;
 }
 
-xx_teledisk *xx_teledisk_create(xx_io_device *device, int64_t base_address) {
+xx_teledisk *xx_teledisk_create(xx_io_device *device, int64_t base_address)
+{
     xx_teledisk *archive = (xx_teledisk *)xx_mem_alloc(sizeof(*archive));
     if (archive) xx_teledisk_init(archive, device, base_address);
     return archive;
 }
 
-void xx_teledisk_destroy(xx_teledisk *archive) {
+void xx_teledisk_destroy(xx_teledisk *archive)
+{
     if (archive) xx_format_cleanup_extra_parameters(&archive->format);
 }
 
-void xx_teledisk_free(xx_teledisk *archive) {
+void xx_teledisk_free(xx_teledisk *archive)
+{
     if (!archive) return;
     xx_teledisk_destroy(archive);
     xx_mem_free(archive);
 }
 
-bool xx_teledisk_check_is_valid(Abstractformat *format, xx_pd_struct *pd) {
+bool xx_teledisk_check_is_valid(Abstractformat *format, xx_pd_struct *pd)
+{
     teledisk_stream *stream;
     (void)pd;
     if (!teledisk_parse(format, &stream)) return false;
@@ -846,7 +800,8 @@ bool xx_teledisk_check_is_valid(Abstractformat *format, xx_pd_struct *pd) {
     return true;
 }
 
-bool xx_teledisk_handle_base_info(Abstractformat *format, xx_pd_struct *pd) {
+bool xx_teledisk_handle_base_info(Abstractformat *format, xx_pd_struct *pd)
+{
     teledisk_stream *stream;
     xx_teledisk *archive;
     (void)pd;
@@ -862,21 +817,18 @@ bool xx_teledisk_handle_base_info(Abstractformat *format, xx_pd_struct *pd) {
     return true;
 }
 
-int64_t xx_teledisk_get_format_size(Abstractformat *format, xx_pd_struct *pd) {
-    return format && (format->base_info_handled ||
-                      xx_teledisk_handle_base_info(format, pd))
-               ? format->format_size : -1;
+int64_t xx_teledisk_get_format_size(Abstractformat *format, xx_pd_struct *pd)
+{
+    return format && (format->base_info_handled || xx_teledisk_handle_base_info(format, pd)) ? format->format_size : -1;
 }
 
-uint64_t xx_teledisk_get_number_of_archive_records(Abstractformat *format,
-                                              xx_pd_struct *pd) {
-    return format && (format->base_info_handled ||
-                      xx_teledisk_handle_base_info(format, pd))
-               ? ((xx_teledisk *)format)->number_of_records : 0U;
+uint64_t xx_teledisk_get_number_of_archive_records(Abstractformat *format, xx_pd_struct *pd)
+{
+    return format && (format->base_info_handled || xx_teledisk_handle_base_info(format, pd)) ? ((xx_teledisk *)format)->number_of_records : 0U;
 }
 
-xx_archive_record_state *xx_teledisk_create_archive_records_reading(
-    Abstractformat *format, const xx_list_s *options, xx_pd_struct *pd) {
+xx_archive_record_state *xx_teledisk_create_archive_records_reading(Abstractformat *format, const xx_list_s *options, xx_pd_struct *pd)
+{
     teledisk_stream *stream;
     xx_archive_record_state *state;
     (void)pd;
@@ -890,8 +842,7 @@ xx_archive_record_state *xx_teledisk_create_archive_records_reading(
     state->internal_state = stream;
     state->free_internal = teledisk_stream_free;
     state->total_records = (int64_t)stream->count;
-    if (!teledisk_copy_options(&state->options, options) ||
-        !teledisk_set_record(&state->current_record, &stream->items[0])) {
+    if (!teledisk_copy_options(&state->options, options) || !teledisk_set_record(&state->current_record, &stream->items[0])) {
         xx_archive_record_state_free(state);
         return NULL;
     }
@@ -899,32 +850,26 @@ xx_archive_record_state *xx_teledisk_create_archive_records_reading(
     return state;
 }
 
-const xx_archive_record *xx_teledisk_get_current_archive_record(
-    Abstractformat *format, xx_archive_record_state *state) {
-    return format && state && state->format == format && state->has_record
-               ? &state->current_record : NULL;
+const xx_archive_record *xx_teledisk_get_current_archive_record(Abstractformat *format, xx_archive_record_state *state)
+{
+    return format && state && state->format == format && state->has_record ? &state->current_record : NULL;
 }
 
-bool xx_teledisk_archive_record_move_to_next(Abstractformat *format,
-                                        xx_archive_record_state *state,
-                                        xx_pd_struct *pd) {
+bool xx_teledisk_archive_record_move_to_next(Abstractformat *format, xx_archive_record_state *state, xx_pd_struct *pd)
+{
     teledisk_stream *stream;
     (void)pd;
-    if (!format || !state || state->format != format ||
-        !(stream = (teledisk_stream *)state->internal_state) ||
-        ++stream->index >= stream->count) {
+    if (!format || !state || state->format != format || !(stream = (teledisk_stream *)state->internal_state) || ++stream->index >= stream->count) {
         if (state) state->has_record = false;
         return false;
     }
     ++state->current_index;
-    state->has_record = teledisk_set_record(&state->current_record,
-                                       &stream->items[stream->index]);
+    state->has_record = teledisk_set_record(&state->current_record, &stream->items[stream->index]);
     return state->has_record;
 }
 
-bool xx_teledisk_unpack_current_archive_record(Abstractformat *format,
-                                          xx_archive_record_state *state,
-                                          xx_pd_struct *pd) {
+bool xx_teledisk_unpack_current_archive_record(Abstractformat *format, xx_archive_record_state *state, xx_pd_struct *pd)
+{
     teledisk_stream *stream;
     teledisk_member *member;
     const xx_var *path_option;
@@ -935,9 +880,8 @@ bool xx_teledisk_unpack_current_archive_record(Abstractformat *format,
     size_t plain_size = 0U, written = 0U;
     bool result = false;
     bool created = false;
-    if (!format || !state || state->format != format || !state->has_record ||
-        !(stream = (teledisk_stream *)state->internal_state) ||
-        stream->index >= stream->count || (pd && xx_pd_is_stopped(pd)))
+    if (!format || !state || state->format != format || !state->has_record || !(stream = (teledisk_stream *)state->internal_state) || stream->index >= stream->count ||
+        (pd && xx_pd_is_stopped(pd)))
         return false;
     member = &stream->items[stream->index];
     if (!teledisk_extract(format, member, &plain, &plain_size)) goto done;
@@ -946,19 +890,14 @@ bool xx_teledisk_unpack_current_archive_record(Abstractformat *format,
         result = true;
         goto done;
     }
-    if (path_option->type == XX_VAR_TYPE_STRING ||
-        path_option->type == XX_VAR_TYPE_STRING_VIEW)
-        base = xx_var_get_str(path_option);
-    else if (path_option->type == XX_VAR_TYPE_WSTRING ||
-             path_option->type == XX_VAR_TYPE_WSTRING_VIEW) {
+    if (path_option->type == XX_VAR_TYPE_STRING || path_option->type == XX_VAR_TYPE_STRING_VIEW) base = xx_var_get_str(path_option);
+    else if (path_option->type == XX_VAR_TYPE_WSTRING || path_option->type == XX_VAR_TYPE_WSTRING_VIEW) {
         owned_base = xx_str_unicode_to_utf8(xx_var_get_wstr(path_option));
         base = owned_base;
     }
     if (!base) goto done;
-    path = (base[0] && base[xx_str_len(base) - 1U] != '/' &&
-            base[xx_str_len(base) - 1U] != '\\')
-               ? xx_str_concat3(base, "/", member->name)
-               : xx_str_concat(base, member->name);
+    path = (base[0] && base[xx_str_len(base) - 1U] != '/' && base[xx_str_len(base) - 1U] != '\\') ? xx_str_concat3(base, "/", member->name)
+                                                                                                  : xx_str_concat(base, member->name);
     if (!path || !xx_store_create_dirs_a(path, false)) goto done;
     {
         xx_io_device *destination = xx_io_file_open(path, "wb");
@@ -966,8 +905,7 @@ bool xx_teledisk_unpack_current_archive_record(Abstractformat *format,
         if (!destination) goto done;
         result = true;
         while (written < plain_size) {
-            ssize_t amount = xx_io_write(destination, plain + written,
-                                         plain_size - written);
+            ssize_t amount = xx_io_write(destination, plain + written, plain_size - written);
             if (amount <= 0 || (size_t)amount > plain_size - written) {
                 result = false;
                 break;
@@ -984,8 +922,8 @@ done:
     return result;
 }
 
-void xx_teledisk_free_archive_records_reading(Abstractformat *format,
-                                         xx_archive_record_state *state) {
+void xx_teledisk_free_archive_records_reading(Abstractformat *format, xx_archive_record_state *state)
+{
     (void)format;
     xx_archive_record_state_free(state);
 }

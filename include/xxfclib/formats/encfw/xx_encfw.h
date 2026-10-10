@@ -105,54 +105,52 @@ typedef struct xx_encfw XEncfw;
 struct xx_encfw {
     Abstractformat format;
     uint64_t number_of_records;
-    uint32_t magic;        /**< The device tag, read big endian so it prints in
-                                order.  Ciphertext, not a method code. */
-    int64_t payload_offset; /**< Start of the ciphertext: the image itself. */
-    int64_t payload_size;   /**< Ciphertext size: the whole image. */
+    uint32_t magic;          /**< The device tag, read big endian so it prints in
+                                  order.  Ciphertext, not a method code. */
+    int64_t payload_offset;  /**< Start of the ciphertext: the image itself. */
+    int64_t payload_size;    /**< Ciphertext size: the whole image. */
     const char *device_name; /**< Static string, never freed. */
     void *internal;
 };
 
-XXFC_API void xx_encfw_init(xx_encfw *encfw, xx_io_device *dev,
-                            int64_t base_address);
+XXFC_API void xx_encfw_init(xx_encfw *encfw, xx_io_device *dev, int64_t base_address);
 XXFC_API xx_encfw *xx_encfw_create(xx_io_device *dev, int64_t base_address);
 XXFC_API void xx_encfw_destroy(xx_encfw *encfw);
 XXFC_API void xx_encfw_free(xx_encfw *encfw);
 
 XXFC_API bool xx_encfw_check_is_valid(Abstractformat *self, xx_pd_struct *pd);
 XXFC_API bool xx_encfw_handle_base_info(Abstractformat *self, xx_pd_struct *pd);
-XXFC_API int64_t xx_encfw_get_format_size(Abstractformat *self,
-                                          xx_pd_struct *pd);
-XXFC_API uint64_t xx_encfw_get_number_of_archive_records(Abstractformat *self,
-                                                         xx_pd_struct *pd);
+XXFC_API int64_t xx_encfw_get_format_size(Abstractformat *self, xx_pd_struct *pd);
+XXFC_API uint64_t xx_encfw_get_number_of_archive_records(Abstractformat *self, xx_pd_struct *pd);
 
-XXFC_API xx_archive_record_state *xx_encfw_create_archive_records_reading(
-    Abstractformat *self, const xx_list_s *options, xx_pd_struct *pd);
-XXFC_API const xx_archive_record *xx_encfw_get_current_archive_record(
-    Abstractformat *self, xx_archive_record_state *state);
-XXFC_API bool xx_encfw_unpack_current_archive_record(
-    Abstractformat *self, xx_archive_record_state *state, xx_pd_struct *pd);
-XXFC_API bool xx_encfw_archive_record_move_to_next(
-    Abstractformat *self, xx_archive_record_state *state, xx_pd_struct *pd);
-XXFC_API void xx_encfw_free_archive_records_reading(
-    Abstractformat *self, xx_archive_record_state *state);
+XXFC_API xx_archive_record_state *xx_encfw_create_archive_records_reading(Abstractformat *self, const xx_list_s *options, xx_pd_struct *pd);
+XXFC_API const xx_archive_record *xx_encfw_get_current_archive_record(Abstractformat *self, xx_archive_record_state *state);
+XXFC_API bool xx_encfw_unpack_current_archive_record(Abstractformat *self, xx_archive_record_state *state, xx_pd_struct *pd);
+XXFC_API bool xx_encfw_archive_record_move_to_next(Abstractformat *self, xx_archive_record_state *state, xx_pd_struct *pd);
+XXFC_API void xx_encfw_free_archive_records_reading(Abstractformat *self, xx_archive_record_state *state);
 
 XXFC_API const char *xx_encfw_get_device_name(const xx_encfw *encfw);
 XXFC_API uint32_t xx_encfw_get_magic(const xx_encfw *encfw);
 XXFC_API int64_t xx_encfw_get_payload_size(const xx_encfw *encfw);
 
-static inline Abstractformat *xx_encfw_to_format(xx_encfw *encfw) {
+static inline Abstractformat *xx_encfw_to_format(xx_encfw *encfw)
+{
     return encfw ? &encfw->format : NULL;
 }
-static inline void XEncfw_init(xx_encfw *encfw, xx_io_device *dev,
-                               int64_t base_address) {
+static inline void XEncfw_init(xx_encfw *encfw, xx_io_device *dev, int64_t base_address)
+{
     xx_encfw_init(encfw, dev, base_address);
 }
-static inline xx_encfw *XEncfw_create(xx_io_device *dev, int64_t base_address) {
+static inline xx_encfw *XEncfw_create(xx_io_device *dev, int64_t base_address)
+{
     return xx_encfw_create(dev, base_address);
 }
-static inline void XEncfw_free(xx_encfw *encfw) { xx_encfw_free(encfw); }
-static inline bool XEncfw_is_valid(xx_encfw *encfw, xx_pd_struct *pd) {
+static inline void XEncfw_free(xx_encfw *encfw)
+{
+    xx_encfw_free(encfw);
+}
+static inline bool XEncfw_is_valid(xx_encfw *encfw, xx_pd_struct *pd)
+{
     return encfw ? xx_format_is_valid(&encfw->format, pd) : false;
 }
 

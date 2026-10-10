@@ -41,17 +41,12 @@ XXFC_API bool xx_gdi_check_is_valid(Abstractformat *, xx_pd_struct *);
 XXFC_API bool xx_gdi_handle_base_info(Abstractformat *, xx_pd_struct *);
 XXFC_API int64_t xx_gdi_get_format_size(Abstractformat *, xx_pd_struct *);
 XXFC_API uint64_t xx_gdi_get_number_of_archive_records(Abstractformat *, xx_pd_struct *);
-XXFC_API xx_archive_record_state *xx_gdi_create_archive_records_reading(
-    Abstractformat *, const xx_list_s *, xx_pd_struct *);
-XXFC_API const xx_archive_record *xx_gdi_get_current_archive_record(
-    Abstractformat *, xx_archive_record_state *);
-XXFC_API bool xx_gdi_archive_record_move_to_next(
-    Abstractformat *, xx_archive_record_state *, xx_pd_struct *);
-XXFC_API bool xx_gdi_unpack_current_archive_record(
-    Abstractformat *, xx_archive_record_state *, xx_pd_struct *);
+XXFC_API xx_archive_record_state *xx_gdi_create_archive_records_reading(Abstractformat *, const xx_list_s *, xx_pd_struct *);
+XXFC_API const xx_archive_record *xx_gdi_get_current_archive_record(Abstractformat *, xx_archive_record_state *);
+XXFC_API bool xx_gdi_archive_record_move_to_next(Abstractformat *, xx_archive_record_state *, xx_pd_struct *);
+XXFC_API bool xx_gdi_unpack_current_archive_record(Abstractformat *, xx_archive_record_state *, xx_pd_struct *);
 /** Copy an exact track to a device; NULL destination verifies/read-checks it. */
-XXFC_API bool xx_gdi_extract_record_to_device(
-    Abstractformat *, xx_archive_record_state *, xx_io_device *, xx_pd_struct *);
+XXFC_API bool xx_gdi_extract_record_to_device(Abstractformat *, xx_archive_record_state *, xx_io_device *, xx_pd_struct *);
 XXFC_API void xx_gdi_free_archive_records_reading(Abstractformat *, xx_archive_record_state *);
 /** Attach a borrowed device to a zero-based track. The reader never closes it. */
 XXFC_API bool xx_gdi_set_data_device(xx_gdi *, uint32_t, xx_io_device *);
@@ -62,7 +57,8 @@ XXFC_API uint32_t xx_gdi_get_number_of_tracks(xx_gdi *);
 XXFC_API char *xx_gdi_get_track_file_name(xx_gdi *, uint32_t);
 /** Cheap detector prefilter; full validation requires check_is_valid. */
 XXFC_API bool xx_gdi_test_magic(const uint8_t *, size_t);
-static inline Abstractformat *xx_gdi_to_format(xx_gdi *v) {
+static inline Abstractformat *xx_gdi_to_format(xx_gdi *v)
+{
     return v ? &v->format : NULL;
 }
 #ifdef __cplusplus

@@ -28,9 +28,9 @@
 #include <limits.h>
 #include <stdint.h>
 
-#define XX_REDUCE_HISTORY_SIZE    4096u
-#define XX_REDUCE_FOLLOWER_LIMIT  32u
-#define XX_REDUCE_ESCAPE          0x90u
+#define XX_REDUCE_HISTORY_SIZE 4096u
+#define XX_REDUCE_FOLLOWER_LIMIT 32u
+#define XX_REDUCE_ESCAPE 0x90u
 
 typedef struct xx_reduce_followers_s {
     uint8_t count;
@@ -64,14 +64,15 @@ typedef struct xx_reduce_context_s {
     uint8_t previous_encoded;
 } xx_reduce_context;
 
-static void xx_reduce_set_error(xx_reduce_context *ctx, int code,
-                                const char *message) {
+static void xx_reduce_set_error(xx_reduce_context *ctx, int code, const char *message)
+{
     if (ctx->pd && ctx->pd->last_error == 0) {
         xx_pd_set_error(ctx->pd, code, message);
     }
 }
 
-static bool xx_reduce_cancelled(xx_reduce_context *ctx) {
+static bool xx_reduce_cancelled(xx_reduce_context *ctx)
+{
     if (ctx->pd && xx_pd_is_stopped(ctx->pd)) {
         xx_reduce_set_error(ctx, 1, "Reduce decompression cancelled");
         return true;
@@ -79,12 +80,12 @@ static bool xx_reduce_cancelled(xx_reduce_context *ctx) {
     return false;
 }
 
-static bool xx_reduce_flush(xx_reduce_context *ctx) {
+static bool xx_reduce_flush(xx_reduce_context *ctx)
+{
     if (ctx->output_size == 0) {
         return true;
     }
-    if (xx_io_write(ctx->dst, ctx->output, ctx->output_size) !=
-        (ssize_t)ctx->output_size) {
+    if (xx_io_write(ctx->dst, ctx->output, ctx->output_size) != (ssize_t)ctx->output_size) {
         xx_reduce_set_error(ctx, 2, "Cannot write Reduce output");
         return false;
     }
@@ -95,7 +96,8 @@ static bool xx_reduce_flush(xx_reduce_context *ctx) {
     return true;
 }
 
-static bool xx_reduce_emit(xx_reduce_context *ctx, uint8_t value) {
+static bool xx_reduce_emit(xx_reduce_context *ctx, uint8_t value)
+{
     if (ctx->produced >= ctx->expected_size) {
         xx_reduce_set_error(ctx, 3, "Reduce output exceeds expected size");
         return false;
@@ -109,7 +111,8 @@ static bool xx_reduce_emit(xx_reduce_context *ctx, uint8_t value) {
     return true;
 }
 
-static bool xx_reduce_read_byte(xx_reduce_context *ctx, uint8_t *value) {
+static bool xx_reduce_read_byte(xx_reduce_context *ctx, uint8_t *value)
+{
     if (ctx->input_pos == ctx->input_size) {
         size_t request;
         ssize_t count;
@@ -118,9 +121,7 @@ static bool xx_reduce_read_byte(xx_reduce_context *ctx, uint8_t *value) {
             xx_reduce_set_error(ctx, 4, "Truncated Reduce stream");
             return false;
         }
-        request = ((uint64_t)ctx->input_left > ctx->io_capacity)
-                      ? ctx->io_capacity
-                      : (size_t)ctx->input_left;
+        request = ((uint64_t)ctx->input_left > ctx->io_capacity) ? ctx->io_capacity : (size_t)ctx->input_left;
         count = xx_io_read(ctx->src, ctx->input, request);
         if (count <= 0 || (size_t)count != request) {
             xx_reduce_set_error(ctx, 4, "Cannot read Reduce stream");
@@ -134,8 +135,8 @@ static bool xx_reduce_read_byte(xx_reduce_context *ctx, uint8_t *value) {
     return true;
 }
 
-static bool xx_reduce_read_bits(xx_reduce_context *ctx, unsigned count,
-                                uint16_t *value) {
+static bool xx_reduce_read_bits(xx_reduce_context *ctx, unsigned count, uint16_t *value)
+{
     uint8_t byte_value;
     uint64_t mask;
 
@@ -153,7 +154,8 @@ static bool xx_reduce_read_bits(xx_reduce_context *ctx, unsigned count,
     return true;
 }
 
-static unsigned xx_reduce_follower_bits(unsigned count) {
+static unsigned xx_reduce_follower_bits(unsigned count)
+{
     unsigned bits = 1;
     unsigned maximum = 2;
 
@@ -167,7 +169,8 @@ static unsigned xx_reduce_follower_bits(unsigned count) {
     return bits;
 }
 
-static bool xx_reduce_read_follower_sets(xx_reduce_context *ctx) {
+static bool xx_reduce_read_follower_sets(xx_reduce_context *ctx)
+{
     int symbol;
 
     for (symbol = 255; symbol >= 0; --symbol) {
@@ -175,8 +178,7 @@ static bool xx_reduce_read_follower_sets(xx_reduce_context *ctx) {
         uint16_t count;
         unsigned index;
 
-        if (!xx_reduce_read_bits(ctx, 6, &count) ||
-            count > XX_REDUCE_FOLLOWER_LIMIT) {
+        if (!xx_reduce_read_bits(ctx, 6, &count) || count > XX_REDUCE_FOLLOWER_LIMIT) {
             xx_reduce_set_error(ctx, 5, "Invalid Reduce follower set");
             return false;
         }
@@ -193,8 +195,8 @@ static bool xx_reduce_read_follower_sets(xx_reduce_context *ctx) {
     return true;
 }
 
-static bool xx_reduce_read_encoded_byte(xx_reduce_context *ctx,
-                                        uint8_t *value) {
+static bool xx_reduce_read_encoded_byte(xx_reduce_context *ctx, uint8_t *value)
+{
     const xx_reduce_followers *set = &ctx->followers[ctx->previous_encoded];
     uint16_t raw;
 
@@ -205,8 +207,7 @@ static bool xx_reduce_read_encoded_byte(xx_reduce_context *ctx,
         }
         if (selector == 0) {
             uint16_t index;
-            if (!xx_reduce_read_bits(ctx, set->bit_count, &index) ||
-                index >= set->count) {
+            if (!xx_reduce_read_bits(ctx, set->bit_count, &index) || index >= set->count) {
                 xx_reduce_set_error(ctx, 5, "Invalid Reduce follower index");
                 return false;
             }
@@ -228,21 +229,18 @@ static bool xx_reduce_read_encoded_byte(xx_reduce_context *ctx,
     return true;
 }
 
-static bool xx_reduce_copy_match(xx_reduce_context *ctx,
-                                 unsigned distance,
-                                 unsigned length) {
+static bool xx_reduce_copy_match(xx_reduce_context *ctx, unsigned distance, unsigned length)
+{
     unsigned index;
 
-    if (distance == 0 || distance > XX_REDUCE_HISTORY_SIZE ||
-        (int64_t)length > ctx->expected_size - ctx->produced) {
+    if (distance == 0 || distance > XX_REDUCE_HISTORY_SIZE || (int64_t)length > ctx->expected_size - ctx->produced) {
         xx_reduce_set_error(ctx, 5, "Invalid Reduce back-reference");
         return false;
     }
     for (index = 0; index < length; ++index) {
         uint8_t value = 0;
         if ((int64_t)distance <= ctx->produced) {
-            value = ctx->history[((size_t)ctx->produced - distance) &
-                                 (XX_REDUCE_HISTORY_SIZE - 1u)];
+            value = ctx->history[((size_t)ctx->produced - distance) & (XX_REDUCE_HISTORY_SIZE - 1u)];
         }
         if (!xx_reduce_emit(ctx, value)) {
             return false;
@@ -251,7 +249,8 @@ static bool xx_reduce_copy_match(xx_reduce_context *ctx,
     return true;
 }
 
-static bool xx_reduce_decode(xx_reduce_context *ctx) {
+static bool xx_reduce_decode(xx_reduce_context *ctx)
+{
     unsigned length_mask = (1u << (8 - ctx->factor)) - 1u;
 
     if (!xx_reduce_read_follower_sets(ctx)) {
@@ -261,8 +260,7 @@ static bool xx_reduce_decode(xx_reduce_context *ctx) {
     while (ctx->produced < ctx->expected_size) {
         uint8_t value;
 
-        if (xx_reduce_cancelled(ctx) ||
-            !xx_reduce_read_encoded_byte(ctx, &value)) {
+        if (xx_reduce_cancelled(ctx) || !xx_reduce_read_encoded_byte(ctx, &value)) {
             return false;
         }
         if (value != XX_REDUCE_ESCAPE) {
@@ -294,8 +292,7 @@ static bool xx_reduce_decode(xx_reduce_context *ctx) {
             if (!xx_reduce_read_encoded_byte(ctx, &low)) {
                 return false;
             }
-            if (!xx_reduce_copy_match(ctx, (distance_high << 8) + low + 1u,
-                                      length + 3u)) {
+            if (!xx_reduce_copy_match(ctx, (distance_high << 8) + low + 1u, length + 3u)) {
                 return false;
             }
         }
@@ -304,17 +301,14 @@ static bool xx_reduce_decode(xx_reduce_context *ctx) {
     return xx_reduce_flush(ctx);
 }
 
-bool xx_reduce_unpack_device(xx_io_device *src_dev, int64_t src_offset,
-                             int64_t comp_size, xx_io_device *dst_dev,
-                             int64_t expected_size, int factor,
-                             xx_pd_struct *pd) {
+bool xx_reduce_unpack_device(xx_io_device *src_dev, int64_t src_offset, int64_t comp_size, xx_io_device *dst_dev, int64_t expected_size, int factor, xx_pd_struct *pd)
+{
     xx_reduce_context *ctx;
     bool result;
     size_t capacity = xx_get_file_buffer_size();
     if (capacity > (SIZE_MAX >> 1)) capacity = SIZE_MAX >> 1;
 
-    if (!src_dev || !dst_dev || comp_size < 0 || expected_size < 0 ||
-        factor < 1 || factor > 4 || src_offset < -1) {
+    if (!src_dev || !dst_dev || comp_size < 0 || expected_size < 0 || factor < 1 || factor > 4 || src_offset < -1) {
         return false;
     }
     if (src_offset >= 0 && xx_io_seek64(src_dev, src_offset, SEEK_SET) != 0) {
@@ -348,8 +342,7 @@ bool xx_reduce_unpack_device(xx_io_device *src_dev, int64_t src_offset,
     ctx->input_left = comp_size;
     ctx->expected_size = expected_size;
     if (pd) {
-        ctx->pd_level = xx_pd_enter_level(pd, (uint64_t)expected_size,
-                                          "Unpacking ZIP Reduce");
+        ctx->pd_level = xx_pd_enter_level(pd, (uint64_t)expected_size, "Unpacking ZIP Reduce");
     }
 
     result = xx_reduce_decode(ctx) && ctx->produced == expected_size;
@@ -365,13 +358,9 @@ bool xx_reduce_unpack_device(xx_io_device *src_dev, int64_t src_offset,
     return result;
 }
 
-bool xx_reduce_unpack_device_to_file(xx_io_device *src_dev,
-                                     int64_t src_offset,
-                                     int64_t comp_size,
-                                     const char *dst_file_path,
-                                     int64_t expected_size,
-                                     int factor,
-                                     xx_pd_struct *pd) {
+bool xx_reduce_unpack_device_to_file(xx_io_device *src_dev, int64_t src_offset, int64_t comp_size, const char *dst_file_path, int64_t expected_size, int factor,
+                                     xx_pd_struct *pd)
+{
     xx_io_device *dst_dev;
     bool result;
 
@@ -382,8 +371,7 @@ bool xx_reduce_unpack_device_to_file(xx_io_device *src_dev,
     if (!dst_dev) {
         return false;
     }
-    result = xx_reduce_unpack_device(src_dev, src_offset, comp_size, dst_dev,
-                                     expected_size, factor, pd);
+    result = xx_reduce_unpack_device(src_dev, src_offset, comp_size, dst_dev, expected_size, factor, pd);
     xx_io_close(dst_dev);
     if (!result) {
         xx_io_file_remove_a(dst_file_path);

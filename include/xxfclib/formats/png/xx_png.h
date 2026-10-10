@@ -68,20 +68,20 @@ typedef struct xx_png xx_png_t;
 typedef struct xx_png XPngImage;
 
 struct xx_png {
-    Abstractformat format;   /**< Base format structure (first member) */
-    int64_t image_end;       /**< Absolute offset just past the IEND CRC */
-    uint32_t width;          /**< IHDR width, pixels */
-    uint32_t height;         /**< IHDR height, pixels */
-    uint8_t bit_depth;       /**< IHDR bit depth */
-    uint8_t colour_type;     /**< IHDR colour type (XX_PNG_COLOUR_*) */
-    uint8_t interlace;       /**< IHDR interlace method (0 none, 1 Adam7) */
-    uint32_t chunk_count;    /**< Chunks walked, IHDR and IEND included */
-    uint32_t idat_count;     /**< IDAT chunks */
-    int64_t idat_size;       /**< Sum of the IDAT data lengths */
-    bool is_animated;        /**< An acTL chunk is present (APNG) */
-    uint32_t frame_count;    /**< acTL num_frames, 0 when not animated */
-    uint32_t play_count;     /**< acTL num_plays (0 = forever) */
-    void *analysis;         /**< Private tolerant inspection metadata */
+    Abstractformat format; /**< Base format structure (first member) */
+    int64_t image_end;     /**< Absolute offset just past the IEND CRC */
+    uint32_t width;        /**< IHDR width, pixels */
+    uint32_t height;       /**< IHDR height, pixels */
+    uint8_t bit_depth;     /**< IHDR bit depth */
+    uint8_t colour_type;   /**< IHDR colour type (XX_PNG_COLOUR_*) */
+    uint8_t interlace;     /**< IHDR interlace method (0 none, 1 Adam7) */
+    uint32_t chunk_count;  /**< Chunks walked, IHDR and IEND included */
+    uint32_t idat_count;   /**< IDAT chunks */
+    int64_t idat_size;     /**< Sum of the IDAT data lengths */
+    bool is_animated;      /**< An acTL chunk is present (APNG) */
+    uint32_t frame_count;  /**< acTL num_frames, 0 when not animated */
+    uint32_t play_count;   /**< acTL num_plays (0 = forever) */
+    void *analysis;        /**< Private tolerant inspection metadata */
 };
 
 /* Read IHDR/pHYs/bKGD metadata without requiring strict image validation.
@@ -91,8 +91,7 @@ XXFC_API bool xx_png_analyze(xx_png *png, xx_pd_struct *pd);
 XXFC_API char *xx_png_get_info(xx_png *png, xx_pd_struct *pd);
 
 /* --- Constructors & Lifecycle --- */
-XXFC_API void xx_png_init(xx_png *png, xx_io_device *dev,
-                          int64_t base_address);
+XXFC_API void xx_png_init(xx_png *png, xx_io_device *dev, int64_t base_address);
 XXFC_API xx_png *xx_png_create(xx_io_device *dev, int64_t base_address);
 XXFC_API void xx_png_destroy(xx_png *png);
 XXFC_API void xx_png_free(xx_png *png);
@@ -100,8 +99,7 @@ XXFC_API void xx_png_free(xx_png *png);
 /* --- Format Implementation Callbacks --- */
 XXFC_API bool xx_png_check_is_valid(Abstractformat *self, xx_pd_struct *pd);
 XXFC_API bool xx_png_handle_base_info(Abstractformat *self, xx_pd_struct *pd);
-XXFC_API int64_t xx_png_get_format_size(Abstractformat *self,
-                                        xx_pd_struct *pd);
+XXFC_API int64_t xx_png_get_format_size(Abstractformat *self, xx_pd_struct *pd);
 
 /* --- Prefilter helper --- */
 /** True when @p data (the first @p size bytes of a candidate) starts with
@@ -121,28 +119,34 @@ XXFC_API bool xx_png_is_animated(const xx_png *png);
 XXFC_API uint32_t xx_png_get_frame_count(const xx_png *png);
 
 /* Cast helpers */
-static inline Abstractformat *xx_png_to_format(xx_png *png) {
+static inline Abstractformat *xx_png_to_format(xx_png *png)
+{
     return png ? &png->format : NULL;
 }
 
-static inline const Abstractformat *xx_png_to_format_const(const xx_png *png) {
+static inline const Abstractformat *xx_png_to_format_const(const xx_png *png)
+{
     return png ? &png->format : NULL;
 }
 
 /* User-facing aliases.  XPngImage, not XPNG: see the note at the top. */
-static inline void XPngImage_init(xx_png *png, xx_io_device *dev,
-                                  int64_t base_address) {
+static inline void XPngImage_init(xx_png *png, xx_io_device *dev, int64_t base_address)
+{
     xx_png_init(png, dev, base_address);
 }
 
-static inline xx_png *XPngImage_create(xx_io_device *dev,
-                                       int64_t base_address) {
+static inline xx_png *XPngImage_create(xx_io_device *dev, int64_t base_address)
+{
     return xx_png_create(dev, base_address);
 }
 
-static inline void XPngImage_free(xx_png *png) { xx_png_free(png); }
+static inline void XPngImage_free(xx_png *png)
+{
+    xx_png_free(png);
+}
 
-static inline bool XPngImage_is_valid(xx_png *png, xx_pd_struct *pd) {
+static inline bool XPngImage_is_valid(xx_png *png, xx_pd_struct *pd)
+{
     return png ? xx_format_is_valid(&png->format, pd) : false;
 }
 

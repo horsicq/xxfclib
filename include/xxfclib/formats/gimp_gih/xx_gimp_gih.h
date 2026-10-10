@@ -9,14 +9,16 @@
 #ifdef __cplusplus
 extern "C" {
 #endif
-typedef struct xx_gimp_gih { Abstractformat format; } xx_gimp_gih;
-XXFC_API void xx_gimp_gih_init(xx_gimp_gih *,xx_io_device *,int64_t);
-XXFC_API xx_gimp_gih *xx_gimp_gih_create(xx_io_device *,int64_t);
+typedef struct xx_gimp_gih {
+    Abstractformat format;
+} xx_gimp_gih;
+XXFC_API void xx_gimp_gih_init(xx_gimp_gih *, xx_io_device *, int64_t);
+XXFC_API xx_gimp_gih *xx_gimp_gih_create(xx_io_device *, int64_t);
 XXFC_API void xx_gimp_gih_destroy(xx_gimp_gih *);
 XXFC_API void xx_gimp_gih_free(xx_gimp_gih *);
-XXFC_API bool xx_gimp_gih_check_is_valid(Abstractformat *,xx_pd_struct *);
-XXFC_API bool xx_gimp_gih_handle_base_info(Abstractformat *,xx_pd_struct *);
-XXFC_API bool xx_gimp_gih_probe_header(const uint8_t *,size_t);
+XXFC_API bool xx_gimp_gih_check_is_valid(Abstractformat *, xx_pd_struct *);
+XXFC_API bool xx_gimp_gih_handle_base_info(Abstractformat *, xx_pd_struct *);
+XXFC_API bool xx_gimp_gih_probe_header(const uint8_t *, size_t);
 #ifdef __cplusplus
 }
 #endif

@@ -24,7 +24,6 @@
 #include "xx_js_ast.h"
 #include "xx_js_lex.h"
 
-
 /* Bound on the recursive descent. Nesting this deep does not occur in a
  * signature script, while the C stack of a 1 MB thread does not survive
  * much more.                                                           */
@@ -192,9 +191,9 @@ static char *property_name(JSParser *pParser)
         if (pTok->pText) {
             pResult = xx_js_strdup(pTok->pText);
         } else {
-            static const char *pNames[] = {"break", "case",   "catch", "continue", "default", "delete", "do",     "else",  "finally",    "for",
-                                           "function", "if",  "in",    "instanceof", "new",   "return", "switch", "this",  "throw",      "try",
-                                           "typeof", "var",   "void",  "while",    "with",    "null",   "true",   "false"};
+            static const char *pNames[] = {"break",    "case", "catch", "continue",   "default", "delete", "do",     "else", "finally", "for",
+                                           "function", "if",   "in",    "instanceof", "new",     "return", "switch", "this", "throw",   "try",
+                                           "typeof",   "var",  "void",  "while",      "with",    "null",   "true",   "false"};
 
             pResult = xx_js_strdup(pNames[pTok->type - T_BREAK]);
         }
@@ -313,13 +312,9 @@ static JSNode *parse_primary(JSParser *pParser)
             pParser->nPos++;
             return pNode;
 
-        case T_THIS:
-            pParser->nPos++;
-            return node_new(N_THIS, pTok->nLine);
+        case T_THIS: pParser->nPos++; return node_new(N_THIS, pTok->nLine);
 
-        case T_NULL:
-            pParser->nPos++;
-            return node_new(N_NULL, pTok->nLine);
+        case T_NULL: pParser->nPos++; return node_new(N_NULL, pTok->nLine);
 
         case T_TRUE:
         case T_FALSE:
@@ -519,19 +514,30 @@ typedef struct {
     int nPrecedence;
 } BinOpInfo;
 
-static const BinOpInfo g_binOps[] = {
-    {T_MUL, OP_MUL, 11},  {T_DIV, OP_DIV, 11},  {T_MOD, OP_MOD, 11},
-    {T_ADD, OP_ADD, 10},  {T_SUB, OP_SUB, 10},
-    {T_SHL, OP_SHL, 9},   {T_SHR, OP_SHR, 9},   {T_USHR, OP_USHR, 9},
-    {T_LT, OP_LT, 8},     {T_GT, OP_GT, 8},     {T_LE, OP_LE, 8},      {T_GE, OP_GE, 8},
-    {T_INSTANCEOF, OP_INSTANCEOF, 8}, {T_IN, OP_IN, 8},
-    {T_EQ, OP_EQ, 7},     {T_NE, OP_NE, 7},     {T_SEQ, OP_SEQ, 7},    {T_SNE, OP_SNE, 7},
-    {T_AND, OP_AND, 6},
-    {T_XOR, OP_XOR, 5},
-    {T_OR, OP_OR, 4},
-    {T_LAND, OP_LAND, 3},
-    {T_LOR, OP_LOR, 2},
-    {T_EOF, OP_NONE, 0}};
+static const BinOpInfo g_binOps[] = {{T_MUL, OP_MUL, 11},
+                                     {T_DIV, OP_DIV, 11},
+                                     {T_MOD, OP_MOD, 11},
+                                     {T_ADD, OP_ADD, 10},
+                                     {T_SUB, OP_SUB, 10},
+                                     {T_SHL, OP_SHL, 9},
+                                     {T_SHR, OP_SHR, 9},
+                                     {T_USHR, OP_USHR, 9},
+                                     {T_LT, OP_LT, 8},
+                                     {T_GT, OP_GT, 8},
+                                     {T_LE, OP_LE, 8},
+                                     {T_GE, OP_GE, 8},
+                                     {T_INSTANCEOF, OP_INSTANCEOF, 8},
+                                     {T_IN, OP_IN, 8},
+                                     {T_EQ, OP_EQ, 7},
+                                     {T_NE, OP_NE, 7},
+                                     {T_SEQ, OP_SEQ, 7},
+                                     {T_SNE, OP_SNE, 7},
+                                     {T_AND, OP_AND, 6},
+                                     {T_XOR, OP_XOR, 5},
+                                     {T_OR, OP_OR, 4},
+                                     {T_LAND, OP_LAND, 3},
+                                     {T_LOR, OP_LOR, 2},
+                                     {T_EOF, OP_NONE, 0}};
 
 static JSNode *parse_binary(JSParser *pParser, int nMinPrecedence, int bNoIn)
 {
@@ -870,9 +876,7 @@ static JSNode *parse_statement_inner(JSParser *pParser)
     switch (pTok->type) {
         case T_LBRACE: return parse_block(pParser);
 
-        case T_SEMI:
-            pParser->nPos++;
-            return node_new(N_EMPTY, pTok->nLine);
+        case T_SEMI: pParser->nPos++; return node_new(N_EMPTY, pTok->nLine);
 
         case T_VAR: {
             JSNode *pNode = parse_var_statement(pParser, 0);

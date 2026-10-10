@@ -15,13 +15,13 @@ typedef struct fead_resource {
     const uint8_t *data;
     size_t size;
 } fead_resource;
-typedef struct fead_action { uint32_t end, type; } fead_action;
+typedef struct fead_action {
+    uint32_t end, type;
+} fead_action;
 /* Returned bytes are borrowed for the duration of the callback. For transformed
  * CAB/PE entries, emit a parent directory and original inner members, never a
  * fabricated parent compressed image. directory=true ignores bytes/length. */
-typedef bool (*fead_emit_fn)(void *user, const char *name, const uint8_t *bytes,
-                             size_t length, uint64_t filetime, uint32_t flags,
-                             bool directory);
+typedef bool (*fead_emit_fn)(void *user, const char *name, const uint8_t *bytes, size_t length, uint64_t filetime, uint32_t flags, bool directory);
 typedef struct fead_restore_context {
     const uint8_t *data;
     size_t size;

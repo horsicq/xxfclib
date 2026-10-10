@@ -31,7 +31,6 @@
 extern "C" {
 #endif
 
-
 #define XX_PE_INSPECT_DIR_EXPORT 0
 #define XX_PE_INSPECT_DIR_IMPORT 1
 #define XX_PE_INSPECT_DIR_RESOURCE 2
@@ -186,8 +185,7 @@ typedef struct {
 /* Borrows device; state owns a read-only view, strings and arrays. Initialize
  * state to zero, free before reuse, and keep the parent device open while using
  * the state. Reported offsets are relative to the supplied base. */
-XXFC_API int xx_pe_inspect_analyze_from_device(xx_pe_inspection *state,
-    xx_io_device *device, int64_t base, xx_pd_struct *pd);
+XXFC_API int xx_pe_inspect_analyze_from_device(xx_pe_inspection *state, xx_io_device *device, int64_t base, xx_pd_struct *pd);
 
 XXFC_API int xx_pe_inspect_parse(xx_pe_inspection *pPE, xx_pe *reader, xx_pd_struct *pd);
 XXFC_API void xx_pe_inspect_free(xx_pe_inspection *pPE);

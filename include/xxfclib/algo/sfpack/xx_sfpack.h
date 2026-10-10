@@ -50,9 +50,7 @@ extern "C" {
  * @param written     Receives the rebuilt .sf2 size (0 on failure).
  * @return true only on a complete rebuild.
  */
-XXFC_API bool xx_sfpack_decode_memory(const uint8_t *input, size_t input_size,
-                                      uint8_t *output, size_t output_size,
-                                      size_t *written);
+XXFC_API bool xx_sfpack_decode_memory(const uint8_t *input, size_t input_size, uint8_t *output, size_t output_size, size_t *written);
 
 /**
  * @brief Measure the .sf2 that xx_sfpack_decode_memory() would produce.
@@ -75,9 +73,7 @@ XXFC_API bool xx_sfpack_decode_memory(const uint8_t *input, size_t input_size,
  * @param produced    Receives the rebuilt .sf2 size. May be NULL.
  * @return true when the header and the pdta chunk describe a rebuildable file.
  */
-XXFC_API bool xx_sfpack_scan_memory(const uint8_t *input, size_t input_size,
-                                    size_t max_output, size_t *consumed,
-                                    size_t *produced);
+XXFC_API bool xx_sfpack_scan_memory(const uint8_t *input, size_t input_size, size_t max_output, size_t *consumed, size_t *produced);
 
 #ifdef __cplusplus
 }

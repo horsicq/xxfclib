@@ -65,7 +65,6 @@
 #include "xxfclib/formats/binsh_sfx/xx_binsh_sfx.h"
 #include <string.h>
 
-
 static xx_file_type_t (*const signature_readers[])(xx_io_device *, int64_t) = {
     xx_legacy_sound_driver_detect,
     xx_sm8_detect,
@@ -128,8 +127,8 @@ static xx_file_type_t (*const signature_readers[])(xx_io_device *, int64_t) = {
     xx_sony_image_detect,
 };
 
-xx_file_type_t xx_format_detect_signature_readers(xx_io_device *device,
-                                                 xx_pd_struct *pd) {
+xx_file_type_t xx_format_detect_signature_readers(xx_io_device *device, xx_pd_struct *pd)
+{
     xx_file_type_t type = XX_FILE_TYPE_UNKNOWN;
     int64_t saved;
     size_t i;
@@ -152,10 +151,10 @@ static const struct {
 #include "xx_format_fast_extensions.inc"
 };
 
-static const size_t fast_extension_count =
-    sizeof(fast_extensions) / sizeof(fast_extensions[0]);
+static const size_t fast_extension_count = sizeof(fast_extensions) / sizeof(fast_extensions[0]);
 
-xx_file_type_t xx_format_get_file_type_extension(const char *source_path) {
+xx_file_type_t xx_format_get_file_type_extension(const char *source_path)
+{
     const char *name, *cursor;
     size_t name_length;
     if (!source_path) return XX_FILE_TYPE_UNKNOWN;
@@ -185,12 +184,12 @@ xx_file_type_t xx_format_get_file_type_extension(const char *source_path) {
     return XX_FILE_TYPE_UNKNOWN;
 }
 
-xx_file_type_t xx_format_get_file_type_device_fast(xx_io_device *dev,
-                                                  const char *source_path) {
+xx_file_type_t xx_format_get_file_type_device_fast(xx_io_device *dev, const char *source_path)
+{
     xx_file_type_t type;
     if (!dev) return XX_FILE_TYPE_UNKNOWN;
-    type=xx_format_detect_signature_readers(dev, NULL);
-    if(type!=XX_FILE_TYPE_UNKNOWN)return type;
+    type = xx_format_detect_signature_readers(dev, NULL);
+    if (type != XX_FILE_TYPE_UNKNOWN) return type;
     if (!source_path) source_path = xx_io_source_path(dev);
     type = xx_format_get_file_type_extension(source_path);
     if (type != XX_FILE_TYPE_UNKNOWN) return type;

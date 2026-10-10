@@ -8,13 +8,15 @@
 #ifdef __cplusplus
 extern "C" {
 #endif
-typedef struct xx_atari_sap { Abstractformat format; } xx_atari_sap;
-XXFC_API void xx_atari_sap_init(xx_atari_sap *,xx_io_device *,int64_t);
-XXFC_API xx_atari_sap *xx_atari_sap_create(xx_io_device *,int64_t);
+typedef struct xx_atari_sap {
+    Abstractformat format;
+} xx_atari_sap;
+XXFC_API void xx_atari_sap_init(xx_atari_sap *, xx_io_device *, int64_t);
+XXFC_API xx_atari_sap *xx_atari_sap_create(xx_io_device *, int64_t);
 XXFC_API void xx_atari_sap_destroy(xx_atari_sap *);
 XXFC_API void xx_atari_sap_free(xx_atari_sap *);
-XXFC_API bool xx_atari_sap_check_is_valid(Abstractformat *,xx_pd_struct *);
-XXFC_API bool xx_atari_sap_handle_base_info(Abstractformat *,xx_pd_struct *);
+XXFC_API bool xx_atari_sap_check_is_valid(Abstractformat *, xx_pd_struct *);
+XXFC_API bool xx_atari_sap_handle_base_info(Abstractformat *, xx_pd_struct *);
 #ifdef __cplusplus
 }
 #endif

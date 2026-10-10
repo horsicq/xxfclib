@@ -19,34 +19,21 @@ typedef struct xx_solitaire_deluxe {
     bool needs_continuation;
 } xx_solitaire_deluxe;
 typedef xx_solitaire_deluxe xx_solitaire_deluxe_t;
-XXFC_API void xx_solitaire_deluxe_init(xx_solitaire_deluxe *,
-                                       xx_io_device *, int64_t);
-XXFC_API xx_solitaire_deluxe *xx_solitaire_deluxe_create(
-    xx_io_device *, int64_t);
+XXFC_API void xx_solitaire_deluxe_init(xx_solitaire_deluxe *, xx_io_device *, int64_t);
+XXFC_API xx_solitaire_deluxe *xx_solitaire_deluxe_create(xx_io_device *, int64_t);
 XXFC_API void xx_solitaire_deluxe_destroy(xx_solitaire_deluxe *);
 XXFC_API void xx_solitaire_deluxe_free(xx_solitaire_deluxe *);
-XXFC_API bool xx_solitaire_deluxe_check_is_valid(Abstractformat *,
-                                                 xx_pd_struct *);
-XXFC_API bool xx_solitaire_deluxe_handle_base_info(Abstractformat *,
-                                                   xx_pd_struct *);
-XXFC_API int64_t xx_solitaire_deluxe_get_format_size(Abstractformat *,
-                                                     xx_pd_struct *);
-XXFC_API uint64_t xx_solitaire_deluxe_get_number_of_archive_records(
-    Abstractformat *, xx_pd_struct *);
-XXFC_API xx_archive_record_state *
-xx_solitaire_deluxe_create_archive_records_reading(
-    Abstractformat *, const xx_list_s *, xx_pd_struct *);
-XXFC_API const xx_archive_record *
-xx_solitaire_deluxe_get_current_archive_record(
-    Abstractformat *, xx_archive_record_state *);
-XXFC_API bool xx_solitaire_deluxe_archive_record_move_to_next(
-    Abstractformat *, xx_archive_record_state *, xx_pd_struct *);
-XXFC_API bool xx_solitaire_deluxe_unpack_current_archive_record(
-    Abstractformat *, xx_archive_record_state *, xx_pd_struct *);
-XXFC_API void xx_solitaire_deluxe_free_archive_records_reading(
-    Abstractformat *, xx_archive_record_state *);
-static inline Abstractformat *xx_solitaire_deluxe_to_format(
-    xx_solitaire_deluxe *archive) {
+XXFC_API bool xx_solitaire_deluxe_check_is_valid(Abstractformat *, xx_pd_struct *);
+XXFC_API bool xx_solitaire_deluxe_handle_base_info(Abstractformat *, xx_pd_struct *);
+XXFC_API int64_t xx_solitaire_deluxe_get_format_size(Abstractformat *, xx_pd_struct *);
+XXFC_API uint64_t xx_solitaire_deluxe_get_number_of_archive_records(Abstractformat *, xx_pd_struct *);
+XXFC_API xx_archive_record_state *xx_solitaire_deluxe_create_archive_records_reading(Abstractformat *, const xx_list_s *, xx_pd_struct *);
+XXFC_API const xx_archive_record *xx_solitaire_deluxe_get_current_archive_record(Abstractformat *, xx_archive_record_state *);
+XXFC_API bool xx_solitaire_deluxe_archive_record_move_to_next(Abstractformat *, xx_archive_record_state *, xx_pd_struct *);
+XXFC_API bool xx_solitaire_deluxe_unpack_current_archive_record(Abstractformat *, xx_archive_record_state *, xx_pd_struct *);
+XXFC_API void xx_solitaire_deluxe_free_archive_records_reading(Abstractformat *, xx_archive_record_state *);
+static inline Abstractformat *xx_solitaire_deluxe_to_format(xx_solitaire_deluxe *archive)
+{
     return archive ? &archive->format : NULL;
 }
 #ifdef __cplusplus

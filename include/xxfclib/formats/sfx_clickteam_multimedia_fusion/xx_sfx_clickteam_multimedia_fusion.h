@@ -55,57 +55,36 @@ extern "C" {
  */
 typedef struct xx_sfx_clickteam_multimedia_fusion {
     Abstractformat format;
-    int64_t pack_offset;      /**< Device offset of the 0x20-byte header. */
-    int64_t container_end;    /**< Device offset where the pack data ends. */
-    int64_t ccn_offset;       /**< Device offset of "1.ccn", -1 if none. */
+    int64_t pack_offset;   /**< Device offset of the 0x20-byte header. */
+    int64_t container_end; /**< Device offset where the pack data ends. */
+    int64_t ccn_offset;    /**< Device offset of "1.ccn", -1 if none. */
     int64_t ccn_size;
-    uint32_t declared_files;  /**< The count at +0x1C. */
-    uint32_t parsed_files;    /**< Complete records found in the table. */
+    uint32_t declared_files; /**< The count at +0x1C. */
+    uint32_t parsed_files;   /**< Complete records found in the table. */
     uint64_t number_of_records;
     bool unicode_names;
     bool two_size_fields;
-    bool first_stored;        /**< The first record is a stored MZ image. */
-    bool truncated;           /**< The table ended before its count. */
+    bool first_stored; /**< The first record is a stored MZ image. */
+    bool truncated;    /**< The table ended before its count. */
 } xx_sfx_clickteam_multimedia_fusion;
 
-typedef xx_sfx_clickteam_multimedia_fusion
-    xx_sfx_clickteam_multimedia_fusion_t;
+typedef xx_sfx_clickteam_multimedia_fusion xx_sfx_clickteam_multimedia_fusion_t;
 
-XXFC_API void xx_sfx_clickteam_multimedia_fusion_init(
-    xx_sfx_clickteam_multimedia_fusion *archive, xx_io_device *device,
-    int64_t base_address);
-XXFC_API xx_sfx_clickteam_multimedia_fusion *
-xx_sfx_clickteam_multimedia_fusion_create(xx_io_device *device,
-                                          int64_t base_address);
-XXFC_API void xx_sfx_clickteam_multimedia_fusion_destroy(
-    xx_sfx_clickteam_multimedia_fusion *archive);
-XXFC_API void xx_sfx_clickteam_multimedia_fusion_free(
-    xx_sfx_clickteam_multimedia_fusion *archive);
+XXFC_API void xx_sfx_clickteam_multimedia_fusion_init(xx_sfx_clickteam_multimedia_fusion *archive, xx_io_device *device, int64_t base_address);
+XXFC_API xx_sfx_clickteam_multimedia_fusion *xx_sfx_clickteam_multimedia_fusion_create(xx_io_device *device, int64_t base_address);
+XXFC_API void xx_sfx_clickteam_multimedia_fusion_destroy(xx_sfx_clickteam_multimedia_fusion *archive);
+XXFC_API void xx_sfx_clickteam_multimedia_fusion_free(xx_sfx_clickteam_multimedia_fusion *archive);
 
-XXFC_API bool xx_sfx_clickteam_multimedia_fusion_check_is_valid(
-    Abstractformat *self, xx_pd_struct *pd);
-XXFC_API bool xx_sfx_clickteam_multimedia_fusion_handle_base_info(
-    Abstractformat *self, xx_pd_struct *pd);
-XXFC_API int64_t xx_sfx_clickteam_multimedia_fusion_get_format_size(
-    Abstractformat *self, xx_pd_struct *pd);
-XXFC_API uint64_t
-xx_sfx_clickteam_multimedia_fusion_get_number_of_archive_records(
-    Abstractformat *self, xx_pd_struct *pd);
+XXFC_API bool xx_sfx_clickteam_multimedia_fusion_check_is_valid(Abstractformat *self, xx_pd_struct *pd);
+XXFC_API bool xx_sfx_clickteam_multimedia_fusion_handle_base_info(Abstractformat *self, xx_pd_struct *pd);
+XXFC_API int64_t xx_sfx_clickteam_multimedia_fusion_get_format_size(Abstractformat *self, xx_pd_struct *pd);
+XXFC_API uint64_t xx_sfx_clickteam_multimedia_fusion_get_number_of_archive_records(Abstractformat *self, xx_pd_struct *pd);
 
-XXFC_API xx_archive_record_state *
-xx_sfx_clickteam_multimedia_fusion_create_archive_records_reading(
-    Abstractformat *self, const xx_list_s *options, xx_pd_struct *pd);
-XXFC_API const xx_archive_record *
-xx_sfx_clickteam_multimedia_fusion_get_current_archive_record(
-    Abstractformat *self, xx_archive_record_state *state);
-XXFC_API bool
-xx_sfx_clickteam_multimedia_fusion_unpack_current_archive_record(
-    Abstractformat *self, xx_archive_record_state *state, xx_pd_struct *pd);
-XXFC_API bool xx_sfx_clickteam_multimedia_fusion_archive_record_move_to_next(
-    Abstractformat *self, xx_archive_record_state *state, xx_pd_struct *pd);
-XXFC_API void
-xx_sfx_clickteam_multimedia_fusion_free_archive_records_reading(
-    Abstractformat *self, xx_archive_record_state *state);
+XXFC_API xx_archive_record_state *xx_sfx_clickteam_multimedia_fusion_create_archive_records_reading(Abstractformat *self, const xx_list_s *options, xx_pd_struct *pd);
+XXFC_API const xx_archive_record *xx_sfx_clickteam_multimedia_fusion_get_current_archive_record(Abstractformat *self, xx_archive_record_state *state);
+XXFC_API bool xx_sfx_clickteam_multimedia_fusion_unpack_current_archive_record(Abstractformat *self, xx_archive_record_state *state, xx_pd_struct *pd);
+XXFC_API bool xx_sfx_clickteam_multimedia_fusion_archive_record_move_to_next(Abstractformat *self, xx_archive_record_state *state, xx_pd_struct *pd);
+XXFC_API void xx_sfx_clickteam_multimedia_fusion_free_archive_records_reading(Abstractformat *self, xx_archive_record_state *state);
 
 /**
  * @brief The pack's per-file checksum over @p size bytes of @p data.
@@ -113,8 +92,7 @@ xx_sfx_clickteam_multimedia_fusion_free_archive_records_reading(
  * Exposed for tests and tools; the reader verifies it on every record that
  * carries a non-zero value.
  */
-XXFC_API uint32_t xx_sfx_clickteam_multimedia_fusion_checksum(
-    const uint8_t *data, size_t size);
+XXFC_API uint32_t xx_sfx_clickteam_multimedia_fusion_checksum(const uint8_t *data, size_t size);
 
 #ifdef __cplusplus
 }

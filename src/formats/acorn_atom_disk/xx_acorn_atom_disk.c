@@ -42,7 +42,7 @@
 
 typedef struct atom_member_s {
     char name[ATOM_NAME_BUFFER];
-    uint32_t index;        /**< Catalogue slot, 1..31. */
+    uint32_t index; /**< Catalogue slot, 1..31. */
     uint32_t start_sector;
     uint32_t length;
     uint32_t load_address;
@@ -59,32 +59,30 @@ typedef struct atom_stream_s {
     char title[13];
 } atom_stream;
 
-static bool atom_read_at(xx_io_device *device, int64_t offset, void *buffer,
-                         size_t size) {
+static bool atom_read_at(xx_io_device *device, int64_t offset, void *buffer, size_t size)
+{
     size_t done = 0U;
-    if (!device || (!buffer && size != 0U) || offset < 0 ||
-        xx_io_seek64(device, offset, SEEK_SET) != 0)
-        return false;
+    if (!device || (!buffer && size != 0U) || offset < 0 || xx_io_seek64(device, offset, SEEK_SET) != 0) return false;
     while (done < size) {
-        ssize_t amount = xx_io_read(device, (uint8_t *)buffer + done,
-                                    size - done);
+        ssize_t amount = xx_io_read(device, (uint8_t *)buffer + done, size - done);
         if (amount <= 0 || (size_t)amount > size - done) return false;
         done += (size_t)amount;
     }
     return true;
 }
 
-static bool atom_size_ok(Abstractformat *format) {
+static bool atom_size_ok(Abstractformat *format)
+{
     int64_t total;
     if (!format || !format->device || format->base_address < 0) return false;
     total = xx_io_total_size(format->device);
-    return total >= format->base_address &&
-           total - format->base_address == ATOM_IMAGE_SIZE;
+    return total >= format->base_address && total - format->base_address == ATOM_IMAGE_SIZE;
 }
 
 /* 7 name characters: printable ASCII (no bit 7, no space), then only
  * spaces; the first one must not be a space. */
-static bool atom_check_name(const uint8_t *name) {
+static bool atom_check_name(const uint8_t *name)
+{
     size_t index;
     bool padding = false;
     for (index = 0U; index < 7U; ++index) {
@@ -99,29 +97,26 @@ static bool atom_check_name(const uint8_t *name) {
     return true;
 }
 
-static uint32_t atom_sectors_of(uint32_t length) {
+static uint32_t atom_sectors_of(uint32_t length)
+{
     return (length + ATOM_SECTOR - 1U) / ATOM_SECTOR;
 }
 
 /* Validate the catalogue and fill the member table (names not yet built).
  * Nothing is allocated. */
-static bool atom_probe(Abstractformat *format, uint8_t *catalogue,
-                       atom_stream *stream) {
+static bool atom_probe(Abstractformat *format, uint8_t *catalogue, atom_stream *stream)
+{
     const uint8_t *s0 = catalogue;
     const uint8_t *s1 = catalogue + ATOM_SECTOR;
     uint32_t files, sectors, index, other;
-    if (!atom_size_ok(format) ||
-        !atom_read_at(format->device, format->base_address, catalogue,
-                      ATOM_CATALOGUE_BYTES))
-        return false;
+    if (!atom_size_ok(format) || !atom_read_at(format->device, format->base_address, catalogue, ATOM_CATALOGUE_BYTES)) return false;
     if ((s1[5] & 7U) != 0U) return false;
     files = (uint32_t)s1[5] >> 3U;
     if (files == 0U || files > ATOM_MAX_FILES) return false;
     /* Boot option and the unused bits 2-3 / 6-7 must be clear. */
     if ((s1[6] & 0xFCU) != 0U) return false;
     sectors = ((uint32_t)(s1[6] & 3U) << 8U) | s1[7];
-    if (sectors < ATOM_FIRST_DATA_SECTOR || sectors > ATOM_TOTAL_SECTORS)
-        return false;
+    if (sectors < ATOM_FIRST_DATA_SECTOR || sectors > ATOM_TOTAL_SECTORS) return false;
 
     xx_mem_zero(stream, sizeof(*stream));
     for (index = 1U; index <= files; ++index) {
@@ -131,13 +126,11 @@ static bool atom_probe(Abstractformat *format, uint8_t *catalogue,
         uint8_t qualifier = (uint8_t)(name[7] & 0x7FU);
         uint8_t mixed = info[6];
         uint32_t start, length, used;
-        if (!atom_check_name(name) || qualifier < 0x20U || qualifier > 0x7EU)
-            return false;
+        if (!atom_check_name(name) || qualifier < 0x20U || qualifier > 0x7EU) return false;
         /* 16-bit Atom: no load / exec address b17..b16. */
         if ((mixed & 0xCCU) != 0U) return false;
         start = ((uint32_t)(mixed & 3U) << 8U) | info[7];
-        length = ((uint32_t)((mixed >> 4U) & 3U) << 16U) |
-                 ((uint32_t)info[5] << 8U) | info[4];
+        length = ((uint32_t)((mixed >> 4U) & 3U) << 16U) | ((uint32_t)info[5] << 8U) | info[4];
         used = atom_sectors_of(length);
         if (start > sectors || used > sectors - start) return false;
         if (used != 0U && start < ATOM_FIRST_DATA_SECTOR) return false;
@@ -157,8 +150,7 @@ static bool atom_probe(Abstractformat *format, uint8_t *catalogue,
             const atom_member *b = &stream->items[other];
             uint32_t b_end = b->start_sector + atom_sectors_of(b->length);
             if (b_end == b->start_sector) continue;
-            if (a->start_sector < b_end && b->start_sector < a_end)
-                return false;
+            if (a->start_sector < b_end && b->start_sector < a_end) return false;
         }
     }
     stream->count = files;
@@ -178,41 +170,47 @@ static bool atom_probe(Abstractformat *format, uint8_t *catalogue,
     return true;
 }
 
-static char atom_out_char(uint8_t c) {
+static char atom_out_char(uint8_t c)
+{
     switch (c) {
-    case '/': case '\\': case ':': case '*': case '?': case '"': case '<':
-    case '>': case '|':
-        return '_';
-    default:
-        return (c < 0x21U || c > 0x7EU) ? '_' : (char)c;
+        case '/':
+        case '\\':
+        case ':':
+        case '*':
+        case '?':
+        case '"':
+        case '<':
+        case '>':
+        case '|': return '_';
+        default: return (c < 0x21U || c > 0x7EU) ? '_' : (char)c;
     }
 }
 
-static char atom_fold(char c) {
+static char atom_fold(char c)
+{
     return (c >= 'a' && c <= 'z') ? (char)(c - 'a' + 'A') : c;
 }
 
-static bool atom_stem_is(const char *stem, size_t length, const char *word) {
+static bool atom_stem_is(const char *stem, size_t length, const char *word)
+{
     size_t index;
     for (index = 0U; index < length; ++index)
-        if (word[index] == 0 || atom_fold(stem[index]) != word[index])
-            return false;
+        if (word[index] == 0 || atom_fold(stem[index]) != word[index]) return false;
     return word[length] == 0;
 }
 
-static bool atom_is_device_stem(const char *stem, size_t length) {
-    static const char *const devices[] = {"CON", "PRN", "AUX", "NUL",
-                                          "CONIN$", "CONOUT$", "CLOCK$"};
+static bool atom_is_device_stem(const char *stem, size_t length)
+{
+    static const char *const devices[] = {"CON", "PRN", "AUX", "NUL", "CONIN$", "CONOUT$", "CLOCK$"};
     size_t index;
     for (index = 0U; index < sizeof(devices) / sizeof(devices[0]); ++index)
         if (atom_stem_is(stem, length, devices[index])) return true;
-    if (length == 4U && stem[3] >= '0' && stem[3] <= '9' &&
-        (atom_stem_is(stem, 3U, "COM") || atom_stem_is(stem, 3U, "LPT")))
-        return true;
+    if (length == 4U && stem[3] >= '0' && stem[3] <= '9' && (atom_stem_is(stem, 3U, "COM") || atom_stem_is(stem, 3U, "LPT"))) return true;
     return false;
 }
 
-static size_t atom_stem_length(const char *text, size_t length) {
+static size_t atom_stem_length(const char *text, size_t length)
+{
     size_t index;
     for (index = 0U; index < length; ++index)
         if (text[index] == '.') return index;
@@ -220,13 +218,12 @@ static size_t atom_stem_length(const char *text, size_t length) {
 }
 
 /* "[Q.][_]NAME[~K]" into `out` (ATOM_NAME_BUFFER bytes). */
-static void atom_make_name(const uint8_t *entry, bool suffix, uint32_t key,
-                           char *out) {
+static void atom_make_name(const uint8_t *entry, bool suffix, uint32_t key, char *out)
+{
     char body[7];
     size_t body_length = 0U, at = 0U, index;
     uint8_t qualifier = (uint8_t)(entry[7] & 0x7FU);
-    for (index = 0U; index < 7U && entry[index] != ' '; ++index)
-        body[body_length++] = atom_out_char(entry[index]);
+    for (index = 0U; index < 7U && entry[index] != ' '; ++index) body[body_length++] = atom_out_char(entry[index]);
     if (body_length == 0U) body[body_length++] = '_';
     /* Windows drops a trailing dot. */
     if (body[body_length - 1U] == '.') body[body_length - 1U] = '_';
@@ -245,7 +242,8 @@ static void atom_make_name(const uint8_t *entry, bool suffix, uint32_t key,
     out[at] = 0;
 }
 
-static bool atom_names_equal(const char *a, const char *b) {
+static bool atom_names_equal(const char *a, const char *b)
+{
     size_t index = 0U;
     for (;;) {
         if (atom_fold(a[index]) != atom_fold(b[index])) return false;
@@ -254,11 +252,13 @@ static bool atom_names_equal(const char *a, const char *b) {
     }
 }
 
-static void atom_stream_free(void *opaque) {
+static void atom_stream_free(void *opaque)
+{
     if (opaque) xx_mem_free(opaque);
 }
 
-static bool atom_parse(Abstractformat *format, atom_stream **result) {
+static bool atom_parse(Abstractformat *format, atom_stream **result)
+{
     uint8_t catalogue[ATOM_CATALOGUE_BYTES];
     atom_stream probe;
     atom_stream *stream;
@@ -282,12 +282,11 @@ static bool atom_parse(Abstractformat *format, atom_stream **result) {
     return true;
 }
 
-static bool atom_write_all(xx_io_device *destination, const uint8_t *data,
-                           size_t size) {
+static bool atom_write_all(xx_io_device *destination, const uint8_t *data, size_t size)
+{
     size_t written = 0U;
     while (written < size) {
-        ssize_t amount = xx_io_write(destination, data + written,
-                                     size - written);
+        ssize_t amount = xx_io_write(destination, data + written, size - written);
         if (amount <= 0 || (size_t)amount > size - written) return false;
         written += (size_t)amount;
     }
@@ -296,25 +295,16 @@ static bool atom_write_all(xx_io_device *destination, const uint8_t *data,
 
 /* Copy a file sector by sector into `destination`, or just read it through
  * when that is NULL. */
-static bool atom_copy_member(Abstractformat *format, const atom_stream *stream,
-                             const atom_member *member,
-                             xx_io_device *destination, xx_pd_struct *pd) {
+static bool atom_copy_member(Abstractformat *format, const atom_stream *stream, const atom_member *member, xx_io_device *destination, xx_pd_struct *pd)
+{
     uint8_t sector[ATOM_SECTOR];
     uint32_t remaining = member->length, number = member->start_sector;
-    if (atom_sectors_of(member->length) > stream->disc_sectors ||
-        number > stream->disc_sectors - atom_sectors_of(member->length))
-        return false;
+    if (atom_sectors_of(member->length) > stream->disc_sectors || number > stream->disc_sectors - atom_sectors_of(member->length)) return false;
     while (remaining > 0U) {
-        size_t chunk = remaining > ATOM_SECTOR ? (size_t)ATOM_SECTOR
-                                               : (size_t)remaining;
+        size_t chunk = remaining > ATOM_SECTOR ? (size_t)ATOM_SECTOR : (size_t)remaining;
         if (pd && xx_pd_is_stopped(pd)) return false;
-        if (!atom_read_at(format->device,
-                          format->base_address +
-                              (int64_t)number * ATOM_SECTOR,
-                          sector, chunk))
-            return false;
-        if (destination && !atom_write_all(destination, sector, chunk))
-            return false;
+        if (!atom_read_at(format->device, format->base_address + (int64_t)number * ATOM_SECTOR, sector, chunk)) return false;
+        if (destination && !atom_write_all(destination, sector, chunk)) return false;
         remaining -= (uint32_t)chunk;
         ++number;
     }
@@ -324,16 +314,16 @@ static bool atom_copy_member(Abstractformat *format, const atom_stream *stream,
 /* Re-check a built name before touching the disk: one path component of
  * printable characters with no separators or reserved characters, not
  * ending in '.', and not a device stem. */
-static bool atom_safe_output_name(const char *name) {
+static bool atom_safe_output_name(const char *name)
+{
     size_t length, index;
     if (!name || !name[0]) return false;
     length = xx_str_len(name);
     if (length >= ATOM_NAME_BUFFER) return false;
     for (index = 0U; index < length; ++index) {
         char c = name[index];
-        if ((unsigned char)c < 0x21U || (unsigned char)c > 0x7EU ||
-            c == '/' || c == '\\' || c == ':' || c == '<' || c == '>' ||
-            c == '"' || c == '|' || c == '?' || c == '*')
+        if ((unsigned char)c < 0x21U || (unsigned char)c > 0x7EU || c == '/' || c == '\\' || c == ':' || c == '<' || c == '>' || c == '"' || c == '|' || c == '?' ||
+            c == '*')
             return false;
     }
     if (name[length - 1U] == '.') return false;
@@ -341,17 +331,16 @@ static bool atom_safe_output_name(const char *name) {
     return !atom_is_device_stem(name, atom_stem_length(name, length));
 }
 
-static bool atom_copy_options(xx_list_s *destination, const xx_list_s *source) {
+static bool atom_copy_options(xx_list_s *destination, const xx_list_s *source)
+{
     size_t index;
     if (!source) return true;
     for (index = 0U; index < source->count; ++index) {
-        const xx_meta *original =
-            (const xx_meta *)xx_list_at((const xx_list_t *)source, index);
+        const xx_meta *original = (const xx_meta *)xx_list_at((const xx_list_t *)source, index);
         xx_meta copy;
         if (!original) continue;
         xx_meta_init(&copy, original->meta_id);
-        if (!xx_var_copy(&copy.var, &original->var) ||
-            !xx_list_append(destination, &copy)) {
+        if (!xx_var_copy(&copy.var, &original->var) || !xx_list_append(destination, &copy)) {
             xx_meta_cleanup(&copy);
             return false;
         }
@@ -359,42 +348,34 @@ static bool atom_copy_options(xx_list_s *destination, const xx_list_s *source) {
     return true;
 }
 
-static const xx_var *atom_option(const xx_list_s *options, uint32_t id) {
+static const xx_var *atom_option(const xx_list_s *options, uint32_t id)
+{
     size_t index;
     if (!options) return NULL;
     for (index = 0U; index < options->count; ++index) {
-        const xx_meta *meta =
-            (const xx_meta *)xx_list_at((const xx_list_t *)options, index);
+        const xx_meta *meta = (const xx_meta *)xx_list_at((const xx_list_t *)options, index);
         if (meta && meta->meta_id == id) return &meta->var;
     }
     return NULL;
 }
 
-static bool atom_set_record(Abstractformat *format, xx_archive_record *record,
-                            const atom_member *member) {
+static bool atom_set_record(Abstractformat *format, xx_archive_record *record, const atom_member *member)
+{
     xx_archive_record_cleanup(record);
     xx_archive_record_init(record);
     record->header_offset = format->base_address + (int64_t)member->index * 8;
     record->header_size = 8;
-    record->data_offset = format->base_address +
-                          (int64_t)member->start_sector * ATOM_SECTOR;
+    record->data_offset = format->base_address + (int64_t)member->start_sector * ATOM_SECTOR;
     record->compressed_size = member->length;
-    return xx_archive_record_set_original_name(record, member->name) &&
-           xx_archive_record_set_meta_u64(record, XX_META_ID_COMPRESSED_SIZE,
-                                          member->length) &&
-           xx_archive_record_set_meta_u64(record, XX_META_ID_UNCOMPRESSED_SIZE,
-                                          member->length) &&
-           xx_archive_record_set_meta_u64(record, XX_META_ID_COMPRESSION_METHOD,
-                                          0U) &&
-           xx_archive_record_set_meta_u64(record, XX_META_ID_ATTRIBUTES,
-                                          member->locked ? 1U : 0U) &&
-           xx_archive_record_set_meta_bool(record, XX_META_ID_IS_ENCRYPTED,
-                                           false) &&
-           xx_archive_record_set_meta_bool(record, XX_META_ID_IS_FOLDER, false);
+    return xx_archive_record_set_original_name(record, member->name) && xx_archive_record_set_meta_u64(record, XX_META_ID_COMPRESSED_SIZE, member->length) &&
+           xx_archive_record_set_meta_u64(record, XX_META_ID_UNCOMPRESSED_SIZE, member->length) &&
+           xx_archive_record_set_meta_u64(record, XX_META_ID_COMPRESSION_METHOD, 0U) &&
+           xx_archive_record_set_meta_u64(record, XX_META_ID_ATTRIBUTES, member->locked ? 1U : 0U) &&
+           xx_archive_record_set_meta_bool(record, XX_META_ID_IS_ENCRYPTED, false) && xx_archive_record_set_meta_bool(record, XX_META_ID_IS_FOLDER, false);
 }
 
-void xx_acorn_atom_disk_init(xx_acorn_atom_disk *archive, xx_io_device *device,
-                             int64_t base_address) {
+void xx_acorn_atom_disk_init(xx_acorn_atom_disk *archive, xx_io_device *device, int64_t base_address)
+{
     if (!archive) return;
     xx_mem_zero(archive, sizeof(*archive));
     xx_format_init(&archive->format, device, base_address);
@@ -402,55 +383,49 @@ void xx_acorn_atom_disk_init(xx_acorn_atom_disk *archive, xx_io_device *device,
     archive->format.file_type = XX_ACORN_ATOM_DISK_FILE_TYPE;
     archive->format.format_type = XX_TYPE_ARCHIVE;
     archive->format.is_archive = true;
-    xx_format_set_mime_type(&archive->format,
-                            "application/x-acorn-atom-disk-image");
+    xx_format_set_mime_type(&archive->format, "application/x-acorn-atom-disk-image");
     xx_format_set_extension(&archive->format, "40t");
     archive->format.check_is_valid = xx_acorn_atom_disk_check_is_valid;
     archive->format.handle_base_info = xx_acorn_atom_disk_handle_base_info;
     archive->format.get_format_size = xx_acorn_atom_disk_get_format_size;
-    archive->format.get_number_of_archive_records =
-        xx_acorn_atom_disk_get_number_of_archive_records;
-    archive->format.create_archive_records_reading =
-        xx_acorn_atom_disk_create_archive_records_reading;
-    archive->format.get_current_archive_record =
-        xx_acorn_atom_disk_get_current_archive_record;
-    archive->format.unpack_current_archive_record =
-        xx_acorn_atom_disk_unpack_current_archive_record;
-    archive->format.archive_record_move_to_next =
-        xx_acorn_atom_disk_archive_record_move_to_next;
-    archive->format.free_archive_records_reading =
-        xx_acorn_atom_disk_free_archive_records_reading;
+    archive->format.get_number_of_archive_records = xx_acorn_atom_disk_get_number_of_archive_records;
+    archive->format.create_archive_records_reading = xx_acorn_atom_disk_create_archive_records_reading;
+    archive->format.get_current_archive_record = xx_acorn_atom_disk_get_current_archive_record;
+    archive->format.unpack_current_archive_record = xx_acorn_atom_disk_unpack_current_archive_record;
+    archive->format.archive_record_move_to_next = xx_acorn_atom_disk_archive_record_move_to_next;
+    archive->format.free_archive_records_reading = xx_acorn_atom_disk_free_archive_records_reading;
     archive->image_size = -1;
 }
 
-xx_acorn_atom_disk *xx_acorn_atom_disk_create(xx_io_device *device,
-                                              int64_t base_address) {
-    xx_acorn_atom_disk *archive =
-        (xx_acorn_atom_disk *)xx_mem_alloc(sizeof(*archive));
+xx_acorn_atom_disk *xx_acorn_atom_disk_create(xx_io_device *device, int64_t base_address)
+{
+    xx_acorn_atom_disk *archive = (xx_acorn_atom_disk *)xx_mem_alloc(sizeof(*archive));
     if (archive) xx_acorn_atom_disk_init(archive, device, base_address);
     return archive;
 }
 
-void xx_acorn_atom_disk_destroy(xx_acorn_atom_disk *archive) {
+void xx_acorn_atom_disk_destroy(xx_acorn_atom_disk *archive)
+{
     if (archive) xx_format_cleanup_extra_parameters(&archive->format);
 }
 
-void xx_acorn_atom_disk_free(xx_acorn_atom_disk *archive) {
+void xx_acorn_atom_disk_free(xx_acorn_atom_disk *archive)
+{
     if (!archive) return;
     xx_acorn_atom_disk_destroy(archive);
     xx_mem_free(archive);
 }
 
-bool xx_acorn_atom_disk_check_is_valid(Abstractformat *format,
-                                       xx_pd_struct *pd) {
+bool xx_acorn_atom_disk_check_is_valid(Abstractformat *format, xx_pd_struct *pd)
+{
     uint8_t catalogue[ATOM_CATALOGUE_BYTES];
     atom_stream probe;
     (void)pd;
     return atom_probe(format, catalogue, &probe);
 }
 
-bool xx_acorn_atom_disk_handle_base_info(Abstractformat *format,
-                                         xx_pd_struct *pd) {
+bool xx_acorn_atom_disk_handle_base_info(Abstractformat *format, xx_pd_struct *pd)
+{
     atom_stream *stream;
     xx_acorn_atom_disk *archive;
     (void)pd;
@@ -469,22 +444,18 @@ bool xx_acorn_atom_disk_handle_base_info(Abstractformat *format,
     return true;
 }
 
-int64_t xx_acorn_atom_disk_get_format_size(Abstractformat *format,
-                                           xx_pd_struct *pd) {
-    return format && (format->base_info_handled ||
-                      xx_acorn_atom_disk_handle_base_info(format, pd))
-               ? format->format_size : -1;
+int64_t xx_acorn_atom_disk_get_format_size(Abstractformat *format, xx_pd_struct *pd)
+{
+    return format && (format->base_info_handled || xx_acorn_atom_disk_handle_base_info(format, pd)) ? format->format_size : -1;
 }
 
-uint64_t xx_acorn_atom_disk_get_number_of_archive_records(
-    Abstractformat *format, xx_pd_struct *pd) {
-    return format && (format->base_info_handled ||
-                      xx_acorn_atom_disk_handle_base_info(format, pd))
-               ? ((xx_acorn_atom_disk *)format)->number_of_records : 0U;
+uint64_t xx_acorn_atom_disk_get_number_of_archive_records(Abstractformat *format, xx_pd_struct *pd)
+{
+    return format && (format->base_info_handled || xx_acorn_atom_disk_handle_base_info(format, pd)) ? ((xx_acorn_atom_disk *)format)->number_of_records : 0U;
 }
 
-xx_archive_record_state *xx_acorn_atom_disk_create_archive_records_reading(
-    Abstractformat *format, const xx_list_s *options, xx_pd_struct *pd) {
+xx_archive_record_state *xx_acorn_atom_disk_create_archive_records_reading(Abstractformat *format, const xx_list_s *options, xx_pd_struct *pd)
+{
     atom_stream *stream;
     xx_archive_record_state *state;
     (void)pd;
@@ -498,8 +469,7 @@ xx_archive_record_state *xx_acorn_atom_disk_create_archive_records_reading(
     state->internal_state = stream;
     state->free_internal = atom_stream_free;
     state->total_records = stream->count;
-    if (!atom_copy_options(&state->options, options) ||
-        !atom_set_record(format, &state->current_record, &stream->items[0])) {
+    if (!atom_copy_options(&state->options, options) || !atom_set_record(format, &state->current_record, &stream->items[0])) {
         xx_archive_record_state_free(state);
         return NULL;
     }
@@ -507,30 +477,26 @@ xx_archive_record_state *xx_acorn_atom_disk_create_archive_records_reading(
     return state;
 }
 
-const xx_archive_record *xx_acorn_atom_disk_get_current_archive_record(
-    Abstractformat *format, xx_archive_record_state *state) {
-    return format && state && state->format == format && state->has_record
-               ? &state->current_record : NULL;
+const xx_archive_record *xx_acorn_atom_disk_get_current_archive_record(Abstractformat *format, xx_archive_record_state *state)
+{
+    return format && state && state->format == format && state->has_record ? &state->current_record : NULL;
 }
 
-bool xx_acorn_atom_disk_archive_record_move_to_next(
-    Abstractformat *format, xx_archive_record_state *state, xx_pd_struct *pd) {
+bool xx_acorn_atom_disk_archive_record_move_to_next(Abstractformat *format, xx_archive_record_state *state, xx_pd_struct *pd)
+{
     atom_stream *stream;
     (void)pd;
-    if (!format || !state || state->format != format ||
-        !(stream = (atom_stream *)state->internal_state) ||
-        ++stream->index >= stream->count) {
+    if (!format || !state || state->format != format || !(stream = (atom_stream *)state->internal_state) || ++stream->index >= stream->count) {
         if (state) state->has_record = false;
         return false;
     }
     ++state->current_index;
-    state->has_record = atom_set_record(format, &state->current_record,
-                                        &stream->items[stream->index]);
+    state->has_record = atom_set_record(format, &state->current_record, &stream->items[stream->index]);
     return state->has_record;
 }
 
-bool xx_acorn_atom_disk_unpack_current_archive_record(
-    Abstractformat *format, xx_archive_record_state *state, xx_pd_struct *pd) {
+bool xx_acorn_atom_disk_unpack_current_archive_record(Abstractformat *format, xx_archive_record_state *state, xx_pd_struct *pd)
+{
     atom_stream *stream;
     atom_member *member;
     const xx_var *path_option;
@@ -539,29 +505,22 @@ bool xx_acorn_atom_disk_unpack_current_archive_record(
     char *path = NULL;
     bool result = false;
     bool created = false;
-    if (!format || !state || state->format != format || !state->has_record ||
-        !(stream = (atom_stream *)state->internal_state) ||
-        stream->index >= stream->count || (pd && xx_pd_is_stopped(pd)))
+    if (!format || !state || state->format != format || !state->has_record || !(stream = (atom_stream *)state->internal_state) || stream->index >= stream->count ||
+        (pd && xx_pd_is_stopped(pd)))
         return false;
     member = &stream->items[stream->index];
     path_option = atom_option(&state->options, XX_META_ID_OPT_UNPACK_PATH);
-    if (!path_option)
-        /* No destination: read the file through, which verifies it. */
+    if (!path_option) /* No destination: read the file through, which verifies it. */
         return atom_copy_member(format, stream, member, NULL, pd);
     if (!atom_safe_output_name(member->name)) return false;
-    if (path_option->type == XX_VAR_TYPE_STRING ||
-        path_option->type == XX_VAR_TYPE_STRING_VIEW)
-        base = xx_var_get_str(path_option);
-    else if (path_option->type == XX_VAR_TYPE_WSTRING ||
-             path_option->type == XX_VAR_TYPE_WSTRING_VIEW) {
+    if (path_option->type == XX_VAR_TYPE_STRING || path_option->type == XX_VAR_TYPE_STRING_VIEW) base = xx_var_get_str(path_option);
+    else if (path_option->type == XX_VAR_TYPE_WSTRING || path_option->type == XX_VAR_TYPE_WSTRING_VIEW) {
         owned_base = xx_str_unicode_to_utf8(xx_var_get_wstr(path_option));
         base = owned_base;
     }
     if (!base) goto done;
-    path = (base[0] && base[xx_str_len(base) - 1U] != '/' &&
-            base[xx_str_len(base) - 1U] != '\\')
-               ? xx_str_concat3(base, "/", member->name)
-               : xx_str_concat(base, member->name);
+    path = (base[0] && base[xx_str_len(base) - 1U] != '/' && base[xx_str_len(base) - 1U] != '\\') ? xx_str_concat3(base, "/", member->name)
+                                                                                                  : xx_str_concat(base, member->name);
     if (!path || !xx_store_create_dirs_a(path, false)) goto done;
     {
         xx_io_device *destination = xx_io_file_open(path, "wb");
@@ -577,8 +536,8 @@ done:
     return result;
 }
 
-void xx_acorn_atom_disk_free_archive_records_reading(
-    Abstractformat *format, xx_archive_record_state *state) {
+void xx_acorn_atom_disk_free_archive_records_reading(Abstractformat *format, xx_archive_record_state *state)
+{
     (void)format;
     xx_archive_record_state_free(state);
 }

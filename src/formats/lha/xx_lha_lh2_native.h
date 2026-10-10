@@ -34,26 +34,22 @@ typedef struct xx_lha_lh2_tree_s {
     unsigned maximum, count;
 } xx_lha_lh2_tree;
 
-static bool xx_lha_lh2_bits_get(xx_lha_lh2_bits *bits, unsigned count,
-                                 unsigned *value) {
+static bool xx_lha_lh2_bits_get(xx_lha_lh2_bits *bits, unsigned count, unsigned *value)
+{
     unsigned result = 0U, i;
-    if (!bits || !value || count > 8U || bits->size > SIZE_MAX / 8U ||
-        bits->position > bits->size * 8U ||
-        count > bits->size * 8U - bits->position) return false;
+    if (!bits || !value || count > 8U || bits->size > SIZE_MAX / 8U || bits->position > bits->size * 8U || count > bits->size * 8U - bits->position) return false;
     for (i = 0U; i < count; ++i) {
         size_t bit = bits->position++;
-        result = (result << 1U) |
-            ((bits->data[bit / 8U] >> (7U - (unsigned)(bit & 7U))) & 1U);
+        result = (result << 1U) | ((bits->data[bit / 8U] >> (7U - (unsigned)(bit & 7U))) & 1U);
     }
     *value = result;
     return true;
 }
 
-static bool xx_lha_lh2_tree_init(xx_lha_lh2_tree *tree,
-                                  unsigned maximum, unsigned count) {
+static bool xx_lha_lh2_tree_init(xx_lha_lh2_tree *tree, unsigned maximum, unsigned count)
+{
     unsigned i;
-    if (!tree || maximum > XX_LHA_LH2_C_CODES || count > maximum ||
-        maximum < 2U) return false;
+    if (!tree || maximum > XX_LHA_LH2_C_CODES || count > maximum || maximum < 2U) return false;
     memset(tree, 0, sizeof(*tree));
     tree->maximum = maximum;
     tree->count = count;
@@ -67,13 +63,10 @@ static bool xx_lha_lh2_tree_init(xx_lha_lh2_tree *tree,
     for (i = maximum * 2U - count; i < maximum * 2U - 1U; ++i) {
         unsigned j = (i - (maximum * 2U - count)) * 2U;
         unsigned left = j >= count ? j + (maximum - count) * 2U : j;
-        unsigned right = j + 1U >= count ?
-                         j + 1U + (maximum - count) * 2U : j + 1U;
+        unsigned right = j + 1U >= count ? j + 1U + (maximum - count) * 2U : j + 1U;
         xx_lha_lh2_node *node = &tree->nodes[i];
-        if (left >= maximum * 2U - 1U || right >= maximum * 2U - 1U)
-            return false;
-        node->frequency = tree->nodes[left].frequency +
-                          tree->nodes[right].frequency;
+        if (left >= maximum * 2U - 1U || right >= maximum * 2U - 1U) return false;
+        node->frequency = tree->nodes[left].frequency + tree->nodes[right].frequency;
         node->index = i;
         node->parent = maximum + i / 2U;
         node->left = left;
@@ -83,7 +76,8 @@ static bool xx_lha_lh2_tree_init(xx_lha_lh2_tree *tree,
     return true;
 }
 
-static bool xx_lha_lh2_tree_add(xx_lha_lh2_tree *tree) {
+static bool xx_lha_lh2_tree_add(xx_lha_lh2_tree *tree)
+{
     unsigned maximum, count, new_index, insert_index, insert_node;
     unsigned representative, parent;
     xx_lha_lh2_node *node;
@@ -112,10 +106,8 @@ static bool xx_lha_lh2_tree_add(xx_lha_lh2_tree *tree) {
         representative = tree->order[(maximum - count) * 2U];
         parent = tree->nodes[representative].parent;
         if (parent >= maximum * 2U - 1U) return false;
-        if (tree->nodes[parent].left == representative)
-            tree->nodes[parent].left = insert_node;
-        else if (tree->nodes[parent].right == representative)
-            tree->nodes[parent].right = insert_node;
+        if (tree->nodes[parent].left == representative) tree->nodes[parent].left = insert_node;
+        else if (tree->nodes[parent].right == representative) tree->nodes[parent].right = insert_node;
         else return false;
         tree->nodes[representative].parent = insert_node;
     } else {
@@ -129,9 +121,7 @@ static bool xx_lha_lh2_tree_add(xx_lha_lh2_tree *tree) {
     node->left = count;
     node->right = representative;
     tree->order[insert_index] = insert_node;
-    if (count > 1U &&
-        tree->nodes[tree->nodes[parent].left].index >
-        tree->nodes[tree->nodes[parent].right].index) {
+    if (count > 1U && tree->nodes[tree->nodes[parent].left].index > tree->nodes[tree->nodes[parent].right].index) {
         unsigned temporary = tree->nodes[parent].left;
         tree->nodes[parent].left = tree->nodes[parent].right;
         tree->nodes[parent].right = temporary;
@@ -140,7 +130,8 @@ static bool xx_lha_lh2_tree_add(xx_lha_lh2_tree *tree) {
     return true;
 }
 
-static bool xx_lha_lh2_tree_update(xx_lha_lh2_tree *tree, unsigned code) {
+static bool xx_lha_lh2_tree_update(xx_lha_lh2_tree *tree, unsigned code)
+{
     unsigned root, index, target, frequency, other;
     if (!tree || code >= tree->count) return false;
     if (tree->count == 1U) {
@@ -155,20 +146,15 @@ static bool xx_lha_lh2_tree_update(xx_lha_lh2_tree *tree, unsigned code) {
         index = node->index;
         target = index;
         frequency = node->frequency;
-        while (target < root &&
-               frequency > tree->nodes[tree->order[target + 1U]].frequency)
-            ++target;
+        while (target < root && frequency > tree->nodes[tree->order[target + 1U]].frequency) ++target;
         if (target != index) {
             other = tree->order[target];
             a_parent = node->parent;
             b_parent = tree->nodes[other].parent;
-            if (a_parent >= root + 1U || b_parent >= root + 1U)
-                return false;
+            if (a_parent >= root + 1U || b_parent >= root + 1U) return false;
             a_left = tree->nodes[a_parent].left == code;
             b_left = tree->nodes[b_parent].left == other;
-            if ((!a_left && tree->nodes[a_parent].right != code) ||
-                (!b_left && tree->nodes[b_parent].right != other))
-                return false;
+            if ((!a_left && tree->nodes[a_parent].right != code) || (!b_left && tree->nodes[b_parent].right != other)) return false;
             temporary = node->index;
             node->index = tree->nodes[other].index;
             tree->nodes[other].index = temporary;
@@ -188,8 +174,8 @@ static bool xx_lha_lh2_tree_update(xx_lha_lh2_tree *tree, unsigned code) {
     return true;
 }
 
-static bool xx_lha_lh2_tree_decode(xx_lha_lh2_tree *tree,
-                                    xx_lha_lh2_bits *bits, unsigned *symbol) {
+static bool xx_lha_lh2_tree_decode(xx_lha_lh2_tree *tree, xx_lha_lh2_bits *bits, unsigned *symbol)
+{
     unsigned code, bit, steps = 0U;
     if (!tree || !bits || !symbol || !tree->count) return false;
     if (tree->count == 1U) {
@@ -198,8 +184,7 @@ static bool xx_lha_lh2_tree_decode(xx_lha_lh2_tree *tree,
     }
     code = tree->maximum * 2U - 2U;
     while (code >= tree->maximum) {
-        if (++steps > 32U || !xx_lha_lh2_bits_get(bits, 1U, &bit))
-            return false;
+        if (++steps > 32U || !xx_lha_lh2_bits_get(bits, 1U, &bit)) return false;
         code = bit ? tree->nodes[code].right : tree->nodes[code].left;
         if (code >= tree->maximum * 2U - 1U) return false;
     }
@@ -207,26 +192,20 @@ static bool xx_lha_lh2_tree_decode(xx_lha_lh2_tree *tree,
     return code < tree->count;
 }
 
-static bool xx_lha_lh2_decode_native(const uint8_t *input, size_t input_size,
-                                      uint8_t *output, size_t output_size,
-                                      xx_pd_struct *pd) {
+static bool xx_lha_lh2_decode_native(const uint8_t *input, size_t input_size, uint8_t *output, size_t output_size, xx_pd_struct *pd)
+{
     xx_lha_lh2_tree literal, position;
     xx_lha_lh2_bits bits;
     size_t produced = 0U;
-    if (!input || !output || !output_size || output_size > XX_LHA_LH2_LIMIT ||
-        input_size > SIZE_MAX / 8U ||
-        !xx_lha_lh2_tree_init(&literal, XX_LHA_LH2_C_CODES,
-                              XX_LHA_LH2_C_CODES) ||
-        !xx_lha_lh2_tree_init(&position, XX_LHA_LH2_P_CODES, 0U))
+    if (!input || !output || !output_size || output_size > XX_LHA_LH2_LIMIT || input_size > SIZE_MAX / 8U ||
+        !xx_lha_lh2_tree_init(&literal, XX_LHA_LH2_C_CODES, XX_LHA_LH2_C_CODES) || !xx_lha_lh2_tree_init(&position, XX_LHA_LH2_P_CODES, 0U))
         return false;
     bits.data = input;
     bits.size = input_size;
     bits.position = 0U;
     while (produced < output_size) {
         unsigned symbol;
-        if ((pd && xx_pd_is_stopped(pd)) ||
-            !xx_lha_lh2_tree_decode(&literal, &bits, &symbol) ||
-            !xx_lha_lh2_tree_update(&literal, symbol)) return false;
+        if ((pd && xx_pd_is_stopped(pd)) || !xx_lha_lh2_tree_decode(&literal, &bits, &symbol) || !xx_lha_lh2_tree_update(&literal, symbol)) return false;
         if (symbol == 285U) {
             unsigned extra;
             if (!xx_lha_lh2_bits_get(&bits, 8U, &extra)) return false;
@@ -238,28 +217,20 @@ static bool xx_lha_lh2_decode_native(const uint8_t *input, size_t input_size,
             unsigned group, low, length = symbol - 253U;
             size_t distance, i;
             unsigned groups = (unsigned)((produced + 63U) / 64U);
-            if (length < 3U || length > 256U ||
-                length > output_size - produced ||
-                groups > XX_LHA_LH2_P_CODES) return false;
+            if (length < 3U || length > 256U || length > output_size - produced || groups > XX_LHA_LH2_P_CODES) return false;
             while (position.count < groups) {
                 unsigned new_group = position.count;
-                if (!xx_lha_lh2_tree_add(&position) ||
-                    !xx_lha_lh2_tree_update(&position, new_group))
-                    return false;
+                if (!xx_lha_lh2_tree_add(&position) || !xx_lha_lh2_tree_update(&position, new_group)) return false;
             }
-            if (!xx_lha_lh2_tree_decode(&position, &bits, &group) ||
-                !xx_lha_lh2_tree_update(&position, group) ||
-                !xx_lha_lh2_bits_get(&bits, 6U, &low)) return false;
+            if (!xx_lha_lh2_tree_decode(&position, &bits, &group) || !xx_lha_lh2_tree_update(&position, group) || !xx_lha_lh2_bits_get(&bits, 6U, &low)) return false;
             distance = ((size_t)group << 6U) + low + 1U;
             if (distance > XX_LHA_LH2_LIMIT) return false;
             for (i = 0U; i < length; ++i) {
-                output[produced] = produced < distance ? (uint8_t)' ' :
-                                   output[produced - distance];
+                output[produced] = produced < distance ? (uint8_t)' ' : output[produced - distance];
                 ++produced;
             }
         }
     }
-    return (bits.position + 7U) / 8U == input_size &&
-           (!pd || !xx_pd_is_stopped(pd));
+    return (bits.position + 7U) / 8U == input_size && (!pd || !xx_pd_is_stopped(pd));
 }
 #endif /* XX_LHA_LH2_NATIVE_H */

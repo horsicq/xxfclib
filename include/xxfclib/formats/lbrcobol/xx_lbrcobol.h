@@ -13,7 +13,8 @@ extern "C" {
 #endif
 
 /**
- * @brief A Micro Focus COBOL library: a 256-byte header followed by a linked chain of 18-byte directory records, each naming one stored member whose payload lives at a 128-byte block boundary.
+ * @brief A Micro Focus COBOL library: a 256-byte header followed by a linked chain of 18-byte directory records, each naming one stored member whose payload lives at a
+ * 128-byte block boundary.
  */
 typedef struct xx_lbrcobol {
     Abstractformat format;
@@ -22,32 +23,21 @@ typedef struct xx_lbrcobol {
 
 typedef xx_lbrcobol xx_lbrcobol_t;
 
-XXFC_API void xx_lbrcobol_init(xx_lbrcobol *archive, xx_io_device *device,
-                             int64_t base_address);
-XXFC_API xx_lbrcobol *xx_lbrcobol_create(xx_io_device *device,
-                                     int64_t base_address);
+XXFC_API void xx_lbrcobol_init(xx_lbrcobol *archive, xx_io_device *device, int64_t base_address);
+XXFC_API xx_lbrcobol *xx_lbrcobol_create(xx_io_device *device, int64_t base_address);
 XXFC_API void xx_lbrcobol_destroy(xx_lbrcobol *archive);
 XXFC_API void xx_lbrcobol_free(xx_lbrcobol *archive);
 
-XXFC_API bool xx_lbrcobol_check_is_valid(Abstractformat *self,
-                                       xx_pd_struct *pd);
-XXFC_API bool xx_lbrcobol_handle_base_info(Abstractformat *self,
-                                         xx_pd_struct *pd);
-XXFC_API int64_t xx_lbrcobol_get_format_size(Abstractformat *self,
-                                           xx_pd_struct *pd);
-XXFC_API uint64_t xx_lbrcobol_get_number_of_archive_records(
-    Abstractformat *self, xx_pd_struct *pd);
+XXFC_API bool xx_lbrcobol_check_is_valid(Abstractformat *self, xx_pd_struct *pd);
+XXFC_API bool xx_lbrcobol_handle_base_info(Abstractformat *self, xx_pd_struct *pd);
+XXFC_API int64_t xx_lbrcobol_get_format_size(Abstractformat *self, xx_pd_struct *pd);
+XXFC_API uint64_t xx_lbrcobol_get_number_of_archive_records(Abstractformat *self, xx_pd_struct *pd);
 
-XXFC_API xx_archive_record_state *xx_lbrcobol_create_archive_records_reading(
-    Abstractformat *self, const xx_list_s *options, xx_pd_struct *pd);
-XXFC_API const xx_archive_record *xx_lbrcobol_get_current_archive_record(
-    Abstractformat *self, xx_archive_record_state *state);
-XXFC_API bool xx_lbrcobol_unpack_current_archive_record(
-    Abstractformat *self, xx_archive_record_state *state, xx_pd_struct *pd);
-XXFC_API bool xx_lbrcobol_archive_record_move_to_next(
-    Abstractformat *self, xx_archive_record_state *state, xx_pd_struct *pd);
-XXFC_API void xx_lbrcobol_free_archive_records_reading(
-    Abstractformat *self, xx_archive_record_state *state);
+XXFC_API xx_archive_record_state *xx_lbrcobol_create_archive_records_reading(Abstractformat *self, const xx_list_s *options, xx_pd_struct *pd);
+XXFC_API const xx_archive_record *xx_lbrcobol_get_current_archive_record(Abstractformat *self, xx_archive_record_state *state);
+XXFC_API bool xx_lbrcobol_unpack_current_archive_record(Abstractformat *self, xx_archive_record_state *state, xx_pd_struct *pd);
+XXFC_API bool xx_lbrcobol_archive_record_move_to_next(Abstractformat *self, xx_archive_record_state *state, xx_pd_struct *pd);
+XXFC_API void xx_lbrcobol_free_archive_records_reading(Abstractformat *self, xx_archive_record_state *state);
 
 #ifdef __cplusplus
 }

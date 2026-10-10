@@ -48,37 +48,29 @@ typedef struct xx_wince XWince;
 
 struct xx_wince {
     Abstractformat format;
-    uint64_t number_of_records;  /**< Payload records, terminator excluded. */
+    uint64_t number_of_records; /**< Payload records, terminator excluded. */
     uint64_t number_of_members;
-    uint32_t image_start;   /**< Physical load address from the file header. */
-    uint32_t image_length;  /**< Declared image span, unverified. */
-    int64_t archive_end;    /**< One byte past the terminator record, or -1. */
+    uint32_t image_start;  /**< Physical load address from the file header. */
+    uint32_t image_length; /**< Declared image span, unverified. */
+    int64_t archive_end;   /**< One byte past the terminator record, or -1. */
     void *internal;
 };
 
-XXFC_API void xx_wince_init(xx_wince *wince, xx_io_device *dev,
-                            int64_t base_address);
+XXFC_API void xx_wince_init(xx_wince *wince, xx_io_device *dev, int64_t base_address);
 XXFC_API xx_wince *xx_wince_create(xx_io_device *dev, int64_t base_address);
 XXFC_API void xx_wince_destroy(xx_wince *wince);
 XXFC_API void xx_wince_free(xx_wince *wince);
 
 XXFC_API bool xx_wince_check_is_valid(Abstractformat *self, xx_pd_struct *pd);
 XXFC_API bool xx_wince_handle_base_info(Abstractformat *self, xx_pd_struct *pd);
-XXFC_API int64_t xx_wince_get_format_size(Abstractformat *self,
-                                          xx_pd_struct *pd);
-XXFC_API uint64_t xx_wince_get_number_of_archive_records(Abstractformat *self,
-                                                         xx_pd_struct *pd);
+XXFC_API int64_t xx_wince_get_format_size(Abstractformat *self, xx_pd_struct *pd);
+XXFC_API uint64_t xx_wince_get_number_of_archive_records(Abstractformat *self, xx_pd_struct *pd);
 
-XXFC_API xx_archive_record_state *xx_wince_create_archive_records_reading(
-    Abstractformat *self, const xx_list_s *options, xx_pd_struct *pd);
-XXFC_API const xx_archive_record *xx_wince_get_current_archive_record(
-    Abstractformat *self, xx_archive_record_state *state);
-XXFC_API bool xx_wince_unpack_current_archive_record(
-    Abstractformat *self, xx_archive_record_state *state, xx_pd_struct *pd);
-XXFC_API bool xx_wince_archive_record_move_to_next(
-    Abstractformat *self, xx_archive_record_state *state, xx_pd_struct *pd);
-XXFC_API void xx_wince_free_archive_records_reading(
-    Abstractformat *self, xx_archive_record_state *state);
+XXFC_API xx_archive_record_state *xx_wince_create_archive_records_reading(Abstractformat *self, const xx_list_s *options, xx_pd_struct *pd);
+XXFC_API const xx_archive_record *xx_wince_get_current_archive_record(Abstractformat *self, xx_archive_record_state *state);
+XXFC_API bool xx_wince_unpack_current_archive_record(Abstractformat *self, xx_archive_record_state *state, xx_pd_struct *pd);
+XXFC_API bool xx_wince_archive_record_move_to_next(Abstractformat *self, xx_archive_record_state *state, xx_pd_struct *pd);
+XXFC_API void xx_wince_free_archive_records_reading(Abstractformat *self, xx_archive_record_state *state);
 
 XXFC_API uint64_t xx_wince_get_number_of_records(const xx_wince *wince);
 XXFC_API uint64_t xx_wince_get_number_of_members(const xx_wince *wince);
@@ -86,19 +78,24 @@ XXFC_API uint32_t xx_wince_get_image_start(const xx_wince *wince);
 XXFC_API uint32_t xx_wince_get_image_length(const xx_wince *wince);
 XXFC_API int64_t xx_wince_get_archive_end(const xx_wince *wince);
 
-static inline Abstractformat *xx_wince_to_format(xx_wince *wince) {
+static inline Abstractformat *xx_wince_to_format(xx_wince *wince)
+{
     return wince ? &wince->format : NULL;
 }
-static inline void XWince_init(xx_wince *wince, xx_io_device *dev,
-                               int64_t base_address) {
+static inline void XWince_init(xx_wince *wince, xx_io_device *dev, int64_t base_address)
+{
     xx_wince_init(wince, dev, base_address);
 }
-static inline xx_wince *XWince_create(xx_io_device *dev,
-                                      int64_t base_address) {
+static inline xx_wince *XWince_create(xx_io_device *dev, int64_t base_address)
+{
     return xx_wince_create(dev, base_address);
 }
-static inline void XWince_free(xx_wince *wince) { xx_wince_free(wince); }
-static inline bool XWince_is_valid(xx_wince *wince, xx_pd_struct *pd) {
+static inline void XWince_free(xx_wince *wince)
+{
+    xx_wince_free(wince);
+}
+static inline bool XWince_is_valid(xx_wince *wince, xx_pd_struct *pd)
+{
     return wince ? xx_format_is_valid(&wince->format, pd) : false;
 }
 

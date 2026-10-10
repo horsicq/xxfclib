@@ -62,40 +62,30 @@ struct xx_xiaomi_hdr1 {
     Abstractformat format;
     uint64_t number_of_records; /**< Blobs listed before the first zero. */
     uint32_t signature_offset;
-    uint32_t crc32;             /**< Raw field (CRC-32/JAMCRC). */
+    uint32_t crc32; /**< Raw field (CRC-32/JAMCRC). */
     uint16_t device_id;
-    int64_t archive_end;        /**< base + signature_offset + 272, or -1. */
+    int64_t archive_end; /**< base + signature_offset + 272, or -1. */
     void *internal;
 };
 
-XXFC_API void xx_xiaomi_hdr1_init(xx_xiaomi_hdr1 *hdr, xx_io_device *dev,
-                                  int64_t base_address);
-XXFC_API xx_xiaomi_hdr1 *xx_xiaomi_hdr1_create(xx_io_device *dev,
-                                               int64_t base_address);
+XXFC_API void xx_xiaomi_hdr1_init(xx_xiaomi_hdr1 *hdr, xx_io_device *dev, int64_t base_address);
+XXFC_API xx_xiaomi_hdr1 *xx_xiaomi_hdr1_create(xx_io_device *dev, int64_t base_address);
 XXFC_API void xx_xiaomi_hdr1_destroy(xx_xiaomi_hdr1 *hdr);
 XXFC_API void xx_xiaomi_hdr1_free(xx_xiaomi_hdr1 *hdr);
 
-XXFC_API bool xx_xiaomi_hdr1_check_is_valid(Abstractformat *self,
-                                            xx_pd_struct *pd);
-XXFC_API bool xx_xiaomi_hdr1_handle_base_info(Abstractformat *self,
-                                              xx_pd_struct *pd);
-XXFC_API int64_t xx_xiaomi_hdr1_get_format_size(Abstractformat *self,
-                                                xx_pd_struct *pd);
-XXFC_API uint64_t xx_xiaomi_hdr1_get_number_of_archive_records(
-    Abstractformat *self, xx_pd_struct *pd);
+XXFC_API bool xx_xiaomi_hdr1_check_is_valid(Abstractformat *self, xx_pd_struct *pd);
+XXFC_API bool xx_xiaomi_hdr1_handle_base_info(Abstractformat *self, xx_pd_struct *pd);
+XXFC_API int64_t xx_xiaomi_hdr1_get_format_size(Abstractformat *self, xx_pd_struct *pd);
+XXFC_API uint64_t xx_xiaomi_hdr1_get_number_of_archive_records(Abstractformat *self, xx_pd_struct *pd);
 
-XXFC_API xx_archive_record_state *xx_xiaomi_hdr1_create_archive_records_reading(
-    Abstractformat *self, const xx_list_s *options, xx_pd_struct *pd);
-XXFC_API const xx_archive_record *xx_xiaomi_hdr1_get_current_archive_record(
-    Abstractformat *self, xx_archive_record_state *state);
-XXFC_API bool xx_xiaomi_hdr1_unpack_current_archive_record(
-    Abstractformat *self, xx_archive_record_state *state, xx_pd_struct *pd);
-XXFC_API bool xx_xiaomi_hdr1_archive_record_move_to_next(
-    Abstractformat *self, xx_archive_record_state *state, xx_pd_struct *pd);
-XXFC_API void xx_xiaomi_hdr1_free_archive_records_reading(
-    Abstractformat *self, xx_archive_record_state *state);
+XXFC_API xx_archive_record_state *xx_xiaomi_hdr1_create_archive_records_reading(Abstractformat *self, const xx_list_s *options, xx_pd_struct *pd);
+XXFC_API const xx_archive_record *xx_xiaomi_hdr1_get_current_archive_record(Abstractformat *self, xx_archive_record_state *state);
+XXFC_API bool xx_xiaomi_hdr1_unpack_current_archive_record(Abstractformat *self, xx_archive_record_state *state, xx_pd_struct *pd);
+XXFC_API bool xx_xiaomi_hdr1_archive_record_move_to_next(Abstractformat *self, xx_archive_record_state *state, xx_pd_struct *pd);
+XXFC_API void xx_xiaomi_hdr1_free_archive_records_reading(Abstractformat *self, xx_archive_record_state *state);
 
-static inline Abstractformat *xx_xiaomi_hdr1_to_format(xx_xiaomi_hdr1 *hdr) {
+static inline Abstractformat *xx_xiaomi_hdr1_to_format(xx_xiaomi_hdr1 *hdr)
+{
     return hdr ? &hdr->format : NULL;
 }
 

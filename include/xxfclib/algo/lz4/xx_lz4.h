@@ -16,9 +16,7 @@ extern "C" {
  * Embedded dictionaries are deliberately rejected because the caller has no
  * dictionary parameter. Block and content checksums are verified when present.
  */
-XXFC_API bool xx_lz4_decompress_memory(const void *source, size_t source_size,
-                                       void *destination, size_t destination_size,
-                                       size_t *out_written);
+XXFC_API bool xx_lz4_decompress_memory(const void *source, size_t source_size, void *destination, size_t destination_size, size_t *out_written);
 
 /**
  * Decodes a single raw LZ4 block -- sequences only, with no frame header,
@@ -33,10 +31,7 @@ XXFC_API bool xx_lz4_decompress_memory(const void *source, size_t source_size,
  * exact size: a block's decoded length is known only once it is decoded.
  * @param out_written receives the decoded length; may be NULL.
  */
-XXFC_API bool xx_lz4_decompress_block(const void *source, size_t source_size,
-                                      void *destination,
-                                      size_t destination_capacity,
-                                      size_t *out_written);
+XXFC_API bool xx_lz4_decompress_block(const void *source, size_t source_size, void *destination, size_t destination_capacity, size_t *out_written);
 
 /**
  * Decodes LZ4 frames into a destination of at least the needed size.
@@ -47,11 +42,7 @@ XXFC_API bool xx_lz4_decompress_block(const void *source, size_t source_size,
  * stream the output length simply is not knowable before decoding.
  * @param out_written receives the real decoded length.
  */
-XXFC_API bool xx_lz4_decompress_frames(const void *source, size_t source_size,
-                                       void *destination,
-                                       size_t destination_capacity,
-                                       size_t *out_written);
-
+XXFC_API bool xx_lz4_decompress_frames(const void *source, size_t source_size, void *destination, size_t destination_capacity, size_t *out_written);
 
 #ifdef __cplusplus
 }

@@ -92,12 +92,12 @@ enum {
 };
 
 struct xx_rar {
-    Abstractformat    format;              /**< Base structure; must be first. */
-    xx_rar_version_t version;             /**< Detected archive generation. */
-    int64_t          signature_offset;    /**< Absolute signature offset. */
-    int64_t          first_header_offset; /**< Absolute first block offset. */
-    uint64_t         number_of_records;   /**< Number of file headers. */
-    void            *split_view;          /**< Private normalized multi-volume view. */
+    Abstractformat format;       /**< Base structure; must be first. */
+    xx_rar_version_t version;    /**< Detected archive generation. */
+    int64_t signature_offset;    /**< Absolute signature offset. */
+    int64_t first_header_offset; /**< Absolute first block offset. */
+    uint64_t number_of_records;  /**< Number of file headers. */
+    void *split_view;            /**< Private normalized multi-volume view. */
 };
 
 XXFC_API void xx_rar_init(xx_rar *rar, xx_io_device *dev, int64_t base_address);
@@ -133,63 +133,78 @@ XXFC_API xx_rar_version_t xx_rar_get_version(const xx_rar *rar);
 XXFC_API int64_t xx_rar_get_signature_offset(const xx_rar *rar);
 XXFC_API uint64_t xx_rar_get_number_of_records(const xx_rar *rar);
 
-static inline Abstractformat *xx_rar_to_format(xx_rar *rar) {
+static inline Abstractformat *xx_rar_to_format(xx_rar *rar)
+{
     return rar ? &rar->format : NULL;
 }
 
-static inline const Abstractformat *xx_rar_to_format_const(const xx_rar *rar) {
+static inline const Abstractformat *xx_rar_to_format_const(const xx_rar *rar)
+{
     return rar ? &rar->format : NULL;
 }
 
-static inline void XRar_init(xx_rar *rar, xx_io_device *dev, int64_t base_address) {
+static inline void XRar_init(xx_rar *rar, xx_io_device *dev, int64_t base_address)
+{
     xx_rar_init(rar, dev, base_address);
 }
 
-static inline xx_rar *XRar_create(xx_io_device *dev, int64_t base_address) {
+static inline xx_rar *XRar_create(xx_io_device *dev, int64_t base_address)
+{
     return xx_rar_create(dev, base_address);
 }
 
-static inline void XRar_free(xx_rar *rar) {
+static inline void XRar_free(xx_rar *rar)
+{
     xx_rar_free(rar);
 }
 
-static inline bool XRar_is_valid(xx_rar *rar, xx_pd_struct *pd) {
+static inline bool XRar_is_valid(xx_rar *rar, xx_pd_struct *pd)
+{
     return rar ? xx_format_is_valid(&rar->format, pd) : false;
 }
 
-static inline bool XRar_handle_base_info(xx_rar *rar, xx_pd_struct *pd) {
+static inline bool XRar_handle_base_info(xx_rar *rar, xx_pd_struct *pd)
+{
     return rar ? xx_rar_handle_base_info(&rar->format, pd) : false;
 }
 
-static inline xx_rar_version_t XRar_get_version(const xx_rar *rar) {
+static inline xx_rar_version_t XRar_get_version(const xx_rar *rar)
+{
     return xx_rar_get_version(rar);
 }
 
-static inline int64_t XRar_get_signature_offset(const xx_rar *rar) {
+static inline int64_t XRar_get_signature_offset(const xx_rar *rar)
+{
     return xx_rar_get_signature_offset(rar);
 }
 
-static inline uint64_t XRar_get_number_of_records(const xx_rar *rar) {
+static inline uint64_t XRar_get_number_of_records(const xx_rar *rar)
+{
     return xx_rar_get_number_of_records(rar);
 }
 
-static inline xx_archive_record_state *XRar_create_archive_records_reading(xx_rar *rar, const xx_list_s *options, xx_pd_struct *pd) {
+static inline xx_archive_record_state *XRar_create_archive_records_reading(xx_rar *rar, const xx_list_s *options, xx_pd_struct *pd)
+{
     return rar ? xx_rar_create_archive_records_reading(&rar->format, options, pd) : NULL;
 }
 
-static inline const xx_archive_record *XRar_get_current_archive_record(xx_rar *rar, xx_archive_record_state *state) {
+static inline const xx_archive_record *XRar_get_current_archive_record(xx_rar *rar, xx_archive_record_state *state)
+{
     return rar ? xx_rar_get_current_archive_record(&rar->format, state) : NULL;
 }
 
-static inline bool XRar_unpack_current_archive_record(xx_rar *rar, xx_archive_record_state *state, xx_pd_struct *pd) {
+static inline bool XRar_unpack_current_archive_record(xx_rar *rar, xx_archive_record_state *state, xx_pd_struct *pd)
+{
     return rar ? xx_rar_unpack_current_archive_record(&rar->format, state, pd) : false;
 }
 
-static inline bool XRar_archive_record_move_to_next(xx_rar *rar, xx_archive_record_state *state, xx_pd_struct *pd) {
+static inline bool XRar_archive_record_move_to_next(xx_rar *rar, xx_archive_record_state *state, xx_pd_struct *pd)
+{
     return rar ? xx_rar_archive_record_move_to_next(&rar->format, state, pd) : false;
 }
 
-static inline void XRar_free_archive_records_reading(xx_rar *rar, xx_archive_record_state *state) {
+static inline void XRar_free_archive_records_reading(xx_rar *rar, xx_archive_record_state *state)
+{
     if (rar) xx_rar_free_archive_records_reading(&rar->format, state);
 }
 

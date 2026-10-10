@@ -8,13 +8,15 @@
 #ifdef __cplusplus
 extern "C" {
 #endif
-typedef struct xx_commodore_p64 { Abstractformat format; } xx_commodore_p64;
-XXFC_API void xx_commodore_p64_init(xx_commodore_p64 *,xx_io_device *,int64_t);
-XXFC_API xx_commodore_p64 *xx_commodore_p64_create(xx_io_device *,int64_t);
+typedef struct xx_commodore_p64 {
+    Abstractformat format;
+} xx_commodore_p64;
+XXFC_API void xx_commodore_p64_init(xx_commodore_p64 *, xx_io_device *, int64_t);
+XXFC_API xx_commodore_p64 *xx_commodore_p64_create(xx_io_device *, int64_t);
 XXFC_API void xx_commodore_p64_destroy(xx_commodore_p64 *);
 XXFC_API void xx_commodore_p64_free(xx_commodore_p64 *);
-XXFC_API bool xx_commodore_p64_check_is_valid(Abstractformat *,xx_pd_struct *);
-XXFC_API bool xx_commodore_p64_handle_base_info(Abstractformat *,xx_pd_struct *);
+XXFC_API bool xx_commodore_p64_check_is_valid(Abstractformat *, xx_pd_struct *);
+XXFC_API bool xx_commodore_p64_handle_base_info(Abstractformat *, xx_pd_struct *);
 #ifdef __cplusplus
 }
 #endif

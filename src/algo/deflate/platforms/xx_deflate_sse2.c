@@ -13,7 +13,8 @@
 #endif
 
 XX_TARGET_SSE2
-size_t xx_deflate_match_sse2(const uint8_t *a, const uint8_t *b, size_t maximum) {
+size_t xx_deflate_match_sse2(const uint8_t *a, const uint8_t *b, size_t maximum)
+{
     size_t at = 0;
 #ifdef XX_DEFLATE_X86
     for (; maximum - at >= 16U; at += 16U) {

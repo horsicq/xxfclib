@@ -75,17 +75,15 @@ static void xx_ealib_vtable_destroy(Abstractformat *self);
 
 /* ------------------------------------------------------------- helpers -- */
 
-static bool xx_ealib_read_at(Abstractformat *self, int64_t offset,
-                              uint8_t *buffer, size_t size) {
+static bool xx_ealib_read_at(Abstractformat *self, int64_t offset, uint8_t *buffer, size_t size)
+{
     size_t completed = 0U;
 
-    if (!self || !self->device || offset < 0 ||
-        xx_io_seek64(self->device, offset, SEEK_SET) != 0) {
+    if (!self || !self->device || offset < 0 || xx_io_seek64(self->device, offset, SEEK_SET) != 0) {
         return false;
     }
     while (completed < size) {
-        ssize_t received =
-            xx_io_read(self->device, buffer + completed, size - completed);
+        ssize_t received = xx_io_read(self->device, buffer + completed, size - completed);
         if (received <= 0 || (size_t)received > size - completed) {
             return false;
         }
@@ -94,14 +92,14 @@ static bool xx_ealib_read_at(Abstractformat *self, int64_t offset,
     return true;
 }
 
-static bool xx_ealib_range_within(int64_t total, int64_t offset,
-                                   int64_t size) {
-    return offset >= 0 && size >= 0 && offset <= total &&
-           size <= total - offset;
+static bool xx_ealib_range_within(int64_t total, int64_t offset, int64_t size)
+{
+    return offset >= 0 && size >= 0 && offset <= total && size <= total - offset;
 }
 
 /* Refuse anything that would escape the extraction directory. */
-static bool xx_ealib_path_safe(const char *name) {
+static bool xx_ealib_path_safe(const char *name)
+{
     const char *cursor = name;
 
     if (!name || !name[0] || name[0] == '/') return false;
@@ -116,7 +114,8 @@ static bool xx_ealib_path_safe(const char *name) {
     return true;
 }
 
-static void xx_ealib_stream_free(void *pointer) {
+static void xx_ealib_stream_free(void *pointer)
+{
     xx_ealib_stream *stream = (xx_ealib_stream *)pointer;
     size_t index;
 
@@ -129,17 +128,15 @@ static void xx_ealib_stream_free(void *pointer) {
 }
 
 /* Append a member, taking ownership of @p name. */
-static bool xx_ealib_add(xx_ealib_stream *stream,
-                          const xx_ealib_member *member) {
-    xx_ealib_member *grown = (xx_ealib_member *)xx_mem_realloc(
-        stream->items, sizeof(*grown) * (stream->count + 1U));
+static bool xx_ealib_add(xx_ealib_stream *stream, const xx_ealib_member *member)
+{
+    xx_ealib_member *grown = (xx_ealib_member *)xx_mem_realloc(stream->items, sizeof(*grown) * (stream->count + 1U));
 
     if (!grown) return false;
     stream->items = grown;
     stream->items[stream->count++] = *member;
     return true;
 }
-
 
 #define XX_EALIB_HEADER_SIZE 7
 #define XX_EALIB_ENTRY_SIZE 18
@@ -161,7 +158,6 @@ static void xx_ealib_name_to_string(const uint8_t *entry, size_t index, char *ou
 static xx_ealib_stream *xx_ealib_parse(Abstractformat *self, xx_pd_struct *pd);
 static bool xx_ealib_decode(Abstractformat *self, const xx_ealib_member *member, uint8_t **out, size_t *out_size, xx_pd_struct *pd);
 
-
 /* The count field is 16 bit, so this is the producer's hard limit and not a
  * policy choice; the sentinel entry rides on top of it. */
 /* Worst case each of the 13 name bytes escapes to three characters. */
@@ -172,7 +168,8 @@ static bool xx_ealib_decode(Abstractformat *self, const xx_ealib_member *member,
  * format the packer does not leave a previous name's tail here, so demanding
  * clean padding costs nothing and is one of the structural rules that stops
  * random data from parsing as a directory. */
-static bool xx_ealib_raw_name_valid(const uint8_t *entry) {
+static bool xx_ealib_raw_name_valid(const uint8_t *entry)
+{
     bool padding = false;
     size_t index;
 
@@ -195,8 +192,8 @@ static bool xx_ealib_raw_name_valid(const uint8_t *entry) {
  * bytes. Path separators and the Windows reserved punctuation are escaped as
  * %XX rather than folded to '_': escaping is reversible and, unlike folding,
  * cannot collapse two distinct members onto one output file. */
-static void xx_ealib_name_to_string(const uint8_t *entry, size_t index,
-                                    char *out) {
+static void xx_ealib_name_to_string(const uint8_t *entry, size_t index, char *out)
+{
     static const char digits[] = "0123456789ABCDEF";
     size_t length = 0U;
     size_t at;
@@ -209,9 +206,7 @@ static void xx_ealib_name_to_string(const uint8_t *entry, size_t index,
 
     for (at = 0U; at < length; ++at) {
         uint8_t byte = entry[at];
-        bool safe = byte > 0x20U && byte < 0x7fU && byte != '%' &&
-                    byte != '/' && byte != '\\' && byte != ':' &&
-                    byte != '*' && byte != '?' && byte != '"' &&
+        bool safe = byte > 0x20U && byte < 0x7fU && byte != '%' && byte != '/' && byte != '\\' && byte != ':' && byte != '*' && byte != '?' && byte != '"' &&
                     byte != '<' && byte != '>' && byte != '|';
 
         if (safe) {
@@ -224,8 +219,7 @@ static void xx_ealib_name_to_string(const uint8_t *entry, size_t index,
     }
     out[written] = '\0';
     if (written == 0U) {
-        xx_rt_snprintf(out, (size_t)XX_EALIB_NAME_BUFFER, "record%u",
-                       (unsigned)index);
+        xx_rt_snprintf(out, (size_t)XX_EALIB_NAME_BUFFER, "record%u", (unsigned)index);
     }
 }
 
@@ -233,8 +227,8 @@ static void xx_ealib_name_to_string(const uint8_t *entry, size_t index,
  * instead concatenate another EALIB stream immediately at that boundary.
  * Verify the latter's directory boundaries before treating a large trailer
  * as another archive rather than accepting arbitrary appended bytes. */
-static bool xx_ealib_tail_valid(Abstractformat *self, int64_t start,
-                                int64_t trailing_size) {
+static bool xx_ealib_tail_valid(Abstractformat *self, int64_t start, int64_t trailing_size)
+{
     uint8_t header[XX_EALIB_HEADER_SIZE];
     uint8_t offset[4];
     int64_t directory_end;
@@ -242,30 +236,22 @@ static bool xx_ealib_tail_valid(Abstractformat *self, int64_t start,
     uint16_t count;
 
     if (trailing_size == 0 || trailing_size <= 16) return true;
-    if (trailing_size < XX_EALIB_HEADER_SIZE + 2 * XX_EALIB_ENTRY_SIZE ||
-        !xx_ealib_read_at(self, start, header, sizeof(header)) ||
+    if (trailing_size < XX_EALIB_HEADER_SIZE + 2 * XX_EALIB_ENTRY_SIZE || !xx_ealib_read_at(self, start, header, sizeof(header)) ||
         xx_rt_memcmp(header, "EALIB", 5U) != 0)
         return false;
     count = xx_data_get_u16(header + 5, 2, 0, false);
     if (count == 0U) return false;
-    directory_end = XX_EALIB_HEADER_SIZE +
-                    (int64_t)(count + 1U) * XX_EALIB_ENTRY_SIZE;
-    if (directory_end > trailing_size ||
-        !xx_ealib_read_at(self, start + XX_EALIB_HEADER_SIZE +
-                               XX_EALIB_OFFSET_OFFSET, offset, sizeof(offset)) ||
+    directory_end = XX_EALIB_HEADER_SIZE + (int64_t)(count + 1U) * XX_EALIB_ENTRY_SIZE;
+    if (directory_end > trailing_size || !xx_ealib_read_at(self, start + XX_EALIB_HEADER_SIZE + XX_EALIB_OFFSET_OFFSET, offset, sizeof(offset)) ||
         (int64_t)(int32_t)xx_data_get_u32(offset, 4, 0, false) != directory_end)
         return false;
-    if (!xx_ealib_read_at(self, start + XX_EALIB_HEADER_SIZE +
-                                  (int64_t)count * XX_EALIB_ENTRY_SIZE +
-                                  XX_EALIB_OFFSET_OFFSET,
-                          offset, sizeof(offset)))
-        return false;
+    if (!xx_ealib_read_at(self, start + XX_EALIB_HEADER_SIZE + (int64_t)count * XX_EALIB_ENTRY_SIZE + XX_EALIB_OFFSET_OFFSET, offset, sizeof(offset))) return false;
     nested_end = (int64_t)(int32_t)xx_data_get_u32(offset, 4, 0, false);
     return nested_end >= directory_end && nested_end <= trailing_size;
 }
 
-static xx_ealib_stream *xx_ealib_parse(Abstractformat *self,
-                                       xx_pd_struct *pd) {
+static xx_ealib_stream *xx_ealib_parse(Abstractformat *self, xx_pd_struct *pd)
+{
     xx_ealib_stream *stream = NULL;
     uint8_t *directory = NULL;
     uint8_t header[XX_EALIB_HEADER_SIZE];
@@ -287,8 +273,7 @@ static xx_ealib_stream *xx_ealib_parse(Abstractformat *self,
     /* Header plus one member entry plus the sentinel entry. */
     if (span < XX_EALIB_HEADER_SIZE + 2 * XX_EALIB_ENTRY_SIZE) return NULL;
 
-    if (!xx_ealib_read_at(self, self->base_address, header,
-                          (size_t)XX_EALIB_HEADER_SIZE)) {
+    if (!xx_ealib_read_at(self, self->base_address, header, (size_t)XX_EALIB_HEADER_SIZE)) {
         return NULL;
     }
     if (xx_rt_memcmp(header, "EALIB", 5U) != 0) return NULL;
@@ -306,8 +291,7 @@ static xx_ealib_stream *xx_ealib_parse(Abstractformat *self,
 
     directory = (uint8_t *)xx_mem_alloc((size_t)directory_size);
     if (!directory) return NULL;
-    if (!xx_ealib_read_at(self, self->base_address + directory_offset,
-                          directory, (size_t)directory_size)) {
+    if (!xx_ealib_read_at(self, self->base_address + directory_offset, directory, (size_t)directory_size)) {
         xx_mem_free(directory);
         return NULL;
     }
@@ -332,11 +316,8 @@ static xx_ealib_stream *xx_ealib_parse(Abstractformat *self,
         }
     }
 
-    first_offset =
-        (int64_t)(int32_t)xx_data_get_u32(directory + XX_EALIB_OFFSET_OFFSET, 4, 0, false);
-    sentinel_offset = (int64_t)(int32_t)xx_data_get_u32(
-        directory + (size_t)member_count * XX_EALIB_ENTRY_SIZE +
-        XX_EALIB_OFFSET_OFFSET, 4, 0, false);
+    first_offset = (int64_t)(int32_t)xx_data_get_u32(directory + XX_EALIB_OFFSET_OFFSET, 4, 0, false);
+    sentinel_offset = (int64_t)(int32_t)xx_data_get_u32(directory + (size_t)member_count * XX_EALIB_ENTRY_SIZE + XX_EALIB_OFFSET_OFFSET, 4, 0, false);
     /* The first entry starts behind the directory.  The sentinel bounds the
      * payload; any remaining bytes must be a short trailer or the start of
      * another structurally valid EALIB archive. */
@@ -344,9 +325,7 @@ static xx_ealib_stream *xx_ealib_parse(Abstractformat *self,
         xx_mem_free(directory);
         return NULL;
     }
-    if (sentinel_offset < first_offset || sentinel_offset > span ||
-        !xx_ealib_tail_valid(self, self->base_address + sentinel_offset,
-                             span - sentinel_offset)) {
+    if (sentinel_offset < first_offset || sentinel_offset > span || !xx_ealib_tail_valid(self, self->base_address + sentinel_offset, span - sentinel_offset)) {
         xx_mem_free(directory);
         return NULL;
     }
@@ -367,10 +346,8 @@ static xx_ealib_stream *xx_ealib_parse(Abstractformat *self,
         int64_t size;
 
         if (pd && xx_pd_is_stopped(pd)) goto fail;
-        entry_offset =
-            (int64_t)(int32_t)xx_data_get_u32(entry + XX_EALIB_OFFSET_OFFSET, 4, 0, false);
-        next_offset = (int64_t)(int32_t)xx_data_get_u32(
-            entry + XX_EALIB_ENTRY_SIZE + XX_EALIB_OFFSET_OFFSET, 4, 0, false);
+        entry_offset = (int64_t)(int32_t)xx_data_get_u32(entry + XX_EALIB_OFFSET_OFFSET, 4, 0, false);
+        next_offset = (int64_t)(int32_t)xx_data_get_u32(entry + XX_EALIB_ENTRY_SIZE + XX_EALIB_OFFSET_OFFSET, 4, 0, false);
         size = next_offset - entry_offset;
         /* Offsets must not run backwards: a negative size would otherwise
          * let two members claim overlapping payloads. */
@@ -383,20 +360,17 @@ static xx_ealib_stream *xx_ealib_parse(Abstractformat *self,
 
         method = (uint32_t)entry[XX_EALIB_METHOD_OFFSET];
         xx_mem_zero(&member, sizeof(member));
-        if (method == XX_EALIB_METHOD_STORED ||
-            method == XX_EALIB_METHOD_STORED_ALT) {
+        if (method == XX_EALIB_METHOD_STORED || method == XX_EALIB_METHOD_STORED_ALT) {
             member.data_offset = self->base_address + entry_offset;
             member.compressed_size = size;
             member.uncompressed_size = size;
-        } else if (method == XX_EALIB_METHOD_LZSS ||
-                   method == XX_EALIB_METHOD_DCL) {
+        } else if (method == XX_EALIB_METHOD_LZSS || method == XX_EALIB_METHOD_DCL) {
             int64_t uncompressed;
 
             /* A compressed member opens with a little-endian u32
              * uncompressed size; the codec stream begins behind it. */
             if (size < 4) goto fail;
-            if (!xx_ealib_read_at(self, self->base_address + entry_offset,
-                                  prefix, 4U)) {
+            if (!xx_ealib_read_at(self, self->base_address + entry_offset, prefix, 4U)) {
                 goto fail;
             }
             uncompressed = (int64_t)(int32_t)xx_data_get_u32(prefix, 4, 0, false);
@@ -414,9 +388,7 @@ static xx_ealib_stream *xx_ealib_parse(Abstractformat *self,
         xx_ealib_name_to_string(entry, (size_t)index, name);
         member.name = xx_str_dup(name);
         if (!member.name) goto fail;
-        member.header_offset =
-            self->base_address + directory_offset +
-            (int64_t)index * XX_EALIB_ENTRY_SIZE;
+        member.header_offset = self->base_address + directory_offset + (int64_t)index * XX_EALIB_ENTRY_SIZE;
         member.header_size = XX_EALIB_ENTRY_SIZE;
         member.method = method;
         member.timestamp = 0U;
@@ -439,16 +411,14 @@ fail:
     return NULL;
 }
 
-
 /* The four-byte prefix of a compressed member is attacker-controlled, so it
  * is capped before it becomes an allocation. */
 
 /* The container's own method numbers, unchanged: a listing shows what the
  * directory actually says, and the mapping to a codec lives only here. */
 
-static bool xx_ealib_decode(Abstractformat *self,
-                            const xx_ealib_member *member, uint8_t **out,
-                            size_t *out_size, xx_pd_struct *pd) {
+static bool xx_ealib_decode(Abstractformat *self, const xx_ealib_member *member, uint8_t **out, size_t *out_size, xx_pd_struct *pd)
+{
     uint8_t *packed = NULL;
     uint8_t *plain = NULL;
     size_t plain_size;
@@ -461,14 +431,12 @@ static bool xx_ealib_decode(Abstractformat *self,
     if (!self || !member) return false;
     if (pd && xx_pd_is_stopped(pd)) return false;
 
-    stored = (member->method == XX_EALIB_METHOD_STORED) ||
-             (member->method == XX_EALIB_METHOD_STORED_ALT);
+    stored = (member->method == XX_EALIB_METHOD_STORED) || (member->method == XX_EALIB_METHOD_STORED_ALT);
     /* Method 2, and anything else the directory might carry, has no decoder.
      * Falling through to the stored path would hand back a compressed
      * bitstream dressed as file data, which nothing downstream can tell from
      * the real thing. */
-    if (!stored && member->method != XX_EALIB_METHOD_LZSS &&
-        member->method != XX_EALIB_METHOD_DCL) {
+    if (!stored && member->method != XX_EALIB_METHOD_LZSS && member->method != XX_EALIB_METHOD_DCL) {
         return false;
     }
 
@@ -482,8 +450,7 @@ static bool xx_ealib_decode(Abstractformat *self,
     }
     /* Both codecs emit at least one byte for at least one byte of input, so
      * an empty compressed member is malformed rather than an empty file. */
-    if (!stored && (member->compressed_size == 0 ||
-                    member->uncompressed_size == 0)) {
+    if (!stored && (member->compressed_size == 0 || member->uncompressed_size == 0)) {
         return false;
     }
 
@@ -491,8 +458,7 @@ static bool xx_ealib_decode(Abstractformat *self,
     if (member->compressed_size > 0) {
         packed = (uint8_t *)xx_mem_alloc((size_t)member->compressed_size);
         if (!packed) return false;
-        if (!xx_ealib_read_at(self, member->data_offset, packed,
-                              (size_t)member->compressed_size)) {
+        if (!xx_ealib_read_at(self, member->data_offset, packed, (size_t)member->compressed_size)) {
             xx_mem_free(packed);
             return false;
         }
@@ -516,14 +482,12 @@ static bool xx_ealib_decode(Abstractformat *self,
         for (at = 0U; at < plain_size; ++at) plain[at] = packed[at];
         written = plain_size;
     } else if (member->method == XX_EALIB_METHOD_LZSS) {
-        if (!xx_ea_lib_decode_memory(packed, (size_t)member->compressed_size,
-                                     plain, plain_size, &written)) {
+        if (!xx_ea_lib_decode_memory(packed, (size_t)member->compressed_size, plain, plain_size, &written)) {
             xx_mem_free(packed);
             xx_mem_free(plain);
             return false;
         }
-    } else if (!xx_dcl_decode_memory(packed, (size_t)member->compressed_size,
-                                     plain, plain_size, &written)) {
+    } else if (!xx_dcl_decode_memory(packed, (size_t)member->compressed_size, plain, plain_size, &written)) {
         xx_mem_free(packed);
         xx_mem_free(plain);
         return false;
@@ -545,8 +509,8 @@ static bool xx_ealib_decode(Abstractformat *self,
 
 /* ---------------------------------------------------------- lifecycle --- */
 
-void xx_ealib_init(xx_ealib *archive, xx_io_device *device,
-                    int64_t base_address) {
+void xx_ealib_init(xx_ealib *archive, xx_io_device *device, int64_t base_address)
+{
     if (!archive) return;
     xx_mem_zero(archive, sizeof(*archive));
     xx_format_init(&archive->format, device, base_address);
@@ -559,22 +523,17 @@ void xx_ealib_init(xx_ealib *archive, xx_io_device *device,
     archive->format.check_is_valid = xx_ealib_check_is_valid;
     archive->format.handle_base_info = xx_ealib_handle_base_info;
     archive->format.get_format_size = xx_ealib_get_format_size;
-    archive->format.get_number_of_archive_records =
-        xx_ealib_get_number_of_archive_records;
-    archive->format.create_archive_records_reading =
-        xx_ealib_create_archive_records_reading;
-    archive->format.get_current_archive_record =
-        xx_ealib_get_current_archive_record;
-    archive->format.unpack_current_archive_record =
-        xx_ealib_unpack_current_archive_record;
-    archive->format.archive_record_move_to_next =
-        xx_ealib_archive_record_move_to_next;
-    archive->format.free_archive_records_reading =
-        xx_ealib_free_archive_records_reading;
+    archive->format.get_number_of_archive_records = xx_ealib_get_number_of_archive_records;
+    archive->format.create_archive_records_reading = xx_ealib_create_archive_records_reading;
+    archive->format.get_current_archive_record = xx_ealib_get_current_archive_record;
+    archive->format.unpack_current_archive_record = xx_ealib_unpack_current_archive_record;
+    archive->format.archive_record_move_to_next = xx_ealib_archive_record_move_to_next;
+    archive->format.free_archive_records_reading = xx_ealib_free_archive_records_reading;
     archive->format.destroy = xx_ealib_vtable_destroy;
 }
 
-xx_ealib *xx_ealib_create(xx_io_device *device, int64_t base_address) {
+xx_ealib *xx_ealib_create(xx_io_device *device, int64_t base_address)
+{
     xx_ealib *archive = (xx_ealib *)xx_mem_alloc(sizeof(*archive));
 
     if (!archive) return NULL;
@@ -582,7 +541,8 @@ xx_ealib *xx_ealib_create(xx_io_device *device, int64_t base_address) {
     return archive;
 }
 
-void xx_ealib_destroy(xx_ealib *archive) {
+void xx_ealib_destroy(xx_ealib *archive)
+{
     if (!archive) return;
     /* Not xx_format_destroy: it dispatches through format.destroy, which is
      * the wrapper below, and the two would recurse. */
@@ -591,19 +551,22 @@ void xx_ealib_destroy(xx_ealib *archive) {
     archive->number_of_records = 0U;
 }
 
-void xx_ealib_free(xx_ealib *archive) {
+void xx_ealib_free(xx_ealib *archive)
+{
     if (!archive) return;
     xx_ealib_destroy(archive);
     xx_mem_free(archive);
 }
 
-static void xx_ealib_vtable_destroy(Abstractformat *self) {
+static void xx_ealib_vtable_destroy(Abstractformat *self)
+{
     xx_ealib_destroy((xx_ealib *)self);
 }
 
 /* -------------------------------------------------------------- format -- */
 
-bool xx_ealib_check_is_valid(Abstractformat *self, xx_pd_struct *pd) {
+bool xx_ealib_check_is_valid(Abstractformat *self, xx_pd_struct *pd)
+{
     xx_ealib_stream *stream;
 
     if (!self || (pd && xx_pd_is_stopped(pd))) return false;
@@ -613,7 +576,8 @@ bool xx_ealib_check_is_valid(Abstractformat *self, xx_pd_struct *pd) {
     return true;
 }
 
-bool xx_ealib_handle_base_info(Abstractformat *self, xx_pd_struct *pd) {
+bool xx_ealib_handle_base_info(Abstractformat *self, xx_pd_struct *pd)
+{
     xx_ealib *archive = (xx_ealib *)self;
     xx_ealib_stream *stream;
 
@@ -634,18 +598,17 @@ bool xx_ealib_handle_base_info(Abstractformat *self, xx_pd_struct *pd) {
     return true;
 }
 
-int64_t xx_ealib_get_format_size(Abstractformat *self, xx_pd_struct *pd) {
-    if (!self ||
-        (!self->base_info_handled && !xx_format_handle_base_info(self, pd))) {
+int64_t xx_ealib_get_format_size(Abstractformat *self, xx_pd_struct *pd)
+{
+    if (!self || (!self->base_info_handled && !xx_format_handle_base_info(self, pd))) {
         return 0;
     }
     return self->is_valid ? self->format_size : 0;
 }
 
-uint64_t xx_ealib_get_number_of_archive_records(Abstractformat *self,
-                                                 xx_pd_struct *pd) {
-    if (!self ||
-        (!self->base_info_handled && !xx_format_handle_base_info(self, pd))) {
+uint64_t xx_ealib_get_number_of_archive_records(Abstractformat *self, xx_pd_struct *pd)
+{
+    if (!self || (!self->base_info_handled && !xx_format_handle_base_info(self, pd))) {
         return 0U;
     }
     return self->is_valid ? ((xx_ealib *)self)->number_of_records : 0U;
@@ -653,8 +616,8 @@ uint64_t xx_ealib_get_number_of_archive_records(Abstractformat *self,
 
 /* ------------------------------------------------------------- records -- */
 
-static bool xx_ealib_set_record(xx_archive_record *record,
-                                 const xx_ealib_member *member) {
+static bool xx_ealib_set_record(xx_archive_record *record, const xx_ealib_member *member)
+{
     xx_archive_record_cleanup(record);
     xx_archive_record_init(record);
     record->header_offset = member->header_offset;
@@ -662,34 +625,24 @@ static bool xx_ealib_set_record(xx_archive_record *record,
     record->data_offset = member->data_offset;
     record->compressed_size = member->compressed_size;
     return xx_archive_record_set_original_name(record, member->name) &&
-           xx_archive_record_set_meta_u64(record, XX_META_ID_COMPRESSED_SIZE,
-                                          (uint64_t)member->compressed_size) &&
-           xx_archive_record_set_meta_u64(
-               record, XX_META_ID_UNCOMPRESSED_SIZE,
-               (uint64_t)member->uncompressed_size) &&
-           xx_archive_record_set_meta_u64(record, XX_META_ID_COMPRESSION_METHOD,
-                                          member->method) &&
-           xx_archive_record_set_meta_u64(record, XX_META_ID_TIMESTAMP,
-                                          member->timestamp) &&
-           xx_archive_record_set_meta_bool(record, XX_META_ID_IS_FOLDER,
-                                           member->is_folder) &&
-           xx_archive_record_set_meta_bool(record, XX_META_ID_IS_ENCRYPTED,
-                                           false);
+           xx_archive_record_set_meta_u64(record, XX_META_ID_COMPRESSED_SIZE, (uint64_t)member->compressed_size) &&
+           xx_archive_record_set_meta_u64(record, XX_META_ID_UNCOMPRESSED_SIZE, (uint64_t)member->uncompressed_size) &&
+           xx_archive_record_set_meta_u64(record, XX_META_ID_COMPRESSION_METHOD, member->method) &&
+           xx_archive_record_set_meta_u64(record, XX_META_ID_TIMESTAMP, member->timestamp) &&
+           xx_archive_record_set_meta_bool(record, XX_META_ID_IS_FOLDER, member->is_folder) && xx_archive_record_set_meta_bool(record, XX_META_ID_IS_ENCRYPTED, false);
 }
 
-static bool xx_ealib_copy_options(xx_list_s *target,
-                                   const xx_list_s *options) {
+static bool xx_ealib_copy_options(xx_list_s *target, const xx_list_s *options)
+{
     size_t index;
 
     if (!target || !options) return options == NULL;
     for (index = 0U; index < options->count; ++index) {
-        const xx_meta *source =
-            (const xx_meta *)xx_list_at((const xx_list_t *)options, index);
+        const xx_meta *source = (const xx_meta *)xx_list_at((const xx_list_t *)options, index);
         xx_meta copied;
         if (!source) continue;
         xx_meta_init(&copied, source->meta_id);
-        if (!xx_var_copy(&copied.var, &source->var) ||
-            !xx_list_append(target, &copied)) {
+        if (!xx_var_copy(&copied.var, &source->var) || !xx_list_append(target, &copied)) {
             xx_meta_cleanup(&copied);
             return false;
         }
@@ -697,21 +650,20 @@ static bool xx_ealib_copy_options(xx_list_s *target,
     return true;
 }
 
-static const xx_var *xx_ealib_get_option(const xx_list_s *options,
-                                          uint32_t meta_id) {
+static const xx_var *xx_ealib_get_option(const xx_list_s *options, uint32_t meta_id)
+{
     size_t index;
 
     if (!options) return NULL;
     for (index = 0U; index < options->count; ++index) {
-        const xx_meta *meta =
-            (const xx_meta *)xx_list_at((const xx_list_t *)options, index);
+        const xx_meta *meta = (const xx_meta *)xx_list_at((const xx_list_t *)options, index);
         if (meta && meta->meta_id == meta_id) return &meta->var;
     }
     return NULL;
 }
 
-xx_archive_record_state *xx_ealib_create_archive_records_reading(
-    Abstractformat *self, const xx_list_s *options, xx_pd_struct *pd) {
+xx_archive_record_state *xx_ealib_create_archive_records_reading(Abstractformat *self, const xx_list_s *options, xx_pd_struct *pd)
+{
     xx_ealib_stream *stream;
     xx_archive_record_state *state;
 
@@ -727,9 +679,7 @@ xx_archive_record_state *xx_ealib_create_archive_records_reading(
     state->internal_state = stream;
     state->free_internal = xx_ealib_stream_free;
     state->total_records = (int64_t)stream->count;
-    if (!xx_ealib_copy_options(&state->options, options) ||
-        (stream->count != 0U &&
-         !xx_ealib_set_record(&state->current_record, &stream->items[0]))) {
+    if (!xx_ealib_copy_options(&state->options, options) || (stream->count != 0U && !xx_ealib_set_record(&state->current_record, &stream->items[0]))) {
         xx_archive_record_state_free(state);
         return NULL;
     }
@@ -738,20 +688,16 @@ xx_archive_record_state *xx_ealib_create_archive_records_reading(
     return state;
 }
 
-const xx_archive_record *xx_ealib_get_current_archive_record(
-    Abstractformat *self, xx_archive_record_state *state) {
-    return self && state && state->format == self && state->has_record
-               ? &state->current_record
-               : NULL;
+const xx_archive_record *xx_ealib_get_current_archive_record(Abstractformat *self, xx_archive_record_state *state)
+{
+    return self && state && state->format == self && state->has_record ? &state->current_record : NULL;
 }
 
-bool xx_ealib_archive_record_move_to_next(Abstractformat *self,
-                                           xx_archive_record_state *state,
-                                           xx_pd_struct *pd) {
+bool xx_ealib_archive_record_move_to_next(Abstractformat *self, xx_archive_record_state *state, xx_pd_struct *pd)
+{
     xx_ealib_stream *stream;
 
-    if (!self || !state || state->format != self || !state->has_record ||
-        (pd && xx_pd_is_stopped(pd))) {
+    if (!self || !state || state->format != self || !state->has_record || (pd && xx_pd_is_stopped(pd))) {
         return false;
     }
     stream = (xx_ealib_stream *)state->internal_state;
@@ -763,14 +709,12 @@ bool xx_ealib_archive_record_move_to_next(Abstractformat *self,
     }
     ++stream->index;
     ++state->current_index;
-    state->has_record = xx_ealib_set_record(&state->current_record,
-                                             &stream->items[stream->index]);
+    state->has_record = xx_ealib_set_record(&state->current_record, &stream->items[stream->index]);
     return state->has_record;
 }
 
-bool xx_ealib_unpack_current_archive_record(Abstractformat *self,
-                                             xx_archive_record_state *state,
-                                             xx_pd_struct *pd) {
+bool xx_ealib_unpack_current_archive_record(Abstractformat *self, xx_archive_record_state *state, xx_pd_struct *pd)
+{
     xx_ealib_stream *stream;
     const xx_ealib_member *member;
     const xx_var *path_option;
@@ -782,8 +726,7 @@ bool xx_ealib_unpack_current_archive_record(Abstractformat *self,
     bool result = false;
     bool created = false;
 
-    if (!self || !state || state->format != self || !state->has_record ||
-        (pd && xx_pd_is_stopped(pd))) {
+    if (!self || !state || state->format != self || !state->has_record || (pd && xx_pd_is_stopped(pd))) {
         return false;
     }
     stream = (xx_ealib_stream *)state->internal_state;
@@ -791,8 +734,7 @@ bool xx_ealib_unpack_current_archive_record(Abstractformat *self,
     member = &stream->items[stream->index];
     if (!xx_ealib_path_safe(member->name)) return false;
 
-    path_option = xx_ealib_get_option(&state->options,
-                                       XX_META_ID_OPT_UNPACK_PATH);
+    path_option = xx_ealib_get_option(&state->options, XX_META_ID_OPT_UNPACK_PATH);
     if (!path_option) {
         /* No destination: decode and discard, which verifies the member
          * without writing anything. */
@@ -801,11 +743,9 @@ bool xx_ealib_unpack_current_archive_record(Abstractformat *self,
         xx_mem_free(plain);
         return result;
     }
-    if (path_option->type == XX_VAR_TYPE_STRING ||
-        path_option->type == XX_VAR_TYPE_STRING_VIEW) {
+    if (path_option->type == XX_VAR_TYPE_STRING || path_option->type == XX_VAR_TYPE_STRING_VIEW) {
         base_path = xx_var_get_str(path_option);
-    } else if (path_option->type == XX_VAR_TYPE_WSTRING ||
-               path_option->type == XX_VAR_TYPE_WSTRING_VIEW) {
+    } else if (path_option->type == XX_VAR_TYPE_WSTRING || path_option->type == XX_VAR_TYPE_WSTRING_VIEW) {
         converted_path = xx_str_unicode_to_utf8(xx_var_get_wstr(path_option));
         base_path = converted_path;
     }
@@ -813,9 +753,7 @@ bool xx_ealib_unpack_current_archive_record(Abstractformat *self,
         xx_str_free(converted_path);
         return false;
     }
-    if (base_path[0] != '\0' &&
-        base_path[xx_str_len(base_path) - 1U] != '/' &&
-        base_path[xx_str_len(base_path) - 1U] != '\\') {
+    if (base_path[0] != '\0' && base_path[xx_str_len(base_path) - 1U] != '/' && base_path[xx_str_len(base_path) - 1U] != '\\') {
         target_path = xx_str_concat3(base_path, "/", member->name);
     } else {
         target_path = xx_str_concat(base_path, member->name);
@@ -828,8 +766,7 @@ bool xx_ealib_unpack_current_archive_record(Abstractformat *self,
         xx_str_free(target_path);
         return result;
     }
-    if (!xx_store_create_dirs_a(target_path, false) ||
-        !xx_ealib_decode(self, member, &plain, &plain_size, pd)) {
+    if (!xx_store_create_dirs_a(target_path, false) || !xx_ealib_decode(self, member, &plain, &plain_size, pd)) {
         xx_str_free(target_path);
         return false;
     }
@@ -840,8 +777,7 @@ bool xx_ealib_unpack_current_archive_record(Abstractformat *self,
 
         result = output != NULL;
         while (result && completed < plain_size) {
-            ssize_t sent = xx_io_write(output, plain + completed,
-                                       plain_size - completed);
+            ssize_t sent = xx_io_write(output, plain + completed, plain_size - completed);
             if (sent <= 0 || (size_t)sent > plain_size - completed) {
                 result = false;
                 break;
@@ -856,8 +792,8 @@ bool xx_ealib_unpack_current_archive_record(Abstractformat *self,
     return result;
 }
 
-void xx_ealib_free_archive_records_reading(Abstractformat *self,
-                                            xx_archive_record_state *state) {
+void xx_ealib_free_archive_records_reading(Abstractformat *self, xx_archive_record_state *state)
+{
     (void)self;
     xx_archive_record_state_free(state);
 }

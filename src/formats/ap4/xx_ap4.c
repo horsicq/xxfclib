@@ -39,7 +39,7 @@
 #include "xxfclib/global/xx_global.h"
 #include "xxfclib/strings/xx_string.h"
 
-#include <stdio.h>  /* SEEK_SET only: formatting goes through xx_rt */
+#include <stdio.h> /* SEEK_SET only: formatting goes through xx_rt */
 #include "xxfclib/data/xx_data.h"
 
 #define XX_AP4_TOC_HEADER_SIZE 5
@@ -98,19 +98,17 @@ static void xx_ap4_vtable_destroy(Abstractformat *self);
 
 /* ------------------------------------------------------------- helpers -- */
 
-static bool xx_ap4_read_at(Abstractformat *self, int64_t offset,
-                           uint8_t *buffer, size_t size) {
+static bool xx_ap4_read_at(Abstractformat *self, int64_t offset, uint8_t *buffer, size_t size)
+{
     size_t completed = 0U;
     size_t capacity = xx_get_file_buffer_size();
 
-    if (!self || !self->device || offset < 0 ||
-        xx_io_seek64(self->device, offset, SEEK_SET) != 0) {
+    if (!self || !self->device || offset < 0 || xx_io_seek64(self->device, offset, SEEK_SET) != 0) {
         return false;
     }
     while (completed < size) {
         size_t request = size - completed < capacity ? size - completed : capacity;
-        ssize_t received =
-            xx_io_read(self->device, buffer + completed, request);
+        ssize_t received = xx_io_read(self->device, buffer + completed, request);
         if (received <= 0 || (size_t)received > request) {
             return false;
         }
@@ -119,12 +117,13 @@ static bool xx_ap4_read_at(Abstractformat *self, int64_t offset,
     return true;
 }
 
-static bool xx_ap4_is_toc_header(const uint8_t *data) {
-    return data[0] == 0x00U && data[1] == 0x01U && data[3] == 0x01U &&
-           data[2] == data[4];
+static bool xx_ap4_is_toc_header(const uint8_t *data)
+{
+    return data[0] == 0x00U && data[1] == 0x01U && data[3] == 0x01U && data[2] == data[4];
 }
 
-static bool xx_ap4_is_all_zero(const uint8_t *data, size_t size) {
+static bool xx_ap4_is_all_zero(const uint8_t *data, size_t size)
+{
     size_t index;
 
     for (index = 0U; index < size; ++index) {
@@ -133,15 +132,15 @@ static bool xx_ap4_is_all_zero(const uint8_t *data, size_t size) {
     return true;
 }
 
-static bool xx_ap4_ranges_overlap(int64_t a_offset, int64_t a_size,
-                                  int64_t b_offset, int64_t b_size) {
+static bool xx_ap4_ranges_overlap(int64_t a_offset, int64_t a_size, int64_t b_offset, int64_t b_size)
+{
     return a_offset < b_offset + b_size && b_offset < a_offset + a_size;
 }
 
 /* --------------------------------------------------------------- MPEG --- */
 
-static bool xx_ap4_parse_mpeg_header(const uint8_t *data, uint8_t key,
-                                     xx_ap4_mpeg_header *out) {
+static bool xx_ap4_parse_mpeg_header(const uint8_t *data, uint8_t key, xx_ap4_mpeg_header *out)
+{
     uint8_t byte0 = (uint8_t)(data[0] ^ key);
     uint8_t byte1 = (uint8_t)(data[1] ^ key);
     uint8_t byte2 = (uint8_t)(data[2] ^ key);
@@ -173,40 +172,31 @@ static bool xx_ap4_parse_mpeg_header(const uint8_t *data, uint8_t key,
 
 /* Standard MPEG 1 / 2 / 2.5 frame length, or 0 when the fields do not
  * describe a frame. */
-static int64_t xx_ap4_mpeg_frame_length(const xx_ap4_mpeg_header *header) {
+static int64_t xx_ap4_mpeg_frame_length(const xx_ap4_mpeg_header *header)
+{
     /* Rows: Layer I, II, III. Columns: bitrate index 0..14, in kbps. */
-    static const int bitrate_mpeg1[3][15] = {
-        {0, 32, 64, 96, 128, 160, 192, 224, 256, 288, 320, 352, 384, 416, 448},
-        {0, 32, 48, 56, 64, 80, 96, 112, 128, 160, 192, 224, 256, 320, 384},
-        {0, 32, 40, 48, 56, 64, 80, 96, 112, 128, 160, 192, 224, 256, 320}};
-    static const int bitrate_mpeg2[3][15] = {
-        {0, 32, 48, 56, 64, 80, 96, 112, 128, 144, 160, 176, 192, 224, 256},
-        {0, 8, 16, 24, 32, 40, 48, 56, 64, 80, 96, 112, 128, 144, 160},
-        {0, 8, 16, 24, 32, 40, 48, 56, 64, 80, 96, 112, 128, 144, 160}};
+    static const int bitrate_mpeg1[3][15] = {{0, 32, 64, 96, 128, 160, 192, 224, 256, 288, 320, 352, 384, 416, 448},
+                                             {0, 32, 48, 56, 64, 80, 96, 112, 128, 160, 192, 224, 256, 320, 384},
+                                             {0, 32, 40, 48, 56, 64, 80, 96, 112, 128, 160, 192, 224, 256, 320}};
+    static const int bitrate_mpeg2[3][15] = {{0, 32, 48, 56, 64, 80, 96, 112, 128, 144, 160, 176, 192, 224, 256},
+                                             {0, 8, 16, 24, 32, 40, 48, 56, 64, 80, 96, 112, 128, 144, 160},
+                                             {0, 8, 16, 24, 32, 40, 48, 56, 64, 80, 96, 112, 128, 144, 160}};
     /* Rows: version bits 0..3 (MPEG 2.5, reserved, MPEG 2, MPEG 1). */
-    static const int sample_rate[4][3] = {{11025, 12000, 8000},
-                                          {0, 0, 0},
-                                          {22050, 24000, 16000},
-                                          {44100, 48000, 32000}};
+    static const int sample_rate[4][3] = {{11025, 12000, 8000}, {0, 0, 0}, {22050, 24000, 16000}, {44100, 48000, 32000}};
     int layer_row;
     bool is_mpeg1;
     int64_t bitrate;
     int64_t rate;
 
-    if (header->version_bits < 0 || header->version_bits > 3 ||
-        header->version_bits == 1 || header->layer_bits < 1 ||
-        header->layer_bits > 3 || header->bitrate_index < 1 ||
-        header->bitrate_index > 14 || header->sample_index < 0 ||
-        header->sample_index > 2) {
+    if (header->version_bits < 0 || header->version_bits > 3 || header->version_bits == 1 || header->layer_bits < 1 || header->layer_bits > 3 ||
+        header->bitrate_index < 1 || header->bitrate_index > 14 || header->sample_index < 0 || header->sample_index > 2) {
         return 0;
     }
     /* Layer bits 3/2/1 mean Layer I/II/III, so they index the table in
      * reverse. */
     layer_row = 3 - header->layer_bits;
     is_mpeg1 = header->version_bits == 3;
-    bitrate = (int64_t)(is_mpeg1 ? bitrate_mpeg1[layer_row][header->bitrate_index]
-                                 : bitrate_mpeg2[layer_row][header->bitrate_index]) *
-              1000;
+    bitrate = (int64_t)(is_mpeg1 ? bitrate_mpeg1[layer_row][header->bitrate_index] : bitrate_mpeg2[layer_row][header->bitrate_index]) * 1000;
     rate = sample_rate[header->version_bits][header->sample_index];
     if (bitrate <= 0 || rate <= 0) return 0;
 
@@ -219,19 +209,16 @@ static int64_t xx_ap4_mpeg_frame_length(const xx_ap4_mpeg_header *header) {
     return ((is_mpeg1 ? 144 : 72) * bitrate / rate) + header->padding;
 }
 
-static bool xx_ap4_headers_agree(const xx_ap4_mpeg_header *first,
-                                 const xx_ap4_mpeg_header *second) {
-    return first->version_bits == second->version_bits &&
-           first->layer_bits == second->layer_bits &&
-           first->sample_index == second->sample_index;
+static bool xx_ap4_headers_agree(const xx_ap4_mpeg_header *first, const xx_ap4_mpeg_header *second)
+{
+    return first->version_bits == second->version_bits && first->layer_bits == second->layer_bits && first->sample_index == second->sample_index;
 }
 
 /*
  * The MPEG start test under one XOR hypothesis; key 0 is the plain case.
  */
-static bool xx_ap4_is_mp3_start(const uint8_t *data, size_t probe_size,
-                                int64_t member_size, uint8_t key,
-                                Abstractformat *self, int64_t member_offset) {
+static bool xx_ap4_is_mp3_start(const uint8_t *data, size_t probe_size, int64_t member_size, uint8_t key, Abstractformat *self, int64_t member_offset)
+{
     xx_ap4_mpeg_header first;
     xx_ap4_mpeg_header second;
     int64_t frame_length;
@@ -254,9 +241,7 @@ static bool xx_ap4_is_mp3_start(const uint8_t *data, size_t probe_size,
     if (probe_size < (size_t)(frame_length + XX_AP4_MPEG_HEADER_SIZE)) {
         return false;
     }
-    if (!xx_ap4_read_at(self, member_offset + frame_length, second_header,
-                       sizeof(second_header)) ||
-        !xx_ap4_parse_mpeg_header(second_header, key, &second)) {
+    if (!xx_ap4_read_at(self, member_offset + frame_length, second_header, sizeof(second_header)) || !xx_ap4_parse_mpeg_header(second_header, key, &second)) {
         return false;
     }
     return xx_ap4_headers_agree(&first, &second);
@@ -267,17 +252,15 @@ static bool xx_ap4_is_mp3_start(const uint8_t *data, size_t probe_size,
  * XOR-obfuscated MP3 -> mp3, key = first byte ^ 0xFF.
  * Anything else -> opaque blob, key 0.
  */
-static void xx_ap4_classify_member(const uint8_t *probe, size_t probe_size,
-                                   int64_t member_size, bool *is_mp3,
-                                   uint8_t *key_out, Abstractformat *self,
-                                   int64_t member_offset) {
+static void xx_ap4_classify_member(const uint8_t *probe, size_t probe_size, int64_t member_size, bool *is_mp3, uint8_t *key_out, Abstractformat *self,
+                                   int64_t member_offset)
+{
     uint8_t key;
 
     *is_mp3 = false;
     *key_out = 0U;
 
-    if (probe_size >= 3U && probe[0] == 'I' && probe[1] == 'D' &&
-        probe[2] == '3') {
+    if (probe_size >= 3U && probe[0] == 'I' && probe[1] == 'D' && probe[2] == '3') {
         *is_mp3 = true;
         return;
     }
@@ -300,7 +283,8 @@ static void xx_ap4_classify_member(const uint8_t *probe, size_t probe_size,
 
 /* ------------------------------------------------------------- parsing -- */
 
-static void xx_ap4_stream_free(void *pointer) {
+static void xx_ap4_stream_free(void *pointer)
+{
     xx_ap4_stream *stream = (xx_ap4_stream *)pointer;
     size_t index;
 
@@ -314,33 +298,27 @@ static void xx_ap4_stream_free(void *pointer) {
 
 /* Scan [from, end) for a table header, buffering so a run of empty tables does
  * not cost one device read per five bytes. Returns the offset, or -1. */
-static int64_t xx_ap4_find_toc(Abstractformat *self, int64_t from, int64_t end,
-                               int64_t input_size, uint8_t *record_count,
-                               uint8_t *cache, int64_t *cache_offset,
-                               size_t *cache_size, size_t cache_capacity, xx_pd_struct *pd) {
+static int64_t xx_ap4_find_toc(Abstractformat *self, int64_t from, int64_t end, int64_t input_size, uint8_t *record_count, uint8_t *cache, int64_t *cache_offset,
+                               size_t *cache_size, size_t cache_capacity, xx_pd_struct *pd)
+{
     int64_t position = from;
 
     if (from < 0 || end > input_size) return -1;
     while (position + XX_AP4_TOC_HEADER_SIZE <= end) {
         int64_t window_end;
-        int64_t cached_end =
-            *cache_offset < 0 ? -1 : *cache_offset + (int64_t)*cache_size;
+        int64_t cached_end = *cache_offset < 0 ? -1 : *cache_offset + (int64_t)*cache_size;
 
         if (pd && xx_pd_is_stopped(pd)) return -1;
-        if (*cache_offset < 0 || position < *cache_offset ||
-            position + XX_AP4_TOC_HEADER_SIZE > cached_end) {
+        if (*cache_offset < 0 || position < *cache_offset || position + XX_AP4_TOC_HEADER_SIZE > cached_end) {
             int64_t available = input_size - position;
-            size_t chunk = (size_t)((uint64_t)available < cache_capacity
-                                        ? (size_t)available
-                                        : cache_capacity);
+            size_t chunk = (size_t)((uint64_t)available < cache_capacity ? (size_t)available : cache_capacity);
             if (chunk < (size_t)XX_AP4_TOC_HEADER_SIZE) return -1;
             if (!xx_ap4_read_at(self, position, cache, chunk)) return -1;
             *cache_offset = position;
             *cache_size = chunk;
         }
         window_end = *cache_offset + (int64_t)*cache_size;
-        while (position + XX_AP4_TOC_HEADER_SIZE <= end &&
-               position + XX_AP4_TOC_HEADER_SIZE <= window_end) {
+        while (position + XX_AP4_TOC_HEADER_SIZE <= end && position + XX_AP4_TOC_HEADER_SIZE <= window_end) {
             const uint8_t *data = cache + (position - *cache_offset);
             if (xx_ap4_is_toc_header(data)) {
                 *record_count = data[4];
@@ -358,8 +336,8 @@ static int64_t xx_ap4_find_toc(Abstractformat *self, int64_t from, int64_t end,
  * for a listing. The full parse additionally drops members whose whole extent
  * is zero and classifies every survivor.
  */
-static xx_ap4_stream *xx_ap4_parse(Abstractformat *self, bool gate_only,
-                                   xx_pd_struct *pd) {
+static xx_ap4_stream *xx_ap4_parse(Abstractformat *self, bool gate_only, xx_pd_struct *pd)
+{
     xx_ap4_stream *stream = NULL;
     xx_ap4_toc *tocs = NULL;
     xx_ap4_member *members = NULL;
@@ -367,8 +345,7 @@ static xx_ap4_stream *xx_ap4_parse(Abstractformat *self, bool gate_only,
     /* MPEG/ID3 headers are semantic frames, independent of the I/O cache. */
     uint8_t probe[XX_AP4_MPEG_HEADER_SIZE];
     size_t capacity = xx_get_file_buffer_size();
-    size_t cache_capacity = capacity < XX_AP4_TOC_HEADER_SIZE
-        ? XX_AP4_TOC_HEADER_SIZE : capacity;
+    size_t cache_capacity = capacity < XX_AP4_TOC_HEADER_SIZE ? XX_AP4_TOC_HEADER_SIZE : capacity;
     size_t toc_count = 0U;
     size_t member_count = 0U;
     size_t index;
@@ -420,9 +397,7 @@ static xx_ap4_stream *xx_ap4_parse(Abstractformat *self, bool gate_only,
             search_end = first_toc_offset + XX_AP4_MAX_TOC_REGION_SIZE;
         }
 
-        found = xx_ap4_find_toc(self, scan_position, search_end, input_size,
-                                &record_count, cache, &cache_offset,
-                                &cache_size, cache_capacity, pd);
+        found = xx_ap4_find_toc(self, scan_position, search_end, input_size, &record_count, cache, &cache_offset, &cache_size, cache_capacity, pd);
         if (found < 0) {
             if (is_first) goto fail;
             break;
@@ -441,8 +416,7 @@ static xx_ap4_stream *xx_ap4_parse(Abstractformat *self, bool gate_only,
 
         records = (uint8_t *)xx_mem_alloc((size_t)records_size);
         if (!records) goto fail;
-        if (!xx_ap4_read_at(self, found + XX_AP4_TOC_HEADER_SIZE, records,
-                            (size_t)records_size)) {
+        if (!xx_ap4_read_at(self, found + XX_AP4_TOC_HEADER_SIZE, records, (size_t)records_size)) {
             xx_mem_free(records);
             goto fail;
         }
@@ -474,16 +448,14 @@ static xx_ap4_stream *xx_ap4_parse(Abstractformat *self, bool gate_only,
                 goto fail;
             }
             for (existing = 0U; existing < member_count; ++existing) {
-                if (members[existing].offset == start &&
-                    members[existing].size == size) {
+                if (members[existing].offset == start && members[existing].size == size) {
                     duplicate = true;
                     break;
                 }
             }
             if (duplicate) continue;
             for (j = 0U; j < toc_count; ++j) {
-                if (xx_ap4_ranges_overlap(start, size, tocs[j].offset,
-                                          tocs[j].size)) {
+                if (xx_ap4_ranges_overlap(start, size, tocs[j].offset, tocs[j].size)) {
                     xx_mem_free(records);
                     goto fail;
                 }
@@ -492,8 +464,7 @@ static xx_ap4_stream *xx_ap4_parse(Abstractformat *self, bool gate_only,
                 xx_mem_free(records);
                 goto fail;
             }
-            grown = (xx_ap4_member *)xx_mem_realloc(
-                members, sizeof(*members) * (member_count + 1U));
+            grown = (xx_ap4_member *)xx_mem_realloc(members, sizeof(*members) * (member_count + 1U));
             if (!grown) {
                 xx_mem_free(records);
                 goto fail;
@@ -532,9 +503,7 @@ static xx_ap4_stream *xx_ap4_parse(Abstractformat *self, bool gate_only,
 
     for (index = 0U; index < member_count; ++index) {
         xx_ap4_member *member = &members[index];
-        size_t probe_size = (size_t)(member->size < XX_AP4_PROBE_SIZE
-                                         ? member->size
-                                         : XX_AP4_PROBE_SIZE);
+        size_t probe_size = (size_t)(member->size < XX_AP4_PROBE_SIZE ? member->size : XX_AP4_PROBE_SIZE);
         bool probe_null;
         bool all_null;
 
@@ -544,13 +513,11 @@ static xx_ap4_stream *xx_ap4_parse(Abstractformat *self, bool gate_only,
             probe_null = true;
             while (done < probe_size) {
                 size_t take = probe_size - done < capacity ? probe_size - done : capacity;
-                if ((pd && xx_pd_is_stopped(pd)) ||
-                    !xx_ap4_read_at(self, member->offset + (int64_t)done, cache, take)) goto fail;
+                if ((pd && xx_pd_is_stopped(pd)) || !xx_ap4_read_at(self, member->offset + (int64_t)done, cache, take)) goto fail;
                 if (!xx_ap4_is_all_zero(cache, take)) probe_null = false;
                 done += take;
             }
-            if (!probe_null && !xx_ap4_read_at(self, member->offset, probe,
-                    probe_size < sizeof(probe) ? probe_size : sizeof(probe))) goto fail;
+            if (!probe_null && !xx_ap4_read_at(self, member->offset, probe, probe_size < sizeof(probe) ? probe_size : sizeof(probe))) goto fail;
         }
         all_null = probe_null;
 
@@ -562,9 +529,7 @@ static xx_ap4_stream *xx_ap4_parse(Abstractformat *self, bool gate_only,
             uint8_t *chunk = (uint8_t *)xx_mem_alloc(capacity);
             if (!chunk) goto fail;
             while (position < end) {
-                size_t take = (size_t)((uint64_t)(end - position) < capacity
-                                           ? (size_t)(end - position)
-                                           : capacity);
+                size_t take = (size_t)((uint64_t)(end - position) < capacity ? (size_t)(end - position) : capacity);
                 if (pd && xx_pd_is_stopped(pd)) {
                     xx_mem_free(chunk);
                     goto fail;
@@ -584,8 +549,7 @@ static xx_ap4_stream *xx_ap4_parse(Abstractformat *self, bool gate_only,
         if (all_null) continue;
 
         if (!probe_null) {
-            xx_ap4_classify_member(probe, probe_size, member->size,
-                                   &member->is_mp3, &member->xor_key, self, member->offset);
+            xx_ap4_classify_member(probe, probe_size, member->size, &member->is_mp3, &member->xor_key, self, member->offset);
             if (!first_probed_seen) {
                 first_probed_seen = true;
                 /* The decision: a container whose first real member is not
@@ -612,12 +576,8 @@ static xx_ap4_stream *xx_ap4_parse(Abstractformat *self, bool gate_only,
         for (index = 0U; index < member_count; ++index) {
             char buffer[128];
             xx_ap4_member *member = &members[index];
-            (void)xx_rt_snprintf(buffer, sizeof(buffer),
-                           "ap4 0x%0*llx-0x%0*llx (%lld).%s", hex_digits,
-                           (unsigned long long)member->offset, hex_digits,
-                           (unsigned long long)(member->offset + member->size),
-                           (long long)member->size,
-                           member->is_mp3 ? "mp3" : "unk");
+            (void)xx_rt_snprintf(buffer, sizeof(buffer), "ap4 0x%0*llx-0x%0*llx (%lld).%s", hex_digits, (unsigned long long)member->offset, hex_digits,
+                                 (unsigned long long)(member->offset + member->size), (long long)member->size, member->is_mp3 ? "mp3" : "unk");
             member->name = xx_str_dup(buffer);
             if (!member->name) goto fail;
         }
@@ -652,8 +612,8 @@ fail:
 
 /* ---------------------------------------------------------- lifecycle --- */
 
-void xx_ap4_init(xx_ap4 *archive, xx_io_device *device,
-                 int64_t base_address) {
+void xx_ap4_init(xx_ap4 *archive, xx_io_device *device, int64_t base_address)
+{
     if (!archive) return;
     xx_mem_zero(archive, sizeof(*archive));
     xx_format_init(&archive->format, device, base_address);
@@ -667,22 +627,17 @@ void xx_ap4_init(xx_ap4 *archive, xx_io_device *device,
     archive->format.check_is_valid = xx_ap4_check_is_valid;
     archive->format.handle_base_info = xx_ap4_handle_base_info;
     archive->format.get_format_size = xx_ap4_get_format_size;
-    archive->format.get_number_of_archive_records =
-        xx_ap4_get_number_of_archive_records;
-    archive->format.create_archive_records_reading =
-        xx_ap4_create_archive_records_reading;
-    archive->format.get_current_archive_record =
-        xx_ap4_get_current_archive_record;
-    archive->format.unpack_current_archive_record =
-        xx_ap4_unpack_current_archive_record;
-    archive->format.archive_record_move_to_next =
-        xx_ap4_archive_record_move_to_next;
-    archive->format.free_archive_records_reading =
-        xx_ap4_free_archive_records_reading;
+    archive->format.get_number_of_archive_records = xx_ap4_get_number_of_archive_records;
+    archive->format.create_archive_records_reading = xx_ap4_create_archive_records_reading;
+    archive->format.get_current_archive_record = xx_ap4_get_current_archive_record;
+    archive->format.unpack_current_archive_record = xx_ap4_unpack_current_archive_record;
+    archive->format.archive_record_move_to_next = xx_ap4_archive_record_move_to_next;
+    archive->format.free_archive_records_reading = xx_ap4_free_archive_records_reading;
     archive->format.destroy = xx_ap4_vtable_destroy;
 }
 
-xx_ap4 *xx_ap4_create(xx_io_device *device, int64_t base_address) {
+xx_ap4 *xx_ap4_create(xx_io_device *device, int64_t base_address)
+{
     xx_ap4 *archive = (xx_ap4 *)xx_mem_alloc(sizeof(*archive));
 
     if (!archive) return NULL;
@@ -690,7 +645,8 @@ xx_ap4 *xx_ap4_create(xx_io_device *device, int64_t base_address) {
     return archive;
 }
 
-void xx_ap4_destroy(xx_ap4 *archive) {
+void xx_ap4_destroy(xx_ap4 *archive)
+{
     if (!archive) return;
     /* Not xx_format_destroy: it dispatches back through format.destroy. */
     if (archive->format.close) archive->format.close(&archive->format);
@@ -699,19 +655,22 @@ void xx_ap4_destroy(xx_ap4 *archive) {
     archive->toc_count = 0U;
 }
 
-void xx_ap4_free(xx_ap4 *archive) {
+void xx_ap4_free(xx_ap4 *archive)
+{
     if (!archive) return;
     xx_ap4_destroy(archive);
     xx_mem_free(archive);
 }
 
-static void xx_ap4_vtable_destroy(Abstractformat *self) {
+static void xx_ap4_vtable_destroy(Abstractformat *self)
+{
     xx_ap4_destroy((xx_ap4 *)self);
 }
 
 /* -------------------------------------------------------------- format -- */
 
-bool xx_ap4_check_is_valid(Abstractformat *self, xx_pd_struct *pd) {
+bool xx_ap4_check_is_valid(Abstractformat *self, xx_pd_struct *pd)
+{
     xx_ap4_stream *stream;
 
     if (!self || (pd && xx_pd_is_stopped(pd))) return false;
@@ -721,7 +680,8 @@ bool xx_ap4_check_is_valid(Abstractformat *self, xx_pd_struct *pd) {
     return true;
 }
 
-bool xx_ap4_handle_base_info(Abstractformat *self, xx_pd_struct *pd) {
+bool xx_ap4_handle_base_info(Abstractformat *self, xx_pd_struct *pd)
+{
     xx_ap4 *archive = (xx_ap4 *)self;
     xx_ap4_stream *stream;
 
@@ -745,18 +705,17 @@ bool xx_ap4_handle_base_info(Abstractformat *self, xx_pd_struct *pd) {
     return true;
 }
 
-int64_t xx_ap4_get_format_size(Abstractformat *self, xx_pd_struct *pd) {
-    if (!self ||
-        (!self->base_info_handled && !xx_format_handle_base_info(self, pd))) {
+int64_t xx_ap4_get_format_size(Abstractformat *self, xx_pd_struct *pd)
+{
+    if (!self || (!self->base_info_handled && !xx_format_handle_base_info(self, pd))) {
         return 0;
     }
     return self->is_valid ? self->format_size : 0;
 }
 
-uint64_t xx_ap4_get_number_of_archive_records(Abstractformat *self,
-                                              xx_pd_struct *pd) {
-    if (!self ||
-        (!self->base_info_handled && !xx_format_handle_base_info(self, pd))) {
+uint64_t xx_ap4_get_number_of_archive_records(Abstractformat *self, xx_pd_struct *pd)
+{
+    if (!self || (!self->base_info_handled && !xx_format_handle_base_info(self, pd))) {
         return 0U;
     }
     return self->is_valid ? ((xx_ap4 *)self)->number_of_records : 0U;
@@ -764,40 +723,34 @@ uint64_t xx_ap4_get_number_of_archive_records(Abstractformat *self,
 
 /* -------------------------------------------------------------- records - */
 
-static bool xx_ap4_set_record(xx_archive_record *record,
-                              const xx_ap4_member *member) {
+static bool xx_ap4_set_record(xx_archive_record *record, const xx_ap4_member *member)
+{
     xx_archive_record_cleanup(record);
     xx_archive_record_init(record);
     record->header_offset = member->offset;
     record->header_size = 0;
     record->data_offset = member->offset;
     record->compressed_size = member->size;
-    return xx_archive_record_set_original_name(record, member->name) &&
-           xx_archive_record_set_meta_u64(record, XX_META_ID_COMPRESSED_SIZE,
-                                          (uint64_t)member->size) &&
-           xx_archive_record_set_meta_u64(record, XX_META_ID_UNCOMPRESSED_SIZE,
-                                          (uint64_t)member->size) &&
-           xx_archive_record_set_meta_bool(record, XX_META_ID_IS_FOLDER,
-                                           false) &&
+    return xx_archive_record_set_original_name(record, member->name) && xx_archive_record_set_meta_u64(record, XX_META_ID_COMPRESSED_SIZE, (uint64_t)member->size) &&
+           xx_archive_record_set_meta_u64(record, XX_META_ID_UNCOMPRESSED_SIZE, (uint64_t)member->size) &&
+           xx_archive_record_set_meta_bool(record, XX_META_ID_IS_FOLDER, false) &&
            /* XOR obfuscation with a recovered key is not encryption: nothing
             * is withheld from the reader, so extraction never needs a
             * password and the flag would mislead a caller that checks it. */
-           xx_archive_record_set_meta_bool(record, XX_META_ID_IS_ENCRYPTED,
-                                           false);
+           xx_archive_record_set_meta_bool(record, XX_META_ID_IS_ENCRYPTED, false);
 }
 
-static bool xx_ap4_copy_options(xx_list_s *target, const xx_list_s *options) {
+static bool xx_ap4_copy_options(xx_list_s *target, const xx_list_s *options)
+{
     size_t index;
 
     if (!target || !options) return options == NULL;
     for (index = 0U; index < options->count; ++index) {
-        const xx_meta *source =
-            (const xx_meta *)xx_list_at((const xx_list_t *)options, index);
+        const xx_meta *source = (const xx_meta *)xx_list_at((const xx_list_t *)options, index);
         xx_meta copied;
         if (!source) continue;
         xx_meta_init(&copied, source->meta_id);
-        if (!xx_var_copy(&copied.var, &source->var) ||
-            !xx_list_append(target, &copied)) {
+        if (!xx_var_copy(&copied.var, &source->var) || !xx_list_append(target, &copied)) {
             xx_meta_cleanup(&copied);
             return false;
         }
@@ -805,21 +758,20 @@ static bool xx_ap4_copy_options(xx_list_s *target, const xx_list_s *options) {
     return true;
 }
 
-static const xx_var *xx_ap4_get_option(const xx_list_s *options,
-                                       uint32_t meta_id) {
+static const xx_var *xx_ap4_get_option(const xx_list_s *options, uint32_t meta_id)
+{
     size_t index;
 
     if (!options) return NULL;
     for (index = 0U; index < options->count; ++index) {
-        const xx_meta *meta =
-            (const xx_meta *)xx_list_at((const xx_list_t *)options, index);
+        const xx_meta *meta = (const xx_meta *)xx_list_at((const xx_list_t *)options, index);
         if (meta && meta->meta_id == meta_id) return &meta->var;
     }
     return NULL;
 }
 
-xx_archive_record_state *xx_ap4_create_archive_records_reading(
-    Abstractformat *self, const xx_list_s *options, xx_pd_struct *pd) {
+xx_archive_record_state *xx_ap4_create_archive_records_reading(Abstractformat *self, const xx_list_s *options, xx_pd_struct *pd)
+{
     xx_ap4_stream *stream;
     xx_archive_record_state *state;
 
@@ -835,8 +787,7 @@ xx_archive_record_state *xx_ap4_create_archive_records_reading(
     state->internal_state = stream;
     state->free_internal = xx_ap4_stream_free;
     state->total_records = (int64_t)stream->count;
-    if (!xx_ap4_copy_options(&state->options, options) ||
-        !xx_ap4_set_record(&state->current_record, &stream->items[0])) {
+    if (!xx_ap4_copy_options(&state->options, options) || !xx_ap4_set_record(&state->current_record, &stream->items[0])) {
         xx_archive_record_state_free(state);
         return NULL;
     }
@@ -845,20 +796,16 @@ xx_archive_record_state *xx_ap4_create_archive_records_reading(
     return state;
 }
 
-const xx_archive_record *xx_ap4_get_current_archive_record(
-    Abstractformat *self, xx_archive_record_state *state) {
-    return self && state && state->format == self && state->has_record
-               ? &state->current_record
-               : NULL;
+const xx_archive_record *xx_ap4_get_current_archive_record(Abstractformat *self, xx_archive_record_state *state)
+{
+    return self && state && state->format == self && state->has_record ? &state->current_record : NULL;
 }
 
-bool xx_ap4_archive_record_move_to_next(Abstractformat *self,
-                                        xx_archive_record_state *state,
-                                        xx_pd_struct *pd) {
+bool xx_ap4_archive_record_move_to_next(Abstractformat *self, xx_archive_record_state *state, xx_pd_struct *pd)
+{
     xx_ap4_stream *stream;
 
-    if (!self || !state || state->format != self || !state->has_record ||
-        (pd && xx_pd_is_stopped(pd))) {
+    if (!self || !state || state->format != self || !state->has_record || (pd && xx_pd_is_stopped(pd))) {
         return false;
     }
     stream = (xx_ap4_stream *)state->internal_state;
@@ -870,17 +817,15 @@ bool xx_ap4_archive_record_move_to_next(Abstractformat *self,
     }
     ++stream->index;
     ++state->current_index;
-    state->has_record =
-        xx_ap4_set_record(&state->current_record, &stream->items[stream->index]);
+    state->has_record = xx_ap4_set_record(&state->current_record, &stream->items[stream->index]);
     return state->has_record;
 }
 
 /*
  * Copy one member out, undoing the XOR key when the member carries one.
  */
-static bool xx_ap4_write_member(Abstractformat *self,
-                                const xx_ap4_member *member,
-                                xx_io_device *destination, xx_pd_struct *pd) {
+static bool xx_ap4_write_member(Abstractformat *self, const xx_ap4_member *member, xx_io_device *destination, xx_pd_struct *pd)
+{
     uint8_t *buffer;
     size_t capacity = xx_get_file_buffer_size();
     int64_t position = member->offset;
@@ -890,13 +835,10 @@ static bool xx_ap4_write_member(Abstractformat *self,
     buffer = (uint8_t *)xx_mem_alloc(capacity);
     if (!buffer) return false;
     while (position < end) {
-        size_t take = (size_t)((uint64_t)(end - position) < capacity
-                                   ? (size_t)(end - position)
-                                   : capacity);
+        size_t take = (size_t)((uint64_t)(end - position) < capacity ? (size_t)(end - position) : capacity);
         size_t written = 0U;
 
-        if ((pd && xx_pd_is_stopped(pd)) ||
-            !xx_ap4_read_at(self, position, buffer, take)) {
+        if ((pd && xx_pd_is_stopped(pd)) || !xx_ap4_read_at(self, position, buffer, take)) {
             result = false;
             break;
         }
@@ -907,8 +849,7 @@ static bool xx_ap4_write_member(Abstractformat *self,
             }
         }
         while (written < take) {
-            ssize_t sent =
-                xx_io_write(destination, buffer + written, take - written);
+            ssize_t sent = xx_io_write(destination, buffer + written, take - written);
             if (sent <= 0 || (size_t)sent > take - written) {
                 result = false;
                 break;
@@ -922,9 +863,8 @@ static bool xx_ap4_write_member(Abstractformat *self,
     return result;
 }
 
-bool xx_ap4_unpack_current_archive_record(Abstractformat *self,
-                                          xx_archive_record_state *state,
-                                          xx_pd_struct *pd) {
+bool xx_ap4_unpack_current_archive_record(Abstractformat *self, xx_archive_record_state *state, xx_pd_struct *pd)
+{
     xx_ap4_stream *stream;
     const xx_ap4_member *member;
     const xx_var *path_option;
@@ -934,16 +874,14 @@ bool xx_ap4_unpack_current_archive_record(Abstractformat *self,
     bool result = false;
     bool created = false;
 
-    if (!self || !state || state->format != self || !state->has_record ||
-        (pd && xx_pd_is_stopped(pd))) {
+    if (!self || !state || state->format != self || !state->has_record || (pd && xx_pd_is_stopped(pd))) {
         return false;
     }
     stream = (xx_ap4_stream *)state->internal_state;
     if (!stream || stream->index >= stream->count) return false;
     member = &stream->items[stream->index];
 
-    path_option = xx_ap4_get_option(&state->options,
-                                    XX_META_ID_OPT_UNPACK_PATH);
+    path_option = xx_ap4_get_option(&state->options, XX_META_ID_OPT_UNPACK_PATH);
     if (!path_option) {
         /* No destination: verify the member is readable end to end, which is
          * what a caller iterating records without extracting is asking. */
@@ -953,21 +891,16 @@ bool xx_ap4_unpack_current_archive_record(Abstractformat *self,
         int64_t end = member->offset + member->size;
         result = buffer != NULL;
         while (result && position < end) {
-            size_t take = (size_t)((uint64_t)(end - position) < capacity
-                                       ? (size_t)(end - position)
-                                       : capacity);
-            result = !(pd && xx_pd_is_stopped(pd)) &&
-                     xx_ap4_read_at(self, position, buffer, take);
+            size_t take = (size_t)((uint64_t)(end - position) < capacity ? (size_t)(end - position) : capacity);
+            result = !(pd && xx_pd_is_stopped(pd)) && xx_ap4_read_at(self, position, buffer, take);
             position += (int64_t)take;
         }
         xx_mem_free(buffer);
         return result;
     }
-    if (path_option->type == XX_VAR_TYPE_STRING ||
-        path_option->type == XX_VAR_TYPE_STRING_VIEW) {
+    if (path_option->type == XX_VAR_TYPE_STRING || path_option->type == XX_VAR_TYPE_STRING_VIEW) {
         base_path = xx_var_get_str(path_option);
-    } else if (path_option->type == XX_VAR_TYPE_WSTRING ||
-               path_option->type == XX_VAR_TYPE_WSTRING_VIEW) {
+    } else if (path_option->type == XX_VAR_TYPE_WSTRING || path_option->type == XX_VAR_TYPE_WSTRING_VIEW) {
         converted_path = xx_str_unicode_to_utf8(xx_var_get_wstr(path_option));
         base_path = converted_path;
     }
@@ -975,9 +908,7 @@ bool xx_ap4_unpack_current_archive_record(Abstractformat *self,
         xx_str_free(converted_path);
         return false;
     }
-    if (base_path[0] != '\0' &&
-        base_path[xx_str_len(base_path) - 1U] != '/' &&
-        base_path[xx_str_len(base_path) - 1U] != '\\') {
+    if (base_path[0] != '\0' && base_path[xx_str_len(base_path) - 1U] != '/' && base_path[xx_str_len(base_path) - 1U] != '\\') {
         target_path = xx_str_concat3(base_path, "/", member->name);
     } else {
         target_path = xx_str_concat(base_path, member->name);
@@ -998,16 +929,18 @@ bool xx_ap4_unpack_current_archive_record(Abstractformat *self,
     return result;
 }
 
-void xx_ap4_free_archive_records_reading(Abstractformat *self,
-                                         xx_archive_record_state *state) {
+void xx_ap4_free_archive_records_reading(Abstractformat *self, xx_archive_record_state *state)
+{
     (void)self;
     xx_archive_record_state_free(state);
 }
 
-int64_t xx_ap4_get_prefix_size(const xx_ap4 *archive) {
+int64_t xx_ap4_get_prefix_size(const xx_ap4 *archive)
+{
     return archive ? archive->prefix_size : 0;
 }
 
-uint32_t xx_ap4_get_toc_count(const xx_ap4 *archive) {
+uint32_t xx_ap4_get_toc_count(const xx_ap4 *archive)
+{
     return archive ? archive->toc_count : 0U;
 }

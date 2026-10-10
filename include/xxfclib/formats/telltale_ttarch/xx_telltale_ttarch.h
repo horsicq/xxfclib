@@ -47,11 +47,11 @@ extern "C" {
 typedef struct xx_telltale_ttarch {
     Abstractformat format;
     uint64_t number_of_records;
-    uint32_t wrapper;       /**< XX_TELLTALE_TTARCH_WRAP_* */
-    uint32_t inner_version; /**< 3 or 4; 0 when the inner stream is unread */
-    uint32_t chunk_size;    /**< ZCTT/ECTT only */
-    uint32_t chunk_count;   /**< ZCTT/ECTT only */
-    int64_t inner_size;     /**< -1 when the inner stream cannot be decoded */
+    uint32_t wrapper;         /**< XX_TELLTALE_TTARCH_WRAP_* */
+    uint32_t inner_version;   /**< 3 or 4; 0 when the inner stream is unread */
+    uint32_t chunk_size;      /**< ZCTT/ECTT only */
+    uint32_t chunk_count;     /**< ZCTT/ECTT only */
+    int64_t inner_size;       /**< -1 when the inner stream cannot be decoded */
     bool members_unavailable; /**< encrypted or non-Deflate chunks */
 } xx_telltale_ttarch;
 
@@ -62,35 +62,21 @@ typedef xx_telltale_ttarch xx_telltale_ttarch_t;
 #define XX_TELLTALE_TTARCH_WRAP_ZCTT 2U
 #define XX_TELLTALE_TTARCH_WRAP_ECTT 3U
 
-XXFC_API void xx_telltale_ttarch_init(xx_telltale_ttarch *archive,
-                                      xx_io_device *device,
-                                      int64_t base_address);
-XXFC_API xx_telltale_ttarch *xx_telltale_ttarch_create(xx_io_device *device,
-                                                       int64_t base_address);
+XXFC_API void xx_telltale_ttarch_init(xx_telltale_ttarch *archive, xx_io_device *device, int64_t base_address);
+XXFC_API xx_telltale_ttarch *xx_telltale_ttarch_create(xx_io_device *device, int64_t base_address);
 XXFC_API void xx_telltale_ttarch_destroy(xx_telltale_ttarch *archive);
 XXFC_API void xx_telltale_ttarch_free(xx_telltale_ttarch *archive);
 
-XXFC_API bool xx_telltale_ttarch_check_is_valid(Abstractformat *self,
-                                                xx_pd_struct *pd);
-XXFC_API bool xx_telltale_ttarch_handle_base_info(Abstractformat *self,
-                                                  xx_pd_struct *pd);
-XXFC_API int64_t xx_telltale_ttarch_get_format_size(Abstractformat *self,
-                                                    xx_pd_struct *pd);
-XXFC_API uint64_t xx_telltale_ttarch_get_number_of_archive_records(
-    Abstractformat *self, xx_pd_struct *pd);
+XXFC_API bool xx_telltale_ttarch_check_is_valid(Abstractformat *self, xx_pd_struct *pd);
+XXFC_API bool xx_telltale_ttarch_handle_base_info(Abstractformat *self, xx_pd_struct *pd);
+XXFC_API int64_t xx_telltale_ttarch_get_format_size(Abstractformat *self, xx_pd_struct *pd);
+XXFC_API uint64_t xx_telltale_ttarch_get_number_of_archive_records(Abstractformat *self, xx_pd_struct *pd);
 
-XXFC_API xx_archive_record_state *
-xx_telltale_ttarch_create_archive_records_reading(Abstractformat *self,
-                                                  const xx_list_s *options,
-                                                  xx_pd_struct *pd);
-XXFC_API const xx_archive_record *xx_telltale_ttarch_get_current_archive_record(
-    Abstractformat *self, xx_archive_record_state *state);
-XXFC_API bool xx_telltale_ttarch_unpack_current_archive_record(
-    Abstractformat *self, xx_archive_record_state *state, xx_pd_struct *pd);
-XXFC_API bool xx_telltale_ttarch_archive_record_move_to_next(
-    Abstractformat *self, xx_archive_record_state *state, xx_pd_struct *pd);
-XXFC_API void xx_telltale_ttarch_free_archive_records_reading(
-    Abstractformat *self, xx_archive_record_state *state);
+XXFC_API xx_archive_record_state *xx_telltale_ttarch_create_archive_records_reading(Abstractformat *self, const xx_list_s *options, xx_pd_struct *pd);
+XXFC_API const xx_archive_record *xx_telltale_ttarch_get_current_archive_record(Abstractformat *self, xx_archive_record_state *state);
+XXFC_API bool xx_telltale_ttarch_unpack_current_archive_record(Abstractformat *self, xx_archive_record_state *state, xx_pd_struct *pd);
+XXFC_API bool xx_telltale_ttarch_archive_record_move_to_next(Abstractformat *self, xx_archive_record_state *state, xx_pd_struct *pd);
+XXFC_API void xx_telltale_ttarch_free_archive_records_reading(Abstractformat *self, xx_archive_record_state *state);
 
 #ifdef __cplusplus
 }

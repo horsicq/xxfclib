@@ -40,7 +40,8 @@
 #ifndef CP_UTF8
 #define CP_UTF8 65001
 int WINAPI MultiByteToWideChar(UINT CodePage, DWORD dwFlags, const char *lpMultiByteStr, int cbMultiByte, wchar_t *lpWideCharStr, int cchWideChar);
-int WINAPI WideCharToMultiByte(UINT CodePage, DWORD dwFlags, const wchar_t *lpWideCharStr, int cchWideChar, char *lpMultiByteStr, int cbMultiByte, const char *lpDefaultChar, int *lpUsedDefaultChar);
+int WINAPI WideCharToMultiByte(UINT CodePage, DWORD dwFlags, const wchar_t *lpWideCharStr, int cchWideChar, char *lpMultiByteStr, int cbMultiByte,
+                               const char *lpDefaultChar, int *lpUsedDefaultChar);
 #endif
 
 /* Paths inside the runtime are UTF-8. Keep the original xx_rt allocator
@@ -107,7 +108,8 @@ char *xx_rt_utf16_to_utf8(const void *pUtf16)
     return pResult;
 }
 
-wchar_t* xx_string_platform_mb_to_wide(const char *str, unsigned int codepage) {
+wchar_t *xx_string_platform_mb_to_wide(const char *str, unsigned int codepage)
+{
     if (!str) {
         return NULL;
     }
@@ -119,7 +121,7 @@ wchar_t* xx_string_platform_mb_to_wide(const char *str, unsigned int codepage) {
         return NULL;
     }
 
-    wchar_t *wbuf = (wchar_t*)xx_mem_alloc((size_t)wlen * sizeof(wchar_t));
+    wchar_t *wbuf = (wchar_t *)xx_mem_alloc((size_t)wlen * sizeof(wchar_t));
     if (!wbuf) {
         return NULL;
     }
@@ -132,7 +134,8 @@ wchar_t* xx_string_platform_mb_to_wide(const char *str, unsigned int codepage) {
     return wbuf;
 }
 
-char* xx_string_platform_wide_to_mb(const wchar_t *wstr, unsigned int codepage) {
+char *xx_string_platform_wide_to_mb(const wchar_t *wstr, unsigned int codepage)
+{
     if (!wstr) {
         return NULL;
     }
@@ -144,7 +147,7 @@ char* xx_string_platform_wide_to_mb(const wchar_t *wstr, unsigned int codepage) 
         return NULL;
     }
 
-    char *mbuf = (char*)xx_mem_alloc((size_t)mlen);
+    char *mbuf = (char *)xx_mem_alloc((size_t)mlen);
     if (!mbuf) {
         return NULL;
     }
@@ -156,7 +159,6 @@ char* xx_string_platform_wide_to_mb(const wchar_t *wstr, unsigned int codepage) 
 
     return mbuf;
 }
-
 
 /* Runtime string primitives (hand-rolled so the /NODEFAULTLIB build needs no CRT string functions).
  * These define the public xx_rt_str* names directly, as

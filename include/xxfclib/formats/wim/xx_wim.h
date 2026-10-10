@@ -27,27 +27,19 @@ typedef struct xx_wim {
 
 typedef struct xx_wim xx_wim_t;
 
-XXFC_API void xx_wim_init(xx_wim *archive, xx_io_device *device,
-                          int64_t base_address);
+XXFC_API void xx_wim_init(xx_wim *archive, xx_io_device *device, int64_t base_address);
 XXFC_API xx_wim *xx_wim_create(xx_io_device *device, int64_t base_address);
 XXFC_API void xx_wim_destroy(xx_wim *archive);
 XXFC_API void xx_wim_free(xx_wim *archive);
 XXFC_API bool xx_wim_check_is_valid(Abstractformat *self, xx_pd_struct *pd);
 XXFC_API bool xx_wim_handle_base_info(Abstractformat *self, xx_pd_struct *pd);
-XXFC_API int64_t xx_wim_get_format_size(Abstractformat *self,
-                                        xx_pd_struct *pd);
-XXFC_API uint64_t xx_wim_get_number_of_archive_records(Abstractformat *self,
-                                                       xx_pd_struct *pd);
-XXFC_API xx_archive_record_state *xx_wim_create_archive_records_reading(
-    Abstractformat *self, const xx_list_s *options, xx_pd_struct *pd);
-XXFC_API const xx_archive_record *xx_wim_get_current_archive_record(
-    Abstractformat *self, xx_archive_record_state *state);
-XXFC_API bool xx_wim_unpack_current_archive_record(
-    Abstractformat *self, xx_archive_record_state *state, xx_pd_struct *pd);
-XXFC_API bool xx_wim_archive_record_move_to_next(
-    Abstractformat *self, xx_archive_record_state *state, xx_pd_struct *pd);
-XXFC_API void xx_wim_free_archive_records_reading(
-    Abstractformat *self, xx_archive_record_state *state);
+XXFC_API int64_t xx_wim_get_format_size(Abstractformat *self, xx_pd_struct *pd);
+XXFC_API uint64_t xx_wim_get_number_of_archive_records(Abstractformat *self, xx_pd_struct *pd);
+XXFC_API xx_archive_record_state *xx_wim_create_archive_records_reading(Abstractformat *self, const xx_list_s *options, xx_pd_struct *pd);
+XXFC_API const xx_archive_record *xx_wim_get_current_archive_record(Abstractformat *self, xx_archive_record_state *state);
+XXFC_API bool xx_wim_unpack_current_archive_record(Abstractformat *self, xx_archive_record_state *state, xx_pd_struct *pd);
+XXFC_API bool xx_wim_archive_record_move_to_next(Abstractformat *self, xx_archive_record_state *state, xx_pd_struct *pd);
+XXFC_API void xx_wim_free_archive_records_reading(Abstractformat *self, xx_archive_record_state *state);
 
 /* Writer option XX_META_ID_COMPRESSION_METHOD accepts these numbers or the
  * matching lower-case names. The absent option preserves stored output. */
@@ -69,17 +61,14 @@ XXFC_API void xx_wim_free_archive_records_reading(
  * Names may contain relative subdirectories; missing parents are synthesized.
  * Equal streams share a lookup resource. Encryption, links, alternate data
  * streams and security descriptors are not synthesized by this writer. */
-XXFC_API xx_archive_write_state *xx_wim_create_archive_records_writing(
-    Abstractformat *self, const xx_list_s *options, xx_pd_struct *pd);
-XXFC_API bool xx_wim_pack_archive_record(Abstractformat *self,
-    xx_archive_write_state *state, const xx_archive_record *record,
-    xx_io_device *source_dev, xx_pd_struct *pd);
-XXFC_API bool xx_wim_finalize_archive_records_writing(Abstractformat *self,
-    xx_archive_write_state *state, xx_pd_struct *pd);
-XXFC_API void xx_wim_free_archive_records_writing(Abstractformat *self,
-    xx_archive_write_state *state);
+XXFC_API xx_archive_write_state *xx_wim_create_archive_records_writing(Abstractformat *self, const xx_list_s *options, xx_pd_struct *pd);
+XXFC_API bool xx_wim_pack_archive_record(Abstractformat *self, xx_archive_write_state *state, const xx_archive_record *record, xx_io_device *source_dev,
+                                         xx_pd_struct *pd);
+XXFC_API bool xx_wim_finalize_archive_records_writing(Abstractformat *self, xx_archive_write_state *state, xx_pd_struct *pd);
+XXFC_API void xx_wim_free_archive_records_writing(Abstractformat *self, xx_archive_write_state *state);
 
-static inline Abstractformat *xx_wim_to_format(xx_wim *archive) {
+static inline Abstractformat *xx_wim_to_format(xx_wim *archive)
+{
     return archive ? &archive->format : NULL;
 }
 

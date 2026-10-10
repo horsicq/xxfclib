@@ -59,11 +59,11 @@ extern "C" {
  */
 typedef struct xx_sfx_flashjester_jugglor {
     Abstractformat format;
-    uint32_t variant;           /**< XX_SFX_FLASHJESTER_JUGGLOR_VARIANT_*. */
+    uint32_t variant; /**< XX_SFX_FLASHJESTER_JUGGLOR_VARIANT_*. */
     uint64_t number_of_records;
-    uint64_t unpacked_size;     /**< Sum of the members' unpacked sizes. */
-    int64_t payload_offset;     /**< First member header, from the base. */
-    int64_t payload_end;        /**< End of the trailer/last record. */
+    uint64_t unpacked_size; /**< Sum of the members' unpacked sizes. */
+    int64_t payload_offset; /**< First member header, from the base. */
+    int64_t payload_end;    /**< End of the trailer/last record. */
 } xx_sfx_flashjester_jugglor;
 
 typedef xx_sfx_flashjester_jugglor xx_sfx_flashjester_jugglor_t;
@@ -76,37 +76,21 @@ typedef xx_sfx_flashjester_jugglor xx_sfx_flashjester_jugglor_t;
 /** XX_META_ID_COMPRESSION_METHOD value of a member (zlib, RFC 1950). */
 #define XX_SFX_FLASHJESTER_JUGGLOR_METHOD_ZLIB 8U
 
-XXFC_API void xx_sfx_flashjester_jugglor_init(
-    xx_sfx_flashjester_jugglor *archive, xx_io_device *device,
-    int64_t base_address);
-XXFC_API xx_sfx_flashjester_jugglor *xx_sfx_flashjester_jugglor_create(
-    xx_io_device *device, int64_t base_address);
-XXFC_API void xx_sfx_flashjester_jugglor_destroy(
-    xx_sfx_flashjester_jugglor *archive);
-XXFC_API void xx_sfx_flashjester_jugglor_free(
-    xx_sfx_flashjester_jugglor *archive);
+XXFC_API void xx_sfx_flashjester_jugglor_init(xx_sfx_flashjester_jugglor *archive, xx_io_device *device, int64_t base_address);
+XXFC_API xx_sfx_flashjester_jugglor *xx_sfx_flashjester_jugglor_create(xx_io_device *device, int64_t base_address);
+XXFC_API void xx_sfx_flashjester_jugglor_destroy(xx_sfx_flashjester_jugglor *archive);
+XXFC_API void xx_sfx_flashjester_jugglor_free(xx_sfx_flashjester_jugglor *archive);
 
-XXFC_API bool xx_sfx_flashjester_jugglor_check_is_valid(Abstractformat *self,
-                                                        xx_pd_struct *pd);
-XXFC_API bool xx_sfx_flashjester_jugglor_handle_base_info(Abstractformat *self,
-                                                          xx_pd_struct *pd);
-XXFC_API int64_t xx_sfx_flashjester_jugglor_get_format_size(
-    Abstractformat *self, xx_pd_struct *pd);
-XXFC_API uint64_t xx_sfx_flashjester_jugglor_get_number_of_archive_records(
-    Abstractformat *self, xx_pd_struct *pd);
+XXFC_API bool xx_sfx_flashjester_jugglor_check_is_valid(Abstractformat *self, xx_pd_struct *pd);
+XXFC_API bool xx_sfx_flashjester_jugglor_handle_base_info(Abstractformat *self, xx_pd_struct *pd);
+XXFC_API int64_t xx_sfx_flashjester_jugglor_get_format_size(Abstractformat *self, xx_pd_struct *pd);
+XXFC_API uint64_t xx_sfx_flashjester_jugglor_get_number_of_archive_records(Abstractformat *self, xx_pd_struct *pd);
 
-XXFC_API xx_archive_record_state *
-xx_sfx_flashjester_jugglor_create_archive_records_reading(
-    Abstractformat *self, const xx_list_s *options, xx_pd_struct *pd);
-XXFC_API const xx_archive_record *
-xx_sfx_flashjester_jugglor_get_current_archive_record(
-    Abstractformat *self, xx_archive_record_state *state);
-XXFC_API bool xx_sfx_flashjester_jugglor_unpack_current_archive_record(
-    Abstractformat *self, xx_archive_record_state *state, xx_pd_struct *pd);
-XXFC_API bool xx_sfx_flashjester_jugglor_archive_record_move_to_next(
-    Abstractformat *self, xx_archive_record_state *state, xx_pd_struct *pd);
-XXFC_API void xx_sfx_flashjester_jugglor_free_archive_records_reading(
-    Abstractformat *self, xx_archive_record_state *state);
+XXFC_API xx_archive_record_state *xx_sfx_flashjester_jugglor_create_archive_records_reading(Abstractformat *self, const xx_list_s *options, xx_pd_struct *pd);
+XXFC_API const xx_archive_record *xx_sfx_flashjester_jugglor_get_current_archive_record(Abstractformat *self, xx_archive_record_state *state);
+XXFC_API bool xx_sfx_flashjester_jugglor_unpack_current_archive_record(Abstractformat *self, xx_archive_record_state *state, xx_pd_struct *pd);
+XXFC_API bool xx_sfx_flashjester_jugglor_archive_record_move_to_next(Abstractformat *self, xx_archive_record_state *state, xx_pd_struct *pd);
+XXFC_API void xx_sfx_flashjester_jugglor_free_archive_records_reading(Abstractformat *self, xx_archive_record_state *state);
 
 /**
  * @brief Inflate the current member into @p destination (NULL only verifies).
@@ -114,9 +98,7 @@ XXFC_API void xx_sfx_flashjester_jugglor_free_archive_records_reading(
  * Succeeds only when the stream yields exactly the declared unpacked size
  * and its Adler-32 matches.
  */
-XXFC_API bool xx_sfx_flashjester_jugglor_unpack_current_to_device(
-    Abstractformat *self, xx_archive_record_state *state,
-    xx_io_device *destination, xx_pd_struct *pd);
+XXFC_API bool xx_sfx_flashjester_jugglor_unpack_current_to_device(Abstractformat *self, xx_archive_record_state *state, xx_io_device *destination, xx_pd_struct *pd);
 
 #ifdef __cplusplus
 }

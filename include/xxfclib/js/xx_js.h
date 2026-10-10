@@ -54,7 +54,14 @@ typedef struct JSStr JSStr;
 typedef struct JSObj JSObj;
 typedef struct JSNode JSNode;
 
-typedef enum { JT_UNDEF = 0, JT_NULL, JT_BOOL, JT_NUM, JT_STR, JT_OBJ } JSTag;
+typedef enum {
+    JT_UNDEF = 0,
+    JT_NULL,
+    JT_BOOL,
+    JT_NUM,
+    JT_STR,
+    JT_OBJ
+} JSTag;
 
 typedef struct {
     JSTag tag;

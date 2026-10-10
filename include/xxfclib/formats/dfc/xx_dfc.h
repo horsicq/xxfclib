@@ -15,14 +15,12 @@ typedef struct xx_dfc {
     Abstractformat format;
 } xx_dfc;
 
-XXFC_API void xx_dfc_init(xx_dfc *archive, xx_io_device *device,
-                          int64_t base_address);
+XXFC_API void xx_dfc_init(xx_dfc *archive, xx_io_device *device, int64_t base_address);
 XXFC_API xx_dfc *xx_dfc_create(xx_io_device *device, int64_t base_address);
 XXFC_API void xx_dfc_destroy(xx_dfc *archive);
 XXFC_API void xx_dfc_free(xx_dfc *archive);
 XXFC_API bool xx_dfc_check_is_valid(Abstractformat *format, xx_pd_struct *pd);
-XXFC_API bool xx_dfc_handle_base_info(Abstractformat *format,
-                                      xx_pd_struct *pd);
+XXFC_API bool xx_dfc_handle_base_info(Abstractformat *format, xx_pd_struct *pd);
 
 #ifdef __cplusplus
 }

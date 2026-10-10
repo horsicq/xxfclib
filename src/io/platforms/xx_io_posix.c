@@ -41,20 +41,23 @@
 #include <stdio.h>
 #include <stdlib.h>
 
-void* xx_io_platform_file_open(const char *path, const char *mode) {
+void *xx_io_platform_file_open(const char *path, const char *mode)
+{
     if (!xx_io_policy_file_open_allowed(mode)) return NULL;
     if (!path || !mode) {
         return NULL;
     }
-    return (void*)fopen(path, mode);
+    return (void *)fopen(path, mode);
 }
 
-void* xx_io_platform_temp_open(void) {
+void *xx_io_platform_temp_open(void)
+{
     if (!xx_io_policy_mutation_allowed()) return NULL;
-    return (void*)tmpfile();
+    return (void *)tmpfile();
 }
 
-ssize_t xx_io_platform_file_read(void *handle, void *buf, size_t n) {
+ssize_t xx_io_platform_file_read(void *handle, void *buf, size_t n)
+{
     if (!handle || !buf) {
         return -1;
     }
@@ -65,7 +68,7 @@ ssize_t xx_io_platform_file_read(void *handle, void *buf, size_t n) {
         n = (size_t)PTRDIFF_MAX;
     }
 
-    FILE *fp = (FILE*)handle;
+    FILE *fp = (FILE *)handle;
     size_t bytes_read = fread(buf, 1, n, fp);
     if (bytes_read == 0) {
         if (ferror(fp)) {
@@ -76,7 +79,8 @@ ssize_t xx_io_platform_file_read(void *handle, void *buf, size_t n) {
     return (ssize_t)bytes_read;
 }
 
-ssize_t xx_io_platform_file_write(void *handle, const void *buf, size_t n) {
+ssize_t xx_io_platform_file_write(void *handle, const void *buf, size_t n)
+{
     if (!xx_io_policy_mutation_allowed()) return -1;
     if (!handle || !buf) {
         return -1;
@@ -88,7 +92,7 @@ ssize_t xx_io_platform_file_write(void *handle, const void *buf, size_t n) {
         n = (size_t)PTRDIFF_MAX;
     }
 
-    FILE *fp = (FILE*)handle;
+    FILE *fp = (FILE *)handle;
     size_t bytes_written = fwrite(buf, 1, n, fp);
     if (bytes_written == 0 && ferror(fp)) {
         return -1;
@@ -96,45 +100,50 @@ ssize_t xx_io_platform_file_write(void *handle, const void *buf, size_t n) {
     return (ssize_t)bytes_written;
 }
 
-int xx_io_platform_file_seek(void *handle, long off, int whence) {
+int xx_io_platform_file_seek(void *handle, long off, int whence)
+{
     return xx_io_platform_file_seek64(handle, (int64_t)off, whence);
 }
 
-int xx_io_platform_file_seek64(void *handle, int64_t off, int whence) {
+int xx_io_platform_file_seek64(void *handle, int64_t off, int whence)
+{
     if (!handle) {
         return -1;
     }
     if ((int64_t)(off_t)off != off) {
         return -1;
     }
-    FILE *fp = (FILE*)handle;
+    FILE *fp = (FILE *)handle;
     return fseeko(fp, (off_t)off, whence);
 }
 
-int64_t xx_io_platform_file_tell(void *handle) {
+int64_t xx_io_platform_file_tell(void *handle)
+{
     if (!handle) {
         return -1;
     }
-    off_t pos = ftello((FILE*)handle);
+    off_t pos = ftello((FILE *)handle);
     if (pos < 0 || (uintmax_t)pos > INT64_MAX) {
         return -1;
     }
     return (int64_t)pos;
 }
 
-int xx_io_platform_file_close(void *handle) {
+int xx_io_platform_file_close(void *handle)
+{
     if (!handle) {
         return -1;
     }
-    FILE *fp = (FILE*)handle;
+    FILE *fp = (FILE *)handle;
     return fclose(fp);
 }
 
-int64_t xx_io_platform_file_size(void *handle) {
+int64_t xx_io_platform_file_size(void *handle)
+{
     if (!handle) {
         return -1;
     }
-    FILE *fp = (FILE*)handle;
+    FILE *fp = (FILE *)handle;
     off_t cur = ftello(fp);
     if (cur < 0) {
         return -1;
@@ -157,7 +166,8 @@ int64_t xx_io_platform_file_size(void *handle) {
 #include <time.h>
 #include <string.h>
 
-static bool xx_posix_wide_path(const wchar_t *path, char output[4096]) {
+static bool xx_posix_wide_path(const wchar_t *path, char output[4096])
+{
     size_t length;
     if (!path || !output) return false;
     length = wcstombs(output, path, 4095U);
@@ -166,31 +176,32 @@ static bool xx_posix_wide_path(const wchar_t *path, char output[4096]) {
     return true;
 }
 
-bool xx_io_platform_file_exists_a(const char *path) {
+bool xx_io_platform_file_exists_a(const char *path)
+{
     struct stat info;
     return path && path[0] && lstat(path, &info) == 0;
 }
 
-bool xx_io_platform_file_exists_w(const wchar_t *path) {
+bool xx_io_platform_file_exists_w(const wchar_t *path)
+{
     char converted[4096];
-    return xx_posix_wide_path(path, converted) &&
-           xx_io_platform_file_exists_a(converted);
+    return xx_posix_wide_path(path, converted) && xx_io_platform_file_exists_a(converted);
 }
 
-bool xx_io_platform_file_remove_a(const char *path) {
+bool xx_io_platform_file_remove_a(const char *path)
+{
     if (!xx_io_policy_mutation_allowed()) return false;
     return path && path[0] && unlink(path) == 0;
 }
 
-bool xx_io_platform_file_remove_w(const wchar_t *path) {
+bool xx_io_platform_file_remove_w(const wchar_t *path)
+{
     char converted[4096];
-    return xx_posix_wide_path(path, converted) &&
-           xx_io_platform_file_remove_a(converted);
+    return xx_posix_wide_path(path, converted) && xx_io_platform_file_remove_a(converted);
 }
 
-bool xx_io_platform_file_replace_a(const char *source,
-                                   const char *destination,
-                                   bool overwrite) {
+bool xx_io_platform_file_replace_a(const char *source, const char *destination, bool overwrite)
+{
     if (!xx_io_policy_mutation_allowed()) return false;
     if (!source || !source[0] || !destination || !destination[0]) return false;
     if (overwrite) return rename(source, destination) == 0;
@@ -199,17 +210,15 @@ bool xx_io_platform_file_replace_a(const char *source,
     return true;
 }
 
-bool xx_io_platform_file_replace_w(const wchar_t *source,
-                                   const wchar_t *destination,
-                                   bool overwrite) {
+bool xx_io_platform_file_replace_w(const wchar_t *source, const wchar_t *destination, bool overwrite)
+{
     char source_path[4096], destination_path[4096];
-    return xx_posix_wide_path(source, source_path) &&
-           xx_posix_wide_path(destination, destination_path) &&
-           xx_io_platform_file_replace_a(source_path, destination_path,
-                                         overwrite);
+    return xx_posix_wide_path(source, source_path) && xx_posix_wide_path(destination, destination_path) &&
+           xx_io_platform_file_replace_a(source_path, destination_path, overwrite);
 }
 
-bool xx_io_platform_create_dirs_a(const char *path, bool is_dir) {
+bool xx_io_platform_create_dirs_a(const char *path, bool is_dir)
+{
     if (!xx_io_policy_mutation_allowed()) return false;
     if (!path || !path[0]) {
         return false;
@@ -230,9 +239,7 @@ bool xx_io_platform_create_dirs_a(const char *path, bool is_dir) {
             temp[i] = '\0';
             if (i > 0) {
                 if (mkdir(temp, 0755) != 0) {
-                    if (errno != EEXIST || lstat(temp, &info) != 0 ||
-                        !S_ISDIR(info.st_mode) || S_ISLNK(info.st_mode))
-                        return false;
+                    if (errno != EEXIST || lstat(temp, &info) != 0 || !S_ISDIR(info.st_mode) || S_ISLNK(info.st_mode)) return false;
                 }
             }
             temp[i] = '/';
@@ -240,9 +247,7 @@ bool xx_io_platform_create_dirs_a(const char *path, bool is_dir) {
     }
     if (is_dir) {
         struct stat info;
-        if (mkdir(temp, 0755) != 0 &&
-            (errno != EEXIST || lstat(temp, &info) != 0 ||
-             !S_ISDIR(info.st_mode) || S_ISLNK(info.st_mode))) return false;
+        if (mkdir(temp, 0755) != 0 && (errno != EEXIST || lstat(temp, &info) != 0 || !S_ISDIR(info.st_mode) || S_ISLNK(info.st_mode))) return false;
     }
     return true;
 }
@@ -251,7 +256,8 @@ bool xx_io_platform_create_dirs_a(const char *path, bool is_dir) {
  * The earlier version truncated with a (char) cast into a 1024-byte buffer,
  * which mangled every non-ASCII name and silently cut long paths; the archive
  * readers worked around it by converting before the call. */
-static char *xx_io_posix_wide_to_utf8(const wchar_t *path) {
+static char *xx_io_posix_wide_to_utf8(const wchar_t *path)
+{
     size_t index;
     size_t size = 1U;
     char *out;
@@ -259,10 +265,7 @@ static char *xx_io_posix_wide_to_utf8(const wchar_t *path) {
 
     for (index = 0U; path[index] != L'\0'; ++index) {
         unsigned long code = (unsigned long)path[index];
-        size += (code < 0x80UL)     ? 1U
-                : (code < 0x800UL)  ? 2U
-                : (code < 0x10000UL) ? 3U
-                                     : 4U;
+        size += (code < 0x80UL) ? 1U : (code < 0x800UL) ? 2U : (code < 0x10000UL) ? 3U : 4U;
     }
     out = (char *)xx_rt_malloc(size);
     if (!out) {
@@ -291,7 +294,8 @@ static char *xx_io_posix_wide_to_utf8(const wchar_t *path) {
     return out;
 }
 
-bool xx_io_platform_create_dirs_w(const wchar_t *path, bool is_dir) {
+bool xx_io_platform_create_dirs_w(const wchar_t *path, bool is_dir)
+{
     char *narrow;
     bool result;
 
@@ -307,7 +311,8 @@ bool xx_io_platform_create_dirs_w(const wchar_t *path, bool is_dir) {
     return result;
 }
 
-bool xx_io_platform_apply_dos_time_and_attrs_a(const char *path, uint16_t dos_date, uint16_t dos_time, uint32_t attrs) {
+bool xx_io_platform_apply_dos_time_and_attrs_a(const char *path, uint16_t dos_date, uint16_t dos_time, uint32_t attrs)
+{
     if (!xx_io_policy_mutation_allowed()) return false;
     if (!path || !path[0]) {
         return false;
@@ -317,10 +322,10 @@ bool xx_io_platform_apply_dos_time_and_attrs_a(const char *path, uint16_t dos_da
         struct tm tm_val;
         memset(&tm_val, 0, sizeof(tm_val));
         tm_val.tm_mday = (dos_date & 0x1F);
-        tm_val.tm_mon  = ((dos_date >> 5) & 0x0F) - 1;
+        tm_val.tm_mon = ((dos_date >> 5) & 0x0F) - 1;
         tm_val.tm_year = ((dos_date >> 9) & 0x7F) + 80;
-        tm_val.tm_sec  = (dos_time & 0x1F) * 2;
-        tm_val.tm_min  = (dos_time >> 5) & 0x3F;
+        tm_val.tm_sec = (dos_time & 0x1F) * 2;
+        tm_val.tm_min = (dos_time >> 5) & 0x3F;
         tm_val.tm_hour = (dos_time >> 11) & 0x1F;
         tm_val.tm_isdst = -1;
 
@@ -348,7 +353,8 @@ bool xx_io_platform_apply_dos_time_and_attrs_a(const char *path, uint16_t dos_da
     return true;
 }
 
-bool xx_io_platform_apply_dos_time_and_attrs_w(const wchar_t *path, uint16_t dos_date, uint16_t dos_time, uint32_t attrs) {
+bool xx_io_platform_apply_dos_time_and_attrs_w(const wchar_t *path, uint16_t dos_date, uint16_t dos_time, uint32_t attrs)
+{
     if (!path || !path[0]) {
         return false;
     }
@@ -362,32 +368,32 @@ bool xx_io_platform_apply_dos_time_and_attrs_w(const wchar_t *path, uint16_t dos
     return xx_io_platform_apply_dos_time_and_attrs_a(temp, dos_date, dos_time, attrs);
 }
 
-
 /* --- Path safety and entropy, shared by the archive readers --------------- */
 
 /* No name is reserved here, so the readers can ask unconditionally. */
-bool xx_io_platform_wsegment_is_reserved(const wchar_t *segment, size_t length) {
+bool xx_io_platform_wsegment_is_reserved(const wchar_t *segment, size_t length)
+{
     (void)segment;
     (void)length;
     return false;
 }
 
-bool xx_io_platform_secure_random(uint8_t *output, size_t size) {
+bool xx_io_platform_secure_random(uint8_t *output, size_t size)
+{
     if (!output) {
         return false;
     }
     if (size == 0U) {
         return true;
     }
-{
+    {
         void *random_file = xx_rt_fopen("/dev/urandom", "rb");
         size_t offset = 0U;
         if (!random_file) {
             return false;
         }
         while (offset < size) {
-            size_t amount = xx_rt_fread(output + offset, 1U, size - offset,
-                                  random_file);
+            size_t amount = xx_rt_fread(output + offset, 1U, size - offset, random_file);
             if (amount == 0U) {
                 xx_rt_fclose(random_file);
                 return false;
@@ -398,7 +404,8 @@ bool xx_io_platform_secure_random(uint8_t *output, size_t size) {
     }
 }
 
-wchar_t xx_io_platform_wseparator(void) {
+wchar_t xx_io_platform_wseparator(void)
+{
     return L'/';
 }
 
@@ -407,15 +414,15 @@ wchar_t xx_io_platform_wseparator(void) {
 #include <fcntl.h>
 
 /* fd is stored as (void*)(intptr_t)(fd + 1) so a valid fd of 0 is not NULL. */
-void* xx_io_platform_process_open(uint64_t pid) {
+void *xx_io_platform_process_open(uint64_t pid)
+{
     char path[64];
     int fd;
 
     if (pid == 0) {
         pid = (uint64_t)getpid();
     }
-    xx_rt_snprintf(path, sizeof(path), "/proc/%llu/mem",
-                   (unsigned long long)pid);
+    xx_rt_snprintf(path, sizeof(path), "/proc/%llu/mem", (unsigned long long)pid);
     fd = open(path, O_RDWR | O_CLOEXEC);
     if (fd < 0) {
         fd = open(path, O_RDONLY | O_CLOEXEC);
@@ -426,16 +433,15 @@ void* xx_io_platform_process_open(uint64_t pid) {
     return (void *)(intptr_t)(fd + 1);
 }
 
-ssize_t xx_io_platform_process_read(void *handle, uint64_t addr, void *buf,
-                                    size_t n) {
+ssize_t xx_io_platform_process_read(void *handle, uint64_t addr, void *buf, size_t n)
+{
     int fd = (int)((intptr_t)handle - 1);
     ssize_t total = 0;
     if (!handle || !buf) {
         return -1;
     }
     while ((size_t)total < n) {
-        ssize_t got = pread(fd, (unsigned char *)buf + total, n - (size_t)total,
-                            (off_t)(addr + (uint64_t)total));
+        ssize_t got = pread(fd, (unsigned char *)buf + total, n - (size_t)total, (off_t)(addr + (uint64_t)total));
         if (got < 0) {
             return total > 0 ? total : -1;
         }
@@ -447,16 +453,15 @@ ssize_t xx_io_platform_process_read(void *handle, uint64_t addr, void *buf,
     return total;
 }
 
-ssize_t xx_io_platform_process_write(void *handle, uint64_t addr,
-                                     const void *buf, size_t n) {
+ssize_t xx_io_platform_process_write(void *handle, uint64_t addr, const void *buf, size_t n)
+{
     int fd = (int)((intptr_t)handle - 1);
     ssize_t total = 0;
     if (!handle || !buf) {
         return -1;
     }
     while ((size_t)total < n) {
-        ssize_t put = pwrite(fd, (const unsigned char *)buf + total,
-                            n - (size_t)total, (off_t)(addr + (uint64_t)total));
+        ssize_t put = pwrite(fd, (const unsigned char *)buf + total, n - (size_t)total, (off_t)(addr + (uint64_t)total));
         if (put < 0) {
             return total > 0 ? total : -1;
         }
@@ -468,14 +473,16 @@ ssize_t xx_io_platform_process_write(void *handle, uint64_t addr,
     return total;
 }
 
-int xx_io_platform_process_close(void *handle) {
+int xx_io_platform_process_close(void *handle)
+{
     if (!handle) {
         return -1;
     }
     return close((int)((intptr_t)handle - 1));
 }
 
-void* xx_io_platform_process_adopt(void *native) {
+void *xx_io_platform_process_adopt(void *native)
+{
     int fd = (int)(intptr_t)native;
     if (fd < 0) {
         return NULL;

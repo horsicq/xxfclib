@@ -36,20 +36,43 @@
 static const struct {
     const char *pDirectory;
     XFileType fileType;
-} g_directories[] = {
-    {"", XFT_UNKNOWN},        {"Binary", XFT_BINARY},   {"COM", XFT_COM},         {"Archive", XFT_ARCHIVE}, {"ZIP", XFT_ZIP},
-    {"JAR", XFT_JAR},         {"APK", XFT_APK},         {"IPA", XFT_IPA},         {"NPM", XFT_NPM},         {"MACHOFAT", XFT_MACHOFAT},
-    {"DEX", XFT_DEX},         {"MSDOS", XFT_MSDOS},     {"LE", XFT_LE},           {"LX", XFT_LX},           {"NE", XFT_NE},
-    {"PE", XFT_PE},           {"ELF", XFT_ELF},         {"MACH", XFT_MACHO},      {"DOS16M", XFT_DOS16M},   {"DOS4G", XFT_DOS4G},
-    {"Amiga", XFT_AMIGAHUNK}, {"AtariST", XFT_ATARIST}, {"JavaClass", XFT_JAVACLASS}, {"PYC", XFT_PYC},     {"PDF", XFT_PDF},
-    {"CFBF", XFT_CFBF},       {"Image", XFT_IMAGE},     {"JPEG", XFT_JPEG},       {"PNG", XFT_PNG},         {"RAR", XFT_RAR},
-    {"ISO9660", XFT_ISO9660},
-    /* .NET-only scripts live under PE/DOTNET and run against a CLI assembly
-     * (a .NET PE), bound to the DOTNET object. Matches the reference loading
-     * PE/DOTNET with FT_CLI_ASSEMBLY. A forward slash resolves on both
-     * platforms.                                                            */
-    {"PE/DOTNET", XFT_CLI_ASSEMBLY},
-    {NULL, XFT_UNKNOWN}};
+} g_directories[] = {{"", XFT_UNKNOWN},
+                     {"Binary", XFT_BINARY},
+                     {"COM", XFT_COM},
+                     {"Archive", XFT_ARCHIVE},
+                     {"ZIP", XFT_ZIP},
+                     {"JAR", XFT_JAR},
+                     {"APK", XFT_APK},
+                     {"IPA", XFT_IPA},
+                     {"NPM", XFT_NPM},
+                     {"MACHOFAT", XFT_MACHOFAT},
+                     {"DEX", XFT_DEX},
+                     {"MSDOS", XFT_MSDOS},
+                     {"LE", XFT_LE},
+                     {"LX", XFT_LX},
+                     {"NE", XFT_NE},
+                     {"PE", XFT_PE},
+                     {"ELF", XFT_ELF},
+                     {"MACH", XFT_MACHO},
+                     {"DOS16M", XFT_DOS16M},
+                     {"DOS4G", XFT_DOS4G},
+                     {"Amiga", XFT_AMIGAHUNK},
+                     {"AtariST", XFT_ATARIST},
+                     {"JavaClass", XFT_JAVACLASS},
+                     {"PYC", XFT_PYC},
+                     {"PDF", XFT_PDF},
+                     {"CFBF", XFT_CFBF},
+                     {"Image", XFT_IMAGE},
+                     {"JPEG", XFT_JPEG},
+                     {"PNG", XFT_PNG},
+                     {"RAR", XFT_RAR},
+                     {"ISO9660", XFT_ISO9660},
+                     /* .NET-only scripts live under PE/DOTNET and run against a CLI assembly
+                      * (a .NET PE), bound to the DOTNET object. Matches the reference loading
+                      * PE/DOTNET with FT_CLI_ASSEMBLY. A forward slash resolves on both
+                      * platforms.                                                            */
+                     {"PE/DOTNET", XFT_CLI_ASSEMBLY},
+                     {NULL, XFT_UNKNOWN}};
 
 static int is_signature_file(const char *pPath)
 {
@@ -445,20 +468,15 @@ static int db_load_builtin_audio_subset(DBase *pDb, DBKind kind, int bMusicOnly)
         char *text;
         size_t size;
 
-        if (bMusicOnly && entry->file_type == XFT_BINARY &&
-            x_strcmp(entry->path, "Binary/_init") != 0 &&
-            x_strcmp(entry->path, "Binary/audio.1.sg") != 0) continue;
+        if (bMusicOnly && entry->file_type == XFT_BINARY && x_strcmp(entry->path, "Binary/_init") != 0 && x_strcmp(entry->path, "Binary/audio.1.sg") != 0) continue;
         cdbuf_init(&out);
-        if (!inflate_raw(entry->deflated, entry->compressed_size,
-                         entry->original_size, entry->original_size + 1U, &out) ||
-            out.nSize != entry->original_size) {
+        if (!inflate_raw(entry->deflated, entry->compressed_size, entry->original_size, entry->original_size + 1U, &out) || out.nSize != entry->original_size) {
             cdbuf_free(&out);
             break;
         }
         text = cdbuf_detach(&out, &size);
         cdbuf_free(&out);
-        db_add(pDb, name ? name + 1 : entry->path, entry->path, text,
-               size, entry->file_type, kind);
+        db_add(pDb, name ? name + 1 : entry->path, entry->path, text, size, entry->file_type, kind);
     }
     if (i != sizeof(xx_die_audio_entries) / sizeof(xx_die_audio_entries[0])) {
         while (pDb->nCount > nBefore) {
@@ -470,8 +488,7 @@ static int db_load_builtin_audio_subset(DBase *pDb, DBKind kind, int bMusicOnly)
         return 0;
     }
     if (pDb->nCount > 1) {
-        x_qsort(pDb->pRecords, (size_t)pDb->nCount,
-                sizeof(DBSignature), compare_signatures);
+        x_qsort(pDb->pRecords, (size_t)pDb->nCount, sizeof(DBSignature), compare_signatures);
     }
     return 1;
 }

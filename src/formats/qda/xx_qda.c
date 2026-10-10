@@ -68,17 +68,15 @@ static void xx_qda_vtable_destroy(Abstractformat *self);
 
 /* ------------------------------------------------------------- helpers -- */
 
-static bool xx_qda_read_at(Abstractformat *self, int64_t offset,
-                              uint8_t *buffer, size_t size) {
+static bool xx_qda_read_at(Abstractformat *self, int64_t offset, uint8_t *buffer, size_t size)
+{
     size_t completed = 0U;
 
-    if (!self || !self->device || offset < 0 ||
-        xx_io_seek64(self->device, offset, SEEK_SET) != 0) {
+    if (!self || !self->device || offset < 0 || xx_io_seek64(self->device, offset, SEEK_SET) != 0) {
         return false;
     }
     while (completed < size) {
-        ssize_t received =
-            xx_io_read(self->device, buffer + completed, size - completed);
+        ssize_t received = xx_io_read(self->device, buffer + completed, size - completed);
         if (received <= 0 || (size_t)received > size - completed) {
             return false;
         }
@@ -87,14 +85,14 @@ static bool xx_qda_read_at(Abstractformat *self, int64_t offset,
     return true;
 }
 
-static bool xx_qda_range_within(int64_t total, int64_t offset,
-                                   int64_t size) {
-    return offset >= 0 && size >= 0 && offset <= total &&
-           size <= total - offset;
+static bool xx_qda_range_within(int64_t total, int64_t offset, int64_t size)
+{
+    return offset >= 0 && size >= 0 && offset <= total && size <= total - offset;
 }
 
 /* Refuse anything that would escape the extraction directory. */
-static bool xx_qda_path_safe(const char *name) {
+static bool xx_qda_path_safe(const char *name)
+{
     const char *cursor = name;
 
     if (!name || !name[0] || name[0] == '/') return false;
@@ -109,7 +107,8 @@ static bool xx_qda_path_safe(const char *name) {
     return true;
 }
 
-static void xx_qda_stream_free(void *pointer) {
+static void xx_qda_stream_free(void *pointer)
+{
     xx_qda_stream *stream = (xx_qda_stream *)pointer;
     size_t index;
 
@@ -122,17 +121,15 @@ static void xx_qda_stream_free(void *pointer) {
 }
 
 /* Append a member, taking ownership of @p name. */
-static bool xx_qda_add(xx_qda_stream *stream,
-                          const xx_qda_member *member) {
-    xx_qda_member *grown = (xx_qda_member *)xx_mem_realloc(
-        stream->items, sizeof(*grown) * (stream->count + 1U));
+static bool xx_qda_add(xx_qda_stream *stream, const xx_qda_member *member)
+{
+    xx_qda_member *grown = (xx_qda_member *)xx_mem_realloc(stream->items, sizeof(*grown) * (stream->count + 1U));
 
     if (!grown) return false;
     stream->items = grown;
     stream->items[stream->count++] = *member;
     return true;
 }
-
 
 #define XX_QDA_HEADER_SIZE 0x100
 #define XX_QDA_ENTRY_SIZE 0x10c
@@ -148,10 +145,10 @@ static bool xx_qda_add(xx_qda_stream *stream,
 static xx_qda_stream *xx_qda_parse(Abstractformat *self, xx_pd_struct *pd);
 static bool xx_qda_decode(Abstractformat *self, const xx_qda_member *member, uint8_t **out, size_t *out_size, xx_pd_struct *pd);
 
-
 /* The archive-wide flag, published per member unchanged. */
 
-static xx_qda_stream *xx_qda_parse(Abstractformat *self, xx_pd_struct *pd) {
+static xx_qda_stream *xx_qda_parse(Abstractformat *self, xx_pd_struct *pd)
+{
     xx_qda_stream *stream = NULL;
     uint8_t header[0x10];
     uint8_t entry[XX_QDA_ENTRY_SIZE];
@@ -175,8 +172,7 @@ static xx_qda_stream *xx_qda_parse(Abstractformat *self, xx_pd_struct *pd) {
 
     /* The signature sits four bytes in, behind the flag word, which is why
      * it is easy to misread as being at offset 0. */
-    if (header[4] != (uint8_t)'Q' || header[5] != (uint8_t)'D' ||
-        header[6] != (uint8_t)'A' || header[7] != (uint8_t)'0') {
+    if (header[4] != (uint8_t)'Q' || header[5] != (uint8_t)'D' || header[6] != (uint8_t)'A' || header[7] != (uint8_t)'0') {
         return NULL;
     }
 
@@ -216,10 +212,8 @@ static xx_qda_stream *xx_qda_parse(Abstractformat *self, xx_pd_struct *pd) {
         size_t name_length = 0U;
 
         if (pd && xx_pd_is_stopped(pd)) goto fail;
-        entry_offset = (int64_t)XX_QDA_HEADER_SIZE +
-                       index * (int64_t)XX_QDA_ENTRY_SIZE;
-        if (!xx_qda_read_at(self, self->base_address + entry_offset, entry,
-                            sizeof(entry))) {
+        entry_offset = (int64_t)XX_QDA_HEADER_SIZE + index * (int64_t)XX_QDA_ENTRY_SIZE;
+        if (!xx_qda_read_at(self, self->base_address + entry_offset, entry, sizeof(entry))) {
             goto fail;
         }
 
@@ -235,15 +229,13 @@ static xx_qda_stream *xx_qda_parse(Abstractformat *self, xx_pd_struct *pd) {
 
         /* The stream's length comes from the ARCHIVE's flag: in a stored
          * archive the compressed-size field is not filled in at all. */
-        stream_size = (flag == XX_QDA_METHOD_PACKED) ? compressed_size
-                                                     : uncompressed_size;
+        stream_size = (flag == XX_QDA_METHOD_PACKED) ? compressed_size : uncompressed_size;
         /* A member whose extent leaves the file is a rejection, not a
          * truncation: the directory is authoritative and a directory that
          * points outside the archive was never a directory. */
         if (!xx_qda_range_within(span, data_offset, stream_size)) goto fail;
 
-        while (name_length < (size_t)XX_QDA_NAME_SIZE &&
-               entry[XX_QDA_NAME_OFFSET + name_length] != 0U) {
+        while (name_length < (size_t)XX_QDA_NAME_SIZE && entry[XX_QDA_NAME_OFFSET + name_length] != 0U) {
             uint8_t byte = entry[XX_QDA_NAME_OFFSET + name_length];
 
             /* Control bytes never appear in a name field that a DOS
@@ -261,8 +253,7 @@ static xx_qda_stream *xx_qda_parse(Abstractformat *self, xx_pd_struct *pd) {
         if (name_length == 0U) {
             /* An all-NUL name field is structurally fine and does happen;
              * the ordinal keeps such members addressable and distinct. */
-            if (xx_rt_snprintf(name_buffer, sizeof(name_buffer),
-                               "record%lld", (long long)(index + 1)) <= 0) {
+            if (xx_rt_snprintf(name_buffer, sizeof(name_buffer), "record%lld", (long long)(index + 1)) <= 0) {
                 goto fail;
             }
         }
@@ -297,12 +288,10 @@ fail:
     return NULL;
 }
 
-
 /* Stored and packed members are both read the same way; only what happens to
  * the bytes afterwards differs. */
-static bool xx_qda_decode(Abstractformat *self, const xx_qda_member *member,
-                          uint8_t **out, size_t *out_size,
-                          xx_pd_struct *pd) {
+static bool xx_qda_decode(Abstractformat *self, const xx_qda_member *member, uint8_t **out, size_t *out_size, xx_pd_struct *pd)
+{
     uint8_t *input = NULL;
     uint8_t *output = NULL;
     size_t written = 0U;
@@ -315,8 +304,7 @@ static bool xx_qda_decode(Abstractformat *self, const xx_qda_member *member,
      * switch is repeated here: were the flag check ever loosened, routing an
      * unknown method through either branch would produce plausible-looking
      * garbage rather than a refusal. */
-    if (member->method != XX_QDA_METHOD_STORED &&
-        member->method != XX_QDA_METHOD_PACKED) {
+    if (member->method != XX_QDA_METHOD_STORED && member->method != XX_QDA_METHOD_PACKED) {
         return false;
     }
     if (member->compressed_size < 0 || member->uncompressed_size < 0) {
@@ -326,16 +314,13 @@ static bool xx_qda_decode(Abstractformat *self, const xx_qda_member *member,
     if (member->compressed_size > XX_QDA_MAX_DECODED) return false;
     /* A stored member's stream IS its plaintext; a disagreement means the
      * member was not built by this parse. */
-    if (member->method == XX_QDA_METHOD_STORED &&
-        member->compressed_size != member->uncompressed_size) {
+    if (member->method == XX_QDA_METHOD_STORED && member->compressed_size != member->uncompressed_size) {
         return false;
     }
 
     /* A zero-length member is legal: the entry simply describes an empty
      * file. Allocate one byte so the caller always gets a freeable block. */
-    output = (uint8_t *)xx_mem_alloc(
-        member->uncompressed_size != 0 ? (size_t)member->uncompressed_size
-                                       : 1U);
+    output = (uint8_t *)xx_mem_alloc(member->uncompressed_size != 0 ? (size_t)member->uncompressed_size : 1U);
     if (!output) return false;
     if (member->uncompressed_size == 0) {
         *out = output;
@@ -343,15 +328,12 @@ static bool xx_qda_decode(Abstractformat *self, const xx_qda_member *member,
         return true;
     }
 
-    input = (uint8_t *)xx_mem_alloc(
-        member->compressed_size != 0 ? (size_t)member->compressed_size : 1U);
+    input = (uint8_t *)xx_mem_alloc(member->compressed_size != 0 ? (size_t)member->compressed_size : 1U);
     if (!input) {
         xx_mem_free(output);
         return false;
     }
-    if (member->compressed_size != 0 &&
-        !xx_qda_read_at(self, member->data_offset, input,
-                        (size_t)member->compressed_size)) {
+    if (member->compressed_size != 0 && !xx_qda_read_at(self, member->data_offset, input, (size_t)member->compressed_size)) {
         xx_mem_free(input);
         xx_mem_free(output);
         return false;
@@ -364,10 +346,7 @@ static bool xx_qda_decode(Abstractformat *self, const xx_qda_member *member,
 
     if (member->method == XX_QDA_METHOD_STORED) {
         xx_rt_memcpy(output, input, (size_t)member->uncompressed_size);
-    } else if (!xx_qda_decode_memory(input, (size_t)member->compressed_size,
-                                     output,
-                                     (size_t)member->uncompressed_size,
-                                     &written) ||
+    } else if (!xx_qda_decode_memory(input, (size_t)member->compressed_size, output, (size_t)member->uncompressed_size, &written) ||
                written != (size_t)member->uncompressed_size) {
         /* The BPE decoder stops at the capacity it was given, so a stream
          * that would expand further returns a short count rather than
@@ -384,8 +363,8 @@ static bool xx_qda_decode(Abstractformat *self, const xx_qda_member *member,
 
 /* ---------------------------------------------------------- lifecycle --- */
 
-void xx_qda_init(xx_qda *archive, xx_io_device *device,
-                    int64_t base_address) {
+void xx_qda_init(xx_qda *archive, xx_io_device *device, int64_t base_address)
+{
     if (!archive) return;
     xx_mem_zero(archive, sizeof(*archive));
     xx_format_init(&archive->format, device, base_address);
@@ -398,22 +377,17 @@ void xx_qda_init(xx_qda *archive, xx_io_device *device,
     archive->format.check_is_valid = xx_qda_check_is_valid;
     archive->format.handle_base_info = xx_qda_handle_base_info;
     archive->format.get_format_size = xx_qda_get_format_size;
-    archive->format.get_number_of_archive_records =
-        xx_qda_get_number_of_archive_records;
-    archive->format.create_archive_records_reading =
-        xx_qda_create_archive_records_reading;
-    archive->format.get_current_archive_record =
-        xx_qda_get_current_archive_record;
-    archive->format.unpack_current_archive_record =
-        xx_qda_unpack_current_archive_record;
-    archive->format.archive_record_move_to_next =
-        xx_qda_archive_record_move_to_next;
-    archive->format.free_archive_records_reading =
-        xx_qda_free_archive_records_reading;
+    archive->format.get_number_of_archive_records = xx_qda_get_number_of_archive_records;
+    archive->format.create_archive_records_reading = xx_qda_create_archive_records_reading;
+    archive->format.get_current_archive_record = xx_qda_get_current_archive_record;
+    archive->format.unpack_current_archive_record = xx_qda_unpack_current_archive_record;
+    archive->format.archive_record_move_to_next = xx_qda_archive_record_move_to_next;
+    archive->format.free_archive_records_reading = xx_qda_free_archive_records_reading;
     archive->format.destroy = xx_qda_vtable_destroy;
 }
 
-xx_qda *xx_qda_create(xx_io_device *device, int64_t base_address) {
+xx_qda *xx_qda_create(xx_io_device *device, int64_t base_address)
+{
     xx_qda *archive = (xx_qda *)xx_mem_alloc(sizeof(*archive));
 
     if (!archive) return NULL;
@@ -421,7 +395,8 @@ xx_qda *xx_qda_create(xx_io_device *device, int64_t base_address) {
     return archive;
 }
 
-void xx_qda_destroy(xx_qda *archive) {
+void xx_qda_destroy(xx_qda *archive)
+{
     if (!archive) return;
     /* Not xx_format_destroy: it dispatches through format.destroy, which is
      * the wrapper below, and the two would recurse. */
@@ -430,19 +405,22 @@ void xx_qda_destroy(xx_qda *archive) {
     archive->number_of_records = 0U;
 }
 
-void xx_qda_free(xx_qda *archive) {
+void xx_qda_free(xx_qda *archive)
+{
     if (!archive) return;
     xx_qda_destroy(archive);
     xx_mem_free(archive);
 }
 
-static void xx_qda_vtable_destroy(Abstractformat *self) {
+static void xx_qda_vtable_destroy(Abstractformat *self)
+{
     xx_qda_destroy((xx_qda *)self);
 }
 
 /* -------------------------------------------------------------- format -- */
 
-bool xx_qda_check_is_valid(Abstractformat *self, xx_pd_struct *pd) {
+bool xx_qda_check_is_valid(Abstractformat *self, xx_pd_struct *pd)
+{
     xx_qda_stream *stream;
 
     if (!self || (pd && xx_pd_is_stopped(pd))) return false;
@@ -452,7 +430,8 @@ bool xx_qda_check_is_valid(Abstractformat *self, xx_pd_struct *pd) {
     return true;
 }
 
-bool xx_qda_handle_base_info(Abstractformat *self, xx_pd_struct *pd) {
+bool xx_qda_handle_base_info(Abstractformat *self, xx_pd_struct *pd)
+{
     xx_qda *archive = (xx_qda *)self;
     xx_qda_stream *stream;
 
@@ -473,18 +452,17 @@ bool xx_qda_handle_base_info(Abstractformat *self, xx_pd_struct *pd) {
     return true;
 }
 
-int64_t xx_qda_get_format_size(Abstractformat *self, xx_pd_struct *pd) {
-    if (!self ||
-        (!self->base_info_handled && !xx_format_handle_base_info(self, pd))) {
+int64_t xx_qda_get_format_size(Abstractformat *self, xx_pd_struct *pd)
+{
+    if (!self || (!self->base_info_handled && !xx_format_handle_base_info(self, pd))) {
         return 0;
     }
     return self->is_valid ? self->format_size : 0;
 }
 
-uint64_t xx_qda_get_number_of_archive_records(Abstractformat *self,
-                                                 xx_pd_struct *pd) {
-    if (!self ||
-        (!self->base_info_handled && !xx_format_handle_base_info(self, pd))) {
+uint64_t xx_qda_get_number_of_archive_records(Abstractformat *self, xx_pd_struct *pd)
+{
+    if (!self || (!self->base_info_handled && !xx_format_handle_base_info(self, pd))) {
         return 0U;
     }
     return self->is_valid ? ((xx_qda *)self)->number_of_records : 0U;
@@ -492,8 +470,8 @@ uint64_t xx_qda_get_number_of_archive_records(Abstractformat *self,
 
 /* ------------------------------------------------------------- records -- */
 
-static bool xx_qda_set_record(xx_archive_record *record,
-                                 const xx_qda_member *member) {
+static bool xx_qda_set_record(xx_archive_record *record, const xx_qda_member *member)
+{
     xx_archive_record_cleanup(record);
     xx_archive_record_init(record);
     record->header_offset = member->header_offset;
@@ -501,34 +479,24 @@ static bool xx_qda_set_record(xx_archive_record *record,
     record->data_offset = member->data_offset;
     record->compressed_size = member->compressed_size;
     return xx_archive_record_set_original_name(record, member->name) &&
-           xx_archive_record_set_meta_u64(record, XX_META_ID_COMPRESSED_SIZE,
-                                          (uint64_t)member->compressed_size) &&
-           xx_archive_record_set_meta_u64(
-               record, XX_META_ID_UNCOMPRESSED_SIZE,
-               (uint64_t)member->uncompressed_size) &&
-           xx_archive_record_set_meta_u64(record, XX_META_ID_COMPRESSION_METHOD,
-                                          member->method) &&
-           xx_archive_record_set_meta_u64(record, XX_META_ID_TIMESTAMP,
-                                          member->timestamp) &&
-           xx_archive_record_set_meta_bool(record, XX_META_ID_IS_FOLDER,
-                                           member->is_folder) &&
-           xx_archive_record_set_meta_bool(record, XX_META_ID_IS_ENCRYPTED,
-                                           false);
+           xx_archive_record_set_meta_u64(record, XX_META_ID_COMPRESSED_SIZE, (uint64_t)member->compressed_size) &&
+           xx_archive_record_set_meta_u64(record, XX_META_ID_UNCOMPRESSED_SIZE, (uint64_t)member->uncompressed_size) &&
+           xx_archive_record_set_meta_u64(record, XX_META_ID_COMPRESSION_METHOD, member->method) &&
+           xx_archive_record_set_meta_u64(record, XX_META_ID_TIMESTAMP, member->timestamp) &&
+           xx_archive_record_set_meta_bool(record, XX_META_ID_IS_FOLDER, member->is_folder) && xx_archive_record_set_meta_bool(record, XX_META_ID_IS_ENCRYPTED, false);
 }
 
-static bool xx_qda_copy_options(xx_list_s *target,
-                                   const xx_list_s *options) {
+static bool xx_qda_copy_options(xx_list_s *target, const xx_list_s *options)
+{
     size_t index;
 
     if (!target || !options) return options == NULL;
     for (index = 0U; index < options->count; ++index) {
-        const xx_meta *source =
-            (const xx_meta *)xx_list_at((const xx_list_t *)options, index);
+        const xx_meta *source = (const xx_meta *)xx_list_at((const xx_list_t *)options, index);
         xx_meta copied;
         if (!source) continue;
         xx_meta_init(&copied, source->meta_id);
-        if (!xx_var_copy(&copied.var, &source->var) ||
-            !xx_list_append(target, &copied)) {
+        if (!xx_var_copy(&copied.var, &source->var) || !xx_list_append(target, &copied)) {
             xx_meta_cleanup(&copied);
             return false;
         }
@@ -536,21 +504,20 @@ static bool xx_qda_copy_options(xx_list_s *target,
     return true;
 }
 
-static const xx_var *xx_qda_get_option(const xx_list_s *options,
-                                          uint32_t meta_id) {
+static const xx_var *xx_qda_get_option(const xx_list_s *options, uint32_t meta_id)
+{
     size_t index;
 
     if (!options) return NULL;
     for (index = 0U; index < options->count; ++index) {
-        const xx_meta *meta =
-            (const xx_meta *)xx_list_at((const xx_list_t *)options, index);
+        const xx_meta *meta = (const xx_meta *)xx_list_at((const xx_list_t *)options, index);
         if (meta && meta->meta_id == meta_id) return &meta->var;
     }
     return NULL;
 }
 
-xx_archive_record_state *xx_qda_create_archive_records_reading(
-    Abstractformat *self, const xx_list_s *options, xx_pd_struct *pd) {
+xx_archive_record_state *xx_qda_create_archive_records_reading(Abstractformat *self, const xx_list_s *options, xx_pd_struct *pd)
+{
     xx_qda_stream *stream;
     xx_archive_record_state *state;
 
@@ -566,9 +533,7 @@ xx_archive_record_state *xx_qda_create_archive_records_reading(
     state->internal_state = stream;
     state->free_internal = xx_qda_stream_free;
     state->total_records = (int64_t)stream->count;
-    if (!xx_qda_copy_options(&state->options, options) ||
-        (stream->count != 0U &&
-         !xx_qda_set_record(&state->current_record, &stream->items[0]))) {
+    if (!xx_qda_copy_options(&state->options, options) || (stream->count != 0U && !xx_qda_set_record(&state->current_record, &stream->items[0]))) {
         xx_archive_record_state_free(state);
         return NULL;
     }
@@ -577,20 +542,16 @@ xx_archive_record_state *xx_qda_create_archive_records_reading(
     return state;
 }
 
-const xx_archive_record *xx_qda_get_current_archive_record(
-    Abstractformat *self, xx_archive_record_state *state) {
-    return self && state && state->format == self && state->has_record
-               ? &state->current_record
-               : NULL;
+const xx_archive_record *xx_qda_get_current_archive_record(Abstractformat *self, xx_archive_record_state *state)
+{
+    return self && state && state->format == self && state->has_record ? &state->current_record : NULL;
 }
 
-bool xx_qda_archive_record_move_to_next(Abstractformat *self,
-                                           xx_archive_record_state *state,
-                                           xx_pd_struct *pd) {
+bool xx_qda_archive_record_move_to_next(Abstractformat *self, xx_archive_record_state *state, xx_pd_struct *pd)
+{
     xx_qda_stream *stream;
 
-    if (!self || !state || state->format != self || !state->has_record ||
-        (pd && xx_pd_is_stopped(pd))) {
+    if (!self || !state || state->format != self || !state->has_record || (pd && xx_pd_is_stopped(pd))) {
         return false;
     }
     stream = (xx_qda_stream *)state->internal_state;
@@ -602,14 +563,12 @@ bool xx_qda_archive_record_move_to_next(Abstractformat *self,
     }
     ++stream->index;
     ++state->current_index;
-    state->has_record = xx_qda_set_record(&state->current_record,
-                                             &stream->items[stream->index]);
+    state->has_record = xx_qda_set_record(&state->current_record, &stream->items[stream->index]);
     return state->has_record;
 }
 
-bool xx_qda_unpack_current_archive_record(Abstractformat *self,
-                                             xx_archive_record_state *state,
-                                             xx_pd_struct *pd) {
+bool xx_qda_unpack_current_archive_record(Abstractformat *self, xx_archive_record_state *state, xx_pd_struct *pd)
+{
     xx_qda_stream *stream;
     const xx_qda_member *member;
     const xx_var *path_option;
@@ -621,8 +580,7 @@ bool xx_qda_unpack_current_archive_record(Abstractformat *self,
     bool result = false;
     bool created = false;
 
-    if (!self || !state || state->format != self || !state->has_record ||
-        (pd && xx_pd_is_stopped(pd))) {
+    if (!self || !state || state->format != self || !state->has_record || (pd && xx_pd_is_stopped(pd))) {
         return false;
     }
     stream = (xx_qda_stream *)state->internal_state;
@@ -630,8 +588,7 @@ bool xx_qda_unpack_current_archive_record(Abstractformat *self,
     member = &stream->items[stream->index];
     if (!xx_qda_path_safe(member->name)) return false;
 
-    path_option = xx_qda_get_option(&state->options,
-                                       XX_META_ID_OPT_UNPACK_PATH);
+    path_option = xx_qda_get_option(&state->options, XX_META_ID_OPT_UNPACK_PATH);
     if (!path_option) {
         /* No destination: decode and discard, which verifies the member
          * without writing anything. */
@@ -640,11 +597,9 @@ bool xx_qda_unpack_current_archive_record(Abstractformat *self,
         xx_mem_free(plain);
         return result;
     }
-    if (path_option->type == XX_VAR_TYPE_STRING ||
-        path_option->type == XX_VAR_TYPE_STRING_VIEW) {
+    if (path_option->type == XX_VAR_TYPE_STRING || path_option->type == XX_VAR_TYPE_STRING_VIEW) {
         base_path = xx_var_get_str(path_option);
-    } else if (path_option->type == XX_VAR_TYPE_WSTRING ||
-               path_option->type == XX_VAR_TYPE_WSTRING_VIEW) {
+    } else if (path_option->type == XX_VAR_TYPE_WSTRING || path_option->type == XX_VAR_TYPE_WSTRING_VIEW) {
         converted_path = xx_str_unicode_to_utf8(xx_var_get_wstr(path_option));
         base_path = converted_path;
     }
@@ -652,9 +607,7 @@ bool xx_qda_unpack_current_archive_record(Abstractformat *self,
         xx_str_free(converted_path);
         return false;
     }
-    if (base_path[0] != '\0' &&
-        base_path[xx_str_len(base_path) - 1U] != '/' &&
-        base_path[xx_str_len(base_path) - 1U] != '\\') {
+    if (base_path[0] != '\0' && base_path[xx_str_len(base_path) - 1U] != '/' && base_path[xx_str_len(base_path) - 1U] != '\\') {
         target_path = xx_str_concat3(base_path, "/", member->name);
     } else {
         target_path = xx_str_concat(base_path, member->name);
@@ -667,8 +620,7 @@ bool xx_qda_unpack_current_archive_record(Abstractformat *self,
         xx_str_free(target_path);
         return result;
     }
-    if (!xx_store_create_dirs_a(target_path, false) ||
-        !xx_qda_decode(self, member, &plain, &plain_size, pd)) {
+    if (!xx_store_create_dirs_a(target_path, false) || !xx_qda_decode(self, member, &plain, &plain_size, pd)) {
         xx_str_free(target_path);
         return false;
     }
@@ -679,8 +631,7 @@ bool xx_qda_unpack_current_archive_record(Abstractformat *self,
 
         result = output != NULL;
         while (result && completed < plain_size) {
-            ssize_t sent = xx_io_write(output, plain + completed,
-                                       plain_size - completed);
+            ssize_t sent = xx_io_write(output, plain + completed, plain_size - completed);
             if (sent <= 0 || (size_t)sent > plain_size - completed) {
                 result = false;
                 break;
@@ -695,8 +646,8 @@ bool xx_qda_unpack_current_archive_record(Abstractformat *self,
     return result;
 }
 
-void xx_qda_free_archive_records_reading(Abstractformat *self,
-                                            xx_archive_record_state *state) {
+void xx_qda_free_archive_records_reading(Abstractformat *self, xx_archive_record_state *state)
+{
     (void)self;
     xx_archive_record_state_free(state);
 }

@@ -60,40 +60,31 @@ struct xx_pchrom {
     Abstractformat format;
     uint64_t number_of_records;
     uint64_t number_of_members;
-    uint32_t flmap0;             /**< Descriptor map word 0 (FCBA/NC/FRBA/NR). */
-    uint32_t flmap1;             /**< Descriptor map word 1 (FMBA/NM/FISBA/ISL). */
-    uint32_t flcomp;             /**< First component section word. */
-    uint32_t descriptor_version; /**< 1 or 2, from the FLCOMP read clock. */
+    uint32_t flmap0;               /**< Descriptor map word 0 (FCBA/NC/FRBA/NR). */
+    uint32_t flmap1;               /**< Descriptor map word 1 (FMBA/NM/FISBA/ISL). */
+    uint32_t flcomp;               /**< First component section word. */
+    uint32_t descriptor_version;   /**< 1 or 2, from the FLCOMP read clock. */
     uint32_t number_of_components; /**< NC + 1. */
-    uint32_t region_mask;        /**< Bit n set when region slot n is used. */
-    int64_t image_end;           /**< base_address + image size, or -1. */
+    uint32_t region_mask;          /**< Bit n set when region slot n is used. */
+    int64_t image_end;             /**< base_address + image size, or -1. */
     void *internal;
 };
 
-XXFC_API void xx_pchrom_init(xx_pchrom *pchrom, xx_io_device *dev,
-                             int64_t base_address);
+XXFC_API void xx_pchrom_init(xx_pchrom *pchrom, xx_io_device *dev, int64_t base_address);
 XXFC_API xx_pchrom *xx_pchrom_create(xx_io_device *dev, int64_t base_address);
 XXFC_API void xx_pchrom_destroy(xx_pchrom *pchrom);
 XXFC_API void xx_pchrom_free(xx_pchrom *pchrom);
 
 XXFC_API bool xx_pchrom_check_is_valid(Abstractformat *self, xx_pd_struct *pd);
-XXFC_API bool xx_pchrom_handle_base_info(Abstractformat *self,
-                                         xx_pd_struct *pd);
-XXFC_API int64_t xx_pchrom_get_format_size(Abstractformat *self,
-                                           xx_pd_struct *pd);
-XXFC_API uint64_t xx_pchrom_get_number_of_archive_records(Abstractformat *self,
-                                                          xx_pd_struct *pd);
+XXFC_API bool xx_pchrom_handle_base_info(Abstractformat *self, xx_pd_struct *pd);
+XXFC_API int64_t xx_pchrom_get_format_size(Abstractformat *self, xx_pd_struct *pd);
+XXFC_API uint64_t xx_pchrom_get_number_of_archive_records(Abstractformat *self, xx_pd_struct *pd);
 
-XXFC_API xx_archive_record_state *xx_pchrom_create_archive_records_reading(
-    Abstractformat *self, const xx_list_s *options, xx_pd_struct *pd);
-XXFC_API const xx_archive_record *xx_pchrom_get_current_archive_record(
-    Abstractformat *self, xx_archive_record_state *state);
-XXFC_API bool xx_pchrom_unpack_current_archive_record(
-    Abstractformat *self, xx_archive_record_state *state, xx_pd_struct *pd);
-XXFC_API bool xx_pchrom_archive_record_move_to_next(
-    Abstractformat *self, xx_archive_record_state *state, xx_pd_struct *pd);
-XXFC_API void xx_pchrom_free_archive_records_reading(
-    Abstractformat *self, xx_archive_record_state *state);
+XXFC_API xx_archive_record_state *xx_pchrom_create_archive_records_reading(Abstractformat *self, const xx_list_s *options, xx_pd_struct *pd);
+XXFC_API const xx_archive_record *xx_pchrom_get_current_archive_record(Abstractformat *self, xx_archive_record_state *state);
+XXFC_API bool xx_pchrom_unpack_current_archive_record(Abstractformat *self, xx_archive_record_state *state, xx_pd_struct *pd);
+XXFC_API bool xx_pchrom_archive_record_move_to_next(Abstractformat *self, xx_archive_record_state *state, xx_pd_struct *pd);
+XXFC_API void xx_pchrom_free_archive_records_reading(Abstractformat *self, xx_archive_record_state *state);
 
 XXFC_API uint64_t xx_pchrom_get_number_of_records(const xx_pchrom *pchrom);
 XXFC_API uint64_t xx_pchrom_get_number_of_members(const xx_pchrom *pchrom);
@@ -103,19 +94,24 @@ XXFC_API int64_t xx_pchrom_get_image_end(const xx_pchrom *pchrom);
 /** Record name used for region slot @p index ("region-bios.fd", ...), or NULL. */
 XXFC_API const char *xx_pchrom_region_name(uint32_t index);
 
-static inline Abstractformat *xx_pchrom_to_format(xx_pchrom *pchrom) {
+static inline Abstractformat *xx_pchrom_to_format(xx_pchrom *pchrom)
+{
     return pchrom ? &pchrom->format : NULL;
 }
-static inline void XPchrom_init(xx_pchrom *pchrom, xx_io_device *dev,
-                                int64_t base_address) {
+static inline void XPchrom_init(xx_pchrom *pchrom, xx_io_device *dev, int64_t base_address)
+{
     xx_pchrom_init(pchrom, dev, base_address);
 }
-static inline xx_pchrom *XPchrom_create(xx_io_device *dev,
-                                        int64_t base_address) {
+static inline xx_pchrom *XPchrom_create(xx_io_device *dev, int64_t base_address)
+{
     return xx_pchrom_create(dev, base_address);
 }
-static inline void XPchrom_free(xx_pchrom *pchrom) { xx_pchrom_free(pchrom); }
-static inline bool XPchrom_is_valid(xx_pchrom *pchrom, xx_pd_struct *pd) {
+static inline void XPchrom_free(xx_pchrom *pchrom)
+{
+    xx_pchrom_free(pchrom);
+}
+static inline bool XPchrom_is_valid(xx_pchrom *pchrom, xx_pd_struct *pd)
+{
     return pchrom ? xx_format_is_valid(&pchrom->format, pd) : false;
 }
 

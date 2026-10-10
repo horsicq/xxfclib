@@ -71,17 +71,17 @@ typedef struct xx_pjl XPjl;
 
 struct xx_pjl {
     Abstractformat format;
-    int64_t text_offset;     /**< base + 9, the first "@PJL"; -1 if unparsed. */
-    int64_t text_size;       /**< Bytes from text_offset to the NUL / end;
-                                  also the format size (binwalk result.size). */
-    int64_t text_end;        /**< text_offset + text_size: the NUL, or the
-                                  end of the input when there is none. */
+    int64_t text_offset;         /**< base + 9, the first "@PJL"; -1 if unparsed. */
+    int64_t text_size;           /**< Bytes from text_offset to the NUL / end;
+                                      also the format size (binwalk result.size). */
+    int64_t text_end;            /**< text_offset + text_size: the NUL, or the
+                                      end of the input when there is none. */
     uint64_t number_of_lines;    /**< LF-separated lines in the text. */
     uint64_t number_of_commands; /**< Lines that begin with "@PJL". */
     uint64_t number_of_uels;     /**< UEL commands in the text, the one
                                       at base not counted. */
-    bool has_terminator;     /**< A NUL byte ends the text. */
-    bool is_ascii;           /**< No byte of the text is above 0x7F. */
+    bool has_terminator;         /**< A NUL byte ends the text. */
+    bool is_ascii;               /**< No byte of the text is above 0x7F. */
 };
 
 XXFC_API void xx_pjl_init(xx_pjl *pjl, xx_io_device *dev, int64_t base_address);
@@ -106,18 +106,24 @@ XXFC_API uint64_t xx_pjl_get_number_of_uels(const xx_pjl *pjl);
 XXFC_API bool xx_pjl_has_terminator(const xx_pjl *pjl);
 XXFC_API bool xx_pjl_is_ascii(const xx_pjl *pjl);
 
-static inline Abstractformat *xx_pjl_to_format(xx_pjl *pjl) {
+static inline Abstractformat *xx_pjl_to_format(xx_pjl *pjl)
+{
     return pjl ? &pjl->format : NULL;
 }
-static inline void XPjl_init(xx_pjl *pjl, xx_io_device *dev,
-                             int64_t base_address) {
+static inline void XPjl_init(xx_pjl *pjl, xx_io_device *dev, int64_t base_address)
+{
     xx_pjl_init(pjl, dev, base_address);
 }
-static inline xx_pjl *XPjl_create(xx_io_device *dev, int64_t base_address) {
+static inline xx_pjl *XPjl_create(xx_io_device *dev, int64_t base_address)
+{
     return xx_pjl_create(dev, base_address);
 }
-static inline void XPjl_free(xx_pjl *pjl) { xx_pjl_free(pjl); }
-static inline bool XPjl_is_valid(xx_pjl *pjl, xx_pd_struct *pd) {
+static inline void XPjl_free(xx_pjl *pjl)
+{
+    xx_pjl_free(pjl);
+}
+static inline bool XPjl_is_valid(xx_pjl *pjl, xx_pd_struct *pd)
+{
     return pjl ? xx_format_is_valid(&pjl->format, pd) : false;
 }
 

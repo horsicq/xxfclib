@@ -91,11 +91,10 @@ static void fz1_vtable_destroy(Abstractformat *self);
 
 /* ------------------------------------------------------------- helpers -- */
 
-static bool fz1_read_at(Abstractformat *self, int64_t offset, uint8_t *buffer,
-                        size_t size) {
+static bool fz1_read_at(Abstractformat *self, int64_t offset, uint8_t *buffer, size_t size)
+{
     size_t done = 0U;
-    if (!self || !self->device || offset < 0 ||
-        xx_io_seek64(self->device, offset, SEEK_SET) != 0) {
+    if (!self || !self->device || offset < 0 || xx_io_seek64(self->device, offset, SEEK_SET) != 0) {
         return false;
     }
     while (done < size) {
@@ -106,7 +105,8 @@ static bool fz1_read_at(Abstractformat *self, int64_t offset, uint8_t *buffer,
     return true;
 }
 
-static void fz1_stream_free(void *pointer) {
+static void fz1_stream_free(void *pointer)
+{
     fz1_stream *stream = (fz1_stream *)pointer;
     size_t index;
     if (!stream) return;
@@ -117,11 +117,13 @@ static void fz1_stream_free(void *pointer) {
     xx_mem_free(stream);
 }
 
-static char fz1_upper(char c) {
+static char fz1_upper(char c)
+{
     return (c >= 'a' && c <= 'z') ? (char)(c - 'a' + 'A') : c;
 }
 
-static bool fz1_same_name(const char *left, const char *right) {
+static bool fz1_same_name(const char *left, const char *right)
+{
     while (*left && *right) {
         if (fz1_upper(*left) != fz1_upper(*right)) return false;
         ++left;
@@ -131,7 +133,8 @@ static bool fz1_same_name(const char *left, const char *right) {
 }
 
 /* True when name[0..stem) spells @p word, ignoring case. */
-static bool fz1_stem_is(const char *name, size_t stem, const char *word) {
+static bool fz1_stem_is(const char *name, size_t stem, const char *word)
+{
     size_t index;
     for (index = 0U; index < stem; ++index) {
         if (!word[index] || fz1_upper(name[index]) != word[index]) return false;
@@ -140,10 +143,9 @@ static bool fz1_stem_is(const char *name, size_t stem, const char *word) {
 }
 
 /* Windows resolves these to devices with or without an extension. */
-static bool fz1_is_device_name(const char *name) {
-    static const char *const devices[] = {"CON",    "PRN",     "AUX",
-                                          "NUL",    "CONIN$",  "CONOUT$",
-                                          "CLOCK$"};
+static bool fz1_is_device_name(const char *name)
+{
+    static const char *const devices[] = {"CON", "PRN", "AUX", "NUL", "CONIN$", "CONOUT$", "CLOCK$"};
     size_t stem = 0U, index;
     while (name[stem] && name[stem] != '.') ++stem;
     while (stem > 0U && name[stem - 1U] == ' ') --stem;
@@ -151,25 +153,23 @@ static bool fz1_is_device_name(const char *name) {
         if (fz1_stem_is(name, stem, devices[index])) return true;
     }
     return stem == 4U && name[3] >= '0' && name[3] <= '9' &&
-           ((fz1_upper(name[0]) == 'C' && fz1_upper(name[1]) == 'O' &&
-             fz1_upper(name[2]) == 'M') ||
-            (fz1_upper(name[0]) == 'L' && fz1_upper(name[1]) == 'P' &&
-             fz1_upper(name[2]) == 'T'));
+           ((fz1_upper(name[0]) == 'C' && fz1_upper(name[1]) == 'O' && fz1_upper(name[2]) == 'M') ||
+            (fz1_upper(name[0]) == 'L' && fz1_upper(name[1]) == 'P' && fz1_upper(name[2]) == 'T'));
 }
 
 /* One output character for a name byte: separators, reserved punctuation,
  * control and non-ASCII bytes all become '_'. */
-static char fz1_safe_char(uint8_t value) {
+static char fz1_safe_char(uint8_t value)
+{
     if (value < 0x20U || value > 0x7EU) return '_';
-    if (value == '/' || value == '\\' || value == ':' || value == '*' ||
-        value == '?' || value == '"' || value == '<' || value == '>' ||
-        value == '|') {
+    if (value == '/' || value == '\\' || value == ':' || value == '*' || value == '?' || value == '"' || value == '<' || value == '>' || value == '|') {
         return '_';
     }
     return (char)value;
 }
 
-static void fz1_append(char *out, size_t *length, const char *text) {
+static void fz1_append(char *out, size_t *length, const char *text)
+{
     while (*text && *length + 1U < FZ1_OUT_NAME_SIZE) out[(*length)++] = *text++;
     out[*length] = 0;
 }
@@ -178,10 +178,9 @@ static void fz1_append(char *out, size_t *length, const char *text) {
  * already published.  The stem never holds a separator, so the result is a
  * single path component; it always ends in an extension, so it can never be
  * "." or "..". */
-static char *fz1_member_name(const fz1_stream *stream, const uint8_t *entry,
-                             unsigned slot) {
-    static const char *const extensions[] = {"fzf", "fzv", "fzb",
-                                             "fze", "fzs", "fzp"};
+static char *fz1_member_name(const fz1_stream *stream, const uint8_t *entry, unsigned slot)
+{
+    static const char *const extensions[] = {"fzf", "fzv", "fzb", "fze", "fzs", "fzp"};
     char stem[FZ1_OUT_NAME_SIZE];
     char candidate[FZ1_OUT_NAME_SIZE];
     size_t begin = 0U, end = 0U, length = 0U, index;
@@ -238,8 +237,8 @@ static char *fz1_member_name(const fz1_stream *stream, const uint8_t *entry,
  * control byte in the name, counts larger than the machine's memory holds,
  * or a pointer list that is empty, runs backwards, leaves the disk or visits
  * a sector twice. */
-static bool fz1_read_entry(Abstractformat *self, const uint8_t *entry,
-                           fz1_member *member) {
+static bool fz1_read_entry(Abstractformat *self, const uint8_t *entry, fz1_member *member)
+{
     uint8_t head[FZ1_SECTOR_SIZE];
     uint8_t seen[FZ1_SECTOR_COUNT / 8U];
     uint32_t sectors = 0U;
@@ -250,24 +249,20 @@ static bool fz1_read_entry(Abstractformat *self, const uint8_t *entry,
     member->type = entry[12];
     member->part = entry[13];
     sloc = xx_data_get_u16(entry + 14, 2, 0, false);
-    if (member->type > FZ1_MAX_TYPE || member->part > FZ1_MAX_PART ||
-        sloc < FZ1_FIRST_DATA_SECTOR || sloc >= FZ1_SECTOR_COUNT) {
+    if (member->type > FZ1_MAX_TYPE || member->part > FZ1_MAX_PART || sloc < FZ1_FIRST_DATA_SECTOR || sloc >= FZ1_SECTOR_COUNT) {
         return false;
     }
     for (index = 0U; index < FZ1_NAME_SIZE && entry[index] != 0U; ++index) {
         if (entry[index] < 0x20U || entry[index] == 0x7FU) return false;
     }
-    if (!fz1_read_at(self,
-                     self->base_address + (int64_t)sloc * FZ1_SECTOR_SIZE,
-                     head, sizeof(head))) {
+    if (!fz1_read_at(self, self->base_address + (int64_t)sloc * FZ1_SECTOR_SIZE, head, sizeof(head))) {
         return false;
     }
     member->head_sector = sloc;
     member->banks = xx_data_get_u16(head + FZ1_COUNTS_OFFSET, 2, 0, false);
     member->voices = xx_data_get_u16(head + FZ1_COUNTS_OFFSET + 2U, 2, 0, false);
     member->waves = xx_data_get_u16(head + FZ1_COUNTS_OFFSET + 4U, 2, 0, false);
-    if (member->type != FZ1_TYPE_SEQUENCE &&
-        (member->banks > FZ1_MAX_BANKS || member->voices > FZ1_MAX_VOICES)) {
+    if (member->type != FZ1_TYPE_SEQUENCE && (member->banks > FZ1_MAX_BANKS || member->voices > FZ1_MAX_VOICES)) {
         return false;
     }
 
@@ -277,8 +272,7 @@ static bool fz1_read_entry(Abstractformat *self, const uint8_t *entry,
         uint16_t stop = xx_data_get_u16(head + index * 4U + 2U, 2, 0, false);
         uint32_t sector;
         if (start == 0U && stop == 0U) break;
-        if (start < FZ1_FIRST_DATA_SECTOR || stop < start ||
-            stop >= FZ1_SECTOR_COUNT) {
+        if (start < FZ1_FIRST_DATA_SECTOR || stop < start || stop >= FZ1_SECTOR_COUNT) {
             return false;
         }
         /* Each step marks a new sector or fails, so this runs at most
@@ -304,14 +298,11 @@ static bool fz1_read_entry(Abstractformat *self, const uint8_t *entry,
     member->size = (int64_t)sectors * FZ1_SECTOR_SIZE;
     member->head_offset = self->base_address + (int64_t)sloc * FZ1_SECTOR_SIZE;
     if (!member->skip_head) {
-        member->data_offset =
-            self->base_address + (int64_t)member->starts[0] * FZ1_SECTOR_SIZE;
+        member->data_offset = self->base_address + (int64_t)member->starts[0] * FZ1_SECTOR_SIZE;
     } else if (member->ends[0] > member->starts[0]) {
-        member->data_offset = self->base_address +
-                              ((int64_t)member->starts[0] + 1) * FZ1_SECTOR_SIZE;
+        member->data_offset = self->base_address + ((int64_t)member->starts[0] + 1) * FZ1_SECTOR_SIZE;
     } else if (member->extent_count > 1U) {
-        member->data_offset =
-            self->base_address + (int64_t)member->starts[1] * FZ1_SECTOR_SIZE;
+        member->data_offset = self->base_address + (int64_t)member->starts[1] * FZ1_SECTOR_SIZE;
     } else {
         member->data_offset = member->head_offset + FZ1_SECTOR_SIZE;
     }
@@ -319,7 +310,8 @@ static bool fz1_read_entry(Abstractformat *self, const uint8_t *entry,
 }
 
 /* The disk ID and allocation-table facts every FZ-1 head sector holds. */
-static bool fz1_head_ok(const uint8_t *sector0) {
+static bool fz1_head_ok(const uint8_t *sector0)
+{
     unsigned index;
     for (index = 0U; index < FZ1_NAME_SIZE; ++index) {
         uint8_t c = sector0[index];
@@ -327,13 +319,12 @@ static bool fz1_head_ok(const uint8_t *sector0) {
             return false;
         }
     }
-    return sector0[12] == 0U && sector0[13] == 0U && sector0[14] == 2U &&
-           sector0[15] == 0U && sector0[28] == 0U && sector0[29] == 0U &&
-           sector0[30] == 0U && sector0[31] == 0U &&
-           (sector0[FZ1_CAT_OFFSET] & 0x03U) == 0x03U;
+    return sector0[12] == 0U && sector0[13] == 0U && sector0[14] == 2U && sector0[15] == 0U && sector0[28] == 0U && sector0[29] == 0U && sector0[30] == 0U &&
+           sector0[31] == 0U && (sector0[FZ1_CAT_OFFSET] & 0x03U) == 0x03U;
 }
 
-static fz1_stream *fz1_parse(Abstractformat *self, xx_pd_struct *pd) {
+static fz1_stream *fz1_parse(Abstractformat *self, xx_pd_struct *pd)
+{
     uint8_t system[2U * FZ1_SECTOR_SIZE];
     fz1_stream *stream;
     bool after_blank = false;
@@ -344,25 +335,21 @@ static fz1_stream *fz1_parse(Abstractformat *self, xx_pd_struct *pd) {
     {
         int64_t total = xx_io_total_size(self->device);
         /* A raw dump has exactly one size; anything else is not this. */
-        if (total < self->base_address ||
-            total - self->base_address != FZ1_IMAGE_SIZE) {
+        if (total < self->base_address || total - self->base_address != FZ1_IMAGE_SIZE) {
             return NULL;
         }
     }
-    if (!fz1_read_at(self, self->base_address, system, sizeof(system)) ||
-        !fz1_head_ok(system)) {
+    if (!fz1_read_at(self, self->base_address, system, sizeof(system)) || !fz1_head_ok(system)) {
         return NULL;
     }
     stream = (fz1_stream *)xx_mem_alloc(sizeof(*stream));
     if (!stream) return NULL;
     xx_mem_zero(stream, sizeof(*stream));
-    stream->items =
-        (fz1_member *)xx_mem_alloc(sizeof(fz1_member) * FZ1_DIR_ENTRIES);
+    stream->items = (fz1_member *)xx_mem_alloc(sizeof(fz1_member) * FZ1_DIR_ENTRIES);
     if (!stream->items) goto fail;
 
     length = FZ1_NAME_SIZE;
-    while (length > 0U &&
-           (system[length - 1U] == ' ' || system[length - 1U] == 0U)) {
+    while (length > 0U && (system[length - 1U] == ' ' || system[length - 1U] == 0U)) {
         --length;
     }
     for (slot = 0U; slot < length; ++slot) {
@@ -371,8 +358,7 @@ static fz1_stream *fz1_parse(Abstractformat *self, xx_pd_struct *pd) {
     stream->label[length] = 0;
 
     for (slot = 0U; slot < FZ1_DIR_ENTRIES; ++slot) {
-        const uint8_t *entry =
-            system + FZ1_SECTOR_SIZE + (size_t)slot * FZ1_ENTRY_SIZE;
+        const uint8_t *entry = system + FZ1_SECTOR_SIZE + (size_t)slot * FZ1_ENTRY_SIZE;
         fz1_member member;
         if (pd && xx_pd_is_stopped(pd)) goto fail;
         if (entry[0] == 0U) {
@@ -398,8 +384,8 @@ fail:
 
 /* Copy the member's sectors, in pointer order and without the head, to
  * @p output; with no output the sectors are only read. */
-static bool fz1_copy(Abstractformat *self, const fz1_member *member,
-                     xx_io_device *output, xx_pd_struct *pd) {
+static bool fz1_copy(Abstractformat *self, const fz1_member *member, xx_io_device *output, xx_pd_struct *pd)
+{
     uint8_t sector_data[FZ1_SECTOR_SIZE];
     int64_t written = 0;
     unsigned extent;
@@ -410,16 +396,11 @@ static bool fz1_copy(Abstractformat *self, const fz1_member *member,
         for (; sector <= member->ends[extent]; ++sector) {
             size_t done = 0U;
             if (pd && xx_pd_is_stopped(pd)) return false;
-            if (sector >= FZ1_SECTOR_COUNT ||
-                !fz1_read_at(self,
-                             self->base_address +
-                                 (int64_t)sector * FZ1_SECTOR_SIZE,
-                             sector_data, sizeof(sector_data))) {
+            if (sector >= FZ1_SECTOR_COUNT || !fz1_read_at(self, self->base_address + (int64_t)sector * FZ1_SECTOR_SIZE, sector_data, sizeof(sector_data))) {
                 return false;
             }
             while (output && done < sizeof(sector_data)) {
-                ssize_t sent = xx_io_write(output, sector_data + done,
-                                           sizeof(sector_data) - done);
+                ssize_t sent = xx_io_write(output, sector_data + done, sizeof(sector_data) - done);
                 if (sent <= 0 || (size_t)sent > sizeof(sector_data) - done) {
                     return false;
                 }
@@ -433,8 +414,8 @@ static bool fz1_copy(Abstractformat *self, const fz1_member *member,
 
 /* ------------------------------------------------------------ lifecycle -- */
 
-void xx_casio_fz_1_disk_init(xx_casio_fz_1_disk *archive, xx_io_device *device,
-                             int64_t base_address) {
+void xx_casio_fz_1_disk_init(xx_casio_fz_1_disk *archive, xx_io_device *device, int64_t base_address)
+{
     if (!archive) return;
     xx_mem_zero(archive, sizeof(*archive));
     xx_format_init(&archive->format, device, base_address);
@@ -447,31 +428,25 @@ void xx_casio_fz_1_disk_init(xx_casio_fz_1_disk *archive, xx_io_device *device,
     archive->format.check_is_valid = xx_casio_fz_1_disk_check_is_valid;
     archive->format.handle_base_info = xx_casio_fz_1_disk_handle_base_info;
     archive->format.get_format_size = xx_casio_fz_1_disk_get_format_size;
-    archive->format.get_number_of_archive_records =
-        xx_casio_fz_1_disk_get_number_of_archive_records;
-    archive->format.create_archive_records_reading =
-        xx_casio_fz_1_disk_create_archive_records_reading;
-    archive->format.get_current_archive_record =
-        xx_casio_fz_1_disk_get_current_archive_record;
-    archive->format.unpack_current_archive_record =
-        xx_casio_fz_1_disk_unpack_current_archive_record;
-    archive->format.archive_record_move_to_next =
-        xx_casio_fz_1_disk_archive_record_move_to_next;
-    archive->format.free_archive_records_reading =
-        xx_casio_fz_1_disk_free_archive_records_reading;
+    archive->format.get_number_of_archive_records = xx_casio_fz_1_disk_get_number_of_archive_records;
+    archive->format.create_archive_records_reading = xx_casio_fz_1_disk_create_archive_records_reading;
+    archive->format.get_current_archive_record = xx_casio_fz_1_disk_get_current_archive_record;
+    archive->format.unpack_current_archive_record = xx_casio_fz_1_disk_unpack_current_archive_record;
+    archive->format.archive_record_move_to_next = xx_casio_fz_1_disk_archive_record_move_to_next;
+    archive->format.free_archive_records_reading = xx_casio_fz_1_disk_free_archive_records_reading;
     archive->format.destroy = fz1_vtable_destroy;
 }
 
-xx_casio_fz_1_disk *xx_casio_fz_1_disk_create(xx_io_device *device,
-                                              int64_t base_address) {
-    xx_casio_fz_1_disk *archive =
-        (xx_casio_fz_1_disk *)xx_mem_alloc(sizeof(*archive));
+xx_casio_fz_1_disk *xx_casio_fz_1_disk_create(xx_io_device *device, int64_t base_address)
+{
+    xx_casio_fz_1_disk *archive = (xx_casio_fz_1_disk *)xx_mem_alloc(sizeof(*archive));
     if (!archive) return NULL;
     xx_casio_fz_1_disk_init(archive, device, base_address);
     return archive;
 }
 
-void xx_casio_fz_1_disk_destroy(xx_casio_fz_1_disk *archive) {
+void xx_casio_fz_1_disk_destroy(xx_casio_fz_1_disk *archive)
+{
     if (!archive) return;
     /* Not xx_format_destroy: it dispatches through format.destroy, which is
      * the wrapper below, and the two would recurse. */
@@ -480,20 +455,22 @@ void xx_casio_fz_1_disk_destroy(xx_casio_fz_1_disk *archive) {
     archive->number_of_records = 0U;
 }
 
-void xx_casio_fz_1_disk_free(xx_casio_fz_1_disk *archive) {
+void xx_casio_fz_1_disk_free(xx_casio_fz_1_disk *archive)
+{
     if (!archive) return;
     xx_casio_fz_1_disk_destroy(archive);
     xx_mem_free(archive);
 }
 
-static void fz1_vtable_destroy(Abstractformat *self) {
+static void fz1_vtable_destroy(Abstractformat *self)
+{
     xx_casio_fz_1_disk_destroy((xx_casio_fz_1_disk *)self);
 }
 
 /* --------------------------------------------------------------- format -- */
 
-bool xx_casio_fz_1_disk_check_is_valid(Abstractformat *self,
-                                       xx_pd_struct *pd) {
+bool xx_casio_fz_1_disk_check_is_valid(Abstractformat *self, xx_pd_struct *pd)
+{
     fz1_stream *stream;
     if (!self || (pd && xx_pd_is_stopped(pd))) return false;
     stream = fz1_parse(self, pd);
@@ -502,8 +479,8 @@ bool xx_casio_fz_1_disk_check_is_valid(Abstractformat *self,
     return true;
 }
 
-bool xx_casio_fz_1_disk_handle_base_info(Abstractformat *self,
-                                         xx_pd_struct *pd) {
+bool xx_casio_fz_1_disk_handle_base_info(Abstractformat *self, xx_pd_struct *pd)
+{
     xx_casio_fz_1_disk *archive = (xx_casio_fz_1_disk *)self;
     fz1_stream *stream;
     if (!self || (pd && xx_pd_is_stopped(pd))) return false;
@@ -526,59 +503,48 @@ bool xx_casio_fz_1_disk_handle_base_info(Abstractformat *self,
     return true;
 }
 
-int64_t xx_casio_fz_1_disk_get_format_size(Abstractformat *self,
-                                           xx_pd_struct *pd) {
-    if (!self ||
-        (!self->base_info_handled && !xx_format_handle_base_info(self, pd))) {
+int64_t xx_casio_fz_1_disk_get_format_size(Abstractformat *self, xx_pd_struct *pd)
+{
+    if (!self || (!self->base_info_handled && !xx_format_handle_base_info(self, pd))) {
         return 0;
     }
     return self->is_valid ? self->format_size : 0;
 }
 
-uint64_t xx_casio_fz_1_disk_get_number_of_archive_records(
-    Abstractformat *self, xx_pd_struct *pd) {
-    if (!self ||
-        (!self->base_info_handled && !xx_format_handle_base_info(self, pd))) {
+uint64_t xx_casio_fz_1_disk_get_number_of_archive_records(Abstractformat *self, xx_pd_struct *pd)
+{
+    if (!self || (!self->base_info_handled && !xx_format_handle_base_info(self, pd))) {
         return 0U;
     }
-    return self->is_valid ? ((xx_casio_fz_1_disk *)self)->number_of_records
-                          : 0U;
+    return self->is_valid ? ((xx_casio_fz_1_disk *)self)->number_of_records : 0U;
 }
 
 /* -------------------------------------------------------------- records -- */
 
-static bool fz1_set_record(xx_archive_record *record,
-                           const fz1_member *member) {
+static bool fz1_set_record(xx_archive_record *record, const fz1_member *member)
+{
     xx_archive_record_cleanup(record);
     xx_archive_record_init(record);
     record->header_offset = member->head_offset;
     record->header_size = FZ1_SECTOR_SIZE;
     record->data_offset = member->data_offset;
     record->compressed_size = member->size;
-    return xx_archive_record_set_original_name(record, member->name) &&
-           xx_archive_record_set_meta_u64(record, XX_META_ID_COMPRESSED_SIZE,
-                                          (uint64_t)member->size) &&
-           xx_archive_record_set_meta_u64(record, XX_META_ID_UNCOMPRESSED_SIZE,
-                                          (uint64_t)member->size) &&
-           xx_archive_record_set_meta_u64(record,
-                                          XX_META_ID_COMPRESSION_METHOD, 0U) &&
-           xx_archive_record_set_meta_bool(record, XX_META_ID_IS_FOLDER,
-                                           false) &&
-           xx_archive_record_set_meta_bool(record, XX_META_ID_IS_ENCRYPTED,
-                                           false);
+    return xx_archive_record_set_original_name(record, member->name) && xx_archive_record_set_meta_u64(record, XX_META_ID_COMPRESSED_SIZE, (uint64_t)member->size) &&
+           xx_archive_record_set_meta_u64(record, XX_META_ID_UNCOMPRESSED_SIZE, (uint64_t)member->size) &&
+           xx_archive_record_set_meta_u64(record, XX_META_ID_COMPRESSION_METHOD, 0U) && xx_archive_record_set_meta_bool(record, XX_META_ID_IS_FOLDER, false) &&
+           xx_archive_record_set_meta_bool(record, XX_META_ID_IS_ENCRYPTED, false);
 }
 
-static bool fz1_copy_options(xx_list_s *target, const xx_list_s *options) {
+static bool fz1_copy_options(xx_list_s *target, const xx_list_s *options)
+{
     size_t index;
     if (!target || !options) return options == NULL;
     for (index = 0U; index < options->count; ++index) {
-        const xx_meta *source =
-            (const xx_meta *)xx_list_at((const xx_list_t *)options, index);
+        const xx_meta *source = (const xx_meta *)xx_list_at((const xx_list_t *)options, index);
         xx_meta copied;
         if (!source) continue;
         xx_meta_init(&copied, source->meta_id);
-        if (!xx_var_copy(&copied.var, &source->var) ||
-            !xx_list_append(target, &copied)) {
+        if (!xx_var_copy(&copied.var, &source->var) || !xx_list_append(target, &copied)) {
             xx_meta_cleanup(&copied);
             return false;
         }
@@ -586,20 +552,19 @@ static bool fz1_copy_options(xx_list_s *target, const xx_list_s *options) {
     return true;
 }
 
-static const xx_var *fz1_get_option(const xx_list_s *options,
-                                    uint32_t meta_id) {
+static const xx_var *fz1_get_option(const xx_list_s *options, uint32_t meta_id)
+{
     size_t index;
     if (!options) return NULL;
     for (index = 0U; index < options->count; ++index) {
-        const xx_meta *meta =
-            (const xx_meta *)xx_list_at((const xx_list_t *)options, index);
+        const xx_meta *meta = (const xx_meta *)xx_list_at((const xx_list_t *)options, index);
         if (meta && meta->meta_id == meta_id) return &meta->var;
     }
     return NULL;
 }
 
-xx_archive_record_state *xx_casio_fz_1_disk_create_archive_records_reading(
-    Abstractformat *self, const xx_list_s *options, xx_pd_struct *pd) {
+xx_archive_record_state *xx_casio_fz_1_disk_create_archive_records_reading(Abstractformat *self, const xx_list_s *options, xx_pd_struct *pd)
+{
     fz1_stream *stream;
     xx_archive_record_state *state;
 
@@ -615,9 +580,7 @@ xx_archive_record_state *xx_casio_fz_1_disk_create_archive_records_reading(
     state->internal_state = stream;
     state->free_internal = fz1_stream_free;
     state->total_records = (int64_t)stream->count;
-    if (!fz1_copy_options(&state->options, options) ||
-        (stream->count != 0U &&
-         !fz1_set_record(&state->current_record, &stream->items[0]))) {
+    if (!fz1_copy_options(&state->options, options) || (stream->count != 0U && !fz1_set_record(&state->current_record, &stream->items[0]))) {
         xx_archive_record_state_free(state);
         return NULL;
     }
@@ -626,18 +589,15 @@ xx_archive_record_state *xx_casio_fz_1_disk_create_archive_records_reading(
     return state;
 }
 
-const xx_archive_record *xx_casio_fz_1_disk_get_current_archive_record(
-    Abstractformat *self, xx_archive_record_state *state) {
-    return self && state && state->format == self && state->has_record
-               ? &state->current_record
-               : NULL;
+const xx_archive_record *xx_casio_fz_1_disk_get_current_archive_record(Abstractformat *self, xx_archive_record_state *state)
+{
+    return self && state && state->format == self && state->has_record ? &state->current_record : NULL;
 }
 
-bool xx_casio_fz_1_disk_archive_record_move_to_next(
-    Abstractformat *self, xx_archive_record_state *state, xx_pd_struct *pd) {
+bool xx_casio_fz_1_disk_archive_record_move_to_next(Abstractformat *self, xx_archive_record_state *state, xx_pd_struct *pd)
+{
     fz1_stream *stream;
-    if (!self || !state || state->format != self || !state->has_record ||
-        (pd && xx_pd_is_stopped(pd))) {
+    if (!self || !state || state->format != self || !state->has_record || (pd && xx_pd_is_stopped(pd))) {
         return false;
     }
     stream = (fz1_stream *)state->internal_state;
@@ -649,13 +609,12 @@ bool xx_casio_fz_1_disk_archive_record_move_to_next(
     }
     ++stream->index;
     ++state->current_index;
-    state->has_record =
-        fz1_set_record(&state->current_record, &stream->items[stream->index]);
+    state->has_record = fz1_set_record(&state->current_record, &stream->items[stream->index]);
     return state->has_record;
 }
 
-bool xx_casio_fz_1_disk_unpack_current_archive_record(
-    Abstractformat *self, xx_archive_record_state *state, xx_pd_struct *pd) {
+bool xx_casio_fz_1_disk_unpack_current_archive_record(Abstractformat *self, xx_archive_record_state *state, xx_pd_struct *pd)
+{
     fz1_stream *stream;
     const fz1_member *member;
     const xx_var *path_option;
@@ -667,8 +626,7 @@ bool xx_casio_fz_1_disk_unpack_current_archive_record(
     bool result;
     bool created = false;
 
-    if (!self || !state || state->format != self || !state->has_record ||
-        (pd && xx_pd_is_stopped(pd))) {
+    if (!self || !state || state->format != self || !state->has_record || (pd && xx_pd_is_stopped(pd))) {
         return false;
     }
     stream = (fz1_stream *)state->internal_state;
@@ -678,11 +636,9 @@ bool xx_casio_fz_1_disk_unpack_current_archive_record(
 
     path_option = fz1_get_option(&state->options, XX_META_ID_OPT_UNPACK_PATH);
     if (!path_option) return fz1_copy(self, member, NULL, pd);
-    if (path_option->type == XX_VAR_TYPE_STRING ||
-        path_option->type == XX_VAR_TYPE_STRING_VIEW) {
+    if (path_option->type == XX_VAR_TYPE_STRING || path_option->type == XX_VAR_TYPE_STRING_VIEW) {
         base_path = xx_var_get_str(path_option);
-    } else if (path_option->type == XX_VAR_TYPE_WSTRING ||
-               path_option->type == XX_VAR_TYPE_WSTRING_VIEW) {
+    } else if (path_option->type == XX_VAR_TYPE_WSTRING || path_option->type == XX_VAR_TYPE_WSTRING_VIEW) {
         converted_path = xx_str_unicode_to_utf8(xx_var_get_wstr(path_option));
         base_path = converted_path;
     }
@@ -691,8 +647,7 @@ bool xx_casio_fz_1_disk_unpack_current_archive_record(
         return false;
     }
     base_length = xx_str_len(base_path);
-    if (base_length != 0U && base_path[base_length - 1U] != '/' &&
-        base_path[base_length - 1U] != '\\') {
+    if (base_length != 0U && base_path[base_length - 1U] != '/' && base_path[base_length - 1U] != '\\') {
         target_path = xx_str_concat3(base_path, "/", member->name);
     } else {
         target_path = xx_str_concat(base_path, member->name);
@@ -716,8 +671,8 @@ bool xx_casio_fz_1_disk_unpack_current_archive_record(
     return result;
 }
 
-void xx_casio_fz_1_disk_free_archive_records_reading(
-    Abstractformat *self, xx_archive_record_state *state) {
+void xx_casio_fz_1_disk_free_archive_records_reading(Abstractformat *self, xx_archive_record_state *state)
+{
     (void)self;
     xx_archive_record_state_free(state);
 }

@@ -7,11 +7,14 @@
 extern "C" {
 #endif
 typedef xx_volume xx_apricot_partitions;
-XXFC_API void xx_apricot_partitions_init(xx_apricot_partitions *,xx_io_device *,int64_t);
-XXFC_API xx_apricot_partitions *xx_apricot_partitions_create(xx_io_device *,int64_t);
+XXFC_API void xx_apricot_partitions_init(xx_apricot_partitions *, xx_io_device *, int64_t);
+XXFC_API xx_apricot_partitions *xx_apricot_partitions_create(xx_io_device *, int64_t);
 XXFC_API void xx_apricot_partitions_destroy(xx_apricot_partitions *);
 XXFC_API void xx_apricot_partitions_free(xx_apricot_partitions *);
-static inline Abstractformat *xx_apricot_partitions_to_format(xx_apricot_partitions *r) { return r?&r->format:NULL; }
+static inline Abstractformat *xx_apricot_partitions_to_format(xx_apricot_partitions *r)
+{
+    return r ? &r->format : NULL;
+}
 #ifdef __cplusplus
 }
 #endif

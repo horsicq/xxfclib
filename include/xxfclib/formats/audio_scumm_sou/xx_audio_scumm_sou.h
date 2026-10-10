@@ -5,7 +5,9 @@
 #ifdef __cplusplus
 extern "C" {
 #endif
-typedef struct xx_audio_scumm_sou { Abstractformat format; } xx_audio_scumm_sou;
+typedef struct xx_audio_scumm_sou {
+    Abstractformat format;
+} xx_audio_scumm_sou;
 XXFC_API void xx_audio_scumm_sou_init(xx_audio_scumm_sou *, xx_io_device *, int64_t);
 XXFC_API xx_audio_scumm_sou *xx_audio_scumm_sou_create(xx_io_device *, int64_t);
 XXFC_API void xx_audio_scumm_sou_destroy(xx_audio_scumm_sou *);

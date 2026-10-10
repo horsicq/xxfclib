@@ -45,7 +45,7 @@ typedef struct xx_rtk XRtk;
 
 struct xx_rtk {
     Abstractformat format;
-    uint64_t number_of_records;  /**< Always 1 when the payload is non-empty. */
+    uint64_t number_of_records; /**< Always 1 when the payload is non-empty. */
     uint64_t number_of_members;
     uint32_t image_size;    /**< Declared payload length. */
     uint32_t checksum;      /**< Raw field; the algorithm is unpublished. */
@@ -56,29 +56,21 @@ struct xx_rtk {
     void *internal;
 };
 
-XXFC_API void xx_rtk_init(xx_rtk *rtk, xx_io_device *dev,
-                          int64_t base_address);
+XXFC_API void xx_rtk_init(xx_rtk *rtk, xx_io_device *dev, int64_t base_address);
 XXFC_API xx_rtk *xx_rtk_create(xx_io_device *dev, int64_t base_address);
 XXFC_API void xx_rtk_destroy(xx_rtk *rtk);
 XXFC_API void xx_rtk_free(xx_rtk *rtk);
 
 XXFC_API bool xx_rtk_check_is_valid(Abstractformat *self, xx_pd_struct *pd);
 XXFC_API bool xx_rtk_handle_base_info(Abstractformat *self, xx_pd_struct *pd);
-XXFC_API int64_t xx_rtk_get_format_size(Abstractformat *self,
-                                        xx_pd_struct *pd);
-XXFC_API uint64_t xx_rtk_get_number_of_archive_records(Abstractformat *self,
-                                                       xx_pd_struct *pd);
+XXFC_API int64_t xx_rtk_get_format_size(Abstractformat *self, xx_pd_struct *pd);
+XXFC_API uint64_t xx_rtk_get_number_of_archive_records(Abstractformat *self, xx_pd_struct *pd);
 
-XXFC_API xx_archive_record_state *xx_rtk_create_archive_records_reading(
-    Abstractformat *self, const xx_list_s *options, xx_pd_struct *pd);
-XXFC_API const xx_archive_record *xx_rtk_get_current_archive_record(
-    Abstractformat *self, xx_archive_record_state *state);
-XXFC_API bool xx_rtk_unpack_current_archive_record(
-    Abstractformat *self, xx_archive_record_state *state, xx_pd_struct *pd);
-XXFC_API bool xx_rtk_archive_record_move_to_next(
-    Abstractformat *self, xx_archive_record_state *state, xx_pd_struct *pd);
-XXFC_API void xx_rtk_free_archive_records_reading(
-    Abstractformat *self, xx_archive_record_state *state);
+XXFC_API xx_archive_record_state *xx_rtk_create_archive_records_reading(Abstractformat *self, const xx_list_s *options, xx_pd_struct *pd);
+XXFC_API const xx_archive_record *xx_rtk_get_current_archive_record(Abstractformat *self, xx_archive_record_state *state);
+XXFC_API bool xx_rtk_unpack_current_archive_record(Abstractformat *self, xx_archive_record_state *state, xx_pd_struct *pd);
+XXFC_API bool xx_rtk_archive_record_move_to_next(Abstractformat *self, xx_archive_record_state *state, xx_pd_struct *pd);
+XXFC_API void xx_rtk_free_archive_records_reading(Abstractformat *self, xx_archive_record_state *state);
 
 XXFC_API uint64_t xx_rtk_get_number_of_records(const xx_rtk *rtk);
 XXFC_API uint32_t xx_rtk_get_image_size(const xx_rtk *rtk);
@@ -88,18 +80,24 @@ XXFC_API uint32_t xx_rtk_get_identifier(const xx_rtk *rtk);
 XXFC_API int64_t xx_rtk_get_payload_offset(const xx_rtk *rtk);
 XXFC_API int64_t xx_rtk_get_archive_end(const xx_rtk *rtk);
 
-static inline Abstractformat *xx_rtk_to_format(xx_rtk *rtk) {
+static inline Abstractformat *xx_rtk_to_format(xx_rtk *rtk)
+{
     return rtk ? &rtk->format : NULL;
 }
-static inline void XRtk_init(xx_rtk *rtk, xx_io_device *dev,
-                             int64_t base_address) {
+static inline void XRtk_init(xx_rtk *rtk, xx_io_device *dev, int64_t base_address)
+{
     xx_rtk_init(rtk, dev, base_address);
 }
-static inline xx_rtk *XRtk_create(xx_io_device *dev, int64_t base_address) {
+static inline xx_rtk *XRtk_create(xx_io_device *dev, int64_t base_address)
+{
     return xx_rtk_create(dev, base_address);
 }
-static inline void XRtk_free(xx_rtk *rtk) { xx_rtk_free(rtk); }
-static inline bool XRtk_is_valid(xx_rtk *rtk, xx_pd_struct *pd) {
+static inline void XRtk_free(xx_rtk *rtk)
+{
+    xx_rtk_free(rtk);
+}
+static inline bool XRtk_is_valid(xx_rtk *rtk, xx_pd_struct *pd)
+{
     return rtk ? xx_format_is_valid(&rtk->format, pd) : false;
 }
 

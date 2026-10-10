@@ -42,8 +42,8 @@ typedef struct xx_compress_writer_s {
     int64_t output_size;
 } xx_compress_writer;
 
-static bool xx_compress_read_exact(xx_io_device *device, void *buffer,
-                                   size_t size, size_t capacity) {
+static bool xx_compress_read_exact(xx_io_device *device, void *buffer, size_t size, size_t capacity)
+{
     size_t done = 0U;
     if (!device || (!buffer && size != 0U)) return false;
     while (done < size) {
@@ -57,27 +57,25 @@ static bool xx_compress_read_exact(xx_io_device *device, void *buffer,
     return true;
 }
 
-bool xx_compress_has_header(const uint8_t *data, size_t size) {
+bool xx_compress_has_header(const uint8_t *data, size_t size)
+{
     unsigned maximum_bits;
-    if (!data || size < 3U || data[0] != XX_COMPRESS_MAGIC0 ||
-        data[1] != XX_COMPRESS_MAGIC1 || (data[2] & UINT8_C(0x60)) != 0U) {
+    if (!data || size < 3U || data[0] != XX_COMPRESS_MAGIC0 || data[1] != XX_COMPRESS_MAGIC1 || (data[2] & UINT8_C(0x60)) != 0U) {
         return false;
     }
     maximum_bits = data[2] & UINT8_C(0x1f);
-    return maximum_bits >= XX_COMPRESS_MIN_BITS &&
-           maximum_bits <= XX_COMPRESS_MAX_BITS;
+    return maximum_bits >= XX_COMPRESS_MIN_BITS && maximum_bits <= XX_COMPRESS_MAX_BITS;
 }
 
 /* 1 = byte, 0 = clean range end, -1 = device error. */
-static int xx_compress_read_byte(xx_compress_reader *reader, uint8_t *value) {
+static int xx_compress_read_byte(xx_compress_reader *reader, uint8_t *value)
+{
     size_t wanted;
     ssize_t amount;
     if (!reader || !value) return -1;
     if (reader->input_position == reader->input_used) {
         if (reader->remaining == 0) return 0;
-        wanted = reader->remaining > (int64_t)reader->capacity
-                     ? reader->capacity
-                     : (size_t)reader->remaining;
+        wanted = reader->remaining > (int64_t)reader->capacity ? reader->capacity : (size_t)reader->remaining;
         amount = xx_io_read(reader->device, reader->input, wanted);
         if (amount <= 0 || (size_t)amount > wanted) return -1;
         reader->input_used = (size_t)amount;
@@ -89,8 +87,8 @@ static int xx_compress_read_byte(xx_compress_reader *reader, uint8_t *value) {
 }
 
 /* 1 = code, 0 = legal zero padding/end, -1 = malformed partial code. */
-static int xx_compress_read_bits(xx_compress_reader *reader, unsigned width,
-                                 uint32_t *value) {
+static int xx_compress_read_bits(xx_compress_reader *reader, unsigned width, uint32_t *value)
+{
     if (!reader || !value || width == 0U || width > XX_COMPRESS_MAX_BITS) {
         return -1;
     }
@@ -104,31 +102,26 @@ static int xx_compress_read_bits(xx_compress_reader *reader, unsigned width,
         reader->bits |= (uint64_t)byte << reader->bit_count;
         reader->bit_count += 8U;
     }
-    *value = (uint32_t)(reader->bits &
-                        ((UINT64_C(1) << width) - UINT64_C(1)));
+    *value = (uint32_t)(reader->bits & ((UINT64_C(1) << width) - UINT64_C(1)));
     reader->bits >>= width;
     reader->bit_count -= width;
     reader->consumed_bits += width;
     return 1;
 }
 
-static bool xx_compress_skip_group_padding(xx_compress_reader *reader,
-                                           unsigned width,
-                                           uint64_t *group_start) {
+static bool xx_compress_skip_group_padding(xx_compress_reader *reader, unsigned width, uint64_t *group_start)
+{
     uint64_t group_bits;
     uint64_t used;
     uint64_t padding;
-    if (!reader || !group_start || width < XX_COMPRESS_MIN_BITS ||
-        width > XX_COMPRESS_MAX_BITS || reader->consumed_bits < *group_start) {
+    if (!reader || !group_start || width < XX_COMPRESS_MIN_BITS || width > XX_COMPRESS_MAX_BITS || reader->consumed_bits < *group_start) {
         return false;
     }
     group_bits = (uint64_t)width * 8U;
     used = reader->consumed_bits - *group_start;
     padding = (group_bits - used % group_bits) % group_bits;
     while (padding != 0U) {
-        unsigned take = padding > XX_COMPRESS_MAX_BITS
-                            ? XX_COMPRESS_MAX_BITS
-                            : (unsigned)padding;
+        unsigned take = padding > XX_COMPRESS_MAX_BITS ? XX_COMPRESS_MAX_BITS : (unsigned)padding;
         uint32_t ignored;
         if (xx_compress_read_bits(reader, take, &ignored) != 1) return false;
         padding -= take;
@@ -137,12 +130,12 @@ static bool xx_compress_skip_group_padding(xx_compress_reader *reader,
     return true;
 }
 
-static bool xx_compress_flush(xx_compress_writer *writer) {
+static bool xx_compress_flush(xx_compress_writer *writer)
+{
     size_t done = 0U;
     if (!writer || !writer->device) return false;
     while (done < writer->output_used) {
-        ssize_t amount = xx_io_write(writer->device, writer->output + done,
-                                     writer->output_used - done);
+        ssize_t amount = xx_io_write(writer->device, writer->output + done, writer->output_used - done);
         if (amount <= 0 || (size_t)amount > writer->output_used - done) {
             return false;
         }
@@ -152,21 +145,18 @@ static bool xx_compress_flush(xx_compress_writer *writer) {
     return true;
 }
 
-static bool xx_compress_emit(xx_compress_writer *writer, uint8_t value,
-                             xx_pd_struct *pd) {
-    if (!writer || !writer->device || writer->output_size == INT64_MAX ||
-        (pd && xx_pd_is_stopped(pd))) {
+static bool xx_compress_emit(xx_compress_writer *writer, uint8_t value, xx_pd_struct *pd)
+{
+    if (!writer || !writer->device || writer->output_size == INT64_MAX || (pd && xx_pd_is_stopped(pd))) {
         return false;
     }
     writer->output[writer->output_used++] = value;
     ++writer->output_size;
-    return writer->output_used < writer->capacity ||
-           xx_compress_flush(writer);
+    return writer->output_used < writer->capacity || xx_compress_flush(writer);
 }
 
-bool xx_compress_decode_device(xx_io_device *source, int64_t source_offset,
-                               int64_t source_size, xx_io_device *destination,
-                               int64_t *output_size, xx_pd_struct *pd) {
+bool xx_compress_decode_device(xx_io_device *source, int64_t source_offset, int64_t source_size, xx_io_device *destination, int64_t *output_size, xx_pd_struct *pd)
+{
     uint8_t header[3];
     xx_compress_reader reader = {0};
     xx_compress_writer writer = {0};
@@ -191,15 +181,12 @@ bool xx_compress_decode_device(xx_io_device *source, int64_t source_offset,
     if (capacity > (SIZE_MAX >> 1)) capacity = SIZE_MAX >> 1;
 
     if (output_size) *output_size = -1;
-    if (!source || !destination || source_offset < 0 || source_size < 3 ||
-        (pd && xx_pd_is_stopped(pd))) {
+    if (!source || !destination || source_offset < 0 || source_size < 3 || (pd && xx_pd_is_stopped(pd))) {
         return false;
     }
     total_size = xx_io_total_size(source);
-    if (total_size < source_offset || source_size > total_size - source_offset ||
-        xx_io_seek64(source, source_offset, SEEK_SET) != 0 ||
-        !xx_compress_read_exact(source, header, sizeof(header), capacity) ||
-        !xx_compress_has_header(header, sizeof(header))) {
+    if (total_size < source_offset || source_size > total_size - source_offset || xx_io_seek64(source, source_offset, SEEK_SET) != 0 ||
+        !xx_compress_read_exact(source, header, sizeof(header), capacity) || !xx_compress_has_header(header, sizeof(header))) {
         return false;
     }
     maximum_bits = header[2] & UINT8_C(0x1f);
@@ -222,8 +209,7 @@ bool xx_compress_decode_device(xx_io_device *source, int64_t source_offset,
         result = xx_compress_flush(&writer);
         goto cleanup;
     }
-    if (status != 1 || code >= 256U ||
-        !xx_compress_emit(&writer, (uint8_t)code, pd)) {
+    if (status != 1 || code >= 256U || !xx_compress_emit(&writer, (uint8_t)code, pd)) {
         goto cleanup;
     }
     old_code = code;
@@ -246,8 +232,7 @@ bool xx_compress_decode_device(xx_io_device *source, int64_t source_offset,
             width_limit = UINT32_C(1) << width;
             next_code = XX_COMPRESS_FIRST;
             status = xx_compress_read_bits(&reader, width, &code);
-            if (status != 1 || code >= 256U ||
-                !xx_compress_emit(&writer, (uint8_t)code, pd)) {
+            if (status != 1 || code >= 256U || !xx_compress_emit(&writer, (uint8_t)code, pd)) {
                 goto cleanup;
             }
             old_code = code;
@@ -263,8 +248,7 @@ bool xx_compress_decode_device(xx_io_device *source, int64_t source_offset,
             code = old_code;
         }
         while (code >= 256U) {
-            if (code >= next_code || code >= maximum_codes ||
-                stack_size >= maximum_codes) {
+            if (code >= next_code || code >= maximum_codes || stack_size >= maximum_codes) {
                 goto cleanup;
             }
             stack[stack_size++] = suffix[code];
@@ -284,8 +268,7 @@ bool xx_compress_decode_device(xx_io_device *source, int64_t source_offset,
             suffix[next_code] = final_byte;
             ++next_code;
             if (next_code >= width_limit && width < maximum_bits) {
-                if (!xx_compress_skip_group_padding(&reader, width,
-                                                    &group_start)) {
+                if (!xx_compress_skip_group_padding(&reader, width, &group_start)) {
                     goto cleanup;
                 }
                 ++width;

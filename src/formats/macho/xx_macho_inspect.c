@@ -29,7 +29,6 @@
  * (Mach-O FAT) and are not handled here.
  */
 
-
 #define MACH_MAGIC 0xFEEDFACEu
 #define MACH_MAGIC_64 0xFEEDFACFu
 #define MACH_CIGAM 0xCEFAEDFEu
@@ -227,7 +226,8 @@ static void mach_foundation_fallback(xx_macho_inspection *pMach, const char **pp
     }
 }
 
-static void mach_compute_os(xx_macho_inspection *pMach, int bBuildVer, uint32_t nPlatform, uint32_t nMinos, int bVersionMin, uint32_t nVersionMinCmd, uint32_t nVersionMinValue)
+static void mach_compute_os(xx_macho_inspection *pMach, int bBuildVer, uint32_t nPlatform, uint32_t nMinos, int bVersionMin, uint32_t nVersionMinCmd,
+                            uint32_t nVersionMinValue)
 {
     uint32_t nType = pMach->nCpuType;
     uint32_t nSub = pMach->nCpuSubType;
@@ -297,7 +297,6 @@ static void mach_compute_os(xx_macho_inspection *pMach, int bBuildVer, uint32_t 
     mach_set_str(pMach->sOsName, sizeof(pMach->sOsName), pOsName);
     mach_set_str(pMach->sOsVersion, sizeof(pMach->sOsVersion), sVer);
 }
-
 
 /* basename after the last '/'. */
 static char *mach_basename(const char *pPath)
@@ -388,9 +387,15 @@ static int inspect_parse_input(xx_executable_input *pFile, xx_macho_inspection *
             uint32_t nNameOffset = xx_exec_u32(pFile, nOffset + 8, bBE ? true : false);
             uint32_t nCurrentVersion = xx_exec_u32(pFile, nOffset + 16, bBE ? true : false);
             char *pFullName;
-            if (nNameOffset < 24 || nNameOffset >= nCmdSize) { nOffset += nCmdSize; continue; }
+            if (nNameOffset < 24 || nNameOffset >= nCmdSize) {
+                nOffset += nCmdSize;
+                continue;
+            }
             pFullName = xx_exec_string(pFile, nOffset + (int64_t)nNameOffset, nCmdSize - nNameOffset);
-            if (!pFullName) { pFile->failed = true; break; }
+            if (!pFullName) {
+                pFile->failed = true;
+                break;
+            }
             xx_macho_inspect_library library = {0};
             xx_macho_inspect_library *pLib = &library;
 
@@ -398,7 +403,11 @@ static int inspect_parse_input(xx_executable_input *pFile, xx_macho_inspection *
             if (!pLib->pName) pFile->failed = true;
             pLib->nCurrentVersion = nCurrentVersion;
             xx_mem_free(pFullName);
-            if (!xx_list_append(&vecLibs, pLib)) { xx_mem_free(pLib->pName); pFile->failed = true; break; }
+            if (!xx_list_append(&vecLibs, pLib)) {
+                xx_mem_free(pLib->pName);
+                pFile->failed = true;
+                break;
+            }
         } else if ((nCmd == MACH_LC_SEGMENT) || (nCmd == MACH_LC_SEGMENT_64)) {
             int bSeg64 = (nCmd == MACH_LC_SEGMENT_64) ? 1 : 0;
             int64_t nNsectsOffset = nOffset + (bSeg64 ? 64 : 48);
@@ -433,7 +442,10 @@ static int inspect_parse_input(xx_executable_input *pFile, xx_macho_inspection *
                     pSection->nOffset = xx_exec_u32(pFile, nSectOffset + 40, bBE ? true : false);
                 }
 
-                if (!xx_list_append(&vecSections, pSection)) { pFile->failed = true; break; }
+                if (!xx_list_append(&vecSections, pSection)) {
+                    pFile->failed = true;
+                    break;
+                }
                 nSectOffset += nSectSize;
             }
         } else if (nCmd == MACH_LC_MAIN && nCmdSize >= 24) {
@@ -465,7 +477,8 @@ static int inspect_parse_input(xx_executable_input *pFile, xx_macho_inspection *
     pMach->pSections = (xx_macho_inspect_section *)vecSections.data;
     vecLibs.data = vecSections.data = NULL;
     vecLibs.count = vecSections.count = vecLibs.capacity = vecSections.capacity = 0;
-    xx_list_cleanup(&vecLibs); xx_list_cleanup(&vecSections);
+    xx_list_cleanup(&vecLibs);
+    xx_list_cleanup(&vecSections);
 
     pMach->bValid = (i == nCmds && nOffset == commands_end);
 
@@ -569,17 +582,26 @@ int xx_macho_inspect_parse(xx_macho *reader, xx_macho_inspection *state, xx_pd_s
         return 0;
     }
     input = xx_exec_input_create(&reader->format, pd);
-    if (!input) { if (saved >= 0) xx_io_seek64(reader->format.device, saved, XX_RT_SEEK_SET); return 0; }
+    if (!input) {
+        if (saved >= 0) xx_io_seek64(reader->format.device, saved, XX_RT_SEEK_SET);
+        return 0;
+    }
     result = inspect_parse_input(input, state);
     if (saved >= 0 && xx_io_seek64(reader->format.device, saved, XX_RT_SEEK_SET) != 0) input->failed = true;
-    if (!result || input->failed || xx_pd_is_stopped(pd)) { xx_macho_inspect_free(state); return 0; }
-    input->pd = NULL; input->parsing = false; input->read_work = 0;
+    if (!result || input->failed || xx_pd_is_stopped(pd)) {
+        xx_macho_inspect_free(state);
+        return 0;
+    }
+    input->pd = NULL;
+    input->parsing = false;
+    input->read_work = 0;
     return result;
 }
 
 int xx_macho_inspect_analyze_from_device(xx_macho_inspection *state, xx_io_device *device, int64_t base, xx_pd_struct *pd)
 {
     xx_macho reader = {0};
-    reader.format.device = device; reader.format.base_address = base;
+    reader.format.device = device;
+    reader.format.base_address = base;
     return xx_macho_inspect_parse(&reader, state, pd);
 }

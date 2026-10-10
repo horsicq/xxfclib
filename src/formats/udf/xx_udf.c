@@ -124,12 +124,11 @@ static void xx_udf_vtable_destroy(Abstractformat *self);
 /* Primitives                                                          */
 /* ------------------------------------------------------------------ */
 
-static bool xx_udf_read_at(xx_io_device *device, int64_t offset, void *data,
-                           size_t size) {
+static bool xx_udf_read_at(xx_io_device *device, int64_t offset, void *data, size_t size)
+{
     uint8_t *out = (uint8_t *)data;
     size_t done = 0U;
-    if (!device || (!data && size != 0U) || offset < 0 ||
-        xx_io_seek64(device, offset, XX_RT_SEEK_SET) != 0) {
+    if (!device || (!data && size != 0U) || offset < 0 || xx_io_seek64(device, offset, XX_RT_SEEK_SET) != 0) {
         return false;
     }
     while (done < size) {
@@ -141,7 +140,8 @@ static bool xx_udf_read_at(xx_io_device *device, int64_t offset, void *data,
 }
 
 /* left + right with an overflow guard; both sides stay non negative. */
-static bool xx_udf_add(int64_t left, uint64_t right, int64_t *result) {
+static bool xx_udf_add(int64_t left, uint64_t right, int64_t *result)
+{
     if (!result || left < 0 || right > (uint64_t)(INT64_MAX - left)) {
         return false;
     }
@@ -150,7 +150,8 @@ static bool xx_udf_add(int64_t left, uint64_t right, int64_t *result) {
 }
 
 /* ECMA-167 4/7.2.3: sum of bytes 0-3 and 5-15 of the tag, modulo 256. */
-static uint8_t xx_udf_tag_checksum(const uint8_t *tag_bytes) {
+static uint8_t xx_udf_tag_checksum(const uint8_t *tag_bytes)
+{
     uint32_t sum = 0U;
     unsigned index;
     for (index = 0U; index < XX_UDF_TAG_SIZE; ++index) {
@@ -161,7 +162,8 @@ static uint8_t xx_udf_tag_checksum(const uint8_t *tag_bytes) {
 
 /* ECMA-167 Annex A: CRC-ITU-T, polynomial 0x1021, initial value 0, no
  * reflection and no final xor. */
-static uint16_t xx_udf_descriptor_crc(const uint8_t *data, size_t size) {
+static uint16_t xx_udf_descriptor_crc(const uint8_t *data, size_t size)
+{
     return xx_crc16_xmodem_calc(0U, data, size);
 }
 
@@ -172,9 +174,8 @@ static uint16_t xx_udf_descriptor_crc(const uint8_t *data, size_t size) {
  * recorded in - only the Anchor Volume Descriptor Pointer can be checked that
  * way, because every other descriptor stores a partition relative block
  * number. */
-static bool xx_udf_check_tag(Abstractformat *self, int64_t offset,
-                             uint16_t expected_identifier,
-                             bool verify_location, xx_udf_tag *tag) {
+static bool xx_udf_check_tag(Abstractformat *self, int64_t offset, uint16_t expected_identifier, bool verify_location, xx_udf_tag *tag)
+{
     uint8_t tag_bytes[XX_UDF_TAG_SIZE];
     uint8_t body[XX_UDF_SECTOR_SIZE];
     xx_udf_tag decoded;
@@ -183,9 +184,7 @@ static bool xx_udf_check_tag(Abstractformat *self, int64_t offset,
     if (tag) xx_rt_memset(tag, 0, sizeof(*tag));
     if (!self || !self->device || offset < 0) return false;
     total_size = xx_io_total_size(self->device);
-    if (total_size < (int64_t)XX_UDF_TAG_SIZE ||
-        offset > total_size - (int64_t)XX_UDF_TAG_SIZE ||
-        !xx_udf_read_at(self->device, offset, tag_bytes, sizeof(tag_bytes))) {
+    if (total_size < (int64_t)XX_UDF_TAG_SIZE || offset > total_size - (int64_t)XX_UDF_TAG_SIZE || !xx_udf_read_at(self->device, offset, tag_bytes, sizeof(tag_bytes))) {
         return false;
     }
     decoded.identifier = xx_data_get_u16(tag_bytes, 2, 0, false);
@@ -203,21 +202,14 @@ static bool xx_udf_check_tag(Abstractformat *self, int64_t offset,
     if (xx_udf_tag_checksum(tag_bytes) != tag_bytes[4]) return false;
     if (verify_location) {
         int64_t relative = offset - self->base_address;
-        if (relative < 0 || (relative % (int64_t)XX_UDF_SECTOR_SIZE) != 0 ||
-            (int64_t)decoded.location != relative / (int64_t)XX_UDF_SECTOR_SIZE) {
+        if (relative < 0 || (relative % (int64_t)XX_UDF_SECTOR_SIZE) != 0 || (int64_t)decoded.location != relative / (int64_t)XX_UDF_SECTOR_SIZE) {
             return false;
         }
     }
     if (decoded.crc_length != 0U) {
-        if ((size_t)decoded.crc_length >
-                (size_t)XX_UDF_SECTOR_SIZE - XX_UDF_TAG_SIZE ||
-            !xx_udf_add(offset, XX_UDF_TAG_SIZE, &body_offset) ||
-            body_offset > total_size ||
-            (int64_t)decoded.crc_length > total_size - body_offset ||
-            !xx_udf_read_at(self->device, body_offset, body,
-                            (size_t)decoded.crc_length) ||
-            xx_udf_descriptor_crc(body, (size_t)decoded.crc_length) !=
-                decoded.crc) {
+        if ((size_t)decoded.crc_length > (size_t)XX_UDF_SECTOR_SIZE - XX_UDF_TAG_SIZE || !xx_udf_add(offset, XX_UDF_TAG_SIZE, &body_offset) || body_offset > total_size ||
+            (int64_t)decoded.crc_length > total_size - body_offset || !xx_udf_read_at(self->device, body_offset, body, (size_t)decoded.crc_length) ||
+            xx_udf_descriptor_crc(body, (size_t)decoded.crc_length) != decoded.crc) {
             return false;
         }
     }
@@ -229,7 +221,8 @@ static bool xx_udf_check_tag(Abstractformat *self, int64_t offset,
 /* Names                                                               */
 /* ------------------------------------------------------------------ */
 
-static size_t xx_udf_utf8_encode(uint32_t code_point, char *out) {
+static size_t xx_udf_utf8_encode(uint32_t code_point, char *out)
+{
     if (code_point < 0x80U) {
         out[0] = (char)code_point;
         return 1U;
@@ -256,8 +249,8 @@ static size_t xx_udf_utf8_encode(uint32_t code_point, char *out) {
  * one byte per character (the value is the Unicode code point), 16 means
  * big endian UTF-16.  When strict is set, characters that must never appear in
  * a path component are rejected instead of being passed through. */
-static bool xx_udf_cs0_to_utf8(const uint8_t *data, size_t size, char *out,
-                               size_t out_capacity, bool strict) {
+static bool xx_udf_cs0_to_utf8(const uint8_t *data, size_t size, char *out, size_t out_capacity, bool strict)
+{
     size_t written = 0U;
     size_t index;
     uint8_t compression;
@@ -276,18 +269,15 @@ static bool xx_udf_cs0_to_utf8(const uint8_t *data, size_t size, char *out,
             code_point = data[index];
             index += 1U;
         } else {
-            uint32_t unit = (uint32_t)(((uint32_t)data[index] << 8) |
-                                       (uint32_t)data[index + 1U]);
+            uint32_t unit = (uint32_t)(((uint32_t)data[index] << 8) | (uint32_t)data[index + 1U]);
             index += 2U;
             if (unit >= 0xD800U && unit <= 0xDBFFU) {
                 uint32_t low;
                 if (index + 1U >= size) return false;
-                low = (uint32_t)(((uint32_t)data[index] << 8) |
-                                 (uint32_t)data[index + 1U]);
+                low = (uint32_t)(((uint32_t)data[index] << 8) | (uint32_t)data[index + 1U]);
                 if (low < 0xDC00U || low > 0xDFFFU) return false;
                 index += 2U;
-                code_point = 0x10000U + ((unit - 0xD800U) << 10) +
-                             (low - 0xDC00U);
+                code_point = 0x10000U + ((unit - 0xD800U) << 10) + (low - 0xDC00U);
             } else if (unit >= 0xDC00U && unit <= 0xDFFFU) {
                 return false;
             } else {
@@ -295,8 +285,7 @@ static bool xx_udf_cs0_to_utf8(const uint8_t *data, size_t size, char *out,
             }
         }
         if (code_point == 0U) break; /* Treat NUL as a terminator. */
-        if (strict && (code_point < 32U || code_point == (uint32_t)'/' ||
-                       code_point == (uint32_t)'\\')) {
+        if (strict && (code_point < 32U || code_point == (uint32_t)'/' || code_point == (uint32_t)'\\')) {
             return false;
         }
         encoded_size = xx_udf_utf8_encode(code_point, encoded);
@@ -310,8 +299,8 @@ static bool xx_udf_cs0_to_utf8(const uint8_t *data, size_t size, char *out,
 
 /* ECMA-167 1/7.2.12 dstring: the last byte of the field holds the number of
  * bytes actually used, the compression id included. */
-static void xx_udf_dstring_to_utf8(const uint8_t *field, size_t field_size,
-                                   char *out, size_t out_capacity) {
+static void xx_udf_dstring_to_utf8(const uint8_t *field, size_t field_size, char *out, size_t out_capacity)
+{
     size_t used;
     if (!field || !out || out_capacity == 0U) return;
     out[0] = '\0';
@@ -323,7 +312,8 @@ static void xx_udf_dstring_to_utf8(const uint8_t *field, size_t field_size,
     }
 }
 
-static char *xx_udf_strdup(const char *text) {
+static char *xx_udf_strdup(const char *text)
+{
     size_t size;
     char *copy;
     if (!text) return NULL;
@@ -337,7 +327,8 @@ static char *xx_udf_strdup(const char *text) {
 
 /* Reject anything that would let an entry name escape the extraction root or
  * name a device on Windows. */
-static bool xx_udf_safe_name(const char *name) {
+static bool xx_udf_safe_name(const char *name)
+{
     const char *component;
     const char *cursor;
     if (!name || !name[0] || name[0] == '/' || name[0] == '\\') return false;
@@ -345,15 +336,12 @@ static bool xx_udf_safe_name(const char *name) {
     component = name;
     for (cursor = name;; ++cursor) {
         unsigned char ch = (unsigned char)*cursor;
-        if (ch == ':' || ch == '<' || ch == '>' || ch == '"' || ch == '|' ||
-            ch == '?' || ch == '*' || (ch != 0U && ch < 32U)) {
+        if (ch == ':' || ch == '<' || ch == '>' || ch == '"' || ch == '|' || ch == '?' || ch == '*' || (ch != 0U && ch < 32U)) {
             return false;
         }
         if (ch == '/' || ch == '\\' || ch == 0U) {
             size_t length = (size_t)(cursor - component);
-            if (length == 0U || (length == 1U && component[0] == '.') ||
-                (length == 2U && component[0] == '.' && component[1] == '.') ||
-                component[length - 1U] == ' ' ||
+            if (length == 0U || (length == 1U && component[0] == '.') || (length == 2U && component[0] == '.' && component[1] == '.') || component[length - 1U] == ' ' ||
                 component[length - 1U] == '.') {
                 return false;
             }
@@ -363,17 +351,15 @@ static bool xx_udf_safe_name(const char *name) {
     }
 }
 
-static char *xx_udf_join_name(const char *prefix, const char *name) {
+static char *xx_udf_join_name(const char *prefix, const char *name)
+{
     size_t prefix_size = prefix ? xx_str_len(prefix) : 0U;
     size_t name_size = name ? xx_str_len(name) : 0U;
     char *combined;
-    if (!name || name_size == 0U || prefix_size >= XX_UDF_MAX_NAME_SIZE ||
-        name_size > XX_UDF_MAX_NAME_SIZE - prefix_size -
-                        (prefix_size != 0U ? 1U : 0U)) {
+    if (!name || name_size == 0U || prefix_size >= XX_UDF_MAX_NAME_SIZE || name_size > XX_UDF_MAX_NAME_SIZE - prefix_size - (prefix_size != 0U ? 1U : 0U)) {
         return NULL;
     }
-    combined = (char *)xx_mem_alloc(prefix_size + name_size +
-                                    (prefix_size != 0U ? 2U : 1U));
+    combined = (char *)xx_mem_alloc(prefix_size + name_size + (prefix_size != 0U ? 2U : 1U));
     if (!combined) return NULL;
     if (prefix_size != 0U) {
         xx_rt_memcpy(combined, prefix, prefix_size);
@@ -391,7 +377,8 @@ static char *xx_udf_join_name(const char *prefix, const char *name) {
 /* Parsed state bookkeeping                                            */
 /* ------------------------------------------------------------------ */
 
-static void xx_udf_private_cleanup(xx_udf_private *parsed) {
+static void xx_udf_private_cleanup(xx_udf_private *parsed)
+{
     size_t index;
     if (!parsed) return;
     for (index = 0U; index < parsed->count; ++index) {
@@ -404,28 +391,27 @@ static void xx_udf_private_cleanup(xx_udf_private *parsed) {
     parsed->volume_end = -1;
 }
 
-static void xx_udf_private_reset(xx_udf_private *parsed) {
+static void xx_udf_private_reset(xx_udf_private *parsed)
+{
     if (!parsed) return;
     xx_rt_memset(parsed, 0, sizeof(*parsed));
     parsed->anchor_offset = -1;
     parsed->volume_end = -1;
 }
 
-static bool xx_udf_append_entry(xx_udf_private *parsed, xx_udf_entry *entry) {
+static bool xx_udf_append_entry(xx_udf_private *parsed, xx_udf_entry *entry)
+{
     xx_udf_entry *grown;
     size_t capacity;
-    if (!parsed || !entry || !entry->name ||
-        parsed->count >= XX_UDF_MAX_ENTRIES) {
+    if (!parsed || !entry || !entry->name || parsed->count >= XX_UDF_MAX_ENTRIES) {
         return false;
     }
     if (parsed->count == parsed->capacity) {
         capacity = parsed->capacity ? parsed->capacity * 2U : 32U;
-        if (capacity < parsed->count ||
-            capacity > SIZE_MAX / sizeof(*parsed->entries)) {
+        if (capacity < parsed->count || capacity > SIZE_MAX / sizeof(*parsed->entries)) {
             return false;
         }
-        grown = (xx_udf_entry *)xx_mem_realloc(
-            parsed->entries, capacity * sizeof(*parsed->entries));
+        grown = (xx_udf_entry *)xx_mem_realloc(parsed->entries, capacity * sizeof(*parsed->entries));
         if (!grown) return false;
         parsed->entries = grown;
         parsed->capacity = capacity;
@@ -438,7 +424,8 @@ static bool xx_udf_append_entry(xx_udf_private *parsed, xx_udf_entry *entry) {
 
 /* Returns true when this File Entry was already walked, which also makes the
  * "out of room" case terminate the walk instead of growing without bound. */
-static bool xx_udf_seen_file_entry(xx_udf_private *parsed, int64_t offset) {
+static bool xx_udf_seen_file_entry(xx_udf_private *parsed, int64_t offset)
+{
     int64_t *grown;
     size_t index;
     size_t capacity;
@@ -449,12 +436,10 @@ static bool xx_udf_seen_file_entry(xx_udf_private *parsed, int64_t offset) {
     if (parsed->visited_count >= XX_UDF_MAX_VISITED) return true;
     if (parsed->visited_count == parsed->visited_capacity) {
         capacity = parsed->visited_capacity ? parsed->visited_capacity * 2U : 16U;
-        if (capacity < parsed->visited_count ||
-            capacity > SIZE_MAX / sizeof(*parsed->visited)) {
+        if (capacity < parsed->visited_count || capacity > SIZE_MAX / sizeof(*parsed->visited)) {
             return true;
         }
-        grown = (int64_t *)xx_mem_realloc(parsed->visited,
-                                          capacity * sizeof(*parsed->visited));
+        grown = (int64_t *)xx_mem_realloc(parsed->visited, capacity * sizeof(*parsed->visited));
         if (!grown) return true;
         parsed->visited = grown;
         parsed->visited_capacity = capacity;
@@ -467,8 +452,8 @@ static bool xx_udf_seen_file_entry(xx_udf_private *parsed, int64_t offset) {
 /* Partition mapping                                                   */
 /* ------------------------------------------------------------------ */
 
-static const xx_udf_partition *xx_udf_find_partition(
-    const xx_udf_private *parsed, uint16_t partition_reference) {
+static const xx_udf_partition *xx_udf_find_partition(const xx_udf_private *parsed, uint16_t partition_reference)
+{
     size_t index;
     if (!parsed || parsed->partition_count == 0U) return NULL;
     /* A single physical partition and no usable map table is the common case
@@ -476,13 +461,11 @@ static const xx_udf_partition *xx_udf_find_partition(
     if (parsed->map_count == 0U) {
         return parsed->partition_count == 1U ? &parsed->partitions[0] : NULL;
     }
-    if ((size_t)partition_reference >= parsed->map_count ||
-        !parsed->map_valid[partition_reference]) {
+    if ((size_t)partition_reference >= parsed->map_count || !parsed->map_valid[partition_reference]) {
         return NULL;
     }
     for (index = 0U; index < parsed->partition_count; ++index) {
-        if (parsed->partitions[index].number ==
-            parsed->map_numbers[partition_reference]) {
+        if (parsed->partitions[index].number == parsed->map_numbers[partition_reference]) {
             return &parsed->partitions[index];
         }
     }
@@ -491,10 +474,8 @@ static const xx_udf_partition *xx_udf_find_partition(
 
 /* Translate a (partition reference, logical block number) pair into a file
  * offset, requiring the block to lie inside the declared partition. */
-static bool xx_udf_lba_to_offset(Abstractformat *self,
-                                 const xx_udf_private *parsed,
-                                 uint16_t partition_reference, uint32_t block,
-                                 int64_t *offset) {
+static bool xx_udf_lba_to_offset(Abstractformat *self, const xx_udf_private *parsed, uint16_t partition_reference, uint32_t block, int64_t *offset)
+{
     const xx_udf_partition *partition;
     uint64_t absolute_block;
     if (!self || !parsed || !offset || parsed->block_size == 0U) return false;
@@ -502,16 +483,15 @@ static bool xx_udf_lba_to_offset(Abstractformat *self,
     if (!partition || block >= partition->length) return false;
     absolute_block = (uint64_t)partition->start + (uint64_t)block;
     if (absolute_block > UINT64_MAX / parsed->block_size) return false;
-    return xx_udf_add(self->base_address,
-                      absolute_block * parsed->block_size, offset);
+    return xx_udf_add(self->base_address, absolute_block * parsed->block_size, offset);
 }
 
 /* ------------------------------------------------------------------ */
 /* Volume Recognition Sequence                                         */
 /* ------------------------------------------------------------------ */
 
-static bool xx_udf_has_recognition_sequence(xx_io_device *device,
-                                            int64_t base_address) {
+static bool xx_udf_has_recognition_sequence(xx_io_device *device, int64_t base_address)
+{
     int64_t total_size;
     unsigned index;
     bool extended_area = false;
@@ -520,34 +500,25 @@ static bool xx_udf_has_recognition_sequence(xx_io_device *device,
     for (index = 0U; index < XX_UDF_VRS_MAX_DESCRIPTORS; ++index) {
         uint8_t identifier[5];
         int64_t offset;
-        if (!xx_udf_add(base_address,
-                        (uint64_t)XX_UDF_VRS_OFFSET +
-                            (uint64_t)index * XX_UDF_SECTOR_SIZE + 1U,
-                        &offset) ||
-            offset > total_size ||
-            (int64_t)sizeof(identifier) > total_size - offset ||
-            !xx_udf_read_at(device, offset, identifier, sizeof(identifier))) {
+        if (!xx_udf_add(base_address, (uint64_t)XX_UDF_VRS_OFFSET + (uint64_t)index * XX_UDF_SECTOR_SIZE + 1U, &offset) || offset > total_size ||
+            (int64_t)sizeof(identifier) > total_size - offset || !xx_udf_read_at(device, offset, identifier, sizeof(identifier))) {
             break;
         }
         if (xx_rt_memcmp(identifier, "BEA01", 5U) == 0) {
             extended_area = true;
         } else if (xx_rt_memcmp(identifier, "TEA01", 5U) == 0) {
             break;
-        } else if (extended_area &&
-                   (xx_rt_memcmp(identifier, "NSR02", 5U) == 0 ||
-                    xx_rt_memcmp(identifier, "NSR03", 5U) == 0)) {
+        } else if (extended_area && (xx_rt_memcmp(identifier, "NSR02", 5U) == 0 || xx_rt_memcmp(identifier, "NSR03", 5U) == 0)) {
             return true;
-        } else if (xx_rt_memcmp(identifier, "CD001", 5U) != 0 &&
-                   xx_rt_memcmp(identifier, "CDW02", 5U) != 0 &&
-                   xx_rt_memcmp(identifier, "BOOT2", 5U) != 0) {
+        } else if (xx_rt_memcmp(identifier, "CD001", 5U) != 0 && xx_rt_memcmp(identifier, "CDW02", 5U) != 0 && xx_rt_memcmp(identifier, "BOOT2", 5U) != 0) {
             break;
         }
     }
     return false;
 }
 
-bool xx_udf_device_has_recognition_sequence(xx_io_device *dev,
-                                            int64_t base_address) {
+bool xx_udf_device_has_recognition_sequence(xx_io_device *dev, int64_t base_address)
+{
     return xx_udf_has_recognition_sequence(dev, base_address);
 }
 
@@ -558,33 +529,25 @@ bool xx_udf_device_has_recognition_sequence(xx_io_device *dev,
 /* ECMA-167 3/10.2: the AVDP body is two extent_ad structures.  A usable anchor
  * has to describe a non empty, sector aligned main Volume Descriptor Sequence
  * that lies inside the volume. */
-static bool xx_udf_read_anchor(Abstractformat *self, int64_t offset,
-                               bool verify_location, int64_t *vds_offset,
-                               uint32_t *vds_length) {
+static bool xx_udf_read_anchor(Abstractformat *self, int64_t offset, bool verify_location, int64_t *vds_offset, uint32_t *vds_length)
+{
     uint8_t extent[8];
     uint32_t length;
     uint32_t location;
     int64_t total_size;
     int64_t resolved;
     if (!self || !self->device || !vds_offset || !vds_length) return false;
-    if (!xx_udf_check_tag(self, offset,
-                          XX_UDF_TAG_ANCHOR_VOLUME_DESCRIPTOR_POINTER,
-                          verify_location, NULL)) {
+    if (!xx_udf_check_tag(self, offset, XX_UDF_TAG_ANCHOR_VOLUME_DESCRIPTOR_POINTER, verify_location, NULL)) {
         return false;
     }
-    if (!xx_udf_read_at(self->device, offset + (int64_t)XX_UDF_TAG_SIZE, extent,
-                        sizeof(extent))) {
+    if (!xx_udf_read_at(self->device, offset + (int64_t)XX_UDF_TAG_SIZE, extent, sizeof(extent))) {
         return false;
     }
     length = xx_data_get_u32(extent, 4, 0, false);
     location = xx_data_get_u32(extent + 4U, 4, 0, false);
     total_size = xx_io_total_size(self->device);
-    if (length == 0U || (length % XX_UDF_SECTOR_SIZE) != 0U ||
-        location == 0U ||
-        !xx_udf_add(self->base_address,
-                    (uint64_t)location * XX_UDF_SECTOR_SIZE, &resolved) ||
-        resolved >= total_size ||
-        (int64_t)XX_UDF_SECTOR_SIZE > total_size - resolved) {
+    if (length == 0U || (length % XX_UDF_SECTOR_SIZE) != 0U || location == 0U || !xx_udf_add(self->base_address, (uint64_t)location * XX_UDF_SECTOR_SIZE, &resolved) ||
+        resolved >= total_size || (int64_t)XX_UDF_SECTOR_SIZE > total_size - resolved) {
         return false;
     }
     *vds_offset = resolved;
@@ -594,8 +557,8 @@ static bool xx_udf_read_anchor(Abstractformat *self, int64_t offset,
 
 /* ECMA-167 3/8.4.2 records an anchor at logical sector 256, at the last sector
  * of the volume space and/or at last-256; UDF 2.60 2.2.3 also allows 512. */
-static bool xx_udf_find_anchor(Abstractformat *self, int64_t *anchor_offset,
-                               int64_t *vds_offset, uint32_t *vds_length) {
+static bool xx_udf_find_anchor(Abstractformat *self, int64_t *anchor_offset, int64_t *vds_offset, uint32_t *vds_length)
+{
     int64_t candidates[4];
     unsigned candidate_count = 0U;
     unsigned index;
@@ -603,8 +566,7 @@ static bool xx_udf_find_anchor(Abstractformat *self, int64_t *anchor_offset,
     int64_t total_size;
     int64_t usable;
     int64_t last_sector;
-    if (!self || !self->device || !anchor_offset || !vds_offset ||
-        !vds_length || self->base_address < 0) {
+    if (!self || !self->device || !anchor_offset || !vds_offset || !vds_length || self->base_address < 0) {
         return false;
     }
     total_size = xx_io_total_size(self->device);
@@ -619,8 +581,7 @@ static bool xx_udf_find_anchor(Abstractformat *self, int64_t *anchor_offset,
         candidates[candidate_count++] = last_sector * (int64_t)XX_UDF_SECTOR_SIZE;
     }
     if (last_sector >= 256) {
-        candidates[candidate_count++] =
-            (last_sector - 256) * (int64_t)XX_UDF_SECTOR_SIZE;
+        candidates[candidate_count++] = (last_sector - 256) * (int64_t)XX_UDF_SECTOR_SIZE;
     }
     candidates[candidate_count++] = (int64_t)512 * XX_UDF_SECTOR_SIZE;
     /* Pass 0 demands a fully self consistent anchor.  Pass 1 accepts a merely
@@ -628,20 +589,15 @@ static bool xx_udf_find_anchor(Abstractformat *self, int64_t *anchor_offset,
      * independently declared the image to be UDF - without that a binary whose
      * bytes happen to read as tag identifier 2 would be accepted. */
     for (pass = 0U; pass < 2U; ++pass) {
-        if (pass == 1U &&
-            !xx_udf_has_recognition_sequence(self->device, self->base_address)) {
+        if (pass == 1U && !xx_udf_has_recognition_sequence(self->device, self->base_address)) {
             break;
         }
         for (index = 0U; index < candidate_count; ++index) {
             int64_t offset;
-            if (!xx_udf_add(self->base_address, (uint64_t)candidates[index],
-                            &offset) ||
-                offset > total_size ||
-                (int64_t)XX_UDF_SECTOR_SIZE > total_size - offset) {
+            if (!xx_udf_add(self->base_address, (uint64_t)candidates[index], &offset) || offset > total_size || (int64_t)XX_UDF_SECTOR_SIZE > total_size - offset) {
                 continue;
             }
-            if (xx_udf_read_anchor(self, offset, pass == 0U, vds_offset,
-                                   vds_length)) {
+            if (xx_udf_read_anchor(self, offset, pass == 0U, vds_offset, vds_length)) {
                 *anchor_offset = offset;
                 return true;
             }
@@ -665,10 +621,8 @@ static bool xx_udf_find_anchor(Abstractformat *self, int64_t *anchor_offset,
  * A long_ad is ExtentLength(4) + LogicalBlockNumber(4) +
  * PartitionReferenceNumber(2) + ImplementationUse(6), so the block the File
  * Set Descriptor lives at is at 252 and not at 248. */
-static bool xx_udf_parse_logical_volume_descriptor(xx_udf_private *parsed,
-                                                   const uint8_t *block,
-                                                   uint32_t *fsd_block,
-                                                   uint16_t *fsd_partition) {
+static bool xx_udf_parse_logical_volume_descriptor(xx_udf_private *parsed, const uint8_t *block, uint32_t *fsd_block, uint16_t *fsd_partition)
+{
     uint32_t map_table_length;
     uint32_t map_count;
     uint32_t fsd_extent_length;
@@ -704,8 +658,7 @@ static bool xx_udf_parse_logical_volume_descriptor(xx_udf_private *parsed,
         if (position + 2U > 440U + (size_t)map_table_length) break;
         type = block[position];
         length = block[position + 1U];
-        if (length < 2U ||
-            position + (size_t)length > 440U + (size_t)map_table_length) {
+        if (length < 2U || position + (size_t)length > 440U + (size_t)map_table_length) {
             break;
         }
         /* Type 1 is a physical partition map: type(1), length(1)=6,
@@ -727,8 +680,8 @@ static bool xx_udf_parse_logical_volume_descriptor(xx_udf_private *parsed,
 /* Partition Descriptor, ECMA-167 3/10.5: 20 PartitionFlags,
  * 22 PartitionNumber, 24 PartitionContents(32), 56 PartitionContentsUse(128),
  * 184 AccessType, 188 PartitionStartingLocation, 192 PartitionLength. */
-static void xx_udf_parse_partition_descriptor(xx_udf_private *parsed,
-                                              const uint8_t *block) {
+static void xx_udf_parse_partition_descriptor(xx_udf_private *parsed, const uint8_t *block)
+{
     xx_udf_partition partition;
     size_t index;
     if (!parsed || !block || parsed->partition_count >= XX_UDF_MAX_PARTITIONS) {
@@ -746,27 +699,20 @@ static void xx_udf_parse_partition_descriptor(xx_udf_private *parsed,
 
 /* Primary Volume Descriptor, ECMA-167 3/10.1: 24 VolumeIdentifier(32 dstring),
  * 72 VolumeSetIdentifier(128 dstring). */
-static void xx_udf_parse_primary_volume_descriptor(xx_udf_private *parsed,
-                                                   const uint8_t *block) {
+static void xx_udf_parse_primary_volume_descriptor(xx_udf_private *parsed, const uint8_t *block)
+{
     if (!parsed || !block) return;
     if (parsed->volume_identifier[0] == '\0') {
-        xx_udf_dstring_to_utf8(block + 24U, 32U, parsed->volume_identifier,
-                               sizeof(parsed->volume_identifier));
+        xx_udf_dstring_to_utf8(block + 24U, 32U, parsed->volume_identifier, sizeof(parsed->volume_identifier));
     }
     if (parsed->volume_set_identifier[0] == '\0') {
-        xx_udf_dstring_to_utf8(block + 72U, 128U,
-                               parsed->volume_set_identifier,
-                               sizeof(parsed->volume_set_identifier));
+        xx_udf_dstring_to_utf8(block + 72U, 128U, parsed->volume_set_identifier, sizeof(parsed->volume_set_identifier));
     }
 }
 
-static bool xx_udf_scan_volume_descriptor_sequence(Abstractformat *self,
-                                                   xx_udf_private *parsed,
-                                                   int64_t vds_offset,
-                                                   uint32_t vds_length,
-                                                   uint32_t *fsd_block,
-                                                   uint16_t *fsd_partition,
-                                                   xx_pd_struct *pd) {
+static bool xx_udf_scan_volume_descriptor_sequence(Abstractformat *self, xx_udf_private *parsed, int64_t vds_offset, uint32_t vds_length, uint32_t *fsd_block,
+                                                   uint16_t *fsd_partition, xx_pd_struct *pd)
+{
     uint8_t block[XX_UDF_SECTOR_SIZE];
     uint64_t block_count;
     uint64_t index;
@@ -783,9 +729,7 @@ static bool xx_udf_scan_volume_descriptor_sequence(Abstractformat *self,
         xx_udf_tag tag;
         uint16_t identifier;
         if (pd && xx_pd_is_stopped(pd)) return false;
-        if (!xx_udf_add(vds_offset, index * XX_UDF_SECTOR_SIZE, &offset) ||
-            offset > total_size ||
-            (int64_t)XX_UDF_SECTOR_SIZE > total_size - offset ||
+        if (!xx_udf_add(vds_offset, index * XX_UDF_SECTOR_SIZE, &offset) || offset > total_size || (int64_t)XX_UDF_SECTOR_SIZE > total_size - offset ||
             !xx_udf_read_at(self->device, offset, block, sizeof(block))) {
             break;
         }
@@ -799,10 +743,8 @@ static bool xx_udf_scan_volume_descriptor_sequence(Abstractformat *self,
             xx_udf_parse_primary_volume_descriptor(parsed, block);
         } else if (identifier == XX_UDF_TAG_PARTITION_DESCRIPTOR) {
             xx_udf_parse_partition_descriptor(parsed, block);
-        } else if (identifier == XX_UDF_TAG_LOGICAL_VOLUME_DESCRIPTOR &&
-                   !have_logical_volume) {
-            if (xx_udf_parse_logical_volume_descriptor(parsed, block, fsd_block,
-                                                       fsd_partition)) {
+        } else if (identifier == XX_UDF_TAG_LOGICAL_VOLUME_DESCRIPTOR && !have_logical_volume) {
+            if (xx_udf_parse_logical_volume_descriptor(parsed, block, fsd_block, fsd_partition)) {
                 have_logical_volume = true;
             }
         }
@@ -822,10 +764,9 @@ static bool xx_udf_scan_volume_descriptor_sequence(Abstractformat *self,
  * unrecorded extents and allocation extent continuations (extent type 3) are
  * reported as UNSUPPORTED, as are files whose recorded extents are not
  * physically contiguous - representing those would need a multi range record. */
-static xx_udf_extent_result xx_udf_resolve_extents(
-    Abstractformat *self, const xx_udf_private *parsed, int64_t ad_offset,
-    uint32_t ad_length, uint8_t allocation_type, uint16_t home_partition,
-    uint64_t information_length, int64_t *data_offset, int64_t *data_size) {
+static xx_udf_extent_result xx_udf_resolve_extents(Abstractformat *self, const xx_udf_private *parsed, int64_t ad_offset, uint32_t ad_length, uint8_t allocation_type,
+                                                   uint16_t home_partition, uint64_t information_length, int64_t *data_offset, int64_t *data_size)
+{
     uint8_t descriptor[16];
     size_t descriptor_size;
     uint64_t descriptor_count;
@@ -834,16 +775,13 @@ static xx_udf_extent_result xx_udf_resolve_extents(
     int64_t total_size;
     int64_t first_offset = -1;
     int64_t expected_offset = 0;
-    if (!self || !self->device || !parsed || !data_offset || !data_size ||
-        parsed->block_size == 0U) {
+    if (!self || !self->device || !parsed || !data_offset || !data_size || parsed->block_size == 0U) {
         return XX_UDF_EXTENT_ERROR;
     }
     total_size = xx_io_total_size(self->device);
     if (allocation_type == 3U) {
         /* Embedded data: the "allocation descriptor" area is the file body. */
-        if (ad_length == 0U || information_length > (uint64_t)ad_length ||
-            ad_offset > total_size ||
-            (int64_t)ad_length > total_size - ad_offset) {
+        if (ad_length == 0U || information_length > (uint64_t)ad_length || ad_offset > total_size || (int64_t)ad_length > total_size - ad_offset) {
             return XX_UDF_EXTENT_ERROR;
         }
         *data_offset = ad_offset;
@@ -874,12 +812,8 @@ static xx_udf_extent_result xx_udf_resolve_extents(
         uint32_t block;
         uint16_t partition;
         uint64_t rounded;
-        if (!xx_udf_add(ad_offset, index * descriptor_size,
-                        &descriptor_offset) ||
-            descriptor_offset > total_size ||
-            (int64_t)descriptor_size > total_size - descriptor_offset ||
-            !xx_udf_read_at(self->device, descriptor_offset, descriptor,
-                            descriptor_size)) {
+        if (!xx_udf_add(ad_offset, index * descriptor_size, &descriptor_offset) || descriptor_offset > total_size ||
+            (int64_t)descriptor_size > total_size - descriptor_offset || !xx_udf_read_at(self->device, descriptor_offset, descriptor, descriptor_size)) {
             return XX_UDF_EXTENT_ERROR;
         }
         raw_length = xx_data_get_u32(descriptor, 4, 0, false);
@@ -890,12 +824,8 @@ static xx_udf_extent_result xx_udf_resolve_extents(
          * type 3 points at a continuation Allocation Extent Descriptor. */
         if (extent_type != 0U) return XX_UDF_EXTENT_UNSUPPORTED;
         block = xx_data_get_u32(descriptor + 4U, 4, 0, false);
-        partition = (descriptor_size == 16U) ? xx_data_get_u16(descriptor + 8U, 2, 0, false)
-                                             : home_partition;
-        if (!xx_udf_lba_to_offset(self, parsed, partition, block,
-                                  &extent_offset) ||
-            extent_offset > total_size ||
-            (int64_t)extent_length > total_size - extent_offset) {
+        partition = (descriptor_size == 16U) ? xx_data_get_u16(descriptor + 8U, 2, 0, false) : home_partition;
+        if (!xx_udf_lba_to_offset(self, parsed, partition, block, &extent_offset) || extent_offset > total_size || (int64_t)extent_length > total_size - extent_offset) {
             return XX_UDF_EXTENT_ERROR;
         }
         if (first_offset < 0) {
@@ -905,8 +835,7 @@ static xx_udf_extent_result xx_udf_resolve_extents(
         }
         /* Every extent but the last has to be a whole number of blocks, so the
          * next one starts at the rounded up end of this one. */
-        rounded = ((uint64_t)extent_length + parsed->block_size - 1U) /
-                  parsed->block_size * parsed->block_size;
+        rounded = ((uint64_t)extent_length + parsed->block_size - 1U) / parsed->block_size * parsed->block_size;
         if (!xx_udf_add(extent_offset, rounded, &expected_offset)) {
             return XX_UDF_EXTENT_ERROR;
         }
@@ -915,9 +844,7 @@ static xx_udf_extent_result xx_udf_resolve_extents(
         }
         total_length += extent_length;
     }
-    if (first_offset < 0 || total_length < information_length ||
-        information_length > (uint64_t)INT64_MAX ||
-        first_offset > total_size ||
+    if (first_offset < 0 || total_length < information_length || information_length > (uint64_t)INT64_MAX || first_offset > total_size ||
         (int64_t)information_length > total_size - first_offset) {
         return XX_UDF_EXTENT_ERROR;
     }
@@ -938,9 +865,8 @@ typedef struct xx_udf_file_entry_s {
  * differ: the extended form inserts ObjectSize and CreationTime and carries a
  * StreamDirectoryICB, which pushes the allocation descriptors from 176 to 216
  * and the two length fields from 168/172 to 208/212. */
-static bool xx_udf_read_file_entry(Abstractformat *self,
-                                   const xx_udf_private *parsed,
-                                   int64_t offset, xx_udf_file_entry *entry) {
+static bool xx_udf_read_file_entry(Abstractformat *self, const xx_udf_private *parsed, int64_t offset, xx_udf_file_entry *entry)
+{
     uint8_t header[XX_UDF_SECTOR_SIZE];
     uint16_t identifier;
     uint16_t icb_flags;
@@ -950,14 +876,11 @@ static bool xx_udf_read_file_entry(Abstractformat *self,
     if (!self || !self->device || !parsed || !entry) return false;
     xx_rt_memset(entry, 0, sizeof(*entry));
     total_size = xx_io_total_size(self->device);
-    if (offset < 0 || offset > total_size ||
-        (int64_t)XX_UDF_SECTOR_SIZE > total_size - offset ||
-        !xx_udf_read_at(self->device, offset, header, sizeof(header))) {
+    if (offset < 0 || offset > total_size || (int64_t)XX_UDF_SECTOR_SIZE > total_size - offset || !xx_udf_read_at(self->device, offset, header, sizeof(header))) {
         return false;
     }
     identifier = xx_data_get_u16(header, 2, 0, false);
-    if (identifier != XX_UDF_TAG_FILE_ENTRY &&
-        identifier != XX_UDF_TAG_EXTENDED_FILE_ENTRY) {
+    if (identifier != XX_UDF_TAG_FILE_ENTRY && identifier != XX_UDF_TAG_EXTENDED_FILE_ENTRY) {
         return false;
     }
     if (!xx_udf_check_tag(self, offset, identifier, false, NULL)) return false;
@@ -977,12 +900,10 @@ static bool xx_udf_read_file_entry(Abstractformat *self,
     }
     /* ECMA-167 4/14.9: a File Entry is recorded in a single logical block, so
      * both variable areas have to fit in what is left of it. */
-    if ((uint64_t)extended_attributes_length + (uint64_t)entry->ad_length >
-        (uint64_t)parsed->block_size - fixed_size) {
+    if ((uint64_t)extended_attributes_length + (uint64_t)entry->ad_length > (uint64_t)parsed->block_size - fixed_size) {
         return false;
     }
-    if (!xx_udf_add(offset, (uint64_t)fixed_size + extended_attributes_length,
-                    &entry->ad_offset)) {
+    if (!xx_udf_add(offset, (uint64_t)fixed_size + extended_attributes_length, &entry->ad_offset)) {
         return false;
     }
     return true;
@@ -992,24 +913,19 @@ static bool xx_udf_read_file_entry(Abstractformat *self,
 /* Directory walk                                                      */
 /* ------------------------------------------------------------------ */
 
-static bool xx_udf_walk(Abstractformat *self, xx_udf_private *parsed,
-                        int64_t file_entry_offset, uint16_t partition,
-                        const char *path, unsigned depth, xx_pd_struct *pd);
+static bool xx_udf_walk(Abstractformat *self, xx_udf_private *parsed, int64_t file_entry_offset, uint16_t partition, const char *path, unsigned depth, xx_pd_struct *pd);
 
 /* Parse the File Identifier Descriptors of one directory extent and recurse
  * into the children. */
-static bool xx_udf_walk_directory_data(Abstractformat *self,
-                                       xx_udf_private *parsed,
-                                       int64_t data_offset, int64_t data_size,
-                                       const char *path, unsigned depth,
-                                       xx_pd_struct *pd) {
+static bool xx_udf_walk_directory_data(Abstractformat *self, xx_udf_private *parsed, int64_t data_offset, int64_t data_size, const char *path, unsigned depth,
+                                       xx_pd_struct *pd)
+{
     int64_t position = 0;
     int64_t total_size;
     if (!self || !self->device || !parsed) return false;
     total_size = xx_io_total_size(self->device);
     if (data_size <= 0) return true;
-    if (data_size > (int64_t)XX_UDF_MAX_DIR_SIZE || data_offset < 0 ||
-        data_offset > total_size || data_size > total_size - data_offset) {
+    if (data_size > (int64_t)XX_UDF_MAX_DIR_SIZE || data_offset < 0 || data_offset > total_size || data_size > total_size - data_offset) {
         return false;
     }
     while (position + 38 <= data_size) {
@@ -1025,18 +941,14 @@ static bool xx_udf_walk_directory_data(Abstractformat *self,
         int64_t descriptor_size;
         int64_t padded_size;
         if (pd && xx_pd_is_stopped(pd)) return false;
-        if (!xx_udf_add(data_offset, (uint64_t)position, &descriptor_offset) ||
-            !xx_udf_read_at(self->device, descriptor_offset, header,
-                            sizeof(header))) {
+        if (!xx_udf_add(data_offset, (uint64_t)position, &descriptor_offset) || !xx_udf_read_at(self->device, descriptor_offset, header, sizeof(header))) {
             return false;
         }
         /* A directory extent is padded with zeroes once the descriptors end;
          * anything that is not a valid File Identifier Descriptor terminates
          * this extent rather than the whole walk. */
         if (xx_data_get_u16(header, 2, 0, false) != XX_UDF_TAG_FILE_IDENTIFIER_DESCRIPTOR ||
-            !xx_udf_check_tag(self, descriptor_offset,
-                              XX_UDF_TAG_FILE_IDENTIFIER_DESCRIPTOR, false,
-                              NULL)) {
+            !xx_udf_check_tag(self, descriptor_offset, XX_UDF_TAG_FILE_IDENTIFIER_DESCRIPTOR, false, NULL)) {
             break;
         }
         characteristics = header[18];
@@ -1045,34 +957,23 @@ static bool xx_udf_walk_directory_data(Abstractformat *self,
         child_block = xx_data_get_u32(header + 24U, 4, 0, false);
         child_partition = xx_data_get_u16(header + 28U, 2, 0, false);
         implementation_length = xx_data_get_u16(header + 36U, 2, 0, false);
-        descriptor_size = 38 + (int64_t)implementation_length +
-                          (int64_t)identifier_length;
+        descriptor_size = 38 + (int64_t)implementation_length + (int64_t)identifier_length;
         padded_size = (descriptor_size + 3) & ~(int64_t)3;
         if (padded_size <= 0 || padded_size > data_size - position) break;
-        if ((characteristics & (XX_UDF_FID_PARENT | XX_UDF_FID_DELETED)) == 0U &&
-            identifier_length != 0U && icb_length != 0U) {
+        if ((characteristics & (XX_UDF_FID_PARENT | XX_UDF_FID_DELETED)) == 0U && identifier_length != 0U && icb_length != 0U) {
             uint8_t raw_name[255];
             char decoded[XX_UDF_MAX_NAME_UTF8];
             char *full_name;
             int64_t name_offset;
-            if (!xx_udf_add(descriptor_offset,
-                            38U + (uint64_t)implementation_length,
-                            &name_offset) ||
-                name_offset > total_size ||
-                (int64_t)identifier_length > total_size - name_offset ||
-                !xx_udf_read_at(self->device, name_offset, raw_name,
-                                identifier_length)) {
+            if (!xx_udf_add(descriptor_offset, 38U + (uint64_t)implementation_length, &name_offset) || name_offset > total_size ||
+                (int64_t)identifier_length > total_size - name_offset || !xx_udf_read_at(self->device, name_offset, raw_name, identifier_length)) {
                 return false;
             }
-            if (xx_udf_cs0_to_utf8(raw_name, identifier_length, decoded,
-                                   sizeof(decoded), true) &&
-                xx_udf_safe_name(decoded) &&
-                xx_udf_lba_to_offset(self, parsed, child_partition, child_block,
-                                     &child_offset)) {
+            if (xx_udf_cs0_to_utf8(raw_name, identifier_length, decoded, sizeof(decoded), true) && xx_udf_safe_name(decoded) &&
+                xx_udf_lba_to_offset(self, parsed, child_partition, child_block, &child_offset)) {
                 full_name = xx_udf_join_name(path, decoded);
                 if (!full_name) return false;
-                if (!xx_udf_walk(self, parsed, child_offset, child_partition,
-                                 full_name, depth + 1U, pd)) {
+                if (!xx_udf_walk(self, parsed, child_offset, child_partition, full_name, depth + 1U, pd)) {
                     xx_str_free(full_name);
                     return false;
                 }
@@ -1088,9 +989,8 @@ static bool xx_udf_walk_directory_data(Abstractformat *self,
 }
 
 /* Walk one File Entry.  path is "" for the root, which is not itself listed. */
-static bool xx_udf_walk(Abstractformat *self, xx_udf_private *parsed,
-                        int64_t file_entry_offset, uint16_t partition,
-                        const char *path, unsigned depth, xx_pd_struct *pd) {
+static bool xx_udf_walk(Abstractformat *self, xx_udf_private *parsed, int64_t file_entry_offset, uint16_t partition, const char *path, unsigned depth, xx_pd_struct *pd)
+{
     xx_udf_file_entry file_entry;
     xx_udf_entry entry;
     int64_t data_offset = 0;
@@ -1102,16 +1002,13 @@ static bool xx_udf_walk(Abstractformat *self, xx_udf_private *parsed,
         /* Not a File Entry at all - skip this name, keep the volume. */
         return true;
     }
-    if (file_entry.file_type != XX_UDF_ICB_FILE_TYPE_DIRECTORY &&
-        file_entry.file_type != XX_UDF_ICB_FILE_TYPE_FILE) {
+    if (file_entry.file_type != XX_UDF_ICB_FILE_TYPE_DIRECTORY && file_entry.file_type != XX_UDF_ICB_FILE_TYPE_FILE) {
         /* Symbolic links, devices, sockets, stream directories and indirect
          * ICBs are deliberately not represented. */
         return true;
     }
-    extent_result = xx_udf_resolve_extents(
-        self, parsed, file_entry.ad_offset, file_entry.ad_length,
-        file_entry.allocation_type, partition, file_entry.information_length,
-        &data_offset, &data_size);
+    extent_result = xx_udf_resolve_extents(self, parsed, file_entry.ad_offset, file_entry.ad_length, file_entry.allocation_type, partition, file_entry.information_length,
+                                           &data_offset, &data_size);
     if (extent_result == XX_UDF_EXTENT_ERROR) return false;
     if (file_entry.file_type == XX_UDF_ICB_FILE_TYPE_DIRECTORY) {
         /* Cycle guard: a directory reached a second time (an ICB pointing at
@@ -1131,8 +1028,7 @@ static bool xx_udf_walk(Abstractformat *self, xx_udf_private *parsed,
             }
         }
         if (extent_result != XX_UDF_EXTENT_OK) return true;
-        return xx_udf_walk_directory_data(self, parsed, data_offset, data_size,
-                                          path, depth, pd);
+        return xx_udf_walk_directory_data(self, parsed, data_offset, data_size, path, depth, pd);
     }
     if (extent_result != XX_UDF_EXTENT_OK || path[0] == '\0') return true;
     xx_rt_memset(&entry, 0, sizeof(entry));
@@ -1160,8 +1056,8 @@ static bool xx_udf_walk(Abstractformat *self, xx_udf_private *parsed,
  * 240 FileSetCharacterSet(64), 304 FileSetIdentifier(32),
  * 336 CopyrightFileIdentifier(32), 368 AbstractFileIdentifier(32),
  * 400 RootDirectoryICB(long_ad). */
-static bool xx_udf_parse(Abstractformat *self, xx_udf_private *parsed,
-                         xx_pd_struct *pd) {
+static bool xx_udf_parse(Abstractformat *self, xx_udf_private *parsed, xx_pd_struct *pd)
+{
     uint8_t file_set[XX_UDF_SECTOR_SIZE];
     int64_t anchor_offset = -1;
     int64_t vds_offset = 0;
@@ -1179,8 +1075,7 @@ static bool xx_udf_parse(Abstractformat *self, xx_udf_private *parsed,
      * stack copy whatever this returns, and cleaning up an uninitialised one
      * would free indeterminate pointers. */
     xx_udf_private_reset(parsed);
-    if (!self || !self->device || !parsed || self->base_address < 0 ||
-        (pd && xx_pd_is_stopped(pd))) {
+    if (!self || !self->device || !parsed || self->base_address < 0 || (pd && xx_pd_is_stopped(pd))) {
         return false;
     }
     total_size = xx_io_total_size(self->device);
@@ -1188,44 +1083,31 @@ static bool xx_udf_parse(Abstractformat *self, xx_udf_private *parsed,
         goto fail;
     }
     parsed->anchor_offset = anchor_offset;
-    if (!xx_udf_scan_volume_descriptor_sequence(self, parsed, vds_offset,
-                                                vds_length, &fsd_block,
-                                                &fsd_partition, pd)) {
+    if (!xx_udf_scan_volume_descriptor_sequence(self, parsed, vds_offset, vds_length, &fsd_block, &fsd_partition, pd)) {
         goto fail;
     }
-    if (!xx_udf_lba_to_offset(self, parsed, fsd_partition, fsd_block,
-                              &fsd_offset) ||
-        fsd_offset > total_size ||
-        (int64_t)XX_UDF_SECTOR_SIZE > total_size - fsd_offset ||
-        !xx_udf_check_tag(self, fsd_offset, XX_UDF_TAG_FILE_SET_DESCRIPTOR,
-                          false, NULL) ||
-        !xx_udf_read_at(self->device, fsd_offset, file_set, sizeof(file_set))) {
+    if (!xx_udf_lba_to_offset(self, parsed, fsd_partition, fsd_block, &fsd_offset) || fsd_offset > total_size || (int64_t)XX_UDF_SECTOR_SIZE > total_size - fsd_offset ||
+        !xx_udf_check_tag(self, fsd_offset, XX_UDF_TAG_FILE_SET_DESCRIPTOR, false, NULL) || !xx_udf_read_at(self->device, fsd_offset, file_set, sizeof(file_set))) {
         goto fail;
     }
     root_extent_length = xx_data_get_u32(file_set + 400U, 4, 0, false);
     root_block = xx_data_get_u32(file_set + 404U, 4, 0, false);
     root_partition = xx_data_get_u16(file_set + 408U, 2, 0, false);
-    if (root_extent_length == 0U ||
-        !xx_udf_lba_to_offset(self, parsed, root_partition, root_block,
-                              &root_offset)) {
+    if (root_extent_length == 0U || !xx_udf_lba_to_offset(self, parsed, root_partition, root_block, &root_offset)) {
         goto fail;
     }
     /* The volume ends after the last block any partition claims; the anchor
      * itself may sit beyond that, at the last sector of the medium. */
     parsed->volume_end = -1;
     for (index = 0U; index < parsed->partition_count; ++index) {
-        uint64_t end_block = (uint64_t)parsed->partitions[index].start +
-                             (uint64_t)parsed->partitions[index].length;
+        uint64_t end_block = (uint64_t)parsed->partitions[index].start + (uint64_t)parsed->partitions[index].length;
         int64_t end_offset;
         if (end_block > UINT64_MAX / parsed->block_size) continue;
-        if (xx_udf_add(self->base_address, end_block * parsed->block_size,
-                       &end_offset) &&
-            end_offset > parsed->volume_end) {
+        if (xx_udf_add(self->base_address, end_block * parsed->block_size, &end_offset) && end_offset > parsed->volume_end) {
             parsed->volume_end = end_offset;
         }
     }
-    if (anchor_offset >= 0 &&
-        anchor_offset + (int64_t)XX_UDF_SECTOR_SIZE > parsed->volume_end) {
+    if (anchor_offset >= 0 && anchor_offset + (int64_t)XX_UDF_SECTOR_SIZE > parsed->volume_end) {
         parsed->volume_end = anchor_offset + (int64_t)XX_UDF_SECTOR_SIZE;
     }
     /* ECMA-167 3/8.4.2 puts a copy of the anchor at the last sector of the
@@ -1237,12 +1119,8 @@ static bool xx_udf_parse(Abstractformat *self, xx_udf_private *parsed,
         int64_t ignored_offset;
         uint32_t ignored_length;
         if (usable >= (int64_t)XX_UDF_SECTOR_SIZE) {
-            last_anchor = self->base_address +
-                          (usable / (int64_t)XX_UDF_SECTOR_SIZE - 1) *
-                              (int64_t)XX_UDF_SECTOR_SIZE;
-            if (last_anchor != anchor_offset &&
-                xx_udf_read_anchor(self, last_anchor, true, &ignored_offset,
-                                   &ignored_length) &&
+            last_anchor = self->base_address + (usable / (int64_t)XX_UDF_SECTOR_SIZE - 1) * (int64_t)XX_UDF_SECTOR_SIZE;
+            if (last_anchor != anchor_offset && xx_udf_read_anchor(self, last_anchor, true, &ignored_offset, &ignored_length) &&
                 last_anchor + (int64_t)XX_UDF_SECTOR_SIZE > parsed->volume_end) {
                 parsed->volume_end = last_anchor + (int64_t)XX_UDF_SECTOR_SIZE;
             }
@@ -1264,18 +1142,16 @@ fail:
 /* Archive record plumbing                                             */
 /* ------------------------------------------------------------------ */
 
-static bool xx_udf_copy_options(xx_list_s *destination,
-                                const xx_list_s *source) {
+static bool xx_udf_copy_options(xx_list_s *destination, const xx_list_s *source)
+{
     size_t index;
     if (!destination || !source) return source == NULL;
     for (index = 0U; index < source->count; ++index) {
-        const xx_meta *item =
-            (const xx_meta *)xx_list_at((const xx_list_t *)source, index);
+        const xx_meta *item = (const xx_meta *)xx_list_at((const xx_list_t *)source, index);
         xx_meta copy;
         if (!item) continue;
         xx_meta_init(&copy, item->meta_id);
-        if (!xx_var_copy(&copy.var, &item->var) ||
-            !xx_list_append(destination, &copy)) {
+        if (!xx_var_copy(&copy.var, &item->var) || !xx_list_append(destination, &copy)) {
             xx_meta_cleanup(&copy);
             return false;
         }
@@ -1283,20 +1159,19 @@ static bool xx_udf_copy_options(xx_list_s *destination,
     return true;
 }
 
-static const xx_var *xx_udf_find_option(const xx_list_s *options,
-                                        uint32_t meta_id) {
+static const xx_var *xx_udf_find_option(const xx_list_s *options, uint32_t meta_id)
+{
     size_t index;
     if (!options) return NULL;
     for (index = 0U; index < options->count; ++index) {
-        const xx_meta *item =
-            (const xx_meta *)xx_list_at((const xx_list_t *)options, index);
+        const xx_meta *item = (const xx_meta *)xx_list_at((const xx_list_t *)options, index);
         if (item && item->meta_id == meta_id) return &item->var;
     }
     return NULL;
 }
 
-static bool xx_udf_populate_record(xx_archive_record *record,
-                                   const xx_udf_entry *entry) {
+static bool xx_udf_populate_record(xx_archive_record *record, const xx_udf_entry *entry)
+{
     uint64_t size;
     if (!record || !entry || !entry->name) return false;
     size = entry->is_folder ? 0U : (uint64_t)entry->data_size;
@@ -1306,18 +1181,13 @@ static bool xx_udf_populate_record(xx_archive_record *record,
     record->header_size = -1;
     record->data_offset = entry->data_offset;
     record->compressed_size = entry->is_folder ? 0 : entry->data_size;
-    return xx_archive_record_set_original_name(record, entry->name) &&
-           xx_archive_record_set_meta_u64(record, XX_META_ID_UNCOMPRESSED_SIZE,
-                                          size) &&
-           xx_archive_record_set_meta_u64(record, XX_META_ID_COMPRESSED_SIZE,
-                                          size) &&
-           xx_archive_record_set_meta_u64(record, XX_META_ID_COMPRESSION_METHOD,
-                                          0U) &&
-           xx_archive_record_set_meta_bool(record, XX_META_ID_IS_FOLDER,
-                                           entry->is_folder);
+    return xx_archive_record_set_original_name(record, entry->name) && xx_archive_record_set_meta_u64(record, XX_META_ID_UNCOMPRESSED_SIZE, size) &&
+           xx_archive_record_set_meta_u64(record, XX_META_ID_COMPRESSED_SIZE, size) && xx_archive_record_set_meta_u64(record, XX_META_ID_COMPRESSION_METHOD, 0U) &&
+           xx_archive_record_set_meta_bool(record, XX_META_ID_IS_FOLDER, entry->is_folder);
 }
 
-static void xx_udf_archive_stream_free(void *pointer) {
+static void xx_udf_archive_stream_free(void *pointer)
+{
     xx_udf_archive_stream *stream = (xx_udf_archive_stream *)pointer;
     if (!stream) return;
     xx_udf_private_cleanup(&stream->parsed);
@@ -1328,7 +1198,8 @@ static void xx_udf_archive_stream_free(void *pointer) {
 /* Public API                                                          */
 /* ------------------------------------------------------------------ */
 
-void xx_udf_init(xx_udf *udf, xx_io_device *dev, int64_t base_address) {
+void xx_udf_init(xx_udf *udf, xx_io_device *dev, int64_t base_address)
+{
     if (!udf) return;
     xx_rt_memset(udf, 0, sizeof(*udf));
     xx_format_init(&udf->format, dev, base_address);
@@ -1341,28 +1212,26 @@ void xx_udf_init(xx_udf *udf, xx_io_device *dev, int64_t base_address) {
     udf->format.check_is_valid = xx_udf_check_is_valid;
     udf->format.handle_base_info = xx_udf_handle_base_info;
     udf->format.get_format_size = xx_udf_get_format_size;
-    udf->format.get_number_of_archive_records =
-        xx_udf_get_number_of_archive_records;
-    udf->format.create_archive_records_reading =
-        xx_udf_create_archive_records_reading;
+    udf->format.get_number_of_archive_records = xx_udf_get_number_of_archive_records;
+    udf->format.create_archive_records_reading = xx_udf_create_archive_records_reading;
     udf->format.get_current_archive_record = xx_udf_get_current_archive_record;
-    udf->format.unpack_current_archive_record =
-        xx_udf_unpack_current_archive_record;
+    udf->format.unpack_current_archive_record = xx_udf_unpack_current_archive_record;
     udf->format.archive_record_move_to_next = xx_udf_archive_record_move_to_next;
-    udf->format.free_archive_records_reading =
-        xx_udf_free_archive_records_reading;
+    udf->format.free_archive_records_reading = xx_udf_free_archive_records_reading;
     udf->format.destroy = xx_udf_vtable_destroy;
     udf->anchor_offset = -1;
     udf->volume_end = -1;
 }
 
-xx_udf *xx_udf_create(xx_io_device *dev, int64_t base_address) {
+xx_udf *xx_udf_create(xx_io_device *dev, int64_t base_address)
+{
     xx_udf *udf = (xx_udf *)xx_mem_alloc(sizeof(*udf));
     if (udf) xx_udf_init(udf, dev, base_address);
     return udf;
 }
 
-void xx_udf_destroy(xx_udf *udf) {
+void xx_udf_destroy(xx_udf *udf)
+{
     if (!udf) return;
     if (udf->internal) {
         xx_udf_private_cleanup((xx_udf_private *)udf->internal);
@@ -1372,24 +1241,28 @@ void xx_udf_destroy(xx_udf *udf) {
     xx_format_cleanup_extra_parameters(&udf->format);
 }
 
-static void xx_udf_vtable_destroy(Abstractformat *self) {
+static void xx_udf_vtable_destroy(Abstractformat *self)
+{
     xx_udf_destroy((xx_udf *)self);
 }
 
-void xx_udf_free(xx_udf *udf) {
+void xx_udf_free(xx_udf *udf)
+{
     if (!udf) return;
     xx_udf_destroy(udf);
     xx_mem_free(udf);
 }
 
-bool xx_udf_check_is_valid(Abstractformat *self, xx_pd_struct *pd) {
+bool xx_udf_check_is_valid(Abstractformat *self, xx_pd_struct *pd)
+{
     xx_udf_private parsed;
     bool result = xx_udf_parse(self, &parsed, pd);
     xx_udf_private_cleanup(&parsed);
     return result;
 }
 
-bool xx_udf_handle_base_info(Abstractformat *self, xx_pd_struct *pd) {
+bool xx_udf_handle_base_info(Abstractformat *self, xx_pd_struct *pd)
+{
     xx_udf_private *parsed;
     xx_udf *udf = (xx_udf *)self;
     int64_t total_size;
@@ -1412,10 +1285,8 @@ bool xx_udf_handle_base_info(Abstractformat *self, xx_pd_struct *pd) {
     udf->udf_revision = parsed->udf_revision;
     udf->anchor_offset = parsed->anchor_offset;
     udf->volume_end = parsed->volume_end;
-    xx_rt_memcpy(udf->volume_identifier, parsed->volume_identifier,
-                 sizeof(udf->volume_identifier));
-    xx_rt_memcpy(udf->volume_set_identifier, parsed->volume_set_identifier,
-                 sizeof(udf->volume_set_identifier));
+    xx_rt_memcpy(udf->volume_identifier, parsed->volume_identifier, sizeof(udf->volume_identifier));
+    xx_rt_memcpy(udf->volume_set_identifier, parsed->volume_set_identifier, sizeof(udf->volume_set_identifier));
     self->format_size = parsed->volume_end - self->base_address;
     total_size = xx_io_total_size(self->device);
     if (total_size > parsed->volume_end) {
@@ -1431,29 +1302,27 @@ bool xx_udf_handle_base_info(Abstractformat *self, xx_pd_struct *pd) {
     return true;
 }
 
-int64_t xx_udf_get_format_size(Abstractformat *self, xx_pd_struct *pd) {
-    if (!self ||
-        (!self->base_info_handled && !xx_format_handle_base_info(self, pd))) {
+int64_t xx_udf_get_format_size(Abstractformat *self, xx_pd_struct *pd)
+{
+    if (!self || (!self->base_info_handled && !xx_format_handle_base_info(self, pd))) {
         return -1;
     }
     return self->format_size;
 }
 
-uint64_t xx_udf_get_number_of_archive_records(Abstractformat *self,
-                                              xx_pd_struct *pd) {
-    if (!self ||
-        (!self->base_info_handled && !xx_format_handle_base_info(self, pd))) {
+uint64_t xx_udf_get_number_of_archive_records(Abstractformat *self, xx_pd_struct *pd)
+{
+    if (!self || (!self->base_info_handled && !xx_format_handle_base_info(self, pd))) {
         return 0U;
     }
     return ((xx_udf *)self)->number_of_records;
 }
 
-xx_archive_record_state *xx_udf_create_archive_records_reading(
-    Abstractformat *self, const xx_list_s *options, xx_pd_struct *pd) {
+xx_archive_record_state *xx_udf_create_archive_records_reading(Abstractformat *self, const xx_list_s *options, xx_pd_struct *pd)
+{
     xx_archive_record_state *state;
     xx_udf_archive_stream *stream;
-    if (!self || !self->device ||
-        (!self->base_info_handled && !xx_format_handle_base_info(self, pd))) {
+    if (!self || !self->device || (!self->base_info_handled && !xx_format_handle_base_info(self, pd))) {
         return NULL;
     }
     state = (xx_archive_record_state *)xx_mem_alloc(sizeof(*state));
@@ -1464,8 +1333,7 @@ xx_archive_record_state *xx_udf_create_archive_records_reading(
         return NULL;
     }
     xx_archive_record_state_init(state, self);
-    if (!xx_udf_copy_options(&state->options, options) ||
-        !xx_udf_parse(self, &stream->parsed, pd)) {
+    if (!xx_udf_copy_options(&state->options, options) || !xx_udf_parse(self, &stream->parsed, pd)) {
         xx_udf_archive_stream_free(stream);
         xx_archive_record_state_free(state);
         return NULL;
@@ -1474,28 +1342,22 @@ xx_archive_record_state *xx_udf_create_archive_records_reading(
     state->internal_state = stream;
     state->free_internal = xx_udf_archive_stream_free;
     state->total_records = (int64_t)stream->parsed.count;
-    if (stream->parsed.count != 0U &&
-        xx_udf_populate_record(&state->current_record,
-                               &stream->parsed.entries[0])) {
+    if (stream->parsed.count != 0U && xx_udf_populate_record(&state->current_record, &stream->parsed.entries[0])) {
         state->has_record = true;
         state->current_index = 0;
     }
     return state;
 }
 
-const xx_archive_record *xx_udf_get_current_archive_record(
-    Abstractformat *self, xx_archive_record_state *state) {
-    return self && state && state->format == self && state->has_record
-               ? &state->current_record
-               : NULL;
+const xx_archive_record *xx_udf_get_current_archive_record(Abstractformat *self, xx_archive_record_state *state)
+{
+    return self && state && state->format == self && state->has_record ? &state->current_record : NULL;
 }
 
-bool xx_udf_archive_record_move_to_next(Abstractformat *self,
-                                        xx_archive_record_state *state,
-                                        xx_pd_struct *pd) {
+bool xx_udf_archive_record_move_to_next(Abstractformat *self, xx_archive_record_state *state, xx_pd_struct *pd)
+{
     xx_udf_archive_stream *stream;
-    if (!self || !state || state->format != self || !state->has_record ||
-        !state->internal_state || (pd && xx_pd_is_stopped(pd))) {
+    if (!self || !state || state->format != self || !state->has_record || !state->internal_state || (pd && xx_pd_is_stopped(pd))) {
         return false;
     }
     stream = (xx_udf_archive_stream *)state->internal_state;
@@ -1506,8 +1368,7 @@ bool xx_udf_archive_record_move_to_next(Abstractformat *self,
         state->has_record = false;
         return false;
     }
-    if (!xx_udf_populate_record(&state->current_record,
-                                &stream->parsed.entries[stream->index])) {
+    if (!xx_udf_populate_record(&state->current_record, &stream->parsed.entries[stream->index])) {
         state->has_record = false;
         return false;
     }
@@ -1515,9 +1376,8 @@ bool xx_udf_archive_record_move_to_next(Abstractformat *self,
     return true;
 }
 
-bool xx_udf_unpack_current_archive_record(Abstractformat *self,
-                                          xx_archive_record_state *state,
-                                          xx_pd_struct *pd) {
+bool xx_udf_unpack_current_archive_record(Abstractformat *self, xx_archive_record_state *state, xx_pd_struct *pd)
+{
     const xx_archive_record *record;
     const xx_var *option;
     const char *name;
@@ -1526,8 +1386,7 @@ bool xx_udf_unpack_current_archive_record(Abstractformat *self,
     char *destination = NULL;
     bool folder;
     bool result;
-    if (!self || !self->device || !state || state->format != self ||
-        !state->has_record || (pd && xx_pd_is_stopped(pd))) {
+    if (!self || !self->device || !state || state->format != self || !state->has_record || (pd && xx_pd_is_stopped(pd))) {
         return false;
     }
     record = &state->current_record;
@@ -1536,21 +1395,16 @@ bool xx_udf_unpack_current_archive_record(Abstractformat *self,
     option = xx_udf_find_option(&state->options, XX_META_ID_OPT_UNPACK_PATH);
     if (!option) {
         int64_t total = xx_io_total_size(self->device);
-        return record->data_offset >= 0 && record->compressed_size >= 0 &&
-               record->data_offset <= total &&
-               record->compressed_size <= total - record->data_offset;
+        return record->data_offset >= 0 && record->compressed_size >= 0 && record->data_offset <= total && record->compressed_size <= total - record->data_offset;
     }
-    if (option->type == XX_VAR_TYPE_STRING ||
-        option->type == XX_VAR_TYPE_STRING_VIEW) {
+    if (option->type == XX_VAR_TYPE_STRING || option->type == XX_VAR_TYPE_STRING_VIEW) {
         base = xx_var_get_str(option);
-    } else if (option->type == XX_VAR_TYPE_WSTRING ||
-               option->type == XX_VAR_TYPE_WSTRING_VIEW) {
+    } else if (option->type == XX_VAR_TYPE_WSTRING || option->type == XX_VAR_TYPE_WSTRING_VIEW) {
         owned_base = xx_str_unicode_to_utf8(xx_var_get_wstr(option));
         base = owned_base;
     }
     if (!base) goto cleanup;
-    if (base[0] && base[xx_str_len(base) - 1U] != '/' &&
-        base[xx_str_len(base) - 1U] != '\\') {
+    if (base[0] && base[xx_str_len(base) - 1U] != '/' && base[xx_str_len(base) - 1U] != '\\') {
         destination = xx_str_concat(base, "/");
         if (!destination) goto cleanup;
         {
@@ -1562,15 +1416,11 @@ bool xx_udf_unpack_current_archive_record(Abstractformat *self,
         destination = xx_str_concat(base, name);
     }
     if (!destination) goto cleanup;
-    folder = xx_archive_record_get_meta_bool(record, XX_META_ID_IS_FOLDER,
-                                             false);
+    folder = xx_archive_record_get_meta_bool(record, XX_META_ID_IS_FOLDER, false);
     if (folder) {
         result = xx_store_create_dirs_a(destination, true);
     } else if (xx_store_create_dirs_a(destination, false)) {
-        result = xx_store_unpack_device_to_file(self->device,
-                                                record->data_offset,
-                                                record->compressed_size,
-                                                destination, pd);
+        result = xx_store_unpack_device_to_file(self->device, record->data_offset, record->compressed_size, destination, pd);
     } else {
         result = false;
     }
@@ -1583,33 +1433,41 @@ cleanup:
     return false;
 }
 
-void xx_udf_free_archive_records_reading(Abstractformat *self,
-                                         xx_archive_record_state *state) {
+void xx_udf_free_archive_records_reading(Abstractformat *self, xx_archive_record_state *state)
+{
     (void)self;
     xx_archive_record_state_free(state);
 }
 
-uint64_t xx_udf_get_number_of_records(const xx_udf *udf) {
+uint64_t xx_udf_get_number_of_records(const xx_udf *udf)
+{
     return udf ? udf->number_of_records : 0U;
 }
-uint64_t xx_udf_get_number_of_members(const xx_udf *udf) {
+uint64_t xx_udf_get_number_of_members(const xx_udf *udf)
+{
     return udf ? udf->number_of_members : 0U;
 }
-uint32_t xx_udf_get_logical_block_size(const xx_udf *udf) {
+uint32_t xx_udf_get_logical_block_size(const xx_udf *udf)
+{
     return udf ? udf->logical_block_size : 0U;
 }
-uint16_t xx_udf_get_udf_revision(const xx_udf *udf) {
+uint16_t xx_udf_get_udf_revision(const xx_udf *udf)
+{
     return udf ? udf->udf_revision : 0U;
 }
-int64_t xx_udf_get_anchor_offset(const xx_udf *udf) {
+int64_t xx_udf_get_anchor_offset(const xx_udf *udf)
+{
     return udf ? udf->anchor_offset : -1;
 }
-int64_t xx_udf_get_volume_end(const xx_udf *udf) {
+int64_t xx_udf_get_volume_end(const xx_udf *udf)
+{
     return udf ? udf->volume_end : -1;
 }
-const char *xx_udf_get_volume_identifier(const xx_udf *udf) {
+const char *xx_udf_get_volume_identifier(const xx_udf *udf)
+{
     return udf ? udf->volume_identifier : NULL;
 }
-const char *xx_udf_get_volume_set_identifier(const xx_udf *udf) {
+const char *xx_udf_get_volume_set_identifier(const xx_udf *udf)
+{
     return udf ? udf->volume_set_identifier : NULL;
 }

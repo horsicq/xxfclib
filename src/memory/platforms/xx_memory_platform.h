@@ -37,17 +37,17 @@ extern "C" {
 /**
  * @brief Allocate memory on host platform.
  */
-void* xx_memory_platform_alloc(size_t size);
+void *xx_memory_platform_alloc(size_t size);
 
 /**
  * @brief Allocate zeroed memory on host platform.
  */
-void* xx_memory_platform_calloc(size_t count, size_t size);
+void *xx_memory_platform_calloc(size_t count, size_t size);
 
 /**
  * @brief Reallocate memory on host platform.
  */
-void* xx_memory_platform_realloc(void *ptr, size_t new_size);
+void *xx_memory_platform_realloc(void *ptr, size_t new_size);
 
 /**
  * @brief Free memory on host platform.
@@ -70,34 +70,52 @@ typedef struct __attribute__((packed, may_alias)) xx_memory_unaligned_word_s {
 /* MSVC supports aliasing through packed objects and does not apply GCC-style
  * strict-aliasing optimizations. Packing also permits unaligned word access. */
 #pragma pack(push, 1)
-typedef struct xx_memory_unaligned_word_s { uint64_t value; } xx_memory_unaligned_word;
+typedef struct xx_memory_unaligned_word_s {
+    uint64_t value;
+} xx_memory_unaligned_word;
 #pragma pack(pop)
 #endif
 
-static inline uint64_t xx_memory_load_word(const uint8_t *source) {
+static inline uint64_t xx_memory_load_word(const uint8_t *source)
+{
 #if defined(_MSC_VER) || defined(__GNUC__) || defined(__clang__)
     return ((const xx_memory_unaligned_word *)(const void *)source)->value;
 #else
-    union { uint64_t value; uint8_t bytes[8]; } word;
-    word.bytes[0] = source[0]; word.bytes[1] = source[1];
-    word.bytes[2] = source[2]; word.bytes[3] = source[3];
-    word.bytes[4] = source[4]; word.bytes[5] = source[5];
-    word.bytes[6] = source[6]; word.bytes[7] = source[7];
+    union {
+        uint64_t value;
+        uint8_t bytes[8];
+    } word;
+    word.bytes[0] = source[0];
+    word.bytes[1] = source[1];
+    word.bytes[2] = source[2];
+    word.bytes[3] = source[3];
+    word.bytes[4] = source[4];
+    word.bytes[5] = source[5];
+    word.bytes[6] = source[6];
+    word.bytes[7] = source[7];
     return word.value;
 #endif
 }
 
-static inline void xx_memory_store_word(uint8_t *destination, uint64_t value) {
+static inline void xx_memory_store_word(uint8_t *destination, uint64_t value)
+{
 #if defined(_MSC_VER) || defined(__GNUC__) || defined(__clang__)
     ((volatile xx_memory_unaligned_word *)(void *)destination)->value = value;
 #else
-    union { uint64_t value; uint8_t bytes[8]; } word;
+    union {
+        uint64_t value;
+        uint8_t bytes[8];
+    } word;
     volatile uint8_t *dst = destination;
     word.value = value;
-    dst[0] = word.bytes[0]; dst[1] = word.bytes[1];
-    dst[2] = word.bytes[2]; dst[3] = word.bytes[3];
-    dst[4] = word.bytes[4]; dst[5] = word.bytes[5];
-    dst[6] = word.bytes[6]; dst[7] = word.bytes[7];
+    dst[0] = word.bytes[0];
+    dst[1] = word.bytes[1];
+    dst[2] = word.bytes[2];
+    dst[3] = word.bytes[3];
+    dst[4] = word.bytes[4];
+    dst[5] = word.bytes[5];
+    dst[6] = word.bytes[6];
+    dst[7] = word.bytes[7];
 #endif
 }
 

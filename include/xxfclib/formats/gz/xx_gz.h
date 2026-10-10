@@ -51,10 +51,10 @@ typedef enum xx_gz_data_struct_id_e {
 } xx_gz_data_struct_id_t;
 
 struct xx_gz {
-    Abstractformat format;       /**< Base format structure (must be first). */
-    uint64_t number_of_members;  /**< Number of concatenated gzip members. */
-    int64_t stream_end;          /**< Absolute end offset of the gzip stream. */
-    void *internal;              /**< Parsed member table (private). */
+    Abstractformat format;      /**< Base format structure (must be first). */
+    uint64_t number_of_members; /**< Number of concatenated gzip members. */
+    int64_t stream_end;         /**< Absolute end offset of the gzip stream. */
+    void *internal;             /**< Parsed member table (private). */
 };
 
 XXFC_API void xx_gz_init(xx_gz *gz, xx_io_device *dev, int64_t base_address);
@@ -68,8 +68,7 @@ XXFC_API int64_t xx_gz_get_format_size(Abstractformat *self, xx_pd_struct *pd);
 XXFC_API uint64_t xx_gz_get_number_of_archive_records(Abstractformat *self, xx_pd_struct *pd);
 
 /** Decode all concatenated gzip members to a caller-provided device. */
-XXFC_API bool xx_gz_unpack_to_device(xx_gz *gz, xx_io_device *destination,
-                                     xx_pd_struct *pd);
+XXFC_API bool xx_gz_unpack_to_device(xx_gz *gz, xx_io_device *destination, xx_pd_struct *pd);
 
 XXFC_API xx_archive_record_state *xx_gz_create_archive_records_reading(Abstractformat *self, const xx_list_s *options, xx_pd_struct *pd);
 XXFC_API const xx_archive_record *xx_gz_get_current_archive_record(Abstractformat *self, xx_archive_record_state *state);
@@ -101,27 +100,33 @@ XXFC_API void xx_gz_free_data_struct_records_reading(Abstractformat *self, xx_da
 XXFC_API uint64_t xx_gz_get_number_of_members(const xx_gz *gz);
 XXFC_API int64_t xx_gz_get_stream_end(const xx_gz *gz);
 
-static inline Abstractformat *xx_gz_to_format(xx_gz *gz) {
+static inline Abstractformat *xx_gz_to_format(xx_gz *gz)
+{
     return gz ? &gz->format : NULL;
 }
 
-static inline const Abstractformat *xx_gz_to_format_const(const xx_gz *gz) {
+static inline const Abstractformat *xx_gz_to_format_const(const xx_gz *gz)
+{
     return gz ? &gz->format : NULL;
 }
 
-static inline void XGz_init(xx_gz *gz, xx_io_device *dev, int64_t base_address) {
+static inline void XGz_init(xx_gz *gz, xx_io_device *dev, int64_t base_address)
+{
     xx_gz_init(gz, dev, base_address);
 }
 
-static inline xx_gz *XGz_create(xx_io_device *dev, int64_t base_address) {
+static inline xx_gz *XGz_create(xx_io_device *dev, int64_t base_address)
+{
     return xx_gz_create(dev, base_address);
 }
 
-static inline void XGz_free(xx_gz *gz) {
+static inline void XGz_free(xx_gz *gz)
+{
     xx_gz_free(gz);
 }
 
-static inline bool XGz_is_valid(xx_gz *gz, xx_pd_struct *pd) {
+static inline bool XGz_is_valid(xx_gz *gz, xx_pd_struct *pd)
+{
     return gz ? xx_format_is_valid(&gz->format, pd) : false;
 }
 

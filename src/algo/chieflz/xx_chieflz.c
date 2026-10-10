@@ -38,11 +38,13 @@ typedef struct chieflz_bits_s {
     unsigned bits_left;
 } chieflz_bits;
 
-static bool chieflz_node_valid(uint32_t node) {
+static bool chieflz_node_valid(uint32_t node)
+{
     return node >= CHIEFLZ_ROOT && node <= CHIEFLZ_NODES;
 }
 
-static void chieflz_model_init(chieflz_model *model) {
+static void chieflz_model_init(chieflz_model *model)
+{
     uint32_t index;
     xx_rt_memset(model, 0, sizeof(*model));
     for (index = 2U; index <= CHIEFLZ_NODES; ++index) {
@@ -55,16 +57,15 @@ static void chieflz_model_init(chieflz_model *model) {
     }
 }
 
-static int chieflz_read_bit(chieflz_bits *bits) {
+static int chieflz_read_bit(chieflz_bits *bits)
+{
     int result;
     if (!bits) return -1;
     if (bits->bits_left == 0U) {
         /* A partial trailing byte is never a valid refill: the encoder always
          * emits whole 16 bit words. */
         if (bits->position + 2U > bits->input_size) return -1;
-        bits->word = (uint16_t)((uint16_t)bits->input[bits->position] |
-                                ((uint16_t)bits->input[bits->position + 1U]
-                                 << 8U));
+        bits->word = (uint16_t)((uint16_t)bits->input[bits->position] | ((uint16_t)bits->input[bits->position + 1U] << 8U));
         bits->position += 2U;
         bits->bits_left = 16U;
     }
@@ -76,7 +77,8 @@ static int chieflz_read_bit(chieflz_bits *bits) {
 
 /* The value is assembled LSB-first from bits that arrive MSB-first.  This
  * looks like a bug and is not: it is what the encoder does. */
-static int chieflz_read_bits(chieflz_bits *bits, unsigned count) {
+static int chieflz_read_bits(chieflz_bits *bits, unsigned count)
+{
     unsigned index;
     int value = 0;
     if (!bits || count > 16U) return -1;
@@ -90,25 +92,22 @@ static int chieflz_read_bits(chieflz_bits *bits, unsigned count) {
 
 /* Re-sum weights from `node` up to the root, then halve everything if the
  * root has just reached the ceiling. */
-static bool chieflz_propagate(chieflz_model *model, uint32_t node,
-                              uint32_t sibling) {
+static bool chieflz_propagate(chieflz_model *model, uint32_t node, uint32_t sibling)
+{
     uint32_t step;
     if (!model) return false;
     for (step = 0U; step <= CHIEFLZ_NODES; ++step) {
         uint32_t child = node;
         uint32_t parent;
         uint32_t grand;
-        if (!chieflz_node_valid(child) || !chieflz_node_valid(sibling))
-            return false;
+        if (!chieflz_node_valid(child) || !chieflz_node_valid(sibling)) return false;
         parent = model->parent[child];
         if (!chieflz_node_valid(parent)) return false;
-        model->frequency[parent] = (uint16_t)(model->frequency[child] +
-                                              model->frequency[sibling]);
+        model->frequency[parent] = (uint16_t)(model->frequency[child] + model->frequency[sibling]);
         if (parent == CHIEFLZ_ROOT) {
             if (model->frequency[CHIEFLZ_ROOT] == CHIEFLZ_MAX_ROOT_FREQ) {
                 uint32_t index;
-                for (index = CHIEFLZ_ROOT; index <= CHIEFLZ_NODES; ++index)
-                    model->frequency[index] >>= 1U;
+                for (index = CHIEFLZ_ROOT; index <= CHIEFLZ_NODES; ++index) model->frequency[index] >>= 1U;
             }
             return true;
         }
@@ -122,7 +121,8 @@ static bool chieflz_propagate(chieflz_model *model, uint32_t node,
     return false;
 }
 
-static bool chieflz_update(chieflz_model *model, uint32_t node) {
+static bool chieflz_update(chieflz_model *model, uint32_t node)
+{
     uint32_t parent;
     uint32_t sibling;
     uint32_t step;
@@ -133,9 +133,7 @@ static bool chieflz_update(chieflz_model *model, uint32_t node) {
     if (parent == CHIEFLZ_ROOT) return true;
     sibling = model->child0[parent];
     if (sibling == node) sibling = model->child1[parent];
-    if (!chieflz_node_valid(sibling) ||
-        !chieflz_propagate(model, node, sibling))
-        return false;
+    if (!chieflz_node_valid(sibling) || !chieflz_propagate(model, node, sibling)) return false;
 
     for (step = 0U; step <= CHIEFLZ_NODES; ++step) {
         uint32_t grand = model->parent[parent];
@@ -147,10 +145,8 @@ static bool chieflz_update(chieflz_model *model, uint32_t node) {
         if (!chieflz_node_valid(uncle)) return false;
         if (model->frequency[uncle] < model->frequency[node]) {
             uint32_t node_sibling;
-            if (parent == left)
-                model->child1[grand] = (uint16_t)node;
-            else
-                model->child0[grand] = (uint16_t)node;
+            if (parent == left) model->child1[grand] = (uint16_t)node;
+            else model->child0[grand] = (uint16_t)node;
             node_sibling = model->child0[parent];
             if (node == node_sibling) {
                 node_sibling = model->child1[parent];
@@ -174,7 +170,8 @@ static bool chieflz_update(chieflz_model *model, uint32_t node) {
 }
 
 /* -1: out of input.  -2: malformed tree. */
-static int chieflz_decode_symbol(chieflz_model *model, chieflz_bits *bits) {
+static int chieflz_decode_symbol(chieflz_model *model, chieflz_bits *bits)
+{
     uint32_t node = CHIEFLZ_ROOT;
     uint32_t step;
     if (!model || !bits) return -2;
@@ -191,24 +188,18 @@ static int chieflz_decode_symbol(chieflz_model *model, chieflz_bits *bits) {
     return -2;
 }
 
-bool xx_chieflz_decode_memory(const uint8_t *input, size_t input_size,
-                              uint8_t *output, size_t output_size,
-                              size_t *written) {
+bool xx_chieflz_decode_memory(const uint8_t *input, size_t input_size, uint8_t *output, size_t output_size, size_t *written)
+{
     /* Shared with ARCV v4: extra widths over bases, and the match length is
      * FOLDED INTO the distance (dist = base + extra + length), so a match can
      * never overlap its own output. */
-    static const uint16_t extra_bits[CHIEFLZ_BUCKETS] = { 4U, 6U, 8U,
-                                                          10U, 12U, 14U };
-    static const uint16_t base_distance[CHIEFLZ_BUCKETS] = { 0U, 16U, 80U,
-                                                             336U, 1360U,
-                                                             5456U };
+    static const uint16_t extra_bits[CHIEFLZ_BUCKETS] = {4U, 6U, 8U, 10U, 12U, 14U};
+    static const uint16_t base_distance[CHIEFLZ_BUCKETS] = {0U, 16U, 80U, 336U, 1360U, 5456U};
     chieflz_model model;
     chieflz_bits bits;
     size_t produced = 0U;
     if (written) *written = 0U;
-    if ((!input && input_size != 0U) || (!output && output_size != 0U) ||
-        input_size == 0U)
-        return false;
+    if ((!input && input_size != 0U) || (!output && output_size != 0U) || input_size == 0U) return false;
     xx_rt_memset(&bits, 0, sizeof(bits));
     bits.input = input;
     bits.input_size = input_size;
@@ -253,8 +244,7 @@ bool xx_chieflz_decode_memory(const uint8_t *input, size_t input_size,
              * the buffer full. */
             available = output_size - produced;
             if ((size_t)length > available) length = (unsigned)available;
-            for (index = 0U; index < length; ++index)
-                output[produced + index] = output[source + index];
+            for (index = 0U; index < length; ++index) output[produced + index] = output[source + index];
             produced += length;
         }
     }

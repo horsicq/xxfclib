@@ -46,44 +46,30 @@ typedef struct xx_act_apricot_pc_xi_raw {
     uint32_t cylinders;
     uint32_t heads;
     uint32_t sectors_per_track;
-    uint32_t total_sectors;     /**< BPB total, equal to the label geometry. */
+    uint32_t total_sectors; /**< BPB total, equal to the label geometry. */
     uint32_t bytes_per_cluster;
-    uint32_t cluster_count;     /**< Data clusters; FAT12, so below 4085. */
+    uint32_t cluster_count; /**< Data clusters; FAT12, so below 4085. */
     uint8_t media;
-    char label[9];              /**< Label bytes 0..7, NUL terminated. */
+    char label[9]; /**< Label bytes 0..7, NUL terminated. */
 } xx_act_apricot_pc_xi_raw;
 
 typedef xx_act_apricot_pc_xi_raw xx_act_apricot_pc_xi_raw_t;
 
-XXFC_API void xx_act_apricot_pc_xi_raw_init(xx_act_apricot_pc_xi_raw *image,
-                                            xx_io_device *device,
-                                            int64_t base_address);
-XXFC_API xx_act_apricot_pc_xi_raw *xx_act_apricot_pc_xi_raw_create(
-    xx_io_device *device, int64_t base_address);
+XXFC_API void xx_act_apricot_pc_xi_raw_init(xx_act_apricot_pc_xi_raw *image, xx_io_device *device, int64_t base_address);
+XXFC_API xx_act_apricot_pc_xi_raw *xx_act_apricot_pc_xi_raw_create(xx_io_device *device, int64_t base_address);
 XXFC_API void xx_act_apricot_pc_xi_raw_destroy(xx_act_apricot_pc_xi_raw *image);
 XXFC_API void xx_act_apricot_pc_xi_raw_free(xx_act_apricot_pc_xi_raw *image);
 
-XXFC_API bool xx_act_apricot_pc_xi_raw_check_is_valid(Abstractformat *self,
-                                                      xx_pd_struct *pd);
-XXFC_API bool xx_act_apricot_pc_xi_raw_handle_base_info(Abstractformat *self,
-                                                        xx_pd_struct *pd);
-XXFC_API int64_t xx_act_apricot_pc_xi_raw_get_format_size(Abstractformat *self,
-                                                          xx_pd_struct *pd);
-XXFC_API uint64_t xx_act_apricot_pc_xi_raw_get_number_of_archive_records(
-    Abstractformat *self, xx_pd_struct *pd);
+XXFC_API bool xx_act_apricot_pc_xi_raw_check_is_valid(Abstractformat *self, xx_pd_struct *pd);
+XXFC_API bool xx_act_apricot_pc_xi_raw_handle_base_info(Abstractformat *self, xx_pd_struct *pd);
+XXFC_API int64_t xx_act_apricot_pc_xi_raw_get_format_size(Abstractformat *self, xx_pd_struct *pd);
+XXFC_API uint64_t xx_act_apricot_pc_xi_raw_get_number_of_archive_records(Abstractformat *self, xx_pd_struct *pd);
 
-XXFC_API xx_archive_record_state *
-xx_act_apricot_pc_xi_raw_create_archive_records_reading(
-    Abstractformat *self, const xx_list_s *options, xx_pd_struct *pd);
-XXFC_API const xx_archive_record *
-xx_act_apricot_pc_xi_raw_get_current_archive_record(
-    Abstractformat *self, xx_archive_record_state *state);
-XXFC_API bool xx_act_apricot_pc_xi_raw_unpack_current_archive_record(
-    Abstractformat *self, xx_archive_record_state *state, xx_pd_struct *pd);
-XXFC_API bool xx_act_apricot_pc_xi_raw_archive_record_move_to_next(
-    Abstractformat *self, xx_archive_record_state *state, xx_pd_struct *pd);
-XXFC_API void xx_act_apricot_pc_xi_raw_free_archive_records_reading(
-    Abstractformat *self, xx_archive_record_state *state);
+XXFC_API xx_archive_record_state *xx_act_apricot_pc_xi_raw_create_archive_records_reading(Abstractformat *self, const xx_list_s *options, xx_pd_struct *pd);
+XXFC_API const xx_archive_record *xx_act_apricot_pc_xi_raw_get_current_archive_record(Abstractformat *self, xx_archive_record_state *state);
+XXFC_API bool xx_act_apricot_pc_xi_raw_unpack_current_archive_record(Abstractformat *self, xx_archive_record_state *state, xx_pd_struct *pd);
+XXFC_API bool xx_act_apricot_pc_xi_raw_archive_record_move_to_next(Abstractformat *self, xx_archive_record_state *state, xx_pd_struct *pd);
+XXFC_API void xx_act_apricot_pc_xi_raw_free_archive_records_reading(Abstractformat *self, xx_archive_record_state *state);
 
 #ifdef __cplusplus
 }

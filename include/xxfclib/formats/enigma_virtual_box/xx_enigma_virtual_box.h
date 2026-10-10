@@ -11,7 +11,12 @@ extern "C" {
  * Does not execute the carrier or reconstruct its original executable.
  * Member decode cap 256 MiB; directory depth64 and one million entries.
  * LIST indexes metadata; TEST decodes into RAM without opening output files. */
-typedef struct xx_enigma_virtual_box { Abstractformat format; void *index; uint32_t legacy; int64_t container_offset; } xx_enigma_virtual_box;
+typedef struct xx_enigma_virtual_box {
+    Abstractformat format;
+    void *index;
+    uint32_t legacy;
+    int64_t container_offset;
+} xx_enigma_virtual_box;
 XXFC_API void xx_enigma_virtual_box_init(xx_enigma_virtual_box *, xx_io_device *, int64_t);
 XXFC_API xx_enigma_virtual_box *xx_enigma_virtual_box_create(xx_io_device *, int64_t);
 XXFC_API void xx_enigma_virtual_box_destroy(xx_enigma_virtual_box *);

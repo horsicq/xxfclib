@@ -80,15 +80,12 @@ typedef struct jasc_stream_s {
     int64_t archive_size;
 } jasc_stream;
 
-static bool jasc_read_at(xx_io_device *device, int64_t offset, void *buffer,
-                         size_t size) {
+static bool jasc_read_at(xx_io_device *device, int64_t offset, void *buffer, size_t size)
+{
     size_t done = 0U;
-    if (!device || (!buffer && size != 0U) || offset < 0 ||
-        xx_io_seek64(device, offset, SEEK_SET) != 0)
-        return false;
+    if (!device || (!buffer && size != 0U) || offset < 0 || xx_io_seek64(device, offset, SEEK_SET) != 0) return false;
     while (done < size) {
-        ssize_t amount = xx_io_read(device, (uint8_t *)buffer + done,
-                                    size - done);
+        ssize_t amount = xx_io_read(device, (uint8_t *)buffer + done, size - done);
         if (amount <= 0 || (size_t)amount > size - done) return false;
         done += (size_t)amount;
     }
@@ -97,20 +94,18 @@ static bool jasc_read_at(xx_io_device *device, int64_t offset, void *buffer,
 
 /* DOS names with no path component; anything a path could not carry makes
  * the header - and so the archive - invalid rather than being repaired. */
-static char *jasc_copy_name(const uint8_t *raw, size_t length) {
+static char *jasc_copy_name(const uint8_t *raw, size_t length)
+{
     char *name;
     size_t index;
     if (length == 0U || length > JASC_MAX_NAME) return NULL;
     for (index = 0U; index < length; ++index) {
         uint8_t c = raw[index];
-        if (c < 0x20U || c > 0x7EU || c == (uint8_t)'/' ||
-            c == (uint8_t)'\\' || c == (uint8_t)':' || c == (uint8_t)'*' ||
-            c == (uint8_t)'?' || c == (uint8_t)'"' || c == (uint8_t)'<' ||
-            c == (uint8_t)'>' || c == (uint8_t)'|') return NULL;
+        if (c < 0x20U || c > 0x7EU || c == (uint8_t)'/' || c == (uint8_t)'\\' || c == (uint8_t)':' || c == (uint8_t)'*' || c == (uint8_t)'?' || c == (uint8_t)'"' ||
+            c == (uint8_t)'<' || c == (uint8_t)'>' || c == (uint8_t)'|')
+            return NULL;
     }
-    if (raw[0] == (uint8_t)'.' &&
-        (length == 1U || (length == 2U && raw[1] == (uint8_t)'.')))
-        return NULL;
+    if (raw[0] == (uint8_t)'.' && (length == 1U || (length == 2U && raw[1] == (uint8_t)'.'))) return NULL;
     if (raw[length - 1U] == (uint8_t)' ') return NULL;
     name = (char *)xx_mem_alloc(length + 1U);
     if (!name) return NULL;
@@ -119,22 +114,20 @@ static char *jasc_copy_name(const uint8_t *raw, size_t length) {
     return name;
 }
 
-static bool jasc_safe_output_name(const char *name) {
+static bool jasc_safe_output_name(const char *name)
+{
     const char *at;
-    if (!name || !name[0] || name[0] == '/' || name[0] == '\\' ||
-        name[1] == ':') return false;
+    if (!name || !name[0] || name[0] == '/' || name[0] == '\\' || name[1] == ':') return false;
     for (at = name; *at; ++at) {
         unsigned char c = (unsigned char)*at;
-        if (c == ':' || c == '<' || c == '>' || c == '"' || c == '|' ||
-            c == '?' || c == '*' || c == '/' || c == '\\' || c < 0x20U)
-            return false;
+        if (c == ':' || c == '<' || c == '>' || c == '"' || c == '|' || c == '?' || c == '*' || c == '/' || c == '\\' || c < 0x20U) return false;
     }
-    if (name[0] == '.' && (!name[1] || (name[1] == '.' && !name[2])))
-        return false;
+    if (name[0] == '.' && (!name[1] || (name[1] == '.' && !name[2]))) return false;
     return true;
 }
 
-static void jasc_stream_free(void *opaque) {
+static void jasc_stream_free(void *opaque)
+{
     jasc_stream *stream = (jasc_stream *)opaque;
     size_t index;
     if (!stream) return;
@@ -144,25 +137,22 @@ static void jasc_stream_free(void *opaque) {
     xx_mem_free(stream);
 }
 
-static bool jasc_add_member(jasc_stream *stream, const jasc_member *member) {
+static bool jasc_add_member(jasc_stream *stream, const jasc_member *member)
+{
     jasc_member *grown;
-    if (!stream || !member || stream->count >= JASC_MAX_MEMBERS ||
-        stream->count > SIZE_MAX / sizeof(*grown) - 1U)
-        return false;
-    grown = (jasc_member *)xx_mem_realloc(stream->items,
-                                          (stream->count + 1U) *
-                                              sizeof(*grown));
+    if (!stream || !member || stream->count >= JASC_MAX_MEMBERS || stream->count > SIZE_MAX / sizeof(*grown) - 1U) return false;
+    grown = (jasc_member *)xx_mem_realloc(stream->items, (stream->count + 1U) * sizeof(*grown));
     if (!grown) return false;
     stream->items = grown;
     stream->items[stream->count++] = *member;
     return true;
 }
 
-static bool jasc_parse(Abstractformat *format, jasc_stream **result) {
+static bool jasc_parse(Abstractformat *format, jasc_stream **result)
+{
     jasc_stream *stream = NULL;
     int64_t total, size, cursor;
-    if (!format || !format->device || !result || format->base_address < 0)
-        return false;
+    if (!format || !format->device || !result || format->base_address < 0) return false;
     total = xx_io_total_size(format->device);
     if (total < format->base_address) return false;
     size = total - format->base_address;
@@ -179,26 +169,20 @@ static bool jasc_parse(Abstractformat *format, jasc_stream **result) {
         uint32_t packed, unpacked;
         uint8_t name_length;
         int64_t header_size, data_offset;
-        if (size - cursor < JASC_HEADER_FIXED ||
-            !jasc_read_at(format->device, format->base_address + cursor,
-                          fixed, sizeof(fixed))) goto fail;
+        if (size - cursor < JASC_HEADER_FIXED || !jasc_read_at(format->device, format->base_address + cursor, fixed, sizeof(fixed))) goto fail;
         name_length = fixed[16];
         /* The redundancy check: the leading size byte and the name length
          * must agree, which is what stands in for a magic number here. */
-        if (name_length == 0U ||
-            fixed[0] != (uint8_t)(name_length + JASC_HEADER_BIAS)) goto fail;
+        if (name_length == 0U || fixed[0] != (uint8_t)(name_length + JASC_HEADER_BIAS)) goto fail;
         packed = xx_data_get_u32(fixed + 2U, 4, 0, false);
         unpacked = xx_data_get_u32(fixed + 6U, 4, 0, false);
         header_size = JASC_HEADER_FIXED + (int64_t)name_length;
         if (size - cursor < header_size) goto fail;
-        if (!jasc_read_at(format->device,
-                          format->base_address + cursor + JASC_HEADER_FIXED,
-                          raw_name, name_length)) goto fail;
+        if (!jasc_read_at(format->device, format->base_address + cursor + JASC_HEADER_FIXED, raw_name, name_length)) goto fail;
         data_offset = cursor + header_size;
         /* Bound the declared extents against the real file before either is
          * used to read or allocate. */
-        if ((int64_t)packed > size - JASC_TERMINATOR_SIZE - data_offset)
-            goto fail;
+        if ((int64_t)packed > size - JASC_TERMINATOR_SIZE - data_offset) goto fail;
         if ((int64_t)unpacked > JASC_MAX_UNPACKED) goto fail;
         xx_mem_zero(&member, sizeof(member));
         member.name = jasc_copy_name(raw_name, name_length);
@@ -217,8 +201,7 @@ static bool jasc_parse(Abstractformat *format, jasc_stream **result) {
         cursor = data_offset + (int64_t)packed;
     }
     /* The chain has to land exactly on the terminator. */
-    if (stream->count == 0U || cursor != size - JASC_TERMINATOR_SIZE)
-        goto fail;
+    if (stream->count == 0U || cursor != size - JASC_TERMINATOR_SIZE) goto fail;
     stream->archive_size = size;
     *result = stream;
     return true;
@@ -227,18 +210,16 @@ fail:
     return false;
 }
 
-static bool jasc_copy_options(xx_list_s *destination,
-                              const xx_list_s *source) {
+static bool jasc_copy_options(xx_list_s *destination, const xx_list_s *source)
+{
     size_t index;
     if (!source) return true;
     for (index = 0U; index < source->count; ++index) {
-        const xx_meta *original =
-            (const xx_meta *)xx_list_at((const xx_list_t *)source, index);
+        const xx_meta *original = (const xx_meta *)xx_list_at((const xx_list_t *)source, index);
         xx_meta copy;
         if (!original) continue;
         xx_meta_init(&copy, original->meta_id);
-        if (!xx_var_copy(&copy.var, &original->var) ||
-            !xx_list_append(destination, &copy)) {
+        if (!xx_var_copy(&copy.var, &original->var) || !xx_list_append(destination, &copy)) {
             xx_meta_cleanup(&copy);
             return false;
         }
@@ -246,19 +227,19 @@ static bool jasc_copy_options(xx_list_s *destination,
     return true;
 }
 
-static const xx_var *jasc_option(const xx_list_s *options, uint32_t id) {
+static const xx_var *jasc_option(const xx_list_s *options, uint32_t id)
+{
     size_t index;
     if (!options) return NULL;
     for (index = 0U; index < options->count; ++index) {
-        const xx_meta *meta =
-            (const xx_meta *)xx_list_at((const xx_list_t *)options, index);
+        const xx_meta *meta = (const xx_meta *)xx_list_at((const xx_list_t *)options, index);
         if (meta && meta->meta_id == id) return &meta->var;
     }
     return NULL;
 }
 
-static bool jasc_set_record(xx_archive_record *record,
-                            const jasc_member *member) {
+static bool jasc_set_record(xx_archive_record *record, const jasc_member *member)
+{
     xx_archive_record_cleanup(record);
     xx_archive_record_init(record);
     record->header_offset = member->header_offset;
@@ -266,43 +247,27 @@ static bool jasc_set_record(xx_archive_record *record,
     record->data_offset = member->data_offset;
     record->compressed_size = member->packed_size;
     return xx_archive_record_set_original_name(record, member->name) &&
-           xx_archive_record_set_meta_u64(record, XX_META_ID_COMPRESSED_SIZE,
-                                          (uint64_t)member->packed_size) &&
-           xx_archive_record_set_meta_u64(record, XX_META_ID_UNCOMPRESSED_SIZE,
-                                          member->unpacked_size) &&
-           xx_archive_record_set_meta_u64(record, XX_META_ID_COMPRESSION_METHOD,
-                                          JASC_LH_METHOD) &&
-           xx_archive_record_set_meta_u64(record, XX_META_ID_CRC32,
-                                          member->crc16) &&
-           xx_archive_record_set_meta_u64(record, XX_META_ID_TIMESTAMP,
-                                          member->unix_time) &&
-           xx_archive_record_set_meta_u64(record, XX_META_ID_FLAGS,
-                                          member->check) &&
-           xx_archive_record_set_meta_bool(record, XX_META_ID_IS_FOLDER,
-                                           false);
+           xx_archive_record_set_meta_u64(record, XX_META_ID_COMPRESSED_SIZE, (uint64_t)member->packed_size) &&
+           xx_archive_record_set_meta_u64(record, XX_META_ID_UNCOMPRESSED_SIZE, member->unpacked_size) &&
+           xx_archive_record_set_meta_u64(record, XX_META_ID_COMPRESSION_METHOD, JASC_LH_METHOD) &&
+           xx_archive_record_set_meta_u64(record, XX_META_ID_CRC32, member->crc16) && xx_archive_record_set_meta_u64(record, XX_META_ID_TIMESTAMP, member->unix_time) &&
+           xx_archive_record_set_meta_u64(record, XX_META_ID_FLAGS, member->check) && xx_archive_record_set_meta_bool(record, XX_META_ID_IS_FOLDER, false);
 }
 
-static bool jasc_decode(Abstractformat *format, const jasc_member *member,
-                        uint8_t **plain, size_t *plain_size) {
+static bool jasc_decode(Abstractformat *format, const jasc_member *member, uint8_t **plain, size_t *plain_size)
+{
     uint8_t *packed = NULL;
     uint8_t *output = NULL;
     size_t written = 0U, output_size;
-    if (!format || !member || !plain || !plain_size ||
-        member->packed_size <= 0 ||
-        member->unpacked_size > (uint64_t)SIZE_MAX) return false;
+    if (!format || !member || !plain || !plain_size || member->packed_size <= 0 || member->unpacked_size > (uint64_t)SIZE_MAX) return false;
     output_size = (size_t)member->unpacked_size;
     packed = (uint8_t *)xx_mem_alloc((size_t)member->packed_size);
     output = (uint8_t *)xx_mem_alloc(output_size != 0U ? output_size : 1U);
-    if (!packed || !output ||
-        !jasc_read_at(format->device, member->data_offset, packed,
-                      (size_t)member->packed_size)) goto fail;
-    if (!xx_lzh5_decode_memory(packed, (size_t)member->packed_size, output,
-                               output_size, JASC_LH_METHOD, &written) ||
-        written != output_size) goto fail;
+    if (!packed || !output || !jasc_read_at(format->device, member->data_offset, packed, (size_t)member->packed_size)) goto fail;
+    if (!xx_lzh5_decode_memory(packed, (size_t)member->packed_size, output, output_size, JASC_LH_METHOD, &written) || written != output_size) goto fail;
     /* The stored CRC is the anchor: a decode that does not reproduce it is
      * reported as a failure, never as output. */
-    if (xx_crc16(XX_CRC_TYPE_CRC16_ARC, output, written) != member->crc16)
-        goto fail;
+    if (xx_crc16(XX_CRC_TYPE_CRC16_ARC, output, written) != member->crc16) goto fail;
     xx_mem_free(packed);
     *plain = output;
     *plain_size = written;
@@ -313,8 +278,8 @@ fail:
     return false;
 }
 
-void xx_jasc_init(xx_jasc *archive, xx_io_device *device,
-                  int64_t base_address) {
+void xx_jasc_init(xx_jasc *archive, xx_io_device *device, int64_t base_address)
+{
     if (!archive) return;
     xx_mem_zero(archive, sizeof(*archive));
     xx_format_init(&archive->format, device, base_address);
@@ -327,37 +292,35 @@ void xx_jasc_init(xx_jasc *archive, xx_io_device *device,
     archive->format.check_is_valid = xx_jasc_check_is_valid;
     archive->format.handle_base_info = xx_jasc_handle_base_info;
     archive->format.get_format_size = xx_jasc_get_format_size;
-    archive->format.get_number_of_archive_records =
-        xx_jasc_get_number_of_archive_records;
-    archive->format.create_archive_records_reading =
-        xx_jasc_create_archive_records_reading;
-    archive->format.get_current_archive_record =
-        xx_jasc_get_current_archive_record;
-    archive->format.unpack_current_archive_record =
-        xx_jasc_unpack_current_archive_record;
-    archive->format.archive_record_move_to_next =
-        xx_jasc_archive_record_move_to_next;
-    archive->format.free_archive_records_reading =
-        xx_jasc_free_archive_records_reading;
+    archive->format.get_number_of_archive_records = xx_jasc_get_number_of_archive_records;
+    archive->format.create_archive_records_reading = xx_jasc_create_archive_records_reading;
+    archive->format.get_current_archive_record = xx_jasc_get_current_archive_record;
+    archive->format.unpack_current_archive_record = xx_jasc_unpack_current_archive_record;
+    archive->format.archive_record_move_to_next = xx_jasc_archive_record_move_to_next;
+    archive->format.free_archive_records_reading = xx_jasc_free_archive_records_reading;
 }
 
-xx_jasc *xx_jasc_create(xx_io_device *device, int64_t base_address) {
+xx_jasc *xx_jasc_create(xx_io_device *device, int64_t base_address)
+{
     xx_jasc *archive = (xx_jasc *)xx_mem_alloc(sizeof(*archive));
     if (archive) xx_jasc_init(archive, device, base_address);
     return archive;
 }
 
-void xx_jasc_destroy(xx_jasc *archive) {
+void xx_jasc_destroy(xx_jasc *archive)
+{
     if (archive) xx_format_cleanup_extra_parameters(&archive->format);
 }
 
-void xx_jasc_free(xx_jasc *archive) {
+void xx_jasc_free(xx_jasc *archive)
+{
     if (!archive) return;
     xx_jasc_destroy(archive);
     xx_mem_free(archive);
 }
 
-bool xx_jasc_check_is_valid(Abstractformat *format, xx_pd_struct *pd) {
+bool xx_jasc_check_is_valid(Abstractformat *format, xx_pd_struct *pd)
+{
     jasc_stream *stream;
     (void)pd;
     if (!jasc_parse(format, &stream)) return false;
@@ -365,7 +328,8 @@ bool xx_jasc_check_is_valid(Abstractformat *format, xx_pd_struct *pd) {
     return true;
 }
 
-bool xx_jasc_handle_base_info(Abstractformat *format, xx_pd_struct *pd) {
+bool xx_jasc_handle_base_info(Abstractformat *format, xx_pd_struct *pd)
+{
     jasc_stream *stream;
     xx_jasc *archive;
     (void)pd;
@@ -380,21 +344,18 @@ bool xx_jasc_handle_base_info(Abstractformat *format, xx_pd_struct *pd) {
     return true;
 }
 
-int64_t xx_jasc_get_format_size(Abstractformat *format, xx_pd_struct *pd) {
-    return format && (format->base_info_handled ||
-                      xx_jasc_handle_base_info(format, pd))
-               ? format->format_size : -1;
+int64_t xx_jasc_get_format_size(Abstractformat *format, xx_pd_struct *pd)
+{
+    return format && (format->base_info_handled || xx_jasc_handle_base_info(format, pd)) ? format->format_size : -1;
 }
 
-uint64_t xx_jasc_get_number_of_archive_records(Abstractformat *format,
-                                               xx_pd_struct *pd) {
-    return format && (format->base_info_handled ||
-                      xx_jasc_handle_base_info(format, pd))
-               ? ((xx_jasc *)format)->number_of_records : 0U;
+uint64_t xx_jasc_get_number_of_archive_records(Abstractformat *format, xx_pd_struct *pd)
+{
+    return format && (format->base_info_handled || xx_jasc_handle_base_info(format, pd)) ? ((xx_jasc *)format)->number_of_records : 0U;
 }
 
-xx_archive_record_state *xx_jasc_create_archive_records_reading(
-    Abstractformat *format, const xx_list_s *options, xx_pd_struct *pd) {
+xx_archive_record_state *xx_jasc_create_archive_records_reading(Abstractformat *format, const xx_list_s *options, xx_pd_struct *pd)
+{
     jasc_stream *stream;
     xx_archive_record_state *state;
     (void)pd;
@@ -408,8 +369,7 @@ xx_archive_record_state *xx_jasc_create_archive_records_reading(
     state->internal_state = stream;
     state->free_internal = jasc_stream_free;
     state->total_records = stream->count;
-    if (!jasc_copy_options(&state->options, options) ||
-        !jasc_set_record(&state->current_record, &stream->items[0])) {
+    if (!jasc_copy_options(&state->options, options) || !jasc_set_record(&state->current_record, &stream->items[0])) {
         xx_archive_record_state_free(state);
         return NULL;
     }
@@ -417,32 +377,26 @@ xx_archive_record_state *xx_jasc_create_archive_records_reading(
     return state;
 }
 
-const xx_archive_record *xx_jasc_get_current_archive_record(
-    Abstractformat *format, xx_archive_record_state *state) {
-    return format && state && state->format == format && state->has_record
-               ? &state->current_record : NULL;
+const xx_archive_record *xx_jasc_get_current_archive_record(Abstractformat *format, xx_archive_record_state *state)
+{
+    return format && state && state->format == format && state->has_record ? &state->current_record : NULL;
 }
 
-bool xx_jasc_archive_record_move_to_next(Abstractformat *format,
-                                         xx_archive_record_state *state,
-                                         xx_pd_struct *pd) {
+bool xx_jasc_archive_record_move_to_next(Abstractformat *format, xx_archive_record_state *state, xx_pd_struct *pd)
+{
     jasc_stream *stream;
     (void)pd;
-    if (!format || !state || state->format != format ||
-        !(stream = (jasc_stream *)state->internal_state) ||
-        ++stream->index >= stream->count) {
+    if (!format || !state || state->format != format || !(stream = (jasc_stream *)state->internal_state) || ++stream->index >= stream->count) {
         if (state) state->has_record = false;
         return false;
     }
     ++state->current_index;
-    state->has_record = jasc_set_record(&state->current_record,
-                                        &stream->items[stream->index]);
+    state->has_record = jasc_set_record(&state->current_record, &stream->items[stream->index]);
     return state->has_record;
 }
 
-bool xx_jasc_unpack_current_archive_record(Abstractformat *format,
-                                           xx_archive_record_state *state,
-                                           xx_pd_struct *pd) {
+bool xx_jasc_unpack_current_archive_record(Abstractformat *format, xx_archive_record_state *state, xx_pd_struct *pd)
+{
     jasc_stream *stream;
     jasc_member *member;
     const xx_var *path_option;
@@ -453,31 +407,24 @@ bool xx_jasc_unpack_current_archive_record(Abstractformat *format,
     size_t plain_size = 0U, written = 0U;
     bool result = false;
     bool created = false;
-    if (!format || !state || state->format != format || !state->has_record ||
-        !(stream = (jasc_stream *)state->internal_state) ||
-        stream->index >= stream->count || (pd && xx_pd_is_stopped(pd)))
+    if (!format || !state || state->format != format || !state->has_record || !(stream = (jasc_stream *)state->internal_state) || stream->index >= stream->count ||
+        (pd && xx_pd_is_stopped(pd)))
         return false;
     member = &stream->items[stream->index];
-    if (!jasc_safe_output_name(member->name) ||
-        !jasc_decode(format, member, &plain, &plain_size)) goto done;
+    if (!jasc_safe_output_name(member->name) || !jasc_decode(format, member, &plain, &plain_size)) goto done;
     path_option = jasc_option(&state->options, XX_META_ID_OPT_UNPACK_PATH);
     if (!path_option) {
         result = true;
         goto done;
     }
-    if (path_option->type == XX_VAR_TYPE_STRING ||
-        path_option->type == XX_VAR_TYPE_STRING_VIEW)
-        base = xx_var_get_str(path_option);
-    else if (path_option->type == XX_VAR_TYPE_WSTRING ||
-             path_option->type == XX_VAR_TYPE_WSTRING_VIEW) {
+    if (path_option->type == XX_VAR_TYPE_STRING || path_option->type == XX_VAR_TYPE_STRING_VIEW) base = xx_var_get_str(path_option);
+    else if (path_option->type == XX_VAR_TYPE_WSTRING || path_option->type == XX_VAR_TYPE_WSTRING_VIEW) {
         owned_base = xx_str_unicode_to_utf8(xx_var_get_wstr(path_option));
         base = owned_base;
     }
     if (!base) goto done;
-    path = (base[0] && base[xx_str_len(base) - 1U] != '/' &&
-            base[xx_str_len(base) - 1U] != '\\')
-               ? xx_str_concat3(base, "/", member->name)
-               : xx_str_concat(base, member->name);
+    path = (base[0] && base[xx_str_len(base) - 1U] != '/' && base[xx_str_len(base) - 1U] != '\\') ? xx_str_concat3(base, "/", member->name)
+                                                                                                  : xx_str_concat(base, member->name);
     if (!path || !xx_store_create_dirs_a(path, false)) goto done;
     {
         xx_io_device *destination = xx_io_file_open(path, "wb");
@@ -485,8 +432,7 @@ bool xx_jasc_unpack_current_archive_record(Abstractformat *format,
         if (!destination) goto done;
         result = true;
         while (written < plain_size) {
-            ssize_t amount = xx_io_write(destination, plain + written,
-                                         plain_size - written);
+            ssize_t amount = xx_io_write(destination, plain + written, plain_size - written);
             if (amount <= 0 || (size_t)amount > plain_size - written) {
                 result = false;
                 break;
@@ -503,8 +449,8 @@ done:
     return result;
 }
 
-void xx_jasc_free_archive_records_reading(Abstractformat *format,
-                                          xx_archive_record_state *state) {
+void xx_jasc_free_archive_records_reading(Abstractformat *format, xx_archive_record_state *state)
+{
     (void)format;
     xx_archive_record_state_free(state);
 }

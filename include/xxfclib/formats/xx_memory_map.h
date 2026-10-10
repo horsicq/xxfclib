@@ -41,23 +41,23 @@ typedef xx_memory_map_mode_t xx_map_mode_t;
 /** Semantic role of a memory-map record. Values are combinable bit flags. */
 typedef uint32_t xx_file_part_t;
 
-#define XX_FILE_PART_UNKNOWN   UINT32_C(0)
-#define XX_FILE_PART_REGION    (UINT32_C(1) << 0)
-#define XX_FILE_PART_SECTION   (UINT32_C(1) << 1)
-#define XX_FILE_PART_SEGMENT   (UINT32_C(1) << 2)
-#define XX_FILE_PART_HEADER    (UINT32_C(1) << 4)
-#define XX_FILE_PART_OVERLAY   (UINT32_C(1) << 5)
-#define XX_FILE_PART_RESOURCE  (UINT32_C(1) << 6)
-#define XX_FILE_PART_DEBUG     (UINT32_C(1) << 7)
+#define XX_FILE_PART_UNKNOWN UINT32_C(0)
+#define XX_FILE_PART_REGION (UINT32_C(1) << 0)
+#define XX_FILE_PART_SECTION (UINT32_C(1) << 1)
+#define XX_FILE_PART_SEGMENT (UINT32_C(1) << 2)
+#define XX_FILE_PART_HEADER (UINT32_C(1) << 4)
+#define XX_FILE_PART_OVERLAY (UINT32_C(1) << 5)
+#define XX_FILE_PART_RESOURCE (UINT32_C(1) << 6)
+#define XX_FILE_PART_DEBUG (UINT32_C(1) << 7)
 #define XX_FILE_PART_DEBUGDATA XX_FILE_PART_DEBUG
-#define XX_FILE_PART_STREAM    (UINT32_C(1) << 8)
+#define XX_FILE_PART_STREAM (UINT32_C(1) << 8)
 #define XX_FILE_PART_SIGNATURE (UINT32_C(1) << 9)
-#define XX_FILE_PART_FOOTER    (UINT32_C(1) << 10)
-#define XX_FILE_PART_DATA      (UINT32_C(1) << 12)
-#define XX_FILE_PART_OBJECT    (UINT32_C(1) << 13)
-#define XX_FILE_PART_TABLE     (UINT32_C(1) << 14)
-#define XX_FILE_PART_VALUE     (UINT32_C(1) << 15)
-#define XX_FILE_PART_ALL       UINT32_MAX
+#define XX_FILE_PART_FOOTER (UINT32_C(1) << 10)
+#define XX_FILE_PART_DATA (UINT32_C(1) << 12)
+#define XX_FILE_PART_OBJECT (UINT32_C(1) << 13)
+#define XX_FILE_PART_TABLE (UINT32_C(1) << 14)
+#define XX_FILE_PART_VALUE (UINT32_C(1) << 15)
+#define XX_FILE_PART_ALL UINT32_MAX
 
 #define XX_MEMORY_RECORD_NAME_SIZE 128U
 
@@ -111,27 +111,20 @@ typedef xx_memory_map XX_MEMORY_MAP;
 XXFC_API void xx_memory_map_init(xx_memory_map *map);
 XXFC_API void xx_memory_map_cleanup(xx_memory_map *map);
 XXFC_API bool xx_memory_map_reserve(xx_memory_map *map, size_t capacity);
-XXFC_API bool xx_memory_map_add_record(xx_memory_map *map,
-                                       const xx_memory_record *record);
+XXFC_API bool xx_memory_map_add_record(xx_memory_map *map, const xx_memory_record *record);
 
 /**
  * Add a format part. The physical portion is emitted first; when
  * virtual_size is larger than file_size, a virtual-only tail is emitted.
  */
-XXFC_API bool xx_memory_map_add_part(xx_memory_map *map, int64_t offset,
-                                     int64_t file_size, uint64_t address,
-                                     int64_t virtual_size,
-                                     xx_file_part_t file_part,
-                                     int32_t file_part_number,
-                                     const char *name, bool is_invisible);
+XXFC_API bool xx_memory_map_add_part(xx_memory_map *map, int64_t offset, int64_t file_size, uint64_t address, int64_t virtual_size, xx_file_part_t file_part,
+                                     int32_t file_part_number, const char *name, bool is_invisible);
 
 /** Reindex records, validate binary bounds, and derive the image span. */
 XXFC_API bool xx_memory_map_finalize(xx_memory_map *map);
 
-XXFC_API uint64_t xx_memory_map_offset_to_address(const xx_memory_map *map,
-                                                   int64_t offset);
-XXFC_API int64_t xx_memory_map_address_to_offset(const xx_memory_map *map,
-                                                 uint64_t address);
+XXFC_API uint64_t xx_memory_map_offset_to_address(const xx_memory_map *map, int64_t offset);
+XXFC_API int64_t xx_memory_map_address_to_offset(const xx_memory_map *map, uint64_t address);
 
 /**
  * Which record answers a lookup when more than one covers the same address
@@ -161,51 +154,28 @@ typedef enum xx_memory_map_lookup_e {
     XX_MEMORY_MAP_LOOKUP_FIRST_MATCH
 } xx_memory_map_lookup_t;
 
-XXFC_API uint64_t xx_memory_map_offset_to_address_ex(
-    const xx_memory_map *map, int64_t offset, xx_memory_map_lookup_t lookup);
-XXFC_API int64_t xx_memory_map_address_to_offset_ex(
-    const xx_memory_map *map, uint64_t address,
-    xx_memory_map_lookup_t lookup);
+XXFC_API uint64_t xx_memory_map_offset_to_address_ex(const xx_memory_map *map, int64_t offset, xx_memory_map_lookup_t lookup);
+XXFC_API int64_t xx_memory_map_address_to_offset_ex(const xx_memory_map *map, uint64_t address, xx_memory_map_lookup_t lookup);
 
-XXFC_API uint64_t xx_memory_map_offset_to_relative_address(
-    const xx_memory_map *map, int64_t offset);
-XXFC_API int64_t xx_memory_map_relative_address_to_offset(
-    const xx_memory_map *map, int64_t relative_address);
-XXFC_API uint64_t xx_memory_map_relative_address_to_address(
-    const xx_memory_map *map, int64_t relative_address);
-XXFC_API int64_t xx_memory_map_address_to_relative_address(
-    const xx_memory_map *map, uint64_t address);
+XXFC_API uint64_t xx_memory_map_offset_to_relative_address(const xx_memory_map *map, int64_t offset);
+XXFC_API int64_t xx_memory_map_relative_address_to_offset(const xx_memory_map *map, int64_t relative_address);
+XXFC_API uint64_t xx_memory_map_relative_address_to_address(const xx_memory_map *map, int64_t relative_address);
+XXFC_API int64_t xx_memory_map_address_to_relative_address(const xx_memory_map *map, uint64_t address);
 
-XXFC_API bool xx_memory_map_is_offset_valid(const xx_memory_map *map,
-                                             int64_t offset);
-XXFC_API bool xx_memory_map_is_offset_range_valid(const xx_memory_map *map,
-                                                   int64_t offset,
-                                                   int64_t size);
-XXFC_API bool xx_memory_map_is_address_valid(const xx_memory_map *map,
-                                              uint64_t address);
-XXFC_API bool xx_memory_map_is_address_range_valid(const xx_memory_map *map,
-                                                    uint64_t address,
-                                                    int64_t size);
-XXFC_API bool xx_memory_map_is_relative_address_valid(
-    const xx_memory_map *map, int64_t relative_address);
-XXFC_API bool xx_memory_map_is_address_physical(const xx_memory_map *map,
-                                                 uint64_t address);
-XXFC_API bool xx_memory_map_is_relative_address_physical(
-    const xx_memory_map *map, int64_t relative_address);
-XXFC_API bool xx_memory_map_is_solid_address_range(const xx_memory_map *map,
-                                                    uint64_t address,
-                                                    int64_t size);
-XXFC_API bool xx_memory_map_is_physical_address_range(
-    const xx_memory_map *map, uint64_t address, int64_t size);
+XXFC_API bool xx_memory_map_is_offset_valid(const xx_memory_map *map, int64_t offset);
+XXFC_API bool xx_memory_map_is_offset_range_valid(const xx_memory_map *map, int64_t offset, int64_t size);
+XXFC_API bool xx_memory_map_is_address_valid(const xx_memory_map *map, uint64_t address);
+XXFC_API bool xx_memory_map_is_address_range_valid(const xx_memory_map *map, uint64_t address, int64_t size);
+XXFC_API bool xx_memory_map_is_relative_address_valid(const xx_memory_map *map, int64_t relative_address);
+XXFC_API bool xx_memory_map_is_address_physical(const xx_memory_map *map, uint64_t address);
+XXFC_API bool xx_memory_map_is_relative_address_physical(const xx_memory_map *map, int64_t relative_address);
+XXFC_API bool xx_memory_map_is_solid_address_range(const xx_memory_map *map, uint64_t address, int64_t size);
+XXFC_API bool xx_memory_map_is_physical_address_range(const xx_memory_map *map, uint64_t address, int64_t size);
 
-XXFC_API const xx_memory_record *xx_memory_map_record_by_offset(
-    const xx_memory_map *map, int64_t offset);
-XXFC_API const xx_memory_record *xx_memory_map_record_by_address(
-    const xx_memory_map *map, uint64_t address);
-XXFC_API const xx_memory_record *xx_memory_map_record_by_relative_address(
-    const xx_memory_map *map, int64_t relative_address);
-XXFC_API const xx_memory_record *xx_memory_map_record_by_index(
-    const xx_memory_map *map, int32_t index);
+XXFC_API const xx_memory_record *xx_memory_map_record_by_offset(const xx_memory_map *map, int64_t offset);
+XXFC_API const xx_memory_record *xx_memory_map_record_by_address(const xx_memory_map *map, uint64_t address);
+XXFC_API const xx_memory_record *xx_memory_map_record_by_relative_address(const xx_memory_map *map, int64_t relative_address);
+XXFC_API const xx_memory_record *xx_memory_map_record_by_index(const xx_memory_map *map, int32_t index);
 
 /**
  * The @p index'th record that has file bytes, counting virtual-only records
@@ -218,38 +188,37 @@ XXFC_API const xx_memory_record *xx_memory_map_record_by_index(
  *
  * @return NULL when there is no such record.
  */
-XXFC_API const xx_memory_record *xx_memory_map_physical_record(
-    const xx_memory_map *map, int32_t index);
+XXFC_API const xx_memory_record *xx_memory_map_physical_record(const xx_memory_map *map, int32_t index);
 
 /* Compatibility spellings matching XBinary's "RelAddress" terminology. */
-static inline uint64_t xx_memory_map_offset_to_rel_address(
-    const xx_memory_map *map, int64_t offset) {
+static inline uint64_t xx_memory_map_offset_to_rel_address(const xx_memory_map *map, int64_t offset)
+{
     return xx_memory_map_offset_to_relative_address(map, offset);
 }
 
-static inline int64_t xx_memory_map_rel_address_to_offset(
-    const xx_memory_map *map, int64_t relative_address) {
+static inline int64_t xx_memory_map_rel_address_to_offset(const xx_memory_map *map, int64_t relative_address)
+{
     return xx_memory_map_relative_address_to_offset(map, relative_address);
 }
 
-static inline uint64_t xx_memory_map_rel_address_to_address(
-    const xx_memory_map *map, int64_t relative_address) {
+static inline uint64_t xx_memory_map_rel_address_to_address(const xx_memory_map *map, int64_t relative_address)
+{
     return xx_memory_map_relative_address_to_address(map, relative_address);
 }
 
-static inline int64_t xx_memory_map_address_to_rel_address(
-    const xx_memory_map *map, uint64_t address) {
+static inline int64_t xx_memory_map_address_to_rel_address(const xx_memory_map *map, uint64_t address)
+{
     return xx_memory_map_address_to_relative_address(map, address);
 }
 
 /* Short RVA spellings used by executable-format code. */
-static inline uint64_t xx_memory_map_offset_to_rva(const xx_memory_map *map,
-                                                    int64_t offset) {
+static inline uint64_t xx_memory_map_offset_to_rva(const xx_memory_map *map, int64_t offset)
+{
     return xx_memory_map_offset_to_relative_address(map, offset);
 }
 
-static inline int64_t xx_memory_map_rva_to_offset(const xx_memory_map *map,
-                                                   int64_t rva) {
+static inline int64_t xx_memory_map_rva_to_offset(const xx_memory_map *map, int64_t rva)
+{
     return xx_memory_map_relative_address_to_offset(map, rva);
 }
 

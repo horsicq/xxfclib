@@ -49,20 +49,19 @@
 #include "xxfclib/data/xx_data.h"
 
 #ifdef SFARK_COMPRESSED_SOUNDFONT
-#define XX_SFARK_COMPRESSED_SOUNDFONT_FILE_TYPE \
-    XX_FILE_TYPE_SFARK_COMPRESSED_SOUNDFONT
+#define XX_SFARK_COMPRESSED_SOUNDFONT_FILE_TYPE XX_FILE_TYPE_SFARK_COMPRESSED_SOUNDFONT
 #else
 #define XX_SFARK_COMPRESSED_SOUNDFONT_FILE_TYPE XX_FILE_TYPE_UNKNOWN
 #endif
 
 #define SFK_HEADER_SIZE 42U
-#define SFK_MAX_NAME 1024U          /* file name incl. NUL */
-#define SFK_BLOCK_MAX 0x40000U      /* zlib block, packed and unpacked */
-#define SFK_MAX_CHUNK 4096U         /* samples per audio chunk */
+#define SFK_MAX_NAME 1024U     /* file name incl. NUL */
+#define SFK_BLOCK_MAX 0x40000U /* zlib block, packed and unpacked */
+#define SFK_MAX_CHUNK 4096U    /* samples per audio chunk */
 #define SFK_MAX_LEVELS 20
 #define SFK_MAX_ORDER 128
-#define SFK_MAX_DELTA_ZEROS 64U     /* unary part of a small delta */
-#define SFK_MAX_RICE_ZEROS 0xFFFFU  /* unary part of a residual */
+#define SFK_MAX_DELTA_ZEROS 64U    /* unary part of a small delta */
+#define SFK_MAX_RICE_ZEROS 0xFFFFU /* unary part of a residual */
 #define SFK_WINDOW 65536U
 /* The structural walk that measures the stream is skipped above this. */
 #define SFK_MAX_SIZE_PASS ((int64_t)256 * 1024 * 1024)
@@ -80,37 +79,35 @@ typedef struct sfk_header_s {
     uint32_t method;
     uint32_t audio_start;
     uint32_t post_audio;
-    char name[SFK_MAX_NAME];     /* sanitised output name */
-    int64_t text_offset;         /* first licence / notes block */
-    int64_t input_size;          /* bytes from base to the device end */
+    char name[SFK_MAX_NAME]; /* sanitised output name */
+    int64_t text_offset;     /* first licence / notes block */
+    int64_t input_size;      /* bytes from base to the device end */
 } sfk_header;
 
 typedef struct sfk_text_s {
     bool present;
-    int64_t offset;              /* of the u32 length */
+    int64_t offset; /* of the u32 length */
     uint32_t packed;
     uint32_t size;
 } sfk_text;
 
 typedef struct sfk_context_s {
     sfk_header header;
-    sfk_text text[2];            /* [0] licence, [1] notes */
+    sfk_text text[2]; /* [0] licence, [1] notes */
     int64_t base_address;
-    int64_t stream_offset;       /* first word of the bit stream */
-    int64_t archive_size;        /* measured, or input_size when unknown */
+    int64_t stream_offset; /* first word of the bit stream */
+    int64_t archive_size;  /* measured, or input_size when unknown */
     char names[3][SFK_MAX_NAME + 16];
     size_t count;
-    size_t kinds[3];             /* 0 SoundFont, 1 licence, 2 notes */
+    size_t kinds[3]; /* 0 SoundFont, 1 licence, 2 notes */
 } sfk_context;
 
-static bool sfk_read_at(xx_io_device *device, int64_t offset, void *buffer,
-                        size_t size) {
+static bool sfk_read_at(xx_io_device *device, int64_t offset, void *buffer, size_t size)
+{
     size_t done = 0U;
-    if (!device || offset < 0 || xx_io_seek64(device, offset, SEEK_SET) != 0)
-        return false;
+    if (!device || offset < 0 || xx_io_seek64(device, offset, SEEK_SET) != 0) return false;
     while (done < size) {
-        ssize_t amount = xx_io_read(device, (uint8_t *)buffer + done,
-                                    size - done);
+        ssize_t amount = xx_io_read(device, (uint8_t *)buffer + done, size - done);
         if (amount <= 0 || (size_t)amount > size - done) return false;
         done += (size_t)amount;
     }
@@ -119,13 +116,14 @@ static bool sfk_read_at(xx_io_device *device, int64_t offset, void *buffer,
 
 /* sfArk's check uses Adler-32 with a 0 seed; the zlib update itself does
  * not care what the seed is. */
-static uint32_t sfk_adler(uint32_t check, const uint8_t *data, size_t size) {
+static uint32_t sfk_adler(uint32_t check, const uint8_t *data, size_t size)
+{
     return size ? xx_adler32_update(check, data, size) : check;
 }
 
-static bool sfk_is_device_stem(const char *name, size_t stem) {
-    static const char *const devices[] = {"CON", "PRN", "AUX", "NUL",
-                                          "CONIN$", "CONOUT$", "CLOCK$"};
+static bool sfk_is_device_stem(const char *name, size_t stem)
+{
+    static const char *const devices[] = {"CON", "PRN", "AUX", "NUL", "CONIN$", "CONOUT$", "CLOCK$"};
     size_t d, i;
     for (d = 0U; d < sizeof(devices) / sizeof(devices[0]); ++d) {
         const char *w = devices[d];
@@ -141,8 +139,7 @@ static bool sfk_is_device_stem(const char *name, size_t stem) {
         if (a >= 'a') a = (char)(a - 32);
         if (b >= 'a') b = (char)(b - 32);
         if (c >= 'a') c = (char)(c - 32);
-        if ((a == 'C' && b == 'O' && c == 'M') ||
-            (a == 'L' && b == 'P' && c == 'T')) return true;
+        if ((a == 'C' && b == 'O' && c == 'M') || (a == 'L' && b == 'P' && c == 'T')) return true;
     }
     return false;
 }
@@ -150,16 +147,15 @@ static bool sfk_is_device_stem(const char *name, size_t stem) {
 /* The stored name is a bare Windows file name.  Keep its last path
  * component, map bytes a file system may refuse to '_', and fall back to a
  * fixed name when nothing usable is left (empty, dots only, device name). */
-static void sfk_make_name(const uint8_t *raw, size_t length, char *out) {
+static void sfk_make_name(const uint8_t *raw, size_t length, char *out)
+{
     size_t start = 0U, i, n = 0U, stem;
     bool meaningful = false;
     for (i = 0U; i < length; ++i)
         if (raw[i] == '/' || raw[i] == '\\' || raw[i] == ':') start = i + 1U;
     for (i = start; i < length && n + 1U < SFK_MAX_NAME; ++i) {
         uint8_t c = raw[i];
-        if (c < 0x20U || c > 0x7EU || c == '<' || c == '>' || c == '"' ||
-            c == '|' || c == '?' || c == '*')
-            c = '_';
+        if (c < 0x20U || c > 0x7EU || c == '<' || c == '>' || c == '"' || c == '|' || c == '?' || c == '*') c = '_';
         if (c != '.' && c != ' ') meaningful = true;
         out[n++] = (char)c;
     }
@@ -169,13 +165,13 @@ static void sfk_make_name(const uint8_t *raw, size_t length, char *out) {
     stem = 0U;
     while (stem < n && out[stem] != '.') ++stem;
     while (stem > 0U && out[stem - 1U] == ' ') --stem;
-    if (!meaningful || n == 0U || sfk_is_device_stem(out, stem))
-        xx_rt_memcpy(out, SFK_FALLBACK_NAME, sizeof(SFK_FALLBACK_NAME));
+    if (!meaningful || n == 0U || sfk_is_device_stem(out, stem)) xx_rt_memcpy(out, SFK_FALLBACK_NAME, sizeof(SFK_FALLBACK_NAME));
 }
 
 /* The header, the file name and the header check.  Cheap: at most
  * SFK_HEADER_SIZE + SFK_MAX_NAME bytes are read. */
-static bool sfk_parse_header(Abstractformat *format, sfk_header *h) {
+static bool sfk_parse_header(Abstractformat *format, sfk_header *h)
+{
     uint8_t buf[SFK_HEADER_SIZE + SFK_MAX_NAME];
     int64_t total, size;
     size_t avail, name_len = 0U;
@@ -186,8 +182,7 @@ static bool sfk_parse_header(Abstractformat *format, sfk_header *h) {
     size = total - format->base_address;
     if (size < (int64_t)SFK_HEADER_SIZE + 2) return false;
     avail = size < (int64_t)sizeof(buf) ? (size_t)size : sizeof(buf);
-    if (!sfk_read_at(format->device, format->base_address, buf,
-                     SFK_HEADER_SIZE)) return false;
+    if (!sfk_read_at(format->device, format->base_address, buf, SFK_HEADER_SIZE)) return false;
     if (xx_rt_memcmp(buf + 0x1AU, "sfArk", 5U) != 0) return false;
     xx_mem_zero(h, sizeof(*h));
     h->flags = xx_data_get_u32(buf, 4, 0, false);
@@ -199,46 +194,35 @@ static bool sfk_parse_header(Abstractformat *format, sfk_header *h) {
     h->audio_start = xx_data_get_u32(buf + 0x22U, 4, 0, false);
     h->post_audio = xx_data_get_u32(buf + 0x26U, 4, 0, false);
     if (h->method < 4U || h->method > 7U) return false;
-    if (h->original_size == 0U || h->original_size > (uint32_t)INT32_MAX ||
-        h->audio_start == 0U || h->audio_start >= h->post_audio ||
-        h->post_audio > h->original_size)
+    if (h->original_size == 0U || h->original_size > (uint32_t)INT32_MAX || h->audio_start == 0U || h->audio_start >= h->post_audio || h->post_audio > h->original_size)
         return false;
     /* The name: read what is there (up to the cap) and find its NUL. */
-    if (avail > SFK_HEADER_SIZE &&
-        !sfk_read_at(format->device, format->base_address + SFK_HEADER_SIZE,
-                     buf + SFK_HEADER_SIZE, avail - SFK_HEADER_SIZE))
-        return false;
-    while (SFK_HEADER_SIZE + name_len < avail &&
-           buf[SFK_HEADER_SIZE + name_len] != 0U)
-        ++name_len;
+    if (avail > SFK_HEADER_SIZE && !sfk_read_at(format->device, format->base_address + SFK_HEADER_SIZE, buf + SFK_HEADER_SIZE, avail - SFK_HEADER_SIZE)) return false;
+    while (SFK_HEADER_SIZE + name_len < avail && buf[SFK_HEADER_SIZE + name_len] != 0U) ++name_len;
     if (SFK_HEADER_SIZE + name_len >= avail) return false;
     buf[16] = buf[17] = buf[18] = buf[19] = 0U;
     check = sfk_adler(0U, buf, SFK_HEADER_SIZE + name_len + 1U);
     if (check != stored) return false;
     sfk_make_name(buf + SFK_HEADER_SIZE, name_len, h->name);
-    h->text_offset = format->base_address + (int64_t)SFK_HEADER_SIZE +
-                     (int64_t)name_len + 1;
+    h->text_offset = format->base_address + (int64_t)SFK_HEADER_SIZE + (int64_t)name_len + 1;
     h->input_size = size;
     return true;
 }
 
 /* Inflate one zlib block of a known packed length into `out`
  * (SFK_BLOCK_MAX bytes).  Returns the unpacked length, 0 on failure. */
-static uint32_t sfk_inflate(const uint8_t *in, uint32_t packed, uint8_t *out) {
+static uint32_t sfk_inflate(const uint8_t *in, uint32_t packed, uint8_t *out)
+{
     size_t written = 0U;
-    if (!xx_zlib_stream_decode_memory(in, packed, out, SFK_BLOCK_MAX,
-                                      &written) ||
-        written == 0U || written > SFK_BLOCK_MAX)
-        return 0U;
+    if (!xx_zlib_stream_decode_memory(in, packed, out, SFK_BLOCK_MAX, &written) || written == 0U || written > SFK_BLOCK_MAX) return 0U;
     return (uint32_t)written;
 }
 
 /* Licence then notes, as raw "u32 length + zlib" blocks.  `scratch_in` and
  * `scratch_out` are SFK_BLOCK_MAX bytes each.  With `check` the unpacked
  * text is folded into the running file check. */
-static bool sfk_parse_texts(Abstractformat *format, sfk_context *ctx,
-                            uint8_t *scratch_in, uint8_t *scratch_out,
-                            uint32_t *check) {
+static bool sfk_parse_texts(Abstractformat *format, sfk_context *ctx, uint8_t *scratch_in, uint8_t *scratch_out, uint32_t *check)
+{
     int64_t offset = ctx->header.text_offset;
     int64_t end = format->base_address + ctx->header.input_size;
     int which;
@@ -249,13 +233,10 @@ static bool sfk_parse_texts(Abstractformat *format, sfk_context *ctx,
         sfk_text *t = &ctx->text[which];
         xx_mem_zero(t, sizeof(*t));
         if (!(ctx->header.flags & bit)) continue;
-        if (end - offset < 4 || !sfk_read_at(format->device, offset, word, 4U))
-            return false;
+        if (end - offset < 4 || !sfk_read_at(format->device, offset, word, 4U)) return false;
         packed = xx_data_get_u32(word, 4, 0, false);
-        if (packed == 0U || packed > SFK_BLOCK_MAX ||
-            (int64_t)packed > end - offset - 4) return false;
-        if (!sfk_read_at(format->device, offset + 4, scratch_in, packed))
-            return false;
+        if (packed == 0U || packed > SFK_BLOCK_MAX || (int64_t)packed > end - offset - 4) return false;
+        if (!sfk_read_at(format->device, offset + 4, scratch_in, packed)) return false;
         size = sfk_inflate(scratch_in, packed, scratch_out);
         if (size == 0U) return false;
         if (check) *check = sfk_adler(*check, scratch_out, size);
@@ -275,16 +256,16 @@ static bool sfk_parse_texts(Abstractformat *format, sfk_context *ctx,
 
 typedef struct sfk_bits_s {
     xx_io_device *device;
-    int64_t next;        /* device offset of the next byte to buffer */
-    int64_t end;         /* device offset of the end of input */
+    int64_t next; /* device offset of the next byte to buffer */
+    int64_t end;  /* device offset of the end of input */
     size_t length, index;
     uint32_t word;
-    int left;            /* bits still unread in `word` */
+    int left; /* bits still unread in `word` */
     uint8_t buffer[SFK_WINDOW];
 } sfk_bits;
 
-static void sfk_bits_init(sfk_bits *b, xx_io_device *device, int64_t start,
-                          int64_t end) {
+static void sfk_bits_init(sfk_bits *b, xx_io_device *device, int64_t start, int64_t end)
+{
     b->device = device;
     b->next = start;
     b->end = end;
@@ -294,11 +275,13 @@ static void sfk_bits_init(sfk_bits *b, xx_io_device *device, int64_t start,
 }
 
 /* Device offset just past the last word consumed. */
-static int64_t sfk_bits_position(const sfk_bits *b) {
+static int64_t sfk_bits_position(const sfk_bits *b)
+{
     return b->next - (int64_t)(b->length - b->index);
 }
 
-static bool sfk_bits_fetch(sfk_bits *b) {
+static bool sfk_bits_fetch(sfk_bits *b)
+{
     if (b->length - b->index < 2U) {
         size_t keep = b->length - b->index, want;
         int64_t remain = b->end - b->next;
@@ -308,36 +291,35 @@ static bool sfk_bits_fetch(sfk_bits *b) {
         want = SFK_WINDOW - keep;
         if (remain < (int64_t)want) want = remain > 0 ? (size_t)remain : 0U;
         if (want) {
-            if (!sfk_read_at(b->device, b->next, b->buffer + keep, want))
-                return false;
+            if (!sfk_read_at(b->device, b->next, b->buffer + keep, want)) return false;
             b->next += (int64_t)want;
             b->length += want;
         }
         if (b->length < 2U) return false;
     }
-    b->word = (uint32_t)b->buffer[b->index] |
-              ((uint32_t)b->buffer[b->index + 1U] << 8U);
+    b->word = (uint32_t)b->buffer[b->index] | ((uint32_t)b->buffer[b->index + 1U] << 8U);
     b->index += 2U;
     b->left = 16;
     return true;
 }
 
 /* One bit, or -1 at the end of input. */
-static int sfk_bit(sfk_bits *b) {
+static int sfk_bit(sfk_bits *b)
+{
     if (b->left == 0 && !sfk_bits_fetch(b)) return -1;
     --b->left;
     return (int)((b->word >> (unsigned)b->left) & 1U);
 }
 
-static bool sfk_get(sfk_bits *b, unsigned count, uint32_t *out) {
+static bool sfk_get(sfk_bits *b, unsigned count, uint32_t *out)
+{
     uint32_t v = 0U;
     while (count) {
         unsigned take;
         if (b->left == 0 && !sfk_bits_fetch(b)) return false;
         take = count < (unsigned)b->left ? count : (unsigned)b->left;
         b->left -= (int)take;
-        v = (take >= 32U ? 0U : v << take) |
-            ((b->word >> (unsigned)b->left) & ((1U << take) - 1U));
+        v = (take >= 32U ? 0U : v << take) | ((b->word >> (unsigned)b->left) & ((1U << take) - 1U));
         count -= take;
     }
     *out = v;
@@ -346,7 +328,8 @@ static bool sfk_get(sfk_bits *b, unsigned count, uint32_t *out) {
 
 /* A small signed change: n zero bits, a one, and when n > 0 a sign bit
  * (1 = negative).  Returns base + change. */
-static bool sfk_delta(sfk_bits *b, int32_t base, int32_t *out) {
+static bool sfk_delta(sfk_bits *b, int32_t base, int32_t *out)
+{
     uint32_t zeros = 0U;
     int bit;
     while ((bit = sfk_bit(b)) == 0)
@@ -362,7 +345,8 @@ static bool sfk_delta(sfk_bits *b, int32_t base, int32_t *out) {
     return true;
 }
 
-static bool sfk_get_bytes(sfk_bits *b, uint8_t *out, uint32_t count) {
+static bool sfk_get_bytes(sfk_bits *b, uint8_t *out, uint32_t count)
+{
     uint32_t i, v;
     for (i = 0U; i < count; ++i) {
         if (!sfk_get(b, 8U, &v)) return false;
@@ -382,38 +366,50 @@ typedef struct sfk_lpc_s {
     int ring;
 } sfk_lpc;
 
-static int32_t sfk_mul(int32_t a, int32_t b) {
+static int32_t sfk_mul(int32_t a, int32_t b)
+{
     return (int32_t)((uint32_t)a * (uint32_t)b);
 }
 
-static int32_t sfk_neg(int32_t a) { return (int32_t)(0U - (uint32_t)a); }
+static int32_t sfk_neg(int32_t a)
+{
+    return (int32_t)(0U - (uint32_t)a);
+}
 
-static int32_t sfk_add(int32_t a, int32_t b) {
+static int32_t sfk_add(int32_t a, int32_t b)
+{
     return (int32_t)((uint32_t)a + (uint32_t)b);
 }
 
-static int32_t sfk_sub(int32_t a, int32_t b) {
+static int32_t sfk_sub(int32_t a, int32_t b)
+{
     return (int32_t)((uint32_t)a - (uint32_t)b);
 }
 
-static int32_t sfk_sar(int32_t v, unsigned n) {
+static int32_t sfk_sar(int32_t v, unsigned n)
+{
     return v < 0 ? (int32_t)~(~(uint32_t)v >> n) : (int32_t)((uint32_t)v >> n);
 }
 
 /* double -> int as a 64-bit truncating convert, low 32 bits kept; NaN and
  * out-of-range values give the "integer indefinite" value, whose low half
  * is 0. */
-static int32_t sfk_trunc(double x) {
+static int32_t sfk_trunc(double x)
+{
     int64_t v;
     if (!(x > -9223372036854775808.0 && x < 9223372036854775808.0)) return 0;
     v = (int64_t)x;
     return (int32_t)(uint32_t)(uint64_t)v;
 }
 
-static void sfk_lpc_reset(sfk_lpc *l) { xx_mem_zero(l, sizeof(*l)); }
+static void sfk_lpc_reset(sfk_lpc *l)
+{
+    xx_mem_zero(l, sizeof(*l));
+}
 
 /* Reflection coefficients (Q14) from the autocorrelation r[0..p]. */
-static void sfk_schur(const float *r, int p, int32_t *k) {
+static void sfk_schur(const float *r, int p, int32_t *k)
+{
     float a[SFK_MAX_ORDER], b[SFK_MAX_ORDER];
     double e;
     int i, j;
@@ -442,8 +438,8 @@ static void sfk_schur(const float *r, int p, int32_t *k) {
 /* sum_{t<count} x[t] * y[t], carried in double, rounded to float after
  * each full run of 16 terms (while the run start is below `group_end`) and
  * after each remaining term. */
-static float sfk_dot(const float *x, const float *y, int start, int group_end,
-                     int end) {
+static float sfk_dot(const float *x, const float *y, int start, int group_end, int end)
+{
     float s = 0.0f;
     int j = start;
     while (j < group_end) {
@@ -460,16 +456,14 @@ static float sfk_dot(const float *x, const float *y, int start, int group_end,
     return s;
 }
 
-static void sfk_lpc_block(sfk_lpc *l, const int32_t *in, int32_t *out, int p,
-                          bool bypass) {
+static void sfk_lpc_block(sfk_lpc *l, const int32_t *in, int32_t *out, int p, bool bypass)
+{
     float r[SFK_MAX_ORDER + 1];
     int32_t k[SFK_MAX_ORDER];
     float tmp[2 * SFK_MAX_ORDER];
     float tb[128];
     int i, j, lag;
-    for (i = 0; i <= p; ++i)
-        r[i] = (float)((((double)l->acc[1][i] + (double)l->acc[0][i]) +
-                        (double)l->acc[2][i]) + (double)l->acc[3][i]);
+    for (i = 0; i <= p; ++i) r[i] = (float)((((double)l->acc[1][i] + (double)l->acc[0][i]) + (double)l->acc[2][i]) + (double)l->acc[3][i]);
     if (bypass) {
         sfk_lpc_reset(l);
         for (i = 0; i < 128; ++i) out[i] = in[i];
@@ -480,12 +474,9 @@ static void sfk_lpc_block(sfk_lpc *l, const int32_t *in, int32_t *out, int p,
             int32_t v = in[i];
             for (j = p - 1; j >= 0; --j) {
                 int32_t prod = sfk_mul(st[j], k[j]);
-                v = prod < 0 ? sfk_add(v, sfk_sar(sfk_neg(prod), 14U))
-                             : sfk_sub(v, sfk_sar(prod, 14U));
+                v = prod < 0 ? sfk_add(v, sfk_sar(sfk_neg(prod), 14U)) : sfk_sub(v, sfk_sar(prod, 14U));
                 prod = sfk_mul(v, k[j]);
-                st[j + 1] = prod < 0
-                                ? sfk_sub(st[j], sfk_sar(sfk_neg(prod), 14U))
-                                : sfk_add(st[j], sfk_sar(prod, 14U));
+                st[j + 1] = prod < 0 ? sfk_sub(st[j], sfk_sar(sfk_neg(prod), 14U)) : sfk_add(st[j], sfk_sar(prod, 14U));
             }
             st[0] = v;
             out[i] = v;
@@ -498,14 +489,11 @@ static void sfk_lpc_block(sfk_lpc *l, const int32_t *in, int32_t *out, int p,
     }
     for (lag = p; lag >= 1; --lag) {
         float s = sfk_dot(tmp + lag, tmp, p - lag, p - 15, p);
-        l->acc[l->ring][lag] =
-            (float)((double)l->acc[l->ring][lag] + (double)s);
+        l->acc[l->ring][lag] = (float)((double)l->acc[l->ring][lag] + (double)s);
     }
     l->ring = (l->ring + 1) & 3;
     for (i = 0; i < 128; ++i) tb[i] = (float)out[i];
-    for (lag = p; lag >= 0; --lag)
-        l->acc[l->ring][lag] = sfk_dot(tb + lag, tb, 0, 128 - lag - 15,
-                                       128 - lag);
+    for (lag = p; lag >= 0; --lag) l->acc[l->ring][lag] = sfk_dot(tb + lag, tb, 0, 128 - lag - 15, 128 - lag);
     for (i = 0; i < p; ++i) l->hist[i] = out[i];
 }
 
@@ -530,15 +518,16 @@ typedef struct sfk_decoder_s {
     sfk_lpc lpc;
 } sfk_decoder;
 
-static uint32_t sfk_bufsum(const int16_t *v, int n) {
+static uint32_t sfk_bufsum(const int16_t *v, int n)
+{
     uint32_t s = 0U;
     int i;
-    for (i = 0; i < n; ++i)
-        s += v[i] < 0 ? (uint32_t)(uint16_t)~(uint16_t)v[i] : (uint32_t)v[i];
+    for (i = 0; i < n; ++i) s += v[i] < 0 ? (uint32_t)(uint16_t)~(uint16_t)v[i] : (uint32_t)v[i];
     return s;
 }
 
-static bool sfk_read_group(sfk_decoder *d, int16_t *out, int count) {
+static bool sfk_read_group(sfk_decoder *d, int16_t *out, int count)
+{
     int i;
     if (!sfk_delta(&d->bits, d->nbits, &d->nbits)) return false;
     if (d->nbits >= 0 && d->nbits < 14) {
@@ -573,15 +562,16 @@ static bool sfk_read_group(sfk_decoder *d, int16_t *out, int count) {
     return true;
 }
 
-static bool sfk_read_residual(sfk_decoder *d, int16_t *out, int n, int group) {
+static bool sfk_read_residual(sfk_decoder *d, int16_t *out, int n, int group)
+{
     int g;
     for (g = 0; g < n; g += group)
-        if (!sfk_read_group(d, out + g, n - g < group ? n - g : group))
-            return false;
+        if (!sfk_read_group(d, out + g, n - g < group ? n - g : group)) return false;
     return true;
 }
 
-static unsigned sfk_bitlen(uint32_t v) {
+static unsigned sfk_bitlen(uint32_t v)
+{
     unsigned n = 0U;
     while (v) {
         ++n;
@@ -592,7 +582,8 @@ static unsigned sfk_bitlen(uint32_t v) {
 
 /* Per-64-sample shift map.  Returns 1 with the map filled, 0 when the
  * chunk carries none, -1 on a malformed map. */
-static int sfk_read_shifts(sfk_decoder *d, int n) {
+static int sfk_read_shifts(sfk_decoder *d, int n)
+{
     int32_t count = (n + 63) >> 6, pos = 0, filled = 0;
     int bit = sfk_bit(&d->bits);
     unsigned changes = 0U;
@@ -601,8 +592,7 @@ static int sfk_read_shifts(sfk_decoder *d, int n) {
         uint32_t step;
         int32_t value;
         if (++changes > 1024U) return -1;
-        if (!sfk_get(&d->bits, sfk_bitlen((uint32_t)(count - pos - 1)),
-                     &step)) return -1;
+        if (!sfk_get(&d->bits, sfk_bitlen((uint32_t)(count - pos - 1)), &step)) return -1;
         pos = (int32_t)((uint32_t)pos + step);
         if (d->prev_shift == 0) {
             if (!sfk_delta(&d->bits, d->prev_used_shift, &value)) return -1;
@@ -620,8 +610,8 @@ static int sfk_read_shifts(sfk_decoder *d, int n) {
 }
 
 /* Level undo: running sum carried across chunks. */
-static void sfk_undo_sum(int16_t *dst, const int16_t *src, int n,
-                         int16_t *prev) {
+static void sfk_undo_sum(int16_t *dst, const int16_t *src, int n, int16_t *prev)
+{
     int i;
     int16_t acc = *prev;
     if (n <= 0) return;
@@ -633,39 +623,34 @@ static void sfk_undo_sum(int16_t *dst, const int16_t *src, int n,
 }
 
 /* Level undo: centred average, run backwards over the chunk. */
-static void sfk_undo_avg(int16_t *dst, const int16_t *src, int n,
-                         int16_t *prev) {
+static void sfk_undo_avg(int16_t *dst, const int16_t *src, int n, int16_t *prev)
+{
     int i;
     if (n <= 0) return;
     dst[n - 1] = src[n - 1];
     if (n >= 2) {
-        for (i = n - 2; i >= 1; --i)
-            dst[i] = (int16_t)(uint16_t)(
-                (uint16_t)src[i] +
-                (uint16_t)(int16_t)(((int32_t)dst[i + 1] +
-                                     (int32_t)src[i - 1]) >> 1));
-        dst[0] = (int16_t)(uint16_t)((uint16_t)src[0] +
-                                     (uint16_t)(int16_t)(dst[1] >> 1));
+        for (i = n - 2; i >= 1; --i) dst[i] = (int16_t)(uint16_t)((uint16_t)src[i] + (uint16_t)(int16_t)(((int32_t)dst[i + 1] + (int32_t)src[i - 1]) >> 1));
+        dst[0] = (int16_t)(uint16_t)((uint16_t)src[0] + (uint16_t)(int16_t)(dst[1] >> 1));
     }
     *prev = dst[n - 1];
 }
 
 /* Level undo: half-step accumulator. */
-static void sfk_undo_half(int16_t *dst, const int16_t *src, int n,
-                          int16_t *prev) {
+static void sfk_undo_half(int16_t *dst, const int16_t *src, int n, int16_t *prev)
+{
     int i;
     int16_t s = *prev;
     for (i = 0; i < n; ++i) {
         int16_t e = src[i], h;
         dst[i] = (int16_t)(uint16_t)((uint16_t)s + (uint16_t)e);
-        h = e < 0 ? (int16_t)-(int16_t)((-(int32_t)e) >> 1)
-                  : (int16_t)(e >> 1);
+        h = e < 0 ? (int16_t)-(int16_t)((-(int32_t)e) >> 1) : (int16_t)(e >> 1);
         s = (int16_t)(uint16_t)((uint16_t)s + (uint16_t)h);
     }
     *prev = s;
 }
 
-static void sfk_swap(int16_t **a, int16_t **b) {
+static void sfk_swap(int16_t **a, int16_t **b)
+{
     int16_t *t = *a;
     *a = *b;
     *b = t;
@@ -673,13 +658,13 @@ static void sfk_swap(int16_t **a, int16_t **b) {
 
 /* One audio chunk of n (0..4096) samples into d->out.  `compute` false
  * walks the bit stream only (no prediction, no output). */
-static bool sfk_audio_chunk(sfk_decoder *d, int n, bool compute) {
+static bool sfk_audio_chunk(sfk_decoder *d, int n, bool compute)
+{
     int16_t *cur = d->buf_a, *spare = d->buf_b;
     int i;
     if (d->method == 4U) {
         int32_t nd;
-        if (!sfk_delta(&d->bits, d->prev_ndiff, &nd) || nd < 0 ||
-            nd > d->maxdiff) return false;
+        if (!sfk_delta(&d->bits, d->prev_ndiff, &nd) || nd < 0 || nd > d->maxdiff) return false;
         d->prev_ndiff = nd;
         if (!sfk_read_residual(d, cur, n, 256)) return false;
         if (compute) {
@@ -698,14 +683,12 @@ static bool sfk_audio_chunk(sfk_decoder *d, int n, bool compute) {
         path = sfk_bit(&d->bits);
         if (path < 0) return false;
         if (path == 0) {
-            if (!sfk_delta(&d->bits, d->prev_ndiff, &nd) || nd < 0 ||
-                nd > d->maxdiff) return false;
+            if (!sfk_delta(&d->bits, d->prev_ndiff, &nd) || nd < 0 || nd > d->maxdiff) return false;
             d->prev_ndiff = nd;
             for (i = 0; i < nd; ++i)
                 if ((method_bits[i] = sfk_bit(&d->bits)) < 0) return false;
         } else {
-            if (!sfk_delta(&d->bits, d->prev_ndiff2, &nd) || nd < 0 ||
-                nd > d->maxdiff2) return false;
+            if (!sfk_delta(&d->bits, d->prev_ndiff2, &nd) || nd < 0 || nd > d->maxdiff2) return false;
             d->prev_ndiff2 = nd;
         }
         if (d->method != 5U) {
@@ -713,8 +696,7 @@ static bool sfk_audio_chunk(sfk_decoder *d, int n, bool compute) {
             if (bit < 0) return false;
             if (bit) {
                 uint32_t lo, hi;
-                if (!sfk_get(&d->bits, 16U, &lo) ||
-                    !sfk_get(&d->bits, 16U, &hi)) return false;
+                if (!sfk_get(&d->bits, 16U, &lo) || !sfk_get(&d->bits, 16U, &hi)) return false;
                 flags = lo | (hi << 16U);
             }
         }
@@ -729,22 +711,17 @@ static bool sfk_audio_chunk(sfk_decoder *d, int n, bool compute) {
                 for (i = 0; i < n; ++i) d->lin[i] = cur[i];
                 for (; i < n + 128; ++i) d->lin[i] = 0;
                 for (b0 = 0; b0 < n; b0 += 128) {
-                    sfk_lpc_block(&d->lpc, d->lin + b0, d->lout + b0,
-                                  d->order, (flags & bit) != 0U);
+                    sfk_lpc_block(&d->lpc, d->lin + b0, d->lout + b0, d->order, (flags & bit) != 0U);
                     bit <<= 1U;
                 }
-                for (i = 0; i < n; ++i)
-                    spare[i] = (int16_t)(uint16_t)(uint32_t)d->lout[i];
+                for (i = 0; i < n; ++i) spare[i] = (int16_t)(uint16_t)(uint32_t)d->lout[i];
                 sfk_swap(&cur, &spare);
             }
         }
         for (i = nd - 1; i >= 0; --i) {
-            if (path == 1)
-                sfk_undo_half(spare, cur, n, &d->prev[i]);
-            else if (method_bits[i] == 0)
-                sfk_undo_sum(spare, cur, n, &d->prev[i]);
-            else
-                sfk_undo_avg(spare, cur, n, &d->prev[i]);
+            if (path == 1) sfk_undo_half(spare, cur, n, &d->prev[i]);
+            else if (method_bits[i] == 0) sfk_undo_sum(spare, cur, n, &d->prev[i]);
+            else sfk_undo_avg(spare, cur, n, &d->prev[i]);
             sfk_swap(&cur, &spare);
         }
         if (shifted) {
@@ -753,9 +730,7 @@ static bool sfk_audio_chunk(sfk_decoder *d, int n, bool compute) {
                 unsigned s = (unsigned)d->shifts[b] & 31U;
                 int end = b * 64 + 64 < n ? b * 64 + 64 : n;
                 if (!d->shifts[b]) continue;
-                for (i = b * 64; i < end; ++i)
-                    cur[i] = (int16_t)(uint16_t)(
-                        ((uint32_t)(uint16_t)cur[i] << s) & 0xFFFFU);
+                for (i = b * 64; i < end; ++i) cur[i] = (int16_t)(uint16_t)(((uint32_t)(uint16_t)cur[i] << s) & 0xFFFFU);
             }
         }
         d->check = 2U * d->check + sfk_bufsum(cur, n);
@@ -768,7 +743,8 @@ static bool sfk_audio_chunk(sfk_decoder *d, int n, bool compute) {
     return true;
 }
 
-static bool sfk_write_all(xx_io_device *dst, const uint8_t *data, size_t size) {
+static bool sfk_write_all(xx_io_device *dst, const uint8_t *data, size_t size)
+{
     size_t done = 0U;
     while (done < size) {
         ssize_t amount = xx_io_write(dst, data + done, size - done);
@@ -782,11 +758,9 @@ static bool sfk_write_all(xx_io_device *dst, const uint8_t *data, size_t size) {
  * are still inflated (their sizes drive the phases) but the audio math, the
  * check and all output are skipped.  `end` receives the device offset just
  * past the last word read. */
-static bool sfk_run(Abstractformat *format, const sfk_context *ctx,
-                    xx_io_device *dst, bool compute, int64_t *end,
-                    xx_pd_struct *pd) {
-    static const int params[4][4] = {
-        {3, 0, 4096, 0}, {20, 20, 1024, 0}, {3, 3, 4096, 8}, {3, 5, 4096, 128}};
+static bool sfk_run(Abstractformat *format, const sfk_context *ctx, xx_io_device *dst, bool compute, int64_t *end, xx_pd_struct *pd)
+{
+    static const int params[4][4] = {{3, 0, 4096, 0}, {20, 20, 1024, 0}, {3, 3, 4096, 8}, {3, 5, 4096, 128}};
     const sfk_header *h = &ctx->header;
     sfk_decoder *d;
     uint32_t pos = 0U;
@@ -805,11 +779,9 @@ static bool sfk_run(Abstractformat *format, const sfk_context *ctx,
     if (compute) {
         /* The check starts over the licence and notes texts. */
         sfk_context scratch = *ctx;
-        if (!sfk_parse_texts(format, &scratch, d->zin, d->zout, &d->check))
-            goto done;
+        if (!sfk_parse_texts(format, &scratch, d->zin, d->zout, &d->check)) goto done;
     }
-    sfk_bits_init(&d->bits, format->device, ctx->stream_offset,
-                  format->base_address + h->input_size);
+    sfk_bits_init(&d->bits, format->device, ctx->stream_offset, format->base_address + h->input_size);
     while (pos < h->original_size) {
         if (pd && (++steps & 63U) == 0U && xx_pd_is_stopped(pd)) goto done;
         if (phase == 1) {
@@ -821,8 +793,7 @@ static bool sfk_run(Abstractformat *format, const sfk_context *ctx,
                 last = true;
             }
             if (!sfk_audio_chunk(d, n, compute)) goto done;
-            if (compute && dst &&
-                !sfk_write_all(dst, d->out, (size_t)n * 2U)) goto done;
+            if (compute && dst && !sfk_write_all(dst, d->out, (size_t)n * 2U)) goto done;
             pos += (uint32_t)n * 2U;
             if (last) phase = 2;
         } else {
@@ -830,8 +801,7 @@ static bool sfk_run(Abstractformat *format, const sfk_context *ctx,
             uint32_t packed, size;
             if (!sfk_get_bytes(&d->bits, word, 4U)) goto done;
             packed = xx_data_get_u32(word, 4, 0, false);
-            if (packed == 0U || packed > SFK_BLOCK_MAX ||
-                !sfk_get_bytes(&d->bits, d->zin, packed)) goto done;
+            if (packed == 0U || packed > SFK_BLOCK_MAX || !sfk_get_bytes(&d->bits, d->zin, packed)) goto done;
             size = sfk_inflate(d->zin, packed, d->zout);
             if (size == 0U) goto done;
             if (size > h->original_size - pos) goto done;
@@ -843,8 +813,7 @@ static bool sfk_run(Abstractformat *format, const sfk_context *ctx,
             /* A block may run past the declared audio start (sfArkLib
              * accepts that); the samples then start where it ended. */
             if (phase == 0 && pos >= h->audio_start) {
-                if (pos > h->post_audio || ((h->post_audio - pos) & 1U))
-                    goto done;
+                if (pos > h->post_audio || ((h->post_audio - pos) & 1U)) goto done;
                 phase = 1;
             }
         }
@@ -861,8 +830,8 @@ done:
 /* container                                                            */
 /* ------------------------------------------------------------------ */
 
-static void sfk_change_ext(const char *name, const char *ext, char *out,
-                           size_t cap) {
+static void sfk_change_ext(const char *name, const char *ext, char *out, size_t cap)
+{
     size_t len = xx_str_len(name), dot = len, i, e = xx_str_len(ext);
     for (i = len; i > 0U; --i)
         if (name[i - 1U] == '.') {
@@ -875,7 +844,8 @@ static void sfk_change_ext(const char *name, const char *ext, char *out,
     xx_rt_memcpy(out + dot, ext, e + 1U);
 }
 
-static bool sfk_same_name(const char *a, const char *b) {
+static bool sfk_same_name(const char *a, const char *b)
+{
     for (;; ++a, ++b) {
         char x = *a, y = *b;
         if (x >= 'A' && x <= 'Z') x = (char)(x - 'A' + 'a');
@@ -885,8 +855,8 @@ static bool sfk_same_name(const char *a, const char *b) {
     }
 }
 
-static bool sfk_parse(Abstractformat *format, sfk_context *ctx, bool measure,
-                      xx_pd_struct *pd) {
+static bool sfk_parse(Abstractformat *format, sfk_context *ctx, bool measure, xx_pd_struct *pd)
+{
     uint8_t *zin, *zout;
     bool ok;
     size_t i, j;
@@ -902,23 +872,18 @@ static bool sfk_parse(Abstractformat *format, sfk_context *ctx, bool measure,
     ctx->archive_size = ctx->header.input_size;
     if (measure && ctx->header.input_size <= SFK_MAX_SIZE_PASS) {
         int64_t end = 0;
-        if (sfk_run(format, ctx, NULL, false, &end, pd) &&
-            end > format->base_address)
-            ctx->archive_size = end - format->base_address;
+        if (sfk_run(format, ctx, NULL, false, &end, pd) && end > format->base_address) ctx->archive_size = end - format->base_address;
     }
     /* Records: the SoundFont, then licence and notes. */
     ctx->count = 0U;
-    xx_rt_memcpy(ctx->names[0], ctx->header.name,
-                 xx_str_len(ctx->header.name) + 1U);
+    xx_rt_memcpy(ctx->names[0], ctx->header.name, xx_str_len(ctx->header.name) + 1U);
     ctx->kinds[ctx->count++] = 0U;
     if (ctx->text[0].present) {
-        sfk_change_ext(ctx->header.name, ".license.txt", ctx->names[ctx->count],
-                       sizeof(ctx->names[0]));
+        sfk_change_ext(ctx->header.name, ".license.txt", ctx->names[ctx->count], sizeof(ctx->names[0]));
         ctx->kinds[ctx->count++] = 1U;
     }
     if (ctx->text[1].present) {
-        sfk_change_ext(ctx->header.name, ".txt", ctx->names[ctx->count],
-                       sizeof(ctx->names[0]));
+        sfk_change_ext(ctx->header.name, ".txt", ctx->names[ctx->count], sizeof(ctx->names[0]));
         ctx->kinds[ctx->count++] = 2U;
     }
     /* Keep the three names distinct (a SoundFont stored as "x.txt"). */
@@ -936,21 +901,21 @@ typedef struct sfk_stream_s {
     size_t index;
 } sfk_stream;
 
-static void sfk_stream_free(void *opaque) {
+static void sfk_stream_free(void *opaque)
+{
     if (opaque) xx_mem_free(opaque);
 }
 
-static bool sfk_copy_options(xx_list_s *destination, const xx_list_s *source) {
+static bool sfk_copy_options(xx_list_s *destination, const xx_list_s *source)
+{
     size_t index;
     if (!source) return true;
     for (index = 0U; index < source->count; ++index) {
-        const xx_meta *original =
-            (const xx_meta *)xx_list_at((const xx_list_t *)source, index);
+        const xx_meta *original = (const xx_meta *)xx_list_at((const xx_list_t *)source, index);
         xx_meta copy;
         if (!original) continue;
         xx_meta_init(&copy, original->meta_id);
-        if (!xx_var_copy(&copy.var, &original->var) ||
-            !xx_list_append(destination, &copy)) {
+        if (!xx_var_copy(&copy.var, &original->var) || !xx_list_append(destination, &copy)) {
             xx_meta_cleanup(&copy);
             return false;
         }
@@ -958,19 +923,19 @@ static bool sfk_copy_options(xx_list_s *destination, const xx_list_s *source) {
     return true;
 }
 
-static const xx_var *sfk_option(const xx_list_s *options, uint32_t id) {
+static const xx_var *sfk_option(const xx_list_s *options, uint32_t id)
+{
     size_t index;
     if (!options) return NULL;
     for (index = 0U; index < options->count; ++index) {
-        const xx_meta *meta =
-            (const xx_meta *)xx_list_at((const xx_list_t *)options, index);
+        const xx_meta *meta = (const xx_meta *)xx_list_at((const xx_list_t *)options, index);
         if (meta && meta->meta_id == id) return &meta->var;
     }
     return NULL;
 }
 
-static bool sfk_set_record(xx_archive_record *record, const sfk_context *ctx,
-                           size_t index) {
+static bool sfk_set_record(xx_archive_record *record, const sfk_context *ctx, size_t index)
+{
     size_t kind = ctx->kinds[index];
     int64_t offset, packed;
     uint64_t size;
@@ -993,19 +958,13 @@ static bool sfk_set_record(xx_archive_record *record, const sfk_context *ctx,
     if (packed < 0) packed = 0;
     record->data_offset = offset;
     record->compressed_size = packed;
-    return xx_archive_record_set_original_name(record, ctx->names[index]) &&
-           xx_archive_record_set_meta_u64(record, XX_META_ID_COMPRESSED_SIZE,
-                                          (uint64_t)packed) &&
-           xx_archive_record_set_meta_u64(record, XX_META_ID_UNCOMPRESSED_SIZE,
-                                          size) &&
-           xx_archive_record_set_meta_bool(record, XX_META_ID_IS_ENCRYPTED,
-                                           false) &&
+    return xx_archive_record_set_original_name(record, ctx->names[index]) && xx_archive_record_set_meta_u64(record, XX_META_ID_COMPRESSED_SIZE, (uint64_t)packed) &&
+           xx_archive_record_set_meta_u64(record, XX_META_ID_UNCOMPRESSED_SIZE, size) && xx_archive_record_set_meta_bool(record, XX_META_ID_IS_ENCRYPTED, false) &&
            xx_archive_record_set_meta_bool(record, XX_META_ID_IS_FOLDER, false);
 }
 
-void xx_sfark_compressed_soundfont_init(xx_sfark_compressed_soundfont *archive,
-                                        xx_io_device *device,
-                                        int64_t base_address) {
+void xx_sfark_compressed_soundfont_init(xx_sfark_compressed_soundfont *archive, xx_io_device *device, int64_t base_address)
+{
     if (!archive) return;
     xx_mem_zero(archive, sizeof(*archive));
     xx_format_init(&archive->format, device, base_address);
@@ -1015,56 +974,45 @@ void xx_sfark_compressed_soundfont_init(xx_sfark_compressed_soundfont *archive,
     archive->format.is_archive = true;
     xx_format_set_mime_type(&archive->format, "application/x-sfark");
     xx_format_set_extension(&archive->format, "sfArk");
-    archive->format.check_is_valid =
-        xx_sfark_compressed_soundfont_check_is_valid;
-    archive->format.handle_base_info =
-        xx_sfark_compressed_soundfont_handle_base_info;
-    archive->format.get_format_size =
-        xx_sfark_compressed_soundfont_get_format_size;
-    archive->format.get_number_of_archive_records =
-        xx_sfark_compressed_soundfont_get_number_of_archive_records;
-    archive->format.create_archive_records_reading =
-        xx_sfark_compressed_soundfont_create_archive_records_reading;
-    archive->format.get_current_archive_record =
-        xx_sfark_compressed_soundfont_get_current_archive_record;
-    archive->format.unpack_current_archive_record =
-        xx_sfark_compressed_soundfont_unpack_current_archive_record;
-    archive->format.archive_record_move_to_next =
-        xx_sfark_compressed_soundfont_archive_record_move_to_next;
-    archive->format.free_archive_records_reading =
-        xx_sfark_compressed_soundfont_free_archive_records_reading;
+    archive->format.check_is_valid = xx_sfark_compressed_soundfont_check_is_valid;
+    archive->format.handle_base_info = xx_sfark_compressed_soundfont_handle_base_info;
+    archive->format.get_format_size = xx_sfark_compressed_soundfont_get_format_size;
+    archive->format.get_number_of_archive_records = xx_sfark_compressed_soundfont_get_number_of_archive_records;
+    archive->format.create_archive_records_reading = xx_sfark_compressed_soundfont_create_archive_records_reading;
+    archive->format.get_current_archive_record = xx_sfark_compressed_soundfont_get_current_archive_record;
+    archive->format.unpack_current_archive_record = xx_sfark_compressed_soundfont_unpack_current_archive_record;
+    archive->format.archive_record_move_to_next = xx_sfark_compressed_soundfont_archive_record_move_to_next;
+    archive->format.free_archive_records_reading = xx_sfark_compressed_soundfont_free_archive_records_reading;
 }
 
-xx_sfark_compressed_soundfont *xx_sfark_compressed_soundfont_create(
-    xx_io_device *device, int64_t base_address) {
-    xx_sfark_compressed_soundfont *archive =
-        (xx_sfark_compressed_soundfont *)xx_mem_alloc(sizeof(*archive));
-    if (archive) xx_sfark_compressed_soundfont_init(archive, device,
-                                                    base_address);
+xx_sfark_compressed_soundfont *xx_sfark_compressed_soundfont_create(xx_io_device *device, int64_t base_address)
+{
+    xx_sfark_compressed_soundfont *archive = (xx_sfark_compressed_soundfont *)xx_mem_alloc(sizeof(*archive));
+    if (archive) xx_sfark_compressed_soundfont_init(archive, device, base_address);
     return archive;
 }
 
-void xx_sfark_compressed_soundfont_destroy(
-    xx_sfark_compressed_soundfont *archive) {
+void xx_sfark_compressed_soundfont_destroy(xx_sfark_compressed_soundfont *archive)
+{
     if (archive) xx_format_cleanup_extra_parameters(&archive->format);
 }
 
-void xx_sfark_compressed_soundfont_free(
-    xx_sfark_compressed_soundfont *archive) {
+void xx_sfark_compressed_soundfont_free(xx_sfark_compressed_soundfont *archive)
+{
     if (!archive) return;
     xx_sfark_compressed_soundfont_destroy(archive);
     xx_mem_free(archive);
 }
 
-bool xx_sfark_compressed_soundfont_check_is_valid(Abstractformat *format,
-                                                  xx_pd_struct *pd) {
+bool xx_sfark_compressed_soundfont_check_is_valid(Abstractformat *format, xx_pd_struct *pd)
+{
     sfk_header header;
     (void)pd;
     return sfk_parse_header(format, &header);
 }
 
-bool xx_sfark_compressed_soundfont_handle_base_info(Abstractformat *format,
-                                                    xx_pd_struct *pd) {
+bool xx_sfark_compressed_soundfont_handle_base_info(Abstractformat *format, xx_pd_struct *pd)
+{
     sfk_context *ctx;
     xx_sfark_compressed_soundfont *archive;
     if (!format) return false;
@@ -1086,26 +1034,20 @@ bool xx_sfark_compressed_soundfont_handle_base_info(Abstractformat *format,
     return true;
 }
 
-int64_t xx_sfark_compressed_soundfont_get_format_size(Abstractformat *format,
-                                                      xx_pd_struct *pd) {
-    return format && (format->base_info_handled ||
-                      xx_sfark_compressed_soundfont_handle_base_info(format,
-                                                                     pd))
-               ? format->format_size : -1;
+int64_t xx_sfark_compressed_soundfont_get_format_size(Abstractformat *format, xx_pd_struct *pd)
+{
+    return format && (format->base_info_handled || xx_sfark_compressed_soundfont_handle_base_info(format, pd)) ? format->format_size : -1;
 }
 
-uint64_t xx_sfark_compressed_soundfont_get_number_of_archive_records(
-    Abstractformat *format, xx_pd_struct *pd) {
-    return format && (format->base_info_handled ||
-                      xx_sfark_compressed_soundfont_handle_base_info(format,
-                                                                     pd))
+uint64_t xx_sfark_compressed_soundfont_get_number_of_archive_records(Abstractformat *format, xx_pd_struct *pd)
+{
+    return format && (format->base_info_handled || xx_sfark_compressed_soundfont_handle_base_info(format, pd))
                ? ((xx_sfark_compressed_soundfont *)format)->number_of_records
                : 0U;
 }
 
-xx_archive_record_state *
-xx_sfark_compressed_soundfont_create_archive_records_reading(
-    Abstractformat *format, const xx_list_s *options, xx_pd_struct *pd) {
+xx_archive_record_state *xx_sfark_compressed_soundfont_create_archive_records_reading(Abstractformat *format, const xx_list_s *options, xx_pd_struct *pd)
+{
     sfk_stream *stream;
     xx_archive_record_state *state;
     stream = (sfk_stream *)xx_mem_calloc(1U, sizeof(*stream));
@@ -1115,10 +1057,9 @@ xx_sfark_compressed_soundfont_create_archive_records_reading(
         return NULL;
     }
     /* The measured extent, when base info already walked the stream. */
-    if (format->base_info_handled && format->format_size > 0 &&
-        format->format_size <= stream->context.header.input_size)
+    if (format->base_info_handled && format->format_size > 0 && format->format_size <= stream->context.header.input_size)
         stream->context.archive_size = format->format_size;
-    state =(xx_archive_record_state *)xx_mem_alloc(sizeof(*state));
+    state = (xx_archive_record_state *)xx_mem_alloc(sizeof(*state));
     if (!state) {
         xx_mem_free(stream);
         return NULL;
@@ -1127,8 +1068,7 @@ xx_sfark_compressed_soundfont_create_archive_records_reading(
     state->internal_state = stream;
     state->free_internal = sfk_stream_free;
     state->total_records = stream->context.count;
-    if (!sfk_copy_options(&state->options, options) ||
-        !sfk_set_record(&state->current_record, &stream->context, 0U)) {
+    if (!sfk_copy_options(&state->options, options) || !sfk_set_record(&state->current_record, &stream->context, 0U)) {
         xx_archive_record_state_free(state);
         return NULL;
     }
@@ -1136,24 +1076,20 @@ xx_sfark_compressed_soundfont_create_archive_records_reading(
     return state;
 }
 
-const xx_archive_record *xx_sfark_compressed_soundfont_get_current_archive_record(
-    Abstractformat *format, xx_archive_record_state *state) {
-    return format && state && state->format == format && state->has_record
-               ? &state->current_record : NULL;
+const xx_archive_record *xx_sfark_compressed_soundfont_get_current_archive_record(Abstractformat *format, xx_archive_record_state *state)
+{
+    return format && state && state->format == format && state->has_record ? &state->current_record : NULL;
 }
 
-bool xx_sfark_compressed_soundfont_archive_record_move_to_next(
-    Abstractformat *format, xx_archive_record_state *state, xx_pd_struct *pd) {
+bool xx_sfark_compressed_soundfont_archive_record_move_to_next(Abstractformat *format, xx_archive_record_state *state, xx_pd_struct *pd)
+{
     sfk_stream *stream;
     (void)pd;
-    if (!format || !state || state->format != format ||
-        !(stream = (sfk_stream *)state->internal_state) ||
-        ++stream->index >= stream->context.count) {
+    if (!format || !state || state->format != format || !(stream = (sfk_stream *)state->internal_state) || ++stream->index >= stream->context.count) {
         if (state) state->has_record = false;
         return false;
     }
-    if (!sfk_set_record(&state->current_record, &stream->context,
-                        stream->index)) {
+    if (!sfk_set_record(&state->current_record, &stream->context, stream->index)) {
         state->has_record = false;
         return false;
     }
@@ -1162,13 +1098,12 @@ bool xx_sfark_compressed_soundfont_archive_record_move_to_next(
 }
 
 /* A licence or notes text: one zlib block. */
-static bool sfk_unpack_text(Abstractformat *format, const sfk_text *t,
-                            xx_io_device *dst) {
+static bool sfk_unpack_text(Abstractformat *format, const sfk_text *t, xx_io_device *dst)
+{
     uint8_t *zin = (uint8_t *)xx_mem_alloc(SFK_BLOCK_MAX);
     uint8_t *zout = (uint8_t *)xx_mem_alloc(SFK_BLOCK_MAX);
     bool ok = false;
-    if (zin && zout && sfk_read_at(format->device, t->offset + 4, zin,
-                                   t->packed)) {
+    if (zin && zout && sfk_read_at(format->device, t->offset + 4, zin, t->packed)) {
         uint32_t size = sfk_inflate(zin, t->packed, zout);
         ok = size == t->size && (!dst || sfk_write_all(dst, zout, size));
     }
@@ -1177,16 +1112,15 @@ static bool sfk_unpack_text(Abstractformat *format, const sfk_text *t,
     return ok;
 }
 
-static bool sfk_unpack_index(Abstractformat *format, const sfk_context *ctx,
-                             size_t index, xx_io_device *dst,
-                             xx_pd_struct *pd) {
+static bool sfk_unpack_index(Abstractformat *format, const sfk_context *ctx, size_t index, xx_io_device *dst, xx_pd_struct *pd)
+{
     size_t kind = ctx->kinds[index];
     if (kind == 0U) return sfk_run(format, ctx, dst, true, NULL, pd);
     return sfk_unpack_text(format, &ctx->text[kind - 1U], dst);
 }
 
-bool xx_sfark_compressed_soundfont_unpack_current_archive_record(
-    Abstractformat *format, xx_archive_record_state *state, xx_pd_struct *pd) {
+bool xx_sfark_compressed_soundfont_unpack_current_archive_record(Abstractformat *format, xx_archive_record_state *state, xx_pd_struct *pd)
+{
     sfk_stream *stream;
     const xx_var *path_option;
     const char *base = NULL;
@@ -1195,35 +1129,26 @@ bool xx_sfark_compressed_soundfont_unpack_current_archive_record(
     char *path = NULL;
     bool result = false;
     bool created = false;
-    if (!format || !state || state->format != format || !state->has_record ||
-        !(stream = (sfk_stream *)state->internal_state) ||
-        stream->index >= stream->context.count || (pd && xx_pd_is_stopped(pd)))
+    if (!format || !state || state->format != format || !state->has_record || !(stream = (sfk_stream *)state->internal_state) || stream->index >= stream->context.count ||
+        (pd && xx_pd_is_stopped(pd)))
         return false;
     path_option = sfk_option(&state->options, XX_META_ID_OPT_UNPACK_PATH);
-    if (!path_option)
-        return sfk_unpack_index(format, &stream->context, stream->index, NULL,
-                                pd);
+    if (!path_option) return sfk_unpack_index(format, &stream->context, stream->index, NULL, pd);
     name = stream->context.names[stream->index];
-    if (path_option->type == XX_VAR_TYPE_STRING ||
-        path_option->type == XX_VAR_TYPE_STRING_VIEW) {
+    if (path_option->type == XX_VAR_TYPE_STRING || path_option->type == XX_VAR_TYPE_STRING_VIEW) {
         base = xx_var_get_str(path_option);
-    } else if (path_option->type == XX_VAR_TYPE_WSTRING ||
-               path_option->type == XX_VAR_TYPE_WSTRING_VIEW) {
+    } else if (path_option->type == XX_VAR_TYPE_WSTRING || path_option->type == XX_VAR_TYPE_WSTRING_VIEW) {
         owned_base = xx_str_unicode_to_utf8(xx_var_get_wstr(path_option));
         base = owned_base;
     }
     if (!base) goto done;
-    path = (base[0] && base[xx_str_len(base) - 1U] != '/' &&
-            base[xx_str_len(base) - 1U] != '\\')
-               ? xx_str_concat3(base, "/", name)
-               : xx_str_concat(base, name);
+    path = (base[0] && base[xx_str_len(base) - 1U] != '/' && base[xx_str_len(base) - 1U] != '\\') ? xx_str_concat3(base, "/", name) : xx_str_concat(base, name);
     if (!path || !xx_store_create_dirs_a(path, false)) goto done;
     {
         xx_io_device *destination = xx_io_file_open(path, "wb");
         created = destination != NULL;
         if (!destination) goto done;
-        result = sfk_unpack_index(format, &stream->context, stream->index,
-                                  destination, pd);
+        result = sfk_unpack_index(format, &stream->context, stream->index, destination, pd);
         if (xx_io_close(destination) != 0) result = false;
     }
 done:
@@ -1233,8 +1158,8 @@ done:
     return result;
 }
 
-void xx_sfark_compressed_soundfont_free_archive_records_reading(
-    Abstractformat *format, xx_archive_record_state *state) {
+void xx_sfark_compressed_soundfont_free_archive_records_reading(Abstractformat *format, xx_archive_record_state *state)
+{
     (void)format;
     xx_archive_record_state_free(state);
 }

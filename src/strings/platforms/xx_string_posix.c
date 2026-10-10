@@ -38,7 +38,8 @@
 /* Explicit UTF-8 conversions must not depend on the process locale.  A
  * command-line program need not call setlocale(), even when its paths are
  * UTF-8.  wchar_t is a Unicode scalar on the supported POSIX platforms. */
-static wchar_t *xx_string_utf8_to_wide(const char *str) {
+static wchar_t *xx_string_utf8_to_wide(const char *str)
+{
     const unsigned char *read = (const unsigned char *)str;
     size_t length = strlen(str);
     wchar_t *result;
@@ -53,13 +54,18 @@ static wchar_t *xx_string_utf8_to_wide(const char *str) {
         unsigned int more;
         unsigned int i;
         unsigned char first = *read++;
-        if (first < 0x80U) { code = first; more = 0U; }
-        else if (first >= 0xC2U && first <= 0xDFU) {
-            code = first & 0x1FU; more = 1U;
+        if (first < 0x80U) {
+            code = first;
+            more = 0U;
+        } else if (first >= 0xC2U && first <= 0xDFU) {
+            code = first & 0x1FU;
+            more = 1U;
         } else if (first >= 0xE0U && first <= 0xEFU) {
-            code = first & 0x0FU; more = 2U;
+            code = first & 0x0FU;
+            more = 2U;
         } else if (first >= 0xF0U && first <= 0xF4U) {
-            code = first & 0x07U; more = 3U;
+            code = first & 0x07U;
+            more = 3U;
         } else goto invalid;
         for (i = 0U; i < more; ++i) {
             unsigned char next = *read;
@@ -67,11 +73,9 @@ static wchar_t *xx_string_utf8_to_wide(const char *str) {
             code = (code << 6) | (next & 0x3FU);
             ++read;
         }
-        if ((more == 1U && code < 0x80U) ||
-            (more == 2U && code < 0x800U) ||
-            (more == 3U && code < 0x10000U) ||
-            (code >= 0xD800U && code <= 0xDFFFU) ||
-            code > 0x10FFFFU || code > (uint32_t)WCHAR_MAX) goto invalid;
+        if ((more == 1U && code < 0x80U) || (more == 2U && code < 0x800U) || (more == 3U && code < 0x10000U) || (code >= 0xD800U && code <= 0xDFFFU) ||
+            code > 0x10FFFFU || code > (uint32_t)WCHAR_MAX)
+            goto invalid;
         *write++ = (wchar_t)code;
     }
     *write = L'\0';
@@ -81,7 +85,8 @@ invalid:
     return NULL;
 }
 
-static char *xx_string_wide_to_utf8(const wchar_t *str) {
+static char *xx_string_wide_to_utf8(const wchar_t *str)
+{
     size_t length = wcslen(str);
     size_t i;
     char *result;
@@ -92,8 +97,7 @@ static char *xx_string_wide_to_utf8(const wchar_t *str) {
     write = (unsigned char *)result;
     for (i = 0U; i < length; ++i) {
         uint32_t code = (uint32_t)str[i];
-        if ((code >= 0xD800U && code <= 0xDFFFU) || code > 0x10FFFFU)
-            goto invalid;
+        if ((code >= 0xD800U && code <= 0xDFFFU) || code > 0x10FFFFU) goto invalid;
         if (code < 0x80U) *write++ = (unsigned char)code;
         else if (code < 0x800U) {
             *write++ = (unsigned char)(0xC0U | (code >> 6));
@@ -116,7 +120,8 @@ invalid:
     return NULL;
 }
 
-wchar_t* xx_string_platform_mb_to_wide(const char *str, unsigned int codepage) {
+wchar_t *xx_string_platform_mb_to_wide(const char *str, unsigned int codepage)
+{
     if (!str) {
         return NULL;
     }
@@ -127,7 +132,7 @@ wchar_t* xx_string_platform_mb_to_wide(const char *str, unsigned int codepage) {
         return NULL;
     }
 
-    wchar_t *wbuf = (wchar_t*)xx_mem_alloc((len + 1) * sizeof(wchar_t));
+    wchar_t *wbuf = (wchar_t *)xx_mem_alloc((len + 1) * sizeof(wchar_t));
     if (!wbuf) {
         return NULL;
     }
@@ -136,7 +141,8 @@ wchar_t* xx_string_platform_mb_to_wide(const char *str, unsigned int codepage) {
     return wbuf;
 }
 
-char* xx_string_platform_wide_to_mb(const wchar_t *wstr, unsigned int codepage) {
+char *xx_string_platform_wide_to_mb(const wchar_t *wstr, unsigned int codepage)
+{
     if (!wstr) {
         return NULL;
     }
@@ -147,7 +153,7 @@ char* xx_string_platform_wide_to_mb(const wchar_t *wstr, unsigned int codepage) 
         return NULL;
     }
 
-    char *mbuf = (char*)xx_mem_alloc(len + 1);
+    char *mbuf = (char *)xx_mem_alloc(len + 1);
     if (!mbuf) {
         return NULL;
     }
@@ -155,7 +161,6 @@ char* xx_string_platform_wide_to_mb(const wchar_t *wstr, unsigned int codepage) 
     wcstombs(mbuf, wstr, len + 1);
     return mbuf;
 }
-
 
 /* Runtime string primitives (thin delegation to libc, which is always present here).
  * These define the public xx_rt_str* names directly, as

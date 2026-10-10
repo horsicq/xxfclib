@@ -84,8 +84,7 @@
 #define PCIS_RAW_DIR "__raw_pcinstall__"
 #define PCIS_RAW_PREFIX PCIS_RAW_DIR "/"
 
-static const uint8_t pcis_tag[PCIS_TAG_SIZE] = {'[', '2', '0', '/',
-                                                '2', '0', ']', 0U};
+static const uint8_t pcis_tag[PCIS_TAG_SIZE] = {'[', '2', '0', '/', '2', '0', ']', 0U};
 
 typedef struct pcis_member_s {
     char *name;            /* output name, unique case-insensitively */
@@ -93,7 +92,7 @@ typedef struct pcis_member_s {
     int64_t header_size;
     int64_t data_offset;
     int64_t packed_size;
-    int64_t unpacked_size; /* -1 while unknown */
+    int64_t unpacked_size;  /* -1 while unknown */
     uint32_t declared_size; /* info +0x9c; 0 when the builder left it blank */
     uint32_t attributes;
     uint16_t dos_date;
@@ -117,32 +116,31 @@ typedef struct pcis_stream_s {
     bool exhausted;
 } pcis_stream;
 
-static bool pcis_read_at(xx_io_device *device, int64_t offset, void *buffer,
-                         size_t size) {
+static bool pcis_read_at(xx_io_device *device, int64_t offset, void *buffer, size_t size)
+{
     size_t done = 0U;
     const size_t io_capacity = xx_get_file_buffer_size();
-    if (!device || (!buffer && size != 0U) || offset < 0 ||
-        xx_io_seek64(device, offset, SEEK_SET) != 0)
-        return false;
+    if (!device || (!buffer && size != 0U) || offset < 0 || xx_io_seek64(device, offset, SEEK_SET) != 0) return false;
     while (done < size) {
         size_t request = size - done;
         if (request > io_capacity) request = io_capacity;
-        ssize_t amount = xx_io_read(device, (uint8_t *)buffer + done,
-                                    request);
+        ssize_t amount = xx_io_read(device, (uint8_t *)buffer + done, request);
         if (amount <= 0 || (size_t)amount > request) return false;
         done += (size_t)amount;
     }
     return true;
 }
 
-static bool pcis_stopped(xx_pd_struct *pd) {
+static bool pcis_stopped(xx_pd_struct *pd)
+{
     return pd && xx_pd_is_stopped(pd);
 }
 
 /* Every name field is a fixed-width buffer whose tail is stale builder heap:
  * the name is the bytes before the first NUL, and it has to be printable
  * ASCII without a path separator.  Returns 0 when the field holds no name. */
-static size_t pcis_field_name_length(const uint8_t *field, size_t size) {
+static size_t pcis_field_name_length(const uint8_t *field, size_t size)
+{
     size_t length = 0U;
     while (length < size && field[length] != 0U) {
         uint8_t c = field[length];
@@ -152,7 +150,8 @@ static size_t pcis_field_name_length(const uint8_t *field, size_t size) {
     return length < size ? length : 0U;
 }
 
-static char *pcis_copy_name(const uint8_t *bytes, size_t length) {
+static char *pcis_copy_name(const uint8_t *bytes, size_t length)
+{
     char *name = (char *)xx_mem_alloc(length + 1U);
     if (!name) return NULL;
     xx_rt_memcpy(name, bytes, length);
@@ -160,7 +159,8 @@ static char *pcis_copy_name(const uint8_t *bytes, size_t length) {
     return name;
 }
 
-static void pcis_truncate(pcis_stream *stream, size_t count) {
+static void pcis_truncate(pcis_stream *stream, size_t count)
+{
     while (stream->count > count) {
         pcis_member *member = &stream->items[--stream->count];
         if (member->name) xx_mem_free(member->name);
@@ -168,7 +168,8 @@ static void pcis_truncate(pcis_stream *stream, size_t count) {
     }
 }
 
-static void pcis_stream_free(void *opaque) {
+static void pcis_stream_free(void *opaque)
+{
     pcis_stream *stream = (pcis_stream *)opaque;
     if (!stream) return;
     pcis_truncate(stream, 0U);
@@ -176,15 +177,15 @@ static void pcis_stream_free(void *opaque) {
     xx_mem_free(stream);
 }
 
-static pcis_member *pcis_push(pcis_stream *stream) {
+static pcis_member *pcis_push(pcis_stream *stream)
+{
     pcis_member *member;
     if (stream->count >= PCIS_MAX_MEMBERS) return NULL;
     if (stream->count == stream->capacity) {
         size_t capacity = stream->capacity ? stream->capacity * 2U : 16U;
         pcis_member *grown;
         if (capacity > PCIS_MAX_MEMBERS) capacity = PCIS_MAX_MEMBERS;
-        grown = (pcis_member *)xx_mem_realloc(stream->items,
-                                              capacity * sizeof(*grown));
+        grown = (pcis_member *)xx_mem_realloc(stream->items, capacity * sizeof(*grown));
         if (!grown) return NULL;
         stream->items = grown;
         stream->capacity = capacity;
@@ -197,7 +198,8 @@ static pcis_member *pcis_push(pcis_stream *stream) {
 
 /* Once the budget is gone every walk fails, rather than letting a group
  * that could not be read fall back to being a verbatim file. */
-static bool pcis_spend(pcis_stream *stream) {
+static bool pcis_spend(pcis_stream *stream)
+{
     if (stream->budget == 0U) {
         stream->exhausted = true;
         return false;
@@ -209,29 +211,21 @@ static bool pcis_spend(pcis_stream *stream) {
 /* A record payload that parses completely as a member group is expanded
  * into its members; on any mismatch nothing is added and the caller treats
  * the payload as a verbatim file. */
-static bool pcis_parse_group(xx_io_device *device, int64_t group_offset,
-                             int64_t group_size, pcis_stream *stream) {
+static bool pcis_parse_group(xx_io_device *device, int64_t group_offset, int64_t group_size, pcis_stream *stream)
+{
     uint8_t prologue[PCIS_PROLOGUE_SIZE];
     size_t start = stream->count;
     size_t index;
     uint32_t count;
     int64_t position;
-    if (group_size < PCIS_PROLOGUE_SIZE + PCIS_INFO_SIZE + 2 ||
-        !pcis_spend(stream) ||
-        !pcis_read_at(device, group_offset, prologue, sizeof(prologue)))
-        return false;
+    if (group_size < PCIS_PROLOGUE_SIZE + PCIS_INFO_SIZE + 2 || !pcis_spend(stream) || !pcis_read_at(device, group_offset, prologue, sizeof(prologue))) return false;
     /* The cross-volume link name is always blank inside one file. */
     for (index = 0U; index < PCIS_LINK_SIZE; ++index)
         if (prologue[index] != 0U) return false;
-    if (xx_data_get_u16(prologue + 0x0eU, 2, 0, false) != PCIS_GROUP_TAG ||
-        xx_data_get_u16(prologue + 0x12U, 2, 0, false) != PCIS_GROUP_TAG)
-        return false;
+    if (xx_data_get_u16(prologue + 0x0eU, 2, 0, false) != PCIS_GROUP_TAG || xx_data_get_u16(prologue + 0x12U, 2, 0, false) != PCIS_GROUP_TAG) return false;
     count = xx_data_get_u16(prologue + 0x10U, 2, 0, false);
     /* Each member costs at least its info block and a two-byte prelude. */
-    if (count == 0U || count > PCIS_MAX_GROUP_MEMBERS ||
-        (int64_t)count >
-            (group_size - PCIS_PROLOGUE_SIZE) / (PCIS_INFO_SIZE + 2))
-        return false;
+    if (count == 0U || count > PCIS_MAX_GROUP_MEMBERS || (int64_t)count > (group_size - PCIS_PROLOGUE_SIZE) / (PCIS_INFO_SIZE + 2)) return false;
     position = PCIS_PROLOGUE_SIZE;
     for (index = 0U; index < count; ++index) {
         uint8_t info[PCIS_INFO_SIZE];
@@ -239,20 +233,13 @@ static bool pcis_parse_group(xx_io_device *device, int64_t group_offset,
         pcis_member *member;
         size_t length;
         int64_t packed;
-        if (position > group_size - PCIS_INFO_SIZE || !pcis_spend(stream) ||
-            !pcis_read_at(device, group_offset + position, info,
-                          sizeof(info)))
-            goto fail;
+        if (position > group_size - PCIS_INFO_SIZE || !pcis_spend(stream) || !pcis_read_at(device, group_offset + position, info, sizeof(info))) goto fail;
         length = pcis_field_name_length(info, PCIS_INFO_NAME_SIZE);
         if (length == 0U || xx_data_get_u32(info + 0x84U, 4, 0, false) != 0U) goto fail;
         packed = (int64_t)xx_data_get_u32(info + 0x88U, 4, 0, false);
-        if (packed < 2 || packed > group_size - position - PCIS_INFO_SIZE)
-            goto fail;
+        if (packed < 2 || packed > group_size - position - PCIS_INFO_SIZE) goto fail;
         /* Raw PKWARE DCL prelude: literal mode 0/1, dictionary bits 4..6. */
-        if (!pcis_read_at(device, group_offset + position + PCIS_INFO_SIZE,
-                          prelude, sizeof(prelude)) ||
-            prelude[0] > 1U || prelude[1] < 4U || prelude[1] > 6U)
-            goto fail;
+        if (!pcis_read_at(device, group_offset + position + PCIS_INFO_SIZE, prelude, sizeof(prelude)) || prelude[0] > 1U || prelude[1] < 4U || prelude[1] > 6U) goto fail;
         member = pcis_push(stream);
         if (!member) goto fail;
         member->name = pcis_copy_name(info, length);
@@ -262,8 +249,7 @@ static bool pcis_parse_group(xx_io_device *device, int64_t group_offset,
         member->data_offset = group_offset + position + PCIS_INFO_SIZE;
         member->packed_size = packed;
         member->declared_size = xx_data_get_u32(info + 0x9cU, 4, 0, false);
-        if (member->declared_size != 0U)
-            member->unpacked_size = (int64_t)member->declared_size;
+        if (member->declared_size != 0U) member->unpacked_size = (int64_t)member->declared_size;
         member->attributes = xx_data_get_u32(info + 0x80U, 4, 0, false);
         member->dos_date = xx_data_get_u16(info + 0x8cU, 2, 0, false);
         member->dos_time = xx_data_get_u16(info + 0x90U, 2, 0, false);
@@ -280,9 +266,8 @@ fail:
 
 /* Walks the chain whose first record is at @p start (relative to the base
  * address) and fills @p stream.  The chain must tile [start, trailer). */
-static bool pcis_walk(Abstractformat *format, int64_t trailer, int64_t start,
-                      uint32_t stored_first, uint32_t stored_last,
-                      pcis_stream *stream, xx_pd_struct *pd) {
+static bool pcis_walk(Abstractformat *format, int64_t trailer, int64_t start, uint32_t stored_first, uint32_t stored_last, pcis_stream *stream, xx_pd_struct *pd)
+{
     xx_io_device *device = format->device;
     int64_t base = format->base_address;
     int64_t cursor = start;
@@ -290,9 +275,7 @@ static bool pcis_walk(Abstractformat *format, int64_t trailer, int64_t start,
     uint8_t tag[PCIS_TAG_SIZE];
     uint8_t header[PCIS_RECORD_SIZE];
     size_t chunks = 0U;
-    if (start < PCIS_MIN_STUB + PCIS_TAG_SIZE ||
-        start > trailer - PCIS_RECORD_SIZE ||
-        !pcis_read_at(device, base + start - PCIS_TAG_SIZE, tag, sizeof(tag)) ||
+    if (start < PCIS_MIN_STUB + PCIS_TAG_SIZE || start > trailer - PCIS_RECORD_SIZE || !pcis_read_at(device, base + start - PCIS_TAG_SIZE, tag, sizeof(tag)) ||
         xx_rt_memcmp(tag, pcis_tag, sizeof(tag)) != 0)
         return false;
     /* The chain can only be accepted if its last record lies where the
@@ -300,35 +283,27 @@ static bool pcis_walk(Abstractformat *format, int64_t trailer, int64_t start,
      * before the walk: a stop record that ends at the trailer.  One read
      * then turns away every start the walk would reject at its end. */
     terminal = start + ((int64_t)stored_last - (int64_t)stored_first);
-    if (terminal < start || terminal > trailer - PCIS_RECORD_SIZE ||
-        !pcis_spend(stream) ||
-        !pcis_read_at(device, base + terminal, header, sizeof(header)) ||
-        xx_data_get_u32(header, 4, 0, false) != 0U ||
-        (int64_t)xx_data_get_u32(header + 0x10U, 4, 0, false) !=
-            trailer - terminal - PCIS_RECORD_SIZE ||
-        pcis_field_name_length(header + PCIS_RECORD_NAME_OFFSET,
-                               PCIS_RECORD_NAME_SIZE) == 0U)
+    if (terminal < start || terminal > trailer - PCIS_RECORD_SIZE || !pcis_spend(stream) || !pcis_read_at(device, base + terminal, header, sizeof(header)) ||
+        xx_data_get_u32(header, 4, 0, false) != 0U || (int64_t)xx_data_get_u32(header + 0x10U, 4, 0, false) != trailer - terminal - PCIS_RECORD_SIZE ||
+        pcis_field_name_length(header + PCIS_RECORD_NAME_OFFSET, PCIS_RECORD_NAME_SIZE) == 0U)
         return false;
     pcis_truncate(stream, 0U);
     for (;;) {
         uint8_t record[PCIS_RECORD_SIZE];
         int64_t next, stored, payload;
         size_t length;
-        if (pcis_stopped(pd) || chunks >= PCIS_MAX_RECORDS ||
-            cursor > trailer - PCIS_RECORD_SIZE || !pcis_spend(stream) ||
+        if (pcis_stopped(pd) || chunks >= PCIS_MAX_RECORDS || cursor > trailer - PCIS_RECORD_SIZE || !pcis_spend(stream) ||
             !pcis_read_at(device, base + cursor, record, sizeof(record)))
             goto fail;
         next = (int64_t)xx_data_get_u32(record, 4, 0, false);
         stored = (int64_t)xx_data_get_u32(record + 0x10U, 4, 0, false);
         payload = cursor + PCIS_RECORD_SIZE;
         if (stored > trailer - payload) goto fail;
-        length = pcis_field_name_length(record + PCIS_RECORD_NAME_OFFSET,
-                                        PCIS_RECORD_NAME_SIZE);
+        length = pcis_field_name_length(record + PCIS_RECORD_NAME_OFFSET, PCIS_RECORD_NAME_SIZE);
         if (length == 0U) goto fail;
         ++chunks;
         {
-            bool grouped = pcis_parse_group(device, base + payload, stored,
-                                            stream);
+            bool grouped = pcis_parse_group(device, base + payload, stored, stream);
             pcis_member *member;
             char *name;
             if (!grouped && stream->exhausted) goto fail;
@@ -336,8 +311,7 @@ static bool pcis_walk(Abstractformat *format, int64_t trailer, int64_t start,
             if (!member) goto fail;
             name = pcis_copy_name(record + PCIS_RECORD_NAME_OFFSET, length);
             if (!name) goto fail;
-            member->name = grouped ? xx_str_concat(PCIS_RAW_PREFIX, name)
-                                   : name;
+            member->name = grouped ? xx_str_concat(PCIS_RAW_PREFIX, name) : name;
             if (grouped) xx_mem_free(name);
             if (!member->name) goto fail;
             member->header_offset = base + cursor;
@@ -356,10 +330,7 @@ static bool pcis_walk(Abstractformat *format, int64_t trailer, int64_t start,
             /* The last record ends where the trailer begins, and the
              * trailer's first/last pair spans the same distance as the
              * chain (both move together when the stub is re-linked). */
-            if (payload + stored != trailer ||
-                (int64_t)stored_last - (int64_t)stored_first !=
-                    cursor - start)
-                goto fail;
+            if (payload + stored != trailer || (int64_t)stored_last - (int64_t)stored_first != cursor - start) goto fail;
             stream->chunks = chunks;
             stream->head_offset = start - PCIS_TAG_SIZE;
             return true;
@@ -374,9 +345,8 @@ fail:
 
 /* The trailer's offsets did not lead to a chain: look for the head tag in
  * the leading part of the file and walk from each candidate. */
-static bool pcis_relocate(Abstractformat *format, int64_t trailer,
-                          uint32_t stored_first, uint32_t stored_last,
-                          pcis_stream *stream, xx_pd_struct *pd) {
+static bool pcis_relocate(Abstractformat *format, int64_t trailer, uint32_t stored_first, uint32_t stored_last, pcis_stream *stream, xx_pd_struct *pd)
+{
     uint8_t *buffer;
     const size_t io_capacity = xx_get_file_buffer_size();
     int64_t position = PCIS_MIN_STUB;
@@ -387,33 +357,25 @@ static bool pcis_relocate(Abstractformat *format, int64_t trailer,
     if (last_tag < position) return false;
     buffer = (uint8_t *)xx_mem_alloc(io_capacity);
     if (!buffer) return false;
-    while (!found && !stream->exhausted && candidates < PCIS_MAX_CANDIDATES &&
-           !pcis_stopped(pd)) {
+    while (!found && !stream->exhausted && candidates < PCIS_MAX_CANDIDATES && !pcis_stopped(pd)) {
         int64_t window = last_tag - position + 1;
-        size_t amount = window > (int64_t)io_capacity ? io_capacity
-                                                          : (size_t)window;
+        size_t amount = window > (int64_t)io_capacity ? io_capacity : (size_t)window;
         size_t at;
-        if (!pcis_read_at(format->device, format->base_address + position,
-                          buffer, amount))
-            break;
-        for (at = 0U; at < amount && !found &&
-                      !stream->exhausted && candidates < PCIS_MAX_CANDIDATES;
-             ++at) {
+        if (!pcis_read_at(format->device, format->base_address + position, buffer, amount)) break;
+        for (at = 0U; at < amount && !found && !stream->exhausted && candidates < PCIS_MAX_CANDIDATES; ++at) {
             int64_t start;
             uint8_t frame[PCIS_TAG_SIZE];
             const uint8_t *bytes = buffer + at;
             if (buffer[at] != pcis_tag[0]) continue;
             if (amount - at < PCIS_TAG_SIZE) {
-                if (!pcis_read_at(format->device, format->base_address + position + (int64_t)at,
-                                  frame, sizeof(frame))) continue;
+                if (!pcis_read_at(format->device, format->base_address + position + (int64_t)at, frame, sizeof(frame))) continue;
                 bytes = frame;
             }
             if (xx_rt_memcmp(bytes, pcis_tag, PCIS_TAG_SIZE) != 0) continue;
             start = position + (int64_t)at + PCIS_TAG_SIZE;
             if (start == (int64_t)stored_first) continue; /* already tried */
             ++candidates;
-            found = pcis_walk(format, trailer, start, stored_first,
-                              stored_last, stream, pd);
+            found = pcis_walk(format, trailer, start, stored_first, stored_last, stream, pd);
         }
         position += (int64_t)amount;
         if (position > last_tag) break;
@@ -424,11 +386,13 @@ static bool pcis_relocate(Abstractformat *format, int64_t trailer,
 
 /* --- member names ------------------------------------------------------- */
 
-static uint8_t pcis_fold(uint8_t c) {
+static uint8_t pcis_fold(uint8_t c)
+{
     return (c >= 'a' && c <= 'z') ? (uint8_t)(c - 'a' + 'A') : c;
 }
 
-static uint32_t pcis_hash(const char *name) {
+static uint32_t pcis_hash(const char *name)
+{
     uint32_t hash = UINT32_C(2166136261);
     while (*name) {
         hash ^= pcis_fold((uint8_t)*name++);
@@ -437,7 +401,8 @@ static uint32_t pcis_hash(const char *name) {
     return hash;
 }
 
-static bool pcis_same_name(const char *a, const char *b) {
+static bool pcis_same_name(const char *a, const char *b)
+{
     while (*a && *b) {
         if (pcis_fold((uint8_t)*a) != pcis_fold((uint8_t)*b)) return false;
         ++a;
@@ -452,29 +417,29 @@ typedef struct pcis_name_set_s {
 } pcis_name_set;
 
 /* Returns the slot that holds @p name, or the empty slot it belongs in. */
-static const char **pcis_name_slot(pcis_name_set *set, const char *name) {
+static const char **pcis_name_slot(pcis_name_set *set, const char *name)
+{
     size_t slot = (size_t)pcis_hash(name) & set->mask;
-    while (set->slots[slot] && !pcis_same_name(set->slots[slot], name))
-        slot = (slot + 1U) & set->mask;
+    while (set->slots[slot] && !pcis_same_name(set->slots[slot], name)) slot = (slot + 1U) & set->mask;
     return &set->slots[slot];
 }
 
-static size_t pcis_put_decimal(char *out, size_t value) {
+static size_t pcis_put_decimal(char *out, size_t value)
+{
     char digits[24];
     size_t count = 0U, index;
     do {
         digits[count++] = (char)('0' + (value % 10U));
         value /= 10U;
     } while (value != 0U && count < sizeof(digits));
-    for (index = 0U; index < count; ++index)
-        out[index] = digits[count - 1U - index];
+    for (index = 0U; index < count; ++index) out[index] = digits[count - 1U - index];
     return count;
 }
 
 /* "<stem>_<number>[_<attempt>]<ext>" where <ext> starts at the last dot
  * (a leading dot is part of the stem). */
-static char *pcis_suffixed_name(const char *name, size_t number,
-                                size_t attempt) {
+static char *pcis_suffixed_name(const char *name, size_t number, size_t attempt)
+{
     size_t length = xx_str_len(name);
     size_t stem = length, position = 0U;
     char *result;
@@ -499,47 +464,41 @@ static char *pcis_suffixed_name(const char *name, size_t number,
 
 /* CON, PRN, AUX, NUL, COM0-9, LPT0-9, CONIN$, CONOUT$ and CLOCK$, with or
  * without an extension, in any case. */
-static bool pcis_device_name(const char *name) {
-    static const char *const words[] = {"CON",    "PRN",     "AUX", "NUL",
-                                        "CONIN$", "CONOUT$", "CLOCK$"};
+static bool pcis_device_name(const char *name)
+{
+    static const char *const words[] = {"CON", "PRN", "AUX", "NUL", "CONIN$", "CONOUT$", "CLOCK$"};
     size_t stem = 0U, word, index;
     while (name[stem] && name[stem] != '.') ++stem;
     while (stem > 0U && name[stem - 1U] == ' ') --stem;
     for (word = 0U; word < sizeof(words) / sizeof(words[0]); ++word) {
         const char *text = words[word];
         for (index = 0U; index < stem && text[index]; ++index)
-            if (pcis_fold((uint8_t)name[index]) != (uint8_t)text[index])
-                break;
+            if (pcis_fold((uint8_t)name[index]) != (uint8_t)text[index]) break;
         if (index == stem && text[index] == 0) return true;
     }
     if (stem == 4U && name[3] >= '0' && name[3] <= '9') {
         uint8_t a = pcis_fold((uint8_t)name[0]);
         uint8_t b = pcis_fold((uint8_t)name[1]);
         uint8_t c = pcis_fold((uint8_t)name[2]);
-        if ((a == 'C' && b == 'O' && c == 'M') ||
-            (a == 'L' && b == 'P' && c == 'T'))
-            return true;
+        if ((a == 'C' && b == 'O' && c == 'M') || (a == 'L' && b == 'P' && c == 'T')) return true;
     }
     return false;
 }
 
-static bool pcis_name_safe(const char *name) {
+static bool pcis_name_safe(const char *name)
+{
     size_t length = xx_str_len(name), index;
-    if (length == 0U ||
-        (name[0] == '.' && (length == 1U || (length == 2U && name[1] == '.'))))
-        return false;
+    if (length == 0U || (name[0] == '.' && (length == 1U || (length == 2U && name[1] == '.')))) return false;
     for (index = 0U; index < length; ++index) {
         uint8_t c = (uint8_t)name[index];
-        if (c < 0x20U || c > 0x7eU || c == '/' || c == '\\' || c == ':' ||
-            c == '*' || c == '?' || c == '"' || c == '<' || c == '>' ||
-            c == '|')
-            return false;
+        if (c < 0x20U || c > 0x7eU || c == '/' || c == '\\' || c == ':' || c == '*' || c == '?' || c == '"' || c == '<' || c == '>' || c == '|') return false;
     }
     if (name[length - 1U] == '.' || name[length - 1U] == ' ') return false;
     return !pcis_device_name(name);
 }
 
-static bool pcis_finish_names(pcis_stream *stream) {
+static bool pcis_finish_names(pcis_stream *stream)
+{
     pcis_name_set set;
     size_t capacity = 16U, index;
     char raw_directory[sizeof(PCIS_RAW_DIR) + 24U];
@@ -551,12 +510,10 @@ static bool pcis_finish_names(pcis_stream *stream) {
         size_t length = sizeof(PCIS_RAW_DIR) - 1U;
         bool occupied = false;
         xx_rt_memcpy(raw_directory, PCIS_RAW_DIR, length);
-        if (attempt != 0U)
-            length += pcis_put_decimal(raw_directory + length, attempt);
+        if (attempt != 0U) length += pcis_put_decimal(raw_directory + length, attempt);
         raw_directory[length] = 0;
         for (index = 0U; index < stream->count; ++index) {
-            if (!stream->items[index].raw_group &&
-                pcis_same_name(stream->items[index].name, raw_directory)) {
+            if (!stream->items[index].raw_group && pcis_same_name(stream->items[index].name, raw_directory)) {
                 occupied = true;
                 break;
             }
@@ -572,8 +529,7 @@ static bool pcis_finish_names(pcis_stream *stream) {
             pcis_member *member = &stream->items[index];
             char *name;
             if (!member->raw_group) continue;
-            name = xx_str_concat3(raw_directory, "/",
-                                  member->name + sizeof(PCIS_RAW_PREFIX) - 1U);
+            name = xx_str_concat3(raw_directory, "/", member->name + sizeof(PCIS_RAW_PREFIX) - 1U);
             if (!name) return false;
             xx_mem_free(member->name);
             member->name = name;
@@ -589,8 +545,7 @@ static bool pcis_finish_names(pcis_stream *stream) {
         bool unique = *slot == NULL;
         size_t retry;
         for (retry = 0U; !unique && retry < PCIS_NAME_TRIES; ++retry) {
-            char *candidate = pcis_suffixed_name(member->name, index + 1U,
-                                                 retry);
+            char *candidate = pcis_suffixed_name(member->name, index + 1U, retry);
             if (!candidate) {
                 xx_mem_free((void *)set.slots);
                 return false;
@@ -605,10 +560,7 @@ static bool pcis_finish_names(pcis_stream *stream) {
             }
         }
         if (unique) *slot = member->name;
-        member->safe = unique &&
-            pcis_name_safe(member->raw_group
-                ? member->name + raw_prefix_length
-                : member->name);
+        member->safe = unique && pcis_name_safe(member->raw_group ? member->name + raw_prefix_length : member->name);
     }
     xx_mem_free((void *)set.slots);
     return true;
@@ -616,29 +568,22 @@ static bool pcis_finish_names(pcis_stream *stream) {
 
 /* --- parse -------------------------------------------------------------- */
 
-static bool pcis_parse(Abstractformat *format, pcis_stream **result,
-                       xx_pd_struct *pd) {
+static bool pcis_parse(Abstractformat *format, pcis_stream **result, xx_pd_struct *pd)
+{
     uint8_t mz[2];
     uint8_t trailer_bytes[PCIS_TRAILER_SIZE];
     pcis_stream *stream;
     int64_t total, size, trailer;
     uint32_t first, last;
-    if (!format || !format->device || !result || format->base_address < 0)
-        return false;
+    if (!format || !format->device || !result || format->base_address < 0) return false;
     total = xx_io_total_size(format->device);
     if (total < format->base_address) return false;
     size = total - format->base_address;
-    if (size < PCIS_MIN_STUB + PCIS_TAG_SIZE + PCIS_RECORD_SIZE +
-                   PCIS_TRAILER_SIZE)
-        return false;
+    if (size < PCIS_MIN_STUB + PCIS_TAG_SIZE + PCIS_RECORD_SIZE + PCIS_TRAILER_SIZE) return false;
     /* Two cheap reads decide every file that is not this format. */
-    if (!pcis_read_at(format->device, format->base_address, mz, sizeof(mz)) ||
-        mz[0] != 'M' || mz[1] != 'Z')
-        return false;
+    if (!pcis_read_at(format->device, format->base_address, mz, sizeof(mz)) || mz[0] != 'M' || mz[1] != 'Z') return false;
     trailer = size - PCIS_TRAILER_SIZE;
-    if (!pcis_read_at(format->device, format->base_address + trailer,
-                      trailer_bytes, sizeof(trailer_bytes)) ||
-        xx_rt_memcmp(trailer_bytes, pcis_tag, PCIS_TAG_SIZE) != 0)
+    if (!pcis_read_at(format->device, format->base_address + trailer, trailer_bytes, sizeof(trailer_bytes)) || xx_rt_memcmp(trailer_bytes, pcis_tag, PCIS_TAG_SIZE) != 0)
         return false;
     first = xx_data_get_u32(trailer_bytes + 8U, 4, 0, false);
     last = xx_data_get_u32(trailer_bytes + 12U, 4, 0, false);
@@ -649,9 +594,7 @@ static bool pcis_parse(Abstractformat *format, pcis_stream **result,
     stream->trailer_offset = trailer;
     if (!pcis_walk(format, trailer, (int64_t)first, first, last, stream, pd)) {
         /* A walk that used up the budget is not followed by a search. */
-        if (stream->exhausted ||
-            !pcis_relocate(format, trailer, first, last, stream, pd))
-            goto fail;
+        if (stream->exhausted || !pcis_relocate(format, trailer, first, last, stream, pd)) goto fail;
         stream->relocated = true;
     }
     if (stream->count == 0U || !pcis_finish_names(stream)) goto fail;
@@ -664,15 +607,13 @@ fail:
 
 /* --- member data -------------------------------------------------------- */
 
-static uint8_t *pcis_load_packed(Abstractformat *format,
-                                 const pcis_member *member) {
+static uint8_t *pcis_load_packed(Abstractformat *format, const pcis_member *member)
+{
     uint8_t *packed;
-    if (member->packed_size < 2 || member->packed_size > PCIS_MAX_PACKED)
-        return NULL;
+    if (member->packed_size < 2 || member->packed_size > PCIS_MAX_PACKED) return NULL;
     packed = (uint8_t *)xx_mem_alloc((size_t)member->packed_size);
     if (!packed) return NULL;
-    if (!pcis_read_at(format->device, member->data_offset, packed,
-                      (size_t)member->packed_size)) {
+    if (!pcis_read_at(format->device, member->data_offset, packed, (size_t)member->packed_size)) {
         xx_mem_free(packed);
         return NULL;
     }
@@ -682,9 +623,8 @@ static uint8_t *pcis_load_packed(Abstractformat *format,
 /* Decodes a group member.  The stream must end exactly at the end of its
  * packed bytes and, when the info block records a size, produce exactly
  * that.  @p plain may be NULL to measure only. */
-static bool pcis_decode(Abstractformat *format, pcis_member *member,
-                        uint64_t max_member, uint64_t memory_limit,
-                        uint8_t **plain, size_t *plain_size) {
+static bool pcis_decode(Abstractformat *format, pcis_member *member, uint64_t max_member, uint64_t memory_limit, uint8_t **plain, size_t *plain_size)
+{
     uint8_t *packed;
     uint8_t *output = NULL;
     size_t consumed = 0U, produced = 0U, written = 0U;
@@ -695,12 +635,8 @@ static bool pcis_decode(Abstractformat *format, pcis_member *member,
     if ((uint64_t)limit > max_member) limit = (size_t)max_member;
     packed = pcis_load_packed(format, member);
     if (!packed) return false;
-    if (!xx_dcl_scan_memory(packed, (size_t)member->packed_size, limit,
-                            &consumed, &produced) ||
-        consumed != (size_t)member->packed_size ||
-        (member->declared_size != 0U &&
-         (uint64_t)produced != (uint64_t)member->declared_size) ||
-        (uint64_t)produced > memory_limit ||
+    if (!xx_dcl_scan_memory(packed, (size_t)member->packed_size, limit, &consumed, &produced) || consumed != (size_t)member->packed_size ||
+        (member->declared_size != 0U && (uint64_t)produced != (uint64_t)member->declared_size) || (uint64_t)produced > memory_limit ||
         (uint64_t)member->packed_size > memory_limit - (uint64_t)produced)
         goto done;
     member->unpacked_size = (int64_t)produced;
@@ -711,12 +647,7 @@ static bool pcis_decode(Abstractformat *format, pcis_member *member,
     /* An empty file is a stream that is only the end marker; the scan has
      * already proved that, and the decoder refuses a zero-sized output. */
     output = (uint8_t *)xx_mem_alloc(produced != 0U ? produced : 1U);
-    if (!output ||
-        (produced != 0U &&
-         (!xx_dcl_decode_memory(packed, (size_t)member->packed_size, output,
-                                produced, &written) ||
-          written != produced)))
-        goto done;
+    if (!output || (produced != 0U && (!xx_dcl_decode_memory(packed, (size_t)member->packed_size, output, produced, &written) || written != produced))) goto done;
     *plain = output;
     output = NULL;
     if (plain_size) *plain_size = written;
@@ -727,21 +658,19 @@ done:
     return result;
 }
 
-static bool pcis_write_all(xx_io_device *destination, const uint8_t *data,
-                           size_t size) {
+static bool pcis_write_all(xx_io_device *destination, const uint8_t *data, size_t size)
+{
     size_t written = 0U;
     while (written < size) {
-        ssize_t amount = xx_io_write(destination, data + written,
-                                     size - written);
+        ssize_t amount = xx_io_write(destination, data + written, size - written);
         if (amount <= 0 || (size_t)amount > size - written) return false;
         written += (size_t)amount;
     }
     return true;
 }
 
-static bool pcis_copy_stored(Abstractformat *format,
-                             const pcis_member *member,
-                             xx_io_device *destination, xx_pd_struct *pd) {
+static bool pcis_copy_stored(Abstractformat *format, const pcis_member *member, xx_io_device *destination, xx_pd_struct *pd)
+{
     uint8_t *buffer;
     const size_t io_capacity = xx_get_file_buffer_size();
     int64_t done = 0;
@@ -751,12 +680,8 @@ static bool pcis_copy_stored(Abstractformat *format,
     if (!buffer) return false;
     while (done < member->packed_size) {
         int64_t left = member->packed_size - done;
-        size_t amount = left > (int64_t)io_capacity ? io_capacity
-                                                        : (size_t)left;
-        if (pcis_stopped(pd) ||
-            !pcis_read_at(format->device, member->data_offset + done, buffer,
-                          amount) ||
-            !pcis_write_all(destination, buffer, amount)) {
+        size_t amount = left > (int64_t)io_capacity ? io_capacity : (size_t)left;
+        if (pcis_stopped(pd) || !pcis_read_at(format->device, member->data_offset + done, buffer, amount) || !pcis_write_all(destination, buffer, amount)) {
             result = false;
             break;
         }
@@ -768,18 +693,16 @@ static bool pcis_copy_stored(Abstractformat *format,
 
 /* --- records ------------------------------------------------------------ */
 
-static bool pcis_copy_options(xx_list_s *destination,
-                              const xx_list_s *source) {
+static bool pcis_copy_options(xx_list_s *destination, const xx_list_s *source)
+{
     size_t index;
     if (!source) return true;
     for (index = 0U; index < source->count; ++index) {
-        const xx_meta *original =
-            (const xx_meta *)xx_list_at((const xx_list_t *)source, index);
+        const xx_meta *original = (const xx_meta *)xx_list_at((const xx_list_t *)source, index);
         xx_meta copy;
         if (!original) continue;
         xx_meta_init(&copy, original->meta_id);
-        if (!xx_var_copy(&copy.var, &original->var) ||
-            !xx_list_append(destination, &copy)) {
+        if (!xx_var_copy(&copy.var, &original->var) || !xx_list_append(destination, &copy)) {
             xx_meta_cleanup(&copy);
             return false;
         }
@@ -787,8 +710,8 @@ static bool pcis_copy_options(xx_list_s *destination,
     return true;
 }
 
-static bool pcis_set_record(Abstractformat *format, xx_archive_record *record,
-                            pcis_member *member) {
+static bool pcis_set_record(Abstractformat *format, xx_archive_record *record, pcis_member *member)
+{
     xx_archive_record_cleanup(record);
     xx_archive_record_init(record);
     record->header_offset = member->header_offset;
@@ -797,34 +720,21 @@ static bool pcis_set_record(Abstractformat *format, xx_archive_record *record,
     record->compressed_size = member->packed_size;
     /* The info block leaves the size blank on about half of the members;
      * then it is measured, and published only when the stream checks out. */
-    if (member->unpacked_size < 0 && !member->stored)
-        (void)pcis_decode(format, member, UINT64_MAX, UINT64_MAX, NULL, NULL);
+    if (member->unpacked_size < 0 && !member->stored) (void)pcis_decode(format, member, UINT64_MAX, UINT64_MAX, NULL, NULL);
     if (!xx_archive_record_set_original_name(record, member->name) ||
-        !xx_archive_record_set_meta_u64(record, XX_META_ID_COMPRESSED_SIZE,
-                                        (uint64_t)member->packed_size) ||
-        !xx_archive_record_set_meta_u64(
-            record, XX_META_ID_COMPRESSION_METHOD,
-            member->stored ? XX_PC_INSTALL_SETUP_METHOD_STORE
-                           : XX_PC_INSTALL_SETUP_METHOD_DCL) ||
-        !xx_archive_record_set_meta_u64(record, XX_META_ID_ATTRIBUTES,
-                                        member->attributes) ||
-        !xx_archive_record_set_meta_u64(record, XX_META_ID_LAST_MOD_DATE,
-                                        member->dos_date) ||
-        !xx_archive_record_set_meta_u64(record, XX_META_ID_LAST_MOD_TIME,
-                                        member->dos_time) ||
-        !xx_archive_record_set_meta_bool(record, XX_META_ID_IS_ENCRYPTED,
-                                         false) ||
+        !xx_archive_record_set_meta_u64(record, XX_META_ID_COMPRESSED_SIZE, (uint64_t)member->packed_size) ||
+        !xx_archive_record_set_meta_u64(record, XX_META_ID_COMPRESSION_METHOD, member->stored ? XX_PC_INSTALL_SETUP_METHOD_STORE : XX_PC_INSTALL_SETUP_METHOD_DCL) ||
+        !xx_archive_record_set_meta_u64(record, XX_META_ID_ATTRIBUTES, member->attributes) ||
+        !xx_archive_record_set_meta_u64(record, XX_META_ID_LAST_MOD_DATE, member->dos_date) ||
+        !xx_archive_record_set_meta_u64(record, XX_META_ID_LAST_MOD_TIME, member->dos_time) || !xx_archive_record_set_meta_bool(record, XX_META_ID_IS_ENCRYPTED, false) ||
         !xx_archive_record_set_meta_bool(record, XX_META_ID_IS_FOLDER, false))
         return false;
-    if (member->unpacked_size >= 0 &&
-        !xx_archive_record_set_meta_u64(record, XX_META_ID_UNCOMPRESSED_SIZE,
-                                        (uint64_t)member->unpacked_size))
-        return false;
+    if (member->unpacked_size >= 0 && !xx_archive_record_set_meta_u64(record, XX_META_ID_UNCOMPRESSED_SIZE, (uint64_t)member->unpacked_size)) return false;
     return true;
 }
 
-void xx_pc_install_setup_init(xx_pc_install_setup *archive,
-                              xx_io_device *device, int64_t base_address) {
+void xx_pc_install_setup_init(xx_pc_install_setup *archive, xx_io_device *device, int64_t base_address)
+{
     if (!archive) return;
     xx_mem_zero(archive, sizeof(*archive));
     xx_format_init(&archive->format, device, base_address);
@@ -837,50 +747,45 @@ void xx_pc_install_setup_init(xx_pc_install_setup *archive,
     archive->format.check_is_valid = xx_pc_install_setup_check_is_valid;
     archive->format.handle_base_info = xx_pc_install_setup_handle_base_info;
     archive->format.get_format_size = xx_pc_install_setup_get_format_size;
-    archive->format.get_number_of_archive_records =
-        xx_pc_install_setup_get_number_of_archive_records;
-    archive->format.create_archive_records_reading =
-        xx_pc_install_setup_create_archive_records_reading;
-    archive->format.get_current_archive_record =
-        xx_pc_install_setup_get_current_archive_record;
-    archive->format.unpack_current_archive_record =
-        xx_pc_install_setup_unpack_current_archive_record;
-    archive->format.archive_record_move_to_next =
-        xx_pc_install_setup_archive_record_move_to_next;
-    archive->format.free_archive_records_reading =
-        xx_pc_install_setup_free_archive_records_reading;
+    archive->format.get_number_of_archive_records = xx_pc_install_setup_get_number_of_archive_records;
+    archive->format.create_archive_records_reading = xx_pc_install_setup_create_archive_records_reading;
+    archive->format.get_current_archive_record = xx_pc_install_setup_get_current_archive_record;
+    archive->format.unpack_current_archive_record = xx_pc_install_setup_unpack_current_archive_record;
+    archive->format.archive_record_move_to_next = xx_pc_install_setup_archive_record_move_to_next;
+    archive->format.free_archive_records_reading = xx_pc_install_setup_free_archive_records_reading;
     archive->head_offset = -1;
     archive->trailer_offset = -1;
 }
 
-xx_pc_install_setup *xx_pc_install_setup_create(xx_io_device *device,
-                                                int64_t base_address) {
-    xx_pc_install_setup *archive =
-        (xx_pc_install_setup *)xx_mem_alloc(sizeof(*archive));
+xx_pc_install_setup *xx_pc_install_setup_create(xx_io_device *device, int64_t base_address)
+{
+    xx_pc_install_setup *archive = (xx_pc_install_setup *)xx_mem_alloc(sizeof(*archive));
     if (archive) xx_pc_install_setup_init(archive, device, base_address);
     return archive;
 }
 
-void xx_pc_install_setup_destroy(xx_pc_install_setup *archive) {
+void xx_pc_install_setup_destroy(xx_pc_install_setup *archive)
+{
     if (archive) xx_format_cleanup_extra_parameters(&archive->format);
 }
 
-void xx_pc_install_setup_free(xx_pc_install_setup *archive) {
+void xx_pc_install_setup_free(xx_pc_install_setup *archive)
+{
     if (!archive) return;
     xx_pc_install_setup_destroy(archive);
     xx_mem_free(archive);
 }
 
-bool xx_pc_install_setup_check_is_valid(Abstractformat *format,
-                                        xx_pd_struct *pd) {
+bool xx_pc_install_setup_check_is_valid(Abstractformat *format, xx_pd_struct *pd)
+{
     pcis_stream *stream;
     if (!pcis_parse(format, &stream, pd)) return false;
     pcis_stream_free(stream);
     return true;
 }
 
-bool xx_pc_install_setup_handle_base_info(Abstractformat *format,
-                                          xx_pd_struct *pd) {
+bool xx_pc_install_setup_handle_base_info(Abstractformat *format, xx_pd_struct *pd)
+{
     pcis_stream *stream;
     xx_pc_install_setup *archive;
     if (!format) return false;
@@ -908,24 +813,18 @@ bool xx_pc_install_setup_handle_base_info(Abstractformat *format,
     return true;
 }
 
-int64_t xx_pc_install_setup_get_format_size(Abstractformat *format,
-                                            xx_pd_struct *pd) {
-    return format && (format->base_info_handled ||
-                      xx_pc_install_setup_handle_base_info(format, pd))
-               ? format->format_size
-               : -1;
+int64_t xx_pc_install_setup_get_format_size(Abstractformat *format, xx_pd_struct *pd)
+{
+    return format && (format->base_info_handled || xx_pc_install_setup_handle_base_info(format, pd)) ? format->format_size : -1;
 }
 
-uint64_t xx_pc_install_setup_get_number_of_archive_records(
-    Abstractformat *format, xx_pd_struct *pd) {
-    return format && (format->base_info_handled ||
-                      xx_pc_install_setup_handle_base_info(format, pd))
-               ? ((xx_pc_install_setup *)format)->number_of_records
-               : 0U;
+uint64_t xx_pc_install_setup_get_number_of_archive_records(Abstractformat *format, xx_pd_struct *pd)
+{
+    return format && (format->base_info_handled || xx_pc_install_setup_handle_base_info(format, pd)) ? ((xx_pc_install_setup *)format)->number_of_records : 0U;
 }
 
-xx_archive_record_state *xx_pc_install_setup_create_archive_records_reading(
-    Abstractformat *format, const xx_list_s *options, xx_pd_struct *pd) {
+xx_archive_record_state *xx_pc_install_setup_create_archive_records_reading(Abstractformat *format, const xx_list_s *options, xx_pd_struct *pd)
+{
     pcis_stream *stream;
     xx_archive_record_state *state;
     if (!pcis_parse(format, &stream, pd)) return NULL;
@@ -938,8 +837,7 @@ xx_archive_record_state *xx_pc_install_setup_create_archive_records_reading(
     state->internal_state = stream;
     state->free_internal = pcis_stream_free;
     state->total_records = (int64_t)stream->count;
-    if (!pcis_copy_options(&state->options, options) ||
-        !pcis_set_record(format, &state->current_record, &stream->items[0])) {
+    if (!pcis_copy_options(&state->options, options) || !pcis_set_record(format, &state->current_record, &stream->items[0])) {
         xx_archive_record_state_free(state);
         return NULL;
     }
@@ -947,34 +845,27 @@ xx_archive_record_state *xx_pc_install_setup_create_archive_records_reading(
     return state;
 }
 
-const xx_archive_record *xx_pc_install_setup_get_current_archive_record(
-    Abstractformat *format, xx_archive_record_state *state) {
-    return format && state && state->format == format && state->has_record
-               ? &state->current_record
-               : NULL;
+const xx_archive_record *xx_pc_install_setup_get_current_archive_record(Abstractformat *format, xx_archive_record_state *state)
+{
+    return format && state && state->format == format && state->has_record ? &state->current_record : NULL;
 }
 
-bool xx_pc_install_setup_archive_record_move_to_next(
-    Abstractformat *format, xx_archive_record_state *state,
-    xx_pd_struct *pd) {
+bool xx_pc_install_setup_archive_record_move_to_next(Abstractformat *format, xx_archive_record_state *state, xx_pd_struct *pd)
+{
     pcis_stream *stream;
     (void)pd;
-    if (!format || !state || state->format != format ||
-        !(stream = (pcis_stream *)state->internal_state) ||
-        stream->index + 1U >= stream->count) {
+    if (!format || !state || state->format != format || !(stream = (pcis_stream *)state->internal_state) || stream->index + 1U >= stream->count) {
         if (state) state->has_record = false;
         return false;
     }
     ++stream->index;
     ++state->current_index;
-    state->has_record = pcis_set_record(format, &state->current_record,
-                                        &stream->items[stream->index]);
+    state->has_record = pcis_set_record(format, &state->current_record, &stream->items[stream->index]);
     return state->has_record;
 }
 
-bool xx_pc_install_setup_unpack_current_archive_record(
-    Abstractformat *format, xx_archive_record_state *state,
-    xx_pd_struct *pd) {
+bool xx_pc_install_setup_unpack_current_archive_record(Abstractformat *format, xx_archive_record_state *state, xx_pd_struct *pd)
+{
     pcis_stream *stream;
     pcis_member *member;
     const xx_var *option;
@@ -986,62 +877,46 @@ bool xx_pc_install_setup_unpack_current_archive_record(
     uint64_t max_member = UINT64_MAX, memory_limit = UINT64_MAX;
     xx_io_device *destination;
     bool overwrite, created = false, result = false;
-    if (!format || !state || state->format != format || !state->has_record ||
-        !(stream = (pcis_stream *)state->internal_state) ||
-        stream->index >= stream->count || pcis_stopped(pd))
+    if (!format || !state || state->format != format || !state->has_record || !(stream = (pcis_stream *)state->internal_state) || stream->index >= stream->count ||
+        pcis_stopped(pd))
         return false;
     member = &stream->items[stream->index];
 
-    option = xx_format_resolve_extra_parameter(format, &state->options,
-                                               XX_META_ID_OPT_MAX_MEMBER_SIZE);
+    option = xx_format_resolve_extra_parameter(format, &state->options, XX_META_ID_OPT_MAX_MEMBER_SIZE);
     if (option) max_member = xx_var_get_u64(option);
-    option = xx_format_resolve_extra_parameter(format, &state->options,
-                                               XX_META_ID_OPT_MEMORY_LIMIT);
+    option = xx_format_resolve_extra_parameter(format, &state->options, XX_META_ID_OPT_MEMORY_LIMIT);
     if (option) memory_limit = xx_var_get_u64(option);
-    if (member->unpacked_size >= 0 &&
-        (uint64_t)member->unpacked_size > max_member)
-        return false;
+    if (member->unpacked_size >= 0 && (uint64_t)member->unpacked_size > max_member) return false;
 
     /* Group members are decoded before any file is created, so a stream
      * that fails leaves nothing behind. */
-    if (!member->stored &&
-        !pcis_decode(format, member, max_member, memory_limit, &plain,
-                     &plain_size))
-        return false;
+    if (!member->stored && !pcis_decode(format, member, max_member, memory_limit, &plain, &plain_size)) return false;
 
-    option = xx_format_resolve_extra_parameter(format, &state->options,
-                                               XX_META_ID_OPT_UNPACK_PATH);
+    option = xx_format_resolve_extra_parameter(format, &state->options, XX_META_ID_OPT_UNPACK_PATH);
     if (!option) {
         /* No destination: the member was verified, nothing is written. */
         result = true;
         goto done;
     }
     if (!member->safe) goto done;
-    if (option->type == XX_VAR_TYPE_STRING ||
-        option->type == XX_VAR_TYPE_STRING_VIEW) {
+    if (option->type == XX_VAR_TYPE_STRING || option->type == XX_VAR_TYPE_STRING_VIEW) {
         base = xx_var_get_str(option);
-    } else if (option->type == XX_VAR_TYPE_WSTRING ||
-               option->type == XX_VAR_TYPE_WSTRING_VIEW) {
+    } else if (option->type == XX_VAR_TYPE_WSTRING || option->type == XX_VAR_TYPE_WSTRING_VIEW) {
         owned_base = xx_str_unicode_to_utf8(xx_var_get_wstr(option));
         base = owned_base;
     }
     if (!base) goto done;
     base_length = xx_str_len(base);
-    path = (base_length != 0U && base[base_length - 1U] != '/' &&
-            base[base_length - 1U] != '\\')
-               ? xx_str_concat3(base, "/", member->name)
-               : xx_str_concat(base, member->name);
+    path = (base_length != 0U && base[base_length - 1U] != '/' && base[base_length - 1U] != '\\') ? xx_str_concat3(base, "/", member->name)
+                                                                                                  : xx_str_concat(base, member->name);
     if (!path || !xx_store_create_dirs_a(path, false)) goto done;
-    option = xx_format_resolve_extra_parameter(format, &state->options,
-                                               XX_META_ID_OPT_OVERWRITE);
+    option = xx_format_resolve_extra_parameter(format, &state->options, XX_META_ID_OPT_OVERWRITE);
     overwrite = option && xx_var_get_bool(option);
     destination = xx_io_file_open(path, overwrite ? "wb" : "wbx");
     if (!destination) goto done;
     /* Only a file this call opened is removed again on failure. */
     created = true;
-    result = member->stored
-                 ? pcis_copy_stored(format, member, destination, pd)
-                 : pcis_write_all(destination, plain, plain_size);
+    result = member->stored ? pcis_copy_stored(format, member, destination, pd) : pcis_write_all(destination, plain, plain_size);
     if (xx_io_close(destination) != 0) result = false;
     if (!result && created) xx_rt_remove(path);
 done:
@@ -1051,8 +926,8 @@ done:
     return result;
 }
 
-void xx_pc_install_setup_free_archive_records_reading(
-    Abstractformat *format, xx_archive_record_state *state) {
+void xx_pc_install_setup_free_archive_records_reading(Abstractformat *format, xx_archive_record_state *state)
+{
     (void)format;
     xx_archive_record_state_free(state);
 }

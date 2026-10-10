@@ -40,10 +40,10 @@ extern "C" {
 #endif
 
 /** @brief The four block magics, little endian, as they sit in the stream. */
-#define XX_LZFSE_MAGIC_ENDOFSTREAM UINT32_C(0x24787662) /* bvx$ */
-#define XX_LZFSE_MAGIC_UNCOMPRESSED UINT32_C(0x2d787662) /* bvx- */
-#define XX_LZFSE_MAGIC_COMPRESSEDV1 UINT32_C(0x31787662) /* bvx1 */
-#define XX_LZFSE_MAGIC_COMPRESSEDV2 UINT32_C(0x32787662) /* bvx2 */
+#define XX_LZFSE_MAGIC_ENDOFSTREAM UINT32_C(0x24787662)    /* bvx$ */
+#define XX_LZFSE_MAGIC_UNCOMPRESSED UINT32_C(0x2d787662)   /* bvx- */
+#define XX_LZFSE_MAGIC_COMPRESSEDV1 UINT32_C(0x31787662)   /* bvx1 */
+#define XX_LZFSE_MAGIC_COMPRESSEDV2 UINT32_C(0x32787662)   /* bvx2 */
 #define XX_LZFSE_MAGIC_COMPRESSEDLZVN UINT32_C(0x6e787662) /* bvxn */
 
 /** @brief Returns true; the decoder is built in and needs no external library. */
@@ -68,11 +68,7 @@ XXFC_API bool xx_lzfse_header_is_valid(const void *source, size_t source_size);
  *        success only; its value after a failure is not meaningful.
  * @return true when the whole stream decoded and the marker was reached.
  */
-XXFC_API bool xx_lzfse_decompress_memory(const void *source,
-                                         size_t source_size,
-                                         void *destination,
-                                         size_t destination_size,
-                                         size_t *out_written);
+XXFC_API bool xx_lzfse_decompress_memory(const void *source, size_t source_size, void *destination, size_t destination_size, size_t *out_written);
 
 /**
  * @brief Decode one bare LZVN payload, without the surrounding bvxn header.
@@ -87,12 +83,7 @@ XXFC_API bool xx_lzfse_decompress_memory(const void *source,
  * @return true when the end-of-stream opcode was reached without the output
  *         buffer overflowing.
  */
-XXFC_API bool xx_lzvn_decompress_memory(const void *source,
-                                        size_t source_size,
-                                        void *destination,
-                                        size_t destination_size,
-                                        size_t *out_written,
-                                        size_t *out_consumed);
+XXFC_API bool xx_lzvn_decompress_memory(const void *source, size_t source_size, void *destination, size_t destination_size, size_t *out_written, size_t *out_consumed);
 
 #ifdef __cplusplus
 }

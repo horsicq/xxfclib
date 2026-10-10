@@ -7,17 +7,56 @@
 #include "../common/xx_sfx_carrier.h"
 
 #include "xxfclib/formats/asymetrix/xx_asymetrix.h"
-static Abstractformat *nested_open(xx_io_device *d,int64_t at) { xx_asymetrix *r=xx_asymetrix_create(d,at); return r ? &r->format : NULL; }
-static void nested_close(Abstractformat *f) { xx_asymetrix_free((xx_asymetrix *)f); }
-static bool sfx_carrier_parse(Abstractformat *f,pm_stream *s,xx_pd_struct *pd) { static const uint8_t sig[]={0x60,0x22,0x13,0x63,0x6c,0x00,0x00,0x00}; int64_t low;
-    if(!sfx_carrier_carrier(f,false,&low,pd)) return false; 
-    return sfx_carrier_embedded(f,s,low,sig,sizeof(sig),0,nested_open,nested_close,"payload.001",pd);
+static Abstractformat *nested_open(xx_io_device *d, int64_t at)
+{
+    xx_asymetrix *r = xx_asymetrix_create(d, at);
+    return r ? &r->format : NULL;
+}
+static void nested_close(Abstractformat *f)
+{
+    xx_asymetrix_free((xx_asymetrix *)f);
+}
+static bool sfx_carrier_parse(Abstractformat *f, pm_stream *s, xx_pd_struct *pd)
+{
+    static const uint8_t sig[] = {0x60, 0x22, 0x13, 0x63, 0x6c, 0x00, 0x00, 0x00};
+    int64_t low;
+    if (!sfx_carrier_carrier(f, false, &low, pd)) return false;
+    return sfx_carrier_embedded(f, s, low, sig, sizeof(sig), 0, nested_open, nested_close, "payload.001", pd);
 }
 
-static bool pm_parse(Abstractformat *f,pm_stream *s,xx_pd_struct *pd) { return sfx_carrier_parse(f,s,pd) && carrier_members(s,pd); }
-void xx_sfx_asymetrix_init(xx_sfx_asymetrix *r,xx_io_device *d,int64_t b) { if(r) { xx_mem_zero(r,sizeof(*r)); pm_init(&r->format,d,b,XX_FILE_TYPE_SFX_ASYMETRIX,"exe"); } }
-xx_sfx_asymetrix *xx_sfx_asymetrix_create(xx_io_device *d,int64_t b) { xx_sfx_asymetrix *r=(xx_sfx_asymetrix *)xx_mem_alloc(sizeof(*r)); if(r) xx_sfx_asymetrix_init(r,d,b); return r; }
-void xx_sfx_asymetrix_destroy(xx_sfx_asymetrix *r) { if(r) xx_format_cleanup_extra_parameters(&r->format); }
-void xx_sfx_asymetrix_free(xx_sfx_asymetrix *r) { if(r) { xx_sfx_asymetrix_destroy(r); xx_mem_free(r); } }
-bool xx_sfx_asymetrix_check_is_valid(Abstractformat *f,xx_pd_struct *pd) { return pm_valid(f,pd); }
-bool xx_sfx_asymetrix_handle_base_info(Abstractformat *f,xx_pd_struct *pd) { return pm_handle(f,pd); }
+static bool pm_parse(Abstractformat *f, pm_stream *s, xx_pd_struct *pd)
+{
+    return sfx_carrier_parse(f, s, pd) && carrier_members(s, pd);
+}
+void xx_sfx_asymetrix_init(xx_sfx_asymetrix *r, xx_io_device *d, int64_t b)
+{
+    if (r) {
+        xx_mem_zero(r, sizeof(*r));
+        pm_init(&r->format, d, b, XX_FILE_TYPE_SFX_ASYMETRIX, "exe");
+    }
+}
+xx_sfx_asymetrix *xx_sfx_asymetrix_create(xx_io_device *d, int64_t b)
+{
+    xx_sfx_asymetrix *r = (xx_sfx_asymetrix *)xx_mem_alloc(sizeof(*r));
+    if (r) xx_sfx_asymetrix_init(r, d, b);
+    return r;
+}
+void xx_sfx_asymetrix_destroy(xx_sfx_asymetrix *r)
+{
+    if (r) xx_format_cleanup_extra_parameters(&r->format);
+}
+void xx_sfx_asymetrix_free(xx_sfx_asymetrix *r)
+{
+    if (r) {
+        xx_sfx_asymetrix_destroy(r);
+        xx_mem_free(r);
+    }
+}
+bool xx_sfx_asymetrix_check_is_valid(Abstractformat *f, xx_pd_struct *pd)
+{
+    return pm_valid(f, pd);
+}
+bool xx_sfx_asymetrix_handle_base_info(Abstractformat *f, xx_pd_struct *pd)
+{
+    return pm_handle(f, pd);
+}

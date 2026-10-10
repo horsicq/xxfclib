@@ -84,29 +84,21 @@ typedef xx_dxa xx_dxa_t;
 #define XX_DXA_METHOD_STORE 0U
 #define XX_DXA_METHOD_LZ 1U
 
-XXFC_API void xx_dxa_init(xx_dxa *archive, xx_io_device *device,
-                          int64_t base_address);
+XXFC_API void xx_dxa_init(xx_dxa *archive, xx_io_device *device, int64_t base_address);
 XXFC_API xx_dxa *xx_dxa_create(xx_io_device *device, int64_t base_address);
 XXFC_API void xx_dxa_destroy(xx_dxa *archive);
 XXFC_API void xx_dxa_free(xx_dxa *archive);
 
 XXFC_API bool xx_dxa_check_is_valid(Abstractformat *self, xx_pd_struct *pd);
 XXFC_API bool xx_dxa_handle_base_info(Abstractformat *self, xx_pd_struct *pd);
-XXFC_API int64_t xx_dxa_get_format_size(Abstractformat *self,
-                                        xx_pd_struct *pd);
-XXFC_API uint64_t xx_dxa_get_number_of_archive_records(Abstractformat *self,
-                                                       xx_pd_struct *pd);
+XXFC_API int64_t xx_dxa_get_format_size(Abstractformat *self, xx_pd_struct *pd);
+XXFC_API uint64_t xx_dxa_get_number_of_archive_records(Abstractformat *self, xx_pd_struct *pd);
 
-XXFC_API xx_archive_record_state *xx_dxa_create_archive_records_reading(
-    Abstractformat *self, const xx_list_s *options, xx_pd_struct *pd);
-XXFC_API const xx_archive_record *xx_dxa_get_current_archive_record(
-    Abstractformat *self, xx_archive_record_state *state);
-XXFC_API bool xx_dxa_unpack_current_archive_record(
-    Abstractformat *self, xx_archive_record_state *state, xx_pd_struct *pd);
-XXFC_API bool xx_dxa_archive_record_move_to_next(
-    Abstractformat *self, xx_archive_record_state *state, xx_pd_struct *pd);
-XXFC_API void xx_dxa_free_archive_records_reading(
-    Abstractformat *self, xx_archive_record_state *state);
+XXFC_API xx_archive_record_state *xx_dxa_create_archive_records_reading(Abstractformat *self, const xx_list_s *options, xx_pd_struct *pd);
+XXFC_API const xx_archive_record *xx_dxa_get_current_archive_record(Abstractformat *self, xx_archive_record_state *state);
+XXFC_API bool xx_dxa_unpack_current_archive_record(Abstractformat *self, xx_archive_record_state *state, xx_pd_struct *pd);
+XXFC_API bool xx_dxa_archive_record_move_to_next(Abstractformat *self, xx_archive_record_state *state, xx_pd_struct *pd);
+XXFC_API void xx_dxa_free_archive_records_reading(Abstractformat *self, xx_archive_record_state *state);
 
 #ifdef __cplusplus
 }

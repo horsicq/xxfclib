@@ -45,12 +45,11 @@ typedef struct xx_linuxarm64_parsed_s {
 static void xx_linuxarm64_vtable_destroy(Abstractformat *self);
 
 /* All positioning goes through seek64: long is 32-bit on Win64. */
-static bool xx_linuxarm64_read_at(xx_io_device *device, int64_t offset,
-                                  void *data, size_t size) {
+static bool xx_linuxarm64_read_at(xx_io_device *device, int64_t offset, void *data, size_t size)
+{
     uint8_t *out = (uint8_t *)data;
     size_t done = 0U;
-    if (!device || (!data && size != 0U) || offset < 0 ||
-        xx_io_seek64(device, offset, SEEK_SET) != 0) {
+    if (!device || (!data && size != 0U) || offset < 0 || xx_io_seek64(device, offset, SEEK_SET) != 0) {
         return false;
     }
     while (done < size) {
@@ -76,9 +75,8 @@ static bool xx_linuxarm64_read_at(xx_io_device *device, int64_t offset,
  *     and "PE\0\0" (tightening: binwalk compares "PE") lies wholly inside the
  *     device at base_address + res5.
  */
-static bool xx_linuxarm64_parse(Abstractformat *self,
-                                xx_linuxarm64_parsed *parsed,
-                                xx_pd_struct *pd) {
+static bool xx_linuxarm64_parse(Abstractformat *self, xx_linuxarm64_parsed *parsed, xx_pd_struct *pd)
+{
     uint8_t header[XX_LINUXARM64_HEADER_SIZE];
     uint8_t signature[XX_LINUXARM64_PE_SIGNATURE_SIZE];
     int64_t total_size;
@@ -87,20 +85,17 @@ static bool xx_linuxarm64_parse(Abstractformat *self,
     size_t index;
 
     if (parsed) xx_mem_zero(parsed, sizeof(*parsed));
-    if (!self || !self->device || !parsed || self->base_address < 0 ||
-        (pd && xx_pd_is_stopped(pd))) {
+    if (!self || !self->device || !parsed || self->base_address < 0 || (pd && xx_pd_is_stopped(pd))) {
         return false;
     }
     total_size = xx_io_total_size(self->device);
     if (total_size < self->base_address) return false;
     available = total_size - self->base_address;
     if (available < (int64_t)XX_LINUXARM64_HEADER_SIZE) return false;
-    if (!xx_linuxarm64_read_at(self->device, self->base_address, header,
-                               sizeof(header))) {
+    if (!xx_linuxarm64_read_at(self->device, self->base_address, header, sizeof(header))) {
         return false;
     }
-    if (xx_rt_memcmp(header + XX_LINUXARM64_MAGIC_OFFSET, XX_LINUXARM64_MAGIC,
-                     XX_LINUXARM64_MAGIC_SIZE) != 0) {
+    if (xx_rt_memcmp(header + XX_LINUXARM64_MAGIC_OFFSET, XX_LINUXARM64_MAGIC, XX_LINUXARM64_MAGIC_SIZE) != 0) {
         return false;
     }
     for (index = 0U; index < XX_LINUXARM64_RESERVED_SIZE; ++index) {
@@ -111,23 +106,19 @@ static bool xx_linuxarm64_parse(Abstractformat *self,
     parsed->text_offset = xx_data_get_u64(header, sizeof(header), 0x08U, false);
     parsed->image_size = xx_data_get_u64(header, sizeof(header), 0x10U, false);
     parsed->flags = xx_data_get_u64(header, sizeof(header), 0x18U, false);
-    parsed->pe_offset = xx_data_get_u32(header, sizeof(header),
-                                        XX_LINUXARM64_PE_OFFSET_FIELD, false);
+    parsed->pe_offset = xx_data_get_u32(header, sizeof(header), XX_LINUXARM64_PE_OFFSET_FIELD, false);
     parsed->has_mz = header[0] == 'M' && header[1] == 'Z';
     if ((parsed->flags & XX_LINUXARM64_FLAGS_RESERVED) != 0U) return false;
     if (parsed->pe_offset < XX_LINUXARM64_HEADER_SIZE) return false;
     /* pe_offset is at most 2^32-1 and available is non-negative, so the
      * comparison below cannot overflow; the addition that follows is then
      * bounded by total_size. */
-    if ((int64_t)parsed->pe_offset >
-        available - (int64_t)XX_LINUXARM64_PE_SIGNATURE_SIZE) {
+    if ((int64_t)parsed->pe_offset > available - (int64_t)XX_LINUXARM64_PE_SIGNATURE_SIZE) {
         return false;
     }
     pe_at = self->base_address + (int64_t)parsed->pe_offset;
-    if (!xx_linuxarm64_read_at(self->device, pe_at, signature,
-                               sizeof(signature)) ||
-        xx_rt_memcmp(signature, XX_LINUXARM64_PE_SIGNATURE,
-                     XX_LINUXARM64_PE_SIGNATURE_SIZE) != 0) {
+    if (!xx_linuxarm64_read_at(self->device, pe_at, signature, sizeof(signature)) ||
+        xx_rt_memcmp(signature, XX_LINUXARM64_PE_SIGNATURE, XX_LINUXARM64_PE_SIGNATURE_SIZE) != 0) {
         return false;
     }
     return !(pd && xx_pd_is_stopped(pd));
@@ -137,8 +128,8 @@ static bool xx_linuxarm64_parse(Abstractformat *self,
 /* Public interface                                                          */
 /* ------------------------------------------------------------------------ */
 
-void xx_linuxarm64_init(xx_linuxarm64 *image, xx_io_device *dev,
-                        int64_t base_address) {
+void xx_linuxarm64_init(xx_linuxarm64 *image, xx_io_device *dev, int64_t base_address)
+{
     if (!image) return;
     xx_mem_zero(image, sizeof(*image));
     xx_format_init(&image->format, dev, base_address);
@@ -158,33 +149,39 @@ void xx_linuxarm64_init(xx_linuxarm64 *image, xx_io_device *dev,
     xx_components_install(&image->format);
 }
 
-xx_linuxarm64 *xx_linuxarm64_create(xx_io_device *dev, int64_t base_address) {
+xx_linuxarm64 *xx_linuxarm64_create(xx_io_device *dev, int64_t base_address)
+{
     xx_linuxarm64 *image = (xx_linuxarm64 *)xx_mem_alloc(sizeof(*image));
     if (image) xx_linuxarm64_init(image, dev, base_address);
     return image;
 }
 
-void xx_linuxarm64_destroy(xx_linuxarm64 *image) {
+void xx_linuxarm64_destroy(xx_linuxarm64 *image)
+{
     if (!image) return;
     xx_format_cleanup_extra_parameters(&image->format);
 }
 
-static void xx_linuxarm64_vtable_destroy(Abstractformat *self) {
+static void xx_linuxarm64_vtable_destroy(Abstractformat *self)
+{
     xx_linuxarm64_destroy((xx_linuxarm64 *)self);
 }
 
-void xx_linuxarm64_free(xx_linuxarm64 *image) {
+void xx_linuxarm64_free(xx_linuxarm64 *image)
+{
     if (!image) return;
     xx_linuxarm64_destroy(image);
     xx_mem_free(image);
 }
 
-bool xx_linuxarm64_check_is_valid(Abstractformat *self, xx_pd_struct *pd) {
+bool xx_linuxarm64_check_is_valid(Abstractformat *self, xx_pd_struct *pd)
+{
     xx_linuxarm64_parsed parsed;
     return xx_linuxarm64_parse(self, &parsed, pd);
 }
 
-bool xx_linuxarm64_handle_base_info(Abstractformat *self, xx_pd_struct *pd) {
+bool xx_linuxarm64_handle_base_info(Abstractformat *self, xx_pd_struct *pd)
+{
     xx_linuxarm64_parsed parsed;
     xx_linuxarm64 *image = (xx_linuxarm64 *)self;
     int64_t total_size;
@@ -205,15 +202,10 @@ bool xx_linuxarm64_handle_base_info(Abstractformat *self, xx_pd_struct *pd) {
     image->pe_offset = parsed.pe_offset;
     image->has_mz = parsed.has_mz;
     image->kernel_big_endian = (parsed.flags & XX_LINUXARM64_FLAG_BE) != 0U;
-    image->phys_placement_anywhere =
-        (parsed.flags & XX_LINUXARM64_FLAG_PHYS_ANY) != 0U;
+    image->phys_placement_anywhere = (parsed.flags & XX_LINUXARM64_FLAG_PHYS_ANY) != 0U;
     page_code = (uint32_t)((parsed.flags >> 1U) & 3U);
-    image->page_size = page_code == 1U   ? 4096U
-                       : page_code == 2U ? 16384U
-                       : page_code == 3U ? 65536U
-                                         : 0U;
-    self->endian =
-        image->kernel_big_endian ? XX_ENDIAN_BIG : XX_ENDIAN_LITTLE;
+    image->page_size = page_code == 1U ? 4096U : page_code == 2U ? 16384U : page_code == 3U ? 65536U : 0U;
+    self->endian = image->kernel_big_endian ? XX_ENDIAN_BIG : XX_ENDIAN_LITTLE;
 
     /* binwalk's carve length: the 64-byte header (result.size ==
      * common::size(boot_img_structure)).  Everything after it -- the PE
@@ -235,39 +227,44 @@ bool xx_linuxarm64_handle_base_info(Abstractformat *self, xx_pd_struct *pd) {
     return true;
 }
 
-int64_t xx_linuxarm64_get_format_size(Abstractformat *self, xx_pd_struct *pd) {
-    if (!self ||
-        (!self->base_info_handled && !xx_format_handle_base_info(self, pd))) {
+int64_t xx_linuxarm64_get_format_size(Abstractformat *self, xx_pd_struct *pd)
+{
+    if (!self || (!self->base_info_handled && !xx_format_handle_base_info(self, pd))) {
         return -1;
     }
     return self->format_size;
 }
 
-uint64_t xx_linuxarm64_get_text_offset(const xx_linuxarm64 *image) {
+uint64_t xx_linuxarm64_get_text_offset(const xx_linuxarm64 *image)
+{
     return image ? image->text_offset : 0U;
 }
-uint64_t xx_linuxarm64_get_image_size(const xx_linuxarm64 *image) {
+uint64_t xx_linuxarm64_get_image_size(const xx_linuxarm64 *image)
+{
     return image ? image->image_size : 0U;
 }
-uint64_t xx_linuxarm64_get_flags(const xx_linuxarm64 *image) {
+uint64_t xx_linuxarm64_get_flags(const xx_linuxarm64 *image)
+{
     return image ? image->flags : 0U;
 }
-uint32_t xx_linuxarm64_get_pe_offset(const xx_linuxarm64 *image) {
+uint32_t xx_linuxarm64_get_pe_offset(const xx_linuxarm64 *image)
+{
     return image ? image->pe_offset : 0U;
 }
-uint32_t xx_linuxarm64_get_page_size(const xx_linuxarm64 *image) {
+uint32_t xx_linuxarm64_get_page_size(const xx_linuxarm64 *image)
+{
     return image ? image->page_size : 0U;
 }
-bool xx_linuxarm64_is_kernel_big_endian(const xx_linuxarm64 *image) {
+bool xx_linuxarm64_is_kernel_big_endian(const xx_linuxarm64 *image)
+{
     return image ? image->kernel_big_endian : false;
 }
 
 /* Encoded/structural component members; this does not decode media. */
-static bool xx_components_build(Abstractformat *f, xx_component_stream *s, xx_pd_struct *pd) {
-
+static bool xx_components_build(Abstractformat *f, xx_component_stream *s, xx_pd_struct *pd)
+{
     (void)pd;
     /* image_size is a memory footprint. Do not claim the unbounded kernel
      * body/PE overlay as a declared member of this 64-byte header format. */
-    return xx_component_add(f,s,0,8,"boot-instructions") &&
-        xx_component_add(f,s,8,56,"boot-parameters");
+    return xx_component_add(f, s, 0, 8, "boot-instructions") && xx_component_add(f, s, 8, 56, "boot-parameters");
 }

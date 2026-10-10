@@ -25,7 +25,6 @@
 #include "xxfclib/formats/macho/xx_macho.h"
 #include "xxfclib/formats/xx_executable_inspect.h"
 
-
 // Inspection strings and arrays are owned by this state; initialize it to zero.
 // Release with xx_macho_inspect_free before reuse. Offsets are relative to reader base.
 #ifdef __cplusplus
@@ -33,12 +32,12 @@ extern "C" {
 #endif
 
 typedef struct {
-    char *pName;        /* basename after the last '/'   */
+    char *pName; /* basename after the last '/'   */
     uint32_t nCurrentVersion;
 } xx_macho_inspect_library;
 
 typedef struct {
-    char sName[17];     /* sectname, NUL-terminated       */
+    char sName[17]; /* sectname, NUL-terminated       */
     uint64_t nOffset;
     uint64_t nSize;
 } xx_macho_inspect_section;
@@ -70,8 +69,7 @@ typedef struct {
 
 /* Independent native inspection for callers that do not need the full reader
  * vtable. Borrows device; state owns a read-only view. */
-XXFC_API int xx_macho_inspect_analyze_from_device(xx_macho_inspection *state,
-    xx_io_device *device, int64_t base, xx_pd_struct *pd);
+XXFC_API int xx_macho_inspect_analyze_from_device(xx_macho_inspection *state, xx_io_device *device, int64_t base, xx_pd_struct *pd);
 
 XXFC_API int xx_macho_inspect_parse(xx_macho *reader, xx_macho_inspection *pMach, xx_pd_struct *pd);
 XXFC_API void xx_macho_inspect_free(xx_macho_inspection *pMach);

@@ -65,15 +65,10 @@
 #define GDPCK_MIN_ENTRY_V2 (4 + 1 + 36)
 /* Flags each pack version may carry.  The sparse-bundle and delta flags came
  * with the later Godot 4 packs; this reader takes them from version 3 on. */
-#define GDPCK_PACK_FLAGS_V2 \
-    (XX_GODOT_ENGINE_PCK_FLAG_DIR_ENCRYPTED | \
-     XX_GODOT_ENGINE_PCK_FLAG_REL_FILEBASE)
-#define GDPCK_PACK_FLAGS_V3 \
-    (GDPCK_PACK_FLAGS_V2 | XX_GODOT_ENGINE_PCK_FLAG_SPARSE_BUNDLE)
-#define GDPCK_FILE_FLAGS_V2 \
-    (XX_GODOT_ENGINE_PCK_FILE_ENCRYPTED | XX_GODOT_ENGINE_PCK_FILE_REMOVAL)
-#define GDPCK_FILE_FLAGS_V3 \
-    (GDPCK_FILE_FLAGS_V2 | XX_GODOT_ENGINE_PCK_FILE_DELTA)
+#define GDPCK_PACK_FLAGS_V2 (XX_GODOT_ENGINE_PCK_FLAG_DIR_ENCRYPTED | XX_GODOT_ENGINE_PCK_FLAG_REL_FILEBASE)
+#define GDPCK_PACK_FLAGS_V3 (GDPCK_PACK_FLAGS_V2 | XX_GODOT_ENGINE_PCK_FLAG_SPARSE_BUNDLE)
+#define GDPCK_FILE_FLAGS_V2 (XX_GODOT_ENGINE_PCK_FILE_ENCRYPTED | XX_GODOT_ENGINE_PCK_FILE_REMOVAL)
+#define GDPCK_FILE_FLAGS_V3 (GDPCK_FILE_FLAGS_V2 | XX_GODOT_ENGINE_PCK_FILE_DELTA)
 /* Version 4 keeps a 32-byte salt at +0x28 when the directory is encrypted
  * and the pack is a sparse bundle; the rest of the reserved block is zero. */
 #define GDPCK_V4_SALT_END 0x48U
@@ -83,8 +78,8 @@
 typedef struct gdpck_layout_s {
     int64_t base;
     int64_t total;
-    int64_t pack;        /* absolute offset of "GDPC" */
-    int64_t region_end;  /* the pack's bytes end here (trailer excluded) */
+    int64_t pack;       /* absolute offset of "GDPC" */
+    int64_t region_end; /* the pack's bytes end here (trailer excluded) */
     xx_godot_engine_pck_placement_t placement;
     uint32_t version;
     uint32_t major;
@@ -92,11 +87,11 @@ typedef struct gdpck_layout_s {
     uint32_t patch;
     uint32_t flags;
     uint64_t stored_file_base;
-    int64_t dir_start;   /* absolute offset of the u32 file count */
+    int64_t dir_start; /* absolute offset of the u32 file count */
     uint32_t file_count;
     bool dir_encrypted;
     /* Resolved by the walk. */
-    int64_t file_base;   /* absolute origin of member offsets */
+    int64_t file_base; /* absolute origin of member offsets */
     int64_t dir_end;
     int64_t data_end;
     int64_t format_end;
@@ -117,7 +112,7 @@ typedef struct gdpck_input_s {
 typedef struct gdpck_entry_s {
     int64_t header_offset;
     int64_t header_size;
-    size_t name_length;  /* bytes in front of the first NUL */
+    size_t name_length; /* bytes in front of the first NUL */
     uint64_t size;
     uint8_t md5[16];
     uint32_t flags;
@@ -139,77 +134,68 @@ typedef struct gdpck_set_s {
 typedef struct gdpck_stream_s {
     gdpck_layout layout;
     gdpck_input input;
-    uint8_t *memory;       /* window, then the path buffer */
+    uint8_t *memory; /* window, then the path buffer */
     uint8_t *path;
-    uint32_t consumed;     /* directory entries read so far */
-    uint64_t index;        /* listed member index of the current record */
+    uint32_t consumed; /* directory entries read so far */
+    uint64_t index;    /* listed member index of the current record */
     gdpck_entry entry;
-    char *output_name;     /* safe unique relative path, NULL if refused */
+    char *output_name; /* safe unique relative path, NULL if refused */
     gdpck_set taken;
     gdpck_set hints;
 } gdpck_stream;
 
 /* ---------------------------------------------------------------- bytes -- */
 
-static bool gdpck_read_at(xx_io_device *device, int64_t offset, void *buffer,
-                          size_t size) {
+static bool gdpck_read_at(xx_io_device *device, int64_t offset, void *buffer, size_t size)
+{
     const size_t io_capacity = xx_get_file_buffer_size();
     size_t done = 0U;
-    if (!device || (!buffer && size != 0U) || offset < 0 ||
-        xx_io_seek64(device, offset, SEEK_SET) != 0)
-        return false;
+    if (!device || (!buffer && size != 0U) || offset < 0 || xx_io_seek64(device, offset, SEEK_SET) != 0) return false;
     while (done < size) {
         size_t request = size - done;
         if (request > io_capacity) request = io_capacity;
-        ssize_t amount = xx_io_read(device, (uint8_t *)buffer + done,
-                                    request);
+        ssize_t amount = xx_io_read(device, (uint8_t *)buffer + done, request);
         if (amount <= 0 || (size_t)amount > request) return false;
         done += (size_t)amount;
     }
     return true;
 }
 
-static bool gdpck_is_magic(xx_io_device *device, int64_t offset) {
+static bool gdpck_is_magic(xx_io_device *device, int64_t offset)
+{
     uint8_t magic[4];
-    return gdpck_read_at(device, offset, magic, sizeof(magic)) &&
-           xx_rt_memcmp(magic, GDPCK_MAGIC, 4U) == 0;
+    return gdpck_read_at(device, offset, magic, sizeof(magic)) && xx_rt_memcmp(magic, GDPCK_MAGIC, 4U) == 0;
 }
 
-bool xx_godot_engine_pck_probe_device(xx_io_device *device) {
+bool xx_godot_engine_pck_probe_device(xx_io_device *device)
+{
     uint8_t head[4], trailer[GDPCK_TRAILER];
     int64_t total = device ? xx_io_total_size(device) : -1;
     int64_t saved = device ? xx_io_tell(device) : -1;
     uint64_t size;
     bool result = false;
-    if (total < GDPCK_MIN_PACK ||
-        !gdpck_read_at(device, 0, head, sizeof(head))) goto done;
-    if (xx_rt_memcmp(head, GDPCK_MAGIC, sizeof(head)) == 0 ||
-        (head[0] == 'M' && head[1] == 'Z')) {
+    if (total < GDPCK_MIN_PACK || !gdpck_read_at(device, 0, head, sizeof(head))) goto done;
+    if (xx_rt_memcmp(head, GDPCK_MAGIC, sizeof(head)) == 0 || (head[0] == 'M' && head[1] == 'Z')) {
         result = true;
         goto done;
     }
-    if (total < GDPCK_MIN_PACK + GDPCK_TRAILER ||
-        !gdpck_read_at(device, total - GDPCK_TRAILER, trailer,
-                       sizeof(trailer)) ||
-        xx_rt_memcmp(trailer + 8U, GDPCK_MAGIC, 4U) != 0) goto done;
+    if (total < GDPCK_MIN_PACK + GDPCK_TRAILER || !gdpck_read_at(device, total - GDPCK_TRAILER, trailer, sizeof(trailer)) ||
+        xx_rt_memcmp(trailer + 8U, GDPCK_MAGIC, 4U) != 0)
+        goto done;
     size = xx_data_get_u64(trailer, 8, 0, false);
-    result = size >= GDPCK_MIN_PACK &&
-             size <= (uint64_t)(total - GDPCK_TRAILER) &&
-             gdpck_is_magic(device, total - GDPCK_TRAILER - (int64_t)size);
+    result = size >= GDPCK_MIN_PACK && size <= (uint64_t)(total - GDPCK_TRAILER) && gdpck_is_magic(device, total - GDPCK_TRAILER - (int64_t)size);
 done:
     if (saved >= 0) (void)xx_io_seek64(device, saved, SEEK_SET);
     return result;
 }
 
 /* Sequential reads that never pass @c limit. */
-static bool gdpck_input_read(gdpck_input *in, void *out, size_t size) {
+static bool gdpck_input_read(gdpck_input *in, void *out, size_t size)
+{
     uint8_t *target = (uint8_t *)out;
-    if (in->position < 0 || in->position > in->limit ||
-        (uint64_t)size > (uint64_t)(in->limit - in->position))
-        return false;
+    if (in->position < 0 || in->position > in->limit || (uint64_t)size > (uint64_t)(in->limit - in->position)) return false;
     while (size != 0U) {
-        if (in->window_size != 0U && in->position >= in->window_offset &&
-            in->position - in->window_offset < (int64_t)in->window_size) {
+        if (in->window_size != 0U && in->position >= in->window_offset && in->position - in->window_offset < (int64_t)in->window_size) {
             size_t at = (size_t)(in->position - in->window_offset);
             size_t take = in->window_size - at;
             if (take > size) take = size;
@@ -221,10 +207,7 @@ static bool gdpck_input_read(gdpck_input *in, void *out, size_t size) {
             int64_t want = in->limit - in->position;
             if ((uint64_t)want > (uint64_t)in->io_capacity) want = (int64_t)in->io_capacity;
             in->window_size = 0U;
-            if (want <= 0 ||
-                !gdpck_read_at(in->device, in->position, in->window,
-                               (size_t)want))
-                return false;
+            if (want <= 0 || !gdpck_read_at(in->device, in->position, in->window, (size_t)want)) return false;
             in->window_offset = in->position;
             in->window_size = (size_t)want;
         }
@@ -236,7 +219,8 @@ static bool gdpck_input_read(gdpck_input *in, void *out, size_t size) {
 
 /* Strict UTF-8 without C0/C1 controls or DEL: the paths Godot writes come
  * from String::utf8(), so anything else is not a directory entry. */
-static bool gdpck_path_text_ok(const uint8_t *text, size_t length) {
+static bool gdpck_path_text_ok(const uint8_t *text, size_t length)
+{
     size_t index = 0U;
     while (index < length) {
         uint32_t c = text[index];
@@ -268,23 +252,22 @@ static bool gdpck_path_text_ok(const uint8_t *text, size_t length) {
             if ((next & 0xC0U) != 0x80U) return false;
             c = (c << 6) | (next & 0x3FU);
         }
-        if (c < minimum || c > 0x10FFFFU || (c >= 0xD800U && c <= 0xDFFFU) ||
-            (c >= 0x80U && c <= 0x9FU))
-            return false;
+        if (c < minimum || c > 0x10FFFFU || (c >= 0xD800U && c <= 0xDFFFU) || (c >= 0x80U && c <= 0x9FU)) return false;
         index += extra + 1U;
     }
     return true;
 }
 
-static char gdpck_upper_ascii(char c) {
+static char gdpck_upper_ascii(char c)
+{
     return (c >= 'a' && c <= 'z') ? (char)(c - 'a' + 'A') : c;
 }
 
 /* CON, PRN, AUX, NUL, COM0-9, LPT0-9, CONIN$, CONOUT$ and CLOCK$, with or
  * without an extension, in any case. */
-static bool gdpck_is_device(const char *name, size_t length) {
-    static const char *const words[] = {"CON", "PRN", "AUX", "NUL",
-                                        "CONIN$", "CONOUT$", "CLOCK$"};
+static bool gdpck_is_device(const char *name, size_t length)
+{
+    static const char *const words[] = {"CON", "PRN", "AUX", "NUL", "CONIN$", "CONOUT$", "CLOCK$"};
     size_t stem = 0U, word, index;
     while (stem < length && name[stem] != '.') ++stem;
     while (stem > 0U && name[stem - 1U] == ' ') --stem;
@@ -298,9 +281,7 @@ static bool gdpck_is_device(const char *name, size_t length) {
         char a = gdpck_upper_ascii(name[0]);
         char b = gdpck_upper_ascii(name[1]);
         char c = gdpck_upper_ascii(name[2]);
-        if ((a == 'C' && b == 'O' && c == 'M') ||
-            (a == 'L' && b == 'P' && c == 'T'))
-            return true;
+        if ((a == 'C' && b == 'O' && c == 'M') || (a == 'L' && b == 'P' && c == 'T')) return true;
     }
     return false;
 }
@@ -310,7 +291,8 @@ static bool gdpck_is_device(const char *name, size_t length) {
  * that Windows would trim (trailing dot or space) or resolve to a device,
  * and none of the characters Windows refuses.  Backslashes were already
  * turned into slashes. */
-static bool gdpck_path_safe(const char *path) {
+static bool gdpck_path_safe(const char *path)
+{
     const char *cursor = path;
     if (!path || !path[0] || path[0] == '/') return false;
     while (*cursor) {
@@ -318,15 +300,12 @@ static bool gdpck_path_safe(const char *path) {
         size_t length;
         while (*end && *end != '/') {
             char c = *end;
-            if ((unsigned char)c < 0x20U || c == ':' || c == '*' ||
-                c == '?' || c == '"' || c == '<' || c == '>' || c == '|')
-                return false;
+            if ((unsigned char)c < 0x20U || c == ':' || c == '*' || c == '?' || c == '"' || c == '<' || c == '>' || c == '|') return false;
             ++end;
         }
         length = (size_t)(end - cursor);
         if (length == 0U) return false;
-        if (cursor[length - 1U] == '.' || cursor[length - 1U] == ' ')
-            return false;
+        if (cursor[length - 1U] == '.' || cursor[length - 1U] == ' ') return false;
         if (gdpck_is_device(cursor, length)) return false;
         cursor = *end ? end + 1 : end;
     }
@@ -337,7 +316,8 @@ static bool gdpck_path_safe(const char *path) {
  * as far as a case-insensitive file system folds it for the scripts game
  * data uses.  Folding more only costs a suffix; folding less could let two
  * members share one file. */
-static uint32_t gdpck_fold_next(const char **cursor) {
+static uint32_t gdpck_fold_next(const char **cursor)
+{
     const uint8_t *s = (const uint8_t *)*cursor;
     uint32_t c = s[0];
     size_t used = 1U;
@@ -346,12 +326,10 @@ static uint32_t gdpck_fold_next(const char **cursor) {
         c = ((c & 0x1FU) << 6) | (s[1] & 0x3FU);
         used = 2U;
     } else if ((c & 0xF0U) == 0xE0U && s[1] && s[2]) {
-        c = ((c & 0x0FU) << 12) | ((uint32_t)(s[1] & 0x3FU) << 6) |
-            (s[2] & 0x3FU);
+        c = ((c & 0x0FU) << 12) | ((uint32_t)(s[1] & 0x3FU) << 6) | (s[2] & 0x3FU);
         used = 3U;
     } else if ((c & 0xF8U) == 0xF0U && s[1] && s[2] && s[3]) {
-        c = ((c & 0x07U) << 18) | ((uint32_t)(s[1] & 0x3FU) << 12) |
-            ((uint32_t)(s[2] & 0x3FU) << 6) | (s[3] & 0x3FU);
+        c = ((c & 0x07U) << 18) | ((uint32_t)(s[1] & 0x3FU) << 12) | ((uint32_t)(s[2] & 0x3FU) << 6) | (s[3] & 0x3FU);
         used = 4U;
     }
     *cursor += used;
@@ -361,13 +339,10 @@ static uint32_t gdpck_fold_next(const char **cursor) {
     if (c == 0xFFU) return 0x178U;
     if (c == 0x131U) return 'I';
     if (c == 0x17FU) return 'S';
-    if ((c >= 0x100U && c <= 0x137U) || (c >= 0x14AU && c <= 0x177U) ||
-        (c >= 0x1E00U && c <= 0x1EFFU) || (c >= 0x460U && c <= 0x481U) ||
-        (c >= 0x48AU && c <= 0x4BFU) || (c >= 0x4D0U && c <= 0x52FU))
+    if ((c >= 0x100U && c <= 0x137U) || (c >= 0x14AU && c <= 0x177U) || (c >= 0x1E00U && c <= 0x1EFFU) || (c >= 0x460U && c <= 0x481U) || (c >= 0x48AU && c <= 0x4BFU) ||
+        (c >= 0x4D0U && c <= 0x52FU))
         return c & ~1U;
-    if ((c >= 0x139U && c <= 0x148U) || (c >= 0x179U && c <= 0x17EU) ||
-        (c >= 0x4C1U && c <= 0x4CEU))
-        return (c & 1U) ? c : c - 1U;
+    if ((c >= 0x139U && c <= 0x148U) || (c >= 0x179U && c <= 0x17EU) || (c >= 0x4C1U && c <= 0x4CEU)) return (c & 1U) ? c : c - 1U;
     if (c >= 0x180U && c <= 0x24FU) return c & ~1U;
     if (c >= 0x3B1U && c <= 0x3CBU && c != 0x3C2U) return c - 0x20U;
     if (c == 0x3C2U) return 0x3A3U;
@@ -382,7 +357,8 @@ static uint32_t gdpck_fold_next(const char **cursor) {
     return c;
 }
 
-static uint64_t gdpck_hash(const char *text) {
+static uint64_t gdpck_hash(const char *text)
+{
     uint64_t hash = UINT64_C(14695981039346656037);
     uint32_t c;
     while ((c = gdpck_fold_next(&text)) != 0U) {
@@ -392,18 +368,19 @@ static uint64_t gdpck_hash(const char *text) {
     return hash ? hash : 1U;
 }
 
-static bool gdpck_set_init(gdpck_set *set, uint64_t expected) {
+static bool gdpck_set_init(gdpck_set *set, uint64_t expected)
+{
     size_t size = 16U;
     xx_mem_zero(set, sizeof(*set));
-    while ((uint64_t)size < expected * 2U + 2U && size < ((size_t)1 << 22))
-        size *= 2U;
+    while ((uint64_t)size < expected * 2U + 2U && size < ((size_t)1 << 22)) size *= 2U;
     set->keys = (uint64_t *)xx_mem_calloc(size, sizeof(*set->keys));
     set->values = (uint32_t *)xx_mem_calloc(size, sizeof(*set->values));
     set->mask = size - 1U;
     return set->keys && set->values;
 }
 
-static void gdpck_set_cleanup(gdpck_set *set) {
+static void gdpck_set_cleanup(gdpck_set *set)
+{
     if (set->keys) xx_mem_free(set->keys);
     if (set->values) xx_mem_free(set->values);
     xx_mem_zero(set, sizeof(*set));
@@ -411,21 +388,21 @@ static void gdpck_set_cleanup(gdpck_set *set) {
 
 /* The slot holding @p key, or the empty slot where it belongs.  The table
  * never gets more than half full, so the probe always ends. */
-static size_t gdpck_set_slot(const gdpck_set *set, uint64_t key) {
+static size_t gdpck_set_slot(const gdpck_set *set, uint64_t key)
+{
     size_t slot = (size_t)(key ^ (key >> 29)) & set->mask;
-    while (set->keys[slot] && set->keys[slot] != key)
-        slot = (slot + 1U) & set->mask;
+    while (set->keys[slot] && set->keys[slot] != key) slot = (slot + 1U) & set->mask;
     return slot;
 }
 
-static bool gdpck_set_grow(gdpck_set *set) {
+static bool gdpck_set_grow(gdpck_set *set)
+{
     gdpck_set bigger;
     size_t index, size = set->mask + 1U;
     if (size >= ((size_t)1 << 22)) return false;
     xx_mem_zero(&bigger, sizeof(bigger));
     bigger.keys = (uint64_t *)xx_mem_calloc(size * 2U, sizeof(*bigger.keys));
-    bigger.values =
-        (uint32_t *)xx_mem_calloc(size * 2U, sizeof(*bigger.values));
+    bigger.values = (uint32_t *)xx_mem_calloc(size * 2U, sizeof(*bigger.values));
     if (!bigger.keys || !bigger.values) {
         gdpck_set_cleanup(&bigger);
         return false;
@@ -444,10 +421,10 @@ static bool gdpck_set_grow(gdpck_set *set) {
     return true;
 }
 
-static bool gdpck_set_put(gdpck_set *set, uint64_t key, uint32_t value) {
+static bool gdpck_set_put(gdpck_set *set, uint64_t key, uint32_t value)
+{
     size_t slot;
-    if ((set->used + 1U) * 2U > set->mask + 1U && !gdpck_set_grow(set))
-        return false;
+    if ((set->used + 1U) * 2U > set->mask + 1U && !gdpck_set_grow(set)) return false;
     slot = gdpck_set_slot(set, key);
     if (!set->keys[slot]) {
         set->keys[slot] = key;
@@ -457,8 +434,8 @@ static bool gdpck_set_put(gdpck_set *set, uint64_t key, uint32_t value) {
     return true;
 }
 
-static bool gdpck_set_has(const gdpck_set *set, uint64_t key,
-                          uint32_t *value) {
+static bool gdpck_set_has(const gdpck_set *set, uint64_t key, uint32_t *value)
+{
     size_t slot = gdpck_set_slot(set, key);
     if (!set->keys[slot]) return false;
     if (value) *value = set->values[slot];
@@ -467,7 +444,8 @@ static bool gdpck_set_has(const gdpck_set *set, uint64_t key,
 
 /* "dir/name.ext" with "_<n>" in front of the extension of the last
  * component (or at its end when it has none, or only a leading dot). */
-static char *gdpck_suffixed(const char *path, uint32_t number) {
+static char *gdpck_suffixed(const char *path, uint32_t number)
+{
     size_t length = xx_str_len(path), last = 0U, dot = length, index;
     char digits[16];
     int written;
@@ -493,8 +471,8 @@ static char *gdpck_suffixed(const char *path, uint32_t number) {
 
 /* ------------------------------------------------------------ directory -- */
 
-static bool gdpck_next_entry(gdpck_input *in, const gdpck_layout *layout,
-                             uint8_t *path, gdpck_entry *entry) {
+static bool gdpck_next_entry(gdpck_input *in, const gdpck_layout *layout, uint8_t *path, gdpck_entry *entry)
+{
     uint8_t word[4];
     uint8_t tail[36];
     size_t tail_size = layout->version >= 2U ? 36U : 32U;
@@ -506,9 +484,7 @@ static bool gdpck_next_entry(gdpck_input *in, const gdpck_layout *layout,
     entry->header_offset = in->position;
     if (!gdpck_input_read(in, word, sizeof(word))) return false;
     path_size = xx_data_get_u32(word, 4, 0, false);
-    if (path_size == 0U || path_size > XX_GODOT_ENGINE_PCK_MAX_PATH ||
-        !gdpck_input_read(in, path, path_size))
-        return false;
+    if (path_size == 0U || path_size > XX_GODOT_ENGINE_PCK_MAX_PATH || !gdpck_input_read(in, path, path_size)) return false;
     path[path_size] = 0U;
     while (length < path_size && path[length]) ++length;
     if (length == 0U || !gdpck_path_text_ok(path, length)) return false;
@@ -519,9 +495,7 @@ static bool gdpck_next_entry(gdpck_input *in, const gdpck_layout *layout,
     entry->size = xx_data_get_u64(tail + 8, 8, 0, false);
     xx_rt_memcpy(entry->md5, tail + 16, 16U);
     entry->flags = layout->version >= 2U ? xx_data_get_u32(tail + 32, 4, 0, false) : 0U;
-    if (entry->flags & ~(layout->version >= 3U ? GDPCK_FILE_FLAGS_V3
-                                               : GDPCK_FILE_FLAGS_V2))
-        return false;
+    if (entry->flags & ~(layout->version >= 3U ? GDPCK_FILE_FLAGS_V3 : GDPCK_FILE_FLAGS_V2)) return false;
     if (entry->size > (uint64_t)INT64_MAX - 64U) return false;
     if (entry->flags & XX_GODOT_ENGINE_PCK_FILE_REMOVAL) {
         entry->removal = true;
@@ -535,25 +509,18 @@ static bool gdpck_next_entry(gdpck_input *in, const gdpck_layout *layout,
         entry->data_offset = -1;
         return true;
     }
-    if (offset > (uint64_t)INT64_MAX ||
-        (int64_t)offset > INT64_MAX - layout->file_base)
-        return false;
+    if (offset > (uint64_t)INT64_MAX || (int64_t)offset > INT64_MAX - layout->file_base) return false;
     entry->data_offset = layout->file_base + (int64_t)offset;
-    entry->stored_size =
-        (entry->flags & XX_GODOT_ENGINE_PCK_FILE_ENCRYPTED)
-            ? GDPCK_CRYPT_HEADER + (int64_t)((entry->size + 15U) & ~UINT64_C(15))
-            : (int64_t)entry->size;
+    entry->stored_size = (entry->flags & XX_GODOT_ENGINE_PCK_FILE_ENCRYPTED) ? GDPCK_CRYPT_HEADER + (int64_t)((entry->size + 15U) & ~UINT64_C(15)) : (int64_t)entry->size;
     return true;
 }
 
-static uint8_t *gdpck_input_open(gdpck_input *in, xx_io_device *device,
-                                 const gdpck_layout *layout,
-                                 uint8_t **path) {
+static uint8_t *gdpck_input_open(gdpck_input *in, xx_io_device *device, const gdpck_layout *layout, uint8_t **path)
+{
     size_t capacity = xx_get_file_buffer_size();
     uint8_t *memory;
     if (capacity > SIZE_MAX - XX_GODOT_ENGINE_PCK_MAX_PATH - 1U) return NULL;
-    memory = (uint8_t *)xx_mem_alloc(
-        capacity + XX_GODOT_ENGINE_PCK_MAX_PATH + 1U);
+    memory = (uint8_t *)xx_mem_alloc(capacity + XX_GODOT_ENGINE_PCK_MAX_PATH + 1U);
     xx_mem_zero(in, sizeof(*in));
     if (!memory) return NULL;
     in->device = device;
@@ -566,16 +533,14 @@ static uint8_t *gdpck_input_open(gdpck_input *in, xx_io_device *device,
 }
 
 /* Every directory entry, against the file base already in @p layout. */
-static bool gdpck_walk(xx_io_device *device, gdpck_layout *layout,
-                       xx_pd_struct *pd) {
+static bool gdpck_walk(xx_io_device *device, gdpck_layout *layout, xx_pd_struct *pd)
+{
     gdpck_input in;
     gdpck_entry entry;
     uint8_t *path = NULL;
     uint8_t *memory = gdpck_input_open(&in, device, layout, &path);
-    int64_t data_low = layout->version >= 2U ? layout->file_base
-                                             : layout->pack;
-    int64_t data_high = layout->version >= 3U ? layout->dir_start
-                                              : layout->region_end;
+    int64_t data_low = layout->version >= 2U ? layout->file_base : layout->pack;
+    int64_t data_high = layout->version >= 3U ? layout->dir_start : layout->region_end;
     int64_t data_min = INT64_MAX, data_max = 0;
     uint64_t listed = 0U;
     bool any_encrypted = false;
@@ -588,24 +553,17 @@ static bool gdpck_walk(xx_io_device *device, gdpck_layout *layout,
         if (!gdpck_next_entry(&in, layout, path, &entry)) goto done;
         if (entry.removal) continue;
         if (!entry.external) {
-            if (entry.data_offset < data_low ||
-                entry.data_offset > data_high ||
-                entry.stored_size > data_high - entry.data_offset)
-                goto done;
+            if (entry.data_offset < data_low || entry.data_offset > data_high || entry.stored_size > data_high - entry.data_offset) goto done;
             if (entry.data_offset < data_min) data_min = entry.data_offset;
-            if (entry.data_offset + entry.stored_size > data_max)
-                data_max = entry.data_offset + entry.stored_size;
+            if (entry.data_offset + entry.stored_size > data_max) data_max = entry.data_offset + entry.stored_size;
         }
-        if (entry.flags & XX_GODOT_ENGINE_PCK_FILE_ENCRYPTED)
-            any_encrypted = true;
+        if (entry.flags & XX_GODOT_ENGINE_PCK_FILE_ENCRYPTED) any_encrypted = true;
         ++listed;
     }
     layout->dir_end = in.position;
     /* The directory comes first in versions 0..2: data inside it is not a
      * member.  Versions 3/4 already bounded the data by the directory. */
-    if (data_min != INT64_MAX && layout->version < 3U &&
-        data_min < layout->dir_end)
-        goto done;
+    if (data_min != INT64_MAX && layout->version < 3U && data_min < layout->dir_end) goto done;
     layout->data_end = data_max;
     layout->listed = listed;
     layout->any_encrypted = any_encrypted;
@@ -616,20 +574,16 @@ done:
 }
 
 /* An encrypted directory: only its envelope can be checked. */
-static bool gdpck_encrypted_directory(xx_io_device *device,
-                                      gdpck_layout *layout) {
+static bool gdpck_encrypted_directory(xx_io_device *device, gdpck_layout *layout)
+{
     uint8_t envelope[GDPCK_CRYPT_HEADER];
     int64_t start = layout->dir_start + 4;
     uint64_t plain, padded;
-    if (layout->region_end - start < GDPCK_CRYPT_HEADER ||
-        !gdpck_read_at(device, start, envelope, sizeof(envelope)))
-        return false;
+    if (layout->region_end - start < GDPCK_CRYPT_HEADER || !gdpck_read_at(device, start, envelope, sizeof(envelope))) return false;
     plain = xx_data_get_u64(envelope + 16, 8, 0, false);
     if (plain > (uint64_t)INT64_MAX - 64U) return false;
     padded = (plain + 15U) & ~UINT64_C(15);
-    if (plain < (uint64_t)layout->file_count * GDPCK_MIN_ENTRY_V2 ||
-        padded > (uint64_t)(layout->region_end - start - GDPCK_CRYPT_HEADER))
-        return false;
+    if (plain < (uint64_t)layout->file_count * GDPCK_MIN_ENTRY_V2 || padded > (uint64_t)(layout->region_end - start - GDPCK_CRYPT_HEADER)) return false;
     layout->dir_end = start + GDPCK_CRYPT_HEADER + (int64_t)padded;
     layout->data_end = 0;
     layout->listed = 0U;
@@ -639,7 +593,8 @@ static bool gdpck_encrypted_directory(xx_io_device *device,
 
 /* --------------------------------------------------------------- header -- */
 
-static bool gdpck_header(xx_io_device *device, gdpck_layout *layout) {
+static bool gdpck_header(xx_io_device *device, gdpck_layout *layout)
+{
     uint8_t header[GDPCK_V3_HEADER];
     uint8_t word[4];
     int64_t available = layout->region_end - layout->pack;
@@ -647,17 +602,13 @@ static bool gdpck_header(xx_io_device *device, gdpck_layout *layout) {
     uint32_t minimum_entry;
     int64_t entries_room;
 
-    if (available < GDPCK_MIN_PACK ||
-        !gdpck_read_at(device, layout->pack, header, 20U) ||
-        xx_rt_memcmp(header, GDPCK_MAGIC, 4U) != 0)
-        return false;
+    if (available < GDPCK_MIN_PACK || !gdpck_read_at(device, layout->pack, header, 20U) || xx_rt_memcmp(header, GDPCK_MAGIC, 4U) != 0) return false;
     layout->version = xx_data_get_u32(header + 4, 4, 0, false);
     layout->major = xx_data_get_u32(header + 8, 4, 0, false);
     layout->minor = xx_data_get_u32(header + 12, 4, 0, false);
     layout->patch = xx_data_get_u32(header + 16, 4, 0, false);
     /* Godot 4 packs (versions 2..4) come from engine 4 or later. */
-    if (layout->version > 4U || layout->major == 0U || layout->major > 99U ||
-        layout->minor > 999U || layout->patch > 9999U ||
+    if (layout->version > 4U || layout->major == 0U || layout->major > 99U || layout->minor > 999U || layout->patch > 9999U ||
         (layout->version >= 2U && layout->major < 4U))
         return false;
     if (layout->version <= 1U) {
@@ -674,51 +625,32 @@ static bool gdpck_header(xx_io_device *device, gdpck_layout *layout) {
         reserved_start = 0x28U;
         reserved_end = GDPCK_V3_HEADER;
     }
-    if (!gdpck_read_at(device, layout->pack + 20, header + 20,
-                       reserved_end - 20U))
-        return false;
+    if (!gdpck_read_at(device, layout->pack + 20, header + 20, reserved_end - 20U)) return false;
     if (layout->version >= 2U) {
         layout->flags = xx_data_get_u32(header + 0x14, 4, 0, false);
         layout->stored_file_base = xx_data_get_u64(header + 0x18, 8, 0, false);
-        if (layout->flags & ~(layout->version >= 3U ? GDPCK_PACK_FLAGS_V3
-                                                    : GDPCK_PACK_FLAGS_V2))
-            return false;
-        layout->dir_encrypted =
-            (layout->flags & XX_GODOT_ENGINE_PCK_FLAG_DIR_ENCRYPTED) != 0U;
-        if (layout->version == 4U && layout->dir_encrypted &&
-            (layout->flags & XX_GODOT_ENGINE_PCK_FLAG_SPARSE_BUNDLE))
-            reserved_start = GDPCK_V4_SALT_END;
+        if (layout->flags & ~(layout->version >= 3U ? GDPCK_PACK_FLAGS_V3 : GDPCK_PACK_FLAGS_V2)) return false;
+        layout->dir_encrypted = (layout->flags & XX_GODOT_ENGINE_PCK_FLAG_DIR_ENCRYPTED) != 0U;
+        if (layout->version == 4U && layout->dir_encrypted && (layout->flags & XX_GODOT_ENGINE_PCK_FLAG_SPARSE_BUNDLE)) reserved_start = GDPCK_V4_SALT_END;
         /* A base counted from the pack stays inside it; one counted from
          * the start of the holding file stays inside the device. */
-        if (layout->stored_file_base >
-            (uint64_t)((layout->version >= 3U ||
-                        (layout->flags &
-                         XX_GODOT_ENGINE_PCK_FLAG_REL_FILEBASE))
-                           ? available
-                           : layout->total))
+        if (layout->stored_file_base > (uint64_t)((layout->version >= 3U || (layout->flags & XX_GODOT_ENGINE_PCK_FLAG_REL_FILEBASE)) ? available : layout->total))
             return false;
     }
     for (index = reserved_start; index < reserved_end; ++index)
         if (header[index] != 0U) return false;
     if (layout->version >= 3U) {
         uint64_t dir_offset = xx_data_get_u64(header + 0x20, 8, 0, false);
-        if (layout->stored_file_base < GDPCK_V3_HEADER ||
-            dir_offset < layout->stored_file_base ||
-            dir_offset > (uint64_t)(available - 4))
-            return false;
+        if (layout->stored_file_base < GDPCK_V3_HEADER || dir_offset < layout->stored_file_base || dir_offset > (uint64_t)(available - 4)) return false;
         layout->dir_start = layout->pack + (int64_t)dir_offset;
     }
-    if (layout->dir_start > layout->region_end - 4 ||
-        !gdpck_read_at(device, layout->dir_start, word, sizeof(word)))
-        return false;
+    if (layout->dir_start > layout->region_end - 4 || !gdpck_read_at(device, layout->dir_start, word, sizeof(word))) return false;
     layout->file_count = xx_data_get_u32(word, 4, 0, false);
     if (layout->file_count > XX_GODOT_ENGINE_PCK_MAX_ENTRIES) return false;
     if (!layout->dir_encrypted) {
-        minimum_entry = layout->version >= 2U ? GDPCK_MIN_ENTRY_V2
-                                              : GDPCK_MIN_ENTRY_V1;
+        minimum_entry = layout->version >= 2U ? GDPCK_MIN_ENTRY_V2 : GDPCK_MIN_ENTRY_V1;
         entries_room = layout->region_end - layout->dir_start - 4;
-        if ((int64_t)layout->file_count > entries_room / minimum_entry)
-            return false;
+        if ((int64_t)layout->file_count > entries_room / minimum_entry) return false;
     }
     return true;
 }
@@ -727,25 +659,20 @@ static bool gdpck_header(xx_io_device *device, gdpck_layout *layout) {
 
 /* A PE image whose section "pck" starts with the pack (Godot looks up to
  * seven bytes past the section start for alignment slack). */
-static bool gdpck_pe_section(xx_io_device *device, gdpck_layout *layout) {
+static bool gdpck_pe_section(xx_io_device *device, gdpck_layout *layout)
+{
     uint8_t dos[64];
     uint8_t nt[24];
     uint8_t table[GDPCK_PE_MAX_SECTIONS * 40U];
     int64_t base = layout->base, total = layout->total, lfanew, table_at;
     uint32_t count, index, slack;
-    if (total - base < 64 || !gdpck_read_at(device, base, dos, sizeof(dos)) ||
-        dos[0] != 'M' || dos[1] != 'Z')
-        return false;
+    if (total - base < 64 || !gdpck_read_at(device, base, dos, sizeof(dos)) || dos[0] != 'M' || dos[1] != 'Z') return false;
     lfanew = (int64_t)xx_data_get_u32(dos + 0x3C, 4, 0, false);
-    if (lfanew > INT64_C(0x10000000) || lfanew > total - base - 24 ||
-        !gdpck_read_at(device, base + lfanew, nt, sizeof(nt)) ||
-        xx_rt_memcmp(nt, "PE\0\0", 4U) != 0)
+    if (lfanew > INT64_C(0x10000000) || lfanew > total - base - 24 || !gdpck_read_at(device, base + lfanew, nt, sizeof(nt)) || xx_rt_memcmp(nt, "PE\0\0", 4U) != 0)
         return false;
     count = xx_data_get_u16(nt + 6, 2, 0, false);
     table_at = base + lfanew + 24 + (int64_t)xx_data_get_u16(nt + 20, 2, 0, false);
-    if (count == 0U || count > GDPCK_PE_MAX_SECTIONS ||
-        table_at > total - (int64_t)count * 40 ||
-        !gdpck_read_at(device, table_at, table, (size_t)count * 40U))
+    if (count == 0U || count > GDPCK_PE_MAX_SECTIONS || table_at > total - (int64_t)count * 40 || !gdpck_read_at(device, table_at, table, (size_t)count * 40U))
         return false;
     for (index = 0U; index < count; ++index) {
         const uint8_t *section = table + (size_t)index * 40U;
@@ -767,7 +694,8 @@ static bool gdpck_pe_section(xx_io_device *device, gdpck_layout *layout) {
     return false;
 }
 
-static bool gdpck_locate(xx_io_device *device, gdpck_layout *layout) {
+static bool gdpck_locate(xx_io_device *device, gdpck_layout *layout)
+{
     uint8_t trailer[GDPCK_TRAILER];
     int64_t base = layout->base, total = layout->total;
     if (total - base < GDPCK_MIN_PACK) return false;
@@ -777,14 +705,10 @@ static bool gdpck_locate(xx_io_device *device, gdpck_layout *layout) {
         layout->placement = XX_GODOT_ENGINE_PCK_STANDALONE;
         return gdpck_header(device, layout);
     }
-    if (total - base >= GDPCK_MIN_PACK + GDPCK_TRAILER &&
-        gdpck_read_at(device, total - GDPCK_TRAILER, trailer,
-                      sizeof(trailer)) &&
+    if (total - base >= GDPCK_MIN_PACK + GDPCK_TRAILER && gdpck_read_at(device, total - GDPCK_TRAILER, trailer, sizeof(trailer)) &&
         xx_rt_memcmp(trailer + 8, GDPCK_MAGIC, 4U) == 0) {
         uint64_t size = xx_data_get_u64(trailer, 8, 0, false);
-        if (size >= GDPCK_MIN_PACK &&
-            size <= (uint64_t)(total - GDPCK_TRAILER - base) &&
-            gdpck_is_magic(device, total - GDPCK_TRAILER - (int64_t)size)) {
+        if (size >= GDPCK_MIN_PACK && size <= (uint64_t)(total - GDPCK_TRAILER - base) && gdpck_is_magic(device, total - GDPCK_TRAILER - (int64_t)size)) {
             layout->pack = total - GDPCK_TRAILER - (int64_t)size;
             layout->region_end = total - GDPCK_TRAILER;
             layout->placement = XX_GODOT_ENGINE_PCK_TRAILER;
@@ -795,22 +719,18 @@ static bool gdpck_locate(xx_io_device *device, gdpck_layout *layout) {
 }
 
 /* Header, file base and directory; fills the whole layout. */
-static bool gdpck_parse(Abstractformat *format, gdpck_layout *layout,
-                        xx_pd_struct *pd) {
+static bool gdpck_parse(Abstractformat *format, gdpck_layout *layout, xx_pd_struct *pd)
+{
     int64_t origins[2];
     size_t count = 0U, index;
     if (!format || !format->device || format->base_address < 0) return false;
     xx_mem_zero(layout, sizeof(*layout));
     layout->base = format->base_address;
     layout->total = xx_io_total_size(format->device);
-    if (layout->total < 0 || layout->base > layout->total ||
-        !gdpck_locate(format->device, layout))
-        return false;
+    if (layout->total < 0 || layout->base > layout->total || !gdpck_locate(format->device, layout)) return false;
 
     /* Candidate origins of the member offsets, most likely first. */
-    if (layout->version >= 3U ||
-        (layout->version == 2U &&
-         (layout->flags & XX_GODOT_ENGINE_PCK_FLAG_REL_FILEBASE))) {
+    if (layout->version >= 3U || (layout->version == 2U && (layout->flags & XX_GODOT_ENGINE_PCK_FLAG_REL_FILEBASE))) {
         origins[count++] = layout->pack;
     } else if (layout->placement == XX_GODOT_ENGINE_PCK_STANDALONE) {
         origins[count++] = layout->pack;
@@ -820,13 +740,9 @@ static bool gdpck_parse(Abstractformat *format, gdpck_layout *layout,
         if (layout->pack != layout->base) origins[count++] = layout->pack;
     }
     for (index = 0U; index < count; ++index) {
-        if (layout->stored_file_base > (uint64_t)(INT64_MAX - origins[index]))
-            continue;
+        if (layout->stored_file_base > (uint64_t)(INT64_MAX - origins[index])) continue;
         layout->file_base = origins[index] + (int64_t)layout->stored_file_base;
-        if (layout->dir_encrypted ? gdpck_encrypted_directory(format->device,
-                                                               layout)
-                                  : gdpck_walk(format->device, layout, pd))
-            break;
+        if (layout->dir_encrypted ? gdpck_encrypted_directory(format->device, layout) : gdpck_walk(format->device, layout, pd)) break;
         /* An encrypted directory does not depend on the origin. */
         if (layout->dir_encrypted) return false;
     }
@@ -840,12 +756,10 @@ static bool gdpck_parse(Abstractformat *format, gdpck_layout *layout,
         layout->format_end = layout->region_end;
     } else {
         uint8_t pad[16];
-        int64_t end = layout->dir_end > layout->data_end ? layout->dir_end
-                                                         : layout->data_end;
+        int64_t end = layout->dir_end > layout->data_end ? layout->dir_end : layout->data_end;
         size_t gap = (size_t)((16 - ((end - layout->pack) & 15)) & 15);
         /* Godot pads the last member to 16 bytes; the zeros belong to it. */
-        if (gap != 0U && end <= layout->total - (int64_t)gap &&
-            gdpck_read_at(format->device, end, pad, gap)) {
+        if (gap != 0U && end <= layout->total - (int64_t)gap && gdpck_read_at(format->device, end, pad, gap)) {
             for (index = 0U; index < gap && pad[index] == 0U; ++index) {
             }
             if (index == gap) end += (int64_t)gap;
@@ -857,8 +771,8 @@ static bool gdpck_parse(Abstractformat *format, gdpck_layout *layout,
 
 /* ------------------------------------------------------------- lifecycle -- */
 
-void xx_godot_engine_pck_init(xx_godot_engine_pck *archive,
-                              xx_io_device *device, int64_t base_address) {
+void xx_godot_engine_pck_init(xx_godot_engine_pck *archive, xx_io_device *device, int64_t base_address)
+{
     if (!archive) return;
     xx_mem_zero(archive, sizeof(*archive));
     xx_format_init(&archive->format, device, base_address);
@@ -866,55 +780,49 @@ void xx_godot_engine_pck_init(xx_godot_engine_pck *archive,
     archive->format.file_type = XX_GODOT_ENGINE_PCK_FILE_TYPE;
     archive->format.format_type = XX_TYPE_ARCHIVE;
     archive->format.is_archive = true;
-    xx_format_set_mime_type(&archive->format,
-                            "application/x-godot-resource-pack");
+    xx_format_set_mime_type(&archive->format, "application/x-godot-resource-pack");
     xx_format_set_extension(&archive->format, "pck");
     archive->format.check_is_valid = xx_godot_engine_pck_check_is_valid;
     archive->format.handle_base_info = xx_godot_engine_pck_handle_base_info;
     archive->format.get_format_size = xx_godot_engine_pck_get_format_size;
-    archive->format.get_number_of_archive_records =
-        xx_godot_engine_pck_get_number_of_archive_records;
-    archive->format.create_archive_records_reading =
-        xx_godot_engine_pck_create_archive_records_reading;
-    archive->format.get_current_archive_record =
-        xx_godot_engine_pck_get_current_archive_record;
-    archive->format.unpack_current_archive_record =
-        xx_godot_engine_pck_unpack_current_archive_record;
-    archive->format.archive_record_move_to_next =
-        xx_godot_engine_pck_archive_record_move_to_next;
-    archive->format.free_archive_records_reading =
-        xx_godot_engine_pck_free_archive_records_reading;
+    archive->format.get_number_of_archive_records = xx_godot_engine_pck_get_number_of_archive_records;
+    archive->format.create_archive_records_reading = xx_godot_engine_pck_create_archive_records_reading;
+    archive->format.get_current_archive_record = xx_godot_engine_pck_get_current_archive_record;
+    archive->format.unpack_current_archive_record = xx_godot_engine_pck_unpack_current_archive_record;
+    archive->format.archive_record_move_to_next = xx_godot_engine_pck_archive_record_move_to_next;
+    archive->format.free_archive_records_reading = xx_godot_engine_pck_free_archive_records_reading;
     archive->pack_offset = -1;
     archive->file_base = -1;
     archive->directory_offset = -1;
 }
 
-xx_godot_engine_pck *xx_godot_engine_pck_create(xx_io_device *device,
-                                                int64_t base_address) {
-    xx_godot_engine_pck *archive =
-        (xx_godot_engine_pck *)xx_mem_alloc(sizeof(*archive));
+xx_godot_engine_pck *xx_godot_engine_pck_create(xx_io_device *device, int64_t base_address)
+{
+    xx_godot_engine_pck *archive = (xx_godot_engine_pck *)xx_mem_alloc(sizeof(*archive));
     if (archive) xx_godot_engine_pck_init(archive, device, base_address);
     return archive;
 }
 
-void xx_godot_engine_pck_destroy(xx_godot_engine_pck *archive) {
+void xx_godot_engine_pck_destroy(xx_godot_engine_pck *archive)
+{
     if (archive) xx_format_cleanup_extra_parameters(&archive->format);
 }
 
-void xx_godot_engine_pck_free(xx_godot_engine_pck *archive) {
+void xx_godot_engine_pck_free(xx_godot_engine_pck *archive)
+{
     if (!archive) return;
     xx_godot_engine_pck_destroy(archive);
     xx_mem_free(archive);
 }
 
-bool xx_godot_engine_pck_check_is_valid(Abstractformat *format,
-                                        xx_pd_struct *pd) {
+bool xx_godot_engine_pck_check_is_valid(Abstractformat *format, xx_pd_struct *pd)
+{
     gdpck_layout layout;
     return gdpck_parse(format, &layout, pd);
 }
 
-bool xx_godot_engine_pck_handle_base_info(Abstractformat *format,
-                                          xx_pd_struct *pd) {
+bool xx_godot_engine_pck_handle_base_info(Abstractformat *format, xx_pd_struct *pd)
+{
     gdpck_layout layout;
     xx_godot_engine_pck *archive;
     char version[32];
@@ -932,9 +840,8 @@ bool xx_godot_engine_pck_handle_base_info(Abstractformat *format,
     archive->directory_offset = layout.dir_start;
     archive->placement = layout.placement;
     archive->directory_encrypted = layout.dir_encrypted;
-    (void)xx_rt_snprintf(version, sizeof(version), "%u (Godot %u.%u.%u)",
-                         (unsigned)layout.version, (unsigned)layout.major,
-                         (unsigned)layout.minor, (unsigned)layout.patch);
+    (void)xx_rt_snprintf(version, sizeof(version), "%u (Godot %u.%u.%u)", (unsigned)layout.version, (unsigned)layout.major, (unsigned)layout.minor,
+                         (unsigned)layout.patch);
     xx_format_set_version(format, version);
     format->is_crypted = layout.any_encrypted;
     format->number_of_archive_records = layout.listed;
@@ -944,25 +851,20 @@ bool xx_godot_engine_pck_handle_base_info(Abstractformat *format,
     return true;
 }
 
-int64_t xx_godot_engine_pck_get_format_size(Abstractformat *format,
-                                            xx_pd_struct *pd) {
-    return format && (format->base_info_handled ||
-                      xx_godot_engine_pck_handle_base_info(format, pd))
-               ? format->format_size
-               : -1;
+int64_t xx_godot_engine_pck_get_format_size(Abstractformat *format, xx_pd_struct *pd)
+{
+    return format && (format->base_info_handled || xx_godot_engine_pck_handle_base_info(format, pd)) ? format->format_size : -1;
 }
 
-uint64_t xx_godot_engine_pck_get_number_of_archive_records(
-    Abstractformat *format, xx_pd_struct *pd) {
-    return format && (format->base_info_handled ||
-                      xx_godot_engine_pck_handle_base_info(format, pd))
-               ? ((xx_godot_engine_pck *)format)->number_of_records
-               : 0U;
+uint64_t xx_godot_engine_pck_get_number_of_archive_records(Abstractformat *format, xx_pd_struct *pd)
+{
+    return format && (format->base_info_handled || xx_godot_engine_pck_handle_base_info(format, pd)) ? ((xx_godot_engine_pck *)format)->number_of_records : 0U;
 }
 
 /* --------------------------------------------------------------- records -- */
 
-static void gdpck_stream_free(void *opaque) {
+static void gdpck_stream_free(void *opaque)
+{
     gdpck_stream *stream = (gdpck_stream *)opaque;
     if (!stream) return;
     if (stream->memory) xx_mem_free(stream->memory);
@@ -972,18 +874,16 @@ static void gdpck_stream_free(void *opaque) {
     xx_mem_free(stream);
 }
 
-static bool gdpck_copy_options(xx_list_s *destination,
-                               const xx_list_s *source) {
+static bool gdpck_copy_options(xx_list_s *destination, const xx_list_s *source)
+{
     size_t index;
     if (!source) return true;
     for (index = 0U; index < source->count; ++index) {
-        const xx_meta *original =
-            (const xx_meta *)xx_list_at((const xx_list_t *)source, index);
+        const xx_meta *original = (const xx_meta *)xx_list_at((const xx_list_t *)source, index);
         xx_meta copy;
         if (!original) continue;
         xx_meta_init(&copy, original->meta_id);
-        if (!xx_var_copy(&copy.var, &original->var) ||
-            !xx_list_append(destination, &copy)) {
+        if (!xx_var_copy(&copy.var, &original->var) || !xx_list_append(destination, &copy)) {
             xx_meta_cleanup(&copy);
             return false;
         }
@@ -991,36 +891,35 @@ static bool gdpck_copy_options(xx_list_s *destination,
     return true;
 }
 
-static const xx_var *gdpck_option(const xx_list_s *options, uint32_t id) {
+static const xx_var *gdpck_option(const xx_list_s *options, uint32_t id)
+{
     size_t index;
     if (!options) return NULL;
     for (index = 0U; index < options->count; ++index) {
-        const xx_meta *meta =
-            (const xx_meta *)xx_list_at((const xx_list_t *)options, index);
+        const xx_meta *meta = (const xx_meta *)xx_list_at((const xx_list_t *)options, index);
         if (meta && meta->meta_id == id) return &meta->var;
     }
     return NULL;
 }
 
 /* The member's path as the pack names it, without "res://". */
-static const char *gdpck_display_name(gdpck_stream *stream) {
+static const char *gdpck_display_name(gdpck_stream *stream)
+{
     const char *text = (const char *)stream->path;
-    if (stream->entry.name_length > 6U &&
-        xx_rt_memcmp(text, "res://", 6U) == 0)
-        text += 6;
+    if (stream->entry.name_length > 6U && xx_rt_memcmp(text, "res://", 6U) == 0) text += 6;
     return text;
 }
 
 /* A safe, session-unique output path for the current entry, or NULL when
  * its path is refused (or no free name could be found). */
-static char *gdpck_output_name(gdpck_stream *stream, const char *display) {
+static char *gdpck_output_name(gdpck_stream *stream, const char *display)
+{
     size_t length = xx_str_len(display), index;
     char *path = (char *)xx_mem_alloc(length + 1U);
     uint64_t key, stem_key;
     uint32_t next = 1U, tries;
     if (!path) return NULL;
-    for (index = 0U; index <= length; ++index)
-        path[index] = display[index] == '\\' ? '/' : display[index];
+    for (index = 0U; index <= length; ++index) path[index] = display[index] == '\\' ? '/' : display[index];
     if (!gdpck_path_safe(path)) {
         xx_mem_free(path);
         return NULL;
@@ -1044,8 +943,7 @@ static char *gdpck_output_name(gdpck_stream *stream, const char *display) {
         if (!candidate) break;
         candidate_key = gdpck_hash(candidate);
         if (!gdpck_set_has(&stream->taken, candidate_key, NULL)) {
-            if (!gdpck_set_put(&stream->taken, candidate_key, 1U) ||
-                !gdpck_set_put(&stream->hints, stem_key, next + 1U)) {
+            if (!gdpck_set_put(&stream->taken, candidate_key, 1U) || !gdpck_set_put(&stream->hints, stem_key, next + 1U)) {
                 xx_mem_free(candidate);
                 break;
             }
@@ -1058,36 +956,25 @@ static char *gdpck_output_name(gdpck_stream *stream, const char *display) {
     return NULL;
 }
 
-static bool gdpck_set_record(xx_archive_record *record,
-                             const gdpck_entry *entry, const char *name) {
-    bool encrypted =
-        (entry->flags & XX_GODOT_ENGINE_PCK_FILE_ENCRYPTED) != 0U;
+static bool gdpck_set_record(xx_archive_record *record, const gdpck_entry *entry, const char *name)
+{
+    bool encrypted = (entry->flags & XX_GODOT_ENGINE_PCK_FILE_ENCRYPTED) != 0U;
     xx_archive_record_cleanup(record);
     xx_archive_record_init(record);
     record->header_offset = entry->header_offset;
     record->header_size = entry->header_size;
     record->data_offset = entry->data_offset;
     record->compressed_size = entry->stored_size;
-    return xx_archive_record_set_original_name(record, name) &&
-           xx_archive_record_set_meta_u64(record, XX_META_ID_COMPRESSED_SIZE,
-                                          (uint64_t)entry->stored_size) &&
-           xx_archive_record_set_meta_u64(record,
-                                          XX_META_ID_UNCOMPRESSED_SIZE,
-                                          entry->size) &&
-           xx_archive_record_set_meta_u64(record,
-                                          XX_META_ID_COMPRESSION_METHOD, 0U) &&
-           xx_archive_record_set_meta_u64(record, XX_META_ID_FLAGS,
-                                          entry->flags) &&
-           xx_archive_record_set_meta_bool(record, XX_META_ID_IS_ENCRYPTED,
-                                           encrypted) &&
-           xx_archive_record_set_meta_bool(record, XX_META_ID_IS_FOLDER,
-                                           false);
+    return xx_archive_record_set_original_name(record, name) && xx_archive_record_set_meta_u64(record, XX_META_ID_COMPRESSED_SIZE, (uint64_t)entry->stored_size) &&
+           xx_archive_record_set_meta_u64(record, XX_META_ID_UNCOMPRESSED_SIZE, entry->size) &&
+           xx_archive_record_set_meta_u64(record, XX_META_ID_COMPRESSION_METHOD, 0U) && xx_archive_record_set_meta_u64(record, XX_META_ID_FLAGS, entry->flags) &&
+           xx_archive_record_set_meta_bool(record, XX_META_ID_IS_ENCRYPTED, encrypted) && xx_archive_record_set_meta_bool(record, XX_META_ID_IS_FOLDER, false);
 }
 
 /* Read directory entries up to the next listed member and make it the
  * current record.  False at the end of the directory or on any error. */
-static bool gdpck_advance(gdpck_stream *stream,
-                          xx_archive_record_state *state) {
+static bool gdpck_advance(gdpck_stream *stream, xx_archive_record_state *state)
+{
     const char *display;
     if (stream->output_name) {
         xx_mem_free(stream->output_name);
@@ -1096,33 +983,26 @@ static bool gdpck_advance(gdpck_stream *stream,
     for (;;) {
         if (stream->consumed >= stream->layout.file_count) return false;
         ++stream->consumed;
-        if (!gdpck_next_entry(&stream->input, &stream->layout, stream->path,
-                              &stream->entry))
-            return false;
+        if (!gdpck_next_entry(&stream->input, &stream->layout, stream->path, &stream->entry)) return false;
         if (!stream->entry.removal) break;
     }
     display = gdpck_display_name(stream);
     stream->output_name = gdpck_output_name(stream, display);
-    return gdpck_set_record(&state->current_record, &stream->entry,
-                            stream->output_name ? stream->output_name
-                                                : display);
+    return gdpck_set_record(&state->current_record, &stream->entry, stream->output_name ? stream->output_name : display);
 }
 
-xx_archive_record_state *xx_godot_engine_pck_create_archive_records_reading(
-    Abstractformat *format, const xx_list_s *options, xx_pd_struct *pd) {
+xx_archive_record_state *xx_godot_engine_pck_create_archive_records_reading(Abstractformat *format, const xx_list_s *options, xx_pd_struct *pd)
+{
     gdpck_stream *stream;
     xx_archive_record_state *state;
     if (!format) return NULL;
     stream = (gdpck_stream *)xx_mem_calloc(1U, sizeof(*stream));
     if (!stream) return NULL;
-    if (!gdpck_parse(format, &stream->layout, pd) ||
-        !gdpck_set_init(&stream->taken, stream->layout.listed) ||
-        !gdpck_set_init(&stream->hints, 8U)) {
+    if (!gdpck_parse(format, &stream->layout, pd) || !gdpck_set_init(&stream->taken, stream->layout.listed) || !gdpck_set_init(&stream->hints, 8U)) {
         gdpck_stream_free(stream);
         return NULL;
     }
-    stream->memory = gdpck_input_open(&stream->input, format->device,
-                                      &stream->layout, &stream->path);
+    stream->memory = gdpck_input_open(&stream->input, format->device, &stream->layout, &stream->path);
     if (!stream->memory) {
         gdpck_stream_free(stream);
         return NULL;
@@ -1141,29 +1021,21 @@ xx_archive_record_state *xx_godot_engine_pck_create_archive_records_reading(
         return NULL;
     }
     state->current_index = 0;
-    state->has_record = stream->layout.listed != 0U &&
-                        !stream->layout.dir_encrypted &&
-                        gdpck_advance(stream, state);
+    state->has_record = stream->layout.listed != 0U && !stream->layout.dir_encrypted && gdpck_advance(stream, state);
     return state;
 }
 
-const xx_archive_record *xx_godot_engine_pck_get_current_archive_record(
-    Abstractformat *format, xx_archive_record_state *state) {
-    return format && state && state->format == format && state->has_record
-               ? &state->current_record
-               : NULL;
+const xx_archive_record *xx_godot_engine_pck_get_current_archive_record(Abstractformat *format, xx_archive_record_state *state)
+{
+    return format && state && state->format == format && state->has_record ? &state->current_record : NULL;
 }
 
-bool xx_godot_engine_pck_archive_record_move_to_next(
-    Abstractformat *format, xx_archive_record_state *state,
-    xx_pd_struct *pd) {
+bool xx_godot_engine_pck_archive_record_move_to_next(Abstractformat *format, xx_archive_record_state *state, xx_pd_struct *pd)
+{
     gdpck_stream *stream;
-    if (!format || !state || state->format != format || !state->has_record ||
-        !(stream = (gdpck_stream *)state->internal_state) ||
-        (pd && xx_pd_is_stopped(pd)))
+    if (!format || !state || state->format != format || !state->has_record || !(stream = (gdpck_stream *)state->internal_state) || (pd && xx_pd_is_stopped(pd)))
         return false;
-    if (stream->index + 1U >= stream->layout.listed ||
-        !gdpck_advance(stream, state)) {
+    if (stream->index + 1U >= stream->layout.listed || !gdpck_advance(stream, state)) {
         xx_archive_record_cleanup(&state->current_record);
         xx_archive_record_init(&state->current_record);
         state->has_record = false;
@@ -1176,8 +1048,8 @@ bool xx_godot_engine_pck_archive_record_move_to_next(
 
 /* Copy the stored member to @p destination (NULL only verifies), checking
  * the directory's MD5 when the writer filled it in. */
-static bool gdpck_copy_member(xx_io_device *device, const gdpck_entry *entry,
-                              xx_io_device *destination, xx_pd_struct *pd) {
+static bool gdpck_copy_member(xx_io_device *device, const gdpck_entry *entry, xx_io_device *destination, xx_pd_struct *pd)
+{
     static const uint8_t zero[16] = {0};
     xx_hash_context md5;
     uint8_t digest[16];
@@ -1192,34 +1064,27 @@ static bool gdpck_copy_member(xx_io_device *device, const gdpck_entry *entry,
     buffer = (uint8_t *)xx_mem_alloc(io_capacity);
     if (!buffer) return false;
     while (remaining != 0U) {
-        size_t chunk = remaining > io_capacity ? io_capacity
-                                                : (size_t)remaining;
+        size_t chunk = remaining > io_capacity ? io_capacity : (size_t)remaining;
         size_t written = 0U;
-        if ((pd && xx_pd_is_stopped(pd)) ||
-            !gdpck_read_at(device, offset, buffer, chunk))
-            goto done;
+        if ((pd && xx_pd_is_stopped(pd)) || !gdpck_read_at(device, offset, buffer, chunk)) goto done;
         if (check) xx_hash_update(&md5, buffer, chunk);
         while (destination && written < chunk) {
-            ssize_t sent = xx_io_write(destination, buffer + written,
-                                       chunk - written);
+            ssize_t sent = xx_io_write(destination, buffer + written, chunk - written);
             if (sent <= 0 || (size_t)sent > chunk - written) goto done;
             written += (size_t)sent;
         }
         offset += (int64_t)chunk;
         remaining -= chunk;
     }
-    if (check && (!xx_hash_final(&md5, digest, sizeof(digest)) ||
-                  xx_rt_memcmp(digest, entry->md5, 16U) != 0))
-        goto done;
+    if (check && (!xx_hash_final(&md5, digest, sizeof(digest)) || xx_rt_memcmp(digest, entry->md5, 16U) != 0)) goto done;
     result = true;
 done:
     xx_mem_free(buffer);
     return result;
 }
 
-bool xx_godot_engine_pck_unpack_current_archive_record(
-    Abstractformat *format, xx_archive_record_state *state,
-    xx_pd_struct *pd) {
+bool xx_godot_engine_pck_unpack_current_archive_record(Abstractformat *format, xx_archive_record_state *state, xx_pd_struct *pd)
+{
     gdpck_stream *stream;
     const xx_var *path_option;
     const char *base = NULL;
@@ -1227,40 +1092,29 @@ bool xx_godot_engine_pck_unpack_current_archive_record(
     char *path = NULL;
     bool created = false;
     bool result = false;
-    if (!format || !state || state->format != format || !state->has_record ||
-        !(stream = (gdpck_stream *)state->internal_state) ||
-        (pd && xx_pd_is_stopped(pd)))
+    if (!format || !state || state->format != format || !state->has_record || !(stream = (gdpck_stream *)state->internal_state) || (pd && xx_pd_is_stopped(pd)))
         return false;
     /* Not in the pack (sparse bundle), or the stored bytes are not the
      * member: ciphertext without the key, or a delta against another pack. */
-    if (stream->entry.data_offset < 0 ||
-        (stream->entry.flags & (XX_GODOT_ENGINE_PCK_FILE_ENCRYPTED |
-                                XX_GODOT_ENGINE_PCK_FILE_DELTA)))
-        return false;
+    if (stream->entry.data_offset < 0 || (stream->entry.flags & (XX_GODOT_ENGINE_PCK_FILE_ENCRYPTED | XX_GODOT_ENGINE_PCK_FILE_DELTA))) return false;
     path_option = gdpck_option(&state->options, XX_META_ID_OPT_UNPACK_PATH);
-    if (!path_option)
-        return gdpck_copy_member(format->device, &stream->entry, NULL, pd);
+    if (!path_option) return gdpck_copy_member(format->device, &stream->entry, NULL, pd);
     if (!stream->output_name) return false;
-    if (path_option->type == XX_VAR_TYPE_STRING ||
-        path_option->type == XX_VAR_TYPE_STRING_VIEW) {
+    if (path_option->type == XX_VAR_TYPE_STRING || path_option->type == XX_VAR_TYPE_STRING_VIEW) {
         base = xx_var_get_str(path_option);
-    } else if (path_option->type == XX_VAR_TYPE_WSTRING ||
-               path_option->type == XX_VAR_TYPE_WSTRING_VIEW) {
+    } else if (path_option->type == XX_VAR_TYPE_WSTRING || path_option->type == XX_VAR_TYPE_WSTRING_VIEW) {
         owned_base = xx_str_unicode_to_utf8(xx_var_get_wstr(path_option));
         base = owned_base;
     }
     if (!base) goto done;
-    path = (base[0] && base[xx_str_len(base) - 1U] != '/' &&
-            base[xx_str_len(base) - 1U] != '\\')
-               ? xx_str_concat3(base, "/", stream->output_name)
-               : xx_str_concat(base, stream->output_name);
+    path = (base[0] && base[xx_str_len(base) - 1U] != '/' && base[xx_str_len(base) - 1U] != '\\') ? xx_str_concat3(base, "/", stream->output_name)
+                                                                                                  : xx_str_concat(base, stream->output_name);
     if (!path || !xx_store_create_dirs_a(path, false)) goto done;
     {
         xx_io_device *destination = xx_io_file_open(path, "wb");
         created = destination != NULL;
         if (!destination) goto done;
-        result = gdpck_copy_member(format->device, &stream->entry,
-                                   destination, pd);
+        result = gdpck_copy_member(format->device, &stream->entry, destination, pd);
         if (xx_io_close(destination) != 0) result = false;
     }
 done:
@@ -1270,8 +1124,8 @@ done:
     return result;
 }
 
-void xx_godot_engine_pck_free_archive_records_reading(
-    Abstractformat *format, xx_archive_record_state *state) {
+void xx_godot_engine_pck_free_archive_records_reading(Abstractformat *format, xx_archive_record_state *state)
+{
     (void)format;
     xx_archive_record_state_free(state);
 }

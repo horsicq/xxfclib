@@ -50,7 +50,7 @@
 /* Constants                                                               */
 
 /* Record. */
-#define SBX_HEAD 0x0e     /* tag, record size, date, time, attr, name length */
+#define SBX_HEAD 0x0e /* tag, record size, date, time, attr, name length */
 #define SBX_OVERHEAD XX_SFX_SBX_EXTRACTOR_OVERHEAD
 #define SBX_MIN_RECORD (SBX_OVERHEAD + 1) /* a name is never empty */
 #define SBX_MAX_NAME 255
@@ -94,28 +94,25 @@
 #define SBX_MAX_NAME_BYTES (16U * 1024U * 1024U)
 #define SBX_MAX_INPUT_PER_BYTE 4
 
-static const uint8_t sbx_tag[XX_SFX_SBX_EXTRACTOR_TAG_SIZE] = {'S', 'B', '1',
-                                                              0x00};
+static const uint8_t sbx_tag[XX_SFX_SBX_EXTRACTOR_TAG_SIZE] = {'S', 'B', '1', 0x00};
 
 /* ---------------------------------------------------------------------- */
 /* Byte helpers                                                            */
 
-static uint32_t sbx_le16(const uint8_t *bytes) {
+static uint32_t sbx_le16(const uint8_t *bytes)
+{
     return (uint32_t)bytes[0] | ((uint32_t)bytes[1] << 8U);
 }
 
-static bool sbx_read_at(xx_io_device *device, int64_t offset, void *buffer,
-                        size_t size) {
+static bool sbx_read_at(xx_io_device *device, int64_t offset, void *buffer, size_t size)
+{
     size_t done = 0U;
     const size_t io_capacity = xx_get_file_buffer_size();
-    if (!device || (!buffer && size != 0U) || offset < 0 ||
-        xx_io_seek64(device, offset, SEEK_SET) != 0)
-        return false;
+    if (!device || (!buffer && size != 0U) || offset < 0 || xx_io_seek64(device, offset, SEEK_SET) != 0) return false;
     while (done < size) {
         size_t request = size - done;
         if (request > io_capacity) request = io_capacity;
-        ssize_t amount = xx_io_read(device, (uint8_t *)buffer + done,
-                                    request);
+        ssize_t amount = xx_io_read(device, (uint8_t *)buffer + done, request);
         if (amount <= 0 || (size_t)amount > request) return false;
         done += (size_t)amount;
     }
@@ -126,9 +123,9 @@ static bool sbx_read_at(xx_io_device *device, int64_t offset, void *buffer,
 /* Records                                                                 */
 
 typedef struct sbx_record_s {
-    int64_t header;   /**< Base-relative offset of the tag. */
-    int64_t size;     /**< The whole record. */
-    int64_t data;     /**< Base-relative offset of the packed bytes. */
+    int64_t header; /**< Base-relative offset of the tag. */
+    int64_t size;   /**< The whole record. */
+    int64_t data;   /**< Base-relative offset of the packed bytes. */
     int64_t packed;
     int64_t unpacked;
     uint32_t dos_date;
@@ -141,27 +138,22 @@ typedef struct sbx_record_s {
 /* Read and check the record at @p offset of a carrier of @p available bytes.
  * Everything that makes the chain advance is checked here: the tag, a name,
  * a record size that covers its own overhead and stays inside the file. */
-static bool sbx_read_record(xx_io_device *device, int64_t base,
-                            int64_t available, int64_t offset,
-                            sbx_record *record) {
+static bool sbx_read_record(xx_io_device *device, int64_t base, int64_t available, int64_t offset, sbx_record *record)
+{
     uint8_t head[SBX_HEAD];
     uint8_t tail[SBX_MAX_NAME + 4];
     int64_t size, packed, unpacked;
     uint32_t name_length;
 
-    if (offset < 0 || available < SBX_MIN_RECORD ||
-        offset > available - SBX_MIN_RECORD ||
-        !sbx_read_at(device, base + offset, head, sizeof(head)) ||
+    if (offset < 0 || available < SBX_MIN_RECORD || offset > available - SBX_MIN_RECORD || !sbx_read_at(device, base + offset, head, sizeof(head)) ||
         xx_rt_memcmp(head, sbx_tag, sizeof(sbx_tag)) != 0)
         return false;
     /* Signed on purpose: a size with the top bit set is corrupt, not a
      * two-gigabyte record. */
     size = (int64_t)(int32_t)xx_data_get_u32(head + 4, 4, 0, false);
     name_length = head[0x0d];
-    if (name_length == 0U || size < (int64_t)name_length + SBX_OVERHEAD ||
-        size > available - offset ||
-        !sbx_read_at(device, base + offset + SBX_HEAD, tail,
-                     (size_t)name_length + 4U))
+    if (name_length == 0U || size < (int64_t)name_length + SBX_OVERHEAD || size > available - offset ||
+        !sbx_read_at(device, base + offset + SBX_HEAD, tail, (size_t)name_length + 4U))
         return false;
     unpacked = (int64_t)(int32_t)xx_data_get_u32(tail + name_length, 4, 0, false);
     packed = size - (int64_t)name_length - SBX_OVERHEAD;
@@ -190,8 +182,8 @@ static bool sbx_publish(struct sbx_table_s *table, const sbx_record *record);
 
 /* True when [@p offset, @p limit) is at most SBX_MAX_TAIL zero bytes: the
  * padding a signing tool or a copy to an aligned medium leaves behind. */
-static bool sbx_zero_tail(xx_io_device *device, int64_t base, int64_t offset,
-                          int64_t limit) {
+static bool sbx_zero_tail(xx_io_device *device, int64_t base, int64_t offset, int64_t limit)
+{
     uint8_t tail[SBX_MAX_TAIL];
     size_t index, length;
     if (offset > limit || limit - offset > SBX_MAX_TAIL) return false;
@@ -209,22 +201,17 @@ static bool sbx_zero_tail(xx_io_device *device, int64_t base, int64_t offset,
  * file), optionally followed by up to SBX_MAX_TAIL zero bytes of padding.
  * @p budget is shared by every walk of one locate, so a file full of tags
  * cannot turn the search quadratic. */
-static bool sbx_walk(xx_io_device *device, int64_t base, int64_t available,
-                     int64_t limit, int64_t start, uint32_t *budget,
-                     struct sbx_table_s *table, xx_pd_struct *pd) {
+static bool sbx_walk(xx_io_device *device, int64_t base, int64_t available, int64_t limit, int64_t start, uint32_t *budget, struct sbx_table_s *table, xx_pd_struct *pd)
+{
     int64_t offset = start;
     uint32_t count = 0U;
     sbx_record record;
 
     if (limit > available || start < 0 || start >= limit) return false;
     while (offset < limit) {
-        if ((pd && xx_pd_is_stopped(pd)) || *budget == 0U ||
-            count >= SBX_MAX_MEMBERS)
-            return false;
+        if ((pd && xx_pd_is_stopped(pd)) || *budget == 0U || count >= SBX_MAX_MEMBERS) return false;
         --*budget;
-        if (!sbx_read_record(device, base, limit, offset, &record))
-            return count != 0U &&
-                   sbx_zero_tail(device, base, offset, limit);
+        if (!sbx_read_record(device, base, limit, offset, &record)) return count != 0U && sbx_zero_tail(device, base, offset, limit);
         if (table && !sbx_publish(table, &record)) return false;
         ++count;
         offset += record.size;
@@ -247,9 +234,8 @@ typedef struct sbx_location_s {
  * @p limit_out receives the start of the Authenticode certificate table when
  * one lies after the image and ends exactly on the last byte, otherwise
  * @p available. */
-static int64_t sbx_pe_image_end(xx_io_device *device, int64_t base,
-                                int64_t available, uint32_t lfanew,
-                                int64_t *limit_out) {
+static int64_t sbx_pe_image_end(xx_io_device *device, int64_t base, int64_t available, uint32_t lfanew, int64_t *limit_out)
+{
     uint8_t pe[SBX_PE_HEADER];
     uint8_t optional[SBX_OPTIONAL_READ];
     uint8_t sections[SBX_MAX_SECTIONS * SBX_SECTION_SIZE];
@@ -260,45 +246,32 @@ static int64_t sbx_pe_image_end(xx_io_device *device, int64_t base,
 
     *limit_out = available;
 
-    if ((int64_t)lfanew > available - SBX_PE_HEADER - SBX_OPTIONAL_MIN ||
-        !sbx_read_at(device, base + lfanew, pe, sizeof(pe)) || pe[0] != 'P' ||
-        pe[1] != 'E' || pe[2] != 0U || pe[3] != 0U)
+    if ((int64_t)lfanew > available - SBX_PE_HEADER - SBX_OPTIONAL_MIN || !sbx_read_at(device, base + lfanew, pe, sizeof(pe)) || pe[0] != 'P' || pe[1] != 'E' ||
+        pe[2] != 0U || pe[3] != 0U)
         return 0;
     count = sbx_le16(pe + 6);
     optional_size = sbx_le16(pe + 20);
-    if (count == 0U || count > SBX_MAX_SECTIONS ||
-        optional_size < SBX_OPTIONAL_MIN || optional_size > SBX_OPTIONAL_MAX)
-        return 0;
+    if (count == 0U || count > SBX_MAX_SECTIONS || optional_size < SBX_OPTIONAL_MIN || optional_size > SBX_OPTIONAL_MAX) return 0;
     table = (int64_t)lfanew + SBX_PE_HEADER + optional_size;
-    optional_read = optional_size < SBX_OPTIONAL_READ ? (size_t)optional_size
-                                                      : SBX_OPTIONAL_READ;
-    if (table > available - (int64_t)count * SBX_SECTION_SIZE ||
-        !sbx_read_at(device, base + lfanew + SBX_PE_HEADER, optional,
-                     optional_read))
-        return 0;
+    optional_read = optional_size < SBX_OPTIONAL_READ ? (size_t)optional_size : SBX_OPTIONAL_READ;
+    if (table > available - (int64_t)count * SBX_SECTION_SIZE || !sbx_read_at(device, base + lfanew + SBX_PE_HEADER, optional, optional_read)) return 0;
     magic = sbx_le16(optional);
     if (magic != 0x010bU && magic != 0x020bU) return 0;
-    if (!sbx_read_at(device, base + table, sections,
-                     (size_t)count * SBX_SECTION_SIZE))
-        return 0;
+    if (!sbx_read_at(device, base + table, sections, (size_t)count * SBX_SECTION_SIZE)) return 0;
     end = xx_data_get_u32(optional + 60, 4, 0, false);
     for (index = 0U; index < count; ++index) {
         const uint8_t *section = sections + (size_t)index * SBX_SECTION_SIZE;
         uint64_t raw_size = xx_data_get_u32(section + 16, 4, 0, false);
         uint64_t raw_pointer = xx_data_get_u32(section + 20, 4, 0, false);
-        if (raw_size != 0U && raw_pointer + raw_size > end)
-            end = raw_pointer + raw_size;
+        if (raw_size != 0U && raw_pointer + raw_size > end) end = raw_pointer + raw_size;
     }
     if (end >= (uint64_t)available) return 0;
     /* Data directory 4 (security) holds a file offset, not an RVA. */
     directories = magic == 0x010bU ? 96U : 112U;
-    if (optional_read >= directories + 40U &&
-        xx_data_get_u32(optional + directories - 4U, 4, 0, false) > 4U) {
+    if (optional_read >= directories + 40U && xx_data_get_u32(optional + directories - 4U, 4, 0, false) > 4U) {
         uint64_t certificate = xx_data_get_u32(optional + directories + 32U, 4, 0, false);
         uint64_t certificate_size = xx_data_get_u32(optional + directories + 36U, 4, 0, false);
-        if (certificate > end && certificate_size != 0U &&
-            certificate + certificate_size == (uint64_t)available)
-            *limit_out = (int64_t)certificate;
+        if (certificate > end && certificate_size != 0U && certificate + certificate_size == (uint64_t)available) *limit_out = (int64_t)certificate;
     }
     return (int64_t)end;
 }
@@ -308,11 +281,9 @@ static int64_t sbx_pe_image_end(xx_io_device *device, int64_t base,
  * carriers search their first MiB and skip the stub's stray tags; a PE
  * searches a window of its overlay when the chain does not open it, and only
  * the first tag there counts. */
-static bool sbx_tag_search(xx_io_device *device, int64_t base,
-                           int64_t available, int64_t chain_limit,
-                           int64_t from, int64_t scan_end,
-                           uint32_t max_candidates, uint32_t *budget,
-                           int64_t *start_out, xx_pd_struct *pd) {
+static bool sbx_tag_search(xx_io_device *device, int64_t base, int64_t available, int64_t chain_limit, int64_t from, int64_t scan_end, uint32_t max_candidates,
+                           uint32_t *budget, int64_t *start_out, xx_pd_struct *pd)
+{
     const size_t window = xx_get_file_buffer_size();
     uint8_t *chunk;
     int64_t limit, position;
@@ -323,15 +294,11 @@ static bool sbx_tag_search(xx_io_device *device, int64_t base,
     if (from < 0 || from > limit - (int64_t)sizeof(sbx_tag)) return false;
     chunk = (uint8_t *)xx_mem_alloc(window);
     if (!chunk) return false;
-    for (position = from;
-         !found && !stop && position <= limit - (int64_t)sizeof(sbx_tag);
-         ) {
+    for (position = from; !found && !stop && position <= limit - (int64_t)sizeof(sbx_tag);) {
         int64_t left = limit - position - (int64_t)sizeof(sbx_tag) + 1;
         size_t length = left > (int64_t)window ? window : (size_t)left;
         size_t index;
-        if ((pd && xx_pd_is_stopped(pd)) ||
-            !sbx_read_at(device, base + position, chunk, length))
-            break;
+        if ((pd && xx_pd_is_stopped(pd)) || !sbx_read_at(device, base + position, chunk, length)) break;
         for (index = 0U; index < length; ++index) {
             uint8_t frame[sizeof(sbx_tag)];
             const uint8_t *bytes = chunk + index;
@@ -345,8 +312,7 @@ static bool sbx_tag_search(xx_io_device *device, int64_t base,
                 stop = true;
                 break;
             }
-            if (sbx_walk(device, base, available, chain_limit,
-                         position + (int64_t)index, budget, NULL, pd)) {
+            if (sbx_walk(device, base, available, chain_limit, position + (int64_t)index, budget, NULL, pd)) {
                 *start_out = position + (int64_t)index;
                 found = true;
                 break;
@@ -362,8 +328,8 @@ static bool sbx_tag_search(xx_io_device *device, int64_t base,
     return found;
 }
 
-static bool sbx_locate(Abstractformat *format, sbx_location *location,
-                       xx_pd_struct *pd) {
+static bool sbx_locate(Abstractformat *format, sbx_location *location, xx_pd_struct *pd)
+{
     uint8_t dos[SBX_DOS_HEADER];
     uint8_t signature[2];
     int64_t total, available, base, start = 0, limit = 0;
@@ -374,15 +340,10 @@ static bool sbx_locate(Abstractformat *format, sbx_location *location,
     total = xx_io_total_size(format->device);
     if (total < base) return false;
     available = total - base;
-    if (available < SBX_DOS_HEADER + SBX_MIN_RECORD ||
-        !sbx_read_at(format->device, base, dos, sizeof(dos)) ||
-        dos[0] != 'M' || dos[1] != 'Z')
-        return false;
+    if (available < SBX_DOS_HEADER + SBX_MIN_RECORD || !sbx_read_at(format->device, base, dos, sizeof(dos)) || dos[0] != 'M' || dos[1] != 'Z') return false;
     lfanew = xx_data_get_u32(dos + 0x3c, 4, 0, false);
-    if (lfanew < SBX_DOS_HEADER || lfanew > SBX_MAX_LFANEW ||
-        (int64_t)lfanew > available - SBX_NE_HEADER - SBX_MIN_RECORD ||
-        !sbx_read_at(format->device, base + lfanew, signature,
-                     sizeof(signature)))
+    if (lfanew < SBX_DOS_HEADER || lfanew > SBX_MAX_LFANEW || (int64_t)lfanew > available - SBX_NE_HEADER - SBX_MIN_RECORD ||
+        !sbx_read_at(format->device, base + lfanew, signature, sizeof(signature)))
         return false;
 
     if (signature[0] == 'P' && signature[1] == 'E') {
@@ -392,28 +353,18 @@ static bool sbx_locate(Abstractformat *format, sbx_location *location,
          * within SBX_PE_SCAN_WINDOW bytes is taken, and only that one: a
          * later tag would be a record in the middle of a broken chain. */
         uint8_t head[XX_SFX_SBX_EXTRACTOR_TAG_SIZE];
-        int64_t end = sbx_pe_image_end(format->device, base, available,
-                                       lfanew, &limit);
-        if (end <= 0 || end > limit - SBX_MIN_RECORD ||
-            !sbx_read_at(format->device, base + end, head, sizeof(head)))
-            return false;
+        int64_t end = sbx_pe_image_end(format->device, base, available, lfanew, &limit);
+        if (end <= 0 || end > limit - SBX_MIN_RECORD || !sbx_read_at(format->device, base + end, head, sizeof(head))) return false;
         if (xx_rt_memcmp(head, sbx_tag, sizeof(head)) == 0) {
-            if (!sbx_walk(format->device, base, available, limit, end,
-                          &budget, NULL, pd))
-                return false;
+            if (!sbx_walk(format->device, base, available, limit, end, &budget, NULL, pd)) return false;
             start = end;
-        } else if (!sbx_tag_search(format->device, base, available, limit,
-                                   end + 1, end + SBX_PE_SCAN_WINDOW, 1U,
-                                   &budget, &start, pd)) {
+        } else if (!sbx_tag_search(format->device, base, available, limit, end + 1, end + SBX_PE_SCAN_WINDOW, 1U, &budget, &start, pd)) {
             return false;
         }
         location->carrier = XX_SFX_SBX_EXTRACTOR_CARRIER_PE;
     } else if (signature[0] == 'N' && signature[1] == 'E') {
         limit = available;
-        if (!sbx_tag_search(format->device, base, available, available,
-                            (int64_t)lfanew + SBX_NE_HEADER,
-                            SBX_NE_SCAN_LIMIT, SBX_MAX_CANDIDATES, &budget,
-                            &start, pd))
+        if (!sbx_tag_search(format->device, base, available, available, (int64_t)lfanew + SBX_NE_HEADER, SBX_NE_SCAN_LIMIT, SBX_MAX_CANDIDATES, &budget, &start, pd))
             return false;
         location->carrier = XX_SFX_SBX_EXTRACTOR_CARRIER_NE;
     } else {
@@ -455,7 +406,8 @@ typedef struct sbx_table_s {
     uint32_t carrier;
 } sbx_table;
 
-static void sbx_table_free(sbx_table *table) {
+static void sbx_table_free(sbx_table *table)
+{
     size_t index;
     if (!table) return;
     for (index = 0U; index < table->count; ++index) {
@@ -467,11 +419,13 @@ static void sbx_table_free(sbx_table *table) {
     xx_mem_free(table);
 }
 
-static void sbx_table_free_opaque(void *opaque) {
+static void sbx_table_free_opaque(void *opaque)
+{
     sbx_table_free((sbx_table *)opaque);
 }
 
-static uint32_t sbx_hash(const char *key) {
+static uint32_t sbx_hash(const char *key)
+{
     uint32_t hash = 2166136261U;
     while (*key) {
         hash ^= (uint8_t)*key++;
@@ -480,7 +434,8 @@ static uint32_t sbx_hash(const char *key) {
     return hash;
 }
 
-static bool sbx_same(const char *left, const char *right) {
+static bool sbx_same(const char *left, const char *right)
+{
     while (*left && *left == *right) {
         ++left;
         ++right;
@@ -488,24 +443,24 @@ static bool sbx_same(const char *left, const char *right) {
     return *left == *right;
 }
 
-static bool sbx_key_taken(const sbx_table *table, const char *key) {
+static bool sbx_key_taken(const sbx_table *table, const char *key)
+{
     size_t mask, slot;
     if (!table->slots) return false;
     mask = table->slot_count - 1U;
     slot = sbx_hash(key) & mask;
     while (table->slots[slot] != 0U) {
-        if (sbx_same(table->items[table->slots[slot] - 1U].key, key))
-            return true;
+        if (sbx_same(table->items[table->slots[slot] - 1U].key, key)) return true;
         slot = (slot + 1U) & mask;
     }
     return false;
 }
 
 /* Insert member @p member's key; grows (and rebuilds) at half load. */
-static bool sbx_key_insert(sbx_table *table, size_t member) {
+static bool sbx_key_insert(sbx_table *table, size_t member)
+{
     size_t mask, slot, index;
-    if (table->slot_count == 0U ||
-        (table->count + 1U) * 2U > table->slot_count) {
+    if (table->slot_count == 0U || (table->count + 1U) * 2U > table->slot_count) {
         size_t grown = table->slot_count ? table->slot_count * 2U : 64U;
         uint32_t *slots = (uint32_t *)xx_mem_alloc(grown * sizeof(uint32_t));
         if (!slots) return false;
@@ -528,7 +483,8 @@ static bool sbx_key_insert(sbx_table *table, size_t member) {
 }
 
 /* Append @p suffix to the heap string @p text. */
-static bool sbx_append(char **text, const char *suffix) {
+static bool sbx_append(char **text, const char *suffix)
+{
     size_t length = xx_str_len(*text), extra = xx_str_len(suffix);
     char *grown = (char *)xx_mem_alloc(length + extra + 1U);
     if (!grown) return false;
@@ -539,7 +495,8 @@ static bool sbx_append(char **text, const char *suffix) {
     return true;
 }
 
-static void sbx_decimal(char *out, char prefix, size_t value, unsigned width) {
+static void sbx_decimal(char *out, char prefix, size_t value, unsigned width)
+{
     char digits[24];
     unsigned count = 0U;
     size_t position = 0U;
@@ -554,28 +511,28 @@ static void sbx_decimal(char *out, char prefix, size_t value, unsigned width) {
 }
 
 /* Windows-1252 bytes 0x80..0x9F; 0 marks the five unassigned positions. */
-static const uint16_t sbx_cp1252_high[32] = {
-    0x20AC, 0x0000, 0x201A, 0x0192, 0x201E, 0x2026, 0x2020, 0x2021,
-    0x02C6, 0x2030, 0x0160, 0x2039, 0x0152, 0x0000, 0x017D, 0x0000,
-    0x0000, 0x2018, 0x2019, 0x201C, 0x201D, 0x2022, 0x2013, 0x2014,
-    0x02DC, 0x2122, 0x0161, 0x203A, 0x0153, 0x0000, 0x017E, 0x0178};
+static const uint16_t sbx_cp1252_high[32] = {0x20AC, 0x0000, 0x201A, 0x0192, 0x201E, 0x2026, 0x2020, 0x2021, 0x02C6, 0x2030, 0x0160,
+                                             0x2039, 0x0152, 0x0000, 0x017D, 0x0000, 0x0000, 0x2018, 0x2019, 0x201C, 0x201D, 0x2022,
+                                             0x2013, 0x2014, 0x02DC, 0x2122, 0x0161, 0x203A, 0x0153, 0x0000, 0x017E, 0x0178};
 
-static uint8_t sbx_upper_ascii(uint8_t value) {
+static uint8_t sbx_upper_ascii(uint8_t value)
+{
     return (value >= 'a' && value <= 'z') ? (uint8_t)(value - 0x20U) : value;
 }
 
 /* Lower-case fold of a code point of a listed name (every one of them comes
  * from Windows-1252, or is ASCII), as the file system would see it. */
-static uint32_t sbx_fold(uint32_t code) {
+static uint32_t sbx_fold(uint32_t code)
+{
     if (code >= 'A' && code <= 'Z') return code + 0x20U;
     if (code >= 0xC0U && code <= 0xDEU && code != 0xD7U) return code + 0x20U;
-    if (code == 0x0160U || code == 0x0152U || code == 0x017DU)
-        return code + 1U; /* S and Z with caron, the OE ligature */
-    if (code == 0x0178U) return 0xFFU; /* Y with diaeresis */
+    if (code == 0x0160U || code == 0x0152U || code == 0x017DU) return code + 1U; /* S and Z with caron, the OE ligature */
+    if (code == 0x0178U) return 0xFFU;                                           /* Y with diaeresis */
     return code;
 }
 
-static size_t sbx_utf8_put(char *out, uint32_t code) {
+static size_t sbx_utf8_put(char *out, uint32_t code)
+{
     if (code < 0x80U) {
         out[0] = (char)code;
         return 1U;
@@ -597,7 +554,8 @@ static size_t sbx_utf8_put(char *out, uint32_t code) {
  * that would land on the same file share a key.  Listed names are
  * well-formed UTF-8 of at most three bytes per code point (sbx_build_name
  * and the ASCII suffixes make them), and folding keeps the width of each. */
-static char *sbx_make_key(const char *name) {
+static char *sbx_make_key(const char *name)
+{
     size_t length = xx_str_len(name), in = 0U, out = 0U, component = 0U;
     char *key = (char *)xx_mem_alloc(length * 3U + 1U);
     if (!key) return NULL;
@@ -605,9 +563,7 @@ static char *sbx_make_key(const char *name) {
         uint8_t lead = (uint8_t)name[in];
         uint32_t code;
         if (lead == 0U || lead == '/') {
-            while (out > component &&
-                   (key[out - 1U] == '.' || key[out - 1U] == ' '))
-                --out;
+            while (out > component && (key[out - 1U] == '.' || key[out - 1U] == ' ')) --out;
             if (lead == 0U) break;
             key[out++] = '/';
             component = out;
@@ -615,13 +571,10 @@ static char *sbx_make_key(const char *name) {
             continue;
         }
         if ((lead & 0xE0U) == 0xC0U && in + 1U < length) {
-            code = ((uint32_t)(lead & 0x1FU) << 6U) |
-                   ((uint8_t)name[in + 1U] & 0x3FU);
+            code = ((uint32_t)(lead & 0x1FU) << 6U) | ((uint8_t)name[in + 1U] & 0x3FU);
             in += 2U;
         } else if ((lead & 0xF0U) == 0xE0U && in + 2U < length) {
-            code = ((uint32_t)(lead & 0x0FU) << 12U) |
-                   ((uint32_t)((uint8_t)name[in + 1U] & 0x3FU) << 6U) |
-                   ((uint8_t)name[in + 2U] & 0x3FU);
+            code = ((uint32_t)(lead & 0x0FU) << 12U) | ((uint32_t)((uint8_t)name[in + 1U] & 0x3FU) << 6U) | ((uint8_t)name[in + 2U] & 0x3FU);
             in += 3U;
         } else {
             code = lead; /* ASCII (anything else is not produced here) */
@@ -638,45 +591,37 @@ static char *sbx_make_key(const char *name) {
 }
 
 /* The characters Windows reserves in a name, and control bytes. */
-static bool sbx_reserved_char(uint8_t c) {
-    return c < 0x20U || c == 0x7FU || c == '<' || c == '>' || c == ':' ||
-           c == '"' || c == '|' || c == '?' || c == '*';
+static bool sbx_reserved_char(uint8_t c)
+{
+    return c < 0x20U || c == 0x7FU || c == '<' || c == '>' || c == ':' || c == '"' || c == '|' || c == '?' || c == '*';
 }
 
 /* COM and LPT take a digit or a superscript one, two or three, which is one
  * Windows-1252 byte in a raw name and two UTF-8 bytes in a listed one. */
-static bool sbx_is_port_suffix(const uint8_t *text, size_t length,
-                               bool utf8) {
+static bool sbx_is_port_suffix(const uint8_t *text, size_t length, bool utf8)
+{
     if (length == 1U && text[0] >= '0' && text[0] <= '9') return true;
-    if (!utf8)
-        return length == 1U &&
-               (text[0] == 0xB9U || text[0] == 0xB2U || text[0] == 0xB3U);
-    return length == 2U && text[0] == 0xC2U &&
-           (text[1] == 0xB9U || text[1] == 0xB2U || text[1] == 0xB3U);
+    if (!utf8) return length == 1U && (text[0] == 0xB9U || text[0] == 0xB2U || text[0] == 0xB3U);
+    return length == 2U && text[0] == 0xC2U && (text[1] == 0xB9U || text[1] == 0xB2U || text[1] == 0xB3U);
 }
 
 /* CON, PRN, AUX, NUL, COM0-9, LPT0-9 (and the superscript ports), CONIN$,
  * CONOUT$ and CLOCK$, with or without an extension, in any case. */
-static bool sbx_is_device(const uint8_t *text, size_t length, bool utf8) {
-    static const char *const names[] = {"CON",    "PRN",     "AUX",
-                                        "NUL",    "CONIN$",  "CONOUT$",
-                                        "CLOCK$"};
+static bool sbx_is_device(const uint8_t *text, size_t length, bool utf8)
+{
+    static const char *const names[] = {"CON", "PRN", "AUX", "NUL", "CONIN$", "CONOUT$", "CLOCK$"};
     size_t stem = 0U, index, position;
     while (stem < length && text[stem] != '.') ++stem;
     while (stem > 0U && text[stem - 1U] == ' ') --stem;
     for (index = 0U; index < sizeof(names) / sizeof(names[0]); ++index) {
         const char *name = names[index];
         for (position = 0U; position < stem && name[position]; ++position)
-            if (sbx_upper_ascii(text[position]) != (uint8_t)name[position])
-                break;
+            if (sbx_upper_ascii(text[position]) != (uint8_t)name[position]) break;
         if (position == stem && name[position] == 0) return true;
     }
     if (stem >= 4U && sbx_is_port_suffix(text + 3, stem - 3U, utf8)) {
-        uint8_t a = sbx_upper_ascii(text[0]), b = sbx_upper_ascii(text[1]),
-                c = sbx_upper_ascii(text[2]);
-        if ((a == 'C' && b == 'O' && c == 'M') ||
-            (a == 'L' && b == 'P' && c == 'T'))
-            return true;
+        uint8_t a = sbx_upper_ascii(text[0]), b = sbx_upper_ascii(text[1]), c = sbx_upper_ascii(text[2]);
+        if ((a == 'C' && b == 'O' && c == 'M') || (a == 'L' && b == 'P' && c == 'T')) return true;
     }
     return false;
 }
@@ -691,8 +636,8 @@ static bool sbx_is_device(const uint8_t *text, size_t length, bool utf8) {
  * components dropped), but it is never written.  A leading separator
  * (absolute path) and a drive letter ("C:") are covered by the empty
  * component and the reserved ':'. */
-static bool sbx_build_name(const uint8_t *raw, size_t length, char **name_out,
-                           bool *unsafe_out) {
+static bool sbx_build_name(const uint8_t *raw, size_t length, char **name_out, bool *unsafe_out)
+{
     uint8_t clean[SBX_MAX_NAME * 2U + 2U];
     size_t clean_length = 0U, start = 0U, index;
     bool unsafe = false;
@@ -720,8 +665,7 @@ static bool sbx_build_name(const uint8_t *raw, size_t length, char **name_out,
         for (position = start; position < index; ++position) {
             uint8_t c = raw[position];
             if (sbx_reserved_char(c)) unsafe = true;
-            clean[clean_length++] =
-                (!meaningful || sbx_reserved_char(c)) ? (uint8_t)'_' : c;
+            clean[clean_length++] = (!meaningful || sbx_reserved_char(c)) ? (uint8_t)'_' : c;
         }
         start = index + 1U;
     }
@@ -746,7 +690,8 @@ static bool sbx_build_name(const uint8_t *raw, size_t length, char **name_out,
 }
 
 /* Replace @p member's key with the key of its current name. */
-static bool sbx_rekey(sbx_member *member) {
+static bool sbx_rekey(sbx_member *member)
+{
     char *key = sbx_make_key(member->name);
     if (!key) return false;
     if (member->key) xx_mem_free(member->key);
@@ -758,7 +703,8 @@ static bool sbx_rekey(sbx_member *member) {
  * not overwrite each other: the later one gets its member index appended.
  * The key is rebuilt from the name after every change, so the key checked is
  * always the key of the path that would be written. */
-static bool sbx_publish(sbx_table *table, const sbx_record *record) {
+static bool sbx_publish(sbx_table *table, const sbx_record *record)
+{
     sbx_member member;
     char suffix[32];
     unsigned attempt;
@@ -766,26 +712,21 @@ static bool sbx_publish(sbx_table *table, const sbx_record *record) {
     if (table->count >= SBX_MAX_MEMBERS) return false;
     if (table->count == table->capacity) {
         size_t capacity = table->capacity ? table->capacity * 2U : 16U;
-        sbx_member *grown = (sbx_member *)xx_mem_realloc(
-            table->items, capacity * sizeof(*grown));
+        sbx_member *grown = (sbx_member *)xx_mem_realloc(table->items, capacity * sizeof(*grown));
         if (!grown) return false;
         table->items = grown;
         table->capacity = capacity;
     }
     xx_mem_zero(&member, sizeof(member));
-    if (!sbx_build_name(record->name, record->name_length, &member.name,
-                        &member.unsafe))
-        return false;
+    if (!sbx_build_name(record->name, record->name_length, &member.name, &member.unsafe)) return false;
     if (!sbx_rekey(&member)) goto fail;
     if (sbx_key_taken(table, member.key)) {
         sbx_decimal(suffix, '.', table->count, 4U);
-        if (!sbx_append(&member.name, suffix) || !sbx_rekey(&member))
-            goto fail;
+        if (!sbx_append(&member.name, suffix) || !sbx_rekey(&member)) goto fail;
         for (attempt = 1U; sbx_key_taken(table, member.key); ++attempt) {
             if (attempt > 16U) goto fail;
             sbx_decimal(suffix, '_', attempt, 1U);
-            if (!sbx_append(&member.name, suffix) || !sbx_rekey(&member))
-                goto fail;
+            if (!sbx_append(&member.name, suffix) || !sbx_rekey(&member)) goto fail;
         }
     }
     table->name_bytes += xx_str_len(member.name) + xx_str_len(member.key);
@@ -812,8 +753,8 @@ fail:
     return false;
 }
 
-static bool sbx_build_table(Abstractformat *format, sbx_table **out,
-                            xx_pd_struct *pd) {
+static bool sbx_build_table(Abstractformat *format, sbx_table **out, xx_pd_struct *pd)
+{
     sbx_location location;
     sbx_table *table;
     uint32_t budget = SBX_STEP_BUDGET;
@@ -827,9 +768,7 @@ static bool sbx_build_table(Abstractformat *format, sbx_table **out,
     table->start = location.start;
     table->available = location.available;
     table->carrier = location.carrier;
-    if (!sbx_walk(format->device, format->base_address, location.available,
-                  location.limit, location.start, &budget, table, pd) ||
-        table->count == 0U) {
+    if (!sbx_walk(format->device, format->base_address, location.available, location.limit, location.start, &budget, table, pd) || table->count == 0U) {
         sbx_table_free(table);
         return false;
     }
@@ -841,18 +780,15 @@ static bool sbx_build_table(Abstractformat *format, sbx_table **out,
 /* Decoding                                                                */
 
 /* Decode one member into @p destination (NULL only verifies). */
-static bool sbx_unpack_member(Abstractformat *format,
-                              const sbx_member *member,
-                              xx_io_device *destination, xx_pd_struct *pd) {
+static bool sbx_unpack_member(Abstractformat *format, const sbx_member *member, xx_io_device *destination, xx_pd_struct *pd)
+{
     uint8_t *packed = NULL;
     uint8_t *plain = NULL;
     size_t written = 0U, done = 0U;
     int64_t input;
     bool result = false;
 
-    if (member->packed_size < 0 || member->unpacked_size < 0 ||
-        member->unpacked_size > SBX_MAX_MEMBER)
-        return false;
+    if (member->packed_size < 0 || member->unpacked_size < 0 || member->unpacked_size > SBX_MAX_MEMBER) return false;
     if (member->unpacked_size == 0) {
         /* Nothing to produce: an empty file, whatever the packed bytes. */
         return true;
@@ -869,27 +805,17 @@ static bool sbx_unpack_member(Abstractformat *format,
      * packed bytes and 64 MiB of output. */
     input = member->unpacked_size * SBX_MAX_INPUT_PER_BYTE + 64;
     if (input > member->packed_size) input = member->packed_size;
-    if ((uint64_t)input > (uint64_t)SIZE_MAX ||
-        (uint64_t)member->unpacked_size > (uint64_t)SIZE_MAX)
-        return false;
+    if ((uint64_t)input > (uint64_t)SIZE_MAX || (uint64_t)member->unpacked_size > (uint64_t)SIZE_MAX) return false;
     if (pd && xx_pd_is_stopped(pd)) return false;
     packed = (uint8_t *)xx_mem_alloc(input != 0 ? (size_t)input : 1U);
     plain = (uint8_t *)xx_mem_alloc((size_t)member->unpacked_size);
-    if (!packed || !plain ||
-        !sbx_read_at(format->device,
-                     format->base_address + member->data_offset, packed,
-                     (size_t)input))
-        goto done;
+    if (!packed || !plain || !sbx_read_at(format->device, format->base_address + member->data_offset, packed, (size_t)input)) goto done;
     /* No end symbol: the stored size is the only stop condition, and the
      * decoder succeeds only when it produced exactly that many bytes. */
-    if (!xx_lzhuf_decode_memory(packed, (size_t)input, plain,
-                                (size_t)member->unpacked_size, &written) ||
-        written != (size_t)member->unpacked_size)
-        goto done;
+    if (!xx_lzhuf_decode_memory(packed, (size_t)input, plain, (size_t)member->unpacked_size, &written) || written != (size_t)member->unpacked_size) goto done;
     if (destination) {
         while (done < written) {
-            ssize_t sent = xx_io_write(destination, plain + done,
-                                       written - done);
+            ssize_t sent = xx_io_write(destination, plain + done, written - done);
             if (sent <= 0 || (size_t)sent > written - done) goto done;
             done += (size_t)sent;
         }
@@ -904,18 +830,16 @@ done:
 /* ---------------------------------------------------------------------- */
 /* Records API helpers                                                     */
 
-static bool sbx_copy_options(xx_list_s *destination,
-                             const xx_list_s *source) {
+static bool sbx_copy_options(xx_list_s *destination, const xx_list_s *source)
+{
     size_t index;
     if (!source) return true;
     for (index = 0U; index < source->count; ++index) {
-        const xx_meta *original =
-            (const xx_meta *)xx_list_at((const xx_list_t *)source, index);
+        const xx_meta *original = (const xx_meta *)xx_list_at((const xx_list_t *)source, index);
         xx_meta copy;
         if (!original) continue;
         xx_meta_init(&copy, original->meta_id);
-        if (!xx_var_copy(&copy.var, &original->var) ||
-            !xx_list_append(destination, &copy)) {
+        if (!xx_var_copy(&copy.var, &original->var) || !xx_list_append(destination, &copy)) {
             xx_meta_cleanup(&copy);
             return false;
         }
@@ -923,22 +847,20 @@ static bool sbx_copy_options(xx_list_s *destination,
     return true;
 }
 
-static const xx_var *sbx_option(const xx_list_s *options, uint32_t id) {
+static const xx_var *sbx_option(const xx_list_s *options, uint32_t id)
+{
     size_t index;
     if (!options) return NULL;
     for (index = 0U; index < options->count; ++index) {
-        const xx_meta *meta =
-            (const xx_meta *)xx_list_at((const xx_list_t *)options, index);
+        const xx_meta *meta = (const xx_meta *)xx_list_at((const xx_list_t *)options, index);
         if (meta && meta->meta_id == id) return &meta->var;
     }
     return NULL;
 }
 
-static bool sbx_set_record(Abstractformat *format, xx_archive_record *record,
-                           const sbx_member *member) {
-    uint64_t method = member->unpacked_size == 0
-                          ? XX_SFX_SBX_EXTRACTOR_METHOD_STORED
-                          : XX_SFX_SBX_EXTRACTOR_METHOD_LZHUF;
+static bool sbx_set_record(Abstractformat *format, xx_archive_record *record, const sbx_member *member)
+{
+    uint64_t method = member->unpacked_size == 0 ? XX_SFX_SBX_EXTRACTOR_METHOD_STORED : XX_SFX_SBX_EXTRACTOR_METHOD_LZHUF;
     xx_archive_record_cleanup(record);
     xx_archive_record_init(record);
     record->header_offset = format->base_address + member->header_offset;
@@ -946,31 +868,22 @@ static bool sbx_set_record(Abstractformat *format, xx_archive_record *record,
     record->data_offset = format->base_address + member->data_offset;
     record->compressed_size = member->packed_size;
     if (!xx_archive_record_set_original_name(record, member->name) ||
-        !xx_archive_record_set_meta_u64(record, XX_META_ID_COMPRESSED_SIZE,
-                                        (uint64_t)member->packed_size) ||
-        !xx_archive_record_set_meta_u64(record, XX_META_ID_UNCOMPRESSED_SIZE,
-                                        (uint64_t)member->unpacked_size) ||
-        !xx_archive_record_set_meta_u64(record, XX_META_ID_COMPRESSION_METHOD,
-                                        method) ||
-        !xx_archive_record_set_meta_u64(record, XX_META_ID_ATTRIBUTES,
-                                        member->attributes) ||
-        !xx_archive_record_set_meta_bool(record, XX_META_ID_IS_ENCRYPTED,
-                                         false) ||
+        !xx_archive_record_set_meta_u64(record, XX_META_ID_COMPRESSED_SIZE, (uint64_t)member->packed_size) ||
+        !xx_archive_record_set_meta_u64(record, XX_META_ID_UNCOMPRESSED_SIZE, (uint64_t)member->unpacked_size) ||
+        !xx_archive_record_set_meta_u64(record, XX_META_ID_COMPRESSION_METHOD, method) ||
+        !xx_archive_record_set_meta_u64(record, XX_META_ID_ATTRIBUTES, member->attributes) || !xx_archive_record_set_meta_bool(record, XX_META_ID_IS_ENCRYPTED, false) ||
         !xx_archive_record_set_meta_bool(record, XX_META_ID_IS_FOLDER, false))
         return false;
     /* The packed MS-DOS stamp, time in the low word and date in the high
      * one, as the ARJ reader publishes it.  A zero date is "no date". */
-    if (member->dos_date != 0U &&
-        !xx_archive_record_set_meta_u64(
-            record, XX_META_ID_TIMESTAMP,
-            ((uint64_t)member->dos_date << 16U) | member->dos_time))
-        return false;
+    if (member->dos_date != 0U && !xx_archive_record_set_meta_u64(record, XX_META_ID_TIMESTAMP, ((uint64_t)member->dos_date << 16U) | member->dos_time)) return false;
     return true;
 }
 
 /* The table already marked unsafe names; this is the last gate before a name
  * reaches the file system. */
-static bool sbx_safe_output_name(const char *name) {
+static bool sbx_safe_output_name(const char *name)
+{
     size_t index, start = 0U, length;
     if (!name || !name[0] || name[0] == '/' || name[0] == '\\') return false;
     length = xx_str_len(name);
@@ -984,9 +897,7 @@ static bool sbx_safe_output_name(const char *name) {
                 if (sbx_reserved_char(c)) return false;
                 if (c != '.' && c != ' ') meaningful = true;
             }
-            if (!meaningful ||
-                sbx_is_device((const uint8_t *)name + start, part, true))
-                return false;
+            if (!meaningful || sbx_is_device((const uint8_t *)name + start, part, true)) return false;
             start = index + 1U;
         } else if (name[index] == '\\') {
             return false;
@@ -998,7 +909,8 @@ static bool sbx_safe_output_name(const char *name) {
 /* ---------------------------------------------------------------------- */
 /* Public API                                                              */
 
-static void sbx_vtable_destroy(Abstractformat *format) {
+static void sbx_vtable_destroy(Abstractformat *format)
+{
     xx_sfx_sbx_extractor *archive = (xx_sfx_sbx_extractor *)format;
     if (archive && archive->table) {
         sbx_table_free((sbx_table *)archive->table);
@@ -1006,8 +918,8 @@ static void sbx_vtable_destroy(Abstractformat *format) {
     }
 }
 
-void xx_sfx_sbx_extractor_init(xx_sfx_sbx_extractor *archive,
-                               xx_io_device *device, int64_t base_address) {
+void xx_sfx_sbx_extractor_init(xx_sfx_sbx_extractor *archive, xx_io_device *device, int64_t base_address)
+{
     if (!archive) return;
     xx_mem_zero(archive, sizeof(*archive));
     xx_format_init(&archive->format, device, base_address);
@@ -1020,31 +932,25 @@ void xx_sfx_sbx_extractor_init(xx_sfx_sbx_extractor *archive,
     archive->format.check_is_valid = xx_sfx_sbx_extractor_check_is_valid;
     archive->format.handle_base_info = xx_sfx_sbx_extractor_handle_base_info;
     archive->format.get_format_size = xx_sfx_sbx_extractor_get_format_size;
-    archive->format.get_number_of_archive_records =
-        xx_sfx_sbx_extractor_get_number_of_archive_records;
-    archive->format.create_archive_records_reading =
-        xx_sfx_sbx_extractor_create_archive_records_reading;
-    archive->format.get_current_archive_record =
-        xx_sfx_sbx_extractor_get_current_archive_record;
-    archive->format.unpack_current_archive_record =
-        xx_sfx_sbx_extractor_unpack_current_archive_record;
-    archive->format.archive_record_move_to_next =
-        xx_sfx_sbx_extractor_archive_record_move_to_next;
-    archive->format.free_archive_records_reading =
-        xx_sfx_sbx_extractor_free_archive_records_reading;
+    archive->format.get_number_of_archive_records = xx_sfx_sbx_extractor_get_number_of_archive_records;
+    archive->format.create_archive_records_reading = xx_sfx_sbx_extractor_create_archive_records_reading;
+    archive->format.get_current_archive_record = xx_sfx_sbx_extractor_get_current_archive_record;
+    archive->format.unpack_current_archive_record = xx_sfx_sbx_extractor_unpack_current_archive_record;
+    archive->format.archive_record_move_to_next = xx_sfx_sbx_extractor_archive_record_move_to_next;
+    archive->format.free_archive_records_reading = xx_sfx_sbx_extractor_free_archive_records_reading;
     archive->format.destroy = sbx_vtable_destroy;
     archive->chain_offset = -1;
 }
 
-xx_sfx_sbx_extractor *xx_sfx_sbx_extractor_create(xx_io_device *device,
-                                                  int64_t base_address) {
-    xx_sfx_sbx_extractor *archive =
-        (xx_sfx_sbx_extractor *)xx_mem_alloc(sizeof(*archive));
+xx_sfx_sbx_extractor *xx_sfx_sbx_extractor_create(xx_io_device *device, int64_t base_address)
+{
+    xx_sfx_sbx_extractor *archive = (xx_sfx_sbx_extractor *)xx_mem_alloc(sizeof(*archive));
     if (archive) xx_sfx_sbx_extractor_init(archive, device, base_address);
     return archive;
 }
 
-void xx_sfx_sbx_extractor_destroy(xx_sfx_sbx_extractor *archive) {
+void xx_sfx_sbx_extractor_destroy(xx_sfx_sbx_extractor *archive)
+{
     if (!archive) return;
     /* Not xx_format_destroy: it dispatches through format.destroy, which is
      * the wrapper above. */
@@ -1053,22 +959,23 @@ void xx_sfx_sbx_extractor_destroy(xx_sfx_sbx_extractor *archive) {
     archive->number_of_records = 0U;
 }
 
-void xx_sfx_sbx_extractor_free(xx_sfx_sbx_extractor *archive) {
+void xx_sfx_sbx_extractor_free(xx_sfx_sbx_extractor *archive)
+{
     if (!archive) return;
     xx_sfx_sbx_extractor_destroy(archive);
     xx_mem_free(archive);
 }
 
-bool xx_sfx_sbx_extractor_check_is_valid(Abstractformat *format,
-                                         xx_pd_struct *pd) {
+bool xx_sfx_sbx_extractor_check_is_valid(Abstractformat *format, xx_pd_struct *pd)
+{
     sbx_location location;
     if (!format || (pd && xx_pd_is_stopped(pd))) return false;
     xx_mem_zero(&location, sizeof(location));
     return sbx_locate(format, &location, pd);
 }
 
-bool xx_sfx_sbx_extractor_handle_base_info(Abstractformat *format,
-                                           xx_pd_struct *pd) {
+bool xx_sfx_sbx_extractor_handle_base_info(Abstractformat *format, xx_pd_struct *pd)
+{
     xx_sfx_sbx_extractor *archive;
     sbx_table *table = NULL;
     if (!format || (pd && xx_pd_is_stopped(pd))) return false;
@@ -1104,24 +1011,18 @@ bool xx_sfx_sbx_extractor_handle_base_info(Abstractformat *format,
     return true;
 }
 
-int64_t xx_sfx_sbx_extractor_get_format_size(Abstractformat *format,
-                                             xx_pd_struct *pd) {
-    return format && (format->base_info_handled ||
-                      xx_sfx_sbx_extractor_handle_base_info(format, pd))
-               ? format->format_size
-               : -1;
+int64_t xx_sfx_sbx_extractor_get_format_size(Abstractformat *format, xx_pd_struct *pd)
+{
+    return format && (format->base_info_handled || xx_sfx_sbx_extractor_handle_base_info(format, pd)) ? format->format_size : -1;
 }
 
-uint64_t xx_sfx_sbx_extractor_get_number_of_archive_records(
-    Abstractformat *format, xx_pd_struct *pd) {
-    return format && (format->base_info_handled ||
-                      xx_sfx_sbx_extractor_handle_base_info(format, pd))
-               ? ((xx_sfx_sbx_extractor *)format)->number_of_records
-               : 0U;
+uint64_t xx_sfx_sbx_extractor_get_number_of_archive_records(Abstractformat *format, xx_pd_struct *pd)
+{
+    return format && (format->base_info_handled || xx_sfx_sbx_extractor_handle_base_info(format, pd)) ? ((xx_sfx_sbx_extractor *)format)->number_of_records : 0U;
 }
 
-xx_archive_record_state *xx_sfx_sbx_extractor_create_archive_records_reading(
-    Abstractformat *format, const xx_list_s *options, xx_pd_struct *pd) {
+xx_archive_record_state *xx_sfx_sbx_extractor_create_archive_records_reading(Abstractformat *format, const xx_list_s *options, xx_pd_struct *pd)
+{
     xx_sfx_sbx_extractor *archive;
     xx_archive_record_state *state;
     sbx_table *table = NULL;
@@ -1145,8 +1046,7 @@ xx_archive_record_state *xx_sfx_sbx_extractor_create_archive_records_reading(
     state->internal_state = table;
     state->free_internal = sbx_table_free_opaque;
     state->total_records = (int64_t)table->count;
-    if (!sbx_copy_options(&state->options, options) ||
-        !sbx_set_record(format, &state->current_record, &table->items[0])) {
+    if (!sbx_copy_options(&state->options, options) || !sbx_set_record(format, &state->current_record, &table->items[0])) {
         xx_archive_record_state_free(state);
         return NULL;
     }
@@ -1155,19 +1055,15 @@ xx_archive_record_state *xx_sfx_sbx_extractor_create_archive_records_reading(
     return state;
 }
 
-const xx_archive_record *xx_sfx_sbx_extractor_get_current_archive_record(
-    Abstractformat *format, xx_archive_record_state *state) {
-    return format && state && state->format == format && state->has_record
-               ? &state->current_record
-               : NULL;
+const xx_archive_record *xx_sfx_sbx_extractor_get_current_archive_record(Abstractformat *format, xx_archive_record_state *state)
+{
+    return format && state && state->format == format && state->has_record ? &state->current_record : NULL;
 }
 
-bool xx_sfx_sbx_extractor_archive_record_move_to_next(
-    Abstractformat *format, xx_archive_record_state *state, xx_pd_struct *pd) {
+bool xx_sfx_sbx_extractor_archive_record_move_to_next(Abstractformat *format, xx_archive_record_state *state, xx_pd_struct *pd)
+{
     sbx_table *table;
-    if (!format || !state || state->format != format || !state->has_record ||
-        (pd && xx_pd_is_stopped(pd)))
-        return false;
+    if (!format || !state || state->format != format || !state->has_record || (pd && xx_pd_is_stopped(pd))) return false;
     table = (sbx_table *)state->internal_state;
     if (!table || table->index + 1U >= table->count) {
         xx_archive_record_cleanup(&state->current_record);
@@ -1177,13 +1073,12 @@ bool xx_sfx_sbx_extractor_archive_record_move_to_next(
     }
     ++table->index;
     ++state->current_index;
-    state->has_record = sbx_set_record(format, &state->current_record,
-                                       &table->items[table->index]);
+    state->has_record = sbx_set_record(format, &state->current_record, &table->items[table->index]);
     return state->has_record;
 }
 
-bool xx_sfx_sbx_extractor_unpack_current_archive_record(
-    Abstractformat *format, xx_archive_record_state *state, xx_pd_struct *pd) {
+bool xx_sfx_sbx_extractor_unpack_current_archive_record(Abstractformat *format, xx_archive_record_state *state, xx_pd_struct *pd)
+{
     sbx_table *table;
     const sbx_member *member;
     const xx_var *path_option;
@@ -1193,28 +1088,23 @@ bool xx_sfx_sbx_extractor_unpack_current_archive_record(
     bool result = false;
     bool created = false;
 
-    if (!format || !state || state->format != format || !state->has_record ||
-        !(table = (sbx_table *)state->internal_state) ||
-        table->index >= table->count || (pd && xx_pd_is_stopped(pd)))
+    if (!format || !state || state->format != format || !state->has_record || !(table = (sbx_table *)state->internal_state) || table->index >= table->count ||
+        (pd && xx_pd_is_stopped(pd)))
         return false;
     member = &table->items[table->index];
     path_option = sbx_option(&state->options, XX_META_ID_OPT_UNPACK_PATH);
     /* No destination: decode and discard, which verifies the member. */
     if (!path_option) return sbx_unpack_member(format, member, NULL, pd);
     if (member->unsafe || !sbx_safe_output_name(member->name)) return false;
-    if (path_option->type == XX_VAR_TYPE_STRING ||
-        path_option->type == XX_VAR_TYPE_STRING_VIEW) {
+    if (path_option->type == XX_VAR_TYPE_STRING || path_option->type == XX_VAR_TYPE_STRING_VIEW) {
         base = xx_var_get_str(path_option);
-    } else if (path_option->type == XX_VAR_TYPE_WSTRING ||
-               path_option->type == XX_VAR_TYPE_WSTRING_VIEW) {
+    } else if (path_option->type == XX_VAR_TYPE_WSTRING || path_option->type == XX_VAR_TYPE_WSTRING_VIEW) {
         owned_base = xx_str_unicode_to_utf8(xx_var_get_wstr(path_option));
         base = owned_base;
     }
     if (!base) goto done;
-    path = (base[0] && base[xx_str_len(base) - 1U] != '/' &&
-            base[xx_str_len(base) - 1U] != '\\')
-               ? xx_str_concat3(base, "/", member->name)
-               : xx_str_concat(base, member->name);
+    path = (base[0] && base[xx_str_len(base) - 1U] != '/' && base[xx_str_len(base) - 1U] != '\\') ? xx_str_concat3(base, "/", member->name)
+                                                                                                  : xx_str_concat(base, member->name);
     if (!path || !xx_store_create_dirs_a(path, false)) goto done;
     {
         xx_io_device *destination = xx_io_file_open(path, "wb");
@@ -1230,8 +1120,8 @@ done:
     return result;
 }
 
-void xx_sfx_sbx_extractor_free_archive_records_reading(
-    Abstractformat *format, xx_archive_record_state *state) {
+void xx_sfx_sbx_extractor_free_archive_records_reading(Abstractformat *format, xx_archive_record_state *state)
+{
     (void)format;
     xx_archive_record_state_free(state);
 }

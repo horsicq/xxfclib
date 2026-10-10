@@ -9,32 +9,34 @@ static const xx_format_search_anchor ce_anchors[] = {
     {ce_magic, sizeof(ce_magic), 0U},
 };
 static const xx_file_type_t ce_types[] = {XX_FILE_TYPE_CKP};
-static Abstractformat *ce_open(xx_io_device *window) {
+static Abstractformat *ce_open(xx_io_device *window)
+{
     xx_ckp *reader = xx_ckp_create(window, 0);
     return reader ? &reader->format : NULL;
 }
-static void ce_close(Abstractformat *format) { xx_ckp_free((xx_ckp *)format); }
-static const xx_format_search_desc ce_desc = {
-    ce_types, sizeof(ce_types) / sizeof(ce_types[0]),
-    ce_anchors, sizeof(ce_anchors) / sizeof(ce_anchors[0]),
-    ce_open, ce_close, false
-};
-static xx_format_search_state *ce_create(xx_format_extractor *self,
-    xx_io_device *device, const xx_list_s *options, xx_pd_struct *pd) {
+static void ce_close(Abstractformat *format)
+{
+    xx_ckp_free((xx_ckp *)format);
+}
+static const xx_format_search_desc ce_desc = {ce_types, sizeof(ce_types) / sizeof(ce_types[0]), ce_anchors, sizeof(ce_anchors) / sizeof(ce_anchors[0]), ce_open, ce_close,
+                                              false};
+static xx_format_search_state *ce_create(xx_format_extractor *self, xx_io_device *device, const xx_list_s *options, xx_pd_struct *pd)
+{
     (void)self;
     return xx_format_search_create(&ce_desc, device, options, pd);
 }
-static const xx_format_search_info *ce_current(xx_format_extractor *self,
-                                                xx_format_search_state *state) {
+static const xx_format_search_info *ce_current(xx_format_extractor *self, xx_format_search_state *state)
+{
     (void)self;
     return xx_format_search_current(state);
 }
-static bool ce_next(xx_format_extractor *self, xx_format_search_state *state,
-                    xx_pd_struct *pd) {
+static bool ce_next(xx_format_extractor *self, xx_format_search_state *state, xx_pd_struct *pd)
+{
     (void)self;
     return xx_format_search_find_next(state, pd);
 }
-static void ce_free(xx_format_extractor *self, xx_format_search_state *state) {
+static void ce_free(xx_format_extractor *self, xx_format_search_state *state)
+{
     (void)self;
     xx_format_search_free(state);
 }

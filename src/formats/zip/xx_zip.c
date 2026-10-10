@@ -62,14 +62,12 @@
 
 /* Forward declaration of vtable callbacks */
 static void xx_zip_vtable_destroy(Abstractformat *self);
-static bool xx_zip_read_exact_at(xx_io_device *device, int64_t offset,
-                                 void *buffer, size_t size);
-static bool xx_zip_unpack_reference_to_device(
-    Abstractformat *format, const xx_archive_record_state *state,
-    const xx_archive_record *record, const uint8_t *digest,
-    xx_io_device *destination, xx_pd_struct *pd);
+static bool xx_zip_read_exact_at(xx_io_device *device, int64_t offset, void *buffer, size_t size);
+static bool xx_zip_unpack_reference_to_device(Abstractformat *format, const xx_archive_record_state *state, const xx_archive_record *record, const uint8_t *digest,
+                                              xx_io_device *destination, xx_pd_struct *pd);
 
-void xx_zip_init(xx_zip *zip, xx_io_device *dev, int64_t base_address) {
+void xx_zip_init(xx_zip *zip, xx_io_device *dev, int64_t base_address)
+{
     if (!zip) {
         return;
     }
@@ -125,7 +123,8 @@ void xx_zip_init(xx_zip *zip, xx_io_device *dev, int64_t base_address) {
     zip->comment[0] = '\0';
 }
 
-xx_zip *xx_zip_create(xx_io_device *dev, int64_t base_address) {
+xx_zip *xx_zip_create(xx_io_device *dev, int64_t base_address)
+{
     xx_zip *zip = (xx_zip *)xx_mem_alloc(sizeof(xx_zip));
     if (!zip) {
         return NULL;
@@ -134,7 +133,8 @@ xx_zip *xx_zip_create(xx_io_device *dev, int64_t base_address) {
     return zip;
 }
 
-void xx_zip_destroy(xx_zip *zip) {
+void xx_zip_destroy(xx_zip *zip)
+{
     xx_zip_cleanup_analysis(zip);
     if (!zip) {
         return;
@@ -145,14 +145,16 @@ void xx_zip_destroy(xx_zip *zip) {
     xx_format_cleanup_extra_parameters(&zip->format);
 }
 
-static void xx_zip_vtable_destroy(Abstractformat *self) {
+static void xx_zip_vtable_destroy(Abstractformat *self)
+{
     if (self) {
         xx_zip *zip = (xx_zip *)self;
         xx_zip_destroy(zip);
     }
 }
 
-void xx_zip_free(xx_zip *zip) {
+void xx_zip_free(xx_zip *zip)
+{
     if (!zip) {
         return;
     }
@@ -160,25 +162,26 @@ void xx_zip_free(xx_zip *zip) {
     xx_mem_free(zip);
 }
 
-static uint16_t xx_zip_split_u16(const uint8_t *p) {
+static uint16_t xx_zip_split_u16(const uint8_t *p)
+{
     return (uint16_t)((uint16_t)p[0] | (uint16_t)((uint16_t)p[1] << 8));
 }
 
-static uint32_t xx_zip_split_u32(const uint8_t *p) {
-    return (uint32_t)p[0] | ((uint32_t)p[1] << 8) |
-           ((uint32_t)p[2] << 16) | ((uint32_t)p[3] << 24);
+static uint32_t xx_zip_split_u32(const uint8_t *p)
+{
+    return (uint32_t)p[0] | ((uint32_t)p[1] << 8) | ((uint32_t)p[2] << 16) | ((uint32_t)p[3] << 24);
 }
 
-static uint64_t xx_zip_split_u64(const uint8_t *p) {
+static uint64_t xx_zip_split_u64(const uint8_t *p)
+{
     return xx_zip_split_u32(p) | ((uint64_t)xx_zip_split_u32(p + 4) << 32);
 }
 
-static bool xx_zip_split_read_sized(xx_io_device *device, int64_t offset,
-                                    void *buffer, size_t size, size_t capacity) {
+static bool xx_zip_split_read_sized(xx_io_device *device, int64_t offset, void *buffer, size_t size, size_t capacity)
+{
     size_t done = 0;
     int64_t total = xx_io_total_size(device);
-    if (offset < 0 || total < offset || (uint64_t)size > (uint64_t)(total - offset) ||
-        xx_io_seek64(device, offset, SEEK_SET) != 0) return false;
+    if (offset < 0 || total < offset || (uint64_t)size > (uint64_t)(total - offset) || xx_io_seek64(device, offset, SEEK_SET) != 0) return false;
     while (done < size) {
         size_t request = size - done < capacity ? size - done : capacity;
         ssize_t count;
@@ -190,15 +193,15 @@ static bool xx_zip_split_read_sized(xx_io_device *device, int64_t offset,
     return true;
 }
 
-static bool xx_zip_split_read(xx_io_device *device, int64_t offset,
-                              void *buffer, size_t size) {
-    return xx_zip_split_read_sized(device, offset, buffer, size,
-                                    xx_get_file_buffer_size());
+static bool xx_zip_split_read(xx_io_device *device, int64_t offset, void *buffer, size_t size)
+{
+    return xx_zip_split_read_sized(device, offset, buffer, size, xx_get_file_buffer_size());
 }
 
 /* EOCD candidates must include their complete comment. For multi-volume input
  * also require exact EOF, so a stray appended disk cannot become an overlay. */
-static int64_t xx_zip_find_tail_record(xx_io_device *device, bool exact_end, int mode) {
+static int64_t xx_zip_find_tail_record(xx_io_device *device, bool exact_end, int mode)
+{
     uint8_t *buffer;
     int64_t total = xx_io_total_size(device), result = -1;
     size_t size, done = 0, capacity = xx_get_file_buffer_size();
@@ -213,8 +216,7 @@ static int64_t xx_zip_find_tail_record(xx_io_device *device, bool exact_end, int
      * is the first one the former backwards scan would have accepted. */
     while (done < size) {
         size_t chunk = size - done < capacity ? size - done : capacity, i;
-        if (!xx_zip_split_read_sized(device, total - (int64_t)size + (int64_t)done,
-                                      buffer, chunk, capacity)) {
+        if (!xx_zip_split_read_sized(device, total - (int64_t)size + (int64_t)done, buffer, chunk, capacity)) {
             result = -1;
             break;
         }
@@ -229,15 +231,13 @@ static int64_t xx_zip_find_tail_record(xx_io_device *device, bool exact_end, int
                 }
                 if (at <= size - sizeof(header)) {
                     size_t end;
-                    if (!xx_zip_split_read_sized(device, total - (int64_t)size + (int64_t)at,
-                                                  header, sizeof(header), capacity)) {
+                    if (!xx_zip_split_read_sized(device, total - (int64_t)size + (int64_t)at, header, sizeof(header), capacity)) {
                         xx_mem_free(buffer);
                         return -1;
                     }
                     end = at + sizeof(header) + xx_zip_split_u16(header + 20);
                     fallback = total - (int64_t)size + (int64_t)at;
-                    if (end <= size && (!exact_end || end == size))
-                        result = total - (int64_t)size + (int64_t)at;
+                    if (end <= size && (!exact_end || end == size)) result = total - (int64_t)size + (int64_t)at;
                 }
             }
         }
@@ -248,45 +248,43 @@ static int64_t xx_zip_find_tail_record(xx_io_device *device, bool exact_end, int
     return result;
 }
 
-static int64_t xx_zip_split_find_eocd(xx_io_device *device, bool exact_end) {
+static int64_t xx_zip_split_find_eocd(xx_io_device *device, bool exact_end)
+{
     return xx_zip_find_tail_record(device, exact_end, 2);
 }
 
-static bool xx_zip_disk_offset(xx_zip *zip, uint32_t disk, uint64_t relative,
-                               uint64_t header_size, int64_t *absolute) {
+static bool xx_zip_disk_offset(xx_zip *zip, uint32_t disk, uint64_t relative, uint64_t header_size, int64_t *absolute)
+{
     xx_io_volume volume;
     int64_t start;
     if (!zip->is_split) {
         int64_t total = xx_io_total_size(zip->format.device);
-        if (disk || total < 0 || relative > (uint64_t)total ||
-            header_size > (uint64_t)total - relative) return false;
+        if (disk || total < 0 || relative > (uint64_t)total || header_size > (uint64_t)total - relative) return false;
         *absolute = (int64_t)relative;
         return true;
     }
     if (disk >= zip->split_disk_count) return false;
     if (!xx_io_multivolume_get_volume(zip->format.device, disk, &volume, &start)) {
         /* The optional PK00 marker may occur in an otherwise ordinary file. */
-        if (disk || zip->split_disk_count != 1 ||
-            xx_io_multivolume_count(zip->format.device) != 0) return false;
+        if (disk || zip->split_disk_count != 1 || xx_io_multivolume_count(zip->format.device) != 0) return false;
         start = 0;
         volume.size = xx_io_total_size(zip->format.device);
     }
-    if (start < 0 || volume.size < 0 || relative > (uint64_t)volume.size ||
-        header_size > (uint64_t)volume.size - relative ||
-        relative > (uint64_t)(INT64_MAX - start)) return false;
+    if (start < 0 || volume.size < 0 || relative > (uint64_t)volume.size || header_size > (uint64_t)volume.size - relative || relative > (uint64_t)(INT64_MAX - start))
+        return false;
     *absolute = start + (int64_t)relative;
     return true;
 }
 
-static bool xx_zip_split_header_fits(xx_zip *zip, int64_t offset, int64_t size) {
+static bool xx_zip_split_header_fits(xx_zip *zip, int64_t offset, int64_t size)
+{
     size_t i;
     if (!zip->is_split || !xx_io_multivolume_count(zip->format.device)) return true;
     for (i = 0; i < zip->split_disk_count; ++i) {
         xx_io_volume volume;
         int64_t start;
         if (!xx_io_multivolume_get_volume(zip->format.device, i, &volume, &start)) return false;
-        if (offset >= start && offset - start < volume.size)
-            return size >= 0 && size <= volume.size - (offset - start);
+        if (offset >= start && offset - start < volume.size) return size >= 0 && size <= volume.size - (offset - start);
     }
     return false;
 }
@@ -298,9 +296,8 @@ typedef struct xx_zip_entry_values {
 
 /* ZIP64 fields are conditional and ordered, not a fixed-width structure.
  * Keep values unsigned until range checks have proved they fit int64_t. */
-static bool xx_zip_read_zip64_extra(xx_io_device *device, int64_t offset,
-                                    uint16_t size, xx_zip_entry_values *values,
-                                    bool local) {
+static bool xx_zip_read_zip64_extra(xx_io_device *device, int64_t offset, uint16_t size, xx_zip_entry_values *values, bool local)
+{
     bool need_unpacked = values->unpacked == UINT32_MAX;
     bool need_packed = values->packed == UINT32_MAX;
     bool need_relative = !local && values->relative == UINT32_MAX;
@@ -319,45 +316,48 @@ static bool xx_zip_read_zip64_extra(xx_io_device *device, int64_t offset,
             if (found) return false;
             found = true;
             /* A local ZIP64 size pair always includes both size fields. */
-            needed = local ? 16 : (need_unpacked ? 8 : 0) + (need_packed ? 8 : 0) +
-                                 (need_relative ? 8 : 0) + (need_disk ? 4 : 0);
+            needed = local ? 16 : (need_unpacked ? 8 : 0) + (need_packed ? 8 : 0) + (need_relative ? 8 : 0) + (need_disk ? 4 : 0);
             if (block < needed || !xx_zip_split_read(device, offset + 4, extended, needed)) return false;
-            if (local || need_unpacked) { values->unpacked = xx_zip_split_u64(extended + position); position += 8; }
-            if (local || need_packed) { values->packed = xx_zip_split_u64(extended + position); position += 8; }
-            if (need_relative) { values->relative = xx_zip_split_u64(extended + position); position += 8; }
+            if (local || need_unpacked) {
+                values->unpacked = xx_zip_split_u64(extended + position);
+                position += 8;
+            }
+            if (local || need_packed) {
+                values->packed = xx_zip_split_u64(extended + position);
+                position += 8;
+            }
+            if (need_relative) {
+                values->relative = xx_zip_split_u64(extended + position);
+                position += 8;
+            }
             if (need_disk) values->disk = xx_zip_split_u32(extended + position);
         }
         offset += 4 + block;
         left -= 4 + block;
     }
-    return found && values->packed <= INT64_MAX && values->unpacked <= INT64_MAX &&
-           values->relative <= INT64_MAX;
+    return found && values->packed <= INT64_MAX && values->unpacked <= INT64_MAX && values->relative <= INT64_MAX;
 }
 
-static bool xx_zip_split_validate_cd(xx_zip *zip, uint64_t count,
-                                     int64_t cd_offset, int64_t cd_size,
-                                     uint32_t counted_disk, uint64_t entries_disk,
-                                     uint64_t entries_last, xx_pd_struct *pd) {
+static bool xx_zip_split_validate_cd(xx_zip *zip, uint64_t count, int64_t cd_offset, int64_t cd_size, uint32_t counted_disk, uint64_t entries_disk, uint64_t entries_last,
+                                     xx_pd_struct *pd)
+{
     uint8_t central[46], local[30], left[256], right[256];
     int64_t cursor = cd_offset, cd_end = cd_offset + cd_size;
     int64_t last_start = 0, counted_start = 0, counted_end = INT64_MAX;
     uint64_t index, observed_last = 0, observed_disk = 0;
-    if (xx_io_multivolume_count(zip->format.device) &&
-        !xx_io_multivolume_get_volume(zip->format.device, zip->split_disk_count - 1,
-                                      NULL, &last_start)) return false;
+    if (xx_io_multivolume_count(zip->format.device) && !xx_io_multivolume_get_volume(zip->format.device, zip->split_disk_count - 1, NULL, &last_start)) return false;
     if (xx_io_multivolume_count(zip->format.device)) {
         xx_io_volume counted_volume;
-        if (!xx_io_multivolume_get_volume(zip->format.device, counted_disk,
-                                          &counted_volume, &counted_start)) return false;
+        if (!xx_io_multivolume_get_volume(zip->format.device, counted_disk, &counted_volume, &counted_start)) return false;
         counted_end = counted_start + counted_volume.size;
     }
     for (index = 0; index < count; ++index) {
         uint16_t name_size, extra_size, comment_size;
         xx_zip_entry_values entry, local_sizes;
         int64_t local_offset, header_size, entry_size, compared;
-        if (xx_pd_is_stopped(pd) || cursor > cd_end || cd_end - cursor < 46 ||
-            !xx_zip_split_read(zip->format.device, cursor, central, sizeof(central)) ||
-            xx_zip_split_u32(central) != XX_ZIP_CENTRAL_DIRECTORY_HEADER_SIGNATURE) return false;
+        if (xx_pd_is_stopped(pd) || cursor > cd_end || cd_end - cursor < 46 || !xx_zip_split_read(zip->format.device, cursor, central, sizeof(central)) ||
+            xx_zip_split_u32(central) != XX_ZIP_CENTRAL_DIRECTORY_HEADER_SIGNATURE)
+            return false;
         if (cursor >= last_start) ++observed_last;
         if (cursor >= counted_start && cursor < counted_end) ++observed_disk;
         name_size = xx_zip_split_u16(central + 28);
@@ -371,46 +371,43 @@ static bool xx_zip_split_validate_cd(xx_zip *zip, uint64_t count,
         if (entry_size > cd_end - cursor || !xx_zip_split_header_fits(zip, cursor, entry_size) ||
             !xx_zip_read_zip64_extra(zip->format.device, cursor + 46 + name_size, extra_size, &entry, false) ||
             !xx_zip_disk_offset(zip, entry.disk, entry.relative, sizeof(local), &local_offset) ||
-            !xx_zip_split_read(zip->format.device, local_offset, local, sizeof(local)) ||
-            xx_zip_split_u32(local) != XX_ZIP_LOCAL_FILE_HEADER_SIGNATURE ||
-            xx_zip_split_u16(local + 26) != name_size ||
-            xx_zip_split_u16(local + 6) != xx_zip_split_u16(central + 8) ||
-            xx_zip_split_u16(local + 8) != xx_zip_split_u16(central + 10)) return false;
+            !xx_zip_split_read(zip->format.device, local_offset, local, sizeof(local)) || xx_zip_split_u32(local) != XX_ZIP_LOCAL_FILE_HEADER_SIGNATURE ||
+            xx_zip_split_u16(local + 26) != name_size || xx_zip_split_u16(local + 6) != xx_zip_split_u16(central + 8) ||
+            xx_zip_split_u16(local + 8) != xx_zip_split_u16(central + 10))
+            return false;
         header_size = 30 + (int64_t)name_size + xx_zip_split_u16(local + 28);
-        if (!xx_zip_disk_offset(zip, entry.disk, entry.relative, (uint64_t)header_size, &local_offset) ||
-            local_offset > cd_offset || header_size > cd_offset - local_offset ||
-            entry.packed > (uint64_t)(cd_offset - local_offset - header_size)) return false;
+        if (!xx_zip_disk_offset(zip, entry.disk, entry.relative, (uint64_t)header_size, &local_offset) || local_offset > cd_offset ||
+            header_size > cd_offset - local_offset || entry.packed > (uint64_t)(cd_offset - local_offset - header_size))
+            return false;
         local_sizes.unpacked = xx_zip_split_u32(local + 22);
         local_sizes.packed = xx_zip_split_u32(local + 18);
         local_sizes.relative = 0;
         local_sizes.disk = 0;
-        if (!xx_zip_read_zip64_extra(zip->format.device, local_offset + 30 + name_size,
-                                     xx_zip_split_u16(local + 28), &local_sizes, true)) return false;
+        if (!xx_zip_read_zip64_extra(zip->format.device, local_offset + 30 + name_size, xx_zip_split_u16(local + 28), &local_sizes, true)) return false;
         if (!(xx_zip_split_u16(local + 6) & 8) &&
-            (local_sizes.packed != entry.packed || local_sizes.unpacked != entry.unpacked ||
-             xx_zip_split_u32(local + 14) != xx_zip_split_u32(central + 16))) return false;
+            (local_sizes.packed != entry.packed || local_sizes.unpacked != entry.unpacked || xx_zip_split_u32(local + 14) != xx_zip_split_u32(central + 16)))
+            return false;
         for (compared = 0; compared < name_size;) {
             size_t amount = (size_t)(name_size - compared);
             if (amount > sizeof(left)) amount = sizeof(left);
             if (!xx_zip_split_read(zip->format.device, cursor + 46 + compared, left, amount) ||
-                !xx_zip_split_read(zip->format.device, local_offset + 30 + compared, right, amount) ||
-                xx_rt_memcmp(left, right, amount) != 0) return false;
+                !xx_zip_split_read(zip->format.device, local_offset + 30 + compared, right, amount) || xx_rt_memcmp(left, right, amount) != 0)
+                return false;
             compared += (int64_t)amount;
         }
         cursor += entry_size;
     }
     if (cursor < cd_end) {
         uint8_t signature[6];
-        if (cd_end - cursor < 6 ||
-            !xx_zip_split_read(zip->format.device, cursor, signature, sizeof(signature)) ||
-            xx_zip_split_u32(signature) != 0x05054B50U ||
-            cd_end - cursor != 6 + (int64_t)xx_zip_split_u16(signature + 4)) return false;
+        if (cd_end - cursor < 6 || !xx_zip_split_read(zip->format.device, cursor, signature, sizeof(signature)) || xx_zip_split_u32(signature) != 0x05054B50U ||
+            cd_end - cursor != 6 + (int64_t)xx_zip_split_u16(signature + 4))
+            return false;
     }
-    return observed_disk == entries_disk &&
-           (entries_last == UINT64_MAX || observed_last == entries_last);
+    return observed_disk == entries_disk && (entries_last == UINT64_MAX || observed_last == entries_last);
 }
 
-bool xx_zip_handle_split_format(Abstractformat *self, xx_pd_struct *pd) {
+bool xx_zip_handle_split_format(Abstractformat *self, xx_pd_struct *pd)
+{
     xx_zip candidate;
     xx_zip *zip;
     uint8_t first[4], eocd[22], locator[20], end64[56];
@@ -419,8 +416,7 @@ bool xx_zip_handle_split_format(Abstractformat *self, xx_pd_struct *pd) {
     size_t supplied;
     int64_t total, eocd_offset, cd_offset, directory_limit, end64_offset = -1, end64_size = 0;
     bool native_split, has_zip64_locator;
-    if (self && self->handle_split_format == xx_zip_handle_split_format &&
-        !self->split_format_handling) return xx_format_handle_split_format(self, pd);
+    if (self && self->handle_split_format == xx_zip_handle_split_format && !self->split_format_handling) return xx_format_handle_split_format(self, pd);
     if (!self || !self->device || xx_pd_is_stopped(pd)) return false;
     zip = (xx_zip *)self;
     supplied = xx_io_multivolume_count(self->device);
@@ -443,22 +439,18 @@ bool xx_zip_handle_split_format(Abstractformat *self, xx_pd_struct *pd) {
     relative = xx_zip_split_u32(eocd + 16);
     entries_disk = entries_last = xx_zip_split_u16(eocd + 8);
     directory_limit = eocd_offset;
-    has_zip64_locator = eocd_offset >= 20 &&
-        xx_zip_split_read(self->device, eocd_offset - 20, locator, sizeof(locator)) &&
-        xx_zip_split_u32(locator) == XX_ZIP_ZIP64_EOCD_LOCATOR_SIGNATURE;
+    has_zip64_locator = eocd_offset >= 20 && xx_zip_split_read(self->device, eocd_offset - 20, locator, sizeof(locator)) &&
+                        xx_zip_split_u32(locator) == XX_ZIP_ZIP64_EOCD_LOCATOR_SIGNATURE;
     native_split = marker || last_disk || cd_disk;
     if (has_zip64_locator) {
         uint32_t locator_disk = xx_zip_split_u32(locator + 4);
         uint32_t locator_disks = xx_zip_split_u32(locator + 16);
         if (locator_disks > 1 || locator_disk) native_split = true;
-        else if (!marker && locator_disks == 1 &&
-                 (last_disk == 0 || last_disk == UINT16_MAX) &&
-                 (cd_disk == 0 || cd_disk == UINT16_MAX)) {
+        else if (!marker && locator_disks == 1 && (last_disk == 0 || last_disk == UINT16_MAX) && (cd_disk == 0 || cd_disk == UINT16_MAX)) {
             uint64_t plain_end64_offset = xx_zip_split_u64(locator + 8);
-            if (plain_end64_offset <= INT64_MAX &&
-                xx_zip_split_read(self->device, (int64_t)plain_end64_offset, end64, sizeof(end64)) &&
-                xx_zip_split_u32(end64) == XX_ZIP_ZIP64_EOCD_SIGNATURE &&
-                !xx_zip_split_u32(end64 + 16) && !xx_zip_split_u32(end64 + 20)) native_split = false;
+            if (plain_end64_offset <= INT64_MAX && xx_zip_split_read(self->device, (int64_t)plain_end64_offset, end64, sizeof(end64)) &&
+                xx_zip_split_u32(end64) == XX_ZIP_ZIP64_EOCD_SIGNATURE && !xx_zip_split_u32(end64 + 16) && !xx_zip_split_u32(end64 + 20))
+                native_split = false;
         }
     }
     if (!native_split) return true; /* ordinary ZIP or raw byte-split .zip.001 */
@@ -474,27 +466,21 @@ bool xx_zip_handle_split_format(Abstractformat *self, xx_pd_struct *pd) {
         uint32_t disks = xx_zip_split_u32(locator + 16);
         uint64_t record_size;
         end64_disk = xx_zip_split_u32(locator + 4);
-        if (!disks || disks == UINT32_MAX || (uint64_t)(supplied ? supplied : 1) != disks ||
-            end64_disk >= disks || (last_disk != UINT16_MAX && last_disk != disks - 1)) {
+        if (!disks || disks == UINT32_MAX || (uint64_t)(supplied ? supplied : 1) != disks || end64_disk >= disks || (last_disk != UINT16_MAX && last_disk != disks - 1)) {
             xx_pd_set_error(pd, XXFC_ERR_INVALID_ARG, "Inconsistent ZIP64 locator disk numbers");
             return false;
         }
         last_disk = disks - 1;
         candidate.split_disk_count = disks;
-        if (!xx_zip_disk_offset(&candidate, end64_disk, xx_zip_split_u64(locator + 8),
-                                sizeof(end64), &end64_offset) ||
-            !xx_zip_split_read(self->device, end64_offset, end64, sizeof(end64)) ||
-            xx_zip_split_u32(end64) != XX_ZIP_ZIP64_EOCD_SIGNATURE ||
+        if (!xx_zip_disk_offset(&candidate, end64_disk, xx_zip_split_u64(locator + 8), sizeof(end64), &end64_offset) ||
+            !xx_zip_split_read(self->device, end64_offset, end64, sizeof(end64)) || xx_zip_split_u32(end64) != XX_ZIP_ZIP64_EOCD_SIGNATURE ||
             xx_zip_split_u32(end64 + 16) != end64_disk) {
             xx_pd_set_error(pd, XXFC_ERR_INVALID_ARG, "Invalid disk-relative ZIP64 end record");
             return false;
         }
         record_size = xx_zip_split_u64(end64 + 4);
-        if (record_size < 44 || record_size > INT64_MAX - 12 ||
-            end64_offset > eocd_offset - 20 ||
-            record_size + 12 != (uint64_t)(eocd_offset - 20 - end64_offset) ||
-            !xx_zip_split_header_fits(&candidate, end64_offset, (int64_t)record_size + 12) ||
-            !xx_zip_split_header_fits(&candidate, eocd_offset - 20, 20)) {
+        if (record_size < 44 || record_size > INT64_MAX - 12 || end64_offset > eocd_offset - 20 || record_size + 12 != (uint64_t)(eocd_offset - 20 - end64_offset) ||
+            !xx_zip_split_header_fits(&candidate, end64_offset, (int64_t)record_size + 12) || !xx_zip_split_header_fits(&candidate, eocd_offset - 20, 20)) {
             xx_pd_set_error(pd, XXFC_ERR_INVALID_ARG, "Invalid ZIP64 end record extent");
             return false;
         }
@@ -502,10 +488,8 @@ bool xx_zip_handle_split_format(Abstractformat *self, xx_pd_struct *pd) {
         directory_limit = end64_offset;
         /* Nonsentinel EOCD fields describe the same directory. The count on
          * the last disk is checked separately if the ZIP64 record is earlier. */
-        if ((cd_disk != UINT16_MAX && cd_disk != xx_zip_split_u32(end64 + 20)) ||
-            (count != UINT16_MAX && count != xx_zip_split_u64(end64 + 32)) ||
-            (size != UINT32_MAX && size != xx_zip_split_u64(end64 + 40)) ||
-            (relative != UINT32_MAX && relative != xx_zip_split_u64(end64 + 48))) {
+        if ((cd_disk != UINT16_MAX && cd_disk != xx_zip_split_u32(end64 + 20)) || (count != UINT16_MAX && count != xx_zip_split_u64(end64 + 32)) ||
+            (size != UINT32_MAX && size != xx_zip_split_u64(end64 + 40)) || (relative != UINT32_MAX && relative != xx_zip_split_u64(end64 + 48))) {
             xx_pd_set_error(pd, XXFC_ERR_INVALID_ARG, "Conflicting ZIP and ZIP64 directory metadata");
             return false;
         }
@@ -516,18 +500,15 @@ bool xx_zip_handle_split_format(Abstractformat *self, xx_pd_struct *pd) {
         entries_disk = xx_zip_split_u64(end64 + 24);
         if (entries_last == UINT16_MAX) entries_last = UINT64_MAX;
     } else {
-        if (last_disk == UINT16_MAX || cd_disk == UINT16_MAX || count == UINT16_MAX ||
-            entries_disk == UINT16_MAX || size == UINT32_MAX || relative == UINT32_MAX) {
+        if (last_disk == UINT16_MAX || cd_disk == UINT16_MAX || count == UINT16_MAX || entries_disk == UINT16_MAX || size == UINT32_MAX || relative == UINT32_MAX) {
             xx_pd_set_error(pd, XXFC_ERR_INVALID_ARG, "ZIP64 sentinel has no ZIP64 end locator");
             return false;
         }
         candidate.split_disk_count = last_disk + 1;
         end64_disk = last_disk;
     }
-    if ((uint64_t)(supplied ? supplied : 1) != (uint64_t)last_disk + 1 || cd_disk > end64_disk ||
-        count > INT64_MAX || size > INT64_MAX || relative > INT64_MAX || entries_disk > count ||
-        (entries_last != UINT64_MAX && entries_last > count) ||
-        eocd_offset + 22 + xx_zip_split_u16(eocd + 20) != total) {
+    if ((uint64_t)(supplied ? supplied : 1) != (uint64_t)last_disk + 1 || cd_disk > end64_disk || count > INT64_MAX || size > INT64_MAX || relative > INT64_MAX ||
+        entries_disk > count || (entries_last != UINT64_MAX && entries_last > count) || eocd_offset + 22 + xx_zip_split_u16(eocd + 20) != total) {
         xx_pd_set_error(pd, XXFC_ERR_INVALID_ARG, "Missing, extra, or inconsistent ZIP volumes");
         return false;
     }
@@ -537,24 +518,18 @@ bool xx_zip_handle_split_format(Abstractformat *self, xx_pd_struct *pd) {
             xx_io_volume volume;
             int64_t start;
             if (!xx_io_multivolume_get_volume(self->device, i, &volume, &start) || volume.size <= 0 ||
-                (i == last_disk && (eocd_offset < start || total - eocd_offset > volume.size ||
-                                   (has_zip64_locator && eocd_offset - 20 < start)))) {
+                (i == last_disk && (eocd_offset < start || total - eocd_offset > volume.size || (has_zip64_locator && eocd_offset - 20 < start)))) {
                 xx_pd_set_error(pd, XXFC_ERR_INVALID_ARG, "Empty or incorrectly ordered ZIP volume");
                 return false;
             }
         }
     }
     if (!xx_zip_split_read(self->device, marker, first, sizeof(first)) ||
-        (xx_zip_split_u32(first) != XX_ZIP_LOCAL_FILE_HEADER_SIGNATURE &&
-         xx_zip_split_u32(first) != XX_ZIP_EOCD_SIGNATURE &&
+        (xx_zip_split_u32(first) != XX_ZIP_LOCAL_FILE_HEADER_SIGNATURE && xx_zip_split_u32(first) != XX_ZIP_EOCD_SIGNATURE &&
          !(count == 0 && xx_zip_split_u32(first) == XX_ZIP_ZIP64_EOCD_SIGNATURE)) ||
-        !xx_zip_disk_offset(&candidate, cd_disk, relative, count ? 46 : 0, &cd_offset) ||
-        cd_offset > directory_limit || size > (uint64_t)(directory_limit - cd_offset) ||
-        count > size / 46 ||
-        !xx_zip_split_validate_cd(&candidate, count, cd_offset, (int64_t)size,
-                                  end64_disk, entries_disk, entries_last, pd)) {
-        if (!pd || !pd->last_error)
-            xx_pd_set_error(pd, XXFC_ERR_INVALID_ARG, "Invalid split ZIP directory or local-header mapping");
+        !xx_zip_disk_offset(&candidate, cd_disk, relative, count ? 46 : 0, &cd_offset) || cd_offset > directory_limit || size > (uint64_t)(directory_limit - cd_offset) ||
+        count > size / 46 || !xx_zip_split_validate_cd(&candidate, count, cd_offset, (int64_t)size, end64_disk, entries_disk, entries_last, pd)) {
+        if (!pd || !pd->last_error) xx_pd_set_error(pd, XXFC_ERR_INVALID_ARG, "Invalid split ZIP directory or local-header mapping");
         return false;
     }
     if (xx_pd_is_stopped(pd)) return false;
@@ -571,7 +546,8 @@ bool xx_zip_handle_split_format(Abstractformat *self, xx_pd_struct *pd) {
     return true;
 }
 
-bool xx_zip_check_is_valid(Abstractformat *self, xx_pd_struct *pd) {
+bool xx_zip_check_is_valid(Abstractformat *self, xx_pd_struct *pd)
+{
     if (!self || !self->device || !xx_format_handle_split_format(self, pd)) {
         return false;
     }
@@ -583,10 +559,8 @@ bool xx_zip_check_is_valid(Abstractformat *self, xx_pd_struct *pd) {
 
     /* Check magic at base_address: must be local file header or EOCD */
     uint32_t magic = xx_io_get_u32(self->device, self->base_address + ((xx_zip *)self)->split_marker_size, false);
-    if (magic != XX_ZIP_LOCAL_FILE_HEADER_SIGNATURE &&
-        magic != XX_ZIP_EOCD_SIGNATURE &&
-        !(magic == XX_ZIP_ZIP64_EOCD_SIGNATURE && ((xx_zip *)self)->is_split &&
-          ((xx_zip *)self)->number_of_records == 0)) {
+    if (magic != XX_ZIP_LOCAL_FILE_HEADER_SIGNATURE && magic != XX_ZIP_EOCD_SIGNATURE &&
+        !(magic == XX_ZIP_ZIP64_EOCD_SIGNATURE && ((xx_zip *)self)->is_split && ((xx_zip *)self)->number_of_records == 0)) {
         return false;
     }
 
@@ -595,10 +569,10 @@ bool xx_zip_check_is_valid(Abstractformat *self, xx_pd_struct *pd) {
     }
 
     return xx_zip_find_tail_record(self->device, false, 0) >= 0;
-
 }
 
-bool xx_zip_handle_base_info(Abstractformat *self, xx_pd_struct *pd) {
+bool xx_zip_handle_base_info(Abstractformat *self, xx_pd_struct *pd)
+{
     if (!self || !self->device || !xx_format_handle_split_format(self, pd)) {
         return false;
     }
@@ -612,8 +586,7 @@ bool xx_zip_handle_base_info(Abstractformat *self, xx_pd_struct *pd) {
 
     /* Check magic at base_address: must be local file header or EOCD */
     uint32_t magic = xx_io_get_u32(self->device, self->base_address + zip->split_marker_size, false);
-    if (magic != XX_ZIP_LOCAL_FILE_HEADER_SIGNATURE &&
-        magic != XX_ZIP_EOCD_SIGNATURE &&
+    if (magic != XX_ZIP_LOCAL_FILE_HEADER_SIGNATURE && magic != XX_ZIP_EOCD_SIGNATURE &&
         !(magic == XX_ZIP_ZIP64_EOCD_SIGNATURE && zip->is_split && zip->number_of_records == 0)) {
         self->is_valid = false;
         return false;
@@ -647,8 +620,7 @@ bool xx_zip_handle_base_info(Abstractformat *self, xx_pd_struct *pd) {
             zip->cd_offset = -1;
         } else {
             zip->cd_size = cd_size;
-            if (self->base_address < 0 ||
-                (uint64_t)cd_offset > (uint64_t)(INT64_MAX - self->base_address) ||
+            if (self->base_address < 0 || (uint64_t)cd_offset > (uint64_t)(INT64_MAX - self->base_address) ||
                 (uint64_t)cd_offset > (uint64_t)(eocd_found_pos - self->base_address) ||
                 (uint64_t)cd_size > (uint64_t)(eocd_found_pos - self->base_address) - cd_offset) {
                 self->is_valid = false;
@@ -660,15 +632,17 @@ bool xx_zip_handle_base_info(Abstractformat *self, xx_pd_struct *pd) {
 
     /* Read archive comment */
     if (comment_len > 0) {
-        size_t to_copy = (comment_len < (uint16_t)(sizeof(zip->comment) - 1)) ?
-                          comment_len : (sizeof(zip->comment) - 1);
+        size_t to_copy = (comment_len < (uint16_t)(sizeof(zip->comment) - 1)) ? comment_len : (sizeof(zip->comment) - 1);
         size_t copied = 0, capacity = xx_get_file_buffer_size();
         if (xx_io_seek64(self->device, eocd_found_pos + 22, SEEK_SET) == 0) {
             while (copied < to_copy) {
                 size_t request = to_copy - copied < capacity ? to_copy - copied : capacity;
                 ssize_t count = xx_io_read(self->device, zip->comment + copied, request);
                 if (count <= 0) break;
-                if ((size_t)count > request) { copied = 0; break; }
+                if ((size_t)count > request) {
+                    copied = 0;
+                    break;
+                }
                 copied += (size_t)count;
             }
             zip->comment[copied] = '\0';
@@ -696,10 +670,8 @@ bool xx_zip_handle_base_info(Abstractformat *self, xx_pd_struct *pd) {
         if (loc_sig == XX_ZIP_ZIP64_EOCD_LOCATOR_SIGNATURE) {
             zip->is_zip64 = true;
             uint64_t zip64_eocd_relative = xx_io_get_u64(self->device, locator_offset + 8, false);
-            if (self->base_address < 0 || locator_offset < self->base_address ||
-                zip64_eocd_relative > INT64_MAX ||
-                zip64_eocd_relative > (uint64_t)(INT64_MAX - self->base_address) ||
-                zip64_eocd_relative > (uint64_t)(locator_offset - self->base_address) ||
+            if (self->base_address < 0 || locator_offset < self->base_address || zip64_eocd_relative > INT64_MAX ||
+                zip64_eocd_relative > (uint64_t)(INT64_MAX - self->base_address) || zip64_eocd_relative > (uint64_t)(locator_offset - self->base_address) ||
                 (uint64_t)(locator_offset - self->base_address) - zip64_eocd_relative < 56) {
                 self->is_valid = false;
                 return false;
@@ -710,16 +682,11 @@ bool xx_zip_handle_base_info(Abstractformat *self, xx_pd_struct *pd) {
             uint64_t directory_offset = xx_io_get_u64(self->device, zip64_eocd_offset + 48, false);
             uint64_t record_size = xx_io_get_u64(self->device, zip64_eocd_offset + 4, false);
             uint64_t zip64_records = xx_io_get_u64(self->device, zip64_eocd_offset + 32, false);
-            if (eocd64_sig != XX_ZIP_ZIP64_EOCD_SIGNATURE ||
-                directory_size > INT64_MAX || directory_offset > INT64_MAX ||
-                directory_offset > (uint64_t)(INT64_MAX - self->base_address) ||
-                zip64_records > INT64_MAX || record_size < 44 || record_size > INT64_MAX - 12 ||
-                record_size + 12 > (uint64_t)locator_offset - zip64_eocd_offset ||
-                directory_offset > zip64_eocd_relative ||
-                directory_size > zip64_eocd_relative - directory_offset ||
-                (total_records != UINT16_MAX && total_records != zip64_records) ||
-                (cd_size != UINT32_MAX && cd_size != directory_size) ||
-                (cd_offset != UINT32_MAX && cd_offset != directory_offset)) {
+            if (eocd64_sig != XX_ZIP_ZIP64_EOCD_SIGNATURE || directory_size > INT64_MAX || directory_offset > INT64_MAX ||
+                directory_offset > (uint64_t)(INT64_MAX - self->base_address) || zip64_records > INT64_MAX || record_size < 44 || record_size > INT64_MAX - 12 ||
+                record_size + 12 > (uint64_t)locator_offset - zip64_eocd_offset || directory_offset > zip64_eocd_relative ||
+                directory_size > zip64_eocd_relative - directory_offset || (total_records != UINT16_MAX && total_records != zip64_records) ||
+                (cd_size != UINT32_MAX && cd_size != directory_size) || (cd_offset != UINT32_MAX && cd_offset != directory_offset)) {
                 self->is_valid = false;
                 return false;
             }
@@ -736,11 +703,8 @@ bool xx_zip_handle_base_info(Abstractformat *self, xx_pd_struct *pd) {
     }
 
     if (!zip->is_split &&
-        ((zip->is_zip64 && zip->zip64_eocd_offset < 0) ||
-         zip->number_of_records > INT64_MAX || zip->cd_offset < self->base_address ||
-         zip->cd_size < 0 || zip->cd_offset > eocd_found_pos ||
-         zip->cd_size > eocd_found_pos - zip->cd_offset ||
-         zip->number_of_records > (uint64_t)zip->cd_size / 46U)) {
+        ((zip->is_zip64 && zip->zip64_eocd_offset < 0) || zip->number_of_records > INT64_MAX || zip->cd_offset < self->base_address || zip->cd_size < 0 ||
+         zip->cd_offset > eocd_found_pos || zip->cd_size > eocd_found_pos - zip->cd_offset || zip->number_of_records > (uint64_t)zip->cd_size / 46U)) {
         self->is_valid = false;
         return false;
     }
@@ -756,7 +720,8 @@ bool xx_zip_handle_base_info(Abstractformat *self, xx_pd_struct *pd) {
     return true;
 }
 
-int64_t xx_zip_get_format_size(Abstractformat *self, xx_pd_struct *pd) {
+int64_t xx_zip_get_format_size(Abstractformat *self, xx_pd_struct *pd)
+{
     if (!self || !xx_format_handle_split_format(self, pd)) {
         return -1;
     }
@@ -766,7 +731,8 @@ int64_t xx_zip_get_format_size(Abstractformat *self, xx_pd_struct *pd) {
     return self->format_size;
 }
 
-uint64_t xx_zip_get_number_of_archive_records(Abstractformat *self, xx_pd_struct *pd) {
+uint64_t xx_zip_get_number_of_archive_records(Abstractformat *self, xx_pd_struct *pd)
+{
     if (!self || !xx_format_handle_split_format(self, pd)) {
         return 0;
     }
@@ -777,8 +743,8 @@ uint64_t xx_zip_get_number_of_archive_records(Abstractformat *self, xx_pd_struct
     return zip->number_of_records;
 }
 
-static bool xx_zip_parse_cd_entry(xx_zip *zip, xx_io_device *device, int64_t dev_size, int64_t curr_offset,
-                                 xx_archive_record *rec, int64_t *entry_size_out) {
+static bool xx_zip_parse_cd_entry(xx_zip *zip, xx_io_device *device, int64_t dev_size, int64_t curr_offset, xx_archive_record *rec, int64_t *entry_size_out)
+{
     uint8_t fixed[46];
     if (!device || !rec) {
         return false;
@@ -790,18 +756,15 @@ static bool xx_zip_parse_cd_entry(xx_zip *zip, xx_io_device *device, int64_t dev
     if (!xx_zip_read_exact_at(device, curr_offset, fixed, sizeof(fixed))) {
         return false;
     }
-    uint32_t sig = (uint32_t)fixed[0] | ((uint32_t)fixed[1] << 8) |
-                   ((uint32_t)fixed[2] << 16) | ((uint32_t)fixed[3] << 24);
+    uint32_t sig = (uint32_t)fixed[0] | ((uint32_t)fixed[1] << 8) | ((uint32_t)fixed[2] << 16) | ((uint32_t)fixed[3] << 24);
     if (sig != XX_ZIP_CENTRAL_DIRECTORY_HEADER_SIGNATURE) {
         return false;
     }
 
-#define XX_ZIP_FIXED_U16(position) ((uint16_t)((uint16_t)fixed[(position)] | \
-    ((uint16_t)fixed[(position) + 1U] << 8)))
-#define XX_ZIP_FIXED_U32(position) ((uint32_t)((uint32_t)fixed[(position)] | \
-    ((uint32_t)fixed[(position) + 1U] << 8) | \
-    ((uint32_t)fixed[(position) + 2U] << 16) | \
-    ((uint32_t)fixed[(position) + 3U] << 24)))
+#define XX_ZIP_FIXED_U16(position) ((uint16_t)((uint16_t)fixed[(position)] | ((uint16_t)fixed[(position) + 1U] << 8)))
+#define XX_ZIP_FIXED_U32(position)                                                                                                 \
+    ((uint32_t)((uint32_t)fixed[(position)] | ((uint32_t)fixed[(position) + 1U] << 8) | ((uint32_t)fixed[(position) + 2U] << 16) | \
+                ((uint32_t)fixed[(position) + 3U] << 24)))
     uint16_t version_made_by = XX_ZIP_FIXED_U16(4);
     uint16_t version_needed = XX_ZIP_FIXED_U16(6);
     uint16_t flags = XX_ZIP_FIXED_U16(8);
@@ -831,8 +794,8 @@ static bool xx_zip_parse_cd_entry(xx_zip *zip, xx_io_device *device, int64_t dev
     values.packed = comp_size_32;
     values.relative = rel_offset_32;
     values.disk = disk_start;
-    if (!xx_zip_read_zip64_extra(device, curr_offset + 46 + fn_len, extra_len, &values, false) ||
-        values.unpacked > INT64_MAX || values.packed > INT64_MAX || values.relative > INT64_MAX)
+    if (!xx_zip_read_zip64_extra(device, curr_offset + 46 + fn_len, extra_len, &values, false) || values.unpacked > INT64_MAX || values.packed > INT64_MAX ||
+        values.relative > INT64_MAX)
         return false;
     uint64_t uncomp_size = values.unpacked;
     uint64_t comp_size = values.packed;
@@ -841,11 +804,9 @@ static bool xx_zip_parse_cd_entry(xx_zip *zip, xx_io_device *device, int64_t dev
 
     int64_t local_offset = rel_offset;
     if (zip->is_split) {
-        if (!xx_zip_disk_offset(zip, disk_number_start,
-                                (uint64_t)rel_offset, 30, &local_offset)) return false;
+        if (!xx_zip_disk_offset(zip, disk_number_start, (uint64_t)rel_offset, 30, &local_offset)) return false;
     } else {
-        if (zip->format.base_address < 0 ||
-            rel_offset > INT64_MAX - zip->format.base_address) return false;
+        if (zip->format.base_address < 0 || rel_offset > INT64_MAX - zip->format.base_address) return false;
         local_offset += zip->format.base_address;
     }
     xx_archive_record_init(rec);
@@ -857,21 +818,13 @@ static bool xx_zip_parse_cd_entry(xx_zip *zip, xx_io_device *device, int64_t dev
     if (local_offset >= 0 && local_offset <= dev_size - 30) {
         uint8_t local_fixed[30];
         uint32_t loc_sig;
-        if (!xx_zip_read_exact_at(device, local_offset, local_fixed,
-                                  sizeof(local_fixed))) goto parse_failed;
-        loc_sig = (uint32_t)local_fixed[0] |
-                  ((uint32_t)local_fixed[1] << 8) |
-                  ((uint32_t)local_fixed[2] << 16) |
-                  ((uint32_t)local_fixed[3] << 24);
+        if (!xx_zip_read_exact_at(device, local_offset, local_fixed, sizeof(local_fixed))) goto parse_failed;
+        loc_sig = (uint32_t)local_fixed[0] | ((uint32_t)local_fixed[1] << 8) | ((uint32_t)local_fixed[2] << 16) | ((uint32_t)local_fixed[3] << 24);
         if (loc_sig == XX_ZIP_LOCAL_FILE_HEADER_SIGNATURE) {
-            uint16_t loc_fn_len = (uint16_t)((uint16_t)local_fixed[26] |
-                                             ((uint16_t)local_fixed[27] << 8));
-            uint16_t loc_extra_len = (uint16_t)((uint16_t)local_fixed[28] |
-                                                ((uint16_t)local_fixed[29] << 8));
+            uint16_t loc_fn_len = (uint16_t)((uint16_t)local_fixed[26] | ((uint16_t)local_fixed[27] << 8));
+            uint16_t loc_extra_len = (uint16_t)((uint16_t)local_fixed[28] | ((uint16_t)local_fixed[29] << 8));
             int64_t loc_hdr_size = 30 + (int64_t)loc_fn_len + (int64_t)loc_extra_len;
-            if (loc_hdr_size > dev_size - local_offset ||
-                comp_size > (uint64_t)(dev_size - local_offset - loc_hdr_size))
-                goto parse_failed;
+            if (loc_hdr_size > dev_size - local_offset || comp_size > (uint64_t)(dev_size - local_offset - loc_hdr_size)) goto parse_failed;
             rec->header_size = loc_hdr_size;
             rec->data_offset = local_offset + loc_hdr_size;
         }
@@ -883,8 +836,7 @@ static bool xx_zip_parse_cd_entry(xx_zip *zip, xx_io_device *device, int64_t dev
         wchar_t *wfn = NULL;
         bool name_set;
         bool is_dir;
-        if (!fn_buf ||
-            !xx_zip_read_exact_at(device, curr_offset + 46, fn_buf, fn_len)) {
+        if (!fn_buf || !xx_zip_read_exact_at(device, curr_offset + 46, fn_buf, fn_len)) {
             xx_mem_free(fn_buf);
             goto parse_failed;
         }
@@ -900,52 +852,27 @@ static bool xx_zip_parse_cd_entry(xx_zip *zip, xx_io_device *device, int64_t dev
             wfn = xx_str_ansi_to_unicode(fn_buf);
         }
 
-        name_set = wfn ? xx_archive_record_set_original_name_w(rec, wfn)
-                       : xx_archive_record_set_original_name(rec, fn_buf);
+        name_set = wfn ? xx_archive_record_set_original_name_w(rec, wfn) : xx_archive_record_set_original_name(rec, fn_buf);
         xx_str_wfree(wfn);
-        is_dir = fn_buf[fn_len - 1] == '/' ||
-                 fn_buf[fn_len - 1] == '\\' ||
-                 (external_attrs & 0x10) != 0;
+        is_dir = fn_buf[fn_len - 1] == '/' || fn_buf[fn_len - 1] == '\\' || (external_attrs & 0x10) != 0;
         xx_mem_free(fn_buf);
-        if (!name_set || !xx_archive_record_set_meta_bool(
-                             rec, XX_META_ID_IS_FOLDER, is_dir))
-            goto parse_failed;
+        if (!name_set || !xx_archive_record_set_meta_bool(rec, XX_META_ID_IS_FOLDER, is_dir)) goto parse_failed;
     } else {
         bool is_dir = ((external_attrs & 0x10) != 0);
-        if (!xx_archive_record_set_meta_bool(rec, XX_META_ID_IS_FOLDER,
-                                             is_dir))
-            goto parse_failed;
+        if (!xx_archive_record_set_meta_bool(rec, XX_META_ID_IS_FOLDER, is_dir)) goto parse_failed;
     }
 
     /* Populate all ZIP metadata */
-    if (!xx_archive_record_set_meta_u64(rec, XX_META_ID_UNCOMPRESSED_SIZE,
-                                        uncomp_size) ||
-        !xx_archive_record_set_meta_u64(rec, XX_META_ID_COMPRESSED_SIZE,
-                                        comp_size) ||
-        !xx_archive_record_set_meta_u64(rec, XX_META_ID_CRC32, crc32) ||
-        !xx_archive_record_set_meta_u64(rec, XX_META_ID_COMPRESSION_METHOD,
-                                        method) ||
-        !xx_archive_record_set_meta_u64(rec, XX_META_ID_ATTRIBUTES,
-                                        external_attrs) ||
-        !xx_archive_record_set_meta_u64(rec, XX_META_ID_EXTERNAL_ATTRS,
-                                        external_attrs) ||
-        !xx_archive_record_set_meta_u64(rec, XX_META_ID_INTERNAL_ATTRS,
-                                        internal_attrs) ||
-        !xx_archive_record_set_meta_u64(rec, XX_META_ID_FLAGS, flags) ||
-        !xx_archive_record_set_meta_u64(rec, XX_META_ID_VERSION_NEEDED,
-                                        version_needed) ||
-        !xx_archive_record_set_meta_u64(rec, XX_META_ID_VERSION_MADE_BY,
-                                        version_made_by) ||
-        !xx_archive_record_set_meta_u64(rec, XX_META_ID_DISK_NUMBER_START,
-                                        disk_number_start) ||
-        !xx_archive_record_set_meta_i64(
-            rec, XX_META_ID_RELATIVE_OFFSET_LOCAL_HEADER, rel_offset) ||
-        !xx_archive_record_set_meta_u64(rec, XX_META_ID_LAST_MOD_TIME,
-                                        last_mod_time) ||
-        !xx_archive_record_set_meta_u64(rec, XX_META_ID_LAST_MOD_DATE,
-                                        last_mod_date) ||
-        !xx_archive_record_set_meta_bool(rec, XX_META_ID_IS_ENCRYPTED,
-                                         (flags & 1) != 0))
+    if (!xx_archive_record_set_meta_u64(rec, XX_META_ID_UNCOMPRESSED_SIZE, uncomp_size) || !xx_archive_record_set_meta_u64(rec, XX_META_ID_COMPRESSED_SIZE, comp_size) ||
+        !xx_archive_record_set_meta_u64(rec, XX_META_ID_CRC32, crc32) || !xx_archive_record_set_meta_u64(rec, XX_META_ID_COMPRESSION_METHOD, method) ||
+        !xx_archive_record_set_meta_u64(rec, XX_META_ID_ATTRIBUTES, external_attrs) || !xx_archive_record_set_meta_u64(rec, XX_META_ID_EXTERNAL_ATTRS, external_attrs) ||
+        !xx_archive_record_set_meta_u64(rec, XX_META_ID_INTERNAL_ATTRS, internal_attrs) || !xx_archive_record_set_meta_u64(rec, XX_META_ID_FLAGS, flags) ||
+        !xx_archive_record_set_meta_u64(rec, XX_META_ID_VERSION_NEEDED, version_needed) ||
+        !xx_archive_record_set_meta_u64(rec, XX_META_ID_VERSION_MADE_BY, version_made_by) ||
+        !xx_archive_record_set_meta_u64(rec, XX_META_ID_DISK_NUMBER_START, disk_number_start) ||
+        !xx_archive_record_set_meta_i64(rec, XX_META_ID_RELATIVE_OFFSET_LOCAL_HEADER, rel_offset) ||
+        !xx_archive_record_set_meta_u64(rec, XX_META_ID_LAST_MOD_TIME, last_mod_time) || !xx_archive_record_set_meta_u64(rec, XX_META_ID_LAST_MOD_DATE, last_mod_date) ||
+        !xx_archive_record_set_meta_bool(rec, XX_META_ID_IS_ENCRYPTED, (flags & 1) != 0))
         goto parse_failed;
 
     /* Read extra field */
@@ -953,15 +880,12 @@ static bool xx_zip_parse_cd_entry(xx_zip *zip, xx_io_device *device, int64_t dev
         uint8_t *ebuf = (uint8_t *)xx_mem_alloc(extra_len);
         xx_var evar;
         bool extra_ok;
-        if (!ebuf || !xx_zip_read_exact_at(
-                         device, curr_offset + 46 + fn_len, ebuf, extra_len)) {
+        if (!ebuf || !xx_zip_read_exact_at(device, curr_offset + 46 + fn_len, ebuf, extra_len)) {
             xx_mem_free(ebuf);
             goto parse_failed;
         }
         xx_var_init(&evar);
-        extra_ok = xx_var_set_bytes(&evar, ebuf, extra_len) &&
-                   xx_archive_record_set_meta(rec, XX_META_ID_EXTRA_FIELD,
-                                              &evar);
+        extra_ok = xx_var_set_bytes(&evar, ebuf, extra_len) && xx_archive_record_set_meta(rec, XX_META_ID_EXTRA_FIELD, &evar);
         xx_var_cleanup(&evar);
         xx_mem_free(ebuf);
         if (!extra_ok) goto parse_failed;
@@ -971,9 +895,7 @@ static bool xx_zip_parse_cd_entry(xx_zip *zip, xx_io_device *device, int64_t dev
     if (comment_len > 0) {
         char *cbuf = (char *)xx_mem_alloc(comment_len + 1);
         bool comment_ok;
-        if (!cbuf || !xx_zip_read_exact_at(
-                         device, curr_offset + 46 + fn_len + extra_len,
-                         cbuf, comment_len)) {
+        if (!cbuf || !xx_zip_read_exact_at(device, curr_offset + 46 + fn_len + extra_len, cbuf, comment_len)) {
             xx_mem_free(cbuf);
             goto parse_failed;
         }
@@ -982,8 +904,7 @@ static bool xx_zip_parse_cd_entry(xx_zip *zip, xx_io_device *device, int64_t dev
             xx_mem_free(cbuf);
             goto parse_failed;
         }
-        comment_ok = xx_archive_record_set_meta_str(
-            rec, XX_META_ID_COMMENT, cbuf);
+        comment_ok = xx_archive_record_set_meta_str(rec, XX_META_ID_COMMENT, cbuf);
         xx_mem_free(cbuf);
         if (!comment_ok) goto parse_failed;
     }
@@ -997,10 +918,8 @@ parse_failed:
     return false;
 }
 
-
-
-
-static const xx_var *xx_zip_find_option(const xx_list_s *options, uint32_t meta_id) {
+static const xx_var *xx_zip_find_option(const xx_list_s *options, uint32_t meta_id)
+{
     if (!options || options->count == 0) {
         return NULL;
     }
@@ -1013,9 +932,8 @@ static const xx_var *xx_zip_find_option(const xx_list_s *options, uint32_t meta_
     return NULL;
 }
 
-static bool xx_zip_get_u64_limit(const Abstractformat *format,
-                                 const xx_list_s *options, uint32_t meta_id,
-                                 bool *present, uint64_t *limit) {
+static bool xx_zip_get_u64_limit(const Abstractformat *format, const xx_list_s *options, uint32_t meta_id, bool *present, uint64_t *limit)
+{
     const xx_var *value;
     int64_t signed_value;
     if (!present || !limit) {
@@ -1032,9 +950,7 @@ static bool xx_zip_get_u64_limit(const Abstractformat *format,
         case XX_VAR_TYPE_UINT8:
         case XX_VAR_TYPE_UINT16:
         case XX_VAR_TYPE_UINT32:
-        case XX_VAR_TYPE_UINT64:
-            *limit = xx_var_get_u64(value);
-            return true;
+        case XX_VAR_TYPE_UINT64: *limit = xx_var_get_u64(value); return true;
         case XX_VAR_TYPE_INT8:
         case XX_VAR_TYPE_INT16:
         case XX_VAR_TYPE_INT32:
@@ -1045,12 +961,12 @@ static bool xx_zip_get_u64_limit(const Abstractformat *format,
             }
             *limit = (uint64_t)signed_value;
             return true;
-        default:
-            return false;
+        default: return false;
     }
 }
 
-static bool xx_zip_add_memory(uint64_t *total, uint64_t amount) {
+static bool xx_zip_add_memory(uint64_t *total, uint64_t amount)
+{
     if (!total || *total > UINT64_MAX - amount) {
         return false;
     }
@@ -1058,41 +974,32 @@ static bool xx_zip_add_memory(uint64_t *total, uint64_t amount) {
     return true;
 }
 
-static bool xx_zip_method_uses_member_buffers(uint16_t method) {
-    return method == 10U || method == 16U || method == 94U ||
-           method == 96U || method == 97U;
+static bool xx_zip_method_uses_member_buffers(uint16_t method)
+{
+    return method == 10U || method == 16U || method == 94U || method == 96U || method == 97U;
 }
 
 /* Concrete members share their whole-member allocation budget with method-92
  * reference lookup. Encrypted dispatch budgets its own buffers separately. */
-static bool xx_zip_check_unencrypted_allocation_budget(
-    const Abstractformat *format, const xx_list_s *options,
-    const xx_archive_record *record, xx_pd_struct *pd) {
+static bool xx_zip_check_unencrypted_allocation_budget(const Abstractformat *format, const xx_list_s *options, const xx_archive_record *record, xx_pd_struct *pd)
+{
     bool present;
     uint64_t limit, required = 0U, unpacked;
     uint16_t method;
     if (!format || !record) return false;
-    if (!xx_zip_get_u64_limit(format, options, XX_META_ID_OPT_MEMORY_LIMIT,
-                              &present, &limit)) {
-        xx_pd_set_error(pd, XXFC_ERR_INVALID_ARG,
-                        "ZIP extraction limits must be nonnegative integers");
+    if (!xx_zip_get_u64_limit(format, options, XX_META_ID_OPT_MEMORY_LIMIT, &present, &limit)) {
+        xx_pd_set_error(pd, XXFC_ERR_INVALID_ARG, "ZIP extraction limits must be nonnegative integers");
         return false;
     }
-    if (!present || xx_archive_record_get_meta_bool(
-                        record, XX_META_ID_IS_ENCRYPTED, false)) return true;
-    method = (uint16_t)xx_archive_record_get_meta_u64(
-        record, XX_META_ID_COMPRESSION_METHOD, 0);
+    if (!present || xx_archive_record_get_meta_bool(record, XX_META_ID_IS_ENCRYPTED, false)) return true;
+    method = (uint16_t)xx_archive_record_get_meta_u64(record, XX_META_ID_COMPRESSION_METHOD, 0);
     if (!xx_zip_method_uses_member_buffers(method)) return true;
-    unpacked = xx_archive_record_get_meta_u64(
-        record, XX_META_ID_UNCOMPRESSED_SIZE, 0);
+    unpacked = xx_archive_record_get_meta_u64(record, XX_META_ID_UNCOMPRESSED_SIZE, 0);
     /* A zero-byte ZIP member with no payload returns before allocation. */
     if (record->compressed_size == 0 && unpacked == 0U) return true;
-    if (record->compressed_size < 0 ||
-        !xx_zip_add_memory(&required, (uint64_t)record->compressed_size) ||
-        !xx_zip_add_memory(&required, unpacked ? unpacked : 1U) ||
+    if (record->compressed_size < 0 || !xx_zip_add_memory(&required, (uint64_t)record->compressed_size) || !xx_zip_add_memory(&required, unpacked ? unpacked : 1U) ||
         required > limit) {
-        xx_pd_set_error(pd, XXFC_ERR_OUT_OF_BOUNDS,
-                        "ZIP extraction exceeds the configured memory limit");
+        xx_pd_set_error(pd, XXFC_ERR_OUT_OF_BOUNDS, "ZIP extraction exceeds the configured memory limit");
         return false;
     }
     return true;
@@ -1104,13 +1011,15 @@ typedef struct xx_zip_stream_state {
     uint64_t total_records;
 } xx_zip_stream_state;
 
-static void xx_zip_stream_state_free(void *ptr) {
+static void xx_zip_stream_state_free(void *ptr)
+{
     xx_zip_stream_state *state = (xx_zip_stream_state *)ptr;
     if (!state) return;
     xx_mem_free(state);
 }
 
-xx_archive_record_state *xx_zip_create_archive_records_reading(Abstractformat *self, const xx_list_s *options, xx_pd_struct *pd) {
+xx_archive_record_state *xx_zip_create_archive_records_reading(Abstractformat *self, const xx_list_s *options, xx_pd_struct *pd)
+{
     if (!self || !self->device || !xx_format_handle_split_format(self, pd)) {
         return NULL;
     }
@@ -1138,8 +1047,7 @@ xx_archive_record_state *xx_zip_create_archive_records_reading(Abstractformat *s
             if (opt_item) {
                 xx_meta new_opt;
                 xx_meta_init(&new_opt, opt_item->meta_id);
-                if (!xx_var_copy(&new_opt.var, &opt_item->var) ||
-                    !xx_list_append(&state->options, &new_opt)) {
+                if (!xx_var_copy(&new_opt.var, &opt_item->var) || !xx_list_append(&state->options, &new_opt)) {
                     xx_meta_cleanup(&new_opt);
                     xx_archive_record_state_free(state);
                     return NULL;
@@ -1165,16 +1073,13 @@ xx_archive_record_state *xx_zip_create_archive_records_reading(Abstractformat *s
     state->has_record = false;
 
     if (pd) {
-        pd_level = xx_pd_enter_level(pd, zip->number_of_records,
-                                     "Reading ZIP records");
+        pd_level = xx_pd_enter_level(pd, zip->number_of_records, "Reading ZIP records");
     }
 
     if (zip->number_of_records > 0 && zip->cd_offset >= 0) {
         int64_t dev_size = xx_io_total_size(self->device);
         int64_t entry_size = 0;
-        if (!xx_zip_parse_cd_entry(zip, self->device, dev_size,
-                                   zstate->curr_offset,
-                                   &state->current_record, &entry_size)) {
+        if (!xx_zip_parse_cd_entry(zip, self->device, dev_size, zstate->curr_offset, &state->current_record, &entry_size)) {
             xx_pd_leave_level(pd, pd_level);
             xx_archive_record_state_free(state);
             return NULL;
@@ -1196,7 +1101,8 @@ xx_archive_record_state *xx_zip_create_archive_records_reading(Abstractformat *s
     return state;
 }
 
-const xx_archive_record *xx_zip_get_current_archive_record(Abstractformat *self, xx_archive_record_state *state) {
+const xx_archive_record *xx_zip_get_current_archive_record(Abstractformat *self, xx_archive_record_state *state)
+{
     (void)self;
     if (!state || !state->has_record) {
         return NULL;
@@ -1204,14 +1110,13 @@ const xx_archive_record *xx_zip_get_current_archive_record(Abstractformat *self,
     return &state->current_record;
 }
 
-bool xx_zip_archive_record_move_to_next(Abstractformat *self, xx_archive_record_state *state, xx_pd_struct *pd) {
-    if (!self || !self->device || !state || !state->internal_state ||
-        xx_pd_is_stopped(pd)) {
+bool xx_zip_archive_record_move_to_next(Abstractformat *self, xx_archive_record_state *state, xx_pd_struct *pd)
+{
+    if (!self || !self->device || !state || !state->internal_state || xx_pd_is_stopped(pd)) {
         return false;
     }
     xx_zip_stream_state *zstate = (xx_zip_stream_state *)state->internal_state;
-    int pd_level = xx_pd_enter_level(pd, zstate->total_records,
-                                     "Reading ZIP records");
+    int pd_level = xx_pd_enter_level(pd, zstate->total_records, "Reading ZIP records");
     if (pd_level >= 0) {
         xx_pd_set_current(pd, pd_level, zstate->current_index + 1U);
     }
@@ -1238,9 +1143,7 @@ bool xx_zip_archive_record_move_to_next(Abstractformat *self, xx_archive_record_
         {
             int64_t dev_size = xx_io_total_size(self->device);
             int64_t entry_size = 0;
-            if (!xx_zip_parse_cd_entry((xx_zip *)self, self->device,
-                                       dev_size, zstate->curr_offset,
-                                       &state->current_record, &entry_size)) {
+            if (!xx_zip_parse_cd_entry((xx_zip *)self, self->device, dev_size, zstate->curr_offset, &state->current_record, &entry_size)) {
                 xx_pd_leave_level(pd, pd_level);
                 return false;
             }
@@ -1297,13 +1200,14 @@ typedef struct xx_zip_limit_sink_s {
     xx_pd_struct *pd;
 } xx_zip_limit_sink;
 
-static uint16_t xx_zip_read_le16_bytes(const uint8_t *data) {
+static uint16_t xx_zip_read_le16_bytes(const uint8_t *data)
+{
     return (uint16_t)((uint16_t)data[0] | ((uint16_t)data[1] << 8));
 }
 
 #if !defined(XXFC_PROFILE_APK_EMUL)
-static bool xx_zip_parse_aes_extra(const xx_archive_record *record,
-                                   xx_zip_aes_info *info) {
+static bool xx_zip_parse_aes_extra(const xx_archive_record *record, xx_zip_aes_info *info)
+{
     const xx_var *extra_var;
     const uint8_t *extra;
     size_t extra_size = 0;
@@ -1313,9 +1217,7 @@ static bool xx_zip_parse_aes_extra(const xx_archive_record *record,
         return false;
     }
     extra_var = xx_archive_record_find_meta(record, XX_META_ID_EXTRA_FIELD);
-    extra = extra_var
-        ? (const uint8_t *)xx_var_get_bytes(extra_var, &extra_size)
-        : NULL;
+    extra = extra_var ? (const uint8_t *)xx_var_get_bytes(extra_var, &extra_size) : NULL;
 
     while (extra && offset + 4U <= extra_size) {
         uint16_t tag = xx_zip_read_le16_bytes(extra + offset);
@@ -1333,47 +1235,40 @@ static bool xx_zip_parse_aes_extra(const xx_archive_record *record,
             info->vendor_version = xx_zip_read_le16_bytes(field);
             info->strength = field[4];
             info->compression_method = xx_zip_read_le16_bytes(field + 5U);
-            return (info->vendor_version == 1U || info->vendor_version == 2U) &&
-                   xx_winzip_aes_key_size(info->strength) != 0U;
+            return (info->vendor_version == 1U || info->vendor_version == 2U) && xx_winzip_aes_key_size(info->strength) != 0U;
         }
         offset += field_size;
     }
     return false;
 }
 
-static bool xx_zip_get_password(const Abstractformat *format,
-                                const xx_list_s *options,
-                                xx_zip_password *password) {
+static bool xx_zip_get_password(const Abstractformat *format, const xx_list_s *options, xx_zip_password *password)
+{
     const xx_var *value;
 
     if (!password) {
         return false;
     }
     xx_mem_zero(password, sizeof(*password));
-    value = xx_format_resolve_extra_parameter(
-        format, options, XX_META_ID_OPT_PASSWORD);
+    value = xx_format_resolve_extra_parameter(format, options, XX_META_ID_OPT_PASSWORD);
     if (!value) {
         return false;
     }
 
-    if (value->type == XX_VAR_TYPE_BYTES ||
-        value->type == XX_VAR_TYPE_BYTES_VIEW) {
+    if (value->type == XX_VAR_TYPE_BYTES || value->type == XX_VAR_TYPE_BYTES_VIEW) {
         password->bytes = (const uint8_t *)xx_var_get_bytes(value, &password->size);
         return password->bytes != NULL || password->size == 0U;
     }
-    if (value->type == XX_VAR_TYPE_STRING ||
-        value->type == XX_VAR_TYPE_STRING_VIEW) {
+    if (value->type == XX_VAR_TYPE_STRING || value->type == XX_VAR_TYPE_STRING_VIEW) {
         password->bytes = (const uint8_t *)xx_var_get_str(value);
         password->size = value->val.str.len;
         return password->bytes != NULL || password->size == 0U;
     }
-    if (value->type == XX_VAR_TYPE_WSTRING ||
-        value->type == XX_VAR_TYPE_WSTRING_VIEW) {
+    if (value->type == XX_VAR_TYPE_WSTRING || value->type == XX_VAR_TYPE_WSTRING_VIEW) {
         const wchar_t *wide = xx_var_get_wstr(value);
         size_t wide_size = value->val.wstr.len;
         wchar_t *terminated;
-        if ((!wide && wide_size != 0U) ||
-            wide_size > (SIZE_MAX / sizeof(wchar_t)) - 1U) {
+        if ((!wide && wide_size != 0U) || wide_size > (SIZE_MAX / sizeof(wchar_t)) - 1U) {
             return false;
         }
         terminated = (wchar_t *)xx_mem_alloc((wide_size + 1U) * sizeof(wchar_t));
@@ -1397,7 +1292,8 @@ static bool xx_zip_get_password(const Abstractformat *format,
     return false;
 }
 
-static void xx_zip_cleanup_password(xx_zip_password *password) {
+static void xx_zip_cleanup_password(xx_zip_password *password)
+{
     if (!password) {
         return;
     }
@@ -1410,14 +1306,13 @@ static void xx_zip_cleanup_password(xx_zip_password *password) {
 
 #endif
 
-static bool xx_zip_read_exact_at(xx_io_device *device, int64_t offset,
-                                 void *buffer, size_t size) {
+static bool xx_zip_read_exact_at(xx_io_device *device, int64_t offset, void *buffer, size_t size)
+{
     uint8_t *bytes = (uint8_t *)buffer;
     size_t done = 0;
     size_t capacity = xx_get_file_buffer_size();
 
-    if (!device || offset < 0 || (!buffer && size != 0U) ||
-        xx_io_seek64(device, offset, SEEK_SET) != 0) {
+    if (!device || offset < 0 || (!buffer && size != 0U) || xx_io_seek64(device, offset, SEEK_SET) != 0) {
         return false;
     }
     while (done < size) {
@@ -1433,15 +1328,12 @@ static bool xx_zip_read_exact_at(xx_io_device *device, int64_t offset,
     return true;
 }
 
-static bool xx_zip_read_exact_at_progress(xx_io_device *device,
-                                          int64_t offset, void *buffer,
-                                          size_t size, xx_pd_struct *pd) {
+static bool xx_zip_read_exact_at_progress(xx_io_device *device, int64_t offset, void *buffer, size_t size, xx_pd_struct *pd)
+{
     uint8_t *bytes = (uint8_t *)buffer;
     size_t done = 0;
     size_t capacity = xx_get_file_buffer_size();
-    if (!device || (!buffer && size != 0U) || offset < 0 ||
-        xx_pd_is_stopped(pd) ||
-        xx_io_seek64(device, offset, SEEK_SET) != 0) {
+    if (!device || (!buffer && size != 0U) || offset < 0 || xx_pd_is_stopped(pd) || xx_io_seek64(device, offset, SEEK_SET) != 0) {
         return false;
     }
     while (done < size) {
@@ -1463,8 +1355,8 @@ static bool xx_zip_read_exact_at_progress(xx_io_device *device,
     return !xx_pd_is_stopped(pd);
 }
 
-static bool xx_zip_write_exact(xx_io_device *device, const void *buffer,
-                               size_t size) {
+static bool xx_zip_write_exact(xx_io_device *device, const void *buffer, size_t size)
+{
     const uint8_t *bytes = (const uint8_t *)buffer;
     size_t done = 0;
     size_t capacity = xx_get_file_buffer_size();
@@ -1485,9 +1377,8 @@ static bool xx_zip_write_exact(xx_io_device *device, const void *buffer,
     return true;
 }
 
-static bool xx_zip_write_exact_progress(xx_io_device *device,
-                                        const void *buffer, size_t size,
-                                        xx_pd_struct *pd) {
+static bool xx_zip_write_exact_progress(xx_io_device *device, const void *buffer, size_t size, xx_pd_struct *pd)
+{
     const uint8_t *bytes = (const uint8_t *)buffer;
     size_t done = 0;
     size_t capacity = xx_get_file_buffer_size();
@@ -1513,13 +1404,12 @@ static bool xx_zip_write_exact_progress(xx_io_device *device,
     return !xx_pd_is_stopped(pd);
 }
 
-static bool xx_zip_crc32_progress(const void *buffer, size_t size,
-                                  uint32_t *crc, xx_pd_struct *pd) {
+static bool xx_zip_crc32_progress(const void *buffer, size_t size, uint32_t *crc, xx_pd_struct *pd)
+{
     const uint8_t *bytes = (const uint8_t *)buffer;
     xx_crc_context context;
     size_t done = 0;
-    if ((!buffer && size != 0U) || !crc ||
-        !xx_crc_context_init_type(&context, XX_CRC_TYPE_CRC32)) {
+    if ((!buffer && size != 0U) || !crc || !xx_crc_context_init_type(&context, XX_CRC_TYPE_CRC32)) {
         return false;
     }
     while (done < size) {
@@ -1540,8 +1430,8 @@ static bool xx_zip_crc32_progress(const void *buffer, size_t size,
     return true;
 }
 
-static ssize_t xx_zip_buffer_sink_write(xx_io_device *device,
-                                        const void *buffer, size_t size) {
+static ssize_t xx_zip_buffer_sink_write(xx_io_device *device, const void *buffer, size_t size)
+{
     xx_zip_buffer_sink *sink;
     if (!device || !device->priv || (!buffer && size != 0U)) {
         return -1;
@@ -1557,7 +1447,8 @@ static ssize_t xx_zip_buffer_sink_write(xx_io_device *device,
     return (ssize_t)size;
 }
 
-static int64_t xx_zip_buffer_sink_size(xx_io_device *device) {
+static int64_t xx_zip_buffer_sink_size(xx_io_device *device)
+{
     const xx_zip_buffer_sink *sink;
     if (!device || !device->priv) {
         return -1;
@@ -1571,9 +1462,8 @@ static int64_t xx_zip_buffer_sink_size(xx_io_device *device) {
     return (int64_t)sink->position;
 }
 
-static void xx_zip_init_buffer_sink(xx_io_device *device,
-                                    xx_zip_buffer_sink *sink,
-                                    uint8_t *buffer, size_t capacity) {
+static void xx_zip_init_buffer_sink(xx_io_device *device, xx_zip_buffer_sink *sink, uint8_t *buffer, size_t capacity)
+{
     xx_mem_zero(device, sizeof(*device));
     xx_mem_zero(sink, sizeof(*sink));
     sink->buffer = buffer;
@@ -1585,12 +1475,11 @@ static void xx_zip_init_buffer_sink(xx_io_device *device,
     device->priv = sink;
 }
 
-static ssize_t xx_zip_verify_sink_write(xx_io_device *device,
-                                        const void *buffer, size_t size) {
+static ssize_t xx_zip_verify_sink_write(xx_io_device *device, const void *buffer, size_t size)
+{
     xx_zip_verify_sink *sink;
     ssize_t written;
-    if (!device || !device->priv || (!buffer && size != 0U) ||
-        size > (size_t)PTRDIFF_MAX) {
+    if (!device || !device->priv || (!buffer && size != 0U) || size > (size_t)PTRDIFF_MAX) {
         return -1;
     }
     sink = (xx_zip_verify_sink *)device->priv;
@@ -1600,8 +1489,7 @@ static ssize_t xx_zip_verify_sink_write(xx_io_device *device,
     /* A real extraction target can accept a short prefix. CRC and count
      * only bytes it actually accepted, so a caller's retry cannot count any
      * byte twice or authenticate bytes that were never written. */
-    written = sink->target ? xx_io_write(sink->target, buffer, size)
-                           : (ssize_t)size;
+    written = sink->target ? xx_io_write(sink->target, buffer, size) : (ssize_t)size;
     if (written < 0 || (size_t)written > size) return -1;
     if (written > 0) {
         sink->crc = xx_crc32_calc(sink->crc, buffer, (size_t)written);
@@ -1610,7 +1498,8 @@ static ssize_t xx_zip_verify_sink_write(xx_io_device *device,
     return written;
 }
 
-static int64_t xx_zip_verify_sink_size(xx_io_device *device) {
+static int64_t xx_zip_verify_sink_size(xx_io_device *device)
+{
     const xx_zip_verify_sink *sink;
     if (!device || !device->priv) {
         return -1;
@@ -1619,8 +1508,8 @@ static int64_t xx_zip_verify_sink_size(xx_io_device *device) {
     return (int64_t)sink->position;
 }
 
-static bool xx_zip_init_verify_sink(xx_io_device *device,
-                                    xx_zip_verify_sink *sink) {
+static bool xx_zip_init_verify_sink(xx_io_device *device, xx_zip_verify_sink *sink)
+{
     if (!device || !sink) {
         return false;
     }
@@ -1634,17 +1523,15 @@ static bool xx_zip_init_verify_sink(xx_io_device *device,
     return true;
 }
 
-static ssize_t xx_zip_limit_sink_write(xx_io_device *device,
-                                       const void *buffer, size_t size) {
+static ssize_t xx_zip_limit_sink_write(xx_io_device *device, const void *buffer, size_t size)
+{
     xx_zip_limit_sink *sink;
     ssize_t written;
-    if (!device || !device->priv || (!buffer && size != 0U) ||
-        size > (size_t)PTRDIFF_MAX) {
+    if (!device || !device->priv || (!buffer && size != 0U) || size > (size_t)PTRDIFF_MAX) {
         return -1;
     }
     sink = (xx_zip_limit_sink *)device->priv;
-    if (!sink->target || xx_pd_is_stopped(sink->pd) ||
-        (uint64_t)size > sink->limit - sink->position) {
+    if (!sink->target || xx_pd_is_stopped(sink->pd) || (uint64_t)size > sink->limit - sink->position) {
         return -1;
     }
     written = xx_io_write(sink->target, buffer, size);
@@ -1655,7 +1542,8 @@ static ssize_t xx_zip_limit_sink_write(xx_io_device *device,
     return written;
 }
 
-static int64_t xx_zip_limit_sink_size(xx_io_device *device) {
+static int64_t xx_zip_limit_sink_size(xx_io_device *device)
+{
     const xx_zip_limit_sink *sink;
     if (!device || !device->priv) {
         return -1;
@@ -1664,10 +1552,8 @@ static int64_t xx_zip_limit_sink_size(xx_io_device *device) {
     return (int64_t)sink->position;
 }
 
-static void xx_zip_init_limit_sink(xx_io_device *device,
-                                   xx_zip_limit_sink *sink,
-                                   xx_io_device *target, uint64_t limit,
-                                   xx_pd_struct *pd) {
+static void xx_zip_init_limit_sink(xx_io_device *device, xx_zip_limit_sink *sink, xx_io_device *target, uint64_t limit, xx_pd_struct *pd)
+{
     xx_mem_zero(device, sizeof(*device));
     xx_mem_zero(sink, sizeof(*sink));
     sink->target = target;
@@ -1688,13 +1574,13 @@ typedef struct xx_zip_xz_window_s {
     int64_t offset, length, position;
 } xx_zip_xz_window;
 
-static ssize_t xx_zip_xz_window_read(xx_io_device *device, void *buffer, size_t count) {
+static ssize_t xx_zip_xz_window_read(xx_io_device *device, void *buffer, size_t count)
+{
     xx_zip_xz_window *window = (xx_zip_xz_window *)device->priv;
     int64_t saved;
     ssize_t result;
     if (!window || !buffer || window->position < 0 || window->position > window->length) return -1;
-    if (count > (size_t)(window->length - window->position))
-        count = (size_t)(window->length - window->position);
+    if (count > (size_t)(window->length - window->position)) count = (size_t)(window->length - window->position);
     if (!count) return 0;
     saved = xx_io_tell(window->source);
     if (saved < 0 || xx_io_seek64(window->source, window->offset + window->position, SEEK_SET)) return -1;
@@ -1704,7 +1590,8 @@ static ssize_t xx_zip_xz_window_read(xx_io_device *device, void *buffer, size_t 
     return result;
 }
 
-static int xx_zip_xz_window_seek(xx_io_device *device, int64_t offset, int whence) {
+static int xx_zip_xz_window_seek(xx_io_device *device, int64_t offset, int whence)
+{
     xx_zip_xz_window *window = (xx_zip_xz_window *)device->priv;
     int64_t base;
     if (!window) return -1;
@@ -1717,25 +1604,25 @@ static int xx_zip_xz_window_seek(xx_io_device *device, int64_t offset, int whenc
     return 0;
 }
 
-static int64_t xx_zip_xz_window_tell(xx_io_device *device) {
+static int64_t xx_zip_xz_window_tell(xx_io_device *device)
+{
     xx_zip_xz_window *window = (xx_zip_xz_window *)device->priv;
     return window ? window->position : -1;
 }
 
-static int64_t xx_zip_xz_window_size(xx_io_device *device) {
+static int64_t xx_zip_xz_window_size(xx_io_device *device)
+{
     xx_zip_xz_window *window = (xx_zip_xz_window *)device->priv;
     return window ? window->length : -1;
 }
 
-static bool xx_zip_xz_unpack(xx_io_device *source, int64_t offset, int64_t length,
-                             xx_io_device *destination, uint64_t expected,
-                             xx_pd_struct *pd) {
+static bool xx_zip_xz_unpack(xx_io_device *source, int64_t offset, int64_t length, xx_io_device *destination, uint64_t expected, xx_pd_struct *pd)
+{
     xx_zip_xz_window window;
     xx_io_device bounded;
     xx_xz xz;
     bool result;
-    if (!source || !destination || offset < 0 || length < 32 ||
-        offset > INT64_MAX - length) return false;
+    if (!source || !destination || offset < 0 || length < 32 || offset > INT64_MAX - length) return false;
     xx_mem_zero(&window, sizeof(window));
     xx_mem_zero(&bounded, sizeof(bounded));
     window.source = source;
@@ -1747,9 +1634,7 @@ static bool xx_zip_xz_unpack(xx_io_device *source, int64_t offset, int64_t lengt
     bounded.total_size = xx_zip_xz_window_size;
     bounded.priv = &window;
     xx_xz_init(&xz, &bounded, 0);
-    result = xx_xz_unpack_to_device(&xz, destination, pd) &&
-             xz.uncompressed_size == expected &&
-             xz.format.format_size == length;
+    result = xx_xz_unpack_to_device(&xz, destination, pd) && xz.uncompressed_size == expected && xz.format.format_size == length;
     xx_xz_destroy(&xz);
     return result;
 }
@@ -1757,71 +1642,63 @@ static bool xx_zip_xz_unpack(xx_io_device *source, int64_t offset, int64_t lengt
 /* ZIP method 10 is the standalone PKWARE DCL stream, not ZIP method 6's
  * tree-prefixed Implode stream. Keep this in-memory decoder bounded while
  * checking the DCL terminator and exact compressed/uncompressed extents. */
-static bool xx_zip_dcl_unpack(xx_io_device *source,int64_t source_offset,
-                              int64_t compressed_size,uint64_t plain_size,
-                              xx_io_device *destination,xx_pd_struct *pd) {
-    const size_t limit=64U*1024U*1024U;
-    uint8_t *compressed=NULL,*plain=NULL;
-    size_t consumed=0U,produced=0U,written=0U;
+static bool xx_zip_dcl_unpack(xx_io_device *source, int64_t source_offset, int64_t compressed_size, uint64_t plain_size, xx_io_device *destination, xx_pd_struct *pd)
+{
+    const size_t limit = 64U * 1024U * 1024U;
+    uint8_t *compressed = NULL, *plain = NULL;
+    size_t consumed = 0U, produced = 0U, written = 0U;
     int64_t cursor;
-    bool ok=false;
-    if(!source||!destination||source_offset<0||compressed_size<3 ||
-       (uint64_t)compressed_size>limit||plain_size>limit||
-       xx_pd_is_stopped(pd))return false;
-    cursor=xx_io_tell(source);if(cursor<0)return false;
-    compressed=(uint8_t *)xx_mem_alloc((size_t)compressed_size);
-    plain=(uint8_t *)xx_mem_alloc(plain_size ? (size_t)plain_size : 1U);
-    if(!compressed||!plain)goto done;
-    ok=xx_zip_read_exact_at_progress(source,source_offset,compressed,
-                                      (size_t)compressed_size,pd) &&
-       xx_dcl_scan_memory(compressed,(size_t)compressed_size,
-                           (size_t)plain_size,&consumed,&produced) &&
-       consumed==(size_t)compressed_size && produced==(size_t)plain_size &&
-       xx_dcl_decode_memory(compressed,(size_t)compressed_size,plain,
-                            (size_t)plain_size,&written) &&
-       written==(size_t)plain_size && !xx_pd_is_stopped(pd) &&
-       xx_zip_write_exact_progress(destination,plain,(size_t)plain_size,pd);
+    bool ok = false;
+    if (!source || !destination || source_offset < 0 || compressed_size < 3 || (uint64_t)compressed_size > limit || plain_size > limit || xx_pd_is_stopped(pd))
+        return false;
+    cursor = xx_io_tell(source);
+    if (cursor < 0) return false;
+    compressed = (uint8_t *)xx_mem_alloc((size_t)compressed_size);
+    plain = (uint8_t *)xx_mem_alloc(plain_size ? (size_t)plain_size : 1U);
+    if (!compressed || !plain) goto done;
+    ok = xx_zip_read_exact_at_progress(source, source_offset, compressed, (size_t)compressed_size, pd) &&
+         xx_dcl_scan_memory(compressed, (size_t)compressed_size, (size_t)plain_size, &consumed, &produced) && consumed == (size_t)compressed_size &&
+         produced == (size_t)plain_size && xx_dcl_decode_memory(compressed, (size_t)compressed_size, plain, (size_t)plain_size, &written) &&
+         written == (size_t)plain_size && !xx_pd_is_stopped(pd) && xx_zip_write_exact_progress(destination, plain, (size_t)plain_size, pd);
 done:
-    if(xx_io_seek64(source,cursor,SEEK_SET)!=0)ok=false;
-    if(plain)xx_mem_free(plain);
-    if(compressed)xx_mem_free(compressed);
+    if (xx_io_seek64(source, cursor, SEEK_SET) != 0) ok = false;
+    if (plain) xx_mem_free(plain);
+    if (compressed) xx_mem_free(compressed);
     return ok && !xx_pd_is_stopped(pd);
 }
 
 /* The native media/CMPSC decoders take bounded whole-member buffers. */
 #define XX_ZIP_MEMORY_CODEC_LIMIT (64U * 1024U * 1024U)
-static bool xx_zip_unpack_memory_codec(xx_io_device *source, int64_t offset,
-                                       int64_t packed, uint64_t unpacked,
-                                       uint16_t method, xx_io_device *destination,
-                                       xx_pd_struct *pd) {
+static bool xx_zip_unpack_memory_codec(xx_io_device *source, int64_t offset, int64_t packed, uint64_t unpacked, uint16_t method, xx_io_device *destination,
+                                       xx_pd_struct *pd)
+{
     uint8_t *input = NULL, *output = NULL;
     size_t written = 0;
     bool result = false;
-    if (!source || !destination || offset < 0 || packed <= 0 ||
-        (uint64_t)packed > XX_ZIP_MEMORY_CODEC_LIMIT || unpacked > XX_ZIP_MEMORY_CODEC_LIMIT ||
-        xx_pd_is_stopped(pd)) return false;
+    if (!source || !destination || offset < 0 || packed <= 0 || (uint64_t)packed > XX_ZIP_MEMORY_CODEC_LIMIT || unpacked > XX_ZIP_MEMORY_CODEC_LIMIT ||
+        xx_pd_is_stopped(pd))
+        return false;
     input = (uint8_t *)xx_mem_alloc((size_t)packed);
     output = (uint8_t *)xx_mem_alloc(unpacked ? (size_t)unpacked : 1U);
     if (!input || !output || !xx_zip_read_exact_at_progress(source, offset, input, (size_t)packed, pd)) goto done;
-    if (method == 16U)
-        result = xx_cmpsc_zip_decode_memory(input, (size_t)packed, output, (size_t)unpacked, &written, pd);
-    else if (method == 94U)
-        result = xx_packmp3_decompress_memory(input, (size_t)packed, output, (size_t)unpacked, &written);
-    else if (method == 96U)
-        result = xx_winzipjpeg_decompress_memory(input, (size_t)packed, output, (size_t)unpacked, &written);
-    else if (method == 97U)
-        result = xx_wavpack_decompress_memory(input, (size_t)packed, output, (size_t)unpacked, &written);
-    result = result && written == unpacked && !xx_pd_is_stopped(pd) &&
-             xx_zip_write_exact_progress(destination, output, written, pd);
+    if (method == 16U) result = xx_cmpsc_zip_decode_memory(input, (size_t)packed, output, (size_t)unpacked, &written, pd);
+    else if (method == 94U) result = xx_packmp3_decompress_memory(input, (size_t)packed, output, (size_t)unpacked, &written);
+    else if (method == 96U) result = xx_winzipjpeg_decompress_memory(input, (size_t)packed, output, (size_t)unpacked, &written);
+    else if (method == 97U) result = xx_wavpack_decompress_memory(input, (size_t)packed, output, (size_t)unpacked, &written);
+    result = result && written == unpacked && !xx_pd_is_stopped(pd) && xx_zip_write_exact_progress(destination, output, written, pd);
 done:
-    if (output) { xx_mem_zero(output, unpacked ? (size_t)unpacked : 1U); xx_mem_free(output); }
+    if (output) {
+        xx_mem_zero(output, unpacked ? (size_t)unpacked : 1U);
+        xx_mem_free(output);
+    }
     if (input) xx_mem_free(input);
     return result;
 }
 
 #endif
 
-static bool xx_zip_method_is_supported(uint16_t method) {
+static bool xx_zip_method_is_supported(uint16_t method)
+{
 #if defined(XXFC_PROFILE_APK_EMUL)
     return method == 0 || method == 8;
 #else
@@ -1846,23 +1723,18 @@ static bool xx_zip_method_is_supported(uint16_t method) {
         case 95:
         case 96:
         case 97:
-        case 98:
-            return true;
-        default:
-            return false;
+        case 98: return true;
+        default: return false;
     }
 #endif
 }
 
-static bool xx_zip_unpack_method_to_device_unchecked(
-    xx_io_device *source, int64_t source_offset, int64_t compressed_size,
-    uint16_t method, uint16_t flags, uint64_t uncompressed_size,
-    xx_io_device *destination, xx_pd_struct *pd) {
+static bool xx_zip_unpack_method_to_device_unchecked(xx_io_device *source, int64_t source_offset, int64_t compressed_size, uint16_t method, uint16_t flags,
+                                                     uint64_t uncompressed_size, xx_io_device *destination, xx_pd_struct *pd)
+{
     int64_t expected_size;
 
-    if (!source || !destination || source_offset < 0 || compressed_size < 0 ||
-        uncompressed_size > (uint64_t)INT64_MAX ||
-        (!xx_zip_method_is_supported(method)) ||
+    if (!source || !destination || source_offset < 0 || compressed_size < 0 || uncompressed_size > (uint64_t)INT64_MAX || (!xx_zip_method_is_supported(method)) ||
         (compressed_size == 0 && uncompressed_size != 0U)) {
         return false;
     }
@@ -1873,198 +1745,131 @@ static bool xx_zip_unpack_method_to_device_unchecked(
 #if defined(XXFC_PROFILE_APK_EMUL)
     (void)expected_size;
     (void)flags;
-    if (method == 0)
-        return (uint64_t)compressed_size == uncompressed_size &&
-            xx_store_unpack_device(source, source_offset, compressed_size, destination, pd);
-    return method == 8 && xx_deflate_unpack_device(source, source_offset,
-        compressed_size, destination, false, pd);
+    if (method == 0) return (uint64_t)compressed_size == uncompressed_size && xx_store_unpack_device(source, source_offset, compressed_size, destination, pd);
+    return method == 8 && xx_deflate_unpack_device(source, source_offset, compressed_size, destination, false, pd);
 #else
     switch (method) {
-        case 0:
-            return (uint64_t)compressed_size == uncompressed_size &&
-                   xx_store_unpack_device(source, source_offset, compressed_size,
-                                          destination, pd);
-        case 1:
-            return xx_shrink_unpack_device(source, source_offset, compressed_size,
-                                           destination, expected_size, pd);
+        case 0: return (uint64_t)compressed_size == uncompressed_size && xx_store_unpack_device(source, source_offset, compressed_size, destination, pd);
+        case 1: return xx_shrink_unpack_device(source, source_offset, compressed_size, destination, expected_size, pd);
         case 2:
         case 3:
         case 4:
-        case 5:
-            return xx_reduce_unpack_device(source, source_offset, compressed_size,
-                                           destination, expected_size,
-                                           (int)method - 1, pd);
-        case 6:
-            return xx_implode_unpack_device(source, source_offset, compressed_size,
-                                            destination, expected_size,
-                                            (flags & 0x0002U) != 0U,
-                                            (flags & 0x0004U) != 0U, pd);
+        case 5: return xx_reduce_unpack_device(source, source_offset, compressed_size, destination, expected_size, (int)method - 1, pd);
+        case 6: return xx_implode_unpack_device(source, source_offset, compressed_size, destination, expected_size, (flags & 0x0002U) != 0U, (flags & 0x0004U) != 0U, pd);
         case 8:
-        case 9:
-            return xx_deflate_unpack_device(source, source_offset, compressed_size,
-                                            destination, method == 9U, pd);
-        case 10:
-            return xx_zip_dcl_unpack(source,source_offset,compressed_size,
-                                     uncompressed_size,destination,pd);
-        case 12:
-            return xx_bzip2_unpack_device(source, source_offset, compressed_size,
-                                          destination, pd);
+        case 9: return xx_deflate_unpack_device(source, source_offset, compressed_size, destination, method == 9U, pd);
+        case 10: return xx_zip_dcl_unpack(source, source_offset, compressed_size, uncompressed_size, destination, pd);
+        case 12: return xx_bzip2_unpack_device(source, source_offset, compressed_size, destination, pd);
         case 16:
         case 94:
         case 96:
-        case 97:
-            return xx_zip_unpack_memory_codec(source, source_offset, compressed_size,
-                                              uncompressed_size, method, destination, pd);
+        case 97: return xx_zip_unpack_memory_codec(source, source_offset, compressed_size, uncompressed_size, method, destination, pd);
         case 14: {
             uint8_t header[9];
-            if (compressed_size < (int64_t)sizeof(header) ||
-                !xx_zip_read_exact_at(source, source_offset, header, sizeof(header)) ||
-                header[2] != XX_LZMA_PROPS_SIZE || header[3] != 0U) {
+            if (compressed_size < (int64_t)sizeof(header) || !xx_zip_read_exact_at(source, source_offset, header, sizeof(header)) || header[2] != XX_LZMA_PROPS_SIZE ||
+                header[3] != 0U) {
                 return false;
             }
-            return xx_lzma_unpack_device(source, source_offset + (int64_t)sizeof(header),
-                                         compressed_size - (int64_t)sizeof(header),
-                                         header + 4U, XX_LZMA_PROPS_SIZE,
+            return xx_lzma_unpack_device(source, source_offset + (int64_t)sizeof(header), compressed_size - (int64_t)sizeof(header), header + 4U, XX_LZMA_PROPS_SIZE,
                                          expected_size, destination, pd);
         }
         case 33: {
             uint8_t header[XX_ZIP_LZMA2_HEADER_SIZE];
             uint8_t end_marker;
-            if (compressed_size < (int64_t)(sizeof(header) + 1U) ||
-                source_offset > INT64_MAX - compressed_size ||
-                !xx_zip_read_exact_at(source, source_offset, header,
-                                      sizeof(header)) ||
-                xx_zip_read_le16_bytes(header) != XX_ZIP_LZMA2_VERSION ||
-                xx_zip_read_le16_bytes(header + 2U) != XX_LZMA2_PROPS_SIZE ||
-                header[4] > XX_ZIP_LZMA2_MAX_PROP ||
-                !xx_zip_read_exact_at(source,
-                                      source_offset + compressed_size - 1,
-                                      &end_marker, sizeof(end_marker)) ||
-                end_marker != 0U) {
+            if (compressed_size < (int64_t)(sizeof(header) + 1U) || source_offset > INT64_MAX - compressed_size ||
+                !xx_zip_read_exact_at(source, source_offset, header, sizeof(header)) || xx_zip_read_le16_bytes(header) != XX_ZIP_LZMA2_VERSION ||
+                xx_zip_read_le16_bytes(header + 2U) != XX_LZMA2_PROPS_SIZE || header[4] > XX_ZIP_LZMA2_MAX_PROP ||
+                !xx_zip_read_exact_at(source, source_offset + compressed_size - 1, &end_marker, sizeof(end_marker)) || end_marker != 0U) {
                 return false;
             }
-            return xx_lzma2_unpack_device(source, source_offset + (int64_t)sizeof(header),
-                                          compressed_size - (int64_t)sizeof(header),
-                                          header[4], destination, pd);
+            return xx_lzma2_unpack_device(source, source_offset + (int64_t)sizeof(header), compressed_size - (int64_t)sizeof(header), header[4], destination, pd);
         }
         case 20:
-        case 93:
-            return xx_zstd_unpack_device_to_device(source, source_offset,
-                                                   compressed_size, destination,
-                                                   uncompressed_size, pd);
-        case 95:
-            return xx_zip_xz_unpack(source, source_offset, compressed_size,
-                                    destination, uncompressed_size, pd);
+        case 93: return xx_zstd_unpack_device_to_device(source, source_offset, compressed_size, destination, uncompressed_size, pd);
+        case 95: return xx_zip_xz_unpack(source, source_offset, compressed_size, destination, uncompressed_size, pd);
         case 98: {
             uint8_t header[2];
             uint16_t properties;
             int order = 0;
             uint32_t memory_mb = 0;
             int restore_method = 0;
-            if (compressed_size < (int64_t)sizeof(header) ||
-                !xx_zip_read_exact_at(source, source_offset, header, sizeof(header))) {
+            if (compressed_size < (int64_t)sizeof(header) || !xx_zip_read_exact_at(source, source_offset, header, sizeof(header))) {
                 return false;
             }
             properties = xx_zip_read_le16_bytes(header);
-            if (!xx_ppmd8_parse_zip_props(properties, &order, &memory_mb,
-                                          &restore_method)) {
+            if (!xx_ppmd8_parse_zip_props(properties, &order, &memory_mb, &restore_method)) {
                 return false;
             }
-            return xx_ppmd8_unpack_device(source, source_offset + 2,
-                                          compressed_size - 2, expected_size,
-                                          order, memory_mb, restore_method,
-                                          destination, pd);
+            return xx_ppmd8_unpack_device(source, source_offset + 2, compressed_size - 2, expected_size, order, memory_mb, restore_method, destination, pd);
         }
-        default:
-            return false;
+        default: return false;
     }
 #endif
 }
 
-static bool xx_zip_unpack_method_to_device(xx_io_device *source,
-                                           int64_t source_offset,
-                                           int64_t compressed_size,
-                                           uint16_t method, uint16_t flags,
-                                           uint64_t uncompressed_size,
-                                           xx_io_device *destination,
-                                           xx_pd_struct *pd) {
+static bool xx_zip_unpack_method_to_device(xx_io_device *source, int64_t source_offset, int64_t compressed_size, uint16_t method, uint16_t flags,
+                                           uint64_t uncompressed_size, xx_io_device *destination, xx_pd_struct *pd)
+{
     xx_io_device limited_device;
     xx_zip_limit_sink limited;
     if (!destination || uncompressed_size > (uint64_t)INT64_MAX) {
         return false;
     }
-    xx_zip_init_limit_sink(&limited_device, &limited, destination,
-                           uncompressed_size, pd);
-    return xx_zip_unpack_method_to_device_unchecked(
-               source, source_offset, compressed_size, method, flags,
-               uncompressed_size, &limited_device, pd) &&
-           limited.position == uncompressed_size &&
-           !xx_pd_is_stopped(pd);
+    xx_zip_init_limit_sink(&limited_device, &limited, destination, uncompressed_size, pd);
+    return xx_zip_unpack_method_to_device_unchecked(source, source_offset, compressed_size, method, flags, uncompressed_size, &limited_device, pd) &&
+           limited.position == uncompressed_size && !xx_pd_is_stopped(pd);
 }
 
-static bool xx_zip_verify_unencrypted_record(
-    Abstractformat *format, const xx_archive_record_state *state,
-    const xx_archive_record *record,
-    xx_pd_struct *pd) {
+static bool xx_zip_verify_unencrypted_record(Abstractformat *format, const xx_archive_record_state *state, const xx_archive_record *record, xx_pd_struct *pd)
+{
     xx_io_device destination;
     xx_zip_verify_sink sink;
     uint16_t method;
     uint16_t flags;
     uint64_t uncompressed_size;
     uint64_t expected_crc;
-    if (!format || !format->device || !record || record->data_offset < 0 ||
-        record->compressed_size < 0 || xx_pd_is_stopped(pd)) {
+    if (!format || !format->device || !record || record->data_offset < 0 || record->compressed_size < 0 || xx_pd_is_stopped(pd)) {
         return false;
     }
-    method = (uint16_t)xx_archive_record_get_meta_u64(
-        record, XX_META_ID_COMPRESSION_METHOD, 0);
-    flags = (uint16_t)xx_archive_record_get_meta_u64(
-        record, XX_META_ID_FLAGS, 0);
-    uncompressed_size = xx_archive_record_get_meta_u64(
-        record, XX_META_ID_UNCOMPRESSED_SIZE, 0);
-    expected_crc = xx_archive_record_get_meta_u64(
-        record, XX_META_ID_CRC32, UINT64_MAX);
-    if (uncompressed_size > (uint64_t)INT64_MAX ||
-        expected_crc > UINT32_MAX ||
-        !xx_zip_init_verify_sink(&destination, &sink) ||
-        !(method == 92U ? xx_zip_unpack_reference_to_device(
-            format, state, record, NULL, &destination, pd) : xx_zip_unpack_method_to_device(
-            format->device, record->data_offset, record->compressed_size,
-            method, flags, uncompressed_size, &destination, pd))) {
+    method = (uint16_t)xx_archive_record_get_meta_u64(record, XX_META_ID_COMPRESSION_METHOD, 0);
+    flags = (uint16_t)xx_archive_record_get_meta_u64(record, XX_META_ID_FLAGS, 0);
+    uncompressed_size = xx_archive_record_get_meta_u64(record, XX_META_ID_UNCOMPRESSED_SIZE, 0);
+    expected_crc = xx_archive_record_get_meta_u64(record, XX_META_ID_CRC32, UINT64_MAX);
+    if (uncompressed_size > (uint64_t)INT64_MAX || expected_crc > UINT32_MAX || !xx_zip_init_verify_sink(&destination, &sink) ||
+        !(method == 92U
+              ? xx_zip_unpack_reference_to_device(format, state, record, NULL, &destination, pd)
+              : xx_zip_unpack_method_to_device(format->device, record->data_offset, record->compressed_size, method, flags, uncompressed_size, &destination, pd))) {
         return false;
     }
-    return sink.position == uncompressed_size &&
-           sink.crc == expected_crc &&
-           !xx_pd_is_stopped(pd);
+    return sink.position == uncompressed_size && sink.crc == expected_crc && !xx_pd_is_stopped(pd);
 }
 
 /* Some ZIP writers encode an empty directory with an empty Deflate stream
  * (typically 03 00). Its compressed length is therefore nonzero. Authenticate
  * that stream before publishing a directory, just as TEST authenticates files.
  * An exact zero-byte sink rejects any hidden/nonempty directory payload. */
-static bool xx_zip_verify_directory_record(
-    Abstractformat *format, const xx_archive_record *record, xx_pd_struct *pd) {
-    xx_io_device destination,verified;
+static bool xx_zip_verify_directory_record(Abstractformat *format, const xx_archive_record *record, xx_pd_struct *pd)
+{
+    xx_io_device destination, verified;
     xx_zip_limit_sink sink;
     xx_zip_verify_sink checksum;
     uint16_t method;
-    int64_t consumed=0;
-    if(!format || !format->device || !record || xx_pd_is_stopped(pd) ||
-       record->data_offset<0 || record->compressed_size<0 ||
-       xx_archive_record_get_meta_u64(record,XX_META_ID_UNCOMPRESSED_SIZE,UINT64_MAX)!=0U ||
-       xx_archive_record_get_meta_u64(record,XX_META_ID_CRC32,UINT64_MAX)!=0U ||
-       xx_archive_record_get_meta_bool(record,XX_META_ID_IS_ENCRYPTED,false)) return false;
-    if(record->compressed_size==0) return true;
-    method=(uint16_t)xx_archive_record_get_meta_u64(record,XX_META_ID_COMPRESSION_METHOD,UINT16_MAX);
-    if(method!=8U && method!=9U) return false;
-    if(!xx_zip_init_verify_sink(&verified,&checksum)) return false;
-    xx_zip_init_limit_sink(&destination,&sink,&verified,0U,pd);
-    return xx_deflate_unpack_device_ex(format->device,record->data_offset,
-        record->compressed_size,&destination,method==9U,0U,NULL,0U,&consumed,pd) &&
-        consumed==record->compressed_size && sink.position==0U && !xx_pd_is_stopped(pd);
+    int64_t consumed = 0;
+    if (!format || !format->device || !record || xx_pd_is_stopped(pd) || record->data_offset < 0 || record->compressed_size < 0 ||
+        xx_archive_record_get_meta_u64(record, XX_META_ID_UNCOMPRESSED_SIZE, UINT64_MAX) != 0U ||
+        xx_archive_record_get_meta_u64(record, XX_META_ID_CRC32, UINT64_MAX) != 0U || xx_archive_record_get_meta_bool(record, XX_META_ID_IS_ENCRYPTED, false))
+        return false;
+    if (record->compressed_size == 0) return true;
+    method = (uint16_t)xx_archive_record_get_meta_u64(record, XX_META_ID_COMPRESSION_METHOD, UINT16_MAX);
+    if (method != 8U && method != 9U) return false;
+    if (!xx_zip_init_verify_sink(&verified, &checksum)) return false;
+    xx_zip_init_limit_sink(&destination, &sink, &verified, 0U, pd);
+    return xx_deflate_unpack_device_ex(format->device, record->data_offset, record->compressed_size, &destination, method == 9U, 0U, NULL, 0U, &consumed, pd) &&
+           consumed == record->compressed_size && sink.position == 0U && !xx_pd_is_stopped(pd);
 }
 
-static void xx_zip_normalize_record_path(char *path) {
+static void xx_zip_normalize_record_path(char *path)
+{
     if (!path) {
         return;
     }
@@ -2076,11 +1881,8 @@ static void xx_zip_normalize_record_path(char *path) {
     }
 }
 
-static bool xx_zip_derived_name_matches(const xx_archive_record *record,
-                                        const char *prefix,
-                                        const char *suffix,
-                                        bool single_component,
-                                        bool exact) {
+static bool xx_zip_derived_name_matches(const xx_archive_record *record, const char *prefix, const char *suffix, bool single_component, bool exact)
+{
     const char *name;
     const wchar_t *name_w;
     char *owned_name = NULL;
@@ -2112,15 +1914,12 @@ static bool xx_zip_derived_name_matches(const xx_archive_record *record,
     name_length = xx_rt_strlen(owned_name);
     prefix_length = xx_rt_strlen(prefix);
     suffix_length = suffix ? xx_rt_strlen(suffix) : 0U;
-    if (suffix && name_length > prefix_length + suffix_length &&
-        xx_rt_memcmp(owned_name, prefix, prefix_length) == 0 &&
-        xx_rt_memcmp(owned_name + name_length - suffix_length, suffix,
-               suffix_length) == 0) {
+    if (suffix && name_length > prefix_length + suffix_length && xx_rt_memcmp(owned_name, prefix, prefix_length) == 0 &&
+        xx_rt_memcmp(owned_name + name_length - suffix_length, suffix, suffix_length) == 0) {
         const char *middle = owned_name + prefix_length;
         size_t middle_length = name_length - prefix_length - suffix_length;
         result = true;
-        if (single_component &&
-            xx_rt_memchr(middle, '/', middle_length) != NULL) {
+        if (single_component && xx_rt_memchr(middle, '/', middle_length) != NULL) {
             result = false;
         }
     }
@@ -2128,21 +1927,18 @@ static bool xx_zip_derived_name_matches(const xx_archive_record *record,
     return result;
 }
 
-static bool xx_zip_has_valid_file_impl(Abstractformat *self,
-                                       const char *prefix,
-                                       const char *suffix,
-                                       bool single_component,
-                                       bool exact,
-                                       uint64_t max_size,
-                                       xx_pd_struct *pd) {
-    enum { XX_ZIP_DERIVED_RECORD_LIMIT = 20000 };
+static bool xx_zip_has_valid_file_impl(Abstractformat *self, const char *prefix, const char *suffix, bool single_component, bool exact, uint64_t max_size,
+                                       xx_pd_struct *pd)
+{
+    enum {
+        XX_ZIP_DERIVED_RECORD_LIMIT = 20000
+    };
     xx_zip probe;
     xx_archive_record_state *state = NULL;
     bool result = false;
     uint64_t visited = 0;
 
-    if (!self || !self->device || !prefix || !prefix[0] ||
-        (!exact && (!suffix || !suffix[0])) || max_size == 0U) {
+    if (!self || !self->device || !prefix || !prefix[0] || (!exact && (!suffix || !suffix[0])) || max_size == 0U) {
         return false;
     }
 
@@ -2158,54 +1954,35 @@ static bool xx_zip_has_valid_file_impl(Abstractformat *self,
     /* Keep the caller's progress hierarchy untouched when a matching entry is
      * found before the end of the central directory. */
     state = xx_zip_create_archive_records_reading(&probe.format, NULL, NULL);
-    while (state && state->has_record &&
-           visited < (uint64_t)XX_ZIP_DERIVED_RECORD_LIMIT) {
-        const xx_archive_record *record =
-            xx_zip_get_current_archive_record(&probe.format, state);
-        bool name_matches = xx_zip_derived_name_matches(
-            record, prefix, suffix, single_component, exact);
+    while (state && state->has_record && visited < (uint64_t)XX_ZIP_DERIVED_RECORD_LIMIT) {
+        const xx_archive_record *record = xx_zip_get_current_archive_record(&probe.format, state);
+        bool name_matches = xx_zip_derived_name_matches(record, prefix, suffix, single_component, exact);
 
         if (pd && xx_pd_is_stopped(pd)) {
             break;
         }
         ++visited;
         if (name_matches) {
-            uint64_t unpacked_size = xx_archive_record_get_meta_u64(
-                record, XX_META_ID_UNCOMPRESSED_SIZE, 0);
-            uint64_t expected_crc = xx_archive_record_get_meta_u64(
-                record, XX_META_ID_CRC32, UINT64_MAX);
-            uint16_t method = (uint16_t)xx_archive_record_get_meta_u64(
-                record, XX_META_ID_COMPRESSION_METHOD, UINT64_MAX);
-            uint16_t flags = (uint16_t)xx_archive_record_get_meta_u64(
-                record, XX_META_ID_FLAGS, 0);
+            uint64_t unpacked_size = xx_archive_record_get_meta_u64(record, XX_META_ID_UNCOMPRESSED_SIZE, 0);
+            uint64_t expected_crc = xx_archive_record_get_meta_u64(record, XX_META_ID_CRC32, UINT64_MAX);
+            uint16_t method = (uint16_t)xx_archive_record_get_meta_u64(record, XX_META_ID_COMPRESSION_METHOD, UINT64_MAX);
+            uint16_t flags = (uint16_t)xx_archive_record_get_meta_u64(record, XX_META_ID_FLAGS, 0);
             int64_t packed_size = record->compressed_size;
             int64_t device_size = xx_io_total_size(self->device);
 
-            if (unpacked_size > 0U && unpacked_size <= max_size &&
-                unpacked_size <= (uint64_t)SIZE_MAX && packed_size > 0 &&
-                (uint64_t)packed_size <= max_size && record->data_offset >= 0 &&
-                device_size >= 0 && record->data_offset <= device_size &&
-                packed_size <= device_size - record->data_offset &&
-                !xx_archive_record_get_meta_bool(
-                    record, XX_META_ID_IS_ENCRYPTED, false) &&
-                (xx_zip_method_is_supported(method) || method == 92U)) {
-                uint8_t *decoded =
-                    (uint8_t *)xx_mem_alloc((size_t)unpacked_size);
+            if (unpacked_size > 0U && unpacked_size <= max_size && unpacked_size <= (uint64_t)SIZE_MAX && packed_size > 0 && (uint64_t)packed_size <= max_size &&
+                record->data_offset >= 0 && device_size >= 0 && record->data_offset <= device_size && packed_size <= device_size - record->data_offset &&
+                !xx_archive_record_get_meta_bool(record, XX_META_ID_IS_ENCRYPTED, false) && (xx_zip_method_is_supported(method) || method == 92U)) {
+                uint8_t *decoded = (uint8_t *)xx_mem_alloc((size_t)unpacked_size);
                 if (decoded) {
                     xx_io_device destination;
                     xx_zip_buffer_sink sink;
-                    xx_zip_init_buffer_sink(&destination, &sink, decoded,
-                                            (size_t)unpacked_size);
-                    result = (method == 92U ? xx_zip_unpack_reference_to_device(
-                                 &probe.format, state, record, NULL, &destination, pd) : xx_zip_unpack_method_to_device(
-                                  self->device, record->data_offset, packed_size,
-                                  method, flags, unpacked_size, &destination,
-                                  pd)) &&
-                             sink.position == (size_t)unpacked_size &&
-                             expected_crc <= UINT32_MAX &&
-                             xx_crc32(XX_CRC_TYPE_CRC32, decoded,
-                                      (size_t)unpacked_size) ==
-                                 (uint32_t)expected_crc;
+                    xx_zip_init_buffer_sink(&destination, &sink, decoded, (size_t)unpacked_size);
+                    result = (method == 92U
+                                  ? xx_zip_unpack_reference_to_device(&probe.format, state, record, NULL, &destination, pd)
+                                  : xx_zip_unpack_method_to_device(self->device, record->data_offset, packed_size, method, flags, unpacked_size, &destination, pd)) &&
+                             sink.position == (size_t)unpacked_size && expected_crc <= UINT32_MAX &&
+                             xx_crc32(XX_CRC_TYPE_CRC32, decoded, (size_t)unpacked_size) == (uint32_t)expected_crc;
                     xx_mem_zero(decoded, (size_t)unpacked_size);
                     xx_mem_free(decoded);
                 }
@@ -2224,27 +2001,20 @@ static bool xx_zip_has_valid_file_impl(Abstractformat *self,
     return result;
 }
 
-bool xx_zip_has_valid_file(Abstractformat *self, const char *record_name,
-                           uint64_t max_size, xx_pd_struct *pd) {
-    return xx_zip_has_valid_file_impl(self, record_name, NULL, false, true,
-                                      max_size, pd);
+bool xx_zip_has_valid_file(Abstractformat *self, const char *record_name, uint64_t max_size, xx_pd_struct *pd)
+{
+    return xx_zip_has_valid_file_impl(self, record_name, NULL, false, true, max_size, pd);
 }
 
-bool xx_zip_has_valid_file_pattern(Abstractformat *self,
-                                   const char *prefix,
-                                   const char *suffix,
-                                   bool single_component,
-                                   uint64_t max_size,
-                                   xx_pd_struct *pd) {
-    return xx_zip_has_valid_file_impl(self, prefix, suffix, single_component,
-                                      false, max_size, pd);
+bool xx_zip_has_valid_file_pattern(Abstractformat *self, const char *prefix, const char *suffix, bool single_component, uint64_t max_size, xx_pd_struct *pd)
+{
+    return xx_zip_has_valid_file_impl(self, prefix, suffix, single_component, false, max_size, pd);
 }
 
 #if !defined(XXFC_PROFILE_APK_EMUL)
-static bool xx_zip_unpack_encrypted_to_device(
-    Abstractformat *format, const xx_archive_record_state *state,
-    const xx_archive_record *record, uint16_t outer_method, uint16_t flags,
-    xx_io_device *destination, xx_pd_struct *pd) {
+static bool xx_zip_unpack_encrypted_to_device(Abstractformat *format, const xx_archive_record_state *state, const xx_archive_record *record, uint16_t outer_method,
+                                              uint16_t flags, xx_io_device *destination, xx_pd_struct *pd)
+{
     xx_zip_password password;
     xx_zip_aes_info aes_info = {0};
     uint8_t *envelope = NULL;
@@ -2274,16 +2044,11 @@ static bool xx_zip_unpack_encrypted_to_device(
     }
     xx_mem_zero(&password, sizeof(password));
     record_compressed_size = record->compressed_size;
-    uncompressed_size = xx_archive_record_get_meta_u64(
-        record, XX_META_ID_UNCOMPRESSED_SIZE, 0);
-    expected_crc = (uint32_t)xx_archive_record_get_meta_u64(
-        record, XX_META_ID_CRC32, 0);
-    last_mod_time = (uint16_t)xx_archive_record_get_meta_u64(
-        record, XX_META_ID_LAST_MOD_TIME, 0);
+    uncompressed_size = xx_archive_record_get_meta_u64(record, XX_META_ID_UNCOMPRESSED_SIZE, 0);
+    expected_crc = (uint32_t)xx_archive_record_get_meta_u64(record, XX_META_ID_CRC32, 0);
+    last_mod_time = (uint16_t)xx_archive_record_get_meta_u64(record, XX_META_ID_LAST_MOD_TIME, 0);
 
-    if (record->data_offset < 0 || record_compressed_size < 0 ||
-        (uint64_t)record_compressed_size > (uint64_t)SIZE_MAX ||
-        uncompressed_size > (uint64_t)SIZE_MAX) {
+    if (record->data_offset < 0 || record_compressed_size < 0 || (uint64_t)record_compressed_size > (uint64_t)SIZE_MAX || uncompressed_size > (uint64_t)SIZE_MAX) {
         goto cleanup;
     }
     envelope_size = (size_t)record_compressed_size;
@@ -2296,18 +2061,14 @@ static bool xx_zip_unpack_encrypted_to_device(
             goto cleanup;
         }
         salt_size = xx_winzip_aes_salt_size(aes_info.strength);
-        if (envelope_size < salt_size + XX_WINZIP_AES_PASSWORD_VERIFIER_SIZE +
-                                XX_WINZIP_AES_AUTH_CODE_SIZE) {
+        if (envelope_size < salt_size + XX_WINZIP_AES_PASSWORD_VERIFIER_SIZE + XX_WINZIP_AES_AUTH_CODE_SIZE) {
             goto cleanup;
         }
-        compressed_capacity = envelope_size - salt_size -
-                              XX_WINZIP_AES_PASSWORD_VERIFIER_SIZE -
-                              XX_WINZIP_AES_AUTH_CODE_SIZE;
+        compressed_capacity = envelope_size - salt_size - XX_WINZIP_AES_PASSWORD_VERIFIER_SIZE - XX_WINZIP_AES_AUTH_CODE_SIZE;
         actual_method = aes_info.compression_method;
         verify_crc = aes_info.vendor_version == 1U;
     } else {
-        if ((flags & 0x0040U) != 0U ||
-            envelope_size < XX_ZIPCRYPTO_HEADER_SIZE) {
+        if ((flags & 0x0040U) != 0U || envelope_size < XX_ZIPCRYPTO_HEADER_SIZE) {
             goto cleanup;
         }
         compressed_capacity = envelope_size - XX_ZIPCRYPTO_HEADER_SIZE;
@@ -2315,73 +2076,50 @@ static bool xx_zip_unpack_encrypted_to_device(
     if (actual_method == 92U && compressed_capacity != XX_SHA1_DIGEST_SIZE) {
         goto cleanup;
     }
-    if (xx_zip_method_uses_member_buffers(actual_method) &&
-        (compressed_capacity > XX_ZIP_MEMORY_CODEC_LIMIT ||
-         uncompressed_size > XX_ZIP_MEMORY_CODEC_LIMIT)) {
+    if (xx_zip_method_uses_member_buffers(actual_method) && (compressed_capacity > XX_ZIP_MEMORY_CODEC_LIMIT || uncompressed_size > XX_ZIP_MEMORY_CODEC_LIMIT)) {
         goto cleanup;
     }
     plain_size = (size_t)uncompressed_size;
-    if (!xx_zip_get_u64_limit(format, &state->options,
-                              XX_META_ID_OPT_MEMORY_LIMIT,
-                              &memory_limit_present, &memory_limit)) {
-        xx_pd_set_error(pd, XXFC_ERR_INVALID_ARG,
-                        "ZIP extraction limits must be nonnegative integers");
+    if (!xx_zip_get_u64_limit(format, &state->options, XX_META_ID_OPT_MEMORY_LIMIT, &memory_limit_present, &memory_limit)) {
+        xx_pd_set_error(pd, XXFC_ERR_INVALID_ARG, "ZIP extraction limits must be nonnegative integers");
         goto cleanup;
     }
-    if (memory_limit_present &&
-        (!xx_zip_add_memory(&required_memory,
-                            envelope_size ? (uint64_t)envelope_size : 1U) ||
-         !xx_zip_add_memory(&required_memory,
-                            compressed_capacity
-                                ? (uint64_t)compressed_capacity : 1U) ||
-         (actual_method != 92U &&
-          !xx_zip_add_memory(&required_memory,
-                             plain_size ? (uint64_t)plain_size : 1U)) ||
-         (xx_zip_method_uses_member_buffers(actual_method) &&
-          (!xx_zip_add_memory(&required_memory, compressed_capacity) ||
-           !xx_zip_add_memory(&required_memory, plain_size ? (uint64_t)plain_size : 1U))) ||
-         required_memory > memory_limit)) {
-        xx_pd_set_error(pd, XXFC_ERR_OUT_OF_BOUNDS,
-                        "ZIP extraction exceeds the configured memory limit");
+    if (memory_limit_present && (!xx_zip_add_memory(&required_memory, envelope_size ? (uint64_t)envelope_size : 1U) ||
+                                 !xx_zip_add_memory(&required_memory, compressed_capacity ? (uint64_t)compressed_capacity : 1U) ||
+                                 (actual_method != 92U && !xx_zip_add_memory(&required_memory, plain_size ? (uint64_t)plain_size : 1U)) ||
+                                 (xx_zip_method_uses_member_buffers(actual_method) && (!xx_zip_add_memory(&required_memory, compressed_capacity) ||
+                                                                                       !xx_zip_add_memory(&required_memory, plain_size ? (uint64_t)plain_size : 1U))) ||
+                                 required_memory > memory_limit)) {
+        xx_pd_set_error(pd, XXFC_ERR_OUT_OF_BOUNDS, "ZIP extraction exceeds the configured memory limit");
         goto cleanup;
     }
     if (!xx_zip_get_password(format, &state->options, &password)) {
         goto cleanup;
     }
     envelope = (uint8_t *)xx_mem_alloc(envelope_size ? envelope_size : 1U);
-    if (!envelope ||
-        !xx_zip_read_exact_at_progress(format->device, record->data_offset,
-                                       envelope, envelope_size, pd)) {
+    if (!envelope || !xx_zip_read_exact_at_progress(format->device, record->data_offset, envelope, envelope_size, pd)) {
         goto cleanup;
     }
 
     if (is_aes) {
-        compressed = (uint8_t *)xx_mem_alloc(compressed_capacity ?
-                                             compressed_capacity : 1U);
+        compressed = (uint8_t *)xx_mem_alloc(compressed_capacity ? compressed_capacity : 1U);
         if (xx_pd_is_stopped(pd) || !compressed ||
-            !xx_winzip_aes_decrypt_envelope_progress(
-                envelope, envelope_size, password.bytes, password.size,
-                aes_info.strength, compressed, compressed_capacity,
-                &compressed_size, pd) ||
+            !xx_winzip_aes_decrypt_envelope_progress(envelope, envelope_size, password.bytes, password.size, aes_info.strength, compressed, compressed_capacity,
+                                                     &compressed_size, pd) ||
             xx_pd_is_stopped(pd)) {
             goto cleanup;
         }
     } else {
-        compressed = (uint8_t *)xx_mem_alloc(compressed_capacity ?
-                                             compressed_capacity : 1U);
+        compressed = (uint8_t *)xx_mem_alloc(compressed_capacity ? compressed_capacity : 1U);
         if (xx_pd_is_stopped(pd) || !compressed ||
-            !xx_zipcrypto_decrypt_envelope_progress(
-                envelope, envelope_size, password.bytes, password.size,
-                expected_crc, last_mod_time,
-                (flags & 0x0008U) != 0U, compressed, compressed_capacity,
-                &compressed_size, pd) ||
+            !xx_zipcrypto_decrypt_envelope_progress(envelope, envelope_size, password.bytes, password.size, expected_crc, last_mod_time, (flags & 0x0008U) != 0U,
+                                                    compressed, compressed_capacity, &compressed_size, pd) ||
             xx_pd_is_stopped(pd)) {
             goto cleanup;
         }
     }
 
-    if ((!xx_zip_method_is_supported(actual_method) && actual_method != 92U) ||
-        (uint64_t)compressed_size > (uint64_t)INT64_MAX) {
+    if ((!xx_zip_method_is_supported(actual_method) && actual_method != 92U) || (uint64_t)compressed_size > (uint64_t)INT64_MAX) {
         goto cleanup;
     }
     if (actual_method == 92U) {
@@ -2407,8 +2145,7 @@ static bool xx_zip_unpack_encrypted_to_device(
             }
             destination = &verify_device;
         }
-        success = xx_zip_unpack_reference_to_device(format, state, record,
-                                                     digest, destination, pd);
+        success = xx_zip_unpack_reference_to_device(format, state, record, digest, destination, pd);
         xx_mem_zero(digest, sizeof(digest));
         goto cleanup;
     }
@@ -2421,26 +2158,20 @@ static bool xx_zip_unpack_encrypted_to_device(
         goto cleanup;
     }
     xx_zip_init_buffer_sink(&plain_device, &plain_sink, plain, plain_size);
-    if (!xx_zip_unpack_method_to_device(compressed_device, 0,
-                                        (int64_t)compressed_size,
-                                        actual_method, flags,
-                                        uncompressed_size,
-                                        &plain_device, pd) ||
+    if (!xx_zip_unpack_method_to_device(compressed_device, 0, (int64_t)compressed_size, actual_method, flags, uncompressed_size, &plain_device, pd) ||
         plain_sink.position != plain_size) {
         goto cleanup;
     }
     if (verify_crc) {
         uint32_t actual_crc;
-        if (!xx_zip_crc32_progress(plain, plain_size, &actual_crc, pd) ||
-            actual_crc != expected_crc) {
+        if (!xx_zip_crc32_progress(plain, plain_size, &actual_crc, pd) || actual_crc != expected_crc) {
             goto cleanup;
         }
     }
 
     if (!destination) {
         success = true;
-    } else if (xx_zip_write_exact_progress(destination, plain, plain_size,
-                                           pd)) {
+    } else if (xx_zip_write_exact_progress(destination, plain, plain_size, pd)) {
         success = true;
     }
 
@@ -2472,18 +2203,18 @@ typedef struct xx_zip_reference_sink_s {
     xx_pd_struct *pd;
 } xx_zip_reference_sink;
 
-static ssize_t xx_zip_reference_sink_write(xx_io_device *device,
-                                           const void *buffer, size_t size) {
+static ssize_t xx_zip_reference_sink_write(xx_io_device *device, const void *buffer, size_t size)
+{
     xx_zip_reference_sink *sink = device ? (xx_zip_reference_sink *)device->priv : NULL;
-    if (!sink || (!buffer && size) || size > (size_t)PTRDIFF_MAX ||
-        (uint64_t)size > sink->limit - sink->size || xx_pd_is_stopped(sink->pd)) return -1;
+    if (!sink || (!buffer && size) || size > (size_t)PTRDIFF_MAX || (uint64_t)size > sink->limit - sink->size || xx_pd_is_stopped(sink->pd)) return -1;
     xx_hash_update(&sink->sha1, buffer, size);
     xx_crc_context_update(&sink->crc, buffer, size);
     sink->size += size;
     return (ssize_t)size;
 }
 
-static int64_t xx_zip_reference_sink_size(xx_io_device *device) {
+static int64_t xx_zip_reference_sink_size(xx_io_device *device)
+{
     const xx_zip_reference_sink *sink = device ? (const xx_zip_reference_sink *)device->priv : NULL;
     return sink ? (int64_t)sink->size : -1;
 }
@@ -2495,10 +2226,9 @@ static int64_t xx_zip_reference_sink_size(xx_io_device *device) {
  * so a CRC collision or dangling reference never publishes candidate data.
  * Wire format independently confirmed by Seed7 lib/zip.s7i getReference()
  * and IO-Compress bin/zipdetails, both upstream implementations. */
-static bool xx_zip_unpack_reference_to_device(
-    Abstractformat *format, const xx_archive_record_state *state,
-    const xx_archive_record *record, const uint8_t *digest,
-    xx_io_device *destination, xx_pd_struct *pd) {
+static bool xx_zip_unpack_reference_to_device(Abstractformat *format, const xx_archive_record_state *state, const xx_archive_record *record, const uint8_t *digest,
+                                              xx_io_device *destination, xx_pd_struct *pd)
+{
     uint8_t stored_digest[XX_SHA1_DIGEST_SIZE];
     uint64_t size, crc;
     bool reference_crc_present = true;
@@ -2516,8 +2246,8 @@ static bool xx_zip_unpack_reference_to_device(
     }
     if (!digest) {
         if (record->compressed_size != XX_SHA1_DIGEST_SIZE || record->data_offset < 0 ||
-            !xx_zip_read_exact_at_progress(format->device, record->data_offset,
-                                           stored_digest, sizeof(stored_digest), pd)) return false;
+            !xx_zip_read_exact_at_progress(format->device, record->data_offset, stored_digest, sizeof(stored_digest), pd))
+            return false;
         digest = stored_digest;
     }
     scan = xx_zip_create_archive_records_reading(format, state ? &state->options : NULL, pd);
@@ -2531,49 +2261,40 @@ static bool xx_zip_unpack_reference_to_device(
         uint64_t candidate_crc = xx_archive_record_get_meta_u64(candidate, XX_META_ID_CRC32, UINT64_MAX);
         if (method == 99U) {
             xx_zip_aes_info aes;
-            concrete = xx_zip_parse_aes_extra(candidate, &aes) &&
-                       aes.compression_method != 92U && xx_zip_method_is_supported(aes.compression_method);
+            concrete = xx_zip_parse_aes_extra(candidate, &aes) && aes.compression_method != 92U && xx_zip_method_is_supported(aes.compression_method);
             if (concrete) candidate_crc_present = aes.vendor_version != 2U;
         }
-        if (concrete && candidate->header_offset != record->header_offset &&
-            !xx_archive_record_get_meta_bool(candidate, XX_META_ID_IS_FOLDER, false) &&
+        if (concrete && candidate->header_offset != record->header_offset && !xx_archive_record_get_meta_bool(candidate, XX_META_ID_IS_FOLDER, false) &&
             candidate->data_offset >= 0 && candidate->compressed_size >= 0 &&
-            xx_archive_record_get_meta_u64(candidate, XX_META_ID_UNCOMPRESSED_SIZE, UINT64_MAX) == size &&
-            candidate_crc <= UINT32_MAX &&
+            xx_archive_record_get_meta_u64(candidate, XX_META_ID_UNCOMPRESSED_SIZE, UINT64_MAX) == size && candidate_crc <= UINT32_MAX &&
             (!reference_crc_present || !candidate_crc_present || candidate_crc == crc)) {
             xx_zip_reference_sink sink;
             xx_io_device hash_device;
             uint8_t actual[XX_SHA1_DIGEST_SIZE];
             bool decoded;
-            bool within_budget = encrypted ||
-                xx_zip_check_unencrypted_allocation_budget(
-                    format, &scan->options, candidate, NULL);
+            bool within_budget = encrypted || xx_zip_check_unencrypted_allocation_budget(format, &scan->options, candidate, NULL);
             if (!within_budget) allocation_limit_hit = true;
             xx_mem_zero(&sink, sizeof(sink));
             xx_mem_zero(&hash_device, sizeof(hash_device));
             sink.limit = size;
             sink.pd = pd;
-            if (!xx_hash_init(&sink.sha1, XX_HASH_SHA1) ||
-                !xx_crc_context_init_type(&sink.crc, XX_CRC_TYPE_CRC32)) break;
+            if (!xx_hash_init(&sink.sha1, XX_HASH_SHA1) || !xx_crc_context_init_type(&sink.crc, XX_CRC_TYPE_CRC32)) break;
             hash_device.priv = &sink;
             hash_device.write = xx_zip_reference_sink_write;
             hash_device.total_size = xx_zip_reference_sink_size;
             hash_device.get_total_size = xx_zip_reference_sink_size;
             hash_device.size = xx_zip_reference_sink_size;
-            decoded = within_budget && (encrypted ? xx_zip_unpack_encrypted_to_device(format, scan, candidate, method, flags, &hash_device, pd) :
-                xx_zip_unpack_method_to_device(format->device, candidate->data_offset, candidate->compressed_size,
-                                              method, flags, size, &hash_device, pd));
-            if (decoded && sink.size == size &&
-                (!reference_crc_present || xx_crc_context_final(&sink.crc) == crc) &&
-                (!candidate_crc_present || xx_crc_context_final(&sink.crc) == candidate_crc) &&
-                xx_hash_final(&sink.sha1, actual, sizeof(actual)) && xx_hash_equal(actual, digest, sizeof(actual))) {
-                within_budget = encrypted ||
-                    xx_zip_check_unencrypted_allocation_budget(
-                        format, &scan->options, candidate, NULL);
+            decoded = within_budget && (encrypted ? xx_zip_unpack_encrypted_to_device(format, scan, candidate, method, flags, &hash_device, pd)
+                                                  : xx_zip_unpack_method_to_device(format->device, candidate->data_offset, candidate->compressed_size, method, flags,
+                                                                                   size, &hash_device, pd));
+            if (decoded && sink.size == size && (!reference_crc_present || xx_crc_context_final(&sink.crc) == crc) &&
+                (!candidate_crc_present || xx_crc_context_final(&sink.crc) == candidate_crc) && xx_hash_final(&sink.sha1, actual, sizeof(actual)) &&
+                xx_hash_equal(actual, digest, sizeof(actual))) {
+                within_budget = encrypted || xx_zip_check_unencrypted_allocation_budget(format, &scan->options, candidate, NULL);
                 if (!within_budget) allocation_limit_hit = true;
-                success = within_budget && (encrypted ? xx_zip_unpack_encrypted_to_device(format, scan, candidate, method, flags, destination, pd) :
-                    xx_zip_unpack_method_to_device(format->device, candidate->data_offset, candidate->compressed_size,
-                                                  method, flags, size, destination, pd));
+                success = within_budget && (encrypted ? xx_zip_unpack_encrypted_to_device(format, scan, candidate, method, flags, destination, pd)
+                                                      : xx_zip_unpack_method_to_device(format->device, candidate->data_offset, candidate->compressed_size, method, flags,
+                                                                                       size, destination, pd));
                 break;
             }
         }
@@ -2582,8 +2303,7 @@ static bool xx_zip_unpack_reference_to_device(
     if (scan) xx_zip_free_archive_records_reading(format, scan);
     if (!success && !xx_pd_is_stopped(pd))
         xx_pd_set_error(pd, allocation_limit_hit ? XXFC_ERR_OUT_OF_BOUNDS : XXFC_ERR_INVALID_ARG,
-                        allocation_limit_hit ? "ZIP extraction exceeds the configured memory limit" :
-                                               "ZIP reference has no matching valid member");
+                        allocation_limit_hit ? "ZIP extraction exceeds the configured memory limit" : "ZIP reference has no matching valid member");
     return success && !xx_pd_is_stopped(pd);
 }
 
@@ -2606,8 +2326,8 @@ static bool xx_zip_unpack_reference_to_device(
  * and *is_root is set.  The name is the central-directory one; the local
  * header name and the Unicode Path extra field (0x7075) are not consulted;
  * code that starts using either must route it through here too. */
-static wchar_t *xx_zip_safe_relative_name(const wchar_t *name,
-                                          wchar_t separator, bool *is_root) {
+static wchar_t *xx_zip_safe_relative_name(const wchar_t *name, wchar_t separator, bool *is_root)
+{
     size_t length;
     size_t index;
     size_t start;
@@ -2620,9 +2340,7 @@ static wchar_t *xx_zip_safe_relative_name(const wchar_t *name,
     for (;;) {
         if (name[0] == L'/' || name[0] == L'\\') {
             ++name;
-        } else if (((name[0] >= L'A' && name[0] <= L'Z') ||
-                    (name[0] >= L'a' && name[0] <= L'z')) &&
-                   name[1] == L':') {
+        } else if (((name[0] >= L'A' && name[0] <= L'Z') || (name[0] >= L'a' && name[0] <= L'z')) && name[1] == L':') {
             name += 2;
         } else {
             break;
@@ -2641,9 +2359,7 @@ static wchar_t *xx_zip_safe_relative_name(const wchar_t *name,
         wchar_t c = name[index];
         size_t size;
         if (index != length && c != L'/' && c != L'\\') {
-            if ((uint32_t)c < 0x20U || c == L'\x7f' || c == L':' || c == L'<' ||
-                c == L'>' || c == L'"' || c == L'|' || c == L'?' ||
-                c == L'*') {
+            if ((uint32_t)c < 0x20U || c == L'\x7f' || c == L':' || c == L'<' || c == L'>' || c == L'"' || c == L'|' || c == L'?' || c == L'*') {
                 xx_mem_free(result);
                 return NULL;
             }
@@ -2655,8 +2371,7 @@ static wchar_t *xx_zip_safe_relative_name(const wchar_t *name,
             return NULL;
         }
         if (size != 0U && !(size == 1U && name[start] == L'.')) {
-            if (name[index - 1U] == L'.' || name[index - 1U] == L' ' ||
-                xx_io_platform_wsegment_is_reserved(name + start, size)) {
+            if (name[index - 1U] == L'.' || name[index - 1U] == L' ' || xx_io_platform_wsegment_is_reserved(name + start, size)) {
                 xx_mem_free(result);
                 return NULL;
             }
@@ -2677,8 +2392,8 @@ static wchar_t *xx_zip_safe_relative_name(const wchar_t *name,
     return result;
 }
 
-static wchar_t *xx_zip_make_destination(const wchar_t *base,
-                                        const wchar_t *name, bool *is_root) {
+static wchar_t *xx_zip_make_destination(const wchar_t *base, const wchar_t *name, bool *is_root)
+{
     wchar_t *normalized;
     wchar_t *result;
     size_t base_length;
@@ -2694,17 +2409,14 @@ static wchar_t *xx_zip_make_destination(const wchar_t *base,
         return NULL;
     }
     base_length = xx_str_wlen(base);
-    separator_needed = base_length != 0U &&
-                       base[base_length - 1U] != L'/' &&
-                       base[base_length - 1U] != L'\\';
-    result = separator_needed ? xx_str_wconcat3(base, separator_text, normalized)
-                              : xx_str_wconcat(base, normalized);
+    separator_needed = base_length != 0U && base[base_length - 1U] != L'/' && base[base_length - 1U] != L'\\';
+    result = separator_needed ? xx_str_wconcat3(base, separator_text, normalized) : xx_str_wconcat(base, normalized);
     xx_str_wfree(normalized);
     return result;
 }
 
-static xx_io_device *xx_zip_open_stage_file(const char *destination,
-                                             char **stage_path) {
+static xx_io_device *xx_zip_open_stage_file(const char *destination, char **stage_path)
+{
     unsigned int attempt;
     if (!destination || !stage_path) {
         return NULL;
@@ -2714,8 +2426,7 @@ static xx_io_device *xx_zip_open_stage_file(const char *destination,
         char suffix[48];
         char *candidate;
         xx_io_device *device;
-        int length = xx_rt_snprintf(suffix, sizeof(suffix),
-                              ".xxfclib.tmp.%u", attempt);
+        int length = xx_rt_snprintf(suffix, sizeof(suffix), ".xxfclib.tmp.%u", attempt);
         if (length <= 0 || (size_t)length >= sizeof(suffix)) {
             return NULL;
         }
@@ -2734,17 +2445,21 @@ static xx_io_device *xx_zip_open_stage_file(const char *destination,
 }
 
 #else
-static bool xx_zip_unpack_reference_to_device(Abstractformat *format,
-    const xx_archive_record_state *state, const xx_archive_record *record,
-    const uint8_t *digest, xx_io_device *destination, xx_pd_struct *pd) {
-    (void)format; (void)state; (void)record; (void)digest; (void)destination; (void)pd;
+static bool xx_zip_unpack_reference_to_device(Abstractformat *format, const xx_archive_record_state *state, const xx_archive_record *record, const uint8_t *digest,
+                                              xx_io_device *destination, xx_pd_struct *pd)
+{
+    (void)format;
+    (void)state;
+    (void)record;
+    (void)digest;
+    (void)destination;
+    (void)pd;
     return false;
 }
 #endif
 
-bool xx_zip_unpack_current_archive_record_to_device(
-    Abstractformat *self, xx_archive_record_state *state,
-    xx_io_device *destination, xx_pd_struct *pd) {
+bool xx_zip_unpack_current_archive_record_to_device(Abstractformat *self, xx_archive_record_state *state, xx_io_device *destination, xx_pd_struct *pd)
+{
     const xx_archive_record *record;
     uint64_t declared_size, expected_crc, member_limit;
     uint16_t method, flags;
@@ -2752,80 +2467,62 @@ bool xx_zip_unpack_current_archive_record_to_device(
     xx_io_device limited_device, verified_device;
     xx_zip_limit_sink limited_sink;
     xx_zip_verify_sink verified_sink;
-    if (!self || !self->device || !state || state->format != self ||
-        !state->has_record || !destination || !destination->write ||
-        destination == self->device || xx_pd_is_stopped(pd)) return false;
+    if (!self || !self->device || !state || state->format != self || !state->has_record || !destination || !destination->write || destination == self->device ||
+        xx_pd_is_stopped(pd))
+        return false;
     record = &state->current_record;
-    declared_size = xx_archive_record_get_meta_u64(
-        record, XX_META_ID_UNCOMPRESSED_SIZE, UINT64_MAX);
-    expected_crc = xx_archive_record_get_meta_u64(
-        record, XX_META_ID_CRC32, UINT64_MAX);
-    is_folder = xx_archive_record_get_meta_bool(
-        record, XX_META_ID_IS_FOLDER, false);
-    is_encrypted = xx_archive_record_get_meta_bool(
-        record, XX_META_ID_IS_ENCRYPTED, false);
-    if (declared_size > (uint64_t)INT64_MAX ||
-        !xx_zip_get_u64_limit(self, &state->options,
-            XX_META_ID_OPT_MAX_MEMBER_SIZE, &member_limit_present,
-            &member_limit)) {
-        xx_pd_set_error(pd, XXFC_ERR_INVALID_ARG,
-                        "ZIP member size or extraction limit is invalid");
+    declared_size = xx_archive_record_get_meta_u64(record, XX_META_ID_UNCOMPRESSED_SIZE, UINT64_MAX);
+    expected_crc = xx_archive_record_get_meta_u64(record, XX_META_ID_CRC32, UINT64_MAX);
+    is_folder = xx_archive_record_get_meta_bool(record, XX_META_ID_IS_FOLDER, false);
+    is_encrypted = xx_archive_record_get_meta_bool(record, XX_META_ID_IS_ENCRYPTED, false);
+    if (declared_size > (uint64_t)INT64_MAX || !xx_zip_get_u64_limit(self, &state->options, XX_META_ID_OPT_MAX_MEMBER_SIZE, &member_limit_present, &member_limit)) {
+        xx_pd_set_error(pd, XXFC_ERR_INVALID_ARG, "ZIP member size or extraction limit is invalid");
         return false;
     }
     if (member_limit_present && declared_size > member_limit) {
-        xx_pd_set_error(pd, XXFC_ERR_OUT_OF_BOUNDS,
-                        "ZIP member exceeds the configured size limit");
+        xx_pd_set_error(pd, XXFC_ERR_OUT_OF_BOUNDS, "ZIP member exceeds the configured size limit");
         return false;
     }
-    if (!xx_zip_check_unencrypted_allocation_budget(
-            self, &state->options, record, pd)) return false;
+    if (!xx_zip_check_unencrypted_allocation_budget(self, &state->options, record, pd)) return false;
     if (is_folder) {
-        return xx_zip_verify_directory_record(self,record,pd);
+        return xx_zip_verify_directory_record(self, record, pd);
     }
     if (record->data_offset < 0 || record->compressed_size < 0) return false;
-    method = (uint16_t)xx_archive_record_get_meta_u64(
-        record, XX_META_ID_COMPRESSION_METHOD, UINT16_MAX);
-    flags = (uint16_t)xx_archive_record_get_meta_u64(
-        record, XX_META_ID_FLAGS, 0);
+    method = (uint16_t)xx_archive_record_get_meta_u64(record, XX_META_ID_COMPRESSION_METHOD, UINT16_MAX);
+    flags = (uint16_t)xx_archive_record_get_meta_u64(record, XX_META_ID_FLAGS, 0);
     if (is_encrypted) {
 #if defined(XXFC_PROFILE_APK_EMUL)
         return false;
 #else
-        return xx_zip_unpack_encrypted_to_device(
-            self, state, record, method, flags, destination, pd) &&
-            !xx_pd_is_stopped(pd);
+        return xx_zip_unpack_encrypted_to_device(self, state, record, method, flags, destination, pd) && !xx_pd_is_stopped(pd);
 #endif
     }
-    if (expected_crc > UINT32_MAX ||
-        !xx_zip_init_verify_sink(&verified_device, &verified_sink)) return false;
-    xx_zip_init_limit_sink(&limited_device, &limited_sink,
-                           destination, declared_size, pd);
+    if (expected_crc > UINT32_MAX || !xx_zip_init_verify_sink(&verified_device, &verified_sink)) return false;
+    xx_zip_init_limit_sink(&limited_device, &limited_sink, destination, declared_size, pd);
     verified_sink.target = &limited_device;
 #if !defined(XXFC_PROFILE_APK_EMUL)
-    success = method == 92U ? xx_zip_unpack_reference_to_device(
-        self, state, record, NULL, &verified_device, pd) :
+    success =
+        method == 92U ? xx_zip_unpack_reference_to_device(self, state, record, NULL, &verified_device, pd) :
 #else
     success =
 #endif
-        xx_zip_unpack_method_to_device(self->device, record->data_offset,
-            record->compressed_size, method, flags, declared_size,
-            &verified_device, pd);
-    if (success && (verified_sink.position != declared_size ||
-                    verified_sink.crc != expected_crc)) {
-        xx_pd_set_error(pd, XXFC_ERR_INVALID_ARG,
-                        "ZIP output CRC or size mismatch");
+                      xx_zip_unpack_method_to_device(self->device, record->data_offset, record->compressed_size, method, flags, declared_size, &verified_device, pd);
+    if (success && (verified_sink.position != declared_size || verified_sink.crc != expected_crc)) {
+        xx_pd_set_error(pd, XXFC_ERR_INVALID_ARG, "ZIP output CRC or size mismatch");
         success = false;
     }
     return success && !xx_pd_is_stopped(pd);
 }
 
-bool xx_zip_unpack_current_archive_record(Abstractformat *self, xx_archive_record_state *state, xx_pd_struct *pd) {
+bool xx_zip_unpack_current_archive_record(Abstractformat *self, xx_archive_record_state *state, xx_pd_struct *pd)
+{
 #if defined(XXFC_PROFILE_APK_EMUL)
-    (void)self; (void)state; (void)pd;
+    (void)self;
+    (void)state;
+    (void)pd;
     return false; /* The focused profile extracts only to caller devices. */
 #else
-    if (!self || !self->device || !state || !state->has_record ||
-        xx_pd_is_stopped(pd)) {
+    if (!self || !self->device || !state || !state->has_record || xx_pd_is_stopped(pd)) {
         return false;
     }
 
@@ -2835,25 +2532,19 @@ bool xx_zip_unpack_current_archive_record(Abstractformat *self, xx_archive_recor
     const wchar_t *orig_name_w = xx_archive_record_get_original_name_w(rec);
     bool member_limit_present;
     uint64_t member_limit;
-    uint64_t declared_size = xx_archive_record_get_meta_u64(
-        rec, XX_META_ID_UNCOMPRESSED_SIZE, 0);
+    uint64_t declared_size = xx_archive_record_get_meta_u64(rec, XX_META_ID_UNCOMPRESSED_SIZE, 0);
 
-    if (!xx_zip_get_u64_limit(self, &state->options,
-                              XX_META_ID_OPT_MAX_MEMBER_SIZE,
-                              &member_limit_present, &member_limit)) {
-        xx_pd_set_error(pd, XXFC_ERR_INVALID_ARG,
-                        "ZIP extraction limits must be nonnegative integers");
+    if (!xx_zip_get_u64_limit(self, &state->options, XX_META_ID_OPT_MAX_MEMBER_SIZE, &member_limit_present, &member_limit)) {
+        xx_pd_set_error(pd, XXFC_ERR_INVALID_ARG, "ZIP extraction limits must be nonnegative integers");
         return false;
     }
     if (member_limit_present && declared_size > member_limit) {
-        xx_pd_set_error(pd, XXFC_ERR_OUT_OF_BOUNDS,
-                        "ZIP member exceeds the configured size limit");
+        xx_pd_set_error(pd, XXFC_ERR_OUT_OF_BOUNDS, "ZIP member exceeds the configured size limit");
         return false;
     }
-    if (!xx_zip_check_unencrypted_allocation_budget(
-            self, &state->options, rec, pd)) return false;
+    if (!xx_zip_check_unencrypted_allocation_budget(self, &state->options, rec, pd)) return false;
 
-    if (is_folder && !xx_zip_verify_directory_record(self,rec,pd)) {
+    if (is_folder && !xx_zip_verify_directory_record(self, rec, pd)) {
         return false;
     }
 
@@ -2881,17 +2572,13 @@ bool xx_zip_unpack_current_archive_record(Abstractformat *self, xx_archive_recor
         if (is_folder) {
             return true;
         }
-        is_encrypted = xx_archive_record_get_meta_bool(
-            rec, XX_META_ID_IS_ENCRYPTED, false);
+        is_encrypted = xx_archive_record_get_meta_bool(rec, XX_META_ID_IS_ENCRYPTED, false);
         if (!is_encrypted) {
             return xx_zip_verify_unencrypted_record(self, state, rec, pd);
         }
-        method = (uint16_t)xx_archive_record_get_meta_u64(
-            rec, XX_META_ID_COMPRESSION_METHOD, 0);
-        flags = (uint16_t)xx_archive_record_get_meta_u64(
-            rec, XX_META_ID_FLAGS, 0);
-        return xx_zip_unpack_encrypted_to_device(
-            self, state, rec, method, flags, NULL, pd);
+        method = (uint16_t)xx_archive_record_get_meta_u64(rec, XX_META_ID_COMPRESSION_METHOD, 0);
+        flags = (uint16_t)xx_archive_record_get_meta_u64(rec, XX_META_ID_FLAGS, 0);
+        return xx_zip_unpack_encrypted_to_device(self, state, rec, method, flags, NULL, pd);
     }
 
     /* Convert unpack path to unicode wchar_t buffer */
@@ -2919,8 +2606,7 @@ bool xx_zip_unpack_current_archive_record(Abstractformat *self, xx_archive_recor
     /* Make absolute and drive-qualified names relative and refuse traversal
        or unmappable names before joining them to the extraction root. */
     bool is_root = false;
-    wchar_t *full_dest_w = xx_zip_make_destination(unpack_path_w, item_name_w,
-                                                   &is_root);
+    wchar_t *full_dest_w = xx_zip_make_destination(unpack_path_w, item_name_w, &is_root);
 
     xx_str_wfree(unpack_path_w);
     xx_str_wfree(item_name_w);
@@ -2950,16 +2636,12 @@ bool xx_zip_unpack_current_archive_record(Abstractformat *self, xx_archive_recor
         /* Convert full path to UTF-8 for xx_io_file_open */
         char *dest_path_utf8 = xx_str_unicode_to_utf8(full_dest_w);
         if (parent_ready && dest_path_utf8) {
-            uint16_t method = (uint16_t)xx_archive_record_get_meta_u64(
-                rec, XX_META_ID_COMPRESSION_METHOD, 0);
-            uint16_t flags = (uint16_t)xx_archive_record_get_meta_u64(
-                rec, XX_META_ID_FLAGS, 0);
-            uint64_t uncomp_size = xx_archive_record_get_meta_u64(
-                rec, XX_META_ID_UNCOMPRESSED_SIZE, 0);
+            uint16_t method = (uint16_t)xx_archive_record_get_meta_u64(rec, XX_META_ID_COMPRESSION_METHOD, 0);
+            uint16_t flags = (uint16_t)xx_archive_record_get_meta_u64(rec, XX_META_ID_FLAGS, 0);
+            uint64_t uncomp_size = xx_archive_record_get_meta_u64(rec, XX_META_ID_UNCOMPRESSED_SIZE, 0);
             int64_t comp_size = rec->compressed_size;
             int64_t data_offset = rec->data_offset;
-            const xx_var *overwrite_var = xx_format_resolve_extra_parameter(
-                self, &state->options, XX_META_ID_OPT_OVERWRITE);
+            const xx_var *overwrite_var = xx_format_resolve_extra_parameter(self, &state->options, XX_META_ID_OPT_OVERWRITE);
             bool overwrite = overwrite_var && xx_var_get_bool(overwrite_var);
             char *stage_path = NULL;
             xx_io_device *stage = NULL;
@@ -2980,15 +2662,11 @@ bool xx_zip_unpack_current_archive_record(Abstractformat *self, xx_archive_recor
                 }
             }
             if (destination && is_encrypted) {
-                success = xx_zip_unpack_encrypted_to_device(
-                    self, state, rec, method, flags, destination, pd);
+                success = xx_zip_unpack_encrypted_to_device(self, state, rec, method, flags, destination, pd);
             } else if (destination && method == 92U) {
-                success = xx_zip_unpack_reference_to_device(
-                    self, state, rec, NULL, destination, pd);
+                success = xx_zip_unpack_reference_to_device(self, state, rec, NULL, destination, pd);
             } else if (destination) {
-                success = xx_zip_unpack_method_to_device(
-                    self->device, data_offset, comp_size, method, flags,
-                    uncomp_size, destination, pd);
+                success = xx_zip_unpack_method_to_device(self->device, data_offset, comp_size, method, flags, uncomp_size, destination, pd);
             }
             if (stage && xx_io_close(stage) != 0) {
                 success = false;
@@ -2998,19 +2676,15 @@ bool xx_zip_unpack_current_archive_record(Abstractformat *self, xx_archive_recor
                 /* Validate the bytes accepted by the staged file before
                  * publishing it. A second full-output read is unnecessary;
                  * this also detects corrupt split continuation payloads. */
-                success = !xx_pd_is_stopped(pd) && uncomp_size <= INT64_MAX &&
-                    crc_sink.position == uncomp_size &&
-                    crc_sink.crc == xx_archive_record_get_meta_u64(
-                        rec, XX_META_ID_CRC32, UINT64_MAX);
+                success = !xx_pd_is_stopped(pd) && uncomp_size <= INT64_MAX && crc_sink.position == uncomp_size &&
+                          crc_sink.crc == xx_archive_record_get_meta_u64(rec, XX_META_ID_CRC32, UINT64_MAX);
                 if (!success && !xx_pd_is_stopped(pd)) {
-                    xx_pd_set_error(pd, XXFC_ERR_INVALID_ARG,
-                                    "ZIP output CRC mismatch");
+                    xx_pd_set_error(pd, XXFC_ERR_INVALID_ARG, "ZIP output CRC mismatch");
                 }
             }
             if (success && xx_pd_is_stopped(pd)) success = false;
             if (success) {
-                success = xx_io_file_replace_a(stage_path, dest_path_utf8,
-                                               overwrite);
+                success = xx_io_file_replace_a(stage_path, dest_path_utf8, overwrite);
             }
             if (stage_path) {
                 /* A successful replace has already moved the stage file. */
@@ -3039,7 +2713,8 @@ bool xx_zip_unpack_current_archive_record(Abstractformat *self, xx_archive_recor
 #endif
 }
 
-void xx_zip_free_archive_records_reading(Abstractformat *self, xx_archive_record_state *state) {
+void xx_zip_free_archive_records_reading(Abstractformat *self, xx_archive_record_state *state)
+{
     (void)self;
     if (!state) {
         return;
@@ -3061,8 +2736,8 @@ typedef struct xx_zip_grow_sink_s {
     size_t capacity;
 } xx_zip_grow_sink;
 
-static ssize_t xx_zip_grow_sink_write(xx_io_device *device,
-                                      const void *buffer, size_t size) {
+static ssize_t xx_zip_grow_sink_write(xx_io_device *device, const void *buffer, size_t size)
+{
     xx_zip_grow_sink *sink;
     size_t required;
     size_t capacity;
@@ -3099,7 +2774,8 @@ static ssize_t xx_zip_grow_sink_write(xx_io_device *device,
     return (ssize_t)size;
 }
 
-static int64_t xx_zip_grow_sink_size(xx_io_device *device) {
+static int64_t xx_zip_grow_sink_size(xx_io_device *device)
+{
     const xx_zip_grow_sink *sink;
     if (!device || !device->priv) {
         return -1;
@@ -3113,8 +2789,8 @@ static int64_t xx_zip_grow_sink_size(xx_io_device *device) {
     return (int64_t)sink->size;
 }
 
-static void xx_zip_grow_sink_init(xx_io_device *device,
-                                  xx_zip_grow_sink *sink) {
+static void xx_zip_grow_sink_init(xx_io_device *device, xx_zip_grow_sink *sink)
+{
     xx_mem_zero(device, sizeof(*device));
     xx_mem_zero(sink, sizeof(*sink));
     device->write = xx_zip_grow_sink_write;
@@ -3124,7 +2800,8 @@ static void xx_zip_grow_sink_init(xx_io_device *device,
     device->priv = sink;
 }
 
-static void xx_zip_grow_sink_cleanup(xx_zip_grow_sink *sink) {
+static void xx_zip_grow_sink_cleanup(xx_zip_grow_sink *sink)
+{
     if (!sink) {
         return;
     }
@@ -3142,19 +2819,14 @@ static void xx_zip_grow_sink_cleanup(xx_zip_grow_sink *sink) {
  *
  *   09 04 01 00 <one-byte LZMA2 property>
  */
-static bool xx_zip_pack_lzma2_source_framed(
-    xx_io_device *source, const char *source_path,
-    int64_t *out_uncompressed_size, int64_t *out_compressed_size,
-    uint32_t *out_crc32, xx_io_device *destination,
-    xx_zip_grow_sink *sink, int level, xx_pd_struct *progress) {
-    uint8_t header[XX_ZIP_LZMA2_HEADER_SIZE] = {
-        0x09U, 0x04U, (uint8_t)XX_LZMA2_PROPS_SIZE, 0x00U, 0x00U
-    };
+static bool xx_zip_pack_lzma2_source_framed(xx_io_device *source, const char *source_path, int64_t *out_uncompressed_size, int64_t *out_compressed_size,
+                                            uint32_t *out_crc32, xx_io_device *destination, xx_zip_grow_sink *sink, int level, xx_pd_struct *progress)
+{
+    uint8_t header[XX_ZIP_LZMA2_HEADER_SIZE] = {0x09U, 0x04U, (uint8_t)XX_LZMA2_PROPS_SIZE, 0x00U, 0x00U};
     uint8_t props2 = 0U;
     int64_t raw_compressed_size = 0;
 
-    if (!out_uncompressed_size || !out_compressed_size || !out_crc32 ||
-        !destination || !sink) {
+    if (!out_uncompressed_size || !out_compressed_size || !out_crc32 || !destination || !sink) {
         return false;
     }
     *out_uncompressed_size = 0;
@@ -3162,17 +2834,10 @@ static bool xx_zip_pack_lzma2_source_framed(
     *out_crc32 = 0U;
 
     if (!xx_zip_write_exact(destination, header, sizeof(header)) ||
-        !xx_lzma2_pack_source(source, source_path, out_uncompressed_size,
-                              &raw_compressed_size, out_crc32, destination,
-                              level, &props2, progress) ||
-        raw_compressed_size < 1 ||
-        (uint64_t)raw_compressed_size >
-            (uint64_t)(INT64_MAX - (int64_t)sizeof(header)) ||
-        (uint64_t)raw_compressed_size >
-            (uint64_t)(SIZE_MAX - sizeof(header)) ||
-        props2 > XX_ZIP_LZMA2_MAX_PROP ||
-        sink->size != (size_t)raw_compressed_size + sizeof(header) ||
-        !sink->data || sink->data[sink->size - 1U] != 0U) {
+        !xx_lzma2_pack_source(source, source_path, out_uncompressed_size, &raw_compressed_size, out_crc32, destination, level, &props2, progress) ||
+        raw_compressed_size < 1 || (uint64_t)raw_compressed_size > (uint64_t)(INT64_MAX - (int64_t)sizeof(header)) ||
+        (uint64_t)raw_compressed_size > (uint64_t)(SIZE_MAX - sizeof(header)) || props2 > XX_ZIP_LZMA2_MAX_PROP ||
+        sink->size != (size_t)raw_compressed_size + sizeof(header) || !sink->data || sink->data[sink->size - 1U] != 0U) {
         return false;
     }
 
@@ -3181,33 +2846,26 @@ static bool xx_zip_pack_lzma2_source_framed(
     return true;
 }
 
-static bool xx_zip_pack_lzma_source_framed(
-    xx_io_device *source, const char *source_path,
-    int64_t *out_uncompressed_size, int64_t *out_compressed_size,
-    uint32_t *out_crc32, xx_io_device *destination,
-    xx_zip_grow_sink *sink, int level, xx_pd_struct *progress) {
+static bool xx_zip_pack_lzma_source_framed(xx_io_device *source, const char *source_path, int64_t *out_uncompressed_size, int64_t *out_compressed_size,
+                                           uint32_t *out_crc32, xx_io_device *destination, xx_zip_grow_sink *sink, int level, xx_pd_struct *progress)
+{
     uint8_t header[4U + XX_LZMA_PROPS_SIZE] = {9U, 4U, XX_LZMA_PROPS_SIZE, 0U};
     uint8_t properties[XX_LZMA_PROPS_SIZE];
     size_t properties_size = sizeof(properties);
     int64_t raw_size = 0;
     if (!xx_zip_write_exact(destination, header, sizeof(header)) ||
-        !xx_lzma_pack_source(source, source_path, out_uncompressed_size,
-                              &raw_size, out_crc32, destination, level,
-                              properties, &properties_size, progress) ||
-        properties_size != sizeof(properties) || raw_size < 0 ||
-        (uint64_t)raw_size > (uint64_t)(INT64_MAX - sizeof(header)) ||
-        (uint64_t)raw_size > (uint64_t)(SIZE_MAX - sizeof(header)) ||
-        sink->size != (size_t)raw_size + sizeof(header)) return false;
+        !xx_lzma_pack_source(source, source_path, out_uncompressed_size, &raw_size, out_crc32, destination, level, properties, &properties_size, progress) ||
+        properties_size != sizeof(properties) || raw_size < 0 || (uint64_t)raw_size > (uint64_t)(INT64_MAX - sizeof(header)) ||
+        (uint64_t)raw_size > (uint64_t)(SIZE_MAX - sizeof(header)) || sink->size != (size_t)raw_size + sizeof(header))
+        return false;
     xx_mem_copy(sink->data + 4U, properties, sizeof(properties));
     *out_compressed_size = raw_size + (int64_t)sizeof(header);
     return true;
 }
 
-static bool xx_zip_pack_xz_source(
-    xx_io_device *source, const char *source_path,
-    int64_t *out_uncompressed_size, int64_t *out_compressed_size,
-    uint32_t *out_crc32, xx_io_device *destination,
-    xx_zip_grow_sink *sink, int level, xx_pd_struct *progress) {
+static bool xx_zip_pack_xz_source(xx_io_device *source, const char *source_path, int64_t *out_uncompressed_size, int64_t *out_compressed_size, uint32_t *out_crc32,
+                                  xx_io_device *destination, xx_zip_grow_sink *sink, int level, xx_pd_struct *progress)
+{
     xx_io_device *owned = NULL;
     bool success = false;
     if (!source) {
@@ -3215,11 +2873,8 @@ static bool xx_zip_pack_xz_source(
         owned = xx_io_file_open(source_path, "rb");
         source = owned;
     }
-    if (source &&
-        xx_store_prepare_source(source, NULL, out_uncompressed_size,
-                                  out_crc32, progress) &&
-        xx_xz_pack_to_device(source, 0, *out_uncompressed_size,
-                              destination, level, progress)) {
+    if (source && xx_store_prepare_source(source, NULL, out_uncompressed_size, out_crc32, progress) &&
+        xx_xz_pack_to_device(source, 0, *out_uncompressed_size, destination, level, progress)) {
         *out_compressed_size = (int64_t)sink->size;
         success = true;
     }
@@ -3227,63 +2882,51 @@ static bool xx_zip_pack_xz_source(
     return success;
 }
 
-static bool xx_zip_pack_source_staged(
-    xx_io_device *source, const char *source_path, uint16_t method,
-    int64_t *out_uncompressed_size, int64_t *out_compressed_size,
-    uint32_t *out_crc32, xx_io_device *destination,
-    xx_zip_grow_sink *sink, int level, xx_pd_struct *progress) {
+static bool xx_zip_pack_source_staged(xx_io_device *source, const char *source_path, uint16_t method, int64_t *out_uncompressed_size, int64_t *out_compressed_size,
+                                      uint32_t *out_crc32, xx_io_device *destination, xx_zip_grow_sink *sink, int level, xx_pd_struct *progress)
+{
     bool success = false;
     if (progress && xx_pd_is_stopped(progress)) return false;
     switch (method) {
         case 0:
-            success = xx_store_prepare_source(source, source_path,
-                out_uncompressed_size, out_crc32, progress) &&
-                xx_store_pack_source(source, source_path,
-                *out_uncompressed_size, destination, progress);
+            success = xx_store_prepare_source(source, source_path, out_uncompressed_size, out_crc32, progress) &&
+                      xx_store_pack_source(source, source_path, *out_uncompressed_size, destination, progress);
             *out_compressed_size = (int64_t)sink->size;
             break;
-        case 1: case 2: case 3: case 4: case 5: case 6: case 10:
-            success = xx_zip_legacy_pack_source(source, source_path, method,
-                level, out_uncompressed_size, out_compressed_size, out_crc32,
-                destination, progress);
+        case 1:
+        case 2:
+        case 3:
+        case 4:
+        case 5:
+        case 6:
+        case 10:
+            success = xx_zip_legacy_pack_source(source, source_path, method, level, out_uncompressed_size, out_compressed_size, out_crc32, destination, progress);
             break;
-        case 8: case 9:
-            success = xx_deflate_pack_source(source, source_path,
-                out_uncompressed_size, out_compressed_size, out_crc32,
-                destination, level, method == 9U, progress);
-            if (success && *out_uncompressed_size == 0 &&
-                *out_compressed_size == 0) {
+        case 8:
+        case 9:
+            success = xx_deflate_pack_source(source, source_path, out_uncompressed_size, out_compressed_size, out_crc32, destination, level, method == 9U, progress);
+            if (success && *out_uncompressed_size == 0 && *out_compressed_size == 0) {
                 /* Both Deflate variants need a final block for an empty file.
                  * The standalone codec's zero-length API emits no bytes. */
                 static const uint8_t empty_stream[2] = {0x03U, 0x00U};
-                success = xx_zip_write_exact_progress(destination, empty_stream,
-                    sizeof(empty_stream), progress);
+                success = xx_zip_write_exact_progress(destination, empty_stream, sizeof(empty_stream), progress);
                 if (success) *out_compressed_size = (int64_t)sizeof(empty_stream);
             }
             break;
         case 12:
-            success = xx_bzip2_pack_source(source, source_path,
-                out_uncompressed_size, out_compressed_size, out_crc32,
-                destination, level, progress);
-            if (success && *out_uncompressed_size == 0 &&
-                *out_compressed_size == 0) {
+            success = xx_bzip2_pack_source(source, source_path, out_uncompressed_size, out_compressed_size, out_crc32, destination, level, progress);
+            if (success && *out_uncompressed_size == 0 && *out_compressed_size == 0) {
                 /* The standalone codec omits an empty stream. ZIP readers
                  * including 7-Zip expect BZh + EOS + combined CRC here. */
-                uint8_t empty_stream[14] = {
-                    'B', 'Z', 'h', '6', 0x17U, 0x72U, 0x45U, 0x38U,
-                    0x50U, 0x90U, 0U, 0U, 0U, 0U
-                };
+                uint8_t empty_stream[14] = {'B', 'Z', 'h', '6', 0x17U, 0x72U, 0x45U, 0x38U, 0x50U, 0x90U, 0U, 0U, 0U, 0U};
                 int block_level = level < 1 ? 1 : level > 9 ? 9 : level;
                 empty_stream[3] = (uint8_t)('0' + block_level);
-                success = xx_zip_write_exact_progress(destination,
-                    empty_stream, sizeof(empty_stream), progress);
+                success = xx_zip_write_exact_progress(destination, empty_stream, sizeof(empty_stream), progress);
                 *out_compressed_size = (int64_t)sizeof(empty_stream);
             }
             break;
         case 14:
-            success = xx_zip_pack_lzma_source_framed(source, source_path,
-                out_uncompressed_size, out_compressed_size, out_crc32,
-                destination, sink, level, progress);
+            success = xx_zip_pack_lzma_source_framed(source, source_path, out_uncompressed_size, out_compressed_size, out_crc32, destination, sink, level, progress);
             break;
         case 16: {
             xx_io_device *owned = NULL;
@@ -3297,8 +2940,7 @@ static bool xx_zip_pack_source_staged(
             }
             if (!source || source == destination) goto cmpsc_cleanup;
             total = xx_io_size(source);
-            if (total < 0 || (uint64_t)total > XX_ZIP_MEMORY_CODEC_LIMIT ||
-                xx_io_seek64(source, 0, SEEK_SET) != 0) goto cmpsc_cleanup;
+            if (total < 0 || (uint64_t)total > XX_ZIP_MEMORY_CODEC_LIMIT || xx_io_seek64(source, 0, SEEK_SET) != 0) goto cmpsc_cleanup;
             bound = xx_cmpsc_zip_encode_bound((size_t)total);
             if (!bound) goto cmpsc_cleanup;
             input = (uint8_t *)xx_mem_alloc(total ? (size_t)total : 1U);
@@ -3314,75 +2956,56 @@ static bool xx_zip_pack_source_staged(
                 crc32 = xx_crc32_calc(crc32, input + at, (size_t)count);
                 at += (size_t)count;
             }
-            if (!xx_cmpsc_zip_encode_memory(input, (size_t)total, output,
-                                              bound, &written, progress) ||
-                written > XX_ZIP_MEMORY_CODEC_LIMIT ||
-                !xx_zip_write_exact_progress(destination, output, written,
-                                              progress)) goto cmpsc_cleanup;
+            if (!xx_cmpsc_zip_encode_memory(input, (size_t)total, output, bound, &written, progress) || written > XX_ZIP_MEMORY_CODEC_LIMIT ||
+                !xx_zip_write_exact_progress(destination, output, written, progress))
+                goto cmpsc_cleanup;
             *out_uncompressed_size = total;
             *out_compressed_size = (int64_t)written;
             *out_crc32 = crc32;
             success = true;
-cmpsc_cleanup:
+        cmpsc_cleanup:
             xx_mem_free(input);
             xx_mem_free(output);
             if (owned) xx_io_close(owned);
             break;
         }
         case 33:
-            success = xx_zip_pack_lzma2_source_framed(source, source_path,
-                out_uncompressed_size, out_compressed_size, out_crc32,
-                destination, sink, level, progress);
+            success = xx_zip_pack_lzma2_source_framed(source, source_path, out_uncompressed_size, out_compressed_size, out_crc32, destination, sink, level, progress);
             break;
-        case 93:
-            success = xx_zstd_pack_source(source, source_path,
-                out_uncompressed_size, out_compressed_size, out_crc32,
-                destination, level, progress);
-            break;
-        case 95:
-            success = xx_zip_pack_xz_source(source, source_path,
-                out_uncompressed_size, out_compressed_size, out_crc32,
-                destination, sink, level, progress);
-            break;
+        case 93: success = xx_zstd_pack_source(source, source_path, out_uncompressed_size, out_compressed_size, out_crc32, destination, level, progress); break;
+        case 95: success = xx_zip_pack_xz_source(source, source_path, out_uncompressed_size, out_compressed_size, out_crc32, destination, sink, level, progress); break;
         case 98: {
             int order = level;
             if (order < XX_PPMD8_MIN_ORDER) order = XX_PPMD8_MIN_ORDER;
             if (order > XX_PPMD8_MAX_ORDER) order = XX_PPMD8_MAX_ORDER;
-            success = xx_ppmd8_pack_source(source, source_path,
-                out_uncompressed_size, out_compressed_size, out_crc32,
-                destination, order, XX_PPMD8_DEFAULT_MEM_MB,
-                XX_PPMD8_RESTORE_METHOD_RESTART, true, progress);
+            success = xx_ppmd8_pack_source(source, source_path, out_uncompressed_size, out_compressed_size, out_crc32, destination, order, XX_PPMD8_DEFAULT_MEM_MB,
+                                           XX_PPMD8_RESTORE_METHOD_RESTART, true, progress);
             break;
         }
         default: return false;
     }
-    return success && *out_uncompressed_size >= 0 &&
-           *out_compressed_size >= 0 &&
-           (uint64_t)*out_compressed_size == (uint64_t)sink->size &&
+    return success && *out_uncompressed_size >= 0 && *out_compressed_size >= 0 && (uint64_t)*out_compressed_size == (uint64_t)sink->size &&
            (!progress || !xx_pd_is_stopped(progress));
 }
 
 /* Encryption headers and AES salts must not use the C library PRNG. */
-static bool xx_zip_secure_random(uint8_t *output, size_t size) {
+static bool xx_zip_secure_random(uint8_t *output, size_t size)
+{
     return xx_io_platform_secure_random(output, size);
 }
 
-static uint8_t xx_zip_encryption_aes_strength(uint32_t encryption_method) {
+static uint8_t xx_zip_encryption_aes_strength(uint32_t encryption_method)
+{
     switch (encryption_method) {
-        case XX_ZIP_ENCRYPTION_AES_128:
-            return XX_WINZIP_AES_STRENGTH_128;
-        case XX_ZIP_ENCRYPTION_AES_192:
-            return XX_WINZIP_AES_STRENGTH_192;
-        case XX_ZIP_ENCRYPTION_AES_256:
-            return XX_WINZIP_AES_STRENGTH_256;
-        default:
-            return 0U;
+        case XX_ZIP_ENCRYPTION_AES_128: return XX_WINZIP_AES_STRENGTH_128;
+        case XX_ZIP_ENCRYPTION_AES_192: return XX_WINZIP_AES_STRENGTH_192;
+        case XX_ZIP_ENCRYPTION_AES_256: return XX_WINZIP_AES_STRENGTH_256;
+        default: return 0U;
     }
 }
 
-static void xx_zip_build_aes_extra(uint8_t extra[XX_ZIP_AES_EXTRA_FIELD_SIZE],
-                                   uint8_t strength,
-                                   uint16_t compression_method) {
+static void xx_zip_build_aes_extra(uint8_t extra[XX_ZIP_AES_EXTRA_FIELD_SIZE], uint8_t strength, uint16_t compression_method)
+{
     extra[0] = 0x01U;
     extra[1] = 0x99U;
     extra[2] = 0x07U;
@@ -3395,8 +3018,6 @@ static void xx_zip_build_aes_extra(uint8_t extra[XX_ZIP_AES_EXTRA_FIELD_SIZE],
     extra[9] = (uint8_t)compression_method;
     extra[10] = (uint8_t)(compression_method >> 8U);
 }
-
-
 
 typedef struct xx_zip_cd_entry_record {
     char *filename;
@@ -3423,7 +3044,8 @@ typedef struct xx_zip_write_internal_state {
     char comment[256];
 } xx_zip_write_internal_state;
 
-static void xx_zip_write_internal_state_free(void *ptr) {
+static void xx_zip_write_internal_state_free(void *ptr)
+{
     xx_zip_write_internal_state *wstate = (xx_zip_write_internal_state *)ptr;
     if (!wstate) return;
     if (wstate->entries) {
@@ -3437,7 +3059,8 @@ static void xx_zip_write_internal_state_free(void *ptr) {
     xx_mem_free(wstate);
 }
 
-xx_archive_write_state *xx_zip_create_archive_records_writing(Abstractformat *self, const xx_list_s *options, xx_pd_struct *pd) {
+xx_archive_write_state *xx_zip_create_archive_records_writing(Abstractformat *self, const xx_list_s *options, xx_pd_struct *pd)
+{
     (void)pd;
     if (!self || !self->device) {
         return NULL;
@@ -3483,7 +3106,8 @@ xx_archive_write_state *xx_zip_create_archive_records_writing(Abstractformat *se
     return state;
 }
 
-bool xx_zip_pack_archive_record(Abstractformat *self, xx_archive_write_state *state, const xx_archive_record *record, xx_io_device *source_dev, xx_pd_struct *pd) {
+bool xx_zip_pack_archive_record(Abstractformat *self, xx_archive_write_state *state, const xx_archive_record *record, xx_io_device *source_dev, xx_pd_struct *pd)
+{
     if (!self || !self->device || !state || !state->internal_state || !record) {
         return false;
     }
@@ -3523,8 +3147,7 @@ bool xx_zip_pack_archive_record(Abstractformat *self, xx_archive_write_state *st
         name_len = xx_rt_strlen(name_utf8);
     }
 
-    if (name_len > UINT16_MAX || wstate->current_offset < 0 ||
-        (uint64_t)wstate->current_offset > UINT32_MAX) {
+    if (name_len > UINT16_MAX || wstate->current_offset < 0 || (uint64_t)wstate->current_offset > UINT32_MAX) {
         xx_str_free(name_utf8);
         return false;
     }
@@ -3549,11 +3172,11 @@ bool xx_zip_pack_archive_record(Abstractformat *self, xx_archive_write_state *st
         method = 0;
     }
 
-    int level = method == 93U ? XX_ZSTD_LEVEL_DEFAULT
-                : method == 12U ? XX_BZIP2_LEVEL_DEFAULT
-                : method == 98U ? XX_PPMD8_DEFAULT_ORDER
-                : (method == 14U || method == 33U || method == 95U)
-                    ? XX_LZMA_LEVEL_DEFAULT : XX_DEFLATE_LEVEL_DEFAULT;
+    int level = method == 93U                                       ? XX_ZSTD_LEVEL_DEFAULT
+                : method == 12U                                     ? XX_BZIP2_LEVEL_DEFAULT
+                : method == 98U                                     ? XX_PPMD8_DEFAULT_ORDER
+                : (method == 14U || method == 33U || method == 95U) ? XX_LZMA_LEVEL_DEFAULT
+                                                                    : XX_DEFLATE_LEVEL_DEFAULT;
     const xx_var *opt_lvl = xx_zip_find_option(&state->options, XX_META_ID_COMPRESSION_LEVEL);
     if (opt_lvl) {
         level = (int)xx_var_get_i64(opt_lvl);
@@ -3565,21 +3188,17 @@ bool xx_zip_pack_archive_record(Abstractformat *self, xx_archive_write_state *st
 
     uint32_t encryption_method = XX_ZIP_ENCRYPTION_NONE;
     bool has_encryption_selector = false;
-    const xx_var *opt_enc = xx_zip_find_option(
-        &state->options, XX_META_ID_ENCRYPTION_METHOD);
+    const xx_var *opt_enc = xx_zip_find_option(&state->options, XX_META_ID_ENCRYPTION_METHOD);
     if (opt_enc) {
         encryption_method = (uint32_t)xx_var_get_u64(opt_enc);
         has_encryption_selector = true;
     }
-    const xx_var *rec_enc = xx_archive_record_find_meta(
-        record, XX_META_ID_ENCRYPTION_METHOD);
+    const xx_var *rec_enc = xx_archive_record_find_meta(record, XX_META_ID_ENCRYPTION_METHOD);
     if (rec_enc) {
         encryption_method = (uint32_t)xx_var_get_u64(rec_enc);
         has_encryption_selector = true;
     }
-    if (!has_encryption_selector &&
-        xx_archive_record_get_meta_bool(record, XX_META_ID_IS_ENCRYPTED,
-                                        false)) {
+    if (!has_encryption_selector && xx_archive_record_get_meta_bool(record, XX_META_ID_IS_ENCRYPTED, false)) {
         encryption_method = XX_ZIP_ENCRYPTION_ZIPCRYPTO;
     }
     if (is_folder) {
@@ -3596,16 +3215,15 @@ bool xx_zip_pack_archive_record(Abstractformat *self, xx_archive_write_state *st
     uint32_t local_header_offset = (uint32_t)wstate->current_offset;
     uint16_t stored_method = method;
     uint16_t stored_flags = 0x0800U; /* UTF-8 */
-    uint16_t version_needed = (method == 14U || method == 16U || method == 33U ||
-                                method == 93U || method == 95U || method == 98U)
-                                ? 63U : method == 12U ? 46U
-                                : method == 10U ? 25U : method == 9U ? 21U
-                                : method >= 1U && method <= 6U ? 10U : 20U;
+    uint16_t version_needed = (method == 14U || method == 16U || method == 33U || method == 93U || method == 95U || method == 98U) ? 63U
+                              : method == 12U                                                                                      ? 46U
+                              : method == 10U                                                                                      ? 25U
+                              : method == 9U                                                                                       ? 21U
+                              : method >= 1U && method <= 6U                                                                       ? 10U
+                                                                                                                                   : 20U;
     if (method == 6U || method == 14U) stored_flags |= 0x0002U;
-    if (encryption_method != XX_ZIP_ENCRYPTION_NONE && version_needed < 20U)
-        version_needed = 20U;
-    if (encryption_method >= XX_ZIP_ENCRYPTION_AES_128 && version_needed < 51U)
-        version_needed = 51U;
+    if (encryption_method != XX_ZIP_ENCRYPTION_NONE && version_needed < 20U) version_needed = 20U;
+    if (encryption_method >= XX_ZIP_ENCRYPTION_AES_128 && version_needed < 51U) version_needed = 51U;
     uint8_t stored_extra[XX_ZIP_AES_EXTRA_FIELD_SIZE];
     uint16_t stored_extra_size = 0U;
     xx_mem_zero(stored_extra, sizeof(stored_extra));
@@ -3631,15 +3249,11 @@ bool xx_zip_pack_archive_record(Abstractformat *self, xx_archive_write_state *st
         if (!xx_zip_get_password(self, &state->options, &password)) {
             goto encrypted_cleanup;
         }
-        if (!xx_zip_pack_source_staged(source_dev, name_utf8, method,
-                &staged_uncomp_size, &staged_comp_size, &staged_crc,
-                &compressed_device, &compressed, level, pd)) {
+        if (!xx_zip_pack_source_staged(source_dev, name_utf8, method, &staged_uncomp_size, &staged_comp_size, &staged_crc, &compressed_device, &compressed, level, pd)) {
             goto encrypted_cleanup;
         }
 
-        if (staged_uncomp_size < 0 ||
-            (uint64_t)staged_uncomp_size > UINT32_MAX ||
-            compressed.size > UINT32_MAX) {
+        if (staged_uncomp_size < 0 || (uint64_t)staged_uncomp_size > UINT32_MAX || compressed.size > UINT32_MAX) {
             goto encrypted_cleanup;
         }
         crc = staged_crc;
@@ -3650,35 +3264,23 @@ bool xx_zip_pack_archive_record(Abstractformat *self, xx_archive_write_state *st
                 goto encrypted_cleanup;
             }
             envelope_capacity = compressed.size + XX_ZIPCRYPTO_HEADER_SIZE;
-            envelope = (uint8_t *)xx_mem_alloc(
-                envelope_capacity ? envelope_capacity : 1U);
-            if (!envelope ||
-                !xx_zip_secure_random(random_data,
-                                      XX_ZIPCRYPTO_RANDOM_HEADER_SIZE) ||
-                !xx_zipcrypto_encrypt_envelope_progress(
-                    compressed.data, compressed.size,
-                    password.bytes, password.size, crc, mod_time, false,
-                    random_data, envelope, envelope_capacity,
-                    &envelope_size, pd)) {
+            envelope = (uint8_t *)xx_mem_alloc(envelope_capacity ? envelope_capacity : 1U);
+            if (!envelope || !xx_zip_secure_random(random_data, XX_ZIPCRYPTO_RANDOM_HEADER_SIZE) ||
+                !xx_zipcrypto_encrypt_envelope_progress(compressed.data, compressed.size, password.bytes, password.size, crc, mod_time, false, random_data, envelope,
+                                                        envelope_capacity, &envelope_size, pd)) {
                 goto encrypted_cleanup;
             }
         } else {
             size_t salt_size = xx_winzip_aes_salt_size(aes_strength);
-            size_t overhead = salt_size +
-                              XX_WINZIP_AES_PASSWORD_VERIFIER_SIZE +
-                              XX_WINZIP_AES_AUTH_CODE_SIZE;
+            size_t overhead = salt_size + XX_WINZIP_AES_PASSWORD_VERIFIER_SIZE + XX_WINZIP_AES_AUTH_CODE_SIZE;
             if (salt_size == 0U || compressed.size > SIZE_MAX - overhead) {
                 goto encrypted_cleanup;
             }
             envelope_capacity = compressed.size + overhead;
-            envelope = (uint8_t *)xx_mem_alloc(
-                envelope_capacity ? envelope_capacity : 1U);
+            envelope = (uint8_t *)xx_mem_alloc(envelope_capacity ? envelope_capacity : 1U);
             if (!envelope || !xx_zip_secure_random(random_data, salt_size) ||
-                !xx_winzip_aes_encrypt_envelope_progress(
-                    compressed.data, compressed.size,
-                    password.bytes, password.size, aes_strength,
-                    random_data, salt_size, envelope, envelope_capacity,
-                    &envelope_size, pd)) {
+                !xx_winzip_aes_encrypt_envelope_progress(compressed.data, compressed.size, password.bytes, password.size, aes_strength, random_data, salt_size, envelope,
+                                                         envelope_capacity, &envelope_size, pd)) {
                 goto encrypted_cleanup;
             }
             stored_method = 99U;
@@ -3686,10 +3288,7 @@ bool xx_zip_pack_archive_record(Abstractformat *self, xx_archive_write_state *st
             xx_zip_build_aes_extra(stored_extra, aes_strength, method);
         }
 
-        if (envelope_size != envelope_capacity ||
-            envelope_size > UINT32_MAX ||
-            name_len > UINT16_MAX ||
-            wstate->current_offset < 0 ||
+        if (envelope_size != envelope_capacity || envelope_size > UINT32_MAX || name_len > UINT16_MAX || wstate->current_offset < 0 ||
             (uint64_t)wstate->current_offset > UINT32_MAX) {
             goto encrypted_cleanup;
         }
@@ -3698,8 +3297,7 @@ bool xx_zip_pack_archive_record(Abstractformat *self, xx_archive_write_state *st
 
         {
             xx_zip_local_header_t lh;
-            uint64_t record_size = (uint64_t)sizeof(lh) + name_len +
-                                   stored_extra_size + envelope_size;
+            uint64_t record_size = (uint64_t)sizeof(lh) + name_len + stored_extra_size + envelope_size;
             xx_mem_zero(&lh, sizeof(lh));
             if (record_size > UINT32_MAX - (uint64_t)local_header_offset) {
                 goto encrypted_cleanup;
@@ -3717,14 +3315,9 @@ bool xx_zip_pack_archive_record(Abstractformat *self, xx_archive_write_state *st
             lh.filename_length = (uint16_t)name_len;
             lh.extra_field_length = stored_extra_size;
 
-            if (xx_io_seek64(self->device, local_header_offset,
-                           SEEK_SET) != 0 ||
-                !xx_zip_write_exact(self->device, &lh, sizeof(lh)) ||
-                !xx_zip_write_exact(self->device, name_utf8, name_len) ||
-                !xx_zip_write_exact(self->device, stored_extra,
-                                    stored_extra_size) ||
-                !xx_zip_write_exact(self->device, envelope,
-                                    envelope_size)) {
+            if (xx_io_seek64(self->device, local_header_offset, SEEK_SET) != 0 || !xx_zip_write_exact(self->device, &lh, sizeof(lh)) ||
+                !xx_zip_write_exact(self->device, name_utf8, name_len) || !xx_zip_write_exact(self->device, stored_extra, stored_extra_size) ||
+                !xx_zip_write_exact(self->device, envelope, envelope_size)) {
                 goto encrypted_cleanup;
             }
             wstate->current_offset += (int64_t)record_size;
@@ -3735,7 +3328,7 @@ bool xx_zip_pack_archive_record(Abstractformat *self, xx_archive_write_state *st
         }
         packed = true;
 
-encrypted_cleanup:
+    encrypted_cleanup:
         if (envelope) {
             xx_mem_free(envelope);
         }
@@ -3759,7 +3352,7 @@ encrypted_cleanup:
         xx_mem_zero(&lh, sizeof(lh));
         lh.signature = XX_ZIP_LOCAL_FILE_HEADER_SIGNATURE;
         lh.version_needed = 20;
-        lh.flags = 0x0800; /* UTF-8 */
+        lh.flags = 0x0800;         /* UTF-8 */
         lh.compression_method = 0; /* STORE */
         lh.last_mod_time = mod_time;
         lh.last_mod_date = mod_date;
@@ -3781,9 +3374,8 @@ encrypted_cleanup:
         }
 
         wstate->current_offset += sizeof(lh) + name_len + comp_size;
-    } else if ((method >= 1U && method <= 6U) || method == 10U ||
-                method == 12U || method == 14U || method == 16U || method == 33U ||
-                method == 93U || method == 95U || method == 98U) {
+    } else if ((method >= 1U && method <= 6U) || method == 10U || method == 12U || method == 14U || method == 16U || method == 33U || method == 93U || method == 95U ||
+               method == 98U) {
         xx_zip_grow_sink compressed;
         xx_io_device compressed_device;
         int64_t staged_uncomp_size = 0;
@@ -3797,22 +3389,15 @@ encrypted_cleanup:
             uint64_t record_size;
             uint64_t record_end;
 
-            bool compression_ok = xx_zip_pack_source_staged(source_dev,
-                name_utf8, method, &staged_uncomp_size, &staged_comp_size,
-                &staged_crc, &compressed_device, &compressed, level, pd);
-            if (!compression_ok ||
-                 staged_uncomp_size < 0 || staged_comp_size < 0 ||
-                (uint64_t)staged_uncomp_size > UINT32_MAX ||
-                compressed.size > UINT32_MAX ||
-                (uint64_t)staged_comp_size !=
-                    (uint64_t)compressed.size) {
+            bool compression_ok =
+                xx_zip_pack_source_staged(source_dev, name_utf8, method, &staged_uncomp_size, &staged_comp_size, &staged_crc, &compressed_device, &compressed, level, pd);
+            if (!compression_ok || staged_uncomp_size < 0 || staged_comp_size < 0 || (uint64_t)staged_uncomp_size > UINT32_MAX || compressed.size > UINT32_MAX ||
+                (uint64_t)staged_comp_size != (uint64_t)compressed.size) {
                 break;
             }
 
-            record_size = (uint64_t)sizeof(lh) + (uint64_t)name_len +
-                          (uint64_t)compressed.size;
-            if (record_size >
-                    (uint64_t)UINT32_MAX - (uint64_t)local_header_offset) {
+            record_size = (uint64_t)sizeof(lh) + (uint64_t)name_len + (uint64_t)compressed.size;
+            if (record_size > (uint64_t)UINT32_MAX - (uint64_t)local_header_offset) {
                 break;
             }
             record_end = (uint64_t)local_header_offset + record_size;
@@ -3834,12 +3419,8 @@ encrypted_cleanup:
             lh.filename_length = (uint16_t)name_len;
             lh.extra_field_length = 0U;
 
-            if (xx_io_seek64(self->device, local_header_offset,
-                           SEEK_SET) != 0 ||
-                !xx_zip_write_exact(self->device, &lh, sizeof(lh)) ||
-                !xx_zip_write_exact(self->device, name_utf8, name_len) ||
-                !xx_zip_write_exact(self->device, compressed.data,
-                                    compressed.size)) {
+            if (xx_io_seek64(self->device, local_header_offset, SEEK_SET) != 0 || !xx_zip_write_exact(self->device, &lh, sizeof(lh)) ||
+                !xx_zip_write_exact(self->device, name_utf8, name_len) || !xx_zip_write_exact(self->device, compressed.data, compressed.size)) {
                 break;
             }
 
@@ -3877,18 +3458,13 @@ encrypted_cleanup:
         uint32_t comp_crc = 0;
 
         if (!is_folder) {
-            bool compression_ok = xx_deflate_pack_source(
-                source_dev, name_utf8, &out_uncomp, &out_comp,
-                &comp_crc, self->device, level, method == 9U, pd);
+            bool compression_ok = xx_deflate_pack_source(source_dev, name_utf8, &out_uncomp, &out_comp, &comp_crc, self->device, level, method == 9U, pd);
             if (compression_ok && out_uncomp == 0 && out_comp == 0) {
                 static const uint8_t empty_stream[2] = {0x03U, 0x00U};
-                compression_ok = xx_zip_write_exact_progress(self->device,
-                    empty_stream, sizeof(empty_stream), pd);
+                compression_ok = xx_zip_write_exact_progress(self->device, empty_stream, sizeof(empty_stream), pd);
                 if (compression_ok) out_comp = (int64_t)sizeof(empty_stream);
             }
-            if (!compression_ok || out_uncomp < 0 || out_comp < 0 ||
-                (uint64_t)out_uncomp > UINT32_MAX ||
-                (uint64_t)out_comp > UINT32_MAX) {
+            if (!compression_ok || out_uncomp < 0 || out_comp < 0 || (uint64_t)out_uncomp > UINT32_MAX || (uint64_t)out_comp > UINT32_MAX) {
                 xx_str_free(name_utf8);
                 return false;
             }
@@ -3916,8 +3492,7 @@ encrypted_cleanup:
 
     if (wstate->count >= wstate->capacity) {
         size_t new_cap = wstate->capacity == 0 ? 8 : wstate->capacity * 2;
-        xx_zip_cd_entry_record *new_entries = (xx_zip_cd_entry_record *)xx_mem_realloc(
-            wstate->entries, new_cap * sizeof(xx_zip_cd_entry_record));
+        xx_zip_cd_entry_record *new_entries = (xx_zip_cd_entry_record *)xx_mem_realloc(wstate->entries, new_cap * sizeof(xx_zip_cd_entry_record));
         if (!new_entries) {
             xx_str_free(name_utf8);
             return false;
@@ -3948,7 +3523,8 @@ encrypted_cleanup:
     return true;
 }
 
-bool xx_zip_finalize_archive_records_writing(Abstractformat *self, xx_archive_write_state *state, xx_pd_struct *pd) {
+bool xx_zip_finalize_archive_records_writing(Abstractformat *self, xx_archive_write_state *state, xx_pd_struct *pd)
+{
     (void)pd;
     if (!self || !self->device || !state || !state->internal_state) {
         return false;
@@ -3981,16 +3557,12 @@ bool xx_zip_finalize_archive_records_writing(Abstractformat *self, xx_archive_wr
         cdh.external_attrs = e->external_attrs;
         cdh.relative_offset_local_header = e->local_header_offset;
 
-        if (!xx_zip_write_exact(self->device, &cdh, sizeof(cdh)) ||
-            !xx_zip_write_exact(self->device, e->filename,
-                                e->filename_length) ||
-            !xx_zip_write_exact(self->device, e->extra_field,
-                                e->extra_field_length)) {
+        if (!xx_zip_write_exact(self->device, &cdh, sizeof(cdh)) || !xx_zip_write_exact(self->device, e->filename, e->filename_length) ||
+            !xx_zip_write_exact(self->device, e->extra_field, e->extra_field_length)) {
             return false;
         }
 
-        wstate->current_offset += sizeof(cdh) + e->filename_length +
-                                  e->extra_field_length;
+        wstate->current_offset += sizeof(cdh) + e->filename_length + e->extra_field_length;
     }
 
     uint32_t cd_size = (uint32_t)(wstate->current_offset - cd_offset);
@@ -4021,7 +3593,8 @@ bool xx_zip_finalize_archive_records_writing(Abstractformat *self, xx_archive_wr
     return true;
 }
 
-void xx_zip_free_archive_records_writing(Abstractformat *self, xx_archive_write_state *state) {
+void xx_zip_free_archive_records_writing(Abstractformat *self, xx_archive_write_state *state)
+{
     (void)self;
     if (!state) {
         return;
@@ -4030,44 +3603,63 @@ void xx_zip_free_archive_records_writing(Abstractformat *self, xx_archive_write_
 }
 
 #else
-xx_archive_write_state *xx_zip_create_archive_records_writing(Abstractformat *self,
-    const xx_list_s *options, xx_pd_struct *pd) {
-    (void)self; (void)options; (void)pd; return NULL;
+xx_archive_write_state *xx_zip_create_archive_records_writing(Abstractformat *self, const xx_list_s *options, xx_pd_struct *pd)
+{
+    (void)self;
+    (void)options;
+    (void)pd;
+    return NULL;
 }
-bool xx_zip_pack_archive_record(Abstractformat *self, xx_archive_write_state *state,
-    const xx_archive_record *record, xx_io_device *source, xx_pd_struct *pd) {
-    (void)self; (void)state; (void)record; (void)source; (void)pd; return false;
+bool xx_zip_pack_archive_record(Abstractformat *self, xx_archive_write_state *state, const xx_archive_record *record, xx_io_device *source, xx_pd_struct *pd)
+{
+    (void)self;
+    (void)state;
+    (void)record;
+    (void)source;
+    (void)pd;
+    return false;
 }
-bool xx_zip_finalize_archive_records_writing(Abstractformat *self,
-    xx_archive_write_state *state, xx_pd_struct *pd) {
-    (void)self; (void)state; (void)pd; return false;
+bool xx_zip_finalize_archive_records_writing(Abstractformat *self, xx_archive_write_state *state, xx_pd_struct *pd)
+{
+    (void)self;
+    (void)state;
+    (void)pd;
+    return false;
 }
-void xx_zip_free_archive_records_writing(Abstractformat *self, xx_archive_write_state *state) {
-    (void)self; (void)state;
+void xx_zip_free_archive_records_writing(Abstractformat *self, xx_archive_write_state *state)
+{
+    (void)self;
+    (void)state;
 }
 #endif
 
-bool xx_zip_is_zip64(const xx_zip *zip) {
+bool xx_zip_is_zip64(const xx_zip *zip)
+{
     return zip ? zip->is_zip64 : false;
 }
 
-uint64_t xx_zip_get_number_of_records(const xx_zip *zip) {
+uint64_t xx_zip_get_number_of_records(const xx_zip *zip)
+{
     return zip ? zip->number_of_records : 0;
 }
 
-int64_t xx_zip_get_cd_offset(const xx_zip *zip) {
+int64_t xx_zip_get_cd_offset(const xx_zip *zip)
+{
     return zip ? zip->cd_offset : -1;
 }
 
-int64_t xx_zip_get_cd_size(const xx_zip *zip) {
+int64_t xx_zip_get_cd_size(const xx_zip *zip)
+{
     return zip ? zip->cd_size : 0;
 }
 
-int64_t xx_zip_get_eocd_offset(const xx_zip *zip) {
+int64_t xx_zip_get_eocd_offset(const xx_zip *zip)
+{
     return zip ? zip->eocd_offset : -1;
 }
 
-const char *xx_zip_get_comment(const xx_zip *zip) {
+const char *xx_zip_get_comment(const xx_zip *zip)
+{
     return zip ? zip->comment : "";
 }
 
@@ -4093,7 +3685,8 @@ static const xx_zip_ds_name_entry _TABLE_XX_ZIP_DataStructNames[] = {
 
 #define _XX_ZIP_DS_NAME_COUNT (sizeof(_TABLE_XX_ZIP_DataStructNames) / sizeof(_TABLE_XX_ZIP_DataStructNames[0]))
 
-const char *xx_zip_data_struct_id_to_string(Abstractformat *self, uint32_t id) {
+const char *xx_zip_data_struct_id_to_string(Abstractformat *self, uint32_t id)
+{
     (void)self;
     for (size_t i = 0; i < _XX_ZIP_DS_NAME_COUNT; ++i) {
         if ((uint32_t)_TABLE_XX_ZIP_DataStructNames[i].id == id) {
@@ -4103,7 +3696,8 @@ const char *xx_zip_data_struct_id_to_string(Abstractformat *self, uint32_t id) {
     return "UNKNOWN";
 }
 
-uint32_t xx_zip_data_struct_string_to_id(Abstractformat *self, const char *name) {
+uint32_t xx_zip_data_struct_string_to_id(Abstractformat *self, const char *name)
+{
     (void)self;
     if (!name) {
         return (uint32_t)XX_ZIP_DS_UNKNOWN;
@@ -4125,7 +3719,8 @@ typedef struct xx_zip_ds_stream_state {
     size_t count;
 } xx_zip_ds_stream_state;
 
-static void xx_zip_ds_stream_state_free(void *ptr) {
+static void xx_zip_ds_stream_state_free(void *ptr)
+{
     if (ptr) {
         xx_zip_ds_stream_state *dstate = (xx_zip_ds_stream_state *)ptr;
         if (dstate->list) {
@@ -4135,9 +3730,9 @@ static void xx_zip_ds_stream_state_free(void *ptr) {
     }
 }
 
-static void xx_zip_ds_append(xx_zip_ds_stream_state *dstate, xx_zip_data_struct_id_t id,
-                            int64_t offset, int64_t address, int64_t entry_size, int64_t total_size,
-                            uint64_t count, xx_data_struct_type_t type) {
+static void xx_zip_ds_append(xx_zip_ds_stream_state *dstate, xx_zip_data_struct_id_t id, int64_t offset, int64_t address, int64_t entry_size, int64_t total_size,
+                             uint64_t count, xx_data_struct_type_t type)
+{
     xx_data_struct *item = &dstate->list[dstate->count++];
     item->id = (uint32_t)id;
     item->offset = offset;
@@ -4148,7 +3743,8 @@ static void xx_zip_ds_append(xx_zip_ds_stream_state *dstate, xx_zip_data_struct_
     item->type = type;
 }
 
-xx_data_struct_state *xx_zip_create_data_structs_reading(Abstractformat *self, xx_pd_struct *pd) {
+xx_data_struct_state *xx_zip_create_data_structs_reading(Abstractformat *self, xx_pd_struct *pd)
+{
     if (!self || !self->device || !xx_format_handle_split_format(self, pd)) {
         return NULL;
     }
@@ -4208,18 +3804,15 @@ xx_data_struct_state *xx_zip_create_data_structs_reading(Abstractformat *self, x
                 int64_t gap_off = expected_next;
                 int64_t gap_size = rec.header_offset - expected_next;
                 int64_t gap_addr = is_mapped ? gap_off : -1;
-                xx_zip_ds_append(dstate, (xx_zip_data_struct_id_t)XX_DATA_STRUCT_ID_RAW_DATA, gap_off, gap_addr,
-                                gap_size, gap_size, 1, XX_DATA_STRUCT_TYPE_RAW_DATA);
+                xx_zip_ds_append(dstate, (xx_zip_data_struct_id_t)XX_DATA_STRUCT_ID_RAW_DATA, gap_off, gap_addr, gap_size, gap_size, 1, XX_DATA_STRUCT_TYPE_RAW_DATA);
             }
 
             int64_t lfh_addr = is_mapped ? rec.header_offset : -1;
-            xx_zip_ds_append(dstate, XX_ZIP_DS_LOCAL_FILE_HEADER, rec.header_offset, lfh_addr,
-                            rec.header_size, rec.header_size, 1, XX_DATA_STRUCT_TYPE_STRUCT);
+            xx_zip_ds_append(dstate, XX_ZIP_DS_LOCAL_FILE_HEADER, rec.header_offset, lfh_addr, rec.header_size, rec.header_size, 1, XX_DATA_STRUCT_TYPE_STRUCT);
 
             if (rec.data_offset >= 0) {
                 int64_t data_addr = is_mapped ? rec.data_offset : -1;
-                xx_zip_ds_append(dstate, XX_ZIP_DS_DATA, rec.data_offset, data_addr,
-                                rec.compressed_size, rec.compressed_size, 1, XX_DATA_STRUCT_TYPE_RAW_DATA);
+                xx_zip_ds_append(dstate, XX_ZIP_DS_DATA, rec.data_offset, data_addr, rec.compressed_size, rec.compressed_size, 1, XX_DATA_STRUCT_TYPE_RAW_DATA);
                 expected_next = rec.data_offset + rec.compressed_size;
             } else {
                 expected_next = rec.header_offset + rec.header_size;
@@ -4234,14 +3827,12 @@ xx_data_struct_state *xx_zip_create_data_structs_reading(Abstractformat *self, x
         int64_t gap_off = expected_next;
         int64_t gap_size = zip->cd_offset - expected_next;
         int64_t gap_addr = is_mapped ? gap_off : -1;
-        xx_zip_ds_append(dstate, (xx_zip_data_struct_id_t)XX_DATA_STRUCT_ID_RAW_DATA, gap_off, gap_addr,
-                        gap_size, gap_size, 1, XX_DATA_STRUCT_TYPE_RAW_DATA);
+        xx_zip_ds_append(dstate, (xx_zip_data_struct_id_t)XX_DATA_STRUCT_ID_RAW_DATA, gap_off, gap_addr, gap_size, gap_size, 1, XX_DATA_STRUCT_TYPE_RAW_DATA);
     }
 
     if (zip->cd_offset >= 0 && zip->number_of_records > 0) {
         int64_t addr = is_mapped ? zip->cd_offset : -1;
-        xx_zip_ds_append(dstate, XX_ZIP_DS_CENTRAL_DIRECTORY_HEADER, zip->cd_offset, addr, -1, zip->cd_size,
-                        zip->number_of_records, XX_DATA_STRUCT_TYPE_STRUCT);
+        xx_zip_ds_append(dstate, XX_ZIP_DS_CENTRAL_DIRECTORY_HEADER, zip->cd_offset, addr, -1, zip->cd_size, zip->number_of_records, XX_DATA_STRUCT_TYPE_STRUCT);
     }
 
     if (zip->is_zip64) {
@@ -4250,14 +3841,14 @@ xx_data_struct_state *xx_zip_create_data_structs_reading(Abstractformat *self, x
             uint32_t loc_sig = xx_io_get_u32(self->device, locator_offset, false);
             if (loc_sig == XX_ZIP_ZIP64_EOCD_LOCATOR_SIGNATURE) {
                 int64_t addr = is_mapped ? locator_offset : -1;
-                xx_zip_ds_append(dstate, XX_ZIP_DS_ZIP64_END_OF_CENTRAL_DIRECTORY_LOCATOR, locator_offset, addr,
-                                sizeof(xx_zip_zip64_locator_t), sizeof(xx_zip_zip64_locator_t), 1, XX_DATA_STRUCT_TYPE_LOCATOR);
+                xx_zip_ds_append(dstate, XX_ZIP_DS_ZIP64_END_OF_CENTRAL_DIRECTORY_LOCATOR, locator_offset, addr, sizeof(xx_zip_zip64_locator_t),
+                                 sizeof(xx_zip_zip64_locator_t), 1, XX_DATA_STRUCT_TYPE_LOCATOR);
 
                 int64_t zip64_eocd_offset = zip->zip64_eocd_offset;
                 if (zip64_eocd_offset >= 0) {
                     int64_t addr64 = is_mapped ? zip64_eocd_offset : -1;
-                    xx_zip_ds_append(dstate, XX_ZIP_DS_ZIP64_END_OF_CENTRAL_DIRECTORY, zip64_eocd_offset,
-                                    addr64, sizeof(xx_zip_zip64_eocd_t), zip->zip64_eocd_size, 1, XX_DATA_STRUCT_TYPE_STRUCT);
+                    xx_zip_ds_append(dstate, XX_ZIP_DS_ZIP64_END_OF_CENTRAL_DIRECTORY, zip64_eocd_offset, addr64, sizeof(xx_zip_zip64_eocd_t), zip->zip64_eocd_size, 1,
+                                     XX_DATA_STRUCT_TYPE_STRUCT);
                 }
             }
         }
@@ -4266,8 +3857,7 @@ xx_data_struct_state *xx_zip_create_data_structs_reading(Abstractformat *self, x
     if (zip->eocd_offset >= 0) {
         int64_t addr = is_mapped ? zip->eocd_offset : -1;
         int64_t eocd_total_size = (self->format_size >= zip->eocd_offset) ? (self->format_size - zip->eocd_offset) : (int64_t)sizeof(xx_zip_eocd_t);
-        xx_zip_ds_append(dstate, XX_ZIP_DS_END_OF_CENTRAL_DIRECTORY, zip->eocd_offset, addr,
-                        sizeof(xx_zip_eocd_t), eocd_total_size, 1, XX_DATA_STRUCT_TYPE_STRUCT);
+        xx_zip_ds_append(dstate, XX_ZIP_DS_END_OF_CENTRAL_DIRECTORY, zip->eocd_offset, addr, sizeof(xx_zip_eocd_t), eocd_total_size, 1, XX_DATA_STRUCT_TYPE_STRUCT);
     }
 
     state->internal_state = dstate;
@@ -4285,7 +3875,8 @@ xx_data_struct_state *xx_zip_create_data_structs_reading(Abstractformat *self, x
     return state;
 }
 
-const xx_data_struct *xx_zip_get_current_data_struct(Abstractformat *self, xx_data_struct_state *state) {
+const xx_data_struct *xx_zip_get_current_data_struct(Abstractformat *self, xx_data_struct_state *state)
+{
     (void)self;
     if (!state || !state->has_struct) {
         return NULL;
@@ -4293,7 +3884,8 @@ const xx_data_struct *xx_zip_get_current_data_struct(Abstractformat *self, xx_da
     return &state->current_struct;
 }
 
-bool xx_zip_data_struct_move_to_next(Abstractformat *self, xx_data_struct_state *state, xx_pd_struct *pd) {
+bool xx_zip_data_struct_move_to_next(Abstractformat *self, xx_data_struct_state *state, xx_pd_struct *pd)
+{
     (void)self;
     (void)pd;
     if (!state || !state->internal_state) {
@@ -4313,7 +3905,8 @@ bool xx_zip_data_struct_move_to_next(Abstractformat *self, xx_data_struct_state 
     return true;
 }
 
-void xx_zip_free_data_structs_reading(Abstractformat *self, xx_data_struct_state *state) {
+void xx_zip_free_data_structs_reading(Abstractformat *self, xx_data_struct_state *state)
+{
     (void)self;
     xx_data_struct_state_free(state);
 }
@@ -4358,14 +3951,10 @@ static const xx_zip_field_desc _TABLE_XX_ZIP_Fields_CentralDirectoryHeader[] = {
 };
 
 static const xx_zip_field_desc _TABLE_XX_ZIP_Fields_Eocd[] = {
-    {L"signature", L"uint32", 0, 4, XX_DATA_STRUCT_RECORD_PROPERTY_ID},
-    {L"disk_number", L"uint16", 4, 2, XX_DATA_STRUCT_RECORD_PROPERTY_NONE},
-    {L"cd_start_disk", L"uint16", 6, 2, XX_DATA_STRUCT_RECORD_PROPERTY_NONE},
-    {L"records_on_disk", L"uint16", 8, 2, XX_DATA_STRUCT_RECORD_PROPERTY_COUNT},
-    {L"total_records", L"uint16", 10, 2, XX_DATA_STRUCT_RECORD_PROPERTY_COUNT},
-    {L"cd_size", L"uint32", 12, 4, XX_DATA_STRUCT_RECORD_PROPERTY_SIZE},
-    {L"cd_offset", L"uint32", 16, 4, XX_DATA_STRUCT_RECORD_PROPERTY_POINTER},
-    {L"comment_length", L"uint16", 20, 2, XX_DATA_STRUCT_RECORD_PROPERTY_SIZE},
+    {L"signature", L"uint32", 0, 4, XX_DATA_STRUCT_RECORD_PROPERTY_ID},         {L"disk_number", L"uint16", 4, 2, XX_DATA_STRUCT_RECORD_PROPERTY_NONE},
+    {L"cd_start_disk", L"uint16", 6, 2, XX_DATA_STRUCT_RECORD_PROPERTY_NONE},   {L"records_on_disk", L"uint16", 8, 2, XX_DATA_STRUCT_RECORD_PROPERTY_COUNT},
+    {L"total_records", L"uint16", 10, 2, XX_DATA_STRUCT_RECORD_PROPERTY_COUNT}, {L"cd_size", L"uint32", 12, 4, XX_DATA_STRUCT_RECORD_PROPERTY_SIZE},
+    {L"cd_offset", L"uint32", 16, 4, XX_DATA_STRUCT_RECORD_PROPERTY_POINTER},   {L"comment_length", L"uint16", 20, 2, XX_DATA_STRUCT_RECORD_PROPERTY_SIZE},
 };
 
 static const xx_zip_field_desc _TABLE_XX_ZIP_Fields_Zip64Locator[] = {
@@ -4376,16 +3965,11 @@ static const xx_zip_field_desc _TABLE_XX_ZIP_Fields_Zip64Locator[] = {
 };
 
 static const xx_zip_field_desc _TABLE_XX_ZIP_Fields_Zip64Eocd[] = {
-    {L"signature", L"uint32", 0, 4, XX_DATA_STRUCT_RECORD_PROPERTY_ID},
-    {L"record_size", L"uint64", 4, 8, XX_DATA_STRUCT_RECORD_PROPERTY_SIZE},
-    {L"version_made_by", L"uint16", 12, 2, XX_DATA_STRUCT_RECORD_PROPERTY_NONE},
-    {L"version_needed", L"uint16", 14, 2, XX_DATA_STRUCT_RECORD_PROPERTY_NONE},
-    {L"disk_number", L"uint32", 16, 4, XX_DATA_STRUCT_RECORD_PROPERTY_NONE},
-    {L"cd_start_disk", L"uint32", 20, 4, XX_DATA_STRUCT_RECORD_PROPERTY_NONE},
-    {L"records_on_disk", L"uint64", 24, 8, XX_DATA_STRUCT_RECORD_PROPERTY_COUNT},
-    {L"total_records", L"uint64", 32, 8, XX_DATA_STRUCT_RECORD_PROPERTY_COUNT},
-    {L"cd_size", L"uint64", 40, 8, XX_DATA_STRUCT_RECORD_PROPERTY_SIZE},
-    {L"cd_offset", L"uint64", 48, 8, XX_DATA_STRUCT_RECORD_PROPERTY_POINTER},
+    {L"signature", L"uint32", 0, 4, XX_DATA_STRUCT_RECORD_PROPERTY_ID},           {L"record_size", L"uint64", 4, 8, XX_DATA_STRUCT_RECORD_PROPERTY_SIZE},
+    {L"version_made_by", L"uint16", 12, 2, XX_DATA_STRUCT_RECORD_PROPERTY_NONE},  {L"version_needed", L"uint16", 14, 2, XX_DATA_STRUCT_RECORD_PROPERTY_NONE},
+    {L"disk_number", L"uint32", 16, 4, XX_DATA_STRUCT_RECORD_PROPERTY_NONE},      {L"cd_start_disk", L"uint32", 20, 4, XX_DATA_STRUCT_RECORD_PROPERTY_NONE},
+    {L"records_on_disk", L"uint64", 24, 8, XX_DATA_STRUCT_RECORD_PROPERTY_COUNT}, {L"total_records", L"uint64", 32, 8, XX_DATA_STRUCT_RECORD_PROPERTY_COUNT},
+    {L"cd_size", L"uint64", 40, 8, XX_DATA_STRUCT_RECORD_PROPERTY_SIZE},          {L"cd_offset", L"uint64", 48, 8, XX_DATA_STRUCT_RECORD_PROPERTY_POINTER},
 };
 
 #define _XX_ZIP_FIELDS_COUNT(table) (sizeof(table) / sizeof((table)[0]))
@@ -4395,19 +3979,21 @@ typedef struct xx_zip_record_stream_state {
     size_t count;
 } xx_zip_record_stream_state;
 
-static void xx_zip_record_stream_state_free(void *ptr) {
+static void xx_zip_record_stream_state_free(void *ptr)
+{
     if (ptr) {
         xx_mem_free(ptr);
     }
 }
 
 /* Reads the field's raw value from the device and populates name/type/value/display_value */
-static bool xx_zip_populate_record(xx_io_device *device, const xx_data_struct *ds, const xx_data_struct_field_desc *field,
-                                  xx_data_struct_record *rec) {
+static bool xx_zip_populate_record(xx_io_device *device, const xx_data_struct *ds, const xx_data_struct_field_desc *field, xx_data_struct_record *rec)
+{
     return xx_data_struct_record_populate(rec, device, ds ? ds->offset : 0, field, false);
 }
 
-xx_data_struct_record_state *xx_zip_create_data_struct_records_reading(Abstractformat *self, const xx_data_struct *ds, xx_pd_struct *pd) {
+xx_data_struct_record_state *xx_zip_create_data_struct_records_reading(Abstractformat *self, const xx_data_struct *ds, xx_pd_struct *pd)
+{
     if (!self || !self->device || !ds || !xx_format_handle_split_format(self, pd)) {
         return NULL;
     }
@@ -4440,8 +4026,7 @@ xx_data_struct_record_state *xx_zip_create_data_struct_records_reading(Abstractf
             table = _TABLE_XX_ZIP_Fields_Zip64Eocd;
             table_count = _XX_ZIP_FIELDS_COUNT(_TABLE_XX_ZIP_Fields_Zip64Eocd);
             break;
-        default:
-            return NULL;
+        default: return NULL;
     }
 
     xx_data_struct_record_state *state = (xx_data_struct_record_state *)xx_mem_alloc(sizeof(xx_data_struct_record_state));
@@ -4473,7 +4058,8 @@ xx_data_struct_record_state *xx_zip_create_data_struct_records_reading(Abstractf
     return state;
 }
 
-const xx_data_struct_record *xx_zip_get_current_data_struct_record(Abstractformat *self, xx_data_struct_record_state *state) {
+const xx_data_struct_record *xx_zip_get_current_data_struct_record(Abstractformat *self, xx_data_struct_record_state *state)
+{
     (void)self;
     if (!state || !state->has_record) {
         return NULL;
@@ -4481,7 +4067,8 @@ const xx_data_struct_record *xx_zip_get_current_data_struct_record(Abstractforma
     return &state->current_record;
 }
 
-bool xx_zip_data_struct_record_move_to_next(Abstractformat *self, xx_data_struct_record_state *state, xx_pd_struct *pd) {
+bool xx_zip_data_struct_record_move_to_next(Abstractformat *self, xx_data_struct_record_state *state, xx_pd_struct *pd)
+{
     (void)pd;
     if (!self || !self->device || !state || !state->internal_state) {
         return false;
@@ -4502,13 +4089,14 @@ bool xx_zip_data_struct_record_move_to_next(Abstractformat *self, xx_data_struct
     return true;
 }
 
-void xx_zip_free_data_struct_records_reading(Abstractformat *self, xx_data_struct_record_state *state) {
+void xx_zip_free_data_struct_records_reading(Abstractformat *self, xx_data_struct_record_state *state)
+{
     (void)self;
     xx_data_struct_record_state_free(state);
 }
 
-static bool xx_zip_record_name_equals(const xx_archive_record *record,
-                                      const char *name) {
+static bool xx_zip_record_name_equals(const xx_archive_record *record, const char *name)
+{
     const char *original = xx_archive_record_get_original_name(record);
     char *owned_name = NULL;
     bool matches;
@@ -4522,8 +4110,8 @@ static bool xx_zip_record_name_equals(const xx_archive_record *record,
     return matches;
 }
 
-bool xx_zip_read_file(xx_zip *zip, const char *name, size_t limit,
-                       uint8_t **data, size_t *size, xx_pd_struct *pd) {
+bool xx_zip_read_file(xx_zip *zip, const char *name, size_t limit, uint8_t **data, size_t *size, xx_pd_struct *pd)
+{
     xx_zip probe;
     xx_archive_record_state *state = NULL;
     uint8_t *decoded = NULL;
@@ -4541,15 +4129,20 @@ bool xx_zip_read_file(xx_zip *zip, const char *name, size_t limit,
         const xx_archive_record *record = xx_zip_get_current_archive_record(&probe.format, state);
         if (xx_zip_record_name_equals(record, name)) {
             uint64_t expected = xx_archive_record_get_meta_u64(record, XX_META_ID_UNCOMPRESSED_SIZE, UINT64_MAX);
-            xx_zip_buffer_sink sink; xx_io_device destination;
-            if (expected > limit || expected >= SIZE_MAX || record->compressed_size < 0 ||
-                (uint64_t)record->compressed_size > limit ||
-                xx_archive_record_get_meta_bool(record, XX_META_ID_IS_ENCRYPTED, false)) break;
-            decoded = (uint8_t *)xx_mem_alloc((size_t)expected + 1U); if (!decoded) break;
+            xx_zip_buffer_sink sink;
+            xx_io_device destination;
+            if (expected > limit || expected >= SIZE_MAX || record->compressed_size < 0 || (uint64_t)record->compressed_size > limit ||
+                xx_archive_record_get_meta_bool(record, XX_META_ID_IS_ENCRYPTED, false))
+                break;
+            decoded = (uint8_t *)xx_mem_alloc((size_t)expected + 1U);
+            if (!decoded) break;
             xx_zip_init_buffer_sink(&destination, &sink, decoded, (size_t)expected);
-            if (xx_zip_unpack_current_archive_record_to_device(&probe.format, state, &destination, pd) &&
-                sink.position == (size_t)expected && !xx_pd_is_stopped(pd)) {
-                decoded[(size_t)expected] = 0; *data = decoded; *size = (size_t)expected; decoded = NULL; ok = true;
+            if (xx_zip_unpack_current_archive_record_to_device(&probe.format, state, &destination, pd) && sink.position == (size_t)expected && !xx_pd_is_stopped(pd)) {
+                decoded[(size_t)expected] = 0;
+                *data = decoded;
+                *size = (size_t)expected;
+                decoded = NULL;
+                ok = true;
             }
             break;
         }
@@ -4558,5 +4151,6 @@ bool xx_zip_read_file(xx_zip *zip, const char *name, size_t limit,
 done:
     xx_mem_free(decoded);
     if (state) xx_zip_free_archive_records_reading(&probe.format, state);
-    xx_zip_destroy(&probe); return ok;
+    xx_zip_destroy(&probe);
+    return ok;
 }

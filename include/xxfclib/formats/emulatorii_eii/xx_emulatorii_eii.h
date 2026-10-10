@@ -13,7 +13,10 @@ XXFC_API void xx_emulatorii_eii_init(xx_emulatorii_eii *, xx_io_device *, int64_
 XXFC_API xx_emulatorii_eii *xx_emulatorii_eii_create(xx_io_device *, int64_t);
 XXFC_API void xx_emulatorii_eii_destroy(xx_emulatorii_eii *);
 XXFC_API void xx_emulatorii_eii_free(xx_emulatorii_eii *);
-static inline Abstractformat *xx_emulatorii_eii_to_format(xx_emulatorii_eii *r) { return r ? &r->format : NULL; }
+static inline Abstractformat *xx_emulatorii_eii_to_format(xx_emulatorii_eii *r)
+{
+    return r ? &r->format : NULL;
+}
 #ifdef __cplusplus
 }
 #endif

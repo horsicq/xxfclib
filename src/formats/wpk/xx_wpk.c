@@ -77,17 +77,15 @@ static void xx_wpk_vtable_destroy(Abstractformat *self);
 
 /* ------------------------------------------------------------- helpers -- */
 
-static bool xx_wpk_read_at(Abstractformat *self, int64_t offset,
-                              uint8_t *buffer, size_t size) {
+static bool xx_wpk_read_at(Abstractformat *self, int64_t offset, uint8_t *buffer, size_t size)
+{
     size_t completed = 0U;
 
-    if (!self || !self->device || offset < 0 ||
-        xx_io_seek64(self->device, offset, SEEK_SET) != 0) {
+    if (!self || !self->device || offset < 0 || xx_io_seek64(self->device, offset, SEEK_SET) != 0) {
         return false;
     }
     while (completed < size) {
-        ssize_t received =
-            xx_io_read(self->device, buffer + completed, size - completed);
+        ssize_t received = xx_io_read(self->device, buffer + completed, size - completed);
         if (received <= 0 || (size_t)received > size - completed) {
             return false;
         }
@@ -96,14 +94,14 @@ static bool xx_wpk_read_at(Abstractformat *self, int64_t offset,
     return true;
 }
 
-static bool xx_wpk_range_within(int64_t total, int64_t offset,
-                                   int64_t size) {
-    return offset >= 0 && size >= 0 && offset <= total &&
-           size <= total - offset;
+static bool xx_wpk_range_within(int64_t total, int64_t offset, int64_t size)
+{
+    return offset >= 0 && size >= 0 && offset <= total && size <= total - offset;
 }
 
 /* Refuse anything that would escape the extraction directory. */
-static bool xx_wpk_path_safe(const char *name) {
+static bool xx_wpk_path_safe(const char *name)
+{
     const char *cursor = name;
 
     if (!name || !name[0] || name[0] == '/') return false;
@@ -118,7 +116,8 @@ static bool xx_wpk_path_safe(const char *name) {
     return true;
 }
 
-static void xx_wpk_stream_free(void *pointer) {
+static void xx_wpk_stream_free(void *pointer)
+{
     xx_wpk_stream *stream = (xx_wpk_stream *)pointer;
     size_t index;
 
@@ -131,17 +130,15 @@ static void xx_wpk_stream_free(void *pointer) {
 }
 
 /* Append a member, taking ownership of @p name. */
-static bool xx_wpk_add(xx_wpk_stream *stream,
-                          const xx_wpk_member *member) {
-    xx_wpk_member *grown = (xx_wpk_member *)xx_mem_realloc(
-        stream->items, sizeof(*grown) * (stream->count + 1U));
+static bool xx_wpk_add(xx_wpk_stream *stream, const xx_wpk_member *member)
+{
+    xx_wpk_member *grown = (xx_wpk_member *)xx_mem_realloc(stream->items, sizeof(*grown) * (stream->count + 1U));
 
     if (!grown) return false;
     stream->items = grown;
     stream->items[stream->count++] = *member;
     return true;
 }
-
 
 #define XX_WPK_HEADER_SIZE 0x0c
 #define XX_WPK_RECORD_SIZE 0x11
@@ -156,12 +153,12 @@ static bool xx_wpk_add(xx_wpk_stream *stream,
 #define XX_WPK_METHOD_B 1U
 
 typedef struct xx_wpk_record_s {
-    int64_t record_offset;  /* relative to base_address */
+    int64_t record_offset; /* relative to base_address */
     int64_t header_size;
-    int64_t data_offset;    /* relative to base_address */
+    int64_t data_offset; /* relative to base_address */
     int64_t compressed_size;
     int64_t uncompressed_size;
-    int64_t name_offset;    /* into the directory buffer */
+    int64_t name_offset; /* into the directory buffer */
     int64_t name_size;
     uint32_t crc;
     uint32_t timestamp;
@@ -170,7 +167,7 @@ typedef struct xx_wpk_record_s {
 typedef struct xx_wpk_dir_s {
     uint8_t *bytes;
     int64_t size;
-    int64_t offset;   /* relative to base_address */
+    int64_t offset; /* relative to base_address */
     int64_t span;
     uint32_t magic;
     xx_wpk_record *records;
@@ -185,7 +182,6 @@ static xx_wpk_stream *xx_wpk_parse(Abstractformat *self, xx_pd_struct *pd);
 static bool xx_wpk_resolve_sorter(Abstractformat *self, xx_pd_struct *pd);
 static bool xx_wpk_decode(Abstractformat *self, const xx_wpk_member *member, uint8_t **out, size_t *out_size, xx_pd_struct *pd);
 
-
 /* Plain integer constants, not int64_t casts: the header size also sizes a
  * stack array, and MSVC will not take a 64-bit constant there without a
  * conversion warning, which this build treats as an error. */
@@ -198,7 +194,8 @@ static bool xx_wpk_decode(Abstractformat *self, const xx_wpk_member *member, uin
 /* The container's own method, which is a single flag bit: clear is the
  * Huffman + LZSS method A, set is the plain LZSS method B. */
 
-static void xx_wpk_dir_free(xx_wpk_dir *dir) {
+static void xx_wpk_dir_free(xx_wpk_dir *dir)
+{
     if (!dir) return;
     if (dir->bytes) xx_mem_free(dir->bytes);
     if (dir->records) xx_mem_free(dir->records);
@@ -211,8 +208,8 @@ static void xx_wpk_dir_free(xx_wpk_dir *dir) {
  *
  * Shared by the parse and by the sorter probe, because the probe needs the
  * per-record CRC and the member struct has nowhere to keep it. */
-static bool xx_wpk_dir_read(Abstractformat *self, xx_pd_struct *pd,
-                            xx_wpk_dir *dir) {
+static bool xx_wpk_dir_read(Abstractformat *self, xx_pd_struct *pd, xx_wpk_dir *dir)
+{
     uint8_t header[XX_WPK_HEADER_SIZE];
     int64_t total;
     int64_t span;
@@ -264,8 +261,7 @@ static bool xx_wpk_dir_read(Abstractformat *self, xx_pd_struct *pd,
 
     dir->bytes = (uint8_t *)xx_mem_alloc((size_t)directory_size);
     if (!dir->bytes) return false;
-    if (!xx_wpk_read_at(self, self->base_address + directory_offset, dir->bytes,
-                        (size_t)directory_size)) {
+    if (!xx_wpk_read_at(self, self->base_address + directory_offset, dir->bytes, (size_t)directory_size)) {
         xx_wpk_dir_free(dir);
         return false;
     }
@@ -273,8 +269,7 @@ static bool xx_wpk_dir_read(Abstractformat *self, xx_pd_struct *pd,
     dir->offset = directory_offset;
     dir->span = span;
 
-    dir->records =
-        (xx_wpk_record *)xx_mem_alloc(sizeof(xx_wpk_record) * (size_t)count);
+    dir->records = (xx_wpk_record *)xx_mem_alloc(sizeof(xx_wpk_record) * (size_t)count);
     if (!dir->records) {
         xx_wpk_dir_free(dir);
         return false;
@@ -299,10 +294,8 @@ static bool xx_wpk_dir_read(Abstractformat *self, xx_pd_struct *pd,
         }
 
         record_offset = directory_offset + position;
-        record->uncompressed_size =
-            (int64_t)(int32_t)xx_data_get_u32(dir->bytes + position, 4, 0, false);
-        record->data_offset =
-            (int64_t)(int32_t)xx_data_get_u32(dir->bytes + position + 4, 4, 0, false);
+        record->uncompressed_size = (int64_t)(int32_t)xx_data_get_u32(dir->bytes + position, 4, 0, false);
+        record->data_offset = (int64_t)(int32_t)xx_data_get_u32(dir->bytes + position + 4, 4, 0, false);
         record->timestamp = xx_data_get_u32(dir->bytes + position + 8, 4, 0, false);
         record->crc = xx_data_get_u32(dir->bytes + position + 0x0c, 4, 0, false);
         flags = dir->bytes[position + 0x10];
@@ -313,16 +306,14 @@ static bool xx_wpk_dir_read(Abstractformat *self, xx_pd_struct *pd,
 
         /* Both sizes are written as u32 but read as signed; a negative one is
          * a rejection, not a four-gigabyte value. */
-        if ((record->uncompressed_size < 0) || (record->data_offset < 0) ||
-            (name_size == 0) || (name_size > (directory_size - position))) {
+        if ((record->uncompressed_size < 0) || (record->data_offset < 0) || (name_size == 0) || (name_size > (directory_size - position))) {
             xx_wpk_dir_free(dir);
             return false;
         }
         /* The payload area is bounded by the DIRECTORY, never by the file end:
          * a member's stream runs from its data offset up to where the
          * directory begins. */
-        if ((record->data_offset < XX_WPK_HEADER_SIZE) ||
-            (record->data_offset > directory_offset)) {
+        if ((record->data_offset < XX_WPK_HEADER_SIZE) || (record->data_offset > directory_offset)) {
             xx_wpk_dir_free(dir);
             return false;
         }
@@ -340,7 +331,8 @@ static bool xx_wpk_dir_read(Abstractformat *self, xx_pd_struct *pd,
     return true;
 }
 
-static xx_wpk_stream *xx_wpk_parse(Abstractformat *self, xx_pd_struct *pd) {
+static xx_wpk_stream *xx_wpk_parse(Abstractformat *self, xx_pd_struct *pd)
+{
     xx_wpk_stream *stream = NULL;
     xx_wpk_member member;
     xx_wpk_dir dir;
@@ -364,8 +356,7 @@ static xx_wpk_stream *xx_wpk_parse(Abstractformat *self, xx_pd_struct *pd) {
 
         if (pd && xx_pd_is_stopped(pd)) goto fail;
         if (stream->count >= (size_t)XX_WPK_MAX_MEMBERS) goto fail;
-        if (!xx_wpk_range_within(dir.span, record->data_offset,
-                                 record->compressed_size)) {
+        if (!xx_wpk_range_within(dir.span, record->data_offset, record->compressed_size)) {
             goto fail;
         }
         if (record->uncompressed_size > XX_WPK_MAX_DECODED) goto fail;
@@ -419,7 +410,6 @@ fail:
     return NULL;
 }
 
-
 /* Resolve the archive-wide sorter, once.
  *
  * The reference probes in exactly this way and for exactly this reason: the
@@ -431,7 +421,8 @@ fail:
  * This is the one piece of state decode touches. It is a memo of a pure
  * function of the device bytes: running it again always produces the same
  * answer, so a decode called twice still returns identical bytes. */
-static bool xx_wpk_resolve_sorter(Abstractformat *self, xx_pd_struct *pd) {
+static bool xx_wpk_resolve_sorter(Abstractformat *self, xx_pd_struct *pd)
+{
     xx_wpk *archive = (xx_wpk *)self;
     xx_wpk_dir dir;
     uint8_t *packed[XX_WPK_PROBE_MEMBERS];
@@ -449,8 +440,7 @@ static bool xx_wpk_resolve_sorter(Abstractformat *self, xx_pd_struct *pd) {
     if (!xx_wpk_dir_read(self, pd, &dir)) return false;
 
     /* The starting candidate only; the probe below is what settles it. */
-    archive->sorter = (dir.magic == XX_WPK_MAGIC_B) ? (uint32_t)XX_WPK_SORTER_B
-                                                    : (uint32_t)XX_WPK_SORTER_A;
+    archive->sorter = (dir.magic == XX_WPK_MAGIC_B) ? (uint32_t)XX_WPK_SORTER_B : (uint32_t)XX_WPK_SORTER_A;
 
     for (index = 0U; index < XX_WPK_PROBE_MEMBERS; ++index) {
         packed[index] = NULL;
@@ -470,22 +460,17 @@ static bool xx_wpk_resolve_sorter(Abstractformat *self, xx_pd_struct *pd) {
             ok = false;
             break;
         }
-        if (record->method_b || (record->uncompressed_size <= 0) ||
-            (record->compressed_size <= 0)) {
+        if (record->method_b || (record->uncompressed_size <= 0) || (record->compressed_size <= 0)) {
             continue;
         }
 
         position = probe_count;
-        while ((position > 0U) &&
-               (dir.records[probe[position - 1U]].uncompressed_size >
-                record->uncompressed_size)) {
+        while ((position > 0U) && (dir.records[probe[position - 1U]].uncompressed_size > record->uncompressed_size)) {
             --position;
         }
         if (position >= (size_t)XX_WPK_PROBE_MEMBERS) continue;
 
-        last = (probe_count < (size_t)XX_WPK_PROBE_MEMBERS)
-                   ? probe_count
-                   : (size_t)(XX_WPK_PROBE_MEMBERS - 1);
+        last = (probe_count < (size_t)XX_WPK_PROBE_MEMBERS) ? probe_count : (size_t)(XX_WPK_PROBE_MEMBERS - 1);
         for (step = last; step > position; --step) {
             probe[step] = probe[step - 1U];
         }
@@ -497,15 +482,12 @@ static bool xx_wpk_resolve_sorter(Abstractformat *self, xx_pd_struct *pd) {
         for (index = 0U; index < probe_count; ++index) {
             const xx_wpk_record *record = &dir.records[probe[index]];
 
-            packed[index] = (uint8_t *)xx_mem_alloc(
-                (size_t)record->compressed_size);
+            packed[index] = (uint8_t *)xx_mem_alloc((size_t)record->compressed_size);
             if (!packed[index]) {
                 ok = false;
                 break;
             }
-            if (!xx_wpk_read_at(self, self->base_address + record->data_offset,
-                                packed[index],
-                                (size_t)record->compressed_size)) {
+            if (!xx_wpk_read_at(self, self->base_address + record->data_offset, packed[index], (size_t)record->compressed_size)) {
                 ok = false;
                 break;
             }
@@ -536,21 +518,15 @@ static bool xx_wpk_resolve_sorter(Abstractformat *self, xx_pd_struct *pd) {
                     ok = false;
                     break;
                 }
-                plain = (uint8_t *)xx_mem_alloc(
-                    (size_t)record->uncompressed_size);
+                plain = (uint8_t *)xx_mem_alloc((size_t)record->uncompressed_size);
                 if (!plain) {
                     accepted = false;
                     ok = false;
                     break;
                 }
-                if (!xx_wpk_decode_method_a_memory(
-                        packed[index], (size_t)record->compressed_size,
-                        candidates[candidate], plain,
-                        (size_t)record->uncompressed_size, &written,
-                        &consumed) ||
-                    (written != (size_t)record->uncompressed_size) ||
-                    (consumed == 0U) ||
-                    (consumed > (size_t)record->compressed_size)) {
+                if (!xx_wpk_decode_method_a_memory(packed[index], (size_t)record->compressed_size, candidates[candidate], plain, (size_t)record->uncompressed_size,
+                                                   &written, &consumed) ||
+                    (written != (size_t)record->uncompressed_size) || (consumed == 0U) || (consumed > (size_t)record->compressed_size)) {
                     xx_mem_free(plain);
                     accepted = false;
                     break;
@@ -561,8 +537,7 @@ static bool xx_wpk_resolve_sorter(Abstractformat *self, xx_pd_struct *pd) {
                  * the plaintext and not the whole run to the directory. This
                  * is the entire discriminating power the format offers - CRC
                  * the wrong span and every candidate fails equally. */
-                if (xx_crc32(XX_CRC_TYPE_CRC32, packed[index], consumed) !=
-                    record->crc) {
+                if (xx_crc32(XX_CRC_TYPE_CRC32, packed[index], consumed) != record->crc) {
                     accepted = false;
                     break;
                 }
@@ -588,8 +563,8 @@ static bool xx_wpk_resolve_sorter(Abstractformat *self, xx_pd_struct *pd) {
     return ok;
 }
 
-static bool xx_wpk_decode(Abstractformat *self, const xx_wpk_member *member,
-                          uint8_t **out, size_t *out_size, xx_pd_struct *pd) {
+static bool xx_wpk_decode(Abstractformat *self, const xx_wpk_member *member, uint8_t **out, size_t *out_size, xx_pd_struct *pd)
+{
     uint8_t *input;
     uint8_t *output;
     size_t written = 0U;
@@ -600,8 +575,7 @@ static bool xx_wpk_decode(Abstractformat *self, const xx_wpk_member *member,
     *out_size = 0U;
     if (!self || !member) return false;
     if (pd && xx_pd_is_stopped(pd)) return false;
-    if ((member->method != XX_WPK_METHOD_A) &&
-        (member->method != XX_WPK_METHOD_B)) {
+    if ((member->method != XX_WPK_METHOD_A) && (member->method != XX_WPK_METHOD_B)) {
         return false;
     }
     if ((member->compressed_size <= 0) || (member->uncompressed_size <= 0)) {
@@ -617,8 +591,7 @@ static bool xx_wpk_decode(Abstractformat *self, const xx_wpk_member *member,
 
     input = (uint8_t *)xx_mem_alloc((size_t)member->compressed_size);
     if (!input) return false;
-    if (!xx_wpk_read_at(self, member->data_offset, input,
-                        (size_t)member->compressed_size)) {
+    if (!xx_wpk_read_at(self, member->data_offset, input, (size_t)member->compressed_size)) {
         xx_mem_free(input);
         return false;
     }
@@ -634,14 +607,10 @@ static bool xx_wpk_decode(Abstractformat *self, const xx_wpk_member *member,
     }
 
     if (member->method == XX_WPK_METHOD_B) {
-        decoded = xx_wpk_decode_method_b_memory(
-            input, (size_t)member->compressed_size, output,
-            (size_t)member->uncompressed_size, &written, &consumed);
+        decoded = xx_wpk_decode_method_b_memory(input, (size_t)member->compressed_size, output, (size_t)member->uncompressed_size, &written, &consumed);
     } else {
-        decoded = xx_wpk_decode_method_a_memory(
-            input, (size_t)member->compressed_size,
-            (int)((xx_wpk *)self)->sorter, output,
-            (size_t)member->uncompressed_size, &written, &consumed);
+        decoded = xx_wpk_decode_method_a_memory(input, (size_t)member->compressed_size, (int)((xx_wpk *)self)->sorter, output, (size_t)member->uncompressed_size,
+                                                &written, &consumed);
     }
 
     if (!decoded || (written != (size_t)member->uncompressed_size)) {
@@ -658,8 +627,8 @@ static bool xx_wpk_decode(Abstractformat *self, const xx_wpk_member *member,
 
 /* ---------------------------------------------------------- lifecycle --- */
 
-void xx_wpk_init(xx_wpk *archive, xx_io_device *device,
-                    int64_t base_address) {
+void xx_wpk_init(xx_wpk *archive, xx_io_device *device, int64_t base_address)
+{
     if (!archive) return;
     xx_mem_zero(archive, sizeof(*archive));
     xx_format_init(&archive->format, device, base_address);
@@ -672,22 +641,17 @@ void xx_wpk_init(xx_wpk *archive, xx_io_device *device,
     archive->format.check_is_valid = xx_wpk_check_is_valid;
     archive->format.handle_base_info = xx_wpk_handle_base_info;
     archive->format.get_format_size = xx_wpk_get_format_size;
-    archive->format.get_number_of_archive_records =
-        xx_wpk_get_number_of_archive_records;
-    archive->format.create_archive_records_reading =
-        xx_wpk_create_archive_records_reading;
-    archive->format.get_current_archive_record =
-        xx_wpk_get_current_archive_record;
-    archive->format.unpack_current_archive_record =
-        xx_wpk_unpack_current_archive_record;
-    archive->format.archive_record_move_to_next =
-        xx_wpk_archive_record_move_to_next;
-    archive->format.free_archive_records_reading =
-        xx_wpk_free_archive_records_reading;
+    archive->format.get_number_of_archive_records = xx_wpk_get_number_of_archive_records;
+    archive->format.create_archive_records_reading = xx_wpk_create_archive_records_reading;
+    archive->format.get_current_archive_record = xx_wpk_get_current_archive_record;
+    archive->format.unpack_current_archive_record = xx_wpk_unpack_current_archive_record;
+    archive->format.archive_record_move_to_next = xx_wpk_archive_record_move_to_next;
+    archive->format.free_archive_records_reading = xx_wpk_free_archive_records_reading;
     archive->format.destroy = xx_wpk_vtable_destroy;
 }
 
-xx_wpk *xx_wpk_create(xx_io_device *device, int64_t base_address) {
+xx_wpk *xx_wpk_create(xx_io_device *device, int64_t base_address)
+{
     xx_wpk *archive = (xx_wpk *)xx_mem_alloc(sizeof(*archive));
 
     if (!archive) return NULL;
@@ -695,7 +659,8 @@ xx_wpk *xx_wpk_create(xx_io_device *device, int64_t base_address) {
     return archive;
 }
 
-void xx_wpk_destroy(xx_wpk *archive) {
+void xx_wpk_destroy(xx_wpk *archive)
+{
     if (!archive) return;
     /* Not xx_format_destroy: it dispatches through format.destroy, which is
      * the wrapper below, and the two would recurse. */
@@ -704,19 +669,22 @@ void xx_wpk_destroy(xx_wpk *archive) {
     archive->number_of_records = 0U;
 }
 
-void xx_wpk_free(xx_wpk *archive) {
+void xx_wpk_free(xx_wpk *archive)
+{
     if (!archive) return;
     xx_wpk_destroy(archive);
     xx_mem_free(archive);
 }
 
-static void xx_wpk_vtable_destroy(Abstractformat *self) {
+static void xx_wpk_vtable_destroy(Abstractformat *self)
+{
     xx_wpk_destroy((xx_wpk *)self);
 }
 
 /* -------------------------------------------------------------- format -- */
 
-bool xx_wpk_check_is_valid(Abstractformat *self, xx_pd_struct *pd) {
+bool xx_wpk_check_is_valid(Abstractformat *self, xx_pd_struct *pd)
+{
     xx_wpk_stream *stream;
 
     if (!self || (pd && xx_pd_is_stopped(pd))) return false;
@@ -726,7 +694,8 @@ bool xx_wpk_check_is_valid(Abstractformat *self, xx_pd_struct *pd) {
     return true;
 }
 
-bool xx_wpk_handle_base_info(Abstractformat *self, xx_pd_struct *pd) {
+bool xx_wpk_handle_base_info(Abstractformat *self, xx_pd_struct *pd)
+{
     xx_wpk *archive = (xx_wpk *)self;
     xx_wpk_stream *stream;
 
@@ -747,18 +716,17 @@ bool xx_wpk_handle_base_info(Abstractformat *self, xx_pd_struct *pd) {
     return true;
 }
 
-int64_t xx_wpk_get_format_size(Abstractformat *self, xx_pd_struct *pd) {
-    if (!self ||
-        (!self->base_info_handled && !xx_format_handle_base_info(self, pd))) {
+int64_t xx_wpk_get_format_size(Abstractformat *self, xx_pd_struct *pd)
+{
+    if (!self || (!self->base_info_handled && !xx_format_handle_base_info(self, pd))) {
         return 0;
     }
     return self->is_valid ? self->format_size : 0;
 }
 
-uint64_t xx_wpk_get_number_of_archive_records(Abstractformat *self,
-                                                 xx_pd_struct *pd) {
-    if (!self ||
-        (!self->base_info_handled && !xx_format_handle_base_info(self, pd))) {
+uint64_t xx_wpk_get_number_of_archive_records(Abstractformat *self, xx_pd_struct *pd)
+{
+    if (!self || (!self->base_info_handled && !xx_format_handle_base_info(self, pd))) {
         return 0U;
     }
     return self->is_valid ? ((xx_wpk *)self)->number_of_records : 0U;
@@ -766,8 +734,8 @@ uint64_t xx_wpk_get_number_of_archive_records(Abstractformat *self,
 
 /* ------------------------------------------------------------- records -- */
 
-static bool xx_wpk_set_record(xx_archive_record *record,
-                                 const xx_wpk_member *member) {
+static bool xx_wpk_set_record(xx_archive_record *record, const xx_wpk_member *member)
+{
     xx_archive_record_cleanup(record);
     xx_archive_record_init(record);
     record->header_offset = member->header_offset;
@@ -775,34 +743,24 @@ static bool xx_wpk_set_record(xx_archive_record *record,
     record->data_offset = member->data_offset;
     record->compressed_size = member->compressed_size;
     return xx_archive_record_set_original_name(record, member->name) &&
-           xx_archive_record_set_meta_u64(record, XX_META_ID_COMPRESSED_SIZE,
-                                          (uint64_t)member->compressed_size) &&
-           xx_archive_record_set_meta_u64(
-               record, XX_META_ID_UNCOMPRESSED_SIZE,
-               (uint64_t)member->uncompressed_size) &&
-           xx_archive_record_set_meta_u64(record, XX_META_ID_COMPRESSION_METHOD,
-                                          member->method) &&
-           xx_archive_record_set_meta_u64(record, XX_META_ID_TIMESTAMP,
-                                          member->timestamp) &&
-           xx_archive_record_set_meta_bool(record, XX_META_ID_IS_FOLDER,
-                                           member->is_folder) &&
-           xx_archive_record_set_meta_bool(record, XX_META_ID_IS_ENCRYPTED,
-                                           false);
+           xx_archive_record_set_meta_u64(record, XX_META_ID_COMPRESSED_SIZE, (uint64_t)member->compressed_size) &&
+           xx_archive_record_set_meta_u64(record, XX_META_ID_UNCOMPRESSED_SIZE, (uint64_t)member->uncompressed_size) &&
+           xx_archive_record_set_meta_u64(record, XX_META_ID_COMPRESSION_METHOD, member->method) &&
+           xx_archive_record_set_meta_u64(record, XX_META_ID_TIMESTAMP, member->timestamp) &&
+           xx_archive_record_set_meta_bool(record, XX_META_ID_IS_FOLDER, member->is_folder) && xx_archive_record_set_meta_bool(record, XX_META_ID_IS_ENCRYPTED, false);
 }
 
-static bool xx_wpk_copy_options(xx_list_s *target,
-                                   const xx_list_s *options) {
+static bool xx_wpk_copy_options(xx_list_s *target, const xx_list_s *options)
+{
     size_t index;
 
     if (!target || !options) return options == NULL;
     for (index = 0U; index < options->count; ++index) {
-        const xx_meta *source =
-            (const xx_meta *)xx_list_at((const xx_list_t *)options, index);
+        const xx_meta *source = (const xx_meta *)xx_list_at((const xx_list_t *)options, index);
         xx_meta copied;
         if (!source) continue;
         xx_meta_init(&copied, source->meta_id);
-        if (!xx_var_copy(&copied.var, &source->var) ||
-            !xx_list_append(target, &copied)) {
+        if (!xx_var_copy(&copied.var, &source->var) || !xx_list_append(target, &copied)) {
             xx_meta_cleanup(&copied);
             return false;
         }
@@ -810,21 +768,20 @@ static bool xx_wpk_copy_options(xx_list_s *target,
     return true;
 }
 
-static const xx_var *xx_wpk_get_option(const xx_list_s *options,
-                                          uint32_t meta_id) {
+static const xx_var *xx_wpk_get_option(const xx_list_s *options, uint32_t meta_id)
+{
     size_t index;
 
     if (!options) return NULL;
     for (index = 0U; index < options->count; ++index) {
-        const xx_meta *meta =
-            (const xx_meta *)xx_list_at((const xx_list_t *)options, index);
+        const xx_meta *meta = (const xx_meta *)xx_list_at((const xx_list_t *)options, index);
         if (meta && meta->meta_id == meta_id) return &meta->var;
     }
     return NULL;
 }
 
-xx_archive_record_state *xx_wpk_create_archive_records_reading(
-    Abstractformat *self, const xx_list_s *options, xx_pd_struct *pd) {
+xx_archive_record_state *xx_wpk_create_archive_records_reading(Abstractformat *self, const xx_list_s *options, xx_pd_struct *pd)
+{
     xx_wpk_stream *stream;
     xx_archive_record_state *state;
 
@@ -840,9 +797,7 @@ xx_archive_record_state *xx_wpk_create_archive_records_reading(
     state->internal_state = stream;
     state->free_internal = xx_wpk_stream_free;
     state->total_records = (int64_t)stream->count;
-    if (!xx_wpk_copy_options(&state->options, options) ||
-        (stream->count != 0U &&
-         !xx_wpk_set_record(&state->current_record, &stream->items[0]))) {
+    if (!xx_wpk_copy_options(&state->options, options) || (stream->count != 0U && !xx_wpk_set_record(&state->current_record, &stream->items[0]))) {
         xx_archive_record_state_free(state);
         return NULL;
     }
@@ -851,20 +806,16 @@ xx_archive_record_state *xx_wpk_create_archive_records_reading(
     return state;
 }
 
-const xx_archive_record *xx_wpk_get_current_archive_record(
-    Abstractformat *self, xx_archive_record_state *state) {
-    return self && state && state->format == self && state->has_record
-               ? &state->current_record
-               : NULL;
+const xx_archive_record *xx_wpk_get_current_archive_record(Abstractformat *self, xx_archive_record_state *state)
+{
+    return self && state && state->format == self && state->has_record ? &state->current_record : NULL;
 }
 
-bool xx_wpk_archive_record_move_to_next(Abstractformat *self,
-                                           xx_archive_record_state *state,
-                                           xx_pd_struct *pd) {
+bool xx_wpk_archive_record_move_to_next(Abstractformat *self, xx_archive_record_state *state, xx_pd_struct *pd)
+{
     xx_wpk_stream *stream;
 
-    if (!self || !state || state->format != self || !state->has_record ||
-        (pd && xx_pd_is_stopped(pd))) {
+    if (!self || !state || state->format != self || !state->has_record || (pd && xx_pd_is_stopped(pd))) {
         return false;
     }
     stream = (xx_wpk_stream *)state->internal_state;
@@ -876,14 +827,12 @@ bool xx_wpk_archive_record_move_to_next(Abstractformat *self,
     }
     ++stream->index;
     ++state->current_index;
-    state->has_record = xx_wpk_set_record(&state->current_record,
-                                             &stream->items[stream->index]);
+    state->has_record = xx_wpk_set_record(&state->current_record, &stream->items[stream->index]);
     return state->has_record;
 }
 
-bool xx_wpk_unpack_current_archive_record(Abstractformat *self,
-                                             xx_archive_record_state *state,
-                                             xx_pd_struct *pd) {
+bool xx_wpk_unpack_current_archive_record(Abstractformat *self, xx_archive_record_state *state, xx_pd_struct *pd)
+{
     xx_wpk_stream *stream;
     const xx_wpk_member *member;
     const xx_var *path_option;
@@ -895,8 +844,7 @@ bool xx_wpk_unpack_current_archive_record(Abstractformat *self,
     bool result = false;
     bool created = false;
 
-    if (!self || !state || state->format != self || !state->has_record ||
-        (pd && xx_pd_is_stopped(pd))) {
+    if (!self || !state || state->format != self || !state->has_record || (pd && xx_pd_is_stopped(pd))) {
         return false;
     }
     stream = (xx_wpk_stream *)state->internal_state;
@@ -904,8 +852,7 @@ bool xx_wpk_unpack_current_archive_record(Abstractformat *self,
     member = &stream->items[stream->index];
     if (!xx_wpk_path_safe(member->name)) return false;
 
-    path_option = xx_wpk_get_option(&state->options,
-                                       XX_META_ID_OPT_UNPACK_PATH);
+    path_option = xx_wpk_get_option(&state->options, XX_META_ID_OPT_UNPACK_PATH);
     if (!path_option) {
         /* No destination: decode and discard, which verifies the member
          * without writing anything. */
@@ -914,11 +861,9 @@ bool xx_wpk_unpack_current_archive_record(Abstractformat *self,
         xx_mem_free(plain);
         return result;
     }
-    if (path_option->type == XX_VAR_TYPE_STRING ||
-        path_option->type == XX_VAR_TYPE_STRING_VIEW) {
+    if (path_option->type == XX_VAR_TYPE_STRING || path_option->type == XX_VAR_TYPE_STRING_VIEW) {
         base_path = xx_var_get_str(path_option);
-    } else if (path_option->type == XX_VAR_TYPE_WSTRING ||
-               path_option->type == XX_VAR_TYPE_WSTRING_VIEW) {
+    } else if (path_option->type == XX_VAR_TYPE_WSTRING || path_option->type == XX_VAR_TYPE_WSTRING_VIEW) {
         converted_path = xx_str_unicode_to_utf8(xx_var_get_wstr(path_option));
         base_path = converted_path;
     }
@@ -926,9 +871,7 @@ bool xx_wpk_unpack_current_archive_record(Abstractformat *self,
         xx_str_free(converted_path);
         return false;
     }
-    if (base_path[0] != '\0' &&
-        base_path[xx_str_len(base_path) - 1U] != '/' &&
-        base_path[xx_str_len(base_path) - 1U] != '\\') {
+    if (base_path[0] != '\0' && base_path[xx_str_len(base_path) - 1U] != '/' && base_path[xx_str_len(base_path) - 1U] != '\\') {
         target_path = xx_str_concat3(base_path, "/", member->name);
     } else {
         target_path = xx_str_concat(base_path, member->name);
@@ -941,8 +884,7 @@ bool xx_wpk_unpack_current_archive_record(Abstractformat *self,
         xx_str_free(target_path);
         return result;
     }
-    if (!xx_store_create_dirs_a(target_path, false) ||
-        !xx_wpk_decode(self, member, &plain, &plain_size, pd)) {
+    if (!xx_store_create_dirs_a(target_path, false) || !xx_wpk_decode(self, member, &plain, &plain_size, pd)) {
         xx_str_free(target_path);
         return false;
     }
@@ -953,8 +895,7 @@ bool xx_wpk_unpack_current_archive_record(Abstractformat *self,
 
         result = output != NULL;
         while (result && completed < plain_size) {
-            ssize_t sent = xx_io_write(output, plain + completed,
-                                       plain_size - completed);
+            ssize_t sent = xx_io_write(output, plain + completed, plain_size - completed);
             if (sent <= 0 || (size_t)sent > plain_size - completed) {
                 result = false;
                 break;
@@ -969,8 +910,8 @@ bool xx_wpk_unpack_current_archive_record(Abstractformat *self,
     return result;
 }
 
-void xx_wpk_free_archive_records_reading(Abstractformat *self,
-                                            xx_archive_record_state *state) {
+void xx_wpk_free_archive_records_reading(Abstractformat *self, xx_archive_record_state *state)
+{
     (void)self;
     xx_archive_record_state_free(state);
 }

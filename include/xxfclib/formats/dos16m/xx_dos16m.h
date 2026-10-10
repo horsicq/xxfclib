@@ -62,7 +62,7 @@ typedef struct xx_dos16m XDos4g;
 
 /** Resolved extender variant of a `BW` chain. */
 typedef enum xx_dos16m_variant_e {
-    XX_DOS16M_VARIANT_NONE = 0,  /**< No `BW` header found; not an extender */
+    XX_DOS16M_VARIANT_NONE = 0,   /**< No `BW` header found; not an extender */
     XX_DOS16M_VARIANT_DOS16M = 1, /**< `BW` chain, bare or ending in `NE` */
     XX_DOS16M_VARIANT_DOS4G = 2   /**< `BW` chain ending in an `LE`/`LX` payload */
 } xx_dos16m_variant_t;
@@ -78,50 +78,50 @@ typedef enum xx_dos16m_variant_e {
  * as a whole is exposed through the memory map.
  */
 struct xx_dos16m {
-    Abstractformat format;         /**< Base format structure (first member) */
+    Abstractformat format; /**< Base format structure (first member) */
 
     /* --- Outer MS-DOS stub, the fields the chain start is derived from --- */
-    uint16_t e_magic;              /**< Stub MZ signature (0x5A4D) */
-    uint16_t e_cblp;               /**< Stub image length mod 512 */
-    uint16_t e_cp;                 /**< Stub image length in 512-byte pages */
+    uint16_t e_magic; /**< Stub MZ signature (0x5A4D) */
+    uint16_t e_cblp;  /**< Stub image length mod 512 */
+    uint16_t e_cp;    /**< Stub image length in 512-byte pages */
 
     /* --- First dos16m_exe_header ('BW') --- */
-    uint16_t signature;            /**< `BW` signature (0x5742) */
-    uint16_t last_page_bytes;      /**< Length of image mod 512 */
-    uint16_t pages_in_file;        /**< Number of 512-byte pages */
+    uint16_t signature;       /**< `BW` signature (0x5742) */
+    uint16_t last_page_bytes; /**< Length of image mod 512 */
+    uint16_t pages_in_file;   /**< Number of 512-byte pages */
     uint16_t reserved1;
     uint16_t reserved2;
-    uint16_t min_alloc;            /**< Required memory, in KB */
-    uint16_t max_alloc;            /**< Max KB (private allocation) */
-    uint16_t stack_seg;            /**< Segment of stack */
-    uint16_t stack_ptr;            /**< Initial SP value */
-    uint16_t first_reloc_sel;      /**< Huge relocation list selector */
-    uint16_t init_ip;              /**< Initial IP value */
-    uint16_t code_seg;             /**< Segment of code */
-    uint16_t runtime_gdt_size;     /**< Runtime GDT size in bytes */
-    uint16_t MAKEPM_version;       /**< version * 100 */
-    uint32_t next_header_pos;      /**< File position of next spliced .EXP */
-    uint32_t cv_info_offset;       /**< Offset to start of debug info */
-    uint16_t last_sel_used;        /**< Last selector value used */
-    uint16_t pmem_alloc;           /**< Private extended memory KB if nonzero */
-    uint16_t alloc_incr;           /**< Auto ExtReserve amount, in KB */
-    uint16_t options;              /**< Runtime options */
-    uint16_t trans_stack_sel;      /**< Selector of transparent stack */
-    uint16_t exp_flags;            /**< ef_ constants */
-    uint16_t program_size;         /**< Size of program in paragraphs */
-    uint16_t gdtimage_size;        /**< Size of GDT in file, in bytes */
-    uint16_t first_selector;       /**< gdt[first_sel] = gdtimage[0]; 0 => 0x80 */
-    uint8_t  default_mem_strategy;
-    uint16_t transfer_buffer_size; /**< Default in bytes; 0 => 8KB */
-    char     EXP_path[XX_DOS16M_EXP_PATH_SIZE + 1]; /**< Original .EXP name */
+    uint16_t min_alloc;        /**< Required memory, in KB */
+    uint16_t max_alloc;        /**< Max KB (private allocation) */
+    uint16_t stack_seg;        /**< Segment of stack */
+    uint16_t stack_ptr;        /**< Initial SP value */
+    uint16_t first_reloc_sel;  /**< Huge relocation list selector */
+    uint16_t init_ip;          /**< Initial IP value */
+    uint16_t code_seg;         /**< Segment of code */
+    uint16_t runtime_gdt_size; /**< Runtime GDT size in bytes */
+    uint16_t MAKEPM_version;   /**< version * 100 */
+    uint32_t next_header_pos;  /**< File position of next spliced .EXP */
+    uint32_t cv_info_offset;   /**< Offset to start of debug info */
+    uint16_t last_sel_used;    /**< Last selector value used */
+    uint16_t pmem_alloc;       /**< Private extended memory KB if nonzero */
+    uint16_t alloc_incr;       /**< Auto ExtReserve amount, in KB */
+    uint16_t options;          /**< Runtime options */
+    uint16_t trans_stack_sel;  /**< Selector of transparent stack */
+    uint16_t exp_flags;        /**< ef_ constants */
+    uint16_t program_size;     /**< Size of program in paragraphs */
+    uint16_t gdtimage_size;    /**< Size of GDT in file, in bytes */
+    uint16_t first_selector;   /**< gdt[first_sel] = gdtimage[0]; 0 => 0x80 */
+    uint8_t default_mem_strategy;
+    uint16_t transfer_buffer_size;              /**< Default in bytes; 0 => 8KB */
+    char EXP_path[XX_DOS16M_EXP_PATH_SIZE + 1]; /**< Original .EXP name */
 
     /* --- Derived container layout --- */
-    int64_t  stub_size;            /**< (e_cp - 1) * 512 + e_cblp */
-    int64_t  first_header_offset;  /**< Offset of the first `BW` header */
-    int64_t  payload_offset;       /**< Offset of the trailing MZ, -1 if none */
+    int64_t stub_size;             /**< (e_cp - 1) * 512 + e_cblp */
+    int64_t first_header_offset;   /**< Offset of the first `BW` header */
+    int64_t payload_offset;        /**< Offset of the trailing MZ, -1 if none */
     uint16_t payload_subsignature; /**< `NE`/`LE`/`LX` of the trailing MZ, 0 if none */
     uint32_t number_of_headers;    /**< Count of `BW` headers in the chain */
-    bool     has_payload;          /**< True when a trailing MZ was reached */
+    bool has_payload;              /**< True when a trailing MZ was reached */
     xx_dos16m_variant_t variant;   /**< Resolved DOS/16M vs DOS/4G */
 };
 
@@ -139,10 +139,7 @@ XXFC_API void xx_dos16m_free(xx_dos16m *dos16m);
 XXFC_API bool xx_dos16m_check_is_valid(Abstractformat *self, xx_pd_struct *pd);
 XXFC_API bool xx_dos16m_handle_base_info(Abstractformat *self, xx_pd_struct *pd);
 XXFC_API int64_t xx_dos16m_get_format_size(Abstractformat *self, xx_pd_struct *pd);
-XXFC_API bool xx_dos16m_get_memory_map(Abstractformat *self,
-                                       xx_memory_map_mode_t mode,
-                                       xx_memory_map *output,
-                                       xx_pd_struct *pd);
+XXFC_API bool xx_dos16m_get_memory_map(Abstractformat *self, xx_memory_map_mode_t mode, xx_memory_map *output, xx_pd_struct *pd);
 
 /* --- Getters --- */
 XXFC_API uint16_t xx_dos16m_get_e_magic(const xx_dos16m *dos16m);
@@ -198,10 +195,7 @@ XXFC_API void xx_dos4g_free(xx_dos4g *dos4g);
 XXFC_API bool xx_dos4g_check_is_valid(Abstractformat *self, xx_pd_struct *pd);
 XXFC_API bool xx_dos4g_handle_base_info(Abstractformat *self, xx_pd_struct *pd);
 XXFC_API int64_t xx_dos4g_get_format_size(Abstractformat *self, xx_pd_struct *pd);
-XXFC_API bool xx_dos4g_get_memory_map(Abstractformat *self,
-                                      xx_memory_map_mode_t mode,
-                                      xx_memory_map *output,
-                                      xx_pd_struct *pd);
+XXFC_API bool xx_dos4g_get_memory_map(Abstractformat *self, xx_memory_map_mode_t mode, xx_memory_map *output, xx_pd_struct *pd);
 
 /* --- Getters --- */
 XXFC_API uint16_t xx_dos4g_get_e_magic(const xx_dos4g *dos4g);
@@ -244,60 +238,74 @@ XXFC_API bool xx_dos4g_has_payload(const xx_dos4g *dos4g);
 XXFC_API xx_dos16m_variant_t xx_dos4g_get_variant(const xx_dos4g *dos4g);
 
 /* Cast helpers */
-static inline Abstractformat *xx_dos16m_to_format(xx_dos16m *dos16m) {
+static inline Abstractformat *xx_dos16m_to_format(xx_dos16m *dos16m)
+{
     return dos16m ? &dos16m->format : NULL;
 }
 
-static inline const Abstractformat *xx_dos16m_to_format_const(const xx_dos16m *dos16m) {
+static inline const Abstractformat *xx_dos16m_to_format_const(const xx_dos16m *dos16m)
+{
     return dos16m ? &dos16m->format : NULL;
 }
 
-static inline Abstractformat *xx_dos4g_to_format(xx_dos4g *dos4g) {
+static inline Abstractformat *xx_dos4g_to_format(xx_dos4g *dos4g)
+{
     return dos4g ? &dos4g->format : NULL;
 }
 
-static inline const Abstractformat *xx_dos4g_to_format_const(const xx_dos4g *dos4g) {
+static inline const Abstractformat *xx_dos4g_to_format_const(const xx_dos4g *dos4g)
+{
     return dos4g ? &dos4g->format : NULL;
 }
 
 /* User-facing aliases without xx_ prefix */
-static inline void XDos16m_init(xx_dos16m *dos16m, xx_io_device *dev, int64_t base_address) {
+static inline void XDos16m_init(xx_dos16m *dos16m, xx_io_device *dev, int64_t base_address)
+{
     xx_dos16m_init(dos16m, dev, base_address);
 }
 
-static inline xx_dos16m *XDos16m_create(xx_io_device *dev, int64_t base_address) {
+static inline xx_dos16m *XDos16m_create(xx_io_device *dev, int64_t base_address)
+{
     return xx_dos16m_create(dev, base_address);
 }
 
-static inline void XDos16m_free(xx_dos16m *dos16m) {
+static inline void XDos16m_free(xx_dos16m *dos16m)
+{
     xx_dos16m_free(dos16m);
 }
 
-static inline bool XDos16m_check_is_valid(xx_dos16m *dos16m, xx_pd_struct *pd) {
+static inline bool XDos16m_check_is_valid(xx_dos16m *dos16m, xx_pd_struct *pd)
+{
     return dos16m ? xx_dos16m_check_is_valid(&dos16m->format, pd) : false;
 }
 
-static inline bool XDos16m_handle_base_info(xx_dos16m *dos16m, xx_pd_struct *pd) {
+static inline bool XDos16m_handle_base_info(xx_dos16m *dos16m, xx_pd_struct *pd)
+{
     return dos16m ? xx_dos16m_handle_base_info(&dos16m->format, pd) : false;
 }
 
-static inline void XDos4g_init(xx_dos4g *dos4g, xx_io_device *dev, int64_t base_address) {
+static inline void XDos4g_init(xx_dos4g *dos4g, xx_io_device *dev, int64_t base_address)
+{
     xx_dos4g_init(dos4g, dev, base_address);
 }
 
-static inline xx_dos4g *XDos4g_create(xx_io_device *dev, int64_t base_address) {
+static inline xx_dos4g *XDos4g_create(xx_io_device *dev, int64_t base_address)
+{
     return xx_dos4g_create(dev, base_address);
 }
 
-static inline void XDos4g_free(xx_dos4g *dos4g) {
+static inline void XDos4g_free(xx_dos4g *dos4g)
+{
     xx_dos4g_free(dos4g);
 }
 
-static inline bool XDos4g_check_is_valid(xx_dos4g *dos4g, xx_pd_struct *pd) {
+static inline bool XDos4g_check_is_valid(xx_dos4g *dos4g, xx_pd_struct *pd)
+{
     return dos4g ? xx_dos4g_check_is_valid(&dos4g->format, pd) : false;
 }
 
-static inline bool XDos4g_handle_base_info(xx_dos4g *dos4g, xx_pd_struct *pd) {
+static inline bool XDos4g_handle_base_info(xx_dos4g *dos4g, xx_pd_struct *pd)
+{
     return dos4g ? xx_dos4g_handle_base_info(&dos4g->format, pd) : false;
 }
 

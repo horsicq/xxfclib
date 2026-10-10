@@ -49,12 +49,9 @@
 #include "xxfclib/rt/xx_rt.h"
 #include "platforms/xx_rt_platform.h"
 
-
 /* ------------------------------------------------------------------------ */
 /*  Process                                                                  */
 /* ------------------------------------------------------------------------ */
-
-
 
 static void xx_rt_swap_bytes(char *pLeft, char *pRight, size_t nSize)
 {
@@ -68,23 +65,17 @@ static void xx_rt_swap_bytes(char *pLeft, char *pRight, size_t nSize)
     }
 }
 
-static void xx_rt_heap_sift_down(char *pBase, size_t nRoot, size_t nEnd,
-                                 size_t nSize,
-                                 xx_rt_compare_context_fn fnCompare,
-                                 void *pContext)
+static void xx_rt_heap_sift_down(char *pBase, size_t nRoot, size_t nEnd, size_t nSize, xx_rt_compare_context_fn fnCompare, void *pContext)
 {
     while (nRoot <= (nEnd - 1) / 2) {
         size_t nChild = nRoot * 2 + 1;
         size_t nSwap = nRoot;
 
-        if (fnCompare(pBase + nSwap * nSize,
-                      pBase + nChild * nSize, pContext) < 0) {
+        if (fnCompare(pBase + nSwap * nSize, pBase + nChild * nSize, pContext) < 0) {
             nSwap = nChild;
         }
 
-        if ((nChild < nEnd) &&
-            (fnCompare(pBase + nSwap * nSize,
-                       pBase + (nChild + 1) * nSize, pContext) < 0)) {
+        if ((nChild < nEnd) && (fnCompare(pBase + nSwap * nSize, pBase + (nChild + 1) * nSize, pContext) < 0)) {
             nSwap = nChild + 1;
         }
 
@@ -92,51 +83,39 @@ static void xx_rt_heap_sift_down(char *pBase, size_t nRoot, size_t nEnd,
             return;
         }
 
-        xx_rt_swap_bytes(pBase + nRoot * nSize,
-                         pBase + nSwap * nSize, nSize);
+        xx_rt_swap_bytes(pBase + nRoot * nSize, pBase + nSwap * nSize, nSize);
         nRoot = nSwap;
     }
 }
 
 /* In-place heapsort has bounded O(log n) index state, never allocates, and
  * cannot degrade to quadratic behavior for equal or adversarial keys. */
-static void xx_rt_qsort_context_impl(char *pBase, size_t nCount,
-                                     size_t nSize,
-                                     xx_rt_compare_context_fn fnCompare,
-                                     void *pContext)
+static void xx_rt_qsort_context_impl(char *pBase, size_t nCount, size_t nSize, xx_rt_compare_context_fn fnCompare, void *pContext)
 {
     size_t nStart = nCount / 2;
     size_t nEnd = nCount - 1;
 
     while (nStart != 0) {
         nStart--;
-        xx_rt_heap_sift_down(pBase, nStart, nEnd, nSize,
-                             fnCompare, pContext);
+        xx_rt_heap_sift_down(pBase, nStart, nEnd, nSize, fnCompare, pContext);
     }
 
     while (nEnd != 0) {
         xx_rt_swap_bytes(pBase, pBase + nEnd * nSize, nSize);
         nEnd--;
         if (nEnd != 0) {
-            xx_rt_heap_sift_down(pBase, 0, nEnd, nSize,
-                                 fnCompare, pContext);
+            xx_rt_heap_sift_down(pBase, 0, nEnd, nSize, fnCompare, pContext);
         }
     }
 }
 
-
-
-void xx_rt_qsort_context(void *pBase, size_t nCount, size_t nSize,
-                         xx_rt_compare_context_fn fnCompare,
-                         void *pContext)
+void xx_rt_qsort_context(void *pBase, size_t nCount, size_t nSize, xx_rt_compare_context_fn fnCompare, void *pContext)
 {
-    if ((pBase == NULL) || (fnCompare == NULL) || (nCount < 2) ||
-        (nSize == 0) || (nCount > ((size_t)-1) / nSize)) {
+    if ((pBase == NULL) || (fnCompare == NULL) || (nCount < 2) || (nSize == 0) || (nCount > ((size_t)-1) / nSize)) {
         return;
     }
 
-    xx_rt_qsort_context_impl((char *)pBase, nCount, nSize,
-                             fnCompare, pContext);
+    xx_rt_qsort_context_impl((char *)pBase, nCount, nSize, fnCompare, pContext);
 }
 
 /* ------------------------------------------------------------------------ */
@@ -261,16 +240,13 @@ unsigned long long xx_rt_strtoull(const char *pString, const char **ppEnd, int n
     return bNegative ? (unsigned long long)(0ull - nValue) : nValue;
 }
 
-
 /* ------------------------------------------------------------------------ */
 /*  I/O                                                                      */
 /* ------------------------------------------------------------------------ */
 
-
 /* ------------------------------------------------------------------------ */
 /*  Formatting                                                               */
 /* ------------------------------------------------------------------------ */
-
 
 XX_RT_PRINTF_LIKE(3, 4) int xx_rt_snprintf(char *pBuffer, size_t nSize, const char *pFormat, ...)
 {
@@ -347,6 +323,5 @@ XX_RT_PRINTF_LIKE(2, 3) int xx_rt_fprintf(void *pStream, const char *pFormat, ..
 /* ------------------------------------------------------------------------ */
 /*  Clock                                                                    */
 /* ------------------------------------------------------------------------ */
-
 
 /* Math lives in utils_math.c; double/decimal conversion in utils_fp.c. */

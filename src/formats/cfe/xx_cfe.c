@@ -46,13 +46,12 @@ static void xx_cfe_vtable_destroy(Abstractformat *self);
 /* All positioning goes through seek64: a CFE image is normally the first
  * partition of a flash dump, but a caller may hand in any base address, and
  * long is 32-bit on Win64. */
-static bool xx_cfe_read_at(xx_io_device *device, int64_t offset, void *data,
-                           size_t size) {
+static bool xx_cfe_read_at(xx_io_device *device, int64_t offset, void *data, size_t size)
+{
     uint8_t *out = (uint8_t *)data;
     size_t done = 0U;
 
-    if (!device || (!data && size != 0U) || offset < 0 ||
-        xx_io_seek64(device, offset, SEEK_SET) != 0) {
+    if (!device || (!data && size != 0U) || offset < 0 || xx_io_seek64(device, offset, SEEK_SET) != 0) {
         return false;
     }
     while (done < size) {
@@ -72,8 +71,8 @@ static bool xx_cfe_read_at(xx_io_device *device, int64_t offset, void *data,
  * whose encoding depends on the CPU and its byte order, and rejecting on
  * them would lose real images that binwalk accepts.
  */
-static bool xx_cfe_parse(Abstractformat *self, xx_cfe_parsed *parsed,
-                         xx_pd_struct *pd) {
+static bool xx_cfe_parse(Abstractformat *self, xx_cfe_parsed *parsed, xx_pd_struct *pd)
+{
     uint8_t seal[XX_CFE_MAGIC_SIZE];
     int64_t span;
 
@@ -83,8 +82,7 @@ static bool xx_cfe_parse(Abstractformat *self, xx_cfe_parsed *parsed,
         parsed->seal_offset = -1;
         parsed->image_size = -1;
     }
-    if (!self || !self->device || !parsed || self->base_address < 0 ||
-        (pd && xx_pd_is_stopped(pd))) {
+    if (!self || !self->device || !parsed || self->base_address < 0 || (pd && xx_pd_is_stopped(pd))) {
         return false;
     }
     parsed->input_size = xx_io_total_size(self->device);
@@ -95,9 +93,7 @@ static bool xx_cfe_parse(Abstractformat *self, xx_cfe_parsed *parsed,
     /* base_address <= input_size, so base_address + 28 cannot overflow once
      * span is known to cover the whole seal. */
     if (span < (int64_t)XX_CFE_MIN_SIZE) return false;
-    if (!xx_cfe_read_at(self->device,
-                        self->base_address + (int64_t)XX_CFE_MAGIC_OFFSET,
-                        seal, sizeof(seal)) ||
+    if (!xx_cfe_read_at(self->device, self->base_address + (int64_t)XX_CFE_MAGIC_OFFSET, seal, sizeof(seal)) ||
         xx_rt_memcmp(seal, XX_CFE_MAGIC, XX_CFE_MAGIC_SIZE) != 0) {
         return false;
     }
@@ -108,7 +104,8 @@ static bool xx_cfe_parse(Abstractformat *self, xx_cfe_parsed *parsed,
 
 /* ----------------------------------------------------------- lifecycle -- */
 
-void xx_cfe_init(xx_cfe *cfe, xx_io_device *dev, int64_t base_address) {
+void xx_cfe_init(xx_cfe *cfe, xx_io_device *dev, int64_t base_address)
+{
     if (!cfe) return;
     xx_mem_zero(cfe, sizeof(*cfe));
     xx_format_init(&cfe->format, dev, base_address);
@@ -129,23 +126,27 @@ void xx_cfe_init(xx_cfe *cfe, xx_io_device *dev, int64_t base_address) {
     xx_components_install(&cfe->format);
 }
 
-xx_cfe *xx_cfe_create(xx_io_device *dev, int64_t base_address) {
+xx_cfe *xx_cfe_create(xx_io_device *dev, int64_t base_address)
+{
     xx_cfe *cfe = (xx_cfe *)xx_mem_alloc(sizeof(*cfe));
 
     if (cfe) xx_cfe_init(cfe, dev, base_address);
     return cfe;
 }
 
-void xx_cfe_destroy(xx_cfe *cfe) {
+void xx_cfe_destroy(xx_cfe *cfe)
+{
     if (!cfe) return;
     xx_format_cleanup_extra_parameters(&cfe->format);
 }
 
-static void xx_cfe_vtable_destroy(Abstractformat *self) {
+static void xx_cfe_vtable_destroy(Abstractformat *self)
+{
     xx_cfe_destroy((xx_cfe *)self);
 }
 
-void xx_cfe_free(xx_cfe *cfe) {
+void xx_cfe_free(xx_cfe *cfe)
+{
     if (!cfe) return;
     xx_cfe_destroy(cfe);
     xx_mem_free(cfe);
@@ -153,13 +154,15 @@ void xx_cfe_free(xx_cfe *cfe) {
 
 /* -------------------------------------------------------------- format -- */
 
-bool xx_cfe_check_is_valid(Abstractformat *self, xx_pd_struct *pd) {
+bool xx_cfe_check_is_valid(Abstractformat *self, xx_pd_struct *pd)
+{
     xx_cfe_parsed parsed;
 
     return xx_cfe_parse(self, &parsed, pd);
 }
 
-bool xx_cfe_handle_base_info(Abstractformat *self, xx_pd_struct *pd) {
+bool xx_cfe_handle_base_info(Abstractformat *self, xx_pd_struct *pd)
+{
     xx_cfe *cfe = (xx_cfe *)self;
     xx_cfe_parsed parsed;
 
@@ -187,9 +190,9 @@ bool xx_cfe_handle_base_info(Abstractformat *self, xx_pd_struct *pd) {
     return true;
 }
 
-int64_t xx_cfe_get_format_size(Abstractformat *self, xx_pd_struct *pd) {
-    if (!self ||
-        (!self->base_info_handled && !xx_format_handle_base_info(self, pd))) {
+int64_t xx_cfe_get_format_size(Abstractformat *self, xx_pd_struct *pd)
+{
+    if (!self || (!self->base_info_handled && !xx_format_handle_base_info(self, pd))) {
         return -1;
     }
     return self->format_size;
@@ -197,18 +200,19 @@ int64_t xx_cfe_get_format_size(Abstractformat *self, xx_pd_struct *pd) {
 
 /* ------------------------------------------------------------ accessors -- */
 
-int64_t xx_cfe_get_seal_offset(const xx_cfe *cfe) {
+int64_t xx_cfe_get_seal_offset(const xx_cfe *cfe)
+{
     return cfe ? cfe->seal_offset : -1;
 }
 
-int64_t xx_cfe_get_image_size(const xx_cfe *cfe) {
+int64_t xx_cfe_get_image_size(const xx_cfe *cfe)
+{
     return cfe ? cfe->image_size : -1;
 }
 
 /* Encoded/structural component members; this does not decode media. */
-static bool xx_components_build(Abstractformat *f, xx_component_stream *s, xx_pd_struct *pd) {
-
+static bool xx_components_build(Abstractformat *f, xx_component_stream *s, xx_pd_struct *pd)
+{
     (void)pd;
-    return xx_component_add(f,s,0,28,"reset-and-api-vectors") &&
-        (f->format_size == 36 || xx_component_add(f,s,36,f->format_size-36,"firmware-body"));
+    return xx_component_add(f, s, 0, 28, "reset-and-api-vectors") && (f->format_size == 36 || xx_component_add(f, s, 36, f->format_size - 36, "firmware-body"));
 }

@@ -37,8 +37,7 @@ static bool irwinpac_read_byte(irwinpac_reader *reader, uint8_t *value)
 /* MSB-first inside each byte, and never beyond the current chunk payload: a
  * truncated block must fail instead of pulling the next block's header in as
  * if it were compressed data. */
-static bool irwinpac_get_bits(irwinpac_reader *reader, unsigned bits,
-                              uint32_t *value)
+static bool irwinpac_get_bits(irwinpac_reader *reader, unsigned bits, uint32_t *value)
 {
     uint32_t result = 0U;
     unsigned take;
@@ -56,8 +55,7 @@ static bool irwinpac_get_bits(irwinpac_reader *reader, unsigned bits,
         }
 
         take = (bits < reader->bit_count) ? bits : reader->bit_count;
-        part = (reader->bit_buffer >> (reader->bit_count - take)) &
-               ((1U << take) - 1U);
+        part = (reader->bit_buffer >> (reader->bit_count - take)) & ((1U << take) - 1U);
         result = (result << take) | part;
         reader->bit_count -= take;
         bits -= take;
@@ -105,8 +103,7 @@ static bool irwinpac_get_length(irwinpac_reader *reader, uint32_t *length)
 /* Decodes one compressed block into block.  The block is complete only when it
  * produced exactly the declared number of bytes: a match that would overrun
  * the declared size is a decode failure, not something to clamp. */
-static bool irwinpac_decode_block(irwinpac_reader *reader, uint8_t *block,
-                                  size_t block_size)
+static bool irwinpac_decode_block(irwinpac_reader *reader, uint8_t *block, size_t block_size)
 {
     size_t position = 0U;
     size_t source;
@@ -132,10 +129,7 @@ static bool irwinpac_decode_block(irwinpac_reader *reader, uint8_t *block,
         if (!irwinpac_get_bits(reader, 1U, &is_short)) return false;
 
         distance = 0U;
-        if (!irwinpac_get_bits(reader,
-                               (is_short != 0U) ? IRWINPAC_SHORT_DIST_BITS
-                                                : IRWINPAC_LONG_DIST_BITS,
-                               &distance)) {
+        if (!irwinpac_get_bits(reader, (is_short != 0U) ? IRWINPAC_SHORT_DIST_BITS : IRWINPAC_LONG_DIST_BITS, &distance)) {
             return false;
         }
 
@@ -169,9 +163,7 @@ static bool irwinpac_decode_block(irwinpac_reader *reader, uint8_t *block,
  * the caller's capacity would mean returning true after producing fewer bytes
  * than the chain encodes - the one failure a caller cannot detect.  This walks
  * the chain to its end and treats an overrun of `cap` as a failure. */
-static bool irwinpac_run(const uint8_t *input, size_t input_size,
-                         uint8_t *output, size_t cap,
-                         size_t *consumed, size_t *produced)
+static bool irwinpac_run(const uint8_t *input, size_t input_size, uint8_t *output, size_t cap, size_t *consumed, size_t *produced)
 {
     irwinpac_reader reader;
     uint8_t *block;
@@ -211,8 +203,7 @@ static bool irwinpac_run(const uint8_t *input, size_t input_size,
 
         /* The header is read as raw bytes, outside the bit reader's payload
          * budget; the loop below is what bounds it. */
-        while ((header_read < IRWINPAC_CHUNK_HEADER_SIZE) &&
-               irwinpac_read_byte(&reader, &header[header_read])) {
+        while ((header_read < IRWINPAC_CHUNK_HEADER_SIZE) && irwinpac_read_byte(&reader, &header[header_read])) {
             header_read++;
         }
 
@@ -260,8 +251,7 @@ static bool irwinpac_run(const uint8_t *input, size_t input_size,
                 stored = 0U;
                 while (stored < block_size) {
                     byte = 0U;
-                    if ((reader.payload_left == 0U) ||
-                        !irwinpac_read_byte(&reader, &byte)) {
+                    if ((reader.payload_left == 0U) || !irwinpac_read_byte(&reader, &byte)) {
                         break;
                     }
                     reader.payload_left--;
@@ -316,9 +306,7 @@ static bool irwinpac_run(const uint8_t *input, size_t input_size,
     return true;
 }
 
-bool xx_irwinpac_decode_memory(const uint8_t *input, size_t input_size,
-                               uint8_t *output, size_t output_size,
-                               size_t *written)
+bool xx_irwinpac_decode_memory(const uint8_t *input, size_t input_size, uint8_t *output, size_t output_size, size_t *written)
 {
     size_t produced = 0U;
     bool ok;
@@ -326,8 +314,7 @@ bool xx_irwinpac_decode_memory(const uint8_t *input, size_t input_size,
     if (written) *written = 0U;
     if (!output && (output_size > 0U)) return false;
 
-    ok = irwinpac_run(input, input_size, output, output_size, NULL,
-                      &produced);
+    ok = irwinpac_run(input, input_size, output, output_size, NULL, &produced);
     if (!ok) return false;
 
     if (written) *written = produced;
@@ -335,13 +322,10 @@ bool xx_irwinpac_decode_memory(const uint8_t *input, size_t input_size,
     return true;
 }
 
-bool xx_irwinpac_scan_memory(const uint8_t *input, size_t input_size,
-                             size_t max_output, size_t *consumed,
-                             size_t *produced)
+bool xx_irwinpac_scan_memory(const uint8_t *input, size_t input_size, size_t max_output, size_t *consumed, size_t *produced)
 {
     if (consumed) *consumed = 0U;
     if (produced) *produced = 0U;
 
-    return irwinpac_run(input, input_size, NULL, max_output, consumed,
-                        produced);
+    return irwinpac_run(input, input_size, NULL, max_output, consumed, produced);
 }

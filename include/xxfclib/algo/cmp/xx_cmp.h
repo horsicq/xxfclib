@@ -43,9 +43,7 @@ extern "C" {
  * @param written     Receives the produced byte count.  Set on every path.
  * @return true only when exactly @p output_size bytes were produced.
  */
-XXFC_API bool xx_cmp_lzw_decode_memory(const uint8_t *input,
-                                       size_t input_size, uint8_t *output,
-                                       size_t output_size, size_t *written);
+XXFC_API bool xx_cmp_lzw_decode_memory(const uint8_t *input, size_t input_size, uint8_t *output, size_t output_size, size_t *written);
 
 /**
  * @brief Decode a CMP method 2 (9-bit LZSS) member.
@@ -60,9 +58,7 @@ XXFC_API bool xx_cmp_lzw_decode_memory(const uint8_t *input,
  * @param written     Receives the produced byte count.  Set on every path.
  * @return true only when exactly @p output_size bytes were produced.
  */
-XXFC_API bool xx_cmp_lzss_decode_memory(const uint8_t *input,
-                                        size_t input_size, uint8_t *output,
-                                        size_t output_size, size_t *written);
+XXFC_API bool xx_cmp_lzss_decode_memory(const uint8_t *input, size_t input_size, uint8_t *output, size_t output_size, size_t *written);
 
 #ifdef __cplusplus
 }

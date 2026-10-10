@@ -13,7 +13,10 @@ XXFC_API void xx_ti99_pc99_init(xx_ti99_pc99 *, xx_io_device *, int64_t);
 XXFC_API xx_ti99_pc99 *xx_ti99_pc99_create(xx_io_device *, int64_t);
 XXFC_API void xx_ti99_pc99_destroy(xx_ti99_pc99 *);
 XXFC_API void xx_ti99_pc99_free(xx_ti99_pc99 *);
-static inline Abstractformat *xx_ti99_pc99_to_format(xx_ti99_pc99 *r) { return r ? &r->format : NULL; }
+static inline Abstractformat *xx_ti99_pc99_to_format(xx_ti99_pc99 *r)
+{
+    return r ? &r->format : NULL;
+}
 #ifdef __cplusplus
 }
 #endif

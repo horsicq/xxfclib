@@ -9,13 +9,15 @@
 #ifdef __cplusplus
 extern "C" {
 #endif
-typedef struct xx_nintendo_sarc { Abstractformat format; } xx_nintendo_sarc;
-XXFC_API void xx_nintendo_sarc_init(xx_nintendo_sarc *,xx_io_device *,int64_t);
-XXFC_API xx_nintendo_sarc *xx_nintendo_sarc_create(xx_io_device *,int64_t);
+typedef struct xx_nintendo_sarc {
+    Abstractformat format;
+} xx_nintendo_sarc;
+XXFC_API void xx_nintendo_sarc_init(xx_nintendo_sarc *, xx_io_device *, int64_t);
+XXFC_API xx_nintendo_sarc *xx_nintendo_sarc_create(xx_io_device *, int64_t);
 XXFC_API void xx_nintendo_sarc_destroy(xx_nintendo_sarc *);
 XXFC_API void xx_nintendo_sarc_free(xx_nintendo_sarc *);
-XXFC_API bool xx_nintendo_sarc_check_is_valid(Abstractformat *,xx_pd_struct *);
-XXFC_API bool xx_nintendo_sarc_handle_base_info(Abstractformat *,xx_pd_struct *);
+XXFC_API bool xx_nintendo_sarc_check_is_valid(Abstractformat *, xx_pd_struct *);
+XXFC_API bool xx_nintendo_sarc_handle_base_info(Abstractformat *, xx_pd_struct *);
 #ifdef __cplusplus
 }
 #endif

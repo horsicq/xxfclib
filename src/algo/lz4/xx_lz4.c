@@ -33,7 +33,7 @@
 #include "xxfclib/data/xx_data.h"
 
 #define XX_LZ4_FRAME_MAGIC UINT32_C(0x184D2204)
-#define XX_LZ4_SKIP_MAGIC  UINT32_C(0x184D2A50)
+#define XX_LZ4_SKIP_MAGIC UINT32_C(0x184D2A50)
 
 #define XXH32_PRIME1 UINT32_C(2654435761)
 #define XXH32_PRIME2 UINT32_C(2246822519)
@@ -41,17 +41,20 @@
 #define XXH32_PRIME4 UINT32_C(668265263)
 #define XXH32_PRIME5 UINT32_C(374761393)
 
-static uint32_t xx_lz4_rotl32(uint32_t value, unsigned count) {
+static uint32_t xx_lz4_rotl32(uint32_t value, unsigned count)
+{
     return (value << count) | (value >> (32U - count));
 }
 
-static uint32_t xx_lz4_xxh_round(uint32_t state, uint32_t input) {
+static uint32_t xx_lz4_xxh_round(uint32_t state, uint32_t input)
+{
     state += input * XXH32_PRIME2;
     state = xx_lz4_rotl32(state, 13);
     return state * XXH32_PRIME1;
 }
 
-static uint32_t xx_lz4_xxh32(const uint8_t *data, size_t size) {
+static uint32_t xx_lz4_xxh32(const uint8_t *data, size_t size)
+{
     const uint8_t *cursor = data;
     const uint8_t *end = data + size;
     uint32_t hash;
@@ -69,8 +72,7 @@ static uint32_t xx_lz4_xxh32(const uint8_t *data, size_t size) {
             lane4 = xx_lz4_xxh_round(lane4, xx_data_get_u32(cursor + 12, 4, 0, false));
             cursor += 16;
         } while (cursor <= limit);
-        hash = xx_lz4_rotl32(lane1, 1) + xx_lz4_rotl32(lane2, 7) +
-               xx_lz4_rotl32(lane3, 12) + xx_lz4_rotl32(lane4, 18);
+        hash = xx_lz4_rotl32(lane1, 1) + xx_lz4_rotl32(lane2, 7) + xx_lz4_rotl32(lane3, 12) + xx_lz4_rotl32(lane4, 18);
     } else {
         hash = XXH32_PRIME5;
     }
@@ -93,8 +95,8 @@ static uint32_t xx_lz4_xxh32(const uint8_t *data, size_t size) {
     return hash;
 }
 
-static bool xx_lz4_extended_length(const uint8_t **cursor,
-                                   const uint8_t *end, size_t *length) {
+static bool xx_lz4_extended_length(const uint8_t **cursor, const uint8_t *end, size_t *length)
+{
     uint8_t value;
     do {
         if (*cursor == end) return false;
@@ -105,9 +107,8 @@ static bool xx_lz4_extended_length(const uint8_t **cursor,
     return true;
 }
 
-static bool xx_lz4_decode_block(const uint8_t *source, size_t source_size,
-                                uint8_t *destination, size_t destination_capacity,
-                                size_t history_size, size_t *out_written) {
+static bool xx_lz4_decode_block(const uint8_t *source, size_t source_size, uint8_t *destination, size_t destination_capacity, size_t history_size, size_t *out_written)
+{
     const uint8_t *input = source;
     const uint8_t *input_end = source + source_size;
     size_t output = history_size;
@@ -123,12 +124,10 @@ static bool xx_lz4_decode_block(const uint8_t *source, size_t source_size,
         size_t distance;
         size_t match;
 
-        if (literal_length == 15U &&
-            !xx_lz4_extended_length(&input, input_end, &literal_length)) {
+        if (literal_length == 15U && !xx_lz4_extended_length(&input, input_end, &literal_length)) {
             return false;
         }
-        if (literal_length > (size_t)(input_end - input) ||
-            literal_length > output_limit - output) {
+        if (literal_length > (size_t)(input_end - input) || literal_length > output_limit - output) {
             return false;
         }
         for (size_t index = 0; index < literal_length; ++index) {
@@ -147,8 +146,7 @@ static bool xx_lz4_decode_block(const uint8_t *source, size_t source_size,
         if (distance == 0U || distance > output) return false;
 
         match_length = (size_t)(token & 15U);
-        if (match_length == 15U &&
-            !xx_lz4_extended_length(&input, input_end, &match_length)) {
+        if (match_length == 15U && !xx_lz4_extended_length(&input, input_end, &match_length)) {
             return false;
         }
         if (match_length > SIZE_MAX - 4U) return false;
@@ -164,7 +162,8 @@ static bool xx_lz4_decode_block(const uint8_t *source, size_t source_size,
     return true;
 }
 
-static bool xx_lz4_block_limit(uint8_t descriptor, size_t *limit) {
+static bool xx_lz4_block_limit(uint8_t descriptor, size_t *limit)
+{
     switch ((descriptor >> 4) & 7U) {
         case 4: *limit = 64U * 1024U; return true;
         case 5: *limit = 256U * 1024U; return true;
@@ -174,45 +173,30 @@ static bool xx_lz4_block_limit(uint8_t descriptor, size_t *limit) {
     }
 }
 
-static bool xx_lz4_decompress_frames_impl(const void *source,
-                                          size_t source_size,
-                                          void *destination,
-                                          size_t destination_size,
-                                          bool exact, size_t *out_written);
+static bool xx_lz4_decompress_frames_impl(const void *source, size_t source_size, void *destination, size_t destination_size, bool exact, size_t *out_written);
 
-bool xx_lz4_decompress_memory(const void *source, size_t source_size,
-                              void *destination, size_t destination_size,
-                              size_t *out_written) {
-    return xx_lz4_decompress_frames_impl(source, source_size, destination,
-                                         destination_size, true, out_written);
+bool xx_lz4_decompress_memory(const void *source, size_t source_size, void *destination, size_t destination_size, size_t *out_written)
+{
+    return xx_lz4_decompress_frames_impl(source, source_size, destination, destination_size, true, out_written);
 }
 
-bool xx_lz4_decompress_frames(const void *source, size_t source_size,
-                              void *destination, size_t destination_capacity,
-                              size_t *out_written) {
-    return xx_lz4_decompress_frames_impl(source, source_size, destination,
-                                         destination_capacity, false,
-                                         out_written);
+bool xx_lz4_decompress_frames(const void *source, size_t source_size, void *destination, size_t destination_capacity, size_t *out_written)
+{
+    return xx_lz4_decompress_frames_impl(source, source_size, destination, destination_capacity, false, out_written);
 }
 
-bool xx_lz4_decompress_block(const void *source, size_t source_size,
-                             void *destination, size_t destination_capacity,
-                             size_t *out_written) {
+bool xx_lz4_decompress_block(const void *source, size_t source_size, void *destination, size_t destination_capacity, size_t *out_written)
+{
     /* A raw block starts with no history: the internal decoder carries a
      * history_size because the frame path chains blocks through a shared
      * window, which a standalone block never does. */
     if (out_written) *out_written = 0;
     if (!source || !destination) return false;
-    return xx_lz4_decode_block((const uint8_t *)source, source_size,
-                               (uint8_t *)destination, destination_capacity,
-                               0U, out_written);
+    return xx_lz4_decode_block((const uint8_t *)source, source_size, (uint8_t *)destination, destination_capacity, 0U, out_written);
 }
 
-static bool xx_lz4_decompress_frames_impl(const void *source,
-                                          size_t source_size,
-                                          void *destination,
-                                          size_t destination_size, bool exact,
-                                          size_t *out_written) {
+static bool xx_lz4_decompress_frames_impl(const void *source, size_t source_size, void *destination, size_t destination_size, bool exact, size_t *out_written)
+{
     const uint8_t *input = (const uint8_t *)source;
     const uint8_t *end;
     uint8_t *output = (uint8_t *)destination;
@@ -259,9 +243,7 @@ static bool xx_lz4_decompress_frames_impl(const void *source,
         descriptor_start = input;
         flags = *input++;
         block_descriptor = *input++;
-        if ((flags >> 6) != 1U || (flags & 2U) != 0U ||
-            (block_descriptor & UINT8_C(0x8F)) != 0U ||
-            !xx_lz4_block_limit(block_descriptor, &block_limit)) {
+        if ((flags >> 6) != 1U || (flags & 2U) != 0U || (block_descriptor & UINT8_C(0x8F)) != 0U || !xx_lz4_block_limit(block_descriptor, &block_limit)) {
             return false;
         }
         independent_blocks = (flags & UINT8_C(0x20)) != 0U;
@@ -279,9 +261,7 @@ static bool xx_lz4_decompress_frames_impl(const void *source,
              * intentionally does not accept. */
             return false;
         }
-        if (input == end ||
-            *input != (uint8_t)(xx_lz4_xxh32(
-                descriptor_start, (size_t)(input - descriptor_start)) >> 8)) {
+        if (input == end || *input != (uint8_t)(xx_lz4_xxh32(descriptor_start, (size_t)(input - descriptor_start)) >> 8)) {
             return false;
         }
         ++input;
@@ -301,15 +281,13 @@ static bool xx_lz4_decompress_frames_impl(const void *source,
             if (stored_size == 0U) break;
             uncompressed = (stored_size & UINT32_C(0x80000000)) != 0U;
             block_size = (size_t)(stored_size & UINT32_C(0x7FFFFFFF));
-            if (block_size == 0U || block_size > block_limit ||
-                (size_t)(end - input) < block_size) {
+            if (block_size == 0U || block_size > block_limit || (size_t)(end - input) < block_size) {
                 return false;
             }
             block_data = input;
             input += block_size;
             if (block_checksum) {
-                if ((size_t)(end - input) < 4U ||
-                    xx_data_get_u32(input, 4, 0, false) != xx_lz4_xxh32(block_data, block_size)) {
+                if ((size_t)(end - input) < 4U || xx_data_get_u32(input, 4, 0, false) != xx_lz4_xxh32(block_data, block_size)) {
                     return false;
                 }
                 input += 4;
@@ -333,10 +311,7 @@ static bool xx_lz4_decompress_frames_impl(const void *source,
                     block_destination = output + frame_output_start;
                     block_capacity = destination_size - frame_output_start;
                 }
-                if (!xx_lz4_decode_block(
-                        block_data, block_size, block_destination,
-                        block_capacity, history_size,
-                        &block_output) || block_output > block_limit) {
+                if (!xx_lz4_decode_block(block_data, block_size, block_destination, block_capacity, history_size, &block_output) || block_output > block_limit) {
                     return false;
                 }
             }
@@ -344,17 +319,12 @@ static bool xx_lz4_decompress_frames_impl(const void *source,
         }
 
         if (content_checksum) {
-            if ((size_t)(end - input) < 4U ||
-                xx_data_get_u32(input, 4, 0, false) != xx_lz4_xxh32(
-                    output + frame_output_start,
-                    output_position - frame_output_start)) {
+            if ((size_t)(end - input) < 4U || xx_data_get_u32(input, 4, 0, false) != xx_lz4_xxh32(output + frame_output_start, output_position - frame_output_start)) {
                 return false;
             }
             input += 4;
         }
-        if (has_content_size &&
-            (content_size > SIZE_MAX ||
-             (size_t)content_size != output_position - frame_output_start)) {
+        if (has_content_size && (content_size > SIZE_MAX || (size_t)content_size != output_position - frame_output_start)) {
             return false;
         }
         saw_frame = true;

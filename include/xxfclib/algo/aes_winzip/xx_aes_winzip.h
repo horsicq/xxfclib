@@ -38,7 +38,7 @@ extern "C" {
 #endif
 
 #define XX_WINZIP_AES_PASSWORD_VERIFIER_SIZE 2U
-#define XX_WINZIP_AES_AUTH_CODE_SIZE         10U
+#define XX_WINZIP_AES_AUTH_CODE_SIZE 10U
 
 typedef enum xx_winzip_aes_strength_e {
     XX_WINZIP_AES_STRENGTH_128 = 1,
@@ -80,16 +80,8 @@ XXFC_API size_t xx_winzip_aes_key_size(uint8_t strength);
  * @param output_size Receives the complete envelope size on success.
  * @return true when the parameters are valid and the envelope was produced.
  */
-XXFC_API bool xx_winzip_aes_encrypt_envelope(const uint8_t *input,
-                                             size_t input_size,
-                                             const uint8_t *password,
-                                             size_t password_size,
-                                             uint8_t strength,
-                                             const uint8_t *salt,
-                                             size_t salt_size,
-                                             uint8_t *output,
-                                             size_t output_capacity,
-                                             size_t *output_size);
+XXFC_API bool xx_winzip_aes_encrypt_envelope(const uint8_t *input, size_t input_size, const uint8_t *password, size_t password_size, uint8_t strength,
+                                             const uint8_t *salt, size_t salt_size, uint8_t *output, size_t output_capacity, size_t *output_size);
 
 /**
  * @brief Decrypt and authenticate a complete WinZip AES entry envelope.
@@ -115,14 +107,8 @@ XXFC_API bool xx_winzip_aes_encrypt_envelope(const uint8_t *input,
  * @param output_size Receives the decrypted compressed byte count on success.
  * @return true only if the password verifier and authentication code are valid.
  */
-XXFC_API bool xx_winzip_aes_decrypt_envelope(const uint8_t *envelope,
-                                             size_t envelope_size,
-                                             const uint8_t *password,
-                                             size_t password_size,
-                                             uint8_t strength,
-                                             uint8_t *output,
-                                             size_t output_capacity,
-                                             size_t *output_size);
+XXFC_API bool xx_winzip_aes_decrypt_envelope(const uint8_t *envelope, size_t envelope_size, const uint8_t *password, size_t password_size, uint8_t strength,
+                                             uint8_t *output, size_t output_capacity, size_t *output_size);
 
 /** Cancellation-aware variants of the WinZip AES envelope functions.
  * The original APIs are equivalent to passing NULL for pd. Password derivation,
@@ -132,17 +118,11 @@ XXFC_API bool xx_winzip_aes_decrypt_envelope(const uint8_t *envelope,
  * An interrupted in-place decryption can therefore overwrite input bytes and
  * must be retried from the original envelope, not the partially cleared buffer.
  */
-XXFC_API bool xx_winzip_aes_encrypt_envelope_progress(
-    const uint8_t *input, size_t input_size,
-    const uint8_t *password, size_t password_size, uint8_t strength,
-    const uint8_t *salt, size_t salt_size,
-    uint8_t *output, size_t output_capacity, size_t *output_size,
-    xx_pd_struct *pd);
-XXFC_API bool xx_winzip_aes_decrypt_envelope_progress(
-    const uint8_t *envelope, size_t envelope_size,
-    const uint8_t *password, size_t password_size, uint8_t strength,
-    uint8_t *output, size_t output_capacity, size_t *output_size,
-    xx_pd_struct *pd);
+XXFC_API bool xx_winzip_aes_encrypt_envelope_progress(const uint8_t *input, size_t input_size, const uint8_t *password, size_t password_size, uint8_t strength,
+                                                      const uint8_t *salt, size_t salt_size, uint8_t *output, size_t output_capacity, size_t *output_size,
+                                                      xx_pd_struct *pd);
+XXFC_API bool xx_winzip_aes_decrypt_envelope_progress(const uint8_t *envelope, size_t envelope_size, const uint8_t *password, size_t password_size, uint8_t strength,
+                                                      uint8_t *output, size_t output_capacity, size_t *output_size, xx_pd_struct *pd);
 
 #ifdef __cplusplus
 }

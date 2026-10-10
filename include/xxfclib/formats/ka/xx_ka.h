@@ -15,8 +15,7 @@ typedef struct xx_ka {
     Abstractformat format;
 } xx_ka;
 
-XXFC_API void xx_ka_init(xx_ka *archive, xx_io_device *device,
-                          int64_t base_address);
+XXFC_API void xx_ka_init(xx_ka *archive, xx_io_device *device, int64_t base_address);
 XXFC_API xx_ka *xx_ka_create(xx_io_device *device, int64_t base_address);
 XXFC_API void xx_ka_destroy(xx_ka *archive);
 XXFC_API void xx_ka_free(xx_ka *archive);

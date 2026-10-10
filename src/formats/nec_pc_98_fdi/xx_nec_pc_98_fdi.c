@@ -60,8 +60,8 @@ typedef struct necfdi_geometry_s {
     uint32_t heads;
     uint32_t cylinders;
     uint64_t image_size;
-    int64_t data_offset;   /* absolute */
-    int64_t archive_size;  /* header plus image, from base_address */
+    int64_t data_offset;  /* absolute */
+    int64_t archive_size; /* header plus image, from base_address */
 } necfdi_geometry;
 
 typedef struct necfdi_stream_s {
@@ -70,44 +70,37 @@ typedef struct necfdi_stream_s {
     size_t index;
 } necfdi_stream;
 
-static bool necfdi_read_at(xx_io_device *device, int64_t offset, void *buffer,
-                           size_t size) {
+static bool necfdi_read_at(xx_io_device *device, int64_t offset, void *buffer, size_t size)
+{
     size_t done = 0U;
-    if (!device || (!buffer && size != 0U) || offset < 0 ||
-        xx_io_seek64(device, offset, SEEK_SET) != 0)
-        return false;
+    if (!device || (!buffer && size != 0U) || offset < 0 || xx_io_seek64(device, offset, SEEK_SET) != 0) return false;
     while (done < size) {
-        ssize_t amount = xx_io_read(device, (uint8_t *)buffer + done,
-                                    size - done);
+        ssize_t amount = xx_io_read(device, (uint8_t *)buffer + done, size - done);
         if (amount <= 0 || (size_t)amount > size - done) return false;
         done += (size_t)amount;
     }
     return true;
 }
 
-static bool necfdi_sector_size_valid(uint32_t bytes) {
-    return bytes == 128U || bytes == 256U || bytes == 512U ||
-           bytes == 1024U || bytes == 2048U || bytes == 4096U ||
-           bytes == 8192U || bytes == 16384U;
+static bool necfdi_sector_size_valid(uint32_t bytes)
+{
+    return bytes == 128U || bytes == 256U || bytes == 512U || bytes == 1024U || bytes == 2048U || bytes == 4096U || bytes == 8192U || bytes == 16384U;
 }
 
 /* One 32-byte read, then pure arithmetic: the geometry must be one a
  * floppy controller can produce, the stored data size must equal it, and
  * the header plus every sector must be present in the file. */
-static bool necfdi_parse(Abstractformat *format, necfdi_geometry *out) {
+static bool necfdi_parse(Abstractformat *format, necfdi_geometry *out)
+{
     uint8_t header[NECFDI_FIELDS_SIZE];
     necfdi_geometry geometry;
     uint32_t data_size;
     int64_t total, size;
-    if (!format || !format->device || !out || format->base_address < 0)
-        return false;
+    if (!format || !format->device || !out || format->base_address < 0) return false;
     total = xx_io_total_size(format->device);
     if (total < format->base_address) return false;
     size = total - format->base_address;
-    if (size < (int64_t)NECFDI_MIN_HEADER ||
-        !necfdi_read_at(format->device, format->base_address, header,
-                        sizeof(header)) ||
-        xx_data_get_u32(header, 4, 0, false) != 0U)
+    if (size < (int64_t)NECFDI_MIN_HEADER || !necfdi_read_at(format->device, format->base_address, header, sizeof(header)) || xx_data_get_u32(header, 4, 0, false) != 0U)
         return false;
     xx_mem_zero(&geometry, sizeof(geometry));
     geometry.fdd_type = xx_data_get_u32(header + 0x04U, 4, 0, false);
@@ -117,44 +110,36 @@ static bool necfdi_parse(Abstractformat *format, necfdi_geometry *out) {
     geometry.sectors = xx_data_get_u32(header + 0x14U, 4, 0, false);
     geometry.heads = xx_data_get_u32(header + 0x18U, 4, 0, false);
     geometry.cylinders = xx_data_get_u32(header + 0x1CU, 4, 0, false);
-    if (geometry.header_size < NECFDI_MIN_HEADER ||
-        geometry.header_size > NECFDI_MAX_HEADER ||
-        !necfdi_sector_size_valid(geometry.sector_size) ||
-        geometry.sectors == 0U || geometry.sectors > NECFDI_MAX_SECTORS ||
-        geometry.heads == 0U || geometry.heads > NECFDI_MAX_HEADS ||
-        geometry.cylinders == 0U || geometry.cylinders > NECFDI_MAX_CYLINDERS)
+    if (geometry.header_size < NECFDI_MIN_HEADER || geometry.header_size > NECFDI_MAX_HEADER || !necfdi_sector_size_valid(geometry.sector_size) ||
+        geometry.sectors == 0U || geometry.sectors > NECFDI_MAX_SECTORS || geometry.heads == 0U || geometry.heads > NECFDI_MAX_HEADS || geometry.cylinders == 0U ||
+        geometry.cylinders > NECFDI_MAX_CYLINDERS)
         return false;
     /* At most 2 * 255 * 255 * 16384, far inside 64 bits. */
-    geometry.image_size = (uint64_t)geometry.heads * geometry.cylinders *
-                          geometry.sectors * geometry.sector_size;
-    if (geometry.image_size != (uint64_t)data_size ||
-        geometry.image_size > NECFDI_MAX_IMAGE ||
-        (uint64_t)geometry.header_size > (uint64_t)size ||
+    geometry.image_size = (uint64_t)geometry.heads * geometry.cylinders * geometry.sectors * geometry.sector_size;
+    if (geometry.image_size != (uint64_t)data_size || geometry.image_size > NECFDI_MAX_IMAGE || (uint64_t)geometry.header_size > (uint64_t)size ||
         geometry.image_size > (uint64_t)(size - geometry.header_size))
         return false;
     geometry.data_offset = format->base_address + geometry.header_size;
-    geometry.archive_size =
-        (int64_t)geometry.header_size + (int64_t)geometry.image_size;
+    geometry.archive_size = (int64_t)geometry.header_size + (int64_t)geometry.image_size;
     *out = geometry;
     return true;
 }
 
-static void necfdi_stream_free(void *opaque) {
+static void necfdi_stream_free(void *opaque)
+{
     if (opaque) xx_mem_free(opaque);
 }
 
-static bool necfdi_copy_options(xx_list_s *destination,
-                                const xx_list_s *source) {
+static bool necfdi_copy_options(xx_list_s *destination, const xx_list_s *source)
+{
     size_t index;
     if (!source) return true;
     for (index = 0U; index < source->count; ++index) {
-        const xx_meta *original =
-            (const xx_meta *)xx_list_at((const xx_list_t *)source, index);
+        const xx_meta *original = (const xx_meta *)xx_list_at((const xx_list_t *)source, index);
         xx_meta copy;
         if (!original) continue;
         xx_meta_init(&copy, original->meta_id);
-        if (!xx_var_copy(&copy.var, &original->var) ||
-            !xx_list_append(destination, &copy)) {
+        if (!xx_var_copy(&copy.var, &original->var) || !xx_list_append(destination, &copy)) {
             xx_meta_cleanup(&copy);
             return false;
         }
@@ -162,39 +147,33 @@ static bool necfdi_copy_options(xx_list_s *destination,
     return true;
 }
 
-static const xx_var *necfdi_option(const xx_list_s *options, uint32_t id) {
+static const xx_var *necfdi_option(const xx_list_s *options, uint32_t id)
+{
     size_t index;
     if (!options) return NULL;
     for (index = 0U; index < options->count; ++index) {
-        const xx_meta *meta =
-            (const xx_meta *)xx_list_at((const xx_list_t *)options, index);
+        const xx_meta *meta = (const xx_meta *)xx_list_at((const xx_list_t *)options, index);
         if (meta && meta->meta_id == id) return &meta->var;
     }
     return NULL;
 }
 
-static bool necfdi_set_record(xx_archive_record *record,
-                              const necfdi_geometry *geometry) {
+static bool necfdi_set_record(xx_archive_record *record, const necfdi_geometry *geometry)
+{
     xx_archive_record_cleanup(record);
     xx_archive_record_init(record);
     record->header_offset = geometry->data_offset - geometry->header_size;
     record->header_size = geometry->header_size;
     record->data_offset = geometry->data_offset;
     record->compressed_size = (int64_t)geometry->image_size;
-    return xx_archive_record_set_original_name(record, NECFDI_MEMBER_NAME) &&
-           xx_archive_record_set_meta_u64(record, XX_META_ID_COMPRESSED_SIZE,
-                                          geometry->image_size) &&
-           xx_archive_record_set_meta_u64(record, XX_META_ID_UNCOMPRESSED_SIZE,
-                                          geometry->image_size) &&
-           xx_archive_record_set_meta_u64(record, XX_META_ID_COMPRESSION_METHOD,
-                                          0U) &&
-           xx_archive_record_set_meta_bool(record, XX_META_ID_IS_ENCRYPTED,
-                                           false) &&
+    return xx_archive_record_set_original_name(record, NECFDI_MEMBER_NAME) && xx_archive_record_set_meta_u64(record, XX_META_ID_COMPRESSED_SIZE, geometry->image_size) &&
+           xx_archive_record_set_meta_u64(record, XX_META_ID_UNCOMPRESSED_SIZE, geometry->image_size) &&
+           xx_archive_record_set_meta_u64(record, XX_META_ID_COMPRESSION_METHOD, 0U) && xx_archive_record_set_meta_bool(record, XX_META_ID_IS_ENCRYPTED, false) &&
            xx_archive_record_set_meta_bool(record, XX_META_ID_IS_FOLDER, false);
 }
 
-void xx_nec_pc_98_fdi_init(xx_nec_pc_98_fdi *archive, xx_io_device *device,
-                           int64_t base_address) {
+void xx_nec_pc_98_fdi_init(xx_nec_pc_98_fdi *archive, xx_io_device *device, int64_t base_address)
+{
     if (!archive) return;
     xx_mem_zero(archive, sizeof(*archive));
     xx_format_init(&archive->format, device, base_address);
@@ -207,48 +186,43 @@ void xx_nec_pc_98_fdi_init(xx_nec_pc_98_fdi *archive, xx_io_device *device,
     archive->format.check_is_valid = xx_nec_pc_98_fdi_check_is_valid;
     archive->format.handle_base_info = xx_nec_pc_98_fdi_handle_base_info;
     archive->format.get_format_size = xx_nec_pc_98_fdi_get_format_size;
-    archive->format.get_number_of_archive_records =
-        xx_nec_pc_98_fdi_get_number_of_archive_records;
-    archive->format.create_archive_records_reading =
-        xx_nec_pc_98_fdi_create_archive_records_reading;
-    archive->format.get_current_archive_record =
-        xx_nec_pc_98_fdi_get_current_archive_record;
-    archive->format.unpack_current_archive_record =
-        xx_nec_pc_98_fdi_unpack_current_archive_record;
-    archive->format.archive_record_move_to_next =
-        xx_nec_pc_98_fdi_archive_record_move_to_next;
-    archive->format.free_archive_records_reading =
-        xx_nec_pc_98_fdi_free_archive_records_reading;
+    archive->format.get_number_of_archive_records = xx_nec_pc_98_fdi_get_number_of_archive_records;
+    archive->format.create_archive_records_reading = xx_nec_pc_98_fdi_create_archive_records_reading;
+    archive->format.get_current_archive_record = xx_nec_pc_98_fdi_get_current_archive_record;
+    archive->format.unpack_current_archive_record = xx_nec_pc_98_fdi_unpack_current_archive_record;
+    archive->format.archive_record_move_to_next = xx_nec_pc_98_fdi_archive_record_move_to_next;
+    archive->format.free_archive_records_reading = xx_nec_pc_98_fdi_free_archive_records_reading;
     archive->archive_end = -1;
 }
 
-xx_nec_pc_98_fdi *xx_nec_pc_98_fdi_create(xx_io_device *device,
-                                          int64_t base_address) {
-    xx_nec_pc_98_fdi *archive =
-        (xx_nec_pc_98_fdi *)xx_mem_alloc(sizeof(*archive));
+xx_nec_pc_98_fdi *xx_nec_pc_98_fdi_create(xx_io_device *device, int64_t base_address)
+{
+    xx_nec_pc_98_fdi *archive = (xx_nec_pc_98_fdi *)xx_mem_alloc(sizeof(*archive));
     if (archive) xx_nec_pc_98_fdi_init(archive, device, base_address);
     return archive;
 }
 
-void xx_nec_pc_98_fdi_destroy(xx_nec_pc_98_fdi *archive) {
+void xx_nec_pc_98_fdi_destroy(xx_nec_pc_98_fdi *archive)
+{
     if (archive) xx_format_cleanup_extra_parameters(&archive->format);
 }
 
-void xx_nec_pc_98_fdi_free(xx_nec_pc_98_fdi *archive) {
+void xx_nec_pc_98_fdi_free(xx_nec_pc_98_fdi *archive)
+{
     if (!archive) return;
     xx_nec_pc_98_fdi_destroy(archive);
     xx_mem_free(archive);
 }
 
-bool xx_nec_pc_98_fdi_check_is_valid(Abstractformat *format,
-                                     xx_pd_struct *pd) {
+bool xx_nec_pc_98_fdi_check_is_valid(Abstractformat *format, xx_pd_struct *pd)
+{
     necfdi_geometry geometry;
     (void)pd;
     return necfdi_parse(format, &geometry);
 }
 
-bool xx_nec_pc_98_fdi_handle_base_info(Abstractformat *format,
-                                       xx_pd_struct *pd) {
+bool xx_nec_pc_98_fdi_handle_base_info(Abstractformat *format, xx_pd_struct *pd)
+{
     necfdi_geometry geometry;
     xx_nec_pc_98_fdi *archive;
     (void)pd;
@@ -270,22 +244,18 @@ bool xx_nec_pc_98_fdi_handle_base_info(Abstractformat *format,
     return true;
 }
 
-int64_t xx_nec_pc_98_fdi_get_format_size(Abstractformat *format,
-                                         xx_pd_struct *pd) {
-    return format && (format->base_info_handled ||
-                      xx_nec_pc_98_fdi_handle_base_info(format, pd))
-               ? format->format_size : -1;
+int64_t xx_nec_pc_98_fdi_get_format_size(Abstractformat *format, xx_pd_struct *pd)
+{
+    return format && (format->base_info_handled || xx_nec_pc_98_fdi_handle_base_info(format, pd)) ? format->format_size : -1;
 }
 
-uint64_t xx_nec_pc_98_fdi_get_number_of_archive_records(
-    Abstractformat *format, xx_pd_struct *pd) {
-    return format && (format->base_info_handled ||
-                      xx_nec_pc_98_fdi_handle_base_info(format, pd))
-               ? ((xx_nec_pc_98_fdi *)format)->number_of_records : 0U;
+uint64_t xx_nec_pc_98_fdi_get_number_of_archive_records(Abstractformat *format, xx_pd_struct *pd)
+{
+    return format && (format->base_info_handled || xx_nec_pc_98_fdi_handle_base_info(format, pd)) ? ((xx_nec_pc_98_fdi *)format)->number_of_records : 0U;
 }
 
-xx_archive_record_state *xx_nec_pc_98_fdi_create_archive_records_reading(
-    Abstractformat *format, const xx_list_s *options, xx_pd_struct *pd) {
+xx_archive_record_state *xx_nec_pc_98_fdi_create_archive_records_reading(Abstractformat *format, const xx_list_s *options, xx_pd_struct *pd)
+{
     necfdi_stream *stream;
     xx_archive_record_state *state;
     necfdi_geometry geometry;
@@ -304,8 +274,7 @@ xx_archive_record_state *xx_nec_pc_98_fdi_create_archive_records_reading(
     state->internal_state = stream;
     state->free_internal = necfdi_stream_free;
     state->total_records = 1;
-    if (!necfdi_copy_options(&state->options, options) ||
-        !necfdi_set_record(&state->current_record, &stream->geometry)) {
+    if (!necfdi_copy_options(&state->options, options) || !necfdi_set_record(&state->current_record, &stream->geometry)) {
         xx_archive_record_state_free(state);
         return NULL;
     }
@@ -313,32 +282,28 @@ xx_archive_record_state *xx_nec_pc_98_fdi_create_archive_records_reading(
     return state;
 }
 
-const xx_archive_record *xx_nec_pc_98_fdi_get_current_archive_record(
-    Abstractformat *format, xx_archive_record_state *state) {
-    return format && state && state->format == format && state->has_record
-               ? &state->current_record : NULL;
+const xx_archive_record *xx_nec_pc_98_fdi_get_current_archive_record(Abstractformat *format, xx_archive_record_state *state)
+{
+    return format && state && state->format == format && state->has_record ? &state->current_record : NULL;
 }
 
-bool xx_nec_pc_98_fdi_archive_record_move_to_next(
-    Abstractformat *format, xx_archive_record_state *state, xx_pd_struct *pd) {
+bool xx_nec_pc_98_fdi_archive_record_move_to_next(Abstractformat *format, xx_archive_record_state *state, xx_pd_struct *pd)
+{
     necfdi_stream *stream;
     (void)pd;
-    if (!format || !state || state->format != format ||
-        !(stream = (necfdi_stream *)state->internal_state) ||
-        ++stream->index >= stream->count) {
+    if (!format || !state || state->format != format || !(stream = (necfdi_stream *)state->internal_state) || ++stream->index >= stream->count) {
         if (state) state->has_record = false;
         return false;
     }
     ++state->current_index;
-    state->has_record = necfdi_set_record(&state->current_record,
-                                          &stream->geometry);
+    state->has_record = necfdi_set_record(&state->current_record, &stream->geometry);
     return state->has_record;
 }
 
 /* The sectors are stored, so the member is streamed straight from the
  * container; nothing proportional to the image is allocated. */
-bool xx_nec_pc_98_fdi_unpack_current_archive_record(
-    Abstractformat *format, xx_archive_record_state *state, xx_pd_struct *pd) {
+bool xx_nec_pc_98_fdi_unpack_current_archive_record(Abstractformat *format, xx_archive_record_state *state, xx_pd_struct *pd)
+{
     necfdi_stream *stream;
     const necfdi_geometry *geometry;
     const xx_var *path_option;
@@ -348,39 +313,29 @@ bool xx_nec_pc_98_fdi_unpack_current_archive_record(
     int64_t total;
     bool result = false;
     bool created = false;
-    if (!format || !format->device || !state || state->format != format ||
-        !state->has_record ||
-        !(stream = (necfdi_stream *)state->internal_state) ||
+    if (!format || !format->device || !state || state->format != format || !state->has_record || !(stream = (necfdi_stream *)state->internal_state) ||
         stream->index >= stream->count || (pd && xx_pd_is_stopped(pd)))
         return false;
     geometry = &stream->geometry;
     total = xx_io_total_size(format->device);
-    if (geometry->data_offset < 0 || total < geometry->data_offset ||
-        geometry->image_size > (uint64_t)(total - geometry->data_offset))
-        return false;
+    if (geometry->data_offset < 0 || total < geometry->data_offset || geometry->image_size > (uint64_t)(total - geometry->data_offset)) return false;
     path_option = necfdi_option(&state->options, XX_META_ID_OPT_UNPACK_PATH);
     if (!path_option) return true;
-    if (path_option->type == XX_VAR_TYPE_STRING ||
-        path_option->type == XX_VAR_TYPE_STRING_VIEW) {
+    if (path_option->type == XX_VAR_TYPE_STRING || path_option->type == XX_VAR_TYPE_STRING_VIEW) {
         base = xx_var_get_str(path_option);
-    } else if (path_option->type == XX_VAR_TYPE_WSTRING ||
-               path_option->type == XX_VAR_TYPE_WSTRING_VIEW) {
+    } else if (path_option->type == XX_VAR_TYPE_WSTRING || path_option->type == XX_VAR_TYPE_WSTRING_VIEW) {
         owned_base = xx_str_unicode_to_utf8(xx_var_get_wstr(path_option));
         base = owned_base;
     }
     if (!base) goto done;
-    path = (base[0] && base[xx_str_len(base) - 1U] != '/' &&
-            base[xx_str_len(base) - 1U] != '\\')
-               ? xx_str_concat3(base, "/", NECFDI_MEMBER_NAME)
-               : xx_str_concat(base, NECFDI_MEMBER_NAME);
+    path = (base[0] && base[xx_str_len(base) - 1U] != '/' && base[xx_str_len(base) - 1U] != '\\') ? xx_str_concat3(base, "/", NECFDI_MEMBER_NAME)
+                                                                                                  : xx_str_concat(base, NECFDI_MEMBER_NAME);
     if (!path || !xx_store_create_dirs_a(path, false)) goto done;
     {
         xx_io_device *destination = xx_io_file_open(path, "wb");
         created = destination != NULL;
         if (!destination) goto done;
-        result = xx_store_unpack_device(format->device, geometry->data_offset,
-                                        (int64_t)geometry->image_size,
-                                        destination, pd);
+        result = xx_store_unpack_device(format->device, geometry->data_offset, (int64_t)geometry->image_size, destination, pd);
         if (xx_io_close(destination) != 0) result = false;
     }
 done:
@@ -390,8 +345,8 @@ done:
     return result;
 }
 
-void xx_nec_pc_98_fdi_free_archive_records_reading(
-    Abstractformat *format, xx_archive_record_state *state) {
+void xx_nec_pc_98_fdi_free_archive_records_reading(Abstractformat *format, xx_archive_record_state *state)
+{
     (void)format;
     xx_archive_record_state_free(state);
 }

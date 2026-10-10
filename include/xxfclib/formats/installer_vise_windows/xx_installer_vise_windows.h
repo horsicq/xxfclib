@@ -59,45 +59,30 @@ extern "C" {
 typedef struct xx_installer_vise_windows {
     Abstractformat format;
     uint64_t number_of_records;
-    int64_t header_offset;   /**< "ESIV" header, from the base address. */
-    int64_t wrapper_offset;  /**< "SIVM" wrapper, or -1. */
-    int64_t footer_offset;   /**< "ESIV" footer, or -1 when absent. */
-    int64_t container_end;   /**< End of the packed data (the footer). */
-    void *parsed;            /**< Internal member table cache. */
+    int64_t header_offset;  /**< "ESIV" header, from the base address. */
+    int64_t wrapper_offset; /**< "SIVM" wrapper, or -1. */
+    int64_t footer_offset;  /**< "ESIV" footer, or -1 when absent. */
+    int64_t container_end;  /**< End of the packed data (the footer). */
+    void *parsed;           /**< Internal member table cache. */
 } xx_installer_vise_windows;
 
 typedef xx_installer_vise_windows xx_installer_vise_windows_t;
 
-XXFC_API void xx_installer_vise_windows_init(xx_installer_vise_windows *archive,
-                                             xx_io_device *device,
-                                             int64_t base_address);
-XXFC_API xx_installer_vise_windows *xx_installer_vise_windows_create(
-    xx_io_device *device, int64_t base_address);
-XXFC_API void xx_installer_vise_windows_destroy(
-    xx_installer_vise_windows *archive);
+XXFC_API void xx_installer_vise_windows_init(xx_installer_vise_windows *archive, xx_io_device *device, int64_t base_address);
+XXFC_API xx_installer_vise_windows *xx_installer_vise_windows_create(xx_io_device *device, int64_t base_address);
+XXFC_API void xx_installer_vise_windows_destroy(xx_installer_vise_windows *archive);
 XXFC_API void xx_installer_vise_windows_free(xx_installer_vise_windows *archive);
 
-XXFC_API bool xx_installer_vise_windows_check_is_valid(Abstractformat *self,
-                                                       xx_pd_struct *pd);
-XXFC_API bool xx_installer_vise_windows_handle_base_info(Abstractformat *self,
-                                                         xx_pd_struct *pd);
-XXFC_API int64_t xx_installer_vise_windows_get_format_size(Abstractformat *self,
-                                                           xx_pd_struct *pd);
-XXFC_API uint64_t xx_installer_vise_windows_get_number_of_archive_records(
-    Abstractformat *self, xx_pd_struct *pd);
+XXFC_API bool xx_installer_vise_windows_check_is_valid(Abstractformat *self, xx_pd_struct *pd);
+XXFC_API bool xx_installer_vise_windows_handle_base_info(Abstractformat *self, xx_pd_struct *pd);
+XXFC_API int64_t xx_installer_vise_windows_get_format_size(Abstractformat *self, xx_pd_struct *pd);
+XXFC_API uint64_t xx_installer_vise_windows_get_number_of_archive_records(Abstractformat *self, xx_pd_struct *pd);
 
-XXFC_API xx_archive_record_state *
-xx_installer_vise_windows_create_archive_records_reading(
-    Abstractformat *self, const xx_list_s *options, xx_pd_struct *pd);
-XXFC_API const xx_archive_record *
-xx_installer_vise_windows_get_current_archive_record(
-    Abstractformat *self, xx_archive_record_state *state);
-XXFC_API bool xx_installer_vise_windows_unpack_current_archive_record(
-    Abstractformat *self, xx_archive_record_state *state, xx_pd_struct *pd);
-XXFC_API bool xx_installer_vise_windows_archive_record_move_to_next(
-    Abstractformat *self, xx_archive_record_state *state, xx_pd_struct *pd);
-XXFC_API void xx_installer_vise_windows_free_archive_records_reading(
-    Abstractformat *self, xx_archive_record_state *state);
+XXFC_API xx_archive_record_state *xx_installer_vise_windows_create_archive_records_reading(Abstractformat *self, const xx_list_s *options, xx_pd_struct *pd);
+XXFC_API const xx_archive_record *xx_installer_vise_windows_get_current_archive_record(Abstractformat *self, xx_archive_record_state *state);
+XXFC_API bool xx_installer_vise_windows_unpack_current_archive_record(Abstractformat *self, xx_archive_record_state *state, xx_pd_struct *pd);
+XXFC_API bool xx_installer_vise_windows_archive_record_move_to_next(Abstractformat *self, xx_archive_record_state *state, xx_pd_struct *pd);
+XXFC_API void xx_installer_vise_windows_free_archive_records_reading(Abstractformat *self, xx_archive_record_state *state);
 
 /**
  * @brief Decode one VISE packed stream (byte-swapped, word-aligned Deflate).
@@ -109,11 +94,7 @@ XXFC_API void xx_installer_vise_windows_free_archive_records_reading(
  * @param written      optional; bytes produced
  * @return true when the stream ends exactly at @p packed_size
  */
-XXFC_API bool xx_installer_vise_windows_decode_memory(const uint8_t *packed,
-                                                      size_t packed_size,
-                                                      uint8_t *output,
-                                                      size_t output_size,
-                                                      size_t *written);
+XXFC_API bool xx_installer_vise_windows_decode_memory(const uint8_t *packed, size_t packed_size, uint8_t *output, size_t output_size, size_t *written);
 
 #ifdef __cplusplus
 }

@@ -8,13 +8,15 @@
 #ifdef __cplusplus
 extern "C" {
 #endif
-typedef struct xx_nintendo_unif { Abstractformat format; } xx_nintendo_unif;
-XXFC_API void xx_nintendo_unif_init(xx_nintendo_unif *,xx_io_device *,int64_t);
-XXFC_API xx_nintendo_unif *xx_nintendo_unif_create(xx_io_device *,int64_t);
+typedef struct xx_nintendo_unif {
+    Abstractformat format;
+} xx_nintendo_unif;
+XXFC_API void xx_nintendo_unif_init(xx_nintendo_unif *, xx_io_device *, int64_t);
+XXFC_API xx_nintendo_unif *xx_nintendo_unif_create(xx_io_device *, int64_t);
 XXFC_API void xx_nintendo_unif_destroy(xx_nintendo_unif *);
 XXFC_API void xx_nintendo_unif_free(xx_nintendo_unif *);
-XXFC_API bool xx_nintendo_unif_check_is_valid(Abstractformat *,xx_pd_struct *);
-XXFC_API bool xx_nintendo_unif_handle_base_info(Abstractformat *,xx_pd_struct *);
+XXFC_API bool xx_nintendo_unif_check_is_valid(Abstractformat *, xx_pd_struct *);
+XXFC_API bool xx_nintendo_unif_handle_base_info(Abstractformat *, xx_pd_struct *);
 #ifdef __cplusplus
 }
 #endif

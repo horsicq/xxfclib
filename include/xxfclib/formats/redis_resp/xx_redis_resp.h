@@ -8,13 +8,15 @@
 #ifdef __cplusplus
 extern "C" {
 #endif
-typedef struct xx_redis_resp { Abstractformat format; } xx_redis_resp;
-XXFC_API void xx_redis_resp_init(xx_redis_resp *,xx_io_device *,int64_t);
-XXFC_API xx_redis_resp *xx_redis_resp_create(xx_io_device *,int64_t);
+typedef struct xx_redis_resp {
+    Abstractformat format;
+} xx_redis_resp;
+XXFC_API void xx_redis_resp_init(xx_redis_resp *, xx_io_device *, int64_t);
+XXFC_API xx_redis_resp *xx_redis_resp_create(xx_io_device *, int64_t);
 XXFC_API void xx_redis_resp_destroy(xx_redis_resp *);
 XXFC_API void xx_redis_resp_free(xx_redis_resp *);
-XXFC_API bool xx_redis_resp_check_is_valid(Abstractformat *,xx_pd_struct *);
-XXFC_API bool xx_redis_resp_handle_base_info(Abstractformat *,xx_pd_struct *);
+XXFC_API bool xx_redis_resp_check_is_valid(Abstractformat *, xx_pd_struct *);
+XXFC_API bool xx_redis_resp_handle_base_info(Abstractformat *, xx_pd_struct *);
 #ifdef __cplusplus
 }
 #endif

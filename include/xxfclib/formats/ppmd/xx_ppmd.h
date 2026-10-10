@@ -60,38 +60,30 @@ extern "C" {
 typedef struct xx_ppmd {
     Abstractformat format;
     uint64_t number_of_records;
-    uint32_t variant;  /**< Of the first member: 7 (var.H) or 8 (var.I). */
+    uint32_t variant; /**< Of the first member: 7 (var.H) or 8 (var.I). */
     uint32_t order;
     uint32_t memory_mb;
     uint32_t restore;
-    bool sizes_known;  /**< Every listed member was decoded to its end. */
+    bool sizes_known; /**< Every listed member was decoded to its end. */
 } xx_ppmd;
 
 typedef xx_ppmd xx_ppmd_t;
 
-XXFC_API void xx_ppmd_init(xx_ppmd *archive, xx_io_device *device,
-                           int64_t base_address);
+XXFC_API void xx_ppmd_init(xx_ppmd *archive, xx_io_device *device, int64_t base_address);
 XXFC_API xx_ppmd *xx_ppmd_create(xx_io_device *device, int64_t base_address);
 XXFC_API void xx_ppmd_destroy(xx_ppmd *archive);
 XXFC_API void xx_ppmd_free(xx_ppmd *archive);
 
 XXFC_API bool xx_ppmd_check_is_valid(Abstractformat *self, xx_pd_struct *pd);
 XXFC_API bool xx_ppmd_handle_base_info(Abstractformat *self, xx_pd_struct *pd);
-XXFC_API int64_t xx_ppmd_get_format_size(Abstractformat *self,
-                                         xx_pd_struct *pd);
-XXFC_API uint64_t xx_ppmd_get_number_of_archive_records(Abstractformat *self,
-                                                        xx_pd_struct *pd);
+XXFC_API int64_t xx_ppmd_get_format_size(Abstractformat *self, xx_pd_struct *pd);
+XXFC_API uint64_t xx_ppmd_get_number_of_archive_records(Abstractformat *self, xx_pd_struct *pd);
 
-XXFC_API xx_archive_record_state *xx_ppmd_create_archive_records_reading(
-    Abstractformat *self, const xx_list_s *options, xx_pd_struct *pd);
-XXFC_API const xx_archive_record *xx_ppmd_get_current_archive_record(
-    Abstractformat *self, xx_archive_record_state *state);
-XXFC_API bool xx_ppmd_unpack_current_archive_record(
-    Abstractformat *self, xx_archive_record_state *state, xx_pd_struct *pd);
-XXFC_API bool xx_ppmd_archive_record_move_to_next(
-    Abstractformat *self, xx_archive_record_state *state, xx_pd_struct *pd);
-XXFC_API void xx_ppmd_free_archive_records_reading(
-    Abstractformat *self, xx_archive_record_state *state);
+XXFC_API xx_archive_record_state *xx_ppmd_create_archive_records_reading(Abstractformat *self, const xx_list_s *options, xx_pd_struct *pd);
+XXFC_API const xx_archive_record *xx_ppmd_get_current_archive_record(Abstractformat *self, xx_archive_record_state *state);
+XXFC_API bool xx_ppmd_unpack_current_archive_record(Abstractformat *self, xx_archive_record_state *state, xx_pd_struct *pd);
+XXFC_API bool xx_ppmd_archive_record_move_to_next(Abstractformat *self, xx_archive_record_state *state, xx_pd_struct *pd);
+XXFC_API void xx_ppmd_free_archive_records_reading(Abstractformat *self, xx_archive_record_state *state);
 
 #ifdef __cplusplus
 }

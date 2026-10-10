@@ -58,14 +58,14 @@ typedef xx_zip_encryption_method_t xx_zip_encryption_method;
  * @brief Identifiers for ZIP-specific binary data structures (used with xx_data_struct.id).
  */
 typedef enum xx_zip_data_struct_id_e {
-    XX_ZIP_DS_UNKNOWN = 0,                            /**< Unknown / unassigned */
-    XX_ZIP_DS_LOCAL_FILE_HEADER,                       /**< Local file header (per-entry) */
-    XX_ZIP_DS_DATA,                                    /**< Compressed/stored record payload data (per-entry, raw data) */
-    XX_ZIP_DS_DATA_DESCRIPTOR,                         /**< Optional post-data descriptor (per-entry) */
-    XX_ZIP_DS_CENTRAL_DIRECTORY_HEADER,                /**< Central directory file header (per-entry) */
-    XX_ZIP_DS_END_OF_CENTRAL_DIRECTORY,                /**< End of Central Directory record (EOCD) */
-    XX_ZIP_DS_ZIP64_END_OF_CENTRAL_DIRECTORY,          /**< ZIP64 End of Central Directory record */
-    XX_ZIP_DS_ZIP64_END_OF_CENTRAL_DIRECTORY_LOCATOR   /**< ZIP64 End of Central Directory locator */
+    XX_ZIP_DS_UNKNOWN = 0,                           /**< Unknown / unassigned */
+    XX_ZIP_DS_LOCAL_FILE_HEADER,                     /**< Local file header (per-entry) */
+    XX_ZIP_DS_DATA,                                  /**< Compressed/stored record payload data (per-entry, raw data) */
+    XX_ZIP_DS_DATA_DESCRIPTOR,                       /**< Optional post-data descriptor (per-entry) */
+    XX_ZIP_DS_CENTRAL_DIRECTORY_HEADER,              /**< Central directory file header (per-entry) */
+    XX_ZIP_DS_END_OF_CENTRAL_DIRECTORY,              /**< End of Central Directory record (EOCD) */
+    XX_ZIP_DS_ZIP64_END_OF_CENTRAL_DIRECTORY,        /**< ZIP64 End of Central Directory record */
+    XX_ZIP_DS_ZIP64_END_OF_CENTRAL_DIRECTORY_LOCATOR /**< ZIP64 End of Central Directory locator */
 } xx_zip_data_struct_id_t;
 
 /**
@@ -73,19 +73,19 @@ typedef enum xx_zip_data_struct_id_e {
  * Inherits from Abstractformat by placing it as the first member.
  */
 struct xx_zip {
-    Abstractformat format;             /**< Base format structure (first member) */
-    bool           is_zip64;           /**< True if ZIP64 format detected */
-    uint64_t       number_of_records;  /**< Number of central directory records */
-    int64_t        cd_offset;          /**< Offset of central directory in device */
-    int64_t        cd_size;            /**< Size of central directory in bytes */
-    int64_t        eocd_offset;        /**< Offset of EOCD record in device */
-    char           comment[256];       /**< Archive comment string */
-    bool           is_split;           /**< Native disk-relative split ZIP, not raw .001 chunks. */
-    uint32_t       split_disk_count;   /**< Validated count of supplied native ZIP disks. */
-    uint32_t       split_marker_size;  /**< Optional initial PK0708/PK00 marker (0 or 4). */
-    int64_t        zip64_eocd_offset;   /**< Joined ZIP64 EOCD offset, or -1. */
-    int64_t        zip64_eocd_size;     /**< Validated ZIP64 EOCD record size. */
-    void          *analysis;          /**< Owned native signature-query cache. */
+    Abstractformat format;      /**< Base format structure (first member) */
+    bool is_zip64;              /**< True if ZIP64 format detected */
+    uint64_t number_of_records; /**< Number of central directory records */
+    int64_t cd_offset;          /**< Offset of central directory in device */
+    int64_t cd_size;            /**< Size of central directory in bytes */
+    int64_t eocd_offset;        /**< Offset of EOCD record in device */
+    char comment[256];          /**< Archive comment string */
+    bool is_split;              /**< Native disk-relative split ZIP, not raw .001 chunks. */
+    uint32_t split_disk_count;  /**< Validated count of supplied native ZIP disks. */
+    uint32_t split_marker_size; /**< Optional initial PK0708/PK00 marker (0 or 4). */
+    int64_t zip64_eocd_offset;  /**< Joined ZIP64 EOCD offset, or -1. */
+    int64_t zip64_eocd_size;    /**< Validated ZIP64 EOCD record size. */
+    void *analysis;             /**< Owned native signature-query cache. */
 };
 
 /* --- Constructors & Lifecycle --- */
@@ -121,9 +121,7 @@ XXFC_API bool xx_zip_unpack_current_archive_record(Abstractformat *self, xx_arch
  * A failed operation can have written a prefix; callers must stage output
  * when they require publication only after successful verification.
  */
-XXFC_API bool xx_zip_unpack_current_archive_record_to_device(
-    Abstractformat *self, xx_archive_record_state *state,
-    xx_io_device *destination, xx_pd_struct *pd);
+XXFC_API bool xx_zip_unpack_current_archive_record_to_device(Abstractformat *self, xx_archive_record_state *state, xx_io_device *destination, xx_pd_struct *pd);
 XXFC_API bool xx_zip_archive_record_move_to_next(Abstractformat *self, xx_archive_record_state *state, xx_pd_struct *pd);
 XXFC_API void xx_zip_free_archive_records_reading(Abstractformat *self, xx_archive_record_state *state);
 
@@ -134,17 +132,13 @@ XXFC_API void xx_zip_free_archive_records_reading(Abstractformat *self, xx_archi
  * a mandatory entry. The entry must be non-empty, unencrypted, no larger than
  * max_size in either packed or unpacked form, and its decoded CRC must match.
  */
-XXFC_API bool xx_zip_has_valid_file(Abstractformat *self,
-                                    const char *record_name,
-                                    uint64_t max_size,
-                                    xx_pd_struct *pd);
+XXFC_API bool xx_zip_has_valid_file(Abstractformat *self, const char *record_name, uint64_t max_size, xx_pd_struct *pd);
 
 /* Native metadata inspection shared by ZIP-derived formats and DIE.
  * The input is borrowed. Returned strings use xx_str_free; other getter
  * results are borrowed until destruction. Selected member reads validate
  * their decoded size and CRC and never open an archive-derived output path. */
-XXFC_API bool xx_zip_read_file(xx_zip *zip, const char *name, size_t limit,
-                              uint8_t **data, size_t *size, xx_pd_struct *pd);
+XXFC_API bool xx_zip_read_file(xx_zip *zip, const char *name, size_t limit, uint8_t **data, size_t *size, xx_pd_struct *pd);
 XXFC_API bool xx_zip_analyze(xx_zip *zip, xx_pd_struct *pd);
 XXFC_API void xx_zip_cleanup_analysis(xx_zip *zip);
 XXFC_API const xx_list_s *xx_zip_get_record_names(const xx_zip *zip);
@@ -162,16 +156,12 @@ XXFC_API const char *xx_zip_get_jvm_version(const xx_zip *zip);
  * contain a path separator. Payload validation is identical to
  * xx_zip_has_valid_file().
  */
-XXFC_API bool xx_zip_has_valid_file_pattern(Abstractformat *self,
-                                            const char *prefix,
-                                            const char *suffix,
-                                            bool single_component,
-                                            uint64_t max_size,
-                                            xx_pd_struct *pd);
+XXFC_API bool xx_zip_has_valid_file_pattern(Abstractformat *self, const char *prefix, const char *suffix, bool single_component, uint64_t max_size, xx_pd_struct *pd);
 
 /* --- Stream Archive Records Writing / Packing --- */
 XXFC_API xx_archive_write_state *xx_zip_create_archive_records_writing(Abstractformat *self, const xx_list_s *options, xx_pd_struct *pd);
-XXFC_API bool xx_zip_pack_archive_record(Abstractformat *self, xx_archive_write_state *state, const xx_archive_record *record, xx_io_device *source_dev, xx_pd_struct *pd);
+XXFC_API bool xx_zip_pack_archive_record(Abstractformat *self, xx_archive_write_state *state, const xx_archive_record *record, xx_io_device *source_dev,
+                                         xx_pd_struct *pd);
 XXFC_API bool xx_zip_finalize_archive_records_writing(Abstractformat *self, xx_archive_write_state *state, xx_pd_struct *pd);
 XXFC_API void xx_zip_free_archive_records_writing(Abstractformat *self, xx_archive_write_state *state);
 
@@ -200,11 +190,13 @@ XXFC_API int64_t xx_zip_get_eocd_offset(const xx_zip *zip);
 XXFC_API const char *xx_zip_get_comment(const xx_zip *zip);
 
 /* Cast helpers */
-static inline Abstractformat *xx_zip_to_format(xx_zip *zip) {
+static inline Abstractformat *xx_zip_to_format(xx_zip *zip)
+{
     return zip ? &zip->format : NULL;
 }
 
-static inline const Abstractformat *xx_zip_to_format_const(const xx_zip *zip) {
+static inline const Abstractformat *xx_zip_to_format_const(const xx_zip *zip)
+{
     return zip ? &zip->format : NULL;
 }
 

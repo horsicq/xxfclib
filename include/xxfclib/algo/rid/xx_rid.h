@@ -41,9 +41,7 @@ extern "C" {
  * uncompressed size.  Succeeds only when the chain terminates exactly at the
  * end of @p input and produces exactly @p output_size bytes.
  */
-XXFC_API bool xx_rid_decode_memory(const uint8_t *input, size_t input_size,
-                                   uint8_t *output, size_t output_size,
-                                   size_t *written);
+XXFC_API bool xx_rid_decode_memory(const uint8_t *input, size_t input_size, uint8_t *output, size_t output_size, size_t *written);
 
 /**
  * @brief Walk a chain without keeping the plaintext.
@@ -53,9 +51,7 @@ XXFC_API bool xx_rid_decode_memory(const uint8_t *input, size_t input_size,
  * the plaintext length in @p produced.  A chain that would produce more than
  * @p max_output bytes is a failure, not a truncation.
  */
-XXFC_API bool xx_rid_scan_memory(const uint8_t *input, size_t input_size,
-                                 size_t max_output, size_t *consumed,
-                                 size_t *produced);
+XXFC_API bool xx_rid_scan_memory(const uint8_t *input, size_t input_size, size_t max_output, size_t *consumed, size_t *produced);
 
 #ifdef __cplusplus
 }

@@ -5,21 +5,72 @@
 #include "../common/xx_retro_resource_components.h"
 #include "xxfclib/data/xx_data.h"
 
-static bool read_components(Abstractformat *f,pm_stream *s,retro_resource_blob *b) {
- const uint8_t *p=b->p;uint32_t units,z,size,count,a=16,i;char label[64];
- if(b->n<16 || p[0]!=0x96 || p[1]!=2 || !retro_resource_zero(p+8,7) || p[15]>1) return false;
- units=(uint32_t)xx_data_get_u16(p+2, 2, 0, false)|((uint32_t)xx_data_get_u16(p+6, 2, 0, false)<<16);size=xx_data_get_u16(p+4, 2, 0, false);
- if(!units || units>(RETRO_RESOURCE_LIMIT-16)/16 || (size!=128 && size!=256)) { return false; } z=units*16;
- if(z!=b->n-16 || z<384 || (size==128 ? z%128 : (z-384)%256)) return false;
- count=size==128 ? z/128 : 3+(z-384)/256;if(count>4095) return false;
- if(!retro_resource_emit(f,s,b,"atr-descriptor.bin",0,16)) return false;
- for(i=1;i<=count;++i) {uint32_t n=i<=3 ? 128:size;xx_rt_snprintf(label,sizeof(label),"sector-%04u.bin",i);if(!retro_resource_emit(f,s,b,label,a,n)) return false;a+=n;}
- if(a!=b->n) { return false; } s->size=b->n;return true;
+static bool read_components(Abstractformat *f, pm_stream *s, retro_resource_blob *b)
+{
+    const uint8_t *p = b->p;
+    uint32_t units, z, size, count, a = 16, i;
+    char label[64];
+    if (b->n < 16 || p[0] != 0x96 || p[1] != 2 || !retro_resource_zero(p + 8, 7) || p[15] > 1) return false;
+    units = (uint32_t)xx_data_get_u16(p + 2, 2, 0, false) | ((uint32_t)xx_data_get_u16(p + 6, 2, 0, false) << 16);
+    size = xx_data_get_u16(p + 4, 2, 0, false);
+    if (!units || units > (RETRO_RESOURCE_LIMIT - 16) / 16 || (size != 128 && size != 256)) {
+        return false;
+    }
+    z = units * 16;
+    if (z != b->n - 16 || z < 384 || (size == 128 ? z % 128 : (z - 384) % 256)) return false;
+    count = size == 128 ? z / 128 : 3 + (z - 384) / 256;
+    if (count > 4095) return false;
+    if (!retro_resource_emit(f, s, b, "atr-descriptor.bin", 0, 16)) return false;
+    for (i = 1; i <= count; ++i) {
+        uint32_t n = i <= 3 ? 128 : size;
+        xx_rt_snprintf(label, sizeof(label), "sector-%04u.bin", i);
+        if (!retro_resource_emit(f, s, b, label, a, n)) return false;
+        a += n;
+    }
+    if (a != b->n) {
+        return false;
+    }
+    s->size = b->n;
+    return true;
 }
-static bool pm_parse(Abstractformat *f,pm_stream *s,xx_pd_struct *pd) { retro_resource_blob b;bool ok;if(!retro_resource_load(f,&b,pd)) return false;ok=read_components(f,s,&b);xx_mem_free(b.p);return ok; }
-void xx_atari_atr_init(xx_atari_atr *r,xx_io_device *d,int64_t b) { if(r) {xx_mem_zero(r,sizeof(*r));pm_init(&r->format,d,b,XX_FILE_TYPE_ATARI_ATR,"atari_atr");} }
-xx_atari_atr *xx_atari_atr_create(xx_io_device *d,int64_t b) { xx_atari_atr *r=(xx_atari_atr *)xx_mem_alloc(sizeof(*r));if(r) xx_atari_atr_init(r,d,b);return r; }
-void xx_atari_atr_destroy(xx_atari_atr *r) { if(r) xx_format_cleanup_extra_parameters(&r->format); }
-void xx_atari_atr_free(xx_atari_atr *r) { if(r) {xx_atari_atr_destroy(r);xx_mem_free(r);} }
-bool xx_atari_atr_check_is_valid(Abstractformat *f,xx_pd_struct *pd) { return pm_valid(f,pd); }
-bool xx_atari_atr_handle_base_info(Abstractformat *f,xx_pd_struct *pd) { return pm_handle(f,pd); }
+static bool pm_parse(Abstractformat *f, pm_stream *s, xx_pd_struct *pd)
+{
+    retro_resource_blob b;
+    bool ok;
+    if (!retro_resource_load(f, &b, pd)) return false;
+    ok = read_components(f, s, &b);
+    xx_mem_free(b.p);
+    return ok;
+}
+void xx_atari_atr_init(xx_atari_atr *r, xx_io_device *d, int64_t b)
+{
+    if (r) {
+        xx_mem_zero(r, sizeof(*r));
+        pm_init(&r->format, d, b, XX_FILE_TYPE_ATARI_ATR, "atari_atr");
+    }
+}
+xx_atari_atr *xx_atari_atr_create(xx_io_device *d, int64_t b)
+{
+    xx_atari_atr *r = (xx_atari_atr *)xx_mem_alloc(sizeof(*r));
+    if (r) xx_atari_atr_init(r, d, b);
+    return r;
+}
+void xx_atari_atr_destroy(xx_atari_atr *r)
+{
+    if (r) xx_format_cleanup_extra_parameters(&r->format);
+}
+void xx_atari_atr_free(xx_atari_atr *r)
+{
+    if (r) {
+        xx_atari_atr_destroy(r);
+        xx_mem_free(r);
+    }
+}
+bool xx_atari_atr_check_is_valid(Abstractformat *f, xx_pd_struct *pd)
+{
+    return pm_valid(f, pd);
+}
+bool xx_atari_atr_handle_base_info(Abstractformat *f, xx_pd_struct *pd)
+{
+    return pm_handle(f, pd);
+}

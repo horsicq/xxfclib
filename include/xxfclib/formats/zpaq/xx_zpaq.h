@@ -37,40 +37,31 @@ struct xx_zpaq_scan;
  */
 typedef struct xx_zpaq {
     Abstractformat format;
-    int64_t block_offset;  /**< 0, or 13 when the locator tag is present. */
-    bool has_tag;          /**< True when the 13-byte locator tag precedes it. */
-    uint8_t level;         /**< Block level, 1 or 2. */
-    uint16_t header_size;  /**< Size of the block's bytecode header. */
+    int64_t block_offset;      /**< 0, or 13 when the locator tag is present. */
+    bool has_tag;              /**< True when the 13-byte locator tag precedes it. */
+    uint8_t level;             /**< Block level, 1 or 2. */
+    uint16_t header_size;      /**< Size of the block's bytecode header. */
     struct xx_zpaq_scan *scan; /**< Archive walk, built on first use. */
 } xx_zpaq;
 
 typedef xx_zpaq xx_zpaq_t;
 typedef xx_zpaq XZpaq;
 
-XXFC_API void xx_zpaq_init(xx_zpaq *archive, xx_io_device *device,
-                           int64_t base_address);
+XXFC_API void xx_zpaq_init(xx_zpaq *archive, xx_io_device *device, int64_t base_address);
 XXFC_API xx_zpaq *xx_zpaq_create(xx_io_device *device, int64_t base_address);
 XXFC_API void xx_zpaq_destroy(xx_zpaq *archive);
 XXFC_API void xx_zpaq_free(xx_zpaq *archive);
 
 XXFC_API bool xx_zpaq_check_is_valid(Abstractformat *self, xx_pd_struct *pd);
-XXFC_API bool xx_zpaq_handle_base_info(Abstractformat *self,
-                                       xx_pd_struct *pd);
-XXFC_API int64_t xx_zpaq_get_format_size(Abstractformat *self,
-                                         xx_pd_struct *pd);
-XXFC_API uint64_t xx_zpaq_get_number_of_archive_records(Abstractformat *self,
-                                                         xx_pd_struct *pd);
+XXFC_API bool xx_zpaq_handle_base_info(Abstractformat *self, xx_pd_struct *pd);
+XXFC_API int64_t xx_zpaq_get_format_size(Abstractformat *self, xx_pd_struct *pd);
+XXFC_API uint64_t xx_zpaq_get_number_of_archive_records(Abstractformat *self, xx_pd_struct *pd);
 
-XXFC_API xx_archive_record_state *xx_zpaq_create_archive_records_reading(
-    Abstractformat *self, const xx_list_s *options, xx_pd_struct *pd);
-XXFC_API const xx_archive_record *xx_zpaq_get_current_archive_record(
-    Abstractformat *self, xx_archive_record_state *state);
-XXFC_API bool xx_zpaq_unpack_current_archive_record(
-    Abstractformat *self, xx_archive_record_state *state, xx_pd_struct *pd);
-XXFC_API bool xx_zpaq_archive_record_move_to_next(
-    Abstractformat *self, xx_archive_record_state *state, xx_pd_struct *pd);
-XXFC_API void xx_zpaq_free_archive_records_reading(
-    Abstractformat *self, xx_archive_record_state *state);
+XXFC_API xx_archive_record_state *xx_zpaq_create_archive_records_reading(Abstractformat *self, const xx_list_s *options, xx_pd_struct *pd);
+XXFC_API const xx_archive_record *xx_zpaq_get_current_archive_record(Abstractformat *self, xx_archive_record_state *state);
+XXFC_API bool xx_zpaq_unpack_current_archive_record(Abstractformat *self, xx_archive_record_state *state, xx_pd_struct *pd);
+XXFC_API bool xx_zpaq_archive_record_move_to_next(Abstractformat *self, xx_archive_record_state *state, xx_pd_struct *pd);
+XXFC_API void xx_zpaq_free_archive_records_reading(Abstractformat *self, xx_archive_record_state *state);
 
 /** @brief Where the first block starts, relative to the base address. */
 XXFC_API int64_t xx_zpaq_get_block_offset(const xx_zpaq *archive);

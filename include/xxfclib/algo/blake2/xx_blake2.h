@@ -36,13 +36,10 @@ typedef struct xx_blake2sp_context {
  * the context or output. A one-shot digest may overlap its input buffer.
  */
 XXFC_API bool xx_blake2sp_init(xx_blake2sp_context *context);
-XXFC_API bool xx_blake2sp_update(xx_blake2sp_context *context,
-                                const void *data, size_t size);
-XXFC_API bool xx_blake2sp_final(xx_blake2sp_context *context,
-                               uint8_t digest[XX_BLAKE2SP_DIGEST_SIZE]);
+XXFC_API bool xx_blake2sp_update(xx_blake2sp_context *context, const void *data, size_t size);
+XXFC_API bool xx_blake2sp_final(xx_blake2sp_context *context, uint8_t digest[XX_BLAKE2SP_DIGEST_SIZE]);
 XXFC_API void xx_blake2sp_clear(xx_blake2sp_context *context);
-XXFC_API bool xx_blake2sp_calc(const void *data, size_t size,
-                              uint8_t digest[XX_BLAKE2SP_DIGEST_SIZE]);
+XXFC_API bool xx_blake2sp_calc(const void *data, size_t size, uint8_t digest[XX_BLAKE2SP_DIGEST_SIZE]);
 
 /** Hash exactly size bytes starting at the nonnegative 64-bit offset.
  * Uses bounded storage, retries short reads, rejects premature EOF/error and
@@ -50,10 +47,7 @@ XXFC_API bool xx_blake2sp_calc(const void *data, size_t size,
  * device or restore its cursor. The requested range must fit int64_t and the
  * device size when reported. pd is optional; its nested progress is released.
  */
-XXFC_API bool xx_blake2sp_calc_device(xx_io_device *device, int64_t offset,
-                                     int64_t size,
-                                     uint8_t digest[XX_BLAKE2SP_DIGEST_SIZE],
-                                     xx_pd_struct *pd);
+XXFC_API bool xx_blake2sp_calc_device(xx_io_device *device, int64_t offset, int64_t size, uint8_t digest[XX_BLAKE2SP_DIGEST_SIZE], xx_pd_struct *pd);
 
 #ifdef __cplusplus
 }

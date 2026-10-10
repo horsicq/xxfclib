@@ -48,56 +48,36 @@ extern "C" {
 typedef struct xx_quoted_printable_encoded_fil {
     Abstractformat format;
     uint64_t number_of_records;
-    uint64_t unpacked_size;   /**< Decoded payload size. */
-    uint64_t escape_count;    /**< "=XY" escapes in the whole text. */
-    uint64_t soft_breaks;     /**< Soft line breaks in the whole text. */
-    int64_t text_size;        /**< Bytes of Quoted-Printable text. */
-    int64_t format_size_all;  /**< Text plus 0x1A / 0x00 padding. */
-    char name[16];            /**< Member name ("payload"). */
+    uint64_t unpacked_size;  /**< Decoded payload size. */
+    uint64_t escape_count;   /**< "=XY" escapes in the whole text. */
+    uint64_t soft_breaks;    /**< Soft line breaks in the whole text. */
+    int64_t text_size;       /**< Bytes of Quoted-Printable text. */
+    int64_t format_size_all; /**< Text plus 0x1A / 0x00 padding. */
+    char name[16];           /**< Member name ("payload"). */
 } xx_quoted_printable_encoded_fil;
 
 typedef xx_quoted_printable_encoded_fil xx_quoted_printable_encoded_fil_t;
 
-XXFC_API void xx_quoted_printable_encoded_fil_init(
-    xx_quoted_printable_encoded_fil *archive, xx_io_device *device,
-    int64_t base_address);
-XXFC_API xx_quoted_printable_encoded_fil *
-xx_quoted_printable_encoded_fil_create(xx_io_device *device,
-                                       int64_t base_address);
-XXFC_API void xx_quoted_printable_encoded_fil_destroy(
-    xx_quoted_printable_encoded_fil *archive);
-XXFC_API void xx_quoted_printable_encoded_fil_free(
-    xx_quoted_printable_encoded_fil *archive);
+XXFC_API void xx_quoted_printable_encoded_fil_init(xx_quoted_printable_encoded_fil *archive, xx_io_device *device, int64_t base_address);
+XXFC_API xx_quoted_printable_encoded_fil *xx_quoted_printable_encoded_fil_create(xx_io_device *device, int64_t base_address);
+XXFC_API void xx_quoted_printable_encoded_fil_destroy(xx_quoted_printable_encoded_fil *archive);
+XXFC_API void xx_quoted_printable_encoded_fil_free(xx_quoted_printable_encoded_fil *archive);
 
-XXFC_API bool xx_quoted_printable_encoded_fil_check_is_valid(
-    Abstractformat *self, xx_pd_struct *pd);
-XXFC_API bool xx_quoted_printable_encoded_fil_handle_base_info(
-    Abstractformat *self, xx_pd_struct *pd);
-XXFC_API int64_t xx_quoted_printable_encoded_fil_get_format_size(
-    Abstractformat *self, xx_pd_struct *pd);
-XXFC_API uint64_t xx_quoted_printable_encoded_fil_get_number_of_archive_records(
-    Abstractformat *self, xx_pd_struct *pd);
+XXFC_API bool xx_quoted_printable_encoded_fil_check_is_valid(Abstractformat *self, xx_pd_struct *pd);
+XXFC_API bool xx_quoted_printable_encoded_fil_handle_base_info(Abstractformat *self, xx_pd_struct *pd);
+XXFC_API int64_t xx_quoted_printable_encoded_fil_get_format_size(Abstractformat *self, xx_pd_struct *pd);
+XXFC_API uint64_t xx_quoted_printable_encoded_fil_get_number_of_archive_records(Abstractformat *self, xx_pd_struct *pd);
 
-XXFC_API xx_archive_record_state *
-xx_quoted_printable_encoded_fil_create_archive_records_reading(
-    Abstractformat *self, const xx_list_s *options, xx_pd_struct *pd);
-XXFC_API const xx_archive_record *
-xx_quoted_printable_encoded_fil_get_current_archive_record(
-    Abstractformat *self, xx_archive_record_state *state);
-XXFC_API bool xx_quoted_printable_encoded_fil_unpack_current_archive_record(
-    Abstractformat *self, xx_archive_record_state *state, xx_pd_struct *pd);
-XXFC_API bool xx_quoted_printable_encoded_fil_archive_record_move_to_next(
-    Abstractformat *self, xx_archive_record_state *state, xx_pd_struct *pd);
-XXFC_API void xx_quoted_printable_encoded_fil_free_archive_records_reading(
-    Abstractformat *self, xx_archive_record_state *state);
+XXFC_API xx_archive_record_state *xx_quoted_printable_encoded_fil_create_archive_records_reading(Abstractformat *self, const xx_list_s *options, xx_pd_struct *pd);
+XXFC_API const xx_archive_record *xx_quoted_printable_encoded_fil_get_current_archive_record(Abstractformat *self, xx_archive_record_state *state);
+XXFC_API bool xx_quoted_printable_encoded_fil_unpack_current_archive_record(Abstractformat *self, xx_archive_record_state *state, xx_pd_struct *pd);
+XXFC_API bool xx_quoted_printable_encoded_fil_archive_record_move_to_next(Abstractformat *self, xx_archive_record_state *state, xx_pd_struct *pd);
+XXFC_API void xx_quoted_printable_encoded_fil_free_archive_records_reading(Abstractformat *self, xx_archive_record_state *state);
 
 /** Decoded payload size; runs handle_base_info when needed, 0 on failure. */
-XXFC_API uint64_t xx_quoted_printable_encoded_fil_get_unpacked_size(
-    xx_quoted_printable_encoded_fil *archive);
+XXFC_API uint64_t xx_quoted_printable_encoded_fil_get_unpacked_size(xx_quoted_printable_encoded_fil *archive);
 /** Decode the whole payload to `destination`. */
-XXFC_API bool xx_quoted_printable_encoded_fil_unpack_to_device(
-    xx_quoted_printable_encoded_fil *archive, xx_io_device *destination,
-    xx_pd_struct *pd);
+XXFC_API bool xx_quoted_printable_encoded_fil_unpack_to_device(xx_quoted_printable_encoded_fil *archive, xx_io_device *destination, xx_pd_struct *pd);
 
 #ifdef __cplusplus
 }

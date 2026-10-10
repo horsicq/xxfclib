@@ -90,17 +90,15 @@ static void xx_cfl_vtable_destroy(Abstractformat *self);
 
 /* ------------------------------------------------------------- helpers -- */
 
-static bool xx_cfl_read_at(Abstractformat *self, int64_t offset,
-                              uint8_t *buffer, size_t size) {
+static bool xx_cfl_read_at(Abstractformat *self, int64_t offset, uint8_t *buffer, size_t size)
+{
     size_t completed = 0U;
 
-    if (!self || !self->device || offset < 0 ||
-        xx_io_seek64(self->device, offset, SEEK_SET) != 0) {
+    if (!self || !self->device || offset < 0 || xx_io_seek64(self->device, offset, SEEK_SET) != 0) {
         return false;
     }
     while (completed < size) {
-        ssize_t received =
-            xx_io_read(self->device, buffer + completed, size - completed);
+        ssize_t received = xx_io_read(self->device, buffer + completed, size - completed);
         if (received <= 0 || (size_t)received > size - completed) {
             return false;
         }
@@ -109,14 +107,14 @@ static bool xx_cfl_read_at(Abstractformat *self, int64_t offset,
     return true;
 }
 
-static bool xx_cfl_range_within(int64_t total, int64_t offset,
-                                   int64_t size) {
-    return offset >= 0 && size >= 0 && offset <= total &&
-           size <= total - offset;
+static bool xx_cfl_range_within(int64_t total, int64_t offset, int64_t size)
+{
+    return offset >= 0 && size >= 0 && offset <= total && size <= total - offset;
 }
 
 /* Refuse anything that would escape the extraction directory. */
-static bool xx_cfl_path_safe(const char *name) {
+static bool xx_cfl_path_safe(const char *name)
+{
     const char *cursor = name;
 
     if (!name || !name[0] || name[0] == '/') return false;
@@ -131,7 +129,8 @@ static bool xx_cfl_path_safe(const char *name) {
     return true;
 }
 
-static void xx_cfl_stream_free(void *pointer) {
+static void xx_cfl_stream_free(void *pointer)
+{
     xx_cfl_stream *stream = (xx_cfl_stream *)pointer;
     size_t index;
 
@@ -144,17 +143,15 @@ static void xx_cfl_stream_free(void *pointer) {
 }
 
 /* Append a member, taking ownership of @p name. */
-static bool xx_cfl_add(xx_cfl_stream *stream,
-                          const xx_cfl_member *member) {
-    xx_cfl_member *grown = (xx_cfl_member *)xx_mem_realloc(
-        stream->items, sizeof(*grown) * (stream->count + 1U));
+static bool xx_cfl_add(xx_cfl_stream *stream, const xx_cfl_member *member)
+{
+    xx_cfl_member *grown = (xx_cfl_member *)xx_mem_realloc(stream->items, sizeof(*grown) * (stream->count + 1U));
 
     if (!grown) return false;
     stream->items = grown;
     stream->items[stream->count++] = *member;
     return true;
 }
-
 
 #define XX_CFL_HEADER_SIZE 12
 #define XX_CFL_ENTRY_SIZE 14
@@ -174,7 +171,6 @@ static uint8_t *xx_cfl_read_block(Abstractformat *self, int64_t span, int64_t of
 static xx_cfl_stream *xx_cfl_parse(Abstractformat *self, xx_pd_struct *pd);
 static bool xx_cfl_decode(Abstractformat *self, const xx_cfl_member *member, uint8_t **out, size_t *out_size, xx_pd_struct *pd);
 
-
 /* The RFC 1950 header the archive stores in front of each DEFLATE stream. */
 /* Name lengths are a u16, so this only refuses the absurd ones. */
 
@@ -184,16 +180,16 @@ static const uint8_t xx_cfl_signature[4] = {'C', 'F', 'L', '3'};
  * reference, and the reference then tests it for being negative. Sign
  * extending here keeps that test meaningful: a field with its high bit set
  * ends the directory walk instead of becoming a four-billion-byte extent. */
-static int64_t xx_cfl_i32(const uint8_t *data) {
+static int64_t xx_cfl_i32(const uint8_t *data)
+{
     return (int64_t)(int32_t)xx_data_get_u32(data, 4, 0, false);
 }
 
 /* The directory's own container. Returns the inflated bytes (exactly
  * `expanded` of them) and reports how many bytes the block occupied in the
  * file, which is where the archive's own extent starts from. */
-static uint8_t *xx_cfl_read_block(Abstractformat *self, int64_t span,
-                                  int64_t offset, int64_t expanded,
-                                  int64_t *block_size, xx_pd_struct *pd) {
+static uint8_t *xx_cfl_read_block(Abstractformat *self, int64_t span, int64_t offset, int64_t expanded, int64_t *block_size, xx_pd_struct *pd)
+{
     uint8_t head[XX_CFL_BLOCK_HEADER_SIZE];
     uint8_t size_field[4];
     uint8_t *packed = NULL;
@@ -205,8 +201,7 @@ static uint8_t *xx_cfl_read_block(Abstractformat *self, int64_t span,
 
     if (expanded <= 0 || expanded > XX_CFL_MAX_DIRECTORY) return NULL;
     if (!xx_cfl_range_within(span, offset, (int64_t)sizeof(head))) return NULL;
-    if (!xx_cfl_read_at(self, self->base_address + offset, head,
-                        sizeof(head))) {
+    if (!xx_cfl_read_at(self, self->base_address + offset, head, sizeof(head))) {
         return NULL;
     }
     method = xx_data_get_u32(head, 4, 0, false);
@@ -224,12 +219,8 @@ static uint8_t *xx_cfl_read_block(Abstractformat *self, int64_t span,
             xx_mem_free(plain);
             return NULL;
         }
-        if (!xx_cfl_range_within(span, offset + XX_CFL_BLOCK_HEADER_SIZE,
-                                 expanded) ||
-            !xx_cfl_read_at(self,
-                            self->base_address + offset +
-                                XX_CFL_BLOCK_HEADER_SIZE,
-                            plain, (size_t)expanded)) {
+        if (!xx_cfl_range_within(span, offset + XX_CFL_BLOCK_HEADER_SIZE, expanded) ||
+            !xx_cfl_read_at(self, self->base_address + offset + XX_CFL_BLOCK_HEADER_SIZE, plain, (size_t)expanded)) {
             xx_mem_free(plain);
             return NULL;
         }
@@ -244,11 +235,8 @@ static uint8_t *xx_cfl_read_block(Abstractformat *self, int64_t span,
     }
     /* The payload length counts the repeated inflated size that opens it, so
      * four bytes is the minimum a well-formed block can claim. */
-    if (payload_size < 4 || payload_size > XX_CFL_MAX_DIRECTORY ||
-        !xx_cfl_range_within(span, offset + XX_CFL_BLOCK_HEADER_SIZE, 4) ||
-        !xx_cfl_read_at(self,
-                        self->base_address + offset + XX_CFL_BLOCK_HEADER_SIZE,
-                        size_field, sizeof(size_field))) {
+    if (payload_size < 4 || payload_size > XX_CFL_MAX_DIRECTORY || !xx_cfl_range_within(span, offset + XX_CFL_BLOCK_HEADER_SIZE, 4) ||
+        !xx_cfl_read_at(self, self->base_address + offset + XX_CFL_BLOCK_HEADER_SIZE, size_field, sizeof(size_field))) {
         xx_mem_free(plain);
         return NULL;
     }
@@ -260,9 +248,7 @@ static uint8_t *xx_cfl_read_block(Abstractformat *self, int64_t span,
         return NULL;
     }
     packed_size = payload_size - 4;
-    if (packed_size < XX_CFL_ZLIB_HEADER_SIZE ||
-        !xx_cfl_range_within(span, offset + XX_CFL_BLOCK_HEADER_SIZE + 4,
-                             packed_size)) {
+    if (packed_size < XX_CFL_ZLIB_HEADER_SIZE || !xx_cfl_range_within(span, offset + XX_CFL_BLOCK_HEADER_SIZE + 4, packed_size)) {
         xx_mem_free(plain);
         return NULL;
     }
@@ -271,11 +257,7 @@ static uint8_t *xx_cfl_read_block(Abstractformat *self, int64_t span,
         xx_mem_free(plain);
         return NULL;
     }
-    if (!xx_cfl_read_at(self,
-                        self->base_address + offset +
-                            XX_CFL_BLOCK_HEADER_SIZE + 4,
-                        packed, (size_t)packed_size) ||
-        (pd && xx_pd_is_stopped(pd))) {
+    if (!xx_cfl_read_at(self, self->base_address + offset + XX_CFL_BLOCK_HEADER_SIZE + 4, packed, (size_t)packed_size) || (pd && xx_pd_is_stopped(pd))) {
         xx_mem_free(packed);
         xx_mem_free(plain);
         return NULL;
@@ -284,9 +266,7 @@ static uint8_t *xx_cfl_read_block(Abstractformat *self, int64_t span,
      * stream and is decoded as one. Its Adler-32 trailer is absent -- the
      * block size cuts the stream at the last DEFLATE byte -- which this
      * decoder tolerates, and a short decode is caught by the length test. */
-    if (!xx_zlib_stream_decode_memory(packed, (size_t)packed_size, plain,
-                                      (size_t)expanded, &written) ||
-        written != (size_t)expanded) {
+    if (!xx_zlib_stream_decode_memory(packed, (size_t)packed_size, plain, (size_t)expanded, &written) || written != (size_t)expanded) {
         xx_mem_free(packed);
         xx_mem_free(plain);
         return NULL;
@@ -296,7 +276,8 @@ static uint8_t *xx_cfl_read_block(Abstractformat *self, int64_t span,
     return plain;
 }
 
-static xx_cfl_stream *xx_cfl_parse(Abstractformat *self, xx_pd_struct *pd) {
+static xx_cfl_stream *xx_cfl_parse(Abstractformat *self, xx_pd_struct *pd)
+{
     xx_cfl_stream *stream = NULL;
     uint8_t *directory = NULL;
     uint8_t header[XX_CFL_HEADER_SIZE];
@@ -330,8 +311,7 @@ static xx_cfl_stream *xx_cfl_parse(Abstractformat *self, xx_pd_struct *pd) {
         return NULL;
     }
 
-    directory = xx_cfl_read_block(self, span, directory_offset, directory_size,
-                                  &directory_block_size, pd);
+    directory = xx_cfl_read_block(self, span, directory_offset, directory_size, &directory_block_size, pd);
     if (!directory) return NULL;
 
     stream = (xx_cfl_stream *)xx_mem_alloc(sizeof(*stream));
@@ -367,8 +347,7 @@ static xx_cfl_stream *xx_cfl_parse(Abstractformat *self, xx_pd_struct *pd) {
          * the last record is tolerated. Anything past this point in the
          * record IS a rejection, because a record that started well and then
          * contradicted itself is a damaged archive, not padding. */
-        if (size < 0 || data_offset < XX_CFL_HEADER_SIZE ||
-            name_length == 0) {
+        if (size < 0 || data_offset < XX_CFL_HEADER_SIZE || name_length == 0) {
             break;
         }
         if ((position + XX_CFL_ENTRY_SIZE + name_length) > directory_size) {
@@ -382,8 +361,7 @@ static xx_cfl_stream *xx_cfl_parse(Abstractformat *self, xx_pd_struct *pd) {
          * only thing distinguishing a directory from an arbitrary run of
          * bytes that happened to inflate. */
         for (index = 0; index < name_length; ++index) {
-            if (entry[XX_CFL_ENTRY_SIZE + index] < 0x20U ||
-                entry[XX_CFL_ENTRY_SIZE + index] > 0x7EU) {
+            if (entry[XX_CFL_ENTRY_SIZE + index] < 0x20U || entry[XX_CFL_ENTRY_SIZE + index] > 0x7EU) {
                 goto fail;
             }
         }
@@ -413,9 +391,7 @@ static xx_cfl_stream *xx_cfl_parse(Abstractformat *self, xx_pd_struct *pd) {
             /* No data block exists, so the record's offset is never read;
              * clamp it into the device anyway, because a published member
              * must not advertise an extent the source cannot answer for. */
-            member.data_offset =
-                self->base_address +
-                (data_offset < span ? data_offset : span);
+            member.data_offset = self->base_address + (data_offset < span ? data_offset : span);
             member.compressed_size = 0;
             member.method = (uint32_t)XX_CFL_METHOD_STORED;
         } else if (method == (uint16_t)XX_CFL_METHOD_STORED) {
@@ -437,10 +413,7 @@ static xx_cfl_stream *xx_cfl_parse(Abstractformat *self, xx_pd_struct *pd) {
 
             /* A member's block header is NOT the directory's: it has no
              * method field, because the method is the record's. */
-            if (!xx_cfl_range_within(span, data_offset,
-                                     (int64_t)sizeof(block)) ||
-                !xx_cfl_read_at(self, self->base_address + data_offset, block,
-                                sizeof(block))) {
+            if (!xx_cfl_range_within(span, data_offset, (int64_t)sizeof(block)) || !xx_cfl_read_at(self, self->base_address + data_offset, block, sizeof(block))) {
                 xx_str_free(name);
                 goto fail;
             }
@@ -453,24 +426,17 @@ static xx_cfl_stream *xx_cfl_parse(Abstractformat *self, xx_pd_struct *pd) {
                 goto fail;
             }
             packed_size = block_size - 4;
-            if (packed_size < XX_CFL_ZLIB_HEADER_SIZE ||
-                !xx_cfl_range_within(span,
-                                     data_offset + XX_CFL_BLOCK_HEADER_SIZE,
-                                     packed_size)) {
+            if (packed_size < XX_CFL_ZLIB_HEADER_SIZE || !xx_cfl_range_within(span, data_offset + XX_CFL_BLOCK_HEADER_SIZE, packed_size)) {
                 xx_str_free(name);
                 goto fail;
             }
-            if (!xx_cfl_read_at(self,
-                                self->base_address + data_offset +
-                                    XX_CFL_BLOCK_HEADER_SIZE,
-                                zlib_header, sizeof(zlib_header))) {
+            if (!xx_cfl_read_at(self, self->base_address + data_offset + XX_CFL_BLOCK_HEADER_SIZE, zlib_header, sizeof(zlib_header))) {
                 xx_str_free(name);
                 goto fail;
             }
             /* The shared check, not an open-coded one: method, window size,
              * the multiple-of-31 rule and the preset-dictionary flag. */
-            if (!xx_zlib_stream_header_is_valid(zlib_header,
-                                                sizeof(zlib_header))) {
+            if (!xx_zlib_stream_header_is_valid(zlib_header, sizeof(zlib_header))) {
                 xx_str_free(name);
                 goto fail;
             }
@@ -479,14 +445,10 @@ static xx_cfl_stream *xx_cfl_parse(Abstractformat *self, xx_pd_struct *pd) {
              * from the header would make a zlib decoder claim the last four
              * DEFLATE bytes as the checksum footer and decode every member
              * short, so the published extent is the raw DEFLATE alone. */
-            member.data_offset = self->base_address + data_offset +
-                                 XX_CFL_BLOCK_HEADER_SIZE +
-                                 XX_CFL_ZLIB_HEADER_SIZE;
+            member.data_offset = self->base_address + data_offset + XX_CFL_BLOCK_HEADER_SIZE + XX_CFL_ZLIB_HEADER_SIZE;
             member.compressed_size = packed_size - XX_CFL_ZLIB_HEADER_SIZE;
-            if (data_offset + XX_CFL_BLOCK_HEADER_SIZE + packed_size >
-                archive_end) {
-                archive_end =
-                    data_offset + XX_CFL_BLOCK_HEADER_SIZE + packed_size;
+            if (data_offset + XX_CFL_BLOCK_HEADER_SIZE + packed_size > archive_end) {
+                archive_end = data_offset + XX_CFL_BLOCK_HEADER_SIZE + packed_size;
             }
         } else {
             /* A method the format does not define. */
@@ -516,12 +478,11 @@ fail:
     return NULL;
 }
 
-
 /* An attacker-controlled length from the container, so it is capped before it
  * becomes an allocation. */
 
-static bool xx_cfl_decode(Abstractformat *self, const xx_cfl_member *member,
-                          uint8_t **out, size_t *out_size, xx_pd_struct *pd) {
+static bool xx_cfl_decode(Abstractformat *self, const xx_cfl_member *member, uint8_t **out, size_t *out_size, xx_pd_struct *pd)
+{
     uint8_t *packed = NULL;
     uint8_t *plain = NULL;
     size_t written = 0U;
@@ -529,21 +490,16 @@ static bool xx_cfl_decode(Abstractformat *self, const xx_cfl_member *member,
     *out = NULL;
     *out_size = 0U;
     if (!member || (pd && xx_pd_is_stopped(pd))) return false;
-    if (member->compressed_size < 0 ||
-        member->compressed_size > (int64_t)XX_CFL_MAX_DECODED) {
+    if (member->compressed_size < 0 || member->compressed_size > (int64_t)XX_CFL_MAX_DECODED) {
         return false;
     }
-    if (member->uncompressed_size < 0 ||
-        member->uncompressed_size > (int64_t)XX_CFL_MAX_DECODED) {
+    if (member->uncompressed_size < 0 || member->uncompressed_size > (int64_t)XX_CFL_MAX_DECODED) {
         return false;
     }
 
-    packed = (uint8_t *)xx_mem_alloc(
-        member->compressed_size != 0 ? (size_t)member->compressed_size : 1U);
+    packed = (uint8_t *)xx_mem_alloc(member->compressed_size != 0 ? (size_t)member->compressed_size : 1U);
     if (!packed) return false;
-    if (member->compressed_size != 0 &&
-        !xx_cfl_read_at(self, member->data_offset, packed,
-                        (size_t)member->compressed_size)) {
+    if (member->compressed_size != 0 && !xx_cfl_read_at(self, member->data_offset, packed, (size_t)member->compressed_size)) {
         xx_mem_free(packed);
         return false;
     }
@@ -572,9 +528,7 @@ static bool xx_cfl_decode(Abstractformat *self, const xx_cfl_member *member,
         return false;
     }
 
-    plain = (uint8_t *)xx_mem_alloc(member->uncompressed_size != 0
-                                        ? (size_t)member->uncompressed_size
-                                        : 1U);
+    plain = (uint8_t *)xx_mem_alloc(member->uncompressed_size != 0 ? (size_t)member->uncompressed_size : 1U);
     if (!plain) {
         xx_mem_free(packed);
         return false;
@@ -582,9 +536,7 @@ static bool xx_cfl_decode(Abstractformat *self, const xx_cfl_member *member,
     /* Raw DEFLATE, not zlib: parse validated the two RFC 1950 header bytes and
      * then published the extent that starts after them, because the archive
      * stores no Adler-32 trailer for a zlib decoder to find. */
-    if (!xx_deflate_decompress_memory(packed, (size_t)member->compressed_size,
-                                      plain, (size_t)member->uncompressed_size,
-                                      &written, false) ||
+    if (!xx_deflate_decompress_memory(packed, (size_t)member->compressed_size, plain, (size_t)member->uncompressed_size, &written, false) ||
         written != (size_t)member->uncompressed_size) {
         /* Short is a failure, never a success with fewer bytes: the container
          * states the exact decoded length, so anything else is corruption. */
@@ -600,8 +552,8 @@ static bool xx_cfl_decode(Abstractformat *self, const xx_cfl_member *member,
 
 /* ---------------------------------------------------------- lifecycle --- */
 
-void xx_cfl_init(xx_cfl *archive, xx_io_device *device,
-                    int64_t base_address) {
+void xx_cfl_init(xx_cfl *archive, xx_io_device *device, int64_t base_address)
+{
     if (!archive) return;
     xx_mem_zero(archive, sizeof(*archive));
     xx_format_init(&archive->format, device, base_address);
@@ -614,22 +566,17 @@ void xx_cfl_init(xx_cfl *archive, xx_io_device *device,
     archive->format.check_is_valid = xx_cfl_check_is_valid;
     archive->format.handle_base_info = xx_cfl_handle_base_info;
     archive->format.get_format_size = xx_cfl_get_format_size;
-    archive->format.get_number_of_archive_records =
-        xx_cfl_get_number_of_archive_records;
-    archive->format.create_archive_records_reading =
-        xx_cfl_create_archive_records_reading;
-    archive->format.get_current_archive_record =
-        xx_cfl_get_current_archive_record;
-    archive->format.unpack_current_archive_record =
-        xx_cfl_unpack_current_archive_record;
-    archive->format.archive_record_move_to_next =
-        xx_cfl_archive_record_move_to_next;
-    archive->format.free_archive_records_reading =
-        xx_cfl_free_archive_records_reading;
+    archive->format.get_number_of_archive_records = xx_cfl_get_number_of_archive_records;
+    archive->format.create_archive_records_reading = xx_cfl_create_archive_records_reading;
+    archive->format.get_current_archive_record = xx_cfl_get_current_archive_record;
+    archive->format.unpack_current_archive_record = xx_cfl_unpack_current_archive_record;
+    archive->format.archive_record_move_to_next = xx_cfl_archive_record_move_to_next;
+    archive->format.free_archive_records_reading = xx_cfl_free_archive_records_reading;
     archive->format.destroy = xx_cfl_vtable_destroy;
 }
 
-xx_cfl *xx_cfl_create(xx_io_device *device, int64_t base_address) {
+xx_cfl *xx_cfl_create(xx_io_device *device, int64_t base_address)
+{
     xx_cfl *archive = (xx_cfl *)xx_mem_alloc(sizeof(*archive));
 
     if (!archive) return NULL;
@@ -637,7 +584,8 @@ xx_cfl *xx_cfl_create(xx_io_device *device, int64_t base_address) {
     return archive;
 }
 
-void xx_cfl_destroy(xx_cfl *archive) {
+void xx_cfl_destroy(xx_cfl *archive)
+{
     if (!archive) return;
     /* Not xx_format_destroy: it dispatches through format.destroy, which is
      * the wrapper below, and the two would recurse. */
@@ -646,19 +594,22 @@ void xx_cfl_destroy(xx_cfl *archive) {
     archive->number_of_records = 0U;
 }
 
-void xx_cfl_free(xx_cfl *archive) {
+void xx_cfl_free(xx_cfl *archive)
+{
     if (!archive) return;
     xx_cfl_destroy(archive);
     xx_mem_free(archive);
 }
 
-static void xx_cfl_vtable_destroy(Abstractformat *self) {
+static void xx_cfl_vtable_destroy(Abstractformat *self)
+{
     xx_cfl_destroy((xx_cfl *)self);
 }
 
 /* -------------------------------------------------------------- format -- */
 
-bool xx_cfl_check_is_valid(Abstractformat *self, xx_pd_struct *pd) {
+bool xx_cfl_check_is_valid(Abstractformat *self, xx_pd_struct *pd)
+{
     xx_cfl_stream *stream;
 
     if (!self || (pd && xx_pd_is_stopped(pd))) return false;
@@ -668,7 +619,8 @@ bool xx_cfl_check_is_valid(Abstractformat *self, xx_pd_struct *pd) {
     return true;
 }
 
-bool xx_cfl_handle_base_info(Abstractformat *self, xx_pd_struct *pd) {
+bool xx_cfl_handle_base_info(Abstractformat *self, xx_pd_struct *pd)
+{
     xx_cfl *archive = (xx_cfl *)self;
     xx_cfl_stream *stream;
 
@@ -689,18 +641,17 @@ bool xx_cfl_handle_base_info(Abstractformat *self, xx_pd_struct *pd) {
     return true;
 }
 
-int64_t xx_cfl_get_format_size(Abstractformat *self, xx_pd_struct *pd) {
-    if (!self ||
-        (!self->base_info_handled && !xx_format_handle_base_info(self, pd))) {
+int64_t xx_cfl_get_format_size(Abstractformat *self, xx_pd_struct *pd)
+{
+    if (!self || (!self->base_info_handled && !xx_format_handle_base_info(self, pd))) {
         return 0;
     }
     return self->is_valid ? self->format_size : 0;
 }
 
-uint64_t xx_cfl_get_number_of_archive_records(Abstractformat *self,
-                                                 xx_pd_struct *pd) {
-    if (!self ||
-        (!self->base_info_handled && !xx_format_handle_base_info(self, pd))) {
+uint64_t xx_cfl_get_number_of_archive_records(Abstractformat *self, xx_pd_struct *pd)
+{
+    if (!self || (!self->base_info_handled && !xx_format_handle_base_info(self, pd))) {
         return 0U;
     }
     return self->is_valid ? ((xx_cfl *)self)->number_of_records : 0U;
@@ -708,8 +659,8 @@ uint64_t xx_cfl_get_number_of_archive_records(Abstractformat *self,
 
 /* ------------------------------------------------------------- records -- */
 
-static bool xx_cfl_set_record(xx_archive_record *record,
-                                 const xx_cfl_member *member) {
+static bool xx_cfl_set_record(xx_archive_record *record, const xx_cfl_member *member)
+{
     xx_archive_record_cleanup(record);
     xx_archive_record_init(record);
     record->header_offset = member->header_offset;
@@ -717,34 +668,24 @@ static bool xx_cfl_set_record(xx_archive_record *record,
     record->data_offset = member->data_offset;
     record->compressed_size = member->compressed_size;
     return xx_archive_record_set_original_name(record, member->name) &&
-           xx_archive_record_set_meta_u64(record, XX_META_ID_COMPRESSED_SIZE,
-                                          (uint64_t)member->compressed_size) &&
-           xx_archive_record_set_meta_u64(
-               record, XX_META_ID_UNCOMPRESSED_SIZE,
-               (uint64_t)member->uncompressed_size) &&
-           xx_archive_record_set_meta_u64(record, XX_META_ID_COMPRESSION_METHOD,
-                                          member->method) &&
-           xx_archive_record_set_meta_u64(record, XX_META_ID_TIMESTAMP,
-                                          member->timestamp) &&
-           xx_archive_record_set_meta_bool(record, XX_META_ID_IS_FOLDER,
-                                           member->is_folder) &&
-           xx_archive_record_set_meta_bool(record, XX_META_ID_IS_ENCRYPTED,
-                                           false);
+           xx_archive_record_set_meta_u64(record, XX_META_ID_COMPRESSED_SIZE, (uint64_t)member->compressed_size) &&
+           xx_archive_record_set_meta_u64(record, XX_META_ID_UNCOMPRESSED_SIZE, (uint64_t)member->uncompressed_size) &&
+           xx_archive_record_set_meta_u64(record, XX_META_ID_COMPRESSION_METHOD, member->method) &&
+           xx_archive_record_set_meta_u64(record, XX_META_ID_TIMESTAMP, member->timestamp) &&
+           xx_archive_record_set_meta_bool(record, XX_META_ID_IS_FOLDER, member->is_folder) && xx_archive_record_set_meta_bool(record, XX_META_ID_IS_ENCRYPTED, false);
 }
 
-static bool xx_cfl_copy_options(xx_list_s *target,
-                                   const xx_list_s *options) {
+static bool xx_cfl_copy_options(xx_list_s *target, const xx_list_s *options)
+{
     size_t index;
 
     if (!target || !options) return options == NULL;
     for (index = 0U; index < options->count; ++index) {
-        const xx_meta *source =
-            (const xx_meta *)xx_list_at((const xx_list_t *)options, index);
+        const xx_meta *source = (const xx_meta *)xx_list_at((const xx_list_t *)options, index);
         xx_meta copied;
         if (!source) continue;
         xx_meta_init(&copied, source->meta_id);
-        if (!xx_var_copy(&copied.var, &source->var) ||
-            !xx_list_append(target, &copied)) {
+        if (!xx_var_copy(&copied.var, &source->var) || !xx_list_append(target, &copied)) {
             xx_meta_cleanup(&copied);
             return false;
         }
@@ -752,21 +693,20 @@ static bool xx_cfl_copy_options(xx_list_s *target,
     return true;
 }
 
-static const xx_var *xx_cfl_get_option(const xx_list_s *options,
-                                          uint32_t meta_id) {
+static const xx_var *xx_cfl_get_option(const xx_list_s *options, uint32_t meta_id)
+{
     size_t index;
 
     if (!options) return NULL;
     for (index = 0U; index < options->count; ++index) {
-        const xx_meta *meta =
-            (const xx_meta *)xx_list_at((const xx_list_t *)options, index);
+        const xx_meta *meta = (const xx_meta *)xx_list_at((const xx_list_t *)options, index);
         if (meta && meta->meta_id == meta_id) return &meta->var;
     }
     return NULL;
 }
 
-xx_archive_record_state *xx_cfl_create_archive_records_reading(
-    Abstractformat *self, const xx_list_s *options, xx_pd_struct *pd) {
+xx_archive_record_state *xx_cfl_create_archive_records_reading(Abstractformat *self, const xx_list_s *options, xx_pd_struct *pd)
+{
     xx_cfl_stream *stream;
     xx_archive_record_state *state;
 
@@ -782,9 +722,7 @@ xx_archive_record_state *xx_cfl_create_archive_records_reading(
     state->internal_state = stream;
     state->free_internal = xx_cfl_stream_free;
     state->total_records = (int64_t)stream->count;
-    if (!xx_cfl_copy_options(&state->options, options) ||
-        (stream->count != 0U &&
-         !xx_cfl_set_record(&state->current_record, &stream->items[0]))) {
+    if (!xx_cfl_copy_options(&state->options, options) || (stream->count != 0U && !xx_cfl_set_record(&state->current_record, &stream->items[0]))) {
         xx_archive_record_state_free(state);
         return NULL;
     }
@@ -793,20 +731,16 @@ xx_archive_record_state *xx_cfl_create_archive_records_reading(
     return state;
 }
 
-const xx_archive_record *xx_cfl_get_current_archive_record(
-    Abstractformat *self, xx_archive_record_state *state) {
-    return self && state && state->format == self && state->has_record
-               ? &state->current_record
-               : NULL;
+const xx_archive_record *xx_cfl_get_current_archive_record(Abstractformat *self, xx_archive_record_state *state)
+{
+    return self && state && state->format == self && state->has_record ? &state->current_record : NULL;
 }
 
-bool xx_cfl_archive_record_move_to_next(Abstractformat *self,
-                                           xx_archive_record_state *state,
-                                           xx_pd_struct *pd) {
+bool xx_cfl_archive_record_move_to_next(Abstractformat *self, xx_archive_record_state *state, xx_pd_struct *pd)
+{
     xx_cfl_stream *stream;
 
-    if (!self || !state || state->format != self || !state->has_record ||
-        (pd && xx_pd_is_stopped(pd))) {
+    if (!self || !state || state->format != self || !state->has_record || (pd && xx_pd_is_stopped(pd))) {
         return false;
     }
     stream = (xx_cfl_stream *)state->internal_state;
@@ -818,14 +752,12 @@ bool xx_cfl_archive_record_move_to_next(Abstractformat *self,
     }
     ++stream->index;
     ++state->current_index;
-    state->has_record = xx_cfl_set_record(&state->current_record,
-                                             &stream->items[stream->index]);
+    state->has_record = xx_cfl_set_record(&state->current_record, &stream->items[stream->index]);
     return state->has_record;
 }
 
-bool xx_cfl_unpack_current_archive_record(Abstractformat *self,
-                                             xx_archive_record_state *state,
-                                             xx_pd_struct *pd) {
+bool xx_cfl_unpack_current_archive_record(Abstractformat *self, xx_archive_record_state *state, xx_pd_struct *pd)
+{
     xx_cfl_stream *stream;
     const xx_cfl_member *member;
     const xx_var *path_option;
@@ -837,8 +769,7 @@ bool xx_cfl_unpack_current_archive_record(Abstractformat *self,
     bool result = false;
     bool created = false;
 
-    if (!self || !state || state->format != self || !state->has_record ||
-        (pd && xx_pd_is_stopped(pd))) {
+    if (!self || !state || state->format != self || !state->has_record || (pd && xx_pd_is_stopped(pd))) {
         return false;
     }
     stream = (xx_cfl_stream *)state->internal_state;
@@ -846,8 +777,7 @@ bool xx_cfl_unpack_current_archive_record(Abstractformat *self,
     member = &stream->items[stream->index];
     if (!xx_cfl_path_safe(member->name)) return false;
 
-    path_option = xx_cfl_get_option(&state->options,
-                                       XX_META_ID_OPT_UNPACK_PATH);
+    path_option = xx_cfl_get_option(&state->options, XX_META_ID_OPT_UNPACK_PATH);
     if (!path_option) {
         /* No destination: decode and discard, which verifies the member
          * without writing anything. */
@@ -856,11 +786,9 @@ bool xx_cfl_unpack_current_archive_record(Abstractformat *self,
         xx_mem_free(plain);
         return result;
     }
-    if (path_option->type == XX_VAR_TYPE_STRING ||
-        path_option->type == XX_VAR_TYPE_STRING_VIEW) {
+    if (path_option->type == XX_VAR_TYPE_STRING || path_option->type == XX_VAR_TYPE_STRING_VIEW) {
         base_path = xx_var_get_str(path_option);
-    } else if (path_option->type == XX_VAR_TYPE_WSTRING ||
-               path_option->type == XX_VAR_TYPE_WSTRING_VIEW) {
+    } else if (path_option->type == XX_VAR_TYPE_WSTRING || path_option->type == XX_VAR_TYPE_WSTRING_VIEW) {
         converted_path = xx_str_unicode_to_utf8(xx_var_get_wstr(path_option));
         base_path = converted_path;
     }
@@ -868,9 +796,7 @@ bool xx_cfl_unpack_current_archive_record(Abstractformat *self,
         xx_str_free(converted_path);
         return false;
     }
-    if (base_path[0] != '\0' &&
-        base_path[xx_str_len(base_path) - 1U] != '/' &&
-        base_path[xx_str_len(base_path) - 1U] != '\\') {
+    if (base_path[0] != '\0' && base_path[xx_str_len(base_path) - 1U] != '/' && base_path[xx_str_len(base_path) - 1U] != '\\') {
         target_path = xx_str_concat3(base_path, "/", member->name);
     } else {
         target_path = xx_str_concat(base_path, member->name);
@@ -883,8 +809,7 @@ bool xx_cfl_unpack_current_archive_record(Abstractformat *self,
         xx_str_free(target_path);
         return result;
     }
-    if (!xx_store_create_dirs_a(target_path, false) ||
-        !xx_cfl_decode(self, member, &plain, &plain_size, pd)) {
+    if (!xx_store_create_dirs_a(target_path, false) || !xx_cfl_decode(self, member, &plain, &plain_size, pd)) {
         xx_str_free(target_path);
         return false;
     }
@@ -895,8 +820,7 @@ bool xx_cfl_unpack_current_archive_record(Abstractformat *self,
 
         result = output != NULL;
         while (result && completed < plain_size) {
-            ssize_t sent = xx_io_write(output, plain + completed,
-                                       plain_size - completed);
+            ssize_t sent = xx_io_write(output, plain + completed, plain_size - completed);
             if (sent <= 0 || (size_t)sent > plain_size - completed) {
                 result = false;
                 break;
@@ -911,8 +835,8 @@ bool xx_cfl_unpack_current_archive_record(Abstractformat *self,
     return result;
 }
 
-void xx_cfl_free_archive_records_reading(Abstractformat *self,
-                                            xx_archive_record_state *state) {
+void xx_cfl_free_archive_records_reading(Abstractformat *self, xx_archive_record_state *state)
+{
     (void)self;
     xx_archive_record_state_free(state);
 }

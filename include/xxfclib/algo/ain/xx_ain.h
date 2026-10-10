@@ -11,9 +11,7 @@ extern "C" {
 #endif
 
 /* Decode an AIN solid-stream range, discarding skip_size bytes first. */
-XXFC_API bool xx_ain_decode_memory(const uint8_t *input, size_t input_size,
-                                   size_t skip_size, uint8_t *output,
-                                   size_t output_size, size_t *written);
+XXFC_API bool xx_ain_decode_memory(const uint8_t *input, size_t input_size, size_t skip_size, uint8_t *output, size_t output_size, size_t *written);
 
 #ifdef __cplusplus
 }

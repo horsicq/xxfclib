@@ -7,26 +7,236 @@
 #include "../common/xx_serialized_value_helpers.h"
 
 #include "../common/xx_android_resource_wire.h"
-static bool sl_z(memory_blob *b,uint64_t at,uint64_t end,bool unicode) {uint64_t start=at;unsigned width=unicode ? 2:1;if(at>=end) return false;while(record_span(at,width,end)) {uint16_t c=unicode ? xx_data_get_u16(b->p+(size_t)at, 2, 0, false):b->p[(size_t)at];if(!c) return !unicode || android_wire_utf16(b,start,(at-start)/2);at+=width;if(at-start>65536) return false;}return false;}
-static bool sl_props(memory_blob *b,uint64_t at,uint64_t end) {uint64_t storages[128];unsigned count=0;while(at<end) {uint32_t n;if(!record_span(at,4,end)) return false;n=xx_data_get_u32(b->p+(size_t)at, 4, 0, false);if(!n) return at+4==end;if(n<28 || count>=128 || !record_span(at,n,end) || xx_data_get_u32(b->p+(size_t)at+4, 4, 0, false)!=0x53505331U) return false;for(unsigned i=0;i<count;++i) if(!xx_rt_memcmp(b->p+(size_t)(storages[i]+8),b->p+(size_t)at+8,16)) return false;storages[count++]=at;static const uint8_t named[]={5,213,205,213,156,46,27,16,147,151,8,0,43,44,249,174};if(!xx_rt_memcmp(b->p+(size_t)at+8,named,16)) return false;uint64_t p=at+24,limit=at+n;uint32_t ids[1024];unsigned values=0;while(p<limit) {uint32_t size,id;uint16_t type;uint64_t payload;if(!record_span(p,4,limit)) return false;size=xx_data_get_u32(b->p+(size_t)p, 4, 0, false);if(!size) {if(p+4!=limit) return false;p+=4;break;}if(values>=1024 || size<13 || !record_span(p,size,limit) || b->p[(size_t)p+8] || xx_data_get_u16(b->p+(size_t)p+11, 2, 0, false)) return false;id=xx_data_get_u32(b->p+(size_t)p+4, 4, 0, false);for(unsigned j=0;j<values;++j) if(ids[j]==id) return false;ids[values++]=id;type=xx_data_get_u16(b->p+(size_t)p+9, 2, 0, false);payload=type==72 ? 16:type==3 || type==19 ? 4:type==20 || type==21 || type==64 ? 8:UINT64_MAX;if(payload==UINT64_MAX || size!=13+payload) return false;p+=size;}if(p!=limit) return false;at=limit;}return false;}
-static bool sl_idlist(memory_blob *b,uint64_t at,uint64_t end,uint64_t wanted,bool *found) {unsigned count=0;*found=false;while(at<end) {uint16_t n;if(!record_span(at,2,end) || !blob_span(b,at,2)) return false;if(at==wanted) *found=true;n=xx_data_get_u16(b->p+(size_t)at, 2, 0, false);if(!n) return at+2==end;if(n<2 || ++count>2048 || !record_span(at,n,end)) return false;at+=n;}return false;}
-static bool sl_offset(memory_blob *b,uint64_t base,uint64_t end,uint32_t offset,uint32_t min,bool unicode) {return offset>=min && record_span(base,offset,end) && sl_z(b,base+offset,end,unicode);}
-static bool sl_linkinfo(memory_blob *b,uint64_t at,uint64_t end) {uint32_t size,hs,flags,volume,local,network,suffix;uint64_t z,ve;BLOB_NEED(record_span(at,28,end));size=xx_data_get_u32(b->p+(size_t)at, 4, 0, false);hs=xx_data_get_u32(b->p+(size_t)at+4, 4, 0, false);flags=xx_data_get_u32(b->p+(size_t)at+8, 4, 0, false);volume=xx_data_get_u32(b->p+(size_t)at+12, 4, 0, false);local=xx_data_get_u32(b->p+(size_t)at+16, 4, 0, false);network=xx_data_get_u32(b->p+(size_t)at+20, 4, 0, false);suffix=xx_data_get_u32(b->p+(size_t)at+24, 4, 0, false);BLOB_NEED(size==end-at && (hs==28 || hs>=36) && hs<=size && flags && !(flags&~3U) && sl_offset(b,at,end,suffix,hs,false));
-    if(flags&1) {uint32_t n,label;BLOB_NEED(volume>=hs && record_span(at+volume,16,end));z=at+volume;n=xx_data_get_u32(b->p+(size_t)z, 4, 0, false);label=xx_data_get_u32(b->p+(size_t)z+12, 4, 0, false);BLOB_NEED(n>16 && record_span(z,n,end) && xx_data_get_u32(b->p+(size_t)z+4, 4, 0, false)<=6);ve=z+n;if(label==20) {BLOB_NEED(n>20 && sl_offset(b,z,ve,xx_data_get_u32(b->p+(size_t)z+16, 4, 0, false),20,true));}else BLOB_NEED(sl_offset(b,z,ve,label,16,false));BLOB_NEED(sl_offset(b,at,end,local,hs,false));}else BLOB_NEED(!volume && !local);
-    if(flags&2) {uint32_t n,f,net,device;BLOB_NEED(network>=hs && record_span(at+network,20,end));z=at+network;n=xx_data_get_u32(b->p+(size_t)z, 4, 0, false);f=xx_data_get_u32(b->p+(size_t)z+4, 4, 0, false);net=xx_data_get_u32(b->p+(size_t)z+8, 4, 0, false);device=xx_data_get_u32(b->p+(size_t)z+12, 4, 0, false);BLOB_NEED(n>=20 && record_span(z,n,end) && !(f&~3U));ve=z+n;BLOB_NEED(sl_offset(b,z,ve,net,20,false) && ((f&1) ? sl_offset(b,z,ve,device,20,false):!device));if(net>20) BLOB_NEED(n>=28 && sl_offset(b,z,ve,xx_data_get_u32(b->p+(size_t)z+20, 4, 0, false),28,true) && (!(f&1) || sl_offset(b,z,ve,xx_data_get_u32(b->p+(size_t)z+24, 4, 0, false),28,true)));}else BLOB_NEED(!network);
-    if(hs>=36) {uint32_t u=xx_data_get_u32(b->p+(size_t)at+28, 4, 0, false),v=xx_data_get_u32(b->p+(size_t)at+32, 4, 0, false);BLOB_NEED((flags&1) ? sl_offset(b,at,end,u,hs,true):!u);BLOB_NEED(sl_offset(b,at,end,v,hs,true));}return true;done:return false;
+static bool sl_z(memory_blob *b, uint64_t at, uint64_t end, bool unicode)
+{
+    uint64_t start = at;
+    unsigned width = unicode ? 2 : 1;
+    if (at >= end) return false;
+    while (record_span(at, width, end)) {
+        uint16_t c = unicode ? xx_data_get_u16(b->p + (size_t)at, 2, 0, false) : b->p[(size_t)at];
+        if (!c) return !unicode || android_wire_utf16(b, start, (at - start) / 2);
+        at += width;
+        if (at - start > 65536) return false;
+    }
+    return false;
 }
-static bool pm_parse(Abstractformat *f,pm_stream *s,xx_pd_struct *pd) {static const uint8_t clsid[]={1,20,2,0,0,0,0,0,192,0,0,0,0,0,0,70};memory_blob b;uint64_t at=76,start,n,end,idStart=0,idEnd=0;uint32_t flags,extras=0;bool ok=false,found;if(!blob_load(f,&b,pd)) return false;BLOB_NEED(blob_span(&b,0,80) && xx_data_get_u32(b.p, 4, 0, false)==76 && !xx_rt_memcmp(b.p+4,clsid,16) && blob_zero(&b,66,10));flags=xx_data_get_u32(b.p+20, 4, 0, false);BLOB_NEED(!(flags&0xf8000000U) && (flags&0x1fU) && blob_add(f,s,&b,"shell-link-header",0,76));if(flags&1) {BLOB_NEED(blob_span(&b,at,2));n=xx_data_get_u16(b.p+(size_t)at, 2, 0, false);at+=2;idStart=at;idEnd=at+n;BLOB_NEED(blob_span(&b,at,n) && sl_idlist(&b,at,idEnd,UINT64_MAX,&found) && blob_add(f,s,&b,"target-idlist",at,n));at=idEnd;}
-    if(flags&2) {BLOB_NEED(blob_span(&b,at,4));n=xx_data_get_u32(b.p+(size_t)at, 4, 0, false);BLOB_NEED(n>=28 && blob_span(&b,at,n) && sl_linkinfo(&b,at,at+n) && blob_add(f,s,&b,"link-info",at,n));at+=n;}
-    for(unsigned bit=2;bit<=6;++bit) if(flags&(1U<<bit)) {start=at;BLOB_NEED(blob_span(&b,at,2));n=xx_data_get_u16(b.p+(size_t)at, 2, 0, false);at+=2;BLOB_NEED(blob_span(&b,at,n*((flags&128) ? 2U:1U)) && (!(flags&128) || android_wire_utf16(&b,at,n)));at+=n*((flags&128) ? 2U:1U);BLOB_NEED(blob_add(f,s,&b,"string-data",start,at-start));}
-    while(at<b.n) {uint32_t sig;BLOB_NEED(blob_span(&b,at,4));n=xx_data_get_u32(b.p+(size_t)at, 4, 0, false);if(!n) {BLOB_NEED(at+4==b.n && blob_add(f,s,&b,"terminal-block",at,4));at+=4;break;}BLOB_NEED(n>=8 && blob_span(&b,at,n));end=at+n;sig=xx_data_get_u32(b.p+(size_t)at+4, 4, 0, false);BLOB_NEED(sig>=0xa0000001U && sig<=0xa000000cU && sig!=0xa000000aU && !(extras&(1U<<(sig&15))));extras|=1U<<(sig&15);
-        if(sig==0xa0000001U || sig==0xa0000006U || sig==0xa0000007U) BLOB_NEED(n==788 && sl_z(&b,at+8,at+268,false) && sl_z(&b,at+268,end,true));else if(sig==0xa0000002U) BLOB_NEED(n==204 && sl_z(&b,at+44,at+108,true));else if(sig==0xa0000003U) BLOB_NEED(n==96 && xx_data_get_u32(b.p+(size_t)at+8, 4, 0, false)==88 && !xx_data_get_u32(b.p+(size_t)at+12, 4, 0, false) && sl_z(&b,at+16,at+32,false));else if(sig==0xa0000004U) BLOB_NEED(n==12);else if(sig==0xa0000005U || sig==0xa000000bU) {BLOB_NEED(n==(sig==0xa0000005U ? 16U:28U) && idStart && sl_idlist(&b,idStart,idEnd,idStart+xx_data_get_u32(b.p+(size_t)end-4, 4, 0, false),&found) && found);}else if(sig==0xa0000008U) BLOB_NEED(n>=136 && sl_z(&b,at+8,end,true));else if(sig==0xa0000009U) BLOB_NEED(n>=12 && sl_props(&b,at+8,end));else if(sig==0xa000000cU) BLOB_NEED(n>=10 && sl_idlist(&b,at+8,end,UINT64_MAX,&found));else BLOB_NEED(false);
-        BLOB_NEED(blob_add(f,s,&b,"extra-data",at,n));at=end;
-    }BLOB_NEED(at==b.n && b.n>=4 && !xx_data_get_u32(b.p+(size_t)b.n-4, 4, 0, false) && (!(flags&512) || (extras&2U)) && (!(flags&4096) || (extras&64U)) && (!(flags&16384) || (extras&128U)) && (!(flags&131072) || (extras&256U)));s->size=(int64_t)b.n;ok=true;done:xx_mem_free(b.p);return ok;}
+static bool sl_props(memory_blob *b, uint64_t at, uint64_t end)
+{
+    uint64_t storages[128];
+    unsigned count = 0;
+    while (at < end) {
+        uint32_t n;
+        if (!record_span(at, 4, end)) return false;
+        n = xx_data_get_u32(b->p + (size_t)at, 4, 0, false);
+        if (!n) return at + 4 == end;
+        if (n < 28 || count >= 128 || !record_span(at, n, end) || xx_data_get_u32(b->p + (size_t)at + 4, 4, 0, false) != 0x53505331U) return false;
+        for (unsigned i = 0; i < count; ++i)
+            if (!xx_rt_memcmp(b->p + (size_t)(storages[i] + 8), b->p + (size_t)at + 8, 16)) return false;
+        storages[count++] = at;
+        static const uint8_t named[] = {5, 213, 205, 213, 156, 46, 27, 16, 147, 151, 8, 0, 43, 44, 249, 174};
+        if (!xx_rt_memcmp(b->p + (size_t)at + 8, named, 16)) return false;
+        uint64_t p = at + 24, limit = at + n;
+        uint32_t ids[1024];
+        unsigned values = 0;
+        while (p < limit) {
+            uint32_t size, id;
+            uint16_t type;
+            uint64_t payload;
+            if (!record_span(p, 4, limit)) return false;
+            size = xx_data_get_u32(b->p + (size_t)p, 4, 0, false);
+            if (!size) {
+                if (p + 4 != limit) return false;
+                p += 4;
+                break;
+            }
+            if (values >= 1024 || size < 13 || !record_span(p, size, limit) || b->p[(size_t)p + 8] || xx_data_get_u16(b->p + (size_t)p + 11, 2, 0, false)) return false;
+            id = xx_data_get_u32(b->p + (size_t)p + 4, 4, 0, false);
+            for (unsigned j = 0; j < values; ++j)
+                if (ids[j] == id) return false;
+            ids[values++] = id;
+            type = xx_data_get_u16(b->p + (size_t)p + 9, 2, 0, false);
+            payload = type == 72 ? 16 : type == 3 || type == 19 ? 4 : type == 20 || type == 21 || type == 64 ? 8 : UINT64_MAX;
+            if (payload == UINT64_MAX || size != 13 + payload) return false;
+            p += size;
+        }
+        if (p != limit) return false;
+        at = limit;
+    }
+    return false;
+}
+static bool sl_idlist(memory_blob *b, uint64_t at, uint64_t end, uint64_t wanted, bool *found)
+{
+    unsigned count = 0;
+    *found = false;
+    while (at < end) {
+        uint16_t n;
+        if (!record_span(at, 2, end) || !blob_span(b, at, 2)) return false;
+        if (at == wanted) *found = true;
+        n = xx_data_get_u16(b->p + (size_t)at, 2, 0, false);
+        if (!n) return at + 2 == end;
+        if (n < 2 || ++count > 2048 || !record_span(at, n, end)) return false;
+        at += n;
+    }
+    return false;
+}
+static bool sl_offset(memory_blob *b, uint64_t base, uint64_t end, uint32_t offset, uint32_t min, bool unicode)
+{
+    return offset >= min && record_span(base, offset, end) && sl_z(b, base + offset, end, unicode);
+}
+static bool sl_linkinfo(memory_blob *b, uint64_t at, uint64_t end)
+{
+    uint32_t size, hs, flags, volume, local, network, suffix;
+    uint64_t z, ve;
+    BLOB_NEED(record_span(at, 28, end));
+    size = xx_data_get_u32(b->p + (size_t)at, 4, 0, false);
+    hs = xx_data_get_u32(b->p + (size_t)at + 4, 4, 0, false);
+    flags = xx_data_get_u32(b->p + (size_t)at + 8, 4, 0, false);
+    volume = xx_data_get_u32(b->p + (size_t)at + 12, 4, 0, false);
+    local = xx_data_get_u32(b->p + (size_t)at + 16, 4, 0, false);
+    network = xx_data_get_u32(b->p + (size_t)at + 20, 4, 0, false);
+    suffix = xx_data_get_u32(b->p + (size_t)at + 24, 4, 0, false);
+    BLOB_NEED(size == end - at && (hs == 28 || hs >= 36) && hs <= size && flags && !(flags & ~3U) && sl_offset(b, at, end, suffix, hs, false));
+    if (flags & 1) {
+        uint32_t n, label;
+        BLOB_NEED(volume >= hs && record_span(at + volume, 16, end));
+        z = at + volume;
+        n = xx_data_get_u32(b->p + (size_t)z, 4, 0, false);
+        label = xx_data_get_u32(b->p + (size_t)z + 12, 4, 0, false);
+        BLOB_NEED(n > 16 && record_span(z, n, end) && xx_data_get_u32(b->p + (size_t)z + 4, 4, 0, false) <= 6);
+        ve = z + n;
+        if (label == 20) {
+            BLOB_NEED(n > 20 && sl_offset(b, z, ve, xx_data_get_u32(b->p + (size_t)z + 16, 4, 0, false), 20, true));
+        } else BLOB_NEED(sl_offset(b, z, ve, label, 16, false));
+        BLOB_NEED(sl_offset(b, at, end, local, hs, false));
+    } else BLOB_NEED(!volume && !local);
+    if (flags & 2) {
+        uint32_t n, f, net, device;
+        BLOB_NEED(network >= hs && record_span(at + network, 20, end));
+        z = at + network;
+        n = xx_data_get_u32(b->p + (size_t)z, 4, 0, false);
+        f = xx_data_get_u32(b->p + (size_t)z + 4, 4, 0, false);
+        net = xx_data_get_u32(b->p + (size_t)z + 8, 4, 0, false);
+        device = xx_data_get_u32(b->p + (size_t)z + 12, 4, 0, false);
+        BLOB_NEED(n >= 20 && record_span(z, n, end) && !(f & ~3U));
+        ve = z + n;
+        BLOB_NEED(sl_offset(b, z, ve, net, 20, false) && ((f & 1) ? sl_offset(b, z, ve, device, 20, false) : !device));
+        if (net > 20)
+            BLOB_NEED(n >= 28 && sl_offset(b, z, ve, xx_data_get_u32(b->p + (size_t)z + 20, 4, 0, false), 28, true) &&
+                      (!(f & 1) || sl_offset(b, z, ve, xx_data_get_u32(b->p + (size_t)z + 24, 4, 0, false), 28, true)));
+    } else BLOB_NEED(!network);
+    if (hs >= 36) {
+        uint32_t u = xx_data_get_u32(b->p + (size_t)at + 28, 4, 0, false), v = xx_data_get_u32(b->p + (size_t)at + 32, 4, 0, false);
+        BLOB_NEED((flags & 1) ? sl_offset(b, at, end, u, hs, true) : !u);
+        BLOB_NEED(sl_offset(b, at, end, v, hs, true));
+    }
+    return true;
+done:
+    return false;
+}
+static bool pm_parse(Abstractformat *f, pm_stream *s, xx_pd_struct *pd)
+{
+    static const uint8_t clsid[] = {1, 20, 2, 0, 0, 0, 0, 0, 192, 0, 0, 0, 0, 0, 0, 70};
+    memory_blob b;
+    uint64_t at = 76, start, n, end, idStart = 0, idEnd = 0;
+    uint32_t flags, extras = 0;
+    bool ok = false, found;
+    if (!blob_load(f, &b, pd)) return false;
+    BLOB_NEED(blob_span(&b, 0, 80) && xx_data_get_u32(b.p, 4, 0, false) == 76 && !xx_rt_memcmp(b.p + 4, clsid, 16) && blob_zero(&b, 66, 10));
+    flags = xx_data_get_u32(b.p + 20, 4, 0, false);
+    BLOB_NEED(!(flags & 0xf8000000U) && (flags & 0x1fU) && blob_add(f, s, &b, "shell-link-header", 0, 76));
+    if (flags & 1) {
+        BLOB_NEED(blob_span(&b, at, 2));
+        n = xx_data_get_u16(b.p + (size_t)at, 2, 0, false);
+        at += 2;
+        idStart = at;
+        idEnd = at + n;
+        BLOB_NEED(blob_span(&b, at, n) && sl_idlist(&b, at, idEnd, UINT64_MAX, &found) && blob_add(f, s, &b, "target-idlist", at, n));
+        at = idEnd;
+    }
+    if (flags & 2) {
+        BLOB_NEED(blob_span(&b, at, 4));
+        n = xx_data_get_u32(b.p + (size_t)at, 4, 0, false);
+        BLOB_NEED(n >= 28 && blob_span(&b, at, n) && sl_linkinfo(&b, at, at + n) && blob_add(f, s, &b, "link-info", at, n));
+        at += n;
+    }
+    for (unsigned bit = 2; bit <= 6; ++bit)
+        if (flags & (1U << bit)) {
+            start = at;
+            BLOB_NEED(blob_span(&b, at, 2));
+            n = xx_data_get_u16(b.p + (size_t)at, 2, 0, false);
+            at += 2;
+            BLOB_NEED(blob_span(&b, at, n * ((flags & 128) ? 2U : 1U)) && (!(flags & 128) || android_wire_utf16(&b, at, n)));
+            at += n * ((flags & 128) ? 2U : 1U);
+            BLOB_NEED(blob_add(f, s, &b, "string-data", start, at - start));
+        }
+    while (at < b.n) {
+        uint32_t sig;
+        BLOB_NEED(blob_span(&b, at, 4));
+        n = xx_data_get_u32(b.p + (size_t)at, 4, 0, false);
+        if (!n) {
+            BLOB_NEED(at + 4 == b.n && blob_add(f, s, &b, "terminal-block", at, 4));
+            at += 4;
+            break;
+        }
+        BLOB_NEED(n >= 8 && blob_span(&b, at, n));
+        end = at + n;
+        sig = xx_data_get_u32(b.p + (size_t)at + 4, 4, 0, false);
+        BLOB_NEED(sig >= 0xa0000001U && sig <= 0xa000000cU && sig != 0xa000000aU && !(extras & (1U << (sig & 15))));
+        extras |= 1U << (sig & 15);
+        if (sig == 0xa0000001U || sig == 0xa0000006U || sig == 0xa0000007U) BLOB_NEED(n == 788 && sl_z(&b, at + 8, at + 268, false) && sl_z(&b, at + 268, end, true));
+        else if (sig == 0xa0000002U) BLOB_NEED(n == 204 && sl_z(&b, at + 44, at + 108, true));
+        else if (sig == 0xa0000003U)
+            BLOB_NEED(n == 96 && xx_data_get_u32(b.p + (size_t)at + 8, 4, 0, false) == 88 && !xx_data_get_u32(b.p + (size_t)at + 12, 4, 0, false) &&
+                      sl_z(&b, at + 16, at + 32, false));
+        else if (sig == 0xa0000004U) BLOB_NEED(n == 12);
+        else if (sig == 0xa0000005U || sig == 0xa000000bU) {
+            BLOB_NEED(n == (sig == 0xa0000005U ? 16U : 28U) && idStart &&
+                      sl_idlist(&b, idStart, idEnd, idStart + xx_data_get_u32(b.p + (size_t)end - 4, 4, 0, false), &found) && found);
+        } else if (sig == 0xa0000008U) BLOB_NEED(n >= 136 && sl_z(&b, at + 8, end, true));
+        else if (sig == 0xa0000009U) BLOB_NEED(n >= 12 && sl_props(&b, at + 8, end));
+        else if (sig == 0xa000000cU) BLOB_NEED(n >= 10 && sl_idlist(&b, at + 8, end, UINT64_MAX, &found));
+        else BLOB_NEED(false);
+        BLOB_NEED(blob_add(f, s, &b, "extra-data", at, n));
+        at = end;
+    }
+    BLOB_NEED(at == b.n && b.n >= 4 && !xx_data_get_u32(b.p + (size_t)b.n - 4, 4, 0, false) && (!(flags & 512) || (extras & 2U)) && (!(flags & 4096) || (extras & 64U)) &&
+              (!(flags & 16384) || (extras & 128U)) && (!(flags & 131072) || (extras & 256U)));
+    s->size = (int64_t)b.n;
+    ok = true;
+done:
+    xx_mem_free(b.p);
+    return ok;
+}
 
-void xx_windows_shell_link_init(xx_windows_shell_link *r,xx_io_device *d,int64_t b) { if(r) { xx_mem_zero(r,sizeof(*r)); pm_init(&r->format,d,b,XX_FILE_TYPE_WINDOWS_SHELL_LINK,"lnk"); } }
-xx_windows_shell_link *xx_windows_shell_link_create(xx_io_device *d,int64_t b) { xx_windows_shell_link *r=(xx_windows_shell_link *)xx_mem_alloc(sizeof(*r)); if(r) xx_windows_shell_link_init(r,d,b); return r; }
-void xx_windows_shell_link_destroy(xx_windows_shell_link *r) { if(r) xx_format_cleanup_extra_parameters(&r->format); }
-void xx_windows_shell_link_free(xx_windows_shell_link *r) { if(r) { xx_windows_shell_link_destroy(r); xx_mem_free(r); } }
-bool xx_windows_shell_link_check_is_valid(Abstractformat *f,xx_pd_struct *pd) { return pm_valid(f,pd); }
-bool xx_windows_shell_link_handle_base_info(Abstractformat *f,xx_pd_struct *pd) { return pm_handle(f,pd); }
+void xx_windows_shell_link_init(xx_windows_shell_link *r, xx_io_device *d, int64_t b)
+{
+    if (r) {
+        xx_mem_zero(r, sizeof(*r));
+        pm_init(&r->format, d, b, XX_FILE_TYPE_WINDOWS_SHELL_LINK, "lnk");
+    }
+}
+xx_windows_shell_link *xx_windows_shell_link_create(xx_io_device *d, int64_t b)
+{
+    xx_windows_shell_link *r = (xx_windows_shell_link *)xx_mem_alloc(sizeof(*r));
+    if (r) xx_windows_shell_link_init(r, d, b);
+    return r;
+}
+void xx_windows_shell_link_destroy(xx_windows_shell_link *r)
+{
+    if (r) xx_format_cleanup_extra_parameters(&r->format);
+}
+void xx_windows_shell_link_free(xx_windows_shell_link *r)
+{
+    if (r) {
+        xx_windows_shell_link_destroy(r);
+        xx_mem_free(r);
+    }
+}
+bool xx_windows_shell_link_check_is_valid(Abstractformat *f, xx_pd_struct *pd)
+{
+    return pm_valid(f, pd);
+}
+bool xx_windows_shell_link_handle_base_info(Abstractformat *f, xx_pd_struct *pd)
+{
+    return pm_handle(f, pd);
+}

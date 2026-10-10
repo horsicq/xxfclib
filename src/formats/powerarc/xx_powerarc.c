@@ -68,17 +68,15 @@ static void xx_powerarc_vtable_destroy(Abstractformat *self);
 
 /* ------------------------------------------------------------- helpers -- */
 
-static bool xx_powerarc_read_at(Abstractformat *self, int64_t offset,
-                              uint8_t *buffer, size_t size) {
+static bool xx_powerarc_read_at(Abstractformat *self, int64_t offset, uint8_t *buffer, size_t size)
+{
     size_t completed = 0U;
 
-    if (!self || !self->device || offset < 0 ||
-        xx_io_seek64(self->device, offset, SEEK_SET) != 0) {
+    if (!self || !self->device || offset < 0 || xx_io_seek64(self->device, offset, SEEK_SET) != 0) {
         return false;
     }
     while (completed < size) {
-        ssize_t received =
-            xx_io_read(self->device, buffer + completed, size - completed);
+        ssize_t received = xx_io_read(self->device, buffer + completed, size - completed);
         if (received <= 0 || (size_t)received > size - completed) {
             return false;
         }
@@ -87,14 +85,14 @@ static bool xx_powerarc_read_at(Abstractformat *self, int64_t offset,
     return true;
 }
 
-static bool xx_powerarc_range_within(int64_t total, int64_t offset,
-                                   int64_t size) {
-    return offset >= 0 && size >= 0 && offset <= total &&
-           size <= total - offset;
+static bool xx_powerarc_range_within(int64_t total, int64_t offset, int64_t size)
+{
+    return offset >= 0 && size >= 0 && offset <= total && size <= total - offset;
 }
 
 /* Refuse anything that would escape the extraction directory. */
-static bool xx_powerarc_path_safe(const char *name) {
+static bool xx_powerarc_path_safe(const char *name)
+{
     const char *cursor = name;
 
     if (!name || !name[0] || name[0] == '/') return false;
@@ -109,7 +107,8 @@ static bool xx_powerarc_path_safe(const char *name) {
     return true;
 }
 
-static void xx_powerarc_stream_free(void *pointer) {
+static void xx_powerarc_stream_free(void *pointer)
+{
     xx_powerarc_stream *stream = (xx_powerarc_stream *)pointer;
     size_t index;
 
@@ -122,17 +121,15 @@ static void xx_powerarc_stream_free(void *pointer) {
 }
 
 /* Append a member, taking ownership of @p name. */
-static bool xx_powerarc_add(xx_powerarc_stream *stream,
-                          const xx_powerarc_member *member) {
-    xx_powerarc_member *grown = (xx_powerarc_member *)xx_mem_realloc(
-        stream->items, sizeof(*grown) * (stream->count + 1U));
+static bool xx_powerarc_add(xx_powerarc_stream *stream, const xx_powerarc_member *member)
+{
+    xx_powerarc_member *grown = (xx_powerarc_member *)xx_mem_realloc(stream->items, sizeof(*grown) * (stream->count + 1U));
 
     if (!grown) return false;
     stream->items = grown;
     stream->items[stream->count++] = *member;
     return true;
 }
-
 
 #define XX_POWERARC_MAGIC_SIZE 8
 #define XX_POWERARC_HEADER_SIZE 8
@@ -151,7 +148,6 @@ static bool xx_powerarc_block_magic_is_valid(const uint8_t *data);
 static xx_powerarc_stream *xx_powerarc_parse(Abstractformat *self, xx_pd_struct *pd);
 static bool xx_powerarc_decode(Abstractformat *self, const xx_powerarc_member *member, uint8_t **out, size_t *out_size, xx_pd_struct *pd);
 
-
 /* Header, then "BZh", the block-size digit and the 48-bit block magic. */
 /* The shortest legal bzip2 stream: "BZh9", the 48-bit end-of-stream magic and
  * the 32-bit combined CRC. */
@@ -160,7 +156,8 @@ static bool xx_powerarc_decode(Abstractformat *self, const xx_powerarc_member *m
  * a member listing should show, so it is the well-known bzip2 method id (12,
  * as in ZIP), not a library enum. */
 
-static uint32_t xx_powerarc_be16(const uint8_t *data) {
+static uint32_t xx_powerarc_be16(const uint8_t *data)
+{
     return ((uint32_t)data[0] << 8) | (uint32_t)data[1];
 }
 
@@ -170,18 +167,17 @@ static uint32_t xx_powerarc_be16(const uint8_t *data) {
  * (0x177245385090, the digits of sqrt(pi)) for a stream with no blocks at
  * all. Nothing else can appear there.
  */
-static bool xx_powerarc_block_magic_is_valid(const uint8_t *data) {
+static bool xx_powerarc_block_magic_is_valid(const uint8_t *data)
+{
     uint32_t high = xx_data_get_u32(data, 4, 0, true);
     uint32_t low = xx_powerarc_be16(data + 4);
 
-    return (high == 0x31415926U && low == 0x5359U) ||
-           (high == 0x17724538U && low == 0x5090U);
+    return (high == 0x31415926U && low == 0x5359U) || (high == 0x17724538U && low == 0x5090U);
 }
 
-static xx_powerarc_stream *xx_powerarc_parse(Abstractformat *self,
-                                             xx_pd_struct *pd) {
-    static const uint8_t expected[XX_POWERARC_MAGIC_SIZE] = {
-        'B', 'Z', 'I', 'P', '0', '0', '0', '1'};
+static xx_powerarc_stream *xx_powerarc_parse(Abstractformat *self, xx_pd_struct *pd)
+{
+    static const uint8_t expected[XX_POWERARC_MAGIC_SIZE] = {'B', 'Z', 'I', 'P', '0', '0', '0', '1'};
     xx_powerarc_stream *stream = NULL;
     xx_powerarc_member member;
     uint8_t probe[XX_POWERARC_PROBE_SIZE];
@@ -218,8 +214,7 @@ static xx_powerarc_stream *xx_powerarc_parse(Abstractformat *self,
     payload_size = span - XX_POWERARC_HEADER_SIZE;
     /* Trivially true given the floor above, but the member's extent is
      * checked against the span before it is published, like any other. */
-    if (!xx_powerarc_range_within(span, XX_POWERARC_HEADER_SIZE,
-                                  payload_size)) {
+    if (!xx_powerarc_range_within(span, XX_POWERARC_HEADER_SIZE, payload_size)) {
         return NULL;
     }
 
@@ -258,7 +253,6 @@ fail:
     return NULL;
 }
 
-
 /* A PowerArc payload is always bzip2 -- that is what the magic asserts -- so
  * there is exactly one method, and anything else must fail rather than fall
  * back to a stored copy, which would hand the caller compressed bytes dressed
@@ -266,9 +260,8 @@ fail:
 /* Nothing in the container records the decoded length, so the first attempt
  * is a guess; these bound it. */
 
-static bool xx_powerarc_decode(Abstractformat *self,
-                               const xx_powerarc_member *member, uint8_t **out,
-                               size_t *out_size, xx_pd_struct *pd) {
+static bool xx_powerarc_decode(Abstractformat *self, const xx_powerarc_member *member, uint8_t **out, size_t *out_size, xx_pd_struct *pd)
+{
     uint8_t *packed = NULL;
     uint8_t *plain = NULL;
     size_t packed_size;
@@ -280,8 +273,7 @@ static bool xx_powerarc_decode(Abstractformat *self,
     *out_size = 0U;
     if (!self || !member || !member->name) return false;
     if (member->method != XX_POWERARC_METHOD_BZIP2) return false;
-    if (member->compressed_size <= 0 ||
-        (uint64_t)member->compressed_size > (uint64_t)XX_POWERARC_MAX_DECODED) {
+    if (member->compressed_size <= 0 || (uint64_t)member->compressed_size > (uint64_t)XX_POWERARC_MAX_DECODED) {
         return false;
     }
     if (pd && xx_pd_is_stopped(pd)) return false;
@@ -289,8 +281,7 @@ static bool xx_powerarc_decode(Abstractformat *self,
     packed_size = (size_t)member->compressed_size;
     packed = (uint8_t *)xx_mem_alloc(packed_size);
     if (!packed) return false;
-    if (!xx_powerarc_read_at(self, member->data_offset, packed, packed_size) ||
-        (pd && xx_pd_is_stopped(pd))) {
+    if (!xx_powerarc_read_at(self, member->data_offset, packed, packed_size) || (pd && xx_pd_is_stopped(pd))) {
         xx_mem_free(packed);
         return false;
     }
@@ -300,16 +291,14 @@ static bool xx_powerarc_decode(Abstractformat *self,
          * measured length turns the growth loop into a single exact-size
          * attempt, so measuring costs one extra decode in total rather than
          * one per record. */
-        if ((uint64_t)member->uncompressed_size >
-            (uint64_t)XX_POWERARC_MAX_DECODED) {
+        if ((uint64_t)member->uncompressed_size > (uint64_t)XX_POWERARC_MAX_DECODED) {
             xx_mem_free(packed);
             return false;
         }
         capacity = (size_t)member->uncompressed_size;
     } else {
         capacity = packed_size;
-        if (capacity <= (size_t)XX_POWERARC_MAX_DECODED /
-                            (size_t)XX_POWERARC_GUESS_RATIO) {
+        if (capacity <= (size_t)XX_POWERARC_MAX_DECODED / (size_t)XX_POWERARC_GUESS_RATIO) {
             capacity *= (size_t)XX_POWERARC_GUESS_RATIO;
         } else {
             capacity = (size_t)XX_POWERARC_MAX_DECODED;
@@ -328,9 +317,7 @@ static bool xx_powerarc_decode(Abstractformat *self,
         plain = (uint8_t *)xx_mem_alloc(capacity != 0U ? capacity : 1U);
         if (!plain) break;
         written = 0U;
-        if (xx_bzip2_decompress_memory(packed, packed_size, plain, capacity,
-                                       &written) &&
-            written <= capacity) {
+        if (xx_bzip2_decompress_memory(packed, packed_size, plain, capacity, &written) && written <= capacity) {
             decoded = true;
             break;
         }
@@ -339,9 +326,7 @@ static bool xx_powerarc_decode(Abstractformat *self,
         if (member->uncompressed_size >= 0) break; /* exact size, no retry */
         if (capacity >= (size_t)XX_POWERARC_MAX_DECODED) break;
         if (pd && xx_pd_is_stopped(pd)) break;
-        capacity = (capacity > (size_t)XX_POWERARC_MAX_DECODED / 2U)
-                       ? (size_t)XX_POWERARC_MAX_DECODED
-                       : capacity * 2U;
+        capacity = (capacity > (size_t)XX_POWERARC_MAX_DECODED / 2U) ? (size_t)XX_POWERARC_MAX_DECODED : capacity * 2U;
     }
     xx_mem_free(packed);
     if (!decoded) {
@@ -350,8 +335,7 @@ static bool xx_powerarc_decode(Abstractformat *self,
     }
     /* When the container did claim a length, a decode that produced anything
      * else is a failure, not a partial success. */
-    if (member->uncompressed_size >= 0 &&
-        written != (size_t)member->uncompressed_size) {
+    if (member->uncompressed_size >= 0 && written != (size_t)member->uncompressed_size) {
         xx_mem_free(plain);
         return false;
     }
@@ -371,8 +355,8 @@ static bool xx_powerarc_decode(Abstractformat *self,
  * UINT64_MAX to a caller, and a caller that skips unknown-size members never
  * asks for the bytes, so the bzip2 CRC never gets to refuse them. The decode
  * path is untouched - a corrupt or truncated stream still fails there. */
-static void xx_powerarc_measure(Abstractformat *self,
-                                xx_powerarc_member *member) {
+static void xx_powerarc_measure(Abstractformat *self, xx_powerarc_member *member)
+{
     uint8_t *plain = NULL;
     size_t plain_size = 0U;
 
@@ -387,8 +371,8 @@ static void xx_powerarc_measure(Abstractformat *self,
 
 /* ---------------------------------------------------------- lifecycle --- */
 
-void xx_powerarc_init(xx_powerarc *archive, xx_io_device *device,
-                    int64_t base_address) {
+void xx_powerarc_init(xx_powerarc *archive, xx_io_device *device, int64_t base_address)
+{
     if (!archive) return;
     xx_mem_zero(archive, sizeof(*archive));
     xx_format_init(&archive->format, device, base_address);
@@ -401,22 +385,17 @@ void xx_powerarc_init(xx_powerarc *archive, xx_io_device *device,
     archive->format.check_is_valid = xx_powerarc_check_is_valid;
     archive->format.handle_base_info = xx_powerarc_handle_base_info;
     archive->format.get_format_size = xx_powerarc_get_format_size;
-    archive->format.get_number_of_archive_records =
-        xx_powerarc_get_number_of_archive_records;
-    archive->format.create_archive_records_reading =
-        xx_powerarc_create_archive_records_reading;
-    archive->format.get_current_archive_record =
-        xx_powerarc_get_current_archive_record;
-    archive->format.unpack_current_archive_record =
-        xx_powerarc_unpack_current_archive_record;
-    archive->format.archive_record_move_to_next =
-        xx_powerarc_archive_record_move_to_next;
-    archive->format.free_archive_records_reading =
-        xx_powerarc_free_archive_records_reading;
+    archive->format.get_number_of_archive_records = xx_powerarc_get_number_of_archive_records;
+    archive->format.create_archive_records_reading = xx_powerarc_create_archive_records_reading;
+    archive->format.get_current_archive_record = xx_powerarc_get_current_archive_record;
+    archive->format.unpack_current_archive_record = xx_powerarc_unpack_current_archive_record;
+    archive->format.archive_record_move_to_next = xx_powerarc_archive_record_move_to_next;
+    archive->format.free_archive_records_reading = xx_powerarc_free_archive_records_reading;
     archive->format.destroy = xx_powerarc_vtable_destroy;
 }
 
-xx_powerarc *xx_powerarc_create(xx_io_device *device, int64_t base_address) {
+xx_powerarc *xx_powerarc_create(xx_io_device *device, int64_t base_address)
+{
     xx_powerarc *archive = (xx_powerarc *)xx_mem_alloc(sizeof(*archive));
 
     if (!archive) return NULL;
@@ -424,7 +403,8 @@ xx_powerarc *xx_powerarc_create(xx_io_device *device, int64_t base_address) {
     return archive;
 }
 
-void xx_powerarc_destroy(xx_powerarc *archive) {
+void xx_powerarc_destroy(xx_powerarc *archive)
+{
     if (!archive) return;
     /* Not xx_format_destroy: it dispatches through format.destroy, which is
      * the wrapper below, and the two would recurse. */
@@ -433,19 +413,22 @@ void xx_powerarc_destroy(xx_powerarc *archive) {
     archive->number_of_records = 0U;
 }
 
-void xx_powerarc_free(xx_powerarc *archive) {
+void xx_powerarc_free(xx_powerarc *archive)
+{
     if (!archive) return;
     xx_powerarc_destroy(archive);
     xx_mem_free(archive);
 }
 
-static void xx_powerarc_vtable_destroy(Abstractformat *self) {
+static void xx_powerarc_vtable_destroy(Abstractformat *self)
+{
     xx_powerarc_destroy((xx_powerarc *)self);
 }
 
 /* -------------------------------------------------------------- format -- */
 
-bool xx_powerarc_check_is_valid(Abstractformat *self, xx_pd_struct *pd) {
+bool xx_powerarc_check_is_valid(Abstractformat *self, xx_pd_struct *pd)
+{
     xx_powerarc_stream *stream;
 
     if (!self || (pd && xx_pd_is_stopped(pd))) return false;
@@ -455,7 +438,8 @@ bool xx_powerarc_check_is_valid(Abstractformat *self, xx_pd_struct *pd) {
     return true;
 }
 
-bool xx_powerarc_handle_base_info(Abstractformat *self, xx_pd_struct *pd) {
+bool xx_powerarc_handle_base_info(Abstractformat *self, xx_pd_struct *pd)
+{
     xx_powerarc *archive = (xx_powerarc *)self;
     xx_powerarc_stream *stream;
 
@@ -476,18 +460,17 @@ bool xx_powerarc_handle_base_info(Abstractformat *self, xx_pd_struct *pd) {
     return true;
 }
 
-int64_t xx_powerarc_get_format_size(Abstractformat *self, xx_pd_struct *pd) {
-    if (!self ||
-        (!self->base_info_handled && !xx_format_handle_base_info(self, pd))) {
+int64_t xx_powerarc_get_format_size(Abstractformat *self, xx_pd_struct *pd)
+{
+    if (!self || (!self->base_info_handled && !xx_format_handle_base_info(self, pd))) {
         return 0;
     }
     return self->is_valid ? self->format_size : 0;
 }
 
-uint64_t xx_powerarc_get_number_of_archive_records(Abstractformat *self,
-                                                 xx_pd_struct *pd) {
-    if (!self ||
-        (!self->base_info_handled && !xx_format_handle_base_info(self, pd))) {
+uint64_t xx_powerarc_get_number_of_archive_records(Abstractformat *self, xx_pd_struct *pd)
+{
+    if (!self || (!self->base_info_handled && !xx_format_handle_base_info(self, pd))) {
         return 0U;
     }
     return self->is_valid ? ((xx_powerarc *)self)->number_of_records : 0U;
@@ -495,9 +478,8 @@ uint64_t xx_powerarc_get_number_of_archive_records(Abstractformat *self,
 
 /* ------------------------------------------------------------- records -- */
 
-static bool xx_powerarc_set_record(Abstractformat *self,
-                                 xx_archive_record *record,
-                                 xx_powerarc_member *member) {
+static bool xx_powerarc_set_record(Abstractformat *self, xx_archive_record *record, xx_powerarc_member *member)
+{
     xx_powerarc_measure(self, member);
     xx_archive_record_cleanup(record);
     xx_archive_record_init(record);
@@ -506,34 +488,24 @@ static bool xx_powerarc_set_record(Abstractformat *self,
     record->data_offset = member->data_offset;
     record->compressed_size = member->compressed_size;
     return xx_archive_record_set_original_name(record, member->name) &&
-           xx_archive_record_set_meta_u64(record, XX_META_ID_COMPRESSED_SIZE,
-                                          (uint64_t)member->compressed_size) &&
-           xx_archive_record_set_meta_u64(
-               record, XX_META_ID_UNCOMPRESSED_SIZE,
-               (uint64_t)member->uncompressed_size) &&
-           xx_archive_record_set_meta_u64(record, XX_META_ID_COMPRESSION_METHOD,
-                                          member->method) &&
-           xx_archive_record_set_meta_u64(record, XX_META_ID_TIMESTAMP,
-                                          member->timestamp) &&
-           xx_archive_record_set_meta_bool(record, XX_META_ID_IS_FOLDER,
-                                           member->is_folder) &&
-           xx_archive_record_set_meta_bool(record, XX_META_ID_IS_ENCRYPTED,
-                                           false);
+           xx_archive_record_set_meta_u64(record, XX_META_ID_COMPRESSED_SIZE, (uint64_t)member->compressed_size) &&
+           xx_archive_record_set_meta_u64(record, XX_META_ID_UNCOMPRESSED_SIZE, (uint64_t)member->uncompressed_size) &&
+           xx_archive_record_set_meta_u64(record, XX_META_ID_COMPRESSION_METHOD, member->method) &&
+           xx_archive_record_set_meta_u64(record, XX_META_ID_TIMESTAMP, member->timestamp) &&
+           xx_archive_record_set_meta_bool(record, XX_META_ID_IS_FOLDER, member->is_folder) && xx_archive_record_set_meta_bool(record, XX_META_ID_IS_ENCRYPTED, false);
 }
 
-static bool xx_powerarc_copy_options(xx_list_s *target,
-                                   const xx_list_s *options) {
+static bool xx_powerarc_copy_options(xx_list_s *target, const xx_list_s *options)
+{
     size_t index;
 
     if (!target || !options) return options == NULL;
     for (index = 0U; index < options->count; ++index) {
-        const xx_meta *source =
-            (const xx_meta *)xx_list_at((const xx_list_t *)options, index);
+        const xx_meta *source = (const xx_meta *)xx_list_at((const xx_list_t *)options, index);
         xx_meta copied;
         if (!source) continue;
         xx_meta_init(&copied, source->meta_id);
-        if (!xx_var_copy(&copied.var, &source->var) ||
-            !xx_list_append(target, &copied)) {
+        if (!xx_var_copy(&copied.var, &source->var) || !xx_list_append(target, &copied)) {
             xx_meta_cleanup(&copied);
             return false;
         }
@@ -541,21 +513,20 @@ static bool xx_powerarc_copy_options(xx_list_s *target,
     return true;
 }
 
-static const xx_var *xx_powerarc_get_option(const xx_list_s *options,
-                                          uint32_t meta_id) {
+static const xx_var *xx_powerarc_get_option(const xx_list_s *options, uint32_t meta_id)
+{
     size_t index;
 
     if (!options) return NULL;
     for (index = 0U; index < options->count; ++index) {
-        const xx_meta *meta =
-            (const xx_meta *)xx_list_at((const xx_list_t *)options, index);
+        const xx_meta *meta = (const xx_meta *)xx_list_at((const xx_list_t *)options, index);
         if (meta && meta->meta_id == meta_id) return &meta->var;
     }
     return NULL;
 }
 
-xx_archive_record_state *xx_powerarc_create_archive_records_reading(
-    Abstractformat *self, const xx_list_s *options, xx_pd_struct *pd) {
+xx_archive_record_state *xx_powerarc_create_archive_records_reading(Abstractformat *self, const xx_list_s *options, xx_pd_struct *pd)
+{
     xx_powerarc_stream *stream;
     xx_archive_record_state *state;
 
@@ -571,10 +542,7 @@ xx_archive_record_state *xx_powerarc_create_archive_records_reading(
     state->internal_state = stream;
     state->free_internal = xx_powerarc_stream_free;
     state->total_records = (int64_t)stream->count;
-    if (!xx_powerarc_copy_options(&state->options, options) ||
-        (stream->count != 0U &&
-         !xx_powerarc_set_record(self, &state->current_record,
-                                 &stream->items[0]))) {
+    if (!xx_powerarc_copy_options(&state->options, options) || (stream->count != 0U && !xx_powerarc_set_record(self, &state->current_record, &stream->items[0]))) {
         xx_archive_record_state_free(state);
         return NULL;
     }
@@ -583,20 +551,16 @@ xx_archive_record_state *xx_powerarc_create_archive_records_reading(
     return state;
 }
 
-const xx_archive_record *xx_powerarc_get_current_archive_record(
-    Abstractformat *self, xx_archive_record_state *state) {
-    return self && state && state->format == self && state->has_record
-               ? &state->current_record
-               : NULL;
+const xx_archive_record *xx_powerarc_get_current_archive_record(Abstractformat *self, xx_archive_record_state *state)
+{
+    return self && state && state->format == self && state->has_record ? &state->current_record : NULL;
 }
 
-bool xx_powerarc_archive_record_move_to_next(Abstractformat *self,
-                                           xx_archive_record_state *state,
-                                           xx_pd_struct *pd) {
+bool xx_powerarc_archive_record_move_to_next(Abstractformat *self, xx_archive_record_state *state, xx_pd_struct *pd)
+{
     xx_powerarc_stream *stream;
 
-    if (!self || !state || state->format != self || !state->has_record ||
-        (pd && xx_pd_is_stopped(pd))) {
+    if (!self || !state || state->format != self || !state->has_record || (pd && xx_pd_is_stopped(pd))) {
         return false;
     }
     stream = (xx_powerarc_stream *)state->internal_state;
@@ -608,14 +572,12 @@ bool xx_powerarc_archive_record_move_to_next(Abstractformat *self,
     }
     ++stream->index;
     ++state->current_index;
-    state->has_record = xx_powerarc_set_record(self, &state->current_record,
-                                             &stream->items[stream->index]);
+    state->has_record = xx_powerarc_set_record(self, &state->current_record, &stream->items[stream->index]);
     return state->has_record;
 }
 
-bool xx_powerarc_unpack_current_archive_record(Abstractformat *self,
-                                             xx_archive_record_state *state,
-                                             xx_pd_struct *pd) {
+bool xx_powerarc_unpack_current_archive_record(Abstractformat *self, xx_archive_record_state *state, xx_pd_struct *pd)
+{
     xx_powerarc_stream *stream;
     const xx_powerarc_member *member;
     const xx_var *path_option;
@@ -627,8 +589,7 @@ bool xx_powerarc_unpack_current_archive_record(Abstractformat *self,
     bool result = false;
     bool created = false;
 
-    if (!self || !state || state->format != self || !state->has_record ||
-        (pd && xx_pd_is_stopped(pd))) {
+    if (!self || !state || state->format != self || !state->has_record || (pd && xx_pd_is_stopped(pd))) {
         return false;
     }
     stream = (xx_powerarc_stream *)state->internal_state;
@@ -636,8 +597,7 @@ bool xx_powerarc_unpack_current_archive_record(Abstractformat *self,
     member = &stream->items[stream->index];
     if (!xx_powerarc_path_safe(member->name)) return false;
 
-    path_option = xx_powerarc_get_option(&state->options,
-                                       XX_META_ID_OPT_UNPACK_PATH);
+    path_option = xx_powerarc_get_option(&state->options, XX_META_ID_OPT_UNPACK_PATH);
     if (!path_option) {
         /* No destination: decode and discard, which verifies the member
          * without writing anything. */
@@ -646,11 +606,9 @@ bool xx_powerarc_unpack_current_archive_record(Abstractformat *self,
         xx_mem_free(plain);
         return result;
     }
-    if (path_option->type == XX_VAR_TYPE_STRING ||
-        path_option->type == XX_VAR_TYPE_STRING_VIEW) {
+    if (path_option->type == XX_VAR_TYPE_STRING || path_option->type == XX_VAR_TYPE_STRING_VIEW) {
         base_path = xx_var_get_str(path_option);
-    } else if (path_option->type == XX_VAR_TYPE_WSTRING ||
-               path_option->type == XX_VAR_TYPE_WSTRING_VIEW) {
+    } else if (path_option->type == XX_VAR_TYPE_WSTRING || path_option->type == XX_VAR_TYPE_WSTRING_VIEW) {
         converted_path = xx_str_unicode_to_utf8(xx_var_get_wstr(path_option));
         base_path = converted_path;
     }
@@ -658,9 +616,7 @@ bool xx_powerarc_unpack_current_archive_record(Abstractformat *self,
         xx_str_free(converted_path);
         return false;
     }
-    if (base_path[0] != '\0' &&
-        base_path[xx_str_len(base_path) - 1U] != '/' &&
-        base_path[xx_str_len(base_path) - 1U] != '\\') {
+    if (base_path[0] != '\0' && base_path[xx_str_len(base_path) - 1U] != '/' && base_path[xx_str_len(base_path) - 1U] != '\\') {
         target_path = xx_str_concat3(base_path, "/", member->name);
     } else {
         target_path = xx_str_concat(base_path, member->name);
@@ -673,8 +629,7 @@ bool xx_powerarc_unpack_current_archive_record(Abstractformat *self,
         xx_str_free(target_path);
         return result;
     }
-    if (!xx_store_create_dirs_a(target_path, false) ||
-        !xx_powerarc_decode(self, member, &plain, &plain_size, pd)) {
+    if (!xx_store_create_dirs_a(target_path, false) || !xx_powerarc_decode(self, member, &plain, &plain_size, pd)) {
         xx_str_free(target_path);
         return false;
     }
@@ -685,8 +640,7 @@ bool xx_powerarc_unpack_current_archive_record(Abstractformat *self,
 
         result = output != NULL;
         while (result && completed < plain_size) {
-            ssize_t sent = xx_io_write(output, plain + completed,
-                                       plain_size - completed);
+            ssize_t sent = xx_io_write(output, plain + completed, plain_size - completed);
             if (sent <= 0 || (size_t)sent > plain_size - completed) {
                 result = false;
                 break;
@@ -701,8 +655,8 @@ bool xx_powerarc_unpack_current_archive_record(Abstractformat *self,
     return result;
 }
 
-void xx_powerarc_free_archive_records_reading(Abstractformat *self,
-                                            xx_archive_record_state *state) {
+void xx_powerarc_free_archive_records_reading(Abstractformat *self, xx_archive_record_state *state)
+{
     (void)self;
     xx_archive_record_state_free(state);
 }

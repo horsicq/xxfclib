@@ -61,51 +61,40 @@ typedef struct xx_sparse XSparse;
 
 struct xx_sparse {
     Abstractformat format;
-    uint64_t number_of_records;   /**< Always 1 for a valid image. */
-    uint64_t number_of_members;   /**< Always 1 for a valid image. */
-    uint32_t block_size;          /**< blk_sz from the header. */
-    uint32_t total_blocks;        /**< total_blks from the header. */
-    uint32_t total_chunks;        /**< total_chunks from the header. */
-    uint32_t image_checksum;      /**< image_checksum from the header. */
+    uint64_t number_of_records; /**< Always 1 for a valid image. */
+    uint64_t number_of_members; /**< Always 1 for a valid image. */
+    uint32_t block_size;        /**< blk_sz from the header. */
+    uint32_t total_blocks;      /**< total_blks from the header. */
+    uint32_t total_chunks;      /**< total_chunks from the header. */
+    uint32_t image_checksum;    /**< image_checksum from the header. */
     uint16_t major_version;
     uint16_t minor_version;
-    int64_t expanded_size;        /**< total_blks * blk_sz, or -1. */
-    int64_t archive_end;          /**< End of the last chunk, or -1. */
+    int64_t expanded_size; /**< total_blks * blk_sz, or -1. */
+    int64_t archive_end;   /**< End of the last chunk, or -1. */
     void *internal;
 };
 
-XXFC_API void xx_sparse_init(xx_sparse *sparse, xx_io_device *dev,
-                             int64_t base_address);
+XXFC_API void xx_sparse_init(xx_sparse *sparse, xx_io_device *dev, int64_t base_address);
 XXFC_API xx_sparse *xx_sparse_create(xx_io_device *dev, int64_t base_address);
 XXFC_API void xx_sparse_destroy(xx_sparse *sparse);
 XXFC_API void xx_sparse_free(xx_sparse *sparse);
 
 XXFC_API bool xx_sparse_check_is_valid(Abstractformat *self, xx_pd_struct *pd);
-XXFC_API bool xx_sparse_handle_base_info(Abstractformat *self,
-                                         xx_pd_struct *pd);
-XXFC_API int64_t xx_sparse_get_format_size(Abstractformat *self,
-                                           xx_pd_struct *pd);
-XXFC_API uint64_t xx_sparse_get_number_of_archive_records(Abstractformat *self,
-                                                          xx_pd_struct *pd);
+XXFC_API bool xx_sparse_handle_base_info(Abstractformat *self, xx_pd_struct *pd);
+XXFC_API int64_t xx_sparse_get_format_size(Abstractformat *self, xx_pd_struct *pd);
+XXFC_API uint64_t xx_sparse_get_number_of_archive_records(Abstractformat *self, xx_pd_struct *pd);
 
 /** Expand the whole image into destination.  The reassembled bytes, not the
  * sparse container, are written; the destination is filled from its current
  * position.  Any CRC32 chunk encountered is checked against the running
  * checksum and a mismatch fails the call. */
-XXFC_API bool xx_sparse_unpack_to_device(xx_sparse *sparse,
-                                         xx_io_device *destination,
-                                         xx_pd_struct *pd);
+XXFC_API bool xx_sparse_unpack_to_device(xx_sparse *sparse, xx_io_device *destination, xx_pd_struct *pd);
 
-XXFC_API xx_archive_record_state *xx_sparse_create_archive_records_reading(
-    Abstractformat *self, const xx_list_s *options, xx_pd_struct *pd);
-XXFC_API const xx_archive_record *xx_sparse_get_current_archive_record(
-    Abstractformat *self, xx_archive_record_state *state);
-XXFC_API bool xx_sparse_unpack_current_archive_record(
-    Abstractformat *self, xx_archive_record_state *state, xx_pd_struct *pd);
-XXFC_API bool xx_sparse_archive_record_move_to_next(
-    Abstractformat *self, xx_archive_record_state *state, xx_pd_struct *pd);
-XXFC_API void xx_sparse_free_archive_records_reading(
-    Abstractformat *self, xx_archive_record_state *state);
+XXFC_API xx_archive_record_state *xx_sparse_create_archive_records_reading(Abstractformat *self, const xx_list_s *options, xx_pd_struct *pd);
+XXFC_API const xx_archive_record *xx_sparse_get_current_archive_record(Abstractformat *self, xx_archive_record_state *state);
+XXFC_API bool xx_sparse_unpack_current_archive_record(Abstractformat *self, xx_archive_record_state *state, xx_pd_struct *pd);
+XXFC_API bool xx_sparse_archive_record_move_to_next(Abstractformat *self, xx_archive_record_state *state, xx_pd_struct *pd);
+XXFC_API void xx_sparse_free_archive_records_reading(Abstractformat *self, xx_archive_record_state *state);
 
 XXFC_API uint64_t xx_sparse_get_number_of_records(const xx_sparse *sparse);
 XXFC_API uint64_t xx_sparse_get_number_of_members(const xx_sparse *sparse);
@@ -116,19 +105,24 @@ XXFC_API uint32_t xx_sparse_get_image_checksum(const xx_sparse *sparse);
 XXFC_API int64_t xx_sparse_get_expanded_size(const xx_sparse *sparse);
 XXFC_API int64_t xx_sparse_get_archive_end(const xx_sparse *sparse);
 
-static inline Abstractformat *xx_sparse_to_format(xx_sparse *sparse) {
+static inline Abstractformat *xx_sparse_to_format(xx_sparse *sparse)
+{
     return sparse ? &sparse->format : NULL;
 }
-static inline void XSparse_init(xx_sparse *sparse, xx_io_device *dev,
-                                int64_t base_address) {
+static inline void XSparse_init(xx_sparse *sparse, xx_io_device *dev, int64_t base_address)
+{
     xx_sparse_init(sparse, dev, base_address);
 }
-static inline xx_sparse *XSparse_create(xx_io_device *dev,
-                                        int64_t base_address) {
+static inline xx_sparse *XSparse_create(xx_io_device *dev, int64_t base_address)
+{
     return xx_sparse_create(dev, base_address);
 }
-static inline void XSparse_free(xx_sparse *sparse) { xx_sparse_free(sparse); }
-static inline bool XSparse_is_valid(xx_sparse *sparse, xx_pd_struct *pd) {
+static inline void XSparse_free(xx_sparse *sparse)
+{
+    xx_sparse_free(sparse);
+}
+static inline bool XSparse_is_valid(xx_sparse *sparse, xx_pd_struct *pd)
+{
     return sparse ? xx_format_is_valid(&sparse->format, pd) : false;
 }
 

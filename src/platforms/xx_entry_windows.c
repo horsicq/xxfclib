@@ -39,7 +39,8 @@
 #if defined(XXFC_BUILD_SHARED)
 #include "xxfclib/global/xx_global.h"
 
-BOOL WINAPI DllMain(HINSTANCE hinstDLL, DWORD fdwReason, LPVOID lpvReserved) {
+BOOL WINAPI DllMain(HINSTANCE hinstDLL, DWORD fdwReason, LPVOID lpvReserved)
+{
     (void)hinstDLL;
 
     /* Unloaded with FreeLibrary rather than at process exit: give the
@@ -68,7 +69,8 @@ int _fltused = 0x9875;
 /* Turn off optimization to prevent compiler from rewriting loops into recursive calls to memset/memcpy */
 #pragma optimize("", off)
 
-void *memset(void *dst, int val, size_t n) {
+void *memset(void *dst, int val, size_t n)
+{
     unsigned char *d = (unsigned char *)dst;
     unsigned char b = (unsigned char)val;
     while (n--) {
@@ -77,7 +79,8 @@ void *memset(void *dst, int val, size_t n) {
     return dst;
 }
 
-void *memcpy(void *dst, const void *src, size_t n) {
+void *memcpy(void *dst, const void *src, size_t n)
+{
     unsigned char *d = (unsigned char *)dst;
     const unsigned char *s = (const unsigned char *)src;
     while (n--) {
@@ -86,7 +89,8 @@ void *memcpy(void *dst, const void *src, size_t n) {
     return dst;
 }
 
-void *memmove(void *dst, const void *src, size_t n) {
+void *memmove(void *dst, const void *src, size_t n)
+{
     unsigned char *d = (unsigned char *)dst;
     const unsigned char *s = (const unsigned char *)src;
     if (d == s || n == 0) {

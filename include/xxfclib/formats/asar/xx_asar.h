@@ -34,38 +34,29 @@ extern "C" {
 typedef struct xx_asar {
     Abstractformat format;
     uint64_t number_of_records;
-    int64_t json_offset;  /**< Always 16. */
-    int64_t json_size;    /**< Bytes of JSON directory. */
-    int64_t blob_offset;  /**< Where file contents begin. */
+    int64_t json_offset; /**< Always 16. */
+    int64_t json_size;   /**< Bytes of JSON directory. */
+    int64_t blob_offset; /**< Where file contents begin. */
 } xx_asar;
 
 typedef xx_asar xx_asar_t;
 typedef xx_asar XAsar;
 
-XXFC_API void xx_asar_init(xx_asar *archive, xx_io_device *device,
-                           int64_t base_address);
+XXFC_API void xx_asar_init(xx_asar *archive, xx_io_device *device, int64_t base_address);
 XXFC_API xx_asar *xx_asar_create(xx_io_device *device, int64_t base_address);
 XXFC_API void xx_asar_destroy(xx_asar *archive);
 XXFC_API void xx_asar_free(xx_asar *archive);
 
 XXFC_API bool xx_asar_check_is_valid(Abstractformat *self, xx_pd_struct *pd);
-XXFC_API bool xx_asar_handle_base_info(Abstractformat *self,
-                                       xx_pd_struct *pd);
-XXFC_API int64_t xx_asar_get_format_size(Abstractformat *self,
-                                         xx_pd_struct *pd);
-XXFC_API uint64_t xx_asar_get_number_of_archive_records(Abstractformat *self,
-                                                         xx_pd_struct *pd);
+XXFC_API bool xx_asar_handle_base_info(Abstractformat *self, xx_pd_struct *pd);
+XXFC_API int64_t xx_asar_get_format_size(Abstractformat *self, xx_pd_struct *pd);
+XXFC_API uint64_t xx_asar_get_number_of_archive_records(Abstractformat *self, xx_pd_struct *pd);
 
-XXFC_API xx_archive_record_state *xx_asar_create_archive_records_reading(
-    Abstractformat *self, const xx_list_s *options, xx_pd_struct *pd);
-XXFC_API const xx_archive_record *xx_asar_get_current_archive_record(
-    Abstractformat *self, xx_archive_record_state *state);
-XXFC_API bool xx_asar_unpack_current_archive_record(
-    Abstractformat *self, xx_archive_record_state *state, xx_pd_struct *pd);
-XXFC_API bool xx_asar_archive_record_move_to_next(
-    Abstractformat *self, xx_archive_record_state *state, xx_pd_struct *pd);
-XXFC_API void xx_asar_free_archive_records_reading(
-    Abstractformat *self, xx_archive_record_state *state);
+XXFC_API xx_archive_record_state *xx_asar_create_archive_records_reading(Abstractformat *self, const xx_list_s *options, xx_pd_struct *pd);
+XXFC_API const xx_archive_record *xx_asar_get_current_archive_record(Abstractformat *self, xx_archive_record_state *state);
+XXFC_API bool xx_asar_unpack_current_archive_record(Abstractformat *self, xx_archive_record_state *state, xx_pd_struct *pd);
+XXFC_API bool xx_asar_archive_record_move_to_next(Abstractformat *self, xx_archive_record_state *state, xx_pd_struct *pd);
+XXFC_API void xx_asar_free_archive_records_reading(Abstractformat *self, xx_archive_record_state *state);
 
 /** @brief Offset at which file contents begin. */
 XXFC_API int64_t xx_asar_get_blob_offset(const xx_asar *archive);

@@ -73,13 +73,12 @@ static void xx_gif_vtable_destroy(Abstractformat *self);
 /* ------------------------------------------------------------- helpers -- */
 
 /* All positioning goes through seek64: long is 32-bit on Win64. */
-static bool xx_gif_read_at(xx_io_device *device, int64_t offset, void *data,
-                           size_t size) {
+static bool xx_gif_read_at(xx_io_device *device, int64_t offset, void *data, size_t size)
+{
     uint8_t *out = (uint8_t *)data;
     size_t done = 0U;
 
-    if (!device || (!data && size != 0U) || offset < 0 ||
-        xx_io_seek64(device, offset, SEEK_SET) != 0) {
+    if (!device || (!data && size != 0U) || offset < 0 || xx_io_seek64(device, offset, SEEK_SET) != 0) {
         return false;
     }
     while (done < size) {
@@ -92,17 +91,14 @@ static bool xx_gif_read_at(xx_io_device *device, int64_t offset, void *data,
 
 /* One byte at an absolute offset, through the read-ahead window.  Refuses
  * anything outside [0, end), so no caller can read past the device. */
-static bool xx_gif_byte(xx_gif_cursor *cursor, int64_t offset,
-                        uint8_t *value) {
+static bool xx_gif_byte(xx_gif_cursor *cursor, int64_t offset, uint8_t *value)
+{
     if (!cursor || !value || offset < 0 || offset >= cursor->end) {
         return false;
     }
-    if (cursor->window_size == 0U || offset < cursor->window_start ||
-        offset - cursor->window_start >= (int64_t)cursor->window_size) {
+    if (cursor->window_size == 0U || offset < cursor->window_start || offset - cursor->window_start >= (int64_t)cursor->window_size) {
         int64_t remaining = cursor->end - offset;
-        size_t want = remaining < (int64_t)XX_GIF_WINDOW_SIZE
-                          ? (size_t)remaining
-                          : (size_t)XX_GIF_WINDOW_SIZE;
+        size_t want = remaining < (int64_t)XX_GIF_WINDOW_SIZE ? (size_t)remaining : (size_t)XX_GIF_WINDOW_SIZE;
         cursor->window_size = 0U;
         if (!xx_gif_read_at(cursor->device, offset, cursor->window, want)) {
             return false;
@@ -116,7 +112,8 @@ static bool xx_gif_byte(xx_gif_cursor *cursor, int64_t offset,
 
 /* Colour table size in bytes for a header / image-descriptor flags byte:
  * 3 * 2^(n+1), at most 768.  Zero when bit 7 is clear. */
-static uint32_t xx_gif_color_table_size(uint8_t flags) {
+static uint32_t xx_gif_color_table_size(uint8_t flags)
+{
     if ((flags & XX_GIF_FLAG_COLOR_TABLE) == 0U) return 0U;
     return 3U * (UINT32_C(1) << ((flags & XX_GIF_FLAG_TABLE_SIZE_MASK) + 1U));
 }
@@ -127,8 +124,8 @@ static uint32_t xx_gif_color_table_size(uint8_t flags) {
  * the end of the device, before a terminator is seen, is a failure.  Every
  * step advances by at least two bytes and stays below `end`, so the loop is
  * bounded by the device size; the stop flag is polled along the way. */
-static bool xx_gif_skip_sub_blocks(xx_gif_cursor *cursor, int64_t offset,
-                                   int64_t *next, xx_pd_struct *pd) {
+static bool xx_gif_skip_sub_blocks(xx_gif_cursor *cursor, int64_t offset, int64_t *next, xx_pd_struct *pd)
+{
     uint32_t steps = 0U;
 
     while (offset >= 0 && offset < cursor->end) {
@@ -143,8 +140,7 @@ static bool xx_gif_skip_sub_blocks(xx_gif_cursor *cursor, int64_t offset,
          * overflow. */
         if ((int64_t)length + 1 >= cursor->end - offset) return false;
         offset += (int64_t)length + 1;
-        if ((++steps & XX_GIF_STOP_POLL_MASK) == 0U && pd &&
-            xx_pd_is_stopped(pd)) {
+        if ((++steps & XX_GIF_STOP_POLL_MASK) == 0U && pd && xx_pd_is_stopped(pd)) {
             return false;
         }
     }
@@ -153,7 +149,8 @@ static bool xx_gif_skip_sub_blocks(xx_gif_cursor *cursor, int64_t offset,
 
 /* --------------------------------------------------------------- parse -- */
 
-static void xx_gif_parsed_reset(xx_gif_parsed *parsed) {
+static void xx_gif_parsed_reset(xx_gif_parsed *parsed)
+{
     if (!parsed) return;
     xx_mem_zero(parsed, sizeof(*parsed));
     parsed->input_size = -1;
@@ -161,8 +158,8 @@ static void xx_gif_parsed_reset(xx_gif_parsed *parsed) {
     parsed->trailer_offset = -1;
 }
 
-static bool xx_gif_parse(Abstractformat *self, xx_gif_parsed *parsed,
-                         xx_pd_struct *pd) {
+static bool xx_gif_parse(Abstractformat *self, xx_gif_parsed *parsed, xx_pd_struct *pd)
+{
     uint8_t header[XX_GIF_HEADER_SIZE];
     xx_gif_cursor cursor;
     int64_t available;
@@ -171,23 +168,18 @@ static bool xx_gif_parse(Abstractformat *self, xx_gif_parsed *parsed,
     uint32_t blocks = 0U;
 
     xx_gif_parsed_reset(parsed);
-    if (!self || !self->device || !parsed || self->base_address < 0 ||
-        (pd && xx_pd_is_stopped(pd))) {
+    if (!self || !self->device || !parsed || self->base_address < 0 || (pd && xx_pd_is_stopped(pd))) {
         return false;
     }
     parsed->input_size = xx_io_total_size(self->device);
     if (parsed->input_size < self->base_address) return false;
     available = parsed->input_size - self->base_address;
-    if (available < (int64_t)XX_GIF_HEADER_SIZE ||
-        !xx_gif_read_at(self->device, self->base_address, header,
-                        sizeof(header))) {
+    if (available < (int64_t)XX_GIF_HEADER_SIZE || !xx_gif_read_at(self->device, self->base_address, header, sizeof(header))) {
         return false;
     }
-    if (xx_rt_memcmp(header, XX_GIF_SIGNATURE_89A, XX_GIF_SIGNATURE_SIZE) ==
-        0) {
+    if (xx_rt_memcmp(header, XX_GIF_SIGNATURE_89A, XX_GIF_SIGNATURE_SIZE) == 0) {
         parsed->version = 89U;
-    } else if (xx_rt_memcmp(header, XX_GIF_SIGNATURE_87A,
-                            XX_GIF_SIGNATURE_SIZE) == 0) {
+    } else if (xx_rt_memcmp(header, XX_GIF_SIGNATURE_87A, XX_GIF_SIGNATURE_SIZE) == 0) {
         parsed->version = 87U;
     } else {
         return false;
@@ -213,8 +205,7 @@ static bool xx_gif_parse(Abstractformat *self, xx_gif_parsed *parsed,
         uint8_t type;
         int64_t remaining = cursor.end - position;
 
-        if ((++blocks & XX_GIF_STOP_POLL_MASK) == 0U && pd &&
-            xx_pd_is_stopped(pd)) {
+        if ((++blocks & XX_GIF_STOP_POLL_MASK) == 0U && pd && xx_pd_is_stopped(pd)) {
             return false;
         }
         if (!xx_gif_byte(&cursor, position, &type)) return false;
@@ -229,18 +220,15 @@ static bool xx_gif_parse(Abstractformat *self, xx_gif_parsed *parsed,
             uint8_t flags;
             int64_t data_offset;
             /* The fixed 10-byte descriptor must be present in full. */
-            if (remaining < (int64_t)XX_GIF_IMAGE_DESCRIPTOR_SIZE ||
-                !xx_gif_byte(&cursor, position + 9, &flags)) {
+            if (remaining < (int64_t)XX_GIF_IMAGE_DESCRIPTOR_SIZE || !xx_gif_byte(&cursor, position + 9, &flags)) {
                 return false;
             }
             /* descriptor + local colour table + LZW minimum code size byte;
              * at most 10 + 768 + 1, so no overflow.  The sub-blocks must
              * start strictly inside the device. */
-            data_offset = (int64_t)XX_GIF_IMAGE_DESCRIPTOR_SIZE +
-                          (int64_t)xx_gif_color_table_size(flags) + 1;
+            data_offset = (int64_t)XX_GIF_IMAGE_DESCRIPTOR_SIZE + (int64_t)xx_gif_color_table_size(flags) + 1;
             if (data_offset >= remaining) return false;
-            if (!xx_gif_skip_sub_blocks(&cursor, position + data_offset,
-                                        &position, pd)) {
+            if (!xx_gif_skip_sub_blocks(&cursor, position + data_offset, &position, pd)) {
                 return false;
             }
             ++parsed->images;
@@ -252,20 +240,17 @@ static bool xx_gif_parse(Abstractformat *self, xx_gif_parsed *parsed,
             uint8_t first;
             int64_t data_offset = 2;
             /* binwalk parses a 3-byte extension header for every label. */
-            if (remaining < 3 || !xx_gif_byte(&cursor, position + 1, &label) ||
-                !xx_gif_byte(&cursor, position + 2, &first)) {
+            if (remaining < 3 || !xx_gif_byte(&cursor, position + 1, &label) || !xx_gif_byte(&cursor, position + 2, &first)) {
                 return false;
             }
             /* Application and Plain Text extensions open with a fixed-size
              * field whose length byte is skipped unconditionally, even when
              * it is zero; every other label goes straight to sub-blocks. */
-            if (label == XX_GIF_EXTENSION_APPLICATION ||
-                label == XX_GIF_EXTENSION_PLAIN_TEXT) {
+            if (label == XX_GIF_EXTENSION_APPLICATION || label == XX_GIF_EXTENSION_PLAIN_TEXT) {
                 data_offset += (int64_t)first + 1;
             }
             if (data_offset >= remaining) return false;
-            if (!xx_gif_skip_sub_blocks(&cursor, position + data_offset,
-                                        &position, pd)) {
+            if (!xx_gif_skip_sub_blocks(&cursor, position + data_offset, &position, pd)) {
                 return false;
             }
             ++parsed->extensions;
@@ -281,7 +266,8 @@ static bool xx_gif_parse(Abstractformat *self, xx_gif_parsed *parsed,
 
 /* ----------------------------------------------------------- lifecycle -- */
 
-void xx_gif_init(xx_gif *gif, xx_io_device *dev, int64_t base_address) {
+void xx_gif_init(xx_gif *gif, xx_io_device *dev, int64_t base_address)
+{
     if (!gif) return;
     xx_mem_zero(gif, sizeof(*gif));
     xx_format_init(&gif->format, dev, base_address);
@@ -301,23 +287,27 @@ void xx_gif_init(xx_gif *gif, xx_io_device *dev, int64_t base_address) {
     xx_components_install(&gif->format);
 }
 
-xx_gif *xx_gif_create(xx_io_device *dev, int64_t base_address) {
+xx_gif *xx_gif_create(xx_io_device *dev, int64_t base_address)
+{
     xx_gif *gif = (xx_gif *)xx_mem_alloc(sizeof(*gif));
 
     if (gif) xx_gif_init(gif, dev, base_address);
     return gif;
 }
 
-void xx_gif_destroy(xx_gif *gif) {
+void xx_gif_destroy(xx_gif *gif)
+{
     if (!gif) return;
     xx_format_cleanup_extra_parameters(&gif->format);
 }
 
-static void xx_gif_vtable_destroy(Abstractformat *self) {
+static void xx_gif_vtable_destroy(Abstractformat *self)
+{
     xx_gif_destroy((xx_gif *)self);
 }
 
-void xx_gif_free(xx_gif *gif) {
+void xx_gif_free(xx_gif *gif)
+{
     if (!gif) return;
     xx_gif_destroy(gif);
     xx_mem_free(gif);
@@ -325,13 +315,15 @@ void xx_gif_free(xx_gif *gif) {
 
 /* -------------------------------------------------------------- format -- */
 
-bool xx_gif_check_is_valid(Abstractformat *self, xx_pd_struct *pd) {
+bool xx_gif_check_is_valid(Abstractformat *self, xx_pd_struct *pd)
+{
     xx_gif_parsed parsed;
 
     return xx_gif_parse(self, &parsed, pd);
 }
 
-bool xx_gif_handle_base_info(Abstractformat *self, xx_pd_struct *pd) {
+bool xx_gif_handle_base_info(Abstractformat *self, xx_pd_struct *pd)
+{
     xx_gif *gif = (xx_gif *)self;
     xx_gif_parsed parsed;
 
@@ -366,9 +358,9 @@ bool xx_gif_handle_base_info(Abstractformat *self, xx_pd_struct *pd) {
     return true;
 }
 
-int64_t xx_gif_get_format_size(Abstractformat *self, xx_pd_struct *pd) {
-    if (!self ||
-        (!self->base_info_handled && !xx_format_handle_base_info(self, pd))) {
+int64_t xx_gif_get_format_size(Abstractformat *self, xx_pd_struct *pd)
+{
+    if (!self || (!self->base_info_handled && !xx_format_handle_base_info(self, pd))) {
         return -1;
     }
     return self->format_size;
@@ -376,63 +368,77 @@ int64_t xx_gif_get_format_size(Abstractformat *self, xx_pd_struct *pd) {
 
 /* ------------------------------------------------------------ accessors -- */
 
-uint16_t xx_gif_get_version(const xx_gif *gif) {
+uint16_t xx_gif_get_version(const xx_gif *gif)
+{
     return gif ? gif->version : 0U;
 }
 
-uint16_t xx_gif_get_width(const xx_gif *gif) { return gif ? gif->width : 0U; }
+uint16_t xx_gif_get_width(const xx_gif *gif)
+{
+    return gif ? gif->width : 0U;
+}
 
-uint16_t xx_gif_get_height(const xx_gif *gif) {
+uint16_t xx_gif_get_height(const xx_gif *gif)
+{
     return gif ? gif->height : 0U;
 }
 
-uint32_t xx_gif_get_global_color_table_size(const xx_gif *gif) {
+uint32_t xx_gif_get_global_color_table_size(const xx_gif *gif)
+{
     return gif ? gif->global_color_table_size : 0U;
 }
 
-uint64_t xx_gif_get_number_of_images(const xx_gif *gif) {
+uint64_t xx_gif_get_number_of_images(const xx_gif *gif)
+{
     return gif ? gif->number_of_images : 0U;
 }
 
-uint64_t xx_gif_get_number_of_extensions(const xx_gif *gif) {
+uint64_t xx_gif_get_number_of_extensions(const xx_gif *gif)
+{
     return gif ? gif->number_of_extensions : 0U;
 }
 
-int64_t xx_gif_get_trailer_offset(const xx_gif *gif) {
+int64_t xx_gif_get_trailer_offset(const xx_gif *gif)
+{
     return gif ? gif->trailer_offset : -1;
 }
 
 /* Encoded/structural component members; this does not decode media. */
-static bool xx_components_build(Abstractformat *f, xx_component_stream *s, xx_pd_struct *pd) {
-
+static bool xx_components_build(Abstractformat *f, xx_component_stream *s, xx_pd_struct *pd)
+{
     xx_gif_cursor cursor;
-    int64_t pos=13, next;
+    int64_t pos = 13, next;
     uint8_t h[13];
-    if(!xx_component_read(f,0,h,sizeof(h))) return false;
-    xx_mem_zero(&cursor,sizeof(cursor)); cursor.device=f->device; cursor.end=f->base_address+f->format_size;
-    if(!xx_component_add(f,s,6,7,"logical-screen")) return false;
-    if(h[10]&128) {
-        uint32_t n=xx_gif_color_table_size(h[10]);
-        if(!xx_component_add(f,s,pos,n,"global-color-table")) { return false; } pos+=n;
+    if (!xx_component_read(f, 0, h, sizeof(h))) return false;
+    xx_mem_zero(&cursor, sizeof(cursor));
+    cursor.device = f->device;
+    cursor.end = f->base_address + f->format_size;
+    if (!xx_component_add(f, s, 6, 7, "logical-screen")) return false;
+    if (h[10] & 128) {
+        uint32_t n = xx_gif_color_table_size(h[10]);
+        if (!xx_component_add(f, s, pos, n, "global-color-table")) {
+            return false;
+        }
+        pos += n;
     }
-    while(pos<f->format_size-1) {
+    while (pos < f->format_size - 1) {
         uint8_t type, flags, label, first;
-        int64_t start=pos, data;
-        if(xx_pd_is_stopped(pd) || !xx_component_read(f,pos,&type,1)) return false;
-        if(type==0x2c) {
-            if(!xx_component_read(f,pos+9,&flags,1)) return false;
-            data=pos+10+xx_gif_color_table_size(flags)+1;
-            if(!xx_gif_skip_sub_blocks(&cursor,f->base_address+data,&next,pd)) return false;
-            pos=next-f->base_address;
-            if(!xx_component_add(f,s,start,pos-start,"image-descriptor-and-lzw-blocks")) return false;
-        } else if(type==0x21) {
-            if(!xx_component_read(f,pos+1,&label,1) || !xx_component_read(f,pos+2,&first,1)) return false;
-            data=pos+2;
-            if(label==0xff || label==1) data+=first+1;
-            if(!xx_gif_skip_sub_blocks(&cursor,f->base_address+data,&next,pd)) return false;
-            pos=next-f->base_address;
-            if(!xx_component_add(f,s,start+1,pos-start-1,"extension-label-and-blocks")) return false;
+        int64_t start = pos, data;
+        if (xx_pd_is_stopped(pd) || !xx_component_read(f, pos, &type, 1)) return false;
+        if (type == 0x2c) {
+            if (!xx_component_read(f, pos + 9, &flags, 1)) return false;
+            data = pos + 10 + xx_gif_color_table_size(flags) + 1;
+            if (!xx_gif_skip_sub_blocks(&cursor, f->base_address + data, &next, pd)) return false;
+            pos = next - f->base_address;
+            if (!xx_component_add(f, s, start, pos - start, "image-descriptor-and-lzw-blocks")) return false;
+        } else if (type == 0x21) {
+            if (!xx_component_read(f, pos + 1, &label, 1) || !xx_component_read(f, pos + 2, &first, 1)) return false;
+            data = pos + 2;
+            if (label == 0xff || label == 1) data += first + 1;
+            if (!xx_gif_skip_sub_blocks(&cursor, f->base_address + data, &next, pd)) return false;
+            pos = next - f->base_address;
+            if (!xx_component_add(f, s, start + 1, pos - start - 1, "extension-label-and-blocks")) return false;
         } else return false;
     }
-    return pos==f->format_size-1;
+    return pos == f->format_size - 1;
 }

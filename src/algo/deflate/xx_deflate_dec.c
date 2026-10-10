@@ -28,8 +28,8 @@
 /* --- Bit Reader Helpers                                                --- */
 /* ========================================================================= */
 
-bool xx_br_init(xx_bit_reader *br, xx_io_device *dev,
-                    const uint8_t *mem_src, size_t mem_size, int64_t remaining_input) {
+bool xx_br_init(xx_bit_reader *br, xx_io_device *dev, const uint8_t *mem_src, size_t mem_size, int64_t remaining_input)
+{
     xx_rt_memset(br, 0, sizeof(*br));
     br->dev = dev;
     br->mem_src = mem_src;
@@ -49,14 +49,16 @@ bool xx_br_init(xx_bit_reader *br, xx_io_device *dev,
     return true;
 }
 
-void xx_br_free(xx_bit_reader *br) {
+void xx_br_free(xx_bit_reader *br)
+{
     if (br->buffer) {
         xx_mem_free(br->buffer);
         br->buffer = NULL;
     }
 }
 
-static bool xx_br_refill(xx_bit_reader *br, int need_bits) {
+static bool xx_br_refill(xx_bit_reader *br, int need_bits)
+{
     while (br->bit_count < need_bits) {
         const uint8_t *source;
         size_t available, consumed;
@@ -108,8 +110,7 @@ static bool xx_br_refill(xx_bit_reader *br, int need_bits) {
 #if defined(_WIN32) || (defined(__BYTE_ORDER__) && __BYTE_ORDER__ == __ORDER_LITTLE_ENDIAN__)
             memcpy(&word, source, sizeof(word));
 #else
-            word = (uint32_t)source[0] | ((uint32_t)source[1] << 8U) |
-                   ((uint32_t)source[2] << 16U) | ((uint32_t)source[3] << 24U);
+            word = (uint32_t)source[0] | ((uint32_t)source[1] << 8U) | ((uint32_t)source[2] << 16U) | ((uint32_t)source[3] << 24U);
 #endif
             br->bit_buf |= (uint64_t)word << br->bit_count;
             br->bit_count += 32;
@@ -125,14 +126,16 @@ static bool xx_br_refill(xx_bit_reader *br, int need_bits) {
     return true;
 }
 
-static inline uint32_t xx_br_peek(xx_bit_reader *br, int n) {
+static inline uint32_t xx_br_peek(xx_bit_reader *br, int n)
+{
     if (br->bit_count < n) {
         xx_br_refill(br, n);
     }
     return (uint32_t)(br->bit_buf & ((1ULL << n) - 1));
 }
 
-static inline void xx_br_drop(xx_bit_reader *br, int n) {
+static inline void xx_br_drop(xx_bit_reader *br, int n)
+{
     br->bit_buf >>= n;
     br->bit_count -= n;
     if (br->bit_count < 0) {
@@ -140,7 +143,8 @@ static inline void xx_br_drop(xx_bit_reader *br, int n) {
     }
 }
 
-static inline uint32_t xx_br_read(xx_bit_reader *br, int n) {
+static inline uint32_t xx_br_read(xx_bit_reader *br, int n)
+{
     if (br->bit_count < n && !xx_br_refill(br, n)) {
         br->error = true;
         return 0U;
@@ -150,7 +154,8 @@ static inline uint32_t xx_br_read(xx_bit_reader *br, int n) {
     return v;
 }
 
-static inline void xx_br_align_byte(xx_bit_reader *br) {
+static inline void xx_br_align_byte(xx_bit_reader *br)
+{
     int drop = br->bit_count % 8;
     if (drop > 0) {
         xx_br_drop(br, drop);
@@ -159,7 +164,8 @@ static inline void xx_br_align_byte(xx_bit_reader *br) {
 
 /* Stored payloads are byte-aligned. Preserve any prefetched bytes before
  * copying directly from the bounded input buffer. */
-static bool xx_br_read_bytes(xx_bit_reader *br, uint8_t *dst, size_t size) {
+static bool xx_br_read_bytes(xx_bit_reader *br, uint8_t *dst, size_t size)
+{
     if (br->error || (br->bit_count & 7) != 0) return false;
     while (size != 0U) {
         size_t available, chunk;
@@ -203,7 +209,8 @@ static bool xx_br_read_bytes(xx_bit_reader *br, uint8_t *dst, size_t size) {
 /* --- Canonical Huffman Decoder Construction & Decoding                  --- */
 /* ========================================================================= */
 
-static bool xx_huff_build(xx_huff_decoder *dec, const uint8_t *lengths, int num_symbols) {
+static bool xx_huff_build(xx_huff_decoder *dec, const uint8_t *lengths, int num_symbols)
+{
     xx_rt_memset(dec, 0, sizeof(*dec));
     dec->num_symbols = num_symbols;
     dec->min_bits = XX_DEFLATE_MAX_BITS + 1;
@@ -282,7 +289,8 @@ static bool xx_huff_build(xx_huff_decoder *dec, const uint8_t *lengths, int num_
     return true;
 }
 
-static inline int xx_huff_decode(const xx_huff_decoder *dec, xx_bit_reader *br) {
+static inline int xx_huff_decode(const xx_huff_decoder *dec, xx_bit_reader *br)
+{
     uint32_t reversed;
     int len, available;
     /* Refill opportunistically. A final code can need fewer than nine bits;
@@ -323,9 +331,10 @@ static inline int xx_huff_decode(const xx_huff_decoder *dec, xx_bit_reader *br) 
 /* --- Fixed Huffman Tables Construction                                 --- */
 /* ========================================================================= */
 
-static void xx_huff_build_fixed(xx_huff_decoder *lit_dec, xx_huff_decoder *dist_dec) {
+static void xx_huff_build_fixed(xx_huff_decoder *lit_dec, xx_huff_decoder *dist_dec)
+{
     uint8_t lit_lens[288];
-    for (int i = 0; i <= 143; ++i)  lit_lens[i] = 8;
+    for (int i = 0; i <= 143; ++i) lit_lens[i] = 8;
     for (int i = 144; i <= 255; ++i) lit_lens[i] = 9;
     for (int i = 256; i <= 279; ++i) lit_lens[i] = 7;
     for (int i = 280; i <= 287; ++i) lit_lens[i] = 8;
@@ -347,7 +356,8 @@ typedef void (*xx_decode_match_fn)(uint8_t *, size_t, size_t, size_t, uint32_t, 
 
 /* Constant-size memcpy loads/stores are unaligned and alias-safe. No helper
  * reads or writes beyond the actual span, including the final short match. */
-static inline void xx_decode_copy_words(uint8_t *dst, const uint8_t *src, size_t size) {
+static inline void xx_decode_copy_words(uint8_t *dst, const uint8_t *src, size_t size)
+{
     while (size >= 8U) {
         uint64_t word;
         memcpy(&word, src, sizeof(word));
@@ -359,13 +369,15 @@ static inline void xx_decode_copy_words(uint8_t *dst, const uint8_t *src, size_t
     while (size-- != 0U) *dst++ = *src++;
 }
 
-static void xx_decode_copy_scalar(uint8_t *dst, const uint8_t *src, size_t size) {
+static void xx_decode_copy_scalar(uint8_t *dst, const uint8_t *src, size_t size)
+{
     xx_decode_copy_words(dst, src, size);
 }
 
 /* Seed spans belong to the same ring allocation and can overlap physically
  * even though the logical history ranges are distinct across a ring wrap. */
-static inline void xx_decode_move_words(uint8_t *dst, const uint8_t *src, size_t size) {
+static inline void xx_decode_move_words(uint8_t *dst, const uint8_t *src, size_t size)
+{
     if (dst <= src) {
         xx_decode_copy_words(dst, src, size);
     } else {
@@ -379,7 +391,8 @@ static inline void xx_decode_move_words(uint8_t *dst, const uint8_t *src, size_t
     }
 }
 
-static inline void xx_decode_fill_words(uint8_t *dst, uint8_t value, size_t size) {
+static inline void xx_decode_fill_words(uint8_t *dst, uint8_t value, size_t size)
+{
     uint64_t word = (uint64_t)value * UINT64_C(0x0101010101010101);
     while (size >= 8U) {
         memcpy(dst, &word, sizeof(word));
@@ -389,9 +402,8 @@ static inline void xx_decode_fill_words(uint8_t *dst, uint8_t value, size_t size
     while (size-- != 0U) *dst++ = value;
 }
 
-static void xx_decode_match_scalar(uint8_t *window, size_t win_size,
-                                    size_t target, size_t source,
-                                    uint32_t distance, size_t chunk) {
+static void xx_decode_match_scalar(uint8_t *window, size_t win_size, size_t target, size_t source, uint32_t distance, size_t chunk)
+{
     size_t seed, first, produced;
     if (distance == 1U) {
         xx_decode_fill_words(window + target, window[source], chunk);
@@ -401,8 +413,7 @@ static void xx_decode_match_scalar(uint8_t *window, size_t win_size,
     first = win_size - source;
     if (first > seed) first = seed;
     xx_decode_move_words(window + target, window + source, first);
-    if (seed > first)
-        xx_decode_move_words(window + target + first, window, seed - first);
+    if (seed > first) xx_decode_move_words(window + target + first, window, seed - first);
     produced = seed;
     while (produced < chunk) {
         size_t copy = chunk - produced;
@@ -414,7 +425,8 @@ static void xx_decode_match_scalar(uint8_t *window, size_t win_size,
 
 #ifdef XX_DEFLATE_DEC_X86
 XX_DEFLATE_DEC_TARGET_SSE2
-static inline void xx_decode_copy_vectors(uint8_t *dst, const uint8_t *src, size_t size) {
+static inline void xx_decode_copy_vectors(uint8_t *dst, const uint8_t *src, size_t size)
+{
     while (size >= 16U) {
         __m128i value = _mm_loadu_si128((const __m128i *)(const void *)src);
         _mm_storeu_si128((__m128i *)(void *)dst, value);
@@ -426,15 +438,14 @@ static inline void xx_decode_copy_vectors(uint8_t *dst, const uint8_t *src, size
 }
 
 XX_DEFLATE_DEC_TARGET_SSE2
-static XX_DEFLATE_DEC_NOINLINE void xx_decode_copy_sse2(uint8_t *dst,
-                                                       const uint8_t *src, size_t size) {
+static XX_DEFLATE_DEC_NOINLINE void xx_decode_copy_sse2(uint8_t *dst, const uint8_t *src, size_t size)
+{
     xx_decode_copy_vectors(dst, src, size);
 }
 
 XX_DEFLATE_DEC_TARGET_SSE2
-static XX_DEFLATE_DEC_NOINLINE void xx_decode_match_sse2(uint8_t *window, size_t win_size,
-                                                        size_t target, size_t source,
-                                                        uint32_t distance, size_t chunk) {
+static XX_DEFLATE_DEC_NOINLINE void xx_decode_match_sse2(uint8_t *window, size_t win_size, size_t target, size_t source, uint32_t distance, size_t chunk)
+{
     uint8_t *dst = window + target;
     if (distance == 1U) {
         uint8_t value = window[source];
@@ -478,19 +489,20 @@ static XX_DEFLATE_DEC_NOINLINE void xx_decode_match_sse2(uint8_t *window, size_t
 
 typedef struct {
     xx_io_device *dev;
-    uint8_t     *mem_dst;
-    size_t       mem_cap;
-    size_t       mem_written;
-    uint8_t     *buf;
-    size_t       buf_cap;
-    size_t       buf_pos;
-    int64_t      total_written;
-    bool         error;
+    uint8_t *mem_dst;
+    size_t mem_cap;
+    size_t mem_written;
+    uint8_t *buf;
+    size_t buf_cap;
+    size_t buf_pos;
+    int64_t total_written;
+    bool error;
     xx_decode_copy_fn copy;
     xx_decode_match_fn match;
 } xx_out_acc;
 
-static bool xx_out_init(xx_out_acc *out, xx_io_device *dev, uint8_t *mem_dst, size_t mem_cap) {
+static bool xx_out_init(xx_out_acc *out, xx_io_device *dev, uint8_t *mem_dst, size_t mem_cap)
+{
     xx_rt_memset(out, 0, sizeof(*out));
     out->dev = dev;
     out->mem_dst = mem_dst;
@@ -519,14 +531,16 @@ static bool xx_out_init(xx_out_acc *out, xx_io_device *dev, uint8_t *mem_dst, si
     return true;
 }
 
-static void xx_out_free(xx_out_acc *out) {
+static void xx_out_free(xx_out_acc *out)
+{
     if (out->buf) {
         xx_mem_free(out->buf);
         out->buf = NULL;
     }
 }
 
-static bool xx_out_flush(xx_out_acc *out) {
+static bool xx_out_flush(xx_out_acc *out)
+{
     if (out->error) {
         return false;
     }
@@ -541,7 +555,8 @@ static bool xx_out_flush(xx_out_acc *out) {
     return true;
 }
 
-static inline bool xx_out_put_byte(xx_out_acc *out, uint8_t b) {
+static inline bool xx_out_put_byte(xx_out_acc *out, uint8_t b)
+{
     if (out->dev) {
         if (out->buf_pos >= out->buf_cap) {
             if (!xx_out_flush(out)) {
@@ -560,7 +575,8 @@ static inline bool xx_out_put_byte(xx_out_acc *out, uint8_t b) {
     return true;
 }
 
-static bool xx_out_write(xx_out_acc *out, const uint8_t *data, size_t size) {
+static bool xx_out_write(xx_out_acc *out, const uint8_t *data, size_t size)
+{
     if (out->error) return false;
     if (out->dev) {
         while (size != 0U) {
@@ -591,9 +607,8 @@ static bool xx_out_write(xx_out_acc *out, const uint8_t *data, size_t size) {
     return true;
 }
 
-static bool xx_out_copy_match(xx_out_acc *out, uint8_t *window,
-                              size_t win_size, size_t *win_pos,
-                              uint32_t distance, uint32_t length) {
+static bool xx_out_copy_match(xx_out_acc *out, uint8_t *window, size_t win_size, size_t *win_pos, uint32_t distance, uint32_t length)
+{
     while (length != 0U) {
         size_t target = *win_pos & (win_size - 1U);
         size_t source = (*win_pos - distance) & (win_size - 1U);
@@ -611,18 +626,13 @@ static bool xx_out_copy_match(xx_out_acc *out, uint8_t *window,
 /* --- Decompression Engine Core                                         --- */
 /* ========================================================================= */
 
-static const uint8_t g_cll_order[XX_DEFLATE_MAX_CLEN_CODES] = {
-    16, 17, 18, 0, 8, 7, 9, 6, 10, 5, 11, 4, 12, 3, 13, 2, 14, 1, 15
-};
+static const uint8_t g_cll_order[XX_DEFLATE_MAX_CLEN_CODES] = {16, 17, 18, 0, 8, 7, 9, 6, 10, 5, 11, 4, 12, 3, 13, 2, 14, 1, 15};
 
-bool xx_deflate_decompress_stream_with_options(xx_bit_reader *reader, xx_io_device *dst_dev,
-                                  uint8_t *mem_dst, size_t mem_cap, size_t *out_written,
-                                  bool is_deflate64, size_t window_size, xx_pd_struct *pd,
-                                  const uint8_t *dictionary,
-                                  size_t dictionary_size) {
+bool xx_deflate_decompress_stream_with_options(xx_bit_reader *reader, xx_io_device *dst_dev, uint8_t *mem_dst, size_t mem_cap, size_t *out_written, bool is_deflate64,
+                                               size_t window_size, xx_pd_struct *pd, const uint8_t *dictionary, size_t dictionary_size)
+{
     size_t win_size = xx_deflate_resolve_window(is_deflate64, window_size);
-    if (!reader || win_size == 0U ||
-        (dictionary_size != 0U && !dictionary) || dictionary_size > win_size) return false;
+    if (!reader || win_size == 0U || (dictionary_size != 0U && !dictionary) || dictionary_size > win_size) return false;
     xx_out_acc out;
     if (!xx_out_init(&out, dst_dev, mem_dst, mem_cap)) {
         return false;
@@ -633,14 +643,12 @@ bool xx_deflate_decompress_stream_with_options(xx_bit_reader *reader, xx_io_devi
         xx_out_free(&out);
         return false;
     }
-    if ((dictionary_size != 0U && !dictionary) ||
-        dictionary_size > win_size) {
+    if ((dictionary_size != 0U && !dictionary) || dictionary_size > win_size) {
         xx_mem_free(window);
         xx_out_free(&out);
         return false;
     }
-    if (dictionary_size != 0U)
-        xx_rt_memcpy(window, dictionary, dictionary_size);
+    if (dictionary_size != 0U) xx_rt_memcpy(window, dictionary, dictionary_size);
     size_t win_pos = dictionary_size;
 
     xx_huff_decoder fixed_lit, fixed_dist;
@@ -678,8 +686,7 @@ bool xx_deflate_decompress_stream_with_options(xx_bit_reader *reader, xx_io_devi
                 size_t at = win_pos & (win_size - 1U);
                 size_t chunk = win_size - at;
                 if (chunk > len) chunk = len;
-                if (!xx_br_read_bytes(reader, window + at, chunk) ||
-                    !xx_out_write(&out, window + at, chunk)) {
+                if (!xx_br_read_bytes(reader, window + at, chunk) || !xx_out_write(&out, window + at, chunk)) {
                     success = false;
                     break;
                 }
@@ -703,7 +710,7 @@ bool xx_deflate_decompress_stream_with_options(xx_bit_reader *reader, xx_io_devi
                 cur_dist_dec = &fixed_dist;
             } else {
                 /* Dynamic Huffman Header */
-                uint32_t hlit  = xx_br_read(reader, 5) + 257;
+                uint32_t hlit = xx_br_read(reader, 5) + 257;
                 uint32_t hdist = xx_br_read(reader, 5) + 1;
                 uint32_t hclen = xx_br_read(reader, 4) + 4;
 
@@ -856,8 +863,7 @@ bool xx_deflate_decompress_stream_with_options(xx_bit_reader *reader, xx_io_devi
                         break;
                     }
 
-                    if (!xx_out_copy_match(&out, window, win_size, &win_pos, dist, length))
-                        success = false;
+                    if (!xx_out_copy_match(&out, window, win_size, &win_pos, dist, length)) success = false;
                     if (!success) break;
                 } else {
                     success = false;
@@ -897,20 +903,14 @@ bool xx_deflate_decompress_stream_with_options(xx_bit_reader *reader, xx_io_devi
     return success;
 }
 
-bool xx_deflate_decompress_stream_with_dictionary(
-    xx_bit_reader *reader, xx_io_device *dst_dev, uint8_t *mem_dst,
-    size_t mem_cap, size_t *out_written, bool is_deflate64, xx_pd_struct *pd,
-    const uint8_t *dictionary, size_t dictionary_size) {
-    return xx_deflate_decompress_stream_with_options(
-        reader, dst_dev, mem_dst, mem_cap, out_written,
-        is_deflate64, 0U, pd, dictionary, dictionary_size);
+bool xx_deflate_decompress_stream_with_dictionary(xx_bit_reader *reader, xx_io_device *dst_dev, uint8_t *mem_dst, size_t mem_cap, size_t *out_written, bool is_deflate64,
+                                                  xx_pd_struct *pd, const uint8_t *dictionary, size_t dictionary_size)
+{
+    return xx_deflate_decompress_stream_with_options(reader, dst_dev, mem_dst, mem_cap, out_written, is_deflate64, 0U, pd, dictionary, dictionary_size);
 }
 
-bool xx_deflate_decompress_stream(xx_bit_reader *reader, xx_io_device *dst_dev,
-                                  uint8_t *mem_dst, size_t mem_cap,
-                                  size_t *out_written, bool is_deflate64,
-                                  xx_pd_struct *pd) {
-    return xx_deflate_decompress_stream_with_dictionary(
-        reader, dst_dev, mem_dst, mem_cap, out_written,
-        is_deflate64, pd, NULL, 0U);
+bool xx_deflate_decompress_stream(xx_bit_reader *reader, xx_io_device *dst_dev, uint8_t *mem_dst, size_t mem_cap, size_t *out_written, bool is_deflate64,
+                                  xx_pd_struct *pd)
+{
+    return xx_deflate_decompress_stream_with_dictionary(reader, dst_dev, mem_dst, mem_cap, out_written, is_deflate64, pd, NULL, 0U);
 }

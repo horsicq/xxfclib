@@ -31,11 +31,13 @@
 
 /* --- Helpers --- */
 
-static inline char xx_tolower_a(char c) {
+static inline char xx_tolower_a(char c)
+{
     return (c >= 'A' && c <= 'Z') ? (char)(c + ('a' - 'A')) : c;
 }
 
-static inline wchar_t xx_tolower_w(wchar_t c) {
+static inline wchar_t xx_tolower_w(wchar_t c)
+{
     return (c >= L'A' && c <= L'Z') ? (wchar_t)(c + (L'a' - L'A')) : c;
 }
 
@@ -67,8 +69,7 @@ int xx_rt_wcscmp(const wchar_t *pLeft, const wchar_t *pRight)
     return (*pLeft < *pRight) ? -1 : 1;
 }
 
-int xx_rt_wcsncmp(const wchar_t *pLeft, const wchar_t *pRight,
-                  size_t nSize)
+int xx_rt_wcsncmp(const wchar_t *pLeft, const wchar_t *pRight, size_t nSize)
 {
     size_t i = 0;
 
@@ -111,7 +112,8 @@ int xx_rt_ascii_tolower(int nChar)
 
 /* --- Raw ANSI String Implementation --- */
 
-size_t xx_str_len(const char *s) {
+size_t xx_str_len(const char *s)
+{
     if (!s) {
         return 0;
     }
@@ -122,13 +124,15 @@ size_t xx_str_len(const char *s) {
     return len;
 }
 
-size_t xx_str_get_length(const char *s) {
+size_t xx_str_get_length(const char *s)
+{
     return xx_str_len(s);
 }
 
-char* xx_str_create(const char *s) {
+char *xx_str_create(const char *s)
+{
     if (!s) {
-        char *res = (char*)xx_mem_alloc(1);
+        char *res = (char *)xx_mem_alloc(1);
         if (res) {
             res[0] = '\0';
         }
@@ -137,8 +141,9 @@ char* xx_str_create(const char *s) {
     return xx_str_dup(s);
 }
 
-char* xx_str_create_len(size_t len) {
-    char *res = (char*)xx_mem_alloc(len + 1);
+char *xx_str_create_len(size_t len)
+{
+    char *res = (char *)xx_mem_alloc(len + 1);
     if (!res) {
         return NULL;
     }
@@ -146,14 +151,16 @@ char* xx_str_create_len(size_t len) {
     return res;
 }
 
-void xx_str_free(char *s) {
+void xx_str_free(char *s)
+{
     xx_mem_free(s);
 }
 
-char* xx_str_concat(const char *s1, const char *s2) {
+char *xx_str_concat(const char *s1, const char *s2)
+{
     size_t len1 = xx_str_len(s1);
     size_t len2 = xx_str_len(s2);
-    char *res = (char*)xx_mem_alloc(len1 + len2 + 1);
+    char *res = (char *)xx_mem_alloc(len1 + len2 + 1);
     if (!res) {
         return NULL;
     }
@@ -167,11 +174,12 @@ char* xx_str_concat(const char *s1, const char *s2) {
     return res;
 }
 
-char* xx_str_concat3(const char *s1, const char *s2, const char *s3) {
+char *xx_str_concat3(const char *s1, const char *s2, const char *s3)
+{
     size_t len1 = xx_str_len(s1);
     size_t len2 = xx_str_len(s2);
     size_t len3 = xx_str_len(s3);
-    char *res = (char*)xx_mem_alloc(len1 + len2 + len3 + 1);
+    char *res = (char *)xx_mem_alloc(len1 + len2 + len3 + 1);
     if (!res) {
         return NULL;
     }
@@ -188,7 +196,8 @@ char* xx_str_concat3(const char *s1, const char *s2, const char *s3) {
     return res;
 }
 
-int xx_str_cmp(const char *a, const char *b) {
+int xx_str_cmp(const char *a, const char *b)
+{
     if (a == b) {
         return 0;
     }
@@ -205,7 +214,8 @@ int xx_str_cmp(const char *a, const char *b) {
     return (int)((unsigned char)*a) - (int)((unsigned char)*b);
 }
 
-int xx_str_icmp(const char *a, const char *b) {
+int xx_str_icmp(const char *a, const char *b)
+{
     if (a == b) {
         return 0;
     }
@@ -222,7 +232,8 @@ int xx_str_icmp(const char *a, const char *b) {
     return (int)((unsigned char)xx_tolower_a(*a)) - (int)((unsigned char)xx_tolower_a(*b));
 }
 
-int xx_str_ncmp(const char *a, const char *b, size_t n) {
+int xx_str_ncmp(const char *a, const char *b, size_t n)
+{
     if (n == 0 || a == b) {
         return 0;
     }
@@ -242,7 +253,8 @@ int xx_str_ncmp(const char *a, const char *b, size_t n) {
     return 0;
 }
 
-int xx_str_nicmp(const char *a, const char *b, size_t n) {
+int xx_str_nicmp(const char *a, const char *b, size_t n)
+{
     if (n == 0 || a == b) {
         return 0;
     }
@@ -262,12 +274,13 @@ int xx_str_nicmp(const char *a, const char *b, size_t n) {
     return 0;
 }
 
-char* xx_str_dup(const char *s) {
+char *xx_str_dup(const char *s)
+{
     if (!s) {
         return NULL;
     }
     size_t len = xx_str_len(s);
-    char *dup = (char*)xx_mem_alloc(len + 1);
+    char *dup = (char *)xx_mem_alloc(len + 1);
     if (!dup) {
         return NULL;
     }
@@ -275,21 +288,23 @@ char* xx_str_dup(const char *s) {
     return dup;
 }
 
-char* xx_str_chr(const char *s, int c) {
+char *xx_str_chr(const char *s, int c)
+{
     if (!s) {
         return NULL;
     }
     char target = (char)c;
     while (*s) {
         if (*s == target) {
-            return (char*)s;
+            return (char *)s;
         }
         s++;
     }
-    return (target == '\0') ? (char*)s : NULL;
+    return (target == '\0') ? (char *)s : NULL;
 }
 
-char* xx_str_rchr(const char *s, int c) {
+char *xx_str_rchr(const char *s, int c)
+{
     if (!s) {
         return NULL;
     }
@@ -302,29 +317,31 @@ char* xx_str_rchr(const char *s, int c) {
         s++;
     }
     if (target == '\0') {
-        return (char*)s;
+        return (char *)s;
     }
-    return (char*)last;
+    return (char *)last;
 }
 
-char* xx_str_str(const char *haystack, const char *needle) {
+char *xx_str_str(const char *haystack, const char *needle)
+{
     if (!haystack || !needle) {
         return NULL;
     }
     if (!*needle) {
-        return (char*)haystack;
+        return (char *)haystack;
     }
     size_t nlen = xx_str_len(needle);
     while (*haystack) {
         if (*haystack == *needle && xx_str_ncmp(haystack, needle, nlen) == 0) {
-            return (char*)haystack;
+            return (char *)haystack;
         }
         haystack++;
     }
     return NULL;
 }
 
-bool xx_str_starts_with(const char *s, const char *prefix) {
+bool xx_str_starts_with(const char *s, const char *prefix)
+{
     if (!s || !prefix) {
         return false;
     }
@@ -332,7 +349,8 @@ bool xx_str_starts_with(const char *s, const char *prefix) {
     return xx_str_ncmp(s, prefix, plen) == 0;
 }
 
-bool xx_str_ends_with(const char *s, const char *suffix) {
+bool xx_str_ends_with(const char *s, const char *suffix)
+{
     if (!s || !suffix) {
         return false;
     }
@@ -344,17 +362,20 @@ bool xx_str_ends_with(const char *s, const char *suffix) {
     return xx_str_cmp(s + (slen - xlen), suffix) == 0;
 }
 
-bool xx_str_equals(const char *a, const char *b) {
+bool xx_str_equals(const char *a, const char *b)
+{
     return xx_str_cmp(a, b) == 0;
 }
 
-bool xx_str_iequals(const char *a, const char *b) {
+bool xx_str_iequals(const char *a, const char *b)
+{
     return xx_str_icmp(a, b) == 0;
 }
 
 /* --- Raw Unicode (Wide) String Implementation --- */
 
-size_t xx_str_wlen(const wchar_t *w) {
+size_t xx_str_wlen(const wchar_t *w)
+{
     if (!w) {
         return 0;
     }
@@ -365,13 +386,15 @@ size_t xx_str_wlen(const wchar_t *w) {
     return len;
 }
 
-size_t xx_str_wget_length(const wchar_t *w) {
+size_t xx_str_wget_length(const wchar_t *w)
+{
     return xx_str_wlen(w);
 }
 
-wchar_t* xx_str_wcreate(const wchar_t *w) {
+wchar_t *xx_str_wcreate(const wchar_t *w)
+{
     if (!w) {
-        wchar_t *res = (wchar_t*)xx_mem_alloc(sizeof(wchar_t));
+        wchar_t *res = (wchar_t *)xx_mem_alloc(sizeof(wchar_t));
         if (res) {
             res[0] = L'\0';
         }
@@ -380,8 +403,9 @@ wchar_t* xx_str_wcreate(const wchar_t *w) {
     return xx_str_wdup(w);
 }
 
-wchar_t* xx_str_wcreate_len(size_t len) {
-    wchar_t *res = (wchar_t*)xx_mem_alloc((len + 1) * sizeof(wchar_t));
+wchar_t *xx_str_wcreate_len(size_t len)
+{
+    wchar_t *res = (wchar_t *)xx_mem_alloc((len + 1) * sizeof(wchar_t));
     if (!res) {
         return NULL;
     }
@@ -389,14 +413,16 @@ wchar_t* xx_str_wcreate_len(size_t len) {
     return res;
 }
 
-void xx_str_wfree(wchar_t *w) {
+void xx_str_wfree(wchar_t *w)
+{
     xx_mem_free(w);
 }
 
-wchar_t* xx_str_wconcat(const wchar_t *w1, const wchar_t *w2) {
+wchar_t *xx_str_wconcat(const wchar_t *w1, const wchar_t *w2)
+{
     size_t len1 = xx_str_wlen(w1);
     size_t len2 = xx_str_wlen(w2);
-    wchar_t *res = (wchar_t*)xx_mem_alloc((len1 + len2 + 1) * sizeof(wchar_t));
+    wchar_t *res = (wchar_t *)xx_mem_alloc((len1 + len2 + 1) * sizeof(wchar_t));
     if (!res) {
         return NULL;
     }
@@ -410,11 +436,12 @@ wchar_t* xx_str_wconcat(const wchar_t *w1, const wchar_t *w2) {
     return res;
 }
 
-wchar_t* xx_str_wconcat3(const wchar_t *w1, const wchar_t *w2, const wchar_t *w3) {
+wchar_t *xx_str_wconcat3(const wchar_t *w1, const wchar_t *w2, const wchar_t *w3)
+{
     size_t len1 = xx_str_wlen(w1);
     size_t len2 = xx_str_wlen(w2);
     size_t len3 = xx_str_wlen(w3);
-    wchar_t *res = (wchar_t*)xx_mem_alloc((len1 + len2 + len3 + 1) * sizeof(wchar_t));
+    wchar_t *res = (wchar_t *)xx_mem_alloc((len1 + len2 + len3 + 1) * sizeof(wchar_t));
     if (!res) {
         return NULL;
     }
@@ -431,7 +458,8 @@ wchar_t* xx_str_wconcat3(const wchar_t *w1, const wchar_t *w2, const wchar_t *w3
     return res;
 }
 
-int xx_str_wcmp(const wchar_t *a, const wchar_t *b) {
+int xx_str_wcmp(const wchar_t *a, const wchar_t *b)
+{
     if (a == b) {
         return 0;
     }
@@ -448,7 +476,8 @@ int xx_str_wcmp(const wchar_t *a, const wchar_t *b) {
     return (int)(*a) - (int)(*b);
 }
 
-int xx_str_wicmp(const wchar_t *a, const wchar_t *b) {
+int xx_str_wicmp(const wchar_t *a, const wchar_t *b)
+{
     if (a == b) {
         return 0;
     }
@@ -465,7 +494,8 @@ int xx_str_wicmp(const wchar_t *a, const wchar_t *b) {
     return (int)xx_tolower_w(*a) - (int)xx_tolower_w(*b);
 }
 
-int xx_str_wncmp(const wchar_t *a, const wchar_t *b, size_t n) {
+int xx_str_wncmp(const wchar_t *a, const wchar_t *b, size_t n)
+{
     if (n == 0 || a == b) {
         return 0;
     }
@@ -485,7 +515,8 @@ int xx_str_wncmp(const wchar_t *a, const wchar_t *b, size_t n) {
     return 0;
 }
 
-int xx_str_wnicmp(const wchar_t *a, const wchar_t *b, size_t n) {
+int xx_str_wnicmp(const wchar_t *a, const wchar_t *b, size_t n)
+{
     if (n == 0 || a == b) {
         return 0;
     }
@@ -505,12 +536,13 @@ int xx_str_wnicmp(const wchar_t *a, const wchar_t *b, size_t n) {
     return 0;
 }
 
-wchar_t* xx_str_wdup(const wchar_t *w) {
+wchar_t *xx_str_wdup(const wchar_t *w)
+{
     if (!w) {
         return NULL;
     }
     size_t len = xx_str_wlen(w);
-    wchar_t *dup = (wchar_t*)xx_mem_alloc((len + 1) * sizeof(wchar_t));
+    wchar_t *dup = (wchar_t *)xx_mem_alloc((len + 1) * sizeof(wchar_t));
     if (!dup) {
         return NULL;
     }
@@ -518,20 +550,22 @@ wchar_t* xx_str_wdup(const wchar_t *w) {
     return dup;
 }
 
-wchar_t* xx_str_wchr(const wchar_t *w, wchar_t c) {
+wchar_t *xx_str_wchr(const wchar_t *w, wchar_t c)
+{
     if (!w) {
         return NULL;
     }
     while (*w) {
         if (*w == c) {
-            return (wchar_t*)w;
+            return (wchar_t *)w;
         }
         w++;
     }
-    return (c == L'\0') ? (wchar_t*)w : NULL;
+    return (c == L'\0') ? (wchar_t *)w : NULL;
 }
 
-wchar_t* xx_str_wrchr(const wchar_t *w, wchar_t c) {
+wchar_t *xx_str_wrchr(const wchar_t *w, wchar_t c)
+{
     if (!w) {
         return NULL;
     }
@@ -543,29 +577,31 @@ wchar_t* xx_str_wrchr(const wchar_t *w, wchar_t c) {
         w++;
     }
     if (c == L'\0') {
-        return (wchar_t*)w;
+        return (wchar_t *)w;
     }
-    return (wchar_t*)last;
+    return (wchar_t *)last;
 }
 
-wchar_t* xx_str_wstr(const wchar_t *haystack, const wchar_t *needle) {
+wchar_t *xx_str_wstr(const wchar_t *haystack, const wchar_t *needle)
+{
     if (!haystack || !needle) {
         return NULL;
     }
     if (!*needle) {
-        return (wchar_t*)haystack;
+        return (wchar_t *)haystack;
     }
     size_t nlen = xx_str_wlen(needle);
     while (*haystack) {
         if (*haystack == *needle && xx_str_wncmp(haystack, needle, nlen) == 0) {
-            return (wchar_t*)haystack;
+            return (wchar_t *)haystack;
         }
         haystack++;
     }
     return NULL;
 }
 
-bool xx_str_w_starts_with(const wchar_t *w, const wchar_t *prefix) {
+bool xx_str_w_starts_with(const wchar_t *w, const wchar_t *prefix)
+{
     if (!w || !prefix) {
         return false;
     }
@@ -573,7 +609,8 @@ bool xx_str_w_starts_with(const wchar_t *w, const wchar_t *prefix) {
     return xx_str_wncmp(w, prefix, plen) == 0;
 }
 
-bool xx_str_w_ends_with(const wchar_t *w, const wchar_t *suffix) {
+bool xx_str_w_ends_with(const wchar_t *w, const wchar_t *suffix)
+{
     if (!w || !suffix) {
         return false;
     }
@@ -585,44 +622,53 @@ bool xx_str_w_ends_with(const wchar_t *w, const wchar_t *suffix) {
     return xx_str_wcmp(w + (slen - xlen), suffix) == 0;
 }
 
-bool xx_str_w_equals(const wchar_t *a, const wchar_t *b) {
+bool xx_str_w_equals(const wchar_t *a, const wchar_t *b)
+{
     return xx_str_wcmp(a, b) == 0;
 }
 
-bool xx_str_w_iequals(const wchar_t *a, const wchar_t *b) {
+bool xx_str_w_iequals(const wchar_t *a, const wchar_t *b)
+{
     return xx_str_wicmp(a, b) == 0;
 }
 
 /* --- Encoding / Conversion Implementation --- */
 
-wchar_t* xx_str_ansi_to_unicode(const char *ansi) {
+wchar_t *xx_str_ansi_to_unicode(const char *ansi)
+{
     return xx_string_platform_mb_to_wide(ansi, XX_CODEPAGE_ANSI);
 }
 
-char* xx_str_unicode_to_ansi(const wchar_t *wstr) {
+char *xx_str_unicode_to_ansi(const wchar_t *wstr)
+{
     return xx_string_platform_wide_to_mb(wstr, XX_CODEPAGE_ANSI);
 }
 
-wchar_t* xx_str_utf8_to_unicode(const char *utf8) {
+wchar_t *xx_str_utf8_to_unicode(const char *utf8)
+{
     return xx_string_platform_mb_to_wide(utf8, XX_CODEPAGE_UTF8);
 }
 
-char* xx_str_unicode_to_utf8(const wchar_t *wstr) {
+char *xx_str_unicode_to_utf8(const wchar_t *wstr)
+{
     return xx_string_platform_wide_to_mb(wstr, XX_CODEPAGE_UTF8);
 }
 
-void xx_str_free_unicode(wchar_t *wstr) {
+void xx_str_free_unicode(wchar_t *wstr)
+{
     xx_mem_free(wstr);
 }
 
-void xx_str_free_ansi(char *str) {
+void xx_str_free_ansi(char *str)
+{
     xx_mem_free(str);
 }
 
 /* --- Dynamic String Struct Implementation (ANSI) --- */
 
-xx_str_a_t* xx_str_a_create(const char *raw) {
-    xx_str_a_t *s = (xx_str_a_t*)xx_mem_alloc(sizeof(xx_str_a_t));
+xx_str_a_t *xx_str_a_create(const char *raw)
+{
+    xx_str_a_t *s = (xx_str_a_t *)xx_mem_alloc(sizeof(xx_str_a_t));
     if (!s) {
         return NULL;
     }
@@ -633,7 +679,8 @@ xx_str_a_t* xx_str_a_create(const char *raw) {
     return s;
 }
 
-void xx_str_a_destroy(xx_str_a_t *s) {
+void xx_str_a_destroy(xx_str_a_t *s)
+{
     if (!s) {
         return;
     }
@@ -641,37 +688,42 @@ void xx_str_a_destroy(xx_str_a_t *s) {
     xx_mem_free(s);
 }
 
-bool xx_str_a_concat(xx_str_a_t *s, const char *append_str) {
+bool xx_str_a_concat(xx_str_a_t *s, const char *append_str)
+{
     return xx_str_a_append(s, append_str);
 }
 
-size_t xx_str_a_get_length(const xx_str_a_t *s) {
+size_t xx_str_a_get_length(const xx_str_a_t *s)
+{
     return s ? s->length : 0;
 }
 
-bool xx_str_a_init(xx_str_a_t *s) {
+bool xx_str_a_init(xx_str_a_t *s)
+{
     if (!s) {
         return false;
     }
-    s->data     = NULL;
-    s->length   = 0;
+    s->data = NULL;
+    s->length = 0;
     s->capacity = 0;
-    s->is_view  = false;
+    s->is_view = false;
     return true;
 }
 
-bool xx_str_a_init_view(xx_str_a_t *s, const char *raw, size_t len) {
+bool xx_str_a_init_view(xx_str_a_t *s, const char *raw, size_t len)
+{
     if (!s) {
         return false;
     }
-    s->data     = (char*)raw;
-    s->length   = len;
+    s->data = (char *)raw;
+    s->length = len;
     s->capacity = len;
-    s->is_view  = true;
+    s->is_view = true;
     return true;
 }
 
-bool xx_str_a_init_copy(xx_str_a_t *s, const char *raw) {
+bool xx_str_a_init_copy(xx_str_a_t *s, const char *raw)
+{
     if (!s) {
         return false;
     }
@@ -685,24 +737,26 @@ bool xx_str_a_init_copy(xx_str_a_t *s, const char *raw) {
     }
     xx_mem_copy(s->data, raw, len);
     s->data[len] = '\0';
-    s->length    = len;
+    s->length = len;
     return true;
 }
 
-void xx_str_a_free(xx_str_a_t *s) {
+void xx_str_a_free(xx_str_a_t *s)
+{
     if (!s) {
         return;
     }
     if (!s->is_view && s->data) {
         xx_mem_free(s->data);
     }
-    s->data     = NULL;
-    s->length   = 0;
+    s->data = NULL;
+    s->length = 0;
     s->capacity = 0;
-    s->is_view  = false;
+    s->is_view = false;
 }
 
-bool xx_str_a_reserve(xx_str_a_t *s, size_t capacity) {
+bool xx_str_a_reserve(xx_str_a_t *s, size_t capacity)
+{
     if (!s || s->is_view) {
         return false;
     }
@@ -723,17 +777,18 @@ bool xx_str_a_reserve(xx_str_a_t *s, size_t capacity) {
         new_cap = grown;
     }
 
-    char *new_data = (char*)xx_mem_realloc(s->data, new_cap);
+    char *new_data = (char *)xx_mem_realloc(s->data, new_cap);
     if (!new_data) {
         return false;
     }
 
-    s->data     = new_data;
+    s->data = new_data;
     s->capacity = new_cap;
     return true;
 }
 
-bool xx_str_a_append(xx_str_a_t *s, const char *append_str) {
+bool xx_str_a_append(xx_str_a_t *s, const char *append_str)
+{
     if (!s || s->is_view || !append_str) {
         return false;
     }
@@ -751,14 +806,16 @@ bool xx_str_a_append(xx_str_a_t *s, const char *append_str) {
     return true;
 }
 
-bool xx_str_a_append_char(xx_str_a_t *s, char c) {
+bool xx_str_a_append_char(xx_str_a_t *s, char c)
+{
     char temp[2];
     temp[0] = c;
     temp[1] = '\0';
     return xx_str_a_append(s, temp);
 }
 
-void xx_str_a_clear(xx_str_a_t *s) {
+void xx_str_a_clear(xx_str_a_t *s)
+{
     if (!s || s->is_view) {
         return;
     }
@@ -768,14 +825,16 @@ void xx_str_a_clear(xx_str_a_t *s) {
     }
 }
 
-const char* xx_str_a_cstr(const xx_str_a_t *s) {
+const char *xx_str_a_cstr(const xx_str_a_t *s)
+{
     return (s && s->data) ? s->data : "";
 }
 
 /* --- Dynamic String Struct Implementation (Unicode) --- */
 
-xx_str_w_t* xx_str_w_create(const wchar_t *raw) {
-    xx_str_w_t *s = (xx_str_w_t*)xx_mem_alloc(sizeof(xx_str_w_t));
+xx_str_w_t *xx_str_w_create(const wchar_t *raw)
+{
+    xx_str_w_t *s = (xx_str_w_t *)xx_mem_alloc(sizeof(xx_str_w_t));
     if (!s) {
         return NULL;
     }
@@ -786,7 +845,8 @@ xx_str_w_t* xx_str_w_create(const wchar_t *raw) {
     return s;
 }
 
-void xx_str_w_destroy(xx_str_w_t *s) {
+void xx_str_w_destroy(xx_str_w_t *s)
+{
     if (!s) {
         return;
     }
@@ -794,37 +854,42 @@ void xx_str_w_destroy(xx_str_w_t *s) {
     xx_mem_free(s);
 }
 
-bool xx_str_w_concat(xx_str_w_t *s, const wchar_t *append_str) {
+bool xx_str_w_concat(xx_str_w_t *s, const wchar_t *append_str)
+{
     return xx_str_w_append(s, append_str);
 }
 
-size_t xx_str_w_get_length(const xx_str_w_t *s) {
+size_t xx_str_w_get_length(const xx_str_w_t *s)
+{
     return s ? s->length : 0;
 }
 
-bool xx_str_w_init(xx_str_w_t *s) {
+bool xx_str_w_init(xx_str_w_t *s)
+{
     if (!s) {
         return false;
     }
-    s->data     = NULL;
-    s->length   = 0;
+    s->data = NULL;
+    s->length = 0;
     s->capacity = 0;
-    s->is_view  = false;
+    s->is_view = false;
     return true;
 }
 
-bool xx_str_w_init_view(xx_str_w_t *s, const wchar_t *raw, size_t len) {
+bool xx_str_w_init_view(xx_str_w_t *s, const wchar_t *raw, size_t len)
+{
     if (!s) {
         return false;
     }
-    s->data     = (wchar_t*)raw;
-    s->length   = len;
+    s->data = (wchar_t *)raw;
+    s->length = len;
     s->capacity = len;
-    s->is_view  = true;
+    s->is_view = true;
     return true;
 }
 
-bool xx_str_w_init_copy(xx_str_w_t *s, const wchar_t *raw) {
+bool xx_str_w_init_copy(xx_str_w_t *s, const wchar_t *raw)
+{
     if (!s) {
         return false;
     }
@@ -838,24 +903,26 @@ bool xx_str_w_init_copy(xx_str_w_t *s, const wchar_t *raw) {
     }
     xx_mem_copy(s->data, raw, len * sizeof(wchar_t));
     s->data[len] = L'\0';
-    s->length    = len;
+    s->length = len;
     return true;
 }
 
-void xx_str_w_free(xx_str_w_t *s) {
+void xx_str_w_free(xx_str_w_t *s)
+{
     if (!s) {
         return;
     }
     if (!s->is_view && s->data) {
         xx_mem_free(s->data);
     }
-    s->data     = NULL;
-    s->length   = 0;
+    s->data = NULL;
+    s->length = 0;
     s->capacity = 0;
-    s->is_view  = false;
+    s->is_view = false;
 }
 
-bool xx_str_w_reserve(xx_str_w_t *s, size_t capacity) {
+bool xx_str_w_reserve(xx_str_w_t *s, size_t capacity)
+{
     if (!s || s->is_view) {
         return false;
     }
@@ -868,17 +935,18 @@ bool xx_str_w_reserve(xx_str_w_t *s, size_t capacity) {
         new_cap = new_cap + (new_cap >> 1);
     }
 
-    wchar_t *new_data = (wchar_t*)xx_mem_realloc(s->data, new_cap * sizeof(wchar_t));
+    wchar_t *new_data = (wchar_t *)xx_mem_realloc(s->data, new_cap * sizeof(wchar_t));
     if (!new_data) {
         return false;
     }
 
-    s->data     = new_data;
+    s->data = new_data;
     s->capacity = new_cap;
     return true;
 }
 
-bool xx_str_w_append(xx_str_w_t *s, const wchar_t *append_str) {
+bool xx_str_w_append(xx_str_w_t *s, const wchar_t *append_str)
+{
     if (!s || s->is_view || !append_str) {
         return false;
     }
@@ -896,14 +964,16 @@ bool xx_str_w_append(xx_str_w_t *s, const wchar_t *append_str) {
     return true;
 }
 
-bool xx_str_w_append_char(xx_str_w_t *s, wchar_t c) {
+bool xx_str_w_append_char(xx_str_w_t *s, wchar_t c)
+{
     wchar_t temp[2];
     temp[0] = c;
     temp[1] = L'\0';
     return xx_str_w_append(s, temp);
 }
 
-void xx_str_w_clear(xx_str_w_t *s) {
+void xx_str_w_clear(xx_str_w_t *s)
+{
     if (!s || s->is_view) {
         return;
     }
@@ -913,6 +983,7 @@ void xx_str_w_clear(xx_str_w_t *s) {
     }
 }
 
-const wchar_t* xx_str_w_cstr(const xx_str_w_t *s) {
+const wchar_t *xx_str_w_cstr(const xx_str_w_t *s)
+{
     return (s && s->data) ? s->data : L"";
 }

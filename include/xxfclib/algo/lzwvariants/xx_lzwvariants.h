@@ -56,11 +56,7 @@ extern "C" {
  * @param written     Receives the produced byte count (0 on failure).
  * @return true only when exactly @p output_size bytes were produced.
  */
-XXFC_API bool xx_lzwvariants_kboom_decode_memory(const uint8_t *input,
-                                                 size_t input_size,
-                                                 uint8_t *output,
-                                                 size_t output_size,
-                                                 size_t *written);
+XXFC_API bool xx_lzwvariants_kboom_decode_memory(const uint8_t *input, size_t input_size, uint8_t *output, size_t output_size, size_t *written);
 
 /**
  * @brief NewWave "LZWD" LZW (HANDLE_METHOD_LZWD_LZW).
@@ -93,11 +89,7 @@ XXFC_API bool xx_lzwvariants_kboom_decode_memory(const uint8_t *input,
  * @param written     Receives the produced byte count (0 on failure).
  * @return true only when exactly @p output_size bytes were produced.
  */
-XXFC_API bool xx_lzwvariants_newwave_decode_memory(const uint8_t *input,
-                                                   size_t input_size,
-                                                   uint8_t *output,
-                                                   size_t output_size,
-                                                   size_t *written);
+XXFC_API bool xx_lzwvariants_newwave_decode_memory(const uint8_t *input, size_t input_size, uint8_t *output, size_t output_size, size_t *written);
 
 #ifdef __cplusplus
 }

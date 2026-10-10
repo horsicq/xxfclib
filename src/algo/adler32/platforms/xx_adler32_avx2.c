@@ -7,7 +7,8 @@
 #define ADLER_MAX_DEFER 5552U
 
 XX_ADLER32_TARGET_AVX2
-uint32_t xx_adler32_avx2(uint32_t adler, const void *data, size_t size) {
+uint32_t xx_adler32_avx2(uint32_t adler, const void *data, size_t size)
+{
 #ifdef XX_ADLER32_X86
     const uint8_t *p = (const uint8_t *)data;
     uint32_t a = adler & 0xFFFFU;
@@ -19,11 +20,9 @@ uint32_t xx_adler32_avx2(uint32_t adler, const void *data, size_t size) {
     while (size >= 64U) {
         size_t run = size < ADLER_MAX_DEFER ? size : ADLER_MAX_DEFER;
         uint32_t n = (uint32_t)(run & ~(size_t)31U);
-        __m256i weights_lo = _mm256_setr_epi16(
-            (short)n, (short)(n-1U), (short)(n-2U), (short)(n-3U),
-            (short)(n-4U), (short)(n-5U), (short)(n-6U), (short)(n-7U),
-            (short)(n-8U), (short)(n-9U), (short)(n-10U), (short)(n-11U),
-            (short)(n-12U), (short)(n-13U), (short)(n-14U), (short)(n-15U));
+        __m256i weights_lo = _mm256_setr_epi16((short)n, (short)(n - 1U), (short)(n - 2U), (short)(n - 3U), (short)(n - 4U), (short)(n - 5U), (short)(n - 6U),
+                                               (short)(n - 7U), (short)(n - 8U), (short)(n - 9U), (short)(n - 10U), (short)(n - 11U), (short)(n - 12U), (short)(n - 13U),
+                                               (short)(n - 14U), (short)(n - 15U));
         __m256i weights_hi = _mm256_sub_epi16(weights_lo, _mm256_set1_epi16(16));
         __m256i sums = zero;
         __m256i weighted = zero;

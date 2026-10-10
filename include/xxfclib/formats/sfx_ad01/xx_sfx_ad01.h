@@ -8,7 +8,9 @@
 #ifdef __cplusplus
 extern "C" {
 #endif
-typedef struct xx_sfx_ad01 { Abstractformat format; } xx_sfx_ad01;
+typedef struct xx_sfx_ad01 {
+    Abstractformat format;
+} xx_sfx_ad01;
 XXFC_API void xx_sfx_ad01_init(xx_sfx_ad01 *, xx_io_device *, int64_t);
 XXFC_API xx_sfx_ad01 *xx_sfx_ad01_create(xx_io_device *, int64_t);
 XXFC_API void xx_sfx_ad01_destroy(xx_sfx_ad01 *);

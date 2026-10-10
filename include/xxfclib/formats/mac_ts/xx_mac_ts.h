@@ -10,16 +10,18 @@ extern "C" {
 #endif
 typedef xx_apple_family_info xx_mac_ts;
 typedef xx_mac_ts xx_mac_ts_t;
-XXFC_API void xx_mac_ts_init(xx_mac_ts *,xx_io_device *,int64_t);
-XXFC_API xx_mac_ts *xx_mac_ts_create(xx_io_device *,int64_t);
+XXFC_API void xx_mac_ts_init(xx_mac_ts *, xx_io_device *, int64_t);
+XXFC_API xx_mac_ts *xx_mac_ts_create(xx_io_device *, int64_t);
 XXFC_API void xx_mac_ts_destroy(xx_mac_ts *);
 XXFC_API void xx_mac_ts_free(xx_mac_ts *);
-XXFC_API bool xx_mac_ts_check_is_valid(Abstractformat *,xx_pd_struct *);
-XXFC_API bool xx_mac_ts_handle_base_info(Abstractformat *,xx_pd_struct *);
-XXFC_API bool xx_mac_ts_extract_record_to_device(Abstractformat *,xx_archive_record_state *,xx_io_device *,xx_pd_struct *);
-static inline Abstractformat *xx_mac_ts_to_format(xx_mac_ts *r) { return r ? &r->format : NULL; }
+XXFC_API bool xx_mac_ts_check_is_valid(Abstractformat *, xx_pd_struct *);
+XXFC_API bool xx_mac_ts_handle_base_info(Abstractformat *, xx_pd_struct *);
+XXFC_API bool xx_mac_ts_extract_record_to_device(Abstractformat *, xx_archive_record_state *, xx_io_device *, xx_pd_struct *);
+static inline Abstractformat *xx_mac_ts_to_format(xx_mac_ts *r)
+{
+    return r ? &r->format : NULL;
+}
 #ifdef __cplusplus
 }
 #endif
 #endif
-

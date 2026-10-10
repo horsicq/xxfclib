@@ -11,7 +11,9 @@ extern "C" {
 #endif
 
 /* Parsec's unnamed offset/size table containing contiguous RIB or SM8 files. */
-typedef struct xx_parsec_archive { Abstractformat format; } xx_parsec_archive;
+typedef struct xx_parsec_archive {
+    Abstractformat format;
+} xx_parsec_archive;
 
 XXFC_API void xx_parsec_archive_init(xx_parsec_archive *, xx_io_device *, int64_t);
 XXFC_API xx_parsec_archive *xx_parsec_archive_create(xx_io_device *, int64_t);

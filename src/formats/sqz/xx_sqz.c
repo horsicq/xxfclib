@@ -85,17 +85,15 @@ static void xx_sqz_vtable_destroy(Abstractformat *self);
 
 /* ------------------------------------------------------------- helpers -- */
 
-static bool xx_sqz_read_at(Abstractformat *self, int64_t offset,
-                           uint8_t *buffer, size_t size) {
+static bool xx_sqz_read_at(Abstractformat *self, int64_t offset, uint8_t *buffer, size_t size)
+{
     size_t completed = 0U;
 
-    if (!self || !self->device || offset < 0 ||
-        xx_io_seek64(self->device, offset, SEEK_SET) != 0) {
+    if (!self || !self->device || offset < 0 || xx_io_seek64(self->device, offset, SEEK_SET) != 0) {
         return false;
     }
     while (completed < size) {
-        ssize_t received =
-            xx_io_read(self->device, buffer + completed, size - completed);
+        ssize_t received = xx_io_read(self->device, buffer + completed, size - completed);
         if (received <= 0 || (size_t)received > size - completed) {
             return false;
         }
@@ -104,13 +102,14 @@ static bool xx_sqz_read_at(Abstractformat *self, int64_t offset,
     return true;
 }
 
-static bool xx_sqz_range_within(int64_t total, int64_t offset, int64_t size) {
-    return offset >= 0 && size >= 0 && offset <= total &&
-           size <= total - offset;
+static bool xx_sqz_range_within(int64_t total, int64_t offset, int64_t size)
+{
+    return offset >= 0 && size >= 0 && offset <= total && size <= total - offset;
 }
 
 /* Refuse anything that would escape the extraction directory. */
-static bool xx_sqz_path_safe(const char *name) {
+static bool xx_sqz_path_safe(const char *name)
+{
     const char *cursor = name;
 
     if (!name || !name[0] || name[0] == '/') return false;
@@ -125,7 +124,8 @@ static bool xx_sqz_path_safe(const char *name) {
     return true;
 }
 
-static void xx_sqz_stream_free(void *pointer) {
+static void xx_sqz_stream_free(void *pointer)
+{
     xx_sqz_stream *stream = (xx_sqz_stream *)pointer;
     size_t index;
 
@@ -138,9 +138,9 @@ static void xx_sqz_stream_free(void *pointer) {
 }
 
 /* Append a member; the caller keeps ownership of @p member->name on failure. */
-static bool xx_sqz_add(xx_sqz_stream *stream, const xx_sqz_member *member) {
-    xx_sqz_member *grown = (xx_sqz_member *)xx_mem_realloc(
-        stream->items, sizeof(*grown) * (stream->count + 1U));
+static bool xx_sqz_add(xx_sqz_stream *stream, const xx_sqz_member *member)
+{
+    xx_sqz_member *grown = (xx_sqz_member *)xx_mem_realloc(stream->items, sizeof(*grown) * (stream->count + 1U));
 
     if (!grown) return false;
     stream->items = grown;
@@ -171,16 +171,15 @@ static bool xx_sqz_add(xx_sqz_stream *stream, const xx_sqz_member *member) {
 #define XX_SQZ_BLOCK_TYPE4 4U
 #define XX_SQZ_POSTFIX_PAYLOAD 5
 
-static const uint8_t XX_SQZ_MAGIC[XX_SQZ_MAGIC_SIZE] = {'H', 'L', 'S', 'Q',
-                                                        'Z'};
+static const uint8_t XX_SQZ_MAGIC[XX_SQZ_MAGIC_SIZE] = {'H', 'L', 'S', 'Q', 'Z'};
 
 /* The reference normalises backslashes to forward slashes and then rejects
  * anything that is not a plain relative path. The same rules are applied here
  * in place, over Latin-1 bytes, so that a member whose name cannot be written
  * safely is refused while the archive is being walked rather than at the far
  * end of an extraction. */
-static bool xx_sqz_clean_name(const uint8_t *raw, size_t length,
-                              char *out /* [XX_SQZ_MAX_NAME + 1] */) {
+static bool xx_sqz_clean_name(const uint8_t *raw, size_t length, char *out /* [XX_SQZ_MAX_NAME + 1] */)
+{
     size_t index;
     size_t part_start = 0U;
 
@@ -207,8 +206,7 @@ static bool xx_sqz_clean_name(const uint8_t *raw, size_t length,
 
             if (part == 0U) return false;
             if (part == 1U && out[part_start] == '.') return false;
-            if (part == 2U && out[part_start] == '.' &&
-                out[part_start + 1U] == '.') {
+            if (part == 2U && out[part_start] == '.' && out[part_start + 1U] == '.') {
                 return false;
             }
             part_start = index + 1U;
@@ -222,9 +220,8 @@ static bool xx_sqz_clean_name(const uint8_t *raw, size_t length,
  * @p block holds the bytes at @p offset, @p available of them (at most ten,
  * fewer near the end of the file). Returns false when the block is malformed,
  * which is a structural error rather than an end of chain. */
-static bool xx_sqz_skip_block(uint8_t type, const uint8_t *block,
-                              int64_t available, int64_t span, int64_t *offset,
-                              bool *saw_postfix) {
+static bool xx_sqz_skip_block(uint8_t type, const uint8_t *block, int64_t available, int64_t span, int64_t *offset, bool *saw_postfix)
+{
     int64_t skip = 3;
     int64_t extra;
 
@@ -259,7 +256,8 @@ static bool xx_sqz_skip_block(uint8_t type, const uint8_t *block,
     return true;
 }
 
-static xx_sqz_stream *xx_sqz_parse(Abstractformat *self, xx_pd_struct *pd) {
+static xx_sqz_stream *xx_sqz_parse(Abstractformat *self, xx_pd_struct *pd)
+{
     xx_sqz_stream *stream;
     uint8_t banner[XX_SQZ_BANNER_SIZE];
     uint8_t header[XX_SQZ_MAX_HEADER_SIZE];
@@ -278,8 +276,7 @@ static xx_sqz_stream *xx_sqz_parse(Abstractformat *self, xx_pd_struct *pd) {
     span = total - self->base_address;
     if (span < XX_SQZ_BANNER_SIZE + 1) return NULL;
     if (pd && xx_pd_is_stopped(pd)) return NULL;
-    if (!xx_sqz_read_at(self, self->base_address, banner, sizeof(banner)) ||
-        xx_rt_memcmp(banner, XX_SQZ_MAGIC, XX_SQZ_MAGIC_SIZE) != 0) {
+    if (!xx_sqz_read_at(self, self->base_address, banner, sizeof(banner)) || xx_rt_memcmp(banner, XX_SQZ_MAGIC, XX_SQZ_MAGIC_SIZE) != 0) {
         return NULL;
     }
     version = banner[XX_SQZ_OFFSET_VERSION];
@@ -309,8 +306,7 @@ static xx_sqz_stream *xx_sqz_parse(Abstractformat *self, xx_pd_struct *pd) {
         /* The chain has to be closed by a terminator inside the file; running
          * off the end means the archive is not whole. */
         if (offset < XX_SQZ_BANNER_SIZE || offset >= span) goto fail;
-        if (!xx_sqz_read_at(self, self->base_address + offset, &length_byte,
-                            1U)) {
+        if (!xx_sqz_read_at(self, self->base_address + offset, &length_byte, 1U)) {
             goto fail;
         }
 
@@ -325,12 +321,10 @@ static xx_sqz_stream *xx_sqz_parse(Abstractformat *self, xx_pd_struct *pd) {
             if (available > (int64_t)sizeof(block)) {
                 available = (int64_t)sizeof(block);
             }
-            if (!xx_sqz_read_at(self, self->base_address + offset, block,
-                                (size_t)available)) {
+            if (!xx_sqz_read_at(self, self->base_address + offset, block, (size_t)available)) {
                 goto fail;
             }
-            if (!xx_sqz_skip_block(length_byte, block, available, span, &offset,
-                                   &saw_postfix)) {
+            if (!xx_sqz_skip_block(length_byte, block, available, span, &offset, &saw_postfix)) {
                 goto fail;
             }
             continue;
@@ -340,14 +334,12 @@ static xx_sqz_stream *xx_sqz_parse(Abstractformat *self, xx_pd_struct *pd) {
 
         header_size = (int64_t)length_byte + 2;
         if (header_size > span - offset) goto fail;
-        if (!xx_sqz_read_at(self, self->base_address + offset, header,
-                            (size_t)header_size)) {
+        if (!xx_sqz_read_at(self, self->base_address + offset, header, (size_t)header_size)) {
             goto fail;
         }
 
         /* Additive check over everything past the length and check bytes. */
-        for (check_index = 2U; check_index < (size_t)header_size;
-             ++check_index) {
+        for (check_index = 2U; check_index < (size_t)header_size; ++check_index) {
             check = (uint8_t)(check + header[check_index]);
         }
         if (check != header[1]) goto fail;
@@ -383,9 +375,7 @@ static xx_sqz_stream *xx_sqz_parse(Abstractformat *self, xx_pd_struct *pd) {
         member.crc32 = xx_data_get_u32(header + 16, 4, 0, false);
         /* The DOS stamp is published the way the reference packs it: date in
          * the high half, time in the low half. */
-        member.timestamp =
-            ((uint64_t)xx_data_get_u16(header + 13, 2, 0, false) << 16) |
-            (uint64_t)xx_data_get_u16(header + 11, 2, 0, false);
+        member.timestamp = ((uint64_t)xx_data_get_u16(header + 13, 2, 0, false) << 16) | (uint64_t)xx_data_get_u16(header + 11, 2, 0, false);
         member.is_folder = false;
         if (!xx_sqz_add(stream, &member)) {
             xx_str_free(member.name);
@@ -409,8 +399,8 @@ fail:
  * which share one decoder behind a method selector. An unknown method must
  * fail rather than fall back to a copy: handing a caller compressed bytes
  * labelled as the file is exactly what the caller cannot detect. */
-static bool xx_sqz_decode(Abstractformat *self, const xx_sqz_member *member,
-                          uint8_t **out, size_t *out_size, xx_pd_struct *pd) {
+static bool xx_sqz_decode(Abstractformat *self, const xx_sqz_member *member, uint8_t **out, size_t *out_size, xx_pd_struct *pd)
+{
     uint8_t *input;
     uint8_t *output;
     size_t written = 0U;
@@ -421,23 +411,18 @@ static bool xx_sqz_decode(Abstractformat *self, const xx_sqz_member *member,
     if (!self || !member) return false;
     if (pd && xx_pd_is_stopped(pd)) return false;
     if (member->method > XX_SQZ_MAX_METHOD) return false;
-    if (member->compressed_size < 0 ||
-        member->compressed_size > XX_SQZ_MAX_MEMBER_SIZE) {
+    if (member->compressed_size < 0 || member->compressed_size > XX_SQZ_MAX_MEMBER_SIZE) {
         return false;
     }
-    if (member->uncompressed_size < 0 ||
-        member->uncompressed_size > XX_SQZ_MAX_MEMBER_SIZE) {
+    if (member->uncompressed_size < 0 || member->uncompressed_size > XX_SQZ_MAX_MEMBER_SIZE) {
         return false;
     }
 
     /* Zero-length allocations are avoided so that a NULL return stays a
      * failure rather than an empty member. */
-    input = (uint8_t *)xx_mem_alloc(
-        member->compressed_size != 0 ? (size_t)member->compressed_size : 1U);
+    input = (uint8_t *)xx_mem_alloc(member->compressed_size != 0 ? (size_t)member->compressed_size : 1U);
     if (!input) return false;
-    if (member->compressed_size != 0 &&
-        !xx_sqz_read_at(self, member->data_offset, input,
-                        (size_t)member->compressed_size)) {
+    if (member->compressed_size != 0 && !xx_sqz_read_at(self, member->data_offset, input, (size_t)member->compressed_size)) {
         xx_mem_free(input);
         return false;
     }
@@ -446,9 +431,7 @@ static bool xx_sqz_decode(Abstractformat *self, const xx_sqz_member *member,
         return false;
     }
 
-    output = (uint8_t *)xx_mem_alloc(
-        member->uncompressed_size != 0 ? (size_t)member->uncompressed_size
-                                       : 1U);
+    output = (uint8_t *)xx_mem_alloc(member->uncompressed_size != 0 ? (size_t)member->uncompressed_size : 1U);
     if (!output) {
         xx_mem_free(input);
         return false;
@@ -464,9 +447,7 @@ static bool xx_sqz_decode(Abstractformat *self, const xx_sqz_member *member,
             written = (size_t)member->uncompressed_size;
         }
     } else {
-        ok = xx_sqz_decode_memory(input, (size_t)member->compressed_size,
-                                  member->method, output,
-                                  (size_t)member->uncompressed_size, &written);
+        ok = xx_sqz_decode_memory(input, (size_t)member->compressed_size, member->method, output, (size_t)member->uncompressed_size, &written);
     }
 
     xx_mem_free(input);
@@ -481,7 +462,8 @@ static bool xx_sqz_decode(Abstractformat *self, const xx_sqz_member *member,
 
 /* ---------------------------------------------------------- lifecycle --- */
 
-void xx_sqz_init(xx_sqz *archive, xx_io_device *device, int64_t base_address) {
+void xx_sqz_init(xx_sqz *archive, xx_io_device *device, int64_t base_address)
+{
     if (!archive) return;
     xx_mem_zero(archive, sizeof(*archive));
     xx_format_init(&archive->format, device, base_address);
@@ -494,22 +476,17 @@ void xx_sqz_init(xx_sqz *archive, xx_io_device *device, int64_t base_address) {
     archive->format.check_is_valid = xx_sqz_check_is_valid;
     archive->format.handle_base_info = xx_sqz_handle_base_info;
     archive->format.get_format_size = xx_sqz_get_format_size;
-    archive->format.get_number_of_archive_records =
-        xx_sqz_get_number_of_archive_records;
-    archive->format.create_archive_records_reading =
-        xx_sqz_create_archive_records_reading;
-    archive->format.get_current_archive_record =
-        xx_sqz_get_current_archive_record;
-    archive->format.unpack_current_archive_record =
-        xx_sqz_unpack_current_archive_record;
-    archive->format.archive_record_move_to_next =
-        xx_sqz_archive_record_move_to_next;
-    archive->format.free_archive_records_reading =
-        xx_sqz_free_archive_records_reading;
+    archive->format.get_number_of_archive_records = xx_sqz_get_number_of_archive_records;
+    archive->format.create_archive_records_reading = xx_sqz_create_archive_records_reading;
+    archive->format.get_current_archive_record = xx_sqz_get_current_archive_record;
+    archive->format.unpack_current_archive_record = xx_sqz_unpack_current_archive_record;
+    archive->format.archive_record_move_to_next = xx_sqz_archive_record_move_to_next;
+    archive->format.free_archive_records_reading = xx_sqz_free_archive_records_reading;
     archive->format.destroy = xx_sqz_vtable_destroy;
 }
 
-xx_sqz *xx_sqz_create(xx_io_device *device, int64_t base_address) {
+xx_sqz *xx_sqz_create(xx_io_device *device, int64_t base_address)
+{
     xx_sqz *archive = (xx_sqz *)xx_mem_alloc(sizeof(*archive));
 
     if (!archive) return NULL;
@@ -517,7 +494,8 @@ xx_sqz *xx_sqz_create(xx_io_device *device, int64_t base_address) {
     return archive;
 }
 
-void xx_sqz_destroy(xx_sqz *archive) {
+void xx_sqz_destroy(xx_sqz *archive)
+{
     if (!archive) return;
     /* Not xx_format_destroy: it dispatches through format.destroy, which is
      * the wrapper below, and the two would recurse. */
@@ -527,19 +505,22 @@ void xx_sqz_destroy(xx_sqz *archive) {
     archive->version = 0U;
 }
 
-void xx_sqz_free(xx_sqz *archive) {
+void xx_sqz_free(xx_sqz *archive)
+{
     if (!archive) return;
     xx_sqz_destroy(archive);
     xx_mem_free(archive);
 }
 
-static void xx_sqz_vtable_destroy(Abstractformat *self) {
+static void xx_sqz_vtable_destroy(Abstractformat *self)
+{
     xx_sqz_destroy((xx_sqz *)self);
 }
 
 /* -------------------------------------------------------------- format -- */
 
-bool xx_sqz_check_is_valid(Abstractformat *self, xx_pd_struct *pd) {
+bool xx_sqz_check_is_valid(Abstractformat *self, xx_pd_struct *pd)
+{
     xx_sqz_stream *stream;
 
     if (!self || (pd && xx_pd_is_stopped(pd))) return false;
@@ -549,7 +530,8 @@ bool xx_sqz_check_is_valid(Abstractformat *self, xx_pd_struct *pd) {
     return true;
 }
 
-bool xx_sqz_handle_base_info(Abstractformat *self, xx_pd_struct *pd) {
+bool xx_sqz_handle_base_info(Abstractformat *self, xx_pd_struct *pd)
+{
     xx_sqz *archive = (xx_sqz *)self;
     xx_sqz_stream *stream;
 
@@ -571,18 +553,17 @@ bool xx_sqz_handle_base_info(Abstractformat *self, xx_pd_struct *pd) {
     return true;
 }
 
-int64_t xx_sqz_get_format_size(Abstractformat *self, xx_pd_struct *pd) {
-    if (!self ||
-        (!self->base_info_handled && !xx_format_handle_base_info(self, pd))) {
+int64_t xx_sqz_get_format_size(Abstractformat *self, xx_pd_struct *pd)
+{
+    if (!self || (!self->base_info_handled && !xx_format_handle_base_info(self, pd))) {
         return 0;
     }
     return self->is_valid ? self->format_size : 0;
 }
 
-uint64_t xx_sqz_get_number_of_archive_records(Abstractformat *self,
-                                              xx_pd_struct *pd) {
-    if (!self ||
-        (!self->base_info_handled && !xx_format_handle_base_info(self, pd))) {
+uint64_t xx_sqz_get_number_of_archive_records(Abstractformat *self, xx_pd_struct *pd)
+{
+    if (!self || (!self->base_info_handled && !xx_format_handle_base_info(self, pd))) {
         return 0U;
     }
     return self->is_valid ? ((xx_sqz *)self)->number_of_records : 0U;
@@ -590,8 +571,8 @@ uint64_t xx_sqz_get_number_of_archive_records(Abstractformat *self,
 
 /* ------------------------------------------------------------- records -- */
 
-static bool xx_sqz_set_record(xx_archive_record *record,
-                              const xx_sqz_member *member) {
+static bool xx_sqz_set_record(xx_archive_record *record, const xx_sqz_member *member)
+{
     xx_archive_record_cleanup(record);
     xx_archive_record_init(record);
     record->header_offset = member->header_offset;
@@ -599,37 +580,25 @@ static bool xx_sqz_set_record(xx_archive_record *record,
     record->data_offset = member->data_offset;
     record->compressed_size = member->compressed_size;
     return xx_archive_record_set_original_name(record, member->name) &&
-           xx_archive_record_set_meta_u64(record, XX_META_ID_COMPRESSED_SIZE,
-                                          (uint64_t)member->compressed_size) &&
-           xx_archive_record_set_meta_u64(
-               record, XX_META_ID_UNCOMPRESSED_SIZE,
-               (uint64_t)member->uncompressed_size) &&
-           xx_archive_record_set_meta_u64(record, XX_META_ID_COMPRESSION_METHOD,
-                                          member->method) &&
-           xx_archive_record_set_meta_u64(record, XX_META_ID_CRC32,
-                                          member->crc32) &&
-           xx_archive_record_set_meta_u64(record, XX_META_ID_ATTRIBUTES,
-                                          member->attributes) &&
-           xx_archive_record_set_meta_u64(record, XX_META_ID_TIMESTAMP,
-                                          member->timestamp) &&
-           xx_archive_record_set_meta_bool(record, XX_META_ID_IS_FOLDER,
-                                           member->is_folder) &&
-           xx_archive_record_set_meta_bool(record, XX_META_ID_IS_ENCRYPTED,
-                                           false);
+           xx_archive_record_set_meta_u64(record, XX_META_ID_COMPRESSED_SIZE, (uint64_t)member->compressed_size) &&
+           xx_archive_record_set_meta_u64(record, XX_META_ID_UNCOMPRESSED_SIZE, (uint64_t)member->uncompressed_size) &&
+           xx_archive_record_set_meta_u64(record, XX_META_ID_COMPRESSION_METHOD, member->method) &&
+           xx_archive_record_set_meta_u64(record, XX_META_ID_CRC32, member->crc32) && xx_archive_record_set_meta_u64(record, XX_META_ID_ATTRIBUTES, member->attributes) &&
+           xx_archive_record_set_meta_u64(record, XX_META_ID_TIMESTAMP, member->timestamp) &&
+           xx_archive_record_set_meta_bool(record, XX_META_ID_IS_FOLDER, member->is_folder) && xx_archive_record_set_meta_bool(record, XX_META_ID_IS_ENCRYPTED, false);
 }
 
-static bool xx_sqz_copy_options(xx_list_s *target, const xx_list_s *options) {
+static bool xx_sqz_copy_options(xx_list_s *target, const xx_list_s *options)
+{
     size_t index;
 
     if (!target || !options) return options == NULL;
     for (index = 0U; index < options->count; ++index) {
-        const xx_meta *source =
-            (const xx_meta *)xx_list_at((const xx_list_t *)options, index);
+        const xx_meta *source = (const xx_meta *)xx_list_at((const xx_list_t *)options, index);
         xx_meta copied;
         if (!source) continue;
         xx_meta_init(&copied, source->meta_id);
-        if (!xx_var_copy(&copied.var, &source->var) ||
-            !xx_list_append(target, &copied)) {
+        if (!xx_var_copy(&copied.var, &source->var) || !xx_list_append(target, &copied)) {
             xx_meta_cleanup(&copied);
             return false;
         }
@@ -637,21 +606,20 @@ static bool xx_sqz_copy_options(xx_list_s *target, const xx_list_s *options) {
     return true;
 }
 
-static const xx_var *xx_sqz_get_option(const xx_list_s *options,
-                                       uint32_t meta_id) {
+static const xx_var *xx_sqz_get_option(const xx_list_s *options, uint32_t meta_id)
+{
     size_t index;
 
     if (!options) return NULL;
     for (index = 0U; index < options->count; ++index) {
-        const xx_meta *meta =
-            (const xx_meta *)xx_list_at((const xx_list_t *)options, index);
+        const xx_meta *meta = (const xx_meta *)xx_list_at((const xx_list_t *)options, index);
         if (meta && meta->meta_id == meta_id) return &meta->var;
     }
     return NULL;
 }
 
-xx_archive_record_state *xx_sqz_create_archive_records_reading(
-    Abstractformat *self, const xx_list_s *options, xx_pd_struct *pd) {
+xx_archive_record_state *xx_sqz_create_archive_records_reading(Abstractformat *self, const xx_list_s *options, xx_pd_struct *pd)
+{
     xx_sqz_stream *stream;
     xx_archive_record_state *state;
 
@@ -667,9 +635,7 @@ xx_archive_record_state *xx_sqz_create_archive_records_reading(
     state->internal_state = stream;
     state->free_internal = xx_sqz_stream_free;
     state->total_records = (int64_t)stream->count;
-    if (!xx_sqz_copy_options(&state->options, options) ||
-        (stream->count != 0U &&
-         !xx_sqz_set_record(&state->current_record, &stream->items[0]))) {
+    if (!xx_sqz_copy_options(&state->options, options) || (stream->count != 0U && !xx_sqz_set_record(&state->current_record, &stream->items[0]))) {
         xx_archive_record_state_free(state);
         return NULL;
     }
@@ -678,20 +644,16 @@ xx_archive_record_state *xx_sqz_create_archive_records_reading(
     return state;
 }
 
-const xx_archive_record *xx_sqz_get_current_archive_record(
-    Abstractformat *self, xx_archive_record_state *state) {
-    return self && state && state->format == self && state->has_record
-               ? &state->current_record
-               : NULL;
+const xx_archive_record *xx_sqz_get_current_archive_record(Abstractformat *self, xx_archive_record_state *state)
+{
+    return self && state && state->format == self && state->has_record ? &state->current_record : NULL;
 }
 
-bool xx_sqz_archive_record_move_to_next(Abstractformat *self,
-                                        xx_archive_record_state *state,
-                                        xx_pd_struct *pd) {
+bool xx_sqz_archive_record_move_to_next(Abstractformat *self, xx_archive_record_state *state, xx_pd_struct *pd)
+{
     xx_sqz_stream *stream;
 
-    if (!self || !state || state->format != self || !state->has_record ||
-        (pd && xx_pd_is_stopped(pd))) {
+    if (!self || !state || state->format != self || !state->has_record || (pd && xx_pd_is_stopped(pd))) {
         return false;
     }
     stream = (xx_sqz_stream *)state->internal_state;
@@ -703,14 +665,12 @@ bool xx_sqz_archive_record_move_to_next(Abstractformat *self,
     }
     ++stream->index;
     ++state->current_index;
-    state->has_record =
-        xx_sqz_set_record(&state->current_record, &stream->items[stream->index]);
+    state->has_record = xx_sqz_set_record(&state->current_record, &stream->items[stream->index]);
     return state->has_record;
 }
 
-bool xx_sqz_unpack_current_archive_record(Abstractformat *self,
-                                          xx_archive_record_state *state,
-                                          xx_pd_struct *pd) {
+bool xx_sqz_unpack_current_archive_record(Abstractformat *self, xx_archive_record_state *state, xx_pd_struct *pd)
+{
     xx_sqz_stream *stream;
     const xx_sqz_member *member;
     const xx_var *path_option;
@@ -722,8 +682,7 @@ bool xx_sqz_unpack_current_archive_record(Abstractformat *self,
     bool result = false;
     bool created = false;
 
-    if (!self || !state || state->format != self || !state->has_record ||
-        (pd && xx_pd_is_stopped(pd))) {
+    if (!self || !state || state->format != self || !state->has_record || (pd && xx_pd_is_stopped(pd))) {
         return false;
     }
     stream = (xx_sqz_stream *)state->internal_state;
@@ -740,11 +699,9 @@ bool xx_sqz_unpack_current_archive_record(Abstractformat *self,
         xx_mem_free(plain);
         return result;
     }
-    if (path_option->type == XX_VAR_TYPE_STRING ||
-        path_option->type == XX_VAR_TYPE_STRING_VIEW) {
+    if (path_option->type == XX_VAR_TYPE_STRING || path_option->type == XX_VAR_TYPE_STRING_VIEW) {
         base_path = xx_var_get_str(path_option);
-    } else if (path_option->type == XX_VAR_TYPE_WSTRING ||
-               path_option->type == XX_VAR_TYPE_WSTRING_VIEW) {
+    } else if (path_option->type == XX_VAR_TYPE_WSTRING || path_option->type == XX_VAR_TYPE_WSTRING_VIEW) {
         converted_path = xx_str_unicode_to_utf8(xx_var_get_wstr(path_option));
         base_path = converted_path;
     }
@@ -752,8 +709,7 @@ bool xx_sqz_unpack_current_archive_record(Abstractformat *self,
         xx_str_free(converted_path);
         return false;
     }
-    if (base_path[0] != '\0' && base_path[xx_str_len(base_path) - 1U] != '/' &&
-        base_path[xx_str_len(base_path) - 1U] != '\\') {
+    if (base_path[0] != '\0' && base_path[xx_str_len(base_path) - 1U] != '/' && base_path[xx_str_len(base_path) - 1U] != '\\') {
         target_path = xx_str_concat3(base_path, "/", member->name);
     } else {
         target_path = xx_str_concat(base_path, member->name);
@@ -766,8 +722,7 @@ bool xx_sqz_unpack_current_archive_record(Abstractformat *self,
         xx_str_free(target_path);
         return result;
     }
-    if (!xx_store_create_dirs_a(target_path, false) ||
-        !xx_sqz_decode(self, member, &plain, &plain_size, pd)) {
+    if (!xx_store_create_dirs_a(target_path, false) || !xx_sqz_decode(self, member, &plain, &plain_size, pd)) {
         xx_str_free(target_path);
         return false;
     }
@@ -778,8 +733,7 @@ bool xx_sqz_unpack_current_archive_record(Abstractformat *self,
 
         result = output != NULL;
         while (result && completed < plain_size) {
-            ssize_t sent =
-                xx_io_write(output, plain + completed, plain_size - completed);
+            ssize_t sent = xx_io_write(output, plain + completed, plain_size - completed);
             if (sent <= 0 || (size_t)sent > plain_size - completed) {
                 result = false;
                 break;
@@ -794,8 +748,8 @@ bool xx_sqz_unpack_current_archive_record(Abstractformat *self,
     return result;
 }
 
-void xx_sqz_free_archive_records_reading(Abstractformat *self,
-                                         xx_archive_record_state *state) {
+void xx_sqz_free_archive_records_reading(Abstractformat *self, xx_archive_record_state *state)
+{
     (void)self;
     xx_archive_record_state_free(state);
 }

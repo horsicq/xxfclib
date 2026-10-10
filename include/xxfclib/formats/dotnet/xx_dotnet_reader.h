@@ -24,14 +24,12 @@ typedef struct xx_dotnet_method_body {
 
 /* RID is one-based. The complete parsed table extent must fit both its
  * metadata-tables stream and the bounded inspection input. */
-XXFC_API bool xx_dotnet_inspect_table_row(xx_dotnet_inspection *state,
-    unsigned table, uint32_t rid, int64_t *offset, uint32_t *size);
+XXFC_API bool xx_dotnet_inspect_table_row(xx_dotnet_inspection *state, unsigned table, uint32_t rid, int64_t *offset, uint32_t *size);
 
 /* Return the #Blob payload after its canonical compressed-length prefix.
  * Index zero denotes the reserved empty entry (heap offset, zero size),
  * and requires that the heap's initial reserved byte exists and is zero. */
-XXFC_API bool xx_dotnet_inspect_blob(xx_dotnet_inspection *state,
-    uint32_t index, int64_t *offset, uint32_t *size);
+XXFC_API bool xx_dotnet_inspect_blob(xx_dotnet_inspection *state, uint32_t index, int64_t *offset, uint32_t *size);
 
 /* Read a tiny or 12-byte fat CIL header and validate the entire method extent
  * within one contiguous raw-backed PE range; virtual zero-fill is excluded.
@@ -40,8 +38,7 @@ XXFC_API bool xx_dotnet_inspect_blob(xx_dotnet_inspection *state,
  * Exception clause ranges and filter offsets are bounded by code_size.
  * Limits: 16 MiB IL, 64 EH sections and 4096 exception clauses. This is a
  * structural reader, not a CIL verifier or an exception implementation. */
-XXFC_API bool xx_dotnet_inspect_method_body(xx_dotnet_inspection *state,
-    uint32_t rva, xx_dotnet_method_body *body);
+XXFC_API bool xx_dotnet_inspect_method_body(xx_dotnet_inspection *state, uint32_t rva, xx_dotnet_method_body *body);
 
 #ifdef __cplusplus
 }

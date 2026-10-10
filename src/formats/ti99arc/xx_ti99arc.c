@@ -78,17 +78,15 @@ static void xx_ti99arc_vtable_destroy(Abstractformat *self);
 
 /* ------------------------------------------------------------- helpers -- */
 
-static bool xx_ti99arc_read_at(Abstractformat *self, int64_t offset,
-                              uint8_t *buffer, size_t size) {
+static bool xx_ti99arc_read_at(Abstractformat *self, int64_t offset, uint8_t *buffer, size_t size)
+{
     size_t completed = 0U;
 
-    if (!self || !self->device || offset < 0 ||
-        xx_io_seek64(self->device, offset, SEEK_SET) != 0) {
+    if (!self || !self->device || offset < 0 || xx_io_seek64(self->device, offset, SEEK_SET) != 0) {
         return false;
     }
     while (completed < size) {
-        ssize_t received =
-            xx_io_read(self->device, buffer + completed, size - completed);
+        ssize_t received = xx_io_read(self->device, buffer + completed, size - completed);
         if (received <= 0 || (size_t)received > size - completed) {
             return false;
         }
@@ -97,14 +95,14 @@ static bool xx_ti99arc_read_at(Abstractformat *self, int64_t offset,
     return true;
 }
 
-static bool xx_ti99arc_range_within(int64_t total, int64_t offset,
-                                   int64_t size) {
-    return offset >= 0 && size >= 0 && offset <= total &&
-           size <= total - offset;
+static bool xx_ti99arc_range_within(int64_t total, int64_t offset, int64_t size)
+{
+    return offset >= 0 && size >= 0 && offset <= total && size <= total - offset;
 }
 
 /* Refuse anything that would escape the extraction directory. */
-static bool xx_ti99arc_path_safe(const char *name) {
+static bool xx_ti99arc_path_safe(const char *name)
+{
     const char *cursor = name;
 
     if (!name || !name[0] || name[0] == '/') return false;
@@ -119,7 +117,8 @@ static bool xx_ti99arc_path_safe(const char *name) {
     return true;
 }
 
-static void xx_ti99arc_stream_free(void *pointer) {
+static void xx_ti99arc_stream_free(void *pointer)
+{
     xx_ti99arc_stream *stream = (xx_ti99arc_stream *)pointer;
     size_t index;
 
@@ -132,17 +131,15 @@ static void xx_ti99arc_stream_free(void *pointer) {
 }
 
 /* Append a member, taking ownership of @p name. */
-static bool xx_ti99arc_add(xx_ti99arc_stream *stream,
-                          const xx_ti99arc_member *member) {
-    xx_ti99arc_member *grown = (xx_ti99arc_member *)xx_mem_realloc(
-        stream->items, sizeof(*grown) * (stream->count + 1U));
+static bool xx_ti99arc_add(xx_ti99arc_stream *stream, const xx_ti99arc_member *member)
+{
+    xx_ti99arc_member *grown = (xx_ti99arc_member *)xx_mem_realloc(stream->items, sizeof(*grown) * (stream->count + 1U));
 
     if (!grown) return false;
     stream->items = grown;
     stream->items[stream->count++] = *member;
     return true;
 }
-
 
 #define XX_TI99ARC_WRAPPER_SIZE 0x80
 #define XX_TI99ARC_SECTOR_SIZE 0x100
@@ -152,8 +149,7 @@ static bool xx_ti99arc_add(xx_ti99arc_stream *stream,
 #define XX_TI99ARC_MAX_SECTORS 0x400
 #define XX_TI99ARC_MAX_FILE_SIZE 0x1000000
 #define XX_TI99ARC_FLAG_COMPRESSED 0x02U
-#define XX_TI99ARC_MAX_MEMBERS (XX_TI99ARC_MAX_SECTORS * \
-                                XX_TI99ARC_ENTRIES_PER_SECTOR)
+#define XX_TI99ARC_MAX_MEMBERS (XX_TI99ARC_MAX_SECTORS * XX_TI99ARC_ENTRIES_PER_SECTOR)
 #define XX_TI99ARC_PROPS_SIZE (0x10 + XX_TI99ARC_WRAPPER_SIZE)
 
 /* Forward declarations: the parse and the decode
@@ -175,8 +171,8 @@ static bool xx_ti99arc_decode(Abstractformat *self, const xx_ti99arc_member *mem
  * magic at all, this chain is the entire false-positive defence: a file that
  * is not an .ARK has to produce a run of sectors whose 0xfc..0xff are zero
  * and then exactly "END!" before the sector cap. */
-static bool xx_ti99arc_chain(const uint8_t *catalogue, size_t catalogue_size,
-                             int64_t *out_size) {
+static bool xx_ti99arc_chain(const uint8_t *catalogue, size_t catalogue_size, int64_t *out_size)
+{
     int64_t walk = 0;
     int32_t sectors = 0;
 
@@ -190,8 +186,7 @@ static bool xx_ti99arc_chain(const uint8_t *catalogue, size_t catalogue_size,
         tail = catalogue + walk + XX_TI99ARC_TAIL_OFFSET;
         ++sectors;
         walk += XX_TI99ARC_SECTOR_SIZE;
-        if (tail[0] == 'E' && tail[1] == 'N' && tail[2] == 'D' &&
-            tail[3] == '!') {
+        if (tail[0] == 'E' && tail[1] == 'N' && tail[2] == 'D' && tail[3] == '!') {
             *out_size = walk;
             return true;
         }
@@ -204,7 +199,8 @@ static bool xx_ti99arc_chain(const uint8_t *catalogue, size_t catalogue_size,
 
 /* True for an entry that is eighteen zero bytes: a free slot, which consumes
  * no data. Advancing the cursor for one shifts every member behind it. */
-static bool xx_ti99arc_entry_free(const uint8_t *entry) {
+static bool xx_ti99arc_entry_free(const uint8_t *entry)
+{
     size_t index;
 
     for (index = 0U; index < (size_t)XX_TI99ARC_ENTRY_SIZE; ++index) {
@@ -217,7 +213,8 @@ static bool xx_ti99arc_entry_free(const uint8_t *entry) {
  * ASCII plus a few punctuation characters; the format grants no exemption for
  * high bytes, and a catalogue full of them is compressed data that happened
  * to land on a plausible chain. */
-static bool xx_ti99arc_entry_name(const uint8_t *entry, char **out_name) {
+static bool xx_ti99arc_entry_name(const uint8_t *entry, char **out_name)
+{
     char buffer[11];
     size_t end = 10U;
     size_t index;
@@ -249,9 +246,8 @@ static bool xx_ti99arc_entry_name(const uint8_t *entry, char **out_name) {
  * entry, from the entry's offset alone. The member record has no room for a
  * properties blob, so the decode of a compressed archive recovers both this
  * way rather than the parse carrying them. */
-static bool xx_ti99arc_locate(const uint8_t *catalogue, size_t catalogue_size,
-                              int64_t entry_offset, int64_t *out_offset,
-                              uint8_t *out_entry) {
+static bool xx_ti99arc_locate(const uint8_t *catalogue, size_t catalogue_size, int64_t entry_offset, int64_t *out_offset, uint8_t *out_entry)
+{
     int64_t catalogue_bytes;
     int64_t cursor;
     int64_t sector;
@@ -269,8 +265,7 @@ static bool xx_ti99arc_locate(const uint8_t *catalogue, size_t catalogue_size,
         int32_t index;
 
         for (index = 0; index < XX_TI99ARC_ENTRIES_PER_SECTOR; ++index) {
-            int64_t offset = sector * XX_TI99ARC_SECTOR_SIZE +
-                             (int64_t)index * XX_TI99ARC_ENTRY_SIZE;
+            int64_t offset = sector * XX_TI99ARC_SECTOR_SIZE + (int64_t)index * XX_TI99ARC_ENTRY_SIZE;
             const uint8_t *entry = catalogue + offset;
             int64_t member_size;
 
@@ -278,15 +273,13 @@ static bool xx_ti99arc_locate(const uint8_t *catalogue, size_t catalogue_size,
             if (offset == entry_offset) {
                 size_t copied;
 
-                for (copied = 0U; copied < (size_t)XX_TI99ARC_ENTRY_SIZE;
-                     ++copied) {
+                for (copied = 0U; copied < (size_t)XX_TI99ARC_ENTRY_SIZE; ++copied) {
                     out_entry[copied] = entry[copied];
                 }
                 *out_offset = cursor;
                 return true;
             }
-            member_size = (int64_t)xx_data_get_u16(entry + 0x0C, 2, 0, true) *
-                          XX_TI99ARC_SECTOR_SIZE;
+            member_size = (int64_t)xx_data_get_u16(entry + 0x0C, 2, 0, true) * XX_TI99ARC_SECTOR_SIZE;
             if (member_size > (int64_t)XX_TI99ARC_MAX_PLAIN_SIZE - cursor) {
                 return false;
             }
@@ -299,21 +292,22 @@ static bool xx_ti99arc_locate(const uint8_t *catalogue, size_t catalogue_size,
 /* The TIFILES wrapper: a byte count, a name, and a size relation that has to
  * hold exactly. Two spellings of the relation exist because one writer
  * counted the 0x80-byte header as a sector. */
-static bool xx_ti99arc_is_tifiles(const uint8_t *wrapper, int64_t size) {
+static bool xx_ti99arc_is_tifiles(const uint8_t *wrapper, int64_t size)
+{
     static const char magic[7] = {'T', 'I', 'F', 'I', 'L', 'E', 'S'};
     int64_t sectors;
 
     if (wrapper[0] != 0x07U) return false;
     if (xx_rt_memcmp(wrapper + 1, magic, sizeof(magic)) != 0) return false;
     sectors = (int64_t)xx_data_get_u16(wrapper + 8, 2, 0, true);
-    return size == sectors * XX_TI99ARC_SECTOR_SIZE + XX_TI99ARC_WRAPPER_SIZE ||
-           size == (sectors + 1) * XX_TI99ARC_SECTOR_SIZE;
+    return size == sectors * XX_TI99ARC_SECTOR_SIZE + XX_TI99ARC_WRAPPER_SIZE || size == (sectors + 1) * XX_TI99ARC_SECTOR_SIZE;
 }
 
 /* FIAD has no magic, only a shape: a zero word at 0x0a, a hundred zero bytes
  * filling the header out to 0x80, and a non-zero sector count that accounts
  * for the file exactly. The size relation is what carries it. */
-static bool xx_ti99arc_is_fiad(const uint8_t *wrapper, int64_t size) {
+static bool xx_ti99arc_is_fiad(const uint8_t *wrapper, int64_t size)
+{
     int64_t sectors;
     size_t index;
 
@@ -322,12 +316,11 @@ static bool xx_ti99arc_is_fiad(const uint8_t *wrapper, int64_t size) {
         if (wrapper[index] != 0U) return false;
     }
     sectors = (int64_t)xx_data_get_u16(wrapper + 0x0E, 2, 0, true);
-    return sectors != 0 &&
-           size == sectors * XX_TI99ARC_SECTOR_SIZE + XX_TI99ARC_WRAPPER_SIZE;
+    return sectors != 0 && size == sectors * XX_TI99ARC_SECTOR_SIZE + XX_TI99ARC_WRAPPER_SIZE;
 }
 
-static xx_ti99arc_stream *xx_ti99arc_parse(Abstractformat *self,
-                                           xx_pd_struct *pd) {
+static xx_ti99arc_stream *xx_ti99arc_parse(Abstractformat *self, xx_pd_struct *pd)
+{
     xx_ti99arc_stream *stream = NULL;
     uint8_t wrapper[XX_TI99ARC_WRAPPER_SIZE];
     uint8_t *payload = NULL;
@@ -353,8 +346,7 @@ static xx_ti99arc_stream *xx_ti99arc_parse(Abstractformat *self,
     }
 
     if (span >= XX_TI99ARC_WRAPPER_SIZE) {
-        if (!xx_ti99arc_read_at(self, self->base_address, wrapper,
-                                sizeof(wrapper))) {
+        if (!xx_ti99arc_read_at(self, self->base_address, wrapper, sizeof(wrapper))) {
             return NULL;
         }
         if (xx_ti99arc_is_tifiles(wrapper, span)) {
@@ -379,26 +371,18 @@ static xx_ti99arc_stream *xx_ti99arc_parse(Abstractformat *self,
     if (!catalogue) return NULL;
     if (compressed) {
         payload = (uint8_t *)xx_mem_alloc((size_t)payload_size);
-        if (!payload ||
-            !xx_ti99arc_read_at(self, self->base_address + payload_offset,
-                                payload, (size_t)payload_size)) {
+        if (!payload || !xx_ti99arc_read_at(self, self->base_address + payload_offset, payload, (size_t)payload_size)) {
             goto fail;
         }
         if (pd && xx_pd_is_stopped(pd)) goto fail;
-        if (!xx_ti99arc_expand_memory(payload, (size_t)payload_size,
-                                      catalogue,
-                                      (size_t)XX_TI99ARC_PROBE_SIZE,
-                                      &catalogue_size, NULL)) {
+        if (!xx_ti99arc_expand_memory(payload, (size_t)payload_size, catalogue, (size_t)XX_TI99ARC_PROBE_SIZE, &catalogue_size, NULL)) {
             goto fail;
         }
         xx_mem_free(payload);
         payload = NULL;
     } else {
-        catalogue_size = (size_t)(payload_size < (int64_t)XX_TI99ARC_PROBE_SIZE
-                                      ? payload_size
-                                      : (int64_t)XX_TI99ARC_PROBE_SIZE);
-        if (!xx_ti99arc_read_at(self, self->base_address + payload_offset,
-                                catalogue, catalogue_size)) {
+        catalogue_size = (size_t)(payload_size < (int64_t)XX_TI99ARC_PROBE_SIZE ? payload_size : (int64_t)XX_TI99ARC_PROBE_SIZE);
+        if (!xx_ti99arc_read_at(self, self->base_address + payload_offset, catalogue, catalogue_size)) {
             goto fail;
         }
     }
@@ -422,16 +406,14 @@ static xx_ti99arc_stream *xx_ti99arc_parse(Abstractformat *self,
         if (pd && xx_pd_is_stopped(pd)) goto fail;
         for (index = 0; index < XX_TI99ARC_ENTRIES_PER_SECTOR; ++index) {
             xx_ti99arc_member member;
-            int64_t entry_offset = sector * XX_TI99ARC_SECTOR_SIZE +
-                                   (int64_t)index * XX_TI99ARC_ENTRY_SIZE;
+            int64_t entry_offset = sector * XX_TI99ARC_SECTOR_SIZE + (int64_t)index * XX_TI99ARC_ENTRY_SIZE;
             const uint8_t *entry = catalogue + entry_offset;
             int64_t member_size;
             char *name;
 
             if (xx_ti99arc_entry_free(entry)) continue;
             if (stream->count >= (size_t)XX_TI99ARC_MAX_MEMBERS) goto fail;
-            member_size = (int64_t)xx_data_get_u16(entry + 0x0C, 2, 0, true) *
-                          XX_TI99ARC_SECTOR_SIZE;
+            member_size = (int64_t)xx_data_get_u16(entry + 0x0C, 2, 0, true) * XX_TI99ARC_SECTOR_SIZE;
 
             xx_mem_zero(&member, sizeof(member));
             member.header_size = XX_TI99ARC_ENTRY_SIZE;
@@ -449,27 +431,22 @@ static xx_ti99arc_stream *xx_ti99arc_parse(Abstractformat *self,
                  * the entry's position inside that stream rather than a real
                  * file offset - there is no file offset to name - and the
                  * decode recovers the slice from the difference. */
-                member.header_offset =
-                    self->base_address + payload_offset + entry_offset;
+                member.header_offset = self->base_address + payload_offset + entry_offset;
                 member.data_offset = self->base_address + payload_offset;
                 member.compressed_size = payload_size;
             } else {
-                member.header_offset =
-                    self->base_address + payload_offset + entry_offset;
-                member.data_offset =
-                    self->base_address + payload_offset + cursor;
+                member.header_offset = self->base_address + payload_offset + entry_offset;
+                member.data_offset = self->base_address + payload_offset + cursor;
                 member.compressed_size = member_size;
                 /* A stored member running past EOF is a rejection. */
-                if (!xx_ti99arc_range_within(
-                        span, payload_offset + cursor, member_size)) {
+                if (!xx_ti99arc_range_within(span, payload_offset + cursor, member_size)) {
                     goto fail;
                 }
             }
 
             if (!xx_ti99arc_entry_name(entry, &name)) goto fail;
             member.name = name;
-            if (!xx_ti99arc_path_safe(name) ||
-                !xx_ti99arc_add(stream, &member)) {
+            if (!xx_ti99arc_path_safe(name) || !xx_ti99arc_add(stream, &member)) {
                 xx_str_free(name);
                 goto fail;
             }
@@ -497,7 +474,6 @@ fail:
     return NULL;
 }
 
-
 /* A u16 BE sector count cannot describe more than 16 MiB, so a larger file is
  * not this format however well the wrapper arithmetic happens to work out. */
 /* Fourteen entries per sector, 0x400 sectors: the format's own ceiling. */
@@ -507,7 +483,8 @@ fail:
 /* The 0x80-byte TIFILES header a member needs and the archive does not hold.
  * Entry bytes 0x00..0x09 land at 0x00 and entry bytes 0x0a..0x11 land at
  * 0x0c: the two-byte gap is the format's, not a transcription slip. */
-static void xx_ti99arc_tifiles_prefix(const uint8_t *entry, uint8_t *prefix) {
+static void xx_ti99arc_tifiles_prefix(const uint8_t *entry, uint8_t *prefix)
+{
     size_t index;
 
     for (index = 0U; index < (size_t)XX_TI99ARC_WRAPPER_SIZE; ++index) {
@@ -519,9 +496,8 @@ static void xx_ti99arc_tifiles_prefix(const uint8_t *entry, uint8_t *prefix) {
     }
 }
 
-static bool xx_ti99arc_decode(Abstractformat *self,
-                              const xx_ti99arc_member *member, uint8_t **out,
-                              size_t *out_size, xx_pd_struct *pd) {
+static bool xx_ti99arc_decode(Abstractformat *self, const xx_ti99arc_member *member, uint8_t **out, size_t *out_size, xx_pd_struct *pd)
+{
     uint8_t props[XX_TI99ARC_PROPS_SIZE];
     uint8_t entry[XX_TI99ARC_ENTRY_SIZE];
     uint8_t *input = NULL;
@@ -536,20 +512,15 @@ static bool xx_ti99arc_decode(Abstractformat *self,
     *out_size = 0U;
     if (!self || !member) return false;
     if (pd && xx_pd_is_stopped(pd)) return false;
-    if (member->compressed_size < 0 ||
-        member->uncompressed_size < XX_TI99ARC_WRAPPER_SIZE ||
-        member->uncompressed_size > (int64_t)XX_TI99ARC_MAX_PLAIN_SIZE ||
+    if (member->compressed_size < 0 || member->uncompressed_size < XX_TI99ARC_WRAPPER_SIZE || member->uncompressed_size > (int64_t)XX_TI99ARC_MAX_PLAIN_SIZE ||
         member->compressed_size > XX_TI99ARC_MAX_FILE_SIZE) {
         return false;
     }
     member_size = member->uncompressed_size - XX_TI99ARC_WRAPPER_SIZE;
 
-    input = (uint8_t *)xx_mem_alloc(
-        member->compressed_size != 0 ? (size_t)member->compressed_size : 1U);
+    input = (uint8_t *)xx_mem_alloc(member->compressed_size != 0 ? (size_t)member->compressed_size : 1U);
     if (!input) return false;
-    if (member->compressed_size != 0 &&
-        !xx_ti99arc_read_at(self, member->data_offset, input,
-                            (size_t)member->compressed_size)) {
+    if (member->compressed_size != 0 && !xx_ti99arc_read_at(self, member->data_offset, input, (size_t)member->compressed_size)) {
         goto fail;
     }
     if (pd && xx_pd_is_stopped(pd)) goto fail;
@@ -564,15 +535,12 @@ static bool xx_ti99arc_decode(Abstractformat *self,
         /* Stored: the catalogue entry is at a real file offset, so the
          * prefix can be rebuilt by re-reading it. */
         if (member->compressed_size != member_size) goto fail;
-        if (!xx_ti99arc_read_at(self, member->header_offset, entry,
-                                sizeof(entry))) {
+        if (!xx_ti99arc_read_at(self, member->header_offset, entry, sizeof(entry))) {
             goto fail;
         }
         xx_ti99arc_tifiles_prefix(entry, props);
-        if (!xx_sclsectors_decode_memory_ex(
-                props, (size_t)XX_TI99ARC_WRAPPER_SIZE, input,
-                (size_t)member->compressed_size, output,
-                (size_t)member->uncompressed_size, &written)) {
+        if (!xx_sclsectors_decode_memory_ex(props, (size_t)XX_TI99ARC_WRAPPER_SIZE, input, (size_t)member->compressed_size, output, (size_t)member->uncompressed_size,
+                                            &written)) {
             goto fail;
         }
     } else {
@@ -584,23 +552,17 @@ static bool xx_ti99arc_decode(Abstractformat *self,
          * room to carry. */
         catalogue = (uint8_t *)xx_mem_alloc((size_t)XX_TI99ARC_PROBE_SIZE);
         if (!catalogue) goto fail;
-        if (!xx_ti99arc_expand_memory(input, (size_t)member->compressed_size,
-                                      catalogue,
-                                      (size_t)XX_TI99ARC_PROBE_SIZE,
-                                      &expanded, NULL)) {
+        if (!xx_ti99arc_expand_memory(input, (size_t)member->compressed_size, catalogue, (size_t)XX_TI99ARC_PROBE_SIZE, &expanded, NULL)) {
             goto fail;
         }
-        if (!xx_ti99arc_locate(catalogue, expanded,
-                               member->header_offset - member->data_offset,
-                               &member_offset, entry)) {
+        if (!xx_ti99arc_locate(catalogue, expanded, member->header_offset - member->data_offset, &member_offset, entry)) {
             goto fail;
         }
         xx_mem_free(catalogue);
         catalogue = NULL;
         if (pd && xx_pd_is_stopped(pd)) goto fail;
 
-        if (member_offset < 0 ||
-            member_size > (int64_t)XX_TI99ARC_MAX_PLAIN_SIZE - member_offset) {
+        if (member_offset < 0 || member_size > (int64_t)XX_TI99ARC_MAX_PLAIN_SIZE - member_offset) {
             goto fail;
         }
         xx_data_set_u32(props, 4, 0, (uint32_t)(member_offset + member_size), false);
@@ -608,10 +570,7 @@ static bool xx_ti99arc_decode(Abstractformat *self,
         xx_data_set_u32(props + 8, 4, 0, (uint32_t)member_size, false);
         xx_data_set_u32(props + 12, 4, 0, (uint32_t)XX_TI99ARC_WRAPPER_SIZE, false);
         xx_ti99arc_tifiles_prefix(entry, props + 0x10);
-        if (!xx_ti99arc_decode_member(input, (size_t)member->compressed_size,
-                                      props, sizeof(props), output,
-                                      (size_t)member->uncompressed_size,
-                                      &written)) {
+        if (!xx_ti99arc_decode_member(input, (size_t)member->compressed_size, props, sizeof(props), output, (size_t)member->uncompressed_size, &written)) {
             goto fail;
         }
     }
@@ -634,8 +593,8 @@ fail:
 
 /* ---------------------------------------------------------- lifecycle --- */
 
-void xx_ti99arc_init(xx_ti99arc *archive, xx_io_device *device,
-                    int64_t base_address) {
+void xx_ti99arc_init(xx_ti99arc *archive, xx_io_device *device, int64_t base_address)
+{
     if (!archive) return;
     xx_mem_zero(archive, sizeof(*archive));
     xx_format_init(&archive->format, device, base_address);
@@ -648,22 +607,17 @@ void xx_ti99arc_init(xx_ti99arc *archive, xx_io_device *device,
     archive->format.check_is_valid = xx_ti99arc_check_is_valid;
     archive->format.handle_base_info = xx_ti99arc_handle_base_info;
     archive->format.get_format_size = xx_ti99arc_get_format_size;
-    archive->format.get_number_of_archive_records =
-        xx_ti99arc_get_number_of_archive_records;
-    archive->format.create_archive_records_reading =
-        xx_ti99arc_create_archive_records_reading;
-    archive->format.get_current_archive_record =
-        xx_ti99arc_get_current_archive_record;
-    archive->format.unpack_current_archive_record =
-        xx_ti99arc_unpack_current_archive_record;
-    archive->format.archive_record_move_to_next =
-        xx_ti99arc_archive_record_move_to_next;
-    archive->format.free_archive_records_reading =
-        xx_ti99arc_free_archive_records_reading;
+    archive->format.get_number_of_archive_records = xx_ti99arc_get_number_of_archive_records;
+    archive->format.create_archive_records_reading = xx_ti99arc_create_archive_records_reading;
+    archive->format.get_current_archive_record = xx_ti99arc_get_current_archive_record;
+    archive->format.unpack_current_archive_record = xx_ti99arc_unpack_current_archive_record;
+    archive->format.archive_record_move_to_next = xx_ti99arc_archive_record_move_to_next;
+    archive->format.free_archive_records_reading = xx_ti99arc_free_archive_records_reading;
     archive->format.destroy = xx_ti99arc_vtable_destroy;
 }
 
-xx_ti99arc *xx_ti99arc_create(xx_io_device *device, int64_t base_address) {
+xx_ti99arc *xx_ti99arc_create(xx_io_device *device, int64_t base_address)
+{
     xx_ti99arc *archive = (xx_ti99arc *)xx_mem_alloc(sizeof(*archive));
 
     if (!archive) return NULL;
@@ -671,7 +625,8 @@ xx_ti99arc *xx_ti99arc_create(xx_io_device *device, int64_t base_address) {
     return archive;
 }
 
-void xx_ti99arc_destroy(xx_ti99arc *archive) {
+void xx_ti99arc_destroy(xx_ti99arc *archive)
+{
     if (!archive) return;
     /* Not xx_format_destroy: it dispatches through format.destroy, which is
      * the wrapper below, and the two would recurse. */
@@ -680,19 +635,22 @@ void xx_ti99arc_destroy(xx_ti99arc *archive) {
     archive->number_of_records = 0U;
 }
 
-void xx_ti99arc_free(xx_ti99arc *archive) {
+void xx_ti99arc_free(xx_ti99arc *archive)
+{
     if (!archive) return;
     xx_ti99arc_destroy(archive);
     xx_mem_free(archive);
 }
 
-static void xx_ti99arc_vtable_destroy(Abstractformat *self) {
+static void xx_ti99arc_vtable_destroy(Abstractformat *self)
+{
     xx_ti99arc_destroy((xx_ti99arc *)self);
 }
 
 /* -------------------------------------------------------------- format -- */
 
-bool xx_ti99arc_check_is_valid(Abstractformat *self, xx_pd_struct *pd) {
+bool xx_ti99arc_check_is_valid(Abstractformat *self, xx_pd_struct *pd)
+{
     xx_ti99arc_stream *stream;
 
     if (!self || (pd && xx_pd_is_stopped(pd))) return false;
@@ -702,7 +660,8 @@ bool xx_ti99arc_check_is_valid(Abstractformat *self, xx_pd_struct *pd) {
     return true;
 }
 
-bool xx_ti99arc_handle_base_info(Abstractformat *self, xx_pd_struct *pd) {
+bool xx_ti99arc_handle_base_info(Abstractformat *self, xx_pd_struct *pd)
+{
     xx_ti99arc *archive = (xx_ti99arc *)self;
     xx_ti99arc_stream *stream;
 
@@ -723,18 +682,17 @@ bool xx_ti99arc_handle_base_info(Abstractformat *self, xx_pd_struct *pd) {
     return true;
 }
 
-int64_t xx_ti99arc_get_format_size(Abstractformat *self, xx_pd_struct *pd) {
-    if (!self ||
-        (!self->base_info_handled && !xx_format_handle_base_info(self, pd))) {
+int64_t xx_ti99arc_get_format_size(Abstractformat *self, xx_pd_struct *pd)
+{
+    if (!self || (!self->base_info_handled && !xx_format_handle_base_info(self, pd))) {
         return 0;
     }
     return self->is_valid ? self->format_size : 0;
 }
 
-uint64_t xx_ti99arc_get_number_of_archive_records(Abstractformat *self,
-                                                 xx_pd_struct *pd) {
-    if (!self ||
-        (!self->base_info_handled && !xx_format_handle_base_info(self, pd))) {
+uint64_t xx_ti99arc_get_number_of_archive_records(Abstractformat *self, xx_pd_struct *pd)
+{
+    if (!self || (!self->base_info_handled && !xx_format_handle_base_info(self, pd))) {
         return 0U;
     }
     return self->is_valid ? ((xx_ti99arc *)self)->number_of_records : 0U;
@@ -742,8 +700,8 @@ uint64_t xx_ti99arc_get_number_of_archive_records(Abstractformat *self,
 
 /* ------------------------------------------------------------- records -- */
 
-static bool xx_ti99arc_set_record(xx_archive_record *record,
-                                 const xx_ti99arc_member *member) {
+static bool xx_ti99arc_set_record(xx_archive_record *record, const xx_ti99arc_member *member)
+{
     xx_archive_record_cleanup(record);
     xx_archive_record_init(record);
     record->header_offset = member->header_offset;
@@ -751,34 +709,24 @@ static bool xx_ti99arc_set_record(xx_archive_record *record,
     record->data_offset = member->data_offset;
     record->compressed_size = member->compressed_size;
     return xx_archive_record_set_original_name(record, member->name) &&
-           xx_archive_record_set_meta_u64(record, XX_META_ID_COMPRESSED_SIZE,
-                                          (uint64_t)member->compressed_size) &&
-           xx_archive_record_set_meta_u64(
-               record, XX_META_ID_UNCOMPRESSED_SIZE,
-               (uint64_t)member->uncompressed_size) &&
-           xx_archive_record_set_meta_u64(record, XX_META_ID_COMPRESSION_METHOD,
-                                          member->method) &&
-           xx_archive_record_set_meta_u64(record, XX_META_ID_TIMESTAMP,
-                                          member->timestamp) &&
-           xx_archive_record_set_meta_bool(record, XX_META_ID_IS_FOLDER,
-                                           member->is_folder) &&
-           xx_archive_record_set_meta_bool(record, XX_META_ID_IS_ENCRYPTED,
-                                           false);
+           xx_archive_record_set_meta_u64(record, XX_META_ID_COMPRESSED_SIZE, (uint64_t)member->compressed_size) &&
+           xx_archive_record_set_meta_u64(record, XX_META_ID_UNCOMPRESSED_SIZE, (uint64_t)member->uncompressed_size) &&
+           xx_archive_record_set_meta_u64(record, XX_META_ID_COMPRESSION_METHOD, member->method) &&
+           xx_archive_record_set_meta_u64(record, XX_META_ID_TIMESTAMP, member->timestamp) &&
+           xx_archive_record_set_meta_bool(record, XX_META_ID_IS_FOLDER, member->is_folder) && xx_archive_record_set_meta_bool(record, XX_META_ID_IS_ENCRYPTED, false);
 }
 
-static bool xx_ti99arc_copy_options(xx_list_s *target,
-                                   const xx_list_s *options) {
+static bool xx_ti99arc_copy_options(xx_list_s *target, const xx_list_s *options)
+{
     size_t index;
 
     if (!target || !options) return options == NULL;
     for (index = 0U; index < options->count; ++index) {
-        const xx_meta *source =
-            (const xx_meta *)xx_list_at((const xx_list_t *)options, index);
+        const xx_meta *source = (const xx_meta *)xx_list_at((const xx_list_t *)options, index);
         xx_meta copied;
         if (!source) continue;
         xx_meta_init(&copied, source->meta_id);
-        if (!xx_var_copy(&copied.var, &source->var) ||
-            !xx_list_append(target, &copied)) {
+        if (!xx_var_copy(&copied.var, &source->var) || !xx_list_append(target, &copied)) {
             xx_meta_cleanup(&copied);
             return false;
         }
@@ -786,21 +734,20 @@ static bool xx_ti99arc_copy_options(xx_list_s *target,
     return true;
 }
 
-static const xx_var *xx_ti99arc_get_option(const xx_list_s *options,
-                                          uint32_t meta_id) {
+static const xx_var *xx_ti99arc_get_option(const xx_list_s *options, uint32_t meta_id)
+{
     size_t index;
 
     if (!options) return NULL;
     for (index = 0U; index < options->count; ++index) {
-        const xx_meta *meta =
-            (const xx_meta *)xx_list_at((const xx_list_t *)options, index);
+        const xx_meta *meta = (const xx_meta *)xx_list_at((const xx_list_t *)options, index);
         if (meta && meta->meta_id == meta_id) return &meta->var;
     }
     return NULL;
 }
 
-xx_archive_record_state *xx_ti99arc_create_archive_records_reading(
-    Abstractformat *self, const xx_list_s *options, xx_pd_struct *pd) {
+xx_archive_record_state *xx_ti99arc_create_archive_records_reading(Abstractformat *self, const xx_list_s *options, xx_pd_struct *pd)
+{
     xx_ti99arc_stream *stream;
     xx_archive_record_state *state;
 
@@ -816,9 +763,7 @@ xx_archive_record_state *xx_ti99arc_create_archive_records_reading(
     state->internal_state = stream;
     state->free_internal = xx_ti99arc_stream_free;
     state->total_records = (int64_t)stream->count;
-    if (!xx_ti99arc_copy_options(&state->options, options) ||
-        (stream->count != 0U &&
-         !xx_ti99arc_set_record(&state->current_record, &stream->items[0]))) {
+    if (!xx_ti99arc_copy_options(&state->options, options) || (stream->count != 0U && !xx_ti99arc_set_record(&state->current_record, &stream->items[0]))) {
         xx_archive_record_state_free(state);
         return NULL;
     }
@@ -827,20 +772,16 @@ xx_archive_record_state *xx_ti99arc_create_archive_records_reading(
     return state;
 }
 
-const xx_archive_record *xx_ti99arc_get_current_archive_record(
-    Abstractformat *self, xx_archive_record_state *state) {
-    return self && state && state->format == self && state->has_record
-               ? &state->current_record
-               : NULL;
+const xx_archive_record *xx_ti99arc_get_current_archive_record(Abstractformat *self, xx_archive_record_state *state)
+{
+    return self && state && state->format == self && state->has_record ? &state->current_record : NULL;
 }
 
-bool xx_ti99arc_archive_record_move_to_next(Abstractformat *self,
-                                           xx_archive_record_state *state,
-                                           xx_pd_struct *pd) {
+bool xx_ti99arc_archive_record_move_to_next(Abstractformat *self, xx_archive_record_state *state, xx_pd_struct *pd)
+{
     xx_ti99arc_stream *stream;
 
-    if (!self || !state || state->format != self || !state->has_record ||
-        (pd && xx_pd_is_stopped(pd))) {
+    if (!self || !state || state->format != self || !state->has_record || (pd && xx_pd_is_stopped(pd))) {
         return false;
     }
     stream = (xx_ti99arc_stream *)state->internal_state;
@@ -852,14 +793,12 @@ bool xx_ti99arc_archive_record_move_to_next(Abstractformat *self,
     }
     ++stream->index;
     ++state->current_index;
-    state->has_record = xx_ti99arc_set_record(&state->current_record,
-                                             &stream->items[stream->index]);
+    state->has_record = xx_ti99arc_set_record(&state->current_record, &stream->items[stream->index]);
     return state->has_record;
 }
 
-bool xx_ti99arc_unpack_current_archive_record(Abstractformat *self,
-                                             xx_archive_record_state *state,
-                                             xx_pd_struct *pd) {
+bool xx_ti99arc_unpack_current_archive_record(Abstractformat *self, xx_archive_record_state *state, xx_pd_struct *pd)
+{
     xx_ti99arc_stream *stream;
     const xx_ti99arc_member *member;
     const xx_var *path_option;
@@ -873,8 +812,7 @@ bool xx_ti99arc_unpack_current_archive_record(Abstractformat *self,
     bool result = false;
     bool created = false;
 
-    if (!self || !state || state->format != self || !state->has_record ||
-        (pd && xx_pd_is_stopped(pd))) {
+    if (!self || !state || state->format != self || !state->has_record || (pd && xx_pd_is_stopped(pd))) {
         return false;
     }
     stream = (xx_ti99arc_stream *)state->internal_state;
@@ -886,15 +824,13 @@ bool xx_ti99arc_unpack_current_archive_record(Abstractformat *self,
         size_t i;
         /* Prefix exceeds the format's ten-byte name limit, so this output
          * cannot collide with any ordinary archive member. */
-        xx_rt_snprintf(portable_name, sizeof(portable_name), "ti99-member-%u-%s",
-                       (unsigned)stream->index, member->name);
+        xx_rt_snprintf(portable_name, sizeof(portable_name), "ti99-member-%u-%s", (unsigned)stream->index, member->name);
         for (i = 0; portable_name[i]; ++i)
             if (portable_name[i] == '/' || portable_name[i] == '\\') portable_name[i] = '_';
         output_name = portable_name;
     }
 
-    path_option = xx_ti99arc_get_option(&state->options,
-                                       XX_META_ID_OPT_UNPACK_PATH);
+    path_option = xx_ti99arc_get_option(&state->options, XX_META_ID_OPT_UNPACK_PATH);
     if (!path_option) {
         /* No destination: decode and discard, which verifies the member
          * without writing anything. */
@@ -903,11 +839,9 @@ bool xx_ti99arc_unpack_current_archive_record(Abstractformat *self,
         xx_mem_free(plain);
         return result;
     }
-    if (path_option->type == XX_VAR_TYPE_STRING ||
-        path_option->type == XX_VAR_TYPE_STRING_VIEW) {
+    if (path_option->type == XX_VAR_TYPE_STRING || path_option->type == XX_VAR_TYPE_STRING_VIEW) {
         base_path = xx_var_get_str(path_option);
-    } else if (path_option->type == XX_VAR_TYPE_WSTRING ||
-               path_option->type == XX_VAR_TYPE_WSTRING_VIEW) {
+    } else if (path_option->type == XX_VAR_TYPE_WSTRING || path_option->type == XX_VAR_TYPE_WSTRING_VIEW) {
         converted_path = xx_str_unicode_to_utf8(xx_var_get_wstr(path_option));
         base_path = converted_path;
     }
@@ -915,9 +849,7 @@ bool xx_ti99arc_unpack_current_archive_record(Abstractformat *self,
         xx_str_free(converted_path);
         return false;
     }
-    if (base_path[0] != '\0' &&
-        base_path[xx_str_len(base_path) - 1U] != '/' &&
-        base_path[xx_str_len(base_path) - 1U] != '\\') {
+    if (base_path[0] != '\0' && base_path[xx_str_len(base_path) - 1U] != '/' && base_path[xx_str_len(base_path) - 1U] != '\\') {
         target_path = xx_str_concat3(base_path, "/", output_name);
     } else {
         target_path = xx_str_concat(base_path, output_name);
@@ -930,8 +862,7 @@ bool xx_ti99arc_unpack_current_archive_record(Abstractformat *self,
         xx_str_free(target_path);
         return result;
     }
-    if (!xx_store_create_dirs_a(target_path, false) ||
-        !xx_ti99arc_decode(self, member, &plain, &plain_size, pd)) {
+    if (!xx_store_create_dirs_a(target_path, false) || !xx_ti99arc_decode(self, member, &plain, &plain_size, pd)) {
         xx_str_free(target_path);
         return false;
     }
@@ -942,8 +873,7 @@ bool xx_ti99arc_unpack_current_archive_record(Abstractformat *self,
 
         result = output != NULL;
         while (result && completed < plain_size) {
-            ssize_t sent = xx_io_write(output, plain + completed,
-                                       plain_size - completed);
+            ssize_t sent = xx_io_write(output, plain + completed, plain_size - completed);
             if (sent <= 0 || (size_t)sent > plain_size - completed) {
                 result = false;
                 break;
@@ -958,8 +888,8 @@ bool xx_ti99arc_unpack_current_archive_record(Abstractformat *self,
     return result;
 }
 
-void xx_ti99arc_free_archive_records_reading(Abstractformat *self,
-                                            xx_archive_record_state *state) {
+void xx_ti99arc_free_archive_records_reading(Abstractformat *self, xx_archive_record_state *state)
+{
     (void)self;
     xx_archive_record_state_free(state);
 }

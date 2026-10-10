@@ -23,12 +23,6 @@
 #include "xxfclib/memory/xx_memory.h"
 #include "../lzma/xx_lzma_internal.h"
 
-
-
-
-
-
-
 // ZIP method 96: WinZip JPEG recompression, implemented from the official
 // specification "JPEG Compression - Method 96" (WinZip Computing, 2008) and
 // the log-domain binary arithmetic coder of the expired U.S. patent 4,791,403
@@ -47,10 +41,6 @@
 //  - Binarization (5.6.4): the unary magnitude bins are indexed by the count
 //    of preceding one bits capped at (cap - 1), and the remainder bits are
 //    coded most-significant first with one bin per bit position.
-
-
-
-
 
 const int64_t WZJPEG_MAX_METADATA_SIZE = 16 * 1024 * 1024;  // spec 4.1.1
 static const size_t WZJPEG_MAX_WORKING_MEMORY = 64U * 1024U * 1024U;
@@ -100,8 +90,6 @@ static const uint8_t g_wzjpegColumn[64] = {
     0, 1, 0, 0, 1, 2, 3, 2, 1, 0, 0, 1, 2, 3, 4, 5, 4, 3, 2, 1, 0, 0, 1, 2, 3, 4, 5, 6, 7, 6, 5, 4,
     3, 2, 1, 0, 1, 2, 3, 4, 5, 6, 7, 7, 6, 5, 4, 3, 2, 3, 4, 5, 6, 7, 7, 6, 5, 4, 5, 6, 7, 7, 6, 7,
 };
-
-
 
 /* Reader bounded to the ZIP entry's compressed payload. */
 typedef struct WZJPEG_INPUT {
@@ -589,12 +577,10 @@ static WZJPEG_PARSE_RESULT wzjpegParseMetadata(WZJPEG_METADATA *pMeta, const uin
                 }
                 if (nComponentIndex < 0) return WZJPEG_PARSE_FAILED;
                 for (int32_t coefficient = 0; coefficient < 64; ++coefficient) {
-                    if (!pMeta->quantTables[pMeta->components[nComponentIndex].nQuantIndex][coefficient])
-                        return WZJPEG_PARSE_FAILED;
+                    if (!pMeta->quantTables[pMeta->components[nComponentIndex].nQuantIndex][coefficient]) return WZJPEG_PARSE_FAILED;
                 }
                 for (int32_t previous = 0; previous < i; ++previous) {
-                    if (pMeta->scanComponents[previous].nComponentIndex == nComponentIndex)
-                        return WZJPEG_PARSE_FAILED;
+                    if (pMeta->scanComponents[previous].nComponentIndex == nComponentIndex) return WZJPEG_PARSE_FAILED;
                 }
 
                 pMeta->scanComponents[i].nComponentIndex = nComponentIndex;
@@ -730,10 +716,12 @@ static int32_t wzjpegAverage(int32_t k, const WZJPEG_BLOCK *pNorth, const WZJPEG
         return (wzjpegAbs(pNorth->c[k]) + wzjpegAbs(pWest->c[k]) + 1) / 2;
     } else if (wzjpegIsFirstRow(k)) {
         const int32_t nLeft = wzjpegLeftOf(k);
-        return (((int64_t)wzjpegAbs(pNorth->c[nLeft]) + wzjpegAbs(pWest->c[nLeft])) * pQuant[nLeft] / pQuant[k] + wzjpegAbs(pNorth->c[k]) + wzjpegAbs(pWest->c[k]) + 2) / (2 * 2);
+        return (((int64_t)wzjpegAbs(pNorth->c[nLeft]) + wzjpegAbs(pWest->c[nLeft])) * pQuant[nLeft] / pQuant[k] + wzjpegAbs(pNorth->c[k]) + wzjpegAbs(pWest->c[k]) + 2) /
+               (2 * 2);
     } else if (wzjpegIsFirstColumn(k)) {
         const int32_t nUp = wzjpegUpOf(k);
-        return (((int64_t)wzjpegAbs(pNorth->c[nUp]) + wzjpegAbs(pWest->c[nUp])) * pQuant[nUp] / pQuant[k] + wzjpegAbs(pNorth->c[k]) + wzjpegAbs(pWest->c[k]) + 2) / (2 * 2);
+        return (((int64_t)wzjpegAbs(pNorth->c[nUp]) + wzjpegAbs(pWest->c[nUp])) * pQuant[nUp] / pQuant[k] + wzjpegAbs(pNorth->c[k]) + wzjpegAbs(pWest->c[k]) + 2) /
+               (2 * 2);
     } else if (k == 4) {
         const int32_t nUp = wzjpegUpOf(k);
         const int32_t nLeft = wzjpegLeftOf(k);
@@ -746,7 +734,8 @@ static int32_t wzjpegAverage(int32_t k, const WZJPEG_BLOCK *pNorth, const WZJPEG
         const int32_t nUpLeft = wzjpegUpLeftOf(k);
         return (((int64_t)wzjpegAbs(pNorth->c[nUp]) + wzjpegAbs(pWest->c[nUp])) * pQuant[nUp] / pQuant[k] +
                 ((int64_t)wzjpegAbs(pNorth->c[nLeft]) + wzjpegAbs(pWest->c[nLeft])) * pQuant[nLeft] / pQuant[k] +
-                ((int64_t)wzjpegAbs(pNorth->c[nUpLeft]) + wzjpegAbs(pWest->c[nUpLeft])) * pQuant[nUpLeft] / pQuant[k] + wzjpegAbs(pNorth->c[k]) + wzjpegAbs(pWest->c[k]) + 4) /
+                ((int64_t)wzjpegAbs(pNorth->c[nUpLeft]) + wzjpegAbs(pWest->c[nUpLeft])) * pQuant[nUpLeft] / pQuant[k] + wzjpegAbs(pNorth->c[k]) + wzjpegAbs(pWest->c[k]) +
+                4) /
                (2 * 4);
     }
 }
@@ -871,7 +860,7 @@ static int32_t wzjpegDecodeBinarization(WZJPEG_BAC *pBac, WZJPEG_BIN *pMagnitude
 }
 
 static int32_t wzjpegDecodeACSign(WZJPEG_SESSION *pSession, int32_t nComp, int32_t k, int32_t nAbsValue, const WZJPEG_BLOCK *pCurrent, const WZJPEG_BLOCK *pNorth,
-                                 const WZJPEG_BLOCK *pWest, const uint16_t *pQuant)
+                                  const WZJPEG_BLOCK *pWest, const uint16_t *pQuant)
 {
     // AC sign coding (5.6.6.4).
     int32_t nPredictedSign = 0;
@@ -901,7 +890,7 @@ static int32_t wzjpegDecodeACSign(WZJPEG_SESSION *pSession, int32_t nComp, int32
 }
 
 static int32_t wzjpegDecodeACComponent(WZJPEG_SESSION *pSession, int32_t nComp, int32_t k, bool bCanBeZero, const WZJPEG_BLOCK *pCurrent, const WZJPEG_BLOCK *pNorth,
-                                      const WZJPEG_BLOCK *pWest, const uint16_t *pQuant)
+                                       const WZJPEG_BLOCK *pWest, const uint16_t *pQuant)
 {
     if (!pNorth) pNorth = &g_wzjpegZeroBlock;
     if (!pWest) pWest = &g_wzjpegZeroBlock;
@@ -959,7 +948,7 @@ static int32_t wzjpegDecodeACComponent(WZJPEG_SESSION *pSession, int32_t nComp, 
 }
 
 static int32_t wzjpegDecodeDCComponent(WZJPEG_SESSION *pSession, int32_t nComp, const WZJPEG_BLOCK *pCurrent, const WZJPEG_BLOCK *pNorth, const WZJPEG_BLOCK *pWest,
-                                      const uint16_t *pQuant)
+                                       const uint16_t *pQuant)
 {
     // DC prediction (5.6.7.1). SPEC-ERRATUM: the neighbour AC terms are added
     // to the current block's, not subtracted.
@@ -1062,8 +1051,7 @@ static bool wzjpegFlushOutput(WZJPEG_SESSION *pSession, bool bForce)
     if (pSession->nOutputSize == 0) return true;
 
     const int32_t nSize = pSession->nOutputSize;
-    if ((size_t)pSession->nTotalWritten > pSession->destination_size ||
-        (size_t)nSize > pSession->destination_size - (size_t)pSession->nTotalWritten) {
+    if ((size_t)pSession->nTotalWritten > pSession->destination_size || (size_t)nSize > pSession->destination_size - (size_t)pSession->nTotalWritten) {
         pSession->bWriteFailed = true;
         return false;
     }
@@ -1227,7 +1215,6 @@ static bool wzjpegDecodeSlice(WZJPEG_SESSION *pSession)
 
         const int32_t nRows = pSession->nCurrentHeight * nVBlocks;
         for (int32_t nY = 0; nY < nRows; nY++) {
-
             for (int32_t nX = 0; nX < nBlocksPerRow; nX++) {
                 WZJPEG_BLOCK *pCurrent = &pSession->pBlocks[nComp][nX + (int64_t)nY * nBlocksPerRow];
 
@@ -1285,8 +1272,7 @@ static bool wzjpegAllocateSliceBuffers(WZJPEG_SESSION *pSession)
     for (int32_t nComp = 0; nComp < pMeta->nNumScanComponents; nComp++) {
         const WZJPEG_COMPONENT *pComponent = &pMeta->components[pMeta->scanComponents[nComp].nComponentIndex];
         const int64_t nBlocks = (int64_t)pMeta->nHorizontalMCUs * pSession->nSliceHeight * pComponent->nHorizontalFactor * pComponent->nVerticalFactor;
-        if ((nBlocks <= 0) || (uint64_t)nBlocks >
-            (WZJPEG_MAX_WORKING_MEMORY - required) / sizeof(WZJPEG_BLOCK)) return false;
+        if ((nBlocks <= 0) || (uint64_t)nBlocks > (WZJPEG_MAX_WORKING_MEMORY - required) / sizeof(WZJPEG_BLOCK)) return false;
         amounts[nComp] = (size_t)nBlocks * sizeof(WZJPEG_BLOCK);
         required += amounts[nComp];
     }
@@ -1318,7 +1304,6 @@ static bool wzjpegProcessStream(WZJPEG_SESSION *pSession)
     bool bFirstBundle = true;
 
     for (;;) {
-
         // Bundle header (4.1.1).
         uint8_t baBundleHeader[8];
         if (!wzjpegInputReadFull(&pSession->input, baBundleHeader, 4)) return false;
@@ -1331,7 +1316,8 @@ static bool wzjpegProcessStream(WZJPEG_SESSION *pSession)
         }
         if ((nUncompressedSize <= 0) || (nUncompressedSize > WZJPEG_MAX_METADATA_SIZE)) return false;
         if ((uint64_t)nUncompressedSize > pSession->destination_size ||
-            (uint64_t)pSession->nTotalWritten + (uint64_t)pSession->nOutputSize + (uint64_t)nUncompressedSize > pSession->destination_size) return false;
+            (uint64_t)pSession->nTotalWritten + (uint64_t)pSession->nOutputSize + (uint64_t)nUncompressedSize > pSession->destination_size)
+            return false;
         if ((nCompressedSize < 0) || (nCompressedSize > WZJPEG_MAX_METADATA_SIZE)) return false;
 
         // Bundle metadata (4.1.2): LZMA with synthesized coder properties, or
@@ -1375,9 +1361,8 @@ static bool wzjpegProcessStream(WZJPEG_SESSION *pSession)
             properties[2] = (uint8_t)(dictionary >> 8);
             properties[3] = (uint8_t)(dictionary >> 16);
             properties[4] = (uint8_t)(dictionary >> 24);
-            decoded = xx_lzma_decompress_memory(compressed, (size_t)nCompressedSize,
-                properties, sizeof(properties), nUncompressedSize,
-                pSession->metadata, (size_t)nUncompressedSize, &written);
+            decoded = xx_lzma_decompress_memory(compressed, (size_t)nCompressedSize, properties, sizeof(properties), nUncompressedSize, pSession->metadata,
+                                                (size_t)nUncompressedSize, &written);
             xx_mem_free(compressed);
             if (!decoded || written != (size_t)nUncompressedSize) return false;
         } else if (!wzjpegInputReadFull(&pSession->input, pSession->metadata, nUncompressedSize)) {
@@ -1442,18 +1427,13 @@ static bool wzjpegProcessStream(WZJPEG_SESSION *pSession)
     return wzjpegFlushOutput(pSession, true);
 }
 
-
-
-
-bool xx_winzipjpeg_decompress_memory(const void *source, size_t source_size,
-    void *destination, size_t destination_size, size_t *out_written)
+bool xx_winzipjpeg_decompress_memory(const void *source, size_t source_size, void *destination, size_t destination_size, size_t *out_written)
 {
     WZJPEG_SESSION *session;
     bool result;
     int32_t i;
     if (out_written) *out_written = 0;
-    if (!source || !source_size || (!destination && destination_size) ||
-        destination_size > INT64_MAX || sizeof(*session) > WZJPEG_MAX_WORKING_MEMORY) return false;
+    if (!source || !source_size || (!destination && destination_size) || destination_size > INT64_MAX || sizeof(*session) > WZJPEG_MAX_WORKING_MEMORY) return false;
     session = (WZJPEG_SESSION *)xx_mem_calloc(1, sizeof(*session));
     if (!session) return false;
     session->input.data = (const uint8_t *)source;
@@ -1463,9 +1443,8 @@ bool xx_winzipjpeg_decompress_memory(const void *source, size_t source_size,
     wzjpegBinInitFixed(&session->fixedBin);
     wzjpegInitSignContextTable(session);
     result = wzjpegProcessStream(session);
-    result = result && !session->input.bReadError && !session->bWriteFailed &&
-        (size_t)session->nTotalWritten == destination_size &&
-        session->input.position == source_size;
+    result =
+        result && !session->input.bReadError && !session->bWriteFailed && (size_t)session->nTotalWritten == destination_size && session->input.position == source_size;
     if (result && out_written) *out_written = (size_t)session->nTotalWritten;
     for (i = 0; i < 4; ++i) xx_mem_free(session->pBlocks[i]);
     xx_mem_free(session->metadata);

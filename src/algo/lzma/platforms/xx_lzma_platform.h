@@ -21,8 +21,7 @@ typedef struct xx_lzma_platform_s {
     const char *name;
     void (*copy)(uint8_t *destination, const uint8_t *source, size_t size);
     void (*fill_probs)(uint16_t *probabilities, size_t count);
-    size_t (*match_length)(const uint8_t *first, const uint8_t *second,
-                           size_t maximum);
+    size_t (*match_length)(const uint8_t *first, const uint8_t *second, size_t maximum);
 } xx_lzma_platform;
 
 const xx_lzma_platform *xx_lzma_platform_select(void);

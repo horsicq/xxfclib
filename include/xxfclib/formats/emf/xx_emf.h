@@ -9,13 +9,15 @@
 #ifdef __cplusplus
 extern "C" {
 #endif
-typedef struct xx_emf { Abstractformat format; } xx_emf;
-XXFC_API void xx_emf_init(xx_emf *,xx_io_device *,int64_t);
-XXFC_API xx_emf *xx_emf_create(xx_io_device *,int64_t);
+typedef struct xx_emf {
+    Abstractformat format;
+} xx_emf;
+XXFC_API void xx_emf_init(xx_emf *, xx_io_device *, int64_t);
+XXFC_API xx_emf *xx_emf_create(xx_io_device *, int64_t);
 XXFC_API void xx_emf_destroy(xx_emf *);
 XXFC_API void xx_emf_free(xx_emf *);
-XXFC_API bool xx_emf_check_is_valid(Abstractformat *,xx_pd_struct *);
-XXFC_API bool xx_emf_handle_base_info(Abstractformat *,xx_pd_struct *);
+XXFC_API bool xx_emf_check_is_valid(Abstractformat *, xx_pd_struct *);
+XXFC_API bool xx_emf_handle_base_info(Abstractformat *, xx_pd_struct *);
 #ifdef __cplusplus
 }
 #endif

@@ -118,7 +118,6 @@ void x_qsort(void *pBase, size_t nCount, size_t nSize, int (*fnCompare)(const vo
     }
 }
 
-
 /* ------------------------------ allocation, containers, strings -------- */
 
 /* The largest representable allocation request; <limits.h> / <stdint.h> are
@@ -523,7 +522,6 @@ void cdvec_clear(CDVec *pVec)
 {
     pVec->nSize = 0;
 }
-
 
 static char cd_lower_ascii(char nChar)
 {

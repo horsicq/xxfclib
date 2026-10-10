@@ -7,11 +7,14 @@
 extern "C" {
 #endif
 typedef xx_volume xx_xenix_partitions;
-XXFC_API void xx_xenix_partitions_init(xx_xenix_partitions *,xx_io_device *,int64_t);
-XXFC_API xx_xenix_partitions *xx_xenix_partitions_create(xx_io_device *,int64_t);
+XXFC_API void xx_xenix_partitions_init(xx_xenix_partitions *, xx_io_device *, int64_t);
+XXFC_API xx_xenix_partitions *xx_xenix_partitions_create(xx_io_device *, int64_t);
 XXFC_API void xx_xenix_partitions_destroy(xx_xenix_partitions *);
 XXFC_API void xx_xenix_partitions_free(xx_xenix_partitions *);
-static inline Abstractformat *xx_xenix_partitions_to_format(xx_xenix_partitions *r) { return r?&r->format:NULL; }
+static inline Abstractformat *xx_xenix_partitions_to_format(xx_xenix_partitions *r)
+{
+    return r ? &r->format : NULL;
+}
 #ifdef __cplusplus
 }
 #endif

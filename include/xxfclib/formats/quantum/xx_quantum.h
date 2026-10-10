@@ -43,38 +43,28 @@ typedef struct xx_quantum {
 
 typedef xx_quantum xx_quantum_t;
 
-XXFC_API void xx_quantum_init(xx_quantum *archive, xx_io_device *device,
-                              int64_t base_address);
-XXFC_API xx_quantum *xx_quantum_create(xx_io_device *device,
-                                       int64_t base_address);
+XXFC_API void xx_quantum_init(xx_quantum *archive, xx_io_device *device, int64_t base_address);
+XXFC_API xx_quantum *xx_quantum_create(xx_io_device *device, int64_t base_address);
 XXFC_API void xx_quantum_destroy(xx_quantum *archive);
 XXFC_API void xx_quantum_free(xx_quantum *archive);
 
-XXFC_API bool xx_quantum_check_is_valid(Abstractformat *self,
-                                        xx_pd_struct *pd);
-XXFC_API bool xx_quantum_handle_base_info(Abstractformat *self,
-                                          xx_pd_struct *pd);
-XXFC_API int64_t xx_quantum_get_format_size(Abstractformat *self,
-                                            xx_pd_struct *pd);
-XXFC_API uint64_t xx_quantum_get_number_of_archive_records(
-    Abstractformat *self, xx_pd_struct *pd);
+XXFC_API bool xx_quantum_check_is_valid(Abstractformat *self, xx_pd_struct *pd);
+XXFC_API bool xx_quantum_handle_base_info(Abstractformat *self, xx_pd_struct *pd);
+XXFC_API int64_t xx_quantum_get_format_size(Abstractformat *self, xx_pd_struct *pd);
+XXFC_API uint64_t xx_quantum_get_number_of_archive_records(Abstractformat *self, xx_pd_struct *pd);
 
-XXFC_API xx_archive_record_state *xx_quantum_create_archive_records_reading(
-    Abstractformat *self, const xx_list_s *options, xx_pd_struct *pd);
-XXFC_API const xx_archive_record *xx_quantum_get_current_archive_record(
-    Abstractformat *self, xx_archive_record_state *state);
-XXFC_API bool xx_quantum_unpack_current_archive_record(
-    Abstractformat *self, xx_archive_record_state *state, xx_pd_struct *pd);
-XXFC_API bool xx_quantum_archive_record_move_to_next(
-    Abstractformat *self, xx_archive_record_state *state, xx_pd_struct *pd);
-XXFC_API void xx_quantum_free_archive_records_reading(
-    Abstractformat *self, xx_archive_record_state *state);
+XXFC_API xx_archive_record_state *xx_quantum_create_archive_records_reading(Abstractformat *self, const xx_list_s *options, xx_pd_struct *pd);
+XXFC_API const xx_archive_record *xx_quantum_get_current_archive_record(Abstractformat *self, xx_archive_record_state *state);
+XXFC_API bool xx_quantum_unpack_current_archive_record(Abstractformat *self, xx_archive_record_state *state, xx_pd_struct *pd);
+XXFC_API bool xx_quantum_archive_record_move_to_next(Abstractformat *self, xx_archive_record_state *state, xx_pd_struct *pd);
+XXFC_API void xx_quantum_free_archive_records_reading(Abstractformat *self, xx_archive_record_state *state);
 
 XXFC_API uint64_t xx_quantum_get_number_of_records(const xx_quantum *archive);
 XXFC_API uint32_t xx_quantum_get_window_bits(const xx_quantum *archive);
 XXFC_API bool xx_quantum_get_old_variant(const xx_quantum *archive);
 
-static inline Abstractformat *xx_quantum_to_format(xx_quantum *archive) {
+static inline Abstractformat *xx_quantum_to_format(xx_quantum *archive)
+{
     return archive ? &archive->format : NULL;
 }
 

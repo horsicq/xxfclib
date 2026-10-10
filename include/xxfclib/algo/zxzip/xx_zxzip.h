@@ -62,8 +62,7 @@ extern "C" {
  * @param padded_size Receives the zero-padded byte count. May be NULL.
  * @return true when the entry is well formed.
  */
-XXFC_API bool xx_zxzip_member_size(const uint8_t *entry, size_t entry_size,
-                                   size_t *data_size, size_t *padded_size);
+XXFC_API bool xx_zxzip_member_size(const uint8_t *entry, size_t entry_size, size_t *data_size, size_t *padded_size);
 
 /**
  * @brief Build the 17-byte Hobeta header a member is prefixed with.
@@ -76,8 +75,7 @@ XXFC_API bool xx_zxzip_member_size(const uint8_t *entry, size_t entry_size,
  * @param header      Receives XX_ZXZIP_HOBETA_SIZE bytes.
  * @return true on success.
  */
-XXFC_API bool xx_zxzip_hobeta_header(const uint8_t *entry, size_t entry_size,
-                                     uint8_t *header);
+XXFC_API bool xx_zxzip_hobeta_header(const uint8_t *entry, size_t entry_size, uint8_t *header);
 
 /**
  * @brief Decode one ZXZIP member into its Hobeta-wrapped form.
@@ -98,9 +96,7 @@ XXFC_API bool xx_zxzip_hobeta_header(const uint8_t *entry, size_t entry_size,
  * @param written     Receives the byte count produced; set on every path.
  * @return true only when the whole member decoded.
  */
-XXFC_API bool xx_zxzip_decode_memory(const uint8_t *input, size_t input_size,
-                                     const uint8_t *entry, size_t entry_size,
-                                     uint8_t *output, size_t output_size,
+XXFC_API bool xx_zxzip_decode_memory(const uint8_t *input, size_t input_size, const uint8_t *entry, size_t entry_size, uint8_t *output, size_t output_size,
                                      size_t *written);
 
 #ifdef __cplusplus

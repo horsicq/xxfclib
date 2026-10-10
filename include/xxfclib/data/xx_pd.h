@@ -42,10 +42,10 @@ extern "C" {
  * @brief Progress record for an individual nested level of an operation.
  */
 typedef struct xx_pd_record {
-    uint64_t current;       /**< Current progress counter (e.g. 500) */
-    uint64_t total;         /**< Total units for this level (e.g. 10000) */
-    bool is_busy;           /**< true if this nested level is currently active */
-    char status[64];        /**< Description or label of the operation */
+    uint64_t current; /**< Current progress counter (e.g. 500) */
+    uint64_t total;   /**< Total units for this level (e.g. 10000) */
+    bool is_busy;     /**< true if this nested level is currently active */
+    char status[64];  /**< Description or label of the operation */
 } xx_pd_record;
 
 /**
@@ -75,8 +75,7 @@ typedef struct xx_pd_observer {
  * the previous binding for restoration. NULL pd/callback clears it. Register on
  * the worker thread and restore before the object/context goes out of scope.
  * The xx_pd_struct layout is unchanged; this is not a cross-thread setter. */
-XXFC_API xx_pd_observer xx_pd_set_observer(const xx_pd_struct *pd,
-    xx_pd_observer_fn callback, void *user_data);
+XXFC_API xx_pd_observer xx_pd_set_observer(const xx_pd_struct *pd, xx_pd_observer_fn callback, void *user_data);
 
 /**
  * @brief Initialize an xx_pd_struct to all zeros / clean state.

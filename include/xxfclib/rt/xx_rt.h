@@ -100,8 +100,7 @@ char *xx_rt_strrchr(const char *pString, int nChar);
 char *xx_rt_strstr(const char *pHaystack, const char *pNeedle);
 size_t xx_rt_wcslen(const wchar_t *pString);
 int xx_rt_wcscmp(const wchar_t *pLeft, const wchar_t *pRight);
-int xx_rt_wcsncmp(const wchar_t *pLeft, const wchar_t *pRight,
-                  size_t nSize);
+int xx_rt_wcsncmp(const wchar_t *pLeft, const wchar_t *pRight, size_t nSize);
 wchar_t *xx_rt_wcschr(const wchar_t *pString, wchar_t nChar);
 
 /* Locale-independent ASCII folding. Bytes outside A..Z are unchanged. */
@@ -129,14 +128,9 @@ void xx_rt_free(void *pPtr);
 XX_RT_NORETURN void xx_rt_exit(int nCode);
 char *xx_rt_getenv(const char *pName);
 typedef int (*xx_rt_compare_fn)(const void *pLeft, const void *pRight);
-typedef int (*xx_rt_compare_context_fn)(const void *pLeft,
-                                        const void *pRight,
-                                        void *pContext);
-void xx_rt_qsort(void *pBase, size_t nCount, size_t nSize,
-                 xx_rt_compare_fn fnCompare);
-void xx_rt_qsort_context(void *pBase, size_t nCount, size_t nSize,
-                         xx_rt_compare_context_fn fnCompare,
-                         void *pContext);
+typedef int (*xx_rt_compare_context_fn)(const void *pLeft, const void *pRight, void *pContext);
+void xx_rt_qsort(void *pBase, size_t nCount, size_t nSize, xx_rt_compare_fn fnCompare);
+void xx_rt_qsort_context(void *pBase, size_t nCount, size_t nSize, xx_rt_compare_context_fn fnCompare, void *pContext);
 
 /* ---------------------------------------------------------- conversion --- */
 

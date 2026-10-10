@@ -19,7 +19,8 @@
 #include "xxfclib/memory/xx_memory.h"
 #include "xxfclib/strings/xx_string.h"
 
-void xx_json_init(xx_json *json, const void *data, size_t size) {
+void xx_json_init(xx_json *json, const void *data, size_t size)
+{
     if (!json) return;
     json->data = (const uint8_t *)data;
     json->size = data ? size : 0U;
@@ -27,7 +28,8 @@ void xx_json_init(xx_json *json, const void *data, size_t size) {
     json->depth = 0;
 }
 
-static void xx_json_skip_space(xx_json *json) {
+static void xx_json_skip_space(xx_json *json)
+{
     while (json->position < json->size) {
         uint8_t c = json->data[json->position];
         /* RFC 8259 whitespace, and nothing else: a stray byte is an error,
@@ -37,42 +39,44 @@ static void xx_json_skip_space(xx_json *json) {
     }
 }
 
-static bool xx_json_take(xx_json *json, char c) {
+static bool xx_json_take(xx_json *json, char c)
+{
     xx_json_skip_space(json);
-    if (json->position >= json->size ||
-        json->data[json->position] != (uint8_t)c) {
+    if (json->position >= json->size || json->data[json->position] != (uint8_t)c) {
         return false;
     }
     ++json->position;
     return true;
 }
 
-static bool xx_json_at(xx_json *json, char c) {
+static bool xx_json_at(xx_json *json, char c)
+{
     xx_json_skip_space(json);
-    return json->position < json->size &&
-           json->data[json->position] == (uint8_t)c;
+    return json->position < json->size && json->data[json->position] == (uint8_t)c;
 }
 
-static int xx_json_hex(uint8_t c) {
+static int xx_json_hex(uint8_t c)
+{
     if (c >= '0' && c <= '9') return c - '0';
     if (c >= 'a' && c <= 'f') return c - 'a' + 10;
     if (c >= 'A' && c <= 'F') return c - 'A' + 10;
     return -1;
 }
 
-static bool xx_json_literal(xx_json *json, const char *text) {
+static bool xx_json_literal(xx_json *json, const char *text)
+{
     size_t length = xx_str_len(text);
 
     xx_json_skip_space(json);
-    if (json->position + length > json->size ||
-        xx_rt_memcmp(json->data + json->position, text, length) != 0) {
+    if (json->position + length > json->size || xx_rt_memcmp(json->data + json->position, text, length) != 0) {
         return false;
     }
     json->position += length;
     return true;
 }
 
-xx_json_type_t xx_json_peek(xx_json *json) {
+xx_json_type_t xx_json_peek(xx_json *json)
+{
     if (!json) return XX_JSON_TYPE_INVALID;
     xx_json_skip_space(json);
     if (json->position >= json->size) return XX_JSON_TYPE_INVALID;
@@ -84,11 +88,7 @@ xx_json_type_t xx_json_peek(xx_json *json) {
         case 'f': return XX_JSON_TYPE_BOOL;
         case 'n': return XX_JSON_TYPE_NULL;
         case '-': return XX_JSON_TYPE_NUMBER;
-        default:
-            return (json->data[json->position] >= '0' &&
-                    json->data[json->position] <= '9')
-                       ? XX_JSON_TYPE_NUMBER
-                       : XX_JSON_TYPE_INVALID;
+        default: return (json->data[json->position] >= '0' && json->data[json->position] <= '9') ? XX_JSON_TYPE_NUMBER : XX_JSON_TYPE_INVALID;
     }
 }
 
@@ -98,8 +98,8 @@ xx_json_type_t xx_json_peek(xx_json *json) {
  * such a byte is passed through untouched instead of being re-encoded as if
  * it were a code point in its own right.
  */
-static bool xx_json_emit(char **buffer, size_t *length, size_t *capacity,
-                         uint32_t code, bool raw) {
+static bool xx_json_emit(char **buffer, size_t *length, size_t *capacity, uint32_t code, bool raw)
+{
     uint8_t encoded[4];
     size_t encoded_length;
     size_t i;
@@ -139,7 +139,8 @@ static bool xx_json_emit(char **buffer, size_t *length, size_t *capacity,
 }
 
 /* Read a string; @p out may be NULL to validate and discard. */
-static bool xx_json_string_inner(xx_json *json, char **out) {
+static bool xx_json_string_inner(xx_json *json, char **out)
+{
     size_t capacity = 32U;
     size_t length = 0U;
     char *buffer = NULL;
@@ -191,21 +192,17 @@ static bool xx_json_string_inner(xx_json *json, char **out) {
                     if (value >= 0xD800U && value <= 0xDBFFU) {
                         /* A high surrogate must be followed by a low one. */
                         uint32_t low = 0U;
-                        if (json->position + 6U > json->size ||
-                            json->data[json->position] != '\\' ||
-                            json->data[json->position + 1U] != 'u') {
+                        if (json->position + 6U > json->size || json->data[json->position] != '\\' || json->data[json->position + 1U] != 'u') {
                             goto fail;
                         }
                         json->position += 2U;
                         for (i = 0; i < 4; ++i) {
-                            int digit =
-                                xx_json_hex(json->data[json->position++]);
+                            int digit = xx_json_hex(json->data[json->position++]);
                             if (digit < 0) goto fail;
                             low = (low << 4) | (uint32_t)digit;
                         }
                         if (low < 0xDC00U || low > 0xDFFFU) goto fail;
-                        value = 0x10000U + ((value - 0xD800U) << 10) +
-                                (low - 0xDC00U);
+                        value = 0x10000U + ((value - 0xD800U) << 10) + (low - 0xDC00U);
                     } else if (value >= 0xDC00U && value <= 0xDFFFU) {
                         goto fail; /* unpaired low surrogate */
                     }
@@ -214,8 +211,7 @@ static bool xx_json_string_inner(xx_json *json, char **out) {
                 }
                 default: goto fail;
             }
-            if (out &&
-                !xx_json_emit(&buffer, &length, &capacity, code, false)) {
+            if (out && !xx_json_emit(&buffer, &length, &capacity, code, false)) {
                 goto fail;
             }
         }
@@ -232,11 +228,13 @@ fail:
     return false;
 }
 
-bool xx_json_string(xx_json *json, char **out) {
+bool xx_json_string(xx_json *json, char **out)
+{
     return json && out && xx_json_string_inner(json, out);
 }
 
-bool xx_json_integer(xx_json *json, int64_t limit, int64_t *out) {
+bool xx_json_integer(xx_json *json, int64_t limit, int64_t *out)
+{
     int64_t value = 0;
     bool any = false;
 
@@ -260,7 +258,8 @@ bool xx_json_integer(xx_json *json, int64_t limit, int64_t *out) {
     return true;
 }
 
-bool xx_json_bool(xx_json *json, bool *out) {
+bool xx_json_bool(xx_json *json, bool *out)
+{
     if (!json) return false;
     if (xx_json_literal(json, "true")) {
         if (out) *out = true;
@@ -273,14 +272,16 @@ bool xx_json_bool(xx_json *json, bool *out) {
     return false;
 }
 
-bool xx_json_null(xx_json *json) {
+bool xx_json_null(xx_json *json)
+{
     return json && xx_json_literal(json, "null");
 }
 
 /* Consume a number in any JSON form, which xx_json_integer deliberately
  * refuses -- skipping has no reason to be that strict, only to be correct
  * about where the value ends. */
-static bool xx_json_skip_number(xx_json *json) {
+static bool xx_json_skip_number(xx_json *json)
+{
     bool any_digit = false;
 
     xx_json_skip_space(json);
@@ -312,7 +313,8 @@ bool xx_json_array_empty(xx_json *json);
 bool xx_json_array_end(xx_json *json);
 bool xx_json_more(xx_json *json);
 
-static bool xx_json_skip_container(xx_json *json, bool is_object) {
+static bool xx_json_skip_container(xx_json *json, bool is_object)
+{
     bool ok;
 
     /* Skipping recurses, so an input nesting brackets a million deep would
@@ -357,7 +359,8 @@ static bool xx_json_skip_container(xx_json *json, bool is_object) {
     return ok;
 }
 
-bool xx_json_skip(xx_json *json) {
+bool xx_json_skip(xx_json *json)
+{
     if (!json) return false;
     switch (xx_json_peek(json)) {
         case XX_JSON_TYPE_STRING: return xx_json_string_inner(json, NULL);
@@ -370,15 +373,18 @@ bool xx_json_skip(xx_json *json) {
     }
 }
 
-bool xx_json_object_begin(xx_json *json) {
+bool xx_json_object_begin(xx_json *json)
+{
     return json && xx_json_take(json, '{');
 }
 
-bool xx_json_object_empty(xx_json *json) {
+bool xx_json_object_empty(xx_json *json)
+{
     return json && xx_json_at(json, '}');
 }
 
-bool xx_json_object_key(xx_json *json, char **key) {
+bool xx_json_object_key(xx_json *json, char **key)
+{
     if (!json) return false;
     if (key) {
         if (!xx_json_string_inner(json, key)) return false;
@@ -395,22 +401,27 @@ bool xx_json_object_key(xx_json *json, char **key) {
     return true;
 }
 
-bool xx_json_object_end(xx_json *json) {
+bool xx_json_object_end(xx_json *json)
+{
     return json && xx_json_take(json, '}');
 }
 
-bool xx_json_array_begin(xx_json *json) {
+bool xx_json_array_begin(xx_json *json)
+{
     return json && xx_json_take(json, '[');
 }
 
-bool xx_json_array_empty(xx_json *json) {
+bool xx_json_array_empty(xx_json *json)
+{
     return json && xx_json_at(json, ']');
 }
 
-bool xx_json_array_end(xx_json *json) {
+bool xx_json_array_end(xx_json *json)
+{
     return json && xx_json_take(json, ']');
 }
 
-bool xx_json_more(xx_json *json) {
+bool xx_json_more(xx_json *json)
+{
     return json && xx_json_take(json, ',');
 }

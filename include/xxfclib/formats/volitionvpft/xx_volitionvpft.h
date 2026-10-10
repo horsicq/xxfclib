@@ -81,34 +81,20 @@ struct xx_volitionvpft {
     int64_t index_offset;       /**< Absolute offset of the index. */
 };
 
-XXFC_API void xx_volitionvpft_init(xx_volitionvpft *archive,
-                                   xx_io_device *device,
-                                   int64_t base_address);
-XXFC_API xx_volitionvpft *xx_volitionvpft_create(xx_io_device *device,
-                                                 int64_t base_address);
+XXFC_API void xx_volitionvpft_init(xx_volitionvpft *archive, xx_io_device *device, int64_t base_address);
+XXFC_API xx_volitionvpft *xx_volitionvpft_create(xx_io_device *device, int64_t base_address);
 XXFC_API void xx_volitionvpft_destroy(xx_volitionvpft *archive);
 XXFC_API void xx_volitionvpft_free(xx_volitionvpft *archive);
 
-XXFC_API bool xx_volitionvpft_check_is_valid(Abstractformat *self,
-                                             xx_pd_struct *pd);
-XXFC_API bool xx_volitionvpft_handle_base_info(Abstractformat *self,
-                                               xx_pd_struct *pd);
-XXFC_API int64_t xx_volitionvpft_get_format_size(Abstractformat *self,
-                                                 xx_pd_struct *pd);
-XXFC_API uint64_t xx_volitionvpft_get_number_of_archive_records(
-    Abstractformat *self, xx_pd_struct *pd);
-XXFC_API xx_archive_record_state *
-xx_volitionvpft_create_archive_records_reading(Abstractformat *self,
-                                               const xx_list_s *options,
-                                               xx_pd_struct *pd);
-XXFC_API const xx_archive_record *xx_volitionvpft_get_current_archive_record(
-    Abstractformat *self, xx_archive_record_state *state);
-XXFC_API bool xx_volitionvpft_unpack_current_archive_record(
-    Abstractformat *self, xx_archive_record_state *state, xx_pd_struct *pd);
-XXFC_API bool xx_volitionvpft_archive_record_move_to_next(
-    Abstractformat *self, xx_archive_record_state *state, xx_pd_struct *pd);
-XXFC_API void xx_volitionvpft_free_archive_records_reading(
-    Abstractformat *self, xx_archive_record_state *state);
+XXFC_API bool xx_volitionvpft_check_is_valid(Abstractformat *self, xx_pd_struct *pd);
+XXFC_API bool xx_volitionvpft_handle_base_info(Abstractformat *self, xx_pd_struct *pd);
+XXFC_API int64_t xx_volitionvpft_get_format_size(Abstractformat *self, xx_pd_struct *pd);
+XXFC_API uint64_t xx_volitionvpft_get_number_of_archive_records(Abstractformat *self, xx_pd_struct *pd);
+XXFC_API xx_archive_record_state *xx_volitionvpft_create_archive_records_reading(Abstractformat *self, const xx_list_s *options, xx_pd_struct *pd);
+XXFC_API const xx_archive_record *xx_volitionvpft_get_current_archive_record(Abstractformat *self, xx_archive_record_state *state);
+XXFC_API bool xx_volitionvpft_unpack_current_archive_record(Abstractformat *self, xx_archive_record_state *state, xx_pd_struct *pd);
+XXFC_API bool xx_volitionvpft_archive_record_move_to_next(Abstractformat *self, xx_archive_record_state *state, xx_pd_struct *pd);
+XXFC_API void xx_volitionvpft_free_archive_records_reading(Abstractformat *self, xx_archive_record_state *state);
 
 #ifdef __cplusplus
 }

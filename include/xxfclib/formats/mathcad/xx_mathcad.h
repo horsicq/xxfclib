@@ -91,38 +91,25 @@ struct xx_mathcad {
     bool unpackable;            /**< True when the stream decoded cleanly. */
 };
 
-XXFC_API void xx_mathcad_init(xx_mathcad *document, xx_io_device *device,
-                              int64_t base_address);
-XXFC_API xx_mathcad *xx_mathcad_create(xx_io_device *device,
-                                       int64_t base_address);
+XXFC_API void xx_mathcad_init(xx_mathcad *document, xx_io_device *device, int64_t base_address);
+XXFC_API xx_mathcad *xx_mathcad_create(xx_io_device *device, int64_t base_address);
 XXFC_API void xx_mathcad_destroy(xx_mathcad *document);
 XXFC_API void xx_mathcad_free(xx_mathcad *document);
 
-XXFC_API bool xx_mathcad_check_is_valid(Abstractformat *self,
-                                        xx_pd_struct *pd);
-XXFC_API bool xx_mathcad_handle_base_info(Abstractformat *self,
-                                          xx_pd_struct *pd);
-XXFC_API int64_t xx_mathcad_get_format_size(Abstractformat *self,
-                                            xx_pd_struct *pd);
-XXFC_API uint64_t xx_mathcad_get_number_of_archive_records(
-    Abstractformat *self, xx_pd_struct *pd);
+XXFC_API bool xx_mathcad_check_is_valid(Abstractformat *self, xx_pd_struct *pd);
+XXFC_API bool xx_mathcad_handle_base_info(Abstractformat *self, xx_pd_struct *pd);
+XXFC_API int64_t xx_mathcad_get_format_size(Abstractformat *self, xx_pd_struct *pd);
+XXFC_API uint64_t xx_mathcad_get_number_of_archive_records(Abstractformat *self, xx_pd_struct *pd);
 
 /** Decode the packed stream to @p destination.  @p destination may be NULL,
  *  in which case the stream is only validated and measured. */
-XXFC_API bool xx_mathcad_unpack_to_device(xx_mathcad *document,
-                                          xx_io_device *destination,
-                                          xx_pd_struct *pd);
+XXFC_API bool xx_mathcad_unpack_to_device(xx_mathcad *document, xx_io_device *destination, xx_pd_struct *pd);
 
-XXFC_API xx_archive_record_state *xx_mathcad_create_archive_records_reading(
-    Abstractformat *self, const xx_list_s *options, xx_pd_struct *pd);
-XXFC_API const xx_archive_record *xx_mathcad_get_current_archive_record(
-    Abstractformat *self, xx_archive_record_state *state);
-XXFC_API bool xx_mathcad_unpack_current_archive_record(
-    Abstractformat *self, xx_archive_record_state *state, xx_pd_struct *pd);
-XXFC_API bool xx_mathcad_archive_record_move_to_next(
-    Abstractformat *self, xx_archive_record_state *state, xx_pd_struct *pd);
-XXFC_API void xx_mathcad_free_archive_records_reading(
-    Abstractformat *self, xx_archive_record_state *state);
+XXFC_API xx_archive_record_state *xx_mathcad_create_archive_records_reading(Abstractformat *self, const xx_list_s *options, xx_pd_struct *pd);
+XXFC_API const xx_archive_record *xx_mathcad_get_current_archive_record(Abstractformat *self, xx_archive_record_state *state);
+XXFC_API bool xx_mathcad_unpack_current_archive_record(Abstractformat *self, xx_archive_record_state *state, xx_pd_struct *pd);
+XXFC_API bool xx_mathcad_archive_record_move_to_next(Abstractformat *self, xx_archive_record_state *state, xx_pd_struct *pd);
+XXFC_API void xx_mathcad_free_archive_records_reading(Abstractformat *self, xx_archive_record_state *state);
 
 /** Absolute offset of the packed stream, or -1 before handle_base_info. */
 XXFC_API int64_t xx_mathcad_get_packed_offset(const xx_mathcad *document);
@@ -131,7 +118,8 @@ XXFC_API int64_t xx_mathcad_get_packed_size(const xx_mathcad *document);
 /** Decoded length in bytes, or 0 when the stream would not decode. */
 XXFC_API uint64_t xx_mathcad_get_uncompressed_size(const xx_mathcad *document);
 
-static inline Abstractformat *xx_mathcad_to_format(xx_mathcad *document) {
+static inline Abstractformat *xx_mathcad_to_format(xx_mathcad *document)
+{
     return document ? &document->format : NULL;
 }
 

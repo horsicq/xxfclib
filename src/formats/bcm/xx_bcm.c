@@ -72,17 +72,18 @@ static void xx_bcm_vtable_destroy(Abstractformat *self);
 
 typedef struct bcm_input_s {
     xx_io_device *device;
-    int64_t next;      /**< Device offset of the next byte to buffer. */
-    int64_t end;       /**< Device offset one past the stream. */
+    int64_t next; /**< Device offset of the next byte to buffer. */
+    int64_t end;  /**< Device offset one past the stream. */
     size_t length;
     size_t offset;
-    int64_t consumed;  /**< Bytes taken after the magic. */
-    bool overrun;      /**< A byte past the end was needed. */
+    int64_t consumed; /**< Bytes taken after the magic. */
+    bool overrun;     /**< A byte past the end was needed. */
     bool io_error;
     uint8_t buffer[XX_BCM_WINDOW];
 } bcm_input;
 
-static uint32_t bcm_getc(bcm_input *in) {
+static uint32_t bcm_getc(bcm_input *in)
+{
     if (in->offset >= in->length) {
         int64_t left = in->end - in->next;
         size_t want, done = 0U;
@@ -93,16 +94,14 @@ static uint32_t bcm_getc(bcm_input *in) {
             in->overrun = true;
             return 0xFFU;
         }
-        want = left < (int64_t)XX_BCM_WINDOW ? (size_t)left
-                                              : (size_t)XX_BCM_WINDOW;
+        want = left < (int64_t)XX_BCM_WINDOW ? (size_t)left : (size_t)XX_BCM_WINDOW;
         if (xx_io_seek64(in->device, in->next, SEEK_SET) != 0) {
             in->io_error = true;
             in->overrun = true;
             return 0xFFU;
         }
         while (done < want) {
-            ssize_t got = xx_io_read(in->device, in->buffer + done,
-                                     want - done);
+            ssize_t got = xx_io_read(in->device, in->buffer + done, want - done);
             if (got <= 0 || (size_t)got > want - done) {
                 in->io_error = true;
                 in->overrun = true;
@@ -125,7 +124,8 @@ typedef struct bcm_decoder_s {
     bcm_input *in;
 } bcm_decoder;
 
-static void bcm_decoder_init(bcm_decoder *rc, bcm_input *in) {
+static void bcm_decoder_init(bcm_decoder *rc, bcm_input *in)
+{
     int i;
     rc->low = 0U;
     rc->high = 0xFFFFFFFFU;
@@ -135,14 +135,12 @@ static void bcm_decoder_init(bcm_decoder *rc, bcm_input *in) {
 }
 
 /* p is the probability of a 1 bit, 18 bits wide. */
-static int bcm_decode_bit(bcm_decoder *rc, uint32_t p) {
-    uint32_t mid = rc->low +
-                   (uint32_t)(((uint64_t)(rc->high - rc->low) * p) >> 18);
+static int bcm_decode_bit(bcm_decoder *rc, uint32_t p)
+{
+    uint32_t mid = rc->low + (uint32_t)(((uint64_t)(rc->high - rc->low) * p) >> 18);
     int bit = rc->code <= mid;
-    if (bit)
-        rc->high = mid;
-    else
-        rc->low = mid + 1U;
+    if (bit) rc->high = mid;
+    else rc->low = mid + 1U;
     while ((rc->low ^ rc->high) < (1U << 24)) {
         rc->low <<= 8;
         rc->high = (rc->high << 8) | 0xFFU;
@@ -151,11 +149,11 @@ static int bcm_decode_bit(bcm_decoder *rc, uint32_t p) {
     return bit;
 }
 
-static uint32_t bcm_decode32(bcm_decoder *rc) {
+static uint32_t bcm_decode32(bcm_decoder *rc)
+{
     uint32_t value = 0U;
     int i;
-    for (i = 0; i < 32; ++i)
-        value = (value << 1) | (uint32_t)bcm_decode_bit(rc, 1U << 17);
+    for (i = 0; i < 32; ++i) value = (value << 1) | (uint32_t)bcm_decode_bit(rc, 1U << 17);
     return value;
 }
 
@@ -173,7 +171,8 @@ typedef struct bcm_model_s {
     bool legacy; /**< "BCM1" (v1.00..v1.04) rather than "BCM!". */
 } bcm_model;
 
-static void bcm_model_init(bcm_model *m, bool legacy) {
+static void bcm_model_init(bcm_model *m, bool legacy)
+{
     int i, j, k;
     /* The top SSE slot starts at 65535 in "BCM!" and at 15 << 12 in
      * "BCM1". */
@@ -183,35 +182,30 @@ static void bcm_model_init(bcm_model *m, bool legacy) {
         for (j = 0; j < 256; ++j) m->order1[i][j] = 1U << 15;
     for (i = 0; i < 2; ++i)
         for (j = 0; j < 256; ++j)
-            for (k = 0; k < 17; ++k)
-                m->sse[i][j][k] = k == 16 ? top : (uint16_t)(k << 12);
+            for (k = 0; k < 17; ++k) m->sse[i][j][k] = k == 16 ? top : (uint16_t)(k << 12);
     m->prev1 = 0U;
     m->prev2 = 0U;
     m->run = 0U;
     m->legacy = legacy;
 }
 
-#define BCM_ADAPT(counter, bit, rate) \
-    do { \
-        if (bit) \
-            (counter) = (uint16_t)((counter) + (((counter) ^ 0xFFFFU) >> (rate))); \
-        else \
-            (counter) = (uint16_t)((counter) - ((counter) >> (rate))); \
+#define BCM_ADAPT(counter, bit, rate)                                                   \
+    do {                                                                                \
+        if (bit) (counter) = (uint16_t)((counter) + (((counter) ^ 0xFFFFU) >> (rate))); \
+        else (counter) = (uint16_t)((counter) - ((counter) >> (rate)));                 \
     } while (0)
 
-static uint32_t bcm_decode_symbol(bcm_model *m, bcm_decoder *rc) {
+static uint32_t bcm_decode_symbol(bcm_model *m, bcm_decoder *rc)
+{
     uint16_t *first = m->order1[m->prev1];
     const uint16_t *second = m->order1[m->prev2];
-    uint16_t (*sse)[17];
+    uint16_t(*sse)[17];
     uint32_t ctx = 1U;
     sse = m->sse[m->run > 2U ? 1 : 0];
     while (ctx < 256U) {
         /* Both mixes stay within 0..65535, so j + 1 <= 16. */
-        int p = m->legacy
-                    ? ((int)m->order0[ctx] * 4 + (int)first[ctx] * 3 +
-                       (int)second[ctx]) >> 3
-                    : (((int)m->order0[ctx] + (int)first[ctx]) * 7 +
-                       (int)second[ctx] * 2) >> 4;
+        int p = m->legacy ? ((int)m->order0[ctx] * 4 + (int)first[ctx] * 3 + (int)second[ctx]) >> 3
+                          : (((int)m->order0[ctx] + (int)first[ctx]) * 7 + (int)second[ctx] * 2) >> 4;
         int j = p >> 12;
         int x1 = sse[ctx][j];
         int x2 = sse[ctx][j + 1];
@@ -239,7 +233,8 @@ static uint32_t bcm_decode_symbol(bcm_model *m, bcm_decoder *rc) {
 /* A block length, primary index or end marker: 32 flat bits in "BCM!", four
  * model-coded bytes (most significant first) in "BCM1", where they also move
  * the model's context like any other symbol. */
-static uint32_t bcm_decode_word(bcm_model *m, bcm_decoder *rc) {
+static uint32_t bcm_decode_word(bcm_model *m, bcm_decoder *rc)
+{
     uint32_t value = 0U;
     int i;
     if (!m->legacy) return bcm_decode32(rc);
@@ -260,14 +255,14 @@ typedef struct bcm_output_s {
     uint8_t buffer[XX_BCM_OUT_BUFFER];
 } bcm_output;
 
-static void bcm_output_flush(bcm_output *out) {
+static void bcm_output_flush(bcm_output *out)
+{
     size_t done = 0U;
     if (out->length == 0U) return;
     out->crc = xx_crc32_calc(out->crc, out->buffer, out->length);
     if (out->device) {
         while (done < out->length) {
-            ssize_t put = xx_io_write(out->device, out->buffer + done,
-                                      out->length - done);
+            ssize_t put = xx_io_write(out->device, out->buffer + done, out->length - done);
             if (put <= 0 || (size_t)put > out->length - done) {
                 out->failed = true;
                 break;
@@ -283,17 +278,13 @@ static void bcm_output_flush(bcm_output *out) {
 /* Stream walk                                                               */
 /* ------------------------------------------------------------------------ */
 
-static bool bcm_read_magic(Abstractformat *self, uint8_t magic[4]) {
+static bool bcm_read_magic(Abstractformat *self, uint8_t magic[4])
+{
     size_t completed = 0U;
-    if (!self || !self->device || self->base_address < 0 ||
-        xx_io_seek64(self->device, self->base_address, SEEK_SET) != 0)
-        return false;
+    if (!self || !self->device || self->base_address < 0 || xx_io_seek64(self->device, self->base_address, SEEK_SET) != 0) return false;
     while (completed < XX_BCM_MAGIC_SIZE) {
-        ssize_t received = xx_io_read(self->device, magic + completed,
-                                      XX_BCM_MAGIC_SIZE - completed);
-        if (received <= 0 ||
-            (size_t)received > XX_BCM_MAGIC_SIZE - completed)
-            return false;
+        ssize_t received = xx_io_read(self->device, magic + completed, XX_BCM_MAGIC_SIZE - completed);
+        if (received <= 0 || (size_t)received > XX_BCM_MAGIC_SIZE - completed) return false;
         completed += (size_t)received;
     }
     return true;
@@ -301,8 +292,8 @@ static bool bcm_read_magic(Abstractformat *self, uint8_t magic[4]) {
 
 /* Grow a byte buffer towards `need` bytes, geometrically, so the memory a
  * block costs follows the symbols actually decoded, not its declared size. */
-static bool bcm_reserve(uint8_t **buffer, size_t *capacity, size_t need,
-                        size_t limit) {
+static bool bcm_reserve(uint8_t **buffer, size_t *capacity, size_t need, size_t limit)
+{
     size_t grown;
     uint8_t *moved;
     if (need <= *capacity) return true;
@@ -310,8 +301,7 @@ static bool bcm_reserve(uint8_t **buffer, size_t *capacity, size_t need,
     while (grown < need) grown = grown > limit / 2U ? limit : grown * 2U;
     if (grown > limit) grown = limit;
     if (grown < need) return false;
-    moved = (uint8_t *)(*buffer ? xx_mem_realloc(*buffer, grown)
-                                : xx_mem_alloc(grown));
+    moved = (uint8_t *)(*buffer ? xx_mem_realloc(*buffer, grown) : xx_mem_alloc(grown));
     if (!moved) return false;
     *buffer = moved;
     *capacity = grown;
@@ -321,8 +311,8 @@ static bool bcm_reserve(uint8_t **buffer, size_t *capacity, size_t need,
 /* full == false: header probe only (first block length and primary index);
  * full == true: decode into `out`, with the CRC check for "BCM!".
  * `legacy` selects the "BCM1" bitstream. */
-static bool bcm_walk(Abstractformat *self, bool legacy, bcm_output *out,
-                     bool full, int64_t *consumed, xx_pd_struct *pd) {
+static bool bcm_walk(Abstractformat *self, bool legacy, bcm_output *out, bool full, int64_t *consumed, xx_pd_struct *pd)
+{
     bcm_input *in = NULL;
     bcm_model *model = NULL;
     bcm_decoder rc;
@@ -335,10 +325,7 @@ static bool bcm_walk(Abstractformat *self, bool legacy, bcm_output *out,
     bool result = false;
 
     total = xx_io_total_size(self->device);
-    if (total < self->base_address ||
-        total - self->base_address <
-            (legacy ? XX_BCM_MIN_SIZE : XX_BCM_V110_MIN_SIZE))
-        return false;
+    if (total < self->base_address || total - self->base_address < (legacy ? XX_BCM_MIN_SIZE : XX_BCM_V110_MIN_SIZE)) return false;
     in = (bcm_input *)xx_mem_alloc(sizeof(*in));
     if (!in) return false;
     /* The model is needed even by the probe: "BCM1" codes the block header
@@ -365,8 +352,7 @@ static bool bcm_walk(Abstractformat *self, bool legacy, bcm_output *out,
             result = legacy || (bcm_decode32(&rc) == 0U && !in->overrun);
         } else {
             uint32_t primary = bcm_decode_word(model, &rc);
-            result = !in->overrun && length <= XX_BCM_MAX_BLOCK &&
-                     primary >= 1U && primary <= length;
+            result = !in->overrun && length <= XX_BCM_MAX_BLOCK && primary >= 1U && primary <= length;
         }
         goto done;
     }
@@ -382,25 +368,17 @@ static bool bcm_walk(Abstractformat *self, bool legacy, bcm_output *out,
          * larger block corrupt. */
         if (first_length == 0U) first_length = length;
         primary = bcm_decode_word(model, &rc);
-        if (in->overrun || length > XX_BCM_MAX_BLOCK ||
-            length > first_length || primary < 1U || primary > length)
-            goto done;
+        if (in->overrun || length > XX_BCM_MAX_BLOCK || length > first_length || primary < 1U || primary > length) goto done;
         for (i = 0U; i < length; ++i) {
-            if ((size_t)i >= block_capacity &&
-                !bcm_reserve(&block, &block_capacity, (size_t)i + 1U,
-                             (size_t)length))
-                goto done;
+            if ((size_t)i >= block_capacity && !bcm_reserve(&block, &block_capacity, (size_t)i + 1U, (size_t)length)) goto done;
             block[i] = (uint8_t)bcm_decode_symbol(model, &rc);
             if (in->overrun) goto done;
-            if ((i & 0xFFFFFU) == 0xFFFFFU && pd && xx_pd_is_stopped(pd))
-                goto done;
+            if ((i & 0xFFFFFU) == 0xFFFFFU && pd && xx_pd_is_stopped(pd)) goto done;
         }
         /* Inverse BWT (the row of the whole text is `primary`, 1-based,
          * with the sentinel row removed). */
         if ((size_t)length > next_capacity) {
-            uint32_t *moved = (uint32_t *)(next
-                ? xx_mem_realloc(next, (size_t)length * sizeof(uint32_t))
-                : xx_mem_alloc((size_t)length * sizeof(uint32_t)));
+            uint32_t *moved = (uint32_t *)(next ? xx_mem_realloc(next, (size_t)length * sizeof(uint32_t)) : xx_mem_alloc((size_t)length * sizeof(uint32_t)));
             if (!moved) goto done;
             next = moved;
             next_capacity = (size_t)length;
@@ -408,8 +386,7 @@ static bool bcm_walk(Abstractformat *self, bool legacy, bcm_output *out,
         xx_rt_memset(counts, 0, sizeof(counts));
         for (i = 0U; i < length; ++i) ++counts[block[i] + 1U];
         for (i = 1U; i < 256U; ++i) counts[i] += counts[i - 1U];
-        for (i = 0U; i < length; ++i)
-            next[counts[block[i]]++] = i + (i >= primary ? 1U : 0U);
+        for (i = 0U; i < length; ++i) next[counts[block[i]]++] = i + (i >= primary ? 1U : 0U);
         /* `next` maps 1..length injectively into 0..length without
          * `primary`, so the chain from `primary` ends at 0 after exactly
          * `length` steps; the counter only guards against a logic error. */
@@ -435,8 +412,7 @@ static bool bcm_walk(Abstractformat *self, bool legacy, bcm_output *out,
     }
     result = true;
 done:
-    if (result && consumed)
-        *consumed = (int64_t)XX_BCM_MAGIC_SIZE + in->consumed;
+    if (result && consumed) *consumed = (int64_t)XX_BCM_MAGIC_SIZE + in->consumed;
     if (next) xx_mem_free(next);
     if (block) xx_mem_free(block);
     if (model) xx_mem_free(model);
@@ -446,19 +422,16 @@ done:
 
 /* A stream is BCM when it carries the "BCM!" or "BCM1" magic and its first
  * block header decodes sensibly. */
-static bool xx_bcm_probe(Abstractformat *self, uint8_t *signature_out) {
+static bool xx_bcm_probe(Abstractformat *self, uint8_t *signature_out)
+{
     uint8_t magic[XX_BCM_MAGIC_SIZE];
     int64_t total;
 
     if (!self || !self->device || self->base_address < 0) return false;
     total = xx_io_total_size(self->device);
-    if (total < self->base_address ||
-        total - self->base_address < XX_BCM_MIN_SIZE)
-        return false;
+    if (total < self->base_address || total - self->base_address < XX_BCM_MIN_SIZE) return false;
     if (!bcm_read_magic(self, magic)) return false;
-    if (magic[0] != 'B' || magic[1] != 'C' || magic[2] != 'M' ||
-        (magic[3] != '!' && magic[3] != '1') ||
-        !bcm_walk(self, magic[3] == '1', NULL, false, NULL, NULL))
+    if (magic[0] != 'B' || magic[1] != 'C' || magic[2] != 'M' || (magic[3] != '!' && magic[3] != '1') || !bcm_walk(self, magic[3] == '1', NULL, false, NULL, NULL))
         return false;
     if (signature_out) *signature_out = magic[3];
     return true;
@@ -468,8 +441,8 @@ static bool xx_bcm_probe(Abstractformat *self, uint8_t *signature_out) {
 /* Format API                                                                */
 /* ------------------------------------------------------------------------ */
 
-void xx_bcm_init(xx_bcm *archive, xx_io_device *device,
-                 int64_t base_address) {
+void xx_bcm_init(xx_bcm *archive, xx_io_device *device, int64_t base_address)
+{
     if (!archive) return;
     xx_mem_zero(archive, sizeof(*archive));
     xx_format_init(&archive->format, device, base_address);
@@ -482,29 +455,25 @@ void xx_bcm_init(xx_bcm *archive, xx_io_device *device,
     archive->format.check_is_valid = xx_bcm_check_is_valid;
     archive->format.handle_base_info = xx_bcm_handle_base_info;
     archive->format.get_format_size = xx_bcm_get_format_size;
-    archive->format.get_number_of_archive_records =
-        xx_bcm_get_number_of_archive_records;
-    archive->format.create_archive_records_reading =
-        xx_bcm_create_archive_records_reading;
-    archive->format.get_current_archive_record =
-        xx_bcm_get_current_archive_record;
-    archive->format.unpack_current_archive_record =
-        xx_bcm_unpack_current_archive_record;
-    archive->format.archive_record_move_to_next =
-        xx_bcm_archive_record_move_to_next;
-    archive->format.free_archive_records_reading =
-        xx_bcm_free_archive_records_reading;
+    archive->format.get_number_of_archive_records = xx_bcm_get_number_of_archive_records;
+    archive->format.create_archive_records_reading = xx_bcm_create_archive_records_reading;
+    archive->format.get_current_archive_record = xx_bcm_get_current_archive_record;
+    archive->format.unpack_current_archive_record = xx_bcm_unpack_current_archive_record;
+    archive->format.archive_record_move_to_next = xx_bcm_archive_record_move_to_next;
+    archive->format.free_archive_records_reading = xx_bcm_free_archive_records_reading;
     archive->format.destroy = xx_bcm_vtable_destroy;
 }
 
-xx_bcm *xx_bcm_create(xx_io_device *device, int64_t base_address) {
+xx_bcm *xx_bcm_create(xx_io_device *device, int64_t base_address)
+{
     xx_bcm *archive = (xx_bcm *)xx_mem_alloc(sizeof(*archive));
     if (!archive) return NULL;
     xx_bcm_init(archive, device, base_address);
     return archive;
 }
 
-void xx_bcm_destroy(xx_bcm *archive) {
+void xx_bcm_destroy(xx_bcm *archive)
+{
     if (!archive) return;
     /* NOT xx_format_destroy: that dispatches through format.destroy, which is
      * this function, and the pair recurses until the stack is gone. The base
@@ -514,22 +483,26 @@ void xx_bcm_destroy(xx_bcm *archive) {
     archive->version = 0U;
 }
 
-void xx_bcm_free(xx_bcm *archive) {
+void xx_bcm_free(xx_bcm *archive)
+{
     if (!archive) return;
     xx_bcm_destroy(archive);
     xx_mem_free(archive);
 }
 
-static void xx_bcm_vtable_destroy(Abstractformat *self) {
+static void xx_bcm_vtable_destroy(Abstractformat *self)
+{
     xx_bcm_destroy((xx_bcm *)self);
 }
 
-bool xx_bcm_check_is_valid(Abstractformat *self, xx_pd_struct *pd) {
+bool xx_bcm_check_is_valid(Abstractformat *self, xx_pd_struct *pd)
+{
     if (!self || (pd && xx_pd_is_stopped(pd))) return false;
     return xx_bcm_probe(self, NULL);
 }
 
-bool xx_bcm_handle_base_info(Abstractformat *self, xx_pd_struct *pd) {
+bool xx_bcm_handle_base_info(Abstractformat *self, xx_pd_struct *pd)
+{
     xx_bcm *archive = (xx_bcm *)self;
     uint8_t signature = 0U;
     int64_t total;
@@ -555,33 +528,29 @@ bool xx_bcm_handle_base_info(Abstractformat *self, xx_pd_struct *pd) {
     return true;
 }
 
-int64_t xx_bcm_get_format_size(Abstractformat *self, xx_pd_struct *pd) {
-    if (!self ||
-        (!self->base_info_handled && !xx_format_handle_base_info(self, pd)))
-        return 0;
+int64_t xx_bcm_get_format_size(Abstractformat *self, xx_pd_struct *pd)
+{
+    if (!self || (!self->base_info_handled && !xx_format_handle_base_info(self, pd))) return 0;
     return self->is_valid ? self->format_size : 0;
 }
 
-uint64_t xx_bcm_get_number_of_archive_records(Abstractformat *self,
-                                              xx_pd_struct *pd) {
-    if (!self ||
-        (!self->base_info_handled && !xx_format_handle_base_info(self, pd)))
-        return 0U;
+uint64_t xx_bcm_get_number_of_archive_records(Abstractformat *self, xx_pd_struct *pd)
+{
+    if (!self || (!self->base_info_handled && !xx_format_handle_base_info(self, pd))) return 0U;
     return self->is_valid ? ((xx_bcm *)self)->number_of_records : 0U;
 }
 
-uint8_t xx_bcm_get_version(const xx_bcm *archive) {
+uint8_t xx_bcm_get_version(const xx_bcm *archive)
+{
     return archive ? archive->version : 0U;
 }
 
-bool xx_bcm_unpack_to_device(xx_bcm *archive, xx_io_device *destination,
-                             uint64_t *out_size, int64_t *consumed,
-                             xx_pd_struct *pd) {
+bool xx_bcm_unpack_to_device(xx_bcm *archive, xx_io_device *destination, uint64_t *out_size, int64_t *consumed, xx_pd_struct *pd)
+{
     bcm_output *out;
     uint8_t signature = 0U;
     bool result;
-    if (!archive || !xx_bcm_probe(&archive->format, &signature))
-        return false;
+    if (!archive || !xx_bcm_probe(&archive->format, &signature)) return false;
     out = (bcm_output *)xx_mem_alloc(sizeof(*out));
     if (!out) return false;
     out->device = destination;
@@ -589,8 +558,7 @@ bool xx_bcm_unpack_to_device(xx_bcm *archive, xx_io_device *destination,
     out->total = 0U;
     out->length = 0U;
     out->failed = false;
-    result = bcm_walk(&archive->format, signature == '1', out, true, consumed,
-                      pd);
+    result = bcm_walk(&archive->format, signature == '1', out, true, consumed, pd);
     if (result && out_size) *out_size = out->total;
     xx_mem_free(out);
     return result;
@@ -605,21 +573,21 @@ typedef struct bcm_stream_s {
     size_t count;
 } bcm_stream;
 
-static void bcm_stream_free(void *opaque) {
+static void bcm_stream_free(void *opaque)
+{
     if (opaque) xx_mem_free(opaque);
 }
 
-static bool bcm_copy_options(xx_list_s *destination, const xx_list_s *source) {
+static bool bcm_copy_options(xx_list_s *destination, const xx_list_s *source)
+{
     size_t index;
     if (!source) return true;
     for (index = 0U; index < source->count; ++index) {
-        const xx_meta *original =
-            (const xx_meta *)xx_list_at((const xx_list_t *)source, index);
+        const xx_meta *original = (const xx_meta *)xx_list_at((const xx_list_t *)source, index);
         xx_meta copy;
         if (!original) continue;
         xx_meta_init(&copy, original->meta_id);
-        if (!xx_var_copy(&copy.var, &original->var) ||
-            !xx_list_append(destination, &copy)) {
+        if (!xx_var_copy(&copy.var, &original->var) || !xx_list_append(destination, &copy)) {
             xx_meta_cleanup(&copy);
             return false;
         }
@@ -627,18 +595,19 @@ static bool bcm_copy_options(xx_list_s *destination, const xx_list_s *source) {
     return true;
 }
 
-static const xx_var *bcm_option(const xx_list_s *options, uint32_t id) {
+static const xx_var *bcm_option(const xx_list_s *options, uint32_t id)
+{
     size_t index;
     if (!options) return NULL;
     for (index = 0U; index < options->count; ++index) {
-        const xx_meta *meta =
-            (const xx_meta *)xx_list_at((const xx_list_t *)options, index);
+        const xx_meta *meta = (const xx_meta *)xx_list_at((const xx_list_t *)options, index);
         if (meta && meta->meta_id == id) return &meta->var;
     }
     return NULL;
 }
 
-static bool bcm_set_record(xx_archive_record *record, Abstractformat *self) {
+static bool bcm_set_record(xx_archive_record *record, Abstractformat *self)
+{
     int64_t packed = self->format_size - (int64_t)XX_BCM_MAGIC_SIZE;
     xx_archive_record_cleanup(record);
     xx_archive_record_init(record);
@@ -647,26 +616,16 @@ static bool bcm_set_record(xx_archive_record *record, Abstractformat *self) {
     record->data_offset = self->base_address + (int64_t)XX_BCM_MAGIC_SIZE;
     record->compressed_size = packed;
     /* The uncompressed size is not stored; 0 means unknown. */
-    return xx_archive_record_set_original_name(record, XX_BCM_PAYLOAD_NAME) &&
-           xx_archive_record_set_meta_u64(record, XX_META_ID_COMPRESSED_SIZE,
-                                          (uint64_t)packed) &&
-           xx_archive_record_set_meta_u64(record, XX_META_ID_UNCOMPRESSED_SIZE,
-                                          0U) &&
-           xx_archive_record_set_meta_u64(record, XX_META_ID_COMPRESSION_METHOD,
-                                          1U) &&
-           xx_archive_record_set_meta_bool(record, XX_META_ID_IS_ENCRYPTED,
-                                           false) &&
-           xx_archive_record_set_meta_bool(record, XX_META_ID_IS_FOLDER, false);
+    return xx_archive_record_set_original_name(record, XX_BCM_PAYLOAD_NAME) && xx_archive_record_set_meta_u64(record, XX_META_ID_COMPRESSED_SIZE, (uint64_t)packed) &&
+           xx_archive_record_set_meta_u64(record, XX_META_ID_UNCOMPRESSED_SIZE, 0U) && xx_archive_record_set_meta_u64(record, XX_META_ID_COMPRESSION_METHOD, 1U) &&
+           xx_archive_record_set_meta_bool(record, XX_META_ID_IS_ENCRYPTED, false) && xx_archive_record_set_meta_bool(record, XX_META_ID_IS_FOLDER, false);
 }
 
-xx_archive_record_state *xx_bcm_create_archive_records_reading(
-    Abstractformat *self, const xx_list_s *options, xx_pd_struct *pd) {
+xx_archive_record_state *xx_bcm_create_archive_records_reading(Abstractformat *self, const xx_list_s *options, xx_pd_struct *pd)
+{
     bcm_stream *stream;
     xx_archive_record_state *state;
-    if (!self ||
-        (!self->base_info_handled && !xx_format_handle_base_info(self, pd)) ||
-        !self->is_valid || ((xx_bcm *)self)->number_of_records == 0U)
-        return NULL;
+    if (!self || (!self->base_info_handled && !xx_format_handle_base_info(self, pd)) || !self->is_valid || ((xx_bcm *)self)->number_of_records == 0U) return NULL;
     stream = (bcm_stream *)xx_mem_calloc(1U, sizeof(*stream));
     if (!stream) return NULL;
     stream->count = 1U;
@@ -679,8 +638,7 @@ xx_archive_record_state *xx_bcm_create_archive_records_reading(
     state->internal_state = stream;
     state->free_internal = bcm_stream_free;
     state->total_records = 1U;
-    if (!bcm_copy_options(&state->options, options) ||
-        !bcm_set_record(&state->current_record, self)) {
+    if (!bcm_copy_options(&state->options, options) || !bcm_set_record(&state->current_record, self)) {
         xx_archive_record_state_free(state);
         return NULL;
     }
@@ -688,29 +646,24 @@ xx_archive_record_state *xx_bcm_create_archive_records_reading(
     return state;
 }
 
-const xx_archive_record *xx_bcm_get_current_archive_record(
-    Abstractformat *self, xx_archive_record_state *state) {
-    return self && state && state->format == self && state->has_record
-               ? &state->current_record : NULL;
+const xx_archive_record *xx_bcm_get_current_archive_record(Abstractformat *self, xx_archive_record_state *state)
+{
+    return self && state && state->format == self && state->has_record ? &state->current_record : NULL;
 }
 
-bool xx_bcm_archive_record_move_to_next(Abstractformat *self,
-                                        xx_archive_record_state *state,
-                                        xx_pd_struct *pd) {
+bool xx_bcm_archive_record_move_to_next(Abstractformat *self, xx_archive_record_state *state, xx_pd_struct *pd)
+{
     bcm_stream *stream;
     (void)pd;
-    if (!self || !state || state->format != self ||
-        !(stream = (bcm_stream *)state->internal_state) ||
-        ++stream->index >= stream->count) {
+    if (!self || !state || state->format != self || !(stream = (bcm_stream *)state->internal_state) || ++stream->index >= stream->count) {
         if (state) state->has_record = false;
         return false;
     }
     return false;
 }
 
-bool xx_bcm_unpack_current_archive_record(Abstractformat *self,
-                                          xx_archive_record_state *state,
-                                          xx_pd_struct *pd) {
+bool xx_bcm_unpack_current_archive_record(Abstractformat *self, xx_archive_record_state *state, xx_pd_struct *pd)
+{
     bcm_stream *stream;
     const xx_var *path_option;
     const char *base = NULL;
@@ -718,35 +671,28 @@ bool xx_bcm_unpack_current_archive_record(Abstractformat *self,
     char *path = NULL;
     bool result = false;
     bool created = false;
-    if (!self || !state || state->format != self || !state->has_record ||
-        !(stream = (bcm_stream *)state->internal_state) ||
-        stream->index >= stream->count || (pd && xx_pd_is_stopped(pd)))
+    if (!self || !state || state->format != self || !state->has_record || !(stream = (bcm_stream *)state->internal_state) || stream->index >= stream->count ||
+        (pd && xx_pd_is_stopped(pd)))
         return false;
     path_option = bcm_option(&state->options, XX_META_ID_OPT_UNPACK_PATH);
     if (!path_option) {
         /* No destination: prove the stream decodes and its CRC matches. */
         return xx_bcm_unpack_to_device((xx_bcm *)self, NULL, NULL, NULL, pd);
     }
-    if (path_option->type == XX_VAR_TYPE_STRING ||
-        path_option->type == XX_VAR_TYPE_STRING_VIEW)
-        base = xx_var_get_str(path_option);
-    else if (path_option->type == XX_VAR_TYPE_WSTRING ||
-             path_option->type == XX_VAR_TYPE_WSTRING_VIEW) {
+    if (path_option->type == XX_VAR_TYPE_STRING || path_option->type == XX_VAR_TYPE_STRING_VIEW) base = xx_var_get_str(path_option);
+    else if (path_option->type == XX_VAR_TYPE_WSTRING || path_option->type == XX_VAR_TYPE_WSTRING_VIEW) {
         owned_base = xx_str_unicode_to_utf8(xx_var_get_wstr(path_option));
         base = owned_base;
     }
     if (!base) goto done;
-    path = (base[0] && base[xx_str_len(base) - 1U] != '/' &&
-            base[xx_str_len(base) - 1U] != '\\')
-               ? xx_str_concat3(base, "/", XX_BCM_PAYLOAD_NAME)
-               : xx_str_concat(base, XX_BCM_PAYLOAD_NAME);
+    path = (base[0] && base[xx_str_len(base) - 1U] != '/' && base[xx_str_len(base) - 1U] != '\\') ? xx_str_concat3(base, "/", XX_BCM_PAYLOAD_NAME)
+                                                                                                  : xx_str_concat(base, XX_BCM_PAYLOAD_NAME);
     if (!path || !xx_store_create_dirs_a(path, false)) goto done;
     {
         xx_io_device *destination = xx_io_file_open(path, "wb");
         created = destination != NULL;
         if (!destination) goto done;
-        result = xx_bcm_unpack_to_device((xx_bcm *)self, destination, NULL,
-                                         NULL, pd);
+        result = xx_bcm_unpack_to_device((xx_bcm *)self, destination, NULL, NULL, pd);
         if (xx_io_close(destination) != 0) result = false;
     }
 done:
@@ -756,8 +702,8 @@ done:
     return result;
 }
 
-void xx_bcm_free_archive_records_reading(Abstractformat *self,
-                                         xx_archive_record_state *state) {
+void xx_bcm_free_archive_records_reading(Abstractformat *self, xx_archive_record_state *state)
+{
     (void)self;
     xx_archive_record_state_free(state);
 }

@@ -46,9 +46,7 @@ extern "C" {
  * @param written     Receives the number of bytes produced. May be NULL.
  * @return true only when exactly @p output_size bytes were produced.
  */
-XXFC_API bool xx_topspeed_decode_memory(const uint8_t *input,
-                                        size_t input_size, uint8_t *output,
-                                        size_t output_size, size_t *written);
+XXFC_API bool xx_topspeed_decode_memory(const uint8_t *input, size_t input_size, uint8_t *output, size_t output_size, size_t *written);
 
 /**
  * @brief Measure a TopSpeed member, which carries no stored plaintext length.
@@ -68,9 +66,7 @@ XXFC_API bool xx_topspeed_decode_memory(const uint8_t *input,
  * @param produced    Receives the decoded size. May be NULL.
  * @return true when the whole member parsed and checksummed cleanly.
  */
-XXFC_API bool xx_topspeed_scan_memory(const uint8_t *input, size_t input_size,
-                                      size_t max_output, size_t *consumed,
-                                      size_t *produced);
+XXFC_API bool xx_topspeed_scan_memory(const uint8_t *input, size_t input_size, size_t max_output, size_t *consumed, size_t *produced);
 
 #ifdef __cplusplus
 }

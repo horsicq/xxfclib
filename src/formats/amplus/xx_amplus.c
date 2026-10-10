@@ -4,40 +4,83 @@
  * Wire-format reference: libxad AMPK.c (AmPlusUnpack). Original implementation. */
 #include "xxfclib/formats/amplus/xx_amplus.h"
 #include "../xx_legacy_archive.h"
-static bool amplus_parse(Abstractformat *f,pm_stream *s,ac_blob *b) {
-    uint32_t at=12;
-    if(b->n<12U || xx_rt_memcmp(b->p,"FORM",4) || xx_rt_memcmp(b->p+8,"APUP",4) || xx_data_get_u32(b->p+4, 4, 0, true)!=b->n-8U) return false;
-    while(at<b->n) {
-        const uint8_t *tag; uint32_t outer,limit,pos,filesize,namesize,size,mode=0,crc=0,sum=0,i; char name[96]; uint8_t *out=NULL;
-        if(!ac_poll(b) || !ac_span(b,at,8)) return false;
-        tag=b->p+at; outer=xx_data_get_u32(tag+4, 4, 0, true); pos=at+8U;
-        if(!ac_span(b,pos,outer) || outer==UINT32_MAX) { return false; } limit=pos+outer;
-        if(!xx_rt_memcmp(tag,"VERS",4) || !xx_rt_memcmp(tag,"DISK",4) || !xx_rt_memcmp(tag,"PREF",4) || !xx_rt_memcmp(tag,"MKDR",4)) { at=limit+(outer&1U); continue; }
-        if(xx_rt_memcmp(tag,"HELP",4)) {
-            if(xx_rt_memcmp(tag,"PACK",4) && xx_rt_memcmp(tag,"DATA",4)) return false;
-            if(outer<10U) { return false; } mode=xx_data_get_u16(b->p+pos, 2, 0, true); size=xx_data_get_u32(b->p+pos+2, 4, 0, true); crc=xx_data_get_u32(b->p+pos+6, 4, 0, true); pos+=10U;
-            if(size>outer) return false;
+static bool amplus_parse(Abstractformat *f, pm_stream *s, ac_blob *b)
+{
+    uint32_t at = 12;
+    if (b->n < 12U || xx_rt_memcmp(b->p, "FORM", 4) || xx_rt_memcmp(b->p + 8, "APUP", 4) || xx_data_get_u32(b->p + 4, 4, 0, true) != b->n - 8U) return false;
+    while (at < b->n) {
+        const uint8_t *tag;
+        uint32_t outer, limit, pos, filesize, namesize, size, mode = 0, crc = 0, sum = 0, i;
+        char name[96];
+        uint8_t *out = NULL;
+        if (!ac_poll(b) || !ac_span(b, at, 8)) return false;
+        tag = b->p + at;
+        outer = xx_data_get_u32(tag + 4, 4, 0, true);
+        pos = at + 8U;
+        if (!ac_span(b, pos, outer) || outer == UINT32_MAX) {
+            return false;
         }
-        if(!ac_span(b,pos,36U) || pos+36U>limit || xx_rt_memcmp(b->p+pos,"FILE",4)) return false;
-        filesize=xx_data_get_u32(b->p+pos+8, 4, 0, true); pos+=28U;
-        if(xx_rt_memcmp(b->p+pos,"NAME",4)) return false;
-        namesize=xx_data_get_u32(b->p+pos+4, 4, 0, true); pos+=8U;
-        if(!ac_span(b,pos,namesize) || !ac_name(name,sizeof(name),b->p+pos,namesize)) return false;
-        pos+=namesize; /* APUP NAME body already includes its original padding. */
-        if(!ac_span(b,pos,8U) || pos+8U>limit) return false;
-        size=xx_data_get_u32(b->p+pos+4, 4, 0, true); pos+=8U;
-        if(!ac_span(b,pos,size) || pos+size+(size&1U)!=limit) return false;
-        out=ac_alloc(b,filesize); if(!out) return false;
-        if(!xx_rt_memcmp(tag,"PACK",4)) {
-            if(mode!=0U) { ac_release(b,out,filesize); return ac_error(b,"Amiga Plus XPK compression is unsupported"); }
-            if(!ac_ampk(b,b->p+pos,size,out,filesize)) { ac_release(b,out,filesize); return false; }
-        } else { if(filesize!=size) { ac_release(b,out,filesize); return false; } xx_rt_memcpy(out,b->p+pos,size); }
-        for(i=0;i<filesize;++i) { if((i&4095U)==0 && !ac_poll(b)) { ac_release(b,out,filesize); return false; } sum+=(uint32_t)out[i]<<((3U-(i&3U))*8U); }
-        if(xx_rt_memcmp(tag,"HELP",4) && sum!=crc) { ac_release(b,out,filesize); return ac_error(b,"Amiga Plus checksum mismatch"); }
-        if(!ac_memory(f,s,b,name,out,filesize,size,!xx_rt_memcmp(tag,"PACK",4)?1:0)) return false;
-        at=limit+(outer&1U);
+        limit = pos + outer;
+        if (!xx_rt_memcmp(tag, "VERS", 4) || !xx_rt_memcmp(tag, "DISK", 4) || !xx_rt_memcmp(tag, "PREF", 4) || !xx_rt_memcmp(tag, "MKDR", 4)) {
+            at = limit + (outer & 1U);
+            continue;
+        }
+        if (xx_rt_memcmp(tag, "HELP", 4)) {
+            if (xx_rt_memcmp(tag, "PACK", 4) && xx_rt_memcmp(tag, "DATA", 4)) return false;
+            if (outer < 10U) {
+                return false;
+            }
+            mode = xx_data_get_u16(b->p + pos, 2, 0, true);
+            size = xx_data_get_u32(b->p + pos + 2, 4, 0, true);
+            crc = xx_data_get_u32(b->p + pos + 6, 4, 0, true);
+            pos += 10U;
+            if (size > outer) return false;
+        }
+        if (!ac_span(b, pos, 36U) || pos + 36U > limit || xx_rt_memcmp(b->p + pos, "FILE", 4)) return false;
+        filesize = xx_data_get_u32(b->p + pos + 8, 4, 0, true);
+        pos += 28U;
+        if (xx_rt_memcmp(b->p + pos, "NAME", 4)) return false;
+        namesize = xx_data_get_u32(b->p + pos + 4, 4, 0, true);
+        pos += 8U;
+        if (!ac_span(b, pos, namesize) || !ac_name(name, sizeof(name), b->p + pos, namesize)) return false;
+        pos += namesize; /* APUP NAME body already includes its original padding. */
+        if (!ac_span(b, pos, 8U) || pos + 8U > limit) return false;
+        size = xx_data_get_u32(b->p + pos + 4, 4, 0, true);
+        pos += 8U;
+        if (!ac_span(b, pos, size) || pos + size + (size & 1U) != limit) return false;
+        out = ac_alloc(b, filesize);
+        if (!out) return false;
+        if (!xx_rt_memcmp(tag, "PACK", 4)) {
+            if (mode != 0U) {
+                ac_release(b, out, filesize);
+                return ac_error(b, "Amiga Plus XPK compression is unsupported");
+            }
+            if (!ac_ampk(b, b->p + pos, size, out, filesize)) {
+                ac_release(b, out, filesize);
+                return false;
+            }
+        } else {
+            if (filesize != size) {
+                ac_release(b, out, filesize);
+                return false;
+            }
+            xx_rt_memcpy(out, b->p + pos, size);
+        }
+        for (i = 0; i < filesize; ++i) {
+            if ((i & 4095U) == 0 && !ac_poll(b)) {
+                ac_release(b, out, filesize);
+                return false;
+            }
+            sum += (uint32_t)out[i] << ((3U - (i & 3U)) * 8U);
+        }
+        if (xx_rt_memcmp(tag, "HELP", 4) && sum != crc) {
+            ac_release(b, out, filesize);
+            return ac_error(b, "Amiga Plus checksum mismatch");
+        }
+        if (!ac_memory(f, s, b, name, out, filesize, size, !xx_rt_memcmp(tag, "PACK", 4) ? 1 : 0)) return false;
+        at = limit + (outer & 1U);
     }
-    return at==b->n && s->count;
+    return at == b->n && s->count;
 }
 AC_PARSE(amplus_parse)
-AC_DEFINE(amplus,XX_FILE_TYPE_AMPLUS,"apu")
+AC_DEFINE(amplus, XX_FILE_TYPE_AMPLUS, "apu")

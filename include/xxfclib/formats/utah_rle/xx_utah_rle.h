@@ -9,13 +9,15 @@
 #ifdef __cplusplus
 extern "C" {
 #endif
-typedef struct xx_utah_rle { Abstractformat format; } xx_utah_rle;
-XXFC_API void xx_utah_rle_init(xx_utah_rle *,xx_io_device *,int64_t);
-XXFC_API xx_utah_rle *xx_utah_rle_create(xx_io_device *,int64_t);
+typedef struct xx_utah_rle {
+    Abstractformat format;
+} xx_utah_rle;
+XXFC_API void xx_utah_rle_init(xx_utah_rle *, xx_io_device *, int64_t);
+XXFC_API xx_utah_rle *xx_utah_rle_create(xx_io_device *, int64_t);
 XXFC_API void xx_utah_rle_destroy(xx_utah_rle *);
 XXFC_API void xx_utah_rle_free(xx_utah_rle *);
-XXFC_API bool xx_utah_rle_check_is_valid(Abstractformat *,xx_pd_struct *);
-XXFC_API bool xx_utah_rle_handle_base_info(Abstractformat *,xx_pd_struct *);
+XXFC_API bool xx_utah_rle_check_is_valid(Abstractformat *, xx_pd_struct *);
+XXFC_API bool xx_utah_rle_handle_base_info(Abstractformat *, xx_pd_struct *);
 #ifdef __cplusplus
 }
 #endif

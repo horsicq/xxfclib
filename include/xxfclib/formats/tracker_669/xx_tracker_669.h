@@ -9,13 +9,15 @@
 #ifdef __cplusplus
 extern "C" {
 #endif
-typedef struct xx_tracker_669 { Abstractformat format; } xx_tracker_669;
-XXFC_API void xx_tracker_669_init(xx_tracker_669 *,xx_io_device *,int64_t);
-XXFC_API xx_tracker_669 *xx_tracker_669_create(xx_io_device *,int64_t);
+typedef struct xx_tracker_669 {
+    Abstractformat format;
+} xx_tracker_669;
+XXFC_API void xx_tracker_669_init(xx_tracker_669 *, xx_io_device *, int64_t);
+XXFC_API xx_tracker_669 *xx_tracker_669_create(xx_io_device *, int64_t);
 XXFC_API void xx_tracker_669_destroy(xx_tracker_669 *);
 XXFC_API void xx_tracker_669_free(xx_tracker_669 *);
-XXFC_API bool xx_tracker_669_check_is_valid(Abstractformat *,xx_pd_struct *);
-XXFC_API bool xx_tracker_669_handle_base_info(Abstractformat *,xx_pd_struct *);
+XXFC_API bool xx_tracker_669_check_is_valid(Abstractformat *, xx_pd_struct *);
+XXFC_API bool xx_tracker_669_handle_base_info(Abstractformat *, xx_pd_struct *);
 #ifdef __cplusplus
 }
 #endif

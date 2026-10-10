@@ -31,9 +31,7 @@ extern "C" {
  * @return true only when the stream decoded completely to its end marker and
  *         produced exactly @p output_size bytes.
  */
-XXFC_API bool xx_zoo_lzd_decode_memory(const uint8_t *input, size_t input_size,
-                                       uint8_t *output, size_t output_size,
-                                       size_t *written);
+XXFC_API bool xx_zoo_lzd_decode_memory(const uint8_t *input, size_t input_size, uint8_t *output, size_t output_size, size_t *written);
 
 /**
  * @brief Decode a ZOO method 2 ("lzh") member.
@@ -53,9 +51,7 @@ XXFC_API bool xx_zoo_lzd_decode_memory(const uint8_t *input, size_t input_size,
  * @param written     Receives the number of bytes produced. May be NULL.
  * @return true when exactly @p output_size bytes were produced.
  */
-XXFC_API bool xx_zoo_lzh_decode_memory(const uint8_t *input, size_t input_size,
-                                       uint8_t *output, size_t output_size,
-                                       size_t *written);
+XXFC_API bool xx_zoo_lzh_decode_memory(const uint8_t *input, size_t input_size, uint8_t *output, size_t output_size, size_t *written);
 
 #ifdef __cplusplus
 }

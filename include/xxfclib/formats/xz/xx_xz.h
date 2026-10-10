@@ -31,7 +31,7 @@ typedef enum xx_xz_data_struct_id_e {
 } xx_xz_data_struct_id_t;
 
 struct xx_xz {
-    Abstractformat format;       /**< Base format; must be first. */
+    Abstractformat format; /**< Base format; must be first. */
     uint64_t number_of_blocks;
     uint64_t uncompressed_size;
     uint64_t compressed_data_size;
@@ -42,22 +42,18 @@ struct xx_xz {
     void *internal;
 };
 
-XXFC_API void xx_xz_init(xx_xz *xz, xx_io_device *dev,
-                         int64_t base_address);
+XXFC_API void xx_xz_init(xx_xz *xz, xx_io_device *dev, int64_t base_address);
 XXFC_API xx_xz *xx_xz_create(xx_io_device *dev, int64_t base_address);
 XXFC_API void xx_xz_free(xx_xz *xz);
 XXFC_API void xx_xz_destroy(xx_xz *xz);
 
 XXFC_API bool xx_xz_check_is_valid(Abstractformat *self, xx_pd_struct *pd);
 XXFC_API bool xx_xz_handle_base_info(Abstractformat *self, xx_pd_struct *pd);
-XXFC_API int64_t xx_xz_get_format_size(Abstractformat *self,
-                                       xx_pd_struct *pd);
-XXFC_API uint64_t xx_xz_get_number_of_archive_records(
-    Abstractformat *self, xx_pd_struct *pd);
+XXFC_API int64_t xx_xz_get_format_size(Abstractformat *self, xx_pd_struct *pd);
+XXFC_API uint64_t xx_xz_get_number_of_archive_records(Abstractformat *self, xx_pd_struct *pd);
 
 /** Decode all concatenated XZ streams to a caller-provided device. */
-XXFC_API bool xx_xz_unpack_to_device(xx_xz *xz, xx_io_device *destination,
-                                     xx_pd_struct *pd);
+XXFC_API bool xx_xz_unpack_to_device(xx_xz *xz, xx_io_device *destination, xx_pd_struct *pd);
 
 /** Write one XZ stream with one LZMA2 block and a CRC64 integrity check.
  *  The source must expose its size and support seeking; destination writes
@@ -65,21 +61,13 @@ XXFC_API bool xx_xz_unpack_to_device(xx_xz *xz, xx_io_device *destination,
  *  destination must be distinct. Levels are clamped to 1..9 (default 5).
  *  Compression and CRC64 use one input pass with bounded codec buffers.
  *  Failure leaves partial output. The caller owns and closes both devices. */
-XXFC_API bool xx_xz_pack_to_device(xx_io_device *source, int64_t source_offset,
-                                   int64_t uncompressed_size,
-                                   xx_io_device *destination, int level,
-                                   xx_pd_struct *pd);
+XXFC_API bool xx_xz_pack_to_device(xx_io_device *source, int64_t source_offset, int64_t uncompressed_size, xx_io_device *destination, int level, xx_pd_struct *pd);
 
-XXFC_API xx_archive_record_state *xx_xz_create_archive_records_reading(
-    Abstractformat *self, const xx_list_s *options, xx_pd_struct *pd);
-XXFC_API const xx_archive_record *xx_xz_get_current_archive_record(
-    Abstractformat *self, xx_archive_record_state *state);
-XXFC_API bool xx_xz_unpack_current_archive_record(
-    Abstractformat *self, xx_archive_record_state *state, xx_pd_struct *pd);
-XXFC_API bool xx_xz_archive_record_move_to_next(
-    Abstractformat *self, xx_archive_record_state *state, xx_pd_struct *pd);
-XXFC_API void xx_xz_free_archive_records_reading(
-    Abstractformat *self, xx_archive_record_state *state);
+XXFC_API xx_archive_record_state *xx_xz_create_archive_records_reading(Abstractformat *self, const xx_list_s *options, xx_pd_struct *pd);
+XXFC_API const xx_archive_record *xx_xz_get_current_archive_record(Abstractformat *self, xx_archive_record_state *state);
+XXFC_API bool xx_xz_unpack_current_archive_record(Abstractformat *self, xx_archive_record_state *state, xx_pd_struct *pd);
+XXFC_API bool xx_xz_archive_record_move_to_next(Abstractformat *self, xx_archive_record_state *state, xx_pd_struct *pd);
+XXFC_API void xx_xz_free_archive_records_reading(Abstractformat *self, xx_archive_record_state *state);
 
 /** Write exactly one regular file (including an empty file) through borrowed
  * devices. Compression level and memory/member limits are supported. Multiple
@@ -90,54 +78,47 @@ XXFC_API bool xx_xz_pack_archive_record(Abstractformat *self, xx_archive_write_s
 XXFC_API bool xx_xz_finalize_archive_records_writing(Abstractformat *self, xx_archive_write_state *state, xx_pd_struct *pd);
 XXFC_API void xx_xz_free_archive_records_writing(Abstractformat *self, xx_archive_write_state *state);
 
-XXFC_API const char *xx_xz_data_struct_id_to_string(Abstractformat *self,
-                                                    uint32_t id);
-XXFC_API uint32_t xx_xz_data_struct_string_to_id(Abstractformat *self,
-                                                 const char *name);
-XXFC_API xx_data_struct_state *xx_xz_create_data_structs_reading(
-    Abstractformat *self, xx_pd_struct *pd);
-XXFC_API const xx_data_struct *xx_xz_get_current_data_struct(
-    Abstractformat *self, xx_data_struct_state *state);
-XXFC_API bool xx_xz_data_struct_move_to_next(
-    Abstractformat *self, xx_data_struct_state *state, xx_pd_struct *pd);
-XXFC_API void xx_xz_free_data_structs_reading(
-    Abstractformat *self, xx_data_struct_state *state);
+XXFC_API const char *xx_xz_data_struct_id_to_string(Abstractformat *self, uint32_t id);
+XXFC_API uint32_t xx_xz_data_struct_string_to_id(Abstractformat *self, const char *name);
+XXFC_API xx_data_struct_state *xx_xz_create_data_structs_reading(Abstractformat *self, xx_pd_struct *pd);
+XXFC_API const xx_data_struct *xx_xz_get_current_data_struct(Abstractformat *self, xx_data_struct_state *state);
+XXFC_API bool xx_xz_data_struct_move_to_next(Abstractformat *self, xx_data_struct_state *state, xx_pd_struct *pd);
+XXFC_API void xx_xz_free_data_structs_reading(Abstractformat *self, xx_data_struct_state *state);
 
-XXFC_API xx_data_struct_record_state *
-xx_xz_create_data_struct_records_reading(Abstractformat *self,
-                                         const xx_data_struct *ds,
-                                         xx_pd_struct *pd);
-XXFC_API const xx_data_struct_record *xx_xz_get_current_data_struct_record(
-    Abstractformat *self, xx_data_struct_record_state *state);
-XXFC_API bool xx_xz_data_struct_record_move_to_next(
-    Abstractformat *self, xx_data_struct_record_state *state,
-    xx_pd_struct *pd);
-XXFC_API void xx_xz_free_data_struct_records_reading(
-    Abstractformat *self, xx_data_struct_record_state *state);
+XXFC_API xx_data_struct_record_state *xx_xz_create_data_struct_records_reading(Abstractformat *self, const xx_data_struct *ds, xx_pd_struct *pd);
+XXFC_API const xx_data_struct_record *xx_xz_get_current_data_struct_record(Abstractformat *self, xx_data_struct_record_state *state);
+XXFC_API bool xx_xz_data_struct_record_move_to_next(Abstractformat *self, xx_data_struct_record_state *state, xx_pd_struct *pd);
+XXFC_API void xx_xz_free_data_struct_records_reading(Abstractformat *self, xx_data_struct_record_state *state);
 
 XXFC_API uint64_t xx_xz_get_number_of_blocks(const xx_xz *xz);
 XXFC_API uint64_t xx_xz_get_uncompressed_size(const xx_xz *xz);
 XXFC_API uint8_t xx_xz_get_check_type(const xx_xz *xz);
 XXFC_API bool xx_xz_can_extract(const xx_xz *xz);
 
-static inline Abstractformat *xx_xz_to_format(xx_xz *xz) {
+static inline Abstractformat *xx_xz_to_format(xx_xz *xz)
+{
     return xz ? &xz->format : NULL;
 }
 
-static inline const Abstractformat *xx_xz_to_format_const(const xx_xz *xz) {
+static inline const Abstractformat *xx_xz_to_format_const(const xx_xz *xz)
+{
     return xz ? &xz->format : NULL;
 }
 
-static inline void XXz_init(xx_xz *xz, xx_io_device *dev,
-                            int64_t base_address) {
+static inline void XXz_init(xx_xz *xz, xx_io_device *dev, int64_t base_address)
+{
     xx_xz_init(xz, dev, base_address);
 }
 
-static inline xx_xz *XXz_create(xx_io_device *dev, int64_t base_address) {
+static inline xx_xz *XXz_create(xx_io_device *dev, int64_t base_address)
+{
     return xx_xz_create(dev, base_address);
 }
 
-static inline void XXz_free(xx_xz *xz) { xx_xz_free(xz); }
+static inline void XXz_free(xx_xz *xz)
+{
+    xx_xz_free(xz);
+}
 
 #ifdef __cplusplus
 }

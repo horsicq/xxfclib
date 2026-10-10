@@ -83,17 +83,15 @@ static void xx_igf2_vtable_destroy(Abstractformat *self);
 
 /* ------------------------------------------------------------- helpers -- */
 
-static bool xx_igf2_read_at(Abstractformat *self, int64_t offset,
-                              uint8_t *buffer, size_t size) {
+static bool xx_igf2_read_at(Abstractformat *self, int64_t offset, uint8_t *buffer, size_t size)
+{
     size_t completed = 0U;
 
-    if (!self || !self->device || offset < 0 ||
-        xx_io_seek64(self->device, offset, SEEK_SET) != 0) {
+    if (!self || !self->device || offset < 0 || xx_io_seek64(self->device, offset, SEEK_SET) != 0) {
         return false;
     }
     while (completed < size) {
-        ssize_t received =
-            xx_io_read(self->device, buffer + completed, size - completed);
+        ssize_t received = xx_io_read(self->device, buffer + completed, size - completed);
         if (received <= 0 || (size_t)received > size - completed) {
             return false;
         }
@@ -102,14 +100,14 @@ static bool xx_igf2_read_at(Abstractformat *self, int64_t offset,
     return true;
 }
 
-static bool xx_igf2_range_within(int64_t total, int64_t offset,
-                                   int64_t size) {
-    return offset >= 0 && size >= 0 && offset <= total &&
-           size <= total - offset;
+static bool xx_igf2_range_within(int64_t total, int64_t offset, int64_t size)
+{
+    return offset >= 0 && size >= 0 && offset <= total && size <= total - offset;
 }
 
 /* Refuse anything that would escape the extraction directory. */
-static bool xx_igf2_path_safe(const char *name) {
+static bool xx_igf2_path_safe(const char *name)
+{
     const char *cursor = name;
 
     if (!name || !name[0] || name[0] == '/') return false;
@@ -124,7 +122,8 @@ static bool xx_igf2_path_safe(const char *name) {
     return true;
 }
 
-static void xx_igf2_stream_free(void *pointer) {
+static void xx_igf2_stream_free(void *pointer)
+{
     xx_igf2_stream *stream = (xx_igf2_stream *)pointer;
     size_t index;
 
@@ -137,17 +136,15 @@ static void xx_igf2_stream_free(void *pointer) {
 }
 
 /* Append a member, taking ownership of @p name. */
-static bool xx_igf2_add(xx_igf2_stream *stream,
-                          const xx_igf2_member *member) {
-    xx_igf2_member *grown = (xx_igf2_member *)xx_mem_realloc(
-        stream->items, sizeof(*grown) * (stream->count + 1U));
+static bool xx_igf2_add(xx_igf2_stream *stream, const xx_igf2_member *member)
+{
+    xx_igf2_member *grown = (xx_igf2_member *)xx_mem_realloc(stream->items, sizeof(*grown) * (stream->count + 1U));
 
     if (!grown) return false;
     stream->items = grown;
     stream->items[stream->count++] = *member;
     return true;
 }
-
 
 #define XX_IGF2_HEADER_SIZE 0x28
 #define XX_IGF2_RECORD_SIZE 0x38
@@ -174,22 +171,16 @@ static bool xx_igf2_walk(Abstractformat *self, xx_pd_struct *pd, int64_t span, i
 static xx_igf2_stream *xx_igf2_parse(Abstractformat *self, xx_pd_struct *pd);
 static bool xx_igf2_decode(Abstractformat *self, const xx_igf2_member *member, uint8_t **out, size_t *out_size, xx_pd_struct *pd);
 
-
-
-
-
 /* Shape 0 is what the reference extractor hard codes; shape 1 drops twelve
  * bytes of padding. Nothing in the header says which is in use. */
-static const xx_igf2_layout xx_igf2_layouts[2] = {
-    {0x14, 0x1c, 0x24, 0x38},
-    {0x10, 0x18, 0x20, 0x2c}};
+static const xx_igf2_layout xx_igf2_layouts[2] = {{0x14, 0x1c, 0x24, 0x38}, {0x10, 0x18, 0x20, 0x2c}};
 
 /* Names are absolute DOS paths, so bytes outside 0x20..0x7E are NOT a
  * rejection here: the format genuinely stores a drive colon, backslashes
  * and OEM codepage characters. They are folded to something a destination
  * path can hold instead, exactly as the reference reader does. */
-static void xx_igf2_fix_name(const uint8_t *raw, size_t raw_length,
-                             char *out, size_t index) {
+static void xx_igf2_fix_name(const uint8_t *raw, size_t raw_length, char *out, size_t index)
+{
     size_t read_at;
     size_t write_at = 0U;
     size_t scan;
@@ -199,9 +190,7 @@ static void xx_igf2_fix_name(const uint8_t *raw, size_t raw_length,
 
         if (byte == (uint8_t)'\\') {
             out[write_at++] = '/';
-        } else if (byte == (uint8_t)':' || byte < 0x20U ||
-                   byte == (uint8_t)'*' || byte == (uint8_t)'?' ||
-                   byte == (uint8_t)'"' || byte == (uint8_t)'<' ||
+        } else if (byte == (uint8_t)':' || byte < 0x20U || byte == (uint8_t)'*' || byte == (uint8_t)'?' || byte == (uint8_t)'"' || byte == (uint8_t)'<' ||
                    byte == (uint8_t)'>' || byte == (uint8_t)'|') {
             out[write_at++] = '_';
         } else {
@@ -244,10 +233,8 @@ static void xx_igf2_fix_name(const uint8_t *raw, size_t raw_length,
 /* Walks the record chain under one candidate layout. Returns true only when
  * the chain ends on the 0xFFFF terminator; whatever could be parsed is left
  * in *stream either way, so a damaged walk is still comparable. */
-static bool xx_igf2_walk(Abstractformat *self, xx_pd_struct *pd, int64_t span,
-                         int64_t directory_offset,
-                         const xx_igf2_layout *layout,
-                         xx_igf2_stream *stream) {
+static bool xx_igf2_walk(Abstractformat *self, xx_pd_struct *pd, int64_t span, int64_t directory_offset, const xx_igf2_layout *layout, xx_igf2_stream *stream)
+{
     uint8_t record[XX_IGF2_RECORD_SIZE];
     uint8_t raw_name[XX_IGF2_MAX_NAME];
     char name[XX_IGF2_MAX_NAME + 32];
@@ -277,22 +264,19 @@ static bool xx_igf2_walk(Abstractformat *self, xx_pd_struct *pd, int64_t span,
         if (!xx_igf2_range_within(span, position, (int64_t)XX_IGF2_RECORD_SIZE)) {
             return false;
         }
-        if (!xx_igf2_read_at(self, self->base_address + position, record,
-                             (size_t)XX_IGF2_RECORD_SIZE)) {
+        if (!xx_igf2_read_at(self, self->base_address + position, record, (size_t)XX_IGF2_RECORD_SIZE)) {
             return false;
         }
 
         raw_size = (int64_t)(int32_t)xx_data_get_u32(record + layout->raw_offset, 4, 0, false);
-        packed_size =
-            (int64_t)(int32_t)xx_data_get_u32(record + layout->packed_offset, 4, 0, false);
+        packed_size = (int64_t)(int32_t)xx_data_get_u32(record + layout->packed_offset, 4, 0, false);
         if (raw_size < 0 || packed_size < 0) return false;
 
         name_offset = position + layout->name_offset;
         name_room = span - name_offset;
         if (name_room > XX_IGF2_MAX_NAME) name_room = XX_IGF2_MAX_NAME;
         if (name_room <= 0) return false;
-        if (!xx_igf2_read_at(self, self->base_address + name_offset, raw_name,
-                             (size_t)name_room)) {
+        if (!xx_igf2_read_at(self, self->base_address + name_offset, raw_name, (size_t)name_room)) {
             return false;
         }
         terminator = -1;
@@ -347,7 +331,8 @@ static bool xx_igf2_walk(Abstractformat *self, xx_pd_struct *pd, int64_t span,
     return false;
 }
 
-static xx_igf2_stream *xx_igf2_parse(Abstractformat *self, xx_pd_struct *pd) {
+static xx_igf2_stream *xx_igf2_parse(Abstractformat *self, xx_pd_struct *pd)
+{
     xx_igf2_stream *stream = NULL;
     xx_igf2_stream *other = NULL;
     uint8_t header[XX_IGF2_HEADER_SIZE];
@@ -366,8 +351,7 @@ static xx_igf2_stream *xx_igf2_parse(Abstractformat *self, xx_pd_struct *pd) {
     if (span < (XX_IGF2_HEADER_SIZE + XX_IGF2_RECORD_SIZE)) return NULL;
 
     if (pd && xx_pd_is_stopped(pd)) return NULL;
-    if (!xx_igf2_read_at(self, self->base_address, header,
-                         (size_t)XX_IGF2_HEADER_SIZE)) {
+    if (!xx_igf2_read_at(self, self->base_address, header, (size_t)XX_IGF2_HEADER_SIZE)) {
         return NULL;
     }
     if (xx_data_get_u16(header, 2, 0, false) != XX_IGF2_MAGIC) return NULL;
@@ -385,15 +369,13 @@ static xx_igf2_stream *xx_igf2_parse(Abstractformat *self, xx_pd_struct *pd) {
      * detection: 32 bits that must invert the directory offset exactly. */
     if (directory_raw != (uint32_t)~directory_not) return NULL;
     directory_offset = (int64_t)directory_raw;
-    if (!xx_igf2_range_within(span, directory_offset,
-                              (int64_t)XX_IGF2_RECORD_SIZE)) {
+    if (!xx_igf2_range_within(span, directory_offset, (int64_t)XX_IGF2_RECORD_SIZE)) {
         return NULL;
     }
 
     /* The first record must carry the record magic before any walking is
      * attempted; this is the third leg of the detection. */
-    if (!xx_igf2_read_at(self, self->base_address + directory_offset, first,
-                         (size_t)XX_IGF2_RECORD_SIZE)) {
+    if (!xx_igf2_read_at(self, self->base_address + directory_offset, first, (size_t)XX_IGF2_RECORD_SIZE)) {
         return NULL;
     }
     if (xx_data_get_u16(first, 2, 0, false) != XX_IGF2_RECORD_MAGIC) return NULL;
@@ -402,15 +384,12 @@ static xx_igf2_stream *xx_igf2_parse(Abstractformat *self, xx_pd_struct *pd) {
     if (!stream) return NULL;
     xx_mem_zero(stream, sizeof(*stream));
 
-    terminated = xx_igf2_walk(self, pd, span, directory_offset,
-                              &xx_igf2_layouts[0], stream);
+    terminated = xx_igf2_walk(self, pd, span, directory_offset, &xx_igf2_layouts[0], stream);
     if (!terminated) {
         other = (xx_igf2_stream *)xx_mem_alloc(sizeof(*other));
         if (!other) goto fail;
         xx_mem_zero(other, sizeof(*other));
-        if (xx_igf2_walk(self, pd, span, directory_offset,
-                         &xx_igf2_layouts[1], other) ||
-            (other->count > stream->count)) {
+        if (xx_igf2_walk(self, pd, span, directory_offset, &xx_igf2_layouts[1], other) || (other->count > stream->count)) {
             /* Either the second shape reached the terminator, or neither
              * did and this damaged walk recovered more; the reference
              * layout wins a tie. */
@@ -436,16 +415,14 @@ fail:
     return NULL;
 }
 
-
 /* Refuse to allocate more than this for one member, whatever the record
  * claims: the raw size is attacker-controlled. */
 
 /* The container has no method field; parse derives these two from the
  * stated sizes, so they are the only values that can appear here. */
 
-static bool xx_igf2_decode(Abstractformat *self, const xx_igf2_member *member,
-                           uint8_t **out, size_t *out_size,
-                           xx_pd_struct *pd) {
+static bool xx_igf2_decode(Abstractformat *self, const xx_igf2_member *member, uint8_t **out, size_t *out_size, xx_pd_struct *pd)
+{
     uint8_t *packed = NULL;
     uint8_t *plain = NULL;
     size_t written = 0U;
@@ -457,12 +434,10 @@ static bool xx_igf2_decode(Abstractformat *self, const xx_igf2_member *member,
     /* Any method but the two parse can produce would mean a reader change
      * that forgot this switch; treating an unknown one as stored hands the
      * caller LZH-coded bytes dressed up as data. */
-    if (member->method != XX_IGF2_METHOD_STORE &&
-        member->method != XX_IGF2_METHOD_LZH4) {
+    if (member->method != XX_IGF2_METHOD_STORE && member->method != XX_IGF2_METHOD_LZH4) {
         return false;
     }
-    if (member->compressed_size < 0 || member->uncompressed_size < 0 ||
-        member->uncompressed_size > XX_IGF2_MAX_DECODED ||
+    if (member->compressed_size < 0 || member->uncompressed_size < 0 || member->uncompressed_size > XX_IGF2_MAX_DECODED ||
         (uint64_t)member->compressed_size > (uint64_t)SIZE_MAX) {
         return false;
     }
@@ -481,8 +456,7 @@ static bool xx_igf2_decode(Abstractformat *self, const xx_igf2_member *member,
 
     packed = (uint8_t *)xx_mem_alloc((size_t)member->compressed_size);
     if (!packed) return false;
-    if (!xx_igf2_read_at(self, member->data_offset, packed,
-                         (size_t)member->compressed_size)) {
+    if (!xx_igf2_read_at(self, member->data_offset, packed, (size_t)member->compressed_size)) {
         xx_mem_free(packed);
         return false;
     }
@@ -512,10 +486,7 @@ static bool xx_igf2_decode(Abstractformat *self, const xx_igf2_member *member,
             plain[index] = packed[index];
         }
         written = (size_t)member->uncompressed_size;
-    } else if (!xx_lzh5_decode_memory(packed, (size_t)member->compressed_size,
-                                      plain,
-                                      (size_t)member->uncompressed_size, 4,
-                                      &written)) {
+    } else if (!xx_lzh5_decode_memory(packed, (size_t)member->compressed_size, plain, (size_t)member->uncompressed_size, 4, &written)) {
         written = 0U;
         xx_mem_free(packed);
         xx_mem_free(plain);
@@ -536,8 +507,8 @@ static bool xx_igf2_decode(Abstractformat *self, const xx_igf2_member *member,
 
 /* ---------------------------------------------------------- lifecycle --- */
 
-void xx_igf2_init(xx_igf2 *archive, xx_io_device *device,
-                    int64_t base_address) {
+void xx_igf2_init(xx_igf2 *archive, xx_io_device *device, int64_t base_address)
+{
     if (!archive) return;
     xx_mem_zero(archive, sizeof(*archive));
     xx_format_init(&archive->format, device, base_address);
@@ -550,22 +521,17 @@ void xx_igf2_init(xx_igf2 *archive, xx_io_device *device,
     archive->format.check_is_valid = xx_igf2_check_is_valid;
     archive->format.handle_base_info = xx_igf2_handle_base_info;
     archive->format.get_format_size = xx_igf2_get_format_size;
-    archive->format.get_number_of_archive_records =
-        xx_igf2_get_number_of_archive_records;
-    archive->format.create_archive_records_reading =
-        xx_igf2_create_archive_records_reading;
-    archive->format.get_current_archive_record =
-        xx_igf2_get_current_archive_record;
-    archive->format.unpack_current_archive_record =
-        xx_igf2_unpack_current_archive_record;
-    archive->format.archive_record_move_to_next =
-        xx_igf2_archive_record_move_to_next;
-    archive->format.free_archive_records_reading =
-        xx_igf2_free_archive_records_reading;
+    archive->format.get_number_of_archive_records = xx_igf2_get_number_of_archive_records;
+    archive->format.create_archive_records_reading = xx_igf2_create_archive_records_reading;
+    archive->format.get_current_archive_record = xx_igf2_get_current_archive_record;
+    archive->format.unpack_current_archive_record = xx_igf2_unpack_current_archive_record;
+    archive->format.archive_record_move_to_next = xx_igf2_archive_record_move_to_next;
+    archive->format.free_archive_records_reading = xx_igf2_free_archive_records_reading;
     archive->format.destroy = xx_igf2_vtable_destroy;
 }
 
-xx_igf2 *xx_igf2_create(xx_io_device *device, int64_t base_address) {
+xx_igf2 *xx_igf2_create(xx_io_device *device, int64_t base_address)
+{
     xx_igf2 *archive = (xx_igf2 *)xx_mem_alloc(sizeof(*archive));
 
     if (!archive) return NULL;
@@ -573,7 +539,8 @@ xx_igf2 *xx_igf2_create(xx_io_device *device, int64_t base_address) {
     return archive;
 }
 
-void xx_igf2_destroy(xx_igf2 *archive) {
+void xx_igf2_destroy(xx_igf2 *archive)
+{
     if (!archive) return;
     /* Not xx_format_destroy: it dispatches through format.destroy, which is
      * the wrapper below, and the two would recurse. */
@@ -582,19 +549,22 @@ void xx_igf2_destroy(xx_igf2 *archive) {
     archive->number_of_records = 0U;
 }
 
-void xx_igf2_free(xx_igf2 *archive) {
+void xx_igf2_free(xx_igf2 *archive)
+{
     if (!archive) return;
     xx_igf2_destroy(archive);
     xx_mem_free(archive);
 }
 
-static void xx_igf2_vtable_destroy(Abstractformat *self) {
+static void xx_igf2_vtable_destroy(Abstractformat *self)
+{
     xx_igf2_destroy((xx_igf2 *)self);
 }
 
 /* -------------------------------------------------------------- format -- */
 
-bool xx_igf2_check_is_valid(Abstractformat *self, xx_pd_struct *pd) {
+bool xx_igf2_check_is_valid(Abstractformat *self, xx_pd_struct *pd)
+{
     xx_igf2_stream *stream;
 
     if (!self || (pd && xx_pd_is_stopped(pd))) return false;
@@ -604,7 +574,8 @@ bool xx_igf2_check_is_valid(Abstractformat *self, xx_pd_struct *pd) {
     return true;
 }
 
-bool xx_igf2_handle_base_info(Abstractformat *self, xx_pd_struct *pd) {
+bool xx_igf2_handle_base_info(Abstractformat *self, xx_pd_struct *pd)
+{
     xx_igf2 *archive = (xx_igf2 *)self;
     xx_igf2_stream *stream;
 
@@ -625,18 +596,17 @@ bool xx_igf2_handle_base_info(Abstractformat *self, xx_pd_struct *pd) {
     return true;
 }
 
-int64_t xx_igf2_get_format_size(Abstractformat *self, xx_pd_struct *pd) {
-    if (!self ||
-        (!self->base_info_handled && !xx_format_handle_base_info(self, pd))) {
+int64_t xx_igf2_get_format_size(Abstractformat *self, xx_pd_struct *pd)
+{
+    if (!self || (!self->base_info_handled && !xx_format_handle_base_info(self, pd))) {
         return 0;
     }
     return self->is_valid ? self->format_size : 0;
 }
 
-uint64_t xx_igf2_get_number_of_archive_records(Abstractformat *self,
-                                                 xx_pd_struct *pd) {
-    if (!self ||
-        (!self->base_info_handled && !xx_format_handle_base_info(self, pd))) {
+uint64_t xx_igf2_get_number_of_archive_records(Abstractformat *self, xx_pd_struct *pd)
+{
+    if (!self || (!self->base_info_handled && !xx_format_handle_base_info(self, pd))) {
         return 0U;
     }
     return self->is_valid ? ((xx_igf2 *)self)->number_of_records : 0U;
@@ -644,8 +614,8 @@ uint64_t xx_igf2_get_number_of_archive_records(Abstractformat *self,
 
 /* ------------------------------------------------------------- records -- */
 
-static bool xx_igf2_set_record(xx_archive_record *record,
-                                 const xx_igf2_member *member) {
+static bool xx_igf2_set_record(xx_archive_record *record, const xx_igf2_member *member)
+{
     xx_archive_record_cleanup(record);
     xx_archive_record_init(record);
     record->header_offset = member->header_offset;
@@ -653,34 +623,24 @@ static bool xx_igf2_set_record(xx_archive_record *record,
     record->data_offset = member->data_offset;
     record->compressed_size = member->compressed_size;
     return xx_archive_record_set_original_name(record, member->name) &&
-           xx_archive_record_set_meta_u64(record, XX_META_ID_COMPRESSED_SIZE,
-                                          (uint64_t)member->compressed_size) &&
-           xx_archive_record_set_meta_u64(
-               record, XX_META_ID_UNCOMPRESSED_SIZE,
-               (uint64_t)member->uncompressed_size) &&
-           xx_archive_record_set_meta_u64(record, XX_META_ID_COMPRESSION_METHOD,
-                                          member->method) &&
-           xx_archive_record_set_meta_u64(record, XX_META_ID_TIMESTAMP,
-                                          member->timestamp) &&
-           xx_archive_record_set_meta_bool(record, XX_META_ID_IS_FOLDER,
-                                           member->is_folder) &&
-           xx_archive_record_set_meta_bool(record, XX_META_ID_IS_ENCRYPTED,
-                                           false);
+           xx_archive_record_set_meta_u64(record, XX_META_ID_COMPRESSED_SIZE, (uint64_t)member->compressed_size) &&
+           xx_archive_record_set_meta_u64(record, XX_META_ID_UNCOMPRESSED_SIZE, (uint64_t)member->uncompressed_size) &&
+           xx_archive_record_set_meta_u64(record, XX_META_ID_COMPRESSION_METHOD, member->method) &&
+           xx_archive_record_set_meta_u64(record, XX_META_ID_TIMESTAMP, member->timestamp) &&
+           xx_archive_record_set_meta_bool(record, XX_META_ID_IS_FOLDER, member->is_folder) && xx_archive_record_set_meta_bool(record, XX_META_ID_IS_ENCRYPTED, false);
 }
 
-static bool xx_igf2_copy_options(xx_list_s *target,
-                                   const xx_list_s *options) {
+static bool xx_igf2_copy_options(xx_list_s *target, const xx_list_s *options)
+{
     size_t index;
 
     if (!target || !options) return options == NULL;
     for (index = 0U; index < options->count; ++index) {
-        const xx_meta *source =
-            (const xx_meta *)xx_list_at((const xx_list_t *)options, index);
+        const xx_meta *source = (const xx_meta *)xx_list_at((const xx_list_t *)options, index);
         xx_meta copied;
         if (!source) continue;
         xx_meta_init(&copied, source->meta_id);
-        if (!xx_var_copy(&copied.var, &source->var) ||
-            !xx_list_append(target, &copied)) {
+        if (!xx_var_copy(&copied.var, &source->var) || !xx_list_append(target, &copied)) {
             xx_meta_cleanup(&copied);
             return false;
         }
@@ -688,21 +648,20 @@ static bool xx_igf2_copy_options(xx_list_s *target,
     return true;
 }
 
-static const xx_var *xx_igf2_get_option(const xx_list_s *options,
-                                          uint32_t meta_id) {
+static const xx_var *xx_igf2_get_option(const xx_list_s *options, uint32_t meta_id)
+{
     size_t index;
 
     if (!options) return NULL;
     for (index = 0U; index < options->count; ++index) {
-        const xx_meta *meta =
-            (const xx_meta *)xx_list_at((const xx_list_t *)options, index);
+        const xx_meta *meta = (const xx_meta *)xx_list_at((const xx_list_t *)options, index);
         if (meta && meta->meta_id == meta_id) return &meta->var;
     }
     return NULL;
 }
 
-xx_archive_record_state *xx_igf2_create_archive_records_reading(
-    Abstractformat *self, const xx_list_s *options, xx_pd_struct *pd) {
+xx_archive_record_state *xx_igf2_create_archive_records_reading(Abstractformat *self, const xx_list_s *options, xx_pd_struct *pd)
+{
     xx_igf2_stream *stream;
     xx_archive_record_state *state;
 
@@ -718,9 +677,7 @@ xx_archive_record_state *xx_igf2_create_archive_records_reading(
     state->internal_state = stream;
     state->free_internal = xx_igf2_stream_free;
     state->total_records = (int64_t)stream->count;
-    if (!xx_igf2_copy_options(&state->options, options) ||
-        (stream->count != 0U &&
-         !xx_igf2_set_record(&state->current_record, &stream->items[0]))) {
+    if (!xx_igf2_copy_options(&state->options, options) || (stream->count != 0U && !xx_igf2_set_record(&state->current_record, &stream->items[0]))) {
         xx_archive_record_state_free(state);
         return NULL;
     }
@@ -729,20 +686,16 @@ xx_archive_record_state *xx_igf2_create_archive_records_reading(
     return state;
 }
 
-const xx_archive_record *xx_igf2_get_current_archive_record(
-    Abstractformat *self, xx_archive_record_state *state) {
-    return self && state && state->format == self && state->has_record
-               ? &state->current_record
-               : NULL;
+const xx_archive_record *xx_igf2_get_current_archive_record(Abstractformat *self, xx_archive_record_state *state)
+{
+    return self && state && state->format == self && state->has_record ? &state->current_record : NULL;
 }
 
-bool xx_igf2_archive_record_move_to_next(Abstractformat *self,
-                                           xx_archive_record_state *state,
-                                           xx_pd_struct *pd) {
+bool xx_igf2_archive_record_move_to_next(Abstractformat *self, xx_archive_record_state *state, xx_pd_struct *pd)
+{
     xx_igf2_stream *stream;
 
-    if (!self || !state || state->format != self || !state->has_record ||
-        (pd && xx_pd_is_stopped(pd))) {
+    if (!self || !state || state->format != self || !state->has_record || (pd && xx_pd_is_stopped(pd))) {
         return false;
     }
     stream = (xx_igf2_stream *)state->internal_state;
@@ -754,14 +707,12 @@ bool xx_igf2_archive_record_move_to_next(Abstractformat *self,
     }
     ++stream->index;
     ++state->current_index;
-    state->has_record = xx_igf2_set_record(&state->current_record,
-                                             &stream->items[stream->index]);
+    state->has_record = xx_igf2_set_record(&state->current_record, &stream->items[stream->index]);
     return state->has_record;
 }
 
-bool xx_igf2_unpack_current_archive_record(Abstractformat *self,
-                                             xx_archive_record_state *state,
-                                             xx_pd_struct *pd) {
+bool xx_igf2_unpack_current_archive_record(Abstractformat *self, xx_archive_record_state *state, xx_pd_struct *pd)
+{
     xx_igf2_stream *stream;
     const xx_igf2_member *member;
     const xx_var *path_option;
@@ -773,8 +724,7 @@ bool xx_igf2_unpack_current_archive_record(Abstractformat *self,
     bool result = false;
     bool created = false;
 
-    if (!self || !state || state->format != self || !state->has_record ||
-        (pd && xx_pd_is_stopped(pd))) {
+    if (!self || !state || state->format != self || !state->has_record || (pd && xx_pd_is_stopped(pd))) {
         return false;
     }
     stream = (xx_igf2_stream *)state->internal_state;
@@ -782,8 +732,7 @@ bool xx_igf2_unpack_current_archive_record(Abstractformat *self,
     member = &stream->items[stream->index];
     if (!xx_igf2_path_safe(member->name)) return false;
 
-    path_option = xx_igf2_get_option(&state->options,
-                                       XX_META_ID_OPT_UNPACK_PATH);
+    path_option = xx_igf2_get_option(&state->options, XX_META_ID_OPT_UNPACK_PATH);
     if (!path_option) {
         /* No destination: decode and discard, which verifies the member
          * without writing anything. */
@@ -792,11 +741,9 @@ bool xx_igf2_unpack_current_archive_record(Abstractformat *self,
         xx_mem_free(plain);
         return result;
     }
-    if (path_option->type == XX_VAR_TYPE_STRING ||
-        path_option->type == XX_VAR_TYPE_STRING_VIEW) {
+    if (path_option->type == XX_VAR_TYPE_STRING || path_option->type == XX_VAR_TYPE_STRING_VIEW) {
         base_path = xx_var_get_str(path_option);
-    } else if (path_option->type == XX_VAR_TYPE_WSTRING ||
-               path_option->type == XX_VAR_TYPE_WSTRING_VIEW) {
+    } else if (path_option->type == XX_VAR_TYPE_WSTRING || path_option->type == XX_VAR_TYPE_WSTRING_VIEW) {
         converted_path = xx_str_unicode_to_utf8(xx_var_get_wstr(path_option));
         base_path = converted_path;
     }
@@ -804,9 +751,7 @@ bool xx_igf2_unpack_current_archive_record(Abstractformat *self,
         xx_str_free(converted_path);
         return false;
     }
-    if (base_path[0] != '\0' &&
-        base_path[xx_str_len(base_path) - 1U] != '/' &&
-        base_path[xx_str_len(base_path) - 1U] != '\\') {
+    if (base_path[0] != '\0' && base_path[xx_str_len(base_path) - 1U] != '/' && base_path[xx_str_len(base_path) - 1U] != '\\') {
         target_path = xx_str_concat3(base_path, "/", member->name);
     } else {
         target_path = xx_str_concat(base_path, member->name);
@@ -819,8 +764,7 @@ bool xx_igf2_unpack_current_archive_record(Abstractformat *self,
         xx_str_free(target_path);
         return result;
     }
-    if (!xx_store_create_dirs_a(target_path, false) ||
-        !xx_igf2_decode(self, member, &plain, &plain_size, pd)) {
+    if (!xx_store_create_dirs_a(target_path, false) || !xx_igf2_decode(self, member, &plain, &plain_size, pd)) {
         xx_str_free(target_path);
         return false;
     }
@@ -831,8 +775,7 @@ bool xx_igf2_unpack_current_archive_record(Abstractformat *self,
 
         result = output != NULL;
         while (result && completed < plain_size) {
-            ssize_t sent = xx_io_write(output, plain + completed,
-                                       plain_size - completed);
+            ssize_t sent = xx_io_write(output, plain + completed, plain_size - completed);
             if (sent <= 0 || (size_t)sent > plain_size - completed) {
                 result = false;
                 break;
@@ -847,8 +790,8 @@ bool xx_igf2_unpack_current_archive_record(Abstractformat *self,
     return result;
 }
 
-void xx_igf2_free_archive_records_reading(Abstractformat *self,
-                                            xx_archive_record_state *state) {
+void xx_igf2_free_archive_records_reading(Abstractformat *self, xx_archive_record_state *state)
+{
     (void)self;
     xx_archive_record_state_free(state);
 }

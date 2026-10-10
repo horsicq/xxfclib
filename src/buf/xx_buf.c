@@ -28,12 +28,14 @@
 #define XX_BUF_SIZE_MAX ((size_t)-1)
 
 /* Marks the buffer failed and reports it, so callers can `return xx_buf_fail(b)`. */
-static bool xx_buf_fail(xx_buf_t *buf) {
+static bool xx_buf_fail(xx_buf_t *buf)
+{
     buf->failed = true;
     return false;
 }
 
-void xx_buf_init(xx_buf_t *buf) {
+void xx_buf_init(xx_buf_t *buf)
+{
     if (!buf) {
         return;
     }
@@ -43,7 +45,8 @@ void xx_buf_init(xx_buf_t *buf) {
     buf->failed = false;
 }
 
-void xx_buf_free(xx_buf_t *buf) {
+void xx_buf_free(xx_buf_t *buf)
+{
     if (!buf) {
         return;
     }
@@ -53,7 +56,8 @@ void xx_buf_free(xx_buf_t *buf) {
     xx_buf_init(buf);
 }
 
-bool xx_buf_reserve(xx_buf_t *buf, size_t capacity) {
+bool xx_buf_reserve(xx_buf_t *buf, size_t capacity)
+{
     size_t needed;
     size_t new_capacity;
     char *grown;
@@ -94,7 +98,8 @@ bool xx_buf_reserve(xx_buf_t *buf, size_t capacity) {
     return true;
 }
 
-void xx_buf_clear(xx_buf_t *buf) {
+void xx_buf_clear(xx_buf_t *buf)
+{
     if (!buf) {
         return;
     }
@@ -104,7 +109,8 @@ void xx_buf_clear(xx_buf_t *buf) {
     }
 }
 
-bool xx_buf_append(xx_buf_t *buf, const void *data, size_t size) {
+bool xx_buf_append(xx_buf_t *buf, const void *data, size_t size)
+{
     if (!buf) {
         return false;
     }
@@ -129,7 +135,8 @@ bool xx_buf_append(xx_buf_t *buf, const void *data, size_t size) {
     return true;
 }
 
-bool xx_buf_append_str(xx_buf_t *buf, const char *str) {
+bool xx_buf_append_str(xx_buf_t *buf, const char *str)
+{
     if (!buf) {
         return false;
     }
@@ -141,7 +148,8 @@ bool xx_buf_append_str(xx_buf_t *buf, const char *str) {
     return xx_buf_append(buf, str, xx_rt_strlen(str));
 }
 
-bool xx_buf_append_char(xx_buf_t *buf, char c) {
+bool xx_buf_append_char(xx_buf_t *buf, char c)
+{
     if (!buf) {
         return false;
     }
@@ -157,7 +165,8 @@ bool xx_buf_append_char(xx_buf_t *buf, char c) {
     return true;
 }
 
-XX_RT_PRINTF_LIKE(2, 3) bool xx_buf_appendf(xx_buf_t *buf, const char *fmt, ...) {
+XX_RT_PRINTF_LIKE(2, 3) bool xx_buf_appendf(xx_buf_t *buf, const char *fmt, ...)
+{
     char stack[512];
     XX_RT_VA_LIST args;
     int count;
@@ -203,11 +212,13 @@ XX_RT_PRINTF_LIKE(2, 3) bool xx_buf_appendf(xx_buf_t *buf, const char *fmt, ...)
     }
 }
 
-bool xx_buf_ok(const xx_buf_t *buf) {
+bool xx_buf_ok(const xx_buf_t *buf)
+{
     return buf && !buf->failed;
 }
 
-char *xx_buf_detach(xx_buf_t *buf, size_t *size) {
+char *xx_buf_detach(xx_buf_t *buf, size_t *size)
+{
     char *result;
 
     if (size) {

@@ -73,19 +73,13 @@ typedef enum xx_wpk_sorter_e {
  *                    prefix to confirm the sorter choice.  May be NULL.
  * @return true only when exactly @p output_size bytes came out.
  */
-XXFC_API bool xx_wpk_decode_method_a_memory(const uint8_t *input,
-                                            size_t input_size, int sorter,
-                                            uint8_t *output, size_t output_size,
-                                            size_t *written, size_t *consumed);
+XXFC_API bool xx_wpk_decode_method_a_memory(const uint8_t *input, size_t input_size, int sorter, uint8_t *output, size_t output_size, size_t *written, size_t *consumed);
 
 /**
  * @brief Decode a WPK method B (plain LZSS) member.  See method A for the
  *        meaning of @p consumed.
  */
-XXFC_API bool xx_wpk_decode_method_b_memory(const uint8_t *input,
-                                            size_t input_size, uint8_t *output,
-                                            size_t output_size,
-                                            size_t *written, size_t *consumed);
+XXFC_API bool xx_wpk_decode_method_b_memory(const uint8_t *input, size_t input_size, uint8_t *output, size_t output_size, size_t *written, size_t *consumed);
 
 /**
  * @brief Plain-signature entry point: method A with XX_WPK_SORTER_A.
@@ -94,9 +88,7 @@ XXFC_API bool xx_wpk_decode_method_b_memory(const uint8_t *input,
  * must not rely on it: 5 of the 127 reference archives need XX_WPK_SORTER_B,
  * and they decode to plausible garbage under XX_WPK_SORTER_A.
  */
-XXFC_API bool xx_wpk_decode_memory(const uint8_t *input, size_t input_size,
-                                   uint8_t *output, size_t output_size,
-                                   size_t *written);
+XXFC_API bool xx_wpk_decode_memory(const uint8_t *input, size_t input_size, uint8_t *output, size_t output_size, size_t *written);
 
 #ifdef __cplusplus
 }

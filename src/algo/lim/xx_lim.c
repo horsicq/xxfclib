@@ -56,22 +56,15 @@
 #define LIM_SHORT_CODES 13
 #define LIM_MAX_CODE_LENGTH 32
 
-static const uint16_t g_lim_code[41] = {0,    1,    2,    4,    8,    16,   32,   64,   128,  256,  512,
-                                        1024, 2048, 4,    5,    6,    7,    8,    9,    10,   11,   268,
-                                        270,  272,  274,  532,  536,  540,  544,  804,  812,  820,  828,
-                                        1092, 1108, 1124, 1140, 1412, 1444, 1476, 1508};
+static const uint16_t g_lim_code[41] = {0,   1,   2,   4,   8,   16,  32,  64,  128, 256, 512, 1024, 2048, 4,    5,    6,    7,    8,    9,    10,  11,
+                                        268, 270, 272, 274, 532, 536, 540, 544, 804, 812, 820, 828,  1092, 1108, 1124, 1140, 1412, 1444, 1476, 1508};
 
-static const uint8_t g_lim_distance_extra[LIM_DIST_SYMBOLS] = {0, 0, 1, 1, 1, 2,  2,  3,  3,  4,
-                                                               4, 5, 5, 6, 6, 7,  7,  8,  8,  9,
-                                                               9, 10, 10, 11, 11, 12, 12, 13, 13};
+static const uint8_t g_lim_distance_extra[LIM_DIST_SYMBOLS] = {0, 0, 1, 1, 1, 2, 2, 3, 3, 4, 4, 5, 5, 6, 6, 7, 7, 8, 8, 9, 9, 10, 10, 11, 11, 12, 12, 13, 13};
 
-static const uint16_t g_lim_distance_base[LIM_DIST_SYMBOLS] = {
-    0,    1,    2,     4,     6,     8,     12,    16,    24,   32,   48,    64,    96,   128,  192,
-    256,  384,  512,   768,   1024,  1536,  2048,  3072,  4096, 6144, 8192,  12288, 16384, 24576};
+static const uint16_t g_lim_distance_base[LIM_DIST_SYMBOLS] = {0,   1,   2,   4,   6,    8,    12,   16,   24,   32,   48,   64,    96,    128,  192,
+                                                               256, 384, 512, 768, 1024, 1536, 2048, 3072, 4096, 6144, 8192, 12288, 16384, 24576};
 
-static const uint8_t g_lim_default_distance_lengths[LIM_DIST_SYMBOLS] = {4, 6, 6, 5, 5, 5, 5, 5, 5, 5,
-                                                                         5, 5, 5, 5, 5, 5, 5, 4, 4, 4,
-                                                                         5, 5, 5, 5, 5, 5, 5, 5, 5};
+static const uint8_t g_lim_default_distance_lengths[LIM_DIST_SYMBOLS] = {4, 6, 6, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 4, 4, 4, 5, 5, 5, 5, 5, 5, 5, 5, 5};
 
 typedef struct lim_bits_s {
     const uint8_t *data;
@@ -102,7 +95,8 @@ typedef struct lim_state_s {
 
 /* -1 means the stream is exhausted.  The reference allows exactly one virtual
  * zero byte at position == size before it gives up; reproduced verbatim. */
-static int32_t lim_get(lim_bits *bits, int32_t nbits) {
+static int32_t lim_get(lim_bits *bits, int32_t nbits)
+{
     int32_t value;
 
     if (nbits == 0) return 0;
@@ -126,7 +120,8 @@ static int32_t lim_get(lim_bits *bits, int32_t nbits) {
     return value;
 }
 
-static bool lim_huffman_build(lim_huffman *tree, const uint8_t *lengths, int32_t count) {
+static bool lim_huffman_build(lim_huffman *tree, const uint8_t *lengths, int32_t count)
+{
     int32_t i;
     int32_t length;
     uint32_t code;
@@ -174,7 +169,8 @@ static bool lim_huffman_build(lim_huffman *tree, const uint8_t *lengths, int32_t
     return true;
 }
 
-static int32_t lim_huffman_decode(const lim_huffman *tree, lim_bits *bits) {
+static int32_t lim_huffman_decode(const lim_huffman *tree, lim_bits *bits)
+{
     uint32_t code = 0U;
     int32_t length;
 
@@ -198,7 +194,8 @@ static int32_t lim_huffman_decode(const lim_huffman *tree, lim_bits *bits) {
 }
 
 /* The variable-length encoding the code-length table uses. */
-static int32_t lim_read_length_code(lim_bits *bits) {
+static int32_t lim_read_length_code(lim_bits *bits)
+{
     int32_t value = lim_get(bits, 2);
     int32_t bit;
 
@@ -226,7 +223,8 @@ static int32_t lim_read_length_code(lim_bits *bits) {
     return value;
 }
 
-static bool lim_read_tables(lim_bits *bits, lim_state *state) {
+static bool lim_read_tables(lim_bits *bits, lim_state *state)
+{
     const int32_t start = lim_get(bits, 3);
     int32_t count = lim_get(bits, 4);
     int32_t value;
@@ -339,7 +337,8 @@ static bool lim_read_tables(lim_bits *bits, lim_state *state) {
     return lim_huffman_build(&state->distance_tree, state->distance_lengths, LIM_DIST_SYMBOLS);
 }
 
-bool xx_lim_decode_memory(const uint8_t *input, size_t input_size, uint8_t *output, size_t output_size, size_t *written) {
+bool xx_lim_decode_memory(const uint8_t *input, size_t input_size, uint8_t *output, size_t output_size, size_t *written)
+{
     lim_bits bits;
     lim_state *state;
     uint64_t produced = 0U;

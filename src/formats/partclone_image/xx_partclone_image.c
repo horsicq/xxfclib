@@ -43,9 +43,7 @@
 
 #define XX_PCL_MEMBER_NAME "partition.img"
 
-static const uint8_t xx_pcl_magic[16] = {
-    'p', 'a', 'r', 't', 'c', 'l', 'o', 'n',
-    'e', '-', 'i', 'm', 'a', 'g', 'e', 0};
+static const uint8_t xx_pcl_magic[16] = {'p', 'a', 'r', 't', 'c', 'l', 'o', 'n', 'e', '-', 'i', 'm', 'a', 'g', 'e', 0};
 
 typedef struct xx_pcl_private_s {
     int64_t input_size;
@@ -73,12 +71,11 @@ typedef struct xx_pcl_stream_s {
 
 static void xx_partclone_image_vtable_destroy(Abstractformat *self);
 
-static bool xx_pcl_read_at(xx_io_device *device, int64_t offset, void *data,
-                           size_t size) {
+static bool xx_pcl_read_at(xx_io_device *device, int64_t offset, void *data, size_t size)
+{
     uint8_t *out = (uint8_t *)data;
     size_t done = 0U;
-    if (!device || (!data && size != 0U) || offset < 0 ||
-        xx_io_seek64(device, offset, SEEK_SET) != 0) {
+    if (!device || (!data && size != 0U) || offset < 0 || xx_io_seek64(device, offset, SEEK_SET) != 0) {
         return false;
     }
     while (done < size) {
@@ -89,8 +86,8 @@ static bool xx_pcl_read_at(xx_io_device *device, int64_t offset, void *data,
     return true;
 }
 
-static bool xx_pcl_write_all(xx_io_device *device, const void *data,
-                             size_t size) {
+static bool xx_pcl_write_all(xx_io_device *device, const void *data, size_t size)
+{
     const uint8_t *in = (const uint8_t *)data;
     size_t done = 0U;
     if (!device || (!data && size != 0U)) return false;
@@ -103,7 +100,8 @@ static bool xx_pcl_write_all(xx_io_device *device, const void *data,
 }
 
 /* left + right into *result, all non-negative and inside int64_t. */
-static bool xx_pcl_add(int64_t left, uint64_t right, int64_t *result) {
+static bool xx_pcl_add(int64_t left, uint64_t right, int64_t *result)
+{
     if (!result || left < 0 || right > (uint64_t)(INT64_MAX - left)) {
         return false;
     }
@@ -111,14 +109,16 @@ static bool xx_pcl_add(int64_t left, uint64_t right, int64_t *result) {
     return true;
 }
 
-static bool xx_pcl_mul(uint64_t left, uint64_t right, uint64_t *result) {
+static bool xx_pcl_mul(uint64_t left, uint64_t right, uint64_t *result)
+{
     if (!result) return false;
     if (left != 0U && right > (uint64_t)INT64_MAX / left) return false;
     *result = left * right;
     return true;
 }
 
-static void xx_pcl_private_reset(xx_pcl_private *parsed) {
+static void xx_pcl_private_reset(xx_pcl_private *parsed)
+{
     if (!parsed) return;
     xx_mem_zero(parsed, sizeof(*parsed));
     parsed->input_size = -1;
@@ -126,12 +126,9 @@ static void xx_pcl_private_reset(xx_pcl_private *parsed) {
     parsed->restored_size = -1;
 }
 
-static uint64_t xx_pcl_max_expanded(const Abstractformat *self,
-                                    const xx_list_s *options) {
-    const xx_var *limit = self ? xx_format_resolve_extra_parameter(
-                                     self, options,
-                                     XX_META_ID_OPT_MAX_MEMBER_SIZE)
-                               : NULL;
+static uint64_t xx_pcl_max_expanded(const Abstractformat *self, const xx_list_s *options)
+{
+    const xx_var *limit = self ? xx_format_resolve_extra_parameter(self, options, XX_META_ID_OPT_MAX_MEMBER_SIZE) : NULL;
     if (!limit) return XX_PCL_DEFAULT_MAX_EXPANDED;
     switch (limit->type) {
         case XX_VAR_TYPE_UINT8:
@@ -153,20 +150,19 @@ static uint64_t xx_pcl_max_expanded(const Abstractformat *self,
  * writer stores the bitmap as an array of CPU words with bit n in word
  * n / W at position n % W; on a little-endian writer that is plain LSB-first
  * byte order, on a big-endian one the bytes of each word are reversed. */
-static uint64_t xx_pcl_block_of(const xx_pcl_private *parsed,
-                                uint64_t byte_index, unsigned bit) {
+static uint64_t xx_pcl_block_of(const xx_pcl_private *parsed, uint64_t byte_index, unsigned bit)
+{
     if (!parsed->big_endian) return byte_index * 8U + bit;
     {
         uint64_t word = byte_index / parsed->word_bytes;
         uint64_t in_word = byte_index % parsed->word_bytes;
-        return word * parsed->word_bytes * 8U +
-               (parsed->word_bytes - 1U - in_word) * 8U + bit;
+        return word * parsed->word_bytes * 8U + (parsed->word_bytes - 1U - in_word) * 8U + bit;
     }
 }
 
 /* Byte index and bit holding block n (inverse of xx_pcl_block_of). */
-static uint64_t xx_pcl_byte_of(const xx_pcl_private *parsed, uint64_t block,
-                               unsigned *bit) {
+static uint64_t xx_pcl_byte_of(const xx_pcl_private *parsed, uint64_t block, unsigned *bit)
+{
     *bit = (unsigned)(block & 7U);
     if (!parsed->big_endian) return block / 8U;
     {
@@ -177,7 +173,8 @@ static uint64_t xx_pcl_byte_of(const xx_pcl_private *parsed, uint64_t block,
     }
 }
 
-static unsigned xx_pcl_popcount8(uint8_t value) {
+static unsigned xx_pcl_popcount8(uint8_t value)
+{
     unsigned count = 0U;
     while (value) {
         value &= (uint8_t)(value - 1U);
@@ -186,7 +183,8 @@ static unsigned xx_pcl_popcount8(uint8_t value) {
     return count;
 }
 
-static bool xx_pcl_parse_header(Abstractformat *self, xx_pcl_private *parsed) {
+static bool xx_pcl_parse_header(Abstractformat *self, xx_pcl_private *parsed)
+{
     uint8_t header[XX_PCL_HEADER_SIZE];
     bool be;
     uint32_t stored_crc;
@@ -197,9 +195,7 @@ static bool xx_pcl_parse_header(Abstractformat *self, xx_pcl_private *parsed) {
     uint64_t checksum_bytes = 0U;
     int64_t offset;
 
-    if (!xx_pcl_read_at(self->device, self->base_address, header,
-                        sizeof(header)) ||
-        xx_rt_memcmp(header, xx_pcl_magic, sizeof(xx_pcl_magic)) != 0 ||
+    if (!xx_pcl_read_at(self->device, self->base_address, header, sizeof(header)) || xx_rt_memcmp(header, xx_pcl_magic, sizeof(xx_pcl_magic)) != 0 ||
         xx_rt_memcmp(header + 30U, "0002", 4U) != 0) {
         return false;
     }
@@ -226,16 +222,13 @@ static bool xx_pcl_parse_header(Abstractformat *self, xx_pcl_private *parsed) {
     cpu_bits = xx_data_get_u16(header, sizeof(header), 94U, be);
     parsed->checksum_mode = xx_data_get_u16(header, sizeof(header), 96U, be);
     parsed->checksum_size = xx_data_get_u16(header, sizeof(header), 98U, be);
-    parsed->blocks_per_checksum =
-        xx_data_get_u32(header, sizeof(header), 100U, be);
+    parsed->blocks_per_checksum = xx_data_get_u32(header, sizeof(header), 100U, be);
 
     if (header[105] != XX_PCL_BM_BIT) return false;
     if (parsed->block_size == 0U || parsed->block_size > XX_PCL_MAX_BLOCK_SIZE) {
         return false;
     }
-    if (parsed->total_blocks == 0U ||
-        parsed->used_blocks > parsed->total_blocks ||
-        parsed->device_size > (uint64_t)INT64_MAX) {
+    if (parsed->total_blocks == 0U || parsed->used_blocks > parsed->total_blocks || parsed->device_size > (uint64_t)INT64_MAX) {
         return false;
     }
     if (parsed->checksum_size > XX_PCL_MAX_CHECKSUM_SIZE) return false;
@@ -248,28 +241,18 @@ static bool xx_pcl_parse_header(Abstractformat *self, xx_pcl_private *parsed) {
     }
 
     /* Bitmap: ceil(total / 8) bytes and its CRC. */
-    parsed->bitmap_size = parsed->total_blocks / 8U +
-                          ((parsed->total_blocks & 7U) ? 1U : 0U);
-    if (!xx_pcl_add(self->base_address, XX_PCL_HEADER_SIZE,
-                    &parsed->bitmap_offset) ||
-        !xx_pcl_add(parsed->bitmap_offset, parsed->bitmap_size, &offset) ||
-        !xx_pcl_add(offset, XX_PCL_BITMAP_CRC_SIZE, &parsed->data_offset) ||
-        parsed->data_offset > parsed->input_size) {
+    parsed->bitmap_size = parsed->total_blocks / 8U + ((parsed->total_blocks & 7U) ? 1U : 0U);
+    if (!xx_pcl_add(self->base_address, XX_PCL_HEADER_SIZE, &parsed->bitmap_offset) || !xx_pcl_add(parsed->bitmap_offset, parsed->bitmap_size, &offset) ||
+        !xx_pcl_add(offset, XX_PCL_BITMAP_CRC_SIZE, &parsed->data_offset) || parsed->data_offset > parsed->input_size) {
         return false;
     }
 
     /* Data: used blocks plus one checksum per full or final partial group. */
     if (parsed->blocks_per_checksum != 0U && parsed->checksum_size != 0U) {
-        checksum_count = parsed->used_blocks / parsed->blocks_per_checksum +
-                         ((parsed->used_blocks % parsed->blocks_per_checksum)
-                              ? 1U
-                              : 0U);
+        checksum_count = parsed->used_blocks / parsed->blocks_per_checksum + ((parsed->used_blocks % parsed->blocks_per_checksum) ? 1U : 0U);
     }
-    if (!xx_pcl_mul(parsed->used_blocks, parsed->block_size, &data_bytes) ||
-        !xx_pcl_mul(checksum_count, parsed->checksum_size, &checksum_bytes) ||
-        !xx_pcl_add(parsed->data_offset, data_bytes, &offset) ||
-        !xx_pcl_add(offset, checksum_bytes, &parsed->archive_end) ||
-        parsed->archive_end > parsed->input_size) {
+    if (!xx_pcl_mul(parsed->used_blocks, parsed->block_size, &data_bytes) || !xx_pcl_mul(checksum_count, parsed->checksum_size, &checksum_bytes) ||
+        !xx_pcl_add(parsed->data_offset, data_bytes, &offset) || !xx_pcl_add(offset, checksum_bytes, &parsed->archive_end) || parsed->archive_end > parsed->input_size) {
         return false;
     }
     return true;
@@ -277,8 +260,8 @@ static bool xx_pcl_parse_header(Abstractformat *self, xx_pcl_private *parsed) {
 
 /* One pass over the bitmap: verify its CRC, check that it marks exactly
  * used_blocks blocks, and find the restored image size. */
-static bool xx_pcl_scan_bitmap(Abstractformat *self, xx_pcl_private *parsed,
-                               xx_pd_struct *pd) {
+static bool xx_pcl_scan_bitmap(Abstractformat *self, xx_pcl_private *parsed, xx_pd_struct *pd)
+{
     uint8_t *buffer;
     uint8_t crc_bytes[4];
     uint32_t crc = 0U;
@@ -298,8 +281,7 @@ static bool xx_pcl_scan_bitmap(Abstractformat *self, xx_pcl_private *parsed,
     }
     while (done < parsed->bitmap_size) {
         uint64_t left = parsed->bitmap_size - done;
-        size_t step = left < XX_PCL_STAGING_SIZE ? (size_t)left
-                                                 : XX_PCL_STAGING_SIZE;
+        size_t step = left < XX_PCL_STAGING_SIZE ? (size_t)left : XX_PCL_STAGING_SIZE;
         size_t got = 0U;
         size_t index;
         if (pd && xx_pd_is_stopped(pd)) goto done;
@@ -313,8 +295,7 @@ static bool xx_pcl_scan_bitmap(Abstractformat *self, xx_pcl_private *parsed,
             uint8_t value = buffer[index];
             unsigned bit;
             if (!value) continue;
-            if (!parsed->big_endian &&
-                (done + index + 1U) * 8U <= parsed->total_blocks) {
+            if (!parsed->big_endian && (done + index + 1U) * 8U <= parsed->total_blocks) {
                 /* Whole byte inside the image: the common fast path. */
                 uint64_t top = (done + index) * 8U;
                 unsigned high = 7U;
@@ -338,11 +319,8 @@ static bool xx_pcl_scan_bitmap(Abstractformat *self, xx_pcl_private *parsed,
         }
         done += step;
     }
-    if (!xx_pcl_read_at(self->device, parsed->bitmap_offset +
-                                          (int64_t)parsed->bitmap_size,
-                        crc_bytes, sizeof(crc_bytes)) ||
-        xx_data_get_u32(crc_bytes, sizeof(crc_bytes), 0U, parsed->big_endian) !=
-            ~crc) {
+    if (!xx_pcl_read_at(self->device, parsed->bitmap_offset + (int64_t)parsed->bitmap_size, crc_bytes, sizeof(crc_bytes)) ||
+        xx_data_get_u32(crc_bytes, sizeof(crc_bytes), 0U, parsed->big_endian) != ~crc) {
         goto done;
     }
     if (count != parsed->used_blocks) goto done;
@@ -362,8 +340,7 @@ static bool xx_pcl_scan_bitmap(Abstractformat *self, xx_pcl_private *parsed,
             if (used_end > restored) restored = used_end;
         }
     }
-    if (restored > (uint64_t)INT64_MAX ||
-        restored > xx_pcl_max_expanded(self, NULL)) {
+    if (restored > (uint64_t)INT64_MAX || restored > xx_pcl_max_expanded(self, NULL)) {
         goto done;
     }
     parsed->restored_size = (int64_t)restored;
@@ -373,17 +350,14 @@ done:
     return result;
 }
 
-static bool xx_pcl_parse(Abstractformat *self, xx_pcl_private *parsed,
-                         xx_pd_struct *pd) {
+static bool xx_pcl_parse(Abstractformat *self, xx_pcl_private *parsed, xx_pd_struct *pd)
+{
     xx_pcl_private_reset(parsed);
-    if (!self || !self->device || !parsed || self->base_address < 0 ||
-        (pd && xx_pd_is_stopped(pd))) {
+    if (!self || !self->device || !parsed || self->base_address < 0 || (pd && xx_pd_is_stopped(pd))) {
         return false;
     }
     parsed->input_size = xx_io_total_size(self->device);
-    if (parsed->input_size < 0 ||
-        parsed->input_size - self->base_address < (int64_t)XX_PCL_HEADER_SIZE ||
-        !xx_pcl_parse_header(self, parsed) ||
+    if (parsed->input_size < 0 || parsed->input_size - self->base_address < (int64_t)XX_PCL_HEADER_SIZE || !xx_pcl_parse_header(self, parsed) ||
         !xx_pcl_scan_bitmap(self, parsed, pd)) {
         xx_pcl_private_reset(parsed);
         return false;
@@ -395,13 +369,11 @@ static bool xx_pcl_parse(Abstractformat *self, xx_pcl_private *parsed,
 /* Restore                                                                   */
 /* ------------------------------------------------------------------------ */
 
-static bool xx_pcl_write_zeros(xx_io_device *destination, const uint8_t *zeros,
-                               uint64_t size, xx_pd_struct *pd) {
+static bool xx_pcl_write_zeros(xx_io_device *destination, const uint8_t *zeros, uint64_t size, xx_pd_struct *pd)
+{
     while (size > 0U) {
-        size_t step = size < XX_PCL_STAGING_SIZE ? (size_t)size
-                                                 : XX_PCL_STAGING_SIZE;
-        if ((pd && xx_pd_is_stopped(pd)) ||
-            !xx_pcl_write_all(destination, zeros, step)) {
+        size_t step = size < XX_PCL_STAGING_SIZE ? (size_t)size : XX_PCL_STAGING_SIZE;
+        if ((pd && xx_pd_is_stopped(pd)) || !xx_pcl_write_all(destination, zeros, step)) {
             return false;
         }
         size -= step;
@@ -409,24 +381,23 @@ static bool xx_pcl_write_zeros(xx_io_device *destination, const uint8_t *zeros,
     return true;
 }
 
-static bool xx_pcl_restore(Abstractformat *self, const xx_pcl_private *parsed,
-                           xx_io_device *destination, xx_pd_struct *pd) {
+static bool xx_pcl_restore(Abstractformat *self, const xx_pcl_private *parsed, xx_io_device *destination, xx_pd_struct *pd)
+{
     uint8_t *bitmap = NULL;
     uint8_t *staging = NULL;
     uint8_t *zeros = NULL;
     int64_t data_pos;
-    uint64_t chunk_start = 0U;   /* first bitmap byte in `bitmap` */
+    uint64_t chunk_start = 0U; /* first bitmap byte in `bitmap` */
     uint64_t chunk_size = 0U;
     uint64_t block;
-    uint64_t written = 0U;       /* bytes emitted to destination */
-    uint64_t pending_zero = 0U;  /* unused-block bytes not yet emitted */
+    uint64_t written = 0U;      /* bytes emitted to destination */
+    uint64_t pending_zero = 0U; /* unused-block bytes not yet emitted */
     uint64_t used_seen = 0U;
     uint32_t in_group = 0U;
     uint64_t limit;
     bool result = false;
 
-    if (!self || !self->device || !parsed || !destination ||
-        parsed->restored_size < 0) {
+    if (!self || !self->device || !parsed || !destination || parsed->restored_size < 0) {
         return false;
     }
     limit = (uint64_t)parsed->restored_size;
@@ -454,10 +425,7 @@ static bool xx_pcl_restore(Abstractformat *self, const xx_pcl_private *parsed,
             chunk_start = byte_index - (byte_index % XX_PCL_STAGING_SIZE);
             left = parsed->bitmap_size - chunk_start;
             chunk_size = left < XX_PCL_STAGING_SIZE ? left : XX_PCL_STAGING_SIZE;
-            if ((pd && xx_pd_is_stopped(pd)) ||
-                !xx_pcl_read_at(self->device,
-                                parsed->bitmap_offset + (int64_t)chunk_start,
-                                bitmap, (size_t)chunk_size)) {
+            if ((pd && xx_pd_is_stopped(pd)) || !xx_pcl_read_at(self->device, parsed->bitmap_offset + (int64_t)chunk_start, bitmap, (size_t)chunk_size)) {
                 goto done;
             }
         }
@@ -473,8 +441,7 @@ static bool xx_pcl_restore(Abstractformat *self, const xx_pcl_private *parsed,
         if (xx_io_seek64(self->device, data_pos, SEEK_SET) != 0) goto done;
         remaining = parsed->block_size;
         while (remaining > 0U) {
-            size_t step = remaining < XX_PCL_STAGING_SIZE ? remaining
-                                                          : XX_PCL_STAGING_SIZE;
+            size_t step = remaining < XX_PCL_STAGING_SIZE ? remaining : XX_PCL_STAGING_SIZE;
             size_t got = 0U;
             while (got < step) {
                 ssize_t n = xx_io_read(self->device, staging + got, step - got);
@@ -486,8 +453,7 @@ static bool xx_pcl_restore(Abstractformat *self, const xx_pcl_private *parsed,
         }
         written += parsed->block_size;
         data_pos += (int64_t)parsed->block_size;
-        if (parsed->blocks_per_checksum != 0U && parsed->checksum_size != 0U &&
-            ++in_group == parsed->blocks_per_checksum) {
+        if (parsed->blocks_per_checksum != 0U && parsed->checksum_size != 0U && ++in_group == parsed->blocks_per_checksum) {
             /* The checksum trails its group; it is skipped, not verified. */
             data_pos += (int64_t)parsed->checksum_size;
             in_group = 0U;
@@ -510,18 +476,16 @@ done:
 /* Record plumbing                                                           */
 /* ------------------------------------------------------------------------ */
 
-static bool xx_pcl_copy_options(xx_list_s *destination,
-                                const xx_list_s *source) {
+static bool xx_pcl_copy_options(xx_list_s *destination, const xx_list_s *source)
+{
     size_t index;
     if (!destination || !source) return source == NULL;
     for (index = 0U; index < source->count; ++index) {
-        const xx_meta *item =
-            (const xx_meta *)xx_list_at((const xx_list_t *)source, index);
+        const xx_meta *item = (const xx_meta *)xx_list_at((const xx_list_t *)source, index);
         xx_meta copy;
         if (!item) continue;
         xx_meta_init(&copy, item->meta_id);
-        if (!xx_var_copy(&copy.var, &item->var) ||
-            !xx_list_append(destination, &copy)) {
+        if (!xx_var_copy(&copy.var, &item->var) || !xx_list_append(destination, &copy)) {
             xx_meta_cleanup(&copy);
             return false;
         }
@@ -529,21 +493,19 @@ static bool xx_pcl_copy_options(xx_list_s *destination,
     return true;
 }
 
-static const xx_var *xx_pcl_find_option(const xx_list_s *options,
-                                        uint32_t meta_id) {
+static const xx_var *xx_pcl_find_option(const xx_list_s *options, uint32_t meta_id)
+{
     size_t index;
     if (!options) return NULL;
     for (index = 0U; index < options->count; ++index) {
-        const xx_meta *item =
-            (const xx_meta *)xx_list_at((const xx_list_t *)options, index);
+        const xx_meta *item = (const xx_meta *)xx_list_at((const xx_list_t *)options, index);
         if (item && item->meta_id == meta_id) return &item->var;
     }
     return NULL;
 }
 
-static bool xx_pcl_populate_record(xx_archive_record *record,
-                                   const xx_pcl_private *parsed,
-                                   int64_t base_address) {
+static bool xx_pcl_populate_record(xx_archive_record *record, const xx_pcl_private *parsed, int64_t base_address)
+{
     if (!record || !parsed) return false;
     xx_archive_record_cleanup(record);
     xx_archive_record_init(record);
@@ -552,17 +514,13 @@ static bool xx_pcl_populate_record(xx_archive_record *record,
     record->data_offset = parsed->data_offset;
     record->compressed_size = parsed->archive_end - parsed->data_offset;
     return xx_archive_record_set_original_name(record, XX_PCL_MEMBER_NAME) &&
-           xx_archive_record_set_meta_u64(record, XX_META_ID_UNCOMPRESSED_SIZE,
-                                          (uint64_t)parsed->restored_size) &&
-           xx_archive_record_set_meta_u64(record, XX_META_ID_COMPRESSED_SIZE,
-                                          (uint64_t)record->compressed_size) &&
-           xx_archive_record_set_meta_u64(record,
-                                          XX_META_ID_COMPRESSION_METHOD, 1U) &&
-           xx_archive_record_set_meta_bool(record, XX_META_ID_IS_FOLDER,
-                                           false);
+           xx_archive_record_set_meta_u64(record, XX_META_ID_UNCOMPRESSED_SIZE, (uint64_t)parsed->restored_size) &&
+           xx_archive_record_set_meta_u64(record, XX_META_ID_COMPRESSED_SIZE, (uint64_t)record->compressed_size) &&
+           xx_archive_record_set_meta_u64(record, XX_META_ID_COMPRESSION_METHOD, 1U) && xx_archive_record_set_meta_bool(record, XX_META_ID_IS_FOLDER, false);
 }
 
-static void xx_pcl_stream_free(void *pointer) {
+static void xx_pcl_stream_free(void *pointer)
+{
     xx_pcl_stream *stream = (xx_pcl_stream *)pointer;
     if (!stream) return;
     xx_mem_free(stream);
@@ -572,8 +530,8 @@ static void xx_pcl_stream_free(void *pointer) {
 /* Public interface                                                          */
 /* ------------------------------------------------------------------------ */
 
-void xx_partclone_image_init(xx_partclone_image *image, xx_io_device *dev,
-                             int64_t base_address) {
+void xx_partclone_image_init(xx_partclone_image *image, xx_io_device *dev, int64_t base_address)
+{
     if (!image) return;
     xx_mem_zero(image, sizeof(*image));
     xx_format_init(&image->format, dev, base_address);
@@ -586,32 +544,26 @@ void xx_partclone_image_init(xx_partclone_image *image, xx_io_device *dev,
     image->format.check_is_valid = xx_partclone_image_check_is_valid;
     image->format.handle_base_info = xx_partclone_image_handle_base_info;
     image->format.get_format_size = xx_partclone_image_get_format_size;
-    image->format.get_number_of_archive_records =
-        xx_partclone_image_get_number_of_archive_records;
-    image->format.create_archive_records_reading =
-        xx_partclone_image_create_archive_records_reading;
-    image->format.get_current_archive_record =
-        xx_partclone_image_get_current_archive_record;
-    image->format.unpack_current_archive_record =
-        xx_partclone_image_unpack_current_archive_record;
-    image->format.archive_record_move_to_next =
-        xx_partclone_image_archive_record_move_to_next;
-    image->format.free_archive_records_reading =
-        xx_partclone_image_free_archive_records_reading;
+    image->format.get_number_of_archive_records = xx_partclone_image_get_number_of_archive_records;
+    image->format.create_archive_records_reading = xx_partclone_image_create_archive_records_reading;
+    image->format.get_current_archive_record = xx_partclone_image_get_current_archive_record;
+    image->format.unpack_current_archive_record = xx_partclone_image_unpack_current_archive_record;
+    image->format.archive_record_move_to_next = xx_partclone_image_archive_record_move_to_next;
+    image->format.free_archive_records_reading = xx_partclone_image_free_archive_records_reading;
     image->format.destroy = xx_partclone_image_vtable_destroy;
     image->restored_size = -1;
     image->archive_end = -1;
 }
 
-xx_partclone_image *xx_partclone_image_create(xx_io_device *dev,
-                                              int64_t base_address) {
-    xx_partclone_image *image =
-        (xx_partclone_image *)xx_mem_alloc(sizeof(*image));
+xx_partclone_image *xx_partclone_image_create(xx_io_device *dev, int64_t base_address)
+{
+    xx_partclone_image *image = (xx_partclone_image *)xx_mem_alloc(sizeof(*image));
     if (image) xx_partclone_image_init(image, dev, base_address);
     return image;
 }
 
-void xx_partclone_image_destroy(xx_partclone_image *image) {
+void xx_partclone_image_destroy(xx_partclone_image *image)
+{
     if (!image) return;
     if (image->internal) {
         xx_mem_free(image->internal);
@@ -620,23 +572,26 @@ void xx_partclone_image_destroy(xx_partclone_image *image) {
     xx_format_cleanup_extra_parameters(&image->format);
 }
 
-static void xx_partclone_image_vtable_destroy(Abstractformat *self) {
+static void xx_partclone_image_vtable_destroy(Abstractformat *self)
+{
     xx_partclone_image_destroy((xx_partclone_image *)self);
 }
 
-void xx_partclone_image_free(xx_partclone_image *image) {
+void xx_partclone_image_free(xx_partclone_image *image)
+{
     if (!image) return;
     xx_partclone_image_destroy(image);
     xx_mem_free(image);
 }
 
-bool xx_partclone_image_check_is_valid(Abstractformat *self, xx_pd_struct *pd) {
+bool xx_partclone_image_check_is_valid(Abstractformat *self, xx_pd_struct *pd)
+{
     xx_pcl_private parsed;
     return xx_pcl_parse(self, &parsed, pd);
 }
 
-bool xx_partclone_image_handle_base_info(Abstractformat *self,
-                                         xx_pd_struct *pd) {
+bool xx_partclone_image_handle_base_info(Abstractformat *self, xx_pd_struct *pd)
+{
     xx_partclone_image *image = (xx_partclone_image *)self;
     xx_pcl_private *parsed;
     int64_t total_size;
@@ -678,39 +633,34 @@ bool xx_partclone_image_handle_base_info(Abstractformat *self,
     return true;
 }
 
-int64_t xx_partclone_image_get_format_size(Abstractformat *self,
-                                           xx_pd_struct *pd) {
-    if (!self ||
-        (!self->base_info_handled && !xx_format_handle_base_info(self, pd))) {
+int64_t xx_partclone_image_get_format_size(Abstractformat *self, xx_pd_struct *pd)
+{
+    if (!self || (!self->base_info_handled && !xx_format_handle_base_info(self, pd))) {
         return -1;
     }
     return self->format_size;
 }
 
-uint64_t xx_partclone_image_get_number_of_archive_records(Abstractformat *self,
-                                                          xx_pd_struct *pd) {
-    if (!self ||
-        (!self->base_info_handled && !xx_format_handle_base_info(self, pd))) {
+uint64_t xx_partclone_image_get_number_of_archive_records(Abstractformat *self, xx_pd_struct *pd)
+{
+    if (!self || (!self->base_info_handled && !xx_format_handle_base_info(self, pd))) {
         return 0U;
     }
     return ((xx_partclone_image *)self)->number_of_records;
 }
 
-bool xx_partclone_image_unpack_to_device(xx_partclone_image *image,
-                                         xx_io_device *destination,
-                                         xx_pd_struct *pd) {
+bool xx_partclone_image_unpack_to_device(xx_partclone_image *image, xx_io_device *destination, xx_pd_struct *pd)
+{
     xx_pcl_private parsed;
     if (!image || !destination) return false;
-    return xx_pcl_parse(&image->format, &parsed, pd) &&
-           xx_pcl_restore(&image->format, &parsed, destination, pd);
+    return xx_pcl_parse(&image->format, &parsed, pd) && xx_pcl_restore(&image->format, &parsed, destination, pd);
 }
 
-xx_archive_record_state *xx_partclone_image_create_archive_records_reading(
-    Abstractformat *self, const xx_list_s *options, xx_pd_struct *pd) {
+xx_archive_record_state *xx_partclone_image_create_archive_records_reading(Abstractformat *self, const xx_list_s *options, xx_pd_struct *pd)
+{
     xx_archive_record_state *state;
     xx_pcl_stream *stream;
-    if (!self || !self->device ||
-        (!self->base_info_handled && !xx_format_handle_base_info(self, pd))) {
+    if (!self || !self->device || (!self->base_info_handled && !xx_format_handle_base_info(self, pd))) {
         return NULL;
     }
     state = (xx_archive_record_state *)xx_mem_alloc(sizeof(*state));
@@ -721,8 +671,7 @@ xx_archive_record_state *xx_partclone_image_create_archive_records_reading(
         return NULL;
     }
     xx_archive_record_state_init(state, self);
-    if (!xx_pcl_copy_options(&state->options, options) ||
-        !xx_pcl_parse(self, &stream->parsed, pd)) {
+    if (!xx_pcl_copy_options(&state->options, options) || !xx_pcl_parse(self, &stream->parsed, pd)) {
         xx_pcl_stream_free(stream);
         xx_archive_record_state_free(state);
         return NULL;
@@ -731,26 +680,22 @@ xx_archive_record_state *xx_partclone_image_create_archive_records_reading(
     state->internal_state = stream;
     state->free_internal = xx_pcl_stream_free;
     state->total_records = 1;
-    if (xx_pcl_populate_record(&state->current_record, &stream->parsed,
-                               self->base_address)) {
+    if (xx_pcl_populate_record(&state->current_record, &stream->parsed, self->base_address)) {
         state->has_record = true;
         state->current_index = 0;
     }
     return state;
 }
 
-const xx_archive_record *xx_partclone_image_get_current_archive_record(
-    Abstractformat *self, xx_archive_record_state *state) {
-    return self && state && state->format == self && state->has_record
-               ? &state->current_record
-               : NULL;
+const xx_archive_record *xx_partclone_image_get_current_archive_record(Abstractformat *self, xx_archive_record_state *state)
+{
+    return self && state && state->format == self && state->has_record ? &state->current_record : NULL;
 }
 
-bool xx_partclone_image_archive_record_move_to_next(
-    Abstractformat *self, xx_archive_record_state *state, xx_pd_struct *pd) {
+bool xx_partclone_image_archive_record_move_to_next(Abstractformat *self, xx_archive_record_state *state, xx_pd_struct *pd)
+{
     xx_pcl_stream *stream;
-    if (!self || !state || state->format != self || !state->has_record ||
-        !state->internal_state || (pd && xx_pd_is_stopped(pd))) {
+    if (!self || !state || state->format != self || !state->has_record || !state->internal_state || (pd && xx_pd_is_stopped(pd))) {
         return false;
     }
     stream = (xx_pcl_stream *)state->internal_state;
@@ -762,8 +707,8 @@ bool xx_partclone_image_archive_record_move_to_next(
     return false;
 }
 
-bool xx_partclone_image_unpack_current_archive_record(
-    Abstractformat *self, xx_archive_record_state *state, xx_pd_struct *pd) {
+bool xx_partclone_image_unpack_current_archive_record(Abstractformat *self, xx_archive_record_state *state, xx_pd_struct *pd)
+{
     xx_pcl_stream *stream;
     const xx_var *option;
     const char *base = NULL;
@@ -773,36 +718,28 @@ bool xx_partclone_image_unpack_current_archive_record(
     bool result = false;
     bool created = false;
     size_t base_length;
-    if (!self || !self->device || !state || state->format != self ||
-        !state->has_record || !state->internal_state ||
-        (pd && xx_pd_is_stopped(pd))) {
+    if (!self || !self->device || !state || state->format != self || !state->has_record || !state->internal_state || (pd && xx_pd_is_stopped(pd))) {
         return false;
     }
     stream = (xx_pcl_stream *)state->internal_state;
     if (stream->index != 0U) return false;
     /* A stricter ceiling supplied with this read session applies here. */
-    if (stream->parsed.restored_size < 0 ||
-        (uint64_t)stream->parsed.restored_size >
-            xx_pcl_max_expanded(self, &state->options)) {
+    if (stream->parsed.restored_size < 0 || (uint64_t)stream->parsed.restored_size > xx_pcl_max_expanded(self, &state->options)) {
         return false;
     }
     option = xx_pcl_find_option(&state->options, XX_META_ID_OPT_UNPACK_PATH);
     if (!option) {
-        return stream->parsed.archive_end >= 0 &&
-               stream->parsed.archive_end <= stream->parsed.input_size;
+        return stream->parsed.archive_end >= 0 && stream->parsed.archive_end <= stream->parsed.input_size;
     }
-    if (option->type == XX_VAR_TYPE_STRING ||
-        option->type == XX_VAR_TYPE_STRING_VIEW) {
+    if (option->type == XX_VAR_TYPE_STRING || option->type == XX_VAR_TYPE_STRING_VIEW) {
         base = xx_var_get_str(option);
-    } else if (option->type == XX_VAR_TYPE_WSTRING ||
-               option->type == XX_VAR_TYPE_WSTRING_VIEW) {
+    } else if (option->type == XX_VAR_TYPE_WSTRING || option->type == XX_VAR_TYPE_WSTRING_VIEW) {
         owned_base = xx_str_unicode_to_utf8(xx_var_get_wstr(option));
         base = owned_base;
     }
     if (!base) goto cleanup;
     base_length = xx_str_len(base);
-    if (base_length && base[base_length - 1U] != '/' &&
-        base[base_length - 1U] != '\\') {
+    if (base_length && base[base_length - 1U] != '/' && base[base_length - 1U] != '\\') {
         destination_path = xx_str_concat3(base, "/", XX_PCL_MEMBER_NAME);
     } else {
         destination_path = xx_str_concat(base, XX_PCL_MEMBER_NAME);
@@ -824,16 +761,18 @@ cleanup:
     return result;
 }
 
-void xx_partclone_image_free_archive_records_reading(
-    Abstractformat *self, xx_archive_record_state *state) {
+void xx_partclone_image_free_archive_records_reading(Abstractformat *self, xx_archive_record_state *state)
+{
     (void)self;
     xx_archive_record_state_free(state);
 }
 
-int64_t xx_partclone_image_get_restored_size(const xx_partclone_image *image) {
+int64_t xx_partclone_image_get_restored_size(const xx_partclone_image *image)
+{
     return image ? image->restored_size : -1;
 }
 
-int64_t xx_partclone_image_get_archive_end(const xx_partclone_image *image) {
+int64_t xx_partclone_image_get_archive_end(const xx_partclone_image *image)
+{
     return image ? image->archive_end : -1;
 }

@@ -77,34 +77,26 @@ struct xx_ubifs {
     uint32_t sb_flags;
     uint16_t default_compr;
     uint64_t highest_inum;
-    uint64_t leaf_count;   /**< Level-0 index branches found. */
-    int64_t archive_end;   /**< base_address + leb_cnt * leb_size, or -1. */
+    uint64_t leaf_count; /**< Level-0 index branches found. */
+    int64_t archive_end; /**< base_address + leb_cnt * leb_size, or -1. */
     void *internal;
 };
 
-XXFC_API void xx_ubifs_init(xx_ubifs *ubifs, xx_io_device *dev,
-                            int64_t base_address);
+XXFC_API void xx_ubifs_init(xx_ubifs *ubifs, xx_io_device *dev, int64_t base_address);
 XXFC_API xx_ubifs *xx_ubifs_create(xx_io_device *dev, int64_t base_address);
 XXFC_API void xx_ubifs_destroy(xx_ubifs *ubifs);
 XXFC_API void xx_ubifs_free(xx_ubifs *ubifs);
 
 XXFC_API bool xx_ubifs_check_is_valid(Abstractformat *self, xx_pd_struct *pd);
 XXFC_API bool xx_ubifs_handle_base_info(Abstractformat *self, xx_pd_struct *pd);
-XXFC_API int64_t xx_ubifs_get_format_size(Abstractformat *self,
-                                          xx_pd_struct *pd);
-XXFC_API uint64_t xx_ubifs_get_number_of_archive_records(Abstractformat *self,
-                                                         xx_pd_struct *pd);
+XXFC_API int64_t xx_ubifs_get_format_size(Abstractformat *self, xx_pd_struct *pd);
+XXFC_API uint64_t xx_ubifs_get_number_of_archive_records(Abstractformat *self, xx_pd_struct *pd);
 
-XXFC_API xx_archive_record_state *xx_ubifs_create_archive_records_reading(
-    Abstractformat *self, const xx_list_s *options, xx_pd_struct *pd);
-XXFC_API const xx_archive_record *xx_ubifs_get_current_archive_record(
-    Abstractformat *self, xx_archive_record_state *state);
-XXFC_API bool xx_ubifs_unpack_current_archive_record(
-    Abstractformat *self, xx_archive_record_state *state, xx_pd_struct *pd);
-XXFC_API bool xx_ubifs_archive_record_move_to_next(
-    Abstractformat *self, xx_archive_record_state *state, xx_pd_struct *pd);
-XXFC_API void xx_ubifs_free_archive_records_reading(
-    Abstractformat *self, xx_archive_record_state *state);
+XXFC_API xx_archive_record_state *xx_ubifs_create_archive_records_reading(Abstractformat *self, const xx_list_s *options, xx_pd_struct *pd);
+XXFC_API const xx_archive_record *xx_ubifs_get_current_archive_record(Abstractformat *self, xx_archive_record_state *state);
+XXFC_API bool xx_ubifs_unpack_current_archive_record(Abstractformat *self, xx_archive_record_state *state, xx_pd_struct *pd);
+XXFC_API bool xx_ubifs_archive_record_move_to_next(Abstractformat *self, xx_archive_record_state *state, xx_pd_struct *pd);
+XXFC_API void xx_ubifs_free_archive_records_reading(Abstractformat *self, xx_archive_record_state *state);
 
 XXFC_API uint64_t xx_ubifs_get_number_of_records(const xx_ubifs *ubifs);
 XXFC_API uint64_t xx_ubifs_get_number_of_members(const xx_ubifs *ubifs);
@@ -116,18 +108,24 @@ XXFC_API int64_t xx_ubifs_get_archive_end(const xx_ubifs *ubifs);
 /** @brief "None", "LZO", "zlib", "zstd" or "Unknown". */
 XXFC_API const char *xx_ubifs_compression_to_string(uint32_t compr_type);
 
-static inline Abstractformat *xx_ubifs_to_format(xx_ubifs *ubifs) {
+static inline Abstractformat *xx_ubifs_to_format(xx_ubifs *ubifs)
+{
     return ubifs ? &ubifs->format : NULL;
 }
-static inline void XUbifs_init(xx_ubifs *ubifs, xx_io_device *dev,
-                               int64_t base_address) {
+static inline void XUbifs_init(xx_ubifs *ubifs, xx_io_device *dev, int64_t base_address)
+{
     xx_ubifs_init(ubifs, dev, base_address);
 }
-static inline xx_ubifs *XUbifs_create(xx_io_device *dev, int64_t base_address) {
+static inline xx_ubifs *XUbifs_create(xx_io_device *dev, int64_t base_address)
+{
     return xx_ubifs_create(dev, base_address);
 }
-static inline void XUbifs_free(xx_ubifs *ubifs) { xx_ubifs_free(ubifs); }
-static inline bool XUbifs_is_valid(xx_ubifs *ubifs, xx_pd_struct *pd) {
+static inline void XUbifs_free(xx_ubifs *ubifs)
+{
+    xx_ubifs_free(ubifs);
+}
+static inline bool XUbifs_is_valid(xx_ubifs *ubifs, xx_pd_struct *pd)
+{
     return ubifs ? xx_format_is_valid(&ubifs->format, pd) : false;
 }
 

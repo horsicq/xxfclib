@@ -62,10 +62,10 @@
 #define UDI_OUT_SIZE 65536U
 
 typedef struct udi_track_s {
-    int64_t offset;     /* absolute offset of the first byte after the type/len */
-    uint32_t stored;    /* bytes stored after the 3 (or 6) byte track header */
-    uint32_t tlen;      /* raw track length */
-    uint8_t type;       /* effective track type (inner type for 0xF0) */
+    int64_t offset;  /* absolute offset of the first byte after the type/len */
+    uint32_t stored; /* bytes stored after the 3 (or 6) byte track header */
+    uint32_t tlen;   /* raw track length */
+    uint8_t type;    /* effective track type (inner type for 0xF0) */
     bool compressed;
     uint8_t cylinder;
     uint8_t head;
@@ -76,7 +76,7 @@ typedef struct udi_track_s {
 } udi_track;
 
 typedef struct udi_sector_s {
-    uint32_t pos;  /* offset of the data in the track buffer */
+    uint32_t pos; /* offset of the data in the track buffer */
     uint32_t size;
     uint8_t id;
 } udi_sector;
@@ -101,26 +101,24 @@ typedef struct udi_stream_s {
 } udi_stream;
 
 typedef struct udi_work_s {
-    uint8_t *buffer;  /* track data + maps */
-    uint8_t *packed;  /* zlib input */
-    uint8_t *out;     /* sector data of one track */
+    uint8_t *buffer; /* track data + maps */
+    uint8_t *packed; /* zlib input */
+    uint8_t *out;    /* sector data of one track */
     udi_sector sectors[UDI_MAX_SECTORS];
     uint32_t count;
 } udi_work;
 
-static uint32_t udi_le16(const uint8_t *p) {
+static uint32_t udi_le16(const uint8_t *p)
+{
     return (uint32_t)p[0] | ((uint32_t)p[1] << 8);
 }
 
-static bool udi_read_at(xx_io_device *device, int64_t offset, void *buffer,
-                        size_t size) {
+static bool udi_read_at(xx_io_device *device, int64_t offset, void *buffer, size_t size)
+{
     size_t done = 0U;
-    if (!device || (!buffer && size != 0U) || offset < 0 ||
-        xx_io_seek64(device, offset, SEEK_SET) != 0)
-        return false;
+    if (!device || (!buffer && size != 0U) || offset < 0 || xx_io_seek64(device, offset, SEEK_SET) != 0) return false;
     while (done < size) {
-        ssize_t amount = xx_io_read(device, (uint8_t *)buffer + done,
-                                    size - done);
+        ssize_t amount = xx_io_read(device, (uint8_t *)buffer + done, size - done);
         if (amount <= 0 || (size_t)amount > size - done) return false;
         done += (size_t)amount;
     }
@@ -128,20 +126,26 @@ static bool udi_read_at(xx_io_device *device, int64_t offset, void *buffer,
 }
 
 /* Number of bitmaps after the raw bytes; 0 for an unsupported type. */
-static uint32_t udi_map_count(uint8_t type) {
+static uint32_t udi_map_count(uint8_t type)
+{
     switch (type) {
-    case 0x00: case 0x01: return 1U;
-    case 0x02: case 0x80: case 0x81: return 2U;
-    case 0x82: return 3U;
-    default: return 0U;
+        case 0x00:
+        case 0x01: return 1U;
+        case 0x02:
+        case 0x80:
+        case 0x81: return 2U;
+        case 0x82: return 3U;
+        default: return 0U;
     }
 }
 
-static uint32_t udi_track_body(uint32_t tlen, uint32_t maps) {
+static uint32_t udi_track_body(uint32_t tlen, uint32_t maps)
+{
     return tlen + maps * ((tlen + 7U) / 8U);
 }
 
-static void udi_stream_free(void *opaque) {
+static void udi_stream_free(void *opaque)
+{
     udi_stream *stream = (udi_stream *)opaque;
     if (!stream) return;
     if (stream->tracks) xx_mem_free(stream->tracks);
@@ -149,7 +153,8 @@ static void udi_stream_free(void *opaque) {
     xx_mem_free(stream);
 }
 
-static void udi_work_free(udi_work *work) {
+static void udi_work_free(udi_work *work)
+{
     if (!work) return;
     if (work->buffer) xx_mem_free(work->buffer);
     if (work->packed) xx_mem_free(work->packed);
@@ -157,7 +162,8 @@ static void udi_work_free(udi_work *work) {
     xx_mem_free(work);
 }
 
-static udi_work *udi_work_new(void) {
+static udi_work *udi_work_new(void)
+{
     udi_work *work = (udi_work *)xx_mem_calloc(1U, sizeof(*work));
     if (!work) return NULL;
     /* 65535 raw bytes + three maps of 8192, and 65536 packed bytes. */
@@ -171,52 +177,47 @@ static udi_work *udi_work_new(void) {
     return work;
 }
 
-static uint16_t udi_ccitt(const uint8_t *data, size_t size, uint16_t crc) {
+static uint16_t udi_ccitt(const uint8_t *data, size_t size, uint16_t crc)
+{
     return xx_crc16_ccitt_calc(crc, data, size);
 }
 
 /* Loads a track body (raw bytes + maps) into work->buffer. */
-static bool udi_load_track(Abstractformat *format, const udi_track *track,
-                           udi_work *work) {
+static bool udi_load_track(Abstractformat *format, const udi_track *track, udi_work *work)
+{
     uint32_t body = udi_track_body(track->tlen, udi_map_count(track->type));
     if (track->tlen == 0U) return true;
-    if (!track->compressed)
-        return track->stored == body &&
-               udi_read_at(format->device, track->offset, work->buffer, body);
+    if (!track->compressed) return track->stored == body && udi_read_at(format->device, track->offset, work->buffer, body);
     {
         size_t written = 0U;
-        if (track->stored > 65536U ||
-            !udi_read_at(format->device, track->offset, work->packed,
-                         track->stored) ||
-            !xx_zlib_stream_decode_memory(work->packed, track->stored,
-                                          work->buffer, body, &written) ||
-            written != body)
+        if (track->stored > 65536U || !udi_read_at(format->device, track->offset, work->packed, track->stored) ||
+            !xx_zlib_stream_decode_memory(work->packed, track->stored, work->buffer, body, &written) || written != body)
             return false;
     }
     return true;
 }
 
-static bool udi_marked(const uint8_t *clock, uint32_t index) {
+static bool udi_marked(const uint8_t *clock, uint32_t index)
+{
     return (clock[index >> 3] & (uint8_t)(1U << (index & 7U))) != 0U;
 }
 
-static bool udi_is_dam(uint8_t value) {
+static bool udi_is_dam(uint8_t value)
+{
     return value >= 0xf8U && value <= 0xfbU;
 }
 
 /* MFM sync: three clock-marked A1 bytes at `index`. */
-static bool udi_mfm_sync(const uint8_t *data, const uint8_t *clock,
-                         uint32_t tlen, uint32_t index) {
-    return index + 4U <= tlen && data[index] == 0xa1U &&
-           data[index + 1U] == 0xa1U && data[index + 2U] == 0xa1U &&
-           udi_marked(clock, index) && udi_marked(clock, index + 1U) &&
-           udi_marked(clock, index + 2U);
+static bool udi_mfm_sync(const uint8_t *data, const uint8_t *clock, uint32_t tlen, uint32_t index)
+{
+    return index + 4U <= tlen && data[index] == 0xa1U && data[index + 1U] == 0xa1U && data[index + 2U] == 0xa1U && udi_marked(clock, index) &&
+           udi_marked(clock, index + 1U) && udi_marked(clock, index + 2U);
 }
 
 /* Finds the data field after an ID field ending at `from`; returns the
  * offset of the first data byte or 0 when none is found. */
-static uint32_t udi_find_data(const uint8_t *data, const uint8_t *clock,
-                              uint32_t tlen, uint32_t from, bool mfm, bool fm) {
+static uint32_t udi_find_data(const uint8_t *data, const uint8_t *clock, uint32_t tlen, uint32_t from, bool mfm, bool fm)
+{
     uint32_t limit = from + (mfm ? UDI_MFM_GAP : UDI_FM_GAP);
     uint32_t index;
     if (limit > tlen) limit = tlen;
@@ -235,14 +236,13 @@ static uint32_t udi_find_data(const uint8_t *data, const uint8_t *clock,
 
 /* Finds the sectors of the loaded track; bounded by one pass over TLEN with
  * a fixed look-ahead per ID. */
-static void udi_scan_track(const udi_track *track, udi_work *work) {
+static void udi_scan_track(const udi_track *track, udi_work *work)
+{
     const uint8_t *data = work->buffer;
     const uint8_t *clock = work->buffer + track->tlen;
     uint32_t tlen = track->tlen, index;
-    bool mfm = track->type == 0x00U || track->type == 0x02U ||
-               track->type == 0x80U || track->type == 0x82U;
-    bool fm = track->type == 0x01U || track->type == 0x02U ||
-              track->type == 0x81U || track->type == 0x82U;
+    bool mfm = track->type == 0x00U || track->type == 0x02U || track->type == 0x80U || track->type == 0x82U;
+    bool fm = track->type == 0x01U || track->type == 0x02U || track->type == 0x81U || track->type == 0x82U;
     uint8_t seen[32];
     xx_rt_memset(seen, 0, sizeof(seen));
     work->count = 0U;
@@ -250,20 +250,14 @@ static void udi_scan_track(const udi_track *track, udi_work *work) {
         uint32_t chrn = 0U, end, start, size;
         const uint8_t *field;
         uint8_t id;
-        if (mfm && index + 10U <= tlen && udi_mfm_sync(data, clock, tlen, index) &&
-            data[index + 3U] == 0xfeU) {
+        if (mfm && index + 10U <= tlen && udi_mfm_sync(data, clock, tlen, index) && data[index + 3U] == 0xfeU) {
             field = data + index;
-            if (udi_ccitt(field, 8U, 0xffffU) !=
-                (uint16_t)(((uint32_t)field[8] << 8) | field[9]))
-                continue;
+            if (udi_ccitt(field, 8U, 0xffffU) != (uint16_t)(((uint32_t)field[8] << 8) | field[9])) continue;
             chrn = index + 4U;
             end = index + 10U;
-        } else if (fm && index + 7U <= tlen && data[index] == 0xfeU &&
-                   udi_marked(clock, index)) {
+        } else if (fm && index + 7U <= tlen && data[index] == 0xfeU && udi_marked(clock, index)) {
             field = data + index;
-            if (udi_ccitt(field, 5U, 0xffffU) !=
-                (uint16_t)(((uint32_t)field[5] << 8) | field[6]))
-                continue;
+            if (udi_ccitt(field, 5U, 0xffffU) != (uint16_t)(((uint32_t)field[5] << 8) | field[6])) continue;
             chrn = index + 1U;
             end = index + 7U;
         } else {
@@ -296,7 +290,8 @@ static void udi_scan_track(const udi_track *track, udi_work *work) {
 
 /* Walks the header and track table.  With `result` NULL only validates the
  * structure (no track data is read). */
-static bool udi_parse(Abstractformat *format, udi_stream **result) {
+static bool udi_parse(Abstractformat *format, udi_stream **result)
+{
     uint8_t header[UDI_HEADER_SIZE];
     uint8_t th[6];
     udi_stream *stream = NULL;
@@ -308,20 +303,15 @@ static bool udi_parse(Abstractformat *format, udi_stream **result) {
     total = xx_io_total_size(format->device);
     if (total < format->base_address) return false;
     avail = total - format->base_address;
-    if (avail < (int64_t)UDI_HEADER_SIZE + 4 ||
-        !udi_read_at(format->device, format->base_address, header,
-                     UDI_HEADER_SIZE) ||
-        xx_rt_memcmp(header, "UDI!", 4U) != 0 || header[8] != 0U ||
-        header[10] > 1U)
+    if (avail < (int64_t)UDI_HEADER_SIZE + 4 || !udi_read_at(format->device, format->base_address, header, UDI_HEADER_SIZE) || xx_rt_memcmp(header, "UDI!", 4U) != 0 ||
+        header[8] != 0U || header[10] > 1U)
         return false;
     file_size = xx_data_get_u32(header + 4, 4, 0, false);
     ext_size = xx_data_get_u32(header + 12, 4, 0, false);
     cylinders = (uint32_t)header[9] + 1U;
     heads = (uint32_t)header[10] + 1U;
     count = cylinders * heads;
-    if (file_size < UDI_HEADER_SIZE || (int64_t)file_size + 4 > avail ||
-        ext_size > file_size - UDI_HEADER_SIZE)
-        return false;
+    if (file_size < UDI_HEADER_SIZE || (int64_t)file_size + 4 > avail || ext_size > file_size - UDI_HEADER_SIZE) return false;
     end = format->base_address + (int64_t)file_size;
     pos = format->base_address + UDI_HEADER_SIZE + (int64_t)ext_size;
     if (result) {
@@ -338,13 +328,11 @@ static bool udi_parse(Abstractformat *format, udi_stream **result) {
         udi_track track;
         uint32_t maps;
         xx_rt_memset(&track, 0, sizeof(track));
-        if (end - pos < 3 || !udi_read_at(format->device, pos, th, 3U))
-            goto fail;
+        if (end - pos < 3 || !udi_read_at(format->device, pos, th, 3U)) goto fail;
         track.cylinder = (uint8_t)(index / heads);
         track.head = (uint8_t)(index % heads);
         if (th[0] == 0xf0U) {
-            if (end - pos < 6 || !udi_read_at(format->device, pos, th, 6U))
-                goto fail;
+            if (end - pos < 6 || !udi_read_at(format->device, pos, th, 6U)) goto fail;
             track.compressed = true;
             track.type = th[3];
             track.tlen = udi_le16(th + 4);
@@ -396,20 +384,16 @@ static bool udi_parse(Abstractformat *format, udi_stream **result) {
             }
             stream->sector_total += work->count;
             if (work->count) ++with_sectors;
-            if (!work->count || !track->sector_size ||
-                track->sector_size != stream->tracks[0].sector_size ||
-                track->sector_count != stream->tracks[0].sector_count ||
+            if (!work->count || !track->sector_size || track->sector_size != stream->tracks[0].sector_size || track->sector_count != stream->tracks[0].sector_count ||
                 xx_rt_memcmp(track->ids, stream->tracks[0].ids, 32U) != 0)
                 regular = false;
             disk_bytes += track->bytes;
         }
         stream->regular = regular;
-        stream->members = (udi_member *)xx_mem_calloc(
-            regular ? 1U : (with_sectors ? with_sectors : 1U), sizeof(udi_member));
+        stream->members = (udi_member *)xx_mem_calloc(regular ? 1U : (with_sectors ? with_sectors : 1U), sizeof(udi_member));
         if (!stream->members) goto fail;
         if (regular) {
-            xx_rt_snprintf(stream->members[0].name, sizeof(stream->members[0].name),
-                           "disk.img");
+            xx_rt_snprintf(stream->members[0].name, sizeof(stream->members[0].name), "disk.img");
             stream->members[0].track = -1;
             stream->members[0].size = disk_bytes;
             stream->member_count = 1U;
@@ -419,9 +403,7 @@ static bool udi_parse(Abstractformat *format, udi_stream **result) {
                 udi_member *member;
                 if (!track->sector_count) continue;
                 member = &stream->members[stream->member_count++];
-                xx_rt_snprintf(member->name, sizeof(member->name),
-                               "track%02u_%u.bin", (unsigned)track->cylinder,
-                               (unsigned)track->head);
+                xx_rt_snprintf(member->name, sizeof(member->name), "track%02u_%u.bin", (unsigned)track->cylinder, (unsigned)track->head);
                 member->track = (int32_t)index;
                 member->size = track->bytes;
             }
@@ -436,7 +418,8 @@ fail:
     return false;
 }
 
-static bool udi_check_crc(Abstractformat *format, int64_t file_size) {
+static bool udi_check_crc(Abstractformat *format, int64_t file_size)
+{
     uint8_t *chunk = (uint8_t *)xx_mem_alloc(UDI_CRC_CHUNK);
     uint8_t stored[4];
     uint32_t crc = 0xffffffffU;
@@ -444,32 +427,27 @@ static bool udi_check_crc(Abstractformat *format, int64_t file_size) {
     bool ok = false;
     if (!chunk) return false;
     while (done < file_size) {
-        size_t part = (file_size - done > (int64_t)UDI_CRC_CHUNK)
-                          ? UDI_CRC_CHUNK : (size_t)(file_size - done);
-        if (!udi_read_at(format->device, format->base_address + done, chunk,
-                         part))
-            goto out;
+        size_t part = (file_size - done > (int64_t)UDI_CRC_CHUNK) ? UDI_CRC_CHUNK : (size_t)(file_size - done);
+        if (!udi_read_at(format->device, format->base_address + done, chunk, part)) goto out;
         crc = xx_crc32_udi_calc(crc, chunk, part);
         done += (int64_t)part;
     }
-    ok = udi_read_at(format->device, format->base_address + file_size, stored,
-                     4U) && xx_data_get_u32(stored, 4, 0, false) == crc;
+    ok = udi_read_at(format->device, format->base_address + file_size, stored, 4U) && xx_data_get_u32(stored, 4, 0, false) == crc;
 out:
     xx_mem_free(chunk);
     return ok;
 }
 
-static bool udi_copy_options(xx_list_s *destination, const xx_list_s *source) {
+static bool udi_copy_options(xx_list_s *destination, const xx_list_s *source)
+{
     size_t index;
     if (!source) return true;
     for (index = 0U; index < source->count; ++index) {
-        const xx_meta *original =
-            (const xx_meta *)xx_list_at((const xx_list_t *)source, index);
+        const xx_meta *original = (const xx_meta *)xx_list_at((const xx_list_t *)source, index);
         xx_meta copy;
         if (!original) continue;
         xx_meta_init(&copy, original->meta_id);
-        if (!xx_var_copy(&copy.var, &original->var) ||
-            !xx_list_append(destination, &copy)) {
+        if (!xx_var_copy(&copy.var, &original->var) || !xx_list_append(destination, &copy)) {
             xx_meta_cleanup(&copy);
             return false;
         }
@@ -477,45 +455,36 @@ static bool udi_copy_options(xx_list_s *destination, const xx_list_s *source) {
     return true;
 }
 
-static const xx_var *udi_option(const xx_list_s *options, uint32_t id) {
+static const xx_var *udi_option(const xx_list_s *options, uint32_t id)
+{
     size_t index;
     if (!options) return NULL;
     for (index = 0U; index < options->count; ++index) {
-        const xx_meta *meta =
-            (const xx_meta *)xx_list_at((const xx_list_t *)options, index);
+        const xx_meta *meta = (const xx_meta *)xx_list_at((const xx_list_t *)options, index);
         if (meta && meta->meta_id == id) return &meta->var;
     }
     return NULL;
 }
 
-static bool udi_set_record(xx_archive_record *record, const udi_stream *stream,
-                           const udi_member *member, int64_t base) {
+static bool udi_set_record(xx_archive_record *record, const udi_stream *stream, const udi_member *member, int64_t base)
+{
     xx_archive_record_cleanup(record);
     xx_archive_record_init(record);
     record->header_offset = base;
     record->header_size = UDI_HEADER_SIZE;
-    record->data_offset = member->track < 0
-                              ? stream->tracks[0].offset
-                              : stream->tracks[member->track].offset;
+    record->data_offset = member->track < 0 ? stream->tracks[0].offset : stream->tracks[member->track].offset;
     record->compressed_size = (int64_t)member->size;
-    return xx_archive_record_set_original_name(record, member->name) &&
-           xx_archive_record_set_meta_u64(record, XX_META_ID_COMPRESSED_SIZE,
-                                          member->size) &&
-           xx_archive_record_set_meta_u64(record, XX_META_ID_UNCOMPRESSED_SIZE,
-                                          member->size) &&
-           xx_archive_record_set_meta_u64(record, XX_META_ID_COMPRESSION_METHOD,
-                                          0U) &&
-           xx_archive_record_set_meta_bool(record, XX_META_ID_IS_ENCRYPTED,
-                                           false) &&
+    return xx_archive_record_set_original_name(record, member->name) && xx_archive_record_set_meta_u64(record, XX_META_ID_COMPRESSED_SIZE, member->size) &&
+           xx_archive_record_set_meta_u64(record, XX_META_ID_UNCOMPRESSED_SIZE, member->size) &&
+           xx_archive_record_set_meta_u64(record, XX_META_ID_COMPRESSION_METHOD, 0U) && xx_archive_record_set_meta_bool(record, XX_META_ID_IS_ENCRYPTED, false) &&
            xx_archive_record_set_meta_bool(record, XX_META_ID_IS_FOLDER, false);
 }
 
 /* Decodes one track and writes its sectors (ascending id) to `out` in one
  * write.  Data fields never overlap (a data search stops at the next ID
  * mark), so they fit in the packed buffer; checked anyway. */
-static bool udi_write_track(Abstractformat *format, const udi_track *track,
-                            udi_work *work, xx_io_device *out,
-                            uint64_t *written) {
+static bool udi_write_track(Abstractformat *format, const udi_track *track, udi_work *work, xx_io_device *out, uint64_t *written)
+{
     uint32_t s;
     size_t bytes = 0U, done = 0U;
     if (!udi_load_track(format, track, work)) return false;
@@ -525,8 +494,7 @@ static bool udi_write_track(Abstractformat *format, const udi_track *track,
     for (s = 0U; s < work->count; ++s) {
         const udi_sector *sector = &work->sectors[s];
         if (sector->size > UDI_OUT_SIZE - bytes) return false;
-        xx_rt_memcpy(work->out + bytes, work->buffer + sector->pos,
-                     sector->size);
+        xx_rt_memcpy(work->out + bytes, work->buffer + sector->pos, sector->size);
         bytes += sector->size;
     }
     if ((uint64_t)bytes != track->bytes) return false;
@@ -539,8 +507,8 @@ static bool udi_write_track(Abstractformat *format, const udi_track *track,
     return true;
 }
 
-void xx_spectrum_udi_init(xx_spectrum_udi *archive, xx_io_device *device,
-                          int64_t base_address) {
+void xx_spectrum_udi_init(xx_spectrum_udi *archive, xx_io_device *device, int64_t base_address)
+{
     if (!archive) return;
     xx_mem_zero(archive, sizeof(*archive));
     xx_format_init(&archive->format, device, base_address);
@@ -553,46 +521,42 @@ void xx_spectrum_udi_init(xx_spectrum_udi *archive, xx_io_device *device,
     archive->format.check_is_valid = xx_spectrum_udi_check_is_valid;
     archive->format.handle_base_info = xx_spectrum_udi_handle_base_info;
     archive->format.get_format_size = xx_spectrum_udi_get_format_size;
-    archive->format.get_number_of_archive_records =
-        xx_spectrum_udi_get_number_of_archive_records;
-    archive->format.create_archive_records_reading =
-        xx_spectrum_udi_create_archive_records_reading;
-    archive->format.get_current_archive_record =
-        xx_spectrum_udi_get_current_archive_record;
-    archive->format.unpack_current_archive_record =
-        xx_spectrum_udi_unpack_current_archive_record;
-    archive->format.archive_record_move_to_next =
-        xx_spectrum_udi_archive_record_move_to_next;
-    archive->format.free_archive_records_reading =
-        xx_spectrum_udi_free_archive_records_reading;
+    archive->format.get_number_of_archive_records = xx_spectrum_udi_get_number_of_archive_records;
+    archive->format.create_archive_records_reading = xx_spectrum_udi_create_archive_records_reading;
+    archive->format.get_current_archive_record = xx_spectrum_udi_get_current_archive_record;
+    archive->format.unpack_current_archive_record = xx_spectrum_udi_unpack_current_archive_record;
+    archive->format.archive_record_move_to_next = xx_spectrum_udi_archive_record_move_to_next;
+    archive->format.free_archive_records_reading = xx_spectrum_udi_free_archive_records_reading;
     archive->archive_end = -1;
 }
 
-xx_spectrum_udi *xx_spectrum_udi_create(xx_io_device *device,
-                                        int64_t base_address) {
-    xx_spectrum_udi *archive =
-        (xx_spectrum_udi *)xx_mem_alloc(sizeof(*archive));
+xx_spectrum_udi *xx_spectrum_udi_create(xx_io_device *device, int64_t base_address)
+{
+    xx_spectrum_udi *archive = (xx_spectrum_udi *)xx_mem_alloc(sizeof(*archive));
     if (archive) xx_spectrum_udi_init(archive, device, base_address);
     return archive;
 }
 
-void xx_spectrum_udi_destroy(xx_spectrum_udi *archive) {
+void xx_spectrum_udi_destroy(xx_spectrum_udi *archive)
+{
     if (archive) xx_format_cleanup_extra_parameters(&archive->format);
 }
 
-void xx_spectrum_udi_free(xx_spectrum_udi *archive) {
+void xx_spectrum_udi_free(xx_spectrum_udi *archive)
+{
     if (!archive) return;
     xx_spectrum_udi_destroy(archive);
     xx_mem_free(archive);
 }
 
-bool xx_spectrum_udi_check_is_valid(Abstractformat *format, xx_pd_struct *pd) {
+bool xx_spectrum_udi_check_is_valid(Abstractformat *format, xx_pd_struct *pd)
+{
     (void)pd;
     return udi_parse(format, NULL);
 }
 
-bool xx_spectrum_udi_handle_base_info(Abstractformat *format,
-                                      xx_pd_struct *pd) {
+bool xx_spectrum_udi_handle_base_info(Abstractformat *format, xx_pd_struct *pd)
+{
     udi_stream *stream;
     xx_spectrum_udi *archive;
     (void)pd;
@@ -613,22 +577,18 @@ bool xx_spectrum_udi_handle_base_info(Abstractformat *format,
     return true;
 }
 
-int64_t xx_spectrum_udi_get_format_size(Abstractformat *format,
-                                        xx_pd_struct *pd) {
-    return format && (format->base_info_handled ||
-                      xx_spectrum_udi_handle_base_info(format, pd))
-               ? format->format_size : -1;
+int64_t xx_spectrum_udi_get_format_size(Abstractformat *format, xx_pd_struct *pd)
+{
+    return format && (format->base_info_handled || xx_spectrum_udi_handle_base_info(format, pd)) ? format->format_size : -1;
 }
 
-uint64_t xx_spectrum_udi_get_number_of_archive_records(Abstractformat *format,
-                                                       xx_pd_struct *pd) {
-    return format && (format->base_info_handled ||
-                      xx_spectrum_udi_handle_base_info(format, pd))
-               ? ((xx_spectrum_udi *)format)->number_of_records : 0U;
+uint64_t xx_spectrum_udi_get_number_of_archive_records(Abstractformat *format, xx_pd_struct *pd)
+{
+    return format && (format->base_info_handled || xx_spectrum_udi_handle_base_info(format, pd)) ? ((xx_spectrum_udi *)format)->number_of_records : 0U;
 }
 
-xx_archive_record_state *xx_spectrum_udi_create_archive_records_reading(
-    Abstractformat *format, const xx_list_s *options, xx_pd_struct *pd) {
+xx_archive_record_state *xx_spectrum_udi_create_archive_records_reading(Abstractformat *format, const xx_list_s *options, xx_pd_struct *pd)
+{
     udi_stream *stream;
     xx_archive_record_state *state;
     (void)pd;
@@ -649,8 +609,7 @@ xx_archive_record_state *xx_spectrum_udi_create_archive_records_reading(
     /* An unformatted disk (every track blank, no sector IDs) is a valid
      * image with no members: iterate nothing rather than fail. */
     if (stream->member_count == 0U) return state;
-    if (!udi_set_record(&state->current_record, stream, &stream->members[0],
-                        format->base_address)) {
+    if (!udi_set_record(&state->current_record, stream, &stream->members[0], format->base_address)) {
         xx_archive_record_state_free(state);
         return NULL;
     }
@@ -659,32 +618,26 @@ xx_archive_record_state *xx_spectrum_udi_create_archive_records_reading(
     return state;
 }
 
-const xx_archive_record *xx_spectrum_udi_get_current_archive_record(
-    Abstractformat *format, xx_archive_record_state *state) {
-    return format && state && state->format == format && state->has_record
-               ? &state->current_record : NULL;
+const xx_archive_record *xx_spectrum_udi_get_current_archive_record(Abstractformat *format, xx_archive_record_state *state)
+{
+    return format && state && state->format == format && state->has_record ? &state->current_record : NULL;
 }
 
-bool xx_spectrum_udi_archive_record_move_to_next(Abstractformat *format,
-                                                 xx_archive_record_state *state,
-                                                 xx_pd_struct *pd) {
+bool xx_spectrum_udi_archive_record_move_to_next(Abstractformat *format, xx_archive_record_state *state, xx_pd_struct *pd)
+{
     udi_stream *stream;
     (void)pd;
-    if (!format || !state || state->format != format ||
-        !(stream = (udi_stream *)state->internal_state) ||
-        ++stream->index >= stream->member_count) {
+    if (!format || !state || state->format != format || !(stream = (udi_stream *)state->internal_state) || ++stream->index >= stream->member_count) {
         if (state) state->has_record = false;
         return false;
     }
     ++state->current_index;
-    state->has_record = udi_set_record(&state->current_record, stream,
-                                       &stream->members[stream->index],
-                                       format->base_address);
+    state->has_record = udi_set_record(&state->current_record, stream, &stream->members[stream->index], format->base_address);
     return state->has_record;
 }
 
-bool xx_spectrum_udi_unpack_current_archive_record(
-    Abstractformat *format, xx_archive_record_state *state, xx_pd_struct *pd) {
+bool xx_spectrum_udi_unpack_current_archive_record(Abstractformat *format, xx_archive_record_state *state, xx_pd_struct *pd)
+{
     udi_stream *stream;
     udi_member *member;
     udi_work *work = NULL;
@@ -696,30 +649,24 @@ bool xx_spectrum_udi_unpack_current_archive_record(
     uint64_t written = 0U;
     bool result = false;
     bool created = false;
-    if (!format || !state || state->format != format || !state->has_record ||
-        !(stream = (udi_stream *)state->internal_state) ||
-        stream->index >= stream->member_count || (pd && xx_pd_is_stopped(pd)))
+    if (!format || !state || state->format != format || !state->has_record || !(stream = (udi_stream *)state->internal_state) || stream->index >= stream->member_count ||
+        (pd && xx_pd_is_stopped(pd)))
         return false;
     member = &stream->members[stream->index];
     work = udi_work_new();
     if (!work) goto done;
     path_option = udi_option(&state->options, XX_META_ID_OPT_UNPACK_PATH);
     if (path_option) {
-        if (path_option->type == XX_VAR_TYPE_STRING ||
-            path_option->type == XX_VAR_TYPE_STRING_VIEW)
-            base = xx_var_get_str(path_option);
-        else if (path_option->type == XX_VAR_TYPE_WSTRING ||
-                 path_option->type == XX_VAR_TYPE_WSTRING_VIEW) {
+        if (path_option->type == XX_VAR_TYPE_STRING || path_option->type == XX_VAR_TYPE_STRING_VIEW) base = xx_var_get_str(path_option);
+        else if (path_option->type == XX_VAR_TYPE_WSTRING || path_option->type == XX_VAR_TYPE_WSTRING_VIEW) {
             owned_base = xx_str_unicode_to_utf8(xx_var_get_wstr(path_option));
             base = owned_base;
         }
         if (!base) goto done;
         /* Member names are built from numbers only ("disk.img",
          * "trackCC_H.bin"), so they are safe by construction. */
-        path = (base[0] && base[xx_str_len(base) - 1U] != '/' &&
-                base[xx_str_len(base) - 1U] != '\\')
-                   ? xx_str_concat3(base, "/", member->name)
-                   : xx_str_concat(base, member->name);
+        path = (base[0] && base[xx_str_len(base) - 1U] != '/' && base[xx_str_len(base) - 1U] != '\\') ? xx_str_concat3(base, "/", member->name)
+                                                                                                      : xx_str_concat(base, member->name);
         if (!path || !xx_store_create_dirs_a(path, false)) goto done;
         destination = xx_io_file_open(path, "wb");
         if (!destination) goto done;
@@ -742,14 +689,12 @@ bool xx_spectrum_udi_unpack_current_archive_record(
     }
     result = true;
     if (member->track >= 0) {
-        result = udi_write_track(format, &stream->tracks[member->track], work,
-                                 destination, &written);
+        result = udi_write_track(format, &stream->tracks[member->track], work, destination, &written);
     } else {
         uint32_t index;
         for (index = 0U; result && index < stream->track_count; ++index) {
             if (pd && xx_pd_is_stopped(pd)) result = false;
-            else result = udi_write_track(format, &stream->tracks[index], work,
-                                          destination, &written);
+            else result = udi_write_track(format, &stream->tracks[index], work, destination, &written);
         }
     }
     if (result && written != member->size) result = false;
@@ -764,8 +709,8 @@ done:
     return result;
 }
 
-void xx_spectrum_udi_free_archive_records_reading(
-    Abstractformat *format, xx_archive_record_state *state) {
+void xx_spectrum_udi_free_archive_records_reading(Abstractformat *format, xx_archive_record_state *state)
+{
     (void)format;
     xx_archive_record_state_free(state);
 }

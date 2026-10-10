@@ -41,8 +41,8 @@ extern "C" {
 typedef struct xx_qnap_nas_firmware {
     Abstractformat format;
     uint64_t number_of_records;
-    uint64_t payload_size;   /**< Bytes in front of the footer. */
-    uint32_t encrypted_len;  /**< Enciphered prefix of the payload. */
+    uint64_t payload_size;  /**< Bytes in front of the footer. */
+    uint32_t encrypted_len; /**< Enciphered prefix of the payload. */
     char device_id[17];
     char file_version[17];
     char firmware_date[17];
@@ -51,35 +51,21 @@ typedef struct xx_qnap_nas_firmware {
 
 typedef xx_qnap_nas_firmware xx_qnap_nas_firmware_t;
 
-XXFC_API void xx_qnap_nas_firmware_init(xx_qnap_nas_firmware *archive,
-                                        xx_io_device *device,
-                                        int64_t base_address);
-XXFC_API xx_qnap_nas_firmware *xx_qnap_nas_firmware_create(
-    xx_io_device *device, int64_t base_address);
+XXFC_API void xx_qnap_nas_firmware_init(xx_qnap_nas_firmware *archive, xx_io_device *device, int64_t base_address);
+XXFC_API xx_qnap_nas_firmware *xx_qnap_nas_firmware_create(xx_io_device *device, int64_t base_address);
 XXFC_API void xx_qnap_nas_firmware_destroy(xx_qnap_nas_firmware *archive);
 XXFC_API void xx_qnap_nas_firmware_free(xx_qnap_nas_firmware *archive);
 
-XXFC_API bool xx_qnap_nas_firmware_check_is_valid(Abstractformat *self,
-                                                  xx_pd_struct *pd);
-XXFC_API bool xx_qnap_nas_firmware_handle_base_info(Abstractformat *self,
-                                                    xx_pd_struct *pd);
-XXFC_API int64_t xx_qnap_nas_firmware_get_format_size(Abstractformat *self,
-                                                      xx_pd_struct *pd);
-XXFC_API uint64_t xx_qnap_nas_firmware_get_number_of_archive_records(
-    Abstractformat *self, xx_pd_struct *pd);
+XXFC_API bool xx_qnap_nas_firmware_check_is_valid(Abstractformat *self, xx_pd_struct *pd);
+XXFC_API bool xx_qnap_nas_firmware_handle_base_info(Abstractformat *self, xx_pd_struct *pd);
+XXFC_API int64_t xx_qnap_nas_firmware_get_format_size(Abstractformat *self, xx_pd_struct *pd);
+XXFC_API uint64_t xx_qnap_nas_firmware_get_number_of_archive_records(Abstractformat *self, xx_pd_struct *pd);
 
-XXFC_API xx_archive_record_state *
-xx_qnap_nas_firmware_create_archive_records_reading(
-    Abstractformat *self, const xx_list_s *options, xx_pd_struct *pd);
-XXFC_API const xx_archive_record *
-xx_qnap_nas_firmware_get_current_archive_record(
-    Abstractformat *self, xx_archive_record_state *state);
-XXFC_API bool xx_qnap_nas_firmware_unpack_current_archive_record(
-    Abstractformat *self, xx_archive_record_state *state, xx_pd_struct *pd);
-XXFC_API bool xx_qnap_nas_firmware_archive_record_move_to_next(
-    Abstractformat *self, xx_archive_record_state *state, xx_pd_struct *pd);
-XXFC_API void xx_qnap_nas_firmware_free_archive_records_reading(
-    Abstractformat *self, xx_archive_record_state *state);
+XXFC_API xx_archive_record_state *xx_qnap_nas_firmware_create_archive_records_reading(Abstractformat *self, const xx_list_s *options, xx_pd_struct *pd);
+XXFC_API const xx_archive_record *xx_qnap_nas_firmware_get_current_archive_record(Abstractformat *self, xx_archive_record_state *state);
+XXFC_API bool xx_qnap_nas_firmware_unpack_current_archive_record(Abstractformat *self, xx_archive_record_state *state, xx_pd_struct *pd);
+XXFC_API bool xx_qnap_nas_firmware_archive_record_move_to_next(Abstractformat *self, xx_archive_record_state *state, xx_pd_struct *pd);
+XXFC_API void xx_qnap_nas_firmware_free_archive_records_reading(Abstractformat *self, xx_archive_record_state *state);
 
 #ifdef __cplusplus
 }

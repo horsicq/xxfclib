@@ -66,16 +66,10 @@ extern "C" {
  * @param written     Receives the byte count produced.  Set on every path.
  * @return true only when exactly @p output_size bytes came out.
  */
-XXFC_API bool xx_wintersoft_ahuff_decode_memory(const uint8_t *input,
-                                                size_t input_size,
-                                                uint8_t *output,
-                                                size_t output_size,
-                                                size_t *written);
+XXFC_API bool xx_wintersoft_ahuff_decode_memory(const uint8_t *input, size_t input_size, uint8_t *output, size_t output_size, size_t *written);
 
 /** Plain-signature alias of xx_wintersoft_ahuff_decode_memory(). */
-XXFC_API bool xx_wintersoft_decode_memory(const uint8_t *input,
-                                          size_t input_size, uint8_t *output,
-                                          size_t output_size, size_t *written);
+XXFC_API bool xx_wintersoft_decode_memory(const uint8_t *input, size_t input_size, uint8_t *output, size_t output_size, size_t *written);
 
 #ifdef __cplusplus
 }

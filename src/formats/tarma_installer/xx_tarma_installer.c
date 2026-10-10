@@ -79,30 +79,28 @@
 
 /* ---- helpers ----------------------------------------------------------- */
 
-static uint32_t tz_le16(const uint8_t *p) {
+static uint32_t tz_le16(const uint8_t *p)
+{
     return (uint32_t)p[0] | ((uint32_t)p[1] << 8U);
 }
 
-static bool tz_read_at(xx_io_device *device, int64_t offset, void *buffer,
-                       size_t size) {
+static bool tz_read_at(xx_io_device *device, int64_t offset, void *buffer, size_t size)
+{
     size_t done = 0U;
     const size_t io_capacity = xx_get_file_buffer_size();
-    if (!device || (!buffer && size != 0U) || offset < 0 ||
-        xx_io_seek64(device, offset, SEEK_SET) != 0)
-        return false;
+    if (!device || (!buffer && size != 0U) || offset < 0 || xx_io_seek64(device, offset, SEEK_SET) != 0) return false;
     while (done < size) {
         size_t request = size - done;
         if (request > io_capacity) request = io_capacity;
-        ssize_t amount =
-            xx_io_read(device, (uint8_t *)buffer + done, request);
+        ssize_t amount = xx_io_read(device, (uint8_t *)buffer + done, request);
         if (amount <= 0 || (size_t)amount > request) return false;
         done += (size_t)amount;
     }
     return true;
 }
 
-static bool tz_write_all(xx_io_device *device, const uint8_t *data,
-                         size_t size) {
+static bool tz_write_all(xx_io_device *device, const uint8_t *data, size_t size)
+{
     size_t done = 0U;
     const size_t io_capacity = xx_get_file_buffer_size();
     while (done < size) {
@@ -170,12 +168,14 @@ typedef struct tz_lzma_s {
     tz_len rep_len;
 } tz_lzma;
 
-static void tz_probs(uint16_t *p, size_t count) {
+static void tz_probs(uint16_t *p, size_t count)
+{
     size_t index;
     for (index = 0U; index < count; ++index) p[index] = TZ_PROB_INIT;
 }
 
-static void tz_lzma_free(tz_lzma *z) {
+static void tz_lzma_free(tz_lzma *z)
+{
     if (!z) return;
     if (z->literal) xx_mem_free(z->literal);
     if (z->dict) xx_mem_free(z->dict);
@@ -183,7 +183,8 @@ static void tz_lzma_free(tz_lzma *z) {
     xx_mem_free(z);
 }
 
-static uint8_t tz_in_byte(tz_lzma *z) {
+static uint8_t tz_in_byte(tz_lzma *z)
+{
     if (z->in_idx >= z->in_len) {
         int64_t left = z->in_end - z->in_pos;
         size_t want;
@@ -209,14 +210,16 @@ static uint8_t tz_in_byte(tz_lzma *z) {
     return z->in_buf[z->in_idx++];
 }
 
-static void tz_normalize(tz_lzma *z) {
+static void tz_normalize(tz_lzma *z)
+{
     if (z->range < (UINT32_C(1) << 24)) {
         z->range <<= 8U;
         z->code = (z->code << 8U) | tz_in_byte(z);
     }
 }
 
-static uint32_t tz_bit(tz_lzma *z, uint16_t *prob) {
+static uint32_t tz_bit(tz_lzma *z, uint16_t *prob)
+{
     uint32_t bound = (z->range >> 11U) * (uint32_t)*prob;
     uint32_t bit;
     if (z->code < bound) {
@@ -233,15 +236,16 @@ static uint32_t tz_bit(tz_lzma *z, uint16_t *prob) {
     return bit;
 }
 
-static uint32_t tz_tree(tz_lzma *z, uint16_t *probs, unsigned bits) {
+static uint32_t tz_tree(tz_lzma *z, uint16_t *probs, unsigned bits)
+{
     uint32_t m = 1U;
     unsigned index;
-    for (index = 0U; index < bits; ++index)
-        m = (m << 1U) | tz_bit(z, probs + m);
+    for (index = 0U; index < bits; ++index) m = (m << 1U) | tz_bit(z, probs + m);
     return m - (UINT32_C(1) << bits);
 }
 
-static uint32_t tz_tree_reverse(tz_lzma *z, uint16_t *probs, unsigned bits) {
+static uint32_t tz_tree_reverse(tz_lzma *z, uint16_t *probs, unsigned bits)
+{
     uint32_t m = 1U, symbol = 0U;
     unsigned index;
     for (index = 0U; index < bits; ++index) {
@@ -252,7 +256,8 @@ static uint32_t tz_tree_reverse(tz_lzma *z, uint16_t *probs, unsigned bits) {
     return symbol;
 }
 
-static uint32_t tz_direct(tz_lzma *z, unsigned bits) {
+static uint32_t tz_direct(tz_lzma *z, unsigned bits)
+{
     uint32_t result = 0U;
     while (bits-- > 0U) {
         z->range >>= 1U;
@@ -267,15 +272,15 @@ static uint32_t tz_direct(tz_lzma *z, unsigned bits) {
     return result;
 }
 
-static uint32_t tz_length(tz_lzma *z, tz_len *model, uint32_t pos_state) {
-    if (!tz_bit(z, &model->choice))
-        return 2U + tz_tree(z, model->low[pos_state], 3U);
-    if (!tz_bit(z, &model->choice2))
-        return 10U + tz_tree(z, model->mid[pos_state], 3U);
+static uint32_t tz_length(tz_lzma *z, tz_len *model, uint32_t pos_state)
+{
+    if (!tz_bit(z, &model->choice)) return 2U + tz_tree(z, model->low[pos_state], 3U);
+    if (!tz_bit(z, &model->choice2)) return 10U + tz_tree(z, model->mid[pos_state], 3U);
     return 18U + tz_tree(z, model->high, 8U);
 }
 
-static void tz_len_init(tz_len *model) {
+static void tz_len_init(tz_len *model)
+{
     model->choice = TZ_PROB_INIT;
     model->choice2 = TZ_PROB_INIT;
     tz_probs(&model->low[0][0], sizeof(model->low) / sizeof(uint16_t));
@@ -285,13 +290,14 @@ static void tz_len_init(tz_len *model) {
 
 /* The byte distance + 1 back.  Callers have checked distance < total and
  * distance < dict_size, so the index is inside the filled window. */
-static uint8_t tz_back(const tz_lzma *z, uint32_t distance) {
+static uint8_t tz_back(const tz_lzma *z, uint32_t distance)
+{
     uint32_t back = distance + 1U;
-    return z->dict[z->dict_pos >= back ? z->dict_pos - back
-                                       : z->dict_pos + z->dict_cap - back];
+    return z->dict[z->dict_pos >= back ? z->dict_pos - back : z->dict_pos + z->dict_cap - back];
 }
 
-static bool tz_put(tz_lzma *z, uint8_t value) {
+static bool tz_put(tz_lzma *z, uint8_t value)
+{
     if (z->total >= z->limit) {
         z->bad = true;
         return false;
@@ -300,8 +306,7 @@ static bool tz_put(tz_lzma *z, uint8_t value) {
     ++z->total;
     if (z->dict_pos == z->dict_cap) {
         if (z->dict_cap < z->dict_size) {
-            uint32_t grown = z->dict_cap > z->dict_size / 2U
-                                 ? z->dict_size : z->dict_cap * 2U;
+            uint32_t grown = z->dict_cap > z->dict_size / 2U ? z->dict_size : z->dict_cap * 2U;
             uint8_t *window = (uint8_t *)xx_mem_realloc(z->dict, grown);
             if (!window) {
                 z->bad = true;
@@ -316,13 +321,13 @@ static bool tz_put(tz_lzma *z, uint8_t value) {
     return true;
 }
 
-static bool tz_distance_ok(const tz_lzma *z, uint32_t distance) {
+static bool tz_distance_ok(const tz_lzma *z, uint32_t distance)
+{
     return (uint64_t)distance < z->total && distance < z->dict_size;
 }
 
-static tz_lzma *tz_lzma_open(xx_io_device *device, int64_t offset,
-                             int64_t size, const uint8_t *props,
-                             uint64_t limit) {
+static tz_lzma *tz_lzma_open(xx_io_device *device, int64_t offset, int64_t size, const uint8_t *props, uint64_t limit)
+{
     tz_lzma *z;
     uint32_t d = props[0], dict = xx_data_get_u32(props + 1U, 4, 0, false);
     size_t literals;
@@ -365,8 +370,7 @@ static tz_lzma *tz_lzma_open(xx_io_device *device, int64_t offset,
     z->range = UINT32_MAX;
     /* A range-coder stream starts with a zero byte, then the 32-bit code. */
     if (tz_in_byte(z) != 0U) z->bad = true;
-    for (index = 0U; index < 4U; ++index)
-        z->code = (z->code << 8U) | tz_in_byte(z);
+    for (index = 0U; index < 4U; ++index) z->code = (z->code << 8U) | tz_in_byte(z);
     if (z->bad || z->code == UINT32_MAX) {
         tz_lzma_free(z);
         return NULL;
@@ -376,7 +380,8 @@ static tz_lzma *tz_lzma_open(xx_io_device *device, int64_t offset,
 
 /* Decode one LZMA symbol.  A literal or short rep produces one byte into
  * *out (when out is not NULL) and sets *made; a match only arms pending. */
-static bool tz_step(tz_lzma *z, uint8_t *out, size_t *made) {
+static bool tz_step(tz_lzma *z, uint8_t *out, size_t *made)
+{
     uint32_t pos_state = (uint32_t)z->total & ((1U << z->pb) - 1U);
     uint32_t state = z->state;
     uint32_t length;
@@ -384,10 +389,7 @@ static bool tz_step(tz_lzma *z, uint8_t *out, size_t *made) {
     if (!tz_bit(z, &z->is_match[state][pos_state])) {
         uint32_t lp_mask = (1U << z->lp) - 1U;
         uint32_t previous = z->total ? tz_back(z, 0U) : 0U;
-        uint16_t *probs =
-            z->literal +
-            (size_t)0x300U * (((((uint32_t)z->total) & lp_mask) << z->lc) +
-                              (previous >> (8U - z->lc)));
+        uint16_t *probs = z->literal + (size_t)0x300U * (((((uint32_t)z->total) & lp_mask) << z->lc) + (previous >> (8U - z->lc)));
         uint32_t symbol;
         if (state < 7U) {
             symbol = tz_tree(z, probs, 8U);
@@ -403,8 +405,7 @@ static bool tz_step(tz_lzma *z, uint8_t *out, size_t *made) {
                 bit = tz_bit(z, probs + ((1U + match_bit) << 8U) + symbol);
                 symbol = (symbol << 1U) | bit;
                 if (match_bit != bit) {
-                    while (symbol < 0x100U)
-                        symbol = (symbol << 1U) | tz_bit(z, probs + symbol);
+                    while (symbol < 0x100U) symbol = (symbol << 1U) | tz_bit(z, probs + symbol);
                     break;
                 }
             } while (symbol < 0x100U);
@@ -426,8 +427,7 @@ static bool tz_step(tz_lzma *z, uint8_t *out, size_t *made) {
             unsigned direct = (unsigned)(slot >> 1U) - 1U;
             distance = (2U | (slot & 1U)) << direct;
             if (slot < 14U) {
-                distance += tz_tree_reverse(
-                    z, z->pos_special + (distance - slot), direct);
+                distance += tz_tree_reverse(z, z->pos_special + (distance - slot), direct);
             } else {
                 distance += tz_direct(z, direct - 4U) << 4U;
                 distance += tz_tree_reverse(z, z->align, 4U);
@@ -482,8 +482,8 @@ static bool tz_step(tz_lzma *z, uint8_t *out, size_t *made) {
 
 /* Produce up to @p want bytes (into @p out unless NULL).  Fewer bytes come
  * back only when the end marker has been reached. */
-static bool tz_lzma_read(tz_lzma *z, uint8_t *out, size_t want,
-                         size_t *got) {
+static bool tz_lzma_read(tz_lzma *z, uint8_t *out, size_t want, size_t *got)
+{
     size_t done = 0U;
     *got = 0U;
     while (done < want) {
@@ -535,8 +535,8 @@ typedef struct tz_layout_s {
 /* End of the last section's raw data and the file alignment, both from the
  * headers only: DOS header, NT signature, file header, optional-header
  * magic and alignment, and the section table. */
-static bool tz_pe_overlay(Abstractformat *format, int64_t size,
-                          int64_t *overlay, uint32_t *alignment) {
+static bool tz_pe_overlay(Abstractformat *format, int64_t size, int64_t *overlay, uint32_t *alignment)
+{
     uint8_t header[64];
     uint8_t nt[24];
     uint8_t optional[40];
@@ -544,29 +544,19 @@ static bool tz_pe_overlay(Abstractformat *format, int64_t size,
     int64_t base = format->base_address;
     int64_t nt_offset, table_offset, end = 0;
     uint32_t sections, optional_size, index, magic;
-    if (size < TZ_MIN_FILE || !tz_read_at(format->device, base, header, 64U) ||
-        header[0] != 'M' || header[1] != 'Z')
-        return false;
+    if (size < TZ_MIN_FILE || !tz_read_at(format->device, base, header, 64U) || header[0] != 'M' || header[1] != 'Z') return false;
     nt_offset = (int64_t)xx_data_get_u32(header + 0x3CU, 4, 0, false);
-    if (nt_offset < 4 || nt_offset > size - 64 ||
-        !tz_read_at(format->device, base + nt_offset, nt, sizeof(nt)) ||
-        xx_rt_memcmp(nt, "PE\0\0", 4U) != 0)
-        return false;
+    if (nt_offset < 4 || nt_offset > size - 64 || !tz_read_at(format->device, base + nt_offset, nt, sizeof(nt)) || xx_rt_memcmp(nt, "PE\0\0", 4U) != 0) return false;
     sections = tz_le16(nt + 6U);
     optional_size = tz_le16(nt + 20U);
-    if (sections == 0U || sections > TZ_MAX_PE_SECTIONS ||
-        optional_size < sizeof(optional) || optional_size > TZ_MAX_OPTIONAL ||
-        !tz_read_at(format->device, base + nt_offset + 24, optional,
-                    sizeof(optional)))
+    if (sections == 0U || sections > TZ_MAX_PE_SECTIONS || optional_size < sizeof(optional) || optional_size > TZ_MAX_OPTIONAL ||
+        !tz_read_at(format->device, base + nt_offset + 24, optional, sizeof(optional)))
         return false;
     magic = tz_le16(optional);
     if (magic != 0x10BU && magic != 0x20BU) return false;
     *alignment = xx_data_get_u32(optional + 36U, 4, 0, false);
     table_offset = nt_offset + 24 + (int64_t)optional_size;
-    if (table_offset > size ||
-        (int64_t)(sections * TZ_PE_ROW) > size - table_offset ||
-        !tz_read_at(format->device, base + table_offset, table,
-                    sections * TZ_PE_ROW))
+    if (table_offset > size || (int64_t)(sections * TZ_PE_ROW) > size - table_offset || !tz_read_at(format->device, base + table_offset, table, sections * TZ_PE_ROW))
         return false;
     for (index = 0U; index < sections; ++index) {
         const uint8_t *row = table + index * TZ_PE_ROW;
@@ -575,29 +565,26 @@ static bool tz_pe_overlay(Abstractformat *format, int64_t size,
         if (raw_size == 0) continue;
         if (raw_offset + raw_size > end) end = raw_offset + raw_size;
     }
-    if (end < table_offset + (int64_t)(sections * TZ_PE_ROW) || end >= size)
-        return false;
+    if (end < table_offset + (int64_t)(sections * TZ_PE_ROW) || end >= size) return false;
     *overlay = end;
     return true;
 }
 
-static bool tz_section_header_ok(const uint8_t *h) {
-    return xx_rt_memcmp(h + 0x10U, "tiz3", 4U) == 0 &&
-           (xx_data_get_u32(h + 0x40U, 4, 0, false) ^ xx_data_get_u32(h + 0x44U, 4, 0, false)) == TZ_XOR_KEY &&
-           h[0x48] < 9U * 5U * 5U && xx_data_get_u32(h + 0x49U, 4, 0, false) <= TZ_MAX_DICT &&
-           h[TZ_STREAM] == 0U;
+static bool tz_section_header_ok(const uint8_t *h)
+{
+    return xx_rt_memcmp(h + 0x10U, "tiz3", 4U) == 0 && (xx_data_get_u32(h + 0x40U, 4, 0, false) ^ xx_data_get_u32(h + 0x44U, 4, 0, false)) == TZ_XOR_KEY &&
+           h[0x48] < 9U * 5U * 5U && xx_data_get_u32(h + 0x49U, 4, 0, false) <= TZ_MAX_DICT && h[TZ_STREAM] == 0U;
 }
 
 /* Walk the section chain.  @p out (may be NULL) receives up to
  * TZ_MAX_SECTIONS entries. */
-static bool tz_locate(Abstractformat *format, tz_layout *layout,
-                      tz_section *out) {
+static bool tz_locate(Abstractformat *format, tz_layout *layout, tz_section *out)
+{
     uint8_t h[TZ_STREAM + 1];
     uint8_t separator[TZ_SEPARATOR];
     int64_t total, size, position = -1, candidates[2];
     uint32_t alignment = 0U, index;
-    if (!format || !format->device || !layout || format->base_address < 0)
-        return false;
+    if (!format || !format->device || !layout || format->base_address < 0) return false;
     total = xx_io_total_size(format->device);
     if (total < format->base_address) return false;
     size = total - format->base_address;
@@ -607,18 +594,13 @@ static bool tz_locate(Abstractformat *format, tz_layout *layout,
     /* The payload normally starts right at the raw end; a file-aligned
      * start is accepted as well. */
     candidates[1] = candidates[0];
-    if (alignment >= 0x200U && alignment <= 0x10000U &&
-        (alignment & (alignment - 1U)) == 0U)
-        candidates[1] = (candidates[0] + (int64_t)alignment - 1) &
-                        ~((int64_t)alignment - 1);
+    if (alignment >= 0x200U && alignment <= 0x10000U && (alignment & (alignment - 1U)) == 0U)
+        candidates[1] = (candidates[0] + (int64_t)alignment - 1) & ~((int64_t)alignment - 1);
     for (index = 0U; index < 2U && position < 0; ++index) {
         int64_t at = candidates[index];
         if (index == 1U && at == candidates[0]) break;
         if (at > size - (int64_t)sizeof(h) - 5) continue;
-        if (tz_read_at(format->device, format->base_address + at, h,
-                       sizeof(h)) &&
-            tz_section_header_ok(h))
-            position = at;
+        if (tz_read_at(format->device, format->base_address + at, h, sizeof(h)) && tz_section_header_ok(h)) position = at;
     }
     if (position < 0) return false;
     layout->overlay = position;
@@ -626,10 +608,7 @@ static bool tz_locate(Abstractformat *format, tz_layout *layout,
     layout->major = tz_le16(h + 0x16U);
     for (;;) {
         int64_t declared, present;
-        if (layout->count >= TZ_MAX_SECTIONS ||
-            position > size - (int64_t)sizeof(h) ||
-            !tz_read_at(format->device, format->base_address + position, h,
-                        sizeof(h)) ||
+        if (layout->count >= TZ_MAX_SECTIONS || position > size - (int64_t)sizeof(h) || !tz_read_at(format->device, format->base_address + position, h, sizeof(h)) ||
             !tz_section_header_ok(h))
             break;
         declared = (int64_t)xx_data_get_u64(h + 0x20U, 8, 0, false);
@@ -649,11 +628,8 @@ static bool tz_locate(Abstractformat *format, tz_layout *layout,
             break;
         }
         position += declared;
-        if (position <= size - TZ_SEPARATOR &&
-            tz_read_at(format->device, format->base_address + position,
-                       separator, sizeof(separator)) &&
-            (xx_data_get_u32(separator, 4, 0, false) ^ xx_data_get_u32(separator + 4U, 4, 0, false)) == UINT32_MAX &&
-            xx_data_get_u64(separator + 8U, 8, 0, false) == 0U)
+        if (position <= size - TZ_SEPARATOR && tz_read_at(format->device, format->base_address + position, separator, sizeof(separator)) &&
+            (xx_data_get_u32(separator, 4, 0, false) ^ xx_data_get_u32(separator + 4U, 4, 0, false)) == UINT32_MAX && xx_data_get_u64(separator + 8U, 8, 0, false) == 0U)
             position += TZ_SEPARATOR;
     }
     if (layout->count == 0U) return false;
@@ -677,12 +653,13 @@ typedef struct tz_cursor_s {
     uint64_t completed; /* blocks whose data decoded completely */
     uint64_t data_start;
     uint64_t data_size;
-    uint8_t *cache; /* bytes of the block @c cached_block, if valid */
+    uint8_t *cache;        /* bytes of the block @c cached_block, if valid */
     uint64_t cached_block; /* value of @c listed when cached, 0 = none */
     uint8_t header[TZ_BLOCK];
 } tz_cursor;
 
-static void tz_cursor_free(tz_cursor *c) {
+static void tz_cursor_free(tz_cursor *c)
+{
     if (!c) return;
     tz_lzma_free(c->z);
     if (c->sections) xx_mem_free(c->sections);
@@ -691,13 +668,13 @@ static void tz_cursor_free(tz_cursor *c) {
     xx_mem_free(c);
 }
 
-static tz_cursor *tz_cursor_create(Abstractformat *format) {
+static tz_cursor *tz_cursor_create(Abstractformat *format)
+{
     tz_cursor *c = (tz_cursor *)xx_mem_calloc(1U, sizeof(*c));
     tz_layout layout;
     if (!c) return NULL;
     c->format = format;
-    c->sections =
-        (tz_section *)xx_mem_calloc(TZ_MAX_SECTIONS, sizeof(tz_section));
+    c->sections = (tz_section *)xx_mem_calloc(TZ_MAX_SECTIONS, sizeof(tz_section));
     c->scratch_capacity = xx_get_file_buffer_size();
     c->scratch = (uint8_t *)xx_mem_alloc(c->scratch_capacity);
     if (!c->sections || !c->scratch || !tz_locate(format, &layout, c->sections)) {
@@ -708,7 +685,8 @@ static tz_cursor *tz_cursor_create(Abstractformat *format) {
     return c;
 }
 
-static bool tz_cursor_open(tz_cursor *c, uint32_t index) {
+static bool tz_cursor_open(tz_cursor *c, uint32_t index)
+{
     const tz_section *section;
     int64_t stream, budget;
     tz_lzma_free(c->z);
@@ -717,30 +695,27 @@ static bool tz_cursor_open(tz_cursor *c, uint32_t index) {
     section = &c->sections[index];
     stream = section->size - TZ_STREAM;
     budget = TZ_MAX_OUTPUT;
-    if (stream < (TZ_MAX_OUTPUT - TZ_RATIO_SLACK) / TZ_RATIO)
-        budget = stream * TZ_RATIO + TZ_RATIO_SLACK;
-    c->z = tz_lzma_open(c->format->device,
-                        c->format->base_address + section->offset + TZ_STREAM,
-                        stream, section->props, (uint64_t)budget);
+    if (stream < (TZ_MAX_OUTPUT - TZ_RATIO_SLACK) / TZ_RATIO) budget = stream * TZ_RATIO + TZ_RATIO_SLACK;
+    c->z = tz_lzma_open(c->format->device, c->format->base_address + section->offset + TZ_STREAM, stream, section->props, (uint64_t)budget);
     return c->z != NULL;
 }
 
-static bool tz_cursor_skip_to(tz_cursor *c, uint64_t target,
-                              xx_pd_struct *pd) {
+static bool tz_cursor_skip_to(tz_cursor *c, uint64_t target, xx_pd_struct *pd)
+{
     while (c->z && c->z->total < target) {
         uint64_t left = target - c->z->total;
         size_t want = left < c->scratch_capacity ? (size_t)left : c->scratch_capacity;
         size_t got;
         if (pd && xx_pd_is_stopped(pd)) return false;
-        if (!tz_lzma_read(c->z, c->scratch, want, &got) || got != want)
-            return false;
+        if (!tz_lzma_read(c->z, c->scratch, want, &got) || got != want) return false;
     }
     return c->z != NULL;
 }
 
 /* Advance to the next block header, finishing the current block's data
  * first.  Returns false at the clean end and on damage (c->error). */
-static bool tz_cursor_next(tz_cursor *c, xx_pd_struct *pd) {
+static bool tz_cursor_next(tz_cursor *c, xx_pd_struct *pd)
+{
     if (c->error) return false;
     if (c->have_block) {
         c->have_block = false;
@@ -775,9 +750,7 @@ static bool tz_cursor_next(tz_cursor *c, xx_pd_struct *pd) {
             continue;
         }
         size = (int64_t)xx_data_get_u64(c->header + 0x10U, 8, 0, false);
-        if (got != TZ_BLOCK || xx_rt_memcmp(c->header, "tzf3", 4U) != 0 ||
-            size < 0 || (uint64_t)size > c->z->limit - c->z->total ||
-            c->listed >= TZ_MAX_BLOCKS) {
+        if (got != TZ_BLOCK || xx_rt_memcmp(c->header, "tzf3", 4U) != 0 || size < 0 || (uint64_t)size > c->z->limit - c->z->total || c->listed >= TZ_MAX_BLOCKS) {
             c->error = true;
             return false;
         }
@@ -792,15 +765,14 @@ static bool tz_cursor_next(tz_cursor *c, xx_pd_struct *pd) {
 /* Deliver the current block's data to @p destination (NULL only decodes).
  * A block already passed is served from the repeat cache when it fits
  * there; a larger one is re-reached by restarting its section. */
-static bool tz_cursor_unpack(tz_cursor *c, xx_io_device *destination,
-                             xx_pd_struct *pd) {
+static bool tz_cursor_unpack(tz_cursor *c, xx_io_device *destination, xx_pd_struct *pd)
+{
     uint64_t end;
     size_t cached = 0U;
     bool keep;
     if (!c->have_block || c->error) return false;
     if (c->cached_block == c->listed) {
-        return !destination || c->data_size == 0U ||
-               tz_write_all(destination, c->cache, (size_t)c->data_size);
+        return !destination || c->data_size == 0U || tz_write_all(destination, c->cache, (size_t)c->data_size);
     }
     if (!c->z || c->z->total > c->data_start) {
         if (!tz_cursor_open(c, c->section)) return false;
@@ -817,10 +789,8 @@ static bool tz_cursor_unpack(tz_cursor *c, xx_io_device *destination,
         size_t want = left < c->scratch_capacity ? (size_t)left : c->scratch_capacity;
         size_t got;
         if (pd && xx_pd_is_stopped(pd)) return false;
-        if (!tz_lzma_read(c->z, c->scratch, want, &got) || got != want)
-            return false;
-        if (destination && !tz_write_all(destination, c->scratch, want))
-            return false;
+        if (!tz_lzma_read(c->z, c->scratch, want, &got) || got != want) return false;
+        if (destination && !tz_write_all(destination, c->scratch, want)) return false;
         if (keep) {
             xx_rt_memcpy(c->cache + cached, c->scratch, want);
             cached += want;
@@ -836,24 +806,24 @@ typedef struct tz_stream_s {
     tz_cursor *cursor;
 } tz_stream;
 
-static void tz_stream_free(void *opaque) {
+static void tz_stream_free(void *opaque)
+{
     tz_stream *stream = (tz_stream *)opaque;
     if (!stream) return;
     tz_cursor_free(stream->cursor);
     xx_mem_free(stream);
 }
 
-static bool tz_copy_options(xx_list_s *destination, const xx_list_s *source) {
+static bool tz_copy_options(xx_list_s *destination, const xx_list_s *source)
+{
     size_t index;
     if (!source) return true;
     for (index = 0U; index < source->count; ++index) {
-        const xx_meta *original =
-            (const xx_meta *)xx_list_at((const xx_list_t *)source, index);
+        const xx_meta *original = (const xx_meta *)xx_list_at((const xx_list_t *)source, index);
         xx_meta copy;
         if (!original) continue;
         xx_meta_init(&copy, original->meta_id);
-        if (!xx_var_copy(&copy.var, &original->var) ||
-            !xx_list_append(destination, &copy)) {
+        if (!xx_var_copy(&copy.var, &original->var) || !xx_list_append(destination, &copy)) {
             xx_meta_cleanup(&copy);
             return false;
         }
@@ -861,31 +831,32 @@ static bool tz_copy_options(xx_list_s *destination, const xx_list_s *source) {
     return true;
 }
 
-static const xx_var *tz_option(const xx_list_s *options, uint32_t id) {
+static const xx_var *tz_option(const xx_list_s *options, uint32_t id)
+{
     size_t index;
     if (!options) return NULL;
     for (index = 0U; index < options->count; ++index) {
-        const xx_meta *meta =
-            (const xx_meta *)xx_list_at((const xx_list_t *)options, index);
+        const xx_meta *meta = (const xx_meta *)xx_list_at((const xx_list_t *)options, index);
         if (meta && meta->meta_id == id) return &meta->var;
     }
     return NULL;
 }
 
 /* Members are numbered in stream order, as the reference reader names them. */
-static void tz_member_name(uint64_t number, char *name) {
+static void tz_member_name(uint64_t number, char *name)
+{
     char digits[TZ_NAME_MAX];
     size_t count = 0U, index;
     do {
         digits[count++] = (char)('0' + (int)(number % 10U));
         number /= 10U;
     } while (number != 0U && count < sizeof(digits) - 1U);
-    for (index = 0U; index < count; ++index)
-        name[index] = digits[count - 1U - index];
+    for (index = 0U; index < count; ++index) name[index] = digits[count - 1U - index];
     name[count] = 0;
 }
 
-static bool tz_set_record(xx_archive_record *record, const tz_cursor *c) {
+static bool tz_set_record(xx_archive_record *record, const tz_cursor *c)
+{
     const tz_section *section = &c->sections[c->section];
     char name[TZ_NAME_MAX];
     uint64_t filetime = xx_data_get_u64(c->header + 0x20U, 8, 0, false);
@@ -894,28 +865,20 @@ static bool tz_set_record(xx_archive_record *record, const tz_cursor *c) {
     tz_member_name(c->listed, name);
     record->header_offset = c->format->base_address + section->offset;
     record->header_size = TZ_STREAM;
-    record->data_offset =
-        c->format->base_address + section->offset + TZ_STREAM;
+    record->data_offset = c->format->base_address + section->offset + TZ_STREAM;
     record->compressed_size = section->size - TZ_STREAM;
-    if (!xx_archive_record_set_original_name(record, name) ||
-        !xx_archive_record_set_meta_u64(record, XX_META_ID_UNCOMPRESSED_SIZE,
-                                        c->data_size) ||
-        !xx_archive_record_set_meta_u64(record, XX_META_ID_COMPRESSION_METHOD,
-                                        XX_TARMA_INSTALLER_METHOD_LZMA) ||
-        !xx_archive_record_set_meta_bool(record, XX_META_ID_IS_ENCRYPTED,
-                                         false) ||
-        !xx_archive_record_set_meta_bool(record, XX_META_ID_IS_FOLDER, false))
+    if (!xx_archive_record_set_original_name(record, name) || !xx_archive_record_set_meta_u64(record, XX_META_ID_UNCOMPRESSED_SIZE, c->data_size) ||
+        !xx_archive_record_set_meta_u64(record, XX_META_ID_COMPRESSION_METHOD, XX_TARMA_INSTALLER_METHOD_LZMA) ||
+        !xx_archive_record_set_meta_bool(record, XX_META_ID_IS_ENCRYPTED, false) || !xx_archive_record_set_meta_bool(record, XX_META_ID_IS_FOLDER, false))
         return false;
-    if (filetime != 0U &&
-        !xx_archive_record_set_meta_u64(record, XX_META_ID_TIMESTAMP, filetime))
-        return false;
+    if (filetime != 0U && !xx_archive_record_set_meta_u64(record, XX_META_ID_TIMESTAMP, filetime)) return false;
     return true;
 }
 
 /* ---- public API -------------------------------------------------------- */
 
-void xx_tarma_installer_init(xx_tarma_installer *archive, xx_io_device *device,
-                             int64_t base_address) {
+void xx_tarma_installer_init(xx_tarma_installer *archive, xx_io_device *device, int64_t base_address)
+{
     if (!archive) return;
     xx_mem_zero(archive, sizeof(*archive));
     xx_format_init(&archive->format, device, base_address);
@@ -923,55 +886,49 @@ void xx_tarma_installer_init(xx_tarma_installer *archive, xx_io_device *device,
     archive->format.file_type = XX_TARMA_INSTALLER_FILE_TYPE;
     archive->format.format_type = XX_TYPE_ARCHIVE;
     archive->format.is_archive = true;
-    xx_format_set_mime_type(&archive->format,
-                            "application/x-tarma-installer");
+    xx_format_set_mime_type(&archive->format, "application/x-tarma-installer");
     xx_format_set_extension(&archive->format, "exe");
     archive->format.check_is_valid = xx_tarma_installer_check_is_valid;
     archive->format.handle_base_info = xx_tarma_installer_handle_base_info;
     archive->format.get_format_size = xx_tarma_installer_get_format_size;
-    archive->format.get_number_of_archive_records =
-        xx_tarma_installer_get_number_of_archive_records;
-    archive->format.create_archive_records_reading =
-        xx_tarma_installer_create_archive_records_reading;
-    archive->format.get_current_archive_record =
-        xx_tarma_installer_get_current_archive_record;
-    archive->format.unpack_current_archive_record =
-        xx_tarma_installer_unpack_current_archive_record;
-    archive->format.archive_record_move_to_next =
-        xx_tarma_installer_archive_record_move_to_next;
-    archive->format.free_archive_records_reading =
-        xx_tarma_installer_free_archive_records_reading;
+    archive->format.get_number_of_archive_records = xx_tarma_installer_get_number_of_archive_records;
+    archive->format.create_archive_records_reading = xx_tarma_installer_create_archive_records_reading;
+    archive->format.get_current_archive_record = xx_tarma_installer_get_current_archive_record;
+    archive->format.unpack_current_archive_record = xx_tarma_installer_unpack_current_archive_record;
+    archive->format.archive_record_move_to_next = xx_tarma_installer_archive_record_move_to_next;
+    archive->format.free_archive_records_reading = xx_tarma_installer_free_archive_records_reading;
     archive->payload_offset = -1;
     archive->payload_end = -1;
 }
 
-xx_tarma_installer *xx_tarma_installer_create(xx_io_device *device,
-                                              int64_t base_address) {
-    xx_tarma_installer *archive =
-        (xx_tarma_installer *)xx_mem_alloc(sizeof(*archive));
+xx_tarma_installer *xx_tarma_installer_create(xx_io_device *device, int64_t base_address)
+{
+    xx_tarma_installer *archive = (xx_tarma_installer *)xx_mem_alloc(sizeof(*archive));
     if (archive) xx_tarma_installer_init(archive, device, base_address);
     return archive;
 }
 
-void xx_tarma_installer_destroy(xx_tarma_installer *archive) {
+void xx_tarma_installer_destroy(xx_tarma_installer *archive)
+{
     if (archive) xx_format_cleanup_extra_parameters(&archive->format);
 }
 
-void xx_tarma_installer_free(xx_tarma_installer *archive) {
+void xx_tarma_installer_free(xx_tarma_installer *archive)
+{
     if (!archive) return;
     xx_tarma_installer_destroy(archive);
     xx_mem_free(archive);
 }
 
-bool xx_tarma_installer_check_is_valid(Abstractformat *format,
-                                       xx_pd_struct *pd) {
+bool xx_tarma_installer_check_is_valid(Abstractformat *format, xx_pd_struct *pd)
+{
     tz_layout layout;
     (void)pd;
     return tz_locate(format, &layout, NULL);
 }
 
-bool xx_tarma_installer_handle_base_info(Abstractformat *format,
-                                         xx_pd_struct *pd) {
+bool xx_tarma_installer_handle_base_info(Abstractformat *format, xx_pd_struct *pd)
+{
     xx_tarma_installer *archive;
     tz_cursor *c;
     uint64_t unpacked = 0U;
@@ -999,13 +956,11 @@ bool xx_tarma_installer_handle_base_info(Abstractformat *format,
     archive->payload_end = c->layout.end;
     archive->truncated = c->layout.truncated;
     archive->damaged = c->error;
-    (void)xx_rt_snprintf(version, sizeof(version), "%u.%u",
-                         (unsigned)c->layout.major, (unsigned)c->layout.minor);
+    (void)xx_rt_snprintf(version, sizeof(version), "%u.%u", (unsigned)c->layout.major, (unsigned)c->layout.minor);
     xx_format_set_version(format, version);
     format->number_of_archive_records = c->listed;
     format->format_size = c->layout.end;
-    format->overlay_offset = c->layout.end < c->layout.size
-                                 ? format->base_address + c->layout.end : -1;
+    format->overlay_offset = c->layout.end < c->layout.size ? format->base_address + c->layout.end : -1;
     format->overlay_size = c->layout.size - c->layout.end;
     format->is_valid = true;
     format->base_info_handled = true;
@@ -1015,22 +970,18 @@ done:
     return result;
 }
 
-int64_t xx_tarma_installer_get_format_size(Abstractformat *format,
-                                           xx_pd_struct *pd) {
-    return format && (format->base_info_handled ||
-                      xx_tarma_installer_handle_base_info(format, pd))
-               ? format->format_size : -1;
+int64_t xx_tarma_installer_get_format_size(Abstractformat *format, xx_pd_struct *pd)
+{
+    return format && (format->base_info_handled || xx_tarma_installer_handle_base_info(format, pd)) ? format->format_size : -1;
 }
 
-uint64_t xx_tarma_installer_get_number_of_archive_records(
-    Abstractformat *format, xx_pd_struct *pd) {
-    return format && (format->base_info_handled ||
-                      xx_tarma_installer_handle_base_info(format, pd))
-               ? ((xx_tarma_installer *)format)->number_of_records : 0U;
+uint64_t xx_tarma_installer_get_number_of_archive_records(Abstractformat *format, xx_pd_struct *pd)
+{
+    return format && (format->base_info_handled || xx_tarma_installer_handle_base_info(format, pd)) ? ((xx_tarma_installer *)format)->number_of_records : 0U;
 }
 
-xx_archive_record_state *xx_tarma_installer_create_archive_records_reading(
-    Abstractformat *format, const xx_list_s *options, xx_pd_struct *pd) {
+xx_archive_record_state *xx_tarma_installer_create_archive_records_reading(Abstractformat *format, const xx_list_s *options, xx_pd_struct *pd)
+{
     tz_stream *stream;
     xx_archive_record_state *state;
     if (!format) return NULL;
@@ -1049,9 +1000,7 @@ xx_archive_record_state *xx_tarma_installer_create_archive_records_reading(
     xx_archive_record_state_init(state, format);
     state->internal_state = stream;
     state->free_internal = tz_stream_free;
-    state->total_records =
-        format->base_info_handled
-            ? (int64_t)((xx_tarma_installer *)format)->number_of_records : -1;
+    state->total_records = format->base_info_handled ? (int64_t)((xx_tarma_installer *)format)->number_of_records : -1;
     if (!tz_copy_options(&state->options, options)) {
         xx_archive_record_state_free(state);
         return NULL;
@@ -1067,18 +1016,15 @@ xx_archive_record_state *xx_tarma_installer_create_archive_records_reading(
     return state;
 }
 
-const xx_archive_record *xx_tarma_installer_get_current_archive_record(
-    Abstractformat *format, xx_archive_record_state *state) {
-    return format && state && state->format == format && state->has_record
-               ? &state->current_record : NULL;
+const xx_archive_record *xx_tarma_installer_get_current_archive_record(Abstractformat *format, xx_archive_record_state *state)
+{
+    return format && state && state->format == format && state->has_record ? &state->current_record : NULL;
 }
 
-bool xx_tarma_installer_archive_record_move_to_next(
-    Abstractformat *format, xx_archive_record_state *state, xx_pd_struct *pd) {
+bool xx_tarma_installer_archive_record_move_to_next(Abstractformat *format, xx_archive_record_state *state, xx_pd_struct *pd)
+{
     tz_stream *stream;
-    if (!format || !state || state->format != format || !state->has_record ||
-        !(stream = (tz_stream *)state->internal_state) ||
-        !tz_cursor_next(stream->cursor, pd) ||
+    if (!format || !state || state->format != format || !state->has_record || !(stream = (tz_stream *)state->internal_state) || !tz_cursor_next(stream->cursor, pd) ||
         !tz_set_record(&state->current_record, stream->cursor)) {
         if (state) state->has_record = false;
         return false;
@@ -1087,8 +1033,8 @@ bool xx_tarma_installer_archive_record_move_to_next(
     return true;
 }
 
-bool xx_tarma_installer_unpack_current_archive_record(
-    Abstractformat *format, xx_archive_record_state *state, xx_pd_struct *pd) {
+bool xx_tarma_installer_unpack_current_archive_record(Abstractformat *format, xx_archive_record_state *state, xx_pd_struct *pd)
+{
     tz_stream *stream;
     const xx_var *path_option;
     const char *base = NULL;
@@ -1097,28 +1043,21 @@ bool xx_tarma_installer_unpack_current_archive_record(
     char name[TZ_NAME_MAX];
     bool result = false;
     bool created = false;
-    if (!format || !state || state->format != format || !state->has_record ||
-        !(stream = (tz_stream *)state->internal_state) ||
-        (pd && xx_pd_is_stopped(pd)))
+    if (!format || !state || state->format != format || !state->has_record || !(stream = (tz_stream *)state->internal_state) || (pd && xx_pd_is_stopped(pd)))
         return false;
     path_option = tz_option(&state->options, XX_META_ID_OPT_UNPACK_PATH);
     if (!path_option) return tz_cursor_unpack(stream->cursor, NULL, pd);
     /* The name is the member's decimal number, so it is always a plain,
      * non-reserved file name and never collides with another member. */
     tz_member_name(stream->cursor->listed, name);
-    if (path_option->type == XX_VAR_TYPE_STRING ||
-        path_option->type == XX_VAR_TYPE_STRING_VIEW) {
+    if (path_option->type == XX_VAR_TYPE_STRING || path_option->type == XX_VAR_TYPE_STRING_VIEW) {
         base = xx_var_get_str(path_option);
-    } else if (path_option->type == XX_VAR_TYPE_WSTRING ||
-               path_option->type == XX_VAR_TYPE_WSTRING_VIEW) {
+    } else if (path_option->type == XX_VAR_TYPE_WSTRING || path_option->type == XX_VAR_TYPE_WSTRING_VIEW) {
         owned_base = xx_str_unicode_to_utf8(xx_var_get_wstr(path_option));
         base = owned_base;
     }
     if (!base) goto done;
-    path = (base[0] && base[xx_str_len(base) - 1U] != '/' &&
-            base[xx_str_len(base) - 1U] != '\\')
-               ? xx_str_concat3(base, "/", name)
-               : xx_str_concat(base, name);
+    path = (base[0] && base[xx_str_len(base) - 1U] != '/' && base[xx_str_len(base) - 1U] != '\\') ? xx_str_concat3(base, "/", name) : xx_str_concat(base, name);
     if (!path || !xx_store_create_dirs_a(path, false)) goto done;
     {
         xx_io_device *destination = xx_io_file_open(path, "wb");
@@ -1134,19 +1073,16 @@ done:
     return result;
 }
 
-bool xx_tarma_installer_unpack_current_to_device(
-    Abstractformat *format, xx_archive_record_state *state,
-    xx_io_device *destination, xx_pd_struct *pd) {
+bool xx_tarma_installer_unpack_current_to_device(Abstractformat *format, xx_archive_record_state *state, xx_io_device *destination, xx_pd_struct *pd)
+{
     tz_stream *stream;
-    if (!format || !state || state->format != format || !state->has_record ||
-        !(stream = (tz_stream *)state->internal_state) ||
-        (pd && xx_pd_is_stopped(pd)))
+    if (!format || !state || state->format != format || !state->has_record || !(stream = (tz_stream *)state->internal_state) || (pd && xx_pd_is_stopped(pd)))
         return false;
     return tz_cursor_unpack(stream->cursor, destination, pd);
 }
 
-void xx_tarma_installer_free_archive_records_reading(
-    Abstractformat *format, xx_archive_record_state *state) {
+void xx_tarma_installer_free_archive_records_reading(Abstractformat *format, xx_archive_record_state *state)
+{
     (void)format;
     xx_archive_record_state_free(state);
 }

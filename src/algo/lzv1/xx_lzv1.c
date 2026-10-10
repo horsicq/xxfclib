@@ -25,8 +25,8 @@ typedef struct xx_lzv1_bit_reader_s {
     unsigned bits_left;
 } xx_lzv1_bit_reader;
 
-static bool xx_lzv1_read_bits(xx_lzv1_bit_reader *reader, unsigned count,
-                              uint32_t *value) {
+static bool xx_lzv1_read_bits(xx_lzv1_bit_reader *reader, unsigned count, uint32_t *value)
+{
     uint32_t result = 0U;
     unsigned index;
     if (!reader || !value || count == 0U || count > 16U) return false;
@@ -36,8 +36,7 @@ static bool xx_lzv1_read_bits(xx_lzv1_bit_reader *reader, unsigned count,
             reader->current = reader->data[reader->position++];
             reader->bits_left = 8U;
         }
-        result = (result << 1U) |
-                 (uint32_t)((reader->current >> 7U) & 1U);
+        result = (result << 1U) | (uint32_t)((reader->current >> 7U) & 1U);
         reader->current = (uint8_t)(reader->current << 1U);
         --reader->bits_left;
     }
@@ -45,14 +44,11 @@ static bool xx_lzv1_read_bits(xx_lzv1_bit_reader *reader, unsigned count,
     return true;
 }
 
-bool xx_lzv1_parse_header(const uint8_t *input, size_t input_size,
-                          xx_lzv1_header *header) {
-    static const uint8_t fixed_bytes[] = {
-        0x5dU, 0x19U, 0x01U, 0xadU, 0x00U, 0x00U
-    };
+bool xx_lzv1_parse_header(const uint8_t *input, size_t input_size, xx_lzv1_header *header)
+{
+    static const uint8_t fixed_bytes[] = {0x5dU, 0x19U, 0x01U, 0xadU, 0x00U, 0x00U};
     uint16_t max_codes;
-    if (!input || !header || input_size < XX_LZV1_HEADER_SIZE ||
-        xx_rt_memcmp(input, "LZV1", 4U) != 0 ||
+    if (!input || !header || input_size < XX_LZV1_HEADER_SIZE || xx_rt_memcmp(input, "LZV1", 4U) != 0 ||
         xx_rt_memcmp(input + 4U, fixed_bytes, sizeof(fixed_bytes)) != 0) {
         return false;
     }
@@ -64,8 +60,8 @@ bool xx_lzv1_parse_header(const uint8_t *input, size_t input_size,
     return true;
 }
 
-static bool xx_lzv1_append(uint8_t **output, size_t *output_size,
-                           size_t *capacity, uint8_t value) {
+static bool xx_lzv1_append(uint8_t **output, size_t *output_size, size_t *capacity, uint8_t value)
+{
     uint8_t *resized;
     size_t new_capacity;
     if (!output || !output_size || !capacity || *output_size >= XX_LZV1_MAX_OUTPUT) {
@@ -89,15 +85,12 @@ static bool xx_lzv1_append(uint8_t **output, size_t *output_size,
     return true;
 }
 
-static bool xx_lzv1_append_code(const uint16_t *prefix,
-                                const uint8_t *suffix, uint16_t max_codes,
-                                uint16_t code, uint8_t *stack,
-                                size_t *stack_size, uint8_t **output,
-                                size_t *output_size, size_t *capacity) {
+static bool xx_lzv1_append_code(const uint16_t *prefix, const uint8_t *suffix, uint16_t max_codes, uint16_t code, uint8_t *stack, size_t *stack_size, uint8_t **output,
+                                size_t *output_size, size_t *capacity)
+{
     size_t count = 0U;
     uint16_t current = code;
-    if (!prefix || !suffix || !stack || !stack_size || !output ||
-        !output_size || !capacity || code >= max_codes) {
+    if (!prefix || !suffix || !stack || !stack_size || !output || !output_size || !capacity || code >= max_codes) {
         return false;
     }
     for (;;) {
@@ -118,8 +111,8 @@ static bool xx_lzv1_append_code(const uint16_t *prefix,
     return true;
 }
 
-bool xx_lzv1_decompress_memory(const uint8_t *input, size_t input_size,
-                               uint8_t **output, size_t *output_size) {
+bool xx_lzv1_decompress_memory(const uint8_t *input, size_t input_size, uint8_t **output, size_t *output_size)
+{
     xx_lzv1_header header;
     xx_lzv1_bit_reader reader;
     uint16_t *prefix = NULL;
@@ -134,12 +127,10 @@ bool xx_lzv1_decompress_memory(const uint8_t *input, size_t input_size,
     if (!output || !output_size) return false;
     *output = NULL;
     *output_size = 0U;
-    if (!input || input_size <= XX_LZV1_HEADER_SIZE ||
-        !xx_lzv1_parse_header(input, input_size, &header)) {
+    if (!input || input_size <= XX_LZV1_HEADER_SIZE || !xx_lzv1_parse_header(input, input_size, &header)) {
         return false;
     }
-    prefix = (uint16_t *)xx_mem_alloc((size_t)header.max_codes *
-                                      sizeof(*prefix));
+    prefix = (uint16_t *)xx_mem_alloc((size_t)header.max_codes * sizeof(*prefix));
     suffix = (uint8_t *)xx_mem_alloc((size_t)header.max_codes);
     first = (uint8_t *)xx_mem_alloc((size_t)header.max_codes);
     stack = (uint8_t *)xx_mem_alloc((size_t)header.max_codes + 1U);
@@ -173,9 +164,7 @@ bool xx_lzv1_decompress_memory(const uint8_t *input, size_t input_size,
                 ++width;
                 width_limit = (uint16_t)(width_limit >> 1U);
             }
-            if (!xx_lzv1_append_code(prefix, suffix, header.max_codes,
-                                     current, stack, &unused_stack_size,
-                                     &result, &result_size, &capacity)) {
+            if (!xx_lzv1_append_code(prefix, suffix, header.max_codes, current, stack, &unused_stack_size, &result, &result_size, &capacity)) {
                 goto cleanup;
             }
             if ((uint16_t)(next + 1U) == header.max_codes) break;
@@ -194,8 +183,7 @@ bool xx_lzv1_decompress_memory(const uint8_t *input, size_t input_size,
                     finished = true;
                     break;
                 }
-                value = ((int32_t)(raw + limit) * 2) - (int32_t)next - 1 +
-                        (int32_t)continuation;
+                value = ((int32_t)(raw + limit) * 2) - (int32_t)next - 1 + (int32_t)continuation;
             }
             if (value < 0 || value > (int32_t)next || next >= header.max_codes) {
                 goto cleanup;

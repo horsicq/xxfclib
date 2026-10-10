@@ -72,29 +72,21 @@ struct xx_shrs {
     void *internal;
 };
 
-XXFC_API void xx_shrs_init(xx_shrs *shrs, xx_io_device *dev,
-                           int64_t base_address);
+XXFC_API void xx_shrs_init(xx_shrs *shrs, xx_io_device *dev, int64_t base_address);
 XXFC_API xx_shrs *xx_shrs_create(xx_io_device *dev, int64_t base_address);
 XXFC_API void xx_shrs_destroy(xx_shrs *shrs);
 XXFC_API void xx_shrs_free(xx_shrs *shrs);
 
 XXFC_API bool xx_shrs_check_is_valid(Abstractformat *self, xx_pd_struct *pd);
 XXFC_API bool xx_shrs_handle_base_info(Abstractformat *self, xx_pd_struct *pd);
-XXFC_API int64_t xx_shrs_get_format_size(Abstractformat *self,
-                                         xx_pd_struct *pd);
-XXFC_API uint64_t xx_shrs_get_number_of_archive_records(Abstractformat *self,
-                                                        xx_pd_struct *pd);
+XXFC_API int64_t xx_shrs_get_format_size(Abstractformat *self, xx_pd_struct *pd);
+XXFC_API uint64_t xx_shrs_get_number_of_archive_records(Abstractformat *self, xx_pd_struct *pd);
 
-XXFC_API xx_archive_record_state *xx_shrs_create_archive_records_reading(
-    Abstractformat *self, const xx_list_s *options, xx_pd_struct *pd);
-XXFC_API const xx_archive_record *xx_shrs_get_current_archive_record(
-    Abstractformat *self, xx_archive_record_state *state);
-XXFC_API bool xx_shrs_unpack_current_archive_record(
-    Abstractformat *self, xx_archive_record_state *state, xx_pd_struct *pd);
-XXFC_API bool xx_shrs_archive_record_move_to_next(
-    Abstractformat *self, xx_archive_record_state *state, xx_pd_struct *pd);
-XXFC_API void xx_shrs_free_archive_records_reading(
-    Abstractformat *self, xx_archive_record_state *state);
+XXFC_API xx_archive_record_state *xx_shrs_create_archive_records_reading(Abstractformat *self, const xx_list_s *options, xx_pd_struct *pd);
+XXFC_API const xx_archive_record *xx_shrs_get_current_archive_record(Abstractformat *self, xx_archive_record_state *state);
+XXFC_API bool xx_shrs_unpack_current_archive_record(Abstractformat *self, xx_archive_record_state *state, xx_pd_struct *pd);
+XXFC_API bool xx_shrs_archive_record_move_to_next(Abstractformat *self, xx_archive_record_state *state, xx_pd_struct *pd);
+XXFC_API void xx_shrs_free_archive_records_reading(Abstractformat *self, xx_archive_record_state *state);
 
 XXFC_API uint64_t xx_shrs_get_number_of_records(const xx_shrs *shrs);
 XXFC_API uint32_t xx_shrs_get_encrypted_data_size(const xx_shrs *shrs);
@@ -102,18 +94,24 @@ XXFC_API uint32_t xx_shrs_get_encrypted_data_size(const xx_shrs *shrs);
 XXFC_API const uint8_t *xx_shrs_get_iv(const xx_shrs *shrs);
 XXFC_API int64_t xx_shrs_get_archive_end(const xx_shrs *shrs);
 
-static inline Abstractformat *xx_shrs_to_format(xx_shrs *shrs) {
+static inline Abstractformat *xx_shrs_to_format(xx_shrs *shrs)
+{
     return shrs ? &shrs->format : NULL;
 }
-static inline void XShrs_init(xx_shrs *shrs, xx_io_device *dev,
-                              int64_t base_address) {
+static inline void XShrs_init(xx_shrs *shrs, xx_io_device *dev, int64_t base_address)
+{
     xx_shrs_init(shrs, dev, base_address);
 }
-static inline xx_shrs *XShrs_create(xx_io_device *dev, int64_t base_address) {
+static inline xx_shrs *XShrs_create(xx_io_device *dev, int64_t base_address)
+{
     return xx_shrs_create(dev, base_address);
 }
-static inline void XShrs_free(xx_shrs *shrs) { xx_shrs_free(shrs); }
-static inline bool XShrs_is_valid(xx_shrs *shrs, xx_pd_struct *pd) {
+static inline void XShrs_free(xx_shrs *shrs)
+{
+    xx_shrs_free(shrs);
+}
+static inline bool XShrs_is_valid(xx_shrs *shrs, xx_pd_struct *pd)
+{
     return shrs ? xx_format_is_valid(&shrs->format, pd) : false;
 }
 

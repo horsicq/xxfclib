@@ -35,9 +35,8 @@
  * so a 64-bit caller cannot ask for more than this either. */
 #define ROMPAQ_MAX_IMAGE_SIZE 0x7fffffffU
 
-bool xx_rompaq_decode_memory(const uint8_t *input, size_t input_size,
-                             uint8_t *output, size_t output_size,
-                             size_t *written) {
+bool xx_rompaq_decode_memory(const uint8_t *input, size_t input_size, uint8_t *output, size_t output_size, size_t *written)
+{
     size_t offset = 0U;
     size_t produced = 0U;
 
@@ -58,8 +57,7 @@ bool xx_rompaq_decode_memory(const uint8_t *input, size_t input_size,
         if (offset > input_size - ROMPAQ_HEADER_SIZE) return false;
 
         version = xx_data_get_u16(input + offset + ROMPAQ_OFFSET_VERSION, 2, 0, false);
-        if ((version != ROMPAQ_VERSION_100) &&
-            (version != ROMPAQ_VERSION_101)) {
+        if ((version != ROMPAQ_VERSION_100) && (version != ROMPAQ_VERSION_101)) {
             return false;
         }
 
@@ -88,8 +86,7 @@ bool xx_rompaq_decode_memory(const uint8_t *input, size_t input_size,
             }
             remaining = output_size - produced;
             if (remaining == 0U) return false;
-            if (!xx_dcl_scan_memory(input + payload, part_size, remaining,
-                                    NULL, &bank_out)) {
+            if (!xx_dcl_scan_memory(input + payload, part_size, remaining, NULL, &bank_out)) {
                 return false;
             }
             /* Matching the reference: XDclDecoder refuses a stream that
@@ -97,17 +94,13 @@ bool xx_rompaq_decode_memory(const uint8_t *input, size_t input_size,
             if (bank_out == 0U) return false;
             {
                 size_t bank_written = 0U;
-                if (!xx_dcl_decode_memory(input + payload, part_size,
-                                          output + produced, bank_out,
-                                          &bank_written) ||
-                    (bank_written != bank_out)) {
+                if (!xx_dcl_decode_memory(input + payload, part_size, output + produced, bank_out, &bank_written) || (bank_written != bank_out)) {
                     return false;
                 }
             }
             produced += bank_out;
         } else if (method == ROMPAQ_METHOD_STORED) {
-            if ((part_size > input_size - payload) ||
-                (part_size > output_size - produced)) {
+            if ((part_size > input_size - payload) || (part_size > output_size - produced)) {
                 return false;
             }
             if (part_size > 0U) {

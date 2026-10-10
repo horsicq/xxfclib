@@ -38,16 +38,13 @@ extern "C" {
  * @param written     Receives the produced size; set on every path.
  * @return true only when the chain decoded to exactly the declared size.
  */
-XXFC_API bool xx_ivt_decode_memory(const uint8_t *input, size_t input_size,
-                                   uint8_t *output, size_t output_size,
-                                   size_t *written);
+XXFC_API bool xx_ivt_decode_memory(const uint8_t *input, size_t input_size, uint8_t *output, size_t output_size, size_t *written);
 
 /**
  * @brief The uncompressed size an IVT member declares, without decoding it.
  * @return false when @p input is not a well-formed 12-byte IVT header.
  */
-XXFC_API bool xx_ivt_declared_size(const uint8_t *input, size_t input_size,
-                                   size_t *declared);
+XXFC_API bool xx_ivt_declared_size(const uint8_t *input, size_t input_size, size_t *declared);
 
 #ifdef __cplusplus
 }

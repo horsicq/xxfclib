@@ -70,17 +70,15 @@ static void xx_kolibrikpack_vtable_destroy(Abstractformat *self);
 
 /* ------------------------------------------------------------- helpers -- */
 
-static bool xx_kolibrikpack_read_at(Abstractformat *self, int64_t offset,
-                              uint8_t *buffer, size_t size) {
+static bool xx_kolibrikpack_read_at(Abstractformat *self, int64_t offset, uint8_t *buffer, size_t size)
+{
     size_t completed = 0U;
 
-    if (!self || !self->device || offset < 0 ||
-        xx_io_seek64(self->device, offset, SEEK_SET) != 0) {
+    if (!self || !self->device || offset < 0 || xx_io_seek64(self->device, offset, SEEK_SET) != 0) {
         return false;
     }
     while (completed < size) {
-        ssize_t received =
-            xx_io_read(self->device, buffer + completed, size - completed);
+        ssize_t received = xx_io_read(self->device, buffer + completed, size - completed);
         if (received <= 0 || (size_t)received > size - completed) {
             return false;
         }
@@ -89,14 +87,14 @@ static bool xx_kolibrikpack_read_at(Abstractformat *self, int64_t offset,
     return true;
 }
 
-static XXFC_MAYBE_UNUSED bool xx_kolibrikpack_range_within(int64_t total, int64_t offset,
-                                   int64_t size) {
-    return offset >= 0 && size >= 0 && offset <= total &&
-           size <= total - offset;
+static XXFC_MAYBE_UNUSED bool xx_kolibrikpack_range_within(int64_t total, int64_t offset, int64_t size)
+{
+    return offset >= 0 && size >= 0 && offset <= total && size <= total - offset;
 }
 
 /* Refuse anything that would escape the extraction directory. */
-static bool xx_kolibrikpack_path_safe(const char *name) {
+static bool xx_kolibrikpack_path_safe(const char *name)
+{
     const char *cursor = name;
 
     if (!name || !name[0] || name[0] == '/') return false;
@@ -111,7 +109,8 @@ static bool xx_kolibrikpack_path_safe(const char *name) {
     return true;
 }
 
-static void xx_kolibrikpack_stream_free(void *pointer) {
+static void xx_kolibrikpack_stream_free(void *pointer)
+{
     xx_kolibrikpack_stream *stream = (xx_kolibrikpack_stream *)pointer;
     size_t index;
 
@@ -124,17 +123,15 @@ static void xx_kolibrikpack_stream_free(void *pointer) {
 }
 
 /* Append a member, taking ownership of @p name. */
-static bool xx_kolibrikpack_add(xx_kolibrikpack_stream *stream,
-                          const xx_kolibrikpack_member *member) {
-    xx_kolibrikpack_member *grown = (xx_kolibrikpack_member *)xx_mem_realloc(
-        stream->items, sizeof(*grown) * (stream->count + 1U));
+static bool xx_kolibrikpack_add(xx_kolibrikpack_stream *stream, const xx_kolibrikpack_member *member)
+{
+    xx_kolibrikpack_member *grown = (xx_kolibrikpack_member *)xx_mem_realloc(stream->items, sizeof(*grown) * (stream->count + 1U));
 
     if (!grown) return false;
     stream->items = grown;
     stream->items[stream->count++] = *member;
     return true;
 }
-
 
 #define XX_KOLIBRIKPACK_MAX_MEMBERS 1
 #define XX_KOLIBRIKPACK_HEADER_SIZE 12
@@ -143,9 +140,7 @@ static bool xx_kolibrikpack_add(xx_kolibrikpack_stream *stream,
 #define XX_KOLIBRIKPACK_FLAG_LZMA 0x01U
 #define XX_KOLIBRIKPACK_FLAG_CALLTRICK1 0x40U
 #define XX_KOLIBRIKPACK_FLAG_CALLTRICK2 0x80U
-#define XX_KOLIBRIKPACK_METHOD_MASK                                          \
-    (XX_KOLIBRIKPACK_FLAG_LZMA | XX_KOLIBRIKPACK_FLAG_CALLTRICK1 |           \
-     XX_KOLIBRIKPACK_FLAG_CALLTRICK2)
+#define XX_KOLIBRIKPACK_METHOD_MASK (XX_KOLIBRIKPACK_FLAG_LZMA | XX_KOLIBRIKPACK_FLAG_CALLTRICK1 | XX_KOLIBRIKPACK_FLAG_CALLTRICK2)
 #define XX_KOLIBRIKPACK_MAX_COMPRESSED ((int64_t)0x10000000)
 #define XX_KOLIBRIKPACK_MAX_DECODED ((int64_t)0x20000000)
 
@@ -154,14 +149,12 @@ static bool xx_kolibrikpack_add(xx_kolibrikpack_stream *stream,
 static xx_kolibrikpack_stream *xx_kolibrikpack_parse(Abstractformat *self, xx_pd_struct *pd);
 static bool xx_kolibrikpack_decode(Abstractformat *self, const xx_kolibrikpack_member *member, uint8_t **out, size_t *out_size, xx_pd_struct *pd);
 
-
 /* The container holds exactly one stream; the cap keeps the shared shape of
  * these readers. */
 
-static xx_kolibrikpack_stream *xx_kolibrikpack_parse(Abstractformat *self,
-                                                     xx_pd_struct *pd) {
-    static const uint8_t magic[4] = {(uint8_t)'K', (uint8_t)'P', (uint8_t)'C',
-                                     (uint8_t)'K'};
+static xx_kolibrikpack_stream *xx_kolibrikpack_parse(Abstractformat *self, xx_pd_struct *pd)
+{
+    static const uint8_t magic[4] = {(uint8_t)'K', (uint8_t)'P', (uint8_t)'C', (uint8_t)'K'};
     xx_kolibrikpack_stream *stream = NULL;
     xx_kolibrikpack_member member;
     uint8_t header[XX_KOLIBRIKPACK_HEADER_SIZE];
@@ -179,8 +172,7 @@ static xx_kolibrikpack_stream *xx_kolibrikpack_parse(Abstractformat *self,
     if (span < XX_KOLIBRIKPACK_MIN_SIZE) return NULL;
     if (span > XX_KOLIBRIKPACK_MAX_COMPRESSED) return NULL;
     if (pd && xx_pd_is_stopped(pd)) return NULL;
-    if (!xx_kolibrikpack_read_at(self, self->base_address, header,
-                                 sizeof(header))) {
+    if (!xx_kolibrikpack_read_at(self, self->base_address, header, sizeof(header))) {
         return NULL;
     }
     if (xx_rt_memcmp(header, magic, sizeof(magic)) != 0) return NULL;
@@ -193,27 +185,21 @@ static xx_kolibrikpack_stream *xx_kolibrikpack_parse(Abstractformat *self,
      * most one call-trick filter and nothing else, so the upper 24 bits and
      * bits 1..5 must all be clear. Loosening this to "bit 0 set" would make
      * any file starting with "KPCK" match. */
-    if ((flags & ~(XX_KOLIBRIKPACK_FLAG_CALLTRICK1 |
-                   XX_KOLIBRIKPACK_FLAG_CALLTRICK2)) !=
-        XX_KOLIBRIKPACK_FLAG_LZMA) {
+    if ((flags & ~(XX_KOLIBRIKPACK_FLAG_CALLTRICK1 | XX_KOLIBRIKPACK_FLAG_CALLTRICK2)) != XX_KOLIBRIKPACK_FLAG_LZMA) {
         return NULL;
     }
     /* The two call-trick filters are alternatives, never both. */
-    if ((flags & (XX_KOLIBRIKPACK_FLAG_CALLTRICK1 |
-                  XX_KOLIBRIKPACK_FLAG_CALLTRICK2)) ==
-        (XX_KOLIBRIKPACK_FLAG_CALLTRICK1 | XX_KOLIBRIKPACK_FLAG_CALLTRICK2)) {
+    if ((flags & (XX_KOLIBRIKPACK_FLAG_CALLTRICK1 | XX_KOLIBRIKPACK_FLAG_CALLTRICK2)) == (XX_KOLIBRIKPACK_FLAG_CALLTRICK1 | XX_KOLIBRIKPACK_FLAG_CALLTRICK2)) {
         return NULL;
     }
-    if (unpacked_size == 0U ||
-        (int64_t)unpacked_size > XX_KOLIBRIKPACK_MAX_DECODED) {
+    if (unpacked_size == 0U || (int64_t)unpacked_size > XX_KOLIBRIKPACK_MAX_DECODED) {
         return NULL;
     }
 
     /* A filtered container must additionally have room for the five-byte
      * trailer the filter reads from its end. */
     minimum = XX_KOLIBRIKPACK_MIN_SIZE;
-    if (flags & (XX_KOLIBRIKPACK_FLAG_CALLTRICK1 |
-                 XX_KOLIBRIKPACK_FLAG_CALLTRICK2)) {
+    if (flags & (XX_KOLIBRIKPACK_FLAG_CALLTRICK1 | XX_KOLIBRIKPACK_FLAG_CALLTRICK2)) {
         minimum += XX_KOLIBRIKPACK_TRAILER_SIZE;
     }
     if (span < minimum) return NULL;
@@ -256,10 +242,8 @@ fail:
     return NULL;
 }
 
-
 /* The range coder alone needs four payload bytes, so this is the shortest
  * container that could possibly decode. */
-
 
 /* The container's own flags dword is published unchanged as the method, so a
  * listing shows exactly what the archive says. Bit 0 is always set. */
@@ -271,10 +255,8 @@ fail:
  * five-byte parameter block from the END of that buffer, so trimming the
  * header off the front would shift nothing but would make the reader's
  * contract differ from the codec's. */
-static bool xx_kolibrikpack_decode(Abstractformat *self,
-                                   const xx_kolibrikpack_member *member,
-                                   uint8_t **out, size_t *out_size,
-                                   xx_pd_struct *pd) {
+static bool xx_kolibrikpack_decode(Abstractformat *self, const xx_kolibrikpack_member *member, uint8_t **out, size_t *out_size, xx_pd_struct *pd)
+{
     uint8_t *input;
     uint8_t *output;
     size_t written = 0U;
@@ -292,29 +274,21 @@ static bool xx_kolibrikpack_decode(Abstractformat *self,
      * FLAG_LZMA. The unknown bits are zero for every valid method word, so
      * that compared 0 against 1 and failed every time -- this decoder could
      * never succeed on any input. */
-    if ((member->method & ~XX_KOLIBRIKPACK_METHOD_MASK) != 0U ||
-        (member->method & XX_KOLIBRIKPACK_FLAG_LZMA) !=
-            XX_KOLIBRIKPACK_FLAG_LZMA ||
-        (member->method & (XX_KOLIBRIKPACK_FLAG_CALLTRICK1 |
-                           XX_KOLIBRIKPACK_FLAG_CALLTRICK2)) ==
-            (XX_KOLIBRIKPACK_FLAG_CALLTRICK1 |
-             XX_KOLIBRIKPACK_FLAG_CALLTRICK2)) {
+    if ((member->method & ~XX_KOLIBRIKPACK_METHOD_MASK) != 0U || (member->method & XX_KOLIBRIKPACK_FLAG_LZMA) != XX_KOLIBRIKPACK_FLAG_LZMA ||
+        (member->method & (XX_KOLIBRIKPACK_FLAG_CALLTRICK1 | XX_KOLIBRIKPACK_FLAG_CALLTRICK2)) == (XX_KOLIBRIKPACK_FLAG_CALLTRICK1 | XX_KOLIBRIKPACK_FLAG_CALLTRICK2)) {
         return false;
     }
-    if (member->compressed_size < XX_KOLIBRIKPACK_MIN_SIZE ||
-        member->uncompressed_size < 1) {
+    if (member->compressed_size < XX_KOLIBRIKPACK_MIN_SIZE || member->uncompressed_size < 1) {
         return false;
     }
-    if (member->compressed_size > XX_KOLIBRIKPACK_MAX_COMPRESSED ||
-        member->uncompressed_size > XX_KOLIBRIKPACK_MAX_DECODED) {
+    if (member->compressed_size > XX_KOLIBRIKPACK_MAX_COMPRESSED || member->uncompressed_size > XX_KOLIBRIKPACK_MAX_DECODED) {
         return false;
     }
 
     input = (uint8_t *)xx_mem_alloc((size_t)member->compressed_size);
     if (!input) return false;
     /* data_offset is the magic, not the payload. */
-    if (!xx_kolibrikpack_read_at(self, member->data_offset, input,
-                                 (size_t)member->compressed_size)) {
+    if (!xx_kolibrikpack_read_at(self, member->data_offset, input, (size_t)member->compressed_size)) {
         xx_mem_free(input);
         return false;
     }
@@ -326,9 +300,7 @@ static bool xx_kolibrikpack_decode(Abstractformat *self,
     /* Re-check the header against the bytes actually read: parse validated a
      * snapshot, and this keeps the decode self-contained if the device
      * changed underneath. */
-    if (!xx_kolibrikpack_check_header(input, (size_t)member->compressed_size,
-                                      &declared) ||
-        declared != (size_t)member->uncompressed_size) {
+    if (!xx_kolibrikpack_check_header(input, (size_t)member->compressed_size, &declared) || declared != (size_t)member->uncompressed_size) {
         xx_mem_free(input);
         return false;
     }
@@ -338,11 +310,7 @@ static bool xx_kolibrikpack_decode(Abstractformat *self,
         xx_mem_free(input);
         return false;
     }
-    if (!xx_kolibrikpack_decode_memory(input,
-                                       (size_t)member->compressed_size,
-                                       output,
-                                       (size_t)member->uncompressed_size,
-                                       &written) ||
+    if (!xx_kolibrikpack_decode_memory(input, (size_t)member->compressed_size, output, (size_t)member->uncompressed_size, &written) ||
         written != (size_t)member->uncompressed_size) {
         xx_mem_free(output);
         xx_mem_free(input);
@@ -356,8 +324,8 @@ static bool xx_kolibrikpack_decode(Abstractformat *self,
 
 /* ---------------------------------------------------------- lifecycle --- */
 
-void xx_kolibrikpack_init(xx_kolibrikpack *archive, xx_io_device *device,
-                    int64_t base_address) {
+void xx_kolibrikpack_init(xx_kolibrikpack *archive, xx_io_device *device, int64_t base_address)
+{
     if (!archive) return;
     xx_mem_zero(archive, sizeof(*archive));
     xx_format_init(&archive->format, device, base_address);
@@ -370,22 +338,17 @@ void xx_kolibrikpack_init(xx_kolibrikpack *archive, xx_io_device *device,
     archive->format.check_is_valid = xx_kolibrikpack_check_is_valid;
     archive->format.handle_base_info = xx_kolibrikpack_handle_base_info;
     archive->format.get_format_size = xx_kolibrikpack_get_format_size;
-    archive->format.get_number_of_archive_records =
-        xx_kolibrikpack_get_number_of_archive_records;
-    archive->format.create_archive_records_reading =
-        xx_kolibrikpack_create_archive_records_reading;
-    archive->format.get_current_archive_record =
-        xx_kolibrikpack_get_current_archive_record;
-    archive->format.unpack_current_archive_record =
-        xx_kolibrikpack_unpack_current_archive_record;
-    archive->format.archive_record_move_to_next =
-        xx_kolibrikpack_archive_record_move_to_next;
-    archive->format.free_archive_records_reading =
-        xx_kolibrikpack_free_archive_records_reading;
+    archive->format.get_number_of_archive_records = xx_kolibrikpack_get_number_of_archive_records;
+    archive->format.create_archive_records_reading = xx_kolibrikpack_create_archive_records_reading;
+    archive->format.get_current_archive_record = xx_kolibrikpack_get_current_archive_record;
+    archive->format.unpack_current_archive_record = xx_kolibrikpack_unpack_current_archive_record;
+    archive->format.archive_record_move_to_next = xx_kolibrikpack_archive_record_move_to_next;
+    archive->format.free_archive_records_reading = xx_kolibrikpack_free_archive_records_reading;
     archive->format.destroy = xx_kolibrikpack_vtable_destroy;
 }
 
-xx_kolibrikpack *xx_kolibrikpack_create(xx_io_device *device, int64_t base_address) {
+xx_kolibrikpack *xx_kolibrikpack_create(xx_io_device *device, int64_t base_address)
+{
     xx_kolibrikpack *archive = (xx_kolibrikpack *)xx_mem_alloc(sizeof(*archive));
 
     if (!archive) return NULL;
@@ -393,7 +356,8 @@ xx_kolibrikpack *xx_kolibrikpack_create(xx_io_device *device, int64_t base_addre
     return archive;
 }
 
-void xx_kolibrikpack_destroy(xx_kolibrikpack *archive) {
+void xx_kolibrikpack_destroy(xx_kolibrikpack *archive)
+{
     if (!archive) return;
     /* Not xx_format_destroy: it dispatches through format.destroy, which is
      * the wrapper below, and the two would recurse. */
@@ -402,19 +366,22 @@ void xx_kolibrikpack_destroy(xx_kolibrikpack *archive) {
     archive->number_of_records = 0U;
 }
 
-void xx_kolibrikpack_free(xx_kolibrikpack *archive) {
+void xx_kolibrikpack_free(xx_kolibrikpack *archive)
+{
     if (!archive) return;
     xx_kolibrikpack_destroy(archive);
     xx_mem_free(archive);
 }
 
-static void xx_kolibrikpack_vtable_destroy(Abstractformat *self) {
+static void xx_kolibrikpack_vtable_destroy(Abstractformat *self)
+{
     xx_kolibrikpack_destroy((xx_kolibrikpack *)self);
 }
 
 /* -------------------------------------------------------------- format -- */
 
-bool xx_kolibrikpack_check_is_valid(Abstractformat *self, xx_pd_struct *pd) {
+bool xx_kolibrikpack_check_is_valid(Abstractformat *self, xx_pd_struct *pd)
+{
     xx_kolibrikpack_stream *stream;
 
     if (!self || (pd && xx_pd_is_stopped(pd))) return false;
@@ -424,7 +391,8 @@ bool xx_kolibrikpack_check_is_valid(Abstractformat *self, xx_pd_struct *pd) {
     return true;
 }
 
-bool xx_kolibrikpack_handle_base_info(Abstractformat *self, xx_pd_struct *pd) {
+bool xx_kolibrikpack_handle_base_info(Abstractformat *self, xx_pd_struct *pd)
+{
     xx_kolibrikpack *archive = (xx_kolibrikpack *)self;
     xx_kolibrikpack_stream *stream;
 
@@ -445,18 +413,17 @@ bool xx_kolibrikpack_handle_base_info(Abstractformat *self, xx_pd_struct *pd) {
     return true;
 }
 
-int64_t xx_kolibrikpack_get_format_size(Abstractformat *self, xx_pd_struct *pd) {
-    if (!self ||
-        (!self->base_info_handled && !xx_format_handle_base_info(self, pd))) {
+int64_t xx_kolibrikpack_get_format_size(Abstractformat *self, xx_pd_struct *pd)
+{
+    if (!self || (!self->base_info_handled && !xx_format_handle_base_info(self, pd))) {
         return 0;
     }
     return self->is_valid ? self->format_size : 0;
 }
 
-uint64_t xx_kolibrikpack_get_number_of_archive_records(Abstractformat *self,
-                                                 xx_pd_struct *pd) {
-    if (!self ||
-        (!self->base_info_handled && !xx_format_handle_base_info(self, pd))) {
+uint64_t xx_kolibrikpack_get_number_of_archive_records(Abstractformat *self, xx_pd_struct *pd)
+{
+    if (!self || (!self->base_info_handled && !xx_format_handle_base_info(self, pd))) {
         return 0U;
     }
     return self->is_valid ? ((xx_kolibrikpack *)self)->number_of_records : 0U;
@@ -464,8 +431,8 @@ uint64_t xx_kolibrikpack_get_number_of_archive_records(Abstractformat *self,
 
 /* ------------------------------------------------------------- records -- */
 
-static bool xx_kolibrikpack_set_record(xx_archive_record *record,
-                                 const xx_kolibrikpack_member *member) {
+static bool xx_kolibrikpack_set_record(xx_archive_record *record, const xx_kolibrikpack_member *member)
+{
     xx_archive_record_cleanup(record);
     xx_archive_record_init(record);
     record->header_offset = member->header_offset;
@@ -473,34 +440,24 @@ static bool xx_kolibrikpack_set_record(xx_archive_record *record,
     record->data_offset = member->data_offset;
     record->compressed_size = member->compressed_size;
     return xx_archive_record_set_original_name(record, member->name) &&
-           xx_archive_record_set_meta_u64(record, XX_META_ID_COMPRESSED_SIZE,
-                                          (uint64_t)member->compressed_size) &&
-           xx_archive_record_set_meta_u64(
-               record, XX_META_ID_UNCOMPRESSED_SIZE,
-               (uint64_t)member->uncompressed_size) &&
-           xx_archive_record_set_meta_u64(record, XX_META_ID_COMPRESSION_METHOD,
-                                          member->method) &&
-           xx_archive_record_set_meta_u64(record, XX_META_ID_TIMESTAMP,
-                                          member->timestamp) &&
-           xx_archive_record_set_meta_bool(record, XX_META_ID_IS_FOLDER,
-                                           member->is_folder) &&
-           xx_archive_record_set_meta_bool(record, XX_META_ID_IS_ENCRYPTED,
-                                           false);
+           xx_archive_record_set_meta_u64(record, XX_META_ID_COMPRESSED_SIZE, (uint64_t)member->compressed_size) &&
+           xx_archive_record_set_meta_u64(record, XX_META_ID_UNCOMPRESSED_SIZE, (uint64_t)member->uncompressed_size) &&
+           xx_archive_record_set_meta_u64(record, XX_META_ID_COMPRESSION_METHOD, member->method) &&
+           xx_archive_record_set_meta_u64(record, XX_META_ID_TIMESTAMP, member->timestamp) &&
+           xx_archive_record_set_meta_bool(record, XX_META_ID_IS_FOLDER, member->is_folder) && xx_archive_record_set_meta_bool(record, XX_META_ID_IS_ENCRYPTED, false);
 }
 
-static bool xx_kolibrikpack_copy_options(xx_list_s *target,
-                                   const xx_list_s *options) {
+static bool xx_kolibrikpack_copy_options(xx_list_s *target, const xx_list_s *options)
+{
     size_t index;
 
     if (!target || !options) return options == NULL;
     for (index = 0U; index < options->count; ++index) {
-        const xx_meta *source =
-            (const xx_meta *)xx_list_at((const xx_list_t *)options, index);
+        const xx_meta *source = (const xx_meta *)xx_list_at((const xx_list_t *)options, index);
         xx_meta copied;
         if (!source) continue;
         xx_meta_init(&copied, source->meta_id);
-        if (!xx_var_copy(&copied.var, &source->var) ||
-            !xx_list_append(target, &copied)) {
+        if (!xx_var_copy(&copied.var, &source->var) || !xx_list_append(target, &copied)) {
             xx_meta_cleanup(&copied);
             return false;
         }
@@ -508,21 +465,20 @@ static bool xx_kolibrikpack_copy_options(xx_list_s *target,
     return true;
 }
 
-static const xx_var *xx_kolibrikpack_get_option(const xx_list_s *options,
-                                          uint32_t meta_id) {
+static const xx_var *xx_kolibrikpack_get_option(const xx_list_s *options, uint32_t meta_id)
+{
     size_t index;
 
     if (!options) return NULL;
     for (index = 0U; index < options->count; ++index) {
-        const xx_meta *meta =
-            (const xx_meta *)xx_list_at((const xx_list_t *)options, index);
+        const xx_meta *meta = (const xx_meta *)xx_list_at((const xx_list_t *)options, index);
         if (meta && meta->meta_id == meta_id) return &meta->var;
     }
     return NULL;
 }
 
-xx_archive_record_state *xx_kolibrikpack_create_archive_records_reading(
-    Abstractformat *self, const xx_list_s *options, xx_pd_struct *pd) {
+xx_archive_record_state *xx_kolibrikpack_create_archive_records_reading(Abstractformat *self, const xx_list_s *options, xx_pd_struct *pd)
+{
     xx_kolibrikpack_stream *stream;
     xx_archive_record_state *state;
 
@@ -538,9 +494,7 @@ xx_archive_record_state *xx_kolibrikpack_create_archive_records_reading(
     state->internal_state = stream;
     state->free_internal = xx_kolibrikpack_stream_free;
     state->total_records = (int64_t)stream->count;
-    if (!xx_kolibrikpack_copy_options(&state->options, options) ||
-        (stream->count != 0U &&
-         !xx_kolibrikpack_set_record(&state->current_record, &stream->items[0]))) {
+    if (!xx_kolibrikpack_copy_options(&state->options, options) || (stream->count != 0U && !xx_kolibrikpack_set_record(&state->current_record, &stream->items[0]))) {
         xx_archive_record_state_free(state);
         return NULL;
     }
@@ -549,20 +503,16 @@ xx_archive_record_state *xx_kolibrikpack_create_archive_records_reading(
     return state;
 }
 
-const xx_archive_record *xx_kolibrikpack_get_current_archive_record(
-    Abstractformat *self, xx_archive_record_state *state) {
-    return self && state && state->format == self && state->has_record
-               ? &state->current_record
-               : NULL;
+const xx_archive_record *xx_kolibrikpack_get_current_archive_record(Abstractformat *self, xx_archive_record_state *state)
+{
+    return self && state && state->format == self && state->has_record ? &state->current_record : NULL;
 }
 
-bool xx_kolibrikpack_archive_record_move_to_next(Abstractformat *self,
-                                           xx_archive_record_state *state,
-                                           xx_pd_struct *pd) {
+bool xx_kolibrikpack_archive_record_move_to_next(Abstractformat *self, xx_archive_record_state *state, xx_pd_struct *pd)
+{
     xx_kolibrikpack_stream *stream;
 
-    if (!self || !state || state->format != self || !state->has_record ||
-        (pd && xx_pd_is_stopped(pd))) {
+    if (!self || !state || state->format != self || !state->has_record || (pd && xx_pd_is_stopped(pd))) {
         return false;
     }
     stream = (xx_kolibrikpack_stream *)state->internal_state;
@@ -574,14 +524,12 @@ bool xx_kolibrikpack_archive_record_move_to_next(Abstractformat *self,
     }
     ++stream->index;
     ++state->current_index;
-    state->has_record = xx_kolibrikpack_set_record(&state->current_record,
-                                             &stream->items[stream->index]);
+    state->has_record = xx_kolibrikpack_set_record(&state->current_record, &stream->items[stream->index]);
     return state->has_record;
 }
 
-bool xx_kolibrikpack_unpack_current_archive_record(Abstractformat *self,
-                                             xx_archive_record_state *state,
-                                             xx_pd_struct *pd) {
+bool xx_kolibrikpack_unpack_current_archive_record(Abstractformat *self, xx_archive_record_state *state, xx_pd_struct *pd)
+{
     xx_kolibrikpack_stream *stream;
     const xx_kolibrikpack_member *member;
     const xx_var *path_option;
@@ -593,8 +541,7 @@ bool xx_kolibrikpack_unpack_current_archive_record(Abstractformat *self,
     bool result = false;
     bool created = false;
 
-    if (!self || !state || state->format != self || !state->has_record ||
-        (pd && xx_pd_is_stopped(pd))) {
+    if (!self || !state || state->format != self || !state->has_record || (pd && xx_pd_is_stopped(pd))) {
         return false;
     }
     stream = (xx_kolibrikpack_stream *)state->internal_state;
@@ -602,8 +549,7 @@ bool xx_kolibrikpack_unpack_current_archive_record(Abstractformat *self,
     member = &stream->items[stream->index];
     if (!xx_kolibrikpack_path_safe(member->name)) return false;
 
-    path_option = xx_kolibrikpack_get_option(&state->options,
-                                       XX_META_ID_OPT_UNPACK_PATH);
+    path_option = xx_kolibrikpack_get_option(&state->options, XX_META_ID_OPT_UNPACK_PATH);
     if (!path_option) {
         /* No destination: decode and discard, which verifies the member
          * without writing anything. */
@@ -612,11 +558,9 @@ bool xx_kolibrikpack_unpack_current_archive_record(Abstractformat *self,
         xx_mem_free(plain);
         return result;
     }
-    if (path_option->type == XX_VAR_TYPE_STRING ||
-        path_option->type == XX_VAR_TYPE_STRING_VIEW) {
+    if (path_option->type == XX_VAR_TYPE_STRING || path_option->type == XX_VAR_TYPE_STRING_VIEW) {
         base_path = xx_var_get_str(path_option);
-    } else if (path_option->type == XX_VAR_TYPE_WSTRING ||
-               path_option->type == XX_VAR_TYPE_WSTRING_VIEW) {
+    } else if (path_option->type == XX_VAR_TYPE_WSTRING || path_option->type == XX_VAR_TYPE_WSTRING_VIEW) {
         converted_path = xx_str_unicode_to_utf8(xx_var_get_wstr(path_option));
         base_path = converted_path;
     }
@@ -624,9 +568,7 @@ bool xx_kolibrikpack_unpack_current_archive_record(Abstractformat *self,
         xx_str_free(converted_path);
         return false;
     }
-    if (base_path[0] != '\0' &&
-        base_path[xx_str_len(base_path) - 1U] != '/' &&
-        base_path[xx_str_len(base_path) - 1U] != '\\') {
+    if (base_path[0] != '\0' && base_path[xx_str_len(base_path) - 1U] != '/' && base_path[xx_str_len(base_path) - 1U] != '\\') {
         target_path = xx_str_concat3(base_path, "/", member->name);
     } else {
         target_path = xx_str_concat(base_path, member->name);
@@ -639,8 +581,7 @@ bool xx_kolibrikpack_unpack_current_archive_record(Abstractformat *self,
         xx_str_free(target_path);
         return result;
     }
-    if (!xx_store_create_dirs_a(target_path, false) ||
-        !xx_kolibrikpack_decode(self, member, &plain, &plain_size, pd)) {
+    if (!xx_store_create_dirs_a(target_path, false) || !xx_kolibrikpack_decode(self, member, &plain, &plain_size, pd)) {
         xx_str_free(target_path);
         return false;
     }
@@ -651,8 +592,7 @@ bool xx_kolibrikpack_unpack_current_archive_record(Abstractformat *self,
 
         result = output != NULL;
         while (result && completed < plain_size) {
-            ssize_t sent = xx_io_write(output, plain + completed,
-                                       plain_size - completed);
+            ssize_t sent = xx_io_write(output, plain + completed, plain_size - completed);
             if (sent <= 0 || (size_t)sent > plain_size - completed) {
                 result = false;
                 break;
@@ -667,8 +607,8 @@ bool xx_kolibrikpack_unpack_current_archive_record(Abstractformat *self,
     return result;
 }
 
-void xx_kolibrikpack_free_archive_records_reading(Abstractformat *self,
-                                            xx_archive_record_state *state) {
+void xx_kolibrikpack_free_archive_records_reading(Abstractformat *self, xx_archive_record_state *state)
+{
     (void)self;
     xx_archive_record_state_free(state);
 }

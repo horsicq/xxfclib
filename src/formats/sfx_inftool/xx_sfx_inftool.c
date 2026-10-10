@@ -25,17 +25,24 @@ typedef struct inf_folder_s {
     uint64_t raw;
     size_t end;
 } inf_folder;
-typedef struct inf_file_s { uint32_t at, size; uint16_t folder; } inf_file;
+typedef struct inf_file_s {
+    uint32_t at, size;
+    uint16_t folder;
+} inf_file;
 
-static bool inf_stop(xx_pd_struct *pd) { return pd && xx_pd_is_stopped(pd); }
-static bool inf_range(uint64_t total, uint64_t at, uint64_t size) {
+static bool inf_stop(xx_pd_struct *pd)
+{
+    return pd && xx_pd_is_stopped(pd);
+}
+static bool inf_range(uint64_t total, uint64_t at, uint64_t size)
+{
     return at <= total && size <= total - at;
 }
-static bool inf_read(Abstractformat *f, int64_t at, void *data, size_t size) {
+static bool inf_read(Abstractformat *f, int64_t at, void *data, size_t size)
+{
     size_t done = 0;
-    if (!f || !f->device || at < 0 || f->base_address < 0 ||
-        at > LONG_MAX - f->base_address ||
-        xx_io_seek(f->device, (long)(f->base_address + at), SEEK_SET)) return false;
+    if (!f || !f->device || at < 0 || f->base_address < 0 || at > LONG_MAX - f->base_address || xx_io_seek(f->device, (long)(f->base_address + at), SEEK_SET))
+        return false;
     while (done < size) {
         ssize_t got = xx_io_read(f->device, (uint8_t *)data + done, size - done);
         if (got <= 0 || (size_t)got > size - done) return false;
@@ -46,42 +53,38 @@ static bool inf_read(Abstractformat *f, int64_t at, void *data, size_t size) {
 
 /* Use section bounds to locate both PE ends, rather than searching for MRI
  * or trusting an MZ marker inside an unrelated overlay. */
-static bool inf_pe_extent(Abstractformat *f, uint64_t total, uint64_t at,
-                          bool dll, uint64_t *extent, xx_pd_struct *pd) {
+static bool inf_pe_extent(Abstractformat *f, uint64_t total, uint64_t at, bool dll, uint64_t *extent, xx_pd_struct *pd)
+{
     uint8_t dos[64], coff[24], optional[64], section[40];
     uint32_t pe, headers;
     uint16_t sections, opt_size;
     uint64_t table, end;
     unsigned i, j;
-    if (!inf_range(total, at, 64) || !inf_read(f, (int64_t)at, dos, 64) ||
-        dos[0] != 'M' || dos[1] != 'Z' ||
-        (pe = xx_data_get_u32(dos + 60, 4, 0, false)) < 64 || pe > 1048576 ||
-        !inf_range(total - at, pe, 24) ||
-        !inf_read(f, (int64_t)(at + pe), coff, 24) ||
-        xx_rt_memcmp(coff, "PE\0\0", 4) || xx_data_get_u16(coff + 4, 2, 0, false) != 0x14c ||
-        !(sections = xx_data_get_u16(coff + 6, 2, 0, false)) || sections > 96 ||
-        (dll && !(xx_data_get_u16(coff + 22, 2, 0, false) & 0x2000U)) ||
-        (opt_size = xx_data_get_u16(coff + 20, 2, 0, false)) < 96 || opt_size > 4096 ||
-        !inf_range(total - at, (uint64_t)pe + 24, opt_size) ||
-        !inf_read(f, (int64_t)(at + pe + 24), optional, 64) ||
-        xx_data_get_u16(optional, 2, 0, false) != 0x10b) return false;
+    if (!inf_range(total, at, 64) || !inf_read(f, (int64_t)at, dos, 64) || dos[0] != 'M' || dos[1] != 'Z' || (pe = xx_data_get_u32(dos + 60, 4, 0, false)) < 64 ||
+        pe > 1048576 || !inf_range(total - at, pe, 24) || !inf_read(f, (int64_t)(at + pe), coff, 24) || xx_rt_memcmp(coff, "PE\0\0", 4) ||
+        xx_data_get_u16(coff + 4, 2, 0, false) != 0x14c || !(sections = xx_data_get_u16(coff + 6, 2, 0, false)) || sections > 96 ||
+        (dll && !(xx_data_get_u16(coff + 22, 2, 0, false) & 0x2000U)) || (opt_size = xx_data_get_u16(coff + 20, 2, 0, false)) < 96 || opt_size > 4096 ||
+        !inf_range(total - at, (uint64_t)pe + 24, opt_size) || !inf_read(f, (int64_t)(at + pe + 24), optional, 64) || xx_data_get_u16(optional, 2, 0, false) != 0x10b)
+        return false;
     table = (uint64_t)pe + 24 + opt_size;
     headers = xx_data_get_u32(optional + 60, 4, 0, false);
-    if (headers < table + (uint64_t)sections * 40 ||
-        headers > INFTOOL_MAX_PE || !inf_range(total - at, 0, headers) ||
-        !inf_range(total - at, table, (uint64_t)sections * 40)) return false;
+    if (headers < table + (uint64_t)sections * 40 || headers > INFTOOL_MAX_PE || !inf_range(total - at, 0, headers) ||
+        !inf_range(total - at, table, (uint64_t)sections * 40))
+        return false;
     end = headers;
     for (i = 0; i < sections; ++i) {
         uint32_t size, offset;
         if (inf_stop(pd) || !inf_read(f, (int64_t)(at + table + i * 40), section, 40)) return false;
-        size = xx_data_get_u32(section + 16, 4, 0, false); offset = xx_data_get_u32(section + 20, 4, 0, false);
+        size = xx_data_get_u32(section + 16, 4, 0, false);
+        offset = xx_data_get_u32(section + 20, 4, 0, false);
         if (!size) continue;
-        if (offset < headers || !inf_range(total - at, offset, size) ||
-            (uint64_t)offset + size > INFTOOL_MAX_PE) return false;
+        if (offset < headers || !inf_range(total - at, offset, size) || (uint64_t)offset + size > INFTOOL_MAX_PE) return false;
         for (j = 0; j < i; ++j) {
-            uint8_t previous[8]; uint32_t ps, po;
+            uint8_t previous[8];
+            uint32_t ps, po;
             if (!inf_read(f, (int64_t)(at + table + j * 40 + 16), previous, 8)) return false;
-            ps = xx_data_get_u32(previous, 4, 0, false); po = xx_data_get_u32(previous + 4, 4, 0, false);
+            ps = xx_data_get_u32(previous, 4, 0, false);
+            po = xx_data_get_u32(previous + 4, 4, 0, false);
             if (ps && offset < (uint64_t)po + ps && po < (uint64_t)offset + size) return false;
         }
         if ((uint64_t)offset + size > end) end = (uint64_t)offset + size;
@@ -90,30 +93,34 @@ static bool inf_pe_extent(Abstractformat *f, uint64_t total, uint64_t at,
     return true;
 }
 
-static uint32_t inf_checksum(const uint8_t *p, size_t size, uint32_t sum) {
+static uint32_t inf_checksum(const uint8_t *p, size_t size, uint32_t sum)
+{
     uint32_t tail = 0;
-    while (size >= 4) { sum ^= xx_data_get_u32(p, 4, 0, false); p += 4; size -= 4; }
+    while (size >= 4) {
+        sum ^= xx_data_get_u32(p, 4, 0, false);
+        p += 4;
+        size -= 4;
+    }
     while (size--) tail = (tail << 8) | *p++;
     return sum ^ tail;
 }
-static bool inf_name(const uint8_t *p, size_t size) {
+static bool inf_name(const uint8_t *p, size_t size)
+{
     size_t start = 0, i;
     if (!size || p[0] == '/' || p[0] == '\\') return false;
     for (i = 0; i <= size; ++i) {
         uint8_t ch = i < size ? p[i] : 0;
-        if (i < size && (!ch || ch < 32 || ch == ':' || ch == '<' || ch == '>' ||
-                        ch == '"' || ch == '|' || ch == '?' || ch == '*')) return false;
+        if (i < size && (!ch || ch < 32 || ch == ':' || ch == '<' || ch == '>' || ch == '"' || ch == '|' || ch == '?' || ch == '*')) return false;
         if (!ch || ch == '/' || ch == '\\') {
             size_t n = i - start;
-            if (!n || (n == 1 && p[start] == '.') ||
-                (n == 2 && p[start] == '.' && p[start + 1] == '.')) return false;
+            if (!n || (n == 1 && p[start] == '.') || (n == 2 && p[start] == '.' && p[start + 1] == '.')) return false;
             start = i + 1;
         }
     }
     return true;
 }
-static bool inf_cstring(const uint8_t *cab, size_t size, size_t *at,
-                        size_t *length, bool safe) {
+static bool inf_cstring(const uint8_t *cab, size_t size, size_t *at, size_t *length, bool safe)
+{
     size_t start = *at;
     while (*at < size && cab[*at] && *at - start <= 4096) ++*at;
     if (*at >= size || *at - start > 4096) return false;
@@ -122,7 +129,8 @@ static bool inf_cstring(const uint8_t *cab, size_t size, size_t *at,
     ++*at;
     return true;
 }
-static bool inf_equal_name(const uint8_t *a, size_t na, const uint8_t *b, size_t nb) {
+static bool inf_equal_name(const uint8_t *a, size_t na, const uint8_t *b, size_t nb)
+{
     size_t i;
     if (na != nb) return false;
     for (i = 0; i < na; ++i) {
@@ -138,33 +146,34 @@ static bool inf_equal_name(const uint8_t *a, size_t na, const uint8_t *b, size_t
  * The historical FCI stub leaves NEXT set even in its final cabinet. Accept
  * the advisory names only when all folders, blocks and files are local;
  * continuation file indices and zero-uncompressed split blocks are rejected. */
-static bool inf_cabinet(const uint8_t *cab, size_t size, const uint8_t *inf,
-                        size_t inf_size, xx_pd_struct *pd) {
+static bool inf_cabinet(const uint8_t *cab, size_t size, const uint8_t *inf, size_t inf_size, xx_pd_struct *pd)
+{
     inf_folder *folders = NULL;
     inf_file *files = NULL;
     unsigned nf, nn, flags, fr = 0, dr = 0, i, j;
     size_t at = 36, files_at, metadata_end, last = 0;
     uint64_t raw_total = 0;
     bool found_inf = false, ok = false;
-    if (size < 36 || xx_rt_memcmp(cab, "MSCF", 4) ||
-        xx_data_get_u32(cab + 4, 4, 0, false) || xx_data_get_u32(cab + 12, 4, 0, false) || xx_data_get_u32(cab + 20, 4, 0, false) ||
-        xx_data_get_u32(cab + 8, 4, 0, false) != size || cab[24] != 3 || cab[25] != 1 ||
-        !(nf = xx_data_get_u16(cab + 26, 2, 0, false)) || nf > 4096 ||
-        !(nn = xx_data_get_u16(cab + 28, 2, 0, false)) || nn > 65535 ||
-        (flags = xx_data_get_u16(cab + 30, 2, 0, false)) & ~7U ||
-        (files_at = xx_data_get_u32(cab + 16, 4, 0, false)) >= size) return false;
+    if (size < 36 || xx_rt_memcmp(cab, "MSCF", 4) || xx_data_get_u32(cab + 4, 4, 0, false) || xx_data_get_u32(cab + 12, 4, 0, false) ||
+        xx_data_get_u32(cab + 20, 4, 0, false) || xx_data_get_u32(cab + 8, 4, 0, false) != size || cab[24] != 3 || cab[25] != 1 ||
+        !(nf = xx_data_get_u16(cab + 26, 2, 0, false)) || nf > 4096 || !(nn = xx_data_get_u16(cab + 28, 2, 0, false)) || nn > 65535 ||
+        (flags = xx_data_get_u16(cab + 30, 2, 0, false)) & ~7U || (files_at = xx_data_get_u32(cab + 16, 4, 0, false)) >= size)
+        return false;
     if (flags & 4) {
         unsigned reserve;
         if (!inf_range(size, at, 4)) return false;
-        reserve = xx_data_get_u16(cab + at, 2, 0, false); fr = cab[at + 2]; dr = cab[at + 3]; at += 4;
+        reserve = xx_data_get_u16(cab + at, 2, 0, false);
+        fr = cab[at + 2];
+        dr = cab[at + 3];
+        at += 4;
         if (!inf_range(size, at, reserve)) return false;
         at += reserve;
     }
-    for (i = 0; i < 2; ++i) if (flags & (1U << i)) {
-        size_t length;
-        if (!inf_cstring(cab, size, &at, &length, false) ||
-            !inf_cstring(cab, size, &at, &length, false)) return false;
-    }
+    for (i = 0; i < 2; ++i)
+        if (flags & (1U << i)) {
+            size_t length;
+            if (!inf_cstring(cab, size, &at, &length, false) || !inf_cstring(cab, size, &at, &length, false)) return false;
+        }
     folders = (inf_folder *)xx_mem_calloc(nf, sizeof(*folders));
     files = (inf_file *)xx_mem_calloc(nn, sizeof(*files));
     if (!folders || !files) goto done;
@@ -174,13 +183,11 @@ static bool inf_cabinet(const uint8_t *cab, size_t size, const uint8_t *inf,
         folders[i].at = xx_data_get_u32(cab + at, 4, 0, false);
         folders[i].blocks = xx_data_get_u16(cab + at + 4, 2, 0, false);
         folders[i].method = xx_data_get_u16(cab + at + 6, 2, 0, false);
-        method = folders[i].method & 15; bits = folders[i].method >> 8;
-        if (!folders[i].blocks || method > 3 ||
-            ((method < 2) && folders[i].method > 1) ||
-            (method == 3 && (bits < 15 || bits > 21 || (folders[i].method & 0xf0))) ||
-            (method == 2 && (bits < 10 || bits > 21 ||
-                              ((folders[i].method >> 4) & 15) < 1 ||
-                              ((folders[i].method >> 4) & 15) > 7))) goto done;
+        method = folders[i].method & 15;
+        bits = folders[i].method >> 8;
+        if (!folders[i].blocks || method > 3 || ((method < 2) && folders[i].method > 1) || (method == 3 && (bits < 15 || bits > 21 || (folders[i].method & 0xf0))) ||
+            (method == 2 && (bits < 10 || bits > 21 || ((folders[i].method >> 4) & 15) < 1 || ((folders[i].method >> 4) & 15) > 7)))
+            goto done;
         at += 8U + fr;
     }
     if (files_at < at) goto done;
@@ -192,7 +199,8 @@ static bool inf_cabinet(const uint8_t *cab, size_t size, const uint8_t *inf,
         files[i].at = xx_data_get_u32(cab + at + 4, 4, 0, false);
         files[i].folder = xx_data_get_u16(cab + at + 8, 2, 0, false);
         if (files[i].folder >= nf) goto done;
-        at += 16; start = at;
+        at += 16;
+        start = at;
         if (!inf_cstring(cab, size, &at, &length, true)) goto done;
         if (inf_equal_name(cab + start, length, inf, inf_size)) found_inf = true;
     }
@@ -202,16 +210,16 @@ static bool inf_cabinet(const uint8_t *cab, size_t size, const uint8_t *inf,
         size_t p = folders[i].at;
         if (p < metadata_end) goto done;
         for (j = 0; j < folders[i].blocks; ++j) {
-            uint32_t checksum; unsigned packed, plain;
+            uint32_t checksum;
+            unsigned packed, plain;
             if (inf_stop(pd) || !inf_range(size, p, 8U + dr)) goto done;
-            checksum = xx_data_get_u32(cab + p, 4, 0, false); packed = xx_data_get_u16(cab + p + 4, 2, 0, false);
+            checksum = xx_data_get_u32(cab + p, 4, 0, false);
+            packed = xx_data_get_u16(cab + p + 4, 2, 0, false);
             plain = xx_data_get_u16(cab + p + 6, 2, 0, false);
-            if (!packed || !plain || plain > 32768 ||
-                !inf_range(size, p + 8U + dr, packed) ||
-                ((folders[i].method & 15) == 0 && packed != plain) ||
-                (folders[i].raw += plain) > INFTOOL_MAX_CABINET) goto done;
-            if (checksum && checksum != inf_checksum(cab + p + 4, 4U + dr,
-                                   inf_checksum(cab + p + 8U + dr, packed, 0))) goto done;
+            if (!packed || !plain || plain > 32768 || !inf_range(size, p + 8U + dr, packed) || ((folders[i].method & 15) == 0 && packed != plain) ||
+                (folders[i].raw += plain) > INFTOOL_MAX_CABINET)
+                goto done;
+            if (checksum && checksum != inf_checksum(cab + p + 4, 4U + dr, inf_checksum(cab + p + 8U + dr, packed, 0))) goto done;
             p += 8U + dr + packed;
         }
         folders[i].end = p;
@@ -226,23 +234,27 @@ static bool inf_cabinet(const uint8_t *cab, size_t size, const uint8_t *inf,
         if ((uint64_t)files[i].at + files[i].size > folders[files[i].folder].raw) goto done;
     ok = !inf_stop(pd);
 done:
-    xx_mem_free(folders); xx_mem_free(files);
+    xx_mem_free(folders);
+    xx_mem_free(files);
     return ok;
 }
 
 #include "xx_inftool_zip.h"
 
-static void inf_release(xx_sfx_inftool *a) {
+static void inf_release(xx_sfx_inftool *a)
+{
     if (a->zip_ready) xx_zip_destroy(&a->legacy_zip);
     a->zip_ready = false;
     if (a->inner_ready) xx_cab_destroy(&a->inner);
     a->inner_ready = false;
     if (a->cabinet_device) xx_io_close(a->cabinet_device);
     a->cabinet_device = NULL;
-    xx_mem_free(a->cabinet); a->cabinet = NULL;
+    xx_mem_free(a->cabinet);
+    a->cabinet = NULL;
 }
 
-static bool inf_open(xx_sfx_inftool *a, xx_pd_struct *pd) {
+static bool inf_open(xx_sfx_inftool *a, xx_pd_struct *pd)
+{
     Abstractformat *f;
     int64_t physical;
     uint64_t total, outer, dll, header_at, payload_at, payload_size;
@@ -261,29 +273,24 @@ static bool inf_open(xx_sfx_inftool *a, xx_pd_struct *pd) {
         return true;
     }
     f = &a->format;
-    if (!f->device || f->base_address < 0 ||
-        (physical = xx_io_total_size(f->device)) < f->base_address) return false;
+    if (!f->device || f->base_address < 0 || (physical = xx_io_total_size(f->device)) < f->base_address) return false;
     total = (uint64_t)(physical - f->base_address);
-    if (total > INT32_MAX || !inf_pe_extent(f, total, 0, false, &outer, pd) ||
-        !inf_range(total, outer, 3) || !inf_read(f, (int64_t)outer, marker, 3)) return false;
+    if (total > INT32_MAX || !inf_pe_extent(f, total, 0, false, &outer, pd) || !inf_range(total, outer, 3) || !inf_read(f, (int64_t)outer, marker, 3)) return false;
     legacy = xx_rt_memcmp(marker, "MRI", 3) == 0;
     if (legacy) {
-        header_at = outer; header_size = 22;
+        header_at = outer;
+        header_size = 22;
     } else {
         if (!inf_pe_extent(f, total, outer, true, &dll, pd)) return false;
-        header_at = outer + dll; header_size = 24;
+        header_at = outer + dll;
+        header_size = 24;
     }
     xx_mem_zero(h, sizeof(h));
-    if (!inf_range(total, header_at, header_size) ||
-        !inf_read(f, (int64_t)header_at, h, header_size) ||
-        xx_rt_memcmp(h, "MRI", 3) || h[3] != 1 || !h[4] || !h[5] ||
-        h[6] > 1 || h[16] > 1 || h[17] != 0 ||
-        (!legacy && (h[18] > 1 || h[19] > 1)) ||
-        (declared = xx_data_get_u32(h + (legacy ? 18 : 20), 4, 0, false)) != total) return false;
-    payload_at = header_at + header_size + h[4] + h[5] + h[7] +
-                 (uint64_t)xx_data_get_u32(h + 8, 4, 0, false) + xx_data_get_u32(h + 12, 4, 0, false);
-    if (!inf_range(total, payload_at, 36) ||
-        !inf_read(f, (int64_t)(header_at + header_size + h[4]), inf, h[5])) return false;
+    if (!inf_range(total, header_at, header_size) || !inf_read(f, (int64_t)header_at, h, header_size) || xx_rt_memcmp(h, "MRI", 3) || h[3] != 1 || !h[4] || !h[5] ||
+        h[6] > 1 || h[16] > 1 || h[17] != 0 || (!legacy && (h[18] > 1 || h[19] > 1)) || (declared = xx_data_get_u32(h + (legacy ? 18 : 20), 4, 0, false)) != total)
+        return false;
+    payload_at = header_at + header_size + h[4] + h[5] + h[7] + (uint64_t)xx_data_get_u32(h + 8, 4, 0, false) + xx_data_get_u32(h + 12, 4, 0, false);
+    if (!inf_range(total, payload_at, 36) || !inf_read(f, (int64_t)(header_at + header_size + h[4]), inf, h[5])) return false;
     inf_size = h[5];
     /* Legacy launch-template parser 0x405f60 replaces "><" with its
      * temporary extraction directory. Resolve only that leading placeholder;
@@ -323,22 +330,26 @@ static bool inf_open(xx_sfx_inftool *a, xx_pd_struct *pd) {
         if (!xx_cab_handle_base_info(&a->inner.format, pd)) goto fail;
         f->number_of_archive_records = a->inner.number_of_records;
     }
-    f->format_size = (int64_t)total; f->is_crypted = encrypted;
-    f->is_valid = true; f->base_info_handled = true;
+    f->format_size = (int64_t)total;
+    f->is_crypted = encrypted;
+    f->is_valid = true;
+    f->base_info_handled = true;
     return true;
 fail:
     inf_release(a);
     return false;
 }
 
-static int64_t inf_size(Abstractformat *f, xx_pd_struct *pd) {
+static int64_t inf_size(Abstractformat *f, xx_pd_struct *pd)
+{
     return inf_open((xx_sfx_inftool *)f, pd) ? f->format_size : -1;
 }
-static uint64_t inf_count(Abstractformat *f, xx_pd_struct *pd) {
+static uint64_t inf_count(Abstractformat *f, xx_pd_struct *pd)
+{
     return inf_open((xx_sfx_inftool *)f, pd) ? f->number_of_archive_records : 0;
 }
-static xx_archive_record_state *inf_records(Abstractformat *f, const xx_list_s *options,
-                                           xx_pd_struct *pd) {
+static xx_archive_record_state *inf_records(Abstractformat *f, const xx_list_s *options, xx_pd_struct *pd)
+{
     xx_sfx_inftool *a = (xx_sfx_inftool *)f;
     size_t i;
     if (!inf_open(a, pd)) return NULL;
@@ -349,45 +360,50 @@ static xx_archive_record_state *inf_records(Abstractformat *f, const xx_list_s *
          * cannot survive in this cached reader across reading sessions. */
         xx_format_cleanup_extra_parameters(&a->legacy_zip.format);
         for (i = 0; i < f->list_extra_parameters.count; ++i) {
-            const xx_meta *m = (const xx_meta *)xx_list_at(
-                (const xx_list_t *)&f->list_extra_parameters, i);
-            if (m && !xx_format_set_extra_parameter(&a->legacy_zip.format,
-                                                     m->meta_id, &m->var)) return NULL;
+            const xx_meta *m = (const xx_meta *)xx_list_at((const xx_list_t *)&f->list_extra_parameters, i);
+            if (m && !xx_format_set_extra_parameter(&a->legacy_zip.format, m->meta_id, &m->var)) return NULL;
         }
         return xx_zip_create_archive_records_reading(&a->legacy_zip.format, options, pd);
     }
     return xx_cab_create_archive_records_reading(&a->inner.format, options, pd);
 }
-static const xx_archive_record *inf_current(Abstractformat *f, xx_archive_record_state *s) {
+static const xx_archive_record *inf_current(Abstractformat *f, xx_archive_record_state *s)
+{
     xx_sfx_inftool *a = (xx_sfx_inftool *)f;
     if (!a) return NULL;
     if (a->zip_ready) return xx_zip_get_current_archive_record(&a->legacy_zip.format, s);
     return a->inner_ready ? xx_cab_get_current_archive_record(&a->inner.format, s) : NULL;
 }
-static bool inf_next(Abstractformat *f, xx_archive_record_state *s, xx_pd_struct *pd) {
+static bool inf_next(Abstractformat *f, xx_archive_record_state *s, xx_pd_struct *pd)
+{
     xx_sfx_inftool *a = (xx_sfx_inftool *)f;
     if (!a || inf_stop(pd)) return false;
     if (a->zip_ready) return xx_zip_archive_record_move_to_next(&a->legacy_zip.format, s, pd);
     return a->inner_ready && xx_cab_archive_record_move_to_next(&a->inner.format, s, pd);
 }
-static bool inf_unpack(Abstractformat *f, xx_archive_record_state *s, xx_pd_struct *pd) {
+static bool inf_unpack(Abstractformat *f, xx_archive_record_state *s, xx_pd_struct *pd)
+{
     xx_sfx_inftool *a = (xx_sfx_inftool *)f;
     if (!a) return false;
     if (a->zip_ready) return xx_zip_unpack_current_archive_record(&a->legacy_zip.format, s, pd);
     return a->inner_ready && xx_cab_unpack_current_archive_record(&a->inner.format, s, pd);
 }
-static void inf_free_records(Abstractformat *f, xx_archive_record_state *s) {
+static void inf_free_records(Abstractformat *f, xx_archive_record_state *s)
+{
     xx_sfx_inftool *a = (xx_sfx_inftool *)f;
     if (a && a->zip_ready) xx_zip_free_archive_records_reading(&a->legacy_zip.format, s);
     else if (a && a->inner_ready) xx_cab_free_archive_records_reading(&a->inner.format, s);
     else xx_archive_record_state_free(s);
 }
 
-void xx_sfx_inftool_init(xx_sfx_inftool *a, xx_io_device *device, int64_t base) {
+void xx_sfx_inftool_init(xx_sfx_inftool *a, xx_io_device *device, int64_t base)
+{
     if (!a) return;
-    xx_mem_zero(a, sizeof(*a)); xx_format_init(&a->format, device, base);
+    xx_mem_zero(a, sizeof(*a));
+    xx_format_init(&a->format, device, base);
     a->format.file_type = XX_FILE_TYPE_SFX_INFTOOL;
-    a->format.format_type = XX_TYPE_ARCHIVE; a->format.is_archive = true;
+    a->format.format_type = XX_TYPE_ARCHIVE;
+    a->format.is_archive = true;
     xx_format_set_extension(&a->format, "exe");
     a->format.check_is_valid = xx_sfx_inftool_check_is_valid;
     a->format.handle_base_info = xx_sfx_inftool_handle_base_info;
@@ -399,21 +415,30 @@ void xx_sfx_inftool_init(xx_sfx_inftool *a, xx_io_device *device, int64_t base) 
     a->format.unpack_current_archive_record = inf_unpack;
     a->format.free_archive_records_reading = inf_free_records;
 }
-xx_sfx_inftool *xx_sfx_inftool_create(xx_io_device *d, int64_t base) {
+xx_sfx_inftool *xx_sfx_inftool_create(xx_io_device *d, int64_t base)
+{
     xx_sfx_inftool *a = (xx_sfx_inftool *)xx_mem_alloc(sizeof(*a));
     if (a) xx_sfx_inftool_init(a, d, base);
     return a;
 }
-void xx_sfx_inftool_destroy(xx_sfx_inftool *a) {
+void xx_sfx_inftool_destroy(xx_sfx_inftool *a)
+{
     if (!a) return;
-    inf_release(a); xx_format_cleanup_extra_parameters(&a->format);
+    inf_release(a);
+    xx_format_cleanup_extra_parameters(&a->format);
 }
-void xx_sfx_inftool_free(xx_sfx_inftool *a) {
-    if (a) { xx_sfx_inftool_destroy(a); xx_mem_free(a); }
+void xx_sfx_inftool_free(xx_sfx_inftool *a)
+{
+    if (a) {
+        xx_sfx_inftool_destroy(a);
+        xx_mem_free(a);
+    }
 }
-bool xx_sfx_inftool_check_is_valid(Abstractformat *f, xx_pd_struct *pd) {
+bool xx_sfx_inftool_check_is_valid(Abstractformat *f, xx_pd_struct *pd)
+{
     return inf_open((xx_sfx_inftool *)f, pd);
 }
-bool xx_sfx_inftool_handle_base_info(Abstractformat *f, xx_pd_struct *pd) {
+bool xx_sfx_inftool_handle_base_info(Abstractformat *f, xx_pd_struct *pd)
+{
     return inf_open((xx_sfx_inftool *)f, pd);
 }

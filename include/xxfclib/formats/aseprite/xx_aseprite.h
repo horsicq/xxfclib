@@ -9,13 +9,15 @@
 #ifdef __cplusplus
 extern "C" {
 #endif
-typedef struct xx_aseprite { Abstractformat format; } xx_aseprite;
-XXFC_API void xx_aseprite_init(xx_aseprite *,xx_io_device *,int64_t);
-XXFC_API xx_aseprite *xx_aseprite_create(xx_io_device *,int64_t);
+typedef struct xx_aseprite {
+    Abstractformat format;
+} xx_aseprite;
+XXFC_API void xx_aseprite_init(xx_aseprite *, xx_io_device *, int64_t);
+XXFC_API xx_aseprite *xx_aseprite_create(xx_io_device *, int64_t);
 XXFC_API void xx_aseprite_destroy(xx_aseprite *);
 XXFC_API void xx_aseprite_free(xx_aseprite *);
-XXFC_API bool xx_aseprite_check_is_valid(Abstractformat *,xx_pd_struct *);
-XXFC_API bool xx_aseprite_handle_base_info(Abstractformat *,xx_pd_struct *);
+XXFC_API bool xx_aseprite_check_is_valid(Abstractformat *, xx_pd_struct *);
+XXFC_API bool xx_aseprite_handle_base_info(Abstractformat *, xx_pd_struct *);
 #ifdef __cplusplus
 }
 #endif

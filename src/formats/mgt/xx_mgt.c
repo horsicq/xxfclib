@@ -113,56 +113,57 @@ typedef struct mgt_stream_s {
 typedef struct mgt_slot_s {
     uint8_t entry[MGT_ENTRY];
     int64_t offset;
-    uint32_t number;       /* 1-based slot number, used for duplicates */
-    uint8_t state;         /* dir path resolution: 0 new, 1 busy, 2 done */
-    uint8_t level;         /* nesting level of a resolved directory, 1 = root */
-    char *path;            /* resolved path of a directory */
+    uint32_t number; /* 1-based slot number, used for duplicates */
+    uint8_t state;   /* dir path resolution: 0 new, 1 busy, 2 done */
+    uint8_t level;   /* nesting level of a resolved directory, 1 = root */
+    char *path;      /* resolved path of a directory */
 } mgt_slot;
 
 static void xx_mgt_vtable_destroy(Abstractformat *self);
 
 /* ------------------------------------------------------------- helpers -- */
 
-static bool mgt_read_at(Abstractformat *self, int64_t offset, uint8_t *buffer,
-                        size_t size) {
+static bool mgt_read_at(Abstractformat *self, int64_t offset, uint8_t *buffer, size_t size)
+{
     size_t completed = 0U;
-    if (!self || !self->device || offset < 0 ||
-        xx_io_seek64(self->device, offset, SEEK_SET) != 0) {
+    if (!self || !self->device || offset < 0 || xx_io_seek64(self->device, offset, SEEK_SET) != 0) {
         return false;
     }
     while (completed < size) {
-        ssize_t received =
-            xx_io_read(self->device, buffer + completed, size - completed);
+        ssize_t received = xx_io_read(self->device, buffer + completed, size - completed);
         if (received <= 0 || (size_t)received > size - completed) return false;
         completed += (size_t)received;
     }
     return true;
 }
 
-static bool mgt_data_sector(uint8_t track, uint8_t sector) {
+static bool mgt_data_sector(uint8_t track, uint8_t sector)
+{
     if (sector < 1U || sector > MGT_SPT) return false;
-    return (track >= MGT_DIR_TRACKS && track < MGT_CYLS) ||
-           (track >= 128U && track < 128U + MGT_CYLS);
+    return (track >= MGT_DIR_TRACKS && track < MGT_CYLS) || (track >= 128U && track < 128U + MGT_CYLS);
 }
 
-static int64_t mgt_sector_offset(uint8_t track, uint8_t sector) {
+static int64_t mgt_sector_offset(uint8_t track, uint8_t sector)
+{
     int64_t cylinder = (int64_t)(track & 0x7FU);
     int64_t side = (int64_t)(track >> 7);
-    return ((cylinder * 2 + side) * MGT_SPT + (int64_t)(sector - 1U)) *
-           MGT_SECTOR;
+    return ((cylinder * 2 + side) * MGT_SPT + (int64_t)(sector - 1U)) * MGT_SECTOR;
 }
 
 /* Bit of the sector map for a data sector (caller checked mgt_data_sector). */
-static uint32_t mgt_bit(uint8_t track, uint8_t sector) {
+static uint32_t mgt_bit(uint8_t track, uint8_t sector)
+{
     uint32_t logical = (uint32_t)(track & 0x7FU) + ((track & 0x80U) ? 80U : 0U);
     return (logical - MGT_DIR_TRACKS) * MGT_SPT + (uint32_t)(sector - 1U);
 }
 
-static bool mgt_map_has(const uint8_t *map, uint32_t bit) {
+static bool mgt_map_has(const uint8_t *map, uint32_t bit)
+{
     return bit < MGT_MAP_BITS && (map[bit >> 3] & (1U << (bit & 7U))) != 0U;
 }
 
-static uint32_t mgt_popcount(const uint8_t *map) {
+static uint32_t mgt_popcount(const uint8_t *map)
+{
     uint32_t total = 0U;
     size_t index;
     for (index = 0U; index < MGT_MAP_BYTES; ++index) {
@@ -175,7 +176,8 @@ static uint32_t mgt_popcount(const uint8_t *map) {
     return total;
 }
 
-static bool mgt_maps_overlap(const uint8_t *a, const uint8_t *b) {
+static bool mgt_maps_overlap(const uint8_t *a, const uint8_t *b)
+{
     size_t index;
     for (index = 0U; index < MGT_MAP_BYTES; ++index) {
         if ((a[index] & b[index]) != 0U) return true;
@@ -183,22 +185,25 @@ static bool mgt_maps_overlap(const uint8_t *a, const uint8_t *b) {
     return false;
 }
 
-static void mgt_map_merge(uint8_t *into, const uint8_t *from) {
+static void mgt_map_merge(uint8_t *into, const uint8_t *from)
+{
     size_t index;
     for (index = 0U; index < MGT_MAP_BYTES; ++index) into[index] |= from[index];
 }
 
-static bool mgt_known_type(uint8_t type) {
+static bool mgt_known_type(uint8_t type)
+{
     return (type >= 1U && type <= 11U) || (type >= 16U && type <= 31U);
 }
 
-static bool mgt_headered(uint8_t type) {
-    return (type >= 1U && type <= 4U) || type == 7U ||
-           (type >= 16U && type <= 20U);
+static bool mgt_headered(uint8_t type)
+{
+    return (type >= 1U && type <= 4U) || type == 7U || (type >= 16U && type <= 20U);
 }
 
 /* A used file entry is self-consistent.  Directories are checked apart. */
-static bool mgt_file_entry_ok(const uint8_t *entry) {
+static bool mgt_file_entry_ok(const uint8_t *entry)
+{
     uint8_t type = (uint8_t)(entry[0] & 0x3FU);
     uint32_t count = ((uint32_t)entry[11] << 8) | entry[12];
     const uint8_t *map = entry + MGT_MAP_OFFSET;
@@ -211,11 +216,13 @@ static bool mgt_file_entry_ok(const uint8_t *entry) {
 
 /* ------------------------------------------------------------ names ----- */
 
-static char mgt_upper(char c) {
+static char mgt_upper(char c)
+{
     return (c >= 'a' && c <= 'z') ? (char)(c - 'a' + 'A') : c;
 }
 
-static bool mgt_stem_is(const char *name, size_t stem, const char *word) {
+static bool mgt_stem_is(const char *name, size_t stem, const char *word)
+{
     size_t index;
     for (index = 0U; index < stem; ++index) {
         if (!word[index] || mgt_upper(name[index]) != word[index]) return false;
@@ -223,30 +230,36 @@ static bool mgt_stem_is(const char *name, size_t stem, const char *word) {
     return word[stem] == 0;
 }
 
-static bool mgt_device_name(const char *name, size_t stem) {
-    static const char *const devices[] = {"CON", "PRN", "AUX", "NUL",
-                                          "CONIN$", "CONOUT$", "CLOCK$"};
+static bool mgt_device_name(const char *name, size_t stem)
+{
+    static const char *const devices[] = {"CON", "PRN", "AUX", "NUL", "CONIN$", "CONOUT$", "CLOCK$"};
     size_t index;
     for (index = 0U; index < sizeof(devices) / sizeof(devices[0]); ++index) {
         if (mgt_stem_is(name, stem, devices[index])) return true;
     }
-    return stem == 4U && name[3] >= '0' && name[3] <= '9' &&
-           (mgt_stem_is(name, 3U, "COM") || mgt_stem_is(name, 3U, "LPT"));
+    return stem == 4U && name[3] >= '0' && name[3] <= '9' && (mgt_stem_is(name, 3U, "COM") || mgt_stem_is(name, 3U, "LPT"));
 }
 
-static char mgt_safe_char(uint8_t value) {
+static char mgt_safe_char(uint8_t value)
+{
     if (value < 0x20U || value >= 0x7FU) return '_';
     switch (value) {
-    case '/': case '\\': case ':': case '*': case '?': case '"': case '<':
-    case '>': case '|':
-        return '_';
-    default:
-        return (char)value;
+        case '/':
+        case '\\':
+        case ':':
+        case '*':
+        case '?':
+        case '"':
+        case '<':
+        case '>':
+        case '|': return '_';
+        default: return (char)value;
     }
 }
 
 /* 10 raw name bytes -> one safe path component in @p out (>= 16 bytes). */
-static void mgt_component(const uint8_t *raw, char *out) {
+static void mgt_component(const uint8_t *raw, char *out)
+{
     size_t begin = 0U, end = 10U, length = 0U, index, stem;
     while (end > 0U && (raw[end - 1U] == 0x20U || raw[end - 1U] == 0U)) --end;
     while (begin < end && raw[begin] == 0x20U) ++begin;
@@ -267,7 +280,8 @@ static void mgt_component(const uint8_t *raw, char *out) {
     }
 }
 
-static bool mgt_path_taken(const mgt_stream *stream, const char *path) {
+static bool mgt_path_taken(const mgt_stream *stream, const char *path)
+{
     size_t index;
     for (index = 0U; index < stream->count; ++index) {
         if (xx_str_icmp(stream->items[index].name, path) == 0) return true;
@@ -276,8 +290,8 @@ static bool mgt_path_taken(const mgt_stream *stream, const char *path) {
 }
 
 /* parent + "/" + leaf, made unique against every name already published. */
-static char *mgt_unique_path(const mgt_stream *stream, const char *parent,
-                             const char *leaf, uint32_t number) {
+static char *mgt_unique_path(const mgt_stream *stream, const char *parent, const char *leaf, uint32_t number)
+{
     char buffer[MGT_PATH_MAX];
     const char *dot = xx_str_rchr(leaf, '.');
     size_t stem = (dot && dot != leaf) ? (size_t)(dot - leaf) : xx_str_len(leaf);
@@ -289,20 +303,12 @@ static char *mgt_unique_path(const mgt_stream *stream, const char *parent,
     }
     for (attempt = 0U; attempt < 1000U; ++attempt) {
         if (attempt == 0U) {
-            written = xx_rt_snprintf(buffer, sizeof(buffer), "%s%s%s",
-                                     parent ? parent : "", parent ? "/" : "",
-                                     leaf);
+            written = xx_rt_snprintf(buffer, sizeof(buffer), "%s%s%s", parent ? parent : "", parent ? "/" : "", leaf);
         } else if (attempt == 1U) {
-            written = xx_rt_snprintf(buffer, sizeof(buffer), "%s%s%.*s_%u%s",
-                                     parent ? parent : "", parent ? "/" : "",
-                                     (int)stem, leaf, (unsigned)number,
-                                     leaf + stem);
+            written = xx_rt_snprintf(buffer, sizeof(buffer), "%s%s%.*s_%u%s", parent ? parent : "", parent ? "/" : "", (int)stem, leaf, (unsigned)number, leaf + stem);
         } else {
-            written = xx_rt_snprintf(buffer, sizeof(buffer),
-                                     "%s%s%.*s_%u_%u%s", parent ? parent : "",
-                                     parent ? "/" : "", (int)stem, leaf,
-                                     (unsigned)number, (unsigned)attempt,
-                                     leaf + stem);
+            written = xx_rt_snprintf(buffer, sizeof(buffer), "%s%s%.*s_%u_%u%s", parent ? parent : "", parent ? "/" : "", (int)stem, leaf, (unsigned)number,
+                                     (unsigned)attempt, leaf + stem);
         }
         if (written <= 0 || (size_t)written >= sizeof(buffer)) return NULL;
         if (!mgt_path_taken(stream, buffer)) return xx_str_dup(buffer);
@@ -312,7 +318,8 @@ static char *mgt_unique_path(const mgt_stream *stream, const char *parent,
 
 /* Every '/'-separated component is non-empty, not "." / "..", ends in no
  * dot, has no unsafe byte and is not a device name. */
-static bool mgt_path_safe(const char *name) {
+static bool mgt_path_safe(const char *name)
+{
     const char *segment, *at;
     if (!name || !name[0] || name[0] == '/') return false;
     segment = name;
@@ -321,8 +328,7 @@ static bool mgt_path_safe(const char *name) {
         if (c == '/' || c == 0) {
             size_t length = (size_t)(at - segment);
             size_t stem = 0U;
-            if (length == 0U || segment[length - 1U] == '.' ||
-                segment[length - 1U] == ' ') {
+            if (length == 0U || segment[length - 1U] == '.' || segment[length - 1U] == ' ') {
                 return false;
             }
             while (stem < length && segment[stem] != '.') ++stem;
@@ -336,9 +342,7 @@ static bool mgt_path_safe(const char *name) {
             segment = at + 1;
             continue;
         }
-        if ((uint8_t)c < 0x20U || (uint8_t)c >= 0x7FU || c == '\\' ||
-            c == ':' || c == '*' || c == '?' || c == '"' || c == '<' ||
-            c == '>' || c == '|') {
+        if ((uint8_t)c < 0x20U || (uint8_t)c >= 0x7FU || c == '\\' || c == ':' || c == '*' || c == '?' || c == '"' || c == '<' || c == '>' || c == '|') {
             return false;
         }
     }
@@ -346,7 +350,8 @@ static bool mgt_path_safe(const char *name) {
 
 /* --------------------------------------------------------------- parse -- */
 
-static void mgt_stream_free(void *pointer) {
+static void mgt_stream_free(void *pointer)
+{
     mgt_stream *stream = (mgt_stream *)pointer;
     size_t index;
     if (!stream) return;
@@ -357,7 +362,8 @@ static void mgt_stream_free(void *pointer) {
     xx_mem_free(stream);
 }
 
-static void mgt_slots_free(mgt_slot *slots, size_t count) {
+static void mgt_slots_free(mgt_slot *slots, size_t count)
+{
     size_t index;
     if (!slots) return;
     for (index = 0U; index < count; ++index) xx_str_free(slots[index].path);
@@ -368,43 +374,35 @@ static void mgt_slots_free(mgt_slot *slots, size_t count) {
  * MGT_MAX_DEPTH and by the busy state (a tag loop), and a directory never
  * nests deeper than MGT_MAX_DEPTH levels: past that, or on a loop or an
  * unknown tag, it hangs at the root. */
-static const mgt_slot *mgt_dir_resolve(mgt_stream *stream, mgt_slot *slots,
-                                       size_t slot_count,
-                                       const int16_t *by_tag, size_t at,
-                                       int depth);
+static const mgt_slot *mgt_dir_resolve(mgt_stream *stream, mgt_slot *slots, size_t slot_count, const int16_t *by_tag, size_t at, int depth);
 
-static const mgt_slot *mgt_parent_slot(mgt_stream *stream, mgt_slot *slots,
-                                       size_t slot_count,
-                                       const int16_t *by_tag, uint8_t tag,
-                                       int depth) {
+static const mgt_slot *mgt_parent_slot(mgt_stream *stream, mgt_slot *slots, size_t slot_count, const int16_t *by_tag, uint8_t tag, int depth)
+{
     int16_t owner;
     const mgt_slot *parent;
     if (tag == 0U || depth >= MGT_MAX_DEPTH) return NULL;
     owner = by_tag[tag];
     if (owner < 0 || (size_t)owner >= slot_count) return NULL;
-    parent = mgt_dir_resolve(stream, slots, slot_count, by_tag,
-                             (size_t)owner, depth + 1);
+    parent = mgt_dir_resolve(stream, slots, slot_count, by_tag, (size_t)owner, depth + 1);
     if (!parent || !parent->path || parent->level >= MGT_MAX_DEPTH) {
         return NULL;
     }
     return parent;
 }
 
-static bool mgt_append(mgt_stream *stream, const mgt_member *member) {
+static bool mgt_append(mgt_stream *stream, const mgt_member *member)
+{
     mgt_member *grown;
     if (stream->count >= (size_t)MGT_MAX_MEMBERS) return false;
-    grown = (mgt_member *)xx_mem_realloc(stream->items,
-                                         sizeof(*grown) * (stream->count + 1U));
+    grown = (mgt_member *)xx_mem_realloc(stream->items, sizeof(*grown) * (stream->count + 1U));
     if (!grown) return false;
     stream->items = grown;
     stream->items[stream->count++] = *member;
     return true;
 }
 
-static const mgt_slot *mgt_dir_resolve(mgt_stream *stream, mgt_slot *slots,
-                                       size_t slot_count,
-                                       const int16_t *by_tag, size_t at,
-                                       int depth) {
+static const mgt_slot *mgt_dir_resolve(mgt_stream *stream, mgt_slot *slots, size_t slot_count, const int16_t *by_tag, size_t at, int depth)
+{
     mgt_slot *slot = &slots[at];
     const mgt_slot *parent;
     char leaf[MGT_NAME_MAX];
@@ -413,11 +411,9 @@ static const mgt_slot *mgt_dir_resolve(mgt_stream *stream, mgt_slot *slots,
     if (slot->state == 2U) return slot;
     if (slot->state == 1U) return NULL; /* loop: caller falls back to root */
     slot->state = 1U;
-    parent = mgt_parent_slot(stream, slots, slot_count, by_tag,
-                             slot->entry[254], depth);
+    parent = mgt_parent_slot(stream, slots, slot_count, by_tag, slot->entry[254], depth);
     mgt_component(slot->entry + 1, leaf);
-    slot->path = mgt_unique_path(stream, parent ? parent->path : NULL, leaf,
-                                 slot->number);
+    slot->path = mgt_unique_path(stream, parent ? parent->path : NULL, leaf, slot->number);
     slot->level = parent ? (uint8_t)(parent->level + 1U) : 1U;
     slot->state = 2U;
     if (!slot->path) return slot;
@@ -436,7 +432,8 @@ static const mgt_slot *mgt_dir_resolve(mgt_stream *stream, mgt_slot *slots,
 }
 
 /* Length rule for a file member (see the header comment). */
-static bool mgt_member_extent(Abstractformat *self, mgt_member *member) {
+static bool mgt_member_extent(Abstractformat *self, mgt_member *member)
+{
     int64_t chain = (int64_t)member->count * MGT_PAYLOAD;
     member->skip = 0;
     member->size = chain;
@@ -458,12 +455,13 @@ static bool mgt_member_extent(Abstractformat *self, mgt_member *member) {
     return true;
 }
 
-static uint32_t mgt_entry_count(const uint8_t *entry) {
+static uint32_t mgt_entry_count(const uint8_t *entry)
+{
     return ((uint32_t)entry[11] << 8) | entry[12];
 }
 
-static mgt_stream *mgt_parse(Abstractformat *self, xx_pd_struct *pd,
-                             bool probe) {
+static mgt_stream *mgt_parse(Abstractformat *self, xx_pd_struct *pd, bool probe)
+{
     uint8_t *dir = NULL;
     mgt_slot *slots = NULL;
     size_t slot_count = 0U;
@@ -479,8 +477,7 @@ static mgt_stream *mgt_parse(Abstractformat *self, xx_pd_struct *pd,
     total = xx_io_total_size(self->device);
     if (total < self->base_address) return NULL;
     span = total - self->base_address;
-    if (self->base_address == 0 ? span != MGT_IMAGE_SIZE
-                                : span < MGT_IMAGE_SIZE) {
+    if (self->base_address == 0 ? span != MGT_IMAGE_SIZE : span < MGT_IMAGE_SIZE) {
         return NULL;
     }
 
@@ -493,10 +490,7 @@ static mgt_stream *mgt_parse(Abstractformat *self, xx_pd_struct *pd,
     for (index = 0U; index < MGT_DIR_TRACKS; ++index) {
         size_t slot;
         uint8_t *track = dir + index * MGT_TRACK_BYTES;
-        if (!mgt_read_at(self,
-                         self->base_address +
-                             (int64_t)index * 2 * MGT_TRACK_BYTES,
-                         track, MGT_TRACK_BYTES)) {
+        if (!mgt_read_at(self, self->base_address + (int64_t)index * 2 * MGT_TRACK_BYTES, track, MGT_TRACK_BYTES)) {
             goto fail;
         }
         for (slot = 0U; slot < MGT_TRACK_BYTES / MGT_ENTRY; ++slot) {
@@ -519,8 +513,7 @@ static mgt_stream *mgt_parse(Abstractformat *self, xx_pd_struct *pd,
         const uint8_t *first = dir;
         uint8_t first_type = (uint8_t)(first[0] & 0x3FU);
         uint8_t claim = first[255];
-        if (claim >= 1U && claim <= MGT_MAX_EXTRA && first_type != 5U &&
-            first_type != 9U) {
+        if (claim >= 1U && claim <= MGT_MAX_EXTRA && first_type != 5U && first_type != 9U) {
             uint32_t bit;
             bool clash = false;
             for (bit = 1U; bit < (uint32_t)claim * MGT_SPT; ++bit) {
@@ -554,10 +547,7 @@ static mgt_stream *mgt_parse(Abstractformat *self, xx_pd_struct *pd,
         size_t track = sector_index / MGT_SPT;
         size_t sector = sector_index % MGT_SPT;
         xx_rt_memcpy(slots[index].entry, dir + index * MGT_ENTRY, MGT_ENTRY);
-        slots[index].offset = self->base_address +
-                              (int64_t)track * 2 * MGT_TRACK_BYTES +
-                              (int64_t)sector * MGT_SECTOR +
-                              (int64_t)(index % 2U) * MGT_ENTRY;
+        slots[index].offset = self->base_address + (int64_t)track * 2 * MGT_TRACK_BYTES + (int64_t)sector * MGT_SECTOR + (int64_t)(index % 2U) * MGT_ENTRY;
         slots[index].number = (uint32_t)index + 1U;
     }
     xx_mem_free(dir);
@@ -583,10 +573,8 @@ static mgt_stream *mgt_parse(Abstractformat *self, xx_pd_struct *pd,
                     at += 2U;
                     continue;
                 }
-                offset = self->base_address +
-                         mgt_sector_offset((uint8_t)t, s);
-                if (!mgt_read_at(self, offset, sector_buffer,
-                                 sizeof(sector_buffer))) {
+                offset = self->base_address + mgt_sector_offset((uint8_t)t, s);
+                if (!mgt_read_at(self, offset, sector_buffer, sizeof(sector_buffer))) {
                     goto fail;
                 }
                 for (half = 0U; half < 2U; ++half) {
@@ -598,8 +586,7 @@ static mgt_stream *mgt_parse(Abstractformat *self, xx_pd_struct *pd,
                     ++at;
                     if (type == 0U) continue;
                     if (type != MGT_TYPE_DIR) {
-                        if (!mgt_file_entry_ok(entry) ||
-                            mgt_maps_overlap(used, entry + MGT_MAP_OFFSET)) {
+                        if (!mgt_file_entry_ok(entry) || mgt_maps_overlap(used, entry + MGT_MAP_OFFSET)) {
                             continue;
                         }
                         mgt_map_merge(used, entry + MGT_MAP_OFFSET);
@@ -620,8 +607,7 @@ static mgt_stream *mgt_parse(Abstractformat *self, xx_pd_struct *pd,
     for (index = 0U; index < 256U; ++index) by_tag[index] = -1;
     for (index = 0U; index < slot_count; ++index) {
         const uint8_t *entry = slots[index].entry;
-        if ((entry[0] & 0x3FU) == MGT_TYPE_DIR && entry[250] != 0U &&
-            by_tag[entry[250]] < 0) {
+        if ((entry[0] & 0x3FU) == MGT_TYPE_DIR && entry[250] != 0U && by_tag[entry[250]] < 0) {
             by_tag[entry[250]] = (int16_t)index;
         }
     }
@@ -652,13 +638,10 @@ static mgt_stream *mgt_parse(Abstractformat *self, xx_pd_struct *pd,
         member.first_sector = entry[14];
         xx_rt_memcpy(member.map, entry + MGT_MAP_OFFSET, MGT_MAP_BYTES);
         member.header_offset = slots[index].offset;
-        member.data_offset =
-            self->base_address + mgt_sector_offset(entry[13], entry[14]);
+        member.data_offset = self->base_address + mgt_sector_offset(entry[13], entry[14]);
         if (!mgt_member_extent(self, &member)) goto fail;
-        member.name = mgt_unique_path(stream, parent, leaf,
-                                      slots[index].number);
-        if (!member.name || !mgt_path_safe(member.name) ||
-            !mgt_append(stream, &member)) {
+        member.name = mgt_unique_path(stream, parent, leaf, slots[index].number);
+        if (!member.name || !mgt_path_safe(member.name) || !mgt_append(stream, &member)) {
             xx_str_free(member.name);
             goto fail;
         }
@@ -676,9 +659,8 @@ fail:
 
 /* -------------------------------------------------------------- decode -- */
 
-static bool mgt_decode(Abstractformat *self, const mgt_stream *stream,
-                       const mgt_member *member, uint8_t **out,
-                       size_t *out_size, xx_pd_struct *pd) {
+static bool mgt_decode(Abstractformat *self, const mgt_stream *stream, const mgt_member *member, uint8_t **out, size_t *out_size, xx_pd_struct *pd)
+{
     uint8_t visited[MGT_MAP_BYTES];
     uint8_t sector_buffer[MGT_SECTOR];
     uint8_t *chain = NULL;
@@ -689,13 +671,11 @@ static bool mgt_decode(Abstractformat *self, const mgt_stream *stream,
 
     *out = NULL;
     *out_size = 0U;
-    if (member->folder || member->count == 0U ||
-        member->count > MGT_MAP_BITS) {
+    if (member->folder || member->count == 0U || member->count > MGT_MAP_BITS) {
         return false;
     }
     chain_size = (int64_t)member->count * MGT_PAYLOAD;
-    if (member->skip < 0 || member->size < 0 ||
-        member->skip + member->size > chain_size) {
+    if (member->skip < 0 || member->size < 0 || member->skip + member->size > chain_size) {
         return false;
     }
     chain = (uint8_t *)xx_mem_alloc((size_t)chain_size);
@@ -710,12 +690,10 @@ static bool mgt_decode(Abstractformat *self, const mgt_stream *stream,
             goto fail;
         }
         visited[bit >> 3] = (uint8_t)(visited[bit >> 3] | (1U << (bit & 7U)));
-        if (!mgt_read_at(self, stream->base + mgt_sector_offset(track, sector),
-                         sector_buffer, sizeof(sector_buffer))) {
+        if (!mgt_read_at(self, stream->base + mgt_sector_offset(track, sector), sector_buffer, sizeof(sector_buffer))) {
             goto fail;
         }
-        xx_rt_memcpy(chain + (size_t)step * MGT_PAYLOAD, sector_buffer,
-                     MGT_PAYLOAD);
+        xx_rt_memcpy(chain + (size_t)step * MGT_PAYLOAD, sector_buffer, MGT_PAYLOAD);
         track = sector_buffer[510];
         sector = sector_buffer[511];
     }
@@ -733,7 +711,8 @@ fail:
 
 /* ---------------------------------------------------------- lifecycle --- */
 
-void xx_mgt_init(xx_mgt *archive, xx_io_device *device, int64_t base_address) {
+void xx_mgt_init(xx_mgt *archive, xx_io_device *device, int64_t base_address)
+{
     if (!archive) return;
     xx_mem_zero(archive, sizeof(*archive));
     xx_format_init(&archive->format, device, base_address);
@@ -746,48 +725,47 @@ void xx_mgt_init(xx_mgt *archive, xx_io_device *device, int64_t base_address) {
     archive->format.check_is_valid = xx_mgt_check_is_valid;
     archive->format.handle_base_info = xx_mgt_handle_base_info;
     archive->format.get_format_size = xx_mgt_get_format_size;
-    archive->format.get_number_of_archive_records =
-        xx_mgt_get_number_of_archive_records;
-    archive->format.create_archive_records_reading =
-        xx_mgt_create_archive_records_reading;
-    archive->format.get_current_archive_record =
-        xx_mgt_get_current_archive_record;
-    archive->format.unpack_current_archive_record =
-        xx_mgt_unpack_current_archive_record;
-    archive->format.archive_record_move_to_next =
-        xx_mgt_archive_record_move_to_next;
-    archive->format.free_archive_records_reading =
-        xx_mgt_free_archive_records_reading;
+    archive->format.get_number_of_archive_records = xx_mgt_get_number_of_archive_records;
+    archive->format.create_archive_records_reading = xx_mgt_create_archive_records_reading;
+    archive->format.get_current_archive_record = xx_mgt_get_current_archive_record;
+    archive->format.unpack_current_archive_record = xx_mgt_unpack_current_archive_record;
+    archive->format.archive_record_move_to_next = xx_mgt_archive_record_move_to_next;
+    archive->format.free_archive_records_reading = xx_mgt_free_archive_records_reading;
     archive->format.destroy = xx_mgt_vtable_destroy;
 }
 
-xx_mgt *xx_mgt_create(xx_io_device *device, int64_t base_address) {
+xx_mgt *xx_mgt_create(xx_io_device *device, int64_t base_address)
+{
     xx_mgt *archive = (xx_mgt *)xx_mem_alloc(sizeof(*archive));
     if (!archive) return NULL;
     xx_mgt_init(archive, device, base_address);
     return archive;
 }
 
-void xx_mgt_destroy(xx_mgt *archive) {
+void xx_mgt_destroy(xx_mgt *archive)
+{
     if (!archive) return;
     if (archive->format.close) archive->format.close(&archive->format);
     xx_format_cleanup_extra_parameters(&archive->format);
     archive->number_of_records = 0U;
 }
 
-void xx_mgt_free(xx_mgt *archive) {
+void xx_mgt_free(xx_mgt *archive)
+{
     if (!archive) return;
     xx_mgt_destroy(archive);
     xx_mem_free(archive);
 }
 
-static void xx_mgt_vtable_destroy(Abstractformat *self) {
+static void xx_mgt_vtable_destroy(Abstractformat *self)
+{
     xx_mgt_destroy((xx_mgt *)self);
 }
 
 /* -------------------------------------------------------------- format -- */
 
-bool xx_mgt_check_is_valid(Abstractformat *self, xx_pd_struct *pd) {
+bool xx_mgt_check_is_valid(Abstractformat *self, xx_pd_struct *pd)
+{
     mgt_stream *stream;
     if (!self || (pd && xx_pd_is_stopped(pd))) return false;
     stream = mgt_parse(self, pd, true);
@@ -796,7 +774,8 @@ bool xx_mgt_check_is_valid(Abstractformat *self, xx_pd_struct *pd) {
     return true;
 }
 
-bool xx_mgt_handle_base_info(Abstractformat *self, xx_pd_struct *pd) {
+bool xx_mgt_handle_base_info(Abstractformat *self, xx_pd_struct *pd)
+{
     xx_mgt *archive = (xx_mgt *)self;
     mgt_stream *stream;
     if (!self || (pd && xx_pd_is_stopped(pd))) return false;
@@ -819,18 +798,17 @@ bool xx_mgt_handle_base_info(Abstractformat *self, xx_pd_struct *pd) {
     return true;
 }
 
-int64_t xx_mgt_get_format_size(Abstractformat *self, xx_pd_struct *pd) {
-    if (!self ||
-        (!self->base_info_handled && !xx_format_handle_base_info(self, pd))) {
+int64_t xx_mgt_get_format_size(Abstractformat *self, xx_pd_struct *pd)
+{
+    if (!self || (!self->base_info_handled && !xx_format_handle_base_info(self, pd))) {
         return 0;
     }
     return self->is_valid ? self->format_size : 0;
 }
 
-uint64_t xx_mgt_get_number_of_archive_records(Abstractformat *self,
-                                              xx_pd_struct *pd) {
-    if (!self ||
-        (!self->base_info_handled && !xx_format_handle_base_info(self, pd))) {
+uint64_t xx_mgt_get_number_of_archive_records(Abstractformat *self, xx_pd_struct *pd)
+{
+    if (!self || (!self->base_info_handled && !xx_format_handle_base_info(self, pd))) {
         return 0U;
     }
     return self->is_valid ? ((xx_mgt *)self)->number_of_records : 0U;
@@ -838,8 +816,8 @@ uint64_t xx_mgt_get_number_of_archive_records(Abstractformat *self,
 
 /* ------------------------------------------------------------- records -- */
 
-static bool mgt_set_record(xx_archive_record *record,
-                           const mgt_member *member) {
+static bool mgt_set_record(xx_archive_record *record, const mgt_member *member)
+{
     uint64_t stored = member->folder ? 0U : (uint64_t)member->count * MGT_SECTOR;
     xx_archive_record_cleanup(record);
     xx_archive_record_init(record);
@@ -847,35 +825,23 @@ static bool mgt_set_record(xx_archive_record *record,
     record->header_size = MGT_ENTRY;
     record->data_offset = member->data_offset;
     record->compressed_size = (int64_t)stored;
-    return xx_archive_record_set_original_name(record, member->name) &&
-           xx_archive_record_set_meta_u64(record, XX_META_ID_COMPRESSED_SIZE,
-                                          stored) &&
-           xx_archive_record_set_meta_u64(record, XX_META_ID_UNCOMPRESSED_SIZE,
-                                          member->folder
-                                              ? 0U
-                                              : (uint64_t)member->size) &&
-           xx_archive_record_set_meta_u64(record, XX_META_ID_COMPRESSION_METHOD,
-                                          0U) &&
-           xx_archive_record_set_meta_u64(record, XX_META_ID_FLAGS,
-                                          member->type) &&
-           xx_archive_record_set_meta_u64(record, XX_META_ID_TIMESTAMP, 0U) &&
-           xx_archive_record_set_meta_bool(record, XX_META_ID_IS_FOLDER,
-                                           member->folder) &&
-           xx_archive_record_set_meta_bool(record, XX_META_ID_IS_ENCRYPTED,
-                                           false);
+    return xx_archive_record_set_original_name(record, member->name) && xx_archive_record_set_meta_u64(record, XX_META_ID_COMPRESSED_SIZE, stored) &&
+           xx_archive_record_set_meta_u64(record, XX_META_ID_UNCOMPRESSED_SIZE, member->folder ? 0U : (uint64_t)member->size) &&
+           xx_archive_record_set_meta_u64(record, XX_META_ID_COMPRESSION_METHOD, 0U) && xx_archive_record_set_meta_u64(record, XX_META_ID_FLAGS, member->type) &&
+           xx_archive_record_set_meta_u64(record, XX_META_ID_TIMESTAMP, 0U) && xx_archive_record_set_meta_bool(record, XX_META_ID_IS_FOLDER, member->folder) &&
+           xx_archive_record_set_meta_bool(record, XX_META_ID_IS_ENCRYPTED, false);
 }
 
-static bool mgt_copy_options(xx_list_s *target, const xx_list_s *options) {
+static bool mgt_copy_options(xx_list_s *target, const xx_list_s *options)
+{
     size_t index;
     if (!target || !options) return options == NULL;
     for (index = 0U; index < options->count; ++index) {
-        const xx_meta *source =
-            (const xx_meta *)xx_list_at((const xx_list_t *)options, index);
+        const xx_meta *source = (const xx_meta *)xx_list_at((const xx_list_t *)options, index);
         xx_meta copied;
         if (!source) continue;
         xx_meta_init(&copied, source->meta_id);
-        if (!xx_var_copy(&copied.var, &source->var) ||
-            !xx_list_append(target, &copied)) {
+        if (!xx_var_copy(&copied.var, &source->var) || !xx_list_append(target, &copied)) {
             xx_meta_cleanup(&copied);
             return false;
         }
@@ -883,20 +849,19 @@ static bool mgt_copy_options(xx_list_s *target, const xx_list_s *options) {
     return true;
 }
 
-static const xx_var *mgt_get_option(const xx_list_s *options,
-                                    uint32_t meta_id) {
+static const xx_var *mgt_get_option(const xx_list_s *options, uint32_t meta_id)
+{
     size_t index;
     if (!options) return NULL;
     for (index = 0U; index < options->count; ++index) {
-        const xx_meta *meta =
-            (const xx_meta *)xx_list_at((const xx_list_t *)options, index);
+        const xx_meta *meta = (const xx_meta *)xx_list_at((const xx_list_t *)options, index);
         if (meta && meta->meta_id == meta_id) return &meta->var;
     }
     return NULL;
 }
 
-xx_archive_record_state *xx_mgt_create_archive_records_reading(
-    Abstractformat *self, const xx_list_s *options, xx_pd_struct *pd) {
+xx_archive_record_state *xx_mgt_create_archive_records_reading(Abstractformat *self, const xx_list_s *options, xx_pd_struct *pd)
+{
     mgt_stream *stream;
     xx_archive_record_state *state;
     if (!self || !self->device) return NULL;
@@ -911,9 +876,7 @@ xx_archive_record_state *xx_mgt_create_archive_records_reading(
     state->internal_state = stream;
     state->free_internal = mgt_stream_free;
     state->total_records = (int64_t)stream->count;
-    if (!mgt_copy_options(&state->options, options) ||
-        (stream->count != 0U &&
-         !mgt_set_record(&state->current_record, &stream->items[0]))) {
+    if (!mgt_copy_options(&state->options, options) || (stream->count != 0U && !mgt_set_record(&state->current_record, &stream->items[0]))) {
         xx_archive_record_state_free(state);
         return NULL;
     }
@@ -922,19 +885,15 @@ xx_archive_record_state *xx_mgt_create_archive_records_reading(
     return state;
 }
 
-const xx_archive_record *xx_mgt_get_current_archive_record(
-    Abstractformat *self, xx_archive_record_state *state) {
-    return self && state && state->format == self && state->has_record
-               ? &state->current_record
-               : NULL;
+const xx_archive_record *xx_mgt_get_current_archive_record(Abstractformat *self, xx_archive_record_state *state)
+{
+    return self && state && state->format == self && state->has_record ? &state->current_record : NULL;
 }
 
-bool xx_mgt_archive_record_move_to_next(Abstractformat *self,
-                                        xx_archive_record_state *state,
-                                        xx_pd_struct *pd) {
+bool xx_mgt_archive_record_move_to_next(Abstractformat *self, xx_archive_record_state *state, xx_pd_struct *pd)
+{
     mgt_stream *stream;
-    if (!self || !state || state->format != self || !state->has_record ||
-        (pd && xx_pd_is_stopped(pd))) {
+    if (!self || !state || state->format != self || !state->has_record || (pd && xx_pd_is_stopped(pd))) {
         return false;
     }
     stream = (mgt_stream *)state->internal_state;
@@ -946,14 +905,12 @@ bool xx_mgt_archive_record_move_to_next(Abstractformat *self,
     }
     ++stream->index;
     ++state->current_index;
-    state->has_record =
-        mgt_set_record(&state->current_record, &stream->items[stream->index]);
+    state->has_record = mgt_set_record(&state->current_record, &stream->items[stream->index]);
     return state->has_record;
 }
 
-bool xx_mgt_unpack_current_archive_record(Abstractformat *self,
-                                          xx_archive_record_state *state,
-                                          xx_pd_struct *pd) {
+bool xx_mgt_unpack_current_archive_record(Abstractformat *self, xx_archive_record_state *state, xx_pd_struct *pd)
+{
     mgt_stream *stream;
     const mgt_member *member;
     const xx_var *path_option;
@@ -965,8 +922,7 @@ bool xx_mgt_unpack_current_archive_record(Abstractformat *self,
     bool result = false;
     bool created = false;
 
-    if (!self || !state || state->format != self || !state->has_record ||
-        (pd && xx_pd_is_stopped(pd))) {
+    if (!self || !state || state->format != self || !state->has_record || (pd && xx_pd_is_stopped(pd))) {
         return false;
     }
     stream = (mgt_stream *)state->internal_state;
@@ -981,11 +937,9 @@ bool xx_mgt_unpack_current_archive_record(Abstractformat *self,
         xx_mem_free(plain);
         return result;
     }
-    if (path_option->type == XX_VAR_TYPE_STRING ||
-        path_option->type == XX_VAR_TYPE_STRING_VIEW) {
+    if (path_option->type == XX_VAR_TYPE_STRING || path_option->type == XX_VAR_TYPE_STRING_VIEW) {
         base_path = xx_var_get_str(path_option);
-    } else if (path_option->type == XX_VAR_TYPE_WSTRING ||
-               path_option->type == XX_VAR_TYPE_WSTRING_VIEW) {
+    } else if (path_option->type == XX_VAR_TYPE_WSTRING || path_option->type == XX_VAR_TYPE_WSTRING_VIEW) {
         converted_path = xx_str_unicode_to_utf8(xx_var_get_wstr(path_option));
         base_path = converted_path;
     }
@@ -993,9 +947,7 @@ bool xx_mgt_unpack_current_archive_record(Abstractformat *self,
         xx_str_free(converted_path);
         return false;
     }
-    if (base_path[0] != '\0' &&
-        base_path[xx_str_len(base_path) - 1U] != '/' &&
-        base_path[xx_str_len(base_path) - 1U] != '\\') {
+    if (base_path[0] != '\0' && base_path[xx_str_len(base_path) - 1U] != '/' && base_path[xx_str_len(base_path) - 1U] != '\\') {
         target_path = xx_str_concat3(base_path, "/", member->name);
     } else {
         target_path = xx_str_concat(base_path, member->name);
@@ -1008,8 +960,7 @@ bool xx_mgt_unpack_current_archive_record(Abstractformat *self,
         xx_str_free(target_path);
         return result;
     }
-    if (!xx_store_create_dirs_a(target_path, false) ||
-        !mgt_decode(self, stream, member, &plain, &plain_size, pd)) {
+    if (!xx_store_create_dirs_a(target_path, false) || !mgt_decode(self, stream, member, &plain, &plain_size, pd)) {
         xx_str_free(target_path);
         return false;
     }
@@ -1019,8 +970,7 @@ bool xx_mgt_unpack_current_archive_record(Abstractformat *self,
         created = output != NULL;
         result = output != NULL;
         while (result && completed < plain_size) {
-            ssize_t sent =
-                xx_io_write(output, plain + completed, plain_size - completed);
+            ssize_t sent = xx_io_write(output, plain + completed, plain_size - completed);
             if (sent <= 0 || (size_t)sent > plain_size - completed) {
                 result = false;
                 break;
@@ -1035,8 +985,8 @@ bool xx_mgt_unpack_current_archive_record(Abstractformat *self,
     return result;
 }
 
-void xx_mgt_free_archive_records_reading(Abstractformat *self,
-                                         xx_archive_record_state *state) {
+void xx_mgt_free_archive_records_reading(Abstractformat *self, xx_archive_record_state *state)
+{
     (void)self;
     xx_archive_record_state_free(state);
 }

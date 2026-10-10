@@ -15,62 +15,54 @@
 #include "../xx_format_extractor_engine.h"
 #include "xxfclib/formats/fiz/xx_fiz.h"
 
-static const uint8_t k_anchor0[] = { 0x46, 0x49, 0x5A, 0x1A };
+static const uint8_t k_anchor0[] = {0x46, 0x49, 0x5A, 0x1A};
 
 static const xx_format_search_anchor k_anchors[] = {
-    { k_anchor0, sizeof(k_anchor0), 0U },
+    {k_anchor0, sizeof(k_anchor0), 0U},
 };
 
-static const xx_file_type_t k_types[] = { XX_FILE_TYPE_FIZ };
+static const xx_file_type_t k_types[] = {XX_FILE_TYPE_FIZ};
 
-static Abstractformat *xx_fiz_search_open(xx_io_device *window) {
+static Abstractformat *xx_fiz_search_open(xx_io_device *window)
+{
     xx_fiz *reader = xx_fiz_create(window, 0);
     return reader ? &reader->format : NULL;
 }
 
-static void xx_fiz_search_close(Abstractformat *format) {
+static void xx_fiz_search_close(Abstractformat *format)
+{
     /* The format is the first member, so this is the reader itself. */
     xx_fiz_free((xx_fiz *)format);
 }
 
 static const xx_format_search_desc k_desc = {
-    k_types, sizeof(k_types) / sizeof(k_types[0]),
-    k_anchors, sizeof(k_anchors) / sizeof(k_anchors[0]),
-    xx_fiz_search_open, xx_fiz_search_close, false
-};
+    k_types, sizeof(k_types) / sizeof(k_types[0]), k_anchors, sizeof(k_anchors) / sizeof(k_anchors[0]), xx_fiz_search_open, xx_fiz_search_close, false};
 
-static xx_format_search_state *xx_fiz_create_format_search(
-    xx_format_extractor *self, xx_io_device *device, const xx_list_s *options,
-    xx_pd_struct *pd) {
+static xx_format_search_state *xx_fiz_create_format_search(xx_format_extractor *self, xx_io_device *device, const xx_list_s *options, xx_pd_struct *pd)
+{
     (void)self;
     return xx_format_search_create(&k_desc, device, options, pd);
 }
 
-static const xx_format_search_info *xx_fiz_get_current_format_info(
-    xx_format_extractor *self, xx_format_search_state *state) {
+static const xx_format_search_info *xx_fiz_get_current_format_info(xx_format_extractor *self, xx_format_search_state *state)
+{
     (void)self;
     return xx_format_search_current(state);
 }
 
-static bool xx_fiz_format_search_find_next(xx_format_extractor *self,
-                                          xx_format_search_state *state,
-                                          xx_pd_struct *pd) {
+static bool xx_fiz_format_search_find_next(xx_format_extractor *self, xx_format_search_state *state, xx_pd_struct *pd)
+{
     (void)self;
     return xx_format_search_find_next(state, pd);
 }
 
-static void xx_fiz_free_format_search(xx_format_extractor *self,
-                                     xx_format_search_state *state) {
+static void xx_fiz_free_format_search(xx_format_extractor *self, xx_format_search_state *state)
+{
     (void)self;
     xx_format_search_free(state);
 }
 
-xx_format_extractor xx_fiz_extractor = {
-    xx_fiz_create_format_search,
-    xx_fiz_get_current_format_info,
-    xx_fiz_format_search_find_next,
-    xx_fiz_free_format_search
-};
+xx_format_extractor xx_fiz_extractor = {xx_fiz_create_format_search, xx_fiz_get_current_format_info, xx_fiz_format_search_find_next, xx_fiz_free_format_search};
 
 /* BEGIN GENERATED ABSTRACT EXTRACTOR */
 #include "../xx_format_abstract_extractor_adapter.h"

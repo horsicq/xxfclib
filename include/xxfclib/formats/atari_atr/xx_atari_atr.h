@@ -5,13 +5,15 @@
 #ifdef __cplusplus
 extern "C" {
 #endif
-typedef struct xx_atari_atr { Abstractformat format; } xx_atari_atr;
-XXFC_API void xx_atari_atr_init(xx_atari_atr *,xx_io_device *,int64_t);
-XXFC_API xx_atari_atr *xx_atari_atr_create(xx_io_device *,int64_t);
+typedef struct xx_atari_atr {
+    Abstractformat format;
+} xx_atari_atr;
+XXFC_API void xx_atari_atr_init(xx_atari_atr *, xx_io_device *, int64_t);
+XXFC_API xx_atari_atr *xx_atari_atr_create(xx_io_device *, int64_t);
 XXFC_API void xx_atari_atr_destroy(xx_atari_atr *);
 XXFC_API void xx_atari_atr_free(xx_atari_atr *);
-XXFC_API bool xx_atari_atr_check_is_valid(Abstractformat *,xx_pd_struct *);
-XXFC_API bool xx_atari_atr_handle_base_info(Abstractformat *,xx_pd_struct *);
+XXFC_API bool xx_atari_atr_check_is_valid(Abstractformat *, xx_pd_struct *);
+XXFC_API bool xx_atari_atr_handle_base_info(Abstractformat *, xx_pd_struct *);
 #ifdef __cplusplus
 }
 #endif

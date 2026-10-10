@@ -9,13 +9,15 @@
 #ifdef __cplusplus
 extern "C" {
 #endif
-typedef struct xx_xcursor { Abstractformat format; } xx_xcursor;
-XXFC_API void xx_xcursor_init(xx_xcursor *,xx_io_device *,int64_t);
-XXFC_API xx_xcursor *xx_xcursor_create(xx_io_device *,int64_t);
+typedef struct xx_xcursor {
+    Abstractformat format;
+} xx_xcursor;
+XXFC_API void xx_xcursor_init(xx_xcursor *, xx_io_device *, int64_t);
+XXFC_API xx_xcursor *xx_xcursor_create(xx_io_device *, int64_t);
 XXFC_API void xx_xcursor_destroy(xx_xcursor *);
 XXFC_API void xx_xcursor_free(xx_xcursor *);
-XXFC_API bool xx_xcursor_check_is_valid(Abstractformat *,xx_pd_struct *);
-XXFC_API bool xx_xcursor_handle_base_info(Abstractformat *,xx_pd_struct *);
+XXFC_API bool xx_xcursor_check_is_valid(Abstractformat *, xx_pd_struct *);
+XXFC_API bool xx_xcursor_handle_base_info(Abstractformat *, xx_pd_struct *);
 #ifdef __cplusplus
 }
 #endif

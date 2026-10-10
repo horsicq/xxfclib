@@ -27,29 +27,34 @@
 #include "xxfclib/memory/xx_memory.h"
 #include "platforms/xx_memory_platform.h"
 
-void* xx_mem_alloc(size_t size) {
+void *xx_mem_alloc(size_t size)
+{
     if (size == 0) {
         return NULL;
     }
     return xx_memory_platform_alloc(size);
 }
 
-void* xx_mem_calloc(size_t count, size_t size) {
+void *xx_mem_calloc(size_t count, size_t size)
+{
     if (count == 0 || size == 0) {
         return NULL;
     }
     return xx_memory_platform_calloc(count, size);
 }
 
-void* xx_mem_realloc(void *ptr, size_t new_size) {
+void *xx_mem_realloc(void *ptr, size_t new_size)
+{
     return xx_memory_platform_realloc(ptr, new_size);
 }
 
-void xx_mem_free(void *ptr) {
+void xx_mem_free(void *ptr)
+{
     xx_memory_platform_free(ptr);
 }
 
-void* xx_mem_aligned_alloc(size_t alignment, size_t size) {
+void *xx_mem_aligned_alloc(size_t alignment, size_t size)
+{
     if (size == 0) {
         return NULL;
     }
@@ -60,59 +65,64 @@ void* xx_mem_aligned_alloc(size_t alignment, size_t size) {
     }
 
     /* Minimum alignment is pointer size */
-    if (alignment < sizeof(void*)) {
-        alignment = sizeof(void*);
+    if (alignment < sizeof(void *)) {
+        alignment = sizeof(void *);
     }
 
     /* Calculate total size needed: size + alignment - 1 + sizeof(void*) */
-    if (size > (size_t)-1 - alignment - sizeof(void*)) {
+    if (size > (size_t)-1 - alignment - sizeof(void *)) {
         return NULL; /* Overflow protection */
     }
-    size_t total_size = size + alignment - 1 + sizeof(void*);
+    size_t total_size = size + alignment - 1 + sizeof(void *);
 
     void *raw = xx_mem_alloc(total_size);
     if (!raw) {
         return NULL;
     }
 
-    uintptr_t raw_addr = (uintptr_t)raw + sizeof(void*);
+    uintptr_t raw_addr = (uintptr_t)raw + sizeof(void *);
     uintptr_t aligned_addr = (raw_addr + (uintptr_t)(alignment - 1)) & ~(uintptr_t)(alignment - 1);
 
-    ((void**)aligned_addr)[-1] = raw;
-    return (void*)aligned_addr;
+    ((void **)aligned_addr)[-1] = raw;
+    return (void *)aligned_addr;
 }
 
-void xx_mem_aligned_free(void *ptr) {
+void xx_mem_aligned_free(void *ptr)
+{
     if (!ptr) {
         return;
     }
-    void *raw = ((void**)ptr)[-1];
+    void *raw = ((void **)ptr)[-1];
     xx_mem_free(raw);
 }
 
-size_t xx_mem_usable_size(void *ptr) {
+size_t xx_mem_usable_size(void *ptr)
+{
     if (!ptr) {
         return 0;
     }
     return xx_memory_platform_usable_size(ptr);
 }
 
-void* xx_mem_zero(void *ptr, size_t size) {
+void *xx_mem_zero(void *ptr, size_t size)
+{
     if (!ptr || size == 0) {
         return ptr;
     }
-    volatile uint8_t *p = (volatile uint8_t*)ptr;
+    volatile uint8_t *p = (volatile uint8_t *)ptr;
     while (size--) {
         *p++ = 0;
     }
     return ptr;
 }
 
-void xx_memory_copy_scalar(uint8_t *destination, const uint8_t *source, size_t size) {
+void xx_memory_copy_scalar(uint8_t *destination, const uint8_t *source, size_t size)
+{
     for (size_t at = 0; at < size; ++at) destination[at] = source[at];
 }
 
-void* xx_mem_copy(void *dst, const void *src, size_t size) {
+void *xx_mem_copy(void *dst, const void *src, size_t size)
+{
     if (!dst || !src || size == 0 || dst == src) {
         return dst;
     }
@@ -120,12 +130,13 @@ void* xx_mem_copy(void *dst, const void *src, size_t size) {
     return dst;
 }
 
-void* xx_mem_move(void *dst, const void *src, size_t size) {
+void *xx_mem_move(void *dst, const void *src, size_t size)
+{
     if (!dst || !src || size == 0 || dst == src) {
         return dst;
     }
-    uint8_t *d = (uint8_t*)dst;
-    const uint8_t *s = (const uint8_t*)src;
+    uint8_t *d = (uint8_t *)dst;
+    const uint8_t *s = (const uint8_t *)src;
     if (d < s) {
         for (size_t i = 0; i < size; ++i) {
             d[i] = s[i];
@@ -138,7 +149,8 @@ void* xx_mem_move(void *dst, const void *src, size_t size) {
     return dst;
 }
 
-int xx_mem_compare(const void *a, const void *b, size_t size) {
+int xx_mem_compare(const void *a, const void *b, size_t size)
+{
     if (a == b || size == 0) {
         return 0;
     }
@@ -148,8 +160,8 @@ int xx_mem_compare(const void *a, const void *b, size_t size) {
     if (!b) {
         return 1;
     }
-    const uint8_t *p1 = (const uint8_t*)a;
-    const uint8_t *p2 = (const uint8_t*)b;
+    const uint8_t *p1 = (const uint8_t *)a;
+    const uint8_t *p2 = (const uint8_t *)b;
     for (size_t i = 0; i < size; ++i) {
         if (p1[i] != p2[i]) {
             return (int)p1[i] - (int)p2[i];

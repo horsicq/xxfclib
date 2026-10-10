@@ -81,42 +81,34 @@ typedef struct xx_mh01 XMh01;
 struct xx_mh01 {
     Abstractformat format;
     uint64_t number_of_records;
-    uint32_t signature_offset;   /**< Raw field, relative to offset 16. */
+    uint32_t signature_offset; /**< Raw field, relative to offset 16. */
     uint32_t signature_size;
     uint32_t iv_size;
     uint32_t encrypted_data_size;
     uint32_t unknown1;
     uint32_t unknown2;
-    int64_t iv_offset;            /**< Absolute, or -1. */
-    int64_t encrypted_data_offset;/**< Absolute, or -1. */
-    int64_t signature_data_offset;/**< Absolute, or -1. */
-    int64_t archive_end;          /**< base_address + total size, or -1. */
+    int64_t iv_offset;             /**< Absolute, or -1. */
+    int64_t encrypted_data_offset; /**< Absolute, or -1. */
+    int64_t signature_data_offset; /**< Absolute, or -1. */
+    int64_t archive_end;           /**< base_address + total size, or -1. */
     void *internal;
 };
 
-XXFC_API void xx_mh01_init(xx_mh01 *mh01, xx_io_device *dev,
-                           int64_t base_address);
+XXFC_API void xx_mh01_init(xx_mh01 *mh01, xx_io_device *dev, int64_t base_address);
 XXFC_API xx_mh01 *xx_mh01_create(xx_io_device *dev, int64_t base_address);
 XXFC_API void xx_mh01_destroy(xx_mh01 *mh01);
 XXFC_API void xx_mh01_free(xx_mh01 *mh01);
 
 XXFC_API bool xx_mh01_check_is_valid(Abstractformat *self, xx_pd_struct *pd);
 XXFC_API bool xx_mh01_handle_base_info(Abstractformat *self, xx_pd_struct *pd);
-XXFC_API int64_t xx_mh01_get_format_size(Abstractformat *self,
-                                         xx_pd_struct *pd);
-XXFC_API uint64_t xx_mh01_get_number_of_archive_records(Abstractformat *self,
-                                                        xx_pd_struct *pd);
+XXFC_API int64_t xx_mh01_get_format_size(Abstractformat *self, xx_pd_struct *pd);
+XXFC_API uint64_t xx_mh01_get_number_of_archive_records(Abstractformat *self, xx_pd_struct *pd);
 
-XXFC_API xx_archive_record_state *xx_mh01_create_archive_records_reading(
-    Abstractformat *self, const xx_list_s *options, xx_pd_struct *pd);
-XXFC_API const xx_archive_record *xx_mh01_get_current_archive_record(
-    Abstractformat *self, xx_archive_record_state *state);
-XXFC_API bool xx_mh01_unpack_current_archive_record(
-    Abstractformat *self, xx_archive_record_state *state, xx_pd_struct *pd);
-XXFC_API bool xx_mh01_archive_record_move_to_next(
-    Abstractformat *self, xx_archive_record_state *state, xx_pd_struct *pd);
-XXFC_API void xx_mh01_free_archive_records_reading(
-    Abstractformat *self, xx_archive_record_state *state);
+XXFC_API xx_archive_record_state *xx_mh01_create_archive_records_reading(Abstractformat *self, const xx_list_s *options, xx_pd_struct *pd);
+XXFC_API const xx_archive_record *xx_mh01_get_current_archive_record(Abstractformat *self, xx_archive_record_state *state);
+XXFC_API bool xx_mh01_unpack_current_archive_record(Abstractformat *self, xx_archive_record_state *state, xx_pd_struct *pd);
+XXFC_API bool xx_mh01_archive_record_move_to_next(Abstractformat *self, xx_archive_record_state *state, xx_pd_struct *pd);
+XXFC_API void xx_mh01_free_archive_records_reading(Abstractformat *self, xx_archive_record_state *state);
 
 XXFC_API uint64_t xx_mh01_get_number_of_records(const xx_mh01 *mh01);
 XXFC_API uint32_t xx_mh01_get_iv_size(const xx_mh01 *mh01);
@@ -127,18 +119,24 @@ XXFC_API uint32_t xx_mh01_get_signature_size(const xx_mh01 *mh01);
 XXFC_API const char *xx_mh01_get_iv(const xx_mh01 *mh01);
 XXFC_API int64_t xx_mh01_get_archive_end(const xx_mh01 *mh01);
 
-static inline Abstractformat *xx_mh01_to_format(xx_mh01 *mh01) {
+static inline Abstractformat *xx_mh01_to_format(xx_mh01 *mh01)
+{
     return mh01 ? &mh01->format : NULL;
 }
-static inline void XMh01_init(xx_mh01 *mh01, xx_io_device *dev,
-                              int64_t base_address) {
+static inline void XMh01_init(xx_mh01 *mh01, xx_io_device *dev, int64_t base_address)
+{
     xx_mh01_init(mh01, dev, base_address);
 }
-static inline xx_mh01 *XMh01_create(xx_io_device *dev, int64_t base_address) {
+static inline xx_mh01 *XMh01_create(xx_io_device *dev, int64_t base_address)
+{
     return xx_mh01_create(dev, base_address);
 }
-static inline void XMh01_free(xx_mh01 *mh01) { xx_mh01_free(mh01); }
-static inline bool XMh01_is_valid(xx_mh01 *mh01, xx_pd_struct *pd) {
+static inline void XMh01_free(xx_mh01 *mh01)
+{
+    xx_mh01_free(mh01);
+}
+static inline bool XMh01_is_valid(xx_mh01 *mh01, xx_pd_struct *pd)
+{
     return mh01 ? xx_format_is_valid(&mh01->format, pd) : false;
 }
 

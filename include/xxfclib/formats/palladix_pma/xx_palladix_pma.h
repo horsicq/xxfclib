@@ -6,7 +6,9 @@
 #ifdef __cplusplus
 extern "C" {
 #endif
-typedef struct xx_palladix_pma { Abstractformat format; } xx_palladix_pma;
+typedef struct xx_palladix_pma {
+    Abstractformat format;
+} xx_palladix_pma;
 XXFC_API void xx_palladix_pma_init(xx_palladix_pma *, xx_io_device *, int64_t);
 XXFC_API xx_palladix_pma *xx_palladix_pma_create(xx_io_device *, int64_t);
 XXFC_API void xx_palladix_pma_destroy(xx_palladix_pma *);

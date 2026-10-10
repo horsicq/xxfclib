@@ -8,13 +8,15 @@
 #ifdef __cplusplus
 extern "C" {
 #endif
-typedef struct xx_hes_sound { Abstractformat format; } xx_hes_sound;
-XXFC_API void xx_hes_sound_init(xx_hes_sound *,xx_io_device *,int64_t);
-XXFC_API xx_hes_sound *xx_hes_sound_create(xx_io_device *,int64_t);
+typedef struct xx_hes_sound {
+    Abstractformat format;
+} xx_hes_sound;
+XXFC_API void xx_hes_sound_init(xx_hes_sound *, xx_io_device *, int64_t);
+XXFC_API xx_hes_sound *xx_hes_sound_create(xx_io_device *, int64_t);
 XXFC_API void xx_hes_sound_destroy(xx_hes_sound *);
 XXFC_API void xx_hes_sound_free(xx_hes_sound *);
-XXFC_API bool xx_hes_sound_check_is_valid(Abstractformat *,xx_pd_struct *);
-XXFC_API bool xx_hes_sound_handle_base_info(Abstractformat *,xx_pd_struct *);
+XXFC_API bool xx_hes_sound_check_is_valid(Abstractformat *, xx_pd_struct *);
+XXFC_API bool xx_hes_sound_handle_base_info(Abstractformat *, xx_pd_struct *);
 #ifdef __cplusplus
 }
 #endif

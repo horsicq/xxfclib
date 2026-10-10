@@ -57,8 +57,7 @@ extern "C" {
 #define XX_LINUXBOOT_SECTOR_SIZE 512U
 #define XX_LINUXBOOT_MAGIC_SIZE 16U
 /** The sixteen bootsect.S bytes binwalk matches at offset 0. */
-#define XX_LINUXBOOT_MAGIC \
-    "\xB8\xC0\x07\x8E\xD8\xB8\x00\x90\x8E\xC0\xB9\x00\x01\x29\xF6\x29"
+#define XX_LINUXBOOT_MAGIC "\xB8\xC0\x07\x8E\xD8\xB8\x00\x90\x8E\xC0\xB9\x00\x01\x29\xF6\x29"
 #define XX_LINUXBOOT_HDRS_OFFSET 0x202U
 #define XX_LINUXBOOT_KERNEL_VERSION_MAX 128U
 
@@ -68,42 +67,37 @@ typedef struct xx_linuxboot XLinuxboot;
 
 struct xx_linuxboot {
     Abstractformat format;
-    uint16_t protocol_version;  /**< 0x206, e.g. 0x0203. */
-    uint8_t setup_sects;        /**< 0x1F1 as stored (0 means 4). */
-    uint8_t loadflags;          /**< 0x211. */
-    uint16_t root_flags;        /**< 0x1F2. */
-    uint16_t swap_dev;          /**< 0x1F6. */
-    uint16_t ram_size;          /**< 0x1F8. */
-    uint16_t vid_mode;          /**< 0x1FA. */
-    uint16_t root_dev;          /**< 0x1FC. */
+    uint16_t protocol_version;      /**< 0x206, e.g. 0x0203. */
+    uint8_t setup_sects;            /**< 0x1F1 as stored (0 means 4). */
+    uint8_t loadflags;              /**< 0x211. */
+    uint16_t root_flags;            /**< 0x1F2. */
+    uint16_t swap_dev;              /**< 0x1F6. */
+    uint16_t ram_size;              /**< 0x1F8. */
+    uint16_t vid_mode;              /**< 0x1FA. */
+    uint16_t root_dev;              /**< 0x1FC. */
     uint16_t kernel_version_offset; /**< 0x20E as stored, 0 if absent. */
-    uint32_t syssize;           /**< 0x1F4 as stored (16 or 32 bits). */
-    uint32_t code32_start;      /**< 0x214. */
-    uint32_t system_paragraphs; /**< syssize after wrap resolution. */
-    int64_t setup_offset;       /**< base + 512. */
-    int64_t setup_size;         /**< effective setup_sects * 512. */
-    int64_t system_offset;      /**< First byte of the protected-mode system. */
-    int64_t system_size;        /**< Bytes of system inside the format size. */
-    int64_t payload_offset;     /**< The gzip piggy, or -1 when not located. */
-    int64_t payload_size;       /**< Its input_len word, or 0. */
-    bool is_bzimage;            /**< loadflags bit 0 (LOADED_HIGH). */
-    bool size_exact;            /**< End pinned by the piggy or by EOF. */
+    uint32_t syssize;               /**< 0x1F4 as stored (16 or 32 bits). */
+    uint32_t code32_start;          /**< 0x214. */
+    uint32_t system_paragraphs;     /**< syssize after wrap resolution. */
+    int64_t setup_offset;           /**< base + 512. */
+    int64_t setup_size;             /**< effective setup_sects * 512. */
+    int64_t system_offset;          /**< First byte of the protected-mode system. */
+    int64_t system_size;            /**< Bytes of system inside the format size. */
+    int64_t payload_offset;         /**< The gzip piggy, or -1 when not located. */
+    int64_t payload_size;           /**< Its input_len word, or 0. */
+    bool is_bzimage;                /**< loadflags bit 0 (LOADED_HIGH). */
+    bool size_exact;                /**< End pinned by the piggy or by EOF. */
     char kernel_version[XX_LINUXBOOT_KERNEL_VERSION_MAX];
 };
 
-XXFC_API void xx_linuxboot_init(xx_linuxboot *image, xx_io_device *dev,
-                                int64_t base_address);
-XXFC_API xx_linuxboot *xx_linuxboot_create(xx_io_device *dev,
-                                           int64_t base_address);
+XXFC_API void xx_linuxboot_init(xx_linuxboot *image, xx_io_device *dev, int64_t base_address);
+XXFC_API xx_linuxboot *xx_linuxboot_create(xx_io_device *dev, int64_t base_address);
 XXFC_API void xx_linuxboot_destroy(xx_linuxboot *image);
 XXFC_API void xx_linuxboot_free(xx_linuxboot *image);
 
-XXFC_API bool xx_linuxboot_check_is_valid(Abstractformat *self,
-                                          xx_pd_struct *pd);
-XXFC_API bool xx_linuxboot_handle_base_info(Abstractformat *self,
-                                            xx_pd_struct *pd);
-XXFC_API int64_t xx_linuxboot_get_format_size(Abstractformat *self,
-                                              xx_pd_struct *pd);
+XXFC_API bool xx_linuxboot_check_is_valid(Abstractformat *self, xx_pd_struct *pd);
+XXFC_API bool xx_linuxboot_handle_base_info(Abstractformat *self, xx_pd_struct *pd);
+XXFC_API int64_t xx_linuxboot_get_format_size(Abstractformat *self, xx_pd_struct *pd);
 
 XXFC_API uint16_t xx_linuxboot_get_protocol_version(const xx_linuxboot *image);
 XXFC_API const char *xx_linuxboot_get_kernel_version(const xx_linuxboot *image);
@@ -113,21 +107,24 @@ XXFC_API int64_t xx_linuxboot_get_system_size(const xx_linuxboot *image);
 XXFC_API int64_t xx_linuxboot_get_payload_offset(const xx_linuxboot *image);
 XXFC_API bool xx_linuxboot_is_bzimage(const xx_linuxboot *image);
 
-static inline Abstractformat *xx_linuxboot_to_format(xx_linuxboot *image) {
+static inline Abstractformat *xx_linuxboot_to_format(xx_linuxboot *image)
+{
     return image ? &image->format : NULL;
 }
-static inline void XLinuxboot_init(xx_linuxboot *image, xx_io_device *dev,
-                                   int64_t base_address) {
+static inline void XLinuxboot_init(xx_linuxboot *image, xx_io_device *dev, int64_t base_address)
+{
     xx_linuxboot_init(image, dev, base_address);
 }
-static inline xx_linuxboot *XLinuxboot_create(xx_io_device *dev,
-                                              int64_t base_address) {
+static inline xx_linuxboot *XLinuxboot_create(xx_io_device *dev, int64_t base_address)
+{
     return xx_linuxboot_create(dev, base_address);
 }
-static inline void XLinuxboot_free(xx_linuxboot *image) {
+static inline void XLinuxboot_free(xx_linuxboot *image)
+{
     xx_linuxboot_free(image);
 }
-static inline bool XLinuxboot_is_valid(xx_linuxboot *image, xx_pd_struct *pd) {
+static inline bool XLinuxboot_is_valid(xx_linuxboot *image, xx_pd_struct *pd)
+{
     return image ? xx_format_is_valid(&image->format, pd) : false;
 }
 

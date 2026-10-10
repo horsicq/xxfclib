@@ -26,14 +26,15 @@
 /* ========================================================================= */
 
 #if defined(_MSC_VER) && (defined(_M_IX86) || defined(_M_X64))
-#  include <intrin.h>
-#  include <immintrin.h>
+#include <intrin.h>
+#include <immintrin.h>
 #elif (defined(__GNUC__) || defined(__clang__)) && (defined(__i386__) || defined(__x86_64__))
-#  include <cpuid.h>
-#  include <immintrin.h>
+#include <cpuid.h>
+#include <immintrin.h>
 #endif
 
-static bool detect_sse2_hardware(void) {
+static bool detect_sse2_hardware(void)
+{
 #if defined(_M_X64) || defined(__x86_64__)
     /* All x86-64 processors support SSE2 by architectural specification */
     return true;
@@ -57,19 +58,19 @@ static bool detect_sse2_hardware(void) {
 }
 
 #if defined(__GNUC__) || defined(__clang__)
-#  if defined(__i386__) || defined(__x86_64__)
-#    define XX_GLOBAL_DETECT_AVX2 __attribute__((target("avx2")))
-#  else
-#    define XX_GLOBAL_DETECT_AVX2
-#  endif
+#if defined(__i386__) || defined(__x86_64__)
+#define XX_GLOBAL_DETECT_AVX2 __attribute__((target("avx2")))
 #else
-#  define XX_GLOBAL_DETECT_AVX2
+#define XX_GLOBAL_DETECT_AVX2
+#endif
+#else
+#define XX_GLOBAL_DETECT_AVX2
 #endif
 
 XX_GLOBAL_DETECT_AVX2
-static bool detect_avx2_hardware(void) {
-#if (defined(_MSC_VER) && (defined(_M_IX86) || defined(_M_X64))) || \
-    ((defined(__GNUC__) || defined(__clang__)) && (defined(__i386__) || defined(__x86_64__)))
+static bool detect_avx2_hardware(void)
+{
+#if (defined(_MSC_VER) && (defined(_M_IX86) || defined(_M_X64))) || ((defined(__GNUC__) || defined(__clang__)) && (defined(__i386__) || defined(__x86_64__)))
     int cpu_info[4] = {0};
 
     /* 1. Check max supported CPUID level */
@@ -112,11 +113,13 @@ static bool detect_avx2_hardware(void) {
 #endif
 }
 
-bool xx_global_platform_has_sse2(void) {
+bool xx_global_platform_has_sse2(void)
+{
     return detect_sse2_hardware();
 }
 
-bool xx_global_platform_has_avx2(void) {
+bool xx_global_platform_has_avx2(void)
+{
     return detect_avx2_hardware();
 }
 
@@ -124,11 +127,13 @@ bool xx_global_platform_has_avx2(void) {
 
 #include "xx_global_platform.h"
 
-bool xx_global_platform_has_sse2(void) {
+bool xx_global_platform_has_sse2(void)
+{
     return false;
 }
 
-bool xx_global_platform_has_avx2(void) {
+bool xx_global_platform_has_avx2(void)
+{
     return false;
 }
 

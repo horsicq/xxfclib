@@ -9,7 +9,9 @@ extern "C" {
 #endif
 /** Universal Mach-O container. Each original architecture slice is a stored
  * archive member. Both table widths and byte orders are supported. */
-typedef struct xx_machofat { Abstractformat format; } xx_machofat;
+typedef struct xx_machofat {
+    Abstractformat format;
+} xx_machofat;
 XXFC_API void xx_machofat_init(xx_machofat *, xx_io_device *, int64_t);
 XXFC_API xx_machofat *xx_machofat_create(xx_io_device *, int64_t);
 XXFC_API void xx_machofat_destroy(xx_machofat *);

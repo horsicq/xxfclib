@@ -5,6 +5,5 @@
 #include <stddef.h>
 #include <stdint.h>
 #include <stdbool.h>
-bool fead_bcj2_decode(const uint8_t *const inputs[4], const size_t sizes[4],
- uint8_t *output, size_t output_size, xx_pd_struct *pd);
+bool fead_bcj2_decode(const uint8_t *const inputs[4], const size_t sizes[4], uint8_t *output, size_t output_size, xx_pd_struct *pd);
 #endif

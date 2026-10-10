@@ -60,7 +60,8 @@ enum {
 };
 
 /* Class of one text byte; `nibble` receives a digit's value. */
-static int base16_class(uint8_t byte, uint8_t *nibble) {
+static int base16_class(uint8_t byte, uint8_t *nibble)
+{
     if (byte >= '0' && byte <= '9') {
         *nibble = (uint8_t)(byte - '0');
         return BASE16_DECIMAL;
@@ -73,8 +74,7 @@ static int base16_class(uint8_t byte, uint8_t *nibble) {
         *nibble = (uint8_t)(byte - 'A' + 10);
         return BASE16_UPPER;
     }
-    if (byte == ' ' || byte == '\t' || byte == '\r' || byte == '\n')
-        return BASE16_SPACE;
+    if (byte == ' ' || byte == '\t' || byte == '\r' || byte == '\n') return BASE16_SPACE;
     return BASE16_FOREIGN;
 }
 
@@ -90,7 +90,7 @@ typedef struct base16_scan_s {
     bool has_decimal;
     bool has_lower;
     bool has_upper;
-    bool foreign;         /**< Stopped on a byte outside the alphabet. */
+    bool foreign; /**< Stopped on a byte outside the alphabet. */
 } base16_scan;
 
 typedef struct base16_context_s {
@@ -107,13 +107,11 @@ typedef struct base16_stream_s {
     size_t count;
 } base16_stream;
 
-static bool base16_read_at(xx_io_device *device, int64_t offset,
-                           void *buffer, size_t size) {
+static bool base16_read_at(xx_io_device *device, int64_t offset, void *buffer, size_t size)
+{
     size_t done = 0U;
     const size_t transfer_capacity = xx_get_file_buffer_size();
-    if (!device || (!buffer && size != 0U) || offset < 0 ||
-        xx_io_seek64(device, offset, SEEK_SET) != 0)
-        return false;
+    if (!device || (!buffer && size != 0U) || offset < 0 || xx_io_seek64(device, offset, SEEK_SET) != 0) return false;
     while (done < size) {
         size_t request = size - done;
         if (request > transfer_capacity) request = transfer_capacity;
@@ -124,25 +122,22 @@ static bool base16_read_at(xx_io_device *device, int64_t offset,
     return true;
 }
 
-static void base16_close_run(base16_scan *scan) {
+static void base16_close_run(base16_scan *scan)
+{
     if (scan->run & 1U) scan->odd_run = true;
     scan->run = 0U;
 }
 
 /* Continue `scan` up to relative offset `limit` (never past the first
  * foreign byte).  False only on a read error or a stop request. */
-static bool base16_scan_run_buffered(Abstractformat *format, base16_scan *scan,
-                            int64_t limit, xx_pd_struct *pd, uint8_t *buffer, size_t buffer_capacity) {
+static bool base16_scan_run_buffered(Abstractformat *format, base16_scan *scan, int64_t limit, xx_pd_struct *pd, uint8_t *buffer, size_t buffer_capacity)
+{
     while (!scan->foreign && scan->position < limit) {
         int64_t left = limit - scan->position;
-        size_t want = (uint64_t)left < (uint64_t)buffer_capacity ? (size_t)left
-                                                      : buffer_capacity;
+        size_t want = (uint64_t)left < (uint64_t)buffer_capacity ? (size_t)left : buffer_capacity;
         size_t index;
         if (pd && xx_pd_is_stopped(pd)) return false;
-        if (!base16_read_at(format->device,
-                            format->base_address + scan->position, buffer,
-                            want))
-            return false;
+        if (!base16_read_at(format->device, format->base_address + scan->position, buffer, want)) return false;
         for (index = 0U; index < want; ++index) {
             uint8_t nibble = 0U;
             int kind = base16_class(buffer[index], &nibble);
@@ -153,8 +148,7 @@ static bool base16_scan_run_buffered(Abstractformat *format, base16_scan *scan,
             }
             if (kind == BASE16_SPACE) {
                 base16_close_run(scan);
-                if (!scan->pending)
-                    scan->pair_end = scan->position + (int64_t)index + 1;
+                if (!scan->pending) scan->pair_end = scan->position + (int64_t)index + 1;
                 continue;
             }
             if (kind == BASE16_DECIMAL) scan->has_decimal = true;
@@ -175,8 +169,8 @@ static bool base16_scan_run_buffered(Abstractformat *format, base16_scan *scan,
     return true;
 }
 
-static bool base16_scan_run(Abstractformat *format, base16_scan *scan,
-                            int64_t limit, xx_pd_struct *pd) {
+static bool base16_scan_run(Abstractformat *format, base16_scan *scan, int64_t limit, xx_pd_struct *pd)
+{
     size_t buffer_capacity = xx_get_file_buffer_size();
     uint8_t *buffer = (uint8_t *)xx_mem_alloc(buffer_capacity);
     bool result;
@@ -188,8 +182,8 @@ static bool base16_scan_run(Abstractformat *format, base16_scan *scan,
 
 /* True when [offset, size) is at most BASE16_MAX_PADDING bytes of 0x1A and
  * 0x00 only. */
-static bool base16_padding_tail(Abstractformat *format, int64_t offset,
-                                int64_t size) {
+static bool base16_padding_tail(Abstractformat *format, int64_t offset, int64_t size)
+{
     int64_t length = size - offset;
     size_t capacity = xx_get_file_buffer_size();
     uint8_t *buffer;
@@ -204,7 +198,10 @@ static bool base16_padding_tail(Abstractformat *format, int64_t offset,
             break;
         }
         for (size_t index = 0U; index < count; ++index)
-            if (buffer[index] != 0x1AU && buffer[index] != 0x00U) { ok = false; break; }
+            if (buffer[index] != 0x1AU && buffer[index] != 0x00U) {
+                ok = false;
+                break;
+            }
         offset += (int64_t)count;
         length -= (int64_t)count;
     }
@@ -213,13 +210,12 @@ static bool base16_padding_tail(Abstractformat *format, int64_t offset,
 }
 
 /* Apply the window rules; with `measure`, also find the end of the text. */
-static bool base16_parse(Abstractformat *format, base16_context *out,
-                         bool measure, xx_pd_struct *pd) {
+static bool base16_parse(Abstractformat *format, base16_context *out, bool measure, xx_pd_struct *pd)
+{
     base16_scan scan;
     base16_context context;
     int64_t total, size, window;
-    if (!format || !format->device || !out || format->base_address < 0)
-        return false;
+    if (!format || !format->device || !out || format->base_address < 0) return false;
     total = xx_io_total_size(format->device);
     if (total < format->base_address) return false;
     size = total - format->base_address;
@@ -235,18 +231,13 @@ static bool base16_parse(Abstractformat *format, base16_context *out,
         /* The whole input fitted the window: its last run is closed too. */
         base16_close_run(&scan);
     }
-    if (scan.digits < BASE16_MIN_DIGITS || !scan.has_decimal ||
-        !(scan.has_lower || scan.has_upper) ||
-        (scan.has_lower && scan.has_upper) || scan.odd_run)
-        return false;
+    if (scan.digits < BASE16_MIN_DIGITS || !scan.has_decimal || !(scan.has_lower || scan.has_upper) || (scan.has_lower && scan.has_upper) || scan.odd_run) return false;
 
     xx_mem_zero(&context, sizeof(context));
     context.input_size = size;
     context.is_uppercase = scan.has_upper;
     if (measure) {
-        if (!scan.foreign && scan.position < size &&
-            !base16_scan_run(format, &scan, size, pd))
-            return false;
+        if (!scan.foreign && scan.position < size && !base16_scan_run(format, &scan, size, pd)) return false;
         if (scan.pair_end <= 0 || scan.pair_digits < 2U) return false;
         context.text_size = scan.pair_end;
         context.digit_count = scan.pair_digits;
@@ -256,8 +247,8 @@ static bool base16_parse(Abstractformat *format, base16_context *out,
     return true;
 }
 
-static bool base16_write_all(xx_io_device *destination, const uint8_t *data,
-                             size_t size) {
+static bool base16_write_all(xx_io_device *destination, const uint8_t *data, size_t size)
+{
     size_t done = 0U;
     const size_t transfer_capacity = xx_get_file_buffer_size();
     while (done < size) {
@@ -273,24 +264,20 @@ static bool base16_write_all(xx_io_device *destination, const uint8_t *data,
 /* Decode the measured text to `destination`.  Every byte inside the text was
  * already classified, so a foreign byte or a count mismatch here means the
  * input changed underneath and is reported as failure. */
-static bool base16_decode_buffered(Abstractformat *format,
-                          const base16_context *context,
-                          xx_io_device *destination, xx_pd_struct *pd, uint8_t *input, uint8_t *output, size_t buffer_capacity) {
+static bool base16_decode_buffered(Abstractformat *format, const base16_context *context, xx_io_device *destination, xx_pd_struct *pd, uint8_t *input, uint8_t *output,
+                                   size_t buffer_capacity)
+{
     int64_t position = 0;
     uint64_t written = 0U;
     uint8_t high = 0U;
     bool pending = false;
-    if (!format || !context || !destination || context->text_size <= 0)
-        return false;
+    if (!format || !context || !destination || context->text_size <= 0) return false;
     while (position < context->text_size) {
         int64_t left = context->text_size - position;
-        size_t want = (uint64_t)left < (uint64_t)buffer_capacity ? (size_t)left
-                                                     : buffer_capacity;
+        size_t want = (uint64_t)left < (uint64_t)buffer_capacity ? (size_t)left : buffer_capacity;
         size_t index, produced = 0U;
         if (pd && xx_pd_is_stopped(pd)) return false;
-        if (!base16_read_at(format->device, format->base_address + position,
-                            input, want))
-            return false;
+        if (!base16_read_at(format->device, format->base_address + position, input, want)) return false;
         for (index = 0U; index < want; ++index) {
             uint8_t nibble = 0U;
             int kind = base16_class(input[index], &nibble);
@@ -305,9 +292,7 @@ static bool base16_decode_buffered(Abstractformat *format,
             }
         }
         if (produced != 0U) {
-            if ((uint64_t)produced > context->unpacked_size - written ||
-                !base16_write_all(destination, output, produced))
-                return false;
+            if ((uint64_t)produced > context->unpacked_size - written || !base16_write_all(destination, output, produced)) return false;
             written += (uint64_t)produced;
         }
         position += (int64_t)want;
@@ -315,31 +300,27 @@ static bool base16_decode_buffered(Abstractformat *format,
     return !pending && written == context->unpacked_size;
 }
 
-static bool base16_decode(Abstractformat *format,
-                          const base16_context *context,
-                          xx_io_device *destination, xx_pd_struct *pd) {
+static bool base16_decode(Abstractformat *format, const base16_context *context, xx_io_device *destination, xx_pd_struct *pd)
+{
     size_t buffer_capacity = xx_get_file_buffer_size();
     uint8_t *input = (uint8_t *)xx_mem_alloc(buffer_capacity);
     uint8_t *output = (uint8_t *)xx_mem_alloc(buffer_capacity);
-    bool ok = input && output && base16_decode_buffered(format, context, destination, pd,
-                                               input, output, buffer_capacity);
+    bool ok = input && output && base16_decode_buffered(format, context, destination, pd, input, output, buffer_capacity);
     xx_mem_free(output);
     xx_mem_free(input);
     return ok;
 }
 
-static bool base16_copy_options(xx_list_s *destination,
-                                const xx_list_s *source) {
+static bool base16_copy_options(xx_list_s *destination, const xx_list_s *source)
+{
     size_t index;
     if (!source) return true;
     for (index = 0U; index < source->count; ++index) {
-        const xx_meta *original =
-            (const xx_meta *)xx_list_at((const xx_list_t *)source, index);
+        const xx_meta *original = (const xx_meta *)xx_list_at((const xx_list_t *)source, index);
         xx_meta copy;
         if (!original) continue;
         xx_meta_init(&copy, original->meta_id);
-        if (!xx_var_copy(&copy.var, &original->var) ||
-            !xx_list_append(destination, &copy)) {
+        if (!xx_var_copy(&copy.var, &original->var) || !xx_list_append(destination, &copy)) {
             xx_meta_cleanup(&copy);
             return false;
         }
@@ -347,20 +328,19 @@ static bool base16_copy_options(xx_list_s *destination,
     return true;
 }
 
-static const xx_var *base16_option(const xx_list_s *options, uint32_t id) {
+static const xx_var *base16_option(const xx_list_s *options, uint32_t id)
+{
     size_t index;
     if (!options) return NULL;
     for (index = 0U; index < options->count; ++index) {
-        const xx_meta *meta =
-            (const xx_meta *)xx_list_at((const xx_list_t *)options, index);
+        const xx_meta *meta = (const xx_meta *)xx_list_at((const xx_list_t *)options, index);
         if (meta && meta->meta_id == id) return &meta->var;
     }
     return NULL;
 }
 
-static bool base16_set_record(Abstractformat *format,
-                              xx_archive_record *record,
-                              const base16_context *context) {
+static bool base16_set_record(Abstractformat *format, xx_archive_record *record, const base16_context *context)
+{
     xx_archive_record_cleanup(record);
     xx_archive_record_init(record);
     record->header_offset = format->base_address;
@@ -368,23 +348,19 @@ static bool base16_set_record(Abstractformat *format,
     record->data_offset = format->base_address;
     record->compressed_size = context->text_size;
     return xx_archive_record_set_original_name(record, BASE16_PAYLOAD_NAME) &&
-           xx_archive_record_set_meta_u64(record, XX_META_ID_COMPRESSED_SIZE,
-                                          (uint64_t)context->text_size) &&
-           xx_archive_record_set_meta_u64(record, XX_META_ID_UNCOMPRESSED_SIZE,
-                                          context->unpacked_size) &&
-           xx_archive_record_set_meta_u64(record, XX_META_ID_COMPRESSION_METHOD,
-                                          0U) &&
-           xx_archive_record_set_meta_bool(record, XX_META_ID_IS_ENCRYPTED,
-                                           false) &&
+           xx_archive_record_set_meta_u64(record, XX_META_ID_COMPRESSED_SIZE, (uint64_t)context->text_size) &&
+           xx_archive_record_set_meta_u64(record, XX_META_ID_UNCOMPRESSED_SIZE, context->unpacked_size) &&
+           xx_archive_record_set_meta_u64(record, XX_META_ID_COMPRESSION_METHOD, 0U) && xx_archive_record_set_meta_bool(record, XX_META_ID_IS_ENCRYPTED, false) &&
            xx_archive_record_set_meta_bool(record, XX_META_ID_IS_FOLDER, false);
 }
 
-static void base16_stream_free(void *opaque) {
+static void base16_stream_free(void *opaque)
+{
     if (opaque) xx_mem_free(opaque);
 }
 
-void xx_base16_init(xx_base16 *archive, xx_io_device *device,
-                    int64_t base_address) {
+void xx_base16_init(xx_base16 *archive, xx_io_device *device, int64_t base_address)
+{
     if (!archive) return;
     xx_mem_zero(archive, sizeof(*archive));
     xx_format_init(&archive->format, device, base_address);
@@ -397,42 +373,41 @@ void xx_base16_init(xx_base16 *archive, xx_io_device *device,
     archive->format.check_is_valid = xx_base16_check_is_valid;
     archive->format.handle_base_info = xx_base16_handle_base_info;
     archive->format.get_format_size = xx_base16_get_format_size;
-    archive->format.get_number_of_archive_records =
-        xx_base16_get_number_of_archive_records;
-    archive->format.create_archive_records_reading =
-        xx_base16_create_archive_records_reading;
-    archive->format.get_current_archive_record =
-        xx_base16_get_current_archive_record;
-    archive->format.unpack_current_archive_record =
-        xx_base16_unpack_current_archive_record;
-    archive->format.archive_record_move_to_next =
-        xx_base16_archive_record_move_to_next;
-    archive->format.free_archive_records_reading =
-        xx_base16_free_archive_records_reading;
+    archive->format.get_number_of_archive_records = xx_base16_get_number_of_archive_records;
+    archive->format.create_archive_records_reading = xx_base16_create_archive_records_reading;
+    archive->format.get_current_archive_record = xx_base16_get_current_archive_record;
+    archive->format.unpack_current_archive_record = xx_base16_unpack_current_archive_record;
+    archive->format.archive_record_move_to_next = xx_base16_archive_record_move_to_next;
+    archive->format.free_archive_records_reading = xx_base16_free_archive_records_reading;
 }
 
-xx_base16 *xx_base16_create(xx_io_device *device, int64_t base_address) {
+xx_base16 *xx_base16_create(xx_io_device *device, int64_t base_address)
+{
     xx_base16 *archive = (xx_base16 *)xx_mem_alloc(sizeof(*archive));
     if (archive) xx_base16_init(archive, device, base_address);
     return archive;
 }
 
-void xx_base16_destroy(xx_base16 *archive) {
+void xx_base16_destroy(xx_base16 *archive)
+{
     if (archive) xx_format_cleanup_extra_parameters(&archive->format);
 }
 
-void xx_base16_free(xx_base16 *archive) {
+void xx_base16_free(xx_base16 *archive)
+{
     if (!archive) return;
     xx_base16_destroy(archive);
     xx_mem_free(archive);
 }
 
-bool xx_base16_check_is_valid(Abstractformat *format, xx_pd_struct *pd) {
+bool xx_base16_check_is_valid(Abstractformat *format, xx_pd_struct *pd)
+{
     base16_context context;
     return base16_parse(format, &context, false, pd);
 }
 
-bool xx_base16_handle_base_info(Abstractformat *format, xx_pd_struct *pd) {
+bool xx_base16_handle_base_info(Abstractformat *format, xx_pd_struct *pd)
+{
     base16_context context;
     xx_base16 *archive;
     if (!format || !base16_parse(format, &context, true, pd)) return false;
@@ -449,38 +424,32 @@ bool xx_base16_handle_base_info(Abstractformat *format, xx_pd_struct *pd) {
     return true;
 }
 
-int64_t xx_base16_get_format_size(Abstractformat *format, xx_pd_struct *pd) {
-    return format && (format->base_info_handled ||
-                      xx_base16_handle_base_info(format, pd))
-               ? format->format_size : -1;
+int64_t xx_base16_get_format_size(Abstractformat *format, xx_pd_struct *pd)
+{
+    return format && (format->base_info_handled || xx_base16_handle_base_info(format, pd)) ? format->format_size : -1;
 }
 
-uint64_t xx_base16_get_number_of_archive_records(Abstractformat *format,
-                                                 xx_pd_struct *pd) {
-    return format && (format->base_info_handled ||
-                      xx_base16_handle_base_info(format, pd))
-               ? ((xx_base16 *)format)->number_of_records : 0U;
+uint64_t xx_base16_get_number_of_archive_records(Abstractformat *format, xx_pd_struct *pd)
+{
+    return format && (format->base_info_handled || xx_base16_handle_base_info(format, pd)) ? ((xx_base16 *)format)->number_of_records : 0U;
 }
 
-uint64_t xx_base16_get_unpacked_size(xx_base16 *archive) {
+uint64_t xx_base16_get_unpacked_size(xx_base16 *archive)
+{
     if (!archive) return 0U;
-    if (!archive->format.base_info_handled &&
-        !xx_base16_handle_base_info(&archive->format, NULL))
-        return 0U;
+    if (!archive->format.base_info_handled && !xx_base16_handle_base_info(&archive->format, NULL)) return 0U;
     return archive->unpacked_size;
 }
 
-bool xx_base16_unpack_to_device(xx_base16 *archive, xx_io_device *destination,
-                                xx_pd_struct *pd) {
+bool xx_base16_unpack_to_device(xx_base16 *archive, xx_io_device *destination, xx_pd_struct *pd)
+{
     base16_context context;
-    if (!archive || !destination ||
-        !base16_parse(&archive->format, &context, true, pd))
-        return false;
+    if (!archive || !destination || !base16_parse(&archive->format, &context, true, pd)) return false;
     return base16_decode(&archive->format, &context, destination, pd);
 }
 
-xx_archive_record_state *xx_base16_create_archive_records_reading(
-    Abstractformat *format, const xx_list_s *options, xx_pd_struct *pd) {
+xx_archive_record_state *xx_base16_create_archive_records_reading(Abstractformat *format, const xx_list_s *options, xx_pd_struct *pd)
+{
     base16_stream *stream;
     xx_archive_record_state *state;
     base16_context context;
@@ -498,8 +467,7 @@ xx_archive_record_state *xx_base16_create_archive_records_reading(
     state->internal_state = stream;
     state->free_internal = base16_stream_free;
     state->total_records = 1U;
-    if (!base16_copy_options(&state->options, options) ||
-        !base16_set_record(format, &state->current_record, &stream->context)) {
+    if (!base16_copy_options(&state->options, options) || !base16_set_record(format, &state->current_record, &stream->context)) {
         xx_archive_record_state_free(state);
         return NULL;
     }
@@ -507,29 +475,24 @@ xx_archive_record_state *xx_base16_create_archive_records_reading(
     return state;
 }
 
-const xx_archive_record *xx_base16_get_current_archive_record(
-    Abstractformat *format, xx_archive_record_state *state) {
-    return format && state && state->format == format && state->has_record
-               ? &state->current_record : NULL;
+const xx_archive_record *xx_base16_get_current_archive_record(Abstractformat *format, xx_archive_record_state *state)
+{
+    return format && state && state->format == format && state->has_record ? &state->current_record : NULL;
 }
 
-bool xx_base16_archive_record_move_to_next(Abstractformat *format,
-                                           xx_archive_record_state *state,
-                                           xx_pd_struct *pd) {
+bool xx_base16_archive_record_move_to_next(Abstractformat *format, xx_archive_record_state *state, xx_pd_struct *pd)
+{
     base16_stream *stream;
     (void)pd;
-    if (!format || !state || state->format != format ||
-        !(stream = (base16_stream *)state->internal_state) ||
-        ++stream->index >= stream->count) {
+    if (!format || !state || state->format != format || !(stream = (base16_stream *)state->internal_state) || ++stream->index >= stream->count) {
         if (state) state->has_record = false;
         return false;
     }
     return false;
 }
 
-bool xx_base16_unpack_current_archive_record(Abstractformat *format,
-                                             xx_archive_record_state *state,
-                                             xx_pd_struct *pd) {
+bool xx_base16_unpack_current_archive_record(Abstractformat *format, xx_archive_record_state *state, xx_pd_struct *pd)
+{
     base16_stream *stream;
     const xx_var *path_option;
     const char *base = NULL;
@@ -537,28 +500,22 @@ bool xx_base16_unpack_current_archive_record(Abstractformat *format,
     char *path = NULL;
     bool result = false;
     bool created = false;
-    if (!format || !state || state->format != format || !state->has_record ||
-        !(stream = (base16_stream *)state->internal_state) ||
-        stream->index >= stream->count || (pd && xx_pd_is_stopped(pd)))
+    if (!format || !state || state->format != format || !state->has_record || !(stream = (base16_stream *)state->internal_state) || stream->index >= stream->count ||
+        (pd && xx_pd_is_stopped(pd)))
         return false;
     path_option = base16_option(&state->options, XX_META_ID_OPT_UNPACK_PATH);
     if (!path_option) {
         /* No destination: prove the text still parses and report that. */
         return base16_parse(format, &stream->context, true, pd);
     }
-    if (path_option->type == XX_VAR_TYPE_STRING ||
-        path_option->type == XX_VAR_TYPE_STRING_VIEW)
-        base = xx_var_get_str(path_option);
-    else if (path_option->type == XX_VAR_TYPE_WSTRING ||
-             path_option->type == XX_VAR_TYPE_WSTRING_VIEW) {
+    if (path_option->type == XX_VAR_TYPE_STRING || path_option->type == XX_VAR_TYPE_STRING_VIEW) base = xx_var_get_str(path_option);
+    else if (path_option->type == XX_VAR_TYPE_WSTRING || path_option->type == XX_VAR_TYPE_WSTRING_VIEW) {
         owned_base = xx_str_unicode_to_utf8(xx_var_get_wstr(path_option));
         base = owned_base;
     }
     if (!base) goto done;
-    path = (base[0] && base[xx_str_len(base) - 1U] != '/' &&
-            base[xx_str_len(base) - 1U] != '\\')
-               ? xx_str_concat3(base, "/", BASE16_PAYLOAD_NAME)
-               : xx_str_concat(base, BASE16_PAYLOAD_NAME);
+    path = (base[0] && base[xx_str_len(base) - 1U] != '/' && base[xx_str_len(base) - 1U] != '\\') ? xx_str_concat3(base, "/", BASE16_PAYLOAD_NAME)
+                                                                                                  : xx_str_concat(base, BASE16_PAYLOAD_NAME);
     if (!path || !xx_store_create_dirs_a(path, false)) goto done;
     {
         xx_io_device *destination = xx_io_file_open(path, "wb");
@@ -574,8 +531,8 @@ done:
     return result;
 }
 
-void xx_base16_free_archive_records_reading(Abstractformat *format,
-                                            xx_archive_record_state *state) {
+void xx_base16_free_archive_records_reading(Abstractformat *format, xx_archive_record_state *state)
+{
     (void)format;
     xx_archive_record_state_free(state);
 }

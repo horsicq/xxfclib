@@ -88,31 +88,27 @@ typedef struct phar_stream_s {
     uint64_t aux2;
 } phar_stream;
 
-static bool phar_read_at(xx_io_device *device, int64_t offset, void *buffer,
-                        size_t size) {
+static bool phar_read_at(xx_io_device *device, int64_t offset, void *buffer, size_t size)
+{
     size_t done = 0U;
-    if (!device || (!buffer && size != 0U) || offset < 0 ||
-        xx_io_seek64(device, offset, SEEK_SET) != 0)
-        return false;
+    if (!device || (!buffer && size != 0U) || offset < 0 || xx_io_seek64(device, offset, SEEK_SET) != 0) return false;
     while (done < size) {
-        ssize_t amount = xx_io_read(device, (uint8_t *)buffer + done,
-                                    size - done);
+        ssize_t amount = xx_io_read(device, (uint8_t *)buffer + done, size - done);
         if (amount <= 0 || (size_t)amount > size - done) return false;
         done += (size_t)amount;
     }
     return true;
 }
 
-static bool phar_write_all(xx_io_device *device, const void *data, size_t size,
-                          xx_pd_struct *pd) {
+static bool phar_write_all(xx_io_device *device, const void *data, size_t size, xx_pd_struct *pd)
+{
     size_t done = 0U;
     if (!data && size != 0U) return false;
     if (!device) return true; /* verify-only pass: nothing is materialized */
     while (done < size) {
         ssize_t amount;
         if (pd && xx_pd_is_stopped(pd)) return false;
-        amount = xx_io_write(device, (const uint8_t *)data + done,
-                             size - done);
+        amount = xx_io_write(device, (const uint8_t *)data + done, size - done);
         if (amount <= 0 || (size_t)amount > size - done) return false;
         done += (size_t)amount;
     }
@@ -120,30 +116,58 @@ static bool phar_write_all(xx_io_device *device, const void *data, size_t size,
 }
 
 /* Copy a run of source bytes straight through to the destination. */
-static bool phar_copy_range(xx_io_device *source, int64_t offset, uint64_t size,
-                           xx_io_device *destination, xx_pd_struct *pd) {
+static bool phar_copy_range(xx_io_device *source, int64_t offset, uint64_t size, xx_io_device *destination, xx_pd_struct *pd)
+{
     size_t capacity = xx_get_file_buffer_size();
     uint8_t *buffer = NULL;
     bool buffer_result = false;
     uint64_t left = size;
-    if (!source || offset < 0) { buffer_result = (false); goto buffer_done; }
-    if (!destination) { buffer_result = (true); goto buffer_done; }
-    if (xx_io_seek64(source, offset, SEEK_SET) != 0) { buffer_result = (false); goto buffer_done; }
+    if (!source || offset < 0) {
+        buffer_result = (false);
+        goto buffer_done;
+    }
+    if (!destination) {
+        buffer_result = (true);
+        goto buffer_done;
+    }
+    if (xx_io_seek64(source, offset, SEEK_SET) != 0) {
+        buffer_result = (false);
+        goto buffer_done;
+    }
     if (capacity > (SIZE_MAX >> 1U)) capacity = SIZE_MAX >> 1U;
-    if (left) { if(capacity>left) capacity=(size_t)left; buffer = (uint8_t *)xx_mem_alloc(capacity); if (!buffer) { buffer_result = false; goto buffer_done; } }
+    if (left) {
+        if (capacity > left) capacity = (size_t)left;
+        buffer = (uint8_t *)xx_mem_alloc(capacity);
+        if (!buffer) {
+            buffer_result = false;
+            goto buffer_done;
+        }
+    }
     while (left != 0U) {
         size_t want = left < capacity ? (size_t)left : capacity;
         size_t done = 0U;
-        if (pd && xx_pd_is_stopped(pd)) { buffer_result = (false); goto buffer_done; }
+        if (pd && xx_pd_is_stopped(pd)) {
+            buffer_result = (false);
+            goto buffer_done;
+        }
         while (done < want) {
             ssize_t amount = xx_io_read(source, buffer + done, want - done);
-            if (amount <= 0 || (size_t)amount > want - done) { buffer_result = (false); goto buffer_done; }
+            if (amount <= 0 || (size_t)amount > want - done) {
+                buffer_result = (false);
+                goto buffer_done;
+            }
             done += (size_t)amount;
         }
-        if (!phar_write_all(destination, buffer, want, pd)) { buffer_result = (false); goto buffer_done; }
+        if (!phar_write_all(destination, buffer, want, pd)) {
+            buffer_result = (false);
+            goto buffer_done;
+        }
         left -= want;
     }
-    { buffer_result = (true); goto buffer_done; }
+    {
+        buffer_result = (true);
+        goto buffer_done;
+    }
 
 buffer_done:
     xx_mem_free(buffer);
@@ -151,23 +175,42 @@ buffer_done:
 }
 
 /* Emit `size` zero bytes: the filler every sparse disk image needs. */
-static XXFC_MAYBE_UNUSED bool phar_write_zeros(xx_io_device *destination, uint64_t size,
-                            xx_pd_struct *pd) {
+static XXFC_MAYBE_UNUSED bool phar_write_zeros(xx_io_device *destination, uint64_t size, xx_pd_struct *pd)
+{
     size_t capacity = xx_get_file_buffer_size();
     uint8_t *buffer = NULL;
     bool buffer_result = false;
     uint64_t left = size;
-    if (!destination) { buffer_result = (true); goto buffer_done; }
+    if (!destination) {
+        buffer_result = (true);
+        goto buffer_done;
+    }
     if (capacity > (SIZE_MAX >> 1U)) capacity = SIZE_MAX >> 1U;
-    if (left) { if(capacity>left) capacity=(size_t)left; buffer = (uint8_t *)xx_mem_alloc(capacity); if (!buffer) { buffer_result = false; goto buffer_done; } }
-    if (!left) { buffer_result = true; goto buffer_done; }
+    if (left) {
+        if (capacity > left) capacity = (size_t)left;
+        buffer = (uint8_t *)xx_mem_alloc(capacity);
+        if (!buffer) {
+            buffer_result = false;
+            goto buffer_done;
+        }
+    }
+    if (!left) {
+        buffer_result = true;
+        goto buffer_done;
+    }
     xx_mem_zero(buffer, capacity);
     while (left != 0U) {
         size_t want = left < capacity ? (size_t)left : capacity;
-        if (!phar_write_all(destination, buffer, want, pd)) { buffer_result = (false); goto buffer_done; }
+        if (!phar_write_all(destination, buffer, want, pd)) {
+            buffer_result = (false);
+            goto buffer_done;
+        }
         left -= want;
     }
-    { buffer_result = (true); goto buffer_done; }
+    {
+        buffer_result = (true);
+        goto buffer_done;
+    }
 
 buffer_done:
     xx_mem_free(buffer);
@@ -176,8 +219,8 @@ buffer_done:
 
 /* Reader-owned names are built here, never taken from the container, so they
  * are safe by construction. */
-static XXFC_MAYBE_UNUSED char *phar_make_name(const char *prefix, int64_t index,
-                           const char *suffix) {
+static XXFC_MAYBE_UNUSED char *phar_make_name(const char *prefix, int64_t index, const char *suffix)
+{
     char buffer[96];
     size_t used = 0U;
     size_t at;
@@ -214,7 +257,8 @@ static XXFC_MAYBE_UNUSED char *phar_make_name(const char *prefix, int64_t index,
 /* Names that DO come from the container are normalized here: separators are
  * unified, traversal components are removed and anything a filesystem would
  * choke on becomes '_'. */
-static char *phar_clean_name(const uint8_t *bytes, size_t size) {
+static char *phar_clean_name(const uint8_t *bytes, size_t size)
+{
     char *name;
     size_t input = 0U, output = 0U;
     if ((!bytes && size != 0U) || size > SIZE_MAX - 2U) return NULL;
@@ -222,16 +266,12 @@ static char *phar_clean_name(const uint8_t *bytes, size_t size) {
     if (!name) return NULL;
     while (input < size) {
         size_t start, end, component_start;
-        while (input < size && (bytes[input] == '/' || bytes[input] == '\\'))
-            ++input;
+        while (input < size && (bytes[input] == '/' || bytes[input] == '\\')) ++input;
         start = input;
-        while (input < size && bytes[input] != '/' && bytes[input] != '\\')
-            ++input;
+        while (input < size && bytes[input] != '/' && bytes[input] != '\\') ++input;
         end = input;
-        if (end == start || (end - start == 1U && bytes[start] == '.'))
-            continue;
-        if (end - start == 2U && bytes[start] == '.' &&
-            bytes[start + 1U] == '.') {
+        if (end == start || (end - start == 1U && bytes[start] == '.')) continue;
+        if (end - start == 2U && bytes[start] == '.' && bytes[start + 1U] == '.') {
             if (output != 0U) {
                 while (output != 0U && name[output - 1U] != '/') --output;
                 if (output != 0U) --output;
@@ -242,15 +282,10 @@ static char *phar_clean_name(const uint8_t *bytes, size_t size) {
         component_start = output;
         while (start < end) {
             uint8_t c = bytes[start++];
-            if (c < 0x20U || c == '"' || c == '*' || c == ':' || c == '<' ||
-                c == '>' || c == '?' || c == '|' || c == 0U)
-                name[output++] = '_';
-            else
-                name[output++] = (char)c;
+            if (c < 0x20U || c == '"' || c == '*' || c == ':' || c == '<' || c == '>' || c == '?' || c == '|' || c == 0U) name[output++] = '_';
+            else name[output++] = (char)c;
         }
-        while (output > component_start &&
-               (name[output - 1U] == ' ' || name[output - 1U] == '.'))
-            --output;
+        while (output > component_start && (name[output - 1U] == ' ' || name[output - 1U] == '.')) --output;
         if (output == component_start) name[output++] = '_';
     }
     if (output == 0U) name[output++] = '_';
@@ -258,30 +293,26 @@ static char *phar_clean_name(const uint8_t *bytes, size_t size) {
     return name;
 }
 
-static bool phar_safe_output_name(const char *name) {
+static bool phar_safe_output_name(const char *name)
+{
     const char *segment;
     const char *at;
-    if (!name || !name[0] || name[0] == '/' || name[0] == '\\' ||
-        name[1] == ':')
-        return false;
+    if (!name || !name[0] || name[0] == '/' || name[0] == '\\' || name[1] == ':') return false;
     segment = name;
     for (at = name;; ++at) {
         unsigned char c = (unsigned char)*at;
-        if (c == ':' || c == '<' || c == '>' || c == '"' || c == '|' ||
-            c == '?' || c == '*' || (c != 0U && c < 0x20U))
-            return false;
+        if (c == ':' || c == '<' || c == '>' || c == '"' || c == '|' || c == '?' || c == '*' || (c != 0U && c < 0x20U)) return false;
         if (c == '/' || c == '\\' || c == 0U) {
             size_t length = (size_t)(at - segment);
-            if (length == 0U || (length == 1U && segment[0] == '.') ||
-                (length == 2U && segment[0] == '.' && segment[1] == '.'))
-                return false;
+            if (length == 0U || (length == 1U && segment[0] == '.') || (length == 2U && segment[0] == '.' && segment[1] == '.')) return false;
             if (c == 0U) return true;
             segment = at + 1;
         }
     }
 }
 
-static void phar_stream_free(void *opaque) {
+static void phar_stream_free(void *opaque)
+{
     phar_stream *stream = (phar_stream *)opaque;
     size_t index;
     if (!stream) return;
@@ -291,13 +322,11 @@ static void phar_stream_free(void *opaque) {
     xx_mem_free(stream);
 }
 
-static bool phar_add_member(phar_stream *stream, const phar_member *member) {
+static bool phar_add_member(phar_stream *stream, const phar_member *member)
+{
     phar_member *grown;
-    if (!stream || !member || stream->count >= PHAR_MAX_MEMBERS ||
-        stream->count > SIZE_MAX / sizeof(*grown) - 1U)
-        return false;
-    grown = (phar_member *)xx_mem_realloc(
-        stream->items, (stream->count + 1U) * sizeof(*grown));
+    if (!stream || !member || stream->count >= PHAR_MAX_MEMBERS || stream->count > SIZE_MAX / sizeof(*grown) - 1U) return false;
+    grown = (phar_member *)xx_mem_realloc(stream->items, (stream->count + 1U) * sizeof(*grown));
     if (!grown) return false;
     stream->items = grown;
     stream->items[stream->count++] = *member;
@@ -320,28 +349,37 @@ static const char PHAR_TOKEN[] = "__HALT_COMPILER();";
 /* Find the stub terminator.  PHP writes "__HALT_COMPILER(); ?>\r\n" but only
  * the call itself is mandatory, so the optional blanks, the optional "?>" and
  * the optional line break are each skipped independently. */
-static bool phar_find_manifest(xx_io_device *device,int64_t base,int64_t size,int64_t *manifest_offset) {
-    int64_t limit=size<(int64_t)PHAR_STUB_LIMIT ? size:(int64_t)PHAR_STUB_LIMIT;
-    int64_t found,after; uint8_t tail[8];size_t left,skip=0;
-    const size_t capacity=xx_get_file_buffer_size();
-    if(limit<(int64_t)PHAR_TOKEN_SIZE) return false;
-    found=xx_io_find_bytes_buffer_optimize_ex(device,base,limit,PHAR_TOKEN,PHAR_TOKEN_SIZE,capacity,NULL);
-    if(found<0) { return false; } after=found-base+(int64_t)PHAR_TOKEN_SIZE;
-    left=(size_t)(size-after);if(left>sizeof(tail)) left=sizeof(tail);
-    xx_mem_zero(tail,sizeof(tail));
-    if(left && !phar_read_at(device,base+after,tail,left)) return false;
-    while(skip<left && (tail[skip]==' ' || tail[skip]=='\t')) ++skip;
-    if(skip+2<=left && tail[skip]=='?' && tail[skip+1]=='>') skip+=2;
-    if(skip+2<=left && tail[skip]=='\r' && tail[skip+1]=='\n') skip+=2;
-    else if(skip<left && tail[skip]=='\n') ++skip;
-    *manifest_offset=after+(int64_t)skip;return true;
+static bool phar_find_manifest(xx_io_device *device, int64_t base, int64_t size, int64_t *manifest_offset)
+{
+    int64_t limit = size < (int64_t)PHAR_STUB_LIMIT ? size : (int64_t)PHAR_STUB_LIMIT;
+    int64_t found, after;
+    uint8_t tail[8];
+    size_t left, skip = 0;
+    const size_t capacity = xx_get_file_buffer_size();
+    if (limit < (int64_t)PHAR_TOKEN_SIZE) return false;
+    found = xx_io_find_bytes_buffer_optimize_ex(device, base, limit, PHAR_TOKEN, PHAR_TOKEN_SIZE, capacity, NULL);
+    if (found < 0) {
+        return false;
+    }
+    after = found - base + (int64_t)PHAR_TOKEN_SIZE;
+    left = (size_t)(size - after);
+    if (left > sizeof(tail)) left = sizeof(tail);
+    xx_mem_zero(tail, sizeof(tail));
+    if (left && !phar_read_at(device, base + after, tail, left)) return false;
+    while (skip < left && (tail[skip] == ' ' || tail[skip] == '\t')) ++skip;
+    if (skip + 2 <= left && tail[skip] == '?' && tail[skip + 1] == '>') skip += 2;
+    if (skip + 2 <= left && tail[skip] == '\r' && tail[skip + 1] == '\n') skip += 2;
+    else if (skip < left && tail[skip] == '\n') ++skip;
+    *manifest_offset = after + (int64_t)skip;
+    return true;
 }
 
 /* The manifest: a length, a file count, an API version, global flags, an
  * alias, archive metadata and then one fixed 24-byte record plus a name and
  * per-entry metadata for every member.  The bodies follow the manifest in
  * exactly the order the entries were declared. */
-static bool phar_parse(Abstractformat *format, phar_stream **result) {
+static bool phar_parse(Abstractformat *format, phar_stream **result)
+{
     uint8_t head[18];
     uint8_t *manifest = NULL;
     phar_stream *stream = NULL;
@@ -351,31 +389,21 @@ static bool phar_parse(Abstractformat *format, phar_stream **result) {
     uint64_t cursor;
     uint32_t index;
 
-    if (!format || !format->device || !result || format->base_address < 0)
-        return false;
+    if (!format || !format->device || !result || format->base_address < 0) return false;
     total = xx_io_total_size(format->device);
     if (total < format->base_address) return false;
     size = total - format->base_address;
     if (size < (int64_t)(PHAR_TOKEN_SIZE + PHAR_MANIFEST_MIN)) return false;
-    if (!phar_find_manifest(format->device, format->base_address, size,
-                            &manifest_offset))
-        return false;
-    if (manifest_offset < 0 ||
-        size - manifest_offset < (int64_t)PHAR_MANIFEST_MIN)
-        return false;
-    if (!phar_read_at(format->device, format->base_address + manifest_offset,
-                      head, sizeof(head)))
-        return false;
+    if (!phar_find_manifest(format->device, format->base_address, size, &manifest_offset)) return false;
+    if (manifest_offset < 0 || size - manifest_offset < (int64_t)PHAR_MANIFEST_MIN) return false;
+    if (!phar_read_at(format->device, format->base_address + manifest_offset, head, sizeof(head))) return false;
 
     manifest_size = xx_data_get_u32(head, 4, 0, false);
     count = xx_data_get_u32(head + 4U, 4, 0, false);
     api = xx_data_get_u16(head + 8U, 2, 0, false);
     flags = xx_data_get_u32(head + 10U, 4, 0, false);
     alias_size = xx_data_get_u32(head + 14U, 4, 0, false);
-    if (manifest_size < PHAR_MANIFEST_MIN - 4U ||
-        manifest_size > PHAR_MAX_MANIFEST ||
-        (int64_t)manifest_size > size - manifest_offset - 4)
-        return false;
+    if (manifest_size < PHAR_MANIFEST_MIN - 4U || manifest_size > PHAR_MAX_MANIFEST || (int64_t)manifest_size > size - manifest_offset - 4) return false;
     /* PHP's own test: the manifest API version must not exceed the one the
      * reader knows (1.1.0 == 0x1100). */
     if (api > 0x1100U) return false;
@@ -383,11 +411,7 @@ static bool phar_parse(Abstractformat *format, phar_stream **result) {
     if ((uint64_t)alias_size > manifest_size) return false;
 
     manifest = (uint8_t *)xx_mem_alloc(manifest_size);
-    if (!manifest ||
-        !phar_read_at(format->device,
-                      format->base_address + manifest_offset + 4,
-                      manifest, manifest_size))
-        goto fail;
+    if (!manifest || !phar_read_at(format->device, format->base_address + manifest_offset + 4, manifest, manifest_size)) goto fail;
 
     /* `manifest` starts AFTER the length word, so the fixed part is
      * count(4) + api(2) + flags(4) + alias length(4) == 14 bytes. */
@@ -413,9 +437,7 @@ static bool phar_parse(Abstractformat *format, phar_stream **result) {
         if (cursor + 4U > manifest_size) goto fail;
         name_size = xx_data_get_u32(manifest + cursor, 4, 0, false);
         cursor += 4U;
-        if (name_size == 0U || name_size > PHAR_MAX_NAME ||
-            name_size > manifest_size - cursor)
-            goto fail;
+        if (name_size == 0U || name_size > PHAR_MAX_NAME || name_size > manifest_size - cursor) goto fail;
         xx_mem_zero(&member, sizeof(member));
         member.name = phar_clean_name(manifest + cursor, name_size);
         if (!member.name) goto fail;
@@ -443,9 +465,7 @@ static bool phar_parse(Abstractformat *format, phar_stream **result) {
         member.header_offset = format->base_address + manifest_offset;
         member.header_size = 0;
         member.data_offset = format->base_address + data_cursor;
-        if (member.unpacked_size > PHAR_MAX_MEMBER ||
-            member.packed_size < 0 ||
-            member.packed_size > size - data_cursor) {
+        if (member.unpacked_size > PHAR_MAX_MEMBER || member.packed_size < 0 || member.packed_size > size - data_cursor) {
             xx_mem_free(member.name);
             goto fail;
         }
@@ -466,9 +486,8 @@ fail:
     return false;
 }
 
-static bool phar_write_member(Abstractformat *format, phar_stream *stream,
-                              const phar_member *member,
-                              xx_io_device *destination, xx_pd_struct *pd) {
+static bool phar_write_member(Abstractformat *format, phar_stream *stream, const phar_member *member, xx_io_device *destination, xx_pd_struct *pd)
+{
     uint8_t *packed = NULL;
     uint8_t *plain = NULL;
     size_t written = 0U;
@@ -482,30 +501,15 @@ static bool phar_write_member(Abstractformat *format, phar_stream *stream,
     if (member->method == 0U) {
         /* Stored: the packed extent IS the file, so it is streamed rather
          * than materialized. */
-        if ((uint64_t)member->packed_size != member->unpacked_size)
-            return false;
-        return phar_copy_range(format->device, member->data_offset,
-                               member->unpacked_size, destination, pd);
+        if ((uint64_t)member->packed_size != member->unpacked_size) return false;
+        return phar_copy_range(format->device, member->data_offset, member->unpacked_size, destination, pd);
     }
-    if (member->method != PHAR_COMP_GZ && member->method != PHAR_COMP_BZ2)
-        return false;
-    packed = (uint8_t *)xx_mem_alloc(member->packed_size != 0
-                                         ? (size_t)member->packed_size
-                                         : 1U);
+    if (member->method != PHAR_COMP_GZ && member->method != PHAR_COMP_BZ2) return false;
+    packed = (uint8_t *)xx_mem_alloc(member->packed_size != 0 ? (size_t)member->packed_size : 1U);
     plain = (uint8_t *)xx_mem_alloc(output_size != 0U ? output_size : 1U);
-    if (!packed || !plain ||
-        (member->packed_size != 0 &&
-         !phar_read_at(format->device, member->data_offset, packed,
-                       (size_t)member->packed_size)))
-        goto done;
-    if (member->method == PHAR_COMP_GZ)
-        decoded = xx_deflate_decompress_memory(
-            packed, (size_t)member->packed_size, plain, output_size, &written,
-            false);
-    else
-        decoded = xx_bzip2_decompress_memory(packed,
-                                             (size_t)member->packed_size,
-                                             plain, output_size, &written);
+    if (!packed || !plain || (member->packed_size != 0 && !phar_read_at(format->device, member->data_offset, packed, (size_t)member->packed_size))) goto done;
+    if (member->method == PHAR_COMP_GZ) decoded = xx_deflate_decompress_memory(packed, (size_t)member->packed_size, plain, output_size, &written, false);
+    else decoded = xx_bzip2_decompress_memory(packed, (size_t)member->packed_size, plain, output_size, &written);
     if (!decoded || written != output_size) goto done;
     if (xx_crc32_calc(0U, plain, written) != member->crc32) goto done;
     result = phar_write_all(destination, plain, written, pd);
@@ -515,17 +519,16 @@ done:
     return result;
 }
 
-static bool phar_copy_options(xx_list_s *destination, const xx_list_s *source) {
+static bool phar_copy_options(xx_list_s *destination, const xx_list_s *source)
+{
     size_t index;
     if (!source) return true;
     for (index = 0U; index < source->count; ++index) {
-        const xx_meta *original =
-            (const xx_meta *)xx_list_at((const xx_list_t *)source, index);
+        const xx_meta *original = (const xx_meta *)xx_list_at((const xx_list_t *)source, index);
         xx_meta copy;
         if (!original) continue;
         xx_meta_init(&copy, original->meta_id);
-        if (!xx_var_copy(&copy.var, &original->var) ||
-            !xx_list_append(destination, &copy)) {
+        if (!xx_var_copy(&copy.var, &original->var) || !xx_list_append(destination, &copy)) {
             xx_meta_cleanup(&copy);
             return false;
         }
@@ -533,19 +536,19 @@ static bool phar_copy_options(xx_list_s *destination, const xx_list_s *source) {
     return true;
 }
 
-static const xx_var *phar_option(const xx_list_s *options, uint32_t id) {
+static const xx_var *phar_option(const xx_list_s *options, uint32_t id)
+{
     size_t index;
     if (!options) return NULL;
     for (index = 0U; index < options->count; ++index) {
-        const xx_meta *meta =
-            (const xx_meta *)xx_list_at((const xx_list_t *)options, index);
+        const xx_meta *meta = (const xx_meta *)xx_list_at((const xx_list_t *)options, index);
         if (meta && meta->meta_id == id) return &meta->var;
     }
     return NULL;
 }
 
-static bool phar_set_record(xx_archive_record *record,
-                           const phar_member *member) {
+static bool phar_set_record(xx_archive_record *record, const phar_member *member)
+{
     xx_archive_record_cleanup(record);
     xx_archive_record_init(record);
     record->header_offset = member->header_offset;
@@ -553,27 +556,17 @@ static bool phar_set_record(xx_archive_record *record,
     record->data_offset = member->data_offset;
     record->compressed_size = member->packed_size;
     return xx_archive_record_set_original_name(record, member->name) &&
-           xx_archive_record_set_meta_u64(record, XX_META_ID_COMPRESSED_SIZE,
-                                          (uint64_t)member->packed_size) &&
-           xx_archive_record_set_meta_u64(record, XX_META_ID_UNCOMPRESSED_SIZE,
-                                          member->unpacked_size) &&
-           xx_archive_record_set_meta_u64(record, XX_META_ID_COMPRESSION_METHOD,
-                                          member->method) &&
-           xx_archive_record_set_meta_u64(record, XX_META_ID_CRC32,
-                                          member->crc32) &&
-           xx_archive_record_set_meta_u64(record, XX_META_ID_ATTRIBUTES,
-                                          member->attributes) &&
-           xx_archive_record_set_meta_u64(record, XX_META_ID_TIMESTAMP,
-                                          member->timestamp) &&
-           xx_archive_record_set_meta_u64(record, XX_META_ID_FLAGS,
-                                          member->flags) &&
-           xx_archive_record_set_meta_bool(record, XX_META_ID_IS_ENCRYPTED,
-                                           member->encrypted) &&
-           xx_archive_record_set_meta_bool(record, XX_META_ID_IS_FOLDER,
-                                           member->folder);
+           xx_archive_record_set_meta_u64(record, XX_META_ID_COMPRESSED_SIZE, (uint64_t)member->packed_size) &&
+           xx_archive_record_set_meta_u64(record, XX_META_ID_UNCOMPRESSED_SIZE, member->unpacked_size) &&
+           xx_archive_record_set_meta_u64(record, XX_META_ID_COMPRESSION_METHOD, member->method) &&
+           xx_archive_record_set_meta_u64(record, XX_META_ID_CRC32, member->crc32) && xx_archive_record_set_meta_u64(record, XX_META_ID_ATTRIBUTES, member->attributes) &&
+           xx_archive_record_set_meta_u64(record, XX_META_ID_TIMESTAMP, member->timestamp) && xx_archive_record_set_meta_u64(record, XX_META_ID_FLAGS, member->flags) &&
+           xx_archive_record_set_meta_bool(record, XX_META_ID_IS_ENCRYPTED, member->encrypted) &&
+           xx_archive_record_set_meta_bool(record, XX_META_ID_IS_FOLDER, member->folder);
 }
 
-void xx_phar_init(xx_phar *archive, xx_io_device *device, int64_t base_address) {
+void xx_phar_init(xx_phar *archive, xx_io_device *device, int64_t base_address)
+{
     if (!archive) return;
     xx_mem_zero(archive, sizeof(*archive));
     xx_format_init(&archive->format, device, base_address);
@@ -586,38 +579,36 @@ void xx_phar_init(xx_phar *archive, xx_io_device *device, int64_t base_address) 
     archive->format.check_is_valid = xx_phar_check_is_valid;
     archive->format.handle_base_info = xx_phar_handle_base_info;
     archive->format.get_format_size = xx_phar_get_format_size;
-    archive->format.get_number_of_archive_records =
-        xx_phar_get_number_of_archive_records;
-    archive->format.create_archive_records_reading =
-        xx_phar_create_archive_records_reading;
-    archive->format.get_current_archive_record =
-        xx_phar_get_current_archive_record;
-    archive->format.unpack_current_archive_record =
-        xx_phar_unpack_current_archive_record;
-    archive->format.archive_record_move_to_next =
-        xx_phar_archive_record_move_to_next;
-    archive->format.free_archive_records_reading =
-        xx_phar_free_archive_records_reading;
+    archive->format.get_number_of_archive_records = xx_phar_get_number_of_archive_records;
+    archive->format.create_archive_records_reading = xx_phar_create_archive_records_reading;
+    archive->format.get_current_archive_record = xx_phar_get_current_archive_record;
+    archive->format.unpack_current_archive_record = xx_phar_unpack_current_archive_record;
+    archive->format.archive_record_move_to_next = xx_phar_archive_record_move_to_next;
+    archive->format.free_archive_records_reading = xx_phar_free_archive_records_reading;
     archive->archive_end = -1;
 }
 
-xx_phar *xx_phar_create(xx_io_device *device, int64_t base_address) {
+xx_phar *xx_phar_create(xx_io_device *device, int64_t base_address)
+{
     xx_phar *archive = (xx_phar *)xx_mem_alloc(sizeof(*archive));
     if (archive) xx_phar_init(archive, device, base_address);
     return archive;
 }
 
-void xx_phar_destroy(xx_phar *archive) {
+void xx_phar_destroy(xx_phar *archive)
+{
     if (archive) xx_format_cleanup_extra_parameters(&archive->format);
 }
 
-void xx_phar_free(xx_phar *archive) {
+void xx_phar_free(xx_phar *archive)
+{
     if (!archive) return;
     xx_phar_destroy(archive);
     xx_mem_free(archive);
 }
 
-bool xx_phar_check_is_valid(Abstractformat *format, xx_pd_struct *pd) {
+bool xx_phar_check_is_valid(Abstractformat *format, xx_pd_struct *pd)
+{
     phar_stream *stream;
     (void)pd;
     if (!phar_parse(format, &stream)) return false;
@@ -625,7 +616,8 @@ bool xx_phar_check_is_valid(Abstractformat *format, xx_pd_struct *pd) {
     return true;
 }
 
-bool xx_phar_handle_base_info(Abstractformat *format, xx_pd_struct *pd) {
+bool xx_phar_handle_base_info(Abstractformat *format, xx_pd_struct *pd)
+{
     phar_stream *stream;
     xx_phar *archive;
     (void)pd;
@@ -654,23 +646,18 @@ bool xx_phar_handle_base_info(Abstractformat *format, xx_pd_struct *pd) {
     return true;
 }
 
-int64_t xx_phar_get_format_size(Abstractformat *format, xx_pd_struct *pd) {
-    return format && (format->base_info_handled ||
-                      xx_phar_handle_base_info(format, pd))
-               ? format->format_size
-               : -1;
+int64_t xx_phar_get_format_size(Abstractformat *format, xx_pd_struct *pd)
+{
+    return format && (format->base_info_handled || xx_phar_handle_base_info(format, pd)) ? format->format_size : -1;
 }
 
-uint64_t xx_phar_get_number_of_archive_records(Abstractformat *format,
-                                              xx_pd_struct *pd) {
-    return format && (format->base_info_handled ||
-                      xx_phar_handle_base_info(format, pd))
-               ? ((xx_phar *)format)->number_of_records
-               : 0U;
+uint64_t xx_phar_get_number_of_archive_records(Abstractformat *format, xx_pd_struct *pd)
+{
+    return format && (format->base_info_handled || xx_phar_handle_base_info(format, pd)) ? ((xx_phar *)format)->number_of_records : 0U;
 }
 
-xx_archive_record_state *xx_phar_create_archive_records_reading(
-    Abstractformat *format, const xx_list_s *options, xx_pd_struct *pd) {
+xx_archive_record_state *xx_phar_create_archive_records_reading(Abstractformat *format, const xx_list_s *options, xx_pd_struct *pd)
+{
     phar_stream *stream;
     xx_archive_record_state *state;
     (void)pd;
@@ -684,8 +671,7 @@ xx_archive_record_state *xx_phar_create_archive_records_reading(
     state->internal_state = stream;
     state->free_internal = phar_stream_free;
     state->total_records = stream->count;
-    if (!phar_copy_options(&state->options, options) ||
-        !phar_set_record(&state->current_record, &stream->items[0])) {
+    if (!phar_copy_options(&state->options, options) || !phar_set_record(&state->current_record, &stream->items[0])) {
         xx_archive_record_state_free(state);
         return NULL;
     }
@@ -693,33 +679,26 @@ xx_archive_record_state *xx_phar_create_archive_records_reading(
     return state;
 }
 
-const xx_archive_record *xx_phar_get_current_archive_record(
-    Abstractformat *format, xx_archive_record_state *state) {
-    return format && state && state->format == format && state->has_record
-               ? &state->current_record
-               : NULL;
+const xx_archive_record *xx_phar_get_current_archive_record(Abstractformat *format, xx_archive_record_state *state)
+{
+    return format && state && state->format == format && state->has_record ? &state->current_record : NULL;
 }
 
-bool xx_phar_archive_record_move_to_next(Abstractformat *format,
-                                        xx_archive_record_state *state,
-                                        xx_pd_struct *pd) {
+bool xx_phar_archive_record_move_to_next(Abstractformat *format, xx_archive_record_state *state, xx_pd_struct *pd)
+{
     phar_stream *stream;
     (void)pd;
-    if (!format || !state || state->format != format ||
-        !(stream = (phar_stream *)state->internal_state) ||
-        ++stream->index >= stream->count) {
+    if (!format || !state || state->format != format || !(stream = (phar_stream *)state->internal_state) || ++stream->index >= stream->count) {
         if (state) state->has_record = false;
         return false;
     }
     ++state->current_index;
-    state->has_record =
-        phar_set_record(&state->current_record, &stream->items[stream->index]);
+    state->has_record = phar_set_record(&state->current_record, &stream->items[stream->index]);
     return state->has_record;
 }
 
-bool xx_phar_unpack_current_archive_record(Abstractformat *format,
-                                          xx_archive_record_state *state,
-                                          xx_pd_struct *pd) {
+bool xx_phar_unpack_current_archive_record(Abstractformat *format, xx_archive_record_state *state, xx_pd_struct *pd)
+{
     phar_stream *stream;
     phar_member *member;
     const xx_var *path_option;
@@ -729,28 +708,21 @@ bool xx_phar_unpack_current_archive_record(Abstractformat *format,
     xx_io_device *destination = NULL;
     bool result = false;
     bool created = false;
-    if (!format || !state || state->format != format || !state->has_record ||
-        !(stream = (phar_stream *)state->internal_state) ||
-        stream->index >= stream->count || (pd && xx_pd_is_stopped(pd)))
+    if (!format || !state || state->format != format || !state->has_record || !(stream = (phar_stream *)state->internal_state) || stream->index >= stream->count ||
+        (pd && xx_pd_is_stopped(pd)))
         return false;
     member = &stream->items[stream->index];
     if (!phar_safe_output_name(member->name)) return false;
     path_option = phar_option(&state->options, XX_META_ID_OPT_UNPACK_PATH);
-    if (!path_option)
-        return phar_write_member(format, stream, member, NULL, pd);
-    if (path_option->type == XX_VAR_TYPE_STRING ||
-        path_option->type == XX_VAR_TYPE_STRING_VIEW)
-        base = xx_var_get_str(path_option);
-    else if (path_option->type == XX_VAR_TYPE_WSTRING ||
-             path_option->type == XX_VAR_TYPE_WSTRING_VIEW) {
+    if (!path_option) return phar_write_member(format, stream, member, NULL, pd);
+    if (path_option->type == XX_VAR_TYPE_STRING || path_option->type == XX_VAR_TYPE_STRING_VIEW) base = xx_var_get_str(path_option);
+    else if (path_option->type == XX_VAR_TYPE_WSTRING || path_option->type == XX_VAR_TYPE_WSTRING_VIEW) {
         owned_base = xx_str_unicode_to_utf8(xx_var_get_wstr(path_option));
         base = owned_base;
     }
     if (!base) goto done;
-    path = (base[0] && base[xx_str_len(base) - 1U] != '/' &&
-            base[xx_str_len(base) - 1U] != '\\')
-               ? xx_str_concat3(base, "/", member->name)
-               : xx_str_concat(base, member->name);
+    path = (base[0] && base[xx_str_len(base) - 1U] != '/' && base[xx_str_len(base) - 1U] != '\\') ? xx_str_concat3(base, "/", member->name)
+                                                                                                  : xx_str_concat(base, member->name);
     if (!path) goto done;
     if (member->folder) {
         result = xx_store_create_dirs_a(path, true);
@@ -770,8 +742,8 @@ done:
     return result;
 }
 
-void xx_phar_free_archive_records_reading(Abstractformat *format,
-                                         xx_archive_record_state *state) {
+void xx_phar_free_archive_records_reading(Abstractformat *format, xx_archive_record_state *state)
+{
     (void)format;
     xx_archive_record_state_free(state);
 }

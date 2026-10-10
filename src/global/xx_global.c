@@ -29,7 +29,8 @@
 static size_t g_buffer_size = XX_DEFAULT_BUFFER_SIZE;
 static size_t g_file_buffer_size = XX_DEFAULT_FILE_BUFFER_SIZE;
 
-void xx_set_buffer_size(size_t size) {
+void xx_set_buffer_size(size_t size)
+{
     if (size == 0) {
         g_buffer_size = XX_DEFAULT_BUFFER_SIZE;
     } else {
@@ -37,11 +38,13 @@ void xx_set_buffer_size(size_t size) {
     }
 }
 
-size_t xx_get_buffer_size(void) {
+size_t xx_get_buffer_size(void)
+{
     return g_buffer_size;
 }
 
-void xx_set_file_buffer_size(size_t size) {
+void xx_set_file_buffer_size(size_t size)
+{
     if (size == 0) {
         g_file_buffer_size = XX_DEFAULT_FILE_BUFFER_SIZE;
     } else {
@@ -49,33 +52,40 @@ void xx_set_file_buffer_size(size_t size) {
     }
 }
 
-size_t xx_get_file_buffer_size(void) {
+size_t xx_get_file_buffer_size(void)
+{
     return g_file_buffer_size;
 }
 
-void xx_global_set_buffer_size(size_t size) {
+void xx_global_set_buffer_size(size_t size)
+{
     xx_set_buffer_size(size);
 }
 
-size_t xx_global_get_buffer_size(void) {
+size_t xx_global_get_buffer_size(void)
+{
     return xx_get_buffer_size();
 }
 
-void xx_global_set_file_buffer_size(size_t size) {
+void xx_global_set_file_buffer_size(size_t size)
+{
     xx_set_file_buffer_size(size);
 }
 
-size_t xx_global_get_file_buffer_size(void) {
+size_t xx_global_get_file_buffer_size(void)
+{
     return xx_get_file_buffer_size();
 }
 
 static uint64_t g_file_memory_limit = XX_DEFAULT_FILE_MEMORY_LIMIT;
 
-void xx_set_file_memory_limit(uint64_t limit) {
+void xx_set_file_memory_limit(uint64_t limit)
+{
     g_file_memory_limit = limit;
 }
 
-uint64_t xx_get_file_memory_limit(void) {
+uint64_t xx_get_file_memory_limit(void)
+{
     return g_file_memory_limit;
 }
 
@@ -83,13 +93,14 @@ uint64_t xx_get_file_memory_limit(void) {
 
 static bool g_sse2_detected = false;
 static bool g_avx2_detected = false;
-static bool g_sse2_enabled  = false;
-static bool g_avx2_enabled  = false;
+static bool g_sse2_enabled = false;
+static bool g_avx2_enabled = false;
 static bool g_features_initialized = false;
 static bool g_color_output_enabled = true;
 static xx_terminal_type_t g_terminal_type = XX_TERMINAL_TYPE_NONE;
 
-static void xx_global_init_features_once(void) {
+static void xx_global_init_features_once(void)
+{
     if (!g_features_initialized) {
         g_sse2_detected = xx_global_platform_has_sse2();
         g_avx2_detected = xx_global_platform_has_avx2();
@@ -101,22 +112,26 @@ static void xx_global_init_features_once(void) {
     }
 }
 
-void xx_set_color_output_enabled(bool enable) {
+void xx_set_color_output_enabled(bool enable)
+{
     xx_global_init_features_once();
     g_color_output_enabled = enable;
 }
 
-bool xx_is_color_output_enabled(void) {
+bool xx_is_color_output_enabled(void)
+{
     xx_global_init_features_once();
     return g_color_output_enabled;
 }
 
-xx_terminal_type_t xx_get_terminal_type(void) {
+xx_terminal_type_t xx_get_terminal_type(void)
+{
     xx_global_init_features_once();
     return g_terminal_type;
 }
 
-void xx_set_terminal_type(xx_terminal_type_t type) {
+void xx_set_terminal_type(xx_terminal_type_t type)
+{
     xx_global_init_features_once();
     if (type != XX_TERMINAL_TYPE_ANSI && type != XX_TERMINAL_TYPE_WINDOWS) {
         type = XX_TERMINAL_TYPE_NONE;
@@ -124,89 +139,109 @@ void xx_set_terminal_type(xx_terminal_type_t type) {
     g_terminal_type = type;
 }
 
-void xx_global_set_color_output_enabled(bool enable) {
+void xx_global_set_color_output_enabled(bool enable)
+{
     xx_set_color_output_enabled(enable);
 }
 
-bool xx_global_is_color_output_enabled(void) {
+bool xx_global_is_color_output_enabled(void)
+{
     return xx_is_color_output_enabled();
 }
 
-xx_terminal_type_t xx_global_get_terminal_type(void) {
+xx_terminal_type_t xx_global_get_terminal_type(void)
+{
     return xx_get_terminal_type();
 }
 
-void xx_global_set_terminal_type(xx_terminal_type_t type) {
+void xx_global_set_terminal_type(xx_terminal_type_t type)
+{
     xx_set_terminal_type(type);
 }
 
-bool xx_has_sse2(void) {
+bool xx_has_sse2(void)
+{
     xx_global_init_features_once();
     return g_sse2_detected;
 }
 
-bool xx_has_avx2(void) {
+bool xx_has_avx2(void)
+{
     xx_global_init_features_once();
     return g_avx2_detected;
 }
 
-void xx_set_sse2_enabled(bool enable) {
+void xx_set_sse2_enabled(bool enable)
+{
     xx_global_init_features_once();
     g_sse2_enabled = enable && g_sse2_detected;
 }
 
-void xx_enable_sse2(bool enable) {
+void xx_enable_sse2(bool enable)
+{
     xx_set_sse2_enabled(enable);
 }
 
-bool xx_is_sse2_enabled(void) {
+bool xx_is_sse2_enabled(void)
+{
     xx_global_init_features_once();
     return g_sse2_enabled && g_sse2_detected;
 }
 
-void xx_set_avx2_enabled(bool enable) {
+void xx_set_avx2_enabled(bool enable)
+{
     xx_global_init_features_once();
     g_avx2_enabled = enable && g_avx2_detected;
 }
 
-void xx_enable_avx2(bool enable) {
+void xx_enable_avx2(bool enable)
+{
     xx_set_avx2_enabled(enable);
 }
 
-bool xx_is_avx2_enabled(void) {
+bool xx_is_avx2_enabled(void)
+{
     xx_global_init_features_once();
     return g_avx2_enabled && g_avx2_detected;
 }
 
 /* Aliases with xx_global prefix */
-bool xx_global_has_sse2(void) {
+bool xx_global_has_sse2(void)
+{
     return xx_has_sse2();
 }
 
-bool xx_global_has_avx2(void) {
+bool xx_global_has_avx2(void)
+{
     return xx_has_avx2();
 }
 
-void xx_global_set_sse2_enabled(bool enable) {
+void xx_global_set_sse2_enabled(bool enable)
+{
     xx_set_sse2_enabled(enable);
 }
 
-void xx_global_enable_sse2(bool enable) {
+void xx_global_enable_sse2(bool enable)
+{
     xx_enable_sse2(enable);
 }
 
-bool xx_global_is_sse2_enabled(void) {
+bool xx_global_is_sse2_enabled(void)
+{
     return xx_is_sse2_enabled();
 }
 
-void xx_global_set_avx2_enabled(bool enable) {
+void xx_global_set_avx2_enabled(bool enable)
+{
     xx_set_avx2_enabled(enable);
 }
 
-void xx_global_enable_avx2(bool enable) {
+void xx_global_enable_avx2(bool enable)
+{
     xx_enable_avx2(enable);
 }
 
-bool xx_global_is_avx2_enabled(void) {
+bool xx_global_is_avx2_enabled(void)
+{
     return xx_is_avx2_enabled();
 }

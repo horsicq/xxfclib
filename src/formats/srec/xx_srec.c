@@ -82,14 +82,14 @@
 /** Buffered forward line reader over a device. */
 typedef struct xx_srecfmt_lines_s {
     xx_io_device *device;
-    int64_t position;      /**< Device offset just past the buffered bytes. */
+    int64_t position; /**< Device offset just past the buffered bytes. */
     int64_t end;
     uint8_t *buffer;
     size_t capacity;
-    size_t fill;           /**< Valid bytes in buffer. */
-    size_t cursor;         /**< Next unread byte in buffer. */
+    size_t fill;   /**< Valid bytes in buffer. */
+    size_t cursor; /**< Next unread byte in buffer. */
     bool exhausted;
-    bool skip_lf;          /**< Last line ended in CR: swallow one LF. */
+    bool skip_lf; /**< Last line ended in CR: swallow one LF. */
 } xx_srecfmt_lines;
 
 typedef enum xx_srecfmt_line_status_e {
@@ -114,14 +114,14 @@ typedef struct xx_srecfmt_tally_s {
     uint64_t lines;
     uint64_t data_records;
     uint64_t data_bytes;
-    uint64_t low;          /**< Lowest addressed byte; UINT64_MAX when none. */
-    uint64_t high;         /**< Highest addressed byte. */
+    uint64_t low;  /**< Lowest addressed byte; UINT64_MAX when none. */
+    uint64_t high; /**< Highest addressed byte. */
     uint64_t entry_point;
     uint64_t declared_record_count;
     bool has_entry_point;
     bool has_record_count;
     bool seen_terminator;
-    bool has_header;       /**< The scan owns header_text from this prefix. */
+    bool has_header; /**< The scan owns header_text from this prefix. */
     uint8_t address_width;
 } xx_srecfmt_tally;
 
@@ -139,8 +139,8 @@ typedef struct xx_srecfmt_scan_s {
     bool has_record_count;
     bool is_contiguous;
     uint8_t address_width;
-    int64_t stream_size;   /**< Bytes of text consumed from base_address. */
-    char *header_text;     /**< Owned S0 text, or NULL. */
+    int64_t stream_size; /**< Bytes of text consumed from base_address. */
+    char *header_text;   /**< Owned S0 text, or NULL. */
 } xx_srecfmt_scan;
 
 static void xx_srecfmt_vtable_destroy(Abstractformat *self);
@@ -149,9 +149,8 @@ static void xx_srecfmt_vtable_destroy(Abstractformat *self);
 /* Line reading                                                        */
 /* ------------------------------------------------------------------ */
 
-static bool xx_srecfmt_lines_init(xx_srecfmt_lines *lines,
-                                  xx_io_device *device, int64_t offset,
-                                  int64_t end) {
+static bool xx_srecfmt_lines_init(xx_srecfmt_lines *lines, xx_io_device *device, int64_t offset, int64_t end)
+{
     xx_mem_zero(lines, sizeof(*lines));
     lines->device = device;
     lines->position = offset;
@@ -161,14 +160,13 @@ static bool xx_srecfmt_lines_init(xx_srecfmt_lines *lines,
     return lines->buffer != NULL;
 }
 
-static bool xx_srecfmt_lines_fill(xx_srecfmt_lines *lines) {
+static bool xx_srecfmt_lines_fill(xx_srecfmt_lines *lines)
+{
     ssize_t amount;
     size_t want;
     if (lines->cursor < lines->fill) return true;
     if (lines->exhausted || lines->position >= lines->end) return false;
-    want = (uint64_t)(lines->end - lines->position) > lines->capacity
-               ? lines->capacity
-               : (size_t)(lines->end - lines->position);
+    want = (uint64_t)(lines->end - lines->position) > lines->capacity ? lines->capacity : (size_t)(lines->end - lines->position);
     amount = xx_io_read(lines->device, lines->buffer, want);
     if (amount <= 0 || (size_t)amount > want) {
         lines->exhausted = true;
@@ -181,14 +179,16 @@ static bool xx_srecfmt_lines_fill(xx_srecfmt_lines *lines) {
 }
 
 /* Device offset of the next unread byte. */
-static int64_t xx_srecfmt_lines_offset(const xx_srecfmt_lines *lines) {
+static int64_t xx_srecfmt_lines_offset(const xx_srecfmt_lines *lines)
+{
     return lines->position - (int64_t)(lines->fill - lines->cursor);
 }
 
 /* Swallow the LF of a CR LF pair left pending by the previous line, so that
  * xx_srecfmt_lines_offset() is the first byte of the next line.  This does not
  * change what the next xx_srecfmt_lines_next() returns. */
-static void xx_srecfmt_lines_settle(xx_srecfmt_lines *lines) {
+static void xx_srecfmt_lines_settle(xx_srecfmt_lines *lines)
+{
     if (lines->skip_lf && xx_srecfmt_lines_fill(lines)) {
         lines->skip_lf = false;
         if (lines->buffer[lines->cursor] == (uint8_t)'\n') ++lines->cursor;
@@ -201,11 +201,8 @@ static void xx_srecfmt_lines_settle(xx_srecfmt_lines *lines) {
  * hostile or binary file looks like.  A Ctrl-Z as the first byte of a line is
  * reported, unconsumed, as the DOS end-of-text marker.  *out_start gets the
  * device offset of the line's first byte. */
-static xx_srecfmt_line_status xx_srecfmt_lines_next(xx_srecfmt_lines *lines,
-                                                    char *out,
-                                                    size_t out_capacity,
-                                                    size_t *out_length,
-                                                    int64_t *out_start) {
+static xx_srecfmt_line_status xx_srecfmt_lines_next(xx_srecfmt_lines *lines, char *out, size_t out_capacity, size_t *out_length, int64_t *out_start)
+{
     size_t used = 0U;
     bool any = false;
     *out_length = 0U;
@@ -242,9 +239,9 @@ static xx_srecfmt_line_status xx_srecfmt_lines_next(xx_srecfmt_lines *lines,
 
 /* True when every byte from the reader's position to the end of its range is
  * Ctrl-Z and there are at most XX_SRECFMT_MAX_CTRL_Z_TAIL of them. */
-static bool xx_srecfmt_lines_tail_is_ctrl_z(xx_srecfmt_lines *lines) {
-    if (lines->end - xx_srecfmt_lines_offset(lines) >
-        (int64_t)XX_SRECFMT_MAX_CTRL_Z_TAIL) {
+static bool xx_srecfmt_lines_tail_is_ctrl_z(xx_srecfmt_lines *lines)
+{
+    if (lines->end - xx_srecfmt_lines_offset(lines) > (int64_t)XX_SRECFMT_MAX_CTRL_Z_TAIL) {
         return false;
     }
     while (xx_srecfmt_lines_fill(lines)) {
@@ -258,7 +255,8 @@ static bool xx_srecfmt_lines_tail_is_ctrl_z(xx_srecfmt_lines *lines) {
 /* Line decoding                                                       */
 /* ------------------------------------------------------------------ */
 
-static bool xx_srecfmt_hex_digit(char ch, uint8_t *value) {
+static bool xx_srecfmt_hex_digit(char ch, uint8_t *value)
+{
     if (ch >= '0' && ch <= '9') {
         *value = (uint8_t)(ch - '0');
     } else if (ch >= 'A' && ch <= 'F') {
@@ -271,18 +269,19 @@ static bool xx_srecfmt_hex_digit(char ch, uint8_t *value) {
     return true;
 }
 
-static bool xx_srecfmt_hex_byte(const char *text, uint8_t *value) {
+static bool xx_srecfmt_hex_byte(const char *text, uint8_t *value)
+{
     uint8_t high;
     uint8_t low;
-    if (!xx_srecfmt_hex_digit(text[0], &high) ||
-        !xx_srecfmt_hex_digit(text[1], &low)) {
+    if (!xx_srecfmt_hex_digit(text[0], &high) || !xx_srecfmt_hex_digit(text[1], &low)) {
         return false;
     }
     *value = (uint8_t)((high << 4U) | low);
     return true;
 }
 
-static uint8_t xx_srecfmt_address_width(uint8_t type) {
+static uint8_t xx_srecfmt_address_width(uint8_t type)
+{
     switch (type) {
         case 0U: return 2U;
         case 1U: return 2U;
@@ -293,18 +292,19 @@ static uint8_t xx_srecfmt_address_width(uint8_t type) {
         case 7U: return 4U;
         case 8U: return 3U;
         case 9U: return 2U;
-        default: return 0U;  /* S4 is reserved and is refused. */
+        default: return 0U; /* S4 is reserved and is refused. */
     }
 }
 
-static bool xx_srecfmt_is_space(char ch) {
+static bool xx_srecfmt_is_space(char ch)
+{
     return ch == ' ' || ch == '\t';
 }
 
 /* Decode one line.  Every field is validated: the type, the hex alphabet, the
  * declared byte count against the real length, and the checksum. */
-static bool xx_srecfmt_decode_line(const char *line, size_t length,
-                                   xx_srecfmt_record *record) {
+static bool xx_srecfmt_decode_line(const char *line, size_t length, xx_srecfmt_record *record)
+{
     uint8_t count;
     uint8_t type_digit;
     uint8_t width;
@@ -314,16 +314,14 @@ static bool xx_srecfmt_decode_line(const char *line, size_t length,
     size_t index;
     /* Surrounding spaces and tabs are tolerated, and so is a DOS Ctrl-Z glued
      * to the end of the last line; nothing else is. */
-    while (length != 0U && (xx_srecfmt_is_space(line[length - 1U]) ||
-                            (uint8_t)line[length - 1U] == XX_SRECFMT_CTRL_Z)) {
+    while (length != 0U && (xx_srecfmt_is_space(line[length - 1U]) || (uint8_t)line[length - 1U] == XX_SRECFMT_CTRL_Z)) {
         --length;
     }
     while (length != 0U && xx_srecfmt_is_space(line[0])) {
         ++line;
         --length;
     }
-    if (length < 10U || length > XX_SREC_MAX_LINE_LENGTH ||
-        (length & 1U) != 0U || line[0] != 'S') {
+    if (length < 10U || length > XX_SREC_MAX_LINE_LENGTH || (length & 1U) != 0U || line[0] != 'S') {
         return false;
     }
     if (!xx_srecfmt_hex_digit(line[1], &type_digit) || type_digit > 9U) {
@@ -350,22 +348,21 @@ static bool xx_srecfmt_decode_line(const char *line, size_t length,
     }
     for (index = 0U; index < payload; ++index) {
         uint8_t byte;
-        if (!xx_srecfmt_hex_byte(line + 4U + ((size_t)width + index) * 2U,
-                                 &byte)) {
+        if (!xx_srecfmt_hex_byte(line + 4U + ((size_t)width + index) * 2U, &byte)) {
             return false;
         }
         record->data[index] = byte;
         sum += byte;
     }
-    if (!xx_srecfmt_hex_byte(line + 4U + ((size_t)width + payload) * 2U,
-                             &checksum)) {
+    if (!xx_srecfmt_hex_byte(line + 4U + ((size_t)width + payload) * 2U, &checksum)) {
         return false;
     }
     /* One's complement of the low byte of the sum. */
     return (uint8_t)(~(uint8_t)(sum & 0xFFU)) == checksum;
 }
 
-static bool xx_srecfmt_line_is_blank(const char *line, size_t length) {
+static bool xx_srecfmt_line_is_blank(const char *line, size_t length)
+{
     size_t index;
     for (index = 0U; index < length; ++index) {
         if (!xx_srecfmt_is_space(line[index])) return false;
@@ -373,15 +370,15 @@ static bool xx_srecfmt_line_is_blank(const char *line, size_t length) {
     return true;
 }
 
-bool xx_srec_check_magic(const uint8_t *magic, size_t magic_size) {
+bool xx_srec_check_magic(const uint8_t *magic, size_t magic_size)
+{
     uint8_t type;
     uint8_t width;
     uint8_t count;
     size_t length;
     size_t limit;
     size_t index;
-    if (!magic || magic_size < 10U || magic[0] != (uint8_t)'S' ||
-        magic[1] < (uint8_t)'0' || magic[1] > (uint8_t)'9') {
+    if (!magic || magic_size < 10U || magic[0] != (uint8_t)'S' || magic[1] < (uint8_t)'0' || magic[1] > (uint8_t)'9') {
         return false;
     }
     type = (uint8_t)(magic[1] - (uint8_t)'0');
@@ -389,9 +386,7 @@ bool xx_srec_check_magic(const uint8_t *magic, size_t magic_size) {
      * record before it and so can never pass check_is_valid(). */
     if (type >= 7U) return false;
     width = xx_srecfmt_address_width(type);
-    if (width == 0U ||
-        !xx_srecfmt_hex_byte((const char *)magic + 2, &count) ||
-        count < (uint8_t)(width + 1U)) {
+    if (width == 0U || !xx_srecfmt_hex_byte((const char *)magic + 2, &count) || count < (uint8_t)(width + 1U)) {
         return false;
     }
     /* Every character of the first record that lies inside the window must
@@ -405,9 +400,7 @@ bool xx_srec_check_magic(const uint8_t *magic, size_t magic_size) {
     }
     if (length < magic_size) {
         uint8_t ch = magic[length];
-        if (ch != (uint8_t)'\r' && ch != (uint8_t)'\n' &&
-            ch != (uint8_t)' ' && ch != (uint8_t)'\t' &&
-            ch != XX_SRECFMT_CTRL_Z) {
+        if (ch != (uint8_t)'\r' && ch != (uint8_t)'\n' && ch != (uint8_t)' ' && ch != (uint8_t)'\t' && ch != XX_SRECFMT_CTRL_Z) {
             return false;
         }
     }
@@ -418,7 +411,8 @@ bool xx_srec_check_magic(const uint8_t *magic, size_t magic_size) {
 /* Scan                                                                */
 /* ------------------------------------------------------------------ */
 
-static void xx_srecfmt_scan_cleanup(xx_srecfmt_scan *scan) {
+static void xx_srecfmt_scan_cleanup(xx_srecfmt_scan *scan)
+{
     if (!scan) return;
     if (scan->header_text) xx_mem_free(scan->header_text);
     xx_mem_zero(scan, sizeof(*scan));
@@ -427,11 +421,11 @@ static void xx_srecfmt_scan_cleanup(xx_srecfmt_scan *scan) {
 
 /* Keep the S0 text when it is short printable ASCII (NUL / space padding at
  * the end is dropped).  It is only ever used as metadata, never as a path. */
-static char *xx_srecfmt_header_copy(const uint8_t *text, size_t length) {
+static char *xx_srecfmt_header_copy(const uint8_t *text, size_t length)
+{
     size_t index;
     char *copy;
-    while (length != 0U &&
-           (text[length - 1U] == 0U || text[length - 1U] == (uint8_t)' ')) {
+    while (length != 0U && (text[length - 1U] == 0U || text[length - 1U] == (uint8_t)' ')) {
         --length;
     }
     if (length == 0U || length > XX_SRECFMT_MAX_HEADER_TEXT) return NULL;
@@ -447,14 +441,13 @@ static char *xx_srecfmt_header_copy(const uint8_t *text, size_t length) {
 
 /* The span rules on a running tally: the absolute ceiling and, above the
  * density floor, the density rule. */
-static bool xx_srecfmt_tally_span_ok(const xx_srecfmt_tally *tally) {
+static bool xx_srecfmt_tally_span_ok(const xx_srecfmt_tally *tally)
+{
     uint64_t span;
     if (tally->data_bytes == 0U) return true;
     span = tally->high - tally->low + 1U;
     if (span > XX_SRECFMT_MAX_IMAGE_SIZE) return false;
-    if (span > XX_SRECFMT_DENSITY_FLOOR &&
-        (tally->data_bytes > UINT64_MAX / XX_SRECFMT_MAX_DENSITY ||
-         span > tally->data_bytes * XX_SRECFMT_MAX_DENSITY)) {
+    if (span > XX_SRECFMT_DENSITY_FLOOR && (tally->data_bytes > UINT64_MAX / XX_SRECFMT_MAX_DENSITY || span > tally->data_bytes * XX_SRECFMT_MAX_DENSITY)) {
         return false;
     }
     return true;
@@ -466,8 +459,8 @@ static bool xx_srecfmt_tally_span_ok(const xx_srecfmt_tally *tally) {
  * records, is never auto-detected, because one checksummed S9 line in front
  * of anything would otherwise be enough to claim it.  Parsing a file that was
  * opened by name still accepts such a file as an empty image. */
-static bool xx_srecfmt_tally_acceptable(const xx_srecfmt_tally *tally,
-                                        bool need_data) {
+static bool xx_srecfmt_tally_acceptable(const xx_srecfmt_tally *tally, bool need_data)
+{
     if (tally->lines == 0U) return false;
     if (need_data) {
         if (tally->data_bytes == 0U) return false;
@@ -502,8 +495,8 @@ static bool xx_srecfmt_tally_acceptable(const xx_srecfmt_tally *tally,
  * cut point at which every rule held.  The cut taken at the window itself is
  * the very state check_is_valid() accepted, so whatever the detector accepts,
  * this walk accepts too, and anything after the chosen end is overlay. */
-static bool xx_srecfmt_scan_run(Abstractformat *self, xx_srecfmt_scan *scan,
-                                xx_pd_struct *pd, bool detect) {
+static bool xx_srecfmt_scan_run(Abstractformat *self, xx_srecfmt_scan *scan, xx_pd_struct *pd, bool detect)
+{
     xx_srecfmt_lines lines = {0};
     char line[XX_SREC_MAX_LINE_LENGTH];
     int64_t total_size;
@@ -518,21 +511,18 @@ static bool xx_srecfmt_scan_run(Abstractformat *self, xx_srecfmt_scan *scan,
         scan->stream_size = -1;
         scan->is_contiguous = true;
     }
-    if (!self || !self->device || !scan || self->base_address < 0 ||
-        (pd && xx_pd_is_stopped(pd))) {
+    if (!self || !self->device || !scan || self->base_address < 0 || (pd && xx_pd_is_stopped(pd))) {
         return false;
     }
     xx_mem_zero(&tally, sizeof(tally));
     xx_mem_zero(&cut, sizeof(cut));
     tally.low = UINT64_MAX;
     total_size = xx_io_total_size(self->device);
-    if (total_size <= self->base_address ||
-        xx_io_seek64(self->device, self->base_address, SEEK_SET) != 0) {
+    if (total_size <= self->base_address || xx_io_seek64(self->device, self->base_address, SEEK_SET) != 0) {
         goto fail;
     }
     stream_end = total_size;
-    if (!xx_srecfmt_lines_init(&lines, self->device, self->base_address,
-                               total_size)) goto fail;
+    if (!xx_srecfmt_lines_init(&lines, self->device, self->base_address, total_size)) goto fail;
     for (;;) {
         size_t length = 0U;
         int64_t start = -1;
@@ -542,8 +532,7 @@ static bool xx_srecfmt_scan_run(Abstractformat *self, xx_srecfmt_scan *scan,
         if (pd && xx_pd_is_stopped(pd)) goto fail;
         xx_srecfmt_lines_settle(&lines);
         offset = xx_srecfmt_lines_offset(&lines);
-        if (!lenient &&
-            offset - self->base_address >= XX_SRECFMT_VALIDATE_WINDOW) {
+        if (!lenient && offset - self->base_address >= XX_SRECFMT_VALIDATE_WINDOW) {
             if (detect) break;
             lenient = true;
         }
@@ -553,15 +542,13 @@ static bool xx_srecfmt_scan_run(Abstractformat *self, xx_srecfmt_scan *scan,
             cut_end = offset;
             have_cut = true;
         }
-        status = xx_srecfmt_lines_next(&lines, line, sizeof(line), &length,
-                                       &start);
+        status = xx_srecfmt_lines_next(&lines, line, sizeof(line), &length, &start);
         if (status == XX_SRECFMT_LINE_END) break;
         if (status == XX_SRECFMT_LINE_MARKER) {
             if (!xx_srecfmt_lines_tail_is_ctrl_z(&lines)) stream_end = start;
             break;
         }
-        if (status == XX_SRECFMT_LINE_OK &&
-            xx_srecfmt_line_is_blank(line, length)) {
+        if (status == XX_SRECFMT_LINE_OK && xx_srecfmt_line_is_blank(line, length)) {
             continue;
         }
         if (tally.seen_terminator) {
@@ -569,18 +556,15 @@ static bool xx_srecfmt_scan_run(Abstractformat *self, xx_srecfmt_scan *scan,
             stream_end = start;
             break;
         }
-        if (status != XX_SRECFMT_LINE_OK ||
-            !xx_srecfmt_decode_line(line, length, &record) ||
-            tally.lines >= XX_SRECFMT_MAX_LINES) {
+        if (status != XX_SRECFMT_LINE_OK || !xx_srecfmt_decode_line(line, length, &record) || tally.lines >= XX_SRECFMT_MAX_LINES) {
             if (!lenient) goto fail;
-            stream_end = start;  /* Past the window: the text ends here. */
+            stream_end = start; /* Past the window: the text ends here. */
             break;
         }
         switch (record.type) {
             case 0U:
                 if (!scan->header_text && record.data_size != 0U) {
-                    scan->header_text =
-                        xx_srecfmt_header_copy(record.data, record.data_size);
+                    scan->header_text = xx_srecfmt_header_copy(record.data, record.data_size);
                     tally.has_header = scan->header_text != NULL;
                 }
                 break;
@@ -627,8 +611,7 @@ static bool xx_srecfmt_scan_run(Abstractformat *self, xx_srecfmt_scan *scan,
                 tally.has_entry_point = true;
                 tally.seen_terminator = true;
                 break;
-            default:
-                goto fail;
+            default: goto fail;
         }
         ++tally.lines;
     }
@@ -678,26 +661,21 @@ fail:
 /* Second pass: allocate the already bounded span and place every data record
  * into it.  Gaps keep XX_SRECFMT_FILL_BYTE.  Only the text the first pass
  * accepted is read. */
-static bool xx_srecfmt_build(Abstractformat *self,
-                             const xx_srecfmt_scan *scan, uint8_t **out_image,
-                             size_t *out_size, xx_pd_struct *pd) {
+static bool xx_srecfmt_build(Abstractformat *self, const xx_srecfmt_scan *scan, uint8_t **out_image, size_t *out_size, xx_pd_struct *pd)
+{
     xx_srecfmt_lines lines = {0};
     char line[XX_SREC_MAX_LINE_LENGTH];
     uint8_t *image;
     if (out_image) *out_image = NULL;
     if (out_size) *out_size = 0U;
-    if (!self || !self->device || !scan || !out_image || !out_size ||
-        scan->image_size == 0U ||
-        scan->image_size > XX_SRECFMT_MAX_IMAGE_SIZE ||
-        scan->image_size > (uint64_t)SIZE_MAX || scan->stream_size <= 0 ||
-        xx_io_seek64(self->device, self->base_address, SEEK_SET) != 0) {
+    if (!self || !self->device || !scan || !out_image || !out_size || scan->image_size == 0U || scan->image_size > XX_SRECFMT_MAX_IMAGE_SIZE ||
+        scan->image_size > (uint64_t)SIZE_MAX || scan->stream_size <= 0 || xx_io_seek64(self->device, self->base_address, SEEK_SET) != 0) {
         return false;
     }
     image = (uint8_t *)xx_mem_alloc((size_t)scan->image_size);
     if (!image) return false;
     xx_rt_memset(image, XX_SRECFMT_FILL_BYTE, (size_t)scan->image_size);
-    if (!xx_srecfmt_lines_init(&lines, self->device, self->base_address,
-                               self->base_address + scan->stream_size)) goto fail;
+    if (!xx_srecfmt_lines_init(&lines, self->device, self->base_address, self->base_address + scan->stream_size)) goto fail;
     for (;;) {
         size_t length = 0U;
         int64_t start = -1;
@@ -705,24 +683,21 @@ static bool xx_srecfmt_build(Abstractformat *self,
         xx_srecfmt_record record;
         uint64_t offset;
         if (pd && xx_pd_is_stopped(pd)) goto fail;
-        status = xx_srecfmt_lines_next(&lines, line, sizeof(line), &length,
-                                       &start);
+        status = xx_srecfmt_lines_next(&lines, line, sizeof(line), &length, &start);
         /* The first pass fixed where the text ends; the same stops apply. */
-        if (status == XX_SRECFMT_LINE_END ||
-            status == XX_SRECFMT_LINE_MARKER) {
+        if (status == XX_SRECFMT_LINE_END || status == XX_SRECFMT_LINE_MARKER) {
             break;
         }
         if (status != XX_SRECFMT_LINE_OK) goto fail;
         if (xx_srecfmt_line_is_blank(line, length)) continue;
         if (!xx_srecfmt_decode_line(line, length, &record)) goto fail;
-        if (record.type >= 7U) break;  /* Termination record. */
+        if (record.type >= 7U) break; /* Termination record. */
         if (record.type > 3U || record.type == 0U || record.data_size == 0U) {
             continue;
         }
         if (record.address < scan->load_address) goto fail;
         offset = (uint64_t)record.address - scan->load_address;
-        if (offset > scan->image_size ||
-            (uint64_t)record.data_size > scan->image_size - offset) {
+        if (offset > scan->image_size || (uint64_t)record.data_size > scan->image_size - offset) {
             goto fail;
         }
         xx_rt_memcpy(image + offset, record.data, record.data_size);
@@ -741,7 +716,8 @@ fail:
 /* Probe                                                               */
 /* ------------------------------------------------------------------ */
 
-bool xx_srec_probe_device(xx_io_device *dev, int64_t base_address) {
+bool xx_srec_probe_device(xx_io_device *dev, int64_t base_address)
+{
     xx_srecfmt_lines lines = {0};
     char line[XX_SREC_MAX_LINE_LENGTH];
     int64_t total_size;
@@ -749,8 +725,7 @@ bool xx_srec_probe_device(xx_io_device *dev, int64_t base_address) {
     unsigned blanks = 0U;
     if (!dev || base_address < 0) return false;
     total_size = xx_io_total_size(dev);
-    if (total_size <= base_address ||
-        xx_io_seek64(dev, base_address, SEEK_SET) != 0) {
+    if (total_size <= base_address || xx_io_seek64(dev, base_address, SEEK_SET) != 0) {
         return false;
     }
     /* A bounded window: enough for a few blank lines plus one record. */
@@ -761,8 +736,7 @@ bool xx_srec_probe_device(xx_io_device *dev, int64_t base_address) {
         size_t length = 0U;
         int64_t start = -1;
         xx_srecfmt_record record;
-        if (xx_srecfmt_lines_next(&lines, line, sizeof(line), &length,
-                                  &start) != XX_SRECFMT_LINE_OK) {
+        if (xx_srecfmt_lines_next(&lines, line, sizeof(line), &length, &start) != XX_SRECFMT_LINE_OK) {
             xx_mem_free(lines.buffer);
             return false;
         }
@@ -785,18 +759,16 @@ bool xx_srec_probe_device(xx_io_device *dev, int64_t base_address) {
 /* Options and records                                                 */
 /* ------------------------------------------------------------------ */
 
-static bool xx_srecfmt_copy_options(xx_list_s *destination,
-                                    const xx_list_s *source) {
+static bool xx_srecfmt_copy_options(xx_list_s *destination, const xx_list_s *source)
+{
     size_t index;
     if (!destination || !source) return source == NULL;
     for (index = 0U; index < source->count; ++index) {
-        const xx_meta *item = (const xx_meta *)xx_list_at(
-            (const xx_list_t *)source, index);
+        const xx_meta *item = (const xx_meta *)xx_list_at((const xx_list_t *)source, index);
         xx_meta copy;
         if (!item) continue;
         xx_meta_init(&copy, item->meta_id);
-        if (!xx_var_copy(&copy.var, &item->var) ||
-            !xx_list_append(destination, &copy)) {
+        if (!xx_var_copy(&copy.var, &item->var) || !xx_list_append(destination, &copy)) {
             xx_meta_cleanup(&copy);
             return false;
         }
@@ -804,20 +776,19 @@ static bool xx_srecfmt_copy_options(xx_list_s *destination,
     return true;
 }
 
-static const xx_var *xx_srecfmt_find_option(const xx_list_s *options,
-                                            uint32_t meta_id) {
+static const xx_var *xx_srecfmt_find_option(const xx_list_s *options, uint32_t meta_id)
+{
     size_t index;
     if (!options) return NULL;
     for (index = 0U; index < options->count; ++index) {
-        const xx_meta *item = (const xx_meta *)xx_list_at(
-            (const xx_list_t *)options, index);
+        const xx_meta *item = (const xx_meta *)xx_list_at((const xx_list_t *)options, index);
         if (item && item->meta_id == meta_id) return &item->var;
     }
     return NULL;
 }
 
-static void xx_srecfmt_append(char *out, size_t capacity, size_t *used,
-                              const char *text) {
+static void xx_srecfmt_append(char *out, size_t capacity, size_t *used, const char *text)
+{
     size_t index;
     for (index = 0U; text && text[index] != '\0'; ++index) {
         if (*used + 1U >= capacity) break;
@@ -827,8 +798,8 @@ static void xx_srecfmt_append(char *out, size_t capacity, size_t *used,
 }
 
 /* Format "load=0x... entry=0x... header=..." without the CRT. */
-static void xx_srecfmt_describe(const xx_srec *archive, char *out,
-                                size_t capacity) {
+static void xx_srecfmt_describe(const xx_srec *archive, char *out, size_t capacity)
+{
     static const char digits[] = "0123456789ABCDEF";
     size_t used = 0U;
     unsigned pass;
@@ -836,13 +807,11 @@ static void xx_srecfmt_describe(const xx_srec *archive, char *out,
     if (!out || capacity == 0U) return;
     out[0] = '\0';
     for (pass = 0U; pass < 2U; ++pass) {
-        uint64_t value = pass == 0U ? archive->load_address
-                                    : archive->entry_point;
+        uint64_t value = pass == 0U ? archive->load_address : archive->entry_point;
         unsigned shift = 60U;
         bool started = false;
         if (pass == 1U && !archive->has_entry_point) break;
-        xx_srecfmt_append(out, capacity, &used,
-                          pass == 0U ? "load=0x" : " entry=0x");
+        xx_srecfmt_append(out, capacity, &used, pass == 0U ? "load=0x" : " entry=0x");
         for (;;) {
             unsigned nibble = (unsigned)((value >> shift) & 0xFU);
             if (nibble != 0U || started || shift == 0U) {
@@ -861,8 +830,8 @@ static void xx_srecfmt_describe(const xx_srec *archive, char *out,
     }
 }
 
-static bool xx_srecfmt_populate_record(Abstractformat *self,
-                                       xx_archive_record *record) {
+static bool xx_srecfmt_populate_record(Abstractformat *self, xx_archive_record *record)
+{
     const xx_srec *archive;
     char description[160];
     if (!self || !record || !self->base_info_handled || !self->is_valid) {
@@ -876,31 +845,23 @@ static bool xx_srecfmt_populate_record(Abstractformat *self,
     record->header_size = 0;
     record->data_offset = self->base_address;
     record->compressed_size = self->format_size;
-    return xx_archive_record_set_original_name(record,
-                                               XX_SRECFMT_PAYLOAD_NAME) &&
-           xx_archive_record_set_meta_u64(record,
-                                          XX_META_ID_UNCOMPRESSED_SIZE,
-                                          archive->image_size) &&
-           xx_archive_record_set_meta_u64(record, XX_META_ID_COMPRESSED_SIZE,
-                                          (uint64_t)self->format_size) &&
-           xx_archive_record_set_meta_u64(record,
-                                          XX_META_ID_COMPRESSION_METHOD, 0U) &&
-           xx_archive_record_set_meta_bool(record, XX_META_ID_IS_FOLDER,
-                                           false) &&
-           xx_archive_record_set_meta_bool(record, XX_META_ID_IS_ENCRYPTED,
-                                           false) &&
+    return xx_archive_record_set_original_name(record, XX_SRECFMT_PAYLOAD_NAME) &&
+           xx_archive_record_set_meta_u64(record, XX_META_ID_UNCOMPRESSED_SIZE, archive->image_size) &&
+           xx_archive_record_set_meta_u64(record, XX_META_ID_COMPRESSED_SIZE, (uint64_t)self->format_size) &&
+           xx_archive_record_set_meta_u64(record, XX_META_ID_COMPRESSION_METHOD, 0U) && xx_archive_record_set_meta_bool(record, XX_META_ID_IS_FOLDER, false) &&
+           xx_archive_record_set_meta_bool(record, XX_META_ID_IS_ENCRYPTED, false) &&
            /* No dedicated load-address / entry-point meta id exists yet, so
             * both are reported as human readable text alongside the struct
             * accessors xx_srec_get_load_address()/xx_srec_get_entry_point(). */
-           xx_archive_record_set_meta_str(record, XX_META_ID_COMMENT,
-                                          description);
+           xx_archive_record_set_meta_str(record, XX_META_ID_COMMENT, description);
 }
 
 /* ------------------------------------------------------------------ */
 /* Lifecycle                                                           */
 /* ------------------------------------------------------------------ */
 
-void xx_srec_init(xx_srec *archive, xx_io_device *dev, int64_t base_address) {
+void xx_srec_init(xx_srec *archive, xx_io_device *dev, int64_t base_address)
+{
     if (!archive) return;
     xx_mem_zero(archive, sizeof(*archive));
     xx_format_init(&archive->format, dev, base_address);
@@ -915,29 +876,25 @@ void xx_srec_init(xx_srec *archive, xx_io_device *dev, int64_t base_address) {
     archive->format.check_is_valid = xx_srec_check_is_valid;
     archive->format.handle_base_info = xx_srec_handle_base_info;
     archive->format.get_format_size = xx_srec_get_format_size;
-    archive->format.get_number_of_archive_records =
-        xx_srec_get_number_of_archive_records;
-    archive->format.create_archive_records_reading =
-        xx_srec_create_archive_records_reading;
-    archive->format.get_current_archive_record =
-        xx_srec_get_current_archive_record;
-    archive->format.unpack_current_archive_record =
-        xx_srec_unpack_current_archive_record;
-    archive->format.archive_record_move_to_next =
-        xx_srec_archive_record_move_to_next;
-    archive->format.free_archive_records_reading =
-        xx_srec_free_archive_records_reading;
+    archive->format.get_number_of_archive_records = xx_srec_get_number_of_archive_records;
+    archive->format.create_archive_records_reading = xx_srec_create_archive_records_reading;
+    archive->format.get_current_archive_record = xx_srec_get_current_archive_record;
+    archive->format.unpack_current_archive_record = xx_srec_unpack_current_archive_record;
+    archive->format.archive_record_move_to_next = xx_srec_archive_record_move_to_next;
+    archive->format.free_archive_records_reading = xx_srec_free_archive_records_reading;
     archive->format.destroy = xx_srecfmt_vtable_destroy;
     archive->stream_end = -1;
 }
 
-xx_srec *xx_srec_create(xx_io_device *dev, int64_t base_address) {
+xx_srec *xx_srec_create(xx_io_device *dev, int64_t base_address)
+{
     xx_srec *archive = (xx_srec *)xx_mem_alloc(sizeof(*archive));
     if (archive) xx_srec_init(archive, dev, base_address);
     return archive;
 }
 
-static void xx_srecfmt_release_internal(xx_srec *archive) {
+static void xx_srecfmt_release_internal(xx_srec *archive)
+{
     if (archive && archive->internal) {
         xx_srecfmt_scan_cleanup((xx_srecfmt_scan *)archive->internal);
         xx_mem_free(archive->internal);
@@ -945,7 +902,8 @@ static void xx_srecfmt_release_internal(xx_srec *archive) {
     }
 }
 
-void xx_srec_destroy(xx_srec *archive) {
+void xx_srec_destroy(xx_srec *archive)
+{
     if (!archive) return;
     xx_srecfmt_release_internal(archive);
     xx_format_cleanup_extra_parameters(&archive->format);
@@ -956,11 +914,13 @@ void xx_srec_destroy(xx_srec *archive) {
     archive->stream_end = -1;
 }
 
-static void xx_srecfmt_vtable_destroy(Abstractformat *self) {
+static void xx_srecfmt_vtable_destroy(Abstractformat *self)
+{
     xx_srec_destroy((xx_srec *)self);
 }
 
-void xx_srec_free(xx_srec *archive) {
+void xx_srec_free(xx_srec *archive)
+{
     if (!archive) return;
     xx_srec_destroy(archive);
     xx_mem_free(archive);
@@ -970,7 +930,8 @@ void xx_srec_free(xx_srec *archive) {
 /* Abstractformat surface                                              */
 /* ------------------------------------------------------------------ */
 
-bool xx_srec_check_is_valid(Abstractformat *self, xx_pd_struct *pd) {
+bool xx_srec_check_is_valid(Abstractformat *self, xx_pd_struct *pd)
+{
     xx_srecfmt_scan scan;
     bool result;
     /* Cheap bounded probe first so a binary file is rejected after at most
@@ -978,8 +939,7 @@ bool xx_srec_check_is_valid(Abstractformat *self, xx_pd_struct *pd) {
      * XX_SRECFMT_VALIDATE_WINDOW bytes of text.  The walk demands at least one
      * data byte and applies the span ceiling and the density rule to what it
      * read; handle_base_info() accepts every file this accepts. */
-    if (!self || !self->device || !xx_srec_probe_device(self->device,
-                                                        self->base_address)) {
+    if (!self || !self->device || !xx_srec_probe_device(self->device, self->base_address)) {
         return false;
     }
     result = xx_srecfmt_scan_run(self, &scan, pd, true);
@@ -987,14 +947,14 @@ bool xx_srec_check_is_valid(Abstractformat *self, xx_pd_struct *pd) {
     return result;
 }
 
-bool xx_srec_handle_base_info(Abstractformat *self, xx_pd_struct *pd) {
+bool xx_srec_handle_base_info(Abstractformat *self, xx_pd_struct *pd)
+{
     xx_srecfmt_scan *scan;
     xx_srec *archive = (xx_srec *)self;
     int64_t total_size;
     if (!self) return false;
     scan = (xx_srecfmt_scan *)xx_mem_alloc(sizeof(*scan));
-    if (!scan || !xx_srec_probe_device(self->device, self->base_address) ||
-        !xx_srecfmt_scan_run(self, scan, pd, false)) {
+    if (!scan || !xx_srec_probe_device(self->device, self->base_address) || !xx_srecfmt_scan_run(self, scan, pd, false)) {
         if (scan) xx_mem_free(scan);
         xx_srecfmt_release_internal(archive);
         archive->number_of_lines = 0U;
@@ -1050,45 +1010,40 @@ bool xx_srec_handle_base_info(Abstractformat *self, xx_pd_struct *pd) {
     return true;
 }
 
-int64_t xx_srec_get_format_size(Abstractformat *self, xx_pd_struct *pd) {
-    if (!self || (!self->base_info_handled &&
-                  !xx_format_handle_base_info(self, pd))) {
+int64_t xx_srec_get_format_size(Abstractformat *self, xx_pd_struct *pd)
+{
+    if (!self || (!self->base_info_handled && !xx_format_handle_base_info(self, pd))) {
         return -1;
     }
     return self->format_size;
 }
 
-uint64_t xx_srec_get_number_of_archive_records(Abstractformat *self,
-                                               xx_pd_struct *pd) {
-    if (!self || (!self->base_info_handled &&
-                  !xx_format_handle_base_info(self, pd))) {
+uint64_t xx_srec_get_number_of_archive_records(Abstractformat *self, xx_pd_struct *pd)
+{
+    if (!self || (!self->base_info_handled && !xx_format_handle_base_info(self, pd))) {
         return 0U;
     }
     return self->number_of_archive_records;
 }
 
-bool xx_srec_unpack_to_device(xx_srec *archive, xx_io_device *destination,
-                              xx_pd_struct *pd) {
+bool xx_srec_unpack_to_device(xx_srec *archive, xx_io_device *destination, xx_pd_struct *pd)
+{
     const xx_srecfmt_scan *scan;
     uint8_t *image = NULL;
     size_t image_size = 0U;
     size_t done = 0U;
     bool result = true;
-    if (!archive || !destination ||
-        (!archive->format.base_info_handled &&
-         !xx_format_handle_base_info(&archive->format, pd)) ||
-        !archive->format.is_valid) {
+    if (!archive || !destination || (!archive->format.base_info_handled && !xx_format_handle_base_info(&archive->format, pd)) || !archive->format.is_valid) {
         return false;
     }
     scan = (const xx_srecfmt_scan *)archive->internal;
     if (!scan) return false;
-    if (scan->image_size == 0U) return true;  /* Empty image. */
+    if (scan->image_size == 0U) return true; /* Empty image. */
     if (!xx_srecfmt_build(&archive->format, scan, &image, &image_size, pd)) {
         return false;
     }
     while (done < image_size) {
-        ssize_t amount = xx_io_write(destination, image + done,
-                                     image_size - done);
+        ssize_t amount = xx_io_write(destination, image + done, image_size - done);
         if (amount <= 0 || (size_t)amount > image_size - done) {
             result = false;
             break;
@@ -1099,12 +1054,10 @@ bool xx_srec_unpack_to_device(xx_srec *archive, xx_io_device *destination,
     return result;
 }
 
-xx_archive_record_state *xx_srec_create_archive_records_reading(
-    Abstractformat *self, const xx_list_s *options, xx_pd_struct *pd) {
+xx_archive_record_state *xx_srec_create_archive_records_reading(Abstractformat *self, const xx_list_s *options, xx_pd_struct *pd)
+{
     xx_archive_record_state *state;
-    if (!self || !self->device ||
-        (!self->base_info_handled && !xx_format_handle_base_info(self, pd)) ||
-        !self->is_valid) {
+    if (!self || !self->device || (!self->base_info_handled && !xx_format_handle_base_info(self, pd)) || !self->is_valid) {
         return NULL;
     }
     state = (xx_archive_record_state *)xx_mem_alloc(sizeof(*state));
@@ -1130,18 +1083,14 @@ xx_archive_record_state *xx_srec_create_archive_records_reading(
     return state;
 }
 
-const xx_archive_record *xx_srec_get_current_archive_record(
-    Abstractformat *self, xx_archive_record_state *state) {
-    return self && state && state->format == self && state->has_record
-               ? &state->current_record
-               : NULL;
+const xx_archive_record *xx_srec_get_current_archive_record(Abstractformat *self, xx_archive_record_state *state)
+{
+    return self && state && state->format == self && state->has_record ? &state->current_record : NULL;
 }
 
-bool xx_srec_archive_record_move_to_next(Abstractformat *self,
-                                         xx_archive_record_state *state,
-                                         xx_pd_struct *pd) {
-    if (!self || !state || state->format != self || !state->has_record ||
-        (pd && xx_pd_is_stopped(pd))) {
+bool xx_srec_archive_record_move_to_next(Abstractformat *self, xx_archive_record_state *state, xx_pd_struct *pd)
+{
+    if (!self || !state || state->format != self || !state->has_record || (pd && xx_pd_is_stopped(pd))) {
         return false;
     }
     /* The reassembled image is the only record. */
@@ -1151,9 +1100,8 @@ bool xx_srec_archive_record_move_to_next(Abstractformat *self,
     return false;
 }
 
-bool xx_srec_unpack_current_archive_record(Abstractformat *self,
-                                           xx_archive_record_state *state,
-                                           xx_pd_struct *pd) {
+bool xx_srec_unpack_current_archive_record(Abstractformat *self, xx_archive_record_state *state, xx_pd_struct *pd)
+{
     const xx_var *path_value;
     const char *base_path = NULL;
     char *owned_path = NULL;
@@ -1161,12 +1109,10 @@ bool xx_srec_unpack_current_archive_record(Abstractformat *self,
     bool result;
     bool created = false;
     xx_srec *archive = (xx_srec *)self;
-    if (!self || !state || state->format != self || !state->has_record ||
-        (pd && xx_pd_is_stopped(pd))) {
+    if (!self || !state || state->format != self || !state->has_record || (pd && xx_pd_is_stopped(pd))) {
         return false;
     }
-    path_value = xx_srecfmt_find_option(&state->options,
-                                        XX_META_ID_OPT_UNPACK_PATH);
+    path_value = xx_srecfmt_find_option(&state->options, XX_META_ID_OPT_UNPACK_PATH);
     if (!path_value) {
         /* No destination: verify the image really reassembles. */
         const xx_srecfmt_scan *scan = (const xx_srecfmt_scan *)archive->internal;
@@ -1178,11 +1124,9 @@ bool xx_srec_unpack_current_archive_record(Abstractformat *self,
         xx_mem_free(image);
         return (uint64_t)image_size == archive->image_size;
     }
-    if (path_value->type == XX_VAR_TYPE_STRING ||
-        path_value->type == XX_VAR_TYPE_STRING_VIEW) {
+    if (path_value->type == XX_VAR_TYPE_STRING || path_value->type == XX_VAR_TYPE_STRING_VIEW) {
         base_path = xx_var_get_str(path_value);
-    } else if (path_value->type == XX_VAR_TYPE_WSTRING ||
-               path_value->type == XX_VAR_TYPE_WSTRING_VIEW) {
+    } else if (path_value->type == XX_VAR_TYPE_WSTRING || path_value->type == XX_VAR_TYPE_WSTRING_VIEW) {
         owned_path = xx_str_unicode_to_utf8(xx_var_get_wstr(path_value));
         base_path = owned_path;
     }
@@ -1192,11 +1136,8 @@ bool xx_srec_unpack_current_archive_record(Abstractformat *self,
     }
     /* The member name is the fixed XX_SRECFMT_PAYLOAD_NAME; nothing from the
      * file reaches the destination path. */
-    if (base_path[0] != '\0' &&
-        base_path[xx_str_len(base_path) - 1U] != '/' &&
-        base_path[xx_str_len(base_path) - 1U] != '\\') {
-        destination_path =
-            xx_str_concat3(base_path, "/", XX_SRECFMT_PAYLOAD_NAME);
+    if (base_path[0] != '\0' && base_path[xx_str_len(base_path) - 1U] != '/' && base_path[xx_str_len(base_path) - 1U] != '\\') {
+        destination_path = xx_str_concat3(base_path, "/", XX_SRECFMT_PAYLOAD_NAME);
     } else {
         destination_path = xx_str_concat(base_path, XX_SRECFMT_PAYLOAD_NAME);
     }
@@ -1216,8 +1157,8 @@ bool xx_srec_unpack_current_archive_record(Abstractformat *self,
     return result;
 }
 
-void xx_srec_free_archive_records_reading(Abstractformat *self,
-                                          xx_archive_record_state *state) {
+void xx_srec_free_archive_records_reading(Abstractformat *self, xx_archive_record_state *state)
+{
     (void)self;
     xx_archive_record_state_free(state);
 }
@@ -1226,32 +1167,40 @@ void xx_srec_free_archive_records_reading(Abstractformat *self,
 /* Accessors                                                           */
 /* ------------------------------------------------------------------ */
 
-uint64_t xx_srec_get_number_of_lines(const xx_srec *archive) {
+uint64_t xx_srec_get_number_of_lines(const xx_srec *archive)
+{
     return archive ? archive->number_of_lines : 0U;
 }
-uint64_t xx_srec_get_data_bytes(const xx_srec *archive) {
+uint64_t xx_srec_get_data_bytes(const xx_srec *archive)
+{
     return archive ? archive->data_bytes : 0U;
 }
-uint64_t xx_srec_get_image_size(const xx_srec *archive) {
+uint64_t xx_srec_get_image_size(const xx_srec *archive)
+{
     return archive ? archive->image_size : 0U;
 }
-uint64_t xx_srec_get_load_address(const xx_srec *archive) {
+uint64_t xx_srec_get_load_address(const xx_srec *archive)
+{
     return archive ? archive->load_address : 0U;
 }
-uint64_t xx_srec_get_entry_point(const xx_srec *archive) {
+uint64_t xx_srec_get_entry_point(const xx_srec *archive)
+{
     return archive ? archive->entry_point : 0U;
 }
-bool xx_srec_get_has_entry_point(const xx_srec *archive) {
+bool xx_srec_get_has_entry_point(const xx_srec *archive)
+{
     return archive ? archive->has_entry_point : false;
 }
-uint8_t xx_srec_get_address_width(const xx_srec *archive) {
+uint8_t xx_srec_get_address_width(const xx_srec *archive)
+{
     return archive ? archive->address_width : 0U;
 }
-int64_t xx_srec_get_stream_end(const xx_srec *archive) {
+int64_t xx_srec_get_stream_end(const xx_srec *archive)
+{
     return archive ? archive->stream_end : -1;
 }
-const char *xx_srec_get_header_text(const xx_srec *archive) {
-    const xx_srecfmt_scan *scan =
-        archive ? (const xx_srecfmt_scan *)archive->internal : NULL;
+const char *xx_srec_get_header_text(const xx_srec *archive)
+{
+    const xx_srecfmt_scan *scan = archive ? (const xx_srecfmt_scan *)archive->internal : NULL;
     return scan ? scan->header_text : NULL;
 }

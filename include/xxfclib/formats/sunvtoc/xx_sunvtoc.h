@@ -73,52 +73,43 @@ typedef struct xx_sunvtoc XSunVtoc;
 
 /** One published slice. */
 typedef struct xx_sunvtoc_slice_info {
-    int64_t offset;          /**< Absolute device offset of the payload. */
-    int64_t size;            /**< Bytes actually present on the device. */
-    uint64_t declared_size;  /**< Sector count * 512. */
-    uint64_t start_sector;   /**< First sector, relative to the label base. */
-    uint32_t sector_count;   /**< Sectors declared by the label. */
-    uint16_t tag;            /**< VTOC tag, 0 when the label has none. */
-    uint16_t flag;           /**< VTOC flag, 0 when the label has none. */
-    uint32_t slot;           /**< 0-based slot in the label. */
-    const char *name;        /**< Record name, e.g. "slice2". */
+    int64_t offset;         /**< Absolute device offset of the payload. */
+    int64_t size;           /**< Bytes actually present on the device. */
+    uint64_t declared_size; /**< Sector count * 512. */
+    uint64_t start_sector;  /**< First sector, relative to the label base. */
+    uint32_t sector_count;  /**< Sectors declared by the label. */
+    uint16_t tag;           /**< VTOC tag, 0 when the label has none. */
+    uint16_t flag;          /**< VTOC flag, 0 when the label has none. */
+    uint32_t slot;          /**< 0-based slot in the label. */
+    const char *name;       /**< Record name, e.g. "slice2". */
 } xx_sunvtoc_slice_info;
 
 struct xx_sunvtoc {
     Abstractformat format;
     uint64_t number_of_records;
     uint64_t number_of_members;
-    uint32_t layout;         /**< XX_SUNVTOC_LAYOUT_*. */
-    bool has_vtoc;           /**< VTOC sanity word present. */
+    uint32_t layout;               /**< XX_SUNVTOC_LAYOUT_*. */
+    bool has_vtoc;                 /**< VTOC sanity word present. */
     uint32_t sectors_per_cylinder; /**< SPARC heads * sectors, else 0. */
-    int64_t archive_end;     /**< End of the farthest slice, or -1. */
+    int64_t archive_end;           /**< End of the farthest slice, or -1. */
     void *internal;
 };
 
-XXFC_API void xx_sunvtoc_init(xx_sunvtoc *sunvtoc, xx_io_device *dev,
-                              int64_t base_address);
+XXFC_API void xx_sunvtoc_init(xx_sunvtoc *sunvtoc, xx_io_device *dev, int64_t base_address);
 XXFC_API xx_sunvtoc *xx_sunvtoc_create(xx_io_device *dev, int64_t base_address);
 XXFC_API void xx_sunvtoc_destroy(xx_sunvtoc *sunvtoc);
 XXFC_API void xx_sunvtoc_free(xx_sunvtoc *sunvtoc);
 
 XXFC_API bool xx_sunvtoc_check_is_valid(Abstractformat *self, xx_pd_struct *pd);
-XXFC_API bool xx_sunvtoc_handle_base_info(Abstractformat *self,
-                                          xx_pd_struct *pd);
-XXFC_API int64_t xx_sunvtoc_get_format_size(Abstractformat *self,
-                                            xx_pd_struct *pd);
-XXFC_API uint64_t xx_sunvtoc_get_number_of_archive_records(Abstractformat *self,
-                                                           xx_pd_struct *pd);
+XXFC_API bool xx_sunvtoc_handle_base_info(Abstractformat *self, xx_pd_struct *pd);
+XXFC_API int64_t xx_sunvtoc_get_format_size(Abstractformat *self, xx_pd_struct *pd);
+XXFC_API uint64_t xx_sunvtoc_get_number_of_archive_records(Abstractformat *self, xx_pd_struct *pd);
 
-XXFC_API xx_archive_record_state *xx_sunvtoc_create_archive_records_reading(
-    Abstractformat *self, const xx_list_s *options, xx_pd_struct *pd);
-XXFC_API const xx_archive_record *xx_sunvtoc_get_current_archive_record(
-    Abstractformat *self, xx_archive_record_state *state);
-XXFC_API bool xx_sunvtoc_unpack_current_archive_record(
-    Abstractformat *self, xx_archive_record_state *state, xx_pd_struct *pd);
-XXFC_API bool xx_sunvtoc_archive_record_move_to_next(
-    Abstractformat *self, xx_archive_record_state *state, xx_pd_struct *pd);
-XXFC_API void xx_sunvtoc_free_archive_records_reading(
-    Abstractformat *self, xx_archive_record_state *state);
+XXFC_API xx_archive_record_state *xx_sunvtoc_create_archive_records_reading(Abstractformat *self, const xx_list_s *options, xx_pd_struct *pd);
+XXFC_API const xx_archive_record *xx_sunvtoc_get_current_archive_record(Abstractformat *self, xx_archive_record_state *state);
+XXFC_API bool xx_sunvtoc_unpack_current_archive_record(Abstractformat *self, xx_archive_record_state *state, xx_pd_struct *pd);
+XXFC_API bool xx_sunvtoc_archive_record_move_to_next(Abstractformat *self, xx_archive_record_state *state, xx_pd_struct *pd);
+XXFC_API void xx_sunvtoc_free_archive_records_reading(Abstractformat *self, xx_archive_record_state *state);
 
 XXFC_API uint64_t xx_sunvtoc_get_number_of_records(const xx_sunvtoc *sunvtoc);
 XXFC_API uint32_t xx_sunvtoc_get_layout(const xx_sunvtoc *sunvtoc);
@@ -126,25 +117,26 @@ XXFC_API int64_t xx_sunvtoc_get_archive_end(const xx_sunvtoc *sunvtoc);
 
 /** Fill info for the index-th published slice. Requires that base info has
  * already been handled. Returns false for an out-of-range index. */
-XXFC_API bool xx_sunvtoc_get_slice_info(const xx_sunvtoc *sunvtoc,
-                                        uint64_t index,
-                                        xx_sunvtoc_slice_info *info);
+XXFC_API bool xx_sunvtoc_get_slice_info(const xx_sunvtoc *sunvtoc, uint64_t index, xx_sunvtoc_slice_info *info);
 
-static inline Abstractformat *xx_sunvtoc_to_format(xx_sunvtoc *sunvtoc) {
+static inline Abstractformat *xx_sunvtoc_to_format(xx_sunvtoc *sunvtoc)
+{
     return sunvtoc ? &sunvtoc->format : NULL;
 }
-static inline void XSunVtoc_init(xx_sunvtoc *sunvtoc, xx_io_device *dev,
-                                 int64_t base_address) {
+static inline void XSunVtoc_init(xx_sunvtoc *sunvtoc, xx_io_device *dev, int64_t base_address)
+{
     xx_sunvtoc_init(sunvtoc, dev, base_address);
 }
-static inline xx_sunvtoc *XSunVtoc_create(xx_io_device *dev,
-                                          int64_t base_address) {
+static inline xx_sunvtoc *XSunVtoc_create(xx_io_device *dev, int64_t base_address)
+{
     return xx_sunvtoc_create(dev, base_address);
 }
-static inline void XSunVtoc_free(xx_sunvtoc *sunvtoc) {
+static inline void XSunVtoc_free(xx_sunvtoc *sunvtoc)
+{
     xx_sunvtoc_free(sunvtoc);
 }
-static inline bool XSunVtoc_is_valid(xx_sunvtoc *sunvtoc, xx_pd_struct *pd) {
+static inline bool XSunVtoc_is_valid(xx_sunvtoc *sunvtoc, xx_pd_struct *pd)
+{
     return sunvtoc ? xx_format_is_valid(&sunvtoc->format, pd) : false;
 }
 

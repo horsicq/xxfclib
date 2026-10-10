@@ -23,9 +23,7 @@
 
 /* binwalk's find_zip_eof() greps for this eight byte string, i.e. an EOCD
  * whose "this disk" and "central directory disk" numbers are both zero. */
-static const uint8_t xx_dahuazip_eocd_magic[8] = {
-    'P', 'K', 0x05U, 0x06U, 0x00U, 0x00U, 0x00U, 0x00U
-};
+static const uint8_t xx_dahuazip_eocd_magic[8] = {'P', 'K', 0x05U, 0x06U, 0x00U, 0x00U, 0x00U, 0x00U};
 #define XX_DAHUAZIP_EOCD_MAGIC_SIZE 8U
 
 /* Reserved general-purpose flag bits (structures/zip.rs UNUSED_FLAGS_MASK). */
@@ -43,8 +41,8 @@ static const uint8_t xx_dahuazip_eocd_magic[8] = {
 typedef struct xx_dahuazip_private_s {
     int64_t input_size;
     int64_t header_offset;
-    int64_t eocd_offset;  /* absolute */
-    int64_t archive_end;  /* absolute, one past the archive comment */
+    int64_t eocd_offset; /* absolute */
+    int64_t archive_end; /* absolute, one past the archive comment */
     uint64_t count;
     uint16_t version;
     uint16_t flags;
@@ -73,16 +71,14 @@ typedef struct xx_dahuazip_view_s {
     int64_t position;
 } xx_dahuazip_view;
 
-static ssize_t xx_dahuazip_view_read(xx_io_device *device, void *buffer,
-                                     size_t size) {
-    xx_dahuazip_view *view =
-        device ? (xx_dahuazip_view *)device->priv : NULL;
+static ssize_t xx_dahuazip_view_read(xx_io_device *device, void *buffer, size_t size)
+{
+    xx_dahuazip_view *view = device ? (xx_dahuazip_view *)device->priv : NULL;
     uint8_t *out = (uint8_t *)buffer;
     size_t wanted;
     size_t done = 0U;
     size_t index;
-    if (!view || (!buffer && size != 0U) || view->position < 0 ||
-        view->position > view->size) {
+    if (!view || (!buffer && size != 0U) || view->position < 0 || view->position > view->size) {
         return -1;
     }
     if (size == 0U || view->position == view->size) return 0;
@@ -91,8 +87,7 @@ static ssize_t xx_dahuazip_view_read(xx_io_device *device, void *buffer,
         wanted = (size_t)(view->size - view->position);
     }
     if (wanted > (SIZE_MAX >> 1)) wanted = SIZE_MAX >> 1; /* fits ssize_t */
-    if (xx_io_seek64(view->parent, view->base + view->position, SEEK_SET) !=
-        0) {
+    if (xx_io_seek64(view->parent, view->base + view->position, SEEK_SET) != 0) {
         return -1;
     }
     while (done < wanted) {
@@ -104,20 +99,17 @@ static ssize_t xx_dahuazip_view_read(xx_io_device *device, void *buffer,
      * opened, so a short parent read is an I/O error, not the end. */
     if (done == 0U) return -1;
     for (index = 0U; index < XX_DAHUAZIP_PATCH_SIZE; ++index) {
-        if ((int64_t)index >= view->position &&
-            (uint64_t)((int64_t)index - view->position) < (uint64_t)done) {
-            out[(size_t)((int64_t)index - view->position)] =
-                (uint8_t)("PK"[index]);
+        if ((int64_t)index >= view->position && (uint64_t)((int64_t)index - view->position) < (uint64_t)done) {
+            out[(size_t)((int64_t)index - view->position)] = (uint8_t)("PK"[index]);
         }
     }
     view->position += (int64_t)done;
     return (ssize_t)done;
 }
 
-static int xx_dahuazip_view_seek64(xx_io_device *device, int64_t offset,
-                                   int whence) {
-    xx_dahuazip_view *view =
-        device ? (xx_dahuazip_view *)device->priv : NULL;
+static int xx_dahuazip_view_seek64(xx_io_device *device, int64_t offset, int whence)
+{
+    xx_dahuazip_view *view = device ? (xx_dahuazip_view *)device->priv : NULL;
     int64_t origin;
     if (!view) return -1;
     switch (whence) {
@@ -126,8 +118,7 @@ static int xx_dahuazip_view_seek64(xx_io_device *device, int64_t offset,
         case SEEK_END: origin = view->size; break;
         default: return -1;
     }
-    if ((offset > 0 && origin > INT64_MAX - offset) ||
-        (offset < 0 && origin < INT64_MIN - offset)) {
+    if ((offset > 0 && origin > INT64_MAX - offset) || (offset < 0 && origin < INT64_MIN - offset)) {
         return -1;
     }
     origin += offset;
@@ -136,26 +127,26 @@ static int xx_dahuazip_view_seek64(xx_io_device *device, int64_t offset,
     return 0;
 }
 
-static int xx_dahuazip_view_seek(xx_io_device *device, long offset,
-                                 int whence) {
+static int xx_dahuazip_view_seek(xx_io_device *device, long offset, int whence)
+{
     return xx_dahuazip_view_seek64(device, (int64_t)offset, whence);
 }
 
-static int64_t xx_dahuazip_view_tell(xx_io_device *device) {
-    xx_dahuazip_view *view =
-        device ? (xx_dahuazip_view *)device->priv : NULL;
+static int64_t xx_dahuazip_view_tell(xx_io_device *device)
+{
+    xx_dahuazip_view *view = device ? (xx_dahuazip_view *)device->priv : NULL;
     return view ? view->position : -1;
 }
 
-static int64_t xx_dahuazip_view_size(xx_io_device *device) {
-    xx_dahuazip_view *view =
-        device ? (xx_dahuazip_view *)device->priv : NULL;
+static int64_t xx_dahuazip_view_size(xx_io_device *device)
+{
+    xx_dahuazip_view *view = device ? (xx_dahuazip_view *)device->priv : NULL;
     return view ? view->size : -1;
 }
 
-static int xx_dahuazip_view_close(xx_io_device *device) {
-    xx_dahuazip_view *view =
-        device ? (xx_dahuazip_view *)device->priv : NULL;
+static int xx_dahuazip_view_close(xx_io_device *device)
+{
+    xx_dahuazip_view *view = device ? (xx_dahuazip_view *)device->priv : NULL;
     if (!view) return -1;
     /* The parent is borrowed; only the view itself is released. */
     xx_mem_zero(view, sizeof(*view));
@@ -163,12 +154,11 @@ static int xx_dahuazip_view_close(xx_io_device *device) {
     return 0;
 }
 
-static xx_io_device *xx_dahuazip_view_open(xx_io_device *parent, int64_t base,
-                                           int64_t size) {
+static xx_io_device *xx_dahuazip_view_open(xx_io_device *parent, int64_t base, int64_t size)
+{
     xx_dahuazip_view *view;
     int64_t parent_size = xx_io_total_size(parent);
-    if (!parent || base < 0 || size < (int64_t)XX_DAHUAZIP_PATCH_SIZE ||
-        parent_size < 0 || base > parent_size || size > parent_size - base) {
+    if (!parent || base < 0 || size < (int64_t)XX_DAHUAZIP_PATCH_SIZE || parent_size < 0 || base > parent_size || size > parent_size - base) {
         return NULL;
     }
     view = (xx_dahuazip_view *)xx_mem_calloc(1U, sizeof(*view));
@@ -194,13 +184,12 @@ static xx_io_device *xx_dahuazip_view_open(xx_io_device *parent, int64_t base,
 /* Helpers                                                                   */
 /* ------------------------------------------------------------------------ */
 
-static bool xx_dahuazip_read_at(xx_io_device *device, int64_t offset,
-                                void *data, size_t size) {
+static bool xx_dahuazip_read_at(xx_io_device *device, int64_t offset, void *data, size_t size)
+{
     uint8_t *out = (uint8_t *)data;
     size_t done = 0U;
     const size_t io_capacity = xx_get_file_buffer_size();
-    if (!device || (!data && size != 0U) || offset < 0 ||
-        xx_io_seek64(device, offset, SEEK_SET) != 0) {
+    if (!device || (!data && size != 0U) || offset < 0 || xx_io_seek64(device, offset, SEEK_SET) != 0) {
         return false;
     }
     while (done < size) {
@@ -214,26 +203,43 @@ static bool xx_dahuazip_read_at(xx_io_device *device, int64_t offset,
 }
 
 /* True when [offset, offset + size) lies inside [0, total_size). */
-static bool xx_dahuazip_range_within(int64_t total_size, int64_t offset,
-                                     int64_t size) {
-    return (total_size >= 0) && (offset >= 0) && (size >= 0) &&
-           (offset <= total_size) && (size <= total_size - offset);
+static bool xx_dahuazip_range_within(int64_t total_size, int64_t offset, int64_t size)
+{
+    return (total_size >= 0) && (offset >= 0) && (size >= 0) && (offset <= total_size) && (size <= total_size - offset);
 }
 
 /* The compression methods binwalk's parse_zip_header() accepts. */
-static bool xx_dahuazip_method_allowed(uint16_t method) {
+static bool xx_dahuazip_method_allowed(uint16_t method)
+{
     switch (method) {
-        case 0: case 1: case 2: case 3: case 4: case 5: case 6:
-        case 8: case 9: case 10: case 12: case 14:
-        case 18: case 19: case 20:
-        case 93: case 94: case 95: case 96: case 97: case 98: case 99:
-            return true;
-        default:
-            return false;
+        case 0:
+        case 1:
+        case 2:
+        case 3:
+        case 4:
+        case 5:
+        case 6:
+        case 8:
+        case 9:
+        case 10:
+        case 12:
+        case 14:
+        case 18:
+        case 19:
+        case 20:
+        case 93:
+        case 94:
+        case 95:
+        case 96:
+        case 97:
+        case 98:
+        case 99: return true;
+        default: return false;
     }
 }
 
-static void xx_dahuazip_private_reset(xx_dahuazip_private *parsed) {
+static void xx_dahuazip_private_reset(xx_dahuazip_private *parsed)
+{
     if (!parsed) return;
     xx_mem_zero(parsed, sizeof(*parsed));
     parsed->input_size = -1;
@@ -249,10 +255,8 @@ static void xx_dahuazip_private_reset(xx_dahuazip_private *parsed) {
  * Later EOCDs are ignored, which is what makes the carve length the first
  * plausible end rather than the last.
  */
-static bool xx_dahuazip_find_eocd(xx_io_device *device, int64_t start,
-                                   int64_t total, xx_pd_struct *pd,
-                                   int64_t *eocd_offset,
-                                   uint8_t eocd[XX_DAHUAZIP_EOCD_SIZE]) {
+static bool xx_dahuazip_find_eocd(xx_io_device *device, int64_t start, int64_t total, xx_pd_struct *pd, int64_t *eocd_offset, uint8_t eocd[XX_DAHUAZIP_EOCD_SIZE])
+{
     const size_t capacity = xx_get_file_buffer_size();
     uint8_t *buffer;
     int64_t position = start;
@@ -264,8 +268,7 @@ static bool xx_dahuazip_find_eocd(xx_io_device *device, int64_t start,
     while (!found && total - position >= (int64_t)XX_DAHUAZIP_EOCD_SIZE) {
         uint64_t left = (uint64_t)(total - position - XX_DAHUAZIP_EOCD_SIZE + 1);
         size_t length = left < capacity ? (size_t)left : capacity, index;
-        if ((pd && xx_pd_is_stopped(pd)) ||
-            !xx_dahuazip_read_at(device, position, buffer, length)) break;
+        if ((pd && xx_pd_is_stopped(pd)) || !xx_dahuazip_read_at(device, position, buffer, length)) break;
         for (index = 0U; index < length; ++index) {
             int64_t candidate = position + (int64_t)index;
             if (buffer[index] != 'P') continue;
@@ -296,13 +299,13 @@ typedef struct xx_dahuazip_session_s {
     xx_archive_record_state *zip_state;
 } xx_dahuazip_session;
 
-static void xx_dahuazip_session_close(xx_dahuazip_session *session) {
+static void xx_dahuazip_session_close(xx_dahuazip_session *session)
+{
     if (!session) return;
     /* Order matters: the record state refers to the zip object, which
      * refers to the view. */
     if (session->zip_state) {
-        xx_format_free_archive_records_reading(&session->zip->format,
-                                               session->zip_state);
+        xx_format_free_archive_records_reading(&session->zip->format, session->zip_state);
         session->zip_state = NULL;
     }
     if (session->zip) {
@@ -319,22 +322,17 @@ static void xx_dahuazip_session_close(xx_dahuazip_session *session) {
  * when xx_zip settles on the same EOCD binwalk chose, sees no split set, and
  * its first central directory entry is the patched local header at view
  * offset 0 - i.e. the "DH" header really is the archive's first member. */
-static bool xx_dahuazip_session_open(Abstractformat *self,
-                                     const xx_dahuazip_private *parsed,
-                                     const xx_list_s *options,
-                                     xx_dahuazip_session *session,
-                                     xx_pd_struct *pd) {
+static bool xx_dahuazip_session_open(Abstractformat *self, const xx_dahuazip_private *parsed, const xx_list_s *options, xx_dahuazip_session *session, xx_pd_struct *pd)
+{
     int64_t view_size;
     const xx_archive_record *first;
     if (!self || !parsed || !session) return false;
     xx_mem_zero(session, sizeof(*session));
-    if (parsed->header_offset < 0 || parsed->archive_end <= parsed->header_offset ||
-        parsed->eocd_offset < parsed->header_offset) {
+    if (parsed->header_offset < 0 || parsed->archive_end <= parsed->header_offset || parsed->eocd_offset < parsed->header_offset) {
         return false;
     }
     view_size = parsed->archive_end - parsed->header_offset;
-    session->view =
-        xx_dahuazip_view_open(self->device, parsed->header_offset, view_size);
+    session->view = xx_dahuazip_view_open(self->device, parsed->header_offset, view_size);
     if (!session->view) goto fail;
     session->zip = xx_zip_create(session->view, 0);
     if (!session->zip) goto fail;
@@ -343,41 +341,30 @@ static bool xx_dahuazip_session_open(Abstractformat *self,
     {
         size_t index;
         for (index = 0U; index < self->list_extra_parameters.count; ++index) {
-            const xx_meta *item = (const xx_meta *)xx_list_at(
-                (const xx_list_t *)&self->list_extra_parameters, index);
-            if (item && !xx_format_set_extra_parameter(
-                            &session->zip->format, item->meta_id,
-                            &item->var)) {
+            const xx_meta *item = (const xx_meta *)xx_list_at((const xx_list_t *)&self->list_extra_parameters, index);
+            if (item && !xx_format_set_extra_parameter(&session->zip->format, item->meta_id, &item->var)) {
                 goto fail;
             }
         }
     }
-    if (!xx_format_resolve_extra_parameter(self, options,
-                                           XX_META_ID_OPT_MAX_MEMBER_SIZE)) {
+    if (!xx_format_resolve_extra_parameter(self, options, XX_META_ID_OPT_MAX_MEMBER_SIZE)) {
         xx_var limit;
         bool stored;
         xx_var_init(&limit);
         xx_var_set_u64(&limit, XX_DAHUAZIP_DEFAULT_MAX_MEMBER);
-        stored = xx_format_set_extra_parameter(
-            &session->zip->format, XX_META_ID_OPT_MAX_MEMBER_SIZE, &limit);
+        stored = xx_format_set_extra_parameter(&session->zip->format, XX_META_ID_OPT_MAX_MEMBER_SIZE, &limit);
         xx_var_cleanup(&limit);
         if (!stored) goto fail;
     }
-    if (!xx_format_handle_base_info(&session->zip->format, pd) ||
-        !session->zip->format.is_valid || session->zip->is_split ||
-        session->zip->eocd_offset !=
-            parsed->eocd_offset - parsed->header_offset ||
-        session->zip->format.format_size != view_size ||
+    if (!xx_format_handle_base_info(&session->zip->format, pd) || !session->zip->format.is_valid || session->zip->is_split ||
+        session->zip->eocd_offset != parsed->eocd_offset - parsed->header_offset || session->zip->format.format_size != view_size ||
         session->zip->number_of_records == 0U) {
         goto fail;
     }
-    session->zip_state = xx_format_create_archive_records_reading(
-        &session->zip->format, options, pd);
+    session->zip_state = xx_format_create_archive_records_reading(&session->zip->format, options, pd);
     if (!session->zip_state) goto fail;
-    first = xx_format_get_current_archive_record(&session->zip->format,
-                                                 session->zip_state);
-    if (!first || first->header_offset != 0 ||
-        first->data_offset < (int64_t)XX_DAHUAZIP_LOCAL_HEADER_SIZE) {
+    first = xx_format_get_current_archive_record(&session->zip->format, session->zip_state);
+    if (!first || first->header_offset != 0 || first->data_offset < (int64_t)XX_DAHUAZIP_LOCAL_HEADER_SIZE) {
         goto fail;
     }
     return true;
@@ -396,49 +383,38 @@ fail:
  * list, so such input is rejected here.  Finally the library ZIP reader must
  * accept the patched view.
  */
-static bool xx_dahuazip_parse(Abstractformat *self,
-                              xx_dahuazip_private *parsed, xx_pd_struct *pd) {
+static bool xx_dahuazip_parse(Abstractformat *self, xx_dahuazip_private *parsed, xx_pd_struct *pd)
+{
     uint8_t header[XX_DAHUAZIP_LOCAL_HEADER_SIZE];
     uint8_t eocd[XX_DAHUAZIP_EOCD_SIZE];
     xx_dahuazip_session session;
     int64_t eocd_offset = -1;
     xx_dahuazip_private_reset(parsed);
-    if (!self || !self->device || !parsed || self->base_address < 0 ||
-        (pd && xx_pd_is_stopped(pd))) {
+    if (!self || !self->device || !parsed || self->base_address < 0 || (pd && xx_pd_is_stopped(pd))) {
         return false;
     }
     parsed->input_size = xx_io_total_size(self->device);
     parsed->header_offset = self->base_address;
-    if (!xx_dahuazip_range_within(parsed->input_size, self->base_address,
-                                  (int64_t)(XX_DAHUAZIP_LOCAL_HEADER_SIZE +
-                                            XX_DAHUAZIP_EOCD_SIZE)) ||
-        !xx_dahuazip_read_at(self->device, self->base_address, header,
-                             sizeof(header)) ||
-        xx_rt_memcmp(header, XX_DAHUAZIP_MAGIC, XX_DAHUAZIP_MAGIC_SIZE) != 0) {
+    if (!xx_dahuazip_range_within(parsed->input_size, self->base_address, (int64_t)(XX_DAHUAZIP_LOCAL_HEADER_SIZE + XX_DAHUAZIP_EOCD_SIZE)) ||
+        !xx_dahuazip_read_at(self->device, self->base_address, header, sizeof(header)) || xx_rt_memcmp(header, XX_DAHUAZIP_MAGIC, XX_DAHUAZIP_MAGIC_SIZE) != 0) {
         goto fail;
     }
     parsed->version = xx_data_get_u16(header, sizeof(header), 4U, false);
     parsed->flags = xx_data_get_u16(header, sizeof(header), 6U, false);
     parsed->method = xx_data_get_u16(header, sizeof(header), 8U, false);
-    if ((parsed->flags & XX_DAHUAZIP_UNUSED_FLAGS_MASK) != 0U ||
-        !xx_dahuazip_method_allowed(parsed->method)) {
+    if ((parsed->flags & XX_DAHUAZIP_UNUSED_FLAGS_MASK) != 0U || !xx_dahuazip_method_allowed(parsed->method)) {
         goto fail;
     }
-    if (!xx_dahuazip_find_eocd(self->device, self->base_address,
-                               parsed->input_size, pd, &eocd_offset, eocd)) {
+    if (!xx_dahuazip_find_eocd(self->device, self->base_address, parsed->input_size, pd, &eocd_offset, eocd)) {
         goto fail;
     }
     parsed->eocd_offset = eocd_offset;
     parsed->comment_size = xx_data_get_u16(eocd, sizeof(eocd), 20U, false);
-    if (!xx_dahuazip_range_within(
-            parsed->input_size, eocd_offset,
-            (int64_t)XX_DAHUAZIP_EOCD_SIZE + (int64_t)parsed->comment_size)) {
+    if (!xx_dahuazip_range_within(parsed->input_size, eocd_offset, (int64_t)XX_DAHUAZIP_EOCD_SIZE + (int64_t)parsed->comment_size)) {
         goto fail;
     }
-    parsed->archive_end = eocd_offset + (int64_t)XX_DAHUAZIP_EOCD_SIZE +
-                          (int64_t)parsed->comment_size;
-    if (parsed->archive_end - parsed->header_offset <
-        (int64_t)(XX_DAHUAZIP_LOCAL_HEADER_SIZE + XX_DAHUAZIP_EOCD_SIZE)) {
+    parsed->archive_end = eocd_offset + (int64_t)XX_DAHUAZIP_EOCD_SIZE + (int64_t)parsed->comment_size;
+    if (parsed->archive_end - parsed->header_offset < (int64_t)(XX_DAHUAZIP_LOCAL_HEADER_SIZE + XX_DAHUAZIP_EOCD_SIZE)) {
         goto fail;
     }
     if (!xx_dahuazip_session_open(self, parsed, NULL, &session, pd)) goto fail;
@@ -460,26 +436,24 @@ typedef struct xx_dahuazip_archive_stream_s {
     int64_t base;
 } xx_dahuazip_archive_stream;
 
-static void xx_dahuazip_archive_stream_free(void *pointer) {
-    xx_dahuazip_archive_stream *stream =
-        (xx_dahuazip_archive_stream *)pointer;
+static void xx_dahuazip_archive_stream_free(void *pointer)
+{
+    xx_dahuazip_archive_stream *stream = (xx_dahuazip_archive_stream *)pointer;
     if (!stream) return;
     xx_dahuazip_session_close(&stream->session);
     xx_mem_free(stream);
 }
 
-static bool xx_dahuazip_copy_options(xx_list_s *destination,
-                                     const xx_list_s *source) {
+static bool xx_dahuazip_copy_options(xx_list_s *destination, const xx_list_s *source)
+{
     size_t index;
     if (!destination || !source) return source == NULL;
     for (index = 0U; index < source->count; ++index) {
-        const xx_meta *item =
-            (const xx_meta *)xx_list_at((const xx_list_t *)source, index);
+        const xx_meta *item = (const xx_meta *)xx_list_at((const xx_list_t *)source, index);
         xx_meta copy;
         if (!item) continue;
         xx_meta_init(&copy, item->meta_id);
-        if (!xx_var_copy(&copy.var, &item->var) ||
-            !xx_list_append(destination, &copy)) {
+        if (!xx_var_copy(&copy.var, &item->var) || !xx_list_append(destination, &copy)) {
             xx_meta_cleanup(&copy);
             return false;
         }
@@ -489,29 +463,22 @@ static bool xx_dahuazip_copy_options(xx_list_s *destination,
 
 /* Publishes one of xx_zip's records with its offsets moved from view
  * coordinates to device coordinates. */
-static bool xx_dahuazip_copy_record(xx_archive_record *destination,
-                                    const xx_archive_record *source,
-                                    int64_t base) {
+static bool xx_dahuazip_copy_record(xx_archive_record *destination, const xx_archive_record *source, int64_t base)
+{
     size_t index;
     if (!destination || !source) return false;
     xx_archive_record_cleanup(destination);
     xx_archive_record_init(destination);
-    if ((source->header_offset > 0 &&
-         base > INT64_MAX - source->header_offset) ||
-        (source->data_offset > 0 && base > INT64_MAX - source->data_offset)) {
+    if ((source->header_offset > 0 && base > INT64_MAX - source->header_offset) || (source->data_offset > 0 && base > INT64_MAX - source->data_offset)) {
         return false;
     }
-    destination->header_offset =
-        source->header_offset >= 0 ? source->header_offset + base : -1;
+    destination->header_offset = source->header_offset >= 0 ? source->header_offset + base : -1;
     destination->header_size = source->header_size;
-    destination->data_offset =
-        source->data_offset >= 0 ? source->data_offset + base : -1;
+    destination->data_offset = source->data_offset >= 0 ? source->data_offset + base : -1;
     destination->compressed_size = source->compressed_size;
     for (index = 0U; index < source->list_meta.count; ++index) {
-        const xx_meta *item = (const xx_meta *)xx_list_at(
-            (const xx_list_t *)&source->list_meta, index);
-        if (item && !xx_archive_record_add_meta(destination, item->meta_id,
-                                                &item->var)) {
+        const xx_meta *item = (const xx_meta *)xx_list_at((const xx_list_t *)&source->list_meta, index);
+        if (item && !xx_archive_record_add_meta(destination, item->meta_id, &item->var)) {
             xx_archive_record_cleanup(destination);
             xx_archive_record_init(destination);
             return false;
@@ -523,39 +490,38 @@ static bool xx_dahuazip_copy_record(xx_archive_record *destination,
 /* Member names come from the archive.  xx_zip already refuses absolute,
  * drive-qualified and dot-segment names; control characters are refused here
  * as well before anything reaches the file system. */
-#define XX_DAHUAZIP_NAME_CHECK(name, type)                                   \
-    do {                                                                     \
-        const type *segment = (name);                                        \
-        const type *cursor = (name);                                         \
-        if ((name)[0] == '/' || (name)[0] == '\\' ||                         \
-            ((name)[0] != 0 && (name)[1] == ':')) {                          \
-            return false;                                                    \
-        }                                                                    \
-        for (;; ++cursor) {                                                  \
-            bool at_end = *cursor == 0;                                      \
-            if (!at_end && ((unsigned long)*cursor < 0x20UL ||               \
-                            (unsigned long)*cursor == 0x7FUL ||              \
-                            *cursor == ':')) {                               \
-                return false;                                                \
-            }                                                                \
-            if (at_end || *cursor == '/' || *cursor == '\\') {               \
-                size_t length = (size_t)(cursor - segment);                  \
-                if (length == 2U && segment[0] == '.' && segment[1] == '.') {\
-                    return false;                                            \
-                }                                                            \
-                if (at_end) break;                                           \
-                segment = cursor + 1;                                        \
-            }                                                                \
-        }                                                                    \
+#define XX_DAHUAZIP_NAME_CHECK(name, type)                                                                            \
+    do {                                                                                                              \
+        const type *segment = (name);                                                                                 \
+        const type *cursor = (name);                                                                                  \
+        if ((name)[0] == '/' || (name)[0] == '\\' || ((name)[0] != 0 && (name)[1] == ':')) {                          \
+            return false;                                                                                             \
+        }                                                                                                             \
+        for (;; ++cursor) {                                                                                           \
+            bool at_end = *cursor == 0;                                                                               \
+            if (!at_end && ((unsigned long)*cursor < 0x20UL || (unsigned long)*cursor == 0x7FUL || *cursor == ':')) { \
+                return false;                                                                                         \
+            }                                                                                                         \
+            if (at_end || *cursor == '/' || *cursor == '\\') {                                                        \
+                size_t length = (size_t)(cursor - segment);                                                           \
+                if (length == 2U && segment[0] == '.' && segment[1] == '.') {                                         \
+                    return false;                                                                                     \
+                }                                                                                                     \
+                if (at_end) break;                                                                                    \
+                segment = cursor + 1;                                                                                 \
+            }                                                                                                         \
+        }                                                                                                             \
     } while (0)
 
-static bool xx_dahuazip_wide_name_is_safe(const wchar_t *name) {
+static bool xx_dahuazip_wide_name_is_safe(const wchar_t *name)
+{
     if (!name) return true;
     XX_DAHUAZIP_NAME_CHECK(name, wchar_t);
     return true;
 }
 
-static bool xx_dahuazip_name_is_safe(const char *name) {
+static bool xx_dahuazip_name_is_safe(const char *name)
+{
     if (!name) return true;
     XX_DAHUAZIP_NAME_CHECK(name, char);
     return true;
@@ -563,11 +529,11 @@ static bool xx_dahuazip_name_is_safe(const char *name) {
 
 #undef XX_DAHUAZIP_NAME_CHECK
 
-static bool xx_dahuazip_record_name_is_safe(const xx_archive_record *record) {
+static bool xx_dahuazip_record_name_is_safe(const xx_archive_record *record)
+{
     const wchar_t *wide = xx_archive_record_get_original_name_w(record);
     if (wide) return xx_dahuazip_wide_name_is_safe(wide);
-    return xx_dahuazip_name_is_safe(
-        xx_archive_record_get_original_name(record));
+    return xx_dahuazip_name_is_safe(xx_archive_record_get_original_name(record));
 }
 
 /* ------------------------------------------------------------------------ */
@@ -576,8 +542,8 @@ static bool xx_dahuazip_record_name_is_safe(const xx_archive_record *record) {
 
 static void xx_dahuazip_vtable_destroy(Abstractformat *self);
 
-void xx_dahuazip_init(xx_dahuazip *dahuazip, xx_io_device *dev,
-                      int64_t base_address) {
+void xx_dahuazip_init(xx_dahuazip *dahuazip, xx_io_device *dev, int64_t base_address)
+{
     if (!dahuazip) return;
     xx_mem_zero(dahuazip, sizeof(*dahuazip));
     xx_format_init(&dahuazip->format, dev, base_address);
@@ -585,36 +551,31 @@ void xx_dahuazip_init(xx_dahuazip *dahuazip, xx_io_device *dev,
     dahuazip->format.file_type = XX_DAHUAZIP_FILE_TYPE;
     dahuazip->format.format_type = XX_TYPE_ARCHIVE;
     dahuazip->format.is_archive = true;
-    xx_format_set_mime_type(&dahuazip->format,
-                            "application/x-dahua-firmware");
+    xx_format_set_mime_type(&dahuazip->format, "application/x-dahua-firmware");
     xx_format_set_extension(&dahuazip->format, "bin");
     dahuazip->format.check_is_valid = xx_dahuazip_check_is_valid;
     dahuazip->format.handle_base_info = xx_dahuazip_handle_base_info;
     dahuazip->format.get_format_size = xx_dahuazip_get_format_size;
-    dahuazip->format.get_number_of_archive_records =
-        xx_dahuazip_get_number_of_archive_records;
-    dahuazip->format.create_archive_records_reading =
-        xx_dahuazip_create_archive_records_reading;
-    dahuazip->format.get_current_archive_record =
-        xx_dahuazip_get_current_archive_record;
-    dahuazip->format.unpack_current_archive_record =
-        xx_dahuazip_unpack_current_archive_record;
-    dahuazip->format.archive_record_move_to_next =
-        xx_dahuazip_archive_record_move_to_next;
-    dahuazip->format.free_archive_records_reading =
-        xx_dahuazip_free_archive_records_reading;
+    dahuazip->format.get_number_of_archive_records = xx_dahuazip_get_number_of_archive_records;
+    dahuazip->format.create_archive_records_reading = xx_dahuazip_create_archive_records_reading;
+    dahuazip->format.get_current_archive_record = xx_dahuazip_get_current_archive_record;
+    dahuazip->format.unpack_current_archive_record = xx_dahuazip_unpack_current_archive_record;
+    dahuazip->format.archive_record_move_to_next = xx_dahuazip_archive_record_move_to_next;
+    dahuazip->format.free_archive_records_reading = xx_dahuazip_free_archive_records_reading;
     dahuazip->format.destroy = xx_dahuazip_vtable_destroy;
     dahuazip->eocd_offset = -1;
     dahuazip->archive_end = -1;
 }
 
-xx_dahuazip *xx_dahuazip_create(xx_io_device *dev, int64_t base_address) {
+xx_dahuazip *xx_dahuazip_create(xx_io_device *dev, int64_t base_address)
+{
     xx_dahuazip *dahuazip = (xx_dahuazip *)xx_mem_alloc(sizeof(*dahuazip));
     if (dahuazip) xx_dahuazip_init(dahuazip, dev, base_address);
     return dahuazip;
 }
 
-void xx_dahuazip_destroy(xx_dahuazip *dahuazip) {
+void xx_dahuazip_destroy(xx_dahuazip *dahuazip)
+{
     if (!dahuazip) return;
     if (dahuazip->internal) {
         xx_dahuazip_private_reset((xx_dahuazip_private *)dahuazip->internal);
@@ -624,24 +585,28 @@ void xx_dahuazip_destroy(xx_dahuazip *dahuazip) {
     xx_format_cleanup_extra_parameters(&dahuazip->format);
 }
 
-static void xx_dahuazip_vtable_destroy(Abstractformat *self) {
+static void xx_dahuazip_vtable_destroy(Abstractformat *self)
+{
     xx_dahuazip_destroy((xx_dahuazip *)self);
 }
 
-void xx_dahuazip_free(xx_dahuazip *dahuazip) {
+void xx_dahuazip_free(xx_dahuazip *dahuazip)
+{
     if (!dahuazip) return;
     xx_dahuazip_destroy(dahuazip);
     xx_mem_free(dahuazip);
 }
 
-bool xx_dahuazip_check_is_valid(Abstractformat *self, xx_pd_struct *pd) {
+bool xx_dahuazip_check_is_valid(Abstractformat *self, xx_pd_struct *pd)
+{
     xx_dahuazip_private parsed;
     bool result = xx_dahuazip_parse(self, &parsed, pd);
     xx_dahuazip_private_reset(&parsed);
     return result;
 }
 
-bool xx_dahuazip_handle_base_info(Abstractformat *self, xx_pd_struct *pd) {
+bool xx_dahuazip_handle_base_info(Abstractformat *self, xx_pd_struct *pd)
+{
     xx_dahuazip_private *parsed;
     xx_dahuazip *dahuazip = (xx_dahuazip *)self;
     int64_t total_size;
@@ -684,32 +649,29 @@ bool xx_dahuazip_handle_base_info(Abstractformat *self, xx_pd_struct *pd) {
     return true;
 }
 
-int64_t xx_dahuazip_get_format_size(Abstractformat *self, xx_pd_struct *pd) {
-    if (!self ||
-        (!self->base_info_handled && !xx_format_handle_base_info(self, pd))) {
+int64_t xx_dahuazip_get_format_size(Abstractformat *self, xx_pd_struct *pd)
+{
+    if (!self || (!self->base_info_handled && !xx_format_handle_base_info(self, pd))) {
         return -1;
     }
     return self->format_size;
 }
 
-uint64_t xx_dahuazip_get_number_of_archive_records(Abstractformat *self,
-                                                   xx_pd_struct *pd) {
-    if (!self ||
-        (!self->base_info_handled && !xx_format_handle_base_info(self, pd))) {
+uint64_t xx_dahuazip_get_number_of_archive_records(Abstractformat *self, xx_pd_struct *pd)
+{
+    if (!self || (!self->base_info_handled && !xx_format_handle_base_info(self, pd))) {
         return 0U;
     }
     return ((xx_dahuazip *)self)->number_of_records;
 }
 
-xx_archive_record_state *xx_dahuazip_create_archive_records_reading(
-    Abstractformat *self, const xx_list_s *options, xx_pd_struct *pd) {
+xx_archive_record_state *xx_dahuazip_create_archive_records_reading(Abstractformat *self, const xx_list_s *options, xx_pd_struct *pd)
+{
     xx_archive_record_state *state;
     xx_dahuazip_archive_stream *stream;
     xx_dahuazip *dahuazip = (xx_dahuazip *)self;
     const xx_archive_record *first;
-    if (!self || !self->device ||
-        (!self->base_info_handled && !xx_format_handle_base_info(self, pd)) ||
-        !dahuazip->internal) {
+    if (!self || !self->device || (!self->base_info_handled && !xx_format_handle_base_info(self, pd)) || !dahuazip->internal) {
         return NULL;
     }
     state = (xx_archive_record_state *)xx_mem_alloc(sizeof(*state));
@@ -724,18 +686,14 @@ xx_archive_record_state *xx_dahuazip_create_archive_records_reading(
     state->internal_state = stream;
     state->free_internal = xx_dahuazip_archive_stream_free;
     if (!xx_dahuazip_copy_options(&state->options, options) ||
-        !xx_dahuazip_session_open(
-            self, (const xx_dahuazip_private *)dahuazip->internal,
-            &state->options, &stream->session, pd)) {
+        !xx_dahuazip_session_open(self, (const xx_dahuazip_private *)dahuazip->internal, &state->options, &stream->session, pd)) {
         xx_archive_record_state_free(state);
         return NULL;
     }
     state->total_records = (int64_t)dahuazip->number_of_records;
-    first = xx_format_get_current_archive_record(&stream->session.zip->format,
-                                                 stream->session.zip_state);
+    first = xx_format_get_current_archive_record(&stream->session.zip->format, stream->session.zip_state);
     if (first) {
-        if (!xx_dahuazip_copy_record(&state->current_record, first,
-                                     stream->base)) {
+        if (!xx_dahuazip_copy_record(&state->current_record, first, stream->base)) {
             xx_archive_record_state_free(state);
             return NULL;
         }
@@ -745,36 +703,27 @@ xx_archive_record_state *xx_dahuazip_create_archive_records_reading(
     return state;
 }
 
-const xx_archive_record *xx_dahuazip_get_current_archive_record(
-    Abstractformat *self, xx_archive_record_state *state) {
-    return self && state && state->format == self && state->has_record
-               ? &state->current_record
-               : NULL;
+const xx_archive_record *xx_dahuazip_get_current_archive_record(Abstractformat *self, xx_archive_record_state *state)
+{
+    return self && state && state->format == self && state->has_record ? &state->current_record : NULL;
 }
 
-bool xx_dahuazip_archive_record_move_to_next(Abstractformat *self,
-                                             xx_archive_record_state *state,
-                                             xx_pd_struct *pd) {
+bool xx_dahuazip_archive_record_move_to_next(Abstractformat *self, xx_archive_record_state *state, xx_pd_struct *pd)
+{
     xx_dahuazip_archive_stream *stream;
     const xx_archive_record *next;
-    if (!self || !state || state->format != self || !state->has_record ||
-        !state->internal_state || (pd && xx_pd_is_stopped(pd))) {
+    if (!self || !state || state->format != self || !state->has_record || !state->internal_state || (pd && xx_pd_is_stopped(pd))) {
         return false;
     }
     stream = (xx_dahuazip_archive_stream *)state->internal_state;
     xx_archive_record_cleanup(&state->current_record);
     xx_archive_record_init(&state->current_record);
     state->has_record = false;
-    if (!stream->session.zip || !stream->session.zip_state ||
-        !xx_format_archive_record_move_to_next(&stream->session.zip->format,
-                                               stream->session.zip_state,
-                                               pd)) {
+    if (!stream->session.zip || !stream->session.zip_state || !xx_format_archive_record_move_to_next(&stream->session.zip->format, stream->session.zip_state, pd)) {
         return false;
     }
-    next = xx_format_get_current_archive_record(&stream->session.zip->format,
-                                                stream->session.zip_state);
-    if (!next ||
-        !xx_dahuazip_copy_record(&state->current_record, next, stream->base)) {
+    next = xx_format_get_current_archive_record(&stream->session.zip->format, stream->session.zip_state);
+    if (!next || !xx_dahuazip_copy_record(&state->current_record, next, stream->base)) {
         return false;
     }
     state->has_record = true;
@@ -782,42 +731,40 @@ bool xx_dahuazip_archive_record_move_to_next(Abstractformat *self,
     return true;
 }
 
-bool xx_dahuazip_unpack_current_archive_record(Abstractformat *self,
-                                               xx_archive_record_state *state,
-                                               xx_pd_struct *pd) {
+bool xx_dahuazip_unpack_current_archive_record(Abstractformat *self, xx_archive_record_state *state, xx_pd_struct *pd)
+{
     xx_dahuazip_archive_stream *stream;
-    if (!self || !self->device || !state || state->format != self ||
-        !state->has_record || !state->internal_state ||
-        (pd && xx_pd_is_stopped(pd))) {
+    if (!self || !self->device || !state || state->format != self || !state->has_record || !state->internal_state || (pd && xx_pd_is_stopped(pd))) {
         return false;
     }
     stream = (xx_dahuazip_archive_stream *)state->internal_state;
-    if (!stream->session.zip || !stream->session.zip_state ||
-        !stream->session.zip_state->has_record ||
-        !xx_dahuazip_record_name_is_safe(&state->current_record)) {
+    if (!stream->session.zip || !stream->session.zip_state || !stream->session.zip_state->has_record || !xx_dahuazip_record_name_is_safe(&state->current_record)) {
         return false;
     }
     /* xx_zip decodes from the view, checks the CRC and writes the member
      * under XX_META_ID_OPT_UNPACK_PATH (or only verifies it without one). */
-    return xx_format_unpack_current_archive_record(
-        &stream->session.zip->format, stream->session.zip_state, pd);
+    return xx_format_unpack_current_archive_record(&stream->session.zip->format, stream->session.zip_state, pd);
 }
 
-void xx_dahuazip_free_archive_records_reading(Abstractformat *self,
-                                              xx_archive_record_state *state) {
+void xx_dahuazip_free_archive_records_reading(Abstractformat *self, xx_archive_record_state *state)
+{
     (void)self;
     xx_archive_record_state_free(state);
 }
 
-uint64_t xx_dahuazip_get_number_of_records(const xx_dahuazip *dahuazip) {
+uint64_t xx_dahuazip_get_number_of_records(const xx_dahuazip *dahuazip)
+{
     return dahuazip ? dahuazip->number_of_records : 0U;
 }
-int64_t xx_dahuazip_get_eocd_offset(const xx_dahuazip *dahuazip) {
+int64_t xx_dahuazip_get_eocd_offset(const xx_dahuazip *dahuazip)
+{
     return dahuazip ? dahuazip->eocd_offset : -1;
 }
-int64_t xx_dahuazip_get_archive_end(const xx_dahuazip *dahuazip) {
+int64_t xx_dahuazip_get_archive_end(const xx_dahuazip *dahuazip)
+{
     return dahuazip ? dahuazip->archive_end : -1;
 }
-bool xx_dahuazip_is_zip64(const xx_dahuazip *dahuazip) {
+bool xx_dahuazip_is_zip64(const xx_dahuazip *dahuazip)
+{
     return dahuazip ? dahuazip->is_zip64 : false;
 }

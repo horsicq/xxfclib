@@ -9,13 +9,15 @@
 #ifdef __cplusplus
 extern "C" {
 #endif
-typedef struct xx_quake_sprite { Abstractformat format; } xx_quake_sprite;
-XXFC_API void xx_quake_sprite_init(xx_quake_sprite *,xx_io_device *,int64_t);
-XXFC_API xx_quake_sprite *xx_quake_sprite_create(xx_io_device *,int64_t);
+typedef struct xx_quake_sprite {
+    Abstractformat format;
+} xx_quake_sprite;
+XXFC_API void xx_quake_sprite_init(xx_quake_sprite *, xx_io_device *, int64_t);
+XXFC_API xx_quake_sprite *xx_quake_sprite_create(xx_io_device *, int64_t);
 XXFC_API void xx_quake_sprite_destroy(xx_quake_sprite *);
 XXFC_API void xx_quake_sprite_free(xx_quake_sprite *);
-XXFC_API bool xx_quake_sprite_check_is_valid(Abstractformat *,xx_pd_struct *);
-XXFC_API bool xx_quake_sprite_handle_base_info(Abstractformat *,xx_pd_struct *);
+XXFC_API bool xx_quake_sprite_check_is_valid(Abstractformat *, xx_pd_struct *);
+XXFC_API bool xx_quake_sprite_handle_base_info(Abstractformat *, xx_pd_struct *);
 #ifdef __cplusplus
 }
 #endif

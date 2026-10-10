@@ -25,9 +25,7 @@ extern "C" {
  * declared uncompressed size and the decode succeeds only when the stream
  * produces exactly that many bytes.  No scan entry point is needed.
  */
-XXFC_API bool xx_gamos_decode_memory(const uint8_t *input, size_t input_size,
-                                     uint8_t *output, size_t output_size,
-                                     size_t *written);
+XXFC_API bool xx_gamos_decode_memory(const uint8_t *input, size_t input_size, uint8_t *output, size_t output_size, size_t *written);
 
 #ifdef __cplusplus
 }

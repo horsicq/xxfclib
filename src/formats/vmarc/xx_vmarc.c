@@ -83,17 +83,15 @@ static void xx_vmarc_vtable_destroy(Abstractformat *self);
 
 /* ------------------------------------------------------------- helpers -- */
 
-static bool xx_vmarc_read_at(Abstractformat *self, int64_t offset,
-                              uint8_t *buffer, size_t size) {
+static bool xx_vmarc_read_at(Abstractformat *self, int64_t offset, uint8_t *buffer, size_t size)
+{
     size_t completed = 0U;
 
-    if (!self || !self->device || offset < 0 ||
-        xx_io_seek64(self->device, offset, SEEK_SET) != 0) {
+    if (!self || !self->device || offset < 0 || xx_io_seek64(self->device, offset, SEEK_SET) != 0) {
         return false;
     }
     while (completed < size) {
-        ssize_t received =
-            xx_io_read(self->device, buffer + completed, size - completed);
+        ssize_t received = xx_io_read(self->device, buffer + completed, size - completed);
         if (received <= 0 || (size_t)received > size - completed) {
             return false;
         }
@@ -102,14 +100,14 @@ static bool xx_vmarc_read_at(Abstractformat *self, int64_t offset,
     return true;
 }
 
-static bool xx_vmarc_range_within(int64_t total, int64_t offset,
-                                   int64_t size) {
-    return offset >= 0 && size >= 0 && offset <= total &&
-           size <= total - offset;
+static bool xx_vmarc_range_within(int64_t total, int64_t offset, int64_t size)
+{
+    return offset >= 0 && size >= 0 && offset <= total && size <= total - offset;
 }
 
 /* Refuse anything that would escape the extraction directory. */
-static bool xx_vmarc_path_safe(const char *name) {
+static bool xx_vmarc_path_safe(const char *name)
+{
     const char *cursor = name;
 
     if (!name || !name[0] || name[0] == '/') return false;
@@ -124,7 +122,8 @@ static bool xx_vmarc_path_safe(const char *name) {
     return true;
 }
 
-static void xx_vmarc_stream_free(void *pointer) {
+static void xx_vmarc_stream_free(void *pointer)
+{
     xx_vmarc_stream *stream = (xx_vmarc_stream *)pointer;
     size_t index;
 
@@ -137,17 +136,15 @@ static void xx_vmarc_stream_free(void *pointer) {
 }
 
 /* Append a member, taking ownership of @p name. */
-static bool xx_vmarc_add(xx_vmarc_stream *stream,
-                          const xx_vmarc_member *member) {
-    xx_vmarc_member *grown = (xx_vmarc_member *)xx_mem_realloc(
-        stream->items, sizeof(*grown) * (stream->count + 1U));
+static bool xx_vmarc_add(xx_vmarc_stream *stream, const xx_vmarc_member *member)
+{
+    xx_vmarc_member *grown = (xx_vmarc_member *)xx_mem_realloc(stream->items, sizeof(*grown) * (stream->count + 1U));
 
     if (!grown) return false;
     stream->items = grown;
     stream->items[stream->count++] = *member;
     return true;
 }
-
 
 #define XX_VMARC_HEADER_SIZE 0x26
 #define XX_VMARC_EXTENDED_SIZE 12
@@ -176,7 +173,6 @@ static char *xx_vmarc_make_name(const uint8_t *header, size_t ordinal);
 static xx_vmarc_stream *xx_vmarc_parse(Abstractformat *self, xx_pd_struct *pd);
 static bool xx_vmarc_decode(Abstractformat *self, const xx_vmarc_member *member, uint8_t **out, size_t *out_size, xx_pd_struct *pd);
 
-
 /* Members start on 80-byte bounds: the CMS record length this was written
  * with. It is also the walk's step when a boundary holds no signature. */
 /* A runaway guard, not a format limit: nothing states the member count. */
@@ -191,51 +187,29 @@ static bool xx_vmarc_decode(Abstractformat *self, const xx_vmarc_member *member,
  * file type may hold. Rejecting the rest is what keeps a chance 9-byte
  * signature match inside unrelated data from being published as a member. */
 static const uint8_t xx_vmarc_cp037[256] = {
-    0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
-    0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
-    0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
-    0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
-    0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
-    0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
-    0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
-    0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
-    0x20, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
-    0x00, 0x00, 0x00, 0x2E, 0x3C, 0x28, 0x2B, 0x7C,
-    0x26, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
-    0x00, 0x00, 0x21, 0x24, 0x2A, 0x29, 0x3B, 0x00,
-    0x2D, 0x2F, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
-    0x00, 0x00, 0x00, 0x2C, 0x25, 0x5F, 0x3E, 0x3F,
-    0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
-    0x00, 0x60, 0x3A, 0x23, 0x40, 0x27, 0x3D, 0x22,
-    0x00, 0x61, 0x62, 0x63, 0x64, 0x65, 0x66, 0x67,
-    0x68, 0x69, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
-    0x00, 0x6A, 0x6B, 0x6C, 0x6D, 0x6E, 0x6F, 0x70,
-    0x71, 0x72, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
-    0x00, 0x7E, 0x73, 0x74, 0x75, 0x76, 0x77, 0x78,
-    0x79, 0x7A, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
-    0x5E, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
-    0x00, 0x00, 0x5B, 0x5D, 0x00, 0x00, 0x00, 0x00,
-    0x7B, 0x41, 0x42, 0x43, 0x44, 0x45, 0x46, 0x47,
-    0x48, 0x49, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
-    0x7D, 0x4A, 0x4B, 0x4C, 0x4D, 0x4E, 0x4F, 0x50,
-    0x51, 0x52, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
-    0x5C, 0x00, 0x53, 0x54, 0x55, 0x56, 0x57, 0x58,
-    0x59, 0x5A, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
-    0x30, 0x31, 0x32, 0x33, 0x34, 0x35, 0x36, 0x37,
-    0x38, 0x39, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00};
+    0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+    0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+    0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x20, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x2E, 0x3C, 0x28,
+    0x2B, 0x7C, 0x26, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x21, 0x24, 0x2A, 0x29, 0x3B, 0x00, 0x2D, 0x2F, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+    0x00, 0x00, 0x00, 0x2C, 0x25, 0x5F, 0x3E, 0x3F, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x60, 0x3A, 0x23, 0x40, 0x27, 0x3D, 0x22, 0x00, 0x61,
+    0x62, 0x63, 0x64, 0x65, 0x66, 0x67, 0x68, 0x69, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x6A, 0x6B, 0x6C, 0x6D, 0x6E, 0x6F, 0x70, 0x71, 0x72, 0x00, 0x00,
+    0x00, 0x00, 0x00, 0x00, 0x00, 0x7E, 0x73, 0x74, 0x75, 0x76, 0x77, 0x78, 0x79, 0x7A, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x5E, 0x00, 0x00, 0x00, 0x00, 0x00,
+    0x00, 0x00, 0x00, 0x00, 0x5B, 0x5D, 0x00, 0x00, 0x00, 0x00, 0x7B, 0x41, 0x42, 0x43, 0x44, 0x45, 0x46, 0x47, 0x48, 0x49, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+    0x7D, 0x4A, 0x4B, 0x4C, 0x4D, 0x4E, 0x4F, 0x50, 0x51, 0x52, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x5C, 0x00, 0x53, 0x54, 0x55, 0x56, 0x57, 0x58, 0x59, 0x5A,
+    0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x30, 0x31, 0x32, 0x33, 0x34, 0x35, 0x36, 0x37, 0x38, 0x39, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00};
 
 /* The 9-byte member signature. It is the format's only magic, and the walk
  * tries it at every 80-byte boundary, so it has to carry all nine bytes. */
-static bool xx_vmarc_is_header(const uint8_t *data, int64_t size,
-                               int64_t offset) {
-    static const uint8_t magic[9] = {0x7A, 0xC3, 0xC6, 0xC6, 0x40,
-                                     0x40, 0x40, 0x40, 0x01};
+static bool xx_vmarc_is_header(const uint8_t *data, int64_t size, int64_t offset)
+{
+    static const uint8_t magic[9] = {0x7A, 0xC3, 0xC6, 0xC6, 0x40, 0x40, 0x40, 0x40, 0x01};
 
     if (offset < 0 || size < 9 || offset > size - 9) return false;
     return xx_rt_memcmp(data + offset, magic, sizeof(magic)) == 0;
 }
 
-static int64_t xx_vmarc_align_up(int64_t value) {
+static int64_t xx_vmarc_align_up(int64_t value)
+{
     if (value < 0) return 0;
     return ((value + XX_VMARC_BLOCK - 1) / XX_VMARC_BLOCK) * XX_VMARC_BLOCK;
 }
@@ -244,7 +218,8 @@ static int64_t xx_vmarc_align_up(int64_t value) {
  * Returns false for any byte CP037 does not map to printable ASCII. Only the
  * trailing blanks go: a leading blank would be part of the name if a
  * producer ever emitted one, exactly as the reference has it. */
-static bool xx_vmarc_field(const uint8_t *field, char *out, size_t *length) {
+static bool xx_vmarc_field(const uint8_t *field, char *out, size_t *length)
+{
     size_t used = 0U;
     size_t index;
 
@@ -261,7 +236,8 @@ static bool xx_vmarc_field(const uint8_t *field, char *out, size_t *length) {
 }
 
 /* "name.type", or "MEMBERn" when both fields are blank. */
-static char *xx_vmarc_make_name(const uint8_t *header, size_t ordinal) {
+static char *xx_vmarc_make_name(const uint8_t *header, size_t ordinal)
+{
     char name_text[XX_VMARC_NAME_FIELD + 1];
     char type_text[XX_VMARC_NAME_FIELD + 1];
     char fallback[XX_VMARC_FALLBACK_NAME_SIZE];
@@ -271,15 +247,11 @@ static char *xx_vmarc_make_name(const uint8_t *header, size_t ordinal) {
     size_t out = 0U;
     size_t index;
 
-    if (!xx_vmarc_field(header + XX_VMARC_NAME_OFFSET, name_text,
-                        &name_size) ||
-        !xx_vmarc_field(header + XX_VMARC_TYPE_OFFSET, type_text,
-                        &type_size)) {
+    if (!xx_vmarc_field(header + XX_VMARC_NAME_OFFSET, name_text, &name_size) || !xx_vmarc_field(header + XX_VMARC_TYPE_OFFSET, type_text, &type_size)) {
         return NULL;
     }
     if (name_size == 0U && type_size == 0U) {
-        if (xx_rt_snprintf(fallback, sizeof(fallback), "MEMBER%u",
-                           (unsigned)ordinal) <= 0) {
+        if (xx_rt_snprintf(fallback, sizeof(fallback), "MEMBER%u", (unsigned)ordinal) <= 0) {
             return NULL;
         }
         return xx_str_dup(fallback);
@@ -299,8 +271,8 @@ static char *xx_vmarc_make_name(const uint8_t *header, size_t ordinal) {
     return result;
 }
 
-static xx_vmarc_stream *xx_vmarc_parse(Abstractformat *self,
-                                       xx_pd_struct *pd) {
+static xx_vmarc_stream *xx_vmarc_parse(Abstractformat *self, xx_pd_struct *pd)
+{
     xx_vmarc_stream *stream = NULL;
     uint8_t probe[XX_VMARC_HEADER_SIZE];
     uint8_t *data = NULL;
@@ -365,8 +337,7 @@ static xx_vmarc_stream *xx_vmarc_parse(Abstractformat *self,
          * either, because member ends are discovered by decoding. Refusing
          * the container is the honest answer; skipping the member would
          * resume the walk at an offset that is only a guess. */
-        if (!(flags & XX_VMARC_FLAG_STORED) &&
-            (flags & XX_VMARC_FLAG_OTHER_CODEC)) {
+        if (!(flags & XX_VMARC_FLAG_STORED) && (flags & XX_VMARC_FLAG_OTHER_CODEC)) {
             goto fail;
         }
 
@@ -382,25 +353,19 @@ static xx_vmarc_stream *xx_vmarc_parse(Abstractformat *self,
          * consecutive end-of-record symbols terminate the member, so getting
          * it wrong changes where the member ends and therefore where the
          * next header is looked for. */
-        params.fixed =
-            (header[XX_VMARC_RECFM_OFFSET] == (uint8_t)XX_VMARC_RECFM_FIXED);
-        params.mode = (flags & XX_VMARC_FLAG_STORED) ? XX_VMARC_MODE_STORED
-                                                     : XX_VMARC_MODE_LZW;
+        params.fixed = (header[XX_VMARC_RECFM_OFFSET] == (uint8_t)XX_VMARC_RECFM_FIXED);
+        params.mode = (flags & XX_VMARC_FLAG_STORED) ? XX_VMARC_MODE_STORED : XX_VMARC_MODE_LZW;
 
         /* Nothing stores the member's length, in either direction, so the
          * scan is what produces both sizes and the member's end offset. A
          * member that does not terminate cleanly ends the walk: publishing
          * it would mean publishing an extent that is a guess. */
-        if (!xx_vmarc_scan_memory_ex(data + data_offset,
-                                     (size_t)(span - data_offset), &params,
-                                     (size_t)XX_VMARC_MAX_DECODED, &consumed,
-                                     &produced)) {
+        if (!xx_vmarc_scan_memory_ex(data + data_offset, (size_t)(span - data_offset), &params, (size_t)XX_VMARC_MAX_DECODED, &consumed, &produced)) {
             break;
         }
         member_end = data_offset + (int64_t)consumed;
         if (member_end < data_offset || member_end > span) break;
-        if (!xx_vmarc_range_within(span, data_offset,
-                                   member_end - data_offset)) {
+        if (!xx_vmarc_range_within(span, data_offset, member_end - data_offset)) {
             break;
         }
 
@@ -448,13 +413,11 @@ fail:
     return NULL;
 }
 
-
 /* The measured size passes through the member struct, so it is capped before
  * it becomes an allocation. */
 
-static bool xx_vmarc_decode(Abstractformat *self,
-                            const xx_vmarc_member *member, uint8_t **out,
-                            size_t *out_size, xx_pd_struct *pd) {
+static bool xx_vmarc_decode(Abstractformat *self, const xx_vmarc_member *member, uint8_t **out, size_t *out_size, xx_pd_struct *pd)
+{
     uint8_t header[XX_VMARC_HEADER_SIZE];
     xx_vmarc_params params;
     uint8_t *packed = NULL;
@@ -477,8 +440,7 @@ static bool xx_vmarc_decode(Abstractformat *self,
      * the member struct, so the header is read back. Re-reading it is also
      * how this function stays free of side effects: it derives everything it
      * needs from the container rather than from parse state. */
-    if (!xx_vmarc_read_at(self, member->header_offset, header,
-                          sizeof(header))) {
+    if (!xx_vmarc_read_at(self, member->header_offset, header, sizeof(header))) {
         return false;
     }
     if (!xx_vmarc_is_header(header, (int64_t)sizeof(header), 0)) return false;
@@ -491,21 +453,17 @@ static bool xx_vmarc_decode(Abstractformat *self,
     /* The one codec VMARC defines that this reader cannot produce bytes for.
      * Treating it as LZW would emit trie output from a stream that is not a
      * trie, which nothing downstream could tell from real data. */
-    if (!(flags & XX_VMARC_FLAG_STORED) &&
-        (flags & XX_VMARC_FLAG_OTHER_CODEC)) {
+    if (!(flags & XX_VMARC_FLAG_STORED) && (flags & XX_VMARC_FLAG_OTHER_CODEC)) {
         return false;
     }
 
     params.lrecl = xx_data_get_u16(header + XX_VMARC_LRECL_OFFSET, 2, 0, true);
-    params.fixed =
-        (header[XX_VMARC_RECFM_OFFSET] == (uint8_t)XX_VMARC_RECFM_FIXED);
-    params.mode = (flags & XX_VMARC_FLAG_STORED) ? XX_VMARC_MODE_STORED
-                                                 : XX_VMARC_MODE_LZW;
+    params.fixed = (header[XX_VMARC_RECFM_OFFSET] == (uint8_t)XX_VMARC_RECFM_FIXED);
+    params.mode = (flags & XX_VMARC_FLAG_STORED) ? XX_VMARC_MODE_STORED : XX_VMARC_MODE_LZW;
 
     packed = (uint8_t *)xx_mem_alloc((size_t)member->compressed_size);
     if (!packed) return false;
-    if (!xx_vmarc_read_at(self, member->data_offset, packed,
-                          (size_t)member->compressed_size)) {
+    if (!xx_vmarc_read_at(self, member->data_offset, packed, (size_t)member->compressed_size)) {
         xx_mem_free(packed);
         return false;
     }
@@ -523,9 +481,7 @@ static bool xx_vmarc_decode(Abstractformat *self,
         return false;
     }
 
-    if (!xx_vmarc_decode_memory_ex(packed, (size_t)member->compressed_size,
-                                   &params, plain, plain_size, &written,
-                                   NULL)) {
+    if (!xx_vmarc_decode_memory_ex(packed, (size_t)member->compressed_size, &params, plain, plain_size, &written, NULL)) {
         xx_mem_free(packed);
         xx_mem_free(plain);
         return false;
@@ -548,8 +504,8 @@ static bool xx_vmarc_decode(Abstractformat *self,
 
 /* ---------------------------------------------------------- lifecycle --- */
 
-void xx_vmarc_init(xx_vmarc *archive, xx_io_device *device,
-                    int64_t base_address) {
+void xx_vmarc_init(xx_vmarc *archive, xx_io_device *device, int64_t base_address)
+{
     if (!archive) return;
     xx_mem_zero(archive, sizeof(*archive));
     xx_format_init(&archive->format, device, base_address);
@@ -562,22 +518,17 @@ void xx_vmarc_init(xx_vmarc *archive, xx_io_device *device,
     archive->format.check_is_valid = xx_vmarc_check_is_valid;
     archive->format.handle_base_info = xx_vmarc_handle_base_info;
     archive->format.get_format_size = xx_vmarc_get_format_size;
-    archive->format.get_number_of_archive_records =
-        xx_vmarc_get_number_of_archive_records;
-    archive->format.create_archive_records_reading =
-        xx_vmarc_create_archive_records_reading;
-    archive->format.get_current_archive_record =
-        xx_vmarc_get_current_archive_record;
-    archive->format.unpack_current_archive_record =
-        xx_vmarc_unpack_current_archive_record;
-    archive->format.archive_record_move_to_next =
-        xx_vmarc_archive_record_move_to_next;
-    archive->format.free_archive_records_reading =
-        xx_vmarc_free_archive_records_reading;
+    archive->format.get_number_of_archive_records = xx_vmarc_get_number_of_archive_records;
+    archive->format.create_archive_records_reading = xx_vmarc_create_archive_records_reading;
+    archive->format.get_current_archive_record = xx_vmarc_get_current_archive_record;
+    archive->format.unpack_current_archive_record = xx_vmarc_unpack_current_archive_record;
+    archive->format.archive_record_move_to_next = xx_vmarc_archive_record_move_to_next;
+    archive->format.free_archive_records_reading = xx_vmarc_free_archive_records_reading;
     archive->format.destroy = xx_vmarc_vtable_destroy;
 }
 
-xx_vmarc *xx_vmarc_create(xx_io_device *device, int64_t base_address) {
+xx_vmarc *xx_vmarc_create(xx_io_device *device, int64_t base_address)
+{
     xx_vmarc *archive = (xx_vmarc *)xx_mem_alloc(sizeof(*archive));
 
     if (!archive) return NULL;
@@ -585,7 +536,8 @@ xx_vmarc *xx_vmarc_create(xx_io_device *device, int64_t base_address) {
     return archive;
 }
 
-void xx_vmarc_destroy(xx_vmarc *archive) {
+void xx_vmarc_destroy(xx_vmarc *archive)
+{
     if (!archive) return;
     /* Not xx_format_destroy: it dispatches through format.destroy, which is
      * the wrapper below, and the two would recurse. */
@@ -594,19 +546,22 @@ void xx_vmarc_destroy(xx_vmarc *archive) {
     archive->number_of_records = 0U;
 }
 
-void xx_vmarc_free(xx_vmarc *archive) {
+void xx_vmarc_free(xx_vmarc *archive)
+{
     if (!archive) return;
     xx_vmarc_destroy(archive);
     xx_mem_free(archive);
 }
 
-static void xx_vmarc_vtable_destroy(Abstractformat *self) {
+static void xx_vmarc_vtable_destroy(Abstractformat *self)
+{
     xx_vmarc_destroy((xx_vmarc *)self);
 }
 
 /* -------------------------------------------------------------- format -- */
 
-bool xx_vmarc_check_is_valid(Abstractformat *self, xx_pd_struct *pd) {
+bool xx_vmarc_check_is_valid(Abstractformat *self, xx_pd_struct *pd)
+{
     xx_vmarc_stream *stream;
 
     if (!self || (pd && xx_pd_is_stopped(pd))) return false;
@@ -616,7 +571,8 @@ bool xx_vmarc_check_is_valid(Abstractformat *self, xx_pd_struct *pd) {
     return true;
 }
 
-bool xx_vmarc_handle_base_info(Abstractformat *self, xx_pd_struct *pd) {
+bool xx_vmarc_handle_base_info(Abstractformat *self, xx_pd_struct *pd)
+{
     xx_vmarc *archive = (xx_vmarc *)self;
     xx_vmarc_stream *stream;
 
@@ -637,18 +593,17 @@ bool xx_vmarc_handle_base_info(Abstractformat *self, xx_pd_struct *pd) {
     return true;
 }
 
-int64_t xx_vmarc_get_format_size(Abstractformat *self, xx_pd_struct *pd) {
-    if (!self ||
-        (!self->base_info_handled && !xx_format_handle_base_info(self, pd))) {
+int64_t xx_vmarc_get_format_size(Abstractformat *self, xx_pd_struct *pd)
+{
+    if (!self || (!self->base_info_handled && !xx_format_handle_base_info(self, pd))) {
         return 0;
     }
     return self->is_valid ? self->format_size : 0;
 }
 
-uint64_t xx_vmarc_get_number_of_archive_records(Abstractformat *self,
-                                                 xx_pd_struct *pd) {
-    if (!self ||
-        (!self->base_info_handled && !xx_format_handle_base_info(self, pd))) {
+uint64_t xx_vmarc_get_number_of_archive_records(Abstractformat *self, xx_pd_struct *pd)
+{
+    if (!self || (!self->base_info_handled && !xx_format_handle_base_info(self, pd))) {
         return 0U;
     }
     return self->is_valid ? ((xx_vmarc *)self)->number_of_records : 0U;
@@ -656,8 +611,8 @@ uint64_t xx_vmarc_get_number_of_archive_records(Abstractformat *self,
 
 /* ------------------------------------------------------------- records -- */
 
-static bool xx_vmarc_set_record(xx_archive_record *record,
-                                 const xx_vmarc_member *member) {
+static bool xx_vmarc_set_record(xx_archive_record *record, const xx_vmarc_member *member)
+{
     xx_archive_record_cleanup(record);
     xx_archive_record_init(record);
     record->header_offset = member->header_offset;
@@ -665,34 +620,24 @@ static bool xx_vmarc_set_record(xx_archive_record *record,
     record->data_offset = member->data_offset;
     record->compressed_size = member->compressed_size;
     return xx_archive_record_set_original_name(record, member->name) &&
-           xx_archive_record_set_meta_u64(record, XX_META_ID_COMPRESSED_SIZE,
-                                          (uint64_t)member->compressed_size) &&
-           xx_archive_record_set_meta_u64(
-               record, XX_META_ID_UNCOMPRESSED_SIZE,
-               (uint64_t)member->uncompressed_size) &&
-           xx_archive_record_set_meta_u64(record, XX_META_ID_COMPRESSION_METHOD,
-                                          member->method) &&
-           xx_archive_record_set_meta_u64(record, XX_META_ID_TIMESTAMP,
-                                          member->timestamp) &&
-           xx_archive_record_set_meta_bool(record, XX_META_ID_IS_FOLDER,
-                                           member->is_folder) &&
-           xx_archive_record_set_meta_bool(record, XX_META_ID_IS_ENCRYPTED,
-                                           false);
+           xx_archive_record_set_meta_u64(record, XX_META_ID_COMPRESSED_SIZE, (uint64_t)member->compressed_size) &&
+           xx_archive_record_set_meta_u64(record, XX_META_ID_UNCOMPRESSED_SIZE, (uint64_t)member->uncompressed_size) &&
+           xx_archive_record_set_meta_u64(record, XX_META_ID_COMPRESSION_METHOD, member->method) &&
+           xx_archive_record_set_meta_u64(record, XX_META_ID_TIMESTAMP, member->timestamp) &&
+           xx_archive_record_set_meta_bool(record, XX_META_ID_IS_FOLDER, member->is_folder) && xx_archive_record_set_meta_bool(record, XX_META_ID_IS_ENCRYPTED, false);
 }
 
-static bool xx_vmarc_copy_options(xx_list_s *target,
-                                   const xx_list_s *options) {
+static bool xx_vmarc_copy_options(xx_list_s *target, const xx_list_s *options)
+{
     size_t index;
 
     if (!target || !options) return options == NULL;
     for (index = 0U; index < options->count; ++index) {
-        const xx_meta *source =
-            (const xx_meta *)xx_list_at((const xx_list_t *)options, index);
+        const xx_meta *source = (const xx_meta *)xx_list_at((const xx_list_t *)options, index);
         xx_meta copied;
         if (!source) continue;
         xx_meta_init(&copied, source->meta_id);
-        if (!xx_var_copy(&copied.var, &source->var) ||
-            !xx_list_append(target, &copied)) {
+        if (!xx_var_copy(&copied.var, &source->var) || !xx_list_append(target, &copied)) {
             xx_meta_cleanup(&copied);
             return false;
         }
@@ -700,21 +645,20 @@ static bool xx_vmarc_copy_options(xx_list_s *target,
     return true;
 }
 
-static const xx_var *xx_vmarc_get_option(const xx_list_s *options,
-                                          uint32_t meta_id) {
+static const xx_var *xx_vmarc_get_option(const xx_list_s *options, uint32_t meta_id)
+{
     size_t index;
 
     if (!options) return NULL;
     for (index = 0U; index < options->count; ++index) {
-        const xx_meta *meta =
-            (const xx_meta *)xx_list_at((const xx_list_t *)options, index);
+        const xx_meta *meta = (const xx_meta *)xx_list_at((const xx_list_t *)options, index);
         if (meta && meta->meta_id == meta_id) return &meta->var;
     }
     return NULL;
 }
 
-xx_archive_record_state *xx_vmarc_create_archive_records_reading(
-    Abstractformat *self, const xx_list_s *options, xx_pd_struct *pd) {
+xx_archive_record_state *xx_vmarc_create_archive_records_reading(Abstractformat *self, const xx_list_s *options, xx_pd_struct *pd)
+{
     xx_vmarc_stream *stream;
     xx_archive_record_state *state;
 
@@ -730,9 +674,7 @@ xx_archive_record_state *xx_vmarc_create_archive_records_reading(
     state->internal_state = stream;
     state->free_internal = xx_vmarc_stream_free;
     state->total_records = (int64_t)stream->count;
-    if (!xx_vmarc_copy_options(&state->options, options) ||
-        (stream->count != 0U &&
-         !xx_vmarc_set_record(&state->current_record, &stream->items[0]))) {
+    if (!xx_vmarc_copy_options(&state->options, options) || (stream->count != 0U && !xx_vmarc_set_record(&state->current_record, &stream->items[0]))) {
         xx_archive_record_state_free(state);
         return NULL;
     }
@@ -741,20 +683,16 @@ xx_archive_record_state *xx_vmarc_create_archive_records_reading(
     return state;
 }
 
-const xx_archive_record *xx_vmarc_get_current_archive_record(
-    Abstractformat *self, xx_archive_record_state *state) {
-    return self && state && state->format == self && state->has_record
-               ? &state->current_record
-               : NULL;
+const xx_archive_record *xx_vmarc_get_current_archive_record(Abstractformat *self, xx_archive_record_state *state)
+{
+    return self && state && state->format == self && state->has_record ? &state->current_record : NULL;
 }
 
-bool xx_vmarc_archive_record_move_to_next(Abstractformat *self,
-                                           xx_archive_record_state *state,
-                                           xx_pd_struct *pd) {
+bool xx_vmarc_archive_record_move_to_next(Abstractformat *self, xx_archive_record_state *state, xx_pd_struct *pd)
+{
     xx_vmarc_stream *stream;
 
-    if (!self || !state || state->format != self || !state->has_record ||
-        (pd && xx_pd_is_stopped(pd))) {
+    if (!self || !state || state->format != self || !state->has_record || (pd && xx_pd_is_stopped(pd))) {
         return false;
     }
     stream = (xx_vmarc_stream *)state->internal_state;
@@ -766,14 +704,12 @@ bool xx_vmarc_archive_record_move_to_next(Abstractformat *self,
     }
     ++stream->index;
     ++state->current_index;
-    state->has_record = xx_vmarc_set_record(&state->current_record,
-                                             &stream->items[stream->index]);
+    state->has_record = xx_vmarc_set_record(&state->current_record, &stream->items[stream->index]);
     return state->has_record;
 }
 
-bool xx_vmarc_unpack_current_archive_record(Abstractformat *self,
-                                             xx_archive_record_state *state,
-                                             xx_pd_struct *pd) {
+bool xx_vmarc_unpack_current_archive_record(Abstractformat *self, xx_archive_record_state *state, xx_pd_struct *pd)
+{
     xx_vmarc_stream *stream;
     const xx_vmarc_member *member;
     const xx_var *path_option;
@@ -785,8 +721,7 @@ bool xx_vmarc_unpack_current_archive_record(Abstractformat *self,
     bool result = false;
     bool created = false;
 
-    if (!self || !state || state->format != self || !state->has_record ||
-        (pd && xx_pd_is_stopped(pd))) {
+    if (!self || !state || state->format != self || !state->has_record || (pd && xx_pd_is_stopped(pd))) {
         return false;
     }
     stream = (xx_vmarc_stream *)state->internal_state;
@@ -794,8 +729,7 @@ bool xx_vmarc_unpack_current_archive_record(Abstractformat *self,
     member = &stream->items[stream->index];
     if (!xx_vmarc_path_safe(member->name)) return false;
 
-    path_option = xx_vmarc_get_option(&state->options,
-                                       XX_META_ID_OPT_UNPACK_PATH);
+    path_option = xx_vmarc_get_option(&state->options, XX_META_ID_OPT_UNPACK_PATH);
     if (!path_option) {
         /* No destination: decode and discard, which verifies the member
          * without writing anything. */
@@ -804,11 +738,9 @@ bool xx_vmarc_unpack_current_archive_record(Abstractformat *self,
         xx_mem_free(plain);
         return result;
     }
-    if (path_option->type == XX_VAR_TYPE_STRING ||
-        path_option->type == XX_VAR_TYPE_STRING_VIEW) {
+    if (path_option->type == XX_VAR_TYPE_STRING || path_option->type == XX_VAR_TYPE_STRING_VIEW) {
         base_path = xx_var_get_str(path_option);
-    } else if (path_option->type == XX_VAR_TYPE_WSTRING ||
-               path_option->type == XX_VAR_TYPE_WSTRING_VIEW) {
+    } else if (path_option->type == XX_VAR_TYPE_WSTRING || path_option->type == XX_VAR_TYPE_WSTRING_VIEW) {
         converted_path = xx_str_unicode_to_utf8(xx_var_get_wstr(path_option));
         base_path = converted_path;
     }
@@ -816,9 +748,7 @@ bool xx_vmarc_unpack_current_archive_record(Abstractformat *self,
         xx_str_free(converted_path);
         return false;
     }
-    if (base_path[0] != '\0' &&
-        base_path[xx_str_len(base_path) - 1U] != '/' &&
-        base_path[xx_str_len(base_path) - 1U] != '\\') {
+    if (base_path[0] != '\0' && base_path[xx_str_len(base_path) - 1U] != '/' && base_path[xx_str_len(base_path) - 1U] != '\\') {
         target_path = xx_str_concat3(base_path, "/", member->name);
     } else {
         target_path = xx_str_concat(base_path, member->name);
@@ -831,8 +761,7 @@ bool xx_vmarc_unpack_current_archive_record(Abstractformat *self,
         xx_str_free(target_path);
         return result;
     }
-    if (!xx_store_create_dirs_a(target_path, false) ||
-        !xx_vmarc_decode(self, member, &plain, &plain_size, pd)) {
+    if (!xx_store_create_dirs_a(target_path, false) || !xx_vmarc_decode(self, member, &plain, &plain_size, pd)) {
         xx_str_free(target_path);
         return false;
     }
@@ -843,8 +772,7 @@ bool xx_vmarc_unpack_current_archive_record(Abstractformat *self,
 
         result = output != NULL;
         while (result && completed < plain_size) {
-            ssize_t sent = xx_io_write(output, plain + completed,
-                                       plain_size - completed);
+            ssize_t sent = xx_io_write(output, plain + completed, plain_size - completed);
             if (sent <= 0 || (size_t)sent > plain_size - completed) {
                 result = false;
                 break;
@@ -859,8 +787,8 @@ bool xx_vmarc_unpack_current_archive_record(Abstractformat *self,
     return result;
 }
 
-void xx_vmarc_free_archive_records_reading(Abstractformat *self,
-                                            xx_archive_record_state *state) {
+void xx_vmarc_free_archive_records_reading(Abstractformat *self, xx_archive_record_state *state)
+{
     (void)self;
     xx_archive_record_state_free(state);
 }

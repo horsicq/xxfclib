@@ -114,12 +114,12 @@ struct xx_btrfs {
     uint8_t metadata_uuid[XX_BTRFS_UUID_SIZE];
     char label[XX_BTRFS_LABEL_SIZE + 1U];
     uint64_t generation;
-    uint64_t root_tree;      /**< Logical address of the root tree. */
-    uint64_t chunk_root;     /**< Logical address of the chunk tree. */
+    uint64_t root_tree;  /**< Logical address of the root tree. */
+    uint64_t chunk_root; /**< Logical address of the chunk tree. */
     uint64_t total_bytes;
     uint64_t bytes_used;
     uint64_t num_devices;
-    uint64_t devid;          /**< This device's id, from btrfs_dev_item. */
+    uint64_t devid; /**< This device's id, from btrfs_dev_item. */
     uint64_t incompat_flags;
     uint64_t compat_ro_flags;
     uint32_t sector_size;
@@ -142,48 +142,45 @@ struct xx_btrfs {
     void *internal;
 };
 
-XXFC_API void xx_btrfs_init(xx_btrfs *btrfs, xx_io_device *dev,
-                            int64_t base_address);
+XXFC_API void xx_btrfs_init(xx_btrfs *btrfs, xx_io_device *dev, int64_t base_address);
 XXFC_API xx_btrfs *xx_btrfs_create(xx_io_device *dev, int64_t base_address);
 XXFC_API void xx_btrfs_destroy(xx_btrfs *btrfs);
 XXFC_API void xx_btrfs_free(xx_btrfs *btrfs);
 
 XXFC_API bool xx_btrfs_check_is_valid(Abstractformat *self, xx_pd_struct *pd);
 XXFC_API bool xx_btrfs_handle_base_info(Abstractformat *self, xx_pd_struct *pd);
-XXFC_API int64_t xx_btrfs_get_format_size(Abstractformat *self,
-                                          xx_pd_struct *pd);
-XXFC_API uint64_t xx_btrfs_get_number_of_archive_records(Abstractformat *self,
-                                                         xx_pd_struct *pd);
+XXFC_API int64_t xx_btrfs_get_format_size(Abstractformat *self, xx_pd_struct *pd);
+XXFC_API uint64_t xx_btrfs_get_number_of_archive_records(Abstractformat *self, xx_pd_struct *pd);
 
-XXFC_API xx_archive_record_state *xx_btrfs_create_archive_records_reading(
-    Abstractformat *self, const xx_list_s *options, xx_pd_struct *pd);
-XXFC_API const xx_archive_record *xx_btrfs_get_current_archive_record(
-    Abstractformat *self, xx_archive_record_state *state);
-XXFC_API bool xx_btrfs_unpack_current_archive_record(
-    Abstractformat *self, xx_archive_record_state *state, xx_pd_struct *pd);
-XXFC_API bool xx_btrfs_archive_record_move_to_next(
-    Abstractformat *self, xx_archive_record_state *state, xx_pd_struct *pd);
-XXFC_API void xx_btrfs_free_archive_records_reading(
-    Abstractformat *self, xx_archive_record_state *state);
+XXFC_API xx_archive_record_state *xx_btrfs_create_archive_records_reading(Abstractformat *self, const xx_list_s *options, xx_pd_struct *pd);
+XXFC_API const xx_archive_record *xx_btrfs_get_current_archive_record(Abstractformat *self, xx_archive_record_state *state);
+XXFC_API bool xx_btrfs_unpack_current_archive_record(Abstractformat *self, xx_archive_record_state *state, xx_pd_struct *pd);
+XXFC_API bool xx_btrfs_archive_record_move_to_next(Abstractformat *self, xx_archive_record_state *state, xx_pd_struct *pd);
+XXFC_API void xx_btrfs_free_archive_records_reading(Abstractformat *self, xx_archive_record_state *state);
 
 XXFC_API const char *xx_btrfs_get_label(const xx_btrfs *btrfs);
 XXFC_API uint32_t xx_btrfs_get_node_size(const xx_btrfs *btrfs);
 XXFC_API uint64_t xx_btrfs_get_number_of_chunks(const xx_btrfs *btrfs);
 XXFC_API bool xx_btrfs_get_csum_verified(const xx_btrfs *btrfs);
 
-static inline Abstractformat *xx_btrfs_to_format(xx_btrfs *btrfs) {
+static inline Abstractformat *xx_btrfs_to_format(xx_btrfs *btrfs)
+{
     return btrfs ? &btrfs->format : NULL;
 }
-static inline void XBtrfs_init(xx_btrfs *btrfs, xx_io_device *dev,
-                               int64_t base_address) {
+static inline void XBtrfs_init(xx_btrfs *btrfs, xx_io_device *dev, int64_t base_address)
+{
     xx_btrfs_init(btrfs, dev, base_address);
 }
-static inline xx_btrfs *XBtrfs_create(xx_io_device *dev,
-                                      int64_t base_address) {
+static inline xx_btrfs *XBtrfs_create(xx_io_device *dev, int64_t base_address)
+{
     return xx_btrfs_create(dev, base_address);
 }
-static inline void XBtrfs_free(xx_btrfs *btrfs) { xx_btrfs_free(btrfs); }
-static inline bool XBtrfs_is_valid(xx_btrfs *btrfs, xx_pd_struct *pd) {
+static inline void XBtrfs_free(xx_btrfs *btrfs)
+{
+    xx_btrfs_free(btrfs);
+}
+static inline bool XBtrfs_is_valid(xx_btrfs *btrfs, xx_pd_struct *pd)
+{
     return btrfs ? xx_format_is_valid(&btrfs->format, pd) : false;
 }
 

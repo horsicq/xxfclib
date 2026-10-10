@@ -48,39 +48,26 @@ typedef struct xx_base16 {
 
 typedef xx_base16 xx_base16_t;
 
-XXFC_API void xx_base16_init(xx_base16 *archive, xx_io_device *device,
-                             int64_t base_address);
-XXFC_API xx_base16 *xx_base16_create(xx_io_device *device,
-                                     int64_t base_address);
+XXFC_API void xx_base16_init(xx_base16 *archive, xx_io_device *device, int64_t base_address);
+XXFC_API xx_base16 *xx_base16_create(xx_io_device *device, int64_t base_address);
 XXFC_API void xx_base16_destroy(xx_base16 *archive);
 XXFC_API void xx_base16_free(xx_base16 *archive);
 
-XXFC_API bool xx_base16_check_is_valid(Abstractformat *self,
-                                       xx_pd_struct *pd);
-XXFC_API bool xx_base16_handle_base_info(Abstractformat *self,
-                                         xx_pd_struct *pd);
-XXFC_API int64_t xx_base16_get_format_size(Abstractformat *self,
-                                           xx_pd_struct *pd);
-XXFC_API uint64_t xx_base16_get_number_of_archive_records(
-    Abstractformat *self, xx_pd_struct *pd);
+XXFC_API bool xx_base16_check_is_valid(Abstractformat *self, xx_pd_struct *pd);
+XXFC_API bool xx_base16_handle_base_info(Abstractformat *self, xx_pd_struct *pd);
+XXFC_API int64_t xx_base16_get_format_size(Abstractformat *self, xx_pd_struct *pd);
+XXFC_API uint64_t xx_base16_get_number_of_archive_records(Abstractformat *self, xx_pd_struct *pd);
 
-XXFC_API xx_archive_record_state *xx_base16_create_archive_records_reading(
-    Abstractformat *self, const xx_list_s *options, xx_pd_struct *pd);
-XXFC_API const xx_archive_record *xx_base16_get_current_archive_record(
-    Abstractformat *self, xx_archive_record_state *state);
-XXFC_API bool xx_base16_unpack_current_archive_record(
-    Abstractformat *self, xx_archive_record_state *state, xx_pd_struct *pd);
-XXFC_API bool xx_base16_archive_record_move_to_next(
-    Abstractformat *self, xx_archive_record_state *state, xx_pd_struct *pd);
-XXFC_API void xx_base16_free_archive_records_reading(
-    Abstractformat *self, xx_archive_record_state *state);
+XXFC_API xx_archive_record_state *xx_base16_create_archive_records_reading(Abstractformat *self, const xx_list_s *options, xx_pd_struct *pd);
+XXFC_API const xx_archive_record *xx_base16_get_current_archive_record(Abstractformat *self, xx_archive_record_state *state);
+XXFC_API bool xx_base16_unpack_current_archive_record(Abstractformat *self, xx_archive_record_state *state, xx_pd_struct *pd);
+XXFC_API bool xx_base16_archive_record_move_to_next(Abstractformat *self, xx_archive_record_state *state, xx_pd_struct *pd);
+XXFC_API void xx_base16_free_archive_records_reading(Abstractformat *self, xx_archive_record_state *state);
 
 /** Decoded payload size; runs handle_base_info when needed, 0 on failure. */
 XXFC_API uint64_t xx_base16_get_unpacked_size(xx_base16 *archive);
 /** Decode the whole payload to `destination`. */
-XXFC_API bool xx_base16_unpack_to_device(xx_base16 *archive,
-                                         xx_io_device *destination,
-                                         xx_pd_struct *pd);
+XXFC_API bool xx_base16_unpack_to_device(xx_base16 *archive, xx_io_device *destination, xx_pd_struct *pd);
 
 #ifdef __cplusplus
 }

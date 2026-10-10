@@ -14,12 +14,12 @@ typedef struct xx_sfx_spis {
     void *inner_state;
     bool checked_inner;
 } xx_sfx_spis;
-XXFC_API void xx_sfx_spis_init(xx_sfx_spis *,xx_io_device *,int64_t);
-XXFC_API xx_sfx_spis *xx_sfx_spis_create(xx_io_device *,int64_t);
+XXFC_API void xx_sfx_spis_init(xx_sfx_spis *, xx_io_device *, int64_t);
+XXFC_API xx_sfx_spis *xx_sfx_spis_create(xx_io_device *, int64_t);
 XXFC_API void xx_sfx_spis_destroy(xx_sfx_spis *);
 XXFC_API void xx_sfx_spis_free(xx_sfx_spis *);
-XXFC_API bool xx_sfx_spis_check_is_valid(Abstractformat *,xx_pd_struct *);
-XXFC_API bool xx_sfx_spis_handle_base_info(Abstractformat *,xx_pd_struct *);
+XXFC_API bool xx_sfx_spis_check_is_valid(Abstractformat *, xx_pd_struct *);
+XXFC_API bool xx_sfx_spis_handle_base_info(Abstractformat *, xx_pd_struct *);
 #ifdef __cplusplus
 }
 #endif

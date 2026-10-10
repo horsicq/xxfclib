@@ -7,11 +7,14 @@
 extern "C" {
 #endif
 typedef xx_volume xx_dragonfly_disklabel;
-XXFC_API void xx_dragonfly_disklabel_init(xx_dragonfly_disklabel *,xx_io_device *,int64_t);
-XXFC_API xx_dragonfly_disklabel *xx_dragonfly_disklabel_create(xx_io_device *,int64_t);
+XXFC_API void xx_dragonfly_disklabel_init(xx_dragonfly_disklabel *, xx_io_device *, int64_t);
+XXFC_API xx_dragonfly_disklabel *xx_dragonfly_disklabel_create(xx_io_device *, int64_t);
 XXFC_API void xx_dragonfly_disklabel_destroy(xx_dragonfly_disklabel *);
 XXFC_API void xx_dragonfly_disklabel_free(xx_dragonfly_disklabel *);
-static inline Abstractformat *xx_dragonfly_disklabel_to_format(xx_dragonfly_disklabel *r) { return r?&r->format:NULL; }
+static inline Abstractformat *xx_dragonfly_disklabel_to_format(xx_dragonfly_disklabel *r)
+{
+    return r ? &r->format : NULL;
+}
 #ifdef __cplusplus
 }
 #endif

@@ -86,36 +86,29 @@ typedef xx_linear_executable xx_le;
 typedef xx_linear_executable xx_le_t;
 typedef xx_linear_executable XLE;
 
-XXFC_API void xx_le_init(xx_le *le, xx_io_device *device,
-                         int64_t base_address);
+XXFC_API void xx_le_init(xx_le *le, xx_io_device *device, int64_t base_address);
 XXFC_API xx_le *xx_le_create(xx_io_device *device, int64_t base_address);
 XXFC_API void xx_le_destroy(xx_le *le);
 XXFC_API void xx_le_free(xx_le *le);
 
 XXFC_API bool xx_le_check_is_valid(Abstractformat *self, xx_pd_struct *pd);
 XXFC_API bool xx_le_handle_base_info(Abstractformat *self, xx_pd_struct *pd);
-XXFC_API int64_t xx_le_get_format_size(Abstractformat *self,
-                                       xx_pd_struct *pd);
-XXFC_API uint64_t xx_le_get_number_of_imports(Abstractformat *self,
-                                              xx_pd_struct *pd);
-XXFC_API uint64_t xx_le_get_number_of_exports(Abstractformat *self,
-                                              xx_pd_struct *pd);
-XXFC_API uint64_t xx_le_get_number_of_resources(Abstractformat *self,
-                                                xx_pd_struct *pd);
-XXFC_API bool xx_le_get_memory_map(Abstractformat *self,
-                                   xx_memory_map_mode_t mode,
-                                   xx_memory_map *output,
-                                   xx_pd_struct *pd);
+XXFC_API int64_t xx_le_get_format_size(Abstractformat *self, xx_pd_struct *pd);
+XXFC_API uint64_t xx_le_get_number_of_imports(Abstractformat *self, xx_pd_struct *pd);
+XXFC_API uint64_t xx_le_get_number_of_exports(Abstractformat *self, xx_pd_struct *pd);
+XXFC_API uint64_t xx_le_get_number_of_resources(Abstractformat *self, xx_pd_struct *pd);
+XXFC_API bool xx_le_get_memory_map(Abstractformat *self, xx_memory_map_mode_t mode, xx_memory_map *output, xx_pd_struct *pd);
 
 XXFC_API uint32_t xx_le_get_number_of_objects(const xx_le *le);
-XXFC_API const xx_linear_object *xx_le_get_object(const xx_le *le,
-                                                  uint32_t index);
+XXFC_API const xx_linear_object *xx_le_get_object(const xx_le *le, uint32_t index);
 
-static inline Abstractformat *xx_le_to_format(xx_le *le) {
+static inline Abstractformat *xx_le_to_format(xx_le *le)
+{
     return le ? &le->format : NULL;
 }
 
-static inline const Abstractformat *xx_le_to_format_const(const xx_le *le) {
+static inline const Abstractformat *xx_le_to_format_const(const xx_le *le)
+{
     return le ? &le->format : NULL;
 }
 

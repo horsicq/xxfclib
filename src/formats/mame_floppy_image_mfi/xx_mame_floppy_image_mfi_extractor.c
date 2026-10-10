@@ -9,54 +9,54 @@
 #include "../xx_format_extractor_engine.h"
 #include "xxfclib/formats/mame_floppy_image_mfi/xx_mame_floppy_image_mfi.h"
 
-static const uint8_t k_anchor0[] = { 0x4D, 0x41, 0x4D, 0x45, 0x46, 0x4C, 0x4F, 0x50, 0x50, 0x59, 0x49, 0x4D, 0x41, 0x47, 0x45 };
-static const uint8_t k_anchor1[] = { 0x4D, 0x45, 0x53, 0x53, 0x46, 0x4C, 0x4F, 0x50, 0x50, 0x59, 0x49, 0x4D, 0x41, 0x47, 0x45 };
+static const uint8_t k_anchor0[] = {0x4D, 0x41, 0x4D, 0x45, 0x46, 0x4C, 0x4F, 0x50, 0x50, 0x59, 0x49, 0x4D, 0x41, 0x47, 0x45};
+static const uint8_t k_anchor1[] = {0x4D, 0x45, 0x53, 0x53, 0x46, 0x4C, 0x4F, 0x50, 0x50, 0x59, 0x49, 0x4D, 0x41, 0x47, 0x45};
 
 static const xx_format_search_anchor k_anchors[] = {
-    { k_anchor0, sizeof(k_anchor0), 0U },
-    { k_anchor1, sizeof(k_anchor1), 0U },
+    {k_anchor0, sizeof(k_anchor0), 0U},
+    {k_anchor1, sizeof(k_anchor1), 0U},
 };
 
-static const xx_file_type_t k_types[] = { XX_FILE_TYPE_MAME_FLOPPY_IMAGE_MFI };
+static const xx_file_type_t k_types[] = {XX_FILE_TYPE_MAME_FLOPPY_IMAGE_MFI};
 
-static Abstractformat *xx_mame_floppy_image_mfi_search_open(xx_io_device *window) {
+static Abstractformat *xx_mame_floppy_image_mfi_search_open(xx_io_device *window)
+{
     xx_mame_floppy_image_mfi *reader = xx_mame_floppy_image_mfi_create(window, 0);
     return reader ? &reader->format : NULL;
 }
-static void xx_mame_floppy_image_mfi_search_close(Abstractformat *format) {
+static void xx_mame_floppy_image_mfi_search_close(Abstractformat *format)
+{
     xx_mame_floppy_image_mfi_free((xx_mame_floppy_image_mfi *)format);
 }
-static const xx_format_search_desc k_desc = {
-    k_types, sizeof(k_types) / sizeof(k_types[0]),
-    k_anchors, sizeof(k_anchors) / sizeof(k_anchors[0]),
-    xx_mame_floppy_image_mfi_search_open, xx_mame_floppy_image_mfi_search_close, false
-};
-static xx_format_search_state *xx_mame_floppy_image_mfi_search_create(
-    xx_format_extractor *self, xx_io_device *device, const xx_list_s *options,
-    xx_pd_struct *pd) {
+static const xx_format_search_desc k_desc = {k_types,
+                                             sizeof(k_types) / sizeof(k_types[0]),
+                                             k_anchors,
+                                             sizeof(k_anchors) / sizeof(k_anchors[0]),
+                                             xx_mame_floppy_image_mfi_search_open,
+                                             xx_mame_floppy_image_mfi_search_close,
+                                             false};
+static xx_format_search_state *xx_mame_floppy_image_mfi_search_create(xx_format_extractor *self, xx_io_device *device, const xx_list_s *options, xx_pd_struct *pd)
+{
     (void)self;
     return xx_format_search_create(&k_desc, device, options, pd);
 }
-static const xx_format_search_info *xx_mame_floppy_image_mfi_search_current(
-    xx_format_extractor *self, xx_format_search_state *state) {
+static const xx_format_search_info *xx_mame_floppy_image_mfi_search_current(xx_format_extractor *self, xx_format_search_state *state)
+{
     (void)self;
     return xx_format_search_current(state);
 }
-static bool xx_mame_floppy_image_mfi_search_next(xx_format_extractor *self,
-    xx_format_search_state *state, xx_pd_struct *pd) {
+static bool xx_mame_floppy_image_mfi_search_next(xx_format_extractor *self, xx_format_search_state *state, xx_pd_struct *pd)
+{
     (void)self;
     return xx_format_search_find_next(state, pd);
 }
-static void xx_mame_floppy_image_mfi_search_free(xx_format_extractor *self,
-    xx_format_search_state *state) {
+static void xx_mame_floppy_image_mfi_search_free(xx_format_extractor *self, xx_format_search_state *state)
+{
     (void)self;
     xx_format_search_free(state);
 }
-xx_format_extractor xx_mame_floppy_image_mfi_extractor = {
-    xx_mame_floppy_image_mfi_search_create, xx_mame_floppy_image_mfi_search_current,
-    xx_mame_floppy_image_mfi_search_next, xx_mame_floppy_image_mfi_search_free
-};
-
+xx_format_extractor xx_mame_floppy_image_mfi_extractor = {xx_mame_floppy_image_mfi_search_create, xx_mame_floppy_image_mfi_search_current,
+                                                          xx_mame_floppy_image_mfi_search_next, xx_mame_floppy_image_mfi_search_free};
 
 /* BEGIN GENERATED ABSTRACT EXTRACTOR */
 #include "../xx_format_abstract_extractor_adapter.h"

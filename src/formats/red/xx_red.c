@@ -87,26 +87,25 @@ typedef struct red_stream_s {
 } red_stream;
 
 /* CRC-16/IBM-3740: poly 0x1021, init 0xFFFF, no reflection, no final xor. */
-static uint16_t red_crc16(const uint8_t *data, size_t size) {
+static uint16_t red_crc16(const uint8_t *data, size_t size)
+{
     return xx_crc16_ccitt_calc(0xFFFFU, data, size);
 }
 
-static bool red_read_at(xx_io_device *device, int64_t offset, void *buffer,
-                        size_t size) {
+static bool red_read_at(xx_io_device *device, int64_t offset, void *buffer, size_t size)
+{
     size_t done = 0U;
-    if (!device || (!buffer && size != 0U) || offset < 0 ||
-        xx_io_seek64(device, offset, SEEK_SET) != 0)
-        return false;
+    if (!device || (!buffer && size != 0U) || offset < 0 || xx_io_seek64(device, offset, SEEK_SET) != 0) return false;
     while (done < size) {
-        ssize_t amount = xx_io_read(device, (uint8_t *)buffer + done,
-                                    size - done);
+        ssize_t amount = xx_io_read(device, (uint8_t *)buffer + done, size - done);
         if (amount <= 0 || (size_t)amount > size - done) return false;
         done += (size_t)amount;
     }
     return true;
 }
 
-static char *red_normalize_name(const uint8_t *bytes, size_t size) {
+static char *red_normalize_name(const uint8_t *bytes, size_t size)
+{
     char *name;
     size_t input, output = 0U;
     name = (char *)xx_mem_alloc(size + 1U);
@@ -114,34 +113,28 @@ static char *red_normalize_name(const uint8_t *bytes, size_t size) {
     for (input = 0U; input < size; ++input) {
         uint8_t c = bytes[input];
         if (c == 0U) break;
-        if (c < 0x20U || c == '/' || c == '\\' || c == '"' || c == '*' ||
-            c == ':' || c == '<' || c == '>' || c == '?' || c == '|')
-            name[output++] = '_';
-        else
-            name[output++] = (char)c;
+        if (c < 0x20U || c == '/' || c == '\\' || c == '"' || c == '*' || c == ':' || c == '<' || c == '>' || c == '?' || c == '|') name[output++] = '_';
+        else name[output++] = (char)c;
     }
-    while (output != 0U &&
-           (name[output - 1U] == ' ' || name[output - 1U] == '.'))
-        --output;
+    while (output != 0U && (name[output - 1U] == ' ' || name[output - 1U] == '.')) --output;
     name[output] = 0;
     return name;
 }
 
-static bool red_safe_output_name(const char *name) {
+static bool red_safe_output_name(const char *name)
+{
     size_t length;
     if (!name || !name[0]) return false;
-    if (name[0] == '.' && (!name[1] || (name[1] == '.' && !name[2])))
-        return false;
+    if (name[0] == '.' && (!name[1] || (name[1] == '.' && !name[2]))) return false;
     for (length = 0U; name[length]; ++length) {
         unsigned char c = (unsigned char)name[length];
-        if (c < 0x20U || c == '/' || c == '\\' || c == ':' || c == '<' ||
-            c == '>' || c == '"' || c == '|' || c == '?' || c == '*')
-            return false;
+        if (c < 0x20U || c == '/' || c == '\\' || c == ':' || c == '<' || c == '>' || c == '"' || c == '|' || c == '?' || c == '*') return false;
     }
     return true;
 }
 
-static void red_stream_free(void *opaque) {
+static void red_stream_free(void *opaque)
+{
     red_stream *stream = (red_stream *)opaque;
     size_t index;
     if (!stream) return;
@@ -151,25 +144,23 @@ static void red_stream_free(void *opaque) {
     xx_mem_free(stream);
 }
 
-static bool red_add_member(red_stream *stream, const red_member *member) {
+static bool red_add_member(red_stream *stream, const red_member *member)
+{
     red_member *grown;
-    if (!stream || !member || stream->count >= RED_MAX_MEMBERS ||
-        stream->count > SIZE_MAX / sizeof(*grown) - 1U)
-        return false;
-    grown = (red_member *)xx_mem_realloc(stream->items,
-                                         (stream->count + 1U) * sizeof(*grown));
+    if (!stream || !member || stream->count >= RED_MAX_MEMBERS || stream->count > SIZE_MAX / sizeof(*grown) - 1U) return false;
+    grown = (red_member *)xx_mem_realloc(stream->items, (stream->count + 1U) * sizeof(*grown));
     if (!grown) return false;
     stream->items = grown;
     stream->items[stream->count++] = *member;
     return true;
 }
 
-static bool red_parse(Abstractformat *format, red_stream **result) {
+static bool red_parse(Abstractformat *format, red_stream **result)
+{
     red_stream *stream = NULL;
     uint8_t header[256];
     int64_t total, size, cursor = 0;
-    if (!format || !format->device || !result || format->base_address < 0)
-        return false;
+    if (!format || !format->device || !result || format->base_address < 0) return false;
     total = xx_io_total_size(format->device);
     if (total < format->base_address) return false;
     size = total - format->base_address;
@@ -184,23 +175,15 @@ static bool red_parse(Abstractformat *format, red_stream **result) {
         uint16_t reported, calculated;
 
         if (size - cursor < RED_MIN_HEADER_SIZE) goto fail;
-        if (!red_read_at(format->device, format->base_address + cursor, header,
-                         RED_MIN_HEADER_SIZE))
-            goto fail;
+        if (!red_read_at(format->device, format->base_address + cursor, header, RED_MIN_HEADER_SIZE)) goto fail;
         if (header[0] != 'R' || header[1] != 'R' || header[2] != 1U) goto fail;
         header_size = (int64_t)header[3];
-        if (header_size < RED_MIN_HEADER_SIZE ||
-            header_size > (int64_t)sizeof(header) || header_size > size - cursor)
-            goto fail;
-        if (header_size > RED_MIN_HEADER_SIZE &&
-            !red_read_at(format->device, format->base_address + cursor, header,
-                         (size_t)header_size))
-            goto fail;
+        if (header_size < RED_MIN_HEADER_SIZE || header_size > (int64_t)sizeof(header) || header_size > size - cursor) goto fail;
+        if (header_size > RED_MIN_HEADER_SIZE && !red_read_at(format->device, format->base_address + cursor, header, (size_t)header_size)) goto fail;
 
         /* The last two header bytes are its own big-endian CRC over the rest,
          * which is what makes the chain walk safe to trust. */
-        reported = (uint16_t)(((uint16_t)header[header_size - 2] << 8U) |
-                              header[header_size - 1]);
+        reported = (uint16_t)(((uint16_t)header[header_size - 2] << 8U) | header[header_size - 1]);
         calculated = red_crc16(header + 2, (size_t)(header_size - 4));
         if (reported != calculated) goto fail;
 
@@ -213,19 +196,13 @@ static bool red_parse(Abstractformat *format, red_stream **result) {
         member.fragment = xx_data_get_u16(header + 20U, 2, 0, false);
         member.last_fragment = xx_data_get_u16(header + 22U, 2, 0, false);
         member.method = xx_data_get_u16(header + 24U, 2, 0, false);
-        member.dos_time = ((uint32_t)xx_data_get_u16(header + 6U, 2, 0, false) << 16U) |
-                          (uint32_t)xx_data_get_u16(header + 4U, 2, 0, false);
-        if (member.method != RED_METHOD_STORE &&
-            member.method != RED_METHOD_LH5)
-            goto fail;
+        member.dos_time = ((uint32_t)xx_data_get_u16(header + 6U, 2, 0, false) << 16U) | (uint32_t)xx_data_get_u16(header + 4U, 2, 0, false);
+        if (member.method != RED_METHOD_STORE && member.method != RED_METHOD_LH5) goto fail;
         if (member.unpacked_size > RED_MAX_UNPACKED) goto fail;
         /* A tiny payload cannot legitimately declare a huge plaintext. */
-        if (member.unpacked_size >
-            (uint64_t)packed * RED_MAX_RATIO + 0x10000U)
-            goto fail;
+        if (member.unpacked_size > (uint64_t)packed * RED_MAX_RATIO + 0x10000U) goto fail;
 
-        member.name = red_normalize_name(header + RED_NAME_OFFSET,
-                                         RED_NAME_SIZE);
+        member.name = red_normalize_name(header + RED_NAME_OFFSET, RED_NAME_SIZE);
         if (!member.name) goto fail;
         if (!member.name[0]) {
             xx_str_free(member.name);
@@ -250,17 +227,16 @@ fail:
     return false;
 }
 
-static bool red_copy_options(xx_list_s *destination, const xx_list_s *source) {
+static bool red_copy_options(xx_list_s *destination, const xx_list_s *source)
+{
     size_t index;
     if (!source) return true;
     for (index = 0U; index < source->count; ++index) {
-        const xx_meta *original =
-            (const xx_meta *)xx_list_at((const xx_list_t *)source, index);
+        const xx_meta *original = (const xx_meta *)xx_list_at((const xx_list_t *)source, index);
         xx_meta copy;
         if (!original) continue;
         xx_meta_init(&copy, original->meta_id);
-        if (!xx_var_copy(&copy.var, &original->var) ||
-            !xx_list_append(destination, &copy)) {
+        if (!xx_var_copy(&copy.var, &original->var) || !xx_list_append(destination, &copy)) {
             xx_meta_cleanup(&copy);
             return false;
         }
@@ -268,19 +244,19 @@ static bool red_copy_options(xx_list_s *destination, const xx_list_s *source) {
     return true;
 }
 
-static const xx_var *red_option(const xx_list_s *options, uint32_t id) {
+static const xx_var *red_option(const xx_list_s *options, uint32_t id)
+{
     size_t index;
     if (!options) return NULL;
     for (index = 0U; index < options->count; ++index) {
-        const xx_meta *meta =
-            (const xx_meta *)xx_list_at((const xx_list_t *)options, index);
+        const xx_meta *meta = (const xx_meta *)xx_list_at((const xx_list_t *)options, index);
         if (meta && meta->meta_id == id) return &meta->var;
     }
     return NULL;
 }
 
-static bool red_set_record(xx_archive_record *record,
-                           const red_member *member) {
+static bool red_set_record(xx_archive_record *record, const red_member *member)
+{
     xx_archive_record_cleanup(record);
     xx_archive_record_init(record);
     record->header_offset = member->header_offset;
@@ -288,45 +264,29 @@ static bool red_set_record(xx_archive_record *record,
     record->data_offset = member->data_offset;
     record->compressed_size = member->packed_size;
     return xx_archive_record_set_original_name(record, member->name) &&
-           xx_archive_record_set_meta_u64(record, XX_META_ID_COMPRESSED_SIZE,
-                                          (uint64_t)member->packed_size) &&
-           xx_archive_record_set_meta_u64(record, XX_META_ID_UNCOMPRESSED_SIZE,
-                                          member->unpacked_size) &&
-           xx_archive_record_set_meta_u64(record, XX_META_ID_COMPRESSION_METHOD,
-                                          member->method) &&
-           xx_archive_record_set_meta_u64(record, XX_META_ID_CRC32,
-                                          member->crc) &&
-           xx_archive_record_set_meta_u64(record, XX_META_ID_TIMESTAMP,
-                                          member->dos_time) &&
-           xx_archive_record_set_meta_u64(record, XX_META_ID_FLAGS,
-                                          member->fragment) &&
-           xx_archive_record_set_meta_bool(record, XX_META_ID_IS_ENCRYPTED,
-                                           false) &&
+           xx_archive_record_set_meta_u64(record, XX_META_ID_COMPRESSED_SIZE, (uint64_t)member->packed_size) &&
+           xx_archive_record_set_meta_u64(record, XX_META_ID_UNCOMPRESSED_SIZE, member->unpacked_size) &&
+           xx_archive_record_set_meta_u64(record, XX_META_ID_COMPRESSION_METHOD, member->method) &&
+           xx_archive_record_set_meta_u64(record, XX_META_ID_CRC32, member->crc) && xx_archive_record_set_meta_u64(record, XX_META_ID_TIMESTAMP, member->dos_time) &&
+           xx_archive_record_set_meta_u64(record, XX_META_ID_FLAGS, member->fragment) && xx_archive_record_set_meta_bool(record, XX_META_ID_IS_ENCRYPTED, false) &&
            xx_archive_record_set_meta_bool(record, XX_META_ID_IS_FOLDER, false);
 }
 
-static bool red_decode_member(Abstractformat *format, const red_member *member,
-                              uint8_t **plain, size_t *plain_size) {
+static bool red_decode_member(Abstractformat *format, const red_member *member, uint8_t **plain, size_t *plain_size)
+{
     uint8_t *packed = NULL;
     uint8_t *joined = NULL;
     uint8_t *output = NULL;
     size_t written = 0U;
     size_t output_size;
     bool decoded = false;
-    if (!format || !member || !plain || !plain_size || member->packed_size < 0 ||
-        member->unpacked_size > SIZE_MAX)
-        return false;
+    if (!format || !member || !plain || !plain_size || member->packed_size < 0 || member->unpacked_size > SIZE_MAX) return false;
     /* A fragment of a file split across volumes cannot be decoded alone. */
     if (member->fragment > 1U || member->last_fragment == 0U) return false;
     output_size = (size_t)member->unpacked_size;
-    packed = (uint8_t *)xx_mem_alloc(
-        member->packed_size != 0 ? (size_t)member->packed_size : 1U);
+    packed = (uint8_t *)xx_mem_alloc(member->packed_size != 0 ? (size_t)member->packed_size : 1U);
     output = (uint8_t *)xx_mem_alloc(output_size != 0U ? output_size : 1U);
-    if (!packed || !output ||
-        (member->packed_size != 0 &&
-         !red_read_at(format->device, member->data_offset, packed,
-                      (size_t)member->packed_size)))
-        goto fail;
+    if (!packed || !output || (member->packed_size != 0 && !red_read_at(format->device, member->data_offset, packed, (size_t)member->packed_size))) goto fail;
 
     if (member->method == RED_METHOD_STORE) {
         if (output_size != (size_t)member->packed_size) goto fail;
@@ -341,16 +301,14 @@ static bool red_decode_member(Abstractformat *format, const red_member *member,
         if (!joined) goto fail;
         while (read_at < remaining) {
             size_t block = remaining - read_at;
-            if (block > (size_t)RED_SEGMENT_SIZE)
-                block = (size_t)RED_SEGMENT_SIZE;
+            if (block > (size_t)RED_SEGMENT_SIZE) block = (size_t)RED_SEGMENT_SIZE;
             if (block >= 2U) {
                 xx_rt_memcpy(joined + write_at, packed + read_at, block - 2U);
                 write_at += block - 2U;
             }
             read_at += block;
         }
-        decoded = xx_lzh5_decode_memory(joined, write_at, output, output_size,
-                                        5, &written);
+        decoded = xx_lzh5_decode_memory(joined, write_at, output, output_size, 5, &written);
         xx_mem_free(joined);
         joined = NULL;
     }
@@ -367,7 +325,8 @@ fail:
     return false;
 }
 
-void xx_red_init(xx_red *archive, xx_io_device *device, int64_t base_address) {
+void xx_red_init(xx_red *archive, xx_io_device *device, int64_t base_address)
+{
     if (!archive) return;
     xx_mem_zero(archive, sizeof(*archive));
     xx_format_init(&archive->format, device, base_address);
@@ -380,38 +339,36 @@ void xx_red_init(xx_red *archive, xx_io_device *device, int64_t base_address) {
     archive->format.check_is_valid = xx_red_check_is_valid;
     archive->format.handle_base_info = xx_red_handle_base_info;
     archive->format.get_format_size = xx_red_get_format_size;
-    archive->format.get_number_of_archive_records =
-        xx_red_get_number_of_archive_records;
-    archive->format.create_archive_records_reading =
-        xx_red_create_archive_records_reading;
-    archive->format.get_current_archive_record =
-        xx_red_get_current_archive_record;
-    archive->format.unpack_current_archive_record =
-        xx_red_unpack_current_archive_record;
-    archive->format.archive_record_move_to_next =
-        xx_red_archive_record_move_to_next;
-    archive->format.free_archive_records_reading =
-        xx_red_free_archive_records_reading;
+    archive->format.get_number_of_archive_records = xx_red_get_number_of_archive_records;
+    archive->format.create_archive_records_reading = xx_red_create_archive_records_reading;
+    archive->format.get_current_archive_record = xx_red_get_current_archive_record;
+    archive->format.unpack_current_archive_record = xx_red_unpack_current_archive_record;
+    archive->format.archive_record_move_to_next = xx_red_archive_record_move_to_next;
+    archive->format.free_archive_records_reading = xx_red_free_archive_records_reading;
     archive->archive_end = -1;
 }
 
-xx_red *xx_red_create(xx_io_device *device, int64_t base_address) {
+xx_red *xx_red_create(xx_io_device *device, int64_t base_address)
+{
     xx_red *archive = (xx_red *)xx_mem_alloc(sizeof(*archive));
     if (archive) xx_red_init(archive, device, base_address);
     return archive;
 }
 
-void xx_red_destroy(xx_red *archive) {
+void xx_red_destroy(xx_red *archive)
+{
     if (archive) xx_format_cleanup_extra_parameters(&archive->format);
 }
 
-void xx_red_free(xx_red *archive) {
+void xx_red_free(xx_red *archive)
+{
     if (!archive) return;
     xx_red_destroy(archive);
     xx_mem_free(archive);
 }
 
-bool xx_red_check_is_valid(Abstractformat *format, xx_pd_struct *pd) {
+bool xx_red_check_is_valid(Abstractformat *format, xx_pd_struct *pd)
+{
     red_stream *stream;
     (void)pd;
     if (!red_parse(format, &stream)) return false;
@@ -419,7 +376,8 @@ bool xx_red_check_is_valid(Abstractformat *format, xx_pd_struct *pd) {
     return true;
 }
 
-bool xx_red_handle_base_info(Abstractformat *format, xx_pd_struct *pd) {
+bool xx_red_handle_base_info(Abstractformat *format, xx_pd_struct *pd)
+{
     red_stream *stream;
     xx_red *archive;
     (void)pd;
@@ -435,21 +393,18 @@ bool xx_red_handle_base_info(Abstractformat *format, xx_pd_struct *pd) {
     return true;
 }
 
-int64_t xx_red_get_format_size(Abstractformat *format, xx_pd_struct *pd) {
-    return format && (format->base_info_handled ||
-                      xx_red_handle_base_info(format, pd))
-               ? format->format_size : -1;
+int64_t xx_red_get_format_size(Abstractformat *format, xx_pd_struct *pd)
+{
+    return format && (format->base_info_handled || xx_red_handle_base_info(format, pd)) ? format->format_size : -1;
 }
 
-uint64_t xx_red_get_number_of_archive_records(Abstractformat *format,
-                                              xx_pd_struct *pd) {
-    return format && (format->base_info_handled ||
-                      xx_red_handle_base_info(format, pd))
-               ? ((xx_red *)format)->number_of_records : 0U;
+uint64_t xx_red_get_number_of_archive_records(Abstractformat *format, xx_pd_struct *pd)
+{
+    return format && (format->base_info_handled || xx_red_handle_base_info(format, pd)) ? ((xx_red *)format)->number_of_records : 0U;
 }
 
-xx_archive_record_state *xx_red_create_archive_records_reading(
-    Abstractformat *format, const xx_list_s *options, xx_pd_struct *pd) {
+xx_archive_record_state *xx_red_create_archive_records_reading(Abstractformat *format, const xx_list_s *options, xx_pd_struct *pd)
+{
     red_stream *stream;
     xx_archive_record_state *state;
     (void)pd;
@@ -463,8 +418,7 @@ xx_archive_record_state *xx_red_create_archive_records_reading(
     state->internal_state = stream;
     state->free_internal = red_stream_free;
     state->total_records = stream->count;
-    if (!red_copy_options(&state->options, options) ||
-        !red_set_record(&state->current_record, &stream->items[0])) {
+    if (!red_copy_options(&state->options, options) || !red_set_record(&state->current_record, &stream->items[0])) {
         xx_archive_record_state_free(state);
         return NULL;
     }
@@ -472,32 +426,26 @@ xx_archive_record_state *xx_red_create_archive_records_reading(
     return state;
 }
 
-const xx_archive_record *xx_red_get_current_archive_record(
-    Abstractformat *format, xx_archive_record_state *state) {
-    return format && state && state->format == format && state->has_record
-               ? &state->current_record : NULL;
+const xx_archive_record *xx_red_get_current_archive_record(Abstractformat *format, xx_archive_record_state *state)
+{
+    return format && state && state->format == format && state->has_record ? &state->current_record : NULL;
 }
 
-bool xx_red_archive_record_move_to_next(Abstractformat *format,
-                                        xx_archive_record_state *state,
-                                        xx_pd_struct *pd) {
+bool xx_red_archive_record_move_to_next(Abstractformat *format, xx_archive_record_state *state, xx_pd_struct *pd)
+{
     red_stream *stream;
     (void)pd;
-    if (!format || !state || state->format != format ||
-        !(stream = (red_stream *)state->internal_state) ||
-        ++stream->index >= stream->count) {
+    if (!format || !state || state->format != format || !(stream = (red_stream *)state->internal_state) || ++stream->index >= stream->count) {
         if (state) state->has_record = false;
         return false;
     }
     ++state->current_index;
-    state->has_record = red_set_record(&state->current_record,
-                                       &stream->items[stream->index]);
+    state->has_record = red_set_record(&state->current_record, &stream->items[stream->index]);
     return state->has_record;
 }
 
-bool xx_red_unpack_current_archive_record(Abstractformat *format,
-                                          xx_archive_record_state *state,
-                                          xx_pd_struct *pd) {
+bool xx_red_unpack_current_archive_record(Abstractformat *format, xx_archive_record_state *state, xx_pd_struct *pd)
+{
     red_stream *stream;
     red_member *member;
     const xx_var *path_option;
@@ -508,32 +456,24 @@ bool xx_red_unpack_current_archive_record(Abstractformat *format,
     size_t plain_size = 0U, written = 0U;
     bool result = false;
     bool created = false;
-    if (!format || !state || state->format != format || !state->has_record ||
-        !(stream = (red_stream *)state->internal_state) ||
-        stream->index >= stream->count || (pd && xx_pd_is_stopped(pd)))
+    if (!format || !state || state->format != format || !state->has_record || !(stream = (red_stream *)state->internal_state) || stream->index >= stream->count ||
+        (pd && xx_pd_is_stopped(pd)))
         return false;
     member = &stream->items[stream->index];
-    if (!red_safe_output_name(member->name) ||
-        !red_decode_member(format, member, &plain, &plain_size))
-        goto done;
+    if (!red_safe_output_name(member->name) || !red_decode_member(format, member, &plain, &plain_size)) goto done;
     path_option = red_option(&state->options, XX_META_ID_OPT_UNPACK_PATH);
     if (!path_option) {
         result = true;
         goto done;
     }
-    if (path_option->type == XX_VAR_TYPE_STRING ||
-        path_option->type == XX_VAR_TYPE_STRING_VIEW)
-        base = xx_var_get_str(path_option);
-    else if (path_option->type == XX_VAR_TYPE_WSTRING ||
-             path_option->type == XX_VAR_TYPE_WSTRING_VIEW) {
+    if (path_option->type == XX_VAR_TYPE_STRING || path_option->type == XX_VAR_TYPE_STRING_VIEW) base = xx_var_get_str(path_option);
+    else if (path_option->type == XX_VAR_TYPE_WSTRING || path_option->type == XX_VAR_TYPE_WSTRING_VIEW) {
         owned_base = xx_str_unicode_to_utf8(xx_var_get_wstr(path_option));
         base = owned_base;
     }
     if (!base) goto done;
-    path = (base[0] && base[xx_str_len(base) - 1U] != '/' &&
-            base[xx_str_len(base) - 1U] != '\\')
-               ? xx_str_concat3(base, "/", member->name)
-               : xx_str_concat(base, member->name);
+    path = (base[0] && base[xx_str_len(base) - 1U] != '/' && base[xx_str_len(base) - 1U] != '\\') ? xx_str_concat3(base, "/", member->name)
+                                                                                                  : xx_str_concat(base, member->name);
     if (!path) goto done;
     if (!xx_store_create_dirs_a(path, false)) goto done;
     {
@@ -542,8 +482,7 @@ bool xx_red_unpack_current_archive_record(Abstractformat *format,
         if (!destination) goto done;
         result = true;
         while (written < plain_size) {
-            ssize_t amount = xx_io_write(destination, plain + written,
-                                         plain_size - written);
+            ssize_t amount = xx_io_write(destination, plain + written, plain_size - written);
             if (amount <= 0 || (size_t)amount > plain_size - written) {
                 result = false;
                 break;
@@ -560,8 +499,8 @@ done:
     return result;
 }
 
-void xx_red_free_archive_records_reading(Abstractformat *format,
-                                         xx_archive_record_state *state) {
+void xx_red_free_archive_records_reading(Abstractformat *format, xx_archive_record_state *state)
+{
     (void)format;
     xx_archive_record_state_free(state);
 }

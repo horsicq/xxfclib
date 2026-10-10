@@ -66,7 +66,7 @@
 #define WASP_MAX_SEGMENTS 4096U
 
 typedef struct wasp_table_s {
-    uint8_t *data;       /**< The whole resource table. */
+    uint8_t *data; /**< The whole resource table. */
     uint32_t length;
     uint32_t shift;
     uint32_t file_entries; /**< Offset of the first "FILE" name info. */
@@ -76,12 +76,12 @@ typedef struct wasp_table_s {
     uint32_t ne_offset;
     uint8_t ne_header[WASP_NE_HEADER];
     int64_t base;
-    int64_t size;        /**< Bytes from the base address to the end. */
+    int64_t size; /**< Bytes from the base address to the end. */
 } wasp_table;
 
 typedef struct wasp_strings_s {
-    uint32_t block;      /**< Loaded block number, 0 when none. */
-    bool present;        /**< The loaded block exists at all. */
+    uint32_t block; /**< Loaded block number, 0 when none. */
+    bool present;   /**< The loaded block exists at all. */
     uint16_t offset[WASP_STRINGS_PER_BLOCK];
     uint8_t length[WASP_STRINGS_PER_BLOCK];
     uint8_t data[WASP_BLOCK_WINDOW];
@@ -104,30 +104,30 @@ typedef struct wasp_list_s {
     size_t index;
 } wasp_list;
 
-static uint32_t wasp_le16(const uint8_t *bytes) {
+static uint32_t wasp_le16(const uint8_t *bytes)
+{
     return (uint32_t)bytes[0] | ((uint32_t)bytes[1] << 8U);
 }
 
-static bool wasp_read_at(xx_io_device *device, int64_t offset, void *buffer,
-                         size_t size) {
+static bool wasp_read_at(xx_io_device *device, int64_t offset, void *buffer, size_t size)
+{
     size_t done = 0U;
-    if (!device || (!buffer && size != 0U) || offset < 0 ||
-        xx_io_seek64(device, offset, SEEK_SET) != 0)
-        return false;
+    if (!device || (!buffer && size != 0U) || offset < 0 || xx_io_seek64(device, offset, SEEK_SET) != 0) return false;
     while (done < size) {
-        ssize_t amount = xx_io_read(device, (uint8_t *)buffer + done,
-                                    size - done);
+        ssize_t amount = xx_io_read(device, (uint8_t *)buffer + done, size - done);
         if (amount <= 0 || (size_t)amount > size - done) return false;
         done += (size_t)amount;
     }
     return true;
 }
 
-static char wasp_upper(char c) {
+static char wasp_upper(char c)
+{
     return (c >= 'a' && c <= 'z') ? (char)(c - 'a' + 'A') : c;
 }
 
-static void wasp_table_free(wasp_table *table) {
+static void wasp_table_free(wasp_table *table)
+{
     if (table && table->data) {
         xx_mem_free(table->data);
         table->data = NULL;
@@ -139,21 +139,20 @@ static void wasp_table_free(wasp_table *table) {
 
 /* True when the length-prefixed type name at @p at spells "FILE" in any
  * case, the way Windows compares resource names. */
-static bool wasp_type_is_file(const wasp_table *table, uint32_t at) {
+static bool wasp_type_is_file(const wasp_table *table, uint32_t at)
+{
     static const char word[] = "FILE";
     uint32_t index;
-    if (at >= table->length || table->data[at] != 4U ||
-        (uint64_t)at + 1U + 4U > table->length)
-        return false;
+    if (at >= table->length || table->data[at] != 4U || (uint64_t)at + 1U + 4U > table->length) return false;
     for (index = 0U; index < 4U; ++index)
-        if (wasp_upper((char)table->data[at + 1U + index]) != word[index])
-            return false;
+        if (wasp_upper((char)table->data[at + 1U + index]) != word[index]) return false;
     return true;
 }
 
 /* MZ header, NE header, then the resource table read whole.  Both bounds
  * of the table are u16 offsets from the NE header, so it is < 64 KiB. */
-static bool wasp_load_table(Abstractformat *format, wasp_table *table) {
+static bool wasp_load_table(Abstractformat *format, wasp_table *table)
+{
     uint8_t mz[WASP_MZ_HEADER];
     int64_t total;
     uint32_t resource_table, resident_names, at;
@@ -164,32 +163,22 @@ static bool wasp_load_table(Abstractformat *format, wasp_table *table) {
     if (total < format->base_address) return false;
     table->base = format->base_address;
     table->size = total - format->base_address;
-    if (table->size < (int64_t)(WASP_MZ_HEADER + WASP_NE_HEADER) ||
-        !wasp_read_at(format->device, table->base, mz, sizeof(mz)) ||
-        mz[0] != 'M' || mz[1] != 'Z')
+    if (table->size < (int64_t)(WASP_MZ_HEADER + WASP_NE_HEADER) || !wasp_read_at(format->device, table->base, mz, sizeof(mz)) || mz[0] != 'M' || mz[1] != 'Z')
         return false;
     table->ne_offset = xx_data_get_u32(mz + 0x3CU, 4, 0, false);
-    if (table->ne_offset < WASP_MZ_HEADER ||
-        (int64_t)table->ne_offset + (int64_t)WASP_NE_HEADER > table->size ||
-        !wasp_read_at(format->device, table->base + table->ne_offset,
-                      table->ne_header, WASP_NE_HEADER) ||
-        table->ne_header[0] != 'N' || table->ne_header[1] != 'E')
+    if (table->ne_offset < WASP_MZ_HEADER || (int64_t)table->ne_offset + (int64_t)WASP_NE_HEADER > table->size ||
+        !wasp_read_at(format->device, table->base + table->ne_offset, table->ne_header, WASP_NE_HEADER) || table->ne_header[0] != 'N' || table->ne_header[1] != 'E')
         return false;
     resource_table = wasp_le16(table->ne_header + 0x24U);
     resident_names = wasp_le16(table->ne_header + 0x26U);
     /* Shift, one type block of a single name info and the terminator. */
-    if (resource_table < WASP_NE_HEADER ||
-        resident_names < resource_table + 2U + WASP_TYPE_INFO +
-                             WASP_NAME_INFO + 2U ||
+    if (resource_table < WASP_NE_HEADER || resident_names < resource_table + 2U + WASP_TYPE_INFO + WASP_NAME_INFO + 2U ||
         (int64_t)table->ne_offset + (int64_t)resident_names > table->size)
         return false;
     table->length = resident_names - resource_table;
     table->data = (uint8_t *)xx_mem_alloc(table->length);
     if (!table->data) return false;
-    if (!wasp_read_at(format->device,
-                      table->base + table->ne_offset + resource_table,
-                      table->data, table->length))
-        goto fail;
+    if (!wasp_read_at(format->device, table->base + table->ne_offset + resource_table, table->data, table->length)) goto fail;
     table->shift = wasp_le16(table->data);
     if (table->shift > WASP_MAX_SHIFT) goto fail;
     /* Every pass moves at least one type info forward. */
@@ -202,21 +191,17 @@ static bool wasp_load_table(Abstractformat *format, wasp_table *table) {
         }
         if ((uint64_t)at + WASP_TYPE_INFO > table->length) goto fail;
         count = wasp_le16(table->data + at + 2U);
-        if ((uint64_t)at + WASP_TYPE_INFO +
-                (uint64_t)count * WASP_NAME_INFO > table->length)
-            goto fail;
+        if ((uint64_t)at + WASP_TYPE_INFO + (uint64_t)count * WASP_NAME_INFO > table->length) goto fail;
         if (type == WASP_RT_STRING && table->string_count == 0U) {
             table->string_entries = at + WASP_TYPE_INFO;
             table->string_count = count;
-        } else if ((type & WASP_INTEGER_ID) == 0U &&
-                   table->file_count == 0U && wasp_type_is_file(table, type)) {
+        } else if ((type & WASP_INTEGER_ID) == 0U && table->file_count == 0U && wasp_type_is_file(table, type)) {
             table->file_entries = at + WASP_TYPE_INFO;
             table->file_count = count;
         }
         at += WASP_TYPE_INFO + count * WASP_NAME_INFO;
     }
-    if (!terminated || table->file_count == 0U || table->string_count == 0U)
-        goto fail;
+    if (!terminated || table->file_count == 0U || table->string_count == 0U) goto fail;
     return true;
 fail:
     wasp_table_free(table);
@@ -225,9 +210,8 @@ fail:
 
 /* The name info of type list (@p entries, @p count) with integer id @p id:
  * its offset and length in bytes from the base address. */
-static bool wasp_find(const wasp_table *table, uint32_t entries,
-                      uint32_t count, uint32_t id, int64_t *offset,
-                      int64_t *length) {
+static bool wasp_find(const wasp_table *table, uint32_t entries, uint32_t count, uint32_t id, int64_t *offset, int64_t *length)
+{
     uint32_t index, want = WASP_INTEGER_ID | id;
     if (id == 0U || id >= WASP_INTEGER_ID) return false;
     for (index = 0U; index < count; ++index) {
@@ -246,8 +230,8 @@ static bool wasp_find(const wasp_table *table, uint32_t entries,
 /* Load block @p block (strings (block - 1) * 16 .. + 15).  A block that is
  * missing, or cut short by the end of the file, leaves the strings it does
  * not hold empty, which is what LoadString reports for them too. */
-static bool wasp_load_block(Abstractformat *format, const wasp_table *table,
-                            wasp_strings *strings, uint32_t block) {
+static bool wasp_load_block(Abstractformat *format, const wasp_table *table, wasp_strings *strings, uint32_t block)
+{
     int64_t offset, length;
     size_t window, position = 0U;
     uint32_t index;
@@ -256,17 +240,10 @@ static bool wasp_load_block(Abstractformat *format, const wasp_table *table,
     xx_mem_zero(strings->length, sizeof(strings->length));
     strings->block = block;
     strings->present = false;
-    if (!wasp_find(table, table->string_entries, table->string_count, block,
-                   &offset, &length) ||
-        offset >= table->size || length <= 0)
-        return false;
-    window = length < (int64_t)WASP_BLOCK_WINDOW ? (size_t)length
-                                                 : WASP_BLOCK_WINDOW;
-    if ((int64_t)window > table->size - offset)
-        window = (size_t)(table->size - offset);
-    if (!wasp_read_at(format->device, table->base + offset, strings->data,
-                      window))
-        return false;
+    if (!wasp_find(table, table->string_entries, table->string_count, block, &offset, &length) || offset >= table->size || length <= 0) return false;
+    window = length < (int64_t)WASP_BLOCK_WINDOW ? (size_t)length : WASP_BLOCK_WINDOW;
+    if ((int64_t)window > table->size - offset) window = (size_t)(table->size - offset);
+    if (!wasp_read_at(format->device, table->base + offset, strings->data, window)) return false;
     for (index = 0U; index < WASP_STRINGS_PER_BLOCK; ++index) {
         size_t size;
         if (position >= window) break;
@@ -282,8 +259,8 @@ static bool wasp_load_block(Abstractformat *format, const wasp_table *table,
 
 /* "<name>,<decimal size>[*]": the size is everything after the last comma.
  * The name keeps printable ASCII; other bytes of 0x80 and up become '_'. */
-static bool wasp_parse_entry(const uint8_t *text, size_t length,
-                             wasp_member *member) {
+static bool wasp_parse_entry(const uint8_t *text, size_t length, wasp_member *member)
+{
     size_t comma = length, index, digits = 0U, name_length;
     uint64_t value = 0U;
     bool meaningful = false;
@@ -309,9 +286,7 @@ static bool wasp_parse_entry(const uint8_t *text, size_t length,
         }
         return false;
     }
-    if (digits == 0U || value > UINT32_MAX ||
-        name_length + 1U > WASP_NAME_CAPACITY)
-        return false;
+    if (digits == 0U || value > UINT32_MAX || name_length + 1U > WASP_NAME_CAPACITY) return false;
     for (index = 0U; index < name_length; ++index) {
         uint8_t c = text[index];
         if (c < 0x20U || c == 0x7FU) return false;
@@ -325,21 +300,15 @@ static bool wasp_parse_entry(const uint8_t *text, size_t length,
 }
 
 /* Member @p id: its string and its FILE resource.  False ends the list. */
-static bool wasp_member_at(Abstractformat *format, const wasp_table *table,
-                           wasp_strings *strings, uint32_t id,
-                           wasp_member *member) {
+static bool wasp_member_at(Abstractformat *format, const wasp_table *table, wasp_strings *strings, uint32_t id, wasp_member *member)
+{
     uint32_t slot = id % WASP_STRINGS_PER_BLOCK;
     int64_t offset, length;
     if (id == 0U || id >= WASP_INTEGER_ID) return false;
     xx_mem_zero(member, sizeof(*member));
-    if (!wasp_load_block(format, table, strings,
-                         id / WASP_STRINGS_PER_BLOCK + 1U) ||
-        strings->length[slot] == 0U ||
-        !wasp_parse_entry(strings->data + strings->offset[slot],
-                          strings->length[slot], member) ||
-        !wasp_find(table, table->file_entries, table->file_count, id, &offset,
-                   &length) ||
-        (int64_t)member->size > length)
+    if (!wasp_load_block(format, table, strings, id / WASP_STRINGS_PER_BLOCK + 1U) || strings->length[slot] == 0U ||
+        !wasp_parse_entry(strings->data + strings->offset[slot], strings->length[slot], member) ||
+        !wasp_find(table, table->file_entries, table->file_count, id, &offset, &length) || (int64_t)member->size > length)
         return false;
     member->id = id;
     member->data_offset = table->base + offset;
@@ -350,7 +319,8 @@ static bool wasp_member_at(Abstractformat *format, const wasp_table *table,
 /* ---------------------------------------------------------------------- */
 /* Member names                                                            */
 
-static uint32_t wasp_hash(const char *name) {
+static uint32_t wasp_hash(const char *name)
+{
     uint32_t hash = 2166136261U;
     for (; *name; ++name) {
         hash ^= (uint8_t)wasp_upper(*name);
@@ -359,18 +329,19 @@ static uint32_t wasp_hash(const char *name) {
     return hash;
 }
 
-static bool wasp_same_name(const char *left, const char *right) {
+static bool wasp_same_name(const char *left, const char *right)
+{
     for (;; ++left, ++right) {
         if (wasp_upper(*left) != wasp_upper(*right)) return false;
         if (!*left) return true;
     }
 }
 
-static bool wasp_stem_is(const char *name, size_t stem, const char *word) {
+static bool wasp_stem_is(const char *name, size_t stem, const char *word)
+{
     size_t index;
     for (index = 0U; index < stem; ++index)
-        if (!word[index] || wasp_upper(name[index]) != word[index])
-            return false;
+        if (!word[index] || wasp_upper(name[index]) != word[index]) return false;
     return word[stem] == 0;
 }
 
@@ -378,57 +349,49 @@ static bool wasp_stem_is(const char *name, size_t stem, const char *word) {
  * separators, drive colons, wildcards or control bytes, not only dots and
  * spaces, no leading or trailing space, no trailing dot, and no device name
  * (CON, NUL, COM1, LPT1.TXT, CONIN$, ...) with or without an extension. */
-static bool wasp_safe_name(const char *name) {
-    static const char *const devices[] = {"CON",    "PRN",     "AUX",
-                                          "NUL",    "CONIN$",  "CONOUT$",
-                                          "CLOCK$"};
+static bool wasp_safe_name(const char *name)
+{
+    static const char *const devices[] = {"CON", "PRN", "AUX", "NUL", "CONIN$", "CONOUT$", "CLOCK$"};
     size_t length, stem = 0U, index;
     bool meaningful = false;
     if (!name || !name[0]) return false;
     length = xx_str_len(name);
     for (index = 0U; index < length; ++index) {
         char c = name[index];
-        if ((unsigned char)c < 0x20U || (unsigned char)c > 0x7EU ||
-            c == '/' || c == '\\' || c == ':' || c == '<' || c == '>' ||
-            c == '"' || c == '|' || c == '?' || c == '*')
+        if ((unsigned char)c < 0x20U || (unsigned char)c > 0x7EU || c == '/' || c == '\\' || c == ':' || c == '<' || c == '>' || c == '"' || c == '|' || c == '?' ||
+            c == '*')
             return false;
         if (c != '.' && c != ' ') meaningful = true;
     }
-    if (!meaningful || name[0] == ' ' || name[length - 1U] == ' ' ||
-        name[length - 1U] == '.')
-        return false;
+    if (!meaningful || name[0] == ' ' || name[length - 1U] == ' ' || name[length - 1U] == '.') return false;
     while (stem < length && name[stem] != '.') ++stem;
     while (stem > 0U && name[stem - 1U] == ' ') --stem;
     for (index = 0U; index < sizeof(devices) / sizeof(devices[0]); ++index)
         if (wasp_stem_is(name, stem, devices[index])) return false;
     if (stem == 4U && name[3] >= '0' && name[3] <= '9' &&
-        ((wasp_upper(name[0]) == 'C' && wasp_upper(name[1]) == 'O' &&
-          wasp_upper(name[2]) == 'M') ||
-         (wasp_upper(name[0]) == 'L' && wasp_upper(name[1]) == 'P' &&
-          wasp_upper(name[2]) == 'T')))
+        ((wasp_upper(name[0]) == 'C' && wasp_upper(name[1]) == 'O' && wasp_upper(name[2]) == 'M') ||
+         (wasp_upper(name[0]) == 'L' && wasp_upper(name[1]) == 'P' && wasp_upper(name[2]) == 'T')))
         return false;
     return true;
 }
 
-static bool wasp_name_taken(const wasp_member *members, size_t count,
-                            const char *name, uint32_t hash) {
+static bool wasp_name_taken(const wasp_member *members, size_t count, const char *name, uint32_t hash)
+{
     size_t index;
     for (index = 0U; index < count; ++index)
-        if (members[index].hash == hash &&
-            wasp_same_name(members[index].name, name))
-            return true;
+        if (members[index].hash == hash && wasp_same_name(members[index].name, name)) return true;
     return false;
 }
 
-static size_t wasp_put_decimal(char *out, uint32_t value) {
+static size_t wasp_put_decimal(char *out, uint32_t value)
+{
     char digits[10];
     size_t count = 0U, index;
     do {
         digits[count++] = (char)('0' + value % 10U);
         value /= 10U;
     } while (value && count < sizeof(digits));
-    for (index = 0U; index < count; ++index)
-        out[index] = digits[count - 1U - index];
+    for (index = 0U; index < count; ++index) out[index] = digits[count - 1U - index];
     return count;
 }
 
@@ -436,7 +399,8 @@ static size_t wasp_put_decimal(char *out, uint32_t value) {
  * case-insensitively): a duplicate becomes "<stem>_<id><.ext>".  A name
  * still taken after that, or one that is unsafe, is listed but never
  * extracted. */
-static void wasp_finish_name(wasp_member *members, size_t index) {
+static void wasp_finish_name(wasp_member *members, size_t index)
+{
     wasp_member *member = &members[index];
     member->hash = wasp_hash(member->name);
     if (wasp_name_taken(members, index, member->name, member->hash)) {
@@ -470,22 +434,19 @@ static void wasp_finish_name(wasp_member *members, size_t index) {
 
 /* Fill @p list (when given) with every member; returns the member count,
  * 0 when the file is not a WASP package. */
-static size_t wasp_collect(Abstractformat *format, const wasp_table *table,
-                           wasp_list *list, uint64_t *total_unpacked,
-                           int32_t *run_index) {
+static size_t wasp_collect(Abstractformat *format, const wasp_table *table, wasp_list *list, uint64_t *total_unpacked, int32_t *run_index)
+{
     wasp_strings *strings;
     wasp_member member;
     size_t count = 0U, capacity;
     uint32_t id;
     if (total_unpacked) *total_unpacked = 0U;
     if (run_index) *run_index = -1;
-    capacity = table->file_count < WASP_MAX_MEMBERS ? table->file_count
-                                                    : WASP_MAX_MEMBERS;
+    capacity = table->file_count < WASP_MAX_MEMBERS ? table->file_count : WASP_MAX_MEMBERS;
     strings = (wasp_strings *)xx_mem_calloc(1U, sizeof(*strings));
     if (!strings) return 0U;
     if (list) {
-        list->members =
-            (wasp_member *)xx_mem_calloc(capacity, sizeof(*list->members));
+        list->members = (wasp_member *)xx_mem_calloc(capacity, sizeof(*list->members));
         if (!list->members) {
             xx_mem_free(strings);
             return 0U;
@@ -494,14 +455,9 @@ static size_t wasp_collect(Abstractformat *format, const wasp_table *table,
     for (id = 1U; count < capacity; ++id) {
         if (!wasp_member_at(format, table, strings, id, &member)) break;
         /* As in the probe: the first member must be complete. */
-        if (id == 1U &&
-            (member.data_offset - table->base > table->size ||
-             (int64_t)member.size >
-                 table->size - (member.data_offset - table->base)))
-            break;
+        if (id == 1U && (member.data_offset - table->base > table->size || (int64_t)member.size > table->size - (member.data_offset - table->base))) break;
         if (total_unpacked) *total_unpacked += member.size;
-        if (run_index && member.run && *run_index < 0)
-            *run_index = (int32_t)count;
+        if (run_index && member.run && *run_index < 0) *run_index = (int32_t)count;
         if (list) {
             list->members[count] = member;
             wasp_finish_name(list->members, count);
@@ -519,14 +475,15 @@ static size_t wasp_collect(Abstractformat *format, const wasp_table *table,
     return count;
 }
 
-static void wasp_extend(int64_t *end, int64_t candidate) {
+static void wasp_extend(int64_t *end, int64_t candidate)
+{
     if (candidate > *end) *end = candidate;
 }
 
 /* The end of the NE image: headers, name and entry tables, segments with
  * their relocation records, and every resource. */
-static int64_t wasp_image_end(Abstractformat *format,
-                              const wasp_table *table) {
+static int64_t wasp_image_end(Abstractformat *format, const wasp_table *table)
+{
     const uint8_t *ne = table->ne_header;
     int64_t end, ne_at = (int64_t)table->ne_offset;
     uint32_t index, type_at = 2U;
@@ -535,13 +492,9 @@ static int64_t wasp_image_end(Abstractformat *format,
     uint32_t segment_shift = wasp_le16(ne + 0x32U);
     end = ne_at + WASP_NE_HEADER;
     wasp_extend(&end, ne_at + (int64_t)wasp_le16(ne + 0x26U));
-    wasp_extend(&end, ne_at + (int64_t)wasp_le16(ne + 0x28U) +
-                          2 * (int64_t)wasp_le16(ne + 0x1EU));
-    wasp_extend(&end, ne_at + (int64_t)wasp_le16(ne + 0x04U) +
-                          (int64_t)wasp_le16(ne + 0x06U));
-    if (wasp_le16(ne + 0x20U) != 0U)
-        wasp_extend(&end, (int64_t)xx_data_get_u32(ne + 0x2CU, 4, 0, false) +
-                              (int64_t)wasp_le16(ne + 0x20U));
+    wasp_extend(&end, ne_at + (int64_t)wasp_le16(ne + 0x28U) + 2 * (int64_t)wasp_le16(ne + 0x1EU));
+    wasp_extend(&end, ne_at + (int64_t)wasp_le16(ne + 0x04U) + (int64_t)wasp_le16(ne + 0x06U));
+    if (wasp_le16(ne + 0x20U) != 0U) wasp_extend(&end, (int64_t)xx_data_get_u32(ne + 0x2CU, 4, 0, false) + (int64_t)wasp_le16(ne + 0x20U));
     if (segment_shift == 0U) segment_shift = 9U;
     if (segments <= WASP_MAX_SEGMENTS && segment_shift <= WASP_MAX_SHIFT) {
         for (index = 0U; index < segments; ++index) {
@@ -549,20 +502,14 @@ static int64_t wasp_image_end(Abstractformat *format,
             uint8_t word[2];
             int64_t start, stop;
             uint32_t sector, length;
-            if (!wasp_read_at(format->device,
-                              table->base + ne_at + segment_table + index * 8U,
-                              entry, sizeof(entry)))
-                break;
+            if (!wasp_read_at(format->device, table->base + ne_at + segment_table + index * 8U, entry, sizeof(entry))) break;
             sector = wasp_le16(entry);
             if (sector == 0U) continue;
             length = wasp_le16(entry + 2U);
             if (length == 0U) length = 0x10000U;
             start = (int64_t)sector << segment_shift;
             stop = start + (int64_t)length;
-            if ((wasp_le16(entry + 4U) & 0x0100U) != 0U &&
-                stop + 2 <= table->size &&
-                wasp_read_at(format->device, table->base + stop, word,
-                             sizeof(word)))
+            if ((wasp_le16(entry + 4U) & 0x0100U) != 0U && stop + 2 <= table->size && wasp_read_at(format->device, table->base + stop, word, sizeof(word)))
                 stop += 2 + 8 * (int64_t)wasp_le16(word);
             wasp_extend(&end, stop);
         }
@@ -575,18 +522,16 @@ static int64_t wasp_image_end(Abstractformat *format,
         if (type == 0U) break;
         count = wasp_le16(table->data + type_at + 2U);
         for (index = 0U; index < count; ++index) {
-            const uint8_t *info = table->data + type_at + WASP_TYPE_INFO +
-                                  index * WASP_NAME_INFO;
-            wasp_extend(&end, ((int64_t)wasp_le16(info) << table->shift) +
-                                  ((int64_t)wasp_le16(info + 2U)
-                                   << table->shift));
+            const uint8_t *info = table->data + type_at + WASP_TYPE_INFO + index * WASP_NAME_INFO;
+            wasp_extend(&end, ((int64_t)wasp_le16(info) << table->shift) + ((int64_t)wasp_le16(info + 2U) << table->shift));
         }
         type_at += WASP_TYPE_INFO + count * WASP_NAME_INFO;
     }
     return end < table->size ? end : table->size;
 }
 
-static bool wasp_probe(Abstractformat *format) {
+static bool wasp_probe(Abstractformat *format)
+{
     wasp_table table;
     wasp_strings *strings;
     wasp_member member;
@@ -594,10 +539,8 @@ static bool wasp_probe(Abstractformat *format) {
     if (!wasp_load_table(format, &table)) return false;
     strings = (wasp_strings *)xx_mem_calloc(1U, sizeof(*strings));
     /* The first member's declared bytes must lie inside the file. */
-    result = strings && wasp_member_at(format, &table, strings, 1U, &member) &&
-             member.data_offset - table.base <= table.size &&
-             (int64_t)member.size <=
-                 table.size - (member.data_offset - table.base);
+    result = strings && wasp_member_at(format, &table, strings, 1U, &member) && member.data_offset - table.base <= table.size &&
+             (int64_t)member.size <= table.size - (member.data_offset - table.base);
     if (strings) xx_mem_free(strings);
     wasp_table_free(&table);
     return result;
@@ -606,25 +549,24 @@ static bool wasp_probe(Abstractformat *format) {
 /* ---------------------------------------------------------------------- */
 /* Records                                                                 */
 
-static void wasp_list_free(void *opaque) {
+static void wasp_list_free(void *opaque)
+{
     wasp_list *list = (wasp_list *)opaque;
     if (!list) return;
     if (list->members) xx_mem_free(list->members);
     xx_mem_free(list);
 }
 
-static bool wasp_copy_options(xx_list_s *destination,
-                              const xx_list_s *source) {
+static bool wasp_copy_options(xx_list_s *destination, const xx_list_s *source)
+{
     size_t index;
     if (!source) return true;
     for (index = 0U; index < source->count; ++index) {
-        const xx_meta *original =
-            (const xx_meta *)xx_list_at((const xx_list_t *)source, index);
+        const xx_meta *original = (const xx_meta *)xx_list_at((const xx_list_t *)source, index);
         xx_meta copy;
         if (!original) continue;
         xx_meta_init(&copy, original->meta_id);
-        if (!xx_var_copy(&copy.var, &original->var) ||
-            !xx_list_append(destination, &copy)) {
+        if (!xx_var_copy(&copy.var, &original->var) || !xx_list_append(destination, &copy)) {
             xx_meta_cleanup(&copy);
             return false;
         }
@@ -632,36 +574,26 @@ static bool wasp_copy_options(xx_list_s *destination,
     return true;
 }
 
-static bool wasp_set_record(xx_archive_record *record,
-                            const wasp_member *member) {
+static bool wasp_set_record(xx_archive_record *record, const wasp_member *member)
+{
     xx_archive_record_cleanup(record);
     xx_archive_record_init(record);
     record->header_offset = member->data_offset;
     record->header_size = 0;
     record->data_offset = member->data_offset;
     record->compressed_size = (int64_t)member->size;
-    if (!xx_archive_record_set_original_name(record, member->name) ||
-        !xx_archive_record_set_meta_u64(record, XX_META_ID_UNCOMPRESSED_SIZE,
-                                        member->size) ||
-        !xx_archive_record_set_meta_u64(record, XX_META_ID_COMPRESSED_SIZE,
-                                        member->size) ||
-        !xx_archive_record_set_meta_u64(record, XX_META_ID_COMPRESSION_METHOD,
-                                        0U) ||
-        !xx_archive_record_set_meta_bool(record, XX_META_ID_IS_ENCRYPTED,
-                                         false) ||
-        !xx_archive_record_set_meta_bool(record, XX_META_ID_IS_FOLDER, false))
+    if (!xx_archive_record_set_original_name(record, member->name) || !xx_archive_record_set_meta_u64(record, XX_META_ID_UNCOMPRESSED_SIZE, member->size) ||
+        !xx_archive_record_set_meta_u64(record, XX_META_ID_COMPRESSED_SIZE, member->size) || !xx_archive_record_set_meta_u64(record, XX_META_ID_COMPRESSION_METHOD, 0U) ||
+        !xx_archive_record_set_meta_bool(record, XX_META_ID_IS_ENCRYPTED, false) || !xx_archive_record_set_meta_bool(record, XX_META_ID_IS_FOLDER, false))
         return false;
-    return !member->run ||
-           xx_archive_record_set_meta_str(record, XX_META_ID_COMMENT,
-                                          "run after extraction");
+    return !member->run || xx_archive_record_set_meta_str(record, XX_META_ID_COMMENT, "run after extraction");
 }
 
 /* ---------------------------------------------------------------------- */
 /* Public API                                                              */
 
-void xx_sfx_wasp_windows_auto_init(xx_sfx_wasp_windows_auto *archive,
-                                   xx_io_device *device,
-                                   int64_t base_address) {
+void xx_sfx_wasp_windows_auto_init(xx_sfx_wasp_windows_auto *archive, xx_io_device *device, int64_t base_address)
+{
     if (!archive) return;
     xx_mem_zero(archive, sizeof(*archive));
     xx_format_init(&archive->format, device, base_address);
@@ -669,54 +601,47 @@ void xx_sfx_wasp_windows_auto_init(xx_sfx_wasp_windows_auto *archive,
     archive->format.file_type = XX_SFX_WASP_WINDOWS_AUTO_FILE_TYPE;
     archive->format.format_type = XX_TYPE_ARCHIVE;
     archive->format.is_archive = true;
-    xx_format_set_mime_type(&archive->format,
-                            "application/x-wasp-setup-package");
+    xx_format_set_mime_type(&archive->format, "application/x-wasp-setup-package");
     xx_format_set_extension(&archive->format, "exe");
     archive->format.check_is_valid = xx_sfx_wasp_windows_auto_check_is_valid;
-    archive->format.handle_base_info =
-        xx_sfx_wasp_windows_auto_handle_base_info;
+    archive->format.handle_base_info = xx_sfx_wasp_windows_auto_handle_base_info;
     archive->format.get_format_size = xx_sfx_wasp_windows_auto_get_format_size;
-    archive->format.get_number_of_archive_records =
-        xx_sfx_wasp_windows_auto_get_number_of_archive_records;
-    archive->format.create_archive_records_reading =
-        xx_sfx_wasp_windows_auto_create_archive_records_reading;
-    archive->format.get_current_archive_record =
-        xx_sfx_wasp_windows_auto_get_current_archive_record;
-    archive->format.unpack_current_archive_record =
-        xx_sfx_wasp_windows_auto_unpack_current_archive_record;
-    archive->format.archive_record_move_to_next =
-        xx_sfx_wasp_windows_auto_archive_record_move_to_next;
-    archive->format.free_archive_records_reading =
-        xx_sfx_wasp_windows_auto_free_archive_records_reading;
+    archive->format.get_number_of_archive_records = xx_sfx_wasp_windows_auto_get_number_of_archive_records;
+    archive->format.create_archive_records_reading = xx_sfx_wasp_windows_auto_create_archive_records_reading;
+    archive->format.get_current_archive_record = xx_sfx_wasp_windows_auto_get_current_archive_record;
+    archive->format.unpack_current_archive_record = xx_sfx_wasp_windows_auto_unpack_current_archive_record;
+    archive->format.archive_record_move_to_next = xx_sfx_wasp_windows_auto_archive_record_move_to_next;
+    archive->format.free_archive_records_reading = xx_sfx_wasp_windows_auto_free_archive_records_reading;
     archive->run_index = -1;
 }
 
-xx_sfx_wasp_windows_auto *xx_sfx_wasp_windows_auto_create(
-    xx_io_device *device, int64_t base_address) {
-    xx_sfx_wasp_windows_auto *archive =
-        (xx_sfx_wasp_windows_auto *)xx_mem_alloc(sizeof(*archive));
+xx_sfx_wasp_windows_auto *xx_sfx_wasp_windows_auto_create(xx_io_device *device, int64_t base_address)
+{
+    xx_sfx_wasp_windows_auto *archive = (xx_sfx_wasp_windows_auto *)xx_mem_alloc(sizeof(*archive));
     if (archive) xx_sfx_wasp_windows_auto_init(archive, device, base_address);
     return archive;
 }
 
-void xx_sfx_wasp_windows_auto_destroy(xx_sfx_wasp_windows_auto *archive) {
+void xx_sfx_wasp_windows_auto_destroy(xx_sfx_wasp_windows_auto *archive)
+{
     if (archive) xx_format_cleanup_extra_parameters(&archive->format);
 }
 
-void xx_sfx_wasp_windows_auto_free(xx_sfx_wasp_windows_auto *archive) {
+void xx_sfx_wasp_windows_auto_free(xx_sfx_wasp_windows_auto *archive)
+{
     if (!archive) return;
     xx_sfx_wasp_windows_auto_destroy(archive);
     xx_mem_free(archive);
 }
 
-bool xx_sfx_wasp_windows_auto_check_is_valid(Abstractformat *format,
-                                             xx_pd_struct *pd) {
+bool xx_sfx_wasp_windows_auto_check_is_valid(Abstractformat *format, xx_pd_struct *pd)
+{
     (void)pd;
     return wasp_probe(format);
 }
 
-bool xx_sfx_wasp_windows_auto_handle_base_info(Abstractformat *format,
-                                               xx_pd_struct *pd) {
+bool xx_sfx_wasp_windows_auto_handle_base_info(Abstractformat *format, xx_pd_struct *pd)
+{
     xx_sfx_wasp_windows_auto *archive;
     wasp_table table;
     uint64_t total_unpacked = 0U;
@@ -744,24 +669,18 @@ bool xx_sfx_wasp_windows_auto_handle_base_info(Abstractformat *format,
     return true;
 }
 
-int64_t xx_sfx_wasp_windows_auto_get_format_size(Abstractformat *format,
-                                                 xx_pd_struct *pd) {
-    return format && (format->base_info_handled ||
-                      xx_sfx_wasp_windows_auto_handle_base_info(format, pd))
-               ? format->format_size : -1;
+int64_t xx_sfx_wasp_windows_auto_get_format_size(Abstractformat *format, xx_pd_struct *pd)
+{
+    return format && (format->base_info_handled || xx_sfx_wasp_windows_auto_handle_base_info(format, pd)) ? format->format_size : -1;
 }
 
-uint64_t xx_sfx_wasp_windows_auto_get_number_of_archive_records(
-    Abstractformat *format, xx_pd_struct *pd) {
-    return format && (format->base_info_handled ||
-                      xx_sfx_wasp_windows_auto_handle_base_info(format, pd))
-               ? ((xx_sfx_wasp_windows_auto *)format)->number_of_records
-               : 0U;
+uint64_t xx_sfx_wasp_windows_auto_get_number_of_archive_records(Abstractformat *format, xx_pd_struct *pd)
+{
+    return format && (format->base_info_handled || xx_sfx_wasp_windows_auto_handle_base_info(format, pd)) ? ((xx_sfx_wasp_windows_auto *)format)->number_of_records : 0U;
 }
 
-xx_archive_record_state *
-xx_sfx_wasp_windows_auto_create_archive_records_reading(
-    Abstractformat *format, const xx_list_s *options, xx_pd_struct *pd) {
+xx_archive_record_state *xx_sfx_wasp_windows_auto_create_archive_records_reading(Abstractformat *format, const xx_list_s *options, xx_pd_struct *pd)
+{
     wasp_table table;
     wasp_list *list;
     xx_archive_record_state *state;
@@ -787,8 +706,7 @@ xx_sfx_wasp_windows_auto_create_archive_records_reading(
     state->internal_state = list;
     state->free_internal = wasp_list_free;
     state->total_records = list->count;
-    if (!wasp_copy_options(&state->options, options) ||
-        !wasp_set_record(&state->current_record, &list->members[0])) {
+    if (!wasp_copy_options(&state->options, options) || !wasp_set_record(&state->current_record, &list->members[0])) {
         xx_archive_record_state_free(state);
         return NULL;
     }
@@ -796,26 +714,21 @@ xx_sfx_wasp_windows_auto_create_archive_records_reading(
     return state;
 }
 
-const xx_archive_record *xx_sfx_wasp_windows_auto_get_current_archive_record(
-    Abstractformat *format, xx_archive_record_state *state) {
-    return format && state && state->format == format && state->has_record
-               ? &state->current_record : NULL;
+const xx_archive_record *xx_sfx_wasp_windows_auto_get_current_archive_record(Abstractformat *format, xx_archive_record_state *state)
+{
+    return format && state && state->format == format && state->has_record ? &state->current_record : NULL;
 }
 
-bool xx_sfx_wasp_windows_auto_archive_record_move_to_next(
-    Abstractformat *format, xx_archive_record_state *state,
-    xx_pd_struct *pd) {
+bool xx_sfx_wasp_windows_auto_archive_record_move_to_next(Abstractformat *format, xx_archive_record_state *state, xx_pd_struct *pd)
+{
     wasp_list *list;
     (void)pd;
-    if (!format || !state || state->format != format ||
-        !(list = (wasp_list *)state->internal_state) ||
-        list->index + 1U >= list->count) {
+    if (!format || !state || state->format != format || !(list = (wasp_list *)state->internal_state) || list->index + 1U >= list->count) {
         if (state) state->has_record = false;
         return false;
     }
     ++list->index;
-    if (!wasp_set_record(&state->current_record,
-                         &list->members[list->index])) {
+    if (!wasp_set_record(&state->current_record, &list->members[list->index])) {
         state->has_record = false;
         return false;
     }
@@ -823,9 +736,8 @@ bool xx_sfx_wasp_windows_auto_archive_record_move_to_next(
     return true;
 }
 
-bool xx_sfx_wasp_windows_auto_unpack_current_archive_record(
-    Abstractformat *format, xx_archive_record_state *state,
-    xx_pd_struct *pd) {
+bool xx_sfx_wasp_windows_auto_unpack_current_archive_record(Abstractformat *format, xx_archive_record_state *state, xx_pd_struct *pd)
+{
     wasp_list *list;
     const wasp_member *member;
     const xx_var *option;
@@ -836,32 +748,23 @@ bool xx_sfx_wasp_windows_auto_unpack_current_archive_record(
     size_t base_length;
     int64_t size;
     bool overwrite, result, created = false;
-    if (!format || !format->device || !state || state->format != format ||
-        !state->has_record ||
-        !(list = (wasp_list *)state->internal_state) ||
+    if (!format || !format->device || !state || state->format != format || !state->has_record || !(list = (wasp_list *)state->internal_state) ||
         list->index >= list->count || (pd && xx_pd_is_stopped(pd)))
         return false;
     member = &list->members[list->index];
     size = xx_io_total_size(format->device);
     /* The declared bytes must all be present. */
-    if (member->data_offset < 0 || size < member->data_offset ||
-        size - member->data_offset < (int64_t)member->size)
-        return false;
-    option = xx_format_resolve_extra_parameter(format, &state->options,
-                                               XX_META_ID_OPT_MAX_MEMBER_SIZE);
-    if (option && (uint64_t)member->size > xx_var_get_u64(option))
-        return false;
-    option = xx_format_resolve_extra_parameter(format, &state->options,
-                                               XX_META_ID_OPT_UNPACK_PATH);
+    if (member->data_offset < 0 || size < member->data_offset || size - member->data_offset < (int64_t)member->size) return false;
+    option = xx_format_resolve_extra_parameter(format, &state->options, XX_META_ID_OPT_MAX_MEMBER_SIZE);
+    if (option && (uint64_t)member->size > xx_var_get_u64(option)) return false;
+    option = xx_format_resolve_extra_parameter(format, &state->options, XX_META_ID_OPT_UNPACK_PATH);
     /* No destination: the member is complete, which is all there is to
      * check for stored data. */
     if (!option) return true;
     if (!member->extractable) return false;
-    if (option->type == XX_VAR_TYPE_STRING ||
-        option->type == XX_VAR_TYPE_STRING_VIEW) {
+    if (option->type == XX_VAR_TYPE_STRING || option->type == XX_VAR_TYPE_STRING_VIEW) {
         base = xx_var_get_str(option);
-    } else if (option->type == XX_VAR_TYPE_WSTRING ||
-               option->type == XX_VAR_TYPE_WSTRING_VIEW) {
+    } else if (option->type == XX_VAR_TYPE_WSTRING || option->type == XX_VAR_TYPE_WSTRING_VIEW) {
         owned_base = xx_str_unicode_to_utf8(xx_var_get_wstr(option));
         base = owned_base;
     }
@@ -870,18 +773,15 @@ bool xx_sfx_wasp_windows_auto_unpack_current_archive_record(
         return false;
     }
     base_length = xx_str_len(base);
-    path = (base_length != 0U && base[base_length - 1U] != '/' &&
-            base[base_length - 1U] != '\\')
-               ? xx_str_concat3(base, "/", member->name)
-               : xx_str_concat(base, member->name);
+    path = (base_length != 0U && base[base_length - 1U] != '/' && base[base_length - 1U] != '\\') ? xx_str_concat3(base, "/", member->name)
+                                                                                                  : xx_str_concat(base, member->name);
     if (owned_base) xx_str_free(owned_base);
     if (!path) return false;
     if (!xx_store_create_dirs_a(path, false)) {
         xx_str_free(path);
         return false;
     }
-    option = xx_format_resolve_extra_parameter(format, &state->options,
-                                               XX_META_ID_OPT_OVERWRITE);
+    option = xx_format_resolve_extra_parameter(format, &state->options, XX_META_ID_OPT_OVERWRITE);
     overwrite = option && xx_var_get_bool(option);
     /* Without the overwrite option an existing file is never replaced. */
     output = xx_io_file_open(path, overwrite ? "wb" : "wbx");
@@ -891,16 +791,15 @@ bool xx_sfx_wasp_windows_auto_unpack_current_archive_record(
     }
     /* Only a file this call opened is ever deleted again. */
     created = true;
-    result = xx_store_unpack_device(format->device, member->data_offset,
-                                    (int64_t)member->size, output, pd);
+    result = xx_store_unpack_device(format->device, member->data_offset, (int64_t)member->size, output, pd);
     if (xx_io_close(output) != 0) result = false;
     if (!result && created) xx_rt_remove(path);
     xx_str_free(path);
     return result;
 }
 
-void xx_sfx_wasp_windows_auto_free_archive_records_reading(
-    Abstractformat *format, xx_archive_record_state *state) {
+void xx_sfx_wasp_windows_auto_free_archive_records_reading(Abstractformat *format, xx_archive_record_state *state)
+{
     (void)format;
     xx_archive_record_state_free(state);
 }

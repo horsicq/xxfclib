@@ -7,31 +7,68 @@
 #include "../xx_payload_members.h"
 #include "xxfclib/data/xx_data.h"
 
-static bool pm_parse(Abstractformat *f,pm_stream *s,xx_pd_struct *pd) {
-    uint8_t h[24],record[16]; bool be,nano; uint32_t magic,snap; int64_t at=24,left=pm_available(f);
-    if(!pm_read(f,0,h,24)) return false;
-    magic=xx_data_get_u32(h, 4, 0, true); be=magic==0xa1b2c3d4U || magic==0xa1b23c4dU;
-    nano=magic==0xa1b23c4dU || magic==0x4d3cb2a1U;
-    if(!be && magic!=0xd4c3b2a1U && magic!=0x4d3cb2a1U) return false;
-    if((be?xx_data_get_u16(h+4, 2, 0, true):xx_data_get_u16(h+4, 2, 0, false))!=2 || (be?xx_data_get_u16(h+6, 2, 0, true):xx_data_get_u16(h+6, 2, 0, false))!=4) return false;
-    snap=be?xx_data_get_u32(h+16, 4, 0, true):xx_data_get_u32(h+16, 4, 0, false); if(!snap) return false;
-    if((be?xx_data_get_u32(h+20, 4, 0, true):xx_data_get_u32(h+20, 4, 0, false))&0x0bff0000U) return false;
-    while(at<left) {
-        uint32_t cap,original,fraction; char name[48];
-        if((pd && xx_pd_is_stopped(pd)) || !pm_read(f,at,record,16)) return false;
-        fraction=be?xx_data_get_u32(record+4, 4, 0, true):xx_data_get_u32(record+4, 4, 0, false);
-        cap=be?xx_data_get_u32(record+8, 4, 0, true):xx_data_get_u32(record+8, 4, 0, false); original=be?xx_data_get_u32(record+12, 4, 0, true):xx_data_get_u32(record+12, 4, 0, false);
-        if(fraction>=(nano?1000000000U:1000000U) || cap>snap || cap>original || cap>(uint64_t)(left-at-16)) return false;
-        xx_rt_snprintf(name,sizeof(name),"packet-%u.bin",(unsigned)s->count);
-        if(!pm_add(f,s,name,at+16,cap)) return false;
-        at+=16+(int64_t)cap;
+static bool pm_parse(Abstractformat *f, pm_stream *s, xx_pd_struct *pd)
+{
+    uint8_t h[24], record[16];
+    bool be, nano;
+    uint32_t magic, snap;
+    int64_t at = 24, left = pm_available(f);
+    if (!pm_read(f, 0, h, 24)) return false;
+    magic = xx_data_get_u32(h, 4, 0, true);
+    be = magic == 0xa1b2c3d4U || magic == 0xa1b23c4dU;
+    nano = magic == 0xa1b23c4dU || magic == 0x4d3cb2a1U;
+    if (!be && magic != 0xd4c3b2a1U && magic != 0x4d3cb2a1U) return false;
+    if ((be ? xx_data_get_u16(h + 4, 2, 0, true) : xx_data_get_u16(h + 4, 2, 0, false)) != 2 ||
+        (be ? xx_data_get_u16(h + 6, 2, 0, true) : xx_data_get_u16(h + 6, 2, 0, false)) != 4)
+        return false;
+    snap = be ? xx_data_get_u32(h + 16, 4, 0, true) : xx_data_get_u32(h + 16, 4, 0, false);
+    if (!snap) return false;
+    if ((be ? xx_data_get_u32(h + 20, 4, 0, true) : xx_data_get_u32(h + 20, 4, 0, false)) & 0x0bff0000U) return false;
+    while (at < left) {
+        uint32_t cap, original, fraction;
+        char name[48];
+        if ((pd && xx_pd_is_stopped(pd)) || !pm_read(f, at, record, 16)) return false;
+        fraction = be ? xx_data_get_u32(record + 4, 4, 0, true) : xx_data_get_u32(record + 4, 4, 0, false);
+        cap = be ? xx_data_get_u32(record + 8, 4, 0, true) : xx_data_get_u32(record + 8, 4, 0, false);
+        original = be ? xx_data_get_u32(record + 12, 4, 0, true) : xx_data_get_u32(record + 12, 4, 0, false);
+        if (fraction >= (nano ? 1000000000U : 1000000U) || cap > snap || cap > original || cap > (uint64_t)(left - at - 16)) return false;
+        xx_rt_snprintf(name, sizeof(name), "packet-%u.bin", (unsigned)s->count);
+        if (!pm_add(f, s, name, at + 16, cap)) return false;
+        at += 16 + (int64_t)cap;
     }
-    s->size=at; return s->count!=0;
+    s->size = at;
+    return s->count != 0;
 }
 
-void xx_pcap_init(xx_pcap *r,xx_io_device *d,int64_t b) { if(r) { xx_mem_zero(r,sizeof(*r)); pm_init(&r->format,d,b,XX_FILE_TYPE_PCAP,"pcap"); } }
-xx_pcap *xx_pcap_create(xx_io_device *d,int64_t b) { xx_pcap *r=(xx_pcap *)xx_mem_alloc(sizeof(*r)); if(r) xx_pcap_init(r,d,b); return r; }
-void xx_pcap_destroy(xx_pcap *r) { if(r) xx_format_cleanup_extra_parameters(&r->format); }
-void xx_pcap_free(xx_pcap *r) { if(r) { xx_pcap_destroy(r); xx_mem_free(r); } }
-bool xx_pcap_check_is_valid(Abstractformat *f,xx_pd_struct *pd) { return pm_valid(f,pd); }
-bool xx_pcap_handle_base_info(Abstractformat *f,xx_pd_struct *pd) { return pm_handle(f,pd); }
+void xx_pcap_init(xx_pcap *r, xx_io_device *d, int64_t b)
+{
+    if (r) {
+        xx_mem_zero(r, sizeof(*r));
+        pm_init(&r->format, d, b, XX_FILE_TYPE_PCAP, "pcap");
+    }
+}
+xx_pcap *xx_pcap_create(xx_io_device *d, int64_t b)
+{
+    xx_pcap *r = (xx_pcap *)xx_mem_alloc(sizeof(*r));
+    if (r) xx_pcap_init(r, d, b);
+    return r;
+}
+void xx_pcap_destroy(xx_pcap *r)
+{
+    if (r) xx_format_cleanup_extra_parameters(&r->format);
+}
+void xx_pcap_free(xx_pcap *r)
+{
+    if (r) {
+        xx_pcap_destroy(r);
+        xx_mem_free(r);
+    }
+}
+bool xx_pcap_check_is_valid(Abstractformat *f, xx_pd_struct *pd)
+{
+    return pm_valid(f, pd);
+}
+bool xx_pcap_handle_base_info(Abstractformat *f, xx_pd_struct *pd)
+{
+    return pm_handle(f, pd);
+}

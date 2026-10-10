@@ -49,8 +49,8 @@ extern "C" {
 typedef struct xx_installshield_multiplatform {
     Abstractformat format;
     uint64_t number_of_records;
-    int64_t index_offset;  /**< From the base address; -1 until parsed. */
-    int64_t index_size;    /**< Index start to end of file, footer included. */
+    int64_t index_offset; /**< From the base address; -1 until parsed. */
+    int64_t index_size;   /**< Index start to end of file, footer included. */
 } xx_installshield_multiplatform;
 
 typedef xx_installshield_multiplatform xx_installshield_multiplatform_t;
@@ -63,37 +63,21 @@ typedef xx_installshield_multiplatform xx_installshield_multiplatform_t;
  * device cursor. The full reader still validates the index and members. */
 XXFC_API bool xx_installshield_multiplatform_has_footer(xx_io_device *device);
 
-XXFC_API void xx_installshield_multiplatform_init(
-    xx_installshield_multiplatform *archive, xx_io_device *device,
-    int64_t base_address);
-XXFC_API xx_installshield_multiplatform *xx_installshield_multiplatform_create(
-    xx_io_device *device, int64_t base_address);
-XXFC_API void xx_installshield_multiplatform_destroy(
-    xx_installshield_multiplatform *archive);
-XXFC_API void xx_installshield_multiplatform_free(
-    xx_installshield_multiplatform *archive);
+XXFC_API void xx_installshield_multiplatform_init(xx_installshield_multiplatform *archive, xx_io_device *device, int64_t base_address);
+XXFC_API xx_installshield_multiplatform *xx_installshield_multiplatform_create(xx_io_device *device, int64_t base_address);
+XXFC_API void xx_installshield_multiplatform_destroy(xx_installshield_multiplatform *archive);
+XXFC_API void xx_installshield_multiplatform_free(xx_installshield_multiplatform *archive);
 
-XXFC_API bool xx_installshield_multiplatform_check_is_valid(
-    Abstractformat *self, xx_pd_struct *pd);
-XXFC_API bool xx_installshield_multiplatform_handle_base_info(
-    Abstractformat *self, xx_pd_struct *pd);
-XXFC_API int64_t xx_installshield_multiplatform_get_format_size(
-    Abstractformat *self, xx_pd_struct *pd);
-XXFC_API uint64_t xx_installshield_multiplatform_get_number_of_archive_records(
-    Abstractformat *self, xx_pd_struct *pd);
+XXFC_API bool xx_installshield_multiplatform_check_is_valid(Abstractformat *self, xx_pd_struct *pd);
+XXFC_API bool xx_installshield_multiplatform_handle_base_info(Abstractformat *self, xx_pd_struct *pd);
+XXFC_API int64_t xx_installshield_multiplatform_get_format_size(Abstractformat *self, xx_pd_struct *pd);
+XXFC_API uint64_t xx_installshield_multiplatform_get_number_of_archive_records(Abstractformat *self, xx_pd_struct *pd);
 
-XXFC_API xx_archive_record_state *
-xx_installshield_multiplatform_create_archive_records_reading(
-    Abstractformat *self, const xx_list_s *options, xx_pd_struct *pd);
-XXFC_API const xx_archive_record *
-xx_installshield_multiplatform_get_current_archive_record(
-    Abstractformat *self, xx_archive_record_state *state);
-XXFC_API bool xx_installshield_multiplatform_unpack_current_archive_record(
-    Abstractformat *self, xx_archive_record_state *state, xx_pd_struct *pd);
-XXFC_API bool xx_installshield_multiplatform_archive_record_move_to_next(
-    Abstractformat *self, xx_archive_record_state *state, xx_pd_struct *pd);
-XXFC_API void xx_installshield_multiplatform_free_archive_records_reading(
-    Abstractformat *self, xx_archive_record_state *state);
+XXFC_API xx_archive_record_state *xx_installshield_multiplatform_create_archive_records_reading(Abstractformat *self, const xx_list_s *options, xx_pd_struct *pd);
+XXFC_API const xx_archive_record *xx_installshield_multiplatform_get_current_archive_record(Abstractformat *self, xx_archive_record_state *state);
+XXFC_API bool xx_installshield_multiplatform_unpack_current_archive_record(Abstractformat *self, xx_archive_record_state *state, xx_pd_struct *pd);
+XXFC_API bool xx_installshield_multiplatform_archive_record_move_to_next(Abstractformat *self, xx_archive_record_state *state, xx_pd_struct *pd);
+XXFC_API void xx_installshield_multiplatform_free_archive_records_reading(Abstractformat *self, xx_archive_record_state *state);
 
 #ifdef __cplusplus
 }

@@ -66,11 +66,11 @@ typedef struct Abstractdetector AbstractDetector;
 
 /** Detection and classification callbacks for one format. */
 struct Abstractdetector {
-  /** Check the format's fast signature at an absolute device offset. */
-  bool (*fast_detect)(xx_io_device *device, int64_t base_address, bool is_mapped);
-  /** Return the fixed type without I/O, or classify a multi-type format.
-   * Returns UNKNOWN when classification fails; preserves the device cursor. */
-  xx_file_type_t (*file_type)(xx_io_device *device, int64_t base_address, bool is_mapped);
+    /** Check the format's fast signature at an absolute device offset. */
+    bool (*fast_detect)(xx_io_device *device, int64_t base_address, bool is_mapped);
+    /** Return the fixed type without I/O, or classify a multi-type format.
+     * Returns UNKNOWN when classification fails; preserves the device cursor. */
+    xx_file_type_t (*file_type)(xx_io_device *device, int64_t base_address, bool is_mapped);
 };
 
 typedef struct Abstractextractor Abstractextractor;
@@ -87,48 +87,45 @@ struct xx_format_search_info;
  * result valid until next/free, and free releases the search state.
  */
 struct Abstractextractor {
-  /**
-   * Fast format-detection callback.
-   * @param device Associated I/O device.
-   * @param base_address Absolute device offset at which the format starts.
-   * @param is_mapped True for a memory-mapped dump.
-   * @return True if the format's fast signature check matches at base_address.
-   */
-  bool (*fast_detect)(xx_io_device *device, int64_t base_address, bool is_mapped);
+    /**
+     * Fast format-detection callback.
+     * @param device Associated I/O device.
+     * @param base_address Absolute device offset at which the format starts.
+     * @param is_mapped True for a memory-mapped dump.
+     * @return True if the format's fast signature check matches at base_address.
+     */
+    bool (*fast_detect)(xx_io_device *device, int64_t base_address, bool is_mapped);
 
-  /**
-   * Format-size callback, using the same device, offset, and mapping inputs.
-   * @return Size in bytes, or -1 when it cannot be determined.
-   */
-  int64_t (*size)(xx_io_device *device, int64_t base_address, bool is_mapped);
+    /**
+     * Format-size callback, using the same device, offset, and mapping inputs.
+     * @return Size in bytes, or -1 when it cannot be determined.
+     */
+    int64_t (*size)(xx_io_device *device, int64_t base_address, bool is_mapped);
 
-  /** Start a streaming search, positioned on its first result. */
-  struct xx_format_search_state *(*create_format_search)(Abstractextractor *self, xx_io_device *device,
-                                                         const xx_list_s *options, xx_pd_struct *pd);
-  /** Borrow the current search result until the next or free call. */
-  const struct xx_format_search_info *(*get_current_format_info)(Abstractextractor *self,
-                                                                 struct xx_format_search_state *state);
-  /** Advance to the next search result. */
-  bool (*format_search_find_next)(Abstractextractor *self, struct xx_format_search_state *state,
-                                  xx_pd_struct *pd);
-  /** Release a streaming search state. */
-  void (*free_format_search)(Abstractextractor *self, struct xx_format_search_state *state);
+    /** Start a streaming search, positioned on its first result. */
+    struct xx_format_search_state *(*create_format_search)(Abstractextractor *self, xx_io_device *device, const xx_list_s *options, xx_pd_struct *pd);
+    /** Borrow the current search result until the next or free call. */
+    const struct xx_format_search_info *(*get_current_format_info)(Abstractextractor *self, struct xx_format_search_state *state);
+    /** Advance to the next search result. */
+    bool (*format_search_find_next)(Abstractextractor *self, struct xx_format_search_state *state, xx_pd_struct *pd);
+    /** Release a streaming search state. */
+    void (*free_format_search)(Abstractextractor *self, struct xx_format_search_state *state);
 
-  /**
-   * Return the format's file type at an absolute device offset.
-   * Single-type formats return their type without inspecting the device.
-   * Formats with multiple types inspect the input and return UNKNOWN when
-   * no supported type matches. The device cursor is preserved.
-   */
-  xx_file_type_t (*file_type)(xx_io_device *device, int64_t base_address, bool is_mapped);
+    /**
+     * Return the format's file type at an absolute device offset.
+     * Single-type formats return their type without inspecting the device.
+     * Formats with multiple types inspect the input and return UNKNOWN when
+     * no supported type matches. The device cursor is preserved.
+     */
+    xx_file_type_t (*file_type)(xx_io_device *device, int64_t base_address, bool is_mapped);
 
-  /** Read the format version at an absolute device offset.
-   * Returns an owned UTF-8 string; release it with xx_str_free(). A valid
-   * format without version metadata returns an allocated empty string.
-   * Returns NULL on invalid input, parse/allocation failure, or failure to
-   * restore the device cursor. The returned string outlives this call and
-   * later extractor calls. */
-  char *(*get_version)(xx_io_device *device, int64_t base_address, bool is_mapped);
+    /** Read the format version at an absolute device offset.
+     * Returns an owned UTF-8 string; release it with xx_str_free(). A valid
+     * format without version metadata returns an allocated empty string.
+     * Returns NULL on invalid input, parse/allocation failure, or failure to
+     * restore the device cursor. The returned string outlives this call and
+     * later extractor calls. */
+    char *(*get_version)(xx_io_device *device, int64_t base_address, bool is_mapped);
 };
 
 /** Return the detection, size, version, and streaming callbacks for a file type.
@@ -144,8 +141,7 @@ XXFC_API size_t xx_abstract_extractor_count(void);
  * @param index Zero-based index below xx_abstract_extractor_count().
  * @param type Receives the file type; may be NULL.
  * @return The extractor, or NULL when index is out of range. */
-XXFC_API Abstractextractor *xx_abstract_extractor_at(size_t index,
-                                                     xx_file_type_t *type);
+XXFC_API Abstractextractor *xx_abstract_extractor_at(size_t index, xx_file_type_t *type);
 
 /** Return a format's detection callbacks, or NULL for an unsupported type.
  * File-type aliases share the same detector. */
@@ -157,16 +153,15 @@ XXFC_API size_t xx_abstract_detector_count(void);
 /** Enumerate detectors in the same order as xx_abstract_extractor_at().
  * @param type Receives the file type; may be NULL.
  * @return The detector, or NULL when index is out of range. */
-XXFC_API Abstractdetector *xx_abstract_detector_at(size_t index,
-                                                 xx_file_type_t *type);
+XXFC_API Abstractdetector *xx_abstract_detector_at(size_t index, xx_file_type_t *type);
 
 #include "xxfclib/formats/xx_format_reader_only_abstract_extractor_decls.inc"
 
 /* Forward declaration and types for archive record & metadata */
 /** Display label paired with a typed value. Ownership is defined by the consumer. */
 typedef struct xx_meta_string {
-  xx_str_w_s *meta_string;
-  xx_var var;
+    xx_str_w_s *meta_string;
+    xx_var var;
 } xx_meta_string;
 
 typedef struct xx_meta xx_meta;
@@ -217,71 +212,71 @@ typedef struct xx_data_struct_field_desc XFieldDesc;
  * @brief Metadata identifier tags for archive records (including ZIP records and options).
  */
 typedef enum xx_meta_id_e {
-  XX_META_ID_UNKNOWN = 0,                 /**< 0 -> Unknown / unassigned */
-  XX_META_ID_ORIGINAL_NAME,               /**< Original name (Unicode dynamic string: wchar_t* or UTF-8) */
-  XX_META_ID_UNCOMPRESSED_SIZE,           /**< Uncompressed file size in bytes (uint64_t) */
-  XX_META_ID_COMPRESSED_SIZE,             /**< Compressed data size in bytes (uint64_t) */
-  XX_META_ID_CRC32,                       /**< CRC32 checksum (uint32_t) */
-  XX_META_ID_COMPRESSION_METHOD,          /**< Compression method ID (uint16_t/uint32_t) */
-  XX_META_ID_ATTRIBUTES,                  /**< General / external file attributes (uint32_t) */
-  XX_META_ID_TIMESTAMP,                   /**< Modification timestamp (uint64_t) */
-  XX_META_ID_LAST_MOD_TIME,               /**< DOS last mod file time (uint16_t) */
-  XX_META_ID_LAST_MOD_DATE,               /**< DOS last mod file date (uint16_t) */
-  XX_META_ID_IS_FOLDER,                   /**< Folder / directory flag (bool) */
-  XX_META_ID_IS_ENCRYPTED,                /**< Encryption flag (bool) */
-  XX_META_ID_COMMENT,                     /**< Entry comment (Unicode/string dynamic) */
-  XX_META_ID_EXTRA_FIELD,                 /**< Raw extra field bytes (dynamic bytes) */
-  XX_META_ID_VERSION_NEEDED,              /**< ZIP version needed to extract (uint16_t) */
-  XX_META_ID_VERSION_MADE_BY,             /**< ZIP version made by / host system (uint16_t) */
-  XX_META_ID_FLAGS,                       /**< General purpose bit flags (uint16_t) */
-  XX_META_ID_INTERNAL_ATTRS,              /**< Internal file attributes (uint16_t) */
-  XX_META_ID_EXTERNAL_ATTRS,              /**< External file attributes (uint32_t) */
-  XX_META_ID_DISK_NUMBER_START,           /**< Disk number where file begins (uint32_t) */
-  XX_META_ID_RELATIVE_OFFSET_LOCAL_HEADER, /**< Relative offset of local header (int64_t) */
-  /* Options for archive reading / unpacking / packing */
-  XX_META_ID_OPT_UNPACK_PATH,             /**< Target directory path for unpacking (Unicode/string dynamic) */
-  XX_META_ID_OPT_PASSWORD,                /**< Format-wide or operation password (Unicode/string/bytes dynamic) */
-  XX_META_ID_OPT_OVERWRITE,               /**< Overwrite existing files on unpack (bool) */
-  XX_META_ID_COMPRESSION_LEVEL,            /**< Format-specific level (typically 0-9; WIM 0/default..100) */
-  XX_META_ID_ENCRYPTION_METHOD,            /**< Encryption method selector (format-specific integer) */
-  XX_META_ID_OPT_MAX_MEMBER_SIZE,          /**< Maximum declared unpacked member size in bytes; absent is unlimited (uint64_t) */
-  XX_META_ID_OPT_MEMORY_LIMIT,             /**< Maximum format-owned extraction buffer budget; absent is unlimited (uint64_t) */
-  /* Appended rather than filed with the record fields above: these values
-   * cross the shared-library boundary, so inserting in the middle would
-   * renumber every option for a consumer built against an older header. */
-  XX_META_ID_LINK_TARGET                   /**< Symlink target path, relative to the archive root (string) */
+    XX_META_ID_UNKNOWN = 0,                  /**< 0 -> Unknown / unassigned */
+    XX_META_ID_ORIGINAL_NAME,                /**< Original name (Unicode dynamic string: wchar_t* or UTF-8) */
+    XX_META_ID_UNCOMPRESSED_SIZE,            /**< Uncompressed file size in bytes (uint64_t) */
+    XX_META_ID_COMPRESSED_SIZE,              /**< Compressed data size in bytes (uint64_t) */
+    XX_META_ID_CRC32,                        /**< CRC32 checksum (uint32_t) */
+    XX_META_ID_COMPRESSION_METHOD,           /**< Compression method ID (uint16_t/uint32_t) */
+    XX_META_ID_ATTRIBUTES,                   /**< General / external file attributes (uint32_t) */
+    XX_META_ID_TIMESTAMP,                    /**< Modification timestamp (uint64_t) */
+    XX_META_ID_LAST_MOD_TIME,                /**< DOS last mod file time (uint16_t) */
+    XX_META_ID_LAST_MOD_DATE,                /**< DOS last mod file date (uint16_t) */
+    XX_META_ID_IS_FOLDER,                    /**< Folder / directory flag (bool) */
+    XX_META_ID_IS_ENCRYPTED,                 /**< Encryption flag (bool) */
+    XX_META_ID_COMMENT,                      /**< Entry comment (Unicode/string dynamic) */
+    XX_META_ID_EXTRA_FIELD,                  /**< Raw extra field bytes (dynamic bytes) */
+    XX_META_ID_VERSION_NEEDED,               /**< ZIP version needed to extract (uint16_t) */
+    XX_META_ID_VERSION_MADE_BY,              /**< ZIP version made by / host system (uint16_t) */
+    XX_META_ID_FLAGS,                        /**< General purpose bit flags (uint16_t) */
+    XX_META_ID_INTERNAL_ATTRS,               /**< Internal file attributes (uint16_t) */
+    XX_META_ID_EXTERNAL_ATTRS,               /**< External file attributes (uint32_t) */
+    XX_META_ID_DISK_NUMBER_START,            /**< Disk number where file begins (uint32_t) */
+    XX_META_ID_RELATIVE_OFFSET_LOCAL_HEADER, /**< Relative offset of local header (int64_t) */
+    /* Options for archive reading / unpacking / packing */
+    XX_META_ID_OPT_UNPACK_PATH,     /**< Target directory path for unpacking (Unicode/string dynamic) */
+    XX_META_ID_OPT_PASSWORD,        /**< Format-wide or operation password (Unicode/string/bytes dynamic) */
+    XX_META_ID_OPT_OVERWRITE,       /**< Overwrite existing files on unpack (bool) */
+    XX_META_ID_COMPRESSION_LEVEL,   /**< Format-specific level (typically 0-9; WIM 0/default..100) */
+    XX_META_ID_ENCRYPTION_METHOD,   /**< Encryption method selector (format-specific integer) */
+    XX_META_ID_OPT_MAX_MEMBER_SIZE, /**< Maximum declared unpacked member size in bytes; absent is unlimited (uint64_t) */
+    XX_META_ID_OPT_MEMORY_LIMIT,    /**< Maximum format-owned extraction buffer budget; absent is unlimited (uint64_t) */
+    /* Appended rather than filed with the record fields above: these values
+     * cross the shared-library boundary, so inserting in the middle would
+     * renumber every option for a consumer built against an older header. */
+    XX_META_ID_LINK_TARGET /**< Symlink target path, relative to the archive root (string) */
 } xx_meta_id_t;
 
 typedef enum xx_meta_id_e xx_archive_meta_id_t;
 
 /* Common metadata ID aliases */
-#define XX_META_ID_NAME               XX_META_ID_ORIGINAL_NAME
-#define XX_META_ID_FILENAME           XX_META_ID_ORIGINAL_NAME
-#define XX_META_ID_FILE_NAME          XX_META_ID_ORIGINAL_NAME
-#define XX_ARCHIVE_META_ID_UNKNOWN    XX_META_ID_UNKNOWN
+#define XX_META_ID_NAME XX_META_ID_ORIGINAL_NAME
+#define XX_META_ID_FILENAME XX_META_ID_ORIGINAL_NAME
+#define XX_META_ID_FILE_NAME XX_META_ID_ORIGINAL_NAME
+#define XX_ARCHIVE_META_ID_UNKNOWN XX_META_ID_UNKNOWN
 #define XX_ARCHIVE_META_ID_ORIGINAL_NAME XX_META_ID_ORIGINAL_NAME
 #define XX_ARCHIVE_META_ID_UNCOMPRESSED_SIZE XX_META_ID_UNCOMPRESSED_SIZE
 #define XX_ARCHIVE_META_ID_COMPRESSED_SIZE XX_META_ID_COMPRESSED_SIZE
-#define XX_ARCHIVE_META_ID_CRC32      XX_META_ID_CRC32
+#define XX_ARCHIVE_META_ID_CRC32 XX_META_ID_CRC32
 #define XX_ARCHIVE_META_ID_COMPRESSION_METHOD XX_META_ID_COMPRESSION_METHOD
 #define XX_ARCHIVE_META_ID_COMPRESSION_LEVEL XX_META_ID_COMPRESSION_LEVEL
 #define XX_META_ID_OPT_COMPRESSION_LEVEL XX_META_ID_COMPRESSION_LEVEL
 #define XX_ARCHIVE_META_ID_ENCRYPTION_METHOD XX_META_ID_ENCRYPTION_METHOD
 #define XX_META_ID_OPT_ENCRYPTION_METHOD XX_META_ID_ENCRYPTION_METHOD
 #define XX_ARCHIVE_META_ID_ATTRIBUTES XX_META_ID_ATTRIBUTES
-#define XX_ARCHIVE_META_ID_TIMESTAMP  XX_META_ID_TIMESTAMP
-#define XX_ARCHIVE_META_ID_IS_FOLDER  XX_META_ID_IS_FOLDER
+#define XX_ARCHIVE_META_ID_TIMESTAMP XX_META_ID_TIMESTAMP
+#define XX_ARCHIVE_META_ID_IS_FOLDER XX_META_ID_IS_FOLDER
 #define XX_ARCHIVE_META_ID_IS_ENCRYPTED XX_META_ID_IS_ENCRYPTED
-#define XX_ARCHIVE_META_ID_COMMENT    XX_META_ID_COMMENT
+#define XX_ARCHIVE_META_ID_COMMENT XX_META_ID_COMMENT
 #define XX_ARCHIVE_META_ID_EXTRA_FIELD XX_META_ID_EXTRA_FIELD
-#define XX_META_ID_UNPACK_PATH        XX_META_ID_OPT_UNPACK_PATH
-#define XX_META_ID_OUTPUT_PATH        XX_META_ID_OPT_UNPACK_PATH
-#define XX_META_ID_TARGET_PATH        XX_META_ID_OPT_UNPACK_PATH
-#define XX_META_ID_PASSWORD           XX_META_ID_OPT_PASSWORD
+#define XX_META_ID_UNPACK_PATH XX_META_ID_OPT_UNPACK_PATH
+#define XX_META_ID_OUTPUT_PATH XX_META_ID_OPT_UNPACK_PATH
+#define XX_META_ID_TARGET_PATH XX_META_ID_OPT_UNPACK_PATH
+#define XX_META_ID_PASSWORD XX_META_ID_OPT_PASSWORD
 #define XX_ARCHIVE_META_ID_UNPACK_PATH XX_META_ID_OPT_UNPACK_PATH
-#define XX_ARCHIVE_META_ID_PASSWORD   XX_META_ID_OPT_PASSWORD
-#define XX_META_ID_MAX_MEMBER_SIZE    XX_META_ID_OPT_MAX_MEMBER_SIZE
-#define XX_META_ID_MEMORY_LIMIT       XX_META_ID_OPT_MEMORY_LIMIT
+#define XX_ARCHIVE_META_ID_PASSWORD XX_META_ID_OPT_PASSWORD
+#define XX_META_ID_MAX_MEMBER_SIZE XX_META_ID_OPT_MAX_MEMBER_SIZE
+#define XX_META_ID_MEMORY_LIMIT XX_META_ID_OPT_MEMORY_LIMIT
 #define XX_ARCHIVE_META_ID_MAX_MEMBER_SIZE XX_META_ID_OPT_MAX_MEMBER_SIZE
 #define XX_ARCHIVE_META_ID_MEMORY_LIMIT XX_META_ID_OPT_MEMORY_LIMIT
 
@@ -289,59 +284,59 @@ typedef enum xx_meta_id_e xx_archive_meta_id_t;
  * @brief Represents a metadata item with an identifier and a variant value.
  */
 struct xx_meta {
-  uint32_t meta_id;
-  xx_var var;
+    uint32_t meta_id;
+    xx_var var;
 };
 
 /**
  * @brief Represents an individual file or directory record within an archive.
  */
 struct xx_archive_record {
-  int64_t header_offset;      /**< Offset of record header in I/O device (-1 if unknown) */
-  int64_t header_size;        /**< Size of record header in bytes (0 if unknown) */
-  int64_t data_offset;        /**< Offset of entry payload / compressed data in I/O device (-1 if unknown) */
-  int64_t compressed_size;    /**< Compressed size of entry in bytes */
-  xx_list_s list_meta;        /**< Dynamic list of metadata items (xx_meta) */
+    int64_t header_offset;   /**< Offset of record header in I/O device (-1 if unknown) */
+    int64_t header_size;     /**< Size of record header in bytes (0 if unknown) */
+    int64_t data_offset;     /**< Offset of entry payload / compressed data in I/O device (-1 if unknown) */
+    int64_t compressed_size; /**< Compressed size of entry in bytes */
+    xx_list_s list_meta;     /**< Dynamic list of metadata items (xx_meta) */
 };
 
 /**
  * @brief State representing an active archive stream reading session.
  */
 struct xx_archive_record_state {
-  Abstractformat    *format;         /**< Associated Abstractformat instance */
-  xx_archive_record  current_record; /**< Currently active archive record */
-  bool               has_record;     /**< True if current_record is valid and loaded */
-  int64_t            current_index;  /**< 0-based index of the current record */
-  int64_t            total_records;  /**< Total number of records (-1 if streaming or unknown) */
-  xx_list_s          options;        /**< Copied list of options (xx_meta) */
-  void              *internal_state; /**< Format-specific internal cursor/context */
-  void (*free_internal)(void *ptr);  /**< Destructor for internal_state */
+    Abstractformat *format;           /**< Associated Abstractformat instance */
+    xx_archive_record current_record; /**< Currently active archive record */
+    bool has_record;                  /**< True if current_record is valid and loaded */
+    int64_t current_index;            /**< 0-based index of the current record */
+    int64_t total_records;            /**< Total number of records (-1 if streaming or unknown) */
+    xx_list_s options;                /**< Copied list of options (xx_meta) */
+    void *internal_state;             /**< Format-specific internal cursor/context */
+    void (*free_internal)(void *ptr); /**< Destructor for internal_state */
 };
 
 /**
  * @brief State representing an active archive stream writing / packing session.
  */
 struct xx_archive_write_state {
-  Abstractformat    *format;         /**< Target Abstractformat instance (owning the output device) */
-  xx_archive_record  current_record; /**< Metadata for the record currently being packed */
-  bool               has_record;     /**< True if a record is active / in-progress */
-  int64_t            current_index;  /**< 0-based index of the current entry being written */
-  int64_t            total_records;  /**< Total records written or planned (-1 if streaming) */
-  xx_list_s          options;        /**< Copied compression/packing options */
-  void              *internal_state; /**< Format-specific internal writer context */
-  void (*free_internal)(void *ptr);  /**< Destructor for internal_state */
+    Abstractformat *format;           /**< Target Abstractformat instance (owning the output device) */
+    xx_archive_record current_record; /**< Metadata for the record currently being packed */
+    bool has_record;                  /**< True if a record is active / in-progress */
+    int64_t current_index;            /**< 0-based index of the current entry being written */
+    int64_t total_records;            /**< Total records written or planned (-1 if streaming) */
+    xx_list_s options;                /**< Copied compression/packing options */
+    void *internal_state;             /**< Format-specific internal writer context */
+    void (*free_internal)(void *ptr); /**< Destructor for internal_state */
 };
 
 /**
  * @brief Classification of a format-specific binary data structure occurrence.
  */
 typedef enum xx_data_struct_type_e {
-  XX_DATA_STRUCT_TYPE_UNKNOWN = 0, /**< Unknown / unassigned */
-  XX_DATA_STRUCT_TYPE_STRUCT,       /**< Structure / header / table record */
-  XX_DATA_STRUCT_TYPE_ENTRY,        /**< Single entry belonging to a table */
-  XX_DATA_STRUCT_TYPE_FOOTER,       /**< Trailing/footer record */
-  XX_DATA_STRUCT_TYPE_LOCATOR,      /**< Locator record pointing to another structure */
-  XX_DATA_STRUCT_TYPE_RAW_DATA      /**< Raw/unparsed data region (e.g. gap, overlay, padding) */
+    XX_DATA_STRUCT_TYPE_UNKNOWN = 0, /**< Unknown / unassigned */
+    XX_DATA_STRUCT_TYPE_STRUCT,      /**< Structure / header / table record */
+    XX_DATA_STRUCT_TYPE_ENTRY,       /**< Single entry belonging to a table */
+    XX_DATA_STRUCT_TYPE_FOOTER,      /**< Trailing/footer record */
+    XX_DATA_STRUCT_TYPE_LOCATOR,     /**< Locator record pointing to another structure */
+    XX_DATA_STRUCT_TYPE_RAW_DATA     /**< Raw/unparsed data region (e.g. gap, overlay, padding) */
 } xx_data_struct_type_t;
 
 /**
@@ -355,26 +350,26 @@ typedef enum xx_data_struct_type_e {
  * (e.g. LOCAL_FILE_HEADER, CENTRAL_DIRECTORY_HEADER, EOCD, ...).
  */
 struct xx_data_struct {
-  uint32_t               id;         /**< Format-specific data struct id */
-  int64_t                offset;     /**< File offset of the structure in the I/O device (-1 if unknown) */
-  int64_t                address;    /**< Mapped/virtual address of the structure (-1 if not mapped) */
-  int64_t                entry_size; /**< Size in bytes of a single occurrence (-1 if unknown/variable) */
-  int64_t                total_size; /**< Total size in bytes covered by all occurrences (-1 if unknown) */
-  uint64_t               count;      /**< Number of elements represented (1 for a header, N for a table) */
-  xx_data_struct_type_t  type;       /**< Structure classification (header/table/entry/...) */
+    uint32_t id;                /**< Format-specific data struct id */
+    int64_t offset;             /**< File offset of the structure in the I/O device (-1 if unknown) */
+    int64_t address;            /**< Mapped/virtual address of the structure (-1 if not mapped) */
+    int64_t entry_size;         /**< Size in bytes of a single occurrence (-1 if unknown/variable) */
+    int64_t total_size;         /**< Total size in bytes covered by all occurrences (-1 if unknown) */
+    uint64_t count;             /**< Number of elements represented (1 for a header, N for a table) */
+    xx_data_struct_type_t type; /**< Structure classification (header/table/entry/...) */
 };
 
 /**
  * @brief State representing an active data-struct stream reading session.
  */
 struct xx_data_struct_state {
-  Abstractformat  *format;         /**< Associated Abstractformat instance */
-  xx_data_struct   current_struct; /**< Currently active data struct descriptor */
-  bool             has_struct;     /**< True if current_struct is valid and loaded */
-  int64_t          current_index;  /**< 0-based index of the current data struct */
-  int64_t          total_structs;  /**< Total number of data structs (-1 if unknown) */
-  void            *internal_state; /**< Format-specific internal cursor/context */
-  void (*free_internal)(void *ptr); /**< Destructor for internal_state */
+    Abstractformat *format;           /**< Associated Abstractformat instance */
+    xx_data_struct current_struct;    /**< Currently active data struct descriptor */
+    bool has_struct;                  /**< True if current_struct is valid and loaded */
+    int64_t current_index;            /**< 0-based index of the current data struct */
+    int64_t total_structs;            /**< Total number of data structs (-1 if unknown) */
+    void *internal_state;             /**< Format-specific internal cursor/context */
+    void (*free_internal)(void *ptr); /**< Destructor for internal_state */
 };
 
 /**
@@ -383,28 +378,28 @@ struct xx_data_struct_state {
  */
 typedef uint32_t xx_data_struct_record_property_t;
 
-#define XX_DATA_STRUCT_RECORD_PROPERTY_NONE            0x00000000u /**< No specific semantic role */
-#define XX_DATA_STRUCT_RECORD_PROPERTY_ID              0x00000001u /**< Value is an identifier / signature / magic */
+#define XX_DATA_STRUCT_RECORD_PROPERTY_NONE 0x00000000u            /**< No specific semantic role */
+#define XX_DATA_STRUCT_RECORD_PROPERTY_ID 0x00000001u              /**< Value is an identifier / signature / magic */
 #define XX_DATA_STRUCT_RECORD_PROPERTY_VIRTUAL_ADDRESS 0x00000002u /**< Value is a virtual/mapped address */
-#define XX_DATA_STRUCT_RECORD_PROPERTY_OFFSET          0x00000004u /**< Value is a file offset */
-#define XX_DATA_STRUCT_RECORD_PROPERTY_SIZE            0x00000008u /**< Value is a size/length in bytes */
-#define XX_DATA_STRUCT_RECORD_PROPERTY_COUNT           0x00000010u /**< Value is a count of elements */
-#define XX_DATA_STRUCT_RECORD_PROPERTY_POINTER         0x00000020u /**< Value is a pointer/offset to other data */
-#define XX_DATA_STRUCT_RECORD_PROPERTY_FLAGS           0x00000040u /**< Value is itself a bit-flags field */
-#define XX_DATA_STRUCT_RECORD_PROPERTY_TIMESTAMP       0x00000080u /**< Value is a date/time field */
-#define XX_DATA_STRUCT_RECORD_PROPERTY_STRING          0x00000100u /**< Value is a text string */
-#define XX_DATA_STRUCT_RECORD_PROPERTY_RESERVED        0x00000200u /**< Value is reserved/padding */
+#define XX_DATA_STRUCT_RECORD_PROPERTY_OFFSET 0x00000004u          /**< Value is a file offset */
+#define XX_DATA_STRUCT_RECORD_PROPERTY_SIZE 0x00000008u            /**< Value is a size/length in bytes */
+#define XX_DATA_STRUCT_RECORD_PROPERTY_COUNT 0x00000010u           /**< Value is a count of elements */
+#define XX_DATA_STRUCT_RECORD_PROPERTY_POINTER 0x00000020u         /**< Value is a pointer/offset to other data */
+#define XX_DATA_STRUCT_RECORD_PROPERTY_FLAGS 0x00000040u           /**< Value is itself a bit-flags field */
+#define XX_DATA_STRUCT_RECORD_PROPERTY_TIMESTAMP 0x00000080u       /**< Value is a date/time field */
+#define XX_DATA_STRUCT_RECORD_PROPERTY_STRING 0x00000100u          /**< Value is a text string */
+#define XX_DATA_STRUCT_RECORD_PROPERTY_RESERVED 0x00000200u        /**< Value is reserved/padding */
 
 /**
  * @brief Describes one named field within a fixed-layout data struct
  * (offset and size relative to the parent data struct).
  */
 struct xx_data_struct_field_desc {
-  const wchar_t                   *name;       /**< Dynamic or static Unicode display name of the field */
-  const wchar_t                   *type;       /**< Dynamic or static Unicode display type (e.g. L"uint16", L"uint32") */
-  int64_t                          rel_offset; /**< Offset of the field relative to the start of the parent data struct */
-  int64_t                          size;       /**< Size in bytes of the field (1, 2, 4, 8) */
-  xx_data_struct_record_property_t property;   /**< Bit flags describing the record's semantic role */
+    const wchar_t *name;                       /**< Dynamic or static Unicode display name of the field */
+    const wchar_t *type;                       /**< Dynamic or static Unicode display type (e.g. L"uint16", L"uint32") */
+    int64_t rel_offset;                        /**< Offset of the field relative to the start of the parent data struct */
+    int64_t size;                              /**< Size in bytes of the field (1, 2, 4, 8) */
+    xx_data_struct_record_property_t property; /**< Bit flags describing the record's semantic role */
 };
 
 /**
@@ -412,13 +407,13 @@ struct xx_data_struct_field_desc {
  * (e.g. the "signature" or "compressed_size" field of a LOCAL_FILE_HEADER).
  */
 struct xx_data_struct_record {
-  wchar_t                          *name;          /**< Dynamic Unicode display name of the record (owned, free with xx_str_wfree) */
-  wchar_t                          *type;          /**< Dynamic Unicode display type of the record (owned, free with xx_str_wfree) */
-  wchar_t                          *display_value; /**< Dynamic Unicode formatted display value of the record (owned, free with xx_str_wfree) */
-  int64_t                           offset;        /**< Offset of the record within its parent data struct */
-  int64_t                           size;          /**< Size in bytes of the record */
-  xx_data_struct_record_property_t  property;      /**< Bit flags describing the record's semantic role */
-  xx_var                            value;         /**< Record value */
+    wchar_t *name;                             /**< Dynamic Unicode display name of the record (owned, free with xx_str_wfree) */
+    wchar_t *type;                             /**< Dynamic Unicode display type of the record (owned, free with xx_str_wfree) */
+    wchar_t *display_value;                    /**< Dynamic Unicode formatted display value of the record (owned, free with xx_str_wfree) */
+    int64_t offset;                            /**< Offset of the record within its parent data struct */
+    int64_t size;                              /**< Size in bytes of the record */
+    xx_data_struct_record_property_t property; /**< Bit flags describing the record's semantic role */
+    xx_var value;                              /**< Record value */
 };
 
 /**
@@ -426,177 +421,176 @@ struct xx_data_struct_record {
  * (iterates the named fields of a single xx_data_struct occurrence).
  */
 struct xx_data_struct_record_state {
-  Abstractformat        *format;         /**< Associated Abstractformat instance */
-  xx_data_struct          parent_struct;  /**< The data struct whose records are being read */
-  xx_data_struct_record   current_record; /**< Currently active record descriptor */
-  bool                    has_record;     /**< True if current_record is valid and loaded */
-  int64_t                 current_index;  /**< 0-based index of the current record */
-  int64_t                 total_records;  /**< Total number of records (-1 if unknown) */
-  void                   *internal_state; /**< Format-specific internal cursor/context */
-  void (*free_internal)(void *ptr);       /**< Destructor for internal_state */
+    Abstractformat *format;               /**< Associated Abstractformat instance */
+    xx_data_struct parent_struct;         /**< The data struct whose records are being read */
+    xx_data_struct_record current_record; /**< Currently active record descriptor */
+    bool has_record;                      /**< True if current_record is valid and loaded */
+    int64_t current_index;                /**< 0-based index of the current record */
+    int64_t total_records;                /**< Total number of records (-1 if unknown) */
+    void *internal_state;                 /**< Format-specific internal cursor/context */
+    void (*free_internal)(void *ptr);     /**< Destructor for internal_state */
 };
 
 /**
  * @brief Abstractformat structure with function pointer vtable.
  */
 struct Abstractformat {
-  xx_io_device *device; /**< Associated I/O device */
-  int64_t base_address; /**< Absolute device offset at which this format starts. */
-  bool is_mapped; /**< True if memory-mapped dump (e.g. raw dump from memory) */
-  bool base_info_handled; /**< True if base format information has been
-                             parsed/handled */
-  bool is_valid;          /**< Cached validity flag */
-  int64_t format_size;    /**< Format size without overlays */
-  int64_t overlay_offset; /**< Offset where overlay data begins in device (-1 if
-                             none) */
-  int64_t overlay_size;   /**< Size of overlay data in bytes (0 if none) */
-  xx_endian_t endian;     /**< Format endianness (XX_ENDIAN_LITTLE/BIG/UNKNOWN) */
-  xx_file_type_t file_type; /**< Detected or assigned file type (0: unknown, 1:
-                               binary, 2: ZIP, 3: ZIP64) */
-  xx_os_t os; /**< Operating system enum (XX_OS_UNKNOWN, XX_OS_WINDOWS, etc.) */
-  xx_format_type_t format_type; /**< Target binary type enum (XX_TYPE_CONSOLE_APPLICATION, XX_TYPE_DRIVER, XX_TYPE_LIBRARY, etc.) */
-  xx_arch_t arch; /**< Architecture enum (XX_ARCH_UNKNOWN, XX_ARCH_X86_64, etc.) */
+    xx_io_device *device;         /**< Associated I/O device */
+    int64_t base_address;         /**< Absolute device offset at which this format starts. */
+    bool is_mapped;               /**< True if memory-mapped dump (e.g. raw dump from memory) */
+    bool base_info_handled;       /**< True if base format information has been
+                                     parsed/handled */
+    bool is_valid;                /**< Cached validity flag */
+    int64_t format_size;          /**< Format size without overlays */
+    int64_t overlay_offset;       /**< Offset where overlay data begins in device (-1 if
+                                     none) */
+    int64_t overlay_size;         /**< Size of overlay data in bytes (0 if none) */
+    xx_endian_t endian;           /**< Format endianness (XX_ENDIAN_LITTLE/BIG/UNKNOWN) */
+    xx_file_type_t file_type;     /**< Detected or assigned file type (0: unknown, 1:
+                                     binary, 2: ZIP, 3: ZIP64) */
+    xx_os_t os;                   /**< Operating system enum (XX_OS_UNKNOWN, XX_OS_WINDOWS, etc.) */
+    xx_format_type_t format_type; /**< Target binary type enum (XX_TYPE_CONSOLE_APPLICATION, XX_TYPE_DRIVER, XX_TYPE_LIBRARY, etc.) */
+    xx_arch_t arch;               /**< Architecture enum (XX_ARCH_UNKNOWN, XX_ARCH_X86_64, etc.) */
 
-  /* Buffers for format string metadata */
-  char mime_type[64];  /**< MIME type string buffer */
-  char extension[32];  /**< File extension string buffer */
-  char os_version[32]; /**< OS version string buffer */
-  char version[32];    /**< Format version string buffer */
+    /* Buffers for format string metadata */
+    char mime_type[64];  /**< MIME type string buffer */
+    char extension[32];  /**< File extension string buffer */
+    char os_version[32]; /**< OS version string buffer */
+    char version[32];    /**< Format version string buffer */
 
-  /* Format classification flags */
-  bool is_executable; /**< True if format is an executable */
-  bool is_archive;    /**< True if format is an archive container */
-  bool is_signed;     /**< True if format carries digital signature */
-  bool is_crypted;    /**< True if format content is encrypted/crypted */
+    /* Format classification flags */
+    bool is_executable; /**< True if format is an executable */
+    bool is_archive;    /**< True if format is an archive container */
+    bool is_signed;     /**< True if format carries digital signature */
+    bool is_crypted;    /**< True if format content is encrypted/crypted */
 
-  /* Format record / payload counts (0 if none or not applicable) */
-  uint64_t number_of_imports;         /**< Number of imports / import table records (0 if none) */
-  uint64_t number_of_exports;         /**< Number of exports / export table records (0 if none) */
-  uint64_t number_of_resources;       /**< Number of embedded resources (0 if none) */
-  uint64_t number_of_metadata;        /**< Number of metadata records (0 if none) */
-  uint64_t number_of_archive_records; /**< Number of archive records (0 for non-archives) */
+    /* Format record / payload counts (0 if none or not applicable) */
+    uint64_t number_of_imports;         /**< Number of imports / import table records (0 if none) */
+    uint64_t number_of_exports;         /**< Number of exports / export table records (0 if none) */
+    uint64_t number_of_resources;       /**< Number of embedded resources (0 if none) */
+    uint64_t number_of_metadata;        /**< Number of metadata records (0 if none) */
+    uint64_t number_of_archive_records; /**< Number of archive records (0 for non-archives) */
 
-  /**
-   * Format-wide extra parameters.  Elements are owned xx_meta values and are
-   * available to every format implementation.  Operation-specific option
-   * lists may override these values for one read/write session.
-   */
-  xx_list_s list_extra_parameters;
+    /**
+     * Format-wide extra parameters.  Elements are owned xx_meta values and are
+     * available to every format implementation.  Operation-specific option
+     * lists may override these values for one read/write session.
+     */
+    xx_list_s list_extra_parameters;
 
-  void *priv; /**< Implementation-specific private state */
+    void *priv; /**< Implementation-specific private state */
 
-  /* Function pointer vtable */
-  bool (*check_is_valid)(Abstractformat *self, xx_pd_struct *pd);
-  bool (*handle_base_info)(Abstractformat *self, xx_pd_struct *pd);
-  xx_format_type_t (*get_type)(Abstractformat *self);
-  xx_file_type_t (*get_file_type)(Abstractformat *self);
-  const char *(*get_mime_type)(Abstractformat *self);
-  const char *(*get_extension)(Abstractformat *self);
-  xx_arch_t (*get_arch)(Abstractformat *self);
-  xx_os_t (*get_os)(Abstractformat *self);
-  const char *(*get_os_version)(Abstractformat *self);
-  const char *(*get_version)(Abstractformat *self);
-  xx_endian_t (*get_endian)(Abstractformat *self);
-  int64_t (*get_format_size)(Abstractformat *self, xx_pd_struct *pd);
-  uint64_t (*get_number_of_archive_records)(Abstractformat *self, xx_pd_struct *pd);
-  uint64_t (*get_number_of_imports)(Abstractformat *self, xx_pd_struct *pd);
-  uint64_t (*get_number_of_exports)(Abstractformat *self, xx_pd_struct *pd);
-  uint64_t (*get_number_of_resources)(Abstractformat *self, xx_pd_struct *pd);
-  uint64_t (*get_number_of_metadata)(Abstractformat *self, xx_pd_struct *pd);
-  bool (*check_is_executable)(Abstractformat *self);
-  bool (*check_is_archive)(Abstractformat *self);
-  bool (*check_is_signed)(Abstractformat *self);
-  bool (*check_is_crypted)(Abstractformat *self);
-  int (*close)(Abstractformat *self);
-  void (*destroy)(Abstractformat *self);
+    /* Function pointer vtable */
+    bool (*check_is_valid)(Abstractformat *self, xx_pd_struct *pd);
+    bool (*handle_base_info)(Abstractformat *self, xx_pd_struct *pd);
+    xx_format_type_t (*get_type)(Abstractformat *self);
+    xx_file_type_t (*get_file_type)(Abstractformat *self);
+    const char *(*get_mime_type)(Abstractformat *self);
+    const char *(*get_extension)(Abstractformat *self);
+    xx_arch_t (*get_arch)(Abstractformat *self);
+    xx_os_t (*get_os)(Abstractformat *self);
+    const char *(*get_os_version)(Abstractformat *self);
+    const char *(*get_version)(Abstractformat *self);
+    xx_endian_t (*get_endian)(Abstractformat *self);
+    int64_t (*get_format_size)(Abstractformat *self, xx_pd_struct *pd);
+    uint64_t (*get_number_of_archive_records)(Abstractformat *self, xx_pd_struct *pd);
+    uint64_t (*get_number_of_imports)(Abstractformat *self, xx_pd_struct *pd);
+    uint64_t (*get_number_of_exports)(Abstractformat *self, xx_pd_struct *pd);
+    uint64_t (*get_number_of_resources)(Abstractformat *self, xx_pd_struct *pd);
+    uint64_t (*get_number_of_metadata)(Abstractformat *self, xx_pd_struct *pd);
+    bool (*check_is_executable)(Abstractformat *self);
+    bool (*check_is_archive)(Abstractformat *self);
+    bool (*check_is_signed)(Abstractformat *self);
+    bool (*check_is_crypted)(Abstractformat *self);
+    int (*close)(Abstractformat *self);
+    void (*destroy)(Abstractformat *self);
 
-  /* Stream archive records reading vtable callbacks */
-  xx_archive_record_state *(*create_archive_records_reading)(Abstractformat *self, const xx_list_s *options, xx_pd_struct *pd);
-  const xx_archive_record *(*get_current_archive_record)(Abstractformat *self, xx_archive_record_state *state);
-  bool (*unpack_current_archive_record)(Abstractformat *self, xx_archive_record_state *state, xx_pd_struct *pd);
-  bool (*archive_record_move_to_next)(Abstractformat *self, xx_archive_record_state *state, xx_pd_struct *pd);
-  void (*free_archive_records_reading)(Abstractformat *self, xx_archive_record_state *state);
+    /* Stream archive records reading vtable callbacks */
+    xx_archive_record_state *(*create_archive_records_reading)(Abstractformat *self, const xx_list_s *options, xx_pd_struct *pd);
+    const xx_archive_record *(*get_current_archive_record)(Abstractformat *self, xx_archive_record_state *state);
+    bool (*unpack_current_archive_record)(Abstractformat *self, xx_archive_record_state *state, xx_pd_struct *pd);
+    bool (*archive_record_move_to_next)(Abstractformat *self, xx_archive_record_state *state, xx_pd_struct *pd);
+    void (*free_archive_records_reading)(Abstractformat *self, xx_archive_record_state *state);
 
-  /* Stream archive records writing / packing vtable callbacks */
-  xx_archive_write_state *(*create_archive_records_writing)(Abstractformat *self, const xx_list_s *options, xx_pd_struct *pd);
-  bool (*pack_archive_record)(Abstractformat *self, xx_archive_write_state *state, const xx_archive_record *record, xx_io_device *source_dev, xx_pd_struct *pd);
-  bool (*finalize_archive_records_writing)(Abstractformat *self, xx_archive_write_state *state, xx_pd_struct *pd);
-  void (*free_archive_records_writing)(Abstractformat *self, xx_archive_write_state *state);
+    /* Stream archive records writing / packing vtable callbacks */
+    xx_archive_write_state *(*create_archive_records_writing)(Abstractformat *self, const xx_list_s *options, xx_pd_struct *pd);
+    bool (*pack_archive_record)(Abstractformat *self, xx_archive_write_state *state, const xx_archive_record *record, xx_io_device *source_dev, xx_pd_struct *pd);
+    bool (*finalize_archive_records_writing)(Abstractformat *self, xx_archive_write_state *state, xx_pd_struct *pd);
+    void (*free_archive_records_writing)(Abstractformat *self, xx_archive_write_state *state);
 
-  /* Format-specific data struct id <-> string conversion */
-  const char *(*data_struct_id_to_string)(Abstractformat *self, uint32_t id);
-  uint32_t (*data_struct_string_to_id)(Abstractformat *self, const char *name);
+    /* Format-specific data struct id <-> string conversion */
+    const char *(*data_struct_id_to_string)(Abstractformat *self, uint32_t id);
+    uint32_t (*data_struct_string_to_id)(Abstractformat *self, const char *name);
 
-  /* Stream data structs reading vtable callbacks (headers/tables/records of the format) */
-  xx_data_struct_state *(*create_data_structs_reading)(Abstractformat *self, xx_pd_struct *pd);
-  const xx_data_struct *(*get_current_data_struct)(Abstractformat *self, xx_data_struct_state *state);
-  bool (*data_struct_move_to_next)(Abstractformat *self, xx_data_struct_state *state, xx_pd_struct *pd);
-  void (*free_data_structs_reading)(Abstractformat *self, xx_data_struct_state *state);
+    /* Stream data structs reading vtable callbacks (headers/tables/records of the format) */
+    xx_data_struct_state *(*create_data_structs_reading)(Abstractformat *self, xx_pd_struct *pd);
+    const xx_data_struct *(*get_current_data_struct)(Abstractformat *self, xx_data_struct_state *state);
+    bool (*data_struct_move_to_next)(Abstractformat *self, xx_data_struct_state *state, xx_pd_struct *pd);
+    void (*free_data_structs_reading)(Abstractformat *self, xx_data_struct_state *state);
 
-  /* Stream data struct records reading vtable callbacks (named fields of a single data struct) */
-  xx_data_struct_record_state *(*create_data_struct_records_reading)(Abstractformat *self, const xx_data_struct *ds, xx_pd_struct *pd);
-  const xx_data_struct_record *(*get_current_data_struct_record)(Abstractformat *self, xx_data_struct_record_state *state);
-  bool (*data_struct_record_move_to_next)(Abstractformat *self, xx_data_struct_record_state *state, xx_pd_struct *pd);
-  void (*free_data_struct_records_reading)(Abstractformat *self, xx_data_struct_record_state *state);
+    /* Stream data struct records reading vtable callbacks (named fields of a single data struct) */
+    xx_data_struct_record_state *(*create_data_struct_records_reading)(Abstractformat *self, const xx_data_struct *ds, xx_pd_struct *pd);
+    const xx_data_struct_record *(*get_current_data_struct_record)(Abstractformat *self, xx_data_struct_record_state *state);
+    bool (*data_struct_record_move_to_next)(Abstractformat *self, xx_data_struct_record_state *state, xx_pd_struct *pd);
+    void (*free_data_struct_records_reading)(Abstractformat *self, xx_data_struct_record_state *state);
 
-  /**
-   * Optional read-side preparation for split archives, before parsing.
-   * Inspect self->device with xx_io_multivolume_count/get_volume as needed.
-   * Return true when ready (including non-split input), false on failure.
-   * Use raw I/O, not generic parsing wrappers on this same object. Bind before
-   * the first read operation. No device ownership is transferred by dispatch.
-   */
-  bool (*handle_split_format)(Abstractformat *self, xx_pd_struct *pd);
-  bool split_format_handled;  /**< Dispatcher cache: installed callback succeeded. */
-  bool split_format_handling; /**< Dispatcher recursion guard; do not modify. */
+    /**
+     * Optional read-side preparation for split archives, before parsing.
+     * Inspect self->device with xx_io_multivolume_count/get_volume as needed.
+     * Return true when ready (including non-split input), false on failure.
+     * Use raw I/O, not generic parsing wrappers on this same object. Bind before
+     * the first read operation. No device ownership is transferred by dispatch.
+     */
+    bool (*handle_split_format)(Abstractformat *self, xx_pd_struct *pd);
+    bool split_format_handled;  /**< Dispatcher cache: installed callback succeeded. */
+    bool split_format_handling; /**< Dispatcher recursion guard; do not modify. */
 
-  /**
-   * Format-specific memory-map producer. It receives an initialized, empty
-   * output map. Abstractformat owns the cached memory_map populated by the
-   * common dispatcher; callers borrow the pointer returned by
-   * xx_format_get_memory_map(). These fields are kept together at the end of
-   * Abstractformat. Because Abstractformat is public and embedded by concrete
-   * formats, adding them changes the ABI and requires a full library/client
-   * rebuild.
-   */
-  bool (*get_memory_map)(Abstractformat *self, xx_memory_map_mode_t mode,
-                         xx_memory_map *output, xx_pd_struct *pd);
-  xx_memory_map memory_map;
-  bool memory_map_handled;
-  bool memory_map_handling;
-  xx_memory_map_mode_t memory_map_requested_mode;
-  /** Optional loaded module VA; UINT64_MAX asks the format for its default. */
-  uint64_t module_address;
+    /**
+     * Format-specific memory-map producer. It receives an initialized, empty
+     * output map. Abstractformat owns the cached memory_map populated by the
+     * common dispatcher; callers borrow the pointer returned by
+     * xx_format_get_memory_map(). These fields are kept together at the end of
+     * Abstractformat. Because Abstractformat is public and embedded by concrete
+     * formats, adding them changes the ABI and requires a full library/client
+     * rebuild.
+     */
+    bool (*get_memory_map)(Abstractformat *self, xx_memory_map_mode_t mode, xx_memory_map *output, xx_pd_struct *pd);
+    xx_memory_map memory_map;
+    bool memory_map_handled;
+    bool memory_map_handling;
+    xx_memory_map_mode_t memory_map_requested_mode;
+    /** Optional loaded module VA; UINT64_MAX asks the format for its default. */
+    uint64_t module_address;
 
-  /* Read-only symbol/resource/metadata streams. Appended to preserve existing
-   * member offsets; the larger public struct still requires an ABI rebuild. */
-  xx_import_state *(*create_imports_reading)(Abstractformat *self, xx_pd_struct *pd);
-  const xx_import_record *(*get_current_import)(Abstractformat *self, xx_import_state *state);
-  bool (*import_move_to_next)(Abstractformat *self, xx_import_state *state, xx_pd_struct *pd);
-  void (*free_imports_reading)(Abstractformat *self, xx_import_state *state);
+    /* Read-only symbol/resource/metadata streams. Appended to preserve existing
+     * member offsets; the larger public struct still requires an ABI rebuild. */
+    xx_import_state *(*create_imports_reading)(Abstractformat *self, xx_pd_struct *pd);
+    const xx_import_record *(*get_current_import)(Abstractformat *self, xx_import_state *state);
+    bool (*import_move_to_next)(Abstractformat *self, xx_import_state *state, xx_pd_struct *pd);
+    void (*free_imports_reading)(Abstractformat *self, xx_import_state *state);
 
-  xx_export_state *(*create_exports_reading)(Abstractformat *self, xx_pd_struct *pd);
-  const xx_export_record *(*get_current_export)(Abstractformat *self, xx_export_state *state);
-  bool (*export_move_to_next)(Abstractformat *self, xx_export_state *state, xx_pd_struct *pd);
-  void (*free_exports_reading)(Abstractformat *self, xx_export_state *state);
+    xx_export_state *(*create_exports_reading)(Abstractformat *self, xx_pd_struct *pd);
+    const xx_export_record *(*get_current_export)(Abstractformat *self, xx_export_state *state);
+    bool (*export_move_to_next)(Abstractformat *self, xx_export_state *state, xx_pd_struct *pd);
+    void (*free_exports_reading)(Abstractformat *self, xx_export_state *state);
 
-  xx_resource_state *(*create_resources_reading)(Abstractformat *self, xx_pd_struct *pd);
-  const xx_resource_record *(*get_current_resource)(Abstractformat *self, xx_resource_state *state);
-  bool (*resource_move_to_next)(Abstractformat *self, xx_resource_state *state, xx_pd_struct *pd);
-  void (*free_resources_reading)(Abstractformat *self, xx_resource_state *state);
+    xx_resource_state *(*create_resources_reading)(Abstractformat *self, xx_pd_struct *pd);
+    const xx_resource_record *(*get_current_resource)(Abstractformat *self, xx_resource_state *state);
+    bool (*resource_move_to_next)(Abstractformat *self, xx_resource_state *state, xx_pd_struct *pd);
+    void (*free_resources_reading)(Abstractformat *self, xx_resource_state *state);
 
-  xx_metadata_state *(*create_metadata_reading)(Abstractformat *self, xx_pd_struct *pd);
-  const xx_metadata_record *(*get_current_metadata)(Abstractformat *self, xx_metadata_state *state);
-  bool (*metadata_move_to_next)(Abstractformat *self, xx_metadata_state *state, xx_pd_struct *pd);
-  void (*free_metadata_reading)(Abstractformat *self, xx_metadata_state *state);
+    xx_metadata_state *(*create_metadata_reading)(Abstractformat *self, xx_pd_struct *pd);
+    const xx_metadata_record *(*get_current_metadata)(Abstractformat *self, xx_metadata_state *state);
+    bool (*metadata_move_to_next)(Abstractformat *self, xx_metadata_state *state, xx_pd_struct *pd);
+    void (*free_metadata_reading)(Abstractformat *self, xx_metadata_state *state);
 
-  /** Native symbol-table primary entries, excluding auxiliary records. */
-  uint64_t number_of_symbols;
-  uint64_t (*get_number_of_symbols)(Abstractformat *self, xx_pd_struct *pd);
-  xx_symbol_state *(*create_symbols_reading)(Abstractformat *self, xx_pd_struct *pd);
-  const xx_symbol_record *(*get_current_symbol)(Abstractformat *self, xx_symbol_state *state);
-  bool (*symbol_move_to_next)(Abstractformat *self, xx_symbol_state *state, xx_pd_struct *pd);
-  void (*free_symbols_reading)(Abstractformat *self, xx_symbol_state *state);
+    /** Native symbol-table primary entries, excluding auxiliary records. */
+    uint64_t number_of_symbols;
+    uint64_t (*get_number_of_symbols)(Abstractformat *self, xx_pd_struct *pd);
+    xx_symbol_state *(*create_symbols_reading)(Abstractformat *self, xx_pd_struct *pd);
+    const xx_symbol_record *(*get_current_symbol)(Abstractformat *self, xx_symbol_state *state);
+    bool (*symbol_move_to_next)(Abstractformat *self, xx_symbol_state *state, xx_pd_struct *pd);
+    void (*free_symbols_reading)(Abstractformat *self, xx_symbol_state *state);
 };
 
 /**
@@ -623,55 +617,34 @@ XXFC_API bool xx_format_handle_split_format(Abstractformat *format, xx_pd_struct
 XXFC_API void xx_format_invalidate_memory_map(Abstractformat *format);
 
 /** Build/cache the requested format-specific map (UNKNOWN = default view). */
-XXFC_API bool xx_format_handle_memory_map(Abstractformat *format,
-                                          xx_memory_map_mode_t mode,
-                                          xx_pd_struct *pd);
+XXFC_API bool xx_format_handle_memory_map(Abstractformat *format, xx_memory_map_mode_t mode, xx_pd_struct *pd);
 
 /** Return the borrowed cached map, or NULL when construction fails. */
-XXFC_API const xx_memory_map *xx_format_get_memory_map(
-    Abstractformat *format, xx_memory_map_mode_t mode, xx_pd_struct *pd);
+XXFC_API const xx_memory_map *xx_format_get_memory_map(Abstractformat *format, xx_memory_map_mode_t mode, xx_pd_struct *pd);
 
-XXFC_API uint64_t xx_format_offset_to_address(Abstractformat *format,
-                                               int64_t offset,
-                                               xx_pd_struct *pd);
-XXFC_API int64_t xx_format_address_to_offset(Abstractformat *format,
-                                             uint64_t address,
-                                             xx_pd_struct *pd);
-XXFC_API uint64_t xx_format_offset_to_rel_address(Abstractformat *format,
-                                                   int64_t offset,
-                                                   xx_pd_struct *pd);
-XXFC_API int64_t xx_format_rel_address_to_offset(Abstractformat *format,
-                                                 int64_t relative_address,
-                                                 xx_pd_struct *pd);
-XXFC_API uint64_t xx_format_rel_address_to_address(Abstractformat *format,
-                                                    int64_t relative_address,
-                                                    xx_pd_struct *pd);
-XXFC_API int64_t xx_format_address_to_rel_address(Abstractformat *format,
-                                                   uint64_t address,
-                                                   xx_pd_struct *pd);
+XXFC_API uint64_t xx_format_offset_to_address(Abstractformat *format, int64_t offset, xx_pd_struct *pd);
+XXFC_API int64_t xx_format_address_to_offset(Abstractformat *format, uint64_t address, xx_pd_struct *pd);
+XXFC_API uint64_t xx_format_offset_to_rel_address(Abstractformat *format, int64_t offset, xx_pd_struct *pd);
+XXFC_API int64_t xx_format_rel_address_to_offset(Abstractformat *format, int64_t relative_address, xx_pd_struct *pd);
+XXFC_API uint64_t xx_format_rel_address_to_address(Abstractformat *format, int64_t relative_address, xx_pd_struct *pd);
+XXFC_API int64_t xx_format_address_to_rel_address(Abstractformat *format, uint64_t address, xx_pd_struct *pd);
 
 /* --- Format-wide Extra Parameters --- */
 
 /** Store an owned copy of a format-wide parameter, replacing the old value. */
-XXFC_API bool xx_format_set_extra_parameter(Abstractformat *format,
-                                             uint32_t meta_id,
-                                             const xx_var *value);
+XXFC_API bool xx_format_set_extra_parameter(Abstractformat *format, uint32_t meta_id, const xx_var *value);
 
 /** Find a format-wide parameter value, or NULL when it has not been set. */
-XXFC_API const xx_var *xx_format_find_extra_parameter(
-    const Abstractformat *format, uint32_t meta_id);
+XXFC_API const xx_var *xx_format_find_extra_parameter(const Abstractformat *format, uint32_t meta_id);
 
 /**
  * Resolve a parameter using operation-specific values first and the
  * format-wide list as a fallback.
  */
-XXFC_API const xx_var *xx_format_resolve_extra_parameter(
-    const Abstractformat *format, const xx_list_s *operation_parameters,
-    uint32_t meta_id);
+XXFC_API const xx_var *xx_format_resolve_extra_parameter(const Abstractformat *format, const xx_list_s *operation_parameters, uint32_t meta_id);
 
 /** Remove a format-wide parameter. */
-XXFC_API bool xx_format_remove_extra_parameter(Abstractformat *format,
-                                                uint32_t meta_id);
+XXFC_API bool xx_format_remove_extra_parameter(Abstractformat *format, uint32_t meta_id);
 
 /**
  * Clear/free format-wide parameters and invalidate owned common caches.
@@ -680,8 +653,7 @@ XXFC_API bool xx_format_remove_extra_parameter(Abstractformat *format,
 XXFC_API void xx_format_cleanup_extra_parameters(Abstractformat *format);
 
 /** Set or clear (password_utf8 == NULL) the password shared by all formats. */
-XXFC_API bool xx_format_set_password(Abstractformat *format,
-                                     const char *password_utf8);
+XXFC_API bool xx_format_set_password(Abstractformat *format, const char *password_utf8);
 
 /** Return the UTF-8 password set by xx_format_set_password, or NULL. */
 XXFC_API const char *xx_format_get_password(const Abstractformat *format);
@@ -775,29 +747,26 @@ XXFC_API const char *xx_format_get_password(const Abstractformat *format);
 
 /* --- Inline Convenience Wrappers --- */
 
-static inline bool xx_format_is_valid(Abstractformat *f, xx_pd_struct *pd) {
-  if (!xx_format_handle_split_format(f, pd))
-    return false;
-  if (f->base_info_handled)
+static inline bool xx_format_is_valid(Abstractformat *f, xx_pd_struct *pd)
+{
+    if (!xx_format_handle_split_format(f, pd)) return false;
+    if (f->base_info_handled) return f->is_valid;
+    if (f->check_is_valid) {
+        f->is_valid = f->check_is_valid(f, pd);
+        return f->is_valid;
+    }
     return f->is_valid;
-  if (f->check_is_valid) {
-    f->is_valid = f->check_is_valid(f, pd);
-    return f->is_valid;
-  }
-  return f->is_valid;
 }
 
-static inline bool xx_format_handle_base_info(Abstractformat *f,
-                                              xx_pd_struct *pd) {
-  if (!xx_format_handle_split_format(f, pd))
+static inline bool xx_format_handle_base_info(Abstractformat *f, xx_pd_struct *pd)
+{
+    if (!xx_format_handle_split_format(f, pd)) return false;
+    if (f->base_info_handled) return true;
+    if (f->handle_base_info) {
+        f->base_info_handled = f->handle_base_info(f, pd);
+        return f->base_info_handled;
+    }
     return false;
-  if (f->base_info_handled)
-    return true;
-  if (f->handle_base_info) {
-    f->base_info_handled = f->handle_base_info(f, pd);
-    return f->base_info_handled;
-  }
-  return false;
 }
 
 XXFC_API xx_format_type_t xx_format_get_type(Abstractformat *f);
@@ -816,8 +785,7 @@ XXFC_API xx_file_type_t xx_format_get_file_type_extension(const char *source_pat
  * NULL source_path uses the file-backed device's path, when available.
  * Extension results are hints: validate with the selected reader before use.
  * The legacy xx_format_get_file_type_device() remains content-only. */
-XXFC_API xx_file_type_t xx_format_get_file_type_device_fast(
-    xx_io_device *dev, const char *source_path);
+XXFC_API xx_file_type_t xx_format_get_file_type_device_fast(xx_io_device *dev, const char *source_path);
 
 /**
  * @brief Longest chain xx_format_get_file_type_chain() can produce.
@@ -849,9 +817,7 @@ XXFC_API xx_file_type_t xx_format_get_parent_file_type(xx_file_type_t type);
  * @return Number of entries the chain has. A value greater than @p capacity
  *         means @p types was too small and nothing was written.
  */
-XXFC_API size_t xx_format_get_file_type_chain(xx_file_type_t type,
-                                              xx_file_type_t *types,
-                                              size_t capacity);
+XXFC_API size_t xx_format_get_file_type_chain(xx_file_type_t type, xx_file_type_t *types, size_t capacity);
 
 /**
  * @brief Select the most specific type from a list of xx_file_type_t values.
@@ -903,9 +869,7 @@ XXFC_API xx_list_t *xx_format_get_file_types_device(xx_io_device *dev);
  *         allocation failure, or an I/O position/size error. Release a returned
  *         list with xx_list_destroy().
  */
-XXFC_API xx_list_t *xx_format_get_file_types_detectors(
-    xx_io_device *device, int64_t base_address, bool is_mapped,
-    const xx_list_t *detectors);
+XXFC_API xx_list_t *xx_format_get_file_types_detectors(xx_io_device *device, int64_t base_address, bool is_mapped, const xx_list_t *detectors);
 
 /**
  * @brief List every file type supported by the formats library.
@@ -929,700 +893,764 @@ XXFC_API xx_list_t *xx_format_get_supported_file_types(void);
  */
 XXFC_API const char *xx_format_file_type_to_string(xx_file_type_t type);
 
-static inline void xx_format_set_file_type(Abstractformat *f,
-                                           xx_file_type_t type) {
-  if (f) {
-    if (f->file_type != type)
-      xx_format_invalidate_memory_map(f);
-    f->file_type = type;
-  }
+static inline void xx_format_set_file_type(Abstractformat *f, xx_file_type_t type)
+{
+    if (f) {
+        if (f->file_type != type) xx_format_invalidate_memory_map(f);
+        f->file_type = type;
+    }
 }
 
-static inline const char *xx_format_get_mime_type(Abstractformat *f) {
-  if (!f)
-    return "";
-  if (f->get_mime_type)
-    return f->get_mime_type(f);
-  return f->mime_type;
+static inline const char *xx_format_get_mime_type(Abstractformat *f)
+{
+    if (!f) return "";
+    if (f->get_mime_type) return f->get_mime_type(f);
+    return f->mime_type;
 }
 
-static inline const char *xx_format_get_extension(Abstractformat *f) {
-  if (!f)
-    return "";
-  if (f->get_extension)
-    return f->get_extension(f);
-  return f->extension;
+static inline const char *xx_format_get_extension(Abstractformat *f)
+{
+    if (!f) return "";
+    if (f->get_extension) return f->get_extension(f);
+    return f->extension;
 }
 
 XXFC_API xx_arch_t xx_format_get_arch(Abstractformat *f);
 XXFC_API void xx_format_set_arch(Abstractformat *f, xx_arch_t arch);
 
-static inline const char *xx_format_get_arch_name(Abstractformat *f) {
-  if (!f)
-    return "";
-  return xx_arch_to_string(xx_format_get_arch(f));
+static inline const char *xx_format_get_arch_name(Abstractformat *f)
+{
+    if (!f) return "";
+    return xx_arch_to_string(xx_format_get_arch(f));
 }
 
-static inline void xx_format_set_arch_name(Abstractformat *f, const char *s) {
-  (void)f;
-  (void)s;
+static inline void xx_format_set_arch_name(Abstractformat *f, const char *s)
+{
+    (void)f;
+    (void)s;
 }
 
 XXFC_API xx_os_t xx_format_get_os(Abstractformat *f);
 XXFC_API void xx_format_set_os(Abstractformat *f, xx_os_t os);
 
-static inline const char *xx_format_get_os_name(Abstractformat *f) {
-  if (!f)
-    return "";
-  return xx_os_to_string(xx_format_get_os(f));
+static inline const char *xx_format_get_os_name(Abstractformat *f)
+{
+    if (!f) return "";
+    return xx_os_to_string(xx_format_get_os(f));
 }
 
-static inline const char *xx_format_get_type_name(Abstractformat *f) {
-  if (!f)
-    return "";
-  return xx_type_to_string(xx_format_get_type(f));
+static inline const char *xx_format_get_type_name(Abstractformat *f)
+{
+    if (!f) return "";
+    return xx_type_to_string(xx_format_get_type(f));
 }
 
-static inline const char *xx_format_get_os_version(Abstractformat *f) {
-  if (!f)
-    return "";
-  if (f->get_os_version)
-    return f->get_os_version(f);
-  return f->os_version;
+static inline const char *xx_format_get_os_version(Abstractformat *f)
+{
+    if (!f) return "";
+    if (f->get_os_version) return f->get_os_version(f);
+    return f->os_version;
 }
 
-static inline const char *xx_format_get_version(Abstractformat *f) {
-  if (!f)
-    return "";
-  if (f->get_version)
-    return f->get_version(f);
-  return f->version;
+static inline const char *xx_format_get_version(Abstractformat *f)
+{
+    if (!f) return "";
+    if (f->get_version) return f->get_version(f);
+    return f->version;
 }
 
 XXFC_API xx_endian_t xx_format_get_endian(Abstractformat *f);
 XXFC_API void xx_format_set_endian(Abstractformat *f, xx_endian_t endian);
 
-static inline int64_t xx_format_get_format_size(Abstractformat *f,
-                                                xx_pd_struct *pd) {
-  if (!xx_format_handle_split_format(f, pd))
-    return -1;
-  if (f && f->get_format_size)
-    return f->get_format_size(f, pd);
-  return f ? f->format_size : -1;
+static inline int64_t xx_format_get_format_size(Abstractformat *f, xx_pd_struct *pd)
+{
+    if (!xx_format_handle_split_format(f, pd)) return -1;
+    if (f && f->get_format_size) return f->get_format_size(f, pd);
+    return f ? f->format_size : -1;
 }
 
-static inline int64_t xx_format_get_size(Abstractformat *f, xx_pd_struct *pd) {
-  return xx_format_get_format_size(f, pd);
+static inline int64_t xx_format_get_size(Abstractformat *f, xx_pd_struct *pd)
+{
+    return xx_format_get_format_size(f, pd);
 }
 
-static inline int64_t xx_format_get_total_size(Abstractformat *f) {
-  return (f && f->device) ? xx_io_total_size(f->device) : -1;
+static inline int64_t xx_format_get_total_size(Abstractformat *f)
+{
+    return (f && f->device) ? xx_io_total_size(f->device) : -1;
 }
 
-static inline int64_t xx_format_get_overlay_offset(Abstractformat *f) {
-  return f ? f->overlay_offset : -1;
+static inline int64_t xx_format_get_overlay_offset(Abstractformat *f)
+{
+    return f ? f->overlay_offset : -1;
 }
 
-static inline int64_t xx_format_get_overlay_size(Abstractformat *f) {
-  return f ? f->overlay_size : 0;
+static inline int64_t xx_format_get_overlay_size(Abstractformat *f)
+{
+    return f ? f->overlay_size : 0;
 }
 
-static inline bool xx_format_is_overlay_present(Abstractformat *f) {
-  return (f && f->overlay_size > 0 && f->overlay_offset >= 0);
+static inline bool xx_format_is_overlay_present(Abstractformat *f)
+{
+    return (f && f->overlay_size > 0 && f->overlay_offset >= 0);
 }
 
-static inline bool xx_format_is_mapped(Abstractformat *f) {
-  return f ? f->is_mapped : false;
+static inline bool xx_format_is_mapped(Abstractformat *f)
+{
+    return f ? f->is_mapped : false;
 }
 
-static inline void xx_format_set_mapped(Abstractformat *f, bool is_mapped) {
-  if (f) {
-    if (f->is_mapped != is_mapped) {
-      xx_format_invalidate_memory_map(f);
-      f->base_info_handled = false;
-      f->is_valid = false;
+static inline void xx_format_set_mapped(Abstractformat *f, bool is_mapped)
+{
+    if (f) {
+        if (f->is_mapped != is_mapped) {
+            xx_format_invalidate_memory_map(f);
+            f->base_info_handled = false;
+            f->is_valid = false;
+        }
+        f->is_mapped = is_mapped;
     }
-    f->is_mapped = is_mapped;
-  }
 }
 
-static inline bool xx_format_is_base_info_handled(Abstractformat *f) {
-  return f ? f->base_info_handled : false;
+static inline bool xx_format_is_base_info_handled(Abstractformat *f)
+{
+    return f ? f->base_info_handled : false;
 }
 
-static inline void xx_format_set_base_info_handled(Abstractformat *f,
-                                                   bool handled) {
-  if (f) {
-    if (!handled)
-      xx_format_invalidate_memory_map(f);
-    f->base_info_handled = handled;
-  }
-}
-
-static inline int64_t xx_format_get_base_address(Abstractformat *f) {
-  return f ? f->base_address : 0;
-}
-
-static inline void xx_format_set_base_address(Abstractformat *f,
-                                              int64_t base_address) {
-  if (f) {
-    if (f->base_address != base_address) {
-      xx_format_invalidate_memory_map(f);
-      f->base_info_handled = false;
-      f->is_valid = false;
+static inline void xx_format_set_base_info_handled(Abstractformat *f, bool handled)
+{
+    if (f) {
+        if (!handled) xx_format_invalidate_memory_map(f);
+        f->base_info_handled = handled;
     }
-    f->base_address = base_address;
-  }
+}
+
+static inline int64_t xx_format_get_base_address(Abstractformat *f)
+{
+    return f ? f->base_address : 0;
+}
+
+static inline void xx_format_set_base_address(Abstractformat *f, int64_t base_address)
+{
+    if (f) {
+        if (f->base_address != base_address) {
+            xx_format_invalidate_memory_map(f);
+            f->base_info_handled = false;
+            f->is_valid = false;
+        }
+        f->base_address = base_address;
+    }
 }
 
 /** Return the configured loaded module VA, or UINT64_MAX for format default. */
-static inline uint64_t xx_format_get_module_address(Abstractformat *f) {
-  return f ? f->module_address : XX_INVALID_ADDRESS;
+static inline uint64_t xx_format_get_module_address(Abstractformat *f)
+{
+    return f ? f->module_address : XX_INVALID_ADDRESS;
 }
 
 /** Override the loaded module VA used by memory maps (e.g. a relocated image). */
-static inline void xx_format_set_module_address(Abstractformat *f,
-                                                uint64_t module_address) {
-  if (f) {
-    if (f->module_address != module_address)
-      xx_format_invalidate_memory_map(f);
-    f->module_address = module_address;
-  }
+static inline void xx_format_set_module_address(Abstractformat *f, uint64_t module_address)
+{
+    if (f) {
+        if (f->module_address != module_address) xx_format_invalidate_memory_map(f);
+        f->module_address = module_address;
+    }
 }
 
-static inline bool xx_format_is_executable(Abstractformat *f) {
-  if (!f)
-    return false;
-  if (f->check_is_executable)
-    return f->check_is_executable(f);
-  return f->is_executable;
+static inline bool xx_format_is_executable(Abstractformat *f)
+{
+    if (!f) return false;
+    if (f->check_is_executable) return f->check_is_executable(f);
+    return f->is_executable;
 }
 
-static inline bool xx_format_is_archive(Abstractformat *f) {
-  if (!f)
-    return false;
-  if (f->check_is_archive)
-    return f->check_is_archive(f);
-  return f->is_archive;
+static inline bool xx_format_is_archive(Abstractformat *f)
+{
+    if (!f) return false;
+    if (f->check_is_archive) return f->check_is_archive(f);
+    return f->is_archive;
 }
 
-static inline bool xx_format_is_signed(Abstractformat *f) {
-  if (!f)
-    return false;
-  if (f->check_is_signed)
-    return f->check_is_signed(f);
-  return f->is_signed;
+static inline bool xx_format_is_signed(Abstractformat *f)
+{
+    if (!f) return false;
+    if (f->check_is_signed) return f->check_is_signed(f);
+    return f->is_signed;
 }
 
-static inline bool xx_format_is_crypted(Abstractformat *f) {
-  if (!f)
-    return false;
-  if (f->check_is_crypted)
-    return f->check_is_crypted(f);
-  return f->is_crypted;
+static inline bool xx_format_is_crypted(Abstractformat *f)
+{
+    if (!f) return false;
+    if (f->check_is_crypted) return f->check_is_crypted(f);
+    return f->is_crypted;
 }
 
-static inline uint64_t xx_format_get_number_of_imports_pd(Abstractformat *f, xx_pd_struct *pd) {
-  if (!f)
-    return 0;
-  if (f->get_number_of_imports)
-    return f->get_number_of_imports(f, pd);
-  return f->number_of_imports;
+static inline uint64_t xx_format_get_number_of_imports_pd(Abstractformat *f, xx_pd_struct *pd)
+{
+    if (!f) return 0;
+    if (f->get_number_of_imports) return f->get_number_of_imports(f, pd);
+    return f->number_of_imports;
 }
 
-static inline uint64_t xx_format_get_number_of_imports(Abstractformat *f, xx_pd_struct *pd) {
-  return xx_format_get_number_of_imports_pd(f, pd);
+static inline uint64_t xx_format_get_number_of_imports(Abstractformat *f, xx_pd_struct *pd)
+{
+    return xx_format_get_number_of_imports_pd(f, pd);
 }
 
-static inline uint64_t xx_format_get_number_of_exports_pd(Abstractformat *f, xx_pd_struct *pd) {
-  if (!f)
-    return 0;
-  if (f->get_number_of_exports)
-    return f->get_number_of_exports(f, pd);
-  return f->number_of_exports;
+static inline uint64_t xx_format_get_number_of_exports_pd(Abstractformat *f, xx_pd_struct *pd)
+{
+    if (!f) return 0;
+    if (f->get_number_of_exports) return f->get_number_of_exports(f, pd);
+    return f->number_of_exports;
 }
 
-static inline uint64_t xx_format_get_number_of_exports(Abstractformat *f, xx_pd_struct *pd) {
-  return xx_format_get_number_of_exports_pd(f, pd);
+static inline uint64_t xx_format_get_number_of_exports(Abstractformat *f, xx_pd_struct *pd)
+{
+    return xx_format_get_number_of_exports_pd(f, pd);
 }
 
-static inline uint64_t xx_format_get_number_of_resources_pd(Abstractformat *f, xx_pd_struct *pd) {
-  if (!f)
-    return 0;
-  if (f->get_number_of_resources)
-    return f->get_number_of_resources(f, pd);
-  return f->number_of_resources;
+static inline uint64_t xx_format_get_number_of_resources_pd(Abstractformat *f, xx_pd_struct *pd)
+{
+    if (!f) return 0;
+    if (f->get_number_of_resources) return f->get_number_of_resources(f, pd);
+    return f->number_of_resources;
 }
 
-static inline uint64_t xx_format_get_number_of_resources(Abstractformat *f, xx_pd_struct *pd) {
-  return xx_format_get_number_of_resources_pd(f, pd);
+static inline uint64_t xx_format_get_number_of_resources(Abstractformat *f, xx_pd_struct *pd)
+{
+    return xx_format_get_number_of_resources_pd(f, pd);
 }
 
-static inline uint64_t xx_format_get_number_of_metadata_pd(Abstractformat *f, xx_pd_struct *pd) {
-  if (!f)
-    return 0;
-  if (f->get_number_of_metadata)
-    return f->get_number_of_metadata(f, pd);
-  return f->number_of_metadata;
+static inline uint64_t xx_format_get_number_of_metadata_pd(Abstractformat *f, xx_pd_struct *pd)
+{
+    if (!f) return 0;
+    if (f->get_number_of_metadata) return f->get_number_of_metadata(f, pd);
+    return f->number_of_metadata;
 }
 
-static inline uint64_t xx_format_get_number_of_metadata(Abstractformat *f, xx_pd_struct *pd) {
-  return xx_format_get_number_of_metadata_pd(f, pd);
+static inline uint64_t xx_format_get_number_of_metadata(Abstractformat *f, xx_pd_struct *pd)
+{
+    return xx_format_get_number_of_metadata_pd(f, pd);
 }
 
-static inline uint64_t xx_format_get_number_of_symbols_pd(Abstractformat *f, xx_pd_struct *pd) {
-  if (!f) return 0;
-  if (f->get_number_of_symbols) return f->get_number_of_symbols(f, pd);
-  return f->number_of_symbols;
+static inline uint64_t xx_format_get_number_of_symbols_pd(Abstractformat *f, xx_pd_struct *pd)
+{
+    if (!f) return 0;
+    if (f->get_number_of_symbols) return f->get_number_of_symbols(f, pd);
+    return f->number_of_symbols;
 }
 
-static inline uint64_t xx_format_get_number_of_symbols(Abstractformat *f, xx_pd_struct *pd) {
-  return xx_format_get_number_of_symbols_pd(f, pd);
+static inline uint64_t xx_format_get_number_of_symbols(Abstractformat *f, xx_pd_struct *pd)
+{
+    return xx_format_get_number_of_symbols_pd(f, pd);
 }
 
-static inline bool xx_format_has_file_symbols(Abstractformat *f) {
-  return xx_format_get_number_of_symbols_pd(f, NULL) > 0;
+static inline bool xx_format_has_file_symbols(Abstractformat *f)
+{
+    return xx_format_get_number_of_symbols_pd(f, NULL) > 0;
 }
 
-static inline void xx_format_set_number_of_symbols(Abstractformat *f, uint64_t count) {
-  if (f) f->number_of_symbols = count;
+static inline void xx_format_set_number_of_symbols(Abstractformat *f, uint64_t count)
+{
+    if (f) f->number_of_symbols = count;
 }
 
-static inline uint64_t Abstractformat_get_number_of_symbols_pd(Abstractformat *f, xx_pd_struct *pd) {
-  return xx_format_get_number_of_symbols_pd(f, pd);
+static inline uint64_t Abstractformat_get_number_of_symbols_pd(Abstractformat *f, xx_pd_struct *pd)
+{
+    return xx_format_get_number_of_symbols_pd(f, pd);
 }
 
-static inline void Abstractformat_set_number_of_symbols(Abstractformat *f, uint64_t count) {
-  xx_format_set_number_of_symbols(f, count);
+static inline void Abstractformat_set_number_of_symbols(Abstractformat *f, uint64_t count)
+{
+    xx_format_set_number_of_symbols(f, count);
 }
 
-static inline bool Abstractformat_has_file_symbols(Abstractformat *f) {
-  return xx_format_has_file_symbols(f);
+static inline bool Abstractformat_has_file_symbols(Abstractformat *f)
+{
+    return xx_format_has_file_symbols(f);
 }
 
-static inline bool has_file_symbols(Abstractformat *f) {
-  return xx_format_has_file_symbols(f);
+static inline bool has_file_symbols(Abstractformat *f)
+{
+    return xx_format_has_file_symbols(f);
 }
 
-static inline bool xx_format_has_file_import(Abstractformat *f) {
-  return xx_format_get_number_of_imports_pd(f, NULL) > 0;
+static inline bool xx_format_has_file_import(Abstractformat *f)
+{
+    return xx_format_get_number_of_imports_pd(f, NULL) > 0;
 }
 
-static inline bool xx_format_has_file_export(Abstractformat *f) {
-  return xx_format_get_number_of_exports_pd(f, NULL) > 0;
+static inline bool xx_format_has_file_export(Abstractformat *f)
+{
+    return xx_format_get_number_of_exports_pd(f, NULL) > 0;
 }
 
-static inline bool xx_format_has_file_resources(Abstractformat *f) {
-  return xx_format_get_number_of_resources_pd(f, NULL) > 0;
+static inline bool xx_format_has_file_resources(Abstractformat *f)
+{
+    return xx_format_get_number_of_resources_pd(f, NULL) > 0;
 }
 
-static inline bool xx_format_has_file_metadata(Abstractformat *f) {
-  return xx_format_get_number_of_metadata_pd(f, NULL) > 0;
+static inline bool xx_format_has_file_metadata(Abstractformat *f)
+{
+    return xx_format_get_number_of_metadata_pd(f, NULL) > 0;
 }
 
-static inline uint64_t xx_format_get_number_of_archive_records_pd(Abstractformat *f, xx_pd_struct *pd) {
-  if (!xx_format_handle_split_format(f, pd))
-    return 0;
-  if (f->get_number_of_archive_records)
-    return f->get_number_of_archive_records(f, pd);
-  return f->number_of_archive_records;
+static inline uint64_t xx_format_get_number_of_archive_records_pd(Abstractformat *f, xx_pd_struct *pd)
+{
+    if (!xx_format_handle_split_format(f, pd)) return 0;
+    if (f->get_number_of_archive_records) return f->get_number_of_archive_records(f, pd);
+    return f->number_of_archive_records;
 }
 
-static inline uint64_t xx_format_get_number_of_archive_records(Abstractformat *f, xx_pd_struct *pd) {
-  return xx_format_get_number_of_archive_records_pd(f, pd);
+static inline uint64_t xx_format_get_number_of_archive_records(Abstractformat *f, xx_pd_struct *pd)
+{
+    return xx_format_get_number_of_archive_records_pd(f, pd);
 }
 
 /* Setters for metadata string buffers and flags */
-static inline void xx_format_set_mime_type(Abstractformat *f, const char *s) {
-  if (!f)
-    return;
-  size_t i = 0;
-  while (s && s[i] && i < sizeof(f->mime_type) - 1) {
-    f->mime_type[i] = s[i];
-    i++;
-  }
-  f->mime_type[i] = '\0';
-}
-
-static inline void xx_format_set_extension(Abstractformat *f, const char *s) {
-  if (!f)
-    return;
-  size_t i = 0;
-  while (s && s[i] && i < sizeof(f->extension) - 1) {
-    f->extension[i] = s[i];
-    i++;
-  }
-  f->extension[i] = '\0';
-}
-
-static inline void xx_format_set_os_name(Abstractformat *f, const char *s) {
-  (void)f;
-  (void)s;
-}
-
-static inline void xx_format_set_os_version(Abstractformat *f, const char *s) {
-  if (!f)
-    return;
-  size_t i = 0;
-  while (s && s[i] && i < sizeof(f->os_version) - 1) {
-    f->os_version[i] = s[i];
-    i++;
-  }
-  f->os_version[i] = '\0';
-}
-
-static inline void xx_format_set_version(Abstractformat *f, const char *s) {
-  if (!f)
-    return;
-  size_t i = 0;
-  while (s && s[i] && i < sizeof(f->version) - 1) {
-    f->version[i] = s[i];
-    i++;
-  }
-  f->version[i] = '\0';
-}
-
-static inline void xx_format_set_executable(Abstractformat *f, bool val) {
-  if (f)
-    f->is_executable = val;
-}
-static inline void xx_format_set_archive(Abstractformat *f, bool val) {
-  if (f)
-    f->is_archive = val;
-}
-static inline void xx_format_set_signed(Abstractformat *f, bool val) {
-  if (f)
-    f->is_signed = val;
-}
-static inline void xx_format_set_crypted(Abstractformat *f, bool val) {
-  if (f)
-    f->is_crypted = val;
-}
-static inline void xx_format_set_number_of_imports(Abstractformat *f, uint64_t count) {
-  if (f)
-    f->number_of_imports = count;
-}
-static inline void xx_format_set_number_of_exports(Abstractformat *f, uint64_t count) {
-  if (f)
-    f->number_of_exports = count;
-}
-static inline void xx_format_set_number_of_resources(Abstractformat *f, uint64_t count) {
-  if (f)
-    f->number_of_resources = count;
-}
-static inline void xx_format_set_number_of_metadata(Abstractformat *f, uint64_t count) {
-  if (f)
-    f->number_of_metadata = count;
-}
-static inline void xx_format_set_number_of_archive_records(Abstractformat *f, uint64_t count) {
-  if (f)
-    f->number_of_archive_records = count;
-}
-static inline void xx_format_set_has_file_import(Abstractformat *f, bool val) {
-  if (f && val && f->number_of_imports == 0)
-    f->number_of_imports = 1;
-  else if (f && !val)
-    f->number_of_imports = 0;
-}
-static inline void xx_format_set_has_file_export(Abstractformat *f, bool val) {
-  if (f && val && f->number_of_exports == 0)
-    f->number_of_exports = 1;
-  else if (f && !val)
-    f->number_of_exports = 0;
-}
-static inline void xx_format_set_has_file_resources(Abstractformat *f, bool val) {
-  if (f && val && f->number_of_resources == 0)
-    f->number_of_resources = 1;
-  else if (f && !val)
-    f->number_of_resources = 0;
-}
-static inline void xx_format_set_has_file_metadata(Abstractformat *f, bool val) {
-  if (f && val && f->number_of_metadata == 0)
-    f->number_of_metadata = 1;
-  else if (f && !val)
-    f->number_of_metadata = 0;
-}
-
-static inline int xx_format_close(Abstractformat *f) {
-  return (f && f->close) ? f->close(f) : 0;
-}
-
-static inline void xx_format_destroy(Abstractformat *f) {
-  if (f) {
-    if (f->destroy) {
-      f->destroy(f);
-    } else if (f->close) {
-      f->close(f);
+static inline void xx_format_set_mime_type(Abstractformat *f, const char *s)
+{
+    if (!f) return;
+    size_t i = 0;
+    while (s && s[i] && i < sizeof(f->mime_type) - 1) {
+        f->mime_type[i] = s[i];
+        i++;
     }
-    xx_format_cleanup_extra_parameters(f);
-  }
+    f->mime_type[i] = '\0';
+}
+
+static inline void xx_format_set_extension(Abstractformat *f, const char *s)
+{
+    if (!f) return;
+    size_t i = 0;
+    while (s && s[i] && i < sizeof(f->extension) - 1) {
+        f->extension[i] = s[i];
+        i++;
+    }
+    f->extension[i] = '\0';
+}
+
+static inline void xx_format_set_os_name(Abstractformat *f, const char *s)
+{
+    (void)f;
+    (void)s;
+}
+
+static inline void xx_format_set_os_version(Abstractformat *f, const char *s)
+{
+    if (!f) return;
+    size_t i = 0;
+    while (s && s[i] && i < sizeof(f->os_version) - 1) {
+        f->os_version[i] = s[i];
+        i++;
+    }
+    f->os_version[i] = '\0';
+}
+
+static inline void xx_format_set_version(Abstractformat *f, const char *s)
+{
+    if (!f) return;
+    size_t i = 0;
+    while (s && s[i] && i < sizeof(f->version) - 1) {
+        f->version[i] = s[i];
+        i++;
+    }
+    f->version[i] = '\0';
+}
+
+static inline void xx_format_set_executable(Abstractformat *f, bool val)
+{
+    if (f) f->is_executable = val;
+}
+static inline void xx_format_set_archive(Abstractformat *f, bool val)
+{
+    if (f) f->is_archive = val;
+}
+static inline void xx_format_set_signed(Abstractformat *f, bool val)
+{
+    if (f) f->is_signed = val;
+}
+static inline void xx_format_set_crypted(Abstractformat *f, bool val)
+{
+    if (f) f->is_crypted = val;
+}
+static inline void xx_format_set_number_of_imports(Abstractformat *f, uint64_t count)
+{
+    if (f) f->number_of_imports = count;
+}
+static inline void xx_format_set_number_of_exports(Abstractformat *f, uint64_t count)
+{
+    if (f) f->number_of_exports = count;
+}
+static inline void xx_format_set_number_of_resources(Abstractformat *f, uint64_t count)
+{
+    if (f) f->number_of_resources = count;
+}
+static inline void xx_format_set_number_of_metadata(Abstractformat *f, uint64_t count)
+{
+    if (f) f->number_of_metadata = count;
+}
+static inline void xx_format_set_number_of_archive_records(Abstractformat *f, uint64_t count)
+{
+    if (f) f->number_of_archive_records = count;
+}
+static inline void xx_format_set_has_file_import(Abstractformat *f, bool val)
+{
+    if (f && val && f->number_of_imports == 0) f->number_of_imports = 1;
+    else if (f && !val) f->number_of_imports = 0;
+}
+static inline void xx_format_set_has_file_export(Abstractformat *f, bool val)
+{
+    if (f && val && f->number_of_exports == 0) f->number_of_exports = 1;
+    else if (f && !val) f->number_of_exports = 0;
+}
+static inline void xx_format_set_has_file_resources(Abstractformat *f, bool val)
+{
+    if (f && val && f->number_of_resources == 0) f->number_of_resources = 1;
+    else if (f && !val) f->number_of_resources = 0;
+}
+static inline void xx_format_set_has_file_metadata(Abstractformat *f, bool val)
+{
+    if (f && val && f->number_of_metadata == 0) f->number_of_metadata = 1;
+    else if (f && !val) f->number_of_metadata = 0;
+}
+
+static inline int xx_format_close(Abstractformat *f)
+{
+    return (f && f->close) ? f->close(f) : 0;
+}
+
+static inline void xx_format_destroy(Abstractformat *f)
+{
+    if (f) {
+        if (f->destroy) {
+            f->destroy(f);
+        } else if (f->close) {
+            f->close(f);
+        }
+        xx_format_cleanup_extra_parameters(f);
+    }
 }
 
 /* Aliases matching user request without xx_ prefix */
-static inline bool Abstractformat_handle_split_format(Abstractformat *f,
-                                                      xx_pd_struct *pd) {
-  return xx_format_handle_split_format(f, pd);
+static inline bool Abstractformat_handle_split_format(Abstractformat *f, xx_pd_struct *pd)
+{
+    return xx_format_handle_split_format(f, pd);
 }
 
-static inline const xx_memory_map *Abstractformat_get_memory_map(
-    Abstractformat *f, xx_memory_map_mode_t mode, xx_pd_struct *pd) {
-  return xx_format_get_memory_map(f, mode, pd);
+static inline const xx_memory_map *Abstractformat_get_memory_map(Abstractformat *f, xx_memory_map_mode_t mode, xx_pd_struct *pd)
+{
+    return xx_format_get_memory_map(f, mode, pd);
 }
 
-static inline uint64_t Abstractformat_offset_to_address(
-    Abstractformat *f, int64_t offset, xx_pd_struct *pd) {
-  return xx_format_offset_to_address(f, offset, pd);
+static inline uint64_t Abstractformat_offset_to_address(Abstractformat *f, int64_t offset, xx_pd_struct *pd)
+{
+    return xx_format_offset_to_address(f, offset, pd);
 }
 
-static inline int64_t Abstractformat_address_to_offset(
-    Abstractformat *f, uint64_t address, xx_pd_struct *pd) {
-  return xx_format_address_to_offset(f, address, pd);
+static inline int64_t Abstractformat_address_to_offset(Abstractformat *f, uint64_t address, xx_pd_struct *pd)
+{
+    return xx_format_address_to_offset(f, address, pd);
 }
 
-static inline uint64_t Abstractformat_offset_to_rel_address(
-    Abstractformat *f, int64_t offset, xx_pd_struct *pd) {
-  return xx_format_offset_to_rel_address(f, offset, pd);
+static inline uint64_t Abstractformat_offset_to_rel_address(Abstractformat *f, int64_t offset, xx_pd_struct *pd)
+{
+    return xx_format_offset_to_rel_address(f, offset, pd);
 }
 
-static inline int64_t Abstractformat_rel_address_to_offset(
-    Abstractformat *f, int64_t relative_address, xx_pd_struct *pd) {
-  return xx_format_rel_address_to_offset(f, relative_address, pd);
+static inline int64_t Abstractformat_rel_address_to_offset(Abstractformat *f, int64_t relative_address, xx_pd_struct *pd)
+{
+    return xx_format_rel_address_to_offset(f, relative_address, pd);
 }
 
-static inline uint64_t Abstractformat_rel_address_to_address(
-    Abstractformat *f, int64_t relative_address, xx_pd_struct *pd) {
-  return xx_format_rel_address_to_address(f, relative_address, pd);
+static inline uint64_t Abstractformat_rel_address_to_address(Abstractformat *f, int64_t relative_address, xx_pd_struct *pd)
+{
+    return xx_format_rel_address_to_address(f, relative_address, pd);
 }
 
-static inline int64_t Abstractformat_address_to_rel_address(
-    Abstractformat *f, uint64_t address, xx_pd_struct *pd) {
-  return xx_format_address_to_rel_address(f, address, pd);
+static inline int64_t Abstractformat_address_to_rel_address(Abstractformat *f, uint64_t address, xx_pd_struct *pd)
+{
+    return xx_format_address_to_rel_address(f, address, pd);
 }
 
-static inline bool Abstractformat_is_valid(Abstractformat *f,
-                                           xx_pd_struct *pd) {
-  return xx_format_is_valid(f, pd);
+static inline bool Abstractformat_is_valid(Abstractformat *f, xx_pd_struct *pd)
+{
+    return xx_format_is_valid(f, pd);
 }
-static inline bool Abstractformat_handle_base_info(Abstractformat *f,
-                                                   xx_pd_struct *pd) {
-  return xx_format_handle_base_info(f, pd);
+static inline bool Abstractformat_handle_base_info(Abstractformat *f, xx_pd_struct *pd)
+{
+    return xx_format_handle_base_info(f, pd);
 }
-static inline xx_format_type_t Abstractformat_get_type(Abstractformat *f) {
-  return xx_format_get_type(f);
+static inline xx_format_type_t Abstractformat_get_type(Abstractformat *f)
+{
+    return xx_format_get_type(f);
 }
-static inline void Abstractformat_set_type(Abstractformat *f,
-                                           xx_format_type_t type) {
-  xx_format_set_type(f, type);
+static inline void Abstractformat_set_type(Abstractformat *f, xx_format_type_t type)
+{
+    xx_format_set_type(f, type);
 }
-static inline xx_format_type_t get_type(Abstractformat *f) {
-  return xx_format_get_type(f);
+static inline xx_format_type_t get_type(Abstractformat *f)
+{
+    return xx_format_get_type(f);
 }
-static inline const char *Abstractformat_get_type_name(Abstractformat *f) {
-  return xx_format_get_type_name(f);
+static inline const char *Abstractformat_get_type_name(Abstractformat *f)
+{
+    return xx_format_get_type_name(f);
 }
-static inline const char *get_type_name(Abstractformat *f) {
-  return xx_format_get_type_name(f);
+static inline const char *get_type_name(Abstractformat *f)
+{
+    return xx_format_get_type_name(f);
 }
-static inline xx_file_type_t Abstractformat_get_file_type(Abstractformat *f) {
-  return xx_format_get_file_type(f);
+static inline xx_file_type_t Abstractformat_get_file_type(Abstractformat *f)
+{
+    return xx_format_get_file_type(f);
 }
-static inline xx_file_type_t
-Abstractformat_get_file_type_device(xx_io_device *dev) {
-  return xx_format_get_file_type_device(dev);
+static inline xx_file_type_t Abstractformat_get_file_type_device(xx_io_device *dev)
+{
+    return xx_format_get_file_type_device(dev);
 }
-static inline void Abstractformat_set_file_type(Abstractformat *f,
-                                                xx_file_type_t type) {
-  xx_format_set_file_type(f, type);
+static inline void Abstractformat_set_file_type(Abstractformat *f, xx_file_type_t type)
+{
+    xx_format_set_file_type(f, type);
 }
-static inline xx_file_type_t get_file_type(Abstractformat *f) {
-  return xx_format_get_file_type(f);
+static inline xx_file_type_t get_file_type(Abstractformat *f)
+{
+    return xx_format_get_file_type(f);
 }
-static inline xx_file_type_t xx_io_get_file_type(xx_io_device *dev) {
-  return xx_format_get_file_type_device(dev);
+static inline xx_file_type_t xx_io_get_file_type(xx_io_device *dev)
+{
+    return xx_format_get_file_type_device(dev);
 }
-static inline xx_file_type_t io_get_file_type(xx_io_device *dev) {
-  return xx_format_get_file_type_device(dev);
+static inline xx_file_type_t io_get_file_type(xx_io_device *dev)
+{
+    return xx_format_get_file_type_device(dev);
 }
-static inline const char *Abstractformat_get_mime_type(Abstractformat *f) {
-  return xx_format_get_mime_type(f);
+static inline const char *Abstractformat_get_mime_type(Abstractformat *f)
+{
+    return xx_format_get_mime_type(f);
 }
-static inline const char *Abstractformat_get_extension(Abstractformat *f) {
-  return xx_format_get_extension(f);
+static inline const char *Abstractformat_get_extension(Abstractformat *f)
+{
+    return xx_format_get_extension(f);
 }
-static inline xx_arch_t Abstractformat_get_arch(Abstractformat *f) {
-  return xx_format_get_arch(f);
+static inline xx_arch_t Abstractformat_get_arch(Abstractformat *f)
+{
+    return xx_format_get_arch(f);
 }
-static inline void Abstractformat_set_arch(Abstractformat *f, xx_arch_t arch) {
-  xx_format_set_arch(f, arch);
+static inline void Abstractformat_set_arch(Abstractformat *f, xx_arch_t arch)
+{
+    xx_format_set_arch(f, arch);
 }
-static inline xx_arch_t get_arch(Abstractformat *f) {
-  return xx_format_get_arch(f);
+static inline xx_arch_t get_arch(Abstractformat *f)
+{
+    return xx_format_get_arch(f);
 }
-static inline const char *Abstractformat_get_arch_name(Abstractformat *f) {
-  return xx_format_get_arch_name(f);
+static inline const char *Abstractformat_get_arch_name(Abstractformat *f)
+{
+    return xx_format_get_arch_name(f);
 }
-static inline void Abstractformat_set_arch_name(Abstractformat *f, const char *s) {
-  xx_format_set_arch_name(f, s);
+static inline void Abstractformat_set_arch_name(Abstractformat *f, const char *s)
+{
+    xx_format_set_arch_name(f, s);
 }
-static inline const char *get_arch_name(Abstractformat *f) {
-  return xx_format_get_arch_name(f);
+static inline const char *get_arch_name(Abstractformat *f)
+{
+    return xx_format_get_arch_name(f);
 }
-static inline xx_os_t Abstractformat_get_os(Abstractformat *f) {
-  return xx_format_get_os(f);
+static inline xx_os_t Abstractformat_get_os(Abstractformat *f)
+{
+    return xx_format_get_os(f);
 }
-static inline void Abstractformat_set_os(Abstractformat *f, xx_os_t os) {
-  xx_format_set_os(f, os);
+static inline void Abstractformat_set_os(Abstractformat *f, xx_os_t os)
+{
+    xx_format_set_os(f, os);
 }
-static inline xx_os_t get_os(Abstractformat *f) { return xx_format_get_os(f); }
-static inline const char *Abstractformat_get_os_name(Abstractformat *f) {
-  return xx_format_get_os_name(f);
+static inline xx_os_t get_os(Abstractformat *f)
+{
+    return xx_format_get_os(f);
 }
-static inline const char *get_os_name(Abstractformat *f) {
-  return xx_format_get_os_name(f);
+static inline const char *Abstractformat_get_os_name(Abstractformat *f)
+{
+    return xx_format_get_os_name(f);
 }
-static inline const char *Abstractformat_get_os_version(Abstractformat *f) {
-  return xx_format_get_os_version(f);
+static inline const char *get_os_name(Abstractformat *f)
+{
+    return xx_format_get_os_name(f);
 }
-static inline const char *Abstractformat_get_version(Abstractformat *f) {
-  return xx_format_get_version(f);
+static inline const char *Abstractformat_get_os_version(Abstractformat *f)
+{
+    return xx_format_get_os_version(f);
 }
-static inline xx_endian_t Abstractformat_get_endian(Abstractformat *f) {
-  return xx_format_get_endian(f);
+static inline const char *Abstractformat_get_version(Abstractformat *f)
+{
+    return xx_format_get_version(f);
 }
-static inline void Abstractformat_set_endian(Abstractformat *f, xx_endian_t endian) {
-  xx_format_set_endian(f, endian);
+static inline xx_endian_t Abstractformat_get_endian(Abstractformat *f)
+{
+    return xx_format_get_endian(f);
 }
-static inline xx_endian_t get_endian(Abstractformat *f) {
-  return xx_format_get_endian(f);
+static inline void Abstractformat_set_endian(Abstractformat *f, xx_endian_t endian)
+{
+    xx_format_set_endian(f, endian);
 }
-static inline int64_t Abstractformat_get_format_size(Abstractformat *f,
-                                                     xx_pd_struct *pd) {
-  return xx_format_get_format_size(f, pd);
+static inline xx_endian_t get_endian(Abstractformat *f)
+{
+    return xx_format_get_endian(f);
 }
-static inline int64_t Abstractformat_get_size(Abstractformat *f,
-                                              xx_pd_struct *pd) {
-  return xx_format_get_size(f, pd);
+static inline int64_t Abstractformat_get_format_size(Abstractformat *f, xx_pd_struct *pd)
+{
+    return xx_format_get_format_size(f, pd);
 }
-static inline int64_t Abstractformat_get_total_size(Abstractformat *f) {
-  return xx_format_get_total_size(f);
+static inline int64_t Abstractformat_get_size(Abstractformat *f, xx_pd_struct *pd)
+{
+    return xx_format_get_size(f, pd);
 }
-static inline int64_t Abstractformat_get_overlay_offset(Abstractformat *f) {
-  return xx_format_get_overlay_offset(f);
+static inline int64_t Abstractformat_get_total_size(Abstractformat *f)
+{
+    return xx_format_get_total_size(f);
 }
-static inline int64_t Abstractformat_get_overlay_size(Abstractformat *f) {
-  return xx_format_get_overlay_size(f);
+static inline int64_t Abstractformat_get_overlay_offset(Abstractformat *f)
+{
+    return xx_format_get_overlay_offset(f);
 }
-static inline bool Abstractformat_is_overlay_present(Abstractformat *f) {
-  return xx_format_is_overlay_present(f);
+static inline int64_t Abstractformat_get_overlay_size(Abstractformat *f)
+{
+    return xx_format_get_overlay_size(f);
 }
-static inline bool Abstractformat_is_mapped(Abstractformat *f) {
-  return xx_format_is_mapped(f);
+static inline bool Abstractformat_is_overlay_present(Abstractformat *f)
+{
+    return xx_format_is_overlay_present(f);
 }
-static inline void Abstractformat_set_mapped(Abstractformat *f,
-                                             bool is_mapped) {
-  xx_format_set_mapped(f, is_mapped);
+static inline bool Abstractformat_is_mapped(Abstractformat *f)
+{
+    return xx_format_is_mapped(f);
 }
-static inline bool Abstractformat_is_base_info_handled(Abstractformat *f) {
-  return xx_format_is_base_info_handled(f);
+static inline void Abstractformat_set_mapped(Abstractformat *f, bool is_mapped)
+{
+    xx_format_set_mapped(f, is_mapped);
 }
-static inline void Abstractformat_set_base_info_handled(Abstractformat *f,
-                                                        bool handled) {
-  xx_format_set_base_info_handled(f, handled);
+static inline bool Abstractformat_is_base_info_handled(Abstractformat *f)
+{
+    return xx_format_is_base_info_handled(f);
 }
-static inline int64_t Abstractformat_get_base_address(Abstractformat *f) {
-  return xx_format_get_base_address(f);
+static inline void Abstractformat_set_base_info_handled(Abstractformat *f, bool handled)
+{
+    xx_format_set_base_info_handled(f, handled);
 }
-static inline void Abstractformat_set_base_address(Abstractformat *f,
-                                                   int64_t base_address) {
-  xx_format_set_base_address(f, base_address);
+static inline int64_t Abstractformat_get_base_address(Abstractformat *f)
+{
+    return xx_format_get_base_address(f);
 }
-static inline uint64_t Abstractformat_get_module_address(Abstractformat *f) {
-  return xx_format_get_module_address(f);
+static inline void Abstractformat_set_base_address(Abstractformat *f, int64_t base_address)
+{
+    xx_format_set_base_address(f, base_address);
 }
-static inline void Abstractformat_set_module_address(Abstractformat *f,
-                                                      uint64_t address) {
-  xx_format_set_module_address(f, address);
+static inline uint64_t Abstractformat_get_module_address(Abstractformat *f)
+{
+    return xx_format_get_module_address(f);
 }
-static inline bool Abstractformat_is_executable(Abstractformat *f) {
-  return xx_format_is_executable(f);
+static inline void Abstractformat_set_module_address(Abstractformat *f, uint64_t address)
+{
+    xx_format_set_module_address(f, address);
 }
-static inline bool Abstractformat_is_archive(Abstractformat *f) {
-  return xx_format_is_archive(f);
+static inline bool Abstractformat_is_executable(Abstractformat *f)
+{
+    return xx_format_is_executable(f);
 }
-static inline bool Abstractformat_is_signed(Abstractformat *f) {
-  return xx_format_is_signed(f);
+static inline bool Abstractformat_is_archive(Abstractformat *f)
+{
+    return xx_format_is_archive(f);
 }
-static inline bool Abstractformat_is_crypted(Abstractformat *f) {
-  return xx_format_is_crypted(f);
+static inline bool Abstractformat_is_signed(Abstractformat *f)
+{
+    return xx_format_is_signed(f);
 }
-static inline void Abstractformat_set_mime_type(Abstractformat *f,
-                                                const char *s) {
-  xx_format_set_mime_type(f, s);
+static inline bool Abstractformat_is_crypted(Abstractformat *f)
+{
+    return xx_format_is_crypted(f);
 }
-static inline void Abstractformat_set_extension(Abstractformat *f,
-                                                const char *s) {
-  xx_format_set_extension(f, s);
+static inline void Abstractformat_set_mime_type(Abstractformat *f, const char *s)
+{
+    xx_format_set_mime_type(f, s);
 }
-static inline void Abstractformat_set_arch_name_alias(Abstractformat *f, const char *s) {
-  xx_format_set_arch_name(f, s);
+static inline void Abstractformat_set_extension(Abstractformat *f, const char *s)
+{
+    xx_format_set_extension(f, s);
 }
-static inline void Abstractformat_set_os_name(Abstractformat *f,
-                                              const char *s) {
-  xx_format_set_os_name(f, s);
+static inline void Abstractformat_set_arch_name_alias(Abstractformat *f, const char *s)
+{
+    xx_format_set_arch_name(f, s);
 }
-static inline void Abstractformat_set_os_version(Abstractformat *f,
-                                                 const char *s) {
-  xx_format_set_os_version(f, s);
+static inline void Abstractformat_set_os_name(Abstractformat *f, const char *s)
+{
+    xx_format_set_os_name(f, s);
 }
-static inline void Abstractformat_set_version(Abstractformat *f,
-                                              const char *s) {
-  xx_format_set_version(f, s);
+static inline void Abstractformat_set_os_version(Abstractformat *f, const char *s)
+{
+    xx_format_set_os_version(f, s);
 }
-static inline void Abstractformat_set_executable(Abstractformat *f, bool val) {
-  xx_format_set_executable(f, val);
+static inline void Abstractformat_set_version(Abstractformat *f, const char *s)
+{
+    xx_format_set_version(f, s);
 }
-static inline void Abstractformat_set_archive(Abstractformat *f, bool val) {
-  xx_format_set_archive(f, val);
+static inline void Abstractformat_set_executable(Abstractformat *f, bool val)
+{
+    xx_format_set_executable(f, val);
 }
-static inline void Abstractformat_set_signed(Abstractformat *f, bool val) {
-  xx_format_set_signed(f, val);
+static inline void Abstractformat_set_archive(Abstractformat *f, bool val)
+{
+    xx_format_set_archive(f, val);
 }
-static inline void Abstractformat_set_crypted(Abstractformat *f, bool val) {
-  xx_format_set_crypted(f, val);
+static inline void Abstractformat_set_signed(Abstractformat *f, bool val)
+{
+    xx_format_set_signed(f, val);
 }
-static inline uint64_t Abstractformat_get_number_of_imports_pd(Abstractformat *f, xx_pd_struct *pd) {
-  return xx_format_get_number_of_imports_pd(f, pd);
+static inline void Abstractformat_set_crypted(Abstractformat *f, bool val)
+{
+    xx_format_set_crypted(f, val);
 }
-static inline void Abstractformat_set_number_of_imports(Abstractformat *f, uint64_t count) {
-  xx_format_set_number_of_imports(f, count);
+static inline uint64_t Abstractformat_get_number_of_imports_pd(Abstractformat *f, xx_pd_struct *pd)
+{
+    return xx_format_get_number_of_imports_pd(f, pd);
+}
+static inline void Abstractformat_set_number_of_imports(Abstractformat *f, uint64_t count)
+{
+    xx_format_set_number_of_imports(f, count);
 }
 
-static inline uint64_t Abstractformat_get_number_of_exports_pd(Abstractformat *f, xx_pd_struct *pd) {
-  return xx_format_get_number_of_exports_pd(f, pd);
+static inline uint64_t Abstractformat_get_number_of_exports_pd(Abstractformat *f, xx_pd_struct *pd)
+{
+    return xx_format_get_number_of_exports_pd(f, pd);
 }
-static inline void Abstractformat_set_number_of_exports(Abstractformat *f, uint64_t count) {
-  xx_format_set_number_of_exports(f, count);
-}
-
-static inline uint64_t Abstractformat_get_number_of_resources_pd(Abstractformat *f, xx_pd_struct *pd) {
-  return xx_format_get_number_of_resources_pd(f, pd);
-}
-static inline void Abstractformat_set_number_of_resources(Abstractformat *f, uint64_t count) {
-  xx_format_set_number_of_resources(f, count);
+static inline void Abstractformat_set_number_of_exports(Abstractformat *f, uint64_t count)
+{
+    xx_format_set_number_of_exports(f, count);
 }
 
-static inline uint64_t Abstractformat_get_number_of_metadata_pd(Abstractformat *f, xx_pd_struct *pd) {
-  return xx_format_get_number_of_metadata_pd(f, pd);
+static inline uint64_t Abstractformat_get_number_of_resources_pd(Abstractformat *f, xx_pd_struct *pd)
+{
+    return xx_format_get_number_of_resources_pd(f, pd);
 }
-static inline void Abstractformat_set_number_of_metadata(Abstractformat *f, uint64_t count) {
-  xx_format_set_number_of_metadata(f, count);
+static inline void Abstractformat_set_number_of_resources(Abstractformat *f, uint64_t count)
+{
+    xx_format_set_number_of_resources(f, count);
 }
 
-static inline uint64_t Abstractformat_get_number_of_archive_records_pd(Abstractformat *f, xx_pd_struct *pd) {
-  return xx_format_get_number_of_archive_records_pd(f, pd);
+static inline uint64_t Abstractformat_get_number_of_metadata_pd(Abstractformat *f, xx_pd_struct *pd)
+{
+    return xx_format_get_number_of_metadata_pd(f, pd);
 }
-static inline void Abstractformat_set_number_of_archive_records(Abstractformat *f, uint64_t count) {
-  xx_format_set_number_of_archive_records(f, count);
+static inline void Abstractformat_set_number_of_metadata(Abstractformat *f, uint64_t count)
+{
+    xx_format_set_number_of_metadata(f, count);
+}
+
+static inline uint64_t Abstractformat_get_number_of_archive_records_pd(Abstractformat *f, xx_pd_struct *pd)
+{
+    return xx_format_get_number_of_archive_records_pd(f, pd);
+}
+static inline void Abstractformat_set_number_of_archive_records(Abstractformat *f, uint64_t count)
+{
+    xx_format_set_number_of_archive_records(f, count);
 }
 
 #define _XX_GET_REC_1(f) xx_format_get_number_of_archive_records_pd((f), NULL)
@@ -1630,97 +1658,90 @@ static inline void Abstractformat_set_number_of_archive_records(Abstractformat *
 #define _XX_GET_REC_CHOOSER(_1, _2, NAME, ...) NAME
 #define _XX_GET_REC_EXPAND(x) x
 
-#define get_number_of_archive_records(...) \
-    _XX_GET_REC_EXPAND(_XX_GET_REC_CHOOSER(__VA_ARGS__, _XX_GET_REC_2, _XX_GET_REC_1)(__VA_ARGS__))
-#define Abstractformat_get_number_of_archive_records(...) \
-    _XX_GET_REC_EXPAND(_XX_GET_REC_CHOOSER(__VA_ARGS__, _XX_GET_REC_2, _XX_GET_REC_1)(__VA_ARGS__))
-#define getNumberOfArchiveRecords(...) \
-    _XX_GET_REC_EXPAND(_XX_GET_REC_CHOOSER(__VA_ARGS__, _XX_GET_REC_2, _XX_GET_REC_1)(__VA_ARGS__))
-#define get_number_of_records(...) \
-    _XX_GET_REC_EXPAND(_XX_GET_REC_CHOOSER(__VA_ARGS__, _XX_GET_REC_2, _XX_GET_REC_1)(__VA_ARGS__))
-#define getNumberOfRecords(...) \
-    _XX_GET_REC_EXPAND(_XX_GET_REC_CHOOSER(__VA_ARGS__, _XX_GET_REC_2, _XX_GET_REC_1)(__VA_ARGS__))
+#define get_number_of_archive_records(...) _XX_GET_REC_EXPAND(_XX_GET_REC_CHOOSER(__VA_ARGS__, _XX_GET_REC_2, _XX_GET_REC_1)(__VA_ARGS__))
+#define Abstractformat_get_number_of_archive_records(...) _XX_GET_REC_EXPAND(_XX_GET_REC_CHOOSER(__VA_ARGS__, _XX_GET_REC_2, _XX_GET_REC_1)(__VA_ARGS__))
+#define getNumberOfArchiveRecords(...) _XX_GET_REC_EXPAND(_XX_GET_REC_CHOOSER(__VA_ARGS__, _XX_GET_REC_2, _XX_GET_REC_1)(__VA_ARGS__))
+#define get_number_of_records(...) _XX_GET_REC_EXPAND(_XX_GET_REC_CHOOSER(__VA_ARGS__, _XX_GET_REC_2, _XX_GET_REC_1)(__VA_ARGS__))
+#define getNumberOfRecords(...) _XX_GET_REC_EXPAND(_XX_GET_REC_CHOOSER(__VA_ARGS__, _XX_GET_REC_2, _XX_GET_REC_1)(__VA_ARGS__))
 
 #define _XX_GET_IMP_1(f) xx_format_get_number_of_imports_pd((f), NULL)
 #define _XX_GET_IMP_2(f, pd) xx_format_get_number_of_imports_pd((f), (pd))
-#define get_number_of_imports(...) \
-    _XX_GET_REC_EXPAND(_XX_GET_REC_CHOOSER(__VA_ARGS__, _XX_GET_IMP_2, _XX_GET_IMP_1)(__VA_ARGS__))
-#define Abstractformat_get_number_of_imports(...) \
-    _XX_GET_REC_EXPAND(_XX_GET_REC_CHOOSER(__VA_ARGS__, _XX_GET_IMP_2, _XX_GET_IMP_1)(__VA_ARGS__))
-#define getNumberOfImports(...) \
-    _XX_GET_REC_EXPAND(_XX_GET_REC_CHOOSER(__VA_ARGS__, _XX_GET_IMP_2, _XX_GET_IMP_1)(__VA_ARGS__))
+#define get_number_of_imports(...) _XX_GET_REC_EXPAND(_XX_GET_REC_CHOOSER(__VA_ARGS__, _XX_GET_IMP_2, _XX_GET_IMP_1)(__VA_ARGS__))
+#define Abstractformat_get_number_of_imports(...) _XX_GET_REC_EXPAND(_XX_GET_REC_CHOOSER(__VA_ARGS__, _XX_GET_IMP_2, _XX_GET_IMP_1)(__VA_ARGS__))
+#define getNumberOfImports(...) _XX_GET_REC_EXPAND(_XX_GET_REC_CHOOSER(__VA_ARGS__, _XX_GET_IMP_2, _XX_GET_IMP_1)(__VA_ARGS__))
 
 #define _XX_GET_EXP_1(f) xx_format_get_number_of_exports_pd((f), NULL)
 #define _XX_GET_EXP_2(f, pd) xx_format_get_number_of_exports_pd((f), (pd))
-#define get_number_of_exports(...) \
-    _XX_GET_REC_EXPAND(_XX_GET_REC_CHOOSER(__VA_ARGS__, _XX_GET_EXP_2, _XX_GET_EXP_1)(__VA_ARGS__))
-#define Abstractformat_get_number_of_exports(...) \
-    _XX_GET_REC_EXPAND(_XX_GET_REC_CHOOSER(__VA_ARGS__, _XX_GET_EXP_2, _XX_GET_EXP_1)(__VA_ARGS__))
-#define getNumberOfExports(...) \
-    _XX_GET_REC_EXPAND(_XX_GET_REC_CHOOSER(__VA_ARGS__, _XX_GET_EXP_2, _XX_GET_EXP_1)(__VA_ARGS__))
+#define get_number_of_exports(...) _XX_GET_REC_EXPAND(_XX_GET_REC_CHOOSER(__VA_ARGS__, _XX_GET_EXP_2, _XX_GET_EXP_1)(__VA_ARGS__))
+#define Abstractformat_get_number_of_exports(...) _XX_GET_REC_EXPAND(_XX_GET_REC_CHOOSER(__VA_ARGS__, _XX_GET_EXP_2, _XX_GET_EXP_1)(__VA_ARGS__))
+#define getNumberOfExports(...) _XX_GET_REC_EXPAND(_XX_GET_REC_CHOOSER(__VA_ARGS__, _XX_GET_EXP_2, _XX_GET_EXP_1)(__VA_ARGS__))
 
 #define _XX_GET_RES_1(f) xx_format_get_number_of_resources_pd((f), NULL)
 #define _XX_GET_RES_2(f, pd) xx_format_get_number_of_resources_pd((f), (pd))
-#define get_number_of_resources(...) \
-    _XX_GET_REC_EXPAND(_XX_GET_REC_CHOOSER(__VA_ARGS__, _XX_GET_RES_2, _XX_GET_RES_1)(__VA_ARGS__))
-#define Abstractformat_get_number_of_resources(...) \
-    _XX_GET_REC_EXPAND(_XX_GET_REC_CHOOSER(__VA_ARGS__, _XX_GET_RES_2, _XX_GET_RES_1)(__VA_ARGS__))
-#define getNumberOfResources(...) \
-    _XX_GET_REC_EXPAND(_XX_GET_REC_CHOOSER(__VA_ARGS__, _XX_GET_RES_2, _XX_GET_RES_1)(__VA_ARGS__))
+#define get_number_of_resources(...) _XX_GET_REC_EXPAND(_XX_GET_REC_CHOOSER(__VA_ARGS__, _XX_GET_RES_2, _XX_GET_RES_1)(__VA_ARGS__))
+#define Abstractformat_get_number_of_resources(...) _XX_GET_REC_EXPAND(_XX_GET_REC_CHOOSER(__VA_ARGS__, _XX_GET_RES_2, _XX_GET_RES_1)(__VA_ARGS__))
+#define getNumberOfResources(...) _XX_GET_REC_EXPAND(_XX_GET_REC_CHOOSER(__VA_ARGS__, _XX_GET_RES_2, _XX_GET_RES_1)(__VA_ARGS__))
 
 #define _XX_GET_SYM_1(f) xx_format_get_number_of_symbols_pd((f), NULL)
 #define _XX_GET_SYM_2(f, pd) xx_format_get_number_of_symbols_pd((f), (pd))
-#define Abstractformat_get_number_of_symbols(...) \
-    _XX_GET_REC_EXPAND(_XX_GET_REC_CHOOSER(__VA_ARGS__, _XX_GET_SYM_2, _XX_GET_SYM_1)(__VA_ARGS__))
-#define getNumberOfSymbols(...) \
-    _XX_GET_REC_EXPAND(_XX_GET_REC_CHOOSER(__VA_ARGS__, _XX_GET_SYM_2, _XX_GET_SYM_1)(__VA_ARGS__))
+#define Abstractformat_get_number_of_symbols(...) _XX_GET_REC_EXPAND(_XX_GET_REC_CHOOSER(__VA_ARGS__, _XX_GET_SYM_2, _XX_GET_SYM_1)(__VA_ARGS__))
+#define getNumberOfSymbols(...) _XX_GET_REC_EXPAND(_XX_GET_REC_CHOOSER(__VA_ARGS__, _XX_GET_SYM_2, _XX_GET_SYM_1)(__VA_ARGS__))
 #define _XX_GET_META_1(f) xx_format_get_number_of_metadata_pd((f), NULL)
 #define _XX_GET_META_2(f, pd) xx_format_get_number_of_metadata_pd((f), (pd))
-#define get_number_of_metadata(...) \
-    _XX_GET_REC_EXPAND(_XX_GET_REC_CHOOSER(__VA_ARGS__, _XX_GET_META_2, _XX_GET_META_1)(__VA_ARGS__))
-#define Abstractformat_get_number_of_metadata(...) \
-    _XX_GET_REC_EXPAND(_XX_GET_REC_CHOOSER(__VA_ARGS__, _XX_GET_META_2, _XX_GET_META_1)(__VA_ARGS__))
-#define getNumberOfMetadata(...) \
-    _XX_GET_REC_EXPAND(_XX_GET_REC_CHOOSER(__VA_ARGS__, _XX_GET_META_2, _XX_GET_META_1)(__VA_ARGS__))
+#define get_number_of_metadata(...) _XX_GET_REC_EXPAND(_XX_GET_REC_CHOOSER(__VA_ARGS__, _XX_GET_META_2, _XX_GET_META_1)(__VA_ARGS__))
+#define Abstractformat_get_number_of_metadata(...) _XX_GET_REC_EXPAND(_XX_GET_REC_CHOOSER(__VA_ARGS__, _XX_GET_META_2, _XX_GET_META_1)(__VA_ARGS__))
+#define getNumberOfMetadata(...) _XX_GET_REC_EXPAND(_XX_GET_REC_CHOOSER(__VA_ARGS__, _XX_GET_META_2, _XX_GET_META_1)(__VA_ARGS__))
 
-static inline bool Abstractformat_has_file_import(Abstractformat *f) {
-  return xx_format_has_file_import(f);
+static inline bool Abstractformat_has_file_import(Abstractformat *f)
+{
+    return xx_format_has_file_import(f);
 }
-static inline bool has_file_import(Abstractformat *f) {
-  return xx_format_has_file_import(f);
+static inline bool has_file_import(Abstractformat *f)
+{
+    return xx_format_has_file_import(f);
 }
-static inline void Abstractformat_set_has_file_import(Abstractformat *f, bool val) {
-  xx_format_set_has_file_import(f, val);
-}
-
-static inline bool Abstractformat_has_file_export(Abstractformat *f) {
-  return xx_format_has_file_export(f);
-}
-static inline bool has_file_export(Abstractformat *f) {
-  return xx_format_has_file_export(f);
-}
-static inline void Abstractformat_set_has_file_export(Abstractformat *f, bool val) {
-  xx_format_set_has_file_export(f, val);
+static inline void Abstractformat_set_has_file_import(Abstractformat *f, bool val)
+{
+    xx_format_set_has_file_import(f, val);
 }
 
-static inline bool Abstractformat_has_file_resources(Abstractformat *f) {
-  return xx_format_has_file_resources(f);
+static inline bool Abstractformat_has_file_export(Abstractformat *f)
+{
+    return xx_format_has_file_export(f);
 }
-static inline bool has_file_resources(Abstractformat *f) {
-  return xx_format_has_file_resources(f);
+static inline bool has_file_export(Abstractformat *f)
+{
+    return xx_format_has_file_export(f);
 }
-static inline void Abstractformat_set_has_file_resources(Abstractformat *f, bool val) {
-  xx_format_set_has_file_resources(f, val);
+static inline void Abstractformat_set_has_file_export(Abstractformat *f, bool val)
+{
+    xx_format_set_has_file_export(f, val);
 }
 
-static inline bool Abstractformat_has_file_metadata(Abstractformat *f) {
-  return xx_format_has_file_metadata(f);
+static inline bool Abstractformat_has_file_resources(Abstractformat *f)
+{
+    return xx_format_has_file_resources(f);
 }
-static inline bool has_file_metadata(Abstractformat *f) {
-  return xx_format_has_file_metadata(f);
+static inline bool has_file_resources(Abstractformat *f)
+{
+    return xx_format_has_file_resources(f);
 }
-static inline void Abstractformat_set_has_file_metadata(Abstractformat *f, bool val) {
-  xx_format_set_has_file_metadata(f, val);
+static inline void Abstractformat_set_has_file_resources(Abstractformat *f, bool val)
+{
+    xx_format_set_has_file_resources(f, val);
+}
+
+static inline bool Abstractformat_has_file_metadata(Abstractformat *f)
+{
+    return xx_format_has_file_metadata(f);
+}
+static inline bool has_file_metadata(Abstractformat *f)
+{
+    return xx_format_has_file_metadata(f);
+}
+static inline void Abstractformat_set_has_file_metadata(Abstractformat *f, bool val)
+{
+    xx_format_set_has_file_metadata(f, val);
 }
 
 #define hasImport has_file_import
@@ -1734,21 +1755,23 @@ static inline void Abstractformat_set_has_file_metadata(Abstractformat *f, bool 
 #define hasSymbols has_file_symbols
 #define hasFileSymbols has_file_symbols
 #define hasFileImportt has_file_import
-static inline int Abstractformat_close(Abstractformat *f) {
-  return xx_format_close(f);
+static inline int Abstractformat_close(Abstractformat *f)
+{
+    return xx_format_close(f);
 }
-static inline void Abstractformat_destroy(Abstractformat *f) {
-  xx_format_destroy(f);
-}
-
-static inline bool Abstractformat_set_password(Abstractformat *f,
-                                                const char *password_utf8) {
-  return xx_format_set_password(f, password_utf8);
+static inline void Abstractformat_destroy(Abstractformat *f)
+{
+    xx_format_destroy(f);
 }
 
-static inline const char *Abstractformat_get_password(
-    const Abstractformat *f) {
-  return xx_format_get_password(f);
+static inline bool Abstractformat_set_password(Abstractformat *f, const char *password_utf8)
+{
+    return xx_format_set_password(f, password_utf8);
+}
+
+static inline const char *Abstractformat_get_password(const Abstractformat *f)
+{
+    return xx_format_get_password(f);
 }
 
 /* --- Metadata & Archive Record Lifecycle --- */
@@ -1772,42 +1795,51 @@ XXFC_API bool xx_archive_record_set_meta_i64(xx_archive_record *rec, uint32_t me
 XXFC_API bool xx_archive_record_set_meta_u64(xx_archive_record *rec, uint32_t meta_id, uint64_t val);
 XXFC_API bool xx_archive_record_set_meta_bool(xx_archive_record *rec, uint32_t meta_id, bool val);
 
-XXFC_API const xx_var* xx_archive_record_find_meta(const xx_archive_record *rec, uint32_t meta_id);
-XXFC_API const char* xx_archive_record_get_meta_str(const xx_archive_record *rec, uint32_t meta_id);
-XXFC_API const wchar_t* xx_archive_record_get_meta_wstr(const xx_archive_record *rec, uint32_t meta_id);
+XXFC_API const xx_var *xx_archive_record_find_meta(const xx_archive_record *rec, uint32_t meta_id);
+XXFC_API const char *xx_archive_record_get_meta_str(const xx_archive_record *rec, uint32_t meta_id);
+XXFC_API const wchar_t *xx_archive_record_get_meta_wstr(const xx_archive_record *rec, uint32_t meta_id);
 XXFC_API int64_t xx_archive_record_get_meta_i64(const xx_archive_record *rec, uint32_t meta_id, int64_t default_val);
 XXFC_API uint64_t xx_archive_record_get_meta_u64(const xx_archive_record *rec, uint32_t meta_id, uint64_t default_val);
 XXFC_API bool xx_archive_record_get_meta_bool(const xx_archive_record *rec, uint32_t meta_id, bool default_val);
 
 /* Convenience original name helpers */
-static inline bool xx_archive_record_add_meta_unicode(xx_archive_record *rec, uint32_t meta_id, const wchar_t *wstr) {
-  return xx_archive_record_add_meta_wstr(rec, meta_id, wstr);
+static inline bool xx_archive_record_add_meta_unicode(xx_archive_record *rec, uint32_t meta_id, const wchar_t *wstr)
+{
+    return xx_archive_record_add_meta_wstr(rec, meta_id, wstr);
 }
-static inline bool xx_archive_record_set_meta_unicode(xx_archive_record *rec, uint32_t meta_id, const wchar_t *wstr) {
-  return xx_archive_record_set_meta_wstr(rec, meta_id, wstr);
+static inline bool xx_archive_record_set_meta_unicode(xx_archive_record *rec, uint32_t meta_id, const wchar_t *wstr)
+{
+    return xx_archive_record_set_meta_wstr(rec, meta_id, wstr);
 }
-static inline const wchar_t* xx_archive_record_get_meta_unicode(const xx_archive_record *rec, uint32_t meta_id) {
-  return xx_archive_record_get_meta_wstr(rec, meta_id);
+static inline const wchar_t *xx_archive_record_get_meta_unicode(const xx_archive_record *rec, uint32_t meta_id)
+{
+    return xx_archive_record_get_meta_wstr(rec, meta_id);
 }
-static inline const wchar_t* xx_archive_record_get_original_name_w(const xx_archive_record *rec) {
-  return xx_archive_record_get_meta_wstr(rec, XX_META_ID_ORIGINAL_NAME);
+static inline const wchar_t *xx_archive_record_get_original_name_w(const xx_archive_record *rec)
+{
+    return xx_archive_record_get_meta_wstr(rec, XX_META_ID_ORIGINAL_NAME);
 }
-static inline const char* xx_archive_record_get_original_name(const xx_archive_record *rec) {
-  return xx_archive_record_get_meta_str(rec, XX_META_ID_ORIGINAL_NAME);
+static inline const char *xx_archive_record_get_original_name(const xx_archive_record *rec)
+{
+    return xx_archive_record_get_meta_str(rec, XX_META_ID_ORIGINAL_NAME);
 }
-static inline bool xx_archive_record_set_original_name_w(xx_archive_record *rec, const wchar_t *wstr) {
-  return xx_archive_record_set_meta_wstr(rec, XX_META_ID_ORIGINAL_NAME, wstr);
+static inline bool xx_archive_record_set_original_name_w(xx_archive_record *rec, const wchar_t *wstr)
+{
+    return xx_archive_record_set_meta_wstr(rec, XX_META_ID_ORIGINAL_NAME, wstr);
 }
-static inline bool xx_archive_record_set_original_name(xx_archive_record *rec, const char *str) {
-  return xx_archive_record_set_meta_str(rec, XX_META_ID_ORIGINAL_NAME, str);
+static inline bool xx_archive_record_set_original_name(xx_archive_record *rec, const char *str)
+{
+    return xx_archive_record_set_meta_str(rec, XX_META_ID_ORIGINAL_NAME, str);
 }
 
-static inline void ArchiveRecord_init(xx_archive_record *rec) {
-  xx_archive_record_init(rec);
+static inline void ArchiveRecord_init(xx_archive_record *rec)
+{
+    xx_archive_record_init(rec);
 }
 
-static inline void ArchiveRecord_cleanup(xx_archive_record *rec) {
-  xx_archive_record_cleanup(rec);
+static inline void ArchiveRecord_cleanup(xx_archive_record *rec)
+{
+    xx_archive_record_cleanup(rec);
 }
 
 /* --- Archive Record Stream Reading Lifecycle & Operations --- */
@@ -1822,20 +1854,25 @@ XXFC_API bool xx_format_unpack_current_archive_record(Abstractformat *f, xx_arch
 XXFC_API bool xx_format_archive_record_move_to_next(Abstractformat *f, xx_archive_record_state *state, xx_pd_struct *pd);
 XXFC_API void xx_format_free_archive_records_reading(Abstractformat *f, xx_archive_record_state *state);
 
-static inline xx_archive_record_state *Abstractformat_create_archive_records_reading(Abstractformat *f, const xx_list_s *options, xx_pd_struct *pd) {
-  return xx_format_create_archive_records_reading(f, options, pd);
+static inline xx_archive_record_state *Abstractformat_create_archive_records_reading(Abstractformat *f, const xx_list_s *options, xx_pd_struct *pd)
+{
+    return xx_format_create_archive_records_reading(f, options, pd);
 }
-static inline const xx_archive_record *Abstractformat_get_current_archive_record(Abstractformat *f, xx_archive_record_state *state) {
-  return xx_format_get_current_archive_record(f, state);
+static inline const xx_archive_record *Abstractformat_get_current_archive_record(Abstractformat *f, xx_archive_record_state *state)
+{
+    return xx_format_get_current_archive_record(f, state);
 }
-static inline bool Abstractformat_unpack_current_archive_record(Abstractformat *f, xx_archive_record_state *state, xx_pd_struct *pd) {
-  return xx_format_unpack_current_archive_record(f, state, pd);
+static inline bool Abstractformat_unpack_current_archive_record(Abstractformat *f, xx_archive_record_state *state, xx_pd_struct *pd)
+{
+    return xx_format_unpack_current_archive_record(f, state, pd);
 }
-static inline bool Abstractformat_archive_record_move_to_next(Abstractformat *f, xx_archive_record_state *state, xx_pd_struct *pd) {
-  return xx_format_archive_record_move_to_next(f, state, pd);
+static inline bool Abstractformat_archive_record_move_to_next(Abstractformat *f, xx_archive_record_state *state, xx_pd_struct *pd)
+{
+    return xx_format_archive_record_move_to_next(f, state, pd);
 }
-static inline void Abstractformat_free_archive_records_reading(Abstractformat *f, xx_archive_record_state *state) {
-  xx_format_free_archive_records_reading(f, state);
+static inline void Abstractformat_free_archive_records_reading(Abstractformat *f, xx_archive_record_state *state)
+{
+    xx_format_free_archive_records_reading(f, state);
 }
 
 /* User-facing helper macros */
@@ -1847,24 +1884,28 @@ static inline void Abstractformat_free_archive_records_reading(Abstractformat *f
 #define create_archive_records_reading(...) \
     _XX_GET_REC_EXPAND(_XX_CREATE_ARCREAD_CHOOSER(__VA_ARGS__, _XX_CREATE_ARCREAD_3, _XX_CREATE_ARCREAD_2, _XX_CREATE_ARCREAD_1)(__VA_ARGS__))
 
-static inline const xx_archive_record *get_current_archive_record(Abstractformat *f, xx_archive_record_state *state) {
-  return xx_format_get_current_archive_record(f, state);
+static inline const xx_archive_record *get_current_archive_record(Abstractformat *f, xx_archive_record_state *state)
+{
+    return xx_format_get_current_archive_record(f, state);
 }
 #define get_curent_archive_record get_current_archive_record
 
-static inline bool unpack_current_archive_record(Abstractformat *f, xx_archive_record_state *state, xx_pd_struct *pd) {
-  return xx_format_unpack_current_archive_record(f, state, pd);
+static inline bool unpack_current_archive_record(Abstractformat *f, xx_archive_record_state *state, xx_pd_struct *pd)
+{
+    return xx_format_unpack_current_archive_record(f, state, pd);
 }
 
-static inline bool archive_record_move_to_next(Abstractformat *f, xx_archive_record_state *state, xx_pd_struct *pd) {
-  return xx_format_archive_record_move_to_next(f, state, pd);
+static inline bool archive_record_move_to_next(Abstractformat *f, xx_archive_record_state *state, xx_pd_struct *pd)
+{
+    return xx_format_archive_record_move_to_next(f, state, pd);
 }
 #define move_to_the_next archive_record_move_to_next
 #define move_to_next archive_record_move_to_next
 #define moveToNext archive_record_move_to_next
 
-static inline void free_archive_records_reading(Abstractformat *f, xx_archive_record_state *state) {
-  xx_format_free_archive_records_reading(f, state);
+static inline void free_archive_records_reading(Abstractformat *f, xx_archive_record_state *state)
+{
+    xx_format_free_archive_records_reading(f, state);
 }
 #define free_active_reading_record free_archive_records_reading
 
@@ -1875,21 +1916,27 @@ XXFC_API void xx_archive_write_state_cleanup(xx_archive_write_state *state);
 XXFC_API void xx_archive_write_state_free(xx_archive_write_state *state);
 
 XXFC_API xx_archive_write_state *xx_format_create_archive_records_writing(Abstractformat *f, const xx_list_s *options, xx_pd_struct *pd);
-XXFC_API bool xx_format_pack_archive_record(Abstractformat *f, xx_archive_write_state *state, const xx_archive_record *record, xx_io_device *source_dev, xx_pd_struct *pd);
+XXFC_API bool xx_format_pack_archive_record(Abstractformat *f, xx_archive_write_state *state, const xx_archive_record *record, xx_io_device *source_dev,
+                                            xx_pd_struct *pd);
 XXFC_API bool xx_format_finalize_archive_records_writing(Abstractformat *f, xx_archive_write_state *state, xx_pd_struct *pd);
 XXFC_API void xx_format_free_archive_records_writing(Abstractformat *f, xx_archive_write_state *state);
 
-static inline xx_archive_write_state *Abstractformat_create_archive_records_writing(Abstractformat *f, const xx_list_s *options, xx_pd_struct *pd) {
-  return xx_format_create_archive_records_writing(f, options, pd);
+static inline xx_archive_write_state *Abstractformat_create_archive_records_writing(Abstractformat *f, const xx_list_s *options, xx_pd_struct *pd)
+{
+    return xx_format_create_archive_records_writing(f, options, pd);
 }
-static inline bool Abstractformat_pack_archive_record(Abstractformat *f, xx_archive_write_state *state, const xx_archive_record *record, xx_io_device *source_dev, xx_pd_struct *pd) {
-  return xx_format_pack_archive_record(f, state, record, source_dev, pd);
+static inline bool Abstractformat_pack_archive_record(Abstractformat *f, xx_archive_write_state *state, const xx_archive_record *record, xx_io_device *source_dev,
+                                                      xx_pd_struct *pd)
+{
+    return xx_format_pack_archive_record(f, state, record, source_dev, pd);
 }
-static inline bool Abstractformat_finalize_archive_records_writing(Abstractformat *f, xx_archive_write_state *state, xx_pd_struct *pd) {
-  return xx_format_finalize_archive_records_writing(f, state, pd);
+static inline bool Abstractformat_finalize_archive_records_writing(Abstractformat *f, xx_archive_write_state *state, xx_pd_struct *pd)
+{
+    return xx_format_finalize_archive_records_writing(f, state, pd);
 }
-static inline void Abstractformat_free_archive_records_writing(Abstractformat *f, xx_archive_write_state *state) {
-  xx_format_free_archive_records_writing(f, state);
+static inline void Abstractformat_free_archive_records_writing(Abstractformat *f, xx_archive_write_state *state)
+{
+    xx_format_free_archive_records_writing(f, state);
 }
 
 /* User-facing helper macros for packing/writing */
@@ -1901,16 +1948,19 @@ static inline void Abstractformat_free_archive_records_writing(Abstractformat *f
 #define create_archive_records_writing(...) \
     _XX_GET_REC_EXPAND(_XX_CREATE_ARCWRITE_CHOOSER(__VA_ARGS__, _XX_CREATE_ARCWRITE_3, _XX_CREATE_ARCWRITE_2, _XX_CREATE_ARCWRITE_1)(__VA_ARGS__))
 
-static inline bool pack_archive_record(Abstractformat *f, xx_archive_write_state *state, const xx_archive_record *record, xx_io_device *source_dev, xx_pd_struct *pd) {
-  return xx_format_pack_archive_record(f, state, record, source_dev, pd);
+static inline bool pack_archive_record(Abstractformat *f, xx_archive_write_state *state, const xx_archive_record *record, xx_io_device *source_dev, xx_pd_struct *pd)
+{
+    return xx_format_pack_archive_record(f, state, record, source_dev, pd);
 }
 
-static inline bool finalize_archive_records_writing(Abstractformat *f, xx_archive_write_state *state, xx_pd_struct *pd) {
-  return xx_format_finalize_archive_records_writing(f, state, pd);
+static inline bool finalize_archive_records_writing(Abstractformat *f, xx_archive_write_state *state, xx_pd_struct *pd)
+{
+    return xx_format_finalize_archive_records_writing(f, state, pd);
 }
 
-static inline void free_archive_records_writing(Abstractformat *f, xx_archive_write_state *state) {
-  xx_format_free_archive_records_writing(f, state);
+static inline void free_archive_records_writing(Abstractformat *f, xx_archive_write_state *state)
+{
+    xx_format_free_archive_records_writing(f, state);
 }
 
 /* --- Data Struct Id <-> String Conversion & Stream Reading Lifecycle --- */
@@ -1939,40 +1989,51 @@ XXFC_API const xx_data_struct *xx_format_get_current_data_struct(Abstractformat 
 XXFC_API bool xx_format_data_struct_move_to_next(Abstractformat *f, xx_data_struct_state *state, xx_pd_struct *pd);
 XXFC_API void xx_format_free_data_structs_reading(Abstractformat *f, xx_data_struct_state *state);
 
-static inline const char *Abstractformat_data_struct_id_to_string(Abstractformat *f, uint32_t id) {
-  return xx_format_data_struct_id_to_string(f, id);
+static inline const char *Abstractformat_data_struct_id_to_string(Abstractformat *f, uint32_t id)
+{
+    return xx_format_data_struct_id_to_string(f, id);
 }
-static inline uint32_t Abstractformat_data_struct_string_to_id(Abstractformat *f, const char *name) {
-  return xx_format_data_struct_string_to_id(f, name);
+static inline uint32_t Abstractformat_data_struct_string_to_id(Abstractformat *f, const char *name)
+{
+    return xx_format_data_struct_string_to_id(f, name);
 }
-static inline const char *data_struct_id_to_string(Abstractformat *f, uint32_t id) {
-  return xx_format_data_struct_id_to_string(f, id);
+static inline const char *data_struct_id_to_string(Abstractformat *f, uint32_t id)
+{
+    return xx_format_data_struct_id_to_string(f, id);
 }
-static inline uint32_t data_struct_string_to_id(Abstractformat *f, const char *name) {
-  return xx_format_data_struct_string_to_id(f, name);
-}
-
-static inline const char *Abstractformat_data_struct_type_to_string(xx_data_struct_type_t type) {
-  return xx_data_struct_type_to_string(type);
-}
-static inline wchar_t *Abstractformat_data_struct_to_string(Abstractformat *f, const xx_data_struct *ds) {
-  return xx_format_data_struct_to_string(f, ds);
-}
-static inline wchar_t *data_struct_to_string(Abstractformat *f, const xx_data_struct *ds) {
-  return xx_format_data_struct_to_string(f, ds);
+static inline uint32_t data_struct_string_to_id(Abstractformat *f, const char *name)
+{
+    return xx_format_data_struct_string_to_id(f, name);
 }
 
-static inline xx_data_struct_state *Abstractformat_create_data_structs_reading(Abstractformat *f, xx_pd_struct *pd) {
-  return xx_format_create_data_structs_reading(f, pd);
+static inline const char *Abstractformat_data_struct_type_to_string(xx_data_struct_type_t type)
+{
+    return xx_data_struct_type_to_string(type);
 }
-static inline const xx_data_struct *Abstractformat_get_current_data_struct(Abstractformat *f, xx_data_struct_state *state) {
-  return xx_format_get_current_data_struct(f, state);
+static inline wchar_t *Abstractformat_data_struct_to_string(Abstractformat *f, const xx_data_struct *ds)
+{
+    return xx_format_data_struct_to_string(f, ds);
 }
-static inline bool Abstractformat_data_struct_move_to_next(Abstractformat *f, xx_data_struct_state *state, xx_pd_struct *pd) {
-  return xx_format_data_struct_move_to_next(f, state, pd);
+static inline wchar_t *data_struct_to_string(Abstractformat *f, const xx_data_struct *ds)
+{
+    return xx_format_data_struct_to_string(f, ds);
 }
-static inline void Abstractformat_free_data_structs_reading(Abstractformat *f, xx_data_struct_state *state) {
-  xx_format_free_data_structs_reading(f, state);
+
+static inline xx_data_struct_state *Abstractformat_create_data_structs_reading(Abstractformat *f, xx_pd_struct *pd)
+{
+    return xx_format_create_data_structs_reading(f, pd);
+}
+static inline const xx_data_struct *Abstractformat_get_current_data_struct(Abstractformat *f, xx_data_struct_state *state)
+{
+    return xx_format_get_current_data_struct(f, state);
+}
+static inline bool Abstractformat_data_struct_move_to_next(Abstractformat *f, xx_data_struct_state *state, xx_pd_struct *pd)
+{
+    return xx_format_data_struct_move_to_next(f, state, pd);
+}
+static inline void Abstractformat_free_data_structs_reading(Abstractformat *f, xx_data_struct_state *state)
+{
+    xx_format_free_data_structs_reading(f, state);
 }
 
 /* User-facing helper macros */
@@ -1980,19 +2041,21 @@ static inline void Abstractformat_free_data_structs_reading(Abstractformat *f, x
 #define _XX_CREATE_DSREAD_2(f, pd) xx_format_create_data_structs_reading((f), (pd))
 #define _XX_CREATE_DSREAD_CHOOSER(_1, _2, NAME, ...) NAME
 
-#define create_data_structs_reading(...) \
-    _XX_GET_REC_EXPAND(_XX_CREATE_DSREAD_CHOOSER(__VA_ARGS__, _XX_CREATE_DSREAD_2, _XX_CREATE_DSREAD_1)(__VA_ARGS__))
+#define create_data_structs_reading(...) _XX_GET_REC_EXPAND(_XX_CREATE_DSREAD_CHOOSER(__VA_ARGS__, _XX_CREATE_DSREAD_2, _XX_CREATE_DSREAD_1)(__VA_ARGS__))
 
-static inline const xx_data_struct *get_current_data_struct(Abstractformat *f, xx_data_struct_state *state) {
-  return xx_format_get_current_data_struct(f, state);
+static inline const xx_data_struct *get_current_data_struct(Abstractformat *f, xx_data_struct_state *state)
+{
+    return xx_format_get_current_data_struct(f, state);
 }
 
-static inline bool data_struct_move_to_next(Abstractformat *f, xx_data_struct_state *state, xx_pd_struct *pd) {
-  return xx_format_data_struct_move_to_next(f, state, pd);
+static inline bool data_struct_move_to_next(Abstractformat *f, xx_data_struct_state *state, xx_pd_struct *pd)
+{
+    return xx_format_data_struct_move_to_next(f, state, pd);
 }
 
-static inline void free_data_structs_reading(Abstractformat *f, xx_data_struct_state *state) {
-  xx_format_free_data_structs_reading(f, state);
+static inline void free_data_structs_reading(Abstractformat *f, xx_data_struct_state *state)
+{
+    xx_format_free_data_structs_reading(f, state);
 }
 
 /* --- Data Struct Record Lifecycle --- */
@@ -2006,12 +2069,12 @@ XXFC_API bool xx_data_struct_record_set_type(xx_data_struct_record *rec, const w
 XXFC_API bool xx_data_struct_record_set_display_value(xx_data_struct_record *rec, const wchar_t *display_value);
 XXFC_API bool xx_data_struct_record_set_value(xx_data_struct_record *rec, const xx_var *value);
 
-XXFC_API bool xx_data_struct_record_populate(xx_data_struct_record *rec, xx_io_device *device,
-                                            int64_t parent_offset, const xx_data_struct_field_desc *field,
-                                            bool is_big_endian);
+XXFC_API bool xx_data_struct_record_populate(xx_data_struct_record *rec, xx_io_device *device, int64_t parent_offset, const xx_data_struct_field_desc *field,
+                                             bool is_big_endian);
 
-static inline bool xx_data_struct_record_has_property(const xx_data_struct_record *rec, xx_data_struct_record_property_t property) {
-  return rec ? ((rec->property & property) != 0) : false;
+static inline bool xx_data_struct_record_has_property(const xx_data_struct_record *rec, xx_data_struct_record_property_t property)
+{
+    return rec ? ((rec->property & property) != 0) : false;
 }
 
 /* --- Data Struct Records Stream Reading Lifecycle & Operations --- */
@@ -2025,52 +2088,59 @@ XXFC_API const xx_data_struct_record *xx_format_get_current_data_struct_record(A
 XXFC_API bool xx_format_data_struct_record_move_to_next(Abstractformat *f, xx_data_struct_record_state *state, xx_pd_struct *pd);
 XXFC_API void xx_format_free_data_struct_records_reading(Abstractformat *f, xx_data_struct_record_state *state);
 
-static inline xx_data_struct_record_state *Abstractformat_create_data_struct_records_reading(Abstractformat *f, const xx_data_struct *ds, xx_pd_struct *pd) {
-  return xx_format_create_data_struct_records_reading(f, ds, pd);
+static inline xx_data_struct_record_state *Abstractformat_create_data_struct_records_reading(Abstractformat *f, const xx_data_struct *ds, xx_pd_struct *pd)
+{
+    return xx_format_create_data_struct_records_reading(f, ds, pd);
 }
-static inline const xx_data_struct_record *Abstractformat_get_current_data_struct_record(Abstractformat *f, xx_data_struct_record_state *state) {
-  return xx_format_get_current_data_struct_record(f, state);
+static inline const xx_data_struct_record *Abstractformat_get_current_data_struct_record(Abstractformat *f, xx_data_struct_record_state *state)
+{
+    return xx_format_get_current_data_struct_record(f, state);
 }
-static inline bool Abstractformat_data_struct_record_move_to_next(Abstractformat *f, xx_data_struct_record_state *state, xx_pd_struct *pd) {
-  return xx_format_data_struct_record_move_to_next(f, state, pd);
+static inline bool Abstractformat_data_struct_record_move_to_next(Abstractformat *f, xx_data_struct_record_state *state, xx_pd_struct *pd)
+{
+    return xx_format_data_struct_record_move_to_next(f, state, pd);
 }
-static inline void Abstractformat_free_data_struct_records_reading(Abstractformat *f, xx_data_struct_record_state *state) {
-  xx_format_free_data_struct_records_reading(f, state);
+static inline void Abstractformat_free_data_struct_records_reading(Abstractformat *f, xx_data_struct_record_state *state)
+{
+    xx_format_free_data_struct_records_reading(f, state);
 }
 
-static inline xx_data_struct_record_state *create_data_struct_records_reading(Abstractformat *f, const xx_data_struct *ds, xx_pd_struct *pd) {
-  return xx_format_create_data_struct_records_reading(f, ds, pd);
+static inline xx_data_struct_record_state *create_data_struct_records_reading(Abstractformat *f, const xx_data_struct *ds, xx_pd_struct *pd)
+{
+    return xx_format_create_data_struct_records_reading(f, ds, pd);
 }
-static inline const xx_data_struct_record *get_current_data_struct_record(Abstractformat *f, xx_data_struct_record_state *state) {
-  return xx_format_get_current_data_struct_record(f, state);
+static inline const xx_data_struct_record *get_current_data_struct_record(Abstractformat *f, xx_data_struct_record_state *state)
+{
+    return xx_format_get_current_data_struct_record(f, state);
 }
-static inline bool data_struct_record_move_to_next(Abstractformat *f, xx_data_struct_record_state *state, xx_pd_struct *pd) {
-  return xx_format_data_struct_record_move_to_next(f, state, pd);
+static inline bool data_struct_record_move_to_next(Abstractformat *f, xx_data_struct_record_state *state, xx_pd_struct *pd)
+{
+    return xx_format_data_struct_record_move_to_next(f, state, pd);
 }
-static inline void free_data_struct_records_reading(Abstractformat *f, xx_data_struct_record_state *state) {
-  xx_format_free_data_struct_records_reading(f, state);
+static inline void free_data_struct_records_reading(Abstractformat *f, xx_data_struct_record_state *state)
+{
+    xx_format_free_data_struct_records_reading(f, state);
 }
 
 /* --- Format Constructors & Lifecycle --- */
 
-XXFC_API void xx_format_init(Abstractformat *fmt, xx_io_device *dev,
-                             int64_t base_address);
-XXFC_API Abstractformat *xx_format_create(xx_io_device *dev,
-                                          int64_t base_address);
+XXFC_API void xx_format_init(Abstractformat *fmt, xx_io_device *dev, int64_t base_address);
+XXFC_API Abstractformat *xx_format_create(xx_io_device *dev, int64_t base_address);
 XXFC_API void xx_format_free(Abstractformat *fmt);
 
-static inline void Abstractformat_init(Abstractformat *fmt, xx_io_device *dev,
-                                       int64_t base_address) {
-  xx_format_init(fmt, dev, base_address);
+static inline void Abstractformat_init(Abstractformat *fmt, xx_io_device *dev, int64_t base_address)
+{
+    xx_format_init(fmt, dev, base_address);
 }
 
-static inline Abstractformat *Abstractformat_create(xx_io_device *dev,
-                                                    int64_t base_address) {
-  return xx_format_create(dev, base_address);
+static inline Abstractformat *Abstractformat_create(xx_io_device *dev, int64_t base_address)
+{
+    return xx_format_create(dev, base_address);
 }
 
-static inline void Abstractformat_free(Abstractformat *fmt) {
-  xx_format_free(fmt);
+static inline void Abstractformat_free(Abstractformat *fmt)
+{
+    xx_format_free(fmt);
 }
 
 #ifdef __cplusplus

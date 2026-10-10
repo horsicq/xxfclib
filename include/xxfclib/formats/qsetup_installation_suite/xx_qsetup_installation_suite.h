@@ -40,40 +40,24 @@ typedef struct xx_qsetup_installation_suite {
 
 typedef xx_qsetup_installation_suite xx_qsetup_installation_suite_t;
 
-XXFC_API void xx_qsetup_installation_suite_init(
-    xx_qsetup_installation_suite *archive, xx_io_device *device,
-    int64_t base_address);
-XXFC_API xx_qsetup_installation_suite *xx_qsetup_installation_suite_create(
-    xx_io_device *device, int64_t base_address);
-XXFC_API void xx_qsetup_installation_suite_destroy(
-    xx_qsetup_installation_suite *archive);
-XXFC_API void xx_qsetup_installation_suite_free(
-    xx_qsetup_installation_suite *archive);
+XXFC_API void xx_qsetup_installation_suite_init(xx_qsetup_installation_suite *archive, xx_io_device *device, int64_t base_address);
+XXFC_API xx_qsetup_installation_suite *xx_qsetup_installation_suite_create(xx_io_device *device, int64_t base_address);
+XXFC_API void xx_qsetup_installation_suite_destroy(xx_qsetup_installation_suite *archive);
+XXFC_API void xx_qsetup_installation_suite_free(xx_qsetup_installation_suite *archive);
 
-XXFC_API bool xx_qsetup_installation_suite_check_is_valid(Abstractformat *self,
-                                                          xx_pd_struct *pd);
-XXFC_API bool xx_qsetup_installation_suite_handle_base_info(
-    Abstractformat *self, xx_pd_struct *pd);
-XXFC_API int64_t xx_qsetup_installation_suite_get_format_size(
-    Abstractformat *self, xx_pd_struct *pd);
-XXFC_API uint64_t xx_qsetup_installation_suite_get_number_of_archive_records(
-    Abstractformat *self, xx_pd_struct *pd);
+XXFC_API bool xx_qsetup_installation_suite_check_is_valid(Abstractformat *self, xx_pd_struct *pd);
+XXFC_API bool xx_qsetup_installation_suite_handle_base_info(Abstractformat *self, xx_pd_struct *pd);
+XXFC_API int64_t xx_qsetup_installation_suite_get_format_size(Abstractformat *self, xx_pd_struct *pd);
+XXFC_API uint64_t xx_qsetup_installation_suite_get_number_of_archive_records(Abstractformat *self, xx_pd_struct *pd);
 
-XXFC_API xx_archive_record_state *
-xx_qsetup_installation_suite_create_archive_records_reading(
-    Abstractformat *self, const xx_list_s *options, xx_pd_struct *pd);
-XXFC_API const xx_archive_record *
-xx_qsetup_installation_suite_get_current_archive_record(
-    Abstractformat *self, xx_archive_record_state *state);
-XXFC_API bool xx_qsetup_installation_suite_unpack_current_archive_record(
-    Abstractformat *self, xx_archive_record_state *state, xx_pd_struct *pd);
-XXFC_API bool xx_qsetup_installation_suite_archive_record_move_to_next(
-    Abstractformat *self, xx_archive_record_state *state, xx_pd_struct *pd);
-XXFC_API void xx_qsetup_installation_suite_free_archive_records_reading(
-    Abstractformat *self, xx_archive_record_state *state);
+XXFC_API xx_archive_record_state *xx_qsetup_installation_suite_create_archive_records_reading(Abstractformat *self, const xx_list_s *options, xx_pd_struct *pd);
+XXFC_API const xx_archive_record *xx_qsetup_installation_suite_get_current_archive_record(Abstractformat *self, xx_archive_record_state *state);
+XXFC_API bool xx_qsetup_installation_suite_unpack_current_archive_record(Abstractformat *self, xx_archive_record_state *state, xx_pd_struct *pd);
+XXFC_API bool xx_qsetup_installation_suite_archive_record_move_to_next(Abstractformat *self, xx_archive_record_state *state, xx_pd_struct *pd);
+XXFC_API void xx_qsetup_installation_suite_free_archive_records_reading(Abstractformat *self, xx_archive_record_state *state);
 
-static inline Abstractformat *xx_qsetup_installation_suite_to_format(
-    xx_qsetup_installation_suite *archive) {
+static inline Abstractformat *xx_qsetup_installation_suite_to_format(xx_qsetup_installation_suite *archive)
+{
     return archive ? &archive->format : NULL;
 }
 

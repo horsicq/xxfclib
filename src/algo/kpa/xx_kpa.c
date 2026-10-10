@@ -5,21 +5,11 @@
 #include "xxfclib/algo/kpa/xx_kpa.h"
 
 /* Precomputed KPA key offset tables for key lengths 1..20 (index 0 is dummy) */
-static const uint8_t encryptedPeKey0Offsets[21] = {
-    0, 40, 40, 42, 40, 40, 42, 42, 40, 45, 40, 44, 48, 52, 42, 45, 48, 51, 54, 57, 40
-};
-static const uint8_t encryptedPeKey1Offsets[21] = {
-    0, 40, 41, 40, 41, 41, 43, 43, 41, 46, 41, 45, 49, 40, 43, 46, 49, 52, 55, 58, 41
-};
-static const uint8_t encryptedPeLfa0Offsets[21] = {
-    0, 40, 40, 42, 40, 40, 42, 46, 44, 42, 40, 49, 48, 47, 46, 45, 44, 43, 42, 41, 40
-};
-static const uint8_t encryptedPeLfa1Offsets[21] = {
-    0, 40, 41, 40, 41, 41, 43, 40, 45, 43, 41, 50, 49, 48, 47, 46, 45, 44, 43, 42, 41
-};
-static const uint8_t encryptedPeLfa2Offsets[21] = {
-    0, 40, 40, 41, 42, 42, 44, 41, 46, 44, 42, 40, 50, 49, 48, 47, 46, 45, 44, 43, 42
-};
+static const uint8_t encryptedPeKey0Offsets[21] = {0, 40, 40, 42, 40, 40, 42, 42, 40, 45, 40, 44, 48, 52, 42, 45, 48, 51, 54, 57, 40};
+static const uint8_t encryptedPeKey1Offsets[21] = {0, 40, 41, 40, 41, 41, 43, 43, 41, 46, 41, 45, 49, 40, 43, 46, 49, 52, 55, 58, 41};
+static const uint8_t encryptedPeLfa0Offsets[21] = {0, 40, 40, 42, 40, 40, 42, 46, 44, 42, 40, 49, 48, 47, 46, 45, 44, 43, 42, 41, 40};
+static const uint8_t encryptedPeLfa1Offsets[21] = {0, 40, 41, 40, 41, 41, 43, 40, 45, 43, 41, 50, 49, 48, 47, 46, 45, 44, 43, 42, 41};
+static const uint8_t encryptedPeLfa2Offsets[21] = {0, 40, 40, 41, 42, 42, 44, 41, 46, 44, 42, 40, 50, 49, 48, 47, 46, 45, 44, 43, 42};
 
 static inline uint8_t decrypt_byte(uint8_t cipher, uint8_t encZero, int mode)
 {
@@ -220,13 +210,11 @@ const char *xx_kpa_scan_buffer_encrypted_pe(const void *data, size_t size)
                     return "XOR-XNOR";
                 }
             } else if (cipherByteKey0 == keyAddM) {
-                if (cipherByteKey1 == keyAddZ &&
-                    verify_encrypted_pe_signature(buf, offset, maxValidLfaNew, keyLength, 1)) {
+                if (cipherByteKey1 == keyAddZ && verify_encrypted_pe_signature(buf, offset, maxValidLfaNew, keyLength, 1)) {
                     return "ADD-SUB";
                 }
             } else if (cipherByteKey0 == keyRevM) {
-                if (cipherByteKey1 == keyRevZ &&
-                    verify_encrypted_pe_signature(buf, offset, maxValidLfaNew, keyLength, 2)) {
+                if (cipherByteKey1 == keyRevZ && verify_encrypted_pe_signature(buf, offset, maxValidLfaNew, keyLength, 2)) {
                     return "SUB-REV";
                 }
             }

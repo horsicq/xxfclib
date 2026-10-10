@@ -22,9 +22,7 @@
 #define QDA_STACK_SIZE 0x100
 #define QDA_STACK_LIMIT 0xfe
 
-bool xx_qda_decode_memory(const uint8_t *input, size_t input_size,
-                          uint8_t *output, size_t output_size,
-                          size_t *written)
+bool xx_qda_decode_memory(const uint8_t *input, size_t input_size, uint8_t *output, size_t output_size, size_t *written)
 {
     uint8_t left[QDA_ALPHABET_SIZE];
     uint8_t right[QDA_ALPHABET_SIZE];
@@ -63,8 +61,7 @@ bool xx_qda_decode_memory(const uint8_t *input, size_t input_size,
             if (code == QDA_ALPHABET_SIZE) break;
 
             for (k = 0; k <= control; ++k) {
-                if ((code > (QDA_ALPHABET_SIZE - 1)) ||
-                    (position >= input_size)) {
+                if ((code > (QDA_ALPHABET_SIZE - 1)) || (position >= input_size)) {
                     return false;
                 }
                 left[code] = input[position];
@@ -83,10 +80,7 @@ bool xx_qda_decode_memory(const uint8_t *input, size_t input_size,
         }
 
         if ((input_size - position) < 4) return false;
-        block_length = (uint32_t)input[position] |
-                       ((uint32_t)input[position + 1] << 8) |
-                       ((uint32_t)input[position + 2] << 16) |
-                       ((uint32_t)input[position + 3] << 24);
+        block_length = (uint32_t)input[position] | ((uint32_t)input[position + 1] << 8) | ((uint32_t)input[position + 2] << 16) | ((uint32_t)input[position + 3] << 24);
         position += 4;
 
         for (;;) {

@@ -8,7 +8,9 @@
 extern "C" {
 #endif
 /** RZIP 2.0/2.1 two-stream archive. Stored/BZip2 blocks and chunk CRCs. */
-typedef struct xx_rzip { Abstractformat format; } xx_rzip;
+typedef struct xx_rzip {
+    Abstractformat format;
+} xx_rzip;
 XXFC_API void xx_rzip_init(xx_rzip *, xx_io_device *, int64_t);
 XXFC_API xx_rzip *xx_rzip_create(xx_io_device *, int64_t);
 XXFC_API void xx_rzip_destroy(xx_rzip *);

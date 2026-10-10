@@ -73,32 +73,21 @@ typedef struct xx_stuffit5 {
 
 typedef xx_stuffit5 xx_stuffit5_t;
 
-XXFC_API void xx_stuffit5_init(xx_stuffit5 *archive, xx_io_device *device,
-                               int64_t base_address);
-XXFC_API xx_stuffit5 *xx_stuffit5_create(xx_io_device *device,
-                                         int64_t base_address);
+XXFC_API void xx_stuffit5_init(xx_stuffit5 *archive, xx_io_device *device, int64_t base_address);
+XXFC_API xx_stuffit5 *xx_stuffit5_create(xx_io_device *device, int64_t base_address);
 XXFC_API void xx_stuffit5_destroy(xx_stuffit5 *archive);
 XXFC_API void xx_stuffit5_free(xx_stuffit5 *archive);
 
-XXFC_API bool xx_stuffit5_check_is_valid(Abstractformat *self,
-                                         xx_pd_struct *pd);
-XXFC_API bool xx_stuffit5_handle_base_info(Abstractformat *self,
-                                           xx_pd_struct *pd);
-XXFC_API int64_t xx_stuffit5_get_format_size(Abstractformat *self,
-                                             xx_pd_struct *pd);
-XXFC_API uint64_t xx_stuffit5_get_number_of_archive_records(
-    Abstractformat *self, xx_pd_struct *pd);
+XXFC_API bool xx_stuffit5_check_is_valid(Abstractformat *self, xx_pd_struct *pd);
+XXFC_API bool xx_stuffit5_handle_base_info(Abstractformat *self, xx_pd_struct *pd);
+XXFC_API int64_t xx_stuffit5_get_format_size(Abstractformat *self, xx_pd_struct *pd);
+XXFC_API uint64_t xx_stuffit5_get_number_of_archive_records(Abstractformat *self, xx_pd_struct *pd);
 
-XXFC_API xx_archive_record_state *xx_stuffit5_create_archive_records_reading(
-    Abstractformat *self, const xx_list_s *options, xx_pd_struct *pd);
-XXFC_API const xx_archive_record *xx_stuffit5_get_current_archive_record(
-    Abstractformat *self, xx_archive_record_state *state);
-XXFC_API bool xx_stuffit5_unpack_current_archive_record(
-    Abstractformat *self, xx_archive_record_state *state, xx_pd_struct *pd);
-XXFC_API bool xx_stuffit5_archive_record_move_to_next(
-    Abstractformat *self, xx_archive_record_state *state, xx_pd_struct *pd);
-XXFC_API void xx_stuffit5_free_archive_records_reading(
-    Abstractformat *self, xx_archive_record_state *state);
+XXFC_API xx_archive_record_state *xx_stuffit5_create_archive_records_reading(Abstractformat *self, const xx_list_s *options, xx_pd_struct *pd);
+XXFC_API const xx_archive_record *xx_stuffit5_get_current_archive_record(Abstractformat *self, xx_archive_record_state *state);
+XXFC_API bool xx_stuffit5_unpack_current_archive_record(Abstractformat *self, xx_archive_record_state *state, xx_pd_struct *pd);
+XXFC_API bool xx_stuffit5_archive_record_move_to_next(Abstractformat *self, xx_archive_record_state *state, xx_pd_struct *pd);
+XXFC_API void xx_stuffit5_free_archive_records_reading(Abstractformat *self, xx_archive_record_state *state);
 
 #ifdef __cplusplus
 }

@@ -63,8 +63,7 @@ xx_fs_platform_kind_t xx_fs_platform_stat(const char *path);
  * @param is_dir  True when the entry is a directory.
  * @return false to stop the walk and make the enumerator report failure.
  */
-typedef bool (*xx_fs_platform_entry_fn)(void *context, const char *name,
-                                        bool is_dir);
+typedef bool (*xx_fs_platform_entry_fn)(void *context, const char *name, bool is_dir);
 
 /**
  * @brief Walk a directory, invoking @p callback once per entry.
@@ -75,9 +74,7 @@ typedef bool (*xx_fs_platform_entry_fn)(void *context, const char *name,
  * @return false if the directory could not be opened, or if @p callback
  *         stopped the walk.
  */
-bool xx_fs_platform_enumerate(const char *path,
-                              xx_fs_platform_entry_fn callback,
-                              void *context);
+bool xx_fs_platform_enumerate(const char *path, xx_fs_platform_entry_fn callback, void *context);
 
 /** @brief The separator this platform writes, '\\' on Windows and '/' elsewhere. */
 char xx_fs_platform_separator(void);

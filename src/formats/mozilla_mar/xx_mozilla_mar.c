@@ -42,16 +42,13 @@ typedef struct mar_stream_s {
     int64_t size;
 } mar_stream;
 
-static bool mar_read_at(Abstractformat *self, int64_t relative,
-                        void *buffer, size_t length) {
+static bool mar_read_at(Abstractformat *self, int64_t relative, void *buffer, size_t length)
+{
     size_t done = 0U;
     int64_t total;
-    if (!self || !self->device || self->base_address < 0 || relative < 0 ||
-        relative > INT64_MAX - self->base_address ||
-        (total = xx_io_size(self->device)) < self->base_address + relative ||
-        (uint64_t)length > (uint64_t)(total - self->base_address - relative) ||
-        (!buffer && length != 0U) ||
-        xx_io_seek64(self->device, self->base_address + relative, SEEK_SET) != 0)
+    if (!self || !self->device || self->base_address < 0 || relative < 0 || relative > INT64_MAX - self->base_address ||
+        (total = xx_io_size(self->device)) < self->base_address + relative || (uint64_t)length > (uint64_t)(total - self->base_address - relative) ||
+        (!buffer && length != 0U) || xx_io_seek64(self->device, self->base_address + relative, SEEK_SET) != 0)
         return false;
     while (done < length) {
         size_t amount = length - done;
@@ -64,7 +61,8 @@ static bool mar_read_at(Abstractformat *self, int64_t relative,
     return true;
 }
 
-static void mar_stream_free(void *opaque) {
+static void mar_stream_free(void *opaque)
+{
     mar_stream *stream = (mar_stream *)opaque;
     if (!stream) return;
     xx_mem_free(stream->index);
@@ -76,8 +74,8 @@ static void mar_stream_free(void *opaque) {
  * The complete signature/section structure identifies the new header even
  * when its 64-bit file-size field is damaged, so a size mismatch cannot make
  * signed metadata appear to be legacy member bytes. */
-static bool mar_data_start(Abstractformat *self, int64_t index_offset,
-                           int64_t archive_size, int64_t *start) {
+static bool mar_data_start(Abstractformat *self, int64_t index_offset, int64_t archive_size, int64_t *start)
+{
     uint8_t header[20];
     uint32_t count, i;
     int64_t at = 20;
@@ -91,26 +89,20 @@ static bool mar_data_start(Abstractformat *self, int64_t index_offset,
     for (i = 0U; i < count; ++i) {
         uint8_t signature[8];
         uint32_t length;
-        if (at > index_offset - 8 ||
-            !mar_read_at(self, at, signature, sizeof(signature)))
-            return !declared_matches;
+        if (at > index_offset - 8 || !mar_read_at(self, at, signature, sizeof(signature))) return !declared_matches;
         length = xx_data_get_u32(signature + 4U, 4, 0, true);
-        if (length > 2048U || (int64_t)length > index_offset - at - 8)
-            return !declared_matches;
+        if (length > 2048U || (int64_t)length > index_offset - at - 8) return !declared_matches;
         at += 8 + (int64_t)length;
     }
-    if (at > index_offset - 4 || !mar_read_at(self, at, header, 4U))
-        return !declared_matches;
+    if (at > index_offset - 4 || !mar_read_at(self, at, header, 4U)) return !declared_matches;
     count = xx_data_get_u32(header, 4, 0, true);
     at += 4;
     if (count > 1024U) return !declared_matches;
     for (i = 0U; i < count; ++i) {
         uint32_t length;
-        if (at > index_offset - 8 ||
-            !mar_read_at(self, at, header, 8U)) return !declared_matches;
+        if (at > index_offset - 8 || !mar_read_at(self, at, header, 8U)) return !declared_matches;
         length = xx_data_get_u32(header, 4, 0, true);
-        if (length < 8U || (int64_t)length > index_offset - at)
-            return !declared_matches;
+        if (length < 8U || (int64_t)length > index_offset - at) return !declared_matches;
         at += length;
     }
     if (!declared_matches) return false;
@@ -118,38 +110,30 @@ static bool mar_data_start(Abstractformat *self, int64_t index_offset,
     return true;
 }
 
-static mar_stream *mar_parse(Abstractformat *self, xx_pd_struct *pd) {
+static mar_stream *mar_parse(Abstractformat *self, xx_pd_struct *pd)
+{
     mar_stream *stream = NULL;
     uint8_t header[8], index_header[4];
     uint32_t index_size, index_offset;
     int64_t available, archive_size, data_start;
     size_t at, count = 0U, i;
     int64_t original_cursor;
-    if (!self || !self->device || self->base_address < 0 ||
-        (pd && xx_pd_is_stopped(pd))) return NULL;
+    if (!self || !self->device || self->base_address < 0 || (pd && xx_pd_is_stopped(pd))) return NULL;
     original_cursor = xx_io_tell(self->device);
     if (original_cursor < 0) return NULL;
     available = xx_io_size(self->device) - self->base_address;
-    if (available < 12 || !mar_read_at(self, 0, header, sizeof(header)) ||
-        xx_rt_memcmp(header, "MAR1", 4U) != 0) goto done;
+    if (available < 12 || !mar_read_at(self, 0, header, sizeof(header)) || xx_rt_memcmp(header, "MAR1", 4U) != 0) goto done;
     index_offset = xx_data_get_u32(header + 4U, 4, 0, true);
-    if (index_offset < 8U || (int64_t)index_offset > available - 4 ||
-        !mar_read_at(self, index_offset, index_header, sizeof(index_header)))
-        goto done;
+    if (index_offset < 8U || (int64_t)index_offset > available - 4 || !mar_read_at(self, index_offset, index_header, sizeof(index_header))) goto done;
     index_size = xx_data_get_u32(index_header, 4, 0, true);
-    if (index_size > MAR_MAX_INDEX ||
-        (int64_t)index_size > available - (int64_t)index_offset - 4)
-        goto done;
+    if (index_size > MAR_MAX_INDEX || (int64_t)index_size > available - (int64_t)index_offset - 4) goto done;
     archive_size = (int64_t)index_offset + 4 + (int64_t)index_size;
-    if (!mar_data_start(self, index_offset, archive_size, &data_start))
-        goto done;
+    if (!mar_data_start(self, index_offset, archive_size, &data_start)) goto done;
     stream = (mar_stream *)xx_mem_alloc(sizeof(*stream));
     if (!stream) goto done;
     xx_mem_zero(stream, sizeof(*stream));
     stream->index = (uint8_t *)xx_mem_alloc(index_size ? index_size : 1U);
-    if (!stream->index ||
-        !mar_read_at(self, (int64_t)index_offset + 4, stream->index,
-                     index_size)) goto fail;
+    if (!stream->index || !mar_read_at(self, (int64_t)index_offset + 4, stream->index, index_size)) goto fail;
     /* First pass checks every name and range before exposing any record. */
     for (at = 0U; at < index_size;) {
         uint32_t offset, length;
@@ -158,15 +142,11 @@ static mar_stream *mar_parse(Abstractformat *self, xx_pd_struct *pd) {
         if (index_size - at < 14U) goto fail;
         offset = xx_data_get_u32(stream->index + at, 4, 0, true);
         length = xx_data_get_u32(stream->index + at + 4U, 4, 0, true);
-        if ((int64_t)offset > index_offset ||
-            (int64_t)length > (int64_t)index_offset - offset ||
-            (length != 0U && (int64_t)offset < data_start)) goto fail;
+        if ((int64_t)offset > index_offset || (int64_t)length > (int64_t)index_offset - offset || (length != 0U && (int64_t)offset < data_start)) goto fail;
         name_at = at + 12U;
         end = name_at;
-        while (end < index_size && stream->index[end] != 0U &&
-               end - name_at <= MAR_MAX_NAME) ++end;
-        if (end == name_at || end == index_size ||
-            end - name_at > MAR_MAX_NAME) goto fail;
+        while (end < index_size && stream->index[end] != 0U && end - name_at <= MAR_MAX_NAME) ++end;
+        if (end == name_at || end == index_size || end - name_at > MAR_MAX_NAME) goto fail;
         at = end + 1U;
         if (++count > MAR_MAX_MEMBERS) goto fail;
     }
@@ -201,19 +181,16 @@ done:
 
 /* Archive paths remain visible in listings, but only relative, portable
  * paths can be materialized on disk. */
-static bool mar_component_safe(const char *part, size_t length) {
-    static const char *const devices[] = {
-        "CON", "PRN", "AUX", "NUL", "CONIN$", "CONOUT$", "CLOCK$"
-    };
+static bool mar_component_safe(const char *part, size_t length)
+{
+    static const char *const devices[] = {"CON", "PRN", "AUX", "NUL", "CONIN$", "CONOUT$", "CLOCK$"};
     size_t i, stem = 0U;
     char upper[16];
-    if (!length || (length == 1U && part[0] == '.') ||
-        (length == 2U && part[0] == '.' && part[1] == '.') ||
-        part[length - 1U] == '.' || part[length - 1U] == ' ') return false;
+    if (!length || (length == 1U && part[0] == '.') || (length == 2U && part[0] == '.' && part[1] == '.') || part[length - 1U] == '.' || part[length - 1U] == ' ')
+        return false;
     for (i = 0U; i < length; ++i) {
         unsigned char c = (unsigned char)part[i];
-        if (c < 0x20U || c == 0x7FU || c == ':' || c == '<' || c == '>' ||
-            c == '"' || c == '|' || c == '?' || c == '*') return false;
+        if (c < 0x20U || c == 0x7FU || c == ':' || c == '<' || c == '>' || c == '"' || c == '|' || c == '?' || c == '*') return false;
     }
     while (stem < length && part[stem] != '.') ++stem;
     while (stem && part[stem - 1U] == ' ') --stem;
@@ -226,13 +203,13 @@ static bool mar_component_safe(const char *part, size_t length) {
     for (i = 0U; i < sizeof(devices) / sizeof(devices[0]); ++i)
         if (xx_str_cmp(upper, devices[i]) == 0) return false;
     if (stem == 4U && upper[3] >= '0' && upper[3] <= '9' &&
-        ((upper[0] == 'C' && upper[1] == 'O' && upper[2] == 'M') ||
-         (upper[0] == 'L' && upper[1] == 'P' && upper[2] == 'T')))
+        ((upper[0] == 'C' && upper[1] == 'O' && upper[2] == 'M') || (upper[0] == 'L' && upper[1] == 'P' && upper[2] == 'T')))
         return false;
     return true;
 }
 
-static bool mar_path_safe(const char *name) {
+static bool mar_path_safe(const char *name)
+{
     size_t i = 0U, start = 0U;
     if (!name || !name[0] || name[0] == '/' || name[0] == '\\') return false;
     for (;;) {
@@ -245,8 +222,8 @@ static bool mar_path_safe(const char *name) {
     }
 }
 
-void xx_mozilla_mar_init(xx_mozilla_mar *archive, xx_io_device *device,
-                         int64_t base_address) {
+void xx_mozilla_mar_init(xx_mozilla_mar *archive, xx_io_device *device, int64_t base_address)
+{
     Abstractformat *self;
     if (!archive) return;
     xx_mem_zero(archive, sizeof(*archive));
@@ -261,45 +238,43 @@ void xx_mozilla_mar_init(xx_mozilla_mar *archive, xx_io_device *device,
     self->check_is_valid = xx_mozilla_mar_check_is_valid;
     self->handle_base_info = xx_mozilla_mar_handle_base_info;
     self->get_format_size = xx_mozilla_mar_get_format_size;
-    self->get_number_of_archive_records =
-        xx_mozilla_mar_get_number_of_archive_records;
-    self->create_archive_records_reading =
-        xx_mozilla_mar_create_archive_records_reading;
-    self->get_current_archive_record =
-        xx_mozilla_mar_get_current_archive_record;
-    self->archive_record_move_to_next =
-        xx_mozilla_mar_archive_record_move_to_next;
-    self->unpack_current_archive_record =
-        xx_mozilla_mar_unpack_current_archive_record;
-    self->free_archive_records_reading =
-        xx_mozilla_mar_free_archive_records_reading;
+    self->get_number_of_archive_records = xx_mozilla_mar_get_number_of_archive_records;
+    self->create_archive_records_reading = xx_mozilla_mar_create_archive_records_reading;
+    self->get_current_archive_record = xx_mozilla_mar_get_current_archive_record;
+    self->archive_record_move_to_next = xx_mozilla_mar_archive_record_move_to_next;
+    self->unpack_current_archive_record = xx_mozilla_mar_unpack_current_archive_record;
+    self->free_archive_records_reading = xx_mozilla_mar_free_archive_records_reading;
 }
 
-xx_mozilla_mar *xx_mozilla_mar_create(xx_io_device *device,
-                                      int64_t base_address) {
+xx_mozilla_mar *xx_mozilla_mar_create(xx_io_device *device, int64_t base_address)
+{
     xx_mozilla_mar *archive = (xx_mozilla_mar *)xx_mem_alloc(sizeof(*archive));
     if (archive) xx_mozilla_mar_init(archive, device, base_address);
     return archive;
 }
 
-void xx_mozilla_mar_destroy(xx_mozilla_mar *archive) {
+void xx_mozilla_mar_destroy(xx_mozilla_mar *archive)
+{
     if (archive) xx_format_cleanup_extra_parameters(&archive->format);
 }
 
-void xx_mozilla_mar_free(xx_mozilla_mar *archive) {
+void xx_mozilla_mar_free(xx_mozilla_mar *archive)
+{
     if (!archive) return;
     xx_mozilla_mar_destroy(archive);
     xx_mem_free(archive);
 }
 
-bool xx_mozilla_mar_check_is_valid(Abstractformat *self, xx_pd_struct *pd) {
+bool xx_mozilla_mar_check_is_valid(Abstractformat *self, xx_pd_struct *pd)
+{
     mar_stream *stream = mar_parse(self, pd);
     if (!stream) return false;
     mar_stream_free(stream);
     return true;
 }
 
-bool xx_mozilla_mar_handle_base_info(Abstractformat *self, xx_pd_struct *pd) {
+bool xx_mozilla_mar_handle_base_info(Abstractformat *self, xx_pd_struct *pd)
+{
     mar_stream *stream = mar_parse(self, pd);
     if (!stream) {
         if (self) {
@@ -319,42 +294,32 @@ bool xx_mozilla_mar_handle_base_info(Abstractformat *self, xx_pd_struct *pd) {
     return true;
 }
 
-int64_t xx_mozilla_mar_get_format_size(Abstractformat *self,
-                                        xx_pd_struct *pd) {
-    return self && (self->base_info_handled ||
-                    xx_mozilla_mar_handle_base_info(self, pd))
-               ? self->format_size : -1;
+int64_t xx_mozilla_mar_get_format_size(Abstractformat *self, xx_pd_struct *pd)
+{
+    return self && (self->base_info_handled || xx_mozilla_mar_handle_base_info(self, pd)) ? self->format_size : -1;
 }
 
-uint64_t xx_mozilla_mar_get_number_of_archive_records(Abstractformat *self,
-                                                      xx_pd_struct *pd) {
-    return self && (self->base_info_handled ||
-                    xx_mozilla_mar_handle_base_info(self, pd))
-               ? self->number_of_archive_records : 0U;
+uint64_t xx_mozilla_mar_get_number_of_archive_records(Abstractformat *self, xx_pd_struct *pd)
+{
+    return self && (self->base_info_handled || xx_mozilla_mar_handle_base_info(self, pd)) ? self->number_of_archive_records : 0U;
 }
 
-static bool mar_set_record(xx_archive_record *record, Abstractformat *self,
-                           const mar_stream *stream, const mar_member *member) {
+static bool mar_set_record(xx_archive_record *record, Abstractformat *self, const mar_stream *stream, const mar_member *member)
+{
     xx_archive_record_cleanup(record);
     xx_archive_record_init(record);
-    record->header_offset = self->base_address + stream->index_offset + 4 +
-                            member->entry_at;
+    record->header_offset = self->base_address + stream->index_offset + 4 + member->entry_at;
     record->header_size = 12U + xx_rt_strlen(member->name) + 1U;
     record->data_offset = self->base_address + member->offset;
     record->compressed_size = member->length;
-    return xx_archive_record_set_original_name(record, member->name) &&
-        xx_archive_record_set_meta_u64(record, XX_META_ID_COMPRESSED_SIZE,
-                                       member->length) &&
-        xx_archive_record_set_meta_u64(record, XX_META_ID_UNCOMPRESSED_SIZE,
-                                       member->length) &&
-        xx_archive_record_set_meta_u64(record, XX_META_ID_COMPRESSION_METHOD,
-                                       0U) &&
-        xx_archive_record_set_meta_bool(record, XX_META_ID_IS_FOLDER, false) &&
-        xx_archive_record_set_meta_bool(record, XX_META_ID_IS_ENCRYPTED, false);
+    return xx_archive_record_set_original_name(record, member->name) && xx_archive_record_set_meta_u64(record, XX_META_ID_COMPRESSED_SIZE, member->length) &&
+           xx_archive_record_set_meta_u64(record, XX_META_ID_UNCOMPRESSED_SIZE, member->length) &&
+           xx_archive_record_set_meta_u64(record, XX_META_ID_COMPRESSION_METHOD, 0U) && xx_archive_record_set_meta_bool(record, XX_META_ID_IS_FOLDER, false) &&
+           xx_archive_record_set_meta_bool(record, XX_META_ID_IS_ENCRYPTED, false);
 }
 
-xx_archive_record_state *xx_mozilla_mar_create_archive_records_reading(
-    Abstractformat *self, const xx_list_s *options, xx_pd_struct *pd) {
+xx_archive_record_state *xx_mozilla_mar_create_archive_records_reading(Abstractformat *self, const xx_list_s *options, xx_pd_struct *pd)
+{
     mar_stream *stream = mar_parse(self, pd);
     xx_archive_record_state *state;
     size_t i;
@@ -373,50 +338,41 @@ xx_archive_record_state *xx_mozilla_mar_create_archive_records_reading(
         xx_meta copy;
         if (!source) continue;
         xx_meta_init(&copy, source->meta_id);
-        if (!xx_var_copy(&copy.var, &source->var) ||
-            !xx_list_append(&state->options, &copy)) {
+        if (!xx_var_copy(&copy.var, &source->var) || !xx_list_append(&state->options, &copy)) {
             xx_meta_cleanup(&copy);
             xx_archive_record_state_free(state);
             return NULL;
         }
     }
     state->has_record = stream->count != 0U;
-    if (state->has_record &&
-        !mar_set_record(&state->current_record, self, stream,
-                        &stream->members[0])) {
+    if (state->has_record && !mar_set_record(&state->current_record, self, stream, &stream->members[0])) {
         xx_archive_record_state_free(state);
         return NULL;
     }
     return state;
 }
 
-const xx_archive_record *xx_mozilla_mar_get_current_archive_record(
-    Abstractformat *self, xx_archive_record_state *state) {
-    return self && state && state->format == self && state->has_record
-        ? &state->current_record : NULL;
+const xx_archive_record *xx_mozilla_mar_get_current_archive_record(Abstractformat *self, xx_archive_record_state *state)
+{
+    return self && state && state->format == self && state->has_record ? &state->current_record : NULL;
 }
 
-bool xx_mozilla_mar_archive_record_move_to_next(Abstractformat *self,
-                                                 xx_archive_record_state *state,
-                                                 xx_pd_struct *pd) {
+bool xx_mozilla_mar_archive_record_move_to_next(Abstractformat *self, xx_archive_record_state *state, xx_pd_struct *pd)
+{
     mar_stream *stream;
-    if (!self || !state || state->format != self || !state->has_record ||
-        (pd && xx_pd_is_stopped(pd))) return false;
+    if (!self || !state || state->format != self || !state->has_record || (pd && xx_pd_is_stopped(pd))) return false;
     stream = (mar_stream *)state->internal_state;
     if (++stream->current >= stream->count) {
         state->has_record = false;
         return false;
     }
     ++state->current_index;
-    state->has_record = mar_set_record(&state->current_record, self, stream,
-                                      &stream->members[stream->current]);
+    state->has_record = mar_set_record(&state->current_record, self, stream, &stream->members[stream->current]);
     return state->has_record;
 }
 
-bool xx_mozilla_mar_extract_record_to_device(Abstractformat *self,
-                                              xx_archive_record_state *state,
-                                              xx_io_device *destination,
-                                              xx_pd_struct *pd) {
+bool xx_mozilla_mar_extract_record_to_device(Abstractformat *self, xx_archive_record_state *state, xx_io_device *destination, xx_pd_struct *pd)
+{
     mar_stream *stream;
     const mar_member *member;
     const xx_var *limit;
@@ -424,12 +380,10 @@ bool xx_mozilla_mar_extract_record_to_device(Abstractformat *self,
     int64_t original_cursor, position;
     uint32_t left;
     bool success = true;
-    if (!self || !state || state->format != self || !state->has_record ||
-        (pd && xx_pd_is_stopped(pd))) return false;
+    if (!self || !state || state->format != self || !state->has_record || (pd && xx_pd_is_stopped(pd))) return false;
     stream = (mar_stream *)state->internal_state;
     member = &stream->members[stream->current];
-    limit = xx_format_resolve_extra_parameter(
-        self, &state->options, XX_META_ID_OPT_MAX_MEMBER_SIZE);
+    limit = xx_format_resolve_extra_parameter(self, &state->options, XX_META_ID_OPT_MAX_MEMBER_SIZE);
     if (limit && (uint64_t)member->length > xx_var_get_u64(limit)) return false;
     if (!destination) return true;
     original_cursor = xx_io_tell(self->device);
@@ -439,14 +393,16 @@ bool xx_mozilla_mar_extract_record_to_device(Abstractformat *self,
     while (left) {
         size_t amount = left < sizeof(buffer) ? left : sizeof(buffer);
         size_t used = 0U;
-        if (pd && xx_pd_is_stopped(pd)) { success = false; break; }
+        if (pd && xx_pd_is_stopped(pd)) {
+            success = false;
+            break;
+        }
         if (!mar_read_at(self, position - self->base_address, buffer, amount)) {
             success = false;
             break;
         }
         while (used < amount) {
-            ssize_t written = xx_io_write(destination, buffer + used,
-                                          amount - used);
+            ssize_t written = xx_io_write(destination, buffer + used, amount - used);
             if (written <= 0 || (size_t)written > amount - used) {
                 success = false;
                 break;
@@ -457,12 +413,12 @@ bool xx_mozilla_mar_extract_record_to_device(Abstractformat *self,
         position += amount;
         left -= (uint32_t)amount;
     }
-    if (xx_io_seek64(self->device, original_cursor, SEEK_SET) != 0)
-        success = false;
+    if (xx_io_seek64(self->device, original_cursor, SEEK_SET) != 0) success = false;
     return success && !(pd && xx_pd_is_stopped(pd));
 }
 
-static bool mar_same_path(const char *a, const char *b) {
+static bool mar_same_path(const char *a, const char *b)
+{
     while (*a && *b) {
         char x = *a++, y = *b++;
         if (x == '\\') x = '/';
@@ -474,7 +430,8 @@ static bool mar_same_path(const char *a, const char *b) {
     return *a == *b;
 }
 
-static xx_io_device *mar_open_stage(const char *target, char **stage) {
+static xx_io_device *mar_open_stage(const char *target, char **stage)
+{
     char *parent = xx_str_dup(target);
     size_t i, cut = 0U;
     unsigned attempt;
@@ -505,8 +462,8 @@ static xx_io_device *mar_open_stage(const char *target, char **stage) {
     return NULL;
 }
 
-bool xx_mozilla_mar_unpack_current_archive_record(
-    Abstractformat *self, xx_archive_record_state *state, xx_pd_struct *pd) {
+bool xx_mozilla_mar_unpack_current_archive_record(Abstractformat *self, xx_archive_record_state *state, xx_pd_struct *pd)
+{
     mar_stream *stream;
     const mar_member *member;
     const xx_var *option;
@@ -514,37 +471,26 @@ bool xx_mozilla_mar_unpack_current_archive_record(
     char *converted = NULL, *target = NULL, *stage = NULL;
     xx_io_device *output = NULL;
     bool overwrite = false, success = false;
-    if (!self || !state || state->format != self || !state->has_record)
-        return false;
+    if (!self || !state || state->format != self || !state->has_record) return false;
     stream = (mar_stream *)state->internal_state;
     member = &stream->members[stream->current];
     if (!mar_path_safe(member->name)) return false;
-    option = xx_format_resolve_extra_parameter(
-        self, &state->options, XX_META_ID_OPT_UNPACK_PATH);
-    if (!option) return xx_mozilla_mar_extract_record_to_device(
-        self, state, NULL, pd);
-    if (option->type == XX_VAR_TYPE_STRING ||
-        option->type == XX_VAR_TYPE_STRING_VIEW)
-        base = xx_var_get_str(option);
-    else if (option->type == XX_VAR_TYPE_WSTRING ||
-             option->type == XX_VAR_TYPE_WSTRING_VIEW)
-        base = converted = xx_str_unicode_to_utf8(xx_var_get_wstr(option));
+    option = xx_format_resolve_extra_parameter(self, &state->options, XX_META_ID_OPT_UNPACK_PATH);
+    if (!option) return xx_mozilla_mar_extract_record_to_device(self, state, NULL, pd);
+    if (option->type == XX_VAR_TYPE_STRING || option->type == XX_VAR_TYPE_STRING_VIEW) base = xx_var_get_str(option);
+    else if (option->type == XX_VAR_TYPE_WSTRING || option->type == XX_VAR_TYPE_WSTRING_VIEW) base = converted = xx_str_unicode_to_utf8(xx_var_get_wstr(option));
     if (!base) goto done;
-    target = base[0] ? xx_str_concat3(base, "/", member->name)
-                     : xx_str_dup(member->name);
+    target = base[0] ? xx_str_concat3(base, "/", member->name) : xx_str_dup(member->name);
     if (!target || !xx_store_create_dirs_a(target, false)) goto done;
-    option = xx_format_resolve_extra_parameter(
-        self, &state->options, XX_META_ID_OPT_OVERWRITE);
+    option = xx_format_resolve_extra_parameter(self, &state->options, XX_META_ID_OPT_OVERWRITE);
     overwrite = option && xx_var_get_bool(option);
-    if ((!overwrite && xx_io_file_exists_a(target)) ||
-        (pd && xx_pd_is_stopped(pd))) goto done;
+    if ((!overwrite && xx_io_file_exists_a(target)) || (pd && xx_pd_is_stopped(pd))) goto done;
     output = mar_open_stage(target, &stage);
     if (!output) goto done;
     success = xx_mozilla_mar_extract_record_to_device(self, state, output, pd);
 done:
     if (output && xx_io_close(output) != 0) success = false;
-    if (success && stage)
-        success = xx_io_file_replace_a(stage, target, overwrite);
+    if (success && stage) success = xx_io_file_replace_a(stage, target, overwrite);
     if (stage && !success) (void)xx_io_file_remove_a(stage);
     xx_str_free(stage);
     xx_str_free(target);
@@ -552,8 +498,8 @@ done:
     return success;
 }
 
-void xx_mozilla_mar_free_archive_records_reading(
-    Abstractformat *self, xx_archive_record_state *state) {
+void xx_mozilla_mar_free_archive_records_reading(Abstractformat *self, xx_archive_record_state *state)
+{
     (void)self;
     xx_archive_record_state_free(state);
 }

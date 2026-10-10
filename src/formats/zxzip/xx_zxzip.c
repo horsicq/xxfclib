@@ -75,30 +75,28 @@ static void xx_zxzip_vtable_destroy(Abstractformat *self);
 
 /* ------------------------------------------------------------- helpers -- */
 
-static bool xx_zxzip_read_at(Abstractformat *self, int64_t offset,
-                             uint8_t *buffer, size_t size) {
+static bool xx_zxzip_read_at(Abstractformat *self, int64_t offset, uint8_t *buffer, size_t size)
+{
     size_t completed = 0U;
-    if (!self || !self->device || offset < 0 || (!buffer && size != 0U) ||
-        xx_io_seek64(self->device, offset, SEEK_SET) != 0) {
+    if (!self || !self->device || offset < 0 || (!buffer && size != 0U) || xx_io_seek64(self->device, offset, SEEK_SET) != 0) {
         return false;
     }
     while (completed < size) {
-        ssize_t received =
-            xx_io_read(self->device, buffer + completed, size - completed);
+        ssize_t received = xx_io_read(self->device, buffer + completed, size - completed);
         if (received <= 0 || (size_t)received > size - completed) return false;
         completed += (size_t)received;
     }
     return true;
 }
 
-static bool xx_zxzip_range_within(int64_t total, int64_t offset,
-                                  int64_t size) {
-    return total >= 0 && offset >= 0 && size >= 0 && offset <= total &&
-           size <= total - offset;
+static bool xx_zxzip_range_within(int64_t total, int64_t offset, int64_t size)
+{
+    return total >= 0 && offset >= 0 && size >= 0 && offset <= total && size <= total - offset;
 }
 
 /* The Hobeta check the archive header carries over its own first 15 bytes. */
-static uint16_t xx_zxzip_hobeta_check(const uint8_t *data, size_t count) {
+static uint16_t xx_zxzip_hobeta_check(const uint8_t *data, size_t count)
+{
     uint32_t sum = 0U;
     size_t index;
     for (index = 0U; index < count; ++index) sum += data[index];
@@ -106,7 +104,8 @@ static uint16_t xx_zxzip_hobeta_check(const uint8_t *data, size_t count) {
 }
 
 /* Refuse anything that would escape the extraction directory. */
-static bool xx_zxzip_path_safe(const char *name) {
+static bool xx_zxzip_path_safe(const char *name)
+{
     const char *cursor = name;
     if (!name || !name[0] || name[0] == '/' || name[0] == '\\') return false;
     while (*cursor) {
@@ -129,20 +128,18 @@ static bool xx_zxzip_path_safe(const char *name) {
  * reserves is folded to '_' - the alternative, dropping the member, would
  * silently lose files the reference lists.
  */
-static char *xx_zxzip_member_name(const uint8_t *entry, size_t index) {
+static char *xx_zxzip_member_name(const uint8_t *entry, size_t index)
+{
     char buffer[XX_ZXZIP_NAME_BUFFER];
     size_t length = 8U;
     size_t position;
     unsigned char type;
-    while (length > 0U && (entry[length - 1U] == ' ' ||
-                           entry[length - 1U] == '.')) {
+    while (length > 0U && (entry[length - 1U] == ' ' || entry[length - 1U] == '.')) {
         --length;
     }
     for (position = 0U; position < length; ++position) {
         unsigned char ch = entry[position];
-        bool safe = ch > 0x20U && ch < 0x7fU && ch != '/' && ch != '\\' &&
-                    ch != ':' && ch != '*' && ch != '?' && ch != '"' &&
-                    ch != '<' && ch != '>' && ch != '|';
+        bool safe = ch > 0x20U && ch < 0x7fU && ch != '/' && ch != '\\' && ch != ':' && ch != '*' && ch != '?' && ch != '"' && ch != '<' && ch != '>' && ch != '|';
         buffer[position] = safe ? (char)ch : '_';
     }
     if (length == 0U) {
@@ -153,9 +150,8 @@ static char *xx_zxzip_member_name(const uint8_t *entry, size_t index) {
         length = 3U;
     }
     type = entry[8];
-    if (type <= 0x20U || type >= 0x7fU || type == '/' || type == '\\' ||
-        type == ':' || type == '*' || type == '?' || type == '"' ||
-        type == '<' || type == '>' || type == '|') {
+    if (type <= 0x20U || type >= 0x7fU || type == '/' || type == '\\' || type == ':' || type == '*' || type == '?' || type == '"' || type == '<' || type == '>' ||
+        type == '|') {
         type = '_';
     }
     buffer[length] = '.';
@@ -165,7 +161,8 @@ static char *xx_zxzip_member_name(const uint8_t *entry, size_t index) {
     return xx_str_dup(buffer);
 }
 
-static void xx_zxzip_stream_free(void *pointer) {
+static void xx_zxzip_stream_free(void *pointer)
+{
     xx_zxzip_stream *stream = (xx_zxzip_stream *)pointer;
     size_t index;
     if (!stream) return;
@@ -177,15 +174,13 @@ static void xx_zxzip_stream_free(void *pointer) {
 }
 
 /* Append a member, taking ownership of member->name on success. */
-static bool xx_zxzip_add(xx_zxzip_stream *stream,
-                         const xx_zxzip_member *member) {
+static bool xx_zxzip_add(xx_zxzip_stream *stream, const xx_zxzip_member *member)
+{
     xx_zxzip_member *grown;
-    if (!stream || !member || stream->count >= XX_ZXZIP_MAX_MEMBERS ||
-        stream->count + 1U > SIZE_MAX / sizeof(*grown)) {
+    if (!stream || !member || stream->count >= XX_ZXZIP_MAX_MEMBERS || stream->count + 1U > SIZE_MAX / sizeof(*grown)) {
         return false;
     }
-    grown = (xx_zxzip_member *)xx_mem_realloc(
-        stream->items, sizeof(*grown) * (stream->count + 1U));
+    grown = (xx_zxzip_member *)xx_mem_realloc(stream->items, sizeof(*grown) * (stream->count + 1U));
     if (!grown) return false;
     stream->items = grown;
     stream->items[stream->count++] = *member;
@@ -194,8 +189,8 @@ static bool xx_zxzip_add(xx_zxzip_stream *stream,
 
 /* --------------------------------------------------------------- parse -- */
 
-static xx_zxzip_stream *xx_zxzip_parse(Abstractformat *self,
-                                       xx_pd_struct *pd) {
+static xx_zxzip_stream *xx_zxzip_parse(Abstractformat *self, xx_pd_struct *pd)
+{
     xx_zxzip_stream *stream;
     uint8_t header[XX_ZXZIP_HEADER_SIZE];
     int64_t total;
@@ -204,8 +199,7 @@ static xx_zxzip_stream *xx_zxzip_parse(Abstractformat *self,
     int64_t remaining;
     unsigned index;
 
-    if (!self || !self->device || self->base_address < 0 ||
-        (pd && xx_pd_is_stopped(pd))) {
+    if (!self || !self->device || self->base_address < 0 || (pd && xx_pd_is_stopped(pd))) {
         return NULL;
     }
     total = xx_io_total_size(self->device);
@@ -226,8 +220,7 @@ static xx_zxzip_stream *xx_zxzip_parse(Abstractformat *self,
     }
     remaining = (int64_t)xx_data_get_u16(header + 0x0b, 2, 0, false);
     if ((remaining >> 8) > (int64_t)header[0x0e]) return NULL;
-    if (xx_zxzip_hobeta_check(header, 15U) !=
-        xx_data_get_u16(header + 0x0f, 2, 0, false)) {
+    if (xx_zxzip_hobeta_check(header, 15U) != xx_data_get_u16(header + 0x0f, 2, 0, false)) {
         return NULL;
     }
     for (index = 0U; index < 9U; ++index) {
@@ -250,12 +243,10 @@ static xx_zxzip_stream *xx_zxzip_parse(Abstractformat *self,
 
         if (pd && xx_pd_is_stopped(pd)) goto fail;
         if (stream->count >= XX_ZXZIP_MAX_MEMBERS) break;
-        if (!xx_zxzip_range_within(span, offset,
-                                   (int64_t)XX_ZXZIP_DIR_ENTRY_SIZE)) {
+        if (!xx_zxzip_range_within(span, offset, (int64_t)XX_ZXZIP_DIR_ENTRY_SIZE)) {
             break;
         }
-        if (!xx_zxzip_read_at(self, self->base_address + offset, entry,
-                              sizeof(entry))) {
+        if (!xx_zxzip_read_at(self, self->base_address + offset, entry, sizeof(entry))) {
             goto fail;
         }
         for (index = 0U; index < 9U; ++index) {
@@ -274,8 +265,7 @@ static xx_zxzip_stream *xx_zxzip_parse(Abstractformat *self,
             packed = span - data_offset;
             truncated = true;
         }
-        if (!xx_zxzip_member_size(entry, sizeof(entry), &data_size,
-                                  &padded_size)) {
+        if (!xx_zxzip_member_size(entry, sizeof(entry), &data_size, &padded_size)) {
             break;
         }
         if (padded_size > (size_t)(INT64_MAX - XX_ZXZIP_HOBETA_SIZE)) break;
@@ -285,8 +275,7 @@ static xx_zxzip_stream *xx_zxzip_parse(Abstractformat *self,
         member.header_offset = self->base_address + offset;
         member.data_offset = self->base_address + data_offset;
         member.compressed_size = packed;
-        member.uncompressed_size =
-            (int64_t)XX_ZXZIP_HOBETA_SIZE + (int64_t)padded_size;
+        member.uncompressed_size = (int64_t)XX_ZXZIP_HOBETA_SIZE + (int64_t)padded_size;
         member.crc = xx_data_get_u32(entry + 0x10, 4, 0, false);
         member.method = entry[0x14];
         member.sub_method = entry[0x15];
@@ -318,9 +307,8 @@ fail:
  * codec in one call; there is no streaming entry point and no way to emit the
  * payload without the Hobeta wrapper the codec builds.
  */
-static bool xx_zxzip_decode(Abstractformat *self,
-                            const xx_zxzip_member *member, uint8_t **out,
-                            size_t *out_size, xx_pd_struct *pd) {
+static bool xx_zxzip_decode(Abstractformat *self, const xx_zxzip_member *member, uint8_t **out, size_t *out_size, xx_pd_struct *pd)
+{
     uint8_t *input = NULL;
     uint8_t *output = NULL;
     size_t input_size;
@@ -329,11 +317,8 @@ static bool xx_zxzip_decode(Abstractformat *self,
 
     if (out) *out = NULL;
     if (out_size) *out_size = 0U;
-    if (!self || !member || !out || !out_size || member->compressed_size < 0 ||
-        member->uncompressed_size <= 0 ||
-        (uint64_t)member->compressed_size > (uint64_t)SIZE_MAX ||
-        (uint64_t)member->uncompressed_size >
-            (uint64_t)XX_ZXZIP_MAX_UNCOMPRESSED_SIZE ||
+    if (!self || !member || !out || !out_size || member->compressed_size < 0 || member->uncompressed_size <= 0 ||
+        (uint64_t)member->compressed_size > (uint64_t)SIZE_MAX || (uint64_t)member->uncompressed_size > (uint64_t)XX_ZXZIP_MAX_UNCOMPRESSED_SIZE ||
         (pd && xx_pd_is_stopped(pd))) {
         return false;
     }
@@ -343,13 +328,8 @@ static bool xx_zxzip_decode(Abstractformat *self,
      * still has to hand the codec a valid pointer. */
     input = (uint8_t *)xx_mem_alloc(input_size != 0U ? input_size : 1U);
     output = (uint8_t *)xx_mem_alloc(output_size);
-    if (!input || !output ||
-        !xx_zxzip_read_at(self, member->data_offset, input, input_size) ||
-        (pd && xx_pd_is_stopped(pd)) ||
-        !xx_zxzip_decode_memory(input, input_size, member->entry,
-                                sizeof(member->entry), output, output_size,
-                                &written) ||
-        written != output_size) {
+    if (!input || !output || !xx_zxzip_read_at(self, member->data_offset, input, input_size) || (pd && xx_pd_is_stopped(pd)) ||
+        !xx_zxzip_decode_memory(input, input_size, member->entry, sizeof(member->entry), output, output_size, &written) || written != output_size) {
         xx_mem_free(input);
         xx_mem_free(output);
         return false;
@@ -362,8 +342,8 @@ static bool xx_zxzip_decode(Abstractformat *self,
 
 /* ------------------------------------------------------------ lifetime -- */
 
-void xx_zxzip_init(xx_zxzip *archive, xx_io_device *device,
-                   int64_t base_address) {
+void xx_zxzip_init(xx_zxzip *archive, xx_io_device *device, int64_t base_address)
+{
     if (!archive) return;
     xx_mem_zero(archive, sizeof(*archive));
     xx_format_init(&archive->format, device, base_address);
@@ -378,29 +358,25 @@ void xx_zxzip_init(xx_zxzip *archive, xx_io_device *device,
     archive->format.check_is_valid = xx_zxzip_check_is_valid;
     archive->format.handle_base_info = xx_zxzip_handle_base_info;
     archive->format.get_format_size = xx_zxzip_get_format_size;
-    archive->format.get_number_of_archive_records =
-        xx_zxzip_get_number_of_archive_records;
-    archive->format.create_archive_records_reading =
-        xx_zxzip_create_archive_records_reading;
-    archive->format.get_current_archive_record =
-        xx_zxzip_get_current_archive_record;
-    archive->format.unpack_current_archive_record =
-        xx_zxzip_unpack_current_archive_record;
-    archive->format.archive_record_move_to_next =
-        xx_zxzip_archive_record_move_to_next;
-    archive->format.free_archive_records_reading =
-        xx_zxzip_free_archive_records_reading;
+    archive->format.get_number_of_archive_records = xx_zxzip_get_number_of_archive_records;
+    archive->format.create_archive_records_reading = xx_zxzip_create_archive_records_reading;
+    archive->format.get_current_archive_record = xx_zxzip_get_current_archive_record;
+    archive->format.unpack_current_archive_record = xx_zxzip_unpack_current_archive_record;
+    archive->format.archive_record_move_to_next = xx_zxzip_archive_record_move_to_next;
+    archive->format.free_archive_records_reading = xx_zxzip_free_archive_records_reading;
     archive->format.destroy = xx_zxzip_vtable_destroy;
     archive->archive_size = -1;
 }
 
-xx_zxzip *xx_zxzip_create(xx_io_device *device, int64_t base_address) {
+xx_zxzip *xx_zxzip_create(xx_io_device *device, int64_t base_address)
+{
     xx_zxzip *archive = (xx_zxzip *)xx_mem_alloc(sizeof(*archive));
     if (archive) xx_zxzip_init(archive, device, base_address);
     return archive;
 }
 
-void xx_zxzip_destroy(xx_zxzip *archive) {
+void xx_zxzip_destroy(xx_zxzip *archive)
+{
     if (!archive) return;
     /* Not xx_format_destroy: it dispatches through format.destroy, which is
      * the wrapper below, and the two would recurse. */
@@ -410,11 +386,13 @@ void xx_zxzip_destroy(xx_zxzip *archive) {
     archive->archive_size = -1;
 }
 
-static void xx_zxzip_vtable_destroy(Abstractformat *self) {
+static void xx_zxzip_vtable_destroy(Abstractformat *self)
+{
     xx_zxzip_destroy((xx_zxzip *)self);
 }
 
-void xx_zxzip_free(xx_zxzip *archive) {
+void xx_zxzip_free(xx_zxzip *archive)
+{
     if (!archive) return;
     xx_zxzip_destroy(archive);
     xx_mem_free(archive);
@@ -422,7 +400,8 @@ void xx_zxzip_free(xx_zxzip *archive) {
 
 /* -------------------------------------------------------------- format -- */
 
-bool xx_zxzip_check_is_valid(Abstractformat *self, xx_pd_struct *pd) {
+bool xx_zxzip_check_is_valid(Abstractformat *self, xx_pd_struct *pd)
+{
     xx_zxzip_stream *stream;
     if (!self || (pd && xx_pd_is_stopped(pd))) return false;
     stream = xx_zxzip_parse(self, pd);
@@ -431,7 +410,8 @@ bool xx_zxzip_check_is_valid(Abstractformat *self, xx_pd_struct *pd) {
     return true;
 }
 
-bool xx_zxzip_handle_base_info(Abstractformat *self, xx_pd_struct *pd) {
+bool xx_zxzip_handle_base_info(Abstractformat *self, xx_pd_struct *pd)
+{
     xx_zxzip *archive = (xx_zxzip *)self;
     xx_zxzip_stream *stream;
     int64_t total;
@@ -466,18 +446,17 @@ bool xx_zxzip_handle_base_info(Abstractformat *self, xx_pd_struct *pd) {
     return true;
 }
 
-int64_t xx_zxzip_get_format_size(Abstractformat *self, xx_pd_struct *pd) {
-    if (!self ||
-        (!self->base_info_handled && !xx_format_handle_base_info(self, pd))) {
+int64_t xx_zxzip_get_format_size(Abstractformat *self, xx_pd_struct *pd)
+{
+    if (!self || (!self->base_info_handled && !xx_format_handle_base_info(self, pd))) {
         return 0;
     }
     return self->is_valid ? self->format_size : 0;
 }
 
-uint64_t xx_zxzip_get_number_of_archive_records(Abstractformat *self,
-                                                xx_pd_struct *pd) {
-    if (!self ||
-        (!self->base_info_handled && !xx_format_handle_base_info(self, pd))) {
+uint64_t xx_zxzip_get_number_of_archive_records(Abstractformat *self, xx_pd_struct *pd)
+{
+    if (!self || (!self->base_info_handled && !xx_format_handle_base_info(self, pd))) {
         return 0U;
     }
     return self->is_valid ? ((xx_zxzip *)self)->number_of_records : 0U;
@@ -485,8 +464,8 @@ uint64_t xx_zxzip_get_number_of_archive_records(Abstractformat *self,
 
 /* ------------------------------------------------------------- records -- */
 
-static bool xx_zxzip_set_record(xx_archive_record *record,
-                                const xx_zxzip_member *member) {
+static bool xx_zxzip_set_record(xx_archive_record *record, const xx_zxzip_member *member)
+{
     if (!record || !member || !member->name) return false;
     xx_archive_record_cleanup(record);
     xx_archive_record_init(record);
@@ -495,34 +474,23 @@ static bool xx_zxzip_set_record(xx_archive_record *record,
     record->data_offset = member->data_offset;
     record->compressed_size = member->compressed_size;
     return xx_archive_record_set_original_name(record, member->name) &&
-           xx_archive_record_set_meta_u64(record, XX_META_ID_COMPRESSED_SIZE,
-                                          (uint64_t)member->compressed_size) &&
-           xx_archive_record_set_meta_u64(
-               record, XX_META_ID_UNCOMPRESSED_SIZE,
-               (uint64_t)member->uncompressed_size) &&
-           xx_archive_record_set_meta_u64(record,
-                                          XX_META_ID_COMPRESSION_METHOD,
-                                          member->method) &&
-           xx_archive_record_set_meta_u64(record, XX_META_ID_CRC32,
-                                          member->crc) &&
-           xx_archive_record_set_meta_bool(record, XX_META_ID_IS_FOLDER,
-                                           false) &&
-           xx_archive_record_set_meta_bool(record, XX_META_ID_IS_ENCRYPTED,
-                                           false);
+           xx_archive_record_set_meta_u64(record, XX_META_ID_COMPRESSED_SIZE, (uint64_t)member->compressed_size) &&
+           xx_archive_record_set_meta_u64(record, XX_META_ID_UNCOMPRESSED_SIZE, (uint64_t)member->uncompressed_size) &&
+           xx_archive_record_set_meta_u64(record, XX_META_ID_COMPRESSION_METHOD, member->method) &&
+           xx_archive_record_set_meta_u64(record, XX_META_ID_CRC32, member->crc) && xx_archive_record_set_meta_bool(record, XX_META_ID_IS_FOLDER, false) &&
+           xx_archive_record_set_meta_bool(record, XX_META_ID_IS_ENCRYPTED, false);
 }
 
-static bool xx_zxzip_copy_options(xx_list_s *target,
-                                  const xx_list_s *options) {
+static bool xx_zxzip_copy_options(xx_list_s *target, const xx_list_s *options)
+{
     size_t index;
     if (!target || !options) return options == NULL;
     for (index = 0U; index < options->count; ++index) {
-        const xx_meta *source =
-            (const xx_meta *)xx_list_at((const xx_list_t *)options, index);
+        const xx_meta *source = (const xx_meta *)xx_list_at((const xx_list_t *)options, index);
         xx_meta copied;
         if (!source) continue;
         xx_meta_init(&copied, source->meta_id);
-        if (!xx_var_copy(&copied.var, &source->var) ||
-            !xx_list_append(target, &copied)) {
+        if (!xx_var_copy(&copied.var, &source->var) || !xx_list_append(target, &copied)) {
             xx_meta_cleanup(&copied);
             return false;
         }
@@ -530,20 +498,19 @@ static bool xx_zxzip_copy_options(xx_list_s *target,
     return true;
 }
 
-static const xx_var *xx_zxzip_get_option(const xx_list_s *options,
-                                         uint32_t meta_id) {
+static const xx_var *xx_zxzip_get_option(const xx_list_s *options, uint32_t meta_id)
+{
     size_t index;
     if (!options) return NULL;
     for (index = 0U; index < options->count; ++index) {
-        const xx_meta *meta =
-            (const xx_meta *)xx_list_at((const xx_list_t *)options, index);
+        const xx_meta *meta = (const xx_meta *)xx_list_at((const xx_list_t *)options, index);
         if (meta && meta->meta_id == meta_id) return &meta->var;
     }
     return NULL;
 }
 
-xx_archive_record_state *xx_zxzip_create_archive_records_reading(
-    Abstractformat *self, const xx_list_s *options, xx_pd_struct *pd) {
+xx_archive_record_state *xx_zxzip_create_archive_records_reading(Abstractformat *self, const xx_list_s *options, xx_pd_struct *pd)
+{
     xx_zxzip_stream *stream;
     xx_archive_record_state *state;
 
@@ -559,8 +526,7 @@ xx_archive_record_state *xx_zxzip_create_archive_records_reading(
     state->internal_state = stream;
     state->free_internal = xx_zxzip_stream_free;
     state->total_records = (int64_t)stream->count;
-    if (!xx_zxzip_copy_options(&state->options, options) ||
-        !xx_zxzip_set_record(&state->current_record, &stream->items[0])) {
+    if (!xx_zxzip_copy_options(&state->options, options) || !xx_zxzip_set_record(&state->current_record, &stream->items[0])) {
         xx_archive_record_state_free(state);
         return NULL;
     }
@@ -569,19 +535,15 @@ xx_archive_record_state *xx_zxzip_create_archive_records_reading(
     return state;
 }
 
-const xx_archive_record *xx_zxzip_get_current_archive_record(
-    Abstractformat *self, xx_archive_record_state *state) {
-    return self && state && state->format == self && state->has_record
-               ? &state->current_record
-               : NULL;
+const xx_archive_record *xx_zxzip_get_current_archive_record(Abstractformat *self, xx_archive_record_state *state)
+{
+    return self && state && state->format == self && state->has_record ? &state->current_record : NULL;
 }
 
-bool xx_zxzip_archive_record_move_to_next(Abstractformat *self,
-                                          xx_archive_record_state *state,
-                                          xx_pd_struct *pd) {
+bool xx_zxzip_archive_record_move_to_next(Abstractformat *self, xx_archive_record_state *state, xx_pd_struct *pd)
+{
     xx_zxzip_stream *stream;
-    if (!self || !state || state->format != self || !state->has_record ||
-        (pd && xx_pd_is_stopped(pd))) {
+    if (!self || !state || state->format != self || !state->has_record || (pd && xx_pd_is_stopped(pd))) {
         return false;
     }
     stream = (xx_zxzip_stream *)state->internal_state;
@@ -593,14 +555,12 @@ bool xx_zxzip_archive_record_move_to_next(Abstractformat *self,
     }
     ++stream->index;
     ++state->current_index;
-    state->has_record =
-        xx_zxzip_set_record(&state->current_record, &stream->items[stream->index]);
+    state->has_record = xx_zxzip_set_record(&state->current_record, &stream->items[stream->index]);
     return state->has_record;
 }
 
-bool xx_zxzip_unpack_current_archive_record(Abstractformat *self,
-                                            xx_archive_record_state *state,
-                                            xx_pd_struct *pd) {
+bool xx_zxzip_unpack_current_archive_record(Abstractformat *self, xx_archive_record_state *state, xx_pd_struct *pd)
+{
     xx_zxzip_stream *stream;
     const xx_zxzip_member *member;
     const xx_var *path_option;
@@ -612,8 +572,7 @@ bool xx_zxzip_unpack_current_archive_record(Abstractformat *self,
     bool result = false;
     bool created = false;
 
-    if (!self || !state || state->format != self || !state->has_record ||
-        (pd && xx_pd_is_stopped(pd))) {
+    if (!self || !state || state->format != self || !state->has_record || (pd && xx_pd_is_stopped(pd))) {
         return false;
     }
     stream = (xx_zxzip_stream *)state->internal_state;
@@ -621,8 +580,7 @@ bool xx_zxzip_unpack_current_archive_record(Abstractformat *self,
     member = &stream->items[stream->index];
     if (!xx_zxzip_path_safe(member->name)) return false;
 
-    path_option =
-        xx_zxzip_get_option(&state->options, XX_META_ID_OPT_UNPACK_PATH);
+    path_option = xx_zxzip_get_option(&state->options, XX_META_ID_OPT_UNPACK_PATH);
     if (!path_option) {
         /* No destination: decode and discard, which verifies the member
          * without writing anything. */
@@ -630,11 +588,9 @@ bool xx_zxzip_unpack_current_archive_record(Abstractformat *self,
         xx_mem_free(plain);
         return result;
     }
-    if (path_option->type == XX_VAR_TYPE_STRING ||
-        path_option->type == XX_VAR_TYPE_STRING_VIEW) {
+    if (path_option->type == XX_VAR_TYPE_STRING || path_option->type == XX_VAR_TYPE_STRING_VIEW) {
         base_path = xx_var_get_str(path_option);
-    } else if (path_option->type == XX_VAR_TYPE_WSTRING ||
-               path_option->type == XX_VAR_TYPE_WSTRING_VIEW) {
+    } else if (path_option->type == XX_VAR_TYPE_WSTRING || path_option->type == XX_VAR_TYPE_WSTRING_VIEW) {
         converted_path = xx_str_unicode_to_utf8(xx_var_get_wstr(path_option));
         base_path = converted_path;
     }
@@ -642,8 +598,7 @@ bool xx_zxzip_unpack_current_archive_record(Abstractformat *self,
         xx_str_free(converted_path);
         return false;
     }
-    if (base_path[0] != '\0' && base_path[xx_str_len(base_path) - 1U] != '/' &&
-        base_path[xx_str_len(base_path) - 1U] != '\\') {
+    if (base_path[0] != '\0' && base_path[xx_str_len(base_path) - 1U] != '/' && base_path[xx_str_len(base_path) - 1U] != '\\') {
         target_path = xx_str_concat3(base_path, "/", member->name);
     } else {
         target_path = xx_str_concat(base_path, member->name);
@@ -651,8 +606,7 @@ bool xx_zxzip_unpack_current_archive_record(Abstractformat *self,
     xx_str_free(converted_path);
     if (!target_path) return false;
 
-    if (!xx_store_create_dirs_a(target_path, false) ||
-        !xx_zxzip_decode(self, member, &plain, &plain_size, pd)) {
+    if (!xx_store_create_dirs_a(target_path, false) || !xx_zxzip_decode(self, member, &plain, &plain_size, pd)) {
         xx_str_free(target_path);
         return false;
     }
@@ -662,8 +616,7 @@ bool xx_zxzip_unpack_current_archive_record(Abstractformat *self,
         size_t completed = 0U;
         result = output != NULL;
         while (result && completed < plain_size) {
-            ssize_t sent =
-                xx_io_write(output, plain + completed, plain_size - completed);
+            ssize_t sent = xx_io_write(output, plain + completed, plain_size - completed);
             if (sent <= 0 || (size_t)sent > plain_size - completed) {
                 result = false;
                 break;
@@ -678,12 +631,13 @@ bool xx_zxzip_unpack_current_archive_record(Abstractformat *self,
     return result;
 }
 
-void xx_zxzip_free_archive_records_reading(Abstractformat *self,
-                                           xx_archive_record_state *state) {
+void xx_zxzip_free_archive_records_reading(Abstractformat *self, xx_archive_record_state *state)
+{
     (void)self;
     xx_archive_record_state_free(state);
 }
 
-uint64_t xx_zxzip_get_number_of_records(const xx_zxzip *archive) {
+uint64_t xx_zxzip_get_number_of_records(const xx_zxzip *archive)
+{
     return archive ? archive->number_of_records : 0U;
 }

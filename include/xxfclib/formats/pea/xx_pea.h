@@ -68,45 +68,37 @@ extern "C" {
  */
 typedef struct xx_pea {
     Abstractformat format;
-    uint8_t version;          /**< Archive header byte 2, 0..6. */
-    uint8_t object_control;   /**< Archive header byte 3 (volume control). */
-    uint8_t compression;      /**< First stream's compression, 0..3. */
-    uint8_t stream_control;   /**< First stream's control byte. */
-    bool big_endian;          /**< Set by bit 0x80 of archive header byte 8. */
+    uint8_t version;             /**< Archive header byte 2, 0..6. */
+    uint8_t object_control;      /**< Archive header byte 3 (volume control). */
+    uint8_t compression;         /**< First stream's compression, 0..3. */
+    uint8_t stream_control;      /**< First stream's control byte. */
+    bool big_endian;             /**< Set by bit 0x80 of archive header byte 8. */
     int64_t first_stream_offset; /**< Offset of the first "POD\0" trigger. */
-    uint8_t member_control;   /**< Object control algorithm. */
-    uint32_t block_size;      /**< Compression block size, 0 when stored. */
+    uint8_t member_control;      /**< Object control algorithm. */
+    uint32_t block_size;         /**< Compression block size, 0 when stored. */
     uint64_t number_of_records;
-    bool encrypted;           /**< The stream is password-protected. */
-    bool complete;            /**< The "EOA\0" trigger was reached. */
+    bool encrypted; /**< The stream is password-protected. */
+    bool complete;  /**< The "EOA\0" trigger was reached. */
 } xx_pea;
 
 typedef xx_pea xx_pea_t;
 typedef xx_pea XPea;
 
-XXFC_API void xx_pea_init(xx_pea *archive, xx_io_device *device,
-                          int64_t base_address);
+XXFC_API void xx_pea_init(xx_pea *archive, xx_io_device *device, int64_t base_address);
 XXFC_API xx_pea *xx_pea_create(xx_io_device *device, int64_t base_address);
 XXFC_API void xx_pea_destroy(xx_pea *archive);
 XXFC_API void xx_pea_free(xx_pea *archive);
 
 XXFC_API bool xx_pea_check_is_valid(Abstractformat *self, xx_pd_struct *pd);
 XXFC_API bool xx_pea_handle_base_info(Abstractformat *self, xx_pd_struct *pd);
-XXFC_API int64_t xx_pea_get_format_size(Abstractformat *self,
-                                        xx_pd_struct *pd);
-XXFC_API uint64_t xx_pea_get_number_of_archive_records(Abstractformat *self,
-                                                        xx_pd_struct *pd);
+XXFC_API int64_t xx_pea_get_format_size(Abstractformat *self, xx_pd_struct *pd);
+XXFC_API uint64_t xx_pea_get_number_of_archive_records(Abstractformat *self, xx_pd_struct *pd);
 
-XXFC_API xx_archive_record_state *xx_pea_create_archive_records_reading(
-    Abstractformat *self, const xx_list_s *options, xx_pd_struct *pd);
-XXFC_API const xx_archive_record *xx_pea_get_current_archive_record(
-    Abstractformat *self, xx_archive_record_state *state);
-XXFC_API bool xx_pea_unpack_current_archive_record(
-    Abstractformat *self, xx_archive_record_state *state, xx_pd_struct *pd);
-XXFC_API bool xx_pea_archive_record_move_to_next(
-    Abstractformat *self, xx_archive_record_state *state, xx_pd_struct *pd);
-XXFC_API void xx_pea_free_archive_records_reading(
-    Abstractformat *self, xx_archive_record_state *state);
+XXFC_API xx_archive_record_state *xx_pea_create_archive_records_reading(Abstractformat *self, const xx_list_s *options, xx_pd_struct *pd);
+XXFC_API const xx_archive_record *xx_pea_get_current_archive_record(Abstractformat *self, xx_archive_record_state *state);
+XXFC_API bool xx_pea_unpack_current_archive_record(Abstractformat *self, xx_archive_record_state *state, xx_pd_struct *pd);
+XXFC_API bool xx_pea_archive_record_move_to_next(Abstractformat *self, xx_archive_record_state *state, xx_pd_struct *pd);
+XXFC_API void xx_pea_free_archive_records_reading(Abstractformat *self, xx_archive_record_state *state);
 
 XXFC_API uint8_t xx_pea_get_version(const xx_pea *archive);
 XXFC_API uint8_t xx_pea_get_compression(const xx_pea *archive);

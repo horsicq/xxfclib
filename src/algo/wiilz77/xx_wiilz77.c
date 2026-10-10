@@ -14,15 +14,14 @@
 #define XX_WIILZ77_SHORT_HEADER_SIZE 4U
 #define XX_WIILZ77_EXTENDED_HEADER_SIZE 8U
 
-bool xx_wiilz77_parse_header(const uint8_t *input, size_t input_size,
-                             xx_wiilz77_header *header) {
+bool xx_wiilz77_parse_header(const uint8_t *input, size_t input_size, xx_wiilz77_header *header)
+{
     size_t offset = 0U;
     uint32_t size24;
     uint64_t uncompressed_size;
     if (!input || !header) return false;
     xx_rt_memset(header, 0, sizeof(*header));
-    if (input_size >= XX_WIILZ77_TAG_SIZE &&
-        xx_rt_memcmp(input, "LZ77", XX_WIILZ77_TAG_SIZE) == 0) {
+    if (input_size >= XX_WIILZ77_TAG_SIZE && xx_rt_memcmp(input, "LZ77", XX_WIILZ77_TAG_SIZE) == 0) {
         offset = XX_WIILZ77_TAG_SIZE;
         header->has_tag = true;
     }
@@ -50,12 +49,10 @@ bool xx_wiilz77_parse_header(const uint8_t *input, size_t input_size,
     return true;
 }
 
-static bool xx_wiilz77_copy_match(uint8_t *output, size_t output_size,
-                                   size_t *output_position, size_t distance,
-                                   size_t length) {
+static bool xx_wiilz77_copy_match(uint8_t *output, size_t output_size, size_t *output_position, size_t distance, size_t length)
+{
     size_t index;
-    if (!output || !output_position || distance == 0U ||
-        distance > *output_position || length > output_size - *output_position) {
+    if (!output || !output_position || distance == 0U || distance > *output_position || length > output_size - *output_position) {
         return false;
     }
     for (index = 0U; index < length; ++index) {
@@ -65,16 +62,13 @@ static bool xx_wiilz77_copy_match(uint8_t *output, size_t output_size,
     return true;
 }
 
-bool xx_wiilz77_decompress_memory(const uint8_t *input, size_t input_size,
-                                  uint8_t *output, size_t output_size,
-                                  size_t *consumed_size) {
+bool xx_wiilz77_decompress_memory(const uint8_t *input, size_t input_size, uint8_t *output, size_t output_size, size_t *consumed_size)
+{
     xx_wiilz77_header header;
     size_t input_position;
     size_t output_position = 0U;
     if (consumed_size) *consumed_size = 0U;
-    if (!input || !output ||
-        !xx_wiilz77_parse_header(input, input_size, &header) ||
-        header.uncompressed_size > (uint64_t)SIZE_MAX ||
+    if (!input || !output || !xx_wiilz77_parse_header(input, input_size, &header) || header.uncompressed_size > (uint64_t)SIZE_MAX ||
         output_size != (size_t)header.uncompressed_size) {
         return false;
     }
@@ -84,8 +78,7 @@ bool xx_wiilz77_decompress_memory(const uint8_t *input, size_t input_size,
         uint8_t mask;
         if (input_position >= input_size) return false;
         flags = input[input_position++];
-        for (mask = 0x80U; mask != 0U && output_position < output_size;
-             mask >>= 1U) {
+        for (mask = 0x80U; mask != 0U && output_position < output_size; mask >>= 1U) {
             if ((flags & mask) == 0U) {
                 if (input_position >= input_size) return false;
                 output[output_position++] = input[input_position++];
@@ -100,8 +93,7 @@ bool xx_wiilz77_decompress_memory(const uint8_t *input, size_t input_size,
                     if (input_position >= input_size) return false;
                     second = input[input_position++];
                     length = (size_t)(first >> 4U) + 3U;
-                    distance = ((size_t)(first & 0x0fU) << 8U) |
-                               (size_t)second;
+                    distance = ((size_t)(first & 0x0fU) << 8U) | (size_t)second;
                     ++distance;
                 } else {
                     uint8_t indicator = (uint8_t)(first >> 4U);
@@ -111,11 +103,9 @@ bool xx_wiilz77_decompress_memory(const uint8_t *input, size_t input_size,
                         uint8_t third;
                         if (input_position >= input_size) return false;
                         third = input[input_position++];
-                        length = ((size_t)(first & 0x0fU) << 4U) |
-                                 (size_t)(second >> 4U);
+                        length = ((size_t)(first & 0x0fU) << 4U) | (size_t)(second >> 4U);
                         length += 0x11U;
-                        distance = ((size_t)(second & 0x0fU) << 8U) |
-                                   (size_t)third;
+                        distance = ((size_t)(second & 0x0fU) << 8U) | (size_t)third;
                         ++distance;
                     } else if (indicator == 1U) {
                         uint8_t third;
@@ -123,23 +113,17 @@ bool xx_wiilz77_decompress_memory(const uint8_t *input, size_t input_size,
                         if (input_size - input_position < 2U) return false;
                         third = input[input_position++];
                         fourth = input[input_position++];
-                        length = ((size_t)(first & 0x0fU) << 12U) |
-                                 ((size_t)second << 4U) |
-                                 (size_t)(third >> 4U);
+                        length = ((size_t)(first & 0x0fU) << 12U) | ((size_t)second << 4U) | (size_t)(third >> 4U);
                         length += 0x111U;
-                        distance = ((size_t)(third & 0x0fU) << 8U) |
-                                   (size_t)fourth;
+                        distance = ((size_t)(third & 0x0fU) << 8U) | (size_t)fourth;
                         ++distance;
                     } else {
                         length = (size_t)indicator + 1U;
-                        distance = ((size_t)(first & 0x0fU) << 8U) |
-                                   (size_t)second;
+                        distance = ((size_t)(first & 0x0fU) << 8U) | (size_t)second;
                         ++distance;
                     }
                 }
-                if (!xx_wiilz77_copy_match(output, output_size,
-                                            &output_position, distance,
-                                            length)) {
+                if (!xx_wiilz77_copy_match(output, output_size, &output_position, distance, length)) {
                     return false;
                 }
             }

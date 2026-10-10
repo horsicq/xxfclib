@@ -37,14 +37,12 @@
 #define RSVK_MAX_SYMBOLS 132 /* group 8 is the widest: 130 chars + 2 */
 
 static const int32_t g_group_low[RSVK_GROUPS] = {0, 1, 2, 4, 8, 16, 32, 64, 128};
-static const int32_t g_group_high[RSVK_GROUPS] = {0, 1, 3, 7,  15,
-                                                  31, 63, 127, 257};
+static const int32_t g_group_high[RSVK_GROUPS] = {0, 1, 3, 7, 15, 31, 63, 127, 257};
 /* Entries 0 and 1 are unused: those two groups are the bare RUNA/RUNB symbols
  * and get no sub-model.  Groups 7 and 8 never reach their rescale threshold in
  * the reference corpus, so their values are the smallest powers of two
  * consistent with every known block -- do not "tidy" them. */
-static const int32_t g_group_max_frequency[RSVK_GROUPS] = {
-    0, 0, 0x100, 0x100, 0x80, 0x400, 0x800, 0x1000, 0x2000};
+static const int32_t g_group_max_frequency[RSVK_GROUPS] = {0, 0, 0x100, 0x100, 0x80, 0x400, 0x800, 0x1000, 0x2000};
 
 /* MSB-first bit reader; reading past the end yields zero bits, which is what
  * the reference does when the bounded sub-stream is exhausted. */
@@ -89,11 +87,11 @@ typedef struct rsvk_state_s {
     size_t mtf_size;
 } rsvk_state;
 
-static int32_t rsvk_read_bit(rsvk_bits *bits) {
+static int32_t rsvk_read_bit(rsvk_bits *bits)
+{
     int32_t bit;
     if (bits->count == 0) {
-        bits->current =
-            (bits->position < bits->size) ? bits->data[bits->position] : 0U;
+        bits->current = (bits->position < bits->size) ? bits->data[bits->position] : 0U;
         ++bits->position;
         bits->count = 8;
     }
@@ -103,8 +101,8 @@ static int32_t rsvk_read_bit(rsvk_bits *bits) {
     return bit;
 }
 
-static bool rsvk_model_init(rsvk_model *model, int32_t low, int32_t high,
-                            int32_t max_frequency, int32_t increment) {
+static bool rsvk_model_init(rsvk_model *model, int32_t low, int32_t high, int32_t max_frequency, int32_t increment)
+{
     int32_t i;
     xx_rt_memset(model, 0, sizeof(*model));
     model->base = low;
@@ -125,7 +123,8 @@ static bool rsvk_model_init(rsvk_model *model, int32_t low, int32_t high,
     return true;
 }
 
-static void rsvk_model_update(rsvk_model *model, int32_t index) {
+static void rsvk_model_update(rsvk_model *model, int32_t index)
+{
     int32_t i;
     if (model->max_frequency <= model->cumulative[0]) {
         int32_t running = 0;
@@ -152,7 +151,8 @@ static void rsvk_model_update(rsvk_model *model, int32_t index) {
     }
 }
 
-static void rsvk_arith_init(rsvk_arith *arith, rsvk_bits *bits) {
+static void rsvk_arith_init(rsvk_arith *arith, rsvk_bits *bits)
+{
     int32_t i;
     arith->bits = bits;
     arith->value = 0;
@@ -165,26 +165,22 @@ static void rsvk_arith_init(rsvk_arith *arith, rsvk_bits *bits) {
 
 /* Returns the decoded character (0 .. model->chars - 1), or -1 on a stream
  * that selects the model's phantom symbol. */
-static int32_t rsvk_arith_decode(rsvk_arith *arith, rsvk_model *model) {
+static int32_t rsvk_arith_decode(rsvk_arith *arith, rsvk_model *model)
+{
     const int32_t range = arith->high - arith->low + 1;
     const int32_t total = model->cumulative[0];
     int32_t target;
     int32_t index = 1;
     int32_t character;
     if ((range <= 0) || (total <= 0)) return -1;
-    target = (int32_t)((((int64_t)(arith->value - arith->low) + 1) * total - 1) /
-                       range);
+    target = (int32_t)((((int64_t)(arith->value - arith->low) + 1) * total - 1) / range);
     while ((index <= model->symbols) && (model->cumulative[index] > target)) {
         ++index;
     }
     if (index > model->chars) return -1;
     character = model->index_to_char[index];
-    arith->high =
-        arith->low +
-        (int32_t)(((int64_t)range * model->cumulative[index - 1]) / total) - 1;
-    arith->low =
-        arith->low +
-        (int32_t)(((int64_t)range * model->cumulative[index]) / total);
+    arith->high = arith->low + (int32_t)(((int64_t)range * model->cumulative[index - 1]) / total) - 1;
+    arith->low = arith->low + (int32_t)(((int64_t)range * model->cumulative[index]) / total);
     for (;;) {
         if (arith->high >= 0x8000) {
             if (arith->low < 0x8000) {
@@ -211,8 +207,8 @@ static int32_t rsvk_arith_decode(rsvk_arith *arith, rsvk_model *model) {
 
 /* Decodes one symbol: a selector, plus a group offset when the selector is 2
  * or above.  Returns false on a phantom symbol. */
-static bool rsvk_next_symbol(rsvk_arith *arith, rsvk_state *state,
-                             int32_t *symbol) {
+static bool rsvk_next_symbol(rsvk_arith *arith, rsvk_state *state, int32_t *symbol)
+{
     const int32_t selector = rsvk_arith_decode(arith, &state->selector);
     int32_t offset;
     if (selector < 0) return false;
@@ -227,8 +223,8 @@ static bool rsvk_next_symbol(rsvk_arith *arith, rsvk_state *state,
 }
 
 /* Decodes one block's arithmetic stream into the MTF-index sequence. */
-static bool rsvk_decode_symbols(rsvk_state *state, const uint8_t *payload,
-                                size_t payload_size) {
+static bool rsvk_decode_symbols(rsvk_state *state, const uint8_t *payload, size_t payload_size)
+{
     rsvk_bits bits;
     rsvk_arith arith;
     int32_t i;
@@ -242,17 +238,14 @@ static bool rsvk_decode_symbols(rsvk_state *state, const uint8_t *payload,
     bits.count = 0;
     rsvk_arith_init(&arith, &bits);
 
-    if (!rsvk_model_init(&state->selector, 0, RSVK_GROUPS - 1,
-                         RSVK_SELECTOR_MAX_FREQUENCY,
-                         RSVK_SELECTOR_INCREMENT)) {
+    if (!rsvk_model_init(&state->selector, 0, RSVK_GROUPS - 1, RSVK_SELECTOR_MAX_FREQUENCY, RSVK_SELECTOR_INCREMENT)) {
         return false;
     }
     for (i = 0; i < RSVK_GROUPS; ++i) {
         xx_rt_memset(&state->groups[i], 0, sizeof(state->groups[i]));
     }
     for (i = 2; i < RSVK_GROUPS; ++i) {
-        if (!rsvk_model_init(&state->groups[i], g_group_low[i], g_group_high[i],
-                             g_group_max_frequency[i], 1)) {
+        if (!rsvk_model_init(&state->groups[i], g_group_low[i], g_group_high[i], g_group_max_frequency[i], 1)) {
             return false;
         }
     }
@@ -295,8 +288,8 @@ static bool rsvk_decode_symbols(rsvk_state *state, const uint8_t *payload,
 }
 
 /* Inverse MTF + inverse BWT for one block, written straight to `output`. */
-static bool rsvk_inverse(rsvk_state *state, int32_t primary, int32_t hole,
-                         uint8_t *output) {
+static bool rsvk_inverse(rsvk_state *state, int32_t primary, int32_t hole, uint8_t *output)
+{
     const int32_t length = (int32_t)state->mtf_size;
     const int32_t rows = length + 1;
     uint8_t table[256];
@@ -378,7 +371,8 @@ static bool rsvk_inverse(rsvk_state *state, int32_t primary, int32_t hole,
     return true;
 }
 
-static void rsvk_free(rsvk_state *state) {
+static void rsvk_free(rsvk_state *state)
+{
     if (!state) return;
     if (state->mtf) xx_mem_free(state->mtf);
     if (state->column) xx_mem_free(state->column);
@@ -386,9 +380,8 @@ static void rsvk_free(rsvk_state *state) {
     xx_mem_free(state);
 }
 
-XXFC_API bool xx_rsvk_decode_memory(const uint8_t *input, size_t input_size,
-                                    uint8_t *output, size_t output_size,
-                                    size_t *written) {
+XXFC_API bool xx_rsvk_decode_memory(const uint8_t *input, size_t input_size, uint8_t *output, size_t output_size, size_t *written)
+{
     static const uint8_t rsvk_magic[4] = {'D', 'A', 'T', 'A'};
     rsvk_state *state;
     size_t capacity;
@@ -433,13 +426,11 @@ XXFC_API bool xx_rsvk_decode_memory(const uint8_t *input, size_t input_size,
         packed = (size_t)xx_data_get_u32(header + 8, 4, 0, false);
         primary = (int32_t)xx_data_get_u32(header + 12, 4, 0, false);
         hole = (int32_t)xx_data_get_u32(header + 16, 4, 0, false);
-        if ((packed == 0) ||
-            (packed > input_size - cursor - RSVK_BLOCK_HEADER_SIZE)) {
+        if ((packed == 0) || (packed > input_size - cursor - RSVK_BLOCK_HEADER_SIZE)) {
             ok = false;
             break;
         }
-        if (!rsvk_decode_symbols(state, header + RSVK_BLOCK_HEADER_SIZE,
-                                 packed)) {
+        if (!rsvk_decode_symbols(state, header + RSVK_BLOCK_HEADER_SIZE, packed)) {
             ok = false;
             break;
         }
@@ -456,8 +447,7 @@ XXFC_API bool xx_rsvk_decode_memory(const uint8_t *input, size_t input_size,
             ok = false;
             break;
         }
-        if (xx_crc32_calc(0U, output + produced, length) !=
-            expected_crc) {
+        if (xx_crc32_calc(0U, output + produced, length) != expected_crc) {
             ok = false;
             break;
         }

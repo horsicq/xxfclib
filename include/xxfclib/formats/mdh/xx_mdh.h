@@ -6,7 +6,9 @@
 #ifdef __cplusplus
 extern "C" {
 #endif
-typedef struct xx_mdh { Abstractformat format; } xx_mdh;
+typedef struct xx_mdh {
+    Abstractformat format;
+} xx_mdh;
 XXFC_API void xx_mdh_init(xx_mdh *, xx_io_device *, int64_t);
 XXFC_API xx_mdh *xx_mdh_create(xx_io_device *, int64_t);
 XXFC_API void xx_mdh_destroy(xx_mdh *);

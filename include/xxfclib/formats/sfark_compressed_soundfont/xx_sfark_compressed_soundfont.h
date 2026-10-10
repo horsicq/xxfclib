@@ -42,43 +42,27 @@ extern "C" {
 typedef struct xx_sfark_compressed_soundfont {
     Abstractformat format;
     uint64_t number_of_records;
-    uint64_t unpacked_size;   /**< Original SoundFont size from the header. */
-    uint32_t method;          /**< 4..7. */
+    uint64_t unpacked_size; /**< Original SoundFont size from the header. */
+    uint32_t method;        /**< 4..7. */
 } xx_sfark_compressed_soundfont;
 
 typedef xx_sfark_compressed_soundfont xx_sfark_compressed_soundfont_t;
 
-XXFC_API void xx_sfark_compressed_soundfont_init(
-    xx_sfark_compressed_soundfont *archive, xx_io_device *device,
-    int64_t base_address);
-XXFC_API xx_sfark_compressed_soundfont *xx_sfark_compressed_soundfont_create(
-    xx_io_device *device, int64_t base_address);
-XXFC_API void xx_sfark_compressed_soundfont_destroy(
-    xx_sfark_compressed_soundfont *archive);
-XXFC_API void xx_sfark_compressed_soundfont_free(
-    xx_sfark_compressed_soundfont *archive);
+XXFC_API void xx_sfark_compressed_soundfont_init(xx_sfark_compressed_soundfont *archive, xx_io_device *device, int64_t base_address);
+XXFC_API xx_sfark_compressed_soundfont *xx_sfark_compressed_soundfont_create(xx_io_device *device, int64_t base_address);
+XXFC_API void xx_sfark_compressed_soundfont_destroy(xx_sfark_compressed_soundfont *archive);
+XXFC_API void xx_sfark_compressed_soundfont_free(xx_sfark_compressed_soundfont *archive);
 
-XXFC_API bool xx_sfark_compressed_soundfont_check_is_valid(
-    Abstractformat *self, xx_pd_struct *pd);
-XXFC_API bool xx_sfark_compressed_soundfont_handle_base_info(
-    Abstractformat *self, xx_pd_struct *pd);
-XXFC_API int64_t xx_sfark_compressed_soundfont_get_format_size(
-    Abstractformat *self, xx_pd_struct *pd);
-XXFC_API uint64_t xx_sfark_compressed_soundfont_get_number_of_archive_records(
-    Abstractformat *self, xx_pd_struct *pd);
+XXFC_API bool xx_sfark_compressed_soundfont_check_is_valid(Abstractformat *self, xx_pd_struct *pd);
+XXFC_API bool xx_sfark_compressed_soundfont_handle_base_info(Abstractformat *self, xx_pd_struct *pd);
+XXFC_API int64_t xx_sfark_compressed_soundfont_get_format_size(Abstractformat *self, xx_pd_struct *pd);
+XXFC_API uint64_t xx_sfark_compressed_soundfont_get_number_of_archive_records(Abstractformat *self, xx_pd_struct *pd);
 
-XXFC_API xx_archive_record_state *
-xx_sfark_compressed_soundfont_create_archive_records_reading(
-    Abstractformat *self, const xx_list_s *options, xx_pd_struct *pd);
-XXFC_API const xx_archive_record *
-xx_sfark_compressed_soundfont_get_current_archive_record(
-    Abstractformat *self, xx_archive_record_state *state);
-XXFC_API bool xx_sfark_compressed_soundfont_unpack_current_archive_record(
-    Abstractformat *self, xx_archive_record_state *state, xx_pd_struct *pd);
-XXFC_API bool xx_sfark_compressed_soundfont_archive_record_move_to_next(
-    Abstractformat *self, xx_archive_record_state *state, xx_pd_struct *pd);
-XXFC_API void xx_sfark_compressed_soundfont_free_archive_records_reading(
-    Abstractformat *self, xx_archive_record_state *state);
+XXFC_API xx_archive_record_state *xx_sfark_compressed_soundfont_create_archive_records_reading(Abstractformat *self, const xx_list_s *options, xx_pd_struct *pd);
+XXFC_API const xx_archive_record *xx_sfark_compressed_soundfont_get_current_archive_record(Abstractformat *self, xx_archive_record_state *state);
+XXFC_API bool xx_sfark_compressed_soundfont_unpack_current_archive_record(Abstractformat *self, xx_archive_record_state *state, xx_pd_struct *pd);
+XXFC_API bool xx_sfark_compressed_soundfont_archive_record_move_to_next(Abstractformat *self, xx_archive_record_state *state, xx_pd_struct *pd);
+XXFC_API void xx_sfark_compressed_soundfont_free_archive_records_reading(Abstractformat *self, xx_archive_record_state *state);
 
 #ifdef __cplusplus
 }

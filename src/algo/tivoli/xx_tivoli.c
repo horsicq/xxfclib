@@ -62,28 +62,16 @@
 /* --------------------------------------------------------------------- */
 /* MD5                                                                    */
 /* --------------------------------------------------------------------- */
-static const uint32_t g_tiv_md5_k[64] = {
-    0xd76aa478U, 0xe8c7b756U, 0x242070dbU, 0xc1bdceeeU, 0xf57c0fafU,
-    0x4787c62aU, 0xa8304613U, 0xfd469501U, 0x698098d8U, 0x8b44f7afU,
-    0xffff5bb1U, 0x895cd7beU, 0x6b901122U, 0xfd987193U, 0xa679438eU,
-    0x49b40821U, 0xf61e2562U, 0xc040b340U, 0x265e5a51U, 0xe9b6c7aaU,
-    0xd62f105dU, 0x02441453U, 0xd8a1e681U, 0xe7d3fbc8U, 0x21e1cde6U,
-    0xc33707d6U, 0xf4d50d87U, 0x455a14edU, 0xa9e3e905U, 0xfcefa3f8U,
-    0x676f02d9U, 0x8d2a4c8aU, 0xfffa3942U, 0x8771f681U, 0x6d9d6122U,
-    0xfde5380cU, 0xa4beea44U, 0x4bdecfa9U, 0xf6bb4b60U, 0xbebfbc70U,
-    0x289b7ec6U, 0xeaa127faU, 0xd4ef3085U, 0x04881d05U, 0xd9d4d039U,
-    0xe6db99e5U, 0x1fa27cf8U, 0xc4ac5665U, 0xf4292244U, 0x432aff97U,
-    0xab9423a7U, 0xfc93a039U, 0x655b59c3U, 0x8f0ccc92U, 0xffeff47dU,
-    0x85845dd1U, 0x6fa87e4fU, 0xfe2ce6e0U, 0xa3014314U, 0x4e0811a1U,
-    0xf7537e82U, 0xbd3af235U, 0x2ad7d2bbU, 0xeb86d391U
-};
+static const uint32_t g_tiv_md5_k[64] = {0xd76aa478U, 0xe8c7b756U, 0x242070dbU, 0xc1bdceeeU, 0xf57c0fafU, 0x4787c62aU, 0xa8304613U, 0xfd469501U, 0x698098d8U, 0x8b44f7afU,
+                                         0xffff5bb1U, 0x895cd7beU, 0x6b901122U, 0xfd987193U, 0xa679438eU, 0x49b40821U, 0xf61e2562U, 0xc040b340U, 0x265e5a51U, 0xe9b6c7aaU,
+                                         0xd62f105dU, 0x02441453U, 0xd8a1e681U, 0xe7d3fbc8U, 0x21e1cde6U, 0xc33707d6U, 0xf4d50d87U, 0x455a14edU, 0xa9e3e905U, 0xfcefa3f8U,
+                                         0x676f02d9U, 0x8d2a4c8aU, 0xfffa3942U, 0x8771f681U, 0x6d9d6122U, 0xfde5380cU, 0xa4beea44U, 0x4bdecfa9U, 0xf6bb4b60U, 0xbebfbc70U,
+                                         0x289b7ec6U, 0xeaa127faU, 0xd4ef3085U, 0x04881d05U, 0xd9d4d039U, 0xe6db99e5U, 0x1fa27cf8U, 0xc4ac5665U, 0xf4292244U, 0x432aff97U,
+                                         0xab9423a7U, 0xfc93a039U, 0x655b59c3U, 0x8f0ccc92U, 0xffeff47dU, 0x85845dd1U, 0x6fa87e4fU, 0xfe2ce6e0U, 0xa3014314U, 0x4e0811a1U,
+                                         0xf7537e82U, 0xbd3af235U, 0x2ad7d2bbU, 0xeb86d391U};
 
-static const uint8_t g_tiv_md5_s[64] = {
-    7, 12, 17, 22, 7, 12, 17, 22, 7, 12, 17, 22, 7, 12, 17, 22,
-    5, 9, 14, 20, 5, 9, 14, 20, 5, 9, 14, 20, 5, 9, 14, 20,
-    4, 11, 16, 23, 4, 11, 16, 23, 4, 11, 16, 23, 4, 11, 16, 23,
-    6, 10, 15, 21, 6, 10, 15, 21, 6, 10, 15, 21, 6, 10, 15, 21
-};
+static const uint8_t g_tiv_md5_s[64] = {7, 12, 17, 22, 7, 12, 17, 22, 7, 12, 17, 22, 7, 12, 17, 22, 5, 9,  14, 20, 5, 9,  14, 20, 5, 9,  14, 20, 5, 9,  14, 20,
+                                        4, 11, 16, 23, 4, 11, 16, 23, 4, 11, 16, 23, 4, 11, 16, 23, 6, 10, 15, 21, 6, 10, 15, 21, 6, 10, 15, 21, 6, 10, 15, 21};
 
 typedef struct tiv_md5 {
     uint32_t state[4];
@@ -91,16 +79,14 @@ typedef struct tiv_md5 {
     uint8_t buffer[64];
 } tiv_md5;
 
-static void tiv_md5_transform(uint32_t *state, const uint8_t *block) {
+static void tiv_md5_transform(uint32_t *state, const uint8_t *block)
+{
     uint32_t words[16];
     uint32_t a, b, c, d;
     unsigned i;
 
     for (i = 0U; i < 16U; ++i) {
-        words[i] = (uint32_t)block[i * 4U] |
-                   ((uint32_t)block[i * 4U + 1U] << 8) |
-                   ((uint32_t)block[i * 4U + 2U] << 16) |
-                   ((uint32_t)block[i * 4U + 3U] << 24);
+        words[i] = (uint32_t)block[i * 4U] | ((uint32_t)block[i * 4U + 1U] << 8) | ((uint32_t)block[i * 4U + 2U] << 16) | ((uint32_t)block[i * 4U + 3U] << 24);
     }
 
     a = state[0];
@@ -139,7 +125,8 @@ static void tiv_md5_transform(uint32_t *state, const uint8_t *block) {
     state[3] = (uint32_t)(state[3] + d);
 }
 
-static void tiv_md5_init(tiv_md5 *ctx) {
+static void tiv_md5_init(tiv_md5 *ctx)
+{
     ctx->state[0] = 0x67452301U;
     ctx->state[1] = 0xefcdab89U;
     ctx->state[2] = 0x98badcfeU;
@@ -148,7 +135,8 @@ static void tiv_md5_init(tiv_md5 *ctx) {
     xx_rt_memset(ctx->buffer, 0, sizeof(ctx->buffer));
 }
 
-static void tiv_md5_update(tiv_md5 *ctx, const uint8_t *data, size_t size) {
+static void tiv_md5_update(tiv_md5 *ctx, const uint8_t *data, size_t size)
+{
     unsigned fill = (unsigned)(ctx->length & 63U);
     size_t i;
     for (i = 0U; i < size; ++i) {
@@ -164,7 +152,8 @@ static void tiv_md5_update(tiv_md5 *ctx, const uint8_t *data, size_t size) {
 
 /* Snapshot: the caller's context keeps running, exactly like hashlib's
  * md5.digest() on a context that is still being fed. */
-static void tiv_md5_digest(const tiv_md5 *ctx, uint8_t *digest) {
+static void tiv_md5_digest(const tiv_md5 *ctx, uint8_t *digest)
+{
     tiv_md5 copy = *ctx;
     uint64_t bits = copy.length * 8U;
     unsigned fill = (unsigned)(copy.length & 63U);
@@ -210,9 +199,8 @@ typedef struct tiv_state {
  * decoded bytes land in state->block / state->block_size, capped at
  * TIV_MAX_BLOCK.  *next receives the input offset actually reached, which may
  * be up to three bytes past offset + budget. */
-static bool tiv_decode_native(tiv_state *state, const uint8_t *input,
-                              size_t input_size, size_t offset, size_t budget,
-                              size_t *next) {
+static bool tiv_decode_native(tiv_state *state, const uint8_t *input, size_t input_size, size_t offset, size_t budget, size_t *next)
+{
     size_t position = offset;
     int64_t remaining = (int64_t)budget;
     uint32_t cursor = 0U;
@@ -231,8 +219,7 @@ static bool tiv_decode_native(tiv_state *state, const uint8_t *input,
 
         if (flag_count == 0U) {
             if ((position + 2U) > input_size) return false;
-            flags = (uint32_t)input[position] |
-                    ((uint32_t)input[position + 1U] << 8);
+            flags = (uint32_t)input[position] | ((uint32_t)input[position + 1U] << 8);
             position += 2U;
             remaining -= 2;
             flag_count = 16U;
@@ -288,7 +275,8 @@ static bool tiv_decode_native(tiv_state *state, const uint8_t *input,
 /* The reference detector does not compare the whole 79-byte header line, only
  * six anchors in it; a producer is free to vary the fpname field between
  * them.  Kept as-is on purpose. */
-static bool tiv_check_header(const uint8_t *input, size_t input_size) {
+static bool tiv_check_header(const uint8_t *input, size_t input_size)
+{
     if (input_size < TIV_HEADER_SIZE) return false;
     if (xx_rt_memcmp(input + 0x00, "    ", 4) != 0) return false;
     if (xx_rt_memcmp(input + 0x04, "79 T", 4) != 0) return false;
@@ -299,8 +287,8 @@ static bool tiv_check_header(const uint8_t *input, size_t input_size) {
     return true;
 }
 
-static bool tiv_run(const uint8_t *input, size_t input_size, uint8_t *output,
-                    size_t limit, size_t *produced, size_t *consumed) {
+static bool tiv_run(const uint8_t *input, size_t input_size, uint8_t *output, size_t limit, size_t *produced, size_t *consumed)
+{
     tiv_state *state;
     tiv_md5 ctx;
     size_t position;
@@ -345,8 +333,7 @@ static bool tiv_run(const uint8_t *input, size_t input_size, uint8_t *output,
                 result = true;
                 break;
             }
-            if (!tiv_decode_native(state, input, input_size, position,
-                                   (size_t)header, &next)) {
+            if (!tiv_decode_native(state, input, input_size, position, (size_t)header, &next)) {
                 break;
             }
             if (state->block_size < TIV_TAIL_SIZE) break;
@@ -387,9 +374,8 @@ static bool tiv_run(const uint8_t *input, size_t input_size, uint8_t *output,
     return true;
 }
 
-bool xx_tivoli_decode_memory(const uint8_t *input, size_t input_size,
-                             uint8_t *output, size_t output_size,
-                             size_t *written) {
+bool xx_tivoli_decode_memory(const uint8_t *input, size_t input_size, uint8_t *output, size_t output_size, size_t *written)
+{
     size_t produced = 0U;
 
     if (written) *written = 0U;
@@ -403,9 +389,8 @@ bool xx_tivoli_decode_memory(const uint8_t *input, size_t input_size,
     return produced == output_size;
 }
 
-bool xx_tivoli_scan_memory(const uint8_t *input, size_t input_size,
-                           size_t max_output, size_t *consumed,
-                           size_t *produced) {
+bool xx_tivoli_scan_memory(const uint8_t *input, size_t input_size, size_t max_output, size_t *consumed, size_t *produced)
+{
     if (consumed) *consumed = 0U;
     if (produced) *produced = 0U;
     if (max_output == 0U) return false;

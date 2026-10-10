@@ -5,7 +5,9 @@
 #ifdef __cplusplus
 extern "C" {
 #endif
-typedef struct xx_audio_pvf { Abstractformat format; } xx_audio_pvf;
+typedef struct xx_audio_pvf {
+    Abstractformat format;
+} xx_audio_pvf;
 XXFC_API void xx_audio_pvf_init(xx_audio_pvf *, xx_io_device *, int64_t);
 XXFC_API xx_audio_pvf *xx_audio_pvf_create(xx_io_device *, int64_t);
 XXFC_API void xx_audio_pvf_destroy(xx_audio_pvf *);

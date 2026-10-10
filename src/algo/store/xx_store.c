@@ -32,30 +32,32 @@
 /* --- Directory and File Attribute Helpers (Stubs forwarding to xx_io)   --- */
 /* ========================================================================= */
 
-bool xx_store_create_dirs_w(const wchar_t *path, bool is_dir) {
+bool xx_store_create_dirs_w(const wchar_t *path, bool is_dir)
+{
     return xx_io_create_dirs_w(path, is_dir);
 }
 
-bool xx_store_create_dirs_a(const char *path, bool is_dir) {
+bool xx_store_create_dirs_a(const char *path, bool is_dir)
+{
     return xx_io_create_dirs_a(path, is_dir);
 }
 
-bool xx_store_apply_dos_time_and_attrs_w(const wchar_t *path, uint16_t dos_date, uint16_t dos_time, uint32_t attrs) {
+bool xx_store_apply_dos_time_and_attrs_w(const wchar_t *path, uint16_t dos_date, uint16_t dos_time, uint32_t attrs)
+{
     return xx_io_apply_dos_time_and_attrs_w(path, dos_date, dos_time, attrs);
 }
 
-bool xx_store_apply_dos_time_and_attrs_a(const char *path, uint16_t dos_date, uint16_t dos_time, uint32_t attrs) {
+bool xx_store_apply_dos_time_and_attrs_a(const char *path, uint16_t dos_date, uint16_t dos_time, uint32_t attrs)
+{
     return xx_io_apply_dos_time_and_attrs_a(path, dos_date, dos_time, attrs);
 }
-
-
 
 /* ========================================================================= */
 /* --- STORE Unpacking Implementation                                    --- */
 /* ========================================================================= */
 
-bool xx_store_unpack_device(xx_io_device *src_dev, int64_t src_offset, int64_t size,
-                            xx_io_device *dst_dev, xx_pd_struct *pd) {
+bool xx_store_unpack_device(xx_io_device *src_dev, int64_t src_offset, int64_t size, xx_io_device *dst_dev, xx_pd_struct *pd)
+{
     if (!src_dev || !dst_dev || size < 0) {
         return false;
     }
@@ -127,8 +129,8 @@ bool xx_store_unpack_device(xx_io_device *src_dev, int64_t src_offset, int64_t s
     return success && (remaining == 0);
 }
 
-bool xx_store_unpack_device_to_file(xx_io_device *src_dev, int64_t src_offset, int64_t size,
-                                    const char *dst_file_path, xx_pd_struct *pd) {
+bool xx_store_unpack_device_to_file(xx_io_device *src_dev, int64_t src_offset, int64_t size, const char *dst_file_path, xx_pd_struct *pd)
+{
     if (!src_dev || !dst_file_path || size < 0) {
         return false;
     }
@@ -148,8 +150,8 @@ bool xx_store_unpack_device_to_file(xx_io_device *src_dev, int64_t src_offset, i
     return success;
 }
 
-bool xx_store_unpack_device_to_file_w(xx_io_device *src_dev, int64_t src_offset, int64_t size,
-                                      const wchar_t *dst_file_path_w, xx_pd_struct *pd) {
+bool xx_store_unpack_device_to_file_w(xx_io_device *src_dev, int64_t src_offset, int64_t size, const wchar_t *dst_file_path_w, xx_pd_struct *pd)
+{
     if (!src_dev || !dst_file_path_w || size < 0) {
         return false;
     }
@@ -162,8 +164,8 @@ bool xx_store_unpack_device_to_file_w(xx_io_device *src_dev, int64_t src_offset,
     return success;
 }
 
-bool xx_store_unpack_memory_to_device(const void *src_buf, size_t size,
-                                      xx_io_device *dst_dev, xx_pd_struct *pd) {
+bool xx_store_unpack_memory_to_device(const void *src_buf, size_t size, xx_io_device *dst_dev, xx_pd_struct *pd)
+{
     if (!src_buf && size > 0) {
         return false;
     }
@@ -181,9 +183,8 @@ bool xx_store_unpack_memory_to_device(const void *src_buf, size_t size,
     return success;
 }
 
-bool xx_store_unpack_device_to_memory(xx_io_device *src_dev, int64_t src_offset, size_t size,
-                                      void *dst_buf, size_t dst_buf_size,
-                                      size_t *out_written, xx_pd_struct *pd) {
+bool xx_store_unpack_device_to_memory(xx_io_device *src_dev, int64_t src_offset, size_t size, void *dst_buf, size_t dst_buf_size, size_t *out_written, xx_pd_struct *pd)
+{
     if (!src_dev || (!dst_buf && size > 0) || size > dst_buf_size) {
         return false;
     }
@@ -202,13 +203,12 @@ bool xx_store_unpack_device_to_memory(xx_io_device *src_dev, int64_t src_offset,
     return success;
 }
 
-
 /* ========================================================================= */
 /* --- STORE Packing Implementation                                      --- */
 /* ========================================================================= */
 
-bool xx_store_prepare_source(xx_io_device *src_dev, const char *src_file_path,
-                             int64_t *out_size, uint32_t *out_crc32, xx_pd_struct *pd) {
+bool xx_store_prepare_source(xx_io_device *src_dev, const char *src_file_path, int64_t *out_size, uint32_t *out_crc32, xx_pd_struct *pd)
+{
     if (!out_size || !out_crc32) {
         return false;
     }
@@ -314,8 +314,8 @@ bool xx_store_prepare_source(xx_io_device *src_dev, const char *src_file_path,
     return false;
 }
 
-bool xx_store_pack_source(xx_io_device *src_dev, const char *src_file_path,
-                          int64_t size, xx_io_device *dst_dev, xx_pd_struct *pd) {
+bool xx_store_pack_source(xx_io_device *src_dev, const char *src_file_path, int64_t size, xx_io_device *dst_dev, xx_pd_struct *pd)
+{
     if (!dst_dev || size < 0) {
         return false;
     }

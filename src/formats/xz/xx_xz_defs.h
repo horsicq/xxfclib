@@ -23,9 +23,7 @@
 #define XX_XZ_PAYLOAD_NAME "payload"
 #define XX_XZ_COMPRESSION_METHOD 0x21U
 
-static const unsigned char XX_XZ_MAGIC[XX_XZ_MAGIC_SIZE] = {
-    0xFD, 0x37, 0x7A, 0x58, 0x5A, 0x00
-};
+static const unsigned char XX_XZ_MAGIC[XX_XZ_MAGIC_SIZE] = {0xFD, 0x37, 0x7A, 0x58, 0x5A, 0x00};
 
 #pragma pack(push, 1)
 typedef struct xx_xz_stream_header_s {

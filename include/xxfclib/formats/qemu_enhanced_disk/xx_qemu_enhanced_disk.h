@@ -61,88 +61,67 @@ typedef struct xx_qemu_enhanced_disk XQemuEnhancedDisk;
 
 struct xx_qemu_enhanced_disk {
     Abstractformat format;
-    uint64_t number_of_records;     /**< Always 1: the guest disk image. */
-    uint64_t image_size;            /**< Guest-visible disk size in bytes. */
+    uint64_t number_of_records; /**< Always 1: the guest disk image. */
+    uint64_t image_size;        /**< Guest-visible disk size in bytes. */
     uint64_t l1_table_offset;
     uint64_t features;
     uint64_t compat_features;
     uint64_t autoclear_features;
     uint32_t cluster_size;
-    uint32_t table_size;            /**< In clusters. */
-    uint32_t header_size;           /**< In clusters. */
+    uint32_t table_size;  /**< In clusters. */
+    uint32_t header_size; /**< In clusters. */
     uint32_t backing_filename_offset;
     uint32_t backing_filename_size;
-    bool has_backing_file;          /**< Feature bit 1 is set. */
-    bool needs_check;               /**< Feature bit 2: not cleanly closed. */
+    bool has_backing_file; /**< Feature bit 1 is set. */
+    bool needs_check;      /**< Feature bit 2: not cleanly closed. */
     void *internal;
 };
 
-XXFC_API void xx_qemu_enhanced_disk_init(xx_qemu_enhanced_disk *archive,
-                                         xx_io_device *dev,
-                                         int64_t base_address);
-XXFC_API xx_qemu_enhanced_disk *xx_qemu_enhanced_disk_create(
-    xx_io_device *dev, int64_t base_address);
+XXFC_API void xx_qemu_enhanced_disk_init(xx_qemu_enhanced_disk *archive, xx_io_device *dev, int64_t base_address);
+XXFC_API xx_qemu_enhanced_disk *xx_qemu_enhanced_disk_create(xx_io_device *dev, int64_t base_address);
 XXFC_API void xx_qemu_enhanced_disk_destroy(xx_qemu_enhanced_disk *archive);
 XXFC_API void xx_qemu_enhanced_disk_free(xx_qemu_enhanced_disk *archive);
 
-XXFC_API bool xx_qemu_enhanced_disk_check_is_valid(Abstractformat *self,
-                                                   xx_pd_struct *pd);
-XXFC_API bool xx_qemu_enhanced_disk_handle_base_info(Abstractformat *self,
-                                                     xx_pd_struct *pd);
-XXFC_API int64_t xx_qemu_enhanced_disk_get_format_size(Abstractformat *self,
-                                                       xx_pd_struct *pd);
-XXFC_API uint64_t xx_qemu_enhanced_disk_get_number_of_archive_records(
-    Abstractformat *self, xx_pd_struct *pd);
+XXFC_API bool xx_qemu_enhanced_disk_check_is_valid(Abstractformat *self, xx_pd_struct *pd);
+XXFC_API bool xx_qemu_enhanced_disk_handle_base_info(Abstractformat *self, xx_pd_struct *pd);
+XXFC_API int64_t xx_qemu_enhanced_disk_get_format_size(Abstractformat *self, xx_pd_struct *pd);
+XXFC_API uint64_t xx_qemu_enhanced_disk_get_number_of_archive_records(Abstractformat *self, xx_pd_struct *pd);
 
-XXFC_API xx_archive_record_state *
-xx_qemu_enhanced_disk_create_archive_records_reading(Abstractformat *self,
-                                                     const xx_list_s *options,
-                                                     xx_pd_struct *pd);
-XXFC_API const xx_archive_record *
-xx_qemu_enhanced_disk_get_current_archive_record(
-    Abstractformat *self, xx_archive_record_state *state);
-XXFC_API bool xx_qemu_enhanced_disk_unpack_current_archive_record(
-    Abstractformat *self, xx_archive_record_state *state, xx_pd_struct *pd);
-XXFC_API bool xx_qemu_enhanced_disk_archive_record_move_to_next(
-    Abstractformat *self, xx_archive_record_state *state, xx_pd_struct *pd);
-XXFC_API void xx_qemu_enhanced_disk_free_archive_records_reading(
-    Abstractformat *self, xx_archive_record_state *state);
+XXFC_API xx_archive_record_state *xx_qemu_enhanced_disk_create_archive_records_reading(Abstractformat *self, const xx_list_s *options, xx_pd_struct *pd);
+XXFC_API const xx_archive_record *xx_qemu_enhanced_disk_get_current_archive_record(Abstractformat *self, xx_archive_record_state *state);
+XXFC_API bool xx_qemu_enhanced_disk_unpack_current_archive_record(Abstractformat *self, xx_archive_record_state *state, xx_pd_struct *pd);
+XXFC_API bool xx_qemu_enhanced_disk_archive_record_move_to_next(Abstractformat *self, xx_archive_record_state *state, xx_pd_struct *pd);
+XXFC_API void xx_qemu_enhanced_disk_free_archive_records_reading(Abstractformat *self, xx_archive_record_state *state);
 
 /** Write the whole guest disk to output. Unallocated clusters are written as
  *  zeros; a backing file is never opened. Needs handle_base_info first. */
-XXFC_API bool xx_qemu_enhanced_disk_unpack_to_device(
-    xx_qemu_enhanced_disk *archive, xx_io_device *output, xx_pd_struct *pd);
+XXFC_API bool xx_qemu_enhanced_disk_unpack_to_device(xx_qemu_enhanced_disk *archive, xx_io_device *output, xx_pd_struct *pd);
 
-XXFC_API uint64_t xx_qemu_enhanced_disk_get_image_size(
-    const xx_qemu_enhanced_disk *archive);
-XXFC_API uint32_t xx_qemu_enhanced_disk_get_cluster_size(
-    const xx_qemu_enhanced_disk *archive);
-XXFC_API uint32_t xx_qemu_enhanced_disk_get_table_size(
-    const xx_qemu_enhanced_disk *archive);
-XXFC_API uint64_t xx_qemu_enhanced_disk_get_features(
-    const xx_qemu_enhanced_disk *archive);
+XXFC_API uint64_t xx_qemu_enhanced_disk_get_image_size(const xx_qemu_enhanced_disk *archive);
+XXFC_API uint32_t xx_qemu_enhanced_disk_get_cluster_size(const xx_qemu_enhanced_disk *archive);
+XXFC_API uint32_t xx_qemu_enhanced_disk_get_table_size(const xx_qemu_enhanced_disk *archive);
+XXFC_API uint64_t xx_qemu_enhanced_disk_get_features(const xx_qemu_enhanced_disk *archive);
 /** The backing file name, or NULL. Owned by the reader. */
-XXFC_API const char *xx_qemu_enhanced_disk_get_backing_file(
-    const xx_qemu_enhanced_disk *archive);
+XXFC_API const char *xx_qemu_enhanced_disk_get_backing_file(const xx_qemu_enhanced_disk *archive);
 
-static inline Abstractformat *xx_qemu_enhanced_disk_to_format(
-    xx_qemu_enhanced_disk *archive) {
+static inline Abstractformat *xx_qemu_enhanced_disk_to_format(xx_qemu_enhanced_disk *archive)
+{
     return archive ? &archive->format : NULL;
 }
-static inline void XQemuEnhancedDisk_init(xx_qemu_enhanced_disk *archive,
-                                          xx_io_device *dev,
-                                          int64_t base_address) {
+static inline void XQemuEnhancedDisk_init(xx_qemu_enhanced_disk *archive, xx_io_device *dev, int64_t base_address)
+{
     xx_qemu_enhanced_disk_init(archive, dev, base_address);
 }
-static inline xx_qemu_enhanced_disk *XQemuEnhancedDisk_create(
-    xx_io_device *dev, int64_t base_address) {
+static inline xx_qemu_enhanced_disk *XQemuEnhancedDisk_create(xx_io_device *dev, int64_t base_address)
+{
     return xx_qemu_enhanced_disk_create(dev, base_address);
 }
-static inline void XQemuEnhancedDisk_free(xx_qemu_enhanced_disk *archive) {
+static inline void XQemuEnhancedDisk_free(xx_qemu_enhanced_disk *archive)
+{
     xx_qemu_enhanced_disk_free(archive);
 }
-static inline bool XQemuEnhancedDisk_is_valid(xx_qemu_enhanced_disk *archive,
-                                              xx_pd_struct *pd) {
+static inline bool XQemuEnhancedDisk_is_valid(xx_qemu_enhanced_disk *archive, xx_pd_struct *pd)
+{
     return archive ? xx_format_is_valid(&archive->format, pd) : false;
 }
 

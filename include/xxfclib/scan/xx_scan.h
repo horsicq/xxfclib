@@ -51,21 +51,21 @@ typedef struct xx_scan_result xx_scan_result_t;
  * pd if a requested scan mode is unsupported, rather than silently ignore it.
  */
 typedef struct xx_scan_options {
-    int64_t offset;                 /**< Start in the input device, in bytes. */
-    int64_t size;                   /**< Bytes to scan; -1 means through EOF. */
-    xx_file_type_t file_type;       /**< UNKNOWN requests automatic detection. */
+    int64_t offset;           /**< Start in the input device, in bytes. */
+    int64_t size;             /**< Bytes to scan; -1 means through EOF. */
+    xx_file_type_t file_type; /**< UNKNOWN requests automatic detection. */
     bool deep_scan;
     bool heuristic_scan;
     bool aggressive_scan;
     bool recursive_scan;
-    bool overlay_scan;            /**< Detect and scan trailing overlays as bounded devices. */
+    bool overlay_scan; /**< Detect and scan trailing overlays as bounded devices. */
     bool resources_scan;
     bool archives_scan;
-    bool all_types_scan;           /**< Scan applicable parent formats before the preferred type. */
+    bool all_types_scan; /**< Scan applicable parent formats before the preferred type. */
     bool first_wrapper_only;
     bool verbose;
-    const char *file_name;          /**< Optional input name or path. */
-    const void *engine_options;     /**< Optional engine-specific options. */
+    const char *file_name;      /**< Optional input name or path. */
+    const void *engine_options; /**< Optional engine-specific options. */
     /**
      * Set by the scanner, never by the caller: every scan of a device (the
      * input itself or one of its overlays) gets a new random nonzero scan_id,
@@ -103,9 +103,7 @@ typedef struct xx_scan_record {
 typedef struct xx_scan_record xx_scan_record_t;
 
 /** A specialized scanner for one resolved file type. */
-typedef xx_scan_result *(*xx_scan_format_callback)(
-    xx_scan_engine *engine, xx_io_device *device,
-    const xx_scan_options *options, xx_pd_struct *pd);
+typedef xx_scan_result *(*xx_scan_format_callback)(xx_scan_engine *engine, xx_io_device *device, const xx_scan_options *options, xx_pd_struct *pd);
 
 typedef struct xx_scan_format_handler {
     xx_file_type_t file_type;
@@ -134,21 +132,19 @@ struct xx_scan_engine {
      * retain it, the options, or input buffers after this call returns.
      * Scanning may change the device position.
      */
-    xx_scan_result *(*scan_device)(xx_scan_engine *self, xx_io_device *device,
-                                  const xx_scan_options *options, xx_pd_struct *pd);
+    xx_scan_result *(*scan_device)(xx_scan_engine *self, xx_io_device *device, const xx_scan_options *options, xx_pd_struct *pd);
 
     size_t (*get_record_count)(xx_scan_engine *self, const xx_scan_result *result);
 
     /** Return NULL for an index outside [0, get_record_count()). */
-    const xx_scan_record *(*get_record)(xx_scan_engine *self,
-                                       const xx_scan_result *result, size_t index);
+    const xx_scan_record *(*get_record)(xx_scan_engine *self, const xx_scan_result *result, size_t index);
 
     void (*free_result)(xx_scan_engine *self, xx_scan_result *result);
 
     /** Release private state without freeing self. */
     void (*cleanup)(xx_scan_engine *self);
 
-    const char *name;              /**< Optional engine name; borrowed. */
+    const char *name; /**< Optional engine name; borrowed. */
     void *priv;
 
     /**
@@ -157,18 +153,14 @@ struct xx_scan_engine {
      * The caller destroys the list. Return NULL on failure; use pd for errors.
      * The device is borrowed and may be repositioned.
      */
-    xx_list_t *(*get_file_types)(xx_scan_engine *self, xx_io_device *device,
-                                const xx_scan_options *options, xx_pd_struct *pd);
+    xx_list_t *(*get_file_types)(xx_scan_engine *self, xx_io_device *device, const xx_scan_options *options, xx_pd_struct *pd);
 
     /** Common handler for PE32 and PE64. options.file_type preserves the width. */
-    xx_scan_result *(*scan_pe)(xx_scan_engine *self, xx_io_device *device,
-                               const xx_scan_options *options, xx_pd_struct *pd);
+    xx_scan_result *(*scan_pe)(xx_scan_engine *self, xx_io_device *device, const xx_scan_options *options, xx_pd_struct *pd);
 
     /** Dedicated PDF and DEX handlers. Same contract as scan_device. */
-    xx_scan_result *(*scan_pdf)(xx_scan_engine *self, xx_io_device *device,
-                                const xx_scan_options *options, xx_pd_struct *pd);
-    xx_scan_result *(*scan_dex)(xx_scan_engine *self, xx_io_device *device,
-                                const xx_scan_options *options, xx_pd_struct *pd);
+    xx_scan_result *(*scan_pdf)(xx_scan_engine *self, xx_io_device *device, const xx_scan_options *options, xx_pd_struct *pd);
+    xx_scan_result *(*scan_dex)(xx_scan_engine *self, xx_io_device *device, const xx_scan_options *options, xx_pd_struct *pd);
 
     /** Borrowed fallback table. First matching non-NULL callback wins. */
     const xx_scan_format_handler *format_handlers;
@@ -215,9 +207,7 @@ struct xx_scan_engine {
      * report the error through pd. Destination must remain safe to free after
      * failure. Each scan callback must return a distinct owned result.
      */
-    bool (*append_result)(xx_scan_engine *self, xx_scan_result *destination,
-                          const xx_scan_result *source, int64_t source_offset,
-                          xx_pd_struct *pd);
+    bool (*append_result)(xx_scan_engine *self, xx_scan_result *destination, const xx_scan_result *source, int64_t source_offset, xx_pd_struct *pd);
 
     /**
      * Optional overlay locator; NULL uses xx_scan_get_overlay. Return true
@@ -225,9 +215,7 @@ struct xx_scan_engine {
      * range must lie within options.offset/size and start after options.offset.
      * Offsets are absolute in device. The device and options are borrowed.
      */
-    bool (*get_overlay)(xx_scan_engine *self, xx_io_device *device,
-                        const xx_scan_options *options, int64_t *offset,
-                        int64_t *size, xx_pd_struct *pd);
+    bool (*get_overlay)(xx_scan_engine *self, xx_io_device *device, const xx_scan_options *options, int64_t *offset, int64_t *size, xx_pd_struct *pd);
 };
 
 /** Defaults: whole input, automatic file type, all optional modes disabled. */
@@ -242,10 +230,7 @@ XXFC_API void xx_scan_options_init(xx_scan_options *options);
  * Detection is confined to options.offset/size when options is supplied.
  * The caller owns the returned list and must destroy it with xx_list_destroy().
  */
-XXFC_API xx_list_t *xx_scan_get_file_types(xx_scan_engine *engine,
-                                           xx_io_device *device,
-                                           const xx_scan_options *options,
-                                           xx_pd_struct *pd);
+XXFC_API xx_list_t *xx_scan_get_file_types(xx_scan_engine *engine, xx_io_device *device, const xx_scan_options *options, xx_pd_struct *pd);
 
 /**
  * Locate a trailing overlay with the resolved format's reader. Matches the
@@ -253,9 +238,7 @@ XXFC_API xx_list_t *xx_scan_get_file_types(xx_scan_engine *engine,
  * the returned offset is absolute in device. Formats without a known boundary
  * return true with offset=-1 and size=0. Output pointers are required.
  */
-XXFC_API bool xx_scan_get_overlay(xx_scan_engine *engine, xx_io_device *device,
-                                  const xx_scan_options *options, int64_t *offset,
-                                  int64_t *size, xx_pd_struct *pd);
+XXFC_API bool xx_scan_get_overlay(xx_scan_engine *engine, xx_io_device *device, const xx_scan_options *options, int64_t *offset, int64_t *size, xx_pd_struct *pd);
 
 /**
  * Scan an existing device. NULL options selects defaults; pd may be NULL.
@@ -284,25 +267,20 @@ XXFC_API bool xx_scan_get_overlay(xx_scan_engine *engine, xx_io_device *device,
  * callback tables, engine failure, or cancellation. Validation errors are
  * reported through pd when supplied.
  */
-XXFC_API xx_scan_result *xx_scan(xx_scan_engine *engine, xx_io_device *device,
-                                const xx_scan_options *options, xx_pd_struct *pd);
+XXFC_API xx_scan_result *xx_scan(xx_scan_engine *engine, xx_io_device *device, const xx_scan_options *options, xx_pd_struct *pd);
 
 /** Compatibility name for xx_scan(). */
-XXFC_API xx_scan_result *xx_scan_device(xx_scan_engine *engine, xx_io_device *device,
-                                       const xx_scan_options *options, xx_pd_struct *pd);
+XXFC_API xx_scan_result *xx_scan_device(xx_scan_engine *engine, xx_io_device *device, const xx_scan_options *options, xx_pd_struct *pd);
 
 /** Open read-only, scan, then close. The path supplies options.file_name. */
-XXFC_API xx_scan_result *xx_scan_file(xx_scan_engine *engine, const char *path,
-                                     const xx_scan_options *options, xx_pd_struct *pd);
+XXFC_API xx_scan_result *xx_scan_file(xx_scan_engine *engine, const char *path, const xx_scan_options *options, xx_pd_struct *pd);
 
 /** Scan a borrowed read-only buffer. NULL data is allowed only for size zero. */
-XXFC_API xx_scan_result *xx_scan_memory(xx_scan_engine *engine, const void *data, size_t size,
-                                       const xx_scan_options *options, xx_pd_struct *pd);
+XXFC_API xx_scan_result *xx_scan_memory(xx_scan_engine *engine, const void *data, size_t size, const xx_scan_options *options, xx_pd_struct *pd);
 
 /** NULL engines/results or missing access callbacks yield zero/NULL. */
 XXFC_API size_t xx_scan_get_record_count(xx_scan_engine *engine, const xx_scan_result *result);
-XXFC_API const xx_scan_record *xx_scan_get_record(xx_scan_engine *engine,
-                                                 const xx_scan_result *result, size_t index);
+XXFC_API const xx_scan_record *xx_scan_get_record(xx_scan_engine *engine, const xx_scan_result *result, size_t index);
 
 /** NULL result is ignored. Use the same engine that created the result. */
 XXFC_API void xx_scan_free_result(xx_scan_engine *engine, xx_scan_result *result);

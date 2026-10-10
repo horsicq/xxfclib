@@ -14,8 +14,8 @@ extern "C" {
 #endif
 
 typedef struct xx_die_music_descriptor {
-    const char *format_id;       /* Stable //fmt[...] identifier in audio.1.sg. */
-    const char *display_name;    /* Short source-derived hint. */
+    const char *format_id;    /* Stable //fmt[...] identifier in audio.1.sg. */
+    const char *display_name; /* Short source-derived hint. */
     const char *source_script;
     unsigned source_line;
     bool heuristic;
@@ -23,9 +23,7 @@ typedef struct xx_die_music_descriptor {
 } xx_die_music_descriptor;
 
 /* Shared implementation used by one C module in each music-family folder. */
-XXFC_API Abstractformat *xx_die_music_reader_create(
-    const xx_die_music_descriptor *descriptor, xx_io_device *device,
-    int64_t base_address);
+XXFC_API Abstractformat *xx_die_music_reader_create(const xx_die_music_descriptor *descriptor, xx_io_device *device, int64_t base_address);
 XXFC_API void xx_die_music_reader_free(void *reader);
 
 /* DIE's original ordered rule is evaluated once for an unknown file. */

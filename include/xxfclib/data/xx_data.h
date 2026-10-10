@@ -45,32 +45,32 @@ extern "C" {
 
 /* Endianness boolean constants */
 #define XX_LITTLE_ENDIAN false
-#define XX_BIG_ENDIAN    true
+#define XX_BIG_ENDIAN true
 
 /* ========================================================================= */
 /* --- 1. Raw Memory Buffer Operations                                   --- */
 /* ========================================================================= */
 
 /* Reading types from raw buffer (safe, returns 0 if out of bounds) */
-XXFC_API uint8_t  xx_data_get_u8(const void *data, size_t data_size, size_t offset);
-XXFC_API int8_t   xx_data_get_i8(const void *data, size_t data_size, size_t offset);
+XXFC_API uint8_t xx_data_get_u8(const void *data, size_t data_size, size_t offset);
+XXFC_API int8_t xx_data_get_i8(const void *data, size_t data_size, size_t offset);
 XXFC_API uint16_t xx_data_get_u16(const void *data, size_t data_size, size_t offset, bool big_endian);
-XXFC_API int16_t  xx_data_get_i16(const void *data, size_t data_size, size_t offset, bool big_endian);
+XXFC_API int16_t xx_data_get_i16(const void *data, size_t data_size, size_t offset, bool big_endian);
 XXFC_API uint32_t xx_data_get_u24(const void *data, size_t data_size, size_t offset, bool big_endian);
-XXFC_API int32_t  xx_data_get_i24(const void *data, size_t data_size, size_t offset, bool big_endian);
+XXFC_API int32_t xx_data_get_i24(const void *data, size_t data_size, size_t offset, bool big_endian);
 XXFC_API uint32_t xx_data_get_u32(const void *data, size_t data_size, size_t offset, bool big_endian);
-XXFC_API int32_t  xx_data_get_i32(const void *data, size_t data_size, size_t offset, bool big_endian);
+XXFC_API int32_t xx_data_get_i32(const void *data, size_t data_size, size_t offset, bool big_endian);
 XXFC_API uint64_t xx_data_get_u64(const void *data, size_t data_size, size_t offset, bool big_endian);
-XXFC_API int64_t  xx_data_get_i64(const void *data, size_t data_size, size_t offset, bool big_endian);
-XXFC_API float    xx_data_get_f32(const void *data, size_t data_size, size_t offset, bool big_endian);
-XXFC_API double   xx_data_get_f64(const void *data, size_t data_size, size_t offset, bool big_endian);
+XXFC_API int64_t xx_data_get_i64(const void *data, size_t data_size, size_t offset, bool big_endian);
+XXFC_API float xx_data_get_f32(const void *data, size_t data_size, size_t offset, bool big_endian);
+XXFC_API double xx_data_get_f64(const void *data, size_t data_size, size_t offset, bool big_endian);
 /* IEEE-754 half, expanded to float. No host type holds a half, so this is
  * the only way to read one. */
-XXFC_API float    xx_data_get_f16(const void *data, size_t data_size, size_t offset, bool big_endian);
+XXFC_API float xx_data_get_f16(const void *data, size_t data_size, size_t offset, bool big_endian);
 
 /* Reading string from raw buffer (allocated via xx_mem_alloc, free with xx_str_free / xx_str_wfree) */
-XXFC_API char*    xx_data_get_ansi_string(const void *data, size_t data_size, size_t offset, size_t max_len);
-XXFC_API wchar_t* xx_data_get_unicode_string(const void *data, size_t data_size, size_t offset, size_t max_len, bool big_endian);
+XXFC_API char *xx_data_get_ansi_string(const void *data, size_t data_size, size_t offset, size_t max_len);
+XXFC_API wchar_t *xx_data_get_unicode_string(const void *data, size_t data_size, size_t offset, size_t max_len, bool big_endian);
 
 /* Writing types to raw buffer (returns false if out of bounds) */
 XXFC_API bool xx_data_set_u8(void *data, size_t data_size, size_t offset, uint8_t val);
@@ -111,28 +111,29 @@ XXFC_API int64_t xx_data_find_u64_buffer_optimize(const void *data, size_t data_
 XXFC_API int64_t xx_data_find_f32_buffer_optimize(const void *data, size_t data_size, size_t start_offset, float val, bool big_endian, xx_pd_struct *pd);
 XXFC_API int64_t xx_data_find_f64_buffer_optimize(const void *data, size_t data_size, size_t start_offset, double val, bool big_endian, xx_pd_struct *pd);
 XXFC_API int64_t xx_data_find_ansi_string_buffer_optimize(const void *data, size_t data_size, size_t start_offset, const char *str, xx_pd_struct *pd);
-XXFC_API int64_t xx_data_find_unicode_string_buffer_optimize(const void *data, size_t data_size, size_t start_offset, const wchar_t *wstr, bool big_endian, xx_pd_struct *pd);
+XXFC_API int64_t xx_data_find_unicode_string_buffer_optimize(const void *data, size_t data_size, size_t start_offset, const wchar_t *wstr, bool big_endian,
+                                                             xx_pd_struct *pd);
 
 /* ========================================================================= */
 /* --- 2. xx_io_device Operations                                        --- */
 /* ========================================================================= */
 
 /* Reading types at specific offset in xx_io_device (seeks, reads, leaves file pos after read) */
-XXFC_API uint8_t  xx_io_get_u8(xx_io_device *dev, int64_t offset);
-XXFC_API int8_t   xx_io_get_i8(xx_io_device *dev, int64_t offset);
+XXFC_API uint8_t xx_io_get_u8(xx_io_device *dev, int64_t offset);
+XXFC_API int8_t xx_io_get_i8(xx_io_device *dev, int64_t offset);
 XXFC_API uint16_t xx_io_get_u16(xx_io_device *dev, int64_t offset, bool big_endian);
-XXFC_API int16_t  xx_io_get_i16(xx_io_device *dev, int64_t offset, bool big_endian);
+XXFC_API int16_t xx_io_get_i16(xx_io_device *dev, int64_t offset, bool big_endian);
 XXFC_API uint32_t xx_io_get_u24(xx_io_device *dev, int64_t offset, bool big_endian);
-XXFC_API int32_t  xx_io_get_i24(xx_io_device *dev, int64_t offset, bool big_endian);
+XXFC_API int32_t xx_io_get_i24(xx_io_device *dev, int64_t offset, bool big_endian);
 XXFC_API uint32_t xx_io_get_u32(xx_io_device *dev, int64_t offset, bool big_endian);
-XXFC_API int32_t  xx_io_get_i32(xx_io_device *dev, int64_t offset, bool big_endian);
+XXFC_API int32_t xx_io_get_i32(xx_io_device *dev, int64_t offset, bool big_endian);
 XXFC_API uint64_t xx_io_get_u64(xx_io_device *dev, int64_t offset, bool big_endian);
-XXFC_API int64_t  xx_io_get_i64(xx_io_device *dev, int64_t offset, bool big_endian);
-XXFC_API float    xx_io_get_f32(xx_io_device *dev, int64_t offset, bool big_endian);
-XXFC_API double   xx_io_get_f64(xx_io_device *dev, int64_t offset, bool big_endian);
-XXFC_API float    xx_io_get_f16(xx_io_device *dev, int64_t offset, bool big_endian);
-XXFC_API char*    xx_io_get_ansi_string(xx_io_device *dev, int64_t offset, size_t max_len);
-XXFC_API wchar_t* xx_io_get_unicode_string(xx_io_device *dev, int64_t offset, size_t max_len, bool big_endian);
+XXFC_API int64_t xx_io_get_i64(xx_io_device *dev, int64_t offset, bool big_endian);
+XXFC_API float xx_io_get_f32(xx_io_device *dev, int64_t offset, bool big_endian);
+XXFC_API double xx_io_get_f64(xx_io_device *dev, int64_t offset, bool big_endian);
+XXFC_API float xx_io_get_f16(xx_io_device *dev, int64_t offset, bool big_endian);
+XXFC_API char *xx_io_get_ansi_string(xx_io_device *dev, int64_t offset, size_t max_len);
+XXFC_API wchar_t *xx_io_get_unicode_string(xx_io_device *dev, int64_t offset, size_t max_len, bool big_endian);
 
 /* Sequential stream reading from current position of xx_io_device */
 XXFC_API bool xx_io_read_u8(xx_io_device *dev, uint8_t *val);
@@ -193,8 +194,10 @@ XXFC_API int64_t xx_io_find_ansi_string(xx_io_device *dev, int64_t start_offset,
 XXFC_API int64_t xx_io_find_unicode_string(xx_io_device *dev, int64_t start_offset, int64_t max_search_len, const wchar_t *wstr, bool big_endian, xx_pd_struct *pd);
 
 /* Optimized finding types in xx_io_device using large streaming chunk buffer & fast search */
-XXFC_API int64_t xx_io_find_bytes_buffer_optimize_ex(xx_io_device *dev, int64_t start_offset, int64_t max_search_len, const void *pattern, size_t pattern_size, size_t buffer_size, xx_pd_struct *pd);
-XXFC_API int64_t xx_io_find_bytes_buffer_optimize(xx_io_device *dev, int64_t start_offset, int64_t max_search_len, const void *pattern, size_t pattern_size, xx_pd_struct *pd);
+XXFC_API int64_t xx_io_find_bytes_buffer_optimize_ex(xx_io_device *dev, int64_t start_offset, int64_t max_search_len, const void *pattern, size_t pattern_size,
+                                                     size_t buffer_size, xx_pd_struct *pd);
+XXFC_API int64_t xx_io_find_bytes_buffer_optimize(xx_io_device *dev, int64_t start_offset, int64_t max_search_len, const void *pattern, size_t pattern_size,
+                                                  xx_pd_struct *pd);
 XXFC_API int64_t xx_io_find_u8_buffer_optimize(xx_io_device *dev, int64_t start_offset, int64_t max_search_len, uint8_t val, xx_pd_struct *pd);
 XXFC_API int64_t xx_io_find_u16_buffer_optimize(xx_io_device *dev, int64_t start_offset, int64_t max_search_len, uint16_t val, bool big_endian, xx_pd_struct *pd);
 XXFC_API int64_t xx_io_find_u24_buffer_optimize(xx_io_device *dev, int64_t start_offset, int64_t max_search_len, uint32_t val, bool big_endian, xx_pd_struct *pd);
@@ -203,7 +206,8 @@ XXFC_API int64_t xx_io_find_u64_buffer_optimize(xx_io_device *dev, int64_t start
 XXFC_API int64_t xx_io_find_f32_buffer_optimize(xx_io_device *dev, int64_t start_offset, int64_t max_search_len, float val, bool big_endian, xx_pd_struct *pd);
 XXFC_API int64_t xx_io_find_f64_buffer_optimize(xx_io_device *dev, int64_t start_offset, int64_t max_search_len, double val, bool big_endian, xx_pd_struct *pd);
 XXFC_API int64_t xx_io_find_ansi_string_buffer_optimize(xx_io_device *dev, int64_t start_offset, int64_t max_search_len, const char *str, xx_pd_struct *pd);
-XXFC_API int64_t xx_io_find_unicode_string_buffer_optimize(xx_io_device *dev, int64_t start_offset, int64_t max_search_len, const wchar_t *wstr, bool big_endian, xx_pd_struct *pd);
+XXFC_API int64_t xx_io_find_unicode_string_buffer_optimize(xx_io_device *dev, int64_t start_offset, int64_t max_search_len, const wchar_t *wstr, bool big_endian,
+                                                           xx_pd_struct *pd);
 
 #ifdef __cplusplus
 }

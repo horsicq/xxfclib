@@ -30,11 +30,12 @@
 extern "C" {
 #endif
 
-#define XX_DEFLATE_WINDOW_SIZE_32K  32768
-#define XX_DEFLATE_WINDOW_SIZE_64K  65536
+#define XX_DEFLATE_WINDOW_SIZE_32K 32768
+#define XX_DEFLATE_WINDOW_SIZE_64K 65536
 
 /* Zero chooses the method's native window; invalid requests resolve to zero. */
-static inline size_t xx_deflate_resolve_window(bool is_deflate64, size_t size) {
+static inline size_t xx_deflate_resolve_window(bool is_deflate64, size_t size)
+{
     size_t maximum = is_deflate64 ? XX_DEFLATE_WINDOW_SIZE_64K : XX_DEFLATE_WINDOW_SIZE_32K;
     if (size == 0U) return maximum;
     return size >= 256U && size <= maximum && (size & (size - 1U)) == 0U ? size : 0U;
@@ -42,15 +43,15 @@ static inline size_t xx_deflate_resolve_window(bool is_deflate64, size_t size) {
 
 #define XX_DEFLATE_MAX_LIT_LEN_CODES 286
 #define XX_DEFLATE_MAX_DIST_CODES_STD 30
-#define XX_DEFLATE_MAX_DIST_CODES_64  32
-#define XX_DEFLATE_MAX_CLEN_CODES    19
+#define XX_DEFLATE_MAX_DIST_CODES_64 32
+#define XX_DEFLATE_MAX_CLEN_CODES 19
 
-#define XX_DEFLATE_MAX_BITS          15
+#define XX_DEFLATE_MAX_BITS 15
 
 /* Huffman decode lookup entry */
 typedef struct {
-    uint8_t  bits;   /* Code length in bits */
-    uint16_t sym;    /* Symbol value */
+    uint8_t bits; /* Code length in bits */
+    uint16_t sym; /* Symbol value */
 } xx_huff_entry;
 
 /* Canonical Huffman Decoder */
@@ -61,39 +62,39 @@ typedef struct {
     uint16_t offset[16];        /* Offset into symbol table for each length */
     uint16_t first_code[16];    /* First canonical code of each length */
     uint8_t min_bits, max_bits;
-    uint16_t symbols[320];      /* Symbols sorted by code length */
+    uint16_t symbols[320]; /* Symbols sorted by code length */
 } xx_huff_decoder;
 
 /* Bit Reader for streaming decompression */
 typedef struct {
     xx_io_device *dev;
     const uint8_t *mem_src;
-    size_t       mem_size;
-    size_t       mem_pos;
-    uint8_t     *buffer;
-    size_t       buffer_cap;
-    size_t       buffer_pos;
-    size_t       buffer_len;
-    int64_t      remaining_input;
-    uint64_t     bit_buf;
-    int          bit_count;
-    bool         eof;
-    bool         error;
+    size_t mem_size;
+    size_t mem_pos;
+    uint8_t *buffer;
+    size_t buffer_cap;
+    size_t buffer_pos;
+    size_t buffer_len;
+    int64_t remaining_input;
+    uint64_t bit_buf;
+    int bit_count;
+    bool eof;
+    bool error;
 } xx_bit_reader;
 
 /* Bit Writer for streaming compression */
 typedef struct {
     xx_io_device *dev;
-    uint8_t     *mem_dst;
-    size_t       mem_cap;
-    size_t       mem_written;
-    uint8_t     *buffer;
-    size_t       buffer_cap;
-    size_t       buffer_pos;
-    int64_t      total_written;
-    uint64_t     bit_buf;
-    int          bit_count;
-    bool         error;
+    uint8_t *mem_dst;
+    size_t mem_cap;
+    size_t mem_written;
+    uint8_t *buffer;
+    size_t buffer_cap;
+    size_t buffer_pos;
+    int64_t total_written;
+    uint64_t bit_buf;
+    int bit_count;
+    bool error;
 } xx_bit_writer;
 
 /* Bit Reader and Writer helper functions */
@@ -104,32 +105,21 @@ bool xx_bw_init(xx_bit_writer *bw, xx_io_device *dev, uint8_t *mem_dst, size_t m
 void xx_bw_free(xx_bit_writer *bw);
 
 /* Decompressor engine internal entry point */
-bool xx_deflate_decompress_stream(xx_bit_reader *reader, xx_io_device *dst_dev,
-                                  uint8_t *mem_dst, size_t mem_cap, size_t *out_written,
-                                  bool is_deflate64, xx_pd_struct *pd);
-bool xx_deflate_decompress_stream_with_dictionary(
-    xx_bit_reader *reader, xx_io_device *dst_dev, uint8_t *mem_dst,
-    size_t mem_cap, size_t *out_written, bool is_deflate64,
-    xx_pd_struct *pd, const uint8_t *dictionary, size_t dictionary_size);
-bool xx_deflate_decompress_stream_with_options(
-    xx_bit_reader *reader, xx_io_device *dst_dev, uint8_t *mem_dst,
-    size_t mem_cap, size_t *out_written, bool is_deflate64,
-    size_t window_size, xx_pd_struct *pd, const uint8_t *dictionary,
-    size_t dictionary_size);
+bool xx_deflate_decompress_stream(xx_bit_reader *reader, xx_io_device *dst_dev, uint8_t *mem_dst, size_t mem_cap, size_t *out_written, bool is_deflate64,
+                                  xx_pd_struct *pd);
+bool xx_deflate_decompress_stream_with_dictionary(xx_bit_reader *reader, xx_io_device *dst_dev, uint8_t *mem_dst, size_t mem_cap, size_t *out_written, bool is_deflate64,
+                                                  xx_pd_struct *pd, const uint8_t *dictionary, size_t dictionary_size);
+bool xx_deflate_decompress_stream_with_options(xx_bit_reader *reader, xx_io_device *dst_dev, uint8_t *mem_dst, size_t mem_cap, size_t *out_written, bool is_deflate64,
+                                               size_t window_size, xx_pd_struct *pd, const uint8_t *dictionary, size_t dictionary_size);
 
 /* Compressor engine internal entry point */
 /* Internal Huffman service: at most 286 symbols, a 1..15 bit limit, and
  * sufficient code space for the number of nonzero frequencies. */
-void xx_deflate_build_code_lengths(const uint32_t *freqs, int num_symbols,
-                                   uint8_t *out_lens, int max_bits);
-bool xx_deflate_compress_stream(xx_io_device *src_dev, const uint8_t *mem_src, size_t mem_src_size,
-                                int64_t src_offset, int64_t uncomp_size,
-                                xx_bit_writer *writer, int level, bool is_deflate64,
-                                xx_pd_struct *pd);
-bool xx_deflate_compress_stream_with_window(
-    xx_io_device *src_dev, const uint8_t *mem_src, size_t mem_src_size,
-    int64_t src_offset, int64_t uncomp_size, xx_bit_writer *writer,
-    int level, bool is_deflate64, size_t window_size, xx_pd_struct *pd);
+void xx_deflate_build_code_lengths(const uint32_t *freqs, int num_symbols, uint8_t *out_lens, int max_bits);
+bool xx_deflate_compress_stream(xx_io_device *src_dev, const uint8_t *mem_src, size_t mem_src_size, int64_t src_offset, int64_t uncomp_size, xx_bit_writer *writer,
+                                int level, bool is_deflate64, xx_pd_struct *pd);
+bool xx_deflate_compress_stream_with_window(xx_io_device *src_dev, const uint8_t *mem_src, size_t mem_src_size, int64_t src_offset, int64_t uncomp_size,
+                                            xx_bit_writer *writer, int level, bool is_deflate64, size_t window_size, xx_pd_struct *pd);
 
 #ifdef __cplusplus
 }

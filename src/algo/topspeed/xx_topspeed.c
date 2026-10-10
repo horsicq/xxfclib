@@ -82,8 +82,7 @@ static int ts_read_code(ts_reader *reader)
         reader->pair = 2;
     }
     if (reader->pos >= reader->size) return -1;
-    code = (int)((((uint32_t)(reader->high & 0xf0)) << 4) |
-                 (uint32_t)reader->data[reader->pos]);
+    code = (int)((((uint32_t)(reader->high & 0xf0)) << 4) | (uint32_t)reader->data[reader->pos]);
     reader->pos++;
     reader->high = (uint8_t)((reader->high << 4) & 0xff);
     reader->pair--;
@@ -94,8 +93,7 @@ static int ts_read_code(ts_reader *reader)
 /* Walk the block chain, validating headers and checksums.  This is the
  * reference's measure(); decode() runs it first and then decodes, so the two
  * can never disagree about the member's length or its validity. */
-static bool ts_walk(const uint8_t *input, size_t input_size, size_t max_output,
-                    size_t *total_out)
+static bool ts_walk(const uint8_t *input, size_t input_size, size_t max_output, size_t *total_out)
 {
     size_t pos = 0U;
     size_t total = 0U;
@@ -151,9 +149,7 @@ static bool ts_walk(const uint8_t *input, size_t input_size, size_t max_output,
 
 /* One compressed block.  `limit` is the block's declared plaintext size; the
  * caller has already proved that many bytes fit in the output buffer. */
-static bool ts_decode_block(const uint8_t *payload, size_t payload_size,
-                            uint32_t limit, ts_dict *dict, uint8_t *output,
-                            size_t *produced)
+static bool ts_decode_block(const uint8_t *payload, size_t payload_size, uint32_t limit, ts_dict *dict, uint8_t *output, size_t *produced)
 {
     ts_reader reader;
     int code;
@@ -246,9 +242,7 @@ static bool ts_decode_block(const uint8_t *payload, size_t payload_size,
     return emitted == limit;
 }
 
-bool xx_topspeed_scan_memory(const uint8_t *input, size_t input_size,
-                             size_t max_output, size_t *consumed,
-                             size_t *produced)
+bool xx_topspeed_scan_memory(const uint8_t *input, size_t input_size, size_t max_output, size_t *consumed, size_t *produced)
 {
     size_t total = 0U;
 
@@ -263,9 +257,7 @@ bool xx_topspeed_scan_memory(const uint8_t *input, size_t input_size,
     return true;
 }
 
-bool xx_topspeed_decode_memory(const uint8_t *input, size_t input_size,
-                               uint8_t *output, size_t output_size,
-                               size_t *written)
+bool xx_topspeed_decode_memory(const uint8_t *input, size_t input_size, uint8_t *output, size_t output_size, size_t *written)
 {
     ts_dict *dict;
     size_t total = 0U;
@@ -304,8 +296,7 @@ bool xx_topspeed_decode_memory(const uint8_t *input, size_t input_size,
         if (packed >= plain) {
             xx_rt_memcpy(output + produced, payload, (size_t)plain);
             produced += (size_t)plain;
-        } else if (!ts_decode_block(payload, (size_t)on_disk, plain, dict,
-                                    output, &produced)) {
+        } else if (!ts_decode_block(payload, (size_t)on_disk, plain, dict, output, &produced)) {
             ok = false;
             break;
         }

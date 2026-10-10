@@ -14,12 +14,12 @@ typedef struct xx_sfx_sqz {
     Abstractformat format;
     xx_sqz *inner;
 } xx_sfx_sqz;
-XXFC_API void xx_sfx_sqz_init(xx_sfx_sqz *,xx_io_device *,int64_t);
-XXFC_API xx_sfx_sqz *xx_sfx_sqz_create(xx_io_device *,int64_t);
+XXFC_API void xx_sfx_sqz_init(xx_sfx_sqz *, xx_io_device *, int64_t);
+XXFC_API xx_sfx_sqz *xx_sfx_sqz_create(xx_io_device *, int64_t);
 XXFC_API void xx_sfx_sqz_destroy(xx_sfx_sqz *);
 XXFC_API void xx_sfx_sqz_free(xx_sfx_sqz *);
-XXFC_API bool xx_sfx_sqz_check_is_valid(Abstractformat *,xx_pd_struct *);
-XXFC_API bool xx_sfx_sqz_handle_base_info(Abstractformat *,xx_pd_struct *);
+XXFC_API bool xx_sfx_sqz_check_is_valid(Abstractformat *, xx_pd_struct *);
+XXFC_API bool xx_sfx_sqz_handle_base_info(Abstractformat *, xx_pd_struct *);
 #ifdef __cplusplus
 }
 #endif

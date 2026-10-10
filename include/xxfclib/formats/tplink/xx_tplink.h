@@ -160,42 +160,33 @@ struct xx_tplink {
     uint16_t version_major;
     uint16_t version_minor;
     uint16_t version_patch;
-    uint16_t model_number;       /**< RTOS variant only. */
-    uint8_t hardware_rev_major;  /**< RTOS variant only. */
-    uint8_t hardware_rev_minor;  /**< RTOS variant only. */
+    uint16_t model_number;               /**< RTOS variant only. */
+    uint8_t hardware_rev_major;          /**< RTOS variant only. */
+    uint8_t hardware_rev_minor;          /**< RTOS variant only. */
     uint8_t md5sum1[XX_TPLINK_MD5_SIZE]; /**< Stored digest, Linux variant. */
-    bool md5_checked; /**< The image digest was recomputed. */
-    bool md5_valid;   /**< ...and one of the known salts reproduced it. */
-    int md5_salt_index; /**< Which salt matched, or -1.  Advisory. */
-    bool header_big_endian; /**< Linux variant field decode order. */
-    int64_t archive_end;    /**< base_address + image size, or -1. */
+    bool md5_checked;                    /**< The image digest was recomputed. */
+    bool md5_valid;                      /**< ...and one of the known salts reproduced it. */
+    int md5_salt_index;                  /**< Which salt matched, or -1.  Advisory. */
+    bool header_big_endian;              /**< Linux variant field decode order. */
+    int64_t archive_end;                 /**< base_address + image size, or -1. */
     void *internal;
 };
 
-XXFC_API void xx_tplink_init(xx_tplink *tplink, xx_io_device *dev,
-                             int64_t base_address);
+XXFC_API void xx_tplink_init(xx_tplink *tplink, xx_io_device *dev, int64_t base_address);
 XXFC_API xx_tplink *xx_tplink_create(xx_io_device *dev, int64_t base_address);
 XXFC_API void xx_tplink_destroy(xx_tplink *tplink);
 XXFC_API void xx_tplink_free(xx_tplink *tplink);
 
 XXFC_API bool xx_tplink_check_is_valid(Abstractformat *self, xx_pd_struct *pd);
-XXFC_API bool xx_tplink_handle_base_info(Abstractformat *self,
-                                         xx_pd_struct *pd);
-XXFC_API int64_t xx_tplink_get_format_size(Abstractformat *self,
-                                           xx_pd_struct *pd);
-XXFC_API uint64_t xx_tplink_get_number_of_archive_records(Abstractformat *self,
-                                                          xx_pd_struct *pd);
+XXFC_API bool xx_tplink_handle_base_info(Abstractformat *self, xx_pd_struct *pd);
+XXFC_API int64_t xx_tplink_get_format_size(Abstractformat *self, xx_pd_struct *pd);
+XXFC_API uint64_t xx_tplink_get_number_of_archive_records(Abstractformat *self, xx_pd_struct *pd);
 
-XXFC_API xx_archive_record_state *xx_tplink_create_archive_records_reading(
-    Abstractformat *self, const xx_list_s *options, xx_pd_struct *pd);
-XXFC_API const xx_archive_record *xx_tplink_get_current_archive_record(
-    Abstractformat *self, xx_archive_record_state *state);
-XXFC_API bool xx_tplink_unpack_current_archive_record(
-    Abstractformat *self, xx_archive_record_state *state, xx_pd_struct *pd);
-XXFC_API bool xx_tplink_archive_record_move_to_next(
-    Abstractformat *self, xx_archive_record_state *state, xx_pd_struct *pd);
-XXFC_API void xx_tplink_free_archive_records_reading(
-    Abstractformat *self, xx_archive_record_state *state);
+XXFC_API xx_archive_record_state *xx_tplink_create_archive_records_reading(Abstractformat *self, const xx_list_s *options, xx_pd_struct *pd);
+XXFC_API const xx_archive_record *xx_tplink_get_current_archive_record(Abstractformat *self, xx_archive_record_state *state);
+XXFC_API bool xx_tplink_unpack_current_archive_record(Abstractformat *self, xx_archive_record_state *state, xx_pd_struct *pd);
+XXFC_API bool xx_tplink_archive_record_move_to_next(Abstractformat *self, xx_archive_record_state *state, xx_pd_struct *pd);
+XXFC_API void xx_tplink_free_archive_records_reading(Abstractformat *self, xx_archive_record_state *state);
 
 XXFC_API uint64_t xx_tplink_get_number_of_records(const xx_tplink *tplink);
 XXFC_API xx_tplink_variant_t xx_tplink_get_variant(const xx_tplink *tplink);
@@ -212,19 +203,24 @@ XXFC_API int xx_tplink_get_md5_salt_index(const xx_tplink *tplink);
 /** true when the Linux header decoded as big endian. */
 XXFC_API bool xx_tplink_get_header_big_endian(const xx_tplink *tplink);
 
-static inline Abstractformat *xx_tplink_to_format(xx_tplink *tplink) {
+static inline Abstractformat *xx_tplink_to_format(xx_tplink *tplink)
+{
     return tplink ? &tplink->format : NULL;
 }
-static inline void XTpLink_init(xx_tplink *tplink, xx_io_device *dev,
-                                int64_t base_address) {
+static inline void XTpLink_init(xx_tplink *tplink, xx_io_device *dev, int64_t base_address)
+{
     xx_tplink_init(tplink, dev, base_address);
 }
-static inline xx_tplink *XTpLink_create(xx_io_device *dev,
-                                        int64_t base_address) {
+static inline xx_tplink *XTpLink_create(xx_io_device *dev, int64_t base_address)
+{
     return xx_tplink_create(dev, base_address);
 }
-static inline void XTpLink_free(xx_tplink *tplink) { xx_tplink_free(tplink); }
-static inline bool XTpLink_is_valid(xx_tplink *tplink, xx_pd_struct *pd) {
+static inline void XTpLink_free(xx_tplink *tplink)
+{
+    xx_tplink_free(tplink);
+}
+static inline bool XTpLink_is_valid(xx_tplink *tplink, xx_pd_struct *pd)
+{
     return tplink ? xx_format_is_valid(&tplink->format, pd) : false;
 }
 

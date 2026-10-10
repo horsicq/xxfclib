@@ -115,19 +115,13 @@ XXFC_API void xx_dms_free(xx_dms *dms);
 XXFC_API bool xx_dms_check_is_valid(Abstractformat *self, xx_pd_struct *pd);
 XXFC_API bool xx_dms_handle_base_info(Abstractformat *self, xx_pd_struct *pd);
 XXFC_API int64_t xx_dms_get_format_size(Abstractformat *self, xx_pd_struct *pd);
-XXFC_API uint64_t xx_dms_get_number_of_archive_records(Abstractformat *self,
-                                                       xx_pd_struct *pd);
+XXFC_API uint64_t xx_dms_get_number_of_archive_records(Abstractformat *self, xx_pd_struct *pd);
 
-XXFC_API xx_archive_record_state *xx_dms_create_archive_records_reading(
-    Abstractformat *self, const xx_list_s *options, xx_pd_struct *pd);
-XXFC_API const xx_archive_record *xx_dms_get_current_archive_record(
-    Abstractformat *self, xx_archive_record_state *state);
-XXFC_API bool xx_dms_unpack_current_archive_record(
-    Abstractformat *self, xx_archive_record_state *state, xx_pd_struct *pd);
-XXFC_API bool xx_dms_archive_record_move_to_next(
-    Abstractformat *self, xx_archive_record_state *state, xx_pd_struct *pd);
-XXFC_API void xx_dms_free_archive_records_reading(
-    Abstractformat *self, xx_archive_record_state *state);
+XXFC_API xx_archive_record_state *xx_dms_create_archive_records_reading(Abstractformat *self, const xx_list_s *options, xx_pd_struct *pd);
+XXFC_API const xx_archive_record *xx_dms_get_current_archive_record(Abstractformat *self, xx_archive_record_state *state);
+XXFC_API bool xx_dms_unpack_current_archive_record(Abstractformat *self, xx_archive_record_state *state, xx_pd_struct *pd);
+XXFC_API bool xx_dms_archive_record_move_to_next(Abstractformat *self, xx_archive_record_state *state, xx_pd_struct *pd);
+XXFC_API void xx_dms_free_archive_records_reading(Abstractformat *self, xx_archive_record_state *state);
 
 XXFC_API uint64_t xx_dms_get_number_of_records(const xx_dms *dms);
 XXFC_API uint64_t xx_dms_get_number_of_members(const xx_dms *dms);
@@ -138,18 +132,24 @@ XXFC_API int64_t xx_dms_get_archive_end(const xx_dms *dms);
 /** Human readable name of a compression mode, "Unknown" outside 0..6. */
 XXFC_API const char *xx_dms_mode_to_string(uint32_t mode);
 
-static inline Abstractformat *xx_dms_to_format(xx_dms *dms) {
+static inline Abstractformat *xx_dms_to_format(xx_dms *dms)
+{
     return dms ? &dms->format : NULL;
 }
-static inline void XDms_init(xx_dms *dms, xx_io_device *dev,
-                             int64_t base_address) {
+static inline void XDms_init(xx_dms *dms, xx_io_device *dev, int64_t base_address)
+{
     xx_dms_init(dms, dev, base_address);
 }
-static inline xx_dms *XDms_create(xx_io_device *dev, int64_t base_address) {
+static inline xx_dms *XDms_create(xx_io_device *dev, int64_t base_address)
+{
     return xx_dms_create(dev, base_address);
 }
-static inline void XDms_free(xx_dms *dms) { xx_dms_free(dms); }
-static inline bool XDms_is_valid(xx_dms *dms, xx_pd_struct *pd) {
+static inline void XDms_free(xx_dms *dms)
+{
+    xx_dms_free(dms);
+}
+static inline bool XDms_is_valid(xx_dms *dms, xx_pd_struct *pd)
+{
     return dms ? xx_format_is_valid(&dms->format, pd) : false;
 }
 

@@ -69,17 +69,17 @@ typedef struct xx_ubi XUbi;
 
 struct xx_ubi {
     Abstractformat format;
-    uint64_t number_of_records;  /**< One record per reassembled volume. */
+    uint64_t number_of_records; /**< One record per reassembled volume. */
     uint64_t number_of_members;
-    uint32_t peb_size;        /**< Detected physical erase block size. */
-    uint32_t leb_size;        /**< peb_size - data_offset. */
-    uint32_t vid_hdr_offset;  /**< From the first valid erase-counter header. */
-    uint32_t data_offset;     /**< From the first valid erase-counter header. */
+    uint32_t peb_size;       /**< Detected physical erase block size. */
+    uint32_t leb_size;       /**< peb_size - data_offset. */
+    uint32_t vid_hdr_offset; /**< From the first valid erase-counter header. */
+    uint32_t data_offset;    /**< From the first valid erase-counter header. */
     uint32_t image_seq;
-    uint64_t peb_count;       /**< PEBs examined, valid or not. */
+    uint64_t peb_count;        /**< PEBs examined, valid or not. */
     uint64_t mapped_peb_count; /**< PEBs carrying a volume-id header. */
-    uint64_t volume_count;    /**< Non-internal volumes found. */
-    int64_t archive_end;      /**< End of the last examined PEB, or -1. */
+    uint64_t volume_count;     /**< Non-internal volumes found. */
+    int64_t archive_end;       /**< End of the last examined PEB, or -1. */
     void *internal;
 };
 
@@ -91,19 +91,13 @@ XXFC_API void xx_ubi_free(xx_ubi *ubi);
 XXFC_API bool xx_ubi_check_is_valid(Abstractformat *self, xx_pd_struct *pd);
 XXFC_API bool xx_ubi_handle_base_info(Abstractformat *self, xx_pd_struct *pd);
 XXFC_API int64_t xx_ubi_get_format_size(Abstractformat *self, xx_pd_struct *pd);
-XXFC_API uint64_t xx_ubi_get_number_of_archive_records(Abstractformat *self,
-                                                       xx_pd_struct *pd);
+XXFC_API uint64_t xx_ubi_get_number_of_archive_records(Abstractformat *self, xx_pd_struct *pd);
 
-XXFC_API xx_archive_record_state *xx_ubi_create_archive_records_reading(
-    Abstractformat *self, const xx_list_s *options, xx_pd_struct *pd);
-XXFC_API const xx_archive_record *xx_ubi_get_current_archive_record(
-    Abstractformat *self, xx_archive_record_state *state);
-XXFC_API bool xx_ubi_unpack_current_archive_record(
-    Abstractformat *self, xx_archive_record_state *state, xx_pd_struct *pd);
-XXFC_API bool xx_ubi_archive_record_move_to_next(
-    Abstractformat *self, xx_archive_record_state *state, xx_pd_struct *pd);
-XXFC_API void xx_ubi_free_archive_records_reading(
-    Abstractformat *self, xx_archive_record_state *state);
+XXFC_API xx_archive_record_state *xx_ubi_create_archive_records_reading(Abstractformat *self, const xx_list_s *options, xx_pd_struct *pd);
+XXFC_API const xx_archive_record *xx_ubi_get_current_archive_record(Abstractformat *self, xx_archive_record_state *state);
+XXFC_API bool xx_ubi_unpack_current_archive_record(Abstractformat *self, xx_archive_record_state *state, xx_pd_struct *pd);
+XXFC_API bool xx_ubi_archive_record_move_to_next(Abstractformat *self, xx_archive_record_state *state, xx_pd_struct *pd);
+XXFC_API void xx_ubi_free_archive_records_reading(Abstractformat *self, xx_archive_record_state *state);
 
 XXFC_API uint64_t xx_ubi_get_number_of_records(const xx_ubi *ubi);
 XXFC_API uint64_t xx_ubi_get_number_of_members(const xx_ubi *ubi);
@@ -115,18 +109,24 @@ XXFC_API int64_t xx_ubi_get_archive_end(const xx_ubi *ubi);
 /** @brief "Dynamic", "Static" or "Unknown" for a ubi_vid_hdr vol_type. */
 XXFC_API const char *xx_ubi_volume_type_to_string(uint32_t vol_type);
 
-static inline Abstractformat *xx_ubi_to_format(xx_ubi *ubi) {
+static inline Abstractformat *xx_ubi_to_format(xx_ubi *ubi)
+{
     return ubi ? &ubi->format : NULL;
 }
-static inline void XUbi_init(xx_ubi *ubi, xx_io_device *dev,
-                             int64_t base_address) {
+static inline void XUbi_init(xx_ubi *ubi, xx_io_device *dev, int64_t base_address)
+{
     xx_ubi_init(ubi, dev, base_address);
 }
-static inline xx_ubi *XUbi_create(xx_io_device *dev, int64_t base_address) {
+static inline xx_ubi *XUbi_create(xx_io_device *dev, int64_t base_address)
+{
     return xx_ubi_create(dev, base_address);
 }
-static inline void XUbi_free(xx_ubi *ubi) { xx_ubi_free(ubi); }
-static inline bool XUbi_is_valid(xx_ubi *ubi, xx_pd_struct *pd) {
+static inline void XUbi_free(xx_ubi *ubi)
+{
+    xx_ubi_free(ubi);
+}
+static inline bool XUbi_is_valid(xx_ubi *ubi, xx_pd_struct *pd)
+{
     return ubi ? xx_format_is_valid(&ubi->format, pd) : false;
 }
 

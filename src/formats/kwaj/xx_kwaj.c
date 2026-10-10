@@ -89,8 +89,7 @@
 #define KWAJ_NAME_CAPACITY (2U * (KWAJ_NAME_BASE_MAX + 1U + KWAJ_NAME_EXT_MAX) + 1U)
 #define KWAJ_PAYLOAD_NAME "payload"
 
-static const uint8_t kwaj_magic[8] = {'K', 'W', 'A', 'J',
-                                      0x88U, 0xf0U, 0x27U, 0xd1U};
+static const uint8_t kwaj_magic[8] = {'K', 'W', 'A', 'J', 0x88U, 0xf0U, 0x27U, 0xd1U};
 
 typedef struct kwaj_header_s {
     uint32_t method;
@@ -117,18 +116,15 @@ typedef struct kwaj_stream_s {
     size_t count;
 } kwaj_stream;
 
-static bool kwaj_read_at(xx_io_device *device, int64_t offset, void *buffer,
-                         size_t size) {
+static bool kwaj_read_at(xx_io_device *device, int64_t offset, void *buffer, size_t size)
+{
     size_t done = 0U;
     const size_t io_capacity = xx_get_file_buffer_size();
-    if (!device || (!buffer && size != 0U) || offset < 0 ||
-        xx_io_seek64(device, offset, SEEK_SET) != 0)
-        return false;
+    if (!device || (!buffer && size != 0U) || offset < 0 || xx_io_seek64(device, offset, SEEK_SET) != 0) return false;
     while (done < size) {
         size_t request = size - done;
         if (request > io_capacity) request = io_capacity;
-        ssize_t amount = xx_io_read(device, (uint8_t *)buffer + done,
-                                    request);
+        ssize_t amount = xx_io_read(device, (uint8_t *)buffer + done, request);
         if (amount <= 0 || (size_t)amount > request) return false;
         done += (size_t)amount;
     }
@@ -137,15 +133,16 @@ static bool kwaj_read_at(xx_io_device *device, int64_t offset, void *buffer,
 
 /* ---- member name ------------------------------------------------------- */
 
-static char kwaj_upper(char c) {
+static char kwaj_upper(char c)
+{
     return (c >= 'a' && c <= 'z') ? (char)(c - 'a' + 'A') : c;
 }
 
-static bool kwaj_stem_is(const char *name, size_t stem, const char *word) {
+static bool kwaj_stem_is(const char *name, size_t stem, const char *word)
+{
     size_t index;
     for (index = 0U; index < stem; ++index)
-        if (!word[index] || kwaj_upper(name[index]) != word[index])
-            return false;
+        if (!word[index] || kwaj_upper(name[index]) != word[index]) return false;
     return word[stem] == 0;
 }
 
@@ -153,19 +150,16 @@ static bool kwaj_stem_is(const char *name, size_t stem, const char *word) {
  * separators, drive colons and the other characters Windows reserves,
  * names made only of dots and spaces ("." / ".."), and device names such
  * as CON, NUL.TXT, COM1 or CONIN$ in any case, with or without extension. */
-static bool kwaj_name_is_safe(const uint8_t *raw, size_t length) {
-    static const char *const devices[] = {"CON",    "PRN",     "AUX",
-                                          "NUL",    "CONIN$",  "CONOUT$",
-                                          "CLOCK$"};
+static bool kwaj_name_is_safe(const uint8_t *raw, size_t length)
+{
+    static const char *const devices[] = {"CON", "PRN", "AUX", "NUL", "CONIN$", "CONOUT$", "CLOCK$"};
     const char *name = (const char *)raw;
     size_t stem = 0U, index;
     bool meaningful = false;
     if (!raw || length == 0U) return false;
     for (index = 0U; index < length; ++index) {
         uint8_t c = raw[index];
-        if (c < 0x20U || (c >= 0x7fU && c <= 0x9fU) || c == '/' ||
-            c == '\\' || c == ':' || c == '<' || c == '>' || c == '"' ||
-            c == '|' || c == '?' || c == '*')
+        if (c < 0x20U || (c >= 0x7fU && c <= 0x9fU) || c == '/' || c == '\\' || c == ':' || c == '<' || c == '>' || c == '"' || c == '|' || c == '?' || c == '*')
             return false;
         if (c != '.' && c != ' ') meaningful = true;
     }
@@ -175,17 +169,16 @@ static bool kwaj_name_is_safe(const uint8_t *raw, size_t length) {
     for (index = 0U; index < sizeof(devices) / sizeof(devices[0]); ++index)
         if (kwaj_stem_is(name, stem, devices[index])) return false;
     if (stem == 4U && name[3] >= '0' && name[3] <= '9' &&
-        ((kwaj_upper(name[0]) == 'C' && kwaj_upper(name[1]) == 'O' &&
-          kwaj_upper(name[2]) == 'M') ||
-         (kwaj_upper(name[0]) == 'L' && kwaj_upper(name[1]) == 'P' &&
-          kwaj_upper(name[2]) == 'T')))
+        ((kwaj_upper(name[0]) == 'C' && kwaj_upper(name[1]) == 'O' && kwaj_upper(name[2]) == 'M') ||
+         (kwaj_upper(name[0]) == 'L' && kwaj_upper(name[1]) == 'P' && kwaj_upper(name[2]) == 'T')))
         return false;
     return true;
 }
 
 /* The stored bytes are read as Latin-1.  Bytes the listing cannot show
  * (controls) are listed as '_'; the name is then unsafe anyway. */
-static void kwaj_name_to_utf8(const uint8_t *raw, size_t length, char *out) {
+static void kwaj_name_to_utf8(const uint8_t *raw, size_t length, char *out)
+{
     size_t index, used = 0U;
     for (index = 0U; index < length; ++index) {
         uint8_t c = raw[index];
@@ -204,15 +197,12 @@ static void kwaj_name_to_utf8(const uint8_t *raw, size_t length, char *out) {
 /* A NUL-terminated field of at most @p limit characters, entirely before
  * the data offset.  Returns the length, or -1 when it is not terminated in
  * time (the header's names are then ignored, as Deark does). */
-static int kwaj_read_field(xx_io_device *device, int64_t base,
-                           int64_t position, int64_t data_offset,
-                           size_t limit, uint8_t *out) {
+static int kwaj_read_field(xx_io_device *device, int64_t base, int64_t position, int64_t data_offset, size_t limit, uint8_t *out)
+{
     uint8_t bytes[KWAJ_NAME_BASE_MAX + 1U];
     size_t available, index;
     if (position >= data_offset) return -1;
-    available = (size_t)((data_offset - position) < (int64_t)(limit + 1U)
-                             ? (data_offset - position)
-                             : (int64_t)(limit + 1U));
+    available = (size_t)((data_offset - position) < (int64_t)(limit + 1U) ? (data_offset - position) : (int64_t)(limit + 1U));
     if (!kwaj_read_at(device, base + position, bytes, available)) return -1;
     for (index = 0U; index < available; ++index) {
         if (bytes[index] == 0U) {
@@ -225,8 +215,8 @@ static int kwaj_read_field(xx_io_device *device, int64_t base,
 
 /* ---- header ------------------------------------------------------------ */
 
-static bool kwaj_parse_header(xx_io_device *device, int64_t base,
-                              int64_t size, kwaj_header *out) {
+static bool kwaj_parse_header(xx_io_device *device, int64_t base, int64_t size, kwaj_header *out)
+{
     uint8_t raw[KWAJ_HEADER_SIZE];
     uint8_t word[4];
     uint8_t base_name[KWAJ_NAME_BASE_MAX + 1U];
@@ -235,23 +225,17 @@ static bool kwaj_parse_header(xx_io_device *device, int64_t base,
     kwaj_header header;
     int64_t position;
     int base_length = -1, extension_length = -1;
-    if (!device || !out || base < 0 || size < KWAJ_HEADER_SIZE ||
-        !kwaj_read_at(device, base, raw, sizeof(raw)) ||
-        xx_rt_memcmp(raw, kwaj_magic, sizeof(kwaj_magic)) != 0)
+    if (!device || !out || base < 0 || size < KWAJ_HEADER_SIZE || !kwaj_read_at(device, base, raw, sizeof(raw)) || xx_rt_memcmp(raw, kwaj_magic, sizeof(kwaj_magic)) != 0)
         return false;
     xx_mem_zero(&header, sizeof(header));
     header.method = xx_data_get_u16(raw + 8U, 2, 0, false);
     header.data_offset = (int64_t)xx_data_get_u16(raw + 10U, 2, 0, false);
     header.flags = xx_data_get_u16(raw + 12U, 2, 0, false);
     /* The data cannot overlap the fixed header, and it must be present. */
-    if (header.method > KWAJ_METHOD_MSZIP ||
-        header.data_offset < KWAJ_HEADER_SIZE || header.data_offset > size)
-        return false;
+    if (header.method > KWAJ_METHOD_MSZIP || header.data_offset < KWAJ_HEADER_SIZE || header.data_offset > size) return false;
     position = KWAJ_HEADER_SIZE;
     if (header.flags & KWAJ_FLAG_LENGTH) {
-        if (header.data_offset - position < 4 ||
-            !kwaj_read_at(device, base + position, word, 4U))
-            return false;
+        if (header.data_offset - position < 4 || !kwaj_read_at(device, base + position, word, 4U)) return false;
         header.has_length = true;
         header.length = xx_data_get_u32(word, 4, 0, false);
         if ((uint64_t)header.length > KWAJ_MAX_OUTPUT) return false;
@@ -261,22 +245,16 @@ static bool kwaj_parse_header(xx_io_device *device, int64_t base,
      * explicitly, so a field that does not fit merely loses the name. */
     if (header.flags & KWAJ_FLAG_UNKNOWN1) position += 2;
     if (header.flags & KWAJ_FLAG_UNKNOWN2) {
-        if (header.data_offset - position < 2 ||
-            !kwaj_read_at(device, base + position, word, 2U))
-            goto names_done;
+        if (header.data_offset - position < 2 || !kwaj_read_at(device, base + position, word, 2U)) goto names_done;
         position += 2 + (int64_t)xx_data_get_u16(word, 2, 0, false);
     }
     if (header.flags & KWAJ_FLAG_NAME) {
-        base_length = kwaj_read_field(device, base, position,
-                                      header.data_offset, KWAJ_NAME_BASE_MAX,
-                                      base_name);
+        base_length = kwaj_read_field(device, base, position, header.data_offset, KWAJ_NAME_BASE_MAX, base_name);
         if (base_length < 0) goto names_done;
         position += base_length + 1;
     }
     if (header.flags & KWAJ_FLAG_EXTENSION) {
-        extension_length = kwaj_read_field(device, base, position,
-                                           header.data_offset,
-                                           KWAJ_NAME_EXT_MAX, extension);
+        extension_length = kwaj_read_field(device, base, position, header.data_offset, KWAJ_NAME_EXT_MAX, extension);
     }
 names_done:
     if (base_length > 0) {
@@ -292,8 +270,7 @@ names_done:
         kwaj_name_to_utf8(joined, length, header.name);
     } else {
         header.name_safe = true;
-        xx_rt_memcpy(header.name, KWAJ_PAYLOAD_NAME,
-                     sizeof(KWAJ_PAYLOAD_NAME));
+        xx_rt_memcpy(header.name, KWAJ_PAYLOAD_NAME, sizeof(KWAJ_PAYLOAD_NAME));
     }
     *out = header;
     return true;
@@ -312,7 +289,8 @@ typedef struct kwaj_input_s {
     size_t io_capacity;
 } kwaj_input;
 
-static kwaj_input *kwaj_input_create(void) {
+static kwaj_input *kwaj_input_create(void)
+{
     size_t capacity = xx_get_file_buffer_size();
     kwaj_input *state;
     if (capacity > ((size_t)-1 - sizeof(*state)) / 1U) return NULL;
@@ -323,14 +301,13 @@ static kwaj_input *kwaj_input_create(void) {
     return state;
 }
 
-
-static int kwaj_input_byte(kwaj_input *in) {
+static int kwaj_input_byte(kwaj_input *in)
+{
     if (in->index >= in->length) {
         int64_t left = in->end - in->next;
         size_t want;
         if (in->failed || left <= 0) return -1;
-        want = left < (int64_t)in->io_capacity ? (size_t)left
-                                              : in->io_capacity;
+        want = left < (int64_t)in->io_capacity ? (size_t)left : in->io_capacity;
         if (!kwaj_read_at(in->device, in->next, in->buffer, want)) {
             in->failed = true;
             return -1;
@@ -343,7 +320,8 @@ static int kwaj_input_byte(kwaj_input *in) {
 }
 
 /* Device offset just past the last byte handed out. */
-static int64_t kwaj_input_position(const kwaj_input *in) {
+static int64_t kwaj_input_position(const kwaj_input *in)
+{
     return in->next - (int64_t)(in->length - in->index);
 }
 
@@ -358,7 +336,8 @@ typedef struct kwaj_output_s {
     size_t io_capacity;
 } kwaj_output;
 
-static kwaj_output *kwaj_output_create(void) {
+static kwaj_output *kwaj_output_create(void)
+{
     size_t capacity = xx_get_file_buffer_size();
     kwaj_output *state;
     if (capacity > ((size_t)-1 - sizeof(*state)) / 1U) return NULL;
@@ -369,29 +348,28 @@ static kwaj_output *kwaj_output_create(void) {
     return state;
 }
 
-
-static bool kwaj_output_flush(kwaj_output *out) {
+static bool kwaj_output_flush(kwaj_output *out)
+{
     size_t done = 0U;
     if (out->pd && xx_pd_is_stopped(out->pd)) out->failed = true;
     while (!out->failed && out->device && done < out->used) {
-        ssize_t amount = xx_io_write(out->device, out->buffer + done,
-                                     out->used - done);
-        if (amount <= 0 || (size_t)amount > out->used - done)
-            out->failed = true;
-        else
-            done += (size_t)amount;
+        ssize_t amount = xx_io_write(out->device, out->buffer + done, out->used - done);
+        if (amount <= 0 || (size_t)amount > out->used - done) out->failed = true;
+        else done += (size_t)amount;
     }
     out->used = 0U;
     return !out->failed;
 }
 
-static bool kwaj_output_full(const kwaj_output *out) {
+static bool kwaj_output_full(const kwaj_output *out)
+{
     return out->failed || out->total >= out->limit;
 }
 
 /* False once no further byte is wanted: the limit is reached, a write
  * failed, or the caller cancelled. */
-static bool kwaj_output_byte(kwaj_output *out, uint8_t value) {
+static bool kwaj_output_byte(kwaj_output *out, uint8_t value)
+{
     if (kwaj_output_full(out)) return false;
     out->buffer[out->used++] = value;
     ++out->total;
@@ -401,7 +379,8 @@ static bool kwaj_output_byte(kwaj_output *out, uint8_t value) {
 
 /* ---- methods 0 and 1 ---------------------------------------------------- */
 
-static void kwaj_decode_copy(kwaj_input *in, kwaj_output *out, uint8_t mask) {
+static void kwaj_decode_copy(kwaj_input *in, kwaj_output *out, uint8_t mask)
+{
     while (!kwaj_output_full(out)) {
         int value = kwaj_input_byte(in);
         if (value < 0 || !kwaj_output_byte(out, (uint8_t)value ^ mask)) break;
@@ -410,8 +389,8 @@ static void kwaj_decode_copy(kwaj_input *in, kwaj_output *out, uint8_t mask) {
 
 /* ---- method 2: LZSS ------------------------------------------------------ */
 
-static void kwaj_decode_lzss(kwaj_input *in, kwaj_output *out,
-                             uint8_t *window) {
+static void kwaj_decode_lzss(kwaj_input *in, kwaj_output *out, uint8_t *window)
+{
     unsigned position = KWAJ_LZSS_START;
     xx_rt_memset(window, 0x20, KWAJ_WINDOW);
     for (;;) {
@@ -453,7 +432,8 @@ typedef struct kwaj_bits_s {
 } kwaj_bits;
 
 /* MSB-first.  At the end of the input it latches `eof` and yields 0. */
-static unsigned kwaj_bits_get(kwaj_bits *bits, unsigned width) {
+static unsigned kwaj_bits_get(kwaj_bits *bits, unsigned width)
+{
     if (bits->eof) return 0U;
     while (bits->count < width) {
         int value = kwaj_input_byte(bits->in);
@@ -478,8 +458,8 @@ typedef struct kwaj_huff_s {
 /* Canonical code from per-symbol lengths (0 = absent), shortest codes
  * first and, within a length, in symbol order.  An over-subscribed set is
  * corrupt; an incomplete one is allowed. */
-static bool kwaj_huff_build(kwaj_huff *huff, const uint8_t *lengths,
-                            unsigned symbols) {
+static bool kwaj_huff_build(kwaj_huff *huff, const uint8_t *lengths, unsigned symbols)
+{
     uint16_t offset[KWAJ_HUFF_MAX_BITS + 2U];
     unsigned index, bits;
     xx_mem_zero(huff, sizeof(*huff));
@@ -489,15 +469,10 @@ static bool kwaj_huff_build(kwaj_huff *huff, const uint8_t *lengths,
         ++huff->count[length];
         if (length > huff->max_bits) huff->max_bits = length;
     }
-    for (bits = 1U; bits <= huff->max_bits; ++bits)
-        huff->kraft += (uint64_t)huff->count[bits]
-                       << (huff->max_bits - bits);
-    if (huff->max_bits != 0U &&
-        huff->kraft > ((uint64_t)1U << huff->max_bits))
-        return false;
+    for (bits = 1U; bits <= huff->max_bits; ++bits) huff->kraft += (uint64_t)huff->count[bits] << (huff->max_bits - bits);
+    if (huff->max_bits != 0U && huff->kraft > ((uint64_t)1U << huff->max_bits)) return false;
     offset[1] = 0U;
-    for (bits = 1U; bits <= KWAJ_HUFF_MAX_BITS; ++bits)
-        offset[bits + 1U] = (uint16_t)(offset[bits] + huff->count[bits]);
+    for (bits = 1U; bits <= KWAJ_HUFF_MAX_BITS; ++bits) offset[bits + 1U] = (uint16_t)(offset[bits] + huff->count[bits]);
     for (index = 0U; index < symbols; ++index) {
         unsigned length = lengths[index];
         if (length == 0U || length > KWAJ_HUFF_MAX_BITS) continue;
@@ -508,7 +483,8 @@ static bool kwaj_huff_build(kwaj_huff *huff, const uint8_t *lengths,
 
 /* One symbol, or -1 at the end of the input.  A prefix that no code
  * continues yields symbol 0 after the bits read so far, as in Deark. */
-static int kwaj_huff_decode(const kwaj_huff *huff, kwaj_bits *bits) {
+static int kwaj_huff_decode(const kwaj_huff *huff, kwaj_bits *bits)
+{
     uint64_t code = 0U, first = 0U;
     unsigned length, index = 0U;
     if (huff->max_bits == 0U) {
@@ -520,8 +496,7 @@ static int kwaj_huff_decode(const kwaj_huff *huff, kwaj_bits *bits) {
         uint64_t used;
         code = (code << 1U) | kwaj_bits_get(bits, 1U);
         if (bits->eof) return -1;
-        if (code - first < huff->count[length])
-            return huff->symbol[index + (unsigned)(code - first)];
+        if (code - first < huff->count[length]) return huff->symbol[index + (unsigned)(code - first)];
         index += huff->count[length];
         first = (first + huff->count[length]) << 1U;
         used = (huff->kraft + (((uint64_t)1U << shift) - 1U)) >> shift;
@@ -531,49 +506,42 @@ static int kwaj_huff_decode(const kwaj_huff *huff, kwaj_bits *bits) {
 }
 
 /* Table encodings 0-3.  Lengths are 8-bit and wrap as in the reference. */
-static bool kwaj_huff_read(kwaj_huff *huff, kwaj_bits *bits, unsigned type,
-                           unsigned symbols) {
+static bool kwaj_huff_read(kwaj_huff *huff, kwaj_bits *bits, unsigned type, unsigned symbols)
+{
     uint8_t lengths[256];
     uint8_t previous;
     unsigned index;
     switch (type) {
-    case 0: {
-        uint8_t width = symbols <= 16U ? 4U : symbols <= 32U ? 5U
-                        : symbols <= 64U ? 6U : 8U;
-        for (index = 0U; index < symbols; ++index) lengths[index] = width;
-        break;
-    }
-    case 1:
-        lengths[0] = (uint8_t)kwaj_bits_get(bits, 4U);
-        previous = lengths[0];
-        for (index = 1U; index < symbols && !bits->eof; ++index) {
-            if (kwaj_bits_get(bits, 1U) != 0U) {
-                if (kwaj_bits_get(bits, 1U) == 0U)
-                    previous = (uint8_t)(previous + 1U);
-                else
-                    previous = (uint8_t)kwaj_bits_get(bits, 4U);
+        case 0: {
+            uint8_t width = symbols <= 16U ? 4U : symbols <= 32U ? 5U : symbols <= 64U ? 6U : 8U;
+            for (index = 0U; index < symbols; ++index) lengths[index] = width;
+            break;
+        }
+        case 1:
+            lengths[0] = (uint8_t)kwaj_bits_get(bits, 4U);
+            previous = lengths[0];
+            for (index = 1U; index < symbols && !bits->eof; ++index) {
+                if (kwaj_bits_get(bits, 1U) != 0U) {
+                    if (kwaj_bits_get(bits, 1U) == 0U) previous = (uint8_t)(previous + 1U);
+                    else previous = (uint8_t)kwaj_bits_get(bits, 4U);
+                }
+                lengths[index] = previous;
             }
-            lengths[index] = previous;
-        }
-        break;
-    case 2:
-        lengths[0] = (uint8_t)kwaj_bits_get(bits, 4U);
-        previous = lengths[0];
-        for (index = 1U; index < symbols && !bits->eof; ++index) {
-            unsigned step = kwaj_bits_get(bits, 2U);
-            if (step == 3U)
-                previous = (uint8_t)kwaj_bits_get(bits, 4U);
-            else
-                previous = (uint8_t)(previous + step - 1U);
-            lengths[index] = previous;
-        }
-        break;
-    case 3:
-        for (index = 0U; index < symbols && !bits->eof; ++index)
-            lengths[index] = (uint8_t)kwaj_bits_get(bits, 4U);
-        break;
-    default:
-        return false;
+            break;
+        case 2:
+            lengths[0] = (uint8_t)kwaj_bits_get(bits, 4U);
+            previous = lengths[0];
+            for (index = 1U; index < symbols && !bits->eof; ++index) {
+                unsigned step = kwaj_bits_get(bits, 2U);
+                if (step == 3U) previous = (uint8_t)kwaj_bits_get(bits, 4U);
+                else previous = (uint8_t)(previous + step - 1U);
+                lengths[index] = previous;
+            }
+            break;
+        case 3:
+            for (index = 0U; index < symbols && !bits->eof; ++index) lengths[index] = (uint8_t)kwaj_bits_get(bits, 4U);
+            break;
+        default: return false;
     }
     if (bits->eof) return false;
     return kwaj_huff_build(huff, lengths, symbols);
@@ -584,12 +552,18 @@ typedef struct kwaj_lzh_s {
     uint8_t window[KWAJ_WINDOW];
 } kwaj_lzh;
 
-enum { KWAJ_T_MATCH = 0, KWAJ_T_MATCH2, KWAJ_T_LITLEN, KWAJ_T_OFFSET,
-       KWAJ_T_LITERAL };
+enum {
+    KWAJ_T_MATCH = 0,
+    KWAJ_T_MATCH2,
+    KWAJ_T_LITLEN,
+    KWAJ_T_OFFSET,
+    KWAJ_T_LITERAL
+};
 
 /* False only when the table header is damaged; the token stream itself
  * ends wherever the input ends. */
-static bool kwaj_decode_lzh(kwaj_input *in, kwaj_output *out, kwaj_lzh *lzh) {
+static bool kwaj_decode_lzh(kwaj_input *in, kwaj_output *out, kwaj_lzh *lzh)
+{
     static const unsigned symbols[KWAJ_TREES] = {16U, 16U, 32U, 64U, 256U};
     unsigned types[KWAJ_TREES];
     kwaj_bits bits;
@@ -597,14 +571,11 @@ static bool kwaj_decode_lzh(kwaj_input *in, kwaj_output *out, kwaj_lzh *lzh) {
     unsigned index, position = 0U;
     xx_mem_zero(&bits, sizeof(bits));
     bits.in = in;
-    for (index = 0U; index < KWAJ_TREES; ++index)
-        types[index] = kwaj_bits_get(&bits, 4U);
+    for (index = 0U; index < KWAJ_TREES; ++index) types[index] = kwaj_bits_get(&bits, 4U);
     (void)kwaj_bits_get(&bits, 4U);
     if (bits.eof) return false;
     for (index = 0U; index < KWAJ_TREES; ++index)
-        if (!kwaj_huff_read(&lzh->tree[index], &bits, types[index],
-                            symbols[index]))
-            return false;
+        if (!kwaj_huff_read(&lzh->tree[index], &bits, types[index], symbols[index])) return false;
     xx_rt_memset(lzh->window, 0x20, sizeof(lzh->window));
     lengths_table = &lzh->tree[KWAJ_T_MATCH];
     for (;;) {
@@ -619,8 +590,7 @@ static bool kwaj_decode_lzh(kwaj_input *in, kwaj_output *out, kwaj_lzh *lzh) {
             if (high < 0) break;
             low = kwaj_bits_get(&bits, 6U);
             if (bits.eof) break;
-            from = (position - (((unsigned)high << 6U) | low)) &
-                   (KWAJ_WINDOW - 1U);
+            from = (position - (((unsigned)high << 6U) | low)) & (KWAJ_WINDOW - 1U);
             lengths_table = &lzh->tree[KWAJ_T_MATCH];
             for (index = 0U; index < count; ++index) {
                 uint8_t byte = lzh->window[from];
@@ -659,9 +629,8 @@ typedef struct kwaj_mszip_s {
  * stored Deflate block, which makes the shared 32 KiB history visible to
  * the public raw-Deflate decoder.  @p stream_end receives the offset just
  * past the chain. */
-static bool kwaj_decode_mszip(xx_io_device *device, int64_t start,
-                              int64_t end, kwaj_output *out,
-                              kwaj_mszip *work, int64_t *stream_end) {
+static bool kwaj_decode_mszip(xx_io_device *device, int64_t start, int64_t end, kwaj_output *out, kwaj_mszip *work, int64_t *stream_end)
+{
     int64_t position = start;
     size_t history = 0U;
     for (;;) {
@@ -677,18 +646,13 @@ static bool kwaj_decode_mszip(xx_io_device *device, int64_t start,
             break;
         }
         if (remaining < 4) break;
-        if (!kwaj_read_at(device, position + 2, head + 2, 2U) ||
-            head[2] != 'C' || head[3] != 'K')
-            return false;
+        if (!kwaj_read_at(device, position + 2, head + 2, 2U) || head[2] != 'C' || head[3] != 'K') return false;
         packed = xx_data_get_u16(head, 2, 0, false);
         if (packed <= 2U || (int64_t)packed - 2 > remaining - 4) return false;
         packed -= 2U;
-        if (!kwaj_read_at(device, position + 4, work->input + KWAJ_MSZIP_DATA,
-                          packed))
-            return false;
+        if (!kwaj_read_at(device, position + 4, work->input + KWAJ_MSZIP_DATA, packed)) return false;
         if (history != 0U) {
-            uint8_t *prefix = work->input + KWAJ_MSZIP_DATA - history -
-                              KWAJ_MSZIP_PREFIX;
+            uint8_t *prefix = work->input + KWAJ_MSZIP_DATA - history - KWAJ_MSZIP_PREFIX;
             prefix[0] = 0U;
             prefix[1] = (uint8_t)(history & 0xffU);
             prefix[2] = (uint8_t)(history >> 8U);
@@ -699,19 +663,14 @@ static bool kwaj_decode_mszip(xx_io_device *device, int64_t start,
             source = work->input + KWAJ_MSZIP_DATA;
         }
         source_size = (size_t)(work->input + KWAJ_MSZIP_DATA - source) + packed;
-        if (!xx_deflate_decompress_memory(source, source_size, work->output,
-                                          history + KWAJ_MSZIP_BLOCK,
-                                          &written, false) ||
-            written < history)
-            return false;
+        if (!xx_deflate_decompress_memory(source, source_size, work->output, history + KWAJ_MSZIP_BLOCK, &written, false) || written < history) return false;
         produced = written - history;
         for (index = 0U; index < produced; ++index)
             if (!kwaj_output_byte(out, work->output[history + index])) break;
         if (out->failed) return false;
         position += 4 + (int64_t)packed;
         if (produced < KWAJ_MSZIP_BLOCK) break;
-        xx_rt_memcpy(work->input + KWAJ_MSZIP_PREFIX,
-                     work->output + history, KWAJ_MSZIP_BLOCK);
+        xx_rt_memcpy(work->input + KWAJ_MSZIP_PREFIX, work->output + history, KWAJ_MSZIP_BLOCK);
         history = KWAJ_MSZIP_BLOCK;
     }
     *stream_end = position;
@@ -723,10 +682,9 @@ static bool kwaj_decode_mszip(xx_io_device *device, int64_t start,
 /* Decode the member.  @p destination may be NULL to measure only.  On
  * success @p produced is the member's size and @p stream_size the format
  * size (header included). */
-static bool kwaj_run(xx_io_device *device, int64_t base, int64_t input_size,
-                     const kwaj_header *header, xx_io_device *destination,
-                     xx_pd_struct *pd, uint64_t *produced,
-                     int64_t *stream_size) {
+static bool kwaj_run(xx_io_device *device, int64_t base, int64_t input_size, const kwaj_header *header, xx_io_device *destination, xx_pd_struct *pd, uint64_t *produced,
+                     int64_t *stream_size)
+{
     kwaj_output *out;
     int64_t start = base + header->data_offset;
     int64_t end = base + input_size;
@@ -736,8 +694,7 @@ static bool kwaj_run(xx_io_device *device, int64_t base, int64_t input_size,
     if (!out) return false;
     out->device = destination;
     out->pd = pd;
-    out->limit = header->has_length ? (uint64_t)header->length
-                                    : KWAJ_MAX_OUTPUT + 1U;
+    out->limit = header->has_length ? (uint64_t)header->length : KWAJ_MAX_OUTPUT + 1U;
     if (header->method == KWAJ_METHOD_MSZIP) {
         kwaj_mszip *work = (kwaj_mszip *)xx_mem_alloc(sizeof(*work));
         if (!work) goto done;
@@ -752,17 +709,17 @@ static bool kwaj_run(xx_io_device *device, int64_t base, int64_t input_size,
         in->end = end;
         result = true;
         switch (header->method) {
-        case KWAJ_METHOD_STORED: kwaj_decode_copy(in, out, 0x00U); break;
-        case KWAJ_METHOD_XOR: kwaj_decode_copy(in, out, 0xffU); break;
-        case KWAJ_METHOD_LZSS:
-            lzh = (kwaj_lzh *)xx_mem_alloc(sizeof(*lzh));
-            if (!lzh) result = false;
-            else kwaj_decode_lzss(in, out, lzh->window);
-            break;
-        default:
-            lzh = (kwaj_lzh *)xx_mem_alloc(sizeof(*lzh));
-            result = lzh && kwaj_decode_lzh(in, out, lzh);
-            break;
+            case KWAJ_METHOD_STORED: kwaj_decode_copy(in, out, 0x00U); break;
+            case KWAJ_METHOD_XOR: kwaj_decode_copy(in, out, 0xffU); break;
+            case KWAJ_METHOD_LZSS:
+                lzh = (kwaj_lzh *)xx_mem_alloc(sizeof(*lzh));
+                if (!lzh) result = false;
+                else kwaj_decode_lzss(in, out, lzh->window);
+                break;
+            default:
+                lzh = (kwaj_lzh *)xx_mem_alloc(sizeof(*lzh));
+                result = lzh && kwaj_decode_lzh(in, out, lzh);
+                break;
         }
         if (in->failed) result = false;
         /* With a declared length the stream ends at its last used byte;
@@ -773,9 +730,7 @@ static bool kwaj_run(xx_io_device *device, int64_t base, int64_t input_size,
     }
     if (result && !kwaj_output_flush(out)) result = false;
     if (result) {
-        if (header->has_length ? out->total != (uint64_t)header->length
-                               : out->total > KWAJ_MAX_OUTPUT)
-            result = false;
+        if (header->has_length ? out->total != (uint64_t)header->length : out->total > KWAJ_MAX_OUTPUT) result = false;
     }
     if (result) {
         *produced = out->total;
@@ -786,39 +741,29 @@ done:
     return result;
 }
 
-static bool kwaj_parse(Abstractformat *format, kwaj_context *out,
-                       bool measure, xx_pd_struct *pd) {
+static bool kwaj_parse(Abstractformat *format, kwaj_context *out, bool measure, xx_pd_struct *pd)
+{
     kwaj_context context;
     int64_t total;
-    if (!format || !format->device || !out || format->base_address < 0)
-        return false;
+    if (!format || !format->device || !out || format->base_address < 0) return false;
     total = xx_io_total_size(format->device);
     if (total < format->base_address) return false;
     xx_mem_zero(&context, sizeof(context));
     context.input_size = total - format->base_address;
-    if (!kwaj_parse_header(format->device, format->base_address,
-                           context.input_size, &context.header))
-        return false;
+    if (!kwaj_parse_header(format->device, format->base_address, context.input_size, &context.header)) return false;
     context.stream_size = context.input_size;
     if (context.header.has_length) {
         context.unpacked_size = context.header.length;
         context.unpacked_size_known = true;
         if (context.header.method <= KWAJ_METHOD_XOR) {
-            if ((int64_t)context.header.length >
-                context.input_size - context.header.data_offset)
-                return false;
-            context.stream_size =
-                context.header.data_offset + (int64_t)context.header.length;
+            if ((int64_t)context.header.length > context.input_size - context.header.data_offset) return false;
+            context.stream_size = context.header.data_offset + (int64_t)context.header.length;
         }
     }
-    if (measure &&
-        context.input_size - context.header.data_offset <= KWAJ_MAX_SIZE_PASS) {
+    if (measure && context.input_size - context.header.data_offset <= KWAJ_MAX_SIZE_PASS) {
         uint64_t produced = 0U;
         int64_t stream_size = 0;
-        if (!kwaj_run(format->device, format->base_address,
-                      context.input_size, &context.header, NULL, pd,
-                      &produced, &stream_size))
-            return false;
+        if (!kwaj_run(format->device, format->base_address, context.input_size, &context.header, NULL, pd, &produced, &stream_size)) return false;
         context.unpacked_size = produced;
         context.unpacked_size_known = true;
         context.stream_size = stream_size;
@@ -827,22 +772,21 @@ static bool kwaj_parse(Abstractformat *format, kwaj_context *out,
     return true;
 }
 
-static void kwaj_stream_free(void *opaque) {
+static void kwaj_stream_free(void *opaque)
+{
     if (opaque) xx_mem_free(opaque);
 }
 
-static bool kwaj_copy_options(xx_list_s *destination,
-                              const xx_list_s *source) {
+static bool kwaj_copy_options(xx_list_s *destination, const xx_list_s *source)
+{
     size_t index;
     if (!source) return true;
     for (index = 0U; index < source->count; ++index) {
-        const xx_meta *original =
-            (const xx_meta *)xx_list_at((const xx_list_t *)source, index);
+        const xx_meta *original = (const xx_meta *)xx_list_at((const xx_list_t *)source, index);
         xx_meta copy;
         if (!original) continue;
         xx_meta_init(&copy, original->meta_id);
-        if (!xx_var_copy(&copy.var, &original->var) ||
-            !xx_list_append(destination, &copy)) {
+        if (!xx_var_copy(&copy.var, &original->var) || !xx_list_append(destination, &copy)) {
             xx_meta_cleanup(&copy);
             return false;
         }
@@ -850,42 +794,34 @@ static bool kwaj_copy_options(xx_list_s *destination,
     return true;
 }
 
-static const xx_var *kwaj_option(const xx_list_s *options, uint32_t id) {
+static const xx_var *kwaj_option(const xx_list_s *options, uint32_t id)
+{
     size_t index;
     if (!options) return NULL;
     for (index = 0U; index < options->count; ++index) {
-        const xx_meta *meta =
-            (const xx_meta *)xx_list_at((const xx_list_t *)options, index);
+        const xx_meta *meta = (const xx_meta *)xx_list_at((const xx_list_t *)options, index);
         if (meta && meta->meta_id == id) return &meta->var;
     }
     return NULL;
 }
 
-static bool kwaj_set_record(xx_archive_record *record, int64_t base,
-                            const kwaj_context *context) {
+static bool kwaj_set_record(xx_archive_record *record, int64_t base, const kwaj_context *context)
+{
     xx_archive_record_cleanup(record);
     xx_archive_record_init(record);
     record->header_offset = base;
     record->header_size = context->header.data_offset;
     record->data_offset = base + context->header.data_offset;
-    record->compressed_size =
-        context->stream_size - context->header.data_offset;
+    record->compressed_size = context->stream_size - context->header.data_offset;
     return xx_archive_record_set_original_name(record, context->header.name) &&
-           xx_archive_record_set_meta_u64(
-               record, XX_META_ID_COMPRESSED_SIZE,
-               (uint64_t)(context->stream_size -
-                          context->header.data_offset)) &&
-           xx_archive_record_set_meta_u64(record, XX_META_ID_UNCOMPRESSED_SIZE,
-                                          context->unpacked_size) &&
-           xx_archive_record_set_meta_u64(record, XX_META_ID_COMPRESSION_METHOD,
-                                          context->header.method) &&
-           xx_archive_record_set_meta_bool(record, XX_META_ID_IS_ENCRYPTED,
-                                           false) &&
-           xx_archive_record_set_meta_bool(record, XX_META_ID_IS_FOLDER, false);
+           xx_archive_record_set_meta_u64(record, XX_META_ID_COMPRESSED_SIZE, (uint64_t)(context->stream_size - context->header.data_offset)) &&
+           xx_archive_record_set_meta_u64(record, XX_META_ID_UNCOMPRESSED_SIZE, context->unpacked_size) &&
+           xx_archive_record_set_meta_u64(record, XX_META_ID_COMPRESSION_METHOD, context->header.method) &&
+           xx_archive_record_set_meta_bool(record, XX_META_ID_IS_ENCRYPTED, false) && xx_archive_record_set_meta_bool(record, XX_META_ID_IS_FOLDER, false);
 }
 
-void xx_kwaj_init(xx_kwaj *archive, xx_io_device *device,
-                  int64_t base_address) {
+void xx_kwaj_init(xx_kwaj *archive, xx_io_device *device, int64_t base_address)
+{
     if (!archive) return;
     xx_mem_zero(archive, sizeof(*archive));
     xx_format_init(&archive->format, device, base_address);
@@ -898,31 +834,28 @@ void xx_kwaj_init(xx_kwaj *archive, xx_io_device *device,
     archive->format.check_is_valid = xx_kwaj_check_is_valid;
     archive->format.handle_base_info = xx_kwaj_handle_base_info;
     archive->format.get_format_size = xx_kwaj_get_format_size;
-    archive->format.get_number_of_archive_records =
-        xx_kwaj_get_number_of_archive_records;
-    archive->format.create_archive_records_reading =
-        xx_kwaj_create_archive_records_reading;
-    archive->format.get_current_archive_record =
-        xx_kwaj_get_current_archive_record;
-    archive->format.unpack_current_archive_record =
-        xx_kwaj_unpack_current_archive_record;
-    archive->format.archive_record_move_to_next =
-        xx_kwaj_archive_record_move_to_next;
-    archive->format.free_archive_records_reading =
-        xx_kwaj_free_archive_records_reading;
+    archive->format.get_number_of_archive_records = xx_kwaj_get_number_of_archive_records;
+    archive->format.create_archive_records_reading = xx_kwaj_create_archive_records_reading;
+    archive->format.get_current_archive_record = xx_kwaj_get_current_archive_record;
+    archive->format.unpack_current_archive_record = xx_kwaj_unpack_current_archive_record;
+    archive->format.archive_record_move_to_next = xx_kwaj_archive_record_move_to_next;
+    archive->format.free_archive_records_reading = xx_kwaj_free_archive_records_reading;
 }
 
-xx_kwaj *xx_kwaj_create(xx_io_device *device, int64_t base_address) {
+xx_kwaj *xx_kwaj_create(xx_io_device *device, int64_t base_address)
+{
     xx_kwaj *archive = (xx_kwaj *)xx_mem_alloc(sizeof(*archive));
     if (archive) xx_kwaj_init(archive, device, base_address);
     return archive;
 }
 
-void xx_kwaj_destroy(xx_kwaj *archive) {
+void xx_kwaj_destroy(xx_kwaj *archive)
+{
     if (archive) xx_format_cleanup_extra_parameters(&archive->format);
 }
 
-void xx_kwaj_free(xx_kwaj *archive) {
+void xx_kwaj_free(xx_kwaj *archive)
+{
     if (!archive) return;
     xx_kwaj_destroy(archive);
     xx_mem_free(archive);
@@ -930,12 +863,14 @@ void xx_kwaj_free(xx_kwaj *archive) {
 
 /* The header alone: magic, method, data offset and, when flagged, a length
  * field that fits before the data.  Cheap enough for the detector. */
-bool xx_kwaj_check_is_valid(Abstractformat *format, xx_pd_struct *pd) {
+bool xx_kwaj_check_is_valid(Abstractformat *format, xx_pd_struct *pd)
+{
     kwaj_context context;
     return kwaj_parse(format, &context, false, pd);
 }
 
-bool xx_kwaj_handle_base_info(Abstractformat *format, xx_pd_struct *pd) {
+bool xx_kwaj_handle_base_info(Abstractformat *format, xx_pd_struct *pd)
+{
     kwaj_context context;
     xx_kwaj *archive;
     if (!format || !kwaj_parse(format, &context, true, pd)) return false;
@@ -954,21 +889,18 @@ bool xx_kwaj_handle_base_info(Abstractformat *format, xx_pd_struct *pd) {
     return true;
 }
 
-int64_t xx_kwaj_get_format_size(Abstractformat *format, xx_pd_struct *pd) {
-    return format && (format->base_info_handled ||
-                      xx_kwaj_handle_base_info(format, pd))
-               ? format->format_size : -1;
+int64_t xx_kwaj_get_format_size(Abstractformat *format, xx_pd_struct *pd)
+{
+    return format && (format->base_info_handled || xx_kwaj_handle_base_info(format, pd)) ? format->format_size : -1;
 }
 
-uint64_t xx_kwaj_get_number_of_archive_records(Abstractformat *format,
-                                               xx_pd_struct *pd) {
-    return format && (format->base_info_handled ||
-                      xx_kwaj_handle_base_info(format, pd))
-               ? ((xx_kwaj *)format)->number_of_records : 0U;
+uint64_t xx_kwaj_get_number_of_archive_records(Abstractformat *format, xx_pd_struct *pd)
+{
+    return format && (format->base_info_handled || xx_kwaj_handle_base_info(format, pd)) ? ((xx_kwaj *)format)->number_of_records : 0U;
 }
 
-xx_archive_record_state *xx_kwaj_create_archive_records_reading(
-    Abstractformat *format, const xx_list_s *options, xx_pd_struct *pd) {
+xx_archive_record_state *xx_kwaj_create_archive_records_reading(Abstractformat *format, const xx_list_s *options, xx_pd_struct *pd)
+{
     kwaj_stream *stream;
     xx_archive_record_state *state;
     kwaj_context context;
@@ -986,9 +918,7 @@ xx_archive_record_state *xx_kwaj_create_archive_records_reading(
     state->internal_state = stream;
     state->free_internal = kwaj_stream_free;
     state->total_records = 1U;
-    if (!kwaj_copy_options(&state->options, options) ||
-        !kwaj_set_record(&state->current_record, format->base_address,
-                         &stream->context)) {
+    if (!kwaj_copy_options(&state->options, options) || !kwaj_set_record(&state->current_record, format->base_address, &stream->context)) {
         xx_archive_record_state_free(state);
         return NULL;
     }
@@ -996,40 +926,31 @@ xx_archive_record_state *xx_kwaj_create_archive_records_reading(
     return state;
 }
 
-const xx_archive_record *xx_kwaj_get_current_archive_record(
-    Abstractformat *format, xx_archive_record_state *state) {
-    return format && state && state->format == format && state->has_record
-               ? &state->current_record : NULL;
+const xx_archive_record *xx_kwaj_get_current_archive_record(Abstractformat *format, xx_archive_record_state *state)
+{
+    return format && state && state->format == format && state->has_record ? &state->current_record : NULL;
 }
 
-bool xx_kwaj_archive_record_move_to_next(Abstractformat *format,
-                                         xx_archive_record_state *state,
-                                         xx_pd_struct *pd) {
+bool xx_kwaj_archive_record_move_to_next(Abstractformat *format, xx_archive_record_state *state, xx_pd_struct *pd)
+{
     kwaj_stream *stream;
     (void)pd;
-    if (state && state->format == format &&
-        (stream = (kwaj_stream *)state->internal_state) != NULL)
-        stream->index = stream->count;
+    if (state && state->format == format && (stream = (kwaj_stream *)state->internal_state) != NULL) stream->index = stream->count;
     if (state) state->has_record = false;
     return false;
 }
 
-bool xx_kwaj_unpack_to_device(xx_kwaj *archive, xx_io_device *destination,
-                              xx_pd_struct *pd) {
+bool xx_kwaj_unpack_to_device(xx_kwaj *archive, xx_io_device *destination, xx_pd_struct *pd)
+{
     kwaj_context context;
     uint64_t produced = 0U;
     int64_t stream_size = 0;
-    if (!archive || !destination ||
-        !kwaj_parse(&archive->format, &context, false, pd))
-        return false;
-    return kwaj_run(archive->format.device, archive->format.base_address,
-                    context.input_size, &context.header, destination, pd,
-                    &produced, &stream_size);
+    if (!archive || !destination || !kwaj_parse(&archive->format, &context, false, pd)) return false;
+    return kwaj_run(archive->format.device, archive->format.base_address, context.input_size, &context.header, destination, pd, &produced, &stream_size);
 }
 
-bool xx_kwaj_unpack_current_archive_record(Abstractformat *format,
-                                           xx_archive_record_state *state,
-                                           xx_pd_struct *pd) {
+bool xx_kwaj_unpack_current_archive_record(Abstractformat *format, xx_archive_record_state *state, xx_pd_struct *pd)
+{
     kwaj_stream *stream;
     const xx_var *path_option;
     const char *base = NULL;
@@ -1039,39 +960,29 @@ bool xx_kwaj_unpack_current_archive_record(Abstractformat *format,
     bool created = false;
     uint64_t produced = 0U;
     int64_t stream_size = 0;
-    if (!format || !state || state->format != format || !state->has_record ||
-        !(stream = (kwaj_stream *)state->internal_state) ||
-        stream->index >= stream->count || (pd && xx_pd_is_stopped(pd)))
+    if (!format || !state || state->format != format || !state->has_record || !(stream = (kwaj_stream *)state->internal_state) || stream->index >= stream->count ||
+        (pd && xx_pd_is_stopped(pd)))
         return false;
     path_option = kwaj_option(&state->options, XX_META_ID_OPT_UNPACK_PATH);
     if (!path_option) {
         /* No destination: prove the member decodes. */
-        return kwaj_run(format->device, format->base_address,
-                        stream->context.input_size, &stream->context.header,
-                        NULL, pd, &produced, &stream_size);
+        return kwaj_run(format->device, format->base_address, stream->context.input_size, &stream->context.header, NULL, pd, &produced, &stream_size);
     }
     if (!stream->context.header.name_safe) return false;
-    if (path_option->type == XX_VAR_TYPE_STRING ||
-        path_option->type == XX_VAR_TYPE_STRING_VIEW)
-        base = xx_var_get_str(path_option);
-    else if (path_option->type == XX_VAR_TYPE_WSTRING ||
-             path_option->type == XX_VAR_TYPE_WSTRING_VIEW) {
+    if (path_option->type == XX_VAR_TYPE_STRING || path_option->type == XX_VAR_TYPE_STRING_VIEW) base = xx_var_get_str(path_option);
+    else if (path_option->type == XX_VAR_TYPE_WSTRING || path_option->type == XX_VAR_TYPE_WSTRING_VIEW) {
         owned_base = xx_str_unicode_to_utf8(xx_var_get_wstr(path_option));
         base = owned_base;
     }
     if (!base) goto done;
-    path = (base[0] && base[xx_str_len(base) - 1U] != '/' &&
-            base[xx_str_len(base) - 1U] != '\\')
-               ? xx_str_concat3(base, "/", stream->context.header.name)
-               : xx_str_concat(base, stream->context.header.name);
+    path = (base[0] && base[xx_str_len(base) - 1U] != '/' && base[xx_str_len(base) - 1U] != '\\') ? xx_str_concat3(base, "/", stream->context.header.name)
+                                                                                                  : xx_str_concat(base, stream->context.header.name);
     if (!path || !xx_store_create_dirs_a(path, false)) goto done;
     {
         xx_io_device *destination = xx_io_file_open(path, "wb");
         created = destination != NULL;
         if (!destination) goto done;
-        result = kwaj_run(format->device, format->base_address,
-                          stream->context.input_size, &stream->context.header,
-                          destination, pd, &produced, &stream_size);
+        result = kwaj_run(format->device, format->base_address, stream->context.input_size, &stream->context.header, destination, pd, &produced, &stream_size);
         if (xx_io_close(destination) != 0) result = false;
     }
 done:
@@ -1081,8 +992,8 @@ done:
     return result;
 }
 
-void xx_kwaj_free_archive_records_reading(Abstractformat *format,
-                                          xx_archive_record_state *state) {
+void xx_kwaj_free_archive_records_reading(Abstractformat *format, xx_archive_record_state *state)
+{
     (void)format;
     xx_archive_record_state_free(state);
 }

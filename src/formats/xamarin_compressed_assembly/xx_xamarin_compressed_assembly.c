@@ -34,8 +34,7 @@
 #include "xxfclib/data/xx_data.h"
 
 #ifdef XAMARIN_COMPRESSED_ASSEMBLY
-#define XX_XAMARIN_COMPRESSED_ASSEMBLY_FILE_TYPE \
-    XX_FILE_TYPE_XAMARIN_COMPRESSED_ASSEMBLY
+#define XX_XAMARIN_COMPRESSED_ASSEMBLY_FILE_TYPE XX_FILE_TYPE_XAMARIN_COMPRESSED_ASSEMBLY
 #else
 #define XX_XAMARIN_COMPRESSED_ASSEMBLY_FILE_TYPE XX_FILE_TYPE_UNKNOWN
 #endif
@@ -63,15 +62,12 @@ typedef struct xca_stream_s {
     size_t count;
 } xca_stream;
 
-static bool xca_read_at(xx_io_device *device, int64_t offset, void *buffer,
-                        size_t size) {
+static bool xca_read_at(xx_io_device *device, int64_t offset, void *buffer, size_t size)
+{
     size_t done = 0U;
-    if (!device || (!buffer && size != 0U) || offset < 0 ||
-        xx_io_seek64(device, offset, SEEK_SET) != 0)
-        return false;
+    if (!device || (!buffer && size != 0U) || offset < 0 || xx_io_seek64(device, offset, SEEK_SET) != 0) return false;
     while (done < size) {
-        ssize_t amount = xx_io_read(device, (uint8_t *)buffer + done,
-                                    size - done);
+        ssize_t amount = xx_io_read(device, (uint8_t *)buffer + done, size - done);
         if (amount <= 0 || (size_t)amount > size - done) return false;
         done += (size_t)amount;
     }
@@ -83,23 +79,22 @@ typedef struct xca_reader_s {
     xx_io_device *device;
     int64_t base;
     int64_t size;
-    int64_t position;  /**< Stream position of the next byte. */
-    int64_t start;     /**< Stream position of buffer[0]. */
+    int64_t position; /**< Stream position of the next byte. */
+    int64_t start;    /**< Stream position of buffer[0]. */
     size_t length;
     uint8_t *buffer;
 } xca_reader;
 
-static bool xca_get(xca_reader *reader, uint8_t *out) {
+static bool xca_get(xca_reader *reader, uint8_t *out)
+{
     int64_t offset;
     if (reader->position >= reader->size) return false;
     offset = reader->position - reader->start;
     if (offset < 0 || (uint64_t)offset >= (uint64_t)reader->length) {
         int64_t available = reader->size - reader->position;
-        size_t want = available < (int64_t)XCA_WINDOW ? (size_t)available
-                                                      : (size_t)XCA_WINDOW;
+        size_t want = available < (int64_t)XCA_WINDOW ? (size_t)available : (size_t)XCA_WINDOW;
         reader->length = 0U;
-        if (!xca_read_at(reader->device, reader->base + reader->position,
-                         reader->buffer, want)) return false;
+        if (!xca_read_at(reader->device, reader->base + reader->position, reader->buffer, want)) return false;
         reader->start = reader->position;
         reader->length = want;
         offset = 0;
@@ -109,7 +104,8 @@ static bool xca_get(xca_reader *reader, uint8_t *out) {
     return true;
 }
 
-static bool xca_skip(xca_reader *reader, uint64_t count) {
+static bool xca_skip(xca_reader *reader, uint64_t count)
+{
     if (count > (uint64_t)(reader->size - reader->position)) return false;
     reader->position += (int64_t)count;
     return true;
@@ -118,7 +114,8 @@ static bool xca_skip(xca_reader *reader, uint64_t count) {
 /* LZ4 length extension: 255-valued bytes continue, anything else ends.  The
  * sum is refused as soon as it passes `limit`, so a run of 0xFF bytes costs
  * at most limit/255 reads. */
-static bool xca_extend(xca_reader *reader, uint64_t *length, uint64_t limit) {
+static bool xca_extend(xca_reader *reader, uint64_t *length, uint64_t limit)
+{
     for (;;) {
         uint8_t byte;
         if (!xca_get(reader, &byte)) return false;
@@ -130,9 +127,8 @@ static bool xca_extend(xca_reader *reader, uint64_t *length, uint64_t limit) {
 
 /* Walk the sequence grammar of a raw LZ4 block that must decode to exactly
  * `unpacked` bytes; on success `*packed` is the block's length. */
-static bool xca_measure(xx_io_device *device, int64_t base, int64_t available,
-                        uint32_t unpacked, int64_t *packed,
-                        xx_pd_struct *pd) {
+static bool xca_measure(xx_io_device *device, int64_t base, int64_t available, uint32_t unpacked, int64_t *packed, xx_pd_struct *pd)
+{
     xca_reader reader;
     uint64_t produced = 0U, iterations = 0U;
     bool result = false;
@@ -145,8 +141,7 @@ static bool xca_measure(xx_io_device *device, int64_t base, int64_t available,
     for (;;) {
         uint8_t token, low, high;
         uint64_t literals, match, distance, room;
-        if ((++iterations & 0xFFFFU) == 0U && pd && xx_pd_is_stopped(pd))
-            goto done;
+        if ((++iterations & 0xFFFFU) == 0U && pd && xx_pd_is_stopped(pd)) goto done;
         if (!xca_get(&reader, &token)) goto done;
         room = (uint64_t)unpacked - produced;
         literals = (uint64_t)(token >> 4U);
@@ -174,48 +169,41 @@ done:
     return result;
 }
 
-static bool xca_parse(Abstractformat *format, xca_context *out,
-                      xx_pd_struct *pd) {
+static bool xca_parse(Abstractformat *format, xca_context *out, xx_pd_struct *pd)
+{
     uint8_t header[XCA_HEADER_SIZE];
     xca_context context;
     int64_t total, size;
-    if (!format || !format->device || !out || format->base_address < 0)
-        return false;
+    if (!format || !format->device || !out || format->base_address < 0) return false;
     total = xx_io_total_size(format->device);
     if (total < format->base_address) return false;
     size = total - format->base_address;
     /* Header plus at least the one token a non-empty block needs. */
-    if (size < XCA_HEADER_SIZE + 1 ||
-        !xca_read_at(format->device, format->base_address, header,
-                     sizeof(header)) ||
-        header[0] != 'X' || header[1] != 'A' || header[2] != 'L' ||
-        header[3] != 'Z') return false;
+    if (size < XCA_HEADER_SIZE + 1 || !xca_read_at(format->device, format->base_address, header, sizeof(header)) || header[0] != 'X' || header[1] != 'A' ||
+        header[2] != 'L' || header[3] != 'Z')
+        return false;
     xx_mem_zero(&context, sizeof(context));
     context.descriptor_index = xx_data_get_u32(header + 4, 4, 0, false);
     context.unpacked_size = xx_data_get_u32(header + 8, 4, 0, false);
-    if (context.unpacked_size == 0U ||
-        context.unpacked_size > XCA_MAX_UNPACKED) return false;
+    if (context.unpacked_size == 0U || context.unpacked_size > XCA_MAX_UNPACKED) return false;
     context.header_offset = format->base_address;
     context.packed_offset = format->base_address + XCA_HEADER_SIZE;
-    if (!xca_measure(format->device, context.packed_offset,
-                     size - XCA_HEADER_SIZE, context.unpacked_size,
-                     &context.packed_size, pd)) return false;
+    if (!xca_measure(format->device, context.packed_offset, size - XCA_HEADER_SIZE, context.unpacked_size, &context.packed_size, pd)) return false;
     context.format_size = XCA_HEADER_SIZE + context.packed_size;
     *out = context;
     return true;
 }
 
-static bool xca_copy_options(xx_list_s *destination, const xx_list_s *source) {
+static bool xca_copy_options(xx_list_s *destination, const xx_list_s *source)
+{
     size_t index;
     if (!source) return true;
     for (index = 0U; index < source->count; ++index) {
-        const xx_meta *original =
-            (const xx_meta *)xx_list_at((const xx_list_t *)source, index);
+        const xx_meta *original = (const xx_meta *)xx_list_at((const xx_list_t *)source, index);
         xx_meta copy;
         if (!original) continue;
         xx_meta_init(&copy, original->meta_id);
-        if (!xx_var_copy(&copy.var, &original->var) ||
-            !xx_list_append(destination, &copy)) {
+        if (!xx_var_copy(&copy.var, &original->var) || !xx_list_append(destination, &copy)) {
             xx_meta_cleanup(&copy);
             return false;
         }
@@ -223,19 +211,19 @@ static bool xca_copy_options(xx_list_s *destination, const xx_list_s *source) {
     return true;
 }
 
-static const xx_var *xca_option(const xx_list_s *options, uint32_t id) {
+static const xx_var *xca_option(const xx_list_s *options, uint32_t id)
+{
     size_t index;
     if (!options) return NULL;
     for (index = 0U; index < options->count; ++index) {
-        const xx_meta *meta =
-            (const xx_meta *)xx_list_at((const xx_list_t *)options, index);
+        const xx_meta *meta = (const xx_meta *)xx_list_at((const xx_list_t *)options, index);
         if (meta && meta->meta_id == id) return &meta->var;
     }
     return NULL;
 }
 
-static bool xca_set_record(xx_archive_record *record,
-                           const xca_context *context) {
+static bool xca_set_record(xx_archive_record *record, const xca_context *context)
+{
     xx_archive_record_cleanup(record);
     xx_archive_record_init(record);
     record->header_offset = context->header_offset;
@@ -243,20 +231,14 @@ static bool xca_set_record(xx_archive_record *record,
     record->data_offset = context->packed_offset;
     record->compressed_size = context->packed_size;
     return xx_archive_record_set_original_name(record, XCA_PAYLOAD_NAME) &&
-           xx_archive_record_set_meta_u64(record, XX_META_ID_COMPRESSED_SIZE,
-                                          (uint64_t)context->packed_size) &&
-           xx_archive_record_set_meta_u64(record, XX_META_ID_UNCOMPRESSED_SIZE,
-                                          context->unpacked_size) &&
-           xx_archive_record_set_meta_u64(record, XX_META_ID_COMPRESSION_METHOD,
-                                          1U) &&
-           xx_archive_record_set_meta_bool(record, XX_META_ID_IS_ENCRYPTED,
-                                           false) &&
+           xx_archive_record_set_meta_u64(record, XX_META_ID_COMPRESSED_SIZE, (uint64_t)context->packed_size) &&
+           xx_archive_record_set_meta_u64(record, XX_META_ID_UNCOMPRESSED_SIZE, context->unpacked_size) &&
+           xx_archive_record_set_meta_u64(record, XX_META_ID_COMPRESSION_METHOD, 1U) && xx_archive_record_set_meta_bool(record, XX_META_ID_IS_ENCRYPTED, false) &&
            xx_archive_record_set_meta_bool(record, XX_META_ID_IS_FOLDER, false);
 }
 
-void xx_xamarin_compressed_assembly_init(
-    xx_xamarin_compressed_assembly *archive, xx_io_device *device,
-    int64_t base_address) {
+void xx_xamarin_compressed_assembly_init(xx_xamarin_compressed_assembly *archive, xx_io_device *device, int64_t base_address)
+{
     if (!archive) return;
     xx_mem_zero(archive, sizeof(*archive));
     xx_format_init(&archive->format, device, base_address);
@@ -266,55 +248,44 @@ void xx_xamarin_compressed_assembly_init(
     archive->format.is_archive = true;
     xx_format_set_mime_type(&archive->format, "application/octet-stream");
     xx_format_set_extension(&archive->format, "dll");
-    archive->format.check_is_valid =
-        xx_xamarin_compressed_assembly_check_is_valid;
-    archive->format.handle_base_info =
-        xx_xamarin_compressed_assembly_handle_base_info;
-    archive->format.get_format_size =
-        xx_xamarin_compressed_assembly_get_format_size;
-    archive->format.get_number_of_archive_records =
-        xx_xamarin_compressed_assembly_get_number_of_archive_records;
-    archive->format.create_archive_records_reading =
-        xx_xamarin_compressed_assembly_create_archive_records_reading;
-    archive->format.get_current_archive_record =
-        xx_xamarin_compressed_assembly_get_current_archive_record;
-    archive->format.unpack_current_archive_record =
-        xx_xamarin_compressed_assembly_unpack_current_archive_record;
-    archive->format.archive_record_move_to_next =
-        xx_xamarin_compressed_assembly_archive_record_move_to_next;
-    archive->format.free_archive_records_reading =
-        xx_xamarin_compressed_assembly_free_archive_records_reading;
+    archive->format.check_is_valid = xx_xamarin_compressed_assembly_check_is_valid;
+    archive->format.handle_base_info = xx_xamarin_compressed_assembly_handle_base_info;
+    archive->format.get_format_size = xx_xamarin_compressed_assembly_get_format_size;
+    archive->format.get_number_of_archive_records = xx_xamarin_compressed_assembly_get_number_of_archive_records;
+    archive->format.create_archive_records_reading = xx_xamarin_compressed_assembly_create_archive_records_reading;
+    archive->format.get_current_archive_record = xx_xamarin_compressed_assembly_get_current_archive_record;
+    archive->format.unpack_current_archive_record = xx_xamarin_compressed_assembly_unpack_current_archive_record;
+    archive->format.archive_record_move_to_next = xx_xamarin_compressed_assembly_archive_record_move_to_next;
+    archive->format.free_archive_records_reading = xx_xamarin_compressed_assembly_free_archive_records_reading;
 }
 
-xx_xamarin_compressed_assembly *xx_xamarin_compressed_assembly_create(
-    xx_io_device *device, int64_t base_address) {
-    xx_xamarin_compressed_assembly *archive =
-        (xx_xamarin_compressed_assembly *)xx_mem_alloc(sizeof(*archive));
-    if (archive)
-        xx_xamarin_compressed_assembly_init(archive, device, base_address);
+xx_xamarin_compressed_assembly *xx_xamarin_compressed_assembly_create(xx_io_device *device, int64_t base_address)
+{
+    xx_xamarin_compressed_assembly *archive = (xx_xamarin_compressed_assembly *)xx_mem_alloc(sizeof(*archive));
+    if (archive) xx_xamarin_compressed_assembly_init(archive, device, base_address);
     return archive;
 }
 
-void xx_xamarin_compressed_assembly_destroy(
-    xx_xamarin_compressed_assembly *archive) {
+void xx_xamarin_compressed_assembly_destroy(xx_xamarin_compressed_assembly *archive)
+{
     if (archive) xx_format_cleanup_extra_parameters(&archive->format);
 }
 
-void xx_xamarin_compressed_assembly_free(
-    xx_xamarin_compressed_assembly *archive) {
+void xx_xamarin_compressed_assembly_free(xx_xamarin_compressed_assembly *archive)
+{
     if (!archive) return;
     xx_xamarin_compressed_assembly_destroy(archive);
     xx_mem_free(archive);
 }
 
-bool xx_xamarin_compressed_assembly_check_is_valid(Abstractformat *format,
-                                                   xx_pd_struct *pd) {
+bool xx_xamarin_compressed_assembly_check_is_valid(Abstractformat *format, xx_pd_struct *pd)
+{
     xca_context context;
     return xca_parse(format, &context, pd);
 }
 
-bool xx_xamarin_compressed_assembly_handle_base_info(Abstractformat *format,
-                                                     xx_pd_struct *pd) {
+bool xx_xamarin_compressed_assembly_handle_base_info(Abstractformat *format, xx_pd_struct *pd)
+{
     xca_context context;
     xx_xamarin_compressed_assembly *archive;
     if (!format || !xca_parse(format, &context, pd)) return false;
@@ -330,30 +301,25 @@ bool xx_xamarin_compressed_assembly_handle_base_info(Abstractformat *format,
     return true;
 }
 
-int64_t xx_xamarin_compressed_assembly_get_format_size(Abstractformat *format,
-                                                       xx_pd_struct *pd) {
-    return format && (format->base_info_handled ||
-                      xx_xamarin_compressed_assembly_handle_base_info(format,
-                                                                      pd))
-               ? format->format_size : -1;
+int64_t xx_xamarin_compressed_assembly_get_format_size(Abstractformat *format, xx_pd_struct *pd)
+{
+    return format && (format->base_info_handled || xx_xamarin_compressed_assembly_handle_base_info(format, pd)) ? format->format_size : -1;
 }
 
-uint64_t xx_xamarin_compressed_assembly_get_number_of_archive_records(
-    Abstractformat *format, xx_pd_struct *pd) {
-    return format && (format->base_info_handled ||
-                      xx_xamarin_compressed_assembly_handle_base_info(format,
-                                                                      pd))
+uint64_t xx_xamarin_compressed_assembly_get_number_of_archive_records(Abstractformat *format, xx_pd_struct *pd)
+{
+    return format && (format->base_info_handled || xx_xamarin_compressed_assembly_handle_base_info(format, pd))
                ? ((xx_xamarin_compressed_assembly *)format)->number_of_records
                : 0U;
 }
 
-static void xca_stream_free(void *opaque) {
+static void xca_stream_free(void *opaque)
+{
     if (opaque) xx_mem_free(opaque);
 }
 
-xx_archive_record_state *
-xx_xamarin_compressed_assembly_create_archive_records_reading(
-    Abstractformat *format, const xx_list_s *options, xx_pd_struct *pd) {
+xx_archive_record_state *xx_xamarin_compressed_assembly_create_archive_records_reading(Abstractformat *format, const xx_list_s *options, xx_pd_struct *pd)
+{
     xca_stream *stream;
     xx_archive_record_state *state;
     xca_context context;
@@ -371,8 +337,7 @@ xx_xamarin_compressed_assembly_create_archive_records_reading(
     state->internal_state = stream;
     state->free_internal = xca_stream_free;
     state->total_records = 1U;
-    if (!xca_copy_options(&state->options, options) ||
-        !xca_set_record(&state->current_record, &stream->context)) {
+    if (!xca_copy_options(&state->options, options) || !xca_set_record(&state->current_record, &stream->context)) {
         xx_archive_record_state_free(state);
         return NULL;
     }
@@ -380,20 +345,16 @@ xx_xamarin_compressed_assembly_create_archive_records_reading(
     return state;
 }
 
-const xx_archive_record *
-xx_xamarin_compressed_assembly_get_current_archive_record(
-    Abstractformat *format, xx_archive_record_state *state) {
-    return format && state && state->format == format && state->has_record
-               ? &state->current_record : NULL;
+const xx_archive_record *xx_xamarin_compressed_assembly_get_current_archive_record(Abstractformat *format, xx_archive_record_state *state)
+{
+    return format && state && state->format == format && state->has_record ? &state->current_record : NULL;
 }
 
-bool xx_xamarin_compressed_assembly_archive_record_move_to_next(
-    Abstractformat *format, xx_archive_record_state *state, xx_pd_struct *pd) {
+bool xx_xamarin_compressed_assembly_archive_record_move_to_next(Abstractformat *format, xx_archive_record_state *state, xx_pd_struct *pd)
+{
     xca_stream *stream;
     (void)pd;
-    if (!format || !state || state->format != format ||
-        !(stream = (xca_stream *)state->internal_state) ||
-        ++stream->index >= stream->count) {
+    if (!format || !state || state->format != format || !(stream = (xca_stream *)state->internal_state) || ++stream->index >= stream->count) {
         if (state) state->has_record = false;
         return false;
     }
@@ -402,25 +363,20 @@ bool xx_xamarin_compressed_assembly_archive_record_move_to_next(
 
 /* Decode the measured block into a buffer of exactly the declared size.
  * The caller frees *out_data. */
-static bool xca_decode(Abstractformat *format, const xca_context *context,
-                       uint8_t **out_data) {
+static bool xca_decode(Abstractformat *format, const xca_context *context, uint8_t **out_data)
+{
     uint8_t *packed = NULL;
     uint8_t *plain = NULL;
     size_t written = 0U;
     bool result = false;
     *out_data = NULL;
-    if (context->packed_size <= 0 ||
-        (uint64_t)context->packed_size > (uint64_t)SIZE_MAX ||
-        context->unpacked_size == 0U ||
-        context->unpacked_size > XCA_MAX_UNPACKED) return false;
+    if (context->packed_size <= 0 || (uint64_t)context->packed_size > (uint64_t)SIZE_MAX || context->unpacked_size == 0U || context->unpacked_size > XCA_MAX_UNPACKED)
+        return false;
     packed = (uint8_t *)xx_mem_alloc((size_t)context->packed_size);
     plain = (uint8_t *)xx_mem_alloc((size_t)context->unpacked_size);
-    if (!packed || !plain ||
-        !xca_read_at(format->device, context->packed_offset, packed,
-                     (size_t)context->packed_size) ||
-        !xx_lz4_decompress_block(packed, (size_t)context->packed_size, plain,
-                                 (size_t)context->unpacked_size, &written) ||
-        written != (size_t)context->unpacked_size) goto done;
+    if (!packed || !plain || !xca_read_at(format->device, context->packed_offset, packed, (size_t)context->packed_size) ||
+        !xx_lz4_decompress_block(packed, (size_t)context->packed_size, plain, (size_t)context->unpacked_size, &written) || written != (size_t)context->unpacked_size)
+        goto done;
     *out_data = plain;
     plain = NULL;
     result = true;
@@ -430,8 +386,8 @@ done:
     return result;
 }
 
-bool xx_xamarin_compressed_assembly_unpack_current_archive_record(
-    Abstractformat *format, xx_archive_record_state *state, xx_pd_struct *pd) {
+bool xx_xamarin_compressed_assembly_unpack_current_archive_record(Abstractformat *format, xx_archive_record_state *state, xx_pd_struct *pd)
+{
     xca_stream *stream;
     const xx_var *path_option;
     const char *base = NULL;
@@ -440,9 +396,8 @@ bool xx_xamarin_compressed_assembly_unpack_current_archive_record(
     uint8_t *plain = NULL;
     bool result = false;
     bool created = false;
-    if (!format || !state || state->format != format || !state->has_record ||
-        !(stream = (xca_stream *)state->internal_state) ||
-        stream->index >= stream->count || (pd && xx_pd_is_stopped(pd)))
+    if (!format || !state || state->format != format || !state->has_record || !(stream = (xca_stream *)state->internal_state) || stream->index >= stream->count ||
+        (pd && xx_pd_is_stopped(pd)))
         return false;
     path_option = xca_option(&state->options, XX_META_ID_OPT_UNPACK_PATH);
     if (!path_option) {
@@ -451,21 +406,16 @@ bool xx_xamarin_compressed_assembly_unpack_current_archive_record(
         if (plain) xx_mem_free(plain);
         return result;
     }
-    if (path_option->type == XX_VAR_TYPE_STRING ||
-        path_option->type == XX_VAR_TYPE_STRING_VIEW)
-        base = xx_var_get_str(path_option);
-    else if (path_option->type == XX_VAR_TYPE_WSTRING ||
-             path_option->type == XX_VAR_TYPE_WSTRING_VIEW) {
+    if (path_option->type == XX_VAR_TYPE_STRING || path_option->type == XX_VAR_TYPE_STRING_VIEW) base = xx_var_get_str(path_option);
+    else if (path_option->type == XX_VAR_TYPE_WSTRING || path_option->type == XX_VAR_TYPE_WSTRING_VIEW) {
         owned_base = xx_str_unicode_to_utf8(xx_var_get_wstr(path_option));
         base = owned_base;
     }
     if (!base) goto done;
     /* Decode first so a bad stream never touches the destination. */
     if (!xca_decode(format, &stream->context, &plain)) goto done;
-    path = (base[0] && base[xx_str_len(base) - 1U] != '/' &&
-            base[xx_str_len(base) - 1U] != '\\')
-               ? xx_str_concat3(base, "/", XCA_PAYLOAD_NAME)
-               : xx_str_concat(base, XCA_PAYLOAD_NAME);
+    path = (base[0] && base[xx_str_len(base) - 1U] != '/' && base[xx_str_len(base) - 1U] != '\\') ? xx_str_concat3(base, "/", XCA_PAYLOAD_NAME)
+                                                                                                  : xx_str_concat(base, XCA_PAYLOAD_NAME);
     if (!path || !xx_store_create_dirs_a(path, false)) goto done;
     {
         size_t done_bytes = 0U, total = (size_t)stream->context.unpacked_size;
@@ -474,8 +424,7 @@ bool xx_xamarin_compressed_assembly_unpack_current_archive_record(
         created = true;
         result = true;
         while (done_bytes < total) {
-            ssize_t amount = xx_io_write(destination, plain + done_bytes,
-                                         total - done_bytes);
+            ssize_t amount = xx_io_write(destination, plain + done_bytes, total - done_bytes);
             if (amount <= 0 || (size_t)amount > total - done_bytes) {
                 result = false;
                 break;
@@ -492,8 +441,8 @@ done:
     return result;
 }
 
-void xx_xamarin_compressed_assembly_free_archive_records_reading(
-    Abstractformat *format, xx_archive_record_state *state) {
+void xx_xamarin_compressed_assembly_free_archive_records_reading(Abstractformat *format, xx_archive_record_state *state)
+{
     (void)format;
     xx_archive_record_state_free(state);
 }

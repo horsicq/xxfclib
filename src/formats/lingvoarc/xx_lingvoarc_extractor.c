@@ -17,66 +17,60 @@
 #include "../xx_format_extractor_engine.h"
 #include "xxfclib/formats/lingvoarc/xx_lingvoarc.h"
 
-static const uint8_t k_anchor0[] = { 0x6C, 0x69, 0x6E, 0x67, 0x76, 0x6F, 0x41, 0x72, 0x63, 0x31, 0x00, 0xFD, 0x00, 0xDF, 0x00, 0xFF };
-static const uint8_t k_anchor1[] = { 0x6C, 0x69, 0x6E, 0x67, 0x76, 0x6F, 0x41, 0x72, 0x63, 0x32, 0x00, 0xFD, 0x00, 0xDF, 0x00, 0xFF };
-static const uint8_t k_anchor2[] = { 0x4C, 0x69, 0x6E, 0x67, 0x76, 0x6F, 0x41, 0x72, 0x63, 0x68, 0x01, 0x00, 0xF0, 0x1F, 0x00, 0x01, 0x40, 0x00, 0x47, 0x01, 0x47, 0x01, 0x1F, 0x83, 0x41, 0x01 };
+static const uint8_t k_anchor0[] = {0x6C, 0x69, 0x6E, 0x67, 0x76, 0x6F, 0x41, 0x72, 0x63, 0x31, 0x00, 0xFD, 0x00, 0xDF, 0x00, 0xFF};
+static const uint8_t k_anchor1[] = {0x6C, 0x69, 0x6E, 0x67, 0x76, 0x6F, 0x41, 0x72, 0x63, 0x32, 0x00, 0xFD, 0x00, 0xDF, 0x00, 0xFF};
+static const uint8_t k_anchor2[] = {0x4C, 0x69, 0x6E, 0x67, 0x76, 0x6F, 0x41, 0x72, 0x63, 0x68, 0x01, 0x00, 0xF0,
+                                    0x1F, 0x00, 0x01, 0x40, 0x00, 0x47, 0x01, 0x47, 0x01, 0x1F, 0x83, 0x41, 0x01};
 
 static const xx_format_search_anchor k_anchors[] = {
-    { k_anchor0, sizeof(k_anchor0), 0U },
-    { k_anchor1, sizeof(k_anchor1), 0U },
-    { k_anchor2, sizeof(k_anchor2), 0U },
+    {k_anchor0, sizeof(k_anchor0), 0U},
+    {k_anchor1, sizeof(k_anchor1), 0U},
+    {k_anchor2, sizeof(k_anchor2), 0U},
 };
 
-static const xx_file_type_t k_types[] = { XX_FILE_TYPE_LINGVOARC };
+static const xx_file_type_t k_types[] = {XX_FILE_TYPE_LINGVOARC};
 
-static Abstractformat *xx_lingvoarc_search_open(xx_io_device *window) {
+static Abstractformat *xx_lingvoarc_search_open(xx_io_device *window)
+{
     xx_lingvoarc *reader = xx_lingvoarc_create(window, 0);
     return reader ? &reader->format : NULL;
 }
 
-static void xx_lingvoarc_search_close(Abstractformat *format) {
+static void xx_lingvoarc_search_close(Abstractformat *format)
+{
     /* The format is the first member, so this is the reader itself. */
     xx_lingvoarc_free((xx_lingvoarc *)format);
 }
 
 static const xx_format_search_desc k_desc = {
-    k_types, sizeof(k_types) / sizeof(k_types[0]),
-    k_anchors, sizeof(k_anchors) / sizeof(k_anchors[0]),
-    xx_lingvoarc_search_open, xx_lingvoarc_search_close, false
-};
+    k_types, sizeof(k_types) / sizeof(k_types[0]), k_anchors, sizeof(k_anchors) / sizeof(k_anchors[0]), xx_lingvoarc_search_open, xx_lingvoarc_search_close, false};
 
-static xx_format_search_state *xx_lingvoarc_create_format_search(
-    xx_format_extractor *self, xx_io_device *device, const xx_list_s *options,
-    xx_pd_struct *pd) {
+static xx_format_search_state *xx_lingvoarc_create_format_search(xx_format_extractor *self, xx_io_device *device, const xx_list_s *options, xx_pd_struct *pd)
+{
     (void)self;
     return xx_format_search_create(&k_desc, device, options, pd);
 }
 
-static const xx_format_search_info *xx_lingvoarc_get_current_format_info(
-    xx_format_extractor *self, xx_format_search_state *state) {
+static const xx_format_search_info *xx_lingvoarc_get_current_format_info(xx_format_extractor *self, xx_format_search_state *state)
+{
     (void)self;
     return xx_format_search_current(state);
 }
 
-static bool xx_lingvoarc_format_search_find_next(xx_format_extractor *self,
-                                          xx_format_search_state *state,
-                                          xx_pd_struct *pd) {
+static bool xx_lingvoarc_format_search_find_next(xx_format_extractor *self, xx_format_search_state *state, xx_pd_struct *pd)
+{
     (void)self;
     return xx_format_search_find_next(state, pd);
 }
 
-static void xx_lingvoarc_free_format_search(xx_format_extractor *self,
-                                     xx_format_search_state *state) {
+static void xx_lingvoarc_free_format_search(xx_format_extractor *self, xx_format_search_state *state)
+{
     (void)self;
     xx_format_search_free(state);
 }
 
-xx_format_extractor xx_lingvoarc_extractor = {
-    xx_lingvoarc_create_format_search,
-    xx_lingvoarc_get_current_format_info,
-    xx_lingvoarc_format_search_find_next,
-    xx_lingvoarc_free_format_search
-};
+xx_format_extractor xx_lingvoarc_extractor = {xx_lingvoarc_create_format_search, xx_lingvoarc_get_current_format_info, xx_lingvoarc_format_search_find_next,
+                                              xx_lingvoarc_free_format_search};
 
 /* BEGIN GENERATED ABSTRACT EXTRACTOR */
 #include "../xx_format_abstract_extractor_adapter.h"

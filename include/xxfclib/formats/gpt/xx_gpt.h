@@ -84,11 +84,11 @@ typedef struct xx_gpt XGpt;
 
 /** One published partition, as seen by a caller that wants to recurse. */
 typedef struct xx_gpt_partition_info {
-    int64_t offset;          /**< Absolute device offset of the payload. */
-    int64_t size;            /**< Bytes actually present on the device. */
-    uint64_t declared_size;  /**< (ending - starting + 1) * block size. */
+    int64_t offset;         /**< Absolute device offset of the payload. */
+    int64_t size;           /**< Bytes actually present on the device. */
+    uint64_t declared_size; /**< (ending - starting + 1) * block size. */
     uint64_t starting_lba;
-    uint64_t ending_lba;     /**< Inclusive, as stored. */
+    uint64_t ending_lba; /**< Inclusive, as stored. */
     uint64_t attributes;
     uint32_t entry_index;    /**< Slot in the entry array. */
     const char *type_guid;   /**< Canonical uppercase type GUID text. */
@@ -102,16 +102,16 @@ struct xx_gpt {
     Abstractformat format;
     uint64_t number_of_records;
     uint64_t number_of_members;
-    uint32_t block_size;        /**< 512 or 4096, as probed. */
-    uint32_t entry_count;       /**< Declared array slots. */
-    uint32_t entry_size;        /**< Declared bytes per slot. */
+    uint32_t block_size;  /**< 512 or 4096, as probed. */
+    uint32_t entry_count; /**< Declared array slots. */
+    uint32_t entry_size;  /**< Declared bytes per slot. */
     uint64_t first_usable_lba;
     uint64_t last_usable_lba;
     uint64_t partition_entry_lba;
-    bool used_backup;           /**< The primary header or array was bad. */
-    bool header_crc_valid;      /**< The header actually used verified. */
-    bool entries_crc_valid;     /**< The array actually used verified. */
-    int64_t archive_end;        /**< End of the farthest partition, or -1. */
+    bool used_backup;       /**< The primary header or array was bad. */
+    bool header_crc_valid;  /**< The header actually used verified. */
+    bool entries_crc_valid; /**< The array actually used verified. */
+    int64_t archive_end;    /**< End of the farthest partition, or -1. */
     void *internal;
 };
 
@@ -123,19 +123,13 @@ XXFC_API void xx_gpt_free(xx_gpt *gpt);
 XXFC_API bool xx_gpt_check_is_valid(Abstractformat *self, xx_pd_struct *pd);
 XXFC_API bool xx_gpt_handle_base_info(Abstractformat *self, xx_pd_struct *pd);
 XXFC_API int64_t xx_gpt_get_format_size(Abstractformat *self, xx_pd_struct *pd);
-XXFC_API uint64_t xx_gpt_get_number_of_archive_records(Abstractformat *self,
-                                                       xx_pd_struct *pd);
+XXFC_API uint64_t xx_gpt_get_number_of_archive_records(Abstractformat *self, xx_pd_struct *pd);
 
-XXFC_API xx_archive_record_state *xx_gpt_create_archive_records_reading(
-    Abstractformat *self, const xx_list_s *options, xx_pd_struct *pd);
-XXFC_API const xx_archive_record *xx_gpt_get_current_archive_record(
-    Abstractformat *self, xx_archive_record_state *state);
-XXFC_API bool xx_gpt_unpack_current_archive_record(
-    Abstractformat *self, xx_archive_record_state *state, xx_pd_struct *pd);
-XXFC_API bool xx_gpt_archive_record_move_to_next(
-    Abstractformat *self, xx_archive_record_state *state, xx_pd_struct *pd);
-XXFC_API void xx_gpt_free_archive_records_reading(
-    Abstractformat *self, xx_archive_record_state *state);
+XXFC_API xx_archive_record_state *xx_gpt_create_archive_records_reading(Abstractformat *self, const xx_list_s *options, xx_pd_struct *pd);
+XXFC_API const xx_archive_record *xx_gpt_get_current_archive_record(Abstractformat *self, xx_archive_record_state *state);
+XXFC_API bool xx_gpt_unpack_current_archive_record(Abstractformat *self, xx_archive_record_state *state, xx_pd_struct *pd);
+XXFC_API bool xx_gpt_archive_record_move_to_next(Abstractformat *self, xx_archive_record_state *state, xx_pd_struct *pd);
+XXFC_API void xx_gpt_free_archive_records_reading(Abstractformat *self, xx_archive_record_state *state);
 
 XXFC_API uint64_t xx_gpt_get_number_of_records(const xx_gpt *gpt);
 XXFC_API uint64_t xx_gpt_get_number_of_members(const xx_gpt *gpt);
@@ -150,21 +144,26 @@ XXFC_API const char *xx_gpt_type_name(const char *type_guid);
 
 /** Fill info for the index-th published partition. Requires that base info
  * has already been handled. Returns false for an out-of-range index. */
-XXFC_API bool xx_gpt_get_partition_info(const xx_gpt *gpt, uint64_t index,
-                                        xx_gpt_partition_info *info);
+XXFC_API bool xx_gpt_get_partition_info(const xx_gpt *gpt, uint64_t index, xx_gpt_partition_info *info);
 
-static inline Abstractformat *xx_gpt_to_format(xx_gpt *gpt) {
+static inline Abstractformat *xx_gpt_to_format(xx_gpt *gpt)
+{
     return gpt ? &gpt->format : NULL;
 }
-static inline void XGpt_init(xx_gpt *gpt, xx_io_device *dev,
-                             int64_t base_address) {
+static inline void XGpt_init(xx_gpt *gpt, xx_io_device *dev, int64_t base_address)
+{
     xx_gpt_init(gpt, dev, base_address);
 }
-static inline xx_gpt *XGpt_create(xx_io_device *dev, int64_t base_address) {
+static inline xx_gpt *XGpt_create(xx_io_device *dev, int64_t base_address)
+{
     return xx_gpt_create(dev, base_address);
 }
-static inline void XGpt_free(xx_gpt *gpt) { xx_gpt_free(gpt); }
-static inline bool XGpt_is_valid(xx_gpt *gpt, xx_pd_struct *pd) {
+static inline void XGpt_free(xx_gpt *gpt)
+{
+    xx_gpt_free(gpt);
+}
+static inline bool XGpt_is_valid(xx_gpt *gpt, xx_pd_struct *pd)
+{
     return gpt ? xx_format_is_valid(&gpt->format, pd) : false;
 }
 

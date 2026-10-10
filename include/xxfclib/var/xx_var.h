@@ -57,17 +57,17 @@ typedef enum xx_var_type_e {
     XX_VAR_TYPE_BOOL,
 
     /* Dynamically allocated types (memory allocated via xx_mem_alloc, freed automatically) */
-    XX_VAR_TYPE_STRING,         /**< Owned dynamic ANSI/UTF-8 string (freed with xx_mem_free) */
-    XX_VAR_TYPE_WSTRING,        /**< Owned dynamic Unicode string (wchar_t*, freed with xx_mem_free) */
-    XX_VAR_TYPE_BYTES,          /**< Owned dynamic byte buffer (freed with xx_mem_free) */
+    XX_VAR_TYPE_STRING,  /**< Owned dynamic ANSI/UTF-8 string (freed with xx_mem_free) */
+    XX_VAR_TYPE_WSTRING, /**< Owned dynamic Unicode string (wchar_t*, freed with xx_mem_free) */
+    XX_VAR_TYPE_BYTES,   /**< Owned dynamic byte buffer (freed with xx_mem_free) */
 
     /* View types (non-owning pointer references, never freed) */
-    XX_VAR_TYPE_STRING_VIEW,    /**< Non-owning ANSI/UTF-8 string pointer */
-    XX_VAR_TYPE_WSTRING_VIEW,   /**< Non-owning Unicode wchar_t string pointer */
-    XX_VAR_TYPE_BYTES_VIEW,     /**< Non-owning byte slice pointer */
+    XX_VAR_TYPE_STRING_VIEW,  /**< Non-owning ANSI/UTF-8 string pointer */
+    XX_VAR_TYPE_WSTRING_VIEW, /**< Non-owning Unicode wchar_t string pointer */
+    XX_VAR_TYPE_BYTES_VIEW,   /**< Non-owning byte slice pointer */
 
     /* Generic pointer type */
-    XX_VAR_TYPE_PTR             /**< Generic pointer (freed if is_allocated is true) */
+    XX_VAR_TYPE_PTR /**< Generic pointer (freed if is_allocated is true) */
 } xx_var_type_t;
 
 /**
@@ -79,9 +79,9 @@ typedef void (*xx_var_free_fn)(void *ptr);
  * @brief Variant structure holding scalar, view, or dynamically allocated values.
  */
 typedef struct xx_var {
-    uint32_t type;             /**< Variant value type (xx_var_type_t) */
-    bool is_allocated;         /**< True if value holds allocated memory that must be freed */
-    xx_var_free_fn free_fn;    /**< Optional custom destructor (if NULL, xx_mem_free is used) */
+    uint32_t type;          /**< Variant value type (xx_var_type_t) */
+    bool is_allocated;      /**< True if value holds allocated memory that must be freed */
+    xx_var_free_fn free_fn; /**< Optional custom destructor (if NULL, xx_mem_free is used) */
     union {
         int8_t i8;
         int16_t i16;
@@ -146,7 +146,8 @@ XXFC_API bool xx_var_copy(xx_var *dst, const xx_var *src);
  * @param var Pointer to xx_var.
  * @return True if memory was allocated and will be freed on cleanup.
  */
-static inline bool xx_var_is_allocated(const xx_var *var) {
+static inline bool xx_var_is_allocated(const xx_var *var)
+{
     return var ? var->is_allocated : false;
 }
 
@@ -155,7 +156,8 @@ static inline bool xx_var_is_allocated(const xx_var *var) {
  * @param var Pointer to xx_var.
  * @return xx_var_type_t enum value.
  */
-static inline xx_var_type_t xx_var_get_type(const xx_var *var) {
+static inline xx_var_type_t xx_var_get_type(const xx_var *var)
+{
     return var ? (xx_var_type_t)var->type : XX_VAR_TYPE_NONE;
 }
 
@@ -241,18 +243,30 @@ XXFC_API int64_t xx_var_get_i64(const xx_var *var);
 XXFC_API uint64_t xx_var_get_u64(const xx_var *var);
 XXFC_API double xx_var_get_double(const xx_var *var);
 XXFC_API bool xx_var_get_bool(const xx_var *var);
-XXFC_API const char* xx_var_get_str(const xx_var *var);
-XXFC_API const wchar_t* xx_var_get_wstr(const xx_var *var);
-XXFC_API const void* xx_var_get_bytes(const xx_var *var, size_t *out_size);
-XXFC_API void* xx_var_get_ptr(const xx_var *var);
+XXFC_API const char *xx_var_get_str(const xx_var *var);
+XXFC_API const wchar_t *xx_var_get_wstr(const xx_var *var);
+XXFC_API const void *xx_var_get_bytes(const xx_var *var, size_t *out_size);
+XXFC_API void *xx_var_get_ptr(const xx_var *var);
 
 /* Unicode convenience aliases */
-#define XX_VAR_TYPE_UNICODE       XX_VAR_TYPE_WSTRING
-#define XX_VAR_TYPE_UNICODE_VIEW  XX_VAR_TYPE_WSTRING_VIEW
-static inline bool xx_var_set_unicode(xx_var *var, const wchar_t *wstr) { return xx_var_set_wstr(var, wstr); }
-static inline bool xx_var_set_unicode_take(xx_var *var, wchar_t *wstr, size_t len) { return xx_var_set_wstr_take(var, wstr, len); }
-static inline void xx_var_set_unicode_view(xx_var *var, const wchar_t *wstr, size_t len) { xx_var_set_wstr_view(var, wstr, len); }
-static inline const wchar_t* xx_var_get_unicode(const xx_var *var) { return xx_var_get_wstr(var); }
+#define XX_VAR_TYPE_UNICODE XX_VAR_TYPE_WSTRING
+#define XX_VAR_TYPE_UNICODE_VIEW XX_VAR_TYPE_WSTRING_VIEW
+static inline bool xx_var_set_unicode(xx_var *var, const wchar_t *wstr)
+{
+    return xx_var_set_wstr(var, wstr);
+}
+static inline bool xx_var_set_unicode_take(xx_var *var, wchar_t *wstr, size_t len)
+{
+    return xx_var_set_wstr_take(var, wstr, len);
+}
+static inline void xx_var_set_unicode_view(xx_var *var, const wchar_t *wstr, size_t len)
+{
+    xx_var_set_wstr_view(var, wstr, len);
+}
+static inline const wchar_t *xx_var_get_unicode(const xx_var *var)
+{
+    return xx_var_get_wstr(var);
+}
 
 #ifdef __cplusplus
 }

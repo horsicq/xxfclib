@@ -126,7 +126,8 @@ typedef struct xx_ibmpack_lzw_s {
     int nibble_high;
 } xx_ibmpack_lzw;
 
-static void xx_ibmpack_lzw_reset(xx_ibmpack_lzw *lzw) {
+static void xx_ibmpack_lzw_reset(xx_ibmpack_lzw *lzw)
+{
     uint16_t code;
 
     xx_mem_zero(lzw, sizeof(*lzw));
@@ -148,23 +149,21 @@ static void xx_ibmpack_lzw_reset(xx_ibmpack_lzw *lzw) {
     lzw->hold = 0U;
 }
 
-static void xx_ibmpack_lzw_unlink(xx_ibmpack_lzw *lzw, uint16_t code) {
+static void xx_ibmpack_lzw_unlink(xx_ibmpack_lzw *lzw, uint16_t code)
+{
     uint16_t next = lzw->newer[code];
     uint16_t prev = lzw->older[code];
 
-    if (code == lzw->newest)
-        lzw->newest = prev;
-    else
-        lzw->older[next] = prev;
-    if (code == lzw->oldest)
-        lzw->oldest = next;
-    else
-        lzw->newer[prev] = next;
+    if (code == lzw->newest) lzw->newest = prev;
+    else lzw->older[next] = prev;
+    if (code == lzw->oldest) lzw->oldest = next;
+    else lzw->newer[prev] = next;
     lzw->older[code] = 0U;
     lzw->newer[code] = 0U;
 }
 
-static void xx_ibmpack_lzw_touch(xx_ibmpack_lzw *lzw, uint16_t code) {
+static void xx_ibmpack_lzw_touch(xx_ibmpack_lzw *lzw, uint16_t code)
+{
     lzw->newer[lzw->newest] = code;
     lzw->older[code] = lzw->newest;
     lzw->newer[code] = 0U;
@@ -173,7 +172,8 @@ static void xx_ibmpack_lzw_touch(xx_ibmpack_lzw *lzw, uint16_t code) {
 
 /* Recycle the least-recently-used slot and describe the phrase
  * oldcode + first(tcode) in it. */
-static bool xx_ibmpack_lzw_build(xx_ibmpack_lzw *lzw, uint16_t newcode) {
+static bool xx_ibmpack_lzw_build(xx_ibmpack_lzw *lzw, uint16_t newcode)
+{
     uint16_t lru = lzw->oldest;
     uint16_t parent = lzw->charlink[lru];
     uint16_t source;
@@ -207,8 +207,8 @@ static bool xx_ibmpack_lzw_build(xx_ibmpack_lzw *lzw, uint16_t newcode) {
 }
 
 /* Walk a phrase back to its root, filling @p phrase from the end. */
-static bool xx_ibmpack_lzw_expand(xx_ibmpack_lzw *lzw, uint16_t code,
-                                  uint32_t *length) {
+static bool xx_ibmpack_lzw_expand(xx_ibmpack_lzw *lzw, uint16_t code, uint32_t *length)
+{
     uint32_t want;
     uint32_t index;
     uint32_t position;
@@ -238,9 +238,8 @@ static bool xx_ibmpack_lzw_expand(xx_ibmpack_lzw *lzw, uint16_t code,
  * seeing code 0 is NOT an error: the container ends a member at a byte
  * boundary and several corpus members simply stop there.
  */
-static bool xx_ibmpack_lzw_run(const uint8_t *input, size_t input_size,
-                               uint8_t *output, size_t limit,
-                               size_t *produced) {
+static bool xx_ibmpack_lzw_run(const uint8_t *input, size_t input_size, uint8_t *output, size_t limit, size_t *produced)
+{
     xx_ibmpack_lzw *lzw;
     size_t position = 0U;
     size_t written = 0U;
@@ -313,13 +312,11 @@ typedef struct xx_ibmpack_stream_s {
 
 static void xx_ibmpack_vtable_destroy(Abstractformat *self);
 
-static bool xx_ibmpack_read_at(Abstractformat *self, int64_t offset,
-                               uint8_t *buffer, size_t size) {
+static bool xx_ibmpack_read_at(Abstractformat *self, int64_t offset, uint8_t *buffer, size_t size)
+{
     size_t done = 0U;
 
-    if (!self || !self->device || offset < 0 || (!buffer && size != 0U) ||
-        xx_io_seek64(self->device, offset, SEEK_SET) != 0)
-        return false;
+    if (!self || !self->device || offset < 0 || (!buffer && size != 0U) || xx_io_seek64(self->device, offset, SEEK_SET) != 0) return false;
     while (done < size) {
         ssize_t got = xx_io_read(self->device, buffer + done, size - done);
         if (got <= 0 || (size_t)got > size - done) return false;
@@ -328,17 +325,16 @@ static bool xx_ibmpack_read_at(Abstractformat *self, int64_t offset,
     return true;
 }
 
-static bool xx_ibmpack_variant_known(uint32_t variant) {
-    return variant == XX_IBMPACK_VARIANT_P1A ||
-           variant == XX_IBMPACK_VARIANT_P1B ||
-           variant == XX_IBMPACK_VARIANT_CHAIN ||
-           variant == XX_IBMPACK_VARIANT_PLAIN;
+static bool xx_ibmpack_variant_known(uint32_t variant)
+{
+    return variant == XX_IBMPACK_VARIANT_P1A || variant == XX_IBMPACK_VARIANT_P1B || variant == XX_IBMPACK_VARIANT_CHAIN || variant == XX_IBMPACK_VARIANT_PLAIN;
 }
 
 /* The stored name is an MS-DOS path with backslash separators.  Only the
  * filesystem-facing form is rewritten; the bytes themselves are kept for the
  * caller's code page. */
-static char *xx_ibmpack_normalize_name(const uint8_t *bytes, size_t size) {
+static char *xx_ibmpack_normalize_name(const uint8_t *bytes, size_t size)
+{
     char *name;
     size_t input = 0U;
     size_t output = 0U;
@@ -351,17 +347,12 @@ static char *xx_ibmpack_normalize_name(const uint8_t *bytes, size_t size) {
         size_t end;
         size_t component;
 
-        while (input < size &&
-               (bytes[input] == '/' || bytes[input] == '\\'))
-            ++input;
+        while (input < size && (bytes[input] == '/' || bytes[input] == '\\')) ++input;
         start = input;
-        while (input < size && bytes[input] != '/' && bytes[input] != '\\')
-            ++input;
+        while (input < size && bytes[input] != '/' && bytes[input] != '\\') ++input;
         end = input;
-        if (end == start || (end - start == 1U && bytes[start] == '.'))
-            continue;
-        if (end - start == 2U && bytes[start] == '.' &&
-            bytes[start + 1U] == '.') {
+        if (end == start || (end - start == 1U && bytes[start] == '.')) continue;
+        if (end - start == 2U && bytes[start] == '.' && bytes[start + 1U] == '.') {
             if (output != 0U) {
                 while (output != 0U && name[output - 1U] != '/') --output;
                 if (output != 0U) --output;
@@ -372,15 +363,10 @@ static char *xx_ibmpack_normalize_name(const uint8_t *bytes, size_t size) {
         component = output;
         while (start < end) {
             uint8_t c = bytes[start++];
-            if (c < 0x20U || c == '"' || c == '*' || c == ':' || c == '<' ||
-                c == '>' || c == '?' || c == '|')
-                name[output++] = '_';
-            else
-                name[output++] = (char)c;
+            if (c < 0x20U || c == '"' || c == '*' || c == ':' || c == '<' || c == '>' || c == '?' || c == '|') name[output++] = '_';
+            else name[output++] = (char)c;
         }
-        while (output > component &&
-               (name[output - 1U] == ' ' || name[output - 1U] == '.'))
-            --output;
+        while (output > component && (name[output - 1U] == ' ' || name[output - 1U] == '.')) --output;
         if (output == component) name[output++] = '_';
     }
     if (output == 0U) name[output++] = '_';
@@ -388,45 +374,39 @@ static char *xx_ibmpack_normalize_name(const uint8_t *bytes, size_t size) {
     return name;
 }
 
-static bool xx_ibmpack_path_safe(const char *name) {
+static bool xx_ibmpack_path_safe(const char *name)
+{
     const char *cursor = name;
 
-    if (!name || !name[0] || name[0] == '/' || name[0] == '\\' ||
-        name[1] == ':')
-        return false;
+    if (!name || !name[0] || name[0] == '/' || name[0] == '\\' || name[1] == ':') return false;
     while (*cursor) {
         const char *end = cursor;
         size_t length;
         while (*end && *end != '/') ++end;
         length = (size_t)(end - cursor);
-        if (length == 0U || (length == 1U && cursor[0] == '.') ||
-            (length == 2U && cursor[0] == '.' && cursor[1] == '.'))
-            return false;
+        if (length == 0U || (length == 1U && cursor[0] == '.') || (length == 2U && cursor[0] == '.' && cursor[1] == '.')) return false;
         cursor = *end ? end + 1 : end;
     }
     return true;
 }
 
-static void xx_ibmpack_stream_free(void *pointer) {
+static void xx_ibmpack_stream_free(void *pointer)
+{
     xx_ibmpack_stream *stream = (xx_ibmpack_stream *)pointer;
     size_t index;
 
     if (!stream) return;
-    for (index = 0U; index < stream->count; ++index)
-        xx_str_free(stream->items[index].name);
+    for (index = 0U; index < stream->count; ++index) xx_str_free(stream->items[index].name);
     xx_mem_free(stream->items);
     xx_mem_free(stream);
 }
 
-static bool xx_ibmpack_add(xx_ibmpack_stream *stream,
-                           const xx_ibmpack_member *member) {
+static bool xx_ibmpack_add(xx_ibmpack_stream *stream, const xx_ibmpack_member *member)
+{
     xx_ibmpack_member *grown;
 
-    if (stream->count >= XX_IBMPACK_MAX_MEMBERS ||
-        stream->count > SIZE_MAX / sizeof(*grown) - 1U)
-        return false;
-    grown = (xx_ibmpack_member *)xx_mem_realloc(
-        stream->items, sizeof(*grown) * (stream->count + 1U));
+    if (stream->count >= XX_IBMPACK_MAX_MEMBERS || stream->count > SIZE_MAX / sizeof(*grown) - 1U) return false;
+    grown = (xx_ibmpack_member *)xx_mem_realloc(stream->items, sizeof(*grown) * (stream->count + 1U));
     if (!grown) return false;
     stream->items = grown;
     stream->items[stream->count++] = *member;
@@ -435,9 +415,8 @@ static bool xx_ibmpack_add(xx_ibmpack_stream *stream,
 
 /* Parse one member header at @p offset (relative to base_address).  On
  * success @p next receives the chained successor's relative offset, or 0. */
-static bool xx_ibmpack_read_member(Abstractformat *self, int64_t span,
-                                   int64_t offset, xx_ibmpack_member *member,
-                                   int64_t *next) {
+static bool xx_ibmpack_read_member(Abstractformat *self, int64_t span, int64_t offset, xx_ibmpack_member *member, int64_t *next)
+{
     uint8_t header[26];
     uint8_t namebuf[XX_IBMPACK_MAX_NAME];
     uint32_t variant;
@@ -453,24 +432,18 @@ static bool xx_ibmpack_read_member(Abstractformat *self, int64_t span,
     xx_mem_zero(member, sizeof(*member));
     *next = 0;
     if (offset < 0 || span - offset < XX_IBMPACK_MIN_HEADER) return false;
-    if (!xx_ibmpack_read_at(self, self->base_address + offset, header,
-                            XX_IBMPACK_MIN_HEADER))
-        return false;
-    if (header[0] != XX_IBMPACK_SIG0 || header[1] != XX_IBMPACK_SIG1)
-        return false;
+    if (!xx_ibmpack_read_at(self, self->base_address + offset, header, XX_IBMPACK_MIN_HEADER)) return false;
+    if (header[0] != XX_IBMPACK_SIG0 || header[1] != XX_IBMPACK_SIG1) return false;
     variant = xx_data_get_u16(header + 2, 2, 0, false);
     if (!xx_ibmpack_variant_known(variant)) return false;
 
     member->variant = variant;
     member->attributes = header[8];
-    member->timestamp = ((uint64_t)xx_data_get_u16(header + 4, 2, 0, false) << 16) |
-                        (uint64_t)xx_data_get_u16(header + 6, 2, 0, false);
+    member->timestamp = ((uint64_t)xx_data_get_u16(header + 4, 2, 0, false) << 16) | (uint64_t)xx_data_get_u16(header + 6, 2, 0, false);
 
     if (variant == XX_IBMPACK_VARIANT_CHAIN) {
         if (span - offset < 26) return false;
-        if (!xx_ibmpack_read_at(self, self->base_address + offset, header,
-                                sizeof(header)))
-            return false;
+        if (!xx_ibmpack_read_at(self, self->base_address + offset, header, sizeof(header))) return false;
         extended_attributes = xx_data_get_u32(header + 12, 4, 0, false);
         declared = xx_data_get_u32(header + 16, 4, 0, false);
         successor = xx_data_get_u32(header + 20, 4, 0, false);
@@ -478,27 +451,21 @@ static bool xx_ibmpack_read_member(Abstractformat *self, int64_t span,
         name_offset = offset + 26;
         /* A name field must fit in the file and must be able to hold a
          * NUL.  Bound it before it is used to place the payload. */
-        if (name_field < 1 || name_field > (int64_t)XX_IBMPACK_MAX_NAME ||
-            name_field > span - name_offset)
-            return false;
+        if (name_field < 1 || name_field > (int64_t)XX_IBMPACK_MAX_NAME || name_field > span - name_offset) return false;
     } else if (variant == XX_IBMPACK_VARIANT_PLAIN) {
         name_offset = offset + 15;
         if (name_offset > span) return false;
         name_field = span - name_offset;
-        if (name_field > (int64_t)XX_IBMPACK_MAX_NAME)
-            name_field = (int64_t)XX_IBMPACK_MAX_NAME;
+        if (name_field > (int64_t)XX_IBMPACK_MAX_NAME) name_field = (int64_t)XX_IBMPACK_MAX_NAME;
     } else {
         name_offset = offset + 10;
         name_field = (int64_t)XX_IBMPACK_P1_NAME_FIELD;
         if (name_field > span - name_offset) return false;
     }
 
-    if (!xx_ibmpack_read_at(self, self->base_address + name_offset, namebuf,
-                            (size_t)name_field))
-        return false;
+    if (!xx_ibmpack_read_at(self, self->base_address + name_offset, namebuf, (size_t)name_field)) return false;
     name_length = 0U;
-    while (name_length < (size_t)name_field && namebuf[name_length] != 0U)
-        ++name_length;
+    while (name_length < (size_t)name_field && namebuf[name_length] != 0U) ++name_length;
     if (name_length == 0U) return false;
     if (variant == XX_IBMPACK_VARIANT_PLAIN) {
         /* No field size is stored: the terminator itself delimits it, and a
@@ -510,9 +477,7 @@ static bool xx_ibmpack_read_member(Abstractformat *self, int64_t span,
     if (data_offset > span) return false;
 
     if (successor != 0U) {
-        if ((int64_t)successor <= offset || (int64_t)successor > span ||
-            (int64_t)successor < data_offset)
-            return false;
+        if ((int64_t)successor <= offset || (int64_t)successor > span || (int64_t)successor < data_offset) return false;
         member_end = (int64_t)successor;
         *next = (int64_t)successor;
     } else {
@@ -527,10 +492,7 @@ static bool xx_ibmpack_read_member(Abstractformat *self, int64_t span,
      * and the codec stops at its own end code.  Do not "tighten" this into a
      * rejection without first explaining those small values - 4 of the 257
      * IBMPACK2 samples depend on it. */
-    if (extended_attributes != 0U &&
-        (int64_t)extended_attributes >= data_offset &&
-        (int64_t)extended_attributes <= member_end)
-        member_end = (int64_t)extended_attributes;
+    if (extended_attributes != 0U && (int64_t)extended_attributes >= data_offset && (int64_t)extended_attributes <= member_end) member_end = (int64_t)extended_attributes;
     if (member_end < data_offset) return false;
 
     member->name = xx_ibmpack_normalize_name(namebuf, name_length);
@@ -540,11 +502,7 @@ static bool xx_ibmpack_read_member(Abstractformat *self, int64_t span,
     member->data_offset = self->base_address + data_offset;
     member->compressed_size = member_end - data_offset;
     /* The packer writes a literal 1 when it did not record a length. */
-    member->uncompressed_size =
-        (variant == XX_IBMPACK_VARIANT_CHAIN && declared != 0U &&
-         declared != 1U)
-            ? (int64_t)declared
-            : -1;
+    member->uncompressed_size = (variant == XX_IBMPACK_VARIANT_CHAIN && declared != 0U && declared != 1U) ? (int64_t)declared : -1;
     if (member->uncompressed_size > XX_IBMPACK_MAX_DECODED) {
         xx_str_free(member->name);
         member->name = NULL;
@@ -553,8 +511,8 @@ static bool xx_ibmpack_read_member(Abstractformat *self, int64_t span,
     return true;
 }
 
-static xx_ibmpack_stream *xx_ibmpack_parse(Abstractformat *self,
-                                           xx_pd_struct *pd) {
+static xx_ibmpack_stream *xx_ibmpack_parse(Abstractformat *self, xx_pd_struct *pd)
+{
     xx_ibmpack_stream *stream;
     int64_t total;
     int64_t span;
@@ -573,8 +531,7 @@ static xx_ibmpack_stream *xx_ibmpack_parse(Abstractformat *self,
         int64_t next = 0;
 
         if (pd && xx_pd_is_stopped(pd)) goto fail;
-        if (!xx_ibmpack_read_member(self, span, cursor, &member, &next))
-            goto fail;
+        if (!xx_ibmpack_read_member(self, span, cursor, &member, &next)) goto fail;
         if (stream->count == 0U) stream->variant = member.variant;
         if (!xx_ibmpack_add(stream, &member)) {
             xx_str_free(member.name);
@@ -593,10 +550,8 @@ fail:
 /* Produce the member's plaintext.  Members whose dialect records a length
  * must reproduce it exactly; the others are measured first so the allocation
  * is never larger than the stream can actually produce. */
-static bool xx_ibmpack_decode(Abstractformat *self,
-                              const xx_ibmpack_member *member,
-                              uint8_t **plain, size_t *plain_size,
-                              xx_pd_struct *pd) {
+static bool xx_ibmpack_decode(Abstractformat *self, const xx_ibmpack_member *member, uint8_t **plain, size_t *plain_size, xx_pd_struct *pd)
+{
     uint8_t *input = NULL;
     uint8_t *output = NULL;
     int64_t ceiling;
@@ -611,8 +566,7 @@ static bool xx_ibmpack_decode(Abstractformat *self,
     if (pd && xx_pd_is_stopped(pd)) return false;
 
     ceiling = XX_IBMPACK_MAX_DECODED;
-    if (member->compressed_size < ceiling / XX_IBMPACK_MAX_EXPANSION)
-        ceiling = member->compressed_size * XX_IBMPACK_MAX_EXPANSION;
+    if (member->compressed_size < ceiling / XX_IBMPACK_MAX_EXPANSION) ceiling = member->compressed_size * XX_IBMPACK_MAX_EXPANSION;
     if (member->uncompressed_size >= 0) {
         if (member->uncompressed_size > ceiling) return false;
         ceiling = member->uncompressed_size;
@@ -621,8 +575,7 @@ static bool xx_ibmpack_decode(Abstractformat *self,
 
     input = (uint8_t *)xx_mem_alloc((size_t)member->compressed_size);
     if (!input) return false;
-    if (!xx_ibmpack_read_at(self, member->data_offset, input,
-                            (size_t)member->compressed_size)) {
+    if (!xx_ibmpack_read_at(self, member->data_offset, input, (size_t)member->compressed_size)) {
         xx_mem_free(input);
         return false;
     }
@@ -631,9 +584,7 @@ static bool xx_ibmpack_decode(Abstractformat *self,
     } else {
         /* Measuring pass: nothing is allocated for the plaintext until its
          * real size is known. */
-        if (!xx_ibmpack_lzw_run(input, (size_t)member->compressed_size, NULL,
-                                (size_t)ceiling, &produced) ||
-            produced == 0U) {
+        if (!xx_ibmpack_lzw_run(input, (size_t)member->compressed_size, NULL, (size_t)ceiling, &produced) || produced == 0U) {
             xx_mem_free(input);
             return false;
         }
@@ -648,9 +599,7 @@ static bool xx_ibmpack_decode(Abstractformat *self,
         xx_mem_free(input);
         return false;
     }
-    if (!xx_ibmpack_lzw_run(input, (size_t)member->compressed_size, output,
-                            wanted, &produced) ||
-        produced != wanted) {
+    if (!xx_ibmpack_lzw_run(input, (size_t)member->compressed_size, output, wanted, &produced) || produced != wanted) {
         xx_mem_free(output);
         xx_mem_free(input);
         return false;
@@ -663,8 +612,8 @@ static bool xx_ibmpack_decode(Abstractformat *self,
 
 /* ---------------------------------------------------------- lifecycle --- */
 
-void xx_ibmpack_init(xx_ibmpack *archive, xx_io_device *device,
-                     int64_t base_address) {
+void xx_ibmpack_init(xx_ibmpack *archive, xx_io_device *device, int64_t base_address)
+{
     if (!archive) return;
     xx_mem_zero(archive, sizeof(*archive));
     xx_format_init(&archive->format, device, base_address);
@@ -677,22 +626,17 @@ void xx_ibmpack_init(xx_ibmpack *archive, xx_io_device *device,
     archive->format.check_is_valid = xx_ibmpack_check_is_valid;
     archive->format.handle_base_info = xx_ibmpack_handle_base_info;
     archive->format.get_format_size = xx_ibmpack_get_format_size;
-    archive->format.get_number_of_archive_records =
-        xx_ibmpack_get_number_of_archive_records;
-    archive->format.create_archive_records_reading =
-        xx_ibmpack_create_archive_records_reading;
-    archive->format.get_current_archive_record =
-        xx_ibmpack_get_current_archive_record;
-    archive->format.unpack_current_archive_record =
-        xx_ibmpack_unpack_current_archive_record;
-    archive->format.archive_record_move_to_next =
-        xx_ibmpack_archive_record_move_to_next;
-    archive->format.free_archive_records_reading =
-        xx_ibmpack_free_archive_records_reading;
+    archive->format.get_number_of_archive_records = xx_ibmpack_get_number_of_archive_records;
+    archive->format.create_archive_records_reading = xx_ibmpack_create_archive_records_reading;
+    archive->format.get_current_archive_record = xx_ibmpack_get_current_archive_record;
+    archive->format.unpack_current_archive_record = xx_ibmpack_unpack_current_archive_record;
+    archive->format.archive_record_move_to_next = xx_ibmpack_archive_record_move_to_next;
+    archive->format.free_archive_records_reading = xx_ibmpack_free_archive_records_reading;
     archive->format.destroy = xx_ibmpack_vtable_destroy;
 }
 
-xx_ibmpack *xx_ibmpack_create(xx_io_device *device, int64_t base_address) {
+xx_ibmpack *xx_ibmpack_create(xx_io_device *device, int64_t base_address)
+{
     xx_ibmpack *archive = (xx_ibmpack *)xx_mem_alloc(sizeof(*archive));
 
     if (!archive) return NULL;
@@ -700,26 +644,30 @@ xx_ibmpack *xx_ibmpack_create(xx_io_device *device, int64_t base_address) {
     return archive;
 }
 
-void xx_ibmpack_destroy(xx_ibmpack *archive) {
+void xx_ibmpack_destroy(xx_ibmpack *archive)
+{
     if (!archive) return;
     if (archive->format.close) archive->format.close(&archive->format);
     xx_format_cleanup_extra_parameters(&archive->format);
     archive->number_of_records = 0U;
 }
 
-void xx_ibmpack_free(xx_ibmpack *archive) {
+void xx_ibmpack_free(xx_ibmpack *archive)
+{
     if (!archive) return;
     xx_ibmpack_destroy(archive);
     xx_mem_free(archive);
 }
 
-static void xx_ibmpack_vtable_destroy(Abstractformat *self) {
+static void xx_ibmpack_vtable_destroy(Abstractformat *self)
+{
     xx_ibmpack_destroy((xx_ibmpack *)self);
 }
 
 /* ------------------------------------------------------------- format --- */
 
-bool xx_ibmpack_check_is_valid(Abstractformat *self, xx_pd_struct *pd) {
+bool xx_ibmpack_check_is_valid(Abstractformat *self, xx_pd_struct *pd)
+{
     xx_ibmpack_stream *stream;
 
     if (!self || (pd && xx_pd_is_stopped(pd))) return false;
@@ -729,7 +677,8 @@ bool xx_ibmpack_check_is_valid(Abstractformat *self, xx_pd_struct *pd) {
     return true;
 }
 
-bool xx_ibmpack_handle_base_info(Abstractformat *self, xx_pd_struct *pd) {
+bool xx_ibmpack_handle_base_info(Abstractformat *self, xx_pd_struct *pd)
+{
     xx_ibmpack *archive = (xx_ibmpack *)self;
     xx_ibmpack_stream *stream;
 
@@ -750,25 +699,22 @@ bool xx_ibmpack_handle_base_info(Abstractformat *self, xx_pd_struct *pd) {
     return true;
 }
 
-int64_t xx_ibmpack_get_format_size(Abstractformat *self, xx_pd_struct *pd) {
-    if (!self ||
-        (!self->base_info_handled && !xx_format_handle_base_info(self, pd)))
-        return 0;
+int64_t xx_ibmpack_get_format_size(Abstractformat *self, xx_pd_struct *pd)
+{
+    if (!self || (!self->base_info_handled && !xx_format_handle_base_info(self, pd))) return 0;
     return self->is_valid ? self->format_size : 0;
 }
 
-uint64_t xx_ibmpack_get_number_of_archive_records(Abstractformat *self,
-                                                  xx_pd_struct *pd) {
-    if (!self ||
-        (!self->base_info_handled && !xx_format_handle_base_info(self, pd)))
-        return 0U;
+uint64_t xx_ibmpack_get_number_of_archive_records(Abstractformat *self, xx_pd_struct *pd)
+{
+    if (!self || (!self->base_info_handled && !xx_format_handle_base_info(self, pd))) return 0U;
     return self->is_valid ? ((xx_ibmpack *)self)->number_of_records : 0U;
 }
 
 /* ------------------------------------------------------------ records --- */
 
-static bool xx_ibmpack_set_record(xx_archive_record *record,
-                                  const xx_ibmpack_member *member) {
+static bool xx_ibmpack_set_record(xx_archive_record *record, const xx_ibmpack_member *member)
+{
     xx_archive_record_cleanup(record);
     xx_archive_record_init(record);
     record->header_offset = member->header_offset;
@@ -776,42 +722,26 @@ static bool xx_ibmpack_set_record(xx_archive_record *record,
     record->data_offset = member->data_offset;
     record->compressed_size = member->compressed_size;
     return xx_archive_record_set_original_name(record, member->name) &&
-           xx_archive_record_set_meta_u64(record, XX_META_ID_COMPRESSED_SIZE,
-                                          (uint64_t)member->compressed_size) &&
-           xx_archive_record_set_meta_u64(
-               record, XX_META_ID_UNCOMPRESSED_SIZE,
-               member->uncompressed_size >= 0
-                   ? (uint64_t)member->uncompressed_size
-                   : 0U) &&
-           xx_archive_record_set_meta_u64(record,
-                                          XX_META_ID_COMPRESSION_METHOD,
-                                          XX_IBMPACK_METHOD_LZW) &&
-           xx_archive_record_set_meta_u64(record, XX_META_ID_ATTRIBUTES,
-                                          member->attributes) &&
-           xx_archive_record_set_meta_u64(record, XX_META_ID_TIMESTAMP,
-                                          member->timestamp) &&
-           xx_archive_record_set_meta_u64(record, XX_META_ID_FLAGS,
-                                          member->variant) &&
-           xx_archive_record_set_meta_bool(record, XX_META_ID_IS_FOLDER,
-                                           false) &&
-           xx_archive_record_set_meta_bool(record, XX_META_ID_IS_ENCRYPTED,
-                                           false);
+           xx_archive_record_set_meta_u64(record, XX_META_ID_COMPRESSED_SIZE, (uint64_t)member->compressed_size) &&
+           xx_archive_record_set_meta_u64(record, XX_META_ID_UNCOMPRESSED_SIZE, member->uncompressed_size >= 0 ? (uint64_t)member->uncompressed_size : 0U) &&
+           xx_archive_record_set_meta_u64(record, XX_META_ID_COMPRESSION_METHOD, XX_IBMPACK_METHOD_LZW) &&
+           xx_archive_record_set_meta_u64(record, XX_META_ID_ATTRIBUTES, member->attributes) &&
+           xx_archive_record_set_meta_u64(record, XX_META_ID_TIMESTAMP, member->timestamp) && xx_archive_record_set_meta_u64(record, XX_META_ID_FLAGS, member->variant) &&
+           xx_archive_record_set_meta_bool(record, XX_META_ID_IS_FOLDER, false) && xx_archive_record_set_meta_bool(record, XX_META_ID_IS_ENCRYPTED, false);
 }
 
-static bool xx_ibmpack_copy_options(xx_list_s *target,
-                                    const xx_list_s *options) {
+static bool xx_ibmpack_copy_options(xx_list_s *target, const xx_list_s *options)
+{
     size_t index;
 
     if (!options) return true;
     if (!target) return false;
     for (index = 0U; index < options->count; ++index) {
-        const xx_meta *source =
-            (const xx_meta *)xx_list_at((const xx_list_t *)options, index);
+        const xx_meta *source = (const xx_meta *)xx_list_at((const xx_list_t *)options, index);
         xx_meta copied;
         if (!source) continue;
         xx_meta_init(&copied, source->meta_id);
-        if (!xx_var_copy(&copied.var, &source->var) ||
-            !xx_list_append(target, &copied)) {
+        if (!xx_var_copy(&copied.var, &source->var) || !xx_list_append(target, &copied)) {
             xx_meta_cleanup(&copied);
             return false;
         }
@@ -819,21 +749,20 @@ static bool xx_ibmpack_copy_options(xx_list_s *target,
     return true;
 }
 
-static const xx_var *xx_ibmpack_get_option(const xx_list_s *options,
-                                           uint32_t meta_id) {
+static const xx_var *xx_ibmpack_get_option(const xx_list_s *options, uint32_t meta_id)
+{
     size_t index;
 
     if (!options) return NULL;
     for (index = 0U; index < options->count; ++index) {
-        const xx_meta *meta =
-            (const xx_meta *)xx_list_at((const xx_list_t *)options, index);
+        const xx_meta *meta = (const xx_meta *)xx_list_at((const xx_list_t *)options, index);
         if (meta && meta->meta_id == meta_id) return &meta->var;
     }
     return NULL;
 }
 
-xx_archive_record_state *xx_ibmpack_create_archive_records_reading(
-    Abstractformat *self, const xx_list_s *options, xx_pd_struct *pd) {
+xx_archive_record_state *xx_ibmpack_create_archive_records_reading(Abstractformat *self, const xx_list_s *options, xx_pd_struct *pd)
+{
     xx_ibmpack_stream *stream;
     xx_archive_record_state *state;
 
@@ -849,9 +778,7 @@ xx_archive_record_state *xx_ibmpack_create_archive_records_reading(
     state->internal_state = stream;
     state->free_internal = xx_ibmpack_stream_free;
     state->total_records = (int64_t)stream->count;
-    if (!xx_ibmpack_copy_options(&state->options, options) ||
-        (stream->count != 0U &&
-         !xx_ibmpack_set_record(&state->current_record, &stream->items[0]))) {
+    if (!xx_ibmpack_copy_options(&state->options, options) || (stream->count != 0U && !xx_ibmpack_set_record(&state->current_record, &stream->items[0]))) {
         xx_archive_record_state_free(state);
         return NULL;
     }
@@ -860,21 +787,16 @@ xx_archive_record_state *xx_ibmpack_create_archive_records_reading(
     return state;
 }
 
-const xx_archive_record *xx_ibmpack_get_current_archive_record(
-    Abstractformat *self, xx_archive_record_state *state) {
-    return self && state && state->format == self && state->has_record
-               ? &state->current_record
-               : NULL;
+const xx_archive_record *xx_ibmpack_get_current_archive_record(Abstractformat *self, xx_archive_record_state *state)
+{
+    return self && state && state->format == self && state->has_record ? &state->current_record : NULL;
 }
 
-bool xx_ibmpack_archive_record_move_to_next(Abstractformat *self,
-                                            xx_archive_record_state *state,
-                                            xx_pd_struct *pd) {
+bool xx_ibmpack_archive_record_move_to_next(Abstractformat *self, xx_archive_record_state *state, xx_pd_struct *pd)
+{
     xx_ibmpack_stream *stream;
 
-    if (!self || !state || state->format != self || !state->has_record ||
-        (pd && xx_pd_is_stopped(pd)))
-        return false;
+    if (!self || !state || state->format != self || !state->has_record || (pd && xx_pd_is_stopped(pd))) return false;
     stream = (xx_ibmpack_stream *)state->internal_state;
     if (!stream || stream->index + 1U >= stream->count) {
         xx_archive_record_cleanup(&state->current_record);
@@ -884,15 +806,12 @@ bool xx_ibmpack_archive_record_move_to_next(Abstractformat *self,
     }
     ++stream->index;
     ++state->current_index;
-    state->has_record =
-        xx_ibmpack_set_record(&state->current_record,
-                              &stream->items[stream->index]);
+    state->has_record = xx_ibmpack_set_record(&state->current_record, &stream->items[stream->index]);
     return state->has_record;
 }
 
-bool xx_ibmpack_unpack_current_archive_record(Abstractformat *self,
-                                              xx_archive_record_state *state,
-                                              xx_pd_struct *pd) {
+bool xx_ibmpack_unpack_current_archive_record(Abstractformat *self, xx_archive_record_state *state, xx_pd_struct *pd)
+{
     xx_ibmpack_stream *stream;
     const xx_ibmpack_member *member;
     const xx_var *path_option;
@@ -904,26 +823,21 @@ bool xx_ibmpack_unpack_current_archive_record(Abstractformat *self,
     bool result = false;
     bool created = false;
 
-    if (!self || !state || state->format != self || !state->has_record ||
-        (pd && xx_pd_is_stopped(pd)))
-        return false;
+    if (!self || !state || state->format != self || !state->has_record || (pd && xx_pd_is_stopped(pd))) return false;
     stream = (xx_ibmpack_stream *)state->internal_state;
     if (!stream || stream->index >= stream->count) return false;
     member = &stream->items[stream->index];
     if (!xx_ibmpack_path_safe(member->name)) return false;
 
-    path_option =
-        xx_ibmpack_get_option(&state->options, XX_META_ID_OPT_UNPACK_PATH);
+    path_option = xx_ibmpack_get_option(&state->options, XX_META_ID_OPT_UNPACK_PATH);
     if (!path_option) {
         result = xx_ibmpack_decode(self, member, &plain, &plain_size, pd);
         xx_mem_free(plain);
         return result;
     }
-    if (path_option->type == XX_VAR_TYPE_STRING ||
-        path_option->type == XX_VAR_TYPE_STRING_VIEW) {
+    if (path_option->type == XX_VAR_TYPE_STRING || path_option->type == XX_VAR_TYPE_STRING_VIEW) {
         base_path = xx_var_get_str(path_option);
-    } else if (path_option->type == XX_VAR_TYPE_WSTRING ||
-               path_option->type == XX_VAR_TYPE_WSTRING_VIEW) {
+    } else if (path_option->type == XX_VAR_TYPE_WSTRING || path_option->type == XX_VAR_TYPE_WSTRING_VIEW) {
         converted = xx_str_unicode_to_utf8(xx_var_get_wstr(path_option));
         base_path = converted;
     }
@@ -931,15 +845,12 @@ bool xx_ibmpack_unpack_current_archive_record(Abstractformat *self,
         xx_str_free(converted);
         return false;
     }
-    target = (base_path[0] != '\0' &&
-              base_path[xx_str_len(base_path) - 1U] != '/' &&
-              base_path[xx_str_len(base_path) - 1U] != '\\')
+    target = (base_path[0] != '\0' && base_path[xx_str_len(base_path) - 1U] != '/' && base_path[xx_str_len(base_path) - 1U] != '\\')
                  ? xx_str_concat3(base_path, "/", member->name)
                  : xx_str_concat(base_path, member->name);
     xx_str_free(converted);
     if (!target) return false;
-    if (!xx_store_create_dirs_a(target, false) ||
-        !xx_ibmpack_decode(self, member, &plain, &plain_size, pd)) {
+    if (!xx_store_create_dirs_a(target, false) || !xx_ibmpack_decode(self, member, &plain, &plain_size, pd)) {
         xx_str_free(target);
         return false;
     }
@@ -965,8 +876,8 @@ bool xx_ibmpack_unpack_current_archive_record(Abstractformat *self,
     return result;
 }
 
-void xx_ibmpack_free_archive_records_reading(Abstractformat *self,
-                                             xx_archive_record_state *state) {
+void xx_ibmpack_free_archive_records_reading(Abstractformat *self, xx_archive_record_state *state)
+{
     (void)self;
     xx_archive_record_state_free(state);
 }

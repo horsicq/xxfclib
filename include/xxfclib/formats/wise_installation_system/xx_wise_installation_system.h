@@ -39,58 +39,40 @@ extern "C" {
 typedef struct xx_wise_installation_system {
     Abstractformat format;
     uint64_t number_of_records;
-    int64_t overlay_offset;  /**< End of the NE/PE image (device offset). */
-    int64_t payload_offset;  /**< First member stream or local header. */
-    int64_t chain_end;       /**< End of the last complete member. */
-    uint64_t named_records;  /**< Members named by the script / headers. */
-    bool is_ne;              /**< Wise16 NE stub (else Wise32 PE). */
-    bool pk_mode;            /**< ZIP-framed member chain. */
-    bool truncated;          /**< Chain stops before the end of the file. */
-    void *cache;             /**< Parsed member table (owned, refcounted). */
+    int64_t overlay_offset; /**< End of the NE/PE image (device offset). */
+    int64_t payload_offset; /**< First member stream or local header. */
+    int64_t chain_end;      /**< End of the last complete member. */
+    uint64_t named_records; /**< Members named by the script / headers. */
+    bool is_ne;             /**< Wise16 NE stub (else Wise32 PE). */
+    bool pk_mode;           /**< ZIP-framed member chain. */
+    bool truncated;         /**< Chain stops before the end of the file. */
+    void *cache;            /**< Parsed member table (owned, refcounted). */
 } xx_wise_installation_system;
 
 typedef xx_wise_installation_system xx_wise_installation_system_t;
 
-XXFC_API void xx_wise_installation_system_init(
-    xx_wise_installation_system *archive, xx_io_device *device,
-    int64_t base_address);
-XXFC_API xx_wise_installation_system *xx_wise_installation_system_create(
-    xx_io_device *device, int64_t base_address);
-XXFC_API void xx_wise_installation_system_destroy(
-    xx_wise_installation_system *archive);
-XXFC_API void xx_wise_installation_system_free(
-    xx_wise_installation_system *archive);
+XXFC_API void xx_wise_installation_system_init(xx_wise_installation_system *archive, xx_io_device *device, int64_t base_address);
+XXFC_API xx_wise_installation_system *xx_wise_installation_system_create(xx_io_device *device, int64_t base_address);
+XXFC_API void xx_wise_installation_system_destroy(xx_wise_installation_system *archive);
+XXFC_API void xx_wise_installation_system_free(xx_wise_installation_system *archive);
 
-XXFC_API bool xx_wise_installation_system_check_is_valid(Abstractformat *self,
-                                                         xx_pd_struct *pd);
-XXFC_API bool xx_wise_installation_system_handle_base_info(
-    Abstractformat *self, xx_pd_struct *pd);
-XXFC_API int64_t xx_wise_installation_system_get_format_size(
-    Abstractformat *self, xx_pd_struct *pd);
-XXFC_API uint64_t xx_wise_installation_system_get_number_of_archive_records(
-    Abstractformat *self, xx_pd_struct *pd);
+XXFC_API bool xx_wise_installation_system_check_is_valid(Abstractformat *self, xx_pd_struct *pd);
+XXFC_API bool xx_wise_installation_system_handle_base_info(Abstractformat *self, xx_pd_struct *pd);
+XXFC_API int64_t xx_wise_installation_system_get_format_size(Abstractformat *self, xx_pd_struct *pd);
+XXFC_API uint64_t xx_wise_installation_system_get_number_of_archive_records(Abstractformat *self, xx_pd_struct *pd);
 
-XXFC_API xx_archive_record_state *
-xx_wise_installation_system_create_archive_records_reading(
-    Abstractformat *self, const xx_list_s *options, xx_pd_struct *pd);
-XXFC_API const xx_archive_record *
-xx_wise_installation_system_get_current_archive_record(
-    Abstractformat *self, xx_archive_record_state *state);
-XXFC_API bool xx_wise_installation_system_unpack_current_archive_record(
-    Abstractformat *self, xx_archive_record_state *state, xx_pd_struct *pd);
-XXFC_API bool xx_wise_installation_system_archive_record_move_to_next(
-    Abstractformat *self, xx_archive_record_state *state, xx_pd_struct *pd);
-XXFC_API void xx_wise_installation_system_free_archive_records_reading(
-    Abstractformat *self, xx_archive_record_state *state);
+XXFC_API xx_archive_record_state *xx_wise_installation_system_create_archive_records_reading(Abstractformat *self, const xx_list_s *options, xx_pd_struct *pd);
+XXFC_API const xx_archive_record *xx_wise_installation_system_get_current_archive_record(Abstractformat *self, xx_archive_record_state *state);
+XXFC_API bool xx_wise_installation_system_unpack_current_archive_record(Abstractformat *self, xx_archive_record_state *state, xx_pd_struct *pd);
+XXFC_API bool xx_wise_installation_system_archive_record_move_to_next(Abstractformat *self, xx_archive_record_state *state, xx_pd_struct *pd);
+XXFC_API void xx_wise_installation_system_free_archive_records_reading(Abstractformat *self, xx_archive_record_state *state);
 
 /**
  * @brief Decode member @p index into @p destination (NULL only verifies).
  *
  * Succeeds only when the member decodes to its recorded size and CRC-32.
  */
-XXFC_API bool xx_wise_installation_system_unpack_record_to_device(
-    xx_wise_installation_system *archive, uint64_t index,
-    xx_io_device *destination, xx_pd_struct *pd);
+XXFC_API bool xx_wise_installation_system_unpack_record_to_device(xx_wise_installation_system *archive, uint64_t index, xx_io_device *destination, xx_pd_struct *pd);
 
 #ifdef __cplusplus
 }

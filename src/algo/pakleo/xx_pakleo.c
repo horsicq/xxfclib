@@ -76,9 +76,7 @@ static int leo_get(leo_bits *reader, int width)
     return value;
 }
 
-bool xx_pakleo_decode_memory(const uint8_t *input, size_t input_size,
-                             uint8_t *output, size_t output_size,
-                             size_t *written)
+bool xx_pakleo_decode_memory(const uint8_t *input, size_t input_size, uint8_t *output, size_t output_size, size_t *written)
 {
     leo_bits reader;
     uint8_t *block;
@@ -102,8 +100,7 @@ bool xx_pakleo_decode_memory(const uint8_t *input, size_t input_size,
     reader.current = 0U;
     reader.count = 0;
 
-    block_size = (size_t)LEO_CAPACITY * sizeof(uint16_t) +
-                 (size_t)LEO_CAPACITY + (size_t)LEO_CAPACITY;
+    block_size = (size_t)LEO_CAPACITY * sizeof(uint16_t) + (size_t)LEO_CAPACITY + (size_t)LEO_CAPACITY;
     block = (uint8_t *)xx_mem_alloc(block_size);
     if (!block) return false;
     xx_rt_memset(block, 0, block_size);

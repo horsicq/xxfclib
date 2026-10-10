@@ -50,24 +50,19 @@ typedef struct xx_opensslenc XOpensslenc;
 struct xx_opensslenc {
     Abstractformat format;
     uint8_t salt[XX_OPENSSLENC_SALT_SIZE]; /**< The salt bytes, as stored. */
-    uint64_t salt_value;     /**< The salt read as a big-endian u64. */
-    int64_t data_offset;     /**< base_address + 16, or -1. */
-    int64_t data_size;       /**< Ciphertext bytes (may be 0), or -1. */
+    uint64_t salt_value;                   /**< The salt read as a big-endian u64. */
+    int64_t data_offset;                   /**< base_address + 16, or -1. */
+    int64_t data_size;                     /**< Ciphertext bytes (may be 0), or -1. */
 };
 
-XXFC_API void xx_opensslenc_init(xx_opensslenc *enc, xx_io_device *dev,
-                                 int64_t base_address);
-XXFC_API xx_opensslenc *xx_opensslenc_create(xx_io_device *dev,
-                                             int64_t base_address);
+XXFC_API void xx_opensslenc_init(xx_opensslenc *enc, xx_io_device *dev, int64_t base_address);
+XXFC_API xx_opensslenc *xx_opensslenc_create(xx_io_device *dev, int64_t base_address);
 XXFC_API void xx_opensslenc_destroy(xx_opensslenc *enc);
 XXFC_API void xx_opensslenc_free(xx_opensslenc *enc);
 
-XXFC_API bool xx_opensslenc_check_is_valid(Abstractformat *self,
-                                           xx_pd_struct *pd);
-XXFC_API bool xx_opensslenc_handle_base_info(Abstractformat *self,
-                                             xx_pd_struct *pd);
-XXFC_API int64_t xx_opensslenc_get_format_size(Abstractformat *self,
-                                               xx_pd_struct *pd);
+XXFC_API bool xx_opensslenc_check_is_valid(Abstractformat *self, xx_pd_struct *pd);
+XXFC_API bool xx_opensslenc_handle_base_info(Abstractformat *self, xx_pd_struct *pd);
+XXFC_API int64_t xx_opensslenc_get_format_size(Abstractformat *self, xx_pd_struct *pd);
 
 /** True when binwalk would reject this salt (see xx_opensslenc.c). */
 XXFC_API bool xx_opensslenc_is_salt_implausible(const uint8_t *salt);
@@ -77,21 +72,24 @@ XXFC_API const uint8_t *xx_opensslenc_get_salt(const xx_opensslenc *enc);
 XXFC_API int64_t xx_opensslenc_get_data_offset(const xx_opensslenc *enc);
 XXFC_API int64_t xx_opensslenc_get_data_size(const xx_opensslenc *enc);
 
-static inline Abstractformat *xx_opensslenc_to_format(xx_opensslenc *enc) {
+static inline Abstractformat *xx_opensslenc_to_format(xx_opensslenc *enc)
+{
     return enc ? &enc->format : NULL;
 }
-static inline void XOpensslenc_init(xx_opensslenc *enc, xx_io_device *dev,
-                                    int64_t base_address) {
+static inline void XOpensslenc_init(xx_opensslenc *enc, xx_io_device *dev, int64_t base_address)
+{
     xx_opensslenc_init(enc, dev, base_address);
 }
-static inline xx_opensslenc *XOpensslenc_create(xx_io_device *dev,
-                                                int64_t base_address) {
+static inline xx_opensslenc *XOpensslenc_create(xx_io_device *dev, int64_t base_address)
+{
     return xx_opensslenc_create(dev, base_address);
 }
-static inline void XOpensslenc_free(xx_opensslenc *enc) {
+static inline void XOpensslenc_free(xx_opensslenc *enc)
+{
     xx_opensslenc_free(enc);
 }
-static inline bool XOpensslenc_is_valid(xx_opensslenc *enc, xx_pd_struct *pd) {
+static inline bool XOpensslenc_is_valid(xx_opensslenc *enc, xx_pd_struct *pd)
+{
     return enc ? xx_format_is_valid(&enc->format, pd) : false;
 }
 

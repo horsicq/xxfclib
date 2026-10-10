@@ -62,8 +62,7 @@ typedef struct xx_cue {
 
 typedef xx_cue xx_cue_t;
 
-XXFC_API void xx_cue_init(xx_cue *archive, xx_io_device *device,
-                          int64_t base_address);
+XXFC_API void xx_cue_init(xx_cue *archive, xx_io_device *device, int64_t base_address);
 XXFC_API xx_cue *xx_cue_create(xx_io_device *device, int64_t base_address);
 /** Releases parse state and closes the data devices the reader opened. */
 XXFC_API void xx_cue_destroy(xx_cue *archive);
@@ -71,21 +70,14 @@ XXFC_API void xx_cue_free(xx_cue *archive);
 
 XXFC_API bool xx_cue_check_is_valid(Abstractformat *self, xx_pd_struct *pd);
 XXFC_API bool xx_cue_handle_base_info(Abstractformat *self, xx_pd_struct *pd);
-XXFC_API int64_t xx_cue_get_format_size(Abstractformat *self,
-                                        xx_pd_struct *pd);
-XXFC_API uint64_t xx_cue_get_number_of_archive_records(Abstractformat *self,
-                                                       xx_pd_struct *pd);
+XXFC_API int64_t xx_cue_get_format_size(Abstractformat *self, xx_pd_struct *pd);
+XXFC_API uint64_t xx_cue_get_number_of_archive_records(Abstractformat *self, xx_pd_struct *pd);
 
-XXFC_API xx_archive_record_state *xx_cue_create_archive_records_reading(
-    Abstractformat *self, const xx_list_s *options, xx_pd_struct *pd);
-XXFC_API const xx_archive_record *xx_cue_get_current_archive_record(
-    Abstractformat *self, xx_archive_record_state *state);
-XXFC_API bool xx_cue_unpack_current_archive_record(
-    Abstractformat *self, xx_archive_record_state *state, xx_pd_struct *pd);
-XXFC_API bool xx_cue_archive_record_move_to_next(
-    Abstractformat *self, xx_archive_record_state *state, xx_pd_struct *pd);
-XXFC_API void xx_cue_free_archive_records_reading(
-    Abstractformat *self, xx_archive_record_state *state);
+XXFC_API xx_archive_record_state *xx_cue_create_archive_records_reading(Abstractformat *self, const xx_list_s *options, xx_pd_struct *pd);
+XXFC_API const xx_archive_record *xx_cue_get_current_archive_record(Abstractformat *self, xx_archive_record_state *state);
+XXFC_API bool xx_cue_unpack_current_archive_record(Abstractformat *self, xx_archive_record_state *state, xx_pd_struct *pd);
+XXFC_API bool xx_cue_archive_record_move_to_next(Abstractformat *self, xx_archive_record_state *state, xx_pd_struct *pd);
+XXFC_API void xx_cue_free_archive_records_reading(Abstractformat *self, xx_archive_record_state *state);
 
 /**
  * @brief Detector prefilter over the first bytes of a file.
@@ -102,8 +94,7 @@ XXFC_API bool xx_cue_test_magic(const uint8_t *magic, size_t magic_size);
  * (0-based, sheet order).  The device stays owned by the caller and must
  * outlive the reader's use of it; NULL detaches.
  */
-XXFC_API bool xx_cue_set_data_device(xx_cue *archive, uint32_t file_index,
-                                     xx_io_device *device);
+XXFC_API bool xx_cue_set_data_device(xx_cue *archive, uint32_t file_index, xx_io_device *device);
 
 /**
  * @brief Open every FILE statement's data file next to the sheet.
@@ -116,8 +107,7 @@ XXFC_API bool xx_cue_set_data_device(xx_cue *archive, uint32_t file_index,
  * owned by the reader.
  * @return how many FILE statements now have a data device.
  */
-XXFC_API uint32_t xx_cue_open_data_files(xx_cue *archive,
-                                         const char *cue_path);
+XXFC_API uint32_t xx_cue_open_data_files(xx_cue *archive, const char *cue_path);
 
 /** Number of FILE statements (0 when the sheet is not valid). */
 XXFC_API uint32_t xx_cue_get_number_of_files(xx_cue *archive);
@@ -129,7 +119,8 @@ XXFC_API uint32_t xx_cue_get_number_of_tracks(xx_cue *archive);
  */
 XXFC_API char *xx_cue_get_file_name(xx_cue *archive, uint32_t file_index);
 
-static inline Abstractformat *xx_cue_to_format(xx_cue *archive) {
+static inline Abstractformat *xx_cue_to_format(xx_cue *archive)
+{
     return archive ? &archive->format : NULL;
 }
 

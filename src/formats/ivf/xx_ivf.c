@@ -13,27 +13,23 @@
 #define IVF_MAX_PACKET_SIZE (256U * 1024U * 1024U)
 #define IVF_MAX_FRAMES 1000000U
 
-static const char *ivf_codec_extension(const uint8_t *fourcc) {
+static const char *ivf_codec_extension(const uint8_t *fourcc)
+{
     if (xx_rt_memcmp(fourcc, "VP80", 4U) == 0) return "vp8";
     if (xx_rt_memcmp(fourcc, "VP90", 4U) == 0) return "vp9";
     if (xx_rt_memcmp(fourcc, "AV01", 4U) == 0) return "av1";
     return "bin";
 }
 
-static bool pm_parse(Abstractformat *self, pm_stream *stream,
-                     xx_pd_struct *pd) {
+static bool pm_parse(Abstractformat *self, pm_stream *stream, xx_pd_struct *pd)
+{
     uint8_t header[IVF_HEADER_SIZE], frame[IVF_FRAME_HEADER_SIZE];
     int64_t available = pm_available(self), at;
     const char *extension;
     uint32_t count = 0U;
-    if (available < (int64_t)IVF_HEADER_SIZE ||
-        !pm_read(self, 0, header, sizeof(header)) ||
-        xx_rt_memcmp(header, "DKIF", 4U) != 0 ||
-        xx_data_get_u16(header + 4U, 2, 0, false) != 0U ||
-        xx_data_get_u16(header + 6U, 2, 0, false) != IVF_HEADER_SIZE ||
-        xx_data_get_u16(header + 12U, 2, 0, false) == 0U ||
-        xx_data_get_u16(header + 14U, 2, 0, false) == 0U ||
-        xx_data_get_u32(header + 16U, 4, 0, false) == 0U ||
+    if (available < (int64_t)IVF_HEADER_SIZE || !pm_read(self, 0, header, sizeof(header)) || xx_rt_memcmp(header, "DKIF", 4U) != 0 ||
+        xx_data_get_u16(header + 4U, 2, 0, false) != 0U || xx_data_get_u16(header + 6U, 2, 0, false) != IVF_HEADER_SIZE ||
+        xx_data_get_u16(header + 12U, 2, 0, false) == 0U || xx_data_get_u16(header + 14U, 2, 0, false) == 0U || xx_data_get_u32(header + 16U, 4, 0, false) == 0U ||
         xx_data_get_u32(header + 20U, 4, 0, false) == 0U)
         return false;
     extension = ivf_codec_extension(header + 8U);
@@ -42,20 +38,13 @@ static bool pm_parse(Abstractformat *self, pm_stream *stream,
         uint32_t size;
         uint64_t pts;
         char label[80];
-        if ((pd && xx_pd_is_stopped(pd)) ||
-            count >= IVF_MAX_FRAMES ||
-            available - at < (int64_t)IVF_FRAME_HEADER_SIZE ||
-            !pm_read(self, at, frame, sizeof(frame)))
+        if ((pd && xx_pd_is_stopped(pd)) || count >= IVF_MAX_FRAMES || available - at < (int64_t)IVF_FRAME_HEADER_SIZE || !pm_read(self, at, frame, sizeof(frame)))
             return false;
         size = xx_data_get_u32(frame, 4, 0, false);
-        pts = (uint64_t)xx_data_get_u32(frame + 4U, 4, 0, false) |
-              ((uint64_t)xx_data_get_u32(frame + 8U, 4, 0, false) << 32);
+        pts = (uint64_t)xx_data_get_u32(frame + 4U, 4, 0, false) | ((uint64_t)xx_data_get_u32(frame + 8U, 4, 0, false) << 32);
         at += IVF_FRAME_HEADER_SIZE;
-        if (size > IVF_MAX_PACKET_SIZE || (int64_t)size > available - at)
-            return false;
-        (void)xx_rt_snprintf(label, sizeof(label),
-                             "frame-%06u-pts-%llu.%s", count,
-                             (unsigned long long)pts, extension);
+        if (size > IVF_MAX_PACKET_SIZE || (int64_t)size > available - at) return false;
+        (void)xx_rt_snprintf(label, sizeof(label), "frame-%06u-pts-%llu.%s", count, (unsigned long long)pts, extension);
         if (!pm_add(self, stream, label, at, size)) return false;
         at += (int64_t)size;
         ++count;
@@ -66,33 +55,39 @@ static bool pm_parse(Abstractformat *self, pm_stream *stream,
     return true;
 }
 
-void xx_ivf_init(xx_ivf *reader, xx_io_device *device, int64_t base) {
+void xx_ivf_init(xx_ivf *reader, xx_io_device *device, int64_t base)
+{
     if (!reader) return;
     xx_mem_zero(reader, sizeof(*reader));
     pm_init(&reader->format, device, base, XX_FILE_TYPE_IVF, "ivf");
     xx_format_set_mime_type(&reader->format, "video/x-ivf");
 }
 
-xx_ivf *xx_ivf_create(xx_io_device *device, int64_t base) {
+xx_ivf *xx_ivf_create(xx_io_device *device, int64_t base)
+{
     xx_ivf *reader = (xx_ivf *)xx_mem_alloc(sizeof(*reader));
     if (reader) xx_ivf_init(reader, device, base);
     return reader;
 }
 
-void xx_ivf_destroy(xx_ivf *reader) {
+void xx_ivf_destroy(xx_ivf *reader)
+{
     if (reader) xx_format_cleanup_extra_parameters(&reader->format);
 }
 
-void xx_ivf_free(xx_ivf *reader) {
+void xx_ivf_free(xx_ivf *reader)
+{
     if (!reader) return;
     xx_ivf_destroy(reader);
     xx_mem_free(reader);
 }
 
-bool xx_ivf_check_is_valid(Abstractformat *self, xx_pd_struct *pd) {
+bool xx_ivf_check_is_valid(Abstractformat *self, xx_pd_struct *pd)
+{
     return pm_valid(self, pd);
 }
 
-bool xx_ivf_handle_base_info(Abstractformat *self, xx_pd_struct *pd) {
+bool xx_ivf_handle_base_info(Abstractformat *self, xx_pd_struct *pd)
+{
     return pm_handle(self, pd);
 }

@@ -11,14 +11,14 @@
 #include "xxfclib/memory/xx_memory.h"
 #include "xxfclib/rt/xx_rt.h"
 
-#define LTEC_NC 510           /* 256 literals + 254 match lengths          */
-#define LTEC_CBIT 9           /* width of the literal-table symbol count   */
-#define LTEC_NT 19            /* pre-table alphabet                        */
-#define LTEC_TBIT 5           /* width of the pre-table symbol count       */
-#define LTEC_NP 24            /* position alphabet ceiling                 */
-#define LTEC_PBIT 5           /* width of the position-table symbol count  */
-#define LTEC_THRESHOLD 3      /* shortest encodable match                  */
-#define LTEC_PT_SPECIAL 3     /* pre-table index carrying the 2-bit run    */
+#define LTEC_NC 510       /* 256 literals + 254 match lengths          */
+#define LTEC_CBIT 9       /* width of the literal-table symbol count   */
+#define LTEC_NT 19        /* pre-table alphabet                        */
+#define LTEC_TBIT 5       /* width of the pre-table symbol count       */
+#define LTEC_NP 24        /* position alphabet ceiling                 */
+#define LTEC_PBIT 5       /* width of the position-table symbol count  */
+#define LTEC_THRESHOLD 3  /* shortest encodable match                  */
+#define LTEC_PT_SPECIAL 3 /* pre-table index carrying the 2-bit run    */
 #define LTEC_MAX_CODE_LENGTH 16
 /* Only the two uninformative bits-of-nothing at the head of a block. */
 #define LTEC_PRELUDE_BITS 16
@@ -41,8 +41,8 @@ typedef struct ltec_bits_s {
     uint64_t bit_pos;
 } ltec_bits;
 
-static void ltec_bits_init(ltec_bits *reader, const uint8_t *data,
-                           size_t size) {
+static void ltec_bits_init(ltec_bits *reader, const uint8_t *data, size_t size)
+{
     reader->data = data;
     reader->size = (uint64_t)size;
     reader->bit_count = (uint64_t)size * 8U;
@@ -51,23 +51,20 @@ static void ltec_bits_init(ltec_bits *reader, const uint8_t *data,
 
 /* The reference guard is `bitPos > bitCount + SLACK - count`, which is the
  * same as the unsigned-safe form below. */
-static bool ltec_read_bits(ltec_bits *reader, uint32_t count,
-                           uint32_t *value) {
+static bool ltec_read_bits(ltec_bits *reader, uint32_t count, uint32_t *value)
+{
     uint32_t result = 0U;
     uint32_t i;
 
     if (count > 24U) return false;
-    if ((reader->bit_pos + (uint64_t)count) >
-        (reader->bit_count + (uint64_t)LTEC_TAIL_SLACK_BITS)) {
+    if ((reader->bit_pos + (uint64_t)count) > (reader->bit_count + (uint64_t)LTEC_TAIL_SLACK_BITS)) {
         return false;
     }
     for (i = 0U; i < count; ++i) {
         uint32_t bit = 0U;
         uint64_t byte_index = reader->bit_pos >> 3;
         if (byte_index < reader->size) {
-            bit = (uint32_t)((reader->data[(size_t)byte_index] >>
-                              (7U - (unsigned)(reader->bit_pos & 7U))) &
-                             1U);
+            bit = (uint32_t)((reader->data[(size_t)byte_index] >> (7U - (unsigned)(reader->bit_pos & 7U))) & 1U);
         }
         result = (result << 1U) | bit;
         ++reader->bit_pos;
@@ -76,7 +73,8 @@ static bool ltec_read_bits(ltec_bits *reader, uint32_t count,
     return true;
 }
 
-static bool ltec_skip_bits(ltec_bits *reader, uint32_t count) {
+static bool ltec_skip_bits(ltec_bits *reader, uint32_t count)
+{
     uint32_t dummy = 0U;
     while (count > 24U) {
         if (!ltec_read_bits(reader, 24U, &dummy)) return false;
@@ -112,7 +110,8 @@ typedef struct ltec_state_s {
     uint32_t next_index[LTEC_MAX_CODE_LENGTH + 1];
 } ltec_state;
 
-static void ltec_reset_tree(ltec_tree *tree) {
+static void ltec_reset_tree(ltec_tree *tree)
+{
     uint32_t i;
     for (i = 0U; i <= (uint32_t)LTEC_MAX_CODE_LENGTH; ++i) {
         tree->count[i] = 0U;
@@ -129,8 +128,8 @@ static void ltec_reset_tree(ltec_tree *tree) {
  * blocks of the reference corpus).  Rejecting incomplete and over-subscribed
  * tables therefore costs nothing on genuine input and turns a mis-parse into
  * an immediate failure instead of plausible-looking wrong plaintext. */
-static bool ltec_build_tree(ltec_state *state, uint32_t alphabet,
-                            ltec_tree *tree) {
+static bool ltec_build_tree(ltec_state *state, uint32_t alphabet, ltec_tree *tree)
+{
     uint32_t max_length = 0U;
     int64_t left;
     uint32_t code;
@@ -177,8 +176,8 @@ static bool ltec_build_tree(ltec_state *state, uint32_t alphabet,
     return true;
 }
 
-static bool ltec_decode_symbol(ltec_bits *reader, const ltec_tree *tree,
-                               uint32_t *symbol) {
+static bool ltec_decode_symbol(ltec_bits *reader, const ltec_tree *tree, uint32_t *symbol)
+{
     uint32_t code = 0U;
     uint32_t length;
 
@@ -190,10 +189,8 @@ static bool ltec_decode_symbol(ltec_bits *reader, const ltec_tree *tree,
         uint32_t bit = 0U;
         if (!ltec_read_bits(reader, 1U, &bit)) return false;
         code = (code << 1U) | bit;
-        if (tree->count[length] && (code >= tree->first_code[length]) &&
-            ((code - tree->first_code[length]) < tree->count[length])) {
-            *symbol = tree->symbols[tree->first_index[length] +
-                                    (code - tree->first_code[length])];
+        if (tree->count[length] && (code >= tree->first_code[length]) && ((code - tree->first_code[length]) < tree->count[length])) {
+            *symbol = tree->symbols[tree->first_index[length] + (code - tree->first_code[length])];
             return true;
         }
     }
@@ -208,9 +205,8 @@ static bool ltec_decode_symbol(ltec_bits *reader, const ltec_tree *tree,
  * `special_index` is -1 for the position table, where the two-bit zero run
  * does not exist; `i` is only ever compared after it has been incremented, so
  * -1 can never match.  DELIBERATE, matching the reference. */
-static bool ltec_read_pt_len(ltec_bits *reader, ltec_state *state,
-                             uint32_t alphabet, uint32_t count_bits,
-                             int32_t special_index, ltec_tree *tree) {
+static bool ltec_read_pt_len(ltec_bits *reader, ltec_state *state, uint32_t alphabet, uint32_t count_bits, int32_t special_index, ltec_tree *tree)
+{
     uint32_t number = 0U;
     uint32_t i;
 
@@ -219,8 +215,7 @@ static bool ltec_read_pt_len(ltec_bits *reader, ltec_state *state,
     if (!ltec_read_bits(reader, count_bits, &number)) return false;
     if (number == 0U) {
         uint32_t symbol = 0U;
-        if (!ltec_read_bits(reader, count_bits, &symbol) ||
-            (symbol >= alphabet)) {
+        if (!ltec_read_bits(reader, count_bits, &symbol) || (symbol >= alphabet)) {
             return false;
         }
         tree->constant = true;
@@ -260,8 +255,8 @@ static bool ltec_read_pt_len(ltec_bits *reader, ltec_state *state,
     return ltec_build_tree(state, alphabet, tree);
 }
 
-static bool ltec_read_c_len(ltec_bits *reader, ltec_state *state,
-                            ltec_tree *tree) {
+static bool ltec_read_c_len(ltec_bits *reader, ltec_state *state, ltec_tree *tree)
+{
     uint32_t number = 0U;
     uint32_t i;
 
@@ -270,8 +265,7 @@ static bool ltec_read_c_len(ltec_bits *reader, ltec_state *state,
     if (!ltec_read_bits(reader, (uint32_t)LTEC_CBIT, &number)) return false;
     if (number == 0U) {
         uint32_t symbol = 0U;
-        if (!ltec_read_bits(reader, (uint32_t)LTEC_CBIT, &symbol) ||
-            (symbol >= (uint32_t)LTEC_NC)) {
+        if (!ltec_read_bits(reader, (uint32_t)LTEC_CBIT, &symbol) || (symbol >= (uint32_t)LTEC_NC)) {
             return false;
         }
         tree->constant = true;
@@ -321,9 +315,8 @@ static bool ltec_read_c_len(ltec_bits *reader, ltec_state *state,
  * block's very first byte and never before it, which is what makes a flat
  * buffer both correct and stricter than an LHA ring window pre-filled with
  * spaces.  `out` must hold `stop_size` bytes. */
-static bool ltec_decode_block(const uint8_t *input, size_t input_size,
-                              uint8_t *out, size_t stop_size,
-                              ltec_state *state) {
+static bool ltec_decode_block(const uint8_t *input, size_t input_size, uint8_t *out, size_t stop_size, ltec_state *state)
+{
     ltec_bits reader;
     size_t produced = 0U;
     uint32_t block_remaining = 0U;
@@ -344,17 +337,12 @@ static bool ltec_decode_block(const uint8_t *input, size_t input_size,
         if (block_remaining == 0U) {
             /* A block restates all three tables in-stream after each run of
              * symbols; the 16-bit count is how many symbols the run holds. */
-            if (!ltec_read_bits(&reader, 16U, &block_remaining) ||
-                (block_remaining == 0U)) {
+            if (!ltec_read_bits(&reader, 16U, &block_remaining) || (block_remaining == 0U)) {
                 return false;
             }
-            if (!ltec_read_pt_len(&reader, state, (uint32_t)LTEC_NT,
-                                  (uint32_t)LTEC_TBIT, LTEC_PT_SPECIAL,
-                                  &state->pre_tree) ||
+            if (!ltec_read_pt_len(&reader, state, (uint32_t)LTEC_NT, (uint32_t)LTEC_TBIT, LTEC_PT_SPECIAL, &state->pre_tree) ||
                 !ltec_read_c_len(&reader, state, &state->literal_tree) ||
-                !ltec_read_pt_len(&reader, state, (uint32_t)LTEC_NP,
-                                  (uint32_t)LTEC_PBIT, -1,
-                                  &state->position_tree)) {
+                !ltec_read_pt_len(&reader, state, (uint32_t)LTEC_NP, (uint32_t)LTEC_PBIT, -1, &state->position_tree)) {
                 return false;
             }
         }
@@ -370,16 +358,13 @@ static bool ltec_decode_block(const uint8_t *input, size_t input_size,
         if (symbol >= (uint32_t)LTEC_NC) return false;
 
         {
-            uint32_t match_length =
-                (symbol - 256U) + (uint32_t)LTEC_THRESHOLD;
+            uint32_t match_length = (symbol - 256U) + (uint32_t)LTEC_THRESHOLD;
             uint32_t position_symbol = 0U;
             uint32_t distance = 0U;
             size_t source;
             uint32_t i;
 
-            if (!ltec_decode_symbol(&reader, &state->position_tree,
-                                    &position_symbol) ||
-                (position_symbol >= (uint32_t)LTEC_NP)) {
+            if (!ltec_decode_symbol(&reader, &state->position_tree, &position_symbol) || (position_symbol >= (uint32_t)LTEC_NP)) {
                 return false;
             }
             if (position_symbol > 0U) {
@@ -409,9 +394,8 @@ static bool ltec_decode_block(const uint8_t *input, size_t input_size,
     return produced >= stop_size;
 }
 
-bool xx_corelltec_decode_memory(const uint8_t *input, size_t input_size,
-                                uint8_t *output, size_t output_size,
-                                size_t *written) {
+bool xx_corelltec_decode_memory(const uint8_t *input, size_t input_size, uint8_t *output, size_t output_size, size_t *written)
+{
     ltec_state *state;
     bool result;
 
@@ -431,9 +415,8 @@ bool xx_corelltec_decode_memory(const uint8_t *input, size_t input_size,
     return true;
 }
 
-bool xx_corelltec_decode_member(const uint8_t *input, size_t input_size,
-                                size_t offset_in_block, uint8_t *output,
-                                size_t output_size, size_t *written) {
+bool xx_corelltec_decode_member(const uint8_t *input, size_t input_size, size_t offset_in_block, uint8_t *output, size_t output_size, size_t *written)
+{
     ltec_state *state;
     uint8_t *block;
     size_t stop_size;
@@ -445,8 +428,7 @@ bool xx_corelltec_decode_member(const uint8_t *input, size_t input_size,
     if (offset_in_block > (SIZE_MAX - output_size)) return false;
     if (output_size == 0U) return true;
     if (offset_in_block == 0U) {
-        return xx_corelltec_decode_memory(input, input_size, output,
-                                          output_size, written);
+        return xx_corelltec_decode_memory(input, input_size, output, output_size, written);
     }
 
     stop_size = offset_in_block + output_size;

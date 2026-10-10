@@ -72,10 +72,10 @@ extern "C" {
  * @brief Growable byte buffer. Initialise with @ref xx_buf_init.
  */
 typedef struct xx_buf_s {
-    char  *data;     /**< Bytes; NULL until the first append. Never counted past size. */
+    char *data;      /**< Bytes; NULL until the first append. Never counted past size. */
     size_t size;     /**< Number of bytes held. Authoritative; zero bytes count. */
     size_t capacity; /**< Bytes allocated, including room for the trailing zero. */
-    bool   failed;   /**< Sticky: set on allocation failure, never cleared except by init/free. */
+    bool failed;     /**< Sticky: set on allocation failure, never cleared except by init/free. */
 } xx_buf_t;
 
 /** @brief Put @p buf into the empty state. Allocates nothing. */
@@ -119,8 +119,7 @@ XXFC_API bool xx_buf_append_char(xx_buf_t *buf, char c);
  * no C runtime. Note that the runtime layer's formatter has no floating-point
  * conversions - use the xx_rt_dtoa_* family for those.
  */
-XXFC_API XX_RT_PRINTF_LIKE(2, 3) bool xx_buf_appendf(xx_buf_t *buf,
-                                                     const char *fmt, ...);
+XXFC_API XX_RT_PRINTF_LIKE(2, 3) bool xx_buf_appendf(xx_buf_t *buf, const char *fmt, ...);
 
 /** @brief False once any operation on @p buf has failed. */
 XXFC_API bool xx_buf_ok(const xx_buf_t *buf);

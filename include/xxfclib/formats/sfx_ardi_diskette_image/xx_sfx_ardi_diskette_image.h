@@ -74,59 +74,43 @@ extern "C" {
  */
 typedef struct xx_sfx_ardi_diskette_image {
     Abstractformat format;
-    int64_t record_offset;    /**< Device offset of the 0x33-byte record. */
-    int64_t stream_offset;    /**< Device offset of the Deflate stream. */
-    int64_t stream_size;      /**< Compressed size from the record. */
-    int64_t trailer_offset;   /**< Device offset of the 51-byte trailer. */
-    int64_t prologue_size;    /**< Inflated bytes before the image; -1 if
-                                   the prologue could not be measured. */
-    uint64_t image_size;      /**< total_sectors * bytes_per_sector. */
+    int64_t record_offset;  /**< Device offset of the 0x33-byte record. */
+    int64_t stream_offset;  /**< Device offset of the Deflate stream. */
+    int64_t stream_size;    /**< Compressed size from the record. */
+    int64_t trailer_offset; /**< Device offset of the 51-byte trailer. */
+    int64_t prologue_size;  /**< Inflated bytes before the image; -1 if
+                                 the prologue could not be measured. */
+    uint64_t image_size;    /**< total_sectors * bytes_per_sector. */
     uint64_t number_of_records;
-    uint32_t image_crc32;     /**< CRC-32 of the image, from the record. */
+    uint32_t image_crc32; /**< CRC-32 of the image, from the record. */
     uint16_t bytes_per_sector;
     uint16_t total_sectors;
     uint16_t sectors_per_track;
     uint16_t heads;
     uint8_t media_descriptor;
-    bool located_by_scan;     /**< Record found by the needle scan, not at
-                                   the NE segment end. */
-    char year[5];             /**< The four digits in the trailer. */
+    bool located_by_scan; /**< Record found by the needle scan, not at
+                               the NE segment end. */
+    char year[5];         /**< The four digits in the trailer. */
     char label[XX_SFX_ARDI_DISKETTE_IMAGE_LABEL_MAX + 1];
 } xx_sfx_ardi_diskette_image;
 
 typedef xx_sfx_ardi_diskette_image xx_sfx_ardi_diskette_image_t;
 
-XXFC_API void xx_sfx_ardi_diskette_image_init(
-    xx_sfx_ardi_diskette_image *archive, xx_io_device *device,
-    int64_t base_address);
-XXFC_API xx_sfx_ardi_diskette_image *xx_sfx_ardi_diskette_image_create(
-    xx_io_device *device, int64_t base_address);
-XXFC_API void xx_sfx_ardi_diskette_image_destroy(
-    xx_sfx_ardi_diskette_image *archive);
-XXFC_API void xx_sfx_ardi_diskette_image_free(
-    xx_sfx_ardi_diskette_image *archive);
+XXFC_API void xx_sfx_ardi_diskette_image_init(xx_sfx_ardi_diskette_image *archive, xx_io_device *device, int64_t base_address);
+XXFC_API xx_sfx_ardi_diskette_image *xx_sfx_ardi_diskette_image_create(xx_io_device *device, int64_t base_address);
+XXFC_API void xx_sfx_ardi_diskette_image_destroy(xx_sfx_ardi_diskette_image *archive);
+XXFC_API void xx_sfx_ardi_diskette_image_free(xx_sfx_ardi_diskette_image *archive);
 
-XXFC_API bool xx_sfx_ardi_diskette_image_check_is_valid(Abstractformat *self,
-                                                        xx_pd_struct *pd);
-XXFC_API bool xx_sfx_ardi_diskette_image_handle_base_info(
-    Abstractformat *self, xx_pd_struct *pd);
-XXFC_API int64_t xx_sfx_ardi_diskette_image_get_format_size(
-    Abstractformat *self, xx_pd_struct *pd);
-XXFC_API uint64_t xx_sfx_ardi_diskette_image_get_number_of_archive_records(
-    Abstractformat *self, xx_pd_struct *pd);
+XXFC_API bool xx_sfx_ardi_diskette_image_check_is_valid(Abstractformat *self, xx_pd_struct *pd);
+XXFC_API bool xx_sfx_ardi_diskette_image_handle_base_info(Abstractformat *self, xx_pd_struct *pd);
+XXFC_API int64_t xx_sfx_ardi_diskette_image_get_format_size(Abstractformat *self, xx_pd_struct *pd);
+XXFC_API uint64_t xx_sfx_ardi_diskette_image_get_number_of_archive_records(Abstractformat *self, xx_pd_struct *pd);
 
-XXFC_API xx_archive_record_state *
-xx_sfx_ardi_diskette_image_create_archive_records_reading(
-    Abstractformat *self, const xx_list_s *options, xx_pd_struct *pd);
-XXFC_API const xx_archive_record *
-xx_sfx_ardi_diskette_image_get_current_archive_record(
-    Abstractformat *self, xx_archive_record_state *state);
-XXFC_API bool xx_sfx_ardi_diskette_image_unpack_current_archive_record(
-    Abstractformat *self, xx_archive_record_state *state, xx_pd_struct *pd);
-XXFC_API bool xx_sfx_ardi_diskette_image_archive_record_move_to_next(
-    Abstractformat *self, xx_archive_record_state *state, xx_pd_struct *pd);
-XXFC_API void xx_sfx_ardi_diskette_image_free_archive_records_reading(
-    Abstractformat *self, xx_archive_record_state *state);
+XXFC_API xx_archive_record_state *xx_sfx_ardi_diskette_image_create_archive_records_reading(Abstractformat *self, const xx_list_s *options, xx_pd_struct *pd);
+XXFC_API const xx_archive_record *xx_sfx_ardi_diskette_image_get_current_archive_record(Abstractformat *self, xx_archive_record_state *state);
+XXFC_API bool xx_sfx_ardi_diskette_image_unpack_current_archive_record(Abstractformat *self, xx_archive_record_state *state, xx_pd_struct *pd);
+XXFC_API bool xx_sfx_ardi_diskette_image_archive_record_move_to_next(Abstractformat *self, xx_archive_record_state *state, xx_pd_struct *pd);
+XXFC_API void xx_sfx_ardi_diskette_image_free_archive_records_reading(Abstractformat *self, xx_archive_record_state *state);
 
 /**
  * @brief Inflate the image into @p destination (NULL only verifies).
@@ -134,9 +118,7 @@ XXFC_API void xx_sfx_ardi_diskette_image_free_archive_records_reading(
  * Succeeds only when the prologue is well formed, exactly image_size bytes
  * follow it and their CRC-32 matches the record.
  */
-XXFC_API bool xx_sfx_ardi_diskette_image_unpack_to_device(
-    xx_sfx_ardi_diskette_image *archive, xx_io_device *destination,
-    xx_pd_struct *pd);
+XXFC_API bool xx_sfx_ardi_diskette_image_unpack_to_device(xx_sfx_ardi_diskette_image *archive, xx_io_device *destination, xx_pd_struct *pd);
 
 #ifdef __cplusplus
 }

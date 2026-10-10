@@ -8,7 +8,9 @@
 extern "C" {
 #endif
 /** Raw ChArc record chain. Stored and ChArc-compressed members. */
-typedef struct xx_chz { Abstractformat format; } xx_chz;
+typedef struct xx_chz {
+    Abstractformat format;
+} xx_chz;
 XXFC_API void xx_chz_init(xx_chz *, xx_io_device *, int64_t);
 XXFC_API xx_chz *xx_chz_create(xx_io_device *, int64_t);
 XXFC_API void xx_chz_destroy(xx_chz *);

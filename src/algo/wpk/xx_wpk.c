@@ -18,31 +18,18 @@
 
 /* LHA "-lh1-" position tables.  Kept local so this codec links on its own. */
 static const uint8_t g_wpk_d_code[256] = {
-    0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
-    0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
-    0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x01, 0x01, 0x01, 0x01,
-    0x01, 0x01, 0x01, 0x01, 0x01, 0x01, 0x01, 0x01, 0x01, 0x01, 0x01, 0x01,
-    0x02, 0x02, 0x02, 0x02, 0x02, 0x02, 0x02, 0x02, 0x02, 0x02, 0x02, 0x02,
-    0x02, 0x02, 0x02, 0x02, 0x03, 0x03, 0x03, 0x03, 0x03, 0x03, 0x03, 0x03,
-    0x03, 0x03, 0x03, 0x03, 0x03, 0x03, 0x03, 0x03, 0x04, 0x04, 0x04, 0x04,
-    0x04, 0x04, 0x04, 0x04, 0x05, 0x05, 0x05, 0x05, 0x05, 0x05, 0x05, 0x05,
-    0x06, 0x06, 0x06, 0x06, 0x06, 0x06, 0x06, 0x06, 0x07, 0x07, 0x07, 0x07,
-    0x07, 0x07, 0x07, 0x07, 0x08, 0x08, 0x08, 0x08, 0x08, 0x08, 0x08, 0x08,
-    0x09, 0x09, 0x09, 0x09, 0x09, 0x09, 0x09, 0x09, 0x0a, 0x0a, 0x0a, 0x0a,
-    0x0a, 0x0a, 0x0a, 0x0a, 0x0b, 0x0b, 0x0b, 0x0b, 0x0b, 0x0b, 0x0b, 0x0b,
-    0x0c, 0x0c, 0x0c, 0x0c, 0x0d, 0x0d, 0x0d, 0x0d, 0x0e, 0x0e, 0x0e, 0x0e,
-    0x0f, 0x0f, 0x0f, 0x0f, 0x10, 0x10, 0x10, 0x10, 0x11, 0x11, 0x11, 0x11,
-    0x12, 0x12, 0x12, 0x12, 0x13, 0x13, 0x13, 0x13, 0x14, 0x14, 0x14, 0x14,
-    0x15, 0x15, 0x15, 0x15, 0x16, 0x16, 0x16, 0x16, 0x17, 0x17, 0x17, 0x17,
-    0x18, 0x18, 0x19, 0x19, 0x1a, 0x1a, 0x1b, 0x1b, 0x1c, 0x1c, 0x1d, 0x1d,
-    0x1e, 0x1e, 0x1f, 0x1f, 0x20, 0x20, 0x21, 0x21, 0x22, 0x22, 0x23, 0x23,
-    0x24, 0x24, 0x25, 0x25, 0x26, 0x26, 0x27, 0x27, 0x28, 0x28, 0x29, 0x29,
-    0x2a, 0x2a, 0x2b, 0x2b, 0x2c, 0x2c, 0x2d, 0x2d, 0x2e, 0x2e, 0x2f, 0x2f,
-    0x30, 0x31, 0x32, 0x33, 0x34, 0x35, 0x36, 0x37, 0x38, 0x39, 0x3a, 0x3b,
-    0x3c, 0x3d, 0x3e, 0x3f};
+    0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+    0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x01, 0x01, 0x01, 0x01, 0x01, 0x01, 0x01, 0x01, 0x01, 0x01, 0x01, 0x01, 0x01, 0x01, 0x01, 0x01, 0x02, 0x02, 0x02, 0x02,
+    0x02, 0x02, 0x02, 0x02, 0x02, 0x02, 0x02, 0x02, 0x02, 0x02, 0x02, 0x02, 0x03, 0x03, 0x03, 0x03, 0x03, 0x03, 0x03, 0x03, 0x03, 0x03, 0x03, 0x03, 0x03, 0x03,
+    0x03, 0x03, 0x04, 0x04, 0x04, 0x04, 0x04, 0x04, 0x04, 0x04, 0x05, 0x05, 0x05, 0x05, 0x05, 0x05, 0x05, 0x05, 0x06, 0x06, 0x06, 0x06, 0x06, 0x06, 0x06, 0x06,
+    0x07, 0x07, 0x07, 0x07, 0x07, 0x07, 0x07, 0x07, 0x08, 0x08, 0x08, 0x08, 0x08, 0x08, 0x08, 0x08, 0x09, 0x09, 0x09, 0x09, 0x09, 0x09, 0x09, 0x09, 0x0a, 0x0a,
+    0x0a, 0x0a, 0x0a, 0x0a, 0x0a, 0x0a, 0x0b, 0x0b, 0x0b, 0x0b, 0x0b, 0x0b, 0x0b, 0x0b, 0x0c, 0x0c, 0x0c, 0x0c, 0x0d, 0x0d, 0x0d, 0x0d, 0x0e, 0x0e, 0x0e, 0x0e,
+    0x0f, 0x0f, 0x0f, 0x0f, 0x10, 0x10, 0x10, 0x10, 0x11, 0x11, 0x11, 0x11, 0x12, 0x12, 0x12, 0x12, 0x13, 0x13, 0x13, 0x13, 0x14, 0x14, 0x14, 0x14, 0x15, 0x15,
+    0x15, 0x15, 0x16, 0x16, 0x16, 0x16, 0x17, 0x17, 0x17, 0x17, 0x18, 0x18, 0x19, 0x19, 0x1a, 0x1a, 0x1b, 0x1b, 0x1c, 0x1c, 0x1d, 0x1d, 0x1e, 0x1e, 0x1f, 0x1f,
+    0x20, 0x20, 0x21, 0x21, 0x22, 0x22, 0x23, 0x23, 0x24, 0x24, 0x25, 0x25, 0x26, 0x26, 0x27, 0x27, 0x28, 0x28, 0x29, 0x29, 0x2a, 0x2a, 0x2b, 0x2b, 0x2c, 0x2c,
+    0x2d, 0x2d, 0x2e, 0x2e, 0x2f, 0x2f, 0x30, 0x31, 0x32, 0x33, 0x34, 0x35, 0x36, 0x37, 0x38, 0x39, 0x3a, 0x3b, 0x3c, 0x3d, 0x3e, 0x3f};
 
-static const uint8_t g_wpk_d_len[16] = {3, 3, 4, 4, 4, 5, 5, 5,
-                                        5, 6, 6, 6, 7, 7, 7, 8};
+static const uint8_t g_wpk_d_len[16] = {3, 3, 4, 4, 4, 5, 5, 5, 5, 6, 6, 6, 7, 7, 7, 8};
 
 typedef struct xx_wpk_entry_s {
     int32_t symbol;
@@ -64,8 +51,8 @@ typedef struct xx_wpk_bits_s {
     int32_t count;
 } xx_wpk_bits;
 
-static void xx_wpk_bits_init(xx_wpk_bits *bits, const uint8_t *data,
-                             size_t size) {
+static void xx_wpk_bits_init(xx_wpk_bits *bits, const uint8_t *data, size_t size)
+{
     bits->data = data;
     bits->size = size;
     bits->position = 0;
@@ -73,7 +60,8 @@ static void xx_wpk_bits_init(xx_wpk_bits *bits, const uint8_t *data,
     bits->count = 0;
 }
 
-static void xx_wpk_bits_fill(xx_wpk_bits *bits, int32_t need) {
+static void xx_wpk_bits_fill(xx_wpk_bits *bits, int32_t need)
+{
     while (bits->count < need) {
         if (bits->position >= bits->size) {
             bits->acc = bits->acc << 8;
@@ -86,7 +74,8 @@ static void xx_wpk_bits_fill(xx_wpk_bits *bits, int32_t need) {
 }
 
 /* Returns -1 when the request cannot be served from the real byte supply. */
-static int32_t xx_wpk_bits_get(xx_wpk_bits *bits, int32_t need) {
+static int32_t xx_wpk_bits_get(xx_wpk_bits *bits, int32_t need)
+{
     int32_t result;
 
     if (need <= 0) {
@@ -99,14 +88,14 @@ static int32_t xx_wpk_bits_get(xx_wpk_bits *bits, int32_t need) {
         xx_wpk_bits_fill(bits, need);
     }
     bits->count -= need;
-    result = (int32_t)((bits->acc >> bits->count) &
-                       (((uint32_t)1 << need) - 1U));
+    result = (int32_t)((bits->acc >> bits->count) & (((uint32_t)1 << need) - 1U));
     bits->acc &= ((uint32_t)1 << bits->count) - 1U;
 
     return result;
 }
 
-static int32_t xx_wpk_bits_bit(xx_wpk_bits *bits) {
+static int32_t xx_wpk_bits_bit(xx_wpk_bits *bits)
+{
     int32_t result;
 
     if (bits->count < 1) {
@@ -122,13 +111,15 @@ static int32_t xx_wpk_bits_bit(xx_wpk_bits *bits) {
     return result;
 }
 
-static uint32_t xx_wpk_bits_peek16(xx_wpk_bits *bits) {
+static uint32_t xx_wpk_bits_peek16(xx_wpk_bits *bits)
+{
     xx_wpk_bits_fill(bits, 16);
 
     return (bits->acc >> (bits->count - 16)) & 0xFFFFU;
 }
 
-static bool xx_wpk_bits_drop(xx_wpk_bits *bits, int32_t need) {
+static bool xx_wpk_bits_drop(xx_wpk_bits *bits, int32_t need)
+{
     if ((need <= 0) || (need > bits->count)) {
         return false;
     }
@@ -138,16 +129,18 @@ static bool xx_wpk_bits_drop(xx_wpk_bits *bits, int32_t need) {
     return true;
 }
 
-static size_t xx_wpk_bits_consumed(const xx_wpk_bits *bits) {
+static size_t xx_wpk_bits_consumed(const xx_wpk_bits *bits)
+{
     return bits->position - (size_t)(bits->count >> 3);
 }
 
-static int32_t xx_wpk_compare(const xx_wpk_entry *table, int32_t left,
-                              int32_t right) {
+static int32_t xx_wpk_compare(const xx_wpk_entry *table, int32_t left, int32_t right)
+{
     return table[left].length - table[right].length;
 }
 
-static void xx_wpk_swap(xx_wpk_entry *table, int32_t left, int32_t right) {
+static void xx_wpk_swap(xx_wpk_entry *table, int32_t left, int32_t right)
+{
     xx_wpk_entry entry;
 
     entry = table[left];
@@ -158,8 +151,8 @@ static void xx_wpk_swap(xx_wpk_entry *table, int32_t left, int32_t right) {
 /* Reference sorter A: a simple quicksort over an explicit stack.  The point of
  * this function is its tie-break order inside a run of equal lengths, so
  * nothing here may be rewritten, simplified or replaced by a library sort. */
-static void xx_wpk_sort_a(xx_wpk_entry *table, int32_t count,
-                          int32_t *stack_base, int32_t *stack_count) {
+static void xx_wpk_sort_a(xx_wpk_entry *table, int32_t count, int32_t *stack_base, int32_t *stack_count)
+{
     int32_t sp = 0;
     int32_t base = 0;
     int32_t cnt = count;
@@ -183,8 +176,7 @@ static void xx_wpk_sort_a(xx_wpk_entry *table, int32_t count,
                     xx_wpk_swap(table, base, base + (cnt >> 1));
 
                     while (index < cnt) {
-                        const int32_t result =
-                            xx_wpk_compare(table, base + index, base);
+                        const int32_t result = xx_wpk_compare(table, base + index, base);
                         if (result < 1) {
                             less++;
                             if (index != less) {
@@ -234,8 +226,8 @@ static void xx_wpk_sort_a(xx_wpk_entry *table, int32_t count,
     }
 }
 
-static int32_t xx_wpk_med3(xx_wpk_entry *table, int32_t a, int32_t b,
-                           int32_t c) {
+static int32_t xx_wpk_med3(xx_wpk_entry *table, int32_t a, int32_t b, int32_t c)
+{
     int32_t result = xx_wpk_compare(table, a, b);
 
     if (result < 1) {
@@ -262,8 +254,8 @@ static int32_t xx_wpk_med3(xx_wpk_entry *table, int32_t a, int32_t b,
 /* Reference sorter B: the BSD qsort shape - shell sort below 16 elements,
  * median of three (or of nine) above it.  Same warning as sorter A: the
  * tie-break order IS the format. */
-static void xx_wpk_sort_b(xx_wpk_entry *table, int32_t count,
-                          int32_t *stack_base, int32_t *stack_count) {
+static void xx_wpk_sort_b(xx_wpk_entry *table, int32_t count, int32_t *stack_base, int32_t *stack_count)
+{
     int32_t sp = 0;
     int32_t base = 0;
     int32_t cnt = count;
@@ -302,8 +294,7 @@ static void xx_wpk_sort_b(xx_wpk_entry *table, int32_t count,
                     if (k >= (base + cnt)) {
                         break;
                     }
-                    while ((j > base) &&
-                           (xx_wpk_compare(table, j - gap, j) > 0)) {
+                    while ((j > base) && (xx_wpk_compare(table, j - gap, j) > 0)) {
                         xx_wpk_swap(table, j, j - gap);
                         j -= gap;
                     }
@@ -446,7 +437,8 @@ static void xx_wpk_sort_b(xx_wpk_entry *table, int32_t count,
 /* Insertion sort - stable, i.e. it keeps a run of equal lengths in the order
  * it was transmitted.  Kept only so a caller can probe all three orders; no
  * archive of the reference corpus wants it. */
-static void xx_wpk_sort_stable(xx_wpk_entry *table, int32_t count) {
+static void xx_wpk_sort_stable(xx_wpk_entry *table, int32_t count)
+{
     int32_t i;
 
     for (i = 1; i < count; i++) {
@@ -463,7 +455,8 @@ static void xx_wpk_sort_stable(xx_wpk_entry *table, int32_t count) {
 /* Shared by both methods: the distance is a byte through the -lh1- tables plus
  * d_len[i >> 4] - 2 raw bits, and the source index carries the classic LZSS
  * -1.  Returns -1 when the input runs dry mid-token. */
-static int32_t xx_wpk_decode_distance(xx_wpk_bits *bits, int32_t position) {
+static int32_t xx_wpk_decode_distance(xx_wpk_bits *bits, int32_t position)
+{
     int32_t i = xx_wpk_bits_get(bits, 8);
     int32_t prefix;
     int32_t extra;
@@ -488,8 +481,8 @@ static int32_t xx_wpk_decode_distance(xx_wpk_bits *bits, int32_t position) {
 
 /* The code-length table: one count byte, then count + 1 control bytes that
  * either assign a length to a run of symbols or skip a run of unused ones. */
-static bool xx_wpk_build_table(xx_wpk_bits *bits, xx_wpk_entry *table,
-                               int32_t *count) {
+static bool xx_wpk_build_table(xx_wpk_bits *bits, xx_wpk_entry *table, int32_t *count)
+{
     const int32_t controls = xx_wpk_bits_get(bits, 8);
     int32_t symbol = 0;
     int32_t used = 0;
@@ -542,10 +535,8 @@ typedef struct xx_wpk_scratch_s {
     uint8_t window[XX_WPK_WINDOW];
 } xx_wpk_scratch;
 
-bool xx_wpk_decode_method_a_memory(const uint8_t *input, size_t input_size,
-                                   int sorter, uint8_t *output,
-                                   size_t output_size, size_t *written,
-                                   size_t *consumed) {
+bool xx_wpk_decode_method_a_memory(const uint8_t *input, size_t input_size, int sorter, uint8_t *output, size_t output_size, size_t *written, size_t *consumed)
+{
     xx_wpk_bits bits;
     xx_wpk_scratch *scratch;
     int32_t count = 0;
@@ -582,11 +573,9 @@ bool xx_wpk_decode_method_a_memory(const uint8_t *input, size_t input_size,
     }
 
     if (sorter == (int)XX_WPK_SORTER_A) {
-        xx_wpk_sort_a(scratch->table, count, scratch->stack_base,
-                      scratch->stack_count);
+        xx_wpk_sort_a(scratch->table, count, scratch->stack_base, scratch->stack_count);
     } else if (sorter == (int)XX_WPK_SORTER_B) {
-        xx_wpk_sort_b(scratch->table, count, scratch->stack_base,
-                      scratch->stack_count);
+        xx_wpk_sort_b(scratch->table, count, scratch->stack_base, scratch->stack_count);
     } else if (sorter == (int)XX_WPK_SORTER_STABLE) {
         xx_wpk_sort_stable(scratch->table, count);
     } else {
@@ -711,9 +700,8 @@ bool xx_wpk_decode_method_a_memory(const uint8_t *input, size_t input_size,
     return false;
 }
 
-bool xx_wpk_decode_method_b_memory(const uint8_t *input, size_t input_size,
-                                   uint8_t *output, size_t output_size,
-                                   size_t *written, size_t *consumed) {
+bool xx_wpk_decode_method_b_memory(const uint8_t *input, size_t input_size, uint8_t *output, size_t output_size, size_t *written, size_t *consumed)
+{
     xx_wpk_bits bits;
     uint8_t window[XX_WPK_WINDOW];
     int32_t position = 0;
@@ -803,10 +791,7 @@ bool xx_wpk_decode_method_b_memory(const uint8_t *input, size_t input_size,
     return false;
 }
 
-bool xx_wpk_decode_memory(const uint8_t *input, size_t input_size,
-                          uint8_t *output, size_t output_size,
-                          size_t *written) {
-    return xx_wpk_decode_method_a_memory(input, input_size,
-                                         (int)XX_WPK_SORTER_A, output,
-                                         output_size, written, NULL);
+bool xx_wpk_decode_memory(const uint8_t *input, size_t input_size, uint8_t *output, size_t output_size, size_t *written)
+{
+    return xx_wpk_decode_method_a_memory(input, input_size, (int)XX_WPK_SORTER_A, output, output_size, written, NULL);
 }

@@ -90,7 +90,7 @@ typedef struct xx_apfs_inode_s {
     uint64_t size;
     uint16_t mode;
     bool has_size;
-    bool compressed;      /**< A com.apple.decmpfs xattr was seen. */
+    bool compressed; /**< A com.apple.decmpfs xattr was seen. */
     uint32_t extent_count;
     uint64_t extent_logical;
     uint64_t extent_length;
@@ -102,7 +102,7 @@ typedef struct xx_apfs_drec_s {
     uint64_t child;
     char *name;
     uint8_t dtype;
-    size_t next;          /**< 1-based index of the next entry in this dir. */
+    size_t next; /**< 1-based index of the next entry in this dir. */
 } xx_apfs_drec;
 
 typedef struct xx_apfs_entry_s {
@@ -192,21 +192,18 @@ typedef struct xx_apfs_archive_stream_s {
     size_t index;
 } xx_apfs_archive_stream;
 
-typedef bool (*xx_apfs_leaf_cb)(xx_apfs_private *parsed, void *ctx,
-                                const uint8_t *key, uint32_t key_len,
-                                const uint8_t *value, uint32_t value_len);
+typedef bool (*xx_apfs_leaf_cb)(xx_apfs_private *parsed, void *ctx, const uint8_t *key, uint32_t key_len, const uint8_t *value, uint32_t value_len);
 
 static void xx_apfs_vtable_destroy(Abstractformat *self);
 static void xx_apfs_private_free(xx_apfs_private *parsed);
 
 /* ------------------------------------------------------------- helpers -- */
 
-static bool xx_apfs_read_at(xx_io_device *device, int64_t offset, void *data,
-                            size_t size) {
+static bool xx_apfs_read_at(xx_io_device *device, int64_t offset, void *data, size_t size)
+{
     uint8_t *out = (uint8_t *)data;
     size_t done = 0U;
-    if (!device || (!data && size != 0U) || offset < 0 ||
-        xx_io_seek64(device, offset, SEEK_SET) != 0) {
+    if (!device || (!data && size != 0U) || offset < 0 || xx_io_seek64(device, offset, SEEK_SET) != 0) {
         return false;
     }
     while (done < size) {
@@ -217,13 +214,13 @@ static bool xx_apfs_read_at(xx_io_device *device, int64_t offset, void *data,
     return true;
 }
 
-static bool xx_apfs_range_within(int64_t total_size, int64_t offset,
-                                 int64_t size) {
-    return (total_size >= 0) && (offset >= 0) && (size >= 0) &&
-           (offset <= total_size) && (size <= total_size - offset);
+static bool xx_apfs_range_within(int64_t total_size, int64_t offset, int64_t size)
+{
+    return (total_size >= 0) && (offset >= 0) && (size >= 0) && (offset <= total_size) && (size <= total_size - offset);
 }
 
-static bool xx_apfs_stopped(const xx_apfs_private *parsed) {
+static bool xx_apfs_stopped(const xx_apfs_private *parsed)
+{
     return parsed && parsed->pd && xx_pd_is_stopped(parsed->pd);
 }
 
@@ -231,7 +228,8 @@ static bool xx_apfs_stopped(const xx_apfs_private *parsed) {
  * block's 32-bit little-endian words; the stored checksum is the pair of
  * complements that makes the whole block sum to zero. `data` must point just
  * past the 8-byte checksum field and `size` must be a multiple of 4. */
-uint64_t xx_apfs_fletcher64(const void *data, size_t size) {
+uint64_t xx_apfs_fletcher64(const void *data, size_t size)
+{
     const uint8_t *bytes = (const uint8_t *)data;
     const uint64_t modulus = UINT64_C(0xFFFFFFFF);
     uint64_t sum1 = 0U;
@@ -241,10 +239,7 @@ uint64_t xx_apfs_fletcher64(const void *data, size_t size) {
     size_t index;
     if (!bytes) return 0U;
     for (index = 0U; index + 4U <= size; index += 4U) {
-        uint64_t word = (uint64_t)bytes[index] |
-                        ((uint64_t)bytes[index + 1U] << 8U) |
-                        ((uint64_t)bytes[index + 2U] << 16U) |
-                        ((uint64_t)bytes[index + 3U] << 24U);
+        uint64_t word = (uint64_t)bytes[index] | ((uint64_t)bytes[index + 1U] << 8U) | ((uint64_t)bytes[index + 2U] << 16U) | ((uint64_t)bytes[index + 3U] << 24U);
         sum1 = (sum1 + word) % modulus;
         sum2 = (sum2 + sum1) % modulus;
     }
@@ -255,14 +250,16 @@ uint64_t xx_apfs_fletcher64(const void *data, size_t size) {
 
 /* --- uint64 -> index map ------------------------------------------------ */
 
-static void xx_apfs_map_cleanup(xx_apfs_map *map) {
+static void xx_apfs_map_cleanup(xx_apfs_map *map)
+{
     if (!map) return;
     if (map->keys) xx_mem_free(map->keys);
     if (map->values) xx_mem_free(map->values);
     xx_mem_zero(map, sizeof(*map));
 }
 
-static size_t xx_apfs_map_slot(size_t capacity, uint64_t key) {
+static size_t xx_apfs_map_slot(size_t capacity, uint64_t key)
+{
     uint64_t hash = key;
     hash = (hash ^ (hash >> 30U)) * UINT64_C(0xbf58476d1ce4e5b9);
     hash = (hash ^ (hash >> 27U)) * UINT64_C(0x94d049bb133111eb);
@@ -270,7 +267,8 @@ static size_t xx_apfs_map_slot(size_t capacity, uint64_t key) {
     return (size_t)hash & (capacity - 1U);
 }
 
-static bool xx_apfs_map_grow(xx_apfs_map *map) {
+static bool xx_apfs_map_grow(xx_apfs_map *map)
+{
     size_t capacity = map->capacity ? map->capacity * 2U : 256U;
     uint64_t *keys;
     size_t *values;
@@ -301,7 +299,8 @@ static bool xx_apfs_map_grow(xx_apfs_map *map) {
     return true;
 }
 
-static size_t xx_apfs_map_get(const xx_apfs_map *map, uint64_t key) {
+static size_t xx_apfs_map_get(const xx_apfs_map *map, uint64_t key)
+{
     size_t slot;
     if (!map || map->capacity == 0U) return 0U;
     slot = xx_apfs_map_slot(map->capacity, key);
@@ -312,7 +311,8 @@ static size_t xx_apfs_map_get(const xx_apfs_map *map, uint64_t key) {
     return 0U;
 }
 
-static bool xx_apfs_map_put(xx_apfs_map *map, uint64_t key, size_t value) {
+static bool xx_apfs_map_put(xx_apfs_map *map, uint64_t key, size_t value)
+{
     size_t slot;
     if (!map || value == 0U) return false;
     if ((map->count + 1U) * 4U >= map->capacity * 3U) {
@@ -336,8 +336,8 @@ static bool xx_apfs_map_put(xx_apfs_map *map, uint64_t key, size_t value) {
 
 /* Read one block by block number, verifying its Fletcher-64 and, when
  * expected_type is non-zero, the low 16 bits of o_type. */
-static bool xx_apfs_read_object(xx_apfs_private *parsed, uint64_t block,
-                                uint8_t *buffer, uint32_t expected_type) {
+static bool xx_apfs_read_object(xx_apfs_private *parsed, uint64_t block, uint8_t *buffer, uint32_t expected_type)
+{
     int64_t offset;
     uint32_t block_size = parsed->nx.block_size;
     uint64_t stored;
@@ -367,10 +367,8 @@ static bool xx_apfs_read_object(xx_apfs_private *parsed, uint64_t block,
  * from the root node's btree_info_t; they are ignored for a variable-size
  * tree. Every offset out of the table of contents is bounded against the key
  * and value areas before it is dereferenced. */
-static void xx_apfs_walk_btree(xx_apfs_private *parsed, uint64_t block,
-                               unsigned depth, uint32_t key_size,
-                               uint32_t value_size, xx_apfs_leaf_cb callback,
-                               void *ctx) {
+static void xx_apfs_walk_btree(xx_apfs_private *parsed, uint64_t block, unsigned depth, uint32_t key_size, uint32_t value_size, xx_apfs_leaf_cb callback, void *ctx)
+{
     uint8_t *node;
     uint32_t block_size = parsed->nx.block_size;
     uint16_t flags;
@@ -404,8 +402,7 @@ static void xx_apfs_walk_btree(xx_apfs_private *parsed, uint64_t block,
     }
     {
         uint32_t type = xx_data_get_u32(node, block_size, 24U, false) & 0xFFFFU;
-        if (type != XX_APFS_OBJECT_TYPE_BTREE &&
-            type != XX_APFS_OBJECT_TYPE_BTREE_NODE) {
+        if (type != XX_APFS_OBJECT_TYPE_BTREE && type != XX_APFS_OBJECT_TYPE_BTREE_NODE) {
             ++parsed->bad_nodes;
             xx_mem_free(node);
             return;
@@ -429,16 +426,13 @@ static void xx_apfs_walk_btree(xx_apfs_private *parsed, uint64_t block,
         value_end = block_size - XX_APFS_BTREE_INFO_SIZE;
         /* bt_fixed lives at the start of btree_info_t: flags, node_size,
          * key_size, val_size. */
-        key_size = xx_data_get_u32(node, block_size, (size_t)value_end + 8U,
-                                   false);
-        value_size = xx_data_get_u32(node, block_size, (size_t)value_end + 12U,
-                                     false);
+        key_size = xx_data_get_u32(node, block_size, (size_t)value_end + 8U, false);
+        value_size = xx_data_get_u32(node, block_size, (size_t)value_end + 12U, false);
     }
 
     entry_size = fixed ? 4U : 8U;
     toc_base = XX_APFS_BTREE_NODE_DATA + table_off;
-    if (table_off > block_size || table_len > block_size - toc_base ||
-        toc_base + table_len > value_end) {
+    if (table_off > block_size || table_len > block_size - toc_base || toc_base + table_len > value_end) {
         ++parsed->bad_nodes;
         xx_mem_free(node);
         return;
@@ -456,8 +450,7 @@ static void xx_apfs_walk_btree(xx_apfs_private *parsed, uint64_t block,
     }
 
     if (!leaf) {
-        children = (uint64_t *)xx_mem_calloc(nkeys ? nkeys : 1U,
-                                             sizeof(*children));
+        children = (uint64_t *)xx_mem_calloc(nkeys ? nkeys : 1U, sizeof(*children));
         if (!children) {
             xx_mem_free(node);
             return;
@@ -500,8 +493,7 @@ static void xx_apfs_walk_btree(xx_apfs_private *parsed, uint64_t block,
             continue;
         }
         if (leaf) {
-            if (callback && !callback(parsed, ctx, node + key_start, key_len,
-                                      node + val_start, val_len)) {
+            if (callback && !callback(parsed, ctx, node + key_start, key_len, node + val_start, val_len)) {
                 break;
             }
         } else {
@@ -509,8 +501,7 @@ static void xx_apfs_walk_btree(xx_apfs_private *parsed, uint64_t block,
                 ++parsed->bad_nodes;
                 continue;
             }
-            children[child_count++] =
-                xx_data_get_u64(node, block_size, val_start, false);
+            children[child_count++] = xx_data_get_u64(node, block_size, val_start, false);
         }
     }
     xx_mem_free(node);
@@ -518,8 +509,7 @@ static void xx_apfs_walk_btree(xx_apfs_private *parsed, uint64_t block,
 
     if (children) {
         for (index = 0U; index < child_count; ++index) {
-            xx_apfs_walk_btree(parsed, children[index], depth + 1U, key_size,
-                               value_size, callback, ctx);
+            xx_apfs_walk_btree(parsed, children[index], depth + 1U, key_size, value_size, callback, ctx);
         }
         xx_mem_free(children);
     }
@@ -535,9 +525,8 @@ typedef struct xx_apfs_omap_ctx_s {
     uint64_t max_xid;
 } xx_apfs_omap_ctx;
 
-static bool xx_apfs_omap_cb(xx_apfs_private *parsed, void *raw_ctx,
-                            const uint8_t *key, uint32_t key_len,
-                            const uint8_t *value, uint32_t value_len) {
+static bool xx_apfs_omap_cb(xx_apfs_private *parsed, void *raw_ctx, const uint8_t *key, uint32_t key_len, const uint8_t *value, uint32_t value_len)
+{
     xx_apfs_omap_ctx *ctx = (xx_apfs_omap_ctx *)raw_ctx;
     /* The omap walk needs no reader state; the signature is shared with the
      * other b-tree callbacks, which do. */
@@ -573,10 +562,8 @@ static bool xx_apfs_omap_cb(xx_apfs_private *parsed, void *raw_ctx,
     if (*ctx->count == *ctx->capacity) {
         size_t grown_capacity = *ctx->capacity ? *ctx->capacity * 2U : 64U;
         xx_apfs_omap_entry *grown;
-        if (grown_capacity < *ctx->capacity ||
-            grown_capacity > SIZE_MAX / sizeof(*grown)) return false;
-        grown = (xx_apfs_omap_entry *)xx_mem_realloc(
-            *ctx->table, grown_capacity * sizeof(*grown));
+        if (grown_capacity < *ctx->capacity || grown_capacity > SIZE_MAX / sizeof(*grown)) return false;
+        grown = (xx_apfs_omap_entry *)xx_mem_realloc(*ctx->table, grown_capacity * sizeof(*grown));
         if (!grown) return false;
         *ctx->table = grown;
         *ctx->capacity = grown_capacity;
@@ -593,18 +580,16 @@ static bool xx_apfs_omap_cb(xx_apfs_private *parsed, void *raw_ctx,
 }
 
 /* Read an omap_phys_t at a physical oid and walk its mapping tree. */
-static bool xx_apfs_load_omap(xx_apfs_private *parsed, uint64_t omap_oid,
-                              xx_apfs_omap_entry **table, size_t *count,
-                              size_t *capacity, xx_apfs_map *index,
-                              uint64_t max_xid) {
+static bool xx_apfs_load_omap(xx_apfs_private *parsed, uint64_t omap_oid, xx_apfs_omap_entry **table, size_t *count, size_t *capacity, xx_apfs_map *index,
+                              uint64_t max_xid)
+{
     uint8_t *omap;
     uint64_t tree_oid;
     xx_apfs_omap_ctx ctx;
     if (omap_oid == 0U) return false;
     omap = (uint8_t *)xx_mem_alloc(parsed->nx.block_size);
     if (!omap) return false;
-    if (!xx_apfs_read_object(parsed, omap_oid, omap,
-                             XX_APFS_OBJECT_TYPE_OMAP)) {
+    if (!xx_apfs_read_object(parsed, omap_oid, omap, XX_APFS_OBJECT_TYPE_OMAP)) {
         xx_mem_free(omap);
         return false;
     }
@@ -616,21 +601,20 @@ static bool xx_apfs_load_omap(xx_apfs_private *parsed, uint64_t omap_oid,
     ctx.capacity = capacity;
     ctx.index = index;
     ctx.max_xid = max_xid;
-    xx_apfs_walk_btree(parsed, tree_oid, 0U, XX_APFS_OMAP_KEY_SIZE,
-                       XX_APFS_OMAP_VAL_SIZE, xx_apfs_omap_cb, &ctx);
+    xx_apfs_walk_btree(parsed, tree_oid, 0U, XX_APFS_OMAP_KEY_SIZE, XX_APFS_OMAP_VAL_SIZE, xx_apfs_omap_cb, &ctx);
     return *count != 0U;
 }
 
-static int64_t xx_apfs_omap_lookup(const xx_apfs_omap_entry *table,
-                                   const xx_apfs_map *index, uint64_t oid) {
+static int64_t xx_apfs_omap_lookup(const xx_apfs_omap_entry *table, const xx_apfs_map *index, uint64_t oid)
+{
     size_t slot = xx_apfs_map_get(index, oid);
     return slot != 0U ? table[slot - 1U].block : -1;
 }
 
 /* --- container superblock ----------------------------------------------- */
 
-static bool xx_apfs_decode_nx(const uint8_t *raw, uint32_t block_size,
-                              xx_apfs_nx *out) {
+static bool xx_apfs_decode_nx(const uint8_t *raw, uint32_t block_size, xx_apfs_nx *out)
+{
     size_t index;
     uint32_t max_fs;
     if (xx_data_get_u32(raw, block_size, 32U, false) != XX_APFS_NX_MAGIC) {
@@ -640,8 +624,7 @@ static bool xx_apfs_decode_nx(const uint8_t *raw, uint32_t block_size,
     out->block_size = xx_data_get_u32(raw, block_size, 36U, false);
     out->block_count = xx_data_get_u64(raw, block_size, 40U, false);
     out->features = xx_data_get_u64(raw, block_size, 48U, false);
-    out->readonly_compatible_features =
-        xx_data_get_u64(raw, block_size, 56U, false);
+    out->readonly_compatible_features = xx_data_get_u64(raw, block_size, 56U, false);
     out->incompatible_features = xx_data_get_u64(raw, block_size, 64U, false);
     xx_mem_copy(out->uuid, raw + 72, XX_APFS_UUID_SIZE);
     out->xid = xx_data_get_u64(raw, block_size, 16U, false);
@@ -652,26 +635,24 @@ static bool xx_apfs_decode_nx(const uint8_t *raw, uint32_t block_size,
     out->omap_oid = xx_data_get_u64(raw, block_size, 160U, false);
     out->max_file_systems = xx_data_get_u32(raw, block_size, 180U, false);
     if (block_size >= 1392U) {
-        out->newest_mounted_version =
-            xx_data_get_u64(raw, block_size, 1384U, false);
+        out->newest_mounted_version = xx_data_get_u64(raw, block_size, 1384U, false);
     }
     max_fs = out->max_file_systems;
     if (max_fs > XX_APFS_MAX_VOLUMES) max_fs = XX_APFS_MAX_VOLUMES;
     for (index = 0U; index < max_fs; ++index) {
-        out->fs_oid[index] = xx_data_get_u64(raw, block_size,
-                                             184U + index * 8U, false);
+        out->fs_oid[index] = xx_data_get_u64(raw, block_size, 184U + index * 8U, false);
     }
     if (out->block_size != block_size) return false;
     if (out->block_count == 0U) return false;
-    if (out->max_file_systems == 0U ||
-        out->max_file_systems > XX_APFS_MAX_VOLUMES) return false;
+    if (out->max_file_systems == 0U || out->max_file_systems > XX_APFS_MAX_VOLUMES) return false;
     return true;
 }
 
 /* Find the container superblock. Block 0 is the fallback copy; the authority
  * is the newest valid nx_superblock_t in the checkpoint descriptor area, so
  * that area is scanned and the highest transaction id wins. */
-static bool xx_apfs_load_container(xx_apfs_private *parsed) {
+static bool xx_apfs_load_container(xx_apfs_private *parsed)
+{
     /* A block can be 64 KiB, which is too much to put on the stack in a path
      * that also recurses, so both buffers are heap allocated. */
     uint8_t *probe;
@@ -687,33 +668,24 @@ static bool xx_apfs_load_container(xx_apfs_private *parsed) {
 
     /* Block 0 is read at the smallest legal size first, only to learn the
      * real block size from nx_block_size. */
-    if (!xx_apfs_range_within(parsed->input_size, parsed->base_address,
-                              (int64_t)XX_APFS_MIN_BLOCK_SIZE) ||
-        !xx_apfs_read_at(parsed->device, parsed->base_address, probe,
-                         XX_APFS_MIN_BLOCK_SIZE)) {
+    if (!xx_apfs_range_within(parsed->input_size, parsed->base_address, (int64_t)XX_APFS_MIN_BLOCK_SIZE) ||
+        !xx_apfs_read_at(parsed->device, parsed->base_address, probe, XX_APFS_MIN_BLOCK_SIZE)) {
         goto reject;
     }
-    if (xx_data_get_u32(probe, XX_APFS_MIN_BLOCK_SIZE, 32U, false) !=
-        XX_APFS_NX_MAGIC) {
+    if (xx_data_get_u32(probe, XX_APFS_MIN_BLOCK_SIZE, 32U, false) != XX_APFS_NX_MAGIC) {
         goto reject;
     }
     block_size = xx_data_get_u32(probe, XX_APFS_MIN_BLOCK_SIZE, 36U, false);
-    if (block_size < XX_APFS_MIN_BLOCK_SIZE ||
-        block_size > XX_APFS_MAX_BLOCK_SIZE ||
-        (block_size & (block_size - 1U)) != 0U) goto reject;
+    if (block_size < XX_APFS_MIN_BLOCK_SIZE || block_size > XX_APFS_MAX_BLOCK_SIZE || (block_size & (block_size - 1U)) != 0U) goto reject;
 
-    if (!xx_apfs_range_within(parsed->input_size, parsed->base_address,
-                              (int64_t)block_size) ||
-        !xx_apfs_read_at(parsed->device, parsed->base_address, probe,
-                         block_size)) {
+    if (!xx_apfs_range_within(parsed->input_size, parsed->base_address, (int64_t)block_size) ||
+        !xx_apfs_read_at(parsed->device, parsed->base_address, probe, block_size)) {
         goto reject;
     }
-    if (xx_data_get_u64(probe, block_size, 0U, false) !=
-        xx_apfs_fletcher64(probe + 8, (size_t)block_size - 8U)) {
+    if (xx_data_get_u64(probe, block_size, 0U, false) != xx_apfs_fletcher64(probe + 8, (size_t)block_size - 8U)) {
         goto reject;
     }
-    if ((xx_data_get_u32(probe, block_size, 24U, false) & 0xFFFFU) !=
-        XX_APFS_OBJECT_TYPE_NX_SUPERBLOCK) goto reject;
+    if ((xx_data_get_u32(probe, block_size, 24U, false) & 0xFFFFU) != XX_APFS_OBJECT_TYPE_NX_SUPERBLOCK) goto reject;
     if (!xx_apfs_decode_nx(probe, block_size, &parsed->nx)) goto reject;
     parsed->super_offset = parsed->base_address;
     parsed->from_checkpoint = false;
@@ -723,9 +695,7 @@ static bool xx_apfs_load_container(xx_apfs_private *parsed) {
     /* The high bit of nx_xp_desc_blocks marks a tree-shaped descriptor area,
      * which this reader does not follow; block 0 then stands. */
     if ((parsed->nx.xp_desc_blocks & 0x80000000U) != 0U) return true;
-    if (parsed->nx.xp_desc_blocks == 0U ||
-        parsed->nx.xp_desc_blocks > XX_APFS_MAX_CHECKPOINT_BLOCKS ||
-        parsed->nx.xp_desc_base <= 0) return true;
+    if (parsed->nx.xp_desc_blocks == 0U || parsed->nx.xp_desc_blocks > XX_APFS_MAX_CHECKPOINT_BLOCKS || parsed->nx.xp_desc_base <= 0) return true;
 
     block = (uint8_t *)xx_mem_alloc(block_size);
     if (!block) return true;
@@ -739,16 +709,14 @@ static bool xx_apfs_load_container(xx_apfs_private *parsed) {
         uint64_t number = scan_base + index;
         uint64_t xid;
         if (xx_apfs_stopped(parsed)) break;
-        if (!xx_apfs_read_object(parsed, number, block,
-                                 XX_APFS_OBJECT_TYPE_NX_SUPERBLOCK)) {
-            continue;  /* a checkpoint_map_phys_t, or an unused slot */
+        if (!xx_apfs_read_object(parsed, number, block, XX_APFS_OBJECT_TYPE_NX_SUPERBLOCK)) {
+            continue; /* a checkpoint_map_phys_t, or an unused slot */
         }
         xid = xx_data_get_u64(block, block_size, 16U, false);
         if (xid <= parsed->nx.xid) continue;
         if (!xx_apfs_decode_nx(block, block_size, &candidate)) continue;
         parsed->nx = candidate;
-        parsed->super_offset =
-            parsed->base_address + (int64_t)(number * block_size);
+        parsed->super_offset = parsed->base_address + (int64_t)(number * block_size);
         parsed->from_checkpoint = true;
     }
     xx_mem_free(block);
@@ -760,18 +728,16 @@ reject:
 
 /* --- file-system records ------------------------------------------------ */
 
-static xx_apfs_inode *xx_apfs_inode_for(xx_apfs_private *parsed, uint64_t oid) {
+static xx_apfs_inode *xx_apfs_inode_for(xx_apfs_private *parsed, uint64_t oid)
+{
     size_t slot = xx_apfs_map_get(&parsed->inode_index, oid);
     if (slot != 0U) return &parsed->inodes[slot - 1U];
     if (parsed->inode_count >= XX_APFS_MAX_INODES) return NULL;
     if (parsed->inode_count == parsed->inode_capacity) {
-        size_t capacity = parsed->inode_capacity ? parsed->inode_capacity * 2U
-                                                 : 64U;
+        size_t capacity = parsed->inode_capacity ? parsed->inode_capacity * 2U : 64U;
         xx_apfs_inode *grown;
-        if (capacity < parsed->inode_capacity ||
-            capacity > SIZE_MAX / sizeof(*grown)) return NULL;
-        grown = (xx_apfs_inode *)xx_mem_realloc(parsed->inodes,
-                                                capacity * sizeof(*grown));
+        if (capacity < parsed->inode_capacity || capacity > SIZE_MAX / sizeof(*grown)) return NULL;
+        grown = (xx_apfs_inode *)xx_mem_realloc(parsed->inodes, capacity * sizeof(*grown));
         if (!grown) return NULL;
         parsed->inodes = grown;
         parsed->inode_capacity = capacity;
@@ -789,8 +755,8 @@ static xx_apfs_inode *xx_apfs_inode_for(xx_apfs_private *parsed, uint64_t oid) {
 /* j_inode_val_t carries a trailing xf_blob_t of extended fields. The one that
  * matters here is INO_EXT_TYPE_DSTREAM, which holds the real file size; the
  * fixed part of the inode only has a size field for compressed files. */
-static bool xx_apfs_inode_dstream_size(const uint8_t *value, uint32_t value_len,
-                                       uint64_t *out_size) {
+static bool xx_apfs_inode_dstream_size(const uint8_t *value, uint32_t value_len, uint64_t *out_size)
+{
     uint32_t num_exts;
     uint32_t used_data;
     uint32_t headers;
@@ -799,8 +765,7 @@ static bool xx_apfs_inode_dstream_size(const uint8_t *value, uint32_t value_len,
     uint32_t cursor;
     if (value_len < XX_APFS_INODE_VAL_MIN + 4U) return false;
     num_exts = xx_data_get_u16(value, value_len, XX_APFS_INODE_VAL_MIN, false);
-    used_data = xx_data_get_u16(value, value_len,
-                                XX_APFS_INODE_VAL_MIN + 2U, false);
+    used_data = xx_data_get_u16(value, value_len, XX_APFS_INODE_VAL_MIN + 2U, false);
     (void)used_data;
     if (num_exts == 0U || num_exts > 64U) return false;
     headers = XX_APFS_INODE_VAL_MIN + 4U;
@@ -809,8 +774,7 @@ static bool xx_apfs_inode_dstream_size(const uint8_t *value, uint32_t value_len,
     cursor = data_at;
     for (index = 0U; index < num_exts; ++index) {
         uint8_t x_type = value[headers + index * 4U];
-        uint16_t x_size = xx_data_get_u16(value, value_len,
-                                          headers + index * 4U + 2U, false);
+        uint16_t x_size = xx_data_get_u16(value, value_len, headers + index * 4U + 2U, false);
         uint32_t padded;
         if (x_size > value_len - cursor) return false;
         if (x_type == XX_APFS_INO_EXT_TYPE_DSTREAM && x_size >= 8U) {
@@ -826,9 +790,8 @@ static bool xx_apfs_inode_dstream_size(const uint8_t *value, uint32_t value_len,
     return false;
 }
 
-static bool xx_apfs_drec_add(xx_apfs_private *parsed, uint64_t parent,
-                             uint64_t child, uint8_t dtype,
-                             const uint8_t *name, size_t name_len) {
+static bool xx_apfs_drec_add(xx_apfs_private *parsed, uint64_t parent, uint64_t child, uint8_t dtype, const uint8_t *name, size_t name_len)
+{
     xx_apfs_drec *entry;
     char *copy;
     size_t index;
@@ -842,17 +805,13 @@ static bool xx_apfs_drec_add(xx_apfs_private *parsed, uint64_t parent,
             return true;
         }
     }
-    if ((name_len == 1U && name[0] == '.') ||
-        (name_len == 2U && name[0] == '.' && name[1] == '.')) return true;
+    if ((name_len == 1U && name[0] == '.') || (name_len == 2U && name[0] == '.' && name[1] == '.')) return true;
 
     if (parsed->drec_count == parsed->drec_capacity) {
-        size_t capacity = parsed->drec_capacity ? parsed->drec_capacity * 2U
-                                                : 64U;
+        size_t capacity = parsed->drec_capacity ? parsed->drec_capacity * 2U : 64U;
         xx_apfs_drec *grown;
-        if (capacity < parsed->drec_capacity ||
-            capacity > SIZE_MAX / sizeof(*grown)) return false;
-        grown = (xx_apfs_drec *)xx_mem_realloc(parsed->drecs,
-                                               capacity * sizeof(*grown));
+        if (capacity < parsed->drec_capacity || capacity > SIZE_MAX / sizeof(*grown)) return false;
+        grown = (xx_apfs_drec *)xx_mem_realloc(parsed->drecs, capacity * sizeof(*grown));
         if (!grown) return false;
         parsed->drecs = grown;
         parsed->drec_capacity = capacity;
@@ -880,9 +839,8 @@ static bool xx_apfs_drec_add(xx_apfs_private *parsed, uint64_t parent,
     return true;
 }
 
-static bool xx_apfs_fs_cb(xx_apfs_private *parsed, void *ctx,
-                          const uint8_t *key, uint32_t key_len,
-                          const uint8_t *value, uint32_t value_len) {
+static bool xx_apfs_fs_cb(xx_apfs_private *parsed, void *ctx, const uint8_t *key, uint32_t key_len, const uint8_t *value, uint32_t value_len)
+{
     uint64_t header;
     uint64_t oid;
     uint32_t type;
@@ -913,10 +871,7 @@ static bool xx_apfs_fs_cb(xx_apfs_private *parsed, void *ctx,
          * layouts are checked and the one that fits exactly is used. */
         uint32_t name_len = 0U;
         uint32_t name_at = 0U;
-        bool hashed_first =
-            (parsed->current_volume_features &
-             (XX_APFS_INCOMPAT_CASE_INSENSITIVE |
-              XX_APFS_INCOMPAT_NORMALIZATION_INSENSITIVE)) != 0U;
+        bool hashed_first = (parsed->current_volume_features & (XX_APFS_INCOMPAT_CASE_INSENSITIVE | XX_APFS_INCOMPAT_NORMALIZATION_INSENSITIVE)) != 0U;
         uint32_t hashed_len = 0U;
         uint32_t plain_len = 0U;
         uint8_t dtype;
@@ -942,8 +897,7 @@ static bool xx_apfs_fs_cb(xx_apfs_private *parsed, void *ctx,
         if (value_len < XX_APFS_DREC_VAL_MIN) return true;
         child = xx_data_get_u64(value, value_len, 0U, false);
         dtype = (uint8_t)(xx_data_get_u16(value, value_len, 16U, false) & 0xFU);
-        return xx_apfs_drec_add(parsed, oid, child, dtype, key + name_at,
-                                name_len);
+        return xx_apfs_drec_add(parsed, oid, child, dtype, key + name_at, name_len);
     }
     if (type == XX_APFS_TYPE_FILE_EXTENT) {
         xx_apfs_inode *inode;
@@ -953,8 +907,7 @@ static bool xx_apfs_fs_cb(xx_apfs_private *parsed, void *ctx,
         ++inode->extent_count;
         if (inode->extent_count > 1U) return true;
         inode->extent_logical = xx_data_get_u64(key, key_len, 8U, false);
-        inode->extent_length = xx_data_get_u64(value, value_len, 0U, false) &
-                               UINT64_C(0x00FFFFFFFFFFFFFF);
+        inode->extent_length = xx_data_get_u64(value, value_len, 0U, false) & UINT64_C(0x00FFFFFFFFFFFFFF);
         inode->extent_block = xx_data_get_u64(value, value_len, 8U, false);
         return true;
     }
@@ -983,17 +936,15 @@ static bool xx_apfs_fs_cb(xx_apfs_private *parsed, void *ctx,
 
 /* --- listing ------------------------------------------------------------ */
 
-static char *xx_apfs_join(const char *prefix, const char *name) {
+static char *xx_apfs_join(const char *prefix, const char *name)
+{
     size_t prefix_size = prefix ? xx_str_len(prefix) : 0U;
     size_t name_size = name ? xx_str_len(name) : 0U;
     char *combined;
-    if (!name || name_size == 0U || prefix_size >= XX_APFS_MAX_PATH ||
-        name_size > XX_APFS_MAX_PATH - prefix_size -
-                        (prefix_size != 0U ? 1U : 0U)) {
+    if (!name || name_size == 0U || prefix_size >= XX_APFS_MAX_PATH || name_size > XX_APFS_MAX_PATH - prefix_size - (prefix_size != 0U ? 1U : 0U)) {
         return NULL;
     }
-    combined = (char *)xx_mem_alloc(prefix_size + name_size +
-                                    (prefix_size != 0U ? 2U : 1U));
+    combined = (char *)xx_mem_alloc(prefix_size + name_size + (prefix_size != 0U ? 2U : 1U));
     if (!combined) return NULL;
     if (prefix_size != 0U) {
         xx_mem_copy(combined, prefix, prefix_size);
@@ -1007,17 +958,14 @@ static char *xx_apfs_join(const char *prefix, const char *name) {
     return combined;
 }
 
-static bool xx_apfs_entry_append(xx_apfs_private *parsed,
-                                 xx_apfs_entry *entry) {
+static bool xx_apfs_entry_append(xx_apfs_private *parsed, xx_apfs_entry *entry)
+{
     if (parsed->entry_count >= XX_APFS_MAX_ENTRIES) return false;
     if (parsed->entry_count == parsed->entry_capacity) {
-        size_t capacity = parsed->entry_capacity ? parsed->entry_capacity * 2U
-                                                 : 64U;
+        size_t capacity = parsed->entry_capacity ? parsed->entry_capacity * 2U : 64U;
         xx_apfs_entry *grown;
-        if (capacity < parsed->entry_capacity ||
-            capacity > SIZE_MAX / sizeof(*grown)) return false;
-        grown = (xx_apfs_entry *)xx_mem_realloc(parsed->entries,
-                                                capacity * sizeof(*grown));
+        if (capacity < parsed->entry_capacity || capacity > SIZE_MAX / sizeof(*grown)) return false;
+        grown = (xx_apfs_entry *)xx_mem_realloc(parsed->entries, capacity * sizeof(*grown));
         if (!grown) return false;
         parsed->entries = grown;
         parsed->entry_capacity = capacity;
@@ -1030,9 +978,8 @@ static bool xx_apfs_entry_append(xx_apfs_private *parsed,
 /* Decide whether a file's bytes can be copied verbatim. Only the simplest
  * shape qualifies: one extent, starting at logical zero, long enough for the
  * whole file, not compressed. */
-static void xx_apfs_resolve_data(xx_apfs_private *parsed,
-                                 const xx_apfs_inode *inode,
-                                 xx_apfs_entry *entry) {
+static void xx_apfs_resolve_data(xx_apfs_private *parsed, const xx_apfs_inode *inode, xx_apfs_entry *entry)
+{
     int64_t offset;
     uint64_t block_size = parsed->nx.block_size;
     entry->data_offset = -1;
@@ -1047,16 +994,14 @@ static void xx_apfs_resolve_data(xx_apfs_private *parsed,
         return;
     }
     if (inode->extent_count != 1U || inode->extent_logical != 0U) return;
-    if (inode->extent_block == 0U) return;  /* a sparse hole */
+    if (inode->extent_block == 0U) return; /* a sparse hole */
     if (inode->extent_length < inode->size) return;
-    if (block_size == 0U ||
-        inode->extent_block > (uint64_t)INT64_MAX / block_size) return;
+    if (block_size == 0U || inode->extent_block > (uint64_t)INT64_MAX / block_size) return;
     offset = (int64_t)(inode->extent_block * block_size);
     if (offset > INT64_MAX - parsed->base_address) return;
     offset += parsed->base_address;
     if (inode->size > (uint64_t)INT64_MAX) return;
-    if (!xx_apfs_range_within(parsed->input_size, offset,
-                              (int64_t)inode->size)) return;
+    if (!xx_apfs_range_within(parsed->input_size, offset, (int64_t)inode->size)) return;
     entry->data_offset = offset;
     entry->data_size = (int64_t)inode->size;
     entry->extractable = true;
@@ -1065,8 +1010,8 @@ static void xx_apfs_resolve_data(xx_apfs_private *parsed,
 /* Breadth-first expansion from the volume's root directory. Visited object
  * ids bound the walk, so a directory that names itself or an id cycle cannot
  * loop. */
-static void xx_apfs_build_listing(xx_apfs_private *parsed, const char *prefix,
-                                  uint64_t *out_records) {
+static void xx_apfs_build_listing(xx_apfs_private *parsed, const char *prefix, uint64_t *out_records)
+{
     typedef struct {
         uint64_t oid;
         char *path;
@@ -1109,8 +1054,7 @@ static void xx_apfs_build_listing(xx_apfs_private *parsed, const char *prefix,
             entry.data_offset = -1;
             if (!is_dir) {
                 size_t slot = xx_apfs_map_get(&parsed->inode_index, drec->child);
-                const xx_apfs_inode *inode =
-                    slot != 0U ? &parsed->inodes[slot - 1U] : NULL;
+                const xx_apfs_inode *inode = slot != 0U ? &parsed->inodes[slot - 1U] : NULL;
                 if (inode) entry.size = inode->size;
                 if (drec->dtype == XX_APFS_DT_REG) {
                     xx_apfs_resolve_data(parsed, inode, &entry);
@@ -1124,16 +1068,13 @@ static void xx_apfs_build_listing(xx_apfs_private *parsed, const char *prefix,
                 xx_str_free(path);
                 continue;
             }
-            if (is_dir && current.depth < XX_APFS_MAX_PATH / 8U &&
-                xx_apfs_map_get(&seen, drec->child) == 0U) {
+            if (is_dir && current.depth < XX_APFS_MAX_PATH / 8U && xx_apfs_map_get(&seen, drec->child) == 0U) {
                 if (!xx_apfs_map_put(&seen, drec->child, 1U)) continue;
                 if (tail == capacity) {
                     size_t grown_capacity = capacity * 2U;
                     queue_item *grown;
-                    if (grown_capacity < capacity ||
-                        grown_capacity > SIZE_MAX / sizeof(*grown)) break;
-                    grown = (queue_item *)xx_mem_realloc(
-                        queue, grown_capacity * sizeof(*grown));
+                    if (grown_capacity < capacity || grown_capacity > SIZE_MAX / sizeof(*grown)) break;
+                    grown = (queue_item *)xx_mem_realloc(queue, grown_capacity * sizeof(*grown));
                     if (!grown) break;
                     queue = grown;
                     capacity = grown_capacity;
@@ -1156,7 +1097,8 @@ static void xx_apfs_build_listing(xx_apfs_private *parsed, const char *prefix,
 
 /* Free the scratch that belongs to a single volume, so the next volume
  * starts from an empty object map, inode table and directory index. */
-static void xx_apfs_reset_volume_scratch(xx_apfs_private *parsed) {
+static void xx_apfs_reset_volume_scratch(xx_apfs_private *parsed)
+{
     size_t index;
     for (index = 0U; index < parsed->drec_count; ++index) {
         if (parsed->drecs[index].name) xx_str_free(parsed->drecs[index].name);
@@ -1178,8 +1120,8 @@ static void xx_apfs_reset_volume_scratch(xx_apfs_private *parsed) {
     xx_apfs_map_cleanup(&parsed->vomap_index);
 }
 
-static void xx_apfs_load_volume(xx_apfs_private *parsed, uint32_t slot,
-                                uint64_t fs_oid) {
+static void xx_apfs_load_volume(xx_apfs_private *parsed, uint32_t slot, uint64_t fs_oid)
+{
     xx_apfs_volume_info *info = &parsed->volumes[slot];
     uint8_t *block;
     int64_t volume_block;
@@ -1191,18 +1133,15 @@ static void xx_apfs_load_volume(xx_apfs_private *parsed, uint32_t slot,
     info->oid = fs_oid;
     info->block = -1;
 
-    volume_block = xx_apfs_omap_lookup(parsed->omap, &parsed->omap_index,
-                                       fs_oid);
+    volume_block = xx_apfs_omap_lookup(parsed->omap, &parsed->omap_index, fs_oid);
     if (volume_block <= 0) return;
     block = (uint8_t *)xx_mem_alloc(block_size);
     if (!block) return;
-    if (!xx_apfs_read_object(parsed, (uint64_t)volume_block, block,
-                             XX_APFS_OBJECT_TYPE_FS)) {
+    if (!xx_apfs_read_object(parsed, (uint64_t)volume_block, block, XX_APFS_OBJECT_TYPE_FS)) {
         xx_mem_free(block);
         return;
     }
-    if (xx_data_get_u32(block, block_size, 32U, false) !=
-        XX_APFS_VOLUME_MAGIC) {
+    if (xx_data_get_u32(block, block_size, 32U, false) != XX_APFS_VOLUME_MAGIC) {
         xx_mem_free(block);
         return;
     }
@@ -1229,24 +1168,20 @@ static void xx_apfs_load_volume(xx_apfs_private *parsed, uint32_t slot,
 
     parsed->current_volume_features = info->incompatible_features;
     if (info->omap_oid == 0U || info->root_tree_oid == 0U) return;
-    if (!xx_apfs_load_omap(parsed, info->omap_oid, &parsed->vomap,
-                           &parsed->vomap_count, &parsed->vomap_capacity,
-                           &parsed->vomap_index, parsed->nx.xid)) {
+    if (!xx_apfs_load_omap(parsed, info->omap_oid, &parsed->vomap, &parsed->vomap_count, &parsed->vomap_capacity, &parsed->vomap_index, parsed->nx.xid)) {
         return;
     }
-    tree_block = xx_apfs_omap_lookup(parsed->vomap, &parsed->vomap_index,
-                                     info->root_tree_oid);
+    tree_block = xx_apfs_omap_lookup(parsed->vomap, &parsed->vomap_index, info->root_tree_oid);
     if (tree_block <= 0) return;
-    xx_apfs_walk_btree(parsed, (uint64_t)tree_block, 0U, 0U, 0U,
-                       xx_apfs_fs_cb, NULL);
+    xx_apfs_walk_btree(parsed, (uint64_t)tree_block, 0U, 0U, 0U, xx_apfs_fs_cb, NULL);
     info->tree_reached = true;
-    xx_apfs_build_listing(parsed, info->name[0] ? info->name : "volume",
-                          &info->records);
+    xx_apfs_build_listing(parsed, info->name[0] ? info->name : "volume", &info->records);
 }
 
 /* --- parse -------------------------------------------------------------- */
 
-static void xx_apfs_private_cleanup(xx_apfs_private *parsed) {
+static void xx_apfs_private_cleanup(xx_apfs_private *parsed)
+{
     size_t index;
     if (!parsed) return;
     for (index = 0U; index < parsed->drec_count; ++index) {
@@ -1270,22 +1205,22 @@ static void xx_apfs_private_cleanup(xx_apfs_private *parsed) {
     parsed->super_offset = -1;
 }
 
-static void xx_apfs_private_free(xx_apfs_private *parsed) {
+static void xx_apfs_private_free(xx_apfs_private *parsed)
+{
     if (!parsed) return;
     xx_apfs_private_cleanup(parsed);
     xx_mem_free(parsed);
 }
 
-static bool xx_apfs_parse(Abstractformat *self, xx_apfs_private *parsed,
-                          xx_pd_struct *pd, bool deep) {
+static bool xx_apfs_parse(Abstractformat *self, xx_apfs_private *parsed, xx_pd_struct *pd, bool deep)
+{
     uint32_t index;
     if (parsed) {
         xx_mem_zero(parsed, sizeof(*parsed));
         parsed->input_size = -1;
         parsed->super_offset = -1;
     }
-    if (!self || !self->device || !parsed || self->base_address < 0 ||
-        (pd && xx_pd_is_stopped(pd))) return false;
+    if (!self || !self->device || !parsed || self->base_address < 0 || (pd && xx_pd_is_stopped(pd))) return false;
     parsed->device = self->device;
     parsed->pd = pd;
     parsed->base_address = self->base_address;
@@ -1299,13 +1234,10 @@ static bool xx_apfs_parse(Abstractformat *self, xx_apfs_private *parsed,
     /* The container object map turns the virtual nx_fs_oid entries into block
      * addresses. Without it no volume can be reached, but the container is
      * still correctly identified. */
-    if (!xx_apfs_load_omap(parsed, parsed->nx.omap_oid, &parsed->omap,
-                           &parsed->omap_count, &parsed->omap_capacity,
-                           &parsed->omap_index, parsed->nx.xid)) {
+    if (!xx_apfs_load_omap(parsed, parsed->nx.omap_oid, &parsed->omap, &parsed->omap_count, &parsed->omap_capacity, &parsed->omap_index, parsed->nx.xid)) {
         return true;
     }
-    for (index = 0U; index < parsed->nx.max_file_systems &&
-                     index < XX_APFS_MAX_VOLUMES; ++index) {
+    for (index = 0U; index < parsed->nx.max_file_systems && index < XX_APFS_MAX_VOLUMES; ++index) {
         if (parsed->nx.fs_oid[index] == 0U) continue;
         if (xx_apfs_stopped(parsed)) break;
         /* Each volume gets a fresh visited set: the container omap tree and a
@@ -1314,8 +1246,7 @@ static bool xx_apfs_parse(Abstractformat *self, xx_apfs_private *parsed,
         xx_apfs_map_cleanup(&parsed->visited);
         parsed->nodes = 0U;
         xx_apfs_reset_volume_scratch(parsed);
-        xx_apfs_load_volume(parsed, parsed->volume_count,
-                            parsed->nx.fs_oid[index]);
+        xx_apfs_load_volume(parsed, parsed->volume_count, parsed->nx.fs_oid[index]);
         ++parsed->volume_count;
     }
     xx_apfs_reset_volume_scratch(parsed);
@@ -1324,18 +1255,16 @@ static bool xx_apfs_parse(Abstractformat *self, xx_apfs_private *parsed,
 
 /* --- archive record plumbing -------------------------------------------- */
 
-static bool xx_apfs_copy_options(xx_list_s *destination,
-                                 const xx_list_s *source) {
+static bool xx_apfs_copy_options(xx_list_s *destination, const xx_list_s *source)
+{
     size_t index;
     if (!destination || !source) return source == NULL;
     for (index = 0U; index < source->count; ++index) {
-        const xx_meta *item = (const xx_meta *)xx_list_at(
-            (const xx_list_t *)source, index);
+        const xx_meta *item = (const xx_meta *)xx_list_at((const xx_list_t *)source, index);
         xx_meta copy;
         if (!item) continue;
         xx_meta_init(&copy, item->meta_id);
-        if (!xx_var_copy(&copy.var, &item->var) ||
-            !xx_list_append(destination, &copy)) {
+        if (!xx_var_copy(&copy.var, &item->var) || !xx_list_append(destination, &copy)) {
             xx_meta_cleanup(&copy);
             return false;
         }
@@ -1343,32 +1272,30 @@ static bool xx_apfs_copy_options(xx_list_s *destination,
     return true;
 }
 
-static const xx_var *xx_apfs_find_option(const xx_list_s *options,
-                                         uint32_t meta_id) {
+static const xx_var *xx_apfs_find_option(const xx_list_s *options, uint32_t meta_id)
+{
     size_t index;
     if (!options) return NULL;
     for (index = 0U; index < options->count; ++index) {
-        const xx_meta *item = (const xx_meta *)xx_list_at(
-            (const xx_list_t *)options, index);
+        const xx_meta *item = (const xx_meta *)xx_list_at((const xx_list_t *)options, index);
         if (item && item->meta_id == meta_id) return &item->var;
     }
     return NULL;
 }
 
-static bool xx_apfs_safe_name(const char *name) {
+static bool xx_apfs_safe_name(const char *name)
+{
     const char *component;
     const char *cursor;
     if (!name || !name[0] || name[0] == '/' || name[0] == '\\') return false;
     component = name;
     for (cursor = name;; ++cursor) {
         unsigned char ch = (unsigned char)*cursor;
-        if (ch == ':' || ch == '<' || ch == '>' || ch == '"' || ch == '|' ||
-            ch == '?' || ch == '*' || (ch != 0U && ch < 32U)) return false;
+        if (ch == ':' || ch == '<' || ch == '>' || ch == '"' || ch == '|' || ch == '?' || ch == '*' || (ch != 0U && ch < 32U)) return false;
         if (ch == '/' || ch == '\\' || ch == 0U) {
             size_t length = (size_t)(cursor - component);
-            if (length == 0U || (length == 1U && component[0] == '.') ||
-                (length == 2U && component[0] == '.' && component[1] == '.') ||
-                component[length - 1U] == ' ' || component[length - 1U] == '.') {
+            if (length == 0U || (length == 1U && component[0] == '.') || (length == 2U && component[0] == '.' && component[1] == '.') || component[length - 1U] == ' ' ||
+                component[length - 1U] == '.') {
                 return false;
             }
             if (ch == 0U) return true;
@@ -1377,8 +1304,8 @@ static bool xx_apfs_safe_name(const char *name) {
     }
 }
 
-static bool xx_apfs_populate_record(xx_archive_record *record,
-                                    const xx_apfs_entry *entry) {
+static bool xx_apfs_populate_record(xx_archive_record *record, const xx_apfs_entry *entry)
+{
     if (!record || !entry || !entry->name) return false;
     xx_archive_record_cleanup(record);
     xx_archive_record_init(record);
@@ -1386,19 +1313,13 @@ static bool xx_apfs_populate_record(xx_archive_record *record,
     record->header_size = 0;
     record->data_offset = entry->data_offset;
     record->compressed_size = entry->data_size;
-    return xx_archive_record_set_original_name(record, entry->name) &&
-           xx_archive_record_set_meta_u64(record, XX_META_ID_UNCOMPRESSED_SIZE,
-                                          entry->size) &&
-           xx_archive_record_set_meta_u64(
-               record, XX_META_ID_COMPRESSED_SIZE,
-               (uint64_t)(entry->data_size > 0 ? entry->data_size : 0)) &&
-           xx_archive_record_set_meta_u64(record, XX_META_ID_COMPRESSION_METHOD,
-                                          0U) &&
-           xx_archive_record_set_meta_bool(record, XX_META_ID_IS_FOLDER,
-                                           entry->is_folder);
+    return xx_archive_record_set_original_name(record, entry->name) && xx_archive_record_set_meta_u64(record, XX_META_ID_UNCOMPRESSED_SIZE, entry->size) &&
+           xx_archive_record_set_meta_u64(record, XX_META_ID_COMPRESSED_SIZE, (uint64_t)(entry->data_size > 0 ? entry->data_size : 0)) &&
+           xx_archive_record_set_meta_u64(record, XX_META_ID_COMPRESSION_METHOD, 0U) && xx_archive_record_set_meta_bool(record, XX_META_ID_IS_FOLDER, entry->is_folder);
 }
 
-static void xx_apfs_archive_stream_free(void *pointer) {
+static void xx_apfs_archive_stream_free(void *pointer)
+{
     xx_apfs_archive_stream *stream = (xx_apfs_archive_stream *)pointer;
     if (!stream) return;
     if (stream->parsed) xx_apfs_private_free(stream->parsed);
@@ -1407,7 +1328,8 @@ static void xx_apfs_archive_stream_free(void *pointer) {
 
 /* --- public API --------------------------------------------------------- */
 
-void xx_apfs_init(xx_apfs *apfs, xx_io_device *dev, int64_t base_address) {
+void xx_apfs_init(xx_apfs *apfs, xx_io_device *dev, int64_t base_address)
+{
     if (!apfs) return;
     xx_mem_zero(apfs, sizeof(*apfs));
     xx_format_init(&apfs->format, dev, base_address);
@@ -1421,27 +1343,25 @@ void xx_apfs_init(xx_apfs *apfs, xx_io_device *dev, int64_t base_address) {
     apfs->format.check_is_valid = xx_apfs_check_is_valid;
     apfs->format.handle_base_info = xx_apfs_handle_base_info;
     apfs->format.get_format_size = xx_apfs_get_format_size;
-    apfs->format.get_number_of_archive_records =
-        xx_apfs_get_number_of_archive_records;
-    apfs->format.create_archive_records_reading =
-        xx_apfs_create_archive_records_reading;
+    apfs->format.get_number_of_archive_records = xx_apfs_get_number_of_archive_records;
+    apfs->format.create_archive_records_reading = xx_apfs_create_archive_records_reading;
     apfs->format.get_current_archive_record = xx_apfs_get_current_archive_record;
-    apfs->format.unpack_current_archive_record =
-        xx_apfs_unpack_current_archive_record;
+    apfs->format.unpack_current_archive_record = xx_apfs_unpack_current_archive_record;
     apfs->format.archive_record_move_to_next = xx_apfs_archive_record_move_to_next;
-    apfs->format.free_archive_records_reading =
-        xx_apfs_free_archive_records_reading;
+    apfs->format.free_archive_records_reading = xx_apfs_free_archive_records_reading;
     apfs->format.destroy = xx_apfs_vtable_destroy;
     apfs->super_offset = -1;
 }
 
-xx_apfs *xx_apfs_create(xx_io_device *dev, int64_t base_address) {
+xx_apfs *xx_apfs_create(xx_io_device *dev, int64_t base_address)
+{
     xx_apfs *apfs = (xx_apfs *)xx_mem_alloc(sizeof(*apfs));
     if (apfs) xx_apfs_init(apfs, dev, base_address);
     return apfs;
 }
 
-void xx_apfs_destroy(xx_apfs *apfs) {
+void xx_apfs_destroy(xx_apfs *apfs)
+{
     if (!apfs) return;
     if (apfs->internal) {
         xx_apfs_private_free((xx_apfs_private *)apfs->internal);
@@ -1450,17 +1370,20 @@ void xx_apfs_destroy(xx_apfs *apfs) {
     xx_format_cleanup_extra_parameters(&apfs->format);
 }
 
-static void xx_apfs_vtable_destroy(Abstractformat *self) {
+static void xx_apfs_vtable_destroy(Abstractformat *self)
+{
     xx_apfs_destroy((xx_apfs *)self);
 }
 
-void xx_apfs_free(xx_apfs *apfs) {
+void xx_apfs_free(xx_apfs *apfs)
+{
     if (!apfs) return;
     xx_apfs_destroy(apfs);
     xx_mem_free(apfs);
 }
 
-bool xx_apfs_check_is_valid(Abstractformat *self, xx_pd_struct *pd) {
+bool xx_apfs_check_is_valid(Abstractformat *self, xx_pd_struct *pd)
+{
     /* Identification stops at the container superblock; walking every volume
      * to answer a probe would read the whole image. */
     xx_apfs_private *probe = (xx_apfs_private *)xx_mem_alloc(sizeof(*probe));
@@ -1471,7 +1394,8 @@ bool xx_apfs_check_is_valid(Abstractformat *self, xx_pd_struct *pd) {
     return result;
 }
 
-bool xx_apfs_handle_base_info(Abstractformat *self, xx_pd_struct *pd) {
+bool xx_apfs_handle_base_info(Abstractformat *self, xx_pd_struct *pd)
+{
     xx_apfs_private *parsed;
     xx_apfs *apfs = (xx_apfs *)self;
     int64_t total_size;
@@ -1492,8 +1416,7 @@ bool xx_apfs_handle_base_info(Abstractformat *self, xx_pd_struct *pd) {
     apfs->xid = parsed->nx.xid;
     xx_mem_copy(apfs->uuid, parsed->nx.uuid, XX_APFS_UUID_SIZE);
     apfs->features = parsed->nx.features;
-    apfs->readonly_compatible_features =
-        parsed->nx.readonly_compatible_features;
+    apfs->readonly_compatible_features = parsed->nx.readonly_compatible_features;
     apfs->incompatible_features = parsed->nx.incompatible_features;
     apfs->omap_oid = parsed->nx.omap_oid;
     apfs->max_file_systems = parsed->nx.max_file_systems;
@@ -1502,8 +1425,7 @@ bool xx_apfs_handle_base_info(Abstractformat *self, xx_pd_struct *pd) {
     apfs->from_checkpoint = parsed->from_checkpoint;
     apfs->omap_entries = parsed->omap_count;
     apfs->volume_count = parsed->volume_count;
-    for (index = 0U; index < parsed->volume_count &&
-                     index < XX_APFS_MAX_VOLUMES; ++index) {
+    for (index = 0U; index < parsed->volume_count && index < XX_APFS_MAX_VOLUMES; ++index) {
         apfs->volumes[index] = parsed->volumes[index];
     }
     apfs->number_of_records = parsed->entry_count;
@@ -1511,13 +1433,9 @@ bool xx_apfs_handle_base_info(Abstractformat *self, xx_pd_struct *pd) {
     apfs->number_of_unsupported = parsed->unsupported;
 
     total_size = xx_io_total_size(self->device);
-    if (parsed->nx.block_count <=
-            (uint64_t)INT64_MAX / (parsed->nx.block_size ? parsed->nx.block_size
-                                                         : 1U) &&
-        (int64_t)(parsed->nx.block_count * parsed->nx.block_size) <=
-            total_size - self->base_address) {
-        self->format_size =
-            (int64_t)(parsed->nx.block_count * parsed->nx.block_size);
+    if (parsed->nx.block_count <= (uint64_t)INT64_MAX / (parsed->nx.block_size ? parsed->nx.block_size : 1U) &&
+        (int64_t)(parsed->nx.block_count * parsed->nx.block_size) <= total_size - self->base_address) {
+        self->format_size = (int64_t)(parsed->nx.block_count * parsed->nx.block_size);
         if (total_size > self->base_address + self->format_size) {
             self->overlay_offset = self->base_address + self->format_size;
             self->overlay_size = total_size - self->overlay_offset;
@@ -1536,25 +1454,23 @@ bool xx_apfs_handle_base_info(Abstractformat *self, xx_pd_struct *pd) {
     return true;
 }
 
-int64_t xx_apfs_get_format_size(Abstractformat *self, xx_pd_struct *pd) {
-    if (!self || (!self->base_info_handled &&
-                  !xx_format_handle_base_info(self, pd))) return -1;
+int64_t xx_apfs_get_format_size(Abstractformat *self, xx_pd_struct *pd)
+{
+    if (!self || (!self->base_info_handled && !xx_format_handle_base_info(self, pd))) return -1;
     return self->format_size;
 }
 
-uint64_t xx_apfs_get_number_of_archive_records(Abstractformat *self,
-                                               xx_pd_struct *pd) {
-    if (!self || (!self->base_info_handled &&
-                  !xx_format_handle_base_info(self, pd))) return 0U;
+uint64_t xx_apfs_get_number_of_archive_records(Abstractformat *self, xx_pd_struct *pd)
+{
+    if (!self || (!self->base_info_handled && !xx_format_handle_base_info(self, pd))) return 0U;
     return ((xx_apfs *)self)->number_of_records;
 }
 
-xx_archive_record_state *xx_apfs_create_archive_records_reading(
-    Abstractformat *self, const xx_list_s *options, xx_pd_struct *pd) {
+xx_archive_record_state *xx_apfs_create_archive_records_reading(Abstractformat *self, const xx_list_s *options, xx_pd_struct *pd)
+{
     xx_archive_record_state *state;
     xx_apfs_archive_stream *stream;
-    if (!self || !self->device ||
-        (!self->base_info_handled && !xx_format_handle_base_info(self, pd))) {
+    if (!self || !self->device || (!self->base_info_handled && !xx_format_handle_base_info(self, pd))) {
         return NULL;
     }
     state = (xx_archive_record_state *)xx_mem_alloc(sizeof(*state));
@@ -1566,8 +1482,7 @@ xx_archive_record_state *xx_apfs_create_archive_records_reading(
     }
     xx_archive_record_state_init(state, self);
     stream->parsed = (xx_apfs_private *)xx_mem_alloc(sizeof(*stream->parsed));
-    if (!stream->parsed || !xx_apfs_copy_options(&state->options, options) ||
-        !xx_apfs_parse(self, stream->parsed, pd, true)) {
+    if (!stream->parsed || !xx_apfs_copy_options(&state->options, options) || !xx_apfs_parse(self, stream->parsed, pd, true)) {
         xx_apfs_archive_stream_free(stream);
         xx_archive_record_state_free(state);
         return NULL;
@@ -1576,27 +1491,22 @@ xx_archive_record_state *xx_apfs_create_archive_records_reading(
     state->internal_state = stream;
     state->free_internal = xx_apfs_archive_stream_free;
     state->total_records = (int64_t)stream->parsed->entry_count;
-    if (stream->parsed->entry_count != 0U &&
-        xx_apfs_populate_record(&state->current_record,
-                                &stream->parsed->entries[0])) {
+    if (stream->parsed->entry_count != 0U && xx_apfs_populate_record(&state->current_record, &stream->parsed->entries[0])) {
         state->has_record = true;
         state->current_index = 0;
     }
     return state;
 }
 
-const xx_archive_record *xx_apfs_get_current_archive_record(
-    Abstractformat *self, xx_archive_record_state *state) {
-    return self && state && state->format == self && state->has_record
-               ? &state->current_record : NULL;
+const xx_archive_record *xx_apfs_get_current_archive_record(Abstractformat *self, xx_archive_record_state *state)
+{
+    return self && state && state->format == self && state->has_record ? &state->current_record : NULL;
 }
 
-bool xx_apfs_archive_record_move_to_next(Abstractformat *self,
-                                         xx_archive_record_state *state,
-                                         xx_pd_struct *pd) {
+bool xx_apfs_archive_record_move_to_next(Abstractformat *self, xx_archive_record_state *state, xx_pd_struct *pd)
+{
     xx_apfs_archive_stream *stream;
-    if (!self || !state || state->format != self || !state->has_record ||
-        !state->internal_state || (pd && xx_pd_is_stopped(pd))) return false;
+    if (!self || !state || state->format != self || !state->has_record || !state->internal_state || (pd && xx_pd_is_stopped(pd))) return false;
     stream = (xx_apfs_archive_stream *)state->internal_state;
     ++stream->index;
     if (stream->index >= stream->parsed->entry_count) {
@@ -1605,8 +1515,7 @@ bool xx_apfs_archive_record_move_to_next(Abstractformat *self,
         state->has_record = false;
         return false;
     }
-    if (!xx_apfs_populate_record(&state->current_record,
-                                 &stream->parsed->entries[stream->index])) {
+    if (!xx_apfs_populate_record(&state->current_record, &stream->parsed->entries[stream->index])) {
         state->has_record = false;
         return false;
     }
@@ -1614,9 +1523,8 @@ bool xx_apfs_archive_record_move_to_next(Abstractformat *self,
     return true;
 }
 
-bool xx_apfs_unpack_current_archive_record(Abstractformat *self,
-                                           xx_archive_record_state *state,
-                                           xx_pd_struct *pd) {
+bool xx_apfs_unpack_current_archive_record(Abstractformat *self, xx_archive_record_state *state, xx_pd_struct *pd)
+{
     const xx_archive_record *record;
     const xx_apfs_entry *entry;
     xx_apfs_archive_stream *stream;
@@ -1626,9 +1534,7 @@ bool xx_apfs_unpack_current_archive_record(Abstractformat *self,
     char *owned_base = NULL;
     char *destination = NULL;
     bool result;
-    if (!self || !self->device || !state || state->format != self ||
-        !state->has_record || !state->internal_state ||
-        (pd && xx_pd_is_stopped(pd))) return false;
+    if (!self || !self->device || !state || state->format != self || !state->has_record || !state->internal_state || (pd && xx_pd_is_stopped(pd))) return false;
     stream = (xx_apfs_archive_stream *)state->internal_state;
     if (stream->index >= stream->parsed->entry_count) return false;
     entry = &stream->parsed->entries[stream->index];
@@ -1642,22 +1548,16 @@ bool xx_apfs_unpack_current_archive_record(Abstractformat *self,
     option = xx_apfs_find_option(&state->options, XX_META_ID_OPT_UNPACK_PATH);
     if (!option) {
         int64_t total = xx_io_total_size(self->device);
-        return entry->is_folder ||
-               (entry->data_offset >= 0 && entry->data_size >= 0 &&
-                entry->data_offset <= total &&
-                entry->data_size <= total - entry->data_offset);
+        return entry->is_folder || (entry->data_offset >= 0 && entry->data_size >= 0 && entry->data_offset <= total && entry->data_size <= total - entry->data_offset);
     }
-    if (option->type == XX_VAR_TYPE_STRING ||
-        option->type == XX_VAR_TYPE_STRING_VIEW) {
+    if (option->type == XX_VAR_TYPE_STRING || option->type == XX_VAR_TYPE_STRING_VIEW) {
         base = xx_var_get_str(option);
-    } else if (option->type == XX_VAR_TYPE_WSTRING ||
-               option->type == XX_VAR_TYPE_WSTRING_VIEW) {
+    } else if (option->type == XX_VAR_TYPE_WSTRING || option->type == XX_VAR_TYPE_WSTRING_VIEW) {
         owned_base = xx_str_unicode_to_utf8(xx_var_get_wstr(option));
         base = owned_base;
     }
     if (!base) goto cleanup;
-    if (base[0] && base[xx_str_len(base) - 1U] != '/' &&
-        base[xx_str_len(base) - 1U] != '\\') {
+    if (base[0] && base[xx_str_len(base) - 1U] != '/' && base[xx_str_len(base) - 1U] != '\\') {
         destination = xx_str_concat(base, "/");
         if (!destination) goto cleanup;
         {
@@ -1672,9 +1572,7 @@ bool xx_apfs_unpack_current_archive_record(Abstractformat *self,
     if (entry->is_folder) {
         result = xx_store_create_dirs_a(destination, true);
     } else if (xx_store_create_dirs_a(destination, false)) {
-        result = xx_store_unpack_device_to_file(self->device, entry->data_offset,
-                                                entry->data_size, destination,
-                                                pd);
+        result = xx_store_unpack_device_to_file(self->device, entry->data_offset, entry->data_size, destination, pd);
     } else {
         result = false;
     }
@@ -1687,21 +1585,22 @@ cleanup:
     return false;
 }
 
-void xx_apfs_free_archive_records_reading(Abstractformat *self,
-                                          xx_archive_record_state *state) {
+void xx_apfs_free_archive_records_reading(Abstractformat *self, xx_archive_record_state *state)
+{
     (void)self;
     xx_archive_record_state_free(state);
 }
 
-uint32_t xx_apfs_get_block_size(const xx_apfs *apfs) {
+uint32_t xx_apfs_get_block_size(const xx_apfs *apfs)
+{
     return apfs ? apfs->block_size : 0U;
 }
-uint32_t xx_apfs_get_volume_count(const xx_apfs *apfs) {
+uint32_t xx_apfs_get_volume_count(const xx_apfs *apfs)
+{
     return apfs ? apfs->volume_count : 0U;
 }
-const xx_apfs_volume_info *xx_apfs_get_volume(const xx_apfs *apfs,
-                                              uint32_t index) {
-    if (!apfs || index >= apfs->volume_count ||
-        index >= XX_APFS_MAX_VOLUMES) return NULL;
+const xx_apfs_volume_info *xx_apfs_get_volume(const xx_apfs *apfs, uint32_t index)
+{
+    if (!apfs || index >= apfs->volume_count || index >= XX_APFS_MAX_VOLUMES) return NULL;
     return &apfs->volumes[index];
 }
